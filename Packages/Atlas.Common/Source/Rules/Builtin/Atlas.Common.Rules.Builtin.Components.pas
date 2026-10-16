@@ -67,7 +67,10 @@ uses
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Pascal.Contract,
   Atlas.Common.Pascal.SyntaxTree,
-  Atlas.Common.Rules.Builtin.Inheritance;
+  Atlas.Common.Index.Contract,
+  Atlas.Common.Rules.Derived,
+  Atlas.Common.Rules.Builtin.Inheritance,
+  Atlas.Text.Lines;
 
 const
   // Bekannte VCL-Basisklassen; erreicht die Vorfahrenkette eine davon, gilt die Klasse
@@ -127,7 +130,9 @@ type
     FLineBreak: string;
     procedure Collect(ANode: TSyntaxNode);
   public
-    constructor Create(const AContext: TRuleContext);
+    /// <summary>ALocal ist der Index der Datei (TRuleDerived.UnitIndex). Das Modell liest aus AContext
+    /// nur Tree und Text; es wird über den Ableitungscache von allen Komponentenregeln geteilt.</summary>
+    constructor Create(const AContext: TRuleContext; const ALocal: TUnitIndex);
     destructor Destroy; override;
     function IsComponent(const AClassName: string): Boolean;
     function FindMethod(const AClassName, AMethodName: string; out AMethod: TMethodImpl): Boolean;
@@ -154,17 +159,16 @@ end;
 
 { TComponentModel }
 
-constructor TComponentModel.Create(const AContext: TRuleContext);
+constructor TComponentModel.Create(const AContext: TRuleContext; const ALocal: TUnitIndex);
 begin
   inherited Create;
   FContext := AContext;
-  FAncestry := TAncestry.Create(AContext);
+  // Bricht den Referenzzyklus Cache -> Modell -> Kontext -> Cache.
+  FContext.Derived := nil;
+  FAncestry := TAncestry.Create(AContext.Index, ALocal);
   FClasses := TList<TClassInfo>.Create;
   FMethods := TList<TMethodImpl>.Create;
-  if Pos(#13#10, AContext.Text) > 0 then
-    FLineBreak := #13#10
-  else
-    FLineBreak := #10;
+  FLineBreak := TTextLines.LineBreakOf(AContext.Text);
   Collect(AContext.Tree.Root);
 end;
 
@@ -436,12 +440,25 @@ begin
   Result := True;
 end;
 
-function Prepare(const AContext: TRuleContext; out AModel: TComponentModel): Boolean;
+/// <summary>Modell der Datei, je Lauf einmal gebaut (Review P-03); gehört ACache, nie freigeben.
+/// False ohne Syntaxbaum.</summary>
+function Prepare(const ACache: IRuleDerivedCache; const AContext: TRuleContext; out AModel: TComponentModel): Boolean;
+var
+  Context: TRuleContext;
+  Local: TUnitIndex;
 begin
   AModel := nil;
   Result := AContext.Tree <> nil;
-  if Result then
-    AModel := TComponentModel.Create(AContext);
+  if not Result then
+    Exit;
+  // const-Parameter dürfen anonyme Methoden nicht erfassen (E2555): lokale Kopien.
+  Context := AContext;
+  Local := TRuleDerived.UnitIndex(ACache, AContext);
+  AModel := TRuleDerived.Get<TComponentModel>(ACache, 'components.model',
+    function: TComponentModel
+    begin
+      Result := TComponentModel.Create(Context, Local);
+    end);
 end;
 
 { TComponentMissingInheritedRule }
@@ -455,6 +472,7 @@ end;
 procedure TComponentMissingInheritedRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
 var
   Model: TComponentModel;
+  Cache: IRuleDerivedCache;
   Info: TClassInfo;
   Method: TMethodImpl;
   Token: TPascalToken;
@@ -463,40 +481,37 @@ var
   Confidence: TRuleConfidence;
   Message: string;
 begin
-  if not Prepare(AContext, Model) then
+  Cache := TRuleDerived.Open(AContext);
+  if not Prepare(Cache, AContext, Model) then
     Exit;
-  try
-    for Info in Model.Classes do
+  for Info in Model.Classes do
+  begin
+    if not Model.IsComponent(Info.Name) then
+      Continue;
+    for Method in Model.Methods do
     begin
-      if not Model.IsComponent(Info.Name) then
+      if not SameText(Method.ClassName, Info.Name) or not IsIn(Method.MethodName, InheritedMethods) or
+        not Model.DeclaredWith(Info, Method.MethodName, 'override') or
+        Model.HasToken(Method.Block, ['inherited']) or not Model.NameToken(Method, Token) then
         Continue;
-      for Method in Model.Methods do
-      begin
-        if not SameText(Method.ClassName, Info.Name) or not IsIn(Method.MethodName, InheritedMethods) or
-          not Model.DeclaredWith(Info, Method.MethodName, 'override') or
-          Model.HasToken(Method.Block, ['inherited']) or not Model.NameToken(Method, Token) then
-          Continue;
-        // TCustomControl.Paint zeichnet nur den Rahmen im Designer; oft bewusst weggelassen.
-        if SameText(Method.MethodName, 'Paint') then
-          Confidence := TRuleConfidence.Low
-        else
-          Confidence := TRuleConfidence.High;
-        // Im Destruktor zuletzt, sonst zuerst.
-        if SameText(Method.MethodName, 'Destroy') then
-          Inserted := Model.InsertBeforeEnd(Method.Block, 'inherited;', Edit)
-        else
-          Inserted := Model.InsertAfterBegin(Method.Block, 'inherited;', Edit);
-        Message := Format('%s.%s ruft inherited nicht auf; die VCL erledigt dort eigene Arbeit',
-          [Info.Name, Method.MethodName]);
-        if Inserted then
-          AReport.Add(TTextRange.Create(Token.StartPos, Token.EndPos), Message, Confidence,
-            [TRuleFix.Create('"inherited;" einfügen', [Edit])])
-        else
-          AReport.Add(TTextRange.Create(Token.StartPos, Token.EndPos), Message, Confidence);
-      end;
+      // TCustomControl.Paint zeichnet nur den Rahmen im Designer; oft bewusst weggelassen.
+      if SameText(Method.MethodName, 'Paint') then
+        Confidence := TRuleConfidence.Low
+      else
+        Confidence := TRuleConfidence.High;
+      // Im Destruktor zuletzt, sonst zuerst.
+      if SameText(Method.MethodName, 'Destroy') then
+        Inserted := Model.InsertBeforeEnd(Method.Block, 'inherited;', Edit)
+      else
+        Inserted := Model.InsertAfterBegin(Method.Block, 'inherited;', Edit);
+      Message := Format('%s.%s ruft inherited nicht auf; die VCL erledigt dort eigene Arbeit',
+        [Info.Name, Method.MethodName]);
+      if Inserted then
+        AReport.Add(TTextRange.Create(Token.StartPos, Token.EndPos), Message, Confidence,
+          [TRuleFix.Create('"inherited;" einfügen', [Edit])])
+      else
+        AReport.Add(TTextRange.Create(Token.StartPos, Token.EndPos), Message, Confidence);
     end;
-  finally
-    Model.Free;
   end;
 end;
 
@@ -546,6 +561,7 @@ end;
 procedure TComponentDefaultMismatchRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
 var
   Model: TComponentModel;
+  Cache: IRuleDerivedCache;
   Info: TClassInfo;
   Prop: TPropertyInfo;
   Ctor: TMethodImpl;
@@ -553,32 +569,29 @@ var
   ValueText: string;
   Range: TTextRange;
 begin
-  if not Prepare(AContext, Model) then
+  Cache := TRuleDerived.Open(AContext);
+  if not Prepare(Cache, AContext, Model) then
     Exit;
-  try
-    for Info in Model.Classes do
+  for Info in Model.Classes do
+  begin
+    if not Model.IsComponent(Info.Name) or not Model.FindMethod(Info.Name, 'Create', Ctor) then
+      Continue;
+    for Prop in Model.Properties(Info) do
     begin
-      if not Model.IsComponent(Info.Name) or not Model.FindMethod(Info.Name, 'Create', Ctor) then
+      if not Prop.HasDefault or (Prop.ReadName = '') or not FindAssignment(Ctor.Block, Prop.ReadName, Value) then
         Continue;
-      for Prop in Model.Properties(Info) do
-      begin
-        if not Prop.HasDefault or (Prop.ReadName = '') or not FindAssignment(Ctor.Block, Prop.ReadName, Value) then
-          Continue;
-        // Nur feste Werte geben eine Aussage.
-        if not (Value.Kind in [TSyntaxKind.Literal, TSyntaxKind.Identifier, TSyntaxKind.UnaryExpr]) then
-          Continue;
-        ValueText := Model.NodeText(Value);
-        if SameValue(ValueText, Prop.DefaultText) then
-          Continue;
-        Range := TTextRange.Create(Prop.DefaultFirst.StartPos, Prop.DefaultLast.EndPos);
-        AReport.Add(Range, Format('"%s" hat default %s, der Konstruktor setzt %s aber auf %s; der Wert wird ' +
-          'dann nicht in der DFM gespeichert oder falsch geladen', [Prop.Name, Prop.DefaultText, Prop.ReadName,
-          ValueText]), TRuleConfidence.High,
-          [TRuleFix.Create(Format('default auf %s ändern', [ValueText]), [TRuleEdit.Create(Range, ValueText)])]);
-      end;
+      // Nur feste Werte geben eine Aussage.
+      if not (Value.Kind in [TSyntaxKind.Literal, TSyntaxKind.Identifier, TSyntaxKind.UnaryExpr]) then
+        Continue;
+      ValueText := Model.NodeText(Value);
+      if SameValue(ValueText, Prop.DefaultText) then
+        Continue;
+      Range := TTextRange.Create(Prop.DefaultFirst.StartPos, Prop.DefaultLast.EndPos);
+      AReport.Add(Range, Format('"%s" hat default %s, der Konstruktor setzt %s aber auf %s; der Wert wird ' +
+        'dann nicht in der DFM gespeichert oder falsch geladen', [Prop.Name, Prop.DefaultText, Prop.ReadName,
+        ValueText]), TRuleConfidence.High,
+        [TRuleFix.Create(Format('default auf %s ändern', [ValueText]), [TRuleEdit.Create(Range, ValueText)])]);
     end;
-  finally
-    Model.Free;
   end;
 end;
 
@@ -610,6 +623,7 @@ const
     'bleibt ein ungültiger Zeiger zurück';
 var
   Model: TComponentModel;
+  Cache: IRuleDerivedCache;
   Info: TClassInfo;
   Prop: TPropertyInfo;
   Setter, Ctor: TMethodImpl;
@@ -618,43 +632,40 @@ var
   Parameter: string;
   Range: TTextRange;
 begin
-  if not Prepare(AContext, Model) then
+  Cache := TRuleDerived.Open(AContext);
+  if not Prepare(Cache, AContext, Model) then
     Exit;
-  try
-    for Info in Model.Classes do
+  for Info in Model.Classes do
+  begin
+    if not Model.IsComponent(Info.Name) then
+      Continue;
+    for Prop in Model.Properties(Info) do
     begin
-      if not Model.IsComponent(Info.Name) then
+      if (Prop.TypeName = '') or (Prop.WriteName = '') or (Prop.NameToken.Text = '') or
+        not Model.IsComponent(Prop.TypeName) then
         Continue;
-      for Prop in Model.Properties(Info) do
+      // Eigene Unterkomponenten (im Konstruktor erzeugt) brauchen keine Benachrichtigung.
+      if (Prop.ReadName <> '') and Model.FindMethod(Info.Name, 'Create', Ctor) and
+        FindAssignment(Ctor.Block, Prop.ReadName, Value) and ContainsText(Model.NodeText(Value), '.Create') then
+        Continue;
+      Range := TTextRange.Create(Prop.NameToken.StartPos, Prop.NameToken.EndPos);
+      if not Model.FindMethod(Info.Name, Prop.WriteName, Setter) then
       begin
-        if (Prop.TypeName = '') or (Prop.WriteName = '') or (Prop.NameToken.Text = '') or
-          not Model.IsComponent(Prop.TypeName) then
-          Continue;
-        // Eigene Unterkomponenten (im Konstruktor erzeugt) brauchen keine Benachrichtigung.
-        if (Prop.ReadName <> '') and Model.FindMethod(Info.Name, 'Create', Ctor) and
-          FindAssignment(Ctor.Block, Prop.ReadName, Value) and ContainsText(Model.NodeText(Value), '.Create') then
-          Continue;
-        Range := TTextRange.Create(Prop.NameToken.StartPos, Prop.NameToken.EndPos);
-        if not Model.FindMethod(Info.Name, Prop.WriteName, Setter) then
-        begin
-          // write auf ein Feld: es gibt keinen Setter, in dem FreeNotification stehen könnte.
-          if SameText(Prop.WriteName, Prop.ReadName) then
-            AReport.Add(Range, Format(Message, [Prop.Name]), TRuleConfidence.Medium);
-          Continue;
-        end;
-        if Model.HasToken(Setter.Block, ['FreeNotification']) then
-          Continue;
-        Parameter := LastParameter(Setter);
-        if (Parameter <> '') and Model.InsertBeforeEnd(Setter.Block,
-          Format('if %s <> nil then', [Parameter]) + ' ' + Format('%s.FreeNotification(Self);', [Parameter]), Edit) then
-          AReport.Add(Range, Format(Message, [Prop.Name]), TRuleConfidence.Medium,
-            [TRuleFix.Create('FreeNotification im Setter ergänzen', [Edit])])
-        else
+        // write auf ein Feld: es gibt keinen Setter, in dem FreeNotification stehen könnte.
+        if SameText(Prop.WriteName, Prop.ReadName) then
           AReport.Add(Range, Format(Message, [Prop.Name]), TRuleConfidence.Medium);
+        Continue;
       end;
+      if Model.HasToken(Setter.Block, ['FreeNotification']) then
+        Continue;
+      Parameter := LastParameter(Setter);
+      if (Parameter <> '') and Model.InsertBeforeEnd(Setter.Block,
+        Format('if %s <> nil then', [Parameter]) + ' ' + Format('%s.FreeNotification(Self);', [Parameter]), Edit) then
+        AReport.Add(Range, Format(Message, [Prop.Name]), TRuleConfidence.Medium,
+          [TRuleFix.Create('FreeNotification im Setter ergänzen', [Edit])])
+      else
+        AReport.Add(Range, Format(Message, [Prop.Name]), TRuleConfidence.Medium);
     end;
-  finally
-    Model.Free;
   end;
 end;
 
@@ -669,6 +680,7 @@ end;
 procedure TComponentSetterWithoutInvalidateRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
 var
   Model: TComponentModel;
+  Cache: IRuleDerivedCache;
   Info: TClassInfo;
   Prop: TPropertyInfo;
   Setter, Paint: TMethodImpl;
@@ -677,31 +689,28 @@ var
   Edit: TRuleEdit;
   Message: string;
 begin
-  if not Prepare(AContext, Model) then
+  Cache := TRuleDerived.Open(AContext);
+  if not Prepare(Cache, AContext, Model) then
     Exit;
-  try
-    for Info in Model.Classes do
+  for Info in Model.Classes do
+  begin
+    if not Model.IsComponent(Info.Name) or not Model.FindMethod(Info.Name, 'Paint', Paint) then
+      Continue;
+    for Prop in Model.Properties(Info) do
     begin
-      if not Model.IsComponent(Info.Name) or not Model.FindMethod(Info.Name, 'Paint', Paint) then
+      if (Prop.ReadName = '') or not Model.FindMethod(Info.Name, Prop.WriteName, Setter) or
+        not FindAssignment(Setter.Block, Prop.ReadName, Value) or
+        not Model.HasToken(Paint.Block, [Prop.ReadName, Prop.Name]) or
+        Model.HasToken(Setter.Block, RepaintCalls) or not Model.NameToken(Setter, Token) then
         Continue;
-      for Prop in Model.Properties(Info) do
-      begin
-        if (Prop.ReadName = '') or not Model.FindMethod(Info.Name, Prop.WriteName, Setter) or
-          not FindAssignment(Setter.Block, Prop.ReadName, Value) or
-          not Model.HasToken(Paint.Block, [Prop.ReadName, Prop.Name]) or
-          Model.HasToken(Setter.Block, RepaintCalls) or not Model.NameToken(Setter, Token) then
-          Continue;
-        Message := Format('%s ändert %s, das Paint liest, ohne Invalidate; die Anzeige bleibt veraltet',
-          [Setter.MethodName, Prop.ReadName]);
-        if Model.InsertBeforeEnd(Setter.Block, 'Invalidate;', Edit) then
-          AReport.Add(TTextRange.Create(Token.StartPos, Token.EndPos), Message, TRuleConfidence.Medium,
-            [TRuleFix.Create('"Invalidate;" einfügen', [Edit])])
-        else
-          AReport.Add(TTextRange.Create(Token.StartPos, Token.EndPos), Message, TRuleConfidence.Medium);
-      end;
+      Message := Format('%s ändert %s, das Paint liest, ohne Invalidate; die Anzeige bleibt veraltet',
+        [Setter.MethodName, Prop.ReadName]);
+      if Model.InsertBeforeEnd(Setter.Block, 'Invalidate;', Edit) then
+        AReport.Add(TTextRange.Create(Token.StartPos, Token.EndPos), Message, TRuleConfidence.Medium,
+          [TRuleFix.Create('"Invalidate;" einfügen', [Edit])])
+      else
+        AReport.Add(TTextRange.Create(Token.StartPos, Token.EndPos), Message, TRuleConfidence.Medium);
     end;
-  finally
-    Model.Free;
   end;
 end;
 
@@ -779,13 +788,15 @@ end;
 procedure TComponentFixedPixelsRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
 var
   Model: TComponentModel;
+  Cache: IRuleDerivedCache;
   Method: TMethodImpl;
   Literals: TList<TSyntaxNode>;
   Index, Last: Integer;
   Edits: TArray<TRuleEdit>;
   Literal: TSyntaxNode;
 begin
-  if not Prepare(AContext, Model) then
+  Cache := TRuleDerived.Open(AContext);
+  if not Prepare(Cache, AContext, Model) then
     Exit;
   Literals := TList<TSyntaxNode>.Create;
   try
@@ -817,7 +828,6 @@ begin
     end;
   finally
     Literals.Free;
-    Model.Free;
   end;
 end;
 
@@ -853,11 +863,13 @@ end;
 procedure TComponentHardcodedColorRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
 var
   Model: TComponentModel;
+  Cache: IRuleDerivedCache;
   Method: TMethodImpl;
   Colors: TList<TSyntaxNode>;
   Node: TSyntaxNode;
 begin
-  if not Prepare(AContext, Model) then
+  Cache := TRuleDerived.Open(AContext);
+  if not Prepare(Cache, AContext, Model) then
     Exit;
   Colors := TList<TSyntaxNode>.Create;
   try
@@ -874,7 +886,6 @@ begin
     end;
   finally
     Colors.Free;
-    Model.Free;
   end;
 end;
 

@@ -38,6 +38,8 @@ type
     [Test]
     procedure ReadsMcpDisabledTools;
     [Test]
+    procedure ReadsMcpGlobalSettings;
+    [Test]
     procedure ReadsStringLiteral;
     [Test]
     procedure ReadsMemberOrder;
@@ -337,6 +339,21 @@ begin
   Assert.AreEqual(2, Integer(Length(Issues)));
   Settings := TConfigurationParser.ParseLayered('{"compiler": {"onSave": true}}', '{}', Issues);
   Assert.IsTrue(Settings.Compiler.OnSave);
+  // Weg zum Compiler (#261): Vorgabe auto ohne cc.ps1.
+  Settings := Parse('{}', Issues);
+  Assert.AreEqual(Ord(TCompilerBackendSetting.Auto), Ord(Settings.Compiler.Backend));
+  Assert.AreEqual('', Settings.Compiler.IdeCommand);
+  Settings := Parse('{"compiler": {"backend": "ide", "ideCommand": "C:\\Tools\\cc.ps1"}}', Issues);
+  Assert.AreEqual(0, Integer(Length(Issues)));
+  Assert.AreEqual(Ord(TCompilerBackendSetting.Ide), Ord(Settings.Compiler.Backend));
+  Assert.AreEqual('C:\Tools\cc.ps1', Settings.Compiler.IdeCommand);
+  Settings := Parse('{"compiler": {"backend": "off"}}', Issues);
+  Assert.AreEqual(Ord(TCompilerBackendSetting.Off), Ord(Settings.Compiler.Backend));
+  Settings := Parse('{"compiler": {"backend": "dcc"}}', Issues);
+  Assert.AreEqual(Ord(TCompilerBackendSetting.Dcc), Ord(Settings.Compiler.Backend));
+  Settings := Parse('{"compiler": {"backend": "msbuild", "ideCommand": 3}}', Issues);
+  Assert.AreEqual(Ord(TCompilerBackendSetting.Auto), Ord(Settings.Compiler.Backend), 'ungültig = Vorgabe');
+  Assert.AreEqual(2, Integer(Length(Issues)));
   // Schnellbefehle (#293)
   Settings := Parse('{}', Issues);
   Assert.IsTrue(Settings.SlashCommands);
@@ -565,6 +582,24 @@ begin
   // Muster ohne {unit} und Projekt ohne .dproj/.dpr (Fehler), "x" unbekannt (Warnung).
   Assert.AreEqual(3, Integer(Length(Issues)));
   Assert.AreEqual('{unit}.Tests', Settings.TestUnits.Pattern, 'ungültiges Muster bleibt bei der Vorgabe');
+end;
+
+procedure TConfigurationParserTests.ReadsMcpGlobalSettings;
+var
+  Settings: TServerSettings;
+  Issues: TArray<TConfigurationIssue>;
+begin
+  Settings := Parse('{}', Issues);
+  Assert.IsTrue(Settings.McpGlobalSettings, 'Vorgabe: globale Datei lesen');
+  Settings := Parse('{"mcp": {"globalSettings": false}}', Issues);
+  Assert.IsFalse(Settings.McpGlobalSettings);
+  Assert.AreEqual(0, Integer(Length(Issues)));
+  Settings := Parse('{"mcp": {"globalSettings": "nein"}}', Issues);
+  Assert.IsTrue(Settings.McpGlobalSettings, 'Ungültiger Wert lässt die Vorgabe');
+  Assert.AreEqual(1, Integer(Length(Issues)));
+  Settings := TConfigurationParser.ParseLayered('{"mcp": {"globalSettings": true}}',
+    '{"mcp": {"globalSettings": false}}', Issues);
+  Assert.IsFalse(Settings.McpGlobalSettings, 'Datei vor Editor');
 end;
 
 procedure TConfigurationParserTests.ReadsMcpDisabledTools;

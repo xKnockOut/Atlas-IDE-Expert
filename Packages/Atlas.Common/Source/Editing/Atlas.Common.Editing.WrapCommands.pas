@@ -25,7 +25,6 @@ uses
   System.SysUtils,
   System.StrUtils,
   Atlas.Common.Documents.Contract,
-  Atlas.Common.Rules.Contract,
   Atlas.Common.Pascal.Contract,
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Index.Contract,
@@ -64,7 +63,7 @@ begin
   Result := False;
 end;
 
-function ExecuteTry(const AContext: TSlashContext; out AEdits: TArray<TRuleEdit>; out AReason: string): Boolean;
+function ExecuteTry(const AContext: TSlashContext; out AEdits: TArray<TTextEdit>; out AReason: string): Boolean;
 var
   Source: TCommandSource;
   Routine: TSyntaxNode;
@@ -100,7 +99,7 @@ end;
 
 { /lock }
 
-function ExecuteLock(const AContext: TSlashContext; out AEdits: TArray<TRuleEdit>; out AReason: string): Boolean;
+function ExecuteLock(const AContext: TSlashContext; out AEdits: TArray<TTextEdit>; out AReason: string): Boolean;
 var
   Source: TCommandSource;
   ClassSymbol, Symbol: TIndexSymbol;
@@ -130,7 +129,7 @@ end;
 
 { /sync, /ifdef, /region }
 
-function ExecuteSync(const AContext: TSlashContext; const AMethod: string; out AEdits: TArray<TRuleEdit>;
+function ExecuteSync(const AContext: TSlashContext; const AMethod: string; out AEdits: TArray<TTextEdit>;
   out AReason: string): Boolean;
 var
   Source: TCommandSource;
@@ -144,7 +143,7 @@ begin
   end;
 end;
 
-function ExecuteIfdef(const AContext: TSlashContext; out AEdits: TArray<TRuleEdit>; out AReason: string): Boolean;
+function ExecuteIfdef(const AContext: TSlashContext; out AEdits: TArray<TTextEdit>; out AReason: string): Boolean;
 var
   Source: TCommandSource;
 begin
@@ -159,7 +158,7 @@ begin
   end;
 end;
 
-function ExecuteRegion(const AContext: TSlashContext; out AEdits: TArray<TRuleEdit>; out AReason: string): Boolean;
+function ExecuteRegion(const AContext: TSlashContext; out AEdits: TArray<TTextEdit>; out AReason: string): Boolean;
 var
   Source: TCommandSource;
 begin
@@ -177,7 +176,7 @@ end;
 
 { /except }
 
-function ExecuteExcept(const AContext: TSlashContext; out AEdits: TArray<TRuleEdit>; out AReason: string): Boolean;
+function ExecuteExcept(const AContext: TSlashContext; out AEdits: TArray<TTextEdit>; out AReason: string): Boolean;
 var
   Source: TCommandSource;
 begin
@@ -205,12 +204,12 @@ begin
   ARegistry.Register(Command('try', 'try … finally Free um die folgenden Anweisungen', '/try', ExecuteTry));
   ARegistry.Register(Command('lock', 'Folgende Anweisungen sperren', '/lock', ExecuteLock));
   ARegistry.Register(Command('sync', 'Folgende Anweisungen per TThread.Queue im Hauptthread', '/sync',
-    function(const AContext: TSlashContext; out AEdits: TArray<TRuleEdit>; out AReason: string): Boolean
+    function(const AContext: TSlashContext; out AEdits: TArray<TTextEdit>; out AReason: string): Boolean
     begin
       Result := ExecuteSync(AContext, 'Queue', AEdits, AReason);
     end));
   ARegistry.Register(Command('sync!', 'Folgende Anweisungen per TThread.Synchronize im Hauptthread', '/sync!',
-    function(const AContext: TSlashContext; out AEdits: TArray<TRuleEdit>; out AReason: string): Boolean
+    function(const AContext: TSlashContext; out AEdits: TArray<TTextEdit>; out AReason: string): Boolean
     begin
       Result := ExecuteSync(AContext, 'Synchronize', AEdits, AReason);
     end));

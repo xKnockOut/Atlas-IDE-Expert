@@ -17,12 +17,15 @@ type
     procedure SwitchesLanguage;
     [Test]
     procedure ConfidenceLineForRuleFindings;
+    [Test]
+    procedure DocLabelsGerman;
   end;
 
 implementation
 
 uses
   System.SysUtils,
+  Atlas.Core.Documentation.Layout,
   Atlas.UI.Strings;
 
 function Placeholders(const AText: string): string;
@@ -87,6 +90,25 @@ begin
     TAtlasStrings.Language := TAtlasLanguage.English;
     Assert.AreEqual('Enter to accept · Esc to close', TAtlasStrings.Text(TAtlasTextId.FooterKeys));
     Assert.AreEqual('3 of 84', TAtlasStrings.Fmt(TAtlasTextId.CountOf, [3, 84]));
+  finally
+    TAtlasStrings.Language := Saved;
+  end;
+end;
+
+procedure TAtlasStringsTests.DocLabelsGerman;
+var
+  Saved: TAtlasLanguage;
+  Labels, Expected: TAtlasDocLabels;
+begin
+  Saved := TAtlasStrings.Language;
+  try
+    TAtlasStrings.Language := TAtlasLanguage.German;
+    Labels := TAtlasStrings.DocLabels;
+    Expected := TAtlasDocLabels.German;
+    Assert.AreEqual(Expected.TypeParams, Labels.TypeParams);
+    Assert.AreEqual(Expected.Value, Labels.Value);
+    Assert.AreEqual(Expected.Example, Labels.Example);
+    Assert.AreEqual(Expected.SeeAlso, Labels.SeeAlso);
   finally
     TAtlasStrings.Language := Saved;
   end;

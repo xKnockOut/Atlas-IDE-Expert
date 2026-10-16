@@ -79,11 +79,11 @@ implementation
 
 uses
   Atlas.Common.Lsp.Internals.Namespaces,
+  Atlas.Common.Index.Files,
   Atlas.Common.Documents.Uris,
   Atlas.Common.Lsp.Positions,
   Atlas.Common.Pascal.Contract,
   Atlas.Common.Pascal.TreeCache,
-  Atlas.Common.Index.Extractor,
   Atlas.Common.Lsp.Internals.Cancellation,
   Atlas.Common.Dfm.Parser;
 
@@ -151,7 +151,8 @@ begin
   // Exit([...]): In der früheren Form brach dcc64 (Delphi 13) ohne Meldung ab.
   if Resolved.Kind = TResolvedKind.None then
   begin
-    OwnerUnit := TIndexExtractor.Extract(ATree, AFileName);
+    // Über den Resolver: bei gepinntem Baum ohne neue Auswertung (Code-Review P-01).
+    OwnerUnit := AResolver.ExtractedUnit(ATree, AFileName);
     for Symbol in OwnerUnit.Symbols do
       if Within(APosition, Symbol.SelectionRange) then
       begin
@@ -186,7 +187,7 @@ begin
     Exit;
   // Deklaration und Implementierung derselben Routine: erste und letzte Fundstelle.
   if SameText(Resolved.FileName, AFileName) then
-    OwnerUnit := TIndexExtractor.Extract(ATree, AFileName)
+    OwnerUnit := AResolver.ExtractedUnit(ATree, AFileName)
   else if not TIndexFiles.UnitOf(AIndex, Resolved.FileName, OwnerUnit) then
     Exit;
   Count := 0;

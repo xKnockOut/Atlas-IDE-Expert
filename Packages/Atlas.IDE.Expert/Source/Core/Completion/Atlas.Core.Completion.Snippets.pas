@@ -18,6 +18,17 @@
 // sind keine Platzhalter. "$$" steht für ein einzelnes "$" (für Text wie
 // "$1;", der sonst wie ein Platzhalter aussähe; so übernimmt Atlas die Live
 // Templates der IDE).
+// Optional "context: …" (#719, Kontext aus #665): wo die Vorlage im
+// Erzeugen-Menü erscheint, kommagetrennt: statement (in einer Routine),
+// declaration (Typ- und Klassenebene), any (überall, wie ohne Angabe) oder
+// die Orte des Servers routine, class, record, interfaceType, interface,
+// implementation, program. Die Vervollständigung beachtet ihn nicht.
+// Optional "file: unit|form|test" (#759): Dateivorlage für „Neu mit Atlas“
+// auf der Willkommensseite (Unit, Formular, Testklasse). Der Text ist dann
+// die ganze neue Datei; %Unit% steht für den Namen der Unit, %Form% für den
+// des Formulars, %Ancestor% für die Basisklasse des Formulars ohne T und
+// %Name% für den Namen der Unit ohne Namespace. Dateivorlagen erscheinen
+// weder in der Vervollständigung noch im normalen Erzeugen-Menü.
 
 interface
 
@@ -46,6 +57,11 @@ type
     Postfix: Boolean;
     /// <summary>Bedingung einer Postfix-Vorlage: Merkmal oder Typname; '' = jeder Ausdruck.</summary>
     TypeCondition: string;
+    /// <summary>Kontext im Erzeugen-Menü (#719): statement, declaration, any oder Orte des Servers, kommagetrennt;
+    /// '' = überall.</summary>
+    Context: string;
+    /// <summary>Dateivorlage (#759): "unit", "form" oder "test"; '' = Code-Vorlage.</summary>
+    FileKind: string;
   end;
 
   TAtlasSnippetList = TArray<TAtlasSnippet>;
@@ -80,7 +96,8 @@ type
     /// <summary>Dateiname zum Kürzel, z. B. "tryf.atlas-snippet"; andere Zeichen als Buchstaben, Ziffern und _
     /// werden zu _.</summary>
     class function FileNameFor(const APrefix: string): string; static;
-    /// <summary>tryf, trye, forin, fori, while, repeat, class, record, prop, propset, comp, reg.</summary>
+    /// <summary>tryf, trye, forin, fori, while, repeat, class, record, prop, propset, comp, reg (je mit Kontext).
+    /// </summary>
     class function BuiltIn: TAtlasSnippetList; static;
     /// <summary>Vorlagen aus AUser ersetzen die aus ABuiltIn mit gleichem Kürzel (ohne Groß/Klein). Für
     /// mitgelieferte, IDE- und eigene Vorlagen zweimal: Merge(Merge(BuiltIn, Ide), User).</summary>
@@ -107,12 +124,26 @@ type
     /// <summary>Parameter für atlas/postfixTemplates: {"templates": [{"key", "description", "body", "type"}]}.
     /// Gehört dem Aufrufer.</summary>
     class function PostfixParams(const AList: TAtlasSnippetList): TJSONObject; static;
+    /// <summary>Erlaubte Wörter für "context:" (#719).</summary>
+    class function ContextWords: TArray<string>; static;
+    /// <summary>Erlaubte Werte für "file:" (#759): unit, form, test.</summary>
+    class function FileKinds: TArray<string>; static;
+    /// <summary>Nur die Dateivorlagen (#759) bzw. alle anderen.</summary>
+    class function FileTemplates(const AList: TAtlasSnippetList): TAtlasSnippetList; static;
+    class function WithoutFileTemplates(const AList: TAtlasSnippetList): TAtlasSnippetList; static;
+    /// <summary>Passt der Kontext AContext zu den Orten APlaces des Servers (routine, class, …)? '' und any immer;
+    /// statement = routine; declaration = class, record, interfaceType, interface, implementation, program
+    /// außerhalb einer Routine.</summary>
+    class function FitsContext(const AContext: string; const APlaces: TArray<string>): Boolean; static;
   end;
 
 implementation
 
 uses
-  System.Classes;
+  System.Classes,
+  System.StrUtils,
+  Atlas.Text.Lines,
+  Atlas.Text.Chars;
 
 type
   TSegment = record
@@ -125,11 +156,6 @@ type
 function IsDigit(C: Char): Boolean;
 begin
   Result := (C >= '0') and (C <= '9');
-end;
-
-function IsWordChar(C: Char): Boolean;
-begin
-  Result := IsDigit(C) or ((C >= 'A') and (C <= 'Z')) or ((C >= 'a') and (C <= 'z')) or (C = '_');
 end;
 
 function NormalizeBreaks(const AText: string): string;
@@ -199,7 +225,7 @@ begin
       end;
       // $0 allein, nicht $0F
       if (Index < Length(ABody)) and (ABody[Index + 1] = '0') and
-        ((Index + 2 > Length(ABody)) or not IsWordChar(ABody[Index + 2])) then
+        ((Index + 2 > Length(ABody)) or not TTextChars.IsAsciiIdentChar(ABody[Index + 2])) then
       begin
         FlushLiteral;
         Segment := Default(TSegment);
@@ -234,7 +260,7 @@ class function TAtlasSnippets.Parse(const AText, AFileName: string; out ASnippet
 var
   Lines: TArray<string>;
   Index, Separator, Colon: Integer;
-  Line, Key, Value, Body: string;
+  Line, Key, Value, Body, Word: string;
 begin
   Result := False;
   ASnippet := Default(TAtlasSnippet);
@@ -279,10 +305,31 @@ begin
     end
     else if Key = 'type' then
       ASnippet.TypeCondition := Value
+    else if Key = 'context' then
+    begin
+      for Word in Value.Split([',']) do
+        if (Trim(Word) <> '') and (IndexText(Trim(Word), ContextWords) < 0) then
+        begin
+          AError := Format('Zeile %d: unbekannter Kontext "%s" (erlaubt: %s)',
+            [Index + 1, Trim(Word), string.Join(', ', ContextWords)]);
+          Exit;
+        end;
+      ASnippet.Context := Value;
+    end
+    else if Key = 'file' then
+    begin
+      if IndexText(Value, FileKinds) < 0 then
+      begin
+        AError := Format('Zeile %d: unbekannte Dateiart "%s" (erlaubt: %s)',
+          [Index + 1, Value, string.Join(', ', FileKinds)]);
+        Exit;
+      end;
+      ASnippet.FileKind := LowerCase(Value);
+    end
     else
     begin
-      AError := Format('Zeile %d: unbekannter Schlüssel "%s" (erlaubt: name, prefix, description, postfix, type)',
-        [Index + 1, Key]);
+      AError := Format('Zeile %d: unbekannter Schlüssel "%s" (erlaubt: name, prefix, description, postfix, type, ' +
+        'context, file)', [Index + 1, Key]);
       Exit;
     end;
   end;
@@ -297,7 +344,7 @@ begin
     Exit;
   end;
   for Index := 1 to Length(ASnippet.Prefix) do
-    if not IsWordChar(ASnippet.Prefix[Index]) then
+    if not TTextChars.IsAsciiIdentChar(ASnippet.Prefix[Index]) then
     begin
       AError := Format('Kürzel "%s": nur Buchstaben, Ziffern und _', [ASnippet.Prefix]);
       Exit;
@@ -339,6 +386,10 @@ begin
     if ASnippet.TypeCondition <> '' then
       Result := Result + 'type: ' + OneLine(ASnippet.TypeCondition) + #10;
   end;
+  if ASnippet.Context <> '' then
+    Result := Result + 'context: ' + OneLine(ASnippet.Context) + #10;
+  if ASnippet.FileKind <> '' then
+    Result := Result + 'file: ' + OneLine(ASnippet.FileKind) + #10;
   Result := Result + '---' + #10 + NormalizeBreaks(ASnippet.Body) + #10;
 end;
 
@@ -348,12 +399,12 @@ var
 begin
   Result := APrefix;
   for Index := 1 to Length(Result) do
-    if not IsWordChar(Result[Index]) then
+    if not TTextChars.IsAsciiIdentChar(Result[Index]) then
       Result[Index] := '_';
   Result := Result + FileExtension;
 end;
 
-function Snippet(const APrefix, AName, ADescription, ABody: string): TAtlasSnippet;
+function Snippet(const APrefix, AName, ADescription, ABody, AContext: string): TAtlasSnippet;
 begin
   Result := Default(TAtlasSnippet);
   Result.Prefix := APrefix;
@@ -361,39 +412,100 @@ begin
   Result.Description := ADescription;
   Result.Body := ABody;
   Result.Origin := TAtlasSnippetOrigin.BuiltIn;
+  Result.Context := AContext;
 end;
 
 class function TAtlasSnippets.BuiltIn: TAtlasSnippetList;
 begin
   Result := [
     Snippet('tryf', 'try…finally mit Create/Free', 'Objekt anlegen und sicher wieder freigeben.',
-      '${1:List} := ${2:TStringList}.Create;'#10'try'#10'  $0'#10'finally'#10'  ${1}.Free;'#10'end;'),
+      '${1:List} := ${2:TStringList}.Create;'#10'try'#10'  $0'#10'finally'#10'  ${1}.Free;'#10'end;', 'statement'),
     Snippet('trye', 'try…except', 'Ausnahme einer Klasse behandeln.',
-      'try'#10'  $0'#10'except'#10'  on E: ${1:Exception} do'#10'    ${2:raise};'#10'end;'),
+      'try'#10'  $0'#10'except'#10'  on E: ${1:Exception} do'#10'    ${2:raise};'#10'end;', 'statement'),
     Snippet('forin', 'for…in-Schleife', 'Über die Elemente einer Liste laufen (Inline-Variable).',
-      'for var ${1:Item} in ${2:List} do'#10'begin'#10'  $0'#10'end;'),
+      'for var ${1:Item} in ${2:List} do'#10'begin'#10'  $0'#10'end;', 'statement'),
     Snippet('fori', 'for-Schleife mit Zähler', 'Von 0 bis Count - 1 zählen (Inline-Variable).',
-      'for var ${1:I} := ${2:0} to ${3:List.Count - 1} do'#10'begin'#10'  $0'#10'end;'),
+      'for var ${1:I} := ${2:0} to ${3:List.Count - 1} do'#10'begin'#10'  $0'#10'end;', 'statement'),
     Snippet('while', 'while-Schleife', 'Solange die Bedingung gilt.',
-      'while ${1:Condition} do'#10'begin'#10'  $0'#10'end;'),
+      'while ${1:Condition} do'#10'begin'#10'  $0'#10'end;', 'statement'),
     Snippet('repeat', 'repeat…until-Schleife', 'Mindestens einmal, bis die Bedingung gilt.',
-      'repeat'#10'  $0'#10'until ${1:Condition};'),
+      'repeat'#10'  $0'#10'until ${1:Condition};', 'statement'),
     Snippet('class', 'Klasse mit Konstruktor und Destruktor', 'Klassendeklaration im type-Abschnitt.',
       '${1:TMyClass} = class(${2:TObject})'#10'private'#10'  $0'#10'public'#10'  constructor Create;'#10 +
-      '  destructor Destroy; override;'#10'end;'),
+      '  destructor Destroy; override;'#10'end;', 'declaration'),
     Snippet('record', 'Record', 'Record-Deklaration im type-Abschnitt.',
-      '${1:TMyRecord} = record'#10'  ${2:Value}: ${3:Integer};$0'#10'end;'),
+      '${1:TMyRecord} = record'#10'  ${2:Value}: ${3:Integer};$0'#10'end;', 'declaration'),
     Snippet('prop', 'Property mit Feld und Setter', 'Deklaration in der Klasse; den Setter legt propset an.',
-      'property ${1:Value}: ${2:Integer} read F${1} write Set${1};$0'),
+      'property ${1:Value}: ${2:Integer} read F${1} write Set${1};$0', 'class'),
     // Gleiche Form wie /prop, /changed und die Vorlage „changed“ des Servers (TSetterGenerator).
     Snippet('propset', 'Setter mit Prüfung auf Änderung', 'Setzt das Feld nur bei Änderung und zeichnet neu.',
       'procedure ${1:TMyControl}.Set${2:Value}(const Value: ${3:Integer});'#10'begin'#10 +
-      '  if F${2} <> Value then'#10'  begin'#10'    F${2} := Value;'#10'    Invalidate;$0'#10'  end;'#10'end;'),
+      '  if F${2} <> Value then'#10'  begin'#10'    F${2} := Value;'#10'    Invalidate;$0'#10'  end;'#10'end;',
+      'implementation'),
     Snippet('comp', 'Komponentengerüst', 'Komponente mit published-Abschnitt; die Registrierung legt reg an.',
       '${1:TMyControl} = class(${2:TCustomControl})'#10'protected'#10'  procedure Paint; override;'#10 +
-      'public'#10'  constructor Create(AOwner: TComponent); override;'#10'published'#10'  $0'#10'end;'),
+      'public'#10'  constructor Create(AOwner: TComponent); override;'#10'published'#10'  $0'#10'end;',
+      'declaration'),
     Snippet('reg', 'Register-Prozedur', 'Komponente in der Palette registrieren.',
-      'procedure Register;'#10'begin'#10'  RegisterComponents(''${1:Atlas}'', [${2:TMyControl}]);$0'#10'end;')];
+      'procedure Register;'#10'begin'#10'  RegisterComponents(''${1:Atlas}'', [${2:TMyControl}]);$0'#10'end;',
+      'implementation')];
+end;
+
+class function TAtlasSnippets.ContextWords: TArray<string>;
+begin
+  Result := ['any', 'statement', 'declaration', 'routine', 'class', 'record', 'interfaceType', 'interface',
+    'implementation', 'program'];
+end;
+
+class function TAtlasSnippets.FileKinds: TArray<string>;
+begin
+  Result := ['unit', 'form', 'test'];
+end;
+
+class function TAtlasSnippets.FileTemplates(const AList: TAtlasSnippetList): TAtlasSnippetList;
+var
+  Item: TAtlasSnippet;
+begin
+  Result := nil;
+  for Item in AList do
+    if Item.FileKind <> '' then
+      Result := Result + [Item];
+end;
+
+class function TAtlasSnippets.WithoutFileTemplates(const AList: TAtlasSnippetList): TAtlasSnippetList;
+var
+  Item: TAtlasSnippet;
+begin
+  Result := nil;
+  for Item in AList do
+    if Item.FileKind = '' then
+      Result := Result + [Item];
+end;
+
+class function TAtlasSnippets.FitsContext(const AContext: string; const APlaces: TArray<string>): Boolean;
+var
+  Word, Place: string;
+  InRoutine: Boolean;
+begin
+  if Trim(AContext) = '' then
+    Exit(True);
+  InRoutine := IndexText('routine', APlaces) >= 0;
+  for Word in AContext.Split([',']) do
+  begin
+    if SameText(Trim(Word), 'any') then
+      Exit(True);
+    if SameText(Trim(Word), 'statement') and InRoutine then
+      Exit(True);
+    for Place in APlaces do
+    begin
+      if SameText(Trim(Word), Place) then
+        Exit(True);
+      // Deklarationen: Typ- und Klassenebene, nicht im Rumpf einer Methode.
+      if SameText(Trim(Word), 'declaration') and not InRoutine and not SameText(Place, 'routine') then
+        Exit(True);
+    end;
+  end;
+  Result := False;
 end;
 
 class function TAtlasSnippets.Merge(const ABuiltIn, AUser: TAtlasSnippetList): TAtlasSnippetList;
@@ -556,7 +668,7 @@ begin
           if AText[AIndex] = '{' then
             Inc(AIndex);
           Start := AIndex;
-          while (AIndex <= Length(AText)) and IsWordChar(AText[AIndex]) do
+          while (AIndex <= Length(AText)) and TTextChars.IsAsciiIdentChar(AText[AIndex]) do
             Inc(AIndex);
           Number := Copy(AText, Start, AIndex - Start);
           Default := '';
@@ -624,13 +736,8 @@ begin
 end;
 
 class function TAtlasSnippets.IndentOf(const ALine: string): string;
-var
-  Index: Integer;
 begin
-  Index := 1;
-  while (Index <= Length(ALine)) and ((ALine[Index] = ' ') or (ALine[Index] = #9)) do
-    Inc(Index);
-  Result := Copy(ALine, 1, Index - 1);
+  Result := TTextLines.IndentOf(ALine);
 end;
 
 class function TAtlasSnippets.FolderStamp(const APath: string): string;

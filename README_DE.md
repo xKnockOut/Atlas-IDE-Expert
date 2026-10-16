@@ -15,7 +15,7 @@ Experte für RAD Studio (Delphi/Object Pascal): ein IDE-Plugin mit eigener Oberf
 - **Compilerprüfung nach dem Speichern** und Übernahme der Compilermeldungen aus dem Reiter „Build“
 - **Klammer- und Blockpaare** farbig nach Tiefe, mit eigenen Blocklinien
 - **Ergebnisfenster** „Atlas-Ergebnisse“ für Referenzen (auch in Formularen), Implementierungen, Aufrufer, Aufrufe und Vererbung; projektweite Symbolsuche; Vorschau vor dem Umbenennen
-- **Code-Aktionen** (Alt+Enter), Auswahl erweitern und verkleinern (Strg+W, Strg+Umschalt+W), Gehe zu Implementierung und Typdefinition, Wechsel zwischen Deklaration und Implementierung (Strg+Umschalt+↑/↓), qualifizierten Namen kopieren; alles auch im Kontextmenü des Editors unter *Atlas*. Schnellbefehle wie `/uses Unit` laufen nach Enter, `///` über einer Deklaration erzeugt den Dokumentationskommentar
+- **Code-Aktionen** (Alt+Enter), Auswahl erweitern und verkleinern (Strg+W, Strg+Umschalt+W), Gehe zu Implementierung und Typdefinition, Wechsel zwischen Deklaration und Implementierung (Strg+Umschalt+↑/↓), qualifizierten Namen kopieren; alles auch im Kontextmenü des Editors unter *Atlas*. Schnellbefehle wie `/uses Unit` laufen nach Enter, `///` über einer Deklaration erzeugt den Dokumentationskommentar; Alt+Einfg zeigt im **Erzeugen-Menü**, was sich am Cursor erzeugen lässt (Konstruktor, Properties, überschriebene Methoden, Interface-Methoden, Umschließen, Vorlagen)
 - **Formular-Designer**: Offene Formulare gehen im Stand des Designers an den Server, Referenzen, Umbenennen und Prüfungen sehen also ungespeicherte Änderungen; das Umbenennen eines Ereignis-Handlers ändert auch seine Zuordnung im Designer
 - **Befehlspalette** (Strg+Umschalt+P), stilles Neuladen extern geänderter Dateien, Hänger-Wächter mit Protokoll
 
@@ -64,7 +64,7 @@ Ausführlich: [docs/Installation.md](docs/Installation.md).
 | `Packages/Atlas.Common` | Package, frei von Windows und VCL |
 | `Packages/Atlas.Windows` | Package für Windows-spezifische Funktionen, frei von VCL |
 | `Application/AtlasServer` | Der Server (Konsolenprogramm, spricht LSP über stdin/stdout) |
-| `Packages/Atlas.IDE.Expert` | Das IDE-Plugin (Designtime-Package, Win32), Schichten `Atlas.Core.*`, `Atlas.UI.*`, `Atlas.IDE.*` |
+| `Packages/Atlas.IDE.Expert` | Das IDE-Plugin (Designtime-Package; Win32 für die klassische IDE, Win64 für die 64-Bit-IDE ab Delphi 12.3), Schichten `Atlas.Core.*`, `Atlas.UI.*`, `Atlas.IDE.*` |
 | `Tests/Atlas.Tests` | DUnitX-Tests |
 
 Details zu Rollen, Benennung und Importregeln: [docs/Architektur.md](docs/Architektur.md).
@@ -78,7 +78,7 @@ Details zu Rollen, Benennung und Importregeln: [docs/Architektur.md](docs/Archit
 
 ## Bauen
 
-In der IDE `Atlas.groupproj` öffnen und **Alle erstellen**. Die Reihenfolge Common → Windows → Server → IDE-Plugin → Tests ist in der Projektgruppe hinterlegt. Common, Windows und Server müssen für dieselbe Plattform gebaut werden, sonst findet der Server die Units der Packages nicht. Das IDE-Plugin ist nur für Win32 eingerichtet (die IDE ist 32-Bit); ein Gruppenbau für Win64 übersetzt es trotzdem mit und prüft so den Quelltext.
+In der IDE `Atlas.groupproj` öffnen und **Alle erstellen**. Die Reihenfolge Common → Windows → Server → IDE-Plugin → Tests ist in der Projektgruppe hinterlegt. Common, Windows und Server müssen für dieselbe Plattform gebaut werden, sonst findet der Server die Units der Packages nicht. Das IDE-Plugin ist für Win32 (klassische IDE) und Win64 (64-Bit-IDE ab Delphi 12.3) eingerichtet; welche BPL die IDE lädt, hängt von der IDE ab ([ADR 0008](docs/adr/0008-plattformen.md)).
 
 Auf der Kommandozeile (RAD-Studio-Eingabeaufforderung bzw. nach `rsvars.bat`):
 
@@ -136,7 +136,7 @@ Werte gehen auch mit `=` (`--log=server.log`). `--stdio` und `--clientProcessId`
 | `--source-root <Ordner>` | Wurzel der SARIF-Pfade; Standard ist die Git-Wurzel über dem Ziel, sonst der Ordner des Ziels. Pfade darunter tragen `uriBaseId` `%SRCROOT%`, Dateien außerhalb erscheinen als absoluter `file:`-URI |
 | `--profile <Name>` | Regelprofil (`standard`, `fast`, `strict`, `security`, `style` oder eigenes aus `profiles`); geht `profile` in `atlas.json` vor |
 | `--baseline <Datei>` | bekannte Treffer ausblenden; ohne Angabe gilt `atlas-baseline.json` neben `atlas.json`, falls vorhanden. Der Editor blendet sie ebenso aus |
-| `--update-baseline` | Baseline aus den aktuellen Treffern neu schreiben (verschwundene Einträge fallen heraus), Exit-Code 0 |
+| `--update-baseline` | Baseline aus den aktuellen Treffern neu schreiben, Exit-Code 0. Auf stderr stehen zuerst die Einträge ohne Datei mit Pfad (umbenannte, verschobene oder gelöschte Dateien; sie fallen heraus), dann die Zähler: Treffer, Dateien, neu, entfernt, unverändert |
 | `--changed [<Basis>]` | nur Dateien, die sich laut Git (bzw. SVN, siehe unten) gegenüber der Merge-Base mit `<Basis>` (Standard `main`) geändert haben; geänderte `.dfm`/`.fmx` prüfen ihre Unit, geänderte `.inc` alle Units, die sie einbinden, geänderte `.dproj`/`.dpk`/`.dpr`/`atlas.json` alles |
 | `--diff <Ref>` | wie `--changed`, aber direkt gegenüber `<Ref>` |
 | `--include-uncommitted` | mit `--changed`/`--diff` auch Index, Arbeitsverzeichnis und neue Dateien |
@@ -146,6 +146,8 @@ Werte gehen auch mit `=` (`--log=server.log`). `--stdio` und `--clientProcessId`
 | `--todos` | statt der Treffer: offene TODO-Einträge (#68) aus `// TODO`, `// FIXME` und dem Format der IDE-To-Do-Liste `{ TODO 1 -oPerson -cKategorie : Text }` mit Priorität, Person und Kategorie; weitere Marken über die Option `"keywords"` der Regel `todo-comment`; `--format text` schreibt eine Markdown-Übersicht, `json` die Daten; Exit-Code 0 |
 
 Exit-Code: 1, wenn ein Treffer `--fail-on` erreicht (Standard: mindestens ein Fehler), sonst 0; 3 bei Aufruf- oder Lesefehlern. Treffer aus der Baseline zählen nie.
+
+Baseline (#97): Ein Eintrag in `atlas-baseline.json` merkt sich Datei, Regel, die umgebende Routine (voll qualifiziert wie `TFoo.Bar`, außerhalb einer Routine der Abschnitt wie `implementation`), einen Fingerabdruck der Zeile ohne Leerraum und einen Fingerabdruck des Codes ±2 Zeilen darum. Dieselbe Zeile in einer anderen Routine gilt deshalb als neu, ebenso ein Treffer, der in eine andere Routine wandert. Neu Einrücken, verschobene Zeilen und eine umbenannte Routine (Kontext gleich, alter Name nicht mehr in der Datei) überstehen die Baseline. Eine umbenannte oder verschobene Datei verliert ihre Einträge: Ihre Treffer erscheinen als neu, bis die Baseline aktualisiert ist. Ältere Dateien ohne Routine bleiben lesbar und werden beim nächsten Aktualisieren ergänzt. Unterdrückungskommentare für Treffer aus der Baseline melden kein `unused-suppression`. In Editoren aktualisiert der Befehl `atlas.updateBaseline` (`workspace/executeCommand`, Argument: URI des Projekts oder Ordners) die Baseline und antwortet mit den Zählern; er prüft dafür alle Dateien des Projekts und hält den Server so lange auf. In SARIF trägt jedes Ergebnis `partialFingerprints` (`atlasBaseline/v1` aus Regel, Routine und Zeile, `atlasContext/v1` aus dem Kontext, je mit laufender Nummer `:n` bei gleichen Werten in einer Datei); mit Baseline kommt `baselineState` hinzu: `new`, `unchanged` (als externe Unterdrückung) oder `absent` (Eintrag ohne Treffer). Text, JSON und Exit-Code enthalten nur die neuen Treffer.
 
 In SARIF steht als `message.text` der englische Name der Regel aus dem Katalog, ohne Konfidenz-Zusatz. Die Konfidenz steht in `properties.confidence`, die deutsche Meldung des Treffers in `properties.detail`.
 

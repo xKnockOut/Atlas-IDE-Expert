@@ -14,6 +14,10 @@
 // Effective setzt die Ebenen zusammen: global < Editor < Projekt. Die
 // Editor-Ebene (initializationOptions und didChangeConfiguration) zählt wie
 // global.
+// atlas.json liegt im Repository und gilt für alle im Team: Filter für den
+// Projekt-Ort entfernt zusätzlich Zugangsdaten und absolute Pfade und meldet
+// sie (#486, Internals.Forbidden); dieselbe Sperre gilt im Plugin für die
+// Projektdatei .atlas.
 
 interface
 
@@ -38,7 +42,8 @@ type
     /// <summary>Objekt mit Gliedern beider Orte (index, completion).</summary>
     class function IsMixed(const AKey: string): Boolean; static;
     /// <summary>AText ohne die Schlüssel, die nicht nach AKeep gehören; AIssues nennt sie mit Position im
-    /// Originaltext. Ohne solche Schlüssel, bei leerem oder ungültigem Text genau AText.</summary>
+    /// Originaltext. Für den Projekt-Ort fehlen außerdem Zugangsdaten und absolute Pfade (#486), ebenfalls mit
+    /// Meldung. Ohne solche Schlüssel, bei leerem oder ungültigem Text genau AText.</summary>
     class function Filter(const AText: string; AKeep: TConfigurationScope;
       out AIssues: TArray<TConfigurationIssue>): string; overload; static;
     class function Filter(const AText: string; AKeep: TConfigurationScope): string; overload; static;
@@ -56,7 +61,9 @@ uses
   Atlas.Common.Documents.Contract,
   Atlas.Common.Configuration.Parser,
   Atlas.Common.Configuration.Internals.JsonTree,
-  Atlas.Common.Configuration.Internals.ScopeData;
+  Atlas.Common.Configuration.Internals.ScopeData,
+  Atlas.Common.Configuration.Internals.Forbidden,
+  Atlas.Text.Lines;
 
 function Listed(const APath: string; const AList: array of string): Boolean;
 var
@@ -66,32 +73,6 @@ begin
     if Item = APath then
       Exit(True);
   Result := False;
-end;
-
-function PositionAt(const AText: string; AOffset: Integer): TTextPosition;
-var
-  Index, Line, LineStart: Integer;
-begin
-  Line := 0;
-  LineStart := 0;
-  Index := 0;
-  while (Index < AOffset) and (Index < Length(AText)) do
-  begin
-    if AText[Index + 1] = #13 then
-    begin
-      if (Index + 1 < Length(AText)) and (AText[Index + 2] = #10) then
-        Inc(Index);
-      Inc(Line);
-      LineStart := Index + 1;
-    end
-    else if AText[Index + 1] = #10 then
-    begin
-      Inc(Line);
-      LineStart := Index + 1;
-    end;
-    Inc(Index);
-  end;
-  Result := TTextPosition.Create(Line, AOffset - LineStart);
 end;
 
 function QuoteKey(const AKey: string): string;
@@ -123,6 +104,9 @@ begin
     Result := Format('"%s" gehört zum Projekt (atlas.json, Atlas › Projekt-Einstellungen); in den globalen ' +
       'Einstellungen wird es ignoriert', [APath]);
 end;
+
+function FilterScope(const AText: string; AKeep: TConfigurationScope;
+  out AIssues: TArray<TConfigurationIssue>): string; forward;
 
 { TConfigurationScopes }
 
@@ -156,6 +140,20 @@ end;
 class function TConfigurationScopes.Filter(const AText: string; AKeep: TConfigurationScope;
   out AIssues: TArray<TConfigurationIssue>): string;
 var
+  Forbidden, Ignored: TArray<TConfigurationIssue>;
+begin
+  if AKeep <> TConfigurationScope.Project then
+    Exit(FilterScope(AText, AKeep, AIssues));
+  // atlas.json gilt für alle im Team (#486): ohne Zugangsdaten und absolute Pfade. Die Meldungen zum Ort beziehen
+  // sich auf den Originaltext.
+  FilterScope(AText, AKeep, AIssues);
+  Result := FilterScope(TForbiddenEntries.Strip(AText, Forbidden), AKeep, Ignored);
+  AIssues := AIssues + Forbidden;
+end;
+
+function FilterScope(const AText: string; AKeep: TConfigurationScope;
+  out AIssues: TArray<TConfigurationIssue>): string;
+var
   Root, Value: TJsonNode;
   Index, Sub: Integer;
   Key, Path: string;
@@ -167,8 +165,8 @@ var
   var
     Issue: TConfigurationIssue;
   begin
-    Issue.Range := TTextRange.Create(PositionAt(AText, AKeyStart),
-      PositionAt(AText, AKeyStart + Length(AKeyText) + 2));
+    Issue.Range := TTextRange.Create(TLineTable.Build(AText).PositionAt(AKeyStart),
+      TLineTable.Build(AText).PositionAt(AKeyStart + Length(AKeyText) + 2));
     Issue.Message := Misplaced(APath, AKeep);
     Issue.IsError := False;
     AIssues := AIssues + [Issue];
@@ -200,14 +198,14 @@ begin
     begin
       Key := Root.Keys[Index];
       Value := Root[Index];
-      if IsMixed(Key) and (Value.Kind = TJsonKind.Object_) then
+      if TConfigurationScopes.IsMixed(Key) and (Value.Kind = TJsonKind.Object_) then
       begin
         Members := nil;
         SubRemoved := False;
         for Sub := 0 to Value.Count - 1 do
         begin
           Path := Key + '.' + Value.Keys[Sub];
-          if Keeps(ScopeOf(Path)) then
+          if Keeps(TConfigurationScopes.ScopeOf(Path)) then
             Members := Members + [QuoteKey(Value.Keys[Sub]) + ': ' + NodeText(AText, Value[Sub])]
           else
           begin
@@ -228,7 +226,7 @@ begin
       end;
       Scope := TConfigurationScope.Unknown;
       if Key <> '$schema' then
-        Scope := ScopeOf(Key);
+        Scope := TConfigurationScopes.ScopeOf(Key);
       if Keeps(Scope) then
         Parts := Parts + [QuoteKey(Key) + ': ' + NodeText(AText, Value)]
       else

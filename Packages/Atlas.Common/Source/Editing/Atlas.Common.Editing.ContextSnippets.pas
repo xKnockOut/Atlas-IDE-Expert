@@ -20,7 +20,7 @@
 interface
 
 uses
-  Atlas.Common.Rules.Contract,
+  Atlas.Common.Documents.Contract,
   Atlas.Common.Editing.SlashCommands;
 
 type
@@ -33,7 +33,7 @@ type
     /// <summary>LSP-Snippet; Zeilen mit #10, ohne Einrückung der Cursorzeile.</summary>
     Text: string;
     /// <summary>Weitere Änderungen (Setter-Deklaration und -Rumpf); ohne Platzhalter.</summary>
-    AdditionalEdits: TArray<TRuleEdit>;
+    AdditionalEdits: TArray<TTextEdit>;
   end;
 
   TContextSnippets = class
@@ -53,18 +53,13 @@ implementation
 uses
   System.SysUtils,
   System.StrUtils,
-  Atlas.Common.Documents.Contract,
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Index.Contract,
   Atlas.Common.Editing.CommandSource,
   Atlas.Common.Editing.ClassMembers,
   Atlas.Common.Editing.ClassCommands,
-  Atlas.Common.Editing.TypeCommands;
-
-function IsIdentChar(C: Char): Boolean;
-begin
-  Result := CharInSet(C, ['A'..'Z', 'a'..'z', '0'..'9', '_']);
-end;
+  Atlas.Common.Editing.TypeCommands,
+  Atlas.Text.Chars;
 
 /// <summary>Typ mit Typargumenten: TObjectList&lt;TKunde&gt;.</summary>
 function FullType(const AField: TIndexSymbol): string;
@@ -97,8 +92,8 @@ begin
   while Found > 0 do
   begin
     After := Found + Length(Name);
-    if ((Found = 1) or not IsIdentChar(Upper[Found - 1])) and
-      ((After > Length(Upper)) or not IsIdentChar(Upper[After])) then
+    if ((Found = 1) or not TTextChars.IsAsciiIdentChar(Upper[Found - 1])) and
+      ((After > Length(Upper)) or not TTextChars.IsAsciiIdentChar(Upper[After])) then
       Exit(True);
     Found := PosEx(Name, Upper, Found + 1);
   end;
@@ -106,7 +101,7 @@ begin
 end;
 
 function Snippet(const APrefix, AName, ADescription, AText: string;
-  const AEdits: TArray<TRuleEdit>): TContextSnippet;
+  const AEdits: TArray<TTextEdit>): TContextSnippet;
 begin
   Result.Prefix := APrefix;
   Result.Name := AName;
@@ -130,7 +125,7 @@ function PropertyItems(ASource: TCommandSource; const AContext: TSlashContext;
 var
   Field, Member: TIndexSymbol;
   Name, Setter, TypeText, Call, Indent, LB: string;
-  Edits: TArray<TRuleEdit>;
+  Edits: TArray<TTextEdit>;
   EndLine: Integer;
 begin
   Result := nil;
@@ -286,7 +281,7 @@ begin
     Exit;
   Before := TrimLeft(Copy(AContext.LineText, 1, ACharacter));
   for Index := 1 to Length(Before) do
-    if not IsIdentChar(Before[Index]) then
+    if not TTextChars.IsAsciiIdentChar(Before[Index]) then
       Exit;
   Source := TCommandSource.Create(AContext);
   try
@@ -366,7 +361,7 @@ begin
           if CharInSet(AText[AIndex + 1], ['0'..'9']) then
           begin
             Inc(AIndex);
-            while (AIndex <= Length(AText)) and IsIdentChar(AText[AIndex]) do
+            while (AIndex <= Length(AText)) and TTextChars.IsAsciiIdentChar(AText[AIndex]) do
               Inc(AIndex);
             Continue;
           end;
@@ -374,7 +369,7 @@ begin
           if AText[AIndex + 1] = '{' then
           begin
             Inc(AIndex, 2);
-            while (AIndex <= Length(AText)) and IsIdentChar(AText[AIndex]) do
+            while (AIndex <= Length(AText)) and TTextChars.IsAsciiIdentChar(AText[AIndex]) do
               Inc(AIndex);
             if (AIndex <= Length(AText)) and (AText[AIndex] = ':') then
             begin

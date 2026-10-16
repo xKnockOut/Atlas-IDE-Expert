@@ -63,6 +63,9 @@ type
 
 implementation
 
+uses
+  Atlas.Text.Jsonc;
+
 type
   TReader = class
   private
@@ -147,26 +150,13 @@ end;
 
 procedure TReader.SkipSpace;
 var
-  Close: Integer;
+  OpenComment: Integer;
 begin
-  while FPos <= Length(FText) do
+  // Gleiche Regeln wie im Plugin (TJsoncScanner, ADR 0012); ein offener Blockkommentar ist hier ein Fehler.
+  if not TJsoncScanner.SkipSpace(FText, FPos, OpenComment) then
   begin
-    if CharInSet(FText[FPos], [' ', #9, #10, #13]) then
-      Inc(FPos)
-    else if (FText[FPos] = '/') and (FPos < Length(FText)) and (FText[FPos + 1] = '/') then
-    begin
-      while (FPos <= Length(FText)) and not CharInSet(FText[FPos], [#10, #13]) do
-        Inc(FPos);
-    end
-    else if (FText[FPos] = '/') and (FPos < Length(FText)) and (FText[FPos + 1] = '*') then
-    begin
-      Close := Pos('*/', FText, FPos + 2);
-      if Close = 0 then
-        Fail('Kommentar nicht abgeschlossen');
-      FPos := Close + 2;
-    end
-    else
-      Exit;
+    FPos := OpenComment;
+    Fail('Kommentar nicht abgeschlossen');
   end;
 end;
 

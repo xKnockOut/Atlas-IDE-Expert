@@ -83,12 +83,8 @@ uses
   Atlas.Core.Diagnostics.Guard,
   System.Math,
   Atlas.Core.Status.Registry,
+  Atlas.UI.Popup.Draw,
   Atlas.UI.Strings;
-
-function ToColor(AColor: TAtlasColor): TColor;
-begin
-  Result := TColor(AColor);
-end;
 
 { TAtlasStatusWindow }
 

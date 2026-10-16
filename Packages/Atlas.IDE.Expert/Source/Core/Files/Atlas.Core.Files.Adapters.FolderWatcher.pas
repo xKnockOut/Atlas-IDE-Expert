@@ -17,7 +17,7 @@ uses
   Atlas.Core.Files.WatchedChanges;
 
 type
-  TAtlasFolderWatcher = class
+  TAtlasFolderWatcher = class(TInterfacedObject, IAtlasFolderWatcher)
   private type
     TWatchThread = class(TThread)
     private

@@ -50,6 +50,11 @@ type
   /// <summary>Modifizierer eines Parameters; None ohne Angabe (Wertparameter).</summary>
   TParameterModifier = (None, ConstParam, VarParam, OutParam, ConstRefParam);
 
+  TSyntaxNode = class;
+
+  /// <summary>Besuch eines Knotens für TSyntaxNode.Walk; False = Kinder nicht besuchen.</summary>
+  TSyntaxNodeVisit = reference to function(ANode: TSyntaxNode): Boolean;
+
   TSyntaxNode = class
   private
     FKind: TSyntaxKind;
@@ -75,6 +80,9 @@ type
     function FindChild(AKind: TSyntaxKind): TSyntaxNode;
     /// <summary>Setzt den Bereich im Quelltext.</summary>
     procedure SetRange(const AStartPos, AEndPos: TTextPosition; AStartOffset, AEndOffset: Integer);
+    /// <summary>Besucht diesen Knoten und, wenn AVisit True liefert, rekursiv alle Kinder in
+    /// Baumreihenfolge (Review P-03).</summary>
+    procedure Walk(const AVisit: TSyntaxNodeVisit);
     property Kind: TSyntaxKind read FKind write FKind;
     /// <summary>Nur bei Parameter: const, var, out oder constref.</summary>
     property Modifier: TParameterModifier read FModifier write FModifier;
@@ -211,6 +219,16 @@ begin
   FEndPos := AEndPos;
   FStartOffset := AStartOffset;
   FEndOffset := AEndOffset;
+end;
+
+procedure TSyntaxNode.Walk(const AVisit: TSyntaxNodeVisit);
+var
+  Index: Integer;
+begin
+  if not AVisit(Self) then
+    Exit;
+  for Index := 0 to ChildCount - 1 do
+    Children[Index].Walk(AVisit);
 end;
 
 { TSyntaxTree }

@@ -1,7 +1,8 @@
 ﻿unit Atlas.Core.Problems.Tests;
 
 // Tests für Probleme im Editor (#398): Diagnosen lesen, Speicher mit
-// mitwandernden Markierungen und Compilermeldungen.
+// mitwandernden Markierungen und Compilermeldungen, fehlgeschlagene Tests
+// als dritte Art (#69).
 
 interface
 
@@ -34,6 +35,16 @@ type
     procedure ForFileHidesInactiveRangesAndDuplicatesAndSorts;
     [Test]
     procedure DiskResultsAdoptTheEditorText;
+    [Test]
+    procedure TestFailuresStayBesideServerDiagnostics;
+    [Test]
+    procedure ClearTestsDropsFilesOnlyWithTests;
+    [Test]
+    procedure ProblemColorErrorIsError;
+    [Test]
+    procedure ProblemColorFadedMixesSurface;
+    [Test]
+    procedure ProblemColorHintMuted;
   end;
 
 implementation
@@ -41,9 +52,13 @@ implementation
 uses
   System.SysUtils,
   System.JSON,
+  Atlas.Core.Style.Color,
+  Atlas.Core.Style.Palette,
   Atlas.Core.Problems.Contract,
+  Atlas.Core.Problems.Colors,
   Atlas.Core.Problems.Store,
-  Atlas.Core.Lsp.Session;
+  Atlas.Core.Lsp.Session,
+  System.Generics.Collections;
 
 function Problem(ALine, ACharacter: Integer; const AMessage: string; const ASource: string = 'Atlas';
   ASeverity: TAtlasProblemSeverity = TAtlasProblemSeverity.Error): TAtlasProblem;
@@ -376,6 +391,95 @@ begin
   finally
     Store.Free;
   end;
+end;
+
+procedure TAtlasProblemsTests.TestFailuresStayBesideServerDiagnostics;
+var
+  Store: TAtlasProblemStore;
+  Shown: TArray<TAtlasProblem>;
+begin
+  Store := TAtlasProblemStore.Create;
+  try
+    Store.SetTests([TPair<string, TAtlasProblem>.Create('C:\P\T.pas', Problem(4, 2, 'Erwartet 3, erhalten 4'))]);
+    Assert.IsFalse(Store.Contains('C:\P\T.pas'), 'nur Tests: für den Server neu');
+    Assert.AreEqual(0, Length(Store.AllFiles), 'nur Tests: nicht vom Server geprüft');
+    Assert.AreEqual(1, Length(Store.ForFile('c:\p\t.pas')));
+    Assert.AreEqual(TAtlasProblemStore.TestSource, Store.ForFile('C:\P\T.pas')[0].Source);
+    // Erste Diagnosen des Servers ersetzen Compilermeldungen wie bei einer neuen Datei und lassen Tests stehen.
+    Store.Update('C:\P\T.pas', 'a'#10'b'#10'c'#10'd'#10'e', True,
+      [Problem(1, 0, 'Undeklariert', TAtlasProblem.CompilerSource)], '1', False);
+    Shown := Store.ForFile('C:\P\T.pas');
+    Assert.AreEqual(2, Length(Shown));
+    Assert.AreEqual('Undeklariert', Shown[0].Message);
+    Assert.AreEqual('Erwartet 3, erhalten 4', Shown[1].Message);
+    Assert.IsTrue(Store.Contains('C:\P\T.pas'));
+    // Zwei Zeilen davor eingefügt: der Test wandert mit.
+    Store.Edit('C:\P\T.pas', 'x'#10'y'#10'a'#10'b'#10'c'#10'd'#10'e');
+    Shown := Store.ForFile('C:\P\T.pas');
+    Assert.AreEqual(6, Shown[1].StartLine);
+    Assert.IsFalse(Shown[1].Stale, 'unverändert: nicht blass');
+  finally
+    Store.Free;
+  end;
+end;
+
+procedure TAtlasProblemsTests.ClearTestsDropsFilesOnlyWithTests;
+var
+  Store: TAtlasProblemStore;
+  Version: Integer;
+begin
+  Store := TAtlasProblemStore.Create;
+  try
+    Store.Update('C:\P\A.pas', 'a', True, [Problem(0, 0, 'Regel')], '1', True);
+    Store.SetTests([TPair<string, TAtlasProblem>.Create('C:\P\A.pas', Problem(0, 0, 'Test A')),
+      TPair<string, TAtlasProblem>.Create('C:\P\B.pas', Problem(2, 0, 'Test B'))]);
+    Assert.AreEqual(2, Length(Store.Files));
+    Version := Store.Version;
+    Store.SetTests([TPair<string, TAtlasProblem>.Create('C:\P\B.pas', Problem(3, 0, 'Test B neu'))]);
+    Assert.IsTrue(Store.Version > Version);
+    Assert.AreEqual(1, Length(Store.ForFile('C:\P\A.pas')), 'Test A ersetzt, Regel bleibt');
+    Assert.AreEqual('Test B neu', Store.ForFile('C:\P\B.pas')[0].Message);
+    Store.ClearTests;
+    Assert.IsFalse(Store.Contains('C:\P\B.pas'));
+    Assert.AreEqual(1, Length(Store.Files), 'Datei nur mit Tests fällt weg');
+    Version := Store.Version;
+    Store.ClearTests;
+    Assert.AreEqual(Version, Store.Version, 'nichts zu entfernen: keine neue Version');
+  finally
+    Store.Free;
+  end;
+end;
+
+procedure TAtlasProblemsTests.ProblemColorErrorIsError;
+var
+  Colors: TAtlasColors;
+begin
+  Colors := TAtlasColors.Light;
+  Assert.AreEqual(Colors.Error, ProblemColor(Colors, Problem(0, 0, 'x')));
+  Assert.AreEqual(Colors.Warn, ProblemColor(Colors, Problem(0, 0, 'x', 'Atlas', TAtlasProblemSeverity.Warning)));
+  Assert.AreEqual(Colors.Accent,
+    ProblemColor(Colors, Problem(0, 0, 'x', 'Atlas', TAtlasProblemSeverity.Information)));
+end;
+
+procedure TAtlasProblemsTests.ProblemColorFadedMixesSurface;
+var
+  Colors: TAtlasColors;
+  Faded: TAtlasProblem;
+begin
+  // Editor und Hover gleich blass (D-07).
+  Colors := TAtlasColors.Dark;
+  Faded := Problem(0, 0, 'x', 'Atlas', TAtlasProblemSeverity.Warning);
+  Faded.Stale := True;
+  Assert.AreEqual(TAtlasColorMath.Mix(Colors.Warn, Colors.Surface, AtlasMixFaded), ProblemColor(Colors, Faded));
+  Assert.AreEqual(0.55, AtlasMixFaded, 0.0001);
+end;
+
+procedure TAtlasProblemsTests.ProblemColorHintMuted;
+var
+  Colors: TAtlasColors;
+begin
+  Colors := TAtlasColors.Light;
+  Assert.AreEqual(Colors.Muted, ProblemColor(Colors, Problem(0, 0, 'x', 'Atlas', TAtlasProblemSeverity.Hint)));
 end;
 
 initialization

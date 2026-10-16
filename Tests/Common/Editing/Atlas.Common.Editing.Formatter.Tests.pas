@@ -26,6 +26,12 @@ type
     procedure ChangesLineEndingsAndFinalNewline;
     [Test]
     procedure FormatsOnlyRange;
+    /// <summary>Ein abschließender Umbruch ist eine leere letzte Zeile (TTextLines.SplitLines): kein zweiter
+    /// Umbruch, und beim Wechsel der Zeilenenden bleibt er erhalten (D-03).</summary>
+    [Test]
+    procedure KeepsSingleFinalNewline;
+    [Test]
+    procedure FormatsEmptyText;
     [Test]
     procedure LeavesFormattedCodeAlone;
   end;
@@ -123,6 +129,23 @@ begin
   Assert.AreEqual('begin'#13#10'end.'#13#10, Formatted('begin'#10'end.', Settings));
   Settings.EndOfLine := '';
   Assert.AreEqual('begin'#10'end.'#10, Formatted('begin'#10'end.', Settings));
+end;
+
+procedure TFormatterTests.KeepsSingleFinalNewline;
+var
+  Settings: TFormatStyle;
+begin
+  Settings := TFormatStyle.Default;
+  Settings.InsertFinalNewline := True;
+  Assert.AreEqual('begin'#10'end.'#10, Formatted('begin'#10'end.'#10, Settings));
+  Settings.EndOfLine := #13#10;
+  Assert.AreEqual('begin'#13#10'end.'#13#10, Formatted('begin'#10'end.'#10, Settings));
+  Assert.AreEqual('begin'#13#10'end.'#13#10, Formatted('begin'#13'end.'#13, Settings));
+end;
+
+procedure TFormatterTests.FormatsEmptyText;
+begin
+  Assert.AreEqual('', Formatted('', TFormatStyle.Default));
 end;
 
 procedure TFormatterTests.FormatsOnlyRange;

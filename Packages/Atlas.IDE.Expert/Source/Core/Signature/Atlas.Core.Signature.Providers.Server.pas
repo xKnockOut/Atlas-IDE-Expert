@@ -20,13 +20,12 @@ uses
   System.JSON,
   System.Generics.Collections,
   Atlas.Core.Signature.Contract,
-  Atlas.Core.Completion.Providers.Server,
   Atlas.Core.Lsp.Session;
 
 type
-  TAtlasSignatureCallback = reference to procedure(const AHelp: TAtlasSignatureHelp);
+  TAtlasSignatureCallback = Atlas.Core.Signature.Contract.TAtlasSignatureCallback;
 
-  TAtlasServerSignatureProvider = class
+  TAtlasServerSignatureProvider = class(TInterfacedObject, IAtlasSignatureSource)
   public const
     DefaultTimeoutMs = 2000;
     ProviderTitle = 'Parameter-Hint (Server)';

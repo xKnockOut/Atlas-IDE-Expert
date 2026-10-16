@@ -18,7 +18,6 @@ uses
   System.SysUtils,
   Atlas.Common.Documents.Contract,
   Atlas.Common.Configuration.Contract,
-  Atlas.Common.Rules.Contract,
   Atlas.Common.Pascal.Contract;
 
 type
@@ -27,7 +26,7 @@ type
     /// <summary>Änderungen für die Zeilen AFirstLine bis ALastLine (-1 = bis zum Ende).
     /// Zeilenenden und die abschließende Leerzeile nur bei der ganzen Datei.</summary>
     class function Edits(const AText: string; const ATokens: TArray<TPascalToken>;
-      const ASettings: TFormatStyle; AFirstLine: Integer = 0; ALastLine: Integer = -1): TArray<TRuleEdit>; static;
+      const ASettings: TFormatStyle; AFirstLine: Integer = 0; ALastLine: Integer = -1): TArray<TTextEdit>; static;
     /// <summary>Text nach dem Formatieren, z. B. für Tests und den Linter.</summary>
     class function FormatText(const AText: string; const ATokens: TArray<TPascalToken>;
       const ASettings: TFormatStyle): string; static;
@@ -38,7 +37,8 @@ implementation
 uses
   System.Math,
   System.Generics.Collections,
-  System.Generics.Defaults;
+  System.Generics.Defaults,
+  Atlas.Text.Lines;
 
 type
   TLineInfo = record
@@ -53,19 +53,6 @@ type
     EndColumn: Integer;
     Text: string;
   end;
-
-function SplitLines(const AText: string): TArray<string>;
-begin
-  Result := AText.Replace(#13#10, #10).Replace(#13, #10).Split([#10]);
-end;
-
-function DetectLineBreak(const AText: string): string;
-begin
-  if Pos(#13#10, AText) > 0 then
-    Result := #13#10
-  else
-    Result := #10;
-end;
 
 /// <summary>Führenden Leerraum nach Spalten umrechnen, Rest unverändert.</summary>
 function Reindent(const ALine: string; const ASettings: TFormatStyle): string;
@@ -105,7 +92,7 @@ end;
 { TFormatter }
 
 class function TFormatter.Edits(const AText: string; const ATokens: TArray<TPascalToken>;
-  const ASettings: TFormatStyle; AFirstLine, ALastLine: Integer): TArray<TRuleEdit>;
+  const ASettings: TFormatStyle; AFirstLine, ALastLine: Integer): TArray<TTextEdit>;
 var
   Lines, Formatted: TArray<string>;
   Info: TArray<TLineInfo>;
@@ -115,19 +102,19 @@ var
   Settings: TFormatStyle;
   Text, LB, Wanted: string;
   Gap: TGapEdit;
-  Found: TList<TRuleEdit>;
+  Found: TList<TTextEdit>;
   WholeFile, Changed: Boolean;
   LastLine: Integer;
 begin
   Settings := ASettings;
   if Settings.IndentSize < 1 then
     Settings.IndentSize := 2;
-  Lines := SplitLines(AText);
+  Lines := TTextLines.SplitLines(AText);
   SetLength(Info, Length(Lines));
   SetLength(Gaps, Length(Lines));
   for Line := 0 to High(Lines) do
     Gaps[Line] := TList<TGapEdit>.Create;
-  Found := TList<TRuleEdit>.Create;
+  Found := TList<TTextEdit>.Create;
   try
     // Mehrzeilige Tokens und asm-Blöcke einfrieren.
     AsmDepth := 0;
@@ -215,12 +202,12 @@ begin
         Text := TrimRight(Text);
       Formatted[Line] := Text;
       if Formatted[Line] <> Lines[Line] then
-        Found.Add(TRuleEdit.Create(TTextRange.Create(Line, 0, Line, Length(Lines[Line])), Formatted[Line]));
+        Found.Add(TTextEdit.Create(TTextRange.Create(Line, 0, Line, Length(Lines[Line])), Formatted[Line]));
     end;
     WholeFile := (AFirstLine <= 0) and (ALastLine < 0);
     if WholeFile then
     begin
-      LB := DetectLineBreak(AText);
+      LB := TTextLines.LineBreakOf(AText);
       Changed := (Settings.EndOfLine <> '') and (Settings.EndOfLine <> LB) and (Length(Lines) > 1);
       if Changed then
       begin
@@ -229,10 +216,10 @@ begin
         Text := string.Join(Settings.EndOfLine, Formatted);
         if Settings.InsertFinalNewline and (Text <> '') and not Text.EndsWith(Settings.EndOfLine) then
           Text := Text + Settings.EndOfLine;
-        Found.Add(TRuleEdit.Create(TTextRange.Create(0, 0, High(Lines), Length(Lines[High(Lines)])), Text));
+        Found.Add(TTextEdit.Create(TTextRange.Create(0, 0, High(Lines), Length(Lines[High(Lines)])), Text));
       end
       else if Settings.InsertFinalNewline and (Formatted[High(Formatted)] <> '') then
-        Found.Add(TRuleEdit.Create(TTextRange.Create(High(Lines), Length(Lines[High(Lines)]), High(Lines),
+        Found.Add(TTextEdit.Create(TTextRange.Create(High(Lines), Length(Lines[High(Lines)]), High(Lines),
           Length(Lines[High(Lines)])), LB));
     end;
     Result := Found.ToArray;
@@ -247,8 +234,8 @@ class function TFormatter.FormatText(const AText: string; const ATokens: TArray<
   const ASettings: TFormatStyle): string;
 var
   Lines: TArray<string>;
-  Edit: TRuleEdit;
-  Edits: TArray<TRuleEdit>;
+  Edit: TTextEdit;
+  Edits: TArray<TTextEdit>;
   Index: Integer;
   LB: string;
 begin
@@ -257,8 +244,8 @@ begin
   if (Length(Edits) = 1) and (Edits[0].Range.StartPos.Line = 0) and (Edits[0].Range.StartPos.Character = 0) and
     (Edits[0].Range.EndPos.Line > 0) then
     Exit(Edits[0].NewText);
-  LB := DetectLineBreak(AText);
-  Lines := SplitLines(AText);
+  LB := TTextLines.LineBreakOf(AText);
+  Lines := TTextLines.SplitLines(AText);
   for Index := High(Edits) downto 0 do
   begin
     Edit := Edits[Index];

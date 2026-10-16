@@ -52,6 +52,8 @@ uses
   Atlas.Common.Lsp.CodeLens,
   Atlas.Common.Lsp.Metrics,
   Atlas.Common.Lsp.Todos,
+  Atlas.Common.Lsp.SlashMenu,
+  Atlas.Common.Lsp.Baseline,
   Atlas.Common.Lsp.SemanticTokens,
   Atlas.Common.Lsp.Status,
   Atlas.Common.Lsp.QualifiedNames,
@@ -75,8 +77,10 @@ uses
   Atlas.Common.Diagnostics.Anonymizer,
   Atlas.Common.Compiler.Contract,
   Atlas.Common.Compiler.Results,
+  Atlas.Common.Compiler.Backend,
   Atlas.Common.Lsp.WorkDoneProgress,
   Shell.CommandLine,
+  Shell.Compiler,
   Atlas.Common.Diagnostics.Contract,
   Atlas.Common.Index.Scheduler,
   Atlas.Windows.Process.ParentWatcher,
@@ -103,6 +107,7 @@ type
     FFoldingRanges: TLspFoldingRanges;
     FLinkedEditing: TLspLinkedEditing;
     FFormatting: TLspFormatting;
+    FSlashMenu: TLspSlashMenu;
     FSelectionRanges: TLspSelectionRanges;
     FDefinition: TLspDefinition;
     FHover: TLspHover;
@@ -134,6 +139,8 @@ type
     FMetrics: TLspMetrics;
     /// <summary>TODO-Übersicht (#68): Befehl atlas.server.todos.</summary>
     FTodos: TLspTodos;
+    /// <summary>Baseline für Altprojekte (#97): Befehl atlas.updateBaseline.</summary>
+    FBaseline: TLspBaseline;
     FSemanticTokens: TLspSemanticTokens;
     FCodeActions: TLspCodeActions;
     /// <summary>Testunit anlegen und wechseln (#274, #189).</summary>
@@ -176,6 +183,8 @@ type
     // atlas.json aller Ordner. FGlobalSettings nur im Thread der Nachrichtenschleife.
     FGlobalSettingsFile: string;
     FGlobalSettings: string;
+    /// <summary>Einstellungen für Dateien ohne Arbeitsbereich: global und Editor (S-02). Unter FWorkspacesLock.</summary>
+    FLooseSettings: TServerSettings;
     FFileWatcher: TFileWatcher;
     // Compiler-Anbindung (#40): höchstens ein Lauf zugleich, ein weiterer wird vorgemerkt.
     FCompilerResults: TCompilerResults;
@@ -187,10 +196,20 @@ type
     /// <summary>Beenden läuft: kein neuer Compilerlauf mehr (Code-Review A-05). Unter FCompileLock.</summary>
     FCompileStopping: Boolean;
     FHasPendingCompile: Boolean;
-    FPendingCompile: TCompilerRequest;
+    FPendingCompile: TShellCompileJob;
     /// <summary>Grund, warum der Compiler nicht nutzbar ist; '' = nutzbar. Unter FCompileLock.
     /// Dann kompiliert der Server nach dem Speichern nicht mehr, bis das Projekt neu geladen wird.</summary>
     FCompilerUnavailable: string;
+    /// <summary>Erkannte Ausgabe der Delphi-Installationen (#261): dcc da und nutzbar?</summary>
+    FCompilerEditions: TShellCompilerEditions;
+    /// <summary>Eigene IDE über cc.ps1 (#261); nur im Compile-Thread und beim Beenden.</summary>
+    FIdeCompiler: TShellIdeCompiler;
+    /// <summary>Zuletzt gewählter Weg zum Compiler für den Status (#28, #261). Unter FCompileLock.</summary>
+    FCompilerChoice: TCompilerBackendChoice;
+    FHasCompilerChoice: Boolean;
+    /// <summary>Gründe, die schon als window/showMessage gezeigt wurden (#261): jeder einmal je Sitzung.
+    /// Unter FCompileLock.</summary>
+    FCompilerShown: TArray<string>;
     /// <summary>Der Client hat keinen brauchbaren Ordner gemeldet (RAD Studio, #175):
     /// Ordner werden aus den geöffneten Dateien abgeleitet.</summary>
     FDeriveWorkspaces: Boolean;
@@ -205,8 +224,42 @@ type
     /// <summary>Legt zur Datei den Ordner mit der nächsten Projektdatei an, falls sie in keinem Ordner liegt.</summary>
     procedure DeriveWorkspace(const AFileName: string);
     procedure RemoveWorkspace(const AFolder: TWorkspaceFolder);
+    /// <summary>Teil von Create (S-02): Dispatcher mit Watchdog und Fehlerprotokoll, Lebenszyklus (initialize/shutdown).</summary>
+    procedure WireProtocol;
+    /// <summary>Teil von Create (S-02): Dokumentspeicher, Synchronisation, Syntax- und Pull-Diagnosen, Compilerergebnisse.</summary>
+    procedure WireDocuments;
+    /// <summary>Teil von Create (S-02): Dokumentbezogene Funktionen ohne Index: Symbole, Faltung, Formatierung, Schnellbefehle.</summary>
+    procedure WireEditing;
+    /// <summary>Teil von Create (S-02): Arbeitsbereiche, Indexplanung und Konfiguration ohne Ordner; Pfade für die Syntaxprüfung.</summary>
+    procedure WireWorkspaces;
+    /// <summary>Teil von Create (S-02): Symbolindex und Diagnoselog.</summary>
+    procedure WireIndex;
+    /// <summary>Teil von Create (S-02): Definition, Hover, Arbeitsbereichssymbole, Hervorhebungen, Verweise, Umbenennen.</summary>
+    procedure WireNavigation;
+    /// <summary>Teil von Create (S-02): Vervollständigung mit Einstellungen, Postfix-Vorlagen und Teilergebnissen.</summary>
+    procedure WireCompletion;
+    /// <summary>Teil von Create (S-02): Signaturhilfe, Hierarchien, Implementierungen, Inlay-Hints, CodeLens, Metriken, TODOs, Baseline, Semantic Tokens.</summary>
+    procedure WireAnalysis;
+    /// <summary>Teil von Create (S-02): Code-Aktionen, Testunits, Dokumentlinks und Farben.</summary>
+    procedure WireCodeActions;
+    /// <summary>Teil von Create (S-02): workspace/executeCommand: alle Befehle des Servers.</summary>
+    procedure WireCommands;
+    /// <summary>Teil von Create (S-02): Dateiüberwachung und Index-Auffrischung.</summary>
+    procedure WireWatchedFiles;
+    /// <summary>Teil von Create (S-02): Anbindung an die IDE: Build-Meldungen und Projektkontext.</summary>
+    procedure WireIde;
+    /// <summary>Teil von Create (S-02): Arbeitsbereichsordner und Ereignisse nach initialized.</summary>
+    procedure WireWorkspaceFolders;
     /// <summary>Innerster Ordner zur Datei oder nil. Aufrufer hält FWorkspacesLock.</summary>
     function WorkspaceOf(const AFileName: string): TShellWorkspace;
+    /// <summary>Arbeitsbereich zur Datei; ohne Treffer bei genau einem Arbeitsbereich dieser, sonst nil
+    /// (TShellWorkspace.Choose, S-02). Aufrufer hält FWorkspacesLock.</summary>
+    function PickWorkspace(const AFileName: string): TShellWorkspace;
+    /// <summary>Wirksame Einstellungen zur Datei (S-02): die des Arbeitsbereichs (PickWorkspace), ohne
+    /// Arbeitsbereich globale Datei und Editor-Einstellungen. Sperrt selbst und liefert eine Kopie.</summary>
+    function SettingsFor(const AUri: string): TServerSettings;
+    /// <summary>FLooseSettings aus globaler Datei und Editor-Einstellungen neu berechnen; Nachrichtenschleife.</summary>
+    procedure UpdateLooseSettings;
     function EnsureUnit(const AUnitName: string): Boolean;
     /// <summary>Fortschritt des Indexaufbaus in Prozent über alle Projekte; -1, wenn keiner läuft.</summary>
     function IndexLoading: Integer;
@@ -217,6 +270,8 @@ type
     function ProjectIndexPending: Boolean;
     /// <summary>Text einer Quelldatei; geöffnete Dokumente haben Vorrang vor der Platte.</summary>
     function ReadSourceText(const AFileName: string; out AText: string): Boolean;
+    /// <summary>Dateizugriffe für atlas.updateBaseline (#97): schreibt UTF-8 ohne BOM wie --update-baseline.</summary>
+    function BaselineFiles: TLspBaselineFiles;
     /// <summary>Muster, Ordner und Testprogramm für Testunits zur Datei (#274, #189).</summary>
     function TestUnitContextFor(const AUri: string; out AContext: TTestUnitContext): Boolean;
     /// <summary>Index, Projekte und Dateizugriffe für „Units suchen“ (#777).</summary>
@@ -228,6 +283,8 @@ type
     /// <summary>Inhalt des Status-Befehls (#28).</summary>
     function CollectBookmarks: TArray<TBookmarkHit>;
     function CollectStatus: TServerStatus;
+    /// <summary>Weg zum Compiler für den Status (#28, #261).</summary>
+    procedure CollectCompilerStatus(var AStatus: TServerStatus);
     /// <summary>Fehlerbericht (#108); AArguments optional [{"anonymize", "client", "target"}].</summary>
     function BugReport(const AArguments: TJSONArray): TJSONValue;
     /// <summary>Wirksame Konfiguration je Arbeitsbereich als formatiertes JSON.</summary>
@@ -251,14 +308,31 @@ type
     procedure ProjectLoaded;
     procedure HandleDocumentEvent(AKind: TDocumentEventKind; const ADocument: ITextDocument);
     /// <summary>Kompiliert das Projekt zu AFileName ('' = einziger Ordner) im Hintergrund.
-    /// AManual: über den Befehl, auch wenn der Compiler zuletzt nicht nutzbar war.</summary>
-    procedure StartCompile(const AFileName: string; AManual: Boolean);
-    /// <summary>Merkt sich, dass der Compiler nicht nutzbar ist, und meldet das einmal.</summary>
-    procedure CompilerUnavailable(const AReason: string);
-    /// <summary>Hintergrund-Thread: führt ARequest und vorgemerkte Läufe aus.</summary>
-    procedure CompileLoop(const ARequest: TCompilerRequest);
+    /// AManual: über den Befehl, auch wenn der Compiler zuletzt nicht nutzbar war. Wählt vorher den Weg
+    /// (#261: dcc, eigene IDE über cc.ps1 oder keiner). False, wenn kein Compiler nutzbar ist; Grund und
+    /// Ausweg dann in AChoice.</summary>
+    function StartCompile(const AFileName: string; AManual: Boolean; out AChoice: TCompilerBackendChoice): Boolean;
+    /// <summary>Merkt sich, dass der Compiler nicht nutzbar ist, schreibt es ins Log und zeigt es einmal je
+    /// Grund als window/showMessage (#261).</summary>
+    procedure CompilerUnavailable(const AChoice: TCompilerBackendChoice; AShow: Boolean);
+    /// <summary>Projekt, Installation und Weg zum Compiler für AFileName ('' = einziger Ordner); erkennt die
+    /// Ausgabe der Installation bei Bedarf (#261). False ohne Projekt oder Installation (Grund in AChoice).
+    /// </summary>
+    function ChooseCompiler(const AFileName: string; out AJob: TShellCompileJob;
+      out AChoice: TCompilerBackendChoice): Boolean;
+    /// <summary>Merkt sich den gewählten Weg für den Status (#261).</summary>
+    procedure RememberCompilerChoice(const AChoice: TCompilerBackendChoice);
+    /// <summary>Hintergrund-Thread: führt AJob und vorgemerkte Läufe aus.</summary>
+    procedure CompileLoop(const AJob: TShellCompileJob);
     /// <summary>Ein Compilerlauf mit Fortschritt und Meldungen; Fehler landen im Fortschritt und im Log.</summary>
-    procedure CompileOnce(const ARequest: TCompilerRequest);
+    procedure CompileOnce(const AJob: TShellCompileJob);
+    /// <summary>Lauf mit dcc32/dcc64; zeigt dcc den Lizenztext der Starter Edition, merkt sich das der
+    /// Server und baut bei einem Befehl gleich über die IDE, wenn cc.ps1 eingerichtet ist (#261).</summary>
+    procedure CompileWithDcc(const AJob: TShellCompileJob);
+    /// <summary>Lauf über die eigene IDE mit cc.ps1 (#261).</summary>
+    procedure CompileWithIde(const AJob: TShellCompileJob);
+    /// <summary>Meldungen eines Laufs an Diagnosen, Log und Fortschritt.</summary>
+    procedure PublishCompile(const AMessages: TArray<TCompilerMessage>; const AVia: string);
     /// <summary>Beenden: keine neuen Läufe, laufenden Compiler abbrechen, Thread abwarten (A-05).</summary>
     procedure StopCompiler;
     /// <summary>Beenden: Index-Threads aller Ordner anhalten; nil-sicher.</summary>
@@ -279,7 +353,6 @@ type
     CompileCommand = 'atlas.server.compile';
     SelectBuildCommand = 'atlas.server.selectBuild';
     RebuildIndexCommand = 'atlas.server.rebuildIndex';
-    /// <summary>Globale Benutzerdatei unter %APPDATA% (#227).</summary>
     /// <summary>Anfragen, die länger laufen, werden abgebrochen und gemeldet.</summary>
     RequestTimeoutMs = 10000;
   public
@@ -305,6 +378,7 @@ uses
   System.IOUtils,
   System.Math,
   System.StrUtils,
+  System.Diagnostics,
   Atlas.Common.Product.Version,
   Atlas.Common.Configuration.Parser,
   Atlas.Common.Configuration.Scopes,
@@ -319,7 +393,12 @@ uses
   Atlas.Common.Documents.Uris,
   Shell.SlashHost,
   Shell.VcsChanges,
+  Shell.Bootstrap,
+  Shell.Commands.Build,
+  Shell.Commands.Index,
   Atlas.Common.Rules.Engine,
+  Atlas.Common.Pascal.SyntaxTree,
+  Atlas.Common.Pascal.TreeCache,
   Atlas.Common.Rules.Builtin.General,
   Atlas.Common.Lsp.FormFiles,
   Atlas.Common.Dfm.FormModel,
@@ -333,23 +412,27 @@ uses
   Atlas.Common.Metrics.Contract,
   Atlas.Common.Compiler.OutputParser,
   Atlas.Windows.Compiler.Adapters.ProcessRunner,
+  Atlas.Windows.Process.Instances,
+  Atlas.Common.Compiler.Edition,
   Atlas.Windows.Console.StdStreams,
   Atlas.Windows.Documents.PathCanonicalizer,
   Atlas.Windows.Diagnostics.Adapters.DebugOutputSink,
   Atlas.Windows.Diagnostics.StackTrace,
-  Atlas.Common.Logging.Providers.RotatingFileStream,
+  Atlas.Common.Logging.RotatingFileStream,
   Atlas.Windows.Editing.SystemColors,
   Atlas.Common.Projects.Contract,
   Atlas.Common.Projects.GroupReader,
   Atlas.Common.JsonRpc.Messages;
 
-function StringsToJson(const AValues: TArray<string>): TJSONArray;
-var
-  Value: string;
+// PowerShell für cc.ps1 (#261): pwsh aus PATH, sonst Windows PowerShell. Der Prozessläufer
+// durchsucht PATH nicht selbst.
+function PowerShellProgram: string;
 begin
-  Result := TJSONArray.Create;
-  for Value in AValues do
-    Result.Add(Value);
+  Result := TVcsChanges.FindProgram('pwsh');
+  if SameText(Result, 'pwsh') then
+    Result := TVcsChanges.FindProgram('powershell');
+  if SameText(Result, 'powershell') then
+    Result := TPath.Combine(GetEnvironmentVariable('SystemRoot'), 'System32\WindowsPowerShell\v1.0\powershell.exe');
 end;
 
 // Mitschnitt anlegen. Rotiert bei Überlänge (#283). Hält ihn schon ein anderer
@@ -372,12 +455,39 @@ end;
 { TServerComposition }
 
 constructor TServerComposition.Create(const ATransport: IJsonRpcTransport; const ALogger: ILogger);
-var
-  SlashHost: TShellSlashHost;
 begin
   inherited Create;
   FTransport := ATransport;
   FLogger := ALogger;
+  WireProtocol;
+  WireDocuments;
+  WireEditing;
+  WireWorkspaces;
+  WireIndex;
+  WireNavigation;
+  WireCompletion;
+  WireAnalysis;
+  WireCodeActions;
+  WireCommands;
+  WireWatchedFiles;
+  WireIde;
+  WireWorkspaceFolders;
+  FConnection := TJsonRpcConnection.Create(FTransport, FDispatcher);
+  FConnection.OnError :=
+    procedure(const AError: Exception)
+    begin
+      FLogger.Error('Fehler bei der Verarbeitung: ' + DescribeFailure(AError));
+    end;
+  FLifecycle.OnExit :=
+    procedure
+    begin
+      FEndReason := TDiagnosticEndReason.Clean;
+      FConnection.Stop;
+    end;
+end;
+
+procedure TServerComposition.WireProtocol;
+begin
   FDispatcher := TJsonRpcDispatcher.Create;
   FStatistics := TJsonRpcStatistics.Create;
   FDispatcher.Statistics := FStatistics;
@@ -420,6 +530,10 @@ begin
   FLifecycle.Attach(FDispatcher);
   // Ändert der Client ein Dokument, sind laufende Anfragen dazu überholt (#283).
   FDispatcher.PendingRequests.AddContentChangeMethod('textDocument/didChange');
+end;
+
+procedure TServerComposition.WireDocuments;
+begin
   FDocuments := TDocumentStore.Create(
     function(const APath: string): string
     begin
@@ -437,6 +551,28 @@ begin
   FCompilerProcess := TProcessRunner.Create;
   FCompileProgress := TLspWorkDoneProgress.Create(FTransport, 'atlas-compile');
   FCompileLock := TObject.Create;
+  // Starter Edition ohne dcc (#261): Ausgabe je Installation erkennen und merken; eigene IDE über cc.ps1.
+  FCompilerEditions := TShellCompilerEditions.Create(FCompilerProcess, FLogger, TShellCompilerEditions.DefaultFile);
+  FIdeCompiler := TShellIdeCompiler.Create(FCompilerProcess, FLogger, PowerShellProgram,
+    function: TArray<Cardinal>
+    begin
+      Result := TProcessInstances.IdsOf('bds.exe');
+    end,
+    function(APid: Cardinal): Boolean
+    begin
+      Result := TProcessInstances.Running(APid);
+    end,
+    function(const AFileName: string): TArray<string>
+    begin
+      Result := nil;
+      try
+        if TFile.Exists(AFileName) then
+          Result := TFile.ReadAllLines(AFileName);
+      except
+        on E: Exception do
+          FLogger.Warning('Build-Log der IDE nicht lesbar: ' + E.ClassName);
+      end;
+    end);
   FSyntaxDiagnostics.CompilerMessagesProvider :=
     function(const AFileName: string): TArray<TCompilerMessage>
     begin
@@ -475,6 +611,12 @@ begin
     end;
   FPullDiagnostics.Attach(FDispatcher);
   FSyntaxDiagnostics.OnPullChanged := FPullDiagnostics.Changed;
+end;
+
+procedure TServerComposition.WireEditing;
+var
+  SlashHost: TShellSlashHost;
+begin
   FDocumentSymbols := TLspDocumentSymbols.Create(FDocuments);
   FDocumentSymbols.Attach(FDispatcher);
   FFoldingRanges := TLspFoldingRanges.Create(FDocuments);
@@ -495,17 +637,12 @@ begin
     begin
       TMonitor.Enter(FWorkspacesLock);
       try
-        Result := WorkspaceOf(TDocumentUris.ToPath(AUri));
-        if (Result = nil) and (FWorkspaces.Count = 1) then
-          Result := FWorkspaces[0];
+        Result := PickWorkspace(TDocumentUris.ToPath(AUri));
       finally
         TMonitor.Exit(FWorkspacesLock);
       end;
     end,
-    function(const AFileName: string; out AText: string): Boolean
-    begin
-      Result := ReadSourceText(AFileName, AText);
-    end,
+    ReadSourceText,
     function(const AUri: string): string
     var
       Workspace: TShellWorkspace;
@@ -513,9 +650,7 @@ begin
     begin
       TMonitor.Enter(FWorkspacesLock);
       try
-        Workspace := WorkspaceOf(TDocumentUris.ToPath(AUri));
-        if (Workspace = nil) and (FWorkspaces.Count = 1) then
-          Workspace := FWorkspaces[0];
+        Workspace := PickWorkspace(TDocumentUris.ToPath(AUri));
         if Workspace = nil then
           Exit('');
         Settings := Workspace.Configuration.Settings;
@@ -542,9 +677,19 @@ begin
     end;
   FFormatting.SlashHost := SlashHost;
   FFormatting.Attach(FDispatcher);
+  // Erzeugen-Menü (#719): dieselben Schalter, Versionen und derselbe Host wie die Schnellbefehle nach Enter.
+  FSlashMenu := TLspSlashMenu.Create(FDocuments);
+  FSlashMenu.SlashCommandsFor := SlashCommandsFor;
+  FSlashMenu.DelphiVersionFor := DelphiVersionFor;
+  FSlashMenu.SlashHost := SlashHost;
   FSelectionRanges := TLspSelectionRanges.Create(FDocuments);
   FSelectionRanges.Attach(FDispatcher);
+end;
+
+procedure TServerComposition.WireWorkspaces;
+begin
   FWorkspaces := TObjectList<TShellWorkspace>.Create(True);
+  FLooseSettings := TServerSettings.Default;
   FWorkspacesLock := TObject.Create;
   FWorkspaceUsers := TDictionary<TShellWorkspace, Integer>.Create;
   FIndexScheduler := TIndexScheduler.Create;
@@ -568,9 +713,7 @@ begin
       AConfig := '';
       TMonitor.Enter(FWorkspacesLock);
       try
-        Workspace := WorkspaceOf(TDocumentUris.ToPath(AUri));
-        if (Workspace = nil) and (FWorkspaces.Count = 1) then
-          Workspace := FWorkspaces[0];
+        Workspace := PickWorkspace(TDocumentUris.ToPath(AUri));
         Result := (Workspace <> nil) and Workspace.Project(Project);
       finally
         TMonitor.Exit(FWorkspacesLock);
@@ -589,7 +732,7 @@ begin
       Result := nil;
       TMonitor.Enter(FWorkspacesLock);
       try
-        Workspace := WorkspaceOf(TDocumentUris.ToPath(AUri));
+        Workspace := PickWorkspace(TDocumentUris.ToPath(AUri));
         if Workspace <> nil then
           Result := Workspace.IncludePaths;
       finally
@@ -598,8 +741,13 @@ begin
     end;
   FSyntaxDiagnostics.VersionProvider := DelphiVersionFor;
   FSyntaxDiagnostics.RuleProvider := RuleContextFor;
+end;
+
+procedure TServerComposition.WireIndex;
+begin
   FIndex := TSymbolIndex.Create;
   FFormatting.Index := FIndex;
+  FSlashMenu.Index := FIndex;
   FEndReason := TDiagnosticEndReason.InputClosed;
   FRequestTimeout := RequestTimeoutMs;
   FDiagnostics := TShellDiagnostics.Create(TShellDiagnostics.DefaultFolder, IntToStr(GetCurrentProcessId),
@@ -616,26 +764,17 @@ begin
       Result := IndexLoading;
     end;
   FDispatcher.Observer := FDiagnosticsRef;
+end;
+
+procedure TServerComposition.WireNavigation;
+begin
   FDefinition := TLspDefinition.Create(FDocuments, FIndex,
-    function(const AUnitName: string): Boolean
-    begin
-      Result := EnsureUnit(AUnitName);
-    end);
-  FDefinition.ReadText :=
-    function(const AFileName: string; out AText: string): Boolean
-    begin
-      Result := ReadSourceText(AFileName, AText);
-    end;
+    EnsureUnit);
+  FDefinition.ReadText := ReadSourceText;
   FDefinition.Attach(FDispatcher);
   FHover := TLspHover.Create(FDocuments, FIndex,
-    function(const AFileName: string; out AText: string): Boolean
-    begin
-      Result := ReadSourceText(AFileName, AText);
-    end,
-    function(const AUnitName: string): Boolean
-    begin
-      Result := EnsureUnit(AUnitName);
-    end);
+    ReadSourceText,
+    EnsureUnit);
   FHover.VersionProvider := DelphiVersionFor;
   FHover.HintsFor := HintSettingsFor;
   FHover.Attach(FDispatcher);
@@ -644,10 +783,7 @@ begin
   FWorkspaceSymbols.BookmarksFor := CollectBookmarks;
   FWorkspaceSymbols.Attach(FDispatcher);
   FDocumentHighlights := TLspDocumentHighlights.Create(FDocuments, FIndex,
-    function(const AUnitName: string): Boolean
-    begin
-      Result := EnsureUnit(AUnitName);
-    end);
+    EnsureUnit);
   FDocumentHighlights.SettingsFor :=
     function(const AUri: string): THighlightSettings
     var
@@ -655,9 +791,7 @@ begin
     begin
       TMonitor.Enter(FWorkspacesLock);
       try
-        Workspace := WorkspaceOf(TDocumentUris.ToPath(AUri));
-        if (Workspace = nil) and (FWorkspaces.Count = 1) then
-          Workspace := FWorkspaces[0];
+        Workspace := PickWorkspace(TDocumentUris.ToPath(AUri));
         if Workspace <> nil then
           Result := Workspace.Configuration.Settings.Highlight
         else
@@ -668,32 +802,21 @@ begin
     end;
   FDocumentHighlights.Attach(FDispatcher);
   FReferences := TLspReferences.Create(FDocuments, FIndex,
-    function(const AFileName: string; out AText: string): Boolean
-    begin
-      Result := ReadSourceText(AFileName, AText);
-    end,
+    ReadSourceText,
     ProjectSourceFiles,
-    function(const AUnitName: string): Boolean
-    begin
-      Result := EnsureUnit(AUnitName);
-    end);
+    EnsureUnit);
   FReferences.Attach(FDispatcher);
   FRename := TLspRename.Create(FDocuments, FIndex,
-    function(const AFileName: string; out AText: string): Boolean
-    begin
-      Result := ReadSourceText(AFileName, AText);
-    end,
+    ReadSourceText,
     ProjectSourceFiles,
-    function(const AUnitName: string): Boolean
-    begin
-      Result := EnsureUnit(AUnitName);
-    end);
+    EnsureUnit);
   FRename.Attach(FDispatcher);
+end;
+
+procedure TServerComposition.WireCompletion;
+begin
   FCompletion := TLspCompletion.Create(FDocuments, FIndex,
-    function(const AUnitName: string): Boolean
-    begin
-      Result := EnsureUnit(AUnitName);
-    end);
+    EnsureUnit);
   FCompletion.MatchingFor :=
     function(const AUri: string): TCompletionMatching
     begin
@@ -718,11 +841,7 @@ begin
     end;
   // Für completionItem/resolve (Detailpanel von Atlas, #405); Anzeige von XMLDoc (#654).
   FCompletion.HintsFor := HintSettingsFor;
-  FCompletion.ReadText :=
-    function(const AFileName: string; out AText: string): Boolean
-    begin
-      Result := ReadSourceText(AFileName, AText);
-    end;
+  FCompletion.ReadText := ReadSourceText;
   // Teilergebnisse (#616) als $/progress; Zeiten je Anfrage im Debug-Protokoll.
   FCompletion.Notify :=
     procedure(const AMethod: string; AParams: TJSONObject)
@@ -742,54 +861,33 @@ begin
       FLogger.Debug(AText);
     end;
   FCompletion.Attach(FDispatcher);
+  // „Interface implementieren“ im Erzeugen-Menü (#719, #466) wie in der Vervollständigung.
+  FSlashMenu.Completion := FCompletion;
+end;
+
+procedure TServerComposition.WireAnalysis;
+begin
   FSignatureHelp := TLspSignatureHelp.Create(FDocuments, FIndex,
-    function(const AFileName: string; out AText: string): Boolean
-    begin
-      Result := ReadSourceText(AFileName, AText);
-    end,
-    function(const AUnitName: string): Boolean
-    begin
-      Result := EnsureUnit(AUnitName);
-    end);
+    ReadSourceText,
+    EnsureUnit);
   FSignatureHelp.Attach(FDispatcher);
   FHierarchies := TLspHierarchies.Create(FDocuments, FIndex,
-    function(const AFileName: string; out AText: string): Boolean
-    begin
-      Result := ReadSourceText(AFileName, AText);
-    end,
+    ReadSourceText,
     ProjectSourceFiles,
-    function(const AUnitName: string): Boolean
-    begin
-      Result := EnsureUnit(AUnitName);
-    end);
+    EnsureUnit);
   FHierarchies.Attach(FDispatcher);
   FImplementations := TLspImplementations.Create(FDocuments, FIndex,
-    function(const AUnitName: string): Boolean
-    begin
-      Result := EnsureUnit(AUnitName);
-    end);
+    EnsureUnit);
   FImplementations.Attach(FDispatcher);
   FInlayHints := TLspInlayHints.Create(FDocuments, FIndex,
-    function(const AFileName: string; out AText: string): Boolean
-    begin
-      Result := ReadSourceText(AFileName, AText);
-    end,
+    ReadSourceText,
     InlayHintSettingsFor,
-    function(const AUnitName: string): Boolean
-    begin
-      Result := EnsureUnit(AUnitName);
-    end);
+    EnsureUnit);
   FInlayHints.Attach(FDispatcher);
   FCodeLens := TLspCodeLens.Create(FDocuments, FIndex,
-    function(const AFileName: string; out AText: string): Boolean
-    begin
-      Result := ReadSourceText(AFileName, AText);
-    end,
+    ReadSourceText,
     ProjectSourceFiles,
-    function(const AUnitName: string): Boolean
-    begin
-      Result := EnsureUnit(AUnitName);
-    end);
+    EnsureUnit);
   FCodeLens.MetricsFor :=
     function(const AUri: string; out ALimits: TMetricLimits): Boolean
     var
@@ -802,22 +900,47 @@ begin
     end;
   FCodeLens.Attach(FDispatcher);
   FMetrics := TLspMetrics.Create(MetricsSourceFor,
-    function(const AFileName: string; out AText: string): Boolean
-    begin
-      Result := ReadSourceText(AFileName, AText);
-    end);
+    ReadSourceText);
   // Gleiche Quelle wie die Metriken: Einstellungen, Wurzel und Dateien des Projektmodells (#14).
   FTodos := TLspTodos.Create(MetricsSourceFor,
-    function(const AFileName: string; out AText: string): Boolean
+    ReadSourceText);
+  // Baseline (#97): dieselben Dateien wie die Metriken, Prüfung wie im Editor (Regeln, Index, Formulardatei).
+  FBaseline := TLspBaseline.Create(MetricsSourceFor,
+    function(const AFileName: string; out ACheck: TLspBaselineCheck): Boolean
+    var
+      Context: TRuleCheckContext;
+      Tree: TSyntaxTree;
+      Extension: string;
     begin
-      Result := ReadSourceText(AFileName, AText);
-    end);
+      ACheck := Default(TLspBaselineCheck);
+      Extension := LowerCase(ExtractFileExt(AFileName));
+      Result := ((Extension = '.pas') or (Extension = '.dpr') or (Extension = '.dpk')) and
+        ReadSourceText(AFileName, ACheck.Text) and RuleContextFor(TDocumentUris.FromPath(AFileName), Context) and
+        (Context.RelativePath <> '');
+      if not Result then
+        Exit;
+      ACheck.RelativePath := Context.RelativePath;
+      Tree := TSyntaxTreeCache.Parse(ACheck.Text);
+      try
+        ACheck.Findings := TLspSyntaxDiagnostics.RuleFindings(ACheck.Text, Tree, Context);
+      finally
+        Tree.Free;
+      end;
+    end,
+    BaselineFiles);
+  FBaseline.OnWritten :=
+    procedure(AFileName: string)
+    begin
+      // Der Arbeitsbereich liest die Datei beim nächsten Prüfen neu; offene Dokumente gleich neu prüfen.
+      FSyntaxDiagnostics.RefreshLater;
+    end;
   FSemanticTokens := TLspSemanticTokens.Create(FDocuments, FIndex,
-    function(const AUnitName: string): Boolean
-    begin
-      Result := EnsureUnit(AUnitName);
-    end);
+    EnsureUnit);
   FSemanticTokens.Attach(FDispatcher);
+end;
+
+procedure TServerComposition.WireCodeActions;
+begin
   FCodeActions := TLspCodeActions.Create(FDocuments, RuleContextFor);
   FCodeActions.FormActions :=
     function(const AUri, AText: string; const ARange: TTextRange): TArray<TCodeAction>
@@ -845,9 +968,7 @@ begin
     begin
       TMonitor.Enter(FWorkspacesLock);
       try
-        Workspace := WorkspaceOf(TDocumentUris.ToPath(AUri));
-        if (Workspace = nil) and (FWorkspaces.Count = 1) then
-          Workspace := FWorkspaces[0];
+        Workspace := PickWorkspace(TDocumentUris.ToPath(AUri));
         if Workspace = nil then
           Result := TMemberOrderSettings.Default
         else
@@ -863,9 +984,7 @@ begin
     begin
       TMonitor.Enter(FWorkspacesLock);
       try
-        Workspace := WorkspaceOf(TDocumentUris.ToPath(AUri));
-        if (Workspace = nil) and (FWorkspaces.Count = 1) then
-          Workspace := FWorkspaces[0];
+        Workspace := PickWorkspace(TDocumentUris.ToPath(AUri));
         Result := (Workspace <> nil) and Workspace.Configuration.Settings.SortUses;
       finally
         TMonitor.Exit(FWorkspacesLock);
@@ -878,9 +997,7 @@ begin
     begin
       TMonitor.Enter(FWorkspacesLock);
       try
-        Workspace := WorkspaceOf(TDocumentUris.ToPath(AUri));
-        if (Workspace = nil) and (FWorkspaces.Count = 1) then
-          Workspace := FWorkspaces[0];
+        Workspace := PickWorkspace(TDocumentUris.ToPath(AUri));
         Result := (Workspace <> nil) and Workspace.Configuration.Settings.SortUsesByNamespace;
       finally
         TMonitor.Exit(FWorkspacesLock);
@@ -894,9 +1011,7 @@ begin
       AContext := Default(TUsesContext);
       TMonitor.Enter(FWorkspacesLock);
       try
-        Workspace := WorkspaceOf(TDocumentUris.ToPath(AUri));
-        if (Workspace = nil) and (FWorkspaces.Count = 1) then
-          Workspace := FWorkspaces[0];
+        Workspace := PickWorkspace(TDocumentUris.ToPath(AUri));
         if Workspace <> nil then
         begin
           AContext.Keep := Workspace.Configuration.Settings.UsesKeep;
@@ -950,7 +1065,7 @@ begin
       Result := nil;
       TMonitor.Enter(FWorkspacesLock);
       try
-        Workspace := WorkspaceOf(TDocumentUris.ToPath(AUri));
+        Workspace := PickWorkspace(TDocumentUris.ToPath(AUri));
         if Workspace <> nil then
           Result := Workspace.IncludePaths;
       finally
@@ -960,37 +1075,22 @@ begin
   FDocumentLinks.Attach(FDispatcher);
   FColors := TLspColors.Create(FDocuments, WindowsSystemColor);
   FColors.Attach(FDispatcher);
+end;
+
+procedure TServerComposition.WireCommands;
+begin
   FCommands := TLspCommands.Create;
   FCommands.Register(TLspFormFiles.ConvertCommand,
     function(const AArguments: TJSONArray): TJSONValue
     var
-      Files: TArray<string>;
-      FileName, Form, Backup, Extension: string;
       Converted, Backups: Integer;
     begin
-      // Mit URI eine Datei, sonst alle Formulare neben den Projekt-Units.
-      Files := nil;
-      if (AArguments <> nil) and (AArguments.Count > 0) and (AArguments.Items[0] is TJSONString) then
-        Files := [TDocumentUris.ToPath(AArguments.Items[0].Value)]
-      else
-        for FileName in ProjectSourceFiles do
-          for Extension in TArray<string>.Create('.dfm', '.fmx') do
-            if FileExists(ChangeFileExt(FileName, Extension)) then
-              Files := Files + [ChangeFileExt(FileName, Extension)];
-      Converted := 0;
-      Backups := 0;
-      for Form in Files do
-        try
-          if TDfmBinary.ConvertFile(Form, Backup) then
-          begin
-            Inc(Converted);
-            if Backup <> '' then
-              Inc(Backups);
-          end;
-        except
-          on E: Exception do
-            FLogger.Warning(Format('%s nicht umgewandelt: %s', [Form, E.Message]));
-        end;
+      // Mit URI eine Datei, sonst alle Formulare neben den Projekt-Units (Logik in Shell.Commands.Build).
+      Converted := TBuildCommands.ConvertForms(TBuildCommands.FormFiles(AArguments, ProjectSourceFiles,
+        function(AFileName: string): Boolean
+        begin
+          Result := FileExists(AFileName);
+        end), FLogger, Backups);
       FLogger.Info(Format('%d binäre Formulare in Text umgewandelt, %d Sicherungskopien (.bak)',
         [Converted, Backups]));
       Result := TJSONString.Create(Format('%d Formulare umgewandelt', [Converted]));
@@ -1004,6 +1104,35 @@ begin
     function(const AArguments: TJSONArray): TJSONValue
     begin
       Result := FTodos.Execute(AArguments);
+    end);
+  FCommands.Register(TLspBaseline.Command,
+    function(const AArguments: TJSONArray): TJSONValue
+    var
+      Watch: TStopwatch;
+    begin
+      // Prüft das ganze Projekt: in großen Altprojekten dauert das; nur Zahlen ins Log, keine Pfade.
+      Watch := TStopwatch.StartNew;
+      Result := FBaseline.Execute(AArguments);
+      if Result is TJSONObject then
+        FLogger.Info(Format('Baseline aktualisiert: %d Treffer in %d Dateien (%d neu, %d entfernt, %d ohne Datei), ' +
+          '%d ms', [TJSONObject(Result).GetValue<Integer>('total', -1), TJSONObject(Result).GetValue<Integer>('files',
+          -1), TJSONObject(Result).GetValue<Integer>('added', -1), TJSONObject(Result).GetValue<Integer>('removed',
+          -1), TJSONObject(Result).GetValue<Integer>('orphaned.count', -1), Watch.ElapsedMilliseconds]));
+    end);
+  FCommands.Register(TLspSlashMenu.MenuCommand,
+    function(const AArguments: TJSONArray): TJSONValue
+    begin
+      Result := FSlashMenu.ExecuteMenu(AArguments);
+    end);
+  FCommands.Register(TLspSlashMenu.ChoicesCommand,
+    function(const AArguments: TJSONArray): TJSONValue
+    begin
+      Result := FSlashMenu.ExecuteChoices(AArguments);
+    end);
+  FCommands.Register(TLspSlashMenu.RunCommand,
+    function(const AArguments: TJSONArray): TJSONValue
+    begin
+      Result := FSlashMenu.ExecuteRun(AArguments);
     end);
   FCommands.Register(TLspTestUnits.Command,
     function(const AArguments: TJSONArray): TJSONValue
@@ -1030,10 +1159,7 @@ begin
     function(const AArguments: TJSONArray): TJSONValue
     begin
       Result := TQualifiedNames.Execute(FDocuments, FIndex,
-        function(const AUnitName: string): Boolean
-        begin
-          Result := EnsureUnit(AUnitName);
-        end, FDefinition.Namespaces, AArguments);
+        EnsureUnit, FDefinition.Namespaces, AArguments);
     end);
   FCommands.Register(TStringLiteralCommands.PlainTextCommand,
     function(const AArguments: TJSONArray): TJSONValue
@@ -1081,16 +1207,25 @@ begin
     function(const AArguments: TJSONArray): TJSONValue
     var
       Uri: string;
+      Started: Boolean;
+      Choice: TCompilerBackendChoice;
+      Answer: TJSONObject;
     begin
       // Optional die URI einer Datei, deren Projekt kompiliert wird.
       Uri := '';
       if (AArguments <> nil) and (AArguments.Count > 0) and (AArguments.Items[0] is TJSONString) then
         Uri := AArguments.Items[0].Value;
-      if Uri <> '' then
-        StartCompile(TDocumentUris.ToPath(Uri), True)
+      if Uri = '' then
+        Started := StartCompile('', True, Choice)
       else
-        StartCompile('', True);
-      Result := TJSONNull.Create;
+        Started := StartCompile(TDocumentUris.ToPath(Uri), True, Choice);
+      // Ohne nutzbaren Compiler antwortet der Befehl immer mit Grund und Ausweg (#261).
+      if not Started then
+        raise EJsonRpcError.Create(TJsonRpcErrorCode.RequestFailed, Choice.MessageText);
+      Answer := TJSONObject.Create;
+      Answer.AddPair('started', TJSONBool.Create(True));
+      Answer.AddPair('backend', TCompilerBackends.BackendText(Choice.Backend));
+      Result := Answer;
     end);
   FCommands.Register(RebuildIndexCommand,
     function(const AArguments: TJSONArray): TJSONValue
@@ -1115,12 +1250,10 @@ begin
     var
       Workspace: TShellWorkspace;
       Targets: TArray<TShellWorkspace>;
-      Before, Freed: Int64;
+      Freed: Int64;
       Removed: Integer;
-      Answer: TJSONObject;
     begin
-      // „Index löschen“ (#492): alle Caches auf der Platte, auch anderer Projekte und IDE-Versionen;
-      // gesperrte Caches anderer Serverinstanzen bleiben. Danach die eigenen Ordner neu indizieren.
+      // „Index löschen“ (#492, Logik in Shell.Commands.Index): Caches freigeben, alle löschen, neu indizieren.
       TMonitor.Enter(FWorkspacesLock);
       try
         Targets := FWorkspaces.ToArray;
@@ -1129,61 +1262,31 @@ begin
       end;
       for Workspace in Targets do
         Workspace.ReleaseCache;
-      Before := TIndexCacheDirectory.TotalSize(TIndexCacheDirectory.DefaultRoot);
-      Removed := TIndexCacheDirectory.Clear(TIndexCacheDirectory.DefaultRoot);
-      Freed := Before - TIndexCacheDirectory.TotalSize(TIndexCacheDirectory.DefaultRoot);
+      Removed := TIndexCommands.ClearCaches(TIndexCacheDirectory.DefaultRoot, Freed);
       FLogger.Info(Format('Index gelöscht: %d Caches, %d KB; %d Ordner werden neu indiziert',
         [Removed, Freed div 1024, Length(Targets)]));
       for Workspace in Targets do
         Workspace.Rebuild;
-      Answer := TJSONObject.Create;
-      Answer.AddPair('removed', TJSONNumber.Create(Removed));
-      Answer.AddPair('freedBytes', TJSONNumber.Create(Freed));
-      Result := Answer;
+      Result := TIndexCommands.Answer(Removed, Freed);
     end);
   FCommands.Register(SelectBuildCommand,
     function(const AArguments: TJSONArray): TJSONValue
     var
-      Options: TJSONObject;
-      Config, Platform, Uri, Error: string;
+      Args: TSelectBuildArgs;
+      Error: string;
       Workspace: TShellWorkspace;
       Targets: TArray<TShellWorkspace>;
       Project: TProjectInfo;
       Items: TJSONArray;
-      Item: TJSONObject;
-      DefinesValue, Define: TJSONValue;
-      Defines: TArray<string>;
-      HasDefines: Boolean;
     begin
-      // Argument: {"config": "Release", "platform": "Win64", "uri": "…", "defines": ["DEBUG"]};
-      // alle Felder optional. Ohne Konfiguration, Plattform und Symbole nur die aktuelle Auswahl
-      // je Projekt (#46). "defines" ersetzt die Symbole der .dproj (Projektoptionen der IDE, #615).
-      Config := '';
-      Platform := '';
-      Uri := '';
-      Defines := nil;
-      HasDefines := False;
-      if (AArguments <> nil) and (AArguments.Count > 0) and (AArguments.Items[0] is TJSONObject) then
-      begin
-        Options := TJSONObject(AArguments.Items[0]);
-        Options.TryGetValue<string>('config', Config);
-        Options.TryGetValue<string>('platform', Platform);
-        Options.TryGetValue<string>('uri', Uri);
-        DefinesValue := Options.GetValue('defines');
-        if DefinesValue is TJSONArray then
-        begin
-          HasDefines := True;
-          for Define in TJSONArray(DefinesValue) do
-            if Define is TJSONString then
-              Defines := Defines + [TJSONString(Define).Value];
-        end;
-      end;
+      // Argumente und Antwort in Shell.Commands.Build; ohne Änderung nur die aktuelle Auswahl je Projekt (#46).
+      Args := TSelectBuildArgs.Parse(AArguments);
       Targets := nil;
       TMonitor.Enter(FWorkspacesLock);
       try
-        if Uri <> '' then
+        if Args.Uri <> '' then
         begin
-          Workspace := WorkspaceOf(TDocumentUris.ToPath(Uri));
+          Workspace := WorkspaceOf(TDocumentUris.ToPath(Args.Uri));
           if Workspace <> nil then
             Targets := [Workspace];
         end
@@ -1192,26 +1295,22 @@ begin
       finally
         TMonitor.Exit(FWorkspacesLock);
       end;
-      if (Config <> '') or (Platform <> '') or HasDefines then
+      if Args.Changes then
         for Workspace in Targets do
-          if Workspace.Project(Project) and not Workspace.SelectBuild(Config, Platform, Defines, HasDefines, Error) then
+          if Workspace.Project(Project) and
+            not Workspace.SelectBuild(Args.Config, Args.Platform, Args.Defines, Args.HasDefines, Error) then
             raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams, Error);
       Items := TJSONArray.Create;
       for Workspace in Targets do
         if Workspace.Project(Project) then
-        begin
-          Item := TJSONObject.Create;
-          Item.AddPair('folder', Workspace.Name);
-          Item.AddPair('project', Project.FileName);
-          Item.AddPair('config', IfThen(Config <> '', Config, Project.Config));
-          Item.AddPair('platform', IfThen(Platform <> '', Platform, Project.Platform));
-          Item.AddPair('configs', StringsToJson(Project.Configs));
-          Item.AddPair('platforms', StringsToJson(Project.Platforms));
-          Items.AddElement(Item);
-        end;
+          Items.AddElement(TBuildCommands.ProjectItem(Workspace.Name, Project, Args));
       Result := TJSONObject.Create(TJSONPair.Create('projects', Items));
     end);
   FCommands.Attach(FDispatcher);
+end;
+
+procedure TServerComposition.WireWatchedFiles;
+begin
   FWatchedFiles := TLspWatchedFiles.Create(FTransport);
   FWatchedFiles.OnChanged := HandleWatchedFiles;
   FIndexRefresh := TLspIndexRefresh.Create(TLspIndexRefresh.DefaultDelayMs,
@@ -1240,6 +1339,10 @@ begin
       FLogger.Warning('Index nach Tipp-Pause: ' + E.Message);
     end;
   FWatchedFiles.Attach(FDispatcher);
+end;
+
+procedure TServerComposition.WireIde;
+begin
   // Compilermeldungen aus dem Meldungsfenster der IDE ersetzen die des letzten Laufs wie ein eigener Compile (#528).
   FIdeBuild := TLspIdeBuild.Create;
   FIdeBuild.OnMessages :=
@@ -1257,9 +1360,7 @@ begin
     begin
       TMonitor.Enter(FWorkspacesLock);
       try
-        Workspace := WorkspaceOf(ABuild.Project);
-        if (Workspace = nil) and (FWorkspaces.Count = 1) then
-          Workspace := FWorkspaces[0];
+        Workspace := PickWorkspace(ABuild.Project);
         if Workspace <> nil then
           Root := Workspace.Root
         else
@@ -1304,6 +1405,10 @@ begin
         Workspace.Reload;
     end;
   FIdeProject.Attach(FDispatcher);
+end;
+
+procedure TServerComposition.WireWorkspaceFolders;
+begin
   FWorkspaceFolders := TLspWorkspaceFolders.Create;
   FWorkspaceFolders.OnChanged :=
     procedure(const AAdded, ARemoved: TArray<TWorkspaceFolder>)
@@ -1329,6 +1434,7 @@ begin
       if FLifecycle.InitializeParams <> nil then
         FEditorSettings := TLspConfiguration.EditorSettingsFromParams(
           FLifecycle.InitializeParams.GetValue('initializationOptions'));
+      UpdateLooseSettings;
       FHover.Markdown := TLspHover.ClientSupportsMarkdown(FLifecycle.InitializeParams);
       // Code-Vorlagen mit Platzhaltern nur an Clients mit snippetSupport (#51).
       FCompletion.SnippetSupport := TLspCompletion.ClientSupportsSnippets(FLifecycle.InitializeParams);
@@ -1358,18 +1464,6 @@ begin
         AddWorkspace(Folder);
       UpdateWatchedSettings;
       FWatchedFiles.RegisterWatchers(FLifecycle.InitializeParams);
-    end;
-  FConnection := TJsonRpcConnection.Create(FTransport, FDispatcher);
-  FConnection.OnError :=
-    procedure(const AError: Exception)
-    begin
-      FLogger.Error('Fehler bei der Verarbeitung: ' + DescribeFailure(AError));
-    end;
-  FLifecycle.OnExit :=
-    procedure
-    begin
-      FEndReason := TDiagnosticEndReason.Clean;
-      FConnection.Stop;
     end;
 end;
 
@@ -1430,6 +1524,9 @@ begin
     FCompileThread.WaitFor;
     FreeAndNil(FCompileThread);
   end;
+  // Eigene IDE (#261) mit dem Server beenden; der alte Läufer ist abgebrochen, deshalb ein neuer.
+  if (FIdeCompiler <> nil) and (FIdeCompiler.Pid <> 0) then
+    FIdeCompiler.Quit(TProcessRunner.Create);
 end;
 
 procedure TServerComposition.StopIndexThreads;
@@ -1460,6 +1557,7 @@ begin
   FFoldingRanges.Free;
   FLinkedEditing.Free;
   FFormatting.Free;
+  FSlashMenu.Free;
   FSelectionRanges.Free;
   FDefinition.Free;
   FHover.Free;
@@ -1471,6 +1569,7 @@ begin
   FCodeLens.Free;
   FMetrics.Free;
   FTodos.Free;
+  FBaseline.Free;
   FInlayHints.Free;
   FImplementations.Free;
   FHierarchies.Free;
@@ -1485,6 +1584,8 @@ begin
   FColors.Free;
   FCommands.Free;
   FCompileProgress.Free;
+  FIdeCompiler.Free;
+  FCompilerEditions.Free;
   FCompileLock.Free;
   FCompilerResults.Free;
   FCompilerProcess := nil;
@@ -1525,18 +1626,8 @@ begin
       on Exception do
         GroupFile := '';
     end;
-  if GroupFile = '' then
-    Exit;
-  try
-    Result := TGroupProjReader.Load(GroupFile);
-    FLogger.Info(Format('Projektgruppe %s: %d Projekte', [GroupFile, Length(Result)]));
-  except
-    on E: Exception do
-    begin
-      FLogger.Warning(Format('Projektgruppe %s nicht lesbar: %s', [GroupFile, E.Message]));
-      Result := nil;
-    end;
-  end;
+  if GroupFile <> '' then
+    Result := TShellBootstrap.LoadGroup(GroupFile, FLogger);
 end;
 
 procedure TServerComposition.AddWorkspace(const AFolder: TWorkspaceFolder);
@@ -1765,6 +1856,41 @@ begin
     Result := FWorkspaces[Index];
 end;
 
+function TServerComposition.PickWorkspace(const AFileName: string): TShellWorkspace;
+begin
+  Result := TShellWorkspace.Choose(WorkspaceOf(AFileName), FWorkspaces);
+end;
+
+function TServerComposition.SettingsFor(const AUri: string): TServerSettings;
+var
+  Workspace: TShellWorkspace;
+begin
+  TMonitor.Enter(FWorkspacesLock);
+  try
+    Workspace := PickWorkspace(TDocumentUris.ToPath(AUri));
+    if Workspace = nil then
+      Result := FLooseSettings
+    else
+      Result := Workspace.Configuration.Settings;
+  finally
+    TMonitor.Exit(FWorkspacesLock);
+  end;
+end;
+
+procedure TServerComposition.UpdateLooseSettings;
+var
+  Settings: TServerSettings;
+  Issues: TArray<TConfigurationIssue>;
+begin
+  Settings := TConfigurationParser.Parse(TConfigurationScopes.Effective(FGlobalSettings, FEditorSettings, ''), Issues);
+  TMonitor.Enter(FWorkspacesLock);
+  try
+    FLooseSettings := Settings;
+  finally
+    TMonitor.Exit(FWorkspacesLock);
+  end;
+end;
+
 function TServerComposition.EnsureUnit(const AUnitName: string): Boolean;
 var
   Workspace: TShellWorkspace;
@@ -1884,18 +2010,46 @@ end;
 function TServerComposition.ReadSourceText(const AFileName: string; out AText: string): Boolean;
 var
   Document: ITextDocument;
-  FileFormat: TFileFormat;
 begin
+  // Geöffnete Dokumente haben Vorrang vor der Datei auf der Platte.
   if FDocuments.TryGet(TDocumentUris.FromPath(AFileName), Document) then
   begin
     AText := Document.Text;
     Exit(True);
   end;
-  Result := FileExists(AFileName);
-  if Result then
-    AText := TFileEncoding.LoadFromFile(AFileName, FileFormat)
-  else
-    AText := '';
+  Result := TShellBootstrap.ReadSourceText(AFileName, AText);
+end;
+
+function TServerComposition.BaselineFiles: TLspBaselineFiles;
+begin
+  Result.Exists :=
+    function(const AFileName: string): Boolean
+    begin
+      Result := TFile.Exists(AFileName);
+    end;
+  Result.Read :=
+    function(const AFileName: string; out AText: string): Boolean
+    var
+      FileFormat: TFileFormat;
+    begin
+      Result := TFile.Exists(AFileName);
+      if Result then
+        AText := TFileEncoding.LoadFromFile(AFileName, FileFormat)
+      else
+        AText := '';
+    end;
+  Result.Write :=
+    procedure(const AFileName, AText: string)
+    var
+      Encoding: TEncoding;
+    begin
+      Encoding := TUTF8Encoding.Create(False);
+      try
+        TFile.WriteAllText(AFileName, AText, Encoding);
+      finally
+        Encoding.Free;
+      end;
+    end;
 end;
 
 function TServerComposition.TestUnitContextFor(const AUri: string; out AContext: TTestUnitContext): Boolean;
@@ -1914,9 +2068,7 @@ begin
   Candidates := nil;
   TMonitor.Enter(FWorkspacesLock);
   try
-    Workspace := WorkspaceOf(TDocumentUris.ToPath(AUri));
-    if (Workspace = nil) and (FWorkspaces.Count = 1) then
-      Workspace := FWorkspaces[0];
+    Workspace := PickWorkspace(TDocumentUris.ToPath(AUri));
     if Workspace = nil then
       Exit(False);
     AContext.Settings := Workspace.Configuration.Settings.TestUnits;
@@ -2276,28 +2428,60 @@ begin
     TMonitor.Exit(FWorkspacesLock);
   end;
   Result.Requests := FStatistics.Snapshot;
+  CollectCompilerStatus(Result);
+end;
+
+procedure TServerComposition.CollectCompilerStatus(var AStatus: TServerStatus);
+var
+  Choice: TCompilerBackendChoice;
+  Job: TShellCompileJob;
+  Known: Boolean;
+begin
+  // Weg zum Compiler (#261): zuletzt gewählt; sonst jetzt prüfen (die Ausgabe der Installation ist
+  // meist schon gemerkt). Eine Meldung zeigt erst ein Compilerlauf.
+  TMonitor.Enter(FCompileLock);
+  try
+    Known := FHasCompilerChoice;
+    Choice := FCompilerChoice;
+  finally
+    TMonitor.Exit(FCompileLock);
+  end;
+  if not Known and not FRestricted then
+    try
+      if ChooseCompiler('', Job, Choice) then
+      begin
+        RememberCompilerChoice(Choice);
+        Known := True;
+      end;
+    except
+      on E: Exception do
+        FLogger.Debug('Weg zum Compiler nicht geprüft: ' + E.ClassName);
+    end;
+  if FRestricted then
+  begin
+    Choice := TCompilerBackendChoice.Unavailable('Der Arbeitsbereich ist nicht vertrauenswürdig', '');
+    Known := True;
+  end;
+  if not Known then
+  begin
+    AStatus.Compiler := TCompilerBackends.UncheckedStatus;
+    Exit;
+  end;
+  AStatus.Compiler := Choice.StatusText;
+  AStatus.CompilerBackend := TCompilerBackends.BackendText(Choice.Backend);
+  AStatus.CompilerReason := Choice.MessageText;
 end;
 
 function TServerComposition.SlashCommandsFor(const AUri: string; out ADisabled: TArray<string>): Boolean;
 var
-  Workspace: TShellWorkspace;
+  Settings: TServerSettings;
 begin
-  ADisabled := nil;
-  TMonitor.Enter(FWorkspacesLock);
-  try
-    Workspace := WorkspaceOf(TDocumentUris.ToPath(AUri));
-    if (Workspace = nil) and (FWorkspaces.Count = 1) then
-      Workspace := FWorkspaces[0];
-    if Workspace = nil then
-      Exit(True);
-    Result := Workspace.Configuration.Settings.SlashCommands;
-    ADisabled := Workspace.Configuration.Settings.SlashCommandsDisabled;
-    // usesCommand bleibt als Alias erhalten (#254).
-    if not Workspace.Configuration.Settings.UsesCommand then
-      ADisabled := ADisabled + ['uses'];
-  finally
-    TMonitor.Exit(FWorkspacesLock);
-  end;
+  Settings := SettingsFor(AUri);
+  Result := Settings.SlashCommands;
+  ADisabled := Settings.SlashCommandsDisabled;
+  // usesCommand bleibt als Alias erhalten (#254).
+  if not Settings.UsesCommand then
+    ADisabled := ADisabled + ['uses'];
 end;
 
 function TServerComposition.DelphiVersionFor(const AUri: string): string;
@@ -2306,9 +2490,7 @@ var
 begin
   TMonitor.Enter(FWorkspacesLock);
   try
-    Workspace := WorkspaceOf(TDocumentUris.ToPath(AUri));
-    if (Workspace = nil) and (FWorkspaces.Count = 1) then
-      Workspace := FWorkspaces[0];
+    Workspace := PickWorkspace(TDocumentUris.ToPath(AUri));
     if Workspace = nil then
       Result := ''
     else
@@ -2324,57 +2506,18 @@ begin
 end;
 
 function TServerComposition.CompletionSettingsFor(const AUri: string): TCompletionSettings;
-var
-  Workspace: TShellWorkspace;
 begin
-  TMonitor.Enter(FWorkspacesLock);
-  try
-    Workspace := WorkspaceOf(TDocumentUris.ToPath(AUri));
-    if (Workspace = nil) and (FWorkspaces.Count = 1) then
-      Workspace := FWorkspaces[0];
-    if Workspace = nil then
-      Result := TCompletionSettings.Default
-    else
-      Result := Workspace.Configuration.Settings.Completion;
-  finally
-    TMonitor.Exit(FWorkspacesLock);
-  end;
+  Result := SettingsFor(AUri).Completion;
 end;
 
 function TServerComposition.RefactoringSettingsFor(const AUri: string): TRefactoringSettings;
-var
-  Workspace: TShellWorkspace;
 begin
-  TMonitor.Enter(FWorkspacesLock);
-  try
-    Workspace := WorkspaceOf(TDocumentUris.ToPath(AUri));
-    if (Workspace = nil) and (FWorkspaces.Count = 1) then
-      Workspace := FWorkspaces[0];
-    if Workspace = nil then
-      Result := TRefactoringSettings.Default
-    else
-      Result := Workspace.Configuration.Settings.Refactoring;
-  finally
-    TMonitor.Exit(FWorkspacesLock);
-  end;
+  Result := SettingsFor(AUri).Refactoring;
 end;
 
 function TServerComposition.StringLiteralFor(const AUri: string; out AMultiline: Boolean): TStringLiteralSettings;
-var
-  Workspace: TShellWorkspace;
 begin
-  TMonitor.Enter(FWorkspacesLock);
-  try
-    Workspace := WorkspaceOf(TDocumentUris.ToPath(AUri));
-    if (Workspace = nil) and (FWorkspaces.Count = 1) then
-      Workspace := FWorkspaces[0];
-    if Workspace = nil then
-      Result := TStringLiteralSettings.Default
-    else
-      Result := Workspace.Configuration.Settings.StringLiteral;
-  finally
-    TMonitor.Exit(FWorkspacesLock);
-  end;
+  Result := SettingsFor(AUri).StringLiteral;
   AMultiline := TStringLiterals.UseMultiline(Result.Style, DelphiVersionFor(AUri));
 end;
 
@@ -2403,8 +2546,7 @@ begin
         end;
     if (Workspace = nil) and (AFileName <> '') then
       Workspace := WorkspaceOf(AFileName);
-    if (Workspace = nil) and (FWorkspaces.Count = 1) then
-      Workspace := FWorkspaces[0];
+    Workspace := TShellWorkspace.Choose(Workspace, FWorkspaces);
     if Workspace = nil then
       Exit(False);
     ASource.Settings := Workspace.Configuration.Settings;
@@ -2422,59 +2564,18 @@ begin
 end;
 
 function TServerComposition.InlayHintSettingsFor(const AUri: string): TInlayHintSettings;
-var
-  Workspace: TShellWorkspace;
 begin
-  TMonitor.Enter(FWorkspacesLock);
-  try
-    Workspace := WorkspaceOf(TDocumentUris.ToPath(AUri));
-    if (Workspace = nil) and (FWorkspaces.Count = 1) then
-      Workspace := FWorkspaces[0];
-    if Workspace = nil then
-      Result := TInlayHintSettings.Default
-    else
-      Result := Workspace.Configuration.Settings.InlayHints;
-  finally
-    TMonitor.Exit(FWorkspacesLock);
-  end;
+  Result := SettingsFor(AUri).InlayHints;
 end;
 
 function TServerComposition.HintSettingsFor(const AUri: string): THintSettings;
-var
-  Workspace: TShellWorkspace;
-  Issues: TArray<TConfigurationIssue>;
 begin
-  TMonitor.Enter(FWorkspacesLock);
-  try
-    Workspace := WorkspaceOf(TDocumentUris.ToPath(AUri));
-    if (Workspace = nil) and (FWorkspaces.Count = 1) then
-      Workspace := FWorkspaces[0];
-    if Workspace <> nil then
-      Exit(Workspace.Configuration.Settings.Hints);
-  finally
-    TMonitor.Exit(FWorkspacesLock);
-  end;
-  // Ohne Arbeitsbereich (z. B. RTL-Unit) gelten die globalen Einstellungen.
-  Result := TConfigurationParser.Parse(TConfigurationScopes.Effective(FGlobalSettings, FEditorSettings, ''),
-    Issues).Hints;
+  Result := SettingsFor(AUri).Hints;
 end;
 
 function TServerComposition.FormatStyleFor(const AUri: string): TFormatStyle;
-var
-  Workspace: TShellWorkspace;
 begin
-  TMonitor.Enter(FWorkspacesLock);
-  try
-    Workspace := WorkspaceOf(TDocumentUris.ToPath(AUri));
-    if (Workspace = nil) and (FWorkspaces.Count = 1) then
-      Workspace := FWorkspaces[0];
-    if Workspace = nil then
-      Result := TFormatStyle.Default
-    else
-      Result := Workspace.Configuration.Settings.Formatting;
-  finally
-    TMonitor.Exit(FWorkspacesLock);
-  end;
+  Result := SettingsFor(AUri).Formatting;
 end;
 
 function TServerComposition.RuleContextFor(const AUri: string; out AContext: TRuleCheckContext): Boolean;
@@ -2486,9 +2587,9 @@ begin
   FileName := TDocumentUris.ToPath(AUri);
   TMonitor.Enter(FWorkspacesLock);
   try
-    Workspace := WorkspaceOf(FileName);
+    Workspace := PickWorkspace(FileName);
     if Workspace = nil then
-      AContext.Settings := TServerSettings.Default
+      AContext.Settings := FLooseSettings
     else
     begin
       AContext.Settings := Workspace.Configuration.Settings;
@@ -2540,6 +2641,8 @@ begin
     TMonitor.Enter(FCompileLock);
     try
       FCompilerUnavailable := '';
+      // Andere Installation möglich: Der Status prüft den Weg zum Compiler neu (#261).
+      FHasCompilerChoice := False;
     finally
       TMonitor.Exit(FCompileLock);
     end;
@@ -2583,6 +2686,7 @@ procedure TServerComposition.HandleDocumentEvent(AKind: TDocumentEventKind; cons
 var
   Workspace: TShellWorkspace;
   OnSave: Boolean;
+  Choice: TCompilerBackendChoice;
 begin
   // Tipp-Pause (#492): ungespeicherten Stand in den Index; beim Schließen wieder den der Platte.
   if (FIndexRefresh <> nil) and StartsText('file:', ADocument.Uri) then
@@ -2627,7 +2731,7 @@ begin
       TMonitor.Exit(FWorkspacesLock);
     end;
     if OnSave then
-      StartCompile(TDocumentUris.ToPath(ADocument.Uri), False);
+      StartCompile(TDocumentUris.ToPath(ADocument.Uri), False, Choice);
     Exit;
   end;
   if not IsConfigurationFileName(ExtractFileName(TDocumentUris.ToPath(ADocument.Uri))) then
@@ -2645,64 +2749,146 @@ begin
     FLooseConfiguration.DocumentEvent(AKind, ADocument);
 end;
 
-procedure TServerComposition.CompilerUnavailable(const AReason: string);
-var
-  First: Boolean;
+procedure TServerComposition.RememberCompilerChoice(const AChoice: TCompilerBackendChoice);
 begin
   TMonitor.Enter(FCompileLock);
   try
-    First := FCompilerUnavailable <> AReason;
-    FCompilerUnavailable := AReason;
+    FCompilerChoice := AChoice;
+    FHasCompilerChoice := True;
+  finally
+    TMonitor.Exit(FCompileLock);
+  end;
+end;
+
+procedure TServerComposition.CompilerUnavailable(const AChoice: TCompilerBackendChoice; AShow: Boolean);
+var
+  First, Show: Boolean;
+  Shown: string;
+  Params, Notification: TJSONObject;
+begin
+  TMonitor.Enter(FCompileLock);
+  try
+    First := FCompilerUnavailable <> AChoice.Reason;
+    FCompilerUnavailable := AChoice.Reason;
+    FCompilerChoice := AChoice;
+    FHasCompilerChoice := True;
+    Show := AShow;
+    for Shown in FCompilerShown do
+      if Shown = AChoice.Reason then
+        Show := False;
+    if Show then
+      FCompilerShown := FCompilerShown + [AChoice.Reason];
   finally
     TMonitor.Exit(FCompileLock);
   end;
   if First then
-    FLogger.Warning('Kompilieren nicht möglich: ' + AReason +
+    FLogger.Warning('Kompilieren nicht möglich: ' + AChoice.Reason +
       '. Nach dem Speichern wird bis zum nächsten Laden des Projekts nicht mehr kompiliert; ' +
       'der Befehl "Projekt kompilieren" versucht es erneut.');
+  // Das Log sieht im Editor kaum jemand (#261): Grund und Ausweg einmal je Grund und Sitzung als Meldung;
+  // dauerhaft steht es im Status (#28).
+  if not Show or (FTransport = nil) then
+    Exit;
+  Params := TJSONObject.Create;
+  Params.AddPair('type', TJSONNumber.Create(2));
+  Params.AddPair('message', AChoice.MessageText);
+  Notification := TJsonRpcMessages.Notification('window/showMessage', Params);
+  try
+    FTransport.WriteMessage(Notification);
+  finally
+    Notification.Free;
+  end;
 end;
 
-procedure TServerComposition.StartCompile(const AFileName: string; AManual: Boolean);
+function TServerComposition.ChooseCompiler(const AFileName: string; out AJob: TShellCompileJob;
+  out AChoice: TCompilerBackendChoice): Boolean;
 var
   Workspace: TShellWorkspace;
-  Request: TCompilerRequest;
   Error: string;
-  Unavailable: Boolean;
+  Edition: TCompilerEdition;
 begin
-  // Workspace Trust (#186): Ein Compiler-Lauf kann Build-Events des Projekts ausführen.
-  if FRestricted then
-  begin
-    if AManual then
-      FLogger.Warning('Kompilieren ist in einem nicht vertrauenswürdigen Arbeitsbereich abgeschaltet');
-    Exit;
-  end;
-  TMonitor.Enter(FCompileLock);
-  try
-    Unavailable := FCompilerUnavailable <> '';
-  finally
-    TMonitor.Exit(FCompileLock);
-  end;
-  if Unavailable and not AManual then
-    Exit;
+  AJob := Default(TShellCompileJob);
+  AChoice := Default(TCompilerBackendChoice);
   TMonitor.Enter(FWorkspacesLock);
   try
     Workspace := nil;
     if AFileName <> '' then
       Workspace := WorkspaceOf(AFileName);
-    if (Workspace = nil) and (FWorkspaces.Count = 1) then
-      Workspace := FWorkspaces[0];
+    Workspace := TShellWorkspace.Choose(Workspace, FWorkspaces);
     if Workspace = nil then
       Error := 'Kein Ordner mit Projekt geöffnet'
-    else if Workspace.CompilerRequest(Request, Error) then
+    else if Workspace.CompileJob(AJob, Error) then
       Error := '';
   finally
     TMonitor.Exit(FWorkspacesLock);
   end;
   if Error <> '' then
   begin
-    CompilerUnavailable(Error);
-    Exit;
+    AChoice := TCompilerBackendChoice.Unavailable(Error, '');
+    Exit(False);
   end;
+  // Die Ausgabe der Installation zählt nur für auto und dcc; erkannt wird einmal je Installation (#261).
+  Edition := TCompilerEdition.Unknown;
+  if (AJob.Settings.Backend = TCompilerBackendSetting.Auto) or (AJob.Settings.Backend = TCompilerBackendSetting.Dcc) then
+    Edition := FCompilerEditions.Resolve(AJob.BdsRoot, AJob.Version, AJob.Request.Executable);
+  AChoice := TCompilerBackends.Choose(AJob.Settings.Backend, Edition, AJob.Settings.IdeCommand,
+    (Trim(AJob.Settings.IdeCommand) <> '') and FileExists(AJob.Settings.IdeCommand));
+  Result := True;
+end;
+
+function TServerComposition.StartCompile(const AFileName: string; AManual: Boolean;
+  out AChoice: TCompilerBackendChoice): Boolean;
+var
+  Job: TShellCompileJob;
+  Unavailable: Boolean;
+begin
+  AChoice := Default(TCompilerBackendChoice);
+  // Workspace Trust (#186): Ein Compiler-Lauf kann Build-Events des Projekts ausführen.
+  if FRestricted then
+  begin
+    AChoice := TCompilerBackendChoice.Unavailable('Der Arbeitsbereich ist nicht vertrauenswürdig',
+      'Dem Ordner im Editor vertrauen; ein Compilerlauf kann Build-Ereignisse des Projekts ausführen.');
+    if AManual then
+      FLogger.Warning('Kompilieren ist in einem nicht vertrauenswürdigen Arbeitsbereich abgeschaltet');
+    Exit(False);
+  end;
+  TMonitor.Enter(FCompileLock);
+  try
+    Unavailable := FCompilerUnavailable <> '';
+    if Unavailable then
+      AChoice := FCompilerChoice;
+  finally
+    TMonitor.Exit(FCompileLock);
+  end;
+  if Unavailable and not AManual then
+    Exit(False);
+  try
+    if not ChooseCompiler(AFileName, Job, AChoice) then
+    begin
+      // Ohne Projekt oder Installation: nur ins Log, wie bisher (#40).
+      CompilerUnavailable(AChoice, False);
+      Exit(False);
+    end;
+  except
+    on ECompilerCancelled do
+      Exit(False); // Beenden läuft (A-05).
+  end;
+  if not AChoice.Usable then
+  begin
+    // Bewusst abgeschaltet: nur der Status sagt es; sonst Grund und Ausweg einmal als Meldung (#261).
+    if Job.Settings.Backend = TCompilerBackendSetting.Off then
+      RememberCompilerChoice(AChoice)
+    else
+      CompilerUnavailable(AChoice, True);
+    Exit(False);
+  end;
+  RememberCompilerChoice(AChoice);
+  Result := True;
+  // Die eigene IDE ist langsam: nur auf den Befehl, nie nach dem Speichern (#261).
+  if not AManual and not TCompilerBackends.RunsOnSave(AChoice.Backend) then
+    Exit;
+  Job.Backend := AChoice.Backend;
+  Job.Manual := AManual;
   TMonitor.Enter(FCompileLock);
   try
     // Beenden läuft schon (A-05): keinen neuen Thread mehr starten.
@@ -2710,8 +2896,10 @@ begin
       Exit;
     if FCompiling then
     begin
-      // Der laufende Lauf startet danach den neuesten Stand.
-      FPendingCompile := Request;
+      // Der laufende Lauf startet danach den neuesten Stand; ein vorgemerkter Befehl bleibt ein Befehl.
+      if FHasPendingCompile and FPendingCompile.Manual then
+        Job.Manual := True;
+      FPendingCompile := Job;
       FHasPendingCompile := True;
       Exit;
     end;
@@ -2728,23 +2916,23 @@ begin
     procedure
     begin
       TThread.NameThreadForDebugging('Atlas.Compile');
-      CompileLoop(Request);
+      CompileLoop(Job);
     end);
   FCompileThread.FreeOnTerminate := False;
   FCompileThread.Start;
 end;
 
-procedure TServerComposition.CompileLoop(const ARequest: TCompilerRequest);
+procedure TServerComposition.CompileLoop(const AJob: TShellCompileJob);
 var
-  Request: TCompilerRequest;
+  Job: TShellCompileJob;
   Done: Boolean;
 begin
-  Request := ARequest;
+  Job := AJob;
   Done := False;
   try
     try
       repeat
-        CompileOnce(Request);
+        CompileOnce(Job);
         TMonitor.Enter(FCompileLock);
         try
           if FCompileStopping or not FHasPendingCompile then
@@ -2754,7 +2942,7 @@ begin
           end
           else
           begin
-            Request := FPendingCompile;
+            Job := FPendingCompile;
             FHasPendingCompile := False;
           end;
         finally
@@ -2780,72 +2968,132 @@ begin
   end;
 end;
 
-procedure TServerComposition.CompileOnce(const ARequest: TCompilerRequest);
+procedure TServerComposition.CompileOnce(const AJob: TShellCompileJob);
+begin
+  try
+    // Im try (S-06): Wirft schon der Start des Fortschritts, endet der Lauf geordnet.
+    if AJob.Backend = TCompilerBackend.Ide then
+      CompileWithIde(AJob)
+    else
+      CompileWithDcc(AJob);
+  except
+    on ECompilerCancelled do
+      ; // Beenden (A-05): nichts mehr melden, der Transport ist schon zu.
+    on E: Exception do
+    begin
+      CompilerUnavailable(TCompilerBackendChoice.Unavailable(E.Message, ''), False);
+      FCompileProgress.Finish('Fehlgeschlagen');
+    end;
+  end;
+end;
+
+procedure TServerComposition.CompileWithDcc(const AJob: TShellCompileJob);
 var
   Lines: TList<string>;
   Messages: TArray<TCompilerMessage>;
-  Item: TCompilerMessage;
-  Counts: array[TCompilerSeverity] of Integer;
   Code, Index: Integer;
-  Summary, Output: string;
+  Output: string;
+  Choice: TCompilerBackendChoice;
+  IdeJob: TShellCompileJob;
 begin
   Lines := TList<string>.Create;
   try
-    try
-      // Im try (S-06): Wirft schon der Start des Fortschritts, endet der Lauf geordnet.
-      FCompileProgress.Start('Projekt kompilieren');
-      Code := FCompilerProcess.Run(ARequest,
-        procedure(const ALine: string)
-        begin
-          Lines.Add(ALine);
-        end);
-      Messages := TCompilerOutputParser.Parse(Lines.ToArray, ARequest.WorkingDir);
-      if (Code <> 0) and (Length(Messages) = 0) then
+    FCompileProgress.Start('Projekt kompilieren');
+    ForceDirectories(AJob.OutputDir);
+    Code := FCompilerProcess.Run(AJob.Request,
+      procedure(const ALine: string)
       begin
-        // Abbruch ohne eine einzige Meldung: Der Compiler selbst ist nicht nutzbar,
-        // z. B. ohne Lizenz für die Kommandozeile. Bisherige Meldungen bleiben stehen.
-        Output := '';
-        for Index := 0 to Min(Lines.Count, 3) - 1 do
-          if Trim(Lines[Index]) <> '' then
-            Output := Output + ' ' + Trim(Lines[Index]);
-        CompilerUnavailable(Format('%s endet mit Exit-Code %d ohne Meldungen:%s',
-          [ARequest.Executable, Code, Output]));
+        Lines.Add(ALine);
+      end);
+    Messages := TCompilerOutputParser.Parse(Lines.ToArray, AJob.Request.WorkingDir);
+    if (Code <> 0) and (Length(Messages) = 0) and TCompilerEditions.HasLicenseText(Lines.ToArray) then
+    begin
+      // Starter bzw. Community Edition (#261): dcc ist da, darf aber nicht von der Kommandozeile bauen.
+      // Merken, damit auto künftig gleich richtig wählt; bei einem Befehl gleich über die IDE bauen.
+      FCompilerEditions.Remember(AJob.BdsRoot, AJob.Version, AJob.Request.Executable,
+        TCompilerEdition.NoCommandLine);
+      Choice := TCompilerBackends.Choose(AJob.Settings.Backend, TCompilerEdition.NoCommandLine,
+        AJob.Settings.IdeCommand, (Trim(AJob.Settings.IdeCommand) <> '') and FileExists(AJob.Settings.IdeCommand));
+      if not Choice.Usable then
+      begin
+        CompilerUnavailable(Choice, True);
         FCompileProgress.Finish('Compiler nicht nutzbar');
-      end
-      else
-      begin
-        TMonitor.Enter(FCompileLock);
-        try
-          FCompilerUnavailable := '';
-        finally
-          TMonitor.Exit(FCompileLock);
-        end;
-        FillChar(Counts, SizeOf(Counts), 0);
-        for Item in Messages do
-        begin
-          Inc(Counts[Item.Severity]);
-          if Item.FileName = '' then
-            FLogger.Warning(Format('Compiler: %s %s', [Item.Code, Item.Text]));
-        end;
-        FSyntaxDiagnostics.RefreshFiles(FCompilerResults.Replace(Messages));
-        Summary := Format('%d Fehler, %d Warnungen, %d Hinweise',
-          [Counts[TCompilerSeverity.Error] + Counts[TCompilerSeverity.Fatal], Counts[TCompilerSeverity.Warning],
-          Counts[TCompilerSeverity.Hint]]);
-        FLogger.Info(Format('Kompiliert mit %s (Exit-Code %d): %s', [ARequest.Executable, Code, Summary]));
-        FCompileProgress.Finish(Summary);
+        Exit;
       end;
-    except
-      on ECompilerCancelled do
-        ; // Beenden (A-05): nichts mehr melden, der Transport ist schon zu.
-      on E: Exception do
+      RememberCompilerChoice(Choice);
+      FCompileProgress.Finish('Kommandozeilen-Compiler nicht lizenziert');
+      if AJob.Manual then
       begin
-        CompilerUnavailable(E.Message);
-        FCompileProgress.Finish('Fehlgeschlagen');
+        IdeJob := AJob;
+        IdeJob.Backend := Choice.Backend;
+        CompileWithIde(IdeJob);
       end;
+      Exit;
     end;
+    if (Code <> 0) and (Length(Messages) = 0) then
+    begin
+      // Abbruch ohne eine einzige Meldung: Der Compiler selbst ist nicht nutzbar.
+      // Bisherige Meldungen bleiben stehen.
+      Output := '';
+      for Index := 0 to Min(Lines.Count, 3) - 1 do
+        if Trim(Lines[Index]) <> '' then
+          Output := Output + ' ' + Trim(Lines[Index]);
+      CompilerUnavailable(TCompilerBackendChoice.Unavailable(Format('%s endet mit Exit-Code %d ohne Meldungen:%s',
+        [ExtractFileName(AJob.Request.Executable), Code, Output]), ''), False);
+      FCompileProgress.Finish('Compiler nicht nutzbar');
+      Exit;
+    end;
+    PublishCompile(Messages, Format('%s (Exit-Code %d)', [ExtractFileName(AJob.Request.Executable), Code]));
   finally
     Lines.Free;
   end;
+end;
+
+procedure TServerComposition.CompileWithIde(const AJob: TShellCompileJob);
+var
+  Messages: TArray<TCompilerMessage>;
+  Succeeded: Boolean;
+  Error: string;
+begin
+  FCompileProgress.Start('Projekt über eine eigene IDE kompilieren');
+  if not FIdeCompiler.Build(AJob.Settings.IdeCommand, AJob.Project, AJob.Platform, Messages, Succeeded, Error) then
+  begin
+    CompilerUnavailable(TCompilerBackendChoice.Unavailable(Error,
+      'cc.ps1 und die Delphi-Installation prüfen; Einzelheiten stehen im Server-Log.'), True);
+    FCompileProgress.Finish('Fehlgeschlagen');
+    Exit;
+  end;
+  if Succeeded then
+    PublishCompile(Messages, 'eigene IDE (erfolgreich)')
+  else
+    PublishCompile(Messages, 'eigene IDE (misslungen)');
+end;
+
+procedure TServerComposition.PublishCompile(const AMessages: TArray<TCompilerMessage>; const AVia: string);
+var
+  Item: TCompilerMessage;
+  Counts: array[TCompilerSeverity] of Integer;
+  Summary: string;
+begin
+  TMonitor.Enter(FCompileLock);
+  try
+    FCompilerUnavailable := '';
+  finally
+    TMonitor.Exit(FCompileLock);
+  end;
+  FillChar(Counts, SizeOf(Counts), 0);
+  for Item in AMessages do
+  begin
+    Inc(Counts[Item.Severity]);
+    if Item.FileName = '' then
+      FLogger.Warning(Format('Compiler: %s %s', [Item.Code, Item.Text]));
+  end;
+  FSyntaxDiagnostics.RefreshFiles(FCompilerResults.Replace(AMessages));
+  Summary := Format('%d Fehler, %d Warnungen, %d Hinweise',
+    [Counts[TCompilerSeverity.Error] + Counts[TCompilerSeverity.Fatal], Counts[TCompilerSeverity.Warning],
+    Counts[TCompilerSeverity.Hint]]);
+  FLogger.Info(Format('Kompiliert über %s: %s', [AVia, Summary]));
+  FCompileProgress.Finish(Summary);
 end;
 
 procedure TServerComposition.HandleDidChangeConfiguration(const AParams: TJSONValue);
@@ -2853,35 +3101,29 @@ var
   Workspace: TShellWorkspace;
 begin
   FEditorSettings := TLspConfiguration.EditorSettingsFromParams(AParams);
+  UpdateLooseSettings;
   for Workspace in FWorkspaces.ToArray do
     Workspace.Configuration.SetEditorSettings(FEditorSettings);
 end;
 
 class function TServerComposition.GlobalSettingsPath: string;
 begin
-  Result := TConfigurationScopes.GlobalFile(GetEnvironmentVariable('APPDATA'));
+  Result := TShellBootstrap.GlobalSettingsFile;
 end;
 
 procedure TServerComposition.LoadGlobalSettings;
 var
   Text: string;
-  FileFormat: TFileFormat;
   Workspace: TShellWorkspace;
   Issues, Misplaced: TArray<TConfigurationIssue>;
   Issue: TConfigurationIssue;
 begin
-  Text := '';
-  if (FGlobalSettingsFile <> '') and FileExists(FGlobalSettingsFile) then
-    try
-      Text := TFileEncoding.LoadFromFile(FGlobalSettingsFile, FileFormat);
-    except
-      // Gerade geschrieben oder gesperrt: Der Beobachter meldet die Datei erneut.
-      on E: Exception do
-        FLogger.Warning('Globale Einstellungen nicht lesbar: ' + E.Message);
-    end;
+  // Nicht lesbar (gerade geschrieben oder gesperrt): Warnung im Log, der Beobachter meldet die Datei erneut.
+  Text := TShellBootstrap.LoadGlobalSettings(FGlobalSettingsFile, FLogger);
   if Text = FGlobalSettings then
     Exit;
   FGlobalSettings := Text;
+  UpdateLooseSettings;
   if Text <> '' then
   begin
     TConfigurationParser.Parse(Text, Issues);
@@ -2991,14 +3233,8 @@ begin
   RecentSink := TRecentLogSink.Create;
   RecentLog := RecentSink;
   LoggerImpl.AddSink(RecentSink, TLogLevel.Info);
-  if AOptions.LogFile <> '' then
-    try
-      LoggerImpl.AddSink(TShellDiagnostics.LogFileSink(AOptions.LogFile, IntToStr(TParentWatcher.CurrentProcessId),
-        AOptions.LogNames, Anonymizer), AOptions.LogLevel);
-    except
-      on E: Exception do
-        Logger.Error(Format('Logdatei "%s" kann nicht geöffnet werden: %s', [AOptions.LogFile, E.Message]));
-    end;
+  TShellDiagnostics.AddLogFile(LoggerImpl, AOptions.LogFile, IntToStr(TParentWatcher.CurrentProcessId),
+    AOptions.LogNames, AOptions.LogLevel, Anonymizer);
 
   // Ab hier erreichen versehentliche Ausgaben (Writeln, Bibliotheken) nur noch stderr.
   Transport := TJsonRpcStreamTransport.Create(TStdStreams.CreateInput, TStdStreams.ReserveOutputForProtocol, True);
@@ -3113,6 +3349,8 @@ begin
   Commands.Add(TQualifiedNames.Command);
   Commands.Add(TStringLiteralCommands.PlainTextCommand);
   Commands.Add(TStringLiteralCommands.ToLiteralCommand);
+  // Editor-Befehl (#97): Clients wie VS Code bieten ihn damit an.
+  Commands.Add(TLspBaseline.Command);
   Result.AddPair('executeCommandProvider', TJSONObject.Create(TJSONPair.Create('commands', Commands)));
   Result.AddPair('workspace', TLspWorkspaceFolders.Capability);
 end;

@@ -28,7 +28,7 @@
         <DCC_MapFile>3</DCC_MapFile>
         <SanitizedProjectName>AtlasServer</SanitizedProjectName>
         <DCC_Namespace>System;Winapi;System.Win;$(DCC_Namespace)</DCC_Namespace>
-        <DCC_UnitSearchPath>..\Output\$(Platform)\$(Config)\Dcu\Atlas.Common;..\Output\$(Platform)\$(Config)\Dcu\Atlas.Windows;$(DCC_UnitSearchPath)</DCC_UnitSearchPath>
+        <DCC_UnitSearchPath>..\Output\$(Platform)\$(Config)\Dcu\Atlas.Text;..\Output\$(Platform)\$(Config)\Dcu\Atlas.Common;..\Output\$(Platform)\$(Config)\Dcu\Atlas.Windows;$(DCC_UnitSearchPath)</DCC_UnitSearchPath>
         <DCC_DcuOutput>..\Output\$(Platform)\$(Config)\Dcu\AtlasServer</DCC_DcuOutput>
         <DCC_ExeOutput>..\Output\$(Platform)\$(Config)\Bin</DCC_ExeOutput>
         <DCC_ConsoleTarget>true</DCC_ConsoleTarget>
@@ -72,6 +72,10 @@
         <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Vcs\Atlas.Core.Vcs.Adapters.ProcessRunner.pas"/>
         <DCCReference Include="Source\Shell\Shell.Mcp.pas"/>
         <DCCReference Include="Source\Shell\Shell.Diagnostics.pas"/>
+        <DCCReference Include="Source\Shell\Shell.Bootstrap.pas"/>
+        <DCCReference Include="Source\Shell\Shell.Commands.Build.pas"/>
+        <DCCReference Include="Source\Shell\Shell.Commands.Index.pas"/>
+        <DCCReference Include="Source\Shell\Shell.Compiler.pas"/>
         <BuildConfiguration Include="Base">
             <Key>Base</Key>
         </BuildConfiguration>

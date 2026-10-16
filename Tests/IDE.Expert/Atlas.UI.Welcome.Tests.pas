@@ -19,7 +19,11 @@
 // Bereich „Weiterarbeiten“ (#755): Texte (Reiter, Zeit, Commit, Zeile der
 // Liste „Gemerkt“), „Fortsetzen“ und Commits über die Nachrichtenschleife,
 // Abschnitt der eingehenden Commits nur mit Daten, Reiter „Gemerkt“ nur mit
-// welcomePage.saved, Filter und Öffnen per Enter bzw. Doppelklick.
+// welcomePage.saved, Filter und Öffnen per Enter bzw. Doppelklick;
+// Bereich „Projektverlauf“ (#758): Wert, Vorwert und Einheit je Kachel,
+// Klick auf einen Punkt zeigt Build, Datum, Branch und Commit, leere
+// Zustände, Umbruch der Kacheln; Auswahl in „Projekte“ (Klick wählt,
+// Doppelklick und „Öffnen“ öffnen).
 
 interface
 
@@ -107,6 +111,10 @@ type
     procedure ClicksReachSource;
     [Test]
     procedure HitTestFindsRows;
+    /// <summary>Mit Projektverlauf (#758): Klick wählt, Doppelklick und „Öffnen“ öffnen, rote Marke springt.
+    /// </summary>
+    [Test]
+    procedure ClickSelectsForHistory;
   end;
 
   [TestFixture]
@@ -177,6 +185,54 @@ type
     procedure ClicksReachSource;
   end;
 
+  /// <summary>Bereich „<Projekt> für Atlas einrichten“ (#759).</summary>
+  [TestFixture]
+  TAtlasWelcomeSetupFrameTests = class
+  public
+    [Test]
+    procedure TextsFollowLanguage;
+    /// <summary>Mockup #ws7: erledigte Schritte grün mit ✓ und ohne Knöpfe, offene mit Knopf.</summary>
+    [Test]
+    procedure StepsShowMarksAndButtons;
+    /// <summary>Abnahme: Ein fehlender Suchpfad wird mit dem Unit-Namen gemeldet.</summary>
+    [Test]
+    procedure FindingNamesUnit;
+    /// <summary>Unsichere Funde nennen das Makro; bei einer Gruppe das Projekt und den Stand der Prüfung.
+    /// </summary>
+    [Test]
+    procedure UncertainAndGroupCaptions;
+    /// <summary>Abnahme: Ohne Karte nur „Neu mit Atlas“; ohne beides nichts; ohne Projekt keine Knöpfe.</summary>
+    [Test]
+    procedure CardAndNewRowFollowCard;
+    [Test]
+    procedure ClicksReachSource;
+    [Test]
+    procedure RunningStepShowsSeconds;
+    /// <summary>Vorschau zeigt den Inhalt vor dem Anlegen; Esc schreibt nichts.</summary>
+    [Test]
+    procedure PreviewShowsContent;
+  end;
+
+  [TestFixture]
+  TAtlasWelcomeTrendsFrameTests = class
+  public
+    /// <summary>Abnahme: 12, 9, 6, 3, 0 Hinweise ergeben „0“ und „vorher 3“; Einheiten je Sprache.</summary>
+    [Test]
+    procedure TextsShowValueAndPrevious;
+    /// <summary>Abnahme: Klick auf einen Punkt zeigt Build, Datum, Branch und Commit.</summary>
+    [Test]
+    procedure ClickShowsBuild;
+    /// <summary>Abnahme: Anderes Projekt gewählt, anderer Verlauf; der gewählte Punkt gehört zum alten.</summary>
+    [Test]
+    procedure OtherProjectResetsChoice;
+    [Test]
+    procedure HitTestFindsPoints;
+    [Test]
+    procedure EmptyStates;
+    [Test]
+    procedure TilesWrapByWidth;
+  end;
+
 implementation
 
 uses
@@ -199,6 +255,9 @@ uses
   Atlas.Core.Projects.Summary,
   Atlas.Core.Welcome.Projects,
   Atlas.UI.Welcome.Projects,
+  Atlas.Core.Projects.Trends,
+  Atlas.Core.Welcome.Trends,
+  Atlas.UI.Welcome.Trends,
   System.DateUtils,
   Atlas.Core.Vcs.Contract,
   Atlas.Core.Welcome.Unsaved,
@@ -212,6 +271,11 @@ uses
   Atlas.UI.Welcome.Discover,
   Atlas.Core.Welcome.Help,
   Atlas.UI.Welcome.Help,
+  Atlas.Core.Projects.Setup,
+  Atlas.Core.Generate.FileTemplates,
+  Atlas.Core.Welcome.Setup,
+  Atlas.UI.Welcome.Setup,
+  Atlas.UI.Welcome.SetupPreview,
   Atlas.Core.Welcome.Continue,
   Atlas.Core.Welcome.Saved,
   Atlas.UI.Welcome.Continue,
@@ -250,6 +314,21 @@ type
     procedure OpenDocs;
     procedure ShowKeys;
     procedure ReportProblem;
+  end;
+
+  /// <summary>Quelle des Bereichs „Projekt für Atlas einrichten“ für die Tests; merkt sich die Aufrufe.</summary>
+  TFakeSetup = class(TInterfacedObject, IAtlasSetupSource)
+  public
+    Card_: TAtlasSetupCard;
+    Calls: TArray<string>;
+    function Card: TAtlasSetupCard;
+    procedure CreateConfig(ATemplate: TAtlasSetupTemplate);
+    procedure StartBaseline;
+    procedure CheckPaths;
+    procedure OpenOptions;
+    procedure OpenProject;
+    procedure Dismiss;
+    procedure NewFile(AKind: TAtlasNewFileKind);
   end;
 
   /// <summary>Quelle der Karte „Atlas entdecken“ für die Tests; merkt sich die Aufrufe.</summary>
@@ -298,6 +377,20 @@ type
     procedure OpenFolder(const AProject: string);
     procedure Remove(const AProject: string);
     procedure Shown;
+    function Selectable: Boolean;
+    procedure Select(const AProject: string);
+    function Selected: string;
+  public
+    /// <summary>Projektverlauf an (#758): Klick wählt.</summary>
+    FSelectable: Boolean;
+    FSelected: string;
+  end;
+
+  /// <summary>Quelle des Bereichs „Projektverlauf“ für die Tests.</summary>
+  TFakeTrends = class(TInterfacedObject, IAtlasTrendsSource)
+  public
+    FView: TAtlasTrendView;
+    function View: TAtlasTrendView;
   end;
 
   /// <summary>Quelle der Karte für die Tests; merkt sich die Aufrufe.</summary>
@@ -399,6 +492,69 @@ end;
 procedure TFakeProjects.Shown;
 begin
   Calls := Calls + ['shown'];
+end;
+
+function TFakeProjects.Selectable: Boolean;
+begin
+  Result := FSelectable;
+end;
+
+procedure TFakeProjects.Select(const AProject: string);
+begin
+  Calls := Calls + ['select ' + AProject];
+  FSelected := AProject;
+end;
+
+function TFakeProjects.Selected: string;
+begin
+  Result := FSelected;
+end;
+
+{ TFakeTrends }
+
+function TFakeTrends.View: TAtlasTrendView;
+begin
+  Result := FView;
+end;
+
+/// <summary>Projekt mit einem Build je Wert in AHints (Hinweise), Dauer 12,48 s, Branch main, eigener Commit je
+/// Build, TODOs ab dem zweiten.</summary>
+function TrendSummary(const AProject: string; const AHints: array of Integer): TAtlasProjectSummary;
+var
+  Index: Integer;
+  Stamp: TDateTime;
+begin
+  Result := TAtlasProjectSummary.Create(AProject);
+  for Index := 0 to High(AHints) do
+  begin
+    Stamp := EncodeDateTime(2026, 10, 10 + Index, 9, 30, 0, 0);
+    Result.Build := TAtlasProjectBuild.Empty;
+    Result.Build.Known := True;
+    Result.Build.At := Stamp;
+    Result.Build.Hints := AHints[Index];
+    Result.Build.DurationMs := 12480;
+    Result.Vcs := TAtlasProjectVcs.Empty;
+    Result.Vcs.Known := True;
+    Result.Vcs.Kind := 'git';
+    Result.Vcs.Branch := 'main';
+    Result.Vcs.Revision := Format('1a2b3c%dd5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b', [Index]);
+    if Index > 0 then
+    begin
+      Result.Todos := TAtlasProjectTodos.Empty;
+      Result.Todos.Known := True;
+      Result.Todos.At := Stamp;
+      Result.Todos.Open := 7;
+    end;
+    TAtlasProjectTrendLog.Append(Result, Stamp, 30);
+  end;
+end;
+
+function TrendsFrame(AHost: TForm; const ASource: IAtlasTrendsSource): TAtlasWelcomeTrendsFrame;
+begin
+  Result := TAtlasWelcomeTrendsFrame.Create(AHost);
+  Result.Parent := AHost;
+  Result.Width := 600;
+  Result.Source := ASource;
 end;
 
 /// <summary>Projekt auf main; mit AErrors &gt; 0 ein fehlgeschlagener Build mit Sprungziel.</summary>
@@ -1221,6 +1377,286 @@ begin
   end;
 end;
 
+procedure TAtlasWelcomeProjectsFrameTests.ClickSelectsForHistory;
+var
+  Host: TForm;
+  Fake: TFakeProjects;
+  Source: IAtlasProjectsSource;
+  Frame: TAtlasWelcomeProjectsFrame;
+  Hit: TAtlasProjectsHit;
+begin
+  Fake := TFakeProjects.Create;
+  Source := Fake;
+  Fake.FEntries := [ProjectEntry('C:\P\Eins.dproj', 0), ProjectEntry('C:\P\Zwei.dproj', 2)];
+  Host := TForm.CreateNew(nil);
+  try
+    Frame := ProjectsFrame(Host, Source);
+    Assert.AreEqual(-1, Frame.SelectedRow, 'ohne Projektverlauf keine Auswahl');
+    Hit.Row := 0;
+    Hit.Pill := -1;
+    Fake.Calls := nil;
+    Frame.DoubleClickAt(Hit);
+    CheckSynchronize;
+    Assert.AreEqual(0, Integer(Length(Fake.Calls)), 'ohne Auswahl öffnet schon der Klick');
+    Fake.FSelectable := True;
+    Assert.AreEqual(0, Frame.SelectedRow, 'ohne Auswahl das oberste');
+    Hit.Row := 1;
+    Frame.ClickAt(Hit);
+    // Rote Marke springt weiter.
+    Hit.Pill := 0;
+    Frame.ClickAt(Hit);
+    Hit.Row := 0;
+    Hit.Pill := -1;
+    Frame.DoubleClickAt(Hit);
+    Frame.MenuRow := 1;
+    Frame.OpenItem.Click;
+    Assert.AreEqual(0, Integer(Length(Fake.Calls)), 'alles über die Nachrichtenschleife');
+    CheckSynchronize;
+    Assert.AreEqual(4, Integer(Length(Fake.Calls)));
+    Assert.AreEqual('select C:\P\Zwei.dproj', Fake.Calls[0]);
+    Assert.AreEqual('openAt C:\P\Zwei.dproj C:\P\Main.pas 12', Fake.Calls[1]);
+    Assert.AreEqual('open C:\P\Eins.dproj', Fake.Calls[2]);
+    Assert.AreEqual('open C:\P\Zwei.dproj', Fake.Calls[3]);
+    Assert.AreEqual(1, Frame.SelectedRow);
+    Fake.FSelected := 'c:/p/eins.DPROJ';
+    Assert.AreEqual(0, Frame.SelectedRow, 'Schreibweise egal');
+    Assert.Contains(TAtlasWelcomeProjectsFrame.HintFor(Fake.FEntries[0], True),
+      TAtlasStrings.Text(TAtlasTextId.WelcomeProjectsHintSelect));
+    Assert.Contains(TAtlasWelcomeProjectsFrame.HintFor(Fake.FEntries[0], False),
+      TAtlasStrings.Text(TAtlasTextId.WelcomeProjectsHintClick));
+  finally
+    Host.Free;
+  end;
+end;
+
+{ TAtlasWelcomeTrendsFrameTests }
+
+procedure TAtlasWelcomeTrendsFrameTests.TextsShowValueAndPrevious;
+var
+  Saved: TAtlasLanguage;
+  View: TAtlasTrendView;
+  Tile: TAtlasTrendTile;
+begin
+  Saved := TAtlasStrings.Language;
+  try
+    TAtlasStrings.Language := TAtlasLanguage.German;
+    View := TAtlasWelcomeTrends.View(TrendSummary('C:\P\Kasse.dproj', [12, 9, 6, 3, 0]),
+      TAtlasWelcomeTrends.ParseSeries(TAtlasWelcomeTrends.DefaultSeries), 30);
+    Assert.AreEqual(5, Integer(Length(View.Tiles)));
+    Tile := View.Tiles[0];
+    Assert.AreEqual('0', TAtlasWelcomeTrendsFrame.ValueLine(Tile));
+    Assert.AreEqual('vorher 3', TAtlasWelcomeTrendsFrame.PreviousLine(Tile));
+    // Regeltreffer ohne Baseline: kein Wert statt 0, kein Vorwert.
+    Tile := View.Tiles[1];
+    Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.WelcomeTrendsNoValue), TAtlasWelcomeTrendsFrame.ValueLine(Tile));
+    Assert.AreEqual('', TAtlasWelcomeTrendsFrame.PreviousLine(Tile));
+    Assert.AreEqual('7', TAtlasWelcomeTrendsFrame.ValueLine(View.Tiles[2]));
+    Assert.AreEqual('12,5 s', TAtlasWelcomeTrendsFrame.ValueLine(View.Tiles[3]));
+    Assert.AreEqual('vorher 12,5 s', TAtlasWelcomeTrendsFrame.PreviousLine(View.Tiles[3]));
+    Assert.AreEqual('11,8 Zeilen', TAtlasWelcomeTrendsFrame.ValueWithUnit(TAtlasTrendSeries.MethodLength, 118));
+    Assert.AreEqual('Projektverlauf', TAtlasWelcomeTrendsFrame.TitleText);
+    Assert.AreEqual('Warnungen + Hinweise', TAtlasWelcomeTrendsFrame.SeriesTitle(TAtlasTrendSeries.Warnings));
+    TAtlasStrings.Language := TAtlasLanguage.English;
+    Assert.AreEqual('11.8 lines', TAtlasWelcomeTrendsFrame.ValueWithUnit(TAtlasTrendSeries.MethodLength, 118));
+    Assert.AreEqual('before 3', TAtlasWelcomeTrendsFrame.PreviousLine(View.Tiles[0]));
+  finally
+    TAtlasStrings.Language := Saved;
+  end;
+end;
+
+procedure TAtlasWelcomeTrendsFrameTests.ClickShowsBuild;
+var
+  Saved: TAtlasLanguage;
+  Host: TForm;
+  Fake: TFakeTrends;
+  Source: IAtlasTrendsSource;
+  Frame: TAtlasWelcomeTrendsFrame;
+  Hit: TAtlasTrendsHit;
+  Info: string;
+begin
+  Saved := TAtlasStrings.Language;
+  Fake := TFakeTrends.Create;
+  Source := Fake;
+  Fake.FView := TAtlasWelcomeTrends.View(TrendSummary('C:\P\Kasse.dproj', [12, 9, 6, 3, 0]),
+    TAtlasWelcomeTrends.ParseSeries(TAtlasWelcomeTrends.DefaultSeries), 30);
+  Host := TForm.CreateNew(nil);
+  try
+    TAtlasStrings.Language := TAtlasLanguage.German;
+    Frame := TrendsFrame(Host, Source);
+    Assert.AreEqual('Kasse · letzte 30 Builds', Frame.HeadingText);
+    Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.WelcomeTrendsClickHint), Frame.InfoText, 'vor dem Klick');
+    Hit.Tile := 0;
+    Hit.Point := 2;
+    Frame.ClickAt(Hit);
+    Assert.AreEqual(2, Frame.ChosenPoint);
+    Assert.AreEqual(0, Frame.ChosenTile);
+    Info := Frame.InfoText;
+    Assert.Contains(Info, 'Build 3 von 5', 'Position wie im Mockup');
+    Assert.IsFalse(Info.Contains('Nr.'), 'laufende Nummer gleich der Position: nicht doppelt');
+    Assert.Contains(Info, TAtlasWelcomeTrendsFrame.LocalText(Fake.FView.Points[2].At), 'Datum');
+    Assert.Contains(Info, 'main', 'Branch');
+    Assert.Contains(Info, '1a2b3c2', 'Commit gekürzt');
+    Assert.Contains(Info, 'Warnungen + Hinweise: 6', 'Wert');
+    // Lücke: kein Wert.
+    Hit.Tile := 2;
+    Hit.Point := 0;
+    Frame.ClickAt(Hit);
+    Assert.Contains(Frame.InfoText, 'Offene TODOs: ' + TAtlasStrings.Text(TAtlasTextId.WelcomeTrendsNoValue));
+    // Daneben: nichts ändert sich.
+    Hit.Tile := -1;
+    Hit.Point := -1;
+    Frame.ClickAt(Hit);
+    Assert.Contains(Frame.InfoText, 'Offene TODOs');
+    // Neu laden (gleiches Projekt, neuer Build): Auswahl bleibt am Build.
+    Frame.UpdateContent;
+    Assert.AreEqual(0, Frame.ChosenPoint);
+    // Nur die letzten 3 Builds gezeigt: Position in der Reihe, dazu die laufende Nummer.
+    Fake.FView := TAtlasWelcomeTrends.View(TrendSummary('C:\P\Kasse.dproj', [12, 9, 6, 3, 0]),
+      [TAtlasTrendSeries.Warnings], 3);
+    Frame.UpdateContent;
+    Hit.Tile := 0;
+    Hit.Point := 0;
+    Frame.ClickAt(Hit);
+    Assert.Contains(Frame.InfoText, 'Build 1 von 3 · Nr. 3 · ');
+    Info := TAtlasWelcomeTrendsFrame.PointInfo(Frame.View, 0, 0, False);
+    Assert.Contains(Info, 'Build 1 von 3 · ');
+    Assert.IsFalse(Info.Contains('Nr.'), 'ohne Platz ohne laufende Nummer');
+    Assert.Contains(Info, 'Warnungen + Hinweise: 6');
+  finally
+    Host.Free;
+    TAtlasStrings.Language := Saved;
+  end;
+end;
+
+procedure TAtlasWelcomeTrendsFrameTests.OtherProjectResetsChoice;
+var
+  Host: TForm;
+  Fake: TFakeTrends;
+  Source: IAtlasTrendsSource;
+  Frame: TAtlasWelcomeTrendsFrame;
+  Hit: TAtlasTrendsHit;
+begin
+  Fake := TFakeTrends.Create;
+  Source := Fake;
+  Fake.FView := TAtlasWelcomeTrends.View(TrendSummary('C:\P\Eins.dproj', [1, 2, 3]),
+    [TAtlasTrendSeries.Warnings], 30);
+  Host := TForm.CreateNew(nil);
+  try
+    Frame := TrendsFrame(Host, Source);
+    Hit.Tile := 0;
+    Hit.Point := 1;
+    Frame.ClickAt(Hit);
+    Assert.AreEqual(1, Frame.ChosenPoint);
+    Fake.FView := TAtlasWelcomeTrends.View(TrendSummary('C:\P\Zwei.dproj', [8, 4]), [TAtlasTrendSeries.Warnings], 30);
+    Frame.UpdateContent;
+    Assert.AreEqual('C:\P\Zwei.dproj', Frame.View.Project);
+    Assert.AreEqual(2, Integer(Length(Frame.View.Points)));
+    Assert.AreEqual(-1, Frame.ChosenPoint, 'Punkt gehörte zum anderen Projekt');
+    Assert.AreEqual(40, Frame.View.Tiles[0].Last);
+  finally
+    Host.Free;
+  end;
+end;
+
+procedure TAtlasWelcomeTrendsFrameTests.HitTestFindsPoints;
+var
+  Host: TForm;
+  Fake: TFakeTrends;
+  Source: IAtlasTrendsSource;
+  Frame: TAtlasWelcomeTrendsFrame;
+  Tile, Spark: TRect;
+  Hit: TAtlasTrendsHit;
+begin
+  Fake := TFakeTrends.Create;
+  Source := Fake;
+  Fake.FView := TAtlasWelcomeTrends.View(TrendSummary('C:\P\Kasse.dproj', [12, 9, 6, 3, 0]),
+    [TAtlasTrendSeries.Warnings, TAtlasTrendSeries.Todos], 30);
+  Host := TForm.CreateNew(nil);
+  try
+    Frame := TrendsFrame(Host, Source);
+    Tile := Frame.TileRect(1, Frame.ClientWidth);
+    Spark := Frame.SparkRect(Tile);
+    Hit := Frame.HitTest(Spark.Left, Spark.Top + Spark.Height div 2);
+    Assert.AreEqual(1, Hit.Tile);
+    Assert.AreEqual(0, Hit.Point);
+    Hit := Frame.HitTest(Spark.Right, Spark.Bottom);
+    Assert.AreEqual(4, Hit.Point, 'letzter Punkt rechts');
+    Hit := Frame.HitTest(Tile.Left + 4, Tile.Top + 4);
+    Assert.AreEqual(1, Hit.Tile, 'Bezeichnung: Kachel, aber kein Punkt');
+    Assert.AreEqual(-1, Hit.Point);
+    Hit := Frame.HitTest(2, 2);
+    Assert.AreEqual(-1, Hit.Tile, 'Kopfzeile');
+  finally
+    Host.Free;
+  end;
+end;
+
+procedure TAtlasWelcomeTrendsFrameTests.EmptyStates;
+var
+  Saved: TAtlasLanguage;
+  Host: TForm;
+  Fake: TFakeTrends;
+  Source: IAtlasTrendsSource;
+  Frame: TAtlasWelcomeTrendsFrame;
+begin
+  Saved := TAtlasStrings.Language;
+  Fake := TFakeTrends.Create;
+  Source := Fake;
+  Host := TForm.CreateNew(nil);
+  try
+    TAtlasStrings.Language := TAtlasLanguage.German;
+    Frame := TrendsFrame(Host, Source);
+    Assert.AreEqual('', Frame.HeadingText);
+    Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.WelcomeTrendsNoProject), Frame.InfoText);
+    Assert.IsTrue(Frame.PreferredHeight > 0);
+    Fake.FView := TAtlasWelcomeTrends.View(TAtlasProjectSummary.Create('C:\P\Neu.dproj'),
+      [TAtlasTrendSeries.Warnings], 30);
+    Frame.UpdateContent;
+    Assert.Contains(Frame.InfoText, 'Neu:');
+    Assert.AreEqual(-1, Frame.HitTest(20, 60).Tile, 'ohne Punkte keine Kacheln');
+    Fake.FView := TAtlasWelcomeTrends.View(TrendSummary('C:\P\Kasse.dproj', [1, 2]), nil, 30);
+    Frame.UpdateContent;
+    Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.WelcomeTrendsNoSeries), Frame.InfoText);
+  finally
+    Host.Free;
+    TAtlasStrings.Language := Saved;
+  end;
+end;
+
+procedure TAtlasWelcomeTrendsFrameTests.TilesWrapByWidth;
+var
+  Host: TForm;
+  Fake: TFakeTrends;
+  Source: IAtlasTrendsSource;
+  Frame: TAtlasWelcomeTrendsFrame;
+  Wide, Narrow, One: Integer;
+begin
+  Fake := TFakeTrends.Create;
+  Source := Fake;
+  Fake.FView := TAtlasWelcomeTrends.View(TrendSummary('C:\P\Kasse.dproj', [3, 2, 1]),
+    TAtlasWelcomeTrends.ParseSeries(TAtlasWelcomeTrends.DefaultSeries), 30);
+  Host := TForm.CreateNew(nil);
+  try
+    Frame := TrendsFrame(Host, Source);
+    Frame.Width := Frame.ScaleValue(900);
+    Wide := Frame.PreferredHeight;
+    Frame.Width := Frame.ScaleValue(340);
+    Narrow := Frame.PreferredHeight;
+    Assert.IsTrue(Narrow > Wide, Format('breit %d, schmal %d', [Wide, Narrow]));
+    Assert.AreEqual(Frame.TileRect(0, Frame.ScaleValue(900)).Top, Frame.TileRect(4, Frame.ScaleValue(900)).Top,
+      'breit: eine Reihe');
+    Assert.IsTrue(Frame.TileRect(2, Frame.ScaleValue(340)).Top > Frame.TileRect(0, Frame.ScaleValue(340)).Top,
+      'schmal: umgebrochen');
+    Fake.FView := TAtlasWelcomeTrends.View(TrendSummary('C:\P\Kasse.dproj', [3, 2, 1]),
+      [TAtlasTrendSeries.Todos], 30);
+    Frame.UpdateContent;
+    One := Frame.PreferredHeight;
+    Assert.IsTrue(One < Narrow, 'eine Reihe weniger Kacheln');
+  finally
+    Host.Free;
+  end;
+end;
+
 { TFakeUnsaved }
 
 function TFakeUnsaved.View: TAtlasUnsavedView;
@@ -1902,6 +2338,510 @@ begin
   end;
 end;
 
+{ TFakeSetup }
+
+function TFakeSetup.Card: TAtlasSetupCard;
+begin
+  Result := Card_;
+end;
+
+procedure TFakeSetup.CreateConfig(ATemplate: TAtlasSetupTemplate);
+begin
+  Calls := Calls + ['config:' + TAtlasProjectSetups.TemplateId(ATemplate)];
+end;
+
+procedure TFakeSetup.StartBaseline;
+begin
+  Calls := Calls + ['baseline'];
+end;
+
+procedure TFakeSetup.CheckPaths;
+begin
+  Calls := Calls + ['paths'];
+end;
+
+procedure TFakeSetup.OpenOptions;
+begin
+  Calls := Calls + ['options'];
+end;
+
+procedure TFakeSetup.OpenProject;
+begin
+  Calls := Calls + ['open'];
+end;
+
+procedure TFakeSetup.Dismiss;
+begin
+  Calls := Calls + ['dismiss'];
+end;
+
+procedure TFakeSetup.NewFile(AKind: TAtlasNewFileKind);
+begin
+  Calls := Calls + ['new:' + TAtlasFileTemplates.KindWord(AKind)];
+end;
+
+/// <summary>Karte für XmlInspector: Projekt offen, keine atlas.json, keine Baseline, nicht geprüft.</summary>
+function SetupCard: TAtlasSetupCard;
+begin
+  Result := TAtlasSetupCard.Empty;
+  Result.Project := 'C:\Src\XmlInspector\XmlInspector.dproj';
+  Result.ProjectName := 'XmlInspector';
+  Result.ProjectOpen := True;
+  Result.Facts.Project := Result.Project;
+  Result.ShowCard := True;
+  Result.ShowNew := True;
+end;
+
+function SetupFinding(const AName, AFileName: string; ALine, ACount: Integer): TAtlasSetupFinding;
+begin
+  Result := Default(TAtlasSetupFinding);
+  Result.Name := AName;
+  Result.FileName := AFileName;
+  Result.Line := ALine;
+  Result.Count := ACount;
+end;
+
+{ TAtlasWelcomeSetupFrameTests }
+
+procedure TAtlasWelcomeSetupFrameTests.TextsFollowLanguage;
+var
+  Saved: TAtlasLanguage;
+  Card: TAtlasSetupCard;
+begin
+  Saved := TAtlasStrings.Language;
+  try
+    Card := SetupCard;
+    TAtlasStrings.Language := TAtlasLanguage.German;
+    Assert.AreEqual('XmlInspector für Atlas einrichten', TAtlasWelcomeSetupFrame.TitleText(Card));
+    Assert.AreEqual('Projekt gefunden, keine atlas.json',
+      TAtlasWelcomeSetupFrame.StepCaption(TAtlasSetupStep.Found, Card, 0));
+    Assert.AreEqual('atlas.json anlegen', TAtlasWelcomeSetupFrame.StepCaption(TAtlasSetupStep.Config, Card, 0));
+    Assert.AreEqual('Baseline erzeugen', TAtlasWelcomeSetupFrame.StepCaption(TAtlasSetupStep.Baseline, Card, 0));
+    Assert.AreEqual('Suchpfade und Defines prüfen',
+      TAtlasWelcomeSetupFrame.StepCaption(TAtlasSetupStep.Paths, Card, 0));
+    Assert.AreEqual('Bestehendes Projekt', TAtlasWelcomeSetupFrame.TemplateCaption(TAtlasSetupTemplate.Existing));
+    Assert.AreEqual('Neues Projekt, streng', TAtlasWelcomeSetupFrame.TemplateCaption(TAtlasSetupTemplate.NewStrict));
+    Assert.AreEqual('Altprojekt mit Baseline', TAtlasWelcomeSetupFrame.TemplateCaption(TAtlasSetupTemplate.Legacy));
+    Assert.AreEqual('Starten', TAtlasWelcomeSetupFrame.ButtonCaption(TAtlasSetupButton.Baseline));
+    Assert.AreEqual('Prüfen', TAtlasWelcomeSetupFrame.ButtonCaption(TAtlasSetupButton.Paths));
+    Assert.AreEqual('Für dieses Projekt nicht mehr fragen',
+      TAtlasWelcomeSetupFrame.ButtonCaption(TAtlasSetupButton.Dismiss));
+    Assert.AreEqual('Testklasse', TAtlasWelcomeSetupFrame.ButtonCaption(TAtlasSetupButton.NewTest));
+    Card.Facts.ConfigExists := True;
+    Card.ConfigName := 'atlas.json';
+    Assert.AreEqual('Projekt gefunden', TAtlasWelcomeSetupFrame.StepCaption(TAtlasSetupStep.Found, Card, 0));
+    Assert.AreEqual('atlas.json vorhanden', TAtlasWelcomeSetupFrame.StepCaption(TAtlasSetupStep.Config, Card, 0));
+    Card.ShowCard := False;
+    Assert.AreEqual('Neu mit Atlas', TAtlasWelcomeSetupFrame.TitleText(Card));
+    TAtlasStrings.Language := TAtlasLanguage.English;
+    Card.ShowCard := True;
+    Assert.AreEqual('Set up XmlInspector for Atlas', TAtlasWelcomeSetupFrame.TitleText(Card));
+    Assert.AreEqual('Test class', TAtlasWelcomeSetupFrame.ButtonCaption(TAtlasSetupButton.NewTest));
+  finally
+    TAtlasStrings.Language := Saved;
+  end;
+end;
+
+procedure TAtlasWelcomeSetupFrameTests.StepsShowMarksAndButtons;
+var
+  Host: TForm;
+  Fake: TFakeSetup;
+  Source: IAtlasSetupSource;
+  Frame: TAtlasWelcomeSetupFrame;
+begin
+  Fake := TFakeSetup.Create;
+  Fake.Card_ := SetupCard;
+  Source := Fake;
+  Host := TForm.CreateNew(nil);
+  try
+    Frame := TAtlasWelcomeSetupFrame.Create(Host);
+    Frame.Parent := Host;
+    Frame.SetBounds(0, 0, 640, 300);
+    Frame.Source := Source;
+    // Schritt 1 erledigt, die anderen offen.
+    Assert.AreEqual(string(#$2713), Frame.StepMark(TAtlasSetupStep.Found).Caption);
+    Assert.AreEqual(Integer(TAtlasWelcomeSetupFrame.DoneColor),
+      Integer(Frame.StepText(TAtlasSetupStep.Found).Font.Color));
+    Assert.AreNotEqual(string(#$2713), Frame.StepMark(TAtlasSetupStep.Config).Caption);
+    Assert.IsTrue(Frame.TemplateBox.Visible);
+    Assert.IsTrue(Frame.Button(TAtlasSetupButton.CreateConfig).Visible);
+    Assert.IsTrue(Frame.Button(TAtlasSetupButton.Baseline).Visible);
+    Assert.IsTrue(Frame.Button(TAtlasSetupButton.Paths).Visible);
+    Assert.IsTrue(Frame.DismissLabel.Visible);
+    Assert.IsFalse(Frame.Button(TAtlasSetupButton.Options).Visible, 'ohne Funde keine Projektoptionen');
+    // Vorgabe der Vorlage: Bestehendes Projekt.
+    Assert.IsTrue(Frame.SelectedTemplate = TAtlasSetupTemplate.Existing);
+    Assert.AreEqual(3, Frame.TemplateBox.Items.Count);
+    Assert.AreEqual(Integer(Ord(TAtlasSetupTemplate.Existing)), Frame.TemplateBox.ItemIndex);
+    // Knöpfe rechts neben dem Text ihres Schritts, Schritte untereinander.
+    Assert.IsTrue(Frame.Button(TAtlasSetupButton.CreateConfig).Left > Frame.TemplateBox.Left);
+    Assert.IsTrue(Frame.TemplateBox.Left > Frame.StepText(TAtlasSetupStep.Config).Left);
+    Assert.IsTrue(Frame.StepText(TAtlasSetupStep.Baseline).Top > Frame.StepText(TAtlasSetupStep.Config).Top);
+    Assert.IsTrue(Frame.StepText(TAtlasSetupStep.Paths).Top > Frame.StepText(TAtlasSetupStep.Baseline).Top);
+    Assert.IsTrue(Frame.DismissLabel.Top > Frame.StepText(TAtlasSetupStep.Paths).Top);
+    // Abnahme: Nach „Anlegen“ ist Schritt 2 abgehakt; nach der Baseline Schritt 3 mit „neue Treffer: 0“.
+    Fake.Card_.Facts.ConfigExists := True;
+    Fake.Card_.ConfigName := 'atlas.json';
+    Fake.Card_.Facts.BaselineExists := True;
+    Fake.Card_.Baseline := TAtlasSetupRun.Done;
+    Fake.Card_.BaselineTotal := 120;
+    Fake.Card_.BaselineFiles := 14;
+    Fake.Card_.BaselineNewHits := 0;
+    Frame.UpdateContent;
+    Assert.AreEqual(string(#$2713), Frame.StepMark(TAtlasSetupStep.Config).Caption);
+    Assert.AreEqual(Integer(TAtlasWelcomeSetupFrame.DoneColor),
+      Integer(Frame.StepText(TAtlasSetupStep.Config).Font.Color));
+    Assert.IsFalse(Frame.TemplateBox.Visible);
+    Assert.IsFalse(Frame.Button(TAtlasSetupButton.CreateConfig).Visible);
+    Assert.AreEqual(string(#$2713), Frame.StepMark(TAtlasSetupStep.Baseline).Caption);
+    Assert.IsFalse(Frame.Button(TAtlasSetupButton.Baseline).Visible);
+    Assert.IsTrue(Frame.BaselineInfo.Visible);
+    Assert.AreEqual(TAtlasStrings.Fmt(TAtlasTextId.WelcomeSetupBaselineResult, [120, 14, 0]),
+      Frame.BaselineInfo.Caption);
+    Assert.Contains(Frame.BaselineInfo.Caption, ': 0');
+    // Ohne geöffnetes Projekt heißen die Knöpfe „Projekt öffnen“.
+    Fake.Card_.Facts.BaselineExists := False;
+    Fake.Card_.Baseline := TAtlasSetupRun.Idle;
+    Fake.Card_.ProjectOpen := False;
+    Frame.UpdateContent;
+    Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.WelcomeSetupOpenProject),
+      Frame.Button(TAtlasSetupButton.Baseline).Caption);
+    Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.WelcomeSetupOpenProject),
+      Frame.Button(TAtlasSetupButton.Paths).Caption);
+  finally
+    Host.Free;
+  end;
+end;
+
+procedure TAtlasWelcomeSetupFrameTests.FindingNamesUnit;
+var
+  Saved: TAtlasLanguage;
+  Host: TForm;
+  Fake: TFakeSetup;
+  Source: IAtlasSetupSource;
+  Frame: TAtlasWelcomeSetupFrame;
+  Line: TAtlasSetupLine;
+  Index: Integer;
+begin
+  Saved := TAtlasStrings.Language;
+  Fake := TFakeSetup.Create;
+  Fake.Card_ := SetupCard;
+  Fake.Card_.Facts.Setup.Known := True;
+  Fake.Card_.Facts.Setup.Checked := True;
+  Fake.Card_.Facts.Setup.Files := 12;
+  Fake.Card_.Facts.Setup.MissingUnitCount := 9;
+  Fake.Card_.Facts.Setup.UndefinedDefineCount := 1;
+  Fake.Card_.Facts.Setup.MissingUnits := [SetupFinding('Xml.Helpers', 'Src\Main.pas', 12, 3)];
+  for Index := 2 to 9 do
+    Fake.Card_.Facts.Setup.MissingUnits := Fake.Card_.Facts.Setup.MissingUnits +
+      [SetupFinding('Unit' + IntToStr(Index), 'Src\Main.pas', 12 + Index, 1)];
+  Fake.Card_.Facts.Setup.UndefinedDefines := [SetupFinding('USE_XML', 'Src\Main.pas', 3, 1)];
+  Fake.Card_.Paths := TAtlasSetupRun.Done;
+  Source := Fake;
+  Host := TForm.CreateNew(nil);
+  try
+    TAtlasStrings.Language := TAtlasLanguage.German;
+    Line := Default(TAtlasSetupLine);
+    Line.Kind := TAtlasSetupFindingKind.MissingUnit;
+    Line.Name := 'Xml.Helpers';
+    Line.FileName := 'Src\Main.pas';
+    Line.Line := 12;
+    Line.Count := 1;
+    Assert.AreEqual('Unit „Xml.Helpers“ nicht gefunden – Src\Main.pas, Zeile 12',
+      TAtlasWelcomeSetupFrame.FindingCaption(Line));
+    Line.Count := 3;
+    Assert.AreEqual('Unit „Xml.Helpers“ nicht gefunden – Src\Main.pas, Zeile 12 (3×)',
+      TAtlasWelcomeSetupFrame.FindingCaption(Line));
+    Line.Kind := TAtlasSetupFindingKind.UndefinedDefine;
+    Line.Name := 'USE_XML';
+    Line.Count := 1;
+    Assert.AreEqual('Define „USE_XML“ ohne Quelle – Src\Main.pas, Zeile 12',
+      TAtlasWelcomeSetupFrame.FindingCaption(Line));
+    Frame := TAtlasWelcomeSetupFrame.Create(Host);
+    Frame.Parent := Host;
+    Frame.SetBounds(0, 0, 640, 300);
+    Frame.Source := Source;
+    // Schritt 4 offen, Zusammenfassung, höchstens MaxLines Funde, der Rest als „… und n weitere“.
+    Assert.AreNotEqual(string(#$2713), Frame.StepMark(TAtlasSetupStep.Paths).Caption);
+    Assert.IsTrue(Frame.PathsInfo.Visible);
+    Assert.AreEqual('9 Units nicht gefunden, 1 Defines ohne Quelle (12 Dateien geprüft)', Frame.PathsInfo.Caption);
+    Assert.IsTrue(Frame.Finding(0).Visible);
+    Assert.Contains(Frame.Finding(0).Caption, 'Xml.Helpers');
+    Assert.IsTrue(Frame.Finding(TAtlasWelcomeSetup.MaxLines - 1).Visible);
+    Assert.IsTrue(Frame.MoreLabel.Visible);
+    Assert.AreEqual('… und 4 weitere', Frame.MoreLabel.Caption);
+    Assert.IsTrue(Frame.Button(TAtlasSetupButton.Options).Visible);
+    Assert.IsTrue(Frame.Finding(0).Top > Frame.StepText(TAtlasSetupStep.Paths).Top);
+    // Ein Klick auf den Fund öffnet die Projektoptionen.
+    Frame.Finding(0).OnClick(Frame.Finding(0));
+    CheckSynchronize;
+    Assert.AreEqual(1, Integer(Length(Fake.Calls)));
+    Assert.AreEqual('options', Fake.Calls[0]);
+    // Saubere Prüfung: Schritt 4 grün, keine Funde.
+    Fake.Card_.Facts.Setup.MissingUnitCount := 0;
+    Fake.Card_.Facts.Setup.UndefinedDefineCount := 0;
+    Fake.Card_.Facts.Setup.MissingUnits := nil;
+    Fake.Card_.Facts.Setup.UndefinedDefines := nil;
+    Frame.UpdateContent;
+    Assert.AreEqual(string(#$2713), Frame.StepMark(TAtlasSetupStep.Paths).Caption);
+    Assert.IsFalse(Frame.Finding(0).Visible);
+    Assert.IsFalse(Frame.PathsInfo.Visible);
+    Assert.IsFalse(Frame.Button(TAtlasSetupButton.Options).Visible);
+  finally
+    Host.Free;
+    TAtlasStrings.Language := Saved;
+  end;
+end;
+
+procedure TAtlasWelcomeSetupFrameTests.UncertainAndGroupCaptions;
+var
+  Saved: TAtlasLanguage;
+  Line: TAtlasSetupLine;
+  Card: TAtlasSetupCard;
+begin
+  Saved := TAtlasStrings.Language;
+  try
+    TAtlasStrings.Language := TAtlasLanguage.German;
+    Line := Default(TAtlasSetupLine);
+    Line.Kind := TAtlasSetupFindingKind.MissingUnit;
+    Line.Name := 'Lib.Core';
+    Line.FileName := 'App\App.dpr';
+    Line.Line := 3;
+    Line.Count := 1;
+    Line.Uncertain := True;
+    Line.Macros := '$(MYLIB)';
+    Assert.AreEqual('Unit „Lib.Core“ nicht gefunden (unsicher, Suchpfad mit unbekanntem Makro $(MYLIB) ' +
+      'übersprungen) – App\App.dpr, Zeile 3', TAtlasWelcomeSetupFrame.FindingCaption(Line));
+    Line.Project := 'App';
+    Line.Kind := TAtlasSetupFindingKind.UndefinedDefine;
+    Line.Name := 'USE_LIB';
+    Assert.AreEqual('App: Define „USE_LIB“ ohne Quelle (unsicher, Suchpfad mit unbekanntem Makro $(MYLIB) ' +
+      'übersprungen) – App\App.dpr, Zeile 3', TAtlasWelcomeSetupFrame.FindingCaption(Line));
+    Card := SetupCard;
+    Card.GroupProjects := 3;
+    Card.GroupChecked := 1;
+    Card.Facts.Setup.MissingUnitCount := 2;
+    Card.Facts.Setup.UncertainUnitCount := 1;
+    Card.Facts.Setup.Files := 5;
+    Card.Facts.Setup.SkippedMacros := ['MYLIB'];
+    Assert.AreEqual('1 von 3 Projekten der Gruppe geprüft' + sLineBreak +
+      '2 Units nicht gefunden, 0 Defines ohne Quelle (5 Dateien geprüft)' + sLineBreak +
+      'Davon unsicher: 1 (Suchpfad mit unbekanntem Makro $(MYLIB) übersprungen)',
+      TAtlasWelcomeSetupFrame.PathsCaption(Card));
+    // Fehler gehen vor.
+    Card.Paths := TAtlasSetupRun.Failed;
+    Card.PathsError := 'kaputt';
+    Assert.AreEqual('kaputt', TAtlasWelcomeSetupFrame.PathsCaption(Card));
+    // Einzelprojekt ohne Prüfung: nichts.
+    Assert.AreEqual('', TAtlasWelcomeSetupFrame.PathsCaption(SetupCard));
+  finally
+    TAtlasStrings.Language := Saved;
+  end;
+end;
+
+procedure TAtlasWelcomeSetupFrameTests.CardAndNewRowFollowCard;
+var
+  Host: TForm;
+  Fake: TFakeSetup;
+  Source: IAtlasSetupSource;
+  Frame: TAtlasWelcomeSetupFrame;
+  Step: TAtlasSetupStep;
+  Full: Integer;
+begin
+  Fake := TFakeSetup.Create;
+  Fake.Card_ := SetupCard;
+  Source := Fake;
+  Host := TForm.CreateNew(nil);
+  try
+    Frame := TAtlasWelcomeSetupFrame.Create(Host);
+    Frame.Parent := Host;
+    Frame.SetBounds(0, 0, 640, 300);
+    Frame.Source := Source;
+    Assert.IsTrue(Frame.NewRowLabel.Visible);
+    Assert.IsTrue(Frame.Button(TAtlasSetupButton.NewUnit).Visible);
+    Assert.IsTrue(Frame.Button(TAtlasSetupButton.NewForm).Visible);
+    Assert.IsTrue(Frame.Button(TAtlasSetupButton.NewTest).Visible);
+    Assert.IsTrue(Frame.NewRowLabel.Top > Frame.DismissLabel.Top, '„Neu mit Atlas“ unter der Karte');
+    Assert.AreEqual(Frame.Button(TAtlasSetupButton.NewUnit).Top, Frame.Button(TAtlasSetupButton.NewTest).Top);
+    Full := Frame.PreferredHeight;
+    // Vollständig eingerichtet bzw. abgewählt: keine Karte, nur „Neu mit Atlas“.
+    Fake.Card_.ShowCard := False;
+    Frame.UpdateContent;
+    for Step := Low(TAtlasSetupStep) to High(TAtlasSetupStep) do
+      Assert.IsFalse(Frame.StepText(Step).Visible);
+    Assert.IsFalse(Frame.TemplateBox.Visible);
+    Assert.IsFalse(Frame.Button(TAtlasSetupButton.Baseline).Visible);
+    Assert.IsFalse(Frame.DismissLabel.Visible);
+    Assert.IsTrue(Frame.Button(TAtlasSetupButton.NewUnit).Visible);
+    Assert.IsTrue(Frame.PreferredHeight < Full);
+    // newFromTemplate aus: nur die Karte.
+    Fake.Card_.ShowCard := True;
+    Fake.Card_.ShowNew := False;
+    Frame.UpdateContent;
+    Assert.IsTrue(Frame.StepText(TAtlasSetupStep.Config).Visible);
+    Assert.IsFalse(Frame.NewRowLabel.Visible);
+    Assert.IsFalse(Frame.Button(TAtlasSetupButton.NewUnit).Visible);
+    Assert.IsFalse(Frame.Button(TAtlasSetupButton.NewTest).Visible);
+    // Schmal: Knöpfe brechen um, der Bereich wird höher.
+    Full := Frame.PreferredHeight;
+    Frame.Width := 200;
+    Frame.UpdateContent;
+    Assert.IsTrue(Frame.Button(TAtlasSetupButton.CreateConfig).Top > Frame.StepText(TAtlasSetupStep.Config).Top);
+    Assert.IsTrue(Frame.PreferredHeight > Full);
+  finally
+    Host.Free;
+  end;
+end;
+
+procedure TAtlasWelcomeSetupFrameTests.ClicksReachSource;
+var
+  Host: TForm;
+  Fake: TFakeSetup;
+  Source: IAtlasSetupSource;
+  Frame: TAtlasWelcomeSetupFrame;
+begin
+  Fake := TFakeSetup.Create;
+  Fake.Card_ := SetupCard;
+  Source := Fake;
+  Host := TForm.CreateNew(nil);
+  try
+    Frame := TAtlasWelcomeSetupFrame.Create(Host);
+    Frame.Parent := Host;
+    Frame.SetBounds(0, 0, 640, 300);
+    // Ohne Quelle geht nichts.
+    Frame.ClickButton(TAtlasSetupButton.CreateConfig);
+    CheckSynchronize;
+    Assert.AreEqual(0, Integer(Length(Fake.Calls)));
+    Frame.Source := Source;
+    Frame.SelectTemplate(TAtlasSetupTemplate.Legacy);
+    Frame.Button(TAtlasSetupButton.CreateConfig).Click;
+    Frame.Button(TAtlasSetupButton.Baseline).Click;
+    Frame.Button(TAtlasSetupButton.Paths).Click;
+    Frame.DismissLabel.OnClick(Frame.DismissLabel);
+    Frame.Button(TAtlasSetupButton.NewUnit).Click;
+    Frame.Button(TAtlasSetupButton.NewForm).Click;
+    Frame.Button(TAtlasSetupButton.NewTest).Click;
+    Assert.AreEqual(0, Integer(Length(Fake.Calls)), 'über die Nachrichtenschleife');
+    CheckSynchronize;
+    Assert.AreEqual(7, Integer(Length(Fake.Calls)));
+    Assert.AreEqual('config:legacy', Fake.Calls[0]);
+    Assert.AreEqual('baseline', Fake.Calls[1]);
+    Assert.AreEqual('paths', Fake.Calls[2]);
+    Assert.AreEqual('dismiss', Fake.Calls[3]);
+    Assert.AreEqual('new:unit', Fake.Calls[4]);
+    Assert.AreEqual('new:form', Fake.Calls[5]);
+    Assert.AreEqual('new:test', Fake.Calls[6]);
+    // Projekt nicht offen: Baseline und Prüfung öffnen erst das Projekt.
+    Fake.Calls := nil;
+    Fake.Card_.ProjectOpen := False;
+    Frame.UpdateContent;
+    Frame.ClickButton(TAtlasSetupButton.Baseline);
+    Frame.ClickButton(TAtlasSetupButton.Paths);
+    CheckSynchronize;
+    Assert.AreEqual(2, Integer(Length(Fake.Calls)));
+    Assert.AreEqual('open', Fake.Calls[0]);
+    Assert.AreEqual('open', Fake.Calls[1]);
+    // Unsichtbare Knöpfe tun nichts: Schritt 2 erledigt, keine Karte.
+    Fake.Calls := nil;
+    Fake.Card_.Facts.ConfigExists := True;
+    Fake.Card_.ShowCard := False;
+    Frame.UpdateContent;
+    Frame.ClickButton(TAtlasSetupButton.CreateConfig);
+    Frame.ClickButton(TAtlasSetupButton.Dismiss);
+    Frame.ClickButton(TAtlasSetupButton.Options);
+    CheckSynchronize;
+    Assert.AreEqual(0, Integer(Length(Fake.Calls)));
+  finally
+    Host.Free;
+  end;
+end;
+
+procedure TAtlasWelcomeSetupFrameTests.RunningStepShowsSeconds;
+var
+  Saved: TAtlasLanguage;
+  Host: TForm;
+  Fake: TFakeSetup;
+  Source: IAtlasSetupSource;
+  Frame: TAtlasWelcomeSetupFrame;
+  Card: TAtlasSetupCard;
+begin
+  Saved := TAtlasStrings.Language;
+  try
+    TAtlasStrings.Language := TAtlasLanguage.German;
+    Card := SetupCard;
+    Card.Baseline := TAtlasSetupRun.Running;
+    Card.BaselineStarted := 1000;
+    Assert.AreEqual('Baseline wird erzeugt … 12 s',
+      TAtlasWelcomeSetupFrame.StepCaption(TAtlasSetupStep.Baseline, Card, 13500));
+    Card.Paths := TAtlasSetupRun.Running;
+    Card.PathsStarted := 1000;
+    Assert.AreEqual('Suchpfade und Defines werden geprüft … 2 s',
+      TAtlasWelcomeSetupFrame.StepCaption(TAtlasSetupStep.Paths, Card, 3000));
+    Fake := TFakeSetup.Create;
+    Fake.Card_ := Card;
+    Fake.Card_.BaselineStarted := TThread.GetTickCount64;
+    Fake.Card_.PathsStarted := TThread.GetTickCount64;
+    Source := Fake;
+    Host := TForm.CreateNew(nil);
+    try
+      Frame := TAtlasWelcomeSetupFrame.Create(Host);
+      Frame.Parent := Host;
+      Frame.SetBounds(0, 0, 640, 300);
+      Frame.Source := Source;
+      // Laufender Schritt: Knopf bleibt sichtbar, aber ausgegraut (kein zweiter Lauf).
+      Assert.IsTrue(Frame.Button(TAtlasSetupButton.Baseline).Visible);
+      Assert.IsFalse(Frame.Button(TAtlasSetupButton.Baseline).Enabled);
+      Assert.IsFalse(Frame.Button(TAtlasSetupButton.Paths).Enabled);
+      Assert.Contains(Frame.StepText(TAtlasSetupStep.Baseline).Caption, '0 s');
+      Frame.ClickButton(TAtlasSetupButton.Baseline);
+      CheckSynchronize;
+      Assert.AreEqual(0, Integer(Length(Fake.Calls)));
+      // Fehler: Grund unter dem Schritt.
+      Fake.Card_.Baseline := TAtlasSetupRun.Failed;
+      Fake.Card_.BaselineError := 'Server nicht bereit';
+      Frame.UpdateContent;
+      Assert.IsTrue(Frame.Button(TAtlasSetupButton.Baseline).Enabled);
+      Assert.IsTrue(Frame.BaselineInfo.Visible);
+      Assert.AreEqual('Server nicht bereit', Frame.BaselineInfo.Caption);
+    finally
+      Host.Free;
+    end;
+  finally
+    TAtlasStrings.Language := Saved;
+  end;
+end;
+
+procedure TAtlasWelcomeSetupFrameTests.PreviewShowsContent;
+var
+  Saved: TAtlasLanguage;
+  Dialog: TAtlasSetupPreviewDialog;
+  Text: string;
+begin
+  Saved := TAtlasStrings.Language;
+  try
+    TAtlasStrings.Language := TAtlasLanguage.German;
+    Text := StringReplace(TAtlasProjectSetups.BuiltIn(TAtlasSetupTemplate.Existing), #10, sLineBreak,
+      [rfReplaceAll]);
+    Dialog := TAtlasSetupPreviewDialog.CreateDialog(nil, 'atlas.json', 'XmlInspector.dproj', 'Bestehendes Projekt',
+      Text);
+    try
+      Assert.AreEqual('atlas.json anlegen', Dialog.Caption);
+      Assert.AreEqual('Atlas legt atlas.json neben XmlInspector.dproj an (Vorlage „Bestehendes Projekt“). Inhalt:',
+        Dialog.Intro.Caption);
+      Assert.Contains(Dialog.Content.Text, '"profile": "standard"');
+      Assert.IsTrue(Dialog.Content.ReadOnly);
+      Assert.IsTrue(Dialog.CreateButton.Default);
+      Assert.IsTrue(Dialog.CancelButton.Cancel, 'Esc schreibt nichts');
+      Assert.AreEqual(Integer(mrOk), Integer(Dialog.CreateButton.ModalResult));
+      Assert.AreEqual(Integer(mrCancel), Integer(Dialog.CancelButton.ModalResult));
+    finally
+      Dialog.Free;
+    end;
+  finally
+    TAtlasStrings.Language := Saved;
+  end;
+end;
+
 procedure TAtlasWelcomeDiscoverFrameTests.ImageFitsColumn;
 var
   Host: TForm;
@@ -2296,5 +3236,7 @@ initialization
   TDUnitX.RegisterTestFixture(TAtlasWelcomeStateFrameTests);
   TDUnitX.RegisterTestFixture(TAtlasWelcomeDiscoverFrameTests);
   TDUnitX.RegisterTestFixture(TAtlasWelcomeHelpFrameTests);
+  TDUnitX.RegisterTestFixture(TAtlasWelcomeSetupFrameTests);
+  TDUnitX.RegisterTestFixture(TAtlasWelcomeTrendsFrameTests);
 
 end.

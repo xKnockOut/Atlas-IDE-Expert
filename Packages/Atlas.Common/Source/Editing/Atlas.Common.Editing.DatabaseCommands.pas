@@ -25,8 +25,7 @@ uses
   Atlas.Common.Documents.Contract,
   Atlas.Common.Documents.Uris,
   Atlas.Common.Configuration.Contract,
-  Atlas.Common.Rules.Contract,
-  Atlas.Common.Rules.DeclaredTypes,
+  Atlas.Common.Pascal.DeclaredTypes,
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Editing.StringLiterals,
   Atlas.Common.Editing.SqlText,
@@ -83,20 +82,9 @@ begin
     Result := Format('%s%s.ParamByName(%s).Value := ;', [AIndent, AName, QuotedStr(AParam)]);
 end;
 
-/// <summary>Ersetzt die Befehlszeile durch ALines.</summary>
-function ReplaceCommand(ASource: TCommandSource; const ALines: TArray<string>): TRuleEdit;
-var
-  Text, Line: string;
-begin
-  Text := '';
-  for Line in ALines do
-    Text := Text + Line + ASource.LineBreak;
-  Result := TRuleEdit.Create(TTextRange.Create(ASource.Line, 0, ASource.Line + 1, 0), Text);
-end;
-
 { /sql }
 
-function ExecuteSql(const AContext: TSlashContext; out AEdits: TArray<TRuleEdit>; out AReason: string): Boolean;
+function ExecuteSql(const AContext: TSlashContext; out AEdits: TArray<TTextEdit>; out AReason: string): Boolean;
 var
   Source: TCommandSource;
   Name, Sql, Indent, TypeName, Param, Literal, Single: string;
@@ -124,7 +112,7 @@ begin
     end;
     for Param in TSqlText.Params(Sql) do
       Lines := Lines + [ParamLine(Indent, Name, TypeName, Param)];
-    AEdits := [ReplaceCommand(Source, Lines)];
+    AEdits := [Source.ReplaceWithLines(Lines)];
     Result := True;
   finally
     Source.Free;
@@ -151,7 +139,7 @@ begin
     end;
 end;
 
-function ExecuteParams(const AContext: TSlashContext; out AEdits: TArray<TRuleEdit>; out AReason: string): Boolean;
+function ExecuteParams(const AContext: TSlashContext; out AEdits: TArray<TTextEdit>; out AReason: string): Boolean;
 var
   Source: TCommandSource;
   Routine: TSyntaxNode;
@@ -187,7 +175,7 @@ begin
     Lines := nil;
     for Param in Missing do
       Lines := Lines + [ParamLine(Indent, Name, TypeName, Param)];
-    AEdits := [ReplaceCommand(Source, Lines)];
+    AEdits := [Source.ReplaceWithLines(Lines)];
     Result := True;
   finally
     Source.Free;
@@ -196,7 +184,7 @@ end;
 
 { /loop }
 
-function ExecuteLoop(const AContext: TSlashContext; out AEdits: TArray<TRuleEdit>; out AReason: string): Boolean;
+function ExecuteLoop(const AContext: TSlashContext; out AEdits: TArray<TTextEdit>; out AReason: string): Boolean;
 var
   Source: TCommandSource;
   Name, Rest: string;
@@ -217,7 +205,7 @@ end;
 
 { /transaction }
 
-function ExecuteTransaction(const AContext: TSlashContext; out AEdits: TArray<TRuleEdit>;
+function ExecuteTransaction(const AContext: TSlashContext; out AEdits: TArray<TTextEdit>;
   out AReason: string): Boolean;
 var
   Source: TCommandSource;

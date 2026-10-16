@@ -15,7 +15,7 @@ An expert for RAD Studio (Delphi/Object Pascal): an IDE plugin with its own user
 - **Compiler check after saving** and the compiler messages of the "Build" tab
 - **Bracket and block pairs** coloured by depth, with matching block lines
 - **Results window** "Atlas Results" for references (including forms), implementations, callers, calls and inheritance; workspace symbol search; preview before renaming
-- **Code actions** (Alt+Enter), expand and shrink selection (Ctrl+W, Ctrl+Shift+W), go to implementation and type definition, copy qualified name; all also in the editor context menu under *Atlas*. Slash commands such as `/uses Unit` run after Enter, `///` above a declaration creates the documentation comment
+- **Code actions** (Alt+Enter), expand and shrink selection (Ctrl+W, Ctrl+Shift+W), go to implementation and type definition, copy qualified name; all also in the editor context menu under *Atlas*. Alt+Ins opens the **generate menu** at the cursor (constructor, properties, overridden methods, interface methods, surround, templates). Slash commands such as `/uses Unit` run after Enter, `///` above a declaration creates the documentation comment
 - **Form designer**: open forms are sent to the server as the designer has them, so references, renames and checks see unsaved changes; renaming an event handler also updates its assignment in the designer
 - **Command palette** (Ctrl+Shift+P), silent reload of files changed outside the IDE, hang watchdog with log
 
@@ -64,7 +64,7 @@ More: [docs/Installation.md](docs/Installation.md).
 | `Packages/Atlas.Common` | Package, free of Windows and VCL |
 | `Packages/Atlas.Windows` | Package for Windows-specific functions, free of VCL |
 | `Application/AtlasServer` | The server (console program, speaks LSP over stdin/stdout) |
-| `Packages/Atlas.IDE.Expert` | The IDE plugin (design-time package, Win32), layers `Atlas.Core.*`, `Atlas.UI.*`, `Atlas.IDE.*` |
+| `Packages/Atlas.IDE.Expert` | The IDE plugin (design-time package; Win32 for the classic IDE, Win64 for the 64-bit IDE from Delphi 12.3), layers `Atlas.Core.*`, `Atlas.UI.*`, `Atlas.IDE.*` |
 | `Tests/Atlas.Tests` | DUnitX tests |
 
 Roles, naming and import rules: [docs/Architektur.md](docs/Architektur.md).
@@ -78,7 +78,7 @@ Roles, naming and import rules: [docs/Architektur.md](docs/Architektur.md).
 
 ## Building
 
-Open `Atlas.groupproj` in the IDE and **Build All**. The order Common → Windows → server → IDE plugin → tests is set in the project group. Common, Windows and the server must be built for the same platform, otherwise the server does not find the package units. The IDE plugin is set up for Win32 only (the IDE is 32-bit); a group build for Win64 still compiles it and thus checks the code.
+Open `Atlas.groupproj` in the IDE and **Build All**. The order Common → Windows → server → IDE plugin → tests is set in the project group. Common, Windows and the server must be built for the same platform, otherwise the server does not find the package units. The IDE plugin is set up for Win32 (classic IDE) and Win64 (64-bit IDE from Delphi 12.3); which BPL is loaded depends on the IDE ([ADR 0008](docs/adr/0008-plattformen.md)).
 
 On the command line (RAD Studio command prompt or after `rsvars.bat`):
 
@@ -137,7 +137,7 @@ Values also work with `=` (`--log=server.log`). `--stdio` and `--clientProcessId
 | `--source-root <folder>` | root of the SARIF paths; defaults to the Git root above the target, otherwise the target's folder. Paths below it carry `uriBaseId` `%SRCROOT%`, files outside appear as absolute `file:` URIs |
 | `--profile <name>` | rule profile (`standard`, `fast`, `strict`, `security`, `style` or one of your own from `profiles`); overrides `profile` in `atlas.json` |
 | `--baseline <file>` | hide known findings; without it `atlas-baseline.json` next to `atlas.json` applies if present. The editor hides them as well |
-| `--update-baseline` | rewrite the baseline from the current findings (vanished entries drop out), exit code 0 |
+| `--update-baseline` | rewrite the baseline from the current findings, exit code 0. stderr first lists entries without a file with their path (renamed, moved or deleted files; they drop out), then the counters: findings, files, added, removed, unchanged |
 | `--changed [<base>]` | only files changed according to Git (or SVN, see below) against the merge base with `<base>` (default `main`); changed `.dfm`/`.fmx` check their unit, changed `.inc` all units including them, changed `.dproj`/`.dpk`/`.dpr`/`atlas.json` everything |
 | `--diff <ref>` | like `--changed`, but directly against `<ref>` |
 | `--include-uncommitted` | with `--changed`/`--diff` also index, working tree and new files |
@@ -147,6 +147,8 @@ Values also work with `=` (`--log=server.log`). `--stdio` and `--clientProcessId
 | `--todos` | instead of findings: open TODO entries (#68) from `// TODO`, `// FIXME` and the IDE to-do format `{ TODO 1 -oOwner -cCategory : Text }` with priority, owner and category; more markers via the option `"keywords"` of the rule `todo-comment`; `--format text` writes a Markdown overview, `json` the data; exit code 0 |
 
 Exit code: 1 if a finding reaches `--fail-on` (default: at least one error), otherwise 0; 3 for invocation or read errors. Findings hidden by the baseline never count.
+
+Baseline (#97): an entry in `atlas-baseline.json` records the file, the rule, the enclosing routine (fully qualified like `TFoo.Bar`, outside a routine the section such as `implementation`), a fingerprint of the line without whitespace and a fingerprint of the code ±2 lines around it. The same line in another routine therefore counts as new, as does a finding that moves to another routine. Re-indenting, moved lines and a renamed routine (same context, old name gone from the file) keep their entries. A renamed or moved file loses its entries: its findings show up as new until the baseline is updated. Older files without routines stay readable and are completed on the next update. Suppression comments for findings in the baseline never report `unused-suppression`. In editors the command `atlas.updateBaseline` (`workspace/executeCommand`, argument: URI of the project or folder) updates the baseline and answers with the counters; it checks every file of the project and keeps the server busy meanwhile. In SARIF every result carries `partialFingerprints` (`atlasBaseline/v1` from rule, routine and line, `atlasContext/v1` from the context, each with a running number `:n` for equal values in one file); with a baseline `baselineState` is added: `new`, `unchanged` (as an external suppression) or `absent` (entry without a finding). Text, JSON and the exit code contain only new findings.
 
 In SARIF, `message.text` is the rule's English catalog name without the confidence suffix. The confidence is in `properties.confidence`, the finding's German message in `properties.detail`.
 

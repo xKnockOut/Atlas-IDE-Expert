@@ -25,6 +25,9 @@
 //   beim Schließen und beim Beenden (Stop) und meldet sich selbst an.
 // - Bereich „Projekte“ (#592, Projects): Zustand je zuletzt geöffnetem
 //   Projekt aus den Projekt-Zusammenfassungen; meldet sich selbst an.
+// - Bereich „Projektverlauf“ (#758, Trends): Linien je Reihe über die
+//   letzten Builds des in „Projekte“ gewählten Projekts; meldet sich selbst
+//   an.
 // - Bereich „Nicht gesichert“ (#762, Unsaved): nicht Committetes, nicht
 //   Gepushtes und Stashes je Projekt; meldet sich selbst an.
 // - Zustandskachel „Atlas“ (#754, State): Server, Version, Index,
@@ -34,6 +37,9 @@
 //   nach der gemeinsamen Zählung (#600); meldet sich selbst an.
 // - Bereich „Hilfe und Rückmeldung“ (#766, Help): Atlas-Doku, Tastenkürzel
 //   (#520) und „Problem melden …“ mit Diagnosepaket; meldet sich selbst an.
+// - Bereich „<Projekt> für Atlas einrichten“ (#759, Setup): atlas.json,
+//   Baseline, Suchpfade und Defines je Projekt sowie „Neu mit Atlas“; meldet
+//   sich selbst an.
 // Die Willkommensseite startet keinen Server und liest nur lokale Daten.
 
 interface
@@ -53,11 +59,13 @@ uses
   Atlas.IDE.Welcome.Search,
   Atlas.IDE.Welcome.WhatsNew,
   Atlas.IDE.Welcome.Projects,
+  Atlas.IDE.Welcome.Trends,
   Atlas.IDE.Welcome.Unsaved,
   Atlas.IDE.Welcome.Continue,
   Atlas.IDE.Welcome.State,
   Atlas.IDE.Welcome.Discover,
-  Atlas.IDE.Welcome.Help;
+  Atlas.IDE.Welcome.Help,
+  Atlas.IDE.Welcome.Setup;
 
 type
   TAtlasIdeWelcome = class
@@ -81,6 +89,9 @@ type
     FProjects: TAtlasIdeProjects;
     // Hält die Quelle des Bereichs „Projekte“ am Leben; die Frames halten sie ebenfalls.
     FProjectsRef: IInterface;
+    FTrends: TAtlasIdeTrends;
+    // Hält die Quelle des Bereichs „Projektverlauf“ am Leben; die Frames halten sie ebenfalls.
+    FTrendsRef: IInterface;
     FUnsaved: TAtlasIdeUnsaved;
     // Hält die Quelle des Bereichs „Nicht gesichert“ am Leben; die Frames halten sie ebenfalls.
     FUnsavedRef: IInterface;
@@ -96,11 +107,16 @@ type
     FHelp: TAtlasIdeHelp;
     // Hält die Quelle des Bereichs „Hilfe und Rückmeldung“ am Leben; die Frames halten sie ebenfalls.
     FHelpRef: IInterface;
+    FSetup: TAtlasIdeSetup;
+    // Hält die Quelle des Bereichs „Projekt für Atlas einrichten“ am Leben; die Frames halten sie ebenfalls.
+    FSetupRef: IInterface;
     procedure SetWhatsNew(AValue: TAtlasIdeWhatsNew);
     procedure SetState(AValue: TAtlasIdeWelcomeState);
     procedure SetDiscover(AValue: TAtlasIdeDiscover);
     procedure SetHelp(AValue: TAtlasIdeHelp);
+    procedure SetSetup(AValue: TAtlasIdeSetup);
     procedure SetProjects(AValue: TAtlasIdeProjects);
+    procedure SetTrends(AValue: TAtlasIdeTrends);
     procedure SetUnsaved(AValue: TAtlasIdeUnsaved);
     procedure SetContinue(AValue: TAtlasIdeContinue);
     procedure AttachMenu(AFrame: TAtlasWelcomeFrame);
@@ -148,6 +164,9 @@ type
     property WhatsNew: TAtlasIdeWhatsNew read FWhatsNew write SetWhatsNew;
     /// <summary>Bereich „Projekte“ (#592); gehört danach der Steuerung (Start beim Setzen). nil = ohne.</summary>
     property Projects: TAtlasIdeProjects read FProjects write SetProjects;
+    /// <summary>Bereich „Projektverlauf“ (#758); gehört danach der Steuerung (Start beim Setzen). nil = ohne.
+    /// </summary>
+    property Trends: TAtlasIdeTrends read FTrends write SetTrends;
     /// <summary>Bereich „Nicht gesichert“ (#762); gehört danach der Steuerung (Start beim Setzen). nil = ohne.</summary>
     property Unsaved: TAtlasIdeUnsaved read FUnsaved write SetUnsaved;
     /// <summary>Bereich „Weiterarbeiten“ (#755); gehört danach der Steuerung (Start beim Setzen). nil = ohne.
@@ -161,6 +180,9 @@ type
     /// <summary>Bereich „Hilfe und Rückmeldung“ (#766); gehört danach der Steuerung (Start beim Setzen). nil =
     /// ohne.</summary>
     property Help: TAtlasIdeHelp read FHelp write SetHelp;
+    /// <summary>Bereich „Projekt für Atlas einrichten“ (#759); gehört danach der Steuerung (Start beim Setzen).
+    /// nil = ohne.</summary>
+    property Setup: TAtlasIdeSetup read FSetup write SetSetup;
     class function HeaderInfo(const AServer: TAtlasServerInfo; AIndexing: Boolean; APercent, AUnits: Integer;
       AHour: Integer; const AFirstName: string; AGreeting: Boolean): TAtlasWelcomeHeaderInfo; static;
   end;
@@ -180,7 +202,7 @@ uses
   Atlas.Core.Welcome.HostLayout,
   Atlas.UI.Strings,
   Atlas.UI.Welcome.WhatsNew,
-  Atlas.IDE.Settings.Store,
+  Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Welcome.Registry,
   Atlas.IDE.Welcome.Window;
 
@@ -261,6 +283,8 @@ begin
   TAtlasStatusRegistry.Default.RemoveListener(FStatusListener);
   if FWhatsNew <> nil then
     FWhatsNew.Stop;
+  if FTrends <> nil then
+    FTrends.Stop;
   if FProjects <> nil then
     FProjects.Stop;
   if FUnsaved <> nil then
@@ -274,6 +298,8 @@ begin
     FDiscover.Stop;
   if FHelp <> nil then
     FHelp.Stop;
+  if FSetup <> nil then
+    FSetup.Stop;
   // Beim Beenden der IDE: Hat die IDE ihr Layout aus dem Speicher zurückgeschrieben, gilt die Marke weiter.
   TAtlasIdeWelcomePage.RemoveAll;
   TAtlasIdeWelcomeWindow.Release;
@@ -282,6 +308,8 @@ begin
   FWhatsNewRef := nil;
   FProjects := nil;
   FProjectsRef := nil;
+  FTrends := nil;
+  FTrendsRef := nil;
   FUnsaved := nil;
   FUnsavedRef := nil;
   FContinue := nil;
@@ -292,6 +320,8 @@ begin
   FDiscoverRef := nil;
   FHelp := nil;
   FHelpRef := nil;
+  FSetup := nil;
+  FSetupRef := nil;
   inherited;
 end;
 
@@ -316,6 +346,18 @@ begin
       procedure
       begin
         FDiscover.Start;
+      end);
+end;
+
+procedure TAtlasIdeWelcome.SetSetup(AValue: TAtlasIdeSetup);
+begin
+  FSetup := AValue;
+  FSetupRef := AValue;
+  if FSetup <> nil then
+    TAtlasGuard.Run(TAtlasFeature.WelcomePage,
+      procedure
+      begin
+        FSetup.Start;
       end);
 end;
 
@@ -364,6 +406,18 @@ begin
       procedure
       begin
         FProjects.Start;
+      end);
+end;
+
+procedure TAtlasIdeWelcome.SetTrends(AValue: TAtlasIdeTrends);
+begin
+  FTrends := AValue;
+  FTrendsRef := AValue;
+  if FTrends <> nil then
+    TAtlasGuard.Run(TAtlasFeature.WelcomePage,
+      procedure
+      begin
+        FTrends.Start;
       end);
 end;
 
@@ -503,6 +557,12 @@ begin
       // Bereich „Hilfe und Rückmeldung“: welcomePage.help und keys.overview (#766).
       if FHelp <> nil then
         FHelp.Refresh;
+      // Bereich „Projekt für Atlas einrichten“: welcomePage.projectSetup und .newFromTemplate (#759).
+      if FSetup <> nil then
+        FSetup.Refresh;
+      // Bereich „Projektverlauf“: welcomePage.trends, .series und .points (#758).
+      if FTrends <> nil then
+        FTrends.Refresh;
       if not Current.WelcomePage then
         Host := ''
       else if (Current.WelcomePageHost = 'dockWindow') or not TAtlasIdeWelcomePage.Available then

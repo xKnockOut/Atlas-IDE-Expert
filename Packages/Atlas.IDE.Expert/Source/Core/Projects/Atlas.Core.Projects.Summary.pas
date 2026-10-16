@@ -22,7 +22,7 @@
 //             "revision": "…", "changed": 3, "ahead": 1, "behind": 0},
 //     "build": {"at": "…", "kind": "build|make|check|…", "configuration": "Debug",
 //               "platform": "Win32", "succeeded": true, "errors": 0,
-//               "warnings": 0, "hints": 0, "first": {…}},
+//               "warnings": 0, "hints": 0, "durationMs": 12480, "first": {…}},
 //     "check": {"at": "…", "errors": 2, "first": {"file": "…", "line": 12,
 //               "column": 5, "code": "E2003", "text": "…"}},
 //     "rules": {"at": "…", "newHits": 3},
@@ -31,7 +31,28 @@
 //                             "cognitive": 2.4, "parameters": 1.3},
 //                 "maximum": {"length": 140, …}, "exceeded": {"length": 2, …}},
 //     "todos": {"at": "…", "files": 4, "open": 9, "done": 2,
-//               "keywords": {"FIXME": 2, "TODO": 7}}
+//               "keywords": {"FIXME": 2, "TODO": 7}},
+//     "baseline": {"at": "…", "exists": true, "valid": true, "entries": 40,
+//                  "hits": 52, "orphaned": 2, "updated": "…", "added": 3,
+//                  "removed": 5},
+//     "trends": {"builds": 31, "points": [{"at": "…", "build": 31,
+//                "branch": "main", "commit": "…", "warnings": 3, "ruleHits": 12,
+//                "todos": 9, "duration": 12.5, "methodLength": 11.8}, …]},
+//     "setup": {"dismissed": true, "dismissedAt": "…",
+//               "paths": {"at": "…", "files": 12, "unreadable": 0,
+//                         "missingUnits": 2, "undefinedDefines": 1,
+//                         "uncertainUnits": 1, "uncertainDefines": 0,
+//                         "skippedMacros": ["MYLIB"],
+//                         "units": [{"name": "Foo", "file": "Src\\Main.pas",
+//                                    "line": 12, "count": 2,
+//                                    "uncertain": true}, …],
+//                         "defines": [{"name": "USE_LOG", …}, …]}},
+//     "tests": {"at": "…", "project": "C:\\Projekte\\Demo.Tests.dproj",
+//               "configuration": "Debug", "platform": "Win64", "passed": 40,
+//               "failed": 1, "errors": 1, "skipped": 2, "durationMs": 1250,
+//               "failures": [{"test": "Demo.Tests.TRechner.Summe.Gross",
+//                             "message": "…", "file": "C:\\…\\Demo.Tests.pas",
+//                             "line": 35}, …]}
 //   }
 // "changed", "ahead", "behind" = -1: unbekannt. "first" ist die erste Fehler-
 // meldung (Zeile und Spalte ab 1). "build" ist der letzte Lauf des Benutzers,
@@ -44,6 +65,45 @@
 // "todos" ist die TODO-Übersicht (#68) beim letzten Build: Dateien mit
 // offenen Einträgen, offene und erledigte Einträge, offene je Marke; der
 // Projektverlauf liest daraus die Reihe „offene TODOs“ ("open").
+// "baseline" ist die Baseline des Projekts (#97), gelesen nach jedem Build
+// und nach „Baseline des Projekts aktualisieren“: "exists" = atlas-baseline.json
+// (oder der frühere Name) liegt im Projektordner, "valid" = lesbar, "entries"
+// Einträge, "hits" Treffer darin, "orphaned" Treffer in Einträgen, deren
+// Datei es nicht mehr gibt. "updated", "added" und "removed" stammen vom
+// letzten Aktualisieren über Atlas (fehlen = unbekannt; ein Build ändert sie
+// nicht). Der Projektverlauf (#758) zeigt „Regeltreffer seit Baseline“
+// ("rules.newHits") nur, wenn "exists" gilt, sonst eine Lücke; die Einrichtung
+// (#759) liest „Baseline vorhanden“ aus "exists" und bietet sonst
+// „Baseline erzeugen“ (Befehl atlas.updateBaseline) an.
+// "build.durationMs" ist die Dauer des Compiles (#527, bei einer Projektgruppe
+// die der Gruppe); fehlt = unbekannt.
+// "trends" ist der Projektverlauf (#758): je Build des Benutzers ein Messpunkt
+// (Ringpuffer, höchstens welcomePage.trends.points), älteste zuerst. "builds"
+// zählt alle Builds, "build" ist die laufende Nummer des Punkts. Je Reihe der
+// Wert zum Zeitpunkt des Builds: "warnings" Warnungen plus Hinweise, "ruleHits"
+// neue Regeltreffer gegenüber der Baseline (nur mit Baseline), "todos" offene
+// TODOs, "duration" Build-Dauer in s, "methodLength" mittlere Methodenlänge in
+// Zeilen (beide mit einer Nachkommastelle). Fehlt ein Wert, war er nicht
+// bekannt; der Verlauf zeigt dort eine Lücke. Unbekannte Felder eines Punkts
+// bleiben erhalten (zugeordnet über "build").
+// "setup" ist die Einrichtung des Projekts für Atlas (#759): "dismissed" =
+// „Für dieses Projekt nicht mehr fragen“ (die Karte erscheint nicht mehr;
+// der Befehl „Projekt für Atlas einrichten“ hebt es auf). "paths" ist das
+// Ergebnis von „Suchpfade und Defines prüfen“: gelesene und nicht lesbare
+// Dateien, Zahl der fehlenden Units und der Defines ohne Quelle und die
+// ersten Funde (höchstens TAtlasProjectSetup.MaxFindings je Liste; Datei
+// relativ zum Projektordner, Zeile ab 1, "count" Stellen im Projekt).
+// "skippedMacros" sind unbekannte Makros übersprungener Suchpfade; Funde mit
+// "uncertain" sind deshalb nicht sicher ("uncertainUnits" und
+// "uncertainDefines" zählen sie, auch über die gespeicherten hinaus). Bei
+// einer Projektgruppe steht die Prüfung je Projekt in dessen Zusammenfassung.
+// "tests" ist der letzte DUnitX-Lauf aus der IDE (#69; Grundlage der Karte
+// Tests #763): Testprojekt, Konfiguration, Plattform, Zahlen, Dauer und die
+// fehlgeschlagenen Tests (höchstens TAtlasProjectTests.MaxFailures; "failed"
+// und "errors" zählen alle). "test" ist der volle Name aus dem Bericht von
+// DUnitX; „Fehlgeschlagene erneut ausführen“ übergibt genau diese Namen an
+// --run. "file" ist absolut, "line" ab 1 (Methodenkopf), beide fehlen ohne
+// Fundstelle. Läufe über das MCP-Werkzeug run_tests schreiben hier nicht.
 //
 // Erweitern: Neue Felder und Abschnitte dürfen jederzeit dazukommen, ohne
 // "format" zu erhöhen. Leser übergehen, was sie nicht kennen; Schreiber
@@ -100,6 +160,8 @@ type
     Errors: Integer;
     Warnings: Integer;
     Hints: Integer;
+    /// <summary>Dauer des Compiles in ms (#758); 0 = unbekannt.</summary>
+    DurationMs: Integer;
     First: TAtlasProjectLocation;
     class function Empty: TAtlasProjectBuild; static;
   end;
@@ -166,6 +228,144 @@ type
     class function Empty: TAtlasProjectRules; static;
   end;
 
+  /// <summary>Baseline des Projekts (#97); Grundlage für Projektverlauf (#758) und Einrichtung (#759).</summary>
+  TAtlasProjectBaseline = record
+    Known: Boolean;
+    /// <summary>Zeitpunkt des Lesens (UTC): Build oder Aktualisieren.</summary>
+    At: TDateTime;
+    /// <summary>Die Datei liegt im Projektordner.</summary>
+    Exists: Boolean;
+    /// <summary>Die Datei ist eine lesbare Baseline; ohne Datei False.</summary>
+    Valid: Boolean;
+    Entries: Integer;
+    /// <summary>Treffer in der Baseline (Summe von "count").</summary>
+    Hits: Integer;
+    /// <summary>Treffer in Einträgen, deren Datei es nicht mehr gibt.</summary>
+    Orphaned: Integer;
+    /// <summary>Letztes Aktualisieren über Atlas (UTC); 0 = unbekannt, dann gelten Added und Removed nicht.</summary>
+    Updated: TDateTime;
+    Added: Integer;
+    Removed: Integer;
+    class function Empty: TAtlasProjectBaseline; static;
+  end;
+
+{$SCOPEDENUMS ON}
+  /// <summary>Reihen des Projektverlaufs (#758) in der Reihenfolge der Kacheln.</summary>
+  TAtlasTrendSeries = (Warnings, RuleHits, Todos, Duration, MethodLength);
+{$SCOPEDENUMS OFF}
+
+  TAtlasTrendNumbers = array[TAtlasTrendSeries] of Integer;
+  TAtlasTrendFlags = array[TAtlasTrendSeries] of Boolean;
+
+  /// <summary>Messpunkt des Projektverlaufs (#758): Werte eines Builds.</summary>
+  TAtlasTrendPoint = record
+    /// <summary>Zeitpunkt des Builds (UTC).</summary>
+    At: TDateTime;
+    /// <summary>Laufende Nummer des Builds (ab 1).</summary>
+    Build: Integer;
+    /// <summary>Branch bzw. SVN-Pfad zum Zeitpunkt des Builds; '' = unbekannt.</summary>
+    Branch: string;
+    /// <summary>Commit bzw. Revision; '' = unbekannt.</summary>
+    Commit: string;
+    /// <summary>Wert je Reihe in Zehnteln (3 Warnungen = 30, 12,5 s = 125); gilt nur mit Has.</summary>
+    Values: TAtlasTrendNumbers;
+    /// <summary>Wert bekannt; sonst Lücke.</summary>
+    Has: TAtlasTrendFlags;
+    class function Create(AAtUtc: TDateTime; ABuild: Integer): TAtlasTrendPoint; static;
+    procedure SetValue(ASeries: TAtlasTrendSeries; ATenths: Integer);
+    procedure Clear(ASeries: TAtlasTrendSeries);
+  end;
+
+  /// <summary>Projektverlauf (#758): Ringpuffer der Messpunkte, älteste zuerst.</summary>
+  TAtlasProjectTrends = record
+    Known: Boolean;
+    /// <summary>Builds bisher; Nummer des nächsten Punkts ist Builds + 1.</summary>
+    Builds: Integer;
+    Points: TArray<TAtlasTrendPoint>;
+    class function Empty: TAtlasProjectTrends; static;
+  end;
+
+  /// <summary>Fund der Pfadprüfung (#759): fehlende Unit oder Define ohne Quelle.</summary>
+  TAtlasSetupFinding = record
+    Name: string;
+    /// <summary>Datei der ersten Stelle, relativ zum Projektordner.</summary>
+    FileName: string;
+    /// <summary>Zeile ab 1.</summary>
+    Line: Integer;
+    /// <summary>Stellen im Projekt.</summary>
+    Count: Integer;
+    /// <summary>Kein sicherer Fund (Suchpfad mit unbekanntem Makro übersprungen).</summary>
+    Uncertain: Boolean;
+    /// <summary>Nur in der Zusammenfassung einer Projektgruppe: Name des Projekts; nicht gespeichert.</summary>
+    Project: string;
+  end;
+
+  /// <summary>Einrichtung des Projekts für Atlas (#759).</summary>
+  TAtlasProjectSetup = record
+  public const
+    /// <summary>Höchstens so viele Funde je Liste stehen in der Datei.</summary>
+    MaxFindings = 50;
+  public
+    Known: Boolean;
+    /// <summary>„Für dieses Projekt nicht mehr fragen“.</summary>
+    Dismissed: Boolean;
+    DismissedAt: TDateTime;
+    /// <summary>„Suchpfade und Defines prüfen“ lief; die übrigen Felder gelten nur dann.</summary>
+    Checked: Boolean;
+    CheckedAt: TDateTime;
+    Files: Integer;
+    Unreadable: Integer;
+    /// <summary>Alle fehlenden Units bzw. Defines ohne Quelle, auch über MaxFindings hinaus.</summary>
+    MissingUnitCount: Integer;
+    UndefinedDefineCount: Integer;
+    MissingUnits: TArray<TAtlasSetupFinding>;
+    UndefinedDefines: TArray<TAtlasSetupFinding>;
+    /// <summary>Davon unsicher (in MissingUnitCount bzw. UndefinedDefineCount enthalten).</summary>
+    UncertainUnitCount: Integer;
+    UncertainDefineCount: Integer;
+    /// <summary>Unbekannte Makros übersprungener Such- und Bibliothekspfade.</summary>
+    SkippedMacros: TArray<string>;
+    class function Empty: TAtlasProjectSetup; static;
+    /// <summary>Die letzte Prüfung lief und fand nichts Sicheres (unsichere Funde zählen nicht).</summary>
+    function PathsClean: Boolean;
+  end;
+
+  /// <summary>Fehlgeschlagener Test des letzten Laufs (#69).</summary>
+  TAtlasProjectTestFailure = record
+    /// <summary>Voller Name aus dem Bericht von DUnitX (Unit.Fixture.Methode[.Fall]).</summary>
+    Test: string;
+    Message: string;
+    /// <summary>Datei des Tests (absolut); '' ohne Fundstelle.</summary>
+    FileName: string;
+    /// <summary>Zeile ab 1; 0 = ohne.</summary>
+    Line: Integer;
+  end;
+
+  /// <summary>Letzter DUnitX-Lauf aus der IDE (#69), Grundlage der Karte Tests (#763).</summary>
+  TAtlasProjectTests = record
+  public const
+    /// <summary>Höchstens so viele fehlgeschlagene Tests stehen in der Datei.</summary>
+    MaxFailures = 50;
+  public
+    Known: Boolean;
+    /// <summary>Ende des Laufs (UTC).</summary>
+    At: TDateTime;
+    /// <summary>Testprojekt (.dproj).</summary>
+    Project: string;
+    Configuration: string;
+    Platform: string;
+    Passed: Integer;
+    Failed: Integer;
+    Errors: Integer;
+    Skipped: Integer;
+    DurationMs: Integer;
+    Failures: TArray<TAtlasProjectTestFailure>;
+    class function Empty: TAtlasProjectTests; static;
+    /// <summary>Namen der gespeicherten fehlgeschlagenen Tests ohne Doppelte, für --run.</summary>
+    function FailedTests: TArray<string>;
+    function Total: Integer;
+  end;
+
   TAtlasProjectSummary = record
     /// <summary>Vollständiger Pfad der Projektdatei (.dproj, .groupproj …).</summary>
     Project: string;
@@ -180,6 +380,10 @@ type
     Rules: TAtlasProjectRules;
     Metrics: TAtlasProjectMetrics;
     Todos: TAtlasProjectTodos;
+    Baseline: TAtlasProjectBaseline;
+    Trends: TAtlasProjectTrends;
+    Setup: TAtlasProjectSetup;
+    Tests: TAtlasProjectTests;
     /// <summary>Gelesener Text der Datei; ToJson behält daraus alle unbekannten Felder.</summary>
     Raw: string;
     class function Create(const AProject: string): TAtlasProjectSummary; static;
@@ -195,6 +399,10 @@ type
     Format = 1;
     /// <summary>Kennzahlen im Abschnitt "metrics" (wie atlas.server.metrics, #66).</summary>
     MetricKeys: array[0..4] of string = ('length', 'nesting', 'cyclomatic', 'cognitive', 'parameters');
+    /// <summary>Namen der Reihen im Abschnitt "trends" und in welcomePage.trends.series (#758).</summary>
+    TrendKeys: array[TAtlasTrendSeries] of string = ('warnings', 'ruleHits', 'todos', 'duration', 'methodLength');
+    /// <summary>Reihen mit einer Nachkommastelle in der Datei; die übrigen sind ganze Zahlen.</summary>
+    TrendDecimals: array[TAtlasTrendSeries] of Boolean = (False, False, False, True, True);
     /// <summary>Unterordner von %LOCALAPPDATA%\Atlas.</summary>
     FolderName = 'projects';
   public
@@ -238,15 +446,25 @@ uses
 
 const
   // Bekannte Felder; alles andere übernimmt ToJson unverändert aus Raw.
-  TopKeys: array[0..10] of string = ('format', 'project', 'lastOpened', 'lastClosed', 'hidden', 'vcs', 'build',
-    'check', 'rules', 'metrics', 'todos');
+  TopKeys: array[0..14] of string = ('format', 'project', 'lastOpened', 'lastClosed', 'hidden', 'vcs', 'build',
+    'check', 'rules', 'metrics', 'todos', 'baseline', 'trends', 'setup', 'tests');
   VcsKeys: array[0..6] of string = ('at', 'kind', 'branch', 'revision', 'changed', 'ahead', 'behind');
-  BuildKeys: array[0..8] of string = ('at', 'kind', 'configuration', 'platform', 'succeeded', 'errors', 'warnings',
-    'hints', 'first');
+  BuildKeys: array[0..9] of string = ('at', 'kind', 'configuration', 'platform', 'succeeded', 'errors', 'warnings',
+    'hints', 'durationMs', 'first');
   CheckKeys: array[0..2] of string = ('at', 'errors', 'first');
   RulesKeys: array[0..1] of string = ('at', 'newHits');
   MetricsKeys: array[0..6] of string = ('at', 'files', 'methods', 'overLimits', 'average', 'maximum', 'exceeded');
   TodosKeys: array[0..4] of string = ('at', 'files', 'open', 'done', 'keywords');
+  BaselineKeys: array[0..8] of string = ('at', 'exists', 'valid', 'entries', 'hits', 'orphaned', 'updated', 'added',
+    'removed');
+  TrendsKeys: array[0..1] of string = ('builds', 'points');
+  TrendPointKeys: array[0..8] of string = ('at', 'build', 'branch', 'commit', 'warnings', 'ruleHits', 'todos',
+    'duration', 'methodLength');
+  SetupKeys: array[0..2] of string = ('dismissed', 'dismissedAt', 'paths');
+  TestsKeys: array[0..9] of string = ('at', 'project', 'configuration', 'platform', 'passed', 'failed', 'errors',
+    'skipped', 'durationMs', 'failures');
+  PathsKeys: array[0..9] of string = ('at', 'files', 'unreadable', 'missingUnits', 'undefinedDefines', 'units',
+    'defines', 'uncertainUnits', 'uncertainDefines', 'skippedMacros');
 
 { TAtlasProjectLocation }
 
@@ -291,6 +509,56 @@ begin
   Result := Default(TAtlasProjectRules);
 end;
 
+{ TAtlasProjectBaseline }
+
+class function TAtlasProjectBaseline.Empty: TAtlasProjectBaseline;
+begin
+  Result := Default(TAtlasProjectBaseline);
+end;
+
+{ TAtlasProjectSetup }
+
+class function TAtlasProjectSetup.Empty: TAtlasProjectSetup;
+begin
+  Result := Default(TAtlasProjectSetup);
+  Result.MissingUnits := nil;
+  Result.UndefinedDefines := nil;
+end;
+
+function TAtlasProjectSetup.PathsClean: Boolean;
+begin
+  Result := Checked and (MissingUnitCount <= UncertainUnitCount) and (UndefinedDefineCount <= UncertainDefineCount);
+end;
+
+{ TAtlasTrendPoint }
+
+class function TAtlasTrendPoint.Create(AAtUtc: TDateTime; ABuild: Integer): TAtlasTrendPoint;
+begin
+  Result := Default(TAtlasTrendPoint);
+  Result.At := AAtUtc;
+  Result.Build := ABuild;
+end;
+
+procedure TAtlasTrendPoint.SetValue(ASeries: TAtlasTrendSeries; ATenths: Integer);
+begin
+  Values[ASeries] := ATenths;
+  Has[ASeries] := True;
+end;
+
+procedure TAtlasTrendPoint.Clear(ASeries: TAtlasTrendSeries);
+begin
+  Values[ASeries] := 0;
+  Has[ASeries] := False;
+end;
+
+{ TAtlasProjectTrends }
+
+class function TAtlasProjectTrends.Empty: TAtlasProjectTrends;
+begin
+  Result := Default(TAtlasProjectTrends);
+  Result.Points := nil;
+end;
+
 { TAtlasProjectSummary }
 
 class function TAtlasProjectSummary.Create(const AProject: string): TAtlasProjectSummary;
@@ -303,6 +571,10 @@ begin
   Result.Rules := TAtlasProjectRules.Empty;
   Result.Metrics := TAtlasProjectMetrics.Empty;
   Result.Todos := TAtlasProjectTodos.Empty;
+  Result.Baseline := TAtlasProjectBaseline.Empty;
+  Result.Trends := TAtlasProjectTrends.Empty;
+  Result.Setup := TAtlasProjectSetup.Empty;
+  Result.Tests := TAtlasProjectTests.Empty;
 end;
 
 function TAtlasProjectSummary.Name: string;
@@ -602,6 +874,356 @@ begin
   end;
 end;
 
+/// <summary>Abschnitt "trends"; leer ohne Abschnitt. Punkte ohne gültige Nummer bekommen eine nach der letzten.
+/// </summary>
+function TrendsOf(ASection: TJSONObject): TAtlasProjectTrends;
+var
+  Points: TJSONValue;
+  Item: TJSONValue;
+  Index: Integer;
+  Series: TAtlasTrendSeries;
+  Point: TAtlasTrendPoint;
+  Value: TJSONValue;
+  Highest: Integer;
+begin
+  Result := TAtlasProjectTrends.Empty;
+  if ASection = nil then
+    Exit;
+  Result.Known := True;
+  Result.Builds := NumberOf(ASection, 'builds', 0);
+  Highest := 0;
+  Points := ASection.GetValue('points');
+  if Points is TJSONArray then
+    for Index := 0 to TJSONArray(Points).Count - 1 do
+    begin
+      Item := TJSONArray(Points).Items[Index];
+      if not (Item is TJSONObject) then
+        Continue;
+      Point := TAtlasTrendPoint.Create(TAtlasProjectSummaries.TimeOf(TextOf(TJSONObject(Item), 'at')),
+        NumberOf(TJSONObject(Item), 'build', 0));
+      if Point.Build <= Highest then
+        Point.Build := Highest + 1;
+      Highest := Point.Build;
+      Point.Branch := TextOf(TJSONObject(Item), 'branch');
+      Point.Commit := TextOf(TJSONObject(Item), 'commit');
+      for Series := Low(TAtlasTrendSeries) to High(TAtlasTrendSeries) do
+      begin
+        Value := TJSONObject(Item).GetValue(TAtlasProjectSummaries.TrendKeys[Series]);
+        if Value is TJSONNumber then
+          Point.SetValue(Series, Round(TJSONNumber(Value).AsDouble * 10));
+      end;
+      Result.Points := Result.Points + [Point];
+    end;
+  // Ohne oder mit zu kleinem Zähler: mindestens die höchste Nummer.
+  if Result.Builds < Highest then
+    Result.Builds := Highest;
+end;
+
+/// <summary>Punkt mit der Nummer ABuild aus dem Abschnitt "trends" von AOriginal (darf nil sein); nil ohne.</summary>
+function OriginalPoint(AOriginal: TJSONObject; ABuild: Integer): TJSONObject;
+var
+  Points: TJSONValue;
+  Index: Integer;
+  Item: TJSONValue;
+begin
+  Result := nil;
+  if AOriginal = nil then
+    Exit;
+  Points := AOriginal.GetValue('points');
+  if not (Points is TJSONArray) then
+    Exit;
+  for Index := 0 to TJSONArray(Points).Count - 1 do
+  begin
+    Item := TJSONArray(Points).Items[Index];
+    if (Item is TJSONObject) and (NumberOf(TJSONObject(Item), 'build', 0) = ABuild) then
+      Exit(TJSONObject(Item));
+  end;
+end;
+
+function TrendsJson(const ATrends: TAtlasProjectTrends; AOriginal: TJSONObject): TJSONObject;
+var
+  Points: TJSONArray;
+  Item: TJSONObject;
+  Point: TAtlasTrendPoint;
+  Series: TAtlasTrendSeries;
+begin
+  Result := TJSONObject.Create;
+  Result.AddPair('builds', TJSONNumber.Create(ATrends.Builds));
+  Points := TJSONArray.Create;
+  Result.AddPair('points', Points);
+  for Point in ATrends.Points do
+  begin
+    Item := TJSONObject.Create;
+    Points.AddElement(Item);
+    AddTime(Item, 'at', Point.At);
+    Item.AddPair('build', TJSONNumber.Create(Point.Build));
+    if Point.Branch <> '' then
+      Item.AddPair('branch', Point.Branch);
+    if Point.Commit <> '' then
+      Item.AddPair('commit', Point.Commit);
+    for Series := Low(TAtlasTrendSeries) to High(TAtlasTrendSeries) do
+    begin
+      // Lücke: kein Feld.
+      if not Point.Has[Series] then
+        Continue;
+      if TAtlasProjectSummaries.TrendDecimals[Series] then
+        Item.AddPair(TAtlasProjectSummaries.TrendKeys[Series], TJSONNumber.Create(Point.Values[Series] / 10))
+      else
+        Item.AddPair(TAtlasProjectSummaries.TrendKeys[Series], TJSONNumber.Create(Point.Values[Series] div 10));
+    end;
+    KeepUnknown(Item, OriginalPoint(AOriginal, Point.Build), TrendPointKeys);
+  end;
+  KeepUnknown(Result, AOriginal, TrendsKeys);
+end;
+
+/// <summary>Funde aus einem Array [{"name", "file", "line", "count"}]; Einträge ohne Namen fallen weg.</summary>
+function SetupFindingsOf(AValue: TJSONValue): TArray<TAtlasSetupFinding>;
+var
+  Index: Integer;
+  Item: TJSONValue;
+  Finding: TAtlasSetupFinding;
+begin
+  Result := nil;
+  if not (AValue is TJSONArray) then
+    Exit;
+  for Index := 0 to TJSONArray(AValue).Count - 1 do
+  begin
+    Item := TJSONArray(AValue).Items[Index];
+    if not (Item is TJSONObject) then
+      Continue;
+    Finding.Name := TextOf(TJSONObject(Item), 'name');
+    Finding.FileName := TextOf(TJSONObject(Item), 'file');
+    Finding.Line := NumberOf(TJSONObject(Item), 'line', 0);
+    Finding.Count := NumberOf(TJSONObject(Item), 'count', 1);
+    Finding.Uncertain := FlagOf(TJSONObject(Item), 'uncertain');
+    if (Finding.Name <> '') and (Length(Result) < TAtlasProjectSetup.MaxFindings) then
+      Result := Result + [Finding];
+  end;
+end;
+
+function SetupFindingsJson(const AFindings: TArray<TAtlasSetupFinding>): TJSONArray;
+var
+  Index: Integer;
+  Item: TJSONObject;
+begin
+  Result := TJSONArray.Create;
+  for Index := 0 to High(AFindings) do
+  begin
+    if Index >= TAtlasProjectSetup.MaxFindings then
+      Break;
+    Item := TJSONObject.Create;
+    Result.AddElement(Item);
+    Item.AddPair('name', AFindings[Index].Name);
+    if AFindings[Index].FileName <> '' then
+      Item.AddPair('file', AFindings[Index].FileName);
+    if AFindings[Index].Line > 0 then
+      Item.AddPair('line', TJSONNumber.Create(AFindings[Index].Line));
+    Item.AddPair('count', TJSONNumber.Create(AFindings[Index].Count));
+    if AFindings[Index].Uncertain then
+      Item.AddPair('uncertain', TJSONBool.Create(True));
+  end;
+end;
+
+/// <summary>Texte aus einem Array von Zeichenketten; anderes (auch Zahlen) fällt weg.</summary>
+function TextsOfSetup(AValue: TJSONValue): TArray<string>;
+var
+  Index: Integer;
+  Item: TJSONValue;
+begin
+  Result := nil;
+  if not (AValue is TJSONArray) then
+    Exit;
+  for Index := 0 to TJSONArray(AValue).Count - 1 do
+  begin
+    Item := TJSONArray(AValue).Items[Index];
+    // TJSONNumber erbt von TJSONString.
+    if (Item is TJSONString) and not (Item is TJSONNumber) and (Item.Value <> '') then
+      Result := Result + [Item.Value];
+  end;
+end;
+
+/// <summary>Abschnitt "setup"; leer ohne Abschnitt.</summary>
+function SetupOf(ASection: TJSONObject): TAtlasProjectSetup;
+var
+  Paths: TJSONObject;
+begin
+  Result := TAtlasProjectSetup.Empty;
+  if ASection = nil then
+    Exit;
+  Result.Known := True;
+  Result.Dismissed := FlagOf(ASection, 'dismissed');
+  Result.DismissedAt := TAtlasProjectSummaries.TimeOf(TextOf(ASection, 'dismissedAt'));
+  Paths := ObjectOf(ASection, 'paths');
+  if Paths = nil then
+    Exit;
+  Result.Checked := True;
+  Result.CheckedAt := TAtlasProjectSummaries.TimeOf(TextOf(Paths, 'at'));
+  Result.Files := NumberOf(Paths, 'files', 0);
+  Result.Unreadable := NumberOf(Paths, 'unreadable', 0);
+  Result.MissingUnits := SetupFindingsOf(Paths.GetValue('units'));
+  Result.UndefinedDefines := SetupFindingsOf(Paths.GetValue('defines'));
+  // Die Zähler sind nie kleiner als die gespeicherten Funde.
+  Result.MissingUnitCount := NumberOf(Paths, 'missingUnits', 0);
+  if Result.MissingUnitCount < Length(Result.MissingUnits) then
+    Result.MissingUnitCount := Length(Result.MissingUnits);
+  Result.UndefinedDefineCount := NumberOf(Paths, 'undefinedDefines', 0);
+  if Result.UndefinedDefineCount < Length(Result.UndefinedDefines) then
+    Result.UndefinedDefineCount := Length(Result.UndefinedDefines);
+  // Unsichere nie mehr als alle.
+  Result.UncertainUnitCount := NumberOf(Paths, 'uncertainUnits', 0);
+  if Result.UncertainUnitCount > Result.MissingUnitCount then
+    Result.UncertainUnitCount := Result.MissingUnitCount;
+  Result.UncertainDefineCount := NumberOf(Paths, 'uncertainDefines', 0);
+  if Result.UncertainDefineCount > Result.UndefinedDefineCount then
+    Result.UncertainDefineCount := Result.UndefinedDefineCount;
+  Result.SkippedMacros := TextsOfSetup(Paths.GetValue('skippedMacros'));
+end;
+
+function SetupJson(const ASetup: TAtlasProjectSetup; AOriginal: TJSONObject): TJSONObject;
+var
+  Paths: TJSONObject;
+  Macros: TJSONArray;
+  Macro: string;
+begin
+  Result := TJSONObject.Create;
+  if ASetup.Dismissed then
+  begin
+    Result.AddPair('dismissed', TJSONBool.Create(True));
+    AddTime(Result, 'dismissedAt', ASetup.DismissedAt);
+  end;
+  if ASetup.Checked then
+  begin
+    Paths := TJSONObject.Create;
+    Result.AddPair('paths', Paths);
+    AddTime(Paths, 'at', ASetup.CheckedAt);
+    Paths.AddPair('files', TJSONNumber.Create(ASetup.Files));
+    Paths.AddPair('unreadable', TJSONNumber.Create(ASetup.Unreadable));
+    Paths.AddPair('missingUnits', TJSONNumber.Create(ASetup.MissingUnitCount));
+    Paths.AddPair('undefinedDefines', TJSONNumber.Create(ASetup.UndefinedDefineCount));
+    if ASetup.UncertainUnitCount > 0 then
+      Paths.AddPair('uncertainUnits', TJSONNumber.Create(ASetup.UncertainUnitCount));
+    if ASetup.UncertainDefineCount > 0 then
+      Paths.AddPair('uncertainDefines', TJSONNumber.Create(ASetup.UncertainDefineCount));
+    if Length(ASetup.SkippedMacros) > 0 then
+    begin
+      Macros := TJSONArray.Create;
+      Paths.AddPair('skippedMacros', Macros);
+      for Macro in ASetup.SkippedMacros do
+        Macros.Add(Macro);
+    end;
+    Paths.AddPair('units', SetupFindingsJson(ASetup.MissingUnits));
+    Paths.AddPair('defines', SetupFindingsJson(ASetup.UndefinedDefines));
+    KeepUnknown(Paths, ObjectOf(AOriginal, 'paths'), PathsKeys);
+  end;
+  KeepUnknown(Result, AOriginal, SetupKeys);
+end;
+
+{ TAtlasProjectTests }
+
+class function TAtlasProjectTests.Empty: TAtlasProjectTests;
+begin
+  Result := Default(TAtlasProjectTests);
+  Result.Failures := nil;
+end;
+
+function TAtlasProjectTests.FailedTests: TArray<string>;
+var
+  Failure: TAtlasProjectTestFailure;
+  Name: string;
+  Seen: Boolean;
+begin
+  Result := nil;
+  for Failure in Failures do
+  begin
+    if Failure.Test = '' then
+      Continue;
+    Seen := False;
+    for Name in Result do
+      if SameText(Name, Failure.Test) then
+        Seen := True;
+    if not Seen then
+      Result := Result + [Failure.Test];
+  end;
+end;
+
+function TAtlasProjectTests.Total: Integer;
+begin
+  Result := Passed + Failed + Errors + Skipped;
+end;
+
+function TestsOf(ASection: TJSONObject): TAtlasProjectTests;
+var
+  Items: TJSONValue;
+  Item: TJSONValue;
+  Failure: TAtlasProjectTestFailure;
+begin
+  Result := TAtlasProjectTests.Empty;
+  if ASection = nil then
+    Exit;
+  Result.Known := True;
+  Result.At := TAtlasProjectSummaries.TimeOf(TextOf(ASection, 'at'));
+  Result.Project := TextOf(ASection, 'project');
+  Result.Configuration := TextOf(ASection, 'configuration');
+  Result.Platform := TextOf(ASection, 'platform');
+  Result.Passed := NumberOf(ASection, 'passed', 0);
+  Result.Failed := NumberOf(ASection, 'failed', 0);
+  Result.Errors := NumberOf(ASection, 'errors', 0);
+  Result.Skipped := NumberOf(ASection, 'skipped', 0);
+  Result.DurationMs := NumberOf(ASection, 'durationMs', 0);
+  Items := ASection.GetValue('failures');
+  if not (Items is TJSONArray) then
+    Exit;
+  for Item in TJSONArray(Items) do
+  begin
+    if not (Item is TJSONObject) or (Length(Result.Failures) >= TAtlasProjectTests.MaxFailures) then
+      Continue;
+    Failure := Default(TAtlasProjectTestFailure);
+    Failure.Test := TextOf(TJSONObject(Item), 'test');
+    Failure.Message := TextOf(TJSONObject(Item), 'message');
+    Failure.FileName := TextOf(TJSONObject(Item), 'file');
+    Failure.Line := NumberOf(TJSONObject(Item), 'line', 0);
+    if Failure.Test <> '' then
+      Result.Failures := Result.Failures + [Failure];
+  end;
+end;
+
+function TestsJson(const ATests: TAtlasProjectTests; AOriginal: TJSONObject): TJSONObject;
+var
+  Items: TJSONArray;
+  Item: TJSONObject;
+  Index: Integer;
+begin
+  Result := TJSONObject.Create;
+  AddTime(Result, 'at', ATests.At);
+  Result.AddPair('project', ATests.Project);
+  if ATests.Configuration <> '' then
+    Result.AddPair('configuration', ATests.Configuration);
+  if ATests.Platform <> '' then
+    Result.AddPair('platform', ATests.Platform);
+  Result.AddPair('passed', TJSONNumber.Create(ATests.Passed));
+  Result.AddPair('failed', TJSONNumber.Create(ATests.Failed));
+  Result.AddPair('errors', TJSONNumber.Create(ATests.Errors));
+  Result.AddPair('skipped', TJSONNumber.Create(ATests.Skipped));
+  Result.AddPair('durationMs', TJSONNumber.Create(ATests.DurationMs));
+  Items := TJSONArray.Create;
+  Result.AddPair('failures', Items);
+  for Index := 0 to High(ATests.Failures) do
+  begin
+    if Index >= TAtlasProjectTests.MaxFailures then
+      Break;
+    Item := TJSONObject.Create;
+    Items.AddElement(Item);
+    Item.AddPair('test', ATests.Failures[Index].Test);
+    if ATests.Failures[Index].Message <> '' then
+      Item.AddPair('message', ATests.Failures[Index].Message);
+    if ATests.Failures[Index].FileName <> '' then
+      Item.AddPair('file', ATests.Failures[Index].FileName);
+    if ATests.Failures[Index].Line > 0 then
+      Item.AddPair('line', TJSONNumber.Create(ATests.Failures[Index].Line));
+  end;
+  KeepUnknown(Result, AOriginal, TestsKeys);
+end;
+
 { TAtlasProjectSummaries }
 
 class function TAtlasProjectSummaries.NormalizedPath(const AProject: string): string;
@@ -754,6 +1376,7 @@ begin
       ASummary.Build.Errors := NumberOf(Section, 'errors', 0);
       ASummary.Build.Warnings := NumberOf(Section, 'warnings', 0);
       ASummary.Build.Hints := NumberOf(Section, 'hints', 0);
+      ASummary.Build.DurationMs := NumberOf(Section, 'durationMs', 0);
       ASummary.Build.First := LocationOf(ObjectOf(Section, 'first'));
     end;
     Section := ObjectOf(Root, 'check');
@@ -773,6 +1396,23 @@ begin
     end;
     ASummary.Metrics := MetricsOf(ObjectOf(Root, 'metrics'));
     ASummary.Todos := TodosOf(ObjectOf(Root, 'todos'));
+    Section := ObjectOf(Root, 'baseline');
+    if Section <> nil then
+    begin
+      ASummary.Baseline.Known := True;
+      ASummary.Baseline.At := TimeOf(TextOf(Section, 'at'));
+      ASummary.Baseline.Exists := FlagOf(Section, 'exists');
+      ASummary.Baseline.Valid := FlagOf(Section, 'valid');
+      ASummary.Baseline.Entries := NumberOf(Section, 'entries', 0);
+      ASummary.Baseline.Hits := NumberOf(Section, 'hits', 0);
+      ASummary.Baseline.Orphaned := NumberOf(Section, 'orphaned', 0);
+      ASummary.Baseline.Updated := TimeOf(TextOf(Section, 'updated'));
+      ASummary.Baseline.Added := NumberOf(Section, 'added', 0);
+      ASummary.Baseline.Removed := NumberOf(Section, 'removed', 0);
+    end;
+    ASummary.Trends := TrendsOf(ObjectOf(Root, 'trends'));
+    ASummary.Setup := SetupOf(ObjectOf(Root, 'setup'));
+    ASummary.Tests := TestsOf(ObjectOf(Root, 'tests'));
     Result := True;
   finally
     Value.Free;
@@ -831,6 +1471,8 @@ begin
       Section.AddPair('errors', TJSONNumber.Create(ASummary.Build.Errors));
       Section.AddPair('warnings', TJSONNumber.Create(ASummary.Build.Warnings));
       Section.AddPair('hints', TJSONNumber.Create(ASummary.Build.Hints));
+      if ASummary.Build.DurationMs > 0 then
+        Section.AddPair('durationMs', TJSONNumber.Create(ASummary.Build.DurationMs));
       if not ASummary.Build.First.IsEmpty then
         Section.AddPair('first', LocationJson(ASummary.Build.First));
       KeepUnknown(Section, ObjectOf(Original, 'build'), BuildKeys);
@@ -880,6 +1522,30 @@ begin
         Keywords.AddPair(ASummary.Todos.Keywords[Index], TJSONNumber.Create(ASummary.Todos.KeywordCounts[Index]));
       KeepUnknown(Section, ObjectOf(Original, 'todos'), TodosKeys);
     end;
+    if ASummary.Baseline.Known then
+    begin
+      Section := TJSONObject.Create;
+      Root.AddPair('baseline', Section);
+      AddTime(Section, 'at', ASummary.Baseline.At);
+      Section.AddPair('exists', TJSONBool.Create(ASummary.Baseline.Exists));
+      Section.AddPair('valid', TJSONBool.Create(ASummary.Baseline.Valid));
+      Section.AddPair('entries', TJSONNumber.Create(ASummary.Baseline.Entries));
+      Section.AddPair('hits', TJSONNumber.Create(ASummary.Baseline.Hits));
+      Section.AddPair('orphaned', TJSONNumber.Create(ASummary.Baseline.Orphaned));
+      if ASummary.Baseline.Updated <> 0 then
+      begin
+        AddTime(Section, 'updated', ASummary.Baseline.Updated);
+        Section.AddPair('added', TJSONNumber.Create(ASummary.Baseline.Added));
+        Section.AddPair('removed', TJSONNumber.Create(ASummary.Baseline.Removed));
+      end;
+      KeepUnknown(Section, ObjectOf(Original, 'baseline'), BaselineKeys);
+    end;
+    if ASummary.Trends.Known then
+      Root.AddPair('trends', TrendsJson(ASummary.Trends, ObjectOf(Original, 'trends')));
+    if ASummary.Setup.Known then
+      Root.AddPair('setup', SetupJson(ASummary.Setup, ObjectOf(Original, 'setup')));
+    if ASummary.Tests.Known then
+      Root.AddPair('tests', TestsJson(ASummary.Tests, ObjectOf(Original, 'tests')));
     KeepUnknown(Root, Original, TopKeys);
     Result := Root.ToJSON;
   finally

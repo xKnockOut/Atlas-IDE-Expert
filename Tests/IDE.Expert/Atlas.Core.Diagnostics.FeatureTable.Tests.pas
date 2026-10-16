@@ -1,0 +1,219 @@
+﻿unit Atlas.Core.Diagnostics.FeatureTable.Tests;
+
+// Startreihenfolge, Abbau und Stufen der Feature-Tabelle (Code-Review S-03).
+
+interface
+
+uses
+  DUnitX.TestFramework;
+
+type
+  [TestFixture]
+  TFeatureTableTests = class
+  public
+    [Test]
+    procedure StartsInOrder;
+    [Test]
+    procedure StopsInReverseOnlyActive;
+    [Test]
+    procedure SkipsBelowMinLevel;
+    [Test]
+    procedure StartWantedIsIdempotent;
+    [Test]
+    procedure LaterWantedStartsOnSecondCall;
+    [Test]
+    procedure WantedSeesLevel;
+  end;
+
+implementation
+
+uses
+  System.SysUtils,
+  Atlas.Core.Diagnostics.SafeMode,
+  Atlas.Core.Diagnostics.FeatureTable;
+
+type
+  /// <summary>Protokolliert Start und Stop; je Teil ein Schalter „läuft“.</summary>
+  TProbe = class
+  public
+    Log: string;
+    Active: array[0..3] of Boolean;
+    procedure AddTo(ATable: TAtlasFeatureTable; AIndex: Integer; AMinLevel: TAtlasSafeLevel); overload;
+    procedure AddTo(ATable: TAtlasFeatureTable; AIndex: Integer; const AWanted: TAtlasFeatureWanted); overload;
+  end;
+
+procedure TProbe.AddTo(ATable: TAtlasFeatureTable; AIndex: Integer; AMinLevel: TAtlasSafeLevel);
+begin
+  AddTo(ATable, AIndex,
+    function(ALevel: TAtlasSafeLevel): Boolean
+    begin
+      Result := Ord(ALevel) <= Ord(AMinLevel);
+    end);
+end;
+
+procedure TProbe.AddTo(ATable: TAtlasFeatureTable; AIndex: Integer; const AWanted: TAtlasFeatureWanted);
+var
+  Name: string;
+begin
+  Name := Chr(Ord('A') + AIndex);
+  ATable.Add(Name, AWanted,
+    function: Boolean
+    begin
+      Result := Active[AIndex];
+    end,
+    procedure
+    begin
+      Active[AIndex] := True;
+      Log := Log + '+' + Name;
+    end,
+    procedure
+    begin
+      Active[AIndex] := False;
+      Log := Log + '-' + Name;
+    end);
+end;
+
+procedure TFeatureTableTests.StartsInOrder;
+var
+  Table: TAtlasFeatureTable;
+  Probe: TProbe;
+begin
+  Table := TAtlasFeatureTable.Create;
+  Probe := TProbe.Create;
+  try
+    Probe.AddTo(Table, 0, TAtlasSafeLevel.Minimal);
+    Probe.AddTo(Table, 1, TAtlasSafeLevel.Minimal);
+    Probe.AddTo(Table, 2, TAtlasSafeLevel.Minimal);
+    Table.StartWanted(TAtlasSafeLevel.Normal);
+    Assert.AreEqual('+A+B+C', Probe.Log);
+    Assert.AreEqual('A,B,C', string.Join(',', Table.Names));
+  finally
+    Probe.Free;
+    Table.Free;
+  end;
+end;
+
+procedure TFeatureTableTests.StopsInReverseOnlyActive;
+var
+  Table: TAtlasFeatureTable;
+  Probe: TProbe;
+begin
+  Table := TAtlasFeatureTable.Create;
+  Probe := TProbe.Create;
+  try
+    Probe.AddTo(Table, 0, TAtlasSafeLevel.Minimal);
+    Probe.AddTo(Table, 1, TAtlasSafeLevel.Normal);
+    Probe.AddTo(Table, 2, TAtlasSafeLevel.Minimal);
+    Table.StartWanted(TAtlasSafeLevel.Safe);
+    Probe.Log := '';
+    Table.StopAll;
+    Assert.AreEqual('-C-A', Probe.Log);
+    Assert.IsFalse(Probe.Active[0]);
+    Assert.IsFalse(Probe.Active[2]);
+  finally
+    Probe.Free;
+    Table.Free;
+  end;
+end;
+
+procedure TFeatureTableTests.SkipsBelowMinLevel;
+var
+  Table: TAtlasFeatureTable;
+  Probe: TProbe;
+begin
+  Table := TAtlasFeatureTable.Create;
+  Probe := TProbe.Create;
+  try
+    Probe.AddTo(Table, 0, TAtlasSafeLevel.Normal);
+    Probe.AddTo(Table, 1, TAtlasSafeLevel.Safe);
+    Probe.AddTo(Table, 2, TAtlasSafeLevel.Minimal);
+    Table.StartWanted(TAtlasSafeLevel.Minimal);
+    Assert.AreEqual('+C', Probe.Log);
+    Probe.Log := '';
+    Table.StartWanted(TAtlasSafeLevel.Safe);
+    Assert.AreEqual('+B', Probe.Log);
+    Probe.Log := '';
+    Table.StartWanted(TAtlasSafeLevel.Normal);
+    Assert.AreEqual('+A', Probe.Log);
+  finally
+    Probe.Free;
+    Table.Free;
+  end;
+end;
+
+procedure TFeatureTableTests.StartWantedIsIdempotent;
+var
+  Table: TAtlasFeatureTable;
+  Probe: TProbe;
+begin
+  Table := TAtlasFeatureTable.Create;
+  Probe := TProbe.Create;
+  try
+    Probe.AddTo(Table, 0, TAtlasSafeLevel.Minimal);
+    Probe.AddTo(Table, 1, TAtlasSafeLevel.Minimal);
+    Table.StartWanted(TAtlasSafeLevel.Normal);
+    Table.StartWanted(TAtlasSafeLevel.Normal);
+    Assert.AreEqual('+A+B', Probe.Log);
+  finally
+    Probe.Free;
+    Table.Free;
+  end;
+end;
+
+procedure TFeatureTableTests.LaterWantedStartsOnSecondCall;
+var
+  Table: TAtlasFeatureTable;
+  Probe: TProbe;
+  Switch: Boolean;
+begin
+  Table := TAtlasFeatureTable.Create;
+  Probe := TProbe.Create;
+  try
+    // Schnellschalter: Das Teil ist erst nach dem Einschalten gewünscht.
+    Switch := False;
+    Probe.AddTo(Table, 0, TAtlasSafeLevel.Minimal);
+    Probe.AddTo(Table, 1,
+      function(ALevel: TAtlasSafeLevel): Boolean
+      begin
+        Result := Switch;
+      end);
+    Table.StartWanted(TAtlasSafeLevel.Safe);
+    Assert.AreEqual('+A', Probe.Log);
+    Switch := True;
+    Table.StartWanted(TAtlasSafeLevel.Safe);
+    Assert.AreEqual('+A+B', Probe.Log);
+  finally
+    Probe.Free;
+    Table.Free;
+  end;
+end;
+
+procedure TFeatureTableTests.WantedSeesLevel;
+var
+  Table: TAtlasFeatureTable;
+  Probe: TProbe;
+  Seen: TAtlasSafeLevel;
+begin
+  Table := TAtlasFeatureTable.Create;
+  Probe := TProbe.Create;
+  try
+    Seen := TAtlasSafeLevel.Normal;
+    Probe.AddTo(Table, 0,
+      function(ALevel: TAtlasSafeLevel): Boolean
+      begin
+        Seen := ALevel;
+        Result := False;
+      end);
+    Table.StartWanted(TAtlasSafeLevel.Minimal);
+    Assert.IsTrue(Seen = TAtlasSafeLevel.Minimal);
+    Assert.AreEqual('', Probe.Log);
+  finally
+    Probe.Free;
+    Table.Free;
+  end;
+end;
+
+initialization
+  TDUnitX.RegisterTestFixture(TFeatureTableTests);
+
+end.

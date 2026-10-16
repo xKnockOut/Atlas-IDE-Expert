@@ -7,6 +7,9 @@
 // Der MCP-Server bricht Schreibaufrufe ab, die eine dieser Dateien betreffen.
 // Unter "open" stehen alle im Editor offenen Dateien: Diese ändert der
 // MCP-Server über den Eingang des Plugins statt auf der Platte (#397).
+// Unter "projects" stehen die offenen Projekte (.dproj), unter
+// "activeProject" das aktive: build_project wählt danach IDE und Projekt
+// (#261).
 // Beim Beenden löscht das Plugin seine Datei; Dateien beendeter Prozesse
 // übergeht der Server.
 
@@ -31,6 +34,8 @@ type
     class function ModifiedFiles: TArray<string>; static;
     /// <summary>Alle Dateien offener Module mit Editorpuffer (#397).</summary>
     class function OpenFiles: TArray<string>; static;
+    /// <summary>Offene Projekte (.dproj) und das aktive ('' ohne), für build_project (#261).</summary>
+    class function OpenProjects(out AActive: string): TArray<string>; static;
   end;
 
 implementation
@@ -111,11 +116,30 @@ begin
   end;
 end;
 
+class function TAtlasDirtyExport.OpenProjects(out AActive: string): TArray<string>;
+var
+  Modules: IOTAModuleServices;
+  Project: IOTAProject;
+  Index: Integer;
+begin
+  Result := nil;
+  AActive := '';
+  if not Supports(BorlandIDEServices, IOTAModuleServices, Modules) then
+    Exit;
+  for Index := 0 to Modules.ModuleCount - 1 do
+    if Supports(Modules.Modules[Index], IOTAProject, Project) and
+      SameText(ExtractFileExt(Project.FileName), '.dproj') then
+      Result := Result + [Project.FileName];
+  Project := Modules.GetActiveProject;
+  if (Project <> nil) and SameText(ExtractFileExt(Project.FileName), '.dproj') then
+    AActive := Project.FileName;
+end;
+
 procedure TAtlasDirtyExport.Tick(Sender: TObject);
 var
   Json: TJSONObject;
-  Files, Open: TJSONArray;
-  Name, Text: string;
+  Files, Open, Projects: TJSONArray;
+  Name, Text, Active: string;
 begin
   try
     Files := TJSONArray.Create;
@@ -124,11 +148,16 @@ begin
     Open := TJSONArray.Create;
     for Name in OpenFiles do
       Open.Add(Name);
+    Projects := TJSONArray.Create;
+    for Name in OpenProjects(Active) do
+      Projects.Add(Name);
     Json := TJSONObject.Create;
     try
       Json.AddPair('pid', TJSONNumber.Create(GetCurrentProcessId));
       Json.AddPair('files', Files);
       Json.AddPair('open', Open);
+      Json.AddPair('projects', Projects);
+      Json.AddPair('activeProject', Active);
       Text := Json.ToJSON;
     finally
       Json.Free;

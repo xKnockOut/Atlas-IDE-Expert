@@ -13,7 +13,8 @@
 //   - fehlt git bzw. svn bei einer gefundenen Arbeitskopie, steht das einmal
 //     je Sitzung in der Meldungsansicht und im Protokoll; Atlas arbeitet ohne
 //     Versionsangaben weiter
-// Start und Stop ruft die Komposition beim Laden bzw. Entladen.
+// Start und Stop ruft die Komposition beim Laden bzw. Entladen; sie setzt
+// dabei auch die Umsetzung des Kerns ein (TAtlasIdeVcsBackend, A-09).
 
 interface
 
@@ -23,11 +24,23 @@ uses
 
 type
   TAtlasIdeVcsMessage = reference to procedure(const AText: string);
+  /// <summary>Umsetzung für AFolder; ATimeoutMs = 0: Vorgabe-Zeitlimit.</summary>
+  TAtlasIdeVcsOpen = reference to function(const AFolder: string; AProvider: TAtlasVcsProvider;
+    const ARunner: IAtlasVcsRunner; ATimeoutMs: Cardinal): IAtlasVersionControl;
+
+  /// <summary>Was die Kompositionswurzel aus dem Kern einsetzt (Prozessläufer, Auswahl, Meldung).</summary>
+  TAtlasIdeVcsBackend = record
+    /// <summary>Neuer Prozessläufer; ACancelled = nil: ohne Abbruch.</summary>
+    NewRunner: TFunc<TFunc<Boolean>, IAtlasVcsRunner>;
+    Open: TAtlasIdeVcsOpen;
+    /// <summary>Setzt (oder mit nil löscht) die Meldung „git bzw. svn fehlt“.</summary>
+    SetToolMissing: TProc<TProc<TAtlasVcsKind>>;
+  end;
 
   TAtlasIdeVcs = class
   public
     /// <summary>Beim Laden: AMessage zeigt eine Zeile in der Meldungsansicht (Hauptthread).</summary>
-    class procedure Start(const AMessage: TAtlasIdeVcsMessage); static;
+    class procedure Start(const AMessage: TAtlasIdeVcsMessage; const ABackend: TAtlasIdeVcsBackend); static;
     /// <summary>Beim Entladen: laufende Aufrufe abbrechen, keine Ergebnisse mehr zustellen.</summary>
     class procedure Stop; static;
     /// <summary>Wirksamer Wert von vcs.provider.</summary>
@@ -55,14 +68,12 @@ uses
   Atlas.Core.Files.TextFile,
   Atlas.Core.Diagnostics.Guard,
   Atlas.Core.Diagnostics.Shutdown,
-  Atlas.Core.Vcs.Worker,
-  Atlas.Core.Vcs.Composition,
-  Atlas.Core.Vcs.Tools,
-  Atlas.Core.Vcs.Adapters.ProcessRunner;
+  Atlas.Core.Vcs.Worker;
 
 var
   Worker: TAtlasVcsWorker;
   Runner: IAtlasVcsRunner;
+  Backend: TAtlasIdeVcsBackend;
   Message_: TAtlasIdeVcsMessage;
   Lock: TCriticalSection;
   // vcs.provider mit Zeitstempel der Datei, aus der er stammt.
@@ -135,23 +146,25 @@ begin
     end);
 end;
 
-class procedure TAtlasIdeVcs.Start(const AMessage: TAtlasIdeVcsMessage);
+class procedure TAtlasIdeVcs.Start(const AMessage: TAtlasIdeVcsMessage; const ABackend: TAtlasIdeVcsBackend);
 begin
   Message_ := AMessage;
+  Backend := ABackend;
   if Runner = nil then
-    Runner := TAtlasVcsProcessRunner.Create(False,
+    Runner := Backend.NewRunner(
       function: Boolean
       begin
         Result := TAtlasShutdown.Signalled;
       end);
   if Worker = nil then
     Worker := TAtlasVcsWorker.Create;
-  TAtlasVcsNotices.OnToolMissing := ToolMissing;
+  Backend.SetToolMissing(ToolMissing);
 end;
 
 class procedure TAtlasIdeVcs.Stop;
 begin
-  TAtlasVcsNotices.OnToolMissing := nil;
+  if Assigned(Backend.SetToolMissing) then
+    Backend.SetToolMissing(nil);
   Message_ := nil;
   if Worker <> nil then
     Worker.Stop(TAtlasShutdown.StopMs);
@@ -160,28 +173,22 @@ begin
 end;
 
 class function TAtlasIdeVcs.ForFolder(const AFolder: string): IAtlasVersionControl;
-var
-  RunnerRef: IAtlasVcsRunner;
 begin
-  RunnerRef := Runner;
-  if RunnerRef = nil then
-    RunnerRef := TAtlasVcsProcessRunner.Create;
-  Result := TAtlasVersionControl.Open(AFolder, Provider, RunnerRef);
+  Result := ForFolder(AFolder, 0);
 end;
 
 class function TAtlasIdeVcs.ForFolder(const AFolder: string; ATimeoutMs: Cardinal): IAtlasVersionControl;
 var
   RunnerRef: IAtlasVcsRunner;
 begin
+  // Vor dem ersten Start ist keine Umsetzung eingesetzt.
+  Result := nil;
+  if not Assigned(Backend.Open) then
+    Exit;
   RunnerRef := Runner;
   if RunnerRef = nil then
-    RunnerRef := TAtlasVcsProcessRunner.Create;
-  Result := TAtlasVersionControl.Open(AFolder, Provider, RunnerRef,
-    function(AKind: TAtlasVcsKind): string
-    begin
-      Result := TAtlasVcsTools.Find(AKind);
-    end,
-    ATimeoutMs);
+    RunnerRef := Backend.NewRunner(nil);
+  Result := Backend.Open(AFolder, Provider, RunnerRef, ATimeoutMs);
 end;
 
 class function TAtlasIdeVcs.Run(const AWork, ADone: TProc): Boolean;

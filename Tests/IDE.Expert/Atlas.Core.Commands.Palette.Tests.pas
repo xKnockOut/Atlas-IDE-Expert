@@ -23,6 +23,8 @@ type
     procedure HistoryRoundTrip;
     [Test]
     procedure KeepsListOrderForCodeActions;
+    [Test]
+    procedure RegistryInterfaceIsUsableWithoutVcl;
   end;
 
 implementation
@@ -53,6 +55,47 @@ function Sample: TArray<TAtlasCommand>;
 begin
   Result := [Command('ProjectBuild', 'Build Project', 'Project'), Command('ProjectCompile', 'Compile Project', 'Project'),
     Command('FileOpen', 'Open', 'File'), Command('Atlas.Options', 'Atlas: Optionen')];
+end;
+
+type
+  /// <summary>Registry ohne Palette: zählt Anmeldungen und merkt Sichtbarkeit.</summary>
+  TFakeRegistry = class(TInterfacedObject, IAtlasCommandRegistry)
+  public
+    Ids: TArray<string>;
+    Conditional: Integer;
+    procedure RegisterCommand(const AId, ACaption, ADescription: string; const AProc: TProc); overload;
+    procedure RegisterCommand(const AId, ACaption, ADescription: string; const AProc: TProc;
+      const AVisible: TFunc<Boolean>); overload;
+  end;
+
+procedure TFakeRegistry.RegisterCommand(const AId, ACaption, ADescription: string; const AProc: TProc);
+begin
+  Ids := Ids + [AId];
+end;
+
+procedure TFakeRegistry.RegisterCommand(const AId, ACaption, ADescription: string; const AProc: TProc;
+  const AVisible: TFunc<Boolean>);
+begin
+  RegisterCommand(AId, ACaption, ADescription, AProc);
+  if Assigned(AVisible) and AVisible() then
+    Inc(Conditional);
+end;
+
+/// <summary>Wie ein Feature, das seine Befehle anmeldet (A-09: nur die Schnittstelle aus dem Core).</summary>
+procedure RegisterSample(const ARegistry: IAtlasCommandRegistry);
+begin
+  ARegistry.RegisterCommand('Atlas.Eins', 'Eins', '',
+    procedure
+    begin
+    end);
+  ARegistry.RegisterCommand('Atlas.Zwei', 'Zwei', 'Beschreibung',
+    procedure
+    begin
+    end,
+    function: Boolean
+    begin
+      Result := True;
+    end);
 end;
 
 procedure TAtlasCommandPaletteTests.FuzzyFindsBuildProject;
@@ -132,6 +175,19 @@ begin
   Assert.AreEqual('Als Konstante|Befund kopieren|try/finally ergänzen|',
     Captions(Commands, TAtlasCommandPalette.Order(Commands, '', nil)), 'ohne KeepOrder alphabetisch');
   Assert.AreEqual('Befund kopieren|', Captions(Commands, TAtlasCommandPalette.Order(Commands, 'befund', nil, True)));
+end;
+
+procedure TAtlasCommandPaletteTests.RegistryInterfaceIsUsableWithoutVcl;
+var
+  Fake: TFakeRegistry;
+  Registry: IAtlasCommandRegistry;
+begin
+  Fake := TFakeRegistry.Create;
+  Registry := Fake;
+  RegisterSample(Registry);
+  Assert.AreEqual(2, Length(Fake.Ids));
+  Assert.AreEqual('Atlas.Zwei', Fake.Ids[1]);
+  Assert.AreEqual(1, Fake.Conditional);
 end;
 
 initialization

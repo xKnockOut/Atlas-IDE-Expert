@@ -130,7 +130,8 @@ uses
   Atlas.Common.Dfm.FormModel,
   Atlas.Common.Rules.Contract,
   Atlas.Common.Pascal.Lexer,
-  Atlas.Common.Lsp.Positions;
+  Atlas.Common.Lsp.Positions,
+  Atlas.Text.Lines;
 
 const
   TypeKinds: set of TIndexSymbolKind = [TIndexSymbolKind.ClassType, TIndexSymbolKind.ObjectType,
@@ -787,10 +788,7 @@ var
   List, AddedList: TJSONArray;
 begin
   Result := TJSONObject.Create;
-  if Pos(#13#10, AText) > 0 then
-    LineBreak := #13#10
-  else
-    LineBreak := #10;
+  LineBreak := TTextLines.LineBreakOf(AText);
   AddedList := TJSONArray.Create;
   if (AText <> '') and TUsesActions.AddUnits(TPascalLexer.Tokenize(AText), AUnits, AUses.Declaring,
     AUses.Namespaces, LineBreak, Edits, Added) then

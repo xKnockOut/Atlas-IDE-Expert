@@ -29,7 +29,8 @@ uses
   System.StrUtils,
   System.Generics.Collections,
   Atlas.Common.Documents.Contract,
-  Atlas.Common.Dfm.BinaryForm;
+  Atlas.Common.Dfm.BinaryForm,
+  Atlas.Text.Chars;
 
 const
   /// <summary>Schutz vor Stapelüberlauf bei kaputten Dateien.</summary>
@@ -64,11 +65,6 @@ type
     destructor Destroy; override;
     function ReadObject: TDfmObject;
   end;
-
-function IsWordChar(C: Char): Boolean;
-begin
-  Result := CharInSet(C, ['A'..'Z', 'a'..'z', '0'..'9', '_']);
-end;
 
 { TScanner }
 
@@ -144,7 +140,7 @@ var
   Index: Integer;
 begin
   Index := FIndex;
-  while (Index <= Length(FText)) and IsWordChar(FText[Index]) do
+  while (Index <= Length(FText)) and TTextChars.IsAsciiIdentChar(FText[Index]) do
     Inc(Index);
   Result := LowerCase(Copy(FText, FIndex, Index - FIndex));
 end;
@@ -154,7 +150,7 @@ var
   Start: Integer;
 begin
   Start := FIndex;
-  while not AtEnd and IsWordChar(Current) do
+  while not AtEnd and TTextChars.IsAsciiIdentChar(Current) do
     Advance;
   Result := Copy(FText, Start, FIndex - Start);
 end;
@@ -164,7 +160,7 @@ var
   Start: Integer;
 begin
   Start := FIndex;
-  while not AtEnd and (IsWordChar(Current) or (Current = '.')) do
+  while not AtEnd and (TTextChars.IsAsciiIdentChar(Current) or (Current = '.')) do
     Advance;
   Result := Copy(FText, Start, FIndex - Start);
 end;
@@ -191,7 +187,7 @@ begin
       else
       begin
         Advance;
-        while not AtEnd and (IsWordChar(Current) or (Current = '$')) do
+        while not AtEnd and (TTextChars.IsAsciiIdentChar(Current) or (Current = '$')) do
           Advance;
       end;
     // "+" am Zeilenende verbindet mit der nächsten Zeile.
@@ -317,7 +313,7 @@ begin
           AObject.Children.Add(Child);
         Continue;
       end;
-      if not (IsWordChar(Current)) then
+      if not (TTextChars.IsAsciiIdentChar(Current)) then
       begin
         Error('Property oder "end" erwartet');
         Advance;

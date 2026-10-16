@@ -68,7 +68,8 @@ type
     function Matches(const AFile: TFileTodos; const AEntry: TTodoEntry): Boolean;
   end;
 
-  TTodos = class
+  // Record statt Klasse: ein Contract enthält nur Werttypen und Interfaces (Konzept 7.1, Code-Review A-12).
+  TTodos = record
   public const
     /// <summary>Marke erledigter Einträge (IDE-Format).</summary>
     DoneKeyword = 'DONE';

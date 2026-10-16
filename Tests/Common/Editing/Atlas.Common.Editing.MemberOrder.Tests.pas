@@ -29,6 +29,20 @@ type
     procedure FieldsInSeveralSectionsKeepLayout;
     [Test]
     procedure NestedTypesKeepPlace;
+    [Test]
+    procedure AlignOffBlocksSort;
+    [Test]
+    procedure ClassVarSectionKeepsPlace;
+    [Test]
+    procedure UnchangedReturnsFalse;
+    [Test]
+    procedure CrlfIsPreserved;
+    [Test]
+    procedure UnknownMemberKindRanksLast;
+    [Test]
+    procedure MultiNameFieldStaysTogether;
+    [Test]
+    procedure DirectiveUnbalancedInSectionBlocks;
   end;
 
 implementation
@@ -228,6 +242,97 @@ begin
     '  private'#10 +
     '    procedure Run;'#10 +
     '    FKind: TKind;'#10)));
+end;
+
+procedure TMemberOrderTests.AlignOffBlocksSort;
+const
+  Body = 'type'#10'  TFoo = class'#10'  public'#10'    procedure Run;'#10'  private'#10'    B: Byte;'#10'  end;'#10 +
+    'implementation'#10'end.';
+begin
+  Assert.AreEqual('', Sorted('unit U;'#10'interface'#10'{$ALIGN OFF}'#10 + Body));
+  Assert.AreEqual('', Sorted('unit U;'#10'interface'#10'{$A1}'#10 + Body));
+end;
+
+procedure TMemberOrderTests.ClassVarSectionKeepsPlace;
+begin
+  // Der Abschnitt mit class var wird weder umsortiert noch verschoben: nichts zu tun.
+  Assert.AreEqual('', Sorted(Wrap(
+    '  public'#10 +
+    '    class var Count: Integer;'#10 +
+    '    procedure Run;'#10 +
+    '    constructor Create;'#10 +
+    '  private'#10 +
+    '    procedure Stop;'#10)));
+end;
+
+procedure TMemberOrderTests.UnchangedReturnsFalse;
+var
+  Source: string;
+  Tree: TSyntaxTree;
+  Edit: TRuleEdit;
+begin
+  Source := Wrap('  private'#10'    FA: Integer;'#10'  public'#10'    constructor Create;'#10'    procedure Run;'#10);
+  Tree := TPascalParser.Parse(Source);
+  try
+    Assert.IsFalse(TMemberOrder.Sort(Source, Tree, 3, TMemberOrderSettings.Default, Edit));
+  finally
+    Tree.Free;
+  end;
+end;
+
+procedure TMemberOrderTests.CrlfIsPreserved;
+var
+  Source: string;
+  Tree: TSyntaxTree;
+  Edit: TRuleEdit;
+begin
+  Source := StringReplace(Wrap('  public'#10'    procedure Run;'#10'    constructor Create;'#10), #10, #13#10,
+    [rfReplaceAll]);
+  Tree := TPascalParser.Parse(Source);
+  try
+    Assert.IsTrue(TMemberOrder.Sort(Source, Tree, 3, TMemberOrderSettings.Default, Edit));
+  finally
+    Tree.Free;
+  end;
+  Assert.AreEqual('  public'#13#10'    constructor Create;'#13#10'    procedure Run;'#13#10, Edit.NewText);
+  Assert.AreEqual(0, Pos(#10, StringReplace(Edit.NewText, #13#10, '', [rfReplaceAll])));
+end;
+
+procedure TMemberOrderTests.UnknownMemberKindRanksLast;
+var
+  Settings: TMemberOrderSettings;
+begin
+  Settings := TMemberOrderSettings.Default;
+  Settings.Members := ['field', 'constructor', 'destructor', 'method'];
+  Assert.AreEqual(Wrap(
+    '  public'#10 +
+    '    constructor Create;'#10 +
+    '    procedure Run;'#10 +
+    '    property B: Integer read FB;'#10), Sorted(Wrap(
+    '  public'#10 +
+    '    property B: Integer read FB;'#10 +
+    '    procedure Run;'#10 +
+    '    constructor Create;'#10), Settings));
+end;
+
+procedure TMemberOrderTests.MultiNameFieldStaysTogether;
+begin
+  Assert.AreEqual(Wrap(
+    '  private'#10 +
+    '    A, B: Integer;'#10 +
+    '    procedure Run;'#10), Sorted(Wrap(
+    '  private'#10 +
+    '    procedure Run;'#10 +
+    '    A, B: Integer;'#10)));
+end;
+
+procedure TMemberOrderTests.DirectiveUnbalancedInSectionBlocks;
+begin
+  Assert.AreEqual('', Sorted(Wrap(
+    '  public'#10 +
+    '{$IFDEF DEBUG}'#10 +
+    '    procedure Run;'#10 +
+    '    constructor Create;'#10)));
 end;
 
 initialization

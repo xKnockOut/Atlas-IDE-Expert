@@ -20,6 +20,9 @@ type
     procedure ListsAndReadsResources;
     [Test]
     procedure AppliesEditsFromBackToFront;
+    /// <summary>Zeichen hinter dem Zeilenende bleiben in ihrer Zeile; CR allein ist ein Zeilenende (D-04).</summary>
+    [Test]
+    procedure ClampsCharacterToLineEnd;
     [Test]
     procedure DryRunWritesNothingAndShowsDiff;
     [Test]
@@ -301,6 +304,16 @@ begin
       TMcpFileEdit.Create('A', TTextRange.Create(0, 6, 0, 9), 'Neu'),
       TMcpFileEdit.Create('A', TTextRange.Create(1, 0, 1, 3), 'Neu')]));
   Assert.AreEqual('ab', TMcpEditTools.ApplyToText('aXb', [TMcpFileEdit.Create('A', TTextRange.Create(0, 1, 0, 2), '')]));
+end;
+
+procedure TMcpEditToolsTests.ClampsCharacterToLineEnd;
+begin
+  Assert.AreEqual('ab!'#10'cd',
+    TMcpEditTools.ApplyToText('ab'#10'cd', [TMcpFileEdit.Create('A', TTextRange.Create(0, 9, 0, 9), '!')]));
+  Assert.AreEqual('ab'#13'c!d',
+    TMcpEditTools.ApplyToText('ab'#13'cd', [TMcpFileEdit.Create('A', TTextRange.Create(1, 1, 1, 1), '!')]));
+  Assert.AreEqual('ab'#13#10'cd!',
+    TMcpEditTools.ApplyToText('ab'#13#10'cd', [TMcpFileEdit.Create('A', TTextRange.Create(5, 0, 5, 0), '!')]));
 end;
 
 procedure TMcpEditToolsTests.DryRunWritesNothingAndShowsDiff;

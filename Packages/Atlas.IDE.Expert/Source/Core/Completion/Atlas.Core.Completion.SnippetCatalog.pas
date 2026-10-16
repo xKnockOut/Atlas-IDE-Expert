@@ -67,12 +67,8 @@ implementation
 
 uses
   System.Classes,
-  System.IOUtils;
-
-function IsWordChar(C: Char): Boolean;
-begin
-  Result := ((C >= '0') and (C <= '9')) or ((C >= 'A') and (C <= 'Z')) or ((C >= 'a') and (C <= 'z')) or (C = '_');
-end;
+  System.IOUtils,
+  Atlas.Text.Chars;
 
 { TAtlasSnippetCatalog }
 
@@ -248,7 +244,7 @@ begin
     begin
       Invalid := False;
       for Position := 1 to Length(Snippet.Prefix) do
-        if not IsWordChar(Snippet.Prefix[Position]) then
+        if not TTextChars.IsAsciiIdentChar(Snippet.Prefix[Position]) then
           Invalid := True;
       if Invalid then
         Add(TAtlasSnippetProblemKind.PrefixInvalid);

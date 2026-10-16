@@ -22,6 +22,9 @@ type
     RequestCancelled = -32800;
     /// <summary>Das Dokument hat sich geändert, das Ergebnis wäre veraltet (LSP, #283).</summary>
     ContentModified = -32801;
+    /// <summary>Die Anfrage war gültig, ließ sich aber nicht ausführen; die Meldung nennt den Grund (LSP 3.17,
+    /// z. B. „Projekt kompilieren“ ohne nutzbaren Compiler, #261).</summary>
+    RequestFailed = -32803;
   end;
 
 const

@@ -9,7 +9,7 @@
 //   - Schließen (#414): Cursor verlässt das Wort oder die Zeile, Editor verliert
 //     den Fokus, IDE wird inaktiv, Editor scrollt, Ansicht wechselt.
 //   - Tasten: Nur solange das Popup offen ist, nimmt es über den gemeinsamen
-//     Tastatur-Hook (Atlas.IDE.Editor.KeyHook) ↑ ↓ Bild↑ Bild↓ Pos1 Ende Enter Tab Esc
+//     Tastatur-Hook (Atlas.IDE.Foundation.KeyHook) ↑ ↓ Bild↑ Bild↓ Pos1 Ende Enter Tab Esc
 //     ohne Umschalt/Strg/Alt entgegen; sonst gehen alle Tasten an den Editor.
 //   - Übernahme: ein Undo-Schritt (CreateUndoableWriter) für Name und uses-Ergänzung.
 //   - Detailpanel (#424): 80 ms nach einem Wechsel der Auswahl fragt die Quelle die
@@ -20,7 +20,8 @@
 //     Puffer, nicht über eine Tastenbindung: unabhängig vom Tastaturlayout.
 //   - Code-Vorlagen (#51): eigene Quelle mit den mitgelieferten Vorlagen, den Live Templates
 //     der IDE (abschaltbar, ImportIdeTemplates) und denen aus %APPDATA%\Atlas\Snippets (bei
-//     Änderung neu gelesen; eigene vor IDE vor mitgelieferten). Übernehmen setzt den Text mit der
+//     Änderung neu gelesen; eigene vor IDE vor mitgelieferten), dazu die des Projekts aus dem Ordner
+//     "snippets" der Projektdatei .atlas (#486; vor den eigenen). Übernehmen setzt den Text mit der
 //     Einrückung der Zeile ein und startet den Platzhalter-Modus (Atlas.IDE.Completion.Placeholders).
 //   - Diagnosemodus (#479): Invoke nimmt nur bei eingeschalteter Messung beim Aufruf einen Zeitstempel
 //     (TAtlasContext.Started); der Kontext reicht von dort bis zur Anfrage.
@@ -40,8 +41,6 @@ uses
   Atlas.Core.Completion.Contract,
   Atlas.Core.Completion.Composite,
   Atlas.Core.Completion.Controller,
-  Atlas.Core.Completion.Providers.Server,
-  Atlas.Core.Completion.Providers.Snippets,
   Atlas.Core.Completion.Parentheses,
   Atlas.Core.Completion.Snippets,
   Atlas.Core.Editor.CloseRules,
@@ -49,24 +48,41 @@ uses
   Atlas.IDE.Completion.Preview,
   Atlas.IDE.Completion.Placeholders,
   Atlas.UI.Completion.Popup,
-  Atlas.IDE.Editor.KeyHook;
+  Atlas.IDE.Foundation.KeyHook;
 
 type
   /// <summary>Protokoll für die Diagnose (Registry-Wert Diagnose).</summary>
   TAtlasLogProc = reference to procedure(const AMessage: string);
+
+  /// <summary>Quellen der Vervollständigung aus dem Kern (Server, XMLDoc, Code-Vorlagen); setzt die
+  /// Kompositionswurzel ein (A-09). Die Funktionen wirken auf Server- und Vorlagenquelle.</summary>
+  TAtlasCompletionSources = record
+    /// <summary>Server; unterstützt auch IAtlasCompletionResolver.</summary>
+    Server: IAtlasCompletionProvider;
+    XmlDoc: IAtlasCompletionProvider;
+    Snippets: IAtlasCompletionProvider;
+    /// <summary>Bricht laufende Anfragen von Server und Vorlagen ab und wartet auf sie.</summary>
+    Shutdown: TProc;
+    /// <summary>Code-Vorlagen in der Liste und kontextabhängige Vorlagen des Servers ein/aus.</summary>
+    SetSnippetsEnabled: TProc<Boolean>;
+    SetSnippetList: TProc<TAtlasSnippetList>;
+    SnippetList: TFunc<TAtlasSnippetList>;
+  end;
+
+  TAtlasCompletionSourcesFactory = reference to function(const ASession: TAtlasSessionFunc;
+    const ALog: TAtlasLogProc): TAtlasCompletionSources;
 
   TAtlasEditorCompletion = class
   private
     FSession: TAtlasSessionFunc;
     FProviders: TAtlasCompletionProviders;
     FProvidersRef: IAtlasCompletionProvider;
-    FServerProvider: TAtlasServerCompletionProvider;
-    FServerProviderRef: IAtlasCompletionProvider;
+    FSources: TAtlasCompletionSources;
     // Code-Vorlagen (#51): Quelle, Stand des Ordners, letzte Prüfung, Platzhalter-Modus.
-    FSnippetProvider: TAtlasSnippetCompletionProvider;
-    FSnippetProviderRef: IAtlasCompletionProvider;
     // Eigene Postfix-Vorlagen (#188): gehen an den Server, neu nach Änderung, neuem Server oder einer Minute.
     FPostfixSnippets: TAtlasSnippetList;
+    // Eigene Dateivorlagen (#759, Kopf "file:") für „Neu mit Atlas“; nicht in der Vervollständigung.
+    FFileSnippets: TAtlasSnippetList;
     FPostfixSession: TLspSession;
     FPostfixSent: UInt64;
     FSnippetStamp: string;
@@ -145,7 +161,9 @@ type
   public
     /// <summary>Nach dem Übernehmen mit Klammern den Parameter-Hint öffnen (#430).</summary>
     property OnOpenSignature: TProc read FOnOpenSignature write FOnOpenSignature;
-    constructor Create(const ASession: TAtlasSessionFunc; const ALog: TAtlasLogProc);
+    /// <summary>ASources legt die Quellen des Kerns an (Kompositionswurzel).</summary>
+    constructor Create(const ASession: TAtlasSessionFunc; const ALog: TAtlasLogProc;
+      const ASources: TAtlasCompletionSourcesFactory);
     destructor Destroy; override;
     /// <summary>Öffnet die Vervollständigung an der Cursorstelle von AView; False, wenn nicht möglich.
     /// AAutomatic: von der IDE nach einem Zeichen ausgelöst, nicht über Strg+Leer. Steht dann "[" vor dem
@@ -175,6 +193,14 @@ type
     /// <summary>Hat Enter die Zeile des übernommenen Konstruktors gerade beendet (#489)? Der Cursor steht dann
     /// in einer leeren Zeile direkt darunter.</summary>
     function GuardNewLine(const AView: IOTAEditView): Boolean;
+    /// <summary>Alle Code-Vorlagen (mitgeliefert, Live Templates der IDE, eigene) für das Erzeugen-Menü (#719);
+    /// leer, wenn Code-Vorlagen aus sind (completion.snippets).</summary>
+    function Snippets: TAtlasSnippetList;
+    /// <summary>Eigene Dateivorlagen (#759) aus dem Ordner der Code-Vorlagen; leer, wenn Code-Vorlagen aus sind.
+    /// </summary>
+    function FileSnippets: TAtlasSnippetList;
+    /// <summary>Setzt ASnippet am Cursor von AView ein, mit Einrückung der Zeile und Platzhaltern (#719).</summary>
+    procedure InsertSnippet(const AView: IOTAEditView; const ASnippet: TAtlasSnippet);
   end;
 
 implementation
@@ -194,23 +220,24 @@ uses
   DockForm,
   Atlas.Core.Documentation.Contract,
   Atlas.Core.Documentation.Layout,
-  Atlas.IDE.Hover.Editor,
   Atlas.Core.Completion.Word,
   Atlas.Core.Completion.Matching,
-  Atlas.Core.Completion.Providers.XmlDoc,
   Atlas.Core.Completion.LiveTemplates,
-  Atlas.Core.Projects.Context,
+  Atlas.Core.Projects.Contract,
   Atlas.Core.Completion.Preview,
   Atlas.Core.Settings.Plugin,
-  Atlas.IDE.Settings.Store,
+  Atlas.IDE.Foundation.Settings,
+  Atlas.IDE.Foundation.TeamFile,
   Atlas.IDE.Completion.History,
   Atlas.Core.Completion.Favorites,
   Atlas.IDE.Completion.Favorites,
   Atlas.IDE.Signature.Editor,
   Atlas.Core.Completion.Ranking,
-  Atlas.IDE.Editor.Buffer,
-  Atlas.IDE.Editor.Style,
-  Atlas.UI.Strings;
+  Atlas.IDE.Foundation.EditorBuffer,
+  Atlas.IDE.Foundation.EditorStyle,
+  Atlas.UI.Strings,
+  Atlas.Text.Lines,
+  Atlas.IDE.Foundation.Navigation;
 
 /// <summary>Plattform und Konfiguration des aktiven Projekts („Win32 · Debug“, #476); '' ohne Projekt.</summary>
 function ActiveTarget: string;
@@ -415,7 +442,8 @@ end;
 
 { TAtlasEditorCompletion }
 
-constructor TAtlasEditorCompletion.Create(const ASession: TAtlasSessionFunc; const ALog: TAtlasLogProc);
+constructor TAtlasEditorCompletion.Create(const ASession: TAtlasSessionFunc; const ALog: TAtlasLogProc;
+  const ASources: TAtlasCompletionSourcesFactory);
 var
   Editor: IOTAEditorServices;
   Notifier: INTAEditServicesNotifier;
@@ -427,20 +455,16 @@ begin
   FCommitEnd := -1;
   FProviders := TAtlasCompletionProviders.Create;
   FProvidersRef := FProviders;
-  FServerProvider := TAtlasServerCompletionProvider.Create(ASession);
-  FServerProvider.OnLog :=
+  FSources := ASources(ASession,
     procedure(const AMessage: string)
     begin
       Log(AMessage);
-    end;
-  FServerProviderRef := FServerProvider;
-  FProviders.Add(FServerProviderRef);
+    end);
+  FProviders.Add(FSources.Server);
   // XMLDoc-Tags in ///-Kommentaren (#435), lokal.
-  FProviders.Add(TAtlasXmlDocCompletionProvider.Create as IAtlasCompletionProvider);
+  FProviders.Add(FSources.XmlDoc);
   // Code-Vorlagen (#51), lokal; die eigenen liest RefreshSnippets beim ersten Öffnen.
-  FSnippetProvider := TAtlasSnippetCompletionProvider.Create(TAtlasSnippets.BuiltIn);
-  FSnippetProviderRef := FSnippetProvider;
-  FProviders.Add(FSnippetProviderRef);
+  FProviders.Add(FSources.Snippets);
   FPlaceholders := TAtlasEditorPlaceholders.Create;
   FPopup := TAtlasCompletionPopup.Create(nil);
   FController := TAtlasCompletionController.Create(FProvidersRef, FPopup);
@@ -476,7 +500,7 @@ begin
       else if AControl and ALink.Target.HasLocation then
       begin
         Close;
-        TAtlasEditorHover.GoToLocation(ALink.Target.FileName, ALink.Target.Line, ALink.Target.Character);
+        TAtlasIdeNavigation.GoToLocation(ALink.Target.FileName, ALink.Target.Line, ALink.Target.Character);
       end;
     end;
   FPopup.OnChip :=
@@ -548,8 +572,7 @@ begin
   FController.Free;
   FPopup.Free;
   FKeys.Free;
-  FServerProviderRef := nil;
-  FSnippetProviderRef := nil;
+  FSources := Default(TAtlasCompletionSources);
   FProvidersRef := nil;
   inherited;
 end;
@@ -563,8 +586,8 @@ end;
 procedure TAtlasEditorCompletion.Shutdown;
 begin
   Close;
-  FServerProvider.Shutdown;
-  FSnippetProvider.Shutdown;
+  if Assigned(FSources.Shutdown) then
+    FSources.Shutdown();
 end;
 
 function TAtlasEditorCompletion.IndexingNow: Boolean;
@@ -685,9 +708,8 @@ begin
   FPopup.Limited := IndexingNow;
   FPopup.Target := ActiveTarget;
   FController.ChipsEnabled := TAtlasIdeSettings.Current.FilterChips;
-  FSnippetProvider.Enabled := TAtlasIdeSettings.Current.Snippets;
   // Kontextabhängige Vorlagen des Servers (#51) hängen an derselben Einstellung.
-  FServerProvider.Snippets := TAtlasIdeSettings.Current.Snippets;
+  FSources.SetSnippetsEnabled(TAtlasIdeSettings.Current.Snippets);
   // Eigene Vorlagen auch ohne Code-Vorlagen in der Liste lesen: Postfix-Vorlagen (#188) hängen an
   // completion.postfixTemplates.
   RefreshSnippets;
@@ -779,9 +801,9 @@ end;
 
 procedure TAtlasEditorCompletion.RefreshSnippets;
 var
-  Folder, IdeFolder, Stamp: string;
-  Errors: TArray<string>;
-  Own, Ide: TAtlasSnippetList;
+  Folder, IdeFolder, TeamFolder, Stamp: string;
+  Errors, TeamErrors: TArray<string>;
+  Own, Ide, Team: TAtlasSnippetList;
   Stats: TAtlasLiveTemplateStats;
 begin
   if (FSnippetChecked <> 0) and (TThread.GetTickCount64 - FSnippetChecked < 3000) then
@@ -791,21 +813,30 @@ begin
   IdeFolder := '';
   if TAtlasIdeSettings.Current.ImportIdeTemplates then
     IdeFolder := TAtlasEditorCompletion.IdeTemplateFolder;
-  Stamp := TAtlasSnippets.FolderStamp(Folder) + '#' + TAtlasLiveTemplates.FolderStamp(IdeFolder);
+  // Vorlagen des Projekts aus der Projektdatei .atlas (#486): gelten für alle im Team, vor den eigenen.
+  TeamFolder := TAtlasIdeTeamFile.Current.SnippetFolder;
+  Stamp := TAtlasSnippets.FolderStamp(Folder) + '#' + TAtlasLiveTemplates.FolderStamp(IdeFolder) + '#' +
+    TeamFolder + '#' + TAtlasSnippets.FolderStamp(TeamFolder);
   if Stamp = FSnippetStamp then
     Exit;
   FSnippetStamp := Stamp;
   Own := TAtlasSnippets.LoadFolder(Folder, Errors);
+  Team := TAtlasSnippets.LoadFolder(TeamFolder, TeamErrors);
+  Own := TAtlasSnippets.Merge(Own, Team);
   // Postfix-Vorlagen (#188) bietet der Server hinter Ausdrücken an, nicht die Liste am Anweisungsanfang.
   FPostfixSnippets := TAtlasSnippets.Postfixes(Own);
   FPostfixSession := nil;
   Own := TAtlasSnippets.WithoutPostfix(Own);
+  // Dateivorlagen (#759) legen eine ganze Datei an; „Neu mit Atlas“ holt sie über FileSnippets.
+  FFileSnippets := TAtlasSnippets.FileTemplates(Own);
+  Own := TAtlasSnippets.WithoutFileTemplates(Own);
   Ide := TAtlasLiveTemplates.LoadFolder(IdeFolder, Stats);
   // Ohne Datei- und Ordnernamen: Das Diagnoselog nennt keine Namen (#647).
   Log(Format('Code-Vorlagen: %d eigene, %d fehlerhafte übersprungen; %d aus der IDE, %d übersprungen, ' +
-    '%d Skripte entfallen', [Integer(Length(Own)), Integer(Length(Errors)), Stats.Templates, Stats.Skipped,
-    Stats.Scripts]));
-  FSnippetProvider.SetSnippets(TAtlasSnippets.Merge(TAtlasSnippets.Merge(TAtlasSnippets.BuiltIn, Ide), Own));
+    '%d Skripte entfallen; %d aus der Projektdatei, %d fehlerhafte übersprungen', [Integer(Length(Own)),
+    Integer(Length(Errors)), Stats.Templates, Stats.Skipped, Stats.Scripts, Integer(Length(Team)),
+    Integer(Length(TeamErrors))]));
+  FSources.SetSnippetList(TAtlasSnippets.Merge(TAtlasSnippets.Merge(TAtlasSnippets.BuiltIn, Ide), Own));
 end;
 
 procedure TAtlasEditorCompletion.SendPostfixTemplates;
@@ -1058,7 +1089,7 @@ begin
   Availability := '';
   if Item.Unavailable and (Item.Condition <> '') and not SameText(Item.Condition, 'platform') then
     Availability := TAtlasStrings.Fmt(TAtlasTextId.UnavailableHint, [Item.Condition, FPopup.Target]);
-  if not Supports(FServerProviderRef, IAtlasCompletionResolver, Resolver) or not Resolver.Resolve(Item,
+  if not Supports(FSources.Server, IAtlasCompletionResolver, Resolver) or not Resolver.Resolve(Item,
     procedure(const ADetails: TAtlasItemDetails)
     var
       Shown: TAtlasItemDetails;
@@ -1380,10 +1411,7 @@ var
   WordStart, SnippetChar, CharShift: Integer;
 begin
   // Zeilenumbrüche wie im Puffer, Einrückung wie die aktuelle Zeile.
-  if Pos(#13#10, AText) > 0 then
-    LineBreak := #13#10
-  else
-    LineBreak := #10;
+  LineBreak := TTextLines.LineBreakOf(AText);
   Expansion := TAtlasSnippets.Expand(AItem.Snippet, TAtlasSnippets.IndentOf(ALineText), LineBreak);
   // Vorlage des Servers (#51): ab dem Anfang ihres Bereichs; sonst das getippte Wort.
   WordStart := FWordStart;
@@ -1432,6 +1460,57 @@ begin
   FPlaceholders.Start(AView, AText, Document, SnippetChar + CharShift, Expansion);
   Log(Format('Code-Vorlage eingesetzt: %d Platzhalter, %d weitere Änderungen',
     [Integer(Length(Expansion.Stops)), Integer(Length(AItem.AdditionalEdits))]));
+end;
+
+function TAtlasEditorCompletion.Snippets: TAtlasSnippetList;
+begin
+  Result := nil;
+  if not TAtlasIdeSettings.Current.Snippets then
+    Exit;
+  RefreshSnippets;
+  Result := FSources.SnippetList();
+end;
+
+function TAtlasEditorCompletion.FileSnippets: TAtlasSnippetList;
+begin
+  Result := nil;
+  if not TAtlasIdeSettings.Current.Snippets then
+    Exit;
+  RefreshSnippets;
+  Result := FFileSnippets;
+end;
+
+procedure TAtlasEditorCompletion.InsertSnippet(const AView: IOTAEditView; const ASnippet: TAtlasSnippet);
+var
+  Item: TAtlasCompletionItem;
+  Text, LineText, Pad: string;
+  Cursor: TOTAEditPos;
+  TabWidth, Character, EndColumn: Integer;
+begin
+  if (AView = nil) or (AView.Buffer = nil) or (ASnippet.Body = '') then
+    Exit;
+  Close;
+  Text := TAtlasEditorBuffer.Text(AView.Buffer);
+  Cursor := AView.CursorPos;
+  LineText := TAtlasEditorBuffer.LineText(AView, Cursor.Line);
+  TabWidth := TAtlasEditorBuffer.TabWidth(AView.Buffer);
+  Character := TLspSession.ColumnToIndex(LineText, Cursor.Col, TabWidth);
+  // Leere Zeile mit dem Cursor hinter ihrem Ende (virtueller Platz): bis zum Cursor einrücken, damit die
+  // Vorlage dort beginnt, wo der Cursor steht; die Folgezeilen bekommen dieselbe Einrückung.
+  Pad := '';
+  if Trim(LineText) = '' then
+  begin
+    EndColumn := TLspSession.IndexToColumn(LineText, Length(LineText), TabWidth);
+    if Cursor.Col > EndColumn then
+      Pad := StringOfChar(' ', Cursor.Col - EndColumn);
+  end;
+  Item := Default(TAtlasCompletionItem);
+  Item.Name := ASnippet.Prefix;
+  Item.Kind := TAtlasItemKind.Snippet;
+  Item.Snippet := Pad + ASnippet.Body;
+  // Nichts ersetzen: Das Wort beginnt am Cursor.
+  FWordStart := Character;
+  CommitSnippet(AView, Item, Text, LineText + Pad, Cursor.Line, Character);
 end;
 
 function TAtlasEditorCompletion.GuardNewLine(const AView: IOTAEditView): Boolean;

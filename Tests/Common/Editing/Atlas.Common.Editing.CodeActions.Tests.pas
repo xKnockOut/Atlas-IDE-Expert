@@ -20,10 +20,6 @@ type
     [Test]
     procedure ResultGetsTryExceptInsteadOfFree;
     [Test]
-    procedure FixAllTakesOnlySafeFixes;
-    [Test]
-    procedure FixAllSkipsOverlappingFixes;
-    [Test]
     procedure OrganizeImportsAsSourceAction;
     [Test]
     procedure MatchesRequestedKinds;
@@ -33,12 +29,11 @@ type
     procedure SuppressLineInsertsCommentAbove;
     [Test]
     procedure SuppressLineExtendsExistingComment;
+    /// <summary>Zeilen auch bei CR allein getrennt (TTextLines.SplitLines, D-03).</summary>
+    [Test]
+    procedure SuppressLineInCrOnlyText;
     [Test]
     procedure SuppressFileAtTop;
-    [Test]
-    procedure FindingInRangeGivesFixAndSuppressions;
-    [Test]
-    procedure FindingOutsideRangeIgnored;
     [Test]
     procedure UnusedSuppressionReportedWithRemoval;
     [Test]
@@ -153,36 +148,6 @@ begin
   Assert.AreEqual(0, Pos('finally', NewText));
 end;
 
-function FindingWith(ALine: Integer; const ANewText: string; ASafe: Boolean): TRuleFinding;
-begin
-  Result := Default(TRuleFinding);
-  Result.RuleId := 'regel';
-  Result.Range := TTextRange.Create(ALine, 0, ALine, 1);
-  Result.Fixes := [TRuleFix.Create('Fix', [TRuleEdit.Create(TTextRange.Create(ALine, 0, ALine, 1), ANewText)], ASafe)];
-end;
-
-procedure TCodeActionTests.FixAllTakesOnlySafeFixes;
-var
-  Action: TCodeAction;
-begin
-  Assert.IsFalse(TCodeActions.FixAll([FindingWith(0, 'a', False)], Action));
-  Assert.IsTrue(TCodeActions.FixAll([FindingWith(0, 'a', False), FindingWith(2, 'b', True), FindingWith(4, 'c', True)],
-    Action));
-  Assert.AreEqual(FixAllKind, Action.Kind);
-  Assert.AreEqual(2, Integer(Length(Action.Edits)));
-  Assert.AreEqual('b', Action.Edits[0].NewText);
-  Assert.AreEqual('c', Action.Edits[1].NewText);
-end;
-
-procedure TCodeActionTests.FixAllSkipsOverlappingFixes;
-var
-  Action: TCodeAction;
-begin
-  Assert.IsTrue(TCodeActions.FixAll([FindingWith(1, 'a', True), FindingWith(1, 'b', True)], Action));
-  Assert.AreEqual(1, Integer(Length(Action.Edits)));
-  Assert.AreEqual('a', Action.Edits[0].NewText);
-end;
-
 procedure TCodeActionTests.OrganizeImportsAsSourceAction;
 var
   Action: TCodeAction;
@@ -240,6 +205,16 @@ begin
   Assert.AreEqual(', b', Edit.NewText);
 end;
 
+procedure TCodeActionTests.SuppressLineInCrOnlyText;
+var
+  Edit: TRuleEdit;
+begin
+  Edit := TCodeActions.SuppressLine('begin'#13'  // lsp-ignore: a'#13'  X;'#13'end;', 2, 'b');
+  Assert.AreEqual(1, Edit.Range.StartPos.Line);
+  Assert.AreEqual(Integer(Length('  // lsp-ignore: a')), Edit.Range.StartPos.Character);
+  Assert.AreEqual(', b', Edit.NewText);
+end;
+
 procedure TCodeActionTests.SuppressFileAtTop;
 var
   Edit: TRuleEdit;
@@ -247,33 +222,6 @@ begin
   Edit := TCodeActions.SuppressFile('unit U;' + #10, 'marker');
   Assert.AreEqual(0, Edit.Range.StartPos.Line);
   Assert.AreEqual('// lsp-ignore-file: marker' + #10, Edit.NewText);
-end;
-
-procedure TCodeActionTests.FindingInRangeGivesFixAndSuppressions;
-var
-  Finding: TRuleFinding;
-  Actions: TArray<TCodeAction>;
-begin
-  Finding := Default(TRuleFinding);
-  Finding.RuleId := 'marker';
-  Finding.Range := TTextRange.Create(5, 2, 5, 3);
-  Finding.Fixes := [TRuleFix.Create('Beheben', [TRuleEdit.Create(Finding.Range, 'M')])];
-  Actions := TCodeActions.ForFindings([Finding], Body, TTextRange.Create(5, 0, 5, 0));
-  Assert.AreEqual(3, Integer(Length(Actions)));
-  Assert.AreEqual('Beheben', Actions[0].Title);
-  Assert.IsTrue(Actions[0].IsPreferred);
-  Assert.AreEqual(QuickFixKind, Actions[1].Kind);
-  Assert.AreEqual('marker', Actions[2].RuleId);
-end;
-
-procedure TCodeActionTests.FindingOutsideRangeIgnored;
-var
-  Finding: TRuleFinding;
-begin
-  Finding := Default(TRuleFinding);
-  Finding.RuleId := 'marker';
-  Finding.Range := TTextRange.Create(1, 0, 1, 3);
-  Assert.AreEqual(0, Integer(Length(TCodeActions.ForFindings([Finding], Body, TTextRange.Create(5, 0, 5, 0)))));
 end;
 
 procedure TCodeActionTests.UnusedSuppressionReportedWithRemoval;

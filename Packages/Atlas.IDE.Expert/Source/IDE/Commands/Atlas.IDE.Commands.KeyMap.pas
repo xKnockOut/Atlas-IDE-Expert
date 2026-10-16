@@ -43,8 +43,8 @@ uses
   Atlas.Core.Commands.KeyConflicts,
   Atlas.Core.Commands.KeyMap,
   Atlas.Core.Setup.Checklist,
-  Atlas.IDE.Commands.Palette,
-  Atlas.UI.Commands.KeyMap;
+  Atlas.UI.Commands.KeyMap,
+  Atlas.Core.Commands.Palette;
 
 type
   TAtlasIdeKeyMap = class
@@ -87,7 +87,7 @@ type
     /// </summary>
     procedure ShowAll;
     /// <summary>„Tastenkürzel-Übersicht…“ in der Befehlspalette, sichtbar nach keys.overview.</summary>
-    procedure RegisterCommands(APalette: TAtlasIdePalette);
+    procedure RegisterCommands(const ARegistry: IAtlasCommandRegistry);
     /// <summary>Package geladen: nach StartDelayMs die eigenen Tasten prüfen (keys.startupCheck).</summary>
     procedure CheckAtStart;
     /// <summary>Eigene Tasten prüfen und neue Konflikte melden; offenes Fenster neu einlesen.</summary>
@@ -108,11 +108,10 @@ uses
   ToolsAPI,
   Atlas.Core.Diagnostics.Guard,
   Atlas.Core.Settings.Plugin,
-  Atlas.Core.Commands.Palette,
   Atlas.UI.Strings,
-  Atlas.IDE.Settings.Store,
-  Atlas.IDE.Editor.Style,
-  Atlas.IDE.Commands.Keys,
+  Atlas.IDE.Foundation.Settings,
+  Atlas.IDE.Foundation.EditorStyle,
+  Atlas.IDE.Foundation.Keys,
   Atlas.Core.Commands.Usage,
   Atlas.Core.Commands.ShortcutTips,
   Atlas.IDE.Commands.Usage,
@@ -736,9 +735,9 @@ begin
   Refresh;
 end;
 
-procedure TAtlasIdeKeyMap.RegisterCommands(APalette: TAtlasIdePalette);
+procedure TAtlasIdeKeyMap.RegisterCommands(const ARegistry: IAtlasCommandRegistry);
 begin
-  APalette.RegisterCommand(CommandId, TAtlasStrings.Text(TAtlasTextId.KeyMapMenu), '',
+  ARegistry.RegisterCommand(CommandId, TAtlasStrings.Text(TAtlasTextId.KeyMapMenu), '',
     procedure
     begin
       if FInstance <> nil then

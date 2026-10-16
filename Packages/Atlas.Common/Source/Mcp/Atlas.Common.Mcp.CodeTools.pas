@@ -90,7 +90,8 @@ uses
   Atlas.Common.Todos.Scanner,
   Atlas.Common.Todos.Report,
   Atlas.Common.Rules.Builtin.Todos,
-  Atlas.Common.Semantics.UnresolvedNames;
+  Atlas.Common.Semantics.UnresolvedNames,
+  Atlas.Text.Lines;
 
 { TMcpCodeTools }
 
@@ -393,14 +394,6 @@ begin
     Result := Result + [Copy(AText, Start, MaxInt)];
 end;
 
-function LineBreakIn(const AText: string): string;
-begin
-  if Pos(#13#10, AText) > 0 then
-    Result := #13#10
-  else
-    Result := #10;
-end;
-
 class function TMcpCodeTools.ReplaceLines(const AOriginal, AText: string; AStartLine, AEndLine: Integer): string;
 var
   Lines: TArray<string>;
@@ -415,7 +408,7 @@ begin
   Inserted := AText;
   // Der ersetzte Bereich endet mit einem Zeilenwechsel, wenn danach noch etwas kommt.
   if (Inserted <> '') and (AEndLine < Length(Lines)) and not EndsStr(#10, Inserted) then
-    Inserted := Inserted + LineBreakIn(AOriginal);
+    Inserted := Inserted + TTextLines.LineBreakOf(AOriginal);
   Result := '';
   for Index := 0 to AStartLine - 2 do
     Result := Result + Lines[Index];

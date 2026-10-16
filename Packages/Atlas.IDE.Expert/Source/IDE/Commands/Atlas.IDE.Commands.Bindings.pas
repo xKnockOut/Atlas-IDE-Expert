@@ -73,13 +73,14 @@ uses
   Atlas.Core.Diagnostics.Guard,
   Atlas.Core.Settings.Plugin,
   Atlas.UI.Strings,
-  Atlas.IDE.Settings.Store,
-  Atlas.IDE.Commands.Keys,
+  Atlas.IDE.Foundation.Settings,
+  Atlas.IDE.Foundation.Keys,
   Atlas.IDE.Commands.Editor,
   Atlas.IDE.Results.Commands,
   Atlas.IDE.UnitSearch.Commands,
   Atlas.IDE.Undo.Changes,
-  Atlas.IDE.Bookmarks.Service;
+  Atlas.IDE.Bookmarks.Service,
+  Atlas.IDE.Generate.Commands;
 
 { TAtlasIdeEditorKeys.TBinding }
 
@@ -288,6 +289,13 @@ begin
           begin
             TAtlasIdeBookmarks.AddBookmark;
           end);
+      end);
+  // Erzeugen-Menü (#719): aus = Alt+Einfg bleibt frei.
+  if Settings.GenerateMenu then
+    AddKey(Settings.GenerateMenuKey, TAtlasStrings.Text(TAtlasTextId.GenerateMenuCommand),
+      procedure
+      begin
+        TAtlasIdeGenerate.Show;
       end);
   AddKey(Settings.UndoKey, TAtlasStrings.Text(TAtlasTextId.UndoMenu),
     procedure

@@ -43,6 +43,11 @@ type
     procedure PreviousRunsWithoutEndAreCounted;
     [Test]
     procedure EveryEndReasonHasText;
+    /// <summary>Gemeinsame Logdatei für LSP und MCP (D-08): ohne Namen nichts, nicht anlegbar ein Fehler im Log.</summary>
+    [Test]
+    procedure AddLogFile_EmptyName_DoesNothing;
+    [Test]
+    procedure AddLogFile_BadPath_LogsError;
   end;
 
 implementation
@@ -65,7 +70,23 @@ uses
   Atlas.Common.Lsp.Hover,
   Atlas.Common.Lsp.Completion,
   Atlas.Core.Diagnostics.Export,
+  Atlas.Common.Logging.Contract,
+  Atlas.Common.Logging.Providers.Logger,
+  Atlas.Common.Diagnostics.Anonymizer,
   Shell.Diagnostics;
+
+type
+  /// <summary>Sammelt die Logeinträge als Text.</summary>
+  TCaptureSink = class(TInterfacedObject, ILogSink)
+  public
+    Text: string;
+    procedure Write(const AEntry: TLogEntry);
+  end;
+
+procedure TCaptureSink.Write(const AEntry: TLogEntry);
+begin
+  Text := Text + AEntry.ToText + sLineBreak;
+end;
 
 const
   Markers: array[0..6] of string = ('MarkerPfadXq7', 'MarkerProjektBn6', 'MarkerUnitZk3', 'TMarkerKlasseWv5',
@@ -364,6 +385,42 @@ begin
       Assert.AreNotEqual(TShellDiagnostics.EndReasonText(Reason), TShellDiagnostics.EndReasonText(Other));
   end;
   Assert.Contains(TShellDiagnostics.EndReasonText(TDiagnosticEndReason.InputClosed), 'ohne exit');
+end;
+
+
+procedure TShellDiagnosticsTests.AddLogFile_EmptyName_DoesNothing;
+var
+  Logger: TLogger;
+  Keep: ILogger;
+  Anonymizer: ILogAnonymizer;
+begin
+  Logger := TLogger.Create;
+  Keep := Logger;
+  Assert.IsTrue(TShellDiagnostics.AddLogFile(Logger, '', '1', False, TLogLevel.Info, Anonymizer));
+  Assert.IsNull(Anonymizer);
+end;
+
+procedure TShellDiagnosticsTests.AddLogFile_BadPath_LogsError;
+var
+  Logger: TLogger;
+  Keep: ILogger;
+  Sink: TCaptureSink;
+  KeepSink: ILogSink;
+  Anonymizer: ILogAnonymizer;
+  Blocker: string;
+begin
+  Logger := TLogger.Create;
+  Keep := Logger;
+  Sink := TCaptureSink.Create;
+  KeepSink := Sink;
+  Logger.AddSink(KeepSink, TLogLevel.Debug);
+  // Eine Datei an der Stelle des Ordners: Die Logdatei lässt sich nicht anlegen.
+  Blocker := TPath.Combine(FLogFolder, 'Blocker');
+  TDirectory.CreateDirectory(FLogFolder);
+  TFile.WriteAllText(Blocker, 'x');
+  Assert.IsFalse(TShellDiagnostics.AddLogFile(Logger, TPath.Combine(Blocker, 'server.log'), '1', True,
+    TLogLevel.Info, Anonymizer));
+  Assert.Contains(Sink.Text, 'kann nicht geöffnet werden');
 end;
 
 initialization

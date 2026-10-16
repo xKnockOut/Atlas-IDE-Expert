@@ -2,13 +2,15 @@
 
 // Unveränderliche Momentaufnahme eines Dokuments mit Zeilenindex.
 // Zeilenumbrüche sind CRLF, LF oder CR (LSP-Spezifikation); sie gehören zur
-// vorangehenden Zeile, zählen aber nicht zu ihrem Text.
+// vorangehenden Zeile, zählen aber nicht zu ihrem Text. Der Zeilenindex ist
+// TLineTable aus Atlas.Text.Lines (gemeinsam mit dem Plugin, ADR 0012).
 
 interface
 
 uses
   System.SysUtils,
   System.Generics.Collections,
+  Atlas.Text.Lines,
   Atlas.Common.Documents.Contract;
 
 type
@@ -18,13 +20,10 @@ type
     FLanguageId: string;
     FVersion: Integer;
     FText: string;
-    /// <summary>Offset ab 0, an dem jede Zeile beginnt; immer mindestens ein Eintrag.</summary>
-    FLineStarts: TArray<Integer>;
+    /// <summary>Zeilenanfänge und -enden; immer mindestens eine Zeile.</summary>
+    FLines: TLineTable;
     /// <summary>Abgeleitete Daten (Derived), erst beim ersten Zugriff angelegt; geschützt über TMonitor(Self).</summary>
     FDerived: TDictionary<string, IInterface>;
-    procedure BuildLineStarts;
-    /// <summary>Offset hinter dem letzten Zeichen der Zeile, ohne Zeilenumbruch.</summary>
-    function LineContentEnd(ALine: Integer): Integer;
   public
     constructor Create(const AUri, ALanguageId: string; AVersion: Integer; const AText: string);
     destructor Destroy; override;
@@ -43,9 +42,6 @@ type
 
 implementation
 
-uses
-  System.Math;
-
 { TTextDocument }
 
 constructor TTextDocument.Create(const AUri, ALanguageId: string; AVersion: Integer; const AText: string);
@@ -55,63 +51,7 @@ begin
   FLanguageId := ALanguageId;
   FVersion := AVersion;
   FText := AText;
-  BuildLineStarts;
-end;
-
-procedure TTextDocument.BuildLineStarts;
-var
-  Starts: TArray<Integer>;
-  Count: Integer;
-  Len: Integer;
-  Offset: Integer;
-
-  procedure Add(AOffset: Integer);
-  begin
-    if Count = Length(Starts) then
-      SetLength(Starts, Count * 2);
-    Starts[Count] := AOffset;
-    Inc(Count);
-  end;
-
-begin
-  SetLength(Starts, 16);
-  Count := 0;
-  Add(0);
-  Len := Length(FText);
-  Offset := 0;
-  // Offset zählt ab 0, der string ab 1: FText[Offset + 1] ist das Zeichen am Offset.
-  while Offset < Len do
-  begin
-    case FText[Offset + 1] of
-      #13:
-        begin
-          if (Offset + 1 < Len) and (FText[Offset + 2] = #10) then
-            Inc(Offset);
-          Add(Offset + 1);
-        end;
-      #10:
-        Add(Offset + 1);
-    end;
-    Inc(Offset);
-  end;
-  SetLength(Starts, Count);
-  FLineStarts := Starts;
-end;
-
-function TTextDocument.LineContentEnd(ALine: Integer): Integer;
-begin
-  if ALine >= High(FLineStarts) then
-    Exit(Length(FText));
-  Result := FLineStarts[ALine + 1];
-  // Zeilenumbruch abziehen: LF, CR oder CRLF.
-  if (Result > FLineStarts[ALine]) and (FText[Result] = #10) then
-  begin
-    Dec(Result);
-    if (Result > FLineStarts[ALine]) and (FText[Result] = #13) then
-      Dec(Result);
-  end
-  else if (Result > FLineStarts[ALine]) and (FText[Result] = #13) then
-    Dec(Result);
+  FLines := TLineTable.Build(FText);
 end;
 
 function TTextDocument.GetUri: string;
@@ -136,47 +76,24 @@ end;
 
 function TTextDocument.GetLineCount: Integer;
 begin
-  Result := Length(FLineStarts);
+  Result := FLines.LineCount;
 end;
 
 function TTextDocument.LineText(ALine: Integer): string;
 begin
-  if (ALine < 0) or (ALine > High(FLineStarts)) then
+  if (ALine < 0) or (ALine >= FLines.LineCount) then
     Exit('');
-  Result := Copy(FText, FLineStarts[ALine] + 1, LineContentEnd(ALine) - FLineStarts[ALine]);
+  Result := Copy(FText, FLines.LineStart(ALine) + 1, FLines.LineContentEnd(ALine) - FLines.LineStart(ALine));
 end;
 
 function TTextDocument.OffsetAt(const APosition: TTextPosition): Integer;
-var
-  LineStart: Integer;
 begin
-  if APosition.Line < 0 then
-    Exit(0);
-  if APosition.Line > High(FLineStarts) then
-    Exit(Length(FText));
-  LineStart := FLineStarts[APosition.Line];
-  Result := LineStart + EnsureRange(APosition.Character, 0, LineContentEnd(APosition.Line) - LineStart);
+  Result := FLines.OffsetAt(APosition);
 end;
 
 function TTextDocument.PositionAt(AOffset: Integer): TTextPosition;
-var
-  First: Integer;
-  Last: Integer;
-  Middle: Integer;
 begin
-  AOffset := EnsureRange(AOffset, 0, Length(FText));
-  // Letzte Zeile, deren Anfang nicht hinter AOffset liegt.
-  First := 0;
-  Last := High(FLineStarts);
-  while First < Last do
-  begin
-    Middle := (First + Last + 1) div 2;
-    if FLineStarts[Middle] <= AOffset then
-      First := Middle
-    else
-      Last := Middle - 1;
-  end;
-  Result := TTextPosition.Create(First, Min(AOffset, LineContentEnd(First)) - FLineStarts[First]);
+  Result := FLines.PositionAt(AOffset);
 end;
 
 destructor TTextDocument.Destroy;

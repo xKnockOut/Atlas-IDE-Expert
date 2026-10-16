@@ -7,6 +7,13 @@
 // Reihenfolge). Bei Teilfolgen zählen Wortanfänge besonders: Großbuchstaben,
 // Zeichen nach "_", "." oder Ziffern. So findet "TBB" TBButton und "GTH"
 // GetTypeHierarchy. Groß- und Kleinschreibung spielt keine Rolle.
+//
+// Wortanfänge bestimmt TTextFuzzy aus Atlas.Text (ADR 0012). Die
+// Vervollständigung nutzt CompletionScore: Teilfolgen gelten dort nur mit
+// Wortgrenzen (TTextFuzzy.MatchesBoundedSubsequence), wie im Plugin, das die
+// Liste beim Weitertippen selbst filtert. Sonst verschwänden Einträge, die der
+// Server geliefert hat, beim nächsten Zeichen (D-05). Die Symbolsuche (Score)
+// bleibt großzügiger.
 
 interface
 
@@ -19,29 +26,22 @@ type
     /// <summary>Punktzahl von AName für AQuery, höher ist besser; NoMatch ohne Treffer.
     /// Exakt vor Präfix vor Teilwort vor Teilfolge.</summary>
     class function Score(const AName, AQuery: string): Integer; static;
+    /// <summary>Wie Score, aber Teilfolgen nur mit Wortgrenzen (Regel des Plugins); für die
+    /// Vervollständigung.</summary>
+    class function CompletionScore(const AName, AQuery: string): Integer; static;
   end;
 
 implementation
 
 uses
-  System.SysUtils;
+  System.SysUtils,
+  Atlas.Text.Fuzzy;
 
 const
   ExactScore = 4000;
   PrefixScore = 3000;
   SubstringScore = 2000;
   SubsequenceScore = 1000;
-
-function IsWordStart(const AName: string; AIndex: Integer): Boolean;
-begin
-  if AIndex = 1 then
-    Exit(True);
-  if CharInSet(AName[AIndex - 1], ['_', '.']) then
-    Exit(True);
-  if CharInSet(AName[AIndex], ['A'..'Z']) then
-    Exit(True);
-  Result := CharInSet(AName[AIndex], ['a'..'z']) and CharInSet(AName[AIndex - 1], ['0'..'9']);
-end;
 
 /// <summary>Teilfolge mit Bewertung; mit APreferWordStarts springt jedes Zeichen
 /// ohne direkten Anschluss zum nächsten passenden Wortanfang.</summary>
@@ -62,7 +62,7 @@ begin
     begin
       Candidate := NameIndex;
       while (Candidate <= Length(ALowerName)) and
-        not ((ALowerName[Candidate] = AQuery[QueryIndex]) and IsWordStart(AName, Candidate)) do
+        not ((ALowerName[Candidate] = AQuery[QueryIndex]) and TTextFuzzy.IsWordStart(AName, Candidate)) do
         Inc(Candidate);
       if Candidate > Length(ALowerName) then
         Candidate := 0;
@@ -75,7 +75,7 @@ begin
       if Candidate > Length(ALowerName) then
         Exit(TFuzzyMatch.NoMatch);
     end;
-    if IsWordStart(AName, Candidate) then
+    if TTextFuzzy.IsWordStart(AName, Candidate) then
       Inc(Result, 10);
     if Candidate = Previous + 1 then
       Inc(Result, 5)
@@ -111,7 +111,7 @@ begin
   if Found > 1 then
   begin
     Result := SubstringScore - Found;
-    if IsWordStart(AName, Found) then
+    if TTextFuzzy.IsWordStart(AName, Found) then
       Inc(Result, 500);
     Exit;
   end;
@@ -119,6 +119,28 @@ begin
   Plain := SubsequenceScoreOf(AName, LowerName, Query, False);
   if Plain > Result then
     Result := Plain;
+  if Result >= SubstringScore then
+    Result := SubstringScore - 1;
+end;
+
+class function TFuzzyMatch.CompletionScore(const AName, AQuery: string): Integer;
+var
+  LowerName, Query: string;
+  Found: Integer;
+begin
+  Query := LowerCase(AQuery);
+  if Query = '' then
+    Exit(NoMatch);
+  LowerName := LowerCase(AName);
+  Found := Pos(Query, LowerName);
+  // Präfix und Teilwort wie Score: Diese Treffer filtert auch das Plugin nicht weg.
+  if Found > 0 then
+    Exit(Score(AName, AQuery));
+  if not TTextFuzzy.MatchesBoundedSubsequence(AQuery, AName) then
+    Exit(NoMatch);
+  Result := SubsequenceScoreOf(AName, LowerName, Query, True);
+  if Result = NoMatch then
+    Result := 0;
   if Result >= SubstringScore then
     Result := SubstringScore - 1;
 end;

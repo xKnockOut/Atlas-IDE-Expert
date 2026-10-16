@@ -34,8 +34,8 @@ uses
   Atlas.Core.Status.Registry,
   Atlas.Core.Status.Lines,
   Atlas.Core.Setup.Checklist,
-  Atlas.IDE.Commands.Palette,
-  Atlas.UI.Setup.Window;
+  Atlas.UI.Setup.Window,
+  Atlas.Core.Commands.Palette;
 
 type
   TAtlasSetupIndexingFunc = reference to function(out APercent: Integer): Boolean;
@@ -50,6 +50,9 @@ type
     StartServer: TFunc<Boolean, Boolean>;
     /// <summary>Befehl an den laufenden Server; Ergebnis gehört dem Aufrufer, nil ohne Server.</summary>
     ServerCommand: TFunc<string, TJSONValue>;
+    /// <summary>Pfad der AtlasServer.exe nach den Einstellungen ('' ohne Haken; A-09: statt Import des
+    /// Code Insight-Managers).</summary>
+    ServerPath: TFunc<string>;
   end;
 
   TAtlasIdeSetupChecklist = class
@@ -97,7 +100,7 @@ type
     /// <summary>Prüfliste zeigen und sofort neu prüfen (Menü, Palette, Statusfeld, Zustandskachel #754).</summary>
     procedure ShowWindow;
     /// <summary>„Einrichtung prüfen…“ in der Befehlspalette.</summary>
-    procedure RegisterCommands(APalette: TAtlasIdePalette);
+    procedure RegisterCommands(const ARegistry: IAtlasCommandRegistry);
     procedure ThemeChanged;
     /// <summary>Für die Zustandskachel (#754): grüne Punkte und alle; False vor der ersten Prüfung.</summary>
     function Progress(out ADone, ATotal: Integer): Boolean;
@@ -118,16 +121,15 @@ uses
   ToolsAPI,
   Atlas.Core.Diagnostics.Guard,
   Atlas.Core.Product.Version,
-  Atlas.Core.Projects.Context,
+  Atlas.Core.Projects.Contract,
   Atlas.Core.Commands.KeyConflicts,
   Atlas.Core.Settings.Plugin,
   Atlas.Core.Updates.Check,
   Atlas.UI.Strings,
-  Atlas.IDE.CodeInsight.Manager,
   Atlas.IDE.Commands.KeyMap,
-  Atlas.IDE.Editor.Structure,
-  Atlas.IDE.Editor.Style,
-  Atlas.IDE.Settings.Store;
+  Atlas.IDE.Foundation.StructureSwitch,
+  Atlas.IDE.Foundation.EditorStyle,
+  Atlas.IDE.Foundation.Settings;
 
 type
   /// <summary>Was die Knöpfe in der IDE tun; Snapshot sammelt den Zustand.</summary>
@@ -183,12 +185,14 @@ var
   Modules: IOTAModuleServices;
   Group: IOTAProjectGroup;
   Active: IOTAProject;
-  Path, Arguments: string;
+  Path: string;
   Index, Percent: Integer;
 begin
   Result := Default(TAtlasSetupInput);
   Settings := TAtlasIdeSettings.Current;
-  Path := TAtlasCodeInsightManager.ServerPath(Arguments);
+  Path := '';
+  if Assigned(FHooks.ServerPath) then
+    Path := FHooks.ServerPath();
   Result.ServerFound := (Path <> '') and FileExists(Path);
   if Assigned(FHooks.ServerInfo) then
     Result.Server := FHooks.ServerInfo();
@@ -224,7 +228,6 @@ end;
 function TIdeEnvironment.ChooseServerPath(out APath: string): Boolean;
 var
   Dialog: TOpenDialog;
-  Arguments: string;
 begin
   APath := '';
   Dialog := TOpenDialog.Create(nil);
@@ -232,7 +235,8 @@ begin
     Dialog.Title := TAtlasStrings.Text(TAtlasTextId.SetupChooseTitle);
     Dialog.Filter := TAtlasStrings.Text(TAtlasTextId.SettingsServerFilter);
     Dialog.Options := Dialog.Options + [ofFileMustExist];
-    Dialog.InitialDir := ExtractFilePath(TAtlasCodeInsightManager.ServerPath(Arguments));
+    if Assigned(FHooks.ServerPath) then
+      Dialog.InitialDir := ExtractFilePath(FHooks.ServerPath());
     Result := Dialog.Execute;
     if Result then
       APath := Dialog.FileName;
@@ -556,9 +560,9 @@ begin
   TAtlasIdeSettings.Update(Settings);
 end;
 
-procedure TAtlasIdeSetupChecklist.RegisterCommands(APalette: TAtlasIdePalette);
+procedure TAtlasIdeSetupChecklist.RegisterCommands(const ARegistry: IAtlasCommandRegistry);
 begin
-  APalette.RegisterCommand(TAtlasSetupChecklist.CommandId, TAtlasStrings.Text(TAtlasTextId.SetupMenu), '',
+  ARegistry.RegisterCommand(TAtlasSetupChecklist.CommandId, TAtlasStrings.Text(TAtlasTextId.SetupMenu), '',
     procedure
     begin
       if FInstance <> nil then

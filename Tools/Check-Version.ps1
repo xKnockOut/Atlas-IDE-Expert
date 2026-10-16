@@ -3,11 +3,11 @@
     Prüft, dass Server und Claude-Code-Plugin dieselbe SemVer-Version tragen (#83).
 
 .DESCRIPTION
-    Quellen: TProductVersion.Version in Atlas.Common.Product.Version.pas,
-    TAtlasPluginVersion.Version in Atlas.Core.Product.Version.pas (IDE-Plugin),
-    plugin.json des Claude-Code-Plugins und marketplace.json. Mit -Expected (z. B. aus dem
+    Quellen: TAtlasVersion.Version in Atlas.Text.Product.Version.pas (Server, IDE-Plugin und
+    Installer, ADR 0012), plugin.json des Claude-Code-Plugins und marketplace.json. Mit -Expected (z. B. aus dem
     Release-Tag) muss auch diese übereinstimmen. CHANGELOG.md braucht einen
-    Abschnitt "## [<Version>]".
+    Abschnitt "## [<Version>]". Atlas.Common.Product.Version.pas und
+    Atlas.Core.Product.Version.pas dürfen keine eigene Versionszeichenkette tragen.
 
     Exit-Code 0: in Ordnung, 1: Abweichung.
 
@@ -24,17 +24,24 @@ Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
 $SemVer = '^\d+\.\d+\.\d+(-[0-9A-Za-z.-]+)?$'
-$Unit = Join-Path $Root 'Packages/Atlas.Common/Source/Product/Atlas.Common.Product.Version.pas'
+$Unit = Join-Path $Root 'Packages/Atlas.Text/Source/Product/Atlas.Text.Product.Version.pas'
 $Server = [regex]::Match((Get-Content -Raw $Unit), "Version\s*=\s*'([^']+)'").Groups[1].Value
-$PluginUnit = Join-Path $Root 'Packages/Atlas.IDE.Expert/Source/Core/Product/Atlas.Core.Product.Version.pas'
-$IdePlugin = [regex]::Match((Get-Content -Raw $PluginUnit), "Version\s*=\s*'([^']+)'").Groups[1].Value
+# Server und IDE-Plugin verweisen auf TAtlasVersion; eine eigene Zeichenkette wäre eine zweite Quelle.
+$Copies = @(
+    'Packages/Atlas.Common/Source/Product/Atlas.Common.Product.Version.pas',
+    'Packages/Atlas.IDE.Expert/Source/Core/Product/Atlas.Core.Product.Version.pas'
+)
 $Changelog = Get-Content -Raw (Join-Path $Root 'CHANGELOG.md')
 $Plugin = (Get-Content -Raw (Join-Path $Root 'Editors/ClaudeCode/atlas/.claude-plugin/plugin.json') | ConvertFrom-Json).version
 $Marketplace = (Get-Content -Raw (Join-Path $Root '.claude-plugin/marketplace.json') | ConvertFrom-Json).plugins[0].version
 
 $Errors = @()
 if ($Server -notmatch $SemVer) { $Errors += "Server-Version '$Server' ist keine SemVer-Version" }
-if ($Server -ne $IdePlugin) { $Errors += "Server $Server und IDE-Plugin $IdePlugin weichen ab" }
+foreach ($Copy in $Copies) {
+    if ((Get-Content -Raw (Join-Path $Root $Copy)) -match "Version\s*=\s*'") {
+        $Errors += "$Copy trägt eine eigene Version; sie muss auf TAtlasVersion.Version verweisen"
+    }
+}
 if ($Server -ne $Plugin) { $Errors += "Server $Server und Claude-Code-Plugin $Plugin weichen ab" }
 if ($Server -ne $Marketplace) { $Errors += "Server $Server und Marketplace-Eintrag $Marketplace weichen ab" }
 if ($Expected -ne '' -and $Expected -ne $Server) { $Errors += "Erwartet $Expected, Server hat $Server" }

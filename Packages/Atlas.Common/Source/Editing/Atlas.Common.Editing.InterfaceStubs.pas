@@ -15,7 +15,6 @@ interface
 
 uses
   Atlas.Common.Documents.Contract,
-  Atlas.Common.Rules.Contract,
   Atlas.Common.Pascal.Contract;
 
 type
@@ -47,10 +46,10 @@ type
     /// <summary>Einfügungen vor Zeile AEndLine (dem "end" der Klasse, eingerückt mit AIndent): mit AHeader der
     /// Abschnitt ASection, dann der Kommentar zum Interface und die Deklaration, eine Ebene tiefer.</summary>
     class function ClassEdits(const AStub: TInterfaceStub; AEndLine: Integer; const AIndent, ASection: string;
-      AHeader: Boolean; const ALineBreak: string): TArray<TRuleEdit>; static;
+      AHeader: Boolean; const ALineBreak: string): TArray<TTextEdit>; static;
     /// <summary>Fasst Änderungen mit gleichem Bereich zusammen: Texte in der Reihenfolge des ersten Auftretens,
     /// gleiche Texte nur einmal. Bereiche bleiben in der Reihenfolge ihres ersten Auftretens.</summary>
-    class function Merge(const AEdits: TArray<TRuleEdit>): TArray<TRuleEdit>; static;
+    class function Merge(const AEdits: TArray<TTextEdit>): TArray<TTextEdit>; static;
   end;
 
 implementation
@@ -180,16 +179,16 @@ begin
 end;
 
 class function TInterfaceStubs.ClassEdits(const AStub: TInterfaceStub; AEndLine: Integer; const AIndent,
-  ASection: string; AHeader: Boolean; const ALineBreak: string): TArray<TRuleEdit>;
+  ASection: string; AHeader: Boolean; const ALineBreak: string): TArray<TTextEdit>;
 var
   Range: TTextRange;
 begin
   Result := nil;
   Range := TTextRange.Create(AEndLine, 0, AEndLine, 0);
   if AHeader then
-    Result := Result + [TRuleEdit.Create(Range, AIndent + ASection + ALineBreak)];
-  Result := Result + [TRuleEdit.Create(Range, AIndent + '  { ' + AStub.InterfaceName + ' }' + ALineBreak),
-    TRuleEdit.Create(Range, AIndent + '  ' + AStub.Declaration + ALineBreak)];
+    Result := Result + [TTextEdit.Create(Range, AIndent + ASection + ALineBreak)];
+  Result := Result + [TTextEdit.Create(Range, AIndent + '  { ' + AStub.InterfaceName + ' }' + ALineBreak),
+    TTextEdit.Create(Range, AIndent + '  ' + AStub.Declaration + ALineBreak)];
 end;
 
 function SameRange(const A, B: TTextRange): Boolean;
@@ -198,9 +197,9 @@ begin
     (A.EndPos.Line = B.EndPos.Line) and (A.EndPos.Character = B.EndPos.Character);
 end;
 
-class function TInterfaceStubs.Merge(const AEdits: TArray<TRuleEdit>): TArray<TRuleEdit>;
+class function TInterfaceStubs.Merge(const AEdits: TArray<TTextEdit>): TArray<TTextEdit>;
 var
-  Edit: TRuleEdit;
+  Edit: TTextEdit;
   Index, Found: Integer;
   // Je Bereich die schon übernommenen Texte, mit #0 umschlossen.
   Seen: TArray<string>;

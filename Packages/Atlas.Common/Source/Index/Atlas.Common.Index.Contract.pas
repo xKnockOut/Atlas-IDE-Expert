@@ -162,7 +162,12 @@ type
     function FindSymbols(const AName: string): TArray<TSymbolLocation>;
     /// <summary>Direkte Nachfahren eines Typs (Klassen, Interfaces, Helfer).</summary>
     function Descendants(const ATypeName: string): TArray<TSymbolLocation>;
+    /// <summary>Alle Units. Das Ergebnis ist ein geteilter Schnappschuss (Code-Review P-13): nur lesen, nicht
+    /// verändern.</summary>
     function Units: TArray<TUnitIndex>;
+    /// <summary>Nur die Units mit Deklarationen aus nicht geltenden Zweigen (#476); meist wenige, für die
+    /// Vervollständigung (Code-Review P-13).</summary>
+    function UnavailableUnits: TArray<TUnitIndex>;
     function UnitCount: Integer;
     function SymbolCount: Integer;
     /// <summary>Geschätzter Speicherbedarf der Einträge in Byte.</summary>
@@ -213,6 +218,11 @@ type
   /// <summary>Abbruch des Aufbaus abfragen.</summary>
   TIndexCancelled = reference to function: Boolean;
 
+  /// <summary>Lädt AUnitName bei Bedarf in den Index nach (Namensauflösung, #178); True, wenn sie danach
+  /// vorliegt. Steht hier statt in Atlas.Common.Semantics.NameResolver, damit Contracts sie ohne fremdes
+  /// Root nutzen können (Code-Review A-10).</summary>
+  TEnsureUnitFunc = reference to function(const AUnitName: string): Boolean;
+
   /// <summary>Stufen des Aufbaus (#648): Projektdateien samt über uses erreichbarer Units, dann alle Units
   /// der Projekt-Suchpfade, zuletzt alle Units der Bibliotheks- und Suchpfade der Installation.</summary>
   TIndexStage = (Project, SearchPaths, Library_);
@@ -223,13 +233,6 @@ type
     ['{4A7E2C91-5B38-4F06-9D1A-E3C6B8F0A217}']
     function Enter(AStage: TIndexStage; const ACancelled: TIndexCancelled): Boolean;
     procedure Leave;
-  end;
-
-  TIndexFiles = class
-  public
-    /// <summary>Unit zu AFileName: die Unit dieser Datei, sonst eine Unit, die sie per $I einbindet (#500).</summary>
-    class function UnitOf(const AIndex: ISymbolIndex; const AFileName: string; out AUnit: TUnitIndex): Boolean;
-      static;
   end;
 
 implementation
@@ -366,31 +369,22 @@ end;
 
 function TUnitIndex.SymbolsNamed(const AName: string): TArray<Integer>;
 var
-  Position: Integer;
+  Position, Count: Integer;
 begin
   if (NameTable <> nil) and NameTable.Positions(Symbols, AName, Result) then
     Exit;
+  // Ohne Tabelle linear; das Ergebnis wächst in Stufen statt je Treffer um eins (Code-Review P-08).
   Result := nil;
+  Count := 0;
   for Position := 0 to High(Symbols) do
     if SameText(Symbols[Position].Name, AName) then
-      Result := Result + [Position];
-end;
-
-{ TIndexFiles }
-
-class function TIndexFiles.UnitOf(const AIndex: ISymbolIndex; const AFileName: string; out AUnit: TUnitIndex): Boolean;
-var
-  Candidate: TUnitIndex;
-begin
-  Result := (AIndex <> nil) and AIndex.FindFile(AFileName, AUnit);
-  if Result or (AIndex = nil) then
-    Exit;
-  for Candidate in AIndex.Units do
-    if IndexText(AFileName, Candidate.Includes) >= 0 then
     begin
-      AUnit := Candidate;
-      Exit(True);
+      if Count = Length(Result) then
+        SetLength(Result, Count * 2 + 4);
+      Result[Count] := Position;
+      Inc(Count);
     end;
+  SetLength(Result, Count);
 end;
 
 { TFileChange }

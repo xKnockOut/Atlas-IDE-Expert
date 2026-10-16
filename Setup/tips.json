@@ -23,6 +23,19 @@
       "column": 27
     },
     {
+      "id": "generateMenu",
+      "command": "Atlas.GenerateMenu",
+      "setting": "GenerateMenu",
+      "title": "Erzeugen-Menü",
+      "titleEn": "Generate menu",
+      "text": "Alt+Einfg zeigt am Cursor, was sich dort erzeugen lässt: Konstruktor, Properties, überschriebene Methoden, Interface-Methoden, Vorlagen. Ziffer wählt, Tippen filtert.",
+      "textEn": "Alt+Ins shows at the cursor what can be generated there: constructor, properties, overridden methods, interface methods, templates. A digit chooses, typing filters.",
+      "image": "Tipps\\erzeugen.png",
+      "sample": "Beispiele\\Entdecken.pas",
+      "line": 42,
+      "column": 9
+    },
+    {
       "id": "expandSelection",
       "command": "Atlas.ExpandSelection",
       "usage": [
@@ -433,6 +446,95 @@
       "text": "Zeigt nur die TODOs einer Kategorie (-c), einer Person (-o), einer Unit oder einer Marke, auf Wunsch auch erledigte (DONE). Die Vorschläge stammen aus der letzten Liste; der Filter bleibt für die Sitzung.",
       "textEn": "Shows only the TODOs of one category (-c), owner (-o), unit or keyword, optionally including done ones (DONE). Suggestions come from the last list; the filter stays for the session.",
       "image": "Tipps\\todo-filter.png"
+    },
+    {
+      "id": "updateBaseline",
+      "command": "Atlas.UpdateBaseline",
+      "setting": "BaselineUpdate",
+      "title": "Baseline des Projekts aktualisieren",
+      "titleEn": "Update project baseline",
+      "text": "Nimmt alle heutigen Regeltreffer des aktiven Projekts in atlas-baseline.json auf; danach meldet Atlas nur neue. Zählt neue, entfernte und unveränderte Treffer und nennt vorher Einträge, deren Datei es nicht mehr gibt.",
+      "textEn": "Records all current rule findings of the active project in atlas-baseline.json; afterwards Atlas reports only new ones. Counts added, removed and unchanged findings and first names entries whose file no longer exists.",
+      "image": "Tipps\\baseline.png"
+    },
+    {
+      "id": "teamFile",
+      "command": "Atlas.TeamFile",
+      "setting": "TeamFile",
+      "title": "Team-Einstellungen in .atlas",
+      "titleEn": "Team settings in .atlas",
+      "text": "Die Projektdatei .atlas im Repository gibt allen im Team dieselben Präfixe, Projekt-Vorlagen, Startprofile, Build-Server und Tracker; ihre Werte gehen den persönlichen vor. Zugangsdaten und absolute Pfade ignoriert Atlas.",
+      "textEn": "The project file .atlas in the repository gives the whole team the same prefixes, project templates, launch profiles, build server and tracker; its values take precedence over personal ones. Atlas ignores credentials and absolute paths.",
+      "image": "Tipps\\projektdatei.png"
+    },
+    {
+      "id": "projectSetup",
+      "command": "Atlas.ProjectSetup",
+      "setting": "WelcomePageProjectSetup",
+      "title": "Projekt für Atlas einrichten",
+      "titleEn": "Set up project for Atlas",
+      "text": "Eine Karte je Projekt: atlas.json aus einer Vorlage anlegen, Baseline erzeugen, fehlende Units und Defines ohne Quelle finden. Jeder Schritt läuft nur auf Klick; darunter „Neu mit Atlas“ für Unit, Formular und Testklasse.",
+      "textEn": "One card per project: create atlas.json from a template, create the baseline, find missing units and defines without a source. Every step runs only on click; below it “New with Atlas” for unit, form and test class.",
+      "image": "Tipps\\einrichten.png"
+    },
+    {
+      "id": "mcpBuild",
+      "setting": "McpBuild",
+      "title": "Builds für Claude Code",
+      "titleEn": "Builds for Claude Code",
+      "text": "Claude Code baut das offene Projekt über das Werkzeug build_project in dieser IDE und bekommt Fehler und Warnungen mit Datei, Zeile und Spalte zurück. Bei laufendem Debugger oder Build lehnt Atlas ab.",
+      "textEn": "Claude Code builds the open project in this IDE through the build_project tool and gets errors and warnings back with file, line and column. While the debugger or a build is running, Atlas refuses.",
+      "image": "Tipps\\claude-build.png"
+    },
+    {
+      "id": "runTests",
+      "command": "Atlas.RunTests",
+      "setting": "TestRun",
+      "title": "DUnitX-Tests ausführen",
+      "titleEn": "Run DUnitX tests",
+      "text": "Startet die Tests des Testprojekts mit dessen Plattform, auf Wunsch nach einem Build. Die Code Lens an [Test] startet einen einzelnen Test; Fehlschläge stehen mit erwartetem und erhaltenem Wert an der Testmethode.",
+      "textEn": "Runs the tests of the test project with its platform, optionally after a build. The code lens at [Test] runs a single test; failures appear at the test method with expected and actual value.",
+      "image": "Tipps\\tests-ausfuehren.png"
+    },
+    {
+      "id": "runFailedTests",
+      "command": "Atlas.RunFailedTests",
+      "setting": "TestRun",
+      "title": "Fehlgeschlagene Tests erneut ausführen",
+      "titleEn": "Re-run failed tests",
+      "text": "Startet genau die Tests, die im letzten Lauf fehlschlugen, auch nach einem Neustart der IDE. Mit „Tests nach dem Build“ laufen die Tests nach jedem erfolgreichen Build des Testprojekts von selbst.",
+      "textEn": "Runs exactly the tests that failed in the last run, even after restarting the IDE. With “Tests after build” the tests run by themselves after every successful build of the test project.",
+      "image": "Tipps\\tests-erneut.png"
+    },
+    {
+      "id": "debugTest",
+      "command": "Atlas.DebugTest",
+      "setting": "TestDebug",
+      "title": "Einzelnen Test debuggen",
+      "titleEn": "Debug a single test",
+      "text": "„Debuggen“ an [Test] oder „Test am Cursor debuggen“ baut das Testprojekt und startet nur diesen Test (bei [TestCase] auch einen Fall) im Debugger; Atlas hält in der ersten Zeile der Methode. Danach gelten aktives Projekt und Startparameter wie vorher.",
+      "textEn": "“Debug” at [Test] or “Debug test at cursor” builds the test project and starts just this test (for [TestCase] also a single case) in the debugger; Atlas stops in the method's first line. Afterwards the active project and run parameters are as before.",
+      "image": "Tipps\\test-debuggen.png"
+    },
+    {
+      "id": "runTestAtCursor",
+      "command": "Atlas.RunTest",
+      "setting": "TestRun",
+      "title": "Test am Cursor ausführen",
+      "titleEn": "Run test at cursor",
+      "text": "Führt den Test, den [TestCase]-Fall oder die Fixture aus, in der der Cursor steht – auch im Rumpf der Testmethode und über das Kontextmenü. Gehört die Testunit zu mehreren Testprojekten, fragt Atlas einmal und merkt sich die Wahl.",
+      "textEn": "Runs the test, [TestCase] case or fixture the cursor is in – also inside the test method's body and from the context menu. If the test unit belongs to several test projects, Atlas asks once and remembers the choice.",
+      "image": "Tipps\\test-am-cursor.png"
+    },
+    {
+      "id": "startProfile",
+      "command": "Atlas.StartProfile",
+      "setting": "StartProfiles",
+      "title": "Startprofile wechseln",
+      "titleEn": "Switch start profiles",
+      "text": "Ein Startprofil bündelt Parameter, Arbeitsordner, Umgebungsvariablen und Host-Anwendung. „Startprofil: …“ oder ein Klick auf das Feld in der Statusleiste setzt es; Start und „Ohne Debugger starten“ nutzen es dann. Gemeinsame Profile stehen in .atlas, persönliche nur lokal.",
+      "textEn": "A start profile bundles parameters, working folder, environment variables and host application. “Start profile: …” or a click on the field in the status bar sets it; Run and “Run without debugging” then use it. Shared profiles live in .atlas, personal ones only locally.",
+      "image": "Tipps\\startprofil.png"
     }
   ]
 }

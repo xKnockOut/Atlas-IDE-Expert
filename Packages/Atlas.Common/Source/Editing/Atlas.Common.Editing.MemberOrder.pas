@@ -17,7 +17,7 @@
 interface
 
 uses
-  Atlas.Common.Rules.Contract,
+  Atlas.Common.Documents.Contract,
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Configuration.Contract;
 
@@ -27,7 +27,7 @@ type
     /// <summary>Ordnet die Klasse um Zeile ALine; False, wenn es nichts zu tun gibt oder sie nicht sicher sortierbar
     /// ist.</summary>
     class function Sort(const AText: string; ATree: TSyntaxTree; ALine: Integer;
-      const ASettings: TMemberOrderSettings; out AEdit: TRuleEdit): Boolean; static;
+      const ASettings: TMemberOrderSettings; out AEdit: TTextEdit): Boolean; static;
   end;
 
 implementation
@@ -35,7 +35,8 @@ implementation
 uses
   System.SysUtils,
   System.StrUtils,
-  Atlas.Common.Documents.Contract;
+  System.Generics.Collections,
+  Atlas.Text.Lines;
 
 type
   TItem = record
@@ -176,26 +177,270 @@ begin
   end;
 end;
 
-class function TMemberOrder.Sort(const AText: string; ATree: TSyntaxTree; ALine: Integer;
-  const ASettings: TMemberOrderSettings; out AEdit: TRuleEdit): Boolean;
+/// <summary>{$A-}, {$A1}, {$ALIGN OFF} oder {$ALIGN 1} irgendwo in der Datei.</summary>
+function HasPackedAlignment(const AText: string): Boolean;
 var
-  Lines, Output: TArray<string>;
-  ClassNode, Child: TSyntaxNode;
-  Header, Stop, Line, Index, Depth, Step, SectionIndex, Next, FieldSections, Rank: Integer;
-  Sections: TArray<TSection>;
+  Upper: string;
+begin
+  Upper := UpperCase(AText);
+  Result := ContainsStr(Upper, '{$A-}') or ContainsStr(Upper, '{$A1}') or ContainsStr(Upper, '{$ALIGN OFF}') or
+    ContainsStr(Upper, '{$ALIGN 1}');
+end;
+
+/// <summary>Abschnitte über die Schlüsselwortzeilen zwischen AHeader und AStop.</summary>
+function CollectSections(const ALines: TArray<string>; AHeader, AStop: Integer): TArray<TSection>;
+var
+  Sections: TList<TSection>;
+  Section: TSection;
+  Line: Integer;
+  Words: string;
+begin
+  Result := nil;
+  Sections := TList<TSection>.Create;
+  try
+    Section := Default(TSection);
+    Section.Header := -1;
+    Section.First := AHeader + 1;
+    for Line := AHeader + 1 to AStop - 1 do
+    begin
+      Words := NormalizedWords(ALines[Line]);
+      if IndexText(Words, Visibilities) >= 0 then
+      begin
+        Section.Last := Line - 1;
+        Sections.Add(Section);
+        Section := Default(TSection);
+        Section.Keyword := Words;
+        Section.Header := Line;
+        Section.First := Line + 1;
+      end
+      else if MatchText(Words, ['type', 'const', 'var', 'class var', 'threadvar', 'resourcestring']) or
+        StartsText('class var ', Words) then
+        Section.Nested := True;
+    end;
+    Section.Last := AStop - 1;
+    Sections.Add(Section);
+    Result := Sections.ToArray;
+  finally
+    Sections.Free;
+  end;
+end;
+
+/// <summary>Markiert Abschnitte mit {$IF…}; False, wenn ein Block quer zu Abschnitten liegt.</summary>
+function MarkDirectives(var ASections: TArray<TSection>; const ALines: TArray<string>): Boolean;
+var
+  SectionIndex, Line, Depth, Step: Integer;
+  Other: Boolean;
+begin
+  Result := False;
+  for SectionIndex := 0 to High(ASections) do
+  begin
+    Depth := 0;
+    for Line := ASections[SectionIndex].First to ASections[SectionIndex].Last do
+    begin
+      Step := DirectiveStep(ALines[Line], Other);
+      if (Step <> 0) or Other then
+        ASections[SectionIndex].Directives := True;
+      Inc(Depth, -Step);
+      if Depth < 0 then
+        Exit;
+    end;
+    if Depth <> 0 then
+      Exit;
+  end;
+  Result := True;
+end;
+
+/// <summary>Ordnet die Kindknoten den Abschnitten zu (Nested, HasFields); Unbekanntes gilt als verschachtelte
+/// Deklaration. False, wenn ein Mitglied über mehrere Abschnitte reicht.</summary>
+function ClassifyMembers(var ASections: TArray<TSection>; AClass: TSyntaxNode; AHeader: Integer): Boolean;
+var
+  Index, SectionIndex: Integer;
+  Child: TSyntaxNode;
+begin
+  Result := False;
+  for Index := 0 to AClass.ChildCount - 1 do
+  begin
+    Child := AClass[Index];
+    if (Child.Kind in IgnoredKinds) or (Child.StartPos.Line <= AHeader) then
+      Continue;
+    for SectionIndex := 0 to High(ASections) do
+      if (Child.StartPos.Line >= ASections[SectionIndex].First) and
+        (Child.StartPos.Line <= ASections[SectionIndex].Last) then
+      begin
+        if not (Child.Kind in MemberKinds) then
+          ASections[SectionIndex].Nested := True
+        else if Child.Kind = TSyntaxKind.Field then
+          ASections[SectionIndex].HasFields := True;
+        if Child.EndPos.Line > ASections[SectionIndex].Last then
+          Exit;
+      end;
+  end;
+  Result := True;
+end;
+
+/// <summary>Dürfen Abschnitte verschoben werden? Nein bei verschachtelten Deklarationen oder bei Feldern in
+/// mehreren Abschnitten ohne sortFields (sonst änderte sich das Speicherlayout).</summary>
+function CanMoveSections(const ASections: TArray<TSection>; const ASettings: TMemberOrderSettings): Boolean;
+var
+  Section: TSection;
+  FieldSections: Integer;
+begin
+  Result := True;
+  FieldSections := 0;
+  for Section in ASections do
+  begin
+    if Section.Nested then
+      Result := False;
+    if Section.HasFields then
+      Inc(FieldSections);
+  end;
+  if (FieldSections > 1) and not ASettings.SortFields then
+    Result := False;
+end;
+
+/// <summary>Position je Abschnitt setzen und stabil sortieren; der Abschnitt ohne Schlüsselwort bleibt vorn.</summary>
+procedure OrderSections(var ASections: TArray<TSection>; const ASettings: TMemberOrderSettings);
+var
+  SectionIndex, Rank: Integer;
+  MayMove: Boolean;
+begin
+  MayMove := CanMoveSections(ASections, ASettings);
+  for SectionIndex := 0 to High(ASections) do
+  begin
+    Rank := IndexText(ASections[SectionIndex].Keyword, ASettings.Sections);
+    if Rank < 0 then
+      Rank := Length(ASettings.Sections);
+    if ASections[SectionIndex].Header < 0 then
+      ASections[SectionIndex].Position := -1
+    else if MayMove then
+      ASections[SectionIndex].Position := Rank * 1000 + SectionIndex
+    else
+      ASections[SectionIndex].Position := SectionIndex;
+  end;
+  SortSections(ASections);
+end;
+
+/// <summary>Werden die Mitglieder dieses Abschnitts umsortiert?</summary>
+function SectionSortable(const ASection: TSection; const ASettings: TMemberOrderSettings): Boolean;
+begin
+  Result := not ASection.Nested and not ASection.Directives and (ASection.Header >= 0) and
+    ((ASection.Keyword <> 'published') or ASettings.SortPublished);
+end;
+
+/// <summary>Mitglieder des Abschnitts samt der Zeilen darüber; ANext = erste Zeile nach dem letzten.</summary>
+function CollectItems(const ASection: TSection; AClass: TSyntaxNode; const ALines: TArray<string>;
+  const AOrder: TArray<string>; out ANext: Integer): TArray<TItem>;
+var
+  Items: TList<TItem>;
+  Item: TItem;
+  Child: TSyntaxNode;
+  Index: Integer;
+begin
+  Result := nil;
+  ANext := ASection.First;
+  Items := TList<TItem>.Create;
+  try
+    for Index := 0 to AClass.ChildCount - 1 do
+    begin
+      Child := AClass[Index];
+      if not (Child.Kind in MemberKinds) or (Child.StartPos.Line < ASection.First) or
+        (Child.StartPos.Line > ASection.Last) then
+        Continue;
+      // Mehrere Knoten in einer Zeile (A, B: Integer) gehören zusammen.
+      if (Items.Count > 0) and (Child.StartPos.Line <= Items[Items.Count - 1].Last) then
+      begin
+        if Child.EndPos.Line > Items[Items.Count - 1].Last then
+        begin
+          Item := Items[Items.Count - 1];
+          Item.Last := Child.EndPos.Line;
+          Items[Items.Count - 1] := Item;
+          ANext := Item.Last + 1;
+        end;
+        Continue;
+      end;
+      Item := Default(TItem);
+      Item.First := ANext;
+      Item.Last := Child.EndPos.Line;
+      Item.Rank := KindRank(ALines[Child.StartPos.Line], Child.Kind, AOrder);
+      Item.Position := Items.Count;
+      Items.Add(Item);
+      ANext := Item.Last + 1;
+    end;
+    Result := Items.ToArray;
+  finally
+    Items.Free;
+  end;
+end;
+
+/// <summary>Neue Zeilen zwischen Kopf und end.</summary>
+procedure EmitSections(const ALines: TArray<string>; const ASections: TArray<TSection>; AClass: TSyntaxNode;
+  const ASettings: TMemberOrderSettings; AOutput: TList<string>);
+var
   Section: TSection;
   Items: TArray<TItem>;
   Item: TItem;
-  Text, LB, Words: string;
-  Other, MayMoveSections, IsVisibility: Boolean;
-  Upper: string;
+  Line, Next: Integer;
+begin
+  for Section in ASections do
+  begin
+    if Section.Header >= 0 then
+      AOutput.Add(ALines[Section.Header]);
+    if not SectionSortable(Section, ASettings) then
+    begin
+      for Line := Section.First to Section.Last do
+        AOutput.Add(ALines[Line]);
+      Continue;
+    end;
+    Items := CollectItems(Section, AClass, ALines, ASettings.Members, Next);
+    SortItems(Items);
+    for Item in Items do
+      for Line := Item.First to Item.Last do
+        AOutput.Add(ALines[Line]);
+    // Was nach dem letzten Mitglied kommt, bleibt am Ende.
+    for Line := Next to Section.Last do
+      AOutput.Add(ALines[Line]);
+  end;
+end;
+
+/// <summary>Weicht AOutput von den Zeilen AHeader+1..AStop-1 ab?</summary>
+function Changed(const ALines: TArray<string>; AOutput: TList<string>; AHeader, AStop: Integer): Boolean;
+var
+  Line: Integer;
+begin
+  if AOutput.Count <> AStop - AHeader - 1 then
+    Exit(True);
+  for Line := AHeader + 1 to AStop - 1 do
+    if ALines[Line] <> AOutput[Line - AHeader - 1] then
+      Exit(True);
+  Result := False;
+end;
+
+function JoinLines(AOutput: TList<string>; const ALineBreak: string): string;
+var
+  Builder: TStringBuilder;
+  Line: string;
+begin
+  Builder := TStringBuilder.Create;
+  try
+    for Line in AOutput do
+      Builder.Append(Line).Append(ALineBreak);
+    Result := Builder.ToString;
+  finally
+    Builder.Free;
+  end;
+end;
+
+class function TMemberOrder.Sort(const AText: string; ATree: TSyntaxTree; ALine: Integer;
+  const ASettings: TMemberOrderSettings; out AEdit: TTextEdit): Boolean;
+var
+  Lines: TArray<string>;
+  ClassNode: TSyntaxNode;
+  Header, Stop: Integer;
+  Sections: TArray<TSection>;
+  Output: TList<string>;
 begin
   Result := False;
-  if (ATree = nil) or (ATree.Root = nil) then
-    Exit;
-  Upper := UpperCase(AText);
-  if ContainsStr(Upper, '{$A-}') or ContainsStr(Upper, '{$A1}') or ContainsStr(Upper, '{$ALIGN OFF}') or
-    ContainsStr(Upper, '{$ALIGN 1}') then
+  if (ATree = nil) or (ATree.Root = nil) or HasPackedAlignment(AText) then
     Exit;
   ClassNode := FindClass(ATree.Root, ALine);
   if ClassNode = nil then
@@ -206,152 +451,23 @@ begin
   if (Stop - Header < 2) or (Stop > High(Lines)) or ContainsText(Lines[Header], 'packed') or
     not StartsText('end', TrimLeft(Lines[Stop])) then
     Exit;
-  // Abschnitte über die Schlüsselwortzeilen.
-  Sections := nil;
-  Section := Default(TSection);
-  Section.Header := -1;
-  Section.First := Header + 1;
-  for Line := Header + 1 to Stop - 1 do
-  begin
-    Words := NormalizedWords(Lines[Line]);
-    IsVisibility := IndexText(Words, Visibilities) >= 0;
-    if IsVisibility then
-    begin
-      Section.Last := Line - 1;
-      Sections := Sections + [Section];
-      Section := Default(TSection);
-      Section.Keyword := Words;
-      Section.Header := Line;
-      Section.First := Line + 1;
-    end
-    else if MatchText(Words, ['type', 'const', 'var', 'class var', 'threadvar', 'resourcestring']) or
-      StartsText('class var ', Words) then
-      Section.Nested := True;
-  end;
-  Section.Last := Stop - 1;
-  Sections := Sections + [Section];
+  Sections := CollectSections(Lines, Header, Stop);
   // {$IF…}: innerhalb eines Abschnitts nur Einheit, quer dazu keine Aktion.
-  for SectionIndex := 0 to High(Sections) do
-  begin
-    Depth := 0;
-    for Line := Sections[SectionIndex].First to Sections[SectionIndex].Last do
-    begin
-      Step := DirectiveStep(Lines[Line], Other);
-      if (Step <> 0) or Other then
-        Sections[SectionIndex].Directives := True;
-      Inc(Depth, -Step);
-      if Depth < 0 then
-        Exit;
-    end;
-    if Depth <> 0 then
-      Exit;
-  end;
-  // Mitglieder den Abschnitten zuordnen; Unbekanntes gilt als verschachtelte Deklaration.
-  for Index := 0 to ClassNode.ChildCount - 1 do
-  begin
-    Child := ClassNode[Index];
-    if (Child.Kind in IgnoredKinds) or (Child.StartPos.Line <= Header) then
-      Continue;
-    for SectionIndex := 0 to High(Sections) do
-      if (Child.StartPos.Line >= Sections[SectionIndex].First) and
-        (Child.StartPos.Line <= Sections[SectionIndex].Last) then
-      begin
-        if not (Child.Kind in MemberKinds) then
-          Sections[SectionIndex].Nested := True
-        else if Child.Kind = TSyntaxKind.Field then
-          Sections[SectionIndex].HasFields := True;
-        // Mitglied über mehrere Abschnitte: nicht anfassen.
-        if Child.EndPos.Line > Sections[SectionIndex].Last then
-          Exit;
-      end;
-  end;
-  MayMoveSections := True;
-  FieldSections := 0;
-  for Section in Sections do
-  begin
-    if Section.Nested then
-      MayMoveSections := False;
-    if Section.HasFields then
-      Inc(FieldSections);
-  end;
-  if (FieldSections > 1) and not ASettings.SortFields then
-    MayMoveSections := False;
-  for SectionIndex := 0 to High(Sections) do
-  begin
-    Rank := IndexText(Sections[SectionIndex].Keyword, ASettings.Sections);
-    if Rank < 0 then
-      Rank := Length(ASettings.Sections);
-    // Der Abschnitt ohne Schlüsselwort bleibt vorn.
-    if Sections[SectionIndex].Header < 0 then
-      Sections[SectionIndex].Position := -1
-    else if MayMoveSections then
-      Sections[SectionIndex].Position := Rank * 1000 + SectionIndex
-    else
-      Sections[SectionIndex].Position := SectionIndex;
-  end;
-  SortSections(Sections);
-  Output := nil;
-  for Section in Sections do
-  begin
-    if Section.Header >= 0 then
-      Output := Output + [Lines[Section.Header]];
-    if Section.Nested or Section.Directives or (Section.Header < 0) or
-      ((Section.Keyword = 'published') and not ASettings.SortPublished) then
-    begin
-      for Line := Section.First to Section.Last do
-        Output := Output + [Lines[Line]];
-      Continue;
-    end;
-    // Mitglieder samt der Zeilen darüber; was nach dem letzten kommt, bleibt am Ende.
-    Items := nil;
-    Next := Section.First;
-    for Index := 0 to ClassNode.ChildCount - 1 do
-    begin
-      Child := ClassNode[Index];
-      if not (Child.Kind in MemberKinds) or (Child.StartPos.Line < Section.First) or
-        (Child.StartPos.Line > Section.Last) then
-        Continue;
-      // Mehrere Knoten in einer Zeile (A, B: Integer) gehören zusammen.
-      if (Length(Items) > 0) and (Child.StartPos.Line <= Items[High(Items)].Last) then
-      begin
-        if Child.EndPos.Line > Items[High(Items)].Last then
-          Items[High(Items)].Last := Child.EndPos.Line;
-        Continue;
-      end;
-      Item.First := Next;
-      Item.Last := Child.EndPos.Line;
-      Item.Rank := KindRank(Lines[Child.StartPos.Line], Child.Kind, ASettings.Members);
-      Item.Position := Length(Items);
-      Items := Items + [Item];
-      Next := Item.Last + 1;
-    end;
-    SortItems(Items);
-    for Item in Items do
-      for Line := Item.First to Item.Last do
-        Output := Output + [Lines[Line]];
-    for Line := Next to Section.Last do
-      Output := Output + [Lines[Line]];
-  end;
-  // Unverändert: keine Aktion.
-  Index := 0;
-  Other := False;
-  for Line := Header + 1 to Stop - 1 do
-  begin
-    if Lines[Line] <> Output[Index] then
-      Other := True;
-    Inc(Index);
-  end;
-  if not Other then
+  if not MarkDirectives(Sections, Lines) or not ClassifyMembers(Sections, ClassNode, Header) then
     Exit;
-  if Pos(#13#10, AText) > 0 then
-    LB := #13#10
-  else
-    LB := #10;
-  Text := '';
-  for Line := 0 to High(Output) do
-    Text := Text + Output[Line] + LB;
-  AEdit := TRuleEdit.Create(TTextRange.Create(Header + 1, 0, Stop, 0), Text);
-  Result := True;
+  OrderSections(Sections, ASettings);
+  Output := TList<string>.Create;
+  try
+    EmitSections(Lines, Sections, ClassNode, ASettings, Output);
+    // Unverändert: keine Aktion.
+    if not Changed(Lines, Output, Header, Stop) then
+      Exit;
+    AEdit := TTextEdit.Create(TTextRange.Create(Header + 1, 0, Stop, 0),
+      JoinLines(Output, TTextLines.LineBreakOf(AText)));
+    Result := True;
+  finally
+    Output.Free;
+  end;
 end;
 
 end.

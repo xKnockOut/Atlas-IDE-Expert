@@ -129,6 +129,11 @@ begin
   Assert.AreEqual('Editor', Toggle.Page);
   Assert.IsTrue(Toggle.Drawing);
   Assert.AreEqual('Bookmarks', Toggle.Feature);
+  // Erzeugen-Menü (#719): Befehl, keine Zeichnung; „Alles aus“ lässt ihn stehen.
+  Assert.IsTrue(TAtlasQuickToggles.Find(Toggles, 'GenerateMenu', Toggle));
+  Assert.AreEqual('Editor', Toggle.Page);
+  Assert.IsFalse(Toggle.Drawing);
+  Assert.AreEqual('EditorCommands', Toggle.Feature);
   // Code Lens mit Code-Metriken (#66): Zeichnung im Editor, „Alles aus“ schaltet sie ab.
   Assert.IsTrue(TAtlasQuickToggles.Find(Toggles, 'CodeLensMetrics', Toggle));
   Assert.AreEqual('Editor', Toggle.Page);
@@ -139,11 +144,56 @@ begin
   Assert.AreEqual('Editor', Toggle.Page);
   Assert.IsFalse(Toggle.Drawing);
   Assert.AreEqual('Palette', Toggle.Feature);
+  // Projektdatei .atlas (#486): eigener Schalter auf der Seite Allgemein, keine Zeichnung.
+  Assert.IsTrue(TAtlasQuickToggles.Find(Toggles, 'TeamFile', Toggle));
+  Assert.AreEqual('Allgemein', Toggle.Page);
+  Assert.IsFalse(Toggle.Drawing);
+  Assert.AreEqual('Settings', Toggle.Feature);
+  // Builds für Claude Code (#261): Schalter auf der Seite Compiler, keine Zeichnung.
+  // Tests ausführen (#69): Code Lens zeichnet im Editor, Befehle und Lauf nach dem Build nicht.
+  Assert.IsTrue(TAtlasQuickToggles.Find(Toggles, 'CodeLensTests', Toggle));
+  Assert.AreEqual('Editor', Toggle.Page);
+  Assert.IsTrue(Toggle.Drawing);
+  Assert.AreEqual('Build', Toggle.Feature);
+  Assert.IsTrue(TAtlasQuickToggles.Find(Toggles, 'TestRun', Toggle));
+  Assert.AreEqual('Compiler', Toggle.Page);
+  Assert.IsFalse(Toggle.Drawing);
+  Assert.IsTrue(TAtlasQuickToggles.Find(Toggles, 'TestsAfterBuild', Toggle));
+  Assert.IsFalse(TAtlasQuickToggles.Find(Toggles, 'BuildZeroHints', Toggle), 'ohne x-quickToggle');
+  // Startprofile (#575): Befehl und Statusfeld je ein Schalter auf der Seite Compiler, keine Zeichnung.
+  Assert.IsTrue(TAtlasQuickToggles.Find(Toggles, 'StartProfiles', Toggle));
+  Assert.AreEqual('Compiler', Toggle.Page);
+  Assert.IsFalse(Toggle.Drawing);
+  Assert.AreEqual('Build', Toggle.Feature);
+  Assert.IsTrue(TAtlasQuickToggles.Find(Toggles, 'StartProfilesStatusField', Toggle));
+  Assert.AreEqual('Compiler', Toggle.Page);
+  Assert.IsFalse(Toggle.Drawing);
+  // Test debuggen (#585): eigener Schalter für Befehl, Kontextmenü und Marke auf der Seite Debuggen; der
+  // Haltepunkt am Anfang ist kein Schnellschalter.
+  Assert.IsTrue(TAtlasQuickToggles.Find(Toggles, 'TestDebug', Toggle));
+  Assert.AreEqual('Debuggen', Toggle.Page);
+  Assert.IsFalse(Toggle.Drawing);
+  Assert.AreEqual('Build', Toggle.Feature);
+  Assert.IsFalse(TAtlasQuickToggles.Find(Toggles, 'TestBreakAtStart', Toggle), 'ohne x-quickToggle');
+  Assert.IsTrue(TAtlasQuickToggles.Find(Toggles, 'McpBuild', Toggle));
+  Assert.AreEqual('Compiler', Toggle.Page);
+  Assert.IsFalse(Toggle.Drawing);
+  Assert.AreEqual('Build', Toggle.Feature);
   // Befehl (#68): Schalter auf der Seite Editor; keine Zeichnung, „Alles aus“ lässt ihn stehen.
   Assert.IsTrue(TAtlasQuickToggles.Find(Toggles, 'TodoList', Toggle));
   Assert.AreEqual('Editor', Toggle.Page);
   Assert.IsFalse(Toggle.Drawing);
   Assert.AreEqual('Palette', Toggle.Feature);
+  // Befehl (#97): eigener Schalter je Palettenbefehl, keine Zeichnung.
+  Assert.IsTrue(TAtlasQuickToggles.Find(Toggles, 'BaselineUpdate', Toggle));
+  Assert.AreEqual('Editor', Toggle.Page);
+  Assert.IsFalse(Toggle.Drawing);
+  Assert.AreEqual('Palette', Toggle.Feature);
+  // Einrichtungskarte und Befehl Atlas.ProjectSetup (#759): eigener Schalter auf der Seite Willkommensseite.
+  Assert.IsTrue(TAtlasQuickToggles.Find(Toggles, 'WelcomePageProjectSetup', Toggle));
+  Assert.AreEqual('Willkommensseite', Toggle.Page);
+  Assert.IsFalse(Toggle.Drawing);
+  Assert.AreEqual('WelcomePage', Toggle.Feature);
   // Jeder Schalter ist eine Einstellung des Plugins.
   for Toggle in Toggles do
   begin
@@ -193,8 +243,13 @@ begin
   Assert.IsFalse(Effective.PairColors);
   Assert.IsFalse(Effective.PairGuides);
   Assert.IsTrue(Effective.Preview = Stored.Preview);
+  Assert.IsTrue(Effective.GenerateMenu, 'Befehl (#719) ist keine Zeichnung');
   Assert.IsTrue(Effective.TodoList, 'Befehl (#68) ist keine Zeichnung');
   Assert.IsTrue(Effective.MetricsReport, 'Befehl (#66) ist keine Zeichnung');
+  Assert.IsTrue(Effective.TeamFile, 'Projektdatei (#486) ist keine Zeichnung');
+  Assert.IsTrue(Effective.StartProfiles, 'Startprofile (#575) sind keine Zeichnung');
+  Assert.IsTrue(Effective.TestDebug, 'Test debuggen (#585) ist keine Zeichnung');
+  Assert.IsTrue(Effective.BaselineUpdate, 'Befehl (#97) ist keine Zeichnung');
   Assert.IsTrue(Stored.PairColors);
   Assert.IsTrue(Stored.PairGuides);
   Assert.IsTrue(Stored.HoverTooltip);

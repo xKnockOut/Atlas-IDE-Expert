@@ -29,6 +29,18 @@ type
     IsAtlas: Boolean;
   end;
 
+  /// <summary>Atlas-Befehle anmelden (Palette, #520); ohne VCL und Open Tools API. Features melden ihre Befehle
+  /// darüber an, statt die Palette der IDE-Schicht zu importieren (A-09). Ohne Referenzzählung: Die Palette
+  /// gehört der Composition; Empfänger speichern die Schnittstelle nicht.</summary>
+  IAtlasCommandRegistry = interface
+    ['{57AA1265-60F8-4655-BC7B-1AE31AC48481}']
+    /// <summary>Atlas-Befehl für die Palette (Beschriftung mit „Atlas: “ davor).</summary>
+    procedure RegisterCommand(const AId, ACaption, ADescription: string; const AProc: TProc); overload;
+    /// <summary>Wie oben; der Befehl erscheint nur, solange AVisible True liefert (#520).</summary>
+    procedure RegisterCommand(const AId, ACaption, ADescription: string; const AProc: TProc;
+      const AVisible: TFunc<Boolean>); overload;
+  end;
+
   TAtlasCommandHistory = class
   private type
     TEntry = record

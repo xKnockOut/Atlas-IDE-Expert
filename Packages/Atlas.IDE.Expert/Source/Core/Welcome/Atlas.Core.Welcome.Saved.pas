@@ -89,7 +89,8 @@ implementation
 
 uses
   Atlas.Core.Editor.MethodToggle,
-  Atlas.Core.Projects.Summary;
+  Atlas.Core.Projects.Summary,
+  Atlas.Text.Chars;
 
 function NameOfPath(const APath: string): string;
 var
@@ -273,11 +274,6 @@ begin
   end;
 end;
 
-function IsIdentChar(AChar: Char): Boolean;
-begin
-  Result := CharInSet(AChar, ['A'..'Z', 'a'..'z', '0'..'9', '_']) or (Ord(AChar) > 127);
-end;
-
 /// <summary>Enthält ALine AWord als ganzes Wort (Groß/klein egal)?</summary>
 function HasWord(const ALine, AWord: string): Boolean;
 var
@@ -294,8 +290,8 @@ begin
     Found := Pos(Wanted, Lower, Start);
     if Found = 0 then
       Exit;
-    if ((Found = 1) or not IsIdentChar(Lower[Found - 1])) and
-      ((Found + Length(Wanted) > Length(Lower)) or not IsIdentChar(Lower[Found + Length(Wanted)])) then
+    if ((Found = 1) or not TTextChars.IsIdentChar(Lower[Found - 1])) and
+      ((Found + Length(Wanted) > Length(Lower)) or not TTextChars.IsIdentChar(Lower[Found + Length(Wanted)])) then
       Exit(True);
     Start := Found + 1;
   until False;
@@ -312,7 +308,7 @@ begin
   if not SameText(Copy(Text, 1, Length(ATypeName)), ATypeName) then
     Exit;
   Index := Length(ATypeName) + 1;
-  if (Index <= Length(Text)) and IsIdentChar(Text[Index]) then
+  if (Index <= Length(Text)) and TTextChars.IsIdentChar(Text[Index]) then
     Exit;
   // Generische Parameter überspringen.
   if (Index <= Length(Text)) and (Text[Index] = '<') then

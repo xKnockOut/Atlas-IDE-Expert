@@ -138,6 +138,34 @@ begin
     Result := '-' + Result;
 end;
 
+type
+  /// <summary>Zeiger auf ein string-Feld; eigener Typ, weil PString nicht überall auf string zeigt.</summary>
+  PStringField = ^string;
+
+  /// <summary>Parameter mit Textwert, der unverändert in ein Feld geht (S-02: Tabelle statt if-Kette).</summary>
+  TStringOption = record
+    Name: string;
+    Target: PStringField;
+  end;
+
+  /// <summary>Schalter ohne Wert, der ein Feld auf True setzt.</summary>
+  TFlagOption = record
+    Name: string;
+    Target: PBoolean;
+  end;
+
+function StringOption(const AName: string; ATarget: PStringField): TStringOption;
+begin
+  Result.Name := AName;
+  Result.Target := ATarget;
+end;
+
+function FlagOption(const AName: string; ATarget: PBoolean): TFlagOption;
+begin
+  Result.Name := AName;
+  Result.Target := ATarget;
+end;
+
 class function TCommandLineOptions.Parse(const AArgs: TArray<string>): TCommandLineOptions;
 var
   Index: Integer;
@@ -172,10 +200,25 @@ var
   FailOn: TFailOn;
   Severity: TRuleSeverity;
   ProcessId: Cardinal;
+  Strings: TArray<TStringOption>;
+  Flags: TArray<TFlagOption>;
+  StringHit: TStringOption;
+  FlagHit: TFlagOption;
+  Found: Boolean;
 begin
   Result := Default(TCommandLineOptions);
   Result.LogLevel := DefaultLogLevel;
   Result.FailOn := TFailOn.Error;
+  Strings := [StringOption('--log', @Result.LogFile), StringOption('--trace', @Result.TraceFile),
+    StringOption('--check', @Result.CheckTarget), StringOption('--output', @Result.OutputFile),
+    StringOption('--source-root', @Result.SourceRoot), StringOption('--profile', @Result.Profile),
+    StringOption('--baseline', @Result.BaselineFile), StringOption('--root', @Result.McpRoot)];
+  Flags := [FlagOption('--log-names', @Result.LogNames), FlagOption('--mcp', @Result.Mcp),
+    FlagOption('--restricted', @Result.Restricted), FlagOption('--clear-cache', @Result.ClearCache),
+    FlagOption('--include-uncommitted', @Result.IncludeUncommitted),
+    FlagOption('--changed-lines', @Result.ChangedLines), FlagOption('--update-baseline', @Result.UpdateBaseline),
+    FlagOption('--suppression-stats', @Result.SuppressionStats), FlagOption('--metrics', @Result.Metrics),
+    FlagOption('--todos', @Result.Todos)];
 
   Index := Low(AArgs);
   while Index <= High(AArgs) do
@@ -194,11 +237,26 @@ begin
       Value := '';
     end;
 
-    if Name = '--log' then
-    begin
-      if TakeValue then
-        Result.LogFile := Value;
-    end
+    Found := False;
+    for StringHit in Strings do
+      if StringHit.Name = Name then
+      begin
+        Found := True;
+        if TakeValue then
+          StringHit.Target^ := Value;
+        Break;
+      end;
+    if not Found then
+      for FlagHit in Flags do
+        if FlagHit.Name = Name then
+        begin
+          Found := True;
+          FlagHit.Target^ := True;
+          Break;
+        end;
+
+    if Found then
+      // schon erledigt
     else if Name = '--log-level' then
     begin
       if TakeValue then
@@ -207,18 +265,6 @@ begin
         else
           AddWarning(Format('Unbekannte Log-Stufe "%s", verwendet wird info', [Value]));
     end
-    else if Name = '--log-names' then
-      Result.LogNames := True
-    else if Name = '--trace' then
-    begin
-      if TakeValue then
-        Result.TraceFile := Value;
-    end
-    else if Name = '--check' then
-    begin
-      if TakeValue then
-        Result.CheckTarget := Value;
-    end
     else if Name = '--format' then
     begin
       if TakeValue then
@@ -226,11 +272,6 @@ begin
           Result.CheckFormat := CheckFormat
         else
           AddWarning(Format('Unbekanntes Format "%s", verwendet wird text', [Value]));
-    end
-    else if Name = '--output' then
-    begin
-      if TakeValue then
-        Result.OutputFile := Value;
     end
     else if Name = '--rules' then
     begin
@@ -258,21 +299,6 @@ begin
         else
           AddWarning(Format('Unbekannter Wert "%s" für --fail-on, verwendet wird error', [Value]));
     end
-    else if Name = '--source-root' then
-    begin
-      if TakeValue then
-        Result.SourceRoot := Value;
-    end
-    else if Name = '--profile' then
-    begin
-      if TakeValue then
-        Result.Profile := Value;
-    end
-    else if Name = '--baseline' then
-    begin
-      if TakeValue then
-        Result.BaselineFile := Value;
-    end
     else if Name = '--changed' then
     begin
       // Basis optional: --changed, --changed=dev oder --changed dev
@@ -295,29 +321,6 @@ begin
         Result.ChangedMergeBase := False;
       end;
     end
-    else if Name = '--root' then
-    begin
-      if TakeValue then
-        Result.McpRoot := Value;
-    end
-    else if Name = '--mcp' then
-      Result.Mcp := True
-    else if Name = '--restricted' then
-      Result.Restricted := True
-    else if Name = '--clear-cache' then
-      Result.ClearCache := True
-    else if Name = '--include-uncommitted' then
-      Result.IncludeUncommitted := True
-    else if Name = '--changed-lines' then
-      Result.ChangedLines := True
-    else if Name = '--update-baseline' then
-      Result.UpdateBaseline := True
-    else if Name = '--suppression-stats' then
-      Result.SuppressionStats := True
-    else if Name = '--metrics' then
-      Result.Metrics := True
-    else if Name = '--todos' then
-      Result.Todos := True
     else if Name = '--clientprocessid' then
     begin
       if TakeValue then

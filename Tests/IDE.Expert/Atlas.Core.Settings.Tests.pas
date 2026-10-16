@@ -27,6 +27,9 @@ type
     procedure OneActionAfterSaving;
     [Test]
     procedure UnitSearchOptions;
+    /// <summary>Erzeugen-Menü (#719): Vorgaben, Normalisieren, Speichern und Laden.</summary>
+    [Test]
+    procedure GenerateMenuOptions;
   end;
 
   [TestFixture]
@@ -132,8 +135,20 @@ begin
   Assert.AreEqual(0, Settings.TestUnitKey, 'Testunit-Wechsel ohne Kürzel (#189)');
   Assert.IsTrue(Settings.CodeLensTestUnit, 'Code Lens Testunit standardmäßig an (#189)');
   Assert.IsTrue(Settings.CodeLensMetrics, 'Code Lens Metriken standardmäßig an (#66)');
+  Assert.IsTrue(Settings.CodeLensTests, 'Code Lens „Test ausführen“ standardmäßig an (#69)');
+  Assert.IsTrue(Settings.TestRun, 'Tests ausführen standardmäßig da (#69)');
+  Assert.IsFalse(Settings.TestsAfterBuild, 'Tests nach dem Build standardmäßig aus (#69)');
+  Assert.IsTrue(Settings.TestsBuildFirst, 'vor den Tests bauen standardmäßig an (#69)');
+  Assert.IsFalse(Settings.BuildZeroHints, 'build.zeroHints standardmäßig aus (#530)');
+  Assert.IsTrue(Settings.StartProfiles, 'Startprofile standardmäßig an (#575)');
+  Assert.IsTrue(Settings.StartProfilesStatusField, 'Startprofil in der Statusleiste standardmäßig an (#575)');
+  Assert.IsTrue(Settings.TestDebug, 'Test debuggen standardmäßig da (#585)');
+  Assert.IsTrue(Settings.TestBreakAtStart, 'debug.testBreakAtStart standardmäßig an (#585)');
   Assert.IsTrue(Settings.TodoList, 'Befehl standardmäßig da (#68)');
   Assert.IsTrue(Settings.MetricsReport, 'Befehl standardmäßig da (#66)');
+  Assert.IsTrue(Settings.TeamFile, 'Projektdatei standardmäßig an (#486)');
+  Assert.IsTrue(Settings.McpBuild, 'Builds für Claude Code standardmäßig erlaubt (#261)');
+  Assert.IsTrue(Settings.BaselineUpdate, 'Befehl standardmäßig da (#97)');
   Assert.IsTrue(Settings.SlashCommands, 'Schnellbefehle standardmäßig an (#399)');
   Assert.IsTrue(Settings.Snippets, 'Code-Vorlagen standardmäßig an (#51)');
   Assert.IsTrue(Settings.ImportIdeTemplates, 'Live Templates der IDE standardmäßig an (#51)');
@@ -215,8 +230,20 @@ begin
   Settings.TestUnitKey := $6054;
   Settings.CodeLensTestUnit := False;
   Settings.CodeLensMetrics := False;
+  Settings.CodeLensTests := False;
+  Settings.TestRun := False;
+  Settings.TestsAfterBuild := True;
+  Settings.TestsBuildFirst := False;
+  Settings.BuildZeroHints := True;
+  Settings.StartProfiles := False;
+  Settings.StartProfilesStatusField := False;
+  Settings.TestDebug := False;
+  Settings.TestBreakAtStart := False;
   Settings.TodoList := False;
   Settings.MetricsReport := False;
+  Settings.TeamFile := False;
+  Settings.McpBuild := False;
+  Settings.BaselineUpdate := False;
   Settings.EditorKeysPriority := True;
   Settings.SlashCommands := False;
   Settings.Snippets := False;
@@ -284,8 +311,20 @@ begin
   Assert.AreEqual($6054, Loaded.TestUnitKey);
   Assert.IsFalse(Loaded.CodeLensTestUnit);
   Assert.IsFalse(Loaded.CodeLensMetrics);
+  Assert.IsFalse(Loaded.CodeLensTests);
+  Assert.IsFalse(Loaded.TestRun);
+  Assert.IsTrue(Loaded.TestsAfterBuild);
+  Assert.IsFalse(Loaded.TestsBuildFirst);
+  Assert.IsTrue(Loaded.BuildZeroHints);
+  Assert.IsFalse(Loaded.StartProfiles);
+  Assert.IsFalse(Loaded.StartProfilesStatusField);
+  Assert.IsFalse(Loaded.TestDebug, 'Test debuggen (#585)');
+  Assert.IsFalse(Loaded.TestBreakAtStart, 'debug.testBreakAtStart (#585)');
   Assert.IsFalse(Loaded.TodoList);
   Assert.IsFalse(Loaded.MetricsReport);
+  Assert.IsFalse(Loaded.TeamFile);
+  Assert.IsFalse(Loaded.McpBuild);
+  Assert.IsFalse(Loaded.BaselineUpdate);
   Assert.IsTrue(Loaded.EditorKeysPriority);
   Assert.IsFalse(Loaded.SlashCommands);
   Assert.IsFalse(Loaded.Snippets);
@@ -494,6 +533,45 @@ begin
   Settings.Normalize;
   Assert.IsTrue(Settings.CheckOnSave);
   Assert.IsFalse(Settings.CompileOnSave);
+end;
+
+procedure TAtlasPluginSettingsTests.GenerateMenuOptions;
+var
+  Settings, Loaded: TAtlasPluginSettings;
+  Store: IAtlasSettingsStore;
+begin
+  Settings := TAtlasPluginSettings.Defaults;
+  Assert.IsTrue(Settings.GenerateMenu, 'standardmäßig an');
+  Assert.AreEqual($802D, Settings.GenerateMenuKey, 'Alt+Einfg');
+  Assert.AreEqual('generate,surround,templates', Settings.GenerateMenuGroups);
+  Assert.AreEqual('', Settings.GenerateMenuHidden);
+  Assert.IsTrue(Settings.GenerateMenuRecentFirst);
+  Assert.IsTrue(Settings.GenerateMenuShowCommandNames);
+  // Unbekannte Gruppen entfallen, Reihenfolge bleibt; Ausgeblendete ohne Leere und Doppelte.
+  Settings.GenerateMenuGroups := ' Templates; quatsch, generate ';
+  Settings.GenerateMenuHidden := '/json, , /json,tryf';
+  Settings.Normalize;
+  Assert.AreEqual('templates,generate', Settings.GenerateMenuGroups);
+  Assert.AreEqual('/json, tryf', Settings.GenerateMenuHidden);
+  Settings.GenerateMenuGroups := 'nichts';
+  Settings.Normalize;
+  Assert.AreEqual('generate,surround,templates', Settings.GenerateMenuGroups, 'ohne bekannte Gruppe: Vorgabe');
+  // Speichern und Laden.
+  Settings.GenerateMenu := False;
+  Settings.GenerateMenuKey := 0;
+  Settings.GenerateMenuGroups := 'surround,generate';
+  Settings.GenerateMenuRecentFirst := False;
+  Settings.GenerateMenuShowCommandNames := False;
+  Store := TMemoryStore.Create;
+  Settings.Save(Store);
+  Loaded := TAtlasPluginSettings.Defaults;
+  Loaded.Load(Store);
+  Assert.IsFalse(Loaded.GenerateMenu, 'abschaltbar');
+  Assert.AreEqual(0, Loaded.GenerateMenuKey, '0 = keine Taste');
+  Assert.AreEqual('surround,generate', Loaded.GenerateMenuGroups);
+  Assert.AreEqual('/json, tryf', Loaded.GenerateMenuHidden);
+  Assert.IsFalse(Loaded.GenerateMenuRecentFirst);
+  Assert.IsFalse(Loaded.GenerateMenuShowCommandNames);
 end;
 
 procedure TAtlasPluginSettingsTests.UnitSearchOptions;

@@ -18,7 +18,12 @@
 // atlas.json (Regel todo-comment, Option "keywords"); Exit-Code dann 0.
 // Bekannte Treffer aus der Baseline (--baseline, sonst atlas-baseline.json
 // neben atlas.json) werden ausgeblendet; --update-baseline schreibt sie aus
-// den aktuellen Treffern neu (#97), Exit-Code dann 0.
+// den aktuellen Treffern neu (#97), Exit-Code dann 0. Dabei nennt es auf
+// stderr hinzugekommene, entfernte und unveränderte Treffer und, bevor sie
+// herausfallen, die Einträge ohne Datei (umbenannt, verschoben, gelöscht).
+// Mit --format sarif trägt jedes Ergebnis partialFingerprints und mit
+// Baseline baselineState; unveränderte und nicht mehr gefundene Treffer der
+// Baseline stehen dort mit, zählen aber nicht für den Exit-Code.
 // Mit --changed bzw. --diff werden nur die geänderten Dateien laut Git (#157)
 // bzw. SVN (#276) geprüft, mit --changed-lines nur Treffer in geänderten Zeilen ausgegeben;
 // zusammen mit der Baseline zählt ein Treffer nur, wenn er in einer geänderten
@@ -70,12 +75,14 @@ uses
   Atlas.Common.Todos.Report,
   Atlas.Common.Rules.Builtin.Todos,
   Atlas.Common.Rules.Baseline,
+  Atlas.Common.Rules.Scopes,
   Atlas.Common.Rules.ChangedFiles,
   Atlas.Common.Compiler.Contract,
   Atlas.Common.Index.Adapters.CacheDirectory,
   Atlas.Windows.Console.StdStreams,
   Atlas.Windows.Compiler.Adapters.ProcessRunner,
-  Shell.VcsChanges;
+  Shell.VcsChanges,
+  Shell.Bootstrap;
 
 procedure WriteText(const AStream: TStream; const AText: string);
 var
@@ -109,19 +116,14 @@ end;
 // Wie im Server: globale Datei für globale Schlüssel, atlas.json für Projekt-Schlüssel (TConfigurationScopes).
 function LoadSettings(const ARoot: string): TServerSettings;
 var
-  FileName, GlobalFile, Text, GlobalText: string;
-  FileFormat: TFileFormat;
+  FileName, Text, GlobalText: string;
   Issues, Misplaced: TArray<TConfigurationIssue>;
   Issue: TConfigurationIssue;
 begin
-  GlobalText := '';
-  GlobalFile := TConfigurationScopes.GlobalFile(GetEnvironmentVariable('APPDATA'));
-  if (GlobalFile <> '') and TFile.Exists(GlobalFile) then
-    GlobalText := TFileEncoding.LoadFromFile(GlobalFile, FileFormat);
-  Text := '';
+  // Ohne Logger: Eine nicht lesbare globale Datei bricht den Lauf ab (Exit-Code 3) wie bisher.
+  GlobalText := TShellBootstrap.LoadGlobalSettings(nil);
   FileName := ExistingOrLegacyFile(ARoot, ConfigurationFileName, LegacyConfigurationFileName);
-  if TFile.Exists(FileName) then
-    Text := TFileEncoding.LoadFromFile(FileName, FileFormat);
+  TShellBootstrap.ReadSourceText(FileName, Text);
   Result := TConfigurationParser.Parse(TConfigurationScopes.Effective(GlobalText, '', Text), Misplaced);
   if Text = '' then
     Exit;
@@ -218,6 +220,77 @@ begin
       Result := Result + [Finding];
 end;
 
+/// <summary>Treffer mit Fingerabdrücken für SARIF (#97) nach Filter und --changed-lines. Nicht mehr gefundene
+/// Einträge haben keine Zeile: Sie entfallen mit --changed-lines und tragen für den Filter den Standard-Schweregrad
+/// ihrer Regel.</summary>
+function KeptMarks(const AMarks: TArray<TBaselineMark>; const AFilter: TFindingFilter;
+  const ASettings: TServerSettings; const ADescriptors: TArray<TRuleDescriptor>; AGit: TVcsChanges;
+  AChangedLines: Boolean; const AFileName: string): TArray<TBaselineMark>;
+var
+  Lines: TChangedLines;
+  HasLines: Boolean;
+  Mark, Item: TBaselineMark;
+  Descriptor: TRuleDescriptor;
+  Severity: TRuleSeverity;
+begin
+  Result := nil;
+  HasLines := (AGit <> nil) and AChangedLines;
+  if HasLines and not TChangedFiles.LinesOf(AGit.Lines, AGit.RepoRoot, AFileName, Lines) then
+    Exit;
+  for Mark in AMarks do
+  begin
+    Item := Mark;
+    if Item.State = TBaselineState.Absent then
+    begin
+      if HasLines then
+        Continue;
+      Severity := TRuleSeverity.Hint;
+      for Descriptor in ADescriptors do
+        if SameText(Descriptor.Id, Item.Finding.RuleId) then
+          Severity := Descriptor.DefaultSeverity;
+      Item.Finding.Severity := ASettings.RuleSeverity(Item.Finding.RuleId, Severity);
+    end
+    else if HasLines and not Lines.Contains(Item.Finding.Range.StartPos.Line) then
+      Continue;
+    if AFilter.AcceptsFinding(Item.Finding) then
+      Result := Result + [Item];
+  end;
+end;
+
+/// <summary>Nur die Treffer, die nicht in der Baseline stehen.</summary>
+function NewFindings(const AMarks: TArray<TBaselineMark>): TArray<TRuleFinding>;
+var
+  Mark: TBaselineMark;
+begin
+  Result := nil;
+  for Mark in AMarks do
+    if Mark.State = TBaselineState.New then
+      Result := Result + [Mark.Finding];
+end;
+
+/// <summary>Einträge ohne Datei bei --update-baseline auf stderr (#97), bevor die neue Datei sie entfernt.
+/// </summary>
+procedure ReportBaselineOrphans(const AUpdate: TBaselineUpdate);
+var
+  Orphan: TBaselineOrphan;
+begin
+  if Length(AUpdate.Orphans) = 0 then
+    Exit;
+  WriteError(Format('%d Einträge ohne Datei werden entfernt (Datei umbenannt, verschoben oder gelöscht):',
+    [AUpdate.OrphanCount]));
+  for Orphan in AUpdate.Orphans do
+    WriteError(Format('  %s (%d)', [Orphan.Path, Orphan.Count]));
+end;
+
+/// <summary>Zähler nach --update-baseline auf stderr (#97).</summary>
+procedure ReportBaselineUpdate(const AUpdate: TBaselineUpdate; const APath: string);
+begin
+  WriteError(Format('Baseline geschrieben: %s (%d Treffer in %d Dateien; %d neu, %d entfernt, %d unverändert)',
+    [APath, AUpdate.Total, AUpdate.Files, AUpdate.Added, AUpdate.Removed, AUpdate.Unchanged]));
+  if AUpdate.Completed > 0 then
+    WriteError(Format('%d Einträge der älteren Baseline um die Routine ergänzt', [AUpdate.Completed]));
+end;
+
 /// <summary>--source-root, sonst die Git-Wurzel über AConfigRoot, sonst AConfigRoot.</summary>
 function SourceRootOf(const AOptions: TCommandLineOptions; const AConfigRoot: string): string;
 begin
@@ -269,6 +342,12 @@ var
   Baseline: IRuleBaseline;
   Sources: TArray<TBaselineSource>;
   Source: TBaselineSource;
+  Scopes: TFindingScopes;
+  Marks: TArray<TBaselineMark>;
+  CheckedPaths: TList<string>;
+  BaselineEntryPath: string;
+  Update: TBaselineUpdate;
+  Orphan: TCheckedFile;
   Candidates: TArray<string>;
   Git: TVcsChanges;
   Process: ICompilerProcess;
@@ -333,12 +412,25 @@ begin
     else if BaselinePath = '' then
       BaselinePath := ExistingOrLegacyFile(ConfigRoot, BaselineFileName, LegacyBaselineFileName);
     if not AOptions.UpdateBaseline then
+    begin
       if TFile.Exists(BaselinePath) then
         Baseline := TRuleBaseline.FromJson(TFileEncoding.LoadFromFile(BaselinePath, FileFormat))
       else if AOptions.BaselineFile <> '' then
       begin
         WriteError(Format('Baseline "%s" nicht gefunden', [BaselinePath]));
         Exit(TFindingsOutput.ExitFailure);
+      end;
+    end
+    else if TFile.Exists(BaselinePath) then
+      // Die bisherige Baseline nur für die Zähler; eine unlesbare hält das Neuschreiben nicht auf.
+      try
+        Baseline := TRuleBaseline.FromJson(TFileEncoding.LoadFromFile(BaselinePath, FileFormat));
+      except
+        on E: Exception do
+        begin
+          WriteError(Format('Bisherige Baseline nicht lesbar, wird ersetzt: %s', [E.Message]));
+          Baseline := nil;
+        end;
       end;
 
     Files := nil;
@@ -347,6 +439,7 @@ begin
     Todos := nil;
     Git := nil;
     Stats := TSuppressionStats.Create;
+    CheckedPaths := TList<string>.Create;
     try
       Candidates := CollectFiles(AOptions.CheckTarget, Settings, Root);
       if (AOptions.ChangedRef <> '') and AOptions.UpdateBaseline then
@@ -387,7 +480,7 @@ begin
             [rfReplaceAll]), TodoEntries)], TTodoFilter.Default);
           Continue;
         end;
-        Findings := TFileChecker.CheckText(Rules, Settings, RelativePath, Text);
+        Findings := TFileChecker.CheckText(Rules, Settings, RelativePath, Text, Scopes);
         if AOptions.SuppressionStats then
           Stats.Add(Text, Findings);
         if AOptions.UpdateBaseline then
@@ -396,27 +489,62 @@ begin
           Source.Text := Text;
           Source.Findings := Findings;
           Sources := Sources + [Source];
+          Continue;
         end;
+        CheckedPaths.Add(LowerCase(TRuleBaseline.NormalizePath(RelativePath)));
+        // Zustand je Treffer (#97): mit Baseline neu oder unverändert, für SARIF mit Fingerabdrücken.
+        Marks := nil;
         if Baseline <> nil then
-          Findings := Baseline.Filter(RelativePath, Text, Findings);
+        begin
+          Marks := Baseline.Classify(RelativePath, Text, Scopes, Findings);
+          Findings := NewFindings(Marks);
+        end
+        else if AOptions.CheckFormat = TFindingsFormat.Sarif then
+          Marks := TRuleBaseline.Mark(Text, Scopes, Findings);
         Checked.Path := RelativePath;
         Checked.FullPath := TPath.GetFullPath(FileName);
         Checked.Findings := Filter.Apply(Findings);
         if (Git <> nil) and AOptions.ChangedLines then
           Checked.Findings := InChangedLines(Checked.Findings, Git, FileName);
+        Checked.Marks := nil;
+        if AOptions.CheckFormat = TFindingsFormat.Sarif then
+          Checked.Marks := KeptMarks(Marks, Filter, Settings, Descriptors, Git, AOptions.ChangedLines, FileName);
         Files := Files + [Checked];
       end;
 
+      // SARIF: Einträge von Dateien, die es nicht mehr gibt, als "absent" (nur bei vollem Lauf).
+      if (Baseline <> nil) and (AOptions.CheckFormat = TFindingsFormat.Sarif) and (AOptions.ChangedRef = '') and
+        not (AOptions.Metrics or AOptions.Todos or AOptions.SuppressionStats or AOptions.UpdateBaseline) then
+        for BaselineEntryPath in Baseline.Paths do
+          if not CheckedPaths.Contains(LowerCase(BaselineEntryPath)) and Filter.AcceptsFile(BaselineEntryPath) and
+            not TFile.Exists(TPath.Combine(Root, StringReplace(BaselineEntryPath, '/', PathDelim, [rfReplaceAll])))
+          then
+          begin
+            Orphan := Default(TCheckedFile);
+            Orphan.Path := BaselineEntryPath;
+            Orphan.FullPath := TPath.Combine(Root, StringReplace(BaselineEntryPath, '/', PathDelim, [rfReplaceAll]));
+            Orphan.Findings := nil;
+            Orphan.Marks := KeptMarks(Baseline.AbsentOf(BaselineEntryPath), Filter, Settings, Descriptors, nil,
+              False, Orphan.FullPath);
+            if Length(Orphan.Marks) > 0 then
+              Files := Files + [Orphan];
+          end;
+
       if AOptions.UpdateBaseline then
       begin
-        Output := TRuleBaseline.Build(Sources);
+        Update := TRuleBaseline.Update(Baseline, Sources,
+          function(const APath: string): Boolean
+          begin
+            Result := TFile.Exists(TPath.Combine(Root, StringReplace(APath, '/', PathDelim, [rfReplaceAll])));
+          end);
+        ReportBaselineOrphans(Update);
         Encoding := TUTF8Encoding.Create(False);
         try
-          TFile.WriteAllText(BaselinePath, Output, Encoding);
+          TFile.WriteAllText(BaselinePath, Update.Json, Encoding);
         finally
           Encoding.Free;
         end;
-        WriteError(Format('Baseline geschrieben: %s', [BaselinePath]));
+        ReportBaselineUpdate(Update, BaselinePath);
         Exit(TFindingsOutput.ExitClean);
       end;
       if AOptions.Metrics and (AOptions.CheckFormat = TFindingsFormat.Json) then
@@ -435,6 +563,7 @@ begin
         Output := TFindingsOutput.Render(Files, AOptions.CheckFormat, Descriptors,
           SourceRootOf(AOptions, ConfigRoot));
     finally
+      CheckedPaths.Free;
       Git.Free;
       Stats.Free;
     end;

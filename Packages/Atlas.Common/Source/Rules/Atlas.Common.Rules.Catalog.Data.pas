@@ -84,6 +84,24 @@ begin
     '      "good": "unit App.Common.Model;\ninterface\nuses System.Classes;"' + #10 +
     '    },' + #10 +
     '    {' + #10 +
+    '      "id": "architecture-role-import",' + #10 +
+    '      "name": "Import violates the role matrix",' + #10 +
+    '      "category": "code-smell",' + #10 +
+    '      "severity": "warning",' + #10 +
+    '      "description": "A uses entry violates the import matrix of the role concept (output artefact, feature, role: Contract, Internals, Providers, Adapters, Composition, Hosting). Off by default; swit' + 'ch it on in atlas.json with the option \"prefixes\". Approved exceptions go to \"allow\" as \"Source -> Target\" globs.",' + #10 +
+    '      "bad": "unit Atlas.Common.Logging.Contract;\ninterface\nuses Atlas.Common.Logging.Providers.Logger;",' + #10 +
+    '      "good": "unit Atlas.Common.Logging.Contract;\ninterface\nuses System.SysUtils;"' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "architecture-contract-content",' + #10 +
+    '      "name": "Class in a contract unit",' + #10 +
+    '      "category": "code-smell",' + #10 +
+    '      "severity": "warning",' + #10 +
+    '      "description": "A contract unit declares a class in its interface section. Contracts hold only records, interfaces, enumerations and exceptions. Off by default; switch it on in atlas.json with t' + 'he option \"prefixes\". Approved exceptions go to \"allow\" as \"Unit.Type\" globs.",' + #10 +
+    '      "bad": "unit App.Orders.Contract;\ninterface\ntype\n  TOrderList = class\n  end;",' + #10 +
+    '      "good": "unit App.Orders.Contract;\ninterface\ntype\n  IOrderList = interface\n  end;"' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
     '      "id": "thread-vcl-access",' + #10 +
     '      "name": "VCL access from a thread",' + #10 +
     '      "category": "bug",' + #10 +
@@ -848,6 +866,16 @@ begin
     '      "id": "forbidden-uses",' + #10 +
     '      "name": "Verbotene uses-Beziehung",' + #10 +
     '      "description": "Ein uses-Eintrag verletzt eine Schichtregel unter \"layers\" in atlas.json, z. B. darf *.Common.* nicht Vcl.* verwenden."' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "architecture-role-import",' + #10 +
+    '      "name": "Import verletzt die Rollenmatrix",' + #10 +
+    '      "description": "Ein uses-Eintrag verletzt die Importmatrix des Rollenkonzepts (Ausgabeartefakt, Feature, Rolle: Contract, Internals, Providers, Adapters, Composition, Hosting). Standardmäßig aus' + '; in atlas.json mit der Option \"prefixes\" einschalten. Genehmigte Ausnahmen stehen unter \"allow\" als \"Quelle -> Ziel\"-Globs."' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "architecture-contract-content",' + #10 +
+    '      "name": "Klasse in einer Contract-Unit",' + #10 +
+    '      "description": "Eine Contract-Unit deklariert im interface eine Klasse. Contracts enthalten nur Records, Interfaces, Aufzählungen und Ausnahmen. Standardmäßig aus; in atlas.json mit der Option \' + '"prefixes\" einschalten. Genehmigte Ausnahmen stehen unter \"allow\" als \"Unit.Typ\"-Globs."' + #10 +
     '    },' + #10 +
     '    {' + #10 +
     '      "id": "thread-vcl-access",' + #10 +

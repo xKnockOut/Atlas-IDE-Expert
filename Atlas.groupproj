@@ -3,14 +3,17 @@
         <ProjectGuid>{3C6E2F0A-6B2D-4F0E-9E0B-5A1D7C2B8E41}</ProjectGuid>
     </PropertyGroup>
     <ItemGroup>
-        <Projects Include="Packages\Atlas.Common\Atlas.Common.dproj">
+        <Projects Include="Packages\Atlas.Text\Atlas.Text.dproj">
             <Dependencies></Dependencies>
         </Projects>
+        <Projects Include="Packages\Atlas.Common\Atlas.Common.dproj">
+            <Dependencies>Packages\Atlas.Text\Atlas.Text.dproj</Dependencies>
+        </Projects>
         <Projects Include="Packages\Atlas.Windows\Atlas.Windows.dproj">
-            <Dependencies>Packages\Atlas.Common\Atlas.Common.dproj</Dependencies>
+            <Dependencies>Packages\Atlas.Text\Atlas.Text.dproj;Packages\Atlas.Common\Atlas.Common.dproj</Dependencies>
         </Projects>
         <Projects Include="Application\AtlasServer.dproj">
-            <Dependencies>Packages\Atlas.Common\Atlas.Common.dproj;Packages\Atlas.Windows\Atlas.Windows.dproj</Dependencies>
+            <Dependencies>Packages\Atlas.Text\Atlas.Text.dproj;Packages\Atlas.Common\Atlas.Common.dproj;Packages\Atlas.Windows\Atlas.Windows.dproj</Dependencies>
         </Projects>
         <Projects Include="Packages\Atlas.IDE.Expert\Atlas.IDE.Expert.dproj">
             <Dependencies/>
@@ -19,7 +22,7 @@
             <Dependencies/>
         </Projects>
         <Projects Include="Tests\Atlas.Tests.dproj">
-            <Dependencies>Packages\Atlas.Common\Atlas.Common.dproj;Packages\Atlas.Windows\Atlas.Windows.dproj</Dependencies>
+            <Dependencies>Packages\Atlas.Text\Atlas.Text.dproj;Packages\Atlas.Common\Atlas.Common.dproj;Packages\Atlas.Windows\Atlas.Windows.dproj</Dependencies>
         </Projects>
     </ItemGroup>
     <ProjectExtensions>
@@ -29,6 +32,15 @@
             <Default.Personality/>
         </BorlandProject>
     </ProjectExtensions>
+    <Target Name="Atlas_Text">
+        <MSBuild Projects="Packages\Atlas.Text\Atlas.Text.dproj"/>
+    </Target>
+    <Target Name="Atlas_Text:Clean">
+        <MSBuild Projects="Packages\Atlas.Text\Atlas.Text.dproj" Targets="Clean"/>
+    </Target>
+    <Target Name="Atlas_Text:Make">
+        <MSBuild Projects="Packages\Atlas.Text\Atlas.Text.dproj" Targets="Make"/>
+    </Target>
     <Target Name="Atlas_Common">
         <MSBuild Projects="Packages\Atlas.Common\Atlas.Common.dproj"/>
     </Target>
@@ -84,13 +96,13 @@
         <MSBuild Projects="Tests\Atlas.Tests.dproj" Targets="Make"/>
     </Target>
     <Target Name="Build">
-        <CallTarget Targets="Atlas_Common;Atlas_Windows;AtlasServer;Atlas_IDE_Expert;AtlasSetup;Atlas_Tests"/>
+        <CallTarget Targets="Atlas_Text;Atlas_Common;Atlas_Windows;AtlasServer;Atlas_IDE_Expert;AtlasSetup;Atlas_Tests"/>
     </Target>
     <Target Name="Clean">
-        <CallTarget Targets="Atlas_Common:Clean;Atlas_Windows:Clean;AtlasServer:Clean;Atlas_IDE_Expert:Clean;AtlasSetup:Clean;Atlas_Tests:Clean"/>
+        <CallTarget Targets="Atlas_Text:Clean;Atlas_Common:Clean;Atlas_Windows:Clean;AtlasServer:Clean;Atlas_IDE_Expert:Clean;AtlasSetup:Clean;Atlas_Tests:Clean"/>
     </Target>
     <Target Name="Make">
-        <CallTarget Targets="Atlas_Common:Make;Atlas_Windows:Make;AtlasServer:Make;Atlas_IDE_Expert:Make;AtlasSetup:Make;Atlas_Tests:Make"/>
+        <CallTarget Targets="Atlas_Text:Make;Atlas_Common:Make;Atlas_Windows:Make;AtlasServer:Make;Atlas_IDE_Expert:Make;AtlasSetup:Make;Atlas_Tests:Make"/>
     </Target>
     <Import Project="$(BDS)\Bin\CodeGear.Group.Targets" Condition="Exists('$(BDS)\Bin\CodeGear.Group.Targets')"/>
 </Project>

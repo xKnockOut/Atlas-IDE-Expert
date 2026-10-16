@@ -11,6 +11,11 @@
 // asm-Blöcken sind keine Befehle.
 //
 // Eingetragen sind /uses (#254) und die Deklarationsbefehle (#294).
+//
+// Run führt eine Befehlszeile auch ohne Enter aus (Erzeugen-Menü, #719) und
+// nennt den Grund, wenn sie nicht passt; WrapUntil begrenzt dabei das
+// Umschließen auf eine Markierung. Erlaubte Orte, Gruppen und
+// Argumentauswahl je Befehl stehen in Atlas.Common.Editing.SlashMenu.
 
 interface
 
@@ -20,8 +25,7 @@ uses
   Atlas.Common.Documents.Contract,
   Atlas.Common.Pascal.Contract,
   Atlas.Common.Index.Contract,
-  Atlas.Common.Projects.Contract,
-  Atlas.Common.Rules.Contract;
+  Atlas.Common.Projects.Contract;
 
 type
   /// <summary>Zugriff auf Projekt und Editor für Befehle, die mehr als die Datei ändern (#301).</summary>
@@ -75,12 +79,15 @@ type
     Host: ISlashHost;
     /// <summary>Ziel für Defer; nil, wenn nichts ausgeführt werden soll.</summary>
     Actions: TSlashActions;
+    /// <summary>Umschließen nur bis vor diese Zeile (Markierung im Erzeugen-Menü, #719); 0 = bis zum Ende des
+    /// umgebenden Blocks.</summary>
+    WrapUntil: Integer;
     /// <summary>Merkt AAction für nach dem Befehl vor; ohne Actions ohne Wirkung.</summary>
     procedure Defer(const AAction: TProc);
   end;
 
   /// <summary>Führt den Befehl aus. False mit AReason, wenn er hier nicht passt.</summary>
-  TSlashExecute = reference to function(const AContext: TSlashContext; out AEdits: TArray<TRuleEdit>;
+  TSlashExecute = reference to function(const AContext: TSlashContext; out AEdits: TArray<TTextEdit>;
     out AReason: string): Boolean;
 
   TSlashCommand = record
@@ -121,8 +128,14 @@ type
     /// <summary>Edits nach Enter in APosition.Line für die Befehlszeile darüber. False, wenn dort kein
     /// ausführbarer Befehl steht (dann bleibt die Zeile stehen).</summary>
     function AfterEnter(const AText: string; const APosition: TTextPosition; const ANamespaces,
-      ADisabled: TArray<string>; out AEdits: TArray<TRuleEdit>; const AIndex: ISymbolIndex = nil;
+      ADisabled: TArray<string>; out AEdits: TArray<TTextEdit>; const AIndex: ISymbolIndex = nil;
       const ADelphiVersion: string = ''; const AUri: string = ''; const AHost: ISlashHost = nil): Boolean;
+    /// <summary>Führt die Befehlszeile ALine (ab 0) aus wie AfterEnter, aber mit Grund (#719): False mit AReason,
+    /// wenn dort kein ausführbarer Befehl steht. AWrapUntil &gt; ALine begrenzt das Umschließen auf die Zeilen
+    /// davor (TSlashContext.WrapUntil); 0 = bis zum Blockende.</summary>
+    function Run(const AText: string; ALine, AWrapUntil: Integer; const ANamespaces, ADisabled: TArray<string>;
+      const AIndex: ISymbolIndex; const ADelphiVersion, AUri: string; const AHost: ISlashHost;
+      out AEdits: TArray<TTextEdit>; out AReason: string): Boolean;
     /// <summary>Hinweise für Befehlszeilen, die stehen geblieben sind (unbekannt, abgeschaltet, falscher Ort).</summary>
     function Problems(const AText: string; const ADisabled: TArray<string>;
       const AIndex: ISymbolIndex = nil; const ADelphiVersion: string = ''): TArray<TSlashProblem>;
@@ -152,7 +165,8 @@ uses
   Atlas.Common.Editing.WinApiCommands,
   Atlas.Common.Editing.TaskCommands,
   Atlas.Common.Editing.RecordCommands,
-  Atlas.Common.Editing.ErrorCommands;
+  Atlas.Common.Editing.ErrorCommands,
+  Atlas.Text.Lines;
 
 function IsDisabled(const AName: string; const ADisabled: TArray<string>): Boolean;
 var
@@ -162,15 +176,6 @@ begin
     if SameText(Name, AName) then
       Exit(True);
   Result := False;
-end;
-
-function SplitLines(const AText: string; out ALineBreak: string): TArray<string>;
-begin
-  if Pos(#13#10, AText) > 0 then
-    ALineBreak := #13#10
-  else
-    ALineBreak := #10;
-  Result := AText.Split([ALineBreak]);
 end;
 
 { TSlashContext }
@@ -235,7 +240,7 @@ begin
   Result.Summary := 'Units ins uses des Abschnitts eintragen';
   Result.Example := '/uses System.SysUtils, System.Classes';
   Result.Execute :=
-    function(const AContext: TSlashContext; out AEdits: TArray<TRuleEdit>; out AReason: string): Boolean
+    function(const AContext: TSlashContext; out AEdits: TArray<TTextEdit>; out AReason: string): Boolean
     begin
       AReason := '';
       Result := TUsesCommand.AfterEnter(AContext.Text, TTextPosition.Create(AContext.Line + 1, 0),
@@ -369,24 +374,50 @@ begin
 end;
 
 function TSlashCommandRegistry.AfterEnter(const AText: string; const APosition: TTextPosition; const ANamespaces,
-  ADisabled: TArray<string>; out AEdits: TArray<TRuleEdit>; const AIndex: ISymbolIndex;
+  ADisabled: TArray<string>; out AEdits: TArray<TTextEdit>; const AIndex: ISymbolIndex;
   const ADelphiVersion, AUri: string; const AHost: ISlashHost): Boolean;
 var
+  Reason: string;
+begin
+  Result := Run(AText, APosition.Line - 1, 0, ANamespaces, ADisabled, AIndex, ADelphiVersion, AUri, AHost, AEdits,
+    Reason);
+end;
+
+function TSlashCommandRegistry.Run(const AText: string; ALine, AWrapUntil: Integer; const ANamespaces,
+  ADisabled: TArray<string>; const AIndex: ISymbolIndex; const ADelphiVersion, AUri: string;
+  const AHost: ISlashHost; out AEdits: TArray<TTextEdit>; out AReason: string): Boolean;
+var
   Lines: TArray<string>;
-  LineBreak, Reason: string;
+  LineBreak: string;
   Context: TSlashContext;
   Command: TSlashCommand;
 begin
   AEdits := nil;
+  AReason := '';
   Context := Default(TSlashContext);
-  Context.Line := APosition.Line - 1;
-  Lines := SplitLines(AText, LineBreak);
+  Context.Line := ALine;
+  Lines := TTextLines.SplitLines(AText, LineBreak);
   if (Context.Line < 0) or (Context.Line > High(Lines)) then
     Exit(False);
   Context.LineText := Lines[Context.Line];
-  if not Split(Context.LineText, Context.Name, Context.Arguments) or IsDisabled(Context.Name, ADisabled) or
-    not Find(Context.Name, Command) or not IsCodeLine(TPascalLexer.Tokenize(AText), Context.Line) then
+  if not Split(Context.LineText, Context.Name, Context.Arguments) then
     Exit(False);
+  if not Find(Context.Name, Command) then
+  begin
+    AReason := Format('Unbekannter Schnellbefehl /%s', [Context.Name]);
+    Exit(False);
+  end;
+  if IsDisabled(Context.Name, ADisabled) then
+  begin
+    AReason := Format('Schnellbefehl /%s ist abgeschaltet (slashCommands.disabled)', [Context.Name]);
+    Exit(False);
+  end;
+  if not IsCodeLine(TPascalLexer.Tokenize(AText), Context.Line) then
+  begin
+    AReason := 'Schnellbefehle gelten nicht in Kommentaren, Strings und asm-Blöcken';
+    Exit(False);
+  end;
+  Context.WrapUntil := AWrapUntil;
   Context.Text := AText;
   Context.Namespaces := ANamespaces;
   Context.Index := AIndex;
@@ -395,11 +426,15 @@ begin
   Context.Host := AHost;
   Context.Actions := TSlashActions.Create;
   try
-    Result := Command.Execute(Context, AEdits, Reason);
+    Result := Command.Execute(Context, AEdits, AReason);
     if Result then
       Context.Actions.Run
     else
+    begin
       AEdits := nil;
+      if AReason = '' then
+        AReason := Format('Schnellbefehl /%s passt hier nicht', [Context.Name]);
+    end;
   finally
     Context.Actions.Free;
   end;
@@ -414,12 +449,12 @@ var
   Line, Start: Integer;
   Command: TSlashCommand;
   Context: TSlashContext;
-  Edits: TArray<TRuleEdit>;
+  Edits: TArray<TTextEdit>;
   Problem: TSlashProblem;
 begin
   Result := nil;
   Tokens := nil;
-  Lines := SplitLines(AText, LineBreak);
+  Lines := TTextLines.SplitLines(AText, LineBreak);
   for Line := 0 to High(Lines) do
   begin
     if not Split(Lines[Line], Name, Arguments) then

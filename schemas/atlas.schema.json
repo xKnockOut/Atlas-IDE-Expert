@@ -132,6 +132,27 @@
                 "default": ["TODO", "FIXME"],
                 "description": "Nur todo-comment (#68): Marken offener TODO-Einträge (nur Buchstaben, Groß-/Kleinschreibung egal), z. B. [\"TODO\", \"FIXME\", \"HACK\"]. Erledigt ist immer DONE. Gilt auch, wenn die Regel aus ist, für get_todos, atlas.server.todos und --todos. Vorgabe: TODO und FIXME."
               },
+              "prefixes": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "description": "Nur architecture-role-import und architecture-contract-content (Code-Review A-12): Präfixe der Ausgabeartefakte nach dem Rollenkonzept (Ausgabeartefakt.Feature.Rolle.Sache), z. B. \"Atlas.Common\". Ohne Angabe melden die Regeln nichts."
+              },
+              "hostRoles": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "description": "Nur architecture-role-import: erste Namenssegmente der Host-Units ohne Präfix. Vorgabe: Foundation, Core, Shell, Adapters, Platform."
+              },
+              "allow": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "description": "Nur architecture-role-import und architecture-contract-content: genehmigte Ausnahmen, bei architecture-role-import \"Quelle -> Ziel\" (beide Globs), bei architecture-contract-content \"Unit.Typ\" als Glob."
+              },
               "layers": {
                 "type": "array",
                 "description": "Nur forbidden-uses: Schichtregeln für uses-Beziehungen.",
@@ -305,19 +326,40 @@
     },
     "compiler": {
       "type": "object",
-      "description": "Compiler-Anbindung (dcc32/dcc64).",
+      "description": "Compiler-Anbindung: Kommandozeilen-Compiler (dcc32/dcc64) oder eine eigene IDE über cc.ps1.",
       "additionalProperties": false,
       "properties": {
         "onSave": {
           "type": "boolean",
           "default": false,
-          "description": "Nach dem Speichern einer Quelldatei das Projekt im Hintergrund kompilieren und die Meldungen anzeigen."
+          "description": "Nach dem Speichern einer Quelldatei das Projekt im Hintergrund kompilieren und die Meldungen anzeigen. Nur mit dem Kommandozeilen-Compiler; über die IDE (backend ide) kompiliert Atlas wegen ihrer Startzeit nur auf den Befehl „Projekt kompilieren“ (atlas.server.compile)."
+        },
+        "backend": {
+          "type": "string",
+          "enum": [
+            "auto",
+            "dcc",
+            "ide",
+            "off"
+          ],
+          "default": "auto",
+          "x-control": "Auswahl",
+          "description": "Weg zum Compiler. auto: Atlas erkennt vorher je Delphi-Installation, ob dcc32/dcc64 vorhanden und nutzbar ist (die Starter und Community Edition melden einen Lizenztext statt zu kompilieren), merkt sich das und nimmt dann dcc, sonst ide (wenn ideCommand eingerichtet ist), sonst off. dcc: nur der Kommandozeilen-Compiler. ide: eine eigene IDE über cc.ps1 (ideCommand), immer mit eigener Instanz; die IDE des Benutzers wird nie angesprochen. off: Atlas kompiliert nie selbst. Ist kein Compiler nutzbar, meldet Atlas das einmal mit Grund und Ausweg, zeigt es im Status (atlas.server.status) und der Befehl „Projekt kompilieren“ antwortet mit dem Grund."
+        },
+        "ideCommand": {
+          "type": "string",
+          "default": "",
+          "x-control": "Datei wählen",
+          "description": "Pfad zu cc.ps1 (Claude-Compile) für den Weg über die IDE; leer = nicht eingerichtet. Atlas startet damit eine eigene Scratch-IDE (-Instance), nutzt sie für weitere Läufe wieder und beendet sie mit dem Server.",
+          "examples": [
+            "C:\\Projekte\\IDE-Plugins\\Claude-Compile\\cc.ps1"
+          ]
         }
       },
       "x-scope": "global",
       "x-page": "Compiler",
-      "x-control": "Kontrollkästchen",
-      "x-issue": "#40"
+      "x-control": "Kontrollkästchen, Auswahl, Datei wählen",
+      "x-issue": "#40, #261"
     },
     "vcs": {
       "type": "object",
@@ -848,6 +890,14 @@
           },
           "default": [],
           "description": "Werkzeuge, die der MCP-Server nicht anbietet, z. B. rename_symbol oder apply_code_action. Im eingeschränkten Modus (--restricted) sind schreibende Werkzeuge immer aus."
+        },
+        "globalSettings": {
+          "type": "boolean",
+          "default": true,
+          "description": "Der MCP-Server liest wie der LSP-Server und der Linter die globale Datei %APPDATA%\\Atlas\\settings.json (z. B. mcp.disabledTools, Index, Hints). false: nur atlas.json, etwa für reproduzierbare Ergebnisse im Team.",
+          "x-scope": "project",
+          "x-page": "MCP",
+          "x-control": "Kontrollkästchen in den Projekt-Einstellungen (Seite MCP)"
         }
       },
       "examples": [
@@ -856,11 +906,14 @@
             "rename_symbol",
             "apply_code_action"
           ]
+        },
+        {
+          "globalSettings": false
         }
       ],
       "x-scope": "global",
       "x-page": "MCP",
-      "x-control": "Liste mit Hinzufügen/Entfernen",
+      "x-control": "Liste mit Hinzufügen/Entfernen; globalSettings: Kontrollkästchen",
       "x-issue": "#99"
     },
     "format": {

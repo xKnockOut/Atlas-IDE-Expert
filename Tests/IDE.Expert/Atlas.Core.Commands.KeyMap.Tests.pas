@@ -310,6 +310,10 @@ begin
   Assert.AreEqual($C04B, Integer(EntryOf(Entries, TAtlasKeyFunction.Bookmark).Key));
   Assert.IsFalse(EntryOf(Entries, TAtlasKeyFunction.Bookmark).Disabled);
   Assert.AreEqual(Ord(TAtlasKeySource.Binding), Ord(TAtlasKeyMap.SourceOf(TAtlasKeyFunction.Bookmark)));
+  // Erzeugen-Menü (#719): Alt+Einfg als Editorbefehl.
+  Assert.AreEqual($802D, Integer(EntryOf(Entries, TAtlasKeyFunction.GenerateMenu).Key));
+  Assert.IsFalse(EntryOf(Entries, TAtlasKeyFunction.GenerateMenu).Disabled);
+  Assert.AreEqual(Ord(TAtlasKeySource.Binding), Ord(TAtlasKeyMap.SourceOf(TAtlasKeyFunction.GenerateMenu)));
   Assert.AreEqual(Ord(TAtlasKeyContext.Editor), Ord(TAtlasKeyMap.ContextOf(TAtlasKeyFunction.MethodToggleDown)));
   Assert.AreEqual(Ord(TAtlasKeySource.Binding), Ord(TAtlasKeyMap.SourceOf(TAtlasKeyFunction.TestUnit)));
   Settings.EditorKeysPriority := True;
@@ -333,11 +337,12 @@ begin
   Settings.UnitSearchEnabled := False;
   Settings.WelcomePageSearch := False;
   Settings.BookmarksNamed := False;
+  Settings.GenerateMenu := False;
   Entries := TAtlasKeyEntry.AllFromSettings(Settings);
   for Entry in Entries do
     if Entry.Func in [TAtlasKeyFunction.MethodToggleUp, TAtlasKeyFunction.MethodToggleDown,
       TAtlasKeyFunction.UnitSearch, TAtlasKeyFunction.UnitSearchIde, TAtlasKeyFunction.WelcomeSearch,
-      TAtlasKeyFunction.Bookmark] then
+      TAtlasKeyFunction.Bookmark, TAtlasKeyFunction.GenerateMenu] then
     begin
       Assert.IsTrue(Entry.Disabled, 'abgeschaltet: ' + IntToStr(Ord(Entry.Func)));
       Assert.AreEqual(Ord(TAtlasKeyStatus.NoKey), Ord(Entry.Status('IDE: Klassennavigation')),
@@ -638,6 +643,8 @@ begin
   Assert.AreEqual('Atlas.UnitSearch', TAtlasKeyMap.CommandIdOf(TAtlasKeyFunction.UnitSearchIde));
   // #622: „Lesezeichen setzen…“.
   Assert.AreEqual('Atlas.BookmarkAdd', TAtlasKeyMap.CommandIdOf(TAtlasKeyFunction.Bookmark));
+  // #719: Erzeugen-Menü.
+  Assert.AreEqual('Atlas.GenerateMenu', TAtlasKeyMap.CommandIdOf(TAtlasKeyFunction.GenerateMenu));
 end;
 
 procedure TAtlasKeyMapTests.HtmlIsEscapedAndMarksConflicts;

@@ -28,6 +28,8 @@ type
     DurationMs: Int64;
     FinishedAt: TDateTime;
     Messages: TArray<TCompilerMessage>;
+    /// <summary>Wer den Build angestoßen hat: '' = Benutzer, "mcp" = Claude Code über build_project (#261).</summary>
+    RequestedBy: string;
   end;
 
   TIdeBuildMessagesEvent = reference to procedure(const AMessages: TArray<TCompilerMessage>);
@@ -144,6 +146,7 @@ begin
       FLast.Project := Params.GetValue<string>('project', '');
       FLast.Configuration := Params.GetValue<string>('configuration', '');
       FLast.Platform := Params.GetValue<string>('platform', '');
+      FLast.RequestedBy := Params.GetValue<string>('requestedBy', '');
     end;
     FLast.Kind := Params.GetValue<string>('kind', FLast.Kind);
     FLast.Success := Params.GetValue<Boolean>('success', False);
