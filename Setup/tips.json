@@ -535,6 +535,16 @@
       "text": "Ein Startprofil bündelt Parameter, Arbeitsordner, Umgebungsvariablen und Host-Anwendung. „Startprofil: …“ oder ein Klick auf das Feld in der Statusleiste setzt es; Start und „Ohne Debugger starten“ nutzen es dann. Gemeinsame Profile stehen in .atlas, persönliche nur lokal.",
       "textEn": "A start profile bundles parameters, working folder, environment variables and host application. “Start profile: …” or a click on the field in the status bar sets it; Run and “Run without debugging” then use it. Shared profiles live in .atlas, personal ones only locally.",
       "image": "Tipps\\startprofil.png"
+    },
+    {
+      "id": "notifications",
+      "command": "Atlas.Notifications",
+      "setting": "Notifications",
+      "title": "Benachrichtigungen",
+      "titleEn": "Notifications",
+      "text": "Build fertig, neu geladene Dateien, Server-Neustarts und Tastenkürzel-Tipps landen in einer Liste über dem Atlas-Statusfeld; die Zahl dort zählt die ungelesenen. Aktionen wie „Zum Fehler“ stehen am Eintrag, und per Rechtsklick wählst du je Quelle: einblenden, nur sammeln oder aus.",
+      "textEn": "Build finished, reloaded files, server restarts and shortcut tips end up in one list above the Atlas status field; the number there counts the unread ones. Actions such as “Go to error” sit on the entry, and a right-click picks per source: show, collect only or off.",
+      "image": "Tipps\\benachrichtigungen.png"
     }
   ]
 }

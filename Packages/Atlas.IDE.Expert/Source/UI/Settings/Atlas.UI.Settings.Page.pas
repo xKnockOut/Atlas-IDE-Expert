@@ -142,6 +142,14 @@ type
     FSetupChecklist: TCheckBox;
     FShortcutTips: TCheckBox;
     FShortcutTipsScope: TAtlasChoiceBox;
+    // Benachrichtigungszentrale (#601); FNotificationsSpec hält notifications.sources, die beiden Auswahllisten
+    // zeigen und ändern das Verhalten der gewählten Quelle.
+    FNotifications: TCheckBox;
+    FNotificationsMax: TEdit;
+    FNotificationSource: TAtlasChoiceBox;
+    FNotificationMode: TAtlasChoiceBox;
+    FNotificationsSpec: string;
+    FNotificationsKey: TEdit;
     FStatusSummary: TCheckBox;
     FStatusToggles: TAtlasChoiceBox;
     FIndexProgress: TAtlasChoiceBox;
@@ -328,6 +336,10 @@ type
     procedure AddFuseSection;
     procedure AddIndexSection;
     procedure AddSafeSection;
+    /// <summary>Zeile „Verhalten je Quelle“ (#601): Quelle und Verhalten nebeneinander.</summary>
+    procedure AddNotificationSources;
+    procedure NotificationSourceChange(Sender: TObject);
+    procedure NotificationModeChange(Sender: TObject);
     procedure AddUndoSection;
     procedure AddUnitSearchSection;
     procedure AddWelcomeSection;
@@ -376,6 +388,13 @@ type
     property SetupChecklist: TCheckBox read FSetupChecklist;
     property ShortcutTips: TCheckBox read FShortcutTips;
     property ShortcutTipsScope: TAtlasChoiceBox read FShortcutTipsScope;
+    /// <summary>Zum Testen: Benachrichtigungszentrale (#601).</summary>
+    property Notifications: TCheckBox read FNotifications;
+    property NotificationsMax: TEdit read FNotificationsMax;
+    property NotificationSource: TAtlasChoiceBox read FNotificationSource;
+    property NotificationMode: TAtlasChoiceBox read FNotificationMode;
+    property NotificationsSpec: string read FNotificationsSpec;
+    property NotificationsKey: TEdit read FNotificationsKey;
     property StatusSummary: TCheckBox read FStatusSummary;
     property StatusToggles: TAtlasChoiceBox read FStatusToggles;
     property IndexProgress: TAtlasChoiceBox read FIndexProgress;
@@ -527,7 +546,10 @@ uses
   Atlas.Core.Undo.Names,
   Atlas.Core.Welcome.WhatsNew,
   Atlas.Core.Welcome.Trends,
-  Atlas.Core.Commands.ShortcutTips;
+  Atlas.Core.Commands.ShortcutTips,
+  Atlas.Core.Notifications.Contract,
+  Atlas.Core.Notifications.Sources,
+  Atlas.UI.Notifications.Window;
 
 /// <summary>Bezeichnung einer Reihe des Projektverlaufs (#758) wie auf ihrer Kachel.</summary>
 function TrendSeriesTitle(ASeries: TAtlasTrendSeries): string;
@@ -729,6 +751,10 @@ begin
   FShortcutTips := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsShortcutTips));
   FShortcutTipsScope := AddChoice(TAtlasStrings.Text(TAtlasTextId.SettingsShortcutTipsScope),
     [TAtlasStrings.Text(TAtlasTextId.SettingsShortcutTipsAtlas), TAtlasStrings.Text(TAtlasTextId.SettingsShortcutTipsAll)]);
+  // Benachrichtigungszentrale (#601); Taste auf dem Reiter Befehle.
+  FNotifications := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsNotifications));
+  FNotificationsMax := AddNumber(TAtlasStrings.Text(TAtlasTextId.SettingsNotificationsMax));
+  AddNotificationSources;
 
   // Liste der Vervollständigung.
   AddSheet(TAtlasTextId.SettingsTabCompletion);
@@ -893,6 +919,8 @@ begin
   FGenerateMenuHidden := AddTextLine(TAtlasStrings.Text(TAtlasTextId.SettingsGenerateMenuHidden));
   FGenerateMenuRecentFirst := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsGenerateMenuRecentFirst));
   FGenerateMenuShowCommandNames := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsGenerateMenuShowCommandNames));
+  // Liste der Benachrichtigungen (#601).
+  FNotificationsKey := AddKey(TAtlasStrings.Text(TAtlasTextId.NotificationsCommand));
 
   AddSheet(TAtlasTextId.SettingsTabRobustness);
   // Einfrier-Wächter (#501).
@@ -1471,6 +1499,66 @@ begin
   Inc(FNextTop, 100);
 end;
 
+procedure TAtlasSettingsPage.AddNotificationSources;
+var
+  Panel: TWinControl;
+  Caption: TLabel;
+  Names: TArray<string>;
+  Source: string;
+begin
+  Panel := AddPanel(26);
+  Caption := TLabel.Create(Self);
+  Caption.Parent := Panel;
+  Caption.Caption := TAtlasStrings.Text(TAtlasTextId.SettingsNotificationsSources);
+  Caption.Left := 0;
+  Caption.Top := 5;
+  Names := nil;
+  for Source in TAtlasNotificationSources.Known do
+    Names := Names + [TAtlasNotificationsWindow.SourceCaption(Source)];
+  FNotificationSource := TAtlasChoiceBox.Create(Self);
+  FNotificationSource.Parent := Panel;
+  FNotificationSource.Left := FieldLeft;
+  FNotificationSource.Top := 1;
+  FNotificationSource.Width := 180;
+  FNotificationSource.SetChoices(Names);
+  FNotificationSource.Choice := 0;
+  FNotificationSource.OnChange := NotificationSourceChange;
+  // Reihenfolge wie TAtlasNotificationMode: einblenden und sammeln, nur sammeln, aus.
+  FNotificationMode := TAtlasChoiceBox.Create(Self);
+  FNotificationMode.Parent := Panel;
+  FNotificationMode.Left := FieldLeft + 186;
+  FNotificationMode.Top := 1;
+  FNotificationMode.Width := 170;
+  FNotificationMode.SetChoices([TAtlasStrings.Text(TAtlasTextId.NotificationsModeShow),
+    TAtlasStrings.Text(TAtlasTextId.NotificationsModeCollect), TAtlasStrings.Text(TAtlasTextId.NotificationsModeOff)]);
+  FNotificationMode.Choice := 0;
+  FNotificationMode.OnChange := NotificationModeChange;
+end;
+
+procedure TAtlasSettingsPage.NotificationSourceChange(Sender: TObject);
+var
+  Known: TArray<string>;
+begin
+  Known := TAtlasNotificationSources.Known;
+  if (FNotificationSource.Choice < 0) or (FNotificationSource.Choice > High(Known)) then
+    Exit;
+  FNotificationMode.Choice := Ord(TAtlasNotificationSources.ModeIn(FNotificationsSpec,
+    Known[FNotificationSource.Choice]));
+end;
+
+procedure TAtlasSettingsPage.NotificationModeChange(Sender: TObject);
+var
+  Known: TArray<string>;
+begin
+  Known := TAtlasNotificationSources.Known;
+  if (FNotificationSource.Choice < 0) or (FNotificationSource.Choice > High(Known)) or
+    (FNotificationMode.Choice < Ord(Low(TAtlasNotificationMode))) or
+    (FNotificationMode.Choice > Ord(High(TAtlasNotificationMode))) then
+    Exit;
+  FNotificationsSpec := TAtlasNotificationSources.WithMode(FNotificationsSpec, Known[FNotificationSource.Choice],
+    TAtlasNotificationMode(FNotificationMode.Choice));
+end;
+
 function TAtlasSettingsPage.AddKey(const ACaption: string): TEdit;
 var
   Panel: TWinControl;
@@ -1614,6 +1702,7 @@ begin
   FSlashCommands.Checked := ASettings.SlashCommands;
   FGenerateMenu.Checked := ASettings.GenerateMenu;
   FGenerateMenuKey.Text := ShortCutToText(TShortCut(ASettings.GenerateMenuKey));
+  FNotificationsKey.Text := ShortCutToText(TShortCut(ASettings.NotificationsKey));
   FGenerateMenuGroups.Text := ASettings.GenerateMenuGroups;
   FGenerateMenuHidden.Text := ASettings.GenerateMenuHidden;
   FGenerateMenuRecentFirst.Checked := ASettings.GenerateMenuRecentFirst;
@@ -1675,6 +1764,10 @@ begin
   FSetupChecklist.Checked := ASettings.SetupChecklist;
   FShortcutTips.Checked := ASettings.ShortcutTips;
   FShortcutTipsScope.Choice := Ord(TAtlasShortcutTips.ScopeOf(ASettings.ShortcutTipsScope));
+  FNotifications.Checked := ASettings.Notifications;
+  FNotificationsMax.Text := IntToStr(ASettings.NotificationsMaxEntries);
+  FNotificationsSpec := ASettings.NotificationsSources;
+  NotificationSourceChange(nil);
   FStatusSummary.Checked := ASettings.StatusFieldSummary;
   if not ASettings.StatusTogglesOnDoubleClick then
     FStatusToggles.Choice := 1
@@ -1819,6 +1912,7 @@ begin
   ASettings.SlashCommands := FSlashCommands.Checked;
   ASettings.GenerateMenu := FGenerateMenu.Checked;
   ASettings.GenerateMenuKey := Integer(TextToShortCut(Trim(FGenerateMenuKey.Text)));
+  ASettings.NotificationsKey := Integer(TextToShortCut(Trim(FNotificationsKey.Text)));
   ASettings.GenerateMenuGroups := Trim(FGenerateMenuGroups.Text);
   ASettings.GenerateMenuHidden := Trim(FGenerateMenuHidden.Text);
   ASettings.GenerateMenuRecentFirst := FGenerateMenuRecentFirst.Checked;
@@ -1873,6 +1967,9 @@ begin
   ASettings.ShortcutTips := FShortcutTips.Checked;
   ASettings.ShortcutTipsScope := TAtlasShortcutTips.ScopeName(TAtlasTipScope(EnsureRange(FShortcutTipsScope.Choice,
     Ord(Low(TAtlasTipScope)), Ord(High(TAtlasTipScope)))));
+  ASettings.Notifications := FNotifications.Checked;
+  ASettings.NotificationsMaxEntries := StrToIntDef(Trim(FNotificationsMax.Text), ASettings.NotificationsMaxEntries);
+  ASettings.NotificationsSources := TAtlasNotificationSources.Normalize(FNotificationsSpec);
   ASettings.StatusFieldSummary := FStatusSummary.Checked;
   case FStatusToggles.Choice of
     1:

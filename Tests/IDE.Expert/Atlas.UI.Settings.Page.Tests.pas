@@ -27,6 +27,10 @@ type
     procedure StatusFieldRoundTrips;
     [Test]
     procedure ShortcutTipsRoundTrip;
+    /// <summary>Benachrichtigungszentrale (#601): Schalter, Höchstzahl und Verhalten je Quelle auf dem Reiter
+    /// Allgemein, Taste auf dem Reiter Befehle.</summary>
+    [Test]
+    procedure NotificationsRoundTrip;
     /// <summary>Notizen (#545): Schalter auf dem Reiter Editor, Vorgabe an.</summary>
     [Test]
     procedure NotesRoundTrip;
@@ -446,6 +450,46 @@ begin
   finally
     Page.Free;
   end;
+end;
+
+procedure TAtlasSettingsPageTests.NotificationsRoundTrip;
+var
+  Page: TAtlasSettingsPage;
+  Settings, Saved: TAtlasPluginSettings;
+begin
+  Settings := TAtlasPluginSettings.Defaults;
+  Settings.NotificationsSources := 'server=off, buildServer=collect';
+  Page := TAtlasSettingsPage.Create(nil);
+  try
+    Page.LoadFrom(Settings);
+    Assert.IsTrue(Page.Notifications.Checked, 'standardmäßig an');
+    Assert.AreEqual('200', Page.NotificationsMax.Text);
+    Assert.AreEqual(ShortCutToText($E04E), Page.NotificationsKey.Text, 'Strg+Umschalt+Alt+N');
+    // Erste Quelle (build) ohne Angabe: einblenden.
+    Assert.AreEqual(0, Page.NotificationSource.Choice);
+    Assert.AreEqual(0, Page.NotificationMode.Choice);
+    // Quelle server (vierte) zeigt „aus“.
+    Page.NotificationSource.Choice := 3;
+    Page.NotificationSource.OnChange(Page.NotificationSource);
+    Assert.AreEqual(2, Page.NotificationMode.Choice);
+    // Tastenkürzel-Tipps (fünfte) auf „nur sammeln“.
+    Page.NotificationSource.Choice := 4;
+    Page.NotificationSource.OnChange(Page.NotificationSource);
+    Page.NotificationMode.Choice := 1;
+    Page.NotificationMode.OnChange(Page.NotificationMode);
+    Page.Notifications.Checked := False;
+    Page.NotificationsMax.Text := '50';
+    Page.NotificationsKey.Text := '';
+    Saved := TAtlasPluginSettings.Defaults;
+    Page.SaveTo(Saved);
+  finally
+    Page.Free;
+  end;
+  Assert.IsFalse(Saved.Notifications);
+  Assert.AreEqual(50, Saved.NotificationsMaxEntries);
+  Assert.AreEqual(0, Saved.NotificationsKey, 'leer = keine Taste');
+  // Unbekannte Quellen (künftige wie der Build-Server #763) bleiben erhalten.
+  Assert.AreEqual('server=off, buildServer=collect, shortcutTips=collect', Saved.NotificationsSources);
 end;
 
 procedure TAtlasSettingsPageTests.NotesRoundTrip;
