@@ -10,6 +10,9 @@
 // Anmeldung. Weiterleitungen nur auf denselben Rechner (http → https erlaubt),
 // damit das Token nie an einen anderen Server geht. Weder Adresse noch Token
 // kommen ins Protokoll.
+// Der Issue-Tracker (#765) nutzt denselben Transport mit
+// „Authorization: Bearer <Token>“ (CreateBearer; GitHub und YouTrack), unter
+// denselben Regeln für https, Server und Weiterleitungen.
 
 interface
 
@@ -23,9 +26,12 @@ type
     FServer: string;
     FUser: string;
     FToken: string;
+    FBearer: Boolean;
   public
     /// <summary>AServer wie TAtlasCiJob.Server; AUser/AToken leer = ohne Anmeldung.</summary>
     constructor Create(const AServer, AUser, AToken: string);
+    /// <summary>Anmeldung mit „Authorization: Bearer“ (#765); AToken leer = ohne Anmeldung.</summary>
+    constructor CreateBearer(const AServer, AToken: string);
     destructor Destroy; override;
     function Get(const AUrl: string; ATimeoutMs: Integer; out AStatus: Integer; out AText: string;
       out AError: TAtlasCiFetchError): Boolean;
@@ -62,6 +68,12 @@ begin
   FServer := LowerCase(AServer);
   FUser := AUser;
   FToken := AToken;
+end;
+
+constructor TAtlasCiHttpTransport.CreateBearer(const AServer, AToken: string);
+begin
+  Create(AServer, '', AToken);
+  FBearer := True;
 end;
 
 destructor TAtlasCiHttpTransport.Destroy;
@@ -109,7 +121,9 @@ begin
       begin
         Headers := nil;
         // Anmeldung nur über https beim eingetragenen Server.
-        if (FUser <> '') and (FToken <> '') and TAtlasCiAddresses.MayAuthenticate(Url, FServer) then
+        if FBearer and (FToken <> '') and TAtlasCiAddresses.MayAuthenticate(Url, FServer) then
+          Headers := [TNetHeader.Create('Authorization', 'Bearer ' + FToken)]
+        else if (FUser <> '') and (FToken <> '') and TAtlasCiAddresses.MayAuthenticate(Url, FServer) then
         begin
           Encoding := TBase64Encoding.Create(0);
           try

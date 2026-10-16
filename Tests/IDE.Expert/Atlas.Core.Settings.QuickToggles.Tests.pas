@@ -223,6 +223,15 @@ begin
   Assert.AreEqual('WelcomePage', Toggle.Feature);
   Assert.IsTrue(TAtlasQuickToggles.GetFlag(TAtlasPluginSettings.Defaults, 'WelcomePageQuickActions', Value));
   Assert.IsTrue(Value);
+  // Issue-Tracker (#765): Bereich standardmäßig aus, Befehl für den Zugang an.
+  Assert.IsTrue(TAtlasQuickToggles.Find(Toggles, 'WelcomePageIssues', Toggle));
+  Assert.AreEqual('Willkommensseite', Toggle.Page);
+  Assert.AreEqual('WelcomePage', Toggle.Feature);
+  Assert.IsTrue(TAtlasQuickToggles.GetFlag(TAtlasPluginSettings.Defaults, 'WelcomePageIssues', Value));
+  Assert.IsFalse(Value);
+  Assert.IsTrue(TAtlasQuickToggles.Find(Toggles, 'TrackerLogin', Toggle));
+  Assert.IsTrue(TAtlasQuickToggles.GetFlag(TAtlasPluginSettings.Defaults, 'TrackerLogin', Value));
+  Assert.IsTrue(Value);
   // Jeder Schalter ist eine Einstellung des Plugins.
   for Toggle in Toggles do
   begin

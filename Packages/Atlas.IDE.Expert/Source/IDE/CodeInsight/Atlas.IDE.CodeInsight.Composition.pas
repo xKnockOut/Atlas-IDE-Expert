@@ -116,6 +116,10 @@ uses
   Atlas.Core.Ci.Providers.Jenkins,
   Atlas.Core.Ci.Adapters.Http,
   Atlas.Core.Ci.Adapters.Credentials,
+  Atlas.Core.Tracker.Contract,
+  Atlas.Core.Tracker.Providers.GitHub,
+  Atlas.Core.Tracker.Providers.YouTrack,
+  Atlas.IDE.Welcome.Issues,
   Atlas.UI.Welcome.TestResults,
   Atlas.UI.Welcome.Projects,
   Atlas.Core.Editor.Metrics,
@@ -1116,6 +1120,17 @@ begin
     function: Boolean
     begin
       Result := TAtlasIdeSettings.Current.CiLogin and (Welcome <> nil) and (Welcome.TestResults <> nil);
+    end);
+  // Zugang zum Issue-Tracker (#765): für die .atlas des aktiven Projekts; sichtbar mit TrackerLogin.
+  Add('Atlas.TrackerLogin', TAtlasTextId.TrackerLoginCommand,
+    procedure
+    begin
+      if (Welcome <> nil) and (Welcome.Issues <> nil) then
+        Welcome.Issues.EnterCredentialsForActive;
+    end,
+    function: Boolean
+    begin
+      Result := TAtlasIdeSettings.Current.TrackerLogin and (Welcome <> nil) and (Welcome.Issues <> nil);
     end);
   // DUnitX-Tests (#69): sichtbar, solange TestRun an ist und der Läufer läuft (auch später gestartet).
   Add('Atlas.RunTests', TAtlasTextId.TestsRunCommand,
@@ -2207,6 +2222,81 @@ begin
   Result.OnCredentials := EnterCiCredentials;
 end;
 
+/// <summary>Token für den Issue-Tracker ATarget abfragen und im Anmeldespeicher von Windows ablegen (#765); leer
+/// entfernt es. Ziel "Atlas:tracker:<Server>", Benutzer = Anbieter. True, wenn sich etwas geändert hat.</summary>
+function EnterTrackerCredentials(const AProvider: IAtlasTrackerProvider; const ATarget: TAtlasTrackerTarget): Boolean;
+var
+  Token: string;
+  Ok: Boolean;
+begin
+  Result := False;
+  // Das Token geht nur über https an den eingetragenen Server; ohne https gar nicht erst speichern.
+  if not ATarget.Secure then
+  begin
+    GuardWarning(TAtlasStrings.Text(TAtlasTextId.TrackerLoginInsecure));
+    Exit;
+  end;
+  Token := '';
+  if not TAtlasCiLoginPrompt.AskToken(TAtlasStrings.Fmt(TAtlasTextId.TrackerLoginTitle, [AProvider.Caption,
+    ATarget.Server]), TAtlasStrings.Text(TAtlasTextId.TrackerLoginToken), Token) then
+    Exit;
+  if Token = '' then
+  begin
+    Ok := TAtlasCiCredentials.Delete(ATarget.CredentialTarget);
+    if Ok then
+      GuardWarning(TAtlasStrings.Text(TAtlasTextId.TrackerLoginRemoved))
+    else
+      GuardWarning(TAtlasStrings.Text(TAtlasTextId.TrackerLoginFailed));
+    Exit(Ok);
+  end;
+  Ok := TAtlasCiCredentials.Write(ATarget.CredentialTarget, AProvider.Name, Token, 'Atlas: Issue-Tracker');
+  UniqueString(Token);
+  FillChar(PChar(Token)^, Length(Token) * SizeOf(Char), 0);
+  // Anonym: weder Server noch Projekt.
+  if Ok then
+    GuardWarning(TAtlasStrings.Text(TAtlasTextId.TrackerLoginSaved))
+  else
+    GuardWarning(TAtlasStrings.Text(TAtlasTextId.TrackerLoginFailed));
+  Result := Ok;
+end;
+
+function CreateWelcomeIssues(AProjects: TAtlasIdeProjects): TAtlasIdeIssues;
+begin
+  Result := TAtlasIdeIssues.Create(AProjects,
+    procedure(AText: string)
+    begin
+      // Nur Meldungsansicht: Die Zeilen können Branch-Namen enthalten.
+      MessageLine(AText);
+    end);
+  // Tracker-Anbieter: GitHub und YouTrack; weitere kommen ohne Änderung am Bereich dazu.
+  Result.ProviderFactory :=
+    function(const AName: string): IAtlasTrackerProvider
+    begin
+      Result := nil;
+      if SameText(AName, TAtlasGitHubTracker.ProviderName) then
+        Result := TAtlasGitHubTracker.Create
+      else if SameText(AName, TAtlasYouTrackTracker.ProviderName) then
+        Result := TAtlasYouTrackTracker.Create;
+    end;
+  // Im Hintergrund-Thread: Token aus dem Anmeldespeicher, ohne Dialog; ohne Token kein Transport (kein Netz).
+  Result.TransportFactory :=
+    function(const AProvider: IAtlasTrackerProvider; const ATarget: TAtlasTrackerTarget): IAtlasCiTransport
+    var
+      User, Token: string;
+    begin
+      Result := nil;
+      User := '';
+      Token := '';
+      if not TAtlasCiCredentials.Read(ATarget.CredentialTarget, User, Token) or (Token = '') then
+        Exit;
+      // „Authorization: Bearer“ nur über https an die Programmierschnittstelle des Trackers.
+      Result := TAtlasCiHttpTransport.CreateBearer(AProvider.ApiServer(ATarget), Token);
+      UniqueString(Token);
+      FillChar(PChar(Token)^, Length(Token) * SizeOf(Char), 0);
+    end;
+  Result.OnCredentials := EnterTrackerCredentials;
+end;
+
 procedure StartWelcome;
 begin
   Welcome := TAtlasIdeWelcome.Create(
@@ -2276,6 +2366,9 @@ begin
   Welcome.Trends := TAtlasIdeTrends.Create(Welcome.Projects);
   // Bereich „Testergebnisse“ (#763): letzter Testlauf (#69) und letzter Build des Build-Servers je Projekt.
   Welcome.TestResults := CreateWelcomeTestResults(Welcome.Projects);
+  // Bereich „Meine Issues“ (#765): offene Issues aus GitHub bzw. YouTrack (Tracker aus .atlas), „Beginnen“ über die
+  // VCS-Schnittstelle (#571), aktuelles Issue im Statusfeld (#591); Token im Anmeldespeicher wie #763.
+  Welcome.Issues := CreateWelcomeIssues(Welcome.Projects);
   // Bereich „Nicht gesichert“ (#762): nicht Gesichertes je Projekt über die VCS-Schnittstelle (#571).
   Welcome.Unsaved := TAtlasIdeUnsaved.Create(
     procedure(AText: string)

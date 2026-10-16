@@ -293,6 +293,11 @@
         <DCCReference Include="Source\Core\Ci\Atlas.Core.Ci.Providers.Jenkins.pas"/>
         <DCCReference Include="Source\Core\Ci\Atlas.Core.Ci.Adapters.Http.pas"/>
         <DCCReference Include="Source\Core\Ci\Atlas.Core.Ci.Adapters.Credentials.pas"/>
+        <DCCReference Include="Source\Core\Tracker\Atlas.Core.Tracker.Contract.pas"/>
+        <DCCReference Include="Source\Core\Tracker\Atlas.Core.Tracker.Naming.pas"/>
+        <DCCReference Include="Source\Core\Tracker\Atlas.Core.Tracker.Providers.GitHub.pas"/>
+        <DCCReference Include="Source\Core\Tracker\Atlas.Core.Tracker.Providers.YouTrack.pas"/>
+        <DCCReference Include="Source\Core\Tracker\Atlas.Core.Tracker.CommitHook.pas"/>
         <DCCReference Include="Source\IDE\Foundation\Atlas.IDE.Foundation.TeamFile.pas"/>
         <DCCReference Include="Source\Core\Diagnostics\Atlas.Core.Diagnostics.FeatureTable.pas"/>
         <DCCReference Include="Source\Core\Diagnostics\Atlas.Core.Diagnostics.SafeMode.pas"/>
@@ -384,6 +389,7 @@
         <DCCReference Include="Source\Core\Welcome\Atlas.Core.Welcome.Projects.pas"/>
         <DCCReference Include="Source\Core\Welcome\Atlas.Core.Welcome.Trends.pas"/>
         <DCCReference Include="Source\Core\Welcome\Atlas.Core.Welcome.TestResults.pas"/>
+        <DCCReference Include="Source\Core\Welcome\Atlas.Core.Welcome.Issues.pas"/>
         <DCCReference Include="Source\Core\Welcome\Atlas.Core.Welcome.Unsaved.pas"/>
         <DCCReference Include="Source\Core\Welcome\Atlas.Core.Welcome.Continue.pas"/>
         <DCCReference Include="Source\Core\Welcome\Atlas.Core.Welcome.QuickActions.pas"/>
@@ -404,6 +410,7 @@
         <DCCReference Include="Source\UI\Welcome\Atlas.UI.Welcome.Projects.pas"/>
         <DCCReference Include="Source\UI\Welcome\Atlas.UI.Welcome.Trends.pas"/>
         <DCCReference Include="Source\UI\Welcome\Atlas.UI.Welcome.TestResults.pas"/>
+        <DCCReference Include="Source\UI\Welcome\Atlas.UI.Welcome.Issues.pas"/>
         <DCCReference Include="Source\UI\Welcome\Atlas.UI.Welcome.Unsaved.pas"/>
         <DCCReference Include="Source\UI\Welcome\Atlas.UI.Welcome.Continue.pas"/>
         <DCCReference Include="Source\UI\Welcome\Atlas.UI.Welcome.QuickActions.pas"/>
@@ -421,6 +428,7 @@
         <DCCReference Include="Source\IDE\Welcome\Atlas.IDE.Welcome.Projects.pas"/>
         <DCCReference Include="Source\IDE\Welcome\Atlas.IDE.Welcome.Trends.pas"/>
         <DCCReference Include="Source\IDE\Welcome\Atlas.IDE.Welcome.TestResults.pas"/>
+        <DCCReference Include="Source\IDE\Welcome\Atlas.IDE.Welcome.Issues.pas"/>
         <DCCReference Include="Source\IDE\Welcome\Atlas.IDE.Welcome.Unsaved.pas"/>
         <DCCReference Include="Source\IDE\Welcome\Atlas.IDE.Welcome.Continue.pas"/>
         <DCCReference Include="Source\IDE\Welcome\Atlas.IDE.Welcome.QuickActions.pas"/>
