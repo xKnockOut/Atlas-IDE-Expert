@@ -58,11 +58,17 @@ jobs:
       - name: Server bauen (Win64 Release)
         shell: pwsh
         run: |
+          # Projekt für Projekt: Die Gruppe enthält AtlasSetup, das nur Win32 kennt; die IDE stürzt beim
+          # Win64-Build daran ab (Zugriffsverletzung in coreide370.bpl).
           $start = Get-Date
-          $r = & $env:CC_SCRIPT group-build -Instance ${{ steps.ide.outputs.pid }} -Platform Win64 -Config Release -Json | Out-String | ConvertFrom-Json
-          $r | ConvertTo-Json -Depth 5 | Write-Host
-          if (-not $r.ok -or -not $r.outputWritten) { throw 'Build fehlgeschlagen oder keine Ausgabe geschrieben' }
-          if ($r.logFile -and (Select-String -Path $r.logFile -Pattern '\[dcc.*(Hinweis|Warnung)')) { throw 'Build hat Hinweise oder Warnungen' }
+          foreach ($project in 'Packages\Atlas.Text\Atlas.Text.dproj', 'Packages\Atlas.Common\Atlas.Common.dproj',
+            'Packages\Atlas.Windows\Atlas.Windows.dproj', 'Application\AtlasServer.dproj',
+            'Packages\Atlas.IDE.Expert\Atlas.IDE.Expert.dproj') {
+            $r = & $env:CC_SCRIPT build -Instance ${{ steps.ide.outputs.pid }} -Project "$env:GITHUB_WORKSPACE\$project" -Platform Win64 -Config Release -Json | Out-String | ConvertFrom-Json
+            $r | ConvertTo-Json -Depth 5 | Write-Host
+            if (-not $r.ok -or -not $r.outputWritten) { throw "Build fehlgeschlagen oder keine Ausgabe geschrieben: $project" }
+            if ($r.logFile -and (Select-String -Path $r.logFile -Pattern '\[dcc.*(Hinweis|Warnung)')) { throw "Build hat Hinweise oder Warnungen: $project" }
+          }
           $exe = 'Output\Win64\Release\Bin\AtlasServer.exe'
           if (-not (Test-Path $exe) -or (Get-Item $exe).LastWriteTime -lt $start) { throw 'Release-exe wurde nicht neu geschrieben' }
       - name: Plugin und Installer bauen (Win32 Release)
@@ -135,7 +141,7 @@ jobs:
           name: server
           path: |
             Output/Win64/Release/Bin/AtlasServer.exe
-            Output/Win64/Release/Bin/Atlas.map
+            Output/Win64/Release/Bin/AtlasServer.map
             Output/Win64/Release/Bin/atlas-ide-expert-${{ needs.version.outputs.version }}.zip
 
   release:
@@ -179,7 +185,7 @@ jobs:
           files: |
             atlas-claude-plugin-${{ env.VERSION }}.zip
             server/AtlasServer.exe
-            server/Atlas.map
+            server/AtlasServer.map
             server/atlas-ide-expert-${{ env.VERSION }}.zip
             atlas-version.json
           fail_on_unmatched_files: false
