@@ -18,6 +18,10 @@
 // - Die Meldungen liest der Leser des Meldungsfensters (#528) kurz nach dem
 //   Ende; die Kompositionswurzel reicht sie über MessagesRead weiter. Kommen
 //   sie nicht binnen MessagesWaitMs, meldet der Läufer das Ergebnis ohne sie.
+// - Bricht ein Teilnehmer der Compile-Ereignisse den eigenen Build ab (etwa
+//   der Release-Build-Wächter mit build.gate = block, #533), endet der
+//   Auftrag als „nicht gebaut“ mit dessen Grund (AError), nicht als
+//   fehlgeschlagener Build.
 
 interface
 
@@ -44,6 +48,7 @@ type
       procedure GroupFinished(ASucceeded: Boolean; ADurationMs: Int64); override;
       procedure ProjectFinished(const AProject: TAtlasCompileProject; ASucceeded: Boolean; ADurationMs: Int64);
         override;
+      procedure CompileCancelled(const AProject: TAtlasCompileProject; const AReason: string); override;
     end;
   private
     FEvents: TAtlasCompileEvents;
@@ -59,6 +64,8 @@ type
     FReport: TAtlasBuildReport;
     FProjectSeen: Boolean;
     FMessagesSeen: Boolean;
+    /// <summary>Grund, aus dem ein Teilnehmer den eigenen Build abgebrochen hat; '' = keiner.</summary>
+    FCancelReason: string;
     FWaitStarted: Int64;
     FOnDone: TAtlasBuildDoneProc;
     procedure Tick(Sender: TObject);
@@ -116,6 +123,17 @@ begin
   FOwner.FReport.Project := AProject;
   FOwner.FReport.Succeeded := ASucceeded;
   FOwner.FReport.DurationMs := ADurationMs;
+end;
+
+procedure TAtlasIdeBuildRunner.TWatcher.CompileCancelled(const AProject: TAtlasCompileProject;
+  const AReason: string);
+begin
+  // Auch der Abbruch eines abhängigen Projekts verhindert den eigenen Build; der erste Grund zählt.
+  if (FOwner = nil) or not FOwner.FBuilding or (FOwner.FCancelReason <> '') then
+    Exit;
+  FOwner.FCancelReason := AReason;
+  if FOwner.FCancelReason = '' then
+    FOwner.FCancelReason := 'Ein Teilnehmer hat den Build abgebrochen';
 end;
 
 { TAtlasIdeBuildRunner }
@@ -212,6 +230,7 @@ begin
   FReport.Project.Kind := ARequest.Kind;
   FProjectSeen := False;
   FMessagesSeen := False;
+  FCancelReason := '';
   FBusy := True;
   FBuilding := True;
   FTimer.Enabled := True;
@@ -252,6 +271,15 @@ begin
       FOnDone := nil;
       Exit(True);
     end;
+  end;
+  if FCancelReason <> '' then
+  begin
+    // Abgebrochen vor dem Compile (#533): nicht gebaut, mit Grund; keine Meldungen abwarten.
+    FBusy := False;
+    FTimer.Enabled := False;
+    FOnDone(FReport, FCancelReason);
+    FOnDone := nil;
+    Exit(True);
   end;
   if not FProjectSeen then
   begin

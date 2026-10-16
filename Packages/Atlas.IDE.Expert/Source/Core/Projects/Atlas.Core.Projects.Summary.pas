@@ -52,7 +52,12 @@
 //               "failed": 1, "errors": 1, "skipped": 2, "durationMs": 1250,
 //               "failures": [{"test": "Demo.Tests.TRechner.Summe.Gross",
 //                             "message": "…", "file": "C:\\…\\Demo.Tests.pas",
-//                             "line": 35}, …]}
+//                             "line": 35}, …]},
+//     "release": {"checkedAt": "…", "configuration": "Release",
+//                 "platform": "Win64", "findings": 2, "blocked": true,
+//                 "rules": ["release-debug-define", …],
+//                 "builds": [{"configuration": "Release", "platform": "Win64",
+//                             "version": "1.2.0.0", "at": "…"}, …]}
 //   }
 // "changed", "ahead", "behind" = -1: unbekannt. "first" ist die erste Fehler-
 // meldung (Zeile und Spalte ab 1). "build" ist der letzte Lauf des Benutzers,
@@ -104,6 +109,12 @@
 // DUnitX; „Fehlgeschlagene erneut ausführen“ übergibt genau diese Namen an
 // --run. "file" ist absolut, "line" ab 1 (Methodenkopf), beide fehlen ohne
 // Fundstelle. Läufe über das MCP-Werkzeug run_tests schreiben hier nicht.
+// "release" ist der Release-Build-Wächter (#533): "checkedAt" bis "rules" die
+// letzte Prüfung vor einem Release-Build (Konfiguration, Plattform, Zahl der
+// Verstöße, ob der Build abgebrochen wurde, Regel-IDs der Verstöße ohne
+// Doppelte), "builds" je Konfiguration und Plattform die Version des letzten
+// erfolgreichen Release-Builds (Grundlage von „unveränderte Version“; auch
+// für die Schnellaktion „Öffnen und bauen“ #764).
 //
 // Erweitern: Neue Felder und Abschnitte dürfen jederzeit dazukommen, ohne
 // "format" zu erhöhen. Leser übergehen, was sie nicht kennen; Schreiber
@@ -366,6 +377,40 @@ type
     function Total: Integer;
   end;
 
+  /// <summary>Letzter erfolgreicher Release-Build einer Konfiguration und Plattform (#533).</summary>
+  TAtlasProjectReleaseBuild = record
+    Configuration: string;
+    Platform: string;
+    Version: string;
+    /// <summary>Ende des Builds (UTC).</summary>
+    At: TDateTime;
+  end;
+
+  /// <summary>Release-Build-Wächter (#533): letzte Prüfung und Versionen der Release-Builds.</summary>
+  TAtlasProjectRelease = record
+  public const
+    /// <summary>Höchstens so viele Einträge in "builds" (je Konfiguration und Plattform einer).</summary>
+    MaxBuilds = 20;
+  public
+    Known: Boolean;
+    /// <summary>Letzte Prüfung (UTC); 0 = noch keine.</summary>
+    CheckedAt: TDateTime;
+    Configuration: string;
+    Platform: string;
+    Findings: Integer;
+    /// <summary>Die Prüfung hat den Build abgebrochen (build.gate = block).</summary>
+    Blocked: Boolean;
+    /// <summary>Regel-IDs der Verstöße ohne Doppelte, z. B. release-debug-define.</summary>
+    Rules: TArray<string>;
+    Builds: TArray<TAtlasProjectReleaseBuild>;
+    class function Empty: TAtlasProjectRelease; static;
+    /// <summary>Version des letzten erfolgreichen Release-Builds von AConfiguration/APlatform; '' = keiner.
+    /// </summary>
+    function VersionOf(const AConfiguration, APlatform: string): string;
+    /// <summary>Merkt AVersion für AConfiguration/APlatform (ersetzt den alten Eintrag, neueste zuerst).</summary>
+    procedure Remember(const AConfiguration, APlatform, AVersion: string; AAtUtc: TDateTime);
+  end;
+
   TAtlasProjectSummary = record
     /// <summary>Vollständiger Pfad der Projektdatei (.dproj, .groupproj …).</summary>
     Project: string;
@@ -384,6 +429,7 @@ type
     Trends: TAtlasProjectTrends;
     Setup: TAtlasProjectSetup;
     Tests: TAtlasProjectTests;
+    Release: TAtlasProjectRelease;
     /// <summary>Gelesener Text der Datei; ToJson behält daraus alle unbekannten Felder.</summary>
     Raw: string;
     class function Create(const AProject: string): TAtlasProjectSummary; static;
@@ -446,8 +492,8 @@ uses
 
 const
   // Bekannte Felder; alles andere übernimmt ToJson unverändert aus Raw.
-  TopKeys: array[0..14] of string = ('format', 'project', 'lastOpened', 'lastClosed', 'hidden', 'vcs', 'build',
-    'check', 'rules', 'metrics', 'todos', 'baseline', 'trends', 'setup', 'tests');
+  TopKeys: array[0..15] of string = ('format', 'project', 'lastOpened', 'lastClosed', 'hidden', 'vcs', 'build',
+    'check', 'rules', 'metrics', 'todos', 'baseline', 'trends', 'setup', 'tests', 'release');
   VcsKeys: array[0..6] of string = ('at', 'kind', 'branch', 'revision', 'changed', 'ahead', 'behind');
   BuildKeys: array[0..9] of string = ('at', 'kind', 'configuration', 'platform', 'succeeded', 'errors', 'warnings',
     'hints', 'durationMs', 'first');
@@ -463,6 +509,9 @@ const
   SetupKeys: array[0..2] of string = ('dismissed', 'dismissedAt', 'paths');
   TestsKeys: array[0..9] of string = ('at', 'project', 'configuration', 'platform', 'passed', 'failed', 'errors',
     'skipped', 'durationMs', 'failures');
+  ReleaseKeys: array[0..6] of string = ('checkedAt', 'configuration', 'platform', 'findings', 'blocked', 'rules',
+    'builds');
+  ReleaseBuildKeys: array[0..3] of string = ('configuration', 'platform', 'version', 'at');
   PathsKeys: array[0..9] of string = ('at', 'files', 'unreadable', 'missingUnits', 'undefinedDefines', 'units',
     'defines', 'uncertainUnits', 'uncertainDefines', 'skippedMacros');
 
@@ -575,6 +624,7 @@ begin
   Result.Trends := TAtlasProjectTrends.Empty;
   Result.Setup := TAtlasProjectSetup.Empty;
   Result.Tests := TAtlasProjectTests.Empty;
+  Result.Release := TAtlasProjectRelease.Empty;
 end;
 
 function TAtlasProjectSummary.Name: string;
@@ -1224,6 +1274,135 @@ begin
   KeepUnknown(Result, AOriginal, TestsKeys);
 end;
 
+{ TAtlasProjectRelease }
+
+class function TAtlasProjectRelease.Empty: TAtlasProjectRelease;
+begin
+  Result := Default(TAtlasProjectRelease);
+  Result.Rules := nil;
+  Result.Builds := nil;
+end;
+
+function TAtlasProjectRelease.VersionOf(const AConfiguration, APlatform: string): string;
+var
+  Build: TAtlasProjectReleaseBuild;
+begin
+  Result := '';
+  for Build in Builds do
+    if SameText(Build.Configuration, AConfiguration) and SameText(Build.Platform, APlatform) then
+      Exit(Build.Version);
+end;
+
+procedure TAtlasProjectRelease.Remember(const AConfiguration, APlatform, AVersion: string; AAtUtc: TDateTime);
+var
+  Entry: TAtlasProjectReleaseBuild;
+  Kept: TArray<TAtlasProjectReleaseBuild>;
+  Build: TAtlasProjectReleaseBuild;
+begin
+  Entry.Configuration := AConfiguration;
+  Entry.Platform := APlatform;
+  Entry.Version := AVersion;
+  Entry.At := AAtUtc;
+  Kept := nil;
+  Kept := Kept + [Entry];
+  for Build in Builds do
+    if (Length(Kept) < MaxBuilds) and
+      not (SameText(Build.Configuration, AConfiguration) and SameText(Build.Platform, APlatform)) then
+      Kept := Kept + [Build];
+  Builds := Kept;
+  Known := True;
+end;
+
+function ReleaseOf(ASection: TJSONObject): TAtlasProjectRelease;
+var
+  Items: TJSONValue;
+  Item: TJSONValue;
+  Build: TAtlasProjectReleaseBuild;
+begin
+  Result := TAtlasProjectRelease.Empty;
+  if ASection = nil then
+    Exit;
+  Result.Known := True;
+  Result.CheckedAt := TAtlasProjectSummaries.TimeOf(TextOf(ASection, 'checkedAt'));
+  Result.Configuration := TextOf(ASection, 'configuration');
+  Result.Platform := TextOf(ASection, 'platform');
+  Result.Findings := NumberOf(ASection, 'findings', 0);
+  Result.Blocked := FlagOf(ASection, 'blocked');
+  Items := ASection.GetValue('rules');
+  if Items is TJSONArray then
+    for Item in TJSONArray(Items) do
+      if (Item is TJSONString) and (TJSONString(Item).Value <> '') then
+        Result.Rules := Result.Rules + [TJSONString(Item).Value];
+  Items := ASection.GetValue('builds');
+  if not (Items is TJSONArray) then
+    Exit;
+  for Item in TJSONArray(Items) do
+  begin
+    if not (Item is TJSONObject) or (Length(Result.Builds) >= TAtlasProjectRelease.MaxBuilds) then
+      Continue;
+    Build := Default(TAtlasProjectReleaseBuild);
+    Build.Configuration := TextOf(TJSONObject(Item), 'configuration');
+    Build.Platform := TextOf(TJSONObject(Item), 'platform');
+    Build.Version := TextOf(TJSONObject(Item), 'version');
+    Build.At := TAtlasProjectSummaries.TimeOf(TextOf(TJSONObject(Item), 'at'));
+    if Build.Configuration <> '' then
+      Result.Builds := Result.Builds + [Build];
+  end;
+end;
+
+/// <summary>Eintrag in "builds" zu AConfiguration/APlatform aus dem gelesenen Text (für unbekannte Felder).</summary>
+function OriginalReleaseBuild(AOriginal: TJSONObject; const AConfiguration, APlatform: string): TJSONObject;
+var
+  Items: TJSONValue;
+  Item: TJSONValue;
+begin
+  Result := nil;
+  if AOriginal = nil then
+    Exit;
+  Items := AOriginal.GetValue('builds');
+  if not (Items is TJSONArray) then
+    Exit;
+  for Item in TJSONArray(Items) do
+    if (Item is TJSONObject) and SameText(TextOf(TJSONObject(Item), 'configuration'), AConfiguration) and
+      SameText(TextOf(TJSONObject(Item), 'platform'), APlatform) then
+      Exit(TJSONObject(Item));
+end;
+
+function ReleaseJson(const ARelease: TAtlasProjectRelease; AOriginal: TJSONObject): TJSONObject;
+var
+  Items: TJSONArray;
+  Item: TJSONObject;
+  Rule: string;
+  Build: TAtlasProjectReleaseBuild;
+begin
+  Result := TJSONObject.Create;
+  if ARelease.CheckedAt > 0 then
+  begin
+    AddTime(Result, 'checkedAt', ARelease.CheckedAt);
+    Result.AddPair('configuration', ARelease.Configuration);
+    Result.AddPair('platform', ARelease.Platform);
+    Result.AddPair('findings', TJSONNumber.Create(ARelease.Findings));
+    Result.AddPair('blocked', TJSONBool.Create(ARelease.Blocked));
+    Items := TJSONArray.Create;
+    Result.AddPair('rules', Items);
+    for Rule in ARelease.Rules do
+      Items.Add(Rule);
+  end;
+  Items := TJSONArray.Create;
+  Result.AddPair('builds', Items);
+  for Build in ARelease.Builds do
+  begin
+    Item := TJSONObject.Create;
+    Items.AddElement(Item);
+    Item.AddPair('configuration', Build.Configuration);
+    Item.AddPair('platform', Build.Platform);
+    Item.AddPair('version', Build.Version);
+    AddTime(Item, 'at', Build.At);
+    KeepUnknown(Item, OriginalReleaseBuild(AOriginal, Build.Configuration, Build.Platform), ReleaseBuildKeys);
+  end;
+  KeepUnknown(Result, AOriginal, ReleaseKeys);
+end;
+
 { TAtlasProjectSummaries }
 
 class function TAtlasProjectSummaries.NormalizedPath(const AProject: string): string;
@@ -1413,6 +1592,7 @@ begin
     ASummary.Trends := TrendsOf(ObjectOf(Root, 'trends'));
     ASummary.Setup := SetupOf(ObjectOf(Root, 'setup'));
     ASummary.Tests := TestsOf(ObjectOf(Root, 'tests'));
+    ASummary.Release := ReleaseOf(ObjectOf(Root, 'release'));
     Result := True;
   finally
     Value.Free;
@@ -1546,6 +1726,8 @@ begin
       Root.AddPair('setup', SetupJson(ASummary.Setup, ObjectOf(Original, 'setup')));
     if ASummary.Tests.Known then
       Root.AddPair('tests', TestsJson(ASummary.Tests, ObjectOf(Original, 'tests')));
+    if ASummary.Release.Known then
+      Root.AddPair('release', ReleaseJson(ASummary.Release, ObjectOf(Original, 'release')));
     KeepUnknown(Root, Original, TopKeys);
     Result := Root.ToJSON;
   finally
