@@ -144,6 +144,11 @@ begin
   Assert.AreEqual('Editor', Toggle.Page);
   Assert.IsFalse(Toggle.Drawing);
   Assert.AreEqual('Palette', Toggle.Feature);
+  // Projektdatei .atlas (#486): eigener Schalter auf der Seite Allgemein, keine Zeichnung.
+  Assert.IsTrue(TAtlasQuickToggles.Find(Toggles, 'TeamFile', Toggle));
+  Assert.AreEqual('Allgemein', Toggle.Page);
+  Assert.IsFalse(Toggle.Drawing);
+  Assert.AreEqual('Settings', Toggle.Feature);
   // Befehl (#68): Schalter auf der Seite Editor; keine Zeichnung, „Alles aus“ lässt ihn stehen.
   Assert.IsTrue(TAtlasQuickToggles.Find(Toggles, 'TodoList', Toggle));
   Assert.AreEqual('Editor', Toggle.Page);
@@ -211,6 +216,7 @@ begin
   Assert.IsTrue(Effective.GenerateMenu, 'Befehl (#719) ist keine Zeichnung');
   Assert.IsTrue(Effective.TodoList, 'Befehl (#68) ist keine Zeichnung');
   Assert.IsTrue(Effective.MetricsReport, 'Befehl (#66) ist keine Zeichnung');
+  Assert.IsTrue(Effective.TeamFile, 'Projektdatei (#486) ist keine Zeichnung');
   Assert.IsTrue(Effective.BaselineUpdate, 'Befehl (#97) ist keine Zeichnung');
   Assert.IsTrue(Stored.PairColors);
   Assert.IsTrue(Stored.PairGuides);

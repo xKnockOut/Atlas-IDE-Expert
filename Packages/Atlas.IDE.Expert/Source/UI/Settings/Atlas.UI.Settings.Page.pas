@@ -34,6 +34,7 @@ uses
   Atlas.Core.Style.Color,
   Atlas.Core.Style.Palette,
   Atlas.Core.Settings.Plugin,
+  Atlas.Core.Settings.TeamFile,
   Atlas.Core.Projects.Summary,
   Atlas.Core.Completion.Favorites,
   Atlas.Core.Diagnostics.Hangs,
@@ -182,6 +183,13 @@ type
     FGenerateMenuShowCommandNames: TCheckBox;
     FSnippets: TCheckBox;
     FImportIdeTemplates: TCheckBox;
+    // Projektdatei .atlas (#486): Schalter, Anzeige der Werte „aus .atlas“, Öffnen; Hinweis bei den Vorlagen.
+    FTeamFile: TCheckBox;
+    FTeamFileInfo: TLabel;
+    FTeamFileOpen: TButton;
+    FTeamSnippets: TLabel;
+    FOnTeamFile: TFunc<TAtlasTeamSettings>;
+    FOnOpenTeamFile: TProc;
     FSafeAsk: TCheckBox;
     FSafeAuto: TCheckBox;
     FSafeKey: TAtlasChoiceBox;
@@ -287,6 +295,12 @@ type
     procedure SetOnFavorites(const AValue: TFunc<TArray<TAtlasFavorite>>);
     procedure ResetUsageClick(Sender: TObject);
     procedure UnblockTipsClick(Sender: TObject);
+    procedure AddTeamFileSection;
+    procedure TeamFileClick(Sender: TObject);
+    procedure TeamFileOpenClick(Sender: TObject);
+    procedure SetOnTeamFile(const AValue: TFunc<TAtlasTeamSettings>);
+    /// <summary>Beschriftung über die ganze Breite mit Zeilenumbruch.</summary>
+    function AddWrappedLabel(AHeight: Integer; const ACaption: string): TLabel;
     procedure HelpFolderBrowseClick(Sender: TObject);
     /// <summary>Beschriftung in einer Zeile, darunter ein Textfeld über die ganze Breite (#766).</summary>
     function AddTextLine(const ACaption: string): TEdit;
@@ -448,6 +462,17 @@ type
     property OnResetUsage: TProc read FOnResetUsage write FOnResetUsage;
     /// <summary>„Gesperrte Tipps wieder zeigen“ der Karte „Atlas entdecken“ (#757).</summary>
     property OnUnblockTips: TProc read FOnUnblockTips write FOnUnblockTips;
+    /// <summary>Projektdatei .atlas des aktiven Projekts (#486) für die Anzeige „aus .atlas“; nil = keine.</summary>
+    property OnTeamFile: TFunc<TAtlasTeamSettings> read FOnTeamFile write SetOnTeamFile;
+    /// <summary>„Projektdatei öffnen“: anlegen, falls es sie nicht gibt, und im Editor öffnen (#486).</summary>
+    property OnOpenTeamFile: TProc read FOnOpenTeamFile write FOnOpenTeamFile;
+    /// <summary>Anzeige der Projektdatei neu aufbauen (#486).</summary>
+    procedure RefreshTeamFile;
+    /// <summary>Zum Testen: Projektdatei (#486).</summary>
+    property TeamFileCheck: TCheckBox read FTeamFile;
+    property TeamFileInfo: TLabel read FTeamFileInfo;
+    property TeamFileOpenButton: TButton read FTeamFileOpen;
+    property TeamSnippetsLabel: TLabel read FTeamSnippets;
     /// <summary>Server, der bei leerem Pfad gilt (für die Anzeige „Verwendet: …“).</summary>
     property DefaultServerPath: string read FDefaultServerPath write SetDefaultServerPath;
     /// <summary>Version des Servers unter dem Pfad als Text ('' = unbekannt); nil = keine Anzeige.</summary>
@@ -733,6 +758,8 @@ begin
   // Code-Vorlagen (#51).
   FSnippets := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsSnippets));
   FImportIdeTemplates := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsImportIdeTemplates));
+  // Vorlagen aus der Projektdatei (#486); leer ohne .atlas.
+  FTeamSnippets := AddWrappedLabel(20, '');
 
   AddSheet(TAtlasTextId.SettingsTabEditor);
   FHoverTooltip := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsHover));
@@ -858,6 +885,9 @@ begin
 
   AddSheet(TAtlasTextId.SettingsTabWelcome);
   AddWelcomeSection;
+
+  AddSheet(TAtlasTextId.SettingsTabTeamFile);
+  AddTeamFileSection;
 end;
 
 procedure TAtlasSettingsPage.AddWelcomeSection;
@@ -1563,6 +1593,8 @@ begin
   FPreview.Checked := ASettings.Preview;
   FSnippets.Checked := ASettings.Snippets;
   FImportIdeTemplates.Checked := ASettings.ImportIdeTemplates;
+  FTeamFile.Checked := ASettings.TeamFile;
+  RefreshTeamFile;
   FHoverTooltip.Checked := ASettings.HoverTooltip;
   FXmlDocFull.Checked := ASettings.XmlDocFull;
   FXmlDocMaxLines.Text := IntToStr(ASettings.XmlDocMaxLines);
@@ -1752,6 +1784,7 @@ begin
   ASettings.Preview := FPreview.Checked;
   ASettings.Snippets := FSnippets.Checked;
   ASettings.ImportIdeTemplates := FImportIdeTemplates.Checked;
+  ASettings.TeamFile := FTeamFile.Checked;
   ASettings.HoverTooltip := FHoverTooltip.Checked;
   ASettings.XmlDocFull := FXmlDocFull.Checked;
   ASettings.XmlDocMaxLines := StrToIntDef(FXmlDocMaxLines.Text, ASettings.XmlDocMaxLines);
@@ -1984,6 +2017,96 @@ begin
   if Assigned(FOnUnblockTips) then
     FOnUnblockTips();
   FUnblockTips.Enabled := False;
+end;
+
+function TAtlasSettingsPage.AddWrappedLabel(AHeight: Integer; const ACaption: string): TLabel;
+var
+  Panel: TWinControl;
+begin
+  Panel := AddPanel(AHeight);
+  Result := TLabel.Create(Self);
+  Result.Parent := Panel;
+  Result.AutoSize := False;
+  Result.Align := alClient;
+  Result.WordWrap := True;
+  Result.ShowAccelChar := False;
+  Result.Caption := ACaption;
+end;
+
+procedure TAtlasSettingsPage.AddTeamFileSection;
+var
+  Panel: TWinControl;
+begin
+  // Projektdatei .atlas (#486): Schalter, Erklärung, „Projektdatei öffnen“ und jeder Wert mit „aus .atlas“.
+  FTeamFile := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsTeamFile));
+  FTeamFile.OnClick := TeamFileClick;
+  AddWrappedLabel(36, TAtlasStrings.Text(TAtlasTextId.SettingsTeamFileHint));
+  Panel := AddPanel(32);
+  FTeamFileOpen := TButton.Create(Self);
+  FTeamFileOpen.Parent := Panel;
+  FTeamFileOpen.Caption := TAtlasStrings.Text(TAtlasTextId.SettingsTeamFileOpen);
+  FTeamFileOpen.Left := 0;
+  FTeamFileOpen.Top := 3;
+  FTeamFileOpen.Width := 180;
+  FTeamFileOpen.OnClick := TeamFileOpenClick;
+  FTeamFileInfo := AddWrappedLabel(180, '');
+  RefreshTeamFile;
+end;
+
+procedure TAtlasSettingsPage.TeamFileClick(Sender: TObject);
+begin
+  RefreshTeamFile;
+end;
+
+procedure TAtlasSettingsPage.TeamFileOpenClick(Sender: TObject);
+begin
+  if Assigned(FOnOpenTeamFile) then
+    FOnOpenTeamFile();
+  RefreshTeamFile;
+end;
+
+procedure TAtlasSettingsPage.SetOnTeamFile(const AValue: TFunc<TAtlasTeamSettings>);
+begin
+  FOnTeamFile := AValue;
+  RefreshTeamFile;
+end;
+
+procedure TAtlasSettingsPage.RefreshTeamFile;
+var
+  Team: TAtlasTeamSettings;
+  Value: TAtlasTeamValue;
+  Lines: TArray<string>;
+begin
+  // Ausgeschaltet wird die Datei nicht gelesen.
+  Team := TAtlasTeamFile.Empty;
+  if FTeamFile.Checked and Assigned(FOnTeamFile) then
+    Team := FOnTeamFile();
+  FTeamSnippets.Caption := '';
+  if Team.Valid and (Team.Snippets <> '') then
+    FTeamSnippets.Caption := TAtlasStrings.Fmt(TAtlasTextId.SettingsTeamSnippets, [Team.Snippets]);
+  if not FTeamFile.Checked then
+    Lines := [TAtlasStrings.Text(TAtlasTextId.SettingsTeamFileOff)]
+  else if Team.Project = '' then
+    Lines := [TAtlasStrings.Text(TAtlasTextId.SettingsTeamFileNoProject)]
+  else if not Team.Exists then
+    Lines := [TAtlasStrings.Text(TAtlasTextId.SettingsTeamFileMissing)]
+  else
+  begin
+    Lines := [TAtlasStrings.Fmt(TAtlasTextId.SettingsTeamFileLocation, [Team.FileName])];
+    if not Team.Valid then
+      Lines := Lines + [TAtlasStrings.Text(TAtlasTextId.SettingsTeamFileInvalid)]
+    else
+    begin
+      for Value in TAtlasTeamFile.Values(Team) do
+        Lines := Lines + [TAtlasStrings.Fmt(TAtlasTextId.SettingsTeamFileValue, [Value.Key, Value.Value])];
+      if Length(Lines) = 1 then
+        Lines := Lines + [TAtlasStrings.Text(TAtlasTextId.SettingsTeamFileNoValues)];
+      if Length(Team.Issues) > 0 then
+        Lines := Lines + [TAtlasStrings.Fmt(TAtlasTextId.SettingsTeamFileIssues, [Length(Team.Issues)])];
+    end;
+  end;
+  FTeamFileInfo.Caption := string.Join(sLineBreak, Lines);
+  FTeamFileOpen.Enabled := FTeamFile.Checked and (Team.Project <> '');
 end;
 
 procedure TAtlasSettingsPage.HangTestClick(Sender: TObject);

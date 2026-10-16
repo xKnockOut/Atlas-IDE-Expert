@@ -69,6 +69,9 @@ type
     /// <summary>„Wächter testen“ nur im Diagnosemodus (Code-Review S-07).</summary>
     [Test]
     procedure HangTestOnlyInDiagnosticMode;
+    /// <summary>Reiter „Projektdatei“ (#486): jeder Wert mit „aus .atlas“, Hinweise, Öffnen.</summary>
+    [Test]
+    procedure TeamFileTabShowsValuesFromAtlas;
   end;
 
 implementation
@@ -91,6 +94,7 @@ uses
   Atlas.Core.Settings.SchemaData,
   Atlas.Core.Settings.Layers,
   Atlas.Core.Settings.Validation,
+  Atlas.Core.Settings.TeamFile,
   Atlas.Core.Style.Symbol,
   Atlas.UI.Style.Symbol,
   Vcl.Graphics,
@@ -132,11 +136,12 @@ begin
     Page := TAtlasSettingsPage.Create(Host);
     Page.Parent := Host;
     Page.HandleNeeded;
-    Assert.AreEqual(13, Page.Pages.PageCount);
+    Assert.AreEqual(14, Page.Pages.PageCount);
     Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.SettingsTabGeneral), Page.Pages.Pages[0].Caption);
     Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.SettingsTabUndo), Page.Pages.Pages[10].Caption);
     Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.SettingsTabUnitSearch), Page.Pages.Pages[11].Caption);
     Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.SettingsTabWelcome), Page.Pages.Pages[12].Caption);
+    Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.SettingsTabTeamFile), Page.Pages.Pages[13].Caption);
     for Index := 0 to Page.Pages.PageCount - 1 do
     begin
       Sheet := Page.Pages.Pages[Index];
@@ -145,6 +150,57 @@ begin
     Assert.AreEqual(0, Page.Pages.ActivePageIndex);
   finally
     Host.Free;
+  end;
+end;
+
+procedure TAtlasSettingsPageTests.TeamFileTabShowsValuesFromAtlas;
+var
+  Page: TAtlasSettingsPage;
+  Team: TAtlasTeamSettings;
+  Opened: Integer;
+  Settings: TAtlasPluginSettings;
+begin
+  Team := TAtlasTeamFile.Parse('{"version": 1, "naming": {"field": "F"}, "snippets": "Vorlagen", "token": "x"}',
+    'C:\Repo\.atlas', 'C:\Repo');
+  Team.Project := 'C:\Repo\Kasse.dproj';
+  Opened := 0;
+  Page := TAtlasSettingsPage.Create(nil);
+  try
+    Settings := TAtlasPluginSettings.Defaults;
+    Page.LoadFrom(Settings);
+    Assert.Contains(Page.TeamFileInfo.Caption, TAtlasStrings.Text(TAtlasTextId.SettingsTeamFileNoProject));
+    Assert.IsFalse(Page.TeamFileOpenButton.Enabled, 'ohne Projekt');
+    Page.OnTeamFile :=
+      function: TAtlasTeamSettings
+      begin
+        Result := Team;
+      end;
+    Page.OnOpenTeamFile :=
+      procedure
+      begin
+        Inc(Opened);
+      end;
+    Assert.Contains(Page.TeamFileInfo.Caption, TAtlasStrings.Fmt(TAtlasTextId.SettingsTeamFileValue,
+      ['naming.field', '"F"']));
+    Assert.Contains(Page.TeamFileInfo.Caption, TAtlasStrings.Fmt(TAtlasTextId.SettingsTeamFileIssues, [1]),
+      'Zugangsdaten ignoriert');
+    Assert.Contains(Page.TeamSnippetsLabel.Caption, 'Vorlagen');
+    Assert.IsTrue(Page.TeamFileOpenButton.Enabled);
+    Page.TeamFileOpenButton.Click;
+    Assert.AreEqual(1, Opened);
+    // Ausgeschaltet: keine Werte, kein Hinweis bei den Vorlagen, gespeichert als TeamFile = False.
+    Page.TeamFileCheck.Checked := False;
+    Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.SettingsTeamFileOff), Page.TeamFileInfo.Caption);
+    Assert.AreEqual('', Page.TeamSnippetsLabel.Caption);
+    Page.SaveTo(Settings);
+    Assert.IsFalse(Settings.TeamFile);
+    // Fehlerhafte Datei: Hinweis statt Werte.
+    Team := TAtlasTeamFile.Parse('{', 'C:\Repo\.atlas', 'C:\Repo');
+    Team.Project := 'C:\Repo\Kasse.dproj';
+    Page.TeamFileCheck.Checked := True;
+    Assert.Contains(Page.TeamFileInfo.Caption, TAtlasStrings.Text(TAtlasTextId.SettingsTeamFileInvalid));
+  finally
+    Page.Free;
   end;
 end;
 
@@ -175,6 +231,7 @@ begin
   Settings.CodeLensMetrics := False;
   Settings.TodoList := False;
   Settings.MetricsReport := False;
+  Settings.TeamFile := False;
   Page := TAtlasSettingsPage.Create(nil);
   try
     Page.LoadFrom(Settings);
@@ -206,6 +263,7 @@ begin
   Assert.IsFalse(Saved.CodeLensMetrics, 'Code Lens Metriken (#66)');
   Assert.IsFalse(Saved.TodoList, 'Befehl (#68)');
   Assert.IsFalse(Saved.MetricsReport, 'Befehl (#66)');
+  Assert.IsFalse(Saved.TeamFile, 'Projektdatei (#486)');
 end;
 
 procedure TAtlasSettingsPageTests.ShowsAndReenablesTrippedFeatures;

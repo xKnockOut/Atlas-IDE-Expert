@@ -1097,6 +1097,25 @@ Voraussetzung: Server läuft, eigenes Projekt geöffnet, die Regel `empty-except
 | BL15 | VS Code oder anderer Editor: `workspace/executeCommand` `atlas.updateBaseline` mit der URI des Projekts | Antwort mit `file`, `total`, `files`, `added`, `removed`, `unchanged`, `completed`, `orphaned`; der Befehl steht in `executeCommandProvider` |
 | BL16 | Optionen › Atlas › Editor: „Befehl „Baseline des Projekts aktualisieren“ in der Befehlspalette“ aus (oder Schnellschalter „Baseline aktualisieren“) | Der Befehl und sein Tipp verschwinden ohne Neustart; die Baseline blendet weiter aus, BL13 schreibt weiter; „Alles aus für diese Sitzung“ lässt den Befehl stehen |
 
+## Projektdatei .atlas (#486)
+
+Voraussetzung: Git-Projekt `C:\Repo\App\Kasse.dproj` (Repository-Wurzel `C:\Repo`), Server läuft. Persönliche Code-Vorlagen in `%APPDATA%\Atlas\Snippets` mit einer Vorlage `try`.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| PD1 | Befehlspalette „Projektdatei .atlas öffnen“ ohne vorhandene Datei | `C:\Repo\App\.atlas` entsteht (UTF-8 ohne BOM) mit `"version": 1`, leeren Abschnitten und Beispielen als Kommentar und ist im Editor offen; Meldungsansicht „Projektdatei .atlas angelegt …“; keine weitere Meldung |
+| PD2 | In `.atlas` `"naming": {"field": "F"}` und `"snippets": "..\\Vorlagen"` eintragen, speichern; in `C:\Repo\Vorlagen` eine Vorlage `try` mit anderem Text ablegen | Nach höchstens 2 s gilt die Datei; *Tools › Optionen › Atlas › Projektdatei* zeigt „naming.field: "F" (aus .atlas)“ und „snippets: ..\Vorlagen (aus .atlas)“, der Reiter *Einfügen* „Code-Vorlagen des Projekts: ..\Vorlagen (aus .atlas, …)“; die Vervollständigung bietet für `try` die Vorlage des Projekts an |
+| PD3 | `.atlas` löschen, im Ordner `C:\Repo` neu anlegen (gleicher Inhalt) | Gilt weiter (Wurzel des Repositorys); `"snippets": "..\\Vorlagen"` wird jetzt als „führt aus dem Projekt heraus“ gemeldet und ignoriert |
+| PD4 | In `.atlas` eine schließende Klammer löschen, speichern | Meldungsansicht einmal „Projektdatei .atlas ist fehlerhaft …; Atlas nutzt die persönlichen Einstellungen.“, kein Dialog, kein Absturz; der Reiter zeigt „Die Datei ist fehlerhaft …“; Projekt-Vorlagen fallen weg. Nach dem Reparieren gilt die Datei wieder ohne Meldung |
+| PD5 | `"token": "abc"`, `"ci": {"url": "https://marco:pw@ci.firma.de", "job": "kasse"}` und ein Startprofil mit `"environment": {"DB_PASSWORD": "x"}` eintragen | Je eine Meldung „… sieht nach Zugangsdaten aus und wird ignoriert …“ (`token`, `ci.url`, `startProfiles[…].environment.DB_PASSWORD`); das Startprofil fehlt ganz, der Reiter nennt „3 Einträge werden ignoriert“ |
+| PD6 | `"snippets": "C:\\Vorlagen"` und ein Startprofil mit `"host": "C:\\Tools\\host.exe"` bzw. `"parameters": "-db D:\\Daten\\x.fdb"` | Meldungen „… enthält einen absoluten Pfad …“; Werte ignoriert |
+| PD7 | Unbekannter Schlüssel `"nameing": {}` und `"sqlTargets": "TQuery.SQL"` | Meldungen „Unbekannter Eintrag "nameing" …“ und „"sqlTargets" hat den falschen Typ …“; übrige Werte gelten |
+| PD8 | Zwei Projekte einer Gruppe, nur eines mit `.atlas`; aktives Projekt wechseln | Der Reiter *Projektdatei* zeigt nach dem Wechsel die Datei des aktiven Projekts bzw. „Das aktive Projekt hat keine .atlas …“ |
+| PD9 | Optionen › Atlas › Projektdatei: Schalter aus (oder Schnellschalter „Projektdatei .atlas“) | Ohne Neustart: Befehl und Tipp verschwinden, die Projekt-Vorlagen fallen weg, der Reiter zeigt „Ausgeschaltet …“; keine Meldungen mehr zu `.atlas`. Wieder an: Datei gilt, Meldungen erscheinen einmal neu |
+| PD10 | `atlas.json` im Projekt mit `"token": "x"`, `"exclude": ["C:\\Fremd\\**", "/Generated/**"]` und `"testUnits": {"folder": "..\\Tests"}` | Warnungen in `atlas.json` an `token` und am absoluten Ausschluss („… gilt für alle im Team …“); `/Generated/**` und `..\Tests` gelten ohne Meldung |
+| PD11 | Dasselbe in `%APPDATA%\Atlas\settings.json` (global) mit einem absoluten `exclude` | Keine Warnung: die globale Datei ist persönlich |
+| PD12 | Abgesichert starten (wie AS5), dann Schnellschalter „Projektdatei .atlas“ an | Zuerst ist der Schalter wie alle aus (keine Meldungen zu `.atlas`, Befehl fehlt); danach gilt die Datei ohne Neustart, Befehl wieder in der Palette |
+
 ## Units suchen (#777)
 
 Voraussetzung: Projektgruppe mit mehreren Projekten, darunter ein DUnitX-Testprojekt; Server läuft; Einstellungen auf Vorgabe.

@@ -230,6 +230,7 @@ contains
   Atlas.IDE.Settings.QuickToggles in 'Source\IDE\Settings\Atlas.IDE.Settings.QuickToggles.pas',
   Atlas.Core.Settings.History in 'Source\Core\Settings\Atlas.Core.Settings.History.pas',
   Atlas.Core.Settings.TeamFile in 'Source\Core\Settings\Atlas.Core.Settings.TeamFile.pas',
+  Atlas.IDE.Foundation.TeamFile in 'Source\IDE\Foundation\Atlas.IDE.Foundation.TeamFile.pas',
   Atlas.Core.Diagnostics.FeatureTable in 'Source\Core\Diagnostics\Atlas.Core.Diagnostics.FeatureTable.pas',
   Atlas.Core.Diagnostics.SafeMode in 'Source\Core\Diagnostics\Atlas.Core.Diagnostics.SafeMode.pas',
   Atlas.UI.Diagnostics.SafeModeNotice in 'Source\UI\Diagnostics\Atlas.UI.Diagnostics.SafeModeNotice.pas',
