@@ -446,7 +446,12 @@ type
     CiLoginTitle, CiLoginUser, CiLoginToken, CiLoginNoServer, CiLoginSaved, CiLoginRemoved, CiLoginFailed,
     CiLoginIncomplete, NotificationsBuildServerRed, NotificationsSourceBuildServer, SettingsWelcomeTests,
     SettingsWelcomeTestsMaxFailures, SettingsWelcomeTestsCi, SettingsWelcomeTestsCiProvider,
-    SettingsWelcomeTestsCiJenkins, SettingsWelcomeTestsCiInterval, SettingsWelcomeTestsCiNotify, SettingsCiLogin);
+    SettingsWelcomeTestsCiJenkins, SettingsWelcomeTestsCiInterval, SettingsWelcomeTestsCiNotify, SettingsCiLogin,
+    SettingsOpenBuildTitle, SettingsOpenBuild, SettingsOpenBuildNone, SettingsOpenBuildCheck, SettingsOpenBuildMake,
+    SettingsOpenBuildBuild,
+    SettingsOpenBuildScope, SettingsOpenBuildScopeAll, SettingsOpenBuildScopeActive, SettingsOpenBuildDelay,
+    SettingsOpenBuildExclude, NotificationsSourceOpenBuild,
+    OpenBuildTitle, OpenBuildFailed, OpenBuildNotBuilt, OpenBuildReason, OpenBuildSucceeded, OpenBuildReport);
 
   TAtlasStrings = class
   private class var
@@ -1314,7 +1319,14 @@ const
      'Ergebnisse vom Build-Server (Server und Job aus der .atlas des Projekts)',
      'Anbieter, wenn die .atlas keinen nennt:', 'Jenkins',
      'Build-Server höchstens alle so viele Minuten abfragen (1–1440):',
-     'Hinweis, wenn der Build auf dem Server rot wird', 'Befehl „Zugang zum Build-Server hinterlegen …“'),
+     'Hinweis, wenn der Build auf dem Server rot wird', 'Befehl „Zugang zum Build-Server hinterlegen …“',
+     'Beim Öffnen eines Projekts oder einer Projektgruppe', 'Einmal bauen:', 'nicht bauen', 'Syntaxprüfung',
+     'Compilieren (Make)', 'Erzeugen (Build)', 'In einer Projektgruppe:', 'alle Projekte',
+     'nur das aktive Projekt', 'Warten, bis die IDE ruhig ist (ms):',
+     'Nicht bauen (Projektnamen, durch Komma getrennt):', 'Bauen beim Öffnen',
+     'Beim Öffnen gebaut: %d von %d erfolgreich', 'Fehlgeschlagen: %s', 'Nicht gebaut: %s', 'Grund: %s',
+     'Alle Projekte erfolgreich (%s).',
+     'Bauen beim Öffnen (%s): %d Projekte, %d erfolgreich, %d fehlgeschlagen, %d nicht gebaut, %d ms'),
     ('Enter to accept · Esc to close', '%d of %d', 'No matches for “%s”', 'Backspace widens the search',
      'No suggestions here', 'Esc closes', 'No details for this entry', 'Overload', 'Deprecated: %s', 'Deprecated.',
      'Inherited from %s', 'Inherited', 'optional, default %s', 'No overload with %d parameters.', '… %d more',
@@ -2127,7 +2139,13 @@ const
      'Results from the build server (server and job from the project’s .atlas)',
      'Provider if .atlas names none:', 'Jenkins',
      'Query the build server at most every so many minutes (1–1440):',
-     'Notify when the build on the server turns red', 'Command “Store build server access …”'));
+     'Notify when the build on the server turns red', 'Command “Store build server access …”',
+     'When opening a project or project group', 'Build once:', 'do not build', 'Syntax check',
+     'Compile (Make)', 'Build', 'In a project group:', 'all projects',
+     'only the active project', 'Wait until the IDE is idle (ms):',
+     'Do not build (project names, separated by commas):', 'Build on opening',
+     'Built on opening: %d of %d succeeded', 'Failed: %s', 'Not built: %s', 'Reason: %s',
+     'All projects succeeded (%s).', 'Build on opening (%s): %d projects, %d succeeded, %d failed, %d not built, %d ms'));
 
 { TAtlasStrings }
 

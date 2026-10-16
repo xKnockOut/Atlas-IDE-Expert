@@ -37,6 +37,10 @@ type
     /// <summary>#261: Schalter „Builds für Claude Code“ auf dem Reiter Compiler.</summary>
     [Test]
     procedure McpBuildRoundTrip;
+    /// <summary>Beim Öffnen bauen: Auswahl, Umfang, Wartezeit und Ausschluss hin und zurück; standardmäßig aus.
+    /// </summary>
+    [Test]
+    procedure OpenBuildRoundTrip;
     /// <summary>#69: Code Lens auf dem Reiter Editor, Tests ausführen, vorher bauen, nach dem Build und
     /// build.zeroHints (#530) auf dem Reiter Compiler.</summary>
     [Test]
@@ -672,6 +676,48 @@ begin
     Assert.IsFalse(Saved.McpBuild, 'abschaltbar');
     Page.LoadFrom(Saved);
     Assert.IsFalse(Page.McpBuildCheck.Checked);
+  finally
+    Page.Free;
+  end;
+end;
+
+procedure TAtlasSettingsPageTests.OpenBuildRoundTrip;
+var
+  Page: TAtlasSettingsPage;
+  Saved: TAtlasPluginSettings;
+begin
+  Page := TAtlasSettingsPage.Create(nil);
+  try
+    Page.LoadFrom(TAtlasPluginSettings.Defaults);
+    Assert.AreEqual(0, Page.OpenBuildChoice.Choice, 'standardmäßig nicht bauen');
+    Assert.AreEqual(0, Page.OpenBuildScopeChoice.Choice, 'alle Projekte');
+    Assert.AreEqual('3000', Page.OpenBuildDelayEdit.Text);
+    Assert.AreEqual('', Page.OpenBuildExcludeEdit.Text);
+    // Erzeugen, nur das aktive Projekt, 5 s, ein Package ausgeschlossen.
+    Page.OpenBuildChoice.Choice := 3;
+    Page.OpenBuildScopeChoice.Choice := 1;
+    Page.OpenBuildDelayEdit.Text := '5000';
+    Page.OpenBuildExcludeEdit.Text := 'Atlas.IDE.Expert.dproj';
+    Saved := TAtlasPluginSettings.Defaults;
+    Page.SaveTo(Saved);
+    Assert.IsTrue(Saved.BuildOnOpen);
+    Assert.AreEqual('build', Saved.BuildOnOpenKind);
+    Assert.AreEqual('active', Saved.BuildOnOpenScope);
+    Assert.AreEqual(5000, Saved.BuildOnOpenDelayMs);
+    Assert.AreEqual('Atlas.IDE.Expert', Saved.BuildOnOpenExclude);
+    Page.LoadFrom(Saved);
+    Assert.AreEqual(3, Page.OpenBuildChoice.Choice);
+    Assert.AreEqual(1, Page.OpenBuildScopeChoice.Choice);
+    // Syntaxprüfung; „nicht bauen“ schaltet ab und behält die Art.
+    Page.OpenBuildChoice.Choice := 1;
+    Page.SaveTo(Saved);
+    Assert.AreEqual('check', Saved.BuildOnOpenKind);
+    Page.OpenBuildChoice.Choice := 0;
+    Page.SaveTo(Saved);
+    Assert.IsFalse(Saved.BuildOnOpen, 'abschaltbar');
+    Assert.AreEqual('check', Saved.BuildOnOpenKind);
+    Page.LoadFrom(Saved);
+    Assert.AreEqual(0, Page.OpenBuildChoice.Choice);
   finally
     Page.Free;
   end;
