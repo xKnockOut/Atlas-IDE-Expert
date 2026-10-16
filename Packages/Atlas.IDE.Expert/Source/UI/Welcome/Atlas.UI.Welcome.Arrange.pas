@@ -169,7 +169,8 @@ type
     /// <summary>Taste wie gedrückt; True, wenn sie verarbeitet wurde (auch für Tests).</summary>
     function HandleKey(AKey: Word; AShift: TShiftState): Boolean;
     property SectionId: string read FSectionId write FSectionId;
-    property Dragging: Boolean read FDragging;
+    /// <summary>Zieht gerade; nicht „Dragging“, das verdeckte TControl.Dragging (W1009).</summary>
+    property IsDragging: Boolean read FDragging;
     property OnMove: TAtlasWelcomeMoveEvent read FOnMove write FOnMove;
     property OnDragStart: TProc<string> read FOnDragStart write FOnDragStart;
     property OnDragMove: TProc<TPoint> read FOnDragMove write FOnDragMove;
@@ -571,7 +572,7 @@ begin
   inherited;
   if Button <> mbLeft then
     Exit;
-  if CanFocus then
+  if CanFocus and (GetParentForm(Self) <> nil) and GetParentForm(Self).Visible then
     SetFocus;
   FPressed := True;
   FDragging := False;

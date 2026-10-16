@@ -1724,6 +1724,7 @@ Vorbereitung: Plugin (Win32 und Win64) gebaut und installiert; Projekt mit `.dpr
 | AU19 | Inlay-Hints an, Rechtsklick auf einen Parameternamen | Menü wie AU2 für „Inlay-Hints“; „Nur hier“ blendet die Hints dieser Zeile aus |
 | AU20 | IDE-Thema hell ↔ dunkel, 100 %, 150 %, 200 % Skalierung | Menü und Hinweis lesbar, Hinweis unter dem Element und innerhalb des Bildschirms |
 | AU21 | Protokoll (`%LOCALAPPDATA%\Atlas\Logs`) nach AU2–AU19 | Keine Pfade, Ankertexte oder Quelltext |
+
 ## Einstellungen exportieren, importieren und zurücksetzen (#723)
 
 Vorbereitung: Plugin (Win32 und Win64) gebaut und installiert; `settings.exportImport`, `settings.markModified` und `settings.backupBeforeImport` an, `settings.exportSecrets` = `omit`. Einige Einstellungen geändert (z. B. *Editor* „Notizen“ aus, *Vervollständigung* „Sichtbare Zeilen“ 12, *Compiler* „Tests nach dem Build“ an). Ein Projekt mit `atlas.json`, das `tests.afterBuild` setzt. Ordner `%APPDATA%\Atlas\Backups` vorher leeren.

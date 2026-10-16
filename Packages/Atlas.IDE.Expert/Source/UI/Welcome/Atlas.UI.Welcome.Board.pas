@@ -665,7 +665,10 @@ var
 begin
   if TAtlasWelcomeLayout.Same(ALayout, FLayout) then
     Exit;
-  // Sofort zeigen (mehrere Strg+Pfeiltasten hintereinander), gespeichert wird über die Quelle.
+  // Sofort zeigen (mehrere Strg+Pfeiltasten hintereinander), gespeichert wird über die Quelle. Eine andere
+  // Spaltenzahl gilt gleich mit: Place verteilt auf FWanted, das sonst erst der nächste Rebuild setzt.
+  if ALayout.Columns <> FLayout.Columns then
+    FWanted := ALayout.Columns;
   FLayout := ALayout;
   Layout_ := ALayout;
   ApplyEditing;
@@ -689,7 +692,8 @@ begin
   Rearranged(Moved);
   // Der Fokus bleibt am Griff des verschobenen Bereichs.
   Grip := GripOf(AId);
-  if (Grip <> nil) and Grip.CanFocus and not Grip.Focused then
+  // Nur mit sichtbarer Form: CanFocus allein lässt eine verborgene durch („kann den Fokus nicht erhalten“).
+  if (Grip <> nil) and Grip.CanFocus and not Grip.Focused and (GetParentForm(Grip) <> nil) and GetParentForm(Grip).Visible then
     Grip.SetFocus;
 end;
 

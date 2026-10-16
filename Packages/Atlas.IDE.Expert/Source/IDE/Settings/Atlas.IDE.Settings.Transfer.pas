@@ -184,7 +184,7 @@ begin
   AFileName := '';
   Result := False;
   try
-    Export_ := TAtlasSettingsTransfer.ExportSettings(Catalog, State(ACurrent), TAtlasExportOptions.ForBackup, Macros);
+    Export_ := TAtlasSettingsTransfer.ExportSettings(Catalog, State(ACurrent), TAtlasExportOptions.ForBackup, Macros());
     AFileName := TPath.Combine(BackupFolder, TAtlasSettingsTransfer.BackupFileName(Now));
     WriteText(AFileName, Export_.Text);
     Result := True;
@@ -225,7 +225,7 @@ begin
     if not Dialog.Execute then
       Exit;
     try
-      Export_ := TAtlasSettingsTransfer.ExportSettings(Catalog, State(ACurrent), Options, Macros);
+      Export_ := TAtlasSettingsTransfer.ExportSettings(Catalog, State(ACurrent), Options, Macros());
       WriteText(Dialog.FileName, Export_.Text);
     except
       on E: Exception do
@@ -330,11 +330,11 @@ begin
   Current := State(ACurrent);
   ProjectTexts(ProjectText, TeamText);
   Preview := TAtlasSettingsTransfer.Preview(Catalog, Current, Source, TAtlasSettingsTransfer.ModeOf(Source), nil,
-    Macros, ProjectText, TeamText);
+    Macros(), ProjectText, TeamText);
   if not TAtlasImportDialog.Execute(Catalog, AFileName, Preview,
     function(AMode: TAtlasImportMode; const AAreas: TArray<string>): TAtlasImportPreview
     begin
-      Result := TAtlasSettingsTransfer.Preview(Catalog, Current, Source, AMode, AAreas, Macros, ProjectText, TeamText);
+      Result := TAtlasSettingsTransfer.Preview(Catalog, Current, Source, AMode, AAreas, Macros(), ProjectText, TeamText);
     end, nil) then
     Exit;
   Count := Preview.SelectedCount;

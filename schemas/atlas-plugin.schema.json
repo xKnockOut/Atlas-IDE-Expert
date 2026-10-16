@@ -1839,6 +1839,7 @@
       "default": "",
       "x-key": "welcomePage.issues.tracker",
       "x-area": "welcome",
+      "x-team": "tracker.provider",
       "x-page": "Willkommensseite",
       "x-issue": "#765"
     },
