@@ -668,6 +668,9 @@ begin
     AUnit := FCurrent;
     Exit(True);
   end;
+  // Ohne Index (Schnellbefehle in Tests) nur die eigene Unit.
+  if FIndex = nil then
+    Exit(False);
   if FIndex.FindUnit(AName, AUnit) then
     Exit(True);
   // Erst alle Schreibweisen im Index (uses SysUtils mit Namespace System → System.SysUtils), dann
@@ -725,6 +728,9 @@ begin
     AUnit := FCurrent;
     Exit(True);
   end;
+  // Ohne Index (Schnellbefehle in Tests) nur die eigene Unit.
+  if FIndex = nil then
+    Exit(False);
   if FIndex.FindUnit(AName, AUnit) then
     Exit(True);
   for Namespace in FNamespaces do
@@ -745,7 +751,7 @@ begin
     AUnit := FCurrent;
     Exit(True);
   end;
-  Result := FIndex.FindFile(AResolved.FileName, AUnit) or FindUnit(AResolved.UnitName, AUnit);
+  Result := (FIndex <> nil) and (FIndex.FindFile(AResolved.FileName, AUnit) or FindUnit(AResolved.UnitName, AUnit));
 end;
 
 function TNameResolver.ScopeUnits(const AUnit: TUnitIndex; AWithImplementation: Boolean): TArray<string>;
@@ -2809,7 +2815,7 @@ begin
       while Dot > 0 do
       begin
         if ((AOwnUnit <> '') and SameText(Copy(Chain, 1, Dot - 1), AOwnUnit)) or
-          FIndex.FindUnit(Copy(Chain, 1, Dot - 1), UnitIndex) then
+          ((FIndex <> nil) and FIndex.FindUnit(Copy(Chain, 1, Dot - 1), UnitIndex)) then
         begin
           Chain := Copy(Chain, Dot + 1, MaxInt);
           Break;
