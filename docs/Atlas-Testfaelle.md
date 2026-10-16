@@ -1638,3 +1638,28 @@ Vorbereitung: Repository-Ordner als Projekt geöffnet (die `atlas.json` im Wurze
 | PS7 | Code-Aktion, die eine Unit anlegt und eine bestehende ändert; danach Strg+Alt+Z | Neue Unit im Projekt und im Editor; Zurücknehmen trägt sie aus und legt sie in den Papierkorb |
 | PS8 | Workspace-Edit auf eine schreibgeschützte Datei | Meldung mit dem Dateinamen, keine der übrigen Dateien halb geändert |
 | PS9 | Versionsverwaltung: Willkommensseite mit Git-Projekt öffnen, dann git aus `PATH` nehmen und IDE neu starten | Erst Branch und Zustand; danach einmal „git nicht gefunden“ in der Meldungsansicht, Atlas arbeitet weiter |
+
+## Bauen beim Öffnen (`build.onOpen`)
+
+Vorbereitung: Plugin (Win32 und Win64) gebaut und installiert; unter *Tools › Optionen › Atlas › Compiler* „Einmal bauen:“ auf „Compilieren (Make)“, „In einer Projektgruppe:“ auf „alle Projekte“, Wartezeit 3000 ms; Benachrichtigungszentrale an. Für die Fälle mit „Hintergrund“ in den IDE-Optionen die Hintergrundcompilierung einschalten (*Tools › Optionen › IDE › Compilieren und Ausführen*), sonst aus.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| OB1 | `Atlas.Tests` bauen und ausführen | 0 Fehler, 0 Warnungen, 0 Hinweise; `TAtlasOpenBuildTests`, `BuildOnOpenOptions`, `OpenBuildRoundTrip` grün |
+| OB2 | Standardeinstellungen, Projekt öffnen | Nichts wird gebaut (standardmäßig aus) |
+| OB3 | Einzelprojekt öffnen und 3 s nichts tun | Das Projekt wird einmal compiliert (Fortschrittsdialog der IDE bzw. Statusleiste); Eintrag „Build fertig“ in der Benachrichtigungszentrale; keine Zusammenfassung |
+| OB4 | Projektgruppe mit drei Projekten öffnen | Alle drei werden in der Reihenfolge der Gruppe in einem Lauf compiliert; dazu ein Eintrag „Beim Öffnen gebaut: 3 von 3 erfolgreich“ (Quelle „Bauen beim Öffnen“) |
+| OB5 | Gleich nach dem Öffnen weiter tippen bzw. klicken | Der Bau beginnt erst, wenn 3 s keine Eingabe kam |
+| OB6 | Nach OB4 ein Projekt der Gruppe in der Projektverwaltung aktivieren, eine Datei speichern, dann ein weiteres Projekt zur Gruppe hinzufügen | Nur das neue Projekt wird gebaut, die übrigen nicht noch einmal (einmal je Öffnen) |
+| OB7 | Gruppe schließen und wieder öffnen | Alle Projekte werden wieder gebaut |
+| OB8 | „In einer Projektgruppe:“ auf „nur das aktive Projekt“, Gruppe öffnen | Nur das aktive Projekt wird gebaut |
+| OB9 | Ein Projekt mit Compilerfehler in der Gruppe | Fortschrittsdialog schließt ohne Klick; Eintrag „Build fertig: 1 Fehler“ mit „Zum Fehler“ und Zusammenfassung „Beim Öffnen gebaut: 2 von 3 erfolgreich“ mit „Fehlgeschlagen: <Name>“ (Fehler-Plakette) |
+| OB10 | Hintergrundcompilierung der IDE an, Gruppe öffnen | Die IDE bleibt während des Baus bedienbar; die Zusammenfassung kommt nach dem Ende des Laufs |
+| OB11 | „Nicht bauen“ auf den Namen eines Projekts der Gruppe (z. B. `Atlas.IDE.Expert`), Gruppe öffnen | Dieses Projekt wird ausgelassen, die übrigen gebaut |
+| OB12 | „Einmal bauen:“ auf „Syntaxprüfung“ bzw. „Erzeugen (Build)“ | Die Gruppe wird geprüft (keine .exe/.dcu neu) bzw. vollständig neu erzeugt |
+| OB13 | Projekt öffnen und sofort mit F9 starten bzw. Strg+F9 drücken | Atlas wartet, bis Debugger bzw. Build des Benutzers beendet sind, und baut danach einmal |
+| OB14 | DUnitX-Testprojekt mit „Tests nach dem Build“ (#69) an öffnen | Das Testprojekt wird gebaut, die Tests laufen nicht (kein Build des Benutzers) |
+| OB15 | Release-Konfiguration mit Befund und `build.gate = block` (#533) aktiv, Projekt öffnen | Der Release-Wächter meldet die Befunde; Zusammenfassung „Nicht gebaut: <Name>“ mit Grund |
+| OB16 | IDE mit „Projekt beim Start laden“ starten | Das geladene Projekt bzw. die Gruppe wird nach dem Laden einmal gebaut |
+| OB17 | Schnellschalter „Beim Öffnen einmal bauen“ aus, Projekt öffnen; Quelle „Bauen beim Öffnen“ auf „Aus“ | Kein Bau; bei aus geschalteter Quelle keine Zusammenfassung, die Einträge „Build fertig“ bleiben |
+| OB18 | Abgesicherter Start (#722) | Kein Bau beim Öffnen |

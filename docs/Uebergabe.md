@@ -1,8 +1,8 @@
-﻿# Übergabe: Atlas IDE Expert – Stand 09.10.2026
+﻿# Übergabe: Atlas IDE Expert – Stand 16.10.2026
 
 ## Kontext
 - Repo: https://github.com/xKnockOut/Atlas-IDE-Expert.git, lokal unter `C:\Projekte\BetterDelphiLSP\repo`. Gearbeitet wird auf `main`.
-- Projektgruppe `Atlas.groupproj`: `Atlas.Common`, `Atlas.Windows` (Packages), `AtlasServer` (Anwendung), `Atlas.IDE.Expert` (Design-Time-Package, Win32, ADR 0006; bis #406 `Atlas.IdePlugin`), `Atlas.Tests` (DUnitX, nur Win64).
+- Projektgruppe `Atlas.groupproj`: `Atlas.Text`, `Atlas.Common`, `Atlas.Windows` (Packages), `AtlasServer` (Anwendung), `Atlas.IDE.Expert` (Design-Time-Package, Win32, ADR 0006; bis #406 `Atlas.IdePlugin`), `Atlas.Tests` (DUnitX, nur Win64).
 - Projektregeln in `CLAUDE.md`: Deutsch, UTF-8 mit BOM und CRLF, Rollenkonzept in `docs/Architektur.md`.
 - Regeln des Users:
   - Hinweise und Warnungen sofort beheben. Ein Build gilt erst bei 0/0/0 als fertig.
@@ -22,7 +22,7 @@
 - Das Referenz-Testprojekt (#94) baut `pwsh Tools/Build-Referenzprojekt.ps1` für Win32 und Win64 (`-MitDaten` zusätzlich das optionale FireDAC-Projekt `RefDaten`). Hinweise und Warnungen müssen genau `Tests/Referenzprojekt/erwartete-meldungen.txt` entsprechen; geänderte `.dproj`-Dateien lassen es scheitern. Die minimalen `.dproj`-Dateien einmal in der IDE speichern und einchecken.
 - **Niemals `quit` oder einen Build ohne geprüfte `-Instance`.** Ein Agent für XML-Inspector nutzt dasselbe Plugin und lädt seine Projekte in freie IDEs. Erkennbar an einer veränderten `.groupproj`. Dann die Änderung verwerfen und mit neuer IDE wiederholen.
 - **Fehlertexte nicht lesbar:** Das Plugin kann die Fehlertexte oft nicht lesen. Dann ist `ok=False` bei 0/0/0, im Log steht nur „Misslungen“. Die Ursache im Code suchen.
-- **Häufige Fehlerursachen:**
+- **Häufige Fehlerursachen** (weitere Delphi-Fallen, die unter FPC durchgehen, und die Regel „vor dem Merge mit Delphi bauen“: Abschnitt „Mit Delphi bauen vor dem Merge“ in `CLAUDE.md`):
   - Eine Funktion, die eine Methodenreferenz liefert, ohne `()` zugewiesen (E2010).
   - `TXyz.Create` direkt an einen `const`-Interface-Parameter übergeben.
   - Eine Methode steht zwischen Feldern (E2169).
@@ -440,6 +440,7 @@ Jeder Branch baut auf dem vorigen auf. Nichts davon ist gebaut, getestet oder in
 - **Nachtrag 16.10., 5:30 Uhr:** Marcos Delphi-Korrekturen (f635abae) liegen in main. Danach `feature/601-benachrichtigungen` (#601, Benachrichtigungszentrale) ohne Konflikte gemergt. Prüfskripte grün, nicht gebaut.
 - **Nachtrag 16.10., 6:10 Uhr:** auf Marcos Stand 065990f2 (Tests grün) `feature/533-release-waechter` (#533, Release-Build-Wächter, Reiter „Release-Build“) ohne Konflikte gemergt. Prüfskripte grün, nicht gebaut.
 - **Nachtrag 16.10., 7 Uhr:** auf Marcos Stand 25776944 (Einstellungen als Bereichsliste) `feature/763-testergebnisse` (#763, Testergebnisse auf der Willkommensseite, auch aus Jenkins) ohne Konflikte gemergt. Prüfskripte grün, nicht gebaut.
+- **Nachtrag 16.10., 7:35 Uhr:** `claude/project-thread-gf0r3s` („Beim Öffnen eines Projekts einmal bauen“, `build.onOpen`) ohne Konflikte gemergt. Prüfskripte grün, nicht gebaut.
 
 ## Code-Review Block C: Heißer Pfad des Servers (15.10.2026, Branch `claude/code-review-fixes-awz1nk-heisser-pfad` auf Block B, nicht gepusht)
 - **Umfang:** P-01, P-02, P-05 (Rest), P-06, P-07, P-08 (ohne `Semantics.ControlFlow`), P-11, P-12 (Rest), P-13, P-17 nach dem Plan `C-server-hotpath`.
@@ -467,3 +468,10 @@ Jeder Branch baut auf dem vorigen auf. Nichts davon ist gebaut, getestet oder in
 - **Geprüft in der Cloud:** alle Prüfskripte grün; FPC-Harness für die neuen bzw. geänderten Core-Tests grün (MemberOrder, WorkspacePlan, Lsp.Contract, Lsp.Session, FeatureTable, Generate.Menu, Signature, Undo, Vcs). Bekannt rot schon auf der Basis: `TAtlasWatchedChangesTests.RootsPreferGitWorkingTree` (Pfade unter Linux), `TAtlasGenerateProtocolTests.ParsesChoices`, `Atlas.Core.Settings.Tests` übersetzt unter FPC nicht.
 - **Offen bei Marco:** Delphi-Build Win32/Win64 0/0/0 (Risiko: statische Klassenmethoden als `TProc` in `RegisterPalette`, Typinferenz der Fabrik-Closures in der Kompositionswurzel, `TInterfacedObject` als Basis von `TLspServerProcess`, `TAtlasFolderWatcher` und `TAtlasServerSignatureProvider`); `Atlas.Tests` unter Delphi; Testfälle PS1–PS9 in `docs/Atlas-Testfaelle.md`.
 
+## Bauen beim Öffnen (16.10.2026, Branch `claude/project-thread-gf0r3s` von main c00db27)
+- **Frage von Marco:** Kann Atlas ein Gruppen- oder Einzelprojekt beim Öffnen einmal im Hintergrund erzeugen? Ja, mit dem Compiler der IDE; kein Issue vorhanden (#569, #764 berühren es nur).
+- **Einstellungen (Reiter Compiler, Registry):** `BuildOnOpen` (Schnellschalter, Vorgabe aus), `BuildOnOpenKind` (check/make/build, Vorgabe make), `BuildOnOpenScope` (all/active), `BuildOnOpenDelayMs` (3000, 500–60000), `BuildOnOpenExclude` (Projektnamen). Optionsseite: Auswahl „Einmal bauen: nicht bauen / Syntaxprüfung / Compilieren / Erzeugen“.
+- **Neu:** `Atlas.Core.Build.OpenBuild` (Vormerken, Ruhe der IDE, einmal je Öffnen, Ergebnis zählen; Tests `Atlas.Core.Build.OpenBuild.Tests`), `Atlas.IDE.Build.OpenBuild` (IDE-Notifier für Öffnen/Schließen, Gruppen auflösen, ein Lauf über `IOTACompileServices.CompileProjects`, requestedBy `open`, OK im Fortschrittsdialog nur im eigenen Lauf), Feature `OpenBuild` in der Kompositionswurzel, Quelle `openBuild` der Benachrichtigungszentrale (Zusammenfassung bei mehreren Projekten).
+- **Im Hintergrund:** Nur mit eingeschalteter Hintergrundcompilierung der IDE kommt `CompileProjects` mit `crOTABackground` sofort zurück; sonst modal mit Fortschrittsdialog. Atlas startet erst nach `BuildOnOpenDelayMs` ohne Eingabe (GetLastInputInfo), nie bei Build, Debugger, Compilerprüfung oder Auftrag des Läufers. Beim ersten Start in der IDE-Sitzung gilt eine schon geladene Gruppe als geöffnet.
+- **Geprüft in der Cloud:** alle Prüfskripte grün, `Update-ConfigDoc.ps1` erzeugt `Einstellungen.md`. **Nicht gebaut.**
+- **Offen bei Marco:** Delphi-Build Win32/Win64 0/0/0 (Risiko: Signatur von `IOTACompileServices.CompileProjects` in RAD Studio 13, Array-Verkettung mit `IOTAProject`), `Atlas.Tests`, Testfälle OB1–OB18 in `docs/Atlas-Testfaelle.md` (vor allem OB10 mit Hintergrundcompilierung).

@@ -299,8 +299,14 @@ end;
 
 class function TAtlasWelcomeSetupFrame.FindingCaption(const ALine: TAtlasSetupLine): string;
 begin
+  // Hinweis zu einem requires-Package (#759): kein Fehler.
+  if (ALine.Kind = TAtlasSetupFindingKind.Hint) and (ALine.Note <> '') then
+    Result := TAtlasStrings.Fmt(TAtlasTextId.WelcomeSetupRequiresInSearchPath, [ALine.Note, ALine.Name,
+      ALine.FileName, ALine.Line])
+  else if ALine.Kind = TAtlasSetupFindingKind.Hint then
+    Result := TAtlasStrings.Fmt(TAtlasTextId.WelcomeSetupRequiresNoSource, [ALine.Name, ALine.FileName, ALine.Line])
   // Unsicher (Suchpfad mit unbekanntem Makro übersprungen): mit den Makros, damit es nicht wie ein Fehler wirkt.
-  if ALine.Uncertain and (ALine.Kind = TAtlasSetupFindingKind.MissingUnit) then
+  else if ALine.Uncertain and (ALine.Kind = TAtlasSetupFindingKind.MissingUnit) then
     Result := TAtlasStrings.Fmt(TAtlasTextId.WelcomeSetupMissingUnitUncertain, [ALine.Name, ALine.Macros,
       ALine.FileName, ALine.Line])
   else if ALine.Uncertain then
@@ -312,6 +318,9 @@ begin
     Result := TAtlasStrings.Fmt(TAtlasTextId.WelcomeSetupUndefinedDefine, [ALine.Name, ALine.FileName, ALine.Line]);
   if ALine.Count > 1 then
     Result := Result + ' ' + TAtlasStrings.Fmt(TAtlasTextId.WelcomeSetupTimes, [ALine.Count]);
+  // Tippfehler? Ähnliches bekanntes Symbol.
+  if (ALine.Kind = TAtlasSetupFindingKind.UndefinedDefine) and (ALine.Note <> '') then
+    Result := Result + ' – ' + TAtlasStrings.Fmt(TAtlasTextId.WelcomeSetupSuggestion, [ALine.Note]);
   // Projektgruppe: Projekt vorn.
   if ALine.Project <> '' then
     Result := TAtlasStrings.Fmt(TAtlasTextId.WelcomeSetupFindingInProject, [ALine.Project, Result]);

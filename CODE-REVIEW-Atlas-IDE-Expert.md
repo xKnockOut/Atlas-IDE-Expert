@@ -5,6 +5,29 @@ Werkzeuge: nur Dateiwerkzeuge (Grep, Read, eigene Python-Skripte für Metriken u
 
 Vorgehen: Das gesamte Projekt wurde strukturell erfasst (Metriken je Unit, Abhängigkeitsgraph, Importmatrix des Konzepts „Rollenbasierte Kopplung und Kohäsion“). Danach wurden die nach Größe, Kopplung und Mustertreffern auffälligen Units gelesen: Server-Kern (Completion, NameResolver, Index, Parser, References), Host und Protokollschicht (Shell, JsonRpc), Plugin-IDE-Schicht (CodeInsight, OTA-Notifier, LSP-Client, Zeitlimit), Plugin-UI-Schicht (Popups, Hover, Painter) sowie Rules/Editing und die Duplikate zwischen Server und Plugin. Jede Fundstelle im Bericht wurde gelesen; Laufzeitangaben sind Schätzungen aus dem Code, keine Messungen.
 
+## Status (Stand 16.10.2026)
+
+Alle Befunde sind erledigt. Commits laut `git log` (Kurz-Hash; mehrere = Schritte):
+
+| Befunde | Status | Commit |
+|---|---|---|
+| P-01, P-02, P-05–P-07, P-12, P-13, P-17 | erledigt | `94bd93df` (Block C) |
+| P-03, P-08, P-11 | erledigt | `50507754`, P-08/P-11 auch `94bd93df`, P-08 auch `8a4fc1a4` |
+| P-04, P-09, P-10, P-15 | erledigt | `4a1cc965`, P-09 auch `667f9506` |
+| P-14 / P-16 | erledigt | `a9c7f774` / `31dd64a3` |
+| S-01 | erledigt | `7246fa97`, `575fa735`, `dd820036`, `170ebdc5` |
+| S-02 / S-03 / S-04 | erledigt | `552e3cbb`, `777ae12f` / `daa1e03f` / `8a4fc1a4` |
+| S-05 / S-06 / S-07 | erledigt | `9a957911` / `c58eea60` / `54812897`, `ab7a23e6`, `37248d3b` |
+| D-01–D-06, D-10, K-02 | erledigt | `80c8a5f5`, D-04 auch `50507754`, D-10 auch `37248d3b` |
+| D-07 / D-08 / D-09 | erledigt | `4a1cc965` / `777ae12f`, `8467f643` / `575fa735` |
+| A-01, A-07, A-13, K-03 | erledigt | `71008a63` |
+| A-02 | erledigt | `9a957911`, `2f0c0525` (Prüfskript `Tools/Check-MainThreadQueue.ps1`) u. a. |
+| A-03 / A-04 / A-05 / A-06 | erledigt | `843b2aa2` / `abdba914` / `c58eea60` / `4f5fbdcc` |
+| A-08 / A-09 / A-10 | erledigt | `bce17694` / `1b7cf147` u. a. / `d893a819` |
+| A-11 / A-12 | erledigt | `f5473db0` / `5a2be0b1` |
+| K-01 | erledigt | `57cc5b22` (Nachschlagetabellen in `SymbolIndex` tatsächlich eingeführt, Kopfkommentar stimmt jetzt) |
+| K-04, K-05, K-06 | erledigt | `9e2d2187` |
+
 ---
 
 ## 1. Zusammenfassung

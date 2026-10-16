@@ -61,6 +61,7 @@ uses
   Atlas.IDE.Build.Runner,
   Atlas.IDE.Build.Inbox,
   Atlas.IDE.Build.ReleaseGuard,
+  Atlas.IDE.Build.OpenBuild,
   Atlas.IDE.Settings.Project,
   Atlas.IDE.Commands.MainMenu,
   Atlas.IDE.Editor.Rename,
@@ -190,6 +191,9 @@ var
   BuildRunner: TAtlasIdeBuildRunner;
   // Eingang des MCP-Werkzeugs build_project (#261), abschaltbar über McpBuild.
   BuildInbox: TAtlasIdeBuildInbox;
+  // Beim Öffnen eines Projekts oder einer Projektgruppe einmal bauen (build.onOpen); lebt mit den
+  // Compile-Ereignissen.
+  OpenBuild: TAtlasIdeOpenBuild;
   // DUnitX-Tests ausführen samt Code Lens (#69), abschaltbar über TestRun bzw. CodeLensTests.
   Tests: TAtlasIdeTests;
   // Einzelnen Test ausführen bzw. im Debugger starten (#585), lebt mit Tests; abschaltbar über TestDebug.
@@ -1700,6 +1704,16 @@ begin
     end);
 end;
 
+procedure StartOpenBuild;
+begin
+  OpenBuild := TAtlasIdeOpenBuild.Create(Compile.Events,
+    procedure(AText: string)
+    begin
+      if Manager <> nil then
+        Manager.Report(AText);
+    end);
+end;
+
 procedure StartCommands;
 begin
   CommandsInstalled := True;
@@ -2468,7 +2482,8 @@ begin
     RegisterCompileEvents,
     procedure
     begin
-      // Der Läufer meldet sich bei den Ereignissen von Compile an; vorher gehen.
+      // Läufer und Bauen beim Öffnen melden sich bei den Ereignissen von Compile an; vorher gehen.
+      FreeAndNil(OpenBuild);
       FreeAndNil(BuildInbox);
       FreeAndNil(BuildRunner);
       FreeAndNil(Compile);
@@ -2532,6 +2547,21 @@ begin
     procedure
     begin
       FreeAndNil(BuildInbox);
+    end);
+  // Beim Öffnen bauen: nur im normalen Start, mit den Compile-Ereignissen und solange BuildOnOpen an ist.
+  Features.AddWanted('OpenBuild',
+    function(ALevel: TAtlasSafeLevel): Boolean
+    begin
+      Result := (ALevel = TAtlasSafeLevel.Normal) and TAtlasIdeSettings.Current.BuildOnOpen and (Compile <> nil);
+    end,
+    function: Boolean
+    begin
+      Result := OpenBuild <> nil;
+    end,
+    StartOpenBuild,
+    procedure
+    begin
+      FreeAndNil(OpenBuild);
     end);
   // DUnitX-Tests (#69): nur im normalen Start und solange TestRun an ist; baut über BuildRunner, wenn er läuft.
   Features.AddWanted('Tests',

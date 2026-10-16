@@ -383,6 +383,7 @@ type
     WelcomeSetupNoProject, WelcomeSetupPathsFailed, WelcomeSetupNewFailed, WelcomeSetupNewNoProject,
     WelcomeSetupBaselineElsewhere,
     WelcomeSetupMissingUnitUncertain, WelcomeSetupUndefinedDefineUncertain, WelcomeSetupFindingInProject,
+    WelcomeSetupSuggestion, WelcomeSetupRequiresInSearchPath, WelcomeSetupRequiresNoSource,
     WelcomeSetupPathsGroup, WelcomeSetupPathsUncertain,
     TeamFileCommand, TeamFileNoProject, TeamFileCreated, TeamFileCreateFailed, TeamFileIssueSyntax,
     TeamFileIssueVersion, TeamFileIssueUnknownKey, TeamFileIssueWrongType, TeamFileIssueInvalidValue,
@@ -465,7 +466,12 @@ type
     WelcomeQuickMsgRunRefused, WelcomeQuickMsgPullBlocked, WelcomeQuickMsgPullFailed,
     WelcomeQuickMsgUpdateFailed, WelcomeQuickMsgConsoleFailed, SettingsWelcomeQuickActions,
     SettingsWelcomeQuickActionsItem, SettingsWelcomeQuickActionsConsole, SettingsWelcomeQuickActionsBuildKey,
-    SettingsWelcomeQuickActionsTestKey);
+    SettingsWelcomeQuickActionsTestKey,
+    SettingsOpenBuildTitle, SettingsOpenBuild, SettingsOpenBuildNone, SettingsOpenBuildCheck, SettingsOpenBuildMake,
+    SettingsOpenBuildBuild,
+    SettingsOpenBuildScope, SettingsOpenBuildScopeAll, SettingsOpenBuildScopeActive, SettingsOpenBuildDelay,
+    SettingsOpenBuildExclude, NotificationsSourceOpenBuild,
+    OpenBuildTitle, OpenBuildFailed, OpenBuildNotBuilt, OpenBuildReason, OpenBuildSucceeded, OpenBuildReport);
 
   TAtlasStrings = class
   private class var
@@ -1195,7 +1201,11 @@ const
      'Die Baseline liegt nicht im Projektordner (Details in der Meldungsansicht).',
      'Unit „%s“ nicht gefunden (unsicher, Suchpfad mit unbekanntem Makro %s übersprungen) – %s, Zeile %d',
      'Define „%s“ ohne Quelle (unsicher, Suchpfad mit unbekanntem Makro %s übersprungen) – %s, Zeile %d',
-     '%s: %s', '%d von %d Projekten der Gruppe geprüft',
+     '%s: %s',
+     'meinten Sie „%s“?',
+     'Hinweis: Unit „%s“ gehört zum requires-Package „%s“; ihr Ordner steht zusätzlich im Suchpfad – %s, Zeile %d',
+     'Hinweis: requires-Package „%s“ liegt nur als .dcp vor (ohne Quelle in der Projektgruppe) – %s, Zeile %d',
+     '%d von %d Projekten der Gruppe geprüft',
      'Davon unsicher: %d (Suchpfad mit unbekanntem Makro %s übersprungen)',
      'Projektdatei .atlas öffnen', 'Projektdatei .atlas: Es ist kein Projekt geöffnet.',
      'Projektdatei .atlas angelegt; sie gilt für alle im Team, sobald sie eingecheckt ist.',
@@ -1361,7 +1371,14 @@ const
      'Schnellaktion: Konsole %s ließ sich nicht starten.',
      'Schnellaktionen je Projekt in „Projekte“ und „Weiterarbeiten“', 'Knopf „%s“',
      'Programm für „Konsole“ (leer = wt.exe; ohne Windows-Terminal cmd.exe)', 'Schnellaktion „Öffnen und bauen“',
-     'Schnellaktion „Tests“'),
+     'Schnellaktion „Tests“',
+     'Beim Öffnen eines Projekts oder einer Projektgruppe', 'Einmal bauen:', 'nicht bauen', 'Syntaxprüfung',
+     'Compilieren (Make)', 'Erzeugen (Build)', 'In einer Projektgruppe:', 'alle Projekte',
+     'nur das aktive Projekt', 'Warten, bis die IDE ruhig ist (ms):',
+     'Nicht bauen (Projektnamen, durch Komma getrennt):', 'Bauen beim Öffnen',
+     'Beim Öffnen gebaut: %d von %d erfolgreich', 'Fehlgeschlagen: %s', 'Nicht gebaut: %s', 'Grund: %s',
+     'Alle Projekte erfolgreich (%s).',
+     'Bauen beim Öffnen (%s): %d Projekte, %d erfolgreich, %d fehlgeschlagen, %d nicht gebaut, %d ms'),
     ('Enter to accept · Esc to close', '%d of %d', 'No matches for “%s”', 'Backspace widens the search',
      'No suggestions here', 'Esc closes', 'No details for this entry', 'Overload', 'Deprecated: %s', 'Deprecated.',
      'Inherited from %s', 'Inherited', 'optional, default %s', 'No overload with %d parameters.', '… %d more',
@@ -2045,7 +2062,11 @@ const
      'The baseline is not in the project folder (details in the Messages view).',
      'Unit “%s” not found (uncertain, search path with unknown macro %s skipped) – %s, line %d',
      'Define “%s” without a source (uncertain, search path with unknown macro %s skipped) – %s, line %d',
-     '%s: %s', '%d of %d projects in the group checked',
+     '%s: %s',
+     'did you mean “%s”?',
+     'Note: unit “%s” belongs to the required package “%s”; its folder is also on the search path – %s, line %d',
+     'Note: required package “%s” exists only as .dcp (no source in the project group) – %s, line %d',
+     '%d of %d projects in the group checked',
      'Uncertain: %d (search path with unknown macro %s skipped)',
      'Open project file .atlas', 'Project file .atlas: no project is open.',
      'Project file .atlas created; it applies to the whole team once it is checked in.',
@@ -2198,7 +2219,13 @@ const
      'Quick action: updating %s failed (%s).', 'Quick action: console %s could not be started.',
      'Quick actions per project in “Projects” and “Continue”', 'Button “%s”',
      'Program for “Console” (empty = wt.exe; without Windows Terminal cmd.exe)', 'Quick action “Open and build”',
-     'Quick action “Tests”'));
+     'Quick action “Tests”',
+     'When opening a project or project group', 'Build once:', 'do not build', 'Syntax check',
+     'Compile (Make)', 'Build', 'In a project group:', 'all projects',
+     'only the active project', 'Wait until the IDE is idle (ms):',
+     'Do not build (project names, separated by commas):', 'Build on opening',
+     'Built on opening: %d of %d succeeded', 'Failed: %s', 'Not built: %s', 'Reason: %s',
+     'All projects succeeded (%s).', 'Build on opening (%s): %d projects, %d succeeded, %d failed, %d not built, %d ms'));
 
 { TAtlasStrings }
 

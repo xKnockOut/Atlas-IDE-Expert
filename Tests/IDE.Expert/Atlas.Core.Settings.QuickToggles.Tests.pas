@@ -184,6 +184,11 @@ begin
   Assert.AreEqual('Compiler', Toggle.Page);
   Assert.IsFalse(Toggle.Drawing);
   Assert.AreEqual('Build', Toggle.Feature);
+  // Beim Öffnen einmal bauen (build.onOpen): Schalter auf der Seite Compiler, keine Zeichnung.
+  Assert.IsTrue(TAtlasQuickToggles.Find(Toggles, 'BuildOnOpen', Toggle));
+  Assert.AreEqual('Compiler', Toggle.Page);
+  Assert.IsFalse(Toggle.Drawing);
+  Assert.AreEqual('Build', Toggle.Feature);
   // Befehl (#68): Schalter auf der Seite Editor; keine Zeichnung, „Alles aus“ lässt ihn stehen.
   Assert.IsTrue(TAtlasQuickToggles.Find(Toggles, 'TodoList', Toggle));
   Assert.AreEqual('Editor', Toggle.Page);

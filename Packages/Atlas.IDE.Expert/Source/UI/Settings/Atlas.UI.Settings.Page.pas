@@ -177,6 +177,12 @@ type
     FCheckDelay: TEdit;
     FCheckMax: TEdit;
     FMcpBuild: TCheckBox;
+    /// <summary>Beim Öffnen bauen (build.onOpen*): eine Auswahl „nicht bauen / Syntaxprüfung / Compilieren /
+    /// Erzeugen“, Umfang in einer Gruppe, Wartezeit und ausgeschlossene Projekte.</summary>
+    FOpenBuild: TAtlasChoiceBox;
+    FOpenBuildScope: TAtlasChoiceBox;
+    FOpenBuildDelay: TEdit;
+    FOpenBuildExclude: TEdit;
     /// <summary>DUnitX-Tests ausführen (#69): Befehle, vorher bauen, nach dem Build; Build ohne Hinweise (#530).
     /// </summary>
     FTestRun: TCheckBox;
@@ -367,6 +373,9 @@ type
     procedure NotificationSourceChange(Sender: TObject);
     procedure NotificationModeChange(Sender: TObject);
     procedure AddReleaseSection;
+    procedure AddOpenBuildSection;
+    procedure LoadOpenBuild(const ASettings: TAtlasPluginSettings);
+    procedure SaveOpenBuild(var ASettings: TAtlasPluginSettings);
     procedure LoadRelease(const ASettings: TAtlasPluginSettings);
     procedure SaveRelease(var ASettings: TAtlasPluginSettings);
     procedure AddUndoSection;
@@ -524,6 +533,11 @@ type
     property FavoritesCheck: TCheckBox read FFavorites;
     property NotesCheck: TCheckBox read FNotes;
     property McpBuildCheck: TCheckBox read FMcpBuild;
+    /// <summary>Zum Testen: Beim Öffnen bauen.</summary>
+    property OpenBuildChoice: TAtlasChoiceBox read FOpenBuild;
+    property OpenBuildScopeChoice: TAtlasChoiceBox read FOpenBuildScope;
+    property OpenBuildDelayEdit: TEdit read FOpenBuildDelay;
+    property OpenBuildExcludeEdit: TEdit read FOpenBuildExclude;
     /// <summary>Zum Testen: Tests ausführen (#69).</summary>
     property CodeLensTestsCheck: TCheckBox read FCodeLensTests;
     property TestRunCheck: TCheckBox read FTestRun;
@@ -602,6 +616,7 @@ uses
   Atlas.Core.Commands.ShortcutTips,
   Atlas.Core.Notifications.Contract,
   Atlas.Core.Notifications.Sources,
+  Atlas.Core.Build.OpenBuild,
   Atlas.UI.Notifications.Window;
 
 /// <summary>Bezeichnung einer Reihe des Projektverlaufs (#758) wie auf ihrer Kachel.</summary>
@@ -968,6 +983,8 @@ begin
   // Startprofile (#575).
   FStartProfiles := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsStartProfiles));
   FStartProfilesStatusField := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsStartProfilesStatusField));
+  // Beim Öffnen eines Projekts oder einer Projektgruppe einmal bauen (build.onOpen).
+  AddOpenBuildSection;
 
   // Release-Build-Wächter (#533).
   AddSheet(TAtlasTextId.SettingsTabRelease);
@@ -1183,6 +1200,49 @@ begin
   finally
     Dialog.Free;
   end;
+end;
+
+procedure TAtlasSettingsPage.AddOpenBuildSection;
+begin
+  AddTitle(TAtlasTextId.SettingsOpenBuildTitle);
+  // Reihenfolge: nicht bauen, dann wie TAtlasOpenBuild.KindNames (check, make, build).
+  FOpenBuild := AddChoice(TAtlasStrings.Text(TAtlasTextId.SettingsOpenBuild),
+    [TAtlasStrings.Text(TAtlasTextId.SettingsOpenBuildNone), TAtlasStrings.Text(TAtlasTextId.SettingsOpenBuildCheck),
+    TAtlasStrings.Text(TAtlasTextId.SettingsOpenBuildMake), TAtlasStrings.Text(TAtlasTextId.SettingsOpenBuildBuild)]);
+  // Reihenfolge wie TAtlasOpenBuildScope: alle, nur das aktive.
+  FOpenBuildScope := AddChoice(TAtlasStrings.Text(TAtlasTextId.SettingsOpenBuildScope),
+    [TAtlasStrings.Text(TAtlasTextId.SettingsOpenBuildScopeAll),
+    TAtlasStrings.Text(TAtlasTextId.SettingsOpenBuildScopeActive)]);
+  FOpenBuildDelay := AddNumber(TAtlasStrings.Text(TAtlasTextId.SettingsOpenBuildDelay));
+  FOpenBuildExclude := AddTextLine(TAtlasStrings.Text(TAtlasTextId.SettingsOpenBuildExclude));
+end;
+
+procedure TAtlasSettingsPage.LoadOpenBuild(const ASettings: TAtlasPluginSettings);
+var
+  Index: Integer;
+begin
+  FOpenBuild.Choice := 0;
+  if ASettings.BuildOnOpen then
+    for Index := Low(TAtlasOpenBuild.KindNames) to High(TAtlasOpenBuild.KindNames) do
+      if SameText(TAtlasOpenBuild.KindNames[Index],
+        TAtlasOpenBuild.KindName(TAtlasOpenBuild.KindOf(ASettings.BuildOnOpenKind))) then
+        FOpenBuild.Choice := Index + 1;
+  FOpenBuildScope.Choice := Ord(TAtlasOpenBuild.ScopeOf(ASettings.BuildOnOpenScope));
+  FOpenBuildDelay.Text := IntToStr(ASettings.BuildOnOpenDelayMs);
+  FOpenBuildExclude.Text := TAtlasOpenBuild.NormalizedExclude(ASettings.BuildOnOpenExclude);
+end;
+
+procedure TAtlasSettingsPage.SaveOpenBuild(var ASettings: TAtlasPluginSettings);
+begin
+  // „nicht bauen“ behält die Art für das nächste Einschalten (Schnellschalter).
+  ASettings.BuildOnOpen := FOpenBuild.Choice > 0;
+  if (FOpenBuild.Choice > 0) and (FOpenBuild.Choice - 1 <= High(TAtlasOpenBuild.KindNames)) then
+    ASettings.BuildOnOpenKind := TAtlasOpenBuild.KindNames[FOpenBuild.Choice - 1];
+  if (FOpenBuildScope.Choice >= Ord(Low(TAtlasOpenBuildScope))) and
+    (FOpenBuildScope.Choice <= Ord(High(TAtlasOpenBuildScope))) then
+    ASettings.BuildOnOpenScope := TAtlasOpenBuild.ScopeNames[TAtlasOpenBuildScope(FOpenBuildScope.Choice)];
+  ASettings.BuildOnOpenDelayMs := StrToIntDef(FOpenBuildDelay.Text, ASettings.BuildOnOpenDelayMs);
+  ASettings.BuildOnOpenExclude := TAtlasOpenBuild.NormalizedExclude(FOpenBuildExclude.Text);
 end;
 
 procedure TAtlasSettingsPage.AddReleaseSection;
@@ -2014,6 +2074,7 @@ begin
   FCheckDelay.Text := IntToStr(ASettings.CheckOnSaveDelayMs);
   FCheckMax.Text := IntToStr(ASettings.CheckOnSaveMaxMs);
   FMcpBuild.Checked := ASettings.McpBuild;
+  LoadOpenBuild(ASettings);
   FTestRun.Checked := ASettings.TestRun;
   FTestsBuildFirst.Checked := ASettings.TestsBuildFirst;
   FTestsAfterBuild.Checked := ASettings.TestsAfterBuild;
@@ -2235,6 +2296,7 @@ begin
   ASettings.CheckOnSaveDelayMs := StrToIntDef(FCheckDelay.Text, ASettings.CheckOnSaveDelayMs);
   ASettings.CheckOnSaveMaxMs := StrToIntDef(FCheckMax.Text, ASettings.CheckOnSaveMaxMs);
   ASettings.McpBuild := FMcpBuild.Checked;
+  SaveOpenBuild(ASettings);
   ASettings.TestRun := FTestRun.Checked;
   ASettings.TestsBuildFirst := FTestsBuildFirst.Checked;
   ASettings.TestsAfterBuild := FTestsAfterBuild.Checked;

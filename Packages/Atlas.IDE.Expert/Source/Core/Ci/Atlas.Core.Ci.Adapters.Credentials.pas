@@ -36,6 +36,8 @@ uses
   Winapi.Windows;
 
 const
+  // Fehlt in Delphis Winapi.Windows.
+  ERROR_NOT_FOUND = 1168;
   CRED_TYPE_GENERIC = 1;
   CRED_PERSIST_LOCAL_MACHINE = 2;
 

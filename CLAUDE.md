@@ -9,3 +9,22 @@
 - Der Quelltext muss auch mit Delphi 12 übersetzen: kein Bedingungsausdruck `if … then … else`, kein `is not`, kein `not in`. `pwsh Tools/Check-Delphi12.ps1` prüft das.
 - Jede Prüfregel und jede Kernfunktion bekommt DUnitX-Tests in `Tests/`.
 - Neue Einstellung: Schema `schemas/atlas.schema.json` (mit `x-page`, `x-control`, `x-issue`), Parser, Test; dann `pwsh Tools/Update-ConfigDoc.ps1` ausführen. Es erzeugt Konfiguration.md, Einstellungen.md und die Schema-Unit des Plugins und prüft den Parser.
+- Im IDE-Plugin nur über `TAtlasMainThread` in den Hauptthread einreihen, nie `TThread.Queue(nil, …)`/`ForceQueue(nil, …)` (sonst laufen Einträge nach dem Entladen in fremdem Speicher). `pwsh Tools/Check-MainThreadQueue.ps1` prüft das; Ausnahme je Zeile mit `// mainthread-ok`.
+
+## Mit Delphi bauen vor dem Merge
+
+- Vor jedem Merge nach `main` mit Delphi übersetzen (Win64-Gruppe und Win32-Plugin), Tests grün, 0 Fehler, 0 Warnungen, 0 Hinweise. FPC-Läufe ersetzen das nicht.
+- Typische Fallen, die unter FPC durchgehen:
+  - `Exit([...])` mit Array-Literal: erst `Result` zuweisen, dann `Exit`.
+  - Anonyme Methode als Argument bei Überladungen: typisierte Variable oder eigener Methodenname.
+  - Funktion, die eine Methodenreferenz liefert, ohne `()` aufgerufen (E2010).
+  - `TMonitor` wird durch `Vcl.Forms` verdeckt: `System.TMonitor` schreiben.
+  - `Assert.AreEqual` mit `Length`/`High`: `Integer(...)` darum.
+  - DUnitX `Contains`/`DoesNotContain` ignorieren Groß-/Kleinschreibung.
+  - `TCaption` hat keine String-Helfer.
+  - Controls, die ein Fenster brauchen (`TTabControl.Tabs`, `TListBox.Items`, Text messen), nicht im Konstruktor füllen, sondern in `CreateWnd` bzw. erst mit Fenster.
+  - Konstanten, die in Delphis `Winapi.Windows` fehlen (z. B. `ERROR_NOT_FOUND`), selbst deklarieren.
+  - Felder nach Methoden im selben Klassenabschnitt (E2169).
+  - Fehlende Units für Inline-Funktionen (H2443): `System.Generics.Collections` bei `TJSONArray`/`TJSONObject`, `Winapi.Windows` bei `RenameFile`.
+  - Tests: string- und Array-Felder im `TearDown` leeren, sonst meldet der Leckmonitor.
+  - Zeilenenden CRLF.

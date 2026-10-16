@@ -318,6 +318,9 @@ begin
     '"McpBuild":{"type":"boolean","x-feature":"Build",' +
       '"default":true,"x-page":"Compiler","x-quickToggle":true,' +
       '"x-caption":"Builds für Claude Code","x-captionEn":"Builds for Claude Code","x-issue":"#261"},' +
+    '"BuildOnOpen":{"type":"boolean","x-feature":"Build",' +
+      '"default":false,"x-page":"Compiler","x-quickToggle":true,' +
+      '"x-caption":"Beim Öffnen einmal bauen","x-captionEn":"Build once on opening"},' +
     '"StartProfiles":{"type":"boolean","x-feature":"Build",' +
       '"default":true,"x-page":"Compiler","x-quickToggle":true,' +
       '"x-caption":"Startprofile","x-captionEn":"Start profiles","x-issue":"#575"},' +

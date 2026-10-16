@@ -32,7 +32,7 @@ type
 {$SCOPEDENUMS ON}
   /// <summary>Lauf eines Schritts in dieser Sitzung (Baseline, Pfadprüfung).</summary>
   TAtlasSetupRun = (Idle, Running, Done, Failed);
-  TAtlasSetupFindingKind = (MissingUnit, UndefinedDefine);
+  TAtlasSetupFindingKind = (MissingUnit, UndefinedDefine, Hint);
 {$SCOPEDENUMS OFF}
 
   /// <summary>Zeile unter „Suchpfade und Defines prüfen“.</summary>
@@ -49,6 +49,8 @@ type
     /// <summary>Ab 1; 0 = ohne.</summary>
     Line: Integer;
     Count: Integer;
+    /// <summary>Define: Vorschlag (Tippfehler?); Hinweis: Unit im Suchpfad, '' = Package ohne Quelle.</summary>
+    Note: string;
   end;
 
   TAtlasSetupCard = record
@@ -191,6 +193,7 @@ class function TAtlasWelcomeSetup.Lines(const ASetup: TAtlasProjectSetup; AMax: 
     Line.FileName := AFinding.FileName;
     Line.Line := AFinding.Line;
     Line.Count := AFinding.Count;
+    Line.Note := AFinding.Note;
     AList := AList + [Line];
   end;
 
@@ -209,7 +212,11 @@ begin
   for Finding in ASetup.UndefinedDefines do
     if Length(List) < AMax then
       Add(TAtlasSetupFindingKind.UndefinedDefine, Finding, List);
-  AMore := ASetup.MissingUnitCount + ASetup.UndefinedDefineCount - Length(List);
+  // Hinweise zu requires-Packages (#759) zuletzt; sie sind keine Fehler.
+  for Finding in ASetup.Hints do
+    if Length(List) < AMax then
+      Add(TAtlasSetupFindingKind.Hint, Finding, List);
+  AMore := ASetup.MissingUnitCount + ASetup.UndefinedDefineCount + Length(ASetup.Hints) - Length(List);
   if AMore < 0 then
     AMore := 0;
   Result := List;
@@ -259,6 +266,7 @@ class function TAtlasWelcomeSetup.Checked(const APrevious: TAtlasProjectSetup; c
       Finding.Line := Item.Line;
       Finding.Count := Item.Count;
       Finding.Uncertain := Item.Uncertain;
+      Finding.Note := Item.Note;
       Result := Result + [Finding];
     end;
   end;
@@ -274,6 +282,7 @@ begin
   Result.UndefinedDefineCount := Length(AResult.UndefinedDefines);
   Result.MissingUnits := Findings(AResult.MissingUnits);
   Result.UndefinedDefines := Findings(AResult.UndefinedDefines);
+  Result.Hints := Findings(AResult.Hints);
   Result.UncertainUnitCount := TAtlasPathCheckResult.UncertainIn(AResult.MissingUnits);
   Result.UncertainDefineCount := TAtlasPathCheckResult.UncertainIn(AResult.UndefinedDefines);
   Result.SkippedMacros := AResult.SkippedMacros;
@@ -353,6 +362,7 @@ begin
     Inc(Result.UncertainDefineCount, Member.Setup.UncertainDefineCount);
     AddAll(Member, Member.Setup.MissingUnits, Result.MissingUnits);
     AddAll(Member, Member.Setup.UndefinedDefines, Result.UndefinedDefines);
+    AddAll(Member, Member.Setup.Hints, Result.Hints);
     for Macro in Member.Setup.SkippedMacros do
     begin
       Seen := False;

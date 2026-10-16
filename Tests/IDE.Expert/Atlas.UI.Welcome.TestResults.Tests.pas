@@ -16,6 +16,9 @@ type
   [TestFixture]
   TAtlasWelcomeTestResultsFrameTests = class
   public
+    /// <summary>Erste Benutzung ungemessen vorwegnehmen.</summary>
+    [SetupFixture]
+    procedure WarmUpFirstUse;
     [Test]
     procedure TextsFollowMockup;
     [Test]
@@ -214,6 +217,11 @@ begin
 end;
 
 { TAtlasWelcomeTestResultsFrameTests }
+
+procedure TAtlasWelcomeTestResultsFrameTests.WarmUpFirstUse;
+begin
+  ClicksReachSource;
+end;
 
 procedure TAtlasWelcomeTestResultsFrameTests.TextsFollowMockup;
 var
