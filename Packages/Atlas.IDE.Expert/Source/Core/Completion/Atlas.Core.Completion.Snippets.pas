@@ -23,6 +23,12 @@
 // declaration (Typ- und Klassenebene), any (überall, wie ohne Angabe) oder
 // die Orte des Servers routine, class, record, interfaceType, interface,
 // implementation, program. Die Vervollständigung beachtet ihn nicht.
+// Optional "file: unit|form|test" (#759): Dateivorlage für „Neu mit Atlas“
+// auf der Willkommensseite (Unit, Formular, Testklasse). Der Text ist dann
+// die ganze neue Datei; %Unit% steht für den Namen der Unit, %Form% für den
+// des Formulars, %Ancestor% für die Basisklasse des Formulars ohne T und
+// %Name% für den Namen der Unit ohne Namespace. Dateivorlagen erscheinen
+// weder in der Vervollständigung noch im normalen Erzeugen-Menü.
 
 interface
 
@@ -54,6 +60,8 @@ type
     /// <summary>Kontext im Erzeugen-Menü (#719): statement, declaration, any oder Orte des Servers, kommagetrennt;
     /// '' = überall.</summary>
     Context: string;
+    /// <summary>Dateivorlage (#759): "unit", "form" oder "test"; '' = Code-Vorlage.</summary>
+    FileKind: string;
   end;
 
   TAtlasSnippetList = TArray<TAtlasSnippet>;
@@ -118,6 +126,11 @@ type
     class function PostfixParams(const AList: TAtlasSnippetList): TJSONObject; static;
     /// <summary>Erlaubte Wörter für "context:" (#719).</summary>
     class function ContextWords: TArray<string>; static;
+    /// <summary>Erlaubte Werte für "file:" (#759): unit, form, test.</summary>
+    class function FileKinds: TArray<string>; static;
+    /// <summary>Nur die Dateivorlagen (#759) bzw. alle anderen.</summary>
+    class function FileTemplates(const AList: TAtlasSnippetList): TAtlasSnippetList; static;
+    class function WithoutFileTemplates(const AList: TAtlasSnippetList): TAtlasSnippetList; static;
     /// <summary>Passt der Kontext AContext zu den Orten APlaces des Servers (routine, class, …)? '' und any immer;
     /// statement = routine; declaration = class, record, interfaceType, interface, implementation, program
     /// außerhalb einer Routine.</summary>
@@ -303,10 +316,20 @@ begin
         end;
       ASnippet.Context := Value;
     end
+    else if Key = 'file' then
+    begin
+      if IndexText(Value, FileKinds) < 0 then
+      begin
+        AError := Format('Zeile %d: unbekannte Dateiart "%s" (erlaubt: %s)',
+          [Index + 1, Value, string.Join(', ', FileKinds)]);
+        Exit;
+      end;
+      ASnippet.FileKind := LowerCase(Value);
+    end
     else
     begin
       AError := Format('Zeile %d: unbekannter Schlüssel "%s" (erlaubt: name, prefix, description, postfix, type, ' +
-        'context)', [Index + 1, Key]);
+        'context, file)', [Index + 1, Key]);
       Exit;
     end;
   end;
@@ -365,6 +388,8 @@ begin
   end;
   if ASnippet.Context <> '' then
     Result := Result + 'context: ' + OneLine(ASnippet.Context) + #10;
+  if ASnippet.FileKind <> '' then
+    Result := Result + 'file: ' + OneLine(ASnippet.FileKind) + #10;
   Result := Result + '---' + #10 + NormalizeBreaks(ASnippet.Body) + #10;
 end;
 
@@ -430,6 +455,31 @@ class function TAtlasSnippets.ContextWords: TArray<string>;
 begin
   Result := ['any', 'statement', 'declaration', 'routine', 'class', 'record', 'interfaceType', 'interface',
     'implementation', 'program'];
+end;
+
+class function TAtlasSnippets.FileKinds: TArray<string>;
+begin
+  Result := ['unit', 'form', 'test'];
+end;
+
+class function TAtlasSnippets.FileTemplates(const AList: TAtlasSnippetList): TAtlasSnippetList;
+var
+  Item: TAtlasSnippet;
+begin
+  Result := nil;
+  for Item in AList do
+    if Item.FileKind <> '' then
+      Result := Result + [Item];
+end;
+
+class function TAtlasSnippets.WithoutFileTemplates(const AList: TAtlasSnippetList): TAtlasSnippetList;
+var
+  Item: TAtlasSnippet;
+begin
+  Result := nil;
+  for Item in AList do
+    if Item.FileKind = '' then
+      Result := Result + [Item];
 end;
 
 class function TAtlasSnippets.FitsContext(const AContext: string; const APlaces: TArray<string>): Boolean;

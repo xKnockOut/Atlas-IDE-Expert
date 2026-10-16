@@ -197,7 +197,7 @@ var
   Snippets: TAtlasSnippetList;
   Entries: TArray<TAtlasGenerateEntry>;
 begin
-  SetLength(Snippets, 4);
+  SetLength(Snippets, 5);
   Snippets[0].Prefix := 'tryf';
   Snippets[0].Name := 'try…finally';
   Snippets[0].Context := 'statement';
@@ -207,6 +207,9 @@ begin
   Snippets[2].Context := '';
   Snippets[3].Prefix := 'nn';
   Snippets[3].Postfix := True;
+  // Dateivorlage (#759): nur für „Neu mit Atlas“, nie am Cursor.
+  Snippets[4].Prefix := 'newunit';
+  Snippets[4].FileKind := 'unit';
   // In einer Routine: Anweisungen und „überall“, keine Deklarationen, keine Postfix-Vorlagen.
   Entries := TAtlasGenerateProtocol.FromSnippets(Snippets, ['routine', 'implementation']);
   Assert.AreEqual(2, Integer(Length(Entries)));

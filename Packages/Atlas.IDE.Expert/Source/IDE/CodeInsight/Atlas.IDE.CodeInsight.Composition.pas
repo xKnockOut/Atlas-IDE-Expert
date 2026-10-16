@@ -65,6 +65,8 @@ uses
   Atlas.IDE.Commands.Editor,
   Atlas.IDE.UnitSearch.Commands,
   Atlas.IDE.Generate.Commands,
+  Atlas.IDE.Generate.NewFile,
+  Atlas.Core.Generate.FileTemplates,
   Atlas.Core.Completion.Snippets,
   Atlas.IDE.Commands.Bindings,
   Atlas.IDE.Forms.Designer,
@@ -107,6 +109,7 @@ uses
   Atlas.IDE.Welcome.State,
   Atlas.IDE.Welcome.Discover,
   Atlas.IDE.Welcome.Help,
+  Atlas.IDE.Welcome.Setup,
   Atlas.IDE.Welcome.Commands,
   Atlas.IDE.Vcs.Service,
   Atlas.IDE.Notes.Service,
@@ -569,37 +572,22 @@ begin
     MessageLine(TAtlasStrings.Fmt(TAtlasTextId.BaselineUpdateCompleted, [AUpdate.Completed]));
 end;
 
-/// <summary>„Baseline des Projekts aktualisieren“ (#97): nennt vorher die Einträge ohne Datei und fragt nach, lässt
-/// den Server (atlas.updateBaseline) im Hintergrund alle Dateien prüfen und die Baseline schreiben, meldet die
-/// Zähler und schreibt den Abschnitt "baseline" der Projekt-Zusammenfassung.</summary>
-procedure UpdateBaseline;
+/// <summary>Lässt den Server (atlas.updateBaseline, #97) im Hintergrund alle Dateien von AFileName prüfen und die
+/// Baseline schreiben, meldet die Zähler und schreibt den Abschnitt "baseline" der Projekt-Zusammenfassung. ADone
+/// (darf nil sein) bekommt im Hauptthread das Ergebnis (Einrichtung #759). '' = gestartet, sonst der Grund.</summary>
+function StartBaselineUpdate(const AFileName: string; const ADone: TAtlasSetupBaselineDone): string;
 var
-  Project: IOTAProject;
   FileName: string;
-  State: TAtlasBaselineState;
+  Done: TAtlasSetupBaselineDone;
 begin
-  // Abgeschaltet: auch über Tastenkürzel oder „Ausprobieren“ nichts tun.
-  if (Manager = nil) or not TAtlasIdeSettings.Current.BaselineUpdate then
-    Exit;
-  Project := GetActiveProject;
-  if (Project = nil) or (Project.FileName = '') then
-  begin
-    GuardWarning(TAtlasStrings.Text(TAtlasTextId.BaselineUpdateNoProject));
-    Exit;
-  end;
+  Result := '';
+  if Manager = nil then
+    Exit(TAtlasStrings.Text(TAtlasTextId.BaselineUpdateFailed));
   if Manager.ActiveSession = nil then
-  begin
-    GuardWarning(TAtlasStrings.Text(TAtlasTextId.BaselineUpdateFailed));
-    Exit;
-  end;
-  FileName := Project.FileName;
-  // Einträge ohne Datei nennen, bevor das Aktualisieren sie entfernt (umbenannte oder verschobene Dateien).
-  State := BaselineState(ExtractFileDir(FileName));
-  if (State.OrphanCount > 0) and (MessageDlg(TAtlasStrings.Fmt(TAtlasTextId.BaselineUpdateConfirm,
-    [State.OrphanCount, sLineBreak + string.Join(sLineBreak, BaselineOrphanText(State.Orphans)) + sLineBreak +
-    sLineBreak]), mtConfirmation, [mbYes, mbNo], 0) <> mrYes) then
-    Exit;
-  if Manager.RunCommandAsync(TAtlasProjectBaselines.Command,
+    Exit(TAtlasStrings.Text(TAtlasTextId.BaselineUpdateFailed));
+  FileName := AFileName;
+  Done := ADone;
+  if not Manager.RunCommandAsync(TAtlasProjectBaselines.Command,
     TAtlasProjectBaselines.Arguments(TLspSession.PathToUri(FileName)), TAtlasProjectBaselines.TimeoutMs,
     procedure(AAnswer: string)
     var
@@ -627,6 +615,8 @@ begin
               if not Valid then
               begin
                 GuardWarning(TAtlasStrings.Text(TAtlasTextId.BaselineUpdateFailed));
+                if Assigned(Done) then
+                  Done(False, 0, 0, TAtlasStrings.Text(TAtlasTextId.BaselineUpdateFailed));
                 Exit;
               end;
               ReportBaselineUpdate(Update);
@@ -637,17 +627,55 @@ begin
                 // Zähler des Servers gehören zur anderen Datei: nur den Stand im Projektordner eintragen.
                 if (Welcome <> nil) and (Welcome.Projects <> nil) then
                   Welcome.Projects.RecordBaseline(FileName, After, TAtlasIdeProjects.StampUtc);
+                if Assigned(Done) then
+                  Done(False, 0, 0, TAtlasStrings.Text(TAtlasTextId.WelcomeSetupBaselineElsewhere));
                 Exit;
               end;
               if (Welcome <> nil) and (Welcome.Projects <> nil) then
                 Welcome.Projects.RecordBaseline(FileName, After, Update, TAtlasIdeProjects.StampUtc);
+              if Assigned(Done) then
+                Done(True, Update.Total, Update.Files, '');
             end);
         end);
     end) then
+    // Ein Befehl im Hintergrund läuft schon (etwa die Werte nach einem Build): später noch einmal.
+    Result := TAtlasStrings.Text(TAtlasTextId.BaselineUpdateBusy);
+end;
+
+/// <summary>„Baseline des Projekts aktualisieren“ (#97): nennt vorher die Einträge ohne Datei und fragt nach, dann
+/// StartBaselineUpdate für das aktive Projekt.</summary>
+procedure UpdateBaseline;
+var
+  Project: IOTAProject;
+  FileName, Reason: string;
+  State: TAtlasBaselineState;
+begin
+  // Abgeschaltet: auch über Tastenkürzel oder „Ausprobieren“ nichts tun.
+  if (Manager = nil) or not TAtlasIdeSettings.Current.BaselineUpdate then
+    Exit;
+  Project := GetActiveProject;
+  if (Project = nil) or (Project.FileName = '') then
+  begin
+    GuardWarning(TAtlasStrings.Text(TAtlasTextId.BaselineUpdateNoProject));
+    Exit;
+  end;
+  if Manager.ActiveSession = nil then
+  begin
+    GuardWarning(TAtlasStrings.Text(TAtlasTextId.BaselineUpdateFailed));
+    Exit;
+  end;
+  FileName := Project.FileName;
+  // Einträge ohne Datei nennen, bevor das Aktualisieren sie entfernt (umbenannte oder verschobene Dateien).
+  State := BaselineState(ExtractFileDir(FileName));
+  if (State.OrphanCount > 0) and (MessageDlg(TAtlasStrings.Fmt(TAtlasTextId.BaselineUpdateConfirm,
+    [State.OrphanCount, sLineBreak + string.Join(sLineBreak, BaselineOrphanText(State.Orphans)) + sLineBreak +
+    sLineBreak]), mtConfirmation, [mbYes, mbNo], 0) <> mrYes) then
+    Exit;
+  Reason := StartBaselineUpdate(FileName, nil);
+  if Reason = '' then
     GuardWarning(TAtlasStrings.Text(TAtlasTextId.BaselineUpdateRunning))
   else
-    // Ein Befehl im Hintergrund läuft schon (etwa die Werte nach einem Build): später noch einmal.
-    GuardWarning(TAtlasStrings.Text(TAtlasTextId.BaselineUpdateBusy));
+    GuardWarning(Reason);
 end;
 
 var
@@ -959,6 +987,19 @@ begin
     begin
       if (Welcome <> nil) and (Welcome.WhatsNew <> nil) and TAtlasIdeSettings.Current.WelcomePage then
         Welcome.ShowWhatsNew(TAtlasWhatsNewView.Current);
+    end);
+  // Projekt für Atlas einrichten (#759): hebt „nicht mehr fragen“ auf und zeigt die Karte in „Atlas-Start“.
+  Add('Atlas.ProjectSetup', TAtlasTextId.WelcomeSetupCommand,
+    procedure
+    begin
+      if (Welcome = nil) or (Welcome.Setup = nil) or not TAtlasIdeSetup.Active then
+        Exit;
+      Welcome.Setup.Ask;
+      Welcome.ShowStart;
+    end,
+    function: Boolean
+    begin
+      Result := TAtlasIdeSetup.Active;
     end);
   Add('Atlas.WhatsNewAll', TAtlasTextId.WelcomeNewsShowAllCommand,
     procedure
@@ -1838,6 +1879,30 @@ begin
     begin
       if KeyMap <> nil then
         KeyMap.ShowAll;
+    end);
+  // Bereich „Projekt für Atlas einrichten“ (#759): atlas.json, Baseline (#97), Suchpfade und „Neu mit Atlas“.
+  Welcome.Setup := TAtlasIdeSetup.Create(
+    procedure(AText: string)
+    begin
+      // Nur Meldungsansicht: Die Zeilen enthalten Pfade.
+      MessageLine(AText);
+    end,
+    function(const AProject: string; const ADone: TAtlasSetupBaselineDone): string
+    begin
+      Result := StartBaselineUpdate(AProject, ADone);
+    end,
+    procedure(AKind: TAtlasNewFileKind)
+    var
+      User: TAtlasSnippetList;
+    begin
+      User := nil;
+      if (Manager <> nil) and (Manager.Completion <> nil) then
+        User := Manager.Completion.FileSnippets;
+      TAtlasIdeNewFile.Show(AKind, User,
+        procedure(AText: string)
+        begin
+          MessageLine(AText);
+        end);
     end);
 end;
 

@@ -104,6 +104,7 @@ type
 implementation
 
 uses
+  Atlas.Text.Defines,
   Atlas.Common.Pascal.Lexer;
 
 type
@@ -876,12 +877,8 @@ end;
 
 class function TPascalPreprocessor.CompilerVersionOfBds(ABdsVersion: Double): Double;
 begin
-  if ABdsVersion >= 37 then
-    Result := ABdsVersion
-  else if ABdsVersion >= 8 then
-    Result := ABdsVersion + 13
-  else
-    Result := 0;
+  // Gemeinsam mit dem Plugin (#759).
+  Result := TTextDefines.CompilerVersionOfBds(ABdsVersion);
 end;
 
 class function TPascalPreprocessor.CompilerVersionFromDefines(const ADefines: TArray<string>): Double;
@@ -900,44 +897,9 @@ begin
 end;
 
 class function TPascalPreprocessor.PredefinedSymbols(const APlatform: string; ACompilerVersion: Double): TArray<string>;
-var
-  Symbols: TList<string>;
-  Platform: string;
 begin
-  Symbols := TList<string>.Create;
-  try
-    Symbols.AddRange(['CONDITIONALEXPRESSIONS', 'UNICODE', 'NATIVECODE', 'ASSEMBLER']);
-    if ACompilerVersion > 0 then
-      Symbols.Add(Format('VER%d', [Round(ACompilerVersion * 10)]));
-    Platform := UpperCase(APlatform);
-    if (Platform = 'WIN32') or (Platform = '') then
-      Symbols.AddRange(['MSWINDOWS', 'WIN32', 'CPUX86', 'CPU386', 'CPU32BITS'])
-    else if Platform = 'WIN64' then
-      Symbols.AddRange(['MSWINDOWS', 'WIN64', 'CPUX64', 'CPU64BITS'])
-    else if Platform = 'WIN64X' then
-      Symbols.AddRange(['MSWINDOWS', 'WIN64', 'CPUX64', 'CPU64BITS', 'LLVM'])
-    else if Platform = 'LINUX64' then
-      Symbols.AddRange(['LINUX', 'LINUX64', 'POSIX', 'POSIX64', 'CPUX64', 'CPU64BITS'])
-    else if (Platform = 'OSX64') or (Platform = 'OSXARM64') then
-    begin
-      Symbols.AddRange(['MACOS', 'MACOS64', 'POSIX', 'POSIX64', 'CPU64BITS']);
-      if Platform = 'OSX64' then
-        Symbols.Add('CPUX64')
-      else
-        Symbols.Add('CPUARM64');
-    end
-    else if Platform = 'ANDROID' then
-      Symbols.AddRange(['ANDROID', 'ANDROID32', 'LINUX', 'POSIX', 'POSIX32', 'CPUARM', 'CPUARM32', 'CPU32BITS'])
-    else if Platform = 'ANDROID64' then
-      Symbols.AddRange(['ANDROID', 'ANDROID64', 'LINUX', 'POSIX', 'POSIX64', 'CPUARM', 'CPUARM64', 'CPU64BITS'])
-    else if Platform = 'IOSDEVICE64' then
-      Symbols.AddRange(['IOS', 'IOS64', 'MACOS', 'POSIX', 'POSIX64', 'CPUARM', 'CPUARM64', 'CPU64BITS'])
-    else if Platform = 'IOSSIMARM64' then
-      Symbols.AddRange(['IOS', 'IOS64', 'IOSSIMULATOR', 'MACOS', 'POSIX', 'POSIX64', 'CPUARM', 'CPUARM64', 'CPU64BITS']);
-    Result := Symbols.ToArray;
-  finally
-    Symbols.Free;
-  end;
+  // Gemeinsam mit dem Plugin (#759): Defines ohne Quelle.
+  Result := TTextDefines.Predefined(APlatform, ACompilerVersion);
 end;
 
 end.
