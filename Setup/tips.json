@@ -505,6 +505,16 @@
       "text": "Startet genau die Tests, die im letzten Lauf fehlschlugen, auch nach einem Neustart der IDE. Mit „Tests nach dem Build“ laufen die Tests nach jedem erfolgreichen Build des Testprojekts von selbst.",
       "textEn": "Runs exactly the tests that failed in the last run, even after restarting the IDE. With “Tests after build” the tests run by themselves after every successful build of the test project.",
       "image": "Tipps\\tests-erneut.png"
+    },
+    {
+      "id": "startProfile",
+      "command": "Atlas.StartProfile",
+      "setting": "StartProfiles",
+      "title": "Startprofile wechseln",
+      "titleEn": "Switch start profiles",
+      "text": "Ein Startprofil bündelt Parameter, Arbeitsordner, Umgebungsvariablen und Host-Anwendung. „Startprofil: …“ oder ein Klick auf das Feld in der Statusleiste setzt es; Start und „Ohne Debugger starten“ nutzen es dann. Gemeinsame Profile stehen in .atlas, persönliche nur lokal.",
+      "textEn": "A start profile bundles parameters, working folder, environment variables and host application. “Start profile: …” or a click on the field in the status bar sets it; Run and “Run without debugging” then use it. Shared profiles live in .atlas, personal ones only locally.",
+      "image": "Tipps\\startprofil.png"
     }
   ]
 }

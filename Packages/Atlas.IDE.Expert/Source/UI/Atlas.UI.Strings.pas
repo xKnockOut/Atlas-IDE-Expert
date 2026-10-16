@@ -396,7 +396,16 @@ type
     TestsNoFailed, TestsBusy, TestsPlatform, TestsBuildRefused, TestsBuildFailed, TestsNoExe, TestsStarted,
     TestsTimedOut, TestsNoReport, TestsNoTests, TestsFinished, TestsProblem, TestsProblemValues, TestsLensRun,
     TestsLensRunFixture, TestsLensPassed, TestsLensFailed, TestsLensRunning,
-    TestsNoBuildRunner);
+    TestsNoBuildRunner,
+    StartProfilesCommand, StartProfilesStatus, StartProfilesStatusNone, StartProfilesStatusMissing,
+    StartProfilesHintClick, StartProfilesHintNone, StartProfilesHintMissing, StartProfilesTeam,
+    StartProfilesPersonal, StartProfilesActiveMark, StartProfilesNone, StartProfilesSaveCurrent,
+    StartProfilesEditPersonal, StartProfilesEditTeam, StartProfilesActions, StartProfilesNameTitle,
+    StartProfilesNamePrompt, StartProfilesNoProject, StartProfilesNotOpen, StartProfilesUnknown,
+    StartProfilesApplied, StartProfilesRestored, StartProfilesWriteFailed, StartProfilesSaveFailed,
+    StartProfilesSaved, StartProfilesDebuggerRunning, StartProfilesNoRunAction, StartProfilesParameters,
+    StartProfilesWorkingDir, StartProfilesHost, StartProfilesEnvironment, StartProfilesNoOptions,
+    StartProfilesInvalidName, StartProfilesTeamOff, SettingsStartProfiles, SettingsStartProfilesStatusField);
 
   TAtlasStrings = class
   private class var
@@ -1167,7 +1176,24 @@ const
      'Tests %s: %d bestanden, %d fehlgeschlagen, %d Fehler, %d übersprungen (%s s)',
      'Test %s fehlgeschlagen: %s', 'Test %s fehlgeschlagen: erwartet %s, erhalten %s', 'Test ausführen',
      'Tests der Klasse ausführen', '%s · bestanden', '%s · fehlgeschlagen', 'Tests laufen …',
-     'die Builds auf Auftrag laufen nicht (Compile-Ereignisse aus)'),
+     'die Builds auf Auftrag laufen nicht (Compile-Ereignisse aus)',
+     'Startprofil: …', 'Startprofil: %s', 'Startprofil: –', 'Startprofil: %s (fehlt)',
+     'Klick: Startprofil wählen', 'Es gelten die Startoptionen der IDE (Start › Parameter).',
+     'Das Profil „%s“ gibt es nicht mehr; es gelten die zuletzt gesetzten Startoptionen.', 'Team (.atlas)',
+     'Persönlich', 'aktiv', 'Kein Startprofil (Startoptionen von vorher)',
+     'Aktuelle Startoptionen als persönliches Profil speichern …', 'Persönliche Startprofile bearbeiten',
+     'Gemeinsame Startprofile in .atlas bearbeiten', 'Startprofile', 'Startprofil speichern',
+     'Name des Profils:', 'Atlas: Kein aktives Projekt für Startprofile.',
+     'Atlas: Das Projekt %s ist nicht geöffnet.', 'Atlas: Das Startprofil „%s“ gibt es für %s nicht.',
+     'Atlas: Startprofil „%s“ gesetzt (%s).',
+     'Atlas: Kein Startprofil; die Startoptionen von vorher gelten wieder.',
+     'Atlas: Die Startoptionen ließen sich nicht setzen (%s).',
+     'Atlas: Die Startprofile ließen sich nicht speichern.', 'Atlas: Persönliches Startprofil „%s“ gespeichert.',
+     'Atlas: Der Debugger läuft; erst beenden.', 'Atlas: Der Befehl „Start“ der IDE ist gerade nicht verfügbar.',
+     'Parameter: %s', 'Arbeitsordner: %s', 'Host-Anwendung: %s', 'Umgebungsvariablen: %s', 'ohne Parameter',
+     'Atlas: Der Name des Profils darf nicht leer sein.',
+     'Atlas: Die Projektdatei .atlas ist ausgeschaltet (Tools › Optionen › Atlas › Projektdatei).',
+     'Startprofile (Befehl „Startprofil: …“, Startoptionen setzen)', 'Startprofil in der Statusleiste anzeigen'),
     ('Enter to accept · Esc to close', '%d of %d', 'No matches for “%s”', 'Backspace widens the search',
      'No suggestions here', 'Esc closes', 'No details for this entry', 'Overload', 'Deprecated: %s', 'Deprecated.',
      'Inherited from %s', 'Inherited', 'optional, default %s', 'No overload with %d parameters.', '… %d more',
@@ -1891,7 +1917,22 @@ const
      'Tests %s: %d passed, %d failed, %d errors, %d skipped (%s s)', 'Test %s failed: %s',
      'Test %s failed: expected %s, actual %s', 'Run test', 'Run tests of class', '%s · passed', '%s · failed',
      'Tests running …',
-     'builds on request are not running (compile events off)'));
+     'builds on request are not running (compile events off)',
+     'Start profile: …', 'Start profile: %s', 'Start profile: –', 'Start profile: %s (missing)',
+     'Click: choose start profile', 'The IDE''s run options apply (Run › Parameters).',
+     'The profile “%s” no longer exists; the run options set last apply.', 'Team (.atlas)', 'Personal', 'active',
+     'No start profile (previous run options)', 'Save current run options as personal profile …',
+     'Edit personal start profiles', 'Edit shared start profiles in .atlas', 'Start profiles',
+     'Save start profile', 'Profile name:', 'Atlas: No active project for start profiles.',
+     'Atlas: The project %s is not open.', 'Atlas: There is no start profile “%s” for %s.',
+     'Atlas: Start profile “%s” set (%s).', 'Atlas: No start profile; the previous run options apply again.',
+     'Atlas: The run options could not be set (%s).', 'Atlas: The start profiles could not be saved.',
+     'Atlas: Personal start profile “%s” saved.', 'Atlas: The debugger is running; stop it first.',
+     'Atlas: The IDE''s Run command is not available right now.', 'Parameters: %s', 'Working directory: %s',
+     'Host application: %s', 'Environment variables: %s', 'without parameters',
+     'Atlas: The profile name must not be empty.',
+     'Atlas: The project file .atlas is switched off (Tools › Options › Atlas › Project file).',
+     'Start profiles (command “Start profile: …”, set run options)', 'Show start profile in the status bar'));
 
 { TAtlasStrings }
 
