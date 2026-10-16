@@ -31,7 +31,7 @@ interface
 uses
   System.SysUtils,
   Atlas.Common.Pascal.SyntaxTree,
-  Atlas.Common.Rules.Contract,
+  Atlas.Common.Documents.Contract,
   Atlas.Common.Configuration.Contract;
 
 type
@@ -70,7 +70,7 @@ type
       out AOffer: TGuardOffer): Boolean; static;
     /// <summary>Änderung für AScope; im Text steht "$0" an der Cursorstelle.</summary>
     class function Edit(const AText: string; const AOffer: TGuardOffer; AScope: TGuardScope;
-      AStyle: TCompletionFreeStyle): TRuleEdit; static;
+      AStyle: TCompletionFreeStyle): TTextEdit; static;
   end;
 
 implementation
@@ -79,7 +79,6 @@ uses
   System.Math,
   System.StrUtils,
   System.RegularExpressions,
-  Atlas.Common.Documents.Contract,
   Atlas.Text.Lines;
 
 /// <summary>Innerste Routine mit Rumpf, deren begin…end Zeile ALine enthält; nil sonst.</summary>
@@ -310,7 +309,7 @@ begin
 end;
 
 class function TGuardFree.Edit(const AText: string; const AOffer: TGuardOffer; AScope: TGuardScope;
-  AStyle: TCompletionFreeStyle): TRuleEdit;
+  AStyle: TCompletionFreeStyle): TTextEdit;
 var
   Lines: TArray<string>;
   LB, Indent, Release, Body, Head: string;
@@ -341,7 +340,7 @@ begin
       StopLine := AOffer.BlankLine;
       StopCharacter := Length(Lines[AOffer.BlankLine]);
     end;
-    Exit(TRuleEdit.Create(TTextRange.Create(AOffer.Line, Start, StopLine, StopCharacter), Head + LB + Indent +
+    Exit(TTextEdit.Create(TTextRange.Create(AOffer.Line, Start, StopLine, StopCharacter), Head + LB + Indent +
       'try' + LB + Indent + '  $0' + LB + Indent + 'finally' + LB + Indent + '  ' + Release + LB + Indent + 'end;'));
   end;
   // Bis zum Routinenende: die Zeilen dazwischen um zwei Zeichen einrücken, Cursor hinter die letzte.
@@ -360,7 +359,7 @@ begin
       Body := Body + '$0';
     Body := Body + LB;
   end;
-  Result := TRuleEdit.Create(TTextRange.Create(AOffer.Line, Start, AOffer.EndLine, 0),
+  Result := TTextEdit.Create(TTextRange.Create(AOffer.Line, Start, AOffer.EndLine, 0),
     Head + LB + Indent + 'try' + LB + Body + Indent + 'finally' + LB + Indent + '  ' + Release + LB + Indent + 'end;' + LB);
 end;
 

@@ -25,8 +25,7 @@ uses
   Atlas.Common.Documents.Contract,
   Atlas.Common.Pascal.Contract,
   Atlas.Common.Index.Contract,
-  Atlas.Common.Projects.Contract,
-  Atlas.Common.Rules.Contract;
+  Atlas.Common.Projects.Contract;
 
 type
   /// <summary>Zugriff auf Projekt und Editor für Befehle, die mehr als die Datei ändern (#301).</summary>
@@ -88,7 +87,7 @@ type
   end;
 
   /// <summary>Führt den Befehl aus. False mit AReason, wenn er hier nicht passt.</summary>
-  TSlashExecute = reference to function(const AContext: TSlashContext; out AEdits: TArray<TRuleEdit>;
+  TSlashExecute = reference to function(const AContext: TSlashContext; out AEdits: TArray<TTextEdit>;
     out AReason: string): Boolean;
 
   TSlashCommand = record
@@ -129,14 +128,14 @@ type
     /// <summary>Edits nach Enter in APosition.Line für die Befehlszeile darüber. False, wenn dort kein
     /// ausführbarer Befehl steht (dann bleibt die Zeile stehen).</summary>
     function AfterEnter(const AText: string; const APosition: TTextPosition; const ANamespaces,
-      ADisabled: TArray<string>; out AEdits: TArray<TRuleEdit>; const AIndex: ISymbolIndex = nil;
+      ADisabled: TArray<string>; out AEdits: TArray<TTextEdit>; const AIndex: ISymbolIndex = nil;
       const ADelphiVersion: string = ''; const AUri: string = ''; const AHost: ISlashHost = nil): Boolean;
     /// <summary>Führt die Befehlszeile ALine (ab 0) aus wie AfterEnter, aber mit Grund (#719): False mit AReason,
     /// wenn dort kein ausführbarer Befehl steht. AWrapUntil &gt; ALine begrenzt das Umschließen auf die Zeilen
     /// davor (TSlashContext.WrapUntil); 0 = bis zum Blockende.</summary>
     function Run(const AText: string; ALine, AWrapUntil: Integer; const ANamespaces, ADisabled: TArray<string>;
       const AIndex: ISymbolIndex; const ADelphiVersion, AUri: string; const AHost: ISlashHost;
-      out AEdits: TArray<TRuleEdit>; out AReason: string): Boolean;
+      out AEdits: TArray<TTextEdit>; out AReason: string): Boolean;
     /// <summary>Hinweise für Befehlszeilen, die stehen geblieben sind (unbekannt, abgeschaltet, falscher Ort).</summary>
     function Problems(const AText: string; const ADisabled: TArray<string>;
       const AIndex: ISymbolIndex = nil; const ADelphiVersion: string = ''): TArray<TSlashProblem>;
@@ -241,7 +240,7 @@ begin
   Result.Summary := 'Units ins uses des Abschnitts eintragen';
   Result.Example := '/uses System.SysUtils, System.Classes';
   Result.Execute :=
-    function(const AContext: TSlashContext; out AEdits: TArray<TRuleEdit>; out AReason: string): Boolean
+    function(const AContext: TSlashContext; out AEdits: TArray<TTextEdit>; out AReason: string): Boolean
     begin
       AReason := '';
       Result := TUsesCommand.AfterEnter(AContext.Text, TTextPosition.Create(AContext.Line + 1, 0),
@@ -375,7 +374,7 @@ begin
 end;
 
 function TSlashCommandRegistry.AfterEnter(const AText: string; const APosition: TTextPosition; const ANamespaces,
-  ADisabled: TArray<string>; out AEdits: TArray<TRuleEdit>; const AIndex: ISymbolIndex;
+  ADisabled: TArray<string>; out AEdits: TArray<TTextEdit>; const AIndex: ISymbolIndex;
   const ADelphiVersion, AUri: string; const AHost: ISlashHost): Boolean;
 var
   Reason: string;
@@ -386,7 +385,7 @@ end;
 
 function TSlashCommandRegistry.Run(const AText: string; ALine, AWrapUntil: Integer; const ANamespaces,
   ADisabled: TArray<string>; const AIndex: ISymbolIndex; const ADelphiVersion, AUri: string;
-  const AHost: ISlashHost; out AEdits: TArray<TRuleEdit>; out AReason: string): Boolean;
+  const AHost: ISlashHost; out AEdits: TArray<TTextEdit>; out AReason: string): Boolean;
 var
   Lines: TArray<string>;
   LineBreak: string;
@@ -450,7 +449,7 @@ var
   Line, Start: Integer;
   Command: TSlashCommand;
   Context: TSlashContext;
-  Edits: TArray<TRuleEdit>;
+  Edits: TArray<TTextEdit>;
   Problem: TSlashProblem;
 begin
   Result := nil;

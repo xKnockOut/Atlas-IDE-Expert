@@ -48,7 +48,6 @@ uses
   System.StrUtils,
   System.Classes,
   Atlas.Common.Documents.FileEncoding,
-  Atlas.Common.Rules.Contract,
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Index.Contract,
   Atlas.Common.Editing.CodeActions,
@@ -193,7 +192,7 @@ end;
 
 /// <summary>Abschnitt mit Deklaration vor "end" der Klasse und Rumpf in der implementation.</summary>
 function AddMethod(ASource: TCommandSource; const AClass: TIndexSymbol; const ASection, ADeclaration,
-  ABody: string): TArray<TRuleEdit>;
+  ABody: string): TArray<TTextEdit>;
 var
   EndLine: Integer;
   Indent: string;
@@ -219,7 +218,7 @@ end;
 
 { /impl }
 
-function ExecuteImpl(const AContext: TSlashContext; out AEdits: TArray<TRuleEdit>; out AReason: string): Boolean;
+function ExecuteImpl(const AContext: TSlashContext; out AEdits: TArray<TTextEdit>; out AReason: string): Boolean;
 var
   Source: TCommandSource;
   ClassSymbol: TIndexSymbol;
@@ -242,7 +241,7 @@ end;
 
 { /ctor }
 
-function ExecuteCtor(const AContext: TSlashContext; out AEdits: TArray<TRuleEdit>; out AReason: string): Boolean;
+function ExecuteCtor(const AContext: TSlashContext; out AEdits: TArray<TTextEdit>; out AReason: string): Boolean;
 var
   Source: TCommandSource;
   ClassSymbol, Symbol: TIndexSymbol;
@@ -309,7 +308,7 @@ end;
 
 { /dtor }
 
-function ExecuteDtor(const AContext: TSlashContext; out AEdits: TArray<TRuleEdit>; out AReason: string): Boolean;
+function ExecuteDtor(const AContext: TSlashContext; out AEdits: TArray<TTextEdit>; out AReason: string): Boolean;
 var
   Source: TCommandSource;
   ClassSymbol: TIndexSymbol;
@@ -337,7 +336,7 @@ end;
 
 { /msg }
 
-function ExecuteMsg(const AContext: TSlashContext; out AEdits: TArray<TRuleEdit>; out AReason: string): Boolean;
+function ExecuteMsg(const AContext: TSlashContext; out AEdits: TArray<TTextEdit>; out AReason: string): Boolean;
 var
   Source: TCommandSource;
   ClassSymbol: TIndexSymbol;
@@ -471,7 +470,7 @@ begin
   end;
 end;
 
-function ExecuteOverride(const AContext: TSlashContext; out AEdits: TArray<TRuleEdit>; out AReason: string): Boolean;
+function ExecuteOverride(const AContext: TSlashContext; out AEdits: TArray<TTextEdit>; out AReason: string): Boolean;
 var
   Source: TCommandSource;
   ClassSymbol: TIndexSymbol;

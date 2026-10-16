@@ -22,6 +22,7 @@ uses
   Atlas.Common.JsonRpc.Dispatcher,
   Atlas.Common.Documents.Contract,
   Atlas.Common.Editing.CodeActions,
+  Atlas.Common.Rules.CodeActions,
   Atlas.Common.Editing.UsesActions,
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Lsp.SyntaxDiagnostics;
@@ -274,7 +275,7 @@ begin
   // Erst jetzt anlegen: Ein Abbruch oben soll kein Objekt zurücklassen.
   Result := TJSONArray.Create;
   if WantsEditing then
-    for Action in TCodeActions.ForRange(Findings, Document.Text, Range) do
+    for Action in TRuleCodeActions.ForRange(Findings, Document.Text, Range) do
       TJSONArray(Result).AddElement(ActionToJson(Uri, Action));
   // Befund als Prompt kopieren (#158): den Text kopiert der Client (Befehl atlas.copyText).
   if WantsEditing then
@@ -329,7 +330,7 @@ begin
   if WantsOrganize and TCodeActions.OrganizeImports(Document.Text, Assigned(FSortUsesFor) and FSortUsesFor(Uri),
     Action, Assigned(FSortUsesByNamespaceFor) and FSortUsesByNamespaceFor(Uri)) then
     TJSONArray(Result).AddElement(ActionToJson(Uri, Action));
-  if WantsFixAll and TCodeActions.FixAll(Findings, Action) then
+  if WantsFixAll and TRuleCodeActions.FixAll(Findings, Action) then
     TJSONArray(Result).AddElement(ActionToJson(Uri, Action));
   if WantsEditing and Assigned(FExtraActions) then
     for Extra in FExtraActions(Uri, Range) do

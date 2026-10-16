@@ -13,7 +13,6 @@ interface
 
 uses
   Atlas.Common.Documents.Contract,
-  Atlas.Common.Rules.Contract,
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Editing.CodeActions;
 
@@ -33,7 +32,7 @@ type
     class function Skeleton(const ASignature: TDocSignature; const AIndent: string): TArray<string>; static;
     /// <summary>Gerüst nach dem dritten "/" an APosition; False, wenn die Zeile nicht passt.</summary>
     class function AfterSlash(const AText: string; ATree: TSyntaxTree; const APosition: TTextPosition;
-      out AEdit: TRuleEdit): Boolean; static;
+      out AEdit: TTextEdit): Boolean; static;
     /// <summary>Code-Aktionen zur Deklaration in Zeile ALine: Kommentar erzeugen, &lt;param&gt; anpassen.</summary>
     class function Actions(const AText: string; ATree: TSyntaxTree; ALine: Integer): TArray<TCodeAction>; static;
   end;
@@ -221,7 +220,7 @@ begin
 end;
 
 class function TDocComments.AfterSlash(const AText: string; ATree: TSyntaxTree; const APosition: TTextPosition;
-  out AEdit: TRuleEdit): Boolean;
+  out AEdit: TTextEdit): Boolean;
 var
   Lines: TArray<string>;
   Line: Integer;
@@ -236,7 +235,7 @@ begin
   if ((Line > 0) and IsDocLine(Lines[Line - 1])) or not IsDeclarationLine(ATree, Lines, Line + 1) then
     Exit;
   Skeleton := TDocComments.Skeleton(TDocComments.Signature(Lines, Line + 1), TTextLines.IndentOf(Lines[Line]));
-  AEdit := TRuleEdit.Create(TTextRange.Create(Line, 0, Line, Length(Lines[Line])),
+  AEdit := TTextEdit.Create(TTextRange.Create(Line, 0, Line, Length(Lines[Line])),
     TTextLines.JoinLines(Skeleton, TTextLines.LineBreakOf(AText)));
   Result := True;
 end;
@@ -280,7 +279,7 @@ begin
   if First = ALine then
   begin
     Action.Title := 'Dokumentationskommentar erzeugen';
-    Action.Edits := [TRuleEdit.Create(TTextRange.Create(ALine, 0, ALine, 0),
+    Action.Edits := [TTextEdit.Create(TTextRange.Create(ALine, 0, ALine, 0),
       TTextLines.JoinLines(TDocComments.Skeleton(Signature, Indent), LB) + LB)];
     Result := [Action];
     Exit;
@@ -302,7 +301,7 @@ begin
     if IndexText(Name, Signature.Params) < 0 then
     begin
       Stale := True;
-      Action.Edits := Action.Edits + [TRuleEdit.Create(TTextRange.Create(Line, 0, Line + 1, 0), '')];
+      Action.Edits := Action.Edits + [TTextEdit.Create(TTextRange.Create(Line, 0, Line + 1, 0), '')];
     end;
   end;
   Missing := nil;
@@ -314,7 +313,7 @@ begin
     Inserted := '';
     for Name in Missing do
       Inserted := Inserted + Indent + Format('/// <param name="%s"></param>', [Name]) + LB;
-    Action.Edits := Action.Edits + [TRuleEdit.Create(TTextRange.Create(Anchor, 0, Anchor, 0), Inserted)];
+    Action.Edits := Action.Edits + [TTextEdit.Create(TTextRange.Create(Anchor, 0, Anchor, 0), Inserted)];
   end;
   if Action.Edits = nil then
     Exit;

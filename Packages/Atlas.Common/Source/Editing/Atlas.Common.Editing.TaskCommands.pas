@@ -24,8 +24,7 @@ uses
   System.SysUtils,
   System.StrUtils,
   Atlas.Common.Documents.Contract,
-  Atlas.Common.Rules.Contract,
-  Atlas.Common.Rules.DeclaredTypes,
+  Atlas.Common.Pascal.DeclaredTypes,
   Atlas.Common.Pascal.Contract,
   Atlas.Common.Pascal.Lexer,
   Atlas.Common.Pascal.SyntaxTree,
@@ -91,7 +90,7 @@ end;
 
 { /task }
 
-function ExecuteTask(const AContext: TSlashContext; out AEdits: TArray<TRuleEdit>; out AReason: string): Boolean;
+function ExecuteTask(const AContext: TSlashContext; out AEdits: TArray<TTextEdit>; out AReason: string): Boolean;
 var
   Source: TCommandSource;
   Types: TDeclaredTypes;
@@ -135,7 +134,7 @@ begin
       Text := Text + Indent + '      end);' + LB;
     end;
     Text := Text + Indent + '  end);' + LB;
-    AEdits := [TRuleEdit.Create(TTextRange.Create(Source.Line, 0, Last + 1, 0), Text)];
+    AEdits := [TTextEdit.Create(TTextRange.Create(Source.Line, 0, Last + 1, 0), Text)];
     AddUses(Source, AContext, Source.Line, ['System.Threading', 'System.Classes'], AEdits);
     Result := True;
   finally
@@ -220,7 +219,7 @@ begin
   Result := '';
 end;
 
-function ExecuteParallel(const AContext: TSlashContext; out AEdits: TArray<TRuleEdit>; out AReason: string): Boolean;
+function ExecuteParallel(const AContext: TSlashContext; out AEdits: TArray<TTextEdit>; out AReason: string): Boolean;
 var
   Source: TCommandSource;
   Types: TDeclaredTypes;
@@ -287,7 +286,7 @@ begin
       else
         Text := Text + Indent + '    ' + Copy(Source.Lines[Line], Common + 1, MaxInt) + LB;
     Text := Text + Indent + '  end);' + LB;
-    AEdits := [TRuleEdit.Create(TTextRange.Create(Source.Line, 0, ForNode.EndPos.Line + 1, 0), Text)];
+    AEdits := [TTextEdit.Create(TTextRange.Create(Source.Line, 0, ForNode.EndPos.Line + 1, 0), Text)];
     AddUses(Source, AContext, Source.Line, ['System.Threading'], AEdits);
     Result := True;
   finally
@@ -297,7 +296,7 @@ end;
 
 { /future }
 
-function ExecuteFuture(const AContext: TSlashContext; out AEdits: TArray<TRuleEdit>; out AReason: string): Boolean;
+function ExecuteFuture(const AContext: TSlashContext; out AEdits: TArray<TTextEdit>; out AReason: string): Boolean;
 var
   Source: TCommandSource;
   Name, TypeName, Head: string;
@@ -339,7 +338,7 @@ begin
   Result := False;
 end;
 
-function ExecuteAtomic(const AContext: TSlashContext; out AEdits: TArray<TRuleEdit>; out AReason: string): Boolean;
+function ExecuteAtomic(const AContext: TSlashContext; out AEdits: TArray<TTextEdit>; out AReason: string): Boolean;
 var
   Source: TCommandSource;
   Line, Indent, Statement, Target, Amount, Call, Inner: string;
@@ -395,7 +394,7 @@ begin
       Exit(Fail('Erwartet wird darunter Inc(F), Dec(F) oder F := F + N', AReason));
     if not IsField(Source, Target) then
       Exit(Fail(Format('%s ist kein Feld; /atomic gilt für Felder', [Target]), AReason));
-    AEdits := [TRuleEdit.Create(TTextRange.Create(Source.Line, 0, Source.Line + 2, 0), Indent + Call +
+    AEdits := [TTextEdit.Create(TTextRange.Create(Source.Line, 0, Source.Line + 2, 0), Indent + Call +
       Source.LineBreak)];
     AddUses(Source, AContext, Source.Line, ['System.SyncObjs'], AEdits);
     Result := True;

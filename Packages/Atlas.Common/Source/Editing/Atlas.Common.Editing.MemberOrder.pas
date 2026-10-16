@@ -17,7 +17,7 @@
 interface
 
 uses
-  Atlas.Common.Rules.Contract,
+  Atlas.Common.Documents.Contract,
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Configuration.Contract;
 
@@ -27,7 +27,7 @@ type
     /// <summary>Ordnet die Klasse um Zeile ALine; False, wenn es nichts zu tun gibt oder sie nicht sicher sortierbar
     /// ist.</summary>
     class function Sort(const AText: string; ATree: TSyntaxTree; ALine: Integer;
-      const ASettings: TMemberOrderSettings; out AEdit: TRuleEdit): Boolean; static;
+      const ASettings: TMemberOrderSettings; out AEdit: TTextEdit): Boolean; static;
   end;
 
 implementation
@@ -35,7 +35,6 @@ implementation
 uses
   System.SysUtils,
   System.StrUtils,
-  Atlas.Common.Documents.Contract,
   Atlas.Text.Lines;
 
 type
@@ -178,7 +177,7 @@ begin
 end;
 
 class function TMemberOrder.Sort(const AText: string; ATree: TSyntaxTree; ALine: Integer;
-  const ASettings: TMemberOrderSettings; out AEdit: TRuleEdit): Boolean;
+  const ASettings: TMemberOrderSettings; out AEdit: TTextEdit): Boolean;
 var
   Lines, Output: TArray<string>;
   ClassNode, Child: TSyntaxNode;
@@ -348,7 +347,7 @@ begin
   Text := '';
   for Line := 0 to High(Output) do
     Text := Text + Output[Line] + LB;
-  AEdit := TRuleEdit.Create(TTextRange.Create(Header + 1, 0, Stop, 0), Text);
+  AEdit := TTextEdit.Create(TTextRange.Create(Header + 1, 0, Stop, 0), Text);
   Result := True;
 end;
 

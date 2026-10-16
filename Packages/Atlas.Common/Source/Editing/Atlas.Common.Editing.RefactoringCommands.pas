@@ -20,7 +20,6 @@ uses
   System.SysUtils,
   Atlas.Common.Documents.Contract,
   Atlas.Common.Configuration.Contract,
-  Atlas.Common.Rules.Contract,
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.Lexer,
   Atlas.Common.Editing.Formatter,
@@ -28,11 +27,11 @@ uses
 
 { /fmt }
 
-function ExecuteFmt(const AContext: TSlashContext; out AEdits: TArray<TRuleEdit>; out AReason: string): Boolean;
+function ExecuteFmt(const AContext: TSlashContext; out AEdits: TArray<TTextEdit>; out AReason: string): Boolean;
 var
   Source: TCommandSource;
   Routine: TSyntaxNode;
-  Edit: TRuleEdit;
+  Edit: TTextEdit;
   Text: string;
 begin
   AEdits := nil;
@@ -56,7 +55,7 @@ end;
 
 { /measure }
 
-function ExecuteMeasure(const AContext: TSlashContext; out AEdits: TArray<TRuleEdit>; out AReason: string): Boolean;
+function ExecuteMeasure(const AContext: TSlashContext; out AEdits: TArray<TTextEdit>; out AReason: string): Boolean;
 var
   Source: TCommandSource;
   Routine: TSyntaxNode;

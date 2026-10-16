@@ -25,7 +25,6 @@ uses
   Atlas.Common.Documents.Contract,
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Index.Contract,
-  Atlas.Common.Rules.Contract,
   Atlas.Common.Editing.CodeActions;
 
 type
@@ -49,18 +48,20 @@ type
     /// <summary>Fügt die Deklaration zu einem Rumpf ohne Deklaration im private-Abschnitt ein
     /// (legt ihn bei Bedarf an); False, wenn der Typ nicht passend aufgebaut ist.</summary>
     class function AddDeclaration(ATree: TSyntaxTree; const AText: string; const AMethod: TUnmatchedMethod;
-      out AEdit: TRuleEdit): Boolean; static;
+      out AEdit: TTextEdit): Boolean; static;
     /// <summary>Aktion für fehlende Rümpfe an APosition; False, wenn nichts fehlt.</summary>
     class function MissingBodies(ATree: TSyntaxTree; const AText: string; const APosition: TTextPosition;
       out AAction: TCodeAction): Boolean; static;
     /// <summary>Zu einer Methode ohne Gegenstück mit eindeutigem Partner gleichen Namens und gleicher
     /// Parameteranzahl auf der anderen Seite: "Implementierung an Deklaration angleichen" und
-    /// "Deklaration an Implementierung angleichen" (#100). False ohne eindeutigen Partner.</summary>
+    /// "Deklaration an Implementierung angleichen" (#100). False ohne eindeutigen Partner.
+    /// Liefert Code-Aktionen statt TRuleFix, damit Editing ohne Rules auskommt (A-11); die Regeln
+    /// in Rules.Builtin.Declarations machen daraus alternative Korrekturen.</summary>
     class function SignatureFixes(ATree: TSyntaxTree; const AText: string; const AMethod: TUnmatchedMethod;
-      out AFixes: TArray<TRuleFix>): Boolean; static;
+      out AFixes: TArray<TCodeAction>): Boolean; static;
     /// <summary>Fügt den Rumpf ABody (ohne Zeilenumbruch am Ende) für einen Typ dieser Datei ein: hinter die
     /// letzte vorhandene Methode des Typs, sonst vor initialization, finalization bzw. "end." (#443).</summary>
-    class function BodyEdit(ATree: TSyntaxTree; const AText, ATypeName, ABody: string; out AEdit: TRuleEdit): Boolean;
+    class function BodyEdit(ATree: TSyntaxTree; const AText, ATypeName, ABody: string; out AEdit: TTextEdit): Boolean;
       static;
   end;
 
@@ -475,14 +476,14 @@ end;
 { TClassCompletion }
 
 class function TClassCompletion.SignatureFixes(ATree: TSyntaxTree; const AText: string;
-  const AMethod: TUnmatchedMethod; out AFixes: TArray<TRuleFix>): Boolean;
+  const AMethod: TUnmatchedMethod; out AFixes: TArray<TCodeAction>): Boolean;
 var
   Items: TArray<TUnmatchedMethod>;
   Item, Partner, Decl, Body: TUnmatchedMethod;
   Partners, Same: Integer;
   DeclRange, BodyRange: TTextRange;
   DeclTail, BodyTail: string;
-  Fix: TRuleFix;
+  Fix: TCodeAction;
 begin
   AFixes := nil;
   Result := False;
@@ -519,13 +520,13 @@ begin
   if not SignatureTail(ATree, AText, Decl.Symbol, DeclRange, DeclTail) or
     not SignatureTail(ATree, AText, Body.Symbol, BodyRange, BodyTail) then
     Exit;
-  Fix := TRuleFix.Create(Format('Implementierung von %s an die Deklaration angleichen', [AMethod.Symbol.Name]),
-    [TRuleEdit.Create(BodyRange, WithoutDefaults(DeclTail))]);
-  Fix.Alternative := True;
+  Fix := Default(TCodeAction);
+  Fix.Kind := QuickFixKind;
+  Fix.Title := Format('Implementierung von %s an die Deklaration angleichen', [AMethod.Symbol.Name]);
+  Fix.Edits := [TTextEdit.Create(BodyRange, WithoutDefaults(DeclTail))];
   AFixes := AFixes + [Fix];
-  Fix := TRuleFix.Create(Format('Deklaration von %s an die Implementierung angleichen', [AMethod.Symbol.Name]),
-    [TRuleEdit.Create(DeclRange, WithDefaultsOf(BodyTail, DeclTail))]);
-  Fix.Alternative := True;
+  Fix.Title := Format('Deklaration von %s an die Implementierung angleichen', [AMethod.Symbol.Name]);
+  Fix.Edits := [TTextEdit.Create(DeclRange, WithDefaultsOf(BodyTail, DeclTail))];
   AFixes := AFixes + [Fix];
   Result := True;
 end;
@@ -614,7 +615,7 @@ begin
 end;
 
 class function TClassCompletion.AddDeclaration(ATree: TSyntaxTree; const AText: string;
-  const AMethod: TUnmatchedMethod; out AEdit: TRuleEdit): Boolean;
+  const AMethod: TUnmatchedMethod; out AEdit: TTextEdit): Boolean;
 var
   Lines: TArray<string>;
   UnitIndex: TUnitIndex;
@@ -624,7 +625,7 @@ var
   Index, Line, EndLine: Integer;
 begin
   Result := False;
-  AEdit := Default(TRuleEdit);
+  AEdit := Default(TTextEdit);
   if AMethod.Declared then
     Exit;
   Lines := TTextLines.SplitLines(AText);
@@ -661,7 +662,7 @@ begin
     Trimmed := LowerCase(Trim(Lines[Line]));
     if Trimmed = 'private' then
     begin
-      AEdit := TRuleEdit.Create(TTextRange.Create(Line, Length(Lines[Line]), Line, Length(Lines[Line])),
+      AEdit := TTextEdit.Create(TTextRange.Create(Line, Length(Lines[Line]), Line, Length(Lines[Line])),
         LB + TTextLines.IndentOf(Lines[Line]) + '  ' + Declaration);
       Exit(True);
     end;
@@ -670,14 +671,14 @@ begin
   EndLine := TypeSymbol.Range.EndPos.Line;
   if not LowerCase(TrimLeft(Lines[EndLine])).StartsWith('end') then
     Exit;
-  AEdit := TRuleEdit.Create(TTextRange.Create(EndLine, 0, EndLine, 0),
+  AEdit := TTextEdit.Create(TTextRange.Create(EndLine, 0, EndLine, 0),
     TTextLines.IndentOf(Lines[EndLine]) + 'private' + LB + TTextLines.IndentOf(Lines[EndLine]) + '  ' +
     Declaration + LB);
   Result := True;
 end;
 
 class function TClassCompletion.BodyEdit(ATree: TSyntaxTree; const AText, ATypeName, ABody: string;
-  out AEdit: TRuleEdit): Boolean;
+  out AEdit: TTextEdit): Boolean;
 var
   Lines: TArray<string>;
   UnitIndex: TUnitIndex;
@@ -686,7 +687,7 @@ var
   Found: Boolean;
   LB: string;
 begin
-  AEdit := Default(TRuleEdit);
+  AEdit := Default(TTextEdit);
   Lines := TTextLines.SplitLines(AText);
   UnitIndex := TIndexExtractor.Extract(ATree, '');
   Found := False;
@@ -707,14 +708,14 @@ begin
       LastLine := Symbol.Range.EndPos.Line;
   LB := TTextLines.LineBreakOf(AText);
   if LastLine >= 0 then
-    AEdit := TRuleEdit.Create(TTextRange.Create(LastLine, Length(Lines[LastLine]), LastLine, Length(Lines[LastLine])),
+    AEdit := TTextEdit.Create(TTextRange.Create(LastLine, Length(Lines[LastLine]), LastLine, Length(Lines[LastLine])),
       LB + LB + ABody)
   else
   begin
     InsertLine := ImplementationEndLine(ATree);
     if InsertLine < 0 then
       Exit(False);
-    AEdit := TRuleEdit.Create(TTextRange.Create(InsertLine, 0, InsertLine, 0), ABody + LB + LB);
+    AEdit := TTextEdit.Create(TTextRange.Create(InsertLine, 0, InsertLine, 0), ABody + LB + LB);
   end;
   Result := True;
 end;
@@ -815,7 +816,7 @@ begin
     if LastLine >= 0 then
     begin
       InsertLine := LastLine;
-      AAction.Edits := [TRuleEdit.Create(TTextRange.Create(InsertLine, Length(Lines[InsertLine]), InsertLine,
+      AAction.Edits := [TTextEdit.Create(TTextRange.Create(InsertLine, Length(Lines[InsertLine]), InsertLine,
         Length(Lines[InsertLine])), LB + Copy(Bodies, 1, Length(Bodies) - Length(LB)))];
     end
     else
@@ -823,7 +824,7 @@ begin
       InsertLine := ImplementationEndLine(ATree);
       if InsertLine < 0 then
         Exit;
-      AAction.Edits := [TRuleEdit.Create(TTextRange.Create(InsertLine, 0, InsertLine, 0),
+      AAction.Edits := [TTextEdit.Create(TTextRange.Create(InsertLine, 0, InsertLine, 0),
         Copy(Bodies, Length(LB) + 1, MaxInt) + LB)];
     end;
     if OnMethod then

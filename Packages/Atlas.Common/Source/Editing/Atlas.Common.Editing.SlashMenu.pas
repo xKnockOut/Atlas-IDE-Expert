@@ -20,7 +20,7 @@
 interface
 
 uses
-  Atlas.Common.Rules.Contract,
+  Atlas.Common.Documents.Contract,
   Atlas.Common.Index.Contract,
   Atlas.Common.Editing.SlashCommands;
 
@@ -85,12 +85,12 @@ type
     /// Befehl dort nicht passt oder abgeschaltet ist.</summary>
     class function Run(ARegistry: TSlashCommandRegistry; const AText: string; const ASpot: TSlashSpot; const AName,
       AArguments: string; const ADisabled: TArray<string>; const AIndex: ISymbolIndex; const ADelphiVersion,
-      AUri: string; const AHost: ISlashHost; out AEdits: TArray<TRuleEdit>; out AReason: string): Boolean; static;
+      AUri: string; const AHost: ISlashHost; out AEdits: TArray<TTextEdit>; out AReason: string): Boolean; static;
     /// <summary>Rechnet Änderungen am Text mit der gedachten Zeile ACommandLine (Text ACommandText) auf den Text
     /// ohne sie um. Was die Änderungen von der Zeile nicht überdecken (Einrückung davor, Zeilenende), bleibt wie
     /// im gedachten Text erhalten.</summary>
-    class function MapEdits(const AEdits: TArray<TRuleEdit>; ACommandLine: Integer; const ACommandText,
-      ALineBreak: string): TArray<TRuleEdit>; static;
+    class function MapEdits(const AEdits: TArray<TTextEdit>; ACommandLine: Integer; const ACommandText,
+      ALineBreak: string): TArray<TTextEdit>; static;
   end;
 
 implementation
@@ -100,7 +100,6 @@ uses
   System.StrUtils,
   System.Math,
   Atlas.Text.Lines,
-  Atlas.Common.Documents.Contract,
   Atlas.Common.Pascal.Contract,
   Atlas.Common.Pascal.Lexer,
   Atlas.Common.Editing.CommandSource,
@@ -479,12 +478,12 @@ end;
 
 class function TSlashMenu.Run(ARegistry: TSlashCommandRegistry; const AText: string; const ASpot: TSlashSpot;
   const AName, AArguments: string; const ADisabled: TArray<string>; const AIndex: ISymbolIndex;
-  const ADelphiVersion, AUri: string; const AHost: ISlashHost; out AEdits: TArray<TRuleEdit>;
+  const ADelphiVersion, AUri: string; const AHost: ISlashHost; out AEdits: TArray<TTextEdit>;
   out AReason: string): Boolean;
 var
   Virtual, Command, LineBreak: string;
   CommandLine, WrapUntil: Integer;
-  Edits: TArray<TRuleEdit>;
+  Edits: TArray<TTextEdit>;
   Lines: TArray<string>;
 begin
   AEdits := nil;
@@ -506,11 +505,11 @@ begin
   AEdits := MapEdits(Edits, CommandLine, Lines[CommandLine], LineBreak);
 end;
 
-class function TSlashMenu.MapEdits(const AEdits: TArray<TRuleEdit>; ACommandLine: Integer; const ACommandText,
-  ALineBreak: string): TArray<TRuleEdit>;
+class function TSlashMenu.MapEdits(const AEdits: TArray<TTextEdit>; ACommandLine: Integer; const ACommandText,
+  ALineBreak: string): TArray<TTextEdit>;
 var
-  Edit: TRuleEdit;
-  Mapped: TArray<TRuleEdit>;
+  Edit: TTextEdit;
+  Mapped: TArray<TTextEdit>;
   Index, FirstStart, FirstEdit, LastEnd, LastEdit: Integer;
   BreakCovered: Boolean;
   Indent: string;
@@ -561,7 +560,7 @@ begin
   Mapped := nil;
   for Index := 0 to High(AEdits) do
   begin
-    Edit := TRuleEdit.Create(TTextRange.Create(Map(AEdits[Index].Range.StartPos), Map(AEdits[Index].Range.EndPos)),
+    Edit := TTextEdit.Create(TTextRange.Create(Map(AEdits[Index].Range.StartPos), Map(AEdits[Index].Range.EndPos)),
       AEdits[Index].NewText);
     if Index = FirstEdit then
       Edit.NewText := Indent + Edit.NewText;
