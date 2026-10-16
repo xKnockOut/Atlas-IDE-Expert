@@ -1755,3 +1755,32 @@ Vorbereitung: Plugin (Win32 und Win64) gebaut und installiert; `settings.exportI
 | EI22 | IDE-Thema hell ↔ dunkel, 100 %, 150 %, 200 % | Dialoge und Knopfleiste lesbar, nichts abgeschnitten; Punkte gut sichtbar |
 | EI23 | Protokoll (`%LOCALAPPDATA%\Atlas\Logs`) nach EI7–EI19 | Keine Dateipfade, Werte oder Benutzernamen aus Export und Import |
 | EI24 | Tipps „Einstellungen exportieren“, „… importieren“, „Einstellungsprofil laden“, „… zurücksetzen“ auf „Atlas entdecken“ | Bild und Text passend; mit `settings.exportImport` aus erscheinen sie nicht |
+
+## Willkommensseite frei anordnen (#767)
+
+Vorbereitung: Plugin (Win32 und Win64) gebaut und installiert; *Tools › Optionen › Atlas › Willkommensseite*: „Atlas-Layout verwenden“ an (Bereich „Atlas“ oben), „Willkommensseite frei anordnen“ an, „Meine Issues“ aus. Vorher Registry `HKCU\Software\Atlas\…\WelcomePageLayouts` leer bzw. nicht vorhanden.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| FL1 | `Atlas.Tests` bauen und ausführen | 0 Fehler, 0 Warnungen, 0 Hinweise; `TAtlasWelcomeArrangeTests`, `TAtlasWelcomeFlowTests`, `TAtlasWelcomeLayoutsTests`, `TAtlasWelcomeCustomizingTests`, `TAtlasWelcomeArrangeBoardTests`, `TAtlasSettingsPageTests.WelcomeLayoutsOnPage`, `TAtlasSettingsTransferTests.WelcomeLayoutsTravel`, `TAtlasWhatsNewTests.AnnouncedItemsJoinTheirVersion` und `TAtlasWelcomeSettingsTests` grün |
+| FL2 | Willkommensseite ansehen | Unter dem Kopf eine Leiste mit „✎ Seite anpassen“; kein Layout-Umschalter (nur ein Layout); Anordnung wie im Mockup WS17 (links Weiterarbeiten, Projekte, Projektverlauf, Testergebnisse; rechts Zustandskachel, Nicht gesichert, Neu in Atlas, Atlas entdecken, Projekt einrichten, Hilfe) |
+| FL3 | „Seite anpassen“ | Leiste zeigt „Fertig“, „Layout: Standard ▾“, „Spalten 1 2 3“ (2 hervorgehoben), „Bereich hinzufügen ▾“, „Zurücksetzen“; jeder Bereich hat links einen Griff ⠿, rechts Breite und Auge; unten „Ausgeblendet: Meine Issues +“; eine blaue Einfügelinie am Ende der kürzeren Spalte |
+| FL4 | Zustandskachel am Griff nach links oben ziehen, loslassen; IDE neu starten | Beim Ziehen wandert die Einfügelinie mit; nach dem Loslassen steht die Kachel links oben; nach dem Neustart steht sie dort (**Abnahme**) |
+| FL5 | „Zurücksetzen“; dann mit Tab auf den Griff der Zustandskachel, Strg+← | Atlas-Layout wieder hergestellt; mit Strg+← steht die Kachel links oben, der Fokus bleibt am Griff; Strg+↑ am oberen Rand tut nichts und der Fokus wandert nicht; Esc während des Ziehens bricht ab (**Abnahme**) |
+| FL6 | Auge an „Testergebnisse“ | Bereich verschwindet, erscheint unten unter „Ausgeblendet“; *Tools › Optionen › Atlas › Willkommensseite* „Testergebnisse“ ist aus (`welcomePage.tests` = false, Registry `WelcomePageTests` = 0) (**Abnahme**) |
+| FL7 | In den Optionen „Testergebnisse“ wieder an, OK | Bereich erscheint an seinem alten Platz (**Abnahme**) |
+| FL8 | Auf freie Fläche der rechten Spalte zwischen zwei Bereiche klicken, „Bereich hinzufügen ▾“ | Einfügelinie springt an die Stelle; das Menü listet alle Atlas-Bereiche mit kurzer Beschreibung, sichtbare abgehakt und gesperrt; „Meine Issues“ wählen: erscheint an der Einfügelinie, `welcomePage.issues` an (**Abnahme**) |
+| FL9 | „Meine Issues“ wieder per Auge aus; unten in „Ausgeblendet“ den Eintrag in die linke Spalte ziehen | Erscheint an der Stelle, an der losgelassen wurde; ein Klick auf den Eintrag setzt ihn an die Einfügelinie |
+| FL10 | Breite an „Projekte“ | Bereich über zwei Spalten; Symbol der Breite wechselt; noch einmal: wieder eine Spalte |
+| FL11 | Spalten „3“, dann „1“ | Drei Spalten; mit einer Spalte stehen alle untereinander; zurück auf 2: alte Plätze; `welcomePage.columns` folgt |
+| FL12 | „Layout ▾ › Neues Layout …“ „Präsentation“; dort Projektverlauf ausblenden, Spalten 1; „Layout ▾ › Standard“ | Neues Layout ist Kopie und aktiv; in „Standard“ ist der Projektverlauf wieder da, zwei Spalten; zurück auf „Präsentation“: wieder ausgeblendet. Umbenennen in „Arbeit“ bzw. einen vergebenen Namen: Hinweis „Ein Layout … gibt es schon.“; Löschen fragt nach, das letzte Layout lässt sich nicht löschen (**Abnahme**) |
+| FL13 | „Fertig“; Kopf zeigt jetzt „Layout: Arbeit ▾“ | Umschalten zwischen „Arbeit“ und „Präsentation“ ohne Bearbeitungsmodus (**Abnahme**) |
+| FL14 | „Zurücksetzen“ im Bearbeitungsmodus | Plätze, Breiten und Spalten wie #753; ausgeblendete Bereiche bleiben ausgeblendet; das andere Layout bleibt unverändert (**Abnahme**) |
+| FL15 | *Ansicht › Atlas-Start* | Gleiche Anordnung wie auf der Willkommensseite; Bearbeitungsmodus gilt in beiden zugleich; schmales Fenster faltet Spalten untereinander (**Abnahme**) |
+| FL16 | Rechtsklick auf einen Bereich (Titel oder Fläche) | Menü „Ausblenden“, „Einstellungen dazu …“, Trennlinie, „Seite anpassen“; „Ausblenden“ zeigt „Ausgeblendet“ mit „Rückgängig“ wie #628; „Einstellungen dazu …“ öffnet *Tools › Optionen › Atlas › Willkommensseite* mit der Zeile des Bereichs fett im Bild |
+| FL17 | Befehlspalette „Willkommensseite anpassen“; mit „Atlas-Layout verwenden“ aus | Schaltet den Bearbeitungsmodus um; ohne Bereich „Atlas“ öffnet der Befehl „Atlas-Start“ im Bearbeitungsmodus |
+| FL18 | „Willkommensseite frei anordnen“ aus (Optionen oder Schnellschalter) | Keine Leiste, kein Griff, kein Befehl in der Palette; festes Layout aus #753; Rechtsklick „Ausblenden“ geht weiter (**Abnahme**) |
+| FL19 | Optionen › Willkommensseite: „Aktives Layout“ wechseln, „Neu …“, „Umbenennen …“, „Löschen“, „Spalten der Seite“ | Häkchen der Bereiche folgen dem gewählten Layout; nach OK zeigt die Willkommensseite das gewählte Layout |
+| FL20 | Einstellungen exportieren (Bereich Willkommensseite), auf einem zweiten Profil importieren; „Seite zurücksetzen“ | `welcomePage.layouts`, `.activeLayout`, `.columns`, `.customLayout` in der Datei und nach dem Import wirksam; Zurücksetzen bringt ein Layout „Standard“ |
+| FL21 | Eigenes Layout gespeichert; Registry-Wert `WelcomePageLayouts` von Hand ohne `atlas.help` speichern, IDE neu starten | „Hilfe“ steht am Ende der Spalte mit dem meisten Platz; „Neu in Atlas“ meldet „Neuer Bereich: Hilfe und Rückmeldung“ |
+| FL22 | IDE-Thema hell ↔ dunkel, 100 %, 150 %, 200 % | Leisten, Griff, Werkzeuge und Einfügelinie lesbar und passend skaliert |

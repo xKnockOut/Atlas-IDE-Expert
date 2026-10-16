@@ -70,6 +70,10 @@ type
     class function Latest(const AVersions: TAtlasWhatsNewVersions; const ACurrent: string): TAtlasWhatsNewVersions; static;
     /// <summary>Alle Versionen &lt;= ACurrent, neueste zuerst.</summary>
     class function UpTo(const AVersions: TAtlasWhatsNewVersions; const ACurrent: string): TAtlasWhatsNewVersions; static;
+    /// <summary>AItems an die Version AVersion anhängen (neu angelegt, wenn es sie noch nicht gibt; neueste
+    /// zuerst). Einträge mit einem Titel, den die Version schon hat, fallen weg (#767: neue Bereiche).</summary>
+    class function WithItems(const AVersions: TAtlasWhatsNewVersions; const AVersion: string;
+      const AItems: TArray<TAtlasWhatsNewItem>): TAtlasWhatsNewVersions; static;
     /// <summary>Einstellung welcomePage.whatsNew; Unbekanntes gilt als afterUpdate.</summary>
     class function ModeOf(const AValue: string): TAtlasWhatsNewMode; static;
     class function ModeName(AMode: TAtlasWhatsNewMode): string; static;
@@ -305,6 +309,48 @@ begin
   Result := nil;
   if Length(All) > 0 then
     Result := [All[0]];
+end;
+
+class function TAtlasWhatsNew.WithItems(const AVersions: TAtlasWhatsNewVersions; const AVersion: string;
+  const AItems: TArray<TAtlasWhatsNewItem>): TAtlasWhatsNewVersions;
+var
+  Index, Target: Integer;
+  Item, Known: TAtlasWhatsNewItem;
+  Found: Boolean;
+  Added: TAtlasWhatsNewVersion;
+begin
+  Result := Copy(AVersions);
+  if (AVersion = '') or (Length(AItems) = 0) then
+    Exit;
+  Target := -1;
+  for Index := 0 to High(Result) do
+    if CompareVersions(Result[Index].Version, AVersion) = 0 then
+      Target := Index;
+  if Target < 0 then
+  begin
+    Added.Version := AVersion;
+    Added.Items := nil;
+    // Neueste zuerst: vor die erste ältere Version.
+    Target := Length(Result);
+    for Index := High(Result) downto 0 do
+      if CompareVersions(Result[Index].Version, AVersion) < 0 then
+        Target := Index;
+    Insert(Added, Result, Target);
+  end;
+  Result[Target].Items := Copy(Result[Target].Items);
+  for Item in AItems do
+  begin
+    if Item.Title = '' then
+      Continue;
+    Found := False;
+    for Known in Result[Target].Items do
+      Found := Found or SameText(Known.Title, Item.Title);
+    if not Found then
+      Result[Target].Items := Result[Target].Items + [Item];
+  end;
+  // Eine neu angelegte Version ohne Einträge gäbe es in Parse nicht.
+  if Length(Result[Target].Items) = 0 then
+    Delete(Result, Target, 1);
 end;
 
 class function TAtlasWhatsNew.ModeOf(const AValue: string): TAtlasWhatsNewMode;

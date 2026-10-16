@@ -533,7 +533,7 @@ begin
     FKeyButton := -1;
   end;
   FUseKey := False;
-  if FSink.CanFocus and not FSink.Focused then
+  if FSink.CanFocus and not FSink.Focused and (GetParentForm(FSink) <> nil) and GetParentForm(FSink).Visible then
     FSink.SetFocus;
 end;
 

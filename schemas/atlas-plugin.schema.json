@@ -549,82 +549,6 @@
       "x-captionEn": "Build server access",
       "x-issue": "#763"
     },
-    "WelcomePageIssues": {
-      "type": "boolean",
-      "default": false,
-      "x-key": "welcomePage.issues",
-      "x-area": "welcome",
-      "x-feature": "WelcomePage",
-      "x-page": "Willkommensseite",
-      "x-quickToggle": true,
-      "x-caption": "Meine Issues aus dem Tracker",
-      "x-captionEn": "My issues from the tracker",
-      "x-issue": "#765"
-    },
-    "WelcomePageIssuesTracker": {
-      "type": "string",
-      "enum": [
-        "",
-        "github",
-        "youtrack"
-      ],
-      "default": "",
-      "x-key": "welcomePage.issues.tracker",
-      "x-area": "welcome",
-      "x-team": "tracker.provider",
-      "x-page": "Willkommensseite"
-    },
-    "WelcomePageIssuesQuery": {
-      "type": "string",
-      "default": "",
-      "x-key": "welcomePage.issues.query",
-      "x-area": "welcome",
-      "x-page": "Willkommensseite"
-    },
-    "WelcomePageIssuesStart": {
-      "type": "string",
-      "enum": [
-        "branch",
-        "remember"
-      ],
-      "default": "branch",
-      "x-key": "welcomePage.issues.start",
-      "x-area": "welcome",
-      "x-page": "Willkommensseite"
-    },
-    "WelcomePageIssuesBranchPattern": {
-      "type": "string",
-      "default": "",
-      "x-key": "welcomePage.issues.branchPattern",
-      "x-area": "welcome",
-      "x-page": "Willkommensseite"
-    },
-    "WelcomePageIssuesBranchBase": {
-      "type": "string",
-      "default": "",
-      "x-key": "welcomePage.issues.branchBase",
-      "x-area": "welcome",
-      "x-page": "Willkommensseite"
-    },
-    "WelcomePageIssuesCommitPattern": {
-      "type": "string",
-      "default": "{kennung} ",
-      "x-key": "welcomePage.issues.commitPattern",
-      "x-area": "welcome",
-      "x-page": "Willkommensseite"
-    },
-    "TrackerLogin": {
-      "type": "boolean",
-      "default": true,
-      "x-key": "welcomePage.issues.login",
-      "x-area": "welcome",
-      "x-feature": "WelcomePage",
-      "x-page": "Willkommensseite",
-      "x-quickToggle": true,
-      "x-caption": "Zugang zum Issue-Tracker",
-      "x-captionEn": "Issue tracker access",
-      "x-issue": "#765"
-    },
     "WelcomePageQuickActions": {
       "type": "boolean",
       "default": true,
@@ -852,6 +776,15 @@
       "x-area": "keys",
       "x-format": "shortcut",
       "x-page": "Befehle"
+    },
+    "HideElementKey": {
+      "type": "integer",
+      "default": 16574,
+      "x-key": "keys.hideElement",
+      "x-area": "keys",
+      "x-format": "shortcut",
+      "x-page": "Befehle",
+      "x-issue": "#628"
     },
     "ServerPath": {
       "type": "string",
@@ -1086,15 +1019,6 @@
       "x-area": "keys",
       "x-format": "shortcut",
       "x-page": "Befehle"
-    },
-    "HideElementKey": {
-      "type": "integer",
-      "default": 16574,
-      "x-key": "keys.hideElement",
-      "x-area": "keys",
-      "x-format": "shortcut",
-      "x-page": "Befehle",
-      "x-issue": "#628"
     },
     "GenerateMenuGroups": {
       "type": "string",
@@ -1612,7 +1536,12 @@
       "default": true,
       "x-key": "welcomePage.projectStatus",
       "x-area": "welcome",
-      "x-page": "Willkommensseite"
+      "x-feature": "WelcomePage",
+      "x-page": "Willkommensseite",
+      "x-quickToggle": true,
+      "x-caption": "Bereich „Projekte“",
+      "x-captionEn": "Section “Projects”",
+      "x-issue": "#767"
     },
     "WelcomePageMaxProjects": {
       "type": "integer",
@@ -1633,7 +1562,12 @@
       "default": true,
       "x-key": "welcomePage.unsaved",
       "x-area": "welcome",
-      "x-page": "Willkommensseite"
+      "x-feature": "WelcomePage",
+      "x-page": "Willkommensseite",
+      "x-quickToggle": true,
+      "x-caption": "Bereich „Nicht gesichert“",
+      "x-captionEn": "Section “Not saved”",
+      "x-issue": "#767"
     },
     "WelcomePageUnsavedMinAgeHours": {
       "type": "integer",
@@ -1668,7 +1602,12 @@
       "default": true,
       "x-key": "welcomePage.statusTile",
       "x-area": "welcome",
-      "x-page": "Willkommensseite"
+      "x-feature": "WelcomePage",
+      "x-page": "Willkommensseite",
+      "x-quickToggle": true,
+      "x-caption": "Zustandskachel „Atlas“",
+      "x-captionEn": "Status tile “Atlas”",
+      "x-issue": "#767"
     },
     "WelcomePageStatusTileOnlyProblems": {
       "type": "boolean",
@@ -1682,7 +1621,12 @@
       "default": true,
       "x-key": "welcomePage.discover",
       "x-area": "welcome",
-      "x-page": "Willkommensseite"
+      "x-feature": "WelcomePage",
+      "x-page": "Willkommensseite",
+      "x-quickToggle": true,
+      "x-caption": "Karte „Atlas entdecken“",
+      "x-captionEn": "Card “Discover Atlas”",
+      "x-issue": "#767"
     },
     "TipsUsageTracking": {
       "type": "boolean",
@@ -1696,7 +1640,12 @@
       "default": true,
       "x-key": "welcomePage.help",
       "x-area": "welcome",
-      "x-page": "Willkommensseite"
+      "x-feature": "WelcomePage",
+      "x-page": "Willkommensseite",
+      "x-quickToggle": true,
+      "x-caption": "Bereich „Hilfe“",
+      "x-captionEn": "Section “Help”",
+      "x-issue": "#767"
     },
     "WelcomePageHelpReportUrl": {
       "type": "string",
@@ -1725,7 +1674,12 @@
       "default": true,
       "x-key": "welcomePage.continue",
       "x-area": "welcome",
-      "x-page": "Willkommensseite"
+      "x-feature": "WelcomePage",
+      "x-page": "Willkommensseite",
+      "x-quickToggle": true,
+      "x-caption": "Bereich „Weiterarbeiten“",
+      "x-captionEn": "Section “Continue”",
+      "x-issue": "#767"
     },
     "WelcomePageContinueCount": {
       "type": "integer",
@@ -1760,7 +1714,12 @@
       "default": true,
       "x-key": "welcomePage.trends",
       "x-area": "welcome",
-      "x-page": "Willkommensseite"
+      "x-feature": "WelcomePage",
+      "x-page": "Willkommensseite",
+      "x-quickToggle": true,
+      "x-caption": "Bereich „Projektverlauf“",
+      "x-captionEn": "Section “Project history”",
+      "x-issue": "#767"
     },
     "WelcomePageTrendsPoints": {
       "type": "integer",
@@ -1781,7 +1740,12 @@
       "default": true,
       "x-key": "welcomePage.tests",
       "x-area": "welcome",
-      "x-page": "Willkommensseite"
+      "x-feature": "WelcomePage",
+      "x-page": "Willkommensseite",
+      "x-quickToggle": true,
+      "x-caption": "Bereich „Testergebnisse“",
+      "x-captionEn": "Section “Test results”",
+      "x-issue": "#767"
     },
     "WelcomePageTestsMaxFailures": {
       "type": "integer",
@@ -1852,6 +1816,124 @@
       "x-area": "keys",
       "x-format": "shortcut",
       "x-page": "Willkommensseite"
+    },
+    "WelcomePageIssues": {
+      "type": "boolean",
+      "default": false,
+      "x-key": "welcomePage.issues",
+      "x-area": "welcome",
+      "x-feature": "WelcomePage",
+      "x-page": "Willkommensseite",
+      "x-quickToggle": true,
+      "x-caption": "Meine Issues aus dem Tracker",
+      "x-captionEn": "My issues from the tracker",
+      "x-issue": "#765"
+    },
+    "WelcomePageIssuesTracker": {
+      "type": "string",
+      "enum": [
+        "",
+        "github",
+        "youtrack"
+      ],
+      "default": "",
+      "x-key": "welcomePage.issues.tracker",
+      "x-area": "welcome",
+      "x-team": "tracker.provider",
+      "x-page": "Willkommensseite",
+      "x-issue": "#765"
+    },
+    "WelcomePageIssuesQuery": {
+      "type": "string",
+      "default": "",
+      "x-key": "welcomePage.issues.query",
+      "x-area": "welcome",
+      "x-page": "Willkommensseite",
+      "x-issue": "#765"
+    },
+    "WelcomePageIssuesStart": {
+      "type": "string",
+      "enum": [
+        "branch",
+        "remember"
+      ],
+      "default": "branch",
+      "x-key": "welcomePage.issues.start",
+      "x-area": "welcome",
+      "x-page": "Willkommensseite",
+      "x-issue": "#765"
+    },
+    "WelcomePageIssuesBranchPattern": {
+      "type": "string",
+      "default": "",
+      "x-key": "welcomePage.issues.branchPattern",
+      "x-area": "welcome",
+      "x-page": "Willkommensseite",
+      "x-issue": "#765"
+    },
+    "WelcomePageIssuesBranchBase": {
+      "type": "string",
+      "default": "",
+      "x-key": "welcomePage.issues.branchBase",
+      "x-area": "welcome",
+      "x-page": "Willkommensseite",
+      "x-issue": "#765"
+    },
+    "WelcomePageIssuesCommitPattern": {
+      "type": "string",
+      "default": "{kennung} ",
+      "x-key": "welcomePage.issues.commitPattern",
+      "x-area": "welcome",
+      "x-page": "Willkommensseite",
+      "x-issue": "#765"
+    },
+    "TrackerLogin": {
+      "type": "boolean",
+      "default": true,
+      "x-key": "welcomePage.issues.login",
+      "x-area": "welcome",
+      "x-feature": "WelcomePage",
+      "x-page": "Willkommensseite",
+      "x-quickToggle": true,
+      "x-caption": "Zugang zum Issue-Tracker",
+      "x-captionEn": "Issue tracker access",
+      "x-issue": "#765"
+    },
+    "WelcomePageCustomLayout": {
+      "type": "boolean",
+      "default": true,
+      "x-key": "welcomePage.customLayout",
+      "x-area": "welcome",
+      "x-feature": "WelcomePage",
+      "x-page": "Willkommensseite",
+      "x-quickToggle": true,
+      "x-caption": "Willkommensseite anpassen",
+      "x-captionEn": "Customize the welcome page",
+      "x-issue": "#767"
+    },
+    "WelcomePageColumns": {
+      "type": "integer",
+      "default": 2,
+      "x-key": "welcomePage.columns",
+      "x-area": "welcome",
+      "x-page": "Willkommensseite",
+      "x-issue": "#767"
+    },
+    "WelcomePageLayouts": {
+      "type": "string",
+      "default": "",
+      "x-key": "welcomePage.layouts",
+      "x-area": "welcome",
+      "x-page": "Willkommensseite",
+      "x-issue": "#767"
+    },
+    "WelcomePageActiveLayout": {
+      "type": "string",
+      "default": "Standard",
+      "x-key": "welcomePage.activeLayout",
+      "x-area": "welcome",
+      "x-page": "Willkommensseite",
+      "x-issue": "#767"
     },
     "NotificationsSources": {
       "type": "string",
