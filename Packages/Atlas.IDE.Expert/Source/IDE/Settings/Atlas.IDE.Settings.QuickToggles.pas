@@ -22,7 +22,7 @@ uses
   System.Types,
   Atlas.Core.Settings.QuickToggles,
   Atlas.UI.Settings.QuickToggles,
-  Atlas.IDE.Commands.Keys,
+  Atlas.IDE.Foundation.Keys,
   Atlas.Core.Commands.Palette;
 
 type
@@ -75,10 +75,10 @@ uses
   Atlas.Core.Settings.Plugin,
   Atlas.Core.Diagnostics.Guard,
   Atlas.UI.Strings,
-  Atlas.IDE.Settings.Store,
+  Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Settings.Project,
-  Atlas.IDE.Editor.Structure,
-  Atlas.IDE.Editor.Style;
+  Atlas.IDE.Foundation.StructureSwitch,
+  Atlas.IDE.Foundation.EditorStyle;
 
 const
   AnswerSession = 100;

@@ -54,11 +54,11 @@ uses
   Atlas.Core.Commands.Palette,
   Atlas.UI.Strings,
   Atlas.UI.Commands.Palette,
-  Atlas.IDE.Editor.Buffer,
-  Atlas.IDE.Editor.Style,
+  Atlas.IDE.Foundation.EditorBuffer,
+  Atlas.IDE.Foundation.EditorStyle,
   Atlas.IDE.Editor.WorkspaceEdit,
   Atlas.IDE.Editor.Rename,
-  Atlas.IDE.Results.Window,
+  Atlas.IDE.Foundation.ResultsWindow,
   Atlas.IDE.Foundation.Navigation;
 
 const

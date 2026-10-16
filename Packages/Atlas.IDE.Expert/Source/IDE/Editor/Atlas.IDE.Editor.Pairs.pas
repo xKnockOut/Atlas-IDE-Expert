@@ -10,7 +10,7 @@
 // Blocklinien (eigene Einstellung): Nach dem Zeichnen jeder Zeile senkrechte
 // Linien der Blöcke über mehrere Zeilen in den Paarfarben, mit Haken an Öffner
 // und Schließer; die Strukturhervorhebung der IDE ist dann aus
-// (Atlas.IDE.Editor.Structure).
+// (Atlas.IDE.Foundation.StructureSwitch).
 // Inaktive {$IFDEF}-Zweige (#615): Text darin zeichnet Atlas in einer
 // Farbe zwischen Text und Hintergrund, ganze Zeilen und Teile von Zeilen
 // ({$IFDEF X} a {$ENDIF}); die Direktiven selbst bleiben normal. Die Bereiche
@@ -103,9 +103,9 @@ uses
   Atlas.Core.Settings.Plugin,
   Atlas.Core.Style.Color,
   Atlas.Core.Diagnostics.Hangs,
-  Atlas.IDE.Editor.Buffer,
-  Atlas.IDE.Editor.Style,
-  Atlas.IDE.Settings.Store,
+  Atlas.IDE.Foundation.EditorBuffer,
+  Atlas.IDE.Foundation.EditorStyle,
+  Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Problems.Controller;
 
 { TAtlasEditorPairs.TEvents }

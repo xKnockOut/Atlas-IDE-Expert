@@ -1,4 +1,4 @@
-﻿unit Atlas.IDE.Editor.GutterMarks;
+﻿unit Atlas.IDE.Foundation.GutterMarks;
 
 // Gemeinsame Zeichenschicht der Rinne (#401) für Markierungen an Codezeilen,
 // genutzt von den persönlichen Notizen (#545) und den benannten Lesezeichen
@@ -152,8 +152,8 @@ uses
   Winapi.Windows,
   System.Math,
   Atlas.Core.Projects.Summary,
-  Atlas.IDE.Editor.Buffer,
-  Atlas.IDE.Editor.Style;
+  Atlas.IDE.Foundation.EditorBuffer,
+  Atlas.IDE.Foundation.EditorStyle;
 
 { TAtlasIdeGutterMarks.TEvents }
 

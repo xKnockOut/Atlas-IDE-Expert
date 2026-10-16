@@ -69,8 +69,8 @@ uses
   Atlas.UI.Undo.Messages,
   Atlas.UI.Undo.DiffView,
   Atlas.UI.Results.Frame,
-  Atlas.IDE.Settings.Store,
-  Atlas.IDE.Results.Window,
+  Atlas.IDE.Foundation.Settings,
+  Atlas.IDE.Foundation.ResultsWindow,
   Atlas.IDE.Undo.Target;
 
 const

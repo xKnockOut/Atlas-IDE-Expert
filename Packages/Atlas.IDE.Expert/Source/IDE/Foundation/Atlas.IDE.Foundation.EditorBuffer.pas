@@ -1,4 +1,4 @@
-﻿unit Atlas.IDE.Editor.Buffer;
+﻿unit Atlas.IDE.Foundation.EditorBuffer;
 
 // Lesen aus dem Editorpuffer der IDE und Umrechnen von Positionen. Der Puffer
 // ist UTF-8; LSP-Positionen sind 0-basierte Zeilen und UTF-16-Zeichen, die

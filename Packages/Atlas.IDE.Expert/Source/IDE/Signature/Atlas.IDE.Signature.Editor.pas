@@ -33,7 +33,7 @@ uses
   Atlas.Core.Signature.Controller,
   Atlas.UI.Signature.Hint,
   Atlas.Core.Editor.CloseRules,
-  Atlas.IDE.Editor.KeyHook;
+  Atlas.IDE.Foundation.KeyHook;
 
 type
   TAtlasLogFunc = reference to procedure(const AMessage: string);
@@ -102,9 +102,9 @@ uses
   Vcl.Forms,
   DockForm,
   Atlas.Core.Signature.CallScanner,
-  Atlas.IDE.Editor.Buffer,
-  Atlas.IDE.Editor.Style,
-  Atlas.IDE.Settings.Store,
+  Atlas.IDE.Foundation.EditorBuffer,
+  Atlas.IDE.Foundation.EditorStyle,
+  Atlas.IDE.Foundation.Settings,
   Atlas.Core.Lsp.Session;
 
 /// <summary>Größe des Editorfensters (Client-Bereich); (0, 0) ohne Fenster.</summary>

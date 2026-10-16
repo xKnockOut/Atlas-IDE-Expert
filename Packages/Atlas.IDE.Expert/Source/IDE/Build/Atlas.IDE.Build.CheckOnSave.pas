@@ -81,7 +81,7 @@ type
 implementation
 
 uses
-  Atlas.IDE.Commands.Keys,
+  Atlas.IDE.Foundation.Keys,
   Atlas.Core.Diagnostics.Guard,
   Winapi.Windows,
   Vcl.Forms,
@@ -91,7 +91,7 @@ uses
   System.StrUtils,
   Atlas.Core.Settings.Plugin,
   Atlas.UI.Strings,
-  Atlas.IDE.Settings.Store,
+  Atlas.IDE.Foundation.Settings,
   Atlas.Core.Diagnostics.Hangs;
 
 function NowMs: Int64;

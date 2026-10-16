@@ -88,9 +88,9 @@ uses
   Vcl.Forms,
   Atlas.UI.Commands.Palette,
   Atlas.UI.Strings,
-  Atlas.IDE.Editor.Style,
-  Atlas.IDE.Settings.Store,
-  Atlas.IDE.Commands.Keys,
+  Atlas.IDE.Foundation.EditorStyle,
+  Atlas.IDE.Foundation.Settings,
+  Atlas.IDE.Foundation.Keys,
   Atlas.IDE.Commands.ShortcutTips;
 
 { TAtlasIdePalette.TBinding }

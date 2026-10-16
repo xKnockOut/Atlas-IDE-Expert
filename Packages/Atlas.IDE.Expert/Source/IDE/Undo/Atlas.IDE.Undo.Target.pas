@@ -50,8 +50,8 @@ uses
   Winapi.ShellAPI,
   Atlas.Core.Lsp.TextChanges,
   Atlas.Core.Forms.Changes,
-  Atlas.IDE.Editor.Buffer,
-  Atlas.IDE.Editor.Snapshot,
+  Atlas.IDE.Foundation.EditorBuffer,
+  Atlas.IDE.Foundation.EditorSnapshot,
   Atlas.IDE.Forms.Designer,
   Atlas.IDE.Foundation.Files;
 
