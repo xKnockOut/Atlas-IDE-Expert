@@ -26,7 +26,8 @@ uses
   Atlas.Core.Commands.Palette;
 
 type
-  TAtlasIdePalette = class
+  /// <summary>Ohne Referenzzählung (TNoRefCountObject): Die Composition gibt die Palette frei.</summary>
+  TAtlasIdePalette = class(TNoRefCountObject, IAtlasCommandRegistry)
   private type
     TBinding = class(TNotifierObject, IOTAKeyboardBinding)
     private
