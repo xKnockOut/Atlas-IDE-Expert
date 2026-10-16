@@ -120,8 +120,12 @@
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.References.Tests.pas"/>
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.Rename.Tests.pas"/>
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.Completion.Tests.pas"/>
+        <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.Completion.Handle.Tests.pas"/>
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.Completion.Contexts.Tests.pas"/>
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.CompletionEnums.Tests.pas"/>
+        <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.CompletionRequest.Tests.pas"/>
+        <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.CompletionCollector.Tests.pas"/>
+        <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.Internals.CompletionSource.Tests.pas"/>
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.SignatureHelp.Tests.pas"/>
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.Hierarchies.Tests.pas"/>
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.Implementations.Tests.pas"/>

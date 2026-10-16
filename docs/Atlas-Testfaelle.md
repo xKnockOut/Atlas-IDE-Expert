@@ -1281,6 +1281,22 @@ Vorbereitung: Projektgruppe neu gebaut, Plugin installiert, Diagnosemodus an.
 | TX7 | `settings.json` mit `// Kommentar` und CR-only-Zeilenenden speichern, Optionen öffnen | Einstellungen werden gelesen, keine Fehlermeldung |
 | TX8 | Info-Dialog und Startbildschirm, `AtlasServer --version`, Titel des Installers | überall dieselbe Version |
 
+## Vervollständigung nach Umbau (Code-Review S-01)
+
+Vorbereitung: Projektgruppe neu gebaut (Delphi 12 und 13), Plugin installiert. Der Umbau soll nichts Sichtbares ändern; jeder Fall verhält sich wie vor dem Umbau.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| CU1 | In einer Methode `Sel` tippen, dann `Self.` | sichtbare Namen bzw. Mitglieder samt geerbter wie bisher, unscharfe Auswahl |
+| CU2 | Name aus einer nicht eingebundenen Unit wählen (LF- und CRLF-Datei) | uses-Eintrag wird ergänzt |
+| CU3 | `{$` und `{$WARN ` tippen | Direktiven bzw. Warnungsbezeichner |
+| CU4 | `X := ` bei Aufzählungstyp, `case`-Zweig, Menge `[…]` | Aufzählungswerte, „Alle Werte einfügen“, Häkchen bei vorhandenen |
+| CU5 | Unbekannten Namen im Rumpf tippen | Angebote zum Anlegen von Variable, Feld, Konstante |
+| CU6 | Klasse mit Interface ohne Methoden, in der Deklaration vervollständigen | fehlende Interface-Methoden |
+| CU7 | In Formularmethode Komponentennamen, `Sender.` im Ereignis-Handler, `FieldByName('` | Komponenten, Member des gemeinsamen Vorfahren, Feldnamen |
+| CU8 | `TStringList.Create;` mit `;` abschließen | nur „Mit try…finally absichern“ |
+| CU9 | `Ausdruck.` mit Postfix-Vorlage, `/prop` am Zeilenanfang | Vorlagen wie bisher, `completionItem/resolve` liefert Details |
+
 ## Rollenmatrix (Code-Review A-10, A-12)
 
 Vorbereitung: Repository-Ordner als Projekt geöffnet (die `atlas.json` im Wurzelordner schaltet beide Regeln mit `prefixes` ein).
