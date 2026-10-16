@@ -339,6 +339,9 @@ begin
       '"x-captionEn":"Stop at the start of the method when debugging a test","x-issue":"#585"},' +
     '"TestsBuildFirst":{"type":"boolean","default":true,"x-page":"Compiler",' +
       '"x-caption":"Vor den Tests bauen","x-captionEn":"Build before the tests","x-issue":"#69"},' +
+    '"ReleaseGuard":{"type":"boolean","x-feature":"Build",' +
+      '"default":true,"x-page":"Release-Build","x-quickToggle":true,' +
+      '"x-caption":"Release-Build-Wächter","x-captionEn":"Release build guard","x-issue":"#533"},' +
     '"BuildZeroHints":{"type":"boolean","default":false,"x-page":"Compiler",' +
       '"x-caption":"Build nur ohne Warnungen und Hinweise erfolgreich",' +
       '"x-captionEn":"Build succeeds only without warnings and hints","x-issue":"#530"},' +

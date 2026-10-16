@@ -194,6 +194,11 @@ begin
   Assert.AreEqual('Editor', Toggle.Page);
   Assert.IsFalse(Toggle.Drawing);
   Assert.AreEqual('Palette', Toggle.Feature);
+  // Release-Build-Wächter samt Befehl (#533): eigener Schalter auf der Seite Release-Build, keine Zeichnung.
+  Assert.IsTrue(TAtlasQuickToggles.Find(Toggles, 'ReleaseGuard', Toggle));
+  Assert.AreEqual('Release-Build', Toggle.Page);
+  Assert.IsFalse(Toggle.Drawing);
+  Assert.AreEqual('Build', Toggle.Feature);
   // Einrichtungskarte und Befehl Atlas.ProjectSetup (#759): eigener Schalter auf der Seite Willkommensseite.
   Assert.IsTrue(TAtlasQuickToggles.Find(Toggles, 'WelcomePageProjectSetup', Toggle));
   Assert.AreEqual('Willkommensseite', Toggle.Page);
@@ -255,6 +260,7 @@ begin
   Assert.IsTrue(Effective.StartProfiles, 'Startprofile (#575) sind keine Zeichnung');
   Assert.IsTrue(Effective.TestDebug, 'Test debuggen (#585) ist keine Zeichnung');
   Assert.IsTrue(Effective.BaselineUpdate, 'Befehl (#97) ist keine Zeichnung');
+  Assert.IsTrue(Effective.ReleaseGuard, 'Release-Wächter (#533) ist keine Zeichnung');
   Assert.IsTrue(Stored.PairColors);
   Assert.IsTrue(Stored.PairGuides);
   Assert.IsTrue(Stored.HoverTooltip);

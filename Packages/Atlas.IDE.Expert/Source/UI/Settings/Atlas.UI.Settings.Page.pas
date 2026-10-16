@@ -35,6 +35,7 @@ uses
   Atlas.Core.Style.Palette,
   Atlas.Core.Settings.Plugin,
   Atlas.Core.Settings.TeamFile,
+  Atlas.Core.Build.ReleaseGuard,
   Atlas.Core.Projects.Summary,
   Atlas.Core.Completion.Favorites,
   Atlas.Core.Diagnostics.Hangs,
@@ -181,6 +182,13 @@ type
     FTestsBuildFirst: TCheckBox;
     FTestsAfterBuild: TCheckBox;
     FBuildZeroHints: TCheckBox;
+    /// <summary>Release-Build-Wächter (#533): Schalter, build.gate, weitere Release-Konfigurationen und je Prüfung
+    /// ein Haken (ohne Sollwert) bzw. eine Auswahl „nicht prüfen / Soll aus / Soll an“.</summary>
+    FReleaseGuard: TCheckBox;
+    FBuildGate: TAtlasChoiceBox;
+    FReleaseConfigs: TEdit;
+    FReleaseCheckBoxes: array[TAtlasReleaseCheck] of TCheckBox;
+    FReleaseCheckChoices: array[TAtlasReleaseCheck] of TAtlasChoiceBox;
     /// <summary>Startprofile (#575): Befehl, Statusfeld.</summary>
     FStartProfiles: TCheckBox;
     FStartProfilesStatusField: TCheckBox;
@@ -345,6 +353,9 @@ type
     procedure AddNotificationSources;
     procedure NotificationSourceChange(Sender: TObject);
     procedure NotificationModeChange(Sender: TObject);
+    procedure AddReleaseSection;
+    procedure LoadRelease(const ASettings: TAtlasPluginSettings);
+    procedure SaveRelease(var ASettings: TAtlasPluginSettings);
     procedure AddUndoSection;
     procedure AddUnitSearchSection;
     procedure AddWelcomeSection;
@@ -492,6 +503,14 @@ type
     property TestsBuildFirstCheck: TCheckBox read FTestsBuildFirst;
     property TestsAfterBuildCheck: TCheckBox read FTestsAfterBuild;
     property BuildZeroHintsCheck: TCheckBox read FBuildZeroHints;
+    /// <summary>Zum Testen: Release-Build-Wächter (#533).</summary>
+    property ReleaseGuardCheck: TCheckBox read FReleaseGuard;
+    property BuildGateChoice: TAtlasChoiceBox read FBuildGate;
+    property ReleaseConfigsEdit: TEdit read FReleaseConfigs;
+    /// <summary>Haken einer Prüfung ohne Sollwert; nil für Prüfungen mit Sollwert.</summary>
+    function ReleaseCheckBox(ACheck: TAtlasReleaseCheck): TCheckBox;
+    /// <summary>Auswahl einer Prüfung mit Sollwert (0 = nicht prüfen, 1 = Soll aus, 2 = Soll an); sonst nil.</summary>
+    function ReleaseCheckChoice(ACheck: TAtlasReleaseCheck): TAtlasChoiceBox;
     /// <summary>Zum Testen: Startprofile (#575).</summary>
     property StartProfilesCheck: TCheckBox read FStartProfiles;
     property StartProfilesStatusFieldCheck: TCheckBox read FStartProfilesStatusField;
@@ -903,6 +922,10 @@ begin
   FStartProfiles := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsStartProfiles));
   FStartProfilesStatusField := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsStartProfilesStatusField));
 
+  // Release-Build-Wächter (#533).
+  AddSheet(TAtlasTextId.SettingsTabRelease);
+  AddReleaseSection;
+
   // Einzelnen Test im Debugger starten (#585); die Code Lens dazu steht unter Editor (codeLens.tests).
   AddSheet(TAtlasTextId.SettingsTabDebug);
   FTestDebug := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsTestDebug));
@@ -1094,6 +1117,91 @@ begin
   finally
     Dialog.Free;
   end;
+end;
+
+procedure TAtlasSettingsPage.AddReleaseSection;
+const
+  Captions: array[TAtlasReleaseCheck] of TAtlasTextId = (TAtlasTextId.SettingsReleaseCheckDebugDefine,
+    TAtlasTextId.SettingsReleaseCheckDebugInfo, TAtlasTextId.SettingsReleaseCheckStackFrames,
+    TAtlasTextId.SettingsReleaseCheckAssertions, TAtlasTextId.SettingsReleaseCheckRangeChecks,
+    TAtlasTextId.SettingsReleaseCheckOverflowChecks, TAtlasTextId.SettingsReleaseCheckMemoryLeaks,
+    TAtlasTextId.SettingsReleaseCheckVersionInfo, TAtlasTextId.SettingsReleaseCheckOutputFolder);
+var
+  Check: TAtlasReleaseCheck;
+begin
+  FReleaseGuard := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsReleaseGuard));
+  // Reihenfolge wie TAtlasBuildGate: off, warn, block.
+  FBuildGate := AddChoice(TAtlasStrings.Text(TAtlasTextId.SettingsBuildGate),
+    [TAtlasStrings.Text(TAtlasTextId.SettingsBuildGateOff), TAtlasStrings.Text(TAtlasTextId.SettingsBuildGateWarn),
+    TAtlasStrings.Text(TAtlasTextId.SettingsBuildGateBlock)]);
+  FReleaseConfigs := AddTextLine(TAtlasStrings.Text(TAtlasTextId.SettingsReleaseConfigs));
+  AddTitle(TAtlasTextId.SettingsReleaseChecksTitle);
+  for Check := Low(TAtlasReleaseCheck) to High(TAtlasReleaseCheck) do
+    if TAtlasReleaseGuard.HasTarget[Check] then
+      FReleaseCheckChoices[Check] := AddChoice(TAtlasStrings.Text(Captions[Check]),
+        [TAtlasStrings.Text(TAtlasTextId.SettingsReleaseNotChecked),
+        TAtlasStrings.Text(TAtlasTextId.SettingsReleaseExpectOff),
+        TAtlasStrings.Text(TAtlasTextId.SettingsReleaseExpectOn)])
+    else
+      FReleaseCheckBoxes[Check] := AddCheck(TAtlasStrings.Text(Captions[Check]));
+end;
+
+function TAtlasSettingsPage.ReleaseCheckBox(ACheck: TAtlasReleaseCheck): TCheckBox;
+begin
+  Result := FReleaseCheckBoxes[ACheck];
+end;
+
+function TAtlasSettingsPage.ReleaseCheckChoice(ACheck: TAtlasReleaseCheck): TAtlasChoiceBox;
+begin
+  Result := FReleaseCheckChoices[ACheck];
+end;
+
+procedure TAtlasSettingsPage.LoadRelease(const ASettings: TAtlasPluginSettings);
+var
+  Checks: TAtlasReleaseChecks;
+  Check: TAtlasReleaseCheck;
+begin
+  FReleaseGuard.Checked := ASettings.ReleaseGuard;
+  FBuildGate.Choice := Ord(TAtlasReleaseGuard.GateOf(ASettings.BuildGate));
+  FReleaseConfigs.Text := TAtlasReleaseGuard.NormalizedConfigurations(ASettings.ReleaseConfigs);
+  Checks := TAtlasReleaseChecks.Parse(ASettings.ReleaseChecks);
+  for Check := Low(TAtlasReleaseCheck) to High(TAtlasReleaseCheck) do
+    if FReleaseCheckChoices[Check] <> nil then
+    begin
+      if not Checks.Items[Check].Enabled then
+        FReleaseCheckChoices[Check].Choice := 0
+      else if Checks.Items[Check].Expected then
+        FReleaseCheckChoices[Check].Choice := 2
+      else
+        FReleaseCheckChoices[Check].Choice := 1;
+    end
+    else if FReleaseCheckBoxes[Check] <> nil then
+      FReleaseCheckBoxes[Check].Checked := Checks.Items[Check].Enabled;
+end;
+
+procedure TAtlasSettingsPage.SaveRelease(var ASettings: TAtlasPluginSettings);
+var
+  Checks: TAtlasReleaseChecks;
+  Check: TAtlasReleaseCheck;
+begin
+  ASettings.ReleaseGuard := FReleaseGuard.Checked;
+  if (FBuildGate.Choice >= Ord(Low(TAtlasBuildGate))) and (FBuildGate.Choice <= Ord(High(TAtlasBuildGate))) then
+    ASettings.BuildGate := TAtlasReleaseGuard.GateNames[TAtlasBuildGate(FBuildGate.Choice)];
+  ASettings.ReleaseConfigs := TAtlasReleaseGuard.NormalizedConfigurations(FReleaseConfigs.Text);
+  Checks := TAtlasReleaseChecks.Parse(ASettings.ReleaseChecks);
+  for Check := Low(TAtlasReleaseCheck) to High(TAtlasReleaseCheck) do
+    if FReleaseCheckChoices[Check] <> nil then
+    begin
+      if FReleaseCheckChoices[Check].Choice >= 0 then
+      begin
+        Checks.Items[Check].Enabled := FReleaseCheckChoices[Check].Choice > 0;
+        if FReleaseCheckChoices[Check].Choice > 0 then
+          Checks.Items[Check].Expected := FReleaseCheckChoices[Check].Choice = 2;
+      end;
+    end
+    else if FReleaseCheckBoxes[Check] <> nil then
+      Checks.Items[Check].Enabled := FReleaseCheckBoxes[Check].Checked;
+  ASettings.ReleaseChecks := Checks.ToText;
 end;
 
 procedure TAtlasSettingsPage.AddSheet(AId: TAtlasTextId);
@@ -1837,6 +1945,7 @@ begin
   FTestsBuildFirst.Checked := ASettings.TestsBuildFirst;
   FTestsAfterBuild.Checked := ASettings.TestsAfterBuild;
   FBuildZeroHints.Checked := ASettings.BuildZeroHints;
+  LoadRelease(ASettings);
   FStartProfiles.Checked := ASettings.StartProfiles;
   FStartProfilesStatusField.Checked := ASettings.StartProfilesStatusField;
   FTestDebug.Checked := ASettings.TestDebug;
@@ -2040,6 +2149,7 @@ begin
   ASettings.TestsBuildFirst := FTestsBuildFirst.Checked;
   ASettings.TestsAfterBuild := FTestsAfterBuild.Checked;
   ASettings.BuildZeroHints := FBuildZeroHints.Checked;
+  SaveRelease(ASettings);
   ASettings.StartProfiles := FStartProfiles.Checked;
   ASettings.StartProfilesStatusField := FStartProfilesStatusField.Checked;
   ASettings.TestDebug := FTestDebug.Checked;

@@ -68,6 +68,9 @@ type
     /// <summary>#69: letzter Testlauf für die Karte Tests (#763) und „Fehlgeschlagene erneut ausführen“.</summary>
     [Test]
     procedure TestsRoundTripAndLimits;
+    /// <summary>#533: Release-Wächter, letzte Prüfung und Versionen je Konfiguration und Plattform.</summary>
+    [Test]
+    procedure ReleaseRoundTripAndRemember;
   end;
 
 implementation
@@ -282,6 +285,7 @@ begin
   Assert.IsFalse(Summary.Todos.Known);
   Assert.IsFalse(Summary.Baseline.Known);
   Assert.IsFalse(Summary.Tests.Known);
+  Assert.IsFalse(Summary.Release.Known);
   Assert.IsTrue(Summary.LastOpened = 0);
   Assert.IsTrue(TAtlasProjectSummaries.Parse('{"project": "C:\\P.dproj", "vcs": {"kind": "none"}}', Summary));
   Assert.IsTrue(Summary.Vcs.Known);
@@ -530,6 +534,57 @@ begin
   Assert.IsTrue(Read.Tests.Known);
   Assert.AreEqual(3, Read.Tests.Passed);
   Assert.Contains(TAtlasProjectSummaries.ToJson(Read), '"jenkins":{"job":"x"}');
+end;
+
+procedure TAtlasProjectSummaryTests.ReleaseRoundTripAndRemember;
+var
+  Summary, Read: TAtlasProjectSummary;
+  Json: string;
+  Index: Integer;
+begin
+  Summary := TAtlasProjectSummary.Create(Project);
+  Assert.AreEqual('', Summary.Release.VersionOf('Release', 'Win64'));
+  Summary.Release.Remember('Release', 'Win32', '1.0.0.0', At(2026, 10, 1, 8, 0, 0));
+  Summary.Release.Remember('Release', 'Win64', '1.1.0.0', At(2026, 10, 2, 8, 0, 0));
+  Summary.Release.Remember('release', 'WIN32', '1.2.0.0', At(2026, 10, 3, 8, 0, 0));
+  Assert.IsTrue(Summary.Release.Known);
+  Assert.AreEqual(2, Integer(Length(Summary.Release.Builds)), 'je Konfiguration und Plattform ein Eintrag');
+  Assert.AreEqual('1.2.0.0', Summary.Release.VersionOf('Release', 'Win32'));
+  Assert.AreEqual('1.1.0.0', Summary.Release.VersionOf('Release', 'Win64'));
+  Assert.AreEqual('', Summary.Release.VersionOf('Ship', 'Win64'));
+  Json := TAtlasProjectSummaries.ToJson(Summary);
+  Assert.Contains(Json, '"release":{"builds":[{"configuration":"release","platform":"WIN32","version":"1.2.0.0",' +
+    '"at":"2026-10-03T08:00:00Z"},{"configuration":"Release","platform":"Win64","version":"1.1.0.0",' +
+    '"at":"2026-10-02T08:00:00Z"}]}', 'ohne Prüfung nur die Builds');
+  Summary.Release.CheckedAt := At(2026, 10, 16, 9, 0, 0);
+  Summary.Release.Configuration := 'Release';
+  Summary.Release.Platform := 'Win64';
+  Summary.Release.Findings := 2;
+  Summary.Release.Blocked := True;
+  Summary.Release.Rules := ['release-debug-define', 'release-assertions'];
+  Json := TAtlasProjectSummaries.ToJson(Summary);
+  Assert.Contains(Json, '"release":{"checkedAt":"2026-10-16T09:00:00Z","configuration":"Release",' +
+    '"platform":"Win64","findings":2,"blocked":true,"rules":["release-debug-define","release-assertions"],');
+  Assert.IsTrue(TAtlasProjectSummaries.Parse(Json, Read));
+  Assert.IsTrue(Read.Release.Known);
+  Assert.IsTrue(Read.Release.Blocked);
+  Assert.AreEqual(2, Read.Release.Findings);
+  Assert.AreEqual(2, Integer(Length(Read.Release.Rules)));
+  Assert.AreEqual('1.1.0.0', Read.Release.VersionOf('Release', 'Win64'));
+  Assert.IsTrue(SameTime(At(2026, 10, 2, 8, 0, 0), Read.Release.Builds[1].At));
+  // Höchstens MaxBuilds Einträge, der neueste zuerst; unbekannte Felder bleiben.
+  for Index := 1 to TAtlasProjectRelease.MaxBuilds + 3 do
+    Summary.Release.Remember('Release', 'P' + IntToStr(Index), IntToStr(Index), 0);
+  Assert.AreEqual(TAtlasProjectRelease.MaxBuilds, Integer(Length(Summary.Release.Builds)));
+  Assert.AreEqual('P' + IntToStr(TAtlasProjectRelease.MaxBuilds + 3), Summary.Release.Builds[0].Platform);
+  Assert.IsTrue(TAtlasProjectSummaries.Parse('{"project": "C:\\P.dproj", "release": {"findings": 1, "gate": ' +
+    '"block", "builds": [{"configuration": "Release", "platform": "Win32", "version": "2.0.0.0", "signed": true}]}}',
+    Read));
+  Assert.AreEqual('2.0.0.0', Read.Release.VersionOf('Release', 'Win32'));
+  Read.Release.Remember('Release', 'Win64', '2.0.0.0', 0);
+  Json := TAtlasProjectSummaries.ToJson(Read);
+  Assert.Contains(Json, '"gate":"block"');
+  Assert.Contains(Json, '"version":"2.0.0.0","signed":true}');
 end;
 
 procedure TAtlasProjectSummaryTests.TodosRejectInvalidAnswer;
