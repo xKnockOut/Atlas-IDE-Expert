@@ -34,6 +34,9 @@ type
     /// </summary>
     [Test]
     procedure NotificationOptions;
+    /// <summary>Schnellaktionen der Willkommensseite (#764): Vorgaben, Normalisieren, Speichern und Laden.</summary>
+    [Test]
+    procedure WelcomeQuickActionOptions;
     /// <summary>Release-Build-Wächter (#533): build.releaseGuard, build.gate, build.releaseConfigs und
     /// build.releaseChecks mit Vorgaben, Normalisieren, Speichern und Laden.</summary>
     [Test]
@@ -61,6 +64,7 @@ uses
   System.SysUtils,
   System.Generics.Collections,
   Atlas.Core.Notifications.Center,
+  Atlas.Core.Welcome.QuickActions,
   Atlas.Core.Settings.Plugin,
   Atlas.Core.Settings.Schema,
   Atlas.Core.Settings.SchemaData,
@@ -581,6 +585,57 @@ begin
   Assert.AreEqual('/json, tryf', Loaded.GenerateMenuHidden);
   Assert.IsFalse(Loaded.GenerateMenuRecentFirst);
   Assert.IsFalse(Loaded.GenerateMenuShowCommandNames);
+end;
+
+procedure TAtlasPluginSettingsTests.WelcomeQuickActionOptions;
+var
+  Settings, Loaded: TAtlasPluginSettings;
+  Store: IAtlasSettingsStore;
+begin
+  Settings := TAtlasPluginSettings.Defaults;
+  Assert.IsTrue(Settings.WelcomePageQuickActions, 'standardmäßig an');
+  Assert.AreEqual('build,tests,run,pull,folder,console', Settings.WelcomePageQuickActionsItems);
+  Assert.AreEqual('wt.exe', Settings.WelcomePageQuickActionsConsole);
+  Assert.AreEqual($4042, Settings.WelcomePageQuickActionsBuildKey, 'Strg+B');
+  Assert.AreEqual($4054, Settings.WelcomePageQuickActionsTestKey, 'Strg+T');
+  // Die Einstellungen kennen die Willkommensseite nicht (A-09): dieselben Vorgaben und Namen wie dort.
+  Assert.AreEqual(TAtlasWelcomeQuickActions.DefaultItems, Settings.WelcomePageQuickActionsItems);
+  Assert.AreEqual(TAtlasWelcomeQuickActions.DefaultConsole, Settings.WelcomePageQuickActionsConsole);
+  Assert.AreEqual(TAtlasWelcomeQuickActions.DefaultBuildKey, Settings.WelcomePageQuickActionsBuildKey);
+  Assert.AreEqual(TAtlasWelcomeQuickActions.DefaultTestKey, Settings.WelcomePageQuickActionsTestKey);
+  Settings.WelcomePageQuickActionsItems := 'folder,unbekannt;RUN tests console pull build';
+  Settings.Normalize;
+  Assert.AreEqual(TAtlasWelcomeQuickActions.NormalizedItems('folder,unbekannt;RUN tests console pull build'),
+    Settings.WelcomePageQuickActionsItems);
+  // Normalisieren: bekannte Namen in fester Reihenfolge, leeres Programm = wt.exe, Tasten als Word.
+  Settings.WelcomePageQuickActionsItems := ' Console; BUILD pull, unbekannt, build ';
+  Settings.WelcomePageQuickActionsConsole := '   ';
+  Settings.WelcomePageQuickActionsBuildKey := -5;
+  Settings.WelcomePageQuickActionsTestKey := $1FFFF;
+  Settings.Normalize;
+  Assert.AreEqual('build,pull,console', Settings.WelcomePageQuickActionsItems);
+  Assert.AreEqual(TAtlasWelcomeQuickActions.DefaultConsole, Settings.WelcomePageQuickActionsConsole);
+  Assert.AreEqual(0, Settings.WelcomePageQuickActionsBuildKey);
+  Assert.AreEqual($FFFF, Settings.WelcomePageQuickActionsTestKey);
+  // Leere Liste bleibt leer (kein Knopf).
+  Settings.WelcomePageQuickActionsItems := '';
+  Settings.Normalize;
+  Assert.AreEqual('', Settings.WelcomePageQuickActionsItems);
+  // Speichern und Laden.
+  Settings.WelcomePageQuickActions := False;
+  Settings.WelcomePageQuickActionsItems := 'tests,folder';
+  Settings.WelcomePageQuickActionsConsole := 'pwsh.exe';
+  Settings.WelcomePageQuickActionsBuildKey := $C042;
+  Settings.WelcomePageQuickActionsTestKey := 0;
+  Store := TMemoryStore.Create;
+  Settings.Save(Store);
+  Loaded := TAtlasPluginSettings.Defaults;
+  Loaded.Load(Store);
+  Assert.IsFalse(Loaded.WelcomePageQuickActions);
+  Assert.AreEqual('tests,folder', Loaded.WelcomePageQuickActionsItems);
+  Assert.AreEqual('pwsh.exe', Loaded.WelcomePageQuickActionsConsole);
+  Assert.AreEqual($C042, Loaded.WelcomePageQuickActionsBuildKey);
+  Assert.AreEqual(0, Loaded.WelcomePageQuickActionsTestKey);
 end;
 
 procedure TAtlasPluginSettingsTests.NotificationOptions;

@@ -318,6 +318,14 @@ begin
   Assert.AreEqual($E04E, Integer(EntryOf(Entries, TAtlasKeyFunction.Notifications).Key));
   Assert.IsFalse(EntryOf(Entries, TAtlasKeyFunction.Notifications).Disabled);
   Assert.AreEqual(Ord(TAtlasKeySource.Binding), Ord(TAtlasKeyMap.SourceOf(TAtlasKeyFunction.Notifications)));
+  // Schnellaktionen der Willkommensseite (#764): Strg+B und Strg+T, nur dort und immer mit Vorrang.
+  Assert.AreEqual($4042, Integer(EntryOf(Entries, TAtlasKeyFunction.WelcomeQuickBuild).Key));
+  Assert.AreEqual($4054, Integer(EntryOf(Entries, TAtlasKeyFunction.WelcomeQuickTests).Key));
+  Assert.IsTrue(EntryOf(Entries, TAtlasKeyFunction.WelcomeQuickBuild).Priority);
+  Assert.IsFalse(EntryOf(Entries, TAtlasKeyFunction.WelcomeQuickTests).Disabled);
+  Assert.AreEqual(Ord(TAtlasKeySource.Window), Ord(TAtlasKeyMap.SourceOf(TAtlasKeyFunction.WelcomeQuickBuild)));
+  Assert.AreEqual(Ord(TAtlasKeyContext.WelcomePage),
+    Ord(TAtlasKeyMap.ContextOf(TAtlasKeyFunction.WelcomeQuickTests)));
   Assert.AreEqual(Ord(TAtlasKeyContext.Editor), Ord(TAtlasKeyMap.ContextOf(TAtlasKeyFunction.MethodToggleDown)));
   Assert.AreEqual(Ord(TAtlasKeySource.Binding), Ord(TAtlasKeyMap.SourceOf(TAtlasKeyFunction.TestUnit)));
   Settings.EditorKeysPriority := True;
@@ -343,11 +351,13 @@ begin
   Settings.BookmarksNamed := False;
   Settings.GenerateMenu := False;
   Settings.Notifications := False;
+  Settings.WelcomePageQuickActions := False;
   Entries := TAtlasKeyEntry.AllFromSettings(Settings);
   for Entry in Entries do
     if Entry.Func in [TAtlasKeyFunction.MethodToggleUp, TAtlasKeyFunction.MethodToggleDown,
       TAtlasKeyFunction.UnitSearch, TAtlasKeyFunction.UnitSearchIde, TAtlasKeyFunction.WelcomeSearch,
-      TAtlasKeyFunction.Bookmark, TAtlasKeyFunction.GenerateMenu, TAtlasKeyFunction.Notifications] then
+      TAtlasKeyFunction.Bookmark, TAtlasKeyFunction.GenerateMenu, TAtlasKeyFunction.Notifications,
+      TAtlasKeyFunction.WelcomeQuickBuild, TAtlasKeyFunction.WelcomeQuickTests] then
     begin
       Assert.IsTrue(Entry.Disabled, 'abgeschaltet: ' + IntToStr(Ord(Entry.Func)));
       Assert.AreEqual(Ord(TAtlasKeyStatus.NoKey), Ord(Entry.Status('IDE: Klassennavigation')),
@@ -363,6 +373,10 @@ begin
   Settings.WelcomePage := False;
   Settings.WelcomePageSearch := True;
   Assert.IsTrue(EntryOf(TAtlasKeyEntry.AllFromSettings(Settings), TAtlasKeyFunction.WelcomeSearch).Disabled,
+    'Willkommensseite aus');
+  // Ebenso die Schnellaktionen (#764).
+  Settings.WelcomePageQuickActions := True;
+  Assert.IsTrue(EntryOf(TAtlasKeyEntry.AllFromSettings(Settings), TAtlasKeyFunction.WelcomeQuickBuild).Disabled,
     'Willkommensseite aus');
 end;
 

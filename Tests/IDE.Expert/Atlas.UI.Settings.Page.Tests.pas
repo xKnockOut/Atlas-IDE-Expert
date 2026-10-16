@@ -103,6 +103,7 @@ uses
   Atlas.Core.Settings.Plugin,
   Atlas.Core.Build.ReleaseGuard,
   Atlas.Core.Projects.Summary,
+  Atlas.Core.Welcome.QuickActions,
   Atlas.Core.Completion.Contract,
   Atlas.Core.Completion.Favorites,
   Atlas.Core.Completion.Snippets,
@@ -818,6 +819,13 @@ begin
     Assert.AreEqual('10', Page.WelcomeTestsCiInterval.Text);
     Assert.IsTrue(Page.WelcomeTestsCiNotify.Checked);
     Assert.IsTrue(Page.CiLogin.Checked);
+    // #764: Schnellaktionen an, alle sechs Knöpfe, wt.exe, Strg+B und Strg+T.
+    Assert.IsTrue(Page.WelcomeQuickActions.Checked);
+    Assert.IsTrue(Page.WelcomeQuickActionsItem(TAtlasQuickAction.Build).Checked);
+    Assert.IsTrue(Page.WelcomeQuickActionsItem(TAtlasQuickAction.Console).Checked);
+    Assert.AreEqual('wt.exe', Page.WelcomeQuickActionsConsole.Text);
+    Assert.AreEqual(ShortCutToText($4042), Page.WelcomeQuickActionsBuildKey.Text);
+    Assert.AreEqual(ShortCutToText($4054), Page.WelcomeQuickActionsTestKey.Text);
     Assert.IsTrue(Page.WelcomeUnsaved.Checked);
     Assert.AreEqual('0', Page.WelcomeUnsavedMinAge.Text);
     Assert.AreEqual('24', Page.WelcomeUnsavedWarn.Text);
@@ -858,6 +866,12 @@ begin
     Page.WelcomeTestsCiInterval.Text := '0';
     Page.WelcomeTestsCiNotify.Checked := False;
     Page.CiLogin.Checked := False;
+    Page.WelcomeQuickActions.Checked := False;
+    Page.WelcomeQuickActionsItem(TAtlasQuickAction.Console).Checked := False;
+    Page.WelcomeQuickActionsItem(TAtlasQuickAction.Run).Checked := False;
+    Page.WelcomeQuickActionsConsole.Text := '  pwsh.exe ';
+    Page.WelcomeQuickActionsBuildKey.Text := '';
+    Page.WelcomeQuickActionsTestKey.Text := ShortCutToText($C054);
     Page.WelcomeUnsaved.Checked := False;
     Page.WelcomeUnsavedMinAge.Text := '2';
     Page.WelcomeUnsavedWarn.Text := '48';
@@ -908,6 +922,11 @@ begin
     Assert.AreEqual(1, Saved.WelcomePageTestsCiIntervalMinutes, 'auf 1–1440 begrenzt');
     Assert.IsFalse(Saved.WelcomePageTestsCiNotify);
     Assert.IsFalse(Saved.CiLogin);
+    Assert.IsFalse(Saved.WelcomePageQuickActions);
+    Assert.AreEqual('build,tests,pull,folder', Saved.WelcomePageQuickActionsItems, 'ohne run und console');
+    Assert.AreEqual('pwsh.exe', Saved.WelcomePageQuickActionsConsole);
+    Assert.AreEqual(0, Saved.WelcomePageQuickActionsBuildKey, 'leer = keine Taste');
+    Assert.AreEqual($C054, Saved.WelcomePageQuickActionsTestKey);
     Assert.IsFalse(Saved.WelcomePageUnsaved);
     Assert.AreEqual(2, Saved.WelcomePageUnsavedMinAgeHours);
     Assert.AreEqual(48, Saved.WelcomePageUnsavedWarnHours);
@@ -928,6 +947,11 @@ begin
     Assert.AreEqual('1', Page.WelcomeTestsCiInterval.Text);
     Assert.IsFalse(Page.WelcomeTestsCiNotify.Checked);
     Assert.IsFalse(Page.CiLogin.Checked);
+    Assert.IsFalse(Page.WelcomeQuickActions.Checked);
+    Assert.IsFalse(Page.WelcomeQuickActionsItem(TAtlasQuickAction.Console).Checked);
+    Assert.IsTrue(Page.WelcomeQuickActionsItem(TAtlasQuickAction.Pull).Checked);
+    Assert.AreEqual('pwsh.exe', Page.WelcomeQuickActionsConsole.Text);
+    Assert.AreEqual('', Page.WelcomeQuickActionsBuildKey.Text);
     Assert.IsFalse(Page.WelcomeHelp.Checked);
     Assert.AreEqual('https://example.org/issues/new', Page.WelcomeHelpReportUrl.Text);
     Assert.AreEqual('D:\Diagnose', Page.WelcomeHelpReportFolder.Text);
