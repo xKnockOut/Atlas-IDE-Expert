@@ -545,6 +545,16 @@
       "text": "Build fertig, neu geladene Dateien, Server-Neustarts und Tastenkürzel-Tipps landen in einer Liste über dem Atlas-Statusfeld; die Zahl dort zählt die ungelesenen. Aktionen wie „Zum Fehler“ stehen am Eintrag, und per Rechtsklick wählst du je Quelle: einblenden, nur sammeln oder aus.",
       "textEn": "Build finished, reloaded files, server restarts and shortcut tips end up in one list above the Atlas status field; the number there counts the unread ones. Actions such as “Go to error” sit on the entry, and a right-click picks per source: show, collect only or off.",
       "image": "Tipps\\benachrichtigungen.png"
+    },
+    {
+      "id": "checkRelease",
+      "command": "Atlas.CheckRelease",
+      "setting": "ReleaseGuard",
+      "title": "Release-Build prüfen",
+      "titleEn": "Check release build",
+      "text": "Vor jedem Build in einer Release-Konfiguration prüft Atlas die Projektoptionen: Symbol DEBUG, Debug-Informationen, Assertions, Bereichs- und Überlaufprüfung, ReportMemoryLeaksOnShutdown, Version und Ausgabeordner. Befunde stehen im Meldungsfenster mit dem Weg zur Option; „Release-Build prüfen“ prüft ohne Build.",
+      "textEn": "Before every build in a release configuration Atlas checks the project options: symbol DEBUG, debug information, assertions, range and overflow checking, ReportMemoryLeaksOnShutdown, version and output folder. Findings appear in the Messages window with the way to the option; “Check release build” checks without building.",
+      "image": "Tipps\\release-pruefen.png"
     }
   ]
 }

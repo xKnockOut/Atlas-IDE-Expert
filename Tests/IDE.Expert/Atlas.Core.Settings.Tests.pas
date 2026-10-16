@@ -34,6 +34,10 @@ type
     /// </summary>
     [Test]
     procedure NotificationOptions;
+    /// <summary>Release-Build-Wächter (#533): build.releaseGuard, build.gate, build.releaseConfigs und
+    /// build.releaseChecks mit Vorgaben, Normalisieren, Speichern und Laden.</summary>
+    [Test]
+    procedure ReleaseGuardOptions;
   end;
 
   [TestFixture]
@@ -616,6 +620,47 @@ begin
   Assert.AreEqual('ShortcutTips=collect, reload=off', Loaded.NotificationsSources);
   Assert.AreEqual(50, Loaded.NotificationsMaxEntries);
   Assert.AreEqual($C04E, Loaded.NotificationsKey);
+end;
+
+procedure TAtlasPluginSettingsTests.ReleaseGuardOptions;
+var
+  Settings, Loaded: TAtlasPluginSettings;
+  Store: IAtlasSettingsStore;
+begin
+  Settings := TAtlasPluginSettings.Defaults;
+  Assert.IsTrue(Settings.ReleaseGuard, 'Release-Wächter standardmäßig an');
+  Assert.AreEqual('off', Settings.BuildGate, 'build.gate standardmäßig off (#529)');
+  Assert.AreEqual('Release', Settings.ReleaseConfigs);
+  Assert.AreEqual('debugDefine,debugInfo=off,stackFrames=off,assertions=off,rangeChecks=off,overflowChecks=off,' +
+    'memoryLeaks,versionInfo,outputFolder', Settings.ReleaseChecks, 'alle Prüfungen an, Sollwerte aus');
+  // Leeres Speicher-Objekt: Vorgaben.
+  Store := TMemoryStore.Create;
+  Loaded := TAtlasPluginSettings.Defaults;
+  Loaded.Load(Store);
+  Assert.AreEqual(Settings.ReleaseChecks, Loaded.ReleaseChecks);
+  // Normalisieren: unbekannter Modus = off, Liste ohne Doppelte, Prüfungen vollständig in fester Reihenfolge.
+  Settings.BuildGate := 'BLOCK';
+  Settings.ReleaseConfigs := 'Release; Ship,, ship';
+  Settings.ReleaseChecks := '-assertions, rangeChecks=on, quatsch';
+  Settings.Normalize;
+  Assert.AreEqual('block', Settings.BuildGate);
+  Assert.AreEqual('Release, Ship', Settings.ReleaseConfigs);
+  Assert.AreEqual('debugDefine,debugInfo=off,stackFrames=off,-assertions=off,rangeChecks=on,overflowChecks=off,' +
+    'memoryLeaks,versionInfo,outputFolder', Settings.ReleaseChecks);
+  Settings.BuildGate := 'streng';
+  Settings.Normalize;
+  Assert.AreEqual('off', Settings.BuildGate);
+  // Speichern und Laden.
+  Settings.ReleaseGuard := False;
+  Settings.BuildGate := 'warn';
+  Store := TMemoryStore.Create;
+  Settings.Save(Store);
+  Loaded := TAtlasPluginSettings.Defaults;
+  Loaded.Load(Store);
+  Assert.IsFalse(Loaded.ReleaseGuard, 'abschaltbar');
+  Assert.AreEqual('warn', Loaded.BuildGate);
+  Assert.AreEqual('Release, Ship', Loaded.ReleaseConfigs);
+  Assert.AreEqual(Settings.ReleaseChecks, Loaded.ReleaseChecks);
 end;
 
 procedure TAtlasPluginSettingsTests.UnitSearchOptions;

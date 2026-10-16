@@ -24,6 +24,10 @@ type
     /// <summary>#261: Builds auf Auftrag (Claude Code) tragen requestedBy, Builds des Benutzers nicht.</summary>
     [Test]
     procedure RequestedByMarksOwnBuilds;
+    /// <summary>#533: Teilnehmer sehen vor dem Compile schon Background und RequestedBy; nach einem Abbruch
+    /// erfahren alle den Grund (Läufer #261, Schnellaktion #764).</summary>
+    [Test]
+    procedure CancelSeesRunAndIsAnnounced;
   end;
 
 implementation
@@ -42,6 +46,7 @@ type
     procedure GroupStarted(AKind: TAtlasCompileKind); override;
     procedure GroupFinished(ASucceeded: Boolean; ADurationMs: Int64); override;
     function CancelCompile(const AProject: TAtlasCompileProject; out AReason: string): Boolean; override;
+    procedure CompileCancelled(const AProject: TAtlasCompileProject; const AReason: string); override;
     procedure ProjectStarted(const AProject: TAtlasCompileProject); override;
     procedure ProjectFinished(const AProject: TAtlasCompileProject; ASucceeded: Boolean; ADurationMs: Int64); override;
   end;
@@ -56,9 +61,19 @@ begin
   Trace := Trace + Format('G-%s/%d ', [BoolToStr(ASucceeded, True), ADurationMs]);
 end;
 
+procedure TRecorder.CompileCancelled(const AProject: TAtlasCompileProject; const AReason: string);
+begin
+  Trace := Trace + 'X(' + AReason + ') ';
+end;
+
 function TRecorder.CancelCompile(const AProject: TAtlasCompileProject; out AReason: string): Boolean;
 begin
-  Trace := Trace + 'C ';
+  Trace := Trace + 'C';
+  if AProject.Background then
+    Trace := Trace + 'b';
+  if AProject.RequestedBy <> '' then
+    Trace := Trace + '[' + AProject.RequestedBy + ']';
+  Trace := Trace + ' ';
   if Fail then
     raise Exception.Create('kaputt');
   Result := Cancel;
@@ -254,6 +269,38 @@ begin
       'atlas/compileStarted{"project":"C:\\P\\App.dproj","kind":"build","configuration":"Debug","platform":"Win64"}'#10 +
       'atlas/compileFinished{"project":"C:\\P\\App.dproj","kind":"build","configuration":"Debug","platform":"Win64",' +
       '"success":true,"durationMs":0}'#10, Sent);
+  finally
+    Events.Free;
+    Sent := '';
+  end;
+end;
+
+procedure TAtlasCompileEventsTests.CancelSeesRunAndIsAnnounced;
+var
+  Events: TAtlasCompileEvents;
+  First, Second: TRecorder;
+  Reason: string;
+begin
+  Events := MakeEvents;
+  try
+    First := TRecorder.Create;
+    Second := TRecorder.Create;
+    Events.Add(First);
+    Events.Add(Second);
+    Events.RequestedBy := 'welcome';
+    Assert.IsFalse(Events.BeforeCompile(Project('C:\P\App.dproj'), False, Reason));
+    Events.RequestedBy := '';
+    Events.Background := True;
+    Assert.IsFalse(Events.BeforeCompile(Project('C:\P\App.dproj'), False, Reason));
+    Events.Background := False;
+    Assert.AreEqual('C[welcome] Cb ', First.Trace);
+    First.Trace := '';
+    Second.Trace := '';
+    First.Cancel := True;
+    Assert.IsTrue(Events.BeforeCompile(Project('C:\P\App.dproj'), False, Reason));
+    // Der zweite wird nach dem Abbruch nicht mehr gefragt, erfährt ihn aber.
+    Assert.AreEqual('C X(App.dproj: Hinweise vorhanden) ', First.Trace);
+    Assert.AreEqual('X(App.dproj: Hinweise vorhanden) ', Second.Trace);
   finally
     Events.Free;
     Sent := '';
