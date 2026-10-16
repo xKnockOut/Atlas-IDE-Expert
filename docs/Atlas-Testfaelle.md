@@ -1047,6 +1047,37 @@ Vorbereitung: Git-Projekt `GitDemo` (mindestens 8 Units) mit Remote `origin` (z.
 | DI6 | Optionen › Atlas › Befehle: „Zwischen Deklaration und Implementierung wechseln“ aus, OK | Strg+Umschalt+↑/↓ macht wieder die IDE; Menü *Atlas* › „Deklaration/Implementierung wechseln“ geht weiter |
 | DI7 | Taste 1 auf Strg+Alt+D ändern, Taste 2 leeren, OK | Strg+Alt+D wechselt; Strg+Umschalt+↑ macht die IDE, Strg+Umschalt+↓ ebenso |
 | DI8 | Menü *Atlas*, Kontextmenü *Atlas* und Befehlspalette „Deklaration/Implementierung wechseln“ | Sprung wie DI1; außerhalb einer Methode Zeile „Am Cursor steht keine Methode …“ in der Meldungsansicht |
+## DUnitX-Tests ausführen (#69)
+
+Vorbereitung: RAD Studio mit Atlas-Plugin; Projektgruppe mit einer Anwendung und einem DUnitX-Testprojekt aus der Vorlage von RAD Studio (Hauptdatei mit `DUnitX.TestFramework` und `TDUnitXXMLNUnitFileLogger`), darin eine Fixture mit einem bestehenden Test, einem Test `Assert.AreEqual(0, 1)` und einem `[TestCase]`. Meldungsansicht, Reiter „Atlas“.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| TR1 | Testunit öffnen | Hinter `[TestFixture]` die Marke „Tests der Klasse ausführen“, hinter jedem `[Test]`/`[TestCase]` „Test ausführen“; bei einer Fixture ohne Attribut, die `RegisterTestFixture` meldet, hinter der Klassen- bzw. Methodendeklaration |
+| TR2 | Klick auf „Test ausführen“ am bestehenden Test (Testprojekt ungebaut, „Vor den Tests bauen“ an) | Das Testprojekt wird gebaut (make), danach „Tests von … laufen (Debug, Win32) …“ und „Tests …: 1 bestanden, 0 fehlgeschlagen …“; kein Konsolenfenster; die Marke zeigt „Test ausführen · bestanden“ in Grün |
+| TR3 | Befehlspalette › „Tests ausführen“ | Alle Tests laufen; Zusammenfassung mit Zahlen und Dauer; je Fehlschlag eine Zeile „Test TFixture.Methode fehlgeschlagen: erwartet 0, erhalten 1“, Doppelklick springt zum Methodenkopf im implementation-Teil |
+| TR4 | Im Editor auf die Testmethode sehen | Rote Wellenlinie am Methodenkopf, Tooltip mit erwartetem und erhaltenem Wert und Quelle „DUnitX“; Reiter „Atlas-Probleme“ listet den Fehlschlag; die Marke am Test „fehlgeschlagen“ in Rot, an der Fixture ebenso |
+| TR5 | Oberhalb der Testmethode Zeilen einfügen | Die Wellenlinie wandert mit; ein Server-Abgleich der Datei lässt sie stehen |
+| TR6 | Befehlspalette › „Fehlgeschlagene Tests erneut ausführen“ | Nur der fehlgeschlagene Test läuft (Zusammenfassung „0 bestanden, 1 fehlgeschlagen“); die Ergebnisse der übrigen Tests (Marken) bleiben |
+| TR7 | Test reparieren, TR6 wiederholen | Bestanden; Wellenlinie und Eintrag verschwinden; ein weiteres TR6 meldet „Keine fehlgeschlagenen Tests von … bekannt“ |
+| TR8 | IDE neu starten, mit einem fehlgeschlagenen Test vorher, dann TR6 | Es läuft genau der zuletzt fehlgeschlagene Test (aus der Projekt-Zusammenfassung) |
+| TR9 | `%LOCALAPPDATA%\Atlas\projects\<Schlüssel>.json` des Testprojekts und der Projektgruppe ansehen | Abschnitt `tests` mit `passed`, `failed`, `errors`, `skipped`, `durationMs`, `at` (UTC), Konfiguration, Plattform und `failures` mit Test, Meldung, Datei und Zeile (1-basiert) |
+| TR10 | Optionen › Atlas › Compiler › „Vor den Tests bauen“ aus, Test-EXE vorhanden | Kein Build; die vorhandene EXE läuft sofort |
+| TR11 | Wie TR10, aber Test-EXE gelöscht | Meldung „Test-EXE von … fehlt (…)“, nichts läuft |
+| TR12 | Testprojekt nur mit Plattform Win64 (Win32 entfernt), „Tests ausführen“ | Gebaut und gestartet wird Win64; Meldung nennt Win64 |
+| TR13 | Aktive Plattform Linux64 bzw. Android | Meldung „… ist für Linux64 eingestellt; Atlas startet nur Windows-Tests …“, nichts läuft |
+| TR14 | „Tests nach erfolgreichem Build automatisch ausführen“ an, Testprojekt mit Strg+F9 bauen | Nach dem Build laufen die Tests ohne erneuten Build; nach einer Hintergrundprüfung (#548) und nach `build_project` nicht |
+| TR15 | Wie TR14 mit „Build nur ohne Warnungen und Hinweise …“ an und einer Warnung im Testprojekt | Keine Tests nach dem Build; ohne Warnung laufen sie |
+| TR16 | Projektgruppe mit zwei Testprojekten, aktiv ist die Anwendung, Palette › „Tests ausführen“ | Meldung „Mehrere Testprojekte (A, B); bitte das gewünschte aktivieren.“; mit aktivem Testprojekt läuft dieses |
+| TR17 | Projektgruppe ohne Testprojekt | Meldung „Kein DUnitX-Testprojekt in der Projektgruppe …“ |
+| TR18 | Während eines Laufs noch einmal „Tests ausführen“ | Meldung „Es läuft schon ein Testlauf.“; die Marken zeigen „Tests laufen …“ |
+| TR19 | Testprogramm ohne XML-Logger (Logger-Zeile auskommentiert) | Meldung „… lieferte keinen Bericht (Exitcode …). Letzte Ausgabe:“ mit den letzten Zeilen der Konsolenausgabe |
+| TR20 | Test mit `Sleep` über das Zeitlimit (600 s) bzw. IDE während eines Laufs schließen | Abbruch mit „nach 600 s abgebrochen“; beim Schließen endet die Test-EXE mit, die IDE hängt nicht |
+| TR21 | Schnellschalter „Code Lens „Test ausführen““ aus | Marken verschwinden; Befehle bleiben |
+| TR22 | Schnellschalter „DUnitX-Tests ausführen“ aus | Marken und beide Befehle verschwinden, kein Lauf nach dem Build |
+| TR23 | Claude Code: „Führe die Tests über run_tests aus“ (vorhandene EXE) | JSON mit `result` `failed`, Zahlen und je Fehlschlag Name, `expected`/`actual`, Datei und Zeile; kein Compiler läuft; die Projekt-Zusammenfassung ändert sich nicht |
+| TR24 | `run_tests` mit `build: true` ohne laufende IDE bzw. mit `tests: ["Unit.TFixture.Methode"]` | Ohne IDE der Grund wie bei `build_project`, keine Tests; mit Filter nur dieser Test |
+
 ## DUnitX-Testgerüst (#274)
 
 Voraussetzung: Projektgruppe mit einem DUnitX-Testprojekt (`.dpr` mit `uses DUnitX.TestFramework`).

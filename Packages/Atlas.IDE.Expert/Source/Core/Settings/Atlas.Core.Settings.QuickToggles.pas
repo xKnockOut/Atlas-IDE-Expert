@@ -276,6 +276,9 @@ begin
     '"CodeLensMetrics":{"type":"boolean","x-feature":"EditorCommands",' +
       '"default":true,"x-page":"Editor","x-quickToggle":true,"x-drawing":true,' +
       '"x-caption":"Code-Metriken","x-captionEn":"Code metrics","x-issue":"#66"},' +
+    '"CodeLensTests":{"type":"boolean","x-feature":"Build",' +
+      '"default":true,"x-page":"Editor","x-quickToggle":true,"x-drawing":true,' +
+      '"x-caption":"Code Lens „Test ausführen“","x-captionEn":"Code lens “Run test”","x-issue":"#69"},' +
     '"GenerateMenu":{"type":"boolean","x-feature":"EditorCommands",' +
       '"default":true,"x-page":"Editor","x-quickToggle":true,' +
       '"x-caption":"Erzeugen-Menü","x-captionEn":"Generate menu","x-issue":"#719"},' +
@@ -315,6 +318,17 @@ begin
     '"McpBuild":{"type":"boolean","x-feature":"Build",' +
       '"default":true,"x-page":"Compiler","x-quickToggle":true,' +
       '"x-caption":"Builds für Claude Code","x-captionEn":"Builds for Claude Code","x-issue":"#261"},' +
+    '"TestRun":{"type":"boolean","x-feature":"Build",' +
+      '"default":true,"x-page":"Compiler","x-quickToggle":true,' +
+      '"x-caption":"Tests ausführen","x-captionEn":"Run tests","x-issue":"#69"},' +
+    '"TestsAfterBuild":{"type":"boolean","x-feature":"Build",' +
+      '"default":false,"x-page":"Compiler","x-quickToggle":true,' +
+      '"x-caption":"Tests nach dem Build","x-captionEn":"Tests after the build","x-issue":"#69"},' +
+    '"TestsBuildFirst":{"type":"boolean","default":true,"x-page":"Compiler",' +
+      '"x-caption":"Vor den Tests bauen","x-captionEn":"Build before the tests","x-issue":"#69"},' +
+    '"BuildZeroHints":{"type":"boolean","default":false,"x-page":"Compiler",' +
+      '"x-caption":"Build nur ohne Warnungen und Hinweise erfolgreich",' +
+      '"x-captionEn":"Build succeeds only without warnings and hints","x-issue":"#530"},' +
     '"WelcomePage":{"type":"boolean","x-feature":"WelcomePage",' +
       '"default":true,"x-page":"Willkommensseite","x-quickToggle":true,' +
       '"x-caption":"Atlas auf der Willkommensseite","x-captionEn":"Atlas on the welcome page","x-issue":"#753"},' +

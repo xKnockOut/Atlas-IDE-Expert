@@ -150,6 +150,16 @@ begin
   Assert.IsFalse(Toggle.Drawing);
   Assert.AreEqual('Settings', Toggle.Feature);
   // Builds für Claude Code (#261): Schalter auf der Seite Compiler, keine Zeichnung.
+  // Tests ausführen (#69): Code Lens zeichnet im Editor, Befehle und Lauf nach dem Build nicht.
+  Assert.IsTrue(TAtlasQuickToggles.Find(Toggles, 'CodeLensTests', Toggle));
+  Assert.AreEqual('Editor', Toggle.Page);
+  Assert.IsTrue(Toggle.Drawing);
+  Assert.AreEqual('Build', Toggle.Feature);
+  Assert.IsTrue(TAtlasQuickToggles.Find(Toggles, 'TestRun', Toggle));
+  Assert.AreEqual('Compiler', Toggle.Page);
+  Assert.IsFalse(Toggle.Drawing);
+  Assert.IsTrue(TAtlasQuickToggles.Find(Toggles, 'TestsAfterBuild', Toggle));
+  Assert.IsFalse(TAtlasQuickToggles.Find(Toggles, 'BuildZeroHints', Toggle), 'ohne x-quickToggle');
   Assert.IsTrue(TAtlasQuickToggles.Find(Toggles, 'McpBuild', Toggle));
   Assert.AreEqual('Compiler', Toggle.Page);
   Assert.IsFalse(Toggle.Drawing);
