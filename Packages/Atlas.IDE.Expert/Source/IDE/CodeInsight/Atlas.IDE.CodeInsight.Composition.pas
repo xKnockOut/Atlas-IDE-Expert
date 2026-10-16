@@ -116,7 +116,24 @@ uses
   Atlas.IDE.Editor.GutterMarks,
   Atlas.Core.Editor.WorkspacePlan,
   Atlas.IDE.Editor.TestUnitLens,
-  Atlas.IDE.Completion.Editor;
+  Atlas.IDE.Completion.Editor,
+  Atlas.Core.Undo.Contract,
+  Atlas.Core.Undo.Adapters.DiskTarget,
+  Atlas.Core.Undo.Adapters.FileStore,
+  Atlas.IDE.Undo.Target,
+  Atlas.Core.Vcs.Contract,
+  Atlas.Core.Vcs.Composition,
+  Atlas.Core.Vcs.Tools,
+  Atlas.Core.Vcs.Adapters.ProcessRunner,
+  Atlas.Core.Lsp.Client,
+  Atlas.Core.Lsp.Adapters.ServerProcess,
+  Atlas.Core.Files.WatchedChanges,
+  Atlas.Core.Files.Adapters.FolderWatcher,
+  Atlas.Core.Signature.Contract,
+  Atlas.Core.Signature.Providers.Server,
+  Atlas.Core.Completion.Providers.Server,
+  Atlas.Core.Completion.Providers.Snippets,
+  Atlas.Core.Completion.Providers.XmlDoc;
 
 var
   ManagerIndex: Integer = -1;
@@ -267,6 +284,95 @@ begin
 end;
 
 /// <summary>„Fehlerbericht erstellen…“ (#108) aus Menü, Palette und dem Fenster des abgesicherten Starts.</summary>
+// Serverprozess, Ordnerbeobachter und Quellen von Vervollständigung und
+// Parameter-Hint aus dem Kern (A-09).
+function CodeInsightAdapters: TAtlasCodeInsightAdapters;
+begin
+  Result.NewServer :=
+    function(AExeName, AArguments: string): IAtlasLspServer
+    begin
+      Result := TLspServerProcess.Create(AExeName, AArguments);
+    end;
+  Result.NewFolderWatcher :=
+    function(AChanges: TAtlasWatchedChanges): IAtlasFolderWatcher
+    begin
+      Result := TAtlasFolderWatcher.Create(AChanges);
+    end;
+  Result.NewSignatureSource :=
+    function(ASession: TAtlasSessionFunc): IAtlasSignatureSource
+    begin
+      Result := TAtlasServerSignatureProvider.Create(ASession);
+    end;
+  Result.NewCompletionSources :=
+    function(const ASession: TAtlasSessionFunc; const ALog: TAtlasLogProc): TAtlasCompletionSources
+    var
+      Server: TAtlasServerCompletionProvider;
+      Snippets: TAtlasSnippetCompletionProvider;
+    begin
+      Server := TAtlasServerCompletionProvider.Create(ASession);
+      Server.OnLog :=
+        procedure(const AMessage: string)
+        begin
+          ALog(AMessage);
+        end;
+      Snippets := TAtlasSnippetCompletionProvider.Create(TAtlasSnippets.BuiltIn);
+      // Die Schnittstellen halten die Quellen; die Funktionen greifen über die Objekte zu.
+      Result.Server := Server;
+      Result.XmlDoc := TAtlasXmlDocCompletionProvider.Create;
+      Result.Snippets := Snippets;
+      Result.Shutdown :=
+        procedure
+        begin
+          Server.Shutdown;
+          Snippets.Shutdown;
+        end;
+      Result.SetSnippetsEnabled :=
+        procedure(AEnabled: Boolean)
+        begin
+          Snippets.Enabled := AEnabled;
+          Server.Snippets := AEnabled;
+        end;
+      Result.SetSnippetList :=
+        procedure(AList: TAtlasSnippetList)
+        begin
+          Snippets.SetSnippets(AList);
+        end;
+      Result.SnippetList :=
+        function: TAtlasSnippetList
+        begin
+          Result := Snippets.Snippets;
+        end;
+    end;
+end;
+
+// Versionsverwaltung: Prozessläufer und Auswahl des Kerns (A-09).
+function VcsBackend: TAtlasIdeVcsBackend;
+begin
+  Result.NewRunner :=
+    function(ACancelled: TFunc<Boolean>): IAtlasVcsRunner
+    begin
+      Result := TAtlasVcsProcessRunner.Create(False, ACancelled);
+    end;
+  Result.Open :=
+    function(const AFolder: string; AProvider: TAtlasVcsProvider; const ARunner: IAtlasVcsRunner;
+      ATimeoutMs: Cardinal): IAtlasVersionControl
+    begin
+      if ATimeoutMs = 0 then
+        Exit(TAtlasVersionControl.Open(AFolder, AProvider, ARunner));
+      Result := TAtlasVersionControl.Open(AFolder, AProvider, ARunner,
+        function(AKind: TAtlasVcsKind): string
+        begin
+          Result := TAtlasVcsTools.Find(AKind);
+        end,
+        ATimeoutMs);
+    end;
+  Result.SetToolMissing :=
+    procedure(AHandler: TProc<TAtlasVcsKind>)
+    begin
+      TAtlasVcsNotices.OnToolMissing := AHandler;
+    end;
+end;
+
 procedure CreateBugReport;
 begin
   TAtlasIdeBugReport.Execute(
@@ -1435,7 +1541,7 @@ begin
   Basic := Level <> TAtlasSafeLevel.Minimal;
   if Basic and (ManagerIndex < 0) and Supports(BorlandIDEServices, IOTACodeInsightServices, Services) then
   begin
-    Manager := TAtlasCodeInsightManager.Create;
+    Manager := TAtlasCodeInsightManager.Create(CodeInsightAdapters);
     ManagerIndex := Services.AddCodeInsightManager(Manager);
   end;
   // Notifier und Hintergrundaufgaben nur im normalen Betrieb bzw. wenn ihr Schalter wieder an ist.
@@ -1525,6 +1631,24 @@ begin
   end;
   // Änderungsprotokoll vor den Tasten: Strg+Alt+Z braucht es (#721).
   if Basic and (TAtlasIdeUndo.Journal = nil) then
+  begin
+    // Adapter des Kerns setzt nur die Kompositionswurzel ein (A-09).
+    TAtlasIdeUndoTarget.DiskFactory :=
+      function(const AHooks: TAtlasUndoDiskHooks): IAtlasUndoTarget
+      var
+        Disk: TAtlasUndoDiskTarget;
+      begin
+        Disk := TAtlasUndoDiskTarget.Create;
+        Disk.OnAddToProject := AHooks.OnAddToProject;
+        Disk.OnRemoveFromProject := AHooks.OnRemoveFromProject;
+        Disk.OnRecycle := AHooks.OnRecycle;
+        Result := Disk;
+      end;
+    TAtlasIdeUndo.StoreFactory :=
+      function(const AFolder: string; AMaxBytes: Int64): IAtlasUndoStore
+      begin
+        Result := TAtlasUndoFileStore.Create(AFolder, AMaxBytes);
+      end;
     TAtlasIdeUndo.Start(
       procedure(AText: string)
       begin
@@ -1534,6 +1658,7 @@ begin
       begin
         TAtlasGuard.Log(AText);
       end);
+  end;
   // Update-Prüfung nur nach Zustimmung und höchstens einmal täglich (#495).
   if Basic and (Updates = nil) then
   begin
@@ -1895,7 +2020,7 @@ begin
   TAtlasGuard.OnWarning := GuardWarning;
   TAtlasStrings.Language := IdeLanguage;
   // Versionsverwaltung (#571): Aufrufe im Hintergrund; fehlt git bzw. svn, einmal eine Zeile.
-  TAtlasIdeVcs.Start(MessageLine);
+  TAtlasIdeVcs.Start(MessageLine, VcsBackend);
   // Atlas-Symbol (#751): Startbildschirm, Info-Dialog und Bildliste immer, auch abgesichert.
   TAtlasIdeSymbol.Register;
   TAtlasIdeSymbol.OnThemeChanged :=

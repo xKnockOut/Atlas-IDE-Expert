@@ -24,6 +24,8 @@ uses
 
 type
   TAtlasIdeUndoTarget = class(TInterfacedObject, IAtlasUndoTarget)
+  private class var
+    FDiskFactory: TAtlasUndoDiskFactory;
   private
     FDisk: IAtlasUndoTarget;
     class procedure WriteBuffer(const ABuffer: IOTAEditBuffer; const AOld, ANew: string); static;
@@ -37,6 +39,8 @@ type
     procedure RemoveFile(const AFileName, AProject: string; AMode: TAtlasNewFilesMode);
     /// <summary>Datei in den Papierkorb; EInOutError, wenn das nicht geht.</summary>
     class procedure Recycle(const AFileName: string); static;
+    /// <summary>Legt das Plattenziel an; setzt die Kompositionswurzel (TAtlasUndoDiskTarget).</summary>
+    class property DiskFactory: TAtlasUndoDiskFactory read FDiskFactory write FDiskFactory;
   end;
 
 implementation
@@ -46,7 +50,6 @@ uses
   Winapi.ShellAPI,
   Atlas.Core.Lsp.TextChanges,
   Atlas.Core.Forms.Changes,
-  Atlas.Core.Undo.Adapters.DiskTarget,
   Atlas.IDE.Editor.Buffer,
   Atlas.IDE.Editor.Snapshot,
   Atlas.IDE.Forms.Designer,
@@ -56,12 +59,10 @@ uses
 
 constructor TAtlasIdeUndoTarget.Create;
 var
-  Disk: TAtlasUndoDiskTarget;
+  Hooks: TAtlasUndoDiskHooks;
 begin
   inherited Create;
-  Disk := TAtlasUndoDiskTarget.Create;
-  FDisk := Disk;
-  Disk.OnAddToProject :=
+  Hooks.OnAddToProject :=
     procedure(const AFileName, AProject: string)
     var
       Project: IOTAProject;
@@ -70,7 +71,7 @@ begin
       if Project <> nil then
         Project.AddFile(AFileName, SameText(ExtractFileExt(AFileName), '.pas'));
     end;
-  Disk.OnRemoveFromProject :=
+  Hooks.OnRemoveFromProject :=
     procedure(const AFileName, AProject: string)
     var
       Project: IOTAProject;
@@ -79,11 +80,14 @@ begin
       if Project <> nil then
         Project.RemoveFile(AFileName);
     end;
-  Disk.OnRecycle :=
+  Hooks.OnRecycle :=
     procedure(AFileName: string)
     begin
       Recycle(AFileName);
     end;
+  if not Assigned(FDiskFactory) then
+    raise EInvalidOpError.Create('Atlas: Plattenziel des Änderungsprotokolls nicht eingesetzt.');
+  FDisk := FDiskFactory(Hooks);
 end;
 
 class function TAtlasIdeUndoTarget.ProjectOf(const AProject: string): IOTAProject;

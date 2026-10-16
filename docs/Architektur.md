@@ -122,7 +122,7 @@ Die Liste steht einmal in `atlas.json` (`allow` der beiden Regeln) und gilt für
 |---|---|
 | `Atlas.Common.Rules.Contract -> Atlas.Common.Pascal.SyntaxTree` | Der Syntaxbaum ist Datengrundlage jeder Regel und hängt selbst nur an Contracts; ein Baum-Interface würde alle Regeln ändern. |
 | `Atlas.Common.Documents.Contract -> Atlas.Text.Lines` | `TTextPosition` ist derselbe Typ wie in `Atlas.Text` (ADR 0012); `Atlas.Text` hat nur zustandslose Funktionen und Records. |
-| `Atlas.IDE.* -> Atlas.Core.*` | Die Schicht `Atlas.IDE` ist faktisch die Komposition des Plugins und greift auf Providers, Adapters und Composition der Core-Features zu. Wird mit der Neuordnung der Plugin-Schichten (Code-Review A-09) Eintrag für Eintrag ersetzt. Verstöße innerhalb `Atlas.Core` und `Atlas.UI` bleiben sichtbar. |
+| `Atlas.IDE.CodeInsight.Composition -> Atlas.Core.*` | `Atlas.IDE.CodeInsight.Composition` ist die Kompositionswurzel des Plugins und übernimmt dort die Rolle eines Host: Sie allein erzeugt die Providers, Adapters und Compositions der Core-Features (Serverprozess, Ordnerbeobachter, Quellen von Vervollständigung und Parameter-Hint, Ziel und Sicherung des Änderungsprotokolls, Prozessläufer der Versionsverwaltung, Update-Quelle) und reicht sie über Schnittstellen und Fabriken an die Features weiter (Code-Review A-09). Alle übrigen `Atlas.IDE.*`-Units halten die Rollenmatrix ohne Ausnahme ein. |
 | `Atlas.Common.Dfm.Contract.TDfm*` (Contract-Inhalt) | `TDfmObject` und `TDfmDocument` sind reine Datenklassen eines Baums (Besitz der Kinder, kein Verhalten); Verschieben änderte rund 20 Units ohne Abhängigkeitsgewinn. |
 
 ## Tests

@@ -30,6 +30,7 @@ type
     FMaxSizeMb: Integer;
     FOnMessage: TProc<string>;
     FOnLog: TProc<string>;
+    FStoreFactory: TAtlasUndoStoreFactory;
   private
     class procedure Say(const ALines: TArray<string>); static;
     class procedure Report(const AReport: TAtlasUndoReport); static;
@@ -54,6 +55,8 @@ type
     /// <summary>%LOCALAPPDATA%\Atlas\undo.</summary>
     class function DefaultFolder: string; static;
     class property Journal: TAtlasUndoJournal read FJournal;
+    /// <summary>Legt die Sicherung an; setzt die Kompositionswurzel (TAtlasUndoFileStore).</summary>
+    class property StoreFactory: TAtlasUndoStoreFactory read FStoreFactory write FStoreFactory;
   end;
 
 implementation
@@ -61,7 +64,6 @@ implementation
 uses
   System.IOUtils,
   Atlas.Core.Settings.Plugin,
-  Atlas.Core.Undo.Adapters.FileStore,
   Atlas.Core.Undo.Names,
   Atlas.UI.Strings,
   Atlas.UI.Undo.Messages,
@@ -138,14 +140,17 @@ begin
   begin
     FPersist := Persist;
     FMaxSizeMb := Settings.UndoMultiFileMaxSizeMb;
-    if Persist then
-      FJournal.Store := TAtlasUndoFileStore.Create(FFolder, Int64(FMaxSizeMb) * BytesPerMb)
+    if Persist and Assigned(FStoreFactory) then
+      FJournal.Store := FStoreFactory(FFolder, Int64(FMaxSizeMb) * BytesPerMb)
     else
     begin
       // Ohne Sicherung bleibt kein Quelltext im Profil liegen.
       try
-        Cleaner := TAtlasUndoFileStore.Create(FFolder, 0);
-        Cleaner.Clear;
+        if Assigned(FStoreFactory) then
+        begin
+          Cleaner := FStoreFactory(FFolder, 0);
+          Cleaner.Clear;
+        end;
       except
         on E: Exception do
           if Assigned(FOnLog) then

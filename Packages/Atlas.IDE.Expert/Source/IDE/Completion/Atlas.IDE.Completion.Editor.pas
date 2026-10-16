@@ -40,8 +40,6 @@ uses
   Atlas.Core.Completion.Contract,
   Atlas.Core.Completion.Composite,
   Atlas.Core.Completion.Controller,
-  Atlas.Core.Completion.Providers.Server,
-  Atlas.Core.Completion.Providers.Snippets,
   Atlas.Core.Completion.Parentheses,
   Atlas.Core.Completion.Snippets,
   Atlas.Core.Editor.CloseRules,
@@ -55,16 +53,31 @@ type
   /// <summary>Protokoll für die Diagnose (Registry-Wert Diagnose).</summary>
   TAtlasLogProc = reference to procedure(const AMessage: string);
 
+  /// <summary>Quellen der Vervollständigung aus dem Kern (Server, XMLDoc, Code-Vorlagen); setzt die
+  /// Kompositionswurzel ein (A-09). Die Funktionen wirken auf Server- und Vorlagenquelle.</summary>
+  TAtlasCompletionSources = record
+    /// <summary>Server; unterstützt auch IAtlasCompletionResolver.</summary>
+    Server: IAtlasCompletionProvider;
+    XmlDoc: IAtlasCompletionProvider;
+    Snippets: IAtlasCompletionProvider;
+    /// <summary>Bricht laufende Anfragen von Server und Vorlagen ab und wartet auf sie.</summary>
+    Shutdown: TProc;
+    /// <summary>Code-Vorlagen in der Liste und kontextabhängige Vorlagen des Servers ein/aus.</summary>
+    SetSnippetsEnabled: TProc<Boolean>;
+    SetSnippetList: TProc<TAtlasSnippetList>;
+    SnippetList: TFunc<TAtlasSnippetList>;
+  end;
+
+  TAtlasCompletionSourcesFactory = reference to function(const ASession: TAtlasSessionFunc;
+    const ALog: TAtlasLogProc): TAtlasCompletionSources;
+
   TAtlasEditorCompletion = class
   private
     FSession: TAtlasSessionFunc;
     FProviders: TAtlasCompletionProviders;
     FProvidersRef: IAtlasCompletionProvider;
-    FServerProvider: TAtlasServerCompletionProvider;
-    FServerProviderRef: IAtlasCompletionProvider;
+    FSources: TAtlasCompletionSources;
     // Code-Vorlagen (#51): Quelle, Stand des Ordners, letzte Prüfung, Platzhalter-Modus.
-    FSnippetProvider: TAtlasSnippetCompletionProvider;
-    FSnippetProviderRef: IAtlasCompletionProvider;
     // Eigene Postfix-Vorlagen (#188): gehen an den Server, neu nach Änderung, neuem Server oder einer Minute.
     FPostfixSnippets: TAtlasSnippetList;
     FPostfixSession: TLspSession;
@@ -145,7 +158,9 @@ type
   public
     /// <summary>Nach dem Übernehmen mit Klammern den Parameter-Hint öffnen (#430).</summary>
     property OnOpenSignature: TProc read FOnOpenSignature write FOnOpenSignature;
-    constructor Create(const ASession: TAtlasSessionFunc; const ALog: TAtlasLogProc);
+    /// <summary>ASources legt die Quellen des Kerns an (Kompositionswurzel).</summary>
+    constructor Create(const ASession: TAtlasSessionFunc; const ALog: TAtlasLogProc;
+      const ASources: TAtlasCompletionSourcesFactory);
     destructor Destroy; override;
     /// <summary>Öffnet die Vervollständigung an der Cursorstelle von AView; False, wenn nicht möglich.
     /// AAutomatic: von der IDE nach einem Zeichen ausgelöst, nicht über Strg+Leer. Steht dann "[" vor dem
@@ -201,7 +216,6 @@ uses
   Atlas.Core.Documentation.Layout,
   Atlas.Core.Completion.Word,
   Atlas.Core.Completion.Matching,
-  Atlas.Core.Completion.Providers.XmlDoc,
   Atlas.Core.Completion.LiveTemplates,
   Atlas.Core.Projects.Contract,
   Atlas.Core.Completion.Preview,
@@ -421,7 +435,8 @@ end;
 
 { TAtlasEditorCompletion }
 
-constructor TAtlasEditorCompletion.Create(const ASession: TAtlasSessionFunc; const ALog: TAtlasLogProc);
+constructor TAtlasEditorCompletion.Create(const ASession: TAtlasSessionFunc; const ALog: TAtlasLogProc;
+  const ASources: TAtlasCompletionSourcesFactory);
 var
   Editor: IOTAEditorServices;
   Notifier: INTAEditServicesNotifier;
@@ -433,20 +448,16 @@ begin
   FCommitEnd := -1;
   FProviders := TAtlasCompletionProviders.Create;
   FProvidersRef := FProviders;
-  FServerProvider := TAtlasServerCompletionProvider.Create(ASession);
-  FServerProvider.OnLog :=
+  FSources := ASources(ASession,
     procedure(const AMessage: string)
     begin
       Log(AMessage);
-    end;
-  FServerProviderRef := FServerProvider;
-  FProviders.Add(FServerProviderRef);
+    end);
+  FProviders.Add(FSources.Server);
   // XMLDoc-Tags in ///-Kommentaren (#435), lokal.
-  FProviders.Add(TAtlasXmlDocCompletionProvider.Create as IAtlasCompletionProvider);
+  FProviders.Add(FSources.XmlDoc);
   // Code-Vorlagen (#51), lokal; die eigenen liest RefreshSnippets beim ersten Öffnen.
-  FSnippetProvider := TAtlasSnippetCompletionProvider.Create(TAtlasSnippets.BuiltIn);
-  FSnippetProviderRef := FSnippetProvider;
-  FProviders.Add(FSnippetProviderRef);
+  FProviders.Add(FSources.Snippets);
   FPlaceholders := TAtlasEditorPlaceholders.Create;
   FPopup := TAtlasCompletionPopup.Create(nil);
   FController := TAtlasCompletionController.Create(FProvidersRef, FPopup);
@@ -554,8 +565,7 @@ begin
   FController.Free;
   FPopup.Free;
   FKeys.Free;
-  FServerProviderRef := nil;
-  FSnippetProviderRef := nil;
+  FSources := Default(TAtlasCompletionSources);
   FProvidersRef := nil;
   inherited;
 end;
@@ -569,8 +579,8 @@ end;
 procedure TAtlasEditorCompletion.Shutdown;
 begin
   Close;
-  FServerProvider.Shutdown;
-  FSnippetProvider.Shutdown;
+  if Assigned(FSources.Shutdown) then
+    FSources.Shutdown();
 end;
 
 function TAtlasEditorCompletion.IndexingNow: Boolean;
@@ -691,9 +701,8 @@ begin
   FPopup.Limited := IndexingNow;
   FPopup.Target := ActiveTarget;
   FController.ChipsEnabled := TAtlasIdeSettings.Current.FilterChips;
-  FSnippetProvider.Enabled := TAtlasIdeSettings.Current.Snippets;
   // Kontextabhängige Vorlagen des Servers (#51) hängen an derselben Einstellung.
-  FServerProvider.Snippets := TAtlasIdeSettings.Current.Snippets;
+  FSources.SetSnippetsEnabled(TAtlasIdeSettings.Current.Snippets);
   // Eigene Vorlagen auch ohne Code-Vorlagen in der Liste lesen: Postfix-Vorlagen (#188) hängen an
   // completion.postfixTemplates.
   RefreshSnippets;
@@ -811,7 +820,7 @@ begin
   Log(Format('Code-Vorlagen: %d eigene, %d fehlerhafte übersprungen; %d aus der IDE, %d übersprungen, ' +
     '%d Skripte entfallen', [Integer(Length(Own)), Integer(Length(Errors)), Stats.Templates, Stats.Skipped,
     Stats.Scripts]));
-  FSnippetProvider.SetSnippets(TAtlasSnippets.Merge(TAtlasSnippets.Merge(TAtlasSnippets.BuiltIn, Ide), Own));
+  FSources.SetSnippetList(TAtlasSnippets.Merge(TAtlasSnippets.Merge(TAtlasSnippets.BuiltIn, Ide), Own));
 end;
 
 procedure TAtlasEditorCompletion.SendPostfixTemplates;
@@ -1064,7 +1073,7 @@ begin
   Availability := '';
   if Item.Unavailable and (Item.Condition <> '') and not SameText(Item.Condition, 'platform') then
     Availability := TAtlasStrings.Fmt(TAtlasTextId.UnavailableHint, [Item.Condition, FPopup.Target]);
-  if not Supports(FServerProviderRef, IAtlasCompletionResolver, Resolver) or not Resolver.Resolve(Item,
+  if not Supports(FSources.Server, IAtlasCompletionResolver, Resolver) or not Resolver.Resolve(Item,
     procedure(const ADetails: TAtlasItemDetails)
     var
       Shown: TAtlasItemDetails;
@@ -1443,7 +1452,7 @@ begin
   if not TAtlasIdeSettings.Current.Snippets then
     Exit;
   RefreshSnippets;
-  Result := FSnippetProvider.Snippets;
+  Result := FSources.SnippetList();
 end;
 
 procedure TAtlasEditorCompletion.InsertSnippet(const AView: IOTAEditView; const ASnippet: TAtlasSnippet);
