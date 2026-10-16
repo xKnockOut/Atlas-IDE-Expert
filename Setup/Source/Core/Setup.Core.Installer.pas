@@ -76,8 +76,11 @@ type
     /// <summary>Lokale HTML-Doku für den Knopf „Atlas-Doku“ der Willkommensseite (#766, Tools/Build-Docs.ps1);
     /// ersetzt bei jeder Installation den ganzen Ordner.</summary>
     DocsFolder = 'Doku';
+    /// <summary>Vorlagen für atlas.json der Einrichtung „Projekt für Atlas einrichten“ (#759); ersetzt bei jeder
+    /// Installation den ganzen Ordner.</summary>
+    TemplatesFolder = 'Vorlagen';
     /// <summary>Ordner, die bei jeder Installation vollständig ersetzt werden.</summary>
-    DataFolders: array[0..2] of string = (SamplesFolder, TipsFolder, DocsFolder);
+    DataFolders: array[0..3] of string = (SamplesFolder, TipsFolder, DocsFolder, TemplatesFolder);
   private
     FSystem: ISetupSystem;
     FPaths: TSetupPaths;

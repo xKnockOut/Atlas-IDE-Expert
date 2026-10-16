@@ -248,6 +248,8 @@ type
     FWelcomeHelpReportUrl: TEdit;
     FWelcomeHelpReportFolder: TEdit;
     FWelcomeHelpFolderBrowse: TButton;
+    FWelcomeProjectSetup: TCheckBox;
+    FWelcomeNewFromTemplate: TCheckBox;
     FVersion: TLabel;
     FResetHistory: TButton;
     // Favoriten (#458): Schalter, Liste und Schlüssel je Zeile.
@@ -408,6 +410,9 @@ type
     property WelcomeHelp: TCheckBox read FWelcomeHelp;
     property WelcomeHelpReportUrl: TEdit read FWelcomeHelpReportUrl;
     property WelcomeHelpReportFolder: TEdit read FWelcomeHelpReportFolder;
+    /// <summary>Zum Testen: Einrichtungskarte und „Neu mit Atlas“ (#759).</summary>
+    property WelcomeProjectSetup: TCheckBox read FWelcomeProjectSetup;
+    property WelcomeNewFromTemplate: TCheckBox read FWelcomeNewFromTemplate;
     property VersionLabel: TLabel read FVersion;
     /// <summary>Kennzahlen als Text; nil = nicht verfügbar.</summary>
     property OnIndexMetrics: TFunc<string> read FOnIndexMetrics write FOnIndexMetrics;
@@ -933,6 +938,9 @@ begin
   FWelcomeHelpFolderBrowse.Width := 30;
   FWelcomeHelpFolderBrowse.Anchors := [akTop, akRight];
   FWelcomeHelpFolderBrowse.OnClick := HelpFolderBrowseClick;
+  // Karte „Projekt für Atlas einrichten“ und Knöpfe „Neu mit Atlas“ (#759).
+  FWelcomeProjectSetup := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsWelcomeProjectSetup));
+  FWelcomeNewFromTemplate := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsWelcomeNewFromTemplate));
 end;
 
 function TAtlasSettingsPage.AddTextLine(const ACaption: string): TEdit;
@@ -1694,6 +1702,8 @@ begin
   FWelcomeHelp.Checked := ASettings.WelcomePageHelp;
   FWelcomeHelpReportUrl.Text := ASettings.WelcomePageHelpReportUrl;
   FWelcomeHelpReportFolder.Text := ASettings.WelcomePageHelpReportFolder;
+  FWelcomeProjectSetup.Checked := ASettings.WelcomePageProjectSetup;
+  FWelcomeNewFromTemplate.Checked := ASettings.WelcomePageNewFromTemplate;
   RefreshFuse;
   RefreshIndex;
 end;
@@ -1882,6 +1892,8 @@ begin
   ASettings.WelcomePageHelp := FWelcomeHelp.Checked;
   ASettings.WelcomePageHelpReportUrl := Trim(FWelcomeHelpReportUrl.Text);
   ASettings.WelcomePageHelpReportFolder := Trim(FWelcomeHelpReportFolder.Text);
+  ASettings.WelcomePageProjectSetup := FWelcomeProjectSetup.Checked;
+  ASettings.WelcomePageNewFromTemplate := FWelcomeNewFromTemplate.Checked;
   ASettings.ListWidth := FWidths.ListWidth;
   ASettings.PanelWidth := FWidths.PanelWidth;
   ASettings.Normalize;

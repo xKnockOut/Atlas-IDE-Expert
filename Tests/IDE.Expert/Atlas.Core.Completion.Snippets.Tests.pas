@@ -590,6 +590,16 @@ begin
   // Mitgelieferte Vorlagen haben einen Kontext.
   for Snippet in TAtlasSnippets.BuiltIn do
     Assert.IsTrue(Snippet.Context <> '', Snippet.Prefix);
+  // Dateivorlage (#759): Kopf "file:", nur unit, form oder test; bleibt beim Speichern erhalten.
+  Assert.IsTrue(TAtlasSnippets.Parse('prefix: svc'#10'file: Unit'#10'---'#10'unit %Unit%;', '', Snippet, Error), Error);
+  Assert.AreEqual('unit', Snippet.FileKind);
+  Assert.IsTrue(TAtlasSnippets.Parse(TAtlasSnippets.ToFileText(Snippet), '', Parsed, Error), Error);
+  Assert.AreEqual('unit', Parsed.FileKind);
+  Assert.IsFalse(TAtlasSnippets.Parse('prefix: svc'#10'file: paket'#10'---'#10'x', '', Snippet, Error));
+  Assert.Contains(Error, 'paket');
+  Assert.AreEqual(1, Integer(Length(TAtlasSnippets.FileTemplates([Parsed] + TAtlasSnippets.BuiltIn))));
+  Assert.AreEqual(Length(TAtlasSnippets.BuiltIn), Length(TAtlasSnippets.WithoutFileTemplates([Parsed] +
+    TAtlasSnippets.BuiltIn)));
 end;
 
 procedure TAtlasSnippetsTests.ParsesPostfixSnippets;
