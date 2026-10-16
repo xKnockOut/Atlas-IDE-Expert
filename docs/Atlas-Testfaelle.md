@@ -217,6 +217,24 @@ Vorbereitung: MCP eingerichtet (`claude mcp add delphi -- AtlasServer.exe --mcp 
 
 Rauchtest im MCP-Modus: `tools/list` enthält `get_last_build`, ohne Build die Antwort aus LB1.
 
+## Globale Einstellungen im MCP-Modus (D-08)
+
+Vorbereitung: MCP eingerichtet wie oben; in `%APPDATA%\Atlas\settings.json` steht `"mcp": { "disabledTools": ["rename_symbol"] }`.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| MG1 | Claude Code neu starten, `tools/list` | `rename_symbol` fehlt; im Log (`--log`) keine Warnung zur globalen Datei |
+| MG2 | In `atlas.json` des Projekts `"mcp": { "globalSettings": false }`, Claude Code neu starten | `rename_symbol` ist wieder da; im Log „Globale Einstellungen ausgeschaltet (mcp.globalSettings)“ |
+| MG3 | In `settings.json` zusätzlich `"index": { "libraryPaths": true }`, Claude Code neu starten, `find_symbol` nach einem Typ aus den Bibliothekspfaden | Typ wird gefunden (vorher galt die Vorgabe `false`) |
+
+## Datei außerhalb des einzigen Ordners (S-02)
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| SO1 | Ein Projektordner offen; eine .pas außerhalb (z. B. aus einem Nachbarordner) öffnen, die eine Include-Datei des Projekts einbindet | Keine Meldung „Include-Datei nicht gefunden“, Dokumentlink auf die .inc funktioniert |
+| SO2 | Dieselbe Datei: Prüfregeln | Regeln mit dem Profil aus `atlas.json` des Ordners |
+| SO3 | Zwei Ordner offen, Datei außerhalb beider | Hover, Vervollständigung, Hints nach den globalen Einstellungen; inaktive Zweige wie im aktiven Projekt (#615) |
+
 ## Compilerprüfung nach dem Speichern (#548)
 
 Vorab gemessen (RAD Studio 13, Mini-Projekt): Syntaxprüfung 0,6–0,9 s, schreibt keine `.exe`/`.dcu` (nur `.res`). In der echten IDE geprüft: Speichern → nach 2 s Prüfung (640 ms) → 2 Meldungen gelesen.
