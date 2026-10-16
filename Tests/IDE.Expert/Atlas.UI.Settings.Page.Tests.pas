@@ -44,6 +44,10 @@ type
     /// <summary>#575: Startprofile und ihr Feld in der Statusleiste auf dem Reiter Compiler.</summary>
     [Test]
     procedure StartProfilesRoundTrip;
+    /// <summary>Reiter „Release-Build“ (#533): Schalter, build.gate, Konfigurationen und Prüfungen samt Sollwert.
+    /// </summary>
+    [Test]
+    procedure ReleaseGuardRoundTrip;
     /// <summary>#585: Test debuggen und Haltepunkt am Anfang auf dem Reiter Debuggen.</summary>
     [Test]
     procedure TestDebugRoundTrip;
@@ -97,6 +101,7 @@ uses
   System.SysUtils,
   System.Classes,
   Atlas.Core.Settings.Plugin,
+  Atlas.Core.Build.ReleaseGuard,
   Atlas.Core.Projects.Summary,
   Atlas.Core.Completion.Contract,
   Atlas.Core.Completion.Favorites,
@@ -153,13 +158,15 @@ begin
     Page := TAtlasSettingsPage.Create(Host);
     Page.Parent := Host;
     Page.HandleNeeded;
-    Assert.AreEqual(15, Page.Pages.PageCount);
+    Assert.AreEqual(16, Page.Pages.PageCount);
     Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.SettingsTabGeneral), Page.Pages.Pages[0].Caption);
-    Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.SettingsTabDebug), Page.Pages.Pages[7].Caption);
-    Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.SettingsTabUndo), Page.Pages.Pages[11].Caption);
-    Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.SettingsTabUnitSearch), Page.Pages.Pages[12].Caption);
-    Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.SettingsTabWelcome), Page.Pages.Pages[13].Caption);
-    Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.SettingsTabTeamFile), Page.Pages.Pages[14].Caption);
+    Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.SettingsTabCompiler), Page.Pages.Pages[6].Caption);
+    Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.SettingsTabRelease), Page.Pages.Pages[7].Caption);
+    Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.SettingsTabDebug), Page.Pages.Pages[8].Caption);
+    Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.SettingsTabUndo), Page.Pages.Pages[12].Caption);
+    Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.SettingsTabUnitSearch), Page.Pages.Pages[13].Caption);
+    Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.SettingsTabWelcome), Page.Pages.Pages[14].Caption);
+    Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.SettingsTabTeamFile), Page.Pages.Pages[15].Caption);
     for Index := 0 to Page.Pages.PageCount - 1 do
     begin
       Sheet := Page.Pages.Pages[Index];
@@ -540,6 +547,51 @@ begin
     Page.LoadFrom(Saved);
     Assert.IsFalse(Page.CodeLensTestsCheck.Checked);
     Assert.IsTrue(Page.TestsAfterBuildCheck.Checked);
+  finally
+    Page.Free;
+  end;
+end;
+
+procedure TAtlasSettingsPageTests.ReleaseGuardRoundTrip;
+var
+  Page: TAtlasSettingsPage;
+  Saved: TAtlasPluginSettings;
+  Checks: TAtlasReleaseChecks;
+begin
+  Page := TAtlasSettingsPage.Create(nil);
+  try
+    Page.LoadFrom(TAtlasPluginSettings.Defaults);
+    Assert.IsTrue(Page.ReleaseGuardCheck.Checked, 'Wächter standardmäßig an');
+    Assert.AreEqual(0, Page.BuildGateChoice.Choice, 'build.gate off');
+    Assert.AreEqual('Release', Page.ReleaseConfigsEdit.Text);
+    Assert.IsTrue(Page.ReleaseCheckBox(TAtlasReleaseCheck.DebugDefine).Checked);
+    Assert.IsNull(Page.ReleaseCheckChoice(TAtlasReleaseCheck.DebugDefine));
+    Assert.IsNull(Page.ReleaseCheckBox(TAtlasReleaseCheck.RangeChecks));
+    Assert.AreEqual(1, Page.ReleaseCheckChoice(TAtlasReleaseCheck.RangeChecks).Choice, 'prüfen, Soll aus');
+    Page.ReleaseGuardCheck.Checked := False;
+    Page.BuildGateChoice.Choice := 2;
+    Page.ReleaseConfigsEdit.Text := 'Release; Ship ,ship';
+    Page.ReleaseCheckBox(TAtlasReleaseCheck.OutputFolder).Checked := False;
+    Page.ReleaseCheckChoice(TAtlasReleaseCheck.Assertions).Choice := 0;
+    Page.ReleaseCheckChoice(TAtlasReleaseCheck.StackFrames).Choice := 2;
+    Saved := TAtlasPluginSettings.Defaults;
+    Page.SaveTo(Saved);
+    Assert.IsFalse(Saved.ReleaseGuard);
+    Assert.AreEqual('block', Saved.BuildGate);
+    Assert.AreEqual('Release, Ship', Saved.ReleaseConfigs);
+    Checks := TAtlasReleaseChecks.Parse(Saved.ReleaseChecks);
+    Assert.IsFalse(Checks.Items[TAtlasReleaseCheck.OutputFolder].Enabled);
+    Assert.IsFalse(Checks.Items[TAtlasReleaseCheck.Assertions].Enabled);
+    Assert.IsTrue(Checks.Items[TAtlasReleaseCheck.StackFrames].Enabled);
+    Assert.IsTrue(Checks.Items[TAtlasReleaseCheck.StackFrames].Expected);
+    Assert.IsTrue(Checks.Items[TAtlasReleaseCheck.DebugDefine].Enabled);
+    Page.LoadFrom(TAtlasPluginSettings.Defaults);
+    Page.LoadFrom(Saved);
+    Assert.IsFalse(Page.ReleaseGuardCheck.Checked);
+    Assert.AreEqual(2, Page.BuildGateChoice.Choice);
+    Assert.AreEqual(0, Page.ReleaseCheckChoice(TAtlasReleaseCheck.Assertions).Choice);
+    Assert.AreEqual(2, Page.ReleaseCheckChoice(TAtlasReleaseCheck.StackFrames).Choice);
+    Assert.IsFalse(Page.ReleaseCheckBox(TAtlasReleaseCheck.OutputFolder).Checked);
   finally
     Page.Free;
   end;

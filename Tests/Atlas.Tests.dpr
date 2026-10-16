@@ -544,6 +544,8 @@ uses
   Atlas.Core.Build.Target.Tests in 'IDE.Expert\Atlas.Core.Build.Target.Tests.pas',
   Atlas.Core.Build.Inbox in '..\Packages\Atlas.IDE.Expert\Source\Core\Build\Atlas.Core.Build.Inbox.pas',
   Atlas.Core.Build.Inbox.Tests in 'IDE.Expert\Atlas.Core.Build.Inbox.Tests.pas',
+  Atlas.Core.Build.ReleaseGuard in '..\Packages\Atlas.IDE.Expert\Source\Core\Build\Atlas.Core.Build.ReleaseGuard.pas',
+  Atlas.Core.Build.ReleaseGuard.Tests in 'IDE.Expert\Atlas.Core.Build.ReleaseGuard.Tests.pas',
   Atlas.Common.Mcp.BuildTools.Tests in 'Common\Mcp\Atlas.Common.Mcp.BuildTools.Tests.pas',
   Atlas.Common.Mcp.Paths.Tests in 'Common\Mcp\Atlas.Common.Mcp.Paths.Tests.pas',
   Shell.Workspace in '..\Application\Source\Shell\Shell.Workspace.pas',

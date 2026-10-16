@@ -38,6 +38,17 @@ type
     /// <summary>Werte für $(…) in den Pfaden von AContext (siehe Kopf); nur im Hauptthread aufrufen, das Ergebnis
     /// darf in einen Hintergrundthread.</summary>
     class function Macros(const AContext: TAtlasProjectContext): TAtlasPathMacros; static;
+    /// <summary>Wert der Option AName in Konfiguration AConfiguration ('' = aktive) für APlatform ('' = ohne
+    /// Plattformkonfiguration), mit geerbten Werten wie Read; '' = nicht gesetzt oder nicht lesbar. Ohne
+    /// Konfigurationsschnittstelle gelten die Projektoptionen, aber nur für die aktive Konfiguration (#533).
+    /// </summary>
+    class function ConfigurationValue(const AProject: IOTAProject; const AConfiguration, APlatform,
+      AName: string): string; static;
+    /// <summary>Namen der Build-Konfigurationen des Projekts (z. B. Base, Debug, Release); leer, wenn nicht lesbar.
+    /// </summary>
+    class function Configurations(const AProject: IOTAProject): TArray<string>; static;
+    /// <summary>Hat das Projekt die Konfiguration AName (Groß-/Kleinschreibung egal)?</summary>
+    class function HasConfiguration(const AProject: IOTAProject; const AName: string): Boolean; static;
   end;
 
 implementation
@@ -50,21 +61,38 @@ uses
   System.Win.Registry,
   Winapi.Windows;
 
-function BuildConfiguration(const AProject: IOTAProject; const APlatform: string): IOTABuildConfiguration;
+/// <summary>Konfiguration AConfiguration ('' = aktive), für APlatform deren Plattformkonfiguration; nil ohne.
+/// </summary>
+function NamedConfiguration(const AProject: IOTAProject; const AConfiguration,
+  APlatform: string): IOTABuildConfiguration;
 var
   Configurations: IOTAProjectOptionsConfigurations;
   Platformed: IOTABuildConfiguration;
+  Index: Integer;
 begin
   Result := nil;
   if not Supports(AProject.ProjectOptions, IOTAProjectOptionsConfigurations, Configurations) then
     Exit;
-  Result := Configurations.ActiveConfiguration;
+  if AConfiguration = '' then
+    Result := Configurations.ActiveConfiguration
+  else
+    for Index := 0 to Configurations.ConfigurationCount - 1 do
+      if SameText(Configurations.Configurations[Index].Name, AConfiguration) then
+      begin
+        Result := Configurations.Configurations[Index];
+        Break;
+      end;
   if (Result = nil) or (APlatform = '') then
     Exit;
   // Plattformabhängige Werte (z. B. Suchpfade nur für Win64) stehen in der Plattformkonfiguration.
   Platformed := Result.PlatformConfiguration[APlatform];
   if Platformed <> nil then
     Result := Platformed;
+end;
+
+function BuildConfiguration(const AProject: IOTAProject; const APlatform: string): IOTABuildConfiguration;
+begin
+  Result := NamedConfiguration(AProject, '', APlatform);
 end;
 
 /// <summary>Wert mit geerbten Werten; AResolved wird True, wenn das Plugin $(AName) selbst einsetzen musste.</summary>
@@ -221,6 +249,55 @@ begin
     end;
   end;
   Result.AddProject(AContext.Project, AContext.Platform, AContext.Configuration);
+end;
+
+class function TAtlasIdeProjectContext.ConfigurationValue(const AProject: IOTAProject; const AConfiguration,
+  APlatform, AName: string): string;
+var
+  Build: IOTABuildConfiguration;
+  Resolved: Boolean;
+begin
+  Result := '';
+  if AProject = nil then
+    Exit;
+  Resolved := False;
+  try
+    Build := NamedConfiguration(AProject, AConfiguration, APlatform);
+    if Build <> nil then
+      Exit(ConfigValue(Build, AName, 0, Resolved));
+  except
+    on Exception do
+      ; // Ersatzweg unten.
+  end;
+  if (AProject.ProjectOptions <> nil) and
+    ((AConfiguration = '') or SameText(AConfiguration, AProject.CurrentConfiguration)) then
+    Result := OptionValue(AProject, AName);
+end;
+
+class function TAtlasIdeProjectContext.Configurations(const AProject: IOTAProject): TArray<string>;
+var
+  Items: IOTAProjectOptionsConfigurations;
+  Index: Integer;
+begin
+  Result := nil;
+  try
+    if (AProject <> nil) and Supports(AProject.ProjectOptions, IOTAProjectOptionsConfigurations, Items) then
+      for Index := 0 to Items.ConfigurationCount - 1 do
+        Result := Result + [Items.Configurations[Index].Name];
+  except
+    on Exception do
+      Result := nil;
+  end;
+end;
+
+class function TAtlasIdeProjectContext.HasConfiguration(const AProject: IOTAProject; const AName: string): Boolean;
+var
+  Name: string;
+begin
+  Result := False;
+  for Name in Configurations(AProject) do
+    if SameText(Name, AName) then
+      Exit(True);
 end;
 
 class function TAtlasIdeProjectContext.Group: TArray<TAtlasProjectContext>;

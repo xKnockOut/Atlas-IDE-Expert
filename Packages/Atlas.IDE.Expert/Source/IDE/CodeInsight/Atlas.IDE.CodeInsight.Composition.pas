@@ -9,7 +9,7 @@
 // dateiübergreifende Zurücknehmen von Atlas-Änderungen (#721), die
 // Versionsverwaltung (#571), den Diagnosemodus (#479) und die Einrichtung mit
 // Prüfliste (#625), das Ausführen der DUnitX-Tests (#69) und die Startprofile
-// samt Feld in der Statusleiste (#575) beim Laden des Packages an und beim Entladen in umgekehrter Reihenfolge wieder ab
+// samt Feld in der Statusleiste (#575), den Release-Build-Wächter (#533) beim Laden des Packages an und beim Entladen in umgekehrter Reihenfolge wieder ab
 // (ADR 0006). Zuerst entscheidet der abgesicherte Start
 // (#722), was angemeldet wird; RegisterFeatures holt den Rest nach, sobald
 // ein Schnellschalter oder „Normal weiterarbeiten“ es erlaubt.
@@ -60,6 +60,7 @@ uses
   Atlas.IDE.Build.CheckOnSave,
   Atlas.IDE.Build.Runner,
   Atlas.IDE.Build.Inbox,
+  Atlas.IDE.Build.ReleaseGuard,
   Atlas.IDE.Settings.Project,
   Atlas.IDE.Commands.MainMenu,
   Atlas.IDE.Editor.Rename,
@@ -148,6 +149,7 @@ uses
   Atlas.Core.Completion.Providers.XmlDoc,
   Atlas.Core.Diagnostics.FeatureTable,
   Atlas.Core.Build.Inbox,
+  Atlas.Core.Build.ReleaseGuard,
   Atlas.Core.Problems.Contract,
   Atlas.Core.Projects.Summary,
   Atlas.Core.Tests.Run,
@@ -868,6 +870,21 @@ begin
   Result := TAtlasIdeSettings.Current.TeamFile;
 end;
 
+/// <summary>Einstellungen des Release-Build-Wächters (#533) aus den aktuellen Plugin-Einstellungen.</summary>
+function ReleaseSettings: TAtlasReleaseSettings;
+var
+  Settings: TAtlasPluginSettings;
+begin
+  Settings := TAtlasIdeSettings.Current;
+  Result := TAtlasReleaseSettings.Create(Settings.ReleaseGuard, Settings.BuildGate, Settings.ReleaseConfigs,
+    Settings.ReleaseChecks);
+end;
+
+function ReleaseGuardVisible: Boolean;
+begin
+  Result := TAtlasIdeSettings.Current.ReleaseGuard;
+end;
+
 /// <summary>Befehle der Tests (#69) sichtbar?</summary>
 function TestsVisible: Boolean;
 begin
@@ -1008,6 +1025,12 @@ begin
   // Liste der Benachrichtigungen (#601); nur sichtbar, solange die Zentrale an ist.
   Add('Atlas.Notifications', TAtlasTextId.NotificationsCommand,
     Guarded(TAtlasFeature.Notifications, TAtlasIdeNotifications.ShowList), NotificationsVisible);
+  // Release-Build prüfen (#533) ohne Build; nur sichtbar, solange die Einstellung ReleaseGuard an ist.
+  Add('Atlas.CheckRelease', TAtlasTextId.ReleaseCheckCommand, Guarded(TAtlasFeature.Build,
+    procedure
+    begin
+      TAtlasIdeReleaseGuard.CheckActive(TAtlasIdeProjects.Folder, ReleaseSettings());
+    end), ReleaseGuardVisible);
   Add('Atlas.CheckNow', TAtlasTextId.PaletteCheckNow,
     procedure
     begin
@@ -1336,6 +1359,13 @@ begin
     end;
   Events.OnLog := LogLine;
   Events.Add(TAtlasCompileLog.Create(Events, LogLine));
+  // Release-Build-Wächter (#533): prüft vor make und build in einer Release-Konfiguration, auch für Aufträge des
+  // Läufers (#261, #764); mit build.gate = block bricht er ab.
+  Events.Add(TAtlasIdeReleaseGuard.CreateParticipant(TAtlasIdeProjects.Folder,
+    function: TAtlasReleaseSettings
+    begin
+      Result := ReleaseSettings();
+    end));
   // Compilermeldungen aus dem Reiter „Build“ an den Server (#528).
   Events.Add(TAtlasMessageViewReader.Create(
     procedure(const AMessages: TArray<TAtlasCompilerMessage>; const AProject: TAtlasCompileProject;
