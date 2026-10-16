@@ -465,7 +465,7 @@ var
   Settings, Saved: TAtlasPluginSettings;
 begin
   Settings := TAtlasPluginSettings.Defaults;
-  Settings.NotificationsSources := 'server=off, buildServer=collect';
+  Settings.NotificationsSources := 'server=off, buildServer=collect, tracker=off';
   Page := TAtlasSettingsPage.Create(nil);
   try
     Page.LoadFrom(Settings);
@@ -479,6 +479,10 @@ begin
     Page.NotificationSource.Choice := 3;
     Page.NotificationSource.OnChange(Page.NotificationSource);
     Assert.AreEqual(2, Page.NotificationMode.Choice);
+    // Build-Server (sechste, #763) zeigt „nur sammeln“.
+    Page.NotificationSource.Choice := 5;
+    Page.NotificationSource.OnChange(Page.NotificationSource);
+    Assert.AreEqual(1, Page.NotificationMode.Choice);
     // Tastenkürzel-Tipps (fünfte) auf „nur sammeln“.
     Page.NotificationSource.Choice := 4;
     Page.NotificationSource.OnChange(Page.NotificationSource);
@@ -495,8 +499,8 @@ begin
   Assert.IsFalse(Saved.Notifications);
   Assert.AreEqual(50, Saved.NotificationsMaxEntries);
   Assert.AreEqual(0, Saved.NotificationsKey, 'leer = keine Taste');
-  // Unbekannte Quellen (künftige wie der Build-Server #763) bleiben erhalten.
-  Assert.AreEqual('server=off, buildServer=collect, shortcutTips=collect', Saved.NotificationsSources);
+  // Build-Server (#763, sechste Quelle) behält sein Verhalten; unbekannte Quellen bleiben erhalten.
+  Assert.AreEqual('server=off, buildServer=collect, tracker=off, shortcutTips=collect', Saved.NotificationsSources);
 end;
 
 procedure TAtlasSettingsPageTests.NotesRoundTrip;
@@ -800,6 +804,14 @@ begin
     Assert.AreEqual('30', Page.WelcomeTrendsPoints.Text);
     Assert.IsTrue(Page.WelcomeTrendsSeries(TAtlasTrendSeries.Warnings).Checked);
     Assert.IsTrue(Page.WelcomeTrendsSeries(TAtlasTrendSeries.MethodLength).Checked);
+    // #763: Testergebnisse an, Build-Server aus (Jenkins, alle 10 Min., Hinweis an), Befehl Atlas.CiLogin an.
+    Assert.IsTrue(Page.WelcomeTests.Checked);
+    Assert.AreEqual('5', Page.WelcomeTestsMaxFailures.Text);
+    Assert.IsFalse(Page.WelcomeTestsCi.Checked);
+    Assert.AreEqual(0, Page.WelcomeTestsCiProvider.Choice);
+    Assert.AreEqual('10', Page.WelcomeTestsCiInterval.Text);
+    Assert.IsTrue(Page.WelcomeTestsCiNotify.Checked);
+    Assert.IsTrue(Page.CiLogin.Checked);
     Assert.IsTrue(Page.WelcomeUnsaved.Checked);
     Assert.AreEqual('0', Page.WelcomeUnsavedMinAge.Text);
     Assert.AreEqual('24', Page.WelcomeUnsavedWarn.Text);
@@ -834,6 +846,12 @@ begin
     Page.WelcomeTrendsPoints.Text := '500';
     Page.WelcomeTrendsSeries(TAtlasTrendSeries.RuleHits).Checked := False;
     Page.WelcomeTrendsSeries(TAtlasTrendSeries.Duration).Checked := False;
+    Page.WelcomeTests.Checked := False;
+    Page.WelcomeTestsMaxFailures.Text := '99';
+    Page.WelcomeTestsCi.Checked := True;
+    Page.WelcomeTestsCiInterval.Text := '0';
+    Page.WelcomeTestsCiNotify.Checked := False;
+    Page.CiLogin.Checked := False;
     Page.WelcomeUnsaved.Checked := False;
     Page.WelcomeUnsavedMinAge.Text := '2';
     Page.WelcomeUnsavedWarn.Text := '48';
@@ -877,6 +895,13 @@ begin
     Assert.IsFalse(Saved.WelcomePageTrends);
     Assert.AreEqual(100, Saved.WelcomePageTrendsPoints, 'auf 2–100 begrenzt');
     Assert.AreEqual('warnings,todos,methodLength', Saved.WelcomePageTrendsSeries);
+    Assert.IsFalse(Saved.WelcomePageTests);
+    Assert.AreEqual(50, Saved.WelcomePageTestsMaxFailures, 'auf 1–50 begrenzt');
+    Assert.IsTrue(Saved.WelcomePageTestsCi);
+    Assert.AreEqual('jenkins', Saved.WelcomePageTestsCiProvider);
+    Assert.AreEqual(1, Saved.WelcomePageTestsCiIntervalMinutes, 'auf 1–1440 begrenzt');
+    Assert.IsFalse(Saved.WelcomePageTestsCiNotify);
+    Assert.IsFalse(Saved.CiLogin);
     Assert.IsFalse(Saved.WelcomePageUnsaved);
     Assert.AreEqual(2, Saved.WelcomePageUnsavedMinAgeHours);
     Assert.AreEqual(48, Saved.WelcomePageUnsavedWarnHours);
@@ -891,6 +916,12 @@ begin
     Assert.AreEqual('100', Page.WelcomeTrendsPoints.Text);
     Assert.IsFalse(Page.WelcomeTrendsSeries(TAtlasTrendSeries.RuleHits).Checked);
     Assert.IsTrue(Page.WelcomeTrendsSeries(TAtlasTrendSeries.Todos).Checked);
+    Assert.IsFalse(Page.WelcomeTests.Checked);
+    Assert.AreEqual('50', Page.WelcomeTestsMaxFailures.Text);
+    Assert.IsTrue(Page.WelcomeTestsCi.Checked);
+    Assert.AreEqual('1', Page.WelcomeTestsCiInterval.Text);
+    Assert.IsFalse(Page.WelcomeTestsCiNotify.Checked);
+    Assert.IsFalse(Page.CiLogin.Checked);
     Assert.IsFalse(Page.WelcomeHelp.Checked);
     Assert.AreEqual('https://example.org/issues/new', Page.WelcomeHelpReportUrl.Text);
     Assert.AreEqual('D:\Diagnose', Page.WelcomeHelpReportFolder.Text);
