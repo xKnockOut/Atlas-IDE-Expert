@@ -20,7 +20,8 @@
 //     Puffer, nicht über eine Tastenbindung: unabhängig vom Tastaturlayout.
 //   - Code-Vorlagen (#51): eigene Quelle mit den mitgelieferten Vorlagen, den Live Templates
 //     der IDE (abschaltbar, ImportIdeTemplates) und denen aus %APPDATA%\Atlas\Snippets (bei
-//     Änderung neu gelesen; eigene vor IDE vor mitgelieferten). Übernehmen setzt den Text mit der
+//     Änderung neu gelesen; eigene vor IDE vor mitgelieferten), dazu die des Projekts aus dem Ordner
+//     "snippets" der Projektdatei .atlas (#486; vor den eigenen). Übernehmen setzt den Text mit der
 //     Einrückung der Zeile ein und startet den Platzhalter-Modus (Atlas.IDE.Completion.Placeholders).
 //   - Diagnosemodus (#479): Invoke nimmt nur bei eingeschalteter Messung beim Aufruf einen Zeitstempel
 //     (TAtlasContext.Started); der Kontext reicht von dort bis zur Anfrage.
@@ -226,6 +227,7 @@ uses
   Atlas.Core.Completion.Preview,
   Atlas.Core.Settings.Plugin,
   Atlas.IDE.Foundation.Settings,
+  Atlas.IDE.Foundation.TeamFile,
   Atlas.IDE.Completion.History,
   Atlas.Core.Completion.Favorites,
   Atlas.IDE.Completion.Favorites,
@@ -799,9 +801,9 @@ end;
 
 procedure TAtlasEditorCompletion.RefreshSnippets;
 var
-  Folder, IdeFolder, Stamp: string;
-  Errors: TArray<string>;
-  Own, Ide: TAtlasSnippetList;
+  Folder, IdeFolder, TeamFolder, Stamp: string;
+  Errors, TeamErrors: TArray<string>;
+  Own, Ide, Team: TAtlasSnippetList;
   Stats: TAtlasLiveTemplateStats;
 begin
   if (FSnippetChecked <> 0) and (TThread.GetTickCount64 - FSnippetChecked < 3000) then
@@ -811,11 +813,16 @@ begin
   IdeFolder := '';
   if TAtlasIdeSettings.Current.ImportIdeTemplates then
     IdeFolder := TAtlasEditorCompletion.IdeTemplateFolder;
-  Stamp := TAtlasSnippets.FolderStamp(Folder) + '#' + TAtlasLiveTemplates.FolderStamp(IdeFolder);
+  // Vorlagen des Projekts aus der Projektdatei .atlas (#486): gelten für alle im Team, vor den eigenen.
+  TeamFolder := TAtlasIdeTeamFile.Current.SnippetFolder;
+  Stamp := TAtlasSnippets.FolderStamp(Folder) + '#' + TAtlasLiveTemplates.FolderStamp(IdeFolder) + '#' +
+    TeamFolder + '#' + TAtlasSnippets.FolderStamp(TeamFolder);
   if Stamp = FSnippetStamp then
     Exit;
   FSnippetStamp := Stamp;
   Own := TAtlasSnippets.LoadFolder(Folder, Errors);
+  Team := TAtlasSnippets.LoadFolder(TeamFolder, TeamErrors);
+  Own := TAtlasSnippets.Merge(Own, Team);
   // Postfix-Vorlagen (#188) bietet der Server hinter Ausdrücken an, nicht die Liste am Anweisungsanfang.
   FPostfixSnippets := TAtlasSnippets.Postfixes(Own);
   FPostfixSession := nil;
@@ -826,8 +833,9 @@ begin
   Ide := TAtlasLiveTemplates.LoadFolder(IdeFolder, Stats);
   // Ohne Datei- und Ordnernamen: Das Diagnoselog nennt keine Namen (#647).
   Log(Format('Code-Vorlagen: %d eigene, %d fehlerhafte übersprungen; %d aus der IDE, %d übersprungen, ' +
-    '%d Skripte entfallen', [Integer(Length(Own)), Integer(Length(Errors)), Stats.Templates, Stats.Skipped,
-    Stats.Scripts]));
+    '%d Skripte entfallen; %d aus der Projektdatei, %d fehlerhafte übersprungen', [Integer(Length(Own)),
+    Integer(Length(Errors)), Stats.Templates, Stats.Skipped, Stats.Scripts, Integer(Length(Team)),
+    Integer(Length(TeamErrors))]));
   FSources.SetSnippetList(TAtlasSnippets.Merge(TAtlasSnippets.Merge(TAtlasSnippets.BuiltIn, Ide), Own));
 end;
 

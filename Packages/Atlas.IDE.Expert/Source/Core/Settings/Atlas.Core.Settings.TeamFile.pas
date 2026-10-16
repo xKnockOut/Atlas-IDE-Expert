@@ -119,6 +119,8 @@ type
 
   /// <summary>Inhalt der Projektdatei nach dem Lesen; nur erlaubte Werte.</summary>
   TAtlasTeamSettings = record
+    /// <summary>.dproj, für die der Stand gilt; '' ohne Projekt (setzt die IDE-Schicht).</summary>
+    Project: string;
     /// <summary>Vollständiger Pfad der Datei; '' ohne Projektdatei.</summary>
     FileName: string;
     /// <summary>Ordner der Datei; Basis relativer Pfade.</summary>
@@ -925,7 +927,7 @@ const
     '  "naming": {',
     '    // "field": "F", "parameter": "A", "local": "L"',
     '  },',
-    '  // Ordner mit Code-Vorlagen des Projekts (*.json wie unter %APPDATA%\Atlas\Snippets):',
+    '  // Ordner mit Code-Vorlagen des Projekts (*.atlas-snippet wie unter %APPDATA%\Atlas\Snippets):',
     '  // "snippets": "Vorlagen\\Snippets",',
     '  "formatFunctions": [',
     '    // {"name": "Log", "formatIndex": 0}',

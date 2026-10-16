@@ -458,6 +458,16 @@
       "image": "Tipps\\baseline.png"
     },
     {
+      "id": "teamFile",
+      "command": "Atlas.TeamFile",
+      "setting": "TeamFile",
+      "title": "Team-Einstellungen in .atlas",
+      "titleEn": "Team settings in .atlas",
+      "text": "Die Projektdatei .atlas im Repository gibt allen im Team dieselben Präfixe, Projekt-Vorlagen, Startprofile, Build-Server und Tracker; ihre Werte gehen den persönlichen vor. Zugangsdaten und absolute Pfade ignoriert Atlas.",
+      "textEn": "The project file .atlas in the repository gives the whole team the same prefixes, project templates, launch profiles, build server and tracker; its values take precedence over personal ones. Atlas ignores credentials and absolute paths.",
+      "image": "Tipps\\projektdatei.png"
+    },
+    {
       "id": "projectSetup",
       "command": "Atlas.ProjectSetup",
       "setting": "WelcomePageProjectSetup",

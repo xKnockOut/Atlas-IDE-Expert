@@ -117,6 +117,7 @@ uses
   Atlas.IDE.Bookmarks.Service,
   Atlas.IDE.Bookmarks.Gutter,
   Atlas.IDE.Foundation.GutterMarks,
+  Atlas.IDE.Foundation.TeamFile,
   Atlas.Core.Editor.WorkspacePlan,
   Atlas.IDE.Editor.TestUnitLens,
   Atlas.IDE.Completion.Editor,
@@ -829,6 +830,11 @@ begin
   Result := TAtlasIdeSettings.Current.TodoList;
 end;
 
+function TeamFileVisible: Boolean;
+begin
+  Result := TAtlasIdeSettings.Current.TeamFile;
+end;
+
 procedure RegisterPalette;
 
   procedure Add(const AId: string; ATextId: TAtlasTextId; const AProc: TProc); overload;
@@ -946,6 +952,8 @@ begin
   Add('Atlas.TodoListFilter', TAtlasTextId.TodoFilterCommand, FilterProjectTodos, TodoListVisible);
   // Baseline des Projekts aktualisieren (#97); nur sichtbar, solange die Einstellung BaselineUpdate an ist.
   Add('Atlas.UpdateBaseline', TAtlasTextId.BaselineUpdateCommand, UpdateBaseline, BaselineUpdateVisible);
+  // Projektdatei .atlas (#486) anlegen bzw. öffnen; nur sichtbar, solange die Einstellung TeamFile an ist.
+  Add('Atlas.TeamFile', TAtlasTextId.TeamFileCommand, TAtlasIdeTeamFile.OpenInEditor, TeamFileVisible);
   Add('Atlas.CheckNow', TAtlasTextId.PaletteCheckNow,
     procedure
     begin
@@ -2006,6 +2014,18 @@ begin
       Result := CommandsInstalled;
     end,
     StartCommands, StopCommands);
+  // Projektdatei .atlas (#486): in jeder Stufe, solange die Einstellung TeamFile an ist (abgesichert erst nach dem
+  // Schnellschalter); liest nur eine Datei.
+  Features.Add('TeamFile',
+    function(ALevel: TAtlasSafeLevel): Boolean
+    begin
+      Result := TAtlasIdeSettings.Current.TeamFile;
+    end,
+    function: Boolean
+    begin
+      Result := TAtlasIdeTeamFile.Started;
+    end,
+    TAtlasIdeTeamFile.Start, TAtlasIdeTeamFile.Stop);
   // Änderungsprotokoll vor den Tasten: Strg+Alt+Z braucht es (#721).
   Features.Add('Undo', TAtlasSafeLevel.Safe,
     function: Boolean
@@ -2399,6 +2419,8 @@ begin
         DiagnosticMode.ApplySettings;
       // bookmarks.named und bookmarks.shared (#622).
       TAtlasIdeBookmarks.ApplySettings;
+      // Projektdatei .atlas an oder aus (#486).
+      TAtlasIdeTeamFile.Refresh;
       // tips.usageTracking (#757).
       if CommandUsage <> nil then
         CommandUsage.ApplySettings;

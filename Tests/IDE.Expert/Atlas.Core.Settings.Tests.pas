@@ -137,6 +137,7 @@ begin
   Assert.IsTrue(Settings.CodeLensMetrics, 'Code Lens Metriken standardmäßig an (#66)');
   Assert.IsTrue(Settings.TodoList, 'Befehl standardmäßig da (#68)');
   Assert.IsTrue(Settings.MetricsReport, 'Befehl standardmäßig da (#66)');
+  Assert.IsTrue(Settings.TeamFile, 'Projektdatei standardmäßig an (#486)');
   Assert.IsTrue(Settings.BaselineUpdate, 'Befehl standardmäßig da (#97)');
   Assert.IsTrue(Settings.SlashCommands, 'Schnellbefehle standardmäßig an (#399)');
   Assert.IsTrue(Settings.Snippets, 'Code-Vorlagen standardmäßig an (#51)');
@@ -221,6 +222,7 @@ begin
   Settings.CodeLensMetrics := False;
   Settings.TodoList := False;
   Settings.MetricsReport := False;
+  Settings.TeamFile := False;
   Settings.BaselineUpdate := False;
   Settings.EditorKeysPriority := True;
   Settings.SlashCommands := False;
@@ -291,6 +293,7 @@ begin
   Assert.IsFalse(Loaded.CodeLensMetrics);
   Assert.IsFalse(Loaded.TodoList);
   Assert.IsFalse(Loaded.MetricsReport);
+  Assert.IsFalse(Loaded.TeamFile);
   Assert.IsFalse(Loaded.BaselineUpdate);
   Assert.IsTrue(Loaded.EditorKeysPriority);
   Assert.IsFalse(Loaded.SlashCommands);
