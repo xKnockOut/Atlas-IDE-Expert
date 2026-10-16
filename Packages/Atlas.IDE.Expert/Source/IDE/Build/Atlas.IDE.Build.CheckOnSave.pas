@@ -94,7 +94,10 @@ uses
   Atlas.Core.Settings.Plugin,
   Atlas.UI.Strings,
   Atlas.IDE.Foundation.Settings,
-  Atlas.Core.Diagnostics.Hangs;
+  Atlas.Core.Diagnostics.Hangs,
+  Atlas.Core.Notifications.Contract,
+  Atlas.Core.Notifications.Center,
+  Atlas.Core.Notifications.Sources;
 
 function NowMs: Int64;
 begin
@@ -347,6 +350,7 @@ var
   Project: IOTAProject;
   Started, Duration: Int64;
   Activity: IInterface;
+  Text: string;
 begin
   if not Supports(BorlandIDEServices, IOTAModuleServices, Services) or
     not Supports(Services.FindModule(AProject), IOTAProject, Project) or (Project.ProjectBuilder = nil) then
@@ -366,8 +370,13 @@ begin
     FReport(Format('Compilerprüfung %s: %s, %d ms', [IfThen(AManual, 'von Hand', 'nach dem Speichern'),
       ExtractFileName(AProject), Duration]));
   if not AManual and FCore.CheckFinished(AProject, Duration) then
-    AddMessage(TAtlasStrings.Fmt(TAtlasTextId.CheckOnSaveDisabled, [ExtractFileName(AProject), Duration,
-      FCore.MaxMs]));
+  begin
+    Text := TAtlasStrings.Fmt(TAtlasTextId.CheckOnSaveDisabled, [ExtractFileName(AProject), Duration, FCore.MaxMs]);
+    // Benachrichtigungszentrale (#601, Quelle check): Meldungsfenster nur bei „einblenden“.
+    if TAtlasNotificationCenter.Default.Notify(TAtlasNotificationSources.Check, TAtlasNotificationSeverity.Warning,
+      TAtlasStrings.Text(TAtlasTextId.NotificationsCheckDisabled), Text) = TAtlasNotificationMode.Show then
+      AddMessage(Text);
+  end;
 end;
 
 end.
