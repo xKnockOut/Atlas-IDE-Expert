@@ -383,6 +383,7 @@ uses
   Atlas.Common.Lsp.Internals.Namespaces,
   Atlas.Common.Lsp.Internals.CompletionSource,
   Atlas.Common.Lsp.CompletionJson,
+  Atlas.Common.Index.Files,
   System.Math,
   System.StrUtils,
   System.Diagnostics,

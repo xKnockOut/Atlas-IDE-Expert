@@ -129,6 +129,11 @@ begin
   Assert.AreEqual('Editor', Toggle.Page);
   Assert.IsTrue(Toggle.Drawing);
   Assert.AreEqual('Bookmarks', Toggle.Feature);
+  // Erzeugen-Menü (#719): Befehl, keine Zeichnung; „Alles aus“ lässt ihn stehen.
+  Assert.IsTrue(TAtlasQuickToggles.Find(Toggles, 'GenerateMenu', Toggle));
+  Assert.AreEqual('Editor', Toggle.Page);
+  Assert.IsFalse(Toggle.Drawing);
+  Assert.AreEqual('EditorCommands', Toggle.Feature);
   // Code Lens mit Code-Metriken (#66): Zeichnung im Editor, „Alles aus“ schaltet sie ab.
   Assert.IsTrue(TAtlasQuickToggles.Find(Toggles, 'CodeLensMetrics', Toggle));
   Assert.AreEqual('Editor', Toggle.Page);
@@ -198,6 +203,7 @@ begin
   Assert.IsFalse(Effective.PairColors);
   Assert.IsFalse(Effective.PairGuides);
   Assert.IsTrue(Effective.Preview = Stored.Preview);
+  Assert.IsTrue(Effective.GenerateMenu, 'Befehl (#719) ist keine Zeichnung');
   Assert.IsTrue(Effective.TodoList, 'Befehl (#68) ist keine Zeichnung');
   Assert.IsTrue(Effective.MetricsReport, 'Befehl (#66) ist keine Zeichnung');
   Assert.IsTrue(Effective.BaselineUpdate, 'Befehl (#97) ist keine Zeichnung');

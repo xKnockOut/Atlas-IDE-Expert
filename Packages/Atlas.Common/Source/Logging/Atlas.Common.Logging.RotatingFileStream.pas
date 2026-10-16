@@ -1,4 +1,4 @@
-﻿unit Atlas.Common.Logging.Providers.RotatingFileStream;
+﻿unit Atlas.Common.Logging.RotatingFileStream;
 
 // Schreibstrom für Logdatei und Mitschnitt (#283).
 //

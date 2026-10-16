@@ -32,7 +32,7 @@ uses
   Atlas.Core.Signature.Contract,
   Atlas.Core.Signature.Controller,
   Atlas.Core.Signature.Providers.Server,
-  Atlas.Core.Completion.Providers.Server,
+  Atlas.Core.Lsp.Session,
   Atlas.UI.Signature.Hint,
   Atlas.Core.Editor.CloseRules,
   Atlas.IDE.Editor.KeyHook;
@@ -103,7 +103,6 @@ uses
   Vcl.Forms,
   DockForm,
   Atlas.Core.Signature.CallScanner,
-  Atlas.Core.Lsp.Session,
   Atlas.IDE.Editor.Buffer,
   Atlas.IDE.Editor.Style,
   Atlas.IDE.Settings.Store;

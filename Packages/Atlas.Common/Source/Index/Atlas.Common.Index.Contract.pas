@@ -218,6 +218,11 @@ type
   /// <summary>Abbruch des Aufbaus abfragen.</summary>
   TIndexCancelled = reference to function: Boolean;
 
+  /// <summary>Lädt AUnitName bei Bedarf in den Index nach (Namensauflösung, #178); True, wenn sie danach
+  /// vorliegt. Steht hier statt in Atlas.Common.Semantics.NameResolver, damit Contracts sie ohne fremdes
+  /// Root nutzen können (Code-Review A-10).</summary>
+  TEnsureUnitFunc = reference to function(const AUnitName: string): Boolean;
+
   /// <summary>Stufen des Aufbaus (#648): Projektdateien samt über uses erreichbarer Units, dann alle Units
   /// der Projekt-Suchpfade, zuletzt alle Units der Bibliotheks- und Suchpfade der Installation.</summary>
   TIndexStage = (Project, SearchPaths, Library_);
@@ -228,13 +233,6 @@ type
     ['{4A7E2C91-5B38-4F06-9D1A-E3C6B8F0A217}']
     function Enter(AStage: TIndexStage; const ACancelled: TIndexCancelled): Boolean;
     procedure Leave;
-  end;
-
-  TIndexFiles = class
-  public
-    /// <summary>Unit zu AFileName: die Unit dieser Datei, sonst eine Unit, die sie per $I einbindet (#500).</summary>
-    class function UnitOf(const AIndex: ISymbolIndex; const AFileName: string; out AUnit: TUnitIndex): Boolean;
-      static;
   end;
 
 implementation
@@ -387,23 +385,6 @@ begin
       Inc(Count);
     end;
   SetLength(Result, Count);
-end;
-
-{ TIndexFiles }
-
-class function TIndexFiles.UnitOf(const AIndex: ISymbolIndex; const AFileName: string; out AUnit: TUnitIndex): Boolean;
-var
-  Candidate: TUnitIndex;
-begin
-  Result := (AIndex <> nil) and AIndex.FindFile(AFileName, AUnit);
-  if Result or (AIndex = nil) then
-    Exit;
-  for Candidate in AIndex.Units do
-    if IndexText(AFileName, Candidate.Includes) >= 0 then
-    begin
-      AUnit := Candidate;
-      Exit(True);
-    end;
 end;
 
 { TFileChange }

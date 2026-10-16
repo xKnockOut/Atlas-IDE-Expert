@@ -107,7 +107,8 @@ type
     function QualifiedName: string;
   end;
 
-  TEnsureUnitFunc = reference to function(const AUnitName: string): Boolean;
+  /// <summary>Alias für Bestandsnutzer; die Deklaration steht in Atlas.Common.Index.Contract.</summary>
+  TEnsureUnitFunc = Atlas.Common.Index.Contract.TEnsureUnitFunc;
 
   /// <summary>Vorfilter für Namen von Kandidaten (#616); False = gar nicht erst aufbauen.</summary>
   TCandidateNameFilter = reference to function(const AName: string): Boolean;

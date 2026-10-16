@@ -29,18 +29,35 @@
     IsWordChar, IsIdentChar, IsUtf8, PercentDecode usw. neu entstehen. Erlaubt
     sind nur die Fassaden und Sonderfälle in $AllowedLocal, jeweils mit Grund.
 
+    Rollenmatrix (Konzept 8.1/8.3, Code-Review A-12): Jede Unit wird nach
+    Ausgabeartefakt.Feature.Rolle.Sache eingeordnet; ein uses-Eintrag muss die
+    Importregeln aus docs/Architektur.md einhalten. Contract-Units deklarieren
+    im interface keine Klassen außer Ausnahmen (Konzept 7.1). Genehmigte
+    Ausnahmen stehen als "allow" der Regeln architecture-role-import und
+    architecture-contract-content in atlas.json (eine Liste für Skript und
+    Linter). Die Matrix muss TArchitectureMatrix in
+    Atlas.Common.Rules.Builtin.Architecture entsprechen; beide prüfen die
+    Fallliste Tests/Data/Architecture/role-imports.json (-SelfTest).
+
     Ausgewertet werden alle uses-Klauseln der .pas-Dateien und die
     requires-Klausel der .dpk-Datei jedes Packages. Kommentare, Strings und
     Compiler-Direktiven werden vorher entfernt.
 
     Exit-Code 0: keine Verstöße, 1: mindestens ein Verstoß.
 
+.PARAMETER SelfTest
+    Prüft nur die Rollenmatrix gegen Tests/Data/Architecture/role-imports.json.
+
 .EXAMPLE
     pwsh Tools/Check-PackageDependencies.ps1
+
+.EXAMPLE
+    pwsh Tools/Check-PackageDependencies.ps1 -SelfTest
 #>
 [CmdletBinding()]
 param(
-    [string] $Root = ''
+    [string] $Root = '',
+    [switch] $SelfTest
 )
 
 Set-StrictMode -Version Latest
@@ -210,6 +227,113 @@ function Remove-PascalCommentsOnly([string] $Text) {
     })
 }
 
+# Rollenmatrix (Konzept 8.1/8.3). Muss TArchitectureMatrix in Atlas.Common.Rules.Builtin.Architecture
+# entsprechen; beide prüfen Tests/Data/Architecture/role-imports.json.
+$RolePrefixes = @('Atlas.Text', 'Atlas.Common', 'Atlas.Windows', 'Atlas.Core', 'Atlas.UI', 'Atlas.IDE')
+$HostRoles    = @('Foundation', 'Core', 'Shell', 'Adapters', 'Platform')
+$FeatureRoles = @('Contract', 'Internals', 'Providers', 'Adapters', 'Composition', 'Hosting')
+# Eigenes Feature: Rolle der Quelle -> erlaubte Rollen des Ziels
+$OwnAllowed = @{
+    Contract    = @('Contract')
+    Internals   = @('Contract', 'Internals')
+    Providers   = @('Contract', 'Internals', 'Root')
+    Adapters    = @('Contract', 'Internals', 'Root')
+    Root        = @('Contract', 'Internals', 'Root')
+    Composition = @('Contract', 'Providers', 'Adapters', 'Root', 'Composition')
+    Hosting     = @('Contract', 'Providers', 'Adapters', 'Root', 'Composition', 'Hosting')
+}
+# Fremdes Feature; alle nicht genannten Rollen: Contract und Root.
+# Host (8.1, Annahme bis zur Bestätigung des Konzepts): alles außer Internals.
+$ForeignAllowed = @{
+    Contract = @('Contract')
+    Host     = @('Contract', 'Root', 'Providers', 'Adapters', 'Composition', 'Hosting')
+}
+
+function Get-UnitRole([string] $Name, [string[]] $Prefixes, [string[]] $Hosts) {
+    # Einordnung nach Konzept 6.3; $null für externe Units (RTL, VCL, Setup, Tests).
+    $best = ''
+    foreach ($prefix in $Prefixes) {
+        if ($Name.StartsWith("$prefix.", [StringComparison]::OrdinalIgnoreCase) -and $prefix.Length -gt $best.Length) {
+            $best = $prefix
+        }
+    }
+    if ($best -ne '') {
+        $rest = $Name.Substring($best.Length + 1).Split('.')
+        $role = 'Root'
+        if ($rest.Count -ge 2) {
+            $hit = $FeatureRoles | Where-Object { $_ -ieq $rest[1] } | Select-Object -First 1
+            if ($hit) { $role = $hit }
+        }
+        return [pscustomobject]@{ Artefact = $best.ToLowerInvariant(); Feature = $rest[0].ToLowerInvariant(); Role = $role }
+    }
+    $first = $Name.Split('.')[0]
+    $hostRole = $Hosts | Where-Object { $_ -ieq $first } | Select-Object -First 1
+    if ($hostRole -and $Name.Contains('.')) {
+        return [pscustomobject]@{ Artefact = ''; Feature = $hostRole.ToLowerInvariant(); Role = 'Host' }
+    }
+    return $null
+}
+
+function Test-RoleImport($Source, $Target) {
+    if ($null -eq $Source -or $null -eq $Target) { return $true }
+    if ($Target.Role -eq 'Host') { return $Source.Role -eq 'Host' }
+    if ($Source.Role -ne 'Host' -and $Source.Artefact -eq $Target.Artefact -and $Source.Feature -eq $Target.Feature) {
+        return $OwnAllowed[$Source.Role] -contains $Target.Role
+    }
+    $allowed = @('Contract', 'Root')
+    if ($ForeignAllowed.ContainsKey($Source.Role)) { $allowed = $ForeignAllowed[$Source.Role] }
+    return $allowed -contains $Target.Role
+}
+
+function Get-RoleDescription($Source, $Target) {
+    # Kurztext wie TArchitectureMatrix.Describe, z. B. "fremde Adapters aus Root".
+    $kind = 'fremde'
+    if ($Source.Role -ne 'Host' -and $Source.Artefact -eq $Target.Artefact -and $Source.Feature -eq $Target.Feature) {
+        $kind = 'eigene'
+    }
+    return "$kind $($Target.Role) aus $($Source.Role)"
+}
+
+if ($SelfTest) {
+    $data = Get-Content -Raw -Encoding UTF8 (Join-Path $Root 'Tests/Data/Architecture/role-imports.json') | ConvertFrom-Json
+    $failures = @()
+    foreach ($case in $data.cases) {
+        $actual = Test-RoleImport (Get-UnitRole $case.from $data.prefixes $data.hostRoles) (Get-UnitRole $case.to $data.prefixes $data.hostRoles)
+        if ($actual -ne [bool] $case.allowed) {
+            $failures += "$($case.from) -> $($case.to): erwartet $($case.allowed), erhalten $actual"
+        }
+    }
+    if ($failures.Count -gt 0) {
+        Write-Host 'Rollenmatrix weicht von der Fallliste ab:' -ForegroundColor Red
+        $failures | ForEach-Object { Write-Host "  $_" }
+        exit 1
+    }
+    Write-Host "Rollenmatrix: $(@($data.cases).Count) Fälle wie erwartet." -ForegroundColor Green
+    exit 0
+}
+
+# Genehmigte Ausnahmen aus atlas.json (dieselbe Liste liest der Linter).
+$RoleImportAllow = @()
+$ContractContentAllow = @()
+$atlasJson = Join-Path $Root 'atlas.json'
+if (Test-Path $atlasJson) {
+    $config = Get-Content -Raw -Encoding UTF8 $atlasJson | ConvertFrom-Json
+    if ($config.PSObject.Properties['rules']) {
+        $rule = $config.rules.PSObject.Properties['architecture-role-import']
+        if ($rule -and $rule.Value.PSObject.Properties['allow']) { $RoleImportAllow = @($rule.Value.allow) }
+        $rule = $config.rules.PSObject.Properties['architecture-contract-content']
+        if ($rule -and $rule.Value.PSObject.Properties['allow']) { $ContractContentAllow = @($rule.Value.allow) }
+    }
+}
+
+function Test-RoleApproved([string] $Source, [string] $Target) {
+    foreach ($entry in $RoleImportAllow) {
+        $parts = $entry -split '->', 2
+        if ($parts.Count -eq 2 -and $Source -like $parts[0].Trim() -and $Target -like $parts[1].Trim()) { return $true }
+    }
+    return $false
+}
+
 $violations = @()
 
 foreach ($package in $Packages) {
@@ -286,6 +410,36 @@ foreach ($program in @('Tests/Atlas.Tests.dpr', 'Application/AtlasServer.dpr')) 
     foreach ($entry in Get-UsesInEntries (Remove-PascalCommentsOnly ([IO.File]::ReadAllText($programPath)))) {
         if (($entry.Path -replace '/', '\') -match '(?i)Atlas\.Text\\Source\\') {
             $violations += "${program}: $($entry.Name) in '$($entry.Path)' – Atlas.Text kommt als DCU aus Dcu\Atlas.Text, nicht als Quelltext (ADR 0012)"
+        }
+    }
+}
+
+# Rollenmatrix und Contract-Inhalt (Code-Review A-12)
+foreach ($dir in @('Packages', 'Application')) {
+    $path = Join-Path $Root $dir
+    if (-not (Test-Path $path)) { continue }
+    foreach ($file in Get-ChildItem -Path $path -Recurse -File -Include '*.pas') {
+        $relative = $file.FullName.Substring((Resolve-Path $Root).Path.TrimEnd('\', '/').Length + 1) -replace '\\', '/'
+        $ownUnit = [IO.Path]::GetFileNameWithoutExtension($file.Name)
+        $source = Get-UnitRole $ownUnit $RolePrefixes $HostRoles
+        if ($null -eq $source) { continue }
+        $text = Remove-PascalNoise ([IO.File]::ReadAllText($file.FullName))
+        foreach ($unit in Get-ClauseEntries $text 'uses') {
+            $target = Get-UnitRole $unit.Name $RolePrefixes $HostRoles
+            if ((Test-RoleImport $source $target) -or (Test-RoleApproved $ownUnit $unit.Name)) { continue }
+            $violations += "${relative}:$($unit.Line): uses $($unit.Name) – Rollenmatrix: $(Get-RoleDescription $source $target)"
+        }
+        if ($source.Role -ne 'Contract') { continue }
+        $interface = [regex]::Match($text, '(?im)^\s*implementation\b')
+        $head = $text
+        if ($interface.Success) { $head = $text.Substring(0, $interface.Index) }
+        foreach ($match in [regex]::Matches($head, '(?im)^\s*(\w+)\s*=\s*class\b(?!\s*of\b)(?!\s*;)(?:\s*\(\s*([\w.]+))?')) {
+            $typeName = $match.Groups[1].Value
+            $ancestor = $match.Groups[2].Value
+            if ($ancestor -ieq 'Exception' -or $ancestor -cmatch '^E[A-Z]' -or $ancestor -match '\.E[A-Z]\w*$') { continue }
+            if ($ContractContentAllow | Where-Object { "$ownUnit.$typeName" -like $_ }) { continue }
+            $line = ($head.Substring(0, $match.Index + $match.Value.Length - $match.Value.TrimStart().Length) -split "`n").Count
+            $violations += "${relative}:${line}: $typeName ist eine Klasse in einer Contract-Unit (Konzept 7.1)"
         }
     }
 }

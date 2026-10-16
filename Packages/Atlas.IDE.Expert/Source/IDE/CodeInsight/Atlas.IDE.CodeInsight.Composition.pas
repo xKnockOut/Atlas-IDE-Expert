@@ -64,6 +64,8 @@ uses
   Atlas.IDE.Results.Commands,
   Atlas.IDE.Commands.Editor,
   Atlas.IDE.UnitSearch.Commands,
+  Atlas.IDE.Generate.Commands,
+  Atlas.Core.Completion.Snippets,
   Atlas.IDE.Commands.Bindings,
   Atlas.IDE.Forms.Designer,
   Atlas.Core.Status.Registry,
@@ -261,7 +263,6 @@ begin
   Messages.AddTitleMessage(AText, Group);
 end;
 
-/// <summary>„Symbol umbenennen…“ (#397) aus Menü und Palette.</summary>
 /// <summary>„Fehlerbericht erstellen…“ (#108) aus Menü, Palette und dem Fenster des abgesicherten Starts.</summary>
 procedure CreateBugReport;
 begin
@@ -636,6 +637,7 @@ begin
   ProjectTodos(Filter);
 end;
 
+/// <summary>„Symbol umbenennen…“ (#397) aus Menü und Palette.</summary>
 procedure RenameSymbol;
 begin
   if Manager = nil then
@@ -799,6 +801,20 @@ begin
     function: Boolean
     begin
       Result := TAtlasIdeSettings.Current.BookmarksNamed;
+    end);
+  // Erzeugen-Menü (#719); nur sichtbar, solange keys.generateMenu an ist.
+  Palette.RegisterCommand('Atlas.GenerateMenu', TAtlasStrings.Text(TAtlasTextId.GenerateMenuCommand), '',
+    procedure
+    begin
+      TAtlasGuard.Run(TAtlasFeature.EditorCommands,
+        procedure
+        begin
+          TAtlasIdeGenerate.Show;
+        end);
+    end,
+    function: Boolean
+    begin
+      Result := TAtlasIdeSettings.Current.GenerateMenu;
     end);
   // Editorbefehle (#399).
   Palette.RegisterCommand('Atlas.CodeActions', TAtlasStrings.Text(TAtlasTextId.EditorActions), '',
@@ -1394,6 +1410,29 @@ begin
       begin
         GuardWarning(AText);
       end);
+    // Erzeugen-Menü (#719): Vorlagen und ihr Einsetzen mit Platzhaltern kommen aus der Vervollständigung.
+    TAtlasIdeGenerate.Install(
+      function: TLspSession
+      begin
+        Result := nil;
+        if Manager <> nil then
+          Result := Manager.ActiveSession;
+      end,
+      procedure(AText: string)
+      begin
+        GuardWarning(AText);
+      end,
+      function: TAtlasSnippetList
+      begin
+        Result := nil;
+        if Manager <> nil then
+          Result := Manager.Completion.Snippets;
+      end,
+      procedure(AView: IOTAEditView; ASnippet: TAtlasSnippet)
+      begin
+        if Manager <> nil then
+          Manager.Completion.InsertSnippet(AView, ASnippet);
+      end);
     // Units suchen (#777): übernimmt Strg+F12, solange die Einstellungen es wollen.
     TAtlasIdeUnitSearch.Install(
       function: TLspSession
@@ -1942,6 +1981,7 @@ begin
   if CommandsInstalled then
   begin
     TAtlasIdeUnitSearch.Uninstall;
+    TAtlasIdeGenerate.Uninstall;
     TAtlasIdeEditorCommands.Uninstall;
     TAtlasIdeResults.Uninstall;
   end;

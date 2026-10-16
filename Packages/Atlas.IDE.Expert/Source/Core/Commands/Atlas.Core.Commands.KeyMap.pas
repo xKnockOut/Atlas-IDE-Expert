@@ -289,6 +289,8 @@ begin
       Result := 'Atlas.UnitSearch';
     TAtlasKeyFunction.Bookmark:
       Result := 'Atlas.BookmarkAdd';
+    TAtlasKeyFunction.GenerateMenu:
+      Result := 'Atlas.GenerateMenu';
   else
     Result := '';
   end;
