@@ -72,6 +72,8 @@ type
     // Regeltabelle: Feld "rules", sein Wert mit den Änderungen, Zeilen, Liste und Auswahl.
     FRuleIndex: Integer;
     FRulesJson: string;
+    /// <summary>Im Projektmodus: "rules" der globalen Einstellungen, für die Anzeige „(global: …)“.</summary>
+    FGlobalRulesJson: string;
     FRuleRows: TArray<TAtlasRuleRow>;
     FRuleList: TListView;
     FRuleSeverity: TComboBox;
@@ -189,7 +191,11 @@ begin
   end;
   FRuleIndex := FModel.IndexOf(RulesPath);
   if FRuleIndex >= 0 then
+  begin
     FRulesJson := FModel.Current(FRuleIndex);
+    if not FModel.Global then
+      FGlobalRulesJson := FModel.Inherited_(FRuleIndex);
+  end;
 
   Bottom := TPanel.Create(Self);
   Bottom.Parent := Self;
@@ -572,7 +578,7 @@ var
   Caption: TLabel;
   Severity: string;
 begin
-  FRuleRows := TAtlasRuleTable.Rows(FCatalog, FRulesJson);
+  FRuleRows := TAtlasRuleTable.Rows(FCatalog, FRulesJson, FGlobalRulesJson);
   if FCatalog = nil then
   begin
     Caption := AddLabel(TAtlasStrings.Text(TAtlasTextId.ProjectSettingsRuleNoCatalog), ATop);
@@ -637,7 +643,9 @@ begin
   AItem.SubItems.Add(ARow.Category);
   AItem.SubItems.Add(ARow.DefaultSeverity);
   Setting := ARow.Severity;
-  if Setting = '' then
+  if (Setting = '') and (ARow.GlobalSeverity <> '') then
+    Setting := TAtlasStrings.Fmt(TAtlasTextId.ProjectSettingsRuleGlobal, [ARow.GlobalSeverity])
+  else if Setting = '' then
     Setting := TAtlasStrings.Text(TAtlasTextId.ProjectSettingsRuleUseDefault);
   if ARow.HasOptions then
     Setting := TAtlasStrings.Fmt(TAtlasTextId.ProjectSettingsRuleOptions, [Setting]);
@@ -692,7 +700,7 @@ var
   Index: Integer;
 begin
   if Length(FRuleRows) = 0 then
-    FRuleRows := TAtlasRuleTable.Rows(FCatalog, FRulesJson);
+    FRuleRows := TAtlasRuleTable.Rows(FCatalog, FRulesJson, FGlobalRulesJson);
   for Index := 0 to High(FRuleRows) do
     if SameText(FRuleRows[Index].Id, AId) then
     begin

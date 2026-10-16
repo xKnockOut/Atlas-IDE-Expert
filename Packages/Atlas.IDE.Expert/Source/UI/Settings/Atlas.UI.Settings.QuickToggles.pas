@@ -10,6 +10,9 @@
 // Fenster, weil die IDE-Schicht nachfragt, wo die Änderung gelten soll. Esc
 // oder ein Klick daneben schließt. Das Fenster kennt keine Einstellung selbst:
 // neue Schalter im Katalog erscheinen ohne Änderung hier.
+// Gruppen lassen sich ein- und ausklappen: Klick, Leertaste oder Enter auf der
+// Überschrift. Eingeklappt zeigt sie die Zahl ihrer Schalter. Der Zustand gilt
+// für die IDE-Sitzung (class var), das Fenster öffnet wie zuletzt verlassen.
 
 interface
 
@@ -34,7 +37,12 @@ type
       /// <summary>-1: Überschrift einer Seite; sonst Index in FItems.</summary>
       Item: Integer;
       Text: string;
+      /// <summary>Überschrift: Zahl der Schalter der Seite.</summary>
+      Count: Integer;
     end;
+  private class var
+    /// <summary>Eingeklappte Seiten (groß geschrieben), für die IDE-Sitzung.</summary>
+    FCollapsed: TArray<string>;
   private
     FColors: TAtlasColors;
     FItems: TArray<TAtlasQuickToggleItem>;
@@ -56,6 +64,8 @@ type
     procedure Layout;
     procedure MoveHot(ADelta: Integer);
     procedure ToggleRow(ARow: Integer);
+    procedure ToggleGroup(const APage: string);
+    class function IsCollapsed(const APage: string): Boolean; static;
     procedure FormDeactivate(Sender: TObject);
     procedure AllClick(Sender: TObject);
     procedure CMMouseLeave(var Message: TMessage); message CM_MOUSELEAVE;
@@ -80,6 +90,8 @@ type
     function RowCount: Integer;
     function RowText(ARow: Integer): string;
     function RowItem(ARow: Integer): Integer;
+    /// <summary>Alle Gruppen ausklappen (Tests).</summary>
+    class procedure ExpandAll; static;
     property Items: TArray<TAtlasQuickToggleItem> read FItems;
     property AllButton: TButton read FAllButton;
     property HotRow: Integer read FHot;
@@ -171,27 +183,75 @@ begin
     Result := TAtlasStrings.Text(TAtlasTextId.QuickTogglesProject);
 end;
 
+class function TAtlasQuickToggleWindow.IsCollapsed(const APage: string): Boolean;
+var
+  Page: string;
+begin
+  for Page in FCollapsed do
+    if SameText(Page, APage) then
+      Exit(True);
+  Result := False;
+end;
+
+class procedure TAtlasQuickToggleWindow.ExpandAll;
+begin
+  FCollapsed := nil;
+end;
+
 procedure TAtlasQuickToggleWindow.BuildRows;
 var
-  Index: Integer;
+  Index, Header: Integer;
   Page: string;
   Row: TRow;
 begin
   FRows := nil;
   Page := #0;
+  Header := -1;
   for Index := 0 to High(FItems) do
   begin
     if not SameText(FItems[Index].Toggle.Page, Page) then
     begin
       Page := FItems[Index].Toggle.Page;
+      Row := Default(TRow);
       Row.Item := -1;
       Row.Text := Page;
       FRows := FRows + [Row];
+      Header := High(FRows);
     end;
+    Inc(FRows[Header].Count);
+    // Eingeklappt: nur die Überschrift.
+    if IsCollapsed(Page) then
+      Continue;
+    Row := Default(TRow);
     Row.Item := Index;
     Row.Text := FItems[Index].Toggle.Caption;
     FRows := FRows + [Row];
   end;
+end;
+
+procedure TAtlasQuickToggleWindow.ToggleGroup(const APage: string);
+var
+  Index: Integer;
+begin
+  if IsCollapsed(APage) then
+  begin
+    for Index := High(FCollapsed) downto 0 do
+      if SameText(FCollapsed[Index], APage) then
+        Delete(FCollapsed, Index, 1);
+  end
+  else
+    FCollapsed := FCollapsed + [APage];
+  BuildRows;
+  // Auswahl bleibt auf der Überschrift.
+  FHot := -1;
+  for Index := 0 to High(FRows) do
+    if (FRows[Index].Item < 0) and SameText(FRows[Index].Text, APage) then
+      FHot := Index;
+  Layout;
+  // Unten bleibt unten: das Fenster wächst bzw. schrumpft nach oben.
+  if Visible then
+    SetBounds(Left, FAnchor.Y - Height, Width, Height);
+  Invalidate;
 end;
 
 procedure TAtlasQuickToggleWindow.Layout;
@@ -271,8 +331,14 @@ var
   Item: TAtlasQuickToggleItem;
   Handler: TProc<TAtlasQuickToggleItem>;
 begin
-  if (ARow < 0) or (ARow > High(FRows)) or (FRows[ARow].Item < 0) or FClosing then
+  if (ARow < 0) or (ARow > High(FRows)) or FClosing then
     Exit;
+  // Überschrift: Gruppe ein- bzw. ausklappen.
+  if FRows[ARow].Item < 0 then
+  begin
+    ToggleGroup(FRows[ARow].Text);
+    Exit;
+  end;
   Item := FItems[FRows[ARow].Item];
   Handler := FOnToggle;
   if not Assigned(Handler) then
@@ -319,16 +385,12 @@ begin
   Count := Length(FRows);
   if Count = 0 then
     Exit;
-  Row := FHot;
-  repeat
-    Row := Row + ADelta;
-    if Row < 0 then
-      Row := Count - 1;
-    if Row >= Count then
-      Row := 0;
-  until (FRows[Row].Item >= 0) or (Row = FHot);
-  if FRows[Row].Item < 0 then
-    Exit;
+  // Überschriften sind Stationen: Leertaste bzw. Enter klappt dort die Gruppe.
+  Row := FHot + ADelta;
+  if Row < 0 then
+    Row := Count - 1;
+  if Row >= Count then
+    Row := 0;
   FHot := Row;
   Invalidate;
 end;
@@ -385,8 +447,6 @@ var
 begin
   inherited;
   Row := RowAt(Point(X, Y));
-  if (Row >= 0) and (FRows[Row].Item < 0) then
-    Row := -1;
   if Row >= 0 then
     Cursor := crHandPoint
   else
@@ -445,11 +505,21 @@ begin
     Canvas.Brush.Style := bsClear;
     if FRows[Index].Item < 0 then
     begin
-      // Überschrift der Seite.
+      // Überschrift der Seite: ▾ ausgeklappt, ▸ eingeklappt mit der Zahl der Schalter.
+      if Index = FHot then
+      begin
+        Canvas.Brush.Style := bsSolid;
+        Canvas.Brush.Color := ToColor(FColors.Selection);
+        Canvas.FillRect(Row);
+        Canvas.Brush.Style := bsClear;
+      end;
       Canvas.Font.Style := [fsBold];
       Canvas.Font.Color := ToColor(FColors.Muted);
-      Part := Rect(Row.Left + ScaleValue(6), Row.Top, Row.Right, Row.Bottom);
-      Text := FRows[Index].Text;
+      Part := Rect(Row.Left + ScaleValue(6), Row.Top, Row.Right - ScaleValue(6), Row.Bottom);
+      if IsCollapsed(FRows[Index].Text) then
+        Text := #$25B8' ' + FRows[Index].Text + ' (' + IntToStr(FRows[Index].Count) + ')'
+      else
+        Text := #$25BE' ' + FRows[Index].Text;
       DrawText(Canvas.Handle, PChar(Text), -1, Part, DT_SINGLELINE or DT_VCENTER or DT_NOPREFIX);
       Canvas.Font.Style := [];
       Continue;

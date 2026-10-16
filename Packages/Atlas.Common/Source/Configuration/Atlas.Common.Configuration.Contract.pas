@@ -294,6 +294,9 @@ type
     /// <summary>Schnellbefehl "/uses Unit" nach Enter auswerten (#254); false wirkt wie "uses" in
     /// SlashCommandsDisabled.</summary>
     UsesCommand: Boolean;
+    /// <summary>Kennzahlen überhaupt ("metrics", global): false schaltet die Code Lens der Kennzahlen und
+    /// alle Regeln metric-* ab. Eine Regel, die das Projekt unter "rules" ausdrücklich setzt, gilt trotzdem.</summary>
+    Metrics: Boolean;
     /// <summary>Schnellbefehle mit "/" überhaupt auswerten (#293).</summary>
     SlashCommands: Boolean;
     /// <summary>Abgeschaltete Schnellbefehle ohne "/", z. B. uses.</summary>
@@ -649,6 +652,7 @@ begin
   Result.Completion := TCompletionSettings.Default;
   Result.Refactoring := TRefactoringSettings.Default;
   Result.UsesCommand := True;
+  Result.Metrics := True;
   Result.SlashCommands := True;
   Result.SlashCommandsDisabled := nil;
   Result.SlashHeaderTemplate := '';

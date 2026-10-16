@@ -286,6 +286,10 @@ begin
     Assert.AreEqual('hint', Rows[2].Severity);
     // Ohne Server: nur die Regeln aus der Datei.
     Assert.AreEqual(2, Integer(Length(TAtlasRuleTable.Rows(nil, '{"a": "off", "b": "error"}'))));
+    // Im Projekt: globaler Wert je Regel, das Projekt übersteuert ihn.
+    Rows := TAtlasRuleTable.Rows(nil, '{"a": "off"}', '{"a": "hint", "b": "error"}');
+    Assert.AreEqual('off', Rows[0].Severity);
+    Assert.AreEqual('hint', Rows[0].GlobalSeverity);
   finally
     Catalog.Free;
   end;

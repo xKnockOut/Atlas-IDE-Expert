@@ -138,6 +138,10 @@ type
       const ADelphiVersion: string; const ARules: TRuleCheckContext): TJSONObject; overload; static;
     /// <summary>Wie oben mit Bedingung je inaktivem Bereich und gewählter Zielplattform und
     /// Konfiguration (#615; '' = unbekannt).</summary>
+    /// <summary>Wie unten; Syntaxfehler nur aus aktiven Zweigen unter ADefines (leer = Vordefinitionen).</summary>
+    class function BuildParams(const ADocument: ITextDocument; const AInactive: TArray<TLspInactiveRegion>;
+      const ADelphiVersion: string; const ARules: TRuleCheckContext; const APlatform, AConfig: string;
+      const ADefines: TArray<string>): TJSONObject; overload; static;
     class function BuildParams(const ADocument: ITextDocument; const AInactive: TArray<TLspInactiveRegion>;
       const ADelphiVersion: string; const ARules: TRuleCheckContext;
       const APlatform, AConfig: string): TJSONObject; overload; static;
@@ -200,6 +204,7 @@ uses
   Atlas.Common.Rules.Scopes,
   Atlas.Common.Pascal.LanguageFeatures,
   Atlas.Common.Pascal.Preprocessor,
+  Atlas.Common.Pascal.Parser,
   Atlas.Common.Pascal.IncludeFiles,
   Atlas.Common.Rules.Engine,
   Atlas.Common.Rules.Catalog,
@@ -618,12 +623,14 @@ begin
   Issues := nil;
   if CurrentDefines(ADocument.Uri, Defines) then
     Inactive := TLspInactiveRegions.Regions(ADocument.Text, Defines, TDocumentUris.ToPath(ADocument.Uri),
-      TIncludeFiles.Resolver(CurrentIncludePaths(ADocument.Uri)), Issues);
+      TIncludeFiles.Resolver(CurrentIncludePaths(ADocument.Uri)), Issues)
+  else
+    Defines := nil;
   if not CurrentRules(ADocument.Uri, Rules) then
     Rules := Default(TRuleCheckContext);
   Rules.Cancelled := ACancelled;
   CurrentTarget(ADocument.Uri, Platform, Config);
-  Result := BuildParams(ADocument, Inactive, CurrentVersion(ADocument.Uri), Rules, Platform, Config);
+  Result := BuildParams(ADocument, Inactive, CurrentVersion(ADocument.Uri), Rules, Platform, Config, Defines);
   Items := Result.GetValue('diagnostics') as TJSONArray;
   for Issue in Issues do
   begin
@@ -739,7 +746,15 @@ end;
 class function TLspSyntaxDiagnostics.BuildParams(const ADocument: ITextDocument;
   const AInactive: TArray<TLspInactiveRegion>; const ADelphiVersion: string; const ARules: TRuleCheckContext;
   const APlatform, AConfig: string): TJSONObject;
+begin
+  Result := BuildParams(ADocument, AInactive, ADelphiVersion, ARules, APlatform, AConfig, nil);
+end;
+
+class function TLspSyntaxDiagnostics.BuildParams(const ADocument: ITextDocument;
+  const AInactive: TArray<TLspInactiveRegion>; const ADelphiVersion: string; const ARules: TRuleCheckContext;
+  const APlatform, AConfig: string; const ADefines: TArray<string>): TJSONObject;
 var
+  Syntax: TArray<TSyntaxDiagnostic>;
   RuleFinding: TRuleFinding;
   Findings: TArray<TRuleFinding>;
 var
@@ -756,7 +771,10 @@ begin
   Items := TJSONArray.Create;
   Shared := TSyntaxTreeCache.Get(ADocument);
   Tree := Shared.Tree;
-  for Diagnostic in Tree.Diagnostics do
+  // Inaktive Zweige der bedingten Kompilierung erzeugen keine Syntaxfehler.
+  if not TPascalParser.ActiveDiagnostics(ADocument.Text, ADefines, Syntax) then
+    Syntax := Tree.Diagnostics;
+  for Diagnostic in Syntax do
   begin
     Item := TJSONObject.Create;
     Item.AddPair('range', TLspPositions.RangeToJson(TTextRange.Create(Diagnostic.StartPos, Diagnostic.EndPos)));
