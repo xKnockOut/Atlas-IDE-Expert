@@ -12,6 +12,7 @@ const
   GlobalSettingPaths: array[0..26] of string = (
     'delphiVersion',
     'language',
+    'rules',
     'compiler',
     'vcs',
     'completion.matching',
@@ -35,8 +36,7 @@ const
     'mcp.disabledTools',
     'logLevel',
     'logFile',
-    'traceFile',
-    'rules');
+    'traceFile');
   /// <summary>Schlüssel des Projekts (atlas.json).</summary>
   ProjectSettingPaths: array[0..24] of string = (
     'encoding',

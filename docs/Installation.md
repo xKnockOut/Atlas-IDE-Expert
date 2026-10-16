@@ -25,11 +25,12 @@ tips.json               Tipps für die Karte „Atlas entdecken“ und die Taste
 Tipps\                  Bilder (PNG) zu diesen Tipps
 Doku\                   Doku als HTML für „Atlas-Doku“ auf der Willkommensseite (#766)
 Vorlagen\               Vorlagen für atlas.json („Projekt für Atlas einrichten“ auf der Willkommensseite, #759)
+Profile\                Einstellungsprofile „Atlas-Standard“, „Minimal“ und „Alles an“ (#723)
 ```
 
 1. ZIP entpacken und `AtlasSetup.exe` starten. Administratorrechte braucht er nicht, er schreibt nur unter dem eigenen Benutzer.
 2. Er findet die installierten Delphi-Versionen über die Registry (`HKCU` und `HKLM` unter `Software\Embarcadero\BDS\<Version>`, Wert `RootDir`) und zeigt je Version die 32-Bit-IDE (`bin\bds.exe`) und, falls vorhanden, die 64-Bit-IDE (`bin64\bds.exe`). Nicht unterstützte Versionen (vor Delphi 12) und IDEs, für die das ZIP keine BPL enthält, stehen ausgegraut in der Liste.
-3. „Installieren“ (bei vorhandener Installation „Aktualisieren“) prüft zuerst, ob eine der gewählten IDEs läuft, und bittet, sie zu schließen („Wiederholen“, „Abbrechen“). Dann kopiert er alle Dateien nach `%LOCALAPPDATA%\Programs\Atlas` (die Ordner `Beispiele`, `Tipps`, `Doku` und `Vorlagen` ersetzt er ganz) und trägt je IDE die BPL unter `HKCU\Software\Embarcadero\BDS\<Version>\Known Packages` (64-Bit-IDE: `Known Packages x64`) ein. Ältere Einträge von Atlas, auch unter früheren Namen (Argus, BetterDelphiLSP), und eine Abschaltung unter „Disabled Packages“ entfernt er vorher.
+3. „Installieren“ (bei vorhandener Installation „Aktualisieren“) prüft zuerst, ob eine der gewählten IDEs läuft, und bittet, sie zu schließen („Wiederholen“, „Abbrechen“). Dann kopiert er alle Dateien nach `%LOCALAPPDATA%\Programs\Atlas` (die Ordner `Beispiele`, `Tipps`, `Doku`, `Vorlagen` und `Profile` ersetzt er ganz) und trägt je IDE die BPL unter `HKCU\Software\Embarcadero\BDS\<Version>\Known Packages` (64-Bit-IDE: `Known Packages x64`) ein. Ältere Einträge von Atlas, auch unter früheren Namen (Argus, BetterDelphiLSP), und eine Abschaltung unter „Disabled Packages“ entfernt er vorher.
 4. Beim nächsten Start der IDE ist Atlas aktiv. Den Server findet das Plugin eine Ebene über der BPL.
 
 Jeder Schritt steht im Protokollfeld des Installers. Ist eine Datei gesperrt (IDE doch noch offen), bricht er vor der Registrierung ab und nennt die Ursache.
@@ -37,6 +38,16 @@ Jeder Schritt steht im Protokollfeld des Installers. Ist eine Datei gesperrt (ID
 **Deinstallieren:** unter *Einstellungen › Apps › Installierte Apps* „Atlas IDE Expert“ wählen (ruft `AtlasSetup.exe /uninstall`). Entfernt werden die Einträge unter „Known Packages“ und „Disabled Packages“ (auch `x64`) in allen Delphi-Versionen, der Programmordner und der Eintrag in der App-Liste. Einstellungen (`HKCU\Software\Atlas`, `%APPDATA%\Atlas`), Index und Protokolle (`%LOCALAPPDATA%\Atlas`) und eigene Snippets (`%APPDATA%\Atlas\Snippets`) bleiben, außer ihr Kästchen wird angehakt.
 
 **Aktualisieren:** den Installer der neuen Version starten. Einstellungen, Favoriten, `.atlas`-Dateien der Projekte und Snippets berührt er nicht. Ändert sich das Format des Index, verwirft der Server den alten Cache und baut ihn neu auf (#492).
+
+**Einstellungen übertragen (#723):** Ohne Fenster exportiert, importiert oder setzt `AtlasSetup.exe` die persönlichen Einstellungen des Plugins zurück (Registry `HKCU\Software\Atlas\IdePlugin` und `%APPDATA%\Atlas\settings.json`), z. B. für neue Rechner im Team oder ein Skript:
+
+```
+AtlasSetup /exportSettings <Datei> [/areas:editor,build] [/secrets:placeholder]
+AtlasSetup /importSettings <Datei|minimal|atlas-standard|alles-an> [/replace|/merge] [/areas:…]
+AtlasSetup /resetSettings [/areas:…]
+```
+
+Bereiche: `editor`, `completion`, `highlighting`, `keys`, `codeActions`, `rules`, `build`, `debug`, `snippets`, `bookmarks`, `welcome`, `general`; ohne `/areas:` alle bzw. die der Datei. Es gelten dieselben Regeln wie unter *Tools › Optionen › Atlas*: nur geänderte Werte, keine Zugangsdaten und Benutzerpfade, unbekannte Schlüssel werden übersprungen, Projekt- und Teamwerte bleiben, vor Import und Zurücksetzen eine Sicherung unter `%APPDATA%\Atlas\Backups` (abschaltbar mit `settings.backupBeforeImport`). Das Ergebnis zeigt eine Meldung (mit `/quiet` keine); Exit-Code 0 = erledigt oder nichts zu tun, 1 = Aufruf falsch, 2 = Datei fehlt oder ist keine Einstellungsdatei, 3 = Schreiben gescheitert. Eine laufende IDE übernimmt die Werte erst beim nächsten Start; speichert sie vorher ihre Optionen, gelten wieder deren Werte.
 
 **Updates:** Nach Zustimmung beim ersten Start prüft das Plugin höchstens einmal täglich, ob eine neue Version vorliegt, und meldet sie in der Meldungsansicht ([RAD-Studio.md](RAD-Studio.md)). Es lädt nichts herunter.
 

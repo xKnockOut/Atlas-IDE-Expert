@@ -79,8 +79,11 @@ type
     /// <summary>Vorlagen für atlas.json der Einrichtung „Projekt für Atlas einrichten“ (#759); ersetzt bei jeder
     /// Installation den ganzen Ordner.</summary>
     TemplatesFolder = 'Vorlagen';
+    /// <summary>Eingebaute Einstellungsprofile „Atlas-Standard“, „Minimal“ und „Alles an“ (#723) zum Import über
+    /// die Optionsseite oder /importSettings; ersetzt bei jeder Installation den ganzen Ordner.</summary>
+    ProfilesFolder = 'Profile';
     /// <summary>Ordner, die bei jeder Installation vollständig ersetzt werden.</summary>
-    DataFolders: array[0..3] of string = (SamplesFolder, TipsFolder, DocsFolder, TemplatesFolder);
+    DataFolders: array[0..4] of string = (SamplesFolder, TipsFolder, DocsFolder, TemplatesFolder, ProfilesFolder);
   private
     FSystem: ISetupSystem;
     FPaths: TSetupPaths;

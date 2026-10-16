@@ -4,7 +4,8 @@
 // Tools API. Die Liste der Schalter kommt aus dem Einstellungskatalog: jede
 // boolesche Einstellung mit "x-quickToggle": true erscheint, gruppiert nach
 // ihrer Seite (x-page). Zwei Kataloge im Format des JSON-Schemas:
-// - PluginCatalog: Einstellungen des Plugins (Registry); Schlüssel = Name in
+// - PluginCatalog: Einstellungen des Plugins (Registry), erzeugt aus
+//   schemas/atlas-plugin.schema.json (#723); Schlüssel = Name in
 //   TAtlasPluginSettings.Load/Save. "x-drawing" kennzeichnet, was „Alles aus
 //   für diese Sitzung“ abschaltet (Zeichnungen im Editor).
 // - atlas.schema.json: Einstellungen mit "x-plugin" (Name der Plugin-
@@ -105,6 +106,9 @@ type
   end;
 
 implementation
+
+uses
+  Atlas.Core.Settings.PluginSchemaData;
 
 function BoolJson(AValue: Boolean): string;
 begin
@@ -237,138 +241,10 @@ end;
 
 class function TAtlasQuickToggles.PluginCatalog: string;
 begin
-  // Wie atlas.schema.json: "x-page" = Seite (Gruppe), "x-quickToggle" = erscheint als Schnellschalter,
-  // "x-caption"/"x-captionEn" = Beschriftung, "x-drawing" = Zeichnung im Editor, "x-feature" = Feature der
-  // Absturzsicherung (#493) für den Vorschlag nach einem Absturz (#722).
-  Result :=
-    '{"properties":{' +
-    '"Enabled":{"type":"boolean","x-feature":"Completion",' +
-      '"default":true,"x-page":"Allgemein","x-quickToggle":true,' +
-      '"x-caption":"Atlas-Code-Insight","x-captionEn":"Atlas Code Insight","x-issue":"#407"},' +
-    '"DiagnosticMode":{"type":"boolean",' +
-      '"default":false,"x-page":"Allgemein","x-quickToggle":true,' +
-      '"x-caption":"Diagnosemodus","x-captionEn":"Diagnostic mode","x-issue":"#479"},' +
-    '"PairColors":{"type":"boolean","x-feature":"Pairs",' +
-      '"default":true,"x-page":"Editor","x-quickToggle":true,"x-drawing":true,' +
-      '"x-caption":"Klammerfarben","x-captionEn":"Bracket colors","x-issue":"#514"},' +
-    '"PairGuides":{"type":"boolean","x-feature":"Pairs",' +
-      '"default":true,"x-page":"Editor","x-quickToggle":true,"x-drawing":true,' +
-      '"x-caption":"Blocklinien","x-captionEn":"Block guides","x-issue":"#514"},' +
-    '"PairOwners":{"type":"boolean","x-feature":"Pairs",' +
-      '"default":true,"x-page":"Editor","x-quickToggle":true,"x-drawing":true,' +
-      '"x-caption":"Anweisungen mitfärben","x-captionEn":"Colour statements","x-issue":"#653"},' +
-    '"InactiveDim":{"type":"boolean","x-feature":"Pairs",' +
-      '"default":true,"x-page":"Editor","x-quickToggle":true,"x-drawing":true,' +
-      '"x-caption":"Inaktive {$IFDEF}-Zweige ausgrauen","x-captionEn":"Dim inactive {$IFDEF} branches",' +
-      '"x-issue":"#615"},' +
-    '"Problems":{"type":"boolean","x-feature":"Problems",' +
-      '"default":true,"x-page":"Editor","x-quickToggle":true,"x-drawing":true,' +
-      '"x-caption":"Probleme unterstreichen","x-captionEn":"Underline problems","x-issue":"#398"},' +
-    '"InlayHints":{"type":"boolean","x-feature":"InlayHints",' +
-      '"default":false,"x-page":"Editor","x-quickToggle":true,"x-drawing":true,' +
-      '"x-caption":"Inlay-Hints","x-captionEn":"Inlay hints","x-issue":"#401"},' +
-    '"Notes":{"type":"boolean","x-feature":"Notes",' +
-      '"default":true,"x-page":"Editor","x-quickToggle":true,"x-drawing":true,' +
-      '"x-caption":"Notizen","x-captionEn":"Notes","x-issue":"#545"},' +
-    '"BookmarksNamed":{"type":"boolean","x-feature":"Bookmarks",' +
-      '"default":true,"x-page":"Editor","x-quickToggle":true,"x-drawing":true,' +
-      '"x-caption":"Benannte Lesezeichen","x-captionEn":"Named bookmarks","x-issue":"#622"},' +
-    '"CodeLensMetrics":{"type":"boolean","x-feature":"EditorCommands",' +
-      '"default":true,"x-page":"Editor","x-quickToggle":true,"x-drawing":true,' +
-      '"x-caption":"Code-Metriken","x-captionEn":"Code metrics","x-issue":"#66"},' +
-    '"CodeLensTests":{"type":"boolean","x-feature":"Build",' +
-      '"default":true,"x-page":"Editor","x-quickToggle":true,"x-drawing":true,' +
-      '"x-caption":"Code Lens „Test ausführen“","x-captionEn":"Code lens “Run test”","x-issue":"#69"},' +
-    '"GenerateMenu":{"type":"boolean","x-feature":"EditorCommands",' +
-      '"default":true,"x-page":"Editor","x-quickToggle":true,' +
-      '"x-caption":"Erzeugen-Menü","x-captionEn":"Generate menu","x-issue":"#719"},' +
-    '"TodoList":{"type":"boolean","x-feature":"Palette",' +
-      '"default":true,"x-page":"Editor","x-quickToggle":true,' +
-      '"x-caption":"TODO-Liste","x-captionEn":"TODO list","x-issue":"#68"},' +
-    '"BaselineUpdate":{"type":"boolean","x-feature":"Palette",' +
-      '"default":true,"x-page":"Editor","x-quickToggle":true,' +
-      '"x-caption":"Baseline aktualisieren","x-captionEn":"Update baseline","x-issue":"#97"},' +
-    '"MetricsReport":{"type":"boolean","x-feature":"Palette",' +
-      '"default":true,"x-page":"Editor","x-quickToggle":true,' +
-      '"x-caption":"Metrikbericht","x-captionEn":"Metrics report","x-issue":"#66"},' +
-    '"TeamFile":{"type":"boolean","x-feature":"Settings",' +
-      '"default":true,"x-page":"Allgemein","x-quickToggle":true,' +
-      '"x-caption":"Projektdatei .atlas","x-captionEn":"Project file .atlas","x-issue":"#486"},' +
-    '"HoverTooltip":{"type":"boolean","x-feature":"Hover",' +
-      '"default":true,"x-page":"Hints","x-quickToggle":true,' +
-      '"x-caption":"Hover-Tooltip","x-captionEn":"Hover tooltip","x-issue":"#442"},' +
-    '"FilterChips":{"type":"boolean","x-feature":"Completion",' +
-      '"default":true,"x-page":"Vervollständigung","x-quickToggle":true,' +
-      '"x-caption":"Filter-Chips","x-captionEn":"Filter chips","x-issue":"#422"},' +
-    '"Preview":{"type":"boolean","x-feature":"Completion",' +
-      '"default":false,"x-page":"Vervollständigung","x-quickToggle":true,' +
-      '"x-caption":"Vorschau im Editor","x-captionEn":"Preview in the editor","x-issue":"#434"},' +
-    '"GroupInherited":{"type":"boolean","x-feature":"Completion",' +
-      '"default":true,"x-page":"Vervollständigung","x-quickToggle":true,' +
-      '"x-caption":"Geerbte Member gruppieren","x-captionEn":"Group inherited members","x-issue":"#419"},' +
-    '"Learning":{"type":"boolean","x-feature":"Completion",' +
-      '"default":true,"x-page":"Vervollständigung","x-quickToggle":true,' +
-      '"x-caption":"Lernende Gewichtung","x-captionEn":"Learned ranking","x-issue":"#418"},' +
-    '"Favorites":{"type":"boolean","x-feature":"Completion",' +
-      '"default":true,"x-page":"Vervollständigung","x-quickToggle":true,' +
-      '"x-caption":"Favoriten anheften","x-captionEn":"Pin favorites","x-issue":"#458"},' +
-    '"CheckOnSave":{"type":"boolean","x-feature":"CheckOnSave",' +
-      '"default":false,"x-page":"Compiler","x-quickToggle":true,' +
-      '"x-caption":"Syntaxprüfung nach dem Speichern","x-captionEn":"Syntax check after saving","x-issue":"#548"},' +
-    '"McpBuild":{"type":"boolean","x-feature":"Build",' +
-      '"default":true,"x-page":"Compiler","x-quickToggle":true,' +
-      '"x-caption":"Builds für Claude Code","x-captionEn":"Builds for Claude Code","x-issue":"#261"},' +
-    '"BuildOnOpen":{"type":"boolean","x-feature":"Build",' +
-      '"default":false,"x-page":"Compiler","x-quickToggle":true,' +
-      '"x-caption":"Beim Öffnen einmal bauen","x-captionEn":"Build once on opening"},' +
-    '"StartProfiles":{"type":"boolean","x-feature":"Build",' +
-      '"default":true,"x-page":"Compiler","x-quickToggle":true,' +
-      '"x-caption":"Startprofile","x-captionEn":"Start profiles","x-issue":"#575"},' +
-    '"StartProfilesStatusField":{"type":"boolean","x-feature":"Build",' +
-      '"default":true,"x-page":"Compiler","x-quickToggle":true,' +
-      '"x-caption":"Startprofil in der Statusleiste","x-captionEn":"Start profile in the status bar",' +
-      '"x-issue":"#575"},' +
-    '"TestRun":{"type":"boolean","x-feature":"Build",' +
-      '"default":true,"x-page":"Compiler","x-quickToggle":true,' +
-      '"x-caption":"Tests ausführen","x-captionEn":"Run tests","x-issue":"#69"},' +
-    '"TestsAfterBuild":{"type":"boolean","x-feature":"Build",' +
-      '"default":false,"x-page":"Compiler","x-quickToggle":true,' +
-      '"x-caption":"Tests nach dem Build","x-captionEn":"Tests after the build","x-issue":"#69"},' +
-    '"TestDebug":{"type":"boolean","x-feature":"Build",' +
-      '"default":true,"x-page":"Debuggen","x-quickToggle":true,' +
-      '"x-caption":"Test debuggen","x-captionEn":"Debug test","x-issue":"#585"},' +
-    '"TestBreakAtStart":{"type":"boolean","default":true,"x-page":"Debuggen",' +
-      '"x-caption":"Beim Test-Debuggen am Anfang der Methode anhalten",' +
-      '"x-captionEn":"Stop at the start of the method when debugging a test","x-issue":"#585"},' +
-    '"TestsBuildFirst":{"type":"boolean","default":true,"x-page":"Compiler",' +
-      '"x-caption":"Vor den Tests bauen","x-captionEn":"Build before the tests","x-issue":"#69"},' +
-    '"ReleaseGuard":{"type":"boolean","x-feature":"Build",' +
-      '"default":true,"x-page":"Release-Build","x-quickToggle":true,' +
-      '"x-caption":"Release-Build-Wächter","x-captionEn":"Release build guard","x-issue":"#533"},' +
-    '"BuildZeroHints":{"type":"boolean","default":false,"x-page":"Compiler",' +
-      '"x-caption":"Build nur ohne Warnungen und Hinweise erfolgreich",' +
-      '"x-captionEn":"Build succeeds only without warnings and hints","x-issue":"#530"},' +
-    '"WelcomePage":{"type":"boolean","x-feature":"WelcomePage",' +
-      '"default":true,"x-page":"Willkommensseite","x-quickToggle":true,' +
-      '"x-caption":"Atlas auf der Willkommensseite","x-captionEn":"Atlas on the welcome page","x-issue":"#753"},' +
-    '"WelcomePageProjectSetup":{"type":"boolean","x-feature":"WelcomePage",' +
-      '"default":true,"x-page":"Willkommensseite","x-quickToggle":true,' +
-      '"x-caption":"Projekt für Atlas einrichten","x-captionEn":"Set up project for Atlas","x-issue":"#759"},' +
-    '"CiLogin":{"type":"boolean","x-feature":"WelcomePage",' +
-      '"default":true,"x-page":"Willkommensseite","x-quickToggle":true,' +
-      '"x-caption":"Zugang zum Build-Server","x-captionEn":"Build server access","x-issue":"#763"},' +
-    '"WelcomePageQuickActions":{"type":"boolean","x-feature":"WelcomePage",' +
-      '"default":true,"x-page":"Willkommensseite","x-quickToggle":true,' +
-      '"x-caption":"Schnellaktionen je Projekt","x-captionEn":"Quick actions per project","x-issue":"#764"},' +
-    '"ShortcutTips":{"type":"boolean","x-feature":"ShortcutTips",' +
-      '"default":true,"x-page":"Allgemein","x-quickToggle":true,' +
-      '"x-caption":"Tastenkürzel-Tipps","x-captionEn":"Keyboard shortcut tips","x-issue":"#600"},' +
-    '"Notifications":{"type":"boolean","x-feature":"Notifications",' +
-      '"default":true,"x-page":"Allgemein","x-quickToggle":true,' +
-      '"x-caption":"Benachrichtigungszentrale","x-captionEn":"Notification center","x-issue":"#601"},' +
-    '"StatusFieldSummary":{"type":"boolean","default":true,"x-page":"Allgemein",' +
-      '"x-caption":"Kurztext im Statusfeld","x-captionEn":"Summary in the status field","x-issue":"#591"}' +
-    '}}';
+  // Erzeugt aus schemas/atlas-plugin.schema.json (#723): "x-page" = Seite (Gruppe), "x-quickToggle" = erscheint
+  // als Schnellschalter, "x-caption"/"x-captionEn" = Beschriftung, "x-drawing" = Zeichnung im Editor,
+  // "x-feature" = Feature der Absturzsicherung (#493) für den Vorschlag nach einem Absturz (#722).
+  Result := AtlasPluginSchemaJson;
 end;
 
 class function TAtlasQuickToggles.Build(const APluginCatalog, AProjectSchema: string): TArray<TAtlasQuickToggle>;
