@@ -12,7 +12,7 @@ Alle Einstellungen mit Seite und Bedienelement im Einstellungs-Plugin (#227). Ei
 | Projekt | `project` | – | atlas.json (Atlas › Projekt-Einstellungen) | nein | Vorgabe: aktives IDE-Projekt | #14, #24 |
 | Projekt | `config` | – | atlas.json (Atlas › Projekt-Einstellungen) | nein | Auswahl aus der .dproj | #14, #46 |
 | Projekt | `platform` | – | atlas.json (Atlas › Projekt-Einstellungen) | nein | Auswahl aus der .dproj | #14, #46 |
-| Prüfregeln | `rules` | – | atlas.json (Atlas › Projekt-Einstellungen) | nein | Tabelle aus dem Regelkatalog | #41 |
+| Prüfregeln | `rules` | – | settings.json (Tools › Optionen › Atlas) und atlas.json (Atlas › Projekt-Einstellungen) | nein | Tabelle aus dem Regelkatalog | #41 |
 | Prüfregeln | `profile` | `"standard"` | atlas.json (Atlas › Projekt-Einstellungen) | nein | Auswahl | #146 |
 | Prüfregeln | `profiles` | – | atlas.json (Atlas › Projekt-Einstellungen) | nein | Profil-Editor | #146 |
 | Prüfregeln | `overrides` | – | atlas.json (Atlas › Projekt-Einstellungen) | nein | Liste mit Mustern | #146 |
@@ -23,6 +23,7 @@ Alle Einstellungen mit Seite und Bedienelement im Einstellungs-Plugin (#227). Ei
 | Vervollständigung | `completion`: `matching`, `interfaceSection`, `senderCast`, `offerTryFinally`, `freeStyle`, `keywords`, `postfixTemplates` | – | settings.json (Tools › Optionen › Atlas); `interfaceSection`, `senderCast`, `freeStyle` in atlas.json | nein | Auswahl | #31, #188, #229, #466, #480, #489 |
 | Vervollständigung | `refactoring`: `inlineVar` | – | atlas.json (Atlas › Projekt-Einstellungen) | nein | Kontrollkästchen | #50, #188 |
 | Eingabehilfen | `usesCommand` | `true` | settings.json (Tools › Optionen › Atlas) | nein | Kontrollkästchen | #254 |
+| Editor | `metrics` | `true` | settings.json (Tools › Optionen › Atlas) | nein | Kontrollkästchen | #66 |
 | Eingabehilfen | `slashCommands`: `enabled`, `disabled`, `headerTemplate` | – | settings.json (Tools › Optionen › Atlas) | nein | Kontrollkästchen, Liste | #293 |
 | Eingabehilfen | `sortUses` | `false` | atlas.json (Atlas › Projekt-Einstellungen) | nein | Auswahl | #182, #284 |
 | Eingabehilfen | `usesKeep` | `` | atlas.json (Atlas › Projekt-Einstellungen) | nein | Liste | #284 |

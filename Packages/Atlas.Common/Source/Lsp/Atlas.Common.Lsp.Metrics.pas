@@ -130,7 +130,7 @@ begin
     FileItem := TFileMetrics.Create(TMetricsCollector.RelativePath(ASource.Root, AFileName), nil);
   // {"file": …, "methods": […]} um "enabled" und "limits" ergänzt.
   Methods := TMetricsReport.FileJson(FileItem, Limits);
-  Result := '{"enabled": ' + LowerCase(BoolToStr(ASource.Settings.CodeLens.Metrics, True)) + ', "limits": ' +
+  Result := '{"enabled": ' + LowerCase(BoolToStr(ASource.Settings.Metrics and ASource.Settings.CodeLens.Metrics, True)) + ', "limits": ' +
     TMetricsReport.LimitsJson(Limits) + ', ' + Copy(Methods, 2, MaxInt);
 end;
 

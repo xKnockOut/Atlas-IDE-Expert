@@ -161,7 +161,7 @@ end;
 
 function Wanted(const ASettings: TAtlasPluginSettings): Boolean;
 begin
-  Result := ASettings.Enabled and ASettings.CodeLensMetrics and
+  Result := ASettings.Enabled and ASettings.Metrics and ASettings.CodeLensMetrics and
     not TAtlasGuard.Disabled(TAtlasFeature.EditorCommands);
 end;
 

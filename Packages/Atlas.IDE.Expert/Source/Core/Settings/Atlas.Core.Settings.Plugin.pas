@@ -239,6 +239,9 @@ type
     /// <summary>Code Lens mit den Kennzahlen jeder Methode (#66, codeLens.metrics; liegt in settings.json):
     /// Länge, Tiefe, zyklomatische und kognitive Komplexität, Parameter.</summary>
     CodeLensMetrics: Boolean;
+    /// <summary>Kennzahlen überhaupt ("metrics", settings.json): aus schaltet die Code Lens der Kennzahlen und
+    /// die Regeln metric-* ab; ein Projekt übersteuert je Regel in atlas.json unter "rules".</summary>
+    Metrics: Boolean;
     /// <summary>Code Lens „Test ausführen“ an Fixtures und Tests von DUnitX (#69, codeLens.tests; gemeinsamer
     /// Schlüssel mit „Test debuggen“ #585).</summary>
     CodeLensTests: Boolean;
@@ -794,6 +797,7 @@ begin
   Result.TestUnitKey := 0;
   Result.CodeLensTestUnit := True;
   Result.CodeLensMetrics := True;
+  Result.Metrics := True;
   Result.CodeLensTests := True;
   Result.TestRun := True;
   Result.TestsAfterBuild := False;
@@ -1125,6 +1129,7 @@ begin
   TestUnitKey := AStore.ReadInteger('TestUnitKey', Default.TestUnitKey);
   CodeLensTestUnit := AStore.ReadInteger('CodeLensTestUnit', BoolValue(Default.CodeLensTestUnit)) <> 0;
   CodeLensMetrics := AStore.ReadInteger('CodeLensMetrics', BoolValue(Default.CodeLensMetrics)) <> 0;
+  Metrics := AStore.ReadInteger('Metrics', BoolValue(Default.Metrics)) <> 0;
   CodeLensTests := AStore.ReadInteger('CodeLensTests', BoolValue(Default.CodeLensTests)) <> 0;
   TestRun := AStore.ReadInteger('TestRun', BoolValue(Default.TestRun)) <> 0;
   TestsAfterBuild := AStore.ReadInteger('TestsAfterBuild', BoolValue(Default.TestsAfterBuild)) <> 0;
@@ -1356,6 +1361,7 @@ begin
   AStore.WriteInteger('TestUnitKey', TestUnitKey);
   AStore.WriteInteger('CodeLensTestUnit', BoolValue(CodeLensTestUnit));
   AStore.WriteInteger('CodeLensMetrics', BoolValue(CodeLensMetrics));
+  AStore.WriteInteger('Metrics', BoolValue(Metrics));
   AStore.WriteInteger('CodeLensTests', BoolValue(CodeLensTests));
   AStore.WriteInteger('TestRun', BoolValue(TestRun));
   AStore.WriteInteger('TestsAfterBuild', BoolValue(TestsAfterBuild));
