@@ -55,7 +55,8 @@ uses
   System.Generics.Collections,
   Atlas.Common.Documents.Contract,
   Atlas.Common.Pascal.SyntaxTree,
-  Atlas.Common.Pascal.TreeCache;
+  Atlas.Common.Pascal.TreeCache,
+  Atlas.Text.Lines;
 
 function FindClass(const AIndex: ISymbolIndex; const AName: string; out ALocation: TSymbolLocation): Boolean;
 var
@@ -284,24 +285,6 @@ begin
     Result := Trim(Copy(Result, 1, Length(Result) - Length('of object')));
 end;
 
-/// <summary>1-basierter Index von APosition in AText.</summary>
-function OffsetOf(const AText: string; const APosition: TTextPosition): Integer;
-var
-  Line, Index: Integer;
-begin
-  Line := 0;
-  Index := 1;
-  while (Line < APosition.Line) and (Index <= Length(AText)) do
-  begin
-    if AText[Index] = #10 then
-      Inc(Line)
-    else if (AText[Index] = #13) and ((Index = Length(AText)) or (AText[Index + 1] <> #10)) then
-      Inc(Line);
-    Inc(Index);
-  end;
-  Result := Index + APosition.Character;
-end;
-
 class function TPublishedMembers.EventTail(const AIndex: ISymbolIndex; const AReadText: TMemberReadText;
   const AComponentClass, AEventName: string; out ATail: string): Boolean;
 var
@@ -327,7 +310,8 @@ begin
     for Location in AIndex.FindSymbols(TypeName) do
       if (Location.Symbol.Container = '') and AReadText(Location.FileName, Text) then
       begin
-        Start := OffsetOf(Text, Location.Symbol.SelectionRange.EndPos);
+        // 1-basierter Index im Text; Zeichen hinter dem Zeilenende zählen als Zeilenende.
+        Start := TLineTable.Build(Text).OffsetAt(Location.Symbol.SelectionRange.EndPos) + 1;
         ATail := TailOfType(Copy(Text, Start, DeclarationEnd(Text, Start) - Start + 1));
         if ATail <> '' then
           Exit(True);

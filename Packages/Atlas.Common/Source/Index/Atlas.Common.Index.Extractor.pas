@@ -88,9 +88,9 @@ type
     destructor Destroy; override;
     /// <summary>Index-Eintrag aus einem fertigen Syntaxbaum (ohne Stamp und Hash).</summary>
     class function Extract(ATree: TSyntaxTree; const AFileName: string): TUnitIndex; static;
-    /// <summary>Parst AText mit den aktiven Symbolen ADefines und liefert den Eintrag.</summary>
-    /// <summary>Mit AResolver werden $I-Dateien gelesen (#264): ihre $DEFINEs gelten, Includes listet sie auf.</summary>
-    /// <summary>Mit AUsages kommen die Verwendungen der Bezeichner dazu (#492).</summary>
+    /// <summary>Parst AText mit den aktiven Symbolen ADefines und liefert den Eintrag. Mit AResolver werden
+    /// $I-Dateien gelesen (#264): ihre $DEFINEs gelten, Includes listet sie auf. Mit AUsages kommen die
+    /// Verwendungen der Bezeichner dazu (#492).</summary>
     class function ExtractText(const AText, AFileName: string; const ADefines: TArray<string>;
       const AResolver: TIncludeResolver = nil; AUsages: Boolean = False): TUnitIndex; static;
     /// <summary>Verwendungen aller Bezeichner in ATokens außer an den Deklarationsstellen von ASymbols
@@ -120,7 +120,8 @@ uses
   System.RegularExpressions,
   System.Generics.Defaults,
   Atlas.Common.Pascal.XmlDoc,
-  Atlas.Common.Pascal.TreeCache;
+  Atlas.Common.Pascal.TreeCache,
+  Atlas.Text.Lines;
 
 const
   // Direktiven nach Routinenköpfen und Hinweise (wie im Parser); zählen nicht als Verwendung.
@@ -1121,13 +1122,6 @@ var
   // Abschnitt (type/const/var …) am Anfang jeder Zeile; einmal für die ganze Datei bestimmt.
   Sections: TArray<string>;
 
-  function IndentOf(const AValue: string): Integer;
-  begin
-    Result := 0;
-    while (Result < Length(AValue)) and CharInSet(AValue[Result + 1], [' ', #9]) do
-      Inc(Result);
-  end;
-
   procedure AddUnavailable(const AName: string; AKind: TIndexSymbolKind; ALine, AColumn: Integer;
     const ACondition: string; const AContainer: string = '');
   var
@@ -1353,7 +1347,7 @@ begin
           if Trim(Code) = '' then
             Continue;
         end;
-        Indent := IndentOf(Line);
+        Indent := TTextLines.IndentLength(Line);
         // Routinen auf Unit-Ebene stehen am Zeilenanfang.
         Match := TRegEx.Match(Code, '^(procedure|function)\s+([A-Za-z_]\w*)\s*[(:;]', [roIgnoreCase]);
         if Match.Success then

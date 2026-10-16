@@ -373,7 +373,9 @@ end;
 
 class function TAtlasWelcomeProjects.IsRuleHit(const AProblem: TAtlasProblem): Boolean;
 begin
-  Result := (AProblem.Code <> '') and not AProblem.IsCompiler and not AProblem.Unnecessary;
+  // Fehlgeschlagene Tests (#69) sind keine Regeltreffer.
+  Result := (AProblem.Code <> '') and not AProblem.IsCompiler and not AProblem.Unnecessary and
+    not SameText(AProblem.Source, TAtlasProblemStore.TestSource);
 end;
 
 class function TAtlasWelcomeProjects.CountRuleHits(AStore: TAtlasProblemStore; const AFolder: string;

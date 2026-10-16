@@ -70,6 +70,9 @@ type
 
 implementation
 
+uses
+  Atlas.Text.Chars;
+
 { TAtlasFileMetrics }
 
 class function TAtlasFileMetrics.FromJson(const AValue: TJSONValue): TAtlasFileMetrics;
@@ -179,11 +182,6 @@ begin
   Result := False;
 end;
 
-function IsIdentChar(ACh: Char): Boolean;
-begin
-  Result := CharInSet(ACh, ['A'..'Z', 'a'..'z', '0'..'9', '_']) or (Ord(ACh) > 127);
-end;
-
 class function TAtlasMetricsLens.LineMatches(const ALine, AName: string): Boolean;
 var
   Name, Line: string;
@@ -201,8 +199,8 @@ begin
   Start := Pos(Name, Line);
   while Start > 0 do
   begin
-    if ((Start = 1) or not IsIdentChar(Line[Start - 1])) and
-      ((Start + Length(Name) > Length(Line)) or not IsIdentChar(Line[Start + Length(Name)])) then
+    if ((Start = 1) or not TTextChars.IsIdentChar(Line[Start - 1])) and
+      ((Start + Length(Name) > Length(Line)) or not TTextChars.IsIdentChar(Line[Start + Length(Name)])) then
       Exit(True);
     Start := Pos(Name, Line, Start + 1);
   end;

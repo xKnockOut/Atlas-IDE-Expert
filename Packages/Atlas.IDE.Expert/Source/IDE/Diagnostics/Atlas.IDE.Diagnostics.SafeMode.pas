@@ -114,7 +114,7 @@ uses
   Atlas.Core.Settings.Plugin,
   Atlas.Core.Settings.QuickToggles,
   Atlas.UI.Strings,
-  Atlas.IDE.Settings.Store;
+  Atlas.IDE.Foundation.Settings;
 
 const
   // Winapi.Windows kennt die Konstante nicht (ab Windows Vista).

@@ -16,13 +16,18 @@ procedure RegisterRecordCommands(ARegistry: TSlashCommandRegistry);
 
 /// <summary>Operatorname zu Symbol oder Name (= wird Equal, + wird Add); '' wenn unbekannt.</summary>
 function OperatorName(const AToken: string): string;
+/// <summary>Argumente von /operator für die Auswahl im Erzeugen-Menü (#719): Symbol, sonst Name (Implicit).
+/// </summary>
+function OperatorTokens: TArray<string>;
+/// <summary>Felder der Klasse bzw. des Records um die Befehlszeile für /equals (#719); leer außerhalb.</summary>
+function EqualsFields(const AContext: TSlashContext): TArray<string>;
 
 implementation
 
 uses
   System.SysUtils,
   System.StrUtils,
-  Atlas.Common.Rules.Contract,
+  Atlas.Common.Documents.Contract,
   Atlas.Common.Index.Contract,
   Atlas.Common.Editing.CommandSource,
   Atlas.Common.Editing.TypeCommands;
@@ -105,7 +110,7 @@ begin
   Result := Length(AGroups) > 0;
 end;
 
-function ExecuteRecord(const AContext: TSlashContext; out AEdits: TArray<TRuleEdit>; out AReason: string): Boolean;
+function ExecuteRecord(const AContext: TSlashContext; out AEdits: TArray<TTextEdit>; out AReason: string): Boolean;
 var
   Source: TCommandSource;
   Arguments, TypeName, Prefix, Params, Body: string;
@@ -258,7 +263,7 @@ begin
   ABodies := ABodies + ASource.LineBreak + 'end;';
 end;
 
-function ExecuteOperator(const AContext: TSlashContext; out AEdits: TArray<TRuleEdit>; out AReason: string): Boolean;
+function ExecuteOperator(const AContext: TSlashContext; out AEdits: TArray<TTextEdit>; out AReason: string): Boolean;
 var
   Source: TCommandSource;
   RecordSymbol: TIndexSymbol;
@@ -310,7 +315,7 @@ end;
 
 { /equals }
 
-function ExecuteEquals(const AContext: TSlashContext; out AEdits: TArray<TRuleEdit>; out AReason: string): Boolean;
+function ExecuteEquals(const AContext: TSlashContext; out AEdits: TArray<TTextEdit>; out AReason: string): Boolean;
 var
   Source: TCommandSource;
   TypeSymbol, Field: TIndexSymbol;
@@ -439,7 +444,7 @@ begin
   Result := False;
 end;
 
-function ExecuteClone(const AContext: TSlashContext; out AEdits: TArray<TRuleEdit>; out AReason: string): Boolean;
+function ExecuteClone(const AContext: TSlashContext; out AEdits: TArray<TTextEdit>; out AReason: string): Boolean;
 var
   Source: TCommandSource;
   ClassSymbol, Field: TIndexSymbol;
@@ -471,6 +476,36 @@ begin
     AEdits := AddToClass(Source, ClassSymbol, ['public', Format('function Clone: %s;', [T])], Join(Source, Body)) +
       [Source.RemoveCommand];
     Result := True;
+  finally
+    Source.Free;
+  end;
+end;
+
+function OperatorTokens: TArray<string>;
+var
+  Entry: TOperatorEntry;
+begin
+  Result := nil;
+  for Entry in Operators do
+    if Entry.Symbol <> '' then
+      Result := Result + [Entry.Symbol]
+    else
+      Result := Result + [Entry.Name];
+end;
+
+function EqualsFields(const AContext: TSlashContext): TArray<string>;
+var
+  Source: TCommandSource;
+  TypeSymbol, Field: TIndexSymbol;
+  Reason: string;
+begin
+  Result := nil;
+  Source := TCommandSource.Create(AContext);
+  try
+    if not Source.ClassAt(TypeSymbol) and not RecordAt(Source, 'equals', TypeSymbol, Reason) then
+      Exit;
+    for Field in FieldsOf(Source, TypeSymbol) do
+      Result := Result + [Field.Name];
   finally
     Source.Free;
   end;

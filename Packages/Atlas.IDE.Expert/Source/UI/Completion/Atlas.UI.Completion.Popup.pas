@@ -136,6 +136,15 @@ type
     FFavoritesEnabled: Boolean;
     FOnFavorite: TAtlasPositionEvent;
     FNotice: string;
+    // Zeilen-, Chip- und Fußzeilenhöhe (P-15): einmal gemessen, neu nach Schrift- oder Dichtewechsel.
+    FRowHeight: Integer;
+    FChipsHeight: Integer;
+    FFooterHeight: Integer;
+    FMetricsPPI: Integer;
+    FMetricsValid: Boolean;
+    procedure CMFontChanged(var Message: TMessage); message CM_FONTCHANGED;
+    procedure InvalidateMetrics;
+    procedure EnsureMetrics;
     function Dim(AColor: TAtlasColor): TAtlasColor;
     function ChipsHeight: Integer;
     function ListTop: Integer;
@@ -256,6 +265,7 @@ implementation
 
 uses
   System.Math,
+  Atlas.UI.Popup.Draw,
   Atlas.Core.Style.Palette,
   Atlas.Core.Completion.Sets,
   Atlas.Core.Diagnostics.Timing,
@@ -416,13 +426,41 @@ begin
     Result := AColor;
 end;
 
+procedure TAtlasCompletionPopup.CMFontChanged(var Message: TMessage);
+begin
+  // Erst die Basis: sie leitet die UI-Schrift aus der Editorschrift ab.
+  inherited;
+  InvalidateMetrics;
+end;
+
+procedure TAtlasCompletionPopup.InvalidateMetrics;
+begin
+  FMetricsValid := False;
+end;
+
+procedure TAtlasCompletionPopup.EnsureMetrics;
+var
+  UIHeight: Integer;
+begin
+  // Dichte zusätzlich prüfen: Scale hängt an PPI, auch wenn die Schrift gleich bleibt.
+  if FMetricsValid and (FMetricsPPI = PPI) then
+    Exit;
+  Canvas.Font := UIFont;
+  UIHeight := Canvas.TextHeight('Wg');
+  Canvas.Font := Font;
+  FRowHeight := Max(Canvas.TextHeight('Wg') + Scale(9), Scale(24));
+  FChipsHeight := UIHeight + Scale(12);
+  FFooterHeight := UIHeight + Scale(10);
+  FMetricsPPI := PPI;
+  FMetricsValid := True;
+end;
+
 function TAtlasCompletionPopup.ChipsHeight: Integer;
 begin
   if not FChipsVisible or FShowingEmpty then
     Exit(0);
-  Canvas.Font := UIFont;
-  Result := Canvas.TextHeight('Wg') + Scale(12);
-  Canvas.Font := Font;
+  EnsureMetrics;
+  Result := FChipsHeight;
 end;
 
 function TAtlasCompletionPopup.ListTop: Integer;
@@ -629,15 +667,14 @@ end;
 
 function TAtlasCompletionPopup.RowHeight: Integer;
 begin
-  Canvas.Font := Font;
-  Result := Max(Canvas.TextHeight('Wg') + Scale(9), Scale(24));
+  EnsureMetrics;
+  Result := FRowHeight;
 end;
 
 function TAtlasCompletionPopup.FooterHeight: Integer;
 begin
-  Canvas.Font := UIFont;
-  Result := Canvas.TextHeight('Wg') + Scale(10);
-  Canvas.Font := Font;
+  EnsureMetrics;
+  Result := FFooterHeight;
 end;
 
 function TAtlasCompletionPopup.ScrollReserve: Integer;
@@ -686,7 +723,7 @@ end;
 function TAtlasCompletionPopup.TagWidth(const ATag: TAtlasTag): Integer;
 begin
   Canvas.Font := UIFont;
-  Result := Canvas.TextWidth(TagText(ATag)) + Scale(10);
+  Result := Canvas.TextWidth(TagText(ATag)) + Scale(TAtlasDraw.ChipPad);
   Canvas.Font := Font;
 end;
 
@@ -1029,7 +1066,7 @@ begin
   Box := Rect(ALeft, ARow.Top + (ARow.Height - Height) div 2, ALeft + TagWidth(ATag), 0);
   Box.Bottom := Box.Top + Height;
   Canvas.Font := UIFont;
-  FrameRounded(Box, Line, 3);
+  FrameRounded(Box, Line, TAtlasDraw.ChipRadius);
   Canvas.Font.Color := ToColor(TextColor);
   Canvas.Brush.Style := bsClear;
   Text := Box;
@@ -1215,7 +1252,7 @@ begin
   ThumbHeight := Max(Scale(16), Track.Height * Visible div Total);
   ThumbTop := Track.Top + (Track.Height - ThumbHeight) * FTop div Max(1, Total - Visible);
   Thumb := Rect(Track.Left, ThumbTop, Track.Right, ThumbTop + ThumbHeight);
-  FillRounded(Thumb, TAtlasColorMath.Mix(Colors.Muted, Colors.Surface, 0.45), 2);
+  TAtlasDraw.Thumb(Canvas, Thumb, Colors, Scale(2));
 end;
 
 procedure TAtlasCompletionPopup.Paint;

@@ -22,6 +22,7 @@ uses
   Atlas.Common.Index.Contract,
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Logging.Contract,
+  Atlas.Common.Logging.Providers.Logger,
   Atlas.Common.Diagnostics.Contract,
   Atlas.Common.Diagnostics.Anonymizer,
   Atlas.Common.Diagnostics.Providers.Log,
@@ -60,6 +61,11 @@ type
     /// AAnonymizer ist dann nil.</summary>
     class function LogFileSink(const AFileName, AFallbackTag: string; ANames: Boolean;
       out AAnonymizer: ILogAnonymizer): ILogSink; static;
+    /// <summary>Hängt die Logdatei AFileName (--log) ab ALevel an ALogger; gemeinsam für LSP-Server und
+    /// MCP-Modus (D-08). Lässt sie sich nicht öffnen, steht der Fehler im Log und das Ergebnis ist False.
+    /// Ohne AFileName geschieht nichts (True).</summary>
+    class function AddLogFile(ALogger: TLogger; const AFileName, AFallbackTag: string; ANames: Boolean;
+      ALevel: TLogLevel; out AAnonymizer: ILogAnonymizer): Boolean; static;
     { IJsonRpcRequestObserver }
     procedure Started(const AMethod: string);
     procedure Finished(const AMethod: string; const AParams, AResult: TJSONValue; const AError: Exception;
@@ -132,6 +138,24 @@ end;
 class function TShellDiagnostics.DefaultFolder: string;
 begin
   Result := TPath.Combine(TPath.Combine(TPath.Combine(TPath.GetCachePath, 'Atlas'), 'Logs'), 'Diagnose');
+end;
+
+class function TShellDiagnostics.AddLogFile(ALogger: TLogger; const AFileName, AFallbackTag: string;
+  ANames: Boolean; ALevel: TLogLevel; out AAnonymizer: ILogAnonymizer): Boolean;
+begin
+  AAnonymizer := nil;
+  Result := True;
+  if AFileName = '' then
+    Exit;
+  try
+    ALogger.AddSink(LogFileSink(AFileName, AFallbackTag, ANames, AAnonymizer), ALevel);
+  except
+    on E: Exception do
+    begin
+      ALogger.Error(Format('Logdatei "%s" kann nicht geöffnet werden: %s', [AFileName, E.Message]));
+      Result := False;
+    end;
+  end;
 end;
 
 class function TShellDiagnostics.LogFileSink(const AFileName, AFallbackTag: string; ANames: Boolean;

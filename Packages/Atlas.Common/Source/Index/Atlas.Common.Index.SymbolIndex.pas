@@ -17,6 +17,11 @@
 // geschätzte Bedarf das Budget, werden zuerst die Verwendungen ausgelagert
 // (#492; sie bleiben im Cache auf der Platte), dann Bibliotheks-Units, danach
 // Projekt-Units kompakt gehalten (nur interface-Symbole).
+//
+// Heißer Pfad (Code-Review P-13): Units liefert einen Schnappschuss, der bis zur nächsten Änderung gilt,
+// statt bei jedem Aufruf alle Units zu kopieren; UnavailableUnits nur die Units mit nicht geltenden
+// Zweigen. Das Einordnen der Zeichenketten in den Pool läuft außerhalb der Index-Sperre unter einer
+// eigenen, damit Leser nicht auf das Einlesen großer Units warten.
 
 interface
 
@@ -42,6 +47,13 @@ type
     RebuildDeadRefs = 4096;
   private
     FLock: TCriticalSection;
+    // Schützt nur FPool (InternUnit außerhalb von FLock).
+    FPoolLock: TCriticalSection;
+    // Ergebnis von Units bis zur nächsten Änderung an FFiles; nil = neu aufbauen. Jede Änderung leert es,
+    // damit ersetzte Units nicht im Schnappschuss weiterleben.
+    FUnitsSnapshot: TArray<TUnitIndex>;
+    // Dateischlüssel der Units mit Unavailable (#476).
+    FUnavailable: TDictionary<string, Boolean>;
     // Dateiname (groß) → Unit
     FFiles: TDictionary<string, TUnitIndex>;
     // Unit-Name (groß) → Dateiname (groß)
@@ -85,6 +97,7 @@ type
     function FindSymbols(const AName: string): TArray<TSymbolLocation>;
     function Descendants(const ATypeName: string): TArray<TSymbolLocation>;
     function Units: TArray<TUnitIndex>;
+    function UnavailableUnits: TArray<TUnitIndex>;
     function UnitCount: Integer;
     function SymbolCount: Integer;
     function MemoryBytes: Int64;
@@ -127,6 +140,8 @@ begin
   inherited Create;
   FGeneration := TInterlocked.Increment(IndexSerial) shl 32;
   FLock := TCriticalSection.Create;
+  FPoolLock := TCriticalSection.Create;
+  FUnavailable := TDictionary<string, Boolean>.Create;
   FFiles := TDictionary<string, TUnitIndex>.Create;
   FUnitFiles := TDictionary<string, string>.Create;
   FPool := TStringPool.Create;
@@ -151,6 +166,8 @@ begin
   FPool.Free;
   FUnitFiles.Free;
   FFiles.Free;
+  FUnavailable.Free;
+  FPoolLock.Free;
   FLock.Free;
   inherited;
 end;
@@ -169,6 +186,8 @@ begin
   if Existing.UsagesOffloaded then
     Dec(FOffloadedCount);
   FFiles.Remove(AFileKey);
+  FUnitsSnapshot := nil;
+  FUnavailable.Remove(AFileKey);
   FShrinkable.Remove(AFileKey);
   DropRefsLocked(AFileKey);
   Inc(FGeneration);
@@ -185,6 +204,9 @@ begin
   Stored := AUnit;
   Stored.PrepareNames;
   FFiles.Add(AKey, Stored);
+  FUnitsSnapshot := nil;
+  if Length(AUnit.Unavailable) > 0 then
+    FUnavailable.AddOrSetValue(AKey, True);
   Inc(FGeneration);
   FUnitFiles.AddOrSetValue(UpperCase(AUnit.UnitName), AKey);
   Inc(FSymbolCount, Length(AUnit.Symbols));
@@ -360,13 +382,21 @@ var
 begin
   Key := AnsiUpperCase(AUnit.FileName);
   Pooled := AUnit;
+  // Eigene Kopie der Arrays, damit der Pool die Einträge des Aufrufers nicht ändert. Kopieren und Einordnen
+  // in den Pool außerhalb von FLock (Code-Review P-13): Leser warten sonst auf jede große Unit. Zwei
+  // gleichzeitige Aufrufe für dieselbe Datei können sich dadurch überholen; das Ergebnis ist dann wie bei
+  // umgekehrter Aufrufreihenfolge. Der Index-Builder liest jede Datei nur aus einem Thread.
+  Pooled.InterfaceUses := Copy(AUnit.InterfaceUses);
+  Pooled.ImplementationUses := Copy(AUnit.ImplementationUses);
+  Pooled.Symbols := Copy(AUnit.Symbols);
+  FPoolLock.Enter;
+  try
+    FPool.InternUnit(Pooled);
+  finally
+    FPoolLock.Leave;
+  end;
   FLock.Enter;
   try
-    // Eigene Kopie der Arrays, damit der Pool die Einträge des Aufrufers nicht ändert.
-    Pooled.InterfaceUses := Copy(AUnit.InterfaceUses);
-    Pooled.ImplementationUses := Copy(AUnit.ImplementationUses);
-    Pooled.Symbols := Copy(AUnit.Symbols);
-    FPool.InternUnit(Pooled);
     RemoveFileLocked(Key);
     AddLocked(Key, Pooled);
     ShrinkLocked;
@@ -438,9 +468,34 @@ function TSymbolIndex.Units: TArray<TUnitIndex>;
 begin
   FLock.Enter;
   try
-    Result := FFiles.Values.ToArray;
+    // Schnappschuss bis zur nächsten Änderung (Code-Review P-13); dynamische Arrays sind referenzgezählt.
+    if FUnitsSnapshot = nil then
+      FUnitsSnapshot := FFiles.Values.ToArray;
+    Result := FUnitsSnapshot;
   finally
     FLock.Leave;
+  end;
+end;
+
+function TSymbolIndex.UnavailableUnits: TArray<TUnitIndex>;
+var
+  Key: string;
+  Found: TList<TUnitIndex>;
+  UnitIndex: TUnitIndex;
+begin
+  Found := TList<TUnitIndex>.Create;
+  try
+    FLock.Enter;
+    try
+      for Key in FUnavailable.Keys do
+        if FFiles.TryGetValue(Key, UnitIndex) then
+          Found.Add(UnitIndex);
+    finally
+      FLock.Leave;
+    end;
+    Result := Found.ToArray;
+  finally
+    Found.Free;
   end;
 end;
 

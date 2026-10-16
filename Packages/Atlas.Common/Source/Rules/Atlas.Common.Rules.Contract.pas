@@ -12,8 +12,9 @@ uses
   Atlas.Common.Documents.Contract,
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Index.Contract,
-  Atlas.Common.Pascal.SyntaxTree,
-  Atlas.Common.Semantics.NameResolver;
+  // Genehmigte Ausnahme der Rollenmatrix (Architektur.md, "Genehmigte Ausnahmen"): der Syntaxbaum ist
+  // Datengrundlage jeder Regel und hängt selbst nur an Contracts.
+  Atlas.Common.Pascal.SyntaxTree;
 
 type
   /// <summary>Feste Angaben einer Regel.</summary>
@@ -32,12 +33,9 @@ type
       AExperimental: Boolean = False);
   end;
 
-  /// <summary>Eine Textersetzung einer Korrektur.</summary>
-  TRuleEdit = record
-    Range: TTextRange;
-    NewText: string;
-    constructor Create(const ARange: TTextRange; const ANewText: string);
-  end;
+  /// <summary>Eine Textersetzung einer Korrektur. Alias auf TTextEdit aus Documents.Contract,
+  /// damit Editing die Textänderung ohne Abhängigkeit von Rules nutzen kann (A-11).</summary>
+  TRuleEdit = TTextEdit;
 
   /// <summary>Code-Aktion zu einem Treffer.</summary>
   TRuleFix = record
@@ -61,7 +59,6 @@ type
     Fixes: TArray<TRuleFix>;
   end;
 
-  /// <summary>Alles, was eine Regel über die geprüfte Datei wissen darf.</summary>
   /// <summary>Liest eine Datei neben der Unit, z. B. die .dcr aus {$R *.dcr} (#114).</summary>
   TRuleFileReader = reference to function(const AFileName: string; out AData: TBytes): Boolean;
   /// <summary>True, wenn die Prüfung abgebrochen werden soll (Zeitlimit, Dokument geändert).</summary>
@@ -70,6 +67,19 @@ type
   /// <summary>Die Prüfung wurde über TRuleContext.Cancelled abgebrochen; es gibt kein Ergebnis.</summary>
   ERuleCheckCancelled = class(Exception);
 
+  /// <summary>Ableitungen einer Prüfung, die alle Regeln eines Laufs teilen (Review P-03).
+  /// Besitzt die abgelegten Objekte. Nicht threadsicher: ein Cache gehört genau einem Lauf.
+  /// Zugriff typisiert über TRuleDerived (Atlas.Common.Rules.Derived).</summary>
+  IRuleDerivedCache = interface
+    ['{5CCE4184-2A0F-49C4-9B27-84C08CAC8109}']
+    function TryGet(const AKey: string; out AValue: TObject): Boolean;
+    /// <summary>Legt AValue ab und übernimmt den Besitz; ein vorhandener Wert wird freigegeben.</summary>
+    procedure Put(const AKey: string; AValue: TObject);
+    /// <summary>Gibt alle Werte frei (bricht Referenzzyklen über kopierte Kontexte).</summary>
+    procedure Clear;
+  end;
+
+  /// <summary>Alles, was eine Regel über die geprüfte Datei wissen darf.</summary>
   TRuleContext = record
     /// <summary>Pfad relativ zum Ordner der Konfiguration, '' wenn unbekannt.</summary>
     RelativePath: string;
@@ -97,9 +107,12 @@ type
     DfmPropertyRules: TArray<TDfmPropertyRule>;
     /// <summary>Abbruch zwischen den Regeln (Diagnoselog 15.10.2026); nil = nie abbrechen.</summary>
     Cancelled: TRuleCancelled;
+    /// <summary>Gemeinsame Ableitungen des Laufs (Review P-03); setzt TRuleEngine.Run. nil = jede Regel
+    /// rechnet selbst (direkter Aufruf von Check). Zugriff nur über TRuleDerived. Die Werte zeigen in
+    /// Tree: Wer einen eigenen Cache setzt, muss ihn vor dem Baum freigeben oder leeren.</summary>
+    Derived: IRuleDerivedCache;
   end;
 
-  /// <summary>Sammelt die Treffer einer Regel.</summary>
   /// <summary>Sammelt die Treffer einer Regel. Ohne Angabe gilt Konfidenz High.</summary>
   IRuleReport = interface
     ['{6E0D7E61-0B7B-4C4A-9C7F-3B0E5B6E2A11}']
@@ -164,14 +177,6 @@ begin
   DefaultSeverity := ADefaultSeverity;
   Description := ADescription;
   Experimental := AExperimental;
-end;
-
-{ TRuleEdit }
-
-constructor TRuleEdit.Create(const ARange: TTextRange; const ANewText: string);
-begin
-  Range := ARange;
-  NewText := ANewText;
 end;
 
 { TRuleFix }

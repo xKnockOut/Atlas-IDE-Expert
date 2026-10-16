@@ -7,7 +7,7 @@
 interface
 
 uses
-  Atlas.Common.Rules.Contract;
+  Atlas.Common.Documents.Contract;
 
 type
   TFormKind = (Form, Frame, DataModule);
@@ -30,14 +30,14 @@ type
     /// <summary>Edits für die .dpr: Eintrag im uses mit {Kommentar} und bei Formularen und
     /// Datenmodulen Application.CreateForm vor Application.Run. False ohne uses.</summary>
     class function ProgramEdits(const AText, AUnitName, AFileName, AClassName: string; AKind: TFormKind;
-      out AEdits: TArray<TRuleEdit>): Boolean; static;
+      out AEdits: TArray<TTextEdit>): Boolean; static;
     /// <summary>Edit für die .dpr: "AUnitName in 'AFileName'" am Ende des uses, ohne Formular (#274).
     /// False ohne uses oder wenn die Unit dort schon steht.</summary>
-    class function UnitProgramEdit(const AText, AUnitName, AFileName: string; out AEdit: TRuleEdit): Boolean; static;
+    class function UnitProgramEdit(const AText, AUnitName, AFileName: string; out AEdit: TTextEdit): Boolean; static;
     /// <summary>Edit für die .dproj: DCCReference mit Form und gegebenenfalls DesignClass hinter
     /// dem letzten DCCReference. False ohne DCCReference.</summary>
     class function ProjectEdit(const AText, AFileName, AClassName: string; AKind: TFormKind;
-      AWithForm: Boolean; out AEdit: TRuleEdit): Boolean; static;
+      AWithForm: Boolean; out AEdit: TTextEdit): Boolean; static;
   end;
 
 implementation
@@ -45,9 +45,9 @@ implementation
 uses
   System.SysUtils,
   System.StrUtils,
-  Atlas.Common.Documents.Contract,
   Atlas.Common.Pascal.Contract,
-  Atlas.Common.Pascal.Lexer;
+  Atlas.Common.Pascal.Lexer,
+  Atlas.Text.Lines;
 
 const
   FormUses = 'Winapi.Windows, Winapi.Messages, System.SysUtils, System.Variants, System.Classes, Vcl.Graphics,' +
@@ -151,23 +151,15 @@ begin
     ALineBreak + ALineBreak + 'end.' + ALineBreak;
 end;
 
-function LineBreakOf(const AText: string): string;
-begin
-  if Pos(#13#10, AText) > 0 then
-    Result := #13#10
-  else
-    Result := #10;
-end;
-
 class function TUnitTemplates.ProgramEdits(const AText, AUnitName, AFileName, AClassName: string;
-  AKind: TFormKind; out AEdits: TArray<TRuleEdit>): Boolean;
+  AKind: TFormKind; out AEdits: TArray<TTextEdit>): Boolean;
 var
   Tokens: TArray<TPascalToken>;
   Index, Next, Semicolon: Integer;
   Comment, LB: string;
 begin
   AEdits := nil;
-  LB := LineBreakOf(AText);
+  LB := TTextLines.LineBreakOf(AText);
   Tokens := TPascalLexer.Tokenize(AText);
   Semicolon := -1;
   for Index := 0 to High(Tokens) do
@@ -191,7 +183,7 @@ begin
   else
     Comment := Format('{%s}', [TUnitTemplates.InstanceName(AClassName)]);
   end;
-  AEdits := [TRuleEdit.Create(TTextRange.Create(Tokens[Semicolon].StartPos, Tokens[Semicolon].StartPos),
+  AEdits := [TTextEdit.Create(TTextRange.Create(Tokens[Semicolon].StartPos, Tokens[Semicolon].StartPos),
     Format(',%s  %s in %s %s', [LB, AUnitName, QuotedStr(AFileName), Comment]))];
   // Frames erzeugt die Anwendung nicht automatisch.
   if AKind <> TFormKind.Frame then
@@ -199,7 +191,7 @@ begin
       if SameText(Tokens[Index].Text, 'Application') and Tokens[Index + 1].IsSymbol('.') and
         SameText(Tokens[Index + 2].Text, 'Run') then
       begin
-        AEdits := AEdits + [TRuleEdit.Create(TTextRange.Create(Tokens[Index].StartPos, Tokens[Index].StartPos),
+        AEdits := AEdits + [TTextEdit.Create(TTextRange.Create(Tokens[Index].StartPos, Tokens[Index].StartPos),
           Format('Application.CreateForm(%s, %s);%s%s', [AClassName, TUnitTemplates.InstanceName(AClassName), LB,
           StringOfChar(' ', Tokens[Index].StartPos.Character)]))];
         Break;
@@ -208,15 +200,15 @@ begin
 end;
 
 class function TUnitTemplates.UnitProgramEdit(const AText, AUnitName, AFileName: string;
-  out AEdit: TRuleEdit): Boolean;
+  out AEdit: TTextEdit): Boolean;
 var
   Tokens: TArray<TPascalToken>;
   Index, Next, Semicolon: Integer;
   Name, LB: string;
   InName: Boolean;
 begin
-  AEdit := Default(TRuleEdit);
-  LB := LineBreakOf(AText);
+  AEdit := Default(TTextEdit);
+  LB := TTextLines.LineBreakOf(AText);
   Tokens := TPascalLexer.Tokenize(AText);
   Semicolon := -1;
   for Index := 0 to High(Tokens) do
@@ -250,19 +242,19 @@ begin
     end;
   if Semicolon < 0 then
     Exit(False);
-  AEdit := TRuleEdit.Create(TTextRange.Create(Tokens[Semicolon].StartPos, Tokens[Semicolon].StartPos),
+  AEdit := TTextEdit.Create(TTextRange.Create(Tokens[Semicolon].StartPos, Tokens[Semicolon].StartPos),
     Format(',%s  %s in %s', [LB, AUnitName, QuotedStr(AFileName)]));
   Result := True;
 end;
 
 class function TUnitTemplates.ProjectEdit(const AText, AFileName, AClassName: string; AKind: TFormKind;
-  AWithForm: Boolean; out AEdit: TRuleEdit): Boolean;
+  AWithForm: Boolean; out AEdit: TTextEdit): Boolean;
 var
   Lines: TArray<string>;
   Index, Last: Integer;
   Indent, LB, Text: string;
 begin
-  LB := LineBreakOf(AText);
+  LB := TTextLines.LineBreakOf(AText);
   Lines := AText.Split([LB]);
   Last := -1;
   for Index := 0 to High(Lines) do
@@ -288,7 +280,7 @@ begin
         Format('%s    <DesignClass>%s</DesignClass>', [Indent, TUnitTemplates.DefaultAncestor(AKind)]);
     Text := Text + LB + Indent + '</DCCReference>';
   end;
-  AEdit := TRuleEdit.Create(TTextRange.Create(Last, Length(Lines[Last]), Last, Length(Lines[Last])), LB + Text);
+  AEdit := TTextEdit.Create(TTextRange.Create(Last, Length(Lines[Last]), Last, Length(Lines[Last])), LB + Text);
   Result := True;
 end;
 

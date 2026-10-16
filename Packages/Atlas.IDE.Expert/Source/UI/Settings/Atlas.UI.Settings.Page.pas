@@ -34,6 +34,8 @@ uses
   Atlas.Core.Style.Color,
   Atlas.Core.Style.Palette,
   Atlas.Core.Settings.Plugin,
+  Atlas.Core.Settings.TeamFile,
+  Atlas.Core.Projects.Summary,
   Atlas.Core.Completion.Favorites,
   Atlas.Core.Diagnostics.Hangs,
   Atlas.Core.Diagnostics.Guard,
@@ -118,8 +120,12 @@ type
     FCodeLensTestUnit: TCheckBox;
     /// <summary>Code Lens mit Code-Metriken (#66).</summary>
     FCodeLensMetrics: TCheckBox;
+    /// <summary>Code Lens „Test ausführen“ (#69, codeLens.tests).</summary>
+    FCodeLensTests: TCheckBox;
     /// <summary>Befehl in der Befehlspalette (#68).</summary>
     FTodoList: TCheckBox;
+    /// <summary>Befehl in der Befehlspalette (#97).</summary>
+    FBaselineUpdate: TCheckBox;
     /// <summary>Befehl in der Befehlspalette (#66).</summary>
     FMetricsReport: TCheckBox;
     FPairGuides: TCheckBox;
@@ -156,6 +162,19 @@ type
     FAfterSave: TAtlasChoiceBox;
     FCheckDelay: TEdit;
     FCheckMax: TEdit;
+    FMcpBuild: TCheckBox;
+    /// <summary>DUnitX-Tests ausführen (#69): Befehle, vorher bauen, nach dem Build; Build ohne Hinweise (#530).
+    /// </summary>
+    FTestRun: TCheckBox;
+    FTestsBuildFirst: TCheckBox;
+    FTestsAfterBuild: TCheckBox;
+    FBuildZeroHints: TCheckBox;
+    /// <summary>Startprofile (#575): Befehl, Statusfeld.</summary>
+    FStartProfiles: TCheckBox;
+    FStartProfilesStatusField: TCheckBox;
+    /// <summary>Einzelnen Test debuggen (#585): Befehle und Marke, Haltepunkt am Anfang der Methode.</summary>
+    FTestDebug: TCheckBox;
+    FTestBreakAtStart: TCheckBox;
     FActionsKey: TEdit;
     FExpandKey: TEdit;
     FShrinkKey: TEdit;
@@ -170,8 +189,22 @@ type
     FRedoKey: TEdit;
     FEditorKeysPriority: TCheckBox;
     FSlashCommands: TCheckBox;
+    /// <summary>Erzeugen-Menü (#719).</summary>
+    FGenerateMenu: TCheckBox;
+    FGenerateMenuKey: TEdit;
+    FGenerateMenuGroups: TEdit;
+    FGenerateMenuHidden: TEdit;
+    FGenerateMenuRecentFirst: TCheckBox;
+    FGenerateMenuShowCommandNames: TCheckBox;
     FSnippets: TCheckBox;
     FImportIdeTemplates: TCheckBox;
+    // Projektdatei .atlas (#486): Schalter, Anzeige der Werte „aus .atlas“, Öffnen; Hinweis bei den Vorlagen.
+    FTeamFile: TCheckBox;
+    FTeamFileInfo: TLabel;
+    FTeamFileOpen: TButton;
+    FTeamSnippets: TLabel;
+    FOnTeamFile: TFunc<TAtlasTeamSettings>;
+    FOnOpenTeamFile: TProc;
     FSafeAsk: TCheckBox;
     FSafeAuto: TCheckBox;
     FSafeKey: TAtlasChoiceBox;
@@ -218,6 +251,9 @@ type
     FWelcomeProjects: TCheckBox;
     FWelcomeMaxProjects: TEdit;
     FWelcomeRefreshVcs: TCheckBox;
+    FWelcomeTrends: TCheckBox;
+    FWelcomeTrendsPoints: TEdit;
+    FWelcomeTrendsSeries: array[TAtlasTrendSeries] of TCheckBox;
     FWelcomeUnsaved: TCheckBox;
     FWelcomeUnsavedMinAge: TEdit;
     FWelcomeUnsavedWarn: TEdit;
@@ -235,6 +271,8 @@ type
     FWelcomeHelpReportUrl: TEdit;
     FWelcomeHelpReportFolder: TEdit;
     FWelcomeHelpFolderBrowse: TButton;
+    FWelcomeProjectSetup: TCheckBox;
+    FWelcomeNewFromTemplate: TCheckBox;
     FVersion: TLabel;
     FResetHistory: TButton;
     // Favoriten (#458): Schalter, Liste und Schlüssel je Zeile.
@@ -272,6 +310,12 @@ type
     procedure SetOnFavorites(const AValue: TFunc<TArray<TAtlasFavorite>>);
     procedure ResetUsageClick(Sender: TObject);
     procedure UnblockTipsClick(Sender: TObject);
+    procedure AddTeamFileSection;
+    procedure TeamFileClick(Sender: TObject);
+    procedure TeamFileOpenClick(Sender: TObject);
+    procedure SetOnTeamFile(const AValue: TFunc<TAtlasTeamSettings>);
+    /// <summary>Beschriftung über die ganze Breite mit Zeilenumbruch.</summary>
+    function AddWrappedLabel(AHeight: Integer; const ACaption: string): TLabel;
     procedure HelpFolderBrowseClick(Sender: TObject);
     /// <summary>Beschriftung in einer Zeile, darunter ein Textfeld über die ganze Breite (#766).</summary>
     function AddTextLine(const ACaption: string): TEdit;
@@ -375,6 +419,10 @@ type
     property WelcomeProjects: TCheckBox read FWelcomeProjects;
     property WelcomeMaxProjects: TEdit read FWelcomeMaxProjects;
     property WelcomeRefreshVcs: TCheckBox read FWelcomeRefreshVcs;
+    /// <summary>Zum Testen: Bereich „Projektverlauf“ (#758).</summary>
+    property WelcomeTrends: TCheckBox read FWelcomeTrends;
+    property WelcomeTrendsPoints: TEdit read FWelcomeTrendsPoints;
+    function WelcomeTrendsSeries(ASeries: TAtlasTrendSeries): TCheckBox;
     property WelcomeUnsaved: TCheckBox read FWelcomeUnsaved;
     property WelcomeUnsavedMinAge: TEdit read FWelcomeUnsavedMinAge;
     property WelcomeUnsavedWarn: TEdit read FWelcomeUnsavedWarn;
@@ -391,6 +439,9 @@ type
     property WelcomeHelp: TCheckBox read FWelcomeHelp;
     property WelcomeHelpReportUrl: TEdit read FWelcomeHelpReportUrl;
     property WelcomeHelpReportFolder: TEdit read FWelcomeHelpReportFolder;
+    /// <summary>Zum Testen: Einrichtungskarte und „Neu mit Atlas“ (#759).</summary>
+    property WelcomeProjectSetup: TCheckBox read FWelcomeProjectSetup;
+    property WelcomeNewFromTemplate: TCheckBox read FWelcomeNewFromTemplate;
     property VersionLabel: TLabel read FVersion;
     /// <summary>Kennzahlen als Text; nil = nicht verfügbar.</summary>
     property OnIndexMetrics: TFunc<string> read FOnIndexMetrics write FOnIndexMetrics;
@@ -408,10 +459,30 @@ type
     /// <summary>Zum Testen: Favoriten (#458).</summary>
     property FavoritesCheck: TCheckBox read FFavorites;
     property NotesCheck: TCheckBox read FNotes;
+    property McpBuildCheck: TCheckBox read FMcpBuild;
+    /// <summary>Zum Testen: Tests ausführen (#69).</summary>
+    property CodeLensTestsCheck: TCheckBox read FCodeLensTests;
+    property TestRunCheck: TCheckBox read FTestRun;
+    property TestsBuildFirstCheck: TCheckBox read FTestsBuildFirst;
+    property TestsAfterBuildCheck: TCheckBox read FTestsAfterBuild;
+    property BuildZeroHintsCheck: TCheckBox read FBuildZeroHints;
+    /// <summary>Zum Testen: Startprofile (#575).</summary>
+    property StartProfilesCheck: TCheckBox read FStartProfiles;
+    property StartProfilesStatusFieldCheck: TCheckBox read FStartProfilesStatusField;
+    /// <summary>Zum Testen: Test debuggen (#585).</summary>
+    property TestDebugCheck: TCheckBox read FTestDebug;
+    property TestBreakAtStartCheck: TCheckBox read FTestBreakAtStart;
     /// <summary>Zum Testen: benannte Lesezeichen (#622).</summary>
     property BookmarksNamedCheck: TCheckBox read FBookmarksNamed;
     property BookmarksSharedCheck: TCheckBox read FBookmarksShared;
     property BookmarkKey: TEdit read FBookmarkKey;
+    /// <summary>Zum Testen: Erzeugen-Menü (#719).</summary>
+    property GenerateMenuCheck: TCheckBox read FGenerateMenu;
+    property GenerateMenuKey: TEdit read FGenerateMenuKey;
+    property GenerateMenuGroups: TEdit read FGenerateMenuGroups;
+    property GenerateMenuHidden: TEdit read FGenerateMenuHidden;
+    property GenerateMenuRecentFirstCheck: TCheckBox read FGenerateMenuRecentFirst;
+    property GenerateMenuShowCommandNamesCheck: TCheckBox read FGenerateMenuShowCommandNames;
     property FavoritesList: TListBox read FFavoritesList;
     property FavoritesRemove: TButton read FFavoritesRemove;
     property FavoritesRemoveAll: TButton read FFavoritesRemoveAll;
@@ -419,6 +490,17 @@ type
     property OnResetUsage: TProc read FOnResetUsage write FOnResetUsage;
     /// <summary>„Gesperrte Tipps wieder zeigen“ der Karte „Atlas entdecken“ (#757).</summary>
     property OnUnblockTips: TProc read FOnUnblockTips write FOnUnblockTips;
+    /// <summary>Projektdatei .atlas des aktiven Projekts (#486) für die Anzeige „aus .atlas“; nil = keine.</summary>
+    property OnTeamFile: TFunc<TAtlasTeamSettings> read FOnTeamFile write SetOnTeamFile;
+    /// <summary>„Projektdatei öffnen“: anlegen, falls es sie nicht gibt, und im Editor öffnen (#486).</summary>
+    property OnOpenTeamFile: TProc read FOnOpenTeamFile write FOnOpenTeamFile;
+    /// <summary>Anzeige der Projektdatei neu aufbauen (#486).</summary>
+    procedure RefreshTeamFile;
+    /// <summary>Zum Testen: Projektdatei (#486).</summary>
+    property TeamFileCheck: TCheckBox read FTeamFile;
+    property TeamFileInfo: TLabel read FTeamFileInfo;
+    property TeamFileOpenButton: TButton read FTeamFileOpen;
+    property TeamSnippetsLabel: TLabel read FTeamSnippets;
     /// <summary>Server, der bei leerem Pfad gilt (für die Anzeige „Verwendet: …“).</summary>
     property DefaultServerPath: string read FDefaultServerPath write SetDefaultServerPath;
     /// <summary>Version des Servers unter dem Pfad als Text ('' = unbekannt); nil = keine Anzeige.</summary>
@@ -442,8 +524,27 @@ uses
   Atlas.Core.Product.Version,
   Atlas.Core.Updates.Check,
   Atlas.Core.Undo.Contract,
+  Atlas.Core.Undo.Names,
   Atlas.Core.Welcome.WhatsNew,
+  Atlas.Core.Welcome.Trends,
   Atlas.Core.Commands.ShortcutTips;
+
+/// <summary>Bezeichnung einer Reihe des Projektverlaufs (#758) wie auf ihrer Kachel.</summary>
+function TrendSeriesTitle(ASeries: TAtlasTrendSeries): string;
+begin
+  case ASeries of
+    TAtlasTrendSeries.Warnings:
+      Result := TAtlasStrings.Text(TAtlasTextId.WelcomeTrendsWarnings);
+    TAtlasTrendSeries.RuleHits:
+      Result := TAtlasStrings.Text(TAtlasTextId.WelcomeTrendsRuleHits);
+    TAtlasTrendSeries.Todos:
+      Result := TAtlasStrings.Text(TAtlasTextId.WelcomeTrendsTodos);
+    TAtlasTrendSeries.Duration:
+      Result := TAtlasStrings.Text(TAtlasTextId.WelcomeTrendsDuration);
+  else
+    Result := TAtlasStrings.Text(TAtlasTextId.WelcomeTrendsMethodLength);
+  end;
+end;
 
 { TAtlasChoiceBox }
 
@@ -532,6 +633,7 @@ var
   Panel: TWinControl;
   Title: TLabel;
   Button: TButton;
+  Series: TAtlasTrendSeries;
 begin
   inherited Create(AOwner);
   Name := 'AtlasSettingsPage';
@@ -684,6 +786,8 @@ begin
   // Code-Vorlagen (#51).
   FSnippets := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsSnippets));
   FImportIdeTemplates := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsImportIdeTemplates));
+  // Vorlagen aus der Projektdatei (#486); leer ohne .atlas.
+  FTeamSnippets := AddWrappedLabel(20, '');
 
   AddSheet(TAtlasTextId.SettingsTabEditor);
   FHoverTooltip := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsHover));
@@ -706,7 +810,9 @@ begin
   FBookmarksShared := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsBookmarksShared));
   FCodeLensTestUnit := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsCodeLensTestUnit));
   FCodeLensMetrics := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsCodeLensMetrics));
+  FCodeLensTests := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsCodeLensTests));
   FTodoList := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsTodoList));
+  FBaselineUpdate := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsBaselineUpdate));
   FMetricsReport := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsMetricsReport));
 
   // Eigene Paarfarben und deren Reihenfolge je Thema.
@@ -747,6 +853,21 @@ begin
     TAtlasStrings.Text(TAtlasTextId.SettingsAfterSaveCompile)]);
   FCheckDelay := AddNumber(TAtlasStrings.Text(TAtlasTextId.SettingsCheckDelay));
   FCheckMax := AddNumber(TAtlasStrings.Text(TAtlasTextId.SettingsCheckMax));
+  // Claude Code baut über diese IDE (#261, build_project), z. B. ohne Kommandozeilen-Compiler.
+  FMcpBuild := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsMcpBuild));
+  // DUnitX-Tests ausführen (#69).
+  FTestRun := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsTestRun));
+  FTestsBuildFirst := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsTestsBuildFirst));
+  FTestsAfterBuild := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsTestsAfterBuild));
+  FBuildZeroHints := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsBuildZeroHints));
+  // Startprofile (#575).
+  FStartProfiles := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsStartProfiles));
+  FStartProfilesStatusField := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsStartProfilesStatusField));
+
+  // Einzelnen Test im Debugger starten (#585); die Code Lens dazu steht unter Editor (codeLens.tests).
+  AddSheet(TAtlasTextId.SettingsTabDebug);
+  FTestDebug := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsTestDebug));
+  FTestBreakAtStart := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsTestBreakAtStart));
 
   // Editorbefehle (#399): ein Vorrang für alle.
   AddSheet(TAtlasTextId.SettingsTabCommands);
@@ -766,6 +887,13 @@ begin
   FRedoKey := AddKey(TAtlasStrings.Text(TAtlasTextId.RedoMenu));
   FEditorKeysPriority := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsEditorKeysPriority));
   FSlashCommands := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsSlashCommands));
+  // Erzeugen-Menü (#719): Schnellbefehle, Vorlagen und Code-Aktionen an der Cursorstelle.
+  FGenerateMenu := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsGenerateMenu));
+  FGenerateMenuKey := AddKey(TAtlasStrings.Text(TAtlasTextId.GenerateMenuCommand));
+  FGenerateMenuGroups := AddTextLine(TAtlasStrings.Text(TAtlasTextId.SettingsGenerateMenuGroups));
+  FGenerateMenuHidden := AddTextLine(TAtlasStrings.Text(TAtlasTextId.SettingsGenerateMenuHidden));
+  FGenerateMenuRecentFirst := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsGenerateMenuRecentFirst));
+  FGenerateMenuShowCommandNames := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsGenerateMenuShowCommandNames));
 
   AddSheet(TAtlasTextId.SettingsTabRobustness);
   // Einfrier-Wächter (#501).
@@ -801,6 +929,9 @@ begin
 
   AddSheet(TAtlasTextId.SettingsTabWelcome);
   AddWelcomeSection;
+
+  AddSheet(TAtlasTextId.SettingsTabTeamFile);
+  AddTeamFileSection;
 end;
 
 procedure TAtlasSettingsPage.AddWelcomeSection;
@@ -834,6 +965,12 @@ begin
   FWelcomeProjects := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsWelcomeProjects));
   FWelcomeMaxProjects := AddNumber(TAtlasStrings.Text(TAtlasTextId.SettingsWelcomeMaxProjects));
   FWelcomeRefreshVcs := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsWelcomeRefreshVcs));
+  // Bereich „Projektverlauf“ (#758): Schalter, Anzahl der Builds und je Reihe ein Kontrollkästchen.
+  FWelcomeTrends := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsWelcomeTrends));
+  FWelcomeTrendsPoints := AddNumber(TAtlasStrings.Text(TAtlasTextId.SettingsWelcomeTrendsPoints));
+  for Series := Low(TAtlasTrendSeries) to High(TAtlasTrendSeries) do
+    FWelcomeTrendsSeries[Series] := AddCheck(TAtlasStrings.Fmt(TAtlasTextId.SettingsWelcomeTrendsSeries,
+      [TrendSeriesTitle(Series)]));
   // Bereich „Nicht gesichert“ (#762).
   FWelcomeUnsaved := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsWelcomeUnsaved));
   FWelcomeUnsavedMinAge := AddNumber(TAtlasStrings.Text(TAtlasTextId.SettingsWelcomeUnsavedMinAge));
@@ -875,6 +1012,9 @@ begin
   FWelcomeHelpFolderBrowse.Width := 30;
   FWelcomeHelpFolderBrowse.Anchors := [akTop, akRight];
   FWelcomeHelpFolderBrowse.OnClick := HelpFolderBrowseClick;
+  // Karte „Projekt für Atlas einrichten“ und Knöpfe „Neu mit Atlas“ (#759).
+  FWelcomeProjectSetup := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsWelcomeProjectSetup));
+  FWelcomeNewFromTemplate := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsWelcomeNewFromTemplate));
 end;
 
 function TAtlasSettingsPage.AddTextLine(const ACaption: string): TEdit;
@@ -1447,7 +1587,15 @@ begin
   Result.NumbersOnly := True;
 end;
 
+function TAtlasSettingsPage.WelcomeTrendsSeries(ASeries: TAtlasTrendSeries): TCheckBox;
+begin
+  Result := FWelcomeTrendsSeries[ASeries];
+end;
+
 procedure TAtlasSettingsPage.LoadFrom(const ASettings: TAtlasPluginSettings);
+var
+  Shown: TAtlasTrendSeriesList;
+  Series, Wanted: TAtlasTrendSeries;
 begin
   FWidths := ASettings;
   FEnabled.Checked := ASettings.Enabled;
@@ -1464,6 +1612,12 @@ begin
   FBookmarkKey.Text := ShortCutToText(TShortCut(ASettings.BookmarkKey));
   FEditorKeysPriority.Checked := ASettings.EditorKeysPriority;
   FSlashCommands.Checked := ASettings.SlashCommands;
+  FGenerateMenu.Checked := ASettings.GenerateMenu;
+  FGenerateMenuKey.Text := ShortCutToText(TShortCut(ASettings.GenerateMenuKey));
+  FGenerateMenuGroups.Text := ASettings.GenerateMenuGroups;
+  FGenerateMenuHidden.Text := ASettings.GenerateMenuHidden;
+  FGenerateMenuRecentFirst.Checked := ASettings.GenerateMenuRecentFirst;
+  FGenerateMenuShowCommandNames.Checked := ASettings.GenerateMenuShowCommandNames;
   ServerPathChange(nil);
   FRowsUpDown.Position := ASettings.VisibleRows;
   FPanelCollapsed.Checked := ASettings.PanelCollapsed;
@@ -1483,6 +1637,8 @@ begin
   FPreview.Checked := ASettings.Preview;
   FSnippets.Checked := ASettings.Snippets;
   FImportIdeTemplates.Checked := ASettings.ImportIdeTemplates;
+  FTeamFile.Checked := ASettings.TeamFile;
+  RefreshTeamFile;
   FHoverTooltip.Checked := ASettings.HoverTooltip;
   FXmlDocFull.Checked := ASettings.XmlDocFull;
   FXmlDocMaxLines.Text := IntToStr(ASettings.XmlDocMaxLines);
@@ -1499,7 +1655,9 @@ begin
   FBookmarksShared.Checked := ASettings.BookmarksShared;
   FCodeLensTestUnit.Checked := ASettings.CodeLensTestUnit;
   FCodeLensMetrics.Checked := ASettings.CodeLensMetrics;
+  FCodeLensTests.Checked := ASettings.CodeLensTests;
   FTodoList.Checked := ASettings.TodoList;
+  FBaselineUpdate.Checked := ASettings.BaselineUpdate;
   FMetricsReport.Checked := ASettings.MetricsReport;
   FPairGuides.Checked := ASettings.PairGuides;
   FPairOwners.Checked := ASettings.PairOwners;
@@ -1543,6 +1701,15 @@ begin
     FAfterSave.Choice := 2;
   FCheckDelay.Text := IntToStr(ASettings.CheckOnSaveDelayMs);
   FCheckMax.Text := IntToStr(ASettings.CheckOnSaveMaxMs);
+  FMcpBuild.Checked := ASettings.McpBuild;
+  FTestRun.Checked := ASettings.TestRun;
+  FTestsBuildFirst.Checked := ASettings.TestsBuildFirst;
+  FTestsAfterBuild.Checked := ASettings.TestsAfterBuild;
+  FBuildZeroHints.Checked := ASettings.BuildZeroHints;
+  FStartProfiles.Checked := ASettings.StartProfiles;
+  FStartProfilesStatusField.Checked := ASettings.StartProfilesStatusField;
+  FTestDebug.Checked := ASettings.TestDebug;
+  FTestBreakAtStart.Checked := ASettings.TestBreakAtStart;
   FSafeAsk.Checked := ASettings.SafeAskAfterCrash;
   FSafeAuto.Checked := ASettings.SafeAutoAfterRepeatedCrash;
   case TAtlasSafeMode.KeyOf(ASettings.SafeStartupKey) of
@@ -1599,6 +1766,16 @@ begin
   FWelcomeProjects.Checked := ASettings.WelcomePageProjectStatus;
   FWelcomeMaxProjects.Text := IntToStr(ASettings.WelcomePageMaxProjects);
   FWelcomeRefreshVcs.Checked := ASettings.WelcomePageRefreshVcs;
+  FWelcomeTrends.Checked := ASettings.WelcomePageTrends;
+  FWelcomeTrendsPoints.Text := IntToStr(ASettings.WelcomePageTrendsPoints);
+  Shown := TAtlasWelcomeTrends.ParseSeries(ASettings.WelcomePageTrendsSeries);
+  for Series := Low(TAtlasTrendSeries) to High(TAtlasTrendSeries) do
+  begin
+    FWelcomeTrendsSeries[Series].Checked := False;
+    for Wanted in Shown do
+      if Wanted = Series then
+        FWelcomeTrendsSeries[Series].Checked := True;
+  end;
   FWelcomeUnsaved.Checked := ASettings.WelcomePageUnsaved;
   FWelcomeUnsavedMinAge.Text := IntToStr(ASettings.WelcomePageUnsavedMinAgeHours);
   FWelcomeUnsavedWarn.Text := IntToStr(ASettings.WelcomePageUnsavedWarnHours);
@@ -1611,11 +1788,16 @@ begin
   FWelcomeHelp.Checked := ASettings.WelcomePageHelp;
   FWelcomeHelpReportUrl.Text := ASettings.WelcomePageHelpReportUrl;
   FWelcomeHelpReportFolder.Text := ASettings.WelcomePageHelpReportFolder;
+  FWelcomeProjectSetup.Checked := ASettings.WelcomePageProjectSetup;
+  FWelcomeNewFromTemplate.Checked := ASettings.WelcomePageNewFromTemplate;
   RefreshFuse;
   RefreshIndex;
 end;
 
 procedure TAtlasSettingsPage.SaveTo(var ASettings: TAtlasPluginSettings);
+var
+  Shown: TAtlasTrendSeriesList;
+  Series: TAtlasTrendSeries;
 begin
   ASettings.Enabled := FEnabled.Checked;
   ASettings.ServerPath := Trim(FServerPath.Text);
@@ -1635,6 +1817,12 @@ begin
   ASettings.BugReportAnonymize := FBugReportAnonymize.Checked;
   ASettings.EditorKeysPriority := FEditorKeysPriority.Checked;
   ASettings.SlashCommands := FSlashCommands.Checked;
+  ASettings.GenerateMenu := FGenerateMenu.Checked;
+  ASettings.GenerateMenuKey := Integer(TextToShortCut(Trim(FGenerateMenuKey.Text)));
+  ASettings.GenerateMenuGroups := Trim(FGenerateMenuGroups.Text);
+  ASettings.GenerateMenuHidden := Trim(FGenerateMenuHidden.Text);
+  ASettings.GenerateMenuRecentFirst := FGenerateMenuRecentFirst.Checked;
+  ASettings.GenerateMenuShowCommandNames := FGenerateMenuShowCommandNames.Checked;
   ASettings.VisibleRows := FRowsUpDown.Position;
   ASettings.PanelCollapsed := FPanelCollapsed.Checked;
   ASettings.AutoParentheses := FAutoParentheses.Checked;
@@ -1650,6 +1838,7 @@ begin
   ASettings.Preview := FPreview.Checked;
   ASettings.Snippets := FSnippets.Checked;
   ASettings.ImportIdeTemplates := FImportIdeTemplates.Checked;
+  ASettings.TeamFile := FTeamFile.Checked;
   ASettings.HoverTooltip := FHoverTooltip.Checked;
   ASettings.XmlDocFull := FXmlDocFull.Checked;
   ASettings.XmlDocMaxLines := StrToIntDef(FXmlDocMaxLines.Text, ASettings.XmlDocMaxLines);
@@ -1666,7 +1855,9 @@ begin
   ASettings.BookmarksShared := FBookmarksShared.Checked;
   ASettings.CodeLensTestUnit := FCodeLensTestUnit.Checked;
   ASettings.CodeLensMetrics := FCodeLensMetrics.Checked;
+  ASettings.CodeLensTests := FCodeLensTests.Checked;
   ASettings.TodoList := FTodoList.Checked;
+  ASettings.BaselineUpdate := FBaselineUpdate.Checked;
   ASettings.MetricsReport := FMetricsReport.Checked;
   ASettings.PairGuides := FPairGuides.Checked;
   ASettings.PairOwners := FPairOwners.Checked;
@@ -1709,6 +1900,15 @@ begin
   ASettings.CompileOnSave := FAfterSave.Choice = 2;
   ASettings.CheckOnSaveDelayMs := StrToIntDef(FCheckDelay.Text, ASettings.CheckOnSaveDelayMs);
   ASettings.CheckOnSaveMaxMs := StrToIntDef(FCheckMax.Text, ASettings.CheckOnSaveMaxMs);
+  ASettings.McpBuild := FMcpBuild.Checked;
+  ASettings.TestRun := FTestRun.Checked;
+  ASettings.TestsBuildFirst := FTestsBuildFirst.Checked;
+  ASettings.TestsAfterBuild := FTestsAfterBuild.Checked;
+  ASettings.BuildZeroHints := FBuildZeroHints.Checked;
+  ASettings.StartProfiles := FStartProfiles.Checked;
+  ASettings.StartProfilesStatusField := FStartProfilesStatusField.Checked;
+  ASettings.TestDebug := FTestDebug.Checked;
+  ASettings.TestBreakAtStart := FTestBreakAtStart.Checked;
   ASettings.SafeAskAfterCrash := FSafeAsk.Checked;
   ASettings.SafeAutoAfterRepeatedCrash := FSafeAuto.Checked;
   case FSafeKey.Choice of
@@ -1766,6 +1966,14 @@ begin
   ASettings.WelcomePageProjectStatus := FWelcomeProjects.Checked;
   ASettings.WelcomePageMaxProjects := StrToIntDef(Trim(FWelcomeMaxProjects.Text), ASettings.WelcomePageMaxProjects);
   ASettings.WelcomePageRefreshVcs := FWelcomeRefreshVcs.Checked;
+  ASettings.WelcomePageTrends := FWelcomeTrends.Checked;
+  ASettings.WelcomePageTrendsPoints := StrToIntDef(Trim(FWelcomeTrendsPoints.Text),
+    ASettings.WelcomePageTrendsPoints);
+  Shown := nil;
+  for Series := Low(TAtlasTrendSeries) to High(TAtlasTrendSeries) do
+    if FWelcomeTrendsSeries[Series].Checked then
+      Shown := Shown + [Series];
+  ASettings.WelcomePageTrendsSeries := TAtlasWelcomeTrends.SeriesText(Shown);
   ASettings.WelcomePageUnsaved := FWelcomeUnsaved.Checked;
   ASettings.WelcomePageUnsavedMinAgeHours := StrToIntDef(Trim(FWelcomeUnsavedMinAge.Text),
     ASettings.WelcomePageUnsavedMinAgeHours);
@@ -1781,6 +1989,8 @@ begin
   ASettings.WelcomePageHelp := FWelcomeHelp.Checked;
   ASettings.WelcomePageHelpReportUrl := Trim(FWelcomeHelpReportUrl.Text);
   ASettings.WelcomePageHelpReportFolder := Trim(FWelcomeHelpReportFolder.Text);
+  ASettings.WelcomePageProjectSetup := FWelcomeProjectSetup.Checked;
+  ASettings.WelcomePageNewFromTemplate := FWelcomeNewFromTemplate.Checked;
   ASettings.ListWidth := FWidths.ListWidth;
   ASettings.PanelWidth := FWidths.PanelWidth;
   ASettings.Normalize;
@@ -1871,6 +2081,96 @@ begin
   if Assigned(FOnUnblockTips) then
     FOnUnblockTips();
   FUnblockTips.Enabled := False;
+end;
+
+function TAtlasSettingsPage.AddWrappedLabel(AHeight: Integer; const ACaption: string): TLabel;
+var
+  Panel: TWinControl;
+begin
+  Panel := AddPanel(AHeight);
+  Result := TLabel.Create(Self);
+  Result.Parent := Panel;
+  Result.AutoSize := False;
+  Result.Align := alClient;
+  Result.WordWrap := True;
+  Result.ShowAccelChar := False;
+  Result.Caption := ACaption;
+end;
+
+procedure TAtlasSettingsPage.AddTeamFileSection;
+var
+  Panel: TWinControl;
+begin
+  // Projektdatei .atlas (#486): Schalter, Erklärung, „Projektdatei öffnen“ und jeder Wert mit „aus .atlas“.
+  FTeamFile := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsTeamFile));
+  FTeamFile.OnClick := TeamFileClick;
+  AddWrappedLabel(36, TAtlasStrings.Text(TAtlasTextId.SettingsTeamFileHint));
+  Panel := AddPanel(32);
+  FTeamFileOpen := TButton.Create(Self);
+  FTeamFileOpen.Parent := Panel;
+  FTeamFileOpen.Caption := TAtlasStrings.Text(TAtlasTextId.SettingsTeamFileOpen);
+  FTeamFileOpen.Left := 0;
+  FTeamFileOpen.Top := 3;
+  FTeamFileOpen.Width := 180;
+  FTeamFileOpen.OnClick := TeamFileOpenClick;
+  FTeamFileInfo := AddWrappedLabel(180, '');
+  RefreshTeamFile;
+end;
+
+procedure TAtlasSettingsPage.TeamFileClick(Sender: TObject);
+begin
+  RefreshTeamFile;
+end;
+
+procedure TAtlasSettingsPage.TeamFileOpenClick(Sender: TObject);
+begin
+  if Assigned(FOnOpenTeamFile) then
+    FOnOpenTeamFile();
+  RefreshTeamFile;
+end;
+
+procedure TAtlasSettingsPage.SetOnTeamFile(const AValue: TFunc<TAtlasTeamSettings>);
+begin
+  FOnTeamFile := AValue;
+  RefreshTeamFile;
+end;
+
+procedure TAtlasSettingsPage.RefreshTeamFile;
+var
+  Team: TAtlasTeamSettings;
+  Value: TAtlasTeamValue;
+  Lines: TArray<string>;
+begin
+  // Ausgeschaltet wird die Datei nicht gelesen.
+  Team := TAtlasTeamFile.Empty;
+  if FTeamFile.Checked and Assigned(FOnTeamFile) then
+    Team := FOnTeamFile();
+  FTeamSnippets.Caption := '';
+  if Team.Valid and (Team.Snippets <> '') then
+    FTeamSnippets.Caption := TAtlasStrings.Fmt(TAtlasTextId.SettingsTeamSnippets, [Team.Snippets]);
+  if not FTeamFile.Checked then
+    Lines := [TAtlasStrings.Text(TAtlasTextId.SettingsTeamFileOff)]
+  else if Team.Project = '' then
+    Lines := [TAtlasStrings.Text(TAtlasTextId.SettingsTeamFileNoProject)]
+  else if not Team.Exists then
+    Lines := [TAtlasStrings.Text(TAtlasTextId.SettingsTeamFileMissing)]
+  else
+  begin
+    Lines := [TAtlasStrings.Fmt(TAtlasTextId.SettingsTeamFileLocation, [Team.FileName])];
+    if not Team.Valid then
+      Lines := Lines + [TAtlasStrings.Text(TAtlasTextId.SettingsTeamFileInvalid)]
+    else
+    begin
+      for Value in TAtlasTeamFile.Values(Team) do
+        Lines := Lines + [TAtlasStrings.Fmt(TAtlasTextId.SettingsTeamFileValue, [Value.Key, Value.Value])];
+      if Length(Lines) = 1 then
+        Lines := Lines + [TAtlasStrings.Text(TAtlasTextId.SettingsTeamFileNoValues)];
+      if Length(Team.Issues) > 0 then
+        Lines := Lines + [TAtlasStrings.Fmt(TAtlasTextId.SettingsTeamFileIssues, [Length(Team.Issues)])];
+    end;
+  end;
+  FTeamFileInfo.Caption := string.Join(sLineBreak, Lines);
+  FTeamFileOpen.Enabled := FTeamFile.Checked and (Team.Project <> '');
 end;
 
 procedure TAtlasSettingsPage.HangTestClick(Sender: TObject);

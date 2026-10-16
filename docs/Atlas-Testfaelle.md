@@ -217,6 +217,24 @@ Vorbereitung: MCP eingerichtet (`claude mcp add delphi -- AtlasServer.exe --mcp 
 
 Rauchtest im MCP-Modus: `tools/list` enthält `get_last_build`, ohne Build die Antwort aus LB1.
 
+## Globale Einstellungen im MCP-Modus (D-08)
+
+Vorbereitung: MCP eingerichtet wie oben; in `%APPDATA%\Atlas\settings.json` steht `"mcp": { "disabledTools": ["rename_symbol"] }`.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| MG1 | Claude Code neu starten, `tools/list` | `rename_symbol` fehlt; im Log (`--log`) keine Warnung zur globalen Datei |
+| MG2 | In `atlas.json` des Projekts `"mcp": { "globalSettings": false }`, Claude Code neu starten | `rename_symbol` ist wieder da; im Log „Globale Einstellungen ausgeschaltet (mcp.globalSettings)“ |
+| MG3 | In `settings.json` zusätzlich `"index": { "libraryPaths": true }`, Claude Code neu starten, `find_symbol` nach einem Typ aus den Bibliothekspfaden | Typ wird gefunden (vorher galt die Vorgabe `false`) |
+
+## Datei außerhalb des einzigen Ordners (S-02)
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| SO1 | Ein Projektordner offen; eine .pas außerhalb (z. B. aus einem Nachbarordner) öffnen, die eine Include-Datei des Projekts einbindet | Keine Meldung „Include-Datei nicht gefunden“, Dokumentlink auf die .inc funktioniert |
+| SO2 | Dieselbe Datei: Prüfregeln | Regeln mit dem Profil aus `atlas.json` des Ordners |
+| SO3 | Zwei Ordner offen, Datei außerhalb beider | Hover, Vervollständigung, Hints nach den globalen Einstellungen; inaktive Zweige wie im aktiven Projekt (#615) |
+
 ## Compilerprüfung nach dem Speichern (#548)
 
 Vorab gemessen (RAD Studio 13, Mini-Projekt): Syntaxprüfung 0,6–0,9 s, schreibt keine `.exe`/`.dcu` (nur `.res`). In der echten IDE geprüft: Speichern → nach 2 s Prüfung (640 ms) → 2 Meldungen gelesen.
@@ -263,6 +281,40 @@ Vorbereitung: Diagnoseprotokoll an (`HKCU\Software\Atlas\IdePlugin`, DWORD `Diag
 | C6 | IDE schließen bzw. Package über Komponenten › Packages installieren aus- und wieder einschalten | Keine Zugriffsverletzung, danach keine doppelten Zeilen |
 
 Abbruch mit Grund im Meldungsfenster („Atlas“) ist im Dienst vorhanden und getestet; einen Teilnehmer, der abbricht, bringen erst #529/#530.
+
+## Kompilieren ohne Kommandozeilen-Compiler (#261)
+
+Vorbereitung: RAD Studio in einer Ausgabe ohne `dcc32`/`dcc64` (Starter) oder eine, deren `dcc32` nur den Lizenztext ausgibt. Den Text vorher einmal aufzeichnen: `dcc32 > dcc32-starter.txt` im Ordner `bin` und mit `Tests/Data/Compiler/dcc32-starter.txt` vergleichen; weicht er ab, die Kennzeichen in `Atlas.Common.Compiler.Edition` anpassen. Gemerkte Ergebnisse stehen in `%LOCALAPPDATA%\Atlas\compiler-editions.json`; zum Wiederholen löschen. Für den Weg über die IDE in der globalen `settings.json` `"compiler": {"ideCommand": "C:\\…\\cc.ps1"}` setzen.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| SE1 | Starter, ohne `compiler.ideCommand`: in VS Code „Atlas: Projekt kompilieren“ (`atlas.server.compile`) | Genau eine Meldung „Atlas kann nicht kompilieren: kein Kommandozeilen-Compiler (Starter Edition: …). In RAD Studio mit dem Atlas-Plugin kompilieren … oder in settings.json "compiler.ideCommand" auf cc.ps1 setzen …“; der Befehl antwortet mit demselben Text als Fehler |
+| SE2 | Befehl zweimal wiederholen, Datei speichern | Keine weitere Meldung; der Befehl antwortet jedes Mal mit dem Fehlertext; beim Speichern kein Compileraufruf |
+| SE3 | `atlas.server.status` bzw. Statusanzeige des Servers | Zeile „Compiler: nicht verfügbar (Starter Edition)“ |
+| SE4 | `compiler-editions.json` ansehen | Eintrag mit BDS-Wurzel, Version und `"edition": "noCommandLine"` (Lizenztext) bzw. `"missing"` (keine dcc32/dcc64); nach einem Serverneustart kein neuer Probelauf |
+| SE5 | `compiler.ideCommand` auf `cc.ps1` setzen, Befehl erneut | Status „Compiler: IDE über cc.ps1 (nur auf den Befehl …)“; eine zweite, eigene IDE (Scratch-IDE) startet; Fortschritt „Projekt über eine eigene IDE kompilieren“; danach Fehler und Warnungen des Projekts als Diagnosen an den richtigen Zeilen (Abgleich mit `Tests/Data/Compiler/cc-build.log`) |
+| SE6 | Befehl noch einmal | Dieselbe Scratch-IDE wird wiederverwendet (keine zweite neue `bds.exe` im Task-Manager) |
+| SE7 | Während SE5 läuft eine IDE des Benutzers mit demselben Projekt | Die IDE des Benutzers baut nicht, ihr Meldungsfenster bleibt unverändert; der Server spricht nur die eigene pid an |
+| SE8 | VS Code schließen (Server endet) | Die Scratch-IDE schließt sich (`cc.ps1 quit`); die IDE des Benutzers bleibt offen |
+| SE9 | `"compiler": {"backend": "off"}` | Keine Meldung; Status „Compiler: nicht verfügbar (abgeschaltet)“; der Befehl antwortet mit dem Fehlertext |
+| SE10 | `"backend": "dcc"` auf der Starter | Wie SE1, aber kein Weg über die IDE, auch wenn `ideCommand` gesetzt ist |
+| SE11 | Ausgabe mit Kommandozeilen-Compiler, `"backend": "auto"` | Status „Compiler: dcc (Kommandozeile)“; Bauen wie bisher (#40), kein Start einer IDE |
+| SE12 | `compiler.ideCommand` zeigt auf eine fehlende Datei | Meldung nennt Starter Edition und „"compiler.ideCommand" zeigt auf keine vorhandene Datei“ |
+
+### Builds für Claude Code (`build_project`)
+
+Vorbereitung: RAD Studio mit Atlas-Plugin, Projekt offen; Claude Code mit dem Atlas-MCP-Server im Projektordner.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| MB1 | Claude Code: „Baue das Projekt über build_project“ | Meldungsansicht „Claude Code baut App.dproj in der IDE …“, die IDE baut (Fortschrittsdialog schließt sich selbst), danach „Build für Claude Code beendet: App.dproj, n Fehler“; das Werkzeug liefert Erfolg, Dauer und die Meldungen mit Datei, Zeile und Spalte wie `get_last_build` |
+| MB2 | Mit `mode: "build"`, `configuration: "Release"`, `platform: "Win64"` | Gebaut wird Release/Win64; danach stehen Konfiguration und Plattform in der IDE wieder wie vorher |
+| MB3 | Unbekannte Konfiguration bzw. Plattform | Ablehnung mit Grund im Werkzeug und „Build für Claude Code abgelehnt: …“ in der Meldungsansicht |
+| MB4 | Während der Debugger läuft | Ablehnung „… Debugger …“; nichts wird gebaut |
+| MB5 | Während ein Build von Hand läuft (Strg+F9) | Ablehnung; der laufende Build wird nicht gestört |
+| MB6 | Optionen › Atlas › Compiler › „Builds für Claude Code“ aus (oder Schnellschalter) | Das Werkzeug meldet nach kurzer Frist „nicht angenommen“, die IDE baut nicht |
+| MB7 | Projekt in keiner IDE offen | Werkzeug antwortet sofort „Keine RAD-Studio-IDE mit …“ |
+| MB8 | `get_last_build` nach MB1 | Derselbe Build mit `requestedBy: "mcp"` |
 
 ## Probleme im Editor (#398, #528, #548)
 
@@ -738,7 +790,7 @@ Vorbereitung: zwei Projekte in Git (eins auf `main`, eins auf einem Feature-Bran
 | PZ1 | Willkommensseite (bzw. Fenster „Atlas-Start“) öffnen | Bereich „Projekte“ mit den zuletzt geschlossenen Projekten der IDE, höchstens 8; je Zeile Name, gekürzter Pfad, Branch bzw. SVN-Pfad und Marken |
 | PZ2 | Projekt auf `main` fehlerfrei bauen (Strg+F9), schließen | grüne Marke „Build 0/0/0“, Branch `main`, keine Marke „geändert“ |
 | PZ3 | Im Feature-Projekt zwei Fehler einbauen, bauen, schließen; auf der Willkommensseite die rote Marke „2 Fehler“ anklicken | Zeile zeigt rote Marke „2 Fehler“; Klick öffnet das Projekt und die Unit mit dem Cursor an der ersten Fehlerstelle |
-| PZ4 | Klick auf die Zeile (nicht auf eine Marke) | Projekt öffnet sich; solange es offen ist, steht es nicht in der Liste (die IDE führt es dann nicht unter „Closed Projects“) |
+| PZ4 | Projektverlauf aus (`welcomePage.trends`, #758); Klick auf die Zeile (nicht auf eine Marke) | Projekt öffnet sich; solange es offen ist, steht es nicht in der Liste (die IDE führt es dann nicht unter „Closed Projects“). Mit Projektverlauf an wählt der Klick die Zeile, siehe PV2 |
 | PZ5 | Feature-Projekt: Datei ändern und speichern (ohne Commit), Projekt schließen; Branch mit Upstream und einem lokalen Commit | gelbe Marke „n geändert“; neutrale Marke „↑1 ↓0“ |
 | PZ6 | Projekt ohne Versionsverwaltung | kein Branch, keine Marken „geändert“/„↑↓“, keine Fehlermeldung |
 | PZ7 | Prüfung beim Speichern an (#548), im geschlossenen Zustand zuletzt einen Syntaxfehler gespeichert | Marke „Prüfung: 1 Fehler“, nur wenn die Prüfung neuer als der letzte Build ist; Klick springt zur Stelle |
@@ -754,6 +806,30 @@ Vorbereitung: zwei Projekte in Git (eins auf `main`, eins auf einem Feature-Bran
 | PZ17 | Probleme an (#398), Baseline mit bekannten Treffern; im Projekt zwei neue `with`-Anweisungen einbauen, speichern, warten bis die Probleme da sind, Projekt schließen | gelbe Marke „2 neue Treffer“; Tooltip „2 neue Regeltreffer gegenüber der Baseline (geprüfte Dateien)“; Treffer aus der Baseline zählen nicht. Mit ausgeschalteten Problemen bleibt der alte Stand |
 | PZ18 | Eine Git-Arbeitskopie mit zwei Projekten in Unterordnern; nur im ersten eine Datei ändern, beide schließen | „1 geändert“ nur beim ersten Projekt, das zweite ohne Marke |
 | PZ19 | git so umbenennen, dass der Aufruf hängt bzw. fehlt; Willkommensseite öffnen, 10 s warten, Bereich neu zeichnen lassen (Fenster wechseln) | „wird abgefragt …“ verschwindet spätestens nach 5 s; danach gespeicherter Stand mit „Stand vom …“ |
+
+### Projektverlauf (#758)
+
+Abweichungen vom Issue: Ein Klick auf eine Zeile in „Projekte“ wählt sie bei eingeschaltetem Projektverlauf (wie im Mockup); geöffnet wird dann mit Doppelklick oder Kontextmenü „Öffnen“ (bei ausgeschaltetem Verlauf öffnet der Klick wie in #592). Die Auswahl gilt für die Sitzung. Messpunkte entstehen nur nach Builds des Benutzers, nicht nach der Hintergrundprüfung; bei einer Projektgruppe auch für die Gruppe (dort ohne Metriken und TODOs, die gibt es nur je Projekt). Branch und Commit des Punkts stammen aus der Abfrage nach dem Build (`welcomePage.refreshVcs`), sonst aus dem zuletzt bekannten Stand.
+
+Vorbereitung: Git-Projekt mit Baseline (#97), Probleme an (#398), Server läuft; zweites Projekt ohne Baseline. Die Zusammenfassungen stehen in `%LOCALAPPDATA%\Atlas\projects\*.json`, Abschnitt `trends`.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| PV1 | Willkommensseite bzw. „Atlas-Start“ öffnen, noch kein Build mit dieser Version | Bereich „Projektverlauf“ unter „Projekte“, Kopf „<Name> · letzte 30 Builds“ und „<Name>: noch keine Builds aufgezeichnet …“; ohne Projekt in der Liste „Noch kein Projekt …“ |
+| PV2 | Klick auf die zweite Zeile in „Projekte“; Doppelklick auf eine Zeile; Rechtsklick › „Öffnen“; Klick auf eine rote Marke | Erster Klick: Zeile links markiert, Kopf und Kacheln wechseln auf dieses Projekt, nichts öffnet sich. Doppelklick und „Öffnen“ öffnen das Projekt; die rote Marke springt wie in PZ3 |
+| PV3 | Im Projekt fünfmal bauen (Strg+F9) mit 12, 9, 6, 3 und 0 Hinweisen | Kachel „Warnungen + Hinweise“: „0“, daneben „vorher 3“, fallende Linie mit Fläche, letzter Punkt hervorgehoben, Nulllinie gestrichelt sichtbar |
+| PV4 | Auf einen Punkt der Linie klicken (nach PV8, also 30 gezeigte Punkte) | Darunter „Build i von 30 · Nr. n · <Datum Uhrzeit> · <Branch> · <Commit, 7 Zeichen> · Warnungen + Hinweise: <Wert>“ (i = Position in der Linie, n = laufende Nummer des Builds, nur wenn sie von i abweicht; bei zu schmaler Spalte ohne „Nr. n“), der Punkt hat einen Ring; Klick auf einen Punkt einer anderen Kachel zeigt deren Wert |
+| PV5 | Kacheln „Offene TODOs“, „Build-Dauer“ und „Mittl. Methodenlänge“ nach PV3 ansehen | Werte erscheinen wenige Sekunden nach dem Build (Hintergrundlauf); Build-Dauer in s mit einer Nachkommastelle, Methodenlänge in Zeilen |
+| PV6 | Zweites Projekt ohne Baseline bauen und wählen | Kachel „Regeltreffer seit Baseline“: „kein Wert“, Linie mit Lücke statt 0; im JSON fehlt `ruleHits` in diesem Punkt |
+| PV7 | Mit Baseline: zwei neue Treffer einbauen, speichern, Probleme abwarten, bauen | Regeltreffer steigen um 2; nach dem Löschen der Baseline und einem Build: Lücke |
+| PV8 | 31 Mal bauen (z. B. Strg+F9 wiederholt) | Genau 30 Punkte im Abschnitt `trends.points`, `builds` 31, der älteste Punkt fiel weg |
+| PV9 | *Tools › Optionen › Atlas › Willkommensseite*: „Bereich ‚Projektverlauf‘ …“ aus; bauen | Bereich verschwindet ohne Neustart, kein neuer Punkt in der Datei; Klick in „Projekte“ öffnet wieder |
+| PV10 | Gespeicherte Builds auf 10 stellen; nur „Reihe … Warnungen + Hinweise“ und „Offene TODOs“ anhaken; 1 und 500 eingeben | Kopf „letzte 10 Builds“, nur zwei Kacheln; nach dem nächsten Build höchstens 10 Punkte in der Datei. 1 wird als 2 gespeichert, 500 als 100; keine Reihe angehakt: „Keine Reihe gewählt …“ |
+| PV11 | Breite der Spalte ändern (Fenster „Atlas-Start“ schmal ziehen) | Kacheln brechen um (mindestens etwa 150 px je Kachel), der Bereich wird höher, nichts ist abgeschnitten |
+| PV12 | Dunkles und helles IDE-Thema, 150 % Skalierung | Linien, Flächen, Texte und Ring gut lesbar |
+| PV13 | Projektgruppe bauen (Alle erzeugen), Gruppe in „Projekte“ wählen | Verlauf der Gruppe: Warnungen + Hinweise aller Projekte, Dauer des ganzen Laufs; TODOs und Methodenlänge als Lücke |
+| PV14 | Datei der Zusammenfassung von Hand um ein Feld `"x": 1` in einem Punkt und in `trends` ergänzen, bauen | Beide Felder bleiben erhalten, bis der Punkt aus dem Ringpuffer fällt |
+| PV15 | Baseline aktualisieren (BL1) bei einem Projekt, das der Server noch nicht als Arbeitsbereich kennt (etwa direkt nach dem Hinzufügen zur Gruppe) | Schreibt der Server in einen anderen Ordner, meldet das Meldungsfenster „Atlas: Der Server hat die Baseline in <Ordner> geschrieben, nicht im Projektordner …“; Verlauf und Abschnitt `baseline` lesen weiter den Projektordner |
 
 ### Nicht gesichert (#762)
 
@@ -872,6 +948,43 @@ Vorbereitung: Paket aus dem Release bzw. `pwsh Tools/Build-Docs.ps1 -OutDir <Ins
 | HR20 | Installer: Paket aus dem Release installieren, dann aktualisieren | `Doku\index.html` und die übrigen Seiten im Installationsordner; Seiten, die es im neuen Paket nicht mehr gibt, sind weg |
 | HR21 | Protokoll (`%LOCALAPPDATA%\Atlas\Logs\atlas.log`) nach HR7–HR15 | Nur „Problem melden (#766): Dialog geöffnet“; keine Pfade, Adressen oder Texte aus dem Dialog |
 
+### Projekt für Atlas einrichten (#759)
+
+Entscheidungen: Ziel ist das aktive Projekt, ohne offenes Projekt das oberste nicht ausgeblendete der Liste „Wieder öffnen“ (das auch eine Projektgruppe sein kann; atlas.json kommt dann neben die `.groupproj`). „Baseline erzeugen“ und „Suchpfade prüfen“ brauchen das geöffnete Projekt; ohne heißen beide Knöpfe „Projekt öffnen“. Die Prüfung gilt für die aktive Konfiguration und Plattform; Units in Zweigen, deren Bedingung sich nicht auswerten lässt (`CompilerVersion`, `Declared`, `$IFOPT`), zählen nicht. Defines aus `{$IFDEF}` in eingebundenen Dateien zählen nicht als Abfrage (Bibliotheken wie `jedi.inc`), ihre `{$DEFINE}` aber als Quelle. „Neu mit Atlas“ steht auch ohne Karte da (Titel „Neu mit Atlas“), solange ein Projekt offen ist.
+
+Vorbereitung: Projekt `XmlInspector` (VCL, Git egal) ohne `atlas.json` und ohne Baseline, mit `uses Xml.Helpers;` in `Main.pas` (Zeile 12) ohne passende Datei und `{$IFDEF USE_XML}` ohne Define; ein zweites Projekt `Fertig` mit atlas.json, Baseline und sauberen Pfaden.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| PE1 | `Atlas.Tests` bauen und ausführen | 0 Fehler, 0 Warnungen, 0 Hinweise; `TAtlasProjectSetupTests` (Vorlagen gegen das Schema, Erkennung offener Schritte), `TAtlasSchemaCheckTests`, `TAtlasPathCheckTests`, `TAtlasWelcomeSetupTests`, `TAtlasWelcomeSetupFrameTests`, `TAtlasFileTemplatesTests`, `TTextDefinesTests` und `TSetupInstallerTests` grün |
+| PE2 | `XmlInspector` öffnen, Willkommensseite bzw. *Atlas-Start* | Karte „XmlInspector für Atlas einrichten“: ✓ grün „Projekt gefunden, keine atlas.json“, darunter „atlas.json anlegen“ mit Auswahl „Bestehendes Projekt“ und „Anlegen …“, „Baseline erzeugen“ [Starten], „Suchpfade und Defines prüfen“ [Prüfen], Link „Für dieses Projekt nicht mehr fragen“, Reihe „Neu mit Atlas:“ [Unit] [Formular] [Testklasse] (Mockup #ws7) |
+| PE3 | Vorlage „Altprojekt mit Baseline“ wählen, „Anlegen …“ | Dialog „atlas.json anlegen“ mit Ziel, Vorlage und Inhalt (`"minConfidence": "high"`, `overrides` für `Generated/**`); Abbrechen bzw. Esc: keine Datei |
+| PE4 | „Anlegen …“, im Dialog „Anlegen“ | `atlas.json` liegt neben `XmlInspector.dproj` (UTF-8 ohne BOM, CRLF), Meldungsansicht „Projekt einrichten: … angelegt.“; Schritt 2 sofort grün mit ✓ „atlas.json vorhanden“, Auswahl und Knopf weg (**Abnahme**) |
+| PE5 | Datei im Explorer löschen und eine eigene `atlas.json` von Hand anlegen, dann (vor dem Aktualisieren der Karte) „Anlegen …“ | Meldung „… gibt es schon; Atlas überschreibt sie nicht.“, die Datei bleibt unverändert |
+| PE6 | Installationsordner: `Vorlagen\atlas-existing.json` mit ungültigem Wert (`"minConfidence": "sehr"`) speichern, „Anlegen …“ | Der Dialog zeigt die eingebaute Fassung (`"minConfidence": "medium"`); Protokoll „Vorlage existing passt nicht zum Schema, eingebaute Fassung“ |
+| PE7 | „Starten“ bei Baseline | Text „Baseline wird erzeugt … 3 s“ zählt hoch, Knopf ausgegraut; danach ✓ „Baseline vorhanden“ und „Baseline mit 412 Treffern in 87 Dateien; neue Treffer: 0“; Meldungsansicht wie *Baseline des Projekts aktualisieren*; im Bereich „Projekte“ „0 neu“ (**Abnahme**) |
+| PE8 | Server beenden (Atlas aus), „Starten“ | Unter dem Schritt der Grund („Der Atlas-Server hat keine Baseline geschrieben …“), Knopf wieder klickbar |
+| PE9 | „Prüfen“ | „Suchpfade und Defines werden geprüft … n s“, danach „1 Units nicht gefunden, 1 Defines ohne Quelle (n Dateien geprüft)“ und die Zeilen „Unit „Xml.Helpers“ nicht gefunden – Main.pas, Zeile 12“ und „Define „USE_XML“ ohne Quelle – …“ (**Abnahme**) |
+| PE10 | Auf eine Fundzeile klicken bzw. „Projektoptionen …“ | Dialog *Projektoptionen* der IDE öffnet sich |
+| PE11 | Suchpfad auf den Ordner von `Xml.Helpers.pas` ergänzen (auch mit `$(Platform)` bzw. `$(BDS)`), `USE_XML` unter Bedingungen eintragen, „Prüfen“ | Schritt 4 grün; alle vier Schritte erledigt: Die Karte verschwindet; „Neu mit Atlas“ bleibt mit Titel „Neu mit Atlas“ (**Abnahme**) |
+| PE12 | Projekt `Fertig` öffnen, dann mit `welcomePage.newFromTemplate` aus | Keine Karte; mit Schalter aus erscheint gar kein Bereich (**Abnahme**) |
+| PE13 | `XmlInspector` erneut ohne atlas.json, „Für dieses Projekt nicht mehr fragen“, IDE neu starten | Die Karte bleibt weg, auch nach dem Neustart; `setup.dismissed` in `%LOCALAPPDATA%\Atlas\projects\<Schlüssel>.json` (**Abnahme**) |
+| PE14 | Befehlspalette: *Projekt für Atlas einrichten* | Fenster *Atlas-Start* mit der Karte für das aktive Projekt; „nicht mehr fragen“ ist aufgehoben |
+| PE15 | Alle Projekte schließen | Karte für das oberste Projekt der Liste „Wieder öffnen“; „Starten“ und „Prüfen“ heißen „Projekt öffnen“ und öffnen es; keine Knöpfe „Neu mit Atlas“ |
+| PE16 | „Unit“, „Formular“, „Testklasse“ | Das Erzeugen-Menü über dem Hauptfenster zeigt nur „Vorlagen“: leere Unit und Unit mit Klasse bzw. VCL-Formular bzw. DUnitX-Testklasse; Enter legt eine neue, unbenannte Datei im Projekt an (Unit2 …; Formular mit Designer und `.dfm`, Klasse `TForm2`; Testklasse `TUnit3Tests` mit `RegisterTestFixture`) |
+| PE17 | Eigene Code-Vorlage `%APPDATA%\Atlas\Snippets\dm.atlas-snippet` mit `file: unit` und `%Unit%`/`%Name%` im Text | Erscheint unter „Unit“, nicht in der Vervollständigung und nicht im Erzeugen-Menü am Cursor; die neue Datei trägt den Unit-Namen der IDE |
+| PE18 | `welcomePage.projectSetup` aus (Optionen oder Schnellschalter) | Bereich weg, Befehl *Projekt für Atlas einrichten* und Tipp „Projekt für Atlas einrichten“ verschwinden; wieder an: ohne Neustart zurück (**Abnahme**) |
+| PE19 | `welcomePage.newFromTemplate` aus | Nur die Reihe „Neu mit Atlas“ verschwindet, die Karte bleibt (**Abnahme**) |
+| PE20 | Englische IDE; schmale Spalte; 100 %, 150 %, 200 % | „Set up XmlInspector for Atlas“, „Create …“, „Start“, „Check“, „Don’t ask again for this project“, „New with Atlas:“; Knöpfe brechen um, nichts abgeschnitten, Grün in hellem und dunklem Thema lesbar |
+| PE21 | Installer: Paket aus dem Release installieren | Ordner `Vorlagen` mit `atlas-existing.json`, `atlas-strict.json`, `atlas-legacy.json` im Installationsordner |
+| PE22 | Protokoll (`atlas.log`) nach PE3–PE16 | Nur Zahlen und Kennungen („atlas.json angelegt (Vorlage legacy)“, „1 Projekte, 12 Dateien geprüft, 1 Units fehlen …, 0 davon unsicher“); keine Pfade, keine Unit-, Define- oder Makronamen |
+| PE23 | Suchpfad `$(BDSLIB)\$(Platform)\release;$(ProjectDir)\Lib;$(MEINLIB)\src` mit `MEINLIB` unter *Tools › Optionen › Umgebungsvariablen* (Benutzer-Überschreibung), Unit nur in `<MEINLIB>\src` | „Prüfen“: kein Fund; die drei Makros sind aufgelöst (IDE-Variablen und Projektordner vor den Umgebungsvariablen des Prozesses) |
+| PE24 | Wie PE23, aber `MEINLIB` gelöscht (weder in der IDE noch im System) | Fund „Unit „…“ nicht gefunden (unsicher, Suchpfad mit unbekanntem Makro $(MEINLIB) übersprungen) – …“ und darunter „Davon unsicher: 1 (…$(MEINLIB)…)“; Schritt 4 grün, wenn es nur unsichere Funde gibt; eine Unit mit `in 'Pfad'` bleibt ein sicherer Fund |
+| PE25 | Umgebungsvariable `MEINLIB` nur im System (nicht in der IDE), IDE danach neu gestartet | Wie PE23: Makro über die Umgebung des Prozesses aufgelöst |
+| PE26 | Projektgruppe mit drei Projekten öffnen (eines mit fehlender Unit), „Prüfen“ | Alle drei Projekte werden nacheinander geprüft (laufende Sekunden); die Karte zeigt die Summe („1 Units nicht gefunden …, n Dateien geprüft“) und die Funde mit Projekt vorn („App: Unit „…“ nicht gefunden – App\Main.pas, Zeile 3“); jede Projekt-Zusammenfassung (`%LOCALAPPDATA%\Atlas\projects`) enthält nur ihre eigenen Funde |
+| PE27 | Wie PE26, danach ein weiteres Projekt zur Gruppe hinzufügen | Karte: „3 von 4 Projekten der Gruppe geprüft“, Schritt 4 offen, Funde der geprüften bleiben sichtbar; nach „Prüfen“ alle vier |
+| PE28 | Alle Projekte schließen, oberstes in „Wieder öffnen“ ist die `.groupproj` aus PE26 | Karte der Gruppe mit der Zusammenfassung aus PE26; „Prüfen“ öffnet die Gruppe |
+
 ### Weiterarbeiten (#755)
 
 Abweichungen vom Issue: „Gemerkt“ ist ein zweiter Reiter im Bereich „Weiterarbeiten“. Favoriten (#458) haben weder Projekt noch Datei: Sie stehen unter „alle Projekte“, der Ort ist die Unit, der Sprung sucht die Datei im Index-Cache (Projekte und Bibliothek). Ein Klick auf einen eingehenden Commit listet dessen Dateien im Fenster „Atlas-Ergebnisse“, weil #571 keine Commit-Ansicht hat. Bei SVN fehlt der Abschnitt „Neu seit …“ (kein lokaler Stand des Servers). Ohne offene Reiter beim Schließen bleibt der gespeicherte Arbeitsstand stehen; mit `welcomePage.continue` aus zeichnet Atlas nichts auf.
@@ -934,6 +1047,67 @@ Vorbereitung: Git-Projekt `GitDemo` (mindestens 8 Units) mit Remote `origin` (z.
 | DI6 | Optionen › Atlas › Befehle: „Zwischen Deklaration und Implementierung wechseln“ aus, OK | Strg+Umschalt+↑/↓ macht wieder die IDE; Menü *Atlas* › „Deklaration/Implementierung wechseln“ geht weiter |
 | DI7 | Taste 1 auf Strg+Alt+D ändern, Taste 2 leeren, OK | Strg+Alt+D wechselt; Strg+Umschalt+↑ macht die IDE, Strg+Umschalt+↓ ebenso |
 | DI8 | Menü *Atlas*, Kontextmenü *Atlas* und Befehlspalette „Deklaration/Implementierung wechseln“ | Sprung wie DI1; außerhalb einer Methode Zeile „Am Cursor steht keine Methode …“ in der Meldungsansicht |
+## DUnitX-Tests ausführen (#69)
+
+Vorbereitung: RAD Studio mit Atlas-Plugin; Projektgruppe mit einer Anwendung und einem DUnitX-Testprojekt aus der Vorlage von RAD Studio (Hauptdatei mit `DUnitX.TestFramework` und `TDUnitXXMLNUnitFileLogger`), darin eine Fixture mit einem bestehenden Test, einem Test `Assert.AreEqual(0, 1)` und einem `[TestCase]`. Meldungsansicht, Reiter „Atlas“.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| TR1 | Testunit öffnen | Hinter `[TestFixture]` die Marke „Tests der Klasse ausführen“, hinter jedem `[Test]`/`[TestCase]` „Test ausführen“; bei einer Fixture ohne Attribut, die `RegisterTestFixture` meldet, hinter der Klassen- bzw. Methodendeklaration |
+| TR2 | Klick auf „Test ausführen“ am bestehenden Test (Testprojekt ungebaut, „Vor den Tests bauen“ an) | Das Testprojekt wird gebaut (make), danach „Tests von … laufen (Debug, Win32) …“ und „Tests …: 1 bestanden, 0 fehlgeschlagen …“; kein Konsolenfenster; die Marke zeigt „Test ausführen · bestanden“ in Grün |
+| TR3 | Befehlspalette › „Tests ausführen“ | Alle Tests laufen; Zusammenfassung mit Zahlen und Dauer; je Fehlschlag eine Zeile „Test TFixture.Methode fehlgeschlagen: erwartet 0, erhalten 1“, Doppelklick springt zum Methodenkopf im implementation-Teil |
+| TR4 | Im Editor auf die Testmethode sehen | Rote Wellenlinie am Methodenkopf, Tooltip mit erwartetem und erhaltenem Wert und Quelle „DUnitX“; Reiter „Atlas-Probleme“ listet den Fehlschlag; die Marke am Test „fehlgeschlagen“ in Rot, an der Fixture ebenso |
+| TR5 | Oberhalb der Testmethode Zeilen einfügen | Die Wellenlinie wandert mit; ein Server-Abgleich der Datei lässt sie stehen |
+| TR6 | Befehlspalette › „Fehlgeschlagene Tests erneut ausführen“ | Nur der fehlgeschlagene Test läuft (Zusammenfassung „0 bestanden, 1 fehlgeschlagen“); die Ergebnisse der übrigen Tests (Marken) bleiben |
+| TR7 | Test reparieren, TR6 wiederholen | Bestanden; Wellenlinie und Eintrag verschwinden; ein weiteres TR6 meldet „Keine fehlgeschlagenen Tests von … bekannt“ |
+| TR8 | IDE neu starten, mit einem fehlgeschlagenen Test vorher, dann TR6 | Es läuft genau der zuletzt fehlgeschlagene Test (aus der Projekt-Zusammenfassung) |
+| TR9 | `%LOCALAPPDATA%\Atlas\projects\<Schlüssel>.json` des Testprojekts und der Projektgruppe ansehen | Abschnitt `tests` mit `passed`, `failed`, `errors`, `skipped`, `durationMs`, `at` (UTC), Konfiguration, Plattform und `failures` mit Test, Meldung, Datei und Zeile (1-basiert) |
+| TR10 | Optionen › Atlas › Compiler › „Vor den Tests bauen“ aus, Test-EXE vorhanden | Kein Build; die vorhandene EXE läuft sofort |
+| TR11 | Wie TR10, aber Test-EXE gelöscht | Meldung „Test-EXE von … fehlt (…)“, nichts läuft |
+| TR12 | Testprojekt nur mit Plattform Win64 (Win32 entfernt), „Tests ausführen“ | Gebaut und gestartet wird Win64; Meldung nennt Win64 |
+| TR13 | Aktive Plattform Linux64 bzw. Android | Meldung „… ist für Linux64 eingestellt; Atlas startet nur Windows-Tests …“, nichts läuft |
+| TR14 | „Tests nach erfolgreichem Build automatisch ausführen“ an, Testprojekt mit Strg+F9 bauen | Nach dem Build laufen die Tests ohne erneuten Build; nach einer Hintergrundprüfung (#548) und nach `build_project` nicht |
+| TR15 | Wie TR14 mit „Build nur ohne Warnungen und Hinweise …“ an und einer Warnung im Testprojekt | Keine Tests nach dem Build; ohne Warnung laufen sie |
+| TR16 | Projektgruppe mit zwei Testprojekten, aktiv ist die Anwendung, Palette › „Tests ausführen“ | Auswahl „Testprojekt wählen“ mit A und B; nach der Wahl laufen dessen Tests; beim nächsten Mal ohne Frage (#585); mit aktivem Testprojekt läuft dieses |
+| TR17 | Projektgruppe ohne Testprojekt | Meldung „Kein DUnitX-Testprojekt in der Projektgruppe …“ |
+| TR18 | Während eines Laufs noch einmal „Tests ausführen“ | Meldung „Es läuft schon ein Testlauf.“; die Marken zeigen „Tests laufen …“ |
+| TR19 | Testprogramm ohne XML-Logger (Logger-Zeile auskommentiert) | Meldung „… lieferte keinen Bericht (Exitcode …). Letzte Ausgabe:“ mit den letzten Zeilen der Konsolenausgabe |
+| TR20 | Test mit `Sleep` über das Zeitlimit (600 s) bzw. IDE während eines Laufs schließen | Abbruch mit „nach 600 s abgebrochen“; beim Schließen endet die Test-EXE mit, die IDE hängt nicht |
+| TR21 | Schnellschalter „Code Lens „Test ausführen““ aus | Marken verschwinden (auch „Debuggen“, #585); Befehle bleiben |
+| TR22 | Schnellschalter „DUnitX-Tests ausführen“ aus | Marken und beide Befehle verschwinden, kein Lauf nach dem Build |
+| TR23 | Claude Code: „Führe die Tests über run_tests aus“ (vorhandene EXE) | JSON mit `result` `failed`, Zahlen und je Fehlschlag Name, `expected`/`actual`, Datei und Zeile; kein Compiler läuft; die Projekt-Zusammenfassung ändert sich nicht |
+| TR24 | `run_tests` mit `build: true` ohne laufende IDE bzw. mit `tests: ["Unit.TFixture.Methode"]` | Ohne IDE der Grund wie bei `build_project`, keine Tests; mit Filter nur dieser Test |
+
+## Einzelnen Test debuggen (#585)
+
+Vorbereitung: wie bei #69, Projektgruppe mit der Anwendung (aktiv) und dem Testprojekt `Rechner.Tests`; in `Rechner.Tests.dproj` unter *Start › Parameter* den Parameter `-cfg test.ini` eintragen. Testunit mit `[Test] Addiert` (erste Anweisung in einer Zeile nach `var`-Abschnitt und lokaler Funktion), `[Test]` mit zwei `[TestCase('Klein', …)]`/`[TestCase('Gross', …)]` in eigenen Zeilen und einem Test mit `Assert.AreEqual(0, 1)`. Meldungsansicht, Reiter „Atlas“. Optionen › Atlas › Debuggen: beide Schalter an.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| TD1 | Testunit öffnen | Hinter `[TestFixture]` und jedem `[Test]` neben „Test ausführen“ die Marke „Debuggen“; hinter jedem `[TestCase]` in eigener Zeile „Fall ausführen“ und „Debuggen“, die Marke des Tests mit den Fällen steht dann hinter `procedure` |
+| TD2 | Klick auf „Debuggen“ an `Addiert` | Testprojekt wird gebaut; Meldungen „Einmaliger Haltepunkt in Zeile …“ und „Rechner.Tests startet TRechnerTests.Addiert im Debugger (Debug, Win32)“; das Testprojekt wird aktiv; der Debugger hält auf der ersten Anweisung von `Addiert` (nicht in der lokalen Funktion); der Haltepunkt ist nach dem Halt verschwunden (Akzeptanz: startet nur diesen Test und hält in der ersten Zeile) |
+| TD3 | F9 bis zum Ende | Programm endet ohne „Press Enter“; Meldung „Debuggen von Rechner.Tests beendet; aktives Projekt und Startparameter wie vorher“; die Anwendung ist wieder aktives Projekt, *Start › Parameter* von `Rechner.Tests` zeigt wieder `-cfg test.ini`; die Marke an `Addiert` zeigt „bestanden“, die übrigen Marken bleiben, wie sie waren (Akzeptanz: Projekt und Parameter wiederhergestellt) |
+| TD4 | Während TD2 hält: *Start › Parameter* ansehen | `-cfg test.ini "--run:Rechner.Tests.TRechnerTests.Addiert" …` bzw. ohne Anführungszeichen, dazu `--exitbehavior:Continue` und `--xmlfile:…atlas-debug-….xml` |
+| TD5 | „Debuggen“ am Test mit den Fällen (Marke hinter `procedure`) | Beide Fälle laufen (`--run:…Summe.Klein,…Summe.Gross`), Halt in der ersten Zeile beim ersten Fall; nach F9 hält er nicht noch einmal (Akzeptanz: [TestCase] führt alle Fälle aus) |
+| TD6 | „Debuggen“ bzw. „Fall ausführen“ an `[TestCase('Gross', …)]` | Nur dieser Fall läuft (Meldung nennt `TRechnerTests.Summe.Gross`; Zusammenfassung 1 Test) (Akzeptanz: einzelne Fälle wählbar) |
+| TD7 | „Debuggen“ an `[TestFixture]` | Alle Tests der Fixture laufen im Debugger; kein Haltepunkt |
+| TD8 | Cursor in den Rumpf des fehlschlagenden Tests, Befehlspalette › „Test am Cursor debuggen“ | Wie TD2 für diesen Test; nach dem Ende rote Wellenlinie und „fehlgeschlagen“ an der Marke |
+| TD9 | Rechtsklick in der Testmethode › „Test ausführen“ | Läuft ohne Debugger wie die Code Lens (#69), Ergebnis in Meldungsansicht und an der Marke |
+| TD10 | Cursor außerhalb eines Tests (z. B. in `[Setup]`), „Test am Cursor debuggen“ | Meldung „Am Cursor steht kein DUnitX-Test …“, nichts startet |
+| TD11 | Optionen › Atlas › Debuggen › „Beim Test-Debuggen am Anfang der Methode anhalten“ aus, TD2 | Kein Haltepunkt, das Programm läuft durch; Ergebnis wie TD3 |
+| TD12 | Eigenen Haltepunkt auf die erste Anweisung von `Addiert` setzen, TD2 | Atlas setzt keinen zweiten; nach dem Lauf steht der eigene Haltepunkt noch da |
+| TD13 | Während des Haltens in TD2 *Start › Parameter* von `Rechner.Tests` auf `-anders` ändern, dann F9 | Meldung „… Startparameter wurden während des Laufs geändert und bleiben“; *Start › Parameter* zeigt `-anders` |
+| TD14 | Während des Haltens in TD2 die IDE beenden (Programm zurücksetzen, ohne Speichern schließen), neu starten, `Rechner.Tests` aktiv machen | Meldung „Vorübergehende Startparameter von Rechner.Tests.dproj zurückgestellt“; *Start › Parameter* wieder `-cfg test.ini` (bei ausgeschalteten Startprofilen erst beim nächsten Test-Debuggen) |
+| TD15 | Startprofil „Demo“ (#575) für `Rechner.Tests` aktiv, TD2 und TD3 | Während des Laufs Arbeitsordner und Umgebung des Profils, Parameter vorübergehend; danach wieder die des Profils, Statusfeld unverändert |
+| TD16 | Zweites Testprojekt `Rechner.Tests2` in der Gruppe, das dieselbe Testunit enthält; TD2 | Auswahl „Testprojekt wählen“ mit beiden; nach der Wahl läuft es; ein zweites TD2 fragt nicht; nach Entfernen oder Hinzufügen eines Testprojekts fragt Atlas wieder |
+| TD17 | Während TD2 noch einmal „Debuggen“ bzw. „Tests ausführen“ | Meldung „Es läuft schon ein Test im Debugger.“ bzw. „Es läuft schon ein Testlauf.“; die Marke „Debuggen“ ist während des Laufs ausgeblendet |
+| TD18 | Anwendung läuft im Debugger, „Debuggen“ an einem Test | Meldung „Der Debugger läuft schon; erst beenden.“; nichts ändert sich |
+| TD19 | Fehler im Testprojekt einbauen, TD2 | Meldung, dass der Build fehlschlug; aktives Projekt und Startparameter unverändert, keine Datei `atlas-debug-*.xml` im Temp-Ordner |
+| TD20 | Schnellschalter „Test debuggen“ aus | Ohne Neustart: Marken „Debuggen“, Befehl „Test am Cursor debuggen“, Eintrag im Kontextmenü (meldet „ausgeschaltet“) und Tipp „Einzelnen Test debuggen“ verschwinden; „Test ausführen“ bleibt |
+| TD21 | „Code Lens „Test ausführen““ (`codeLens.tests`) aus | Keine Marken, weder „Test ausführen“ noch „Debuggen“ (Akzeptanz: mit codeLens.tests aus ist die Funktion in der Code Lens aus); Befehle und Kontextmenü gelten weiter nach „Test debuggen“ |
+| TD22 | „DUnitX-Tests ausführen“ aus | Auch „Test debuggen“ ist aus: keine Marken, keine Befehle, Kontextmenü meldet „ausgeschaltet“ |
+| TD23 | Testprojekt nur für Win64, aktive Plattform der Anwendung Win32, TD2 | Gebaut und gestartet wird Win64 des Testprojekts |
+
 ## DUnitX-Testgerüst (#274)
 
 Voraussetzung: Projektgruppe mit einem DUnitX-Testprojekt (`.dpr` mit `uses DUnitX.TestFramework`).
@@ -1013,6 +1187,79 @@ Voraussetzung: Server läuft, eigenes Projekt geöffnet. In einer Unit des Proje
 | TD18 | TD13, „Zurücksetzen“, „Anzeigen“ | Alle Felder leer; Liste wie TD1 mit Titel ohne Klammer |
 | TD19 | Optionen › Atlas › Editor: „Befehl „TODOs des Projekts“ in der Befehlspalette“ aus (oder Schnellschalter „TODO-Liste“) | Beide Befehle aus TD1 und TD13 verschwinden ohne Neustart aus der Befehlspalette, die Tipps „TODOs des Projekts“ und „TODOs filtern“ erscheinen nicht mehr; Hinweise der Regel `todo-comment`, `get_todos` und der Abschnitt `todos` nach einem Build (TD10) bleiben; „Alles aus für diese Sitzung“ lässt die Befehle stehen |
 
+## Baseline für Altprojekte (#97)
+
+Voraussetzung: Server läuft, eigenes Projekt geöffnet, die Regel `empty-except` (oder eine andere, die im Projekt Treffer hat) ist an. In `Kasse.pas` steht in `TKasse.Buchen` und in `TKasse.Storno` je dieselbe Zeile mit einem Treffer (z. B. `except end;`).
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| BL1 | Befehlspalette „Baseline des Projekts aktualisieren“ ohne vorhandene Baseline | Meldung „Baseline wird aktualisiert …“, danach im Meldungsfenster „Baseline geschrieben: <Ordner>\atlas-baseline.json (n Treffer in m Dateien; n neu, 0 entfernt, 0 unverändert)“; die Treffer im Editor verschwinden nach kurzer Zeit |
+| BL2 | `atlas-baseline.json` ansehen | Je Eintrag `path`, `rule`, `fingerprint`, `count`, `routine` (z. B. `TKasse.Buchen`; außerhalb einer Routine `implementation` o. ä.) und `context` |
+| BL3 | Die Zeile in `TKasse.Buchen` neu einrücken und eine Leerzeile darüber einfügen | Kein Treffer erscheint |
+| BL4 | `TKasse.Buchen` in `TKasse.Verbuchen` umbenennen (Deklaration und Rumpf) | Kein Treffer erscheint |
+| BL5 | Dieselbe Zeile ein drittes Mal in eine neue Methode `TKasse.Neu` kopieren | Nur dieser Treffer erscheint (gleiche Zeile in anderer Routine ist neu) |
+| BL6 | Die Zeile aus `TKasse.Storno` in eine andere Methode verschieben | Der verschobene Treffer erscheint |
+| BL7 | Eine Unit mit Treffern aus der Baseline umbenennen (Datei und Projekt), BL1 | Vorher Rückfrage „Die Baseline enthält n Einträge ohne Datei …“ mit dem alten Pfad und der Trefferzahl; „Nein“ bricht ab, nichts wird geschrieben. Mit „Ja“: Meldungsfenster nennt zuerst „Baseline: n Einträge ohne Datei entfernt …“ mit dem Pfad, dann die Zähler |
+| BL8 | Eine Baseline einer älteren Atlas-Fassung (Einträge ohne `routine`) ins Projekt legen | Die bekannten Treffer bleiben ausgeblendet. BL1: zusätzlich „Baseline: n Einträge der älteren Baseline um die Routine ergänzt.“; die Datei hat danach `routine` und `context` |
+| BL9 | `// lsp-ignore: empty-except` über eine Zeile, deren Treffer in der Baseline steht | Kein `unused-suppression` an diesem Kommentar |
+| BL10 | `AtlasServer --check <Projekt> --update-baseline` nach BL7 (ohne Plugin) | stderr: zuerst „n Einträge ohne Datei werden entfernt …“ mit Pfaden, dann „Baseline geschrieben: … (… neu, … entfernt, … unverändert)“; Exitcode 0 |
+| BL11 | `AtlasServer --check <Projekt> --format sarif` mit Baseline und einem neuen Treffer | Jedes Ergebnis hat `partialFingerprints` mit `atlasBaseline/v1` und `atlasContext/v1`; der neue Treffer `baselineState` `new`, bekannte `unchanged` mit `suppressions` (`external`); ein Eintrag ohne Treffer `absent`; Exitcode zählt nur den neuen Treffer |
+| BL12 | BL11 ohne Baseline | `partialFingerprints` vorhanden, kein `baselineState`, keine `suppressions` |
+| BL13 | Projekt bauen (Strg+F9), danach `%LOCALAPPDATA%\Atlas\projects\<Schlüssel>.json` ansehen | Abschnitt `baseline` mit `at`, `exists` true, `valid` true, `entries`, `hits`, `orphaned`; nach BL1 zusätzlich `updated`, `added`, `removed`. Baseline löschen und bauen: `exists` false, `updated` bleibt |
+| BL14 | BL1 ohne geöffnetes Projekt bzw. direkt nach einem Build | „Baseline aktualisieren: kein aktives Projekt.“ bzw. ggf. „… Der Atlas-Server ist gerade beschäftigt …“ |
+| BL15 | VS Code oder anderer Editor: `workspace/executeCommand` `atlas.updateBaseline` mit der URI des Projekts | Antwort mit `file`, `total`, `files`, `added`, `removed`, `unchanged`, `completed`, `orphaned`; der Befehl steht in `executeCommandProvider` |
+| BL16 | Optionen › Atlas › Editor: „Befehl „Baseline des Projekts aktualisieren“ in der Befehlspalette“ aus (oder Schnellschalter „Baseline aktualisieren“) | Der Befehl und sein Tipp verschwinden ohne Neustart; die Baseline blendet weiter aus, BL13 schreibt weiter; „Alles aus für diese Sitzung“ lässt den Befehl stehen |
+
+## Projektdatei .atlas (#486)
+
+Voraussetzung: Git-Projekt `C:\Repo\App\Kasse.dproj` (Repository-Wurzel `C:\Repo`), Server läuft. Persönliche Code-Vorlagen in `%APPDATA%\Atlas\Snippets` mit einer Vorlage `try`.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| PD1 | Befehlspalette „Projektdatei .atlas öffnen“ ohne vorhandene Datei | `C:\Repo\App\.atlas` entsteht (UTF-8 ohne BOM) mit `"version": 1`, leeren Abschnitten und Beispielen als Kommentar und ist im Editor offen; Meldungsansicht „Projektdatei .atlas angelegt …“; keine weitere Meldung |
+| PD2 | In `.atlas` `"naming": {"field": "F"}` und `"snippets": "..\\Vorlagen"` eintragen, speichern; in `C:\Repo\Vorlagen` eine Vorlage `try` mit anderem Text ablegen | Nach höchstens 2 s gilt die Datei; *Tools › Optionen › Atlas › Projektdatei* zeigt „naming.field: "F" (aus .atlas)“ und „snippets: ..\Vorlagen (aus .atlas)“, der Reiter *Einfügen* „Code-Vorlagen des Projekts: ..\Vorlagen (aus .atlas, …)“; die Vervollständigung bietet für `try` die Vorlage des Projekts an |
+| PD3 | `.atlas` löschen, im Ordner `C:\Repo` neu anlegen (gleicher Inhalt) | Gilt weiter (Wurzel des Repositorys); `"snippets": "..\\Vorlagen"` wird jetzt als „führt aus dem Projekt heraus“ gemeldet und ignoriert |
+| PD4 | In `.atlas` eine schließende Klammer löschen, speichern | Meldungsansicht einmal „Projektdatei .atlas ist fehlerhaft …; Atlas nutzt die persönlichen Einstellungen.“, kein Dialog, kein Absturz; der Reiter zeigt „Die Datei ist fehlerhaft …“; Projekt-Vorlagen fallen weg. Nach dem Reparieren gilt die Datei wieder ohne Meldung |
+| PD5 | `"token": "abc"`, `"ci": {"url": "https://marco:pw@ci.firma.de", "job": "kasse"}` und ein Startprofil mit `"environment": {"DB_PASSWORD": "x"}` eintragen | Je eine Meldung „… sieht nach Zugangsdaten aus und wird ignoriert …“ (`token`, `ci.url`, `startProfiles[…].environment.DB_PASSWORD`); das Startprofil fehlt ganz, der Reiter nennt „3 Einträge werden ignoriert“ |
+| PD6 | `"snippets": "C:\\Vorlagen"` und ein Startprofil mit `"host": "C:\\Tools\\host.exe"` bzw. `"parameters": "-db D:\\Daten\\x.fdb"` | Meldungen „… enthält einen absoluten Pfad …“; Werte ignoriert |
+| PD7 | Unbekannter Schlüssel `"nameing": {}` und `"sqlTargets": "TQuery.SQL"` | Meldungen „Unbekannter Eintrag "nameing" …“ und „"sqlTargets" hat den falschen Typ …“; übrige Werte gelten |
+| PD8 | Zwei Projekte einer Gruppe, nur eines mit `.atlas`; aktives Projekt wechseln | Der Reiter *Projektdatei* zeigt nach dem Wechsel die Datei des aktiven Projekts bzw. „Das aktive Projekt hat keine .atlas …“ |
+| PD9 | Optionen › Atlas › Projektdatei: Schalter aus (oder Schnellschalter „Projektdatei .atlas“) | Ohne Neustart: Befehl und Tipp verschwinden, die Projekt-Vorlagen fallen weg, der Reiter zeigt „Ausgeschaltet …“; keine Meldungen mehr zu `.atlas`. Wieder an: Datei gilt, Meldungen erscheinen einmal neu |
+| PD10 | `atlas.json` im Projekt mit `"token": "x"`, `"exclude": ["C:\\Fremd\\**", "/Generated/**"]` und `"testUnits": {"folder": "..\\Tests"}` | Warnungen in `atlas.json` an `token` und am absoluten Ausschluss („… gilt für alle im Team …“); `/Generated/**` und `..\Tests` gelten ohne Meldung |
+| PD11 | Dasselbe in `%APPDATA%\Atlas\settings.json` (global) mit einem absoluten `exclude` | Keine Warnung: die globale Datei ist persönlich |
+| PD12 | Abgesichert starten (wie AS5), dann Schnellschalter „Projektdatei .atlas“ an | Zuerst ist der Schalter wie alle aus (keine Meldungen zu `.atlas`, Befehl fehlt); danach gilt die Datei ohne Neustart, Befehl wieder in der Palette |
+
+## Startprofile (#575)
+
+Voraussetzung: Git-Projekt `C:\Repo\App\Zeige.dproj` (Konsolenprogramm, schreibt `ParamStr(1)`, `GetCurrentDir` und `GetEnvironmentVariable('MODUS')` in `C:\Temp\zeige.txt`), Projektdatei `.atlas` an, Startprofile und „Startprofil in der Statusleiste“ an. In `C:\Repo\App\.atlas`:
+
+```jsonc
+"startProfiles": [
+  {"name": "Demo", "parameters": "-demo", "workingDir": "Daten", "environment": {"MODUS": "demo"}},
+  {"name": "Kunde", "parameters": "-kunde 7"}
+]
+```
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| SP1 | Befehlspalette „Startprofil: …“ | Auswahl mit „Demo“ und „Kunde“ (Pfad „Team (.atlas)“, Beschreibung mit Parametern, Arbeitsordner und Umgebung), darunter „Aktuelle Startoptionen als persönliches Profil speichern …“, „Persönliche Startprofile bearbeiten“, „Gemeinsame Startprofile in .atlas bearbeiten“; kein „Kein Startprofil“, solange keines aktiv ist |
+| SP2 | „Demo“ wählen, dann F9 | Meldungsansicht „Atlas: Startprofil „Demo“ gesetzt (…)“; *Start › Parameter* zeigt `-demo`, Arbeitsordner `C:\Repo\App\Daten` und die Variable `MODUS=demo`; `zeige.txt` enthält `-demo`, `C:\Repo\App\Daten` und `demo`; Statusleiste „Startprofil: Demo“ |
+| SP3 | Klick auf „Startprofil: Demo“ in der Statusleiste, „Kunde“ wählen, *Start › Ohne Debugger starten* | Feld zeigt „Startprofil: Kunde“; `zeige.txt` enthält `-kunde`; `MODUS` ist leer und der Arbeitsordner wieder der vorherige, weil „Kunde“ beides nicht setzt (Akzeptanz: zwei Profile, je eigene Parameter) |
+| SP4 | Tooltip über dem Feld | Parameter, Arbeitsordner, Host und Umgebung des aktiven Profils, darunter „Klick: Startprofil wählen“ |
+| SP5 | Vor SP2 eigene Parameter `-alt` in *Start › Parameter* eintragen; nach SP3 „Kein Startprofil (Startoptionen von vorher)“ | Meldung „Kein Startprofil; die Startoptionen von vorher gelten wieder.“; *Start › Parameter* zeigt wieder `-alt`; Feld „Startprofil: –“ |
+| SP6 | Repository auf einem zweiten Rechner (oder in einen anderen Ordner) klonen, `Zeige.dproj` öffnen | „Demo“ und „Kunde“ stehen in der Auswahl, ohne etwas einzurichten; noch kein Profil aktiv (Akzeptanz: gemeinsames Profil nach dem Klonen da) |
+| SP7 | „Kunde“ wählen, IDE schließen (Projekt speichern), neu starten, Projekt öffnen | Feld zeigt wieder „Startprofil: Kunde“; Parameter `-kunde 7` |
+| SP8 | „Aktuelle Startoptionen als persönliches Profil speichern …“, Name „Lokal“ | Meldung „Persönliches Startprofil „Lokal“ gespeichert.“; „Lokal“ ist aktiv, Pfad „Persönlich“; Datei `%LOCALAPPDATA%\Atlas\startprofiles\<Schlüssel>.json` enthält das Profil, `.atlas` ist unverändert |
+| SP9 | „Persönliche Startprofile bearbeiten“, in der Datei `"host": "C:\\Tools\\Host.exe"` bei „Lokal“ ergänzen, speichern | Nach höchstens 1 s setzt Atlas die Host-Anwendung neu (*Start › Parameter*); absolute Pfade sind in persönlichen Profilen erlaubt |
+| SP10 | In `.atlas` „Kunde“ löschen, während „Kunde“ aktiv ist | Feld „Startprofil: Kunde (fehlt)“, Tooltip „Das Profil „Kunde“ gibt es nicht mehr …“; die Startoptionen bleiben, wie sie sind |
+| SP11 | Konfiguration Debug → Release bzw. Plattform Win32 → Win64 wechseln | Das aktive Profil gilt auch dort (*Start › Parameter* der neuen Konfiguration zeigt es); das Projekt gilt nur als geändert, wenn sich ein Wert wirklich ändert |
+| SP12 | Projekt ohne `startProfiles` und ohne persönliche Datei aktiv | Kein Feld in der Statusleiste; der Befehl zeigt nur die Aktionen |
+| SP13 | Schalter „Startprofil in der Statusleiste“ aus (Optionen › Atlas › Compiler oder Schnellschalter) | Feld verschwindet ohne Neustart, der Befehl bleibt; wieder an: Feld da |
+| SP14 | Schalter „Startprofile“ aus | Ohne Neustart: Befehl, Feld und Tipp „Startprofile wechseln“ verschwinden; Startoptionen bleiben, wie sie zuletzt gesetzt waren; wieder an: alles zurück, das gemerkte Profil gilt |
+| SP15 | „Atlas-Feld in der Statusleiste“ aus, Startprofil-Feld an | Das Startprofil-Feld bleibt allein sichtbar und klickbar; kein leerer Platz für das Atlas-Feld |
+| SP16 | Projektdatei `.atlas` aus | Nur persönliche Profile; „Gemeinsame Startprofile in .atlas bearbeiten“ meldet, dass die Projektdatei aus ist |
+| SP17 | Während eine Debug-Sitzung läuft, ein Profil wählen | Startoptionen werden gesetzt, gelten ab dem nächsten Start; kein Absturz, kein Dialog |
+
 ## Units suchen (#777)
 
 Voraussetzung: Projektgruppe mit mehreren Projekten, darunter ein DUnitX-Testprojekt; Server läuft; Einstellungen auf Vorgabe.
@@ -1033,6 +1280,30 @@ Voraussetzung: Projektgruppe mit mehreren Projekten, darunter ein DUnitX-Testpro
 | US12 | „Pfade kopieren“ (Strg+C), „Im Explorer zeigen“, „Im Projektmanager zeigen“ | Pfade in der Zwischenablage; Explorer mit markierter Datei; Projektmanager offen, Meldung „Kunden gehört zu …“ |
 | US13 | Jede Einstellung der Seite einzeln aus | Vorschau, Formularskizze, „Verwendet von“, Chips, Tippsyntax, Häkchen, Aktionsleiste, „In uses aufnehmen“ fehlen jeweils; Pfadanzeige und Vorgewählte Herkunft wirken beim nächsten Öffnen |
 | US14 | Server beenden, Strg+F12 | Meldung „Der Atlas-Server läuft nicht“ und der IDE-Dialog |
+## Erzeugen-Menü (#719)
+
+Voraussetzung: Server läuft; Einstellungen auf Vorgabe; Unit mit `TKunde = class` (Felder `FName: string; FListe: TStrings;`), einer Klasse `TStaffelpreise = class(TStandardpreise)` mit virtueller Methode im Vorfahren und einer Klasse `TDienst = class(TInterfacedObject, IDienst)`, der Methoden von `IDienst` fehlen.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| EM1 | Cursor in `TKunde` hinter `public`, Alt+Einfg | Popup am Cursor mit Kopf „Erzeugen“ und den Zeilen 1 Konstruktor aus Feldern, 2 Destruktor mit Freigabe, 3 Property mit Feld, 4 Methoden überschreiben…, 5 Interface implementieren… (nur in `TDienst`), 6 Equals / GetHashCode; rechts gedimmt `/ctor`, `/dtor` …; darunter weitere Einträge und die Gruppe Vorlagen |
+| EM2 | Taste 1 | Zweiter Schritt „Konstruktor aus Feldern“ mit `FName` und `FListe`, beide gewählt; Enter legt Konstruktor mit beiden Parametern an, ein Strg+Z nimmt alles zurück |
+| EM3 | Alt+Einfg, `ctor`, Leertaste auf `FListe`, Enter | Konstruktor nur mit `FName` |
+| EM4 | In `TStaffelpreise` Alt+Einfg, 4 | Auswahl der überschreibbaren Methoden der Vorfahren; Enter legt Deklaration und Rumpf mit `inherited` an |
+| EM5 | In `TDienst` Alt+Einfg, „Interface implementieren…“, Enter | Alle fehlenden Methoden von `IDienst` als Deklaration und Rumpf; mit nur einer gewählten Methode nur diese |
+| EM6 | In einer Methode zwei Anweisungen markieren, Alt+Einfg | Gruppe Umschließen (try … finally Free, Sperren, Im Hauptthread, {$IFDEF}…) und nur Anweisungs-Vorlagen; „try … finally Free“ umschließt genau die markierten Zeilen |
+| EM7 | Ohne Markierung in einer Methode Alt+Einfg | Keine Gruppe Umschließen; Lokale Variable…, Protokollzeile …; Vorlagen wie `tryf`, keine Deklarations-Vorlagen wie `class` |
+| EM8 | Im Kommentar bzw. String Alt+Einfg | „Hier gibt es nichts zu erzeugen“ |
+| EM9 | Menü offen, `eqh` tippen | Unscharfer Filter, „Equals / GetHashCode“ oben, Treffer hervorgehoben, Fußzeile „Filter: eqh“; Rücktaste nimmt Zeichen zurück |
+| EM10 | Einen Eintrag ausführen, Menü erneut öffnen | Eintrag steht oben unter „Zuletzt gewählt“ und nicht noch einmal in seiner Gruppe; nach IDE-Neustart weiter oben |
+| EM11 | Auf einem Eintrag Entf | Eintrag verschwindet, Meldung „… ausgeblendet“; unter Optionen › Atlas › Befehle steht er in „Ausgeblendete Einträge“ |
+| EM12 | Optionen: Gruppen `templates,generate`, „Zuletzt gewählte Einträge oben“ und „Befehlsnamen anzeigen“ aus | Vorlagen zuerst, keine Gruppe Umschließen, kein „Zuletzt gewählt“, keine `/name` rechts |
+| EM13 | Rechtsklick im Editor › Atlas › Erzeugen…; Befehlspalette „Erzeugen…“; *Atlas › Erzeugen…* | Dasselbe Menü am Cursor |
+| EM14 | Schnellschalter „Erzeugen-Menü“ aus, Alt+Einfg | Alt+Einfg geht an die IDE (bzw. eine andere Belegung); Befehl fehlt in Palette und Atlas-Menü, Tipp „Erzeugen-Menü“ erscheint nicht in „Atlas entdecken“; Kontextmenü meldet „abgeschaltet“ |
+| EM15 | `slashCommands` in atlas.json aus, Alt+Einfg | Keine Schnellbefehle, Vorlagen und Code-Aktionen bleiben |
+| EM16 | Eigene Vorlage mit `context: declaration` in `%APPDATA%\Atlas\Snippets` | Erscheint auf Unit-Ebene unter Vorlagen, nicht in einer Methode; Enter setzt sie mit Platzhaltern ein |
+| EM17 | `/override` mit Pflicht-Argument ohne Auswahl, Enter im leeren Feld | Kein Ausführen, Signalton, Zeile „Beispiel: /override …“ bleibt |
+
 ## Diagnosemodus (#479)
 
 Vorbereitung: Plugin (Win32 und Win64) gebaut und installiert, ein Projekt mit einigen Units geöffnet, Server läuft.
@@ -1165,3 +1436,90 @@ Vorbereitung: Plugin installiert, Projekt geöffnet, Server-Log über `--log` ak
 | RS6 | Problemansicht aktiv, 2 min nichts ändern | Keine Zeitlimit-Warnung für `workspace/diagnostic`; Antworten im Mitschnitt im Abstand von etwa 8 s |
 | RS7 | Server mit `--trace` auf einen USB-Stick, Stick abziehen | Genau eine Warnung „Mitschnitt abgebrochen …“; die Editorfunktionen laufen weiter |
 | RS8 | Claude Code: eine in der IDE offene Datei per MCP-Werkzeug ändern | Die Änderung erscheint wie bisher im Editorpuffer |
+
+## Leistung der Prüfregeln (Code-Review P-03, P-08, P-11, D-04)
+
+Vorbereitung: Projekt mit Formularen und einer Unit mit Threads, Diagnosemodus an, Atlas-Problemliste vor der Änderung als Vergleich notiert.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| PRL1 | Projekt öffnen, `workspace/diagnostic` abwarten, Diagnoselog öffnen | `slowRule` für `component-*`, `flow-*`, `security-*` nicht mehr unter den langsamsten Regeln |
+| PRL2 | Atlas-Problemliste mit dem Vergleich abgleichen (Stichprobe: drei Units mit Formular, eine mit Threads) | Anzahl und Text der Probleme unverändert |
+| PRL3 | In einer Datei mit CRLF-Zeilenenden die Korrektur „Variable … entfernen“ und „Variable … je Durchlauf kopieren“ anwenden | Ersetzt genau die erwarteten Zeilen; Code übersetzt danach |
+| PRL4 | Formular-Eigenschaftsregel (`dfmPropertyRules`) mit nicht gespeicherter Property auslösen | Meldung wie bisher, mit dem default-Wert aus der Klassendeklaration |
+
+## Leistung des Plugins (Code-Review P-04, P-09, P-10, P-15, D-07)
+
+Vorbereitung: Plugin installiert, Probleme und Inlay-Hints an, Projekt geöffnet.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| PP1 | Große Unit (> 1 MB) vorn, IDE 1 min im Leerlauf, Zeitmessung (Diagnosemodus) offen | Keine Last durch die Zeitgeber von Problemen und Inlay-Hints |
+| PP2 | In der Unit tippen | Problemmarken wandern wie bisher mit, neue Diagnosen nach der Tipp-Pause |
+| PP3 | Strg+Z / Umschalt+Strg+Z | Marken und Inlay-Hints folgen dem Text |
+| PP4 | Im Formular-Designer eine Komponente einfügen | Das neue Feld ist in den Problemen spätestens nach 2 s berücksichtigt |
+| PP5 | Offene Datei extern ändern, neu laden | Diagnosen passen zum neuen Text |
+| PP6 | IDE in den Hintergrund, nach einer Minute zurück | Sofort aktuell |
+| PP7 | Inlay-Hints an; helles und dunkles Editorthema; Strg+Mausrad; Schriftgröße in den Editoroptionen ändern | Marken gleich aussehend wie vorher; der Editortext danach unverändert (keine kleinere Schrift „hängengeblieben“) |
+| PP8 | Vervollständigung öffnen, Monitor mit anderer DPI, Editorzoom ändern | Zeilen-, Chip- und Fußzeilenhöhe passen sofort |
+| PP9 | Detailpanel mit langer Deklaration, Panel breiter und schmaler ziehen | Umbruch wie bisher, folgt der Breite |
+| PP10 | Hover über einer Zeile mit blasser Warnung | Farbe so blass wie die Wellenlinie im Editor |
+| PP11 | Chips im Hover (Vererbung), Tags in Vervollständigung und Detailpanel | Gleicher Innenabstand und gleiche Rundung; Scroll-Daumen in Liste und Doku gleich grau |
+
+## Gemeinsamer Code Atlas.Text (ADR 0012, Code-Review D-01 bis D-06, D-10)
+
+Vorbereitung: Projektgruppe neu gebaut, Plugin installiert, Diagnosemodus an.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| TX1 | Plugin Win32 und Win64 bauen (Delphi 12 und 13), IDE starten | 0 Fehler, 0 Warnungen, 0 Hinweise (kein W1033); unter *Komponenten › Packages installieren* nur `Atlas.IDE.Expert…bpl`, kein `Atlas.Text` oder `Atlas.Common`; Plugin lädt und entlädt wie bisher |
+| TX2 | Gesamte Projektgruppe `Atlas.groupproj` neu erzeugen (Win32, Win64) | Reihenfolge Text → Common → Windows → Server/Tests; 0/0/0; `Atlas.Tests` grün |
+| TX3 | ANSI-Datei mit Umlauten (CP1252) und eine Datei mit den Bytes `ED A0 80` ohne BOM über eine Server-Code-Aktion ändern, ohne sie im Editor zu öffnen; danach öffnen | Umlaute unverändert; Statusfeld „Datei“ zeigt bei beiden ANSI; Server und Plugin melden dieselbe Kodierung |
+| TX4 | *Atlas › Fehlerbericht* mit Projekt unter `C:\Users\<Name>\…` | Pfade `<ws>\…` bzw. `<pfad>`, Benutzer `<benutzer>`, Text in Anführungszeichen `<wert>`; Plugin- und Serverteil gleich |
+| TX5 | Vervollständigung: `stl` in einer Unit mit `TStringList`, dann `myLis` bei `ERROR_TOO_MANY_LINKS` (Windows-Units im Suchpfad), weitertippen | `TStringList` bleibt in der Liste; `ERROR_TOO_MANY_LINKS` erscheint nicht, auch nicht kurz |
+| TX6 | Datei auf Laufwerk `C:` öffnen, Hover, Strg+Klick, Umbenennen über zwei Dateien | funktioniert wie vorher; das Protokoll im Diagnosemodus zeigt URIs mit `file:///c%3A/…` |
+| TX7 | `settings.json` mit `// Kommentar` und CR-only-Zeilenenden speichern, Optionen öffnen | Einstellungen werden gelesen, keine Fehlermeldung |
+| TX8 | Info-Dialog und Startbildschirm, `AtlasServer --version`, Titel des Installers | überall dieselbe Version |
+
+## Vervollständigung nach Umbau (Code-Review S-01)
+
+Vorbereitung: Projektgruppe neu gebaut (Delphi 12 und 13), Plugin installiert. Der Umbau soll nichts Sichtbares ändern; jeder Fall verhält sich wie vor dem Umbau.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| CU1 | In einer Methode `Sel` tippen, dann `Self.` | sichtbare Namen bzw. Mitglieder samt geerbter wie bisher, unscharfe Auswahl |
+| CU2 | Name aus einer nicht eingebundenen Unit wählen (LF- und CRLF-Datei) | uses-Eintrag wird ergänzt |
+| CU3 | `{$` und `{$WARN ` tippen | Direktiven bzw. Warnungsbezeichner |
+| CU4 | `X := ` bei Aufzählungstyp, `case`-Zweig, Menge `[…]` | Aufzählungswerte, „Alle Werte einfügen“, Häkchen bei vorhandenen |
+| CU5 | Unbekannten Namen im Rumpf tippen | Angebote zum Anlegen von Variable, Feld, Konstante |
+| CU6 | Klasse mit Interface ohne Methoden, in der Deklaration vervollständigen | fehlende Interface-Methoden |
+| CU7 | In Formularmethode Komponentennamen, `Sender.` im Ereignis-Handler, `FieldByName('` | Komponenten, Member des gemeinsamen Vorfahren, Feldnamen |
+| CU8 | `TStringList.Create;` mit `;` abschließen | nur „Mit try…finally absichern“ |
+| CU9 | `Ausdruck.` mit Postfix-Vorlage, `/prop` am Zeilenanfang | Vorlagen wie bisher, `completionItem/resolve` liefert Details |
+
+## Rollenmatrix (Code-Review A-10, A-12)
+
+Vorbereitung: Repository-Ordner als Projekt geöffnet (die `atlas.json` im Wurzelordner schaltet beide Regeln mit `prefixes` ein).
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| AR1 | In `Atlas.Common.Logging.Contract` `uses Atlas.Common.Logging.Providers.Logger` eintragen | Warnung `architecture-role-import` am uses-Eintrag: „… (eigene Providers aus Contract)“ |
+| AR2 | In `atlas.json` die Regel auf `"severity": "off"` setzen | Warnung verschwindet |
+| AR3 | In eine `*.Contract`-Unit `TFoo = class end;` im interface schreiben | Warnung `architecture-contract-content` am Typnamen; `EFoo = class(Exception);` bleibt ohne Meldung |
+| AR4 | Ein Projekt ohne `prefixes` in `atlas.json` öffnen, Profil `strict` | Keine Meldung der beiden Regeln |
+| AR5 | Undo-Einstellungen unter *Optionen › Atlas* ändern, speichern, wieder öffnen; Atlas-Änderung über zwei Dateien zurücknehmen | Werte bleiben erhalten; Zurücknehmen wie bisher |
+| AR6 | Server-Protokoll mit Mitschnitt (`--trace`), Parameter-Hint und Hover in einer Unit mit `{$I}`-Datei | Mitschnitt rotiert wie bisher; Hint und Hover funktionieren auch in der Include-Datei |
+
+## Plugin-Struktur: Laden, Entladen, Workspace-Edits (Code-Review S-03, A-09)
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| PS1 | IDE mit Atlas starten, *Komponenten › Packages installieren* › Atlas abwählen, wieder anwählen | Keine Zugriffsverletzung; Protokoll „Atlas entladen in … ms; Hintergrund-Threads beendet: True“; nach dem Wiederladen Menü, Palette, Statusfeld, Vervollständigung, Parameter-Hint und Willkommensseite wie zuvor |
+| PS2 | Abgesichert starten (Stufe „abgesichert“, wie AS5) | Server, Statusfeld, Palette, Menü, Ergebnisfenster, Änderungsprotokoll, Notizen und Lesezeichen (Befehle), Willkommensseite da; keine Klammerfarben, keine Rinne, kein Designer-Notifier, kein Wächter, keine Tastenkürzel-Tipps |
+| PS3 | Mit Umschalt starten (Stufe „minimal“, wie AS11) | Nur Optionsseite, Statusfeld und Schnellschalter; Entladen danach ohne Fehler |
+| PS4 | Bei PS2 „Schnellschalter…“, „Klammerfarben“ und „Prüfung beim Speichern“ einschalten | Klammerfarben sofort; nach dem nächsten Speichern prüft Atlas (Compiler-Ereignisse werden nachgemeldet) |
+| PS5 | IDE mit offener Willkommensseite, sichtbaren Tastenkürzel-Tipps und offener Befehlspalette schließen | Kein Fehler beim Beenden; Zählung der Befehle gespeichert (beim nächsten Start „Atlas entdecken“ unverändert) |
+| PS6 | Umbenennen über drei Units, eine davon nicht geöffnet (Workspace-Edit mit Änderungen in offenen und geschlossenen Dateien) | Offene Puffer geändert (je ein Strg+Z-Schritt), die geschlossene Unit auf der Platte in ihrer Kodierung; ein Satz im Änderungsprotokoll |
+| PS7 | Code-Aktion, die eine Unit anlegt und eine bestehende ändert; danach Strg+Alt+Z | Neue Unit im Projekt und im Editor; Zurücknehmen trägt sie aus und legt sie in den Papierkorb |
+| PS8 | Workspace-Edit auf eine schreibgeschützte Datei | Meldung mit dem Dateinamen, keine der übrigen Dateien halb geändert |
+| PS9 | Versionsverwaltung: Willkommensseite mit Git-Projekt öffnen, dann git aus `PATH` nehmen und IDE neu starten | Erst Branch und Zustand; danach einmal „git nicht gefunden“ in der Meldungsansicht, Atlas arbeitet weiter |

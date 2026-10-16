@@ -45,7 +45,7 @@ uses
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Pascal.Contract,
   Atlas.Common.Pascal.SyntaxTree,
-  Atlas.Common.Rules.DeclaredTypes;
+  Atlas.Common.Pascal.DeclaredTypes;
 
 type
   TTokens = TArray<TPascalToken>;

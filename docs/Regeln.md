@@ -11,6 +11,8 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 | [`control-char`](#control-char) | Steuerzeichen | Bug | Fehler |
 | [`confusable-identifier`](#confusable-identifier) | Verwechselbarer Bezeichner | Sicherheits-Hotspot | Warnung |
 | [`forbidden-uses`](#forbidden-uses) | Verbotene uses-Beziehung | Code Smell | Fehler |
+| [`architecture-role-import`](#architecture-role-import) | Import verletzt die Rollenmatrix | Code Smell | Warnung |
+| [`architecture-contract-content`](#architecture-contract-content) | Klasse in einer Contract-Unit | Code Smell | Warnung |
 | [`thread-vcl-access`](#thread-vcl-access) | VCL-Zugriff aus einem Thread | Bug | Warnung |
 | [`lock-without-finally`](#lock-without-finally) | Sperre ohne try/finally | Bug | Warnung |
 | [`thread-use-after-free-on-terminate`](#thread-use-after-free-on-terminate) | Thread nach dem Start mit FreeOnTerminate benutzt | Bug | Warnung |
@@ -235,6 +237,56 @@ Richtig:
 unit App.Common.Model;
 interface
 uses System.Classes;
+```
+
+<a id="architecture-role-import"></a>
+## architecture-role-import
+
+**Import verletzt die Rollenmatrix** · Code Smell · Warnung
+
+Ein uses-Eintrag verletzt die Importmatrix des Rollenkonzepts (Ausgabeartefakt, Feature, Rolle: Contract, Internals, Providers, Adapters, Composition, Hosting). Standardmäßig aus; in atlas.json mit der Option "prefixes" einschalten. Genehmigte Ausnahmen stehen unter "allow" als "Quelle -> Ziel"-Globs.
+
+Mit Treffer:
+
+```pascal
+unit Atlas.Common.Logging.Contract;
+interface
+uses Atlas.Common.Logging.Providers.Logger;
+```
+
+Richtig:
+
+```pascal
+unit Atlas.Common.Logging.Contract;
+interface
+uses System.SysUtils;
+```
+
+<a id="architecture-contract-content"></a>
+## architecture-contract-content
+
+**Klasse in einer Contract-Unit** · Code Smell · Warnung
+
+Eine Contract-Unit deklariert im interface eine Klasse. Contracts enthalten nur Records, Interfaces, Aufzählungen und Ausnahmen. Standardmäßig aus; in atlas.json mit der Option "prefixes" einschalten. Genehmigte Ausnahmen stehen unter "allow" als "Unit.Typ"-Globs.
+
+Mit Treffer:
+
+```pascal
+unit App.Orders.Contract;
+interface
+type
+  TOrderList = class
+  end;
+```
+
+Richtig:
+
+```pascal
+unit App.Orders.Contract;
+interface
+type
+  IOrderList = interface
+  end;
 ```
 
 <a id="thread-vcl-access"></a>

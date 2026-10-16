@@ -142,6 +142,7 @@ implementation
 
 uses
   Atlas.Common.Lsp.Internals.Namespaces,
+  Atlas.Common.Index.Files,
   System.StrUtils,
   System.RegularExpressions,
   Atlas.Common.Documents.Uris,
@@ -164,12 +165,8 @@ uses
   Atlas.Common.Diagnostics.RequestScope,
   Atlas.Common.Lsp.Internals.Cancellation,
   Atlas.Common.Dfm.FormFiles,
-  Atlas.Common.Editing.DataFieldNames;
-
-function SplitLines(const AText: string): TArray<string>;
-begin
-  Result := TLspDocumentation.SplitLines(AText);
-end;
+  Atlas.Common.Editing.DataFieldNames,
+  Atlas.Text.Lines;
 
 function ComparePositions(const A, B: TTextPosition): Integer;
 begin
@@ -503,7 +500,7 @@ begin
     TRequestDiagnostics.Reason('declarationUnreadable');
     Exit;
   end;
-  Lines := SplitLines(Text);
+  Lines := TTextLines.SplitLines(Text);
   if (Start.Line < 0) or (Start.Line > High(Lines)) then
   begin
     TRequestDiagnostics.Reason('declarationOutOfRange');

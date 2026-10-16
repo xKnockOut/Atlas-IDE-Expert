@@ -13,7 +13,7 @@
 interface
 
 uses
-  Atlas.Common.Rules.Contract,
+  Atlas.Common.Documents.Contract,
   Atlas.Common.Index.Contract,
   Atlas.Common.Editing.SlashCommands,
   Atlas.Common.Editing.CommandSource;
@@ -32,10 +32,10 @@ function IsClassType(ASource: TCommandSource; const AIndex: ISymbolIndex; const 
 function TypePlace(ASource: TCommandSource; const AName: string; out AInTypeSection: Boolean;
   out AReason: string): Boolean;
 /// <summary>Ersetzt die Befehlszeile durch ALines; ohne type-Abschnitt kommt "type" davor.</summary>
-function TypeDeclaration(ASource: TCommandSource; AInTypeSection: Boolean; const ALines: array of string): TRuleEdit;
+function TypeDeclaration(ASource: TCommandSource; AInTypeSection: Boolean; const ALines: array of string): TTextEdit;
 /// <summary>Deklarationen vor "end" der Klasse, Rümpfe hinter ihre letzte Methode.</summary>
 function AddToClass(ASource: TCommandSource; const AClass: TIndexSymbol; const ADeclarations: array of string;
-  const ABodies: string): TArray<TRuleEdit>;
+  const ABodies: string): TArray<TTextEdit>;
 /// <summary>ALines mit dem Zeilenende der Datei verbunden.</summary>
 function Join(ASource: TCommandSource; const ALines: array of string): string;
 /// <summary>Felder von AClass in der Datei.</summary>
@@ -48,7 +48,6 @@ implementation
 uses
   System.SysUtils,
   System.StrUtils,
-  Atlas.Common.Documents.Contract,
   Atlas.Common.Pascal.Contract,
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.Lexer,
@@ -129,7 +128,7 @@ begin
 end;
 
 /// <summary>Ersetzt die Befehlszeile durch ALines; ohne type-Abschnitt kommt "type" davor.</summary>
-function TypeDeclaration(ASource: TCommandSource; AInTypeSection: Boolean; const ALines: array of string): TRuleEdit;
+function TypeDeclaration(ASource: TCommandSource; AInTypeSection: Boolean; const ALines: array of string): TTextEdit;
 var
   Indent, Text: string;
   Index: Integer;
@@ -145,12 +144,12 @@ begin
       Text := Text + Copy(ALines[Index], 2, MaxInt) + ASource.LineBreak
     else
       Text := Text + Indent + ALines[Index] + ASource.LineBreak;
-  Result := TRuleEdit.Create(TTextRange.Create(ASource.Line, 0, ASource.Line + 1, 0), Text);
+  Result := TTextEdit.Create(TTextRange.Create(ASource.Line, 0, ASource.Line + 1, 0), Text);
 end;
 
 { /enum }
 
-function ExecuteEnum(const AContext: TSlashContext; APrefixed: Boolean; out AEdits: TArray<TRuleEdit>;
+function ExecuteEnum(const AContext: TSlashContext; APrefixed: Boolean; out AEdits: TArray<TTextEdit>;
   out AReason: string): Boolean;
 var
   Source: TCommandSource;
@@ -234,7 +233,7 @@ begin
     'TForm', 'TFrame', 'TList', 'TStream']);
 end;
 
-function ExecuteHelper(const AContext: TSlashContext; out AEdits: TArray<TRuleEdit>; out AReason: string): Boolean;
+function ExecuteHelper(const AContext: TSlashContext; out AEdits: TArray<TTextEdit>; out AReason: string): Boolean;
 var
   Source: TCommandSource;
   TypeName, Kind: string;
@@ -266,7 +265,7 @@ end;
 
 /// <summary>Deklarationen vor "end" der Klasse, Rümpfe hinter ihre letzte Methode.</summary>
 function AddToClass(ASource: TCommandSource; const AClass: TIndexSymbol; const ADeclarations: array of string;
-  const ABodies: string): TArray<TRuleEdit>;
+  const ABodies: string): TArray<TTextEdit>;
 var
   EndLine, Index: Integer;
   Indent, Text: string;
@@ -334,7 +333,7 @@ end;
 
 { /singleton }
 
-function ExecuteSingleton(const AContext: TSlashContext; out AEdits: TArray<TRuleEdit>;
+function ExecuteSingleton(const AContext: TSlashContext; out AEdits: TArray<TTextEdit>;
   out AReason: string): Boolean;
 var
   Source: TCommandSource;
@@ -360,7 +359,7 @@ end;
 
 { /encapsulate }
 
-function ExecuteEncapsulate(const AContext: TSlashContext; out AEdits: TArray<TRuleEdit>;
+function ExecuteEncapsulate(const AContext: TSlashContext; out AEdits: TArray<TTextEdit>;
   out AReason: string): Boolean;
 var
   Source: TCommandSource;
@@ -402,7 +401,7 @@ begin
       TSetterGenerator.Body(FieldName, 'Value', TSetterGenerator.NotifyCall(Source, AContext.Index, ClassSymbol),
       Source.LineBreak)]));
     // Alte Deklaration entfernen.
-    AEdits := AEdits + [TRuleEdit.Create(TTextRange.Create(Field.Range.StartPos.Line, 0,
+    AEdits := AEdits + [TTextEdit.Create(TTextRange.Create(Field.Range.StartPos.Line, 0,
       Field.Range.StartPos.Line + 1, 0), ''), Source.RemoveCommand];
     Result := True;
   finally
@@ -419,7 +418,7 @@ begin
     IsClassType(ASource, AIndex, AField.TypeName);
 end;
 
-function ExecuteAssign(const AContext: TSlashContext; out AEdits: TArray<TRuleEdit>; out AReason: string): Boolean;
+function ExecuteAssign(const AContext: TSlashContext; out AEdits: TArray<TTextEdit>; out AReason: string): Boolean;
 var
   Source: TCommandSource;
   ClassSymbol, Field: TIndexSymbol;
@@ -449,13 +448,13 @@ end;
 
 { /json }
 
-function ExecuteJson(const AContext: TSlashContext; out AEdits: TArray<TRuleEdit>; out AReason: string): Boolean;
+function ExecuteJson(const AContext: TSlashContext; out AEdits: TArray<TTextEdit>; out AReason: string): Boolean;
 var
   Source: TCommandSource;
   TypeSymbol, Field: TIndexSymbol;
   Name, Key, ToJson, FromJson, Text: string;
   IsClass: Boolean;
-  UsesEdit: TRuleEdit;
+  UsesEdit: TTextEdit;
 begin
   AEdits := nil;
   Source := TCommandSource.Create(AContext);
@@ -518,7 +517,7 @@ end;
 
 { /exception }
 
-function ExecuteException(const AContext: TSlashContext; out AEdits: TArray<TRuleEdit>;
+function ExecuteException(const AContext: TSlashContext; out AEdits: TArray<TTextEdit>;
   out AReason: string): Boolean;
 var
   Source: TCommandSource;
@@ -551,12 +550,12 @@ end;
 
 { /thread }
 
-function ExecuteThread(const AContext: TSlashContext; out AEdits: TArray<TRuleEdit>; out AReason: string): Boolean;
+function ExecuteThread(const AContext: TSlashContext; out AEdits: TArray<TTextEdit>; out AReason: string): Boolean;
 var
   Source: TCommandSource;
   TypeName: string;
   InTypeSection: Boolean;
-  UsesEdit: TRuleEdit;
+  UsesEdit: TTextEdit;
 begin
   AEdits := nil;
   TypeName := Trim(AContext.Arguments);
@@ -593,12 +592,12 @@ end;
 procedure RegisterTypeCommands(ARegistry: TSlashCommandRegistry);
 begin
   ARegistry.Register(Command('enum', 'Aufzählungstyp mit Präfix anlegen', '/enum TFarbe rot, gruen, blau names',
-    function(const AContext: TSlashContext; out AEdits: TArray<TRuleEdit>; out AReason: string): Boolean
+    function(const AContext: TSlashContext; out AEdits: TArray<TTextEdit>; out AReason: string): Boolean
     begin
       Result := ExecuteEnum(AContext, True, AEdits, AReason);
     end));
   ARegistry.Register(Command('enum!', 'Aufzählungstyp ohne Präfix anlegen', '/enum! TFarbe rot, gruen',
-    function(const AContext: TSlashContext; out AEdits: TArray<TRuleEdit>; out AReason: string): Boolean
+    function(const AContext: TSlashContext; out AEdits: TArray<TTextEdit>; out AReason: string): Boolean
     begin
       Result := ExecuteEnum(AContext, False, AEdits, AReason);
     end));

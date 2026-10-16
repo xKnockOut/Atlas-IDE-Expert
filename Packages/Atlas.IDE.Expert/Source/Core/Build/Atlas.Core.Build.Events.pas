@@ -34,6 +34,14 @@ type
     OutputFile: string;
     /// <summary>Eigene Hintergrundprüfung von Atlas (#548), kein Build des Benutzers.</summary>
     Background: Boolean;
+    /// <summary>Wer den Build angestoßen hat: '' = Benutzer, "mcp" = Claude Code über build_project (#261).
+    /// </summary>
+    RequestedBy: string;
+    /// <summary>Dauer des Compiles in ms (#758); setzt nur der Leser des Meldungsfensters nach dem Ende, sonst 0.
+    /// </summary>
+    DurationMs: Int64;
+    /// <summary>Dauer des ganzen Laufs (Gruppe) in ms (#758); 0 = unbekannt.</summary>
+    GroupDurationMs: Int64;
   end;
 
   /// <summary>Teilnehmer an den Compile-Ereignissen; alle Methoden sind optional.</summary>
@@ -69,6 +77,7 @@ type
     FCodeInsightCount: Integer;
     FCodeInsightMs: Int64;
     FBackground: Boolean;
+    FRequestedBy: string;
     function Now_: Int64;
     function RunningIndex(const AFileName: string): Integer;
     procedure Notify(const AMethod: string; AParams: TJSONObject);
@@ -91,6 +100,8 @@ type
     property CodeInsightMs: Int64 read FCodeInsightMs;
     /// <summary>Solange True, sind beginnende Läufe Atlas-eigene Hintergrundprüfungen (#548).</summary>
     property Background: Boolean read FBackground write FBackground;
+    /// <summary>Solange gesetzt, tragen beginnende Läufe diesen Auftraggeber (#261), z. B. "mcp".</summary>
+    property RequestedBy: string read FRequestedBy write FRequestedBy;
     property OnNotify: TAtlasNotifyProc read FOnNotify write FOnNotify;
     property OnLog: TAtlasTextProc read FOnLog write FOnLog;
   end;
@@ -313,6 +324,8 @@ begin
     Result.AddPair('output', AProject.OutputFile);
   if AProject.Background then
     Result.AddPair('background', TJSONBool.Create(True));
+  if AProject.RequestedBy <> '' then
+    Result.AddPair('requestedBy', AProject.RequestedBy);
 end;
 
 procedure TAtlasCompileEvents.ProjectStarted(const AProject: TAtlasCompileProject);
@@ -324,6 +337,7 @@ begin
     Exit;
   Running.Project := AProject;
   Running.Project.Background := FBackground;
+  Running.Project.RequestedBy := FRequestedBy;
   Running.Started := Now_;
   FRunning.Add(Running);
   for Participant in FParticipants do

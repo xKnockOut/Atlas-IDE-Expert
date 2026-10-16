@@ -68,6 +68,7 @@ implementation
 
 uses
   Atlas.Common.Lsp.Internals.Namespaces,
+  System.Generics.Collections,
   Atlas.Common.Documents.Uris,
   Atlas.Common.Lsp.Positions,
   Atlas.Common.Lsp.Definition,
@@ -144,38 +145,49 @@ var
   Name: string;
   Wanted, Candidate: TArray<TDefinitionTarget>;
   Highlight: TDocumentHighlight;
+  Found: TList<TDocumentHighlight>;
 begin
   Result := nil;
   Tokens := ATree.Tokens;
   Index := TokenAt(Tokens, APosition);
   if Index < 0 then
     Exit;
-  Wanted := TLspDefinition.Targets(AResolver, AIndex, ATree, AFileName, APosition, True);
-  if Length(Wanted) = 0 then
-    Exit;
-  Name := CleanName(Tokens[Index].Text);
-  for Index := 0 to High(Tokens) do
-  begin
-    if (Tokens[Index].Kind <> TPascalTokenKind.Identifier) or not SameText(CleanName(Tokens[Index].Text), Name) then
-      Continue;
-    if ACancellation <> nil then
-      ACancellation.ThrowIfCancellationRequested;
-    Candidate := TLspDefinition.Targets(AResolver, AIndex, ATree, AFileName, Tokens[Index].StartPos, True);
-    if (Length(Candidate) = 0) or not SameTarget(Candidate[0], Wanted[0]) then
-      Continue;
-    Highlight.Range := TTextRange.Create(Tokens[Index].StartPos, Tokens[Index].EndPos);
-    if SameText(Wanted[0].FileName, AFileName) and (Wanted[0].SelectionRange.StartPos = Tokens[Index].StartPos) then
-      Highlight.Kind := THighlightKind.Text
-    else
+  Found := TList<TDocumentHighlight>.Create;
+  // Den Baum einmal auswerten statt je Vorkommen (Code-Review P-01).
+  AResolver.PinTree(ATree, AFileName);
+  try
+    Wanted := TLspDefinition.Targets(AResolver, AIndex, ATree, AFileName, APosition, True);
+    if Length(Wanted) = 0 then
+      Exit;
+    Name := CleanName(Tokens[Index].Text);
+    for Index := 0 to High(Tokens) do
     begin
-      Highlight.Kind := THighlightKind.Read;
-      Next := Index + 1;
-      while (Next <= High(Tokens)) and (Tokens[Next].Kind in [TPascalTokenKind.Comment, TPascalTokenKind.Directive]) do
-        Inc(Next);
-      if (Next <= High(Tokens)) and (Tokens[Next].Kind = TPascalTokenKind.Symbol) and (Tokens[Next].Text = ':=') then
-        Highlight.Kind := THighlightKind.Write;
+      if (Tokens[Index].Kind <> TPascalTokenKind.Identifier) or not SameText(CleanName(Tokens[Index].Text), Name) then
+        Continue;
+      if ACancellation <> nil then
+        ACancellation.ThrowIfCancellationRequested;
+      Candidate := TLspDefinition.Targets(AResolver, AIndex, ATree, AFileName, Tokens[Index].StartPos, True);
+      if (Length(Candidate) = 0) or not SameTarget(Candidate[0], Wanted[0]) then
+        Continue;
+      Highlight.Range := TTextRange.Create(Tokens[Index].StartPos, Tokens[Index].EndPos);
+      if SameText(Wanted[0].FileName, AFileName) and (Wanted[0].SelectionRange.StartPos = Tokens[Index].StartPos) then
+        Highlight.Kind := THighlightKind.Text
+      else
+      begin
+        Highlight.Kind := THighlightKind.Read;
+        Next := Index + 1;
+        while (Next <= High(Tokens)) and (Tokens[Next].Kind in [TPascalTokenKind.Comment, TPascalTokenKind.Directive]) do
+          Inc(Next);
+        if (Next <= High(Tokens)) and (Tokens[Next].Kind = TPascalTokenKind.Symbol) and (Tokens[Next].Text = ':=') then
+          Highlight.Kind := THighlightKind.Write;
+      end;
+      // Liste statt Result := Result + [...] (Code-Review P-08).
+      Found.Add(Highlight);
     end;
-    Result := Result + [Highlight];
+    Result := Found.ToArray;
+  finally
+    AResolver.UnpinTree;
+    Found.Free;
   end;
 end;
 
@@ -194,7 +206,7 @@ var
   Item: TJSONObject;
   Settings: THighlightSettings;
   Ranges: TArray<TTextRange>;
-  Range: TTextRange;
+  Index: Integer;
 begin
   if not ((AParams is TJSONObject) and TJSONObject(AParams).TryGetValue<string>('textDocument.uri', Uri) and
     TJSONObject(AParams).TryGetValue<TJSONValue>('position', PositionValue)) then
@@ -214,12 +226,11 @@ begin
     Settings := THighlightSettings.Default;
   if TKeywordHighlights.Find(Tree, TLspPositions.ReadPosition(PositionValue), Settings, Ranges) then
   begin
-    Found := nil;
-    for Range in Ranges do
+    SetLength(Found, Length(Ranges));
+    for Index := 0 to High(Ranges) do
     begin
-      Highlight.Range := Range;
-      Highlight.Kind := THighlightKind.Text;
-      Found := Found + [Highlight];
+      Found[Index].Range := Ranges[Index];
+      Found[Index].Kind := THighlightKind.Text;
     end;
   end
   else

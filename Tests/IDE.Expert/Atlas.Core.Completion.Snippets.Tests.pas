@@ -32,6 +32,8 @@ type
     [Test]
     procedure FormatRoundTrips;
     [Test]
+    procedure ContextForGenerateMenu;
+    [Test]
     procedure ParsesPostfixSnippets;
     [Test]
     procedure SendsPostfixSnippetsToServer;
@@ -63,6 +65,9 @@ type
     procedure ReadsDelphi12Folder;
     [Test]
     procedure ConvertsPointsAndMarkers;
+    /// <summary>Numerische Entities wie im Server (Atlas.Text.Entities, D-03).</summary>
+    [Test]
+    procedure DecodesNumericEntities;
     [Test]
     procedure KeepsFixedPointsAndEscapesDollar;
     [Test]
@@ -559,6 +564,44 @@ begin
   Assert.AreEqual('a_b.atlas-snippet', TAtlasSnippets.FileNameFor('a\b'));
 end;
 
+procedure TAtlasSnippetsTests.ContextForGenerateMenu;
+var
+  Snippet, Parsed: TAtlasSnippet;
+  Error: string;
+begin
+  // Kontext für das Erzeugen-Menü (#719, Kontext aus #665).
+  Assert.IsTrue(TAtlasSnippets.Parse('prefix: lg'#10'context: statement, class'#10'---'#10'Log;', '', Snippet, Error),
+    Error);
+  Assert.AreEqual('statement, class', Snippet.Context);
+  Assert.IsTrue(TAtlasSnippets.Parse(TAtlasSnippets.ToFileText(Snippet), '', Parsed, Error), Error);
+  Assert.AreEqual('statement, class', Parsed.Context);
+  Assert.IsFalse(TAtlasSnippets.Parse('prefix: lg'#10'context: irgendwo'#10'---'#10'Log;', '', Snippet, Error));
+  Assert.Contains(Error, 'irgendwo');
+  // Ohne Kontext überall, statement nur in Routinen, declaration nicht im Rumpf.
+  Assert.IsTrue(TAtlasSnippets.FitsContext('', ['class']));
+  Assert.IsTrue(TAtlasSnippets.FitsContext('any', []));
+  Assert.IsTrue(TAtlasSnippets.FitsContext('statement', ['routine', 'class']));
+  Assert.IsFalse(TAtlasSnippets.FitsContext('statement', ['class']));
+  Assert.IsTrue(TAtlasSnippets.FitsContext('declaration', ['interface']));
+  Assert.IsTrue(TAtlasSnippets.FitsContext('declaration', ['class']));
+  Assert.IsFalse(TAtlasSnippets.FitsContext('declaration', ['routine', 'class']));
+  Assert.IsTrue(TAtlasSnippets.FitsContext('implementation, class', ['implementation']));
+  Assert.IsFalse(TAtlasSnippets.FitsContext('class', ['record']));
+  // Mitgelieferte Vorlagen haben einen Kontext.
+  for Snippet in TAtlasSnippets.BuiltIn do
+    Assert.IsTrue(Snippet.Context <> '', Snippet.Prefix);
+  // Dateivorlage (#759): Kopf "file:", nur unit, form oder test; bleibt beim Speichern erhalten.
+  Assert.IsTrue(TAtlasSnippets.Parse('prefix: svc'#10'file: Unit'#10'---'#10'unit %Unit%;', '', Snippet, Error), Error);
+  Assert.AreEqual('unit', Snippet.FileKind);
+  Assert.IsTrue(TAtlasSnippets.Parse(TAtlasSnippets.ToFileText(Snippet), '', Parsed, Error), Error);
+  Assert.AreEqual('unit', Parsed.FileKind);
+  Assert.IsFalse(TAtlasSnippets.Parse('prefix: svc'#10'file: paket'#10'---'#10'x', '', Snippet, Error));
+  Assert.Contains(Error, 'paket');
+  Assert.AreEqual(1, Integer(Length(TAtlasSnippets.FileTemplates([Parsed] + TAtlasSnippets.BuiltIn))));
+  Assert.AreEqual(Length(TAtlasSnippets.BuiltIn), Length(TAtlasSnippets.WithoutFileTemplates([Parsed] +
+    TAtlasSnippets.BuiltIn)));
+end;
+
 procedure TAtlasSnippetsTests.ParsesPostfixSnippets;
 var
   Snippet, Parsed: TAtlasSnippet;
@@ -844,6 +887,19 @@ begin
   Assert.AreEqual('for ${1:I} := 0 to ${2:N} do'#10'begin'#10'  $0'#10'  X(${1});'#10'end;', Snippet.Body);
   Expansion := TAtlasSnippets.Expand(Snippet.Body, '', #10);
   Assert.AreEqual('for I := 0 to N do'#10'begin'#10'  '#10'  X(I);'#10'end;', Expansion.Text);
+end;
+
+procedure TAtlasLiveTemplatesTests.DecodesNumericEntities;
+var
+  List: TAtlasSnippetList;
+  Stats: TAtlasLiveTemplateStats;
+begin
+  Stats := Default(TAtlasLiveTemplateStats);
+  List := TAtlasLiveTemplates.Parse('<codetemplate><template name="e"><point name="v"><text>&#228;&#x20AC;&lt;' +
+    '</text></point><code language="Delphi" delimiter="|"><![CDATA[X := |v|;]]></code></template></codetemplate>',
+    '', Stats);
+  Assert.AreEqual(1, Integer(Length(List)));
+  Assert.AreEqual('X := ${1:'#$00E4#$20AC'<};', List[0].Body);
 end;
 
 procedure TAtlasLiveTemplatesTests.KeepsFixedPointsAndEscapesDollar;

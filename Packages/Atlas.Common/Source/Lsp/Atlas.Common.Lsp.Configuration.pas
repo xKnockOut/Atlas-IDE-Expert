@@ -84,7 +84,10 @@ type
     /// Arbeitsbereichs und nicht im Editor geöffnet, wird sie neu gelesen (True).</summary>
     function FileChanged(const AFileName: string): Boolean;
     /// <summary>Liest atlas.json aus ARootPath; ohne Datei gelten die Vorgaben.</summary>
-    procedure LoadWorkspace(const ARootPath: string);
+    procedure LoadWorkspace(const ARootPath: string); overload;
+    /// <summary>Wie LoadWorkspace(ARootPath), setzt vorher die globale Datei AGlobalText ohne eigene
+    /// Neuberechnung; OnChanged kommt so nur einmal (MCP-Modus, D-08).</summary>
+    procedure LoadWorkspace(const ARootPath, AGlobalText: string); overload;
     /// <summary>Wurzelordner aus den initialize-Parametern (rootUri, workspaceFolders, rootPath); sonst ''.</summary>
     class function RootPathFromInitialize(const AParams: TJSONObject): string; static;
     /// <summary>Abschnitt atlas aus den Parametern von didChangeConfiguration als JSON; sonst ''.</summary>
@@ -314,6 +317,12 @@ begin
   else
     FFileText := '';
   Recompute;
+end;
+
+procedure TLspConfiguration.LoadWorkspace(const ARootPath, AGlobalText: string);
+begin
+  FGlobalText := AGlobalText;
+  LoadWorkspace(ARootPath);
 end;
 
 procedure TLspConfiguration.LoadWorkspace(const ARootPath: string);

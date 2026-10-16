@@ -4,7 +4,8 @@
 // letzter Indexlauf je Ordner und Antwortzeiten je Methode. Als JSON für
 // Werkzeuge und als Markdown zum Anzeigen. Seit #492 auch die Größe der
 // Caches auf der Platte, die letzte Aktualisierung je Ordner und die Zahl der
-// Units mit ausgelagerten Verwendungen (Einstellungsseite des Plugins).
+// Units mit ausgelagerten Verwendungen (Einstellungsseite des Plugins); seit
+// #261 der Weg zum Compiler und, wenn keiner nutzbar ist, Grund und Ausweg.
 
 interface
 
@@ -50,6 +51,12 @@ type
     DocumentBytes: Int64;
     Workspaces: TArray<TWorkspaceStatus>;
     Requests: TArray<TMethodStatistics>;
+    /// <summary>Zeile zum Compiler (#261), z. B. „Compiler: nicht verfügbar (Starter Edition)“; '' = keine.</summary>
+    Compiler: string;
+    /// <summary>Gewählter Weg: "dcc", "ide", "off"; '' = noch nicht geprüft.</summary>
+    CompilerBackend: string;
+    /// <summary>Grund und Ausweg, wenn kein Compiler nutzbar ist; sonst ''.</summary>
+    CompilerReason: string;
     /// <summary>Der Aufrufer übernimmt das Objekt; enthält zusätzlich "markdown".</summary>
     function ToJson: TJSONObject;
     function ToMarkdown: string;
@@ -101,6 +108,12 @@ begin
     Builder.Append(#10);
     Builder.Append('- Caches auf der Platte: ').Append(MegaBytes(DiskBytes)).Append(#10);
     Builder.Append('- davon geöffnete Dokumente: ').Append(MegaBytes(DocumentBytes)).Append(#10);
+    if Compiler <> '' then
+    begin
+      Builder.Append('- ').Append(Compiler).Append(#10);
+      if CompilerReason <> '' then
+        Builder.Append('  ').Append(CompilerReason).Append(#10);
+    end;
     for Workspace in Workspaces do
       if Workspace.LastIndexMs < 0 then
         Builder.Append(Format('- %s: Index wird aufgebaut', [Workspace.Name])).Append(#10)
@@ -171,6 +184,14 @@ begin
     Items.AddElement(Item);
   end;
   Result.AddPair('requests', Items);
+  if Compiler <> '' then
+  begin
+    Item := TJSONObject.Create;
+    Item.AddPair('status', Compiler);
+    Item.AddPair('backend', CompilerBackend);
+    Item.AddPair('reason', CompilerReason);
+    Result.AddPair('compiler', Item);
+  end;
   Result.AddPair('markdown', ToMarkdown);
 end;
 

@@ -54,6 +54,9 @@ type
 
 implementation
 
+uses
+  Atlas.Text.Lines;
+
 function Compare(const A, B: TTextPosition): Integer;
 begin
   Result := A.Line - B.Line;
@@ -98,22 +101,6 @@ begin
     Result := Copy(AText, 2, MaxInt)
   else
     Result := AText;
-end;
-
-/// <summary>Führender Leerraum der Zeile ALine.</summary>
-function IndentOf(const AText: string; ALine: Integer): string;
-var
-  Lines: TArray<string>;
-  Index: Integer;
-begin
-  Result := '';
-  Lines := AText.Replace(#13#10, #10).Split([#10]);
-  if (ALine < 0) or (ALine > High(Lines)) then
-    Exit;
-  Index := 1;
-  while (Index <= Length(Lines[ALine])) and CharInSet(Lines[ALine][Index], [' ', #9]) do
-    Inc(Index);
-  Result := Copy(Lines[ALine], 1, Index - 1);
 end;
 
 /// <summary>Breite von AIndent, Tabulator als zwei Zeichen.</summary>
@@ -241,7 +228,7 @@ begin
   if (OfIndex > Index) or not ATokens[OfIndex].IsKeyword('of') then
     Exit;
   ASlot.CasePos := ATokens[CaseIndex].StartPos;
-  ASlot.CaseIndent := IndentOf(AText, ATokens[CaseIndex].StartPos.Line);
+  ASlot.CaseIndent := TTextLines.IndentOf(AText, ATokens[CaseIndex].StartPos.Line);
   // Vorwärts bis zum "end" der case-Anweisung: Marken sammeln, else-Teil erkennen.
   Depth := 0;
   Parens := 0;
@@ -259,7 +246,7 @@ begin
       if ATokens[Index].IsKeyword('end') then
       begin
         // Links von der case-Zeile: "end" des umgebenden Blocks, das eigene fehlt.
-        ASlot.HasEnd := Width(IndentOf(AText, ATokens[Index].StartPos.Line)) >= Width(ASlot.CaseIndent);
+        ASlot.HasEnd := Width(TTextLines.IndentOf(AText, ATokens[Index].StartPos.Line)) >= Width(ASlot.CaseIndent);
         Break;
       end;
       if IsKeywordIn(ATokens[Index], ['until', 'except', 'finally', 'procedure', 'function', 'constructor',
@@ -323,7 +310,7 @@ begin
   // Einrückung wie die vorhandenen Zweige, sonst eine Ebene tiefer als case.
   if (FirstLabel >= 0) and (Prev(ATokens, FirstLabel) >= 0) and
     (ATokens[Prev(ATokens, FirstLabel)].EndPos.Line < ATokens[FirstLabel].StartPos.Line) then
-    ASlot.BranchIndent := IndentOf(AText, ATokens[FirstLabel].StartPos.Line)
+    ASlot.BranchIndent := TTextLines.IndentOf(AText, ATokens[FirstLabel].StartPos.Line)
   else
     ASlot.BranchIndent := ASlot.CaseIndent + '  ';
   if Prefix >= 0 then

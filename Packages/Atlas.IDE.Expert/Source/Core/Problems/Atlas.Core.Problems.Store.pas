@@ -17,6 +17,11 @@
 // neu aufbauen.
 // Inaktive {$IFDEF}-Zweige (#615) liefert InactiveSpans je Zeile als Spalten
 // des Editors, auch für Zweige, die innerhalb einer Zeile beginnen oder enden.
+// Fehlgeschlagene Tests (#69) stehen als dritte Art neben Atlas- und
+// Compilermeldungen (Quelle "DUnitX"): SetTests ersetzt die eines Testlaufs,
+// Update des Servers lässt sie stehen, Edit führt sie wie Atlas-Meldungen mit.
+// Eine Datei nur mit Tests gilt nicht als vom Server geprüft (Contains,
+// AllFiles).
 
 interface
 
@@ -39,6 +44,9 @@ type
   end;
 
   TAtlasProblemStore = class
+  public const
+    /// <summary>Quelle der Meldungen fehlgeschlagener Tests (#69).</summary>
+    TestSource = 'DUnitX';
   private type
     TEntry = class
       FileName: string;
@@ -47,6 +55,10 @@ type
       ResultId: string;
       Atlas: TArray<TAtlasProblem>;
       Compiler: TArray<TAtlasProblem>;
+      /// <summary>Fehlgeschlagene Tests des letzten Laufs (#69).</summary>
+      Tests: TArray<TAtlasProblem>;
+      /// <summary>Diagnosen des Servers kamen schon (Update); False bei einer Datei nur mit Tests.</summary>
+      FromServer: Boolean;
       // ForFile bzw. Inactive, bis sich etwas ändert.
       Visible: TArray<TAtlasProblem>;
       VisibleValid: Boolean;
@@ -73,6 +85,12 @@ type
     procedure Edit(const AFileName, ANewText: string);
     procedure Remove(const AFileName: string);
     procedure Clear;
+    /// <summary>Fehlgeschlagene Tests eines Laufs (#69): ersetzt die Tests aller Dateien. AProblems je Datei;
+    /// Positionen beziehen sich auf den Text der Platte bzw. den bekannten Text.</summary>
+    procedure SetTests(const AProblems: TArray<TPair<string, TAtlasProblem>>);
+    /// <summary>Tests aller Dateien entfernen.</summary>
+    procedure ClearTests;
+    /// <summary>Hat der Server die Datei schon geliefert? Dateien nur mit Tests zählen nicht.</summary>
     function Contains(const AFileName: string): Boolean;
     function ResultId(const AFileName: string): string;
     /// <summary>Probleme der Datei ohne inaktive Bereiche und ohne Doppelte, nach Position.</summary>
@@ -108,7 +126,8 @@ implementation
 uses
   System.Math,
   System.Generics.Defaults,
-  Atlas.Core.Editor.Pairs;
+  Atlas.Core.Editor.Pairs,
+  Atlas.Text.Diff;
 
 { TAtlasColumnSpan }
 
@@ -182,7 +201,9 @@ var
   Problem: TAtlasProblem;
   Compiler: TArray<TAtlasProblem>;
 begin
-  IsNew := Find(AFileName) = nil;
+  // Eine Datei, die bisher nur Tests hatte, ist für den Server neu.
+  Entry := Find(AFileName);
+  IsNew := (Entry = nil) or not Entry.FromServer;
   Entry := Ensure(AFileName);
   // Behaltene Compilermeldungen auf den neuen Text bringen.
   if not IsNew and Entry.TextKnown and ATextKnown and (Entry.Text <> AText) then
@@ -200,6 +221,7 @@ begin
   Entry.LinesValid := False;
   Entry.TextKnown := ATextKnown;
   Entry.ResultId := AResultId;
+  Entry.FromServer := True;
   Entry.VisibleValid := False;
   Entry.InactiveValid := False;
   Inc(FVersion);
@@ -231,19 +253,15 @@ var
 begin
   OldLines := AEntry.Text.Split([#10]);
   NewLines := ANewText.Split([#10]);
-  Prefix := 0;
-  while (Prefix < Length(OldLines)) and (Prefix < Length(NewLines)) and (OldLines[Prefix] = NewLines[Prefix]) do
-    Inc(Prefix);
-  Suffix := 0;
-  while (Suffix < Length(OldLines) - Prefix) and (Suffix < Length(NewLines) - Prefix) and
-    (OldLines[High(OldLines) - Suffix] = NewLines[High(NewLines) - Suffix]) do
-    Inc(Suffix);
+  TTextDiff.CommonPrefixSuffix(OldLines, NewLines, Prefix, Suffix);
   ChangedEnd := Length(OldLines) - Suffix;
   Delta := Length(NewLines) - Length(OldLines);
   for Index := 0 to High(AEntry.Atlas) do
     Map(AEntry.Atlas[Index], False);
   for Index := 0 to High(AEntry.Compiler) do
     Map(AEntry.Compiler[Index], True);
+  for Index := 0 to High(AEntry.Tests) do
+    Map(AEntry.Tests[Index], False);
   AEntry.Text := ANewText;
   AEntry.LinesValid := False;
   AEntry.VisibleValid := False;
@@ -374,8 +392,54 @@ begin
 end;
 
 function TAtlasProblemStore.Contains(const AFileName: string): Boolean;
+var
+  Entry: TEntry;
 begin
-  Result := Find(AFileName) <> nil;
+  Entry := Find(AFileName);
+  Result := (Entry <> nil) and Entry.FromServer;
+end;
+
+procedure TAtlasProblemStore.ClearTests;
+var
+  Entry: TEntry;
+  Emptied: TArray<string>;
+  FileName: string;
+  Changed: Boolean;
+begin
+  Changed := False;
+  Emptied := nil;
+  for Entry in FEntries.Values do
+    if Length(Entry.Tests) > 0 then
+    begin
+      Entry.Tests := nil;
+      Entry.VisibleValid := False;
+      Changed := True;
+      if not Entry.FromServer then
+        Emptied := Emptied + [Entry.FileName];
+    end;
+  for FileName in Emptied do
+    FEntries.Remove(Key(FileName));
+  if Changed then
+    Inc(FVersion);
+end;
+
+procedure TAtlasProblemStore.SetTests(const AProblems: TArray<TPair<string, TAtlasProblem>>);
+var
+  Item: TPair<string, TAtlasProblem>;
+  Entry: TEntry;
+  Problem: TAtlasProblem;
+begin
+  ClearTests;
+  for Item in AProblems do
+  begin
+    Entry := Ensure(Item.Key);
+    Problem := Item.Value;
+    Problem.Source := TestSource;
+    Entry.Tests := Entry.Tests + [Problem];
+    Entry.VisibleValid := False;
+  end;
+  if Length(AProblems) > 0 then
+    Inc(FVersion);
 end;
 
 function TAtlasProblemStore.ResultId(const AFileName: string): string;
@@ -432,7 +496,7 @@ begin
   if Entry.VisibleValid then
     Exit(Entry.Visible);
   Visible := nil;
-  for Problem in Entry.Compiler + Entry.Atlas do
+  for Problem in Entry.Compiler + Entry.Atlas + Entry.Tests do
   begin
     if Problem.Unnecessary then
       Continue;
@@ -484,7 +548,8 @@ var
 begin
   Result := nil;
   for Entry in FEntries.Values do
-    Result := Result + [Entry.FileName];
+    if Entry.FromServer then
+      Result := Result + [Entry.FileName];
   TArray.Sort<string>(Result, TComparer<string>.Construct(
     function(const A, B: string): Integer
     begin

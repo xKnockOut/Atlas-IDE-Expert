@@ -24,6 +24,8 @@ uses
 
 type
   TAtlasIdeUndoTarget = class(TInterfacedObject, IAtlasUndoTarget)
+  private class var
+    FDiskFactory: TAtlasUndoDiskFactory;
   private
     FDisk: IAtlasUndoTarget;
     class procedure WriteBuffer(const ABuffer: IOTAEditBuffer; const AOld, ANew: string); static;
@@ -37,6 +39,8 @@ type
     procedure RemoveFile(const AFileName, AProject: string; AMode: TAtlasNewFilesMode);
     /// <summary>Datei in den Papierkorb; EInOutError, wenn das nicht geht.</summary>
     class procedure Recycle(const AFileName: string); static;
+    /// <summary>Legt das Plattenziel an; setzt die Kompositionswurzel (TAtlasUndoDiskTarget).</summary>
+    class property DiskFactory: TAtlasUndoDiskFactory read FDiskFactory write FDiskFactory;
   end;
 
 implementation
@@ -46,21 +50,19 @@ uses
   Winapi.ShellAPI,
   Atlas.Core.Lsp.TextChanges,
   Atlas.Core.Forms.Changes,
-  Atlas.Core.Undo.Adapters.DiskTarget,
-  Atlas.IDE.Editor.Buffer,
-  Atlas.IDE.Editor.WorkspaceEdit,
-  Atlas.IDE.Forms.Designer;
+  Atlas.IDE.Foundation.EditorBuffer,
+  Atlas.IDE.Foundation.EditorSnapshot,
+  Atlas.IDE.Forms.Designer,
+  Atlas.IDE.Foundation.Files;
 
 { TAtlasIdeUndoTarget }
 
 constructor TAtlasIdeUndoTarget.Create;
 var
-  Disk: TAtlasUndoDiskTarget;
+  Hooks: TAtlasUndoDiskHooks;
 begin
   inherited Create;
-  Disk := TAtlasUndoDiskTarget.Create;
-  FDisk := Disk;
-  Disk.OnAddToProject :=
+  Hooks.OnAddToProject :=
     procedure(const AFileName, AProject: string)
     var
       Project: IOTAProject;
@@ -69,7 +71,7 @@ begin
       if Project <> nil then
         Project.AddFile(AFileName, SameText(ExtractFileExt(AFileName), '.pas'));
     end;
-  Disk.OnRemoveFromProject :=
+  Hooks.OnRemoveFromProject :=
     procedure(const AFileName, AProject: string)
     var
       Project: IOTAProject;
@@ -78,18 +80,21 @@ begin
       if Project <> nil then
         Project.RemoveFile(AFileName);
     end;
-  Disk.OnRecycle :=
+  Hooks.OnRecycle :=
     procedure(AFileName: string)
     begin
       Recycle(AFileName);
     end;
+  if not Assigned(FDiskFactory) then
+    raise EInvalidOpError.Create('Atlas: Plattenziel des Änderungsprotokolls nicht eingesetzt.');
+  FDisk := FDiskFactory(Hooks);
 end;
 
 class function TAtlasIdeUndoTarget.ProjectOf(const AProject: string): IOTAProject;
 begin
   Result := nil;
   if AProject <> '' then
-    Supports(TAtlasIdeWorkspaceEdit.ProjectModule(AProject), IOTAProject, Result);
+    Supports(TAtlasIdeFiles.ProjectModule(AProject), IOTAProject, Result);
 end;
 
 function TAtlasIdeUndoTarget.Read(const AFileName: string; out AContent: TAtlasTextFileContent): Boolean;
@@ -97,19 +102,19 @@ var
   Buffer: IOTAEditBuffer;
   Text: string;
 begin
-  if not TAtlasIdeWorkspaceEdit.IsProjectFile(AFileName) then
+  if not TAtlasIdeFiles.IsProjectFile(AFileName) then
   begin
-    Buffer := TAtlasIdeWorkspaceEdit.BufferOf(AFileName);
+    Buffer := TAtlasIdeFiles.BufferOf(AFileName);
     if Buffer <> nil then
     begin
-      AContent := TAtlasIdeWorkspaceEdit.DiskEncoding(AFileName);
+      AContent := TAtlasIdeFiles.DiskEncoding(AFileName);
       AContent.Text := TAtlasEditorBuffer.Text(Buffer);
       Exit(True);
     end;
     // Formular im Designer: der Stand des Designers, nicht die Datei.
     if TAtlasIdeForms.CurrentText(AFileName, Text) then
     begin
-      AContent := TAtlasIdeWorkspaceEdit.DiskEncoding(AFileName);
+      AContent := TAtlasIdeFiles.DiskEncoding(AFileName);
       AContent.Text := Text;
       Exit(True);
     end;
@@ -133,6 +138,8 @@ begin
   if Change.Text <> '' then
     Writer.Insert(PAnsiChar(UTF8Encode(Change.Text)));
   Writer := nil;
+  // Eigener Schreibvorgang: gemeinsamen Pufferstand verwerfen (P-04).
+  TAtlasEditorSnapshots.Invalidate(ABuffer.FileName);
 end;
 
 procedure TAtlasIdeUndoTarget.Write(const AFileName: string; const AContent: TAtlasTextFileContent);
@@ -143,18 +150,18 @@ var
   Old, Reason: string;
   FormChanges: TArray<TAtlasFormEventChange>;
 begin
-  if TAtlasIdeWorkspaceEdit.IsProjectFile(AFileName) then
+  if TAtlasIdeFiles.IsProjectFile(AFileName) then
   begin
     // Projektdatei: nie als Text; ungespeicherte Projektänderungen nicht verwerfen.
-    Module := TAtlasIdeWorkspaceEdit.ProjectModule(AFileName);
-    if (Module <> nil) and TAtlasIdeWorkspaceEdit.ProjectModified(Module) then
+    Module := TAtlasIdeFiles.ProjectModule(AFileName);
+    if (Module <> nil) and TAtlasIdeFiles.ProjectModified(Module) then
       raise EInOutError.Create('Projekt hat ungespeicherte Änderungen; bitte erst speichern');
     FDisk.Write(AFileName, AContent);
     if (Module <> nil) and Supports(BorlandIDEServices, IOTAActionServices, Actions) then
       Actions.ReloadFile(AFileName);
     Exit;
   end;
-  Buffer := TAtlasIdeWorkspaceEdit.BufferOf(AFileName);
+  Buffer := TAtlasIdeFiles.BufferOf(AFileName);
   if Buffer <> nil then
   begin
     if Buffer.IsReadOnly then

@@ -21,7 +21,8 @@ interface
 
 uses
   System.SysUtils,
-  System.Generics.Collections;
+  System.Generics.Collections,
+  System.RegularExpressions;
 
 type
   TDiagnosticIdKind = (Project, Document, UnitFile);
@@ -66,6 +67,10 @@ type
     FNames: TDictionary<string, Integer>;
     FValues: TDictionary<string, Integer>;
     FIdentity: TArray<string>;
+    // Muster einmal übersetzt (Code-Review P-11): vorher je Logzeile vier und je Wert zwei neu. TRegEx ist
+    // nicht threadsicher; alle Zugriffe laufen unter FLock (Anonymize).
+    FQuoted, FPath, FBackslash, FWord, FNumber, FMethod, FExtension, FDrive: TRegEx;
+    function LooksLikePath(const AText: string): Boolean;
     function NameLabel(const AName: string): string;
     function PathLabel(const APath: string): string;
     function QuotedLabel(const AInner: string): string;
@@ -105,7 +110,7 @@ implementation
 uses
   System.StrUtils,
   System.NetEncoding,
-  System.RegularExpressions;
+  Atlas.Text.Chars;
 
 const
   IdPrefixes: array[TDiagnosticIdKind] of string = ('proj', 'doc', 'unit');
@@ -251,18 +256,15 @@ begin
   Result := CharInSet(ACh, ['A'..'Z', 'a'..'z']);
 end;
 
-function IsWordChar(ACh: Char): Boolean;
-begin
-  Result := CharInSet(ACh, ['A'..'Z', 'a'..'z', '0'..'9', '_']);
-end;
-
 /// <summary>Einzelner Buchstabe als ganzes Wort vor einem Doppelpunkt, z. B. "C:".</summary>
 function HasDriveLetter(const ALine: string): Boolean;
 var
   Index: Integer;
 begin
   for Index := 1 to Length(ALine) - 1 do
-    if (ALine[Index + 1] = ':') and IsLetter(ALine[Index]) and ((Index = 1) or not IsWordChar(ALine[Index - 1])) then
+    // Bewusst ASCII: Ein Umlaut davor hebt die Erkennung nicht auf, im Zweifel gilt die Zeile als Pfad.
+    if (ALine[Index + 1] = ':') and IsLetter(ALine[Index]) and
+      ((Index = 1) or not TTextChars.IsAsciiIdentChar(ALine[Index - 1])) then
       Exit(True);
   Result := False;
 end;
@@ -309,28 +311,38 @@ const
   NumberPattern = '^[0-9.,:%+\s-]*$';
   // LSP-Methoden wie textDocument/hover oder $/progress.
   MethodPattern = '^\$?[A-Za-z]*(/[A-Za-z$]+)+$';
+  ExtensionPattern = '^\.[a-z0-9]{1,8}$';
+  DrivePattern = '^[A-Za-z]:[\\/]';
 
 type
   TMatchMap = reference to function(const AMatch: string): string;
 
-function ReplaceMatches(const AText, APattern: string; const AMap: TMatchMap): string;
+function ReplaceMatches(const AText: string; const ARegEx: TRegEx; const AMap: TMatchMap): string;
 var
   Match: TMatch;
   Last: Integer;
+  Builder: TStringBuilder;
 begin
-  Result := '';
-  Last := 1;
-  for Match in TRegEx.Matches(AText, APattern) do
-  begin
-    Result := Result + Copy(AText, Last, Match.Index - Last) + AMap(Match.Value);
-    Last := Match.Index + Match.Length;
+  // TStringBuilder statt Result := Result + … (Code-Review P-11): lange Zeilen mit vielen Treffern.
+  Builder := TStringBuilder.Create(Length(AText));
+  try
+    Last := 1;
+    for Match in ARegEx.Matches(AText) do
+    begin
+      Builder.Append(Copy(AText, Last, Match.Index - Last));
+      Builder.Append(AMap(Match.Value));
+      Last := Match.Index + Match.Length;
+    end;
+    Builder.Append(Copy(AText, Last, MaxInt));
+    Result := Builder.ToString;
+  finally
+    Builder.Free;
   end;
-  Result := Result + Copy(AText, Last, MaxInt);
 end;
 
-function LooksLikePath(const AText: string): Boolean;
+function TLogAnonymizer.LooksLikePath(const AText: string): Boolean;
 begin
-  Result := (Pos('\', AText) > 0) or StartsText('file:', AText) or TRegEx.IsMatch(AText, '^[A-Za-z]:[\\/]');
+  Result := (Pos('\', AText) > 0) or StartsText('file:', AText) or FDrive.IsMatch(AText);
 end;
 
 constructor TLogAnonymizer.Create(const AIdentity: TArray<string>);
@@ -343,6 +355,15 @@ begin
   FPaths := TDictionary<string, Integer>.Create;
   FNames := TDictionary<string, Integer>.Create;
   FValues := TDictionary<string, Integer>.Create;
+  // roNotEmpty wie bei den Klassenmethoden von TRegEx, die vorher benutzt wurden.
+  FQuoted := TRegEx.Create(QuotedPattern, [roNotEmpty, roCompiled]);
+  FPath := TRegEx.Create(PathPattern, [roNotEmpty, roCompiled]);
+  FBackslash := TRegEx.Create(BackslashPattern, [roNotEmpty, roCompiled]);
+  FWord := TRegEx.Create(WordPattern, [roNotEmpty, roCompiled]);
+  FNumber := TRegEx.Create(NumberPattern, [roNotEmpty, roCompiled]);
+  FMethod := TRegEx.Create(MethodPattern, [roNotEmpty, roCompiled]);
+  FExtension := TRegEx.Create(ExtensionPattern, [roNotEmpty, roCompiled]);
+  FDrive := TRegEx.Create(DrivePattern, [roNotEmpty, roCompiled]);
   FIdentity := nil;
   for Value in AIdentity do
     if Length(Trim(Value)) >= 3 then
@@ -429,7 +450,7 @@ begin
     FPaths.Add(Key, Number);
   end;
   Extension := AnsiLowerCase(ExtractFileExt(Path));
-  if not TRegEx.IsMatch(Extension, '^\.[a-z0-9]{1,8}$') then
+  if not FExtension.IsMatch(Extension) then
     Extension := '';
   Result := 'datei#' + IntToStr(Number) + Extension;
 end;
@@ -438,7 +459,7 @@ function TLogAnonymizer.QuotedLabel(const AInner: string): string;
 var
   Number: Integer;
 begin
-  if TRegEx.IsMatch(AInner, NumberPattern) or TRegEx.IsMatch(AInner, MethodPattern) then
+  if FNumber.IsMatch(AInner) or FMethod.IsMatch(AInner) then
     Exit(AInner);
   if LooksLikePath(AInner) then
     Exit(PathLabel(AInner));
@@ -495,7 +516,7 @@ begin
     for Index := 0 to High(FIdentity) do
       Result := StringReplace(Result, FIdentity[Index], 'benutzer#' + IntToStr(Index + 1),
         [rfReplaceAll, rfIgnoreCase]);
-    Result := ReplaceMatches(Result, QuotedPattern,
+    Result := ReplaceMatches(Result, FQuoted,
       function(const AMatch: string): string
       var
         Inner: string;
@@ -503,17 +524,17 @@ begin
         Inner := Copy(AMatch, 2, Length(AMatch) - 2);
         Result := AMatch[1] + QuotedLabel(Inner) + AMatch[Length(AMatch)];
       end);
-    Result := ReplaceMatches(Result, PathPattern,
+    Result := ReplaceMatches(Result, FPath,
       function(const AMatch: string): string
       begin
         Result := PathLabel(AMatch);
       end);
-    Result := ReplaceMatches(Result, BackslashPattern,
+    Result := ReplaceMatches(Result, FBackslash,
       function(const AMatch: string): string
       begin
         Result := PathLabel(AMatch);
       end);
-    Result := ReplaceMatches(Result, WordPattern,
+    Result := ReplaceMatches(Result, FWord,
       function(const AMatch: string): string
       begin
         Result := WordLabel(AMatch);

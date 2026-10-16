@@ -57,6 +57,17 @@ type
     procedure TodosFromServerAndRoundTrip;
     [Test]
     procedure TodosRejectInvalidAnswer;
+    /// <summary>Abschnitt "baseline" (#97) für Projektverlauf (#758) und Einrichtung (#759).</summary>
+    [Test]
+    procedure BaselineRoundTripAndUnknownFields;
+    [Test]
+    procedure SetupRoundTripAndLimits;
+    /// <summary>#759: unsichere Funde und übersprungene Makros (Suchpfad mit unbekanntem Makro).</summary>
+    [Test]
+    procedure SetupKeepsUncertainFindings;
+    /// <summary>#69: letzter Testlauf für die Karte Tests (#763) und „Fehlgeschlagene erneut ausführen“.</summary>
+    [Test]
+    procedure TestsRoundTripAndLimits;
   end;
 
 implementation
@@ -269,6 +280,8 @@ begin
   Assert.IsFalse(Summary.Rules.Known);
   Assert.IsFalse(Summary.Metrics.Known);
   Assert.IsFalse(Summary.Todos.Known);
+  Assert.IsFalse(Summary.Baseline.Known);
+  Assert.IsFalse(Summary.Tests.Known);
   Assert.IsTrue(Summary.LastOpened = 0);
   Assert.IsTrue(TAtlasProjectSummaries.Parse('{"project": "C:\\P.dproj", "vcs": {"kind": "none"}}', Summary));
   Assert.IsTrue(Summary.Vcs.Known);
@@ -457,6 +470,68 @@ begin
   Assert.Contains(TAtlasProjectSummaries.ToJson(Read), '"history":[3,0]');
 end;
 
+procedure TAtlasProjectSummaryTests.TestsRoundTripAndLimits;
+var
+  Summary, Read: TAtlasProjectSummary;
+  Failure: TAtlasProjectTestFailure;
+  Index: Integer;
+  Json: string;
+  Names: TArray<string>;
+begin
+  Summary := TAtlasProjectSummary.Create(Project);
+  Summary.Tests.Known := True;
+  Summary.Tests.At := At(2026, 10, 16, 10, 0, 0);
+  Summary.Tests.Project := 'C:\Projekte\Demo.Tests.dproj';
+  Summary.Tests.Configuration := 'Debug';
+  Summary.Tests.Platform := 'Win64';
+  Summary.Tests.Passed := 40;
+  Summary.Tests.Failed := 1;
+  Summary.Tests.Errors := 1;
+  Summary.Tests.Skipped := 2;
+  Summary.Tests.DurationMs := 1250;
+  Failure := Default(TAtlasProjectTestFailure);
+  Failure.Test := 'Demo.Tests.TRechner.Summe.Gross';
+  Failure.Message := 'Erwartet: 30, erhalten: 31';
+  Failure.FileName := 'C:\Projekte\Demo.Tests.pas';
+  Failure.Line := 35;
+  Summary.Tests.Failures := [Failure, Failure];
+  Failure := Default(TAtlasProjectTestFailure);
+  Failure.Test := 'Demo.Tests.TRechner.Teilt';
+  Summary.Tests.Failures := Summary.Tests.Failures + [Failure];
+  Assert.AreEqual(44, Summary.Tests.Total);
+  Json := TAtlasProjectSummaries.ToJson(Summary);
+  Assert.Contains(Json, '"tests":{"at":"2026-10-16T10:00:00Z","project":"C:\\Projekte\\Demo.Tests.dproj",' +
+    '"configuration":"Debug","platform":"Win64","passed":40,"failed":1,"errors":1,"skipped":2,"durationMs":1250,' +
+    '"failures":[{"test":"Demo.Tests.TRechner.Summe.Gross","message":"Erwartet: 30, erhalten: 31",' +
+    '"file":"C:\\Projekte\\Demo.Tests.pas","line":35}');
+  Assert.Contains(Json, '{"test":"Demo.Tests.TRechner.Teilt"}', 'ohne Meldung und Fundstelle nur der Name');
+  Assert.IsTrue(TAtlasProjectSummaries.Parse(Json, Read));
+  Assert.IsTrue(Read.Tests.Known);
+  Assert.AreEqual('Win64', Read.Tests.Platform);
+  Assert.AreEqual(1250, Read.Tests.DurationMs);
+  Assert.AreEqual(3, Length(Read.Tests.Failures));
+  Assert.AreEqual(35, Read.Tests.Failures[0].Line);
+  Assert.AreEqual('C:\Projekte\Demo.Tests.pas', Read.Tests.Failures[0].FileName);
+  Names := Read.Tests.FailedTests;
+  Assert.AreEqual(2, Length(Names), 'erneut ausführen: jeder Test einmal');
+  Assert.AreEqual('Demo.Tests.TRechner.Summe.Gross', Names[0]);
+  Assert.AreEqual('Demo.Tests.TRechner.Teilt', Names[1]);
+  // Höchstens MaxFailures in der Datei; unbekannte Felder bleiben.
+  Summary.Tests.Failures := nil;
+  for Index := 1 to TAtlasProjectTests.MaxFailures + 5 do
+  begin
+    Failure.Test := 'Demo.Tests.T.M' + IntToStr(Index);
+    Summary.Tests.Failures := Summary.Tests.Failures + [Failure];
+  end;
+  Assert.IsTrue(TAtlasProjectSummaries.Parse(TAtlasProjectSummaries.ToJson(Summary), Read));
+  Assert.AreEqual(TAtlasProjectTests.MaxFailures, Length(Read.Tests.Failures));
+  Assert.IsTrue(TAtlasProjectSummaries.Parse('{"project": "C:\\P.dproj", "tests": {"passed": 3, "jenkins": ' +
+    '{"job": "x"}}}', Read));
+  Assert.IsTrue(Read.Tests.Known);
+  Assert.AreEqual(3, Read.Tests.Passed);
+  Assert.Contains(TAtlasProjectSummaries.ToJson(Read), '"jenkins":{"job":"x"}');
+end;
+
 procedure TAtlasProjectSummaryTests.TodosRejectInvalidAnswer;
 var
   Todos: TAtlasProjectTodos;
@@ -470,6 +545,156 @@ begin
     Todos));
   Assert.IsTrue(Todos.Known);
   Assert.AreEqual(0, Integer(Length(Todos.Keywords)));
+end;
+
+procedure TAtlasProjectSummaryTests.BaselineRoundTripAndUnknownFields;
+var
+  Summary, Read: TAtlasProjectSummary;
+  Stamp: TDateTime;
+  Json: string;
+begin
+  Stamp := EncodeDate(2026, 10, 15) + EncodeTime(9, 30, 0, 0);
+  Summary := TAtlasProjectSummary.Create(Project);
+  Summary.Baseline.Known := True;
+  Summary.Baseline.At := Stamp;
+  Summary.Baseline.Exists := True;
+  Summary.Baseline.Valid := True;
+  Summary.Baseline.Entries := 40;
+  Summary.Baseline.Hits := 52;
+  Summary.Baseline.Orphaned := 2;
+  Json := TAtlasProjectSummaries.ToJson(Summary);
+  // Ohne Aktualisieren über Atlas keine Zähler.
+  Assert.Contains(Json, '"baseline":{"at":"2026-10-15T09:30:00Z","exists":true,"valid":true,"entries":40,' +
+    '"hits":52,"orphaned":2}');
+  Summary.Baseline.Updated := Stamp;
+  Summary.Baseline.Added := 3;
+  Summary.Baseline.Removed := 5;
+  Json := TAtlasProjectSummaries.ToJson(Summary);
+  Assert.Contains(Json, '"orphaned":2,"updated":"2026-10-15T09:30:00Z","added":3,"removed":5}');
+  Assert.IsTrue(TAtlasProjectSummaries.Parse(Json, Read));
+  Assert.IsTrue(Read.Baseline.Known);
+  Assert.IsTrue(Read.Baseline.Exists);
+  Assert.IsTrue(Read.Baseline.Valid);
+  Assert.AreEqual(40, Read.Baseline.Entries);
+  Assert.AreEqual(52, Read.Baseline.Hits);
+  Assert.AreEqual(2, Read.Baseline.Orphaned);
+  Assert.IsTrue(Read.Baseline.Updated = Stamp);
+  Assert.AreEqual(3, Read.Baseline.Added);
+  Assert.AreEqual(5, Read.Baseline.Removed);
+  // Keine Baseline: bekannt, aber nicht vorhanden (Lücke im Projektverlauf, „Baseline erzeugen“ in der
+  // Einrichtung); unbekannte Felder im Abschnitt bleiben.
+  Assert.IsTrue(TAtlasProjectSummaries.Parse('{"project": "C:\\P.dproj", "baseline": {"at": ' +
+    '"2026-10-15T09:30:00Z", "exists": false, "trend": [1, 2]}}', Read));
+  Assert.IsTrue(Read.Baseline.Known);
+  Assert.IsFalse(Read.Baseline.Exists);
+  Assert.IsTrue(Read.Baseline.Updated = 0);
+  Json := TAtlasProjectSummaries.ToJson(Read);
+  Assert.Contains(Json, '"trend":[1,2]');
+  Assert.IsTrue(Pos('"updated"', Json) = 0, Json);
+end;
+
+procedure TAtlasProjectSummaryTests.SetupRoundTripAndLimits;
+var
+  Summary, Read: TAtlasProjectSummary;
+  Stamp: TDateTime;
+  Json: string;
+  Finding: TAtlasSetupFinding;
+  Index: Integer;
+begin
+  Stamp := EncodeDate(2026, 10, 15) + EncodeTime(9, 30, 0, 0);
+  Finding := Default(TAtlasSetupFinding);
+  Summary := TAtlasProjectSummary.Create(Project);
+  Assert.IsFalse(Summary.Setup.Known);
+  Assert.IsFalse(Summary.Setup.PathsClean);
+  Summary.Setup.Known := True;
+  Summary.Setup.Dismissed := True;
+  Summary.Setup.DismissedAt := Stamp;
+  Json := TAtlasProjectSummaries.ToJson(Summary);
+  Assert.Contains(Json, '"setup":{"dismissed":true,"dismissedAt":"2026-10-15T09:30:00Z"}');
+  Summary.Setup.Dismissed := False;
+  Summary.Setup.Checked := True;
+  Summary.Setup.CheckedAt := Stamp;
+  Summary.Setup.Files := 12;
+  Summary.Setup.MissingUnitCount := 60;
+  Summary.Setup.UndefinedDefineCount := 1;
+  for Index := 1 to 60 do
+  begin
+    Finding.Name := 'Unit' + IntToStr(Index);
+    Finding.FileName := 'Src\Main.pas';
+    Finding.Line := Index;
+    Finding.Count := 1;
+    Summary.Setup.MissingUnits := Summary.Setup.MissingUnits + [Finding];
+  end;
+  Finding.Name := 'USE_LOG';
+  Finding.FileName := '';
+  Finding.Line := 0;
+  Finding.Count := 3;
+  Summary.Setup.UndefinedDefines := [Finding];
+  Json := TAtlasProjectSummaries.ToJson(Summary);
+  Assert.Contains(Json, '"setup":{"paths":{"at":"2026-10-15T09:30:00Z","files":12,"unreadable":0,' +
+    '"missingUnits":60,"undefinedDefines":1,"units":[{"name":"Unit1","file":"Src\\Main.pas","line":1,"count":1}');
+  Assert.Contains(Json, '"defines":[{"name":"USE_LOG","count":3}]');
+  Assert.IsTrue(Pos('"Unit51"', Json) = 0, 'höchstens MaxFindings je Liste');
+  Assert.IsTrue(TAtlasProjectSummaries.Parse(Json, Read));
+  Assert.IsTrue(Read.Setup.Known);
+  Assert.IsFalse(Read.Setup.Dismissed);
+  Assert.IsTrue(Read.Setup.Checked);
+  Assert.IsTrue(Read.Setup.CheckedAt = Stamp);
+  Assert.AreEqual(12, Read.Setup.Files);
+  Assert.AreEqual(60, Read.Setup.MissingUnitCount);
+  Assert.AreEqual(TAtlasProjectSetup.MaxFindings, Integer(Length(Read.Setup.MissingUnits)));
+  Assert.AreEqual('Src\Main.pas', Read.Setup.MissingUnits[0].FileName);
+  Assert.AreEqual(3, Read.Setup.UndefinedDefines[0].Count);
+  Assert.IsFalse(Read.Setup.PathsClean);
+  // Sauber; unbekannte Felder bleiben, Zähler nie kleiner als die Funde.
+  Assert.IsTrue(TAtlasProjectSummaries.Parse('{"setup": {"dismissed": false, "x": 1, "paths": {"at": ' +
+    '"2026-10-15T09:30:00Z", "missingUnits": 0, "undefinedDefines": 0, "units": [], "defines": [], "y": 2}}}', Read));
+  Assert.IsTrue(Read.Setup.PathsClean);
+  Json := TAtlasProjectSummaries.ToJson(Read);
+  Assert.Contains(Json, '"x":1');
+  Assert.Contains(Json, '"y":2');
+  Assert.IsTrue(TAtlasProjectSummaries.Parse('{"setup": {"paths": {"missingUnits": 0, "units": [{"name": "A"}, ' +
+    '{"file": "ohne Namen"}]}}}', Read));
+  Assert.AreEqual(1, Read.Setup.MissingUnitCount);
+  Assert.AreEqual(1, Read.Setup.MissingUnits[0].Count);
+end;
+
+procedure TAtlasProjectSummaryTests.SetupKeepsUncertainFindings;
+var
+  Summary, Read: TAtlasProjectSummary;
+  Finding: TAtlasSetupFinding;
+  Json: string;
+begin
+  Summary := TAtlasProjectSummary.Create(Project);
+  Summary.Setup.Known := True;
+  Summary.Setup.Checked := True;
+  Summary.Setup.MissingUnitCount := 2;
+  Summary.Setup.UncertainUnitCount := 1;
+  Summary.Setup.SkippedMacros := ['MYLIB', 'TOOLS'];
+  Finding := Default(TAtlasSetupFinding);
+  Finding.Name := 'Lib.Core';
+  Finding.Count := 1;
+  Finding.Uncertain := True;
+  // Der Projektname gilt nur in der Karte einer Gruppe und wird nicht gespeichert.
+  Finding.Project := 'App';
+  Summary.Setup.MissingUnits := [Finding];
+  Json := TAtlasProjectSummaries.ToJson(Summary);
+  Assert.Contains(Json, '"uncertainUnits":1');
+  Assert.IsTrue(Pos('"uncertainDefines"', Json) = 0, 'nur, wenn es unsichere gibt');
+  Assert.Contains(Json, '"skippedMacros":["MYLIB","TOOLS"]');
+  Assert.Contains(Json, '{"name":"Lib.Core","count":1,"uncertain":true}');
+  Assert.IsTrue(Pos('"App"', Json) = 0);
+  Assert.IsTrue(TAtlasProjectSummaries.Parse(Json, Read));
+  Assert.AreEqual(1, Read.Setup.UncertainUnitCount);
+  Assert.AreEqual('MYLIB|TOOLS', string.Join('|', Read.Setup.SkippedMacros));
+  Assert.IsTrue(Read.Setup.MissingUnits[0].Uncertain);
+  Assert.IsFalse(Read.Setup.PathsClean, 'ein sicherer Fund bleibt');
+  // Unsichere nie mehr als alle; nur unsichere: erledigt.
+  Assert.IsTrue(TAtlasProjectSummaries.Parse('{"setup": {"paths": {"missingUnits": 1, "uncertainUnits": 5, ' +
+    '"skippedMacros": ["A", 3, ""]}}}', Read));
+  Assert.AreEqual(1, Read.Setup.UncertainUnitCount);
+  Assert.AreEqual('A', string.Join('|', Read.Setup.SkippedMacros));
+  Assert.IsTrue(Read.Setup.PathsClean);
 end;
 
 initialization

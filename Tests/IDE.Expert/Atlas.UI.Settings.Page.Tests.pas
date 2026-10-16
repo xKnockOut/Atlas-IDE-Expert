@@ -30,9 +30,25 @@ type
     /// <summary>Notizen (#545): Schalter auf dem Reiter Editor, Vorgabe an.</summary>
     [Test]
     procedure NotesRoundTrip;
+    /// <summary>#261: Schalter „Builds für Claude Code“ auf dem Reiter Compiler.</summary>
+    [Test]
+    procedure McpBuildRoundTrip;
+    /// <summary>#69: Code Lens auf dem Reiter Editor, Tests ausführen, vorher bauen, nach dem Build und
+    /// build.zeroHints (#530) auf dem Reiter Compiler.</summary>
+    [Test]
+    procedure TestRunRoundTrip;
+    /// <summary>#575: Startprofile und ihr Feld in der Statusleiste auf dem Reiter Compiler.</summary>
+    [Test]
+    procedure StartProfilesRoundTrip;
+    /// <summary>#585: Test debuggen und Haltepunkt am Anfang auf dem Reiter Debuggen.</summary>
+    [Test]
+    procedure TestDebugRoundTrip;
     /// <summary>Benannte Lesezeichen (#622): zwei Schalter auf dem Reiter Editor, Taste bei den Befehlen.</summary>
     [Test]
     procedure BookmarksRoundTrip;
+    /// <summary>Erzeugen-Menü (#719) auf dem Reiter Befehle.</summary>
+    [Test]
+    procedure GenerateMenuRoundTrip;
     [Test]
     procedure SafeModeRoundTrips;
     [Test]
@@ -66,6 +82,9 @@ type
     /// <summary>„Wächter testen“ nur im Diagnosemodus (Code-Review S-07).</summary>
     [Test]
     procedure HangTestOnlyInDiagnosticMode;
+    /// <summary>Reiter „Projektdatei“ (#486): jeder Wert mit „aus .atlas“, Hinweise, Öffnen.</summary>
+    [Test]
+    procedure TeamFileTabShowsValuesFromAtlas;
   end;
 
 implementation
@@ -74,6 +93,7 @@ uses
   System.SysUtils,
   System.Classes,
   Atlas.Core.Settings.Plugin,
+  Atlas.Core.Projects.Summary,
   Atlas.Core.Completion.Contract,
   Atlas.Core.Completion.Favorites,
   Atlas.Core.Completion.Snippets,
@@ -87,6 +107,7 @@ uses
   Atlas.Core.Settings.SchemaData,
   Atlas.Core.Settings.Layers,
   Atlas.Core.Settings.Validation,
+  Atlas.Core.Settings.TeamFile,
   Atlas.Core.Style.Symbol,
   Atlas.UI.Style.Symbol,
   Vcl.Graphics,
@@ -128,11 +149,12 @@ begin
     Page := TAtlasSettingsPage.Create(Host);
     Page.Parent := Host;
     Page.HandleNeeded;
-    Assert.AreEqual(13, Page.Pages.PageCount);
+    Assert.AreEqual(14, Page.Pages.PageCount);
     Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.SettingsTabGeneral), Page.Pages.Pages[0].Caption);
     Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.SettingsTabUndo), Page.Pages.Pages[10].Caption);
     Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.SettingsTabUnitSearch), Page.Pages.Pages[11].Caption);
     Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.SettingsTabWelcome), Page.Pages.Pages[12].Caption);
+    Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.SettingsTabTeamFile), Page.Pages.Pages[13].Caption);
     for Index := 0 to Page.Pages.PageCount - 1 do
     begin
       Sheet := Page.Pages.Pages[Index];
@@ -141,6 +163,57 @@ begin
     Assert.AreEqual(0, Page.Pages.ActivePageIndex);
   finally
     Host.Free;
+  end;
+end;
+
+procedure TAtlasSettingsPageTests.TeamFileTabShowsValuesFromAtlas;
+var
+  Page: TAtlasSettingsPage;
+  Team: TAtlasTeamSettings;
+  Opened: Integer;
+  Settings: TAtlasPluginSettings;
+begin
+  Team := TAtlasTeamFile.Parse('{"version": 1, "naming": {"field": "F"}, "snippets": "Vorlagen", "token": "x"}',
+    'C:\Repo\.atlas', 'C:\Repo');
+  Team.Project := 'C:\Repo\Kasse.dproj';
+  Opened := 0;
+  Page := TAtlasSettingsPage.Create(nil);
+  try
+    Settings := TAtlasPluginSettings.Defaults;
+    Page.LoadFrom(Settings);
+    Assert.Contains(Page.TeamFileInfo.Caption, TAtlasStrings.Text(TAtlasTextId.SettingsTeamFileNoProject));
+    Assert.IsFalse(Page.TeamFileOpenButton.Enabled, 'ohne Projekt');
+    Page.OnTeamFile :=
+      function: TAtlasTeamSettings
+      begin
+        Result := Team;
+      end;
+    Page.OnOpenTeamFile :=
+      procedure
+      begin
+        Inc(Opened);
+      end;
+    Assert.Contains(Page.TeamFileInfo.Caption, TAtlasStrings.Fmt(TAtlasTextId.SettingsTeamFileValue,
+      ['naming.field', '"F"']));
+    Assert.Contains(Page.TeamFileInfo.Caption, TAtlasStrings.Fmt(TAtlasTextId.SettingsTeamFileIssues, [1]),
+      'Zugangsdaten ignoriert');
+    Assert.Contains(Page.TeamSnippetsLabel.Caption, 'Vorlagen');
+    Assert.IsTrue(Page.TeamFileOpenButton.Enabled);
+    Page.TeamFileOpenButton.Click;
+    Assert.AreEqual(1, Opened);
+    // Ausgeschaltet: keine Werte, kein Hinweis bei den Vorlagen, gespeichert als TeamFile = False.
+    Page.TeamFileCheck.Checked := False;
+    Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.SettingsTeamFileOff), Page.TeamFileInfo.Caption);
+    Assert.AreEqual('', Page.TeamSnippetsLabel.Caption);
+    Page.SaveTo(Settings);
+    Assert.IsFalse(Settings.TeamFile);
+    // Fehlerhafte Datei: Hinweis statt Werte.
+    Team := TAtlasTeamFile.Parse('{', 'C:\Repo\.atlas', 'C:\Repo');
+    Team.Project := 'C:\Repo\Kasse.dproj';
+    Page.TeamFileCheck.Checked := True;
+    Assert.Contains(Page.TeamFileInfo.Caption, TAtlasStrings.Text(TAtlasTextId.SettingsTeamFileInvalid));
+  finally
+    Page.Free;
   end;
 end;
 
@@ -171,6 +244,8 @@ begin
   Settings.CodeLensMetrics := False;
   Settings.TodoList := False;
   Settings.MetricsReport := False;
+  Settings.TeamFile := False;
+  Settings.StartProfiles := False;
   Page := TAtlasSettingsPage.Create(nil);
   try
     Page.LoadFrom(Settings);
@@ -202,6 +277,8 @@ begin
   Assert.IsFalse(Saved.CodeLensMetrics, 'Code Lens Metriken (#66)');
   Assert.IsFalse(Saved.TodoList, 'Befehl (#68)');
   Assert.IsFalse(Saved.MetricsReport, 'Befehl (#66)');
+  Assert.IsFalse(Saved.TeamFile, 'Projektdatei (#486)');
+  Assert.IsFalse(Saved.StartProfiles, 'Startprofile (#575)');
 end;
 
 procedure TAtlasSettingsPageTests.ShowsAndReenablesTrippedFeatures;
@@ -390,6 +467,145 @@ begin
   end;
 end;
 
+procedure TAtlasSettingsPageTests.TestRunRoundTrip;
+var
+  Page: TAtlasSettingsPage;
+  Saved: TAtlasPluginSettings;
+begin
+  Page := TAtlasSettingsPage.Create(nil);
+  try
+    Page.LoadFrom(TAtlasPluginSettings.Defaults);
+    Assert.IsTrue(Page.CodeLensTestsCheck.Checked, 'Code Lens standardmäßig an');
+    Assert.IsTrue(Page.TestRunCheck.Checked);
+    Assert.IsTrue(Page.TestsBuildFirstCheck.Checked);
+    Assert.IsFalse(Page.TestsAfterBuildCheck.Checked);
+    Assert.IsFalse(Page.BuildZeroHintsCheck.Checked);
+    Page.CodeLensTestsCheck.Checked := False;
+    Page.TestRunCheck.Checked := False;
+    Page.TestsBuildFirstCheck.Checked := False;
+    Page.TestsAfterBuildCheck.Checked := True;
+    Page.BuildZeroHintsCheck.Checked := True;
+    Saved := TAtlasPluginSettings.Defaults;
+    Page.SaveTo(Saved);
+    Assert.IsFalse(Saved.CodeLensTests);
+    Assert.IsFalse(Saved.TestRun);
+    Assert.IsFalse(Saved.TestsBuildFirst);
+    Assert.IsTrue(Saved.TestsAfterBuild);
+    Assert.IsTrue(Saved.BuildZeroHints);
+    Page.LoadFrom(Saved);
+    Assert.IsFalse(Page.CodeLensTestsCheck.Checked);
+    Assert.IsTrue(Page.TestsAfterBuildCheck.Checked);
+  finally
+    Page.Free;
+  end;
+end;
+
+procedure TAtlasSettingsPageTests.StartProfilesRoundTrip;
+var
+  Page: TAtlasSettingsPage;
+  Saved: TAtlasPluginSettings;
+begin
+  Page := TAtlasSettingsPage.Create(nil);
+  try
+    Page.LoadFrom(TAtlasPluginSettings.Defaults);
+    Assert.IsTrue(Page.StartProfilesCheck.Checked, 'Startprofile standardmäßig an');
+    Assert.IsTrue(Page.StartProfilesStatusFieldCheck.Checked, 'Statusfeld standardmäßig an');
+    Page.StartProfilesCheck.Checked := False;
+    Page.StartProfilesStatusFieldCheck.Checked := False;
+    Saved := TAtlasPluginSettings.Defaults;
+    Page.SaveTo(Saved);
+    Assert.IsFalse(Saved.StartProfiles);
+    Assert.IsFalse(Saved.StartProfilesStatusField);
+    Saved.StartProfilesStatusField := True;
+    Page.LoadFrom(Saved);
+    Assert.IsFalse(Page.StartProfilesCheck.Checked);
+    Assert.IsTrue(Page.StartProfilesStatusFieldCheck.Checked);
+  finally
+    Page.Free;
+  end;
+end;
+
+procedure TAtlasSettingsPageTests.TestDebugRoundTrip;
+var
+  Page: TAtlasSettingsPage;
+  Saved: TAtlasPluginSettings;
+begin
+  Page := TAtlasSettingsPage.Create(nil);
+  try
+    Page.LoadFrom(TAtlasPluginSettings.Defaults);
+    Assert.IsTrue(Page.TestDebugCheck.Checked, 'Test debuggen standardmäßig an');
+    Assert.IsTrue(Page.TestBreakAtStartCheck.Checked, 'Haltepunkt am Anfang standardmäßig an');
+    Page.TestDebugCheck.Checked := False;
+    Page.TestBreakAtStartCheck.Checked := False;
+    Saved := TAtlasPluginSettings.Defaults;
+    Page.SaveTo(Saved);
+    Assert.IsFalse(Saved.TestDebug);
+    Assert.IsFalse(Saved.TestBreakAtStart);
+    Saved.TestBreakAtStart := True;
+    Page.LoadFrom(Saved);
+    Assert.IsFalse(Page.TestDebugCheck.Checked);
+    Assert.IsTrue(Page.TestBreakAtStartCheck.Checked);
+  finally
+    Page.Free;
+  end;
+end;
+
+procedure TAtlasSettingsPageTests.McpBuildRoundTrip;
+var
+  Page: TAtlasSettingsPage;
+  Saved: TAtlasPluginSettings;
+begin
+  Page := TAtlasSettingsPage.Create(nil);
+  try
+    Page.LoadFrom(TAtlasPluginSettings.Defaults);
+    Assert.IsTrue(Page.McpBuildCheck.Checked, 'standardmäßig an');
+    Page.McpBuildCheck.Checked := False;
+    Saved := TAtlasPluginSettings.Defaults;
+    Page.SaveTo(Saved);
+    Assert.IsFalse(Saved.McpBuild, 'abschaltbar');
+    Page.LoadFrom(Saved);
+    Assert.IsFalse(Page.McpBuildCheck.Checked);
+  finally
+    Page.Free;
+  end;
+end;
+
+procedure TAtlasSettingsPageTests.GenerateMenuRoundTrip;
+var
+  Page: TAtlasSettingsPage;
+  Saved: TAtlasPluginSettings;
+begin
+  Page := TAtlasSettingsPage.Create(nil);
+  try
+    Page.LoadFrom(TAtlasPluginSettings.Defaults);
+    Assert.IsTrue(Page.GenerateMenuCheck.Checked, 'standardmäßig an');
+    Assert.AreEqual(ShortCutToText($802D), Page.GenerateMenuKey.Text, 'Alt+Einfg');
+    Assert.AreEqual('generate,surround,templates', Page.GenerateMenuGroups.Text);
+    Assert.AreEqual('', Page.GenerateMenuHidden.Text);
+    Assert.IsTrue(Page.GenerateMenuRecentFirstCheck.Checked);
+    Assert.IsTrue(Page.GenerateMenuShowCommandNamesCheck.Checked);
+    Page.GenerateMenuCheck.Checked := False;
+    Page.GenerateMenuKey.Text := '';
+    Page.GenerateMenuGroups.Text := 'templates';
+    Page.GenerateMenuHidden.Text := '/json';
+    Page.GenerateMenuRecentFirstCheck.Checked := False;
+    Page.GenerateMenuShowCommandNamesCheck.Checked := False;
+    Saved := TAtlasPluginSettings.Defaults;
+    Page.SaveTo(Saved);
+    Assert.IsFalse(Saved.GenerateMenu, 'abschaltbar');
+    Assert.AreEqual(0, Saved.GenerateMenuKey, 'leer = keine Taste');
+    Assert.AreEqual('templates', Saved.GenerateMenuGroups);
+    Assert.AreEqual('/json', Saved.GenerateMenuHidden);
+    Assert.IsFalse(Saved.GenerateMenuRecentFirst);
+    Assert.IsFalse(Saved.GenerateMenuShowCommandNames);
+    Page.LoadFrom(Saved);
+    Assert.IsFalse(Page.GenerateMenuCheck.Checked);
+    Assert.AreEqual('/json', Page.GenerateMenuHidden.Text);
+  finally
+    Page.Free;
+  end;
+end;
+
 procedure TAtlasSettingsPageTests.BookmarksRoundTrip;
 var
   Page: TAtlasSettingsPage;
@@ -482,6 +698,11 @@ begin
     Assert.IsTrue(Page.WelcomeProjects.Checked);
     Assert.AreEqual('8', Page.WelcomeMaxProjects.Text);
     Assert.IsTrue(Page.WelcomeRefreshVcs.Checked);
+    // #758: Projektverlauf mit 30 Builds und allen fünf Reihen.
+    Assert.IsTrue(Page.WelcomeTrends.Checked);
+    Assert.AreEqual('30', Page.WelcomeTrendsPoints.Text);
+    Assert.IsTrue(Page.WelcomeTrendsSeries(TAtlasTrendSeries.Warnings).Checked);
+    Assert.IsTrue(Page.WelcomeTrendsSeries(TAtlasTrendSeries.MethodLength).Checked);
     Assert.IsTrue(Page.WelcomeUnsaved.Checked);
     Assert.AreEqual('0', Page.WelcomeUnsavedMinAge.Text);
     Assert.AreEqual('24', Page.WelcomeUnsavedWarn.Text);
@@ -512,6 +733,10 @@ begin
     Page.WelcomeProjects.Checked := False;
     Page.WelcomeMaxProjects.Text := '99';
     Page.WelcomeRefreshVcs.Checked := False;
+    Page.WelcomeTrends.Checked := False;
+    Page.WelcomeTrendsPoints.Text := '500';
+    Page.WelcomeTrendsSeries(TAtlasTrendSeries.RuleHits).Checked := False;
+    Page.WelcomeTrendsSeries(TAtlasTrendSeries.Duration).Checked := False;
     Page.WelcomeUnsaved.Checked := False;
     Page.WelcomeUnsavedMinAge.Text := '2';
     Page.WelcomeUnsavedWarn.Text := '48';
@@ -524,11 +749,17 @@ begin
     Page.WelcomeHelp.Checked := False;
     Page.WelcomeHelpReportUrl.Text := ' https://example.org/issues/new ';
     Page.WelcomeHelpReportFolder.Text := ' D:\Diagnose ';
+    Assert.IsTrue(Page.WelcomeProjectSetup.Checked, 'Vorgabe an (#759)');
+    Assert.IsTrue(Page.WelcomeNewFromTemplate.Checked, 'Vorgabe an (#759)');
+    Page.WelcomeProjectSetup.Checked := False;
+    Page.WelcomeNewFromTemplate.Checked := False;
     Saved := TAtlasPluginSettings.Defaults;
     Page.SaveTo(Saved);
     Assert.IsFalse(Saved.WelcomePageHelp);
     Assert.AreEqual('https://example.org/issues/new', Saved.WelcomePageHelpReportUrl);
     Assert.AreEqual('D:\Diagnose', Saved.WelcomePageHelpReportFolder);
+    Assert.IsFalse(Saved.WelcomePageProjectSetup);
+    Assert.IsFalse(Saved.WelcomePageNewFromTemplate);
     Assert.IsFalse(Saved.WelcomePage);
     Assert.AreEqual('dockWindow', Saved.WelcomePageHost);
     Assert.AreEqual('atlas', Saved.WelcomePageLayout);
@@ -546,6 +777,9 @@ begin
     Assert.IsFalse(Saved.WelcomePageProjectStatus);
     Assert.AreEqual(30, Saved.WelcomePageMaxProjects, 'auf 1–30 begrenzt');
     Assert.IsFalse(Saved.WelcomePageRefreshVcs);
+    Assert.IsFalse(Saved.WelcomePageTrends);
+    Assert.AreEqual(100, Saved.WelcomePageTrendsPoints, 'auf 2–100 begrenzt');
+    Assert.AreEqual('warnings,todos,methodLength', Saved.WelcomePageTrendsSeries);
     Assert.IsFalse(Saved.WelcomePageUnsaved);
     Assert.AreEqual(2, Saved.WelcomePageUnsavedMinAgeHours);
     Assert.AreEqual(48, Saved.WelcomePageUnsavedWarnHours);
@@ -556,6 +790,10 @@ begin
     Assert.IsFalse(Saved.WelcomePageDiscover);
     Assert.IsFalse(Saved.TipsUsageTracking);
     Page.LoadFrom(Saved);
+    Assert.IsFalse(Page.WelcomeTrends.Checked);
+    Assert.AreEqual('100', Page.WelcomeTrendsPoints.Text);
+    Assert.IsFalse(Page.WelcomeTrendsSeries(TAtlasTrendSeries.RuleHits).Checked);
+    Assert.IsTrue(Page.WelcomeTrendsSeries(TAtlasTrendSeries.Todos).Checked);
     Assert.IsFalse(Page.WelcomeHelp.Checked);
     Assert.AreEqual('https://example.org/issues/new', Page.WelcomeHelpReportUrl.Text);
     Assert.AreEqual('D:\Diagnose', Page.WelcomeHelpReportFolder.Text);

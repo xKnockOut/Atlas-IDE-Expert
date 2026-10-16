@@ -40,9 +40,10 @@ uses
   Atlas.Core.Lsp.Session,
   Atlas.Core.Hover.Contract,
   Atlas.Core.Hover.History,
+  Atlas.Core.Hover.Layout,
   Atlas.Core.Editor.CloseRules,
   Atlas.Core.Problems.Contract,
-  Atlas.IDE.Editor.KeyHook,
+  Atlas.IDE.Foundation.KeyHook,
   Atlas.UI.Hover.Tip;
 
 type
@@ -155,8 +156,6 @@ type
     /// <summary>Laufende Anfragen abwarten, bevor die Sitzung wegfällt (Neustart, Abschalten; Code-Review A-07).
     /// Ihre Ergebnisse zeigt der Tooltip nicht mehr. Nur im Hauptthread.</summary>
     procedure Shutdown;
-    /// <summary>Öffnet AFileName im Editor und setzt den Cursor (0-basiert).</summary>
-    class procedure GoToLocation(const AFileName: string; ALine, ACharacter: Integer); static;
   end;
 
 implementation
@@ -171,12 +170,13 @@ uses
   Vcl.Forms,
   Vcl.Clipbrd,
   Atlas.Core.Completion.Word,
-  Atlas.IDE.Editor.Buffer,
-  Atlas.IDE.Editor.Style,
-  Atlas.IDE.Settings.Store,
+  Atlas.IDE.Foundation.EditorBuffer,
+  Atlas.IDE.Foundation.EditorStyle,
+  Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Results.Commands,
   Atlas.Core.Documentation.Contract,
-  Atlas.UI.Strings;
+  Atlas.UI.Strings,
+  Atlas.IDE.Foundation.Navigation;
 
 { TAtlasEditorHover.TEvents }
 
@@ -682,7 +682,7 @@ begin
       if ARef.HasLocation then
       begin
         Hide;
-        GoToLocation(ARef.FileName, ARef.Line, ARef.Character);
+        TAtlasIdeNavigation.GoToLocation(ARef.FileName, ARef.Line, ARef.Character);
       end;
       Exit;
     end;
@@ -750,38 +750,6 @@ begin
   end;
 end;
 
-class procedure TAtlasEditorHover.GoToLocation(const AFileName: string; ALine, ACharacter: Integer);
-var
-  Actions: IOTAActionServices;
-  Modules: IOTAModuleServices;
-  Module: IOTAModule;
-  Index: Integer;
-  Editor: IOTASourceEditor;
-  View: IOTAEditView;
-  Cursor: TOTAEditPos;
-begin
-  if not Supports(BorlandIDEServices, IOTAActionServices, Actions) or not Actions.OpenFile(AFileName) or
-    not Supports(BorlandIDEServices, IOTAModuleServices, Modules) then
-    Exit;
-  Module := Modules.FindModule(AFileName);
-  if Module = nil then
-    Exit;
-  for Index := 0 to Module.ModuleFileCount - 1 do
-    if Supports(Module.ModuleFileEditors[Index], IOTASourceEditor, Editor) then
-    begin
-      Editor.Show;
-      if Editor.EditViewCount = 0 then
-        Exit;
-      View := Editor.EditViews[0];
-      Cursor.Line := ALine + 1;
-      Cursor.Col := ACharacter + 1;
-      View.CursorPos := Cursor;
-      View.MoveViewToCursor;
-      View.Paint;
-      Exit;
-    end;
-end;
-
 procedure TAtlasEditorHover.ShowUsages;
 var
   Data: TAtlasHoverData;
@@ -806,7 +774,7 @@ begin
         if Data.Location.HasLocation then
         begin
           Hide;
-          GoToLocation(Data.Location.FileName, Data.Location.Line, Data.Location.Character);
+          TAtlasIdeNavigation.GoToLocation(Data.Location.FileName, Data.Location.Line, Data.Location.Character);
         end;
       TAtlasHoverAction.Usages:
         ShowUsages;

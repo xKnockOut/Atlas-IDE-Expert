@@ -1,0 +1,58 @@
+﻿package Atlas.Text;
+
+{$IFDEF IMPLICITBUILDING This IFDEF should not be used by users}
+{$ALIGN 8}
+{$ASSERTIONS ON}
+{$BOOLEVAL OFF}
+{$DEBUGINFO OFF}
+{$EXTENDEDSYNTAX ON}
+{$IMPORTEDDATA ON}
+{$IOCHECKS ON}
+{$LOCALSYMBOLS ON}
+{$LONGSTRINGS ON}
+{$OPENSTRINGS ON}
+{$OPTIMIZATION OFF}
+{$OVERFLOWCHECKS OFF}
+{$RANGECHECKS OFF}
+{$REFERENCEINFO ON}
+{$SAFEDIVIDE OFF}
+{$STACKFRAMES ON}
+{$TYPEDADDRESS OFF}
+{$VARSTRINGCHECKS ON}
+{$WRITEABLECONST OFF}
+{$MINENUMSIZE 1}
+{$IMAGEBASE $400000}
+{$DEFINE DEBUG}
+{$ENDIF IMPLICITBUILDING}
+{$DESCRIPTION 'Atlas Text (nur RTL, gemeinsam für Server und Plugin)'}
+{$RUNONLY}
+{$IMPLICITBUILD ON}
+
+// Platform-Package mit Textcode, den Server und IDE-Plugin gleich brauchen
+// (ADR 0012): Zeilen, Zeichenklassen, Kodierungserkennung, URIs,
+// Anonymisierung, Zeilenvergleich, unscharfe Namensregeln, JSONC, XML-Entities
+// die Versionsangabe sowie DUnitX-Tests im Quelltext und ihre Berichte (#69). Nur RTL (System.*), keine Zustände, kein inline.
+// Server und Tests linken dieses Package statisch über seine DCUs; das Plugin
+// übersetzt dieselben Quelldateien per "contains … in" mit, damit die IDE
+// weiterhin nur ein BPL lädt. Geprüft durch Tools\Check-PackageDependencies.ps1.
+
+requires
+  rtl;
+
+contains
+  Atlas.Text.Product.Version in 'Source\Product\Atlas.Text.Product.Version.pas',
+  Atlas.Text.Lines in 'Source\Lines\Atlas.Text.Lines.pas',
+  Atlas.Text.Chars in 'Source\Chars\Atlas.Text.Chars.pas',
+  Atlas.Text.Encoding in 'Source\Encoding\Atlas.Text.Encoding.pas',
+  Atlas.Text.Anonymize in 'Source\Anonymize\Atlas.Text.Anonymize.pas',
+  Atlas.Text.Uris in 'Source\Uris\Atlas.Text.Uris.pas',
+  Atlas.Text.Diff in 'Source\Diff\Atlas.Text.Diff.pas',
+  Atlas.Text.Fuzzy in 'Source\Fuzzy\Atlas.Text.Fuzzy.pas',
+  Atlas.Text.Jsonc in 'Source\Jsonc\Atlas.Text.Jsonc.pas',
+  Atlas.Text.Entities in 'Source\Entities\Atlas.Text.Entities.pas',
+  Atlas.Text.Defines in 'Source\Defines\Atlas.Text.Defines.pas',
+  Atlas.Text.Checkin in 'Source\Checkin\Atlas.Text.Checkin.pas',
+  Atlas.Text.DUnitX in 'Source\DUnitX\Atlas.Text.DUnitX.pas',
+  Atlas.Text.TestResults in 'Source\TestResults\Atlas.Text.TestResults.pas';
+
+end.

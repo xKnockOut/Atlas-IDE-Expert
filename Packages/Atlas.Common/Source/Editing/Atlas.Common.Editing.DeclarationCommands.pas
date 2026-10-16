@@ -25,7 +25,6 @@ uses
   System.SysUtils,
   System.StrUtils,
   Atlas.Common.Documents.Contract,
-  Atlas.Common.Rules.Contract,
   Atlas.Common.Pascal.Contract,
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Index.Contract,
@@ -34,7 +33,7 @@ uses
 
 { /var und /const }
 
-function ExecuteVar(const AContext: TSlashContext; out AEdits: TArray<TRuleEdit>; out AReason: string): Boolean;
+function ExecuteVar(const AContext: TSlashContext; out AEdits: TArray<TTextEdit>; out AReason: string): Boolean;
 var
   Source: TCommandSource;
   Routine: TSyntaxNode;
@@ -55,7 +54,7 @@ begin
         Value := Trim(Copy(Value, 1, Length(Value) - 1));
       if (Name = '') or (Value = '') then
         Exit(Fail('Erwartet wird /var Name := Ausdruck', AReason));
-      AEdits := [TRuleEdit.Create(TTextRange.Create(Source.Line, 0, Source.Line, Length(AContext.LineText)),
+      AEdits := [TTextEdit.Create(TTextRange.Create(Source.Line, 0, Source.Line, Length(AContext.LineText)),
         Copy(AContext.LineText, 1, Pos('/', AContext.LineText) - 1) +
         Format('var %s := %s;', [Name, Value]))];
       Exit(True);
@@ -70,7 +69,7 @@ begin
   end;
 end;
 
-function ExecuteConst(const AContext: TSlashContext; AGlobal: Boolean; out AEdits: TArray<TRuleEdit>;
+function ExecuteConst(const AContext: TSlashContext; AGlobal: Boolean; out AEdits: TArray<TTextEdit>;
   out AReason: string): Boolean;
 var
   Source: TCommandSource;
@@ -114,7 +113,7 @@ end;
 
 { /field und /prop }
 
-function ExecuteField(const AContext: TSlashContext; out AEdits: TArray<TRuleEdit>; out AReason: string): Boolean;
+function ExecuteField(const AContext: TSlashContext; out AEdits: TArray<TTextEdit>; out AReason: string): Boolean;
 var
   Source: TCommandSource;
   ClassSymbol: TIndexSymbol;
@@ -146,7 +145,7 @@ begin
   end;
 end;
 
-function ExecuteProp(const AContext: TSlashContext; out AEdits: TArray<TRuleEdit>; out AReason: string): Boolean;
+function ExecuteProp(const AContext: TSlashContext; out AEdits: TArray<TTextEdit>; out AReason: string): Boolean;
 var
   Source: TCommandSource;
   ClassSymbol: TIndexSymbol;
@@ -243,7 +242,7 @@ begin
     Result := 'SText';
 end;
 
-function ExecuteResStr(const AContext: TSlashContext; out AEdits: TArray<TRuleEdit>; out AReason: string): Boolean;
+function ExecuteResStr(const AContext: TSlashContext; out AEdits: TArray<TTextEdit>; out AReason: string): Boolean;
 var
   Source: TCommandSource;
   Token, Literal: TPascalToken;
@@ -288,7 +287,7 @@ begin
     else
       AEdits := [Source.AfterLine(Start, Source.LineBreak + 'resourcestring' + Source.LineBreak +
         Format('  %s = %s;', [Name, Value]))];
-    AEdits := AEdits + [TRuleEdit.Create(TTextRange.Create(Literal.StartPos, Literal.EndPos), Name),
+    AEdits := AEdits + [TTextEdit.Create(TTextRange.Create(Literal.StartPos, Literal.EndPos), Name),
       Source.RemoveCommand];
     Result := True;
   finally
@@ -298,7 +297,7 @@ end;
 
 { /guid }
 
-function ExecuteGuid(const AContext: TSlashContext; out AEdits: TArray<TRuleEdit>; out AReason: string): Boolean;
+function ExecuteGuid(const AContext: TSlashContext; out AEdits: TArray<TTextEdit>; out AReason: string): Boolean;
 var
   Source: TCommandSource;
   Symbol, Target: TIndexSymbol;
@@ -325,7 +324,7 @@ begin
       if StartsStr('[''{', Trim(Source.Lines[Index])) then
         Exit(Fail('Das Interface hat schon eine GUID', AReason));
     CreateGUID(Guid);
-    AEdits := [TRuleEdit.Create(TTextRange.Create(Source.Line, 0, Source.Line, Length(AContext.LineText)),
+    AEdits := [TTextEdit.Create(TTextRange.Create(Source.Line, 0, Source.Line, Length(AContext.LineText)),
       Copy(AContext.LineText, 1, Pos('/', AContext.LineText) - 1) + Format('[''%s'']', [GUIDToString(Guid)]))];
     Result := True;
   finally
@@ -345,12 +344,12 @@ procedure RegisterDeclarationCommands(ARegistry: TSlashCommandRegistry);
 begin
   ARegistry.Register(Command('var', 'Lokale Variable anlegen', '/var Liste: TStringList', ExecuteVar));
   ARegistry.Register(Command('const', 'Lokale Konstante anlegen', '/const Max = 10',
-    function(const AContext: TSlashContext; out AEdits: TArray<TRuleEdit>; out AReason: string): Boolean
+    function(const AContext: TSlashContext; out AEdits: TArray<TTextEdit>; out AReason: string): Boolean
     begin
       Result := ExecuteConst(AContext, False, AEdits, AReason);
     end));
   ARegistry.Register(Command('const!', 'Konstante in der implementation anlegen', '/const! Max = 10',
-    function(const AContext: TSlashContext; out AEdits: TArray<TRuleEdit>; out AReason: string): Boolean
+    function(const AContext: TSlashContext; out AEdits: TArray<TTextEdit>; out AReason: string): Boolean
     begin
       Result := ExecuteConst(AContext, True, AEdits, AReason);
     end));

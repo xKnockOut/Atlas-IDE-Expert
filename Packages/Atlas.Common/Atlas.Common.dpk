@@ -29,17 +29,19 @@
 {$IMPLICITBUILD ON}
 
 // Platform-Package ohne Abhängigkeit zu Windows und VCL.
-// Erlaubt ist ausschließlich die plattformunabhängige RTL (System.*).
+// Erlaubt sind die plattformunabhängige RTL (System.*) und Atlas.Text
+// (gemeinsamer Textcode mit dem Plugin, ADR 0012).
 // Geprüft durch Tools\Check-PackageDependencies.ps1.
 
 requires
-  rtl;
+  rtl,
+  Atlas.Text;
 
 contains
   Atlas.Common.Product.Version in 'Source\Product\Atlas.Common.Product.Version.pas',
   Atlas.Common.Logging.Contract in 'Source\Logging\Atlas.Common.Logging.Contract.pas',
   Atlas.Common.Logging.Providers.Logger in 'Source\Logging\Providers\Atlas.Common.Logging.Providers.Logger.pas',
-  Atlas.Common.Logging.Providers.RotatingFileStream in 'Source\Logging\Providers\Atlas.Common.Logging.Providers.RotatingFileStream.pas',
+  Atlas.Common.Logging.RotatingFileStream in 'Source\Logging\Atlas.Common.Logging.RotatingFileStream.pas',
   Atlas.Common.Logging.Providers.StreamSink in 'Source\Logging\Providers\Atlas.Common.Logging.Providers.StreamSink.pas',
   Atlas.Common.Logging.Providers.TransformSink in 'Source\Logging\Providers\Atlas.Common.Logging.Providers.TransformSink.pas',
   Atlas.Common.Logging.Providers.RecentSink in 'Source\Logging\Providers\Atlas.Common.Logging.Providers.RecentSink.pas',
@@ -72,6 +74,9 @@ contains
   Atlas.Common.Compiler.OutputParser in 'Source\Compiler\Atlas.Common.Compiler.OutputParser.pas',
   Atlas.Common.Compiler.CommandLine in 'Source\Compiler\Atlas.Common.Compiler.CommandLine.pas',
   Atlas.Common.Compiler.Results in 'Source\Compiler\Atlas.Common.Compiler.Results.pas',
+  Atlas.Common.Compiler.Edition in 'Source\Compiler\Atlas.Common.Compiler.Edition.pas',
+  Atlas.Common.Compiler.Backend in 'Source\Compiler\Atlas.Common.Compiler.Backend.pas',
+  Atlas.Common.Compiler.IdeCommand in 'Source\Compiler\Atlas.Common.Compiler.IdeCommand.pas',
   Atlas.Common.Diagnostics.MapFile in 'Source\Diagnostics\Atlas.Common.Diagnostics.MapFile.pas',
   Atlas.Common.Diagnostics.Contract in 'Source\Diagnostics\Atlas.Common.Diagnostics.Contract.pas',
   Atlas.Common.Diagnostics.Anonymizer in 'Source\Diagnostics\Atlas.Common.Diagnostics.Anonymizer.pas',
@@ -81,6 +86,7 @@ contains
   Atlas.Common.Diagnostics.Providers.Log in 'Source\Diagnostics\Providers\Atlas.Common.Diagnostics.Providers.Log.pas',
   Atlas.Common.Diagnostics.Adapters.LogFolder in 'Source\Diagnostics\Adapters\Atlas.Common.Diagnostics.Adapters.LogFolder.pas',
   Atlas.Common.Index.Contract in 'Source\Index\Atlas.Common.Index.Contract.pas',
+  Atlas.Common.Index.Files in 'Source\Index\Atlas.Common.Index.Files.pas',
   Atlas.Common.Index.Extractor in 'Source\Index\Atlas.Common.Index.Extractor.pas',
   Atlas.Common.Index.SymbolIndex in 'Source\Index\Atlas.Common.Index.SymbolIndex.pas',
   Atlas.Common.Index.NameIndex in 'Source\Index\Atlas.Common.Index.NameIndex.pas',
@@ -92,6 +98,7 @@ contains
   Atlas.Common.Index.Scheduler in 'Source\Index\Atlas.Common.Index.Scheduler.pas',
   Atlas.Common.Index.Service in 'Source\Index\Atlas.Common.Index.Service.pas',
   Atlas.Common.Rules.Contract in 'Source\Rules\Atlas.Common.Rules.Contract.pas',
+  Atlas.Common.Rules.Derived in 'Source\Rules\Atlas.Common.Rules.Derived.pas',
   Atlas.Common.Rules.Registry in 'Source\Rules\Atlas.Common.Rules.Registry.pas',
   Atlas.Common.Rules.Suppressions in 'Source\Rules\Atlas.Common.Rules.Suppressions.pas',
   Atlas.Common.Rules.Engine in 'Source\Rules\Atlas.Common.Rules.Engine.pas',
@@ -101,6 +108,7 @@ contains
   Atlas.Common.Rules.Filter in 'Source\Rules\Atlas.Common.Rules.Filter.pas',
   Atlas.Common.Rules.Output in 'Source\Rules\Atlas.Common.Rules.Output.pas',
   Atlas.Common.Rules.Baseline in 'Source\Rules\Atlas.Common.Rules.Baseline.pas',
+  Atlas.Common.Rules.Scopes in 'Source\Rules\Atlas.Common.Rules.Scopes.pas',
   Atlas.Common.Rules.SuppressionStats in 'Source\Rules\Atlas.Common.Rules.SuppressionStats.pas',
   Atlas.Common.Rules.Catalog in 'Source\Rules\Atlas.Common.Rules.Catalog.pas',
   Atlas.Common.Rules.Catalog.Data in 'Source\Rules\Atlas.Common.Rules.Catalog.Data.pas',
@@ -113,6 +121,10 @@ contains
   Atlas.Common.Lsp.Rename in 'Source\Lsp\Atlas.Common.Lsp.Rename.pas',
   Atlas.Common.Lsp.Completion in 'Source\Lsp\Atlas.Common.Lsp.Completion.pas',
   Atlas.Common.Lsp.CompletionEnums in 'Source\Lsp\Atlas.Common.Lsp.CompletionEnums.pas',
+  Atlas.Common.Lsp.CompletionRequest in 'Source\Lsp\Atlas.Common.Lsp.CompletionRequest.pas',
+  Atlas.Common.Lsp.CompletionCollector in 'Source\Lsp\Atlas.Common.Lsp.CompletionCollector.pas',
+  Atlas.Common.Lsp.CompletionJson in 'Source\Lsp\Atlas.Common.Lsp.CompletionJson.pas',
+  Atlas.Common.Lsp.Internals.CompletionSource in 'Source\Lsp\Internals\Atlas.Common.Lsp.Internals.CompletionSource.pas',
   Atlas.Common.Lsp.SignatureHelp in 'Source\Lsp\Atlas.Common.Lsp.SignatureHelp.pas',
   Atlas.Common.Lsp.Hierarchies in 'Source\Lsp\Atlas.Common.Lsp.Hierarchies.pas',
   Atlas.Common.Lsp.Implementations in 'Source\Lsp\Atlas.Common.Lsp.Implementations.pas',
@@ -130,6 +142,7 @@ contains
   Atlas.Common.Todos.Report in 'Source\Todos\Atlas.Common.Todos.Report.pas',
   Atlas.Common.Rules.Builtin.Todos in 'Source\Rules\Builtin\Atlas.Common.Rules.Builtin.Todos.pas',
   Atlas.Common.Lsp.Todos in 'Source\Lsp\Atlas.Common.Lsp.Todos.pas',
+  Atlas.Common.Lsp.Baseline in 'Source\Lsp\Atlas.Common.Lsp.Baseline.pas',
   Atlas.Common.Lsp.SemanticTokens in 'Source\Lsp\Atlas.Common.Lsp.SemanticTokens.pas',
   Atlas.Common.Lsp.Commands in 'Source\Lsp\Atlas.Common.Lsp.Commands.pas',
   Atlas.Common.Lsp.ApplyEdit in 'Source\Lsp\Atlas.Common.Lsp.ApplyEdit.pas',
@@ -144,11 +157,13 @@ contains
   Atlas.Common.Editing.DeclareUnknown in 'Source\Editing\Atlas.Common.Editing.DeclareUnknown.pas',
   Atlas.Common.Editing.InterfaceStubs in 'Source\Editing\Atlas.Common.Editing.InterfaceStubs.pas',
   Atlas.Common.Lsp.StringLiteralCommands in 'Source\Lsp\Atlas.Common.Lsp.StringLiteralCommands.pas',
+  Atlas.Common.Lsp.SlashMenu in 'Source\Lsp\Atlas.Common.Lsp.SlashMenu.pas',
   Atlas.Common.Lsp.DocWiki in 'Source\Lsp\Atlas.Common.Lsp.DocWiki.pas',
   Atlas.Common.Lsp.CompilerDirectives in 'Source\Lsp\Atlas.Common.Lsp.CompilerDirectives.pas',
   Atlas.Common.Lsp.Colors in 'Source\Lsp\Atlas.Common.Lsp.Colors.pas',
   Atlas.Common.Lsp.DocumentLinks in 'Source\Lsp\Atlas.Common.Lsp.DocumentLinks.pas',
   Atlas.Common.Editing.CodeActions in 'Source\Editing\Atlas.Common.Editing.CodeActions.pas',
+  Atlas.Common.Rules.CodeActions in 'Source\Rules\Atlas.Common.Rules.CodeActions.pas',
   Atlas.Common.Editing.UsesClause in 'Source\Editing\Atlas.Common.Editing.UsesClause.pas',
   Atlas.Common.Editing.UsesActions in 'Source\Editing\Atlas.Common.Editing.UsesActions.pas',
   Atlas.Common.Editing.UsesCommand in 'Source\Editing\Atlas.Common.Editing.UsesCommand.pas',
@@ -157,6 +172,7 @@ contains
   Atlas.Common.Editing.CommandSource in 'Source\Editing\Atlas.Common.Editing.CommandSource.pas',
   Atlas.Common.Editing.ClassCommands in 'Source\Editing\Atlas.Common.Editing.ClassCommands.pas',
   Atlas.Common.Editing.WrapCommands in 'Source\Editing\Atlas.Common.Editing.WrapCommands.pas',
+  Atlas.Common.Editing.SlashMenu in 'Source\Editing\Atlas.Common.Editing.SlashMenu.pas',
   Atlas.Common.Editing.RefactoringCommands in 'Source\Editing\Atlas.Common.Editing.RefactoringCommands.pas',
   Atlas.Common.Editing.ExpressionCommands in 'Source\Editing\Atlas.Common.Editing.ExpressionCommands.pas',
   Atlas.Common.Editing.Modernizer in 'Source\Editing\Atlas.Common.Editing.Modernizer.pas',
@@ -200,7 +216,7 @@ contains
   Atlas.Common.Rules.Builtin.PaletteIcons in 'Source\Rules\Builtin\Atlas.Common.Rules.Builtin.PaletteIcons.pas',
   Atlas.Common.Rules.Builtin.Performance in 'Source\Rules\Builtin\Atlas.Common.Rules.Builtin.Performance.pas',
   Atlas.Common.Rules.ChangedFiles in 'Source\Rules\Atlas.Common.Rules.ChangedFiles.pas',
-  Atlas.Common.Rules.DeclaredTypes in 'Source\Rules\Atlas.Common.Rules.DeclaredTypes.pas',
+  Atlas.Common.Pascal.DeclaredTypes in 'Source\Pascal\Atlas.Common.Pascal.DeclaredTypes.pas',
   Atlas.Common.Rules.ResourceNames in 'Source\Rules\Atlas.Common.Rules.ResourceNames.pas',
   Atlas.Common.Rules.Builtin.DataBinding in 'Source\Rules\Builtin\Atlas.Common.Rules.Builtin.DataBinding.pas',
   Atlas.Common.Rules.Builtin.DfmProperties in 'Source\Rules\Builtin\Atlas.Common.Rules.Builtin.DfmProperties.pas',
@@ -247,6 +263,8 @@ contains
   Atlas.Common.Mcp.Freshness in 'Source\Mcp\Atlas.Common.Mcp.Freshness.pas',
   Atlas.Common.Mcp.EditTools in 'Source\Mcp\Atlas.Common.Mcp.EditTools.pas',
   Atlas.Common.Mcp.IdeEdits in 'Source\Mcp\Atlas.Common.Mcp.IdeEdits.pas',
+  Atlas.Common.Mcp.IdeBuilds in 'Source\Mcp\Atlas.Common.Mcp.IdeBuilds.pas',
+  Atlas.Common.Mcp.TestTools in 'Source\Mcp\Atlas.Common.Mcp.TestTools.pas',
   Atlas.Common.Rules.Prompt in 'Source\Rules\Atlas.Common.Rules.Prompt.pas',
   Atlas.Common.Rules.Builtin.Unresolved in 'Source\Rules\Builtin\Atlas.Common.Rules.Builtin.Unresolved.pas',
   Atlas.Common.Rules.Conventions in 'Source\Rules\Atlas.Common.Rules.Conventions.pas',
@@ -259,6 +277,7 @@ contains
   Atlas.Common.Configuration.Internals.JsonTree in 'Source\Configuration\Internals\Atlas.Common.Configuration.Internals.JsonTree.pas',
   Atlas.Common.Configuration.Parser in 'Source\Configuration\Atlas.Common.Configuration.Parser.pas',
   Atlas.Common.Configuration.Internals.ScopeData in 'Source\Configuration\Internals\Atlas.Common.Configuration.Internals.ScopeData.pas',
+  Atlas.Common.Configuration.Internals.Forbidden in 'Source\Configuration\Internals\Atlas.Common.Configuration.Internals.Forbidden.pas',
   Atlas.Common.Configuration.Scopes in 'Source\Configuration\Atlas.Common.Configuration.Scopes.pas',
   Atlas.Common.Lsp.Configuration in 'Source\Lsp\Atlas.Common.Lsp.Configuration.pas',
   Atlas.Common.Lsp.SettingsCommands in 'Source\Lsp\Atlas.Common.Lsp.SettingsCommands.pas',
@@ -269,6 +288,7 @@ contains
   Atlas.Common.Lsp.Internals.Debouncer in 'Source\Lsp\Internals\Atlas.Common.Lsp.Internals.Debouncer.pas',
   Atlas.Common.Lsp.Internals.Cancellation in 'Source\Lsp\Internals\Atlas.Common.Lsp.Internals.Cancellation.pas',
   Atlas.Common.Lsp.Internals.Namespaces in 'Source\Lsp\Internals\Atlas.Common.Lsp.Internals.Namespaces.pas',
+  Atlas.Common.Lsp.Internals.FormCache in 'Source\Lsp\Internals\Atlas.Common.Lsp.Internals.FormCache.pas',
   Atlas.Common.Lsp.DocumentSymbols in 'Source\Lsp\Atlas.Common.Lsp.DocumentSymbols.pas',
   Atlas.Common.Lsp.FoldingRanges in 'Source\Lsp\Atlas.Common.Lsp.FoldingRanges.pas',
   Atlas.Common.Lsp.SelectionRanges in 'Source\Lsp\Atlas.Common.Lsp.SelectionRanges.pas',

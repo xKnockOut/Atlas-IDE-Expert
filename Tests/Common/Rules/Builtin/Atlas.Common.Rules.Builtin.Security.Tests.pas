@@ -43,6 +43,9 @@ type
     procedure SqlFromVariableIsMedium;
     [Test]
     procedure ParameterizedOrConstantSqlIsSilent;
+    /// <summary>Alle Sicherheitsregeln in einem Lauf teilen die Code-Token (Review P-03, P-08).</summary>
+    [Test]
+    procedure SecurityRulesFindSameWithSharedTokens;
   end;
 
 implementation
@@ -221,6 +224,27 @@ begin
     '  Q.Open;'#10 +
     '  Q.ExecSQL(''update K set A = :A'', [Edit1.Text]);'#10 +
     'end;'#10'end.');
+end;
+
+procedure TSecurityRulesTests.SecurityRulesFindSameWithSharedTokens;
+var
+  Source: string;
+  Count: Integer;
+begin
+  Source := Body(
+    '  // http://kommentar.example.com bleibt unbeachtet'#10 +
+    '  ShellExecute(0, ''open'', PChar(''cmd /c '' + Edit1.Text), nil, nil, SW_SHOW);'#10 +
+    '  Liste.LoadFromFile(''C:\Daten\'' + Edit1.Text);'#10 +
+    '  Gespeichert := THashSHA1.GetHashString(PasswordText);'#10 +
+    '  IdSSL.SSLOptions.VerifyMode := [];'#10 +
+    '  Client.Get(''http://api.example.com/daten'');'#10 +
+    '  Token := IntToStr(Random(MaxInt));'#10 +
+    '  Q.SQL.Text := ''select * from K where N =  + Edit1.Text + '';');
+  Count := TRuleAssert.SameAsSeparateRuns([TSecurityCommandInjectionRule.Create,
+    TSecurityPathTraversalRule.Create, TSecurityWeakCryptoRule.Create, TSecurityTlsVerificationDisabledRule.Create,
+    TSecurityInsecureHttpRule.Create, TSecurityInsecureRandomRule.Create, TSecuritySqlInjectionRule.Create],
+    Source, LowConfidence);
+  Assert.IsTrue(Count >= 5, 'Treffer mehrerer Regeln: ' + IntToStr(Count));
 end;
 
 initialization

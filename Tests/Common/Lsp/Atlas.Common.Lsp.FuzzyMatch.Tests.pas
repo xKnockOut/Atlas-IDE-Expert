@@ -22,6 +22,9 @@ type
     procedure RanksExactPrefixSubstringSubsequence;
     [Test]
     procedure PrefersWordStarts;
+    /// <summary>Vervollständigung: Teilfolgen nur mit Wortgrenzen wie im Plugin (D-05).</summary>
+    [Test]
+    procedure CompletionNeedsWordBoundaries;
   end;
 
 implementation
@@ -76,6 +79,19 @@ procedure TLspFuzzyMatchTests.PrefersWordStarts;
 begin
   // G, T und H als Wortanfänge schlagen verstreute Kleinbuchstaben.
   Assert.IsTrue(TFuzzyMatch.Score('GetTypeHierarchy', 'gth') > TFuzzyMatch.Score('GothicHall', 'gth'));
+end;
+
+procedure TLspFuzzyMatchTests.CompletionNeedsWordBoundaries;
+begin
+  Assert.IsTrue(TFuzzyMatch.CompletionScore('TStringList', 'stl') > TFuzzyMatch.NoMatch);
+  Assert.IsTrue(TFuzzyMatch.CompletionScore('TBButton', 'TBB') > TFuzzyMatch.NoMatch);
+  Assert.IsTrue(TFuzzyMatch.CompletionScore('TStringList.Create', 'stlcr') > TFuzzyMatch.NoMatch);
+  Assert.IsTrue(TFuzzyMatch.CompletionScore('TListe', 'liste') > TFuzzyMatch.NoMatch, 'Teilwort');
+  // Verstreut: die Symbolsuche findet es, die Vervollständigung nicht.
+  Assert.IsTrue(TFuzzyMatch.Score('ERROR_TOO_MANY_LINKS', 'myLis') > TFuzzyMatch.NoMatch);
+  Assert.AreEqual(TFuzzyMatch.NoMatch, TFuzzyMatch.CompletionScore('ERROR_TOO_MANY_LINKS', 'myLis'));
+  Assert.AreEqual(TFuzzyMatch.NoMatch, TFuzzyMatch.CompletionScore('Zaehler', 'zlr'));
+  Assert.AreEqual(TFuzzyMatch.Score('ListeLeeren', 'liste'), TFuzzyMatch.CompletionScore('ListeLeeren', 'liste'));
 end;
 
 initialization

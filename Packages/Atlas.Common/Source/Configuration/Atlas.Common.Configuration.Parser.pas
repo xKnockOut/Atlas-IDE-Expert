@@ -38,6 +38,7 @@ implementation
 uses
   System.StrUtils,
   System.Generics.Collections,
+  Atlas.Text.Lines,
   Atlas.Common.Documents.Contract,
   Atlas.Common.Documents.FileEncoding,
   Atlas.Common.Configuration.Internals.JsonTree;
@@ -46,6 +47,8 @@ type
   TValidator = class
   private
     FText: string;
+    /// <summary>Zeilenindex von FText für die Positionen der Meldungen.</summary>
+    FLines: TLineTable;
     FIssues: TList<TConfigurationIssue>;
     FSettings: TServerSettings;
     /// <summary>"testProfile" mit einem Namen, der erst nach "profiles" geprüft werden kann.</summary>
@@ -99,6 +102,7 @@ constructor TValidator.Create(const AText: string);
 begin
   inherited Create;
   FText := AText;
+  FLines := TLineTable.Build(AText);
   FIssues := TList<TConfigurationIssue>.Create;
   FSettings := TServerSettings.Default;
 end;
@@ -110,31 +114,8 @@ begin
 end;
 
 function TValidator.PositionAt(AOffset: Integer): TTextPosition;
-var
-  Index: Integer;
-  Line: Integer;
-  LineStart: Integer;
 begin
-  Line := 0;
-  LineStart := 0;
-  Index := 0;
-  while (Index < AOffset) and (Index < Length(FText)) do
-  begin
-    if FText[Index + 1] = #13 then
-    begin
-      if (Index + 1 < Length(FText)) and (FText[Index + 2] = #10) then
-        Inc(Index);
-      Inc(Line);
-      LineStart := Index + 1;
-    end
-    else if FText[Index + 1] = #10 then
-    begin
-      Inc(Line);
-      LineStart := Index + 1;
-    end;
-    Inc(Index);
-  end;
-  Result := TTextPosition.Create(Line, AOffset - LineStart);
+  Result := FLines.PositionAt(AOffset);
 end;
 
 procedure TValidator.Report(AStart, AStop: Integer; const AMessage: string; AIsError: Boolean);
@@ -493,6 +474,8 @@ begin
         Items.Free;
       end;
     end
+    else if ANode.Keys[Index] = 'globalSettings' then
+      ExpectBoolean(ANode[Index], 'globalSettings', FSettings.McpGlobalSettings)
     else
       ReportNode(ANode[Index], Format('Unbekannte Einstellung "mcp.%s"', [ANode.Keys[Index]]));
 end;
@@ -947,7 +930,7 @@ end;
 procedure TValidator.ReadCompiler(ANode: TJsonNode);
 var
   Index: Integer;
-  Key: string;
+  Key, Text: string;
 begin
   if ANode.Kind <> TJsonKind.Object_ then
   begin
@@ -959,6 +942,22 @@ begin
     Key := ANode.Keys[Index];
     if Key = 'onSave' then
       ExpectBoolean(ANode[Index], Key, FSettings.Compiler.OnSave)
+    else if Key = 'backend' then
+    begin
+      if ExpectString(ANode[Index], Key, Text) then
+        if Text = 'auto' then
+          FSettings.Compiler.Backend := TCompilerBackendSetting.Auto
+        else if Text = 'dcc' then
+          FSettings.Compiler.Backend := TCompilerBackendSetting.Dcc
+        else if Text = 'ide' then
+          FSettings.Compiler.Backend := TCompilerBackendSetting.Ide
+        else if Text = 'off' then
+          FSettings.Compiler.Backend := TCompilerBackendSetting.Off
+        else
+          ReportNode(ANode[Index], 'Erlaubt sind "auto", "dcc", "ide" und "off"');
+    end
+    else if Key = 'ideCommand' then
+      ExpectString(ANode[Index], Key, FSettings.Compiler.IdeCommand)
     else
       Report(ANode.KeyStarts[Index], ANode.KeyStarts[Index] + Length(Key) + 2,
         Format('Unbekannte Einstellung "compiler.%s"', [Key]), False);
@@ -1640,7 +1639,10 @@ begin
     else if Key = 'exclude' then
       Result.Exclude := FileSettings.Exclude
     else if Key = 'mcp' then
-      Result.McpDisabledTools := FileSettings.McpDisabledTools
+    begin
+      Result.McpDisabledTools := FileSettings.McpDisabledTools;
+      Result.McpGlobalSettings := FileSettings.McpGlobalSettings;
+    end
     else if Key = 'minConfidence' then
     begin
       Result.MinConfidence := FileSettings.MinConfidence;

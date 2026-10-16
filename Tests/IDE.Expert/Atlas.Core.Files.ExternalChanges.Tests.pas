@@ -23,6 +23,8 @@ type
     procedure ChangeBackBeforeQuietCancels;
     [Test]
     procedure DiffShowsChangedLinesOnly;
+    [Test]
+    procedure TextDiffReportsTrailingNewline;
   end;
 
 implementation
@@ -139,6 +141,17 @@ begin
   Assert.AreEqual('Zeile 2:|- b|+ B', string.Join('|', Lines));
   Lines := TAtlasTextDiff.Lines('a'#10'c', 'a'#10'b'#10'c');
   Assert.AreEqual('ab Zeile 2:|+ b', string.Join('|', Lines));
+end;
+
+procedure TAtlasExternalChangesTests.TextDiffReportsTrailingNewline;
+var
+  Lines: TArray<string>;
+begin
+  // Eine zusätzliche letzte Zeilenschaltung ist ein Unterschied (früher von Split verschluckt).
+  Lines := TAtlasTextDiff.Lines('a'#10'b', 'a'#10'b'#10);
+  Assert.AreEqual('ab Zeile 3:|+ ', string.Join('|', Lines));
+  // Alleinstehendes CR trennt Zeilen wie LF.
+  Assert.AreEqual(0, Integer(Length(TAtlasTextDiff.Lines('a'#13'b', 'a'#10'b'))), 'CR wie LF');
 end;
 
 initialization

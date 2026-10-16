@@ -40,11 +40,10 @@ uses
   Atlas.Core.Lsp.Client,
   Atlas.Core.Lsp.Progress,
   Atlas.Core.Hover.Contract,
-  Atlas.Core.Problems.Contract,
+  Atlas.Core.Lsp.Contract,
   Atlas.Core.Files.WatchedChanges,
-  Atlas.Core.Projects.Context,
+  Atlas.Core.Projects.Contract,
   Atlas.Core.InlayHints.Store,
-  Atlas.Core.Results.Model,
   Atlas.Core.Lsp.TextChanges,
   Atlas.Core.Lsp.WorkspaceEdits;
 
@@ -147,6 +146,10 @@ type
     procedure SyncLocked(const AFileName, AText: string);
     procedure CloseLocked(const AFileName: string);
     function PositionParams(const AFileName: string; ALine, ACharacter: Integer): TJSONObject;
+    /// <summary>capabilities für initialize; AApplyEdit: workspace.applyEdit ankündigen.</summary>
+    class function ClientCapabilities(AApplyEdit: Boolean): TJSONObject; static;
+    /// <summary>Lese-Thread-Empfänger setzen; fängt nur Zähler, Client und Callbacks ein, nie Self.</summary>
+    procedure AttachClientHandlers;
   public
     /// <summary>AClient gehört weiter dem Aufrufer.</summary>
     constructor Create(AClient: TLspClient; ATimeoutMs: Cardinal = 3000);
@@ -174,6 +177,12 @@ type
     function InlayHints(const AFileName: string; AFromLine, AToLine: Integer;
       ATimeoutMs: Cardinal): TArray<TAtlasInlayHint>;
     procedure Initialize;
+    /// <summary>Parameter von initialize (#396, #397, #408, #648, #652). AApplyEdit: workspace.applyEdit
+    /// ankündigen. Gehört dem Aufrufer.</summary>
+    class function InitializeParams(const AProjects: TArray<string>; const AServerSettings: string;
+      const AContexts: TArray<TAtlasProjectContext>; AApplyEdit: Boolean): TJSONObject; static;
+    /// <summary>Antwort auf workspace/applyEdit ({applied, failureReason}). Gehört dem Aufrufer.</summary>
+    class function ApplyEditAnswer(AApplied: Boolean; const AFailureReason: string): TJSONObject; static;
     /// <summary>Vor Initialize setzen (#397): workspace/applyEdit des Servers annehmen.</summary>
     property OnApplyEdit: TLspApplyEditProc read FOnApplyEdit write FOnApplyEdit;
     /// <summary>Vor Initialize setzen (#121): Meldungen des Servers für den Benutzer.</summary>
@@ -295,13 +304,16 @@ type
     property Initialized: Boolean read FInitialized;
   end;
 
+  /// <summary>Laufende Sitzung oder nil; startet nie einen Server (Code-Review A-01). Aus beliebigem Thread
+  /// aufgerufen, meist im Zeitlimit-Arbeiter. Steht hier, damit Anbieter verschiedener Features sie ohne
+  /// gegenseitigen Import teilen (Code-Review A-10).</summary>
+  TAtlasSessionFunc = reference to function: TLspSession;
+
 implementation
 
 uses
-  System.SyncObjs;
-
-const
-  Unreserved = ['A'..'Z', 'a'..'z', '0'..'9', '-', '.', '_', '~', '/'];
+  System.SyncObjs,
+  Atlas.Text.Uris;
 
 type
   TLspSignal = class(TInterfacedObject, ILspSignal)
@@ -382,75 +394,15 @@ begin
 end;
 
 class function TLspSession.PathToUri(const APath: string): string;
-var
-  Path: string;
-  Bytes: TBytes;
-  B: Byte;
-  Builder: TStringBuilder;
 begin
-  Path := StringReplace(APath, '\', '/', [rfReplaceAll]);
-  if Path.StartsWith('//') then
-    Path := Path.Substring(2)
-  else
-    Path := '/' + Path;
-  Bytes := TEncoding.UTF8.GetBytes(Path);
-  Builder := TStringBuilder.Create;
-  try
-    for B in Bytes do
-      if (B < $80) and CharInSet(Char(B), Unreserved) then
-        Builder.Append(Char(B))
-      else
-        Builder.Append('%').Append(IntToHex(B, 2));
-    // c:\x → file:///c%3A/x; \\server\share → file://server/share
-    Result := 'file://' + Builder.ToString;
-  finally
-    Builder.Free;
-  end;
+  // Wie der Server (ADR 0012): c:\x → file:///c%3A/x; \\server\share → file://server/share
+  Result := TTextUris.FromPath(APath);
 end;
 
 class function TLspSession.UriToPath(const AUri: string): string;
-var
-  Rest: string;
-  Bytes: TBytes;
-  Count, Index, Code: Integer;
-  Chunk: TBytes;
 begin
-  if not AUri.StartsWith('file://', True) then
-    Exit('');
-  Rest := AUri.Substring(Length('file://'));
-  SetLength(Bytes, Length(Rest) * 3);
-  Count := 0;
-  Index := 1;
-  while Index <= Length(Rest) do
-  begin
-    if (Rest[Index] = '%') and (Index + 2 <= Length(Rest)) then
-    begin
-      Code := StrToIntDef('$' + Copy(Rest, Index + 1, 2), -1);
-      if Code >= 0 then
-      begin
-        Bytes[Count] := Code;
-        Inc(Count);
-        Inc(Index, 3);
-        Continue;
-      end;
-    end;
-    Chunk := TEncoding.UTF8.GetBytes(Rest[Index]);
-    Move(Chunk[0], Bytes[Count], Length(Chunk));
-    Inc(Count, Length(Chunk));
-    Inc(Index);
-  end;
-  Result := TEncoding.UTF8.GetString(Bytes, 0, Count);
-  if Result.StartsWith('/') then
-  begin
-    // file:///c:/x → c:\x; file://server/share → \\server\share
-    if (Length(Result) >= 3) and (Result[3] = ':') then
-      Result := Result.Substring(1)
-    else
-      Result := '/' + Result;
-  end
-  else
-    Result := '//' + Result;
-  Result := StringReplace(Result, '/', '\', [rfReplaceAll]);
+  // file:///c:/x → c:\x; file://server/share → \\server\share; andere Schemata → ''
+  Result := StringReplace(TTextUris.ToPath(AUri), '/', '\', [rfReplaceAll]);
 end;
 
 class function TLspSession.HoverText(const AHover: TJSONValue): string;
@@ -507,17 +459,10 @@ begin
   Result := AMessage <> '';
 end;
 
-procedure TLspSession.Initialize;
+class function TLspSession.ClientCapabilities(AApplyEdit: Boolean): TJSONObject;
 var
-  Params, Capabilities, TextDocument, Hover, Options: TJSONObject;
-  Formats, Contexts: TJSONArray;
-  Context: TAtlasProjectContext;
-  Response: TJSONValue;
-  Refresh: ILspSignal;
-  Progress: ILspProgress;
-  ApplyEdit: TLspApplyEditProc;
-  ShowMessageProc: TLspShowMessageProc;
-  Client: TLspClient;
+  TextDocument, Hover: TJSONObject;
+  Formats: TJSONArray;
 begin
   Formats := TJSONArray.Create;
   Formats.Add('plaintext');
@@ -533,38 +478,62 @@ begin
   // Diagnosen holt das Plugin selbst (#398); der Server bittet per refresh um neues Holen.
   TextDocument.AddPair('diagnostic', TJSONObject.Create.AddPair('dynamicRegistration', TJSONBool.Create(False))
     .AddPair('relatedDocumentSupport', TJSONBool.Create(False)));
-  Capabilities := TJSONObject.Create;
-  Capabilities.AddPair('textDocument', TextDocument);
-  Capabilities.AddPair('workspace', TJSONObject.Create(TJSONPair.Create('diagnostics',
+  Result := TJSONObject.Create;
+  Result.AddPair('textDocument', TextDocument);
+  Result.AddPair('workspace', TJSONObject.Create(TJSONPair.Create('diagnostics',
     TJSONObject.Create(TJSONPair.Create('refreshSupport', TJSONBool.Create(True)))))
     .AddPair('workspaceFolders', TJSONBool.Create(True))
-    .AddPair('applyEdit', TJSONBool.Create(Assigned(FOnApplyEdit))));
-  Params := TJSONObject.Create;
-  Params.AddPair('processId', TJSONNull.Create);
-  Params.AddPair('rootUri', TJSONNull.Create);
-  Params.AddPair('clientInfo', TJSONObject.Create(TJSONPair.Create('name', 'Atlas IDE Expert')));
-  Params.AddPair('capabilities', Capabilities);
-  if Length(FProjects) > 0 then
-    Params.AddPair('workspaceFolders', ProjectFolders(FProjects));
+    .AddPair('applyEdit', TJSONBool.Create(AApplyEdit)));
+end;
+
+class function TLspSession.InitializeParams(const AProjects: TArray<string>; const AServerSettings: string;
+  const AContexts: TArray<TAtlasProjectContext>; AApplyEdit: Boolean): TJSONObject;
+var
+  Options: TJSONObject;
+  Contexts: TJSONArray;
+  Context: TAtlasProjectContext;
+begin
+  Result := TJSONObject.Create;
+  Result.AddPair('processId', TJSONNull.Create);
+  Result.AddPair('rootUri', TJSONNull.Create);
+  Result.AddPair('clientInfo', TJSONObject.Create(TJSONPair.Create('name', 'Atlas IDE Expert')));
+  Result.AddPair('capabilities', ClientCapabilities(AApplyEdit));
+  if Length(AProjects) > 0 then
+    Result.AddPair('workspaceFolders', ProjectFolders(AProjects));
   // Einstellungen der Atlas-Optionen (#652) und Projektkontexte vor dem ersten Laden der Projekte, sonst
   // indiziert der Server sie zweimal (#396).
   Options := nil;
-  if FServerSettings <> '' then
-    Options := SettingsParams(FServerSettings);
-  if Length(FContexts) > 0 then
+  if AServerSettings <> '' then
+    Options := SettingsParams(AServerSettings);
+  if Length(AContexts) > 0 then
   begin
     Contexts := TJSONArray.Create;
-    for Context in FContexts do
-    begin
+    for Context in AContexts do
       Contexts.AddElement(Context.ToJson);
-      FSentContexts.AddOrSetValue(AnsiUpperCase(Context.Project), Context.Key);
-    end;
     if Options = nil then
       Options := TJSONObject.Create;
     Options.AddPair('projectContexts', Contexts);
   end;
   if Options <> nil then
-    Params.AddPair('initializationOptions', Options);
+    Result.AddPair('initializationOptions', Options);
+end;
+
+class function TLspSession.ApplyEditAnswer(AApplied: Boolean; const AFailureReason: string): TJSONObject;
+begin
+  Result := TJSONObject.Create;
+  Result.AddPair('applied', TJSONBool.Create(AApplied));
+  if AFailureReason <> '' then
+    Result.AddPair('failureReason', AFailureReason);
+end;
+
+procedure TLspSession.AttachClientHandlers;
+var
+  Refresh: ILspSignal;
+  Progress: ILspProgress;
+  ApplyEdit: TLspApplyEditProc;
+  ShowMessageProc: TLspShowMessageProc;
+  Client: TLspClient;
+begin
   // Nur den Zähler einfangen, nicht die Sitzung: Der Lese-Thread kann die Sitzung überleben.
   Refresh := FRefresh;
   Progress := FProgress;
@@ -608,17 +577,12 @@ begin
             procedure(AApplied: Boolean; const AFailureReason: string)
             var
               Id: TJSONValue;
-              Answer: TJSONObject;
             begin
               // Nur die erste Antwort zählt.
               Id := Pending.Take;
               if Id = nil then
                 Exit;
-              Answer := TJSONObject.Create;
-              Answer.AddPair('applied', TJSONBool.Create(AApplied));
-              if AFailureReason <> '' then
-                Answer.AddPair('failureReason', AFailureReason);
-              Client.Respond(Id, Answer);
+              Client.Respond(Id, ApplyEditAnswer(AApplied, AFailureReason));
             end);
         except
           // Nicht angenommen: Der Client antwortet mit null und gibt seine Id selbst frei.
@@ -626,6 +590,20 @@ begin
           raise;
         end;
       end;
+end;
+
+procedure TLspSession.Initialize;
+var
+  Params: TJSONObject;
+  Context: TAtlasProjectContext;
+  Response: TJSONValue;
+begin
+  Params := InitializeParams(FProjects, FServerSettings, FContexts, Assigned(FOnApplyEdit));
+  // Gesendete Kontexte merken: SetProjectContexts schickt danach nur neue oder geänderte (#396).
+  for Context in FContexts do
+    FSentContexts.AddOrSetValue(AnsiUpperCase(Context.Project), Context.Key);
+  // Empfänger vor initialize setzen: Der Server darf gleich danach Nachrichten schicken.
+  AttachClientHandlers;
   // Ohne Arbeitsbereich leitet der Server ihn aus den geöffneten Dateien ab, ebenso für Dateien
   // außerhalb der gemeldeten Projekte.
   Response := FClient.Request('initialize', Params, 15000);
@@ -1073,7 +1051,7 @@ var
 begin
   Result := nil;
   Method := 'textDocument/prepareTypeHierarchy';
-  if TAtlasResults.IsCallHierarchy(ADirection) then
+  if ADirection in [TAtlasHierarchyDirection.Incoming, TAtlasHierarchyDirection.Outgoing] then
     Method := 'textDocument/prepareCallHierarchy';
   Response := FClient.Request(Method, PositionParams(AFileName, ALine, ACharacter), FTimeoutMs * 10);
   try

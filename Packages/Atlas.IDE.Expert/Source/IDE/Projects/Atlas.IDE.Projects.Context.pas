@@ -13,12 +13,20 @@
 // Konfigurationsschnittstelle oder wirft sie, gelten die Projektoptionen
 // (IOTAProjectOptions.Values). Welcher Weg galt, steht in Source und mit
 // Diagnose=1 im Protokoll.
+//
+// Macros (#759): Werte für $(…) in Such- und Bibliothekspfaden wie die IDE
+// sie kennt: Umgebungsvariablen aus den IDE-Optionen (Registry "Environment
+// Variables" des laufenden Profils), BDS-Ordner der laufenden IDE (BDS,
+// BDSLIB, BDSBIN, BDSINCLUDE), BDSCOMMONDIR, BDSUSERDIR und
+// BDSCatalogRepository der Version, Projekt, Plattform und Konfiguration;
+// zuletzt die Umgebung des Prozesses.
 
 interface
 
 uses
   ToolsAPI,
-  Atlas.Core.Projects.Context;
+  Atlas.Core.Projects.Contract,
+  Atlas.Core.Projects.PathCheck;
 
 type
   TAtlasIdeProjectContext = class
@@ -27,12 +35,17 @@ type
     class function Read(const AProject: IOTAProject): TAtlasProjectContext; static;
     /// <summary>Kontexte aller Projekte der geöffneten Gruppe, die eine gespeicherte .dproj haben.</summary>
     class function Group: TArray<TAtlasProjectContext>; static;
+    /// <summary>Werte für $(…) in den Pfaden von AContext (siehe Kopf); nur im Hauptthread aufrufen, das Ergebnis
+    /// darf in einen Hintergrundthread.</summary>
+    class function Macros(const AContext: TAtlasProjectContext): TAtlasPathMacros; static;
   end;
 
 implementation
 
 uses
   System.SysUtils,
+  System.Classes,
+  System.IOUtils,
   System.Variants,
   System.Win.Registry,
   Winapi.Windows;
@@ -152,6 +165,62 @@ begin
   Result.BdsVersion := TAtlasProjectContext.VersionOfRegistryKey(BaseKey);
   ReadOptions(AProject, Result);
   Result.LibraryPaths := LibraryPaths(BaseKey, Result.Platform);
+end;
+
+class function TAtlasIdeProjectContext.Macros(const AContext: TAtlasProjectContext): TAtlasPathMacros;
+var
+  Registry: TRegistry;
+  Names: TStringList;
+  Name, BaseKey, Studio: string;
+  Services: IOTAServices;
+begin
+  Result := TAtlasPathMacros.Create(
+    function(const AName: string): string
+    begin
+      Result := GetEnvironmentVariable(AName);
+    end);
+  BaseKey := BaseRegistryKey;
+  // Umgebungsvariablen aus den IDE-Optionen (Tools › Optionen › Umgebungsvariablen) gehen allem vor.
+  if BaseKey <> '' then
+  begin
+    Registry := TRegistry.Create(KEY_READ);
+    Names := TStringList.Create;
+    try
+      Registry.RootKey := HKEY_CURRENT_USER;
+      if Registry.OpenKeyReadOnly(BaseKey + '\Environment Variables') then
+      begin
+        Registry.GetValueNames(Names);
+        for Name in Names do
+          try
+            Result.Add(Name, Registry.ReadString(Name));
+          except
+            on Exception do
+              ; // Kein Text (etwa REG_DWORD): übergehen.
+          end;
+      end;
+    finally
+      Names.Free;
+      Registry.Free;
+    end;
+  end;
+  // Ordner der laufenden IDE.
+  if Supports(BorlandIDEServices, IOTAServices, Services) then
+    Result.AddBds(Services.GetRootDirectory);
+  // Ordner der Version unter „Öffentliche Dokumente“ und „Dokumente“, wie sie die IDE setzt.
+  if AContext.BdsVersion <> '' then
+  begin
+    Studio := 'Embarcadero\Studio\' + AContext.BdsVersion;
+    try
+      Result.AddDefault('BDSCOMMONDIR', IncludeTrailingPathDelimiter(TPath.GetSharedDocumentsPath) + Studio);
+      Result.AddDefault('BDSUSERDIR', IncludeTrailingPathDelimiter(TPath.GetDocumentsPath) + Studio);
+      Result.AddDefault('BDSCatalogRepository', IncludeTrailingPathDelimiter(TPath.GetDocumentsPath) + Studio +
+        '\CatalogRepository');
+    except
+      on Exception do
+        ; // Ordner nicht ermittelbar: dann gilt die Umgebung des Prozesses.
+    end;
+  end;
+  Result.AddProject(AContext.Project, AContext.Platform, AContext.Configuration);
 end;
 
 class function TAtlasIdeProjectContext.Group: TArray<TAtlasProjectContext>;

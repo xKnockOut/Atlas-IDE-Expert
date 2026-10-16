@@ -30,6 +30,9 @@ type
 
 implementation
 
+uses
+  Atlas.Text.Lines;
+
 function EscapeXml(const AValue: string): string;
 begin
   Result := StringReplace(AValue, '&', '&amp;', [rfReplaceAll]);
@@ -82,14 +85,6 @@ begin
   for Ch in AText do
     if Ch > ' ' then
       Result := Result + Ch;
-end;
-
-function LineBreakOf(const AText: string): string;
-begin
-  if Pos(#13#10, AText) > 0 then
-    Result := #13#10
-  else
-    Result := #10;
 end;
 
 /// <summary>Einrückung der Zeile, in der Position APos (ab 1) steht.</summary>
@@ -201,7 +196,7 @@ begin
       if LineEnd + 1 + Length(Indent) >= GroupEnd then
         Indent := IndentAt(AText, Start) + '    ';
       Line := Format('%s<%s>%s;$(%s)</%s>', [Indent, AProperty, EscapeXml(AValue), AProperty, AProperty]) +
-        LineBreakOf(AText);
+        TTextLines.LineBreakOf(AText);
       ANewText := Copy(AText, 1, LineEnd) + Line + Copy(AText, LineEnd + 1, MaxInt);
       Exit(TDprojEditResult.Added);
     end;

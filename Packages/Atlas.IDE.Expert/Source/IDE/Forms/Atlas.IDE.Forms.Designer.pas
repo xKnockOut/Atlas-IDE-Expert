@@ -89,7 +89,8 @@ implementation
 uses
   System.TypInfo,
   Atlas.Core.Diagnostics.Guard,
-  Atlas.Core.Forms.Text;
+  Atlas.Core.Forms.Text,
+  Atlas.IDE.Foundation.EditorSnapshot;
 
 const
   SyncDelayMs = 500;
@@ -253,6 +254,8 @@ end;
 
 procedure TAtlasIdeForms.Changed;
 begin
+  // Der Designer schreibt Felder und Methoden ohne Editorereignis in die Unit (P-04).
+  TAtlasEditorSnapshots.Invalidate;
   // Erst nach einer Pause senden: Beim Ziehen kommt eine Meldung je Mausbewegung.
   FDirty := True;
   FTimer.Enabled := False;

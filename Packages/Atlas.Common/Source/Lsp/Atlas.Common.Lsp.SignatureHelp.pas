@@ -89,6 +89,7 @@ implementation
 
 uses
   Atlas.Common.Lsp.Internals.Namespaces,
+  Atlas.Common.Index.Files,
   System.StrUtils,
   System.Generics.Collections,
   Atlas.Common.Documents.Uris,
@@ -98,7 +99,8 @@ uses
   Atlas.Common.Index.Extractor,
   Atlas.Common.Pascal.XmlDoc,
   Atlas.Common.Lsp.Documentation,
-  Atlas.Common.Lsp.Internals.Cancellation;
+  Atlas.Common.Lsp.Internals.Cancellation,
+  Atlas.Text.Lines;
 
 const
   RoutineKinds = [TIndexSymbolKind.Method, TIndexSymbolKind.Constructor_, TIndexSymbolKind.Routine];
@@ -111,24 +113,6 @@ begin
     Result := A.Line - B.Line
   else
     Result := A.Character - B.Character;
-end;
-
-function SplitLines(const AText: string): TArray<string>;
-var
-  Index, Start: Integer;
-  Line: string;
-begin
-  Result := nil;
-  Start := 1;
-  for Index := 1 to Length(AText) + 1 do
-    if (Index > Length(AText)) or (AText[Index] = #10) then
-    begin
-      Line := Copy(AText, Start, Index - Start);
-      if (Line <> '') and (Line[Length(Line)] = #13) then
-        SetLength(Line, Length(Line) - 1);
-      Result := Result + [Line];
-      Start := Index + 1;
-    end;
 end;
 
 function CollapseSpaces(const AText: string): string;
@@ -453,7 +437,7 @@ begin
     Text := ATreeText
   else if not (Assigned(AReadText) and AReadText(Resolved.FileName, Text)) then
     Exit;
-  Lines := SplitLines(Text);
+  Lines := TTextLines.SplitLines(Text);
   Reader := TLspDocumentation.Reader(AFileName, ATreeText, AReadText);
   Starts := TList<TTextPosition>.Create;
   StartSymbols := TList<TResolvedSymbol>.Create;

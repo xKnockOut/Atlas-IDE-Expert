@@ -80,11 +80,14 @@ type
     class function HintsJson(const AHints: THintSettings): TJSONObject; static;
     /// <summary>Liest AOwnFile aus AOwnText (Editorinhalt, auch ungespeichert), andere Dateien über AReadText.</summary>
     class function Reader(const AOwnFile, AOwnText: string; const AReadText: TDocReadText): TDocReadText; static;
-    /// <summary>Text in Zeilen (LF oder CRLF).</summary>
+    /// <summary>Text in Zeilen (CRLF, LF oder CR); wie TTextLines.SplitLines.</summary>
     class function SplitLines(const AText: string): TArray<string>; static;
   end;
 
 implementation
+
+uses
+  Atlas.Text.Lines;
 
 { TLspDocumentation.TLoader }
 
@@ -194,21 +197,8 @@ end;
 { TLspDocumentation }
 
 class function TLspDocumentation.SplitLines(const AText: string): TArray<string>;
-var
-  Index, Start: Integer;
-  Line: string;
 begin
-  Result := nil;
-  Start := 1;
-  for Index := 1 to Length(AText) + 1 do
-    if (Index > Length(AText)) or (AText[Index] = #10) then
-    begin
-      Line := Copy(AText, Start, Index - Start);
-      if (Line <> '') and (Line[Length(Line)] = #13) then
-        SetLength(Line, Length(Line) - 1);
-      Result := Result + [Line];
-      Start := Index + 1;
-    end;
+  Result := TTextLines.SplitLines(AText);
 end;
 
 class function TLspDocumentation.HintsJson(const AHints: THintSettings): TJSONObject;

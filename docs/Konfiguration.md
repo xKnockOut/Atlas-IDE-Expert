@@ -6,6 +6,8 @@ Einstellungen für Atlas. Jeder Schlüssel hat genau einen Ort (x-scope): "proje
 
 Jeder Schlüssel hat genau einen Ort (Spalte „Ort“): Projekt-Schlüssel stehen in `atlas.json` im Projektordner (im Plugin *Atlas › Projekt-Einstellungen*), globale in `%APPDATA%\Atlas\settings.json` für alle Projekte (im Plugin *Tools › Optionen › Atlas*). Ein Schlüssel am falschen Ort wird ignoriert und als Warnung gemeldet. Fehlende Schlüssel nehmen den Standardwert. In der IDE bestimmt die laufende IDE die Delphi-Version (`delphiVersion` gilt dort nicht). Die Prüfregeln stehen in [Regeln.md](Regeln.md).
 
+`atlas.json` liegt im Repository und gilt für alle im Team (#486). Zugangsdaten (Schlüssel wie `token`, `password`, `user` auf jeder Ebene, Adressen wie `https://user:pw@…` oder `?token=…`) und absolute Pfade (Laufwerk oder UNC) in den Pfad-Einstellungen (`project`, `testUnits.folder`, `testUnits.project`, `exclude`, `index.exclude`, `overrides[].files`) werden beim Lesen ignoriert und als Warnung gemeldet. Glob-Muster ab dem Projektordner (`/Generated/**`) und relative Pfade (`..\Tests`) bleiben erlaubt. Die globale `settings.json` ist persönlich und davon ausgenommen. Die Team-Einstellungen des Plugins stehen in der eigenen Projektdatei `.atlas` (siehe [Einstellungen.md](Einstellungen.md)).
+
 ## Schlüssel
 
 | Schlüssel | Ort | Typ | Standard | Werte | Bedeutung |
@@ -22,7 +24,7 @@ Jeder Schlüssel hat genau einen Ort (Spalte „Ort“): Projekt-Schlüssel steh
 | `overrides` | Projekt (atlas.json) | array<object> | – |  | Pfadregeln: Schweregrade für Dateien, die eines der Glob-Muster treffen, z. B. Tests oder generierten Code herabstufen. Regel-ID "*" steht für alle Regeln; spätere Einträge haben Vorrang. |
 | `excludeTests` | Projekt (atlas.json) | boolean | `false` |  | Test-Units und Testprojekte (uses DUnitX.TestFramework, TestFramework oder TestInsight.*) nicht prüfen. |
 | `testProfile` | Projekt (atlas.json) | string | – | z. B. `"fast"` | Regelprofil für Test-Units und Testprojekte; leer: wie "profile". |
-| `compiler` | global (settings.json) | object | – |  | Compiler-Anbindung (dcc32/dcc64). |
+| `compiler` | global (settings.json) | object | – |  | Compiler-Anbindung: Kommandozeilen-Compiler (dcc32/dcc64) oder eine eigene IDE über cc.ps1. |
 | `vcs` | global (settings.json) | object | – |  | Versionsverwaltung (Git, SVN) für geänderte Dateien, Branch und Revision. |
 | `completion` | gemischt, siehe unten | object | – |  | Code-Vervollständigung. |
 | `refactoring` | Projekt (atlas.json) | object | – |  | Code, den Atlas erzeugt. |
@@ -44,7 +46,7 @@ Jeder Schlüssel hat genau einen Ort (Spalte „Ort“): Projekt-Schlüssel steh
 | `testUnits` | Projekt (atlas.json) | object | – |  | Testunits anlegen und zwischen Unit und Testunit wechseln: Namensmuster, Ordner neuer Testunits und Testprojekt. |
 | `minConfidence` | Projekt (atlas.json) | string | `"medium"` | `"low"`, `"medium"`, `"high"` | Regeltreffer unter dieser Konfidenz ausblenden. |
 | `exclude` | Projekt (atlas.json) | array<string> | – | z. B. `["ThirdParty/**","Generated/*.pas"]` | Ordner und Dateien, die nicht geprüft werden (Glob-Muster relativ zu diesem Ordner: *, **, ?). |
-| `mcp` | global (settings.json) | object | – | z. B. `{"disabledTools":["rename_symbol","apply_code_action"]}` | MCP-Modus (--mcp) für KI-Assistenten. |
+| `mcp` | gemischt, siehe unten | object | – | z. B. `{"disabledTools":["rename_symbol","apply_code_action"]}`, `{"globalSettings":false}` | MCP-Modus (--mcp) für KI-Assistenten. |
 | `format` | Projekt (atlas.json) | object | – |  | Formatierung (Dokument und Auswahl formatieren). Gesetzte Werte haben Vorrang vor .editorconfig. |
 | `logLevel` | global (settings.json) | string | `"info"` | `"debug"`, `"info"`, `"warning"`, `"error"` | Mindeststufe der Meldungen im Ausgabefenster und in der Logdatei. Gilt ab dem nächsten Start; die Kommandozeilenoption --log-level hat Vorrang. |
 | `logFile` | global (settings.json) | string | `""` |  | Optionale Logdatei des Servers (Rotation bei 10 MB). Gilt ab dem nächsten Start; --log hat Vorrang. |
@@ -54,7 +56,9 @@ Jeder Schlüssel hat genau einen Ort (Spalte „Ort“): Projekt-Schlüssel steh
 
 | Schlüssel | Ort | Typ | Standard | Werte | Bedeutung |
 |---|---|---|---|---|---|
-| `compiler.onSave` | global (settings.json) | boolean | `false` |  | Nach dem Speichern einer Quelldatei das Projekt im Hintergrund kompilieren und die Meldungen anzeigen. |
+| `compiler.onSave` | global (settings.json) | boolean | `false` |  | Nach dem Speichern einer Quelldatei das Projekt im Hintergrund kompilieren und die Meldungen anzeigen. Nur mit dem Kommandozeilen-Compiler; über die IDE (backend ide) kompiliert Atlas wegen ihrer Startzeit nur auf den Befehl „Projekt kompilieren“ (atlas.server.compile). |
+| `compiler.backend` | global (settings.json) | string | `"auto"` | `"auto"`, `"dcc"`, `"ide"`, `"off"` | Weg zum Compiler. auto: Atlas erkennt vorher je Delphi-Installation, ob dcc32/dcc64 vorhanden und nutzbar ist (die Starter und Community Edition melden einen Lizenztext statt zu kompilieren), merkt sich das und nimmt dann dcc, sonst ide (wenn ideCommand eingerichtet ist), sonst off. dcc: nur der Kommandozeilen-Compiler. ide: eine eigene IDE über cc.ps1 (ideCommand), immer mit eigener Instanz; die IDE des Benutzers wird nie angesprochen. off: Atlas kompiliert nie selbst. Ist kein Compiler nutzbar, meldet Atlas das einmal mit Grund und Ausweg, zeigt es im Status (atlas.server.status) und der Befehl „Projekt kompilieren“ antwortet mit dem Grund. |
+| `compiler.ideCommand` | global (settings.json) | string | `""` | z. B. `"C:\Projekte\IDE-Plugins\Claude-Compile\cc.ps1"` | Pfad zu cc.ps1 (Claude-Compile) für den Weg über die IDE; leer = nicht eingerichtet. Atlas startet damit eine eigene Scratch-IDE (-Instance), nutzt sie für weitere Läufe wieder und beendet sie mit dem Server. |
 
 ## vcs
 
@@ -167,6 +171,7 @@ Jeder Schlüssel hat genau einen Ort (Spalte „Ort“): Projekt-Schlüssel steh
 | Schlüssel | Ort | Typ | Standard | Werte | Bedeutung |
 |---|---|---|---|---|---|
 | `mcp.disabledTools` | global (settings.json) | array<string> | `` |  | Werkzeuge, die der MCP-Server nicht anbietet, z. B. rename_symbol oder apply_code_action. Im eingeschränkten Modus (--restricted) sind schreibende Werkzeuge immer aus. |
+| `mcp.globalSettings` | Projekt (atlas.json) | boolean | `true` |  | Der MCP-Server liest wie der LSP-Server und der Linter die globale Datei %APPDATA%\Atlas\settings.json (z. B. mcp.disabledTools, Index, Hints). false: nur atlas.json, etwa für reproduzierbare Ergebnisse im Team. |
 
 ## format
 

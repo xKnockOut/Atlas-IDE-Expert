@@ -81,7 +81,8 @@ implementation
 uses
   System.JSON,
   Atlas.Common.Configuration.Contract,
-  Atlas.Common.Documents.Contract;
+  Atlas.Common.Documents.Contract,
+  Atlas.Common.Rules.Derived;
 
 type
   /// <summary>Aufruf X.M, X.M(…) oder M(…) als Anweisung.</summary>
@@ -258,6 +259,21 @@ begin
   until not Changed;
 end;
 
+/// <summary>ThreadClasses der geprüften Datei, je Lauf einmal berechnet (Review P-03).</summary>
+function SharedThreadClasses(const AContext: TRuleContext): TArray<string>;
+var
+  Cache: IRuleDerivedCache;
+  Root: TSyntaxNode;
+begin
+  Cache := TRuleDerived.Open(AContext);
+  Root := AContext.Tree.Root;
+  Result := TRuleDerived.Get<TRuleDerivedValue<TArray<string>>>(Cache, 'concurrency.threadClasses',
+    function: TRuleDerivedValue<TArray<string>>
+    begin
+      Result := TRuleDerivedValue<TArray<string>>.Create(ThreadClasses(Root));
+    end).Value;
+end;
+
 /// <summary>Bereich einer ganzen Anweisung samt Semikolon und Zeilenende, wenn sie allein in ihrer Zeile steht.</summary>
 function StatementRemoval(const AText: string; AStatement: TSyntaxNode): TTextRange;
 var
@@ -398,7 +414,7 @@ var
 begin
   if AContext.Tree = nil then
     Exit;
-  Threads := ThreadClasses(AContext.Tree.Root);
+  Threads := SharedThreadClasses(AContext);
   VisitRoutines(AContext.Tree.Root);
   VisitAnonymous(AContext.Tree.Root);
 end;
@@ -793,7 +809,7 @@ var
 begin
   if AContext.Tree = nil then
     Exit;
-  Threads := ThreadClasses(AContext.Tree.Root);
+  Threads := SharedThreadClasses(AContext);
   if Threads = nil then
     Exit;
   Routines := nil;

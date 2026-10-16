@@ -51,10 +51,11 @@ uses
   Atlas.Core.Settings.Plugin,
   Atlas.Core.Style.Color,
   Atlas.Core.Style.Palette,
+  Atlas.Core.Problems.Colors,
   Atlas.Core.Editor.Pairs,
-  Atlas.IDE.Editor.Buffer,
-  Atlas.IDE.Editor.Style,
-  Atlas.IDE.Settings.Store;
+  Atlas.IDE.Foundation.EditorBuffer,
+  Atlas.IDE.Foundation.EditorStyle,
+  Atlas.IDE.Foundation.Settings;
 
 { TAtlasProblemsPainter.TEvents }
 
@@ -110,26 +111,9 @@ begin
   Result := Length(TAtlasPairs.DisplayLine(Copy(ALine, 1, Max(0, ACharacter)), ATabWidth)) + 1;
 end;
 
-function SeverityColor(const AColors: TAtlasColors; const AProblem: TAtlasProblem): TAtlasColor;
-begin
-  case AProblem.Severity of
-    TAtlasProblemSeverity.Error:
-      Result := AColors.Error;
-    TAtlasProblemSeverity.Warning:
-      Result := AColors.Warn;
-    TAtlasProblemSeverity.Information:
-      Result := AColors.Accent;
-  else
-    Result := AColors.Muted;
-  end;
-  if AProblem.Stale then
-    Result := TAtlasColorMath.Mix(Result, AColors.Surface, 0.55);
-end;
-
 procedure TAtlasProblemsPainter.PaintLine(const Rect: TRect; const Stage: TPaintLineStage; const BeforeEvent: Boolean;
   var AllowDefaultPainting: Boolean; const Context: INTACodeEditorPaintContext);
 var
-  Settings: TAtlasPluginSettings;
   Problems: TArray<TAtlasProblem>;
   Problem: TAtlasProblem;
   LineState: INTACodeEditorLineState;
@@ -148,12 +132,12 @@ begin
   if BeforeEvent or (Stage <> plsEndPaint) or (Context = nil) then
     Exit;
   try
-    Settings := TAtlasIdeSettings.Current;
-    if not (Settings.Enabled and Settings.Problems) then
-      Exit;
     Line := Context.LogicalLineNum - 1;
     Problems := FStore.OnLine(Context.FileName, Line);
     if Length(Problems) = 0 then
+      Exit;
+    // Erst hier, ohne Kopie des Einstellungsrecords: die meisten Zeilen haben keine Probleme (P-10).
+    if not TAtlasIdeSettings.ProblemMarksOn then
       Exit;
     LineState := Context.LineState;
     if (LineState = nil) or (Context.EditView = nil) or (Context.EditView.Buffer = nil) or
@@ -197,7 +181,7 @@ begin
         Left := First.Left;
         Right := Max(Last.Left, Left + Cell);
         Y := Rect.Bottom - 2;
-        Pen := CreatePen(PS_SOLID, 1, ColorToRGB(TColor(SeverityColor(Colors, Problem))));
+        Pen := CreatePen(PS_SOLID, 1, ColorToRGB(TColor(ProblemColor(Colors, Problem))));
         Old := SelectObject(DC, Pen);
         try
           if Problem.Severity = TAtlasProblemSeverity.Hint then

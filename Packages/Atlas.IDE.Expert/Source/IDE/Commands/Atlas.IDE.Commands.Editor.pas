@@ -23,6 +23,9 @@
 //   Änderung im Editor prüft TAtlasSlashTrigger die Cursorzeile; passt sie,
 //   geht textDocument/onTypeFormatting an den Server, und zwar nach der
 //   Nachrichtenverarbeitung (ForceQueue), nie im Notifier selbst.
+// - Test am Cursor ausführen bzw. debuggen (#585): nur Einträge im
+//   Kontextmenü; was sie tun, setzt die Composition über OnRunTest und
+//   OnDebugTest (A-09: die Befehle importieren die Tests nicht).
 // Vor jeder Anfrage bekommt der Server den aktuellen Text der Datei.
 // Meldungen nur als Zeile in der Meldungsansicht, nie als Dialog.
 
@@ -50,6 +53,8 @@ type
     /// <summary>Cursor beim ersten Erweitern der Auswahl.</summary>
     FAnchorFile: string;
     FAnchor: TLspTextPosition;
+    FOnRunTest: TProc;
+    FOnDebugTest: TProc;
   private
     class function Session: TLspSession; static;
     class procedure Say(const AText: string); static;
@@ -70,6 +75,9 @@ type
     class procedure Install(const ASessionOf: TFunc<TLspSession>; const AMessage: TProc<string>); static;
     class procedure Uninstall; static;
     class procedure CodeActions; static;
+    /// <summary>Code-Aktion anwenden: erst die Änderung, dann der Befehl; auch für das Erzeugen-Menü (#719).
+    /// </summary>
+    class procedure ApplyAction(const AAction: TLspCodeAction); static;
     class procedure ExpandSelection; static;
     class procedure ShrinkSelection; static;
     class procedure GoToTypeDefinition; static;
@@ -88,6 +96,11 @@ type
     class procedure EditorModified(const AView: IOTAEditView); static;
     /// <summary>Untermenü Atlas in die Kontextmenüs der Editorfenster hängen.</summary>
     class procedure EnsureContextMenus; static;
+    /// <summary>Kontextmenü „Test am Cursor ausführen“ (#585); setzt die Composition, nil = ausgeschaltet (der
+    /// Eintrag meldet das).</summary>
+    class property OnRunTest: TProc read FOnRunTest write FOnRunTest;
+    /// <summary>Kontextmenü „Test am Cursor debuggen“ (#585); nil = ausgeschaltet.</summary>
+    class property OnDebugTest: TProc read FOnDebugTest write FOnDebugTest;
   end;
 
 implementation
@@ -109,15 +122,17 @@ uses
   Atlas.Core.Editor.TestUnit,
   Atlas.UI.Strings,
   Atlas.UI.Commands.Palette,
-  Atlas.IDE.Editor.Buffer,
-  Atlas.IDE.Editor.Style,
+  Atlas.IDE.Foundation.EditorBuffer,
+  Atlas.IDE.Foundation.EditorStyle,
   Atlas.IDE.Editor.WorkspaceEdit,
-  Atlas.IDE.Hover.Editor,
   Atlas.IDE.Results.Commands,
-  Atlas.IDE.Settings.Store,
+  Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Undo.Changes,
   Atlas.IDE.Notes.Service,
-  Atlas.IDE.Bookmarks.Service;
+  Atlas.IDE.Bookmarks.Service,
+  Atlas.IDE.Generate.Commands,
+  Atlas.Core.Editor.WorkspacePlan,
+  Atlas.IDE.Foundation.Navigation;
 
 const
   // Code-Aktionen und Befehle des Servers; Befehle können projektweit arbeiten.
@@ -222,6 +237,22 @@ begin
     begin
       CodeActions;
     end);
+  // Erzeugen-Menü (#719); aus = ohne Kürzel, der Aufruf meldet, dass es abgeschaltet ist.
+  FContextMenu.Add('Atlas.GenerateMenu', TAtlasStrings.Text(TAtlasTextId.GenerateMenuCommand),
+    function: Integer
+    begin
+      Result := 0;
+      if TAtlasIdeSettings.Current.GenerateMenu then
+        Result := TAtlasIdeSettings.Current.GenerateMenuKey;
+    end,
+    procedure
+    begin
+      TAtlasGuard.Run(TAtlasFeature.EditorCommands,
+        procedure
+        begin
+          TAtlasIdeGenerate.Show;
+        end);
+    end);
   FContextMenu.Add('-', nil, nil);
   FContextMenu.Add('Atlas.ExpandSelection', TAtlasStrings.Text(TAtlasTextId.EditorExpand),
     function: Integer
@@ -286,6 +317,23 @@ begin
     procedure
     begin
       SwitchTestUnit;
+    end);
+  // Test am Cursor (#585): ohne Tests bzw. ohne „Test debuggen“ meldet der Eintrag, dass es aus ist.
+  FContextMenu.Add('Atlas.RunTest', TAtlasStrings.Text(TAtlasTextId.TestsRunHereCommand), nil,
+    procedure
+    begin
+      if Assigned(FOnRunTest) then
+        FOnRunTest()
+      else
+        Say(TAtlasStrings.Text(TAtlasTextId.TestsRunOff));
+    end);
+  FContextMenu.Add('Atlas.DebugTest', TAtlasStrings.Text(TAtlasTextId.TestsDebugCommand), nil,
+    procedure
+    begin
+      if Assigned(FOnDebugTest) then
+        FOnDebugTest()
+      else
+        Say(TAtlasStrings.Text(TAtlasTextId.TestsDebugOff));
     end);
   FContextMenu.Add('Atlas.CopyQualifiedName', TAtlasStrings.Text(TAtlasTextId.EditorCopyQualified), nil,
     procedure
@@ -568,7 +616,7 @@ begin
     Exit;
   end;
   // Ein Typ hat eine Deklaration; bei mehreren (Forward-Deklaration) die erste.
-  TAtlasEditorHover.GoToLocation(Found[0].FileName, Found[0].Line, Found[0].Character);
+  TAtlasIdeNavigation.GoToLocation(Found[0].FileName, Found[0].Line, Found[0].Character);
 end;
 
 class function TAtlasIdeEditorCommands.TryToggleMethod: Boolean;
@@ -749,7 +797,7 @@ begin
   end;
   if Info.CounterpartFile <> '' then
   begin
-    TAtlasEditorHover.GoToLocation(Info.CounterpartFile, 0, 0);
+    TAtlasIdeNavigation.GoToLocation(Info.CounterpartFile, 0, 0);
     Exit;
   end;
   if not Info.CanCreate or Edit.IsEmpty then
@@ -758,14 +806,15 @@ begin
     Exit;
   end;
   // Anlegen und ins Testprojekt eintragen (#274), dann öffnen.
-  Outcome := TAtlasIdeWorkspaceEdit.Apply(Edit, TAtlasIdeSettings.Current.OpenForEdits,
+  Outcome := TAtlasIdeWorkspaceEdit.Apply(Edit,
+    TAtlasUnopenedPolicies.FromSetting(TAtlasIdeSettings.Current.OpenForEdits),
     TAtlasStrings.Fmt(TAtlasTextId.TestUnitLensCreate, [Info.Counterpart]));
   if Outcome.Error <> '' then
   begin
     Say(TAtlasStrings.Fmt(TAtlasTextId.EditFailed, [Outcome.Error]));
     Exit;
   end;
-  TAtlasEditorHover.GoToLocation(Info.NewFile, 0, 0);
+  TAtlasIdeNavigation.GoToLocation(Info.NewFile, 0, 0);
 end;
 
 function KindCaption(const AKind: string): string;
@@ -858,6 +907,11 @@ begin
   Window.ShowOver(Area);
 end;
 
+class procedure TAtlasIdeEditorCommands.ApplyAction(const AAction: TLspCodeAction);
+begin
+  Apply(AAction);
+end;
+
 class procedure TAtlasIdeEditorCommands.Apply(const AAction: TLspCodeAction);
 var
   Outcome: TAtlasWorkspaceEditResult;
@@ -865,7 +919,9 @@ begin
   // LSP: erst die Änderung, dann der Befehl.
   if not AAction.Edit.IsEmpty then
   begin
-    Outcome := TAtlasIdeWorkspaceEdit.Apply(AAction.Edit, TAtlasIdeSettings.Current.OpenForEdits, AAction.Title);
+    Outcome := TAtlasIdeWorkspaceEdit.Apply(AAction.Edit,
+      TAtlasUnopenedPolicies.FromSetting(TAtlasIdeSettings.Current.OpenForEdits),
+      AAction.Title);
     if Outcome.Error <> '' then
     begin
       Say(TAtlasStrings.Fmt(TAtlasTextId.EditFailed, [Outcome.Error]));
@@ -907,7 +963,7 @@ begin
     Arguments := TJSONObject.ParseJSONValue(AArgumentsJson);
     try
       if (Arguments is TJSONArray) and (TJSONArray(Arguments).Count > 0) then
-        TAtlasEditorHover.GoToLocation(TLspSession.UriToPath(TJSONArray(Arguments).Items[0].Value), 0, 0);
+        TAtlasIdeNavigation.GoToLocation(TLspSession.UriToPath(TJSONArray(Arguments).Items[0].Value), 0, 0);
     finally
       Arguments.Free;
     end;
@@ -1017,7 +1073,8 @@ begin
   Edit.Files := [Default(TLspFileEdits)];
   Edit.Files[0].FileName := FileName;
   Edit.Files[0].Edits := Edits;
-  Outcome := TAtlasIdeWorkspaceEdit.Apply(Edit, False, TAtlasStrings.Text(TAtlasTextId.UndoActionSlash));
+  Outcome := TAtlasIdeWorkspaceEdit.Apply(Edit, TAtlasUnopenedPolicy.WriteToDisk,
+    TAtlasStrings.Text(TAtlasTextId.UndoActionSlash));
   if Outcome.Error <> '' then
   begin
     Say(TAtlasStrings.Fmt(TAtlasTextId.EditFailed, [Outcome.Error]));

@@ -43,6 +43,9 @@ type
     procedure ReadsChangedArguments;
     [Test]
     procedure ReadsFailOnAndSourceRoot;
+    /// <summary>Alle Text- und Schalterparameter der Tabelle (S-02), auch mit Großbuchstaben.</summary>
+    [Test]
+    procedure ReadsTableOptions;
   end;
 
 implementation
@@ -266,6 +269,25 @@ begin
   Assert.AreEqual(Ord(TFindingsFormat.Text), Ord(Options.CheckFormat));
   Assert.AreEqual(Ord(TRuleSeverity.Default), Ord(Options.MinSeverity));
   Assert.AreEqual('', Options.CheckTarget);
+end;
+
+procedure TCommandLineOptionsTests.ReadsTableOptions;
+var
+  Options: TCommandLineOptions;
+begin
+  Options := TCommandLineOptions.Parse(['--trace=t.json', '--OUTPUT', 'o.txt', '--baseline', 'b.json', '--root=R',
+    '--log-names', '--clear-cache', '--include-uncommitted', '--changed-lines', '--update-baseline',
+    '--suppression-stats', '--metrics', '--todos']);
+  Assert.AreEqual(0, Integer(Length(Options.Warnings)));
+  Assert.AreEqual('t.json', Options.TraceFile);
+  Assert.AreEqual('o.txt', Options.OutputFile);
+  Assert.AreEqual('b.json', Options.BaselineFile);
+  Assert.AreEqual('R', Options.McpRoot);
+  Assert.IsTrue(Options.LogNames and Options.ClearCache and Options.IncludeUncommitted and Options.ChangedLines);
+  Assert.IsTrue(Options.UpdateBaseline and Options.SuppressionStats and Options.Metrics and Options.Todos);
+  Assert.IsFalse(Options.Mcp or Options.Restricted);
+  // --include-uncommitted ohne Ref: Standardbasis.
+  Assert.AreEqual(TCommandLineOptions.DefaultChangedBase, Options.ChangedRef);
 end;
 
 initialization

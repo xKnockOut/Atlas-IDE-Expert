@@ -1,7 +1,7 @@
 ﻿unit Atlas.Common.Rules.Builtin.RtlTypePatterns;
 
 // Regeln für fehleranfällige RTL-Muster, Stufe 2 aus #153 (mit deklarierten
-// Typen aus der Datei, Atlas.Common.Rules.DeclaredTypes):
+// Typen aus der Datei, Atlas.Common.Pascal.DeclaredTypes):
 //   int32-mul-overflow       Int64 := Int32 * Int32 läuft vor der Zuweisung über
 //   sizeof-pointer           Move/FillChar mit SizeOf eines Zeigers, Strings oder dynamischen Arrays
 //   char-to-pchar            Cast eines Char nach PChar
@@ -67,7 +67,7 @@ uses
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Pascal.Contract,
   Atlas.Common.Pascal.SyntaxTree,
-  Atlas.Common.Rules.DeclaredTypes;
+  Atlas.Common.Pascal.DeclaredTypes;
 
 type
   TTokens = TArray<TPascalToken>;

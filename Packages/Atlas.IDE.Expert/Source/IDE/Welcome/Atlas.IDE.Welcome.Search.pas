@@ -79,8 +79,8 @@ uses
   Atlas.Core.Results.Model,
   Atlas.Core.Lsp.Session,
   Atlas.UI.Strings,
-  Atlas.IDE.Settings.Store,
-  Atlas.IDE.Editor.Style,
+  Atlas.IDE.Foundation.Settings,
+  Atlas.IDE.Foundation.EditorStyle,
   Atlas.IDE.Results.Commands,
   Atlas.IDE.Welcome.Registry;
 

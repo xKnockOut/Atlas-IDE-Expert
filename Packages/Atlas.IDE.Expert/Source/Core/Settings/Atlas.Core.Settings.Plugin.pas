@@ -65,6 +65,12 @@ type
     /// <summary>Grenzen für welcomePage.continue.count (#755); wie TAtlasWelcomeContinue.MinCount/MaxCount.</summary>
     MinContinueCount = 1;
     MaxContinueCount = 20;
+    /// <summary>Grenzen für welcomePage.trends.points (#758); wie TAtlasProjectTrendLog.MinPoints/MaxPoints.</summary>
+    MinTrendPoints = 2;
+    MaxTrendPoints = 100;
+    /// <summary>Vorgabe für welcomePage.trends.series (#758): alle Reihen, Namen wie
+    /// TAtlasProjectSummaries.TrendKeys.</summary>
+    DefaultTrendSeries = 'warnings,ruleHits,todos,duration,methodLength';
     MinPairGuideWidth = 1;
     MaxPairGuideWidth = 3;
     MinPairGuideOpacity = 10;
@@ -175,6 +181,9 @@ type
     CheckOnSaveDelayMs: Integer;
     /// <summary>Höchstdauer einer Prüfung; darüber nur noch von Hand (Strg+Alt+F9).</summary>
     CheckOnSaveMaxMs: Integer;
+    /// <summary>Claude Code darf über das MCP-Werkzeug build_project offene Projekte in dieser IDE bauen (#261),
+    /// z. B. in der Starter Edition ohne Kommandozeilen-Compiler.</summary>
+    McpBuild: Boolean;
     /// <summary>Tastenkürzel im Editor (#399, TShortCut, 0 = keins): Code-Aktionen, Auswahl erweitern und
     /// verkleinern, Gehe zu Implementierung und zu Typdefinition.</summary>
     ActionsKey: Integer;
@@ -196,15 +205,66 @@ type
     /// <summary>Code Lens mit den Kennzahlen jeder Methode (#66, codeLens.metrics; liegt in settings.json):
     /// Länge, Tiefe, zyklomatische und kognitive Komplexität, Parameter.</summary>
     CodeLensMetrics: Boolean;
+    /// <summary>Code Lens „Test ausführen“ an Fixtures und Tests von DUnitX (#69, codeLens.tests; gemeinsamer
+    /// Schlüssel mit „Test debuggen“ #585).</summary>
+    CodeLensTests: Boolean;
+    /// <summary>Befehle „Tests ausführen“ und „Fehlgeschlagene Tests erneut ausführen“ (#69, Atlas.RunTests,
+    /// Atlas.RunFailedTests); aus = Befehle, Code Lens und Lauf nach dem Build verschwinden.</summary>
+    TestRun: Boolean;
+    /// <summary>Tests nach jedem erfolgreichen Build des Testprojekts automatisch ausführen (#69, über die
+    /// Compile-Ereignisse #527).</summary>
+    TestsAfterBuild: Boolean;
+    /// <summary>Vor „Tests ausführen“ das Testprojekt bauen (make); aus = die vorhandene Test-EXE läuft.</summary>
+    TestsBuildFirst: Boolean;
+    /// <summary>Ein Build gilt nur ohne Warnungen und Hinweise als erfolgreich (build.zeroHints, #530). Wirkt
+    /// bisher auf „Tests nach dem Build“ (#69).</summary>
+    BuildZeroHints: Boolean;
+    /// <summary>Einzelnen Test im Debugger starten (#585, tests.debug): Befehl „Test am Cursor debuggen“
+    /// (Atlas.DebugTest) mit Tipp, Eintrag im Kontextmenü und Marke „Debuggen“ der Code Lens; braucht TestRun. Aus
+    /// = Befehl, Tipp und Marke verschwinden.</summary>
+    TestDebug: Boolean;
+    /// <summary>Beim Test-Debuggen am Anfang der Methode anhalten (#585, debug.testBreakAtStart): einmaliger
+    /// Haltepunkt an der ersten Anweisung, nach dem Halt entfernt.</summary>
+    TestBreakAtStart: Boolean;
+    /// <summary>Startprofile (#575, startProfiles.enabled): Befehl „Startprofil: …“ (Atlas.StartProfile) mit Tipp,
+    /// Feld in der Statusleiste und Setzen der Startoptionen des Projekts; aus = Befehl, Tipp und Feld
+    /// verschwinden, die Startoptionen der IDE bleiben, wie sie sind.</summary>
+    StartProfiles: Boolean;
+    /// <summary>Aktives Startprofil als Feld in der Statusleiste des Editors (#575, startProfiles.statusField);
+    /// Klick öffnet die Auswahl.</summary>
+    StartProfilesStatusField: Boolean;
     /// <summary>Befehl „TODOs des Projekts“ (#68, Atlas.TodoList); aus = der Befehl verschwindet.</summary>
     TodoList: Boolean;
+    /// <summary>Befehl „Baseline des Projekts aktualisieren“ (#97, Atlas.UpdateBaseline) in der Befehlspalette;
+    /// aus = der Befehl und sein Tipp verschwinden. Die Baseline selbst wirkt weiter.</summary>
+    BaselineUpdate: Boolean;
     /// <summary>Befehl „Metrikbericht des Projekts“ (#66, Atlas.MetricsReport) in der Befehlspalette; aus = der
     /// Befehl verschwindet. Die Zusammenfassung nach dem Build hängt an der Willkommensseite.</summary>
     MetricsReport: Boolean;
+    /// <summary>Projektdatei .atlas lesen (#486): Einstellungen für alle im Team aus dem Repository, Vorrang vor
+    /// den persönlichen; dazu der Befehl „Projektdatei .atlas öffnen“ (Atlas.TeamFile) mit Tipp. Aus = nur die
+    /// persönlichen Einstellungen gelten, Befehl und Tipp verschwinden.</summary>
+    TeamFile: Boolean;
     /// <summary>Die Editor-Kürzel auch belegen, wenn die IDE oder eine andere Erweiterung sie nutzt.</summary>
     EditorKeysPriority: Boolean;
     /// <summary>Schnellbefehle mit „/“ nach Enter und „///“-Gerüste beim Server auslösen (#399).</summary>
     SlashCommands: Boolean;
+    /// <summary>Erzeugen-Menü (#719, keys.generateMenu): Alt+Einfg, Kontextmenü und Befehlspalette; aus = die Funktion
+    /// ruht und das Kürzel bleibt frei.</summary>
+    GenerateMenu: Boolean;
+    /// <summary>Tastenkürzel des Erzeugen-Menüs (#719, keys.generateMenu.key; TShortCut, 0 = keins; Vorgabe Alt+Einfg).
+    /// </summary>
+    GenerateMenuKey: Integer;
+    /// <summary>Gruppen in ihrer Reihenfolge (#719, keys.generateMenu.groups): generate, surround, templates,
+    /// kommagetrennt; fehlt eine, fehlt sie im Menü.</summary>
+    GenerateMenuGroups: string;
+    /// <summary>Ausgeblendete Einträge (#719, keys.generateMenu.hidden): Kennungen wie slash:json oder Namen wie /json,
+    /// tryf; kommagetrennt.</summary>
+    GenerateMenuHidden: string;
+    /// <summary>Zuletzt gewählte Einträge oben (#719, keys.generateMenu.recentFirst).</summary>
+    GenerateMenuRecentFirst: Boolean;
+    /// <summary>Befehlsnamen (/name) rechts in der Zeile (#719, keys.generateMenu.showCommandNames).</summary>
+    GenerateMenuShowCommandNames: Boolean;
     /// <summary>Code-Vorlagen in der Vervollständigung (#51, completion.snippets).</summary>
     Snippets: Boolean;
     /// <summary>Live Templates der IDE als Code-Vorlagen einlesen (#51, completion.importIdeTemplates).</summary>
@@ -389,6 +449,12 @@ type
     WelcomePageHelpReportUrl: string;
     /// <summary>Ordner für das Diagnosepaket (#766, welcomePage.help.reportFolder); '' = Desktop.</summary>
     WelcomePageHelpReportFolder: string;
+    /// <summary>Karte „Projekt für Atlas einrichten“ und Befehl Atlas.ProjectSetup (#759,
+    /// welcomePage.projectSetup); aus = kein Bereich, auch keine Knöpfe „Neu mit Atlas“.</summary>
+    WelcomePageProjectSetup: Boolean;
+    /// <summary>Knöpfe „Neu mit Atlas“ (Unit, Formular, Testklasse) unter der Karte (#759,
+    /// welcomePage.newFromTemplate).</summary>
+    WelcomePageNewFromTemplate: Boolean;
     /// <summary>Bereich „Weiterarbeiten“ (#755, welcomePage.continue): Arbeitsstände merken und fortsetzen.
     /// </summary>
     WelcomePageContinue: Boolean;
@@ -400,6 +466,14 @@ type
     WelcomePageContinueFetch: Boolean;
     /// <summary>Reiter „Gemerkt“ mit Notizen, Lesezeichen und Favoriten (#755, welcomePage.saved).</summary>
     WelcomePageSaved: Boolean;
+    /// <summary>Bereich „Projektverlauf“ (#758, welcomePage.trends): Messpunkte je Build mitschreiben und als
+    /// Linien zeigen; aus = kein Bereich, nichts wird mitgeschrieben.</summary>
+    WelcomePageTrends: Boolean;
+    /// <summary>Gespeicherte Builds je Projekt (#758, welcomePage.trends.points, 2–100).</summary>
+    WelcomePageTrendsPoints: Integer;
+    /// <summary>Gezeigte Reihen (#758, welcomePage.trends.series): Namen durch Komma getrennt, in der Reihenfolge
+    /// warnings, ruleHits, todos, duration, methodLength; '' = keine.</summary>
+    WelcomePageTrendsSeries: string;
     class function Defaults: TAtlasPluginSettings; static;
     /// <summary>Werte in ihre Grenzen bringen.</summary>
     procedure Normalize;
@@ -419,7 +493,38 @@ implementation
 
 uses
   System.Math,
-  System.StrUtils;
+  System.StrUtils,
+  Atlas.Core.Generate.Contract;
+
+const
+  /// <summary>Reihen des Projektverlaufs (#758) wie TAtlasProjectSummaries.TrendKeys (Test prüft Gleichheit).</summary>
+  TrendSeriesNames: array[0..4] of string = ('warnings', 'ruleHits', 'todos', 'duration', 'methodLength');
+
+/// <summary>Bekannte Reihen aus AText (Komma, Semikolon, Leerzeichen; Groß-/Kleinschreibung egal) in fester
+/// Reihenfolge, jede einmal.</summary>
+function NormalizedTrendSeries(const AText: string): string;
+var
+  Parts: TArray<string>;
+  Part: string;
+  Index: Integer;
+  Wanted: array[0..4] of Boolean;
+begin
+  for Index := Low(Wanted) to High(Wanted) do
+    Wanted[Index] := False;
+  Parts := AText.Split([',', ';', ' ']);
+  for Part in Parts do
+    for Index := Low(TrendSeriesNames) to High(TrendSeriesNames) do
+      if SameText(Trim(Part), TrendSeriesNames[Index]) then
+        Wanted[Index] := True;
+  Result := '';
+  for Index := Low(TrendSeriesNames) to High(TrendSeriesNames) do
+    if Wanted[Index] then
+    begin
+      if Result <> '' then
+        Result := Result + ',';
+      Result := Result + TrendSeriesNames[Index];
+    end;
+end;
 
 /// <summary>http:// oder https:// mit etwas danach, ohne Leer- und Steuerzeichen (#766).</summary>
 function IsWebAddress(const AValue: string): Boolean;
@@ -521,6 +626,7 @@ begin
   Result.CompileOnSave := False;
   Result.CheckOnSaveDelayMs := 2000;
   Result.CheckOnSaveMaxMs := 1500;
+  Result.McpBuild := True;
   Result.ActionsKey := $800D; // Alt+Enter
   Result.ExpandKey := $4057; // Strg+W
   Result.ShrinkKey := $6057; // Strg+Umschalt+W
@@ -532,10 +638,27 @@ begin
   Result.TestUnitKey := 0;
   Result.CodeLensTestUnit := True;
   Result.CodeLensMetrics := True;
+  Result.CodeLensTests := True;
+  Result.TestRun := True;
+  Result.TestsAfterBuild := False;
+  Result.TestsBuildFirst := True;
+  Result.BuildZeroHints := False;
+  Result.TestDebug := True;
+  Result.TestBreakAtStart := True;
+  Result.StartProfiles := True;
+  Result.StartProfilesStatusField := True;
   Result.TodoList := True;
+  Result.BaselineUpdate := True;
   Result.MetricsReport := True;
+  Result.TeamFile := True;
   Result.EditorKeysPriority := False;
   Result.SlashCommands := True;
+  Result.GenerateMenu := True;
+  Result.GenerateMenuKey := $802D; // Alt+Einfg
+  Result.GenerateMenuGroups := 'generate,surround,templates';
+  Result.GenerateMenuHidden := '';
+  Result.GenerateMenuRecentFirst := True;
+  Result.GenerateMenuShowCommandNames := True;
   Result.Snippets := True;
   Result.ImportIdeTemplates := True;
   // Wie die Vorgaben im Schema (atlas.schema.json, index).
@@ -617,8 +740,13 @@ begin
   Result.WelcomePageHelp := True;
   Result.WelcomePageHelpReportUrl := DefaultHelpReportUrl;
   Result.WelcomePageHelpReportFolder := '';
+  Result.WelcomePageProjectSetup := True;
+  Result.WelcomePageNewFromTemplate := True;
   Result.WelcomePageContinue := True;
   Result.WelcomePageContinueCount := 5;
+  Result.WelcomePageTrends := True;
+  Result.WelcomePageTrendsPoints := 30;
+  Result.WelcomePageTrendsSeries := DefaultTrendSeries;
   Result.WelcomePageContinueIncoming := True;
   Result.WelcomePageContinueFetch := False;
   Result.WelcomePageSaved := True;
@@ -650,6 +778,8 @@ begin
   WelcomePageUnsavedAlertHours := EnsureRange(WelcomePageUnsavedAlertHours, WelcomePageUnsavedWarnHours,
     MaxUnsavedHours);
   WelcomePageContinueCount := EnsureRange(WelcomePageContinueCount, MinContinueCount, MaxContinueCount);
+  WelcomePageTrendsPoints := EnsureRange(WelcomePageTrendsPoints, MinTrendPoints, MaxTrendPoints);
+  WelcomePageTrendsSeries := NormalizedTrendSeries(WelcomePageTrendsSeries);
   CheckKey := EnsureRange(CheckKey, 0, $FFFF);
   CompletionKey := EnsureRange(CompletionKey, 0, $FFFF);
   SignatureKey := EnsureRange(SignatureKey, 0, $FFFF);
@@ -697,6 +827,9 @@ begin
   UnitSearchDefaultScope := Choice(UnitSearchDefaultScope, ['group', 'project', 'searchPath', 'library']);
   UnitSearchKey := EnsureRange(UnitSearchKey, 0, $FFFF);
   BookmarkKey := EnsureRange(BookmarkKey, 0, $FFFF);
+  GenerateMenuKey := EnsureRange(GenerateMenuKey, 0, $FFFF);
+  GenerateMenuGroups := TAtlasGenerateLists.NormalizeGroups(GenerateMenuGroups);
+  GenerateMenuHidden := TAtlasGenerateLists.NormalizeHidden(GenerateMenuHidden);
   if SameText(Trim(WelcomePageHost), 'dockWindow') then
     WelcomePageHost := 'dockWindow'
   else
@@ -777,6 +910,7 @@ begin
   CheckOnSave := AStore.ReadInteger('CheckOnSave', BoolValue(Default.CheckOnSave)) <> 0;
   CheckOnSaveDelayMs := AStore.ReadInteger('CheckOnSaveDelayMs', Default.CheckOnSaveDelayMs);
   CheckOnSaveMaxMs := AStore.ReadInteger('CheckOnSaveMaxMs', Default.CheckOnSaveMaxMs);
+  McpBuild := AStore.ReadInteger('McpBuild', BoolValue(Default.McpBuild)) <> 0;
   CompileOnSave := AStore.ReadInteger('CompileOnSave', BoolValue(Default.CompileOnSave)) <> 0;
   ActionsKey := AStore.ReadInteger('ActionsKey', Default.ActionsKey);
   ExpandKey := AStore.ReadInteger('ExpandKey', Default.ExpandKey);
@@ -789,10 +923,30 @@ begin
   TestUnitKey := AStore.ReadInteger('TestUnitKey', Default.TestUnitKey);
   CodeLensTestUnit := AStore.ReadInteger('CodeLensTestUnit', BoolValue(Default.CodeLensTestUnit)) <> 0;
   CodeLensMetrics := AStore.ReadInteger('CodeLensMetrics', BoolValue(Default.CodeLensMetrics)) <> 0;
+  CodeLensTests := AStore.ReadInteger('CodeLensTests', BoolValue(Default.CodeLensTests)) <> 0;
+  TestRun := AStore.ReadInteger('TestRun', BoolValue(Default.TestRun)) <> 0;
+  TestsAfterBuild := AStore.ReadInteger('TestsAfterBuild', BoolValue(Default.TestsAfterBuild)) <> 0;
+  TestsBuildFirst := AStore.ReadInteger('TestsBuildFirst', BoolValue(Default.TestsBuildFirst)) <> 0;
+  BuildZeroHints := AStore.ReadInteger('BuildZeroHints', BoolValue(Default.BuildZeroHints)) <> 0;
+  TestDebug := AStore.ReadInteger('TestDebug', BoolValue(Default.TestDebug)) <> 0;
+  TestBreakAtStart := AStore.ReadInteger('TestBreakAtStart', BoolValue(Default.TestBreakAtStart)) <> 0;
+  StartProfiles := AStore.ReadInteger('StartProfiles', BoolValue(Default.StartProfiles)) <> 0;
+  StartProfilesStatusField := AStore.ReadInteger('StartProfilesStatusField',
+    BoolValue(Default.StartProfilesStatusField)) <> 0;
   TodoList := AStore.ReadInteger('TodoList', BoolValue(Default.TodoList)) <> 0;
+  BaselineUpdate := AStore.ReadInteger('BaselineUpdate', BoolValue(Default.BaselineUpdate)) <> 0;
   MetricsReport := AStore.ReadInteger('MetricsReport', BoolValue(Default.MetricsReport)) <> 0;
+  TeamFile := AStore.ReadInteger('TeamFile', BoolValue(Default.TeamFile)) <> 0;
   EditorKeysPriority := AStore.ReadInteger('EditorKeysPriority', BoolValue(Default.EditorKeysPriority)) <> 0;
   SlashCommands := AStore.ReadInteger('SlashCommands', BoolValue(Default.SlashCommands)) <> 0;
+  GenerateMenu := AStore.ReadInteger('GenerateMenu', BoolValue(Default.GenerateMenu)) <> 0;
+  GenerateMenuKey := AStore.ReadInteger('GenerateMenuKey', Default.GenerateMenuKey);
+  GenerateMenuGroups := AStore.ReadString('GenerateMenuGroups', Default.GenerateMenuGroups);
+  GenerateMenuHidden := AStore.ReadString('GenerateMenuHidden', Default.GenerateMenuHidden);
+  GenerateMenuRecentFirst := AStore.ReadInteger('GenerateMenuRecentFirst',
+    BoolValue(Default.GenerateMenuRecentFirst)) <> 0;
+  GenerateMenuShowCommandNames := AStore.ReadInteger('GenerateMenuShowCommandNames',
+    BoolValue(Default.GenerateMenuShowCommandNames)) <> 0;
   Snippets := AStore.ReadInteger('Snippets', BoolValue(Default.Snippets)) <> 0;
   ImportIdeTemplates := AStore.ReadInteger('ImportIdeTemplates', BoolValue(Default.ImportIdeTemplates)) <> 0;
   IndexProjectGroup := AStore.ReadInteger('IndexProjectGroup', BoolValue(Default.IndexProjectGroup)) <> 0;
@@ -883,6 +1037,10 @@ begin
   WelcomePageHelpReportUrl := AStore.ReadString('WelcomePageHelpReportUrl', Default.WelcomePageHelpReportUrl);
   WelcomePageHelpReportFolder := AStore.ReadString('WelcomePageHelpReportFolder',
     Default.WelcomePageHelpReportFolder);
+  WelcomePageProjectSetup := AStore.ReadInteger('WelcomePageProjectSetup',
+    BoolValue(Default.WelcomePageProjectSetup)) <> 0;
+  WelcomePageNewFromTemplate := AStore.ReadInteger('WelcomePageNewFromTemplate',
+    BoolValue(Default.WelcomePageNewFromTemplate)) <> 0;
   WelcomePageContinue := AStore.ReadInteger('WelcomePageContinue', BoolValue(Default.WelcomePageContinue)) <> 0;
   WelcomePageContinueCount := AStore.ReadInteger('WelcomePageContinueCount', Default.WelcomePageContinueCount);
   WelcomePageContinueIncoming := AStore.ReadInteger('WelcomePageContinueIncoming',
@@ -890,6 +1048,9 @@ begin
   WelcomePageContinueFetch := AStore.ReadInteger('WelcomePageContinueFetch',
     BoolValue(Default.WelcomePageContinueFetch)) <> 0;
   WelcomePageSaved := AStore.ReadInteger('WelcomePageSaved', BoolValue(Default.WelcomePageSaved)) <> 0;
+  WelcomePageTrends := AStore.ReadInteger('WelcomePageTrends', BoolValue(Default.WelcomePageTrends)) <> 0;
+  WelcomePageTrendsPoints := AStore.ReadInteger('WelcomePageTrendsPoints', Default.WelcomePageTrendsPoints);
+  WelcomePageTrendsSeries := AStore.ReadString('WelcomePageTrendsSeries', Default.WelcomePageTrendsSeries);
   Normalize;
 end;
 
@@ -945,6 +1106,7 @@ begin
   AStore.WriteInteger('CheckOnSave', BoolValue(CheckOnSave));
   AStore.WriteInteger('CheckOnSaveDelayMs', CheckOnSaveDelayMs);
   AStore.WriteInteger('CheckOnSaveMaxMs', CheckOnSaveMaxMs);
+  AStore.WriteInteger('McpBuild', BoolValue(McpBuild));
   AStore.WriteInteger('CompileOnSave', BoolValue(CompileOnSave));
   AStore.WriteInteger('ActionsKey', ActionsKey);
   AStore.WriteInteger('ExpandKey', ExpandKey);
@@ -957,10 +1119,27 @@ begin
   AStore.WriteInteger('TestUnitKey', TestUnitKey);
   AStore.WriteInteger('CodeLensTestUnit', BoolValue(CodeLensTestUnit));
   AStore.WriteInteger('CodeLensMetrics', BoolValue(CodeLensMetrics));
+  AStore.WriteInteger('CodeLensTests', BoolValue(CodeLensTests));
+  AStore.WriteInteger('TestRun', BoolValue(TestRun));
+  AStore.WriteInteger('TestsAfterBuild', BoolValue(TestsAfterBuild));
+  AStore.WriteInteger('TestsBuildFirst', BoolValue(TestsBuildFirst));
+  AStore.WriteInteger('BuildZeroHints', BoolValue(BuildZeroHints));
+  AStore.WriteInteger('TestDebug', BoolValue(TestDebug));
+  AStore.WriteInteger('TestBreakAtStart', BoolValue(TestBreakAtStart));
+  AStore.WriteInteger('StartProfiles', BoolValue(StartProfiles));
+  AStore.WriteInteger('StartProfilesStatusField', BoolValue(StartProfilesStatusField));
   AStore.WriteInteger('TodoList', BoolValue(TodoList));
+  AStore.WriteInteger('BaselineUpdate', BoolValue(BaselineUpdate));
   AStore.WriteInteger('MetricsReport', BoolValue(MetricsReport));
+  AStore.WriteInteger('TeamFile', BoolValue(TeamFile));
   AStore.WriteInteger('EditorKeysPriority', BoolValue(EditorKeysPriority));
   AStore.WriteInteger('SlashCommands', BoolValue(SlashCommands));
+  AStore.WriteInteger('GenerateMenu', BoolValue(GenerateMenu));
+  AStore.WriteInteger('GenerateMenuKey', GenerateMenuKey);
+  AStore.WriteString('GenerateMenuGroups', GenerateMenuGroups);
+  AStore.WriteString('GenerateMenuHidden', GenerateMenuHidden);
+  AStore.WriteInteger('GenerateMenuRecentFirst', BoolValue(GenerateMenuRecentFirst));
+  AStore.WriteInteger('GenerateMenuShowCommandNames', BoolValue(GenerateMenuShowCommandNames));
   AStore.WriteInteger('Snippets', BoolValue(Snippets));
   AStore.WriteInteger('ImportIdeTemplates', BoolValue(ImportIdeTemplates));
   AStore.WriteInteger('IndexProjectGroup', BoolValue(IndexProjectGroup));
@@ -1041,11 +1220,16 @@ begin
   AStore.WriteInteger('WelcomePageHelp', BoolValue(WelcomePageHelp));
   AStore.WriteString('WelcomePageHelpReportUrl', WelcomePageHelpReportUrl);
   AStore.WriteString('WelcomePageHelpReportFolder', WelcomePageHelpReportFolder);
+  AStore.WriteInteger('WelcomePageProjectSetup', BoolValue(WelcomePageProjectSetup));
+  AStore.WriteInteger('WelcomePageNewFromTemplate', BoolValue(WelcomePageNewFromTemplate));
   AStore.WriteInteger('WelcomePageContinue', BoolValue(WelcomePageContinue));
   AStore.WriteInteger('WelcomePageContinueCount', WelcomePageContinueCount);
   AStore.WriteInteger('WelcomePageContinueIncoming', BoolValue(WelcomePageContinueIncoming));
   AStore.WriteInteger('WelcomePageContinueFetch', BoolValue(WelcomePageContinueFetch));
   AStore.WriteInteger('WelcomePageSaved', BoolValue(WelcomePageSaved));
+  AStore.WriteInteger('WelcomePageTrends', BoolValue(WelcomePageTrends));
+  AStore.WriteInteger('WelcomePageTrendsPoints', WelcomePageTrendsPoints);
+  AStore.WriteString('WelcomePageTrendsSeries', WelcomePageTrendsSeries);
 end;
 
 function TAtlasPluginSettings.StatusTogglesOnRightClick: Boolean;

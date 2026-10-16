@@ -75,6 +75,8 @@ type
     FViewStart: TMenuItem;
     FNoteItems: TArray<TMenuItem>;
     FBookmarkItems: TArray<TMenuItem>;
+    /// <summary>„Erzeugen…“ (#719), sichtbar nach keys.generateMenu.</summary>
+    FGenerateItem: TMenuItem;
     /// <summary>Untermenü „Notizen und Lesezeichen“ (#545, #622).</summary>
     FNotesGroup: TMenuItem;
     procedure WelcomeClick(Sender: TObject);
@@ -139,10 +141,11 @@ uses
   Atlas.IDE.Bookmarks.Service,
   Atlas.IDE.Commands.Editor,
   Atlas.IDE.UnitSearch.Commands,
+  Atlas.IDE.Generate.Commands,
   Atlas.IDE.Commands.KeyMap,
   Atlas.IDE.Commands.ShortcutTips,
-  Atlas.IDE.Style.Symbol,
-  Atlas.IDE.Settings.Store,
+  Atlas.IDE.Foundation.Symbol,
+  Atlas.IDE.Foundation.Settings,
   Atlas.Core.Settings.Plugin,
   Atlas.Core.Results.Model,
   Atlas.Core.Setup.Checklist,
@@ -150,9 +153,9 @@ uses
 
 const
   // Kennungen der Befehlspalette für die Tastenkürzel-Tipps (#600), je Tag der Einträge.
-  EditorIds: array[0..9] of string = ('Atlas.CodeActions', 'Atlas.ExpandSelection', 'Atlas.ShrinkSelection',
+  EditorIds: array[0..10] of string = ('Atlas.CodeActions', 'Atlas.ExpandSelection', 'Atlas.ShrinkSelection',
     'Atlas.TypeDefinition', 'Atlas.CopyQualifiedName', 'Atlas.CopyQualifiedNameParams', 'Atlas.ToggleMethod',
-    'Atlas.SwitchTestUnit', 'Atlas.UnitSearch', 'Atlas.UnitSearchIde');
+    'Atlas.SwitchTestUnit', 'Atlas.UnitSearch', 'Atlas.UnitSearchIde', 'Atlas.GenerateMenu');
   ResultsIds: array[0..7] of string = ('Atlas.References', 'Atlas.Implementations', 'Atlas.SymbolSearch',
     'Atlas.Callers', 'Atlas.Calls', 'Atlas.Supertypes', 'Atlas.Subtypes', 'Atlas.ResultsWindow');
   UndoIds: array[0..2] of string = ('Atlas.UndoChange', 'Atlas.RedoChange', 'Atlas.ChangeList');
@@ -212,6 +215,8 @@ begin
   AddItem(TAtlasTextId.RenameMenu, 0, RenameClick);
   // Editorbefehle (#399) und Ergebnisfenster (#400); Tag wählt den Befehl in EditorClick bzw. ResultsClick.
   AddItem(TAtlasTextId.EditorActions, 0, EditorClick);
+  // Erzeugen-Menü (#719).
+  FGenerateItem := AddItem(TAtlasTextId.GenerateMenuCommand, 10, EditorClick);
   // Units suchen (#777).
   AddItem(TAtlasTextId.UnitSearchMenu, 8, EditorClick);
   AddItem(TAtlasTextId.MenuSymbolSearch, 2, ResultsClick);
@@ -553,6 +558,9 @@ begin
   // Notizen (#545) nach ihrer Einstellung.
   for Item in FNoteItems do
     Item.Visible := TAtlasIdeSettings.Current.Notes;
+  // Erzeugen-Menü (#719) nach keys.generateMenu.
+  if FGenerateItem <> nil then
+    FGenerateItem.Visible := TAtlasIdeSettings.Current.GenerateMenu;
   // Benannte Lesezeichen (#622) nach bookmarks.named.
   for Item in FBookmarkItems do
     Item.Visible := TAtlasIdeSettings.Current.BookmarksNamed;
@@ -640,6 +648,7 @@ begin
         7: TAtlasIdeEditorCommands.SwitchTestUnit;
         8: TAtlasIdeUnitSearch.Show;
         9: TAtlasIdeUnitSearch.ShowIdeDialog;
+        10: TAtlasIdeGenerate.Show;
       else
         TAtlasIdeEditorCommands.CopyQualifiedName(True);
       end;
