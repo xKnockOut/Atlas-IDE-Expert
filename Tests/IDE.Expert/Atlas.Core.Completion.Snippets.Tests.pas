@@ -330,7 +330,7 @@ begin
   try
     Assert.AreEqual(1, Session.CurrentNumber);
     Assert.AreEqual(1, Session.Position);
-    Assert.AreEqual(2, Session.Count);
+    Assert.AreEqual(2, Integer(Session.Count));
     Assert.AreEqual(8, Session.Current.Start);
     Assert.AreEqual('List', Session.FieldText(Session.Current));
     Assert.AreEqual(3, Integer(Length(Session.Fields)));
@@ -443,7 +443,7 @@ var
 begin
   Session := Start('a ', 'Exit(${1:False});', ' b', Document);
   try
-    Assert.AreEqual(1, Session.Count);
+    Assert.AreEqual(1, Integer(Session.Count));
     Assert.IsFalse(Session.Next);
     Assert.AreEqual(Integer(Length('a Exit(False);')), Session.FinalOffset);
   finally
@@ -598,8 +598,8 @@ begin
   Assert.IsFalse(TAtlasSnippets.Parse('prefix: svc'#10'file: paket'#10'---'#10'x', '', Snippet, Error));
   Assert.Contains(Error, 'paket');
   Assert.AreEqual(1, Integer(Length(TAtlasSnippets.FileTemplates([Parsed] + TAtlasSnippets.BuiltIn))));
-  Assert.AreEqual(Length(TAtlasSnippets.BuiltIn), Length(TAtlasSnippets.WithoutFileTemplates([Parsed] +
-    TAtlasSnippets.BuiltIn)));
+  Assert.AreEqual(Integer(Length(TAtlasSnippets.BuiltIn)), Integer(Length(TAtlasSnippets.WithoutFileTemplates([Parsed] +
+    TAtlasSnippets.BuiltIn))));
 end;
 
 procedure TAtlasSnippetsTests.ParsesPostfixSnippets;
@@ -654,7 +654,7 @@ begin
   Params := TAtlasSnippets.PostfixParams(List);
   try
     Templates := Params.GetValue('templates') as TJSONArray;
-    Assert.AreEqual(2, Templates.Count);
+    Assert.AreEqual(2, Integer(Templates.Count));
     Assert.AreEqual('log', Templates.Items[0].GetValue<string>('key'));
     // Ohne Beschreibung gilt der Name.
     Assert.AreEqual('Protokoll', Templates.Items[0].GetValue<string>('description'));

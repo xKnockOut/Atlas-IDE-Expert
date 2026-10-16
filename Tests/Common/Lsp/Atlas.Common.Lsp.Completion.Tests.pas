@@ -1642,7 +1642,7 @@ begin
       TCompletionMatching.Fuzzy, Items, SetMode));
     Assert.AreEqual('Alle Werte einfügen', Items[0].Name);
     Assert.IsTrue(Items[0].Pinned);
-    Assert.AreEqual(4, Items[0].Count);
+    Assert.AreEqual(4, Integer(Items[0].Count));
     Assert.IsTrue(Items[0].HasTextEdit);
     Assert.AreEqual(#13#10'    skCircle: $0;'#13#10'    skLine: ;'#13#10'    skRect: ;'#13#10'    skTriangle: ;' +
       #13#10'  end;', Items[0].TextEdit.NewText);
@@ -1656,7 +1656,7 @@ begin
     Assert.IsTrue(TLspCompletion.EnumItems(Resolver, FIndex, Tree, Text, HauptFile,
       PositionOf(Text, 'skCircle: Zeichne;'#13#10'    sk'), nil, TCompletionMatching.Fuzzy, Items, SetMode));
     Assert.AreEqual('Fehlende Werte ergänzen (3)', Items[0].Name);
-    Assert.AreEqual(0, Items[0].Count);
+    Assert.AreEqual(0, Integer(Items[0].Count));
     Assert.AreEqual(#13#10'    skLine: $0;'#13#10'    skRect: ;'#13#10'    skTriangle: ;', Items[0].TextEdit.NewText);
     // Bereiche und Listen zählen als vorhanden: nichts mehr zu ergänzen.
     Assert.IsTrue(TLspCompletion.EnumItems(Resolver, FIndex, Tree, Text, HauptFile,
@@ -2118,7 +2118,7 @@ begin
       end, Items));
     Assert.AreEqual('Moved Renamed Changed Cleared Sorted', Names(Items));
     // Vorher je Kandidat einmal (3 bzw. 2), jetzt je Datei einmal.
-    Assert.AreEqual(2, Reads.Count);
+    Assert.AreEqual(2, Integer(Reads.Count));
     Assert.IsTrue(Reads.TryGetValue(UpperCase(BasisFile), Count));
     Assert.AreEqual(1, Count);
     Assert.IsTrue(Reads.TryGetValue(UpperCase(MitteFile), Count));

@@ -293,7 +293,7 @@ begin
   Assert.IsFalse(TRequestDiagnostics.IsOpen);
   Assert.AreEqual('noTarget', Notes.Reason);
   Assert.AreEqual('unitNotFound', Notes.Resolve);
-  Assert.AreEqual(12, Notes.Count);
+  Assert.AreEqual(12, Integer(Notes.Count));
   Assert.AreEqual('ctx=memberAccess inString=false missingUnits=2', string.Join(' ', Notes.Notes));
 end;
 
@@ -318,7 +318,7 @@ begin
   TRequestDiagnostics.Note('ctx', 'scope');
   Notes := TRequestDiagnostics.Close;
   Assert.AreEqual('', Notes.Reason);
-  Assert.AreEqual(-1, Notes.Count);
+  Assert.AreEqual(-1, Integer(Notes.Count));
   Assert.AreEqual<NativeInt>(0, Length(Notes.Notes));
 end;
 
@@ -350,11 +350,11 @@ begin
   try
     Log := TDiagnosticLog.Create(NewWriter(Lines), TDiagnosticFilter.Create(nil));
     Log.LogEvent('first');
-    Assert.AreEqual(0, Lines.Count);
+    Assert.AreEqual(0, Integer(Lines.Count));
     Log.Configure(True);
-    Assert.AreEqual(1, Lines.Count);
+    Assert.AreEqual(1, Integer(Lines.Count));
     Log.LogEvent('second');
-    Assert.AreEqual(2, Lines.Count);
+    Assert.AreEqual(2, Integer(Lines.Count));
     Log := nil;
   finally
     Lines.Free;
@@ -375,7 +375,7 @@ begin
     Log.Configure(False);
     Log.LogRequest(SampleRequest);
     Log.LogEnd(TDiagnosticEndReason.Clean, 0, Process);
-    Assert.AreEqual(0, Lines.Count);
+    Assert.AreEqual(0, Integer(Lines.Count));
     Assert.IsFalse(Log.Enabled);
     Log := nil;
   finally
@@ -401,7 +401,7 @@ begin
     Log.LogEnd(TDiagnosticEndReason.Exception_, 1, Process, 'EAccessViolation',
       'AtlasServer.exe+$10 Shell.Composition.TServerComposition.Run (Shell.Composition.pas:9)'#13#10 +
       'C:\Kunde\Fremd.exe+$20');
-    Assert.AreEqual(3, Lines.Count);
+    Assert.AreEqual(3, Integer(Lines.Count));
     Assert.Contains(Lines[0], 'run end reason parentExited exit 0 mem 50 MB threads 7');
     Assert.Contains(Lines[1], 'run end reason exception exit 1');
     Assert.Contains(Lines[1], 'exception EAccessViolation');
@@ -428,7 +428,7 @@ begin
     Log.LogEvent('opened doc#1');
     Process := Default(TDiagnosticProcess);
     Log.LogEnd(TDiagnosticEndReason.Clean, 0, Process);
-    Assert.AreEqual(2, Lines.Count);
+    Assert.AreEqual(2, Integer(Lines.Count));
     Assert.Contains(Lines[1], 'dropped 1');
     Log := nil;
   finally

@@ -29,6 +29,7 @@ type
 implementation
 
 uses
+  System.Generics.Collections,
   System.SysUtils,
   System.JSON,
   Atlas.Core.Projects.Contract,
@@ -69,7 +70,7 @@ begin
   Params := TLspSession.InitializeParams(nil, '', nil, False);
   try
     Formats := Params.GetValue<TJSONArray>('capabilities.textDocument.hover.contentFormat');
-    Assert.AreEqual(1, Formats.Count);
+    Assert.AreEqual(1, Integer(Formats.Count));
     Assert.AreEqual('plaintext', Formats.Items[0].Value);
     Assert.IsTrue(Params.GetValue<Boolean>('capabilities.textDocument.completion.completionItem.snippetSupport'));
     Assert.IsFalse(Params.GetValue<Boolean>('capabilities.textDocument.diagnostic.dynamicRegistration'));

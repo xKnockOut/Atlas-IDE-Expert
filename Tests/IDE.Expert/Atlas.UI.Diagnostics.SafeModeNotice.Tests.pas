@@ -21,6 +21,9 @@ type
     procedure SafeOffersContinueTogglesRestore;
     [Test]
     procedure DetailsShowLinesAndBugReport;
+    /// <summary>Alle Knöpfe liegen nach dem Zeigen im Fenster, auch in umgebrochenen Reihen.</summary>
+    [Test]
+    procedure ButtonsFitAfterShow;
   end;
 
 implementation
@@ -28,7 +31,9 @@ implementation
 uses
   System.SysUtils,
   System.Classes,
+  System.Types,
   Vcl.Forms,
+  Vcl.StdCtrls,
   Atlas.UI.Strings,
   Atlas.UI.Diagnostics.SafeModeNotice;
 
@@ -133,6 +138,27 @@ begin
     Assert.IsTrue(Notice.BugButton.Visible);
     Notice.BugButton.Click;
     Assert.AreEqual(1, Reported);
+  finally
+    Notice.Free;
+  end;
+end;
+
+procedure TAtlasSafeModeNoticeTests.ButtonsFitAfterShow;
+var
+  Notice: TAtlasSafeModeNotice;
+  Button: TButton;
+begin
+  Notice := TAtlasSafeModeNotice.CreateNotice(nil, TAtlasSafeNoticeKind.Safe,
+    TAtlasStrings.Text(TAtlasTextId.SafeActiveText), TAtlasStrings.Fmt(TAtlasTextId.SafeSuggest, ['Diagnosemodus']),
+    TAtlasStrings.Fmt(TAtlasTextId.SafeRestore, ['15.10.2026 23:02:10']), ['Zeile']);
+  try
+    Notice.ShowIn(Rect(0, 0, 1600, 900));
+    for Button in [Notice.PrimaryButton, Notice.SecondaryButton, Notice.RestoreButton, Notice.DetailsButton] do
+    begin
+      Assert.IsTrue(Button.Visible, Button.Caption);
+      Assert.IsTrue(Notice.ScreenToClient(Button.ClientToScreen(Point(0, Button.Height))).Y <= Notice.ClientHeight,
+        Button.Caption + ' abgeschnitten');
+    end;
   finally
     Notice.Free;
   end;

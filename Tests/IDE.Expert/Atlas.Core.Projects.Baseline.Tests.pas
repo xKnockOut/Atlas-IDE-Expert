@@ -135,9 +135,9 @@ begin
   State := TAtlasProjectBaselines.StateOf(Folder, Exists, ReadText);
   Assert.AreEqual(2, Integer(Length(State.Orphans)));
   Assert.AreEqual('Alt/Weg.pas', State.Orphans[0].Path);
-  Assert.AreEqual(4, State.Orphans[0].Count, 'gleicher Pfad in anderer Schreibweise zählt mit');
+  Assert.AreEqual(4, Integer(State.Orphans[0].Count), 'gleicher Pfad in anderer Schreibweise zählt mit');
   Assert.AreEqual('Weg2.pas', State.Orphans[1].Path);
-  Assert.AreEqual(4, State.Orphans[1].Count);
+  Assert.AreEqual(4, Integer(State.Orphans[1].Count));
   Assert.AreEqual(8, State.OrphanCount);
   // Je Pfad eine Abfrage (plus die nach der Baseline selbst).
   Assert.AreEqual(4, Asked);
@@ -187,7 +187,7 @@ begin
   Assert.AreEqual(3, Update.OrphanCount);
   Assert.AreEqual(2, Integer(Length(Update.Orphans)));
   Assert.AreEqual('Alt/U.pas', Update.Orphans[0].Path);
-  Assert.AreEqual(2, Update.Orphans[0].Count);
+  Assert.AreEqual(2, Integer(Update.Orphans[0].Count));
   // Ohne "orphaned" (ältere Server-Fassung): keine Einträge ohne Datei.
   Assert.IsTrue(TAtlasProjectBaselines.FromServer('{"file": "C:\\B.json", "total": 0}', Update));
   Assert.AreEqual(0, Update.OrphanCount);

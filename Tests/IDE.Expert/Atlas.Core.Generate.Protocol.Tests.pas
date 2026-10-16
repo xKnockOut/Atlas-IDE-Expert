@@ -32,6 +32,7 @@ type
 implementation
 
 uses
+  System.Generics.Collections,
   System.SysUtils,
   System.JSON,
   Atlas.Core.Lsp.Session,
@@ -61,7 +62,7 @@ begin
   try
     Assert.IsTrue(Value is TJSONArray);
     Items := TJSONArray(Value);
-    Assert.AreEqual(5, Items.Count);
+    Assert.AreEqual(5, Integer(Items.Count));
     Assert.AreEqual('file:///C:/P/U.pas', Items.Items[0].Value);
     Assert.AreEqual('{"line":4,"character":2}', Items.Items[1].ToJSON);
     Assert.AreEqual('-1', Items.Items[2].Value);
@@ -72,13 +73,13 @@ begin
   end;
   Value := Parse(TAtlasGenerateProtocol.ChoicesArguments(Spot, 'ctor'));
   try
-    Assert.AreEqual(4, TJSONArray(Value).Count);
+    Assert.AreEqual(4, Integer(TJSONArray(Value).Count));
   finally
     Value.Free;
   end;
   Value := Parse(TAtlasGenerateProtocol.MenuArguments(Spot));
   try
-    Assert.AreEqual(3, TJSONArray(Value).Count);
+    Assert.AreEqual(3, Integer(TJSONArray(Value).Count));
   finally
     Value.Free;
   end;

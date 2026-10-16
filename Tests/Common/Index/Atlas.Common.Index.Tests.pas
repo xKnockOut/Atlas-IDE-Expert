@@ -2037,7 +2037,7 @@ begin
   try
     Other := Scheduler.Register(1);
     Active := Scheduler.Register(0);
-    Assert.AreEqual(2, Scheduler.Count);
+    Assert.AreEqual(2, Integer(Scheduler.Count));
     // Das aktive Projekt (Priorität 0) kommt in derselben Stufe zuerst.
     Assert.IsFalse(Other.Enter(TIndexStage.Project, Cancelled));
     Assert.IsTrue(Active.Enter(TIndexStage.Project, Cancelled));
@@ -2050,7 +2050,7 @@ begin
     Assert.IsTrue(Active.Enter(TIndexStage.SearchPaths, Cancelled));
     Active.Leave;
     Active := nil;
-    Assert.AreEqual(1, Scheduler.Count, 'Freigabe meldet ab');
+    Assert.AreEqual(1, Integer(Scheduler.Count), 'Freigabe meldet ab');
     Assert.IsTrue(Other.Enter(TIndexStage.Library_, Cancelled));
     Other.Leave;
     Other := nil;

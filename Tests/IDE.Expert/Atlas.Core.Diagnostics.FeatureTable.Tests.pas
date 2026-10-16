@@ -38,25 +38,25 @@ type
   public
     Log: string;
     Active: array[0..3] of Boolean;
-    procedure AddTo(ATable: TAtlasFeatureTable; AIndex: Integer; AMinLevel: TAtlasSafeLevel); overload;
-    procedure AddTo(ATable: TAtlasFeatureTable; AIndex: Integer; const AWanted: TAtlasFeatureWanted); overload;
+    procedure AddTo(ATable: TAtlasFeatureTable; AIndex: Integer; AMinLevel: TAtlasSafeLevel);
+    procedure AddWantedTo(ATable: TAtlasFeatureTable; AIndex: Integer; const AWanted: TAtlasFeatureWanted);
   end;
 
 procedure TProbe.AddTo(ATable: TAtlasFeatureTable; AIndex: Integer; AMinLevel: TAtlasSafeLevel);
 begin
-  AddTo(ATable, AIndex,
+  AddWantedTo(ATable, AIndex,
     function(ALevel: TAtlasSafeLevel): Boolean
     begin
       Result := Ord(ALevel) <= Ord(AMinLevel);
     end);
 end;
 
-procedure TProbe.AddTo(ATable: TAtlasFeatureTable; AIndex: Integer; const AWanted: TAtlasFeatureWanted);
+procedure TProbe.AddWantedTo(ATable: TAtlasFeatureTable; AIndex: Integer; const AWanted: TAtlasFeatureWanted);
 var
   Name: string;
 begin
   Name := Chr(Ord('A') + AIndex);
-  ATable.Add(Name, AWanted,
+  ATable.AddWanted(Name, AWanted,
     function: Boolean
     begin
       Result := Active[AIndex];
@@ -172,7 +172,7 @@ begin
     // Schnellschalter: Das Teil ist erst nach dem Einschalten gewünscht.
     Switch := False;
     Probe.AddTo(Table, 0, TAtlasSafeLevel.Minimal);
-    Probe.AddTo(Table, 1,
+    Probe.AddWantedTo(Table, 1,
       function(ALevel: TAtlasSafeLevel): Boolean
       begin
         Result := Switch;
@@ -198,7 +198,7 @@ begin
   Probe := TProbe.Create;
   try
     Seen := TAtlasSafeLevel.Normal;
-    Probe.AddTo(Table, 0,
+    Probe.AddWantedTo(Table, 0,
       function(ALevel: TAtlasSafeLevel): Boolean
       begin
         Seen := ALevel;

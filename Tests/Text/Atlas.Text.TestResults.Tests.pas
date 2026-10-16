@@ -90,7 +90,7 @@ begin
   Assert.AreEqual(Int64(1250), Run.DurationMs, 'Dauer der äußersten Suite');
   Assert.IsFalse(Run.AllPassed);
   Failures := Run.Failures;
-  Assert.AreEqual(2, Length(Failures));
+  Assert.AreEqual(2, Integer(Length(Failures)));
   Assert.AreEqual('Summe', Failures[0].Method);
   Assert.AreEqual('Gross', Failures[0].CaseName);
   Assert.AreEqual('Rechner.Tests.pas:35', Failures[0].StackTrace);

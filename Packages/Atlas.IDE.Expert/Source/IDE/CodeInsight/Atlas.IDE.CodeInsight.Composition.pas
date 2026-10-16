@@ -2234,7 +2234,7 @@ begin
     end,
     StartManager, StopManager);
   // Notifier und Hintergrundaufgaben nur im normalen Betrieb bzw. wenn ihr Schalter wieder an ist.
-  Features.Add('Compile',
+  Features.AddWanted('Compile',
     function(ALevel: TAtlasSafeLevel): Boolean
     begin
       Result := (ALevel = TAtlasSafeLevel.Normal) or TAtlasIdeSettings.Current.CheckOnSave;
@@ -2257,7 +2257,7 @@ begin
       Result := Watchdog <> nil;
     end,
     StartWatchdog, UnregisterWatchdog);
-  Features.Add('CheckOnSave',
+  Features.AddWanted('CheckOnSave',
     function(ALevel: TAtlasSafeLevel): Boolean
     begin
       Result := Compile <> nil;
@@ -2279,7 +2279,7 @@ begin
     StartCommands, StopCommands);
   // Projektdatei .atlas (#486): in jeder Stufe, solange die Einstellung TeamFile an ist (abgesichert erst nach dem
   // Schnellschalter); liest nur eine Datei.
-  Features.Add('TeamFile',
+  Features.AddWanted('TeamFile',
     function(ALevel: TAtlasSafeLevel): Boolean
     begin
       Result := TAtlasIdeSettings.Current.TeamFile;
@@ -2290,7 +2290,7 @@ begin
     end,
     TAtlasIdeTeamFile.Start, TAtlasIdeTeamFile.Stop);
   // Builds für Claude Code (#261): nur im normalen Start, mit den Compile-Ereignissen und solange McpBuild an ist.
-  Features.Add('McpBuild',
+  Features.AddWanted('McpBuild',
     function(ALevel: TAtlasSafeLevel): Boolean
     begin
       Result := (ALevel = TAtlasSafeLevel.Normal) and TAtlasIdeSettings.Current.McpBuild and (BuildRunner <> nil);
@@ -2312,7 +2312,7 @@ begin
       FreeAndNil(BuildInbox);
     end);
   // DUnitX-Tests (#69): nur im normalen Start und solange TestRun an ist; baut über BuildRunner, wenn er läuft.
-  Features.Add('Tests',
+  Features.AddWanted('Tests',
     function(ALevel: TAtlasSafeLevel): Boolean
     begin
       Result := (ALevel = TAtlasSafeLevel.Normal) and TAtlasIdeSettings.Current.TestRun;
@@ -2323,7 +2323,7 @@ begin
     end,
     StartTests, StopTests);
   // Startprofile (#575): nur im normalen Start und solange StartProfiles an ist; liest .atlas über TeamFile.
-  Features.Add('StartProfiles',
+  Features.AddWanted('StartProfiles',
     function(ALevel: TAtlasSafeLevel): Boolean
     begin
       Result := (ALevel = TAtlasSafeLevel.Normal) and TAtlasIdeSettings.Current.StartProfiles;
@@ -2390,7 +2390,7 @@ begin
       FreeAndNil(DiagnosticMode);
     end);
   // Einrichtung (#625): auch abgesichert, sie fragt den Server nie selbst und startet ihn nur auf Knopfdruck.
-  Features.Add('Setup',
+  Features.AddWanted('Setup',
     function(ALevel: TAtlasSafeLevel): Boolean
     begin
       Result := (ALevel <> TAtlasSafeLevel.Minimal) and (StatusLines <> nil);
@@ -2432,7 +2432,7 @@ begin
     end);
   // Tastenkürzel-Tipps (#600): Beobachtung an oder aus nach shortcutTips.enabled (ApplySettings); zählt auch
   // für „Atlas entdecken“ (#757), solange die Karte und die Zählung an sind.
-  Features.Add('ShortcutTips',
+  Features.AddWanted('ShortcutTips',
     function(ALevel: TAtlasSafeLevel): Boolean
     begin
       Result := (ALevel = TAtlasSafeLevel.Normal) and (CommandUsage <> nil);
@@ -2457,7 +2457,7 @@ begin
       FreeAndNil(Palette);
     end);
   // Editor-Zeichnungen.
-  Features.Add('Pairs',
+  Features.AddWanted('Pairs',
     function(ALevel: TAtlasSafeLevel): Boolean
     begin
       Result := (ALevel = TAtlasSafeLevel.Normal) or TAtlasIdeSettings.Current.PairColors or
@@ -2492,7 +2492,7 @@ begin
     end,
     StartBookmarks, StopBookmarks);
   // Nach Notizen und Lesezeichen, Abbau davor: Die Rinne liest deren Listen (#545, #622).
-  Features.Add('GutterMarks',
+  Features.AddWanted('GutterMarks',
     function(ALevel: TAtlasSafeLevel): Boolean
     begin
       Result := (ALevel <> TAtlasSafeLevel.Minimal) and ((ALevel = TAtlasSafeLevel.Normal) or
@@ -2507,7 +2507,7 @@ begin
     begin
       FreeAndNil(GutterMarks);
     end);
-  Features.Add('CompletionKey',
+  Features.AddWanted('CompletionKey',
     function(ALevel: TAtlasSafeLevel): Boolean
     begin
       Result := (ALevel <> TAtlasSafeLevel.Minimal) and ((ALevel = TAtlasSafeLevel.Normal) or
@@ -2522,7 +2522,7 @@ begin
     begin
       FreeAndNil(CompletionKey);
     end);
-  Features.Add('SignatureKey',
+  Features.AddWanted('SignatureKey',
     function(ALevel: TAtlasSafeLevel): Boolean
     begin
       Result := (ALevel <> TAtlasSafeLevel.Minimal) and ((ALevel = TAtlasSafeLevel.Normal) or
@@ -2545,7 +2545,7 @@ begin
     WatchKeys, UnwatchKeys);
   // Willkommensseite (#753): auch abgesichert, sie startet keinen Server und liest nur lokale Daten. Abbau
   // vor dem Statusfeld, dessen Registry sie beobachtet.
-  Features.Add('Welcome',
+  Features.AddWanted('Welcome',
     function(ALevel: TAtlasSafeLevel): Boolean
     begin
       Result := (ALevel <> TAtlasSafeLevel.Minimal) and (StatusLines <> nil);

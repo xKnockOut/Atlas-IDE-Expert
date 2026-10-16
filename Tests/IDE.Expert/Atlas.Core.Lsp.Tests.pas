@@ -1033,7 +1033,7 @@ var
 begin
   Folders := TLspSession.ProjectFolders(['C:\Gruppe\App\App.dproj']);
   try
-    Assert.AreEqual(1, Folders.Count);
+    Assert.AreEqual(1, Integer(Folders.Count));
     Assert.AreEqual(TLspSession.PathToUri('C:\Gruppe\App\App.dproj'), Folders.Items[0].GetValue<string>('uri'));
     Assert.AreEqual('App', Folders.Items[0].GetValue<string>('name'));
   finally

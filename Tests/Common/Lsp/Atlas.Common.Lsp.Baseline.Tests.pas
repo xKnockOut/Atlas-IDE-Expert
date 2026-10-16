@@ -222,7 +222,7 @@ begin
   end;
   Assert.AreEqual(FullPath(BaselineFileName), Written);
   Baseline := TRuleBaseline.FromJson(Disk[FullPath(BaselineFileName)]);
-  Assert.AreEqual(2, Baseline.Count);
+  Assert.AreEqual(2, Integer(Baseline.Count));
   Assert.AreEqual(0, Baseline.LegacyCount);
 end;
 
@@ -390,7 +390,7 @@ begin
   finally
     Command.Free;
   end;
-  Assert.AreEqual(1, TRuleBaseline.FromJson(Disk[FullPath(BaselineFileName)]).Count);
+  Assert.AreEqual(1, Integer(TRuleBaseline.FromJson(Disk[FullPath(BaselineFileName)]).Count));
 end;
 
 procedure TLspBaselineTests.UnreadableFileIsSkipped;

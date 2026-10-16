@@ -26,6 +26,9 @@ type
     function Arguments(ALine, AEndLine: Integer; const AName, AArgument: string): TJSONArray; overload;
     function Names(AResult: TJSONValue): string;
   public
+    /// <summary>Erste Benutzung ungemessen vorwegnehmen.</summary>
+    [SetupFixture]
+    procedure WarmUpFirstUse;
     [Setup]
     procedure Setup;
     [TearDown]
@@ -51,6 +54,7 @@ type
 implementation
 
 uses
+  System.Generics.Collections,
   System.SysUtils,
   Atlas.Common.JsonRpc.Contract,
   Atlas.Common.Documents.Uris,
@@ -91,6 +95,22 @@ end;
 function List(AValue: TJSONValue; const AName: string): TJSONArray;
 begin
   Result := AValue.GetValue<TJSONArray>(AName);
+end;
+
+procedure TLspSlashMenuTests.WarmUpFirstUse;
+begin
+  Setup;
+  try
+    MenuLeavesOutDisabledCommands;
+  finally
+    TearDown;
+  end;
+  Setup;
+  try
+    ImplementsMissingInterfaceMethods;
+  finally
+    TearDown;
+  end;
 end;
 
 procedure TLspSlashMenuTests.Setup;
@@ -249,7 +269,7 @@ begin
   Args := Arguments(5, -1, 'ctor');
   Answer := FMenu.ExecuteChoices(Args);
   try
-    Assert.AreEqual(1, TJSONArray(Answer).Count);
+    Assert.AreEqual(1, Integer(TJSONArray(Answer).Count));
     Assert.AreEqual('FName', TJSONArray(Answer).Items[0].Value);
   finally
     Answer.Free;
@@ -374,7 +394,7 @@ begin
         Args.Add(TLspSlashMenu.ImplementName);
         Answer := FMenu.ExecuteChoices(Args);
         try
-          Assert.AreEqual(1, TJSONArray(Answer).Count);
+          Assert.AreEqual(1, Integer(TJSONArray(Answer).Count));
           Assert.AreEqual('IFlush.Flush', TJSONArray(Answer).Items[0].Value);
         finally
           Answer.Free;

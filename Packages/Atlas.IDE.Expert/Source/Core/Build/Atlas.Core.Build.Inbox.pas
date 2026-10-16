@@ -82,6 +82,7 @@ type
 implementation
 
 uses
+  Winapi.Windows,
   System.IOUtils,
   System.DateUtils,
   System.Generics.Collections;
