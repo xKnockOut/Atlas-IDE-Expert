@@ -22,6 +22,10 @@ type
     /// <summary>Am Zeilenende fehlt der Bezug: Wert dabei, nur aussagekräftige Hinweise.</summary>
     [Test]
     procedure ShowsValueAndSkipsHintsThatSayNothing;
+    /// <summary>Blockende-Beschriftungen (#620): getrennt von den Parameternamen, nicht hinter einem
+    /// Kommentar, lange Texte gekürzt.</summary>
+    [Test]
+    procedure KeepsEndLabelsApart;
   end;
 
 implementation
@@ -32,6 +36,7 @@ uses
 
 function H(ALine, ACharacter: Integer; const AName: string): TAtlasInlayHint;
 begin
+  Result := Default(TAtlasInlayHint);
   Result.Line := ALine;
   Result.Character := ACharacter;
   Result.Name := AName;
@@ -156,6 +161,45 @@ begin
     Assert.AreEqual('AOwner = nil|Exclusive = True|FileName = ''sehr langer Dateiname,…',
       string.Join('|', Store.OnLine('A.pas', 2)));
     Assert.AreEqual('Count = 3', string.Join('|', Store.OnLine('A.pas', 3)), 'Name steht schon im Argument');
+  finally
+    Store.Free;
+  end;
+end;
+
+procedure TAtlasInlayHintStoreTests.KeepsEndLabelsApart;
+var
+  Store: TAtlasInlayHintStore;
+  Text, Anchor, Caption: string;
+  Ends: TArray<TAtlasInlayHint>;
+begin
+  Text := 'begin' + sLineBreak +
+    'end;' + sLineBreak +
+    'end; // schon kommentiert' + sLineBreak +
+    'end;' + sLineBreak +
+    'end;';
+  Ends := [H(1, 4, 'TKunde.Speichern'), H(2, 4, 'TKunde.Laden'), H(3, 4, StringOfChar('x', 50)),
+    H(4, 4, ''), H(1, 4, 'doppelt')];
+  Ends[0].EndLabel := True;
+  Ends[1].EndLabel := True;
+  Ends[2].EndLabel := True;
+  Ends[3].EndLabel := True;
+  Ends[4].EndLabel := True;
+  Store := TAtlasInlayHintStore.Create;
+  try
+    Store.SetText('A.pas', Text);
+    Store.Put('A.pas', Text, 0, 4, Ends);
+    Assert.IsTrue(Store.EndLabelOn('A.pas', 1, Anchor, Caption));
+    Assert.AreEqual('TKunde.Speichern', Anchor);
+    Assert.AreEqual('// TKunde.Speichern', Caption);
+    Assert.AreEqual(0, Integer(Length(Store.OnLine('A.pas', 1))), 'keine Parameternamen');
+    Assert.IsFalse(Store.EndLabelOn('A.pas', 2, Anchor, Caption), 'Kommentar steht schon dahinter');
+    Assert.IsTrue(Store.EndLabelOn('A.pas', 3, Anchor, Caption));
+    Assert.AreEqual(Integer(Length('// ') + TAtlasInlayHintStore.MaxEndLabelLength), Integer(Length(Caption)));
+    Assert.IsTrue(Caption.EndsWith('…'));
+    Assert.IsFalse(Store.EndLabelOn('A.pas', 4, Anchor, Caption), 'ohne Text');
+    Assert.IsFalse(TAtlasInlayHintStore.HasCommentAfter('end; // ''x''', 10));
+    Assert.IsFalse(TAtlasInlayHintStore.HasCommentAfter('S := ''//''; ', 4));
+    Assert.IsTrue(TAtlasInlayHintStore.HasCommentAfter('end; { Ende }', 4));
   finally
     Store.Free;
   end;

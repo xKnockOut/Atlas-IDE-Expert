@@ -15,6 +15,9 @@
 // Seite „Atlas.Server“ (#227): globale und Projekt-Einstellungen des Servers im
 // Dialog, Baseline neu erzeugen oder löschen, Unterdrückungen je Regel und
 // Index-Cache löschen über AtlasServer.exe als Prozess (TAtlasServerTool).
+// ShowSetting (#628, „Einstellungen dazu …“): öffnet Tools › Optionen, wählt
+// die Seite „Atlas“ in der Baumansicht des Dialogs (soweit sie sich finden
+// lässt) und zeigt dort die Einstellung mit markierter Zeile (Reveal).
 
 interface
 
@@ -52,6 +55,9 @@ type
   public
     class procedure Register(const AHooks: TAtlasOptionsHooks); static;
     class procedure Unregister; static;
+    /// <summary>Tools › Optionen öffnen und auf der Seite „Atlas“ die Einstellung AKey (Name der
+    /// Plugin-Einstellung) zeigen und markieren (#628).</summary>
+    class procedure ShowSetting(const AKey: string); static;
   end;
 
 implementation
@@ -63,6 +69,11 @@ uses
   System.Classes,
   Vcl.Forms,
   Vcl.Dialogs,
+  Vcl.Controls,
+  Vcl.ComCtrls,
+  Vcl.ExtCtrls,
+  Vcl.ActnList,
+  Vcl.Menus,
   Atlas.Core.Completion.Snippets,
   Atlas.Core.Completion.LiveTemplates,
   Atlas.Core.Completion.SnippetCatalog,
@@ -152,6 +163,113 @@ var
   KeysOptions: INTAAddInOptions;
   /// <summary>Gesetzt von Register, geleert von Unregister.</summary>
   Hooks: TAtlasOptionsHooks;
+  /// <summary>Einstellung, die die Seite „Atlas“ beim nächsten Anlegen zeigen soll (#628); '' ohne.</summary>
+  PendingReveal: string;
+
+type
+  /// <summary>Sucht im offenen Optionsdialog die Seite „Atlas“ und wählt sie (#628).</summary>
+  TAtlasOptionsSelector = class
+  private const
+    IntervalMs = 200;
+    MaxTries = 50;
+  private
+    FTimer: TTimer;
+    FTries: Integer;
+    procedure Tick(Sender: TObject);
+    class function FindTree(AParent: TWinControl): TTreeView; static;
+  public
+    constructor Create;
+    destructor Destroy; override;
+    procedure Start;
+    procedure Stop;
+  end;
+
+var
+  Selector: TAtlasOptionsSelector;
+
+{ TAtlasOptionsSelector }
+
+constructor TAtlasOptionsSelector.Create;
+begin
+  inherited Create;
+  FTimer := TTimer.Create(nil);
+  FTimer.Enabled := False;
+  FTimer.Interval := IntervalMs;
+  FTimer.OnTimer := Tick;
+end;
+
+destructor TAtlasOptionsSelector.Destroy;
+begin
+  FTimer.Free;
+  inherited Destroy;
+end;
+
+procedure TAtlasOptionsSelector.Start;
+begin
+  FTries := 0;
+  FTimer.Enabled := True;
+end;
+
+procedure TAtlasOptionsSelector.Stop;
+begin
+  FTimer.Enabled := False;
+end;
+
+class function TAtlasOptionsSelector.FindTree(AParent: TWinControl): TTreeView;
+var
+  Index: Integer;
+begin
+  Result := nil;
+  for Index := 0 to AParent.ControlCount - 1 do
+  begin
+    if AParent.Controls[Index] is TTreeView then
+      Exit(TTreeView(AParent.Controls[Index]));
+    if AParent.Controls[Index] is TWinControl then
+    begin
+      Result := FindTree(TWinControl(AParent.Controls[Index]));
+      if Result <> nil then
+        Exit;
+    end;
+  end;
+end;
+
+procedure TAtlasOptionsSelector.Tick(Sender: TObject);
+var
+  Form: TCustomForm;
+  Tree: TTreeView;
+  Node: TTreeNode;
+begin
+  try
+    Inc(FTries);
+    if (FTries > MaxTries) or (PendingReveal = '') then
+    begin
+      Stop;
+      Exit;
+    end;
+    Form := Screen.ActiveCustomForm;
+    if (Form = nil) or not (fsModal in Form.FormState) then
+      Exit;
+    Tree := FindTree(Form);
+    if Tree = nil then
+      Exit;
+    // Die Seite heißt „Atlas“ (GetCaption) und hängt unter „Drittanbieter“, nicht oben im Baum.
+    for Node in Tree.Items do
+      if SameText(Node.Text, 'Atlas') and (Node.Parent <> nil) then
+      begin
+        Stop;
+        Node.MakeVisible;
+        Tree.Selected := Node;
+        Exit;
+      end;
+    Stop;
+  except
+    on E: Exception do
+    begin
+      Stop;
+      TAtlasGuard.Report(TAtlasFeature.Settings, E);
+    end;
+  end;
+end;
 
 /// <summary>Ergebnis eines Hakens; '' ohne Haken.</summary>
 function HookText(const AHook: TFunc<string>): string;
@@ -198,6 +316,9 @@ begin
       Result := TAtlasServerTool.FileVersion(APath);
     end;
   FPage.OnResetHistory := Hooks.ResetHistory;
+  // „Einstellungen dazu …“ (#628): gewünschte Zeile zeigen.
+  if PendingReveal <> '' then
+    FPage.Reveal(PendingReveal);
   // Angeheftete Favoriten (#458): Liste und Entfernen.
   FPage.OnRemoveFavorites :=
     procedure(AKeys: TArray<string>)
@@ -291,6 +412,7 @@ procedure TAtlasAddInOptions.DialogClosed(Accepted: Boolean);
 var
   Settings: TAtlasPluginSettings;
 begin
+  PendingReveal := '';
   try
     if Accepted and (FPage <> nil) then
     begin
@@ -691,6 +813,75 @@ begin
   ServerOptions := nil;
   Options := nil;
   Hooks := Default(TAtlasOptionsHooks);
+  PendingReveal := '';
+  FreeAndNil(Selector);
+end;
+
+/// <summary>Aktion bzw. Menüpunkt „Optionen…“ der IDE ausführen; False, wenn keins zu finden ist.</summary>
+function RunOptionsDialog: Boolean;
+const
+  ActionName = 'ToolsOptionsCommand';
+  ItemName = 'ToolsOptionsItem';
+var
+  Services: INTAServices;
+  Index: Integer;
+
+  function FindItem(AItem: TMenuItem): TMenuItem;
+  var
+    Child: Integer;
+  begin
+    Result := nil;
+    if SameText(AItem.Name, ItemName) then
+      Exit(AItem);
+    for Child := 0 to AItem.Count - 1 do
+    begin
+      Result := FindItem(AItem.Items[Child]);
+      if Result <> nil then
+        Exit;
+    end;
+  end;
+
+var
+  Item: TMenuItem;
+begin
+  Result := False;
+  if not Supports(BorlandIDEServices, INTAServices, Services) then
+    Exit;
+  if Services.ActionList <> nil then
+    for Index := 0 to Services.ActionList.ActionCount - 1 do
+      if SameText(Services.ActionList.Actions[Index].Name, ActionName) then
+      begin
+        Services.ActionList.Actions[Index].Execute;
+        Exit(True);
+      end;
+  if Services.MainMenu <> nil then
+  begin
+    Item := FindItem(Services.MainMenu.Items);
+    if Item <> nil then
+    begin
+      Item.Click;
+      Exit(True);
+    end;
+  end;
+end;
+
+class procedure TAtlasOptionsRegistration.ShowSetting(const AKey: string);
+begin
+  if Options = nil then
+    Exit;
+  PendingReveal := AKey;
+  if Selector = nil then
+    Selector := TAtlasOptionsSelector.Create;
+  // Der Dialog ist modal: Der Zeitgeber wählt die Seite, während er offen ist.
+  Selector.Start;
+  try
+    RunOptionsDialog;
+  finally
+    // Modal: Hier ist der Dialog wieder zu. Nicht gefunden oder geschlossen: nichts mehr vormerken.
+    if Selector <> nil then
+      Selector.Stop;
+    PendingReveal := '';
+  end;
 end;
 
 end.

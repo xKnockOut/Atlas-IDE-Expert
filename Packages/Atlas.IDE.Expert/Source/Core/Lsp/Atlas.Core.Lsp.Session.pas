@@ -172,8 +172,9 @@ type
     /// gleich mit seinem Kontext geladen wird. Ergebnis: die neu gemeldeten oder für initialize
     /// gemerkten Kontexte (fürs Diagnoseprotokoll).</summary>
     function SetProjectContexts(const AContexts: TArray<TAtlasProjectContext>): TArray<TAtlasProjectContext>;
-    /// <summary>Parameternamen (InlayHintKind 2) in den Zeilen AFromLine..AToLine (0-basiert) ohne Abgleich:
-    /// Sync vorher (#401). Namen ohne abschließenden Doppelpunkt.</summary>
+    /// <summary>Parameternamen (InlayHintKind 2) und Endmarken („// Name“ ohne kind, #620, EndLabel) in den Zeilen
+    /// AFromLine..AToLine (0-basiert) ohne Abgleich: Sync vorher (#401). Namen ohne abschließenden Doppelpunkt,
+    /// Endmarken ohne "//".</summary>
     function InlayHints(const AFileName: string; AFromLine, AToLine: Integer;
       ATimeoutMs: Cardinal): TArray<TAtlasInlayHint>;
     procedure Initialize;
@@ -1107,6 +1108,7 @@ var
   Parts: TJSONArray;
   Hint: TAtlasInlayHint;
   Text: string;
+  Kind: Integer;
 begin
   Result := nil;
   Range := TJSONObject.Create;
@@ -1126,7 +1128,9 @@ begin
       if not (Item is TJSONObject) then
         Continue;
       Entry := TJSONObject(Item);
-      if Entry.GetValue<Integer>('kind', 0) <> 2 then
+      // Parameternamen (kind 2) und Endmarken ohne kind mit "// …" (#620).
+      Kind := Entry.GetValue<Integer>('kind', 0);
+      if (Kind <> 2) and (Kind <> 0) then
         Continue;
       // label ist ein String oder eine Liste von InlayHintLabelPart.
       Text := '';
@@ -1139,7 +1143,15 @@ begin
       else
         Text := Entry.GetValue<string>('label', '');
       Text := Trim(Text);
-      if Text.EndsWith(':') then
+      Hint := Default(TAtlasInlayHint);
+      if Kind = 0 then
+      begin
+        if not Text.StartsWith('//') then
+          Continue;
+        Hint.EndLabel := True;
+        Text := Trim(Copy(Text, 3, MaxInt));
+      end
+      else if Text.EndsWith(':') then
         Text := TrimRight(Copy(Text, 1, Length(Text) - 1));
       Hint.Line := Entry.GetValue<Integer>('position.line', -1);
       Hint.Character := Entry.GetValue<Integer>('position.character', 0);

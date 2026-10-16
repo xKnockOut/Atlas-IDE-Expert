@@ -209,6 +209,8 @@ begin
     TAtlasNotificationsWindow.SourceCaption('buildServer'));
   Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.NotificationsSourceOpenBuild),
     TAtlasNotificationsWindow.SourceCaption('openBuild'));
+  Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.NotificationsSourceHidden),
+    TAtlasNotificationsWindow.SourceCaption('hidden'));
   Assert.AreEqual('tracker', TAtlasNotificationsWindow.SourceCaption('tracker'), 'unbekannt: Kennung');
   Day := EncodeDateTime(2026, 10, 16, 14, 3, 0, 0);
   Assert.AreEqual('14:03', TAtlasNotificationsWindow.TimeText(Day, IncHour(Day, 2)));
