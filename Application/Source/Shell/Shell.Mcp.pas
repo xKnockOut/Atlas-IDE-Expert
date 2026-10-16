@@ -30,6 +30,8 @@ implementation
 uses
   Winapi.Windows,
   System.SysUtils,
+  System.Classes,
+  System.SyncObjs,
   System.IOUtils,
   System.StrUtils,
   System.JSON,
@@ -57,6 +59,13 @@ uses
   Atlas.Common.Mcp.EditTools,
   Atlas.Common.Mcp.IdeEdits,
   Atlas.Common.Mcp.IdeBuilds,
+  Atlas.Common.Mcp.TestTools,
+  Atlas.Common.Projects.DprojReader,
+  Atlas.Common.Compiler.Contract,
+  Atlas.Windows.Compiler.Adapters.ProcessRunner,
+  Atlas.Text.Lines,
+  Atlas.Text.DUnitX,
+  Atlas.Text.TestResults,
   Atlas.Common.Rules.Contract,
   Atlas.Common.Rules.Catalog,
   Atlas.Common.Rules.Checker,
@@ -247,6 +256,162 @@ begin
   Result := TShellBootstrap.ReadSourceText(AFileName, AText);
 end;
 
+/// <summary>Baut AProject ('' = aktives Projekt) in der laufenden IDE über das Atlas-Plugin (#261) und wartet
+/// auf das Ende. EMcpToolError mit dem Grund, wenn keine IDE mit Atlas-Plugin das Projekt offen hat oder sie
+/// den Auftrag nicht annimmt.</summary>
+function BuildInIde(const ARoot, AProject, AMode, AConfiguration, APlatform: string): TIdeBuild;
+var
+  Request: TMcpIdeBuildRequest;
+  Pid: Cardinal;
+  Wanted, BuildText, Reason: string;
+begin
+  Request := Default(TMcpIdeBuildRequest);
+  Request.Mode := AMode;
+  if Request.Mode = '' then
+    Request.Mode := 'make';
+  if not TMcpIdeBuilds.ModeValid(Request.Mode) then
+    raise EMcpToolError.Create('Argument "mode": erlaubt sind "make", "build" und "check"');
+  Request.Configuration := AConfiguration;
+  Request.Platform := APlatform;
+  // Relativer Pfad: relativ zum Arbeitsordner.
+  Wanted := AProject;
+  if (Wanted <> '') and ((Pos('\', Wanted) > 0) or (Pos('/', Wanted) > 0)) and not TPath.IsPathRooted(Wanted) then
+    Wanted := TPath.GetFullPath(TPath.Combine(ARoot, Wanted));
+  if not TMcpIdeBuilds.Pick(RunningIdes, ARoot, Wanted, Pid, Request.Project, Reason) then
+    raise EMcpToolError.Create(Reason);
+  if TMcpIdeBuilds.Send(TMcpIdeBuilds.InboxOf(TPath.Combine(GetEnvironmentVariable('LOCALAPPDATA'), 'Atlas'),
+    Pid), Request,
+    procedure
+    begin
+      Sleep(TMcpIdeBuilds.PollMs);
+    end,
+    function: Int64
+    begin
+      Result := GetTickCount64;
+    end, BuildText, Reason) <> TMcpIdeBuildOutcome.Done then
+    raise EMcpToolError.Create(Reason);
+  if not TMcpBuildTools.FromFileText(BuildText, Result) then
+    raise EMcpToolError.Create('Ergebnis der IDE nicht lesbar.');
+end;
+
+/// <summary>Projektdatei ohne Ausnahme auswerten; False, wenn sie nicht lesbar ist.</summary>
+function LoadProject(const AFileName, AConfiguration, APlatform: string; out AInfo: TProjectInfo): Boolean;
+var
+  Options: TDprojOptions;
+begin
+  Options := Default(TDprojOptions);
+  Options.Config := AConfiguration;
+  Options.Platform := APlatform;
+  Options.FileExists :=
+    function(APath: string): Boolean
+    begin
+      Result := FileExists(APath);
+    end;
+  try
+    AInfo := TDprojReader.Load(AFileName, Options);
+    Result := True;
+  except
+    on Exception do
+    begin
+      AInfo := Default(TProjectInfo);
+      Result := False;
+    end;
+  end;
+end;
+
+/// <summary>DUnitX-Testprojekt: Die Hauptdatei verwendet DUnitX.TestFramework (#69).</summary>
+function IsTestProject(const AFileName: string): Boolean;
+var
+  Info: TProjectInfo;
+  Text: string;
+begin
+  Result := LoadProject(AFileName, '', '', Info) and (Info.MainSource <> '') and
+    ReadSourceText(Info.MainSource, Text) and TDUnitXSource.UsesDUnitX(TTextLines.SplitLines(Text));
+end;
+
+/// <summary>Projektdateien unter ARoot ohne Sicherungsordner der IDE.</summary>
+function ProjectFilesUnder(const ARoot: string): TArray<string>;
+var
+  FileName: string;
+begin
+  Result := nil;
+  if (ARoot = '') or not TDirectory.Exists(ARoot) then
+    Exit;
+  for FileName in TDirectory.GetFiles(ARoot, '*.dproj', TSearchOption.soAllDirectories) do
+    if not ContainsText(FileName, '\__history\') and not ContainsText(FileName, '\__recovery\') then
+      Result := Result + [FileName];
+end;
+
+function ReadSourceLines(const AFileName: string; out ALines: TArray<string>): Boolean;
+var
+  Text: string;
+begin
+  Result := ReadSourceText(AFileName, Text);
+  if Result then
+    ALines := TTextLines.SplitLines(Text)
+  else
+    ALines := nil;
+end;
+
+/// <summary>Führt die Test-EXE aus (#69): Ergebnis im XML-Bericht AResultFile; AOutput die letzten Zeilen der
+/// Ausgabe. Beendet den Prozess nach ATimeoutSeconds; dann ATimedOut.</summary>
+function RunTestProcess(const ATarget: TMcpTestTarget; const AArguments: TArray<string>; ATimeoutSeconds: Integer;
+  out AOutput: TArray<string>; out ATimedOut: Boolean): Integer;
+const
+  KeptLines = 40;
+var
+  Process: ICompilerProcess;
+  Request: TCompilerRequest;
+  Finished: TEvent;
+  Watcher: TThread;
+  Output: TArray<string>;
+  TimedOut: Boolean;
+begin
+  Process := TProcessRunner.Create;
+  Request := Default(TCompilerRequest);
+  Request.Executable := ATarget.Executable;
+  Request.Arguments := AArguments;
+  Request.WorkingDir := ATarget.WorkingDir;
+  Output := nil;
+  TimedOut := False;
+  Finished := TEvent.Create(nil, True, False, '');
+  try
+    Watcher := TThread.CreateAnonymousThread(
+      procedure
+      begin
+        if Finished.WaitFor(Cardinal(ATimeoutSeconds) * 1000) = wrTimeout then
+        begin
+          TimedOut := True;
+          Process.Cancel;
+        end;
+      end);
+    Watcher.FreeOnTerminate := False;
+    Watcher.Start;
+    try
+      try
+        Result := Process.Run(Request,
+          procedure(const ALine: string)
+          begin
+            Output := Output + [ALine];
+            if Length(Output) > KeptLines then
+              Delete(Output, 0, Length(Output) - KeptLines);
+          end);
+      except
+        on ECompilerCancelled do
+          Result := -1;
+      end;
+    finally
+      Finished.SetEvent;
+      Watcher.WaitFor;
+      Watcher.Free;
+    end;
+  finally
+    Finished.Free;
+  end;
+  AOutput := Output;
+  ATimedOut := TimedOut;
+end;
+
 procedure RegisterTools(AServer: TMcpServer; ATools: TMcpIndexTools; ACode: TMcpCodeTools;
   AWorkspace: TShellWorkspace; const ARoot: string; AGuard: TMcpPathGuard; AEdit: TMcpEditTools);
 begin
@@ -334,40 +499,94 @@ begin
       '"configuration":{"type":"string","description":"z. B. Debug oder Release; leer = aktive Konfiguration"},' +
       '"platform":{"type":"string","description":"z. B. Win32 oder Win64; leer = aktive Plattform"}}}',
     function(const AArguments: TJSONObject): string
-    var
-      Request: TMcpIdeBuildRequest;
-      Pid: Cardinal;
-      Wanted, BuildText, Reason: string;
-      Build: TIdeBuild;
     begin
-      Request := Default(TMcpIdeBuildRequest);
-      Request.Mode := TMcpServer.OptionalString(AArguments, 'mode');
-      if Request.Mode = '' then
-        Request.Mode := 'make';
-      if not TMcpIdeBuilds.ModeValid(Request.Mode) then
-        raise EMcpToolError.Create('Argument "mode": erlaubt sind "make", "build" und "check"');
-      Request.Configuration := TMcpServer.OptionalString(AArguments, 'configuration');
-      Request.Platform := TMcpServer.OptionalString(AArguments, 'platform');
-      // Relativer Pfad: relativ zum Arbeitsordner.
+      Result := TMcpBuildTools.Report(BuildInIde(ARoot, TMcpServer.OptionalString(AArguments, 'project'),
+        TMcpServer.OptionalString(AArguments, 'mode'), TMcpServer.OptionalString(AArguments, 'configuration'),
+        TMcpServer.OptionalString(AArguments, 'platform')), ARoot, '');
+    end, TMcpToolKind.Process);
+  AServer.AddTool('run_tests',
+    'Führt die DUnitX-Tests eines Testprojekts aus (#69) und liefert bestandene, fehlgeschlagene und ' +
+    'übersprungene Tests; jeder fehlgeschlagene Test mit Meldung, erwartetem und tatsächlichem Wert, Datei und ' +
+    'Zeile. Startet die vorhandene Test-EXE ohne Compiler; mit build: true baut es das Projekt vorher in der ' +
+    'laufenden IDE wie build_project. Die Plattform kommt aus dem Testprojekt (ein Projekt nur für Win64 läuft ' +
+    'als Win64). Das Testprogramm braucht den XML-Logger von DUnitX (Vorlage von RAD Studio).',
+    '{"type":"object","properties":{' +
+      '"project":{"type":"string","description":"Testprojekt (.dproj mit Pfad, Dateiname oder Name); leer = ' +
+        'das einzige DUnitX-Projekt unter dem Arbeitsordner"},' +
+      '"tests":{"type":"array","items":{"type":"string"},"description":"Nur diese Tests: Unit.Fixture oder ' +
+        'Unit.Fixture.Methode; leer = alle"},' +
+      '"build":{"type":"boolean","default":false,"description":"Vorher in der IDE bauen (make)"},' +
+      '"configuration":{"type":"string","description":"z. B. Debug; leer = Vorgabe des Projekts"},' +
+      '"platform":{"type":"string","description":"z. B. Win64; leer = Vorgabe des Projekts, sonst die erste ' +
+        'aktivierte Plattform"},' +
+      '"timeoutSeconds":{"type":"integer","default":600,"description":"Zeitlimit des Testlaufs in Sekunden ' +
+        '(höchstens 3600)"}}}',
+    function(const AArguments: TJSONObject): string
+    var
+      Wanted, Reason, ResultFile, Xml: string;
+      Target: TMcpTestTarget;
+      Info: TProjectInfo;
+      Tests, Output: TArray<string>;
+      BuildFirst, TimedOut: Boolean;
+      Timeout, Code: Integer;
+      Build: TIdeBuild;
+      Run: TTestRunResult;
+    begin
+      Target := Default(TMcpTestTarget);
       Wanted := TMcpServer.OptionalString(AArguments, 'project');
       if (Wanted <> '') and ((Pos('\', Wanted) > 0) or (Pos('/', Wanted) > 0)) and not TPath.IsPathRooted(Wanted) then
         Wanted := TPath.GetFullPath(TPath.Combine(ARoot, Wanted));
-      if not TMcpIdeBuilds.Pick(RunningIdes, ARoot, Wanted, Pid, Request.Project, Reason) then
-        raise EMcpToolError.Create(Reason);
-      if TMcpIdeBuilds.Send(TMcpIdeBuilds.InboxOf(TPath.Combine(GetEnvironmentVariable('LOCALAPPDATA'), 'Atlas'),
-        Pid), Request,
-        procedure
+      if (Wanted <> '') and TPath.IsPathRooted(Wanted) and FileExists(Wanted) then
+        Target.Project := Wanted
+      else if not TMcpTestTools.PickProject(ProjectFilesUnder(ARoot), Wanted,
+        function(AFileName: string): Boolean
         begin
-          Sleep(TMcpIdeBuilds.PollMs);
-        end,
-        function: Int64
-        begin
-          Result := GetTickCount64;
-        end, BuildText, Reason) <> TMcpIdeBuildOutcome.Done then
+          Result := IsTestProject(AFileName);
+        end, Target.Project, Reason) then
         raise EMcpToolError.Create(Reason);
-      if not TMcpBuildTools.FromFileText(BuildText, Build) then
-        raise EMcpToolError.Create('Ergebnis der IDE nicht lesbar.');
-      Result := TMcpBuildTools.Report(Build, ARoot, '');
+      // Plattform aus dem Projekt (#14): erst die Vorgaben der Datei lesen, dann für die Wahl auswerten.
+      if not LoadProject(Target.Project, TMcpServer.OptionalString(AArguments, 'configuration'), '', Info) then
+        raise EMcpToolError.Create('Projektdatei nicht lesbar: ' + Target.Project);
+      if not TMcpTestTools.ChoosePlatform(TMcpServer.OptionalString(AArguments, 'platform'), Info.Platform,
+        Info.Platforms, Target.Platform, Reason) then
+        raise EMcpToolError.Create(Reason);
+      if not LoadProject(Target.Project, TMcpServer.OptionalString(AArguments, 'configuration'), Target.Platform,
+        Info) then
+        raise EMcpToolError.Create('Projektdatei nicht lesbar: ' + Target.Project);
+      Target.Configuration := Info.Config;
+      Target.Executable := TMcpTestTools.ExecutableOf(Info);
+      Target.WorkingDir := ExtractFileDir(Target.Executable);
+      Tests := TMcpTestTools.TestsOf(AArguments);
+      if (AArguments = nil) or not AArguments.TryGetValue<Boolean>('build', BuildFirst) then
+        BuildFirst := False;
+      if (AArguments = nil) or not AArguments.TryGetValue<Integer>('timeoutSeconds', Timeout) or (Timeout <= 0) then
+        Timeout := TMcpTestTools.DefaultTimeoutSeconds;
+      if Timeout > TMcpTestTools.MaxTimeoutSeconds then
+        Timeout := TMcpTestTools.MaxTimeoutSeconds;
+      if BuildFirst then
+      begin
+        Build := BuildInIde(ARoot, Target.Project, 'make', Target.Configuration, Target.Platform);
+        if not Build.Success then
+          Exit('Build fehlgeschlagen; Tests nicht ausgeführt.' + sLineBreak + TMcpBuildTools.Report(Build, ARoot, ''));
+      end;
+      if not FileExists(Target.Executable) then
+        raise EMcpToolError.CreateFmt('Test-EXE fehlt: %s. Mit "build": true bauen oder das Projekt in der IDE ' +
+          'für %s/%s bauen.', [Target.Executable, Target.Configuration, Target.Platform]);
+      ResultFile := TPath.Combine(TPath.GetTempPath, Format('atlas-tests-%s.xml',
+        [TGUID.NewGuid.ToString.Replace('{', '').Replace('}', '')]));
+      try
+        Code := RunTestProcess(Target, TDUnitXCommandLine.Arguments(ResultFile, Tests), Timeout, Output, TimedOut);
+        if TimedOut then
+          raise EMcpToolError.CreateFmt('Testlauf nach %d s abgebrochen (timeoutSeconds).', [Timeout]);
+        Xml := '';
+        if FileExists(ResultFile) then
+          Xml := TFile.ReadAllText(ResultFile, TEncoding.UTF8);
+        Run := TTestResults.Parse(Xml);
+        Result := TMcpTestTools.Report(Target, Tests, Run, Code, Output, Info.Units, ReadSourceLines);
+      finally
+        if FileExists(ResultFile) then
+          System.SysUtils.DeleteFile(ResultFile);
+      end;
     end, TMcpToolKind.Process);
   AServer.AddTool('qualified_name',
     'Voll qualifizierter Name des Symbols an einer Stelle (Unit.TKlasse.Methode), z. B. für Dokumentation.',

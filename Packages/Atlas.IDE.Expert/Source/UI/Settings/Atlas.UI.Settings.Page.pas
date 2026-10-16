@@ -120,6 +120,8 @@ type
     FCodeLensTestUnit: TCheckBox;
     /// <summary>Code Lens mit Code-Metriken (#66).</summary>
     FCodeLensMetrics: TCheckBox;
+    /// <summary>Code Lens „Test ausführen“ (#69, codeLens.tests).</summary>
+    FCodeLensTests: TCheckBox;
     /// <summary>Befehl in der Befehlspalette (#68).</summary>
     FTodoList: TCheckBox;
     /// <summary>Befehl in der Befehlspalette (#97).</summary>
@@ -161,6 +163,12 @@ type
     FCheckDelay: TEdit;
     FCheckMax: TEdit;
     FMcpBuild: TCheckBox;
+    /// <summary>DUnitX-Tests ausführen (#69): Befehle, vorher bauen, nach dem Build; Build ohne Hinweise (#530).
+    /// </summary>
+    FTestRun: TCheckBox;
+    FTestsBuildFirst: TCheckBox;
+    FTestsAfterBuild: TCheckBox;
+    FBuildZeroHints: TCheckBox;
     FActionsKey: TEdit;
     FExpandKey: TEdit;
     FShrinkKey: TEdit;
@@ -446,6 +454,12 @@ type
     property FavoritesCheck: TCheckBox read FFavorites;
     property NotesCheck: TCheckBox read FNotes;
     property McpBuildCheck: TCheckBox read FMcpBuild;
+    /// <summary>Zum Testen: Tests ausführen (#69).</summary>
+    property CodeLensTestsCheck: TCheckBox read FCodeLensTests;
+    property TestRunCheck: TCheckBox read FTestRun;
+    property TestsBuildFirstCheck: TCheckBox read FTestsBuildFirst;
+    property TestsAfterBuildCheck: TCheckBox read FTestsAfterBuild;
+    property BuildZeroHintsCheck: TCheckBox read FBuildZeroHints;
     /// <summary>Zum Testen: benannte Lesezeichen (#622).</summary>
     property BookmarksNamedCheck: TCheckBox read FBookmarksNamed;
     property BookmarksSharedCheck: TCheckBox read FBookmarksShared;
@@ -784,6 +798,7 @@ begin
   FBookmarksShared := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsBookmarksShared));
   FCodeLensTestUnit := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsCodeLensTestUnit));
   FCodeLensMetrics := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsCodeLensMetrics));
+  FCodeLensTests := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsCodeLensTests));
   FTodoList := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsTodoList));
   FBaselineUpdate := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsBaselineUpdate));
   FMetricsReport := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsMetricsReport));
@@ -828,6 +843,11 @@ begin
   FCheckMax := AddNumber(TAtlasStrings.Text(TAtlasTextId.SettingsCheckMax));
   // Claude Code baut über diese IDE (#261, build_project), z. B. ohne Kommandozeilen-Compiler.
   FMcpBuild := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsMcpBuild));
+  // DUnitX-Tests ausführen (#69).
+  FTestRun := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsTestRun));
+  FTestsBuildFirst := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsTestsBuildFirst));
+  FTestsAfterBuild := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsTestsAfterBuild));
+  FBuildZeroHints := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsBuildZeroHints));
 
   // Editorbefehle (#399): ein Vorrang für alle.
   AddSheet(TAtlasTextId.SettingsTabCommands);
@@ -1615,6 +1635,7 @@ begin
   FBookmarksShared.Checked := ASettings.BookmarksShared;
   FCodeLensTestUnit.Checked := ASettings.CodeLensTestUnit;
   FCodeLensMetrics.Checked := ASettings.CodeLensMetrics;
+  FCodeLensTests.Checked := ASettings.CodeLensTests;
   FTodoList.Checked := ASettings.TodoList;
   FBaselineUpdate.Checked := ASettings.BaselineUpdate;
   FMetricsReport.Checked := ASettings.MetricsReport;
@@ -1661,6 +1682,10 @@ begin
   FCheckDelay.Text := IntToStr(ASettings.CheckOnSaveDelayMs);
   FCheckMax.Text := IntToStr(ASettings.CheckOnSaveMaxMs);
   FMcpBuild.Checked := ASettings.McpBuild;
+  FTestRun.Checked := ASettings.TestRun;
+  FTestsBuildFirst.Checked := ASettings.TestsBuildFirst;
+  FTestsAfterBuild.Checked := ASettings.TestsAfterBuild;
+  FBuildZeroHints.Checked := ASettings.BuildZeroHints;
   FSafeAsk.Checked := ASettings.SafeAskAfterCrash;
   FSafeAuto.Checked := ASettings.SafeAutoAfterRepeatedCrash;
   case TAtlasSafeMode.KeyOf(ASettings.SafeStartupKey) of
@@ -1806,6 +1831,7 @@ begin
   ASettings.BookmarksShared := FBookmarksShared.Checked;
   ASettings.CodeLensTestUnit := FCodeLensTestUnit.Checked;
   ASettings.CodeLensMetrics := FCodeLensMetrics.Checked;
+  ASettings.CodeLensTests := FCodeLensTests.Checked;
   ASettings.TodoList := FTodoList.Checked;
   ASettings.BaselineUpdate := FBaselineUpdate.Checked;
   ASettings.MetricsReport := FMetricsReport.Checked;
@@ -1851,6 +1877,10 @@ begin
   ASettings.CheckOnSaveDelayMs := StrToIntDef(FCheckDelay.Text, ASettings.CheckOnSaveDelayMs);
   ASettings.CheckOnSaveMaxMs := StrToIntDef(FCheckMax.Text, ASettings.CheckOnSaveMaxMs);
   ASettings.McpBuild := FMcpBuild.Checked;
+  ASettings.TestRun := FTestRun.Checked;
+  ASettings.TestsBuildFirst := FTestsBuildFirst.Checked;
+  ASettings.TestsAfterBuild := FTestsAfterBuild.Checked;
+  ASettings.BuildZeroHints := FBuildZeroHints.Checked;
   ASettings.SafeAskAfterCrash := FSafeAsk.Checked;
   ASettings.SafeAutoAfterRepeatedCrash := FSafeAuto.Checked;
   case FSafeKey.Choice of

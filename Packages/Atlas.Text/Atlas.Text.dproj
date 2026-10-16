@@ -82,6 +82,8 @@
         <DCCReference Include="Source\Entities\Atlas.Text.Entities.pas"/>
         <DCCReference Include="Source\Defines\Atlas.Text.Defines.pas"/>
         <DCCReference Include="Source\Checkin\Atlas.Text.Checkin.pas"/>
+        <DCCReference Include="Source\DUnitX\Atlas.Text.DUnitX.pas"/>
+        <DCCReference Include="Source\TestResults\Atlas.Text.TestResults.pas"/>
         <BuildConfiguration Include="Base">
             <Key>Base</Key>
         </BuildConfiguration>

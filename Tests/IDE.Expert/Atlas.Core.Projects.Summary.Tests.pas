@@ -65,6 +65,9 @@ type
     /// <summary>#759: unsichere Funde und übersprungene Makros (Suchpfad mit unbekanntem Makro).</summary>
     [Test]
     procedure SetupKeepsUncertainFindings;
+    /// <summary>#69: letzter Testlauf für die Karte Tests (#763) und „Fehlgeschlagene erneut ausführen“.</summary>
+    [Test]
+    procedure TestsRoundTripAndLimits;
   end;
 
 implementation
@@ -278,6 +281,7 @@ begin
   Assert.IsFalse(Summary.Metrics.Known);
   Assert.IsFalse(Summary.Todos.Known);
   Assert.IsFalse(Summary.Baseline.Known);
+  Assert.IsFalse(Summary.Tests.Known);
   Assert.IsTrue(Summary.LastOpened = 0);
   Assert.IsTrue(TAtlasProjectSummaries.Parse('{"project": "C:\\P.dproj", "vcs": {"kind": "none"}}', Summary));
   Assert.IsTrue(Summary.Vcs.Known);
@@ -464,6 +468,68 @@ begin
   Assert.IsTrue(Read.Todos.Known);
   Assert.AreEqual(0, Read.Todos.Open);
   Assert.Contains(TAtlasProjectSummaries.ToJson(Read), '"history":[3,0]');
+end;
+
+procedure TAtlasProjectSummaryTests.TestsRoundTripAndLimits;
+var
+  Summary, Read: TAtlasProjectSummary;
+  Failure: TAtlasProjectTestFailure;
+  Index: Integer;
+  Json: string;
+  Names: TArray<string>;
+begin
+  Summary := TAtlasProjectSummary.Create(Project);
+  Summary.Tests.Known := True;
+  Summary.Tests.At := At(2026, 10, 16, 10, 0, 0);
+  Summary.Tests.Project := 'C:\Projekte\Demo.Tests.dproj';
+  Summary.Tests.Configuration := 'Debug';
+  Summary.Tests.Platform := 'Win64';
+  Summary.Tests.Passed := 40;
+  Summary.Tests.Failed := 1;
+  Summary.Tests.Errors := 1;
+  Summary.Tests.Skipped := 2;
+  Summary.Tests.DurationMs := 1250;
+  Failure := Default(TAtlasProjectTestFailure);
+  Failure.Test := 'Demo.Tests.TRechner.Summe.Gross';
+  Failure.Message := 'Erwartet: 30, erhalten: 31';
+  Failure.FileName := 'C:\Projekte\Demo.Tests.pas';
+  Failure.Line := 35;
+  Summary.Tests.Failures := [Failure, Failure];
+  Failure := Default(TAtlasProjectTestFailure);
+  Failure.Test := 'Demo.Tests.TRechner.Teilt';
+  Summary.Tests.Failures := Summary.Tests.Failures + [Failure];
+  Assert.AreEqual(44, Summary.Tests.Total);
+  Json := TAtlasProjectSummaries.ToJson(Summary);
+  Assert.Contains(Json, '"tests":{"at":"2026-10-16T10:00:00Z","project":"C:\\Projekte\\Demo.Tests.dproj",' +
+    '"configuration":"Debug","platform":"Win64","passed":40,"failed":1,"errors":1,"skipped":2,"durationMs":1250,' +
+    '"failures":[{"test":"Demo.Tests.TRechner.Summe.Gross","message":"Erwartet: 30, erhalten: 31",' +
+    '"file":"C:\\Projekte\\Demo.Tests.pas","line":35}');
+  Assert.Contains(Json, '{"test":"Demo.Tests.TRechner.Teilt"}', 'ohne Meldung und Fundstelle nur der Name');
+  Assert.IsTrue(TAtlasProjectSummaries.Parse(Json, Read));
+  Assert.IsTrue(Read.Tests.Known);
+  Assert.AreEqual('Win64', Read.Tests.Platform);
+  Assert.AreEqual(1250, Read.Tests.DurationMs);
+  Assert.AreEqual(3, Length(Read.Tests.Failures));
+  Assert.AreEqual(35, Read.Tests.Failures[0].Line);
+  Assert.AreEqual('C:\Projekte\Demo.Tests.pas', Read.Tests.Failures[0].FileName);
+  Names := Read.Tests.FailedTests;
+  Assert.AreEqual(2, Length(Names), 'erneut ausführen: jeder Test einmal');
+  Assert.AreEqual('Demo.Tests.TRechner.Summe.Gross', Names[0]);
+  Assert.AreEqual('Demo.Tests.TRechner.Teilt', Names[1]);
+  // Höchstens MaxFailures in der Datei; unbekannte Felder bleiben.
+  Summary.Tests.Failures := nil;
+  for Index := 1 to TAtlasProjectTests.MaxFailures + 5 do
+  begin
+    Failure.Test := 'Demo.Tests.T.M' + IntToStr(Index);
+    Summary.Tests.Failures := Summary.Tests.Failures + [Failure];
+  end;
+  Assert.IsTrue(TAtlasProjectSummaries.Parse(TAtlasProjectSummaries.ToJson(Summary), Read));
+  Assert.AreEqual(TAtlasProjectTests.MaxFailures, Length(Read.Tests.Failures));
+  Assert.IsTrue(TAtlasProjectSummaries.Parse('{"project": "C:\\P.dproj", "tests": {"passed": 3, "jenkins": ' +
+    '{"job": "x"}}}', Read));
+  Assert.IsTrue(Read.Tests.Known);
+  Assert.AreEqual(3, Read.Tests.Passed);
+  Assert.Contains(TAtlasProjectSummaries.ToJson(Read), '"jenkins":{"job":"x"}');
 end;
 
 procedure TAtlasProjectSummaryTests.TodosRejectInvalidAnswer;

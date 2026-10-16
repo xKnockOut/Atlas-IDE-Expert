@@ -8,7 +8,7 @@
 // das Atlas-Statusfeld (#591), die Schnellschalter (#604), das
 // dateiübergreifende Zurücknehmen von Atlas-Änderungen (#721), die
 // Versionsverwaltung (#571), den Diagnosemodus (#479) und die Einrichtung mit
-// Prüfliste (#625) beim Laden des
+// Prüfliste (#625) und das Ausführen der DUnitX-Tests (#69) beim Laden des
 // Packages an und beim Entladen in umgekehrter Reihenfolge wieder ab
 // (ADR 0006). Zuerst entscheidet der abgesicherte Start
 // (#722), was angemeldet wird; RegisterFeatures holt den Rest nach, sobald
@@ -29,6 +29,7 @@ uses
   System.Win.Registry,
   System.JSON,
   System.IOUtils,
+  System.Generics.Collections,
   System.UITypes,
   Vcl.Dialogs,
   ToolsAPI,
@@ -140,7 +141,14 @@ uses
   Atlas.Core.Completion.Providers.Server,
   Atlas.Core.Completion.Providers.Snippets,
   Atlas.Core.Completion.Providers.XmlDoc,
-  Atlas.Core.Diagnostics.FeatureTable;
+  Atlas.Core.Diagnostics.FeatureTable,
+  Atlas.Core.Build.Inbox,
+  Atlas.Core.Problems.Contract,
+  Atlas.Core.Projects.Summary,
+  Atlas.Core.Tests.Run,
+  Atlas.IDE.Problems.Controller,
+  Atlas.IDE.Tests.Runner,
+  Atlas.IDE.Tests.Lens;
 
 var
   ManagerIndex: Integer = -1;
@@ -163,6 +171,9 @@ var
   BuildRunner: TAtlasIdeBuildRunner;
   // Eingang des MCP-Werkzeugs build_project (#261), abschaltbar über McpBuild.
   BuildInbox: TAtlasIdeBuildInbox;
+  // DUnitX-Tests ausführen samt Code Lens (#69), abschaltbar über TestRun bzw. CodeLensTests.
+  Tests: TAtlasIdeTests;
+  TestsLens: TAtlasIdeTestsLens;
   // Hauptmenü Atlas mit Schnellschaltern und Einstellungen (#227).
   MainMenu: TAtlasMainMenu;
   // Tastenkürzel der Editorbefehle (#399).
@@ -841,6 +852,12 @@ begin
   Result := TAtlasIdeSettings.Current.TeamFile;
 end;
 
+/// <summary>Befehle der Tests (#69) sichtbar?</summary>
+function TestsVisible: Boolean;
+begin
+  Result := TAtlasIdeSettings.Current.TestRun and (Tests <> nil);
+end;
+
 procedure RegisterPalette;
 
   procedure Add(const AId: string; ATextId: TAtlasTextId; const AProc: TProc); overload;
@@ -1021,6 +1038,19 @@ begin
       if (Welcome <> nil) and (Welcome.WhatsNew <> nil) and TAtlasIdeSettings.Current.WelcomePage then
         Welcome.ShowWhatsNew(TAtlasWhatsNewView.All);
     end);
+  // DUnitX-Tests (#69): sichtbar, solange TestRun an ist und der Läufer läuft (auch später gestartet).
+  Add('Atlas.RunTests', TAtlasTextId.TestsRunCommand,
+    procedure
+    begin
+      if Tests <> nil then
+        TAtlasGuard.Run(TAtlasFeature.Build, Tests.RunAll);
+    end, TestsVisible);
+  Add('Atlas.RunFailedTests', TAtlasTextId.TestsRunFailedCommand,
+    procedure
+    begin
+      if Tests <> nil then
+        TAtlasGuard.Run(TAtlasFeature.Build, Tests.RunFailed);
+    end, TestsVisible);
   // Künstlicher Hänger für den Einfrier-Wächter (#501): nur im Diagnosemodus (#479, Code-Review S-07).
   // Bereich „Weiterarbeiten“ (#755): obersten Arbeitsstand fortsetzen.
   Add('Atlas.Continue', TAtlasTextId.WelcomeContinueCommand,
@@ -1255,6 +1285,13 @@ begin
           procedure
           begin
             BuildRunner.MessagesRead(Messages, Project, Succeeded, Readable);
+          end);
+      // Tests nach dem Build (#69); die Prüfung auf Warnungen und Hinweise (build.zeroHints) braucht die Meldungen.
+      if (Tests <> nil) and AReadable then
+        TAtlasGuard.Run(TAtlasFeature.Build,
+          procedure
+          begin
+            Tests.BuildFinished(Project, Succeeded, Messages);
           end);
       if Manager = nil then
         Exit;
@@ -1679,6 +1716,68 @@ begin
     TAtlasIdeSettings.Current.TipsUsageTracking;
 end;
 
+/// <summary>DUnitX-Tests (#69): Läufer mit dem Prozessläufer der Versionsverwaltung und Haken zu Build,
+/// Problemen und Willkommensseite (A-09), dazu die Code Lens.</summary>
+procedure StartTests;
+begin
+  Tests := TAtlasIdeTests.Create(
+    function(ACancelled: TFunc<Boolean>): IAtlasVcsRunner
+    begin
+      Result := TAtlasVcsProcessRunner.Create(False, ACancelled);
+    end);
+  // Vor den Tests bauen: über den Läufer der Builds auf Auftrag (#261), Auftraggeber "tests".
+  Tests.OnBuild :=
+    function(const AProject: string; const ADone: TAtlasTestsBuildDone; out AReason: string): Boolean
+    var
+      Request: TAtlasBuildRequest;
+    begin
+      if BuildRunner = nil then
+      begin
+        AReason := TAtlasStrings.Text(TAtlasTextId.TestsNoBuildRunner);
+        Exit(False);
+      end;
+      Request := Default(TAtlasBuildRequest);
+      Request.Project := AProject;
+      Request.Kind := TAtlasCompileKind.Make;
+      Result := BuildRunner.Start(Request, TAtlasTestRun.RequestedBy,
+        procedure(const AReport: TAtlasBuildReport; const AError: string)
+        begin
+          ADone(AReport.Succeeded, AReport.Project.OutputFile, AError);
+        end, AReason);
+    end;
+  Tests.OnProblems :=
+    procedure(const AProblems: TArray<TPair<string, TAtlasProblem>>)
+    begin
+      if TAtlasProblemsController.Current <> nil then
+        TAtlasProblemsController.Current.SetTests(AProblems);
+    end;
+  Tests.OnFinished :=
+    procedure(const AProject: string; const ATests: TAtlasProjectTests)
+    begin
+      if (Welcome <> nil) and (Welcome.Projects <> nil) then
+        TAtlasGuard.Run(TAtlasFeature.WelcomePage,
+          procedure
+          begin
+            Welcome.Projects.RecordTests(AProject, ATests);
+          end);
+    end;
+  Tests.OnLastFailed :=
+    function(AProject: string): TArray<string>
+    begin
+      Result := TAtlasIdeProjects.LastFailedTests(AProject);
+    end;
+  TestsLens := TAtlasIdeTestsLens.Create(Tests);
+end;
+
+procedure StopTests;
+begin
+  // Erst die Lens (sie zeigt auf den Läufer), dann der Läufer; seine Probleme verschwinden mit ihm.
+  FreeAndNil(TestsLens);
+  FreeAndNil(Tests);
+  if TAtlasProblemsController.Current <> nil then
+    TAtlasProblemsController.Current.ClearTests;
+end;
+
 procedure StartPalette;
 begin
   RegisterPalette;
@@ -2065,6 +2164,17 @@ begin
     begin
       FreeAndNil(BuildInbox);
     end);
+  // DUnitX-Tests (#69): nur im normalen Start und solange TestRun an ist; baut über BuildRunner, wenn er läuft.
+  Features.Add('Tests',
+    function(ALevel: TAtlasSafeLevel): Boolean
+    begin
+      Result := (ALevel = TAtlasSafeLevel.Normal) and TAtlasIdeSettings.Current.TestRun;
+    end,
+    function: Boolean
+    begin
+      Result := Tests <> nil;
+    end,
+    StartTests, StopTests);
   // Änderungsprotokoll vor den Tasten: Strg+Alt+Z braucht es (#721).
   Features.Add('Undo', TAtlasSafeLevel.Safe,
     function: Boolean

@@ -205,6 +205,20 @@ type
     /// <summary>Code Lens mit den Kennzahlen jeder Methode (#66, codeLens.metrics; liegt in settings.json):
     /// Länge, Tiefe, zyklomatische und kognitive Komplexität, Parameter.</summary>
     CodeLensMetrics: Boolean;
+    /// <summary>Code Lens „Test ausführen“ an Fixtures und Tests von DUnitX (#69, codeLens.tests; gemeinsamer
+    /// Schlüssel mit „Test debuggen“ #585).</summary>
+    CodeLensTests: Boolean;
+    /// <summary>Befehle „Tests ausführen“ und „Fehlgeschlagene Tests erneut ausführen“ (#69, Atlas.RunTests,
+    /// Atlas.RunFailedTests); aus = Befehle, Code Lens und Lauf nach dem Build verschwinden.</summary>
+    TestRun: Boolean;
+    /// <summary>Tests nach jedem erfolgreichen Build des Testprojekts automatisch ausführen (#69, über die
+    /// Compile-Ereignisse #527).</summary>
+    TestsAfterBuild: Boolean;
+    /// <summary>Vor „Tests ausführen“ das Testprojekt bauen (make); aus = die vorhandene Test-EXE läuft.</summary>
+    TestsBuildFirst: Boolean;
+    /// <summary>Ein Build gilt nur ohne Warnungen und Hinweise als erfolgreich (build.zeroHints, #530). Wirkt
+    /// bisher auf „Tests nach dem Build“ (#69).</summary>
+    BuildZeroHints: Boolean;
     /// <summary>Befehl „TODOs des Projekts“ (#68, Atlas.TodoList); aus = der Befehl verschwindet.</summary>
     TodoList: Boolean;
     /// <summary>Befehl „Baseline des Projekts aktualisieren“ (#97, Atlas.UpdateBaseline) in der Befehlspalette;
@@ -610,6 +624,11 @@ begin
   Result.TestUnitKey := 0;
   Result.CodeLensTestUnit := True;
   Result.CodeLensMetrics := True;
+  Result.CodeLensTests := True;
+  Result.TestRun := True;
+  Result.TestsAfterBuild := False;
+  Result.TestsBuildFirst := True;
+  Result.BuildZeroHints := False;
   Result.TodoList := True;
   Result.BaselineUpdate := True;
   Result.MetricsReport := True;
@@ -886,6 +905,11 @@ begin
   TestUnitKey := AStore.ReadInteger('TestUnitKey', Default.TestUnitKey);
   CodeLensTestUnit := AStore.ReadInteger('CodeLensTestUnit', BoolValue(Default.CodeLensTestUnit)) <> 0;
   CodeLensMetrics := AStore.ReadInteger('CodeLensMetrics', BoolValue(Default.CodeLensMetrics)) <> 0;
+  CodeLensTests := AStore.ReadInteger('CodeLensTests', BoolValue(Default.CodeLensTests)) <> 0;
+  TestRun := AStore.ReadInteger('TestRun', BoolValue(Default.TestRun)) <> 0;
+  TestsAfterBuild := AStore.ReadInteger('TestsAfterBuild', BoolValue(Default.TestsAfterBuild)) <> 0;
+  TestsBuildFirst := AStore.ReadInteger('TestsBuildFirst', BoolValue(Default.TestsBuildFirst)) <> 0;
+  BuildZeroHints := AStore.ReadInteger('BuildZeroHints', BoolValue(Default.BuildZeroHints)) <> 0;
   TodoList := AStore.ReadInteger('TodoList', BoolValue(Default.TodoList)) <> 0;
   BaselineUpdate := AStore.ReadInteger('BaselineUpdate', BoolValue(Default.BaselineUpdate)) <> 0;
   MetricsReport := AStore.ReadInteger('MetricsReport', BoolValue(Default.MetricsReport)) <> 0;
@@ -1072,6 +1096,11 @@ begin
   AStore.WriteInteger('TestUnitKey', TestUnitKey);
   AStore.WriteInteger('CodeLensTestUnit', BoolValue(CodeLensTestUnit));
   AStore.WriteInteger('CodeLensMetrics', BoolValue(CodeLensMetrics));
+  AStore.WriteInteger('CodeLensTests', BoolValue(CodeLensTests));
+  AStore.WriteInteger('TestRun', BoolValue(TestRun));
+  AStore.WriteInteger('TestsAfterBuild', BoolValue(TestsAfterBuild));
+  AStore.WriteInteger('TestsBuildFirst', BoolValue(TestsBuildFirst));
+  AStore.WriteInteger('BuildZeroHints', BoolValue(BuildZeroHints));
   AStore.WriteInteger('TodoList', BoolValue(TodoList));
   AStore.WriteInteger('BaselineUpdate', BoolValue(BaselineUpdate));
   AStore.WriteInteger('MetricsReport', BoolValue(MetricsReport));
