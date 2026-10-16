@@ -35,11 +35,12 @@ type
   /// Übersicht (#520, AllFromSettings): Editorbefehle mit gemeinsamem Vorrang EditorKeysPriority, das Suchfeld
   /// der Willkommensseite, Deklaration ⇄ Implementierung mit zwei Tasten (#775), Unit ⇄ Testunit (#189), die
   /// eigene Taste für „Units suchen“, die Übernahme von Strg+F12 durch „Units suchen“ (#777) und „Lesezeichen
-  /// setzen…“ (#622) sowie das Erzeugen-Menü (#719). Neue Funktionen nur hinten anhängen: Die Ordnungszahl
-  /// steckt in Kennungen der Übersicht.</summary>
+  /// setzen…“ (#622), das Erzeugen-Menü (#719) und die Benachrichtigungen (#601). Neue Funktionen nur hinten
+  /// anhängen: Die Ordnungszahl steckt in Kennungen der Übersicht.</summary>
   TAtlasKeyFunction = (Palette, Check, Completion, Signature, QuickToggle, DiagnosticMode, CodeActions,
     ExpandSelection, ShrinkSelection, GoToImplementation, TypeDefinition, UndoChange, RedoChange, WelcomeSearch,
-    MethodToggleUp, MethodToggleDown, TestUnit, UnitSearch, UnitSearchIde, Bookmark, GenerateMenu);
+    MethodToggleUp, MethodToggleDown, TestUnit, UnitSearch, UnitSearchIde, Bookmark, GenerateMenu,
+    Notifications);
   TAtlasKeyChoice = (UseAtlas, LeaveOther, OtherKey);
   /// <summary>NoKey: keine Taste; IdeKey: Taste der IDE über Code Insight, Atlas belegt nichts selbst;
   /// Free: Atlas belegt die freie Taste; AtlasWins: belegt, Atlas hat Vorrang; Left: belegt, Atlas
@@ -168,7 +169,9 @@ begin
     // Benannte Lesezeichen (#622): aus = Atlas belegt Strg+Alt+K nicht.
     Create(TAtlasKeyFunction.Bookmark, Word(ASettings.BookmarkKey), Shared, ASettings.BookmarksNamed),
     // Erzeugen-Menü (#719): aus = Alt+Einfg bleibt frei.
-    Create(TAtlasKeyFunction.GenerateMenu, Word(ASettings.GenerateMenuKey), Shared, ASettings.GenerateMenu)];
+    Create(TAtlasKeyFunction.GenerateMenu, Word(ASettings.GenerateMenuKey), Shared, ASettings.GenerateMenu),
+    // Benachrichtigungszentrale (#601): aus = Strg+Umschalt+Alt+N bleibt frei.
+    Create(TAtlasKeyFunction.Notifications, Word(ASettings.NotificationsKey), Shared, ASettings.Notifications)];
 end;
 
 class procedure TAtlasKeyEntry.ToSettings(const AEntries: TArray<TAtlasKeyEntry>;
@@ -240,6 +243,8 @@ begin
         ASettings.BookmarkKey := Entry.Key;
       TAtlasKeyFunction.GenerateMenu:
         ASettings.GenerateMenuKey := Entry.Key;
+      TAtlasKeyFunction.Notifications:
+        ASettings.NotificationsKey := Entry.Key;
       // Strg+F12 ist fest; ein- und ausgeschaltet wird über unitSearch.replaceIdeDialog.
       TAtlasKeyFunction.UnitSearchIde:
         ;

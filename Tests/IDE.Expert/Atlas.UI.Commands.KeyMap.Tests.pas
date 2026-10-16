@@ -281,6 +281,7 @@ begin
   Assert.AreEqual('Units suchen', TAtlasKeyMapWindow.FunctionCaption(TAtlasKeyFunction.UnitSearch));
   Assert.AreEqual('Lesezeichen setzen', TAtlasKeyMapWindow.FunctionCaption(TAtlasKeyFunction.Bookmark));
   Assert.AreEqual('Erzeugen', TAtlasKeyMapWindow.FunctionCaption(TAtlasKeyFunction.GenerateMenu));
+  Assert.AreEqual('Benachrichtigungen', TAtlasKeyMapWindow.FunctionCaption(TAtlasKeyFunction.Notifications));
   Assert.AreEqual('Code-Aktionen', TAtlasKeyMapWindow.FunctionCaption(TAtlasKeyFunction.CodeActions));
   Assert.AreEqual('Suchfeld der Willkommensseite',
     TAtlasKeyMapWindow.FunctionCaption(TAtlasKeyFunction.WelcomeSearch));

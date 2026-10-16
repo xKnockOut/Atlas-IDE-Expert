@@ -410,7 +410,18 @@ type
     TestsLensDebug, TestsLensRunCase, TestsNoTestAtCursor, TestsDebugOff, TestsRunOff, TestsDebugBusy,
     TestsDebugRunning, TestsDebugStarted, TestsDebugBreak, TestsDebugFailed, TestsDebugNoProcess,
     TestsDebugFinished, TestsDebugKeptParameters, TestsChooseProject, TestsChoiceSaveFailed,
-    StartProfilesTemporaryRestored);
+    StartProfilesTemporaryRestored,
+    NotificationsCommand, NotificationsUnread, NotificationsEmpty, NotificationsAllRead, NotificationsClear,
+    NotificationsFilterAll, NotificationsMarkRead, NotificationsModeMenu, NotificationsModeShow,
+    NotificationsModeCollect, NotificationsModeOff, NotificationsSourceBuild, NotificationsSourceCheck,
+    NotificationsSourceReload, NotificationsSourceServer, NotificationsSourceShortcutTips,
+    NotificationsBadgeHint, NotificationsBuildErrors, NotificationsBuildWarnings, NotificationsBuildSucceeded,
+    NotificationsBuildFailed, NotificationsBuildText, NotificationsCheckErrors, NotificationsCheckClean,
+    NotificationsCheckDisabled, NotificationsGoToError, NotificationsCompare, NotificationsReloaded,
+    NotificationsReloadKept, NotificationsReloadKeptText, NotificationsReloadDeleted,
+    NotificationsServerRestarted, NotificationsServerReopened, NotificationsServerCrashed,
+    NotificationsServerError, NotificationsServerMessage, NotificationsTipTitle, NotificationsTipText,
+    SettingsNotifications, SettingsNotificationsMax, SettingsNotificationsSources);
 
   TAtlasStrings = class
   private class var
@@ -1213,7 +1224,21 @@ const
      'Tests: Die Startparameter von %s wurden während des Laufs geändert und bleiben, wie sie sind.',
      'Testprojekt wählen (Atlas merkt sich die Wahl)',
      'Tests: Die Wahl des Testprojekts ließ sich nicht speichern.',
-     'Atlas: Vorübergehende Startparameter von %s zurückgestellt.'),
+     'Atlas: Vorübergehende Startparameter von %s zurückgestellt.',
+     'Benachrichtigungen', '%d ungelesen', 'Keine Benachrichtigungen', 'Alle gelesen', 'Liste leeren',
+     'Alle Quellen', 'Als gelesen markieren', 'Hinweise von „%s“', 'Einblenden und sammeln', 'Nur sammeln',
+     'Aus', 'Build fertig', 'Prüfung im Hintergrund', 'Dateien neu geladen', 'Server', 'Tastenkürzel-Tipps',
+     '%d ungelesene Benachrichtigungen; ein Klick auf die Zahl öffnet die Liste.', 'Build fertig: %d Fehler',
+     'Build fertig: %d Warnungen', 'Build fertig', 'Build fehlgeschlagen',
+     '%s: %d Fehler, %d Warnungen, %d Hinweise', 'Prüfung: %d Fehler', 'Prüfung: wieder fehlerfrei',
+     'Prüfung nach dem Speichern abgeschaltet', 'Zum Fehler', 'Vergleichen', 'Dateien neu geladen: %d',
+     'Eigene Änderungen behalten: %s',
+     '%s wurde außerhalb geändert und hat ungespeicherte Änderungen; die IDE fragt nach.', 'Datei gelöscht: %s',
+     'Server neu gestartet', '%d offene Dateien erneut an den Server gesendet.',
+     'Der Server war beendet und läuft wieder.', 'Server: Fehler', 'Meldung des Servers', 'Tastenkürzel: %s',
+     '„%s“ geht auch mit %s.',
+     'Benachrichtigungszentrale: Hinweise sammeln, Zähler im Atlas-Statusfeld, Liste „Benachrichtigungen“',
+     'Höchstens Einträge in der Liste:', 'Verhalten je Quelle:'),
     ('Enter to accept · Esc to close', '%d of %d', 'No matches for “%s”', 'Backspace widens the search',
      'No suggestions here', 'Esc closes', 'No details for this entry', 'Overload', 'Deprecated: %s', 'Deprecated.',
      'Inherited from %s', 'Inherited', 'optional, default %s', 'No overload with %d parameters.', '… %d more',
@@ -1967,7 +1992,19 @@ const
      'Tests: The run parameters of %s were changed during the run and stay as they are.',
      'Choose test project (Atlas remembers the choice)',
      'Tests: The choice of the test project could not be saved.',
-     'Atlas: Temporary run parameters of %s restored.'));
+     'Atlas: Temporary run parameters of %s restored.',
+     'Notifications', '%d unread', 'No notifications', 'Mark all read', 'Clear list', 'All sources',
+     'Mark as read', 'Notices from “%s”', 'Show and collect', 'Collect only', 'Off', 'Build finished',
+     'Background check', 'Files reloaded', 'Server', 'Keyboard shortcut tips',
+     '%d unread notifications; click the number to open the list.', 'Build finished: %d errors',
+     'Build finished: %d warnings', 'Build finished', 'Build failed', '%s: %d errors, %d warnings, %d hints',
+     'Check: %d errors', 'Check: no errors again', 'Check on save switched off', 'Go to error', 'Compare',
+     'Files reloaded: %d', 'Own changes kept: %s', '%s was changed outside and has unsaved changes; the IDE asks.',
+     'File deleted: %s', 'Server restarted', '%d open files sent to the server again.',
+     'The server had stopped and is running again.', 'Server: error', 'Message from the server', 'Shortcut: %s',
+     '“%s” also works with %s.',
+     'Notification center: collect notices, counter in the Atlas status field, list “Notifications”',
+     'Maximum entries in the list:', 'Behaviour per source:'));
 
 { TAtlasStrings }
 
