@@ -34,8 +34,8 @@ uses
   Atlas.Core.Status.Registry,
   Atlas.Core.Status.Lines,
   Atlas.Core.Setup.Checklist,
-  Atlas.IDE.Commands.Palette,
-  Atlas.UI.Setup.Window;
+  Atlas.UI.Setup.Window,
+  Atlas.Core.Commands.Palette;
 
 type
   TAtlasSetupIndexingFunc = reference to function(out APercent: Integer): Boolean;
@@ -97,7 +97,7 @@ type
     /// <summary>Prüfliste zeigen und sofort neu prüfen (Menü, Palette, Statusfeld, Zustandskachel #754).</summary>
     procedure ShowWindow;
     /// <summary>„Einrichtung prüfen…“ in der Befehlspalette.</summary>
-    procedure RegisterCommands(APalette: TAtlasIdePalette);
+    procedure RegisterCommands(const ARegistry: IAtlasCommandRegistry);
     procedure ThemeChanged;
     /// <summary>Für die Zustandskachel (#754): grüne Punkte und alle; False vor der ersten Prüfung.</summary>
     function Progress(out ADone, ATotal: Integer): Boolean;
@@ -556,9 +556,9 @@ begin
   TAtlasIdeSettings.Update(Settings);
 end;
 
-procedure TAtlasIdeSetupChecklist.RegisterCommands(APalette: TAtlasIdePalette);
+procedure TAtlasIdeSetupChecklist.RegisterCommands(const ARegistry: IAtlasCommandRegistry);
 begin
-  APalette.RegisterCommand(TAtlasSetupChecklist.CommandId, TAtlasStrings.Text(TAtlasTextId.SetupMenu), '',
+  ARegistry.RegisterCommand(TAtlasSetupChecklist.CommandId, TAtlasStrings.Text(TAtlasTextId.SetupMenu), '',
     procedure
     begin
       if FInstance <> nil then
