@@ -192,7 +192,7 @@ begin
     Assert.AreEqual(3, Window.RowCount, 'gelesen bleiben sie in der Liste');
     Window.ClearButton.Click;
     Assert.AreEqual(0, Window.RowCount);
-    Assert.AreEqual(0, Integer(Length(Center.Items)));
+    Assert.AreEqual(0, Integer(Length(Center.Items())));
     Assert.IsFalse(Window.ClearButton.Enabled);
   finally
     Window.Free;
