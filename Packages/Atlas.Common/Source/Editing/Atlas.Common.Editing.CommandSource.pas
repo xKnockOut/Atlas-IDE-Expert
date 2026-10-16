@@ -12,7 +12,6 @@ interface
 
 uses
   Atlas.Common.Documents.Contract,
-  Atlas.Common.Rules.Contract,
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Index.Contract,
   Atlas.Common.Editing.SlashCommands;
@@ -36,15 +35,15 @@ type
     /// <summary>Einrückung der Zeile; bei der Befehlszeile die des Befehls.</summary>
     function Indent(ALine: Integer): string;
     /// <summary>Löscht die Befehlszeile samt Zeilenende.</summary>
-    function RemoveCommand: TRuleEdit;
+    function RemoveCommand: TTextEdit;
     /// <summary>Ersetzt die Befehlszeile durch ALines, jede mit der Einrückung der Befehlszeile.</summary>
-    function ReplaceWithIndentedLines(const ALines: array of string): TRuleEdit;
+    function ReplaceWithIndentedLines(const ALines: array of string): TTextEdit;
     /// <summary>Ersetzt die Befehlszeile durch ALines ohne Einrückung (die Zeilen bringen sie mit).</summary>
-    function ReplaceWithLines(const ALines: array of string): TRuleEdit;
+    function ReplaceWithLines(const ALines: array of string): TTextEdit;
     /// <summary>Fügt ANewText am Ende von Zeile ALine ein.</summary>
-    function AfterLine(ALine: Integer; const ANewText: string): TRuleEdit;
+    function AfterLine(ALine: Integer; const ANewText: string): TTextEdit;
     /// <summary>Fügt ANewText vor Zeile ALine ein.</summary>
-    function BeforeLine(ALine: Integer; const ANewText: string): TRuleEdit;
+    function BeforeLine(ALine: Integer; const ANewText: string): TTextEdit;
     /// <summary>Innerste Routine mit Rumpf, in deren begin…end die Befehlszeile steht; nil sonst.</summary>
     function RoutineAt: TSyntaxNode;
     /// <summary>Klasse, in deren Deklaration oder Methode die Befehlszeile steht.</summary>
@@ -58,7 +57,7 @@ type
     /// <summary>Letzte Zeile des letzten Methodenrumpfs von AClassName; -1 ohne.</summary>
     function LastMethodEnd(const AClassName: string): Integer;
     /// <summary>Rumpf hinter die letzte Methode von AClassName bzw. ans Ende der implementation.</summary>
-    function AddBody(const AClassName, ABody: string): TRuleEdit;
+    function AddBody(const AClassName, ABody: string): TTextEdit;
     /// <summary>Text mit der Befehlszeile als Leerzeichen.</summary>
     function Text: string;
     /// <summary>Zeichenoffset des Anfangs von Zeile ALine.</summary>
@@ -83,14 +82,14 @@ function NoStatementsReason(ASource: TCommandSource; const AName: string): strin
 /// <summary>Ersetzt Befehlszeile und folgende Anweisungen durch AHead, die eingerückten Anweisungen und ATail.
 /// ABodyIndent ist die zusätzliche Einrückung der Anweisungen.</summary>
 function Wrap(ASource: TCommandSource; const AName: string; const AHead, ATail: array of string;
-  const ABodyIndent: string; out AEdits: TArray<TRuleEdit>; out AReason: string): Boolean;
+  const ABodyIndent: string; out AEdits: TArray<TTextEdit>; out AReason: string): Boolean;
 /// <summary>Lokale Deklaration in den Abschnitt AKind der Routine; legt ihn vor begin an.</summary>
 function AddLocal(ASource: TCommandSource; ARoutine: TSyntaxNode; AKind: TSyntaxKind; const AKeyword,
-  ADeclaration: string): TRuleEdit;
+  ADeclaration: string): TTextEdit;
 
 /// <summary>Trägt die fehlenden AUnits in das uses des Abschnitts an Zeile ALine ein.</summary>
 procedure AddUses(ASource: TCommandSource; const AContext: TSlashContext; ALine: Integer;
-  const AUnits: array of string; var AEdits: TArray<TRuleEdit>);
+  const AUnits: array of string; var AEdits: TArray<TTextEdit>);
 
 implementation
 
@@ -141,12 +140,12 @@ begin
   Result := TTextLines.IndentOf(FLines[ALine]);
 end;
 
-function TCommandSource.RemoveCommand: TRuleEdit;
+function TCommandSource.RemoveCommand: TTextEdit;
 begin
-  Result := TRuleEdit.Create(TTextRange.Create(Line, 0, Line + 1, 0), '');
+  Result := TTextEdit.Create(TTextRange.Create(Line, 0, Line + 1, 0), '');
 end;
 
-function TCommandSource.ReplaceWithIndentedLines(const ALines: array of string): TRuleEdit;
+function TCommandSource.ReplaceWithIndentedLines(const ALines: array of string): TTextEdit;
 var
   Index: Integer;
   Text: string;
@@ -154,10 +153,10 @@ begin
   Text := '';
   for Index := 0 to High(ALines) do
     Text := Text + Indent(Line) + ALines[Index] + FLineBreak;
-  Result := TRuleEdit.Create(TTextRange.Create(Line, 0, Line + 1, 0), Text);
+  Result := TTextEdit.Create(TTextRange.Create(Line, 0, Line + 1, 0), Text);
 end;
 
-function TCommandSource.ReplaceWithLines(const ALines: array of string): TRuleEdit;
+function TCommandSource.ReplaceWithLines(const ALines: array of string): TTextEdit;
 var
   Index: Integer;
   Text: string;
@@ -165,18 +164,18 @@ begin
   Text := '';
   for Index := 0 to High(ALines) do
     Text := Text + ALines[Index] + FLineBreak;
-  Result := TRuleEdit.Create(TTextRange.Create(Line, 0, Line + 1, 0), Text);
+  Result := TTextEdit.Create(TTextRange.Create(Line, 0, Line + 1, 0), Text);
 end;
 
-function TCommandSource.AfterLine(ALine: Integer; const ANewText: string): TRuleEdit;
+function TCommandSource.AfterLine(ALine: Integer; const ANewText: string): TTextEdit;
 begin
-  Result := TRuleEdit.Create(TTextRange.Create(ALine, Length(FLines[ALine]), ALine, Length(FLines[ALine])),
+  Result := TTextEdit.Create(TTextRange.Create(ALine, Length(FLines[ALine]), ALine, Length(FLines[ALine])),
     FLineBreak + ANewText);
 end;
 
-function TCommandSource.BeforeLine(ALine: Integer; const ANewText: string): TRuleEdit;
+function TCommandSource.BeforeLine(ALine: Integer; const ANewText: string): TTextEdit;
 begin
-  Result := TRuleEdit.Create(TTextRange.Create(ALine, 0, ALine, 0), ANewText + FLineBreak);
+  Result := TTextEdit.Create(TTextRange.Create(ALine, 0, ALine, 0), ANewText + FLineBreak);
 end;
 
 function FindRoutine(ANode: TSyntaxNode; ALine: Integer): TSyntaxNode;
@@ -307,7 +306,7 @@ begin
       Result := Section[Index].EndPos.Line;
 end;
 
-function TCommandSource.AddBody(const AClassName, ABody: string): TRuleEdit;
+function TCommandSource.AddBody(const AClassName, ABody: string): TTextEdit;
 var
   EndLine: Integer;
 begin
@@ -399,7 +398,7 @@ end;
 /// <summary>Ersetzt Befehlszeile und folgende Anweisungen durch AHead, die eingerückten Anweisungen und ATail.
 /// ABodyIndent ist die zusätzliche Einrückung der Anweisungen.</summary>
 function Wrap(ASource: TCommandSource; const AName: string; const AHead, ATail: array of string;
-  const ABodyIndent: string; out AEdits: TArray<TRuleEdit>; out AReason: string): Boolean;
+  const ABodyIndent: string; out AEdits: TArray<TTextEdit>; out AReason: string): Boolean;
 var
   Stop, Index: Integer;
   Indent, Text: string;
@@ -425,13 +424,13 @@ begin
       Text := Text + ABodyIndent + ASource.Lines[Index] + ASource.LineBreak;
   for Index := 0 to High(ATail) do
     Text := Text + Indent + ATail[Index] + ASource.LineBreak;
-  AEdits := [TRuleEdit.Create(TTextRange.Create(ASource.Line, 0, Stop, 0), Text)];
+  AEdits := [TTextEdit.Create(TTextRange.Create(ASource.Line, 0, Stop, 0), Text)];
   Result := True;
 end;
 
 /// <summary>Lokale Deklaration in den Abschnitt AKind der Routine; legt ihn vor begin an.</summary>
 function AddLocal(ASource: TCommandSource; ARoutine: TSyntaxNode; AKind: TSyntaxKind; const AKeyword,
-  ADeclaration: string): TRuleEdit;
+  ADeclaration: string): TTextEdit;
 var
   Index: Integer;
   Section: TSyntaxNode;
@@ -451,15 +450,15 @@ end;
 
 /// <summary>Trägt die fehlenden AUnits in das uses des Abschnitts an Zeile ALine ein.</summary>
 procedure AddUses(ASource: TCommandSource; const AContext: TSlashContext; ALine: Integer;
-  const AUnits: array of string; var AEdits: TArray<TRuleEdit>);
+  const AUnits: array of string; var AEdits: TArray<TTextEdit>);
 var
   Used: TArray<string>;
   Index: Integer;
-  Combined, Edit: TRuleEdit;
+  Combined, Edit: TTextEdit;
   Found: Boolean;
 begin
   Used := TUsesClauses.UsedUnits(ASource.Tree.Tokens);
-  Combined := Default(TRuleEdit);
+  Combined := Default(TTextEdit);
   Found := False;
   for Index := 0 to High(AUnits) do
     if (AUnits[Index] <> '') and not TUsesClauses.IsUsed(Used, AUnits[Index], AContext.Namespaces) and

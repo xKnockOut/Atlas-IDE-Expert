@@ -124,7 +124,9 @@ type
       const ALogger: ILogger; const AIndex: ISymbolIndex; const AProgressToken: string);
     destructor Destroy; override;
     /// <summary>Liest atlas.json des Ordners und startet den Indexaufbau.</summary>
-    procedure Load;
+    procedure Load; overload;
+    /// <summary>Wie Load, mit der globalen settings.json AGlobalSettings; der Index startet nur einmal.</summary>
+    procedure Load(const AGlobalSettings: string); overload;
     /// <summary>Lädt das Projekt neu, auch wenn sich die Einstellungen nicht geändert haben.</summary>
     procedure Reload;
     /// <summary>Baut den Index ohne Cache neu auf (Befehl „Index neu aufbauen“, #49).</summary>
@@ -141,6 +143,9 @@ type
     function ApplyText(const AFileName, AText: string): Boolean;
     /// <summary>Symbole des Projekts für das Abblenden; False ohne Projekt. Threadsicher.</summary>
     function Defines(out ADefines: TArray<string>): Boolean;
+    /// <summary>Arbeitsbereich zu einer Datei (S-02): AFound, sonst bei genau einem Arbeitsbereich dieser,
+    /// sonst nil. Eine Regel für alle Einstellungs- und Pfadabfragen des Servers.</summary>
+    class function Choose(AFound: TShellWorkspace; const AAll: TList<TShellWorkspace>): TShellWorkspace; static;
     /// <summary>
     /// atlas-baseline.json des Ordners (#97), neu gelesen, sobald sich die
     /// Datei ändert; nil ohne oder bei ungültiger Datei. Threadsicher.
@@ -224,7 +229,8 @@ uses
   Atlas.Common.Index.Adapters.DiskFileSystem,
   Atlas.Common.Index.Adapters.CacheDirectory,
   Atlas.Common.Index.CacheHousekeeping,
-  Atlas.Windows.Projects.DelphiInstallation;
+  Atlas.Windows.Projects.DelphiInstallation,
+  Shell.Bootstrap;
 
 type
   /// <summary>.pas-Dateien je Ordner, geteilt von allen Projekten des Servers. Neu gelesen, wenn sich
@@ -313,14 +319,8 @@ begin
   FLastIndexMs := -1;
   FConfiguration := TLspConfiguration.Create(AStore, ATransport,
     function(const AFileName: string; out AText: string): Boolean
-    var
-      FileFormat: TFileFormat;
     begin
-      Result := FileExists(AFileName);
-      if Result then
-        AText := TFileEncoding.LoadFromFile(AFileName, FileFormat)
-      else
-        AText := '';
+      Result := TShellBootstrap.ReadSourceText(AFileName, AText);
     end);
   FConfiguration.OnChanged :=
     procedure(const ASettings: TServerSettings)
@@ -429,9 +429,21 @@ begin
     FOnIndexEvent(AText);
 end;
 
+class function TShellWorkspace.Choose(AFound: TShellWorkspace; const AAll: TList<TShellWorkspace>): TShellWorkspace;
+begin
+  Result := AFound;
+  if (Result = nil) and (AAll <> nil) and (AAll.Count = 1) then
+    Result := AAll[0];
+end;
+
 procedure TShellWorkspace.Load;
 begin
   FConfiguration.LoadWorkspace(FRoot);
+end;
+
+procedure TShellWorkspace.Load(const AGlobalSettings: string);
+begin
+  FConfiguration.LoadWorkspace(FRoot, AGlobalSettings);
 end;
 
 procedure TShellWorkspace.Reload;

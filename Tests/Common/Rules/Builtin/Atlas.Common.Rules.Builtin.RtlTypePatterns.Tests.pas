@@ -39,7 +39,7 @@ uses
   Atlas.Common.Rules.Contract,
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.Parser,
-  Atlas.Common.Rules.DeclaredTypes,
+  Atlas.Common.Pascal.DeclaredTypes,
   Atlas.Common.Rules.Builtin.RtlTypePatterns,
   Atlas.Tests.RuleAssert;
 

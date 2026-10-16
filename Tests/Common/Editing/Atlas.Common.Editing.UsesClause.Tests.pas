@@ -41,6 +41,12 @@ type
     procedure OrganizeKeepsListsWithDirectives;
     [Test]
     procedure OrganizeWithoutChangeGivesNothing;
+    [Test]
+    procedure DUnitXUses_IsTestUnit;
+    [Test]
+    procedure PlainUnit_IsNotTestUnit;
+    [Test]
+    procedure TestInsightNamespace_IsTestUnit;
   end;
 
 implementation
@@ -256,6 +262,26 @@ const
   Text = 'unit A;'#10'interface'#10'uses A1, B2;'#10'implementation'#10'end.';
 begin
   Assert.IsFalse(TUsesClauses.Organize(TPascalLexer.Tokenize(Text), Text, True, #10, Edits));
+end;
+
+procedure TUsesClauseTests.DUnitXUses_IsTestUnit;
+begin
+  Assert.IsTrue(TUsesClauses.IsTestUnit(TPascalLexer.Tokenize(
+    'unit A.Tests;'#10'interface'#10'uses DUnitX.TestFramework;'#10'implementation'#10'end.')));
+  Assert.IsTrue(TUsesClauses.IsTestUnit(TPascalLexer.Tokenize(
+    'unit A.Tests;'#10'interface'#10'implementation'#10'uses TestFramework;'#10'end.')));
+end;
+
+procedure TUsesClauseTests.PlainUnit_IsNotTestUnit;
+begin
+  Assert.IsFalse(TUsesClauses.IsTestUnit(TPascalLexer.Tokenize(
+    'unit A;'#10'interface'#10'uses System.SysUtils, MyTestFrameworkHelper;'#10'implementation'#10'end.')));
+end;
+
+procedure TUsesClauseTests.TestInsightNamespace_IsTestUnit;
+begin
+  Assert.IsTrue(TUsesClauses.IsTestUnit(TPascalLexer.Tokenize(
+    'program Tests;'#10'uses TestInsight.DUnitX;'#10'begin end.')));
 end;
 
 initialization

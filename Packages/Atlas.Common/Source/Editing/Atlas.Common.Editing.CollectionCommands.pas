@@ -27,7 +27,6 @@ uses
   System.SysUtils,
   System.StrUtils,
   Atlas.Common.Documents.Contract,
-  Atlas.Common.Rules.Contract,
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Index.Contract,
   Atlas.Common.Editing.CommandSource,
@@ -91,7 +90,7 @@ end;
 
 /// <summary>Feld AName vom Typ ATypeName mit AConstruction in Konstruktor und Free im Destruktor.</summary>
 function AddOwnedField(ASource: TCommandSource; const AClass: TIndexSymbol; const AName, ATypeName,
-  AConstruction: string): TArray<TRuleEdit>;
+  AConstruction: string): TArray<TTextEdit>;
 var
   Constructor_, Destructor_: TSyntaxNode;
   Declarations: TArray<string>;
@@ -166,10 +165,10 @@ end;
 
 /// <summary>Lokale Variable AName mit Erzeugen und try … finally Free um die folgenden Anweisungen.</summary>
 function AddOwnedLocal(ASource: TCommandSource; ARoutine: TSyntaxNode; const AName, ATypeName, AConstruction: string;
-  out AEdits: TArray<TRuleEdit>; out AReason: string): Boolean;
+  out AEdits: TArray<TTextEdit>; out AReason: string): Boolean;
 var
   Indent: string;
-  Wrapped: TArray<TRuleEdit>;
+  Wrapped: TArray<TTextEdit>;
 begin
   Indent := ASource.Indent(ASource.Line);
   if Wrap(ASource, 'list', [AName + ' := ' + AConstruction + ';', 'try'], ['finally', '  ' + AName + '.Free;',
@@ -177,7 +176,7 @@ begin
     AEdits := Wrapped
   else
     // Ohne folgende Anweisungen: leerer Rumpf.
-    AEdits := [TRuleEdit.Create(TTextRange.Create(ASource.Line, 0, ASource.Line + 1, 0),
+    AEdits := [TTextEdit.Create(TTextRange.Create(ASource.Line, 0, ASource.Line + 1, 0),
       Indent + AName + ' := ' + AConstruction + ';' + ASource.LineBreak + Indent + 'try' + ASource.LineBreak +
       Indent + '  ' + ASource.LineBreak + Indent + 'finally' + ASource.LineBreak + Indent + '  ' + AName + '.Free;' +
       ASource.LineBreak + Indent + 'end;' + ASource.LineBreak)];
@@ -187,12 +186,12 @@ end;
 
 /// <summary>Gemeinsamer Ablauf von /list und /dict: Feld in der Klasse oder lokale Variable.</summary>
 function AddCollection(const AContext: TSlashContext; const AName, ATypeName, AConstruction: string;
-  const AUnits: array of string; out AEdits: TArray<TRuleEdit>; out AReason: string): Boolean;
+  const AUnits: array of string; out AEdits: TArray<TTextEdit>; out AReason: string): Boolean;
 var
   Source: TCommandSource;
   Routine: TSyntaxNode;
   ClassSymbol: TIndexSymbol;
-  Edits: TArray<TRuleEdit>;
+  Edits: TArray<TTextEdit>;
 begin
   AEdits := nil;
   Source := TCommandSource.Create(AContext);
@@ -233,7 +232,7 @@ end;
 
 { /list }
 
-function ExecuteList(const AContext: TSlashContext; out AEdits: TArray<TRuleEdit>; out AReason: string): Boolean;
+function ExecuteList(const AContext: TSlashContext; out AEdits: TArray<TTextEdit>; out AReason: string): Boolean;
 var
   Name, ElementType, TypeName: string;
 begin
@@ -250,7 +249,7 @@ end;
 
 { /dict, /dict! }
 
-function ExecuteDict(const AContext: TSlashContext; AIgnoreCase: Boolean; out AEdits: TArray<TRuleEdit>;
+function ExecuteDict(const AContext: TSlashContext; AIgnoreCase: Boolean; out AEdits: TArray<TTextEdit>;
   out AReason: string): Boolean;
 var
   Name, Types, KeyType, ValueType, TypeName, Arguments: string;
@@ -344,7 +343,7 @@ begin
   Result := '';
 end;
 
-function ExecuteSort(const AContext: TSlashContext; out AEdits: TArray<TRuleEdit>; out AReason: string): Boolean;
+function ExecuteSort(const AContext: TSlashContext; out AEdits: TArray<TTextEdit>; out AReason: string): Boolean;
 var
   Source: TCommandSource;
   Arguments, Collection, Member, Element, Kind, Compare, CompareUnit, Indent, Text, LB: string;
@@ -383,7 +382,7 @@ begin
       Indent + '  begin' + LB +
       Indent + '    Result := ' + Compare + ';' + LB +
       Indent + '  end));' + LB;
-    AEdits := [TRuleEdit.Create(TTextRange.Create(Source.Line, 0, Source.Line + 1, 0), Text)];
+    AEdits := [TTextEdit.Create(TTextRange.Create(Source.Line, 0, Source.Line + 1, 0), Text)];
     AddUses(Source, AContext, Source.Line, ['System.Generics.Defaults', CompareUnit], AEdits);
     Result := True;
   finally
@@ -403,7 +402,7 @@ begin
     Result := ACondition;
 end;
 
-function ExecuteFilter(const AContext: TSlashContext; out AEdits: TArray<TRuleEdit>; out AReason: string): Boolean;
+function ExecuteFilter(const AContext: TSlashContext; out AEdits: TArray<TTextEdit>; out AReason: string): Boolean;
 var
   Source: TCommandSource;
   Arguments, Collection, Condition, Element, Variable, Indent, Text, LB: string;
@@ -441,7 +440,7 @@ begin
       Indent + 'finally' + LB +
       Indent + '  Treffer.Free;' + LB +
       Indent + 'end;' + LB;
-    AEdits := [TRuleEdit.Create(TTextRange.Create(Source.Line, 0, Source.Line + 1, 0), Text)];
+    AEdits := [TTextEdit.Create(TTextRange.Create(Source.Line, 0, Source.Line + 1, 0), Text)];
     AddUses(Source, AContext, Source.Line, ['System.Generics.Collections'], AEdits);
     Result := True;
   finally
@@ -449,12 +448,12 @@ begin
   end;
 end;
 
-function ExecuteDictPlain(const AContext: TSlashContext; out AEdits: TArray<TRuleEdit>; out AReason: string): Boolean;
+function ExecuteDictPlain(const AContext: TSlashContext; out AEdits: TArray<TTextEdit>; out AReason: string): Boolean;
 begin
   Result := ExecuteDict(AContext, False, AEdits, AReason);
 end;
 
-function ExecuteDictIgnoreCase(const AContext: TSlashContext; out AEdits: TArray<TRuleEdit>;
+function ExecuteDictIgnoreCase(const AContext: TSlashContext; out AEdits: TArray<TTextEdit>;
   out AReason: string): Boolean;
 begin
   Result := ExecuteDict(AContext, True, AEdits, AReason);

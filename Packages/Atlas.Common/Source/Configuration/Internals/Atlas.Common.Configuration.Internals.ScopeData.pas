@@ -30,12 +30,12 @@ const
     'inlayHints',
     'codeLens',
     'hints',
-    'mcp',
+    'mcp.disabledTools',
     'logLevel',
     'logFile',
     'traceFile');
   /// <summary>Schlüssel des Projekts (atlas.json).</summary>
-  ProjectSettingPaths: array[0..23] of string = (
+  ProjectSettingPaths: array[0..24] of string = (
     'encoding',
     'project',
     'config',
@@ -59,6 +59,7 @@ const
     'testUnits',
     'minConfidence',
     'exclude',
+    'mcp.globalSettings',
     'format');
 
 implementation

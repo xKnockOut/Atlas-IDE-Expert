@@ -25,8 +25,7 @@ uses
   Atlas.Common.Documents.Contract,
   Atlas.Common.Documents.Uris,
   Atlas.Common.Configuration.Contract,
-  Atlas.Common.Rules.Contract,
-  Atlas.Common.Rules.DeclaredTypes,
+  Atlas.Common.Pascal.DeclaredTypes,
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Editing.StringLiterals,
   Atlas.Common.Editing.SqlText,
@@ -85,7 +84,7 @@ end;
 
 { /sql }
 
-function ExecuteSql(const AContext: TSlashContext; out AEdits: TArray<TRuleEdit>; out AReason: string): Boolean;
+function ExecuteSql(const AContext: TSlashContext; out AEdits: TArray<TTextEdit>; out AReason: string): Boolean;
 var
   Source: TCommandSource;
   Name, Sql, Indent, TypeName, Param, Literal, Single: string;
@@ -140,7 +139,7 @@ begin
     end;
 end;
 
-function ExecuteParams(const AContext: TSlashContext; out AEdits: TArray<TRuleEdit>; out AReason: string): Boolean;
+function ExecuteParams(const AContext: TSlashContext; out AEdits: TArray<TTextEdit>; out AReason: string): Boolean;
 var
   Source: TCommandSource;
   Routine: TSyntaxNode;
@@ -185,7 +184,7 @@ end;
 
 { /loop }
 
-function ExecuteLoop(const AContext: TSlashContext; out AEdits: TArray<TRuleEdit>; out AReason: string): Boolean;
+function ExecuteLoop(const AContext: TSlashContext; out AEdits: TArray<TTextEdit>; out AReason: string): Boolean;
 var
   Source: TCommandSource;
   Name, Rest: string;
@@ -206,7 +205,7 @@ end;
 
 { /transaction }
 
-function ExecuteTransaction(const AContext: TSlashContext; out AEdits: TArray<TRuleEdit>;
+function ExecuteTransaction(const AContext: TSlashContext; out AEdits: TArray<TTextEdit>;
   out AReason: string): Boolean;
 var
   Source: TCommandSource;
