@@ -46,8 +46,8 @@ uses
   Atlas.IDE.Editor.Buffer,
   Atlas.IDE.Editor.WorkspaceEdit,
   Atlas.IDE.Forms.Designer,
-  Atlas.IDE.Hover.Editor,
-  Atlas.IDE.Foundation.Files;
+  Atlas.IDE.Foundation.Files,
+  Atlas.IDE.Foundation.Navigation;
 
 const
   // Projektweit über viele Units; deutlich länger als eine Hover-Anfrage.
@@ -156,7 +156,7 @@ begin
     TAtlasResults.Group(Preview),
     procedure(const AFileName: string; ALine, ACharacter: Integer)
     begin
-      TAtlasEditorHover.GoToLocation(AFileName, ALine, ACharacter);
+      TAtlasIdeNavigation.GoToLocation(AFileName, ALine, ACharacter);
     end) then
     Exit;
   Outcome := TAtlasIdeWorkspaceEdit.Apply(Edit, APolicy,

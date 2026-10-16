@@ -104,6 +104,7 @@ contains
   Atlas.IDE.Editor.Buffer in 'Source\IDE\Editor\Atlas.IDE.Editor.Buffer.pas',
   Atlas.IDE.Editor.Snapshot in 'Source\IDE\Editor\Atlas.IDE.Editor.Snapshot.pas',
   Atlas.IDE.Foundation.Files in 'Source\IDE\Foundation\Atlas.IDE.Foundation.Files.pas',
+  Atlas.IDE.Foundation.Navigation in 'Source\IDE\Foundation\Atlas.IDE.Foundation.Navigation.pas',
   Atlas.IDE.Editor.WorkspaceEdit in 'Source\IDE\Editor\Atlas.IDE.Editor.WorkspaceEdit.pas',
   Atlas.IDE.Projects.Context in 'Source\IDE\Projects\Atlas.IDE.Projects.Context.pas',
   Atlas.IDE.InlayHints.Editor in 'Source\IDE\InlayHints\Atlas.IDE.InlayHints.Editor.pas',
