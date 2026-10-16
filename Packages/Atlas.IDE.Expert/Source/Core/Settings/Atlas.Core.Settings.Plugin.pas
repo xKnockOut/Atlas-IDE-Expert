@@ -68,6 +68,14 @@ type
     /// <summary>Grenzen für welcomePage.trends.points (#758); wie TAtlasProjectTrendLog.MinPoints/MaxPoints.</summary>
     MinTrendPoints = 2;
     MaxTrendPoints = 100;
+    /// <summary>Grenzen für welcomePage.tests.maxFailures und welcomePage.tests.ci.intervalMinutes (#763); wie
+    /// TAtlasWelcomeTestResults (Test prüft Gleichheit).</summary>
+    MinTestFailures = 1;
+    MaxTestFailures = 50;
+    MinCiIntervalMinutes = 1;
+    MaxCiIntervalMinutes = 1440;
+    /// <summary>Vorgabe für welcomePage.tests.ci.provider (#763).</summary>
+    DefaultCiProvider = 'jenkins';
     /// <summary>Grenzen für notifications.maxEntries (#601); wie TAtlasNotificationCenter.MinEntries/MaxMaxEntries
     /// (Test prüft Gleichheit).</summary>
     MinNotificationEntries = 10;
@@ -491,6 +499,26 @@ type
     /// <summary>Gezeigte Reihen (#758, welcomePage.trends.series): Namen durch Komma getrennt, in der Reihenfolge
     /// warnings, ruleHits, todos, duration, methodLength; '' = keine.</summary>
     WelcomePageTrendsSeries: string;
+    /// <summary>Bereich „Testergebnisse“ (#763, welcomePage.tests): letzter Testlauf je Projekt mit den
+    /// fehlgeschlagenen Tests; aus = kein Bereich.</summary>
+    WelcomePageTests: Boolean;
+    /// <summary>Höchstens so viele fehlgeschlagene Tests in der Liste (#763, welcomePage.tests.maxFailures, 1–50).
+    /// </summary>
+    WelcomePageTestsMaxFailures: Integer;
+    /// <summary>Build-Server abfragen (#763, welcomePage.tests.ci); aus = kein Netzzugriff. Server und Job stehen
+    /// in .atlas (ci.url, ci.job).</summary>
+    WelcomePageTestsCi: Boolean;
+    /// <summary>Anbieter, wenn .atlas keinen nennt (#763, welcomePage.tests.ci.provider): "jenkins".</summary>
+    WelcomePageTestsCiProvider: string;
+    /// <summary>Höchstens alle so viele Minuten fragen (#763, welcomePage.tests.ci.intervalMinutes, 1–1440).
+    /// </summary>
+    WelcomePageTestsCiIntervalMinutes: Integer;
+    /// <summary>Hinweis in der Benachrichtigungszentrale, wenn der Build auf dem Server rot wird (#763,
+    /// welcomePage.tests.ci.notify).</summary>
+    WelcomePageTestsCiNotify: Boolean;
+    /// <summary>Befehl „Zugang zum Build-Server hinterlegen …“ (#763, Atlas.CiLogin) in der Befehlspalette und im
+    /// Kontextmenü des Bereichs; aus = der Befehl und sein Tipp verschwinden.</summary>
+    CiLogin: Boolean;
     /// <summary>Benachrichtigungszentrale (#601, notifications.enabled): Hinweise sammeln, Zähler im
     /// Atlas-Statusfeld, Liste und Befehl Atlas.Notifications; aus = jede Funktion zeigt ihre Einblendung wie
     /// vor #601, nichts wird gesammelt.</summary>
@@ -533,6 +561,21 @@ const
 
 /// <summary>Bekannte Reihen aus AText (Komma, Semikolon, Leerzeichen; Groß-/Kleinschreibung egal) in fester
 /// Reihenfolge, jede einmal.</summary>
+const
+  // Bekannte CI-Anbieter für welcomePage.tests.ci.provider (#763).
+  CiProviders: array[0..0] of string = ('jenkins');
+
+/// <summary>Bekannter CI-Anbieter in Kleinbuchstaben; sonst die Vorgabe.</summary>
+function NormalizedCiProvider(const AText: string): string;
+var
+  Name: string;
+begin
+  for Name in CiProviders do
+    if SameText(Trim(AText), Name) then
+      Exit(Name);
+  Result := TAtlasPluginSettings.DefaultCiProvider;
+end;
+
 function NormalizedTrendSeries(const AText: string): string;
 var
   Parts: TArray<string>;
@@ -782,6 +825,13 @@ begin
   Result.WelcomePageTrends := True;
   Result.WelcomePageTrendsPoints := 30;
   Result.WelcomePageTrendsSeries := DefaultTrendSeries;
+  Result.WelcomePageTests := True;
+  Result.WelcomePageTestsMaxFailures := 5;
+  Result.WelcomePageTestsCi := False;
+  Result.WelcomePageTestsCiProvider := DefaultCiProvider;
+  Result.WelcomePageTestsCiIntervalMinutes := 10;
+  Result.WelcomePageTestsCiNotify := True;
+  Result.CiLogin := True;
   Result.WelcomePageContinueIncoming := True;
   Result.WelcomePageContinueFetch := False;
   Result.WelcomePageSaved := True;
@@ -819,6 +869,10 @@ begin
   WelcomePageContinueCount := EnsureRange(WelcomePageContinueCount, MinContinueCount, MaxContinueCount);
   WelcomePageTrendsPoints := EnsureRange(WelcomePageTrendsPoints, MinTrendPoints, MaxTrendPoints);
   WelcomePageTrendsSeries := NormalizedTrendSeries(WelcomePageTrendsSeries);
+  WelcomePageTestsMaxFailures := EnsureRange(WelcomePageTestsMaxFailures, MinTestFailures, MaxTestFailures);
+  WelcomePageTestsCiIntervalMinutes := EnsureRange(WelcomePageTestsCiIntervalMinutes, MinCiIntervalMinutes,
+    MaxCiIntervalMinutes);
+  WelcomePageTestsCiProvider := NormalizedCiProvider(WelcomePageTestsCiProvider);
   BuildGate := TAtlasReleaseGuard.GateNames[TAtlasReleaseGuard.GateOf(BuildGate)];
   ReleaseConfigs := TAtlasReleaseGuard.NormalizedConfigurations(ReleaseConfigs);
   ReleaseChecks := TAtlasReleaseChecks.Normalized(ReleaseChecks);
@@ -1100,6 +1154,16 @@ begin
   WelcomePageTrends := AStore.ReadInteger('WelcomePageTrends', BoolValue(Default.WelcomePageTrends)) <> 0;
   WelcomePageTrendsPoints := AStore.ReadInteger('WelcomePageTrendsPoints', Default.WelcomePageTrendsPoints);
   WelcomePageTrendsSeries := AStore.ReadString('WelcomePageTrendsSeries', Default.WelcomePageTrendsSeries);
+  WelcomePageTests := AStore.ReadInteger('WelcomePageTests', BoolValue(Default.WelcomePageTests)) <> 0;
+  WelcomePageTestsMaxFailures := AStore.ReadInteger('WelcomePageTestsMaxFailures',
+    Default.WelcomePageTestsMaxFailures);
+  WelcomePageTestsCi := AStore.ReadInteger('WelcomePageTestsCi', BoolValue(Default.WelcomePageTestsCi)) <> 0;
+  WelcomePageTestsCiProvider := AStore.ReadString('WelcomePageTestsCiProvider', Default.WelcomePageTestsCiProvider);
+  WelcomePageTestsCiIntervalMinutes := AStore.ReadInteger('WelcomePageTestsCiIntervalMinutes',
+    Default.WelcomePageTestsCiIntervalMinutes);
+  WelcomePageTestsCiNotify := AStore.ReadInteger('WelcomePageTestsCiNotify',
+    BoolValue(Default.WelcomePageTestsCiNotify)) <> 0;
+  CiLogin := AStore.ReadInteger('CiLogin', BoolValue(Default.CiLogin)) <> 0;
   Notifications := AStore.ReadInteger('Notifications', BoolValue(Default.Notifications)) <> 0;
   NotificationsSources := AStore.ReadString('NotificationsSources', Default.NotificationsSources);
   NotificationsMaxEntries := AStore.ReadInteger('NotificationsMaxEntries', Default.NotificationsMaxEntries);
@@ -1287,6 +1351,13 @@ begin
   AStore.WriteInteger('WelcomePageTrends', BoolValue(WelcomePageTrends));
   AStore.WriteInteger('WelcomePageTrendsPoints', WelcomePageTrendsPoints);
   AStore.WriteString('WelcomePageTrendsSeries', WelcomePageTrendsSeries);
+  AStore.WriteInteger('WelcomePageTests', BoolValue(WelcomePageTests));
+  AStore.WriteInteger('WelcomePageTestsMaxFailures', WelcomePageTestsMaxFailures);
+  AStore.WriteInteger('WelcomePageTestsCi', BoolValue(WelcomePageTestsCi));
+  AStore.WriteString('WelcomePageTestsCiProvider', WelcomePageTestsCiProvider);
+  AStore.WriteInteger('WelcomePageTestsCiIntervalMinutes', WelcomePageTestsCiIntervalMinutes);
+  AStore.WriteInteger('WelcomePageTestsCiNotify', BoolValue(WelcomePageTestsCiNotify));
+  AStore.WriteInteger('CiLogin', BoolValue(CiLogin));
   AStore.WriteInteger('Notifications', BoolValue(Notifications));
   AStore.WriteString('NotificationsSources', NotificationsSources);
   AStore.WriteInteger('NotificationsMaxEntries', NotificationsMaxEntries);

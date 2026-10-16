@@ -478,6 +478,16 @@
       "image": "Tipps\\einrichten.png"
     },
     {
+      "id": "buildServer",
+      "command": "Atlas.CiLogin",
+      "setting": "CiLogin",
+      "title": "Testergebnisse vom Build-Server",
+      "titleEn": "Test results from the build server",
+      "text": "Die Willkommensseite zeigt neben dem letzten Testlauf auch den letzten Jenkins-Build aus der .atlas und hebt „lokal grün, Server rot“ hervor. Benutzer und API-Token liegen im Anmeldespeicher von Windows, nie in einer Datei.",
+      "textEn": "Next to the last test run, the welcome page shows the last Jenkins build from .atlas and highlights “green locally, red on the server”. User and API token live in the Windows Credential Manager, never in a file.",
+      "image": "Tipps\\build-server.png"
+    },
+    {
       "id": "mcpBuild",
       "setting": "McpBuild",
       "title": "Builds für Claude Code",

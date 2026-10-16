@@ -91,6 +91,11 @@ type
     /// geöffneten Testprojekts AProject im Debugger starten. False mit Grund, wenn das Projekt nicht offen ist oder
     /// den Test nicht enthält.</summary>
     function DebugByName(const AProject, AFullName: string; out AReason: string): Boolean;
+    /// <summary>Für die Willkommensseite (#763, Doppelklick auf einen Fehlschlag vom Build-Server): Datei und
+    /// Zeile (ab 1, Methodenkopf) des Tests AFullName (Unit.Fixture.Methode[.Fall] bzw. Fixture.Methode) im
+    /// Testprojekt AProject (offen oder neben der .dproj). False ohne Fundstelle.</summary>
+    class function LocateByName(const AProject, AFullName: string; out AFileName: string;
+      out ALine: Integer): Boolean; static;
     /// <summary>Eine Sitzung (Build, Start oder Lauf) ist im Gange.</summary>
     function Busy: Boolean;
   end;
@@ -345,6 +350,39 @@ begin
     end;
   end;
   AReason := TAtlasStrings.Text(TAtlasTextId.TestsNoTestAtCursor);
+end;
+
+class function TAtlasIdeTestDebugger.LocateByName(const AProject, AFullName: string; out AFileName: string;
+  out ALine: Integer): Boolean;
+var
+  Name, UnitName, FileName: string;
+  Index, Line: Integer;
+  Lines: TArray<string>;
+  Found: TDUnitXUnit;
+  Selection: TAtlasTestSelection;
+begin
+  AFileName := '';
+  ALine := 0;
+  Result := False;
+  Name := Trim(AFullName);
+  // Wie DebugByName: jede Teilung von hinten als Unitname versuchen.
+  for Index := Length(Name) downto 1 do
+  begin
+    if Name[Index] <> '.' then
+      Continue;
+    UnitName := Copy(Name, 1, Index - 1);
+    FileName := TAtlasIdeTests.UnitFileOf(AProject, UnitName);
+    if (FileName = '') or not ReadLines(FileName, Lines) then
+      Continue;
+    Found := TDUnitXSource.Scan(Lines);
+    if not TAtlasTestDebug.SelectByName(Found, Name, Selection) then
+      Continue;
+    Line := Found.LineOf(Selection.Fixture, Selection.Method);
+    AFileName := FileName;
+    if Line >= 0 then
+      ALine := Line + 1;
+    Exit(True);
+  end;
 end;
 
 function TAtlasIdeTestDebugger.Prepare(const AProject: IOTAProject; out AReason: string): Boolean;
