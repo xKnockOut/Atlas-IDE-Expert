@@ -23,7 +23,6 @@ uses
   System.SysUtils,
   System.StrUtils,
   Atlas.Common.Documents.Contract,
-  Atlas.Common.Rules.Contract,
   Atlas.Common.Pascal.Contract,
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Index.Contract,
@@ -74,7 +73,7 @@ begin
   Result := Result + 'Dll';
 end;
 
-function ExecuteExternal(const AContext: TSlashContext; out AEdits: TArray<TRuleEdit>; out AReason: string): Boolean;
+function ExecuteExternal(const AContext: TSlashContext; out AEdits: TArray<TTextEdit>; out AReason: string): Boolean;
 var
   Source: TCommandSource;
   Words: TArray<string>;
@@ -154,7 +153,7 @@ begin
     else
     begin
       Indent := Source.Indent(Source.Line);
-      AEdits := [TRuleEdit.Create(TTextRange.Create(Source.Line, 0, Source.Line + 1, 0),
+      AEdits := [TTextEdit.Create(TTextRange.Create(Source.Line, 0, Source.Line + 1, 0),
         Indent + StringReplace(Declaration, LB, LB + Indent, [rfReplaceAll]) + LB)];
     end;
     Result := True;
@@ -179,7 +178,7 @@ begin
   Result := False;
 end;
 
-function ExecuteExports(const AContext: TSlashContext; out AEdits: TArray<TRuleEdit>; out AReason: string): Boolean;
+function ExecuteExports(const AContext: TSlashContext; out AEdits: TArray<TTextEdit>; out AReason: string): Boolean;
 var
   Source: TCommandSource;
   Root, Clause, Main: TSyntaxNode;
@@ -230,7 +229,7 @@ begin
       for Token in Source.Tree.Tokens do
         if Token.IsSymbol(';') and (Token.EndPos.Line = Clause.EndPos.Line) and
           (Token.EndPos.Character = Clause.EndPos.Character) then
-          AEdits := [TRuleEdit.Create(TTextRange.Create(Token.StartPos, Token.StartPos), Text)];
+          AEdits := [TTextEdit.Create(TTextRange.Create(Token.StartPos, Token.StartPos), Text)];
       if AEdits = nil then
         Exit(Fail('exports-Klausel ohne abschließendes ";"', AReason));
     end
@@ -338,16 +337,16 @@ end;
 
 /// <summary>Ersetzt Befehlszeile und Anweisung bzw. ergänzt danach eine Zeile.</summary>
 function WrapStatement(ASource: TCommandSource; const AStatement: TStatement;
-  const ANewText: string): TArray<TRuleEdit>;
+  const ANewText: string): TArray<TTextEdit>;
 begin
   if AStatement.Range.StartPos.Line = ASource.Line + 1 then
-    Result := [TRuleEdit.Create(TTextRange.Create(TTextPosition.Create(ASource.Line, 0), AStatement.Range.EndPos),
+    Result := [TTextEdit.Create(TTextRange.Create(TTextPosition.Create(ASource.Line, 0), AStatement.Range.EndPos),
       Copy(ASource.Lines[ASource.Line + 1], 1, AStatement.Range.StartPos.Character) + ANewText)]
   else
-    Result := [TRuleEdit.Create(AStatement.Range, ANewText), ASource.RemoveCommand];
+    Result := [TTextEdit.Create(AStatement.Range, ANewText), ASource.RemoveCommand];
 end;
 
-function ExecuteOsCheck(const AContext: TSlashContext; out AEdits: TArray<TRuleEdit>; out AReason: string): Boolean;
+function ExecuteOsCheck(const AContext: TSlashContext; out AEdits: TArray<TTextEdit>; out AReason: string): Boolean;
 var
   Source: TCommandSource;
   Statement: TStatement;
@@ -390,7 +389,7 @@ begin
   end;
 end;
 
-function ExecuteOleCheck(const AContext: TSlashContext; out AEdits: TArray<TRuleEdit>; out AReason: string): Boolean;
+function ExecuteOleCheck(const AContext: TSlashContext; out AEdits: TArray<TTextEdit>; out AReason: string): Boolean;
 var
   Source: TCommandSource;
   Statement: TStatement;

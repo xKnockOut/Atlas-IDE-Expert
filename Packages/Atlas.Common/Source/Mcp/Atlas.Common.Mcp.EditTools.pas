@@ -79,6 +79,7 @@ uses
   Atlas.Common.Pascal.TreeCache,
   Atlas.Common.Rules.Checker,
   Atlas.Common.Editing.CodeActions,
+  Atlas.Common.Rules.CodeActions,
   Atlas.Common.Lsp.Rename,
   Atlas.Common.Mcp.Server,
   Atlas.Text.Lines,
@@ -297,7 +298,7 @@ begin
   if (ARoot <> '') and StartsText(IncludeTrailingPathDelimiter(ARoot), AFileName) then
     RelativePath := Copy(AFileName, Length(IncludeTrailingPathDelimiter(ARoot)) + 1, MaxInt);
   Actions := nil;
-  for Action in TCodeActions.ForRange(TFileChecker.CheckText(ARules, ASettings, RelativePath, Text), Text,
+  for Action in TRuleCodeActions.ForRange(TFileChecker.CheckText(ARules, ASettings, RelativePath, Text), Text,
     TTextRange.Create(ALine - 1, 0, ALine - 1, MaxInt div 2)) do
     if (Length(Action.Edits) > 0) and (Action.Command = '') then
       Actions := Actions + [Action];

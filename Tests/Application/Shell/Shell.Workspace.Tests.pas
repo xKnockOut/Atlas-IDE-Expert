@@ -15,6 +15,9 @@ type
     // Der anonyme Thread legt Verwaltungsdaten an, die erst nach dem Test freigegeben werden.
     [IgnoreMemoryLeaks]
     procedure ReloadOutsideLoopThreadRaises;
+    /// <summary>Einheitliche Wahl des Arbeitsbereichs (S-02): Treffer, sonst der einzige, sonst keiner.</summary>
+    [Test]
+    procedure ChooseFallsBackToSingleWorkspace;
   end;
 
 implementation
@@ -26,7 +29,15 @@ uses
   Atlas.Common.Index.SymbolIndex,
   Atlas.Common.Logging.Providers.Logger,
   Atlas.Common.JsonRpc.StreamTransport,
+  System.Generics.Collections,
   Shell.Workspace;
+
+function NewWorkspace(const AName: string): TShellWorkspace;
+begin
+  Result := TShellWorkspace.Create('', AName, TDocumentStore.Create,
+    TJsonRpcStreamTransport.Create(nil, TBytesStream.Create, True), TLogger.Create, TSymbolIndex.Create,
+    'atlas-test-index');
+end;
 
 { TShellWorkspaceTests }
 
@@ -62,6 +73,27 @@ begin
     Assert.AreEqual('EInvalidOpException', Raised);
   finally
     Workspace.Free;
+  end;
+end;
+
+procedure TShellWorkspaceTests.ChooseFallsBackToSingleWorkspace;
+var
+  All: TObjectList<TShellWorkspace>;
+  A, B: TShellWorkspace;
+begin
+  All := TObjectList<TShellWorkspace>.Create(True);
+  try
+    Assert.IsNull(TShellWorkspace.Choose(nil, All), 'Ohne Arbeitsbereich keiner');
+    Assert.IsNull(TShellWorkspace.Choose(nil, nil));
+    A := NewWorkspace('A');
+    All.Add(A);
+    Assert.AreSame(A, TShellWorkspace.Choose(nil, All), 'Einziger Arbeitsbereich als Rückfall');
+    B := NewWorkspace('B');
+    All.Add(B);
+    Assert.IsNull(TShellWorkspace.Choose(nil, All), 'Bei mehreren kein Rückfall');
+    Assert.AreSame(B, TShellWorkspace.Choose(B, All), 'Treffer geht vor');
+  finally
+    All.Free;
   end;
 end;
 

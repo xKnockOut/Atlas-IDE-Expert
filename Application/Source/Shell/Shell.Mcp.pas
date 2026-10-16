@@ -66,13 +66,13 @@ uses
   Atlas.Common.Index.Adapters.CacheDirectory,
   Atlas.Common.Rules.Builtin,
   Atlas.Common.Projects.Contract,
-  Atlas.Common.Projects.GroupReader,
   System.Generics.Collections,
   Atlas.Windows.Console.StdStreams,
   Atlas.Windows.Process.ParentWatcher,
   Atlas.Windows.Documents.PathCanonicalizer,
   Atlas.Common.Diagnostics.Anonymizer,
   Shell.Workspace,
+  Shell.Bootstrap,
   Shell.Diagnostics;
 
 type
@@ -217,15 +217,10 @@ begin
     Result := True;
 end;
 
+// Als gewöhnliche Funktion, weil sie als TReadText-Rückruf an mehrere Werkzeuge geht.
 function ReadSourceText(const AFileName: string; out AText: string): Boolean;
-var
-  FileFormat: TFileFormat;
 begin
-  Result := FileExists(AFileName);
-  if Result then
-    AText := TFileEncoding.LoadFromFile(AFileName, FileFormat)
-  else
-    AText := '';
+  Result := TShellBootstrap.ReadSourceText(AFileName, AText);
 end;
 
 procedure RegisterTools(AServer: TMcpServer; ATools: TMcpIndexTools; ACode: TMcpCodeTools;
@@ -557,26 +552,6 @@ begin
     Server.Free;
   end;
 end;
-// Projekte der einzigen .groupproj im Ordner (wie der LSP-Server ohne IDE, #648); sonst leer.
-function GroupProjects(const ARoot: string; const ALogger: ILogger): TArray<string>;
-var
-  Groups: TArray<string>;
-begin
-  Result := nil;
-  try
-    Groups := TDirectory.GetFiles(ARoot, '*.groupproj');
-    if Length(Groups) <> 1 then
-      Exit;
-    Result := TGroupProjReader.Load(Groups[0]);
-    ALogger.Info(Format('Projektgruppe %s: %d Projekte', [Groups[0], Length(Result)]));
-  except
-    on E: Exception do
-    begin
-      ALogger.Warning('Projektgruppe nicht lesbar: ' + E.Message);
-      Result := nil;
-    end;
-  end;
-end;
 
 class function TMcpShell.Run(const AOptions: TCommandLineOptions): Integer;
 var
@@ -602,19 +577,14 @@ var
   ProjectFile: string;
   AllFiles: TFunc<TArray<string>>;
   EnsureAny: TFunc<string, Boolean>;
+  GlobalSettings: string;
 begin
   Others := TObjectList<TShellWorkspace>.Create(True);
   LoggerImpl := TLogger.Create;
   Logger := LoggerImpl;
   LoggerImpl.AddSink(TStreamLogSink.Create(TStdStreams.CreateError, True), TLogLevel.Warning);
-  if AOptions.LogFile <> '' then
-    try
-      LoggerImpl.AddSink(TShellDiagnostics.LogFileSink(AOptions.LogFile, IntToStr(TParentWatcher.CurrentProcessId),
-        AOptions.LogNames, Anonymizer), AOptions.LogLevel);
-    except
-      on E: Exception do
-        Logger.Error(Format('Logdatei "%s" kann nicht geöffnet werden: %s', [AOptions.LogFile, E.Message]));
-    end;
+  TShellDiagnostics.AddLogFile(LoggerImpl, AOptions.LogFile, IntToStr(TParentWatcher.CurrentProcessId),
+    AOptions.LogNames, AOptions.LogLevel, Anonymizer);
   for Warning in AOptions.Warnings do
     Logger.Warning(Warning);
 
@@ -634,6 +604,13 @@ begin
   Silent := TSilentTransport.Create;
   Workspace := TShellWorkspace.Create(Root, ExtractFileName(Root), Store, Silent, Logger, Index,
     'atlas-mcp-index');
+  // Globale Einstellungen wie im LSP-Server und im Linter (D-08), abschaltbar mit mcp.globalSettings in
+  // atlas.json. Load übernimmt sie, damit der Index nur einmal mit den wirksamen Einstellungen startet.
+  GlobalSettings := '';
+  if TShellBootstrap.ProjectSettings(Root).McpGlobalSettings then
+    GlobalSettings := TShellBootstrap.LoadGlobalSettings(Logger)
+  else
+    Logger.Info('Globale Einstellungen ausgeschaltet (mcp.globalSettings)');
   AllFiles :=
     function: TArray<string>
     var
@@ -750,11 +727,11 @@ begin
         Logger.Error(Format('MCP: %s: %s', [AError.ClassName, AError.Message]));
       end;
     Logger.Info(Format('%s %s im MCP-Modus für %s', [TProductVersion.Name, TProductVersion.Version, Root]));
-    Workspace.Load;
+    Workspace.Load(GlobalSettings);
     // Übrige Projekte der Gruppe (index.projectGroup, Standard an): Sonst fehlen z. B. Units, die nur
     // ein Package enthält, wenn atlas.json auf ein anderes Projekt zeigt.
     if Workspace.Configuration.Settings.IndexProjectGroup then
-      for ProjectFile in GroupProjects(Root, Logger) do
+      for ProjectFile in TShellBootstrap.GroupProjects(Root, Logger) do
       begin
         if Workspace.Project(Main) and SameText(Main.FileName, ProjectFile) then
           Continue;
@@ -762,7 +739,7 @@ begin
           Store, Silent, Logger, Index, Format('atlas-mcp-index-%d', [Others.Count + 1]));
         Other.ProjectFile := ProjectFile;
         Others.Add(Other);
-        Other.Load;
+        Other.Load(GlobalSettings);
       end;
     try
       Connection.Run;

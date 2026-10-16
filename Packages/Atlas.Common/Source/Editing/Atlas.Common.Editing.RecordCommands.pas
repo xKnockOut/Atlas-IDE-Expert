@@ -27,7 +27,7 @@ implementation
 uses
   System.SysUtils,
   System.StrUtils,
-  Atlas.Common.Rules.Contract,
+  Atlas.Common.Documents.Contract,
   Atlas.Common.Index.Contract,
   Atlas.Common.Editing.CommandSource,
   Atlas.Common.Editing.TypeCommands;
@@ -110,7 +110,7 @@ begin
   Result := Length(AGroups) > 0;
 end;
 
-function ExecuteRecord(const AContext: TSlashContext; out AEdits: TArray<TRuleEdit>; out AReason: string): Boolean;
+function ExecuteRecord(const AContext: TSlashContext; out AEdits: TArray<TTextEdit>; out AReason: string): Boolean;
 var
   Source: TCommandSource;
   Arguments, TypeName, Prefix, Params, Body: string;
@@ -263,7 +263,7 @@ begin
   ABodies := ABodies + ASource.LineBreak + 'end;';
 end;
 
-function ExecuteOperator(const AContext: TSlashContext; out AEdits: TArray<TRuleEdit>; out AReason: string): Boolean;
+function ExecuteOperator(const AContext: TSlashContext; out AEdits: TArray<TTextEdit>; out AReason: string): Boolean;
 var
   Source: TCommandSource;
   RecordSymbol: TIndexSymbol;
@@ -315,7 +315,7 @@ end;
 
 { /equals }
 
-function ExecuteEquals(const AContext: TSlashContext; out AEdits: TArray<TRuleEdit>; out AReason: string): Boolean;
+function ExecuteEquals(const AContext: TSlashContext; out AEdits: TArray<TTextEdit>; out AReason: string): Boolean;
 var
   Source: TCommandSource;
   TypeSymbol, Field: TIndexSymbol;
@@ -444,7 +444,7 @@ begin
   Result := False;
 end;
 
-function ExecuteClone(const AContext: TSlashContext; out AEdits: TArray<TRuleEdit>; out AReason: string): Boolean;
+function ExecuteClone(const AContext: TSlashContext; out AEdits: TArray<TTextEdit>; out AReason: string): Boolean;
 var
   Source: TCommandSource;
   ClassSymbol, Field: TIndexSymbol;

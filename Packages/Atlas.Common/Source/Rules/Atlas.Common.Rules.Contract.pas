@@ -33,12 +33,9 @@ type
       AExperimental: Boolean = False);
   end;
 
-  /// <summary>Eine Textersetzung einer Korrektur.</summary>
-  TRuleEdit = record
-    Range: TTextRange;
-    NewText: string;
-    constructor Create(const ARange: TTextRange; const ANewText: string);
-  end;
+  /// <summary>Eine Textersetzung einer Korrektur. Alias auf TTextEdit aus Documents.Contract,
+  /// damit Editing die Textänderung ohne Abhängigkeit von Rules nutzen kann (A-11).</summary>
+  TRuleEdit = TTextEdit;
 
   /// <summary>Code-Aktion zu einem Treffer.</summary>
   TRuleFix = record
@@ -180,14 +177,6 @@ begin
   DefaultSeverity := ADefaultSeverity;
   Description := ADescription;
   Experimental := AExperimental;
-end;
-
-{ TRuleEdit }
-
-constructor TRuleEdit.Create(const ARange: TTextRange; const ANewText: string);
-begin
-  Range := ARange;
-  NewText := ANewText;
 end;
 
 { TRuleFix }
