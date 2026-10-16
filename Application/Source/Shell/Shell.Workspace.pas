@@ -143,6 +143,9 @@ type
     function ApplyText(const AFileName, AText: string): Boolean;
     /// <summary>Symbole des Projekts für das Abblenden; False ohne Projekt. Threadsicher.</summary>
     function Defines(out ADefines: TArray<string>): Boolean;
+    /// <summary>Arbeitsbereich zu einer Datei (S-02): AFound, sonst bei genau einem Arbeitsbereich dieser,
+    /// sonst nil. Eine Regel für alle Einstellungs- und Pfadabfragen des Servers.</summary>
+    class function Choose(AFound: TShellWorkspace; const AAll: TList<TShellWorkspace>): TShellWorkspace; static;
     /// <summary>
     /// atlas-baseline.json des Ordners (#97), neu gelesen, sobald sich die
     /// Datei ändert; nil ohne oder bei ungültiger Datei. Threadsicher.
@@ -424,6 +427,13 @@ procedure TShellWorkspace.IndexEvent(const AText: string);
 begin
   if Assigned(FOnIndexEvent) then
     FOnIndexEvent(AText);
+end;
+
+class function TShellWorkspace.Choose(AFound: TShellWorkspace; const AAll: TList<TShellWorkspace>): TShellWorkspace;
+begin
+  Result := AFound;
+  if (Result = nil) and (AAll <> nil) and (AAll.Count = 1) then
+    Result := AAll[0];
 end;
 
 procedure TShellWorkspace.Load;

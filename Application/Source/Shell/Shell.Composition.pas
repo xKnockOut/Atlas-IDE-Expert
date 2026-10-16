@@ -181,6 +181,8 @@ type
     // atlas.json aller Ordner. FGlobalSettings nur im Thread der Nachrichtenschleife.
     FGlobalSettingsFile: string;
     FGlobalSettings: string;
+    /// <summary>Einstellungen für Dateien ohne Arbeitsbereich: global und Editor (S-02). Unter FWorkspacesLock.</summary>
+    FLooseSettings: TServerSettings;
     FFileWatcher: TFileWatcher;
     // Compiler-Anbindung (#40): höchstens ein Lauf zugleich, ein weiterer wird vorgemerkt.
     FCompilerResults: TCompilerResults;
@@ -210,8 +212,42 @@ type
     /// <summary>Legt zur Datei den Ordner mit der nächsten Projektdatei an, falls sie in keinem Ordner liegt.</summary>
     procedure DeriveWorkspace(const AFileName: string);
     procedure RemoveWorkspace(const AFolder: TWorkspaceFolder);
+    /// <summary>Teil von Create (S-02): Dispatcher mit Watchdog und Fehlerprotokoll, Lebenszyklus (initialize/shutdown).</summary>
+    procedure WireProtocol;
+    /// <summary>Teil von Create (S-02): Dokumentspeicher, Synchronisation, Syntax- und Pull-Diagnosen, Compilerergebnisse.</summary>
+    procedure WireDocuments;
+    /// <summary>Teil von Create (S-02): Dokumentbezogene Funktionen ohne Index: Symbole, Faltung, Formatierung, Schnellbefehle.</summary>
+    procedure WireEditing;
+    /// <summary>Teil von Create (S-02): Arbeitsbereiche, Indexplanung und Konfiguration ohne Ordner; Pfade für die Syntaxprüfung.</summary>
+    procedure WireWorkspaces;
+    /// <summary>Teil von Create (S-02): Symbolindex und Diagnoselog.</summary>
+    procedure WireIndex;
+    /// <summary>Teil von Create (S-02): Definition, Hover, Arbeitsbereichssymbole, Hervorhebungen, Verweise, Umbenennen.</summary>
+    procedure WireNavigation;
+    /// <summary>Teil von Create (S-02): Vervollständigung mit Einstellungen, Postfix-Vorlagen und Teilergebnissen.</summary>
+    procedure WireCompletion;
+    /// <summary>Teil von Create (S-02): Signaturhilfe, Hierarchien, Implementierungen, Inlay-Hints, CodeLens, Metriken, TODOs, Baseline, Semantic Tokens.</summary>
+    procedure WireAnalysis;
+    /// <summary>Teil von Create (S-02): Code-Aktionen, Testunits, Dokumentlinks und Farben.</summary>
+    procedure WireCodeActions;
+    /// <summary>Teil von Create (S-02): workspace/executeCommand: alle Befehle des Servers.</summary>
+    procedure WireCommands;
+    /// <summary>Teil von Create (S-02): Dateiüberwachung und Index-Auffrischung.</summary>
+    procedure WireWatchedFiles;
+    /// <summary>Teil von Create (S-02): Anbindung an die IDE: Build-Meldungen und Projektkontext.</summary>
+    procedure WireIde;
+    /// <summary>Teil von Create (S-02): Arbeitsbereichsordner und Ereignisse nach initialized.</summary>
+    procedure WireWorkspaceFolders;
     /// <summary>Innerster Ordner zur Datei oder nil. Aufrufer hält FWorkspacesLock.</summary>
     function WorkspaceOf(const AFileName: string): TShellWorkspace;
+    /// <summary>Arbeitsbereich zur Datei; ohne Treffer bei genau einem Arbeitsbereich dieser, sonst nil
+    /// (TShellWorkspace.Choose, S-02). Aufrufer hält FWorkspacesLock.</summary>
+    function PickWorkspace(const AFileName: string): TShellWorkspace;
+    /// <summary>Wirksame Einstellungen zur Datei (S-02): die des Arbeitsbereichs (PickWorkspace), ohne
+    /// Arbeitsbereich globale Datei und Editor-Einstellungen. Sperrt selbst und liefert eine Kopie.</summary>
+    function SettingsFor(const AUri: string): TServerSettings;
+    /// <summary>FLooseSettings aus globaler Datei und Editor-Einstellungen neu berechnen; Nachrichtenschleife.</summary>
+    procedure UpdateLooseSettings;
     function EnsureUnit(const AUnitName: string): Boolean;
     /// <summary>Fortschritt des Indexaufbaus in Prozent über alle Projekte; -1, wenn keiner läuft.</summary>
     function IndexLoading: Integer;
@@ -382,12 +418,39 @@ end;
 { TServerComposition }
 
 constructor TServerComposition.Create(const ATransport: IJsonRpcTransport; const ALogger: ILogger);
-var
-  SlashHost: TShellSlashHost;
 begin
   inherited Create;
   FTransport := ATransport;
   FLogger := ALogger;
+  WireProtocol;
+  WireDocuments;
+  WireEditing;
+  WireWorkspaces;
+  WireIndex;
+  WireNavigation;
+  WireCompletion;
+  WireAnalysis;
+  WireCodeActions;
+  WireCommands;
+  WireWatchedFiles;
+  WireIde;
+  WireWorkspaceFolders;
+  FConnection := TJsonRpcConnection.Create(FTransport, FDispatcher);
+  FConnection.OnError :=
+    procedure(const AError: Exception)
+    begin
+      FLogger.Error('Fehler bei der Verarbeitung: ' + DescribeFailure(AError));
+    end;
+  FLifecycle.OnExit :=
+    procedure
+    begin
+      FEndReason := TDiagnosticEndReason.Clean;
+      FConnection.Stop;
+    end;
+end;
+
+procedure TServerComposition.WireProtocol;
+begin
   FDispatcher := TJsonRpcDispatcher.Create;
   FStatistics := TJsonRpcStatistics.Create;
   FDispatcher.Statistics := FStatistics;
@@ -430,6 +493,10 @@ begin
   FLifecycle.Attach(FDispatcher);
   // Ändert der Client ein Dokument, sind laufende Anfragen dazu überholt (#283).
   FDispatcher.PendingRequests.AddContentChangeMethod('textDocument/didChange');
+end;
+
+procedure TServerComposition.WireDocuments;
+begin
   FDocuments := TDocumentStore.Create(
     function(const APath: string): string
     begin
@@ -485,6 +552,12 @@ begin
     end;
   FPullDiagnostics.Attach(FDispatcher);
   FSyntaxDiagnostics.OnPullChanged := FPullDiagnostics.Changed;
+end;
+
+procedure TServerComposition.WireEditing;
+var
+  SlashHost: TShellSlashHost;
+begin
   FDocumentSymbols := TLspDocumentSymbols.Create(FDocuments);
   FDocumentSymbols.Attach(FDispatcher);
   FFoldingRanges := TLspFoldingRanges.Create(FDocuments);
@@ -505,17 +578,12 @@ begin
     begin
       TMonitor.Enter(FWorkspacesLock);
       try
-        Result := WorkspaceOf(TDocumentUris.ToPath(AUri));
-        if (Result = nil) and (FWorkspaces.Count = 1) then
-          Result := FWorkspaces[0];
+        Result := PickWorkspace(TDocumentUris.ToPath(AUri));
       finally
         TMonitor.Exit(FWorkspacesLock);
       end;
     end,
-    function(const AFileName: string; out AText: string): Boolean
-    begin
-      Result := ReadSourceText(AFileName, AText);
-    end,
+    ReadSourceText,
     function(const AUri: string): string
     var
       Workspace: TShellWorkspace;
@@ -523,9 +591,7 @@ begin
     begin
       TMonitor.Enter(FWorkspacesLock);
       try
-        Workspace := WorkspaceOf(TDocumentUris.ToPath(AUri));
-        if (Workspace = nil) and (FWorkspaces.Count = 1) then
-          Workspace := FWorkspaces[0];
+        Workspace := PickWorkspace(TDocumentUris.ToPath(AUri));
         if Workspace = nil then
           Exit('');
         Settings := Workspace.Configuration.Settings;
@@ -559,7 +625,12 @@ begin
   FSlashMenu.SlashHost := SlashHost;
   FSelectionRanges := TLspSelectionRanges.Create(FDocuments);
   FSelectionRanges.Attach(FDispatcher);
+end;
+
+procedure TServerComposition.WireWorkspaces;
+begin
   FWorkspaces := TObjectList<TShellWorkspace>.Create(True);
+  FLooseSettings := TServerSettings.Default;
   FWorkspacesLock := TObject.Create;
   FWorkspaceUsers := TDictionary<TShellWorkspace, Integer>.Create;
   FIndexScheduler := TIndexScheduler.Create;
@@ -583,9 +654,7 @@ begin
       AConfig := '';
       TMonitor.Enter(FWorkspacesLock);
       try
-        Workspace := WorkspaceOf(TDocumentUris.ToPath(AUri));
-        if (Workspace = nil) and (FWorkspaces.Count = 1) then
-          Workspace := FWorkspaces[0];
+        Workspace := PickWorkspace(TDocumentUris.ToPath(AUri));
         Result := (Workspace <> nil) and Workspace.Project(Project);
       finally
         TMonitor.Exit(FWorkspacesLock);
@@ -604,7 +673,7 @@ begin
       Result := nil;
       TMonitor.Enter(FWorkspacesLock);
       try
-        Workspace := WorkspaceOf(TDocumentUris.ToPath(AUri));
+        Workspace := PickWorkspace(TDocumentUris.ToPath(AUri));
         if Workspace <> nil then
           Result := Workspace.IncludePaths;
       finally
@@ -613,6 +682,10 @@ begin
     end;
   FSyntaxDiagnostics.VersionProvider := DelphiVersionFor;
   FSyntaxDiagnostics.RuleProvider := RuleContextFor;
+end;
+
+procedure TServerComposition.WireIndex;
+begin
   FIndex := TSymbolIndex.Create;
   FFormatting.Index := FIndex;
   FSlashMenu.Index := FIndex;
@@ -632,26 +705,17 @@ begin
       Result := IndexLoading;
     end;
   FDispatcher.Observer := FDiagnosticsRef;
+end;
+
+procedure TServerComposition.WireNavigation;
+begin
   FDefinition := TLspDefinition.Create(FDocuments, FIndex,
-    function(const AUnitName: string): Boolean
-    begin
-      Result := EnsureUnit(AUnitName);
-    end);
-  FDefinition.ReadText :=
-    function(const AFileName: string; out AText: string): Boolean
-    begin
-      Result := ReadSourceText(AFileName, AText);
-    end;
+    EnsureUnit);
+  FDefinition.ReadText := ReadSourceText;
   FDefinition.Attach(FDispatcher);
   FHover := TLspHover.Create(FDocuments, FIndex,
-    function(const AFileName: string; out AText: string): Boolean
-    begin
-      Result := ReadSourceText(AFileName, AText);
-    end,
-    function(const AUnitName: string): Boolean
-    begin
-      Result := EnsureUnit(AUnitName);
-    end);
+    ReadSourceText,
+    EnsureUnit);
   FHover.VersionProvider := DelphiVersionFor;
   FHover.HintsFor := HintSettingsFor;
   FHover.Attach(FDispatcher);
@@ -660,10 +724,7 @@ begin
   FWorkspaceSymbols.BookmarksFor := CollectBookmarks;
   FWorkspaceSymbols.Attach(FDispatcher);
   FDocumentHighlights := TLspDocumentHighlights.Create(FDocuments, FIndex,
-    function(const AUnitName: string): Boolean
-    begin
-      Result := EnsureUnit(AUnitName);
-    end);
+    EnsureUnit);
   FDocumentHighlights.SettingsFor :=
     function(const AUri: string): THighlightSettings
     var
@@ -671,9 +732,7 @@ begin
     begin
       TMonitor.Enter(FWorkspacesLock);
       try
-        Workspace := WorkspaceOf(TDocumentUris.ToPath(AUri));
-        if (Workspace = nil) and (FWorkspaces.Count = 1) then
-          Workspace := FWorkspaces[0];
+        Workspace := PickWorkspace(TDocumentUris.ToPath(AUri));
         if Workspace <> nil then
           Result := Workspace.Configuration.Settings.Highlight
         else
@@ -684,32 +743,21 @@ begin
     end;
   FDocumentHighlights.Attach(FDispatcher);
   FReferences := TLspReferences.Create(FDocuments, FIndex,
-    function(const AFileName: string; out AText: string): Boolean
-    begin
-      Result := ReadSourceText(AFileName, AText);
-    end,
+    ReadSourceText,
     ProjectSourceFiles,
-    function(const AUnitName: string): Boolean
-    begin
-      Result := EnsureUnit(AUnitName);
-    end);
+    EnsureUnit);
   FReferences.Attach(FDispatcher);
   FRename := TLspRename.Create(FDocuments, FIndex,
-    function(const AFileName: string; out AText: string): Boolean
-    begin
-      Result := ReadSourceText(AFileName, AText);
-    end,
+    ReadSourceText,
     ProjectSourceFiles,
-    function(const AUnitName: string): Boolean
-    begin
-      Result := EnsureUnit(AUnitName);
-    end);
+    EnsureUnit);
   FRename.Attach(FDispatcher);
+end;
+
+procedure TServerComposition.WireCompletion;
+begin
   FCompletion := TLspCompletion.Create(FDocuments, FIndex,
-    function(const AUnitName: string): Boolean
-    begin
-      Result := EnsureUnit(AUnitName);
-    end);
+    EnsureUnit);
   FCompletion.MatchingFor :=
     function(const AUri: string): TCompletionMatching
     begin
@@ -734,11 +782,7 @@ begin
     end;
   // Für completionItem/resolve (Detailpanel von Atlas, #405); Anzeige von XMLDoc (#654).
   FCompletion.HintsFor := HintSettingsFor;
-  FCompletion.ReadText :=
-    function(const AFileName: string; out AText: string): Boolean
-    begin
-      Result := ReadSourceText(AFileName, AText);
-    end;
+  FCompletion.ReadText := ReadSourceText;
   // Teilergebnisse (#616) als $/progress; Zeiten je Anfrage im Debug-Protokoll.
   FCompletion.Notify :=
     procedure(const AMethod: string; AParams: TJSONObject)
@@ -760,54 +804,31 @@ begin
   FCompletion.Attach(FDispatcher);
   // „Interface implementieren“ im Erzeugen-Menü (#719, #466) wie in der Vervollständigung.
   FSlashMenu.Completion := FCompletion;
+end;
+
+procedure TServerComposition.WireAnalysis;
+begin
   FSignatureHelp := TLspSignatureHelp.Create(FDocuments, FIndex,
-    function(const AFileName: string; out AText: string): Boolean
-    begin
-      Result := ReadSourceText(AFileName, AText);
-    end,
-    function(const AUnitName: string): Boolean
-    begin
-      Result := EnsureUnit(AUnitName);
-    end);
+    ReadSourceText,
+    EnsureUnit);
   FSignatureHelp.Attach(FDispatcher);
   FHierarchies := TLspHierarchies.Create(FDocuments, FIndex,
-    function(const AFileName: string; out AText: string): Boolean
-    begin
-      Result := ReadSourceText(AFileName, AText);
-    end,
+    ReadSourceText,
     ProjectSourceFiles,
-    function(const AUnitName: string): Boolean
-    begin
-      Result := EnsureUnit(AUnitName);
-    end);
+    EnsureUnit);
   FHierarchies.Attach(FDispatcher);
   FImplementations := TLspImplementations.Create(FDocuments, FIndex,
-    function(const AUnitName: string): Boolean
-    begin
-      Result := EnsureUnit(AUnitName);
-    end);
+    EnsureUnit);
   FImplementations.Attach(FDispatcher);
   FInlayHints := TLspInlayHints.Create(FDocuments, FIndex,
-    function(const AFileName: string; out AText: string): Boolean
-    begin
-      Result := ReadSourceText(AFileName, AText);
-    end,
+    ReadSourceText,
     InlayHintSettingsFor,
-    function(const AUnitName: string): Boolean
-    begin
-      Result := EnsureUnit(AUnitName);
-    end);
+    EnsureUnit);
   FInlayHints.Attach(FDispatcher);
   FCodeLens := TLspCodeLens.Create(FDocuments, FIndex,
-    function(const AFileName: string; out AText: string): Boolean
-    begin
-      Result := ReadSourceText(AFileName, AText);
-    end,
+    ReadSourceText,
     ProjectSourceFiles,
-    function(const AUnitName: string): Boolean
-    begin
-      Result := EnsureUnit(AUnitName);
-    end);
+    EnsureUnit);
   FCodeLens.MetricsFor :=
     function(const AUri: string; out ALimits: TMetricLimits): Boolean
     var
@@ -820,16 +841,10 @@ begin
     end;
   FCodeLens.Attach(FDispatcher);
   FMetrics := TLspMetrics.Create(MetricsSourceFor,
-    function(const AFileName: string; out AText: string): Boolean
-    begin
-      Result := ReadSourceText(AFileName, AText);
-    end);
+    ReadSourceText);
   // Gleiche Quelle wie die Metriken: Einstellungen, Wurzel und Dateien des Projektmodells (#14).
   FTodos := TLspTodos.Create(MetricsSourceFor,
-    function(const AFileName: string; out AText: string): Boolean
-    begin
-      Result := ReadSourceText(AFileName, AText);
-    end);
+    ReadSourceText);
   // Baseline (#97): dieselben Dateien wie die Metriken, Prüfung wie im Editor (Regeln, Index, Formulardatei).
   FBaseline := TLspBaseline.Create(MetricsSourceFor,
     function(const AFileName: string; out ACheck: TLspBaselineCheck): Boolean
@@ -861,11 +876,12 @@ begin
       FSyntaxDiagnostics.RefreshLater;
     end;
   FSemanticTokens := TLspSemanticTokens.Create(FDocuments, FIndex,
-    function(const AUnitName: string): Boolean
-    begin
-      Result := EnsureUnit(AUnitName);
-    end);
+    EnsureUnit);
   FSemanticTokens.Attach(FDispatcher);
+end;
+
+procedure TServerComposition.WireCodeActions;
+begin
   FCodeActions := TLspCodeActions.Create(FDocuments, RuleContextFor);
   FCodeActions.FormActions :=
     function(const AUri, AText: string; const ARange: TTextRange): TArray<TCodeAction>
@@ -893,9 +909,7 @@ begin
     begin
       TMonitor.Enter(FWorkspacesLock);
       try
-        Workspace := WorkspaceOf(TDocumentUris.ToPath(AUri));
-        if (Workspace = nil) and (FWorkspaces.Count = 1) then
-          Workspace := FWorkspaces[0];
+        Workspace := PickWorkspace(TDocumentUris.ToPath(AUri));
         if Workspace = nil then
           Result := TMemberOrderSettings.Default
         else
@@ -911,9 +925,7 @@ begin
     begin
       TMonitor.Enter(FWorkspacesLock);
       try
-        Workspace := WorkspaceOf(TDocumentUris.ToPath(AUri));
-        if (Workspace = nil) and (FWorkspaces.Count = 1) then
-          Workspace := FWorkspaces[0];
+        Workspace := PickWorkspace(TDocumentUris.ToPath(AUri));
         Result := (Workspace <> nil) and Workspace.Configuration.Settings.SortUses;
       finally
         TMonitor.Exit(FWorkspacesLock);
@@ -926,9 +938,7 @@ begin
     begin
       TMonitor.Enter(FWorkspacesLock);
       try
-        Workspace := WorkspaceOf(TDocumentUris.ToPath(AUri));
-        if (Workspace = nil) and (FWorkspaces.Count = 1) then
-          Workspace := FWorkspaces[0];
+        Workspace := PickWorkspace(TDocumentUris.ToPath(AUri));
         Result := (Workspace <> nil) and Workspace.Configuration.Settings.SortUsesByNamespace;
       finally
         TMonitor.Exit(FWorkspacesLock);
@@ -942,9 +952,7 @@ begin
       AContext := Default(TUsesContext);
       TMonitor.Enter(FWorkspacesLock);
       try
-        Workspace := WorkspaceOf(TDocumentUris.ToPath(AUri));
-        if (Workspace = nil) and (FWorkspaces.Count = 1) then
-          Workspace := FWorkspaces[0];
+        Workspace := PickWorkspace(TDocumentUris.ToPath(AUri));
         if Workspace <> nil then
         begin
           AContext.Keep := Workspace.Configuration.Settings.UsesKeep;
@@ -998,7 +1006,7 @@ begin
       Result := nil;
       TMonitor.Enter(FWorkspacesLock);
       try
-        Workspace := WorkspaceOf(TDocumentUris.ToPath(AUri));
+        Workspace := PickWorkspace(TDocumentUris.ToPath(AUri));
         if Workspace <> nil then
           Result := Workspace.IncludePaths;
       finally
@@ -1008,6 +1016,10 @@ begin
   FDocumentLinks.Attach(FDispatcher);
   FColors := TLspColors.Create(FDocuments, WindowsSystemColor);
   FColors.Attach(FDispatcher);
+end;
+
+procedure TServerComposition.WireCommands;
+begin
   FCommands := TLspCommands.Create;
   FCommands.Register(TLspFormFiles.ConvertCommand,
     function(const AArguments: TJSONArray): TJSONValue
@@ -1107,10 +1119,7 @@ begin
     function(const AArguments: TJSONArray): TJSONValue
     begin
       Result := TQualifiedNames.Execute(FDocuments, FIndex,
-        function(const AUnitName: string): Boolean
-        begin
-          Result := EnsureUnit(AUnitName);
-        end, FDefinition.Namespaces, AArguments);
+        EnsureUnit, FDefinition.Namespaces, AArguments);
     end);
   FCommands.Register(TStringLiteralCommands.PlainTextCommand,
     function(const AArguments: TJSONArray): TJSONValue
@@ -1289,6 +1298,10 @@ begin
       Result := TJSONObject.Create(TJSONPair.Create('projects', Items));
     end);
   FCommands.Attach(FDispatcher);
+end;
+
+procedure TServerComposition.WireWatchedFiles;
+begin
   FWatchedFiles := TLspWatchedFiles.Create(FTransport);
   FWatchedFiles.OnChanged := HandleWatchedFiles;
   FIndexRefresh := TLspIndexRefresh.Create(TLspIndexRefresh.DefaultDelayMs,
@@ -1317,6 +1330,10 @@ begin
       FLogger.Warning('Index nach Tipp-Pause: ' + E.Message);
     end;
   FWatchedFiles.Attach(FDispatcher);
+end;
+
+procedure TServerComposition.WireIde;
+begin
   // Compilermeldungen aus dem Meldungsfenster der IDE ersetzen die des letzten Laufs wie ein eigener Compile (#528).
   FIdeBuild := TLspIdeBuild.Create;
   FIdeBuild.OnMessages :=
@@ -1334,9 +1351,7 @@ begin
     begin
       TMonitor.Enter(FWorkspacesLock);
       try
-        Workspace := WorkspaceOf(ABuild.Project);
-        if (Workspace = nil) and (FWorkspaces.Count = 1) then
-          Workspace := FWorkspaces[0];
+        Workspace := PickWorkspace(ABuild.Project);
         if Workspace <> nil then
           Root := Workspace.Root
         else
@@ -1381,6 +1396,10 @@ begin
         Workspace.Reload;
     end;
   FIdeProject.Attach(FDispatcher);
+end;
+
+procedure TServerComposition.WireWorkspaceFolders;
+begin
   FWorkspaceFolders := TLspWorkspaceFolders.Create;
   FWorkspaceFolders.OnChanged :=
     procedure(const AAdded, ARemoved: TArray<TWorkspaceFolder>)
@@ -1406,6 +1425,7 @@ begin
       if FLifecycle.InitializeParams <> nil then
         FEditorSettings := TLspConfiguration.EditorSettingsFromParams(
           FLifecycle.InitializeParams.GetValue('initializationOptions'));
+      UpdateLooseSettings;
       FHover.Markdown := TLspHover.ClientSupportsMarkdown(FLifecycle.InitializeParams);
       // Code-Vorlagen mit Platzhaltern nur an Clients mit snippetSupport (#51).
       FCompletion.SnippetSupport := TLspCompletion.ClientSupportsSnippets(FLifecycle.InitializeParams);
@@ -1435,18 +1455,6 @@ begin
         AddWorkspace(Folder);
       UpdateWatchedSettings;
       FWatchedFiles.RegisterWatchers(FLifecycle.InitializeParams);
-    end;
-  FConnection := TJsonRpcConnection.Create(FTransport, FDispatcher);
-  FConnection.OnError :=
-    procedure(const AError: Exception)
-    begin
-      FLogger.Error('Fehler bei der Verarbeitung: ' + DescribeFailure(AError));
-    end;
-  FLifecycle.OnExit :=
-    procedure
-    begin
-      FEndReason := TDiagnosticEndReason.Clean;
-      FConnection.Stop;
     end;
 end;
 
@@ -1834,6 +1842,41 @@ begin
     Result := FWorkspaces[Index];
 end;
 
+function TServerComposition.PickWorkspace(const AFileName: string): TShellWorkspace;
+begin
+  Result := TShellWorkspace.Choose(WorkspaceOf(AFileName), FWorkspaces);
+end;
+
+function TServerComposition.SettingsFor(const AUri: string): TServerSettings;
+var
+  Workspace: TShellWorkspace;
+begin
+  TMonitor.Enter(FWorkspacesLock);
+  try
+    Workspace := PickWorkspace(TDocumentUris.ToPath(AUri));
+    if Workspace = nil then
+      Result := FLooseSettings
+    else
+      Result := Workspace.Configuration.Settings;
+  finally
+    TMonitor.Exit(FWorkspacesLock);
+  end;
+end;
+
+procedure TServerComposition.UpdateLooseSettings;
+var
+  Settings: TServerSettings;
+  Issues: TArray<TConfigurationIssue>;
+begin
+  Settings := TConfigurationParser.Parse(TConfigurationScopes.Effective(FGlobalSettings, FEditorSettings, ''), Issues);
+  TMonitor.Enter(FWorkspacesLock);
+  try
+    FLooseSettings := Settings;
+  finally
+    TMonitor.Exit(FWorkspacesLock);
+  end;
+end;
+
 function TServerComposition.EnsureUnit(const AUnitName: string): Boolean;
 var
   Workspace: TShellWorkspace;
@@ -2011,9 +2054,7 @@ begin
   Candidates := nil;
   TMonitor.Enter(FWorkspacesLock);
   try
-    Workspace := WorkspaceOf(TDocumentUris.ToPath(AUri));
-    if (Workspace = nil) and (FWorkspaces.Count = 1) then
-      Workspace := FWorkspaces[0];
+    Workspace := PickWorkspace(TDocumentUris.ToPath(AUri));
     if Workspace = nil then
       Exit(False);
     AContext.Settings := Workspace.Configuration.Settings.TestUnits;
@@ -2377,24 +2418,14 @@ end;
 
 function TServerComposition.SlashCommandsFor(const AUri: string; out ADisabled: TArray<string>): Boolean;
 var
-  Workspace: TShellWorkspace;
+  Settings: TServerSettings;
 begin
-  ADisabled := nil;
-  TMonitor.Enter(FWorkspacesLock);
-  try
-    Workspace := WorkspaceOf(TDocumentUris.ToPath(AUri));
-    if (Workspace = nil) and (FWorkspaces.Count = 1) then
-      Workspace := FWorkspaces[0];
-    if Workspace = nil then
-      Exit(True);
-    Result := Workspace.Configuration.Settings.SlashCommands;
-    ADisabled := Workspace.Configuration.Settings.SlashCommandsDisabled;
-    // usesCommand bleibt als Alias erhalten (#254).
-    if not Workspace.Configuration.Settings.UsesCommand then
-      ADisabled := ADisabled + ['uses'];
-  finally
-    TMonitor.Exit(FWorkspacesLock);
-  end;
+  Settings := SettingsFor(AUri);
+  Result := Settings.SlashCommands;
+  ADisabled := Settings.SlashCommandsDisabled;
+  // usesCommand bleibt als Alias erhalten (#254).
+  if not Settings.UsesCommand then
+    ADisabled := ADisabled + ['uses'];
 end;
 
 function TServerComposition.DelphiVersionFor(const AUri: string): string;
@@ -2403,9 +2434,7 @@ var
 begin
   TMonitor.Enter(FWorkspacesLock);
   try
-    Workspace := WorkspaceOf(TDocumentUris.ToPath(AUri));
-    if (Workspace = nil) and (FWorkspaces.Count = 1) then
-      Workspace := FWorkspaces[0];
+    Workspace := PickWorkspace(TDocumentUris.ToPath(AUri));
     if Workspace = nil then
       Result := ''
     else
@@ -2421,57 +2450,18 @@ begin
 end;
 
 function TServerComposition.CompletionSettingsFor(const AUri: string): TCompletionSettings;
-var
-  Workspace: TShellWorkspace;
 begin
-  TMonitor.Enter(FWorkspacesLock);
-  try
-    Workspace := WorkspaceOf(TDocumentUris.ToPath(AUri));
-    if (Workspace = nil) and (FWorkspaces.Count = 1) then
-      Workspace := FWorkspaces[0];
-    if Workspace = nil then
-      Result := TCompletionSettings.Default
-    else
-      Result := Workspace.Configuration.Settings.Completion;
-  finally
-    TMonitor.Exit(FWorkspacesLock);
-  end;
+  Result := SettingsFor(AUri).Completion;
 end;
 
 function TServerComposition.RefactoringSettingsFor(const AUri: string): TRefactoringSettings;
-var
-  Workspace: TShellWorkspace;
 begin
-  TMonitor.Enter(FWorkspacesLock);
-  try
-    Workspace := WorkspaceOf(TDocumentUris.ToPath(AUri));
-    if (Workspace = nil) and (FWorkspaces.Count = 1) then
-      Workspace := FWorkspaces[0];
-    if Workspace = nil then
-      Result := TRefactoringSettings.Default
-    else
-      Result := Workspace.Configuration.Settings.Refactoring;
-  finally
-    TMonitor.Exit(FWorkspacesLock);
-  end;
+  Result := SettingsFor(AUri).Refactoring;
 end;
 
 function TServerComposition.StringLiteralFor(const AUri: string; out AMultiline: Boolean): TStringLiteralSettings;
-var
-  Workspace: TShellWorkspace;
 begin
-  TMonitor.Enter(FWorkspacesLock);
-  try
-    Workspace := WorkspaceOf(TDocumentUris.ToPath(AUri));
-    if (Workspace = nil) and (FWorkspaces.Count = 1) then
-      Workspace := FWorkspaces[0];
-    if Workspace = nil then
-      Result := TStringLiteralSettings.Default
-    else
-      Result := Workspace.Configuration.Settings.StringLiteral;
-  finally
-    TMonitor.Exit(FWorkspacesLock);
-  end;
+  Result := SettingsFor(AUri).StringLiteral;
   AMultiline := TStringLiterals.UseMultiline(Result.Style, DelphiVersionFor(AUri));
 end;
 
@@ -2500,8 +2490,7 @@ begin
         end;
     if (Workspace = nil) and (AFileName <> '') then
       Workspace := WorkspaceOf(AFileName);
-    if (Workspace = nil) and (FWorkspaces.Count = 1) then
-      Workspace := FWorkspaces[0];
+    Workspace := TShellWorkspace.Choose(Workspace, FWorkspaces);
     if Workspace = nil then
       Exit(False);
     ASource.Settings := Workspace.Configuration.Settings;
@@ -2519,59 +2508,18 @@ begin
 end;
 
 function TServerComposition.InlayHintSettingsFor(const AUri: string): TInlayHintSettings;
-var
-  Workspace: TShellWorkspace;
 begin
-  TMonitor.Enter(FWorkspacesLock);
-  try
-    Workspace := WorkspaceOf(TDocumentUris.ToPath(AUri));
-    if (Workspace = nil) and (FWorkspaces.Count = 1) then
-      Workspace := FWorkspaces[0];
-    if Workspace = nil then
-      Result := TInlayHintSettings.Default
-    else
-      Result := Workspace.Configuration.Settings.InlayHints;
-  finally
-    TMonitor.Exit(FWorkspacesLock);
-  end;
+  Result := SettingsFor(AUri).InlayHints;
 end;
 
 function TServerComposition.HintSettingsFor(const AUri: string): THintSettings;
-var
-  Workspace: TShellWorkspace;
-  Issues: TArray<TConfigurationIssue>;
 begin
-  TMonitor.Enter(FWorkspacesLock);
-  try
-    Workspace := WorkspaceOf(TDocumentUris.ToPath(AUri));
-    if (Workspace = nil) and (FWorkspaces.Count = 1) then
-      Workspace := FWorkspaces[0];
-    if Workspace <> nil then
-      Exit(Workspace.Configuration.Settings.Hints);
-  finally
-    TMonitor.Exit(FWorkspacesLock);
-  end;
-  // Ohne Arbeitsbereich (z. B. RTL-Unit) gelten die globalen Einstellungen.
-  Result := TConfigurationParser.Parse(TConfigurationScopes.Effective(FGlobalSettings, FEditorSettings, ''),
-    Issues).Hints;
+  Result := SettingsFor(AUri).Hints;
 end;
 
 function TServerComposition.FormatStyleFor(const AUri: string): TFormatStyle;
-var
-  Workspace: TShellWorkspace;
 begin
-  TMonitor.Enter(FWorkspacesLock);
-  try
-    Workspace := WorkspaceOf(TDocumentUris.ToPath(AUri));
-    if (Workspace = nil) and (FWorkspaces.Count = 1) then
-      Workspace := FWorkspaces[0];
-    if Workspace = nil then
-      Result := TFormatStyle.Default
-    else
-      Result := Workspace.Configuration.Settings.Formatting;
-  finally
-    TMonitor.Exit(FWorkspacesLock);
-  end;
+  Result := SettingsFor(AUri).Formatting;
 end;
 
 function TServerComposition.RuleContextFor(const AUri: string; out AContext: TRuleCheckContext): Boolean;
@@ -2583,9 +2531,9 @@ begin
   FileName := TDocumentUris.ToPath(AUri);
   TMonitor.Enter(FWorkspacesLock);
   try
-    Workspace := WorkspaceOf(FileName);
+    Workspace := PickWorkspace(FileName);
     if Workspace = nil then
-      AContext.Settings := TServerSettings.Default
+      AContext.Settings := FLooseSettings
     else
     begin
       AContext.Settings := Workspace.Configuration.Settings;
@@ -2786,8 +2734,7 @@ begin
     Workspace := nil;
     if AFileName <> '' then
       Workspace := WorkspaceOf(AFileName);
-    if (Workspace = nil) and (FWorkspaces.Count = 1) then
-      Workspace := FWorkspaces[0];
+    Workspace := TShellWorkspace.Choose(Workspace, FWorkspaces);
     if Workspace = nil then
       Error := 'Kein Ordner mit Projekt geöffnet'
     else if Workspace.CompilerRequest(Request, Error) then
@@ -2950,6 +2897,7 @@ var
   Workspace: TShellWorkspace;
 begin
   FEditorSettings := TLspConfiguration.EditorSettingsFromParams(AParams);
+  UpdateLooseSettings;
   for Workspace in FWorkspaces.ToArray do
     Workspace.Configuration.SetEditorSettings(FEditorSettings);
 end;
@@ -2971,6 +2919,7 @@ begin
   if Text = FGlobalSettings then
     Exit;
   FGlobalSettings := Text;
+  UpdateLooseSettings;
   if Text <> '' then
   begin
     TConfigurationParser.Parse(Text, Issues);
