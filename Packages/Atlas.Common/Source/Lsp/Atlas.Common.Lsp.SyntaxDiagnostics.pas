@@ -136,12 +136,12 @@ type
     /// <summary>Wie oben, zusätzlich mit den Treffern der Prüfregeln aus ARules.</summary>
     class function BuildParams(const ADocument: ITextDocument; const AInactive: TArray<TTextRange>;
       const ADelphiVersion: string; const ARules: TRuleCheckContext): TJSONObject; overload; static;
-    /// <summary>Wie oben mit Bedingung je inaktivem Bereich und gewählter Zielplattform und
-    /// Konfiguration (#615; '' = unbekannt).</summary>
     /// <summary>Wie unten; Syntaxfehler nur aus aktiven Zweigen unter ADefines (leer = Vordefinitionen).</summary>
     class function BuildParams(const ADocument: ITextDocument; const AInactive: TArray<TLspInactiveRegion>;
       const ADelphiVersion: string; const ARules: TRuleCheckContext; const APlatform, AConfig: string;
       const ADefines: TArray<string>): TJSONObject; overload; static;
+    /// <summary>Wie oben mit Bedingung je inaktivem Bereich und gewählter Zielplattform und
+    /// Konfiguration (#615; '' = unbekannt).</summary>
     class function BuildParams(const ADocument: ITextDocument; const AInactive: TArray<TLspInactiveRegion>;
       const ADelphiVersion: string; const ARules: TRuleCheckContext;
       const APlatform, AConfig: string): TJSONObject; overload; static;
