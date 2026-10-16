@@ -95,6 +95,7 @@ type
 implementation
 
 uses
+  System.Math,
   Atlas.Core.Diagnostics.MainThread,
   Atlas.Core.Diagnostics.Guard,
   Atlas.UI.Strings;
@@ -210,17 +211,28 @@ end;
 
 procedure TAtlasSafeModeNotice.FitHeight;
 var
-  Extra: Integer;
+  Index, Bottom, Extra: Integer;
+  Control: TControl;
 begin
   HandleNeeded;
-  // Umbrechende Beschriftungen und die Knopfreihe messen erst mit Fenster richtig;
-  // im Konstruktor war die Höhe zu klein (Knöpfe abgeschnitten).
+  // Umbrechende Beschriftungen messen erst mit Fenster richtig.
   FText.AutoSize := False;
   FText.AutoSize := True;
   FSuggestion.AutoSize := False;
   FSuggestion.AutoSize := True;
+  // Knopfreihe: AutoSize des TFlowPanel rechnet umgebrochene Reihen nicht zuverlässig mit;
+  // die Höhe ergibt sich aus dem untersten sichtbaren Knopf.
   FButtons.AutoSize := False;
-  FButtons.AutoSize := True;
+  FButtons.Height := ScaleValue(200);
+  FButtons.Realign;
+  Bottom := 0;
+  for Index := 0 to FButtons.ControlCount - 1 do
+  begin
+    Control := FButtons.Controls[Index];
+    if Control.Visible then
+      Bottom := Max(Bottom, Control.Top + Control.Height + Control.Margins.Bottom);
+  end;
+  FButtons.Height := Bottom;
   Realign;
   Extra := 0;
   if FDetailsPanel.Visible then
@@ -235,6 +247,10 @@ begin
   Top := AArea.Bottom - Height - Gap;
   // Nicht modal: Die IDE startet weiter, während der Hinweis offen ist.
   Show;
+  // Beim Zeigen kann das Fenster auf die Skalierung des Bildschirms umgerechnet werden: neu messen,
+  // unten bleibt unten.
+  FitHeight;
+  Top := AArea.Bottom - Height - Gap;
 end;
 
 procedure TAtlasSafeModeNotice.Run(const AProc: TProc);

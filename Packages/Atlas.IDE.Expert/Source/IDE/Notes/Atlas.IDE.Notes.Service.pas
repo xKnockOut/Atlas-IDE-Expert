@@ -77,6 +77,7 @@ type
 implementation
 
 uses
+  Atlas.IDE.Editor.Buffer,
   System.Classes,
   System.DateUtils,
   System.UITypes,
@@ -241,7 +242,6 @@ end;
 
 class function TAtlasIdeNotes.Target(out AFileName: string; out ALine: Integer): Boolean;
 var
-  Editors: IOTAEditorServices;
   View: IOTAEditView;
 begin
   AFileName := '';
@@ -254,9 +254,8 @@ begin
     Say(TAtlasStrings.Text(TAtlasTextId.NotesDisabled));
     Exit;
   end;
-  View := nil;
-  if Supports(BorlandIDEServices, IOTAEditorServices, Editors) then
-    View := Editors.TopView;
+  // Auch aus Palette und Menü, wenn der Fokus nicht im Editor liegt.
+  View := TAtlasEditorBuffer.ActiveView;
   if (View = nil) or (View.Buffer = nil) or (View.Buffer.FileName = '') then
   begin
     Say(TAtlasStrings.Text(TAtlasTextId.NotesNoEditor));
@@ -353,7 +352,6 @@ end;
 
 class procedure TAtlasIdeNotes.ShowList;
 var
-  Editors: IOTAEditorServices;
   View: IOTAEditView;
   Project, FileName: string;
   Current: TAtlasNoteBook;
@@ -368,9 +366,8 @@ begin
     Exit;
   end;
   Project := '';
-  View := nil;
-  if Supports(BorlandIDEServices, IOTAEditorServices, Editors) then
-    View := Editors.TopView;
+  // Auch aus Palette und Menü, wenn der Fokus nicht im Editor liegt.
+  View := TAtlasEditorBuffer.ActiveView;
   if (View <> nil) and (View.Buffer <> nil) and (View.Buffer.FileName <> '') then
     Project := ResolveProject(View.Buffer.FileName);
   if Project = '' then

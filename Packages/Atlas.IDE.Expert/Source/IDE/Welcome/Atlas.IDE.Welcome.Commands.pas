@@ -199,11 +199,14 @@ var
   Size: ULONG;
   Buffer: array[0..255] of WideChar;
 begin
+  // Puffer leeren und nur die gemeldete Länge übernehmen: Bei lokalen Konten meldet die Funktion teils
+  // Erfolg, ohne etwas zu schreiben; dann stand Speicherrest als Vorname im Gruß.
+  FillChar(Buffer, SizeOf(Buffer), 0);
   Size := Length(Buffer);
-  if GetUserNameExW(NameDisplay, @Buffer[0], Size) then
-    Result := Buffer
-  else
-    Result := '';
+  Result := '';
+  if GetUserNameExW(NameDisplay, @Buffer[0], Size) and (Size > 0) and (Size < ULONG(Length(Buffer))) then
+    SetString(Result, PWideChar(@Buffer[0]), Size);
+  Result := Trim(Result);
 end;
 
 /// <summary>Textdatei lesen; ohne Byte-Order-Mark, das TFile.WriteAllText mit UTF-8 schreibt.</summary>
