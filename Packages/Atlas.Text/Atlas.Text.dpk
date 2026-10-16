@@ -50,6 +50,7 @@ contains
   Atlas.Text.Fuzzy in 'Source\Fuzzy\Atlas.Text.Fuzzy.pas',
   Atlas.Text.Jsonc in 'Source\Jsonc\Atlas.Text.Jsonc.pas',
   Atlas.Text.Entities in 'Source\Entities\Atlas.Text.Entities.pas',
-  Atlas.Text.Defines in 'Source\Defines\Atlas.Text.Defines.pas';
+  Atlas.Text.Defines in 'Source\Defines\Atlas.Text.Defines.pas',
+  Atlas.Text.Checkin in 'Source\Checkin\Atlas.Text.Checkin.pas';
 
 end.
