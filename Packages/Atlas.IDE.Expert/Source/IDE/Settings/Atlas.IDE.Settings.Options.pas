@@ -77,11 +77,11 @@ uses
   Atlas.IDE.Settings.Project,
   Atlas.IDE.Settings.ServerTool,
   Atlas.UI.Strings,
-  Atlas.IDE.Commands.Keys,
+  Atlas.IDE.Foundation.Keys,
   Atlas.Core.Completion.Favorites,
   Atlas.IDE.Completion.Favorites,
-  Atlas.IDE.Editor.Structure,
-  Atlas.IDE.Settings.Store;
+  Atlas.IDE.Foundation.StructureSwitch,
+  Atlas.IDE.Foundation.Settings;
 
 type
   TAtlasAddInOptions = class(TInterfacedObject, INTAAddInOptions)

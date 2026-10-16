@@ -28,7 +28,7 @@ uses
   Atlas.Core.Status.Contract,
   Atlas.Core.Status.Registry,
   Atlas.Core.Status.Lines,
-  Atlas.IDE.Commands.Keys,
+  Atlas.IDE.Foundation.Keys,
   Atlas.UI.Diagnostics.TimingFrame,
   Atlas.Core.Commands.Palette;
 
@@ -97,8 +97,8 @@ uses
   Atlas.Core.Settings.History,
   Atlas.Core.Updates.Check,
   Atlas.UI.Strings,
-  Atlas.IDE.Editor.Style,
-  Atlas.IDE.Settings.Store,
+  Atlas.IDE.Foundation.EditorStyle,
+  Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Settings.QuickToggles,
   Atlas.IDE.Diagnostics.TimingWindow;
 

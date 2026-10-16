@@ -87,8 +87,8 @@ uses
   Atlas.Core.Style.Palette,
   Atlas.Core.Editor.Pairs,
   Atlas.UI.Strings,
-  Atlas.IDE.Editor.Buffer,
-  Atlas.IDE.Settings.Store;
+  Atlas.IDE.Foundation.EditorBuffer,
+  Atlas.IDE.Foundation.Settings;
 
 const
   MetricsCommand = 'atlas.server.metrics';

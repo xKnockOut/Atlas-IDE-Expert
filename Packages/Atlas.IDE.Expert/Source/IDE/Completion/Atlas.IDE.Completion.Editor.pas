@@ -9,7 +9,7 @@
 //   - Schließen (#414): Cursor verlässt das Wort oder die Zeile, Editor verliert
 //     den Fokus, IDE wird inaktiv, Editor scrollt, Ansicht wechselt.
 //   - Tasten: Nur solange das Popup offen ist, nimmt es über den gemeinsamen
-//     Tastatur-Hook (Atlas.IDE.Editor.KeyHook) ↑ ↓ Bild↑ Bild↓ Pos1 Ende Enter Tab Esc
+//     Tastatur-Hook (Atlas.IDE.Foundation.KeyHook) ↑ ↓ Bild↑ Bild↓ Pos1 Ende Enter Tab Esc
 //     ohne Umschalt/Strg/Alt entgegen; sonst gehen alle Tasten an den Editor.
 //   - Übernahme: ein Undo-Schritt (CreateUndoableWriter) für Name und uses-Ergänzung.
 //   - Detailpanel (#424): 80 ms nach einem Wechsel der Auswahl fragt die Quelle die
@@ -47,7 +47,7 @@ uses
   Atlas.IDE.Completion.Preview,
   Atlas.IDE.Completion.Placeholders,
   Atlas.UI.Completion.Popup,
-  Atlas.IDE.Editor.KeyHook;
+  Atlas.IDE.Foundation.KeyHook;
 
 type
   /// <summary>Protokoll für die Diagnose (Registry-Wert Diagnose).</summary>
@@ -220,14 +220,14 @@ uses
   Atlas.Core.Projects.Contract,
   Atlas.Core.Completion.Preview,
   Atlas.Core.Settings.Plugin,
-  Atlas.IDE.Settings.Store,
+  Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Completion.History,
   Atlas.Core.Completion.Favorites,
   Atlas.IDE.Completion.Favorites,
   Atlas.IDE.Signature.Editor,
   Atlas.Core.Completion.Ranking,
-  Atlas.IDE.Editor.Buffer,
-  Atlas.IDE.Editor.Style,
+  Atlas.IDE.Foundation.EditorBuffer,
+  Atlas.IDE.Foundation.EditorStyle,
   Atlas.UI.Strings,
   Atlas.Text.Lines,
   Atlas.IDE.Foundation.Navigation;

@@ -90,7 +90,7 @@ uses
   System.TypInfo,
   Atlas.Core.Diagnostics.Guard,
   Atlas.Core.Forms.Text,
-  Atlas.IDE.Editor.Snapshot;
+  Atlas.IDE.Foundation.EditorSnapshot;
 
 const
   SyncDelayMs = 500;

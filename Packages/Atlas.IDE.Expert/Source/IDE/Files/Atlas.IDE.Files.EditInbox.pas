@@ -45,7 +45,7 @@ uses
   Atlas.Core.Files.EditInbox,
   Atlas.Core.Lsp.TextChanges,
   Atlas.Core.Lsp.WorkspaceEdits,
-  Atlas.IDE.Editor.Buffer,
+  Atlas.IDE.Foundation.EditorBuffer,
   Atlas.IDE.Editor.WorkspaceEdit,
   Atlas.IDE.Foundation.Files,
   Atlas.Core.Editor.WorkspacePlan;

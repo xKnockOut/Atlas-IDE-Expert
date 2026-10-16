@@ -80,10 +80,10 @@ uses
   Atlas.Core.Generate.Protocol,
   Atlas.UI.Strings,
   Atlas.UI.Generate.Window,
-  Atlas.IDE.Editor.Buffer,
-  Atlas.IDE.Editor.Style,
+  Atlas.IDE.Foundation.EditorBuffer,
+  Atlas.IDE.Foundation.EditorStyle,
   Atlas.IDE.Editor.WorkspaceEdit,
-  Atlas.IDE.Settings.Store,
+  Atlas.IDE.Foundation.Settings,
   Atlas.Core.Editor.WorkspacePlan;
 
 const

@@ -127,9 +127,9 @@ uses
   Atlas.Core.Updates.Check,
   Atlas.UI.Strings,
   Atlas.IDE.Commands.KeyMap,
-  Atlas.IDE.Editor.Structure,
-  Atlas.IDE.Editor.Style,
-  Atlas.IDE.Settings.Store;
+  Atlas.IDE.Foundation.StructureSwitch,
+  Atlas.IDE.Foundation.EditorStyle,
+  Atlas.IDE.Foundation.Settings;
 
 type
   /// <summary>Was die Knöpfe in der IDE tun; Snapshot sammelt den Zustand.</summary>

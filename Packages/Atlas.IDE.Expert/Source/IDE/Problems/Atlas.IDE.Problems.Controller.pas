@@ -165,9 +165,9 @@ uses
   ToolsAPI,
   Atlas.Core.Settings.Plugin,
   Atlas.UI.Strings,
-  Atlas.IDE.Editor.Buffer,
-  Atlas.IDE.Editor.Snapshot,
-  Atlas.IDE.Settings.Store;
+  Atlas.IDE.Foundation.EditorBuffer,
+  Atlas.IDE.Foundation.EditorSnapshot,
+  Atlas.IDE.Foundation.Settings;
 
 { TAtlasProblemsController.TDocumentWorker }
 

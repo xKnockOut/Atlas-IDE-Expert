@@ -75,10 +75,10 @@ uses
   Atlas.Core.UnitSearch.State,
   Atlas.UI.Strings,
   Atlas.UI.UnitSearch.Window,
-  Atlas.IDE.Editor.Buffer,
-  Atlas.IDE.Editor.Style,
+  Atlas.IDE.Foundation.EditorBuffer,
+  Atlas.IDE.Foundation.EditorStyle,
   Atlas.IDE.Editor.WorkspaceEdit,
-  Atlas.IDE.Settings.Store,
+  Atlas.IDE.Foundation.Settings,
   Atlas.Core.Editor.WorkspacePlan,
   Atlas.IDE.Foundation.Navigation;
 

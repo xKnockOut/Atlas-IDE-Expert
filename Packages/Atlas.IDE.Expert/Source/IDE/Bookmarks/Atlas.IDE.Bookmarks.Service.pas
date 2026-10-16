@@ -105,12 +105,12 @@ uses
   Atlas.UI.Strings,
   Atlas.UI.Commands.Palette,
   Atlas.UI.Bookmarks.Dialog,
-  Atlas.IDE.Editor.Style,
+  Atlas.IDE.Foundation.EditorStyle,
   Atlas.IDE.Editor.WorkspaceEdit,
-  Atlas.IDE.Editor.GutterMarks,
+  Atlas.IDE.Foundation.GutterMarks,
   Atlas.IDE.Results.Commands,
   Atlas.IDE.Bookmarks.Window,
-  Atlas.IDE.Settings.Store,
+  Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Foundation.Files;
 
 { TAtlasIdeBookmarks }

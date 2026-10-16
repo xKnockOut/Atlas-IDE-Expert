@@ -79,8 +79,8 @@ uses
   Atlas.Core.Forms.Changes,
   Atlas.Core.Undo.Contract,
   Atlas.IDE.Foundation.Files,
-  Atlas.IDE.Editor.Buffer,
-  Atlas.IDE.Editor.Snapshot,
+  Atlas.IDE.Foundation.EditorBuffer,
+  Atlas.IDE.Foundation.EditorSnapshot,
   Atlas.IDE.Forms.Designer,
   Atlas.IDE.Undo.Changes,
   Atlas.IDE.Undo.Target;

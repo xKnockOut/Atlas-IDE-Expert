@@ -23,7 +23,7 @@ uses
   Atlas.Core.Style.Color,
   Atlas.Core.Style.Palette,
   Atlas.Core.Notes.Store,
-  Atlas.IDE.Editor.GutterMarks;
+  Atlas.IDE.Foundation.GutterMarks;
 
 type
   TAtlasIdeNotesGutter = class(TAtlasGutterLayer)
@@ -49,7 +49,7 @@ uses
   Atlas.Core.Editor.LineAnchor,
   Atlas.UI.Strings,
   Atlas.IDE.Notes.Service,
-  Atlas.IDE.Settings.Store;
+  Atlas.IDE.Foundation.Settings;
 
 { TAtlasIdeNotesGutter }
 

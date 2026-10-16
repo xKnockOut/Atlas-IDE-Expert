@@ -42,7 +42,7 @@ uses
   Atlas.Core.Diagnostics.BugReport,
   Atlas.UI.Diagnostics.ExportDialog,
   Atlas.UI.Strings,
-  Atlas.IDE.Settings.Store;
+  Atlas.IDE.Foundation.Settings;
 
 class function TAtlasIdeBugReport.ProjectRoots: TArray<string>;
 var

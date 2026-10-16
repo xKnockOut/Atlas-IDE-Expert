@@ -43,7 +43,7 @@ uses
   Atlas.Core.Hover.Layout,
   Atlas.Core.Editor.CloseRules,
   Atlas.Core.Problems.Contract,
-  Atlas.IDE.Editor.KeyHook,
+  Atlas.IDE.Foundation.KeyHook,
   Atlas.UI.Hover.Tip;
 
 type
@@ -170,9 +170,9 @@ uses
   Vcl.Forms,
   Vcl.Clipbrd,
   Atlas.Core.Completion.Word,
-  Atlas.IDE.Editor.Buffer,
-  Atlas.IDE.Editor.Style,
-  Atlas.IDE.Settings.Store,
+  Atlas.IDE.Foundation.EditorBuffer,
+  Atlas.IDE.Foundation.EditorStyle,
+  Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Results.Commands,
   Atlas.Core.Documentation.Contract,
   Atlas.UI.Strings,
