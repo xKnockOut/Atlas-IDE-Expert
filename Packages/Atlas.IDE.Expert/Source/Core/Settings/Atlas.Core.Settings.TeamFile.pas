@@ -20,7 +20,9 @@
 //      "ci": {"provider": "jenkins", "url": "https://ci.firma.de",      #763
 //             "job": "kasse", "multibranch": true},
 //      "tracker": {"provider": "youtrack",                              #765
-//                  "url": "https://firma.youtrack.cloud", "project": "ATL"}}
+//                  "url": "https://firma.youtrack.cloud", "project": "ATL"},
+//      "hidden": [{"setting": "BlockEndLabels", "file": "Source/Kunde.pas", #628
+//                  "anchor": "TKunde.Speichern"}]}
 // - Verboten und beim Lesen ignoriert (mit Meldung, Atlas.Text.Checkin):
 //   Zugangsdaten (Schlüssel wie token oder password auf jeder Ebene, Adressen
 //   mit Benutzer oder Token, Umgebungsvariablen wie DB_PASSWORD), absolute
@@ -37,7 +39,8 @@
 interface
 
 uses
-  System.SysUtils;
+  System.SysUtils,
+  Atlas.Core.Settings.HiddenPlaces;
 
 type
 {$SCOPEDENUMS ON}
@@ -141,6 +144,8 @@ type
     StartProfiles: TArray<TAtlasStartProfile>;
     Ci: TAtlasTeamCi;
     Tracker: TAtlasTeamTracker;
+    /// <summary>An einer Stelle oder in einer Datei ausgeblendete Elemente (#628).</summary>
+    Hidden: TArray<TAtlasHiddenPlace>;
     Issues: TArray<TAtlasTeamIssue>;
     /// <summary>Es gibt eine Projektdatei (gültig oder nicht).</summary>
     function Exists: Boolean;
@@ -345,6 +350,7 @@ type
     procedure ReadStartProfiles(AValue: TJSONValue);
     procedure ReadCi(AValue: TJSONValue);
     procedure ReadTracker(AValue: TJSONValue);
+    procedure ReadHidden(AValue: TJSONValue);
     procedure ReadVersion(AValue: TJSONValue);
   public
     constructor Create(const AFileName, ARoot: string);
@@ -681,6 +687,54 @@ begin
   end;
 end;
 
+procedure TTeamReader.ReadHidden(AValue: TJSONValue);
+var
+  Index, Member: Integer;
+  Item: TJSONValue;
+  Key, Path, Setting, FileName, Anchor: string;
+  Usable: Boolean;
+begin
+  if not (AValue is TJSONArray) then
+  begin
+    Report(TAtlasTeamIssueKind.WrongType, TAtlasHiddenPlaces.Key);
+    Exit;
+  end;
+  for Index := 0 to TJSONArray(AValue).Count - 1 do
+  begin
+    Item := TJSONArray(AValue).Items[Index];
+    Path := Format('%s[%d]', [TAtlasHiddenPlaces.Key, Index]);
+    if not (Item is TJSONObject) then
+    begin
+      Report(TAtlasTeamIssueKind.WrongType, Path);
+      Continue;
+    end;
+    Setting := '';
+    FileName := '';
+    Anchor := '';
+    Usable := True;
+    for Member := 0 to TJSONObject(Item).Count - 1 do
+    begin
+      Key := TJSONObject(Item).Pairs[Member].JsonString.Value;
+      if Key = 'setting' then
+        Usable := ReadString(TJSONObject(Item).Pairs[Member].JsonValue, Path + '.setting', Setting) and Usable
+      else if Key = 'file' then
+        Usable := ReadPath(TJSONObject(Item).Pairs[Member].JsonValue, Path + '.file', FileName) and Usable
+      else if Key = 'anchor' then
+        Usable := ReadString(TJSONObject(Item).Pairs[Member].JsonValue, Path + '.anchor', Anchor) and Usable
+      else
+        Report(TAtlasTeamIssueKind.UnknownKey, Path + '.' + Key);
+    end;
+    if not Usable then
+      Continue;
+    if (Setting = '') or (FileName = '') then
+    begin
+      Report(TAtlasTeamIssueKind.InvalidValue, Path);
+      Continue;
+    end;
+    FTeam.Hidden := FTeam.Hidden + [TAtlasHiddenPlace.Create(Setting, FileName, Anchor)];
+  end;
+end;
+
 procedure TTeamReader.ReadCi(AValue: TJSONValue);
 var
   Index: Integer;
@@ -846,6 +900,8 @@ begin
       ReadCi(Value)
     else if Key = 'tracker' then
       ReadTracker(Value)
+    else if Key = TAtlasHiddenPlaces.Key then
+      ReadHidden(Value)
     else
     begin
       Report(TAtlasTeamIssueKind.UnknownKey, Key);
@@ -918,7 +974,7 @@ end;
 
 class function TAtlasTeamFile.Skeleton: string;
 const
-  Lines: array[0..29] of string = (
+  Lines: array[0..31] of string = (
     '{',
     '  // Projekteinstellungen von Atlas für alle im Team (eingecheckt). Persönliche',
     '  // Einstellungen stehen unter Tools > Optionen > Atlas; ein Wert aus dieser',
@@ -948,6 +1004,8 @@ const
     '  // Build-Server und Issue-Tracker; Benutzer und Token im Anmeldespeicher von Windows:',
     '  // "ci": {"provider": "jenkins", "url": "https://ci.example.com", "job": "projekt", "multibranch": false},',
     '  // "tracker": {"provider": "youtrack", "url": "https://example.youtrack.cloud", "project": "ATL"},',
+    '  // Im Editor ausgeblendete Elemente („Nur hier“ bzw. „In dieser Datei ausblenden“, #628):',
+    '  // "hidden": [{"setting": "BlockEndLabels", "file": "Source/Kunde.pas", "anchor": "TKunde.Speichern"}],',
     '}');
 var
   Line: string;
@@ -1042,6 +1100,7 @@ var
   Kind: TAtlasNamingKind;
   Item: TAtlasFormatFunction;
   Profile: TAtlasStartProfile;
+  Place: TAtlasHiddenPlace;
   Text: string;
 begin
   Result := nil;
@@ -1088,6 +1147,19 @@ begin
     if ATeam.Tracker.Project <> '' then
       Text := Text + ', ' + ATeam.Tracker.Project;
     Add('tracker', Text);
+  end;
+  if Length(ATeam.Hidden) > 0 then
+  begin
+    Text := '';
+    for Place in ATeam.Hidden do
+    begin
+      if Text <> '' then
+        Text := Text + ', ';
+      Text := Text + Place.Setting + ' ' + Place.FileName;
+      if Place.Anchor <> '' then
+        Text := Text + ' (' + Place.Anchor + ')';
+    end;
+    Add(TAtlasHiddenPlaces.Key, Text);
   end;
 end;
 

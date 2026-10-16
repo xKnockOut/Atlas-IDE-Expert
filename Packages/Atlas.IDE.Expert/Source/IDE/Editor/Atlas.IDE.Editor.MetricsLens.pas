@@ -14,7 +14,9 @@
 //   Überschreitungen als Problem.
 // Abschaltbar über die Einstellung „Code Lens mit Code-Metriken“
 // (codeLens.metrics, auch als Schnellschalter); die Server-Einstellung
-// codeLens.metrics in settings.json schaltet sie ebenfalls ab.
+// codeLens.metrics in settings.json schaltet sie ebenfalls ab. Ausblenden am
+// Element (#628): je Methode („Nur hier“, Anker = Name der Methode) oder je
+// Datei über .atlas.
 
 interface
 
@@ -87,8 +89,10 @@ uses
   Atlas.Core.Style.Palette,
   Atlas.Core.Editor.Pairs,
   Atlas.UI.Strings,
+  Atlas.Core.Editor.Elements,
   Atlas.IDE.Foundation.EditorBuffer,
-  Atlas.IDE.Foundation.Settings;
+  Atlas.IDE.Foundation.Settings,
+  Atlas.IDE.Foundation.Elements;
 
 const
   MetricsCommand = 'atlas.server.metrics';
@@ -296,6 +300,8 @@ begin
     // Nur, wenn die Zeile noch den Namen der Methode trägt (Text kann seit dem Abruf verschoben sein).
     if not TAtlasMetricsLens.LineMatches(Line, Method.Name) then
       Exit;
+    if TAtlasIdeElements.Hidden(TAtlasDrawnElement.CodeLensMetrics, Context.FileName, Method.Name) then
+      Exit;
     Text := TAtlasMetricsLens.Caption(Method, FMetrics.Limits, FFormats,
       TAtlasStrings.Text(TAtlasTextId.MetricsLensLimit));
     TabWidth := TAtlasEditorBuffer.TabWidth(Context.EditView.Buffer);
@@ -331,6 +337,8 @@ begin
       Canvas.RoundRect(Pill.Left, Pill.Top, Pill.Right, Pill.Bottom, 6, 6);
       Canvas.Brush.Style := bsClear;
       Canvas.TextOut(Pill.Left + 5, Pill.Top + 1, Text);
+      TAtlasIdeElements.Painted(TAtlasDrawnElement.CodeLensMetrics, Context.FileName, Context.LogicalLineNum - 1,
+        Method.Name, Pill, Context.EditView.TopRow, Rect.Height);
     finally
       Canvas.Font.Assign(OldFont);
       Canvas.Brush.Assign(OldBrush);

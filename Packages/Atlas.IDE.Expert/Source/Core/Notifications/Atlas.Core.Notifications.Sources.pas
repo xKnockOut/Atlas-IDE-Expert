@@ -36,6 +36,8 @@ type
     BuildServer = 'buildServer';
     /// <summary>Bauen beim Öffnen eines Projekts (build.onOpen): Ergebnis des Laufs.</summary>
     OpenBuild = 'openBuild';
+    /// <summary>Ausblenden direkt am Element (#628): „Ausgeblendet · Rückgängig“.</summary>
+    Hidden = 'hidden';
   public
     /// <summary>Bekannte Quellen in fester Reihenfolge (Optionsseite, Filter).</summary>
     class function Known: TArray<string>; static;
@@ -63,7 +65,7 @@ implementation
 
 class function TAtlasNotificationSources.Known: TArray<string>;
 begin
-  Result := [Build, Check, Reload, Server, ShortcutTips, BuildServer, OpenBuild];
+  Result := [Build, Check, Reload, Server, ShortcutTips, BuildServer, OpenBuild, Hidden];
 end;
 
 class function TAtlasNotificationSources.ModeName(AMode: TAtlasNotificationMode): string;

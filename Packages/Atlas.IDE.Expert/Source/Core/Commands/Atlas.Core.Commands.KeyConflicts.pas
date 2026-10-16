@@ -18,7 +18,7 @@
 //   (#775), des Wechsels Unit ⇄ Testunit (#189), des Fensters „Units
 //   suchen“ (#777, eigene Taste und Übernahme von Strg+F12) und von
 //   „Lesezeichen setzen…“ (#622, Strg+Alt+K) und des Erzeugen-Menüs (#719,
-//   Alt+Einfg). Ist eine Funktion
+//   Alt+Einfg) und von „Element ausblenden …“ (#628, Strg+.). Ist eine Funktion
 //   abgeschaltet, steht ihr Eintrag mit Disabled in der Liste: Atlas belegt die
 //   Taste dann nicht, also ist sie auch kein Konflikt.
 // Kürzel sind TShortCut-Werte (Word) wie in Vcl.Menus.
@@ -36,12 +36,12 @@ type
   /// der Willkommensseite, Deklaration ⇄ Implementierung mit zwei Tasten (#775), Unit ⇄ Testunit (#189), die
   /// eigene Taste für „Units suchen“, die Übernahme von Strg+F12 durch „Units suchen“ (#777) und „Lesezeichen
   /// setzen…“ (#622), das Erzeugen-Menü (#719), die Benachrichtigungen (#601) und die Schnellaktionen der
-  /// Willkommensseite „Öffnen und bauen“ und „Tests“ (#764). Neue Funktionen nur hinten anhängen: Die Ordnungszahl
-  /// steckt in Kennungen der Übersicht.</summary>
+  /// Willkommensseite „Öffnen und bauen“ und „Tests“ (#764) sowie „Element ausblenden …“ (#628). Neue Funktionen
+  /// nur hinten anhängen: Die Ordnungszahl steckt in Kennungen der Übersicht.</summary>
   TAtlasKeyFunction = (Palette, Check, Completion, Signature, QuickToggle, DiagnosticMode, CodeActions,
     ExpandSelection, ShrinkSelection, GoToImplementation, TypeDefinition, UndoChange, RedoChange, WelcomeSearch,
     MethodToggleUp, MethodToggleDown, TestUnit, UnitSearch, UnitSearchIde, Bookmark, GenerateMenu,
-    Notifications, WelcomeQuickBuild, WelcomeQuickTests);
+    Notifications, WelcomeQuickBuild, WelcomeQuickTests, HideElement);
   TAtlasKeyChoice = (UseAtlas, LeaveOther, OtherKey);
   /// <summary>NoKey: keine Taste; IdeKey: Taste der IDE über Code Insight, Atlas belegt nichts selbst;
   /// Free: Atlas belegt die freie Taste; AtlasWins: belegt, Atlas hat Vorrang; Left: belegt, Atlas
@@ -178,7 +178,10 @@ begin
     Create(TAtlasKeyFunction.WelcomeQuickBuild, Word(ASettings.WelcomePageQuickActionsBuildKey), True,
       ASettings.WelcomePage and ASettings.WelcomePageQuickActions),
     Create(TAtlasKeyFunction.WelcomeQuickTests, Word(ASettings.WelcomePageQuickActionsTestKey), True,
-      ASettings.WelcomePage and ASettings.WelcomePageQuickActions)];
+      ASettings.WelcomePage and ASettings.WelcomePageQuickActions),
+    // Ausblenden am Element (#628): nimmt die Taste nur auf einer Zeile mit Atlas-Element, sonst geht sie an die
+    // IDE weiter (Strg+. = IDE Insight); darum immer mit Vorrang, ohne fremde Belegung abzuschalten.
+    Create(TAtlasKeyFunction.HideElement, Word(ASettings.HideElementKey), True)];
 end;
 
 class procedure TAtlasKeyEntry.ToSettings(const AEntries: TArray<TAtlasKeyEntry>;
@@ -256,6 +259,8 @@ begin
         ASettings.WelcomePageQuickActionsBuildKey := Entry.Key;
       TAtlasKeyFunction.WelcomeQuickTests:
         ASettings.WelcomePageQuickActionsTestKey := Entry.Key;
+      TAtlasKeyFunction.HideElement:
+        ASettings.HideElementKey := Entry.Key;
       // Strg+F12 ist fest; ein- und ausgeschaltet wird über unitSearch.replaceIdeDialog.
       TAtlasKeyFunction.UnitSearchIde:
         ;

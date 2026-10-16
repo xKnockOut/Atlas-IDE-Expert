@@ -19,6 +19,9 @@
 //   Markierungen neu verankern, und zeichnet den Editor bei Bedarf neu.
 // Jede Schicht ist über ihre Einstellung (Wanted) abschaltbar und über ihr
 // Feature gesichert (#493): Fehler einer Schicht schalten nur diese ab.
+// Ausblenden am Element (#628): Jede Schicht nennt ihr Element; ein in .atlas
+// ausgeblendetes Symbol (Datei oder Zeilentext) entfällt, jedes gezeichnete
+// meldet sich bei TAtlasIdeElements.
 // Nur im Hauptthread verwenden.
 
 interface
@@ -36,6 +39,7 @@ uses
   Atlas.Core.Diagnostics.Guard,
   Atlas.Core.Style.Color,
   Atlas.Core.Style.Palette,
+  Atlas.Core.Editor.Elements,
   Atlas.UI.Notes.Tip;
 
 type
@@ -45,6 +49,8 @@ type
   public
     /// <summary>Sicherung (#493): Fehler gehen an dieses Feature; ist es abgeschaltet, ruht die Schicht.</summary>
     function Feature: TAtlasFeature; virtual; abstract;
+    /// <summary>Gezeichnetes Element für „Ausblenden“ (#628).</summary>
+    function Element: TAtlasDrawnElement; virtual; abstract;
     /// <summary>Einstellung an.</summary>
     function Wanted: Boolean; virtual; abstract;
     /// <summary>Oberer Editor zeigt AFileName mit AText: neu verankern. AOpened: Datei ist gerade nach vorn
@@ -153,7 +159,8 @@ uses
   System.Math,
   Atlas.Core.Projects.Summary,
   Atlas.IDE.Foundation.EditorBuffer,
-  Atlas.IDE.Foundation.EditorStyle;
+  Atlas.IDE.Foundation.EditorStyle,
+  Atlas.IDE.Foundation.Elements;
 
 { TAtlasIdeGutterMarks.TEvents }
 
@@ -449,6 +456,9 @@ begin
     try
       if not Layer.Wanted or not Layer.MarkAt(Context.FileName, Row.Line, LineText, HasText) then
         Continue;
+      // In .atlas ausgeblendet (#628): ganze Datei oder diese Codezeile.
+      if TAtlasIdeElements.Hidden(Layer.Element, Context.FileName, LineText) then
+        Continue;
       if not Prepared then
       begin
         // Farben einmal je Zeile aus dem Grund der Rinne.
@@ -476,6 +486,8 @@ begin
         OldBrush.Free;
       end;
       Row.Marks := Row.Marks + [Icon];
+      TAtlasIdeElements.Painted(Layer.Element, Context.FileName, Row.Line, LineText, Icon.Rect, Row.TopRow,
+        Rect.Height);
     except
       // Zeichnen darf die IDE nie stören.
       on E: Exception do
