@@ -123,6 +123,8 @@ jobs:
           ./Tools/Build-Docs.ps1 -OutDir "$dist\Doku"
           # „Projekt für Atlas einrichten“ (#759): Vorlagen für atlas.json im Ordner Vorlagen.
           Copy-Item 'Setup\Vorlagen' "$dist\Vorlagen" -Recurse
+          # Eingebaute Einstellungsprofile (#723), dieselben Dateien wie im Plugin (ProfileData).
+          Copy-Item 'Setup\Profile' "$dist\Profile" -Recurse
           Copy-Item 'Output\Win32\Release\Bpl\Atlas.IDE.Expert*.bpl' "$dist\Win32"
           Copy-Item 'Output\Win64\Release\Bpl\Atlas.IDE.Expert*.bpl' "$dist\Win64"
           if (-not (Get-ChildItem "$dist\Win32\*.bpl")) { throw 'Win32-BPL fehlt' }

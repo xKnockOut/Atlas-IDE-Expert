@@ -19,6 +19,14 @@
       Jeder Schlüssel der obersten Ebene braucht x-scope; ein Glied darf mit
       eigenem x-scope abweichen (gemischtes Objekt wie index, completion).
 
+    - schemas/atlas-plugin.schema.json: Katalog der Plugin-Einstellungen mit
+      x-key, x-area, x-page (#723). Wächter: genau die Namen aus
+      TAtlasPluginSettings.Save, Bereiche aus x-areas, x-key eindeutig. Jeder
+      globale Schlüssel in atlas.schema.json braucht x-area. Daraus entstehen
+      Atlas.Core.Settings.PluginSchemaData, der Abschnitt „Bereiche für Export,
+      Import und Zurücksetzen“ in Einstellungen.md und aus Setup/Profile/*.json
+      die Unit Atlas.Core.Settings.ProfileData (eingebaute Profile).
+
     Mit -Check wird nichts geschrieben; Exit-Code 1, wenn eine Datei veraltet ist
     oder der Parser abweicht.
 
@@ -45,6 +53,10 @@ $ParserPath = Join-Path $Root 'Packages/Atlas.Common/Source/Configuration/Atlas.
 $Utf8 = New-Object System.Text.UTF8Encoding($false)
 
 $Schema = Get-Content -Raw -Encoding utf8 $SchemaPath | ConvertFrom-Json -AsHashtable
+$PluginSchemaPath = Join-Path $Root 'schemas/atlas-plugin.schema.json'
+$PluginSchema = Get-Content -Raw -Encoding utf8 $PluginSchemaPath | ConvertFrom-Json -AsHashtable
+$PluginPath = Join-Path $Root 'Packages/Atlas.IDE.Expert/Source/Core/Settings/Atlas.Core.Settings.Plugin.pas'
+$ProfileFolder = Join-Path $Root 'Setup/Profile'
 
 function Has([hashtable] $Node, [string] $Key) { $Node.ContainsKey($Key) -and $null -ne $Node[$Key] }
 
@@ -195,6 +207,7 @@ foreach ($Name in $Schema['properties'].Keys) {
 [void]$Table.AppendLine('| Allgemein | Atlas-Änderungen über mehrere Dateien zurücknehmen: an/aus (`undo.multiFile`), Anzahl Sätze (`undo.multiFile.depth`), über Neustarts sichern (`undo.multiFile.persist`) bis höchstens MB (`undo.multiFile.maxSizeMb`), bei Konflikten (`undo.multiFile.onConflict`: partial, abort), neu angelegte Dateien (`undo.multiFile.newFiles`: recycleBin, delete, keep), Tasten Zurücknehmen und Wiederherstellen | an, 20, an, 50, partial, recycleBin, Strg+Alt+Z, Strg+Alt+Umschalt+Z | Plugin (Registry `UndoMultiFile`, `UndoMultiFileDepth`, `UndoMultiFilePersist`, `UndoMultiFileMaxSizeMb`, `UndoMultiFileOnConflict`, `UndoMultiFileNewFiles`, `UndoKey`, `RedoKey`); Sicherung in `%LOCALAPPDATA%\Atlas\undo` | nein | Kontrollkästchen, Zahl (1–200), Kontrollkästchen, Zahl (1–1024), Auswahl, Auswahl, Tastenkürzel, Tastenkürzel | #721 |')
 [void]$Table.AppendLine('| Allgemein | Nach Zustimmung beim ersten Start höchstens einmal täglich auf eine neue Atlas-Version prüfen (`updates.check`); übertragen werden nur Atlas- und IDE-Version, ein Hinweis erscheint in der Meldungsansicht und als gelbe Zeile „Version“ im Statusfeld und in der Zustandskachel | aus | Plugin (Registry `UpdatesCheck`); Zustand (auch die gefundene neue Version) in `%LOCALAPPDATA%\Atlas\updates.json` | nein | Kontrollkästchen | #495 |')
 [void]$Table.AppendLine('| Allgemein | Fehlerbericht (*Atlas › Fehlerbericht erstellen…*) anonymisieren: Pfade unter dem Projekt zu `<ws>`, andere Pfade zu `<pfad>`, Benutzername und Bezeichner im Protokoll ersetzen (`diagnostics.bugReport.anonymize`) | an | Plugin (Registry `BugReportAnonymize`) | nein | Kontrollkästchen | #108 |')
+[void]$Table.AppendLine('| Allgemein | Einstellungen exportieren, importieren und zurücksetzen (`settings.exportImport`, Schnellschalter): Knöpfe unten auf *Tools › Optionen › Atlas* und Befehle *Atlas.SettingsExport*, *Atlas.SettingsImport*, *Atlas.SettingsProfile*, *Atlas.SettingsReset* (Befehlspalette) sowie `AtlasSetup.exe /exportSettings`, `/importSettings`, `/resetSettings`; geänderte Werte mit Punkt am Feld (`settings.markModified`), Sicherung in `%APPDATA%\Atlas\Backups` vor jedem Import (`settings.backupBeforeImport`), Zugangsdaten auslassen oder als Platzhalter (`settings.exportSecrets`: omit, placeholder); Bereiche siehe unten | an, an, an, omit | Plugin (Registry `SettingsExportImport`, `SettingsMarkModified`, `SettingsBackupBeforeImport`, `SettingsExportSecrets`) | nein | Kontrollkästchen, Auswahl, Knöpfe „Exportieren…“, „Importieren…“, „Profil laden…“, „Seite zurücksetzen“, „Alles zurücksetzen…“, Kontextmenü „Auf Standard zurücksetzen“ | #723 |')
 [void]$Table.AppendLine('| Vervollständigung | Favoriten anheften (`completion.favorites`, Schnellschalter): Strg+D in der offenen Liste oder Klick auf den Stern, der beim Überfahren einer Zeile erscheint, heftet den Eintrag an bzw. löst ihn; angeheftete Einträge stehen mit Stern links vor allen anderen Gruppen, unabhängig von Lernen und Rangfolge, aber nur, wenn sie zum getippten Präfix passen; je Paar (Typ, Member) wie die lernende Gewichtung, höchstens 5 je Typ (ein sechster ersetzt nichts, die Fußzeile nennt den Grund); Liste mit „Entfernen“ und „Alle entfernen“ auf der Optionsseite | an | Plugin (Registry `Favorites`); Favoriten in `%APPDATA%\Atlas\favorites.json` (Typ, Member, Art, Unit, Signatur, Zeitpunkt; lesbar ohne Server) | nein | Kontrollkästchen, Liste mit Knöpfen | #458 |')
 [void]$Table.AppendLine('| Editor | Zwischen Unit und Testunit wechseln: Code Lens über der Zeile `unit …;` (`codeLens.testUnit`) und Tastenkürzel (Befehl auch im Atlas-Menü, Kontextmenü und in der Befehlspalette) | an, keins | Plugin (Registry `CodeLensTestUnit`, `TestUnitKey`) | nein | Kontrollkästchen, Tastenkürzel | #189 |')
 [void]$Table.AppendLine('| Editor | Code Lens „Test ausführen“ (`codeLens.tests`, Schnellschalter; gemeinsamer Schlüssel mit „Test debuggen“ #585): hinter `[TestFixture]` und `[Test]`/`[TestCase]` (bzw. der Deklaration registrierter Fixtures und published-Methoden) eine Marke mit dem Ergebnis des letzten Laufs (bestanden grün, fehlgeschlagen rot, während eines Laufs „Tests laufen …“); Klick startet den Test bzw. alle Tests der Fixture; ein `[TestCase]` in eigener Zeile hat eine eigene Marke „Fall ausführen“ (#585); daneben „Debuggen“, wenn „Test debuggen“ an ist. Braucht „Tests ausführen“; aus = keine Marken, weder „Test ausführen“ noch „Debuggen“ | an | Plugin (Registry `CodeLensTests`) | nein | Kontrollkästchen | #69 |')
@@ -230,6 +243,53 @@ foreach ($Name in $Schema['properties'].Keys) {
 [void]$Table.AppendLine('| Units suchen | Aktionsleiste (`unitSearch.actions`) | an | Plugin (Registry `UnitSearchActions`) | nein | Kontrollkästchen | #777 |')
 [void]$Table.AppendLine('| Units suchen | Aktion „In uses aufnehmen“ (`unitSearch.actions.addUses`) | an | Plugin (Registry `UnitSearchActionsAddUses`) | nein | Kontrollkästchen | #777 |')
 [void]$Table.AppendLine('| Willkommensseite | Atlas-Bereiche auf der Willkommensseite (`welcomePage.enabled`, Schnellschalter), anzeigen in (`welcomePage.host`: welcomePage, dockWindow = Fenster „Atlas-Start“), Atlas-Layout (`welcomePage.layout`: off, atlas; mit Sicherung des bisherigen Layouts, *Atlas › Atlas-Layout anwenden/zurücksetzen*), Kopf mit Symbol und Version (`welcomePage.header`), Grußzeile (`welcomePage.greeting`), Suchfeld im Kopf (`welcomePage.search`), Gruppe „Symbole“ darin (`welcomePage.search.symbols`, braucht laufenden Server), Taste für das Suchfeld (`welcomePage.search.key`, nur auf der Willkommensseite), Karte „Neu in Atlas“ (`welcomePage.whatsNew`: off = nie, afterUpdate = einmalig nach einem Update, always = immer), Bereich „Weiterarbeiten“ mit den letzten Arbeitsständen (Reiter, zuletzt bearbeitete Datei und Methode, „Fortsetzen“ öffnet Projekt und Reiter und setzt den Cursor an die letzte Änderung; *Atlas.Continue* in der Palette) (`welcomePage.continue`; aus = kein Bereich, nichts wird mitgeschrieben), höchstens so viele Arbeitsstände (`welcomePage.continue.count`, 1–20), „Neu seit deinem letzten Öffnen“ mit eingehenden Commits zu den eigenen Dateien aus dem lokalen Stand der Remote-Branches (`welcomePage.continue.incoming`), vorher abrufen (`welcomePage.continue.fetch`: fetch im Hintergrund, 5 s, ohne Rückfrage nach Zugangsdaten), Reiter „Gemerkt“ mit Notizen, Lesezeichen und Favoriten aller Projekte (`welcomePage.saved`), Bereich „Projekte“ mit Zustand je Projekt (`welcomePage.projectStatus`), höchstens so viele Projekte (`welcomePage.maxProjects`, 1–30), Branch und Änderungen frisch abfragen (`welcomePage.refreshVcs`), Bereich „Projektverlauf“ mit einer Linie je Reihe über die letzten Builds des in „Projekte“ gewählten (sonst obersten) Projekts, letzter Wert, Vorwert, Lücke für unbekannte Werte, Klick auf einen Punkt zeigt Build, Datum, Branch und Commit; Klick auf eine Projektzeile wählt sie dann, Doppelklick öffnet (`welcomePage.trends`; aus = kein Bereich, keine neuen Messpunkte, Klick öffnet wieder), gespeicherte und gezeigte Builds je Projekt (`welcomePage.trends.points`, 2–100), gezeigte Reihen (`welcomePage.trends.series`: Liste aus warnings, ruleHits, todos, duration, methodLength), Bereich „Nicht gesichert“ mit nicht Committetem, nicht Gepushtem und Stashes je Projekt (`welcomePage.unsaved`), erst ab so vielen Stunden zeigen (`welcomePage.unsaved.minAgeHours`, 0–8760), gelb ab (`welcomePage.unsaved.warnHours`, 0–8760), rot ab (`welcomePage.unsaved.alertHours`, 0–8760, nie unter warnHours), Bereich ausblenden, wenn alles gesichert ist (`welcomePage.unsaved.hideWhenClean`; sonst Zeile „Alles gesichert“), Zustandskachel „Atlas“ mit Server, Version, Index, Einrichtung und Diagnosemodus (`welcomePage.statusTile`), Kachel nur bei einer gelben oder roten Zeile (`welcomePage.statusTile.onlyProblems`), Karte „Atlas entdecken“ mit einem Tipp je Start aus `tips.json` der Installation, Bild, tatsächlichem Kürzel und „Noch nie benutzt“/„Zuletzt vor 3 Wochen“, Knöpfe „Ausprobieren“, „Nächster Tipp“, „Nicht mehr zeigen“ (`welcomePage.discover`; zuerst eingeschaltete, nie benutzte Funktionen, dann lange nicht benutzte; abgeschaltete nie), Nutzung je Befehl lokal zählen (`tips.usageTracking`; aus = Tipps der Reihe nach, es wird nichts gezählt), Knöpfe „Zählung zurücksetzen“ und „Gesperrte Tipps wieder zeigen“, Bereich „Hilfe und Rückmeldung“ mit „Atlas-Doku“ (lokale HTML-Doku `Doku\index.html` der Installation, sonst die Doku-Seite des Repositorys), „Tastenkürzel“ (Übersicht aus #520, ausgegraut mit `keys.overview` aus) und „Problem melden …“ (Dialog: Kurzbeschreibung, Häkchen für Logs, Versionen, Einstellungen ohne Pfade und letzte Diagnosedaten, Vorschau jeder Datei, „ZIP anlegen“ schreibt `Atlas-Diagnose-<Datum>.zip` und zeigt sie im Explorer, „Issue-Seite öffnen“ legt die Vorlage in die Zwischenablage und öffnet die Seite im Browser; Atlas sendet nichts) (`welcomePage.help`), Ziel für „Issue-Seite öffnen“ (`welcomePage.help.reportUrl`, nur http:// oder https://, sonst die Vorgabe), Ordner für das Diagnosepaket (`welcomePage.help.reportFolder`, leer = Desktop), Karte „<Projekt> für Atlas einrichten“ für das aktive bzw. zuletzt geöffnete Projekt mit den Schritten atlas.json anlegen (Vorlage „Bestehendes Projekt“, „Neues Projekt, streng“ oder „Altprojekt mit Baseline“ aus dem Ordner `Vorlagen` der Installation, vorher gegen das Schema geprüft und gezeigt), Baseline erzeugen (#97) und Suchpfade und Defines prüfen (fehlende Units aus uses, Defines ohne Quelle; Klick öffnet die Projektoptionen), jeder Schritt nur auf Klick, „Für dieses Projekt nicht mehr fragen“ dauerhaft, *Atlas.ProjectSetup* in der Palette fragt wieder (`welcomePage.projectSetup`, Schnellschalter; aus = keine Karte, keine Knöpfe, kein Befehl), Knöpfe „Neu mit Atlas“ (Unit, Formular, Testklasse) öffnen das Erzeugen-Menü mit den Dateivorlagen und legen die Datei im aktuellen Projekt an (`welcomePage.newFromTemplate`), Bereich „Testergebnisse“ mit einer Zeile je Projekt aus dem letzten DUnitX-Lauf in der IDE (#69: Ampel, Marke „2 fehlgeschlagen“ bzw. „alle 57 ok“, bestanden, übersprungen, Dauer, Zeit), darunter die fehlgeschlagenen Tests des gewählten Projekts mit Meldung und Datei:Zeile, Doppelklick öffnet Projekt und Test, „Fehlgeschlagene erneut ausführen“ startet genau diese Tests, „Im Debugger“ den gewählten (#585) (`welcomePage.tests`), höchstens so viele Fehlschläge (`welcomePage.tests.maxFailures`, 1–50), Ergebnisse vom Build-Server (`welcomePage.tests.ci`; Server, Job und Multibranch aus dem Abschnitt `ci` der `.atlas`, bei Multibranch der Job des aktuellen Branches; REST `…/lastCompletedBuild/api/json` und `…/testReport/api/json`; zweite Zeile „Jenkins #482 · 2 fehlgeschlagen · vor 40 Min. · main“, Server-Fehlschläge in derselben Liste mit Marke „Server“, „lokal grün, Server rot“ hervorgehoben, „Im Browser“ öffnet die Seite des Builds; abgefragt beim Anzeigen im Hintergrund mit 5 s Zeitgrenze; nicht erreichbar = letzter Stand mit „Stand vom …“, kein Dialog; aus = kein Netzzugriff, `.atlas` wird dafür nicht gelesen), Anbieter, wenn die `.atlas` keinen nennt (`welcomePage.tests.ci.provider`: jenkins), höchstens alle so viele Minuten je Job (`welcomePage.tests.ci.intervalMinutes`, 1–1440, auch nach einem Fehler und über einen Neustart hinweg), Hinweis in der Benachrichtigungszentrale, wenn ein neuer Build rot wird (`welcomePage.tests.ci.notify`, Quelle `buildServer`, mit „Im Browser“), Befehl „Zugang zum Build-Server hinterlegen …“ (*Atlas.CiLogin*, Schnellschalter; auch im Kontextmenü des Bereichs): Benutzer und API-Token für den Server aus der `.atlas` des aktiven Projekts im Anmeldespeicher von Windows (Ziel `Atlas:ci:<Server>`), das Token verdeckt eingegeben, beide Felder leer entfernt den Zugang; angemeldet wird nur über https und nur beim eingetragenen Server, Weiterleitungen nur auf denselben Rechner; Adresse, Job, Benutzer und Token kommen nie ins Protokoll, Schnellaktionen je Projekt in „Projekte“ und „Weiterarbeiten“: Knöpfe in der Zeile unter der Maus bzw. der Tastatur „Öffnen und bauen ▾“ (öffnet Projekt bzw. Gruppe wie die IDE und baut mit der zuletzt benutzten oder gewählten Konfiguration und Plattform, Release-Wächter #533 gilt), „Tests“ (baut das zugehörige DUnitX-Testprojekt und führt es aus, #69; Ergebnis auch in „Testergebnisse“), „Startprofil ▾“ (#575), „Pull“ bzw. bei SVN „Aktualisieren“ (nur vorwärts, gesperrt bei lokalen Änderungen: „Erst lokale Änderungen sichern“), „Ordner“ (Explorer) und „Konsole“; Fortschritt „baut … 12 s“ in der Zeile, Ergebnis als Marke; ohne Maus über Pfeiltasten, Enter, Alt+↓ und Kontextmenütaste (`welcomePage.quickActions`, Schnellschalter; aus = keine Knöpfe, die Tasten bleiben bei der IDE), gezeigte Knöpfe (`welcomePage.quickActions.items`: Liste aus build, tests, run, pull, folder, console), Programm für „Konsole“ im Projektordner (`welcomePage.quickActions.console`; ohne Windows-Terminal cmd.exe), Taste für „Öffnen und bauen“ (`welcomePage.quickActions.buildKey`) und für „Tests“ (`welcomePage.quickActions.testKey`), beide nur in einer Zeile mit Fokus, Bereich „Meine Issues · <Projekt>“ mit den mir zugewiesenen offenen Issues aus dem Tracker der `.atlas` des in „Projekte“ gewählten, sonst des aktiven Projekts (Abschnitt `tracker`; GitHub: Vorgabe-Abfrage `assignee:@me state:open`, Kennung `#123`, Labels und verknüpfter Pull Request mit CI-Ampel; YouTrack: Vorgabe `for: me #Unresolved`, Kennung `ATL-123`, Zustand, Priorität und Sprint), Klick auf die Kennung öffnet das Issue im Browser, abgefragt beim Anzeigen höchstens alle 10 Minuten im Hintergrund mit 5 s Zeitgrenze, nicht erreichbar = letzter Stand mit „Stand vom …“, kein Dialog; „Beginnen“ legt unter Git den Branch nach Muster von der Basis an und checkt ihn aus (vorhandener Branch: nur auschecken; bei lokalen Änderungen fragt Atlas vorher), unter SVN `svn copy ^/trunk ^/branches/<Name>` und `svn switch`, und öffnet danach das Projekt; das aktuelle Issue steht im Atlas-Statusfeld (Zeile `atlas.issue`, Klick beendet es nach Rückfrage) (`welcomePage.issues`, Schnellschalter; aus = kein Bereich, kein Netzzugriff), Anbieter (`welcomePage.issues.tracker`: leer = aus der `.atlas`, github, youtrack), Abfrage (`welcomePage.issues.query`, leer = Vorgabe des Anbieters), „Beginnen“ (`welcomePage.issues.start`: branch, remember = nur Kennung merken), Branch-Muster (`welcomePage.issues.branchPattern` mit `{kennung}`, `{nummer}` und `{kurztitel}` = erste drei Wörter, klein, Umlaute ersetzt, mit Bindestrichen; leer = `feature/{kennung}-{kurztitel}`, unter SVN `{kennung}-{kurztitel}`), Basis (`welcomePage.issues.branchBase`, leer = main, sonst master; SVN trunk), Präfix für Commit-Nachrichten, solange ein Issue aktuell ist (`welcomePage.issues.commitPattern`, leer = aus; im Commit-Dialog der IDE und nach einmaliger Zustimmung je Projekt über den Git-Hook `prepare-commit-msg`, der den Präfix aus `.git/atlas-commit-prefix` liest; einen fremden Hook ändert Atlas nie), Befehl „Zugang zum Issue-Tracker hinterlegen …“ (*Atlas.TrackerLogin*, Schnellschalter; auch im Kontextmenü des Bereichs): Token für den Tracker aus der `.atlas` des aktiven Projekts im Anmeldespeicher von Windows (Ziel `Atlas:tracker:<Server>`), verdeckt eingegeben, leer entfernt es; gesendet als „Authorization: Bearer“ nur über https an den Tracker; Adresse, Projekt, Kennungen, Titel und Token kommen nie ins Protokoll | an, welcomePage, off, an, an, an, an, Strg+E, afterUpdate, an, 5, an, aus, an, an, 8, an, an, 30, alle fünf, an, 0, 24, 72, aus, an, aus, an, an, an, Issue-Seite des Atlas-Repositorys, Desktop, an, an, an, 5, aus, jenkins, 10, an, an, an, alle sechs, wt.exe, Strg+B, Strg+T, aus, leer, leer, branch, leer, leer, `{kennung} `, an | Plugin (Registry `WelcomePage`, `WelcomePageHost`, `WelcomePageLayout`, `WelcomePageHeader`, `WelcomePageGreeting`, `WelcomePageSearch`, `WelcomePageSearchSymbols`, `WelcomePageSearchKey`, `WelcomePageWhatsNew`, `WelcomePageContinue`, `WelcomePageContinueCount`, `WelcomePageContinueIncoming`, `WelcomePageContinueFetch`, `WelcomePageSaved`, `WelcomePageProjectStatus`, `WelcomePageMaxProjects`, `WelcomePageRefreshVcs`, `WelcomePageTrends`, `WelcomePageTrendsPoints`, `WelcomePageTrendsSeries`, `WelcomePageUnsaved`, `WelcomePageUnsavedMinAgeHours`, `WelcomePageUnsavedWarnHours`, `WelcomePageUnsavedAlertHours`, `WelcomePageUnsavedHideWhenClean`, `WelcomePageStatusTile`, `WelcomePageStatusTileOnlyProblems`, `WelcomePageDiscover`, `TipsUsageTracking`, `WelcomePageHelp`, `WelcomePageHelpReportUrl`, `WelcomePageHelpReportFolder`, `WelcomePageProjectSetup`, `WelcomePageNewFromTemplate`, `WelcomePageTests`, `WelcomePageTestsMaxFailures`, `WelcomePageTestsCi`, `WelcomePageTestsCiProvider`, `WelcomePageTestsCiIntervalMinutes`, `WelcomePageTestsCiNotify`, `CiLogin`, `WelcomePageQuickActions`, `WelcomePageQuickActionsItems`, `WelcomePageQuickActionsConsole`, `WelcomePageQuickActionsBuildKey`, `WelcomePageQuickActionsTestKey`, `WelcomePageIssues`, `WelcomePageIssuesTracker`, `WelcomePageIssuesQuery`, `WelcomePageIssuesStart`, `WelcomePageIssuesBranchPattern`, `WelcomePageIssuesBranchBase`, `WelcomePageIssuesCommitPattern`, `TrackerLogin`; gesehene Version in `WhatsNewSeen`); Zählung je Befehl (nur Kennung, Zähler, Datum, nichts wird versendet) in `%LOCALAPPDATA%\Atlas\usage.json`, gesperrte und zuletzt gezeigter Tipp im Abschnitt `discover` von `%LOCALAPPDATA%\Atlas\shortcut-tips.json`; Sicherung in `%LOCALAPPDATA%\Atlas\welcomepage-layout-backup.json`, Projektzustand (auch Abschnitte `unsaved`, `continue`, `trends`, `setup`, `tests`, `ci` und `issues`, die beiden letzten mit letztem Stand, Zeit des letzten Versuchs und Fehlerart, ohne Zugang; `issues` auch mit aktuellem Issue und Zustimmung zum Git-Hook) in `%LOCALAPPDATA%\Atlas\projects\<Schlüssel>.json`, letzter Index-Stand der Kachel („Stand vom …“) in `%LOCALAPPDATA%\Atlas\index-state.json` | nein | Kontrollkästchen, Auswahl, Kontrollkästchen, Kontrollkästchen, Kontrollkästchen, Kontrollkästchen, Kontrollkästchen, Tastenfeld, Auswahl, Kontrollkästchen, Zahl (1–20), Kontrollkästchen, Kontrollkästchen, Kontrollkästchen, Kontrollkästchen, Zahl (1–30), Kontrollkästchen, Kontrollkästchen, Zahl (2–100), fünf Kontrollkästchen, Kontrollkästchen, Zahl (0–8760), Zahl (0–8760), Zahl (0–8760), Kontrollkästchen, Kontrollkästchen, Kontrollkästchen, Kontrollkästchen, Kontrollkästchen, Knopf, Knopf, Kontrollkästchen, Textfeld, Textfeld mit „…“, Kontrollkästchen, Kontrollkästchen, Kontrollkästchen, Zahl (1–50), Kontrollkästchen, Auswahl, Zahl (1–1440), Kontrollkästchen, Kontrollkästchen, Kontrollkästchen, sechs Kontrollkästchen, Textfeld, Tastenfeld, Tastenfeld, Kontrollkästchen, Auswahl, Textfeld, Auswahl, Textfeld, Textfeld, Textfeld, Kontrollkästchen | #753, #760, #756, #755, #592, #758, #762, #754, #757, #766, #759, #763, #764, #765 |')
+
+# --- Bereiche für Export, Import und Zurücksetzen (#723) ---
+$AreaKeys = [ordered]@{}
+foreach ($Area in $PluginSchema['x-areas'].PSBase.Keys) { $AreaKeys[$Area] = New-Object System.Collections.Generic.List[string] }
+$Skipped = New-Object System.Collections.Generic.List[string]
+$PluginKeys = @{}
+foreach ($Name in $PluginSchema['properties'].Keys) {
+    $P = $PluginSchema['properties'][$Name]
+    if (-not (Has $P 'x-key')) { continue }
+    $PluginKeys[$P['x-key']] = $Name
+    if (((Has $P 'x-state') -and $P['x-state']) -or ((Has $P 'x-machine') -and $P['x-machine'])) { $Skipped.Add('`' + $P['x-key'] + '`'); continue }
+    if ((Has $P 'x-area') -and $AreaKeys.Contains($P['x-area'])) { $AreaKeys[$P['x-area']].Add('`' + $P['x-key'] + '`') }
+}
+foreach ($Name in $Schema['properties'].Keys) {
+    if ($Name -eq '$schema') { continue }
+    $P = $Schema['properties'][$Name]
+    $Scope = Scope-Of $P ''
+    $Leaves = @()
+    if (Has $P 'properties') {
+        foreach ($Sub in $P['properties'].Keys) {
+            $S = $P['properties'][$Sub]
+            if ('global', 'both' -cnotcontains (Scope-Of $S $Scope)) { continue }
+            $Area = if (Has $S 'x-area') { $S['x-area'] } elseif (Has $P 'x-area') { $P['x-area'] } else { '' }
+            $Leaves += , @("$Name.$Sub", $Area, ((Has $S 'x-machine') -or (Has $P 'x-machine')))
+        }
+    }
+    elseif ('global', 'both' -ccontains $Scope) {
+        $Area = if (Has $P 'x-area') { $P['x-area'] } else { '' }
+        $Leaves += , @($Name, $Area, (Has $P 'x-machine'))
+    }
+    foreach ($Leaf in $Leaves) {
+        if ($PluginKeys.ContainsKey($Leaf[0])) { continue }
+        if ($Leaf[2]) { $Skipped.Add('`' + $Leaf[0] + '`'); continue }
+        if ($AreaKeys.Contains($Leaf[1])) { $AreaKeys[$Leaf[1]].Add('`' + $Leaf[0] + '`') }
+    }
+}
+[void]$Table.AppendLine()
+[void]$Table.AppendLine('## Bereiche für Export, Import und Zurücksetzen')
+[void]$Table.AppendLine()
+[void]$Table.AppendLine('*Tools › Optionen › Atlas*, die Befehlspalette und `AtlasSetup.exe` exportieren, importieren und setzen Einstellungen je Bereich zurück (#723, abschaltbar mit `settings.exportImport`). Den Bereich bestimmt `x-area` im Schema: je Plugin-Einstellung im Katalog `schemas/atlas-plugin.schema.json`, je globalem Schlüssel in `atlas.schema.json`. Neue Einstellungen gehören damit ohne weitere Liste dazu. Die Exportdatei `atlas-settings.json` enthält nur geänderte Werte, keine Zugangsdaten (`settings.exportSecrets`: auslassen oder Platzhalter) und keine Pfade mit Benutzernamen (Benutzerordner werden zu `$(APPDATA)`, `$(LOCALAPPDATA)`, `$(USERPROFILE)`). Projekt- und Teamwerte (`atlas.json`, `.atlas`) werden weder exportiert noch beim Import überschrieben.')
+[void]$Table.AppendLine()
+[void]$Table.AppendLine('| Bereich | Schlüssel |')
+[void]$Table.AppendLine('|---|---|')
+foreach ($Area in $AreaKeys.PSBase.Keys) {
+    [void]$Table.AppendLine("| $($PluginSchema['x-areas'][$Area]['caption']) (``$Area``) | $($AreaKeys[$Area] -join ', ') |")
+}
+[void]$Table.AppendLine("| nicht exportiert (Zustand, nur dieser Rechner) | $($Skipped -join ', ') |")
 $TableText = $Table.ToString().Replace("`r`n", "`n")
 
 # --- Wächter: Schlüssel im Parser ---
@@ -265,6 +325,39 @@ foreach ($Name in $SchemaKeys) {
     }
 }
 
+# --- Wächter: Katalog der Plugin-Einstellungen (#723) ---
+$PluginText = [IO.File]::ReadAllText($PluginPath, $Utf8)
+$SaveNames = @([regex]::Matches($PluginText, "Write(?:Integer|String)\('(\w+)'") | ForEach-Object { $_.Groups[1].Value })
+$CatalogNames = @($PluginSchema['properties'].Keys)
+foreach ($Name in $SaveNames) { if ($CatalogNames -cnotcontains $Name) { $Problems.Add("Plugin-Katalog: ""$Name"" aus TAtlasPluginSettings.Save fehlt in schemas/atlas-plugin.schema.json") } }
+foreach ($Name in $CatalogNames) { if ($SaveNames -cnotcontains $Name) { $Problems.Add("Plugin-Katalog: ""$Name"" wird in TAtlasPluginSettings.Save nicht geschrieben") } }
+$SeenKeys = @{}
+foreach ($Name in $CatalogNames) {
+    $P = $PluginSchema['properties'][$Name]
+    foreach ($Meta in 'type', 'default', 'x-key', 'x-area', 'x-page') {
+        if (-not $P.ContainsKey($Meta)) { $Problems.Add("Plugin-Katalog: ""$Name"" ohne $Meta") }
+    }
+    if ((Has $P 'x-area') -and -not $PluginSchema['x-areas'].Contains($P['x-area'])) { $Problems.Add("Plugin-Katalog: ""$Name"" mit unbekanntem Bereich ""$($P['x-area'])""") }
+    if (Has $P 'x-key') {
+        if ($SeenKeys.ContainsKey($P['x-key'])) { $Problems.Add("Plugin-Katalog: x-key ""$($P['x-key'])"" doppelt ($($SeenKeys[$P['x-key']]), $Name)") }
+        else { $SeenKeys[$P['x-key']] = $Name }
+    }
+}
+foreach ($Name in $Schema['properties'].Keys) {
+    if ($Name -eq '$schema') { continue }
+    $P = $Schema['properties'][$Name]
+    $Scope = Scope-Of $P ''
+    if (('global', 'both' -ccontains $Scope) -and -not (Has $P 'x-area')) { $Problems.Add("Schema: globaler Schlüssel ""$Name"" ohne x-area (Bereich für Export und Import, #723)") }
+    if ((Has $P 'x-area') -and -not $PluginSchema['x-areas'].Contains($P['x-area'])) { $Problems.Add("Schema: ""$Name"" mit unbekanntem Bereich ""$($P['x-area'])""") }
+    if (Has $P 'properties') {
+        foreach ($Sub in $P['properties'].Keys) {
+            $S = $P['properties'][$Sub]
+            if (('global', 'both' -ccontains (Scope-Of $S $Scope)) -and -not (Has $S 'x-area') -and -not (Has $P 'x-area')) { $Problems.Add("Schema: globaler Schlüssel ""$Name.$Sub"" ohne x-area") }
+            if ((Has $S 'x-area') -and -not $PluginSchema['x-areas'].Contains($S['x-area'])) { $Problems.Add("Schema: ""$Name.$Sub"" mit unbekanntem Bereich ""$($S['x-area'])""") }
+        }
+    }
+}
+
 # --- Schreiben oder prüfen ---
 $Targets = @(
     @{ Path = $DocPath; Text = $Text; Name = 'docs/Konfiguration.md' },
@@ -279,35 +372,77 @@ foreach ($Target in $Targets) {
         Write-Host "Geschrieben: $($Target.Path)"
     }
 }
-# --- Schema für den Einstellungsdialog im Plugin (#227): UTF-8 mit BOM, CRLF ---
-$SchemaUnitPath = Join-Path $Root 'Packages/Atlas.IDE.Expert/Source/Core/Settings/Atlas.Core.Settings.SchemaData.pas'
-$SchemaLines = [IO.File]::ReadAllText($SchemaPath, $Utf8).TrimStart([char]0xFEFF).Replace("`r`n", "`n").TrimEnd("`n").Split("`n")
-$Unit = New-Object System.Text.StringBuilder
-foreach ($Line in @(
-    'unit Atlas.Core.Settings.SchemaData;', '',
-    '// Erzeugt von Tools/Update-ConfigDoc.ps1 aus schemas/atlas.schema.json;',
-    '// nicht von Hand ändern. JSON-Schema von atlas.json für den Einstellungsdialog (#227).', '',
-    'interface', '', '/// <summary>Inhalt von atlas.schema.json.</summary>', 'function AtlasSchemaJson: string;', '',
-    'implementation', '', 'const', "  Lines: array[0..$($SchemaLines.Count - 1)] of string = (")) { [void]$Unit.Append($Line + "`r`n") }
-for ($Index = 0; $Index -lt $SchemaLines.Count; $Index++) {
-    $Escaped = $SchemaLines[$Index].Replace("'", "''")
-    $Pieces = @()
-    for ($At = 0; $At -lt $Escaped.Length; $At += 200) { $Pieces += "'" + $Escaped.Substring($At, [Math]::Min(200, $Escaped.Length - $At)) + "'" }
-    if ($Pieces.Count -eq 0) { $Pieces = @("''") }
-    $End = if ($Index -eq $SchemaLines.Count - 1) { ');' } else { ',' }
-    [void]$Unit.Append('    ' + ($Pieces -join ' + ') + $End + "`r`n")
+# --- Pascal-Units mit eingebettetem JSON: UTF-8 mit BOM, CRLF ---
+function Pascal-Lines([string] $Name, [string] $Source) {
+    $Lines = $Source.TrimStart([char]0xFEFF).Replace("`r`n", "`n").TrimEnd("`n").Split("`n")
+    $Result = @("  $Name`: array[0..$($Lines.Count - 1)] of string = (")
+    for ($Index = 0; $Index -lt $Lines.Count; $Index++) {
+        $Escaped = $Lines[$Index].Replace("'", "''")
+        $Pieces = @()
+        for ($At = 0; $At -lt $Escaped.Length; $At += 200) { $Pieces += "'" + $Escaped.Substring($At, [Math]::Min(200, $Escaped.Length - $At)) + "'" }
+        if ($Pieces.Count -eq 0) { $Pieces = @("''") }
+        $End = if ($Index -eq $Lines.Count - 1) { ');' } else { ',' }
+        $Result += '    ' + ($Pieces -join ' + ') + $End
+    }
+    return $Result
 }
-foreach ($Line in @('', 'function AtlasSchemaJson: string;', 'var', '  Line: string;', 'begin', "  Result := '';",
-    '  for Line in Lines do', '    Result := Result + Line + #10;', 'end;', '', 'end.')) { [void]$Unit.Append($Line + "`r`n") }
-$UnitText = $Unit.ToString()
-$CurrentUnit = if (Test-Path $SchemaUnitPath) { [IO.File]::ReadAllText($SchemaUnitPath, $Utf8).TrimStart([char]0xFEFF) } else { '' }
-if ($CurrentUnit -ne $UnitText) {
-    if ($Check) { $Problems.Add('Atlas.Core.Settings.SchemaData.pas ist veraltet: pwsh Tools/Update-ConfigDoc.ps1 ausführen') }
+function Sync-Unit([string] $Path, [string[]] $Lines) {
+    $Text = ($Lines -join "`r`n") + "`r`n"
+    $Current = if (Test-Path $Path) { [IO.File]::ReadAllText($Path, $Utf8).TrimStart([char]0xFEFF) } else { '' }
+    if ($Current -eq $Text) { return }
+    if ($Check) { $Problems.Add("$(Split-Path -Leaf $Path) ist veraltet: pwsh Tools/Update-ConfigDoc.ps1 ausführen") }
     else {
-        [IO.File]::WriteAllText($SchemaUnitPath, $UnitText, (New-Object System.Text.UTF8Encoding($true)))
-        Write-Host "Geschrieben: $SchemaUnitPath"
+        [IO.File]::WriteAllText($Path, $Text, (New-Object System.Text.UTF8Encoding($true)))
+        Write-Host "Geschrieben: $Path"
     }
 }
+function Text-Unit([string] $UnitName, [string[]] $Comment, [string] $Summary, [string] $FunctionName, [string] $Source) {
+    return @("unit $UnitName;", '') + $Comment + @('', 'interface', '', "/// <summary>$Summary</summary>", "function $FunctionName`: string;", '',
+        'implementation', '', 'const') + (Pascal-Lines 'Lines' $Source) +
+        @('', "function $FunctionName`: string;", 'var', '  Line: string;', 'begin', "  Result := '';",
+        '  for Line in Lines do', '    Result := Result + Line + #10;', 'end;', '', 'end.')
+}
+$SettingsFolder = Join-Path $Root 'Packages/Atlas.IDE.Expert/Source/Core/Settings'
+
+# Schema für den Einstellungsdialog im Plugin (#227)
+Sync-Unit (Join-Path $SettingsFolder 'Atlas.Core.Settings.SchemaData.pas') (Text-Unit 'Atlas.Core.Settings.SchemaData' @(
+    '// Erzeugt von Tools/Update-ConfigDoc.ps1 aus schemas/atlas.schema.json;',
+    '// nicht von Hand ändern. JSON-Schema von atlas.json für den Einstellungsdialog (#227).') `
+    'Inhalt von atlas.schema.json.' 'AtlasSchemaJson' ([IO.File]::ReadAllText($SchemaPath, $Utf8)))
+
+# Katalog der Plugin-Einstellungen (#604, #723)
+Sync-Unit (Join-Path $SettingsFolder 'Atlas.Core.Settings.PluginSchemaData.pas') (Text-Unit 'Atlas.Core.Settings.PluginSchemaData' @(
+    '// Erzeugt von Tools/Update-ConfigDoc.ps1 aus schemas/atlas-plugin.schema.json;',
+    '// nicht von Hand ändern. Katalog der Plugin-Einstellungen: Schnellschalter (#604),',
+    '// Bereiche für Export, Import und Zurücksetzen (#723).') `
+    'Inhalt von atlas-plugin.schema.json.' 'AtlasPluginSchemaJson' ([IO.File]::ReadAllText($PluginSchemaPath, $Utf8)))
+
+# Eingebaute Profile (#723) aus Setup/Profile/*.json
+$Profiles = @(Get-ChildItem -Path $ProfileFolder -Filter '*.json' -File | Sort-Object Name)
+if ($Profiles.Count -eq 0) { $Problems.Add('Setup/Profile: keine Profile gefunden') }
+$ProfileLines = @('unit Atlas.Core.Settings.ProfileData;', '',
+    '// Erzeugt von Tools/Update-ConfigDoc.ps1 aus Setup/Profile/*.json;',
+    '// nicht von Hand ändern. Eingebaute Profile für den Import der Einstellungen (#723).', '',
+    'interface', '',
+    '/// <summary>Dateinamen der eingebauten Profile (wie in Setup\Profile).</summary>',
+    'function AtlasProfileFiles: TArray<string>;',
+    '/// <summary>Inhalt eines eingebauten Profils; leer, wenn der Name unbekannt ist.</summary>',
+    'function AtlasProfileJson(const AFileName: string): string;', '',
+    'implementation', '', 'uses', '  System.SysUtils;', '', 'const')
+for ($Index = 0; $Index -lt $Profiles.Count; $Index++) {
+    $ProfileLines += Pascal-Lines "Profile$Index" ([IO.File]::ReadAllText($Profiles[$Index].FullName, $Utf8))
+}
+$ProfileLines += @('', 'function Joined(const ALines: array of string): string;', 'var', '  Line: string;', 'begin', "  Result := '';",
+    '  for Line in ALines do', '    Result := Result + Line + #10;', 'end;', '',
+    'function AtlasProfileFiles: TArray<string>;', 'begin', "  SetLength(Result, $($Profiles.Count));")
+for ($Index = 0; $Index -lt $Profiles.Count; $Index++) { $ProfileLines += "  Result[$Index] := '$($Profiles[$Index].Name)';" }
+$ProfileLines += @('end;', '', 'function AtlasProfileJson(const AFileName: string): string;', 'begin', "  Result := '';")
+for ($Index = 0; $Index -lt $Profiles.Count; $Index++) {
+    $ProfileLines += "  if SameText(AFileName, '$($Profiles[$Index].Name)') then"
+    $ProfileLines += "    Result := Joined(Profile$Index);"
+}
+$ProfileLines += @('end;', '', 'end.')
+Sync-Unit (Join-Path $SettingsFolder 'Atlas.Core.Settings.ProfileData.pas') $ProfileLines
 
 # --- Ort der Schlüssel für den Server: UTF-8 mit BOM, CRLF ---
 $ScopeUnitPath = Join-Path $Root 'Packages/Atlas.Common/Source/Configuration/Internals/Atlas.Common.Configuration.Internals.ScopeData.pas'
@@ -363,5 +498,5 @@ if ($Problems.Count -gt 0) {
     foreach ($Problem in $Problems) { Write-Error $Problem -ErrorAction Continue }
     exit 1
 }
-Write-Host 'Schema, Parser, Schema-Unit und Doku stimmen überein.'
+Write-Host 'Schema, Plugin-Katalog, Parser, erzeugte Units und Doku stimmen überein.'
 exit 0

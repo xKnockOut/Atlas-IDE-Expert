@@ -9,7 +9,8 @@ interface
 uses
   System.SysUtils,
   Setup.Core.Ides,
-  Setup.Core.Installer;
+  Setup.Core.Installer,
+  Setup.Core.SettingsCommand;
 
 type
 {$SCOPEDENUMS ON}
@@ -18,7 +19,10 @@ type
     UpdateButton, UninstallButton, CloseButton, NothingSelected, Running, InstallDone, UninstallDone, Aborted,
     DataLabel, DataSettings, DataIndex, DataSnippets, ConfirmUninstall, StateInstalled, StateUnsupported,
     StatePackageMissing, StepFileCopied, StepRegistered, StepRegistrationRemoved, StepUninstallEntryWritten,
-    StepUninstallEntryRemoved, StepFilesRemoved, StepFilesRemovedLater, StepDataRemoved, StepFailed);
+    StepUninstallEntryRemoved, StepFilesRemoved, StepFilesRemovedLater, StepDataRemoved, StepFailed,
+    SettingsTitle, SettingsExported, SettingsImported, SettingsReset, SettingsNothing, SettingsUsage,
+    SettingsFileMissing, SettingsFileInvalid, SettingsFailed, SettingsBackup, SettingsSkipped, SettingsOmitted,
+    SettingsRestart);
 {$SCOPEDENUMS OFF}
 
   TSetupTexts = class
@@ -32,6 +36,8 @@ type
     /// <summary>Eine Protokollzeile je Schritt des Installers.</summary>
     class function StepText(const AStep: TSetupStep): string; static;
     class function DataName(AData: TSetupData): string; static;
+    /// <summary>Meldung zu /exportSettings, /importSettings und /resetSettings (#723).</summary>
+    class function SettingsMessage(const AResult: TSetupSettingsResult): string; static;
     class property Language: TSetupLanguage read FLanguage write FLanguage;
   end;
 
@@ -70,7 +76,23 @@ const
     'Programmdateien entfernt: %s',
     'Programmordner wird nach dem Beenden entfernt: %s',
     'Entfernt: %s',
-    'Fehler: %s');
+    'Fehler: %s',
+    'Atlas IDE Expert – Einstellungen',
+    '%d Einstellungen exportiert nach %s.',
+    '%d Einstellungen importiert.',
+    '%d Einstellungen auf den Standard zurückgesetzt.',
+    'Nichts zu tun: Die Einstellungen sind schon so.',
+    'Aufruf: %s' + sLineBreak + sLineBreak +
+      'AtlasSetup /exportSettings <Datei> [/areas:editor,build] [/secrets:placeholder]' + sLineBreak +
+      'AtlasSetup /importSettings <Datei|minimal|atlas-standard|alles-an> [/replace|/merge] [/areas:…]' + sLineBreak +
+      'AtlasSetup /resetSettings [/areas:…]' + sLineBreak + 'Jeweils mit /quiet ohne Meldung.',
+    'Datei nicht gefunden: %s',
+    'Keine Einstellungsdatei von Atlas: %s',
+    'Fehler: %s',
+    'Sicherung: %s',
+    'Übersprungen (unbekannt, ungültig oder Zugangsdaten): %s',
+    'Nicht exportiert (Zugangsdaten oder Benutzerpfad): %s',
+    'Eine laufende IDE übernimmt die Werte erst beim nächsten Start.');
   English: array[TSetupTextId] of string = (
     'Atlas IDE Expert %s Setup',
     'Atlas IDE Expert Uninstall',
@@ -103,7 +125,23 @@ const
     'Program files removed: %s',
     'Program folder is removed after exit: %s',
     'Removed: %s',
-    'Error: %s');
+    'Error: %s',
+    'Atlas IDE Expert Settings',
+    '%d settings exported to %s.',
+    '%d settings imported.',
+    '%d settings reset to their defaults.',
+    'Nothing to do: the settings are already like that.',
+    'Usage: %s' + sLineBreak + sLineBreak +
+      'AtlasSetup /exportSettings <file> [/areas:editor,build] [/secrets:placeholder]' + sLineBreak +
+      'AtlasSetup /importSettings <file|minimal|atlas-standard|alles-an> [/replace|/merge] [/areas:…]' + sLineBreak +
+      'AtlasSetup /resetSettings [/areas:…]' + sLineBreak + 'Add /quiet to suppress this message.',
+    'File not found: %s',
+    'Not an Atlas settings file: %s',
+    'Error: %s',
+    'Backup: %s',
+    'Skipped (unknown, invalid or credentials): %s',
+    'Not exported (credentials or user path): %s',
+    'A running IDE picks up the values the next time it starts.');
 
 { TSetupTexts }
 
@@ -144,6 +182,42 @@ begin
   else
     Result := Get(TSetupTextId.DataSnippets);
   end;
+end;
+
+class function TSetupTexts.SettingsMessage(const AResult: TSetupSettingsResult): string;
+begin
+  case AResult.Outcome of
+    TSetupSettingsOutcome.Usage:
+      Exit(Fmt(TSetupTextId.SettingsUsage, [AResult.Detail]));
+    TSetupSettingsOutcome.FileMissing:
+      Exit(Fmt(TSetupTextId.SettingsFileMissing, [AResult.FileName]));
+    TSetupSettingsOutcome.FileInvalid:
+      Exit(Fmt(TSetupTextId.SettingsFileInvalid, [AResult.Detail]));
+    TSetupSettingsOutcome.Failed:
+      Exit(Fmt(TSetupTextId.SettingsFailed, [AResult.Detail]));
+    TSetupSettingsOutcome.Nothing:
+      Result := Get(TSetupTextId.SettingsNothing);
+  else
+    case AResult.Action of
+      TSetupSettingsAction.ExportSettings:
+        Result := Fmt(TSetupTextId.SettingsExported, [AResult.Count, AResult.FileName]);
+      TSetupSettingsAction.ImportSettings:
+        Result := Fmt(TSetupTextId.SettingsImported, [AResult.Count]);
+    else
+      Result := Fmt(TSetupTextId.SettingsReset, [AResult.Count]);
+    end;
+  end;
+  if Length(AResult.Skipped) > 0 then
+  begin
+    if AResult.Action = TSetupSettingsAction.ExportSettings then
+      Result := Result + sLineBreak + Fmt(TSetupTextId.SettingsOmitted, [string.Join(', ', AResult.Skipped)])
+    else
+      Result := Result + sLineBreak + Fmt(TSetupTextId.SettingsSkipped, [string.Join(', ', AResult.Skipped)]);
+  end;
+  if AResult.BackupFile <> '' then
+    Result := Result + sLineBreak + Fmt(TSetupTextId.SettingsBackup, [AResult.BackupFile]);
+  if (AResult.Outcome = TSetupSettingsOutcome.Done) and (AResult.Action <> TSetupSettingsAction.ExportSettings) then
+    Result := Result + sLineBreak + Get(TSetupTextId.SettingsRestart);
 end;
 
 class function TSetupTexts.StepText(const AStep: TSetupStep): string;

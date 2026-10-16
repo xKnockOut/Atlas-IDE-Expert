@@ -84,6 +84,9 @@ uses
   System.JSON,
   DUnitX.ServiceLocator,
   Atlas.Common.Editing.SlashCommands,
+  Atlas.Core.Settings.Catalog,
+  Atlas.Core.Settings.Plugin,
+  Atlas.Core.Settings.Transfer,
   Atlas.Core.Diagnostics.TimeLimit;
 
 const
@@ -214,6 +217,35 @@ begin
   end;
 end;
 
+/// <summary>Katalog, Export und Import der Einstellungen (#723) einmal durchlaufen: Was dabei beim ersten
+/// Gebrauch bleibt, träfe sonst je nach Reihenfolge einen anderen Test als Leck.</summary>
+procedure PrewarmSettingsTransfer;
+var
+  Catalog: TAtlasSettingsCatalog;
+  State: TAtlasSettingsState;
+  Exported: TAtlasExportResult;
+  Environment: TAtlasSettingsEnvironment;
+  Index: Integer;
+begin
+  Environment :=
+    function(const AName: string): string
+    begin
+      Result := '';
+    end;
+  Catalog := TAtlasSettingsCatalog.CreateDefault;
+  try
+    State := TAtlasSettingsState.Create(TAtlasPluginSettings.Defaults, '');
+    // Gemeinsamer Speicher mit allen Standardwerten (DefaultValues): entsteht beim ersten DefaultJson.
+    for Index := 0 to Catalog.Count - 1 do
+      TAtlasSettingsTransfer.DefaultJson(Catalog, Index);
+    Exported := TAtlasSettingsTransfer.ExportSettings(Catalog, State, TAtlasExportOptions.ForBackup, Environment);
+    TAtlasSettingsTransfer.Apply(Catalog, State, TAtlasSettingsTransfer.Preview(Catalog, State,
+      TAtlasSettingsTransfer.ParseFile(Exported.Text), imMerge, nil, Environment, '', ''));
+  finally
+    Catalog.Free;
+  end;
+end;
+
 procedure PrewarmRuntime;
 var
   Task: ITask;
@@ -245,6 +277,7 @@ begin
   finally
     Json.Free;
   end;
+  PrewarmSettingsTransfer;
 end;
 
 procedure RegisterLeakMonitor;

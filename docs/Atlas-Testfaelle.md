@@ -1724,3 +1724,34 @@ Vorbereitung: Plugin (Win32 und Win64) gebaut und installiert; Projekt mit `.dpr
 | AU19 | Inlay-Hints an, Rechtsklick auf einen Parameternamen | Menü wie AU2 für „Inlay-Hints“; „Nur hier“ blendet die Hints dieser Zeile aus |
 | AU20 | IDE-Thema hell ↔ dunkel, 100 %, 150 %, 200 % Skalierung | Menü und Hinweis lesbar, Hinweis unter dem Element und innerhalb des Bildschirms |
 | AU21 | Protokoll (`%LOCALAPPDATA%\Atlas\Logs`) nach AU2–AU19 | Keine Pfade, Ankertexte oder Quelltext |
+
+## Einstellungen exportieren, importieren und zurücksetzen (#723)
+
+Vorbereitung: Plugin (Win32 und Win64) gebaut und installiert; `settings.exportImport`, `settings.markModified` und `settings.backupBeforeImport` an, `settings.exportSecrets` = `omit`. Einige Einstellungen geändert (z. B. *Editor* „Notizen“ aus, *Vervollständigung* „Sichtbare Zeilen“ 12, *Compiler* „Tests nach dem Build“ an). Ein Projekt mit `atlas.json`, das `tests.afterBuild` setzt. Ordner `%APPDATA%\Atlas\Backups` vorher leeren.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| EI1 | `Atlas.Tests` bauen und ausführen | 0 Fehler, 0 Warnungen, 0 Hinweise; `TAtlasSettingsCatalogTests`, `TAtlasSettingsTransferTests`, `TAtlasSettingsTransferUiTests`, `TSetupSettingsCommandTests`, `TSetupInstallerTests` und `TAtlasQuickTogglesTests` grün |
+| EI2 | *Tools › Optionen › Atlas* öffnen | Unten die Knöpfe „Exportieren…“, „Importieren…“, „Profil laden…“ und darunter „Seite zurücksetzen“, „Alles zurücksetzen…“ auf jeder Seite; vor „Notizen“, „Sichtbare Zeilen“ und „Tests nach dem Build“ ein Punkt „●“, Tooltip „Vom Standard geändert; Rechtsklick setzt zurück.“ (**Abnahme**) |
+| EI3 | Auf der Seite *Allgemein* „Export, Import und Zurücksetzen“ ausschalten | Die Knopfleiste verschwindet sofort; nach OK fehlen die vier Befehle „Einstellungen …“ in der Befehlspalette; wieder an: Knöpfe und Befehle zurück (**Abnahme**) |
+| EI4 | „Geänderte Werte markieren“ ausschalten bzw. wieder an | Alle Punkte verschwinden bzw. erscheinen wieder; ein Kästchen auf seinen Standard zurückklicken nimmt seinen Punkt sofort weg |
+| EI5 | Rechtsklick auf „Notizen“ (Kästchen) bzw. auf die Beschriftung „Sichtbare Zeilen“ › „Auf Standard zurücksetzen“ | Wert auf Standard, Punkt weg; „Abbrechen“ verwirft, „OK“ speichert (**Abnahme**) |
+| EI6 | Seite *Vervollständigung*: „Seite zurücksetzen“ bzw. Rechtsklick › „Ganze Seite auf Standard zurücksetzen“ | Nur die Werte dieser Seite gehen auf den Standard, „Notizen“ (Seite *Editor*) behält den Punkt (**Abnahme**) |
+| EI7 | „Exportieren…“, alle Bereiche, „Speichern…“ nach `D:\Temp\atlas-settings.json` | Meldung „N Werte nach … exportiert.“; die Datei (UTF-8, CRLF) enthält `format`, `formatVersion`, `schemaVersion`, `atlasVersion`, `areas` und unter `settings` nur die geänderten Schlüssel (`notes.enabled`, `completion.visibleRows`, `tests.afterBuild` …), keine Fensterbreiten, keinen Serverpfad, keinen Pfad mit dem Benutzernamen |
+| EI8 | In EI7 nur „Editor“ wählen | Nur Schlüssel des Bereichs Editor in der Datei |
+| EI9 | Unter *Willkommensseite* „Adresse für Fehlerberichte“ auf `https://name:geheim@example.org/issues` setzen, exportieren; dann „Zugangsdaten beim Export“ auf „Platzhalter“, erneut exportieren | Erst fehlt der Schlüssel, die Meldung nennt ihn unter „Ausgelassen (Zugangsdaten oder Benutzerpfad)“; dann steht `"<secret>"` darin; das Passwort steht in keiner Datei und nicht im Protokoll |
+| EI10 | Einstellungen zurück auf Standard, „Importieren…“ mit der Datei aus EI7 | Vorschau mit Spalten Einstellung, Bereich, Aktuell, Neu, Hinweis; geänderte Werte angehakt; Tastenkürzel als Text (z. B. „Strg+Umschalt+P“); bei `tests.afterBuild` der Hinweis „im Projekt überdeckt: atlas.json: tests.afterBuild = …“; „2 von 3 Werten gewählt“ nach Abwahl einer Zeile (**Abnahme**) |
+| EI11 | In EI10 eine Zeile abwählen, „Übernehmen“ | Meldung „N Werte übernommen.“ und „Sicherung: …\Backups\atlas-settings-JJJJMMTT-HHMMSS.json“; die Seite zeigt sofort die neuen Werte mit Punkten, die abgewählte Zeile bleibt unverändert; die Sicherung enthält den alten Stand (**Abnahme**) |
+| EI12 | Datei aus EI7 mit Texteditor um `"gibt.esNicht": 1` und `"completion.visibleRows": "viele"` ergänzen, importieren | Beide Zeilen ohne Kästchen, Hinweis „unbekannt, übersprungen“ bzw. „ungültig, übersprungen: …“; der Rest lässt sich übernehmen |
+| EI13 | Alte Datei ohne `schemaVersion` mit Registry-Namen (`{"format":"atlas-settings","formatVersion":1,"settings":{"Notes":0}}`) importieren | Zeile `notes.enabled`, neu `false`, Hinweis „umgerechnet aus Notes“ |
+| EI14 | Import mit „Ersetzen“ und nur Bereich „Editor“ | Alle Editor-Werte, die in der Datei fehlen, gehen auf den Standard („(Standard)“ in Spalte Neu); andere Bereiche bleiben |
+| EI15 | „Profil laden…“ › „Minimal“, dann „Alles an“, dann „Atlas-Standard“ | Liste mit Beschreibung; Doppelklick lädt; jede Vorschau zeigt die Änderungen; „Atlas-Standard“ setzt alles zurück (Modus Ersetzen); Projektwerte bleiben (**Abnahme**) |
+| EI16 | „Alles zurücksetzen…“ › „Nein“, dann › „Ja“ | „Nein“ ändert nichts; „Ja“ sichert, setzt alle persönlichen Einstellungen auf den Standard, keine Punkte mehr; Fensterbreiten und Serverpfad bleiben (**Abnahme**) |
+| EI17 | `settings.backupBeforeImport` aus, importieren | Keine neue Datei unter `Backups`; mehr als zehn Importe mit Sicherung: nur die zehn neuesten bleiben |
+| EI18 | Befehlspalette: „Einstellungen exportieren…“, „Einstellungen importieren…“, „Einstellungsprofil laden…“, „Alle Einstellungen zurücksetzen…“ | Dieselben Dialoge mit den gespeicherten Werten; nach Import bzw. Zurücksetzen wirken die Werte sofort |
+| EI19 | IDE schließen; `AtlasSetup /exportSettings D:\Temp\a.json`, dann `/importSettings minimal /quiet`, `echo %ERRORLEVEL%`, `/resetSettings /areas:build`, `/importSettings D:\Temp\fehlt.json`, `/bunt` mit `/resetSettings` | Meldungen „exportiert“, keine Meldung und 0, „zurückgesetzt“ samt Sicherung, „Datei nicht gefunden“ (Exit-Code 2), Aufrufhilfe (Exit-Code 1); IDE starten: Werte aus „Minimal“ bzw. zurückgesetzter Bereich Build (**Abnahme**) |
+| EI20 | Neu installieren | Ordner `Profile` mit `alles-an.json`, `atlas-standard.json`, `minimal.json` im Installationsordner |
+| EI21 | Seite *Tastenkonflikte* und *Projektdatei* | Keine Punkte (Deutung siehe PR), Knopfleiste vorhanden; Projektwerte (Reiter *Projektdatei*) werden weder exportiert noch überschrieben |
+| EI22 | IDE-Thema hell ↔ dunkel, 100 %, 150 %, 200 % | Dialoge und Knopfleiste lesbar, nichts abgeschnitten; Punkte gut sichtbar |
+| EI23 | Protokoll (`%LOCALAPPDATA%\Atlas\Logs`) nach EI7–EI19 | Keine Dateipfade, Werte oder Benutzernamen aus Export und Import |
+| EI24 | Tipps „Einstellungen exportieren“, „… importieren“, „Einstellungsprofil laden“, „… zurücksetzen“ auf „Atlas entdecken“ | Bild und Text passend; mit `settings.exportImport` aus erscheinen sie nicht |

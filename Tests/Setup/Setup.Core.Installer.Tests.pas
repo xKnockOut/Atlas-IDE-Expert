@@ -8,9 +8,51 @@
 interface
 
 uses
-  DUnitX.TestFramework;
+  System.Classes,
+  System.Generics.Collections,
+  DUnitX.TestFramework,
+  Setup.Core.Contract;
 
 type
+  /// <summary>Registry als Tabelle „SCHLÜSSEL|WERT“ → Inhalt, Dateien als Liste von Pfaden;
+  /// Groß-/Kleinschreibung egal.</summary>
+  TFakeSystem = class(TInterfacedObject, ISetupSystem)
+  public
+    User: TDictionary<string, string>;
+    Machine: TDictionary<string, string>;
+    Files: TStringList;
+    Running: TArray<string>;
+    LaterDeleted: string;
+    LockedFile: string;
+    /// <summary>Inhalt der Textdateien (#723); jede steht auch in Files.</summary>
+    Texts: TDictionary<string, string>;
+    constructor Create;
+    destructor Destroy; override;
+    procedure AddKey(AStore: TDictionary<string, string>; const AKey: string);
+    function SubKeys(const AKey: string): TArray<string>;
+    function MachineSubKeys(const AKey: string): TArray<string>;
+    function ReadString(const AKey, AName: string): string;
+    function MachineReadString(const AKey, AName: string): string;
+    function ReadInteger(const AKey, AName: string; ADefault: Integer): Integer;
+    function ValueNames(const AKey: string): TArray<string>;
+    procedure WriteString(const AKey, AName, AValue: string);
+    procedure WriteInteger(const AKey, AName: string; AValue: Integer);
+    procedure DeleteValue(const AKey, AName: string);
+    procedure DeleteKey(const AKey: string);
+    function FileExists(const AFileName: string): Boolean;
+    function DirectoryExists(const ADirectory: string): Boolean;
+    procedure CopyFile(const ASource, ATarget: string);
+    procedure DeleteFile(const AFileName: string);
+    procedure DeleteDirectory(const ADirectory: string);
+    procedure DeleteDirectoryLater(const ADirectory: string);
+    function FileSize(const AFileName: string): Int64;
+    function ReadText(const AFileName: string): string;
+    procedure WriteText(const AFileName, AText: string);
+    function FilesIn(const ADirectory: string): TArray<string>;
+    function RunningExecutables: TArray<string>;
+    function HasFileUnder(const ADirectory: string): Boolean;
+  end;
+
   [TestFixture]
   TSetupInstallerTests = class
   public
@@ -46,47 +88,9 @@ implementation
 
 uses
   System.SysUtils,
-  System.Classes,
-  System.Generics.Collections,
-  Setup.Core.Contract,
   Setup.Core.Ides,
   Setup.Core.Installer,
   Setup.Shell.Texts;
-
-type
-  /// <summary>Registry als Tabelle „SCHLÜSSEL|WERT“ → Inhalt, Dateien als Liste von Pfaden;
-  /// Groß-/Kleinschreibung egal.</summary>
-  TFakeSystem = class(TInterfacedObject, ISetupSystem)
-  public
-    User: TDictionary<string, string>;
-    Machine: TDictionary<string, string>;
-    Files: TStringList;
-    Running: TArray<string>;
-    LaterDeleted: string;
-    LockedFile: string;
-    constructor Create;
-    destructor Destroy; override;
-    procedure AddKey(AStore: TDictionary<string, string>; const AKey: string);
-    function SubKeys(const AKey: string): TArray<string>;
-    function MachineSubKeys(const AKey: string): TArray<string>;
-    function ReadString(const AKey, AName: string): string;
-    function MachineReadString(const AKey, AName: string): string;
-    function ValueNames(const AKey: string): TArray<string>;
-    procedure WriteString(const AKey, AName, AValue: string);
-    procedure WriteInteger(const AKey, AName: string; AValue: Integer);
-    procedure DeleteValue(const AKey, AName: string);
-    procedure DeleteKey(const AKey: string);
-    function FileExists(const AFileName: string): Boolean;
-    function DirectoryExists(const ADirectory: string): Boolean;
-    procedure CopyFile(const ASource, ATarget: string);
-    procedure DeleteFile(const AFileName: string);
-    procedure DeleteDirectory(const ADirectory: string);
-    procedure DeleteDirectoryLater(const ADirectory: string);
-    function FileSize(const AFileName: string): Int64;
-    function FilesIn(const ADirectory: string): TArray<string>;
-    function RunningExecutables: TArray<string>;
-    function HasFileUnder(const ADirectory: string): Boolean;
-  end;
 
 const
   // Schlüssel ohne Wert stehen als „Schlüssel|“ in der Liste.
@@ -104,6 +108,7 @@ begin
   Machine := TDictionary<string, string>.Create;
   Files := TStringList.Create;
   Files.CaseSensitive := False;
+  Texts := TDictionary<string, string>.Create;
 end;
 
 destructor TFakeSystem.Destroy;
@@ -111,6 +116,7 @@ begin
   User.Free;
   Machine.Free;
   Files.Free;
+  Texts.Free;
   inherited;
 end;
 
@@ -165,6 +171,12 @@ function TFakeSystem.MachineReadString(const AKey, AName: string): string;
 begin
   if not Machine.TryGetValue(Up(AKey) + KeyMark + Up(AName), Result) then
     Result := '';
+end;
+
+function TFakeSystem.ReadInteger(const AKey, AName: string; ADefault: Integer): Integer;
+begin
+  if not TryStrToInt(ReadString(AKey, AName), Result) then
+    Result := ADefault;
 end;
 
 function TFakeSystem.ValueNames(const AKey: string): TArray<string>;
@@ -247,6 +259,7 @@ begin
   Index := Files.IndexOf(AFileName);
   if Index >= 0 then
     Files.Delete(Index);
+  Texts.Remove(Up(AFileName));
 end;
 
 procedure TFakeSystem.DeleteDirectory(const ADirectory: string);
@@ -266,6 +279,21 @@ end;
 function TFakeSystem.FileSize(const AFileName: string): Int64;
 begin
   Result := 2048;
+end;
+
+function TFakeSystem.ReadText(const AFileName: string): string;
+begin
+  if not Texts.TryGetValue(Up(AFileName), Result) then
+    Result := '';
+end;
+
+procedure TFakeSystem.WriteText(const AFileName, AText: string);
+begin
+  if SameText(AFileName, LockedFile) then
+    raise EInOutError.Create('gesperrt: ' + AFileName);
+  Texts.AddOrSetValue(Up(AFileName), AText);
+  if not FileExists(AFileName) then
+    Files.Add(AFileName);
 end;
 
 function TFakeSystem.FilesIn(const ADirectory: string): TArray<string>;
@@ -331,6 +359,7 @@ begin
   Result.Files.Add(Source + '\Doku\Einstellungen.html');
   Result.Files.Add(Source + '\Vorlagen\atlas-existing.json');
   Result.Files.Add(Source + '\Vorlagen\atlas-strict.json');
+  Result.Files.Add(Source + '\Profile\minimal.json');
 end;
 
 function Find(const AIdes: TArray<TSetupIde>; const AId: string): TSetupIde;
@@ -472,6 +501,8 @@ begin
     // Einrichtung „Projekt für Atlas einrichten“ (#759): Vorlagen für atlas.json im Ordner Vorlagen.
     Assert.IsTrue(Sys.FileExists(Target + '\Vorlagen\atlas-existing.json'));
     Assert.IsTrue(Sys.FileExists(Target + '\Vorlagen\atlas-strict.json'));
+    // Eingebaute Einstellungsprofile (#723) im Ordner Profile.
+    Assert.IsTrue(Sys.FileExists(Target + '\Profile\minimal.json'));
     Assert.AreEqual(TSetupIdes.PackageDescription, Sys.ReadString('Software\Embarcadero\BDS\23.0\Known Packages',
       Target + '\Win32\Atlas.IDE.Expert290.bpl'));
     Assert.AreEqual(TSetupIdes.PackageDescription, Sys.ReadString(
