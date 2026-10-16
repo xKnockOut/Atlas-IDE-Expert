@@ -224,6 +224,7 @@
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.Completion.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.CompletionEnums.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.CompletionRequest.pas"/>
+        <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.CompletionCollector.pas"/>
         <DCCReference Include="Source\Lsp\Internals\Atlas.Common.Lsp.Internals.CompletionSource.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.SignatureHelp.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.Hierarchies.pas"/>
