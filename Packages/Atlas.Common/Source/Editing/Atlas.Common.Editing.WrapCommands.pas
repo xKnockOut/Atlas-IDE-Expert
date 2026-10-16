@@ -7,6 +7,7 @@
 //   /ifdef SYMBOL  {$IFDEF SYMBOL} … {$ENDIF}
 //   /region Name   {$REGION 'Name'} … {$ENDREGION}
 //   /except        try … except on E: Exception do protokollieren und weiterwerfen (#304)
+//   /case          case darunter um die fehlenden Werte seiner Aufzählung ergänzen (#50, #449)
 //
 // Umschlossen werden die Zeilen nach der Befehlszeile bis zum Ende des
 // umgebenden Blocks (end, finally, except bzw. until).
@@ -28,6 +29,10 @@ uses
   Atlas.Common.Pascal.Contract,
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Index.Contract,
+  Atlas.Common.Pascal.Lexer,
+  Atlas.Common.Documents.Uris,
+  Atlas.Common.Semantics.NameResolver,
+  Atlas.Common.Editing.CaseCompletion,
   Atlas.Common.Editing.CommandSource;
 
 { /try }
@@ -191,6 +196,190 @@ begin
   end;
 end;
 
+{ /case }
+
+/// <summary>Unit der Deklaration von AType: die eigene aus dem Baum, sonst aus dem Index.</summary>
+function OwnerOf(AResolver: TNameResolver; ASource: TCommandSource; const AIndex: ISymbolIndex;
+  const AFileName: string; const AType: TResolvedSymbol; out AUnit: TUnitIndex): Boolean;
+begin
+  if SameText(AType.FileName, AFileName) then
+  begin
+    AUnit := AResolver.ExtractedUnit(ASource.Tree, AFileName);
+    Exit(True);
+  end;
+  Result := (AIndex <> nil) and AIndex.FindFile(AType.FileName, AUnit);
+end;
+
+/// <summary>Werte der Aufzählung AType in Deklarationsreihenfolge, Aliase verfolgt; False, wenn AType keine
+/// Aufzählung ist.</summary>
+function EnumValues(AResolver: TNameResolver; ASource: TCommandSource; const AIndex: ISymbolIndex;
+  const AFileName: string; AType: TResolvedSymbol; out AName: string; out AValues: TArray<string>): Boolean;
+var
+  Owner: TUnitIndex;
+  Symbol: TIndexSymbol;
+  Step: Integer;
+begin
+  AName := '';
+  AValues := nil;
+  Result := False;
+  for Step := 1 to 4 do
+  begin
+    if not AType.Found or not AType.IsType or not OwnerOf(AResolver, ASource, AIndex, AFileName, AType, Owner) then
+      Exit;
+    if AType.SymbolKind = TIndexSymbolKind.EnumType then
+    begin
+      for Symbol in Owner.Symbols do
+        if (Symbol.Kind = TIndexSymbolKind.EnumMember) and (SameText(Symbol.Container, AType.QualifiedName) or
+          SameText(Symbol.Container, AType.Name)) then
+          AValues := AValues + [Symbol.Name];
+      AName := AType.Name;
+      Exit(AValues <> nil);
+    end;
+    if (AType.SymbolKind <> TIndexSymbolKind.TypeAlias) or (AType.TypeName = '') or
+      not AResolver.ResolveTypeFrom(Owner, AType.TypeName, AType) then
+      Exit;
+  end;
+end;
+
+/// <summary>Steht {$SCOPEDENUMS ON} vor der Deklaration von AType in seiner Datei?</summary>
+function ScopedEnum(const AContext: TSlashContext; ASource: TCommandSource; const AFileName: string;
+  const AType: TResolvedSymbol): Boolean;
+var
+  Text: string;
+  Token: TPascalToken;
+  Directive: string;
+begin
+  Result := False;
+  if SameText(AType.FileName, AFileName) then
+    Text := ASource.Text
+  else if (AContext.Host = nil) or not AContext.Host.ReadFile(AType.FileName, Text) then
+    Exit;
+  for Token in TPascalLexer.Tokenize(Text) do
+  begin
+    if (Token.StartPos.Line > AType.Range.StartPos.Line) then
+      Break;
+    if Token.Kind <> TPascalTokenKind.Directive then
+      Continue;
+    Directive := UpperCase(StringReplace(Token.Text, ' ', '', [rfReplaceAll]));
+    if StartsStr('{$SCOPEDENUMSON', Directive) then
+      Result := True
+    else if StartsStr('{$SCOPEDENUMSOFF', Directive) then
+      Result := False;
+  end;
+end;
+
+function NextCode(const ATokens: TArray<TPascalToken>; AIndex: Integer): Integer;
+begin
+  Result := AIndex + 1;
+  while (Result <= High(ATokens)) and (ATokens[Result].Kind in [TPascalTokenKind.Comment,
+    TPascalTokenKind.Directive]) do
+    Inc(Result);
+end;
+
+function ExecuteCase(const AContext: TSlashContext; out AEdits: TArray<TTextEdit>; out AReason: string): Boolean;
+const
+  Usage = '/case erwartet darunter eine case-Anweisung über einer Aufzählung';
+var
+  Source: TCommandSource;
+  Tokens: TArray<TPascalToken>;
+  CaseIndex, OfIndex, Index, Depth, LastIndex: Integer;
+  Names, Missing, Values: TArray<string>;
+  Resolver: TNameResolver;
+  Owner, EnumType: TResolvedSymbol;
+  TypeFound, Scoped: Boolean;
+  FileName, EnumName, Prefix, Text, Label_: string;
+  Slot: TCaseBranchSlot;
+  InsertAt: TTextPosition;
+begin
+  AEdits := nil;
+  if AContext.Arguments <> '' then
+    Exit(Fail('/case hat keine Argumente', AReason));
+  Source := TCommandSource.Create(AContext);
+  try
+    if Source.RoutineAt = nil then
+      Exit(Fail('/case gilt nur im Rumpf einer Routine', AReason));
+    Tokens := TPascalLexer.Tokenize(Source.Text);
+    // Erstes Token unter der Befehlszeile muss "case" sein.
+    CaseIndex := 0;
+    while (CaseIndex <= High(Tokens)) and ((Tokens[CaseIndex].StartPos.Line <= Source.Line) or
+      (Tokens[CaseIndex].Kind in [TPascalTokenKind.Comment, TPascalTokenKind.Directive])) do
+      Inc(CaseIndex);
+    if (CaseIndex > High(Tokens)) or not Tokens[CaseIndex].IsKeyword('case') then
+      Exit(Fail(Usage, AReason));
+    // Auswahlausdruck: nur Namen und Punkte (A, Self.FArt, Kunde.Art).
+    Names := nil;
+    OfIndex := NextCode(Tokens, CaseIndex);
+    while (OfIndex <= High(Tokens)) and not Tokens[OfIndex].IsKeyword('of') do
+    begin
+      if Tokens[OfIndex].Kind = TPascalTokenKind.Identifier then
+        Names := Names + [Tokens[OfIndex].Text]
+      else if not Tokens[OfIndex].IsSymbol('.') then
+        Exit(Fail('/case versteht als Auswahl nur einen Namen wie Art oder Kunde.Art', AReason));
+      OfIndex := NextCode(Tokens, OfIndex);
+    end;
+    if (OfIndex > High(Tokens)) or (Names = nil) then
+      Exit(Fail(Usage, AReason));
+    FileName := '';
+    if AContext.Uri <> '' then
+      FileName := TDocumentUris.ToPath(AContext.Uri);
+    Resolver := TNameResolver.Create(AContext.Index);
+    try
+      if not Resolver.ChainType(Source.Tree, FileName, Names, Tokens[CaseIndex].Offset, Owner, EnumType,
+        TypeFound) or not TypeFound or
+        not EnumValues(Resolver, Source, AContext.Index, FileName, EnumType, EnumName, Values) then
+        Exit(Fail(Format('Der Typ von %s ist keine bekannte Aufzählung', [string.Join('.', Names)]), AReason));
+      Scoped := ScopedEnum(AContext, Source, FileName, EnumType);
+    finally
+      Resolver.Free;
+    end;
+    // Vorhandene Marken und Einrückung wie bei der Vervollständigung (#449).
+    if not TCaseCompletion.BranchSlot(Source.Text, Tokens, Tokens[OfIndex].EndPos, Slot) then
+      Exit(Fail(Usage, AReason));
+    if not TCaseCompletion.Missing(Values, Slot.Labels, Missing) then
+      Exit(Fail(Format('Eine Marke im case ist kein Wert von %s', [EnumName]), AReason));
+    if Missing = nil then
+      Exit(Fail(Format('Der case behandelt schon alle Werte von %s', [EnumName]), AReason));
+    for Label_ in Slot.Labels do
+      if Pos('.', Label_) > 0 then
+        Scoped := True;
+    Prefix := '';
+    if Scoped then
+      Prefix := EnumName + '.';
+    // Letztes Token der Zweige: vor else bzw. end des case auf Ebene 0.
+    LastIndex := OfIndex;
+    Depth := 0;
+    Index := NextCode(Tokens, OfIndex);
+    while Index <= High(Tokens) do
+    begin
+      if Depth = 0 then
+      begin
+        if Tokens[Index].IsKeyword('end') or (Tokens[Index].IsKeyword('else') and
+          (Tokens[LastIndex].IsSymbol(';') or (LastIndex = OfIndex))) then
+          Break;
+      end;
+      if Tokens[Index].IsKeyword('begin') or Tokens[Index].IsKeyword('try') or Tokens[Index].IsKeyword('case') or
+        Tokens[Index].IsKeyword('repeat') or Tokens[Index].IsKeyword('asm') then
+        Inc(Depth)
+      else if Tokens[Index].IsKeyword('end') or Tokens[Index].IsKeyword('until') then
+        Dec(Depth);
+      LastIndex := Index;
+      Index := NextCode(Tokens, Index);
+    end;
+    InsertAt := Tokens[LastIndex].EndPos;
+    Text := '';
+    if (LastIndex <> OfIndex) and not Tokens[LastIndex].IsSymbol(';') then
+      Text := ';';
+    for Label_ in Missing do
+      Text := Text + Source.LineBreak + Slot.BranchIndent + Prefix + Label_ + ': ;';
+    if not Slot.HasEnd then
+      Text := Text + Source.LineBreak + Slot.CaseIndent + 'end;';
+    AEdits := [TTextEdit.Create(TTextRange.Create(InsertAt, InsertAt), Text), Source.RemoveCommand];
+    Result := True;
+  finally
+    Source.Free;
+  end;
+end;
+
 function Command(const AName, ASummary, AExample: string; const AExecute: TSlashExecute): TSlashCommand;
 begin
   Result.Name := AName;
@@ -217,6 +406,7 @@ begin
   ARegistry.Register(Command('except', 'Folgende Anweisungen mit Protokoll und raise absichern', '/except',
     ExecuteExcept));
   ARegistry.Register(Command('region', 'Folgende Anweisungen in {$REGION}', '/region Laden', ExecuteRegion));
+  ARegistry.Register(Command('case', 'Fehlende Werte der Aufzählung im case darunter ergänzen', '/case', ExecuteCase));
 end;
 
 end.
