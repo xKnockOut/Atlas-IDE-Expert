@@ -6,6 +6,9 @@
 //   /searchpath Pfad   Ordner relativ zur .dproj in DCC_UnitSearchPath der Basis
 //   /config Release Win64  Konfiguration und Plattform umschalten (#46)
 //   /dfm               aus Ereignis-Handler bzw. Formularmethode in die DFM springen
+//   /unit Name         neue Unit neben der Datei anlegen, in .dpr/.dpk und .dproj
+//                      eintragen und öffnen (#297)
+//   /open Unit         Unit aus Index, Projekt oder Suchpfad öffnen (#297)
 // Die Befehle prüfen alles vorab; Schreiben, Umschalten und Springen laufen
 // erst nach Erfolg über ISlashHost (TSlashContext.Defer). Ohne Host (Prüfung
 // stehen gebliebener Zeilen) passen sie nicht.
@@ -15,7 +18,7 @@ interface
 uses
   Atlas.Common.Editing.SlashCommands;
 
-/// <summary>Trägt /define, /define!, /searchpath, /config und /dfm in ARegistry ein.</summary>
+/// <summary>Trägt /define, /define!, /searchpath, /config, /dfm, /unit und /open in ARegistry ein.</summary>
 procedure RegisterProjectCommands(ARegistry: TSlashCommandRegistry);
 
 implementation
@@ -31,7 +34,11 @@ uses
   Atlas.Common.Projects.DprojEditor,
   Atlas.Common.Dfm.Contract,
   Atlas.Common.Dfm.Parser,
-  Atlas.Common.Editing.CommandSource;
+  Atlas.Common.Index.Contract,
+  Atlas.Common.Editing.UnitTemplates,
+  Atlas.Common.Editing.TestUnits,
+  Atlas.Common.Editing.CommandSource,
+  Atlas.Text.Lines;
 
 /// <summary>Projekt und .dproj-Text zur Datei des Befehls; False mit Grund.</summary>
 function LoadProject(const AContext: TSlashContext; out AProject: TProjectInfo; out AText, AReason: string): Boolean;
@@ -233,6 +240,177 @@ begin
   Result := True;
 end;
 
+{ /unit }
+
+/// <summary>AText mit AEdit angewandt.</summary>
+function Applied(const AText: string; const AEdit: TTextEdit): string;
+var
+  Table: TLineTable;
+  Start, Stop: Integer;
+begin
+  Table := TLineTable.Build(AText);
+  Start := Table.OffsetAt(AEdit.Range.StartPos);
+  Stop := Table.OffsetAt(AEdit.Range.EndPos);
+  Result := Copy(AText, 1, Start) + AEdit.NewText + Copy(AText, Stop + 1, MaxInt);
+end;
+
+/// <summary>Name ohne Endung .pas; '' wenn kein gültiger (auch gepunkteter) Bezeichner.</summary>
+function UnitNameOf(const AArguments: string): string;
+begin
+  Result := Trim(AArguments);
+  if EndsText('.pas', Result) then
+    Result := Copy(Result, 1, Length(Result) - 4);
+  if not IsValidIdent(Result, True) then
+    Result := '';
+end;
+
+/// <summary>Leere Unit wie Datei > Neu > Unit der IDE.</summary>
+function NewUnitText(const AUnitName: string): string;
+const
+  LB = #13#10;
+begin
+  Result := 'unit ' + AUnitName + ';' + LB + LB + 'interface' + LB + LB + 'implementation' + LB + LB + 'end.' + LB;
+end;
+
+function ExecuteUnit(const AContext: TSlashContext; out AEdits: TArray<TTextEdit>; out AReason: string): Boolean;
+var
+  Project: TProjectInfo;
+  ProjectText, Name, Folder, FileName, Existing, MainText, Uri: string;
+  Item: TProjectUnit;
+  Edit: TTextEdit;
+  Files: TArray<TSlashFile>;
+  Host: ISlashHost;
+  Source: TCommandSource;
+begin
+  AEdits := nil;
+  Name := UnitNameOf(AContext.Arguments);
+  if Name = '' then
+    Exit(Fail('Erwartet wird ein Unit-Name, z. B. /unit Kunden.Daten', AReason));
+  if not LoadProject(AContext, Project, ProjectText, AReason) then
+    Exit(False);
+  for Item in Project.Units do
+    if SameText(Item.Name, Name) then
+      Exit(Fail(Format('%s steht schon im Projekt', [Name]), AReason));
+  // Neben die Datei des Befehls, ohne Datei neben die .dproj.
+  if AContext.Uri <> '' then
+    Folder := TProjectPaths.DirectoryOf(TDocumentUris.ToPath(AContext.Uri))
+  else
+    Folder := TProjectPaths.DirectoryOf(Project.FileName);
+  FileName := TProjectPaths.Combine(Folder, Name + '.pas');
+  if AContext.Host.ReadFile(FileName, Existing) then
+    Exit(Fail(Format('%s gibt es schon', [ExtractFileName(FileName)]), AReason));
+  Files := [TSlashFile.Create(FileName, NewUnitText(Name), True)];
+  // Hauptdatei: uses der .dpr bzw. contains der .dpk.
+  if (Project.MainSource <> '') and AContext.Host.ReadFile(Project.MainSource, MainText) then
+  begin
+    if not TUnitTemplates.UnitProgramEdit(MainText, Name,
+      TTestUnits.RelativePath(TProjectPaths.DirectoryOf(Project.MainSource), FileName), Edit) then
+      Exit(Fail(Format('%s hat kein uses bzw. contains für %s', [ExtractFileName(Project.MainSource), Name]),
+        AReason));
+    Files := Files + [TSlashFile.Create(Project.MainSource, Applied(MainText, Edit), False)];
+  end;
+  if not TUnitTemplates.ProjectEdit(ProjectText,
+    TTestUnits.RelativePath(TProjectPaths.DirectoryOf(Project.FileName), FileName), '', TFormKind.Form, False,
+    Edit) then
+    Exit(Fail(Format('%s hat keinen Platz für DCCReference', [ExtractFileName(Project.FileName)]), AReason));
+  Files := Files + [TSlashFile.Create(Project.FileName, Applied(ProjectText, Edit), False)];
+  Source := TCommandSource.Create(AContext);
+  try
+    AEdits := [Source.RemoveCommand];
+  finally
+    Source.Free;
+  end;
+  Host := AContext.Host;
+  Uri := AContext.Uri;
+  AContext.Defer(
+    procedure
+    begin
+      Host.WriteFiles(Uri, Files, FileName);
+    end);
+  Result := True;
+end;
+
+{ /open }
+
+/// <summary>Datei der Unit AName: Index, eingetragene Units, dann Ordner der Datei und Suchpfade (auch mit
+/// Namespace-Präfix); False ohne.</summary>
+function FindUnitFile(const AContext: TSlashContext; const AName: string; out AFileName: string): Boolean;
+var
+  Indexed: TUnitIndex;
+  Project: TProjectInfo;
+  HasProject: Boolean;
+  Item: TProjectUnit;
+  Folders, Names: TArray<string>;
+  Folder, Name, Namespace, Text: string;
+begin
+  AFileName := '';
+  Names := [AName];
+  HasProject := AContext.Host.Project(AContext.Uri, Project);
+  if HasProject then
+    for Namespace in Project.Namespaces do
+      Names := Names + [Namespace + '.' + AName];
+  for Namespace in AContext.Namespaces do
+    Names := Names + [Namespace + '.' + AName];
+  if AContext.Index <> nil then
+    for Name in Names do
+      if AContext.Index.FindUnit(Name, Indexed) and (Indexed.FileName <> '') then
+      begin
+        AFileName := Indexed.FileName;
+        Exit(True);
+      end;
+  Folders := nil;
+  if AContext.Uri <> '' then
+    Folders := [TProjectPaths.DirectoryOf(TDocumentUris.ToPath(AContext.Uri))];
+  if HasProject then
+  begin
+    for Item in Project.Units do
+      for Name in Names do
+        if SameText(Item.Name, Name) and (Item.FileName <> '') then
+        begin
+          AFileName := Item.FileName;
+          Exit(True);
+        end;
+    Folders := Folders + [TProjectPaths.DirectoryOf(Project.FileName)] + Project.SearchPaths;
+  end;
+  for Folder in Folders do
+    for Name in Names do
+      if AContext.Host.ReadFile(TProjectPaths.Combine(Folder, Name + '.pas'), Text) then
+      begin
+        AFileName := TProjectPaths.Combine(Folder, Name + '.pas');
+        Exit(True);
+      end;
+  Result := False;
+end;
+
+function ExecuteOpen(const AContext: TSlashContext; out AEdits: TArray<TTextEdit>; out AReason: string): Boolean;
+var
+  Name, FileName: string;
+  Host: ISlashHost;
+  Source: TCommandSource;
+begin
+  AEdits := nil;
+  Name := UnitNameOf(AContext.Arguments);
+  if Name = '' then
+    Exit(Fail('Erwartet wird ein Unit-Name, z. B. /open System.SysUtils', AReason));
+  if AContext.Host = nil then
+    Exit(Fail('/open braucht den Editor', AReason));
+  if not FindUnitFile(AContext, Name, FileName) then
+    Exit(Fail(Format('Die Unit %s steht weder im Index noch im Suchpfad', [Name]), AReason));
+  Source := TCommandSource.Create(AContext);
+  try
+    AEdits := [Source.RemoveCommand];
+  finally
+    Source.Free;
+  end;
+  Host := AContext.Host;
+  AContext.Defer(
+    procedure
+    begin
+      Host.ShowDocument(FileName, TTextRange.Create(0, 0, 0, 0));
+    end);
+  Result := True;
+end;
+
 function Command(const AName, ASummary, AExample: string; const AExecute: TSlashExecute): TSlashCommand;
 begin
   Result.Name := AName;
@@ -252,6 +430,9 @@ begin
   ARegistry.Register(Command('config', 'Konfiguration und Plattform umschalten', '/config Release Win64',
     ExecuteConfig));
   ARegistry.Register(Command('dfm', 'Zur Stelle in der Formulardatei springen', '/dfm', ExecuteDfm));
+  ARegistry.Register(Command('unit', 'Neue Unit anlegen, ins Projekt eintragen und öffnen', '/unit Kunden.Daten',
+    ExecuteUnit));
+  ARegistry.Register(Command('open', 'Unit aus dem Suchpfad öffnen', '/open System.SysUtils', ExecuteOpen));
 end;
 
 end.

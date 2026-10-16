@@ -11,11 +11,16 @@
 // Schnellbefehle laufen in einem Worker-Thread (onTypeFormatting). Neu geladen
 // wird nur im Thread der Nachrichtenschleife (Code-Review A-03): WriteProject
 // und SelectBuild stellen das über RunInLoop dorthin.
+//
+// WriteFiles (/unit, #297) legt mehrere Dateien in einem WorkspaceEdit an
+// bzw. ersetzt sie und öffnet danach die neue Unit; ohne Editor auf der Platte
+// (neue Dateien UTF-8 mit BOM und CRLF, vorhandene in ihrer Kodierung).
 
 interface
 
 uses
   System.SysUtils,
+  System.JSON,
   Atlas.Common.Logging.Contract,
   Atlas.Common.JsonRpc.Contract,
   Atlas.Common.Documents.Contract,
@@ -41,6 +46,9 @@ type
     FDispatcher: TJsonRpcDispatcher;
     FClientAppliesEdits: TFunc<Boolean>;
     FRunInLoop: TJsonRpcScheduler;
+    function ClientWrites: Boolean;
+    /// <summary>Schickt AEdit (wird übernommen) an den Client; nach Erfolg Reload und AAfter.</summary>
+    procedure SendEdit(const AUri, ADescription: string; AEdit: TJSONObject; const AAfter: TProc);
     function WriteThroughClient(const AUri, AFileName, AText: string): Boolean;
     /// <summary>Führt AWork im Thread der Nachrichtenschleife aus (über RunInLoop), sonst sofort.</summary>
     procedure InLoop(const AWork: TProc);
@@ -56,6 +64,7 @@ type
     procedure SelectBuild(const AUri, AConfig, APlatform: string);
     procedure ShowDocument(const AFileName: string; const ASelection: TTextRange);
     function HeaderTemplate(const AUri: string): string;
+    procedure WriteFiles(const AUri: string; const AFiles: TArray<TSlashFile>; const AShow: string);
     /// <summary>Stellt Arbeit in die Nachrichtenschleife (TJsonRpcConnection.Queue). Reload und SelectBuild
     /// laufen nur dort (Code-Review A-03); ohne Zuweisung (Tests) sofort.</summary>
     property RunInLoop: TJsonRpcScheduler read FRunInLoop write FRunInLoop;
@@ -64,7 +73,6 @@ type
 implementation
 
 uses
-  System.JSON,
   Atlas.Common.Documents.Uris,
   Atlas.Common.Documents.FileEncoding,
   Atlas.Common.Lsp.Positions,
@@ -102,24 +110,53 @@ begin
   Result := System.SysUtils.DirectoryExists(APath);
 end;
 
-function TShellSlashHost.WriteThroughClient(const AUri, AFileName, AText: string): Boolean;
 var
-  OldText, Id: string;
-  FileFormat: TFileFormat;
+  ShowRequests: Integer;
+
+/// <summary>window/showDocument an den Editor; ohne Self, damit es auch nach der Antwort des Clients läuft.</summary>
+procedure SendShowDocument(const ATransport: IJsonRpcTransport; const AFileName: string;
+  const ASelection: TTextRange);
+var
+  Request, Params: TJSONObject;
+begin
+  Params := TJSONObject.Create;
+  Params.AddPair('uri', TDocumentUris.FromPath(AFileName));
+  Params.AddPair('takeFocus', TJSONBool.Create(True));
+  Params.AddPair('selection', TLspPositions.RangeToJson(ASelection));
+  Request := TJSONObject.Create;
+  try
+    Request.AddPair('jsonrpc', '2.0');
+    Request.AddPair('id', Format('atlas/showDocument/%d', [AtomicIncrement(ShowRequests)]));
+    Request.AddPair('method', 'window/showDocument');
+    Request.AddPair('params', Params);
+    ATransport.WriteMessage(Request);
+  finally
+    Request.Free;
+  end;
+end;
+
+function TShellSlashHost.ClientWrites: Boolean;
+begin
+  Result := (FDispatcher <> nil) and Assigned(FClientAppliesEdits) and FClientAppliesEdits();
+end;
+
+procedure TShellSlashHost.SendEdit(const AUri, ADescription: string; AEdit: TJSONObject; const AAfter: TProc);
+var
+  Id, Uri, Description: string;
   Request: TJSONObject;
   Logger: ILogger;
   Transport: IJsonRpcTransport;
   WorkspaceOf: TWorkspaceOfFunc;
+  After: TProc;
 begin
-  Result := False;
-  if (FDispatcher = nil) or not Assigned(FClientAppliesEdits) or not FClientAppliesEdits() then
-    Exit;
-  OldText := TFileEncoding.LoadFromFile(AFileName, FileFormat);
   Id := Format('atlas/applyEdit/%d', [AtomicIncrement(FRequestId)]);
   // Nur lokale Werte einfangen: Die Antwort kommt in der Nachrichtenschleife (ExpectResponse).
   Logger := FLogger;
   Transport := FTransport;
   WorkspaceOf := FWorkspaceOf;
+  Uri := AUri;
+  Description := ADescription;
+  After := AAfter;
   FDispatcher.ExpectResponse(Id,
     procedure(const AResponse: TJSONObject)
     var
@@ -129,25 +166,27 @@ begin
     begin
       if TLspApplyEdit.ReadResult(AResponse, Reason) then
       begin
-        Logger.Info(Format('%s geändert (Schnellbefehl, über den Editor)', [AFileName]));
-        Target := WorkspaceOf(AUri);
+        Logger.Info(Format('%s geändert (Schnellbefehl, über den Editor)', [Description]));
+        Target := WorkspaceOf(Uri);
         if Target <> nil then
           Target.Reload;
+        if Assigned(After) then
+          After();
         Exit;
       end;
-      Logger.Warning(Format('%s nicht geändert: %s', [AFileName, Reason]));
+      Logger.Warning(Format('%s nicht geändert: %s', [Description, Reason]));
       Message := TJSONObject.Create;
       try
         Message.AddPair('jsonrpc', '2.0');
         Message.AddPair('method', 'window/showMessage');
         Message.AddPair('params', TJSONObject.Create.AddPair('type', TJSONNumber.Create(2))
-          .AddPair('message', Format('Atlas: %s wurde nicht geändert (%s).', [ExtractFileName(AFileName), Reason])));
+          .AddPair('message', Format('Atlas: %s wurde nicht geändert (%s).', [Description, Reason])));
         Transport.WriteMessage(Message);
       finally
         Message.Free;
       end;
     end);
-  Request := TLspApplyEdit.Request(Id, 'Atlas: Schnellbefehl', TLspApplyEdit.ReplaceAll(AFileName, OldText, AText));
+  Request := TLspApplyEdit.Request(Id, 'Atlas: Schnellbefehl', AEdit);
   try
     try
       FTransport.WriteMessage(Request);
@@ -158,7 +197,18 @@ begin
   finally
     Request.Free;
   end;
-  Result := True;
+end;
+
+function TShellSlashHost.WriteThroughClient(const AUri, AFileName, AText: string): Boolean;
+var
+  OldText: string;
+  FileFormat: TFileFormat;
+begin
+  Result := ClientWrites;
+  if not Result then
+    Exit;
+  OldText := TFileEncoding.LoadFromFile(AFileName, FileFormat);
+  SendEdit(AUri, ExtractFileName(AFileName), TLspApplyEdit.ReplaceAll(AFileName, OldText, AText), nil);
 end;
 
 procedure TShellSlashHost.InLoop(const AWork: TProc);
@@ -236,23 +286,8 @@ begin
 end;
 
 procedure TShellSlashHost.ShowDocument(const AFileName: string; const ASelection: TTextRange);
-var
-  Request, Params: TJSONObject;
 begin
-  Params := TJSONObject.Create;
-  Params.AddPair('uri', TDocumentUris.FromPath(AFileName));
-  Params.AddPair('takeFocus', TJSONBool.Create(True));
-  Params.AddPair('selection', TLspPositions.RangeToJson(ASelection));
-  Request := TJSONObject.Create;
-  try
-    Request.AddPair('jsonrpc', '2.0');
-    Request.AddPair('id', Format('atlas/showDocument/%d', [AtomicIncrement(FRequestId)]));
-    Request.AddPair('method', 'window/showDocument');
-    Request.AddPair('params', Params);
-    FTransport.WriteMessage(Request);
-  finally
-    Request.Free;
-  end;
+  SendShowDocument(FTransport, AFileName, ASelection);
 end;
 
 function TShellSlashHost.HeaderTemplate(const AUri: string): string;

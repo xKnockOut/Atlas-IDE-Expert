@@ -29,6 +29,10 @@ type
     procedure ProjectGetsReference;
     [Test]
     procedure ProgramGetsPlainUnit;
+    [Test]
+    procedure PackageGetsContains;
+    [Test]
+    procedure ProjectWithoutUnitsGetsReference;
   end;
 
 implementation
@@ -205,6 +209,37 @@ begin
   Assert.IsTrue(TUnitTemplates.ProjectEdit(Project, 'Werkzeug.pas', '', TFormKind.Form, False, Edit));
   Assert.AreEqual(#10'        <DCCReference Include="Werkzeug.pas"/>', Edit.NewText);
   Assert.IsFalse(TUnitTemplates.ProjectEdit('<Project/>', 'A.pas', 'TA', TFormKind.Form, True, Edit));
+end;
+
+procedure TUnitTemplatesTests.PackageGetsContains;
+const
+  Package = 'package Paket;'#10'requires'#10'  rtl,'#10'  vcl;'#10'contains'#10 +
+    '  Haupt in ''Haupt.pas'';'#10'end.';
+var
+  Edit: TRuleEdit;
+  Text: string;
+begin
+  // Units einer .dpk stehen unter contains, nicht unter requires (#299).
+  Assert.IsTrue(TUnitTemplates.UnitProgramEdit(Package, 'Knopf', 'Knopf.pas', Edit));
+  Text := ApplyOne(Package, Edit);
+  Assert.IsTrue(Pos('  vcl;'#10'contains'#10'  Haupt in ''Haupt.pas'','#10'  Knopf in ''Knopf.pas'';'#10'end.',
+    Text) > 0, Text);
+  Assert.IsFalse(TUnitTemplates.UnitProgramEdit(Package, 'haupt', 'Haupt.pas', Edit));
+end;
+
+procedure TUnitTemplatesTests.ProjectWithoutUnitsGetsReference;
+const
+  Project = '<Project>'#10'    <ItemGroup>'#10'        <DelphiCompile Include="App.dpr"/>'#10 +
+    '        <BuildConfiguration Include="Base">'#10'            <Key>Base</Key>'#10 +
+    '        </BuildConfiguration>'#10'    </ItemGroup>'#10'</Project>';
+var
+  Edit: TRuleEdit;
+  Text: string;
+begin
+  Assert.IsTrue(TUnitTemplates.ProjectEdit(Project, 'Werkzeug.pas', '', TFormKind.Form, False, Edit));
+  Text := ApplyOne(Project, Edit);
+  Assert.IsTrue(Pos('<DelphiCompile Include="App.dpr"/>'#10'        <DCCReference Include="Werkzeug.pas"/>'#10 +
+    '        <BuildConfiguration Include="Base">', Text) > 0, Text);
 end;
 
 initialization

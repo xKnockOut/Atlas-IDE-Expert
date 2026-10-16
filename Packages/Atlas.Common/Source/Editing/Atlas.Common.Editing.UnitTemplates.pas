@@ -31,11 +31,11 @@ type
     /// Datenmodulen Application.CreateForm vor Application.Run. False ohne uses.</summary>
     class function ProgramEdits(const AText, AUnitName, AFileName, AClassName: string; AKind: TFormKind;
       out AEdits: TArray<TTextEdit>): Boolean; static;
-    /// <summary>Edit für die .dpr: "AUnitName in 'AFileName'" am Ende des uses, ohne Formular (#274).
-    /// False ohne uses oder wenn die Unit dort schon steht.</summary>
+    /// <summary>Edit für die .dpr: "AUnitName in 'AFileName'" am Ende des uses, ohne Formular (#274); in einer
+    /// .dpk am Ende von contains (#299). False ohne Liste oder wenn die Unit dort schon steht.</summary>
     class function UnitProgramEdit(const AText, AUnitName, AFileName: string; out AEdit: TTextEdit): Boolean; static;
     /// <summary>Edit für die .dproj: DCCReference mit Form und gegebenenfalls DesignClass hinter
-    /// dem letzten DCCReference. False ohne DCCReference.</summary>
+    /// dem letzten DCCReference, ohne solche vor der ersten BuildConfiguration (#297). False ohne beides.</summary>
     class function ProjectEdit(const AText, AFileName, AClassName: string; AKind: TFormKind;
       AWithForm: Boolean; out AEdit: TTextEdit): Boolean; static;
   end;
@@ -204,15 +204,25 @@ class function TUnitTemplates.UnitProgramEdit(const AText, AUnitName, AFileName:
 var
   Tokens: TArray<TPascalToken>;
   Index, Next, Semicolon: Integer;
-  Name, LB: string;
+  Name, LB, List: string;
   InName: Boolean;
 begin
   AEdit := Default(TTextEdit);
   LB := TTextLines.LineBreakOf(AText);
   Tokens := TPascalLexer.Tokenize(AText);
   Semicolon := -1;
+  // Packages führen ihre Units unter contains, Programme unter uses.
+  List := 'uses';
   for Index := 0 to High(Tokens) do
-    if Tokens[Index].IsKeyword('uses') then
+    if (Tokens[Index].Kind in [TPascalTokenKind.Identifier, TPascalTokenKind.Keyword]) and
+      SameText(Tokens[Index].Text, 'contains') then
+    begin
+      List := 'contains';
+      Break;
+    end;
+  for Index := 0 to High(Tokens) do
+    if (Tokens[Index].Kind in [TPascalTokenKind.Identifier, TPascalTokenKind.Keyword]) and
+      SameText(Tokens[Index].Text, List) then
     begin
       // Namen bis "in", "," oder ";" zusammensetzen; Pfade und Kommentare zählen nicht.
       Name := '';
@@ -267,7 +277,18 @@ begin
         Inc(Last);
     end;
   if Last < 0 then
+  begin
+    // Projekt ohne Units (Konsolenprogramm): vor die erste BuildConfiguration im selben ItemGroup.
+    for Index := 0 to High(Lines) do
+      if Pos('<BuildConfiguration ', Lines[Index]) > 0 then
+      begin
+        Indent := Copy(Lines[Index], 1, Pos('<', Lines[Index]) - 1);
+        AEdit := TTextEdit.Create(TTextRange.Create(Index, 0, Index, 0),
+          Format('%s<DCCReference Include="%s"/>', [Indent, AFileName]) + LB);
+        Exit(True);
+      end;
     Exit(False);
+  end;
   Indent := Copy(Lines[Last], 1, Pos('<', Lines[Last]) - 1);
   if not AWithForm then
     Text := Format('%s<DCCReference Include="%s"/>', [Indent, AFileName])

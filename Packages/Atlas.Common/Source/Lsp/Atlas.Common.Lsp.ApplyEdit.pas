@@ -12,6 +12,17 @@ uses
   System.JSON;
 
 type
+  /// <summary>Eine Datei in einem WorkspaceEdit mit mehreren Dateien (#297).</summary>
+  TLspFileChange = record
+    FileName: string;
+    /// <summary>Bisheriger Inhalt; bei New leer.</summary>
+    OldText: string;
+    NewText: string;
+    /// <summary>Datei neu anlegen (documentChanges kind create).</summary>
+    New: Boolean;
+    class function Create(const AFileName, AOldText, ANewText: string; ANew: Boolean): TLspFileChange; static;
+  end;
+
   TLspApplyEdit = class
   public const
     Method = 'workspace/applyEdit';
@@ -21,6 +32,9 @@ type
     /// <summary>WorkspaceEdit, das den ganzen Text AOldText der Datei AFileName durch ANewText ersetzt.
     /// Der Aufrufer übernimmt das Objekt.</summary>
     class function ReplaceAll(const AFileName, AOldText, ANewText: string): TJSONObject; static;
+    /// <summary>WorkspaceEdit mit documentChanges: neue Dateien anlegen und füllen, vorhandene ganz ersetzen,
+    /// in der Reihenfolge von AChanges. Der Aufrufer übernimmt das Objekt.</summary>
+    class function Files(const AChanges: TArray<TLspFileChange>): TJSONObject; static;
     /// <summary>Vollständige Anfrage mit id AId; übernimmt AEdit. Der Aufrufer übernimmt das Ergebnis.</summary>
     class function Request(const AId, ALabel: string; AEdit: TJSONObject): TJSONObject; static;
     /// <summary>Antwort des Clients: True bei applied; sonst AReason (failureReason bzw. Fehlermeldung).</summary>
@@ -40,6 +54,71 @@ var
 begin
   Result := (AInitializeParams <> nil) and
     AInitializeParams.TryGetValue<Boolean>('capabilities.workspace.applyEdit', Value) and Value;
+end;
+
+{ TLspFileChange }
+
+class function TLspFileChange.Create(const AFileName, AOldText, ANewText: string; ANew: Boolean): TLspFileChange;
+begin
+  Result.FileName := AFileName;
+  Result.OldText := AOldText;
+  Result.NewText := ANewText;
+  Result.New := ANew;
+end;
+
+{ TLspApplyEdit }
+
+/// <summary>Bereich über den ganzen Text AText, Länge in UTF-16-Einheiten wie im LSP üblich.</summary>
+function WholeRange(const AText: string): TTextRange;
+var
+  Lines: TArray<string>;
+begin
+  Lines := AText.Split([#10]);
+  if Length(Lines) = 0 then
+    Lines := [''];
+  Result := TTextRange.Create(0, 0, High(Lines), Length(Lines[High(Lines)]));
+end;
+
+class function TLspApplyEdit.Files(const AChanges: TArray<TLspFileChange>): TJSONObject;
+var
+  Changes, Edits: TJSONArray;
+  Creation, Options, Document, Edit, Item: TJSONObject;
+  Change: TLspFileChange;
+  Uri: string;
+  Range: TTextRange;
+begin
+  Changes := TJSONArray.Create;
+  for Change in AChanges do
+  begin
+    Uri := TDocumentUris.FromPath(Change.FileName);
+    if Change.New then
+    begin
+      Creation := TJSONObject.Create;
+      Creation.AddPair('kind', 'create');
+      Creation.AddPair('uri', Uri);
+      Options := TJSONObject.Create;
+      Options.AddPair('ignoreIfExists', TJSONBool.Create(False));
+      Creation.AddPair('options', Options);
+      Changes.AddElement(Creation);
+      Range := TTextRange.Create(0, 0, 0, 0);
+    end
+    else
+      Range := WholeRange(Change.OldText);
+    Document := TJSONObject.Create;
+    Document.AddPair('uri', Uri);
+    Document.AddPair('version', TJSONNull.Create);
+    Edit := TJSONObject.Create;
+    Edit.AddPair('range', TLspPositions.RangeToJson(Range));
+    Edit.AddPair('newText', Change.NewText);
+    Edits := TJSONArray.Create;
+    Edits.AddElement(Edit);
+    Item := TJSONObject.Create;
+    Item.AddPair('textDocument', Document);
+    Item.AddPair('edits', Edits);
+    Changes.AddElement(Item);
+  end;
+  Result := TJSONObject.Create;
+  Result.AddPair('documentChanges', Changes);
 end;
 
 class function TLspApplyEdit.ReplaceAll(const AFileName, AOldText, ANewText: string): TJSONObject;
