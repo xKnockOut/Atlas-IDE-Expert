@@ -482,10 +482,11 @@ procedure TAtlasNotificationSourcesTests.KnownSourcesAndModeNames;
 var
   Mode: TAtlasNotificationMode;
 begin
-  Assert.AreEqual(6, Integer(Length(TAtlasNotificationSources.Known)));
+  Assert.AreEqual(7, Integer(Length(TAtlasNotificationSources.Known)));
   Assert.AreEqual('build', TAtlasNotificationSources.Known[0]);
   Assert.AreEqual('shortcutTips', TAtlasNotificationSources.Known[4]);
   Assert.AreEqual('buildServer', TAtlasNotificationSources.Known[5], 'Build-Server (#763)');
+  Assert.AreEqual('openBuild', TAtlasNotificationSources.Known[6], 'Bauen beim Öffnen');
   Assert.AreEqual('show', TAtlasNotificationSources.ModeName(TAtlasNotificationMode.Show));
   Assert.AreEqual('collect', TAtlasNotificationSources.ModeName(TAtlasNotificationMode.Collect));
   Assert.AreEqual('off', TAtlasNotificationSources.ModeName(TAtlasNotificationMode.Off));

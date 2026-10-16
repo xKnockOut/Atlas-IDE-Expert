@@ -199,6 +199,8 @@ begin
     Result := TAtlasStrings.Text(TAtlasTextId.NotificationsSourceShortcutTips)
   else if SameText(ASource, TAtlasNotificationSources.BuildServer) then
     Result := TAtlasStrings.Text(TAtlasTextId.NotificationsSourceBuildServer)
+  else if SameText(ASource, TAtlasNotificationSources.OpenBuild) then
+    Result := TAtlasStrings.Text(TAtlasTextId.NotificationsSourceOpenBuild)
   else
     Result := ASource;
 end;
