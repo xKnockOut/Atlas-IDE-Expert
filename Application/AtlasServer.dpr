@@ -26,7 +26,9 @@ uses
   Atlas.Core.Vcs.Adapters.ProcessRunner in '..\Packages\Atlas.IDE.Expert\Source\Core\Vcs\Atlas.Core.Vcs.Adapters.ProcessRunner.pas',
   Shell.Mcp in 'Source\Shell\Shell.Mcp.pas',
   Shell.Diagnostics in 'Source\Shell\Shell.Diagnostics.pas',
-  Shell.Bootstrap in 'Source\Shell\Shell.Bootstrap.pas';
+  Shell.Bootstrap in 'Source\Shell\Shell.Bootstrap.pas',
+  Shell.Commands.Build in 'Source\Shell\Shell.Commands.Build.pas',
+  Shell.Commands.Index in 'Source\Shell\Shell.Commands.Index.pas';
 
 // Atlas-Symbol (#751) als Programmsymbol (MAINICON).
 {$R '..\Packages\Atlas.IDE.Expert\Resources\Symbol\Atlas.Icon.res'}

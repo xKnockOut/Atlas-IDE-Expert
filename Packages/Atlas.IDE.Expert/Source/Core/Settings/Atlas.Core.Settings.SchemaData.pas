@@ -11,7 +11,7 @@ function AtlasSchemaJson: string;
 implementation
 
 const
-  Lines: array[0..997] of string = (
+  Lines: array[0..999] of string = (
     '{',
     '  "$schema": "http://json-schema.org/draft-07/schema#",',
     '  "title": "Atlas-Konfiguration",',
@@ -888,7 +888,9 @@ const
     '          "type": "boolean",',
     '          "default": true,',
     '          "description": "Der MCP-Server liest wie der LSP-Server und der Linter die globale Datei %APPDATA%\\Atlas\\settings.json (z. B. mcp.disabledTools, Index, Hints). false: nur atlas.json, etwa ' + 'für reproduzierbare Ergebnisse im Team.",',
-    '          "x-scope": "project"',
+    '          "x-scope": "project",',
+    '          "x-page": "MCP",',
+    '          "x-control": "Kontrollkästchen in den Projekt-Einstellungen (Seite MCP)"',
     '        }',
     '      },',
     '      "examples": [',
