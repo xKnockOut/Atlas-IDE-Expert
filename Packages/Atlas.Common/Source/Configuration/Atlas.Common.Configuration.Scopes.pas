@@ -14,6 +14,10 @@
 // Effective setzt die Ebenen zusammen: global < Editor < Projekt. Die
 // Editor-Ebene (initializationOptions und didChangeConfiguration) zählt wie
 // global.
+// atlas.json liegt im Repository und gilt für alle im Team: Filter für den
+// Projekt-Ort entfernt zusätzlich Zugangsdaten und absolute Pfade und meldet
+// sie (#486, Internals.Forbidden); dieselbe Sperre gilt im Plugin für die
+// Projektdatei .atlas.
 
 interface
 
@@ -38,7 +42,8 @@ type
     /// <summary>Objekt mit Gliedern beider Orte (index, completion).</summary>
     class function IsMixed(const AKey: string): Boolean; static;
     /// <summary>AText ohne die Schlüssel, die nicht nach AKeep gehören; AIssues nennt sie mit Position im
-    /// Originaltext. Ohne solche Schlüssel, bei leerem oder ungültigem Text genau AText.</summary>
+    /// Originaltext. Für den Projekt-Ort fehlen außerdem Zugangsdaten und absolute Pfade (#486), ebenfalls mit
+    /// Meldung. Ohne solche Schlüssel, bei leerem oder ungültigem Text genau AText.</summary>
     class function Filter(const AText: string; AKeep: TConfigurationScope;
       out AIssues: TArray<TConfigurationIssue>): string; overload; static;
     class function Filter(const AText: string; AKeep: TConfigurationScope): string; overload; static;
@@ -57,6 +62,7 @@ uses
   Atlas.Common.Configuration.Parser,
   Atlas.Common.Configuration.Internals.JsonTree,
   Atlas.Common.Configuration.Internals.ScopeData,
+  Atlas.Common.Configuration.Internals.Forbidden,
   Atlas.Text.Lines;
 
 function Listed(const APath: string; const AList: array of string): Boolean;
@@ -99,6 +105,9 @@ begin
       'Einstellungen wird es ignoriert', [APath]);
 end;
 
+function FilterScope(const AText: string; AKeep: TConfigurationScope;
+  out AIssues: TArray<TConfigurationIssue>): string; forward;
+
 { TConfigurationScopes }
 
 class function TConfigurationScopes.ScopeOf(const APath: string): TConfigurationScope;
@@ -129,6 +138,20 @@ begin
 end;
 
 class function TConfigurationScopes.Filter(const AText: string; AKeep: TConfigurationScope;
+  out AIssues: TArray<TConfigurationIssue>): string;
+var
+  Forbidden, Ignored: TArray<TConfigurationIssue>;
+begin
+  if AKeep <> TConfigurationScope.Project then
+    Exit(FilterScope(AText, AKeep, AIssues));
+  // atlas.json gilt für alle im Team (#486): ohne Zugangsdaten und absolute Pfade. Die Meldungen zum Ort beziehen
+  // sich auf den Originaltext.
+  FilterScope(AText, AKeep, AIssues);
+  Result := FilterScope(TForbiddenEntries.Strip(AText, Forbidden), AKeep, Ignored);
+  AIssues := AIssues + Forbidden;
+end;
+
+function FilterScope(const AText: string; AKeep: TConfigurationScope;
   out AIssues: TArray<TConfigurationIssue>): string;
 var
   Root, Value: TJsonNode;
@@ -175,14 +198,14 @@ begin
     begin
       Key := Root.Keys[Index];
       Value := Root[Index];
-      if IsMixed(Key) and (Value.Kind = TJsonKind.Object_) then
+      if TConfigurationScopes.IsMixed(Key) and (Value.Kind = TJsonKind.Object_) then
       begin
         Members := nil;
         SubRemoved := False;
         for Sub := 0 to Value.Count - 1 do
         begin
           Path := Key + '.' + Value.Keys[Sub];
-          if Keeps(ScopeOf(Path)) then
+          if Keeps(TConfigurationScopes.ScopeOf(Path)) then
             Members := Members + [QuoteKey(Value.Keys[Sub]) + ': ' + NodeText(AText, Value[Sub])]
           else
           begin
@@ -203,7 +226,7 @@ begin
       end;
       Scope := TConfigurationScope.Unknown;
       if Key <> '$schema' then
-        Scope := ScopeOf(Key);
+        Scope := TConfigurationScopes.ScopeOf(Key);
       if Keeps(Scope) then
         Parts := Parts + [QuoteKey(Key) + ': ' + NodeText(AText, Value)]
       else

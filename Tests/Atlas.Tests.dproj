@@ -62,6 +62,7 @@
         <DCCReference Include="Text\Atlas.Text.Jsonc.Tests.pas"/>
         <DCCReference Include="Text\Atlas.Text.Entities.Tests.pas"/>
         <DCCReference Include="Text\Atlas.Text.Defines.Tests.pas"/>
+        <DCCReference Include="Text\Atlas.Text.Checkin.Tests.pas"/>
         <DCCReference Include="Common\Logging\Atlas.Common.Logging.Providers.Logger.Tests.pas"/>
         <DCCReference Include="Common\Logging\Atlas.Common.Logging.Providers.StreamSink.Tests.pas"/>
         <DCCReference Include="Common\Logging\Atlas.Common.Logging.RotatingFileStream.Tests.pas"/>
@@ -521,6 +522,8 @@
         <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\UI\Settings\Atlas.UI.Settings.QuickToggles.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.UI.Settings.QuickToggles.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Settings\Atlas.Core.Settings.History.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Settings\Atlas.Core.Settings.TeamFile.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.Core.Settings.TeamFile.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Diagnostics\Atlas.Core.Diagnostics.FeatureTable.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Diagnostics\Atlas.Core.Diagnostics.SafeMode.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Diagnostics.SafeMode.Tests.pas"/>

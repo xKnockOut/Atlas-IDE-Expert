@@ -1,6 +1,7 @@
 ﻿unit Atlas.Common.Configuration.Scopes.Tests;
 
 // Tests für den Ort der Einstellungen: jeder Schlüssel in genau einer Datei.
+// Dazu die Sperre für Zugangsdaten und absolute Pfade in atlas.json (#486).
 
 interface
 
@@ -27,6 +28,14 @@ type
     procedure LayersGlobalEditorProject;
     [Test]
     procedure BuildsGlobalFileName;
+    [Test]
+    procedure IgnoresCredentialsInProjectFile;
+    [Test]
+    procedure IgnoresAbsolutePathsInProjectFile;
+    [Test]
+    procedure KeepsRelativePathsAndGlobs;
+    [Test]
+    procedure GlobalFileKeepsPersonalPaths;
   end;
 
 implementation
@@ -163,6 +172,94 @@ begin
   Assert.AreEqual('', TConfigurationScopes.GlobalFile(''));
   Assert.AreEqual(IncludeTrailingPathDelimiter('C:\Daten') + 'Atlas' + PathDelim + 'settings.json',
     TConfigurationScopes.GlobalFile('C:\Daten'));
+end;
+
+procedure TConfigurationScopesTests.IgnoresCredentialsInProjectFile;
+var
+  Issues: TArray<TConfigurationIssue>;
+  Text: string;
+  Settings: TServerSettings;
+begin
+  Text := TConfigurationScopes.Filter('{"platform": "Win64",'#10' "token": "abc",'#10 +
+    ' "rules": {"empty-except": "off", "x": {"password": "geheim", "max": 3}}}', TConfigurationScope.Project, Issues);
+  Assert.AreEqual(2, Integer(Length(Issues)));
+  Assert.IsFalse(Issues[0].IsError, 'Warnung, kein Fehler');
+  Assert.AreEqual(1, Issues[0].Range.StartPos.Line);
+  Assert.AreEqual(1, Issues[0].Range.StartPos.Character);
+  Assert.Contains(Issues[0].Message, '"token"');
+  Assert.Contains(Issues[0].Message, 'Zugangsdaten');
+  Assert.Contains(Issues[1].Message, '"rules.x.password"');
+  Assert.DoesNotContain(Text, 'abc');
+  Assert.DoesNotContain(Text, 'geheim');
+  Settings := TConfigurationParser.Parse(Text, Issues);
+  Assert.AreEqual('Win64', Settings.Platform, 'der Rest gilt');
+  // Adresse mit Benutzer und Passwort.
+  TConfigurationScopes.Filter('{"exclude": ["https://u:p@host/x"]}', TConfigurationScope.Project, Issues);
+  Assert.AreEqual(1, Integer(Length(Issues)));
+  Assert.Contains(Issues[0].Message, 'Adresse');
+  // Regel-IDs mit „password“ im Namen sind keine Zugangsdaten.
+  Assert.AreEqual('{"rules": {"hardcoded-password": "error"}}', TConfigurationScopes.Filter(
+    '{"rules": {"hardcoded-password": "error"}}', TConfigurationScope.Project, Issues));
+  Assert.AreEqual(0, Integer(Length(Issues)));
+end;
+
+procedure TConfigurationScopesTests.IgnoresAbsolutePathsInProjectFile;
+var
+  Issues: TArray<TConfigurationIssue>;
+  Settings: TServerSettings;
+begin
+  Settings := TConfigurationParser.Parse(TConfigurationScopes.Filter(
+    '{"project": "C:\\Users\\marco\\Kasse.dproj", "exclude": ["Generated/**", "D:\\Fremd\\**"], ' +
+    '"testUnits": {"folder": "\\\\server\\tests", "project": "Tests\\Tests.dproj"}, ' +
+    '"index": {"exclude": ["//server/x/**"]}, "overrides": [{"files": ["C:/a/*.pas", "Tests/**"], ' +
+    '"rules": {"*": "off"}}]}', TConfigurationScope.Project, Issues), Issues);
+  Assert.AreEqual(0, Integer(Length(Issues)), 'gefilterter Text ist gültig');
+  Assert.AreEqual('', Settings.Project);
+  Assert.AreEqual(1, Integer(Length(Settings.Exclude)));
+  Assert.AreEqual('Generated/**', Settings.Exclude[0]);
+  Assert.AreEqual('', Settings.TestUnits.Folder);
+  Assert.AreEqual('Tests\Tests.dproj', Settings.TestUnits.Project);
+  Assert.AreEqual(0, Integer(Length(Settings.IndexExclude)));
+  Assert.AreEqual(1, Integer(Length(Settings.Overrides)));
+  Assert.AreEqual(1, Integer(Length(Settings.Overrides[0].Files)));
+  Assert.AreEqual('Tests/**', Settings.Overrides[0].Files[0]);
+  // Gemeldet: project, exclude, testUnits.folder, index.exclude, overrides.files.
+  TConfigurationScopes.Filter('{"project": "C:\\Kasse.dproj", "exclude": ["D:\\x"], ' +
+    '"testUnits": {"folder": "\\\\s\\t"}, "index": {"exclude": ["//s/x"]}, ' +
+    '"overrides": [{"files": ["C:/a"]}]}', TConfigurationScope.Project, Issues);
+  Assert.AreEqual(5, Integer(Length(Issues)));
+  Assert.Contains(Issues[0].Message, '"project"');
+  Assert.Contains(Issues[0].Message, 'absolute Pfade');
+  Assert.Contains(Issues[4].Message, '"overrides.files"');
+end;
+
+procedure TConfigurationScopesTests.KeepsRelativePathsAndGlobs;
+const
+  Text = '{"project": "App\\Kasse.dproj", "exclude": ["/Generated/**", "..\\Gemeinsam\\**"], ' +
+    '"testUnits": {"folder": "..\\Tests"}, "slashCommands": {"headerTemplate": "C:\\x"}}';
+var
+  Issues: TArray<TConfigurationIssue>;
+  Filtered: string;
+begin
+  // slashCommands gehört nach settings.json und wird nur deshalb gemeldet; Pfade ab dem Projektordner und
+  // relative Pfade bleiben.
+  Filtered := TConfigurationScopes.Filter(Text, TConfigurationScope.Project, Issues);
+  Assert.AreEqual(1, Integer(Length(Issues)));
+  Assert.Contains(Issues[0].Message, '"slashCommands"');
+  Assert.Contains(Filtered, '"/Generated/**"');
+  Assert.Contains(Filtered, '..\\Gemeinsam');
+  Assert.Contains(Filtered, '"App\\Kasse.dproj"');
+end;
+
+procedure TConfigurationScopesTests.GlobalFileKeepsPersonalPaths;
+const
+  Text = '{"logFile": "C:\\Users\\marco\\atlas.log", "traceFile": "D:\\trace.json"}';
+var
+  Issues: TArray<TConfigurationIssue>;
+begin
+  // settings.json ist persönlich: absolute Pfade bleiben, keine Meldung.
+  Assert.AreEqual(Text, TConfigurationScopes.Filter(Text, TConfigurationScope.Global, Issues));
+  Assert.AreEqual(0, Integer(Length(Issues)));
 end;
 
 initialization
