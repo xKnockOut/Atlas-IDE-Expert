@@ -94,7 +94,7 @@ type
 implementation
 
 uses
-  Atlas.IDE.Editor.Buffer,
+  Atlas.IDE.Foundation.EditorBuffer,
   System.Types,
   System.DateUtils,
   System.UITypes,

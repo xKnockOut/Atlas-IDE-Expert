@@ -128,11 +128,11 @@ var
 begin
   Found := TDUnitXSource.Scan(Sample);
   Assert.AreEqual('Rechner.Tests', Found.UnitName);
-  Assert.AreEqual(1, Length(Found.Fixtures));
+  Assert.AreEqual(1, Integer(Length(Found.Fixtures)));
   Assert.AreEqual('TRechnerTests', Found.Fixtures[0].Name);
   Assert.AreEqual(9, Found.Fixtures[0].Line);
   Assert.AreEqual(8, Found.Fixtures[0].AttributeLine);
-  Assert.AreEqual(2, Length(Found.Fixtures[0].Tests), 'Addiert und Summe; Setup und Hilfe nicht');
+  Assert.AreEqual(2, Integer(Length(Found.Fixtures[0].Tests)), 'Addiert und Summe; Setup und Hilfe nicht');
   Assert.AreEqual(2, Found.TestCount);
   Assert.AreEqual('Addiert', Found.Fixtures[0].Tests[0].Method);
   Assert.AreEqual(16, Found.Fixtures[0].Tests[0].Line);
@@ -150,7 +150,7 @@ var
 begin
   Found := TDUnitXSource.Scan(Sample);
   Test := Found.Fixtures[0].Tests[1];
-  Assert.AreEqual(2, Length(Test.Cases));
+  Assert.AreEqual(2, Integer(Length(Test.Cases)));
   Assert.AreEqual('Klein', Test.Cases[0]);
   Assert.AreEqual('Gross', Test.Cases[1]);
   Assert.IsFalse(Test.Ignored);
@@ -205,7 +205,7 @@ begin
     'initialization',
     '  TDUnitX.RegisterTestFixture(TOhneAttribut);',
     'end.']);
-  Assert.AreEqual(1, Length(Found.Fixtures));
+  Assert.AreEqual(1, Integer(Length(Found.Fixtures)));
   Assert.AreEqual(4, Found.Fixtures[0].AttributeLine, 'ohne Attribut die Klassenzeile');
   Assert.AreEqual(10, Found.Fixtures[0].Tests[0].BodyLine);
 end;
@@ -231,9 +231,9 @@ begin
     '    [Test] procedure Aussen;',
     '  end;',
     'implementation', 'end.']);
-  Assert.AreEqual(1, Length(Found.Fixtures), 'THelfer ist weder markiert noch registriert');
+  Assert.AreEqual(1, Integer(Length(Found.Fixtures)), 'THelfer ist weder markiert noch registriert');
   Assert.AreEqual('TT', Found.Fixtures[0].Name);
-  Assert.AreEqual(1, Length(Found.Fixtures[0].Tests), 'Methoden innerer Klassen zählen nicht');
+  Assert.AreEqual(1, Integer(Length(Found.Fixtures[0].Tests)), 'Methoden innerer Klassen zählen nicht');
   Assert.AreEqual('Aussen', Found.Fixtures[0].Tests[0].Method);
 end;
 
@@ -277,7 +277,7 @@ begin
     '  Writeln(''procedure TT.Fall'');',
     'end;',
     'end.']);
-  Assert.AreEqual(1, Length(Found.Fixtures));
+  Assert.AreEqual(1, Integer(Length(Found.Fixtures)));
   Assert.AreEqual(1, Found.TestCount);
   Assert.AreEqual('A;b', Found.Fixtures[0].Tests[0].Cases[0]);
   Assert.AreEqual(13, Found.Fixtures[0].Tests[0].BodyLine);
@@ -348,14 +348,14 @@ begin
     TDUnitXCommandLine.TestName('Rechner.Tests', 'TRechnerTests', 'Addiert'));
   Assert.AreEqual('Rechner.Tests.TRechnerTests', TDUnitXCommandLine.TestName('Rechner.Tests', 'TRechnerTests', ''));
   Arguments := TDUnitXCommandLine.Arguments('C:\Temp\r.xml', nil);
-  Assert.AreEqual(2, Length(Arguments));
+  Assert.AreEqual(2, Integer(Length(Arguments)));
   Assert.AreEqual('--exitbehavior:Continue', Arguments[0]);
   Assert.AreEqual('--xmlfile:C:\Temp\r.xml', Arguments[1]);
   Arguments := TDUnitXCommandLine.Arguments('r.xml', ['A.T.X', '', 'A.T.Y']);
-  Assert.AreEqual(3, Length(Arguments));
+  Assert.AreEqual(3, Integer(Length(Arguments)));
   Assert.AreEqual('--run:A.T.X,A.T.Y', Arguments[2]);
   Arguments := TDUnitXCommandLine.Arguments('r.xml', [StringOfChar('x', TDUnitXCommandLine.MaxRunLength + 1)]);
-  Assert.AreEqual(2, Length(Arguments), 'zu lang: alle Tests');
+  Assert.AreEqual(2, Integer(Length(Arguments)), 'zu lang: alle Tests');
 end;
 
 procedure TDUnitXSourceTests.BodyRangeSkipsLocalRoutinesAndTypes;
@@ -417,7 +417,7 @@ var
   Found: TDUnitXUnit;
 begin
   Found := TDUnitXSource.Scan(Sample);
-  Assert.AreEqual(2, Length(Found.Fixtures[0].Tests[1].CaseLines));
+  Assert.AreEqual(2, Integer(Length(Found.Fixtures[0].Tests[1].CaseLines)));
   Assert.AreEqual(18, Found.Fixtures[0].Tests[1].CaseLines[0]);
   Assert.AreEqual(19, Found.Fixtures[0].Tests[1].CaseLines[1]);
   Assert.IsTrue(Found.CaseHasOwnLine(0, 1, 0));
@@ -492,21 +492,21 @@ begin
   Assert.AreEqual('U.TT.M', TDUnitXCommandLine.CaseName('U', 'TT', 'M', ''));
   Found := TDUnitXSource.Scan(Sample);
   Names := TDUnitXCommandLine.RunNames(Found, 0, 0, -1);
-  Assert.AreEqual(1, Length(Names));
+  Assert.AreEqual(1, Integer(Length(Names)));
   Assert.AreEqual('Rechner.Tests.TRechnerTests.Addiert', Names[0]);
   // [TestCase]: Unit.Fixture.Methode trifft keinen Fall, darum je Fall ein Name.
   Names := TDUnitXCommandLine.RunNames(Found, 0, 1, -1);
-  Assert.AreEqual(2, Length(Names));
+  Assert.AreEqual(2, Integer(Length(Names)));
   Assert.AreEqual('Rechner.Tests.TRechnerTests.Summe.Klein', Names[0]);
   Assert.AreEqual('Rechner.Tests.TRechnerTests.Summe.Gross', Names[1]);
   Names := TDUnitXCommandLine.RunNames(Found, 0, 1, 1);
-  Assert.AreEqual(1, Length(Names));
+  Assert.AreEqual(1, Integer(Length(Names)));
   Assert.AreEqual('Rechner.Tests.TRechnerTests.Summe.Gross', Names[0]);
   Names := TDUnitXCommandLine.RunNames(Found, 0, -1, -1);
-  Assert.AreEqual(1, Length(Names));
+  Assert.AreEqual(1, Integer(Length(Names)));
   Assert.AreEqual('Rechner.Tests.TRechnerTests', Names[0]);
-  Assert.AreEqual(0, Length(TDUnitXCommandLine.RunNames(Found, 1, -1, -1)), 'ungültige Fixture');
-  Assert.AreEqual(0, Length(TDUnitXCommandLine.RunNames(Found, 0, 5, -1)), 'ungültiger Test');
+  Assert.AreEqual(0, Integer(Length(TDUnitXCommandLine.RunNames(Found, 1, -1, -1))), 'ungültige Fixture');
+  Assert.AreEqual(0, Integer(Length(TDUnitXCommandLine.RunNames(Found, 0, 5, -1))), 'ungültiger Test');
   Found := TDUnitXSource.Scan([
     'unit U;', 'interface', 'type',
     '  [TestFixture]', '  TT = class',
@@ -523,14 +523,14 @@ begin
     'implementation', 'end.']);
   // TT ist der Anfang von TTMehr: U.TT liefe beide; also die Tests von TT einzeln.
   Names := TDUnitXCommandLine.RunNames(Found, 0, -1, -1);
-  Assert.AreEqual(2, Length(Names));
+  Assert.AreEqual(2, Integer(Length(Names)));
   Assert.AreEqual('U.TT.Eins', Names[0]);
   Assert.AreEqual('U.TT.Spaeter', Names[1], '[Ignore] mit Fällen: ein Test ohne Fall');
   Names := TDUnitXCommandLine.RunNames(Found, 0, 1, 0);
-  Assert.AreEqual(1, Length(Names));
+  Assert.AreEqual(1, Integer(Length(Names)));
   Assert.AreEqual('U.TT.Spaeter', Names[0]);
   Names := TDUnitXCommandLine.RunNames(Found, 1, -1, -1);
-  Assert.AreEqual(1, Length(Names));
+  Assert.AreEqual(1, Integer(Length(Names)));
   Assert.AreEqual('U.TTMehr', Names[0]);
 end;
 

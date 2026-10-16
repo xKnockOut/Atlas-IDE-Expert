@@ -2471,7 +2471,7 @@ begin
     Assert.IsFalse(Frame.Button(TAtlasSetupButton.Options).Visible, 'ohne Funde keine Projektoptionen');
     // Vorgabe der Vorlage: Bestehendes Projekt.
     Assert.IsTrue(Frame.SelectedTemplate = TAtlasSetupTemplate.Existing);
-    Assert.AreEqual(3, Frame.TemplateBox.Items.Count);
+    Assert.AreEqual(3, Integer(Frame.TemplateBox.Items.Count));
     Assert.AreEqual(Integer(Ord(TAtlasSetupTemplate.Existing)), Frame.TemplateBox.ItemIndex);
     // Knöpfe rechts neben dem Text ihres Schritts, Schritte untereinander.
     Assert.IsTrue(Frame.Button(TAtlasSetupButton.CreateConfig).Left > Frame.TemplateBox.Left);
@@ -3164,17 +3164,17 @@ begin
     Frame.Width := 600;
     Frame.Source := Source;
     Assert.IsTrue(Frame.Tabs.Visible, 'Reiter „Zuletzt“ und „Gemerkt“');
-    Assert.AreEqual(2, Frame.Tabs.Tabs.Count);
+    Assert.AreEqual(2, Integer(Frame.Tabs.Tabs.Count));
     Assert.AreEqual(TAtlasWelcomeContinueFrame.PageRecent, Frame.Page);
     Assert.AreEqual(0, Integer(Length(Fake.Calls)) - 1, '„Gemerkt“ erst beim Wechsel lesen');
     Frame.Page := TAtlasWelcomeContinueFrame.PageSaved;
     Assert.AreEqual(TAtlasWelcomeContinueFrame.PageSaved, Frame.Page);
-    Assert.AreEqual(2, Frame.List.Items.Count);
+    Assert.AreEqual(2, Integer(Frame.List.Items.Count));
     Assert.AreEqual('Notiz', Frame.List.Items[0].Caption);
     Assert.AreEqual('Kunde.pas:5', Frame.List.Items[0].SubItems[1]);
     Assert.AreEqual('Zeta', Frame.List.Items[1].SubItems[2]);
     Frame.Filter.Text := 'zeta';
-    Assert.AreEqual(1, Frame.List.Items.Count, 'Filter');
+    Assert.AreEqual(1, Integer(Frame.List.Items.Count), 'Filter');
     Assert.AreEqual('b1', Frame.ShownSaved[0].Id);
     Frame.Filter.Text := 'gibtsnicht';
     Assert.IsTrue(Frame.SavedEmptyLabel.Visible);

@@ -56,6 +56,7 @@ type
 implementation
 
 uses
+  Winapi.Windows,
   System.JSON,
   System.Generics.Collections,
   System.IOUtils;

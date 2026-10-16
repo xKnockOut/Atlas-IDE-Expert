@@ -103,7 +103,7 @@ begin
   try
     Window.SetItems(Sample);
     Assert.AreEqual(4, Integer(Length(Window.Shown)));
-    Assert.AreEqual(4, Window.List.Items.Count);
+    Assert.AreEqual(4, Integer(Window.List.Items.Count));
     Cells := TAtlasKeyMapWindow.Cells(Window.Items, 0);
     Assert.AreEqual('Strg+Umschalt+P', Cells[0]);
     Assert.AreEqual('Befehlspalette', Cells[1]);

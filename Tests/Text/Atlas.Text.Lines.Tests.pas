@@ -163,10 +163,15 @@ procedure TTextLinesTests.SplitHelperDropsTrailingEmpty;
 var
   Text: string;
 begin
+  // Verhalten der Laufzeitbibliothek: FPC verwirft die leere letzte Zeile, Delphi nicht. SplitLines gilt für beide.
+  {$IFDEF FPC}
   Text := 'a'#10;
   Assert.AreEqual<Integer>(1, Length(Text.Split([#10])), 'Split verwirft die leere letzte Zeile');
   Text := '';
   Assert.AreEqual<Integer>(0, Length(Text.Split([#10])), 'Split liefert für leeren Text nichts');
+  {$ELSE}
+  Text := '';
+  {$ENDIF}
   Assert.AreEqual<Integer>(2, Length(TTextLines.SplitLines('a'#10)));
   Assert.AreEqual<Integer>(1, Length(TTextLines.SplitLines('')));
 end;

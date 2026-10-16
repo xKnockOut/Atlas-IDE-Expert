@@ -54,7 +54,7 @@ begin
   Statistics.Add('a', 30, True);
   Snapshot := Statistics.Snapshot;
   Assert.AreEqual<NativeInt>(1, Length(Snapshot));
-  Assert.AreEqual(2, Snapshot[0].Count);
+  Assert.AreEqual(2, Integer(Snapshot[0].Count));
   Assert.AreEqual<Int64>(30, Snapshot[0].MaxMs);
   Assert.AreEqual(20.0, Snapshot[0].AverageMs, 0.001);
   Assert.AreEqual(1, Snapshot[0].Failed);
@@ -117,7 +117,7 @@ begin
   end;
   Snapshot := Statistics.Snapshot;
   Assert.AreEqual<NativeInt>(2, Length(Snapshot));
-  Assert.AreEqual(2, Snapshot[0].Count + Snapshot[1].Count);
+  Assert.AreEqual(2, Integer(Snapshot[0].Count + Snapshot[1].Count));
   Assert.AreEqual(1, Snapshot[0].Failed + Snapshot[1].Failed);
 end;
 

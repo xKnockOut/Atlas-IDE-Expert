@@ -119,7 +119,7 @@ begin
   FConfiguration.LoadWorkspace(Root);
   Assert.AreEqual('de', FConfiguration.Settings.Language);
   Assert.AreEqual(1, FChanges);
-  Assert.AreEqual(0, FCapture.Count);
+  Assert.AreEqual(0, Integer(FCapture.Count));
 end;
 
 procedure TLspConfigurationTests.LoadsFileFromWorkspaceRoot;
@@ -129,7 +129,7 @@ begin
   FDiskText := '{"platform": "Win64", "unbekannt": 1}';
   FConfiguration.LoadWorkspace(Root);
   Assert.AreEqual('Win64', FConfiguration.Settings.Platform);
-  Assert.AreEqual(1, FCapture.Count);
+  Assert.AreEqual(1, Integer(FCapture.Count));
   Message := FCapture.MessageAt(0);
   try
     Assert.AreEqual(ConfigUri, Message.GetValue<string>('params.uri'));
@@ -147,7 +147,7 @@ begin
   FLegacyText := '{"platform": "Win32"}';
   FConfiguration.LoadWorkspace(Root);
   Assert.AreEqual('Win32', FConfiguration.Settings.Platform);
-  Assert.AreEqual(1, FCapture.Count);
+  Assert.AreEqual(1, Integer(FCapture.Count));
   Message := FCapture.MessageAt(0);
   try
     Assert.AreEqual(LegacyConfigUri, Message.GetValue<string>('params.uri'));
@@ -175,7 +175,7 @@ var
   Message: TJSONObject;
 begin
   FStore.Open('file:///c%3A/Anderer/atlas.json', 'json', 3, '{"language": 1}');
-  Assert.AreEqual(1, FCapture.Count);
+  Assert.AreEqual(1, Integer(FCapture.Count));
   Message := FCapture.MessageAt(0);
   try
     Assert.AreEqual(3, Message.GetValue<Integer>('params.version'));
@@ -269,7 +269,7 @@ begin
   Message := FCapture.MessageAt(FCapture.Count - 1);
   try
     Diagnostics := Message.GetValue<TJSONArray>('params.diagnostics');
-    Assert.AreEqual(1, Diagnostics.Count);
+    Assert.AreEqual(1, Integer(Diagnostics.Count));
     Assert.AreEqual(2, (Diagnostics.Items[0] as TJSONObject).GetValue<Integer>('severity'));
     Assert.Contains((Diagnostics.Items[0] as TJSONObject).GetValue<string>('message'), '"index.libraryPaths"');
     Assert.AreEqual(0, (Diagnostics.Items[0] as TJSONObject).GetValue<Integer>('range.start.line'));

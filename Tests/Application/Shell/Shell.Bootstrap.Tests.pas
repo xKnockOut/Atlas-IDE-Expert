@@ -128,6 +128,8 @@ procedure TShellBootstrapTests.TearDown;
 begin
   if TDirectory.Exists(FFolder) then
     TDirectory.Delete(FFolder, True);
+  // Der Leckmonitor misst den Saldo von Setup und TearDown.
+  FFolder := '';
 end;
 
 function TShellBootstrapTests.Write(const AName, AText: string): string;

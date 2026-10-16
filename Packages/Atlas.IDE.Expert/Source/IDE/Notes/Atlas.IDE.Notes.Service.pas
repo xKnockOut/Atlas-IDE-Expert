@@ -77,7 +77,7 @@ type
 implementation
 
 uses
-  Atlas.IDE.Editor.Buffer,
+  Atlas.IDE.Foundation.EditorBuffer,
   System.Classes,
   System.DateUtils,
   System.UITypes,
