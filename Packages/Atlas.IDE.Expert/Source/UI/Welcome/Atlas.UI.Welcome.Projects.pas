@@ -79,7 +79,7 @@ type
     PathLength = 60;
   private
     FSource: IAtlasProjectsSource;
-    FBox: TPaintBox;
+    FBox: TAtlasWelcomeCanvas;
     FEntries: TAtlasProjectEntries;
     FPills: TArray<TArray<TAtlasProjectPill>>;
     FPillRects: TArray<TArray<TRect>>;
@@ -144,7 +144,7 @@ type
     /// <summary>Knopfleiste, Stand und Tastatur der Schnellaktionen (auch für Tests).</summary>
     property Quick: TAtlasQuickActionsBar read FQuick;
     property Entries: TAtlasProjectEntries read FEntries;
-    property PaintBox: TPaintBox read FBox;
+    property PaintBox: TAtlasWelcomeCanvas read FBox;
     property Menu: TPopupMenu read FMenu;
     property OpenItem: TMenuItem read FOpenItem;
     property OpenFolderItem: TMenuItem read FOpenFolderItem;
@@ -170,7 +170,7 @@ constructor TAtlasWelcomeProjectsFrame.Create(AOwner: TComponent);
 begin
   inherited Create(AOwner);
   FMenuRow := -1;
-  FBox := TPaintBox.Create(Self);
+  FBox := TAtlasWelcomeCanvas.Create(Self);
   FBox.Parent := Body;
   FBox.Align := alClient;
   FBox.ShowHint := True;

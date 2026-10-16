@@ -36,6 +36,7 @@ uses
   Vcl.Graphics,
   Vcl.Menus,
   Atlas.Core.Welcome.QuickActions,
+  Atlas.UI.Welcome.Frame,
   Atlas.UI.Strings;
 
 type
@@ -117,7 +118,7 @@ type
       B: string;
     end;
   private
-    FBox: TPaintBox;
+    FBox: TAtlasWelcomeCanvas;
     FSink: TAtlasQuickKeySink;
     FSource: IAtlasQuickActionsSource;
     FTimer: TTimer;
@@ -162,7 +163,7 @@ type
     procedure PopupAt(ARow, AIndex: Integer);
     procedure UpdateTimer;
   public
-    constructor Create(AOwner: TComponent; ABox: TPaintBox; AParent: TWinControl); reintroduce;
+    constructor Create(AOwner: TComponent; ABox: TAtlasWelcomeCanvas; AParent: TWinControl); reintroduce;
     destructor Destroy; override;
     /// <summary>Zeilen neu setzen (UpdateContent des Bereichs): Knöpfe und Stand je Projekt neu lesen.</summary>
     procedure SetRows(const AProjects: TArray<string>);
@@ -317,7 +318,7 @@ end;
 
 { TAtlasQuickActionsBar }
 
-constructor TAtlasQuickActionsBar.Create(AOwner: TComponent; ABox: TPaintBox; AParent: TWinControl);
+constructor TAtlasQuickActionsBar.Create(AOwner: TComponent; ABox: TAtlasWelcomeCanvas; AParent: TWinControl);
 begin
   inherited Create(AOwner);
   FBox := ABox;

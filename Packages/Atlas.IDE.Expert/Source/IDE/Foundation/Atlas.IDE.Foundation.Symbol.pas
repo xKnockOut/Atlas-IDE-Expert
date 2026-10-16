@@ -37,6 +37,7 @@ uses
   Winapi.Windows,
   System.Classes,
   Vcl.Forms,
+  Vcl.ExtCtrls,
   Vcl.ImageCollection,
   Vcl.VirtualImageList,
   ToolsAPI,
@@ -53,7 +54,17 @@ type
     procedure ChangedTheme;
   end;
 
+  /// <summary>Zweiter Durchlauf nach dem Themenwechsel.</summary>
+  TLater = class
+    procedure Tick(Sender: TObject);
+  end;
+
+const
+  LaterMs = 400;
+
 var
+  Later: TTimer;
+  Later_: TLater;
   Collection: TImageCollection;
   Images: TVirtualImageList;
   FirstImage: Integer = -1;
@@ -74,6 +85,33 @@ end;
 
 procedure TThemeNotifier.ChangedTheme;
 begin
+  try
+    if Assigned(TAtlasIdeSymbol.OnThemeChanged) then
+      TAtlasIdeSymbol.OnThemeChanged();
+  except
+    on E: Exception do
+      TAtlasGuard.Report(TAtlasFeature.Status, E);
+  end;
+  // Die IDE meldet den Wechsel, bevor ihre StyleServices das neue Thema liefern: Hell/Dunkel wäre noch das
+  // alte (Logo im Menü, Farben der Panels). Kurz danach noch einmal; ein Eintrag in der Warteschlange kam noch
+  // zu früh.
+  if Later = nil then
+  begin
+    if Later_ = nil then
+      Later_ := TLater.Create;
+    Later := TTimer.Create(nil);
+    Later.OnTimer := Later_.Tick;
+  end;
+  Later.Enabled := False;
+  Later.Interval := LaterMs;
+  Later.Enabled := True;
+end;
+
+{ TLater }
+
+procedure TLater.Tick(Sender: TObject);
+begin
+  Later.Enabled := False;
   try
     if Assigned(TAtlasIdeSymbol.OnThemeChanged) then
       TAtlasIdeSymbol.OnThemeChanged();
@@ -178,6 +216,8 @@ var
   Theming: IOTAIDEThemingServices;
 begin
   OnThemeChanged := nil;
+  FreeAndNil(Later);
+  FreeAndNil(Later_);
   if (ThemeNotifier >= 0) and Supports(BorlandIDEServices, IOTAIDEThemingServices, Theming) then
     Theming.RemoveNotifier(ThemeNotifier);
   ThemeNotifier := -1;

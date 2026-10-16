@@ -91,7 +91,7 @@ type
   private
     FSource: IAtlasContinueSource;
     FTabs: TTabControl;
-    FBox: TPaintBox;
+    FBox: TAtlasWelcomeCanvas;
     FSavedPanel: TPanel;
     FFilter: TEdit;
     FList: TListView;
@@ -181,7 +181,7 @@ type
     property Menu: TPopupMenu read FMenu;
     property Entries: TAtlasContinueEntries read FEntries;
     property IncomingView: TAtlasContinueIncoming read FIncoming;
-    property PaintBox: TPaintBox read FBox;
+    property PaintBox: TAtlasWelcomeCanvas read FBox;
     property Tabs: TTabControl read FTabs;
     property Filter: TEdit read FFilter;
     property List: TListView read FList;
@@ -234,7 +234,7 @@ begin
   // Reiter erst in CreateWnd: TTabControl braucht dafür ein Fenster („kein übergeordnetes Fenster“).
   FTabs.OnChange := TabsChange;
 
-  FBox := TPaintBox.Create(Self);
+  FBox := TAtlasWelcomeCanvas.Create(Self);
   FBox.Parent := Body;
   FBox.Align := alClient;
   FBox.ShowHint := True;
