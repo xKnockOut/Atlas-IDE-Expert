@@ -19,7 +19,9 @@
 // Taste an die nächste Bindung (krNextProc), beim Wechsel Deklaration ⇄
 // Implementierung also an die Klassennavigation der IDE. F3 und Umschalt+F3
 // suchen eine einzeilige Markierung vorwärts bzw. rückwärts; ohne Markierung
-// bleibt es bei „Erneut suchen“ der IDE.
+// bleibt es bei „Erneut suchen“ der IDE. Strg+. (HideElementKey, #628) öffnet
+// das Menü „Ausblenden“ zu den Elementen der Zeile; ohne Element geht die Taste
+// an die IDE (IDE Insight).
 
 interface
 
@@ -83,6 +85,7 @@ uses
   Atlas.IDE.Undo.Changes,
   Atlas.IDE.Bookmarks.Service,
   Atlas.IDE.Generate.Commands,
+  Atlas.IDE.Editor.Hide,
   Atlas.IDE.Notifications.Service;
 
 { TAtlasIdeEditorKeys.TBinding }
@@ -270,6 +273,19 @@ begin
     begin
       Result := TAtlasIdeEditorCommands.TryFindSelection(True);
     end, False);
+  // Ausblenden am Element (#628): mit Rückfall, ohne Element behält die IDE die Taste (Strg+. = IDE Insight).
+  if Settings.HideElementKey <> 0 then
+    AddAttemptKey(Settings.HideElementKey, TAtlasStrings.Text(TAtlasTextId.HideElementCommand),
+      function: Boolean
+      begin
+        Result := False;
+        try
+          Result := TAtlasIdeHide.ShowForCaret;
+        except
+          on E: Exception do
+            TAtlasGuard.Report(TAtlasFeature.EditorCommands, E);
+        end;
+      end, False);
   AddKey(Settings.TestUnitKey, TAtlasStrings.Text(TAtlasTextId.EditorTestUnit),
     procedure
     begin

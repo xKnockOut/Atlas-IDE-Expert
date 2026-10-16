@@ -6,6 +6,10 @@
 // Probleme (Text seither geändert) in abgeschwächter Farbe. Gezeichnet wird
 // nur, wenn die Zeile im Editor der Zeile im Speicher entspricht.
 // Direkt im DC zwischen SaveDC und RestoreDC (siehe Klammerfarben, #514).
+// Ausblenden am Element (#628): Befunde mit Regel bekommen einen
+// Unterdrückungskommentar (dann meldet der Server sie nicht mehr), andere
+// (Compiler) einen Eintrag in .atlas je Codezeile oder Datei; jede gezeichnete
+// Unterstreichung meldet sich mit Regel bei TAtlasIdeElements.
 
 interface
 
@@ -55,7 +59,10 @@ uses
   Atlas.Core.Editor.Pairs,
   Atlas.IDE.Foundation.EditorBuffer,
   Atlas.IDE.Foundation.EditorStyle,
-  Atlas.IDE.Foundation.Settings;
+  Atlas.IDE.Foundation.Settings,
+  Atlas.IDE.Foundation.Elements,
+  Atlas.Core.Editor.Elements,
+  Atlas.Core.Editor.Hide;
 
 { TAtlasProblemsPainter.TEvents }
 
@@ -125,6 +132,7 @@ var
   Saved: Integer;
   Pen, Old: HGDIOBJ;
   Up: Boolean;
+  Target: TAtlasHideTarget;
 begin
   // Durch die Sicherung abgeschaltet (#493).
   if TAtlasGuard.Disabled(TAtlasFeature.Problems) then
@@ -148,6 +156,9 @@ begin
     // Nur, wenn die Zeile im Editor der im Speicher entspricht.
     if TrimRight(TAtlasPairs.DisplayLine(LineState.Text, TabWidth)) <>
       TrimRight(TAtlasPairs.DisplayLine(Text, TabWidth)) then
+      Exit;
+    // In .atlas ausgeblendet (#628): diese Codezeile oder die ganze Datei.
+    if TAtlasIdeElements.Hidden(TAtlasDrawnElement.Problems, Context.FileName, Text) then
       Exit;
     Colors := TAtlasIdeStyle.Colors;
     Code := LineState.CodeRect;
@@ -215,6 +226,14 @@ begin
           SelectObject(DC, Old);
           DeleteObject(Pen);
         end;
+        // Befund mit Regel des Servers: Kommentar über der ersten Zeile; sonst Eintrag für diese Codezeile.
+        if not Problem.IsCompiler and (Problem.Code <> '') then
+          Target := TAtlasHideTarget.Finding(Context.FileName, Problem.StartLine, Problem.Code, Text)
+        else
+          Target := TAtlasHideTarget.Finding(Context.FileName, Line, '', Text);
+        Target.Caption := Problem.Caption;
+        TAtlasIdeElements.Painted(Target, TRect.Create(Left, Rect.Top, Right, Rect.Bottom), Context.EditView.TopRow,
+          Rect.Height);
       end;
     finally
       RestoreDC(DC, Saved);

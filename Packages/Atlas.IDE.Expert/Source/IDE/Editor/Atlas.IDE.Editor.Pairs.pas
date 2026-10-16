@@ -21,6 +21,10 @@
 // PairOwners); Linienbreite PairGuideWidth (1–3 px bei 100 %, skaliert mit
 // Monitor und Zoom). Hell oder dunkel nach dem Hintergrund, den die IDE für
 // den Lauf vorbereitet hat (Editor-Farbschema), nicht nach dem IDE-Thema.
+// Ausblenden am Element (#628): Klammerfarben, Blocklinien, mitgefärbte
+// Anweisungen und ausgegraute Zweige lassen sich je Datei über .atlas
+// abschalten („In dieser Datei ausblenden“); was gezeichnet ist, meldet sich
+// je Zeile bei TAtlasIdeElements.
 
 interface
 
@@ -106,6 +110,8 @@ uses
   Atlas.IDE.Foundation.EditorBuffer,
   Atlas.IDE.Foundation.EditorStyle,
   Atlas.IDE.Foundation.Settings,
+  Atlas.IDE.Foundation.Elements,
+  Atlas.Core.Editor.Elements,
   Atlas.IDE.Problems.Controller;
 
 { TAtlasEditorPairs.TEvents }
@@ -167,6 +173,14 @@ begin
   end;
 end;
 
+/// <summary>Oberste Zeile der Ansicht beim Zeichnen; 0 ohne Ansicht.</summary>
+function TopRowOf(const AContext: INTACodeEditorPaintContext): Integer;
+begin
+  Result := 0;
+  if AContext.EditView <> nil then
+    Result := AContext.EditView.TopRow;
+end;
+
 /// <summary>Zeichenindex (0-basiert) in ALine als 1-basierte Editorspalte, Tabs aufgelöst.</summary>
 function ColumnOf(const ALine: string; ACharacter, ATabWidth: Integer): Integer;
 var
@@ -191,16 +205,18 @@ var
   LineGuide: TLineGuide;
   TabWidth, Index, Line: Integer;
   Activity: IInterface;
+  Owners: Boolean;
 begin
   FCheck := False;
   View := Context.EditView;
   if (View = nil) or (View.Buffer = nil) then
     Exit;
   Text := TAtlasEditorBuffer.Text(View.Buffer);
-  if (Text = FText) and SameText(Context.FileName, FFileName) and
-    (FOwners = TAtlasIdeSettings.Current.PairOwners) then
+  Owners := TAtlasIdeSettings.Current.PairOwners and
+    not TAtlasIdeElements.FileHidden(TAtlasDrawnElement.PairOwners, Context.FileName);
+  if (Text = FText) and SameText(Context.FileName, FFileName) and (FOwners = Owners) then
     Exit;
-  FOwners := TAtlasIdeSettings.Current.PairOwners;
+  FOwners := Owners;
   Activity := TAtlasActivity.Scope('Klammerpaare');
   FFileName := Context.FileName;
   FText := Text;
@@ -276,6 +292,8 @@ begin
     Exit;
   if Length(Store.Inactive(Context.FileName)) = 0 then
     Exit;
+  if TAtlasIdeElements.FileHidden(TAtlasDrawnElement.InactiveDim, Context.FileName) then
+    Exit;
   if FDimTabWidth < 0 then
   begin
     View := Context.EditView;
@@ -334,6 +352,7 @@ var
   Dimmed: TArray<Boolean>;
   Dim: TColor;
   LineText: string;
+  ColorsOn, Colored, OwnerColored: Boolean;
 begin
   // Durch die Sicherung abgeschaltet (#493).
   if TAtlasGuard.Disabled(TAtlasFeature.Pairs) then
@@ -344,8 +363,12 @@ begin
     Line := Context.LogicalLineNum - 1;
     // Inaktive {$IFDEF}-Zweige (#615): ganze Läufe gleich, Teile zeichenweise.
     Spans := InactiveSpans(Context);
-    if (Length(Spans) = 0) and not TAtlasIdeSettings.Current.PairColors then
+    ColorsOn := TAtlasIdeSettings.Current.PairColors and
+      not TAtlasIdeElements.FileHidden(TAtlasDrawnElement.PairColors, Context.FileName);
+    if (Length(Spans) = 0) and not ColorsOn then
       Exit;
+    Colored := False;
+    OwnerColored := False;
     Canvas := Context.Canvas;
     Original := Canvas.Font.Color;
     SetLength(CharColors, Length(Text));
@@ -363,6 +386,8 @@ begin
       begin
         PaintRun(Rect, Text, Context, Dim);
         AllowDefaultPainting := False;
+        TAtlasIdeElements.Painted(TAtlasDrawnElement.InactiveDim, Context.FileName, Line, '', Rect,
+          TopRowOf(Context), Rect.Height);
         Exit;
       end;
       // Teile einer Zeile nur, wenn der Lauf dort im Text der Diagnosen steht (wie bei den Paaren).
@@ -377,7 +402,7 @@ begin
             Found := True;
           end;
     end;
-    if TAtlasIdeSettings.Current.PairColors then
+    if ColorsOn then
     begin
       if FCheck or not SameText(Context.FileName, FFileName) then
         Refresh(Context);
@@ -393,6 +418,10 @@ begin
             if (Column >= ColNum) and (Column < ColNum + Length(Text)) and not Dimmed[Column - ColNum] then
             begin
               Found := True;
+              if Token.Owner then
+                OwnerColored := True
+              else
+                Colored := True;
               if Token.Unpaired then
               begin
                 CharColors[Column - ColNum] := TColor(Colors.Error);
@@ -405,6 +434,21 @@ begin
     end;
     if not Found then
       Exit;
+    // Gezeichnete Elemente der Zeile (#628).
+    if Colored then
+      TAtlasIdeElements.Painted(TAtlasDrawnElement.PairColors, Context.FileName, Line, '', Rect,
+        TopRowOf(Context), Rect.Height);
+    if OwnerColored then
+      TAtlasIdeElements.Painted(TAtlasDrawnElement.PairOwners, Context.FileName, Line, '', Rect,
+        TopRowOf(Context), Rect.Height);
+    if Length(Spans) > 0 then
+      for Index := 0 to High(Dimmed) do
+        if Dimmed[Index] then
+        begin
+          TAtlasIdeElements.Painted(TAtlasDrawnElement.InactiveDim, Context.FileName, Line, '', Rect,
+            TopRowOf(Context), Rect.Height);
+          Break;
+        end;
     // Lauf selbst zeichnen: Hintergrund wie vorbereitet, Zeichen in fester Zellbreite.
     // Direkt im DC und mit gesichertem Zustand: Die IDE setzt die Textfarbe nur
     // beim Wechsel des Attributs; eine stehengebliebene Paarfarbe färbte sonst
@@ -485,6 +529,8 @@ begin
     Settings := TAtlasIdeSettings.Current;
     if not (Settings.PairColors and Settings.PairGuides) then
       Exit;
+    if TAtlasIdeElements.FileHidden(TAtlasDrawnElement.PairGuides, Context.FileName) then
+      Exit;
     if FCheck or not SameText(Context.FileName, FFileName) then
       Refresh(Context);
     Line := Context.LogicalLineNum - 1;
@@ -553,6 +599,8 @@ begin
     finally
       RestoreDC(DC, Saved);
     end;
+    TAtlasIdeElements.Painted(TAtlasDrawnElement.PairGuides, Context.FileName, Line, '', Code,
+      TopRowOf(Context), Rect.Height);
   except
     // Zeichnen darf die IDE nie stören.
     on E: Exception do

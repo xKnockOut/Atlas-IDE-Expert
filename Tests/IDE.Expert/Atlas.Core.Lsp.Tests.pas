@@ -791,7 +791,9 @@ begin
           Reply := TLspClient.Frame(Format('{"jsonrpc":"2.0","id":%d,"result":[' +
             '{"position":{"line":3,"character":9},"label":"AWert:","kind":2,"paddingRight":true},' +
             '{"position":{"line":4,"character":2},"label":": Integer","kind":1},' +
-            '{"position":{"line":5,"character":7},"label":[{"value":"AName"},{"value":":"}],"kind":2}]}',
+            '{"position":{"line":5,"character":7},"label":[{"value":"AName"},{"value":":"}],"kind":2},' +
+            '{"position":{"line":8,"character":6},"label":"// TKunde.Speichern","paddingLeft":true},' +
+            '{"position":{"line":9,"character":1},"label":"ohne Art"}]}',
             [Message.GetValue<Integer>('id')]));
           Client.Receive(Reply, Length(Reply));
         end;
@@ -804,11 +806,16 @@ begin
     Hints := Session.InlayHints('C:\P\A.pas', 2, 9, 1000);
     // Bis zum Anfang der Zeile nach der letzten, damit sie ganz dabei ist.
     Assert.AreEqual('2-10', Range);
-    Assert.AreEqual(2, Integer(Length(Hints)), 'nur Parameternamen');
+    Assert.AreEqual(3, Integer(Length(Hints)), 'Parameternamen und Endmarke (#620)');
     Assert.AreEqual(3, Hints[0].Line);
     Assert.AreEqual(9, Hints[0].Character);
     Assert.AreEqual('AWert', Hints[0].Name);
+    Assert.IsFalse(Hints[0].EndLabel);
     Assert.AreEqual('AName', Hints[1].Name);
+    Assert.IsFalse(Hints[1].EndLabel);
+    Assert.IsTrue(Hints[2].EndLabel);
+    Assert.AreEqual('TKunde.Speichern', Hints[2].Name);
+    Assert.AreEqual(8, Hints[2].Line);
   finally
     Session.Free;
     Client.Free;
