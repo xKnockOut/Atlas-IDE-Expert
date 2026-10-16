@@ -448,6 +448,8 @@
         <DCCReference Include="Source\IDE\Bookmarks\Atlas.IDE.Bookmarks.Gutter.pas"/>
         <DCCReference Include="Source\IDE\Tests\Atlas.IDE.Tests.Runner.pas"/>
         <DCCReference Include="Source\IDE\Tests\Atlas.IDE.Tests.Lens.pas"/>
+        <DCCReference Include="Source\Core\StartProfiles\Atlas.Core.StartProfiles.Store.pas"/>
+        <DCCReference Include="Source\IDE\StartProfiles\Atlas.IDE.StartProfiles.Service.pas"/>
         <BuildConfiguration Include="Base">
             <Key>Base</Key>
         </BuildConfiguration>

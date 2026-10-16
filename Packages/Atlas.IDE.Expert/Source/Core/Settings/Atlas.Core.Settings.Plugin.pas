@@ -219,6 +219,13 @@ type
     /// <summary>Ein Build gilt nur ohne Warnungen und Hinweise als erfolgreich (build.zeroHints, #530). Wirkt
     /// bisher auf „Tests nach dem Build“ (#69).</summary>
     BuildZeroHints: Boolean;
+    /// <summary>Startprofile (#575, startProfiles.enabled): Befehl „Startprofil: …“ (Atlas.StartProfile) mit Tipp,
+    /// Feld in der Statusleiste und Setzen der Startoptionen des Projekts; aus = Befehl, Tipp und Feld
+    /// verschwinden, die Startoptionen der IDE bleiben, wie sie sind.</summary>
+    StartProfiles: Boolean;
+    /// <summary>Aktives Startprofil als Feld in der Statusleiste des Editors (#575, startProfiles.statusField);
+    /// Klick öffnet die Auswahl.</summary>
+    StartProfilesStatusField: Boolean;
     /// <summary>Befehl „TODOs des Projekts“ (#68, Atlas.TodoList); aus = der Befehl verschwindet.</summary>
     TodoList: Boolean;
     /// <summary>Befehl „Baseline des Projekts aktualisieren“ (#97, Atlas.UpdateBaseline) in der Befehlspalette;
@@ -629,6 +636,8 @@ begin
   Result.TestsAfterBuild := False;
   Result.TestsBuildFirst := True;
   Result.BuildZeroHints := False;
+  Result.StartProfiles := True;
+  Result.StartProfilesStatusField := True;
   Result.TodoList := True;
   Result.BaselineUpdate := True;
   Result.MetricsReport := True;
@@ -910,6 +919,9 @@ begin
   TestsAfterBuild := AStore.ReadInteger('TestsAfterBuild', BoolValue(Default.TestsAfterBuild)) <> 0;
   TestsBuildFirst := AStore.ReadInteger('TestsBuildFirst', BoolValue(Default.TestsBuildFirst)) <> 0;
   BuildZeroHints := AStore.ReadInteger('BuildZeroHints', BoolValue(Default.BuildZeroHints)) <> 0;
+  StartProfiles := AStore.ReadInteger('StartProfiles', BoolValue(Default.StartProfiles)) <> 0;
+  StartProfilesStatusField := AStore.ReadInteger('StartProfilesStatusField',
+    BoolValue(Default.StartProfilesStatusField)) <> 0;
   TodoList := AStore.ReadInteger('TodoList', BoolValue(Default.TodoList)) <> 0;
   BaselineUpdate := AStore.ReadInteger('BaselineUpdate', BoolValue(Default.BaselineUpdate)) <> 0;
   MetricsReport := AStore.ReadInteger('MetricsReport', BoolValue(Default.MetricsReport)) <> 0;
@@ -1101,6 +1113,8 @@ begin
   AStore.WriteInteger('TestsAfterBuild', BoolValue(TestsAfterBuild));
   AStore.WriteInteger('TestsBuildFirst', BoolValue(TestsBuildFirst));
   AStore.WriteInteger('BuildZeroHints', BoolValue(BuildZeroHints));
+  AStore.WriteInteger('StartProfiles', BoolValue(StartProfiles));
+  AStore.WriteInteger('StartProfilesStatusField', BoolValue(StartProfilesStatusField));
   AStore.WriteInteger('TodoList', BoolValue(TodoList));
   AStore.WriteInteger('BaselineUpdate', BoolValue(BaselineUpdate));
   AStore.WriteInteger('MetricsReport', BoolValue(MetricsReport));

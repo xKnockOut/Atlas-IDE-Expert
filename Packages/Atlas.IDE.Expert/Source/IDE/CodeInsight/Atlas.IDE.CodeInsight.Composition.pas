@@ -8,8 +8,8 @@
 // das Atlas-Statusfeld (#591), die Schnellschalter (#604), das
 // dateiübergreifende Zurücknehmen von Atlas-Änderungen (#721), die
 // Versionsverwaltung (#571), den Diagnosemodus (#479) und die Einrichtung mit
-// Prüfliste (#625) und das Ausführen der DUnitX-Tests (#69) beim Laden des
-// Packages an und beim Entladen in umgekehrter Reihenfolge wieder ab
+// Prüfliste (#625), das Ausführen der DUnitX-Tests (#69) und die Startprofile
+// samt Feld in der Statusleiste (#575) beim Laden des Packages an und beim Entladen in umgekehrter Reihenfolge wieder ab
 // (ADR 0006). Zuerst entscheidet der abgesicherte Start
 // (#722), was angemeldet wird; RegisterFeatures holt den Rest nach, sobald
 // ein Schnellschalter oder „Normal weiterarbeiten“ es erlaubt.
@@ -121,6 +121,7 @@ uses
   Atlas.IDE.Bookmarks.Gutter,
   Atlas.IDE.Foundation.GutterMarks,
   Atlas.IDE.Foundation.TeamFile,
+  Atlas.IDE.StartProfiles.Service,
   Atlas.Core.Editor.WorkspacePlan,
   Atlas.IDE.Editor.TestUnitLens,
   Atlas.IDE.Completion.Editor,
@@ -858,6 +859,12 @@ begin
   Result := TAtlasIdeSettings.Current.TestRun and (Tests <> nil);
 end;
 
+/// <summary>Befehl „Startprofil: …“ (#575) sichtbar?</summary>
+function StartProfilesVisible: Boolean;
+begin
+  Result := TAtlasIdeSettings.Current.StartProfiles and TAtlasIdeStartProfiles.Started;
+end;
+
 procedure RegisterPalette;
 
   procedure Add(const AId: string; ATextId: TAtlasTextId; const AProc: TProc); overload;
@@ -1051,6 +1058,9 @@ begin
       if Tests <> nil then
         TAtlasGuard.Run(TAtlasFeature.Build, Tests.RunFailed);
     end, TestsVisible);
+  // Startprofile (#575): Auswahl für das aktive Projekt; sichtbar, solange StartProfiles an ist.
+  Add('Atlas.StartProfile', TAtlasTextId.StartProfilesCommand,
+    Guarded(TAtlasFeature.Build, TAtlasIdeStartProfiles.ShowPicker), StartProfilesVisible);
   // Künstlicher Hänger für den Einfrier-Wächter (#501): nur im Diagnosemodus (#479, Code-Review S-07).
   // Bereich „Weiterarbeiten“ (#755): obersten Arbeitsstand fortsetzen.
   Add('Atlas.Continue', TAtlasTextId.WelcomeContinueCommand,
@@ -1778,6 +1788,39 @@ begin
     TAtlasProblemsController.Current.ClearTests;
 end;
 
+const
+  StartProfileExtra = 'startProfile';
+
+/// <summary>Startprofil im Zusatzfeld der Statusleiste (#575); ohne startProfiles.statusField kein Feld.</summary>
+procedure ShowStartProfileStatus(const AText, AHint: string);
+begin
+  if StatusField = nil then
+    Exit;
+  if (AText = '') or not TAtlasIdeSettings.Current.StartProfilesStatusField then
+  begin
+    StatusField.SetExtra(StartProfileExtra, '', '', nil);
+    Exit;
+  end;
+  StatusField.SetExtra(StartProfileExtra, AText, AHint,
+    procedure(APoint: TPoint)
+    begin
+      TAtlasIdeStartProfiles.ShowPicker;
+    end);
+end;
+
+procedure StartStartProfiles;
+begin
+  TAtlasIdeStartProfiles.SetStatusHandler(ShowStartProfileStatus);
+  TAtlasIdeStartProfiles.Start;
+end;
+
+procedure StopStartProfiles;
+begin
+  // Stop meldet noch Text '' und entfernt so das Feld; danach kein Empfänger mehr.
+  TAtlasIdeStartProfiles.Stop;
+  TAtlasIdeStartProfiles.SetStatusHandler(nil);
+end;
+
 procedure StartPalette;
 begin
   RegisterPalette;
@@ -2175,6 +2218,17 @@ begin
       Result := Tests <> nil;
     end,
     StartTests, StopTests);
+  // Startprofile (#575): nur im normalen Start und solange StartProfiles an ist; liest .atlas über TeamFile.
+  Features.Add('StartProfiles',
+    function(ALevel: TAtlasSafeLevel): Boolean
+    begin
+      Result := (ALevel = TAtlasSafeLevel.Normal) and TAtlasIdeSettings.Current.StartProfiles;
+    end,
+    function: Boolean
+    begin
+      Result := TAtlasIdeStartProfiles.Started;
+    end,
+    StartStartProfiles, StopStartProfiles);
   // Änderungsprotokoll vor den Tasten: Strg+Alt+Z braucht es (#721).
   Features.Add('Undo', TAtlasSafeLevel.Safe,
     function: Boolean
@@ -2570,6 +2624,12 @@ begin
       TAtlasIdeBookmarks.ApplySettings;
       // Projektdatei .atlas an oder aus (#486).
       TAtlasIdeTeamFile.Refresh;
+      // startProfiles.enabled aus: Zeitgeber und Feld weg (RegisterFeatures startet sie wieder);
+      // startProfiles.statusField oder .atlas geändert: Feld neu melden (#575).
+      if not TAtlasIdeSettings.Current.StartProfiles then
+        StopStartProfiles
+      else
+        TAtlasIdeStartProfiles.Refresh;
       // tips.usageTracking (#757).
       if CommandUsage <> nil then
         CommandUsage.ApplySettings;
