@@ -78,6 +78,10 @@ uses
   Atlas.IDE.Status.Field,
   Atlas.IDE.Status.Lines,
   Atlas.IDE.Settings.QuickToggles,
+  Atlas.Core.Status.Contract,
+  Atlas.Core.Notifications.Contract,
+  Atlas.Core.Notifications.Center,
+  Atlas.IDE.Notifications.Service,
   Atlas.Core.Diagnostics.SafeMode,
   Atlas.IDE.Diagnostics.SafeMode,
   Atlas.Core.Diagnostics.Guard,
@@ -195,6 +199,8 @@ var
   SignatureKey: TAtlasIdeKeyBinding;
   // Schnellschalter mit Fenster, Taste und Befehlen in der Palette (#604).
   QuickToggles: TAtlasIdeQuickToggles;
+  // Benachrichtigungszentrale mit Liste, Plakette im Statusfeld und Build-Einträgen (#601).
+  Notifications: TAtlasIdeNotifications;
   // Diagnosemodus mit Fenster, Taste und Statuszeile (#479).
   DiagnosticMode: TAtlasIdeDiagnosticMode;
   // Einrichtung mit Prüfliste und Statuszeile (#625).
@@ -852,6 +858,11 @@ begin
   Result := TAtlasIdeSettings.Current.TodoList;
 end;
 
+function NotificationsVisible: Boolean;
+begin
+  Result := TAtlasIdeNotifications.Active;
+end;
+
 function TeamFileVisible: Boolean;
 begin
   Result := TAtlasIdeSettings.Current.TeamFile;
@@ -994,6 +1005,9 @@ begin
   Add('Atlas.UpdateBaseline', TAtlasTextId.BaselineUpdateCommand, UpdateBaseline, BaselineUpdateVisible);
   // Projektdatei .atlas (#486) anlegen bzw. öffnen; nur sichtbar, solange die Einstellung TeamFile an ist.
   Add('Atlas.TeamFile', TAtlasTextId.TeamFileCommand, TAtlasIdeTeamFile.OpenInEditor, TeamFileVisible);
+  // Liste der Benachrichtigungen (#601); nur sichtbar, solange die Zentrale an ist.
+  Add('Atlas.Notifications', TAtlasTextId.NotificationsCommand, TAtlasIdeNotifications.ShowList,
+    NotificationsVisible);
   Add('Atlas.CheckNow', TAtlasTextId.PaletteCheckNow,
     procedure
     begin
@@ -1209,6 +1223,46 @@ begin
     end;
 end;
 
+/// <summary>Farbe der Plakette (#601): Info neutral, Warnung gelb, Fehler rot.</summary>
+function BadgeState(ASeverity: TAtlasNotificationSeverity): TAtlasStatusState;
+begin
+  case ASeverity of
+    TAtlasNotificationSeverity.Warning:
+      Result := TAtlasStatusState.Yellow;
+    TAtlasNotificationSeverity.Error:
+      Result := TAtlasStatusState.Red;
+  else
+    Result := TAtlasStatusState.Neutral;
+  end;
+end;
+
+/// <summary>Benachrichtigungszentrale (#601): immer, auch abgesichert; an oder aus nach notifications.enabled.
+/// </summary>
+procedure StartNotifications;
+begin
+  Notifications := TAtlasIdeNotifications.Create(nil);
+  Notifications.OnAnchor :=
+    function: TPoint
+    begin
+      if (StatusField = nil) or not StatusField.Anchor(Result) then
+        Result := Point(MaxInt, MaxInt);
+    end;
+  Notifications.OnBadge :=
+    procedure(AUnread: Integer; AWorst: TAtlasNotificationSeverity)
+    begin
+      if StatusField <> nil then
+        StatusField.SetBadge(AUnread, BadgeState(AWorst),
+          TAtlasStrings.Fmt(TAtlasTextId.NotificationsBadgeHint, [AUnread]),
+          procedure(APoint: TPoint)
+          begin
+            if Notifications <> nil then
+              Notifications.Show(APoint);
+          end);
+    end;
+  // Erst jetzt erreicht die Plakette das Feld.
+  Notifications.ApplySettings;
+end;
+
 procedure UnregisterStatusField;
 begin
   if Manager <> nil then
@@ -1318,6 +1372,13 @@ begin
           procedure
           begin
             BuildRunner.MessagesRead(Messages, Project, Succeeded, Readable);
+          end);
+      // Eintrag „Build fertig“ bzw. Hintergrundprüfung in der Benachrichtigungszentrale (#601).
+      if Notifications <> nil then
+        TAtlasGuard.Run(TAtlasFeature.Notifications,
+          procedure
+          begin
+            Notifications.BuildFinished(Messages, Project, Succeeded, Readable);
           end);
       // Tests nach dem Build (#69); die Prüfung auf Warnungen und Hinweise (build.zeroHints) braucht die Meldungen.
       if (Tests <> nil) and AReadable then
@@ -1553,6 +1614,8 @@ begin
   if Supports(BorlandIDEServices, IOTACodeInsightServices, Services) then
   begin
     Manager := TAtlasCodeInsightManager.Create(CodeInsightAdapters);
+    // „Protokoll öffnen“ an den Einträgen des Servers in der Benachrichtigungszentrale (#601).
+    Manager.OnOpenLog := OpenLog;
     ManagerIndex := Services.AddCodeInsightManager(Manager);
   end;
 end;
@@ -2644,6 +2707,8 @@ begin
           Result := Point(MaxInt, MaxInt);
       end;
   end;
+  if Notifications = nil then
+    StartNotifications;
   RegisterFeatures;
   // Geänderte Tastenkürzel sofort neu belegen; fremde Vervollständigung melden (#494).
   TAtlasIdeSettings.OnChanged :=
@@ -2663,6 +2728,9 @@ begin
         DiagnosticMode.ApplySettings;
       // bookmarks.named und bookmarks.shared (#622).
       TAtlasIdeBookmarks.ApplySettings;
+      // notifications.* (#601): an oder aus, Höchstzahl, Verhalten je Quelle.
+      if Notifications <> nil then
+        Notifications.ApplySettings;
       // Projektdatei .atlas an oder aus (#486).
       TAtlasIdeTeamFile.Refresh;
       // startProfiles.enabled aus: Zeitgeber und Feld weg (RegisterFeatures startet sie wieder);
@@ -2739,6 +2807,9 @@ begin
   if Features <> nil then
     Features.StopAll;
   FreeAndNil(QuickToggles);
+  // Nach den Quellen, vor dem Statusfeld: Die Einträge halten Aktionen mit Code des Plugins (#601).
+  FreeAndNil(Notifications);
+  TAtlasNotificationCenter.ReleaseDefault;
   UnregisterStatusField;
   TAtlasOptionsRegistration.Unregister;
   TAtlasProjectSettings.Command := nil;

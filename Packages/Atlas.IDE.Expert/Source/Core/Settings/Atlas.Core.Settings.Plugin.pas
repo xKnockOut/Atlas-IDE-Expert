@@ -68,6 +68,10 @@ type
     /// <summary>Grenzen für welcomePage.trends.points (#758); wie TAtlasProjectTrendLog.MinPoints/MaxPoints.</summary>
     MinTrendPoints = 2;
     MaxTrendPoints = 100;
+    /// <summary>Grenzen für notifications.maxEntries (#601); wie TAtlasNotificationCenter.MinEntries/MaxMaxEntries
+    /// (Test prüft Gleichheit).</summary>
+    MinNotificationEntries = 10;
+    MaxNotificationEntries = 1000;
     /// <summary>Vorgabe für welcomePage.trends.series (#758): alle Reihen, Namen wie
     /// TAtlasProjectSummaries.TrendKeys.</summary>
     DefaultTrendSeries = 'warnings,ruleHits,todos,duration,methodLength';
@@ -474,6 +478,18 @@ type
     /// <summary>Gezeigte Reihen (#758, welcomePage.trends.series): Namen durch Komma getrennt, in der Reihenfolge
     /// warnings, ruleHits, todos, duration, methodLength; '' = keine.</summary>
     WelcomePageTrendsSeries: string;
+    /// <summary>Benachrichtigungszentrale (#601, notifications.enabled): Hinweise sammeln, Zähler im
+    /// Atlas-Statusfeld, Liste und Befehl Atlas.Notifications; aus = jede Funktion zeigt ihre Einblendung wie
+    /// vor #601, nichts wird gesammelt.</summary>
+    Notifications: Boolean;
+    /// <summary>Verhalten je Quelle (#601, notifications.sources): "quelle=verhalten" mit Komma getrennt,
+    /// verhalten show, collect oder off; nicht genannte Quellen zeigen (show).</summary>
+    NotificationsSources: string;
+    /// <summary>Höchstens so viele Einträge in der Liste (#601, notifications.maxEntries, 10–1000).</summary>
+    NotificationsMaxEntries: Integer;
+    /// <summary>Tastenkürzel für die Liste der Benachrichtigungen (#601, TShortCut, 0 = keins); Vorrang wie die
+    /// Editorbefehle (EditorKeysPriority, #399).</summary>
+    NotificationsKey: Integer;
     class function Defaults: TAtlasPluginSettings; static;
     /// <summary>Werte in ihre Grenzen bringen.</summary>
     procedure Normalize;
@@ -494,7 +510,8 @@ implementation
 uses
   System.Math,
   System.StrUtils,
-  Atlas.Core.Generate.Contract;
+  Atlas.Core.Generate.Contract,
+  Atlas.Core.Notifications.Sources;
 
 const
   /// <summary>Reihen des Projektverlaufs (#758) wie TAtlasProjectSummaries.TrendKeys (Test prüft Gleichheit).</summary>
@@ -750,6 +767,10 @@ begin
   Result.WelcomePageContinueIncoming := True;
   Result.WelcomePageContinueFetch := False;
   Result.WelcomePageSaved := True;
+  Result.Notifications := True;
+  Result.NotificationsSources := '';
+  Result.NotificationsMaxEntries := 200;
+  Result.NotificationsKey := $E04E; // Strg+Umschalt+Alt+N
 end;
 
 procedure TAtlasPluginSettings.Normalize;
@@ -854,6 +875,9 @@ begin
   if not IsWebAddress(WelcomePageHelpReportUrl) then
     WelcomePageHelpReportUrl := DefaultHelpReportUrl;
   WelcomePageHelpReportFolder := Trim(WelcomePageHelpReportFolder);
+  NotificationsSources := TAtlasNotificationSources.Normalize(NotificationsSources);
+  NotificationsMaxEntries := EnsureRange(NotificationsMaxEntries, MinNotificationEntries, MaxNotificationEntries);
+  NotificationsKey := EnsureRange(NotificationsKey, 0, $FFFF);
 end;
 
 procedure TAtlasPluginSettings.Load(const AStore: IAtlasSettingsStore);
@@ -1051,6 +1075,10 @@ begin
   WelcomePageTrends := AStore.ReadInteger('WelcomePageTrends', BoolValue(Default.WelcomePageTrends)) <> 0;
   WelcomePageTrendsPoints := AStore.ReadInteger('WelcomePageTrendsPoints', Default.WelcomePageTrendsPoints);
   WelcomePageTrendsSeries := AStore.ReadString('WelcomePageTrendsSeries', Default.WelcomePageTrendsSeries);
+  Notifications := AStore.ReadInteger('Notifications', BoolValue(Default.Notifications)) <> 0;
+  NotificationsSources := AStore.ReadString('NotificationsSources', Default.NotificationsSources);
+  NotificationsMaxEntries := AStore.ReadInteger('NotificationsMaxEntries', Default.NotificationsMaxEntries);
+  NotificationsKey := AStore.ReadInteger('NotificationsKey', Default.NotificationsKey);
   Normalize;
 end;
 
@@ -1230,6 +1258,10 @@ begin
   AStore.WriteInteger('WelcomePageTrends', BoolValue(WelcomePageTrends));
   AStore.WriteInteger('WelcomePageTrendsPoints', WelcomePageTrendsPoints);
   AStore.WriteString('WelcomePageTrendsSeries', WelcomePageTrendsSeries);
+  AStore.WriteInteger('Notifications', BoolValue(Notifications));
+  AStore.WriteString('NotificationsSources', NotificationsSources);
+  AStore.WriteInteger('NotificationsMaxEntries', NotificationsMaxEntries);
+  AStore.WriteInteger('NotificationsKey', NotificationsKey);
 end;
 
 function TAtlasPluginSettings.StatusTogglesOnRightClick: Boolean;
