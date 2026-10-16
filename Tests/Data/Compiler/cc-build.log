@@ -1,0 +1,8 @@
+Build started 16.10.2026 10:00:00.
+Project "C:\Projekte\App\App.dproj" (Build target(s)):
+[dcc64 Fehler] Main.pas(12): E2003 Undeklarierter Bezeichner: 'Foo'
+[dcc64 Warnung] Main.pas(20,7): W1036 Variable 'X' ist möglicherweise nicht initialisiert worden
+[dcc64 Hinweis] C:\Projekte\App\Lib\Hilfe.pas(5): H2164 Variable 'Y' wurde deklariert, aber in 'Test' nicht verwendet
+[dcc64 Schwerwiegender Fehler] App.dpr(9): F2063 Verwendete Unit 'Main' kann nicht compiliert werden
+Misslungen
+Verstrichene Zeit 00:00:02.5

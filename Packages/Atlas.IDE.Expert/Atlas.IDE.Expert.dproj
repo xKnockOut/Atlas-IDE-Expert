@@ -356,6 +356,9 @@
         <DCCReference Include="Source\Core\Build\Atlas.Core.Build.Messages.pas"/>
         <DCCReference Include="Source\Core\Build\Atlas.Core.Build.CheckOnSave.pas"/>
         <DCCReference Include="Source\IDE\Build\Atlas.IDE.Build.CheckOnSave.pas"/>
+        <DCCReference Include="Source\Core\Build\Atlas.Core.Build.Inbox.pas"/>
+        <DCCReference Include="Source\IDE\Build\Atlas.IDE.Build.Runner.pas"/>
+        <DCCReference Include="Source\IDE\Build\Atlas.IDE.Build.Inbox.pas"/>
         <DCCReference Include="Source\Core\Welcome\Atlas.Core.Welcome.Sections.pas"/>
         <DCCReference Include="Source\Core\Welcome\Atlas.Core.Welcome.Layout.pas"/>
         <DCCReference Include="Source\Core\Welcome\Atlas.Core.Welcome.Greeting.pas"/>

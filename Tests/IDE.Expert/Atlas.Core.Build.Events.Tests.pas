@@ -21,6 +21,9 @@ type
     procedure ParticipantCancelsWithReason;
     [Test]
     procedure ExceptionIsLoggedAndOthersRun;
+    /// <summary>#261: Builds auf Auftrag (Claude Code) tragen requestedBy, Builds des Benutzers nicht.</summary>
+    [Test]
+    procedure RequestedByMarksOwnBuilds;
   end;
 
 implementation
@@ -227,6 +230,32 @@ begin
   finally
     Events.Free;
     // Globaler Text darf den Leck-Monitor nicht über Testgrenzen täuschen.
+    Sent := '';
+  end;
+end;
+
+procedure TAtlasCompileEventsTests.RequestedByMarksOwnBuilds;
+var
+  Events: TAtlasCompileEvents;
+begin
+  Events := MakeEvents;
+  try
+    Events.RequestedBy := 'mcp';
+    Events.ProjectStarted(Project('C:\P\App.dproj'));
+    Events.RequestedBy := '';
+    Events.ProjectFinished('C:\P\App.dproj', False);
+    Events.ProjectStarted(Project('C:\P\App.dproj'));
+    Events.ProjectFinished('C:\P\App.dproj', True);
+    Assert.AreEqual(
+      'atlas/compileStarted{"project":"C:\\P\\App.dproj","kind":"build","configuration":"Debug","platform":"Win64",' +
+      '"requestedBy":"mcp"}'#10 +
+      'atlas/compileFinished{"project":"C:\\P\\App.dproj","kind":"build","configuration":"Debug","platform":"Win64",' +
+      '"requestedBy":"mcp","success":false,"durationMs":0}'#10 +
+      'atlas/compileStarted{"project":"C:\\P\\App.dproj","kind":"build","configuration":"Debug","platform":"Win64"}'#10 +
+      'atlas/compileFinished{"project":"C:\\P\\App.dproj","kind":"build","configuration":"Debug","platform":"Win64",' +
+      '"success":true,"durationMs":0}'#10, Sent);
+  finally
+    Events.Free;
     Sent := '';
   end;
 end;

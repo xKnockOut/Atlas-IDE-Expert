@@ -389,7 +389,8 @@ type
     TeamFileIssueCredential, TeamFileIssueAbsolutePath, TeamFileIssueOutsidePath, SettingsTabTeamFile,
     SettingsTeamFile, SettingsTeamFileHint, SettingsTeamFileOpen, SettingsTeamFileNoProject,
     SettingsTeamFileMissing, SettingsTeamFileOff, SettingsTeamFileLocation, SettingsTeamFileInvalid,
-    SettingsTeamFileNoValues, SettingsTeamFileValue, SettingsTeamFileIssues, SettingsTeamSnippets);
+    SettingsTeamFileNoValues, SettingsTeamFileValue, SettingsTeamFileIssues, SettingsTeamSnippets,
+    SettingsMcpBuild, McpBuildStarted, McpBuildFinished, McpBuildRefused);
 
   TAtlasStrings = class
   private class var
@@ -1139,7 +1140,9 @@ const
      'Die Datei ist fehlerhaft; es gelten die persönlichen Einstellungen (Hinweis in der Meldungsansicht).',
      'Die Datei setzt keine Werte.', '%s: %s (aus .atlas)',
      '%d Einträge werden ignoriert (siehe Meldungsansicht).',
-     'Code-Vorlagen des Projekts: %s (aus .atlas, Vorrang vor den eigenen)'),
+     'Code-Vorlagen des Projekts: %s (aus .atlas, Vorrang vor den eigenen)',
+     'Builds für Claude Code über diese IDE erlauben (build_project)', 'Claude Code baut %s in der IDE …',
+     'Build für Claude Code beendet: %s, %d Fehler', 'Build für Claude Code abgelehnt: %s (%s)'),
     ('Enter to accept · Esc to close', '%d of %d', 'No matches for “%s”', 'Backspace widens the search',
      'No suggestions here', 'Esc closes', 'No details for this entry', 'Overload', 'Deprecated: %s', 'Deprecated.',
      'Inherited from %s', 'Inherited', 'optional, default %s', 'No overload with %d parameters.', '… %d more',
@@ -1842,7 +1845,9 @@ const
      'Switched off: Atlas does not read .atlas.', 'File: %s',
      'The file is invalid; personal settings apply (see the Messages view).', 'The file sets no values.',
      '%s: %s (from .atlas)', '%d entries are ignored (see the Messages view).',
-     'Project code templates: %s (from .atlas, take precedence over your own)'));
+     'Project code templates: %s (from .atlas, take precedence over your own)',
+     'Allow builds for Claude Code in this IDE (build_project)', 'Claude Code is building %s in the IDE …',
+     'Build for Claude Code finished: %s, %d errors', 'Build for Claude Code refused: %s (%s)'));
 
 { TAtlasStrings }
 

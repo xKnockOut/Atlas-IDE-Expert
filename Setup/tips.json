@@ -476,6 +476,15 @@
       "text": "Eine Karte je Projekt: atlas.json aus einer Vorlage anlegen, Baseline erzeugen, fehlende Units und Defines ohne Quelle finden. Jeder Schritt läuft nur auf Klick; darunter „Neu mit Atlas“ für Unit, Formular und Testklasse.",
       "textEn": "One card per project: create atlas.json from a template, create the baseline, find missing units and defines without a source. Every step runs only on click; below it “New with Atlas” for unit, form and test class.",
       "image": "Tipps\\einrichten.png"
+    },
+    {
+      "id": "mcpBuild",
+      "setting": "McpBuild",
+      "title": "Builds für Claude Code",
+      "titleEn": "Builds for Claude Code",
+      "text": "Claude Code baut das offene Projekt über das Werkzeug build_project in dieser IDE und bekommt Fehler und Warnungen mit Datei, Zeile und Spalte zurück. Bei laufendem Debugger oder Build lehnt Atlas ab.",
+      "textEn": "Claude Code builds the open project in this IDE through the build_project tool and gets errors and warnings back with file, line and column. While the debugger or a build is running, Atlas refuses.",
+      "image": "Tipps\\claude-build.png"
     }
   ]
 }

@@ -181,6 +181,9 @@ type
     CheckOnSaveDelayMs: Integer;
     /// <summary>Höchstdauer einer Prüfung; darüber nur noch von Hand (Strg+Alt+F9).</summary>
     CheckOnSaveMaxMs: Integer;
+    /// <summary>Claude Code darf über das MCP-Werkzeug build_project offene Projekte in dieser IDE bauen (#261),
+    /// z. B. in der Starter Edition ohne Kommandozeilen-Compiler.</summary>
+    McpBuild: Boolean;
     /// <summary>Tastenkürzel im Editor (#399, TShortCut, 0 = keins): Code-Aktionen, Auswahl erweitern und
     /// verkleinern, Gehe zu Implementierung und zu Typdefinition.</summary>
     ActionsKey: Integer;
@@ -595,6 +598,7 @@ begin
   Result.CompileOnSave := False;
   Result.CheckOnSaveDelayMs := 2000;
   Result.CheckOnSaveMaxMs := 1500;
+  Result.McpBuild := True;
   Result.ActionsKey := $800D; // Alt+Enter
   Result.ExpandKey := $4057; // Strg+W
   Result.ShrinkKey := $6057; // Strg+Umschalt+W
@@ -869,6 +873,7 @@ begin
   CheckOnSave := AStore.ReadInteger('CheckOnSave', BoolValue(Default.CheckOnSave)) <> 0;
   CheckOnSaveDelayMs := AStore.ReadInteger('CheckOnSaveDelayMs', Default.CheckOnSaveDelayMs);
   CheckOnSaveMaxMs := AStore.ReadInteger('CheckOnSaveMaxMs', Default.CheckOnSaveMaxMs);
+  McpBuild := AStore.ReadInteger('McpBuild', BoolValue(Default.McpBuild)) <> 0;
   CompileOnSave := AStore.ReadInteger('CompileOnSave', BoolValue(Default.CompileOnSave)) <> 0;
   ActionsKey := AStore.ReadInteger('ActionsKey', Default.ActionsKey);
   ExpandKey := AStore.ReadInteger('ExpandKey', Default.ExpandKey);
@@ -1054,6 +1059,7 @@ begin
   AStore.WriteInteger('CheckOnSave', BoolValue(CheckOnSave));
   AStore.WriteInteger('CheckOnSaveDelayMs', CheckOnSaveDelayMs);
   AStore.WriteInteger('CheckOnSaveMaxMs', CheckOnSaveMaxMs);
+  AStore.WriteInteger('McpBuild', BoolValue(McpBuild));
   AStore.WriteInteger('CompileOnSave', BoolValue(CompileOnSave));
   AStore.WriteInteger('ActionsKey', ActionsKey);
   AStore.WriteInteger('ExpandKey', ExpandKey);

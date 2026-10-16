@@ -57,6 +57,8 @@ uses
   Atlas.IDE.Files.DirtyExport,
   Atlas.IDE.Files.EditInbox,
   Atlas.IDE.Build.CheckOnSave,
+  Atlas.IDE.Build.Runner,
+  Atlas.IDE.Build.Inbox,
   Atlas.IDE.Settings.Project,
   Atlas.IDE.Commands.MainMenu,
   Atlas.IDE.Editor.Rename,
@@ -157,6 +159,10 @@ var
   // Schreibende MCP-Werkzeuge ändern offene Dateien über das Plugin (#397).
   EditInbox: TAtlasIdeEditInbox;
   CheckOnSave: TAtlasIdeCheckOnSave;
+  // Bauen auf Auftrag über IOTAProjectBuilder (#261), z. B. für Claude Code; lebt mit den Compile-Ereignissen.
+  BuildRunner: TAtlasIdeBuildRunner;
+  // Eingang des MCP-Werkzeugs build_project (#261), abschaltbar über McpBuild.
+  BuildInbox: TAtlasIdeBuildInbox;
   // Hauptmenü Atlas mit Schnellschaltern und Einstellungen (#227).
   MainMenu: TAtlasMainMenu;
   // Tastenkürzel der Editorbefehle (#399).
@@ -1243,6 +1249,13 @@ begin
           begin
             RecordProjectMetrics(Project.FileName, Stamp);
           end);
+      // Builds auf Auftrag (#261) warten auf ihre Meldungen.
+      if BuildRunner <> nil then
+        TAtlasGuard.Run(TAtlasFeature.Build,
+          procedure
+          begin
+            BuildRunner.MessagesRead(Messages, Project, Succeeded, Readable);
+          end);
       if Manager = nil then
         Exit;
       if Length(Messages) > 0 then
@@ -1255,6 +1268,7 @@ begin
         AProject.Background));
     end));
   Compile := TAtlasIdeCompileEvents.Create(Events);
+  BuildRunner := TAtlasIdeBuildRunner.Create(Events);
 end;
 
 /// <summary>Sprache der IDE (#446): Eintrag für bds.exe unter HKCU\Software\Embarcadero\Locales (von
@@ -1986,6 +2000,9 @@ begin
     RegisterCompileEvents,
     procedure
     begin
+      // Der Läufer meldet sich bei den Ereignissen von Compile an; vorher gehen.
+      FreeAndNil(BuildInbox);
+      FreeAndNil(BuildRunner);
       FreeAndNil(Compile);
     end);
   Features.Add('Watchdog', TAtlasSafeLevel.Normal,
@@ -2026,6 +2043,28 @@ begin
       Result := TAtlasIdeTeamFile.Started;
     end,
     TAtlasIdeTeamFile.Start, TAtlasIdeTeamFile.Stop);
+  // Builds für Claude Code (#261): nur im normalen Start, mit den Compile-Ereignissen und solange McpBuild an ist.
+  Features.Add('McpBuild',
+    function(ALevel: TAtlasSafeLevel): Boolean
+    begin
+      Result := (ALevel = TAtlasSafeLevel.Normal) and TAtlasIdeSettings.Current.McpBuild and (BuildRunner <> nil);
+    end,
+    function: Boolean
+    begin
+      Result := BuildInbox <> nil;
+    end,
+    procedure
+    begin
+      BuildInbox := TAtlasIdeBuildInbox.Create(BuildRunner,
+        procedure(const AText: string)
+        begin
+          GuardWarning(AText);
+        end);
+    end,
+    procedure
+    begin
+      FreeAndNil(BuildInbox);
+    end);
   // Änderungsprotokoll vor den Tasten: Strg+Alt+Z braucht es (#721).
   Features.Add('Undo', TAtlasSafeLevel.Safe,
     function: Boolean

@@ -30,6 +30,9 @@ type
     /// <summary>Notizen (#545): Schalter auf dem Reiter Editor, Vorgabe an.</summary>
     [Test]
     procedure NotesRoundTrip;
+    /// <summary>#261: Schalter „Builds für Claude Code“ auf dem Reiter Compiler.</summary>
+    [Test]
+    procedure McpBuildRoundTrip;
     /// <summary>Benannte Lesezeichen (#622): zwei Schalter auf dem Reiter Editor, Taste bei den Befehlen.</summary>
     [Test]
     procedure BookmarksRoundTrip;
@@ -447,6 +450,26 @@ begin
     Assert.IsFalse(Saved.Notes, 'Notizen abschaltbar');
     Page.LoadFrom(Saved);
     Assert.IsFalse(Page.NotesCheck.Checked);
+  finally
+    Page.Free;
+  end;
+end;
+
+procedure TAtlasSettingsPageTests.McpBuildRoundTrip;
+var
+  Page: TAtlasSettingsPage;
+  Saved: TAtlasPluginSettings;
+begin
+  Page := TAtlasSettingsPage.Create(nil);
+  try
+    Page.LoadFrom(TAtlasPluginSettings.Defaults);
+    Assert.IsTrue(Page.McpBuildCheck.Checked, 'standardmäßig an');
+    Page.McpBuildCheck.Checked := False;
+    Saved := TAtlasPluginSettings.Defaults;
+    Page.SaveTo(Saved);
+    Assert.IsFalse(Saved.McpBuild, 'abschaltbar');
+    Page.LoadFrom(Saved);
+    Assert.IsFalse(Page.McpBuildCheck.Checked);
   finally
     Page.Free;
   end;
