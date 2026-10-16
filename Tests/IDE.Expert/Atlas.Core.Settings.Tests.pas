@@ -30,6 +30,10 @@ type
     /// <summary>Erzeugen-Menü (#719): Vorgaben, Normalisieren, Speichern und Laden.</summary>
     [Test]
     procedure GenerateMenuOptions;
+    /// <summary>Benachrichtigungszentrale (#601): Vorgaben, Grenzen, Verhalten je Quelle, Speichern und Laden.
+    /// </summary>
+    [Test]
+    procedure NotificationOptions;
   end;
 
   [TestFixture]
@@ -52,6 +56,7 @@ implementation
 uses
   System.SysUtils,
   System.Generics.Collections,
+  Atlas.Core.Notifications.Center,
   Atlas.Core.Settings.Plugin,
   Atlas.Core.Settings.Schema,
   Atlas.Core.Settings.SchemaData,
@@ -572,6 +577,45 @@ begin
   Assert.AreEqual('/json, tryf', Loaded.GenerateMenuHidden);
   Assert.IsFalse(Loaded.GenerateMenuRecentFirst);
   Assert.IsFalse(Loaded.GenerateMenuShowCommandNames);
+end;
+
+procedure TAtlasPluginSettingsTests.NotificationOptions;
+var
+  Settings, Loaded: TAtlasPluginSettings;
+  Store: IAtlasSettingsStore;
+begin
+  Settings := TAtlasPluginSettings.Defaults;
+  Assert.IsTrue(Settings.Notifications, 'standardmäßig an');
+  Assert.AreEqual('', Settings.NotificationsSources, 'alle Quellen zeigen');
+  Assert.AreEqual(200, Settings.NotificationsMaxEntries);
+  Assert.AreEqual($E04E, Settings.NotificationsKey, 'Strg+Umschalt+Alt+N');
+  // Grenzen wie in der Zentrale.
+  Assert.AreEqual(TAtlasNotificationCenter.MinEntries, TAtlasPluginSettings.MinNotificationEntries);
+  Assert.AreEqual(TAtlasNotificationCenter.MaxMaxEntries, TAtlasPluginSettings.MaxNotificationEntries);
+  Assert.AreEqual(TAtlasNotificationCenter.DefaultMaxEntries, Settings.NotificationsMaxEntries);
+  Settings.NotificationsMaxEntries := 3;
+  Settings.NotificationsSources := ' ShortcutTips = COLLECT ; server=show, build=laut, reload=off ';
+  Settings.NotificationsKey := -1;
+  Settings.Normalize;
+  Assert.AreEqual(TAtlasPluginSettings.MinNotificationEntries, Settings.NotificationsMaxEntries);
+  Assert.AreEqual('ShortcutTips=collect, reload=off', Settings.NotificationsSources,
+    'show entfällt, unbekanntes Verhalten auch');
+  Assert.AreEqual(0, Settings.NotificationsKey);
+  Settings.NotificationsMaxEntries := 5000;
+  Settings.Normalize;
+  Assert.AreEqual(TAtlasPluginSettings.MaxNotificationEntries, Settings.NotificationsMaxEntries);
+  // Speichern und Laden.
+  Settings.Notifications := False;
+  Settings.NotificationsMaxEntries := 50;
+  Settings.NotificationsKey := $C04E;
+  Store := TMemoryStore.Create;
+  Settings.Save(Store);
+  Loaded := TAtlasPluginSettings.Defaults;
+  Loaded.Load(Store);
+  Assert.IsFalse(Loaded.Notifications, 'abschaltbar');
+  Assert.AreEqual('ShortcutTips=collect, reload=off', Loaded.NotificationsSources);
+  Assert.AreEqual(50, Loaded.NotificationsMaxEntries);
+  Assert.AreEqual($C04E, Loaded.NotificationsKey);
 end;
 
 procedure TAtlasPluginSettingsTests.UnitSearchOptions;

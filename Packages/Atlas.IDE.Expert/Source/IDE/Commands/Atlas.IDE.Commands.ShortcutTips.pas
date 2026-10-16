@@ -41,6 +41,9 @@
 // Befehl gibt (dieselbe Tippquelle wie #757), sonst von der Aktion.
 // Kein Tipp während einer angehaltenen Debug-Sitzung, bei offenem modalem
 // Dialog und häufiger als alle 30 s; die Regeln stehen im Core.
+// Benachrichtigungszentrale (#601, Quelle shortcutTips): Jeder Tipp ist auch
+// ein Eintrag mit „Alle Kürzel“ und „Nicht mehr zeigen“; „nur sammeln“ zeigt
+// kein Fenster (der Tipp gilt trotzdem als gezeigt), „aus“ unterdrückt ihn.
 
 interface
 
@@ -52,6 +55,7 @@ uses
   Vcl.AppEvnts,
   Atlas.Core.Commands.Usage,
   Atlas.Core.Commands.ShortcutTips,
+  Atlas.Core.Notifications.Contract,
   Atlas.UI.Commands.ShortcutTip,
   Atlas.IDE.Commands.Usage;
 
@@ -91,6 +95,10 @@ type
     procedure AppActionExecute(Action: TBasicAction; var Handled: Boolean);
     procedure NeverClick(Sender: TObject);
     procedure AllKeysClick(Sender: TObject);
+    /// <summary>„Nicht mehr zeigen“ für den Tipp zu AId (Fenster und Benachrichtigung).</summary>
+    procedure SetNever(const AId: string);
+    /// <summary>Aktionen des Eintrags in der Benachrichtigungszentrale (#601).</summary>
+    class function TipActions(const AId: string): TArray<TAtlasNotificationAction>; static;
     procedure Changed;
     procedure Save;
     procedure EnsureKeys;
@@ -156,6 +164,8 @@ uses
   Atlas.Core.Commands.KeyMap,
   Atlas.Core.Commands.Palette,
   Atlas.Core.Commands.Tips,
+  Atlas.Core.Notifications.Center,
+  Atlas.Core.Notifications.Sources,
   Atlas.UI.Popup.Window,
   Atlas.UI.Commands.KeyMap,
   Atlas.UI.Strings,
@@ -841,6 +851,25 @@ begin
     ShowTip(AId, KeyText, Caption);
 end;
 
+class function TAtlasIdeShortcutTips.TipActions(const AId: string): TArray<TAtlasNotificationAction>;
+begin
+  Result := nil;
+  if TAtlasIdeSettings.Current.KeyOverview then
+    Result := [TAtlasNotificationCenter.Action(TAtlasStrings.Text(TAtlasTextId.ShortcutTipAllKeys),
+      procedure
+      begin
+        if TAtlasIdeKeyMap.Instance <> nil then
+          TAtlasIdeKeyMap.Instance.ShowAll;
+      end)];
+  Result := Result + [TAtlasNotificationCenter.Action(TAtlasStrings.Text(TAtlasTextId.ShortcutTipNever),
+    procedure
+    begin
+      // Die Tipps können inzwischen beendet sein: nur über die laufende Instanz.
+      if FInstance <> nil then
+        FInstance.SetNever(AId);
+    end)];
+end;
+
 procedure TAtlasIdeShortcutTips.ShowTip(const AId, AKeyText, ACaption: string);
 var
   Entry: TAtlasCommandUsageEntry;
@@ -848,24 +877,34 @@ var
   Editor: IOTAEditorServices;
   FontName: string;
   FontSize: Integer;
+  Mode: TAtlasNotificationMode;
 begin
-  if FWindow = nil then
+  // Benachrichtigungszentrale (#601): „nur sammeln“ zeigt kein Fenster, „aus“ unterdrückt den Tipp ganz.
+  Mode := TAtlasNotificationCenter.Default.Notify(TAtlasNotificationSources.ShortcutTips,
+    TAtlasNotificationSeverity.Info, TAtlasStrings.Fmt(TAtlasTextId.NotificationsTipTitle, [AKeyText]),
+    TAtlasStrings.Fmt(TAtlasTextId.NotificationsTipText, [ACaption, AKeyText]), TipActions(AId));
+  if Mode = TAtlasNotificationMode.Off then
+    Exit;
+  if Mode = TAtlasNotificationMode.Show then
   begin
-    FWindow := TAtlasShortcutTipWindow.Create(nil);
-    FWindow.OnNever := NeverClick;
-    FWindow.OnAllKeys := AllKeysClick;
+    if FWindow = nil then
+    begin
+      FWindow := TAtlasShortcutTipWindow.Create(nil);
+      FWindow.OnNever := NeverClick;
+      FWindow.OnAllKeys := AllKeysClick;
+    end;
+    Area := TipArea;
+    FontName := FWindow.Font.Name;
+    FontSize := 10;
+    if Supports(BorlandIDEServices, IOTAEditorServices, Editor) and (Editor.EditOptions <> nil) then
+    begin
+      FontName := Editor.EditOptions.FontName;
+      FontSize := Editor.EditOptions.FontSize;
+    end;
+    FWindow.Colors := TAtlasIdeStyle.Colors;
+    FWindow.SetScaling(TAtlasPopupWindow.MonitorPPI(Area.CenterPoint), 1, FontName, FontSize);
+    FWindow.ShowTip(TAtlasShortcutTipView.Create(AKeyText, ACaption, TAtlasIdeSettings.Current.KeyOverview), Area);
   end;
-  Area := TipArea;
-  FontName := FWindow.Font.Name;
-  FontSize := 10;
-  if Supports(BorlandIDEServices, IOTAEditorServices, Editor) and (Editor.EditOptions <> nil) then
-  begin
-    FontName := Editor.EditOptions.FontName;
-    FontSize := Editor.EditOptions.FontSize;
-  end;
-  FWindow.Colors := TAtlasIdeStyle.Colors;
-  FWindow.SetScaling(TAtlasPopupWindow.MonitorPPI(Area.CenterPoint), 1, FontName, FontSize);
-  FWindow.ShowTip(TAtlasShortcutTipView.Create(AKeyText, ACaption, TAtlasIdeSettings.Current.KeyOverview), Area);
   FTipId := AId;
   FLastTipAt := Now;
   Entry := Usage.Entry(AId);
@@ -877,15 +916,22 @@ begin
 end;
 
 procedure TAtlasIdeShortcutTips.NeverClick(Sender: TObject);
+begin
+  SetNever(FTipId);
+end;
+
+procedure TAtlasIdeShortcutTips.SetNever(const AId: string);
 var
   Entry: TAtlasCommandUsageEntry;
+  Id: string;
 begin
+  Id := AId;
   TAtlasGuard.Run(TAtlasFeature.ShortcutTips,
     procedure
     begin
-      if FTipId = '' then
+      if Id = '' then
         Exit;
-      Entry := Usage.Entry(FTipId);
+      Entry := Usage.Entry(Id);
       Entry.Never := True;
       Usage.Put(Entry);
       // Gleich sichern: Die Wahl soll auch einen Absturz überstehen.

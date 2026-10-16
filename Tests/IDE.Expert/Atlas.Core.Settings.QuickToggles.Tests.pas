@@ -119,6 +119,11 @@ begin
   Assert.IsTrue(TAtlasQuickToggles.Find(Toggles, 'ShortcutTips', Toggle));
   Assert.AreEqual('Allgemein', Toggle.Page);
   Assert.IsFalse(Toggle.Drawing);
+  // Benachrichtigungszentrale (#601): Schalter auf der Seite Allgemein, keine Zeichnung.
+  Assert.IsTrue(TAtlasQuickToggles.Find(Toggles, 'Notifications', Toggle));
+  Assert.AreEqual('Allgemein', Toggle.Page);
+  Assert.IsFalse(Toggle.Drawing);
+  Assert.AreEqual('Notifications', Toggle.Feature);
   // Persönliche Notizen (#545): Schalter auf der Seite Editor, Symbol in der Rinne.
   Assert.IsTrue(TAtlasQuickToggles.Find(Toggles, 'Notes', Toggle));
   Assert.AreEqual('Editor', Toggle.Page);

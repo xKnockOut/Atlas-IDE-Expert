@@ -62,7 +62,8 @@ uses
   Atlas.IDE.InlayHints.Editor,
   Atlas.IDE.Editor.TestUnitLens,
   Atlas.IDE.Editor.MetricsLens,
-  Atlas.IDE.Problems.Controller;
+  Atlas.IDE.Problems.Controller,
+  Atlas.Core.Notifications.Contract;
 
 type
   /// <summary>Adapter des Kerns, eingesetzt von der Kompositionswurzel.</summary>
@@ -82,6 +83,10 @@ type
     FServer: IAtlasLspServer;
     FSession: TLspSession;
     FLastError: string;
+    /// <summary>Erfolgreiche Starts des Servers; ab dem zweiten meldet jeder „Server neu gestartet“ (#601).
+    /// </summary>
+    FStarts: Integer;
+    FOnOpenLog: TProc;
     // Ob AtlasServer.exe da ist, höchstens alle paar Sekunden neu geprüft.
     FServerChecked: Cardinal;
     FServerFound: Boolean;
@@ -141,6 +146,9 @@ type
     /// <summary>Warnungen und Fehler des Servers (window/showMessage) ins Meldungsfenster (#121).</summary>
     procedure AcceptShowMessage(ASession: TLspSession);
     procedure ReportError(const AMessage: string);
+    /// <summary>Aktion „Protokoll öffnen“ für Einträge der Benachrichtigungszentrale (#601); leer ohne OnOpenLog.
+    /// </summary>
+    function LogActions: TArray<TAtlasNotificationAction>;
     procedure Diagnose(const AMessage: string);
     function CurrentEditView: IOTAEditView;
     /// <summary>Cursorzeile ist ein ///-Kommentar (XMLDoc, #435).</summary>
@@ -213,6 +221,9 @@ type
       const ADone: TProc<TArray<string>>): Boolean;
     /// <summary>Phase, Version oder Fortschritt haben sich geändert; aus jedem Thread.</summary>
     property OnServerChanged: TProc read FOnServerChanged write FOnServerChanged;
+    /// <summary>„Protokoll öffnen“ für die Einträge der Quelle Server in der Benachrichtigungszentrale (#601).
+    /// </summary>
+    property OnOpenLog: TProc read FOnOpenLog write FOnOpenLog;
     /// <summary>Bietet IOTACodeInsightManager90 (Help Insight) nur an, solange der Atlas-Tooltip an ist.</summary>
     function QueryInterface(const IID: TGUID; out Obj): HResult; stdcall;
     { IOTACodeInsightManager100 }
@@ -270,7 +281,9 @@ uses
   Atlas.Core.Diagnostics.MainThread,
   Atlas.Core.Diagnostics.TimeLimit,
   Atlas.Core.Diagnostics.Shutdown,
-  Atlas.Core.Editor.WorkspacePlan;
+  Atlas.Core.Editor.WorkspacePlan,
+  Atlas.Core.Notifications.Center,
+  Atlas.Core.Notifications.Sources;
 
 var
   /// <summary>Lebender Manager; nach dem Freigeben nil, damit späte applyEdit-Aufrufe nichts mehr tun.</summary>
@@ -490,15 +503,29 @@ begin
     Result := StringReplace(Result, UserName, '<benutzer>', [rfReplaceAll, rfIgnoreCase]);
 end;
 
+function TAtlasCodeInsightManager.LogActions: TArray<TAtlasNotificationAction>;
+begin
+  Result := nil;
+  if Assigned(FOnOpenLog) then
+    Result := [TAtlasNotificationCenter.Action(TAtlasStrings.Text(TAtlasTextId.StatusOpenLog), FOnOpenLog)];
+end;
+
 procedure TAtlasCodeInsightManager.ReportError(const AMessage: string);
 var
   Messages: IOTAMessageServices;
+  Mode: TAtlasNotificationMode;
 begin
   Diagnose('Fehler: ' + AMessage);
   // Jede Meldung nur einmal, sonst flutet ein fehlender Server das Meldungsfenster.
   if AMessage = FLastError then
     Exit;
   FLastError := AMessage;
+  // Benachrichtigungszentrale (#601): bei „nur sammeln“ oder „aus“ keine Zeile im Meldungsfenster.
+  Mode := TAtlasNotificationCenter.Default.Notify(TAtlasNotificationSources.Server,
+    TAtlasNotificationSeverity.Error, TAtlasStrings.Text(TAtlasTextId.NotificationsServerError), AMessage,
+    LogActions);
+  if Mode <> TAtlasNotificationMode.Show then
+    Exit;
   if Supports(BorlandIDEServices, IOTAMessageServices, Messages) then
     Messages.AddTitleMessage('Atlas: ' + AMessage);
 end;
@@ -763,7 +790,11 @@ var
   Path, Arguments: string;
   Documents: TArray<TLspOpenDocument>;
   Projects: TArray<string>;
+  Crashed: Boolean;
+  Text: string;
 begin
+  // Vom Server selbst beendet (nicht von Atlas): für den Eintrag „Server neu gestartet“ (#601).
+  Crashed := (FPhase = TAtlasServerPhase.Stopped) and not FPhaseEnded;
   // Abgestürzter oder hängender Server: Was die alte Sitzung abgeglichen hatte, bekommt
   // der neue Server sofort wieder, nicht erst bei der nächsten Anfrage je Datei (#393).
   Documents := nil;
@@ -816,6 +847,23 @@ begin
     FLastError := '';
     SetPhase(TAtlasServerPhase.Running, '');
     Result := True;
+    // Jeder weitere Start ist ein Neustart (#393): Eintrag in der Benachrichtigungszentrale (#601); drei
+    // innerhalb von 10 s fasst sie zu „3 × Server neu gestartet“ zusammen.
+    Inc(FStarts);
+    if FStarts > 1 then
+    begin
+      Text := '';
+      if Crashed then
+        Text := TAtlasStrings.Text(TAtlasTextId.NotificationsServerCrashed);
+      if Length(Documents) > 0 then
+        Text := Trim(Text + ' ' + TAtlasStrings.Fmt(TAtlasTextId.NotificationsServerReopened, [Length(Documents)]));
+      if Crashed then
+        TAtlasNotificationCenter.Default.Notify(TAtlasNotificationSources.Server, TAtlasNotificationSeverity.Warning,
+          TAtlasStrings.Text(TAtlasTextId.NotificationsServerRestarted), Text, LogActions)
+      else
+        TAtlasNotificationCenter.Default.Notify(TAtlasNotificationSources.Server, TAtlasNotificationSeverity.Info,
+          TAtlasStrings.Text(TAtlasTextId.NotificationsServerRestarted), Text, LogActions);
+    end;
   except
     on E: Exception do
     begin
@@ -917,10 +965,20 @@ begin
         var
           Messages: IOTAMessageServices;
           Group: IOTAMessageGroup;
+          Severity: TAtlasNotificationSeverity;
         begin
           if (LiveManager <> Manager) or (Manager.FSession <> ASession) then
             Exit;
           Manager.Diagnose('window/showMessage: ' + AMessage);
+          // Benachrichtigungszentrale (#601): Fehler (1) rot, Warnung (2) gelb; Meldungsfenster nur bei Show.
+          if AType = 1 then
+            Severity := TAtlasNotificationSeverity.Error
+          else
+            Severity := TAtlasNotificationSeverity.Warning;
+          if TAtlasNotificationCenter.Default.Notify(TAtlasNotificationSources.Server, Severity,
+            TAtlasStrings.Text(TAtlasTextId.NotificationsServerMessage), AMessage, Manager.LogActions) <>
+            TAtlasNotificationMode.Show then
+            Exit;
           if not Supports(BorlandIDEServices, IOTAMessageServices, Messages) then
             Exit;
           Group := Messages.GetGroup('Atlas');

@@ -453,6 +453,12 @@
         <DCCReference Include="Source\IDE\Tests\Atlas.IDE.Tests.Lens.pas"/>
         <DCCReference Include="Source\Core\StartProfiles\Atlas.Core.StartProfiles.Store.pas"/>
         <DCCReference Include="Source\IDE\StartProfiles\Atlas.IDE.StartProfiles.Service.pas"/>
+        <DCCReference Include="Source\Core\Notifications\Atlas.Core.Notifications.Contract.pas"/>
+        <DCCReference Include="Source\Core\Notifications\Atlas.Core.Notifications.Sources.pas"/>
+        <DCCReference Include="Source\Core\Notifications\Atlas.Core.Notifications.Center.pas"/>
+        <DCCReference Include="Source\Core\Notifications\Atlas.Core.Notifications.Build.pas"/>
+        <DCCReference Include="Source\UI\Notifications\Atlas.UI.Notifications.Window.pas"/>
+        <DCCReference Include="Source\IDE\Notifications\Atlas.IDE.Notifications.Service.pas"/>
         <BuildConfiguration Include="Base">
             <Key>Base</Key>
         </BuildConfiguration>

@@ -351,6 +351,9 @@ begin
     '"ShortcutTips":{"type":"boolean","x-feature":"ShortcutTips",' +
       '"default":true,"x-page":"Allgemein","x-quickToggle":true,' +
       '"x-caption":"Tastenkürzel-Tipps","x-captionEn":"Keyboard shortcut tips","x-issue":"#600"},' +
+    '"Notifications":{"type":"boolean","x-feature":"Notifications",' +
+      '"default":true,"x-page":"Allgemein","x-quickToggle":true,' +
+      '"x-caption":"Benachrichtigungszentrale","x-captionEn":"Notification center","x-issue":"#601"},' +
     '"StatusFieldSummary":{"type":"boolean","default":true,"x-page":"Allgemein",' +
       '"x-caption":"Kurztext im Statusfeld","x-captionEn":"Summary in the status field","x-issue":"#591"}' +
     '}}';

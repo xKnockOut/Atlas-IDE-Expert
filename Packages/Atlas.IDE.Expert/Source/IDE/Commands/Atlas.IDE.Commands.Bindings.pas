@@ -8,7 +8,9 @@
 // (Strg+Alt+Umschalt+Z, #721) sowie Deklaration ⇄ Implementierung
 // (Strg+Umschalt+↑/↓, #775), Unit ⇄ Testunit (#189), Units suchen (#777,
 // nur solange unitSearch.enabled an ist) und „Lesezeichen setzen…“ (#622,
-// Strg+Alt+K, nur solange bookmarks.named an ist). Jede Taste wird wie
+// Strg+Alt+K, nur solange bookmarks.named an ist) sowie die Liste der
+// Benachrichtigungen (#601, Strg+Umschalt+Alt+N, nur solange
+// notifications.enabled an ist). Jede Taste wird wie
 // die der Befehlspalette vorher auf Konflikte geprüft (#494); ohne Vorrang
 // bleibt eine fremde Belegung aktiv. Nach geänderten Einstellungen meldet
 // Rebind die Bindung neu an. Der Befehl läuft nach der Tastenverarbeitung
@@ -80,7 +82,8 @@ uses
   Atlas.IDE.UnitSearch.Commands,
   Atlas.IDE.Undo.Changes,
   Atlas.IDE.Bookmarks.Service,
-  Atlas.IDE.Generate.Commands;
+  Atlas.IDE.Generate.Commands,
+  Atlas.IDE.Notifications.Service;
 
 { TAtlasIdeEditorKeys.TBinding }
 
@@ -296,6 +299,17 @@ begin
       procedure
       begin
         TAtlasIdeGenerate.Show;
+      end);
+  // Benachrichtigungen (#601): aus = Strg+Umschalt+Alt+N bleibt frei.
+  if Settings.Notifications then
+    AddKey(Settings.NotificationsKey, TAtlasStrings.Text(TAtlasTextId.NotificationsCommand),
+      procedure
+      begin
+        TAtlasGuard.Run(TAtlasFeature.Notifications,
+          procedure
+          begin
+            TAtlasIdeNotifications.ShowList;
+          end);
       end);
   AddKey(Settings.UndoKey, TAtlasStrings.Text(TAtlasTextId.UndoMenu),
     procedure
