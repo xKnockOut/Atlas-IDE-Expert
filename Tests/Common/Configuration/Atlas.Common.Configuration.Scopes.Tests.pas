@@ -17,6 +17,8 @@ type
     [Test]
     procedure ListsAreDisjoint;
     [Test]
+    procedure GlobalRulesProjectOverridesPerRule;
+    [Test]
     procedure KeepsTextWithoutMisplacedKeys;
     [Test]
     procedure RemovesAndReportsMisplacedKeys;
@@ -53,7 +55,7 @@ begin
   Assert.IsTrue(TConfigurationScopes.ScopeOf('index.exclude') = TConfigurationScope.Project);
   Assert.IsTrue(TConfigurationScopes.ScopeOf('memoryBudgetMb') = TConfigurationScope.Global);
   Assert.IsTrue(TConfigurationScopes.ScopeOf('hints.xmlDocFull') = TConfigurationScope.Global, 'erbt von hints');
-  Assert.IsTrue(TConfigurationScopes.ScopeOf('rules') = TConfigurationScope.Project);
+  Assert.IsTrue(TConfigurationScopes.ScopeOf('rules') = TConfigurationScope.Both, 'global und Projekt');
   Assert.IsTrue(TConfigurationScopes.ScopeOf('format.indentSize') = TConfigurationScope.Project);
   Assert.IsTrue(TConfigurationScopes.ScopeOf('completion.matching') = TConfigurationScope.Global);
   Assert.IsTrue(TConfigurationScopes.ScopeOf('completion.senderCast') = TConfigurationScope.Project);
@@ -71,11 +73,31 @@ begin
   for GlobalPath in GlobalSettingPaths do
     for ProjectPath in ProjectSettingPaths do
     begin
+      // rules (x-scope "both") steht absichtlich in beiden Listen.
+      if (GlobalPath = 'rules') and (ProjectPath = 'rules') then
+        Continue;
       Assert.AreNotEqual(GlobalPath, ProjectPath);
       // Ein ganzes Objekt an einem Ort und eines seiner Glieder am anderen wäre widersprüchlich.
       Assert.IsFalse(GlobalPath.StartsWith(ProjectPath + '.'), GlobalPath);
       Assert.IsFalse(ProjectPath.StartsWith(GlobalPath + '.'), ProjectPath);
     end;
+end;
+
+procedure TConfigurationScopesTests.GlobalRulesProjectOverridesPerRule;
+var
+  Issues: TArray<TConfigurationIssue>;
+  Settings: TServerSettings;
+begin
+  // Global erlaubt, ohne Meldung.
+  TConfigurationScopes.Filter('{"rules": {"no-with": "off"}}', TConfigurationScope.Global, Issues);
+  Assert.AreEqual(0, Integer(Length(Issues)));
+  TConfigurationScopes.Filter('{"rules": {"no-with": "off"}}', TConfigurationScope.Project, Issues);
+  Assert.AreEqual(0, Integer(Length(Issues)));
+  Settings := TConfigurationParser.Parse(TConfigurationScopes.Effective(
+    '{"rules": {"no-with": "off", "magic-number": "hint"}}', '', '{"rules": {"magic-number": "error"}}'), Issues);
+  Assert.AreEqual(Ord(TRuleSeverity.Off), Ord(Settings.RuleSeverity('no-with', TRuleSeverity.Warning)), 'global');
+  Assert.AreEqual(Ord(TRuleSeverity.Error), Ord(Settings.RuleSeverity('magic-number', TRuleSeverity.Warning)),
+    'Projekt übersteuert');
 end;
 
 procedure TConfigurationScopesTests.KeepsTextWithoutMisplacedKeys;
@@ -111,12 +133,12 @@ begin
   Assert.AreEqual('Win64', Settings.Platform);
   Assert.AreEqual(TServerSettings.Default.MemoryBudgetMb, Settings.MemoryBudgetMb);
   // Umgekehrt: Projekt-Schlüssel in der globalen Datei.
-  Text := TConfigurationScopes.Filter('{"rules": {"empty-except": "off"}, "logLevel": "debug"}',
+  Text := TConfigurationScopes.Filter('{"platform": "Win64", "logLevel": "debug"}',
     TConfigurationScope.Global, Issues);
   Assert.AreEqual(1, Integer(Length(Issues)));
   Assert.Contains(Issues[0].Message, 'atlas.json');
   Settings := TConfigurationParser.Parse(Text, Issues);
-  Assert.AreEqual(0, Integer(Length(Settings.Rules)));
+  Assert.AreEqual(TServerSettings.Default.Platform, Settings.Platform);
   Assert.AreEqual('debug', Settings.LogLevel);
 end;
 

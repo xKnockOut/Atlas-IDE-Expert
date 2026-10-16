@@ -21,6 +21,8 @@ type
     [Test]
     procedure SavesBesideAndReplaces;
     [Test]
+    procedure ReplacesFileHeldOpenByOthers;
+    [Test]
     procedure AnsiDefaultCodePage;
     [Test]
     procedure PureAsciiFollowsDefault;
@@ -33,6 +35,7 @@ type
 implementation
 
 uses
+  Winapi.Windows,
   System.SysUtils,
   System.IOUtils,
   Atlas.Core.Files.TextFile;
@@ -107,6 +110,36 @@ begin
     Assert.AreEqual<NativeInt>(6, Length(TFile.ReadAllBytes(FileName)));
     Assert.IsFalse(TFile.Exists(FileName + '.atlas-tmp'), 'keine Nachbardatei übrig');
     Assert.AreEqual('aä', TAtlasTextFile.Load(FileName).Text);
+  finally
+    TDirectory.Delete(Folder, True);
+  end;
+end;
+
+procedure TAtlasTextFileTests.ReplacesFileHeldOpenByOthers;
+var
+  Folder, FileName: string;
+  Content: TAtlasTextFileContent;
+  Handle: THandle;
+begin
+  // Wie der Server, der settings.json beobachtet: Datei offen mit FILE_SHARE_DELETE. Löschen und Verschieben
+  // getrennt meldete „Datei bereits vorhanden“.
+  Folder := TPath.Combine(TPath.GetTempPath, 'Atlas-TextFile-' + IntToStr(Random(MaxInt)));
+  TDirectory.CreateDirectory(Folder);
+  try
+    FileName := TPath.Combine(Folder, 'settings.json');
+    TFile.WriteAllText(FileName, '{}');
+    Handle := CreateFile(PChar(FileName), GENERIC_READ, FILE_SHARE_READ or FILE_SHARE_WRITE or FILE_SHARE_DELETE,
+      nil, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, 0);
+    Assert.IsTrue(Handle <> INVALID_HANDLE_VALUE);
+    try
+      Content := TAtlasTextFile.Load(FileName);
+      Content.Text := '{"metrics": false}';
+      TAtlasTextFile.Save(FileName, Content);
+    finally
+      CloseHandle(Handle);
+    end;
+    Assert.AreEqual('{"metrics": false}', TAtlasTextFile.Load(FileName).Text);
+    Assert.IsFalse(TFile.Exists(FileName + '.atlas-tmp'), 'keine Nachbardatei übrig');
   finally
     TDirectory.Delete(Folder, True);
   end;

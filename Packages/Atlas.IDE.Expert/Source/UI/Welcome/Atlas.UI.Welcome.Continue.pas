@@ -196,6 +196,7 @@ implementation
 
 uses
   System.DateUtils,
+  System.UITypes,
   Winapi.Windows,
   Vcl.Themes,
   Atlas.Core.Welcome.QuickActions,

@@ -152,7 +152,6 @@ type
     procedure ContextClick(Sender: TObject);
     function Scale(AValue: Integer): Integer;
     function ValidRow(ARow: Integer): Boolean;
-    function Project(ARow: Integer): string;
     function ItemsOf(ARow: Integer): TAtlasQuickActions;
     procedure Queue(const AProc: TProc);
     procedure AddChoice(AParent: TMenuItem; const ACaption: string; const AChoice: TChoice; ADefault: Boolean);
@@ -366,13 +365,6 @@ end;
 function TAtlasQuickActionsBar.ValidRow(ARow: Integer): Boolean;
 begin
   Result := (ARow >= 0) and (ARow <= High(FProjects));
-end;
-
-function TAtlasQuickActionsBar.Project(ARow: Integer): string;
-begin
-  Result := '';
-  if ValidRow(ARow) then
-    Result := FProjects[ARow];
 end;
 
 procedure TAtlasQuickActionsBar.SetRows(const AProjects: TArray<string>);

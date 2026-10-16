@@ -41,6 +41,8 @@ type
     Restart: Boolean;
     /// <summary>x-scope: True = gilt für alle Projekte (settings.json), False = atlas.json des Projekts.</summary>
     Global: Boolean;
+    /// <summary>x-scope "both": an beiden Orten, das Projekt übersteuert je Glied (rules).</summary>
+    Both: Boolean;
     /// <summary>x-control verlangt eine Dateiauswahl.</summary>
     function PicksFile: Boolean;
     /// <summary>Passt AJson (JSON-Text) zur Art des Felds? Sonst bleibt der Wert unangetastet.</summary>
@@ -208,6 +210,7 @@ var
     Restart := ASchema.GetValue('x-restart');
     Result.Restart := (Restart is TJSONBool) and TJSONBool(Restart).AsBoolean;
     Result.Global := ASchema.GetValue<string>('x-scope', AScope) = 'global';
+    Result.Both := ASchema.GetValue<string>('x-scope', AScope) = 'both';
   end;
 
 begin
@@ -261,7 +264,7 @@ begin
   Result := nil;
   for Field in AFields do
   begin
-    if Field.Global <> AGlobal then
+    if (Field.Global <> AGlobal) and not Field.Both then
       Continue;
     Excluded := False;
     for Path in AExclude do

@@ -76,7 +76,7 @@ var
   Issues: TJSONArray;
 begin
   // Als atlas.json (Vorgabe): der globale Schlüssel ist eine Warnung, der Text bleibt gültig.
-  Args := Arguments('{"rules": {}, "memoryBudgetMb": 512}');
+  Args := Arguments('{"rules": {}, "platform": "Win64", "memoryBudgetMb": 512}');
   try
     Answer := TLspSettingsCommands.Check(Args);
     try
@@ -88,13 +88,13 @@ begin
     finally
       Answer.Free;
     end;
-    // Als globale Datei: rules gehört zum Projekt.
+    // Als globale Datei: platform gehört zum Projekt; rules geht an beiden Orten.
     Args.Add('global');
     Answer := TLspSettingsCommands.Check(Args);
     try
       Issues := TJSONArray(Answer.GetValue('issues'));
       Assert.AreEqual(1, Issues.Count);
-      Assert.Contains((Issues.Items[0] as TJSONObject).GetValue<string>('message'), '"rules"');
+      Assert.Contains((Issues.Items[0] as TJSONObject).GetValue<string>('message'), '"platform"');
     finally
       Answer.Free;
     end;
