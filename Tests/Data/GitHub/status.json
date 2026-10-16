@@ -1,0 +1,7 @@
+{
+  "state": "success",
+  "total_count": 1,
+  "statuses": [
+    {"context": "continuous-integration/jenkins", "state": "success"}
+  ]
+}
