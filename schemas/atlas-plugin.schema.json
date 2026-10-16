@@ -1,0 +1,1919 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Atlas-Plugin-Einstellungen",
+  "description": "Katalog der Einstellungen des IDE-Plugins (#227, #604, #723). Schlüssel = Name in TAtlasPluginSettings.Load/Save (Registry HKCU\\Software\\Atlas\\IdePlugin; ein Teil liegt in %APPDATA%\\Atlas\\settings.json). x-key: Schlüssel in Doku und Exportdatei atlas-settings.json; x-area: Bereich für Export, Import und Zurücksetzen (x-areas); x-page: Seite; x-state: interner Zustand (nicht exportiert, nicht zurückgesetzt, nicht markiert); x-machine: gilt nur für diesen Rechner (nicht exportiert); x-path: Pfad (Benutzerordner als Pfadmakro, sonst ausgelassen); x-secret: Zugangsdaten; x-formerKeys: frühere Schlüssel, die der Import umrechnet; x-format \"shortcut\": Tastenkürzel (TShortCut) für die Anzeige; x-team: Pfad in der Projektdatei .atlas, deren Wert die Einstellung überdeckt; x-project: Pfad in atlas.json, dessen Wert sie überdeckt; x-quickToggle, x-caption, x-captionEn, x-drawing, x-feature: Schnellschalter (#604). Neue Plugin-Einstellung: Eintrag hier (mit x-key, x-area, x-page), Feld in TAtlasPluginSettings, Test; dann pwsh Tools/Update-ConfigDoc.ps1.",
+  "x-version": 1,
+  "x-areas": {
+    "editor": {
+      "caption": "Editor",
+      "captionEn": "Editor"
+    },
+    "completion": {
+      "caption": "Vervollständigung",
+      "captionEn": "Completion"
+    },
+    "highlighting": {
+      "caption": "Hervorhebung",
+      "captionEn": "Highlighting"
+    },
+    "keys": {
+      "caption": "Tastenkürzel",
+      "captionEn": "Keyboard shortcuts"
+    },
+    "codeActions": {
+      "caption": "Code-Aktionen",
+      "captionEn": "Code actions"
+    },
+    "rules": {
+      "caption": "Prüfregeln",
+      "captionEn": "Code checks"
+    },
+    "build": {
+      "caption": "Build",
+      "captionEn": "Build"
+    },
+    "debug": {
+      "caption": "Debug",
+      "captionEn": "Debug"
+    },
+    "snippets": {
+      "caption": "Vorlagen/Snippets",
+      "captionEn": "Templates/snippets"
+    },
+    "bookmarks": {
+      "caption": "Lesezeichen",
+      "captionEn": "Bookmarks"
+    },
+    "welcome": {
+      "caption": "Willkommensseite",
+      "captionEn": "Welcome page"
+    },
+    "general": {
+      "caption": "Allgemein",
+      "captionEn": "General"
+    }
+  },
+  "type": "object",
+  "properties": {
+    "Enabled": {
+      "type": "boolean",
+      "default": true,
+      "x-key": "completion.enabled",
+      "x-area": "completion",
+      "x-feature": "Completion",
+      "x-page": "Allgemein",
+      "x-quickToggle": true,
+      "x-caption": "Atlas-Code-Insight",
+      "x-captionEn": "Atlas Code Insight",
+      "x-issue": "#407"
+    },
+    "DiagnosticMode": {
+      "type": "boolean",
+      "default": false,
+      "x-key": "diagnosticMode.enabled",
+      "x-area": "general",
+      "x-page": "Allgemein",
+      "x-quickToggle": true,
+      "x-caption": "Diagnosemodus",
+      "x-captionEn": "Diagnostic mode",
+      "x-issue": "#479"
+    },
+    "PairColors": {
+      "type": "boolean",
+      "default": true,
+      "x-key": "highlight.pairColors",
+      "x-area": "highlighting",
+      "x-feature": "Pairs",
+      "x-page": "Editor",
+      "x-quickToggle": true,
+      "x-drawing": true,
+      "x-caption": "Klammerfarben",
+      "x-captionEn": "Bracket colors",
+      "x-issue": "#514"
+    },
+    "PairGuides": {
+      "type": "boolean",
+      "default": true,
+      "x-key": "highlight.pairGuides",
+      "x-area": "highlighting",
+      "x-feature": "Pairs",
+      "x-page": "Editor",
+      "x-quickToggle": true,
+      "x-drawing": true,
+      "x-caption": "Blocklinien",
+      "x-captionEn": "Block guides",
+      "x-issue": "#514"
+    },
+    "PairOwners": {
+      "type": "boolean",
+      "default": true,
+      "x-key": "highlight.pairOwners",
+      "x-area": "highlighting",
+      "x-feature": "Pairs",
+      "x-page": "Editor",
+      "x-quickToggle": true,
+      "x-drawing": true,
+      "x-caption": "Anweisungen mitfärben",
+      "x-captionEn": "Colour statements",
+      "x-issue": "#653"
+    },
+    "InactiveDim": {
+      "type": "boolean",
+      "default": true,
+      "x-key": "highlight.inactiveDim",
+      "x-area": "highlighting",
+      "x-feature": "Pairs",
+      "x-page": "Editor",
+      "x-quickToggle": true,
+      "x-drawing": true,
+      "x-caption": "Inaktive {$IFDEF}-Zweige ausgrauen",
+      "x-captionEn": "Dim inactive {$IFDEF} branches",
+      "x-issue": "#615"
+    },
+    "Problems": {
+      "type": "boolean",
+      "default": true,
+      "x-key": "problems.enabled",
+      "x-area": "editor",
+      "x-feature": "Problems",
+      "x-page": "Editor",
+      "x-quickToggle": true,
+      "x-drawing": true,
+      "x-caption": "Probleme unterstreichen",
+      "x-captionEn": "Underline problems",
+      "x-issue": "#398"
+    },
+    "InlayHints": {
+      "type": "boolean",
+      "default": false,
+      "x-key": "inlayHints.parameterNames",
+      "x-area": "editor",
+      "x-feature": "InlayHints",
+      "x-page": "Editor",
+      "x-quickToggle": true,
+      "x-drawing": true,
+      "x-caption": "Inlay-Hints",
+      "x-captionEn": "Inlay hints",
+      "x-issue": "#401"
+    },
+    "BlockEndLabels": {
+      "type": "boolean",
+      "default": true,
+      "x-key": "editor.blockEndLabels",
+      "x-area": "editor",
+      "x-feature": "InlayHints",
+      "x-page": "Editor",
+      "x-quickToggle": true,
+      "x-drawing": true,
+      "x-caption": "Blockende-Beschriftungen",
+      "x-captionEn": "Block end labels",
+      "x-issue": "#620"
+    },
+    "Notes": {
+      "type": "boolean",
+      "default": true,
+      "x-key": "notes.enabled",
+      "x-area": "editor",
+      "x-feature": "Notes",
+      "x-page": "Editor",
+      "x-quickToggle": true,
+      "x-drawing": true,
+      "x-caption": "Notizen",
+      "x-captionEn": "Notes",
+      "x-issue": "#545"
+    },
+    "BookmarksNamed": {
+      "type": "boolean",
+      "default": true,
+      "x-key": "bookmarks.named",
+      "x-area": "bookmarks",
+      "x-feature": "Bookmarks",
+      "x-page": "Editor",
+      "x-quickToggle": true,
+      "x-drawing": true,
+      "x-caption": "Benannte Lesezeichen",
+      "x-captionEn": "Named bookmarks",
+      "x-issue": "#622"
+    },
+    "CodeLensMetrics": {
+      "type": "boolean",
+      "default": true,
+      "x-key": "codeLens.metrics",
+      "x-area": "editor",
+      "x-feature": "EditorCommands",
+      "x-page": "Editor",
+      "x-quickToggle": true,
+      "x-drawing": true,
+      "x-caption": "Code-Metriken",
+      "x-captionEn": "Code metrics",
+      "x-issue": "#66"
+    },
+    "Metrics": {
+      "type": "boolean",
+      "default": true,
+      "x-key": "metrics",
+      "x-area": "editor",
+      "x-page": "Editor",
+      "x-issue": "#66"
+    },
+    "CodeLensTests": {
+      "type": "boolean",
+      "default": true,
+      "x-key": "codeLens.tests",
+      "x-area": "editor",
+      "x-feature": "Build",
+      "x-page": "Editor",
+      "x-quickToggle": true,
+      "x-drawing": true,
+      "x-caption": "Code Lens „Test ausführen“",
+      "x-captionEn": "Code lens “Run test”",
+      "x-issue": "#69"
+    },
+    "GenerateMenu": {
+      "type": "boolean",
+      "default": true,
+      "x-key": "keys.generateMenu",
+      "x-area": "codeActions",
+      "x-feature": "EditorCommands",
+      "x-page": "Editor",
+      "x-quickToggle": true,
+      "x-caption": "Erzeugen-Menü",
+      "x-captionEn": "Generate menu",
+      "x-issue": "#719"
+    },
+    "TodoList": {
+      "type": "boolean",
+      "default": true,
+      "x-key": "todos.list",
+      "x-area": "editor",
+      "x-feature": "Palette",
+      "x-page": "Editor",
+      "x-quickToggle": true,
+      "x-caption": "TODO-Liste",
+      "x-captionEn": "TODO list",
+      "x-issue": "#68"
+    },
+    "BaselineUpdate": {
+      "type": "boolean",
+      "default": true,
+      "x-key": "baseline.update",
+      "x-area": "editor",
+      "x-feature": "Palette",
+      "x-page": "Editor",
+      "x-quickToggle": true,
+      "x-caption": "Baseline aktualisieren",
+      "x-captionEn": "Update baseline",
+      "x-issue": "#97"
+    },
+    "MetricsReport": {
+      "type": "boolean",
+      "default": true,
+      "x-key": "metrics.report",
+      "x-area": "editor",
+      "x-feature": "Palette",
+      "x-page": "Editor",
+      "x-quickToggle": true,
+      "x-caption": "Metrikbericht",
+      "x-captionEn": "Metrics report",
+      "x-issue": "#66"
+    },
+    "TeamFile": {
+      "type": "boolean",
+      "default": true,
+      "x-key": "teamFile.enabled",
+      "x-area": "general",
+      "x-feature": "Settings",
+      "x-page": "Allgemein",
+      "x-quickToggle": true,
+      "x-caption": "Projektdatei .atlas",
+      "x-captionEn": "Project file .atlas",
+      "x-issue": "#486"
+    },
+    "SettingsExportImport": {
+      "type": "boolean",
+      "default": true,
+      "x-key": "settings.exportImport",
+      "x-area": "general",
+      "x-page": "Allgemein",
+      "description": "Befehle und Knöpfe für Export, Import und Zurücksetzen der Einstellungen (Befehlspalette, Optionsseite, Kontextmenü)",
+      "x-control": "Kontrollkästchen",
+      "x-issue": "#723",
+      "x-quickToggle": true,
+      "x-feature": "Settings",
+      "x-caption": "Einstellungen exportieren und importieren",
+      "x-captionEn": "Export and import settings"
+    },
+    "HoverTooltip": {
+      "type": "boolean",
+      "default": true,
+      "x-key": "editor.hoverTooltip",
+      "x-area": "editor",
+      "x-feature": "Hover",
+      "x-page": "Hints",
+      "x-quickToggle": true,
+      "x-caption": "Hover-Tooltip",
+      "x-captionEn": "Hover tooltip",
+      "x-issue": "#442"
+    },
+    "FilterChips": {
+      "type": "boolean",
+      "default": true,
+      "x-key": "completion.filterChips",
+      "x-area": "completion",
+      "x-feature": "Completion",
+      "x-page": "Vervollständigung",
+      "x-quickToggle": true,
+      "x-caption": "Filter-Chips",
+      "x-captionEn": "Filter chips",
+      "x-issue": "#422"
+    },
+    "Preview": {
+      "type": "boolean",
+      "default": false,
+      "x-key": "completion.preview",
+      "x-area": "completion",
+      "x-feature": "Completion",
+      "x-page": "Vervollständigung",
+      "x-quickToggle": true,
+      "x-drawing": true,
+      "x-caption": "Vorschau im Editor",
+      "x-captionEn": "Preview in the editor",
+      "x-issue": "#434"
+    },
+    "GroupInherited": {
+      "type": "boolean",
+      "default": true,
+      "x-key": "completion.groupInherited",
+      "x-area": "completion",
+      "x-feature": "Completion",
+      "x-page": "Vervollständigung",
+      "x-quickToggle": true,
+      "x-caption": "Geerbte Member gruppieren",
+      "x-captionEn": "Group inherited members",
+      "x-issue": "#419"
+    },
+    "Learning": {
+      "type": "boolean",
+      "default": true,
+      "x-key": "completion.learning",
+      "x-area": "completion",
+      "x-feature": "Completion",
+      "x-page": "Vervollständigung",
+      "x-quickToggle": true,
+      "x-caption": "Lernende Gewichtung",
+      "x-captionEn": "Learned ranking",
+      "x-issue": "#418"
+    },
+    "Favorites": {
+      "type": "boolean",
+      "default": true,
+      "x-key": "completion.favorites",
+      "x-area": "completion",
+      "x-feature": "Completion",
+      "x-page": "Vervollständigung",
+      "x-quickToggle": true,
+      "x-caption": "Favoriten anheften",
+      "x-captionEn": "Pin favorites",
+      "x-issue": "#458"
+    },
+    "CheckOnSave": {
+      "type": "boolean",
+      "default": false,
+      "x-key": "build.checkOnSave",
+      "x-area": "build",
+      "x-feature": "CheckOnSave",
+      "x-page": "Compiler",
+      "x-quickToggle": true,
+      "x-caption": "Syntaxprüfung nach dem Speichern",
+      "x-captionEn": "Syntax check after saving",
+      "x-issue": "#548"
+    },
+    "McpBuild": {
+      "type": "boolean",
+      "default": true,
+      "x-key": "compiler.mcpBuild",
+      "x-area": "build",
+      "x-feature": "Build",
+      "x-page": "Compiler",
+      "x-quickToggle": true,
+      "x-caption": "Builds für Claude Code",
+      "x-captionEn": "Builds for Claude Code",
+      "x-issue": "#261"
+    },
+    "BuildOnOpen": {
+      "type": "boolean",
+      "default": false,
+      "x-key": "build.onOpen",
+      "x-area": "build",
+      "x-feature": "Build",
+      "x-page": "Compiler",
+      "x-quickToggle": true,
+      "x-caption": "Beim Öffnen einmal bauen",
+      "x-captionEn": "Build once on opening"
+    },
+    "StartProfiles": {
+      "type": "boolean",
+      "default": true,
+      "x-key": "startProfiles.enabled",
+      "x-area": "debug",
+      "x-feature": "Build",
+      "x-page": "Compiler",
+      "x-quickToggle": true,
+      "x-caption": "Startprofile",
+      "x-captionEn": "Start profiles",
+      "x-issue": "#575"
+    },
+    "StartProfilesStatusField": {
+      "type": "boolean",
+      "default": true,
+      "x-key": "startProfiles.statusField",
+      "x-area": "debug",
+      "x-feature": "Build",
+      "x-page": "Compiler",
+      "x-quickToggle": true,
+      "x-caption": "Startprofil in der Statusleiste",
+      "x-captionEn": "Start profile in the status bar",
+      "x-issue": "#575"
+    },
+    "TestRun": {
+      "type": "boolean",
+      "default": true,
+      "x-key": "tests.run",
+      "x-area": "build",
+      "x-feature": "Build",
+      "x-page": "Compiler",
+      "x-quickToggle": true,
+      "x-caption": "Tests ausführen",
+      "x-captionEn": "Run tests",
+      "x-issue": "#69"
+    },
+    "TestsAfterBuild": {
+      "type": "boolean",
+      "default": false,
+      "x-key": "tests.afterBuild",
+      "x-area": "build",
+      "x-feature": "Build",
+      "x-page": "Compiler",
+      "x-quickToggle": true,
+      "x-caption": "Tests nach dem Build",
+      "x-captionEn": "Tests after the build",
+      "x-issue": "#69"
+    },
+    "TestDebug": {
+      "type": "boolean",
+      "default": true,
+      "x-key": "tests.debug",
+      "x-area": "debug",
+      "x-feature": "Build",
+      "x-page": "Debuggen",
+      "x-quickToggle": true,
+      "x-caption": "Test debuggen",
+      "x-captionEn": "Debug test",
+      "x-issue": "#585"
+    },
+    "TestBreakAtStart": {
+      "type": "boolean",
+      "default": true,
+      "x-key": "debug.testBreakAtStart",
+      "x-area": "debug",
+      "x-page": "Debuggen",
+      "x-caption": "Beim Test-Debuggen am Anfang der Methode anhalten",
+      "x-captionEn": "Stop at the start of the method when debugging a test",
+      "x-issue": "#585"
+    },
+    "TestsBuildFirst": {
+      "type": "boolean",
+      "default": true,
+      "x-key": "tests.buildFirst",
+      "x-area": "build",
+      "x-page": "Compiler",
+      "x-caption": "Vor den Tests bauen",
+      "x-captionEn": "Build before the tests",
+      "x-issue": "#69"
+    },
+    "ReleaseGuard": {
+      "type": "boolean",
+      "default": true,
+      "x-key": "build.releaseGuard",
+      "x-area": "build",
+      "x-feature": "Build",
+      "x-page": "Release-Build",
+      "x-quickToggle": true,
+      "x-caption": "Release-Build-Wächter",
+      "x-captionEn": "Release build guard",
+      "x-issue": "#533"
+    },
+    "BuildZeroHints": {
+      "type": "boolean",
+      "default": false,
+      "x-key": "build.zeroHints",
+      "x-area": "build",
+      "x-page": "Compiler",
+      "x-caption": "Build nur ohne Warnungen und Hinweise erfolgreich",
+      "x-captionEn": "Build succeeds only without warnings and hints",
+      "x-issue": "#530"
+    },
+    "WelcomePage": {
+      "type": "boolean",
+      "default": true,
+      "x-key": "welcomePage.enabled",
+      "x-area": "welcome",
+      "x-feature": "WelcomePage",
+      "x-page": "Willkommensseite",
+      "x-quickToggle": true,
+      "x-caption": "Atlas auf der Willkommensseite",
+      "x-captionEn": "Atlas on the welcome page",
+      "x-issue": "#753"
+    },
+    "WelcomePageProjectSetup": {
+      "type": "boolean",
+      "default": true,
+      "x-key": "welcomePage.projectSetup",
+      "x-area": "welcome",
+      "x-feature": "WelcomePage",
+      "x-page": "Willkommensseite",
+      "x-quickToggle": true,
+      "x-caption": "Projekt für Atlas einrichten",
+      "x-captionEn": "Set up project for Atlas",
+      "x-issue": "#759"
+    },
+    "CiLogin": {
+      "type": "boolean",
+      "default": true,
+      "x-key": "welcomePage.tests.ci.login",
+      "x-area": "welcome",
+      "x-feature": "WelcomePage",
+      "x-page": "Willkommensseite",
+      "x-quickToggle": true,
+      "x-caption": "Zugang zum Build-Server",
+      "x-captionEn": "Build server access",
+      "x-issue": "#763"
+    },
+    "WelcomePageQuickActions": {
+      "type": "boolean",
+      "default": true,
+      "x-key": "welcomePage.quickActions",
+      "x-area": "welcome",
+      "x-feature": "WelcomePage",
+      "x-page": "Willkommensseite",
+      "x-quickToggle": true,
+      "x-caption": "Schnellaktionen je Projekt",
+      "x-captionEn": "Quick actions per project",
+      "x-issue": "#764"
+    },
+    "ShortcutTips": {
+      "type": "boolean",
+      "default": true,
+      "x-key": "shortcutTips.enabled",
+      "x-area": "general",
+      "x-feature": "ShortcutTips",
+      "x-page": "Allgemein",
+      "x-quickToggle": true,
+      "x-caption": "Tastenkürzel-Tipps",
+      "x-captionEn": "Keyboard shortcut tips",
+      "x-issue": "#600"
+    },
+    "Notifications": {
+      "type": "boolean",
+      "default": true,
+      "x-key": "notifications.enabled",
+      "x-area": "general",
+      "x-feature": "Notifications",
+      "x-page": "Allgemein",
+      "x-quickToggle": true,
+      "x-caption": "Benachrichtigungszentrale",
+      "x-captionEn": "Notification center",
+      "x-issue": "#601"
+    },
+    "StatusFieldSummary": {
+      "type": "boolean",
+      "default": true,
+      "x-key": "statusField.showSummary",
+      "x-area": "general",
+      "x-page": "Allgemein",
+      "x-caption": "Kurztext im Statusfeld",
+      "x-captionEn": "Summary in the status field",
+      "x-issue": "#591"
+    },
+    "VisibleRows": {
+      "type": "integer",
+      "default": 9,
+      "x-key": "completion.visibleRows",
+      "x-area": "completion",
+      "x-page": "Vervollständigung"
+    },
+    "ListWidth": {
+      "type": "integer",
+      "default": 0,
+      "x-key": "completion.listWidth",
+      "x-area": "completion",
+      "x-page": "Vervollständigung",
+      "x-state": true
+    },
+    "PanelWidth": {
+      "type": "integer",
+      "default": 320,
+      "x-key": "completion.panelWidth",
+      "x-area": "completion",
+      "x-page": "Vervollständigung",
+      "x-state": true
+    },
+    "PanelCollapsed": {
+      "type": "boolean",
+      "default": false,
+      "x-key": "completion.panelCollapsed",
+      "x-area": "completion",
+      "x-page": "Vervollständigung"
+    },
+    "AutoParentheses": {
+      "type": "boolean",
+      "default": true,
+      "x-key": "completion.autoParentheses",
+      "x-area": "completion",
+      "x-page": "Einfügen"
+    },
+    "FixCase": {
+      "type": "boolean",
+      "default": true,
+      "x-key": "completion.fixCase",
+      "x-area": "completion",
+      "x-page": "Einfügen"
+    },
+    "CommitCharacters": {
+      "type": "boolean",
+      "default": true,
+      "x-key": "completion.commitCharacters",
+      "x-area": "completion",
+      "x-page": "Einfügen"
+    },
+    "AutoUses": {
+      "type": "boolean",
+      "default": true,
+      "x-key": "completion.autoUses",
+      "x-area": "completion",
+      "x-page": "Einfügen"
+    },
+    "ParameterHints": {
+      "type": "boolean",
+      "default": true,
+      "x-key": "completion.parameterHints",
+      "x-area": "completion",
+      "x-page": "Einfügen"
+    },
+    "OpenDelayMs": {
+      "type": "integer",
+      "default": 150,
+      "x-key": "completion.openDelayMs",
+      "x-area": "completion",
+      "x-page": "Vervollständigung"
+    },
+    "PaletteKey": {
+      "type": "integer",
+      "default": 24656,
+      "x-key": "keys.palette",
+      "x-area": "keys",
+      "x-format": "shortcut",
+      "x-page": "Tastenkonflikte"
+    },
+    "CheckKey": {
+      "type": "integer",
+      "default": 49272,
+      "x-key": "keys.check",
+      "x-area": "keys",
+      "x-format": "shortcut",
+      "x-page": "Tastenkonflikte"
+    },
+    "PaletteKeyPriority": {
+      "type": "boolean",
+      "default": false,
+      "x-key": "keys.palettePriority",
+      "x-area": "keys",
+      "x-page": "Tastenkonflikte"
+    },
+    "CheckKeyPriority": {
+      "type": "boolean",
+      "default": false,
+      "x-key": "keys.checkPriority",
+      "x-area": "keys",
+      "x-page": "Tastenkonflikte"
+    },
+    "CompletionKey": {
+      "type": "integer",
+      "default": 0,
+      "x-key": "keys.completion",
+      "x-area": "keys",
+      "x-format": "shortcut",
+      "x-page": "Tastenkonflikte"
+    },
+    "SignatureKey": {
+      "type": "integer",
+      "default": 0,
+      "x-key": "keys.signature",
+      "x-area": "keys",
+      "x-format": "shortcut",
+      "x-page": "Tastenkonflikte"
+    },
+    "CompletionKeyPriority": {
+      "type": "boolean",
+      "default": false,
+      "x-key": "keys.completionPriority",
+      "x-area": "keys",
+      "x-page": "Tastenkonflikte"
+    },
+    "SignatureKeyPriority": {
+      "type": "boolean",
+      "default": false,
+      "x-key": "keys.signaturePriority",
+      "x-area": "keys",
+      "x-page": "Tastenkonflikte"
+    },
+    "HangThresholdMs": {
+      "type": "integer",
+      "default": 500,
+      "x-key": "robustness.hangThresholdMs",
+      "x-area": "general",
+      "x-page": "Robustheit"
+    },
+    "ProviderTimeLimitMs": {
+      "type": "integer",
+      "default": 200,
+      "x-key": "robustness.providerTimeLimitMs",
+      "x-area": "general",
+      "x-page": "Robustheit"
+    },
+    "HangHint": {
+      "type": "boolean",
+      "default": true,
+      "x-key": "robustness.hangHint",
+      "x-area": "general",
+      "x-page": "Robustheit"
+    },
+    "ReloadExternal": {
+      "type": "boolean",
+      "default": true,
+      "x-key": "editor.reloadExternal",
+      "x-area": "editor",
+      "x-page": "Allgemein"
+    },
+    "OpenForEdits": {
+      "type": "boolean",
+      "default": true,
+      "x-key": "editor.openForEdits",
+      "x-area": "editor",
+      "x-page": "Allgemein"
+    },
+    "BookmarksShared": {
+      "type": "boolean",
+      "default": false,
+      "x-key": "bookmarks.shared",
+      "x-area": "bookmarks",
+      "x-page": "Editor"
+    },
+    "BookmarkKey": {
+      "type": "integer",
+      "default": 49227,
+      "x-key": "bookmarks.key",
+      "x-area": "keys",
+      "x-format": "shortcut",
+      "x-page": "Befehle"
+    },
+    "HideElementKey": {
+      "type": "integer",
+      "default": 16574,
+      "x-key": "keys.hideElement",
+      "x-area": "keys",
+      "x-format": "shortcut",
+      "x-page": "Befehle",
+      "x-issue": "#628"
+    },
+    "ServerPath": {
+      "type": "string",
+      "default": "",
+      "x-key": "server.path",
+      "x-area": "general",
+      "x-page": "Allgemein",
+      "x-machine": true,
+      "x-path": true
+    },
+    "PairGuideWidth": {
+      "type": "integer",
+      "default": 1,
+      "x-key": "highlight.pairGuideWidth",
+      "x-area": "highlighting",
+      "x-page": "Editor"
+    },
+    "PairGuideOpacity": {
+      "type": "integer",
+      "default": 75,
+      "x-key": "highlight.pairGuideOpacity",
+      "x-area": "highlighting",
+      "x-page": "Editor"
+    },
+    "PairColorsLight": {
+      "type": "string",
+      "default": "",
+      "x-key": "highlight.pairColorsLight",
+      "x-area": "highlighting",
+      "x-page": "Farben"
+    },
+    "PairColorsDark": {
+      "type": "string",
+      "default": "",
+      "x-key": "highlight.pairColorsDark",
+      "x-area": "highlighting",
+      "x-page": "Farben"
+    },
+    "ProblemsList": {
+      "type": "boolean",
+      "default": true,
+      "x-key": "problems.list",
+      "x-area": "editor",
+      "x-page": "Compiler"
+    },
+    "CheckOnSaveDelayMs": {
+      "type": "integer",
+      "default": 2000,
+      "x-key": "build.checkOnSaveDelayMs",
+      "x-area": "build",
+      "x-page": "Compiler"
+    },
+    "CheckOnSaveMaxMs": {
+      "type": "integer",
+      "default": 1500,
+      "x-key": "build.checkOnSaveMaxMs",
+      "x-area": "build",
+      "x-page": "Compiler"
+    },
+    "BuildOnOpenKind": {
+      "type": "string",
+      "enum": [
+        "check",
+        "make",
+        "build"
+      ],
+      "default": "make",
+      "x-key": "build.onOpenKind",
+      "x-area": "build",
+      "x-page": "Compiler"
+    },
+    "BuildOnOpenScope": {
+      "type": "string",
+      "enum": [
+        "all",
+        "active"
+      ],
+      "default": "all",
+      "x-key": "build.onOpenScope",
+      "x-area": "build",
+      "x-page": "Compiler"
+    },
+    "BuildOnOpenDelayMs": {
+      "type": "integer",
+      "default": 3000,
+      "x-key": "build.onOpenDelayMs",
+      "x-area": "build",
+      "x-page": "Compiler"
+    },
+    "BuildOnOpenExclude": {
+      "type": "string",
+      "default": "",
+      "x-key": "build.onOpenExclude",
+      "x-area": "build",
+      "x-page": "Compiler"
+    },
+    "CompileOnSave": {
+      "type": "boolean",
+      "default": false,
+      "x-key": "compiler.onSave",
+      "x-area": "build",
+      "x-page": "Compiler"
+    },
+    "ActionsKey": {
+      "type": "integer",
+      "default": 32781,
+      "x-key": "keys.codeActions",
+      "x-area": "keys",
+      "x-format": "shortcut",
+      "x-page": "Befehle"
+    },
+    "ExpandKey": {
+      "type": "integer",
+      "default": 16471,
+      "x-key": "keys.expandSelection",
+      "x-area": "keys",
+      "x-format": "shortcut",
+      "x-page": "Befehle"
+    },
+    "ShrinkKey": {
+      "type": "integer",
+      "default": 24663,
+      "x-key": "keys.shrinkSelection",
+      "x-area": "keys",
+      "x-format": "shortcut",
+      "x-page": "Befehle"
+    },
+    "ImplementationKey": {
+      "type": "integer",
+      "default": 49225,
+      "x-key": "keys.implementations",
+      "x-area": "keys",
+      "x-format": "shortcut",
+      "x-page": "Befehle"
+    },
+    "TypeDefinitionKey": {
+      "type": "integer",
+      "default": 0,
+      "x-key": "keys.typeDefinition",
+      "x-area": "keys",
+      "x-format": "shortcut",
+      "x-page": "Befehle"
+    },
+    "MethodToggle": {
+      "type": "boolean",
+      "default": true,
+      "x-key": "codeActions.methodToggle",
+      "x-area": "codeActions",
+      "x-page": "Befehle"
+    },
+    "MethodToggleUpKey": {
+      "type": "integer",
+      "default": 24614,
+      "x-key": "keys.methodToggleUp",
+      "x-area": "keys",
+      "x-format": "shortcut",
+      "x-page": "Befehle"
+    },
+    "MethodToggleDownKey": {
+      "type": "integer",
+      "default": 24616,
+      "x-key": "keys.methodToggleDown",
+      "x-area": "keys",
+      "x-format": "shortcut",
+      "x-page": "Befehle"
+    },
+    "TestUnitKey": {
+      "type": "integer",
+      "default": 0,
+      "x-key": "keys.testUnit",
+      "x-area": "keys",
+      "x-format": "shortcut",
+      "x-page": "Befehle"
+    },
+    "CodeLensTestUnit": {
+      "type": "boolean",
+      "default": true,
+      "x-key": "codeLens.testUnit",
+      "x-area": "editor",
+      "x-feature": "EditorCommands",
+      "x-page": "Editor",
+      "x-quickToggle": true,
+      "x-drawing": true,
+      "x-caption": "Code Lens „Testunit“",
+      "x-captionEn": "Code lens “Test unit”",
+      "x-issue": "#189"
+    },
+    "BuildGate": {
+      "type": "string",
+      "enum": [
+        "off",
+        "warn",
+        "block"
+      ],
+      "default": "off",
+      "x-key": "build.gate",
+      "x-area": "build",
+      "x-page": "Release-Build"
+    },
+    "ReleaseConfigs": {
+      "type": "string",
+      "default": "Release",
+      "x-key": "build.releaseConfigs",
+      "x-area": "build",
+      "x-page": "Release-Build"
+    },
+    "ReleaseChecks": {
+      "type": "string",
+      "default": "debugDefine,debugInfo=off,stackFrames=off,assertions=off,rangeChecks=off,overflowChecks=off,memoryLeaks,versionInfo,outputFolder",
+      "x-key": "build.releaseChecks",
+      "x-area": "build",
+      "x-page": "Release-Build"
+    },
+    "EditorKeysPriority": {
+      "type": "boolean",
+      "default": false,
+      "x-key": "keys.editorPriority",
+      "x-area": "keys",
+      "x-page": "Befehle"
+    },
+    "SlashCommands": {
+      "type": "boolean",
+      "default": true,
+      "x-key": "slashCommands.enabled",
+      "x-area": "codeActions",
+      "x-page": "Befehle"
+    },
+    "GenerateMenuKey": {
+      "type": "integer",
+      "default": 32813,
+      "x-key": "keys.generateMenu.key",
+      "x-area": "keys",
+      "x-format": "shortcut",
+      "x-page": "Befehle"
+    },
+    "GenerateMenuGroups": {
+      "type": "string",
+      "default": "generate,surround,templates",
+      "x-key": "keys.generateMenu.groups",
+      "x-area": "codeActions",
+      "x-page": "Befehle"
+    },
+    "GenerateMenuHidden": {
+      "type": "string",
+      "default": "",
+      "x-key": "keys.generateMenu.hidden",
+      "x-area": "codeActions",
+      "x-page": "Befehle"
+    },
+    "GenerateMenuRecentFirst": {
+      "type": "boolean",
+      "default": true,
+      "x-key": "keys.generateMenu.recentFirst",
+      "x-area": "codeActions",
+      "x-page": "Befehle"
+    },
+    "GenerateMenuShowCommandNames": {
+      "type": "boolean",
+      "default": true,
+      "x-key": "keys.generateMenu.showCommandNames",
+      "x-area": "codeActions",
+      "x-page": "Befehle"
+    },
+    "Snippets": {
+      "type": "boolean",
+      "default": true,
+      "x-key": "snippets.enabled",
+      "x-area": "snippets",
+      "x-page": "Einfügen"
+    },
+    "ImportIdeTemplates": {
+      "type": "boolean",
+      "default": true,
+      "x-key": "snippets.importIdeTemplates",
+      "x-area": "snippets",
+      "x-page": "Einfügen"
+    },
+    "IndexProjectGroup": {
+      "type": "boolean",
+      "default": true,
+      "x-key": "index.projectGroup",
+      "x-area": "general",
+      "x-page": "Index"
+    },
+    "IndexSearchPaths": {
+      "type": "boolean",
+      "default": true,
+      "x-key": "index.searchPaths",
+      "x-area": "general",
+      "x-page": "Index"
+    },
+    "IndexLibraryPaths": {
+      "type": "boolean",
+      "default": false,
+      "x-key": "index.libraryPaths",
+      "x-area": "general",
+      "x-page": "Index"
+    },
+    "IndexUsages": {
+      "type": "boolean",
+      "default": true,
+      "x-key": "index.usages",
+      "x-area": "general",
+      "x-page": "Index"
+    },
+    "MemoryBudgetMb": {
+      "type": "integer",
+      "default": 768,
+      "x-key": "memoryBudgetMb",
+      "x-area": "general",
+      "x-page": "Index"
+    },
+    "XmlDocFull": {
+      "type": "boolean",
+      "default": true,
+      "x-key": "hints.xmlDocFull",
+      "x-area": "editor",
+      "x-page": "Editor"
+    },
+    "XmlDocMaxLines": {
+      "type": "integer",
+      "default": 0,
+      "x-key": "hints.xmlDocMaxLines",
+      "x-area": "editor",
+      "x-page": "Editor"
+    },
+    "StatusField": {
+      "type": "boolean",
+      "default": true,
+      "x-key": "statusField.enabled",
+      "x-area": "general",
+      "x-page": "Allgemein"
+    },
+    "StatusFieldHidden": {
+      "type": "string",
+      "default": "",
+      "x-key": "statusField.hidden",
+      "x-area": "general",
+      "x-page": "Allgemein"
+    },
+    "StatusFieldToggles": {
+      "type": "string",
+      "enum": [
+        "both",
+        "rightClick",
+        "doubleClick"
+      ],
+      "default": "both",
+      "x-key": "statusField.openToggles",
+      "x-area": "general",
+      "x-page": "Allgemein"
+    },
+    "IndexProgressPlace": {
+      "type": "string",
+      "enum": [
+        "statusField",
+        "menu",
+        "off"
+      ],
+      "default": "statusField",
+      "x-key": "statusField.indexProgress",
+      "x-area": "general",
+      "x-page": "Allgemein"
+    },
+    "QuickToggleKey": {
+      "type": "integer",
+      "default": 57409,
+      "x-key": "keys.quickToggles",
+      "x-area": "keys",
+      "x-format": "shortcut",
+      "x-page": "Tastenkonflikte"
+    },
+    "QuickToggleKeyPriority": {
+      "type": "boolean",
+      "default": false,
+      "x-key": "keys.quickTogglesPriority",
+      "x-area": "keys",
+      "x-page": "Tastenkonflikte"
+    },
+    "DiagnosticModeKey": {
+      "type": "integer",
+      "default": 57412,
+      "x-key": "keys.diagnosticMode",
+      "x-area": "keys",
+      "x-format": "shortcut",
+      "x-page": "Tastenkonflikte"
+    },
+    "DiagnosticModeKeyPriority": {
+      "type": "boolean",
+      "default": false,
+      "x-key": "keys.diagnosticModePriority",
+      "x-area": "keys",
+      "x-page": "Tastenkonflikte"
+    },
+    "SetupChecklist": {
+      "type": "boolean",
+      "default": true,
+      "x-key": "ui.setupChecklist",
+      "x-area": "general",
+      "x-page": "Allgemein"
+    },
+    "SetupChecklistSeen": {
+      "type": "boolean",
+      "default": false,
+      "x-key": "ui.setupChecklistSeen",
+      "x-area": "general",
+      "x-page": "Allgemein",
+      "x-state": true
+    },
+    "KeyOverview": {
+      "type": "boolean",
+      "default": true,
+      "x-key": "keys.overview",
+      "x-area": "keys",
+      "x-page": "Tastenkonflikte"
+    },
+    "KeyStartupCheck": {
+      "type": "boolean",
+      "default": true,
+      "x-key": "keys.startupCheck",
+      "x-area": "keys",
+      "x-page": "Tastenkonflikte"
+    },
+    "ShortcutTipsScope": {
+      "type": "string",
+      "enum": [
+        "atlas",
+        "all"
+      ],
+      "default": "all",
+      "x-key": "shortcutTips.scope",
+      "x-area": "general",
+      "x-page": "Allgemein"
+    },
+    "SafeAskAfterCrash": {
+      "type": "boolean",
+      "default": true,
+      "x-key": "safeMode.askAfterCrash",
+      "x-area": "general",
+      "x-page": "Start und Updates"
+    },
+    "SafeAutoAfterRepeatedCrash": {
+      "type": "boolean",
+      "default": true,
+      "x-key": "safeMode.autoAfterRepeatedCrash",
+      "x-area": "general",
+      "x-page": "Start und Updates"
+    },
+    "SafeStartupKey": {
+      "type": "string",
+      "enum": [
+        "shift",
+        "ctrl",
+        "none"
+      ],
+      "default": "shift",
+      "x-key": "safeMode.startupKey",
+      "x-area": "general",
+      "x-page": "Start und Updates"
+    },
+    "SafeStartupTimeoutMs": {
+      "type": "integer",
+      "default": 10000,
+      "x-key": "safeMode.startupTimeoutMs",
+      "x-area": "general",
+      "x-page": "Start und Updates"
+    },
+    "SafeKeepSettingsHistory": {
+      "type": "integer",
+      "default": 5,
+      "x-key": "safeMode.keepSettingsHistory",
+      "x-area": "general",
+      "x-page": "Start und Updates"
+    },
+    "UndoMultiFile": {
+      "type": "boolean",
+      "default": true,
+      "x-key": "undo.multiFile",
+      "x-area": "editor",
+      "x-page": "Rückgängig"
+    },
+    "UndoMultiFileDepth": {
+      "type": "integer",
+      "default": 20,
+      "x-key": "undo.multiFile.depth",
+      "x-area": "editor",
+      "x-page": "Rückgängig"
+    },
+    "UndoMultiFilePersist": {
+      "type": "boolean",
+      "default": true,
+      "x-key": "undo.multiFile.persist",
+      "x-area": "editor",
+      "x-page": "Rückgängig"
+    },
+    "UndoMultiFileMaxSizeMb": {
+      "type": "integer",
+      "default": 50,
+      "x-key": "undo.multiFile.maxSizeMb",
+      "x-area": "editor",
+      "x-page": "Rückgängig"
+    },
+    "UndoMultiFileOnConflict": {
+      "type": "string",
+      "default": "partial",
+      "x-key": "undo.multiFile.onConflict",
+      "x-area": "editor",
+      "x-page": "Rückgängig"
+    },
+    "UndoMultiFileNewFiles": {
+      "type": "string",
+      "default": "recycleBin",
+      "x-key": "undo.multiFile.newFiles",
+      "x-area": "editor",
+      "x-page": "Rückgängig"
+    },
+    "UndoKey": {
+      "type": "integer",
+      "default": 49242,
+      "x-key": "keys.undoChange",
+      "x-area": "keys",
+      "x-format": "shortcut",
+      "x-page": "Befehle"
+    },
+    "RedoKey": {
+      "type": "integer",
+      "default": 57434,
+      "x-key": "keys.redoChange",
+      "x-area": "keys",
+      "x-format": "shortcut",
+      "x-page": "Befehle"
+    },
+    "UpdatesCheck": {
+      "type": "boolean",
+      "default": false,
+      "x-key": "updates.check",
+      "x-area": "general",
+      "x-page": "Start und Updates"
+    },
+    "BugReportAnonymize": {
+      "type": "boolean",
+      "default": true,
+      "x-key": "diagnostics.bugReport.anonymize",
+      "x-area": "general",
+      "x-page": "Start und Updates"
+    },
+    "UnitSearchEnabled": {
+      "type": "boolean",
+      "default": true,
+      "x-key": "unitSearch.enabled",
+      "x-area": "editor",
+      "x-page": "Units suchen"
+    },
+    "UnitSearchReplaceIdeDialog": {
+      "type": "boolean",
+      "default": true,
+      "x-key": "unitSearch.replaceIdeDialog",
+      "x-area": "editor",
+      "x-page": "Units suchen"
+    },
+    "UnitSearchRememberCollapsed": {
+      "type": "boolean",
+      "default": true,
+      "x-key": "unitSearch.rememberCollapsed",
+      "x-area": "editor",
+      "x-page": "Units suchen"
+    },
+    "UnitSearchFilters": {
+      "type": "boolean",
+      "default": true,
+      "x-key": "unitSearch.filters",
+      "x-area": "editor",
+      "x-page": "Units suchen"
+    },
+    "UnitSearchFilterSyntax": {
+      "type": "boolean",
+      "default": true,
+      "x-key": "unitSearch.filterSyntax",
+      "x-area": "editor",
+      "x-page": "Units suchen"
+    },
+    "UnitSearchPreview": {
+      "type": "boolean",
+      "default": true,
+      "x-key": "unitSearch.preview",
+      "x-area": "editor",
+      "x-page": "Units suchen"
+    },
+    "UnitSearchPreviewForm": {
+      "type": "boolean",
+      "default": true,
+      "x-key": "unitSearch.preview.form",
+      "x-area": "editor",
+      "x-page": "Units suchen"
+    },
+    "UnitSearchPreviewUsedBy": {
+      "type": "boolean",
+      "default": true,
+      "x-key": "unitSearch.preview.usedBy",
+      "x-area": "editor",
+      "x-page": "Units suchen"
+    },
+    "UnitSearchMultiSelect": {
+      "type": "boolean",
+      "default": true,
+      "x-key": "unitSearch.multiSelect",
+      "x-area": "editor",
+      "x-page": "Units suchen"
+    },
+    "UnitSearchActions": {
+      "type": "boolean",
+      "default": true,
+      "x-key": "unitSearch.actions",
+      "x-area": "editor",
+      "x-page": "Units suchen"
+    },
+    "UnitSearchActionsAddUses": {
+      "type": "boolean",
+      "default": true,
+      "x-key": "unitSearch.actions.addUses",
+      "x-area": "editor",
+      "x-page": "Units suchen"
+    },
+    "UnitSearchPathStyle": {
+      "type": "string",
+      "enum": [
+        "relative",
+        "compact",
+        "absolute"
+      ],
+      "default": "relative",
+      "x-key": "unitSearch.pathStyle",
+      "x-area": "editor",
+      "x-page": "Units suchen"
+    },
+    "UnitSearchGroupBy": {
+      "type": "string",
+      "enum": [
+        "project",
+        "folder",
+        "none"
+      ],
+      "default": "project",
+      "x-key": "unitSearch.groupBy",
+      "x-area": "editor",
+      "x-page": "Units suchen"
+    },
+    "UnitSearchDefaultScope": {
+      "type": "string",
+      "enum": [
+        "group",
+        "project",
+        "searchPath",
+        "library"
+      ],
+      "default": "group",
+      "x-key": "unitSearch.defaultScope",
+      "x-area": "editor",
+      "x-page": "Units suchen"
+    },
+    "UnitSearchKey": {
+      "type": "integer",
+      "default": 0,
+      "x-key": "unitSearch.key",
+      "x-area": "keys",
+      "x-format": "shortcut",
+      "x-page": "Units suchen"
+    },
+    "WelcomePageHost": {
+      "type": "string",
+      "enum": [
+        "welcomePage",
+        "dockWindow"
+      ],
+      "default": "welcomePage",
+      "x-key": "welcomePage.host",
+      "x-area": "welcome",
+      "x-page": "Willkommensseite"
+    },
+    "WelcomePageLayout": {
+      "type": "string",
+      "enum": [
+        "off",
+        "atlas"
+      ],
+      "default": "off",
+      "x-key": "welcomePage.layout",
+      "x-area": "welcome",
+      "x-page": "Willkommensseite"
+    },
+    "WelcomePageHeader": {
+      "type": "boolean",
+      "default": true,
+      "x-key": "welcomePage.header",
+      "x-area": "welcome",
+      "x-page": "Willkommensseite"
+    },
+    "WelcomePageGreeting": {
+      "type": "boolean",
+      "default": true,
+      "x-key": "welcomePage.greeting",
+      "x-area": "welcome",
+      "x-page": "Willkommensseite"
+    },
+    "WelcomePageSearch": {
+      "type": "boolean",
+      "default": true,
+      "x-key": "welcomePage.search",
+      "x-area": "welcome",
+      "x-page": "Willkommensseite"
+    },
+    "WelcomePageSearchSymbols": {
+      "type": "boolean",
+      "default": true,
+      "x-key": "welcomePage.search.symbols",
+      "x-area": "welcome",
+      "x-page": "Willkommensseite"
+    },
+    "WelcomePageSearchKey": {
+      "type": "integer",
+      "default": 16453,
+      "x-key": "welcomePage.search.key",
+      "x-area": "keys",
+      "x-format": "shortcut",
+      "x-page": "Willkommensseite"
+    },
+    "WelcomePageWhatsNew": {
+      "type": "string",
+      "enum": [
+        "off",
+        "afterUpdate",
+        "always"
+      ],
+      "default": "afterUpdate",
+      "x-key": "welcomePage.whatsNew",
+      "x-area": "welcome",
+      "x-page": "Willkommensseite"
+    },
+    "WhatsNewSeen": {
+      "type": "string",
+      "default": "",
+      "x-key": "welcomePage.whatsNewSeen",
+      "x-area": "welcome",
+      "x-page": "Willkommensseite",
+      "x-state": true
+    },
+    "WelcomePageProjectStatus": {
+      "type": "boolean",
+      "default": true,
+      "x-key": "welcomePage.projectStatus",
+      "x-area": "welcome",
+      "x-page": "Willkommensseite"
+    },
+    "WelcomePageMaxProjects": {
+      "type": "integer",
+      "default": 8,
+      "x-key": "welcomePage.maxProjects",
+      "x-area": "welcome",
+      "x-page": "Willkommensseite"
+    },
+    "WelcomePageRefreshVcs": {
+      "type": "boolean",
+      "default": true,
+      "x-key": "welcomePage.refreshVcs",
+      "x-area": "welcome",
+      "x-page": "Willkommensseite"
+    },
+    "WelcomePageUnsaved": {
+      "type": "boolean",
+      "default": true,
+      "x-key": "welcomePage.unsaved",
+      "x-area": "welcome",
+      "x-page": "Willkommensseite"
+    },
+    "WelcomePageUnsavedMinAgeHours": {
+      "type": "integer",
+      "default": 0,
+      "x-key": "welcomePage.unsaved.minAgeHours",
+      "x-area": "welcome",
+      "x-page": "Willkommensseite"
+    },
+    "WelcomePageUnsavedWarnHours": {
+      "type": "integer",
+      "default": 24,
+      "x-key": "welcomePage.unsaved.warnHours",
+      "x-area": "welcome",
+      "x-page": "Willkommensseite"
+    },
+    "WelcomePageUnsavedAlertHours": {
+      "type": "integer",
+      "default": 72,
+      "x-key": "welcomePage.unsaved.alertHours",
+      "x-area": "welcome",
+      "x-page": "Willkommensseite"
+    },
+    "WelcomePageUnsavedHideWhenClean": {
+      "type": "boolean",
+      "default": false,
+      "x-key": "welcomePage.unsaved.hideWhenClean",
+      "x-area": "welcome",
+      "x-page": "Willkommensseite"
+    },
+    "WelcomePageStatusTile": {
+      "type": "boolean",
+      "default": true,
+      "x-key": "welcomePage.statusTile",
+      "x-area": "welcome",
+      "x-page": "Willkommensseite"
+    },
+    "WelcomePageStatusTileOnlyProblems": {
+      "type": "boolean",
+      "default": false,
+      "x-key": "welcomePage.statusTile.onlyProblems",
+      "x-area": "welcome",
+      "x-page": "Willkommensseite"
+    },
+    "WelcomePageDiscover": {
+      "type": "boolean",
+      "default": true,
+      "x-key": "welcomePage.discover",
+      "x-area": "welcome",
+      "x-page": "Willkommensseite"
+    },
+    "TipsUsageTracking": {
+      "type": "boolean",
+      "default": true,
+      "x-key": "tips.usageTracking",
+      "x-area": "welcome",
+      "x-page": "Willkommensseite"
+    },
+    "WelcomePageHelp": {
+      "type": "boolean",
+      "default": true,
+      "x-key": "welcomePage.help",
+      "x-area": "welcome",
+      "x-page": "Willkommensseite"
+    },
+    "WelcomePageHelpReportUrl": {
+      "type": "string",
+      "default": "https://github.com/xKnockOut/Atlas-IDE-Expert/issues/new",
+      "x-key": "welcomePage.help.reportUrl",
+      "x-area": "welcome",
+      "x-page": "Willkommensseite"
+    },
+    "WelcomePageHelpReportFolder": {
+      "type": "string",
+      "default": "",
+      "x-key": "welcomePage.help.reportFolder",
+      "x-area": "welcome",
+      "x-page": "Willkommensseite",
+      "x-path": true
+    },
+    "WelcomePageNewFromTemplate": {
+      "type": "boolean",
+      "default": true,
+      "x-key": "welcomePage.newFromTemplate",
+      "x-area": "welcome",
+      "x-page": "Willkommensseite"
+    },
+    "WelcomePageContinue": {
+      "type": "boolean",
+      "default": true,
+      "x-key": "welcomePage.continue",
+      "x-area": "welcome",
+      "x-page": "Willkommensseite"
+    },
+    "WelcomePageContinueCount": {
+      "type": "integer",
+      "default": 5,
+      "x-key": "welcomePage.continue.count",
+      "x-area": "welcome",
+      "x-page": "Willkommensseite"
+    },
+    "WelcomePageContinueIncoming": {
+      "type": "boolean",
+      "default": true,
+      "x-key": "welcomePage.continue.incoming",
+      "x-area": "welcome",
+      "x-page": "Willkommensseite"
+    },
+    "WelcomePageContinueFetch": {
+      "type": "boolean",
+      "default": false,
+      "x-key": "welcomePage.continue.fetch",
+      "x-area": "welcome",
+      "x-page": "Willkommensseite"
+    },
+    "WelcomePageSaved": {
+      "type": "boolean",
+      "default": true,
+      "x-key": "welcomePage.saved",
+      "x-area": "welcome",
+      "x-page": "Willkommensseite"
+    },
+    "WelcomePageTrends": {
+      "type": "boolean",
+      "default": true,
+      "x-key": "welcomePage.trends",
+      "x-area": "welcome",
+      "x-page": "Willkommensseite"
+    },
+    "WelcomePageTrendsPoints": {
+      "type": "integer",
+      "default": 30,
+      "x-key": "welcomePage.trends.points",
+      "x-area": "welcome",
+      "x-page": "Willkommensseite"
+    },
+    "WelcomePageTrendsSeries": {
+      "type": "string",
+      "default": "warnings,ruleHits,todos,duration,methodLength",
+      "x-key": "welcomePage.trends.series",
+      "x-area": "welcome",
+      "x-page": "Willkommensseite"
+    },
+    "WelcomePageTests": {
+      "type": "boolean",
+      "default": true,
+      "x-key": "welcomePage.tests",
+      "x-area": "welcome",
+      "x-page": "Willkommensseite"
+    },
+    "WelcomePageTestsMaxFailures": {
+      "type": "integer",
+      "default": 5,
+      "x-key": "welcomePage.tests.maxFailures",
+      "x-area": "welcome",
+      "x-page": "Willkommensseite"
+    },
+    "WelcomePageTestsCi": {
+      "type": "boolean",
+      "default": false,
+      "x-key": "welcomePage.tests.ci",
+      "x-area": "welcome",
+      "x-page": "Willkommensseite"
+    },
+    "WelcomePageTestsCiProvider": {
+      "type": "string",
+      "enum": [
+        "jenkins"
+      ],
+      "default": "jenkins",
+      "x-key": "welcomePage.tests.ci.provider",
+      "x-area": "welcome",
+      "x-team": "ci.provider",
+      "x-page": "Willkommensseite"
+    },
+    "WelcomePageTestsCiIntervalMinutes": {
+      "type": "integer",
+      "default": 10,
+      "x-key": "welcomePage.tests.ci.intervalMinutes",
+      "x-area": "welcome",
+      "x-page": "Willkommensseite"
+    },
+    "WelcomePageTestsCiNotify": {
+      "type": "boolean",
+      "default": true,
+      "x-key": "welcomePage.tests.ci.notify",
+      "x-area": "welcome",
+      "x-page": "Willkommensseite"
+    },
+    "WelcomePageQuickActionsItems": {
+      "type": "string",
+      "default": "build,tests,run,pull,folder,console",
+      "x-key": "welcomePage.quickActions.items",
+      "x-area": "welcome",
+      "x-page": "Willkommensseite"
+    },
+    "WelcomePageQuickActionsConsole": {
+      "type": "string",
+      "default": "wt.exe",
+      "x-key": "welcomePage.quickActions.console",
+      "x-area": "welcome",
+      "x-page": "Willkommensseite",
+      "x-path": true
+    },
+    "WelcomePageQuickActionsBuildKey": {
+      "type": "integer",
+      "default": 16450,
+      "x-key": "welcomePage.quickActions.buildKey",
+      "x-area": "keys",
+      "x-format": "shortcut",
+      "x-page": "Willkommensseite"
+    },
+    "WelcomePageQuickActionsTestKey": {
+      "type": "integer",
+      "default": 16468,
+      "x-key": "welcomePage.quickActions.testKey",
+      "x-area": "keys",
+      "x-format": "shortcut",
+      "x-page": "Willkommensseite"
+    },
+    "WelcomePageIssues": {
+      "type": "boolean",
+      "default": false,
+      "x-key": "welcomePage.issues",
+      "x-area": "welcome",
+      "x-feature": "WelcomePage",
+      "x-page": "Willkommensseite",
+      "x-quickToggle": true,
+      "x-caption": "Meine Issues aus dem Tracker",
+      "x-captionEn": "My issues from the tracker",
+      "x-issue": "#765"
+    },
+    "WelcomePageIssuesTracker": {
+      "type": "string",
+      "enum": [
+        "",
+        "github",
+        "youtrack"
+      ],
+      "default": "",
+      "x-key": "welcomePage.issues.tracker",
+      "x-area": "welcome",
+      "x-page": "Willkommensseite",
+      "x-issue": "#765"
+    },
+    "WelcomePageIssuesQuery": {
+      "type": "string",
+      "default": "",
+      "x-key": "welcomePage.issues.query",
+      "x-area": "welcome",
+      "x-page": "Willkommensseite",
+      "x-issue": "#765"
+    },
+    "WelcomePageIssuesStart": {
+      "type": "string",
+      "enum": [
+        "branch",
+        "remember"
+      ],
+      "default": "branch",
+      "x-key": "welcomePage.issues.start",
+      "x-area": "welcome",
+      "x-page": "Willkommensseite",
+      "x-issue": "#765"
+    },
+    "WelcomePageIssuesBranchPattern": {
+      "type": "string",
+      "default": "",
+      "x-key": "welcomePage.issues.branchPattern",
+      "x-area": "welcome",
+      "x-page": "Willkommensseite",
+      "x-issue": "#765"
+    },
+    "WelcomePageIssuesBranchBase": {
+      "type": "string",
+      "default": "",
+      "x-key": "welcomePage.issues.branchBase",
+      "x-area": "welcome",
+      "x-page": "Willkommensseite",
+      "x-issue": "#765"
+    },
+    "WelcomePageIssuesCommitPattern": {
+      "type": "string",
+      "default": "{kennung} ",
+      "x-key": "welcomePage.issues.commitPattern",
+      "x-area": "welcome",
+      "x-page": "Willkommensseite",
+      "x-issue": "#765"
+    },
+    "TrackerLogin": {
+      "type": "boolean",
+      "default": true,
+      "x-key": "welcomePage.issues.login",
+      "x-area": "welcome",
+      "x-feature": "WelcomePage",
+      "x-page": "Willkommensseite",
+      "x-quickToggle": true,
+      "x-caption": "Zugang zum Issue-Tracker",
+      "x-captionEn": "Issue tracker access",
+      "x-issue": "#765"
+    },
+    "NotificationsSources": {
+      "type": "string",
+      "default": "",
+      "x-key": "notifications.sources",
+      "x-area": "general",
+      "x-page": "Allgemein"
+    },
+    "NotificationsMaxEntries": {
+      "type": "integer",
+      "default": 200,
+      "x-key": "notifications.maxEntries",
+      "x-area": "general",
+      "x-page": "Allgemein"
+    },
+    "NotificationsKey": {
+      "type": "integer",
+      "default": 57422,
+      "x-key": "notifications.key",
+      "x-area": "keys",
+      "x-format": "shortcut",
+      "x-page": "Befehle"
+    },
+    "SettingsMarkModified": {
+      "type": "boolean",
+      "default": true,
+      "x-key": "settings.markModified",
+      "x-area": "general",
+      "x-page": "Allgemein",
+      "description": "Geänderte Werte auf der Optionsseite mit einem Punkt vor der Beschriftung markieren",
+      "x-control": "Kontrollkästchen",
+      "x-issue": "#723"
+    },
+    "SettingsBackupBeforeImport": {
+      "type": "boolean",
+      "default": true,
+      "x-key": "settings.backupBeforeImport",
+      "x-area": "general",
+      "x-page": "Allgemein",
+      "description": "Vor jedem Import und vor „Alles zurücksetzen“ den aktuellen Stand als Datei sichern",
+      "x-control": "Kontrollkästchen",
+      "x-issue": "#723"
+    },
+    "SettingsExportSecrets": {
+      "type": "string",
+      "enum": [
+        "omit",
+        "placeholder"
+      ],
+      "default": "omit",
+      "x-key": "settings.exportSecrets",
+      "x-area": "general",
+      "x-page": "Allgemein",
+      "description": "Zugangsdaten beim Export: omit lässt sie aus, placeholder schreibt den Platzhalter \"<secret>\"",
+      "x-control": "Auswahl",
+      "x-issue": "#723"
+    }
+  },
+  "additionalProperties": false
+}

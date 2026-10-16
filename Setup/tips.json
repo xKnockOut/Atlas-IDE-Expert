@@ -598,6 +598,46 @@
       "text": "Rechtsklick auf eine Code Lens, einen Inlay-Hint oder eine Blockende-Beschriftung, oder Strg+. in der Zeile: nur hier, in dieser Datei oder überall ausblenden, oder gleich zur Einstellung. „Rückgängig“ holt es zurück.",
       "textEn": "Right-click a code lens, an inlay hint or a block end label, or press Ctrl+. on the line: hide it here only, in this file or everywhere, or jump to its setting. “Undo” brings it back.",
       "image": "Tipps\\ausblenden.png"
+    },
+    {
+      "id": "settingsExport",
+      "command": "Atlas.SettingsExport",
+      "setting": "SettingsExportImport",
+      "title": "Einstellungen exportieren",
+      "titleEn": "Export settings",
+      "text": "Schreibt nur die geänderten Einstellungen nach atlas-settings.json, wahlweise je Bereich. Zugangsdaten und Pfade mit dem Benutzernamen bleiben draußen, Projektwerte aus atlas.json und .atlas auch.",
+      "textEn": "Writes only the changed settings to atlas-settings.json, optionally per area. Credentials and paths containing the user name stay out, and so do project values from atlas.json and .atlas.",
+      "image": "Tipps\\einstellungen-export.png"
+    },
+    {
+      "id": "settingsImport",
+      "command": "Atlas.SettingsImport",
+      "setting": "SettingsExportImport",
+      "title": "Einstellungen importieren",
+      "titleEn": "Import settings",
+      "text": "Zeigt vor dem Import je Schlüssel „aktuell → neu“ mit Kästchen; Zusammenführen übernimmt die gewählten Werte, Ersetzen ganze Bereiche. Unbekanntes wird gemeldet und übersprungen, vorher sichert Atlas den alten Stand.",
+      "textEn": "Before importing it shows “current → new” per key with check boxes; merge takes the chosen values, replace whole areas. Unknown keys are reported and skipped, and Atlas backs up the old state first.",
+      "image": "Tipps\\einstellungen-import.png"
+    },
+    {
+      "id": "settingsProfile",
+      "command": "Atlas.SettingsProfile",
+      "setting": "SettingsExportImport",
+      "title": "Einstellungsprofil laden",
+      "titleEn": "Load settings profile",
+      "text": "„Atlas-Standard“ setzt alles auf den Auslieferungszustand, „Minimal“ schaltet die Zeichnungen und Helfer ab, „Alles an“ schaltet sie ein. Die Vorschau zeigt jede Änderung vor dem Übernehmen.",
+      "textEn": "“Atlas default” restores the shipped state, “Minimal” turns off drawings and helpers, “All on” turns them on. The preview shows every change before it is applied.",
+      "image": "Tipps\\einstellungen-profil.png"
+    },
+    {
+      "id": "settingsReset",
+      "command": "Atlas.SettingsReset",
+      "setting": "SettingsExportImport",
+      "title": "Einstellungen zurücksetzen",
+      "titleEn": "Reset settings",
+      "text": "Ein Punkt markiert jede geänderte Einstellung. Rechtsklick setzt sie einzeln zurück, „Seite zurücksetzen“ den ganzen Bereich, „Alles zurücksetzen…“ fragt nach und sichert vorher.",
+      "textEn": "A dot marks every changed setting. A right-click resets it on its own, “Reset page” the whole area, “Reset all…” asks first and makes a backup.",
+      "image": "Tipps\\einstellungen-zuruecksetzen.png"
     }
   ]
 }

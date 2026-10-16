@@ -80,6 +80,7 @@ uses
   Atlas.IDE.Status.Field,
   Atlas.IDE.Status.Lines,
   Atlas.IDE.Settings.QuickToggles,
+  Atlas.IDE.Settings.Transfer,
   Atlas.Core.Status.Contract,
   Atlas.Core.Notifications.Contract,
   Atlas.Core.Notifications.Center,
@@ -876,6 +877,12 @@ begin
   Result := TAtlasIdeSettings.Current.Notes;
 end;
 
+/// <summary>Export, Import und Zurücksetzen der Einstellungen (#723): settings.exportImport.</summary>
+function SettingsTransferVisible: Boolean;
+begin
+  Result := TAtlasIdeSettingsTransfer.Visible;
+end;
+
 function TodoListVisible: Boolean;
 begin
   Result := TAtlasIdeSettings.Current.TodoList;
@@ -1005,6 +1012,15 @@ begin
           TAtlasIdeGenerate.Show;
         end);
     end, GenerateMenuVisible);
+  // Einstellungen exportieren, importieren und zurücksetzen (#723); nur sichtbar mit settings.exportImport.
+  Add('Atlas.SettingsExport', TAtlasTextId.SettingsExportCommand,
+    Guarded(TAtlasFeature.Settings, TAtlasIdeSettingsTransfer.ExportCommand), SettingsTransferVisible);
+  Add('Atlas.SettingsImport', TAtlasTextId.SettingsImportCommand,
+    Guarded(TAtlasFeature.Settings, TAtlasIdeSettingsTransfer.ImportCommand), SettingsTransferVisible);
+  Add('Atlas.SettingsProfile', TAtlasTextId.SettingsProfileCommand,
+    Guarded(TAtlasFeature.Settings, TAtlasIdeSettingsTransfer.ProfileCommand), SettingsTransferVisible);
+  Add('Atlas.SettingsReset', TAtlasTextId.SettingsResetCommand,
+    Guarded(TAtlasFeature.Settings, TAtlasIdeSettingsTransfer.ResetCommand), SettingsTransferVisible);
   // Editorbefehle (#399).
   Add('Atlas.CodeActions', TAtlasTextId.EditorActions, TAtlasIdeEditorCommands.CodeActions);
   // Ausblenden am Element (#628).
@@ -3195,6 +3211,7 @@ begin
   if Features <> nil then
     Features.StopAll;
   FreeAndNil(QuickToggles);
+  TAtlasIdeSettingsTransfer.Release;
   // Nach den Quellen, vor dem Statusfeld: Die Einträge halten Aktionen mit Code des Plugins (#601).
   FreeAndNil(Notifications);
   TAtlasNotificationCenter.ReleaseDefault;
