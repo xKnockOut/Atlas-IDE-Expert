@@ -1044,6 +1044,38 @@ Vorbereitung: Git-Projekt `GitDemo` (mindestens 8 Units) mit Remote `origin` (z.
 | WA18 | Englische IDE; dunkles und helles Thema; 150 % Skalierung; Fenster *Atlas-Start* | „Continue working“, „Recent“, „Saved“, „7 tabs“, „5 min ago“, „Resume“; Texte und Schaltfläche lesbar und nicht abgeschnitten; im Fenster derselbe Inhalt |
 | WA19 | Protokoll (`%LOCALAPPDATA%\Atlas\Logs\atlas.log`) nach WA2–WA16 | Nur Meldungen wie in der Meldungsansicht, ohne Pfade (Dateinamen ohne Ordner); kein Quelltext, keine Betreffzeilen von Commits |
 
+### Schnellaktionen je Projekt (#764)
+
+Abweichungen vom Issue: Die Knopfleiste erscheint wie im Issue-Text nur in der Zeile unter der Maus bzw. mit dem Tastaturfokus (das Mockup #ws10 zeigt sie zur Erklärung dauerhaft in der ersten Zeile). Kein eigener Platz im Atlas-Layout: Die Knöpfe gehören zu den Bereichen „Projekte“ und „Weiterarbeiten“. „Startprofil ▾“ startet immer mit Debugger. Das Ergebnis eines Builds zeigt die vorhandene Marke „Build 0/0/0“ der Zeile, keine zweite Marke.
+
+Vorbereitung: Git-Projekt `GitDemo` (Debug und Release, Win32 und Win64) mit Upstream und Testprojekt `Tests\GitDemo.Tests.dproj` (DUnitX, ein fehlschlagender Test), SVN-Projekt `SvnDemo`, Projekt `OhneVcs` ohne Arbeitskopie, Projektgruppe `Gruppe.groupproj` mit zwei Projekten; alle einmal geöffnet und gebaut, Windows Terminal installiert
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| SA1 | `Atlas.Tests` bauen und ausführen | 0 Fehler, 0 Warnungen, 0 Hinweise; `TAtlasWelcomeQuickActionsTests`, `TAtlasQuickActionsBarTests`, `TAtlasWelcomeProjectsFrameTests.QuickActionsInRows`, `TAtlasWelcomeContinueFrameTests.QuickActionsInRecent` und die Tests von Einstellungen, Tastenbelegung und Schnellschaltern grün |
+| SA2 | Willkommensseite, Maus über die Zeile `GitDemo` in „Projekte“ | Zeile hinterlegt, rechts die Knöpfe „Öffnen und bauen ▾“ (gefüllt), „Tests“, „Startprofil ▾“, „Pull“, „Ordner“, „Konsole“; bei schmaler Spalte in zwei Reihen; die Marken der Zeile bleiben lesbar; Maus weg = Knöpfe weg |
+| SA3 | ▾ an „Öffnen und bauen“: „Debug · Win64“ wählen | Projekt öffnet sich (andere Gruppe offen und geändert: Rückfrage der IDE zum Speichern), Knopf zeigt „baut … 1 s“, „… 2 s“ usw.; danach Marke „Build 0/0/0“ in der Zeile; Meldungsansicht wie bei einem Build über das Menü (**Abnahme**) |
+| SA4 | SA3, dann „Öffnen und bauen“ ohne ▾ | Baut wieder Debug · Win64 (zuletzt benutzt, in der Auswahl als „(zuletzt)“ fett) |
+| SA5 | ▾ „Release · Win32“ mit eingeschaltetem Release-Wächter (#533) und `build.gate = block`, Projekt mit DEBUG in Release | Marke „nicht gebaut“; Tooltip und Meldungsansicht nennen den Grund des Wächters |
+| SA6 | „Tests“ an `GitDemo` | Projekt öffnet sich, `GitDemo.Tests` kommt in die Gruppe, wird gebaut und ausgeführt; Knopf „testet … n s“, danach Marke „Tests: 1 fehlgeschlagen“ in der Zeile und Eintrag unter „Testergebnisse“ (#763) (**Abnahme**) |
+| SA7 | „Tests“ an einem Projekt ohne Testprojekt; dann mit zwei passenden Testprojekten (`Tests\X.Tests.dproj`, `Test\XTest.dproj`) | Ohne: Marke „Tests nicht gelaufen“, Meldungsansicht nennt die gesuchten Orte und Namen; mit zwei: Auswahl „Testprojekt“ mit beiden |
+| SA8 | „Startprofil ▾“ an einem Projekt mit Profilen (#575) | Auswahl mit Überschrift „Startprofil“, aktives Profil „(aktiv)“ fett, „Ohne Startprofil“ zuletzt; Wahl öffnet das Projekt und startet es im Debugger mit dem Profil |
+| SA9 | `GitDemo` mit einer geänderten Datei: Maus über „Pull“ | „Pull“ ausgegraut, Tooltip „Erst lokale Änderungen sichern“, Klick tut nichts (**Abnahme**) |
+| SA10 | Änderung sichern bzw. verwerfen, Remote hat einen neuen Commit; „Pull“ | Knopf „holt … n s“, danach Marke „aktualisiert“, Branch und ↑/↓ in der Zeile neu; ohne neuen Commit „aktuell“; bei abweichendem Branch „Pull fehlgeschlagen“ und Meldung „Ein abweichender Branch wird nicht zusammengeführt“ (**Abnahme**) |
+| SA11 | `SvnDemo`: Knopf heißt „Aktualisieren“; klicken | „aktualisiert … n s“, danach „aktualisiert“ bzw. „aktuell“; `OhneVcs`: Knopf ausgegraut, Tooltip „Keine Arbeitskopie (Git oder SVN)“ |
+| SA12 | „Ordner“ und „Konsole“ | Explorer im Projektordner; Windows Terminal im Projektordner; ohne Windows Terminal (bzw. `welcomePage.quickActions.console` leer und `wt.exe` fehlt) `cmd.exe`; `pwsh.exe` eingetragen: PowerShell im Projektordner |
+| SA13 | Gruppe `Gruppe.groupproj`: „Öffnen und bauen“ | Gruppe öffnet sich, beide Projekte bauen nacheinander; Marke „Build …“ der Gruppe |
+| SA14 | Ohne Maus: Tab bis in „Projekte“, ↓/↑, →/←, Enter, Alt+↓, Esc, Pos1, Kontextmenütaste | Fokusrahmen um Zeile bzw. Knopf; ↓/↑ wählen die Zeile, →/← den Knopf (gesperrte übersprungen), Enter führt aus bzw. öffnet die Zeile ohne Knopf, Alt+↓ öffnet die Auswahl, Esc geht vom Knopf zurück zur Zeile, Kontextmenütaste zeigt das Kontextmenü mit „Öffnen und bauen“, „Bauen mit“, „Tests“, „Starten mit“, „Pull“, „Konsole öffnen“ (**Abnahme**) |
+| SA15 | Fokus auf einer Zeile: Strg+B, Strg+T; dann Fokus im Editor: Strg+B, Strg+T | Auf der Willkommensseite baut bzw. testet die gewählte Zeile; im Editor gelten die Tasten der IDE bzw. anderer Experten wie vorher |
+| SA16 | *Tools › Optionen › Atlas › Willkommensseite*: Taste „Schnellaktion „Öffnen und bauen““ auf Strg+Umschalt+B; einer Funktion im Editor Strg+B geben | Keine Konfliktmeldung mit Funktionen außerhalb der Willkommensseite (#399); die neue Taste wirkt; die Tastenkürzel-Übersicht (#520) nennt beide Schnellaktionen; Tooltip des Knopfs nennt die Taste |
+| SA17 | „Weiterarbeiten“, Reiter „Zuletzt“: Maus über einen Arbeitsstand | Knöpfe links neben „Fortsetzen“, Alter ausgeblendet; Strg+B und „Pull“ wie in „Projekte“; Enter ohne Knopf setzt fort; Reiter „Gemerkt“ hat keine Knöpfe |
+| SA18 | *Optionen › Willkommensseite*: „Konsole“ abhaken (`welcomePage.quickActions.items` ohne `console`) | Nur der Knopf „Konsole“ fehlt (auch im Kontextmenü), alle anderen bleiben (**Abnahme**) |
+| SA19 | Schalter „Schnellaktionen je Projekt“ aus (auch über die Schnellschalter) | Keine Knöpfe, keine Hinterlegung, kein Tastaturfokus; Strg+B und Strg+T gehören der IDE; Klick in die Zeile wirkt wie vor #764 (**Abnahme**) |
+| SA20 | Während „baut …“ an `GitDemo` die Knöpfe einer anderen Zeile ansehen | „Öffnen und bauen“, „Tests“, „Startprofil ▾“ ausgegraut mit „In der IDE läuft schon eine Schnellaktion“; „Pull“, „Ordner“, „Konsole“ gehen |
+| SA21 | Englische IDE; dunkles und helles Thema; 150 % Skalierung; Fenster *Atlas-Start* | „Open and build“, „Tests“, „Start profile“, „Pull“/„Update“, „Folder“, „Console“, „building … 12 s“; Knöpfe skaliert, lesbar in beiden Themen |
+| SA22 | Karte „Atlas entdecken“ und „Neu in Atlas“ | Tipp „Schnellaktionen je Projekt“ mit Bild und Strg+B; „Neu in Atlas“ nennt die Funktion mit Schalter |
+| SA23 | Protokoll (`%LOCALAPPDATA%\Atlas\Logs\atlas.log`) nach SA3–SA20 | Keine Pfade, keine Projektnamen, kein Quelltext; Meldungen mit Pfaden nur in der Meldungsansicht |
+
 ## Atlas-Symbol (#751)
 
 | Nr. | Schritte | Erwartet |

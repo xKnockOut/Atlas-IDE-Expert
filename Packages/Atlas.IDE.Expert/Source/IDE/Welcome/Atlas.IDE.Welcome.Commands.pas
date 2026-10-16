@@ -25,6 +25,8 @@
 //   beim Schließen und beim Beenden (Stop) und meldet sich selbst an.
 // - Bereich „Projekte“ (#592, Projects): Zustand je zuletzt geöffnetem
 //   Projekt aus den Projekt-Zusammenfassungen; meldet sich selbst an.
+// - Schnellaktionen (#764, QuickActions): Knopfleiste in „Projekte“ und
+//   „Weiterarbeiten“; die Quelle bekommen beide Bereiche für ihre Frames.
 // - Bereich „Projektverlauf“ (#758, Trends): Linien je Reihe über die
 //   letzten Builds des in „Projekte“ gewählten Projekts; meldet sich selbst
 //   an.
@@ -64,6 +66,7 @@ uses
   Atlas.IDE.Welcome.Search,
   Atlas.IDE.Welcome.WhatsNew,
   Atlas.IDE.Welcome.Projects,
+  Atlas.IDE.Welcome.QuickActions,
   Atlas.IDE.Welcome.Trends,
   Atlas.IDE.Welcome.TestResults,
   Atlas.IDE.Welcome.Unsaved,
@@ -95,6 +98,9 @@ type
     FProjects: TAtlasIdeProjects;
     // Hält die Quelle des Bereichs „Projekte“ am Leben; die Frames halten sie ebenfalls.
     FProjectsRef: IInterface;
+    FQuickActions: TAtlasIdeQuickActions;
+    // Hält die Quelle der Schnellaktionen am Leben; Bereiche und Frames halten sie ebenfalls.
+    FQuickActionsRef: IInterface;
     FTrends: TAtlasIdeTrends;
     // Hält die Quelle des Bereichs „Projektverlauf“ am Leben; die Frames halten sie ebenfalls.
     FTrendsRef: IInterface;
@@ -125,6 +131,7 @@ type
     procedure SetHelp(AValue: TAtlasIdeHelp);
     procedure SetSetup(AValue: TAtlasIdeSetup);
     procedure SetProjects(AValue: TAtlasIdeProjects);
+    procedure SetQuickActions(AValue: TAtlasIdeQuickActions);
     procedure SetTrends(AValue: TAtlasIdeTrends);
     procedure SetTestResults(AValue: TAtlasIdeTestResults);
     procedure SetUnsaved(AValue: TAtlasIdeUnsaved);
@@ -174,6 +181,8 @@ type
     property WhatsNew: TAtlasIdeWhatsNew read FWhatsNew write SetWhatsNew;
     /// <summary>Bereich „Projekte“ (#592); gehört danach der Steuerung (Start beim Setzen). nil = ohne.</summary>
     property Projects: TAtlasIdeProjects read FProjects write SetProjects;
+    /// <summary>Schnellaktionen (#764); vor ContinueWork und vor dem ersten Sync setzen, nach Projects.</summary>
+    property QuickActions: TAtlasIdeQuickActions read FQuickActions write SetQuickActions;
     /// <summary>Bereich „Projektverlauf“ (#758); gehört danach der Steuerung (Start beim Setzen). nil = ohne.
     /// </summary>
     property Trends: TAtlasIdeTrends read FTrends write SetTrends;
@@ -294,6 +303,9 @@ begin
   FreeAndNil(FSearch);
   TAtlasWelcomeSections.Default.RemoveListener(FSectionsListener);
   TAtlasStatusRegistry.Default.RemoveListener(FStatusListener);
+  // Vor „Projekte“: Die Schnellaktionen fragen dort nach dem Stand der Versionsverwaltung.
+  if FQuickActions <> nil then
+    FQuickActions.Stop;
   if FWhatsNew <> nil then
     FWhatsNew.Stop;
   if FTrends <> nil then
@@ -324,6 +336,8 @@ begin
   FWhatsNewRef := nil;
   FProjects := nil;
   FProjectsRef := nil;
+  FQuickActions := nil;
+  FQuickActionsRef := nil;
   FTrends := nil;
   FTrendsRef := nil;
   FTestResults := nil;
@@ -403,10 +417,29 @@ begin
       end);
 end;
 
+procedure TAtlasIdeWelcome.SetQuickActions(AValue: TAtlasIdeQuickActions);
+begin
+  FQuickActions := AValue;
+  FQuickActionsRef := AValue;
+  // Die Bereiche reichen die Quelle an jeden neuen Frame weiter.
+  if FProjects <> nil then
+    FProjects.QuickActions := AValue;
+  if FContinue <> nil then
+    FContinue.QuickActions := AValue;
+  if FQuickActions <> nil then
+    TAtlasGuard.Run(TAtlasFeature.WelcomePage,
+      procedure
+      begin
+        FQuickActions.Start;
+      end);
+end;
+
 procedure TAtlasIdeWelcome.SetContinue(AValue: TAtlasIdeContinue);
 begin
   FContinue := AValue;
   FContinueRef := AValue;
+  if (FContinue <> nil) and (FQuickActions <> nil) then
+    FContinue.QuickActions := FQuickActions;
   if FContinue <> nil then
     TAtlasGuard.Run(TAtlasFeature.WelcomePage,
       procedure
@@ -596,6 +629,9 @@ begin
       // Bereich „Testergebnisse“: welcomePage.tests, .maxFailures und .ci (#763).
       if FTestResults <> nil then
         FTestResults.Refresh;
+      // Schnellaktionen: welcomePage.quickActions, .items, .console und Tasten (#764).
+      if FQuickActions <> nil then
+        FQuickActions.Refresh;
       if not Current.WelcomePage then
         Host := ''
       else if (Current.WelcomePageHost = 'dockWindow') or not TAtlasIdeWelcomePage.Available then

@@ -35,12 +35,13 @@ type
   /// Übersicht (#520, AllFromSettings): Editorbefehle mit gemeinsamem Vorrang EditorKeysPriority, das Suchfeld
   /// der Willkommensseite, Deklaration ⇄ Implementierung mit zwei Tasten (#775), Unit ⇄ Testunit (#189), die
   /// eigene Taste für „Units suchen“, die Übernahme von Strg+F12 durch „Units suchen“ (#777) und „Lesezeichen
-  /// setzen…“ (#622), das Erzeugen-Menü (#719) und die Benachrichtigungen (#601). Neue Funktionen nur hinten
-  /// anhängen: Die Ordnungszahl steckt in Kennungen der Übersicht.</summary>
+  /// setzen…“ (#622), das Erzeugen-Menü (#719), die Benachrichtigungen (#601) und die Schnellaktionen der
+  /// Willkommensseite „Öffnen und bauen“ und „Tests“ (#764). Neue Funktionen nur hinten anhängen: Die Ordnungszahl
+  /// steckt in Kennungen der Übersicht.</summary>
   TAtlasKeyFunction = (Palette, Check, Completion, Signature, QuickToggle, DiagnosticMode, CodeActions,
     ExpandSelection, ShrinkSelection, GoToImplementation, TypeDefinition, UndoChange, RedoChange, WelcomeSearch,
     MethodToggleUp, MethodToggleDown, TestUnit, UnitSearch, UnitSearchIde, Bookmark, GenerateMenu,
-    Notifications);
+    Notifications, WelcomeQuickBuild, WelcomeQuickTests);
   TAtlasKeyChoice = (UseAtlas, LeaveOther, OtherKey);
   /// <summary>NoKey: keine Taste; IdeKey: Taste der IDE über Code Insight, Atlas belegt nichts selbst;
   /// Free: Atlas belegt die freie Taste; AtlasWins: belegt, Atlas hat Vorrang; Left: belegt, Atlas
@@ -171,7 +172,13 @@ begin
     // Erzeugen-Menü (#719): aus = Alt+Einfg bleibt frei.
     Create(TAtlasKeyFunction.GenerateMenu, Word(ASettings.GenerateMenuKey), Shared, ASettings.GenerateMenu),
     // Benachrichtigungszentrale (#601): aus = Strg+Umschalt+Alt+N bleibt frei.
-    Create(TAtlasKeyFunction.Notifications, Word(ASettings.NotificationsKey), Shared, ASettings.Notifications)];
+    Create(TAtlasKeyFunction.Notifications, Word(ASettings.NotificationsKey), Shared, ASettings.Notifications),
+    // Schnellaktionen der Willkommensseite (#764): nur in der Zeile von „Projekte“ bzw. „Weiterarbeiten“ mit dem
+    // Fokus, dort immer mit Vorrang (wie das Suchfeld); aus = Strg+B und Strg+T bleiben dort der IDE.
+    Create(TAtlasKeyFunction.WelcomeQuickBuild, Word(ASettings.WelcomePageQuickActionsBuildKey), True,
+      ASettings.WelcomePage and ASettings.WelcomePageQuickActions),
+    Create(TAtlasKeyFunction.WelcomeQuickTests, Word(ASettings.WelcomePageQuickActionsTestKey), True,
+      ASettings.WelcomePage and ASettings.WelcomePageQuickActions)];
 end;
 
 class procedure TAtlasKeyEntry.ToSettings(const AEntries: TArray<TAtlasKeyEntry>;
@@ -245,6 +252,10 @@ begin
         ASettings.GenerateMenuKey := Entry.Key;
       TAtlasKeyFunction.Notifications:
         ASettings.NotificationsKey := Entry.Key;
+      TAtlasKeyFunction.WelcomeQuickBuild:
+        ASettings.WelcomePageQuickActionsBuildKey := Entry.Key;
+      TAtlasKeyFunction.WelcomeQuickTests:
+        ASettings.WelcomePageQuickActionsTestKey := Entry.Key;
       // Strg+F12 ist fest; ein- und ausgeschaltet wird über unitSearch.replaceIdeDialog.
       TAtlasKeyFunction.UnitSearchIde:
         ;

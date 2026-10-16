@@ -77,6 +77,8 @@ type
     procedure GitIncomingParsesCommitsWithFiles;
     [Test]
     procedure GitProviderRunsIncomingCommands;
+    [Test]
+    procedure ProvidersPullOnlyForward;
   end;
 
 implementation
@@ -1403,6 +1405,37 @@ begin
   Assert.IsTrue(Supports(Vcs, IAtlasVcsIncoming, Incoming));
   Assert.IsTrue(Incoming.Fetch('') = TAtlasVcsOutcome.Disabled);
   Assert.IsTrue(Incoming.Incoming('origin/main', nil, 5, Commits) = TAtlasVcsOutcome.Disabled);
+end;
+
+procedure TAtlasVcsTests.ProvidersPullOnlyForward;
+const
+  Prefix = '--no-optional-locks -c core.quotepath=off -c color.ui=false ';
+var
+  Runner: TFakeRunner;
+  RunnerRef: IAtlasVcsRunner;
+  Vcs: IAtlasVersionControl;
+  Update: IAtlasVcsUpdate;
+begin
+  Runner := TFakeRunner.Create;
+  RunnerRef := Runner;
+  Vcs := TAtlasGitVersionControl.Create(Root, RunnerRef, 'git.exe', 5000);
+  Assert.IsTrue(Supports(Vcs, IAtlasVcsUpdate, Update), 'Git bietet IAtlasVcsUpdate');
+  Assert.IsTrue(Update.Pull = TAtlasVcsOutcome.Ok);
+  Assert.AreEqual(Prefix + '-c credential.interactive=never -c core.askPass= pull --ff-only --no-rebase --quiet',
+    Runner.Calls[0], 'nur vorwärts, ohne Rückfrage nach Zugangsdaten');
+  Assert.AreEqual(Root, Runner.WorkingDirs[0], 'in der Wurzel der Arbeitskopie');
+  // Abweichender Branch: git endet mit Fehler, nichts wird zusammengeführt.
+  Runner.ExitCode := 128;
+  Assert.IsTrue(Update.Pull = TAtlasVcsOutcome.Failed);
+  Runner.ExitCode := 0;
+  Vcs := TAtlasSvnVersionControl.Create(Root, RunnerRef, 'svn.exe');
+  Assert.IsTrue(Supports(Vcs, IAtlasVcsUpdate, Update), 'SVN bietet IAtlasVcsUpdate');
+  Assert.IsTrue(Update.Pull = TAtlasVcsOutcome.Ok);
+  Assert.AreEqual('update . --non-interactive', Runner.Calls[2]);
+  Vcs := TAtlasNullVersionControl.Create(TAtlasVcsOutcome.ToolMissing);
+  Assert.IsTrue(Supports(Vcs, IAtlasVcsUpdate, Update));
+  Assert.IsTrue(Update.Pull = TAtlasVcsOutcome.ToolMissing);
+  Assert.AreEqual(3, Integer(Length(Runner.Calls)), 'die leere Umsetzung startet keinen Prozess');
 end;
 
 initialization

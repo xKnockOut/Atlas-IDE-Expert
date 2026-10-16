@@ -268,6 +268,10 @@ begin
       Id := TAtlasTextId.GenerateMenuCommand;
     TAtlasKeyFunction.Notifications:
       Id := TAtlasTextId.NotificationsCommand;
+    TAtlasKeyFunction.WelcomeQuickBuild:
+      Id := TAtlasTextId.SettingsWelcomeQuickActionsBuildKey;
+    TAtlasKeyFunction.WelcomeQuickTests:
+      Id := TAtlasTextId.SettingsWelcomeQuickActionsTestKey;
   else
     Id := TAtlasTextId.KeyMapUnitSearchIde;
   end;

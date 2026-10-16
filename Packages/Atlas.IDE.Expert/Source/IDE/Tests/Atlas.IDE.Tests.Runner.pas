@@ -103,6 +103,10 @@ type
     procedure RunFailed;
     /// <summary>Tests ATests (Namen für --run) im Testprojekt der Datei AFileName (Code Lens).</summary>
     procedure RunTests(const AFileName: string; const ATests: TArray<string>);
+    /// <summary>Alle Tests des geöffneten Testprojekts AProject (Schnellaktion „Tests“, #764), vorher gebaut.
+    /// False mit AReason, wenn „Tests ausführen“ aus ist, schon ein Lauf läuft oder AProject nicht offen ist.
+    /// </summary>
+    function RunProject(const AProject: string; out AReason: string): Boolean;
     /// <summary>Ein Build ist fertig (Meldungen gelesen): mit „Tests nach dem Build“ laufen die Tests.</summary>
     procedure BuildFinished(const AProject: TAtlasCompileProject; ASucceeded: Boolean;
       const AMessages: TArray<TAtlasCompilerMessage>);
@@ -464,6 +468,32 @@ begin
     begin
       Start(AProject, Tests, TAtlasIdeSettings.Current.TestsBuildFirst);
     end);
+end;
+
+function TAtlasIdeTests.RunProject(const AProject: string; out AReason: string): Boolean;
+var
+  Project: IOTAProject;
+begin
+  Result := False;
+  AReason := '';
+  if not TAtlasIdeSettings.Current.TestRun then
+  begin
+    AReason := TAtlasStrings.Text(TAtlasTextId.WelcomeQuickReasonTestsOff);
+    Exit;
+  end;
+  if Busy then
+  begin
+    AReason := TAtlasStrings.Text(TAtlasTextId.TestsBusy);
+    Exit;
+  end;
+  Project := ProjectByFile(AProject);
+  if Project = nil then
+  begin
+    AReason := TAtlasStrings.Text(TAtlasTextId.WelcomeQuickReasonNotOpened);
+    Exit;
+  end;
+  Start(Project, nil, True);
+  Result := True;
 end;
 
 procedure TAtlasIdeTests.BuildFinished(const AProject: TAtlasCompileProject; ASucceeded: Boolean;

@@ -19,6 +19,9 @@
 // Branch (z. B. origin/main) liegt, aber nicht in gemerkten Ständen, mit Autor
 // und geänderten Dateien. Grundlage ist der lokale Stand der Remote-Branches;
 // nur Fetch spricht mit dem Server (ohne Rückfrage nach Zugangsdaten).
+// IAtlasVcsUpdate (#764) holt neue Commits in die Arbeitskopie: Git nur
+// vorwärts (pull --ff-only), SVN mit update; für die Schnellaktion „Pull“
+// der Willkommensseite.
 
 interface
 
@@ -254,6 +257,15 @@ type
     /// <summary>Remote-Branches von ARemote abrufen ('' = Remote des aktuellen Branchs bzw. origin), ohne
     /// Rückfrage nach Zugangsdaten. Spricht mit dem Server.</summary>
     function Fetch(const ARemote: string): TAtlasVcsOutcome;
+  end;
+
+  /// <summary>Arbeitskopie auf den Stand des Servers bringen (#764). Git: pull --ff-only ohne Rückfrage nach
+  /// Zugangsdaten (kein Merge, kein Rebase; weicht der Branch ab, Failed); SVN: update. Die leere Umsetzung
+  /// liefert ihr Outcome. Ob lokale Änderungen das Holen sperren, entscheidet der Aufrufer vorher. Spricht mit
+  /// dem Server und startet einen Prozess: nur aus einem Hintergrund-Thread aufrufen, mit Zeitlimit.</summary>
+  IAtlasVcsUpdate = interface
+    ['{8AFD73A9-6F83-48FE-B1B8-4B4D0E96D7E8}']
+    function Pull: TAtlasVcsOutcome;
   end;
 
   /// <summary>Fehler beim Lesen einer Ausgabe; die Umsetzungen machen daraus Outcome Failed.</summary>

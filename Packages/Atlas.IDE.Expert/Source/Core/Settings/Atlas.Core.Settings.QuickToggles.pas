@@ -354,6 +354,9 @@ begin
     '"CiLogin":{"type":"boolean","x-feature":"WelcomePage",' +
       '"default":true,"x-page":"Willkommensseite","x-quickToggle":true,' +
       '"x-caption":"Zugang zum Build-Server","x-captionEn":"Build server access","x-issue":"#763"},' +
+    '"WelcomePageQuickActions":{"type":"boolean","x-feature":"WelcomePage",' +
+      '"default":true,"x-page":"Willkommensseite","x-quickToggle":true,' +
+      '"x-caption":"Schnellaktionen je Projekt","x-captionEn":"Quick actions per project","x-issue":"#764"},' +
     '"ShortcutTips":{"type":"boolean","x-feature":"ShortcutTips",' +
       '"default":true,"x-page":"Allgemein","x-quickToggle":true,' +
       '"x-caption":"Tastenkürzel-Tipps","x-captionEn":"Keyboard shortcut tips","x-issue":"#600"},' +
