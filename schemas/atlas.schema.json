@@ -326,19 +326,40 @@
     },
     "compiler": {
       "type": "object",
-      "description": "Compiler-Anbindung (dcc32/dcc64).",
+      "description": "Compiler-Anbindung: Kommandozeilen-Compiler (dcc32/dcc64) oder eine eigene IDE über cc.ps1.",
       "additionalProperties": false,
       "properties": {
         "onSave": {
           "type": "boolean",
           "default": false,
-          "description": "Nach dem Speichern einer Quelldatei das Projekt im Hintergrund kompilieren und die Meldungen anzeigen."
+          "description": "Nach dem Speichern einer Quelldatei das Projekt im Hintergrund kompilieren und die Meldungen anzeigen. Nur mit dem Kommandozeilen-Compiler; über die IDE (backend ide) kompiliert Atlas wegen ihrer Startzeit nur auf den Befehl „Projekt kompilieren“ (atlas.server.compile)."
+        },
+        "backend": {
+          "type": "string",
+          "enum": [
+            "auto",
+            "dcc",
+            "ide",
+            "off"
+          ],
+          "default": "auto",
+          "x-control": "Auswahl",
+          "description": "Weg zum Compiler. auto: Atlas erkennt vorher je Delphi-Installation, ob dcc32/dcc64 vorhanden und nutzbar ist (die Starter und Community Edition melden einen Lizenztext statt zu kompilieren), merkt sich das und nimmt dann dcc, sonst ide (wenn ideCommand eingerichtet ist), sonst off. dcc: nur der Kommandozeilen-Compiler. ide: eine eigene IDE über cc.ps1 (ideCommand), immer mit eigener Instanz; die IDE des Benutzers wird nie angesprochen. off: Atlas kompiliert nie selbst. Ist kein Compiler nutzbar, meldet Atlas das einmal mit Grund und Ausweg, zeigt es im Status (atlas.server.status) und der Befehl „Projekt kompilieren“ antwortet mit dem Grund."
+        },
+        "ideCommand": {
+          "type": "string",
+          "default": "",
+          "x-control": "Datei wählen",
+          "description": "Pfad zu cc.ps1 (Claude-Compile) für den Weg über die IDE; leer = nicht eingerichtet. Atlas startet damit eine eigene Scratch-IDE (-Instance), nutzt sie für weitere Läufe wieder und beendet sie mit dem Server.",
+          "examples": [
+            "C:\\Projekte\\IDE-Plugins\\Claude-Compile\\cc.ps1"
+          ]
         }
       },
       "x-scope": "global",
       "x-page": "Compiler",
-      "x-control": "Kontrollkästchen",
-      "x-issue": "#40"
+      "x-control": "Kontrollkästchen, Auswahl, Datei wählen",
+      "x-issue": "#40, #261"
     },
     "vcs": {
       "type": "object",

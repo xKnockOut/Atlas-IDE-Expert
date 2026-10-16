@@ -160,6 +160,7 @@ type
     FAfterSave: TAtlasChoiceBox;
     FCheckDelay: TEdit;
     FCheckMax: TEdit;
+    FMcpBuild: TCheckBox;
     FActionsKey: TEdit;
     FExpandKey: TEdit;
     FShrinkKey: TEdit;
@@ -444,6 +445,7 @@ type
     /// <summary>Zum Testen: Favoriten (#458).</summary>
     property FavoritesCheck: TCheckBox read FFavorites;
     property NotesCheck: TCheckBox read FNotes;
+    property McpBuildCheck: TCheckBox read FMcpBuild;
     /// <summary>Zum Testen: benannte Lesezeichen (#622).</summary>
     property BookmarksNamedCheck: TCheckBox read FBookmarksNamed;
     property BookmarksSharedCheck: TCheckBox read FBookmarksShared;
@@ -824,6 +826,8 @@ begin
     TAtlasStrings.Text(TAtlasTextId.SettingsAfterSaveCompile)]);
   FCheckDelay := AddNumber(TAtlasStrings.Text(TAtlasTextId.SettingsCheckDelay));
   FCheckMax := AddNumber(TAtlasStrings.Text(TAtlasTextId.SettingsCheckMax));
+  // Claude Code baut über diese IDE (#261, build_project), z. B. ohne Kommandozeilen-Compiler.
+  FMcpBuild := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsMcpBuild));
 
   // Editorbefehle (#399): ein Vorrang für alle.
   AddSheet(TAtlasTextId.SettingsTabCommands);
@@ -1656,6 +1660,7 @@ begin
     FAfterSave.Choice := 2;
   FCheckDelay.Text := IntToStr(ASettings.CheckOnSaveDelayMs);
   FCheckMax.Text := IntToStr(ASettings.CheckOnSaveMaxMs);
+  FMcpBuild.Checked := ASettings.McpBuild;
   FSafeAsk.Checked := ASettings.SafeAskAfterCrash;
   FSafeAuto.Checked := ASettings.SafeAutoAfterRepeatedCrash;
   case TAtlasSafeMode.KeyOf(ASettings.SafeStartupKey) of
@@ -1845,6 +1850,7 @@ begin
   ASettings.CompileOnSave := FAfterSave.Choice = 2;
   ASettings.CheckOnSaveDelayMs := StrToIntDef(FCheckDelay.Text, ASettings.CheckOnSaveDelayMs);
   ASettings.CheckOnSaveMaxMs := StrToIntDef(FCheckMax.Text, ASettings.CheckOnSaveMaxMs);
+  ASettings.McpBuild := FMcpBuild.Checked;
   ASettings.SafeAskAfterCrash := FSafeAsk.Checked;
   ASettings.SafeAutoAfterRepeatedCrash := FSafeAuto.Checked;
   case FSafeKey.Choice of

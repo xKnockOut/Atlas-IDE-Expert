@@ -110,6 +110,8 @@ begin
     Root.AddPair('durationMs', TJSONNumber.Create(ABuild.DurationMs));
     Root.AddPair('finishedAt', DateToISO8601(ABuild.FinishedAt, False));
     Root.AddPair('messages', MessagesToJson(ABuild.Messages, '', Omitted));
+    if ABuild.RequestedBy <> '' then
+      Root.AddPair('requestedBy', ABuild.RequestedBy);
     Result := Root.ToJSON;
   finally
     Root.Free;
@@ -138,6 +140,7 @@ begin
     ABuild.Success := Root.GetValue<Boolean>('success', False);
     ABuild.DurationMs := Root.GetValue<Int64>('durationMs', 0);
     ABuild.FinishedAt := ISO8601ToDate(Root.GetValue<string>('finishedAt', '2000-01-01T00:00:00'), False);
+    ABuild.RequestedBy := Root.GetValue<string>('requestedBy', '');
     if Root.TryGetValue<TJSONArray>('messages', Items) then
       for Item in Items do
         if Item is TJSONObject then
@@ -186,6 +189,9 @@ begin
     Root.AddPair('project', ABuild.Project);
     Root.AddPair('configuration', ABuild.Configuration);
     Root.AddPair('platform', ABuild.Platform);
+    // Angestoßen von Claude Code (build_project, #261) statt vom Benutzer.
+    if ABuild.RequestedBy <> '' then
+      Root.AddPair('requestedBy', ABuild.RequestedBy);
     Root.AddPair('errors', TJSONNumber.Create(Counts[TCompilerSeverity.Error] + Counts[TCompilerSeverity.Fatal]));
     Root.AddPair('warnings', TJSONNumber.Create(Counts[TCompilerSeverity.Warning]));
     Root.AddPair('hints', TJSONNumber.Create(Counts[TCompilerSeverity.Hint]));

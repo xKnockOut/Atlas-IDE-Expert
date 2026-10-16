@@ -77,6 +77,7 @@
         <DCCReference Include="Source\Diagnostics\Atlas.Windows.Diagnostics.StackTrace.pas"/>
         <DCCReference Include="Source\Diagnostics\Atlas.Windows.Diagnostics.ProcessInfo.pas"/>
         <DCCReference Include="Source\Process\Atlas.Windows.Process.ParentWatcher.pas"/>
+        <DCCReference Include="Source\Process\Atlas.Windows.Process.Instances.pas"/>
         <DCCReference Include="Source\Projects\Atlas.Windows.Projects.DelphiInstallation.pas"/>
         <DCCReference Include="Source\Compiler\Atlas.Windows.Compiler.Adapters.ProcessRunner.pas"/>
         <DCCReference Include="Source\Documents\Atlas.Windows.Documents.PathCanonicalizer.pas"/>

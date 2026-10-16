@@ -138,6 +138,7 @@ begin
   Assert.IsTrue(Settings.TodoList, 'Befehl standardmäßig da (#68)');
   Assert.IsTrue(Settings.MetricsReport, 'Befehl standardmäßig da (#66)');
   Assert.IsTrue(Settings.TeamFile, 'Projektdatei standardmäßig an (#486)');
+  Assert.IsTrue(Settings.McpBuild, 'Builds für Claude Code standardmäßig erlaubt (#261)');
   Assert.IsTrue(Settings.BaselineUpdate, 'Befehl standardmäßig da (#97)');
   Assert.IsTrue(Settings.SlashCommands, 'Schnellbefehle standardmäßig an (#399)');
   Assert.IsTrue(Settings.Snippets, 'Code-Vorlagen standardmäßig an (#51)');
@@ -223,6 +224,7 @@ begin
   Settings.TodoList := False;
   Settings.MetricsReport := False;
   Settings.TeamFile := False;
+  Settings.McpBuild := False;
   Settings.BaselineUpdate := False;
   Settings.EditorKeysPriority := True;
   Settings.SlashCommands := False;
@@ -294,6 +296,7 @@ begin
   Assert.IsFalse(Loaded.TodoList);
   Assert.IsFalse(Loaded.MetricsReport);
   Assert.IsFalse(Loaded.TeamFile);
+  Assert.IsFalse(Loaded.McpBuild);
   Assert.IsFalse(Loaded.BaselineUpdate);
   Assert.IsTrue(Loaded.EditorKeysPriority);
   Assert.IsFalse(Loaded.SlashCommands);
@@ -533,9 +536,9 @@ begin
   Settings.GenerateMenuRecentFirst := False;
   Settings.GenerateMenuShowCommandNames := False;
   Store := TMemoryStore.Create;
-  Settings.SaveTo(Store);
+  Settings.Save(Store);
   Loaded := TAtlasPluginSettings.Defaults;
-  Loaded.LoadFrom(Store);
+  Loaded.Load(Store);
   Assert.IsFalse(Loaded.GenerateMenu, 'abschaltbar');
   Assert.AreEqual(0, Loaded.GenerateMenuKey, '0 = keine Taste');
   Assert.AreEqual('surround,generate', Loaded.GenerateMenuGroups);

@@ -1,0 +1,2 @@
+Embarcadero Delphi for Win32 compiler version 37.0
+This version of the product does not support command line compiling.

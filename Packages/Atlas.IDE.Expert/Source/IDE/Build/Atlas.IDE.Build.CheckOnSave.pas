@@ -64,7 +64,6 @@ type
     procedure Run(const AProject: string; AManual: Boolean);
     class function ActiveProject: IOTAProject; static;
     class function Debugging: Boolean; static;
-    class procedure PressProgressOk; static;
     class procedure AddMessage(const AText: string); static;
   public
     /// <summary>AEvents gehört dem Aufrufer und muss länger leben; der Wächter wird dort angemeldet.</summary>
@@ -76,6 +75,9 @@ type
     procedure Saved(const AFileName: string);
     /// <summary>Aktives Projekt jetzt prüfen.</summary>
     procedure CheckNow;
+    /// <summary>Drückt OK im Fortschrittsdialog des Compilers (nur dort, nie Abbrechen). Nur während eines eigenen
+    /// Laufs aufrufen (auch vom Build-Läufer, #261).</summary>
+    class procedure PressProgressOk; static;
   end;
 
 implementation
