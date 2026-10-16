@@ -115,7 +115,8 @@ uses
   Atlas.IDE.Bookmarks.Gutter,
   Atlas.IDE.Editor.GutterMarks,
   Atlas.Core.Editor.WorkspacePlan,
-  Atlas.IDE.Editor.TestUnitLens;
+  Atlas.IDE.Editor.TestUnitLens,
+  Atlas.IDE.Completion.Editor;
 
 var
   ManagerIndex: Integer = -1;
@@ -1354,7 +1355,70 @@ begin
       else
         Result := nil;
     end;
+  Hooks.ServerPath :=
+    function: string
+    var
+      Arguments: string;
+    begin
+      Result := TAtlasCodeInsightManager.ServerPath(Arguments);
+    end;
   Setup := TAtlasIdeSetupChecklist.Create(TAtlasStatusRegistry.Default, Hooks);
+end;
+
+/// <summary>Optionsseiten (#227) mit ihren Haken (A-09): Die Seiten importieren die Features nicht, die sie
+/// bedienen.</summary>
+procedure RegisterOptions;
+var
+  Hooks: TAtlasOptionsHooks;
+begin
+  Hooks := Default(TAtlasOptionsHooks);
+  Hooks.ResetHistory :=
+    procedure
+    begin
+      TAtlasIdeHistory.Reset;
+    end;
+  Hooks.Command :=
+    function(ACommand: string): TJSONValue
+    begin
+      // Kennzahlen, „Index neu aufbauen“ und „Index löschen“ der Einstellungsseite (#492).
+      if Manager <> nil then
+        Result := Manager.ExecuteServerCommand(ACommand)
+      else
+        Result := nil;
+    end;
+  Hooks.ResetUsage :=
+    procedure
+    begin
+      TAtlasIdeCommandUsage.ResetCounts;
+    end;
+  Hooks.UnblockTips :=
+    procedure
+    begin
+      TAtlasIdeDiscover.UnblockAll;
+    end;
+  Hooks.ServerPath :=
+    function: string
+    var
+      Arguments: string;
+    begin
+      Result := TAtlasCodeInsightManager.ServerPath(Arguments);
+    end;
+  Hooks.DefaultServerPath :=
+    function: string
+    begin
+      Result := TAtlasCodeInsightManager.DefaultServerPath;
+    end;
+  Hooks.IdeTemplateFolder :=
+    function: string
+    begin
+      Result := TAtlasEditorCompletion.IdeTemplateFolder;
+    end;
+  Hooks.SnippetFolder :=
+    function: string
+    begin
+      Result := TAtlasEditorCompletion.SnippetFolder;
+    end;
+  TAtlasOptionsRegistration.Register(Hooks);
 end;
 
 /// <summary>Meldet an, was die Stufe des abgesicherten Starts (#722) und die Einstellungen erlauben; mehrfach
@@ -1914,19 +1978,7 @@ begin
       else
         Result := nil;
     end;
-  TAtlasOptionsRegistration.Register(
-    procedure
-    begin
-      TAtlasIdeHistory.Reset;
-    end,
-    function(ACommand: string): TJSONValue
-    begin
-      // Kennzahlen, „Index neu aufbauen“ und „Index löschen“ der Einstellungsseite (#492).
-      if Manager <> nil then
-        Result := Manager.ExecuteServerCommand(ACommand)
-      else
-        Result := nil;
-    end);
+  RegisterOptions;
   // Ladezeit bis zur freien Nachrichtenschleife: zu lange zählt beim nächsten Start wie ein Absturz (#722).
   TAtlasMainThread.ForceQueue(TAtlasFeature.Settings,
     procedure

@@ -50,6 +50,9 @@ type
     StartServer: TFunc<Boolean, Boolean>;
     /// <summary>Befehl an den laufenden Server; Ergebnis gehört dem Aufrufer, nil ohne Server.</summary>
     ServerCommand: TFunc<string, TJSONValue>;
+    /// <summary>Pfad der AtlasServer.exe nach den Einstellungen ('' ohne Haken; A-09: statt Import des
+    /// Code Insight-Managers).</summary>
+    ServerPath: TFunc<string>;
   end;
 
   TAtlasIdeSetupChecklist = class
@@ -123,7 +126,6 @@ uses
   Atlas.Core.Settings.Plugin,
   Atlas.Core.Updates.Check,
   Atlas.UI.Strings,
-  Atlas.IDE.CodeInsight.Manager,
   Atlas.IDE.Commands.KeyMap,
   Atlas.IDE.Editor.Structure,
   Atlas.IDE.Editor.Style,
@@ -183,12 +185,14 @@ var
   Modules: IOTAModuleServices;
   Group: IOTAProjectGroup;
   Active: IOTAProject;
-  Path, Arguments: string;
+  Path: string;
   Index, Percent: Integer;
 begin
   Result := Default(TAtlasSetupInput);
   Settings := TAtlasIdeSettings.Current;
-  Path := TAtlasCodeInsightManager.ServerPath(Arguments);
+  Path := '';
+  if Assigned(FHooks.ServerPath) then
+    Path := FHooks.ServerPath();
   Result.ServerFound := (Path <> '') and FileExists(Path);
   if Assigned(FHooks.ServerInfo) then
     Result.Server := FHooks.ServerInfo();
@@ -224,7 +228,6 @@ end;
 function TIdeEnvironment.ChooseServerPath(out APath: string): Boolean;
 var
   Dialog: TOpenDialog;
-  Arguments: string;
 begin
   APath := '';
   Dialog := TOpenDialog.Create(nil);
@@ -232,7 +235,8 @@ begin
     Dialog.Title := TAtlasStrings.Text(TAtlasTextId.SetupChooseTitle);
     Dialog.Filter := TAtlasStrings.Text(TAtlasTextId.SettingsServerFilter);
     Dialog.Options := Dialog.Options + [ofFileMustExist];
-    Dialog.InitialDir := ExtractFilePath(TAtlasCodeInsightManager.ServerPath(Arguments));
+    if Assigned(FHooks.ServerPath) then
+      Dialog.InitialDir := ExtractFilePath(FHooks.ServerPath());
     Result := Dialog.Execute;
     if Result then
       APath := Dialog.FileName;
