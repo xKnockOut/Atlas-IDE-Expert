@@ -31,8 +31,6 @@ uses
   ToolsAPI,
   Atlas.Core.Signature.Contract,
   Atlas.Core.Signature.Controller,
-  Atlas.Core.Signature.Providers.Server,
-  Atlas.Core.Lsp.Session,
   Atlas.UI.Signature.Hint,
   Atlas.Core.Editor.CloseRules,
   Atlas.IDE.Editor.KeyHook;
@@ -44,7 +42,7 @@ type
 
   TAtlasEditorSignature = class
   private
-    FProvider: TAtlasServerSignatureProvider;
+    FProvider: IAtlasSignatureSource;
     FHint: TAtlasSignatureHint;
     FController: TAtlasSignatureController;
     FTimer: TTimer;
@@ -82,7 +80,8 @@ type
   public
     /// <summary>Beim nächsten Hint für AName die Überladung AIndex wählen (aus dem Detailpanel, #425).</summary>
     class procedure PreferOverload(const AName: string; AIndex: Integer); static;
-    constructor Create(const ASession: TAtlasSessionFunc; const ACompletionOpen: TAtlasBoolFunc;
+    /// <summary>ASource: Server-Anbieter, eingesetzt von der Kompositionswurzel.</summary>
+    constructor Create(const ASource: IAtlasSignatureSource; const ACompletionOpen: TAtlasBoolFunc;
       const ALog: TAtlasLogFunc);
     destructor Destroy; override;
     /// <summary>Öffnet den Hint für den Aufruf am Cursor von AView; False ohne Aufruf.</summary>
@@ -105,7 +104,8 @@ uses
   Atlas.Core.Signature.CallScanner,
   Atlas.IDE.Editor.Buffer,
   Atlas.IDE.Editor.Style,
-  Atlas.IDE.Settings.Store;
+  Atlas.IDE.Settings.Store,
+  Atlas.Core.Lsp.Session;
 
 /// <summary>Größe des Editorfensters (Client-Bereich); (0, 0) ohne Fenster.</summary>
 function EditorSize(AWindow: HWND): TPoint;
@@ -244,7 +244,7 @@ end;
 
 { TAtlasEditorSignature }
 
-constructor TAtlasEditorSignature.Create(const ASession: TAtlasSessionFunc; const ACompletionOpen: TAtlasBoolFunc;
+constructor TAtlasEditorSignature.Create(const ASource: IAtlasSignatureSource; const ACompletionOpen: TAtlasBoolFunc;
   const ALog: TAtlasLogFunc);
 var
   Editor: IOTAEditorServices;
@@ -257,7 +257,7 @@ begin
   FOpenParen := -1;
   FLastLine := -1;
   FDismissedParen := -1;
-  FProvider := TAtlasServerSignatureProvider.Create(ASession);
+  FProvider := ASource;
   FHint := TAtlasSignatureHint.Create(nil);
   FController := TAtlasSignatureController.Create(FHint);
   FHint.OnSelect :=
@@ -289,7 +289,7 @@ begin
   Shutdown;
   FController.Free;
   FHint.Free;
-  FProvider.Free;
+  FProvider := nil;
   FKeys.Free;
   inherited;
 end;
