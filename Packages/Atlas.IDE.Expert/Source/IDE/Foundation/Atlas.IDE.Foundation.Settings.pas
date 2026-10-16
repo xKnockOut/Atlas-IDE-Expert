@@ -60,6 +60,11 @@ type
     class function ProblemMarksOn: Boolean; static;
     /// <summary>Übernimmt und speichert ASettings (gespeicherte Werte, ohne Sitzungswerte).</summary>
     class procedure Update(const ASettings: TAtlasPluginSettings); static;
+    /// <summary>Inhalt von %APPDATA%\Atlas\settings.json ('' ohne Datei) für Export und Import (#723).</summary>
+    class function GlobalText: string; static;
+    /// <summary>Schreibt AText nach settings.json (#723); False, wenn die Datei da, aber nicht lesbar ist.
+    /// Danach Update aufrufen, damit die umgeleiteten Plugin-Werte dazukommen.</summary>
+    class function SaveGlobalText(const AText: string): Boolean; static;
     /// <summary>Sitzungswerte der Schnellschalter (#604).</summary>
     class function Session: TAtlasToggleSession; static;
     class procedure SetSession(const ASession: TAtlasToggleSession); static;
@@ -313,6 +318,23 @@ begin
   if Readable then
     SaveGlobal(Content, Routed.Text);
   Changed;
+end;
+
+class function TAtlasIdeSettings.GlobalText: string;
+var
+  Content: TAtlasTextFileContent;
+begin
+  LoadGlobal(Content);
+  Result := Content.Text;
+end;
+
+class function TAtlasIdeSettings.SaveGlobalText(const AText: string): Boolean;
+var
+  Content: TAtlasTextFileContent;
+begin
+  Result := LoadGlobal(Content);
+  if Result then
+    SaveGlobal(Content, AText);
 end;
 
 class function TAtlasIdeSettings.Session: TAtlasToggleSession;

@@ -54,6 +54,9 @@ type
   private
     FLanguage: TAtlasLanguage;
   public
+    /// <summary>Erste Benutzung (VCL, Menüs, Warteschlange) ungemessen vorwegnehmen.</summary>
+    [SetupFixture]
+    procedure WarmUpFirstUse;
     /// <summary>Texte deutsch; danach die Sprache von vorher.</summary>
     [Setup]
     procedure Setup;
@@ -254,6 +257,32 @@ begin
 end;
 
 { TAtlasQuickActionsBarTests }
+
+procedure TAtlasQuickActionsBarTests.WarmUpFirstUse;
+begin
+  Setup;
+  try
+    try
+      ButtonsFollowSwitchAndItems;
+    except
+      on Exception do
+        ;
+    end;
+  finally
+    TearDown;
+  end;
+  Setup;
+  try
+    try
+      ActiveRowFollowsMouse;
+    except
+      on Exception do
+        ;
+    end;
+  finally
+    TearDown;
+  end;
+end;
 
 procedure TAtlasQuickActionsBarTests.Setup;
 begin
