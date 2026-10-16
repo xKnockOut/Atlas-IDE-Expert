@@ -167,7 +167,7 @@ var
   Baseline: IRuleBaseline;
 begin
   Baseline := BaselineOf([Source('Src\U.pas', Original, [Finding('a', 2)])]);
-  Assert.AreEqual(1, Baseline.Count);
+  Assert.AreEqual(1, Integer(Baseline.Count));
   Assert.AreEqual<NativeInt>(0, Length(Baseline.Filter('Src\U.pas', Original, [Finding('a', 2)])));
   // Andere Regel in derselben Zeile ist neu.
   Assert.AreEqual<NativeInt>(1, Length(Baseline.Filter('Src\U.pas', Original, [Finding('b', 2)])));
@@ -230,9 +230,9 @@ var
 begin
   // Neu geschrieben enthält die Baseline nur, was aktuell gefunden wird.
   Baseline := BaselineOf([Source('U.pas', Original, [Finding('a', 2)]), Source('V.pas', Original, nil)]);
-  Assert.AreEqual(1, Baseline.Count);
+  Assert.AreEqual(1, Integer(Baseline.Count));
   Baseline := BaselineOf([Source('U.pas', Original, nil)]);
-  Assert.AreEqual(0, Baseline.Count);
+  Assert.AreEqual(0, Integer(Baseline.Count));
   Assert.AreEqual<NativeInt>(1, Length(Baseline.Filter('U.pas', Original, [Finding('a', 2)])));
 end;
 
@@ -362,7 +362,7 @@ begin
   Assert.AreEqual(1, Outcome.Removed);
   Assert.AreEqual(1, Outcome.Unchanged);
   Assert.AreEqual<NativeInt>(0, Length(Outcome.Orphans));
-  Assert.AreEqual(3, TRuleBaseline.FromJson(Outcome.Json).Count);
+  Assert.AreEqual(3, Integer(TRuleBaseline.FromJson(Outcome.Json).Count));
 end;
 
 procedure TRuleBaselineTests.UpdateReportsOrphansOfRenamedFile;
@@ -381,7 +381,7 @@ begin
     end);
   Assert.AreEqual<NativeInt>(1, Length(Outcome.Orphans));
   Assert.AreEqual('Src/Alt.pas', Outcome.Orphans[0].Path);
-  Assert.AreEqual(2, Outcome.Orphans[0].Count);
+  Assert.AreEqual(2, Integer(Outcome.Orphans[0].Count));
   Assert.AreEqual(2, Outcome.OrphanCount);
   Assert.AreEqual(2, Outcome.Removed);
   Assert.AreEqual(2, Outcome.Added);

@@ -124,7 +124,7 @@ begin
   Assert.AreEqual('Xml.Helpers', Lines[0].Name, 'fehlende Unit mit Namen');
   Assert.AreEqual('Src\Main.pas', Lines[0].FileName);
   Assert.AreEqual(12, Lines[0].Line);
-  Assert.AreEqual(2, Lines[0].Count);
+  Assert.AreEqual(2, Integer(Lines[0].Count));
   Assert.IsTrue(Lines[2].Kind = TAtlasSetupFindingKind.UndefinedDefine);
   // Drei weitere Units stehen nur in der Zahl.
   Assert.AreEqual(3, More);
@@ -200,7 +200,7 @@ begin
   Assert.AreEqual('Xml.Helpers', Setup.MissingUnits[0].Name);
   Assert.AreEqual('Src\Main.pas', Setup.MissingUnits[0].FileName, 'relativ zum Projekt');
   Assert.AreEqual('D:\Fremd\Lib.pas', Setup.UndefinedDefines[0].FileName, 'außerhalb bleibt der Pfad');
-  Assert.AreEqual(3, Setup.MissingUnits[0].Count);
+  Assert.AreEqual(3, Integer(Setup.MissingUnits[0].Count));
   Assert.IsFalse(Setup.PathsClean);
   // Schritt 4 bleibt offen; die Karte nennt die Unit.
   Card := TAtlasSetupCard.Empty;

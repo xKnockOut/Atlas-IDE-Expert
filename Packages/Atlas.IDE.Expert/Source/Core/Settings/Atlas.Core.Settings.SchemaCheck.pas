@@ -33,6 +33,7 @@ type
 implementation
 
 uses
+  System.Generics.Collections,
   Atlas.Core.Settings.JsonText;
 
 function IsText(AValue: TJSONValue): Boolean;

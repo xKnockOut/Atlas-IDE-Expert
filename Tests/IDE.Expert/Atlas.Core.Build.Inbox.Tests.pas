@@ -35,6 +35,7 @@ type
 implementation
 
 uses
+  System.Generics.Collections,
   System.SysUtils,
   System.IOUtils,
   System.JSON,
@@ -53,6 +54,8 @@ procedure TAtlasBuildInboxTests.TearDown;
 begin
   if TDirectory.Exists(ExtractFileDir(ExtractFileDir(FFolder))) then
     TDirectory.Delete(ExtractFileDir(ExtractFileDir(FFolder)), True);
+  // Der Leckmonitor misst den Saldo von Setup und TearDown.
+  FFolder := '';
 end;
 
 procedure TAtlasBuildInboxTests.ReadsRequest;
@@ -130,7 +133,7 @@ begin
     Assert.AreEqual('mcp', Build.GetValue('requestedBy').Value);
     // Info-Meldungen bleiben weg; Zeilen und Spalten 1-basiert wie in der IDE.
     Items := Build.GetValue('messages') as TJSONArray;
-    Assert.AreEqual(2, Items.Count);
+    Assert.AreEqual(2, Integer(Items.Count));
     First := Items.Items[0] as TJSONObject;
     Assert.AreEqual('C:\P\Main.pas', First.GetValue('file').Value);
     Assert.AreEqual('12', First.GetValue('line').Value);

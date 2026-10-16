@@ -148,7 +148,6 @@ type
     /// <summary>Cursor im Namen von FieldByName('…'), FindField('…') oder ParamByName('…') (#461).
     /// ATypedQuote: Das gerade getippte ' steht vielleicht noch nicht im Puffer.</summary>
     function InDataNameString(ATypedQuote: Boolean): Boolean;
-    function Completion: TAtlasEditorCompletion;
     function Signature: TAtlasEditorSignature;
     function SessionOrNil: TLspSession;
     /// <summary>Gibt es den Server? Ohne ihn übernimmt die eingebaute Code Insight.</summary>
@@ -159,6 +158,8 @@ type
     class function OwnTooltip: Boolean; static;
     class function DiagnoseEnabled: Boolean; static;
   public
+    /// <summary>Vervollständigung der Sitzung (Schnipsel, Neue Datei); nil vor dem Start.</summary>
+    function Completion: TAtlasEditorCompletion;
     /// <summary>Pfad zu AtlasServer.exe aus den Einstellungen, sonst DefaultServerPath; AArguments: zusätzliche
     /// Argumente aus der Registry. Auch für die Aufrufe der Optionsseite (#227).</summary>
     class function ServerPath(out AArguments: string): string; static;
@@ -256,7 +257,6 @@ uses
   System.Win.Registry,
   Atlas.IDE.Foundation.Settings,
   Atlas.Core.Diagnostics.Hangs,
-  Atlas.Core.Lsp.Client,
   Atlas.Core.Problems.Contract,
   Winapi.Windows,
   Atlas.IDE.Foundation.EditorBuffer,

@@ -40,6 +40,7 @@ type
 implementation
 
 uses
+  Winapi.Windows,
   System.SysUtils,
   System.IOUtils,
   System.JSON,

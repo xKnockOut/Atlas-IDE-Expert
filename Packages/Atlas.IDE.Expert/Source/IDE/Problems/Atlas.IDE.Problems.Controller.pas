@@ -197,42 +197,48 @@ end;
 
 procedure TAtlasProblemsController.TDocumentWorker.Add(const APulls: TArray<TPull>);
 begin
-  TMonitor.Enter(FLock);
+  System.TMonitor.Enter(FLock);
   try
     FJobs := FJobs + APulls;
   finally
-    TMonitor.Exit(FLock);
+    System.TMonitor.Exit(FLock);
   end;
   FWake.SetEvent;
 end;
 
 function TAtlasProblemsController.TDocumentWorker.Idle: Boolean;
 begin
-  TMonitor.Enter(FLock);
+  System.TMonitor.Enter(FLock);
   try
     Result := (Length(FJobs) = 0) and (FBusy = 0);
   finally
-    TMonitor.Exit(FLock);
+    System.TMonitor.Exit(FLock);
   end;
 end;
 
 procedure TAtlasProblemsController.TDocumentWorker.Deliver(const APull: TPull; const AReport: TLspDiagnosticReport);
+var
+  Work: TThreadProcedure;
 begin
   // Eigener Rahmen je Aufruf: Die Closure fängt diese Werte, nicht die Schleifenvariable.
-  Queue(
+  Work :=
     procedure
     begin
       FDeliver(APull, AReport);
-    end);
+    end;
+  Queue(Work);
 end;
 
 procedure TAtlasProblemsController.TDocumentWorker.LogLater(const AMessage: string);
+var
+  Work: TThreadProcedure;
 begin
-  Queue(
+  Work :=
     procedure
     begin
       FLog(AMessage);
-    end);
+    end;
+  Queue(Work);
 end;
 
 procedure TAtlasProblemsController.TDocumentWorker.Execute;
@@ -243,14 +249,14 @@ begin
   while not Terminated do
   begin
     FWake.WaitFor(1000);
-    TMonitor.Enter(FLock);
+    System.TMonitor.Enter(FLock);
     try
       Jobs := FJobs;
       FJobs := nil;
       if Length(Jobs) > 0 then
         FBusy := 1;
     finally
-      TMonitor.Exit(FLock);
+      System.TMonitor.Exit(FLock);
     end;
     for Job in Jobs do
     begin
@@ -263,11 +269,11 @@ begin
           LogLater('Probleme: ' + ExtractFileName(Job.FileName) + ': ' + E.Message);
       end;
     end;
-    TMonitor.Enter(FLock);
+    System.TMonitor.Enter(FLock);
     try
       FBusy := 0;
     finally
-      TMonitor.Exit(FLock);
+      System.TMonitor.Exit(FLock);
     end;
   end;
 end;
@@ -299,21 +305,27 @@ begin
 end;
 
 procedure TAtlasProblemsController.TWorkspaceWorker.Deliver(const AReports: TArray<TLspDiagnosticReport>);
+var
+  Work: TThreadProcedure;
 begin
-  Queue(
+  Work :=
     procedure
     begin
       FDeliver(AReports);
-    end);
+    end;
+  Queue(Work);
 end;
 
 procedure TAtlasProblemsController.TWorkspaceWorker.LogLater(const AMessage: string);
+var
+  Work: TThreadProcedure;
 begin
-  Queue(
+  Work :=
     procedure
     begin
       FLog(AMessage);
-    end);
+    end;
+  Queue(Work);
 end;
 
 procedure TAtlasProblemsController.TWorkspaceWorker.Execute;

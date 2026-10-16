@@ -703,7 +703,8 @@ begin
   try
     Input := AJob.Input;
     Folder := ExtractFileDir(AJob.Project);
-    Variable := AJob.Macros.Variable;
+    // Mit (): Variable liefert eine Funktion; ohne Klammern wäre es die Methode selbst.
+    Variable := AJob.Macros.Variable();
     // Pfade mit unbekanntem Makro fallen weg; ihre Makros machen die Funde unsicher.
     Skipped := nil;
     Input.SearchPaths := TAtlasPathCheck.ExpandPaths(AJob.SearchPaths, Folder, Variable, Skipped);

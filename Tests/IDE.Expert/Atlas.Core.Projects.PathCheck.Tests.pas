@@ -307,7 +307,7 @@ begin
     Assert.AreEqual('Helpers', FindingNames(Check.MissingUnits));
     Assert.AreEqual('C:\P\App.dpr', Check.MissingUnits[0].FileName);
     Assert.AreEqual(4, Check.MissingUnits[0].Line);
-    Assert.AreEqual(2, Check.MissingUnits[0].Count);
+    Assert.AreEqual(2, Integer(Check.MissingUnits[0].Count));
     // Mit dem Suchpfad ist die Unit da, alles ist sauber.
     Disk.Add('C:\Shared\Helpers.pas', 'unit Helpers; interface implementation end.');
     Input.SearchPaths := ['C:\Shared'];
@@ -381,7 +381,7 @@ begin
     Assert.AreEqual('USE_LOG|OTHER', FindingNames(Check.UndefinedDefines));
     Assert.AreEqual('C:\P\App.dpr', Check.UndefinedDefines[0].FileName);
     Assert.AreEqual(3, Check.UndefinedDefines[0].Line);
-    Assert.AreEqual(2, Check.UndefinedDefines[0].Count);
+    Assert.AreEqual(2, Integer(Check.UndefinedDefines[0].Count));
     Assert.AreEqual('C:\P\Main.pas', Check.UndefinedDefines[1].FileName);
   finally
     Disk.Free;
@@ -516,7 +516,7 @@ begin
   // AddDefault ändert nichts Gesetztes.
   Macros.AddDefault('Platform', 'Win32');
   Assert.AreEqual('Win64', Macros.Value('Platform'));
-  Variable := Macros.Variable;
+  Variable := Macros.Variable();
   Assert.AreEqual('C:\Delphi\lib\Win64\release', TAtlasPathCheck.ExpandPath('$(BDSLIB)\$(Platform)\release',
     'C:\P', Variable));
   Assert.AreEqual('C:\Work\App\Lib', TAtlasPathCheck.ExpandPath('$(ProjectDir)\Lib', 'C:\P', Variable));

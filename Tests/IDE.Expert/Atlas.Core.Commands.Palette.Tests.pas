@@ -185,7 +185,7 @@ begin
   Fake := TFakeRegistry.Create;
   Registry := Fake;
   RegisterSample(Registry);
-  Assert.AreEqual(2, Length(Fake.Ids));
+  Assert.AreEqual(2, Integer(Length(Fake.Ids)));
   Assert.AreEqual('Atlas.Zwei', Fake.Ids[1]);
   Assert.AreEqual(1, Fake.Conditional);
 end;

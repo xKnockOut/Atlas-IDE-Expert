@@ -218,11 +218,11 @@ begin
   Planned := Plan(Edit([Operation(TLspFileOperationKind.Create, 'C:\P\Neu.pas')],
     [FileEdits('C:\P\Neu.pas', [Insert(0, 0, 'unit Neu;')])]), TFakeEnvironment.Create);
   Assert.AreEqual('', Planned.Error);
-  Assert.AreEqual(1, Length(Planned.Creates));
+  Assert.AreEqual(1, Integer(Length(Planned.Creates)));
   Assert.AreEqual('unit Neu;', Planned.Creates[0].Content.Text);
   Assert.IsTrue(Planned.Creates[0].Kind = TAtlasFileChangeKind.Created);
   Assert.AreEqual(1, Planned.CreatedEdits);
-  Assert.AreEqual(0, Length(Planned.Files));
+  Assert.AreEqual(0, Integer(Length(Planned.Files)));
 end;
 
 procedure TWorkspacePlanTests.CreateExistingFailsWithoutFlags;
@@ -248,8 +248,8 @@ begin
   Change.IgnoreIfExists := True;
   Planned := Plan(Edit([Change], nil), Environment);
   Assert.AreEqual('', Planned.Error);
-  Assert.AreEqual(0, Length(Planned.Creates));
-  Assert.AreEqual(0, Length(Planned.Files));
+  Assert.AreEqual(0, Integer(Length(Planned.Creates)));
+  Assert.AreEqual(0, Integer(Length(Planned.Files)));
 end;
 
 procedure TWorkspacePlanTests.CreateExistingOverwriteReplaces;
@@ -264,11 +264,11 @@ begin
   Change.Overwrite := True;
   Planned := Plan(Edit([Change], [FileEdits('C:\P\Alt.pas', [Insert(0, 0, 'neu')])]), Environment);
   Assert.AreEqual('', Planned.Error);
-  Assert.AreEqual(0, Length(Planned.Creates));
-  Assert.AreEqual(1, Length(Planned.Files));
+  Assert.AreEqual(0, Integer(Length(Planned.Creates)));
+  Assert.AreEqual(1, Integer(Length(Planned.Files)));
   Assert.IsTrue(Planned.Files[0].HasBase);
   Assert.AreEqual('', Planned.Files[0].Base);
-  Assert.AreEqual(1, Length(Planned.Files[0].Edits));
+  Assert.AreEqual(1, Integer(Length(Planned.Files[0].Edits)));
 end;
 
 procedure TWorkspacePlanTests.RenameMovesContentEncodingAndProject;
@@ -280,11 +280,11 @@ begin
   Environment.AddFile('C:\P\Alt.pas', 'unit Alt;', 'C:\P\P.dproj');
   Planned := Plan(Edit([Operation(TLspFileOperationKind.Rename, 'C:\P\Alt.pas', 'C:\P\Neu.pas')], nil), Environment);
   Assert.AreEqual('', Planned.Error);
-  Assert.AreEqual(1, Length(Planned.Removes));
+  Assert.AreEqual(1, Integer(Length(Planned.Removes)));
   Assert.AreEqual('C:\P\Alt.pas', Planned.Removes[0].FileName);
   Assert.AreEqual('C:\P\P.dproj', Planned.Removes[0].Project);
   Assert.AreEqual('unit Alt;', Planned.Removes[0].Content.Text);
-  Assert.AreEqual(1, Length(Planned.Creates));
+  Assert.AreEqual(1, Integer(Length(Planned.Creates)));
   Assert.AreEqual('C:\P\Neu.pas', Planned.Creates[0].FileName);
   Assert.AreEqual('C:\P\P.dproj', Planned.Creates[0].Project);
   Assert.AreEqual('unit Alt;', Planned.Creates[0].Content.Text);
@@ -301,8 +301,8 @@ begin
   Environment.AddFile('C:\P\Alt.pas', 'unit Alt;');
   Planned := Plan(Edit([Operation(TLspFileOperationKind.Rename, 'C:\P\Alt.pas', 'c:\p\ALT.pas')], nil), Environment);
   Assert.AreEqual('', Planned.Error);
-  Assert.AreEqual(0, Length(Planned.Creates));
-  Assert.AreEqual(0, Length(Planned.Removes));
+  Assert.AreEqual(0, Integer(Length(Planned.Creates)));
+  Assert.AreEqual(0, Integer(Length(Planned.Removes)));
 end;
 
 procedure TWorkspacePlanTests.RenameOfCreatedFileKeepsCreate;
@@ -316,11 +316,11 @@ begin
     Operation(TLspFileOperationKind.Rename, 'C:\P\A.pas', 'C:\P\B.pas')],
     [FileEdits('C:\P\B.pas', [Insert(0, 0, 'unit B;')])]), Environment);
   Assert.AreEqual('', Planned.Error);
-  Assert.AreEqual(1, Length(Planned.Creates));
+  Assert.AreEqual(1, Integer(Length(Planned.Creates)));
   Assert.AreEqual('C:\P\B.pas', Planned.Creates[0].FileName);
   Assert.AreEqual('C:\P\P.dproj', Planned.Creates[0].Project);
   Assert.AreEqual('unit B;', Planned.Creates[0].Content.Text);
-  Assert.AreEqual(0, Length(Planned.Removes));
+  Assert.AreEqual(0, Integer(Length(Planned.Removes)));
 end;
 
 procedure TWorkspacePlanTests.DeleteOfCreatedFileDropsCreate;
@@ -330,8 +330,8 @@ begin
   Planned := Plan(Edit([Operation(TLspFileOperationKind.Create, 'C:\P\A.pas'),
     Operation(TLspFileOperationKind.Delete, 'C:\P\A.pas')], nil), TFakeEnvironment.Create);
   Assert.AreEqual('', Planned.Error);
-  Assert.AreEqual(0, Length(Planned.Creates));
-  Assert.AreEqual(0, Length(Planned.Removes));
+  Assert.AreEqual(0, Integer(Length(Planned.Creates)));
+  Assert.AreEqual(0, Integer(Length(Planned.Removes)));
 end;
 
 procedure TWorkspacePlanTests.DeleteMissingFails;
@@ -351,7 +351,7 @@ begin
   Change.IgnoreIfNotExists := True;
   Planned := Plan(Edit([Change], nil), TFakeEnvironment.Create);
   Assert.AreEqual('', Planned.Error);
-  Assert.AreEqual(0, Length(Planned.Removes));
+  Assert.AreEqual(0, Integer(Length(Planned.Removes)));
 end;
 
 procedure TWorkspacePlanTests.DeleteFolderFails;
@@ -388,9 +388,9 @@ begin
     Operation(TLspFileOperationKind.Create, 'C:\P\Alt.pas')],
     [FileEdits('C:\P\Alt.pas', [Insert(0, 0, 'unit Neu;')])]), Environment);
   Assert.AreEqual('', Planned.Error);
-  Assert.AreEqual(0, Length(Planned.Removes));
-  Assert.AreEqual(0, Length(Planned.Creates));
-  Assert.AreEqual(1, Length(Planned.Files));
+  Assert.AreEqual(0, Integer(Length(Planned.Removes)));
+  Assert.AreEqual(0, Integer(Length(Planned.Creates)));
+  Assert.AreEqual(1, Integer(Length(Planned.Files)));
   Assert.IsTrue(Planned.Files[0].HasBase);
   Assert.AreEqual('', Planned.Files[0].Base);
 end;
@@ -408,12 +408,12 @@ begin
   Change.Overwrite := True;
   Planned := Plan(Edit([Change], nil), Environment);
   Assert.AreEqual('', Planned.Error);
-  Assert.AreEqual(1, Length(Planned.Files));
+  Assert.AreEqual(1, Integer(Length(Planned.Files)));
   Assert.AreEqual('C:\P\B.pas', Planned.Files[0].FileName);
   Assert.IsTrue(Planned.Files[0].HasBase);
   Assert.AreEqual('unit A;', Planned.Files[0].Base);
-  Assert.AreEqual(0, Length(Planned.Files[0].Edits));
-  Assert.AreEqual(1, Length(Planned.Removes));
+  Assert.AreEqual(0, Integer(Length(Planned.Files[0].Edits)));
+  Assert.AreEqual(1, Integer(Length(Planned.Removes)));
 end;
 
 procedure TWorkspacePlanTests.NewUnitGoesIntoLoadedOwnerProject;
@@ -430,11 +430,11 @@ begin
     [FileEdits('C:\T\Tests.dproj', [Insert(0, 0, 'x')]), FileEdits('C:\T\Tests.dpr', [Insert(0, 0, 'y')])]),
     Environment);
   Assert.AreEqual('', Planned.Error);
-  Assert.AreEqual(1, Length(Planned.Creates));
+  Assert.AreEqual(1, Integer(Length(Planned.Creates)));
   Assert.AreEqual('C:\T\Tests.dproj', Planned.Creates[0].Project);
   // Die IDE trägt die Unit selbst ein: Änderungen an .dproj und .dpr entfallen.
-  Assert.AreEqual(0, Length(Planned.Files));
-  Assert.AreEqual(0, Length(Planned.Edit.Files));
+  Assert.AreEqual(0, Integer(Length(Planned.Files)));
+  Assert.AreEqual(0, Integer(Length(Planned.Edit.Files)));
 end;
 
 procedure TWorkspacePlanTests.NewFileUsesActiveProjectWithoutOwner;
@@ -453,7 +453,7 @@ begin
   Planned := Plan(Edit([Operation(TLspFileOperationKind.Create, 'C:\T\Neu.Tests.pas')],
     [FileEdits('C:\T\Tests.dproj', [Insert(0, 0, 'x')])]), Environment);
   Assert.AreEqual('', Planned.Creates[0].Project);
-  Assert.AreEqual(1, Length(Planned.Files));
+  Assert.AreEqual(1, Integer(Length(Planned.Files)));
   Assert.IsFalse(Planned.Files[0].HasBase);
 end;
 

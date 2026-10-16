@@ -83,6 +83,7 @@ implementation
 uses
   Winapi.Windows,
   ToolsAPI,
+  PlatformAPI,
   Atlas.Core.Diagnostics.Guard,
   Atlas.Core.Diagnostics.Hangs,
   Atlas.IDE.Build.CheckOnSave;
@@ -217,15 +218,15 @@ begin
   Activity := TAtlasActivity.Scope('Build für Claude Code');
   OldConfiguration := Project.CurrentConfiguration;
   OldPlatform := Project.CurrentPlatform;
-  Succeeded := False;
   Started := NowMs;
   try
     try
-      // Nur für diesen Build umschalten; der Benutzer findet danach seine Auswahl wieder.
+      // Nur für diesen Build umschalten; der Benutzer findet danach seine Auswahl wieder. Über IOTAProject:
+      // ActiveConfigurationName und CurrentPlatform der Hilfsschnittstellen sind nur lesbar.
       if (Configurations <> nil) and not SameText(OldConfiguration, ARequest.Configuration) then
-        Configurations.ActiveConfigurationName := ARequest.Configuration;
+        Project.CurrentConfiguration := ARequest.Configuration;
       if (Platforms <> nil) and not SameText(OldPlatform, ARequest.Platform) then
-        Platforms.CurrentPlatform := ARequest.Platform;
+        Project.CurrentPlatform := ARequest.Platform;
       FReport.Project.Configuration := Project.CurrentConfiguration;
       FReport.Project.Platform := Project.CurrentPlatform;
       FEvents.RequestedBy := ARequestedBy;
@@ -237,9 +238,9 @@ begin
     finally
       FBuilding := False;
       if (Configurations <> nil) and not SameText(Project.CurrentConfiguration, OldConfiguration) then
-        Configurations.ActiveConfigurationName := OldConfiguration;
+        Project.CurrentConfiguration := OldConfiguration;
       if (Platforms <> nil) and not SameText(Project.CurrentPlatform, OldPlatform) then
-        Platforms.CurrentPlatform := OldPlatform;
+        Project.CurrentPlatform := OldPlatform;
     end;
   except
     on E: Exception do

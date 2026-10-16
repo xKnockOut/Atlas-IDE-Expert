@@ -192,6 +192,7 @@ type
 implementation
 
 uses
+  System.Generics.Collections,
   System.JSON,
   Atlas.Text.Jsonc,
   Atlas.Text.Checkin;

@@ -402,14 +402,14 @@ begin
   try
     Store.SetTests([TPair<string, TAtlasProblem>.Create('C:\P\T.pas', Problem(4, 2, 'Erwartet 3, erhalten 4'))]);
     Assert.IsFalse(Store.Contains('C:\P\T.pas'), 'nur Tests: für den Server neu');
-    Assert.AreEqual(0, Length(Store.AllFiles), 'nur Tests: nicht vom Server geprüft');
-    Assert.AreEqual(1, Length(Store.ForFile('c:\p\t.pas')));
+    Assert.AreEqual(0, Integer(Length(Store.AllFiles)), 'nur Tests: nicht vom Server geprüft');
+    Assert.AreEqual(1, Integer(Length(Store.ForFile('c:\p\t.pas'))));
     Assert.AreEqual(TAtlasProblemStore.TestSource, Store.ForFile('C:\P\T.pas')[0].Source);
     // Erste Diagnosen des Servers ersetzen Compilermeldungen wie bei einer neuen Datei und lassen Tests stehen.
     Store.Update('C:\P\T.pas', 'a'#10'b'#10'c'#10'd'#10'e', True,
       [Problem(1, 0, 'Undeklariert', TAtlasProblem.CompilerSource)], '1', False);
     Shown := Store.ForFile('C:\P\T.pas');
-    Assert.AreEqual(2, Length(Shown));
+    Assert.AreEqual(2, Integer(Length(Shown)));
     Assert.AreEqual('Undeklariert', Shown[0].Message);
     Assert.AreEqual('Erwartet 3, erhalten 4', Shown[1].Message);
     Assert.IsTrue(Store.Contains('C:\P\T.pas'));
@@ -433,15 +433,15 @@ begin
     Store.Update('C:\P\A.pas', 'a', True, [Problem(0, 0, 'Regel')], '1', True);
     Store.SetTests([TPair<string, TAtlasProblem>.Create('C:\P\A.pas', Problem(0, 0, 'Test A')),
       TPair<string, TAtlasProblem>.Create('C:\P\B.pas', Problem(2, 0, 'Test B'))]);
-    Assert.AreEqual(2, Length(Store.Files));
+    Assert.AreEqual(2, Integer(Length(Store.Files)));
     Version := Store.Version;
     Store.SetTests([TPair<string, TAtlasProblem>.Create('C:\P\B.pas', Problem(3, 0, 'Test B neu'))]);
     Assert.IsTrue(Store.Version > Version);
-    Assert.AreEqual(1, Length(Store.ForFile('C:\P\A.pas')), 'Test A ersetzt, Regel bleibt');
+    Assert.AreEqual(1, Integer(Length(Store.ForFile('C:\P\A.pas'))), 'Test A ersetzt, Regel bleibt');
     Assert.AreEqual('Test B neu', Store.ForFile('C:\P\B.pas')[0].Message);
     Store.ClearTests;
     Assert.IsFalse(Store.Contains('C:\P\B.pas'));
-    Assert.AreEqual(1, Length(Store.Files), 'Datei nur mit Tests fällt weg');
+    Assert.AreEqual(1, Integer(Length(Store.Files)), 'Datei nur mit Tests fällt weg');
     Version := Store.Version;
     Store.ClearTests;
     Assert.AreEqual(Version, Store.Version, 'nichts zu entfernen: keine neue Version');

@@ -50,6 +50,7 @@ type
 implementation
 
 uses
+  System.Generics.Collections,
   Atlas.Common.Documents.Uris,
   Atlas.Common.Dfm.BinaryForm;
 
@@ -120,7 +121,11 @@ var
 begin
   Result := nil;
   if (AArguments <> nil) and (AArguments.Count > 0) and (AArguments.Items[0] is TJSONString) then
-    Exit([TDocumentUris.ToPath(AArguments.Items[0].Value)]);
+  begin
+    // Delphi: Exit mit Array-Literal geht nicht (E2001).
+    Result := [TDocumentUris.ToPath(AArguments.Items[0].Value)];
+    Exit;
+  end;
   for FileName in AProjectSources do
     for Extension in TArray<string>.Create('.dfm', '.fmx') do
       if AExists(ChangeFileExt(FileName, Extension)) then
