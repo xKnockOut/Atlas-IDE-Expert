@@ -312,6 +312,9 @@ begin
     '"CheckOnSave":{"type":"boolean","x-feature":"CheckOnSave",' +
       '"default":false,"x-page":"Compiler","x-quickToggle":true,' +
       '"x-caption":"Syntaxprüfung nach dem Speichern","x-captionEn":"Syntax check after saving","x-issue":"#548"},' +
+    '"McpBuild":{"type":"boolean","x-feature":"Build",' +
+      '"default":true,"x-page":"Compiler","x-quickToggle":true,' +
+      '"x-caption":"Builds für Claude Code","x-captionEn":"Builds for Claude Code","x-issue":"#261"},' +
     '"WelcomePage":{"type":"boolean","x-feature":"WelcomePage",' +
       '"default":true,"x-page":"Willkommensseite","x-quickToggle":true,' +
       '"x-caption":"Atlas auf der Willkommensseite","x-captionEn":"Atlas on the welcome page","x-issue":"#753"},' +

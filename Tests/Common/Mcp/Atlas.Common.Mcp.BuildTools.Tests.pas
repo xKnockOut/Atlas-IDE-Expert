@@ -18,6 +18,9 @@ type
     procedure NoBuildYet;
     [Test]
     procedure FileRoundTripAndReport;
+    /// <summary>#261: Builds von Claude Code (build_project) tragen requestedBy.</summary>
+    [Test]
+    procedure KeepsRequestedBy;
     [Test]
     procedure OmitsFilesOutsideWorkspaceAndFiltersProject;
     [Test]
@@ -97,6 +100,25 @@ begin
     Assert.AreEqual(5, First.GetValue<Integer>('column'));
     Assert.AreEqual('E2003', First.GetValue<string>('code'));
     Assert.AreEqual('error', First.GetValue<string>('severity'));
+  finally
+    Report.Free;
+  end;
+end;
+
+procedure TMcpBuildToolsTests.KeepsRequestedBy;
+var
+  Requested, Build: TIdeBuild;
+  Report: TJSONObject;
+begin
+  Assert.IsTrue(TMcpBuildTools.FromFileText(TMcpBuildTools.ToFileText(Sample), Build));
+  Assert.AreEqual('', Build.RequestedBy, 'Build des Benutzers');
+  Requested := Sample;
+  Requested.RequestedBy := 'mcp';
+  Assert.IsTrue(TMcpBuildTools.FromFileText(TMcpBuildTools.ToFileText(Requested), Build));
+  Assert.AreEqual('mcp', Build.RequestedBy);
+  Report := TJSONObject.ParseJSONValue(TMcpBuildTools.Report(Build, '', '')) as TJSONObject;
+  try
+    Assert.AreEqual('mcp', Report.GetValue<string>('requestedBy'));
   finally
     Report.Free;
   end;

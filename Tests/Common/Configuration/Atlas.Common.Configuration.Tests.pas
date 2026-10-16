@@ -339,6 +339,21 @@ begin
   Assert.AreEqual(2, Integer(Length(Issues)));
   Settings := TConfigurationParser.ParseLayered('{"compiler": {"onSave": true}}', '{}', Issues);
   Assert.IsTrue(Settings.Compiler.OnSave);
+  // Weg zum Compiler (#261): Vorgabe auto ohne cc.ps1.
+  Settings := Parse('{}', Issues);
+  Assert.AreEqual(Ord(TCompilerBackendSetting.Auto), Ord(Settings.Compiler.Backend));
+  Assert.AreEqual('', Settings.Compiler.IdeCommand);
+  Settings := Parse('{"compiler": {"backend": "ide", "ideCommand": "C:\\Tools\\cc.ps1"}}', Issues);
+  Assert.AreEqual(0, Integer(Length(Issues)));
+  Assert.AreEqual(Ord(TCompilerBackendSetting.Ide), Ord(Settings.Compiler.Backend));
+  Assert.AreEqual('C:\Tools\cc.ps1', Settings.Compiler.IdeCommand);
+  Settings := Parse('{"compiler": {"backend": "off"}}', Issues);
+  Assert.AreEqual(Ord(TCompilerBackendSetting.Off), Ord(Settings.Compiler.Backend));
+  Settings := Parse('{"compiler": {"backend": "dcc"}}', Issues);
+  Assert.AreEqual(Ord(TCompilerBackendSetting.Dcc), Ord(Settings.Compiler.Backend));
+  Settings := Parse('{"compiler": {"backend": "msbuild", "ideCommand": 3}}', Issues);
+  Assert.AreEqual(Ord(TCompilerBackendSetting.Auto), Ord(Settings.Compiler.Backend), 'ungültig = Vorgabe');
+  Assert.AreEqual(2, Integer(Length(Issues)));
   // Schnellbefehle (#293)
   Settings := Parse('{}', Issues);
   Assert.IsTrue(Settings.SlashCommands);
