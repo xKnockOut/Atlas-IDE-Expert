@@ -30,6 +30,8 @@ type
   TAtlasTestUnitLensSessionFunc = reference to function: TLspSession;
 
   TAtlasEditorTestUnitLens = class
+  private class var
+    FOnSwitchTestUnit: TProc;
   private type
     TEvents = class(TNTACodeEditorNotifier)
     protected
@@ -72,6 +74,9 @@ type
   public
     constructor Create(const ASession: TAtlasTestUnitLensSessionFunc);
     destructor Destroy; override;
+    /// <summary>Klick auf die Lens: zwischen Unit und Testunit wechseln (Editorbefehle). Setzt die Composition
+    /// (A-09: die Lens importiert die Editorbefehle nicht); nil = Klick ohne Wirkung.</summary>
+    class property OnSwitchTestUnit: TProc read FOnSwitchTestUnit write FOnSwitchTestUnit;
   end;
 
 implementation
@@ -89,7 +94,6 @@ uses
   Atlas.Core.Style.Palette,
   Atlas.Core.Editor.Pairs,
   Atlas.UI.Strings,
-  Atlas.IDE.Commands.Editor,
   Atlas.IDE.Editor.Buffer,
   Atlas.IDE.Settings.Store;
 
@@ -385,7 +389,8 @@ begin
       TAtlasGuard.Run(TAtlasFeature.EditorCommands,
         procedure
         begin
-          TAtlasIdeEditorCommands.SwitchTestUnit;
+          if Assigned(FOnSwitchTestUnit) then
+            FOnSwitchTestUnit();
         end);
       // Neu fragen: eine angelegte Testunit ändert die Lens.
       FFetchedAt := 0;
