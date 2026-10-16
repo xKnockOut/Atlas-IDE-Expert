@@ -21,6 +21,7 @@ uses
   Atlas.Core.Diagnostics.Guard,
   Atlas.Core.Style.Color,
   Atlas.Core.Style.Palette,
+  Atlas.Core.Editor.Elements,
   Atlas.Core.Bookmarks.Store,
   Atlas.IDE.Foundation.GutterMarks;
 
@@ -28,6 +29,7 @@ type
   TAtlasIdeBookmarksGutter = class(TAtlasGutterLayer)
   public
     function Feature: TAtlasFeature; override;
+    function Element: TAtlasDrawnElement; override;
     function Wanted: Boolean; override;
     procedure Track(const AFileName, AText: string; AOpened: Boolean); override;
     function HasMarks(const AFileName: string): Boolean; override;
@@ -54,6 +56,11 @@ uses
 function TAtlasIdeBookmarksGutter.Feature: TAtlasFeature;
 begin
   Result := TAtlasFeature.Bookmarks;
+end;
+
+function TAtlasIdeBookmarksGutter.Element: TAtlasDrawnElement;
+begin
+  Result := TAtlasDrawnElement.Bookmarks;
 end;
 
 function TAtlasIdeBookmarksGutter.Wanted: Boolean;

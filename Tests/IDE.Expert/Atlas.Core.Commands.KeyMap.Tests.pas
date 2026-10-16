@@ -327,6 +327,11 @@ begin
   Assert.AreEqual(Ord(TAtlasKeyContext.WelcomePage),
     Ord(TAtlasKeyMap.ContextOf(TAtlasKeyFunction.WelcomeQuickTests)));
   Assert.AreEqual(Ord(TAtlasKeyContext.Editor), Ord(TAtlasKeyMap.ContextOf(TAtlasKeyFunction.MethodToggleDown)));
+  // „Element ausblenden …“ (#628): Strg+. als Editorbefehl, immer mit Vorrang (ohne Element geht die Taste weiter).
+  Assert.AreEqual($40BE, Integer(EntryOf(Entries, TAtlasKeyFunction.HideElement).Key));
+  Assert.IsTrue(EntryOf(Entries, TAtlasKeyFunction.HideElement).Priority);
+  Assert.IsFalse(EntryOf(Entries, TAtlasKeyFunction.HideElement).Disabled);
+  Assert.AreEqual('Atlas.HideElement', TAtlasKeyMap.CommandIdOf(TAtlasKeyFunction.HideElement));
   Assert.AreEqual(Ord(TAtlasKeySource.Binding), Ord(TAtlasKeyMap.SourceOf(TAtlasKeyFunction.TestUnit)));
   Settings.EditorKeysPriority := True;
   Assert.IsTrue(EntryOf(TAtlasKeyEntry.AllFromSettings(Settings), TAtlasKeyFunction.UnitSearch).Priority);

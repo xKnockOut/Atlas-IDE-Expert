@@ -10,7 +10,8 @@
 //   mit dem Text der Lens; ihr Rechteck wird gemerkt.
 // - Klick: Linksklick in die Marke wechselt wie der Befehl „Zur Testunit
 //   wechseln“ (nach dem Mausereignis, über die Warteschlange).
-// Abschaltbar über die Einstellung „Code Lens Testunit“.
+// Abschaltbar über die Einstellung „Code Lens Testunit“, je Datei über
+// „In dieser Datei ausblenden“ (#628, Eintrag in .atlas).
 
 interface
 
@@ -94,8 +95,10 @@ uses
   Atlas.Core.Style.Palette,
   Atlas.Core.Editor.Pairs,
   Atlas.UI.Strings,
+  Atlas.Core.Editor.Elements,
   Atlas.IDE.Foundation.EditorBuffer,
-  Atlas.IDE.Foundation.Settings;
+  Atlas.IDE.Foundation.Settings,
+  Atlas.IDE.Foundation.Elements;
 
 const
   TestUnitCommand = 'atlas.server.testUnit';
@@ -311,6 +314,12 @@ begin
       Exit;
     if (Context.LogicalLineNum - 1 <> FLine) or not SameText(Context.FileName, FFetchedFile) then
       Exit;
+    // In dieser Datei ausgeblendet (#628): keine Marke, kein Klickziel.
+    if TAtlasIdeElements.FileHidden(TAtlasDrawnElement.CodeLensTestUnit, Context.FileName) then
+    begin
+      FLensRect := TRect.Empty;
+      Exit;
+    end;
     Text := Caption;
     LineState := Context.LineState;
     if (Text = '') or (LineState = nil) or (Context.EditView = nil) or (Context.EditView.Buffer = nil) then
@@ -351,6 +360,8 @@ begin
       Canvas.TextOut(Pill.Left + 5, Pill.Top + 1, Text);
       FLensRect := Pill;
       FLensTopRow := Context.EditView.TopRow;
+      TAtlasIdeElements.Painted(TAtlasDrawnElement.CodeLensTestUnit, Context.FileName, FLine, '', Pill,
+        FLensTopRow, Rect.Height);
     finally
       Canvas.Font.Assign(OldFont);
       Canvas.Brush.Assign(OldBrush);

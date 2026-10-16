@@ -293,6 +293,8 @@ begin
       Result := 'Atlas.GenerateMenu';
     TAtlasKeyFunction.Notifications:
       Result := 'Atlas.Notifications';
+    TAtlasKeyFunction.HideElement:
+      Result := 'Atlas.HideElement';
   else
     Result := '';
   end;

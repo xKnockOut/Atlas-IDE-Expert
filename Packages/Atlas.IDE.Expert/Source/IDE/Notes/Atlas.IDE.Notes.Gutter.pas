@@ -22,6 +22,7 @@ uses
   Atlas.Core.Diagnostics.Guard,
   Atlas.Core.Style.Color,
   Atlas.Core.Style.Palette,
+  Atlas.Core.Editor.Elements,
   Atlas.Core.Notes.Store,
   Atlas.IDE.Foundation.GutterMarks;
 
@@ -29,6 +30,7 @@ type
   TAtlasIdeNotesGutter = class(TAtlasGutterLayer)
   public
     function Feature: TAtlasFeature; override;
+    function Element: TAtlasDrawnElement; override;
     function Wanted: Boolean; override;
     procedure Track(const AFileName, AText: string; AOpened: Boolean); override;
     function HasMarks(const AFileName: string): Boolean; override;
@@ -56,6 +58,11 @@ uses
 function TAtlasIdeNotesGutter.Feature: TAtlasFeature;
 begin
   Result := TAtlasFeature.Notes;
+end;
+
+function TAtlasIdeNotesGutter.Element: TAtlasDrawnElement;
+begin
+  Result := TAtlasDrawnElement.Notes;
 end;
 
 function TAtlasIdeNotesGutter.Wanted: Boolean;

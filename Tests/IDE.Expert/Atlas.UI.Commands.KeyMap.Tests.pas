@@ -282,6 +282,7 @@ begin
   Assert.AreEqual('Lesezeichen setzen', TAtlasKeyMapWindow.FunctionCaption(TAtlasKeyFunction.Bookmark));
   Assert.AreEqual('Erzeugen', TAtlasKeyMapWindow.FunctionCaption(TAtlasKeyFunction.GenerateMenu));
   Assert.AreEqual('Benachrichtigungen', TAtlasKeyMapWindow.FunctionCaption(TAtlasKeyFunction.Notifications));
+  Assert.AreEqual('Element ausblenden', TAtlasKeyMapWindow.FunctionCaption(TAtlasKeyFunction.HideElement));
   // #764: Schnellaktionen der Willkommensseite.
   Assert.AreEqual('Schnellaktion „Öffnen und bauen“',
     TAtlasKeyMapWindow.FunctionCaption(TAtlasKeyFunction.WelcomeQuickBuild));

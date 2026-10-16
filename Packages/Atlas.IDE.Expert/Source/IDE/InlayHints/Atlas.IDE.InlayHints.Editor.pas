@@ -19,6 +19,14 @@
 //   neu gebaut. Die Einstellung wird erst geprüft, wenn die Zeile Hinweise hat.
 // - Pufferstand (P-04): über TAtlasEditorSnapshots, gelesen nur nach einer
 //   Änderung; bei inaktiver IDE wird der Puffer nicht geprüft.
+// - Blockende-Beschriftungen (#620, Einstellung BlockEndLabels): Die
+//   Endmarkierungen des Servers (inlayHints.endMarkers, „// if …“) stehen
+//   hinter dem end langer Blöcke als gedämpfter Text wie ein Kommentar, nicht
+//   als Marke. Abgerufen wird, solange Inlay-Hints oder Beschriftungen an
+//   sind; jede Art zeichnet nur mit ihrer Einstellung.
+// - Ausblenden am Element (#628): Inlay-Hints je Codezeile, Beschriftungen je
+//   Text der Beschriftung (oder je Datei) über .atlas; jede gezeichnete Marke
+//   meldet sich bei TAtlasIdeElements.
 
 interface
 
@@ -97,7 +105,9 @@ uses
   Atlas.IDE.Foundation.EditorBuffer,
   Atlas.IDE.Foundation.EditorSnapshot,
   Atlas.IDE.Foundation.EditorStyle,
-  Atlas.IDE.Foundation.Settings;
+  Atlas.IDE.Foundation.Settings,
+  Atlas.IDE.Foundation.Elements,
+  Atlas.Core.Editor.Elements;
 
 { TAtlasEditorInlayHints.TEvents }
 
@@ -175,7 +185,7 @@ begin
   if TAtlasGuard.Disabled(TAtlasFeature.InlayHints) then
     Exit;
   try
-    if not TAtlasIdeSettings.InlayHintsOn then
+    if not TAtlasIdeSettings.InlayHintsOn and not TAtlasIdeSettings.BlockEndLabelsOn then
     begin
       if FShowing then
       begin
@@ -294,15 +304,16 @@ procedure TAtlasEditorInlayHints.PaintLine(const Rect: TRect; const Stage: TPain
   var AllowDefaultPainting: Boolean; const Context: INTACodeEditorPaintContext);
 var
   Names: TArray<string>;
-  Name, Stored: string;
+  Name, Stored, EndText, EndLabel: string;
   LineState: INTACodeEditorLineState;
   Line, TabWidth, X, Height, Top: Integer;
   Canvas: TCanvas;
-  Cell, Pill: TRect;
+  Cell, Pill, Hints: TRect;
   Sample: COLORREF;
   DC: HDC;
   Saved: Integer;
   Size: TSize;
+  ShowNames, ShowEnd: Boolean;
 begin
   // Durch die Sicherung abgeschaltet (#493).
   if TAtlasGuard.Disabled(TAtlasFeature.InlayHints) then
@@ -312,10 +323,13 @@ begin
   try
     Line := Context.LogicalLineNum - 1;
     Names := FStore.OnLine(Context.FileName, Line);
-    if Length(Names) = 0 then
+    ShowEnd := FStore.EndLabelOn(Context.FileName, Line, EndText, EndLabel);
+    if (Length(Names) = 0) and not ShowEnd then
       Exit;
     // Erst hier: die meisten Zeilen haben keine Hinweise (P-10).
-    if not TAtlasIdeSettings.InlayHintsOn then
+    ShowNames := (Length(Names) > 0) and TAtlasIdeSettings.InlayHintsOn;
+    ShowEnd := ShowEnd and TAtlasIdeSettings.BlockEndLabelsOn;
+    if not ShowNames and not ShowEnd then
       Exit;
     LineState := Context.LineState;
     if (LineState = nil) or (Context.EditView = nil) or (Context.EditView.Buffer = nil) or
@@ -325,6 +339,13 @@ begin
     // Nur, wenn die Zeile im Editor der im Speicher entspricht.
     if TrimRight(TAtlasPairs.DisplayLine(LineState.Text, TabWidth)) <>
       TrimRight(TAtlasPairs.DisplayLine(Stored, TabWidth)) then
+      Exit;
+    // In .atlas ausgeblendet (#628): Inlay-Hints an dieser Codezeile, Beschriftung mit diesem Text.
+    if ShowNames and TAtlasIdeElements.Hidden(TAtlasDrawnElement.InlayHints, Context.FileName, Stored) then
+      ShowNames := False;
+    if ShowEnd and TAtlasIdeElements.Hidden(TAtlasDrawnElement.BlockEndLabels, Context.FileName, EndText) then
+      ShowEnd := False;
+    if not ShowNames and not ShowEnd then
       Exit;
     Canvas := Context.Canvas;
     DC := Canvas.Handle;
@@ -350,13 +371,32 @@ begin
       GetTextExtentPoint32W(DC, 'Xg', 2, Size);
       Height := Size.cy;
       Top := Rect.Top + Max(0, (Rect.Bottom - Rect.Top - Height - 2) div 2);
-      for Name in Names do
+      if ShowNames then
       begin
-        GetTextExtentPoint32W(DC, PChar(Name), Length(Name), Size);
-        Pill := TRect.Create(X, Top, X + Size.cx + 8, Top + Height + 2);
-        RoundRect(DC, Pill.Left, Pill.Top, Pill.Right, Pill.Bottom, 6, 6);
-        TextOutW(DC, Pill.Left + 4, Pill.Top + 1, PChar(Name), Length(Name));
-        X := Pill.Right + 4;
+        Hints := TRect.Empty;
+        for Name in Names do
+        begin
+          GetTextExtentPoint32W(DC, PChar(Name), Length(Name), Size);
+          Pill := TRect.Create(X, Top, X + Size.cx + 8, Top + Height + 2);
+          RoundRect(DC, Pill.Left, Pill.Top, Pill.Right, Pill.Bottom, 6, 6);
+          TextOutW(DC, Pill.Left + 4, Pill.Top + 1, PChar(Name), Length(Name));
+          X := Pill.Right + 4;
+          if Hints.IsEmpty then
+            Hints := Pill
+          else
+            Hints.Union(Pill);
+        end;
+        TAtlasIdeElements.Painted(TAtlasDrawnElement.InlayHints, Context.FileName, Line, Stored, Hints,
+          Context.EditView.TopRow, Rect.Height);
+      end;
+      // Blockende-Beschriftung (#620): gedämpfter Text wie ein Kommentar, ohne Rahmen.
+      if ShowEnd then
+      begin
+        GetTextExtentPoint32W(DC, PChar(EndLabel), Length(EndLabel), Size);
+        Pill := TRect.Create(X, Top, X + Size.cx + 4, Top + Height + 2);
+        TextOutW(DC, Pill.Left + 2, Pill.Top + 1, PChar(EndLabel), Length(EndLabel));
+        TAtlasIdeElements.Painted(TAtlasDrawnElement.BlockEndLabels, Context.FileName, Line, EndText, Pill,
+          Context.EditView.TopRow, Rect.Height);
       end;
     finally
       RestoreDC(DC, Saved);
