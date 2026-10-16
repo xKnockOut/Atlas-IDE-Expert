@@ -68,6 +68,8 @@ type
     /// <summary>Palettenseite für /component (#299).</summary>
     ComponentPalette = 'componentPalette';
     DefaultPalette = 'Eigene';
+    /// <summary>completion.interfaceSection (#466) für /intf: private, protected oder public.</summary>
+    InterfaceSection = 'interfaceSection';
   end;
 
   /// <summary>Aktionen, die erst nach erfolgreichem Befehl laufen; bei Hinweisen werden sie verworfen.</summary>
