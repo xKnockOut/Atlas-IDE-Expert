@@ -11,6 +11,14 @@
 // NeedsCard). Die Knöpfe „Neu mit Atlas“ brauchen welcomePage.newFromTemplate
 // und ein offenes Projekt; sie stehen auch ohne Karte da (Titel dann „Neu mit
 // Atlas“). welcomePage.projectSetup aus schaltet beides ab.
+//
+// Projektgruppe: Die Pfadprüfung läuft für jedes Projekt der Gruppe, die Funde
+// stehen je Projekt in dessen Zusammenfassung. Combined fasst sie für die
+// Karte zusammen (Zahlen summiert, Funde mit Projektname, Pfade relativ zum
+// Ordner der Gruppe); erledigt ist der Schritt erst, wenn jedes Projekt
+// geprüft ist und keins einen sicheren Fund hat.
+// Unsichere Funde (Suchpfad mit unbekanntem Makro übersprungen) stehen mit
+// den Makros in der Karte, zählen aber nicht als offener Schritt.
 
 interface
 
@@ -31,6 +39,11 @@ type
   TAtlasSetupLine = record
     Kind: TAtlasSetupFindingKind;
     Name: string;
+    /// <summary>Projekt bei einer Projektgruppe; '' sonst.</summary>
+    Project: string;
+    /// <summary>Kein sicherer Fund; Macros nennt die übersprungenen Makros („$(A), $(B)“).</summary>
+    Uncertain: Boolean;
+    Macros: string;
     /// <summary>Relativ zum Projektordner.</summary>
     FileName: string;
     /// <summary>Ab 1; 0 = ohne.</summary>
@@ -46,6 +59,9 @@ type
     /// <summary>Das Ziel ist in der IDE geöffnet (Baseline und Pfadprüfung brauchen das).</summary>
     ProjectOpen: Boolean;
     Facts: TAtlasSetupFacts;
+    /// <summary>Projektgruppe: Zahl ihrer Projekte und davon geprüfte; 0 = keine Gruppe.</summary>
+    GroupProjects: Integer;
+    GroupChecked: Integer;
     /// <summary>Name der vorhandenen Konfiguration (atlas.json bzw. delphi-lsp.json); '' ohne.</summary>
     ConfigName: string;
     ShowCard: Boolean;
@@ -70,8 +86,16 @@ type
     function Visible: Boolean;
   end;
 
+  /// <summary>Projekt einer Gruppe mit seinem Abschnitt "setup".</summary>
+  TAtlasSetupMember = record
+    Project: string;
+    Setup: TAtlasProjectSetup;
+  end;
+
   TAtlasWelcomeSetup = class
   public const
+    /// <summary>Höchstens so viele Makros nennt MacroList, dann „…“.</summary>
+    MaxMacros = 3;
     /// <summary>Höchstens so viele Funde stehen in der Karte; der Rest als „… und n weitere“.</summary>
     MaxLines = 6;
   public
@@ -82,7 +106,8 @@ type
     /// <summary>Ganze Sekunden seit AStarted (Millisekunden-Zähler); 0 bei Zählerüberlauf.</summary>
     class function Elapsed(AStarted, ANow: UInt64): Integer; static;
     /// <summary>Funde der letzten Prüfung: fehlende Units, dann Defines ohne Quelle, höchstens AMax; AMore =
-    /// übrige Funde (auch über die gespeicherten hinaus).</summary>
+    /// übrige Funde (auch über die gespeicherten hinaus). Unsichere Funde mit den übersprungenen Makros.
+    /// </summary>
     class function Lines(const ASetup: TAtlasProjectSetup; AMax: Integer; out AMore: Integer):
       TArray<TAtlasSetupLine>; static;
     /// <summary>AFileName relativ zum Ordner von AProject, wenn er darin liegt; sonst unverändert.</summary>
@@ -96,6 +121,15 @@ type
     /// <summary>Abschnitt "rules" nach dem Erzeugen der Baseline: Alle Treffer stehen darin, neue gibt es keine.
     /// </summary>
     class procedure BaselineWritten(var ARules: TAtlasProjectRules; AAtUtc: TDateTime); static;
+    /// <summary>.groupproj?</summary>
+    class function IsGroup(const AProject: string): Boolean; static;
+    /// <summary>Abschnitt "setup" einer Gruppe für die Karte: „nicht mehr fragen“ aus AGroup, Prüfung aus
+    /// AMembers zusammengefasst (Pfade relativ zum Ordner von AGroupProject, Projektname je Fund). Geprüft
+    /// nur, wenn alle Projekte geprüft sind; AChecked = Zahl der geprüften.</summary>
+    class function Combined(const AGroupProject: string; const AGroup: TAtlasProjectSetup;
+      const AMembers: TArray<TAtlasSetupMember>; out AChecked: Integer): TAtlasProjectSetup; static;
+    /// <summary>„$(A), $(B), $(C), …“ für die Karte.</summary>
+    class function MacroList(const AMacros: TArray<string>): string; static;
   end;
 
 implementation
@@ -149,6 +183,11 @@ class function TAtlasWelcomeSetup.Lines(const ASetup: TAtlasProjectSetup; AMax: 
   begin
     Line.Kind := AKind;
     Line.Name := AFinding.Name;
+    Line.Project := AFinding.Project;
+    Line.Uncertain := AFinding.Uncertain;
+    Line.Macros := '';
+    if Line.Uncertain then
+      Line.Macros := TAtlasWelcomeSetup.MacroList(ASetup.SkippedMacros);
     Line.FileName := AFinding.FileName;
     Line.Line := AFinding.Line;
     Line.Count := AFinding.Count;
@@ -161,7 +200,8 @@ var
 begin
   List := nil;
   AMore := 0;
-  if not ASetup.Checked then
+  // Bei einer Gruppe stehen Funde schon da, bevor alle Projekte geprüft sind.
+  if not ASetup.Checked and (Length(ASetup.MissingUnits) + Length(ASetup.UndefinedDefines) = 0) then
     Exit(nil);
   for Finding in ASetup.MissingUnits do
     if Length(List) < AMax then
@@ -218,6 +258,7 @@ class function TAtlasWelcomeSetup.Checked(const APrevious: TAtlasProjectSetup; c
       Finding.FileName := Relative(AProject, Item.FileName);
       Finding.Line := Item.Line;
       Finding.Count := Item.Count;
+      Finding.Uncertain := Item.Uncertain;
       Result := Result + [Finding];
     end;
   end;
@@ -233,6 +274,9 @@ begin
   Result.UndefinedDefineCount := Length(AResult.UndefinedDefines);
   Result.MissingUnits := Findings(AResult.MissingUnits);
   Result.UndefinedDefines := Findings(AResult.UndefinedDefines);
+  Result.UncertainUnitCount := TAtlasPathCheckResult.UncertainIn(AResult.MissingUnits);
+  Result.UncertainDefineCount := TAtlasPathCheckResult.UncertainIn(AResult.UndefinedDefines);
+  Result.SkippedMacros := AResult.SkippedMacros;
 end;
 
 class procedure TAtlasWelcomeSetup.BaselineWritten(var ARules: TAtlasProjectRules; AAtUtc: TDateTime);
@@ -240,6 +284,107 @@ begin
   ARules.Known := True;
   ARules.At := AAtUtc;
   ARules.NewHits := 0;
+end;
+
+class function TAtlasWelcomeSetup.IsGroup(const AProject: string): Boolean;
+begin
+  Result := SameText(Copy(AProject, Length(AProject) - 9, 10), '.groupproj');
+end;
+
+/// <summary>Ordner von AFileName mit abschließendem Trenner; '' ohne.</summary>
+function FolderWithSlash(const AFileName: string): string;
+var
+  Index: Integer;
+begin
+  Result := '';
+  for Index := Length(AFileName) downto 1 do
+    if CharInSet(AFileName[Index], ['\', '/']) then
+      Exit(Copy(AFileName, 1, Index));
+end;
+
+function IsAbsolutePath(const APath: string): Boolean;
+begin
+  Result := ((Length(APath) >= 2) and (APath[2] = ':')) or APath.StartsWith('\\') or APath.StartsWith('/');
+end;
+
+class function TAtlasWelcomeSetup.Combined(const AGroupProject: string; const AGroup: TAtlasProjectSetup;
+  const AMembers: TArray<TAtlasSetupMember>; out AChecked: Integer): TAtlasProjectSetup;
+
+  procedure AddAll(const AMember: TAtlasSetupMember; const AFrom: TArray<TAtlasSetupFinding>;
+    var AList: TArray<TAtlasSetupFinding>);
+  var
+    Finding: TAtlasSetupFinding;
+  begin
+    for Finding in AFrom do
+    begin
+      if Length(AList) >= TAtlasProjectSetup.MaxFindings then
+        Exit;
+      AList := AList + [Finding];
+      AList[High(AList)].Project := TAtlasWelcomeSetup.NameOf(AMember.Project);
+      // Relativ zum Projekt gespeichert, für die Karte relativ zur Gruppe.
+      if (Finding.FileName <> '') and not IsAbsolutePath(Finding.FileName) then
+        AList[High(AList)].FileName := TAtlasWelcomeSetup.Relative(AGroupProject,
+          FolderWithSlash(AMember.Project) + Finding.FileName);
+    end;
+  end;
+
+var
+  Member: TAtlasSetupMember;
+  Macro, Known: string;
+  Seen: Boolean;
+begin
+  Result := TAtlasProjectSetup.Empty;
+  Result.Known := AGroup.Known;
+  Result.Dismissed := AGroup.Dismissed;
+  Result.DismissedAt := AGroup.DismissedAt;
+  AChecked := 0;
+  for Member in AMembers do
+  begin
+    if not Member.Setup.Checked then
+      Continue;
+    Inc(AChecked);
+    if Member.Setup.CheckedAt > Result.CheckedAt then
+      Result.CheckedAt := Member.Setup.CheckedAt;
+    Inc(Result.Files, Member.Setup.Files);
+    Inc(Result.Unreadable, Member.Setup.Unreadable);
+    Inc(Result.MissingUnitCount, Member.Setup.MissingUnitCount);
+    Inc(Result.UndefinedDefineCount, Member.Setup.UndefinedDefineCount);
+    Inc(Result.UncertainUnitCount, Member.Setup.UncertainUnitCount);
+    Inc(Result.UncertainDefineCount, Member.Setup.UncertainDefineCount);
+    AddAll(Member, Member.Setup.MissingUnits, Result.MissingUnits);
+    AddAll(Member, Member.Setup.UndefinedDefines, Result.UndefinedDefines);
+    for Macro in Member.Setup.SkippedMacros do
+    begin
+      Seen := False;
+      for Known in Result.SkippedMacros do
+        if SameText(Known, Macro) then
+          Seen := True;
+      if not Seen then
+        Result.SkippedMacros := Result.SkippedMacros + [Macro];
+    end;
+  end;
+  // Erledigt erst, wenn jedes Projekt geprüft ist.
+  Result.Checked := (Length(AMembers) > 0) and (AChecked = Length(AMembers));
+  if Result.Checked or (AChecked > 0) then
+    Result.Known := True;
+end;
+
+class function TAtlasWelcomeSetup.MacroList(const AMacros: TArray<string>): string;
+var
+  Index: Integer;
+begin
+  Result := '';
+  for Index := 0 to High(AMacros) do
+  begin
+    if Index >= MaxMacros then
+    begin
+      Result := Result + ', …';
+      Break;
+    end;
+    if Result <> '' then
+      Result := Result + ', ';
+    Result := Result + '$(' + AMacros[Index] + ')';
+  end;
 end;
 
 end.

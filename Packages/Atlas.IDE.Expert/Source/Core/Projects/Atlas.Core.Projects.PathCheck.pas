@@ -25,9 +25,18 @@
 // fremde Symbole ab); Symbole anderer Compiler (FPC …) auch nicht.
 //
 // Pfade: unter Windows mit „\“; ExpandPath setzt $(Name) über eine Funktion
-// des Aufrufers ein und macht relative Pfade absolut. Dateizugriffe kommen
-// von außen (Lesen, Auflisten eines Ordners), damit die Tests ohne Platte
-// laufen und die IDE die Arbeit in einen Hintergrundthread legen kann.
+// des Aufrufers ein (auch verschachtelt, etwa BDSLIB = $(BDS)\lib) und macht
+// relative Pfade absolut. TAtlasPathMacros sammelt die Werte: zuerst die der
+// IDE (Umgebungsvariablen aus den IDE-Optionen, BDS-Ordner, Projekt, Plattform,
+// Konfiguration), danach die Umgebung des Prozesses.
+// Unsichere Funde: Bleibt in einem Such- oder Bibliothekspfad ein Makro
+// unbekannt, fällt der Pfad weg und das Makro steht in SkippedMacros. Eine
+// fehlende Unit (ohne "in 'Pfad'") könnte dann in diesem Ordner liegen: Sie
+// zählt als unsicher (Uncertain), nicht als sicherer Fund. Ebenso ein Define
+// ohne Quelle, wenn eine eingebundene Datei nicht gefunden wurde.
+// Dateizugriffe kommen von außen (Lesen, Auflisten eines Ordners), damit die
+// Tests ohne Platte laufen und die IDE die Arbeit in einen Hintergrundthread
+// legen kann.
 
 interface
 
@@ -75,6 +84,8 @@ type
     /// <summary>Zeile ab 1.</summary>
     Line: Integer;
     Count: Integer;
+    /// <summary>Kein sicherer Fund: Ein Suchpfad mit unbekanntem Makro wurde übersprungen.</summary>
+    Uncertain: Boolean;
   end;
 
   TAtlasPathCheckInput = record
@@ -91,6 +102,8 @@ type
     ActiveDefines: TArray<string>;
     /// <summary>Alle Symbole aus der .dproj (alle Konfigurationen, DprojDefines); gelten als Quelle.</summary>
     ProjectDefines: TArray<string>;
+    /// <summary>Unbekannte Makros übersprungener Such- und Bibliothekspfade (ohne „$(“ und „)“).</summary>
+    SkippedMacros: TArray<string>;
   end;
 
   TAtlasPathCheckResult = record
@@ -100,7 +113,12 @@ type
     Unreadable: Integer;
     MissingUnits: TArray<TAtlasPathFinding>;
     UndefinedDefines: TArray<TAtlasPathFinding>;
+    /// <summary>Wie TAtlasPathCheckInput.SkippedMacros.</summary>
+    SkippedMacros: TArray<string>;
+    /// <summary>Keine sicheren Funde (unsichere zählen nicht).</summary>
     function Clean: Boolean;
+    /// <summary>Unsichere Funde in AFindings.</summary>
+    class function UncertainIn(const AFindings: TArray<TAtlasPathFinding>): Integer; static;
   end;
 
   /// <summary>Liest AFileName als Text; False, wenn die Datei fehlt oder nicht lesbar ist.</summary>
@@ -110,10 +128,39 @@ type
   /// <summary>Wert der Variablen AName ($(AName)); '' = unbekannt.</summary>
   TAtlasPathVariable = reference to function(const AName: string): string;
 
+  /// <summary>Werte für $(Name) in Such- und Bibliothekspfaden: zuerst die gesetzten (IDE), dann die Umgebung
+  /// des Prozesses. Namen ohne Unterschied der Groß-/Kleinschreibung.</summary>
+  TAtlasPathMacros = record
+  private
+    FNames: TArray<string>;
+    FValues: TArray<string>;
+    FEnvironment: TAtlasPathVariable;
+    function IndexOf(const AName: string): Integer;
+  public
+    /// <summary>AEnvironment (darf nil sein): Umgebung des Prozesses, gilt nach allen gesetzten Werten.</summary>
+    class function Create(const AEnvironment: TAtlasPathVariable): TAtlasPathMacros; static;
+    /// <summary>Setzt AName; ein späterer Aufruf überschreibt. Leere Werte zählen nicht.</summary>
+    procedure Add(const AName, AValue: string);
+    /// <summary>Wie Add, aber nur, wenn AName noch keinen Wert hat.</summary>
+    procedure AddDefault(const AName, AValue: string);
+    /// <summary>BDS und, wo noch kein Wert steht, BDSLIB, BDSBIN und BDSINCLUDE darunter.</summary>
+    procedure AddBds(const ABdsDir: string);
+    /// <summary>Platform, Config, ProjectDir, ProjectName, ProjectFilename, ProjectPath und die
+    /// MSBuild-Namen (MSBuildProjectDirectory, MSBuildProjectName, MSBuildProjectFullPath,
+    /// MSBuildThisFileDirectory, MSBuildProjectDirectoryNoRoot) für die Projektdatei AProject.</summary>
+    procedure AddProject(const AProject, APlatform, AConfig: string);
+    /// <summary>Gesetzter Wert, sonst der der Umgebung; '' = unbekannt.</summary>
+    function Value(const AName: string): string;
+    /// <summary>Value als Funktion für ExpandPath (mit einer Kopie der Werte).</summary>
+    function Variable: TAtlasPathVariable;
+  end;
+
   TAtlasPathCheck = class
   public const
     /// <summary>Höchstens so viele eingebundene Dateien werden für $DEFINE gelesen.</summary>
     MaxIncludes = 200;
+    /// <summary>Höchstens so viele Ersetzungen von $(…) je Pfad.</summary>
+    MaxExpansions = 32;
   public
     /// <summary>uses, bedingte Symbole und eingebundene Dateien von AText; ADefines gelten zu Beginn.</summary>
     class function Scan(const AText: string; const ADefines: TArray<string>): TAtlasSourceScan; static;
@@ -125,7 +172,16 @@ type
       const AList: TAtlasPathListFolder): TAtlasPathCheckResult; static;
     /// <summary>Setzt $(Name) über AVariable ein und macht APath relativ zu ABaseDir absolut ("\" als Trenner,
     /// "." und ".." aufgelöst). '' bei leerem Pfad oder unbekannter Variable.</summary>
-    class function ExpandPath(const APath, ABaseDir: string; const AVariable: TAtlasPathVariable): string; static;
+    class function ExpandPath(const APath, ABaseDir: string; const AVariable: TAtlasPathVariable): string;
+      overload; static;
+    /// <summary>Wie oben; AUnknown = Name des ersten unbekannten Makros ('' sonst). Werte dürfen selbst $(…)
+    /// enthalten; nach MaxExpansions Ersetzungen gilt das Makro als unbekannt (Schleife).</summary>
+    class function ExpandPath(const APath, ABaseDir: string; const AVariable: TAtlasPathVariable;
+      out AUnknown: string): string; overload; static;
+    /// <summary>Alle Pfade aus ARaw über ExpandPath; Pfade mit unbekanntem Makro fallen weg, ihre Makros kommen
+    /// (ohne Doppelte) nach ASkipped.</summary>
+    class function ExpandPaths(const ARaw: TArray<string>; const ABaseDir: string;
+      const AVariable: TAtlasPathVariable; var ASkipped: TArray<string>): TArray<string>; static;
     /// <summary>Ordner und Name verbunden, "." und ".." aufgelöst; absolute ANames bleiben.</summary>
     class function Combine(const AFolder, AName: string): string; static;
     /// <summary>Alle Symbole aus DCC_Define der .dproj (alle Konfigurationen), ohne $(…), ohne Doppelte.</summary>
@@ -149,7 +205,145 @@ const
 
 function TAtlasPathCheckResult.Clean: Boolean;
 begin
-  Result := (Length(MissingUnits) = 0) and (Length(UndefinedDefines) = 0);
+  Result := (UncertainIn(MissingUnits) = Length(MissingUnits)) and
+    (UncertainIn(UndefinedDefines) = Length(UndefinedDefines));
+end;
+
+class function TAtlasPathCheckResult.UncertainIn(const AFindings: TArray<TAtlasPathFinding>): Integer;
+var
+  Finding: TAtlasPathFinding;
+begin
+  Result := 0;
+  for Finding in AFindings do
+    if Finding.Uncertain then
+      Inc(Result);
+end;
+
+{ TAtlasPathMacros }
+
+class function TAtlasPathMacros.Create(const AEnvironment: TAtlasPathVariable): TAtlasPathMacros;
+begin
+  Result := Default(TAtlasPathMacros);
+  Result.FEnvironment := AEnvironment;
+end;
+
+function TAtlasPathMacros.IndexOf(const AName: string): Integer;
+var
+  Index: Integer;
+begin
+  for Index := 0 to High(FNames) do
+    if SameText(FNames[Index], Trim(AName)) then
+      Exit(Index);
+  Result := -1;
+end;
+
+procedure TAtlasPathMacros.Add(const AName, AValue: string);
+var
+  Index: Integer;
+begin
+  if (Trim(AName) = '') or (Trim(AValue) = '') then
+    Exit;
+  Index := IndexOf(AName);
+  if Index >= 0 then
+    FValues[Index] := AValue
+  else
+  begin
+    FNames := FNames + [Trim(AName)];
+    FValues := FValues + [AValue];
+  end;
+end;
+
+procedure TAtlasPathMacros.AddDefault(const AName, AValue: string);
+begin
+  if IndexOf(AName) < 0 then
+    Add(AName, AValue);
+end;
+
+function WithoutSlash(const AFolder: string): string;
+begin
+  Result := Trim(AFolder);
+  while (Length(Result) > 3) and CharInSet(Result[Length(Result)], ['\', '/']) do
+    Delete(Result, Length(Result), 1);
+end;
+
+procedure TAtlasPathMacros.AddBds(const ABdsDir: string);
+var
+  Bds: string;
+begin
+  Bds := WithoutSlash(ABdsDir);
+  if Bds = '' then
+    Exit;
+  AddDefault('BDS', Bds);
+  AddDefault('BDSLIB', Bds + '\lib');
+  AddDefault('BDSBIN', Bds + '\bin');
+  AddDefault('BDSINCLUDE', Bds + '\include');
+end;
+
+procedure TAtlasPathMacros.AddProject(const AProject, APlatform, AConfig: string);
+var
+  Folder, FileName, Name, NoRoot: string;
+  Index: Integer;
+begin
+  Add('Platform', APlatform);
+  Add('Config', AConfig);
+  if Trim(AProject) = '' then
+    Exit;
+  Folder := '';
+  FileName := Trim(AProject);
+  for Index := Length(FileName) downto 1 do
+    if CharInSet(FileName[Index], ['\', '/']) then
+    begin
+      Folder := Copy(FileName, 1, Index - 1);
+      FileName := Copy(FileName, Index + 1, MaxInt);
+      Break;
+    end;
+  Name := FileName;
+  for Index := Length(Name) downto 1 do
+    if Name[Index] = '.' then
+    begin
+      Name := Copy(Name, 1, Index - 1);
+      Break;
+    end;
+  // ProjectDir wie bei MSBuild ohne abschließenden Trenner; Combine verträgt doppelte „\“.
+  Add('ProjectDir', Folder);
+  Add('ProjectPath', Folder);
+  Add('ProjectName', Name);
+  Add('ProjectFilename', FileName);
+  Add('MSBuildProjectDirectory', Folder);
+  Add('MSBuildProjectName', Name);
+  Add('MSBuildProjectFile', FileName);
+  Add('MSBuildProjectFullPath', Trim(AProject));
+  Add('MSBuildThisFileDirectory', Folder + '\');
+  NoRoot := Folder;
+  if (Length(NoRoot) >= 2) and (NoRoot[2] = ':') then
+    Delete(NoRoot, 1, 2);
+  while (NoRoot <> '') and CharInSet(NoRoot[1], ['\', '/']) do
+    Delete(NoRoot, 1, 1);
+  Add('MSBuildProjectDirectoryNoRoot', NoRoot);
+end;
+
+function TAtlasPathMacros.Value(const AName: string): string;
+var
+  Index: Integer;
+begin
+  Index := IndexOf(AName);
+  if Index >= 0 then
+    Exit(FValues[Index]);
+  Result := '';
+  if Assigned(FEnvironment) and (Trim(AName) <> '') then
+    Result := FEnvironment(Trim(AName));
+end;
+
+function TAtlasPathMacros.Variable: TAtlasPathVariable;
+var
+  Macros: TAtlasPathMacros;
+begin
+  Macros := Self;
+  Result :=
+    function(const AName: string): string
+    begin
+      Result := Macros.Value(AName);
+    end;
 end;
 
 { Bedingungen }
@@ -817,31 +1011,75 @@ end;
 
 class function TAtlasPathCheck.ExpandPath(const APath, ABaseDir: string; const AVariable: TAtlasPathVariable): string;
 var
+  Unknown: string;
+begin
+  Result := ExpandPath(APath, ABaseDir, AVariable, Unknown);
+end;
+
+class function TAtlasPathCheck.ExpandPath(const APath, ABaseDir: string; const AVariable: TAtlasPathVariable;
+  out AUnknown: string): string;
+var
   Text, Name, Value: string;
-  Open, Close: Integer;
+  Open, Close, Count: Integer;
 begin
   Result := '';
+  AUnknown := '';
   Text := Trim(APath);
   if Text = '' then
     Exit;
+  Count := 0;
   Open := Pos('$(', Text);
   while Open > 0 do
   begin
     Close := Pos(')', Text, Open + 2);
     if Close = 0 then
+    begin
+      AUnknown := Copy(Text, Open + 2, MaxInt);
       Exit;
-    Name := Copy(Text, Open + 2, Close - Open - 2);
+    end;
+    Name := Trim(Copy(Text, Open + 2, Close - Open - 2));
     Value := '';
-    if Assigned(AVariable) then
+    Inc(Count);
+    if Assigned(AVariable) and (Count <= MaxExpansions) then
       Value := AVariable(Name);
     if Value = '' then
+    begin
+      AUnknown := Name;
       Exit;
+    end;
+    // Ab derselben Stelle weiter: Der Wert kann selbst $(…) enthalten.
     Text := Copy(Text, 1, Open - 1) + Value + Copy(Text, Close + 1, MaxInt);
-    Open := Pos('$(', Text, Open + Length(Value));
+    Open := Pos('$(', Text, Open);
   end;
   Result := Combine(ABaseDir, Text);
   if Result.EndsWith('\') and (Length(Result) > 3) then
     Delete(Result, Length(Result), 1);
+end;
+
+class function TAtlasPathCheck.ExpandPaths(const ARaw: TArray<string>; const ABaseDir: string;
+  const AVariable: TAtlasPathVariable; var ASkipped: TArray<string>): TArray<string>;
+var
+  Raw, Path, Unknown, Known: string;
+  Seen: Boolean;
+begin
+  Result := nil;
+  for Raw in ARaw do
+  begin
+    Path := ExpandPath(Raw, ABaseDir, AVariable, Unknown);
+    if Path <> '' then
+    begin
+      Result := Result + [Path];
+      Continue;
+    end;
+    if Unknown = '' then
+      Continue;
+    Seen := False;
+    for Known in ASkipped do
+      if SameText(Known, Unknown) then
+        Seen := True;
+    if not Seen then
+      ASkipped := ASkipped + [Unknown];
+  end;
 end;
 
 class function TAtlasPathCheck.DprojDefines(const ADprojText: string): TArray<string>;
@@ -955,7 +1193,7 @@ begin
 end;
 
 procedure AddFinding(AList: TList<TAtlasPathFinding>; AIndex: TDictionary<string, Integer>; const AName,
-  AFileName: string; ALine: Integer);
+  AFileName: string; ALine: Integer; AUncertain: Boolean);
 var
   Key: string;
   Index: Integer;
@@ -966,9 +1204,12 @@ begin
   begin
     Finding := AList[Index];
     Inc(Finding.Count);
+    // Sicher, sobald eine Stelle sicher fehlt.
+    Finding.Uncertain := Finding.Uncertain and AUncertain;
     AList[Index] := Finding;
     Exit;
   end;
+  Finding.Uncertain := AUncertain;
   Finding.Name := AName;
   Finding.FileName := AFileName;
   Finding.Line := ALine;
@@ -993,6 +1234,7 @@ var
   Pair: TIncludeRef;
   Item: TSymbolAt;
   Index: Integer;
+  Skipped, IncludeMissing: Boolean;
 
   function Folders(const AFrom: string): TArray<string>;
   begin
@@ -1051,6 +1293,9 @@ var
 
 begin
   Result := Default(TAtlasPathCheckResult);
+  Result.SkippedMacros := AInput.SkippedMacros;
+  Skipped := Length(AInput.SkippedMacros) > 0;
+  IncludeMissing := False;
   ProjectDir := ExtractFileDir(Combine('', AInput.Project));
   Cache := TFolderCache.Create(AList);
   ProjectNames := TDictionary<string, Boolean>.Create;
@@ -1082,7 +1327,8 @@ begin
       Scanned := Scan(Text, AInput.ActiveDefines);
       for Used in Scanned.Units do
         if (Used.State = TAtlasBranchState.Active) and not Resolves(Used, Folder) then
-          AddFinding(Missing, MissingIndex, Used.Name, Source, Used.Line);
+          // Mit "in 'Pfad'" zählt kein Suchpfad: dann sicher.
+          AddFinding(Missing, MissingIndex, Used.Name, Source, Used.Line, Skipped and (Used.InFile = ''));
       for Use in Scanned.Referenced do
         Uses_.Add(SymbolAt(Source, Use));
       for Name in Scanned.Defined do
@@ -1096,7 +1342,12 @@ begin
     begin
       Pair := Queue[Index];
       Inc(Index);
-      if not FindInclude(Pair.Name, Pair.Folder, Candidate) or Visited.ContainsKey(UpperCase(Candidate)) then
+      if not FindInclude(Pair.Name, Pair.Folder, Candidate) then
+      begin
+        IncludeMissing := True;
+        Continue;
+      end;
+      if Visited.ContainsKey(UpperCase(Candidate)) then
         Continue;
       Visited.Add(UpperCase(Candidate), True);
       if not (Assigned(ARead) and ARead(Candidate, Text)) then
@@ -1110,7 +1361,9 @@ begin
     for Item in Uses_ do
       if not Known.ContainsKey(UpperCase(Item.Use.Name)) and not TTextDefines.IsCompilerSymbol(Item.Use.Name) and
         not IsForeignSymbol(Item.Use.Name) then
-        AddFinding(Undefined, UndefinedIndex, Item.Use.Name, Item.FileName, Item.Use.Line);
+        // Fehlt eine eingebundene Datei und fiel ein Suchpfad weg, kann das $DEFINE dort stehen.
+        AddFinding(Undefined, UndefinedIndex, Item.Use.Name, Item.FileName, Item.Use.Line,
+          Skipped and IncludeMissing);
     Result.MissingUnits := Missing.ToArray;
     Result.UndefinedDefines := Undefined.ToArray;
   finally

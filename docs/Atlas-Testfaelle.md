@@ -925,7 +925,13 @@ Vorbereitung: Projekt `XmlInspector` (VCL, Git egal) ohne `atlas.json` und ohne 
 | PE19 | `welcomePage.newFromTemplate` aus | Nur die Reihe „Neu mit Atlas“ verschwindet, die Karte bleibt (**Abnahme**) |
 | PE20 | Englische IDE; schmale Spalte; 100 %, 150 %, 200 % | „Set up XmlInspector for Atlas“, „Create …“, „Start“, „Check“, „Don’t ask again for this project“, „New with Atlas:“; Knöpfe brechen um, nichts abgeschnitten, Grün in hellem und dunklem Thema lesbar |
 | PE21 | Installer: Paket aus dem Release installieren | Ordner `Vorlagen` mit `atlas-existing.json`, `atlas-strict.json`, `atlas-legacy.json` im Installationsordner |
-| PE22 | Protokoll (`atlas.log`) nach PE3–PE16 | Nur Zahlen und Kennungen („atlas.json angelegt (Vorlage legacy)“, „12 Dateien geprüft, 1 Units fehlen …“); keine Pfade, keine Unit- oder Define-Namen |
+| PE22 | Protokoll (`atlas.log`) nach PE3–PE16 | Nur Zahlen und Kennungen („atlas.json angelegt (Vorlage legacy)“, „1 Projekte, 12 Dateien geprüft, 1 Units fehlen …, 0 davon unsicher“); keine Pfade, keine Unit-, Define- oder Makronamen |
+| PE23 | Suchpfad `$(BDSLIB)\$(Platform)\release;$(ProjectDir)\Lib;$(MEINLIB)\src` mit `MEINLIB` unter *Tools › Optionen › Umgebungsvariablen* (Benutzer-Überschreibung), Unit nur in `<MEINLIB>\src` | „Prüfen“: kein Fund; die drei Makros sind aufgelöst (IDE-Variablen und Projektordner vor den Umgebungsvariablen des Prozesses) |
+| PE24 | Wie PE23, aber `MEINLIB` gelöscht (weder in der IDE noch im System) | Fund „Unit „…“ nicht gefunden (unsicher, Suchpfad mit unbekanntem Makro $(MEINLIB) übersprungen) – …“ und darunter „Davon unsicher: 1 (…$(MEINLIB)…)“; Schritt 4 grün, wenn es nur unsichere Funde gibt; eine Unit mit `in 'Pfad'` bleibt ein sicherer Fund |
+| PE25 | Umgebungsvariable `MEINLIB` nur im System (nicht in der IDE), IDE danach neu gestartet | Wie PE23: Makro über die Umgebung des Prozesses aufgelöst |
+| PE26 | Projektgruppe mit drei Projekten öffnen (eines mit fehlender Unit), „Prüfen“ | Alle drei Projekte werden nacheinander geprüft (laufende Sekunden); die Karte zeigt die Summe („1 Units nicht gefunden …, n Dateien geprüft“) und die Funde mit Projekt vorn („App: Unit „…“ nicht gefunden – App\Main.pas, Zeile 3“); jede Projekt-Zusammenfassung (`%LOCALAPPDATA%\Atlas\projects`) enthält nur ihre eigenen Funde |
+| PE27 | Wie PE26, danach ein weiteres Projekt zur Gruppe hinzufügen | Karte: „3 von 4 Projekten der Gruppe geprüft“, Schritt 4 offen, Funde der geprüften bleiben sichtbar; nach „Prüfen“ alle vier |
+| PE28 | Alle Projekte schließen, oberstes in „Wieder öffnen“ ist die `.groupproj` aus PE26 | Karte der Gruppe mit der Zusammenfassung aus PE26; „Prüfen“ öffnet die Gruppe |
 
 ### Weiterarbeiten (#755)
 

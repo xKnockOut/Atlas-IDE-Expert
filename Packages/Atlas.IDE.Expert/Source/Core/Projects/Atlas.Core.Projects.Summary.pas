@@ -41,8 +41,11 @@
 //     "setup": {"dismissed": true, "dismissedAt": "…",
 //               "paths": {"at": "…", "files": 12, "unreadable": 0,
 //                         "missingUnits": 2, "undefinedDefines": 1,
+//                         "uncertainUnits": 1, "uncertainDefines": 0,
+//                         "skippedMacros": ["MYLIB"],
 //                         "units": [{"name": "Foo", "file": "Src\\Main.pas",
-//                                    "line": 12, "count": 2}, …],
+//                                    "line": 12, "count": 2,
+//                                    "uncertain": true}, …],
 //                         "defines": [{"name": "USE_LOG", …}, …]}}
 //   }
 // "changed", "ahead", "behind" = -1: unbekannt. "first" ist die erste Fehler-
@@ -84,6 +87,10 @@
 // Dateien, Zahl der fehlenden Units und der Defines ohne Quelle und die
 // ersten Funde (höchstens TAtlasProjectSetup.MaxFindings je Liste; Datei
 // relativ zum Projektordner, Zeile ab 1, "count" Stellen im Projekt).
+// "skippedMacros" sind unbekannte Makros übersprungener Suchpfade; Funde mit
+// "uncertain" sind deshalb nicht sicher ("uncertainUnits" und
+// "uncertainDefines" zählen sie, auch über die gespeicherten hinaus). Bei
+// einer Projektgruppe steht die Prüfung je Projekt in dessen Zusammenfassung.
 //
 // Erweitern: Neue Felder und Abschnitte dürfen jederzeit dazukommen, ohne
 // "format" zu erhöhen. Leser übergehen, was sie nicht kennen; Schreiber
@@ -274,6 +281,10 @@ type
     Line: Integer;
     /// <summary>Stellen im Projekt.</summary>
     Count: Integer;
+    /// <summary>Kein sicherer Fund (Suchpfad mit unbekanntem Makro übersprungen).</summary>
+    Uncertain: Boolean;
+    /// <summary>Nur in der Zusammenfassung einer Projektgruppe: Name des Projekts; nicht gespeichert.</summary>
+    Project: string;
   end;
 
   /// <summary>Einrichtung des Projekts für Atlas (#759).</summary>
@@ -296,8 +307,13 @@ type
     UndefinedDefineCount: Integer;
     MissingUnits: TArray<TAtlasSetupFinding>;
     UndefinedDefines: TArray<TAtlasSetupFinding>;
+    /// <summary>Davon unsicher (in MissingUnitCount bzw. UndefinedDefineCount enthalten).</summary>
+    UncertainUnitCount: Integer;
+    UncertainDefineCount: Integer;
+    /// <summary>Unbekannte Makros übersprungener Such- und Bibliothekspfade.</summary>
+    SkippedMacros: TArray<string>;
     class function Empty: TAtlasProjectSetup; static;
-    /// <summary>Die letzte Prüfung lief und fand nichts.</summary>
+    /// <summary>Die letzte Prüfung lief und fand nichts Sicheres (unsichere Funde zählen nicht).</summary>
     function PathsClean: Boolean;
   end;
 
@@ -395,8 +411,8 @@ const
   TrendPointKeys: array[0..8] of string = ('at', 'build', 'branch', 'commit', 'warnings', 'ruleHits', 'todos',
     'duration', 'methodLength');
   SetupKeys: array[0..2] of string = ('dismissed', 'dismissedAt', 'paths');
-  PathsKeys: array[0..6] of string = ('at', 'files', 'unreadable', 'missingUnits', 'undefinedDefines', 'units',
-    'defines');
+  PathsKeys: array[0..9] of string = ('at', 'files', 'unreadable', 'missingUnits', 'undefinedDefines', 'units',
+    'defines', 'uncertainUnits', 'uncertainDefines', 'skippedMacros');
 
 { TAtlasProjectLocation }
 
@@ -459,7 +475,7 @@ end;
 
 function TAtlasProjectSetup.PathsClean: Boolean;
 begin
-  Result := Checked and (MissingUnitCount = 0) and (UndefinedDefineCount = 0);
+  Result := Checked and (MissingUnitCount <= UncertainUnitCount) and (UndefinedDefineCount <= UncertainDefineCount);
 end;
 
 { TAtlasTrendPoint }
@@ -926,6 +942,7 @@ begin
     Finding.FileName := TextOf(TJSONObject(Item), 'file');
     Finding.Line := NumberOf(TJSONObject(Item), 'line', 0);
     Finding.Count := NumberOf(TJSONObject(Item), 'count', 1);
+    Finding.Uncertain := FlagOf(TJSONObject(Item), 'uncertain');
     if (Finding.Name <> '') and (Length(Result) < TAtlasProjectSetup.MaxFindings) then
       Result := Result + [Finding];
   end;
@@ -949,6 +966,26 @@ begin
     if AFindings[Index].Line > 0 then
       Item.AddPair('line', TJSONNumber.Create(AFindings[Index].Line));
     Item.AddPair('count', TJSONNumber.Create(AFindings[Index].Count));
+    if AFindings[Index].Uncertain then
+      Item.AddPair('uncertain', TJSONBool.Create(True));
+  end;
+end;
+
+/// <summary>Texte aus einem Array von Zeichenketten; anderes (auch Zahlen) fällt weg.</summary>
+function TextsOfSetup(AValue: TJSONValue): TArray<string>;
+var
+  Index: Integer;
+  Item: TJSONValue;
+begin
+  Result := nil;
+  if not (AValue is TJSONArray) then
+    Exit;
+  for Index := 0 to TJSONArray(AValue).Count - 1 do
+  begin
+    Item := TJSONArray(AValue).Items[Index];
+    // TJSONNumber erbt von TJSONString.
+    if (Item is TJSONString) and not (Item is TJSONNumber) and (Item.Value <> '') then
+      Result := Result + [Item.Value];
   end;
 end;
 
@@ -979,11 +1016,21 @@ begin
   Result.UndefinedDefineCount := NumberOf(Paths, 'undefinedDefines', 0);
   if Result.UndefinedDefineCount < Length(Result.UndefinedDefines) then
     Result.UndefinedDefineCount := Length(Result.UndefinedDefines);
+  // Unsichere nie mehr als alle.
+  Result.UncertainUnitCount := NumberOf(Paths, 'uncertainUnits', 0);
+  if Result.UncertainUnitCount > Result.MissingUnitCount then
+    Result.UncertainUnitCount := Result.MissingUnitCount;
+  Result.UncertainDefineCount := NumberOf(Paths, 'uncertainDefines', 0);
+  if Result.UncertainDefineCount > Result.UndefinedDefineCount then
+    Result.UncertainDefineCount := Result.UndefinedDefineCount;
+  Result.SkippedMacros := TextsOfSetup(Paths.GetValue('skippedMacros'));
 end;
 
 function SetupJson(const ASetup: TAtlasProjectSetup; AOriginal: TJSONObject): TJSONObject;
 var
   Paths: TJSONObject;
+  Macros: TJSONArray;
+  Macro: string;
 begin
   Result := TJSONObject.Create;
   if ASetup.Dismissed then
@@ -1000,6 +1047,17 @@ begin
     Paths.AddPair('unreadable', TJSONNumber.Create(ASetup.Unreadable));
     Paths.AddPair('missingUnits', TJSONNumber.Create(ASetup.MissingUnitCount));
     Paths.AddPair('undefinedDefines', TJSONNumber.Create(ASetup.UndefinedDefineCount));
+    if ASetup.UncertainUnitCount > 0 then
+      Paths.AddPair('uncertainUnits', TJSONNumber.Create(ASetup.UncertainUnitCount));
+    if ASetup.UncertainDefineCount > 0 then
+      Paths.AddPair('uncertainDefines', TJSONNumber.Create(ASetup.UncertainDefineCount));
+    if Length(ASetup.SkippedMacros) > 0 then
+    begin
+      Macros := TJSONArray.Create;
+      Paths.AddPair('skippedMacros', Macros);
+      for Macro in ASetup.SkippedMacros do
+        Macros.Add(Macro);
+    end;
     Paths.AddPair('units', SetupFindingsJson(ASetup.MissingUnits));
     Paths.AddPair('defines', SetupFindingsJson(ASetup.UndefinedDefines));
     KeepUnknown(Paths, ObjectOf(AOriginal, 'paths'), PathsKeys);

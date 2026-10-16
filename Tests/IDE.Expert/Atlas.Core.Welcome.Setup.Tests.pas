@@ -2,7 +2,8 @@
 
 // Tests für die Einrichtungskarte der Willkommensseite (#759): wann Karte und
 // Knöpfe „Neu mit Atlas“ erscheinen, Laufzeit, Zeilen der Pfadprüfung und
-// Pfade relativ zum Projekt.
+// Pfade relativ zum Projekt, unsichere Funde mit Makros und die
+// Zusammenfassung einer Projektgruppe.
 
 interface
 
@@ -31,6 +32,15 @@ type
     /// <summary>Abnahme: Nach der Baseline sind die neuen Treffer 0.</summary>
     [Test]
     procedure BaselineClearsNewHits;
+    /// <summary>Unbekanntes Makro: Funde unsicher, mit Makro in der Zeile; der Schritt gilt als erledigt.
+    /// </summary>
+    [Test]
+    procedure UncertainFindingsNameTheMacro;
+    [Test]
+    procedure ListsMacrosShortly;
+    /// <summary>Projektgruppe: Funde je Projekt, die Karte fasst sie zusammen.</summary>
+    [Test]
+    procedure CombinesGroupMembers;
   end;
 
 implementation
@@ -54,6 +64,7 @@ end;
 
 function Finding(const AName, AFile: string; ALine, ACount: Integer): TAtlasSetupFinding;
 begin
+  Result := Default(TAtlasSetupFinding);
   Result.Name := AName;
   Result.FileName := AFile;
   Result.Line := ALine;
@@ -151,6 +162,7 @@ end;
 
 function PathFinding(const AName, AFile: string; ALine, ACount: Integer): TAtlasPathFinding;
 begin
+  Result := Default(TAtlasPathFinding);
   Result.Name := AName;
   Result.FileName := AFile;
   Result.Line := ALine;
@@ -218,6 +230,110 @@ begin
   Assert.AreEqual(0, Rules.NewHits);
   Assert.IsTrue(Rules.At = Stamp);
   Assert.AreEqual(-1, TAtlasSetupCard.Empty.BaselineNewHits, 'ohne Zusammenfassung unbekannt');
+end;
+
+procedure TAtlasWelcomeSetupTests.UncertainFindingsNameTheMacro;
+var
+  Check: TAtlasPathCheckResult;
+  Setup: TAtlasProjectSetup;
+  Lines: TArray<TAtlasSetupLine>;
+  More: Integer;
+  Missing: TAtlasPathFinding;
+begin
+  Missing := PathFinding('Lib.Core', 'C:\Projekte\App\App.dpr', 3, 1);
+  Missing.Uncertain := True;
+  Check := Default(TAtlasPathCheckResult);
+  Check.Files := 2;
+  Check.MissingUnits := [Missing];
+  Check.SkippedMacros := ['MYLIB', 'TOOLS'];
+  Setup := TAtlasWelcomeSetup.Checked(TAtlasProjectSetup.Empty, 'C:\Projekte\App\App.dproj', Check, Now);
+  Assert.AreEqual(1, Setup.MissingUnitCount);
+  Assert.AreEqual(1, Setup.UncertainUnitCount);
+  Assert.AreEqual('MYLIB|TOOLS', string.Join('|', Setup.SkippedMacros));
+  Assert.IsTrue(Setup.MissingUnits[0].Uncertain);
+  // Kein sicherer Fund: Schritt 4 erledigt.
+  Assert.IsTrue(Setup.PathsClean);
+  Lines := TAtlasWelcomeSetup.Lines(Setup, 6, More);
+  Assert.AreEqual(1, Integer(Length(Lines)));
+  Assert.IsTrue(Lines[0].Uncertain);
+  Assert.AreEqual('$(MYLIB), $(TOOLS)', Lines[0].Macros);
+  // Ein sicherer Fund dazu: Schritt offen, die sichere Zeile ohne Makro.
+  Check.UndefinedDefines := [PathFinding('USE_X', 'C:\Projekte\App\App.dpr', 4, 1)];
+  Setup := TAtlasWelcomeSetup.Checked(Setup, 'C:\Projekte\App\App.dproj', Check, Now);
+  Assert.IsFalse(Setup.PathsClean);
+  Lines := TAtlasWelcomeSetup.Lines(Setup, 6, More);
+  Assert.IsFalse(Lines[1].Uncertain);
+  Assert.AreEqual('', Lines[1].Macros);
+end;
+
+procedure TAtlasWelcomeSetupTests.ListsMacrosShortly;
+begin
+  Assert.AreEqual('', TAtlasWelcomeSetup.MacroList(nil));
+  Assert.AreEqual('$(A)', TAtlasWelcomeSetup.MacroList(['A']));
+  Assert.AreEqual('$(A), $(B), $(C), …', TAtlasWelcomeSetup.MacroList(['A', 'B', 'C', 'D']));
+end;
+
+procedure TAtlasWelcomeSetupTests.CombinesGroupMembers;
+var
+  Group, Combined: TAtlasProjectSetup;
+  App, Lib: TAtlasSetupMember;
+  Checked, More: Integer;
+  Lines: TArray<TAtlasSetupLine>;
+begin
+  Assert.IsTrue(TAtlasWelcomeSetup.IsGroup('C:\G\Alle.GROUPPROJ'));
+  Assert.IsFalse(TAtlasWelcomeSetup.IsGroup('C:\G\App.dproj'));
+  Group := TAtlasProjectSetup.Empty;
+  Group.Known := True;
+  Group.Dismissed := True;
+  App.Project := 'C:\G\App\App.dproj';
+  App.Setup := TAtlasProjectSetup.Empty;
+  App.Setup.Checked := True;
+  App.Setup.CheckedAt := EncodeDate(2026, 10, 15);
+  App.Setup.Files := 4;
+  App.Setup.MissingUnitCount := 1;
+  App.Setup.MissingUnits := [Finding('Helpers', 'Src\Main.pas', 7, 1)];
+  Lib.Project := 'C:\G\Lib\Lib.dproj';
+  Lib.Setup := TAtlasProjectSetup.Empty;
+  // Lib noch nicht geprüft: Schritt offen, Funde von App schon in der Karte.
+  Combined := TAtlasWelcomeSetup.Combined('C:\G\Alle.groupproj', Group, [App, Lib], Checked);
+  Assert.AreEqual(1, Checked);
+  Assert.IsTrue(Combined.Dismissed, '„nicht mehr fragen“ der Gruppe');
+  Assert.IsFalse(Combined.Checked);
+  Assert.IsFalse(Combined.PathsClean);
+  Lines := TAtlasWelcomeSetup.Lines(Combined, 6, More);
+  Assert.AreEqual(1, Integer(Length(Lines)));
+  Assert.AreEqual('App', Lines[0].Project);
+  Assert.AreEqual('App\Src\Main.pas', Lines[0].FileName, 'relativ zur Gruppe');
+  // Beide geprüft: Zahlen summiert, Makros ohne Doppelte, jüngster Zeitpunkt.
+  Lib.Setup.Checked := True;
+  Lib.Setup.CheckedAt := EncodeDate(2026, 10, 16);
+  Lib.Setup.Files := 3;
+  Lib.Setup.UndefinedDefineCount := 2;
+  Lib.Setup.UncertainDefineCount := 2;
+  Lib.Setup.UndefinedDefines := [Finding('USE_X', 'Lib.pas', 2, 1)];
+  Lib.Setup.UndefinedDefines[0].Uncertain := True;
+  Lib.Setup.SkippedMacros := ['MYLIB'];
+  App.Setup.SkippedMacros := ['mylib', 'TOOLS'];
+  Combined := TAtlasWelcomeSetup.Combined('C:\G\Alle.groupproj', Group, [App, Lib], Checked);
+  Assert.AreEqual(2, Checked);
+  Assert.IsTrue(Combined.Checked);
+  Assert.IsTrue(Combined.CheckedAt = EncodeDate(2026, 10, 16));
+  Assert.AreEqual(7, Combined.Files);
+  Assert.AreEqual(1, Combined.MissingUnitCount);
+  Assert.AreEqual(2, Combined.UndefinedDefineCount);
+  Assert.AreEqual(2, Combined.UncertainDefineCount);
+  Assert.AreEqual('mylib|TOOLS', string.Join('|', Combined.SkippedMacros));
+  Assert.AreEqual('Lib\Lib.pas', Combined.UndefinedDefines[0].FileName);
+  Assert.AreEqual('Lib', Combined.UndefinedDefines[0].Project);
+  Assert.IsFalse(Combined.PathsClean, 'App hat einen sicheren Fund');
+  // Ohne den sicheren Fund in App: erledigt.
+  App.Setup.MissingUnitCount := 0;
+  App.Setup.MissingUnits := nil;
+  Combined := TAtlasWelcomeSetup.Combined('C:\G\Alle.groupproj', Group, [App, Lib], Checked);
+  Assert.IsTrue(Combined.PathsClean);
+  // Eine Gruppe ohne Projekte gilt nie als geprüft.
+  Combined := TAtlasWelcomeSetup.Combined('C:\G\Alle.groupproj', Group, nil, Checked);
+  Assert.IsFalse(Combined.Checked);
 end;
 
 initialization

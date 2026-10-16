@@ -3,7 +3,8 @@
 // Tests für „Suchpfade und Defines prüfen“ der Einrichtung (#759): uses und
 // contains mit bedingten Abschnitten, $IF-Ausdrücke, fehlende Units mit Name
 // und Zeile, Defines ohne Quelle samt eingebundener Dateien, Pfade und die
-// Symbole aus der .dproj.
+// Symbole aus der .dproj, Makros (IDE vor Umgebung, verschachtelt) und
+// unsichere Funde nach übersprungenen Suchpfaden.
 
 interface
 
@@ -42,6 +43,16 @@ type
     procedure ExpandsVariables;
     [Test]
     procedure ReadsDefinesFromDproj;
+    [Test]
+    procedure ExpandsNestedMacrosAndNamesUnknown;
+    [Test]
+    procedure MacrosPreferIdeOverEnvironment;
+    [Test]
+    procedure CollectsSkippedMacros;
+    [Test]
+    procedure SkippedPathMakesUnitsUncertain;
+    [Test]
+    procedure SkippedPathAndMissingIncludeMakeDefinesUncertain;
   end;
 
 implementation
@@ -438,6 +449,166 @@ begin
   Assert.AreEqual(0, Integer(Length(TAtlasPathCheck.DprojDefines('<Project/>'))));
   Assert.IsTrue(TAtlasPathCheck.IsForeignSymbol('fpc'));
   Assert.IsFalse(TAtlasPathCheck.IsForeignSymbol('DEBUG'));
+end;
+
+procedure TAtlasPathCheckTests.ExpandsNestedMacrosAndNamesUnknown;
+var
+  Variable: TAtlasPathVariable;
+  Unknown: string;
+begin
+  Variable :=
+    function(const AName: string): string
+    begin
+      Result := '';
+      if SameText(AName, 'BDS') then
+        Result := 'C:\Delphi'
+      else if SameText(AName, 'BDSLIB') then
+        Result := '$(BDS)\lib'
+      else if SameText(AName, 'Loop') then
+        Result := '$(Loop)';
+    end;
+  Assert.AreEqual('C:\Delphi\lib\x', TAtlasPathCheck.ExpandPath('$(BDSLIB)\x', 'C:\P', Variable, Unknown));
+  Assert.AreEqual('', Unknown);
+  Assert.AreEqual('', TAtlasPathCheck.ExpandPath('$(BDS)\$( MyLib )\src', 'C:\P', Variable, Unknown));
+  Assert.AreEqual('MyLib', Unknown);
+  // Ein Wert, der sich selbst enthält, endet nach MaxExpansions als unbekannt.
+  Assert.AreEqual('', TAtlasPathCheck.ExpandPath('$(Loop)', 'C:\P', Variable, Unknown));
+  Assert.AreEqual('Loop', Unknown);
+  Assert.AreEqual('', TAtlasPathCheck.ExpandPath('$(Open', 'C:\P', Variable, Unknown));
+  Assert.AreEqual('Open', Unknown);
+end;
+
+procedure TAtlasPathCheckTests.MacrosPreferIdeOverEnvironment;
+var
+  Macros: TAtlasPathMacros;
+  Variable: TAtlasPathVariable;
+begin
+  Macros := TAtlasPathMacros.Create(
+    function(const AName: string): string
+    begin
+      Result := '';
+      if SameText(AName, 'BDSLIB') then
+        Result := 'E:\Env\lib'
+      else if SameText(AName, 'MYLIB') then
+        Result := 'E:\MyLib'
+      else if SameText(AName, 'BDSCOMMONDIR') then
+        Result := 'E:\Public';
+    end);
+  // Umgebungsvariable aus den IDE-Optionen überschreibt die des Prozesses.
+  Macros.Add('MyLib', 'D:\Override');
+  Macros.Add('Empty', '');
+  Macros.AddBds('C:\Delphi\');
+  Macros.AddProject('C:\Work\App\App.dproj', 'Win64', 'Debug');
+  Assert.AreEqual('D:\Override', Macros.Value('MYLIB'));
+  Assert.AreEqual('C:\Delphi', Macros.Value('bds'));
+  // BDS-Werte der IDE gehen der Umgebung vor.
+  Assert.AreEqual('C:\Delphi\lib', Macros.Value('BDSLIB'));
+  Assert.AreEqual('C:\Delphi\bin', Macros.Value('BDSBIN'));
+  Assert.AreEqual('E:\Public', Macros.Value('BDSCOMMONDIR'));
+  Assert.AreEqual('', Macros.Value('Empty'));
+  Assert.AreEqual('Win64', Macros.Value('Platform'));
+  Assert.AreEqual('Debug', Macros.Value('Config'));
+  Assert.AreEqual('C:\Work\App', Macros.Value('ProjectDir'));
+  Assert.AreEqual('App', Macros.Value('ProjectName'));
+  Assert.AreEqual('App.dproj', Macros.Value('ProjectFilename'));
+  Assert.AreEqual('C:\Work\App\', Macros.Value('MSBuildThisFileDirectory'));
+  Assert.AreEqual('Work\App', Macros.Value('MSBuildProjectDirectoryNoRoot'));
+  // AddDefault ändert nichts Gesetztes.
+  Macros.AddDefault('Platform', 'Win32');
+  Assert.AreEqual('Win64', Macros.Value('Platform'));
+  Variable := Macros.Variable;
+  Assert.AreEqual('C:\Delphi\lib\Win64\release', TAtlasPathCheck.ExpandPath('$(BDSLIB)\$(Platform)\release',
+    'C:\P', Variable));
+  Assert.AreEqual('C:\Work\App\Lib', TAtlasPathCheck.ExpandPath('$(ProjectDir)\Lib', 'C:\P', Variable));
+  Assert.AreEqual('C:\Work\App\Lib', TAtlasPathCheck.ExpandPath('$(MSBuildThisFileDirectory)Lib', 'C:\P',
+    Variable));
+end;
+
+procedure TAtlasPathCheckTests.CollectsSkippedMacros;
+var
+  Skipped: TArray<string>;
+  Paths: TArray<string>;
+  Variable: TAtlasPathVariable;
+begin
+  Variable :=
+    function(const AName: string): string
+    begin
+      Result := '';
+      if SameText(AName, 'BDS') then
+        Result := 'C:\Delphi';
+    end;
+  Skipped := ['OLD'];
+  Paths := TAtlasPathCheck.ExpandPaths(['$(BDS)\lib', '$(MyLib)\src', '$(MYLIB)\inc', '$(Other)', '', 'Rel',
+    '$(old)'], 'C:\P', Variable, Skipped);
+  Assert.AreEqual('C:\Delphi\lib|C:\P\Rel', string.Join('|', Paths));
+  Assert.AreEqual('OLD|MyLib|Other', string.Join('|', Skipped));
+end;
+
+procedure TAtlasPathCheckTests.SkippedPathMakesUnitsUncertain;
+var
+  Disk: TFakeDisk;
+  Input: TAtlasPathCheckInput;
+  Check: TAtlasPathCheckResult;
+begin
+  Disk := TFakeDisk.Create;
+  try
+    Disk.Add('C:\P\App.dpr', 'program App; uses Helpers, Gone in ''..\Gone.pas''; begin end.');
+    Input := Default(TAtlasPathCheckInput);
+    Input.Project := 'C:\P\App.dproj';
+    Input.Sources := ['C:\P\App.dpr'];
+    Check := RunOn(Disk, Input);
+    Assert.AreEqual('Helpers|Gone', FindingNames(Check.MissingUnits));
+    Assert.IsFalse(Check.MissingUnits[0].Uncertain);
+    Assert.AreEqual(0, TAtlasPathCheckResult.UncertainIn(Check.MissingUnits));
+    Assert.IsFalse(Check.Clean);
+    // Ein Suchpfad mit unbekanntem Makro fiel weg: Helpers könnte dort liegen, Gone (mit Pfad) nicht.
+    Input.SkippedMacros := ['MyLib'];
+    Input.Sources := ['C:\P\App.dpr'];
+    Disk.Add('C:\P\App.dpr', 'program App; uses Helpers; begin end.');
+    Check := RunOn(Disk, Input);
+    Assert.AreEqual('Helpers', FindingNames(Check.MissingUnits));
+    Assert.IsTrue(Check.MissingUnits[0].Uncertain);
+    Assert.AreEqual('MyLib', string.Join('|', Check.SkippedMacros));
+    Assert.AreEqual(1, TAtlasPathCheckResult.UncertainIn(Check.MissingUnits));
+    // Nur unsichere Funde: kein sicherer Fund.
+    Assert.IsTrue(Check.Clean);
+    Disk.Add('C:\P\App.dpr', 'program App; uses Helpers, Gone in ''..\Gone.pas''; begin end.');
+    Check := RunOn(Disk, Input);
+    Assert.IsTrue(Check.MissingUnits[0].Uncertain);
+    Assert.IsFalse(Check.MissingUnits[1].Uncertain);
+    Assert.IsFalse(Check.Clean);
+  finally
+    Disk.Free;
+  end;
+end;
+
+procedure TAtlasPathCheckTests.SkippedPathAndMissingIncludeMakeDefinesUncertain;
+var
+  Disk: TFakeDisk;
+  Input: TAtlasPathCheckInput;
+  Check: TAtlasPathCheckResult;
+begin
+  Disk := TFakeDisk.Create;
+  try
+    Disk.Add('C:\P\App.dpr', 'program App; {$I Lib.inc} {$IFDEF USE_LIB} {$ENDIF} begin end.');
+    Input := Default(TAtlasPathCheckInput);
+    Input.Project := 'C:\P\App.dproj';
+    Input.Sources := ['C:\P\App.dpr'];
+    // Ohne übersprungenen Pfad: sicherer Fund, auch wenn Lib.inc fehlt.
+    Check := RunOn(Disk, Input);
+    Assert.AreEqual('USE_LIB', FindingNames(Check.UndefinedDefines));
+    Assert.IsFalse(Check.UndefinedDefines[0].Uncertain);
+    // Lib.inc könnte im übersprungenen Pfad liegen und USE_LIB setzen.
+    Input.SkippedMacros := ['MyLib'];
+    Check := RunOn(Disk, Input);
+    Assert.IsTrue(Check.UndefinedDefines[0].Uncertain);
+    // Ist die eingebundene Datei da, bleibt der Fund sicher.
+    Disk.Add('C:\P\Lib.inc', '{$DEFINE OTHER}');
+    Check := RunOn(Disk, Input);
+    Assert.IsFalse(Check.UndefinedDefines[0].Uncertain);
+  finally
+    Disk.Free;
+  end;
 end;
 
 initialization
