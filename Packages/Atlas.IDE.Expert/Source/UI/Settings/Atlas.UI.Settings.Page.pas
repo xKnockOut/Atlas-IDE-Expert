@@ -40,10 +40,13 @@ uses
   Atlas.Core.Build.ReleaseGuard,
   Atlas.Core.Projects.Summary,
   Atlas.Core.Welcome.QuickActions,
+  Atlas.Core.Welcome.Layouts,
   Atlas.Core.Completion.Favorites,
   Atlas.Core.Diagnostics.Hangs,
   Atlas.Core.Diagnostics.Guard,
   Atlas.Core.Diagnostics.SafeMode,
+  Atlas.Core.Settings.Catalog,
+  Atlas.UI.Settings.Marks,
   Atlas.UI.Strings,
   Atlas.Core.Style.Symbol,
   Atlas.UI.Style.Symbol;
@@ -72,6 +75,19 @@ type
   public
     constructor Create(AOwner: TComponent); override;
   end;
+
+  /// <summary>Import (#723): AProfile True = erst ein eingebautes Profil wählen. True, wenn AResult gilt (die
+  /// IDE hat schon gespeichert).</summary>
+  TAtlasSettingsImportEvent = reference to function(const ACurrent: TAtlasPluginSettings; AProfile: Boolean;
+    out AResult: TAtlasPluginSettings): Boolean;
+  /// <summary>„Alles zurücksetzen“ (#723) mit Rückfrage; True, wenn AResult gilt.</summary>
+  TAtlasSettingsResetEvent = reference to function(const ACurrent: TAtlasPluginSettings;
+    out AResult: TAtlasPluginSettings): Boolean;
+
+  /// <summary>Name eines Layouts der Willkommensseite erfragen (#767); False = abgebrochen.</summary>
+  TAtlasSettingsAskName = reference to function(const APrompt: string; var AName: string): Boolean;
+  /// <summary>Meldung (AQuestion False) oder Rückfrage mit Ja/Nein; True = Ja bzw. gelesen.</summary>
+  TAtlasSettingsConfirm = reference to function(const AText: string; AQuestion: Boolean): Boolean;
 
   TAtlasSettingsPage = class(TFrame)
   private
@@ -271,6 +287,17 @@ type
     FWelcomeEnabled: TCheckBox;
     FWelcomeHost: TAtlasChoiceBox;
     FWelcomeLayout: TCheckBox;
+    // Freies Layout (#767): Schalter, Spalten, aktives Layout und dessen Verwaltung. FPageLayouts ist das
+    // Modell der Seite; erst OK schreibt es in die Einstellungen.
+    FWelcomeCustomLayout: TCheckBox;
+    FWelcomeColumns: TEdit;
+    FWelcomeActiveLayout: TAtlasChoiceBox;
+    FWelcomeLayoutNew: TButton;
+    FWelcomeLayoutRename: TButton;
+    FWelcomeLayoutDelete: TButton;
+    FPageLayouts: TAtlasWelcomeLayouts;
+    FOnAskLayoutName: TAtlasSettingsAskName;
+    FOnConfirmLayout: TAtlasSettingsConfirm;
     FWelcomeHeader: TCheckBox;
     FWelcomeGreeting: TCheckBox;
     FWelcomeSearch: TCheckBox;
@@ -348,6 +375,22 @@ type
     FRevealControls: TArray<TControl>;
     /// <summary>Reveal vor dem Fenster: folgt in CreateWnd.</summary>
     FPendingReveal: string;
+    // Einstellungen übertragen (#723): Schalter, Knöpfe unten, Punkte an geänderten Werten.
+    FSettingsExportImport: TCheckBox;
+    FSettingsMarkModified: TCheckBox;
+    FSettingsBackupBeforeImport: TCheckBox;
+    FSettingsExportSecrets: TAtlasChoiceBox;
+    FTransferBar: TWinControl;
+    FExportButton: TButton;
+    FImportButton: TButton;
+    FProfileButton: TButton;
+    FResetPageButton: TButton;
+    FResetAllButton: TButton;
+    FMarks: TAtlasSettingsMarks;
+    FCatalog: TAtlasSettingsCatalog;
+    FOnExportSettings: TProc<TAtlasPluginSettings>;
+    FOnImportSettings: TAtlasSettingsImportEvent;
+    FOnResetAllSettings: TAtlasSettingsResetEvent;
     procedure NavClick(Sender: TObject);
     procedure Bind(const AKey: string; AControl: TControl);
     procedure ApplyReveal(const AKey: string);
@@ -379,6 +422,24 @@ type
     /// <summary>Beschriftung über die ganze Breite mit Zeilenumbruch.</summary>
     function AddWrappedLabel(AHeight: Integer; const ACaption: string): TLabel;
     procedure HelpFolderBrowseClick(Sender: TObject);
+    /// <summary>Knöpfe „Neu …“, „Umbenennen …“ und „Löschen“ rechts neben der Auswahl des Layouts (#767).
+    /// </summary>
+    procedure AddWelcomeLayoutButtons;
+    procedure WelcomeLayoutChange(Sender: TObject);
+    procedure WelcomeLayoutNewClick(Sender: TObject);
+    procedure WelcomeLayoutRenameClick(Sender: TObject);
+    procedure WelcomeLayoutDeleteClick(Sender: TObject);
+    /// <summary>Ob das Häkchen bzw. die Auswahl des Bereichs AId ihn zeigt („Neu in Atlas“: nicht „Aus“).
+    /// </summary>
+    function WelcomeSectionShown(const AId: string; out AShown: Boolean): Boolean;
+    procedure ShowWelcomeSection(const AId: string; AShown: Boolean);
+    /// <summary>Spalten und Sichtbarkeit der Steuerelemente ins aktive Layout von FPageLayouts.</summary>
+    procedure KeepWelcomeLayout;
+    /// <summary>FPageLayouts auf die Seite: Namen, Auswahl, Spalten; AVisibility auch die Häkchen der
+    /// Bereiche.</summary>
+    procedure ShowWelcomeLayouts(AVisibility: Boolean);
+    function AskLayoutName(var AName: string): Boolean;
+    function ConfirmLayout(const AText: string; AQuestion: Boolean): Boolean;
     /// <summary>Beschriftung in einer Zeile, darunter ein Textfeld über die ganze Breite (#766).</summary>
     function AddTextLine(const ACaption: string): TEdit;
     procedure ResetWidthsClick(Sender: TObject);
@@ -420,8 +481,46 @@ type
     procedure SetDefaultServerPath(const AValue: string);
     procedure SetOnServerVersion(const AValue: TFunc<string, string>);
     procedure AutoWidthClick(Sender: TObject);
+    procedure LoadControls(const ASettings: TAtlasPluginSettings);
+    procedure AddTransferSection;
+    /// <summary>Bindet die Elemente an ihre Einstellungen (Punkt, Kontextmenü, Zurücksetzen je Seite).</summary>
+    procedure BindControls;
+    procedure MarksChanged(Sender: TObject);
+    procedure ResetPageClick(Sender: TObject);
+    procedure ExportClick(Sender: TObject);
+    procedure ImportClick(Sender: TObject);
+    procedure ProfileClick(Sender: TObject);
+    procedure ResetAllClick(Sender: TObject);
+    function Catalog: TAtlasSettingsCatalog;
   public
     constructor Create(AOwner: TComponent); override;
+    destructor Destroy; override;
+    /// <summary>Werte der Seite (ungespeichert) über den zuletzt geladenen.</summary>
+    function CurrentSettings: TAtlasPluginSettings;
+    /// <summary>Punkte an geänderten Werten und Knöpfe neu setzen (#723).</summary>
+    procedure RefreshMarks;
+    /// <summary>Einstellungen ANames (Registry-Namen) auf der Seite auf den Standard setzen; gespeichert wird
+    /// erst mit OK (#723).</summary>
+    procedure ResetNames(const ANames: TArray<string>);
+    /// <summary>Alle Einstellungen des sichtbaren Reiters auf den Standard setzen (#723).</summary>
+    procedure ResetPage;
+    /// <summary>„Exportieren…“ mit den Werten der Seite (#723).</summary>
+    property OnExportSettings: TProc<TAtlasPluginSettings> read FOnExportSettings write FOnExportSettings;
+    /// <summary>„Importieren…“ und „Profil laden…“ (#723).</summary>
+    property OnImportSettings: TAtlasSettingsImportEvent read FOnImportSettings write FOnImportSettings;
+    /// <summary>„Alles zurücksetzen…“ (#723).</summary>
+    property OnResetAllSettings: TAtlasSettingsResetEvent read FOnResetAllSettings write FOnResetAllSettings;
+    /// <summary>Zum Testen: Übertragen (#723).</summary>
+    property Marks: TAtlasSettingsMarks read FMarks;
+    property TransferBar: TWinControl read FTransferBar;
+    property SettingsExportImportCheck: TCheckBox read FSettingsExportImport;
+    property SettingsMarkModifiedCheck: TCheckBox read FSettingsMarkModified;
+    property SettingsBackupBeforeImportCheck: TCheckBox read FSettingsBackupBeforeImport;
+    property SettingsExportSecretsChoice: TAtlasChoiceBox read FSettingsExportSecrets;
+    property ExportButton: TButton read FExportButton;
+    property ImportButton: TButton read FImportButton;
+    property ResetPageButton: TButton read FResetPageButton;
+    property ResetAllButton: TButton read FResetAllButton;
     procedure LoadFrom(const ASettings: TAtlasPluginSettings);
     procedure SaveTo(var ASettings: TAtlasPluginSettings);
     /// <summary>Liste der abgeschalteten Features und Quellen neu lesen (#493).</summary>
@@ -491,6 +590,20 @@ type
     property WelcomeEnabled: TCheckBox read FWelcomeEnabled;
     property WelcomeHost: TAtlasChoiceBox read FWelcomeHost;
     property WelcomeLayout: TCheckBox read FWelcomeLayout;
+    /// <summary>Zum Testen: freies Layout (#767).</summary>
+    property WelcomeCustomLayout: TCheckBox read FWelcomeCustomLayout;
+    property WelcomeColumns: TEdit read FWelcomeColumns;
+    property WelcomeActiveLayout: TAtlasChoiceBox read FWelcomeActiveLayout;
+    property WelcomeLayoutNew: TButton read FWelcomeLayoutNew;
+    property WelcomeLayoutRename: TButton read FWelcomeLayoutRename;
+    property WelcomeLayoutDelete: TButton read FWelcomeLayoutDelete;
+    property PageLayouts: TAtlasWelcomeLayouts read FPageLayouts;
+    /// <summary>Wählt das Layout AIndex wie die Auswahlliste (#767).</summary>
+    procedure SelectWelcomeLayout(AIndex: Integer);
+    /// <summary>Namensabfrage für „Neu …“ und „Umbenennen …“; Standard: InputQuery.</summary>
+    property OnAskLayoutName: TAtlasSettingsAskName read FOnAskLayoutName write FOnAskLayoutName;
+    /// <summary>Rückfrage vor „Löschen“ und Meldung bei doppeltem Namen; Standard: Dialog.</summary>
+    property OnConfirmLayout: TAtlasSettingsConfirm read FOnConfirmLayout write FOnConfirmLayout;
     property WelcomeHeader: TCheckBox read FWelcomeHeader;
     property WelcomeGreeting: TCheckBox read FWelcomeGreeting;
     property WelcomeSearch: TCheckBox read FWelcomeSearch;
@@ -651,10 +764,13 @@ uses
   Atlas.Core.Undo.Names,
   Atlas.Core.Welcome.WhatsNew,
   Atlas.Core.Welcome.Trends,
+  Atlas.Core.Welcome.Sections,
+  Atlas.Core.Welcome.Layout,
   Atlas.Core.Commands.ShortcutTips,
   Atlas.Core.Notifications.Contract,
   Atlas.Core.Notifications.Sources,
   Atlas.Core.Build.OpenBuild,
+  Atlas.Core.Settings.Transfer,
   Atlas.UI.Notifications.Window;
 
 /// <summary>Bezeichnung einer Reihe des Projektverlaufs (#758) wie auf ihrer Kachel.</summary>
@@ -888,6 +1004,8 @@ begin
   FNotifications := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsNotifications));
   FNotificationsMax := AddNumber(TAtlasStrings.Text(TAtlasTextId.SettingsNotificationsMax));
   AddNotificationSources;
+  // Einstellungen exportieren, importieren und zurücksetzen (#723).
+  AddTransferSection;
 
   // Liste der Vervollständigung.
   AddSheet(TAtlasTextId.SettingsTabCompletion);
@@ -1132,6 +1250,12 @@ begin
   Bind('WelcomePageDiscover', FWelcomeDiscover);
   Bind('WelcomePageHelp', FWelcomeHelp);
   Bind('WelcomePageProjectSetup', FWelcomeProjectSetup);
+  Bind('WelcomePageIssues', FWelcomeIssues);
+  Bind('WelcomePageCustomLayout', FWelcomeCustomLayout);
+  Bind('WelcomePageColumns', FWelcomeColumns);
+  Bind('WelcomePageActiveLayout', FWelcomeActiveLayout);
+  Bind('WelcomePageLayouts', FWelcomeActiveLayout);
+  BindControls;
 end;
 
 procedure TAtlasSettingsPage.Bind(const AKey: string; AControl: TControl);
@@ -1214,6 +1338,14 @@ begin
     [TAtlasStrings.Text(TAtlasTextId.SettingsWelcomeHostPage),
     TAtlasStrings.Text(TAtlasTextId.SettingsWelcomeHostWindow)]);
   FWelcomeLayout := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsWelcomeLayout));
+  // Freies Layout (#767): Bearbeitungsmodus „Seite anpassen“, Spalten, benannte Layouts.
+  FWelcomeCustomLayout := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsWelcomeCustomLayout));
+  FWelcomeColumns := AddNumber(TAtlasStrings.Text(TAtlasTextId.SettingsWelcomeColumns));
+  FWelcomeActiveLayout := AddChoice(TAtlasStrings.Text(TAtlasTextId.SettingsWelcomeActiveLayout),
+    [TAtlasWelcomeLayout.DefaultName]);
+  FWelcomeActiveLayout.OnChange := WelcomeLayoutChange;
+  AddWelcomeLayoutButtons;
+  FPageLayouts := TAtlasWelcomeLayouts.Defaults;
   FWelcomeHeader := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsWelcomeHeader));
   FWelcomeGreeting := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsWelcomeGreeting));
   FWelcomeSearch := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsWelcomeSearch));
@@ -1314,6 +1446,221 @@ begin
   // Karte „Projekt für Atlas einrichten“ und Knöpfe „Neu mit Atlas“ (#759).
   FWelcomeProjectSetup := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsWelcomeProjectSetup));
   FWelcomeNewFromTemplate := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsWelcomeNewFromTemplate));
+end;
+
+procedure TAtlasSettingsPage.AddWelcomeLayoutButtons;
+
+  function AddButton(ALeft: Integer; AId: TAtlasTextId; AClick: TNotifyEvent): TButton;
+  begin
+    Result := TButton.Create(Self);
+    Result.Parent := FWelcomeActiveLayout.Parent;
+    Result.Caption := TAtlasStrings.Text(AId);
+    Result.Left := ALeft;
+    Result.Top := 0;
+    Result.Width := 96;
+    Result.OnClick := AClick;
+  end;
+
+var
+  Left: Integer;
+begin
+  Left := FWelcomeActiveLayout.Left + FWelcomeActiveLayout.Width + 6;
+  FWelcomeLayoutNew := AddButton(Left, TAtlasTextId.SettingsWelcomeLayoutNew, WelcomeLayoutNewClick);
+  FWelcomeLayoutRename := AddButton(Left + 102, TAtlasTextId.SettingsWelcomeLayoutRename,
+    WelcomeLayoutRenameClick);
+  FWelcomeLayoutDelete := AddButton(Left + 204, TAtlasTextId.SettingsWelcomeLayoutDelete,
+    WelcomeLayoutDeleteClick);
+end;
+
+function TAtlasSettingsPage.WelcomeSectionShown(const AId: string; out AShown: Boolean): Boolean;
+var
+  Check: TCheckBox;
+begin
+  Result := True;
+  AShown := False;
+  if AId = TAtlasWelcomeIds.News then
+  begin
+    AShown := FWelcomeWhatsNew.Choice > 0;
+    Exit;
+  end;
+  Check := nil;
+  if AId = TAtlasWelcomeIds.Continue then
+    Check := FWelcomeContinue
+  else if AId = TAtlasWelcomeIds.Projects then
+    Check := FWelcomeProjects
+  else if AId = TAtlasWelcomeIds.History then
+    Check := FWelcomeTrends
+  else if AId = TAtlasWelcomeIds.Tests then
+    Check := FWelcomeTests
+  else if AId = TAtlasWelcomeIds.State then
+    Check := FWelcomeStatusTile
+  else if AId = TAtlasWelcomeIds.Unsaved then
+    Check := FWelcomeUnsaved
+  else if AId = TAtlasWelcomeIds.Discover then
+    Check := FWelcomeDiscover
+  else if AId = TAtlasWelcomeIds.Setup then
+    Check := FWelcomeProjectSetup
+  else if AId = TAtlasWelcomeIds.Issues then
+    Check := FWelcomeIssues
+  else if AId = TAtlasWelcomeIds.Help then
+    Check := FWelcomeHelp;
+  Result := Check <> nil;
+  if Result then
+    AShown := Check.Checked;
+end;
+
+procedure TAtlasSettingsPage.ShowWelcomeSection(const AId: string; AShown: Boolean);
+var
+  Shown: Boolean;
+begin
+  if not WelcomeSectionShown(AId, Shown) or (Shown = AShown) then
+    Exit;
+  if AId = TAtlasWelcomeIds.News then
+  begin
+    // Einschalten heißt „nach einem Update“, wie die Vorgabe.
+    FWelcomeWhatsNew.Choice := Ord(TAtlasWhatsNewMode.AfterUpdate);
+    if not AShown then
+      FWelcomeWhatsNew.Choice := Ord(TAtlasWhatsNewMode.Off);
+  end
+  else if AId = TAtlasWelcomeIds.Continue then
+    FWelcomeContinue.Checked := AShown
+  else if AId = TAtlasWelcomeIds.Projects then
+    FWelcomeProjects.Checked := AShown
+  else if AId = TAtlasWelcomeIds.History then
+    FWelcomeTrends.Checked := AShown
+  else if AId = TAtlasWelcomeIds.Tests then
+    FWelcomeTests.Checked := AShown
+  else if AId = TAtlasWelcomeIds.State then
+    FWelcomeStatusTile.Checked := AShown
+  else if AId = TAtlasWelcomeIds.Unsaved then
+    FWelcomeUnsaved.Checked := AShown
+  else if AId = TAtlasWelcomeIds.Discover then
+    FWelcomeDiscover.Checked := AShown
+  else if AId = TAtlasWelcomeIds.Setup then
+    FWelcomeProjectSetup.Checked := AShown
+  else if AId = TAtlasWelcomeIds.Issues then
+    FWelcomeIssues.Checked := AShown
+  else if AId = TAtlasWelcomeIds.Help then
+    FWelcomeHelp.Checked := AShown;
+end;
+
+procedure TAtlasSettingsPage.KeepWelcomeLayout;
+var
+  Layout: TAtlasWelcomeLayout;
+  Item: TAtlasWelcomeCatalogItem;
+  Shown: Boolean;
+begin
+  Layout := FPageLayouts.Current;
+  Layout := Layout.WithColumns(EnsureRange(StrToIntDef(Trim(FWelcomeColumns.Text), Layout.Columns),
+    TAtlasWelcomeLayout.MinColumns, TAtlasWelcomeLayout.MaxColumns));
+  for Item in TAtlasWelcomeCustomizing.Catalog do
+    if WelcomeSectionShown(Item.Id, Shown) and (Layout.IndexOf(Item.Id) >= 0) then
+      Layout := Layout.WithVisible(Item.Id, Shown);
+  FPageLayouts := FPageLayouts.WithCurrent(Layout);
+end;
+
+procedure TAtlasSettingsPage.ShowWelcomeLayouts(AVisibility: Boolean);
+var
+  Layout: TAtlasWelcomeLayout;
+  Slot: TAtlasWelcomeSlot;
+begin
+  Layout := FPageLayouts.Current;
+  FWelcomeActiveLayout.SetChoices(FPageLayouts.Names);
+  FWelcomeActiveLayout.Choice := FPageLayouts.Active;
+  FWelcomeColumns.Text := IntToStr(Layout.Columns);
+  FWelcomeLayoutDelete.Enabled := Length(FPageLayouts.Items) > 1;
+  if AVisibility then
+    for Slot in Layout.Slots do
+      ShowWelcomeSection(Slot.Id, Slot.Visible);
+end;
+
+procedure TAtlasSettingsPage.SelectWelcomeLayout(AIndex: Integer);
+var
+  Layouts: TAtlasWelcomeLayouts;
+begin
+  if (AIndex < 0) or (AIndex > High(FPageLayouts.Items)) or (AIndex = FPageLayouts.Active) then
+    Exit;
+  // Das bisherige Layout merkt sich Spalten und Sichtbarkeit, das neue setzt seine.
+  KeepWelcomeLayout;
+  if FPageLayouts.Activated(FPageLayouts.Items[AIndex].Name, Layouts) then
+    FPageLayouts := Layouts;
+  ShowWelcomeLayouts(True);
+end;
+
+procedure TAtlasSettingsPage.WelcomeLayoutChange(Sender: TObject);
+begin
+  SelectWelcomeLayout(FWelcomeActiveLayout.Choice);
+end;
+
+procedure TAtlasSettingsPage.WelcomeLayoutNewClick(Sender: TObject);
+var
+  Name: string;
+  Layouts: TAtlasWelcomeLayouts;
+begin
+  Name := '';
+  if not AskLayoutName(Name) or (Trim(Name) = '') then
+    Exit;
+  KeepWelcomeLayout;
+  if not FPageLayouts.Added(Trim(Name), Layouts) then
+  begin
+    ConfirmLayout(TAtlasStrings.Fmt(TAtlasTextId.WelcomeArrangeLayoutTaken, [Trim(Name)]), False);
+    Exit;
+  end;
+  // Die Kopie übernimmt die Sichtbarkeit; die Häkchen bleiben.
+  FPageLayouts := Layouts;
+  ShowWelcomeLayouts(False);
+end;
+
+procedure TAtlasSettingsPage.WelcomeLayoutRenameClick(Sender: TObject);
+var
+  Name: string;
+  Layouts: TAtlasWelcomeLayouts;
+begin
+  Name := FPageLayouts.ActiveName;
+  if not AskLayoutName(Name) or (Trim(Name) = '') or (Trim(Name) = FPageLayouts.ActiveName) then
+    Exit;
+  if not FPageLayouts.Renamed(Trim(Name), Layouts) then
+  begin
+    ConfirmLayout(TAtlasStrings.Fmt(TAtlasTextId.WelcomeArrangeLayoutTaken, [Trim(Name)]), False);
+    Exit;
+  end;
+  FPageLayouts := Layouts;
+  ShowWelcomeLayouts(False);
+end;
+
+procedure TAtlasSettingsPage.WelcomeLayoutDeleteClick(Sender: TObject);
+var
+  Layouts: TAtlasWelcomeLayouts;
+begin
+  if (Length(FPageLayouts.Items) < 2) or
+    not ConfirmLayout(TAtlasStrings.Fmt(TAtlasTextId.WelcomeArrangeDeleteConfirm, [FPageLayouts.ActiveName]),
+    True) then
+    Exit;
+  if not FPageLayouts.Deleted(Layouts) then
+    Exit;
+  FPageLayouts := Layouts;
+  ShowWelcomeLayouts(True);
+end;
+
+function TAtlasSettingsPage.AskLayoutName(var AName: string): Boolean;
+begin
+  if Assigned(FOnAskLayoutName) then
+    Exit(FOnAskLayoutName(TAtlasStrings.Text(TAtlasTextId.WelcomeArrangeLayoutName), AName));
+  Result := InputQuery(TAtlasStrings.Text(TAtlasTextId.WelcomeArrangeCustomize),
+    TAtlasStrings.Text(TAtlasTextId.WelcomeArrangeLayoutName), AName);
+end;
+
+function TAtlasSettingsPage.ConfirmLayout(const AText: string; AQuestion: Boolean): Boolean;
+begin
+  if Assigned(FOnConfirmLayout) then
+    Exit(FOnConfirmLayout(AText, AQuestion));
+  if AQuestion then
+    Result := MessageDlg(AText, mtConfirmation, [mbYes, mbNo], 0) = mrYes
+  else
+  begin
+    MessageDlg(AText, mtInformation, [mbOK], 0);
+    Result := True;
+  end;
 end;
 
 function TAtlasSettingsPage.AddTextLine(const ACaption: string): TEdit;
@@ -1479,6 +1826,347 @@ begin
     else if FReleaseCheckBoxes[Check] <> nil then
       Checks.Items[Check].Enabled := FReleaseCheckBoxes[Check].Checked;
   ASettings.ReleaseChecks := Checks.ToText;
+end;
+
+procedure TAtlasSettingsPage.AddTransferSection;
+const
+  BarHeight = 66;
+  ButtonHeight = 25;
+  Row2 = 34;
+
+  function AddButton(const ACaption: string; ALeft, ATop, AWidth: Integer; const AClick: TNotifyEvent): TButton;
+  begin
+    Result := TButton.Create(Self);
+    Result.Parent := FTransferBar;
+    Result.Caption := ACaption;
+    Result.SetBounds(ALeft, ATop, AWidth, ButtonHeight);
+    Result.OnClick := AClick;
+  end;
+
+begin
+  AddTitle(TAtlasTextId.SettingsTransferTitle);
+  FSettingsExportImport := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsExportImport));
+  FSettingsMarkModified := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsMarkModified));
+  FSettingsBackupBeforeImport := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsBackupBeforeImport));
+  FSettingsExportSecrets := AddChoice(TAtlasStrings.Text(TAtlasTextId.SettingsExportSecrets),
+    [TAtlasStrings.Text(TAtlasTextId.SettingsExportSecretsOmit),
+    TAtlasStrings.Text(TAtlasTextId.SettingsExportSecretsPlaceholder)]);
+  // Knöpfe unten über die ganze Seite; ohne settings.exportImport ausgeblendet (RefreshMarks).
+  FTransferBar := TAtlasSettingsRow.Create(Self);
+  FTransferBar.Parent := Self;
+  FTransferBar.Align := alBottom;
+  FTransferBar.AlignWithMargins := True;
+  FTransferBar.Height := BarHeight;
+  FExportButton := AddButton(TAtlasStrings.Text(TAtlasTextId.SettingsExportButton), 0, 4, 120, ExportClick);
+  FImportButton := AddButton(TAtlasStrings.Text(TAtlasTextId.SettingsImportButton), 126, 4, 120, ImportClick);
+  FProfileButton := AddButton(TAtlasStrings.Text(TAtlasTextId.SettingsProfileButton), 252, 4, 120, ProfileClick);
+  FResetPageButton := AddButton(TAtlasStrings.Text(TAtlasTextId.SettingsResetPageButton), 0, Row2, 150,
+    ResetPageClick);
+  FResetAllButton := AddButton(TAtlasStrings.Text(TAtlasTextId.SettingsResetAllButton), 156, Row2, 150,
+    ResetAllClick);
+  FMarks := TAtlasSettingsMarks.Create(Self);
+  FMarks.OnChanged := MarksChanged;
+  FMarks.OnResetPage := ResetPageClick;
+  FMarks.OnReset :=
+    procedure(ANames: TArray<string>)
+    begin
+      ResetNames(ANames);
+    end;
+end;
+
+procedure TAtlasSettingsPage.BindControls;
+var
+  Check: TAtlasReleaseCheck;
+  Series: TAtlasTrendSeries;
+  Action: TAtlasQuickAction;
+begin
+  // Aus SaveTo: Element und die Einstellungen, die es schreibt. Listen aus mehreren Haken zeigen keinen Punkt
+  // (der gälte für jeden Haken), lassen sich aber zurücksetzen.
+  FMarks.Bind(FEnabled, ['Enabled']);
+  FMarks.Bind(FActionsKey, ['ActionsKey']);
+  FMarks.Bind(FExpandKey, ['ExpandKey']);
+  FMarks.Bind(FShrinkKey, ['ShrinkKey']);
+  FMarks.Bind(FImplementationKey, ['ImplementationKey']);
+  FMarks.Bind(FTypeDefinitionKey, ['TypeDefinitionKey']);
+  FMarks.Bind(FMethodToggle, ['MethodToggle']);
+  FMarks.Bind(FMethodToggleUpKey, ['MethodToggleUpKey']);
+  FMarks.Bind(FMethodToggleDownKey, ['MethodToggleDownKey']);
+  FMarks.Bind(FTestUnitKey, ['TestUnitKey']);
+  FMarks.Bind(FBookmarkKey, ['BookmarkKey']);
+  FMarks.Bind(FHideElementKey, ['HideElementKey']);
+  FMarks.Bind(FUndoKey, ['UndoKey']);
+  FMarks.Bind(FRedoKey, ['RedoKey']);
+  FMarks.Bind(FUpdatesCheck, ['UpdatesCheck']);
+  FMarks.Bind(FBugReportAnonymize, ['BugReportAnonymize']);
+  FMarks.Bind(FEditorKeysPriority, ['EditorKeysPriority']);
+  FMarks.Bind(FSlashCommands, ['SlashCommands']);
+  FMarks.Bind(FGenerateMenu, ['GenerateMenu']);
+  FMarks.Bind(FGenerateMenuKey, ['GenerateMenuKey']);
+  FMarks.Bind(FNotificationsKey, ['NotificationsKey']);
+  FMarks.Bind(FGenerateMenuGroups, ['GenerateMenuGroups']);
+  FMarks.Bind(FGenerateMenuHidden, ['GenerateMenuHidden']);
+  FMarks.Bind(FGenerateMenuRecentFirst, ['GenerateMenuRecentFirst']);
+  FMarks.Bind(FGenerateMenuShowCommandNames, ['GenerateMenuShowCommandNames']);
+  FMarks.Bind(FRows, ['VisibleRows']);
+  FMarks.Bind(FPanelCollapsed, ['PanelCollapsed']);
+  FMarks.Bind(FAutoParentheses, ['AutoParentheses']);
+  FMarks.Bind(FFixCase, ['FixCase']);
+  FMarks.Bind(FCommitChars, ['CommitCharacters']);
+  FMarks.Bind(FAutoUses, ['AutoUses']);
+  FMarks.Bind(FParameterHints, ['ParameterHints']);
+  FMarks.Bind(FOpenDelay, ['OpenDelayMs']);
+  FMarks.Bind(FFilterChips, ['FilterChips']);
+  FMarks.Bind(FLearning, ['Learning']);
+  FMarks.Bind(FFavorites, ['Favorites']);
+  FMarks.Bind(FGroupInherited, ['GroupInherited']);
+  FMarks.Bind(FPreview, ['Preview']);
+  FMarks.Bind(FSnippets, ['Snippets']);
+  FMarks.Bind(FImportIdeTemplates, ['ImportIdeTemplates']);
+  FMarks.Bind(FTeamFile, ['TeamFile']);
+  FMarks.Bind(FHoverTooltip, ['HoverTooltip']);
+  FMarks.Bind(FXmlDocFull, ['XmlDocFull']);
+  FMarks.Bind(FXmlDocMaxLines, ['XmlDocMaxLines']);
+  FMarks.Bind(FHangThreshold, ['HangThresholdMs']);
+  FMarks.Bind(FProviderTimeLimit, ['ProviderTimeLimitMs']);
+  FMarks.Bind(FHangHint, ['HangHint']);
+  FMarks.Bind(FReloadExternal, ['ReloadExternal']);
+  FMarks.Bind(FOpenForEdits, ['OpenForEdits']);
+  FMarks.Bind(FPairColors, ['PairColors']);
+  FMarks.Bind(FInactiveDim, ['InactiveDim']);
+  FMarks.Bind(FInlayHints, ['InlayHints']);
+  FMarks.Bind(FBlockEndLabels, ['BlockEndLabels']);
+  FMarks.Bind(FNotes, ['Notes']);
+  FMarks.Bind(FBookmarksNamed, ['BookmarksNamed']);
+  FMarks.Bind(FBookmarksShared, ['BookmarksShared']);
+  FMarks.Bind(FCodeLensTestUnit, ['CodeLensTestUnit']);
+  FMarks.Bind(FCodeLensMetrics, ['CodeLensMetrics']);
+  FMarks.Bind(FMetrics, ['Metrics']);
+  FMarks.Bind(FCodeLensTests, ['CodeLensTests']);
+  FMarks.Bind(FTodoList, ['TodoList']);
+  FMarks.Bind(FBaselineUpdate, ['BaselineUpdate']);
+  FMarks.Bind(FMetricsReport, ['MetricsReport']);
+  FMarks.Bind(FPairGuides, ['PairGuides']);
+  FMarks.Bind(FPairOwners, ['PairOwners']);
+  FMarks.Bind(FPairGuideWidth, ['PairGuideWidth']);
+  FMarks.Bind(FPairGuideOpacity, ['PairGuideOpacity']);
+  FMarks.Bind(FLightSwatches[0], ['PairColorsLight']);
+  FMarks.Bind(FDarkSwatches[0], ['PairColorsDark']);
+  FMarks.Bind(FProblems, ['Problems']);
+  FMarks.Bind(FProblemsList, ['ProblemsList']);
+  FMarks.Bind(FStatusField, ['StatusField']);
+  FMarks.Bind(FDiagnosticMode, ['DiagnosticMode']);
+  FMarks.Bind(FSetupChecklist, ['SetupChecklist']);
+  FMarks.Bind(FShortcutTips, ['ShortcutTips']);
+  FMarks.Bind(FShortcutTipsScope, ['ShortcutTipsScope']);
+  FMarks.Bind(FNotifications, ['Notifications']);
+  FMarks.Bind(FNotificationsMax, ['NotificationsMaxEntries']);
+  FMarks.Bind(FNotificationSource, ['NotificationsSources']);
+  FMarks.Bind(FStatusSummary, ['StatusFieldSummary']);
+  FMarks.Bind(FStatusToggles, ['StatusFieldToggles']);
+  FMarks.Bind(FIndexProgress, ['IndexProgressPlace']);
+  FMarks.Bind(FStatusHidden, ['StatusFieldHidden']);
+  FMarks.Bind(FIndexGroup, ['IndexProjectGroup']);
+  FMarks.Bind(FIndexSearch, ['IndexSearchPaths']);
+  FMarks.Bind(FIndexLibrary, ['IndexLibraryPaths']);
+  FMarks.Bind(FIndexUsages, ['IndexUsages']);
+  FMarks.Bind(FMemoryBudget, ['MemoryBudgetMb']);
+  FMarks.Bind(FAfterSave, ['CheckOnSave', 'CompileOnSave']);
+  FMarks.Bind(FCheckDelay, ['CheckOnSaveDelayMs']);
+  FMarks.Bind(FCheckMax, ['CheckOnSaveMaxMs']);
+  FMarks.Bind(FMcpBuild, ['McpBuild']);
+  FMarks.Bind(FTestRun, ['TestRun']);
+  FMarks.Bind(FTestsBuildFirst, ['TestsBuildFirst']);
+  FMarks.Bind(FTestsAfterBuild, ['TestsAfterBuild']);
+  FMarks.Bind(FBuildZeroHints, ['BuildZeroHints']);
+  FMarks.Bind(FStartProfiles, ['StartProfiles']);
+  FMarks.Bind(FStartProfilesStatusField, ['StartProfilesStatusField']);
+  FMarks.Bind(FTestDebug, ['TestDebug']);
+  FMarks.Bind(FTestBreakAtStart, ['TestBreakAtStart']);
+  FMarks.Bind(FSafeAsk, ['SafeAskAfterCrash']);
+  FMarks.Bind(FSafeAuto, ['SafeAutoAfterRepeatedCrash']);
+  FMarks.Bind(FSafeKey, ['SafeStartupKey']);
+  FMarks.Bind(FSafeTimeout, ['SafeStartupTimeoutMs']);
+  FMarks.Bind(FSafeHistory, ['SafeKeepSettingsHistory']);
+  FMarks.Bind(FUndoEnabled, ['UndoMultiFile']);
+  FMarks.Bind(FUndoDepth, ['UndoMultiFileDepth']);
+  FMarks.Bind(FUndoPersist, ['UndoMultiFilePersist']);
+  FMarks.Bind(FUndoMaxSize, ['UndoMultiFileMaxSizeMb']);
+  FMarks.Bind(FUndoOnConflict, ['UndoMultiFileOnConflict']);
+  FMarks.Bind(FUndoNewFiles, ['UndoMultiFileNewFiles']);
+  FMarks.Bind(FUnitSearchEnabled, ['UnitSearchEnabled']);
+  FMarks.Bind(FUnitSearchReplace, ['UnitSearchReplaceIdeDialog']);
+  FMarks.Bind(FUnitSearchKey, ['UnitSearchKey']);
+  FMarks.Bind(FUnitSearchPathStyle, ['UnitSearchPathStyle']);
+  FMarks.Bind(FUnitSearchGroupBy, ['UnitSearchGroupBy']);
+  FMarks.Bind(FUnitSearchRememberCollapsed, ['UnitSearchRememberCollapsed']);
+  FMarks.Bind(FUnitSearchFilters, ['UnitSearchFilters']);
+  FMarks.Bind(FUnitSearchDefaultScope, ['UnitSearchDefaultScope']);
+  FMarks.Bind(FUnitSearchFilterSyntax, ['UnitSearchFilterSyntax']);
+  FMarks.Bind(FUnitSearchPreview, ['UnitSearchPreview']);
+  FMarks.Bind(FUnitSearchPreviewForm, ['UnitSearchPreviewForm']);
+  FMarks.Bind(FUnitSearchPreviewUsedBy, ['UnitSearchPreviewUsedBy']);
+  FMarks.Bind(FUnitSearchMultiSelect, ['UnitSearchMultiSelect']);
+  FMarks.Bind(FUnitSearchActions, ['UnitSearchActions']);
+  FMarks.Bind(FUnitSearchAddUses, ['UnitSearchActionsAddUses']);
+  FMarks.Bind(FWelcomeEnabled, ['WelcomePage']);
+  FMarks.Bind(FWelcomeHost, ['WelcomePageHost']);
+  FMarks.Bind(FWelcomeLayout, ['WelcomePageLayout']);
+  FMarks.Bind(FWelcomeCustomLayout, ['WelcomePageCustomLayout']);
+  FMarks.Bind(FWelcomeColumns, ['WelcomePageColumns']);
+  FMarks.Bind(FWelcomeActiveLayout, ['WelcomePageActiveLayout', 'WelcomePageLayouts']);
+  FMarks.Bind(FWelcomeHeader, ['WelcomePageHeader']);
+  FMarks.Bind(FWelcomeGreeting, ['WelcomePageGreeting']);
+  FMarks.Bind(FWelcomeSearch, ['WelcomePageSearch']);
+  FMarks.Bind(FWelcomeSearchSymbols, ['WelcomePageSearchSymbols']);
+  FMarks.Bind(FWelcomeSearchKey, ['WelcomePageSearchKey']);
+  FMarks.Bind(FWelcomeWhatsNew, ['WelcomePageWhatsNew']);
+  FMarks.Bind(FWelcomeContinue, ['WelcomePageContinue']);
+  FMarks.Bind(FWelcomeContinueCount, ['WelcomePageContinueCount']);
+  FMarks.Bind(FWelcomeContinueIncoming, ['WelcomePageContinueIncoming']);
+  FMarks.Bind(FWelcomeContinueFetch, ['WelcomePageContinueFetch']);
+  FMarks.Bind(FWelcomeSaved, ['WelcomePageSaved']);
+  FMarks.Bind(FWelcomeProjects, ['WelcomePageProjectStatus']);
+  FMarks.Bind(FWelcomeMaxProjects, ['WelcomePageMaxProjects']);
+  FMarks.Bind(FWelcomeRefreshVcs, ['WelcomePageRefreshVcs']);
+  FMarks.Bind(FWelcomeTrends, ['WelcomePageTrends']);
+  FMarks.Bind(FWelcomeTrendsPoints, ['WelcomePageTrendsPoints']);
+  FMarks.Bind(FWelcomeTests, ['WelcomePageTests']);
+  FMarks.Bind(FWelcomeTestsMaxFailures, ['WelcomePageTestsMaxFailures']);
+  FMarks.Bind(FWelcomeTestsCi, ['WelcomePageTestsCi']);
+  FMarks.Bind(FWelcomeTestsCiInterval, ['WelcomePageTestsCiIntervalMinutes']);
+  FMarks.Bind(FWelcomeTestsCiNotify, ['WelcomePageTestsCiNotify']);
+  FMarks.Bind(FCiLogin, ['CiLogin']);
+  FMarks.Bind(FWelcomeQuickActions, ['WelcomePageQuickActions']);
+  FMarks.Bind(FWelcomeQuickActionsConsole, ['WelcomePageQuickActionsConsole']);
+  FMarks.Bind(FWelcomeQuickActionsBuildKey, ['WelcomePageQuickActionsBuildKey']);
+  FMarks.Bind(FWelcomeQuickActionsTestKey, ['WelcomePageQuickActionsTestKey']);
+  FMarks.Bind(FWelcomeUnsaved, ['WelcomePageUnsaved']);
+  FMarks.Bind(FWelcomeUnsavedMinAge, ['WelcomePageUnsavedMinAgeHours']);
+  FMarks.Bind(FWelcomeUnsavedWarn, ['WelcomePageUnsavedWarnHours']);
+  FMarks.Bind(FWelcomeUnsavedAlert, ['WelcomePageUnsavedAlertHours']);
+  FMarks.Bind(FWelcomeUnsavedHideClean, ['WelcomePageUnsavedHideWhenClean']);
+  FMarks.Bind(FWelcomeStatusTile, ['WelcomePageStatusTile']);
+  FMarks.Bind(FWelcomeStatusTileOnlyProblems, ['WelcomePageStatusTileOnlyProblems']);
+  FMarks.Bind(FWelcomeDiscover, ['WelcomePageDiscover']);
+  FMarks.Bind(FTipsUsageTracking, ['TipsUsageTracking']);
+  FMarks.Bind(FWelcomeHelp, ['WelcomePageHelp']);
+  FMarks.Bind(FWelcomeHelpReportUrl, ['WelcomePageHelpReportUrl']);
+  FMarks.Bind(FWelcomeHelpReportFolder, ['WelcomePageHelpReportFolder']);
+  FMarks.Bind(FWelcomeProjectSetup, ['WelcomePageProjectSetup']);
+  FMarks.Bind(FWelcomeNewFromTemplate, ['WelcomePageNewFromTemplate']);
+  FMarks.Bind(FWelcomeIssues, ['WelcomePageIssues']);
+  FMarks.Bind(FWelcomeIssuesTracker, ['WelcomePageIssuesTracker']);
+  FMarks.Bind(FWelcomeIssuesQuery, ['WelcomePageIssuesQuery']);
+  FMarks.Bind(FWelcomeIssuesStart, ['WelcomePageIssuesStart']);
+  FMarks.Bind(FWelcomeIssuesBranchPattern, ['WelcomePageIssuesBranchPattern']);
+  FMarks.Bind(FWelcomeIssuesBranchBase, ['WelcomePageIssuesBranchBase']);
+  FMarks.Bind(FWelcomeIssuesCommitPattern, ['WelcomePageIssuesCommitPattern']);
+  FMarks.Bind(FTrackerLogin, ['TrackerLogin']);
+  FMarks.Bind(FOpenBuild, ['BuildOnOpen', 'BuildOnOpenKind']);
+  FMarks.Bind(FOpenBuildScope, ['BuildOnOpenScope']);
+  FMarks.Bind(FOpenBuildDelay, ['BuildOnOpenDelayMs']);
+  FMarks.Bind(FOpenBuildExclude, ['BuildOnOpenExclude']);
+  FMarks.Bind(FReleaseGuard, ['ReleaseGuard']);
+  FMarks.Bind(FBuildGate, ['BuildGate']);
+  FMarks.Bind(FReleaseConfigs, ['ReleaseConfigs']);
+  FMarks.Bind(FSettingsExportImport, ['SettingsExportImport']);
+  FMarks.Bind(FSettingsMarkModified, ['SettingsMarkModified']);
+  FMarks.Bind(FSettingsBackupBeforeImport, ['SettingsBackupBeforeImport']);
+  FMarks.Bind(FSettingsExportSecrets, ['SettingsExportSecrets']);
+  for Check := Low(TAtlasReleaseCheck) to High(TAtlasReleaseCheck) do
+  begin
+    FMarks.Bind(FReleaseCheckBoxes[Check], ['ReleaseChecks'], False);
+    FMarks.Bind(FReleaseCheckChoices[Check], ['ReleaseChecks'], False);
+  end;
+  for Series := Low(TAtlasTrendSeries) to High(TAtlasTrendSeries) do
+    FMarks.Bind(FWelcomeTrendsSeries[Series], ['WelcomePageTrendsSeries'], False);
+  for Action := Low(TAtlasQuickAction) to High(TAtlasQuickAction) do
+    FMarks.Bind(FWelcomeQuickActionsItems[Action], ['WelcomePageQuickActionsItems'], False);
+end;
+
+destructor TAtlasSettingsPage.Destroy;
+begin
+  FreeAndNil(FCatalog);
+  inherited;
+end;
+
+function TAtlasSettingsPage.Catalog: TAtlasSettingsCatalog;
+begin
+  if FCatalog = nil then
+    FCatalog := TAtlasSettingsCatalog.CreateDefault;
+  Result := FCatalog;
+end;
+
+function TAtlasSettingsPage.CurrentSettings: TAtlasPluginSettings;
+begin
+  Result := FWidths;
+  SaveTo(Result);
+end;
+
+procedure TAtlasSettingsPage.RefreshMarks;
+var
+  Modified: TArray<string>;
+begin
+  FTransferBar.Visible := FSettingsExportImport.Checked;
+  Modified := nil;
+  if FSettingsMarkModified.Checked then
+    Modified := TAtlasSettingsTransfer.ModifiedNames(Catalog, CurrentSettings);
+  FMarks.Show(Modified, FSettingsMarkModified.Checked);
+end;
+
+procedure TAtlasSettingsPage.MarksChanged(Sender: TObject);
+begin
+  RefreshMarks;
+end;
+
+procedure TAtlasSettingsPage.ResetNames(const ANames: TArray<string>);
+begin
+  if Length(ANames) = 0 then
+    Exit;
+  LoadFrom(TAtlasSettingsTransfer.ResetNames(Catalog, CurrentSettings, ANames));
+end;
+
+procedure TAtlasSettingsPage.ResetPage;
+begin
+  // Ohne Fenster hängen die Reiter noch nicht am PageControl.
+  if FPages.ActivePage = nil then
+    Exit;
+  ResetNames(FMarks.NamesIn(FPages.ActivePage));
+end;
+
+procedure TAtlasSettingsPage.ResetPageClick(Sender: TObject);
+begin
+  ResetPage;
+end;
+
+procedure TAtlasSettingsPage.ExportClick(Sender: TObject);
+begin
+  if Assigned(FOnExportSettings) then
+    FOnExportSettings(CurrentSettings);
+end;
+
+procedure TAtlasSettingsPage.ImportClick(Sender: TObject);
+var
+  Imported: TAtlasPluginSettings;
+begin
+  if Assigned(FOnImportSettings) and FOnImportSettings(CurrentSettings, False, Imported) then
+    LoadFrom(Imported);
+end;
+
+procedure TAtlasSettingsPage.ProfileClick(Sender: TObject);
+var
+  Imported: TAtlasPluginSettings;
+begin
+  if Assigned(FOnImportSettings) and FOnImportSettings(CurrentSettings, True, Imported) then
+    LoadFrom(Imported);
+end;
+
+procedure TAtlasSettingsPage.ResetAllClick(Sender: TObject);
+var
+  Reset: TAtlasPluginSettings;
+begin
+  if Assigned(FOnResetAllSettings) and FOnResetAllSettings(CurrentSettings, Reset) then
+    LoadFrom(Reset);
 end;
 
 procedure TAtlasSettingsPage.AddSheet(AId: TAtlasTextId);
@@ -2112,6 +2800,18 @@ begin
 end;
 
 procedure TAtlasSettingsPage.LoadFrom(const ASettings: TAtlasPluginSettings);
+begin
+  // Während des Ladens lösen die Elemente keine Neuberechnung der Punkte aus.
+  FMarks.BeginLoad;
+  try
+    LoadControls(ASettings);
+  finally
+    FMarks.EndLoad;
+  end;
+  RefreshMarks;
+end;
+
+procedure TAtlasSettingsPage.LoadControls(const ASettings: TAtlasPluginSettings);
 var
   Shown: TAtlasTrendSeriesList;
   Series, Wanted: TAtlasTrendSeries;
@@ -2352,6 +3052,14 @@ begin
   FWelcomeHelpReportFolder.Text := ASettings.WelcomePageHelpReportFolder;
   FWelcomeProjectSetup.Checked := ASettings.WelcomePageProjectSetup;
   FWelcomeNewFromTemplate.Checked := ASettings.WelcomePageNewFromTemplate;
+  // Freies Layout (#767): die Häkchen der Bereiche stehen schon; das Modell liest sie aus ASettings.
+  FWelcomeCustomLayout.Checked := ASettings.WelcomePageCustomLayout;
+  FPageLayouts := TAtlasWelcomeCustomizing.Load(ASettings);
+  ShowWelcomeLayouts(False);
+  FSettingsExportImport.Checked := ASettings.SettingsExportImport;
+  FSettingsMarkModified.Checked := ASettings.SettingsMarkModified;
+  FSettingsBackupBeforeImport.Checked := ASettings.SettingsBackupBeforeImport;
+  FSettingsExportSecrets.Choice := Ord(ASettings.SettingsExportSecrets = 'placeholder');
   RefreshFuse;
   RefreshIndex;
 end;
@@ -2602,6 +3310,16 @@ begin
   ASettings.WelcomePageHelpReportFolder := Trim(FWelcomeHelpReportFolder.Text);
   ASettings.WelcomePageProjectSetup := FWelcomeProjectSetup.Checked;
   ASettings.WelcomePageNewFromTemplate := FWelcomeNewFromTemplate.Checked;
+  // Freies Layout (#767): nach allen Häkchen, denn Stored liest die Sichtbarkeit aus ASettings.
+  ASettings.WelcomePageCustomLayout := FWelcomeCustomLayout.Checked;
+  KeepWelcomeLayout;
+  ASettings := TAtlasWelcomeCustomizing.Stored(ASettings, FPageLayouts);
+  ASettings.SettingsExportImport := FSettingsExportImport.Checked;
+  ASettings.SettingsMarkModified := FSettingsMarkModified.Checked;
+  ASettings.SettingsBackupBeforeImport := FSettingsBackupBeforeImport.Checked;
+  ASettings.SettingsExportSecrets := 'omit';
+  if FSettingsExportSecrets.Choice = 1 then
+    ASettings.SettingsExportSecrets := 'placeholder';
   ASettings.ListWidth := FWidths.ListWidth;
   ASettings.PanelWidth := FWidths.PanelWidth;
   ASettings.Normalize;

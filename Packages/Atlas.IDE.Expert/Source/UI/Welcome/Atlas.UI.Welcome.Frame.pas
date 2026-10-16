@@ -94,6 +94,8 @@ type
     /// <summary>Hierhin legen Bereiche ihren Inhalt.</summary>
     property Body: TPanel read FBody;
     property TitleLabel: TLabel read FTitle;
+    /// <summary>Titelzeile; „Seite anpassen“ (#767) legt Griff und Werkzeuge hinein.</summary>
+    property TitleBar: TPanel read FTitleBar;
     /// <summary>Der Frame „Atlas“ ordnet daraufhin die Spalten neu.</summary>
     property OnHeightChanged: TNotifyEvent read FOnHeightChanged write FOnHeightChanged;
   end;

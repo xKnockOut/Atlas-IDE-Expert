@@ -181,6 +181,8 @@
         <DCCReference Include="Source\IDE\CodeInsight\Atlas.IDE.CodeInsight.Composition.pas"/>
         <DCCReference Include="Source\Core\Settings\Atlas.Core.Settings.Plugin.pas"/>
         <DCCReference Include="Source\UI\Settings\Atlas.UI.Settings.Page.pas">
+        <DCCReference Include="Source\UI\Settings\Atlas.UI.Settings.Marks.pas"/>,
+        <DCCReference Include="Source\UI\Settings\Atlas.UI.Settings.Transfer.pas"/>,
             <Form>AtlasSettingsPage</Form>
             <FormType>dfm</FormType>
             <DesignClass>TFrame</DesignClass>
@@ -201,6 +203,10 @@
         <DCCReference Include="Source\Core\Settings\Atlas.Core.Settings.Schema.pas"/>
         <DCCReference Include="Source\Core\Settings\Atlas.Core.Settings.Scopes.pas"/>
         <DCCReference Include="Source\Core\Settings\Atlas.Core.Settings.SchemaData.pas"/>
+        <DCCReference Include="Source\Core\Settings\Atlas.Core.Settings.PluginSchemaData.pas"/>,
+        <DCCReference Include="Source\Core\Settings\Atlas.Core.Settings.ProfileData.pas"/>,
+        <DCCReference Include="Source\Core\Settings\Atlas.Core.Settings.Catalog.pas"/>,
+        <DCCReference Include="Source\Core\Settings\Atlas.Core.Settings.Transfer.pas"/>,
         <DCCReference Include="Source\UI\Settings\Atlas.UI.Settings.ProjectDialog.pas"/>
         <DCCReference Include="Source\IDE\Settings\Atlas.IDE.Settings.Project.pas"/>
         <DCCReference Include="Source\Core\Settings\Atlas.Core.Settings.Layers.pas"/>
@@ -286,6 +292,7 @@
         <DCCReference Include="Source\Core\Settings\Atlas.Core.Settings.QuickToggles.pas"/>
         <DCCReference Include="Source\UI\Settings\Atlas.UI.Settings.QuickToggles.pas"/>
         <DCCReference Include="Source\IDE\Settings\Atlas.IDE.Settings.QuickToggles.pas"/>
+        <DCCReference Include="Source\IDE\Settings\Atlas.IDE.Settings.Transfer.pas"/>,
         <DCCReference Include="Source\Core\Settings\Atlas.Core.Settings.History.pas"/>
         <DCCReference Include="Source\Core\Settings\Atlas.Core.Settings.TeamFile.pas"/>
         <DCCReference Include="Source\Core\Ci\Atlas.Core.Ci.Contract.pas"/>
@@ -380,6 +387,7 @@
         <DCCReference Include="Source\IDE\Build\Atlas.IDE.Build.OpenBuild.pas"/>
         <DCCReference Include="Source\Core\Welcome\Atlas.Core.Welcome.Sections.pas"/>
         <DCCReference Include="Source\Core\Welcome\Atlas.Core.Welcome.Layout.pas"/>
+        <DCCReference Include="Source\Core\Welcome\Atlas.Core.Welcome.Layouts.pas"/>
         <DCCReference Include="Source\Core\Welcome\Atlas.Core.Welcome.Greeting.pas"/>
         <DCCReference Include="Source\Core\Welcome\Atlas.Core.Welcome.Backup.pas"/>
         <DCCReference Include="Source\Core\Welcome\Atlas.Core.Welcome.HostLayout.pas"/>
@@ -405,6 +413,7 @@
         </DCCReference>
         <DCCReference Include="Source\UI\Welcome\Atlas.UI.Welcome.Search.pas"/>
         <DCCReference Include="Source\UI\Welcome\Atlas.UI.Welcome.Header.pas"/>
+        <DCCReference Include="Source\UI\Welcome\Atlas.UI.Welcome.Arrange.pas"/>
         <DCCReference Include="Source\UI\Welcome\Atlas.UI.Welcome.Board.pas"/>
         <DCCReference Include="Source\UI\Welcome\Atlas.UI.Welcome.WhatsNew.pas"/>
         <DCCReference Include="Source\UI\Welcome\Atlas.UI.Welcome.Projects.pas"/>
@@ -436,6 +445,7 @@
         <DCCReference Include="Source\IDE\Welcome\Atlas.IDE.Welcome.Discover.pas"/>
         <DCCReference Include="Source\IDE\Welcome\Atlas.IDE.Welcome.Help.pas"/>
         <DCCReference Include="Source\IDE\Welcome\Atlas.IDE.Welcome.Setup.pas"/>
+        <DCCReference Include="Source\IDE\Welcome\Atlas.IDE.Welcome.Layouts.pas"/>
         <DCCReference Include="Source\IDE\Welcome\Atlas.IDE.Welcome.Commands.pas"/>
         <DCCReference Include="Source\Core\Vcs\Atlas.Core.Vcs.Contract.pas"/>
         <DCCReference Include="Source\Core\Vcs\Atlas.Core.Vcs.Internals.Text.pas"/>

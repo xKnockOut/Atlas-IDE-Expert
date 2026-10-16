@@ -17,6 +17,8 @@ type
     /// <summary>'' wenn Schlüssel oder Wert fehlt.</summary>
     function ReadString(const AKey, AName: string): string;
     function MachineReadString(const AKey, AName: string): string;
+    /// <summary>ADefault, wenn Schlüssel oder Wert fehlt oder der Wert keine Zahl ist (#723).</summary>
+    function ReadInteger(const AKey, AName: string; ADefault: Integer): Integer;
     function ValueNames(const AKey: string): TArray<string>;
     /// <summary>Legt den Schlüssel bei Bedarf an.</summary>
     procedure WriteString(const AKey, AName, AValue: string);
@@ -34,6 +36,11 @@ type
     /// <summary>Ordner löschen, sobald dieser Prozess beendet ist (der Installer liegt selbst darin).</summary>
     procedure DeleteDirectoryLater(const ADirectory: string);
     function FileSize(const AFileName: string): Int64;
+    /// <summary>Textdatei als UTF-8 (mit oder ohne BOM); '' ohne Datei, Ausnahme, wenn sie nicht lesbar ist
+    /// (#723).</summary>
+    function ReadText(const AFileName: string): string;
+    /// <summary>Schreibt AText als UTF-8 ohne BOM, legt den Ordner an; Ausnahme bei Fehlern (#723).</summary>
+    procedure WriteText(const AFileName, AText: string);
     /// <summary>Namen der Dateien direkt in ADirectory (ohne Unterordner); leer, wenn es ihn nicht gibt.</summary>
     function FilesIn(const ADirectory: string): TArray<string>;
     /// <summary>Vollständige Pfade der laufenden Programme.</summary>
