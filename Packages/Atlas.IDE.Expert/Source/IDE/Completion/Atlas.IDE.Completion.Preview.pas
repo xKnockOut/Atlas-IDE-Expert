@@ -4,7 +4,9 @@
 // steht kursiv und gedämpft hinter dem Cursor. Nur gezeichnet über die
 // Zeichenereignisse der Code-Editor-API (ToolsAPI.Editor, PaintLine nach dem
 // Zeichnen der Zeile); Datei und Undo-Liste bleiben unberührt. Beim Wechsel
-// des Texts wird nur die betroffene Zeile neu gezeichnet.
+// des Texts wird nur die betroffene Zeile neu gezeichnet. Die gezeichnete
+// Vorschau meldet sich bei TAtlasIdeElements (#628, nur „überall
+// ausblenden“: Einstellung Preview).
 
 interface
 
@@ -49,7 +51,9 @@ implementation
 uses
   Atlas.Core.Diagnostics.Guard,
   Winapi.Windows,
-  Atlas.IDE.Foundation.EditorStyle;
+  Atlas.Core.Editor.Elements,
+  Atlas.IDE.Foundation.EditorStyle,
+  Atlas.IDE.Foundation.Elements;
 
 { TAtlasEditorPreview.TEvents }
 
@@ -127,7 +131,8 @@ var
   Canvas: TCanvas;
   Italic: TFont;
   DC: HDC;
-  Saved, Top: Integer;
+  Saved, Top, TopRow: Integer;
+  Size: TSize;
 begin
   try
     if BeforeEvent or (Stage <> plsEndPaint) or (FText = '') or (Context = nil) or
@@ -150,9 +155,15 @@ begin
         SetBkMode(DC, TRANSPARENT);
         SetTextColor(DC, ColorToRGB(TColor(TAtlasIdeStyle.Colors.Muted)));
         Winapi.Windows.TextOut(DC, Cell.Left, Top, PChar(FText), Length(FText));
+        GetTextExtentPoint32W(DC, PChar(FText), Length(FText), Size);
       finally
         RestoreDC(DC, Saved);
       end;
+      TopRow := 0;
+      if Context.EditView <> nil then
+        TopRow := Context.EditView.TopRow;
+      TAtlasIdeElements.Painted(TAtlasDrawnElement.CompletionPreview, Context.FileName, FLine - 1, '',
+        TRect.Create(Cell.Left, Rect.Top, Cell.Left + Size.cx, Rect.Bottom), TopRow, Rect.Height);
     finally
       Italic.Free;
     end;

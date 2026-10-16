@@ -11,6 +11,10 @@
 // es bleiben nur Hinweise, die etwas sagen: nicht beim einzigen Argument eines
 // Aufrufs, nicht bei Namen wie S1, A oder X und nicht, wenn das Argument den
 // Namen schon enthält.
+// Blockende-Beschriftungen (#620): Die Endmarken des Servers ("// TKunde.Speichern"
+// hinter dem end langer Blöcke, inlayHints.endMarkers) liegen getrennt von den
+// Parameternamen und haben eine eigene Einstellung (BlockEndLabels). Keine Marke,
+// wenn hinter dem end schon ein Kommentar steht; lange Texte enden mit „…“.
 
 interface
 
@@ -24,8 +28,10 @@ type
     Line: Integer;
     /// <summary>0-basiert, UTF-16-Index in der Zeile.</summary>
     Character: Integer;
-    /// <summary>Parametername ohne ":".</summary>
+    /// <summary>Parametername ohne ":"; bei einer Endmarke deren Text ohne "//".</summary>
     Name: string;
+    /// <summary>Endmarke hinter einem end (#620) statt Parametername.</summary>
+    EndLabel: Boolean;
   end;
 
   TAtlasInlayHintStore = class
@@ -34,12 +40,15 @@ type
     Margin = 20;
     /// <summary>Längster gezeigter Wert, danach „…“.</summary>
     MaxValueLength = 24;
+    /// <summary>Längster Text einer Blockende-Beschriftung, danach „…“.</summary>
+    MaxEndLabelLength = 40;
   private type
     TEntry = class
       Text: string;
       Lines: TArray<string>;
       Covered: TArray<Boolean>;
       Hints: TArray<TAtlasInlayHint>;
+      Ends: TArray<TAtlasInlayHint>;
     end;
   private
     FEntries: TObjectDictionary<string, TEntry>;
@@ -61,6 +70,10 @@ type
     class function IsVagueName(const AName: string): Boolean; static;
     /// <summary>„Name = Wert“, lange Werte gekürzt.</summary>
     class function LabelOf(const AName, AValue: string): string; static;
+    /// <summary>„// Text“ einer Blockende-Beschriftung, lange Texte gekürzt.</summary>
+    class function EndLabelOf(const AText: string): string; static;
+    /// <summary>Steht ab ACharacter (0-basiert) noch ein Kommentar in der Zeile?</summary>
+    class function HasCommentAfter(const ALine: string; ACharacter: Integer): Boolean; static;
     /// <summary>Aktueller Text einer Datei; anderer Text verwirft ihre Hinweise.</summary>
     procedure SetText(const AFileName, AText: string);
     /// <summary>Fehlende Zeilen um AFirst..ALast (mit Rand); False, wenn alles da ist.</summary>
@@ -70,6 +83,9 @@ type
     procedure Put(const AFileName, AText: string; AFrom, ATo: Integer; const AHints: TArray<TAtlasInlayHint>);
     /// <summary>Beschriftungen („Name = Wert“) der Zeile in Reihenfolge.</summary>
     function OnLine(const AFileName: string; ALine: Integer): TArray<string>;
+    /// <summary>Blockende-Beschriftung der Zeile: AText ist der Text der Marke ohne "//" (Anker), ALabel die
+    /// gezeigte Beschriftung („// TKunde.Speichern“); False ohne.</summary>
+    function EndLabelOn(const AFileName: string; ALine: Integer; out AText, ALabel: string): Boolean;
     /// <summary>Zeile im Speicher, zum Vergleich mit dem Editor.</summary>
     function LineText(const AFileName: string; ALine: Integer; out AText: string): Boolean;
     procedure Clear;
@@ -78,6 +94,7 @@ type
 implementation
 
 uses
+  System.Math,
   System.StrUtils,
   System.Generics.Defaults,
   Atlas.Text.Lines,
@@ -162,6 +179,7 @@ begin
   Entry.Covered := nil;
   SetLength(Entry.Covered, Length(Entry.Lines));
   Entry.Hints := nil;
+  Entry.Ends := nil;
 end;
 
 function TAtlasInlayHintStore.Missing(const AFileName: string; AFirst, ALast: Integer; out AFrom, ATo: Integer): Boolean;
@@ -206,6 +224,19 @@ begin
       Entry.Covered[Line] := True;
   for Hint in AHints do
   begin
+    // Endmarke (#620): nur ohne Kommentar hinter dem end, jede Zeile einmal.
+    if Hint.EndLabel then
+    begin
+      if (Hint.Line < AFrom) or (Hint.Line > ATo) or (Hint.Line > High(Entry.Lines)) or (Hint.Name = '') or
+        HasCommentAfter(Entry.Lines[Hint.Line], Hint.Character) then
+        Continue;
+      Duplicate := False;
+      for Known in Entry.Ends do
+        Duplicate := Duplicate or (Known.Line = Hint.Line);
+      if not Duplicate then
+        Entry.Ends := Entry.Ends + [Hint];
+      Continue;
+    end;
     if (Hint.Line < AFrom) or (Hint.Line > ATo) or (Hint.Line > High(Entry.Lines)) or (Hint.Name = '') or
       not IsLiteralAt(Entry.Lines[Hint.Line], Hint.Character) then
       Continue;
@@ -241,6 +272,57 @@ begin
   for Hint in Entry.Hints do
     if Hint.Line = ALine then
       Result := Result + [LabelOf(Hint.Name, ArgumentAt(Entry.Lines[ALine], Hint.Character))];
+end;
+
+function TAtlasInlayHintStore.EndLabelOn(const AFileName: string; ALine: Integer; out AText, ALabel: string): Boolean;
+var
+  Entry: TEntry;
+  Hint: TAtlasInlayHint;
+begin
+  AText := '';
+  ALabel := '';
+  Entry := Find(AFileName);
+  if Entry = nil then
+    Exit(False);
+  for Hint in Entry.Ends do
+    if Hint.Line = ALine then
+    begin
+      AText := Hint.Name;
+      ALabel := EndLabelOf(Hint.Name);
+      Exit(True);
+    end;
+  Result := False;
+end;
+
+class function TAtlasInlayHintStore.EndLabelOf(const AText: string): string;
+begin
+  if Length(AText) > MaxEndLabelLength then
+    Result := '// ' + TrimRight(Copy(AText, 1, MaxEndLabelLength - 1)) + '…'
+  else
+    Result := '// ' + AText;
+end;
+
+class function TAtlasInlayHintStore.HasCommentAfter(const ALine: string; ACharacter: Integer): Boolean;
+var
+  Index: Integer;
+  InString: Boolean;
+begin
+  InString := False;
+  Index := Max(0, ACharacter) + 1;
+  while Index <= Length(ALine) do
+  begin
+    if InString then
+    begin
+      if ALine[Index] = '''' then
+        InString := False;
+    end
+    else if ALine[Index] = '''' then
+      InString := True
+    else if (ALine[Index] = '{') or (Copy(ALine, Index, 2) = '//') or (Copy(ALine, Index, 2) = '(*') then
+      Exit(True);
+    Inc(Index);
+  end;
+  Result := False;
 end;
 
 class function TAtlasInlayHintStore.ArgumentAt(const ALine: string; ACharacter: Integer): string;

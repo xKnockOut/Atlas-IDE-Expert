@@ -23,7 +23,8 @@
 // Abschaltbar über „Code Lens „Test ausführen““ (codeLens.tests, Schlüssel
 // gemeinsam mit #585) und über „Tests ausführen“ (TestRun); ohne sie
 // zeichnet die Lens nichts und nimmt keinen Klick an. Die Marke „Debuggen“
-// zusätzlich über „Test debuggen“ (TestDebug).
+// zusätzlich über „Test debuggen“ (TestDebug). Ausblenden am Element (#628):
+// je Test über .atlas (Anker Fixture.Methode[.Fall]) oder je Datei.
 
 interface
 
@@ -116,8 +117,10 @@ uses
   Atlas.Core.Editor.Pairs,
   Atlas.Core.Tests.Run,
   Atlas.UI.Strings,
+  Atlas.Core.Editor.Elements,
   Atlas.IDE.Foundation.EditorBuffer,
   Atlas.IDE.Foundation.Settings,
+  Atlas.IDE.Foundation.Elements,
   Atlas.Text.Lines,
   Atlas.Text.DUnitX;
 
@@ -375,6 +378,14 @@ begin
     // Text seit dem Lesen verschoben: keine Marke an einer Leerzeile.
     if Trim(Line) = '' then
       Exit;
+    // Ausgeblendet am Element (#628): Anker ist Fixture.Methode[.Fall].
+    if TAtlasIdeElements.Hidden(TAtlasDrawnElement.CodeLensTests, Context.FileName,
+      FItems[Index].Selection.Caption) then
+    begin
+      FItems[Index].RunRect := TRect.Empty;
+      FItems[Index].DebugRect := TRect.Empty;
+      Exit;
+    end;
     Text := Caption(FItems[Index], Failed, Passed);
     TabWidth := TAtlasEditorBuffer.TabWidth(Context.EditView.Buffer);
     Column := Length(TrimRight(TAtlasPairs.DisplayLine(Line, TabWidth))) + 1;
@@ -408,6 +419,11 @@ begin
         FItems[Index].DebugRect := DrawPill(TAtlasStrings.Text(TAtlasTextId.TestsLensDebug), Colors.Accent,
           Pill.Right + 6);
       FItems[Index].TopRow := Context.EditView.TopRow;
+      TAtlasIdeElements.Painted(TAtlasDrawnElement.CodeLensTests, Context.FileName, FItems[Index].Line,
+        FItems[Index].Selection.Caption, Pill, FItems[Index].TopRow, Rect.Height);
+      if not FItems[Index].DebugRect.IsEmpty then
+        TAtlasIdeElements.Painted(TAtlasDrawnElement.CodeLensTests, Context.FileName, FItems[Index].Line,
+          FItems[Index].Selection.Caption, FItems[Index].DebugRect, FItems[Index].TopRow, Rect.Height);
     finally
       Canvas.Font.Assign(OldFont);
       Canvas.Brush.Assign(OldBrush);

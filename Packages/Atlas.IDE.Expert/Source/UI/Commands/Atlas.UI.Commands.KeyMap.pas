@@ -272,6 +272,8 @@ begin
       Id := TAtlasTextId.SettingsWelcomeQuickActionsBuildKey;
     TAtlasKeyFunction.WelcomeQuickTests:
       Id := TAtlasTextId.SettingsWelcomeQuickActionsTestKey;
+    TAtlasKeyFunction.HideElement:
+      Id := TAtlasTextId.HideElementCommand;
   else
     Id := TAtlasTextId.KeyMapUnitSearchIde;
   end;
