@@ -264,6 +264,8 @@ begin
       Id := TAtlasTextId.UnitSearchTitle;
     TAtlasKeyFunction.Bookmark:
       Id := TAtlasTextId.BookmarksMenuAdd;
+    TAtlasKeyFunction.GenerateMenu:
+      Id := TAtlasTextId.GenerateMenuCommand;
   else
     Id := TAtlasTextId.KeyMapUnitSearchIde;
   end;

@@ -173,6 +173,13 @@ type
     FRedoKey: TEdit;
     FEditorKeysPriority: TCheckBox;
     FSlashCommands: TCheckBox;
+    /// <summary>Erzeugen-Menü (#719).</summary>
+    FGenerateMenu: TCheckBox;
+    FGenerateMenuKey: TEdit;
+    FGenerateMenuGroups: TEdit;
+    FGenerateMenuHidden: TEdit;
+    FGenerateMenuRecentFirst: TCheckBox;
+    FGenerateMenuShowCommandNames: TCheckBox;
     FSnippets: TCheckBox;
     FImportIdeTemplates: TCheckBox;
     FSafeAsk: TCheckBox;
@@ -422,6 +429,13 @@ type
     property BookmarksNamedCheck: TCheckBox read FBookmarksNamed;
     property BookmarksSharedCheck: TCheckBox read FBookmarksShared;
     property BookmarkKey: TEdit read FBookmarkKey;
+    /// <summary>Zum Testen: Erzeugen-Menü (#719).</summary>
+    property GenerateMenuCheck: TCheckBox read FGenerateMenu;
+    property GenerateMenuKey: TEdit read FGenerateMenuKey;
+    property GenerateMenuGroups: TEdit read FGenerateMenuGroups;
+    property GenerateMenuHidden: TEdit read FGenerateMenuHidden;
+    property GenerateMenuRecentFirstCheck: TCheckBox read FGenerateMenuRecentFirst;
+    property GenerateMenuShowCommandNamesCheck: TCheckBox read FGenerateMenuShowCommandNames;
     property FavoritesList: TListBox read FFavoritesList;
     property FavoritesRemove: TButton read FFavoritesRemove;
     property FavoritesRemoveAll: TButton read FFavoritesRemoveAll;
@@ -452,6 +466,7 @@ uses
   Atlas.Core.Product.Version,
   Atlas.Core.Updates.Check,
   Atlas.Core.Undo.Contract,
+  Atlas.Core.Undo.Names,
   Atlas.Core.Welcome.WhatsNew,
   Atlas.Core.Welcome.Trends,
   Atlas.Core.Commands.ShortcutTips;
@@ -796,6 +811,13 @@ begin
   FRedoKey := AddKey(TAtlasStrings.Text(TAtlasTextId.RedoMenu));
   FEditorKeysPriority := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsEditorKeysPriority));
   FSlashCommands := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsSlashCommands));
+  // Erzeugen-Menü (#719): Schnellbefehle, Vorlagen und Code-Aktionen an der Cursorstelle.
+  FGenerateMenu := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsGenerateMenu));
+  FGenerateMenuKey := AddKey(TAtlasStrings.Text(TAtlasTextId.GenerateMenuCommand));
+  FGenerateMenuGroups := AddTextLine(TAtlasStrings.Text(TAtlasTextId.SettingsGenerateMenuGroups));
+  FGenerateMenuHidden := AddTextLine(TAtlasStrings.Text(TAtlasTextId.SettingsGenerateMenuHidden));
+  FGenerateMenuRecentFirst := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsGenerateMenuRecentFirst));
+  FGenerateMenuShowCommandNames := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsGenerateMenuShowCommandNames));
 
   AddSheet(TAtlasTextId.SettingsTabRobustness);
   // Einfrier-Wächter (#501).
@@ -1508,6 +1530,12 @@ begin
   FBookmarkKey.Text := ShortCutToText(TShortCut(ASettings.BookmarkKey));
   FEditorKeysPriority.Checked := ASettings.EditorKeysPriority;
   FSlashCommands.Checked := ASettings.SlashCommands;
+  FGenerateMenu.Checked := ASettings.GenerateMenu;
+  FGenerateMenuKey.Text := ShortCutToText(TShortCut(ASettings.GenerateMenuKey));
+  FGenerateMenuGroups.Text := ASettings.GenerateMenuGroups;
+  FGenerateMenuHidden.Text := ASettings.GenerateMenuHidden;
+  FGenerateMenuRecentFirst.Checked := ASettings.GenerateMenuRecentFirst;
+  FGenerateMenuShowCommandNames.Checked := ASettings.GenerateMenuShowCommandNames;
   ServerPathChange(nil);
   FRowsUpDown.Position := ASettings.VisibleRows;
   FPanelCollapsed.Checked := ASettings.PanelCollapsed;
@@ -1693,6 +1721,12 @@ begin
   ASettings.BugReportAnonymize := FBugReportAnonymize.Checked;
   ASettings.EditorKeysPriority := FEditorKeysPriority.Checked;
   ASettings.SlashCommands := FSlashCommands.Checked;
+  ASettings.GenerateMenu := FGenerateMenu.Checked;
+  ASettings.GenerateMenuKey := Integer(TextToShortCut(Trim(FGenerateMenuKey.Text)));
+  ASettings.GenerateMenuGroups := Trim(FGenerateMenuGroups.Text);
+  ASettings.GenerateMenuHidden := Trim(FGenerateMenuHidden.Text);
+  ASettings.GenerateMenuRecentFirst := FGenerateMenuRecentFirst.Checked;
+  ASettings.GenerateMenuShowCommandNames := FGenerateMenuShowCommandNames.Checked;
   ASettings.VisibleRows := FRowsUpDown.Position;
   ASettings.PanelCollapsed := FPanelCollapsed.Checked;
   ASettings.AutoParentheses := FAutoParentheses.Checked;

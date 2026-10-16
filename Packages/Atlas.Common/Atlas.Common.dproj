@@ -75,7 +75,7 @@
         <DCCReference Include="Source\Product\Atlas.Common.Product.Version.pas"/>
         <DCCReference Include="Source\Logging\Atlas.Common.Logging.Contract.pas"/>
         <DCCReference Include="Source\Logging\Providers\Atlas.Common.Logging.Providers.Logger.pas"/>
-        <DCCReference Include="Source\Logging\Providers\Atlas.Common.Logging.Providers.RotatingFileStream.pas"/>
+        <DCCReference Include="Source\Logging\Atlas.Common.Logging.RotatingFileStream.pas"/>
         <DCCReference Include="Source\Logging\Providers\Atlas.Common.Logging.Providers.StreamSink.pas"/>
         <DCCReference Include="Source\Logging\Providers\Atlas.Common.Logging.Providers.TransformSink.pas"/>
         <DCCReference Include="Source\Logging\Providers\Atlas.Common.Logging.Providers.RecentSink.pas"/>
@@ -117,6 +117,7 @@
         <DCCReference Include="Source\Diagnostics\Providers\Atlas.Common.Diagnostics.Providers.Log.pas"/>
         <DCCReference Include="Source\Diagnostics\Adapters\Atlas.Common.Diagnostics.Adapters.LogFolder.pas"/>
         <DCCReference Include="Source\Index\Atlas.Common.Index.Contract.pas"/>
+        <DCCReference Include="Source\Index\Atlas.Common.Index.Files.pas"/>
         <DCCReference Include="Source\Index\Atlas.Common.Index.Extractor.pas"/>
         <DCCReference Include="Source\Index\Atlas.Common.Index.SymbolIndex.pas"/>
         <DCCReference Include="Source\Index\Atlas.Common.Index.NameIndex.pas"/>
@@ -153,6 +154,7 @@
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.CommandSource.pas"/>
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.ClassCommands.pas"/>
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.WrapCommands.pas"/>
+        <DCCReference Include="Source\Editing\Atlas.Common.Editing.SlashMenu.pas"/>
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.RefactoringCommands.pas"/>
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.ExpressionCommands.pas"/>
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.Modernizer.pas"/>
@@ -288,6 +290,7 @@
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.DeclareUnknown.pas"/>
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.InterfaceStubs.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.StringLiteralCommands.pas"/>
+        <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.SlashMenu.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.CodeActions.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.TestUnits.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.UnitSearch.pas"/>

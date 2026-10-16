@@ -11,7 +11,7 @@ function AtlasSchemaJson: string;
 implementation
 
 const
-  Lines: array[0..967] of string = (
+  Lines: array[0..988] of string = (
     '{',
     '  "$schema": "http://json-schema.org/draft-07/schema#",',
     '  "title": "Atlas-Konfiguration",',
@@ -145,6 +145,27 @@ const
     '                },',
     '                "default": ["TODO", "FIXME"],',
     '                "description": "Nur todo-comment (#68): Marken offener TODO-Einträge (nur Buchstaben, Groß-/Kleinschreibung egal), z. B. [\"TODO\", \"FIXME\", \"HACK\"]. Erledigt ist immer DONE. Gilt ' + 'auch, wenn die Regel aus ist, für get_todos, atlas.server.todos und --todos. Vorgabe: TODO und FIXME."',
+    '              },',
+    '              "prefixes": {',
+    '                "type": "array",',
+    '                "items": {',
+    '                  "type": "string"',
+    '                },',
+    '                "description": "Nur architecture-role-import und architecture-contract-content (Code-Review A-12): Präfixe der Ausgabeartefakte nach dem Rollenkonzept (Ausgabeartefakt.Feature.Rolle.Sa' + 'che), z. B. \"Atlas.Common\". Ohne Angabe melden die Regeln nichts."',
+    '              },',
+    '              "hostRoles": {',
+    '                "type": "array",',
+    '                "items": {',
+    '                  "type": "string"',
+    '                },',
+    '                "description": "Nur architecture-role-import: erste Namenssegmente der Host-Units ohne Präfix. Vorgabe: Foundation, Core, Shell, Adapters, Platform."',
+    '              },',
+    '              "allow": {',
+    '                "type": "array",',
+    '                "items": {',
+    '                  "type": "string"',
+    '                },',
+    '                "description": "Nur architecture-role-import und architecture-contract-content: genehmigte Ausnahmen, bei architecture-role-import \"Quelle -> Ziel\" (beide Globs), bei architecture-co' + 'ntract-content \"Unit.Typ\" als Glob."',
     '              },',
     '              "layers": {',
     '                "type": "array",',

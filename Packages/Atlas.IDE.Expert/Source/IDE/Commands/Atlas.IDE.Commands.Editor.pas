@@ -70,6 +70,9 @@ type
     class procedure Install(const ASessionOf: TFunc<TLspSession>; const AMessage: TProc<string>); static;
     class procedure Uninstall; static;
     class procedure CodeActions; static;
+    /// <summary>Code-Aktion anwenden: erst die Änderung, dann der Befehl; auch für das Erzeugen-Menü (#719).
+    /// </summary>
+    class procedure ApplyAction(const AAction: TLspCodeAction); static;
     class procedure ExpandSelection; static;
     class procedure ShrinkSelection; static;
     class procedure GoToTypeDefinition; static;
@@ -117,7 +120,8 @@ uses
   Atlas.IDE.Settings.Store,
   Atlas.IDE.Undo.Changes,
   Atlas.IDE.Notes.Service,
-  Atlas.IDE.Bookmarks.Service;
+  Atlas.IDE.Bookmarks.Service,
+  Atlas.IDE.Generate.Commands;
 
 const
   // Code-Aktionen und Befehle des Servers; Befehle können projektweit arbeiten.
@@ -221,6 +225,22 @@ begin
     procedure
     begin
       CodeActions;
+    end);
+  // Erzeugen-Menü (#719); aus = ohne Kürzel, der Aufruf meldet, dass es abgeschaltet ist.
+  FContextMenu.Add('Atlas.GenerateMenu', TAtlasStrings.Text(TAtlasTextId.GenerateMenuCommand),
+    function: Integer
+    begin
+      Result := 0;
+      if TAtlasIdeSettings.Current.GenerateMenu then
+        Result := TAtlasIdeSettings.Current.GenerateMenuKey;
+    end,
+    procedure
+    begin
+      TAtlasGuard.Run(TAtlasFeature.EditorCommands,
+        procedure
+        begin
+          TAtlasIdeGenerate.Show;
+        end);
     end);
   FContextMenu.Add('-', nil, nil);
   FContextMenu.Add('Atlas.ExpandSelection', TAtlasStrings.Text(TAtlasTextId.EditorExpand),
@@ -856,6 +876,11 @@ begin
   else
     Area := Screen.WorkAreaRect;
   Window.ShowOver(Area);
+end;
+
+class procedure TAtlasIdeEditorCommands.ApplyAction(const AAction: TLspCodeAction);
+begin
+  Apply(AAction);
 end;
 
 class procedure TAtlasIdeEditorCommands.Apply(const AAction: TLspCodeAction);

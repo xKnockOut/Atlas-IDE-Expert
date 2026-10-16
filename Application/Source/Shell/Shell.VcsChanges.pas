@@ -96,7 +96,6 @@ uses
   Atlas.Core.Vcs.Tools,
   Atlas.Core.Vcs.Detection,
   Atlas.Core.Vcs.Composition,
-  Atlas.Core.Vcs.Internals.Text,
   Atlas.Core.Vcs.Adapters.ProcessRunner;
 
 { TVcsChanges }
@@ -305,7 +304,8 @@ begin
     FLines := TChangedFiles.ParseSvnDiff(Svn(['diff', '--internal-diff'] + Range));
   if AIncludeUncommitted then
     for Change in Changes do
-      if (Change.Kind = TAtlasVcsChangeKind.Untracked) and VcsRelativePath(FRepoRoot, Change.Path, Relative) then
+      if (Change.Kind = TAtlasVcsChangeKind.Untracked) and
+        TAtlasVcsDetection.RelativePath(FRepoRoot, Change.Path, Relative) then
         AddWholeFile(Relative);
 end;
 
