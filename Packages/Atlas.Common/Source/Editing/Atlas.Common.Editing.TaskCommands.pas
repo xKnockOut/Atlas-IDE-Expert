@@ -83,7 +83,7 @@ begin
   while (Stop > 0) and (Index < Stop) and (Trim(ASource.Lines[Index]) = '') do
     Inc(Index);
   if (Stop < 0) or (Index >= Stop) then
-    Exit(Fail('Nach /' + AName + ' stehen keine Anweisungen im Block', AReason));
+    Exit(Fail(NoStatementsReason(ASource, AName), AReason));
   AFirst := ASource.Line + 1;
   ALast := Stop - 1;
   Result := True;

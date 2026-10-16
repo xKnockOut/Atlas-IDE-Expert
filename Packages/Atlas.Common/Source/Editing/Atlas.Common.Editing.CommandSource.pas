@@ -4,7 +4,9 @@
 // Syntaxbaum und Index der Datei mit der Befehlszeile als Leerzeichen, damit
 // der Parser sie nicht als Fehler sieht und alle Positionen gleich bleiben.
 // Dazu Hilfen für Einfügestellen (Routine, Klasse, private, Ende der
-// implementation) und für Argumente.
+// implementation) und für Argumente. Mit WrapUntil (Markierung im
+// Erzeugen-Menü, #719) endet ein Umschließen vor dieser Zeile statt am
+// Blockende.
 
 interface
 
@@ -25,6 +27,7 @@ type
     FUnitIndex: TUnitIndex;
     FIndexed: Boolean;
     FCommandIndent: string;
+    FWrapUntil: Integer;
     function GetUnitIndex: TUnitIndex;
   public
     Line: Integer;
@@ -64,14 +67,19 @@ type
     property LineBreak: string read FLineBreak;
     property Tree: TSyntaxTree read FTree;
     property UnitIndex: TUnitIndex read GetUnitIndex;
+    /// <summary>Umschließen bis vor diese Zeile (TSlashContext.WrapUntil); 0 = bis zum Blockende.</summary>
+    property WrapUntil: Integer read FWrapUntil;
   end;
 
 /// <summary>"Name: Typ" bzw. "Name = Wert"; ASeparator ':' oder '='.</summary>
 function SplitDeclaration(const AArguments: string; ASeparator: Char; out AName, AValue: string): Boolean;
 /// <summary>Setzt AReasonOut und liefert False.</summary>
 function Fail(const AReason: string; out AReasonOut: string): Boolean;
-/// <summary>Zeile des Tokens, das den Block um ALine schließt; -1 ohne.</summary>
+/// <summary>Zeile des Tokens, das den Block um ALine schließt; -1 ohne. Für die Befehlszeile mit
+/// ASource.WrapUntil (#719) diese Zeile, wenn sie im Block liegt, sonst -1.</summary>
 function BlockEnd(ASource: TCommandSource; ALine: Integer): Integer;
+/// <summary>Grund, wenn BlockEnd -1 liefert: Markierung über das Blockende hinaus oder keine Anweisungen.</summary>
+function NoStatementsReason(ASource: TCommandSource; const AName: string): string;
 /// <summary>Ersetzt Befehlszeile und folgende Anweisungen durch AHead, die eingerückten Anweisungen und ATail.
 /// ABodyIndent ist die zusätzliche Einrückung der Anweisungen.</summary>
 function Wrap(ASource: TCommandSource; const AName: string; const AHead, ATail: array of string;
@@ -101,6 +109,7 @@ var
 begin
   inherited Create;
   Line := AContext.Line;
+  FWrapUntil := AContext.WrapUntil;
   FLineBreak := TTextLines.LineBreakOf(AContext.Text);
   FLines := AContext.Text.Split([FLineBreak]);
   FCommandIndent := Indent(Line);
@@ -341,8 +350,7 @@ begin
   Result := False;
 end;
 
-/// <summary>Zeile des Tokens, das den Block um ALine schließt; -1 ohne.</summary>
-function BlockEnd(ASource: TCommandSource; ALine: Integer): Integer;
+function BlockEndOfTokens(ASource: TCommandSource; ALine: Integer): Integer;
 var
   Tokens: TArray<TPascalToken>;
   Index, Depth: Integer;
@@ -368,6 +376,26 @@ begin
   Result := -1;
 end;
 
+function BlockEnd(ASource: TCommandSource; ALine: Integer): Integer;
+begin
+  Result := BlockEndOfTokens(ASource, ALine);
+  if (ALine <> ASource.Line) or (ASource.WrapUntil <= ALine) then
+    Exit;
+  // Markierung (#719): nur bis vor ihr Ende, und nur, wenn sie im Block bleibt.
+  if (Result >= 0) and (ASource.WrapUntil <= Result) then
+    Result := ASource.WrapUntil
+  else
+    Result := -1;
+end;
+
+function NoStatementsReason(ASource: TCommandSource; const AName: string): string;
+begin
+  if ASource.WrapUntil > ASource.Line then
+    Result := 'Die Markierung für /' + AName + ' muss im selben Block liegen und Anweisungen enthalten'
+  else
+    Result := 'Nach /' + AName + ' stehen keine Anweisungen im Block';
+end;
+
 /// <summary>Ersetzt Befehlszeile und folgende Anweisungen durch AHead, die eingerückten Anweisungen und ATail.
 /// ABodyIndent ist die zusätzliche Einrückung der Anweisungen.</summary>
 function Wrap(ASource: TCommandSource; const AName: string; const AHead, ATail: array of string;
@@ -385,7 +413,7 @@ begin
   while (Stop > 0) and (Index < Stop) and (Trim(ASource.Lines[Index]) = '') do
     Inc(Index);
   if (Stop < 0) or (Index >= Stop) then
-    Exit(Fail('Nach /' + AName + ' stehen keine Anweisungen im Block', AReason));
+    Exit(Fail(NoStatementsReason(ASource, AName), AReason));
   Indent := ASource.Indent(ASource.Line);
   Text := '';
   for Index := 0 to High(AHead) do

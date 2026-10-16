@@ -354,7 +354,22 @@ type
     WelcomeTrendsPrevious, WelcomeTrendsNoValue, WelcomeTrendsClickHint, WelcomeTrendsBuild,
     WelcomeTrendsTileHint, WelcomeProjectsHintSelect, WelcomeProjectsOpen, SettingsWelcomeTrends,
     SettingsWelcomeTrendsPoints, SettingsWelcomeTrendsSeries, BaselineUpdateElsewhere,
-    WelcomeTrendsBuildNumber);
+    WelcomeTrendsBuildNumber,
+    GenerateMenuCommand, GenerateTitle, GenerateGroupRecent, GenerateGroupGenerate, GenerateGroupSurround,
+    GenerateGroupTemplates, GenerateHint, GenerateFilter, GenerateEmpty, GenerateNoMatch, GenerateStepHint,
+    GenerateStepMultiHint, GenerateFreeText, GenerateExample, GenerateArgumentPrompt, GenerateNoChoices,
+    GenerateMenuOff, GenerateFailed, GenerateHiddenSaved, SettingsGenerateMenu, SettingsGenerateMenuGroups,
+    SettingsGenerateMenuHidden, SettingsGenerateMenuRecentFirst, SettingsGenerateMenuShowCommandNames,
+    GenerateCmdCtor, GenerateCmdDtor, GenerateCmdProp, GenerateCmdOverride, GenerateCmdImplement,
+    GenerateCmdEquals, GenerateCmdImpl, GenerateCmdField, GenerateCmdEncapsulate, GenerateCmdClone,
+    GenerateCmdAssign, GenerateCmdJson, GenerateCmdMsg, GenerateCmdNotify, GenerateCmdChanged, GenerateCmdLoaded,
+    GenerateCmdNotification, GenerateCmdSingleton, GenerateCmdList, GenerateCmdDict, GenerateCmdDictBang,
+    GenerateCmdOperator, GenerateCmdGuid, GenerateCmdVar, GenerateCmdConst, GenerateCmdConstBang,
+    GenerateCmdGuard, GenerateCmdRaise, GenerateCmdLog, GenerateCmdSql, GenerateCmdParams, GenerateCmdRecord,
+    GenerateCmdEnum, GenerateCmdEnumBang, GenerateCmdHelper, GenerateCmdException, GenerateCmdThread,
+    GenerateCmdExternal, GenerateCmdExports, GenerateCmdTodo, GenerateCmdTry, GenerateCmdExcept, GenerateCmdLock,
+    GenerateCmdSync, GenerateCmdSyncBang, GenerateCmdIfdef, GenerateCmdRegion, GenerateCmdMeasure,
+    GenerateCmdTask, GenerateCmdFuture, GenerateCmdLoop, GenerateCmdTransaction);
 
   TAtlasStrings = class
   private class var
@@ -1041,7 +1056,29 @@ const
      'Atlas: Der Server hat die Baseline in %0:s geschrieben, nicht im Projektordner %1:s (das Projekt ist dort ' +
      'wohl noch nicht als Arbeitsbereich bekannt). Projektverlauf und Einrichtung lesen die Baseline im ' +
      'Projektordner; bitte nach dem nächsten Build erneut aktualisieren.',
-     'Nr. %d'),
+     'Nr. %d',
+     'Erzeugen…', 'Erzeugen', 'Zuletzt gewählt', 'Erzeugen', 'Umschließen', 'Vorlagen',
+     '1–9 wählen · Tippen filtert · Entf blendet aus', 'Filter: %s', 'Hier gibt es nichts zu erzeugen',
+     'Kein Eintrag passt', 'Enter übernimmt · Esc zurück', 'Leertaste wählt · Enter übernimmt · Esc zurück',
+     '„%s“ verwenden', 'Beispiel: %s', 'Argument eingeben', 'Keine Auswahl; Argument eingeben',
+     'Das Erzeugen-Menü ist abgeschaltet (keys.generateMenu).', 'Erzeugen: %s',
+     '„%s“ ausgeblendet; wieder einblenden unter Einstellungen › Befehle.',
+     'Erzeugen-Menü (Alt+Einfg, Kontextmenü, Befehlspalette)',
+     'Gruppen des Erzeugen-Menüs in ihrer Reihenfolge (generate, surround, templates)',
+     'Ausgeblendete Einträge im Erzeugen-Menü (kommagetrennt, z. B. /json, tryf)',
+     'Zuletzt gewählte Einträge oben', 'Befehlsnamen (/name) rechts anzeigen', 'Konstruktor aus Feldern',
+     'Destruktor mit Freigabe', 'Property mit Feld', 'Methoden überschreiben…', 'Interface implementieren…',
+     'Equals / GetHashCode', 'Fehlende Methodenrümpfe', 'Feld…', 'Feld kapseln…', 'Clone mit Freigabe',
+     'Assign für alle Felder', 'ToJson und FromJson', 'Botschaftsmethode…', 'Ereignis mit Feld und Property…',
+     'Setter mit Benachrichtigung…', 'Loaded überschreiben', 'Notification für Komponentenfelder', 'Singleton',
+     'Liste…', 'Dictionary…', 'Dictionary ohne Groß-/Kleinschreibung…', 'Operatoren…', 'GUID einfügen',
+     'Lokale Variable…', 'Lokale Konstante…', 'Konstante in der implementation…', 'nil-Prüfungen für Parameter',
+     'Ausnahme auslösen…', 'Protokollzeile', 'SQL-Text und Parameter…', 'ParamByName-Zeilen ergänzen…',
+     'Record mit Konstruktor…', 'Aufzählungstyp…', 'Aufzählungstyp ohne Präfix…', 'Helper…', 'Ausnahmeklasse…',
+     'TThread-Nachfahre…', 'Funktion aus einer DLL…', 'Routinen exportieren', 'TODO-Kommentar…',
+     'try … finally Free', 'try … except mit Protokoll', 'Sperren', 'Im Hauptthread (Queue)',
+     'Im Hauptthread (Synchronize)', '{$IFDEF}…', '{$REGION}…', 'Laufzeit messen', 'In TTask.Run',
+     'Als TTask.Future…', 'Datensätze durchlaufen…', 'In einer Transaktion…'),
     ('Enter to accept · Esc to close', '%d of %d', 'No matches for “%s”', 'Backspace widens the search',
      'No suggestions here', 'Esc closes', 'No details for this entry', 'Overload', 'Deprecated: %s', 'Deprecated.',
      'Inherited from %s', 'Inherited', 'optional, default %s', 'No overload with %d parameters.', '… %d more',
@@ -1684,7 +1721,28 @@ const
      'Atlas: The server wrote the baseline to %0:s, not to the project folder %1:s (it probably does not know ' +
      'the project as a workspace yet). Project history and setup read the baseline in the project folder; please ' +
      'update again after the next build.',
-     'no. %d'));
+     'no. %d',
+     'Generate…', 'Generate', 'Recently used', 'Generate', 'Surround', 'Templates',
+     '1–9 choose · type to filter · Del hides', 'Filter: %s', 'Nothing to generate here', 'No entry matches',
+     'Enter applies · Esc goes back', 'Space toggles · Enter applies · Esc goes back', 'Use “%s”', 'Example: %s',
+     'Type an argument', 'No choices; type an argument',
+     'The generate menu is switched off (keys.generateMenu).', 'Generate: %s',
+     '“%s” hidden; show it again under Settings › Commands.',
+     'Generate menu (Alt+Ins, context menu, command palette)',
+     'Groups of the generate menu in order (generate, surround, templates)',
+     'Hidden entries in the generate menu (comma-separated, e.g. /json, tryf)', 'Recently used entries first',
+     'Show command names (/name) on the right', 'Constructor from fields', 'Destructor with cleanup',
+     'Property with field', 'Override methods…', 'Implement interface…', 'Equals / GetHashCode',
+     'Missing method bodies', 'Field…', 'Encapsulate field…', 'Clone with cleanup', 'Assign for all fields',
+     'ToJson and FromJson', 'Message method…', 'Event with field and property…', 'Setter with notification…',
+     'Override Loaded', 'Notification for component fields', 'Singleton', 'List…', 'Dictionary…',
+     'Case-insensitive dictionary…', 'Operators…', 'Insert GUID', 'Local variable…', 'Local constant…',
+     'Constant in the implementation…', 'nil checks for parameters', 'Raise exception…', 'Log line',
+     'SQL text and parameters…', 'Add ParamByName lines…', 'Record with constructor…', 'Enumeration…',
+     'Enumeration without prefix…', 'Helper…', 'Exception class…', 'TThread descendant…', 'Function from a DLL…',
+     'Export routines', 'TODO comment…', 'try … finally Free', 'try … except with logging', 'Lock',
+     'On the main thread (Queue)', 'On the main thread (Synchronize)', '{$IFDEF}…', '{$REGION}…',
+     'Measure duration', 'In TTask.Run', 'As TTask.Future…', 'Loop over records…', 'In a transaction…'));
 
 { TAtlasStrings }
 

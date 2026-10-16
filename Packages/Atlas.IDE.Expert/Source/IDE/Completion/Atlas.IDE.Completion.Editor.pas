@@ -175,6 +175,11 @@ type
     /// <summary>Hat Enter die Zeile des übernommenen Konstruktors gerade beendet (#489)? Der Cursor steht dann
     /// in einer leeren Zeile direkt darunter.</summary>
     function GuardNewLine(const AView: IOTAEditView): Boolean;
+    /// <summary>Alle Code-Vorlagen (mitgeliefert, Live Templates der IDE, eigene) für das Erzeugen-Menü (#719);
+    /// leer, wenn Code-Vorlagen aus sind (completion.snippets).</summary>
+    function Snippets: TAtlasSnippetList;
+    /// <summary>Setzt ASnippet am Cursor von AView ein, mit Einrückung der Zeile und Platzhaltern (#719).</summary>
+    procedure InsertSnippet(const AView: IOTAEditView; const ASnippet: TAtlasSnippet);
   end;
 
 implementation
@@ -1430,6 +1435,48 @@ begin
   FPlaceholders.Start(AView, AText, Document, SnippetChar + CharShift, Expansion);
   Log(Format('Code-Vorlage eingesetzt: %d Platzhalter, %d weitere Änderungen',
     [Integer(Length(Expansion.Stops)), Integer(Length(AItem.AdditionalEdits))]));
+end;
+
+function TAtlasEditorCompletion.Snippets: TAtlasSnippetList;
+begin
+  Result := nil;
+  if not TAtlasIdeSettings.Current.Snippets then
+    Exit;
+  RefreshSnippets;
+  Result := FSnippetProvider.Snippets;
+end;
+
+procedure TAtlasEditorCompletion.InsertSnippet(const AView: IOTAEditView; const ASnippet: TAtlasSnippet);
+var
+  Item: TAtlasCompletionItem;
+  Text, LineText, Pad: string;
+  Cursor: TOTAEditPos;
+  TabWidth, Character, EndColumn: Integer;
+begin
+  if (AView = nil) or (AView.Buffer = nil) or (ASnippet.Body = '') then
+    Exit;
+  Close;
+  Text := TAtlasEditorBuffer.Text(AView.Buffer);
+  Cursor := AView.CursorPos;
+  LineText := TAtlasEditorBuffer.LineText(AView, Cursor.Line);
+  TabWidth := TAtlasEditorBuffer.TabWidth(AView.Buffer);
+  Character := TLspSession.ColumnToIndex(LineText, Cursor.Col, TabWidth);
+  // Leere Zeile mit dem Cursor hinter ihrem Ende (virtueller Platz): bis zum Cursor einrücken, damit die
+  // Vorlage dort beginnt, wo der Cursor steht; die Folgezeilen bekommen dieselbe Einrückung.
+  Pad := '';
+  if Trim(LineText) = '' then
+  begin
+    EndColumn := TLspSession.IndexToColumn(LineText, Length(LineText), TabWidth);
+    if Cursor.Col > EndColumn then
+      Pad := StringOfChar(' ', Cursor.Col - EndColumn);
+  end;
+  Item := Default(TAtlasCompletionItem);
+  Item.Name := ASnippet.Prefix;
+  Item.Kind := TAtlasItemKind.Snippet;
+  Item.Snippet := Pad + ASnippet.Body;
+  // Nichts ersetzen: Das Wort beginnt am Cursor.
+  FWordStart := Character;
+  CommitSnippet(AView, Item, Text, LineText + Pad, Cursor.Line, Character);
 end;
 
 function TAtlasEditorCompletion.GuardNewLine(const AView: IOTAEditView): Boolean;

@@ -1080,6 +1080,30 @@ Voraussetzung: Projektgruppe mit mehreren Projekten, darunter ein DUnitX-Testpro
 | US12 | „Pfade kopieren“ (Strg+C), „Im Explorer zeigen“, „Im Projektmanager zeigen“ | Pfade in der Zwischenablage; Explorer mit markierter Datei; Projektmanager offen, Meldung „Kunden gehört zu …“ |
 | US13 | Jede Einstellung der Seite einzeln aus | Vorschau, Formularskizze, „Verwendet von“, Chips, Tippsyntax, Häkchen, Aktionsleiste, „In uses aufnehmen“ fehlen jeweils; Pfadanzeige und Vorgewählte Herkunft wirken beim nächsten Öffnen |
 | US14 | Server beenden, Strg+F12 | Meldung „Der Atlas-Server läuft nicht“ und der IDE-Dialog |
+## Erzeugen-Menü (#719)
+
+Voraussetzung: Server läuft; Einstellungen auf Vorgabe; Unit mit `TKunde = class` (Felder `FName: string; FListe: TStrings;`), einer Klasse `TStaffelpreise = class(TStandardpreise)` mit virtueller Methode im Vorfahren und einer Klasse `TDienst = class(TInterfacedObject, IDienst)`, der Methoden von `IDienst` fehlen.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| EM1 | Cursor in `TKunde` hinter `public`, Alt+Einfg | Popup am Cursor mit Kopf „Erzeugen“ und den Zeilen 1 Konstruktor aus Feldern, 2 Destruktor mit Freigabe, 3 Property mit Feld, 4 Methoden überschreiben…, 5 Interface implementieren… (nur in `TDienst`), 6 Equals / GetHashCode; rechts gedimmt `/ctor`, `/dtor` …; darunter weitere Einträge und die Gruppe Vorlagen |
+| EM2 | Taste 1 | Zweiter Schritt „Konstruktor aus Feldern“ mit `FName` und `FListe`, beide gewählt; Enter legt Konstruktor mit beiden Parametern an, ein Strg+Z nimmt alles zurück |
+| EM3 | Alt+Einfg, `ctor`, Leertaste auf `FListe`, Enter | Konstruktor nur mit `FName` |
+| EM4 | In `TStaffelpreise` Alt+Einfg, 4 | Auswahl der überschreibbaren Methoden der Vorfahren; Enter legt Deklaration und Rumpf mit `inherited` an |
+| EM5 | In `TDienst` Alt+Einfg, „Interface implementieren…“, Enter | Alle fehlenden Methoden von `IDienst` als Deklaration und Rumpf; mit nur einer gewählten Methode nur diese |
+| EM6 | In einer Methode zwei Anweisungen markieren, Alt+Einfg | Gruppe Umschließen (try … finally Free, Sperren, Im Hauptthread, {$IFDEF}…) und nur Anweisungs-Vorlagen; „try … finally Free“ umschließt genau die markierten Zeilen |
+| EM7 | Ohne Markierung in einer Methode Alt+Einfg | Keine Gruppe Umschließen; Lokale Variable…, Protokollzeile …; Vorlagen wie `tryf`, keine Deklarations-Vorlagen wie `class` |
+| EM8 | Im Kommentar bzw. String Alt+Einfg | „Hier gibt es nichts zu erzeugen“ |
+| EM9 | Menü offen, `eqh` tippen | Unscharfer Filter, „Equals / GetHashCode“ oben, Treffer hervorgehoben, Fußzeile „Filter: eqh“; Rücktaste nimmt Zeichen zurück |
+| EM10 | Einen Eintrag ausführen, Menü erneut öffnen | Eintrag steht oben unter „Zuletzt gewählt“ und nicht noch einmal in seiner Gruppe; nach IDE-Neustart weiter oben |
+| EM11 | Auf einem Eintrag Entf | Eintrag verschwindet, Meldung „… ausgeblendet“; unter Optionen › Atlas › Befehle steht er in „Ausgeblendete Einträge“ |
+| EM12 | Optionen: Gruppen `templates,generate`, „Zuletzt gewählte Einträge oben“ und „Befehlsnamen anzeigen“ aus | Vorlagen zuerst, keine Gruppe Umschließen, kein „Zuletzt gewählt“, keine `/name` rechts |
+| EM13 | Rechtsklick im Editor › Atlas › Erzeugen…; Befehlspalette „Erzeugen…“; *Atlas › Erzeugen…* | Dasselbe Menü am Cursor |
+| EM14 | Schnellschalter „Erzeugen-Menü“ aus, Alt+Einfg | Alt+Einfg geht an die IDE (bzw. eine andere Belegung); Befehl fehlt in Palette und Atlas-Menü, Tipp „Erzeugen-Menü“ erscheint nicht in „Atlas entdecken“; Kontextmenü meldet „abgeschaltet“ |
+| EM15 | `slashCommands` in atlas.json aus, Alt+Einfg | Keine Schnellbefehle, Vorlagen und Code-Aktionen bleiben |
+| EM16 | Eigene Vorlage mit `context: declaration` in `%APPDATA%\Atlas\Snippets` | Erscheint auf Unit-Ebene unter Vorlagen, nicht in einer Methode; Enter setzt sie mit Platzhaltern ein |
+| EM17 | `/override` mit Pflicht-Argument ohne Auswahl, Enter im leeren Feld | Kein Ausführen, Signalton, Zeile „Beispiel: /override …“ bleibt |
+
 ## Diagnosemodus (#479)
 
 Vorbereitung: Plugin (Win32 und Win64) gebaut und installiert, ein Projekt mit einigen Units geöffnet, Server läuft.
