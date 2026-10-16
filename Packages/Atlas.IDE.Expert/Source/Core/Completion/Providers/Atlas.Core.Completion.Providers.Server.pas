@@ -25,9 +25,8 @@ uses
   Atlas.Core.Lsp.Session;
 
 type
-  /// <summary>Laufende Sitzung oder nil; startet nie einen Server (Code-Review A-01). Aus beliebigem Thread
-  /// aufgerufen, meist im Zeitlimit-Arbeiter.</summary>
-  TAtlasSessionFunc = reference to function: TLspSession;
+  /// <summary>Alias für Bestandsnutzer; die Deklaration steht in Atlas.Core.Lsp.Session.</summary>
+  TAtlasSessionFunc = Atlas.Core.Lsp.Session.TAtlasSessionFunc;
   /// <summary>Zeile fürs Diagnoselog des Plugins; ohne Namen aus dem Quelltext. Auch aus Hintergrund-Threads.</summary>
   TAtlasProviderLog = reference to procedure(const AMessage: string);
 

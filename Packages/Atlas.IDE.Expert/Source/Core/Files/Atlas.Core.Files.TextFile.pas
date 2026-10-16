@@ -20,19 +20,14 @@ interface
 {$SCOPEDENUMS ON}
 
 uses
-  System.SysUtils;
+  System.SysUtils,
+  Atlas.Core.Files.Contract;
 
 type
-  TAtlasTextEncoding = (Utf8Bom, Utf8, Utf16LE, Utf16BE, Ansi);
-
-  TAtlasTextFileContent = record
-    Text: string;
-    Encoding: TAtlasTextEncoding;
-    /// <summary>Codepage bei Ansi; 0 = ANSI-Codepage des Systems.</summary>
-    CodePage: Integer;
-  end;
-
-  EAtlasTextFileError = class(Exception);
+  // Aliase für Bestandsnutzer; die Deklarationen stehen in Atlas.Core.Files.Contract (Code-Review A-10).
+  TAtlasTextEncoding = Atlas.Core.Files.Contract.TAtlasTextEncoding;
+  TAtlasTextFileContent = Atlas.Core.Files.Contract.TAtlasTextFileContent;
+  EAtlasTextFileError = Atlas.Core.Files.Contract.EAtlasTextFileError;
 
   TAtlasTextFile = class
   public const

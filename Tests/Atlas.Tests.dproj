@@ -63,7 +63,7 @@
         <DCCReference Include="Text\Atlas.Text.Entities.Tests.pas"/>
         <DCCReference Include="Common\Logging\Atlas.Common.Logging.Providers.Logger.Tests.pas"/>
         <DCCReference Include="Common\Logging\Atlas.Common.Logging.Providers.StreamSink.Tests.pas"/>
-        <DCCReference Include="Common\Logging\Atlas.Common.Logging.Providers.RotatingFileStream.Tests.pas"/>
+        <DCCReference Include="Common\Logging\Atlas.Common.Logging.RotatingFileStream.Tests.pas"/>
         <DCCReference Include="Common\JsonRpc\Atlas.Common.JsonRpc.TestSupport.pas"/>
         <DCCReference Include="Common\JsonRpc\Atlas.Common.JsonRpc.StreamTransport.Tests.pas"/>
         <DCCReference Include="Common\JsonRpc\Atlas.Common.JsonRpc.TracingTransport.Tests.pas"/>
@@ -88,6 +88,7 @@
         <DCCReference Include="Common\Documents\Atlas.Common.Documents.ChangeTracker.Tests.pas"/>
         <DCCReference Include="Common\Index\Atlas.Common.Index.Tests.pas"/>
         <DCCReference Include="Common\Index\Atlas.Common.Index.NameIndex.Tests.pas"/>
+        <DCCReference Include="Common\Index\Atlas.Common.Index.Files.Tests.pas"/>
         <DCCReference Include="Common\Index\Atlas.Common.Index.CacheHousekeeping.Tests.pas"/>
         <DCCReference Include="Common\Index\Atlas.Common.Index.Memory.Tests.pas"/>
         <DCCReference Include="Common\Index\Atlas.Common.Index.Content.Tests.pas"/>
@@ -388,6 +389,7 @@
         <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Files\Atlas.Core.Files.TextDiff.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Files\Atlas.Core.Files.WatchedChanges.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Files.WatchedChanges.Tests.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Files\Atlas.Core.Files.Contract.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Files\Atlas.Core.Files.TextFile.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Files\Atlas.Core.Files.EncodingDefault.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Files.TextFile.Tests.pas"/>
@@ -509,6 +511,8 @@
         <DCCReference Include="IDE.Expert\Atlas.UI.Setup.Window.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Undo\Atlas.Core.Undo.LinePatch.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Undo\Atlas.Core.Undo.Contract.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Undo\Atlas.Core.Undo.Names.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.Core.Undo.Names.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Undo\Atlas.Core.Undo.Journal.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Undo\Atlas.Core.Undo.Adapters.FileStore.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Undo\Atlas.Core.Undo.Adapters.DiskTarget.pas"/>

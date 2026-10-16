@@ -23,6 +23,9 @@ type
     /// <summary>Wie oben mit dem Dateisystem; ein relativer Ordner gilt zum aktuellen Verzeichnis.</summary>
     class function Find(const AFolder: string; AProvider: TAtlasVcsProvider): TAtlasVcsWorkingCopy; overload;
       static;
+    /// <summary>AFileName relativ zur Wurzel ARoot der Arbeitskopie; False, wenn die Datei nicht darunter liegt.
+    /// Für den Host, der Internals nicht importieren darf (Rollenmatrix, Code-Review A-12).</summary>
+    class function RelativePath(const ARoot, AFileName: string; out ARelative: string): Boolean; static;
   end;
 
 implementation
@@ -60,6 +63,11 @@ begin
       Break;
     Dir := Parent;
   end;
+end;
+
+class function TAtlasVcsDetection.RelativePath(const ARoot, AFileName: string; out ARelative: string): Boolean;
+begin
+  Result := VcsRelativePath(ARoot, AFileName, ARelative);
 end;
 
 class function TAtlasVcsDetection.Find(const AFolder: string; AProvider: TAtlasVcsProvider): TAtlasVcsWorkingCopy;

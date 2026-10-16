@@ -142,6 +142,7 @@ implementation
 
 uses
   Atlas.Common.Lsp.Internals.Namespaces,
+  Atlas.Common.Index.Files,
   System.StrUtils,
   System.RegularExpressions,
   Atlas.Common.Documents.Uris,

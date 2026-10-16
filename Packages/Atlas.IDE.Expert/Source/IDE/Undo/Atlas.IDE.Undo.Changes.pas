@@ -62,6 +62,7 @@ uses
   System.IOUtils,
   Atlas.Core.Settings.Plugin,
   Atlas.Core.Undo.Adapters.FileStore,
+  Atlas.Core.Undo.Names,
   Atlas.UI.Strings,
   Atlas.UI.Undo.Messages,
   Atlas.UI.Undo.DiffView,

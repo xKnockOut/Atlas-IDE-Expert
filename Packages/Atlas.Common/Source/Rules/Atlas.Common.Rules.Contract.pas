@@ -12,8 +12,9 @@ uses
   Atlas.Common.Documents.Contract,
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Index.Contract,
-  Atlas.Common.Pascal.SyntaxTree,
-  Atlas.Common.Semantics.NameResolver;
+  // Genehmigte Ausnahme der Rollenmatrix (Architektur.md, "Genehmigte Ausnahmen"): der Syntaxbaum ist
+  // Datengrundlage jeder Regel und hängt selbst nur an Contracts.
+  Atlas.Common.Pascal.SyntaxTree;
 
 type
   /// <summary>Feste Angaben einer Regel.</summary>
@@ -61,7 +62,6 @@ type
     Fixes: TArray<TRuleFix>;
   end;
 
-  /// <summary>Alles, was eine Regel über die geprüfte Datei wissen darf.</summary>
   /// <summary>Liest eine Datei neben der Unit, z. B. die .dcr aus {$R *.dcr} (#114).</summary>
   TRuleFileReader = reference to function(const AFileName: string; out AData: TBytes): Boolean;
   /// <summary>True, wenn die Prüfung abgebrochen werden soll (Zeitlimit, Dokument geändert).</summary>
@@ -82,6 +82,7 @@ type
     procedure Clear;
   end;
 
+  /// <summary>Alles, was eine Regel über die geprüfte Datei wissen darf.</summary>
   TRuleContext = record
     /// <summary>Pfad relativ zum Ordner der Konfiguration, '' wenn unbekannt.</summary>
     RelativePath: string;
@@ -115,7 +116,6 @@ type
     Derived: IRuleDerivedCache;
   end;
 
-  /// <summary>Sammelt die Treffer einer Regel.</summary>
   /// <summary>Sammelt die Treffer einer Regel. Ohne Angabe gilt Konfidenz High.</summary>
   IRuleReport = interface
     ['{6E0D7E61-0B7B-4C4A-9C7F-3B0E5B6E2A11}']
