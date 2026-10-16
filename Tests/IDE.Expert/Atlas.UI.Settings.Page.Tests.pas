@@ -865,6 +865,15 @@ begin
     Assert.AreEqual('10', Page.WelcomeTestsCiInterval.Text);
     Assert.IsTrue(Page.WelcomeTestsCiNotify.Checked);
     Assert.IsTrue(Page.CiLogin.Checked);
+    // #765: Meine Issues aus, Tracker aus der .atlas, Branch anlegen, Präfix „{kennung} “, Befehl Atlas.TrackerLogin an.
+    Assert.IsFalse(Page.WelcomeIssues.Checked);
+    Assert.AreEqual(0, Page.WelcomeIssuesTracker.Choice);
+    Assert.AreEqual('', Page.WelcomeIssuesQuery.Text);
+    Assert.AreEqual(0, Page.WelcomeIssuesStart.Choice);
+    Assert.AreEqual('', Page.WelcomeIssuesBranchPattern.Text);
+    Assert.AreEqual('', Page.WelcomeIssuesBranchBase.Text);
+    Assert.AreEqual('{kennung} ', Page.WelcomeIssuesCommitPattern.Text);
+    Assert.IsTrue(Page.TrackerLogin.Checked);
     // #764: Schnellaktionen an, alle sechs Knöpfe, wt.exe, Strg+B und Strg+T.
     Assert.IsTrue(Page.WelcomeQuickActions.Checked);
     Assert.IsTrue(Page.WelcomeQuickActionsItem(TAtlasQuickAction.Build).Checked);
@@ -912,6 +921,14 @@ begin
     Page.WelcomeTestsCiInterval.Text := '0';
     Page.WelcomeTestsCiNotify.Checked := False;
     Page.CiLogin.Checked := False;
+    Page.WelcomeIssues.Checked := True;
+    Page.WelcomeIssuesTracker.Choice := 2;
+    Page.WelcomeIssuesQuery.Text := '  for: me State: {In Progress} ';
+    Page.WelcomeIssuesStart.Choice := 1;
+    Page.WelcomeIssuesBranchPattern.Text := ' {kennung}/{kurztitel} ';
+    Page.WelcomeIssuesBranchBase.Text := ' develop ';
+    Page.WelcomeIssuesCommitPattern.Text := '[{kennung}] ';
+    Page.TrackerLogin.Checked := False;
     Page.WelcomeQuickActions.Checked := False;
     Page.WelcomeQuickActionsItem(TAtlasQuickAction.Console).Checked := False;
     Page.WelcomeQuickActionsItem(TAtlasQuickAction.Run).Checked := False;
@@ -968,6 +985,14 @@ begin
     Assert.AreEqual(1, Saved.WelcomePageTestsCiIntervalMinutes, 'auf 1–1440 begrenzt');
     Assert.IsFalse(Saved.WelcomePageTestsCiNotify);
     Assert.IsFalse(Saved.CiLogin);
+    Assert.IsTrue(Saved.WelcomePageIssues);
+    Assert.AreEqual('youtrack', Saved.WelcomePageIssuesTracker);
+    Assert.AreEqual('for: me State: {In Progress}', Saved.WelcomePageIssuesQuery);
+    Assert.AreEqual('remember', Saved.WelcomePageIssuesStart);
+    Assert.AreEqual('{kennung}/{kurztitel}', Saved.WelcomePageIssuesBranchPattern);
+    Assert.AreEqual('develop', Saved.WelcomePageIssuesBranchBase);
+    Assert.AreEqual('[{kennung}] ', Saved.WelcomePageIssuesCommitPattern, 'Leerzeichen am Ende bleibt');
+    Assert.IsFalse(Saved.TrackerLogin);
     Assert.IsFalse(Saved.WelcomePageQuickActions);
     Assert.AreEqual('build,tests,pull,folder', Saved.WelcomePageQuickActionsItems, 'ohne run und console');
     Assert.AreEqual('pwsh.exe', Saved.WelcomePageQuickActionsConsole);
@@ -993,6 +1018,12 @@ begin
     Assert.AreEqual('1', Page.WelcomeTestsCiInterval.Text);
     Assert.IsFalse(Page.WelcomeTestsCiNotify.Checked);
     Assert.IsFalse(Page.CiLogin.Checked);
+    Assert.IsTrue(Page.WelcomeIssues.Checked);
+    Assert.AreEqual(2, Page.WelcomeIssuesTracker.Choice);
+    Assert.AreEqual(1, Page.WelcomeIssuesStart.Choice);
+    Assert.AreEqual('develop', Page.WelcomeIssuesBranchBase.Text);
+    Assert.AreEqual('[{kennung}] ', Page.WelcomeIssuesCommitPattern.Text);
+    Assert.IsFalse(Page.TrackerLogin.Checked);
     Assert.IsFalse(Page.WelcomeQuickActions.Checked);
     Assert.IsFalse(Page.WelcomeQuickActionsItem(TAtlasQuickAction.Console).Checked);
     Assert.IsTrue(Page.WelcomeQuickActionsItem(TAtlasQuickAction.Pull).Checked);

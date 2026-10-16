@@ -1,0 +1,37 @@
+{
+  "total_count": 4,
+  "incomplete_results": false,
+  "items": [
+    {
+      "url": "https://api.github.com/repos/beispiel/atlas/issues/753",
+      "html_url": "https://github.com/beispiel/atlas/issues/753",
+      "number": 753,
+      "title": "Plugin: Atlas-Bereiche und Layouts der Willkommensseite",
+      "state": "open",
+      "labels": [
+        {"id": 1, "name": "plugin", "color": "1d76db"},
+        {"id": 2, "name": "willkommensseite", "color": "0e8a16"}
+      ],
+      "assignee": {"login": "beispiel"},
+      "body": "Bereiche und Layouts."
+    },
+    {
+      "number": 640,
+      "title": "Plugin: Testergebnisse auf der Willkommensseite",
+      "state": "open",
+      "labels": [],
+      "pull_request": {"url": "https://api.github.com/repos/beispiel/atlas/pulls/640"}
+    },
+    {
+      "number": 612,
+      "title": "Überschrift mit Ümläuten, Akzenten (café) & Sonderzeichen: 100% fertig?",
+      "state": "open",
+      "labels": [{"name": "bug"}, {"name": "server"}]
+    },
+    {
+      "number": 598,
+      "title": "Fehler im Parser\nzweite Zeile",
+      "state": "open"
+    }
+  ]
+}
