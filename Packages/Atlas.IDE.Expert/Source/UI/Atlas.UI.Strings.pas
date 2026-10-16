@@ -471,7 +471,17 @@ type
     SettingsOpenBuildBuild,
     SettingsOpenBuildScope, SettingsOpenBuildScopeAll, SettingsOpenBuildScopeActive, SettingsOpenBuildDelay,
     SettingsOpenBuildExclude, NotificationsSourceOpenBuild,
-    OpenBuildTitle, OpenBuildFailed, OpenBuildNotBuilt, OpenBuildReason, OpenBuildSucceeded, OpenBuildReport);
+    OpenBuildTitle, OpenBuildFailed, OpenBuildNotBuilt, OpenBuildReason, OpenBuildSucceeded, OpenBuildReport,
+    SettingsBlockEndLabels, HideElementCommand, HideHere, HideInFile, HideEverywhere, HideSettings, HideNotice,
+    HideUndo, HideDoneLineComment, HideDoneTeamFile, HideDoneSetting, HideRefusedNoProject, HideRefusedOutside,
+    HideRefusedAlready, HideRefusedTeamFileOff, HideFailed, HideUndone, HideUndoFailed, HideNoElement,
+    NotificationsSourceHidden, ElementCodeLensMetrics, ElementCodeLensMetricsPlural, ElementCodeLensTests,
+    ElementCodeLensTestsPlural, ElementCodeLensTestUnit, ElementCodeLensTestUnitPlural, ElementBlockEndLabels,
+    ElementBlockEndLabelsPlural, ElementInlayHints, ElementInlayHintsPlural, ElementProblems,
+    ElementProblemsPlural, ElementNotes, ElementNotesPlural, ElementBookmarks, ElementBookmarksPlural,
+    ElementPairColors, ElementPairColorsPlural, ElementPairGuides, ElementPairGuidesPlural, ElementPairOwners,
+    ElementPairOwnersPlural, ElementInactiveDim, ElementInactiveDimPlural, ElementCompletionPreview,
+    ElementCompletionPreviewPlural);
 
   TAtlasStrings = class
   private class var
@@ -1378,7 +1388,23 @@ const
      'Nicht bauen (Projektnamen, durch Komma getrennt):', 'Bauen beim Öffnen',
      'Beim Öffnen gebaut: %d von %d erfolgreich', 'Fehlgeschlagen: %s', 'Nicht gebaut: %s', 'Grund: %s',
      'Alle Projekte erfolgreich (%s).',
-     'Bauen beim Öffnen (%s): %d Projekte, %d erfolgreich, %d fehlgeschlagen, %d nicht gebaut, %d ms'),
+     'Bauen beim Öffnen (%s): %d Projekte, %d erfolgreich, %d fehlgeschlagen, %d nicht gebaut, %d ms',
+     'Blockende-Beschriftungen hinter dem end langer Blöcke („// if …“)', 'Element ausblenden …',
+     'Nur hier ausblenden', 'In dieser Datei ausblenden', '%s überall ausblenden', 'Einstellungen dazu …',
+     'Ausgeblendet', 'Rückgängig', 'Kommentar „%s“ eingefügt.', '%s in .atlas eingetragen (%s).',
+     'Einstellung „%s“ ausgeschaltet.',
+     '„Nur hier“ und „In dieser Datei“ brauchen ein offenes Projekt (Eintrag in .atlas).',
+     'Die Datei liegt außerhalb des Projektordners; hier geht nur „überall“.', 'Schon ausgeblendet.',
+     'Die Projektdatei .atlas ist ausgeschaltet (Einstellung „Projektdatei .atlas“).',
+     'Ausblenden fehlgeschlagen: %s', 'Wieder eingeblendet.',
+     'Rückgängig nicht möglich: Der Text hat sich inzwischen geändert.',
+     'An dieser Stelle zeichnet Atlas nichts, das sich ausblenden lässt.', 'Ausblenden am Element',
+     'Metrik-Lens', 'Metrik-Lenses', 'Test-Lens', 'Test-Lenses', 'Testunit-Lens', 'Testunit-Lenses',
+     'Blockende-Beschriftung', 'Blockende-Beschriftungen', 'Inlay-Hint', 'Inlay-Hints', 'Befund-Unterstreichung',
+     'Befund-Unterstreichungen', 'Notizsymbol', 'Notizsymbole', 'Lesezeichen-Band', 'Lesezeichen-Bänder',
+     'Klammerfarben', 'Klammerfarben', 'Blocklinien', 'Blocklinien', 'Mitgefärbte Anweisungen',
+     'Mitgefärbte Anweisungen', 'Ausgegraute {$IFDEF}-Zweige', 'Ausgegraute {$IFDEF}-Zweige',
+     'Vorschau der Vervollständigung', 'Vorschauen der Vervollständigung'),
     ('Enter to accept · Esc to close', '%d of %d', 'No matches for “%s”', 'Backspace widens the search',
      'No suggestions here', 'Esc closes', 'No details for this entry', 'Overload', 'Deprecated: %s', 'Deprecated.',
      'Inherited from %s', 'Inherited', 'optional, default %s', 'No overload with %d parameters.', '… %d more',
@@ -2225,7 +2251,20 @@ const
      'only the active project', 'Wait until the IDE is idle (ms):',
      'Do not build (project names, separated by commas):', 'Build on opening',
      'Built on opening: %d of %d succeeded', 'Failed: %s', 'Not built: %s', 'Reason: %s',
-     'All projects succeeded (%s).', 'Build on opening (%s): %d projects, %d succeeded, %d failed, %d not built, %d ms'));
+     'All projects succeeded (%s).', 'Build on opening (%s): %d projects, %d succeeded, %d failed, %d not built, %d ms',
+     'Block end labels after the end of long blocks ("// if …")', 'Hide element…', 'Hide here only',
+     'Hide in this file', 'Hide %s everywhere', 'Settings for this…', 'Hidden', 'Undo',
+     'Inserted the comment “%s”.', 'Added %s to .atlas (%s).', 'Switched off the setting “%s”.',
+     '“Here only” and “In this file” need an open project (entry in .atlas).',
+     'The file is outside the project folder; only “everywhere” works here.', 'Already hidden.',
+     'The project file .atlas is switched off (setting “Project file .atlas”).', 'Hiding failed: %s',
+     'Shown again.', 'Cannot undo: the text has changed in the meantime.',
+     'Atlas draws nothing here that can be hidden.', 'Hiding at the element', 'metrics lens', 'metrics lenses',
+     'test lens', 'test lenses', 'test unit lens', 'test unit lenses', 'block end label', 'block end labels',
+     'inlay hint', 'inlay hints', 'finding underline', 'finding underlines', 'note icon', 'note icons',
+     'bookmark band', 'bookmark bands', 'bracket colors', 'bracket colors', 'block guides', 'block guides',
+     'colored statements', 'colored statements', 'dimmed {$IFDEF} branches', 'dimmed {$IFDEF} branches',
+     'completion preview', 'completion previews'));
 
 { TAtlasStrings }
 
