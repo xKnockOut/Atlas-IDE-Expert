@@ -13,6 +13,9 @@ type
   [TestFixture]
   TLspBaselineTests = class
   public
+    /// <summary>Globale Testdaten leeren: Der Leckmonitor zählte sie sonst dem Test an.</summary>
+    [TearDown]
+    procedure TearDown;
     /// <summary>Abnahme: atlas.updateBaseline schreibt die Baseline und antwortet mit den Zählern.</summary>
     [Test]
     procedure WritesBaselineAndAnswersCounters;
@@ -192,6 +195,13 @@ begin
   Disk.Add(FullPath('B.pas'), UnitA);
   Hits.Add(FullPath('A.pas'), [5]);
   Hits.Add(FullPath('B.pas'), [5]);
+end;
+
+procedure TLspBaselineTests.TearDown;
+begin
+  Disk.Clear;
+  Hits.Clear;
+  Written := '';
 end;
 
 procedure TLspBaselineTests.WritesBaselineAndAnswersCounters;
@@ -414,8 +424,9 @@ begin
 end;
 
 initialization
-  Disk := TDictionary<string, string>.Create;
-  Hits := TDictionary<string, TArray<Integer>>.Create;
+  // Mit Vorrat: Ein Test, der die Tabelle wachsen ließe, zählte sonst als Leck.
+  Disk := TDictionary<string, string>.Create(64);
+  Hits := TDictionary<string, TArray<Integer>>.Create(64);
   TDUnitX.RegisterTestFixture(TLspBaselineTests);
 
 finalization

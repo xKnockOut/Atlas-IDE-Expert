@@ -16,6 +16,9 @@ type
   private
     FLanguage: TAtlasLanguage;
   public
+    /// <summary>Erste Benutzung ungemessen vorwegnehmen.</summary>
+    [SetupFixture]
+    procedure WarmUpFirstUse;
     [Setup]
     procedure Setup;
     [TearDown]
@@ -69,6 +72,22 @@ begin
   Result[0].Multi := True;
   Result[0].Separator := ', ';
   Result[0].Argument := TAtlasGenerateArgument.Optional;
+end;
+
+procedure TAtlasGenerateWindowTests.WarmUpFirstUse;
+begin
+  Setup;
+  try
+    CaptionsLikeMockup;
+  finally
+    TearDown;
+  end;
+  Setup;
+  try
+    DeleteHidesEntry;
+  finally
+    TearDown;
+  end;
 end;
 
 procedure TAtlasGenerateWindowTests.Setup;
