@@ -24,6 +24,18 @@
 // eingebundenen Dateien zählen nicht (Bibliotheken wie jedi.inc fragen viele
 // fremde Symbole ab); Symbole anderer Compiler (FPC …) auch nicht.
 //
+// Packages (#759): Units eines per requires eingebundenen Packages der
+// Projektgruppe gelten als gefunden. Steht ihr Ordner zusätzlich im Suchpfad,
+// oder hat ein requires-Package keine Quelle in der Gruppe und liegt nur als
+// .dcp außerhalb der Bibliothekspfade, gibt es einen Hinweis (kein Fehler).
+// Ebenso Units eines Projekts der Gruppe, dessen DCU-Ausgabeordner im
+// Suchpfad steht (ProducedBy): Sie entstehen beim Bauen der Gruppe.
+// Quellen eines Symbols außerdem: -dX in Build-Skripten (*.sh, *.cmd, *.bat)
+// und ConditionalDefines in .lpi/.lpk der Skriptordner.
+// Symbole anderer Compiler und Widgetsets (FPC, UNIX, CPU*, ENDIAN_*, FPC_*,
+// LCL*) gelten als bekannt. Ein Symbol ohne Quelle bekommt einen Vorschlag,
+// wenn ein bekanntes Symbol ähnlich geschrieben ist (Tippfehler).
+//
 // Pfade: unter Windows mit „\“; ExpandPath setzt $(Name) über eine Funktion
 // des Aufrufers ein (auch verschachtelt, etwa BDSLIB = $(BDS)\lib) und macht
 // relative Pfade absolut. TAtlasPathMacros sammelt die Werte: zuerst die der
@@ -74,6 +86,8 @@ type
     Defined: TArray<string>;
     /// <summary>Dateinamen aus $I und $INCLUDE, wie geschrieben.</summary>
     Includes: TArray<string>;
+    /// <summary>Paket (.dpk): Namen aus requires.</summary>
+    Requires: TArray<TAtlasUsedUnit>;
   end;
 
   /// <summary>Fehlende Unit oder Symbol ohne Quelle: erste Stelle und Zahl der Stellen.</summary>
@@ -86,6 +100,9 @@ type
     Count: Integer;
     /// <summary>Kein sicherer Fund: Ein Suchpfad mit unbekanntem Makro wurde übersprungen.</summary>
     Uncertain: Boolean;
+    /// <summary>Define: ähnlich geschriebenes bekanntes Symbol (Tippfehler?). Hinweis: Unit im Suchpfad, die zu
+    /// dem requires-Package Name gehört; '' = Package ohne Quelle.</summary>
+    Note: string;
   end;
 
   TAtlasPathCheckInput = record
@@ -104,6 +121,13 @@ type
     ProjectDefines: TArray<string>;
     /// <summary>Unbekannte Makros übersprungener Such- und Bibliothekspfade (ohne „$(“ und „)“).</summary>
     SkippedMacros: TArray<string>;
+    /// <summary>.dproj aller Projekte der Projektgruppe; ihre Packages erfüllen requires.</summary>
+    GroupProjects: TArray<string>;
+    /// <summary>Ordner mit Build-Skripten (-dX) und .lpi/.lpk.</summary>
+    ScriptFolders: TArray<string>;
+    /// <summary>.dproj von Projekten der Gruppe, deren DCU-Ausgabeordner im Suchpfad steht: Ihre Units entstehen
+    /// beim Bauen der Gruppe und gelten als gefunden.</summary>
+    ProducedBy: TArray<string>;
   end;
 
   TAtlasPathCheckResult = record
@@ -113,6 +137,8 @@ type
     Unreadable: Integer;
     MissingUnits: TArray<TAtlasPathFinding>;
     UndefinedDefines: TArray<TAtlasPathFinding>;
+    /// <summary>Hinweise zu requires-Packages (Name = Package, Note = Unit im Suchpfad bzw. ''); kein Fehler.</summary>
+    Hints: TArray<TAtlasPathFinding>;
     /// <summary>Wie TAtlasPathCheckInput.SkippedMacros.</summary>
     SkippedMacros: TArray<string>;
     /// <summary>Keine sicheren Funde (unsichere zählen nicht).</summary>
@@ -186,19 +212,37 @@ type
     class function Combine(const AFolder, AName: string): string; static;
     /// <summary>Alle Symbole aus DCC_Define der .dproj (alle Konfigurationen), ohne $(…), ohne Doppelte.</summary>
     class function DprojDefines(const ADprojText: string): TArray<string>; static;
-    /// <summary>Symbole anderer Compiler, die Delphi-Code oft abfragt (FPC …).</summary>
+    /// <summary>Symbole anderer Compiler und Widgetsets, die Delphi-Code oft abfragt (FPC, UNIX, CPU*, ENDIAN_*,
+    /// FPC_*, LCL* …).</summary>
     class function IsForeignSymbol(const AName: string): Boolean; static;
+    /// <summary>DCC_Define der Konfiguration AConfig (Debug, Release …) und Plattform APlatform mit Vererbung
+    /// Base → Cfg_n → Cfg_n_Plattform; $(DCC_Define) setzt den Wert der Ebene darüber ein.</summary>
+    class function DprojConfigDefines(const ADprojText, AConfig, APlatform: string): TArray<string>; static;
+    /// <summary>Gesetzte Symbole einer Skriptdatei: -dX (*.sh, *.cmd, *.bat …), in .lpi/.lpk auch
+    /// ConditionalDefines.</summary>
+    class function ScriptDefines(const AFileName, AText: string): TArray<string>; static;
+    /// <summary>Ähnlich geschriebenes Symbol aus AKnown (höchstens zwei Zeichen anders); '' ohne.</summary>
+    class function Suggest(const AName: string; const AKnown: TArray<string>): string; static;
   end;
 
 implementation
 
 uses
+  System.StrUtils,
+  System.Math,
+  System.RegularExpressions,
   System.Generics.Collections,
   Atlas.Text.Chars,
   Atlas.Text.Defines;
 
 const
-  ForeignSymbols: array[0..4] of string = ('FPC', 'CLR', 'KYLIX', 'LCL', 'DOTNET');
+  // IMPLICITBUILDING setzt die IDE beim impliziten Bauen eines Packages (steht in jeder .dpk-Vorlage);
+  // TESTINSIGHT und CI fragt die Projektvorlage von DUnitX ab, gesetzt werden sie vom jeweiligen Werkzeug.
+  ForeignSymbols: array[0..15] of string = ('FPC', 'CLR', 'KYLIX', 'LCL', 'DOTNET', 'UNIX', 'DARWIN', 'WINDOWS',
+    'BSD', 'FREEBSD', 'HAIKU', 'WASI', 'EMBEDDED', 'IMPLICITBUILDING', 'TESTINSIGHT', 'CI');
+  // Präfixe von Symbolen, die Free Pascal bzw. Lazarus je Ziel setzt (CPUX86_64, ENDIAN_BIG, FPC_FULLVERSION, LCLgtk2).
+  ForeignPrefixes: array[0..3] of string = ('CPU', 'ENDIAN_', 'FPC_', 'LCL');
+  ScriptExtensions: array[0..4] of string = ('.sh', '.cmd', '.bat', '.lpi', '.lpk');
   AlwaysThere: array[0..1] of string = ('SYSTEM', 'SYSINIT');
 
 { TAtlasPathCheckResult }
@@ -527,6 +571,8 @@ type
     FUses: TUsesState;
     FPending: TAtlasUsedUnit;
     FFirstWord: Boolean;
+    /// <summary>Liste nach requires: Namen sind Packages, keine Units.</summary>
+    FInRequires: Boolean;
     function Current: TAtlasBranchState;
     procedure Push(ACondition: TAtlasBranchState);
     procedure ElseIf(ACondition: TAtlasBranchState);
@@ -728,7 +774,9 @@ end;
 
 procedure TScanner.Commit;
 begin
-  if FPending.Name <> '' then
+  if (FPending.Name <> '') and FInRequires then
+    FResult.Requires := FResult.Requires + [FPending]
+  else if FPending.Name <> '' then
     FResult.Units := FResult.Units + [FPending];
   FPending := Default(TAtlasUsedUnit);
 end;
@@ -742,8 +790,10 @@ begin
   end;
   case FUses of
     TUsesState.None:
-      if SameText(AWord, 'uses') or (FResult.IsPackage and SameText(AWord, 'contains')) then
+      if SameText(AWord, 'uses') or (FResult.IsPackage and (SameText(AWord, 'contains') or
+        SameText(AWord, 'requires'))) then
       begin
+        FInRequires := SameText(AWord, 'requires');
         FUses := TUsesState.ExpectName;
         FPending := Default(TAtlasUsedUnit);
       end;
@@ -1121,7 +1171,127 @@ begin
   for Name in ForeignSymbols do
     if SameText(Name, Trim(AName)) then
       Exit(True);
+  for Name in ForeignPrefixes do
+    if StartsText(Name, Trim(AName)) then
+      Exit(True);
   Result := False;
+end;
+
+class function TAtlasPathCheck.DprojConfigDefines(const ADprojText, AConfig, APlatform: string): TArray<string>;
+var
+  Keys: TArray<string>;
+  Key, Value, Inherited_, Part: string;
+  Match: TMatch;
+
+  function DefineOf(const AKey: string; out AValue: string): Boolean;
+  var
+    Group, Define: TMatch;
+  begin
+    // <PropertyGroup Condition="'$(Key)'!=''"> … <DCC_Define>…</DCC_Define>
+    for Group in TRegEx.Matches(ADprojText, '<PropertyGroup\s+Condition="''\$\(' + AKey +
+      '\)''!=''''"\s*>(.*?)</PropertyGroup>', [roIgnoreCase, roSingleLine]) do
+    begin
+      Define := TRegEx.Match(Group.Groups[1].Value, '<DCC_Define>(.*?)</DCC_Define>', [roIgnoreCase, roSingleLine]);
+      if Define.Success then
+      begin
+        AValue := Define.Groups[1].Value;
+        Exit(True);
+      end;
+    end;
+    AValue := '';
+    Result := False;
+  end;
+
+begin
+  Result := nil;
+  // Debug → Cfg_1: <BuildConfiguration Include="Debug"><Key>Cfg_1</Key>.
+  Key := '';
+  Match := TRegEx.Match(ADprojText, '<BuildConfiguration\s+Include="' + TRegEx.Escape(AConfig) +
+    '"\s*>\s*<Key>(\w+)</Key>', [roIgnoreCase]);
+  if Match.Success then
+    Key := Match.Groups[1].Value;
+  Keys := ['Base'];
+  if (Key <> '') and not SameText(Key, 'Base') then
+  begin
+    Keys := Keys + [Key];
+    if APlatform <> '' then
+      Keys := Keys + [Key + '_' + APlatform];
+  end;
+  Inherited_ := '';
+  for Key in Keys do
+    if DefineOf(Key, Value) then
+      Inherited_ := StringReplace(Value, '$(DCC_Define)', Inherited_, [rfReplaceAll, rfIgnoreCase]);
+  for Part in Inherited_.Split([';']) do
+    if (Trim(Part) <> '') and (Pos('$(', Part) = 0) and (IndexText(Trim(Part), Result) < 0) then
+      Result := Result + [Trim(Part)];
+end;
+
+class function TAtlasPathCheck.ScriptDefines(const AFileName, AText: string): TArray<string>;
+var
+  Match: TMatch;
+  Part, Ext: string;
+
+  procedure Add(const AName: string);
+  begin
+    if (AName <> '') and (IndexText(AName, Result) < 0) then
+      Result := Result + [AName];
+  end;
+
+begin
+  Result := nil;
+  // -dX auf der Kommandozeile (fpc -dX, dcc32 -DX); X beginnt mit Buchstabe oder _.
+  for Match in TRegEx.Matches(AText, '(?<![\w-])-[dD]([A-Za-z_]\w*)') do
+    Add(Match.Groups[1].Value);
+  Ext := LowerCase(ExtractFileExt(AFileName));
+  if (Ext = '.lpi') or (Ext = '.lpk') then
+    for Match in TRegEx.Matches(AText, '<ConditionalDefines\s+Value="([^"]*)"', [roIgnoreCase]) do
+      for Part in Match.Groups[1].Value.Split([';', ',', ' ']) do
+        Add(Trim(Part));
+end;
+
+class function TAtlasPathCheck.Suggest(const AName: string; const AKnown: TArray<string>): string;
+
+  function Distance(const A, B: string): Integer;
+  var
+    Row, Prev: TArray<Integer>;
+    I, J, Cost: Integer;
+  begin
+    SetLength(Prev, Length(B) + 1);
+    SetLength(Row, Length(B) + 1);
+    for J := 0 to Length(B) do
+      Prev[J] := J;
+    for I := 1 to Length(A) do
+    begin
+      Row[0] := I;
+      for J := 1 to Length(B) do
+      begin
+        Cost := Ord(UpCase(A[I]) <> UpCase(B[J]));
+        Row[J] := Min(Min(Row[J - 1] + 1, Prev[J] + 1), Prev[J - 1] + Cost);
+      end;
+      Prev := Copy(Row);
+    end;
+    Result := Prev[Length(B)];
+  end;
+
+var
+  Known: string;
+  Best, Value: Integer;
+begin
+  Result := '';
+  // Kurze Namen (X, C) gleichen fast allem; erst ab vier Zeichen.
+  if Length(Trim(AName)) < 4 then
+    Exit;
+  Best := 3;
+  for Known in AKnown do
+    if (Known <> '') and not SameText(Known, AName) and (Abs(Length(Known) - Length(AName)) <= 2) then
+    begin
+      Value := Distance(AName, Known);
+      if Value < Best then
+      begin
+        Best := Value;
+        Result := Known;
+      end;
+    end;
 end;
 
 { Ablauf }
@@ -1209,6 +1379,7 @@ begin
     AList[Index] := Finding;
     Exit;
   end;
+  Finding := Default(TAtlasPathFinding);
   Finding.Uncertain := AUncertain;
   Finding.Name := AName;
   Finding.FileName := AFileName;
@@ -1224,7 +1395,12 @@ var
   Cache: TFolderCache;
   ProjectDir, Source, Text, Folder, Name, Include, Candidate: string;
   ProjectNames, Known, Visited: TDictionary<string, Boolean>;
-  Missing, Undefined: TList<TAtlasPathFinding>;
+  // Unit (groß) → requires-Package, aus dem sie kommt.
+  Required: TDictionary<string, string>;
+  Missing, Undefined, Hints: TList<TAtlasPathFinding>;
+  HintedPackages: TDictionary<string, Boolean>;
+  // Inhalt (groß) der .dcp von requires-Packages ohne Quelle (rtl, vcl, designide …): Unit-Namen stehen lesbar darin.
+  DcpTexts: TList<string>;
   MissingIndex, UndefinedIndex: TDictionary<string, Integer>;
   Scanned: TAtlasSourceScan;
   Used: TAtlasUsedUnit;
@@ -1235,6 +1411,7 @@ var
   Item: TSymbolAt;
   Index: Integer;
   Skipped, IncludeMissing: Boolean;
+  Finding_: TAtlasPathFinding;
 
   function Folders(const AFrom: string): TArray<string>;
   begin
@@ -1257,8 +1434,11 @@ var
         Names := Names + [Trim(Namespace) + '.' + AUnit.Name];
     for Each in Names do
     begin
-      if ProjectNames.ContainsKey(UpperCase(Each)) then
+      if ProjectNames.ContainsKey(UpperCase(Each)) or Required.ContainsKey(UpperCase(Each)) then
         Exit(True);
+      for Path in DcpTexts do
+        if Pos(UpperCase(Each), Path) > 0 then
+          Exit(True);
       for Dir in AlwaysThere do
         if SameText(Dir, Each) then
           Exit(True);
@@ -1291,6 +1471,82 @@ var
     Result := False;
   end;
 
+  function InFolders(const AFolder: string; const AFolders: TArray<string>): Boolean;
+  var
+    Each: string;
+  begin
+    for Each in AFolders do
+      if (Trim(Each) <> '') and SameText(ExcludeTrailingPathDelimiter(Each), ExcludeTrailingPathDelimiter(AFolder)) then
+        Exit(True);
+    Result := False;
+  end;
+
+  procedure Hint(const APackage, AUnit, AFileName: string; ALine: Integer);
+  var
+    Item: TAtlasPathFinding;
+  begin
+    // Ein Hinweis je Package.
+    if HintedPackages.ContainsKey(UpperCase(APackage)) then
+      Exit;
+    HintedPackages.Add(UpperCase(APackage), True);
+    Item := Default(TAtlasPathFinding);
+    Item.Name := APackage;
+    Item.Note := AUnit;
+    Item.FileName := AFileName;
+    Item.Line := ALine;
+    Item.Count := 1;
+    Hints.Add(Item);
+  end;
+
+  /// <summary>Units eines requires-Packages der Projektgruppe als gefunden merken; ohne Quelle in der Gruppe ein
+  /// Hinweis, wenn es nur als .dcp außerhalb der Bibliothekspfade liegt.</summary>
+  procedure Require(const APackage: TAtlasUsedUnit; const AFrom: string);
+  var
+    Project, Dpk, PackageText, Path, Dir: string;
+    Contained: TAtlasSourceScan;
+    Item: TAtlasUsedUnit;
+    Own: TArray<string>;
+  begin
+    for Project in AInput.GroupProjects do
+      if SameText(ChangeFileExt(ExtractFileName(Project), ''), APackage.Name) then
+      begin
+        Dpk := ChangeFileExt(Project, '.dpk');
+        if not (Assigned(ARead) and ARead(Dpk, PackageText)) then
+          Continue;
+        Contained := Scan(PackageText, AInput.ActiveDefines);
+        for Item in Contained.Units do
+        begin
+          Required.AddOrSetValue(UpperCase(Item.Name), APackage.Name);
+          // Quellordner des Packages zusätzlich im Suchpfad: doppelt gefunden, Hinweis.
+          if Item.InFile <> '' then
+          begin
+            Path := Combine(ExtractFileDir(Dpk), Item.InFile);
+            if InFolders(ExtractFileDir(Path), AInput.SearchPaths) then
+              Hint(APackage.Name, Item.Name, AFrom, APackage.Line);
+          end;
+        end;
+        Exit;
+      end;
+    // Nicht in der Gruppe: rtl, vcl … liegen als .dcp in den Bibliothekspfaden, das ist normal. Die .dcp nennt
+    // ihre Units lesbar; sie gelten damit als gefunden (ToolsAPI aus designide).
+    for Dir in AInput.LibraryPaths do
+      if (Trim(Dir) <> '') and Cache.Has(Dir, APackage.Name + '.dcp') then
+      begin
+        if Assigned(ARead) and ARead(Combine(Dir, APackage.Name + '.dcp'), PackageText) then
+          DcpTexts.Add(UpperCase(PackageText));
+        Exit;
+      end;
+    Own := [ProjectDir] + AInput.SearchPaths;
+    for Dir in Own do
+      if (Trim(Dir) <> '') and Cache.Has(Dir, APackage.Name + '.dcp') then
+      begin
+        if Assigned(ARead) and ARead(Combine(Dir, APackage.Name + '.dcp'), PackageText) then
+          DcpTexts.Add(UpperCase(PackageText));
+        Hint(APackage.Name, '', AFrom, APackage.Line);
+        Exit;
+      end;
+  end;
+
 begin
   Result := Default(TAtlasPathCheckResult);
   Result.SkippedMacros := AInput.SkippedMacros;
@@ -1304,6 +1560,10 @@ begin
   Missing := TList<TAtlasPathFinding>.Create;
   Undefined := TList<TAtlasPathFinding>.Create;
   MissingIndex := TDictionary<string, Integer>.Create;
+  Required := TDictionary<string, string>.Create;
+  Hints := TList<TAtlasPathFinding>.Create;
+  HintedPackages := TDictionary<string, Boolean>.Create;
+  DcpTexts := TList<string>.Create;
   UndefinedIndex := TDictionary<string, Integer>.Create;
   Queue := TList<TIncludeRef>.Create;
   Uses_ := TList<TSymbolAt>.Create;
@@ -1312,6 +1572,31 @@ begin
       ProjectNames.AddOrSetValue(UpperCase(ChangeFileExt(ExtractFileName(Source), '')), True);
     for Name in AInput.ActiveDefines + AInput.ProjectDefines do
       Known.AddOrSetValue(UpperCase(Trim(Name)), True);
+    // Units, die ein anderes Projekt der Gruppe in einen Ordner des Suchpfads übersetzt.
+    for Source in AInput.ProducedBy do
+      if Assigned(ARead) and (ARead(ChangeFileExt(Source, '.dpk'), Text) or ARead(ChangeFileExt(Source, '.dpr'), Text)) then
+      begin
+        Scanned := Scan(Text, AInput.ActiveDefines);
+        for Used in Scanned.Units do
+          Required.AddOrSetValue(UpperCase(Used.Name), ChangeFileExt(ExtractFileName(Source), ''));
+      end;
+    // requires der Packages zuerst: Ihre Units sind beim Prüfen der uses schon bekannt.
+    for Source in AInput.Sources do
+      if SameText(ExtractFileExt(Source), '.dpk') and Assigned(ARead) and ARead(Source, Text) then
+      begin
+        Scanned := Scan(Text, AInput.ActiveDefines);
+        for Used in Scanned.Requires do
+          if Used.State = TAtlasBranchState.Active then
+            Require(Used, Source);
+      end;
+    // Build-Skripte und Lazarus-Projekte: -dX und ConditionalDefines sind Quellen.
+    for Folder in AInput.ScriptFolders do
+      if Trim(Folder) <> '' then
+        for Name in AList(Folder) do
+          if IndexText(ExtractFileExt(Name), ScriptExtensions) >= 0 then
+            if Assigned(ARead) and ARead(Combine(Folder, Name), Text) then
+              for Include in ScriptDefines(Name, Text) do
+                Known.AddOrSetValue(UpperCase(Include), True);
     for Source in AInput.Sources do
     begin
       if Visited.ContainsKey(UpperCase(Source)) then
@@ -1364,9 +1649,21 @@ begin
         // Fehlt eine eingebundene Datei und fiel ein Suchpfad weg, kann das $DEFINE dort stehen.
         AddFinding(Undefined, UndefinedIndex, Item.Use.Name, Item.FileName, Item.Use.Line,
           Skipped and IncludeMissing);
+    // Tippfehler? Ein ähnlich geschriebenes bekanntes Symbol vorschlagen.
+    for Index := 0 to Undefined.Count - 1 do
+    begin
+      Finding_ := Undefined[Index];
+      Finding_.Note := Suggest(Finding_.Name, Known.Keys.ToArray);
+      Undefined[Index] := Finding_;
+    end;
     Result.MissingUnits := Missing.ToArray;
     Result.UndefinedDefines := Undefined.ToArray;
+    Result.Hints := Hints.ToArray;
   finally
+    DcpTexts.Free;
+    HintedPackages.Free;
+    Hints.Free;
+    Required.Free;
     Uses_.Free;
     Queue.Free;
     UndefinedIndex.Free;
