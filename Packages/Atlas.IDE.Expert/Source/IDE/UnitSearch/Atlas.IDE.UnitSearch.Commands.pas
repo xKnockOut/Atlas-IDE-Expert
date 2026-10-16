@@ -75,11 +75,12 @@ uses
   Atlas.Core.UnitSearch.State,
   Atlas.UI.Strings,
   Atlas.UI.UnitSearch.Window,
-  Atlas.IDE.Editor.Buffer,
-  Atlas.IDE.Editor.Style,
+  Atlas.IDE.Foundation.EditorBuffer,
+  Atlas.IDE.Foundation.EditorStyle,
   Atlas.IDE.Editor.WorkspaceEdit,
-  Atlas.IDE.Hover.Editor,
-  Atlas.IDE.Settings.Store;
+  Atlas.IDE.Foundation.Settings,
+  Atlas.Core.Editor.WorkspacePlan,
+  Atlas.IDE.Foundation.Navigation;
 
 const
   UnitsCommand = 'atlas.server.units';
@@ -607,7 +608,7 @@ begin
   begin
     if Entry.Kind = TAtlasUnitKind.Test then
     begin
-      TAtlasEditorHover.GoToLocation(Entry.FileName, 0, 0);
+      TAtlasIdeNavigation.GoToLocation(Entry.FileName, 0, 0);
       Continue;
     end;
     Live := TAtlasIdeUnitSearch.Session;
@@ -636,7 +637,7 @@ begin
       Answer.Free;
     end;
     if Info.CounterpartFile <> '' then
-      TAtlasEditorHover.GoToLocation(Info.CounterpartFile, 0, 0)
+      TAtlasIdeNavigation.GoToLocation(Info.CounterpartFile, 0, 0)
     else
       TAtlasIdeUnitSearch.Say(TAtlasStrings.Fmt(TAtlasTextId.UnitSearchNoTests, [Entry.Name]));
   end;
@@ -721,7 +722,8 @@ begin
     TAtlasIdeUnitSearch.Say(TAtlasStrings.Fmt(TAtlasTextId.UnitSearchUsesAdded, [0, ExtractFileName(ATarget)]));
     Exit;
   end;
-  Outcome := TAtlasIdeWorkspaceEdit.Apply(Edit, TAtlasIdeSettings.Current.OpenForEdits,
+  Outcome := TAtlasIdeWorkspaceEdit.Apply(Edit,
+    TAtlasUnopenedPolicies.FromSetting(TAtlasIdeSettings.Current.OpenForEdits),
     TAtlasStrings.Text(TAtlasTextId.UnitSearchAddUses) + ': ' + UnitList(AEntries));
   if Outcome.Error <> '' then
     TAtlasIdeUnitSearch.Say(TAtlasStrings.Fmt(TAtlasTextId.EditFailed, [Outcome.Error]))
@@ -740,7 +742,7 @@ begin
   case AAction of
     TAtlasUnitSearchAction.Open:
       for Entry in AEntries do
-        TAtlasEditorHover.GoToLocation(Entry.FileName, 0, 0);
+        TAtlasIdeNavigation.GoToLocation(Entry.FileName, 0, 0);
     TAtlasUnitSearchAction.OpenForm:
       for Entry in AEntries do
       begin

@@ -1,4 +1,4 @@
-﻿unit Atlas.IDE.Settings.Store;
+﻿unit Atlas.IDE.Foundation.Settings;
 
 // Einstellungen des Plugins in der Registry (HKCU\Software\Atlas\IdePlugin,
 // #227) und der aktuelle Stand für alle Teile des Plugins. Gelesen wird

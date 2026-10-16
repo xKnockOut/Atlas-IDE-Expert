@@ -122,6 +122,15 @@ type
     property OnServerRequest: TLspServerRequestFunc read FOnServerRequest write FOnServerRequest;
   end;
 
+  /// <summary>Laufender Sprachserver mit seinem Client; die Freigabe beendet den Prozess. Den Prozess
+  /// startet die Kompositionswurzel (TLspServerProcess, A-09).</summary>
+  IAtlasLspServer = interface
+    ['{EAC5AE10-77D6-42EA-8AD8-CF869F7B79EC}']
+    function Running: Boolean;
+    function GetClient: TLspClient;
+    property Client: TLspClient read GetClient;
+  end;
+
 implementation
 
 uses

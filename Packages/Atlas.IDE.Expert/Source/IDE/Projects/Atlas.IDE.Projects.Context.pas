@@ -18,7 +18,7 @@ interface
 
 uses
   ToolsAPI,
-  Atlas.Core.Projects.Context;
+  Atlas.Core.Projects.Contract;
 
 type
   TAtlasIdeProjectContext = class

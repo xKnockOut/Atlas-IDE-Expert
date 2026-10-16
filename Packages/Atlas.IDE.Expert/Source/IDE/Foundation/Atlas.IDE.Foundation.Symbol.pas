@@ -1,4 +1,4 @@
-﻿unit Atlas.IDE.Style.Symbol;
+﻿unit Atlas.IDE.Foundation.Symbol;
 
 // Atlas-Symbol G1a in der IDE (#751): Eintrag mit Symbol und Version im
 // Startbildschirm (IOTASplashScreenServices) und im Info-Dialog
@@ -44,7 +44,7 @@ uses
   Atlas.Core.Diagnostics.Guard,
   Atlas.UI.Strings,
   Atlas.UI.Style.Symbol,
-  Atlas.IDE.Editor.Style;
+  Atlas.IDE.Foundation.EditorStyle;
 
 type
   TThemeNotifier = class(TNotifierObject, INTAIDEThemingServicesNotifier)
