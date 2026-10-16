@@ -6,7 +6,10 @@
 // atlas/compileStarted bzw. atlas/compileFinished an den Server.
 //
 // - Vor dem Compile fragt BeforeCompile alle Teilnehmer, ob abgebrochen
-//   werden soll; der erste Grund gewinnt.
+//   werden soll; der erste Grund gewinnt. Die Teilnehmer sehen dabei schon
+//   Background und RequestedBy des beginnenden Laufs (Release-Wächter #533);
+//   nach einem Abbruch erfahren alle über CompileCancelled davon (Läufer #261,
+//   Schnellaktion „Öffnen und bauen“ #764).
 // - Hintergrund-Kompilierungen der Code Insight zählen nur mit (Anzahl,
 //   Dauer); sie lösen keine Teilnehmer und keine Abbrüche aus.
 // - Ein Projekt, das schon läuft, beginnt nicht noch einmal (zwei Notifier
@@ -51,6 +54,8 @@ type
     procedure GroupFinished(ASucceeded: Boolean; ADurationMs: Int64); virtual;
     /// <summary>True bricht den Compile ab; AReason erscheint im Meldungsfenster.</summary>
     function CancelCompile(const AProject: TAtlasCompileProject; out AReason: string): Boolean; virtual;
+    /// <summary>Ein Teilnehmer hat den Compile von AProject abgebrochen; AReason wie im Meldungsfenster.</summary>
+    procedure CompileCancelled(const AProject: TAtlasCompileProject; const AReason: string); virtual;
     procedure ProjectStarted(const AProject: TAtlasCompileProject); virtual;
     procedure ProjectFinished(const AProject: TAtlasCompileProject; ASucceeded: Boolean; ADurationMs: Int64); virtual;
   end;
@@ -177,6 +182,10 @@ begin
   Result := False;
 end;
 
+procedure TAtlasCompileParticipant.CompileCancelled(const AProject: TAtlasCompileProject; const AReason: string);
+begin
+end;
+
 procedure TAtlasCompileParticipant.ProjectStarted(const AProject: TAtlasCompileProject);
 begin
 end;
@@ -283,7 +292,8 @@ function TAtlasCompileEvents.BeforeCompile(const AProject: TAtlasCompileProject;
 var
   Participant: TAtlasCompileParticipant;
   Cancel: Boolean;
-  Reason: string;
+  Reason, Text: string;
+  Info: TAtlasCompileProject;
 begin
   AReason := '';
   Result := False;
@@ -293,17 +303,27 @@ begin
     Inc(FCodeInsightCount);
     Exit;
   end;
+  // Wie ProjectStarted: Hintergrundprüfung (#548) und Auftraggeber (#261) gelten schon hier.
+  Info := AProject;
+  Info.Background := FBackground;
+  Info.RequestedBy := FRequestedBy;
   for Participant in FParticipants do
   begin
     Cancel := False;
     Reason := '';
-    Guard(Participant.ClassName, procedure begin Cancel := Participant.CancelCompile(AProject, Reason); end);
+    Guard(Participant.ClassName, procedure begin Cancel := Participant.CancelCompile(Info, Reason); end);
     if Cancel then
     begin
       AReason := Format('%s: %s', [ExtractFileName(AProject.FileName), Reason]);
-      Exit(True);
+      Result := True;
+      Break;
     end;
   end;
+  if not Result then
+    Exit;
+  Text := AReason;
+  for Participant in FParticipants do
+    Guard(Participant.ClassName, procedure begin Participant.CompileCancelled(Info, Text); end);
 end;
 
 procedure TAtlasCompileEvents.CodeInsightFinished;

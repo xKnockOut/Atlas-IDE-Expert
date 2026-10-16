@@ -1260,6 +1260,31 @@ Voraussetzung: Git-Projekt `C:\Repo\App\Zeige.dproj` (Konsolenprogramm, schreibt
 | SP16 | Projektdatei `.atlas` aus | Nur persönliche Profile; „Gemeinsame Startprofile in .atlas bearbeiten“ meldet, dass die Projektdatei aus ist |
 | SP17 | Während eine Debug-Sitzung läuft, ein Profil wählen | Startoptionen werden gesetzt, gelten ab dem nächsten Start; kein Absturz, kein Dialog |
 
+## Release-Build-Wächter (#533)
+
+Voraussetzung: VCL-Projekt `Kasse.dproj` mit den Konfigurationen Debug und Release (Win32 und Win64), Release-Build-Wächter an (Optionen › Atlas › *Release-Build*), `build.gate` = off, alle Prüfungen an, Sollwerte aus. In Release: DEBUG nicht definiert, Debug-Informationen, Assertions, Stack-Frames, Bereichs- und Überlaufprüfung aus, Versionsinformationen 1.0.0.0, Ausgabeordner `.\$(Platform)\$(Config)`. In `Kasse.dpr` steht `ReportMemoryLeaksOnShutdown := True;` innerhalb von `{$IFDEF DEBUG}`.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| RW1 | Release aktiv, *Projekt › Erzeugen* | Keine Meldung des Wächters; der Build läuft |
+| RW2 | In Release unter *Bedingte Definitionen* `DEBUG` eintragen (nicht speichern), *Erzeugen* | Atlas-Gruppe des Meldungsfensters: „Release-Wächter: 1 Befund(e) in Kasse.dproj (Release, Win32):“ und „[release-debug-define] Symbol DEBUG ist definiert. Ändern: Projekt › Optionen › … Bedingte Definitionen (Release, Win32).“; der Build läuft (Akzeptanz: Release mit DEBUG gibt eine Meldung; Optionen aus der IDE, nicht aus der gespeicherten .dproj) |
+| RW3 | Wie RW2 mit `build.gate` = block | Der Build startet nicht; Atlas-Gruppe mit dem Befund, „Build abgebrochen (build.gate = block) …“ und „Atlas: Compile abgebrochen – 1 Befund(e) des Release-Wächters: release-debug-define“ (Akzeptanz: mit block startet der Build nicht) |
+| RW4 | Nach RW3 binnen 10 s noch einmal *Erzeugen* | Der Build läuft; Meldung „bewusst übergangen …“; nach mehr als 10 s wieder Abbruch |
+| RW5 | Debug aktiv (mit DEBUG), *Erzeugen*, auch mit block | Keine Meldung des Wächters, der Build läuft (Akzeptanz: Debug-Build wird nicht geprüft) |
+| RW6 | Wie RW2, auf dem Reiter *Release-Build* „Symbol DEBUG definiert“ abhaken, *Erzeugen* | Kein Befund (Akzeptanz: eine abgeschaltete Prüfung meldet nichts) |
+| RW7 | Release: Bereichsprüfung, Überlaufprüfung, Assertions und Stack-Frames an, Debug-Informationen auf „Begrenzt“ | Je ein Befund mit „ist an (Soll: aus)“ und dem Weg zur Option; „Bereichsprüfung“ auf „prüfen, Soll: an“ gestellt: dieser Befund entfällt |
+| RW8 | In `Kasse.dpr` die Zeile `ReportMemoryLeaksOnShutdown := True;` aus dem `{$IFDEF DEBUG}`-Block nehmen (ungespeichert), Release erzeugen | Befund „[release-memory-leaks] …“ als Zeile mit Datei und Zeile; Doppelklick springt in die .dpr; in `{$IF DEFINED(DEBUG)}` oder im `{$ELSE}`-Zweig von `{$IFNDEF DEBUG}` kein Befund, in einem Kommentar auch nicht |
+| RW9 | *Versionsinformationen in Projekt aufnehmen* in Release abschalten | Befund „[release-version-info] Keine Versionsinformationen …“ |
+| RW10 | Versionsinformationen an (1.0.0.0), Release erfolgreich erzeugen, dann noch einmal erzeugen | Beim zweiten Build „Version 1.0.0.0 wie beim letzten Release-Build …“; nach Erhöhen auf 1.0.1.0 kein Befund; mit „Build-Nummer automatisch erhöhen“ nie; nach Neustart der IDE gilt die gemerkte Version weiter (Abschnitt `release` in `%LOCALAPPDATA%\Atlas\projects\<Schlüssel>.json`) |
+| RW11 | Ausgabeordner von Release auf `.\Bin` stellen, Debug ebenfalls `.\Bin` | Befund „[release-output-folder] Ausgabeordner Bin wie in Debug …“; mit `.\$(Platform)\$(Config)` in beiden kein Befund |
+| RW12 | Konfiguration „Ship“ anlegen, DEBUG darin, `build.releaseConfigs` = `Release, Ship`, Ship erzeugen | Befund wie RW2 mit (Ship, Win32); ohne „Ship“ in der Liste keine Prüfung |
+| RW13 | Package-Projekt (.dpk) in Release mit gleichem Ausgabeordner wie Debug und `ReportMemoryLeaksOnShutdown` im Quelltext | Keine Befunde zu Leckbericht und Ausgabeordner; DEBUG und Compileroptionen werden geprüft |
+| RW14 | Mit block und DEBUG in Release: Claude Code `build_project` mit `configuration: "Release"` | Antwort „nicht angenommen“ bzw. Fehler mit „1 Befund(e) des Release-Wächters: release-debug-define“, kein Build; Konfiguration und Plattform danach wie vorher (für #764 „Öffnen und bauen“) |
+| RW15 | Befehlspalette „Release-Build prüfen“ mit Debug aktiv | Prüft Release ohne Build: Befunde wie RW2 oder „Release-Wächter: Kasse.dproj (Release, Win32) ohne Befund.“; Projekt ohne Release-Konfiguration: „… hat keine Release-Konfiguration …“; kein Projekt offen: „Kein Projekt geöffnet.“ |
+| RW16 | Release-Build-Wächter aus (Optionen oder Schnellschalter) | Keine Prüfung bei Release-Builds; Befehl und Tipp „Release-Build prüfen“ verschwinden ohne Neustart |
+| RW17 | Hintergrundprüfung nach dem Speichern (#548) und Syntaxprüfung in Release mit DEBUG | Keine Meldung des Wächters, kein Abbruch |
+| RW18 | Projektgruppe mit zwei Release-Projekten, eines mit DEBUG, *Alle erzeugen* mit block | Das Projekt mit DEBUG wird abgebrochen, die Meldung nennt dessen Namen; das andere prüft der Wächter ohne Befund (ob die IDE danach weiterbaut, entscheidet sie) |
+
 ## Units suchen (#777)
 
 Voraussetzung: Projektgruppe mit mehreren Projekten, darunter ein DUnitX-Testprojekt; Server läuft; Einstellungen auf Vorgabe.
