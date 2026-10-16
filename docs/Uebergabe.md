@@ -1,8 +1,8 @@
-﻿# Übergabe: Atlas IDE Expert – Stand 09.10.2026
+﻿# Übergabe: Atlas IDE Expert – Stand 16.10.2026
 
 ## Kontext
 - Repo: https://github.com/xKnockOut/Atlas-IDE-Expert.git, lokal unter `C:\Projekte\BetterDelphiLSP\repo`. Gearbeitet wird auf `main`.
-- Projektgruppe `Atlas.groupproj`: `Atlas.Common`, `Atlas.Windows` (Packages), `AtlasServer` (Anwendung), `Atlas.IDE.Expert` (Design-Time-Package, Win32, ADR 0006; bis #406 `Atlas.IdePlugin`), `Atlas.Tests` (DUnitX, nur Win64).
+- Projektgruppe `Atlas.groupproj`: `Atlas.Text`, `Atlas.Common`, `Atlas.Windows` (Packages), `AtlasServer` (Anwendung), `Atlas.IDE.Expert` (Design-Time-Package, Win32, ADR 0006; bis #406 `Atlas.IdePlugin`), `Atlas.Tests` (DUnitX, nur Win64).
 - Projektregeln in `CLAUDE.md`: Deutsch, UTF-8 mit BOM und CRLF, Rollenkonzept in `docs/Architektur.md`.
 - Regeln des Users:
   - Hinweise und Warnungen sofort beheben. Ein Build gilt erst bei 0/0/0 als fertig.
@@ -22,7 +22,7 @@
 - Das Referenz-Testprojekt (#94) baut `pwsh Tools/Build-Referenzprojekt.ps1` für Win32 und Win64 (`-MitDaten` zusätzlich das optionale FireDAC-Projekt `RefDaten`). Hinweise und Warnungen müssen genau `Tests/Referenzprojekt/erwartete-meldungen.txt` entsprechen; geänderte `.dproj`-Dateien lassen es scheitern. Die minimalen `.dproj`-Dateien einmal in der IDE speichern und einchecken.
 - **Niemals `quit` oder einen Build ohne geprüfte `-Instance`.** Ein Agent für XML-Inspector nutzt dasselbe Plugin und lädt seine Projekte in freie IDEs. Erkennbar an einer veränderten `.groupproj`. Dann die Änderung verwerfen und mit neuer IDE wiederholen.
 - **Fehlertexte nicht lesbar:** Das Plugin kann die Fehlertexte oft nicht lesen. Dann ist `ok=False` bei 0/0/0, im Log steht nur „Misslungen“. Die Ursache im Code suchen.
-- **Häufige Fehlerursachen:**
+- **Häufige Fehlerursachen** (weitere Delphi-Fallen, die unter FPC durchgehen, und die Regel „vor dem Merge mit Delphi bauen“: Abschnitt „Mit Delphi bauen vor dem Merge“ in `CLAUDE.md`):
   - Eine Funktion, die eine Methodenreferenz liefert, ohne `()` zugewiesen (E2010).
   - `TXyz.Create` direkt an einen `const`-Interface-Parameter übergeben.
   - Eine Methode steht zwischen Feldern (E2169).
