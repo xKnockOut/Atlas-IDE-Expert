@@ -25,7 +25,6 @@ uses
   System.StrUtils,
   Atlas.Common.Documents.Contract,
   Atlas.Common.Documents.Uris,
-  Atlas.Common.Rules.Contract,
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Projects.Contract,
   Atlas.Common.Projects.Paths,
@@ -49,7 +48,7 @@ end;
 
 /// <summary>Trägt AValue in AProperty der Konfiguration AConfig ein und merkt das Schreiben vor.</summary>
 function AddToProject(const AContext: TSlashContext; const AProject: TProjectInfo; const AText, AConfig,
-  AProperty, AValue: string; out AEdits: TArray<TRuleEdit>; out AReason: string): Boolean;
+  AProperty, AValue: string; out AEdits: TArray<TTextEdit>; out AReason: string): Boolean;
 var
   Key, NewText, Uri: string;
   Host: ISlashHost;
@@ -84,7 +83,7 @@ end;
 
 { /define }
 
-function ExecuteDefine(const AContext: TSlashContext; out AEdits: TArray<TRuleEdit>; out AReason: string): Boolean;
+function ExecuteDefine(const AContext: TSlashContext; out AEdits: TArray<TTextEdit>; out AReason: string): Boolean;
 var
   Project: TProjectInfo;
   Text, Config: string;
@@ -103,7 +102,7 @@ end;
 
 { /searchpath }
 
-function ExecuteSearchPath(const AContext: TSlashContext; out AEdits: TArray<TRuleEdit>;
+function ExecuteSearchPath(const AContext: TSlashContext; out AEdits: TArray<TTextEdit>;
   out AReason: string): Boolean;
 var
   Project: TProjectInfo;
@@ -124,7 +123,7 @@ end;
 
 { /config }
 
-function ExecuteConfig(const AContext: TSlashContext; out AEdits: TArray<TRuleEdit>; out AReason: string): Boolean;
+function ExecuteConfig(const AContext: TSlashContext; out AEdits: TArray<TTextEdit>; out AReason: string): Boolean;
 var
   Project: TProjectInfo;
   Word, Config, Platform, Uri: string;
@@ -186,7 +185,7 @@ begin
   Result := False;
 end;
 
-function ExecuteDfm(const AContext: TSlashContext; out AEdits: TArray<TRuleEdit>; out AReason: string): Boolean;
+function ExecuteDfm(const AContext: TSlashContext; out AEdits: TArray<TTextEdit>; out AReason: string): Boolean;
 var
   Source: TCommandSource;
   Routine: TSyntaxNode;

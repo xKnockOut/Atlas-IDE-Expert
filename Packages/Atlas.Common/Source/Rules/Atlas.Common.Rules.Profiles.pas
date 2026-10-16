@@ -41,7 +41,7 @@ type
     class function MinConfidence(const ASettings: TServerSettings; const AProfile: string): TRuleConfidence; static;
     /// <summary>Kategorie aus dem Regelkatalog, '' wenn die Regel dort fehlt.</summary>
     class function CategoryOf(const ARuleId: string): string; static;
-    /// <summary>True, wenn die Unit ein Test-Framework einbindet.</summary>
+    /// <summary>True, wenn die Unit ein Test-Framework einbindet; Weiterleitung an TUsesClauses.IsTestUnit.</summary>
     class function IsTestUnit(const ATokens: TArray<TPascalToken>): Boolean; static;
   end;
 
@@ -168,14 +168,8 @@ begin
 end;
 
 class function TRuleProfiles.IsTestUnit(const ATokens: TArray<TPascalToken>): Boolean;
-var
-  Name: string;
 begin
-  for Name in TUsesClauses.UsedUnits(ATokens) do
-    if SameText(Name, 'DUnitX.TestFramework') or SameText(Name, 'TestFramework') or
-      Name.StartsWith('TestInsight.', True) then
-      Exit(True);
-  Result := False;
+  Result := TUsesClauses.IsTestUnit(ATokens);
 end;
 
 procedure LoadCategories;

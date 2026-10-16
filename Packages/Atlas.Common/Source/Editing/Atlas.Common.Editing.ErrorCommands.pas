@@ -28,7 +28,6 @@ uses
   System.SysUtils,
   System.StrUtils,
   Atlas.Common.Documents.Contract,
-  Atlas.Common.Rules.Contract,
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Index.Contract,
   Atlas.Common.Editing.UsesClause,
@@ -102,7 +101,7 @@ end;
 
 /// <summary>Edit, das System.SysUtils ins uses des Abschnitts an ALine einträgt; False, wenn es schon da ist.</summary>
 function AddSysUtils(ASource: TCommandSource; const AContext: TSlashContext; ALine: Integer;
-  out AEdit: TRuleEdit): Boolean;
+  out AEdit: TTextEdit): Boolean;
 begin
   Result := not TUsesClauses.IsUsed(TUsesClauses.UsedUnits(ASource.Tree.Tokens), 'System.SysUtils',
     AContext.Namespaces) and TUsesClauses.AddUnit(ASource.Tree.Tokens, ASource.Offset(ALine), 'System.SysUtils',
@@ -111,14 +110,14 @@ end;
 
 { /guard }
 
-function ExecuteGuard(const AContext: TSlashContext; out AEdits: TArray<TRuleEdit>; out AReason: string): Boolean;
+function ExecuteGuard(const AContext: TSlashContext; out AEdits: TArray<TTextEdit>; out AReason: string): Boolean;
 var
   Source: TCommandSource;
   Routine, Block: TSyntaxNode;
   Header, Body, Checks, Indent: string;
   Parameter: TGuardParameter;
   Index: Integer;
-  UsesEdit: TRuleEdit;
+  UsesEdit: TTextEdit;
 begin
   AEdits := nil;
   if (AContext.Arguments <> '') and not IsValidIdent(AContext.Arguments) then
@@ -181,13 +180,13 @@ begin
   Result := (AIndex <> nil) and (Length(AIndex.FindSymbols(AName)) > 0);
 end;
 
-function ExecuteRaise(const AContext: TSlashContext; out AEdits: TArray<TRuleEdit>; out AReason: string): Boolean;
+function ExecuteRaise(const AContext: TSlashContext; out AEdits: TArray<TTextEdit>; out AReason: string): Boolean;
 var
   Source: TCommandSource;
   Routine: TSyntaxNode;
   Space: Integer;
   Name, Message, Statement: string;
-  UsesEdit: TRuleEdit;
+  UsesEdit: TTextEdit;
 begin
   AEdits := nil;
   Space := Pos(' ', AContext.Arguments);
@@ -206,7 +205,7 @@ begin
       Statement := Format('raise %s.CreateFmt(%s, []);', [Name, QuotedStr(Message)])
     else
       Statement := Format('raise %s.Create(%s);', [Name, QuotedStr(Message)]);
-    AEdits := [TRuleEdit.Create(TTextRange.Create(Source.Line, 0, Source.Line + 1, 0),
+    AEdits := [TTextEdit.Create(TTextRange.Create(Source.Line, 0, Source.Line + 1, 0),
       Source.Indent(Source.Line) + Statement + Source.LineBreak)];
     // Unbekannte Klasse vor der Routine anlegen.
     if not IsKnownException(Source, AContext.Index, Name) then

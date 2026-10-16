@@ -186,6 +186,7 @@
         <DCCReference Include="Common\Rules\Atlas.Common.Rules.Derived.Tests.pas"/>
         <DCCReference Include="Common\Rules\Atlas.Common.Rules.GoldenCorpus.Tests.pas"/>
         <DCCReference Include="Common\Rules\Atlas.Common.Rules.Profiles.Tests.pas"/>
+        <DCCReference Include="Common\Rules\Atlas.Common.Rules.CodeActions.Tests.pas"/>
         <DCCReference Include="Common\Rules\Atlas.Common.Rules.Confidence.Tests.pas"/>
         <DCCReference Include="Common\Rules\Atlas.Common.Rules.Output.Tests.pas"/>
         <DCCReference Include="Common\Rules\Atlas.Common.Rules.Baseline.Tests.pas"/>
@@ -601,6 +602,7 @@
         <DCCReference Include="..\Application\Source\Shell\Shell.Mcp.pas"/>
         <DCCReference Include="..\Application\Source\Shell\Shell.Diagnostics.pas"/>
         <DCCReference Include="..\Application\Source\Shell\Shell.SlashHost.pas"/>
+        <DCCReference Include="..\Application\Source\Shell\Shell.Bootstrap.pas"/>
         <DCCReference Include="Common\Mcp\Atlas.Common.Mcp.Freshness.Tests.pas"/>
         <DCCReference Include="Common\Mcp\Atlas.Common.Mcp.EditTools.Tests.pas"/>
         <DCCReference Include="Common\Mcp\Atlas.Common.Mcp.IdeEdits.Tests.pas"/>
@@ -608,6 +610,10 @@
         <DCCReference Include="Application\Shell\Shell.Diagnostics.Tests.pas"/>
         <DCCReference Include="Application\Shell\Shell.SlashHost.Tests.pas"/>
         <DCCReference Include="Application\Shell\Shell.Workspace.Tests.pas"/>
+        <DCCReference Include="Application\Shell\Shell.Bootstrap.Tests.pas"/>
+        <DCCReference Include="..\Application\Source\Shell\Shell.Commands.Build.pas"/>
+        <DCCReference Include="..\Application\Source\Shell\Shell.Commands.Index.pas"/>
+        <DCCReference Include="Application\Shell\Shell.Commands.Tests.pas"/>
         <BuildConfiguration Include="Base">
             <Key>Base</Key>
         </BuildConfiguration>

@@ -1,6 +1,6 @@
-﻿unit Atlas.Common.Rules.DeclaredTypes;
+﻿unit Atlas.Common.Pascal.DeclaredTypes;
 
-// Deklarierte Typen der Bezeichner einer Datei für typbasierte Regeln (#153,
+// Deklarierte Typen der Bezeichner einer Datei für typbasierte Regeln und Befehle (#153,
 // Stufe 2): Variablen der Unit, Felder der Klassen, Parameter, lokale und
 // Inline-Variablen. Ohne Namensauflösung über Units hinweg (#17): Was in der
 // Datei nicht deklariert ist, hat den Typ ''. Die Regeln treffen dann keine
