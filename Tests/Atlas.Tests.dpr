@@ -177,6 +177,7 @@ uses
   Atlas.Core.Lsp.WorkspaceEdits.Tests in 'IDE.Expert\Atlas.Core.Lsp.WorkspaceEdits.Tests.pas',
   Atlas.Core.Lsp.Adapters.ServerProcess in '..\Packages\Atlas.IDE.Expert\Source\Core\Lsp\Atlas.Core.Lsp.Adapters.ServerProcess.pas',
   Atlas.Core.Lsp.Contract.Tests in 'IDE.Expert\Atlas.Core.Lsp.Contract.Tests.pas',
+  Atlas.Core.Lsp.Session.Tests in 'IDE.Expert\Atlas.Core.Lsp.Session.Tests.pas',
   Atlas.Core.Lsp.Tests in 'IDE.Expert\Atlas.Core.Lsp.Tests.pas',
   Atlas.Core.Completion.Contract in '..\Packages\Atlas.IDE.Expert\Source\Core\Completion\Atlas.Core.Completion.Contract.pas',
   Atlas.Core.Completion.Internals.Async in '..\Packages\Atlas.IDE.Expert\Source\Core\Completion\Internals\Atlas.Core.Completion.Internals.Async.pas',
