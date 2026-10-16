@@ -57,7 +57,14 @@
 //                 "platform": "Win64", "findings": 2, "blocked": true,
 //                 "rules": ["release-debug-define", …],
 //                 "builds": [{"configuration": "Release", "platform": "Win64",
-//                             "version": "1.2.0.0", "at": "…"}, …]}
+//                             "version": "1.2.0.0", "at": "…"}, …]},
+//     "ci": {"provider": "jenkins", "server": "https://ci.firma.de",
+//            "job": "team/kasse", "branch": "main", "attempt": "…",
+//            "error": "timeout", "at": "…", "number": 482,
+//            "result": "unstable", "started": "…", "durationMs": 61000,
+//            "passed": 410, "failed": 2, "skipped": 3,
+//            "failures": [{"test": "Demo.Tests.TRechner.Summe",
+//                          "message": "…"}, …]}
 //   }
 // "changed", "ahead", "behind" = -1: unbekannt. "first" ist die erste Fehler-
 // meldung (Zeile und Spalte ab 1). "build" ist der letzte Lauf des Benutzers,
@@ -115,6 +122,16 @@
 // Doppelte), "builds" je Konfiguration und Plattform die Version des letzten
 // erfolgreichen Release-Builds (Grundlage von „unveränderte Version“; auch
 // für die Schnellaktion „Öffnen und bauen“ #764).
+// "ci" ist der letzte Abruf vom Build-Server (#763, Bereich Testergebnisse):
+// Anbieter, Server (nur Schema, Rechner und Port, nie Zugangsdaten), Job und
+// bei Multibranch der Branch, zu dem der Stand gehört; "attempt" der letzte
+// Versuch, "error" dessen Fehler ("timeout", "network", "unauthorized" …;
+// fehlt = gelungen), "at" der letzte gelungene Abruf. "number" bis
+// "durationMs" sind der letzte abgeschlossene Build ("result" wie
+// TAtlasCiBuild.OutcomeKey), "passed" bis "failures" sein Testbericht (fehlen
+// ohne Bericht; höchstens TAtlasCiBuild.MaxFailures Fehlschläge mit vollem
+// Namen und erster Zeile der Meldung). Schlägt ein Abruf fehl, bleibt der
+// letzte Build stehen („Stand vom …“).
 //
 // Erweitern: Neue Felder und Abschnitte dürfen jederzeit dazukommen, ohne
 // "format" zu erhöhen. Leser übergehen, was sie nicht kennen; Schreiber
@@ -127,7 +144,8 @@
 interface
 
 uses
-  System.SysUtils;
+  System.SysUtils,
+  Atlas.Core.Ci.Contract;
 
 type
   /// <summary>Stelle einer Meldung; Zeile und Spalte ab 1, 0 = ohne.</summary>
@@ -415,6 +433,30 @@ type
     procedure Remember(const AConfiguration, APlatform, AVersion: string; AAtUtc: TDateTime);
   end;
 
+  /// <summary>Letzter Abruf vom Build-Server (#763).</summary>
+  TAtlasProjectCi = record
+    Known: Boolean;
+    /// <summary>"jenkins".</summary>
+    Provider: string;
+    /// <summary>TAtlasCiJob.Server, z. B. "https://ci.firma.de".</summary>
+    Server: string;
+    Job: string;
+    /// <summary>Branch des Multibranch-Jobs; '' sonst.</summary>
+    Branch: string;
+    /// <summary>Letzter Versuch (UTC); 0 = noch keiner.</summary>
+    Attempt: TDateTime;
+    /// <summary>Fehler des letzten Versuchs; None = gelungen.</summary>
+    Error: TAtlasCiFetchError;
+    /// <summary>Letzter gelungener Abruf (UTC); 0 = noch keiner. Build gilt für diesen Stand.</summary>
+    At: TDateTime;
+    Build: TAtlasCiBuild;
+    class function Empty: TAtlasProjectCi; static;
+    /// <summary>Der Stand gehört zu AJob (Anbieter, Server, Job und Branch gleich).</summary>
+    function Matches(const AJob: TAtlasCiJob): Boolean;
+    /// <summary>Ein Build ist bekannt.</summary>
+    function HasBuild: Boolean;
+  end;
+
   TAtlasProjectSummary = record
     /// <summary>Vollständiger Pfad der Projektdatei (.dproj, .groupproj …).</summary>
     Project: string;
@@ -434,6 +476,7 @@ type
     Setup: TAtlasProjectSetup;
     Tests: TAtlasProjectTests;
     Release: TAtlasProjectRelease;
+    Ci: TAtlasProjectCi;
     /// <summary>Gelesener Text der Datei; ToJson behält daraus alle unbekannten Felder.</summary>
     Raw: string;
     class function Create(const AProject: string): TAtlasProjectSummary; static;
@@ -496,8 +539,8 @@ uses
 
 const
   // Bekannte Felder; alles andere übernimmt ToJson unverändert aus Raw.
-  TopKeys: array[0..15] of string = ('format', 'project', 'lastOpened', 'lastClosed', 'hidden', 'vcs', 'build',
-    'check', 'rules', 'metrics', 'todos', 'baseline', 'trends', 'setup', 'tests', 'release');
+  TopKeys: array[0..16] of string = ('format', 'project', 'lastOpened', 'lastClosed', 'hidden', 'vcs', 'build',
+    'check', 'rules', 'metrics', 'todos', 'baseline', 'trends', 'setup', 'tests', 'release', 'ci');
   VcsKeys: array[0..6] of string = ('at', 'kind', 'branch', 'revision', 'changed', 'ahead', 'behind');
   BuildKeys: array[0..9] of string = ('at', 'kind', 'configuration', 'platform', 'succeeded', 'errors', 'warnings',
     'hints', 'durationMs', 'first');
@@ -515,6 +558,9 @@ const
     'skipped', 'durationMs', 'failures');
   ReleaseKeys: array[0..6] of string = ('checkedAt', 'configuration', 'platform', 'findings', 'blocked', 'rules',
     'builds');
+  CiKeys: array[0..14] of string = ('provider', 'server', 'job', 'branch', 'attempt', 'error', 'at', 'number',
+    'result', 'started', 'durationMs', 'passed', 'failed', 'skipped', 'failures');
+  CiFailureKeys: array[0..1] of string = ('test', 'message');
   ReleaseBuildKeys: array[0..3] of string = ('configuration', 'platform', 'version', 'at');
   PathsKeys: array[0..10] of string = ('at', 'files', 'unreadable', 'missingUnits', 'undefinedDefines', 'units',
     'defines', 'uncertainUnits', 'uncertainDefines', 'skippedMacros', 'hints');
@@ -629,6 +675,7 @@ begin
   Result.Setup := TAtlasProjectSetup.Empty;
   Result.Tests := TAtlasProjectTests.Empty;
   Result.Release := TAtlasProjectRelease.Empty;
+  Result.Ci := TAtlasProjectCi.Empty;
 end;
 
 function TAtlasProjectSummary.Name: string;
@@ -1414,6 +1461,129 @@ begin
   KeepUnknown(Result, AOriginal, ReleaseKeys);
 end;
 
+{ TAtlasProjectCi }
+
+class function TAtlasProjectCi.Empty: TAtlasProjectCi;
+begin
+  Result := Default(TAtlasProjectCi);
+  Result.Build := TAtlasCiBuild.Empty;
+end;
+
+function TAtlasProjectCi.Matches(const AJob: TAtlasCiJob): Boolean;
+begin
+  Result := Known and SameText(Provider, AJob.Provider) and SameText(Server, AJob.Server) and
+    SameText(Job, AJob.Job) and SameText(Branch, AJob.JobBranch);
+end;
+
+function TAtlasProjectCi.HasBuild: Boolean;
+begin
+  Result := Known and (Build.Number > 0);
+end;
+
+function CiOf(ASection: TJSONObject): TAtlasProjectCi;
+var
+  Items: TJSONValue;
+  Item: TJSONValue;
+  Failure: TAtlasCiFailure;
+begin
+  Result := TAtlasProjectCi.Empty;
+  if ASection = nil then
+    Exit;
+  Result.Known := True;
+  Result.Provider := TextOf(ASection, 'provider');
+  Result.Server := TextOf(ASection, 'server');
+  Result.Job := TextOf(ASection, 'job');
+  Result.Branch := TextOf(ASection, 'branch');
+  Result.Attempt := TAtlasProjectSummaries.TimeOf(TextOf(ASection, 'attempt'));
+  Result.Error := TAtlasCiBuild.ErrorOf(TextOf(ASection, 'error'));
+  Result.At := TAtlasProjectSummaries.TimeOf(TextOf(ASection, 'at'));
+  Result.Build.Number := NumberOf(ASection, 'number', 0);
+  if Result.Build.Number < 0 then
+    Result.Build.Number := 0;
+  Result.Build.Outcome := TAtlasCiBuild.OutcomeOf(TextOf(ASection, 'result'));
+  Result.Build.StartedUtc := TAtlasProjectSummaries.TimeOf(TextOf(ASection, 'started'));
+  Result.Build.DurationMs := NumberOf(ASection, 'durationMs', 0);
+  Items := ASection.GetValue('failures');
+  Result.Build.TestsKnown := (ASection.GetValue('passed') is TJSONNumber) or (Items is TJSONArray);
+  Result.Build.Passed := NumberOf(ASection, 'passed', 0);
+  Result.Build.Failed := NumberOf(ASection, 'failed', 0);
+  Result.Build.Skipped := NumberOf(ASection, 'skipped', 0);
+  if not (Items is TJSONArray) then
+    Exit;
+  for Item in TJSONArray(Items) do
+  begin
+    if not (Item is TJSONObject) or (Length(Result.Build.Failures) >= TAtlasCiBuild.MaxFailures) then
+      Continue;
+    Failure.Test := TextOf(TJSONObject(Item), 'test');
+    Failure.Message := TextOf(TJSONObject(Item), 'message');
+    if Failure.Test <> '' then
+      Result.Build.Failures := Result.Build.Failures + [Failure];
+  end;
+end;
+
+/// <summary>Eintrag in "failures" zu ATest aus dem gelesenen Text (für unbekannte Felder).</summary>
+function OriginalCiFailure(AOriginal: TJSONObject; const ATest: string): TJSONObject;
+var
+  Items: TJSONValue;
+  Item: TJSONValue;
+begin
+  Result := nil;
+  if AOriginal = nil then
+    Exit;
+  Items := AOriginal.GetValue('failures');
+  if not (Items is TJSONArray) then
+    Exit;
+  for Item in TJSONArray(Items) do
+    if (Item is TJSONObject) and (TextOf(TJSONObject(Item), 'test') = ATest) then
+      Exit(TJSONObject(Item));
+end;
+
+function CiJson(const ACi: TAtlasProjectCi; AOriginal: TJSONObject): TJSONObject;
+var
+  Items: TJSONArray;
+  Item: TJSONObject;
+  Index: Integer;
+begin
+  Result := TJSONObject.Create;
+  Result.AddPair('provider', ACi.Provider);
+  Result.AddPair('server', ACi.Server);
+  Result.AddPair('job', ACi.Job);
+  if ACi.Branch <> '' then
+    Result.AddPair('branch', ACi.Branch);
+  AddTime(Result, 'attempt', ACi.Attempt);
+  if ACi.Error <> TAtlasCiFetchError.None then
+    Result.AddPair('error', TAtlasCiBuild.ErrorKey(ACi.Error));
+  AddTime(Result, 'at', ACi.At);
+  if ACi.Build.Number > 0 then
+  begin
+    Result.AddPair('number', TJSONNumber.Create(ACi.Build.Number));
+    Result.AddPair('result', TAtlasCiBuild.OutcomeKey(ACi.Build.Outcome));
+    AddTime(Result, 'started', ACi.Build.StartedUtc);
+    if ACi.Build.DurationMs > 0 then
+      Result.AddPair('durationMs', TJSONNumber.Create(ACi.Build.DurationMs));
+    if ACi.Build.TestsKnown then
+    begin
+      Result.AddPair('passed', TJSONNumber.Create(ACi.Build.Passed));
+      Result.AddPair('failed', TJSONNumber.Create(ACi.Build.Failed));
+      Result.AddPair('skipped', TJSONNumber.Create(ACi.Build.Skipped));
+      Items := TJSONArray.Create;
+      Result.AddPair('failures', Items);
+      for Index := 0 to High(ACi.Build.Failures) do
+      begin
+        if Index >= TAtlasCiBuild.MaxFailures then
+          Break;
+        Item := TJSONObject.Create;
+        Items.AddElement(Item);
+        Item.AddPair('test', ACi.Build.Failures[Index].Test);
+        if ACi.Build.Failures[Index].Message <> '' then
+          Item.AddPair('message', ACi.Build.Failures[Index].Message);
+        KeepUnknown(Item, OriginalCiFailure(AOriginal, ACi.Build.Failures[Index].Test), CiFailureKeys);
+      end;
+    end;
+  end;
+  KeepUnknown(Result, AOriginal, CiKeys);
+end;
+
 { TAtlasProjectSummaries }
 
 class function TAtlasProjectSummaries.NormalizedPath(const AProject: string): string;
@@ -1604,6 +1774,7 @@ begin
     ASummary.Setup := SetupOf(ObjectOf(Root, 'setup'));
     ASummary.Tests := TestsOf(ObjectOf(Root, 'tests'));
     ASummary.Release := ReleaseOf(ObjectOf(Root, 'release'));
+    ASummary.Ci := CiOf(ObjectOf(Root, 'ci'));
     Result := True;
   finally
     Value.Free;
@@ -1739,6 +1910,8 @@ begin
       Root.AddPair('tests', TestsJson(ASummary.Tests, ObjectOf(Original, 'tests')));
     if ASummary.Release.Known then
       Root.AddPair('release', ReleaseJson(ASummary.Release, ObjectOf(Original, 'release')));
+    if ASummary.Ci.Known then
+      Root.AddPair('ci', CiJson(ASummary.Ci, ObjectOf(Original, 'ci')));
     KeepUnknown(Root, Original, TopKeys);
     Result := Root.ToJSON;
   finally

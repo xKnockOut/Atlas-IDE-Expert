@@ -28,6 +28,9 @@
 // - Bereich „Projektverlauf“ (#758, Trends): Linien je Reihe über die
 //   letzten Builds des in „Projekte“ gewählten Projekts; meldet sich selbst
 //   an.
+// - Bereich „Testergebnisse“ (#763, TestResults): letzter Testlauf je Projekt
+//   und, mit welcomePage.tests.ci, der letzte Build des Build-Servers;
+//   meldet sich selbst an.
 // - Bereich „Nicht gesichert“ (#762, Unsaved): nicht Committetes, nicht
 //   Gepushtes und Stashes je Projekt; meldet sich selbst an.
 // - Zustandskachel „Atlas“ (#754, State): Server, Version, Index,
@@ -40,7 +43,9 @@
 // - Bereich „<Projekt> für Atlas einrichten“ (#759, Setup): atlas.json,
 //   Baseline, Suchpfade und Defines je Projekt sowie „Neu mit Atlas“; meldet
 //   sich selbst an.
-// Die Willkommensseite startet keinen Server und liest nur lokale Daten.
+// Die Willkommensseite startet keinen Server und liest nur lokale Daten;
+// einzige Ausnahme ist die Abfrage beim Build-Server (#763,
+// welcomePage.tests.ci, Vorgabe aus).
 
 interface
 
@@ -60,6 +65,7 @@ uses
   Atlas.IDE.Welcome.WhatsNew,
   Atlas.IDE.Welcome.Projects,
   Atlas.IDE.Welcome.Trends,
+  Atlas.IDE.Welcome.TestResults,
   Atlas.IDE.Welcome.Unsaved,
   Atlas.IDE.Welcome.Continue,
   Atlas.IDE.Welcome.State,
@@ -92,6 +98,9 @@ type
     FTrends: TAtlasIdeTrends;
     // Hält die Quelle des Bereichs „Projektverlauf“ am Leben; die Frames halten sie ebenfalls.
     FTrendsRef: IInterface;
+    FTestResults: TAtlasIdeTestResults;
+    // Hält die Quelle des Bereichs „Testergebnisse“ am Leben; die Frames halten sie ebenfalls.
+    FTestResultsRef: IInterface;
     FUnsaved: TAtlasIdeUnsaved;
     // Hält die Quelle des Bereichs „Nicht gesichert“ am Leben; die Frames halten sie ebenfalls.
     FUnsavedRef: IInterface;
@@ -117,6 +126,7 @@ type
     procedure SetSetup(AValue: TAtlasIdeSetup);
     procedure SetProjects(AValue: TAtlasIdeProjects);
     procedure SetTrends(AValue: TAtlasIdeTrends);
+    procedure SetTestResults(AValue: TAtlasIdeTestResults);
     procedure SetUnsaved(AValue: TAtlasIdeUnsaved);
     procedure SetContinue(AValue: TAtlasIdeContinue);
     procedure AttachMenu(AFrame: TAtlasWelcomeFrame);
@@ -167,6 +177,9 @@ type
     /// <summary>Bereich „Projektverlauf“ (#758); gehört danach der Steuerung (Start beim Setzen). nil = ohne.
     /// </summary>
     property Trends: TAtlasIdeTrends read FTrends write SetTrends;
+    /// <summary>Bereich „Testergebnisse“ (#763); gehört danach der Steuerung (Start beim Setzen). nil = ohne.
+    /// </summary>
+    property TestResults: TAtlasIdeTestResults read FTestResults write SetTestResults;
     /// <summary>Bereich „Nicht gesichert“ (#762); gehört danach der Steuerung (Start beim Setzen). nil = ohne.</summary>
     property Unsaved: TAtlasIdeUnsaved read FUnsaved write SetUnsaved;
     /// <summary>Bereich „Weiterarbeiten“ (#755); gehört danach der Steuerung (Start beim Setzen). nil = ohne.
@@ -285,6 +298,9 @@ begin
     FWhatsNew.Stop;
   if FTrends <> nil then
     FTrends.Stop;
+  // Wartet kurz auf eine laufende Abfrage beim Build-Server.
+  if FTestResults <> nil then
+    FTestResults.Stop;
   if FProjects <> nil then
     FProjects.Stop;
   if FUnsaved <> nil then
@@ -310,6 +326,8 @@ begin
   FProjectsRef := nil;
   FTrends := nil;
   FTrendsRef := nil;
+  FTestResults := nil;
+  FTestResultsRef := nil;
   FUnsaved := nil;
   FUnsavedRef := nil;
   FContinue := nil;
@@ -418,6 +436,18 @@ begin
       procedure
       begin
         FTrends.Start;
+      end);
+end;
+
+procedure TAtlasIdeWelcome.SetTestResults(AValue: TAtlasIdeTestResults);
+begin
+  FTestResults := AValue;
+  FTestResultsRef := AValue;
+  if FTestResults <> nil then
+    TAtlasGuard.Run(TAtlasFeature.WelcomePage,
+      procedure
+      begin
+        FTestResults.Start;
       end);
 end;
 
@@ -563,6 +593,9 @@ begin
       // Bereich „Projektverlauf“: welcomePage.trends, .series und .points (#758).
       if FTrends <> nil then
         FTrends.Refresh;
+      // Bereich „Testergebnisse“: welcomePage.tests, .maxFailures und .ci (#763).
+      if FTestResults <> nil then
+        FTestResults.Refresh;
       if not Current.WelcomePage then
         Host := ''
       else if (Current.WelcomePageHost = 'dockWindow') or not TAtlasIdeWelcomePage.Available then

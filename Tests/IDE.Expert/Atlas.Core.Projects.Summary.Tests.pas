@@ -71,6 +71,9 @@ type
     /// <summary>#533: Release-Wächter, letzte Prüfung und Versionen je Konfiguration und Plattform.</summary>
     [Test]
     procedure ReleaseRoundTripAndRemember;
+    /// <summary>#763: letzter Abruf vom Build-Server samt Testbericht; unbekannte Felder bleiben.</summary>
+    [Test]
+    procedure CiRoundTripAndMatches;
   end;
 
 implementation
@@ -79,6 +82,7 @@ uses
   System.SysUtils,
   System.IOUtils,
   System.JSON,
+  Atlas.Core.Ci.Contract,
   Atlas.Core.Projects.Summary;
 
 const
@@ -286,6 +290,8 @@ begin
   Assert.IsFalse(Summary.Baseline.Known);
   Assert.IsFalse(Summary.Tests.Known);
   Assert.IsFalse(Summary.Release.Known);
+  Assert.IsFalse(Summary.Ci.Known);
+  Assert.IsFalse(Summary.Ci.HasBuild);
   Assert.IsTrue(Summary.LastOpened = 0);
   Assert.IsTrue(TAtlasProjectSummaries.Parse('{"project": "C:\\P.dproj", "vcs": {"kind": "none"}}', Summary));
   Assert.IsTrue(Summary.Vcs.Known);
@@ -585,6 +591,75 @@ begin
   Json := TAtlasProjectSummaries.ToJson(Read);
   Assert.Contains(Json, '"gate":"block"');
   Assert.Contains(Json, '"version":"2.0.0.0","signed":true}');
+end;
+
+procedure TAtlasProjectSummaryTests.CiRoundTripAndMatches;
+var
+  Summary, Read: TAtlasProjectSummary;
+  Job: TAtlasCiJob;
+  Failure: TAtlasCiFailure;
+  Json: string;
+begin
+  Job := TAtlasCiJob.Create('jenkins', 'https://CI.Firma.de/', 'team/kasse', True, 'main');
+  Summary := TAtlasProjectSummary.Create(Project);
+  Assert.IsFalse(Summary.Ci.Matches(Job));
+  Summary.Ci.Known := True;
+  Summary.Ci.Provider := Job.Provider;
+  Summary.Ci.Server := Job.Server;
+  Summary.Ci.Job := Job.Job;
+  Summary.Ci.Branch := Job.JobBranch;
+  Summary.Ci.Attempt := At(2026, 10, 16, 9, 5, 0);
+  Summary.Ci.Error := TAtlasCiFetchError.Timeout;
+  Summary.Ci.At := At(2026, 10, 16, 8, 30, 0);
+  Summary.Ci.Build.Number := 482;
+  Summary.Ci.Build.Outcome := TAtlasCiOutcome.Unstable;
+  Summary.Ci.Build.StartedUtc := At(2026, 10, 16, 8, 20, 0);
+  Summary.Ci.Build.DurationMs := 61234;
+  Summary.Ci.Build.TestsKnown := True;
+  Summary.Ci.Build.Passed := 410;
+  Summary.Ci.Build.Failed := 2;
+  Summary.Ci.Build.Skipped := 3;
+  Failure.Test := 'Atlas.Core.Index.Tests.TIndexTests.FindsDeclarations';
+  Failure.Message := 'Erwartet 3 Deklarationen, gefunden 0';
+  Summary.Ci.Build.Failures := [Failure];
+  Assert.IsTrue(Summary.Ci.Matches(Job));
+  Assert.IsTrue(Summary.Ci.HasBuild);
+  Json := TAtlasProjectSummaries.ToJson(Summary);
+  Assert.Contains(Json, '"ci":{"provider":"jenkins","server":"https://ci.firma.de","job":"team/kasse",' +
+    '"branch":"main","attempt":"2026-10-16T09:05:00Z","error":"timeout","at":"2026-10-16T08:30:00Z",' +
+    '"number":482,"result":"unstable","started":"2026-10-16T08:20:00Z","durationMs":61234,"passed":410,' +
+    '"failed":2,"skipped":3,"failures":[{"test":"Atlas.Core.Index.Tests.TIndexTests.FindsDeclarations",' +
+    '"message":"Erwartet 3 Deklarationen, gefunden 0"}]}');
+  Assert.DoesNotContain(Json, 'https://CI.Firma.de/', 'nur der Server, wie TAtlasCiJob.Server');
+  Assert.IsTrue(TAtlasProjectSummaries.Parse(Json, Read));
+  Assert.IsTrue(Read.Ci.Known);
+  Assert.IsTrue(Read.Ci.Matches(Job));
+  Assert.IsFalse(Read.Ci.Matches(TAtlasCiJob.Create('jenkins', 'https://ci.firma.de', 'team/kasse', True,
+    'develop')), 'anderer Branch');
+  Assert.IsTrue(Read.Ci.Error = TAtlasCiFetchError.Timeout);
+  Assert.IsTrue(SameTime(At(2026, 10, 16, 8, 30, 0), Read.Ci.At));
+  Assert.IsTrue(SameTime(At(2026, 10, 16, 9, 5, 0), Read.Ci.Attempt));
+  Assert.AreEqual(482, Read.Ci.Build.Number);
+  Assert.IsTrue(Read.Ci.Build.Outcome = TAtlasCiOutcome.Unstable);
+  Assert.IsTrue(Read.Ci.Build.TestsKnown);
+  Assert.AreEqual(410, Read.Ci.Build.Passed);
+  Assert.AreEqual(2, Read.Ci.Build.Failed);
+  Assert.AreEqual(1, Integer(Length(Read.Ci.Build.Failures)));
+  Assert.AreEqual('Erwartet 3 Deklarationen, gefunden 0', Read.Ci.Build.Failures[0].Message);
+  // Ohne Testbericht fehlen die Zähler; fremde Felder (auch in "failures") bleiben.
+  Assert.IsTrue(TAtlasProjectSummaries.Parse('{"project": "C:\\P.dproj", "ci": {"provider": "jenkins",' +
+    ' "server": "https://ci", "job": "kasse", "number": 7, "result": "success", "error": "neu", "extra": 1,' +
+    ' "failures": [{"test": "A.B", "flaky": true}]}}', Read));
+  Assert.IsTrue(Read.Ci.Error = TAtlasCiFetchError.Network, 'unbekannter Fehler gilt als Netzfehler');
+  Assert.IsTrue(Read.Ci.Build.TestsKnown);
+  Json := TAtlasProjectSummaries.ToJson(Read);
+  Assert.Contains(Json, '"extra":1');
+  Assert.Contains(Json, '{"test":"A.B","flaky":true}');
+  Read.Ci.Build.TestsKnown := False;
+  Read.Ci.Build.Failures := nil;
+  Json := TAtlasProjectSummaries.ToJson(Read);
+  Assert.DoesNotContain(Json, '"passed"');
+  Assert.DoesNotContain(Json, '"failures"');
 end;
 
 procedure TAtlasProjectSummaryTests.TodosRejectInvalidAnswer;
