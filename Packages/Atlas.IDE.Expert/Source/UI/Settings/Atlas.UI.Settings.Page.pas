@@ -1321,7 +1321,9 @@ begin
     for Child := 0 to Control.Parent.ControlCount - 1 do
       if Control.Parent.Controls[Child] is TLabel then
         TLabel(Control.Parent.Controls[Child]).Font.Style := [fsBold];
-  if (Control is TWinControl) and TWinControl(Control).CanFocus then
+  // Nur mit sichtbarer Form: CanFocus allein lässt eine noch verborgene Form durch („kann den Fokus nicht erhalten“).
+  if (Control is TWinControl) and TWinControl(Control).CanFocus and (GetParentForm(Control) <> nil) and
+    GetParentForm(Control).Visible then
     TWinControl(Control).SetFocus;
 end;
 

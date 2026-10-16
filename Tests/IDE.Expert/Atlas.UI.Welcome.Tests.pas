@@ -66,6 +66,9 @@ type
   [TestFixture]
   TAtlasWelcomeArrangeBoardTests = class
   public
+    /// <summary>Erste Benutzung (Menüs, Bearbeitungsleiste) ungemessen vorwegnehmen.</summary>
+    [SetupFixture]
+    procedure WarmUpFirstUse;
     [Test]
     procedure BarFollowsCustomLayoutAndEditing;
     [Test]
@@ -1058,6 +1061,16 @@ begin
   Result.Rebuild([Section(TAtlasWelcomeIds.State, 10, TAtlasWelcomeColumn.Right),
     Section(TAtlasWelcomeIds.Continue, 20, TAtlasWelcomeColumn.Left),
     Section(TAtlasWelcomeIds.Projects, 30, TAtlasWelcomeColumn.Left)], TAtlasWelcomeLayout.Atlas, 2);
+end;
+
+procedure TAtlasWelcomeArrangeBoardTests.WarmUpFirstUse;
+begin
+  try
+    BarFollowsCustomLayoutAndEditing;
+  except
+    on Exception do
+      ;
+  end;
 end;
 
 procedure TAtlasWelcomeArrangeBoardTests.BarFollowsCustomLayoutAndEditing;

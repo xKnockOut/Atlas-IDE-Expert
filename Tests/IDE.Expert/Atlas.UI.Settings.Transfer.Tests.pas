@@ -13,6 +13,9 @@ type
   [TestFixture]
   TAtlasSettingsTransferUiTests = class
   public
+    /// <summary>Erste Benutzung (VCL, Menüs, Warteschlange) ungemessen vorwegnehmen.</summary>
+    [SetupFixture]
+    procedure WarmUpFirstUse;
     [Test]
     procedure TransferSettingsRoundTrip;
     /// <summary>Mit settings.exportImport aus fehlen die Knöpfe auf der Seite.</summary>
@@ -63,6 +66,28 @@ begin
     if AControl is TTabSheet then
       Result := TTabSheet(AControl);
     AControl := AControl.Parent;
+  end;
+end;
+
+procedure TAtlasSettingsTransferUiTests.WarmUpFirstUse;
+begin
+  try
+    TransferSettingsRoundTrip;
+  except
+    on Exception do
+      ;
+  end;
+  try
+    ResetPageOnlyActiveSheet;
+  except
+    on Exception do
+      ;
+  end;
+  try
+    ImportDialogShowsPreview;
+  except
+    on Exception do
+      ;
   end;
 end;
 

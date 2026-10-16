@@ -1,4 +1,4 @@
-<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+﻿<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
     <PropertyGroup>
         <ProjectGuid>{ADEA236B-AAA7-57E7-A46A-7B93AC12E1E6}</ProjectGuid>
         <MainSource>RefApp.dpr</MainSource>
@@ -6,11 +6,22 @@
         <FrameworkType>VCL</FrameworkType>
         <AppType>Application</AppType>
         <Base>True</Base>
-        <Config Condition="'$(Config)'==''">Debug</Config>
+        <Config Condition="'$(Config)'==''">Base</Config>
         <Platform Condition="'$(Platform)'==''">Win32</Platform>
         <TargetedPlatforms>3</TargetedPlatforms>
+        <ProjectName Condition="'$(ProjectName)'==''">RefApp</ProjectName>
     </PropertyGroup>
     <PropertyGroup Condition="'$(Config)'=='Base' or '$(Base)'!=''">
+        <Base>true</Base>
+    </PropertyGroup>
+    <PropertyGroup Condition="('$(Platform)'=='Win32' and '$(Base)'=='true') or '$(Base_Win32)'!=''">
+        <Base_Win32>true</Base_Win32>
+        <CfgParent>Base</CfgParent>
+        <Base>true</Base>
+    </PropertyGroup>
+    <PropertyGroup Condition="('$(Platform)'=='Win64' and '$(Base)'=='true') or '$(Base_Win64)'!=''">
+        <Base_Win64>true</Base_Win64>
+        <CfgParent>Base</CfgParent>
         <Base>true</Base>
     </PropertyGroup>
     <PropertyGroup Condition="'$(Base)'!=''">
@@ -19,16 +30,32 @@
         <DCC_ExeOutput>.\Output\$(Platform)\$(Config)\Bin</DCC_ExeOutput>
         <DCC_BplOutput>.\Output\$(Platform)\$(Config)\Bin</DCC_BplOutput>
         <DCC_DcpOutput>.\Output\$(Platform)\$(Config)\Dcp</DCC_DcpOutput>
+        <SanitizedProjectName>RefApp</SanitizedProjectName>
+    </PropertyGroup>
+    <PropertyGroup Condition="'$(Base_Win32)'!=''">
+        <BT_BuildType>Debug</BT_BuildType>
+    </PropertyGroup>
+    <PropertyGroup Condition="'$(Base_Win64)'!=''">
+        <BT_BuildType>Debug</BT_BuildType>
     </PropertyGroup>
     <ItemGroup>
         <DelphiCompile Include="$(MainSource)">
             <MainSource>MainSource</MainSource>
         </DelphiCompile>
         <DCCReference Include="Source\Ref.Komponenten.Anzeige.pas"/>
-        <DCCReference Include="Source\Ref.Formulare.Basis.pas"/>
-        <DCCReference Include="Source\Ref.Formulare.Detail.pas"/>
-        <DCCReference Include="Source\Ref.Formulare.Suchrahmen.pas"/>
-        <DCCReference Include="Source\Ref.Formulare.Haupt.pas"/>
+        <DCCReference Include="Source\Ref.Formulare.Basis.pas">
+            <Form>BasisFormular</Form>
+        </DCCReference>
+        <DCCReference Include="Source\Ref.Formulare.Detail.pas">
+            <Form>DetailFormular</Form>
+        </DCCReference>
+        <DCCReference Include="Source\Ref.Formulare.Suchrahmen.pas">
+            <Form>Suchrahmen</Form>
+            <DesignClass>TFrame</DesignClass>
+        </DCCReference>
+        <DCCReference Include="Source\Ref.Formulare.Haupt.pas">
+            <Form>HauptFormular</Form>
+        </DCCReference>
         <DCCReference Include="Source\Ref.Sprache.Merkmale.pas"/>
         <DCCReference Include="Source\Ref.Daten.Suche.pas"/>
         <DCCReference Include="Source\Ref.Pruefung.Verstoesse.pas"/>
@@ -36,14 +63,6 @@
         <DCCReference Include="Source\Ref.Daten.Verwendung.pas"/>
         <BuildConfiguration Include="Base">
             <Key>Base</Key>
-        </BuildConfiguration>
-        <BuildConfiguration Include="Debug">
-            <Key>Cfg_1</Key>
-            <CfgParent>Base</CfgParent>
-        </BuildConfiguration>
-        <BuildConfiguration Include="Release">
-            <Key>Cfg_2</Key>
-            <CfgParent>Base</CfgParent>
         </BuildConfiguration>
     </ItemGroup>
     <ProjectExtensions>
@@ -63,4 +82,5 @@
         <ProjectFileVersion>12</ProjectFileVersion>
     </ProjectExtensions>
     <Import Project="$(BDS)\Bin\CodeGear.Delphi.Targets" Condition="Exists('$(BDS)\Bin\CodeGear.Delphi.Targets')"/>
+    <Import Project="$(APPDATA)\Embarcadero\$(BDSAPPDATABASEDIR)\$(PRODUCTVERSION)\UserTools.proj" Condition="Exists('$(APPDATA)\Embarcadero\$(BDSAPPDATABASEDIR)\$(PRODUCTVERSION)\UserTools.proj')"/>
 </Project>

@@ -72,7 +72,7 @@ end;
 
 function Run(const ASystem: ISetupSystem; const AArgs: TArray<string>): TSetupSettingsResult;
 begin
-  Result := TSetupSettingsCommand.Run(ASystem, TSetupSettingsCommand.Parse(AArgs), Roaming, Macros, Moment);
+  Result := TSetupSettingsCommand.Run(ASystem, TSetupSettingsCommand.Parse(AArgs), Roaming, Macros(), Moment);
 end;
 
 function Settings(const ABody: string): string;

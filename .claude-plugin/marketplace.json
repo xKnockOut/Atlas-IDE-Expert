@@ -11,7 +11,7 @@
       "name": "atlas",
       "source": "./Editors/ClaudeCode/atlas",
       "description": "Delphi/Object Pascal: Language Server (Diagnosen, Navigation) und MCP-Werkzeuge von Atlas",
-      "version": "0.1.0",
+      "version": "1.0.0",
       "category": "development",
       "keywords": [
         "delphi",
