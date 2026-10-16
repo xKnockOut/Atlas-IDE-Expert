@@ -76,6 +76,7 @@ uses
   Atlas.Core.Settings.Baseline,
   Atlas.IDE.Settings.Project,
   Atlas.IDE.Settings.ServerTool,
+  Atlas.IDE.Settings.Transfer,
   Atlas.UI.Strings,
   Atlas.IDE.Foundation.Keys,
   Atlas.Core.Completion.Favorites,
@@ -283,6 +284,23 @@ begin
         begin
           TAtlasIdeTeamFile.OpenInEditor;
         end);
+    end;
+  // Export, Import und „Alles zurücksetzen“ (#723) mit den Werten der Seite; Import und Zurücksetzen speichern
+  // sofort (mit Sicherung), die Seite lädt danach neu.
+  FPage.OnExportSettings :=
+    procedure(ACurrent: TAtlasPluginSettings)
+    begin
+      TAtlasIdeSettingsTransfer.ExportSettings(ACurrent);
+    end;
+  FPage.OnImportSettings :=
+    function(const ACurrent: TAtlasPluginSettings; AProfile: Boolean; out AResult: TAtlasPluginSettings): Boolean
+    begin
+      Result := TAtlasIdeSettingsTransfer.ImportSettings(ACurrent, AProfile, AResult);
+    end;
+  FPage.OnResetAllSettings :=
+    function(const ACurrent: TAtlasPluginSettings; out AResult: TAtlasPluginSettings): Boolean
+    begin
+      Result := TAtlasIdeSettingsTransfer.ResetAll(ACurrent, AResult);
     end;
   FPage.LoadFrom(TAtlasIdeSettings.Stored);
 end;

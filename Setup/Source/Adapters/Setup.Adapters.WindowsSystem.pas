@@ -19,6 +19,7 @@ type
     function MachineSubKeys(const AKey: string): TArray<string>;
     function ReadString(const AKey, AName: string): string;
     function MachineReadString(const AKey, AName: string): string;
+    function ReadInteger(const AKey, AName: string; ADefault: Integer): Integer;
     function ValueNames(const AKey: string): TArray<string>;
     procedure WriteString(const AKey, AName, AValue: string);
     procedure WriteInteger(const AKey, AName: string; AValue: Integer);
@@ -31,6 +32,8 @@ type
     procedure DeleteDirectory(const ADirectory: string);
     procedure DeleteDirectoryLater(const ADirectory: string);
     function FileSize(const AFileName: string): Int64;
+    function ReadText(const AFileName: string): string;
+    procedure WriteText(const AFileName, AText: string);
     function FilesIn(const ADirectory: string): TArray<string>;
     function RunningExecutables: TArray<string>;
   end;
@@ -123,6 +126,22 @@ end;
 function TSetupWindowsSystem.MachineReadString(const AKey, AName: string): string;
 begin
   Result := ReadValue(HKEY_LOCAL_MACHINE, MachineAccess, AKey, AName);
+end;
+
+function TSetupWindowsSystem.ReadInteger(const AKey, AName: string; ADefault: Integer): Integer;
+var
+  Reg: TRegistry;
+begin
+  Result := ADefault;
+  Reg := OpenRead(HKEY_CURRENT_USER, UserAccess, AKey);
+  if Reg = nil then
+    Exit;
+  try
+    if Reg.ValueExists(AName) and (Reg.GetDataType(AName) = rdInteger) then
+      Result := Reg.ReadInteger(AName);
+  finally
+    Reg.Free;
+  end;
 end;
 
 function TSetupWindowsSystem.ValueNames(const AKey: string): TArray<string>;
@@ -258,6 +277,27 @@ end;
 function TSetupWindowsSystem.FileSize(const AFileName: string): Int64;
 begin
   Result := TFile.GetSize(AFileName);
+end;
+
+function TSetupWindowsSystem.ReadText(const AFileName: string): string;
+begin
+  Result := '';
+  if System.SysUtils.FileExists(AFileName) then
+    Result := TFile.ReadAllText(AFileName, TEncoding.UTF8);
+end;
+
+procedure TSetupWindowsSystem.WriteText(const AFileName, AText: string);
+var
+  Encoding: TEncoding;
+begin
+  ForceDirectories(ExtractFileDir(AFileName));
+  // UTF-8 ohne BOM wie settings.json und die Exportdatei des Plugins.
+  Encoding := TUTF8Encoding.Create(False);
+  try
+    TFile.WriteAllText(AFileName, AText, Encoding);
+  finally
+    Encoding.Free;
+  end;
 end;
 
 function TSetupWindowsSystem.RunningExecutables: TArray<string>;

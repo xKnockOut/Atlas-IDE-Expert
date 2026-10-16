@@ -42,6 +42,8 @@ uses
   Atlas.Core.Diagnostics.Hangs,
   Atlas.Core.Diagnostics.Guard,
   Atlas.Core.Diagnostics.SafeMode,
+  Atlas.Core.Settings.Catalog,
+  Atlas.UI.Settings.Marks,
   Atlas.UI.Strings,
   Atlas.Core.Style.Symbol,
   Atlas.UI.Style.Symbol;
@@ -70,6 +72,14 @@ type
   public
     constructor Create(AOwner: TComponent); override;
   end;
+
+  /// <summary>Import (#723): AProfile True = erst ein eingebautes Profil wählen. True, wenn AResult gilt (die
+  /// IDE hat schon gespeichert).</summary>
+  TAtlasSettingsImportEvent = reference to function(const ACurrent: TAtlasPluginSettings; AProfile: Boolean;
+    out AResult: TAtlasPluginSettings): Boolean;
+  /// <summary>„Alles zurücksetzen“ (#723) mit Rückfrage; True, wenn AResult gilt.</summary>
+  TAtlasSettingsResetEvent = reference to function(const ACurrent: TAtlasPluginSettings;
+    out AResult: TAtlasPluginSettings): Boolean;
 
   TAtlasSettingsPage = class(TFrame)
   private
@@ -329,6 +339,22 @@ type
     FWidths: TAtlasPluginSettings;
     FNextTop: Integer;
     FOnResetHistory: TProc;
+    // Einstellungen übertragen (#723): Schalter, Knöpfe unten, Punkte an geänderten Werten.
+    FSettingsExportImport: TCheckBox;
+    FSettingsMarkModified: TCheckBox;
+    FSettingsBackupBeforeImport: TCheckBox;
+    FSettingsExportSecrets: TAtlasChoiceBox;
+    FTransferBar: TWinControl;
+    FExportButton: TButton;
+    FImportButton: TButton;
+    FProfileButton: TButton;
+    FResetPageButton: TButton;
+    FResetAllButton: TButton;
+    FMarks: TAtlasSettingsMarks;
+    FCatalog: TAtlasSettingsCatalog;
+    FOnExportSettings: TProc<TAtlasPluginSettings>;
+    FOnImportSettings: TAtlasSettingsImportEvent;
+    FOnResetAllSettings: TAtlasSettingsResetEvent;
     procedure NavClick(Sender: TObject);
   protected
     procedure CreateWnd; override;
@@ -399,8 +425,46 @@ type
     procedure SetDefaultServerPath(const AValue: string);
     procedure SetOnServerVersion(const AValue: TFunc<string, string>);
     procedure AutoWidthClick(Sender: TObject);
+    procedure LoadControls(const ASettings: TAtlasPluginSettings);
+    procedure AddTransferSection;
+    /// <summary>Bindet die Elemente an ihre Einstellungen (Punkt, Kontextmenü, Zurücksetzen je Seite).</summary>
+    procedure BindControls;
+    procedure MarksChanged(Sender: TObject);
+    procedure ResetPageClick(Sender: TObject);
+    procedure ExportClick(Sender: TObject);
+    procedure ImportClick(Sender: TObject);
+    procedure ProfileClick(Sender: TObject);
+    procedure ResetAllClick(Sender: TObject);
+    function Catalog: TAtlasSettingsCatalog;
   public
     constructor Create(AOwner: TComponent); override;
+    destructor Destroy; override;
+    /// <summary>Werte der Seite (ungespeichert) über den zuletzt geladenen.</summary>
+    function CurrentSettings: TAtlasPluginSettings;
+    /// <summary>Punkte an geänderten Werten und Knöpfe neu setzen (#723).</summary>
+    procedure RefreshMarks;
+    /// <summary>Einstellungen ANames (Registry-Namen) auf der Seite auf den Standard setzen; gespeichert wird
+    /// erst mit OK (#723).</summary>
+    procedure ResetNames(const ANames: TArray<string>);
+    /// <summary>Alle Einstellungen des sichtbaren Reiters auf den Standard setzen (#723).</summary>
+    procedure ResetPage;
+    /// <summary>„Exportieren…“ mit den Werten der Seite (#723).</summary>
+    property OnExportSettings: TProc<TAtlasPluginSettings> read FOnExportSettings write FOnExportSettings;
+    /// <summary>„Importieren…“ und „Profil laden…“ (#723).</summary>
+    property OnImportSettings: TAtlasSettingsImportEvent read FOnImportSettings write FOnImportSettings;
+    /// <summary>„Alles zurücksetzen…“ (#723).</summary>
+    property OnResetAllSettings: TAtlasSettingsResetEvent read FOnResetAllSettings write FOnResetAllSettings;
+    /// <summary>Zum Testen: Übertragen (#723).</summary>
+    property Marks: TAtlasSettingsMarks read FMarks;
+    property TransferBar: TWinControl read FTransferBar;
+    property SettingsExportImportCheck: TCheckBox read FSettingsExportImport;
+    property SettingsMarkModifiedCheck: TCheckBox read FSettingsMarkModified;
+    property SettingsBackupBeforeImportCheck: TCheckBox read FSettingsBackupBeforeImport;
+    property SettingsExportSecretsChoice: TAtlasChoiceBox read FSettingsExportSecrets;
+    property ExportButton: TButton read FExportButton;
+    property ImportButton: TButton read FImportButton;
+    property ResetPageButton: TButton read FResetPageButton;
+    property ResetAllButton: TButton read FResetAllButton;
     procedure LoadFrom(const ASettings: TAtlasPluginSettings);
     procedure SaveTo(var ASettings: TAtlasPluginSettings);
     /// <summary>Liste der abgeschalteten Features und Quellen neu lesen (#493).</summary>
@@ -618,6 +682,7 @@ uses
   Atlas.Core.Notifications.Contract,
   Atlas.Core.Notifications.Sources,
   Atlas.Core.Build.OpenBuild,
+  Atlas.Core.Settings.Transfer,
   Atlas.UI.Notifications.Window;
 
 /// <summary>Bezeichnung einer Reihe des Projektverlaufs (#758) wie auf ihrer Kachel.</summary>
@@ -851,6 +916,8 @@ begin
   FNotifications := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsNotifications));
   FNotificationsMax := AddNumber(TAtlasStrings.Text(TAtlasTextId.SettingsNotificationsMax));
   AddNotificationSources;
+  // Einstellungen exportieren, importieren und zurücksetzen (#723).
+  AddTransferSection;
 
   // Liste der Vervollständigung.
   AddSheet(TAtlasTextId.SettingsTabCompletion);
@@ -1062,6 +1129,7 @@ begin
 
   AddSheet(TAtlasTextId.SettingsTabTeamFile);
   AddTeamFileSection;
+  BindControls;
 end;
 
 procedure TAtlasSettingsPage.AddWelcomeSection;
@@ -1330,6 +1398,334 @@ begin
     else if FReleaseCheckBoxes[Check] <> nil then
       Checks.Items[Check].Enabled := FReleaseCheckBoxes[Check].Checked;
   ASettings.ReleaseChecks := Checks.ToText;
+end;
+
+procedure TAtlasSettingsPage.AddTransferSection;
+const
+  BarHeight = 66;
+  ButtonHeight = 25;
+  Row2 = 34;
+
+  function AddButton(const ACaption: string; ALeft, ATop, AWidth: Integer; const AClick: TNotifyEvent): TButton;
+  begin
+    Result := TButton.Create(Self);
+    Result.Parent := FTransferBar;
+    Result.Caption := ACaption;
+    Result.SetBounds(ALeft, ATop, AWidth, ButtonHeight);
+    Result.OnClick := AClick;
+  end;
+
+begin
+  AddTitle(TAtlasTextId.SettingsTransferTitle);
+  FSettingsExportImport := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsExportImport));
+  FSettingsMarkModified := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsMarkModified));
+  FSettingsBackupBeforeImport := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsBackupBeforeImport));
+  FSettingsExportSecrets := AddChoice(TAtlasStrings.Text(TAtlasTextId.SettingsExportSecrets),
+    [TAtlasStrings.Text(TAtlasTextId.SettingsExportSecretsOmit),
+    TAtlasStrings.Text(TAtlasTextId.SettingsExportSecretsPlaceholder)]);
+  // Knöpfe unten über die ganze Seite; ohne settings.exportImport ausgeblendet (RefreshMarks).
+  FTransferBar := TAtlasSettingsRow.Create(Self);
+  FTransferBar.Parent := Self;
+  FTransferBar.Align := alBottom;
+  FTransferBar.AlignWithMargins := True;
+  FTransferBar.Height := BarHeight;
+  FExportButton := AddButton(TAtlasStrings.Text(TAtlasTextId.SettingsExportButton), 0, 4, 120, ExportClick);
+  FImportButton := AddButton(TAtlasStrings.Text(TAtlasTextId.SettingsImportButton), 126, 4, 120, ImportClick);
+  FProfileButton := AddButton(TAtlasStrings.Text(TAtlasTextId.SettingsProfileButton), 252, 4, 120, ProfileClick);
+  FResetPageButton := AddButton(TAtlasStrings.Text(TAtlasTextId.SettingsResetPageButton), 0, Row2, 150,
+    ResetPageClick);
+  FResetAllButton := AddButton(TAtlasStrings.Text(TAtlasTextId.SettingsResetAllButton), 156, Row2, 150,
+    ResetAllClick);
+  FMarks := TAtlasSettingsMarks.Create(Self);
+  FMarks.OnChanged := MarksChanged;
+  FMarks.OnResetPage := ResetPageClick;
+  FMarks.OnReset :=
+    procedure(ANames: TArray<string>)
+    begin
+      ResetNames(ANames);
+    end;
+end;
+
+procedure TAtlasSettingsPage.BindControls;
+var
+  Check: TAtlasReleaseCheck;
+  Series: TAtlasTrendSeries;
+  Action: TAtlasQuickAction;
+begin
+  // Aus SaveTo: Element und die Einstellungen, die es schreibt. Listen aus mehreren Haken zeigen keinen Punkt
+  // (der gälte für jeden Haken), lassen sich aber zurücksetzen.
+  FMarks.Bind(FEnabled, ['Enabled']);
+  FMarks.Bind(FActionsKey, ['ActionsKey']);
+  FMarks.Bind(FExpandKey, ['ExpandKey']);
+  FMarks.Bind(FShrinkKey, ['ShrinkKey']);
+  FMarks.Bind(FImplementationKey, ['ImplementationKey']);
+  FMarks.Bind(FTypeDefinitionKey, ['TypeDefinitionKey']);
+  FMarks.Bind(FMethodToggle, ['MethodToggle']);
+  FMarks.Bind(FMethodToggleUpKey, ['MethodToggleUpKey']);
+  FMarks.Bind(FMethodToggleDownKey, ['MethodToggleDownKey']);
+  FMarks.Bind(FTestUnitKey, ['TestUnitKey']);
+  FMarks.Bind(FBookmarkKey, ['BookmarkKey']);
+  FMarks.Bind(FUndoKey, ['UndoKey']);
+  FMarks.Bind(FRedoKey, ['RedoKey']);
+  FMarks.Bind(FUpdatesCheck, ['UpdatesCheck']);
+  FMarks.Bind(FBugReportAnonymize, ['BugReportAnonymize']);
+  FMarks.Bind(FEditorKeysPriority, ['EditorKeysPriority']);
+  FMarks.Bind(FSlashCommands, ['SlashCommands']);
+  FMarks.Bind(FGenerateMenu, ['GenerateMenu']);
+  FMarks.Bind(FGenerateMenuKey, ['GenerateMenuKey']);
+  FMarks.Bind(FNotificationsKey, ['NotificationsKey']);
+  FMarks.Bind(FGenerateMenuGroups, ['GenerateMenuGroups']);
+  FMarks.Bind(FGenerateMenuHidden, ['GenerateMenuHidden']);
+  FMarks.Bind(FGenerateMenuRecentFirst, ['GenerateMenuRecentFirst']);
+  FMarks.Bind(FGenerateMenuShowCommandNames, ['GenerateMenuShowCommandNames']);
+  FMarks.Bind(FRows, ['VisibleRows']);
+  FMarks.Bind(FPanelCollapsed, ['PanelCollapsed']);
+  FMarks.Bind(FAutoParentheses, ['AutoParentheses']);
+  FMarks.Bind(FFixCase, ['FixCase']);
+  FMarks.Bind(FCommitChars, ['CommitCharacters']);
+  FMarks.Bind(FAutoUses, ['AutoUses']);
+  FMarks.Bind(FParameterHints, ['ParameterHints']);
+  FMarks.Bind(FOpenDelay, ['OpenDelayMs']);
+  FMarks.Bind(FFilterChips, ['FilterChips']);
+  FMarks.Bind(FLearning, ['Learning']);
+  FMarks.Bind(FFavorites, ['Favorites']);
+  FMarks.Bind(FGroupInherited, ['GroupInherited']);
+  FMarks.Bind(FPreview, ['Preview']);
+  FMarks.Bind(FSnippets, ['Snippets']);
+  FMarks.Bind(FImportIdeTemplates, ['ImportIdeTemplates']);
+  FMarks.Bind(FTeamFile, ['TeamFile']);
+  FMarks.Bind(FHoverTooltip, ['HoverTooltip']);
+  FMarks.Bind(FXmlDocFull, ['XmlDocFull']);
+  FMarks.Bind(FXmlDocMaxLines, ['XmlDocMaxLines']);
+  FMarks.Bind(FHangThreshold, ['HangThresholdMs']);
+  FMarks.Bind(FProviderTimeLimit, ['ProviderTimeLimitMs']);
+  FMarks.Bind(FHangHint, ['HangHint']);
+  FMarks.Bind(FReloadExternal, ['ReloadExternal']);
+  FMarks.Bind(FOpenForEdits, ['OpenForEdits']);
+  FMarks.Bind(FPairColors, ['PairColors']);
+  FMarks.Bind(FInactiveDim, ['InactiveDim']);
+  FMarks.Bind(FInlayHints, ['InlayHints']);
+  FMarks.Bind(FNotes, ['Notes']);
+  FMarks.Bind(FBookmarksNamed, ['BookmarksNamed']);
+  FMarks.Bind(FBookmarksShared, ['BookmarksShared']);
+  FMarks.Bind(FCodeLensTestUnit, ['CodeLensTestUnit']);
+  FMarks.Bind(FCodeLensMetrics, ['CodeLensMetrics']);
+  FMarks.Bind(FMetrics, ['Metrics']);
+  FMarks.Bind(FCodeLensTests, ['CodeLensTests']);
+  FMarks.Bind(FTodoList, ['TodoList']);
+  FMarks.Bind(FBaselineUpdate, ['BaselineUpdate']);
+  FMarks.Bind(FMetricsReport, ['MetricsReport']);
+  FMarks.Bind(FPairGuides, ['PairGuides']);
+  FMarks.Bind(FPairOwners, ['PairOwners']);
+  FMarks.Bind(FPairGuideWidth, ['PairGuideWidth']);
+  FMarks.Bind(FPairGuideOpacity, ['PairGuideOpacity']);
+  FMarks.Bind(FLightSwatches[0], ['PairColorsLight']);
+  FMarks.Bind(FDarkSwatches[0], ['PairColorsDark']);
+  FMarks.Bind(FProblems, ['Problems']);
+  FMarks.Bind(FProblemsList, ['ProblemsList']);
+  FMarks.Bind(FStatusField, ['StatusField']);
+  FMarks.Bind(FDiagnosticMode, ['DiagnosticMode']);
+  FMarks.Bind(FSetupChecklist, ['SetupChecklist']);
+  FMarks.Bind(FShortcutTips, ['ShortcutTips']);
+  FMarks.Bind(FShortcutTipsScope, ['ShortcutTipsScope']);
+  FMarks.Bind(FNotifications, ['Notifications']);
+  FMarks.Bind(FNotificationsMax, ['NotificationsMaxEntries']);
+  FMarks.Bind(FNotificationSource, ['NotificationsSources']);
+  FMarks.Bind(FStatusSummary, ['StatusFieldSummary']);
+  FMarks.Bind(FStatusToggles, ['StatusFieldToggles']);
+  FMarks.Bind(FIndexProgress, ['IndexProgressPlace']);
+  FMarks.Bind(FStatusHidden, ['StatusFieldHidden']);
+  FMarks.Bind(FIndexGroup, ['IndexProjectGroup']);
+  FMarks.Bind(FIndexSearch, ['IndexSearchPaths']);
+  FMarks.Bind(FIndexLibrary, ['IndexLibraryPaths']);
+  FMarks.Bind(FIndexUsages, ['IndexUsages']);
+  FMarks.Bind(FMemoryBudget, ['MemoryBudgetMb']);
+  FMarks.Bind(FAfterSave, ['CheckOnSave', 'CompileOnSave']);
+  FMarks.Bind(FCheckDelay, ['CheckOnSaveDelayMs']);
+  FMarks.Bind(FCheckMax, ['CheckOnSaveMaxMs']);
+  FMarks.Bind(FMcpBuild, ['McpBuild']);
+  FMarks.Bind(FTestRun, ['TestRun']);
+  FMarks.Bind(FTestsBuildFirst, ['TestsBuildFirst']);
+  FMarks.Bind(FTestsAfterBuild, ['TestsAfterBuild']);
+  FMarks.Bind(FBuildZeroHints, ['BuildZeroHints']);
+  FMarks.Bind(FStartProfiles, ['StartProfiles']);
+  FMarks.Bind(FStartProfilesStatusField, ['StartProfilesStatusField']);
+  FMarks.Bind(FTestDebug, ['TestDebug']);
+  FMarks.Bind(FTestBreakAtStart, ['TestBreakAtStart']);
+  FMarks.Bind(FSafeAsk, ['SafeAskAfterCrash']);
+  FMarks.Bind(FSafeAuto, ['SafeAutoAfterRepeatedCrash']);
+  FMarks.Bind(FSafeKey, ['SafeStartupKey']);
+  FMarks.Bind(FSafeTimeout, ['SafeStartupTimeoutMs']);
+  FMarks.Bind(FSafeHistory, ['SafeKeepSettingsHistory']);
+  FMarks.Bind(FUndoEnabled, ['UndoMultiFile']);
+  FMarks.Bind(FUndoDepth, ['UndoMultiFileDepth']);
+  FMarks.Bind(FUndoPersist, ['UndoMultiFilePersist']);
+  FMarks.Bind(FUndoMaxSize, ['UndoMultiFileMaxSizeMb']);
+  FMarks.Bind(FUndoOnConflict, ['UndoMultiFileOnConflict']);
+  FMarks.Bind(FUndoNewFiles, ['UndoMultiFileNewFiles']);
+  FMarks.Bind(FUnitSearchEnabled, ['UnitSearchEnabled']);
+  FMarks.Bind(FUnitSearchReplace, ['UnitSearchReplaceIdeDialog']);
+  FMarks.Bind(FUnitSearchKey, ['UnitSearchKey']);
+  FMarks.Bind(FUnitSearchPathStyle, ['UnitSearchPathStyle']);
+  FMarks.Bind(FUnitSearchGroupBy, ['UnitSearchGroupBy']);
+  FMarks.Bind(FUnitSearchRememberCollapsed, ['UnitSearchRememberCollapsed']);
+  FMarks.Bind(FUnitSearchFilters, ['UnitSearchFilters']);
+  FMarks.Bind(FUnitSearchDefaultScope, ['UnitSearchDefaultScope']);
+  FMarks.Bind(FUnitSearchFilterSyntax, ['UnitSearchFilterSyntax']);
+  FMarks.Bind(FUnitSearchPreview, ['UnitSearchPreview']);
+  FMarks.Bind(FUnitSearchPreviewForm, ['UnitSearchPreviewForm']);
+  FMarks.Bind(FUnitSearchPreviewUsedBy, ['UnitSearchPreviewUsedBy']);
+  FMarks.Bind(FUnitSearchMultiSelect, ['UnitSearchMultiSelect']);
+  FMarks.Bind(FUnitSearchActions, ['UnitSearchActions']);
+  FMarks.Bind(FUnitSearchAddUses, ['UnitSearchActionsAddUses']);
+  FMarks.Bind(FWelcomeEnabled, ['WelcomePage']);
+  FMarks.Bind(FWelcomeHost, ['WelcomePageHost']);
+  FMarks.Bind(FWelcomeLayout, ['WelcomePageLayout']);
+  FMarks.Bind(FWelcomeHeader, ['WelcomePageHeader']);
+  FMarks.Bind(FWelcomeGreeting, ['WelcomePageGreeting']);
+  FMarks.Bind(FWelcomeSearch, ['WelcomePageSearch']);
+  FMarks.Bind(FWelcomeSearchSymbols, ['WelcomePageSearchSymbols']);
+  FMarks.Bind(FWelcomeSearchKey, ['WelcomePageSearchKey']);
+  FMarks.Bind(FWelcomeWhatsNew, ['WelcomePageWhatsNew']);
+  FMarks.Bind(FWelcomeContinue, ['WelcomePageContinue']);
+  FMarks.Bind(FWelcomeContinueCount, ['WelcomePageContinueCount']);
+  FMarks.Bind(FWelcomeContinueIncoming, ['WelcomePageContinueIncoming']);
+  FMarks.Bind(FWelcomeContinueFetch, ['WelcomePageContinueFetch']);
+  FMarks.Bind(FWelcomeSaved, ['WelcomePageSaved']);
+  FMarks.Bind(FWelcomeProjects, ['WelcomePageProjectStatus']);
+  FMarks.Bind(FWelcomeMaxProjects, ['WelcomePageMaxProjects']);
+  FMarks.Bind(FWelcomeRefreshVcs, ['WelcomePageRefreshVcs']);
+  FMarks.Bind(FWelcomeTrends, ['WelcomePageTrends']);
+  FMarks.Bind(FWelcomeTrendsPoints, ['WelcomePageTrendsPoints']);
+  FMarks.Bind(FWelcomeTests, ['WelcomePageTests']);
+  FMarks.Bind(FWelcomeTestsMaxFailures, ['WelcomePageTestsMaxFailures']);
+  FMarks.Bind(FWelcomeTestsCi, ['WelcomePageTestsCi']);
+  FMarks.Bind(FWelcomeTestsCiInterval, ['WelcomePageTestsCiIntervalMinutes']);
+  FMarks.Bind(FWelcomeTestsCiNotify, ['WelcomePageTestsCiNotify']);
+  FMarks.Bind(FCiLogin, ['CiLogin']);
+  FMarks.Bind(FWelcomeQuickActions, ['WelcomePageQuickActions']);
+  FMarks.Bind(FWelcomeQuickActionsConsole, ['WelcomePageQuickActionsConsole']);
+  FMarks.Bind(FWelcomeQuickActionsBuildKey, ['WelcomePageQuickActionsBuildKey']);
+  FMarks.Bind(FWelcomeQuickActionsTestKey, ['WelcomePageQuickActionsTestKey']);
+  FMarks.Bind(FWelcomeUnsaved, ['WelcomePageUnsaved']);
+  FMarks.Bind(FWelcomeUnsavedMinAge, ['WelcomePageUnsavedMinAgeHours']);
+  FMarks.Bind(FWelcomeUnsavedWarn, ['WelcomePageUnsavedWarnHours']);
+  FMarks.Bind(FWelcomeUnsavedAlert, ['WelcomePageUnsavedAlertHours']);
+  FMarks.Bind(FWelcomeUnsavedHideClean, ['WelcomePageUnsavedHideWhenClean']);
+  FMarks.Bind(FWelcomeStatusTile, ['WelcomePageStatusTile']);
+  FMarks.Bind(FWelcomeStatusTileOnlyProblems, ['WelcomePageStatusTileOnlyProblems']);
+  FMarks.Bind(FWelcomeDiscover, ['WelcomePageDiscover']);
+  FMarks.Bind(FTipsUsageTracking, ['TipsUsageTracking']);
+  FMarks.Bind(FWelcomeHelp, ['WelcomePageHelp']);
+  FMarks.Bind(FWelcomeHelpReportUrl, ['WelcomePageHelpReportUrl']);
+  FMarks.Bind(FWelcomeHelpReportFolder, ['WelcomePageHelpReportFolder']);
+  FMarks.Bind(FWelcomeProjectSetup, ['WelcomePageProjectSetup']);
+  FMarks.Bind(FWelcomeNewFromTemplate, ['WelcomePageNewFromTemplate']);
+  FMarks.Bind(FOpenBuild, ['BuildOnOpen', 'BuildOnOpenKind']);
+  FMarks.Bind(FOpenBuildScope, ['BuildOnOpenScope']);
+  FMarks.Bind(FOpenBuildDelay, ['BuildOnOpenDelayMs']);
+  FMarks.Bind(FOpenBuildExclude, ['BuildOnOpenExclude']);
+  FMarks.Bind(FReleaseGuard, ['ReleaseGuard']);
+  FMarks.Bind(FBuildGate, ['BuildGate']);
+  FMarks.Bind(FReleaseConfigs, ['ReleaseConfigs']);
+  FMarks.Bind(FSettingsExportImport, ['SettingsExportImport']);
+  FMarks.Bind(FSettingsMarkModified, ['SettingsMarkModified']);
+  FMarks.Bind(FSettingsBackupBeforeImport, ['SettingsBackupBeforeImport']);
+  FMarks.Bind(FSettingsExportSecrets, ['SettingsExportSecrets']);
+  for Check := Low(TAtlasReleaseCheck) to High(TAtlasReleaseCheck) do
+  begin
+    FMarks.Bind(FReleaseCheckBoxes[Check], ['ReleaseChecks'], False);
+    FMarks.Bind(FReleaseCheckChoices[Check], ['ReleaseChecks'], False);
+  end;
+  for Series := Low(TAtlasTrendSeries) to High(TAtlasTrendSeries) do
+    FMarks.Bind(FWelcomeTrendsSeries[Series], ['WelcomePageTrendsSeries'], False);
+  for Action := Low(TAtlasQuickAction) to High(TAtlasQuickAction) do
+    FMarks.Bind(FWelcomeQuickActionsItems[Action], ['WelcomePageQuickActionsItems'], False);
+end;
+
+destructor TAtlasSettingsPage.Destroy;
+begin
+  FreeAndNil(FCatalog);
+  inherited;
+end;
+
+function TAtlasSettingsPage.Catalog: TAtlasSettingsCatalog;
+begin
+  if FCatalog = nil then
+    FCatalog := TAtlasSettingsCatalog.CreateDefault;
+  Result := FCatalog;
+end;
+
+function TAtlasSettingsPage.CurrentSettings: TAtlasPluginSettings;
+begin
+  Result := FWidths;
+  SaveTo(Result);
+end;
+
+procedure TAtlasSettingsPage.RefreshMarks;
+var
+  Modified: TArray<string>;
+begin
+  FTransferBar.Visible := FSettingsExportImport.Checked;
+  Modified := nil;
+  if FSettingsMarkModified.Checked then
+    Modified := TAtlasSettingsTransfer.ModifiedNames(Catalog, CurrentSettings);
+  FMarks.Show(Modified, FSettingsMarkModified.Checked);
+end;
+
+procedure TAtlasSettingsPage.MarksChanged(Sender: TObject);
+begin
+  RefreshMarks;
+end;
+
+procedure TAtlasSettingsPage.ResetNames(const ANames: TArray<string>);
+begin
+  if Length(ANames) = 0 then
+    Exit;
+  LoadFrom(TAtlasSettingsTransfer.ResetNames(Catalog, CurrentSettings, ANames));
+end;
+
+procedure TAtlasSettingsPage.ResetPage;
+begin
+  // Ohne Fenster hängen die Reiter noch nicht am PageControl.
+  if FPages.ActivePage = nil then
+    Exit;
+  ResetNames(FMarks.NamesIn(FPages.ActivePage));
+end;
+
+procedure TAtlasSettingsPage.ResetPageClick(Sender: TObject);
+begin
+  ResetPage;
+end;
+
+procedure TAtlasSettingsPage.ExportClick(Sender: TObject);
+begin
+  if Assigned(FOnExportSettings) then
+    FOnExportSettings(CurrentSettings);
+end;
+
+procedure TAtlasSettingsPage.ImportClick(Sender: TObject);
+var
+  Imported: TAtlasPluginSettings;
+begin
+  if Assigned(FOnImportSettings) and FOnImportSettings(CurrentSettings, False, Imported) then
+    LoadFrom(Imported);
+end;
+
+procedure TAtlasSettingsPage.ProfileClick(Sender: TObject);
+var
+  Imported: TAtlasPluginSettings;
+begin
+  if Assigned(FOnImportSettings) and FOnImportSettings(CurrentSettings, True, Imported) then
+    LoadFrom(Imported);
+end;
+
+procedure TAtlasSettingsPage.ResetAllClick(Sender: TObject);
+var
+  Reset: TAtlasPluginSettings;
+begin
+  if Assigned(FOnResetAllSettings) and FOnResetAllSettings(CurrentSettings, Reset) then
+    LoadFrom(Reset);
 end;
 
 procedure TAtlasSettingsPage.AddSheet(AId: TAtlasTextId);
@@ -1960,6 +2356,18 @@ begin
 end;
 
 procedure TAtlasSettingsPage.LoadFrom(const ASettings: TAtlasPluginSettings);
+begin
+  // Während des Ladens lösen die Elemente keine Neuberechnung der Punkte aus.
+  FMarks.BeginLoad;
+  try
+    LoadControls(ASettings);
+  finally
+    FMarks.EndLoad;
+  end;
+  RefreshMarks;
+end;
+
+procedure TAtlasSettingsPage.LoadControls(const ASettings: TAtlasPluginSettings);
 var
   Shown: TAtlasTrendSeriesList;
   Series, Wanted: TAtlasTrendSeries;
@@ -2182,6 +2590,10 @@ begin
   FWelcomeHelpReportFolder.Text := ASettings.WelcomePageHelpReportFolder;
   FWelcomeProjectSetup.Checked := ASettings.WelcomePageProjectSetup;
   FWelcomeNewFromTemplate.Checked := ASettings.WelcomePageNewFromTemplate;
+  FSettingsExportImport.Checked := ASettings.SettingsExportImport;
+  FSettingsMarkModified.Checked := ASettings.SettingsMarkModified;
+  FSettingsBackupBeforeImport.Checked := ASettings.SettingsBackupBeforeImport;
+  FSettingsExportSecrets.Choice := Ord(ASettings.SettingsExportSecrets = 'placeholder');
   RefreshFuse;
   RefreshIndex;
 end;
@@ -2411,6 +2823,12 @@ begin
   ASettings.WelcomePageHelpReportFolder := Trim(FWelcomeHelpReportFolder.Text);
   ASettings.WelcomePageProjectSetup := FWelcomeProjectSetup.Checked;
   ASettings.WelcomePageNewFromTemplate := FWelcomeNewFromTemplate.Checked;
+  ASettings.SettingsExportImport := FSettingsExportImport.Checked;
+  ASettings.SettingsMarkModified := FSettingsMarkModified.Checked;
+  ASettings.SettingsBackupBeforeImport := FSettingsBackupBeforeImport.Checked;
+  ASettings.SettingsExportSecrets := 'omit';
+  if FSettingsExportSecrets.Choice = 1 then
+    ASettings.SettingsExportSecrets := 'placeholder';
   ASettings.ListWidth := FWidths.ListWidth;
   ASettings.PanelWidth := FWidths.PanelWidth;
   ASettings.Normalize;
