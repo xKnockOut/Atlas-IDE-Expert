@@ -423,6 +423,10 @@
         <DCCReference Include="IDE.Expert\Atlas.Core.Projects.Summary.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Tests\Atlas.Core.Tests.Run.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Tests.Run.Tests.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Tests\Atlas.Core.Tests.Debug.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.Core.Tests.Debug.Tests.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Tests\Atlas.Core.Tests.ProjectChoice.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.Core.Tests.ProjectChoice.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Editor\Atlas.Core.Editor.LineAnchor.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Editor.LineAnchor.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Notes\Atlas.Core.Notes.Store.pas"/>

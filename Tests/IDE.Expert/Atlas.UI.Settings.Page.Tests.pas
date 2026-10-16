@@ -40,6 +40,9 @@ type
     /// <summary>#575: Startprofile und ihr Feld in der Statusleiste auf dem Reiter Compiler.</summary>
     [Test]
     procedure StartProfilesRoundTrip;
+    /// <summary>#585: Test debuggen und Haltepunkt am Anfang auf dem Reiter Debuggen.</summary>
+    [Test]
+    procedure TestDebugRoundTrip;
     /// <summary>Benannte Lesezeichen (#622): zwei Schalter auf dem Reiter Editor, Taste bei den Befehlen.</summary>
     [Test]
     procedure BookmarksRoundTrip;
@@ -517,6 +520,31 @@ begin
     Page.LoadFrom(Saved);
     Assert.IsFalse(Page.StartProfilesCheck.Checked);
     Assert.IsTrue(Page.StartProfilesStatusFieldCheck.Checked);
+  finally
+    Page.Free;
+  end;
+end;
+
+procedure TAtlasSettingsPageTests.TestDebugRoundTrip;
+var
+  Page: TAtlasSettingsPage;
+  Saved: TAtlasPluginSettings;
+begin
+  Page := TAtlasSettingsPage.Create(nil);
+  try
+    Page.LoadFrom(TAtlasPluginSettings.Defaults);
+    Assert.IsTrue(Page.TestDebugCheck.Checked, 'Test debuggen standardmäßig an');
+    Assert.IsTrue(Page.TestBreakAtStartCheck.Checked, 'Haltepunkt am Anfang standardmäßig an');
+    Page.TestDebugCheck.Checked := False;
+    Page.TestBreakAtStartCheck.Checked := False;
+    Saved := TAtlasPluginSettings.Defaults;
+    Page.SaveTo(Saved);
+    Assert.IsFalse(Saved.TestDebug);
+    Assert.IsFalse(Saved.TestBreakAtStart);
+    Saved.TestBreakAtStart := True;
+    Page.LoadFrom(Saved);
+    Assert.IsFalse(Page.TestDebugCheck.Checked);
+    Assert.IsTrue(Page.TestBreakAtStartCheck.Checked);
   finally
     Page.Free;
   end;

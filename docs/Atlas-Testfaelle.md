@@ -1068,15 +1068,45 @@ Vorbereitung: RAD Studio mit Atlas-Plugin; Projektgruppe mit einer Anwendung und
 | TR13 | Aktive Plattform Linux64 bzw. Android | Meldung „… ist für Linux64 eingestellt; Atlas startet nur Windows-Tests …“, nichts läuft |
 | TR14 | „Tests nach erfolgreichem Build automatisch ausführen“ an, Testprojekt mit Strg+F9 bauen | Nach dem Build laufen die Tests ohne erneuten Build; nach einer Hintergrundprüfung (#548) und nach `build_project` nicht |
 | TR15 | Wie TR14 mit „Build nur ohne Warnungen und Hinweise …“ an und einer Warnung im Testprojekt | Keine Tests nach dem Build; ohne Warnung laufen sie |
-| TR16 | Projektgruppe mit zwei Testprojekten, aktiv ist die Anwendung, Palette › „Tests ausführen“ | Meldung „Mehrere Testprojekte (A, B); bitte das gewünschte aktivieren.“; mit aktivem Testprojekt läuft dieses |
+| TR16 | Projektgruppe mit zwei Testprojekten, aktiv ist die Anwendung, Palette › „Tests ausführen“ | Auswahl „Testprojekt wählen“ mit A und B; nach der Wahl laufen dessen Tests; beim nächsten Mal ohne Frage (#585); mit aktivem Testprojekt läuft dieses |
 | TR17 | Projektgruppe ohne Testprojekt | Meldung „Kein DUnitX-Testprojekt in der Projektgruppe …“ |
 | TR18 | Während eines Laufs noch einmal „Tests ausführen“ | Meldung „Es läuft schon ein Testlauf.“; die Marken zeigen „Tests laufen …“ |
 | TR19 | Testprogramm ohne XML-Logger (Logger-Zeile auskommentiert) | Meldung „… lieferte keinen Bericht (Exitcode …). Letzte Ausgabe:“ mit den letzten Zeilen der Konsolenausgabe |
 | TR20 | Test mit `Sleep` über das Zeitlimit (600 s) bzw. IDE während eines Laufs schließen | Abbruch mit „nach 600 s abgebrochen“; beim Schließen endet die Test-EXE mit, die IDE hängt nicht |
-| TR21 | Schnellschalter „Code Lens „Test ausführen““ aus | Marken verschwinden; Befehle bleiben |
+| TR21 | Schnellschalter „Code Lens „Test ausführen““ aus | Marken verschwinden (auch „Debuggen“, #585); Befehle bleiben |
 | TR22 | Schnellschalter „DUnitX-Tests ausführen“ aus | Marken und beide Befehle verschwinden, kein Lauf nach dem Build |
 | TR23 | Claude Code: „Führe die Tests über run_tests aus“ (vorhandene EXE) | JSON mit `result` `failed`, Zahlen und je Fehlschlag Name, `expected`/`actual`, Datei und Zeile; kein Compiler läuft; die Projekt-Zusammenfassung ändert sich nicht |
 | TR24 | `run_tests` mit `build: true` ohne laufende IDE bzw. mit `tests: ["Unit.TFixture.Methode"]` | Ohne IDE der Grund wie bei `build_project`, keine Tests; mit Filter nur dieser Test |
+
+## Einzelnen Test debuggen (#585)
+
+Vorbereitung: wie bei #69, Projektgruppe mit der Anwendung (aktiv) und dem Testprojekt `Rechner.Tests`; in `Rechner.Tests.dproj` unter *Start › Parameter* den Parameter `-cfg test.ini` eintragen. Testunit mit `[Test] Addiert` (erste Anweisung in einer Zeile nach `var`-Abschnitt und lokaler Funktion), `[Test]` mit zwei `[TestCase('Klein', …)]`/`[TestCase('Gross', …)]` in eigenen Zeilen und einem Test mit `Assert.AreEqual(0, 1)`. Meldungsansicht, Reiter „Atlas“. Optionen › Atlas › Debuggen: beide Schalter an.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| TD1 | Testunit öffnen | Hinter `[TestFixture]` und jedem `[Test]` neben „Test ausführen“ die Marke „Debuggen“; hinter jedem `[TestCase]` in eigener Zeile „Fall ausführen“ und „Debuggen“, die Marke des Tests mit den Fällen steht dann hinter `procedure` |
+| TD2 | Klick auf „Debuggen“ an `Addiert` | Testprojekt wird gebaut; Meldungen „Einmaliger Haltepunkt in Zeile …“ und „Rechner.Tests startet TRechnerTests.Addiert im Debugger (Debug, Win32)“; das Testprojekt wird aktiv; der Debugger hält auf der ersten Anweisung von `Addiert` (nicht in der lokalen Funktion); der Haltepunkt ist nach dem Halt verschwunden (Akzeptanz: startet nur diesen Test und hält in der ersten Zeile) |
+| TD3 | F9 bis zum Ende | Programm endet ohne „Press Enter“; Meldung „Debuggen von Rechner.Tests beendet; aktives Projekt und Startparameter wie vorher“; die Anwendung ist wieder aktives Projekt, *Start › Parameter* von `Rechner.Tests` zeigt wieder `-cfg test.ini`; die Marke an `Addiert` zeigt „bestanden“, die übrigen Marken bleiben, wie sie waren (Akzeptanz: Projekt und Parameter wiederhergestellt) |
+| TD4 | Während TD2 hält: *Start › Parameter* ansehen | `-cfg test.ini "--run:Rechner.Tests.TRechnerTests.Addiert" …` bzw. ohne Anführungszeichen, dazu `--exitbehavior:Continue` und `--xmlfile:…atlas-debug-….xml` |
+| TD5 | „Debuggen“ am Test mit den Fällen (Marke hinter `procedure`) | Beide Fälle laufen (`--run:…Summe.Klein,…Summe.Gross`), Halt in der ersten Zeile beim ersten Fall; nach F9 hält er nicht noch einmal (Akzeptanz: [TestCase] führt alle Fälle aus) |
+| TD6 | „Debuggen“ bzw. „Fall ausführen“ an `[TestCase('Gross', …)]` | Nur dieser Fall läuft (Meldung nennt `TRechnerTests.Summe.Gross`; Zusammenfassung 1 Test) (Akzeptanz: einzelne Fälle wählbar) |
+| TD7 | „Debuggen“ an `[TestFixture]` | Alle Tests der Fixture laufen im Debugger; kein Haltepunkt |
+| TD8 | Cursor in den Rumpf des fehlschlagenden Tests, Befehlspalette › „Test am Cursor debuggen“ | Wie TD2 für diesen Test; nach dem Ende rote Wellenlinie und „fehlgeschlagen“ an der Marke |
+| TD9 | Rechtsklick in der Testmethode › „Test ausführen“ | Läuft ohne Debugger wie die Code Lens (#69), Ergebnis in Meldungsansicht und an der Marke |
+| TD10 | Cursor außerhalb eines Tests (z. B. in `[Setup]`), „Test am Cursor debuggen“ | Meldung „Am Cursor steht kein DUnitX-Test …“, nichts startet |
+| TD11 | Optionen › Atlas › Debuggen › „Beim Test-Debuggen am Anfang der Methode anhalten“ aus, TD2 | Kein Haltepunkt, das Programm läuft durch; Ergebnis wie TD3 |
+| TD12 | Eigenen Haltepunkt auf die erste Anweisung von `Addiert` setzen, TD2 | Atlas setzt keinen zweiten; nach dem Lauf steht der eigene Haltepunkt noch da |
+| TD13 | Während des Haltens in TD2 *Start › Parameter* von `Rechner.Tests` auf `-anders` ändern, dann F9 | Meldung „… Startparameter wurden während des Laufs geändert und bleiben“; *Start › Parameter* zeigt `-anders` |
+| TD14 | Während des Haltens in TD2 die IDE beenden (Programm zurücksetzen, ohne Speichern schließen), neu starten, `Rechner.Tests` aktiv machen | Meldung „Vorübergehende Startparameter von Rechner.Tests.dproj zurückgestellt“; *Start › Parameter* wieder `-cfg test.ini` (bei ausgeschalteten Startprofilen erst beim nächsten Test-Debuggen) |
+| TD15 | Startprofil „Demo“ (#575) für `Rechner.Tests` aktiv, TD2 und TD3 | Während des Laufs Arbeitsordner und Umgebung des Profils, Parameter vorübergehend; danach wieder die des Profils, Statusfeld unverändert |
+| TD16 | Zweites Testprojekt `Rechner.Tests2` in der Gruppe, das dieselbe Testunit enthält; TD2 | Auswahl „Testprojekt wählen“ mit beiden; nach der Wahl läuft es; ein zweites TD2 fragt nicht; nach Entfernen oder Hinzufügen eines Testprojekts fragt Atlas wieder |
+| TD17 | Während TD2 noch einmal „Debuggen“ bzw. „Tests ausführen“ | Meldung „Es läuft schon ein Test im Debugger.“ bzw. „Es läuft schon ein Testlauf.“; die Marke „Debuggen“ ist während des Laufs ausgeblendet |
+| TD18 | Anwendung läuft im Debugger, „Debuggen“ an einem Test | Meldung „Der Debugger läuft schon; erst beenden.“; nichts ändert sich |
+| TD19 | Fehler im Testprojekt einbauen, TD2 | Meldung, dass der Build fehlschlug; aktives Projekt und Startparameter unverändert, keine Datei `atlas-debug-*.xml` im Temp-Ordner |
+| TD20 | Schnellschalter „Test debuggen“ aus | Ohne Neustart: Marken „Debuggen“, Befehl „Test am Cursor debuggen“, Eintrag im Kontextmenü (meldet „ausgeschaltet“) und Tipp „Einzelnen Test debuggen“ verschwinden; „Test ausführen“ bleibt |
+| TD21 | „Code Lens „Test ausführen““ (`codeLens.tests`) aus | Keine Marken, weder „Test ausführen“ noch „Debuggen“ (Akzeptanz: mit codeLens.tests aus ist die Funktion in der Code Lens aus); Befehle und Kontextmenü gelten weiter nach „Test debuggen“ |
+| TD22 | „DUnitX-Tests ausführen“ aus | Auch „Test debuggen“ ist aus: keine Marken, keine Befehle, Kontextmenü meldet „ausgeschaltet“ |
+| TD23 | Testprojekt nur für Win64, aktive Plattform der Anwendung Win32, TD2 | Gebaut und gestartet wird Win64 des Testprojekts |
 
 ## DUnitX-Testgerüst (#274)
 

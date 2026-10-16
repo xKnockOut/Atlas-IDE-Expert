@@ -1,20 +1,29 @@
 ﻿unit Atlas.IDE.Tests.Lens;
 
-// Code Lens „Test ausführen“ an [TestFixture] und [Test] (#69).
+// Code Lens „Test ausführen“ und „Debuggen“ an [TestFixture], [Test] und
+// [TestCase] (#69, #585).
 // - Erkennen: Ein Zeitgeber prüft den oberen Editor. Nach einer Tipp-Pause
 //   liest er Fixtures und Tests der Unit mit Atlas.Text.DUnitX (lokal, ohne
 //   Server; dieselbe Erkennung wie das MCP-Werkzeug run_tests und #154).
-// - Zeichnen: hinter dem Ende der Attributzeile ([TestFixture], [Test],
-//   [TestCase …]; ohne Attribut hinter der Deklaration) eine Marke „Test
-//   ausführen“ bzw. „Tests der Klasse ausführen“, nach einem Lauf mit dem
-//   Stand (bestanden grün, fehlgeschlagen in der Fehlerfarbe); während eines
-//   Laufs „Tests laufen …“. Die Rechtecke werden je Zeile gemerkt.
-// - Klick: Linksklick in eine Marke startet den Test bzw. alle Tests der
-//   Fixture (--run Unit.Fixture[.Methode]) im Testprojekt der Unit.
+// - Zeichnen: hinter dem Ende der Attributzeile ([TestFixture], [Test];
+//   ohne Attribut hinter der Deklaration) eine Marke „Test ausführen“ bzw.
+//   „Tests der Klasse ausführen“, nach einem Lauf mit dem Stand (bestanden
+//   grün, fehlgeschlagen in der Fehlerfarbe); während eines Laufs (auch im
+//   Debugger) „Tests laufen …“. Hat eine [TestCase]-Methode je Fall eine
+//   eigene Zeile, steht an jedem [TestCase] „Fall ausführen“ und die Marke
+//   der Methode (alle Fälle) an der Deklaration. Mit „Test debuggen“
+//   (TestDebug, #585) folgt je Marke eine zweite: „Debuggen“. Die Rechtecke
+//   werden je Zeile gemerkt.
+// - Klick: Linksklick in „Test ausführen“ startet den Test, den Fall bzw. alle
+//   Tests der Fixture im Testprojekt der Unit (--run mit den Namen aus
+//   Atlas.Text.DUnitX, [TestCase] je Fall); „Debuggen“ startet ihn im
+//   Debugger (Atlas.IDE.Tests.Debug).
 // - Ändert sich der Stand der Läufe (TAtlasIdeTests.Version), zeichnet der
 //   Zeitgeber den Editor neu.
 // Abschaltbar über „Code Lens „Test ausführen““ (codeLens.tests, Schlüssel
-// gemeinsam mit #585) und über „Tests ausführen“ (TestRun).
+// gemeinsam mit #585) und über „Tests ausführen“ (TestRun); ohne sie
+// zeichnet die Lens nichts und nimmt keinen Klick an. Die Marke „Debuggen“
+// zusätzlich über „Test debuggen“ (TestDebug).
 
 interface
 
@@ -27,7 +36,9 @@ uses
   ToolsAPI,
   ToolsAPI.Editor,
   Atlas.Core.Settings.Plugin,
-  Atlas.IDE.Tests.Runner;
+  Atlas.Core.Tests.Debug,
+  Atlas.IDE.Tests.Runner,
+  Atlas.IDE.Tests.Debug;
 
 type
   TAtlasIdeTestsLens = class
@@ -38,14 +49,15 @@ type
       function AllowedLineStages: TPaintLineStages; override;
     end;
 
-    /// <summary>Eine Marke: Fixture (Method = '') oder Test.</summary>
+    /// <summary>Eine Marke: Fixture, Test (alle Fälle) oder ein Fall.</summary>
     TItem = record
       /// <summary>Zeile der Marke (0-basiert).</summary>
       Line: Integer;
-      Fixture: string;
-      Method: string;
-      /// <summary>Gezeichnetes Rechteck (Koordinaten des Editors) und oberste sichtbare Zeile dabei.</summary>
-      Rect: TRect;
+      Selection: TAtlasTestSelection;
+      /// <summary>Gezeichnete Rechtecke „ausführen“ und „Debuggen“ (Koordinaten des Editors, leer ohne) und
+      /// oberste sichtbare Zeile dabei.</summary>
+      RunRect: TRect;
+      DebugRect: TRect;
       TopRow: Integer;
     end;
     /// <summary>Lebt, solange die Lens lebt; ein eingereihter Klick prüft es.</summary>
@@ -57,6 +69,7 @@ type
     QuietMs = 400;
   private
     FTests: TAtlasIdeTests;
+    FDebugger: TAtlasIdeTestDebugger;
     FAlive: TAlive;
     FAliveRef: IInterface;
     FTimer: TTimer;
@@ -83,8 +96,8 @@ type
     procedure EditorMouseDown(const Editor: TWinControl; Button: TMouseButton; Shift: TShiftState; X, Y: Integer);
     class procedure Invalidate; static;
   public
-    /// <summary>ATests gehört dem Aufrufer und lebt länger als die Lens.</summary>
-    constructor Create(ATests: TAtlasIdeTests);
+    /// <summary>ATests und ADebugger gehören dem Aufrufer und leben länger als die Lens.</summary>
+    constructor Create(ATests: TAtlasIdeTests; ADebugger: TAtlasIdeTestDebugger);
     destructor Destroy; override;
     /// <summary>Lens zeichnen? Einstellungen codeLens.tests und TestRun.</summary>
     class function Wanted(const ASettings: TAtlasPluginSettings): Boolean; static;
@@ -122,12 +135,13 @@ end;
 
 { TAtlasIdeTestsLens }
 
-constructor TAtlasIdeTestsLens.Create(ATests: TAtlasIdeTests);
+constructor TAtlasIdeTestsLens.Create(ATests: TAtlasIdeTests; ADebugger: TAtlasIdeTestDebugger);
 var
   Services: INTACodeEditorServices;
 begin
   inherited Create;
   FTests := ATests;
+  FDebugger := ADebugger;
   FAlive := TAlive.Create;
   FAlive.Alive := True;
   FAliveRef := FAlive;
@@ -173,8 +187,7 @@ end;
 
 class function TAtlasIdeTestsLens.Wanted(const ASettings: TAtlasPluginSettings): Boolean;
 begin
-  Result := ASettings.Enabled and ASettings.CodeLensTests and ASettings.TestRun and
-    not TAtlasGuard.Disabled(TAtlasFeature.EditorCommands);
+  Result := TAtlasTestDebug.LensWanted(ASettings) and not TAtlasGuard.Disabled(TAtlasFeature.EditorCommands);
 end;
 
 procedure TAtlasIdeTestsLens.Clear;
@@ -232,26 +245,38 @@ end;
 procedure TAtlasIdeTestsLens.Scan;
 var
   Found: TDUnitXUnit;
-  Fixture: TDUnitXFixture;
+  FixtureIndex, TestIndex, CaseIndex: Integer;
   Test: TDUnitXTest;
-  Item: TItem;
   Items: TArray<TItem>;
+
+  procedure Add(ALine, AFixture, ATest, ACase: Integer);
+  var
+    Item: TItem;
+  begin
+    if ALine < 0 then
+      Exit;
+    Item := Default(TItem);
+    Item.Line := ALine;
+    Item.Selection := TAtlasTestDebug.Selection(Found, AFixture, ATest, ACase);
+    if Length(Item.Selection.Names) > 0 then
+      Items := Items + [Item];
+  end;
+
 begin
   Found := TDUnitXSource.Scan(TTextLines.SplitLines(FText));
   Items := nil;
-  for Fixture in Found.Fixtures do
+  for FixtureIndex := 0 to High(Found.Fixtures) do
   begin
-    Item := Default(TItem);
-    Item.Line := Fixture.AttributeLine;
-    Item.Fixture := Fixture.Name;
-    Items := Items + [Item];
-    for Test in Fixture.Tests do
+    Add(Found.MarkLine(FixtureIndex, -1), FixtureIndex, -1, -1);
+    for TestIndex := 0 to High(Found.Fixtures[FixtureIndex].Tests) do
     begin
-      Item := Default(TItem);
-      Item.Line := Test.AttributeLine;
-      Item.Fixture := Fixture.Name;
-      Item.Method := Test.Method;
-      Items := Items + [Item];
+      Test := Found.Fixtures[FixtureIndex].Tests[TestIndex];
+      Add(Found.MarkLine(FixtureIndex, TestIndex), FixtureIndex, TestIndex, -1);
+      // Fälle mit eigener Zeile bekommen eigene Marken (mit [Ignore] führt DUnitX sie als einen Test).
+      if not Test.Ignored then
+        for CaseIndex := 0 to High(Test.CaseLines) do
+          if Found.CaseHasOwnLine(FixtureIndex, TestIndex, CaseIndex) then
+            Add(Test.CaseLines[CaseIndex], FixtureIndex, TestIndex, CaseIndex);
     end;
   end;
   FScannedFile := FFileName;
@@ -283,11 +308,13 @@ begin
   APassed := False;
   if FTests.Busy then
     Exit(TAtlasStrings.Text(TAtlasTextId.TestsLensRunning));
-  if AItem.Method = '' then
+  if AItem.Selection.Method = '' then
     Result := TAtlasStrings.Text(TAtlasTextId.TestsLensRunFixture)
+  else if AItem.Selection.CaseName <> '' then
+    Result := TAtlasStrings.Text(TAtlasTextId.TestsLensRunCase)
   else
     Result := TAtlasStrings.Text(TAtlasTextId.TestsLensRun);
-  Status := FTests.StatusOf(FUnitName, AItem.Fixture, AItem.Method);
+  Status := FTests.StatusOf(FUnitName, AItem.Selection.Fixture, AItem.Selection.Method, AItem.Selection.CaseName);
   if Status = TAtlasTestStatus.Failed then
   begin
     AFailed := True;
@@ -315,6 +342,23 @@ var
   Back, Tone: TAtlasColor;
   Sample: COLORREF;
   Failed, Passed: Boolean;
+
+  /// <summary>Eine Marke ab ALeft in der Farbe ATone; liefert ihr Rechteck.</summary>
+  function DrawPill(const ACaption: string; ATone: TAtlasColor; ALeft: Integer): TRect;
+  begin
+    Canvas.Font.Color := TColor(TAtlasColorMath.Mix(ATone, Back, 0.85));
+    Canvas.Pen.Color := TColor(TAtlasColorMath.Mix(ATone, Back, 0.35));
+    Canvas.Brush.Color := TColor(TAtlasColorMath.Mix(ATone, Back, 0.12));
+    Height := Canvas.TextHeight('Xg');
+    Width := Canvas.TextWidth(ACaption);
+    Top := Rect.Top + Max(0, (Rect.Bottom - Rect.Top - Height - 2) div 2);
+    Result := TRect.Create(ALeft, Top, ALeft + Width + 10, Top + Height + 2);
+    Canvas.Brush.Style := bsSolid;
+    Canvas.RoundRect(Result.Left, Result.Top, Result.Right, Result.Bottom, 6, 6);
+    Canvas.Brush.Style := bsClear;
+    Canvas.TextOut(Result.Left + 5, Result.Top + 1, ACaption);
+  end;
+
 begin
   if BeforeEvent or (Stage <> plsEndPaint) or (Context = nil) or not FShowing then
     Exit;
@@ -356,18 +400,13 @@ begin
       OldPen.Assign(Canvas.Pen);
       Canvas.Font.Size := Max(6, Canvas.Font.Size - 1);
       Canvas.Font.Style := [fsUnderline];
-      Canvas.Font.Color := TColor(TAtlasColorMath.Mix(Tone, Back, 0.85));
-      Canvas.Pen.Color := TColor(TAtlasColorMath.Mix(Tone, Back, 0.35));
-      Canvas.Brush.Color := TColor(TAtlasColorMath.Mix(Tone, Back, 0.12));
-      Height := Canvas.TextHeight('Xg');
-      Width := Canvas.TextWidth(Text);
-      Top := Rect.Top + Max(0, (Rect.Bottom - Rect.Top - Height - 2) div 2);
-      Pill := TRect.Create(Cell.Left, Top, Cell.Left + Width + 10, Top + Height + 2);
-      Canvas.Brush.Style := bsSolid;
-      Canvas.RoundRect(Pill.Left, Pill.Top, Pill.Right, Pill.Bottom, 6, 6);
-      Canvas.Brush.Style := bsClear;
-      Canvas.TextOut(Pill.Left + 5, Pill.Top + 1, Text);
-      FItems[Index].Rect := Pill;
+      Pill := DrawPill(Text, Tone, Cell.Left);
+      FItems[Index].RunRect := Pill;
+      FItems[Index].DebugRect := TRect.Empty;
+      // „Debuggen“ (#585) rechts daneben; nicht während eines Laufs.
+      if TAtlasTestDebug.LensDebugWanted(TAtlasIdeSettings.Current) and not FTests.Busy then
+        FItems[Index].DebugRect := DrawPill(TAtlasStrings.Text(TAtlasTextId.TestsLensDebug), Colors.Accent,
+          Pill.Right + 6);
       FItems[Index].TopRow := Context.EditView.TopRow;
     finally
       Canvas.Font.Assign(OldFont);
@@ -390,17 +429,29 @@ var
   Editors: IOTAEditorServices;
   View: IOTAEditView;
   Index, Hit: Integer;
-  FileName, Name: string;
-  Tests: TAtlasIdeTests;
+  DebugHit: Boolean;
+  FileName: string;
+  Selection: TAtlasTestSelection;
+  Debugger: TAtlasIdeTestDebugger;
   Alive: TAlive;
   Keep: IInterface;
 begin
-  if (Button <> mbLeft) or (Shift * [ssShift, ssCtrl, ssAlt] <> []) or not FShowing or (FUnitName = '') then
+  if (Button <> mbLeft) or (Shift * [ssShift, ssCtrl, ssAlt] <> []) or not FShowing or (FUnitName = '') or
+    not Wanted(TAtlasIdeSettings.Current) then
     Exit;
   Hit := -1;
+  DebugHit := False;
   for Index := 0 to High(FItems) do
-    if not FItems[Index].Rect.IsEmpty and PtInRect(FItems[Index].Rect, Point(X, Y)) then
+    if not FItems[Index].RunRect.IsEmpty and PtInRect(FItems[Index].RunRect, Point(X, Y)) then
+    begin
       Hit := Index;
+      DebugHit := False;
+    end
+    else if not FItems[Index].DebugRect.IsEmpty and PtInRect(FItems[Index].DebugRect, Point(X, Y)) then
+    begin
+      Hit := Index;
+      DebugHit := True;
+    end;
   if Hit < 0 then
     Exit;
   // Nur, wenn die Marke noch dort steht: gleiche Datei, nicht gescrollt.
@@ -411,12 +462,12 @@ begin
     (View.TopRow <> FItems[Hit].TopRow) then
     Exit;
   FileName := FScannedFile;
-  Name := TDUnitXCommandLine.TestName(FUnitName, FItems[Hit].Fixture, FItems[Hit].Method);
-  Tests := FTests;
+  Selection := FItems[Hit].Selection;
+  Debugger := FDebugger;
   Alive := FAlive;
   Keep := FAliveRef;
-  // Erst nach dem Mausereignis: der Editor setzt sonst den Cursor danach. Die Lens lebt kürzer als der Läufer:
-  // Lebt sie noch, lebt auch er.
+  // Erst nach dem Mausereignis: der Editor setzt sonst den Cursor danach. Die Lens lebt kürzer als Läufer und
+  // Debugger-Teil: Lebt sie noch, leben auch sie.
   TAtlasMainThread.ForceQueue(TAtlasFeature.EditorCommands,
     procedure
     begin
@@ -425,7 +476,10 @@ begin
       TAtlasGuard.Run(TAtlasFeature.Build,
         procedure
         begin
-          Tests.RunTests(FileName, [Name]);
+          if DebugHit then
+            Debugger.Debug(FileName, Selection)
+          else
+            Debugger.Run(FileName, Selection);
         end);
     end);
 end;

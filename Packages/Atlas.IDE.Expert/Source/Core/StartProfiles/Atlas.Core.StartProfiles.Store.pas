@@ -18,7 +18,14 @@
 //     {"format": 1, "project": "C:\\Projekte\\App.dproj", "active": "Demo",
 //      "profiles": [{"name": "Lokal", "parameters": "-db C:\\Daten\\test.fdb",
 //        "workingDir": "C:\\Daten", "host": "", "environment": {"MODUS": "test"}}],
-//      "original": {"parameters": "", "workingDir": "", "host": "", "environment": ""}}
+//      "original": {"parameters": "", "workingDir": "", "host": "", "environment": ""},
+//      "temporary": {"parameters": "", "workingDir": "", "host": "", "environment": "",
+//        "written": "--run:… --exitbehavior:Continue"}}
+// - Vorübergehende Startparameter (Test debuggen, #585): "temporary" hält die
+//   Startoptionen von davor und die geschriebenen Parameter, bis der Lauf
+//   endet. Bleibt der Eintrag nach einem Absturz der IDE stehen, stellt Atlas
+//   die Startoptionen beim nächsten Mal wieder her, aber nur, wenn die
+//   Parameter noch die geschriebenen sind.
 // - Vorrang: Gleichnamige Profile (ohne Groß-/Kleinschreibung) kommen aus
 //   .atlas; die Liste hat erst die gemeinsamen, dann die persönlichen.
 // - Startoptionen in der .dproj (Run › Parameter der IDE): Debugger_RunParams,
@@ -77,6 +84,11 @@ type
     /// <summary>Original ist gesetzt: Startoptionen, bevor Atlas das erste Profil setzte.</summary>
     HasOriginal: Boolean;
     Original: TAtlasStartOptions;
+    /// <summary>Vorübergehende Startparameter sind gesetzt (#585): TemporaryBefore galt davor, TemporaryWritten
+    /// hat Atlas geschrieben.</summary>
+    HasTemporary: Boolean;
+    TemporaryBefore: TAtlasStartOptions;
+    TemporaryWritten: string;
     /// <summary>Index des persönlichen Profils AName (ohne Groß-/Kleinschreibung); -1 ohne.</summary>
     function IndexOf(const AName: string): Integer;
   end;
@@ -143,6 +155,18 @@ type
     /// <summary>Kein Profil mehr; True mit den gemerkten Startoptionen, die wieder gelten sollen.</summary>
     class function Deactivate(var AState: TAtlasStartProfileState; out AOriginal: TAtlasStartOptions): Boolean;
       static;
+    /// <summary>Startoptionen für einen vorübergehenden Lauf: ACurrent mit den Parametern AParameters (Arbeitsordner,
+    /// Host und Umgebung bleiben, z. B. die eines aktiven Startprofils).</summary>
+    class function TemporaryOptions(const ACurrent: TAtlasStartOptions; const AParameters: string): TAtlasStartOptions;
+      static;
+    /// <summary>Vorübergehende Parameter AWritten merken; ACurrent galt davor. Ist schon ein Eintrag offen, bleiben
+    /// dessen Startoptionen von davor (sonst gälten nach dem Lauf die vorübergehenden).</summary>
+    class procedure BeginTemporary(var AState: TAtlasStartProfileState; const ACurrent: TAtlasStartOptions;
+      const AWritten: string); static;
+    /// <summary>Lauf beendet: Eintrag entfernen; True mit den Startoptionen von davor, wenn sie wieder gelten sollen
+    /// (die Parameter ACurrent sind noch die geschriebenen; hat sie jemand geändert, bleiben sie).</summary>
+    class function EndTemporary(var AState: TAtlasStartProfileState; const ACurrent: TAtlasStartOptions;
+      out ABefore: TAtlasStartOptions): Boolean; static;
   end;
 
 implementation
@@ -263,6 +287,13 @@ begin
   AOptions.Environment := StringOf(TJSONObject(AValue), 'environment');
 end;
 
+function ReadTemporary(AValue: TJSONValue; var AState: TAtlasStartProfileState): Boolean;
+begin
+  Result := ReadOptions(AValue, AState.TemporaryBefore);
+  if Result then
+    AState.TemporaryWritten := StringOf(TJSONObject(AValue), 'written');
+end;
+
 function SplitEnvironment(const AText: string): TArray<string>;
 var
   Index: Integer;
@@ -351,6 +382,7 @@ begin
         if ReadProfile(TJSONArray(Value).Items[Index], Profile) and (Result.IndexOf(Profile.Name) < 0) then
           Result.Profiles := Result.Profiles + [Profile];
     Result.HasOriginal := ReadOptions(TJSONObject(Root).GetValue('original'), Result.Original);
+    Result.HasTemporary := ReadTemporary(TJSONObject(Root).GetValue('temporary'), Result);
   finally
     Root.Free;
   end;
@@ -428,6 +460,16 @@ begin
       Lines.Append('    "workingDir": ' + Quote(AState.Original.WorkingDir) + ',' + NewLine);
       Lines.Append('    "host": ' + Quote(AState.Original.Host) + ',' + NewLine);
       Lines.Append('    "environment": ' + Quote(AState.Original.Environment) + NewLine);
+      Lines.Append('  }');
+    end;
+    if AState.HasTemporary then
+    begin
+      Lines.Append(',' + NewLine + '  "temporary": {' + NewLine);
+      Lines.Append('    "parameters": ' + Quote(AState.TemporaryBefore.Parameters) + ',' + NewLine);
+      Lines.Append('    "workingDir": ' + Quote(AState.TemporaryBefore.WorkingDir) + ',' + NewLine);
+      Lines.Append('    "host": ' + Quote(AState.TemporaryBefore.Host) + ',' + NewLine);
+      Lines.Append('    "environment": ' + Quote(AState.TemporaryBefore.Environment) + ',' + NewLine);
+      Lines.Append('    "written": ' + Quote(AState.TemporaryWritten) + NewLine);
       Lines.Append('  }');
     end;
     Lines.Append(NewLine + '}' + NewLine);
@@ -655,6 +697,34 @@ begin
   AState.Active := '';
   AState.HasOriginal := False;
   AState.Original := Default(TAtlasStartOptions);
+end;
+
+class function TAtlasStartProfiles.TemporaryOptions(const ACurrent: TAtlasStartOptions;
+  const AParameters: string): TAtlasStartOptions;
+begin
+  Result := ACurrent;
+  Result.Parameters := AParameters;
+end;
+
+class procedure TAtlasStartProfiles.BeginTemporary(var AState: TAtlasStartProfileState;
+  const ACurrent: TAtlasStartOptions; const AWritten: string);
+begin
+  if not AState.HasTemporary then
+  begin
+    AState.TemporaryBefore := ACurrent;
+    AState.HasTemporary := True;
+  end;
+  AState.TemporaryWritten := AWritten;
+end;
+
+class function TAtlasStartProfiles.EndTemporary(var AState: TAtlasStartProfileState;
+  const ACurrent: TAtlasStartOptions; out ABefore: TAtlasStartOptions): Boolean;
+begin
+  ABefore := AState.TemporaryBefore;
+  Result := AState.HasTemporary and (ACurrent.Parameters = AState.TemporaryWritten);
+  AState.HasTemporary := False;
+  AState.TemporaryBefore := Default(TAtlasStartOptions);
+  AState.TemporaryWritten := '';
 end;
 
 end.
