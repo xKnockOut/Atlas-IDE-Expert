@@ -33,6 +33,9 @@
 // - Bereich „Testergebnisse“ (#763, TestResults): letzter Testlauf je Projekt
 //   und, mit welcomePage.tests.ci, der letzte Build des Build-Servers;
 //   meldet sich selbst an.
+// - Bereich „Meine Issues“ (#765, Issues): offene Issues aus GitHub oder
+//   YouTrack, „Beginnen“ und das aktuelle Issue im Statusfeld; meldet sich
+//   selbst an.
 // - Bereich „Nicht gesichert“ (#762, Unsaved): nicht Committetes, nicht
 //   Gepushtes und Stashes je Projekt; meldet sich selbst an.
 // - Zustandskachel „Atlas“ (#754, State): Server, Version, Index,
@@ -69,6 +72,7 @@ uses
   Atlas.IDE.Welcome.QuickActions,
   Atlas.IDE.Welcome.Trends,
   Atlas.IDE.Welcome.TestResults,
+  Atlas.IDE.Welcome.Issues,
   Atlas.IDE.Welcome.Unsaved,
   Atlas.IDE.Welcome.Continue,
   Atlas.IDE.Welcome.State,
@@ -107,6 +111,9 @@ type
     FTestResults: TAtlasIdeTestResults;
     // Hält die Quelle des Bereichs „Testergebnisse“ am Leben; die Frames halten sie ebenfalls.
     FTestResultsRef: IInterface;
+    FIssues: TAtlasIdeIssues;
+    // Hält die Quelle des Bereichs „Meine Issues“ am Leben; die Frames halten sie ebenfalls.
+    FIssuesRef: IInterface;
     FUnsaved: TAtlasIdeUnsaved;
     // Hält die Quelle des Bereichs „Nicht gesichert“ am Leben; die Frames halten sie ebenfalls.
     FUnsavedRef: IInterface;
@@ -134,6 +141,7 @@ type
     procedure SetQuickActions(AValue: TAtlasIdeQuickActions);
     procedure SetTrends(AValue: TAtlasIdeTrends);
     procedure SetTestResults(AValue: TAtlasIdeTestResults);
+    procedure SetIssues(AValue: TAtlasIdeIssues);
     procedure SetUnsaved(AValue: TAtlasIdeUnsaved);
     procedure SetContinue(AValue: TAtlasIdeContinue);
     procedure AttachMenu(AFrame: TAtlasWelcomeFrame);
@@ -189,6 +197,8 @@ type
     /// <summary>Bereich „Testergebnisse“ (#763); gehört danach der Steuerung (Start beim Setzen). nil = ohne.
     /// </summary>
     property TestResults: TAtlasIdeTestResults read FTestResults write SetTestResults;
+    /// <summary>Bereich „Meine Issues“ (#765); gehört danach der Steuerung (Start beim Setzen). nil = ohne.</summary>
+    property Issues: TAtlasIdeIssues read FIssues write SetIssues;
     /// <summary>Bereich „Nicht gesichert“ (#762); gehört danach der Steuerung (Start beim Setzen). nil = ohne.</summary>
     property Unsaved: TAtlasIdeUnsaved read FUnsaved write SetUnsaved;
     /// <summary>Bereich „Weiterarbeiten“ (#755); gehört danach der Steuerung (Start beim Setzen). nil = ohne.
@@ -313,6 +323,9 @@ begin
   // Wartet kurz auf eine laufende Abfrage beim Build-Server.
   if FTestResults <> nil then
     FTestResults.Stop;
+  // Wartet kurz auf eine laufende Abfrage beim Issue-Tracker; meldet die Statuszeile ab.
+  if FIssues <> nil then
+    FIssues.Stop;
   if FProjects <> nil then
     FProjects.Stop;
   if FUnsaved <> nil then
@@ -342,6 +355,8 @@ begin
   FTrendsRef := nil;
   FTestResults := nil;
   FTestResultsRef := nil;
+  FIssues := nil;
+  FIssuesRef := nil;
   FUnsaved := nil;
   FUnsavedRef := nil;
   FContinue := nil;
@@ -481,6 +496,18 @@ begin
       procedure
       begin
         FTestResults.Start;
+      end);
+end;
+
+procedure TAtlasIdeWelcome.SetIssues(AValue: TAtlasIdeIssues);
+begin
+  FIssues := AValue;
+  FIssuesRef := AValue;
+  if FIssues <> nil then
+    TAtlasGuard.Run(TAtlasFeature.WelcomePage,
+      procedure
+      begin
+        FIssues.Start;
       end);
 end;
 
@@ -629,6 +656,9 @@ begin
       // Bereich „Testergebnisse“: welcomePage.tests, .maxFailures und .ci (#763).
       if FTestResults <> nil then
         FTestResults.Refresh;
+      // Bereich „Meine Issues“: welcomePage.issues, .tracker, .query und die Muster (#765).
+      if FIssues <> nil then
+        FIssues.Refresh;
       // Schnellaktionen: welcomePage.quickActions, .items, .console und Tasten (#764).
       if FQuickActions <> nil then
         FQuickActions.Refresh;

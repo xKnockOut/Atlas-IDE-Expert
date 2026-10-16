@@ -22,6 +22,10 @@
 // IAtlasVcsUpdate (#764) holt neue Commits in die Arbeitskopie: Git nur
 // vorwärts (pull --ff-only), SVN mit update; für die Schnellaktion „Pull“
 // der Willkommensseite.
+// IAtlasVcsBranching (#765) legt für ein Issue einen Branch an und wechselt
+// dorthin: Git lokal von einer Basis (checkout -b), SVN als Kopie im
+// Repository (svn copy ^/trunk ^/branches/…) mit svn switch; dazu die Ordner
+// für den Commit-Hook (Git prepare-commit-msg).
 
 interface
 
@@ -266,6 +270,29 @@ type
   IAtlasVcsUpdate = interface
     ['{8AFD73A9-6F83-48FE-B1B8-4B4D0E96D7E8}']
     function Pull: TAtlasVcsOutcome;
+  end;
+
+  /// <summary>Branch für ein Issue anlegen und dorthin wechseln (#765). Git: lokaler Branch von einer Basis
+  /// (checkout -b, ohne verfolgten Branch); SVN: Kopie im Repository (svn copy ^/&lt;Basis&gt; ^/branches/&lt;Name&gt;
+  /// --parents) und Umstellen der Arbeitskopie (svn switch). Die leere Umsetzung liefert ihr Outcome. Ob lokale
+  /// Änderungen vorher eine Rückfrage brauchen, entscheidet der Aufrufer. Jede Methode der Git- und SVN-Umsetzung
+  /// startet einen Prozess (SVN spricht dabei mit dem Server): nur aus einem Hintergrund-Thread aufrufen, mit
+  /// Zeitlimit. Namen mit Leer- oder Steuerzeichen, „..“ oder „-“ am Anfang lehnen alle mit Failed ab.</summary>
+  IAtlasVcsBranching = interface
+    ['{2C7E9A41-6B5D-4F38-9E12-A8D4C3B7F605}']
+    /// <summary>Git: lokaler Branch refs/heads/&lt;AName&gt; existiert. SVN: ^/branches/&lt;AName&gt; existiert
+    /// (fehlt er oder antwortet der Server mit einem Fehler, gilt er als nicht vorhanden).</summary>
+    function BranchExists(const AName: string; out AExists: Boolean): TAtlasVcsOutcome;
+    /// <summary>Git: neuen Branch AName von ABase anlegen und auschecken; ABase ist ein lokaler Branch, sonst
+    /// origin/&lt;ABase&gt;, '' = HEAD; gibt es beides nicht, Failed. SVN: ^/&lt;ABase&gt; ('' = trunk) nach
+    /// ^/branches/&lt;AName&gt; kopieren (Nachricht AMessage) und die Arbeitskopie dorthin umstellen.</summary>
+    function CreateBranch(const AName, ABase, AMessage: string): TAtlasVcsOutcome;
+    /// <summary>Zu einem vorhandenen Branch wechseln (Git checkout, SVN switch ^/branches/&lt;AName&gt;).</summary>
+    function SwitchBranch(const AName: string): TAtlasVcsOutcome;
+    /// <summary>Git: Ordner der Hooks (beachtet core.hooksPath) und Verwaltungsordner dieser Arbeitskopie
+    /// (bei Worktrees der eigene), beide vollständig. SVN kennt keine Hooks auf dem Rechner: Ok mit ''. Die leere
+    /// Umsetzung liefert ihr Outcome mit ''.</summary>
+    function HookFolders(out AHooks, AGitDir: string): TAtlasVcsOutcome;
   end;
 
   /// <summary>Fehler beim Lesen einer Ausgabe; die Umsetzungen machen daraus Outcome Failed.</summary>

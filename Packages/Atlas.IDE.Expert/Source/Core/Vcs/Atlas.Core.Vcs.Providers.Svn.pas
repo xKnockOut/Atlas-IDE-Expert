@@ -18,6 +18,11 @@
 // Stand des Servers; Resolve liefert '', Incoming eine leere Liste, Fetch tut
 // nichts (alle Ok ohne Prozess).
 // Holen (IAtlasVcsUpdate, #764): Pull = update . (spricht mit dem Server).
+// Branch für ein Issue (IAtlasVcsBranching, #765), alle mit dem Server:
+//   BranchExists info ^/branches/<Name>@
+//   CreateBranch copy ^/<Basis>@ ^/branches/<Name>@ --parents -m <Nachricht>, dann SwitchBranch
+//   SwitchBranch switch ^/branches/<Name>@ .
+//   HookFolders  ohne Prozess Ok mit '' (SVN hat keine Hooks auf dem Rechner)
 // ChangeMarker: Zeitstempel und Größe von .svn/wc.db; svn update und
 // svn switch schreiben die Datenbank.
 
@@ -30,7 +35,7 @@ uses
 
 type
   TAtlasSvnVersionControl = class(TInterfacedObject, IAtlasVersionControl, IAtlasVcsLocalWork, IAtlasVcsIncoming,
-    IAtlasVcsUpdate)
+    IAtlasVcsUpdate, IAtlasVcsBranching)
   private
     FRoot: string;
     FCommand: TAtlasVcsCommand;
@@ -63,6 +68,11 @@ type
     function Fetch(const ARemote: string): TAtlasVcsOutcome;
     { IAtlasVcsUpdate }
     function Pull: TAtlasVcsOutcome;
+    { IAtlasVcsBranching }
+    function BranchExists(const AName: string; out AExists: Boolean): TAtlasVcsOutcome;
+    function CreateBranch(const AName, ABase, AMessage: string): TAtlasVcsOutcome;
+    function SwitchBranch(const AName: string): TAtlasVcsOutcome;
+    function HookFolders(out AHooks, AGitDir: string): TAtlasVcsOutcome;
   end;
 
 implementation
@@ -274,6 +284,58 @@ var
   Output: TBytes;
 begin
   Result := Svn(['update', '.'], Output);
+end;
+
+{ IAtlasVcsBranching (#765) }
+
+function TAtlasSvnVersionControl.BranchExists(const AName: string; out AExists: Boolean): TAtlasVcsOutcome;
+var
+  Output: TBytes;
+begin
+  AExists := False;
+  if not VcsSafeBranchName(AName) then
+    Exit(TAtlasVcsOutcome.Failed);
+  // "@" am Ende: ein "@" im Namen ist dann keine Revision.
+  Result := Svn(['info', '^/branches/' + AName + '@'], Output);
+  AExists := Result = TAtlasVcsOutcome.Ok;
+  // Fehlt der Branch, endet svn mit Fehler; das ist die Antwort, kein Fehler.
+  if Result = TAtlasVcsOutcome.Failed then
+    Result := TAtlasVcsOutcome.Ok;
+end;
+
+function TAtlasSvnVersionControl.CreateBranch(const AName, ABase, AMessage: string): TAtlasVcsOutcome;
+var
+  Output: TBytes;
+  Base, Message: string;
+begin
+  Base := ABase;
+  if Base = '' then
+    Base := 'trunk';
+  if not VcsSafeBranchName(AName) or not VcsSafeBranchName(Base) then
+    Exit(TAtlasVcsOutcome.Failed);
+  Message := Trim(AMessage);
+  if Message = '' then
+    Message := 'Branch ' + AName;
+  Result := Svn(['copy', '^/' + Base + '@', '^/branches/' + AName + '@', '--parents', '-m', Message], Output);
+  if Result <> TAtlasVcsOutcome.Ok then
+    Exit;
+  Result := SwitchBranch(AName);
+end;
+
+function TAtlasSvnVersionControl.SwitchBranch(const AName: string): TAtlasVcsOutcome;
+var
+  Output: TBytes;
+begin
+  if not VcsSafeBranchName(AName) then
+    Exit(TAtlasVcsOutcome.Failed);
+  Result := Svn(['switch', '^/branches/' + AName + '@', '.'], Output);
+end;
+
+function TAtlasSvnVersionControl.HookFolders(out AHooks, AGitDir: string): TAtlasVcsOutcome;
+begin
+  AHooks := '';
+  AGitDir := '';
+  Result := TAtlasVcsOutcome.Ok;
 end;
 
 end.

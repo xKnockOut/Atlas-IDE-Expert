@@ -502,6 +502,16 @@
       "image": "Tipps\\build-server.png"
     },
     {
+      "id": "issueTracker",
+      "command": "Atlas.TrackerLogin",
+      "setting": "WelcomePageIssues",
+      "title": "Issues aus dem Tracker beginnen",
+      "titleEn": "Start issues from the tracker",
+      "text": "„Meine Issues“ zeigt die mir zugewiesenen offenen Issues aus GitHub oder YouTrack (Tracker aus der .atlas). „Beginnen“ legt den Branch nach Muster an und öffnet das Projekt; Commit-Nachrichten beginnen danach mit der Kennung. Das Token liegt im Anmeldespeicher von Windows.",
+      "textEn": "“My issues” shows the open issues assigned to me from GitHub or YouTrack (tracker from .atlas). “Start” creates the branch from a pattern and opens the project; commit messages then start with the key. The token lives in the Windows Credential Manager.",
+      "image": "Tipps\\issue-tracker.png"
+    },
+    {
       "id": "mcpBuild",
       "setting": "McpBuild",
       "title": "Builds für Claude Code",

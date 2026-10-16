@@ -58,6 +58,10 @@ function VcsParseIsoDate(const AText: string; out ADate: TDateTime): Boolean;
 function VcsUnixToDate(ASeconds: Int64): TDateTime;
 /// <summary>&amp;amp; &amp;lt; &amp;gt; &amp;quot; &amp;apos; und &amp;#…; aufgelöst.</summary>
 function VcsXmlDecode(const AText: string): string;
+/// <summary>Branchname für Git und SVN, der nicht als Option oder Pfad missverstanden werden kann: nicht leer,
+/// ohne Leer- und Steuerzeichen, ohne "-" oder "/" am Anfang, ohne "..", "\", "^", "~", ":", "?", "*", "[", "@{"
+/// und ohne "/" oder "." am Ende (#765).</summary>
+function VcsSafeBranchName(const AName: string): Boolean;
 
 implementation
 
@@ -182,6 +186,29 @@ end;
 function VcsUnixToDate(ASeconds: Int64): TDateTime;
 begin
   Result := UnixDateDelta + ASeconds / SecsPerDay;
+end;
+
+function VcsSafeBranchName(const AName: string): Boolean;
+var
+  Index: Integer;
+begin
+  Result := False;
+  if (AName = '') or (AName[1] = '-') or (AName[1] = '/') then
+    Exit;
+  if (AName[Length(AName)] = '/') or (AName[Length(AName)] = '.') then
+    Exit;
+  if (Pos('..', AName) > 0) or (Pos('@{', AName) > 0) or (Pos('//', AName) > 0) then
+    Exit;
+  for Index := 1 to Length(AName) do
+  begin
+    if Ord(AName[Index]) <= 32 then
+      Exit;
+    case AName[Index] of
+      '\', '^', '~', ':', '?', '*', '[', #127:
+        Exit;
+    end;
+  end;
+  Result := True;
 end;
 
 function VcsXmlDecode(const AText: string): string;

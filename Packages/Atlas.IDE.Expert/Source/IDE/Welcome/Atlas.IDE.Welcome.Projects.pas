@@ -43,9 +43,9 @@
 //   kommen mit demselben Zeitpunkt und werden in diesen Punkt nachgetragen
 //   (Fill). Die Build-Dauer steht in "build.durationMs" (Gruppe: Dauer des
 //   ganzen Laufs).
-// - Auswahl (#758): Mit eingeschaltetem Projektverlauf wählt ein Klick auf eine
-//   Zeile das Projekt für den Verlauf (Doppelklick öffnet); Select meldet
-//   beiden Bereichen die Änderung.
+// - Auswahl (#758): Mit eingeschaltetem Projektverlauf oder „Meine Issues“
+//   (#765) wählt ein Klick auf eine Zeile das Projekt für diese Bereiche
+//   (Doppelklick öffnet); Select meldet ihnen die Änderung.
 // - Tests (#69): nach jedem Testlauf aus der IDE übergibt die Composition den
 //   Abschnitt "tests" an RecordTests, für das Testprojekt und seine
 //   Projektgruppe (die Karte Tests #763 zeigt ihn beim Projekt, das der
@@ -367,6 +367,8 @@ begin
   TAtlasWelcomeSections.Default.Changed(TAtlasWelcomeIds.History);
   // Ebenso die Testergebnisse (#763, Abschnitt "tests" und Branch für den Multibranch-Job).
   TAtlasWelcomeSections.Default.Changed(TAtlasWelcomeIds.Tests);
+  // Und „Meine Issues“ (#765): Auswahl, Branch (Branch → Ticket) und Art der Versionsverwaltung.
+  TAtlasWelcomeSections.Default.Changed(TAtlasWelcomeIds.Issues);
 end;
 
 class function TAtlasIdeProjects.TrendsOn: Boolean;
@@ -376,8 +378,8 @@ end;
 
 function TAtlasIdeProjects.Selectable: Boolean;
 begin
-  // Ohne Projektverlauf hat eine Auswahl keinen Zweck: Klick öffnet wie bisher (#592).
-  Result := not FStopped and TrendsOn;
+  // Ohne Projektverlauf und „Meine Issues“ (#765) hat eine Auswahl keinen Zweck: Klick öffnet wie bisher (#592).
+  Result := not FStopped and (TrendsOn or TAtlasIdeSettings.Current.WelcomePageIssues);
 end;
 
 procedure TAtlasIdeProjects.Select(const AProject: string);
