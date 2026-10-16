@@ -14,7 +14,7 @@ uses
   Atlas.Core.Undo.Contract;
 
 type
-  TAtlasUndoFileProc = reference to procedure(const AFileName, AProject: string);
+  TAtlasUndoFileProc = Atlas.Core.Undo.Contract.TAtlasUndoFileProc;
 
   TAtlasUndoDiskTarget = class(TInterfacedObject, IAtlasUndoTarget)
   private

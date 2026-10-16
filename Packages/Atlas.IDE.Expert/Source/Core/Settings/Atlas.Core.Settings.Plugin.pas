@@ -459,7 +459,7 @@ implementation
 uses
   System.Math,
   System.StrUtils,
-  Atlas.Core.Generate.Menu;
+  Atlas.Core.Generate.Contract;
 
 const
   /// <summary>Reihen des Projektverlaufs (#758) wie TAtlasProjectSummaries.TrendKeys (Test prüft Gleichheit).</summary>
@@ -782,8 +782,8 @@ begin
   UnitSearchKey := EnsureRange(UnitSearchKey, 0, $FFFF);
   BookmarkKey := EnsureRange(BookmarkKey, 0, $FFFF);
   GenerateMenuKey := EnsureRange(GenerateMenuKey, 0, $FFFF);
-  GenerateMenuGroups := TAtlasGenerateOptions.NormalizeGroups(GenerateMenuGroups);
-  GenerateMenuHidden := TAtlasGenerateOptions.NormalizeHidden(GenerateMenuHidden);
+  GenerateMenuGroups := TAtlasGenerateLists.NormalizeGroups(GenerateMenuGroups);
+  GenerateMenuHidden := TAtlasGenerateLists.NormalizeHidden(GenerateMenuHidden);
   if SameText(Trim(WelcomePageHost), 'dockWindow') then
     WelcomePageHost := 'dockWindow'
   else

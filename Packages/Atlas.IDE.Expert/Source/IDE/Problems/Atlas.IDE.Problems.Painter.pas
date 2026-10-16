@@ -53,9 +53,9 @@ uses
   Atlas.Core.Style.Palette,
   Atlas.Core.Problems.Colors,
   Atlas.Core.Editor.Pairs,
-  Atlas.IDE.Editor.Buffer,
-  Atlas.IDE.Editor.Style,
-  Atlas.IDE.Settings.Store;
+  Atlas.IDE.Foundation.EditorBuffer,
+  Atlas.IDE.Foundation.EditorStyle,
+  Atlas.IDE.Foundation.Settings;
 
 { TAtlasProblemsPainter.TEvents }
 

@@ -202,7 +202,7 @@ uses
   Atlas.Core.Welcome.HostLayout,
   Atlas.UI.Strings,
   Atlas.UI.Welcome.WhatsNew,
-  Atlas.IDE.Settings.Store,
+  Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Welcome.Registry,
   Atlas.IDE.Welcome.Window;
 

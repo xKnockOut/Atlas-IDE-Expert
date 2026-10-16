@@ -7,7 +7,7 @@
       "allow": [
         "Atlas.Common.Rules.Contract -> Atlas.Common.Pascal.SyntaxTree",
         "Atlas.Common.Documents.Contract -> Atlas.Text.Lines",
-        "Atlas.IDE.* -> Atlas.Core.*"
+        "Atlas.IDE.CodeInsight.Composition -> Atlas.Core.*"
       ]
     },
     "architecture-contract-content": {

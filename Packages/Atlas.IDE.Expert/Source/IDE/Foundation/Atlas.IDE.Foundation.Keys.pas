@@ -1,4 +1,4 @@
-﻿unit Atlas.IDE.Commands.Keys;
+﻿unit Atlas.IDE.Foundation.Keys;
 
 // Tastenkürzel von Atlas in der IDE (#494): vor dem Belegen prüfen, ob die
 // IDE oder eine andere Erweiterung die Taste schon nutzt (Aktionen aus

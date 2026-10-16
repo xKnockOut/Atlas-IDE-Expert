@@ -1340,3 +1340,17 @@ Vorbereitung: Repository-Ordner als Projekt geöffnet (die `atlas.json` im Wurze
 | AR4 | Ein Projekt ohne `prefixes` in `atlas.json` öffnen, Profil `strict` | Keine Meldung der beiden Regeln |
 | AR5 | Undo-Einstellungen unter *Optionen › Atlas* ändern, speichern, wieder öffnen; Atlas-Änderung über zwei Dateien zurücknehmen | Werte bleiben erhalten; Zurücknehmen wie bisher |
 | AR6 | Server-Protokoll mit Mitschnitt (`--trace`), Parameter-Hint und Hover in einer Unit mit `{$I}`-Datei | Mitschnitt rotiert wie bisher; Hint und Hover funktionieren auch in der Include-Datei |
+
+## Plugin-Struktur: Laden, Entladen, Workspace-Edits (Code-Review S-03, A-09)
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| PS1 | IDE mit Atlas starten, *Komponenten › Packages installieren* › Atlas abwählen, wieder anwählen | Keine Zugriffsverletzung; Protokoll „Atlas entladen in … ms; Hintergrund-Threads beendet: True“; nach dem Wiederladen Menü, Palette, Statusfeld, Vervollständigung, Parameter-Hint und Willkommensseite wie zuvor |
+| PS2 | Abgesichert starten (Stufe „abgesichert“, wie AS5) | Server, Statusfeld, Palette, Menü, Ergebnisfenster, Änderungsprotokoll, Notizen und Lesezeichen (Befehle), Willkommensseite da; keine Klammerfarben, keine Rinne, kein Designer-Notifier, kein Wächter, keine Tastenkürzel-Tipps |
+| PS3 | Mit Umschalt starten (Stufe „minimal“, wie AS11) | Nur Optionsseite, Statusfeld und Schnellschalter; Entladen danach ohne Fehler |
+| PS4 | Bei PS2 „Schnellschalter…“, „Klammerfarben“ und „Prüfung beim Speichern“ einschalten | Klammerfarben sofort; nach dem nächsten Speichern prüft Atlas (Compiler-Ereignisse werden nachgemeldet) |
+| PS5 | IDE mit offener Willkommensseite, sichtbaren Tastenkürzel-Tipps und offener Befehlspalette schließen | Kein Fehler beim Beenden; Zählung der Befehle gespeichert (beim nächsten Start „Atlas entdecken“ unverändert) |
+| PS6 | Umbenennen über drei Units, eine davon nicht geöffnet (Workspace-Edit mit Änderungen in offenen und geschlossenen Dateien) | Offene Puffer geändert (je ein Strg+Z-Schritt), die geschlossene Unit auf der Platte in ihrer Kodierung; ein Satz im Änderungsprotokoll |
+| PS7 | Code-Aktion, die eine Unit anlegt und eine bestehende ändert; danach Strg+Alt+Z | Neue Unit im Projekt und im Editor; Zurücknehmen trägt sie aus und legt sie in den Papierkorb |
+| PS8 | Workspace-Edit auf eine schreibgeschützte Datei | Meldung mit dem Dateinamen, keine der übrigen Dateien halb geändert |
+| PS9 | Versionsverwaltung: Willkommensseite mit Git-Projekt öffnen, dann git aus `PATH` nehmen und IDE neu starten | Erst Branch und Zustand; danach einmal „git nicht gefunden“ in der Meldungsansicht, Atlas arbeitet weiter |

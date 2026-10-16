@@ -1,4 +1,4 @@
-﻿unit Atlas.IDE.Results.Window;
+﻿unit Atlas.IDE.Foundation.ResultsWindow;
 
 // Andockbares Ergebnisfenster „Atlas-Ergebnisse“ (#400): ein IDE-Fenster
 // über INTAServices.CreateDockableForm, das den Frame TAtlasResultsFrame
@@ -64,7 +64,7 @@ uses
   Vcl.Graphics,
   Atlas.UI.Strings,
   Atlas.UI.Style.Symbol,
-  Atlas.IDE.Style.Symbol;
+  Atlas.IDE.Foundation.Symbol;
 
 type
   TResultsDock = class(TInterfacedObject, INTACustomDockableForm)
