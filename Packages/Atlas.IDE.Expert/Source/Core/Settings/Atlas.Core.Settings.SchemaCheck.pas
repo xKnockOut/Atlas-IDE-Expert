@@ -258,7 +258,7 @@ begin
           if not (Field is TJSONObject) then
             Continue;
           Scope := TJSONObject(Field).GetValue('x-scope');
-          if IsText(Scope) and not SameText(Scope.Value, AScope) then
+          if IsText(Scope) and not SameText(Scope.Value, AScope) and not SameText(Scope.Value, 'both') then
             Add(AIssues, Pair.JsonString.Value, 'gehört in die Einstellungen "' + Scope.Value + '"');
         end;
     end;

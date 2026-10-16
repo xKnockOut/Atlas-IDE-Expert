@@ -126,6 +126,7 @@ type
     FCodeLensTestUnit: TCheckBox;
     /// <summary>Code Lens mit Code-Metriken (#66).</summary>
     FCodeLensMetrics: TCheckBox;
+    FMetrics: TCheckBox;
     /// <summary>Code Lens „Test ausführen“ (#69, codeLens.tests).</summary>
     FCodeLensTests: TCheckBox;
     /// <summary>Befehl in der Befehlspalette (#68).</summary>
@@ -946,6 +947,7 @@ begin
   FBookmarksShared := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsBookmarksShared));
   FCodeLensTestUnit := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsCodeLensTestUnit));
   FCodeLensMetrics := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsCodeLensMetrics));
+  FMetrics := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsMetricsAll));
   FCodeLensTests := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsCodeLensTests));
   FTodoList := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsTodoList));
   FBaselineUpdate := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsBaselineUpdate));
@@ -2051,6 +2053,7 @@ begin
   FBookmarksShared.Checked := ASettings.BookmarksShared;
   FCodeLensTestUnit.Checked := ASettings.CodeLensTestUnit;
   FCodeLensMetrics.Checked := ASettings.CodeLensMetrics;
+  FMetrics.Checked := ASettings.Metrics;
   FCodeLensTests.Checked := ASettings.CodeLensTests;
   FTodoList.Checked := ASettings.TodoList;
   FBaselineUpdate.Checked := ASettings.BaselineUpdate;
@@ -2291,6 +2294,7 @@ begin
   ASettings.BookmarksShared := FBookmarksShared.Checked;
   ASettings.CodeLensTestUnit := FCodeLensTestUnit.Checked;
   ASettings.CodeLensMetrics := FCodeLensMetrics.Checked;
+  ASettings.Metrics := FMetrics.Checked;
   ASettings.CodeLensTests := FCodeLensTests.Checked;
   ASettings.TodoList := FTodoList.Checked;
   ASettings.BaselineUpdate := FBaselineUpdate.Checked;

@@ -62,7 +62,7 @@ type
     ButtonPadding = 10;
   private
     FSource: IAtlasUnsavedSource;
-    FBox: TPaintBox;
+    FBox: TAtlasWelcomeCanvas;
     FView: TAtlasUnsavedView;
     FButtonRects: TArray<TRect>;
     FMenu: TPopupMenu;
@@ -110,7 +110,7 @@ type
     class function LocalText(AUtc: TDateTime): string; static;
     property Source: IAtlasUnsavedSource read FSource write SetSource;
     property View: TAtlasUnsavedView read FView;
-    property PaintBox: TPaintBox read FBox;
+    property PaintBox: TAtlasWelcomeCanvas read FBox;
     property Menu: TPopupMenu read FMenu;
     property OpenFolderItem: TMenuItem read FOpenFolderItem;
     property IgnoreItem: TMenuItem read FIgnoreItem;
@@ -138,7 +138,7 @@ begin
   inherited Create(AOwner);
   FMenuRow := -1;
   FHintRow := -1;
-  FBox := TPaintBox.Create(Self);
+  FBox := TAtlasWelcomeCanvas.Create(Self);
   FBox.Parent := Body;
   FBox.Align := alClient;
   FBox.ShowHint := True;

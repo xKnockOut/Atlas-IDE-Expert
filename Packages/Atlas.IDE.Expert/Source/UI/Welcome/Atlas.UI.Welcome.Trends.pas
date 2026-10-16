@@ -58,7 +58,7 @@ type
     EmptyHeight = 40;
   private
     FSource: IAtlasTrendsSource;
-    FBox: TPaintBox;
+    FBox: TAtlasWelcomeCanvas;
     FView: TAtlasTrendView;
     // Gewählter Punkt: Reihe und Build-Nummer, damit er ein Neuladen übersteht; 0 = keiner.
     FChosenSeries: TAtlasTrendSeries;
@@ -118,7 +118,7 @@ type
     class function LocalText(AUtc: TDateTime): string; static;
     property Source: IAtlasTrendsSource read FSource write SetSource;
     property View: TAtlasTrendView read FView;
-    property PaintBox: TPaintBox read FBox;
+    property PaintBox: TAtlasWelcomeCanvas read FBox;
   end;
 
 implementation
@@ -151,7 +151,7 @@ constructor TAtlasWelcomeTrendsFrame.Create(AOwner: TComponent);
 begin
   inherited Create(AOwner);
   FHintTile := -1;
-  FBox := TPaintBox.Create(Self);
+  FBox := TAtlasWelcomeCanvas.Create(Self);
   FBox.Parent := Body;
   FBox.Align := alClient;
   FBox.ShowHint := True;

@@ -179,6 +179,7 @@
         <DCCReference Include="Common\Pascal\Atlas.Common.Pascal.Preprocessor.Tests.pas"/>
         <DCCReference Include="Common\Pascal\Atlas.Common.Pascal.LanguageFeatures.Tests.pas"/>
         <DCCReference Include="Common\Pascal\Atlas.Common.Pascal.Parser.Robustness.Tests.pas"/>
+        <DCCReference Include="Common\Pascal\Atlas.Common.Pascal.ConditionalSyntax.Tests.pas"/>
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.ProtocolReplay.pas"/>
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.Protocol.Tests.pas"/>
         <DCCReference Include="..\Application\Source\Shell\Shell.CommandLine.pas"/>

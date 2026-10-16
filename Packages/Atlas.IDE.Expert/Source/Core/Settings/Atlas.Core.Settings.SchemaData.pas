@@ -11,11 +11,11 @@ function AtlasSchemaJson: string;
 implementation
 
 const
-  Lines: array[0..1020] of string = (
+  Lines: array[0..1029] of string = (
     '{',
     '  "$schema": "http://json-schema.org/draft-07/schema#",',
     '  "title": "Atlas-Konfiguration",',
-    '  "description": "Einstellungen für Atlas. Jeder Schlüssel hat genau einen Ort (x-scope): \"project\" in atlas.json im Projektordner (Atlas › Projekt-Einstellungen), \"global\" in %APPDATA%\\Atlas\\se' + 'ttings.json für alle Projekte (Tools › Optionen › Atlas). Ein Schlüssel am falschen Ort wird ignoriert und gemeldet.",',
+    '  "description": "Einstellungen für Atlas. Jeder Schlüssel hat genau einen Ort (x-scope): \"project\" in atlas.json im Projektordner (Atlas › Projekt-Einstellungen), \"global\" in %APPDATA%\\Atlas\\se' + 'ttings.json für alle Projekte (Tools › Optionen › Atlas). \"both\" an beiden Orten: Die globale Datei gilt für alle Projekte, atlas.json übersteuert je Glied (rules: je Regel). Ein Schlüssel am falsch' + 'en Ort wird ignoriert und gemeldet.",',
     '  "type": "object",',
     '  "properties": {',
     '    "$schema": {',
@@ -202,7 +202,7 @@ const
     '          }',
     '        ]',
     '      },',
-    '      "x-scope": "project",',
+    '      "x-scope": "both",',
     '      "x-page": "Prüfregeln",',
     '      "x-control": "Tabelle aus dem Regelkatalog",',
     '      "x-issue": "#41"',
@@ -487,6 +487,15 @@ const
     '      "x-page": "Eingabehilfen",',
     '      "x-control": "Kontrollkästchen",',
     '      "x-issue": "#254"',
+    '    },',
+    '    "metrics": {',
+    '      "type": "boolean",',
+    '      "default": true,',
+    '      "description": "Kennzahlen überhaupt: false schaltet die Kennzahlen über den Methoden (codeLens.metrics) und alle Regeln metric-* für alle Projekte ab. Ein Projekt übersteuert das je Regel, inde' + 'm es sie in atlas.json unter \"rules\" ausdrücklich setzt, z. B. \"metric-method-length\": \"warning\".",',
+    '      "x-scope": "global",',
+    '      "x-page": "Editor",',
+    '      "x-control": "Kontrollkästchen",',
+    '      "x-issue": "#66"',
     '    },',
     '    "slashCommands": {',
     '      "type": "object",',

@@ -1346,6 +1346,8 @@ begin
         ReadIndex(Value)
       else if Key = 'usesCommand' then
         ExpectBoolean(Value, Key, FSettings.UsesCommand)
+      else if Key = 'metrics' then
+        ExpectBoolean(Value, Key, FSettings.Metrics)
       else if Key = 'slashCommands' then
         ReadSlashCommands(Value)
       else if Key = 'sortUses' then
@@ -1693,6 +1695,8 @@ begin
     end
     else if Key = 'usesCommand' then
       Result.UsesCommand := FileSettings.UsesCommand
+    else if Key = 'metrics' then
+      Result.Metrics := FileSettings.Metrics
     else if Key = 'slashCommands' then
     begin
       Result.SlashCommands := FileSettings.SlashCommands;

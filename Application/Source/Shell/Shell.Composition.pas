@@ -896,7 +896,7 @@ begin
       if not MetricsSourceFor(TDocumentUris.ToPath(AUri), False, Source) then
         Source.Settings := TServerSettings.Default;
       ALimits := TMetricRules.Limits(Source.Settings);
-      Result := Source.Settings.CodeLens.Metrics;
+      Result := Source.Settings.Metrics and Source.Settings.CodeLens.Metrics;
     end;
   FCodeLens.Attach(FDispatcher);
   FMetrics := TLspMetrics.Create(MetricsSourceFor,

@@ -20,6 +20,9 @@ type
     procedure GroupsByPage;
     [Test]
     procedure ClickTogglesAndStaysOpen;
+    /// <summary>Klick auf eine Überschrift klappt die Gruppe ein und wieder aus; geschaltet wird nichts.</summary>
+    [Test]
+    procedure HeaderCollapsesAndExpandsGroup;
     [Test]
     procedure ProjectValueRunsAfterClosing;
     [Test]
@@ -61,6 +64,7 @@ procedure TAtlasQuickToggleWindowTests.GroupsByPage;
 var
   Window: TAtlasQuickToggleWindow;
 begin
+  TAtlasQuickToggleWindow.ExpandAll;
   Window := TAtlasQuickToggleWindow.CreateToggles(nil, TAtlasColors.Light);
   try
     Window.SetItems(SampleItems, False);
@@ -87,6 +91,7 @@ var
 begin
   Toggled := '';
   Count := 0;
+  TAtlasQuickToggleWindow.ExpandAll;
   Window := TAtlasQuickToggleWindow.CreateToggles(nil, TAtlasColors.Light);
   try
     Window.SetItems(SampleItems, False);
@@ -96,8 +101,6 @@ begin
         Toggled := AItem.Toggle.Key;
         Inc(Count);
       end;
-    Window.ClickRow(0);
-    Assert.AreEqual(0, Count, 'Überschrift schaltet nichts');
     Window.ClickRow(1);
     Assert.AreEqual(1, Count, 'sofort');
     Assert.AreEqual('PairColors', Toggled);
@@ -118,6 +121,7 @@ begin
   Count := 0;
   Items := SampleItems;
   Items[0].Project := True;
+  TAtlasQuickToggleWindow.ExpandAll;
   Window := TAtlasQuickToggleWindow.CreateToggles(nil, TAtlasColors.Light);
   try
     Window.SetItems(Items, False);
@@ -158,6 +162,42 @@ begin
     Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.QuickTogglesAllOn), Window.AllButton.Caption);
   finally
     Window.Free;
+  end;
+end;
+
+procedure TAtlasQuickToggleWindowTests.HeaderCollapsesAndExpandsGroup;
+var
+  Window: TAtlasQuickToggleWindow;
+  Count: Integer;
+begin
+  Count := 0;
+  TAtlasQuickToggleWindow.ExpandAll;
+  Window := TAtlasQuickToggleWindow.CreateToggles(nil, TAtlasColors.Light);
+  try
+    Window.SetItems(SampleItems, False);
+    Window.OnToggle :=
+      procedure(AItem: TAtlasQuickToggleItem)
+      begin
+        Inc(Count);
+      end;
+    Window.ClickRow(0);
+    Assert.AreEqual(0, Count, 'Überschrift schaltet nichts');
+    // Editor eingeklappt: Editor, Hints, Hover.
+    Assert.AreEqual(3, Window.RowCount);
+    Assert.AreEqual('Editor', Window.RowText(0));
+    Assert.AreEqual('Hints', Window.RowText(1));
+    Assert.AreEqual(0, Window.HotRow, 'Auswahl bleibt auf der Überschrift');
+    // Neues Fenster öffnet wie zuletzt verlassen.
+    Window.Free;
+    Window := TAtlasQuickToggleWindow.CreateToggles(nil, TAtlasColors.Light);
+    Window.SetItems(SampleItems, False);
+    Assert.AreEqual(3, Window.RowCount);
+    Window.ClickRow(0);
+    Assert.AreEqual(5, Window.RowCount, 'wieder ausgeklappt');
+    Assert.AreEqual('Klammerfarben', Window.RowText(1));
+  finally
+    Window.Free;
+    TAtlasQuickToggleWindow.ExpandAll;
   end;
 end;
 
