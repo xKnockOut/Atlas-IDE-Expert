@@ -289,6 +289,14 @@ type
     FWelcomeTestsCiInterval: TEdit;
     FWelcomeTestsCiNotify: TCheckBox;
     FCiLogin: TCheckBox;
+    FWelcomeIssues: TCheckBox;
+    FWelcomeIssuesTracker: TAtlasChoiceBox;
+    FWelcomeIssuesQuery: TEdit;
+    FWelcomeIssuesStart: TAtlasChoiceBox;
+    FWelcomeIssuesBranchPattern: TEdit;
+    FWelcomeIssuesBranchBase: TEdit;
+    FWelcomeIssuesCommitPattern: TEdit;
+    FTrackerLogin: TCheckBox;
     FWelcomeQuickActions: TCheckBox;
     FWelcomeQuickActionsItems: array[TAtlasQuickAction] of TCheckBox;
     FWelcomeQuickActionsConsole: TEdit;
@@ -491,6 +499,14 @@ type
     property WelcomeTestsCiInterval: TEdit read FWelcomeTestsCiInterval;
     property WelcomeTestsCiNotify: TCheckBox read FWelcomeTestsCiNotify;
     property CiLogin: TCheckBox read FCiLogin;
+    property WelcomeIssues: TCheckBox read FWelcomeIssues;
+    property WelcomeIssuesTracker: TAtlasChoiceBox read FWelcomeIssuesTracker;
+    property WelcomeIssuesQuery: TEdit read FWelcomeIssuesQuery;
+    property WelcomeIssuesStart: TAtlasChoiceBox read FWelcomeIssuesStart;
+    property WelcomeIssuesBranchPattern: TEdit read FWelcomeIssuesBranchPattern;
+    property WelcomeIssuesBranchBase: TEdit read FWelcomeIssuesBranchBase;
+    property WelcomeIssuesCommitPattern: TEdit read FWelcomeIssuesCommitPattern;
+    property TrackerLogin: TCheckBox read FTrackerLogin;
     /// <summary>Zum Testen: Schnellaktionen je Projekt (#764).</summary>
     property WelcomeQuickActions: TCheckBox read FWelcomeQuickActions;
     function WelcomeQuickActionsItem(AAction: TAtlasQuickAction): TCheckBox;
@@ -1113,6 +1129,18 @@ begin
   FWelcomeTestsCiInterval := AddNumber(TAtlasStrings.Text(TAtlasTextId.SettingsWelcomeTestsCiInterval));
   FWelcomeTestsCiNotify := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsWelcomeTestsCiNotify));
   FCiLogin := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsCiLogin));
+  // Meine Issues (#765): Tracker aus .atlas, Abfrage, „Beginnen“ und Muster.
+  FWelcomeIssues := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsWelcomeIssues));
+  FWelcomeIssuesTracker := AddChoice(TAtlasStrings.Text(TAtlasTextId.SettingsWelcomeIssuesTracker),
+    [TAtlasStrings.Text(TAtlasTextId.SettingsWelcomeIssuesTrackerTeam), 'GitHub', 'YouTrack']);
+  FWelcomeIssuesQuery := AddTextLine(TAtlasStrings.Text(TAtlasTextId.SettingsWelcomeIssuesQuery));
+  FWelcomeIssuesStart := AddChoice(TAtlasStrings.Text(TAtlasTextId.SettingsWelcomeIssuesStart),
+    [TAtlasStrings.Text(TAtlasTextId.SettingsWelcomeIssuesStartBranch),
+    TAtlasStrings.Text(TAtlasTextId.SettingsWelcomeIssuesStartRemember)]);
+  FWelcomeIssuesBranchPattern := AddTextLine(TAtlasStrings.Text(TAtlasTextId.SettingsWelcomeIssuesBranchPattern));
+  FWelcomeIssuesBranchBase := AddTextLine(TAtlasStrings.Text(TAtlasTextId.SettingsWelcomeIssuesBranchBase));
+  FWelcomeIssuesCommitPattern := AddTextLine(TAtlasStrings.Text(TAtlasTextId.SettingsWelcomeIssuesCommitPattern));
+  FTrackerLogin := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsTrackerLogin));
   // Schnellaktionen je Projekt (#764): Schalter, je Knopf ein Häkchen, Programm für „Konsole“, zwei Tasten.
   FWelcomeQuickActions := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsWelcomeQuickActions));
   for Action := Low(TAtlasQuickAction) to High(TAtlasQuickAction) do
@@ -2161,6 +2189,22 @@ begin
   FWelcomeTestsCiInterval.Text := IntToStr(ASettings.WelcomePageTestsCiIntervalMinutes);
   FWelcomeTestsCiNotify.Checked := ASettings.WelcomePageTestsCiNotify;
   FCiLogin.Checked := ASettings.CiLogin;
+  FWelcomeIssues.Checked := ASettings.WelcomePageIssues;
+  if SameText(ASettings.WelcomePageIssuesTracker, 'github') then
+    FWelcomeIssuesTracker.Choice := 1
+  else if SameText(ASettings.WelcomePageIssuesTracker, 'youtrack') then
+    FWelcomeIssuesTracker.Choice := 2
+  else
+    FWelcomeIssuesTracker.Choice := 0;
+  FWelcomeIssuesQuery.Text := ASettings.WelcomePageIssuesQuery;
+  if SameText(ASettings.WelcomePageIssuesStart, TAtlasPluginSettings.IssuesStartRemember) then
+    FWelcomeIssuesStart.Choice := 1
+  else
+    FWelcomeIssuesStart.Choice := 0;
+  FWelcomeIssuesBranchPattern.Text := ASettings.WelcomePageIssuesBranchPattern;
+  FWelcomeIssuesBranchBase.Text := ASettings.WelcomePageIssuesBranchBase;
+  FWelcomeIssuesCommitPattern.Text := ASettings.WelcomePageIssuesCommitPattern;
+  FTrackerLogin.Checked := ASettings.TrackerLogin;
   FWelcomeQuickActions.Checked := ASettings.WelcomePageQuickActions;
   Items := TAtlasWelcomeQuickActions.ParseItems(ASettings.WelcomePageQuickActionsItems);
   for Action := Low(TAtlasQuickAction) to High(TAtlasQuickAction) do
@@ -2384,6 +2428,25 @@ begin
     ASettings.WelcomePageTestsCiIntervalMinutes);
   ASettings.WelcomePageTestsCiNotify := FWelcomeTestsCiNotify.Checked;
   ASettings.CiLogin := FCiLogin.Checked;
+  ASettings.WelcomePageIssues := FWelcomeIssues.Checked;
+  case FWelcomeIssuesTracker.Choice of
+    1:
+      ASettings.WelcomePageIssuesTracker := 'github';
+    2:
+      ASettings.WelcomePageIssuesTracker := 'youtrack';
+  else
+    ASettings.WelcomePageIssuesTracker := '';
+  end;
+  ASettings.WelcomePageIssuesQuery := Trim(FWelcomeIssuesQuery.Text);
+  if FWelcomeIssuesStart.Choice = 1 then
+    ASettings.WelcomePageIssuesStart := TAtlasPluginSettings.IssuesStartRemember
+  else
+    ASettings.WelcomePageIssuesStart := TAtlasPluginSettings.IssuesStartBranch;
+  ASettings.WelcomePageIssuesBranchPattern := Trim(FWelcomeIssuesBranchPattern.Text);
+  ASettings.WelcomePageIssuesBranchBase := Trim(FWelcomeIssuesBranchBase.Text);
+  // Nicht gekürzt: Das Leerzeichen am Ende von "{kennung} " trennt Kennung und Nachricht.
+  ASettings.WelcomePageIssuesCommitPattern := FWelcomeIssuesCommitPattern.Text;
+  ASettings.TrackerLogin := FTrackerLogin.Checked;
   ASettings.WelcomePageQuickActions := FWelcomeQuickActions.Checked;
   Items := [];
   for Action := Low(TAtlasQuickAction) to High(TAtlasQuickAction) do

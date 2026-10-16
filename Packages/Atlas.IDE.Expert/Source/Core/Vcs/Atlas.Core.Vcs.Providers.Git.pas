@@ -27,6 +27,12 @@
 //             im Terminal nicht nach. Das Zeitlimit setzt der Aufrufer.)
 // Holen (IAtlasVcsUpdate, #764):
 //   Pull      -c credential.interactive=never -c core.askPass= pull --ff-only --no-rebase --quiet
+// Branch für ein Issue (IAtlasVcsBranching, #765), ohne Netz:
+//   BranchExists for-each-ref --format=%(refname) refs/heads/<Name>
+//   CreateBranch checkout --quiet --no-track -b <Name> <Basis> --
+//                (Basis: refs/heads/<Basis>, sonst refs/remotes/origin/<Basis>, '' = HEAD)
+//   SwitchBranch checkout --quiet <Name> --
+//   HookFolders  rev-parse --git-path hooks --git-dir
 // ChangeMarker liest nur Dateien: .git/HEAD (Inhalt und Zeitstempel), die
 // Datei des Branchs unter refs/heads und packed-refs. In Worktrees und
 // Submodulen ist .git eine Datei mit "gitdir: …".
@@ -40,13 +46,14 @@ uses
 
 type
   TAtlasGitVersionControl = class(TInterfacedObject, IAtlasVersionControl, IAtlasVcsLocalWork, IAtlasVcsIncoming,
-    IAtlasVcsUpdate)
+    IAtlasVcsUpdate, IAtlasVcsBranching)
   private
     FRoot: string;
     FCommand: TAtlasVcsCommand;
     function Git(const AArguments: TArray<string>; out AOutput: TBytes): TAtlasVcsOutcome;
     function Status(AUntracked: Boolean; out AHead: TAtlasVcsHead;
       out AChanges: TArray<TAtlasVcsChange>): TAtlasVcsOutcome;
+    function RefExists(const ARef: string; out AExists: Boolean): TAtlasVcsOutcome;
   public
     /// <summary>ARoot: Ordner mit .git. AExecutable: vollständiger Pfad von git ('' = nicht installiert).</summary>
     constructor Create(const ARoot: string; const ARunner: IAtlasVcsRunner; const AExecutable: string;
@@ -75,6 +82,11 @@ type
     function Fetch(const ARemote: string): TAtlasVcsOutcome;
     { IAtlasVcsUpdate }
     function Pull: TAtlasVcsOutcome;
+    { IAtlasVcsBranching }
+    function BranchExists(const AName: string; out AExists: Boolean): TAtlasVcsOutcome;
+    function CreateBranch(const AName, ABase, AMessage: string): TAtlasVcsOutcome;
+    function SwitchBranch(const AName: string): TAtlasVcsOutcome;
+    function HookFolders(out AHooks, AGitDir: string): TAtlasVcsOutcome;
     /// <summary>Ordner mit den Verwaltungsdaten: ARoot\.git oder das Ziel von "gitdir:"; '' ohne.</summary>
     class function GitDir(const ARoot: string): string; static;
   end;
@@ -457,6 +469,102 @@ begin
     '--quiet'], Output);
 end;
 
+{ IAtlasVcsBranching (#765) }
+
+function TAtlasGitVersionControl.RefExists(const ARef: string; out AExists: Boolean): TAtlasVcsOutcome;
+var
+  Output: TBytes;
+  Line: string;
+begin
+  AExists := False;
+  // for-each-ref mit vollem Namen: genau dieser Ref oder nichts; nie ein Fehler, wenn er fehlt.
+  Result := Git(['for-each-ref', '--format=%(refname)', ARef], Output);
+  if Result <> TAtlasVcsOutcome.Ok then
+    Exit;
+  for Line in TAtlasGitParser.ParseLines(VcsUtf8(Output)) do
+    if Line = ARef then
+      AExists := True;
+end;
+
+function TAtlasGitVersionControl.BranchExists(const AName: string; out AExists: Boolean): TAtlasVcsOutcome;
+begin
+  AExists := False;
+  if not VcsSafeBranchName(AName) then
+    Exit(TAtlasVcsOutcome.Failed);
+  Result := RefExists('refs/heads/' + AName, AExists);
+end;
+
+function TAtlasGitVersionControl.CreateBranch(const AName, ABase, AMessage: string): TAtlasVcsOutcome;
+var
+  Output: TBytes;
+  StartPoint: string;
+  Exists: Boolean;
+begin
+  // AMessage braucht nur SVN; ein Git-Branch hat keine Nachricht.
+  if not VcsSafeBranchName(AName) then
+    Exit(TAtlasVcsOutcome.Failed);
+  StartPoint := 'HEAD';
+  if ABase <> '' then
+  begin
+    if not VcsSafeBranchName(ABase) then
+      Exit(TAtlasVcsOutcome.Failed);
+    Result := RefExists('refs/heads/' + ABase, Exists);
+    if Result <> TAtlasVcsOutcome.Ok then
+      Exit;
+    if Exists then
+      StartPoint := 'refs/heads/' + ABase
+    else
+    begin
+      Result := RefExists('refs/remotes/origin/' + ABase, Exists);
+      if Result <> TAtlasVcsOutcome.Ok then
+        Exit;
+      if not Exists then
+        Exit(TAtlasVcsOutcome.Failed);
+      StartPoint := 'refs/remotes/origin/' + ABase;
+    end;
+  end;
+  // --no-track: der neue Branch verfolgt nicht die Basis; den Upstream setzt erst der erste Push.
+  // "--" am Ende: StartPoint ist eine Revision, nie ein Dateiname.
+  Result := Git(['checkout', '--quiet', '--no-track', '-b', AName, StartPoint, '--'], Output);
+end;
+
+function TAtlasGitVersionControl.SwitchBranch(const AName: string): TAtlasVcsOutcome;
+var
+  Output: TBytes;
+begin
+  if not VcsSafeBranchName(AName) then
+    Exit(TAtlasVcsOutcome.Failed);
+  Result := Git(['checkout', '--quiet', AName, '--'], Output);
+end;
+
+/// <summary>APath vollständig: absolut (Laufwerk, "/" oder UNC) unverändert, sonst relativ zu ARoot.</summary>
+function AbsoluteGitPath(const ARoot, APath: string): string;
+begin
+  if (Pos(':', APath) = 2) or (Copy(APath, 1, 1) = '/') or (Copy(APath, 1, 2) = '\\') then
+    Result := VcsNormalizeDir(APath)
+  else
+    Result := VcsFullPath(ARoot, APath);
+end;
+
+function TAtlasGitVersionControl.HookFolders(out AHooks, AGitDir: string): TAtlasVcsOutcome;
+var
+  Output: TBytes;
+  Lines: TArray<string>;
+begin
+  AHooks := '';
+  AGitDir := '';
+  // Zwei Zeilen, relativ zur Wurzel oder vollständig: Hooks (mit core.hooksPath und commondir) und der eigene
+  // Verwaltungsordner.
+  Result := Git(['rev-parse', '--git-path', 'hooks', '--git-dir'], Output);
+  if Result <> TAtlasVcsOutcome.Ok then
+    Exit;
+  Lines := TAtlasGitParser.ParseLines(VcsUtf8(Output));
+  if (Length(Lines) < 2) or (Trim(Lines[0]) = '') or (Trim(Lines[1]) = '') then
+    Exit(TAtlasVcsOutcome.Failed);
+  AHooks := AbsoluteGitPath(FRoot, Trim(Lines[0]));
+  AGitDir := AbsoluteGitPath(FRoot, Trim(Lines[1]));
+end;
+
 class function TAtlasGitVersionControl.GitDir(const ARoot: string): string;
 var
   DotGit, Content: string;
@@ -474,10 +582,7 @@ begin
   if Content = '' then
     Exit;
   // Relativ zum Ordner der Datei .git, sonst absolut.
-  if (Pos(':', Content) = 2) or (Copy(Content, 1, 1) = '/') or (Copy(Content, 1, 2) = '\\') then
-    Result := VcsNormalizeDir(Content)
-  else
-    Result := VcsFullPath(ARoot, Content);
+  Result := AbsoluteGitPath(ARoot, Content);
 end;
 
 function TAtlasGitVersionControl.ChangeMarker: string;

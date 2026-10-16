@@ -1076,6 +1076,39 @@ Vorbereitung: Git-Projekt `GitDemo` (Debug und Release, Win32 und Win64) mit Ups
 | SA22 | Karte „Atlas entdecken“ und „Neu in Atlas“ | Tipp „Schnellaktionen je Projekt“ mit Bild und Strg+B; „Neu in Atlas“ nennt die Funktion mit Schalter |
 | SA23 | Protokoll (`%LOCALAPPDATA%\Atlas\Logs\atlas.log`) nach SA3–SA20 | Keine Pfade, keine Projektnamen, kein Quelltext; Meldungen mit Pfaden nur in der Meldungsansicht |
 
+### Meine Issues (#765)
+
+Abweichungen vom Issue und vom Mockup #ws12: Kein fester Platz im Atlas-Layout (das Mockup L0 blendet ws12 aus); der Bereich steht mit Reihenfolge 26 in der rechten Spalte und ist standardmäßig aus. Der Kachel-Kurztext „ATL-123 · 3 offen“ ist der Kurztext der Statuszeile `atlas.issue`. Das aktuelle Issue trägt in der Liste den Chip „aktuell“; Hinweise (abgefragt, Stand vom …, Fehler) stehen in einer Zeile über der Liste. `{kurztitel}` lässt Vorsilben aus einem Wort mit Doppelpunkt („Plugin:“) weg.
+
+Vorbereitung: Git-Projekt `GitDemo` mit `.atlas` `"tracker": {"provider": "github", "url": "https://github.com", "project": "owner/repo"}` und einem GitHub-Token (fein granuliert, Issues und Pull Requests lesen); mir zugewiesen: #753 „Atlas-Bereiche und Layout der Willkommensseite“ mit offenem PR (Branch `feature/753-…`) und Checks. SVN-Projekt `SvnDemo` (Standardlayout trunk/branches) mit YouTrack-Tracker und permanentem Token. Die Zusammenfassungen stehen in `%LOCALAPPDATA%\Atlas\projects\*.json`, Abschnitt `issues`.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| MI1 | `Atlas.Tests` bauen und ausführen | 0 Fehler, 0 Warnungen, 0 Hinweise; `TAtlasTrackerTargetTests`, `TAtlasTrackerNamingTests`, `TAtlasGitHubTrackerTests`, `TAtlasYouTrackTrackerTests`, `TAtlasCommitHookTests`, `TAtlasWelcomeIssuesTests`, `TAtlasWelcomeIssuesFrameTests`, die Vcs-Tests (Branching) und die Tests von Einstellungen, Einstellungsseite und Schnellschaltern grün |
+| MI2 | *Optionen › Willkommensseite*: „Meine Issues“ an; GitHub-Projekt öffnen, Willkommensseite anzeigen | Bereich „Meine Issues · GitDemo“ in der rechten Spalte: je Issue Kennung `#753` grau in Festbreitenschrift, Titel, Labels als Chips, verknüpfter PR als Marke „PR #760 · CI grün“ in Grün (rot, gelb für läuft); rechts „Beginnen“; Fußzeile „„Beginnen“ legt den Branch an und öffnet das Projekt.“ (Mockup #ws12) (**Abnahme**) |
+| MI3 | Klick auf `#753`; Klick auf die PR-Marke | Issue bzw. Pull Request öffnet sich im Standardbrowser |
+| MI4 | „Beginnen“ an #753 „Atlas-Bereiche und Layout der Willkommensseite“ (keine lokalen Änderungen) | Branch `feature/753-atlas-bereiche-und` von `main` angelegt und ausgecheckt, Meldung „Branch … von main angelegt, Projekt wird geöffnet.“, das Projekt öffnet sich; Zeile hat den Chip „aktuell“ und fetten Titel; Statusfeld zeigt „Issue: #753 …“ (**Abnahme**) |
+| MI5 | Nach MI4: Rückfrage zum Git-Hook mit „Ja“; in der IDE committen; dann in der Konsole `git commit -m "Test"` | Hook `.git/hooks/prepare-commit-msg` angelegt, `.git/atlas-commit-prefix` enthält `#753 `; die Nachricht im Commit-Dialog der IDE beginnt mit `#753 `, ebenso die Nachricht des Konsolen-Commits; `git commit --amend` und Merge-Nachrichten bleiben unverändert (**Abnahme**) |
+| MI6 | Projekt mit eigenem `prepare-commit-msg`: „Beginnen“ | Keine Rückfrage, Meldung „… hat schon einen eigenen Hook … Atlas ändert ihn nicht“; der fremde Hook ist unverändert; das Präfix kommt nur über den Commit-Dialog der IDE |
+| MI7 | Eine Datei ändern, „Beginnen“ an einem anderen Issue | Rückfrage „Das Projekt hat 1 lokale Änderung(en). Trotzdem Branch … anlegen bzw. auschecken?“; „Nein“ ändert nichts; „Ja“ legt an (bei Kollision bricht Git ohne Änderung ab, Meldung „Branch … nicht angelegt (…)“) (**Abnahme**) |
+| MI8 | „Beginnen“ an #753, wenn `feature/753-atlas-bereiche-und` schon existiert | Branch wird nur ausgecheckt, Meldung „Branch … ausgecheckt …“ |
+| MI9 | YouTrack: `.atlas` mit `"tracker": {"provider": "youtrack", "url": "https://firma.youtrack.cloud", "project": "ATL"}`, Token hinterlegt, Seite anzeigen | Kennung `ATL-123`, Chips mit Zustand, Priorität und Sprint; Klick auf `ATL-123` öffnet `…/issue/ATL-123` (**Abnahme**) |
+| MI10 | SVN-Projekt mit YouTrack (MI9): „Beginnen“ an ATL-123 „Speichern im Kassenmodul hängt“ | `svn copy ^/trunk ^/branches/ATL-123-speichern-im-kassenmodul` und `svn switch`; danach zeigt `svn info` den Branch, das Projekt öffnet sich (**Abnahme**) |
+| MI11 | `welcomePage.issues.start` = „nur Kennung merken“, „Beginnen“ an ATL-123, dann in der IDE committen | Kein Branch, Meldung „ATL-123 ist das aktuelle Issue; Commit-Nachrichten beginnen mit „ATL-123 ““; Nachricht im Commit-Dialog beginnt mit `ATL-123 `; Fußzeile „„Beginnen“ merkt das Issue …“ (**Abnahme**) |
+| MI12 | `welcomePage.issues.commitPattern` leeren, committen | Nachricht bleibt unverändert, keine Datei `atlas-commit-prefix`, keine Rückfrage zum Hook (**Abnahme**) |
+| MI13 | Klick auf „Issue: …“ im Statusfeld; „Ja“ | Rückfrage „Aktuelles Issue … beenden?“, danach verschwindet die Zeile, der Chip „aktuell“ ist weg, `atlas-commit-prefix` gelöscht; der Branch bleibt, aktiviert das Issue aber nicht gleich wieder |
+| MI14 | Befehlspalette „Zugang zum Issue-Tracker hinterlegen …“ (aktives Projekt mit `.atlas`); Token eingeben; dann leer lassen | Dialog „Issue-Tracker https://… (GitHub)“ mit verdecktem Feld; Meldung „Zugang … gespeichert“, der Bereich fragt sofort neu; in der Windows-Anmeldeinformationsverwaltung steht `Atlas:tracker:<Server>`; leer entfernt den Eintrag (**Abnahme**) |
+| MI15 | Kein Token hinterlegt bzw. `url` über http | Bereich zeigt „Anmeldung abgelehnt oder kein Token (Zugang zum Issue-Tracker hinterlegen)“, ohne Netzzugriff (Proxy- bzw. Firewall-Protokoll); der Befehl meldet bei http „… sendet das Token nur über https“ |
+| MI16 | Netz trennen (bzw. falsche `url`), Seite anzeigen | Kein Dialog; letzter Stand mit „Stand vom …“, ohne früheren Abruf die Fehlerart; die Seite wartet nicht (Hintergrund, 5 s) (**Abnahme**) |
+| MI17 | Seite mehrmals öffnen und schließen, IDE neu starten | Der Tracker wird je Projekt höchstens alle 10 Minuten gefragt (`issues.attempt` in der Zusammenfassung), auch nach dem Neustart; Kontextmenü „Tracker jetzt abfragen“ fragt sofort |
+| MI18 | Schalter „Meine Issues“ aus (auch über die Schnellschalter) | Bereich verschwindet ohne Neustart; kein Netzzugriff zum Tracker; Statuszeile und Präfix im Commit-Dialog entfallen, `.git/atlas-commit-prefix` wird gelöscht (der Hook tut dann nichts) (**Abnahme**) |
+| MI19 | Schnellschalter „Zugang zum Issue-Tracker“ aus | Befehl fehlt in der Palette und im Kontextmenü; die Abfrage mit schon hinterlegtem Token läuft weiter |
+| MI20 | In „Projekte“ ein anderes Projekt wählen | Titel wechselt auf „Meine Issues · <Projekt>“, die Liste zeigt dessen Tracker (bzw. „Kein Issue-Tracker in der .atlas …“) |
+| MI21 | Protokoll (`%LOCALAPPDATA%\Atlas\Logs\atlas.log`), Zusammenfassung und Registry nach MI2–MI17 ansehen | Nur Anbieter, Anzahl, Ergebnis und Fehlerart; weder Adresse, Projekt, Kennungen, Titel noch Token; kein Token in Dateien oder Registry (**Abnahme**) |
+| MI22 | Englische IDE; helles und dunkles Thema; 150 % Skalierung; Fenster *Atlas-Start* | „My issues“, „Start“, Chips und Marken lesbar, nichts abgeschnitten |
+| MI23 | Karte „Atlas entdecken“ und „Neu in Atlas“ | Tipp „Issues aus dem Tracker beginnen“ mit Bild, „Ausprobieren“ öffnet den Zugangsdialog; „Neu in Atlas“ nennt die Funktion mit Schalter |
+| MI24 | IDE während einer laufenden Abfrage schließen (Server antwortet langsam) | IDE schließt ohne Hänger |
+
 ## Atlas-Symbol (#751)
 
 | Nr. | Schritte | Erwartet |

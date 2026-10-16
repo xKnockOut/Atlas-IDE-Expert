@@ -9,6 +9,9 @@
 // (CRED_PERSIST_LOCAL_MACHINE, wandert nicht mit dem Profil).
 // Leser im Hintergrund-Thread erlaubt; Schreiben aus dem Befehl
 // „Zugang zum Build-Server hinterlegen …“.
+// Der Issue-Tracker (#765) legt seinen Zugang ebenso ab: Ziel
+// "Atlas:tracker:https://github.com" (TAtlasTrackerTarget.CredentialTarget),
+// Benutzer = Name des Trackers, Inhalt = Token, Kommentar „Atlas: Issue-Tracker“.
 
 interface
 
@@ -24,7 +27,9 @@ type
     /// <summary>Eintrag zu ATarget lesen; False ohne Eintrag.</summary>
     class function Read(const ATarget: string; out AUser, AToken: string): Boolean; static;
     /// <summary>Eintrag anlegen oder ersetzen; False bei Fehler oder zu langem Token.</summary>
-    class function Write(const ATarget, AUser, AToken: string): Boolean; static;
+    class function Write(const ATarget, AUser, AToken: string): Boolean; overload; static;
+    /// <summary>Wie Write, mit eigenem Kommentar für die Anmeldeinformationsverwaltung (#765).</summary>
+    class function Write(const ATarget, AUser, AToken, AComment: string): Boolean; overload; static;
     /// <summary>Eintrag entfernen; True auch, wenn es keinen gab.</summary>
     class function Delete(const ATarget: string): Boolean; static;
     class function Exists(const ATarget: string): Boolean; static;
@@ -95,6 +100,11 @@ begin
 end;
 
 class function TAtlasCiCredentials.Write(const ATarget, AUser, AToken: string): Boolean;
+begin
+  Result := TAtlasCiCredentials.Write(ATarget, AUser, AToken, 'Atlas: Build-Server');
+end;
+
+class function TAtlasCiCredentials.Write(const ATarget, AUser, AToken, AComment: string): Boolean;
 var
   Credential: TCredential;
   Blob: string;
@@ -108,7 +118,7 @@ begin
     Credential := Default(TCredential);
     Credential.CredType := CRED_TYPE_GENERIC;
     Credential.TargetName := PWideChar(ATarget);
-    Credential.Comment := PWideChar('Atlas: Build-Server');
+    Credential.Comment := PWideChar(AComment);
     Credential.CredentialBlobSize := Length(Blob) * SizeOf(WideChar);
     Credential.CredentialBlob := PByte(PWideChar(Blob));
     Credential.Persist := CRED_PERSIST_LOCAL_MACHINE;

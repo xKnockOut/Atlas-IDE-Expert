@@ -360,6 +360,12 @@ begin
     '"WelcomePageQuickActions":{"type":"boolean","x-feature":"WelcomePage",' +
       '"default":true,"x-page":"Willkommensseite","x-quickToggle":true,' +
       '"x-caption":"Schnellaktionen je Projekt","x-captionEn":"Quick actions per project","x-issue":"#764"},' +
+    '"WelcomePageIssues":{"type":"boolean","x-feature":"WelcomePage",' +
+      '"default":false,"x-page":"Willkommensseite","x-quickToggle":true,' +
+      '"x-caption":"Meine Issues aus dem Tracker","x-captionEn":"My issues from the tracker","x-issue":"#765"},' +
+    '"TrackerLogin":{"type":"boolean","x-feature":"WelcomePage",' +
+      '"default":true,"x-page":"Willkommensseite","x-quickToggle":true,' +
+      '"x-caption":"Zugang zum Issue-Tracker","x-captionEn":"Issue tracker access","x-issue":"#765"},' +
     '"ShortcutTips":{"type":"boolean","x-feature":"ShortcutTips",' +
       '"default":true,"x-page":"Allgemein","x-quickToggle":true,' +
       '"x-caption":"Tastenkürzel-Tipps","x-captionEn":"Keyboard shortcut tips","x-issue":"#600"},' +

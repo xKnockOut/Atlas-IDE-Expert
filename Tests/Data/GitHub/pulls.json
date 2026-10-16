@@ -1,0 +1,23 @@
+[
+  {
+    "number": 760,
+    "title": "Atlas-Bereiche und Layouts",
+    "draft": false,
+    "body": "Erste Fassung der Bereiche.",
+    "head": {"ref": "feature/753-atlas-bereiche-und", "sha": "0123456789abcdef0123456789abcdef01234567"}
+  },
+  {
+    "number": 640,
+    "title": "Fix parser",
+    "draft": true,
+    "body": "Beschreibung\n\nFixes: #598",
+    "head": {"ref": "bugfix/parser", "sha": "fedcba9876543210fedcba9876543210fedcba98"}
+  },
+  {
+    "number": 655,
+    "title": "Erwähnt #612 nur",
+    "draft": false,
+    "body": "Siehe #6120 und #612.",
+    "head": {"ref": "release/2026-10", "sha": "1111111111111111111111111111111111111111"}
+  }
+]

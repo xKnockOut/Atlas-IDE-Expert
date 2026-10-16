@@ -37,6 +37,10 @@ type
     /// <summary>Schnellaktionen der Willkommensseite (#764): Vorgaben, Normalisieren, Speichern und Laden.</summary>
     [Test]
     procedure WelcomeQuickActionOptions;
+    /// <summary>Meine Issues (#765): Vorgaben, Normalisieren (Leerzeichen am Ende des Commit-Musters bleibt),
+    /// Speichern und Laden.</summary>
+    [Test]
+    procedure WelcomeIssuesOptions;
     /// <summary>Release-Build-Wächter (#533): build.releaseGuard, build.gate, build.releaseConfigs und
     /// build.releaseChecks mit Vorgaben, Normalisieren, Speichern und Laden.</summary>
     [Test]
@@ -69,6 +73,8 @@ uses
   System.Generics.Collections,
   Atlas.Core.Notifications.Center,
   Atlas.Core.Welcome.QuickActions,
+  Atlas.Core.Tracker.Naming,
+  Atlas.Core.Welcome.Issues,
   Atlas.Core.Settings.Plugin,
   Atlas.Core.Settings.Schema,
   Atlas.Core.Settings.SchemaData,
@@ -589,6 +595,69 @@ begin
   Assert.AreEqual('/json, tryf', Loaded.GenerateMenuHidden);
   Assert.IsFalse(Loaded.GenerateMenuRecentFirst);
   Assert.IsFalse(Loaded.GenerateMenuShowCommandNames);
+end;
+
+procedure TAtlasPluginSettingsTests.WelcomeIssuesOptions;
+var
+  Settings, Loaded: TAtlasPluginSettings;
+  Store: IAtlasSettingsStore;
+begin
+  Settings := TAtlasPluginSettings.Defaults;
+  Assert.IsFalse(Settings.WelcomePageIssues, 'standardmäßig aus: kein Netzzugriff');
+  Assert.AreEqual('', Settings.WelcomePageIssuesTracker, 'aus der .atlas');
+  Assert.AreEqual('', Settings.WelcomePageIssuesQuery);
+  Assert.AreEqual('branch', Settings.WelcomePageIssuesStart);
+  Assert.AreEqual('', Settings.WelcomePageIssuesBranchPattern, 'je Versionsverwaltung');
+  Assert.AreEqual('', Settings.WelcomePageIssuesBranchBase);
+  Assert.AreEqual('{kennung} ', Settings.WelcomePageIssuesCommitPattern);
+  Assert.IsTrue(Settings.TrackerLogin);
+  // Die Einstellungen kennen den Bereich nicht (A-09): dieselben Werte wie dort.
+  Assert.AreEqual(TAtlasTrackerNaming.CommitPattern, Settings.WelcomePageIssuesCommitPattern);
+  Assert.AreEqual(TAtlasWelcomeIssues.StartName(TAtlasIssueStart.Branch), TAtlasPluginSettings.IssuesStartBranch);
+  Assert.AreEqual(TAtlasWelcomeIssues.StartName(TAtlasIssueStart.Remember),
+    TAtlasPluginSettings.IssuesStartRemember);
+  // Normalisieren.
+  Settings.WelcomePageIssuesTracker := ' YouTrack ';
+  Settings.WelcomePageIssuesQuery := '  for: me'#13#10'#Unresolved  ';
+  Settings.WelcomePageIssuesStart := 'REMEMBER';
+  Settings.WelcomePageIssuesBranchPattern := ' bugfix/{kennung} ';
+  Settings.WelcomePageIssuesBranchBase := ' develop ';
+  Settings.WelcomePageIssuesCommitPattern := '[{kennung}] ';
+  Settings.Normalize;
+  Assert.AreEqual('youtrack', Settings.WelcomePageIssuesTracker);
+  Assert.AreEqual('for: me  #Unresolved', Settings.WelcomePageIssuesQuery, 'einzeilig');
+  Assert.AreEqual('remember', Settings.WelcomePageIssuesStart);
+  Assert.AreEqual('bugfix/{kennung}', Settings.WelcomePageIssuesBranchPattern);
+  Assert.AreEqual('develop', Settings.WelcomePageIssuesBranchBase);
+  Assert.AreEqual('[{kennung}] ', Settings.WelcomePageIssuesCommitPattern, 'Leerzeichen am Ende bleibt');
+  Settings.WelcomePageIssuesTracker := 'jira';
+  Settings.WelcomePageIssuesStart := 'egal';
+  Settings.WelcomePageIssuesCommitPattern := '';
+  Settings.Normalize;
+  Assert.AreEqual('', Settings.WelcomePageIssuesTracker);
+  Assert.AreEqual('branch', Settings.WelcomePageIssuesStart);
+  Assert.AreEqual('', Settings.WelcomePageIssuesCommitPattern, 'leer = aus');
+  // Speichern und Laden.
+  Settings.WelcomePageIssues := True;
+  Settings.WelcomePageIssuesTracker := 'github';
+  Settings.WelcomePageIssuesQuery := 'label:bug';
+  Settings.WelcomePageIssuesStart := 'remember';
+  Settings.WelcomePageIssuesBranchPattern := 'issue/{nummer}';
+  Settings.WelcomePageIssuesBranchBase := 'trunk';
+  Settings.WelcomePageIssuesCommitPattern := '{kennung}: ';
+  Settings.TrackerLogin := False;
+  Store := TMemoryStore.Create;
+  Settings.Save(Store);
+  Loaded := TAtlasPluginSettings.Defaults;
+  Loaded.Load(Store);
+  Assert.IsTrue(Loaded.WelcomePageIssues);
+  Assert.AreEqual('github', Loaded.WelcomePageIssuesTracker);
+  Assert.AreEqual('label:bug', Loaded.WelcomePageIssuesQuery);
+  Assert.AreEqual('remember', Loaded.WelcomePageIssuesStart);
+  Assert.AreEqual('issue/{nummer}', Loaded.WelcomePageIssuesBranchPattern);
+  Assert.AreEqual('trunk', Loaded.WelcomePageIssuesBranchBase);
+  Assert.AreEqual('{kennung}: ', Loaded.WelcomePageIssuesCommitPattern);
+  Assert.IsFalse(Loaded.TrackerLogin);
 end;
 
 procedure TAtlasPluginSettingsTests.WelcomeQuickActionOptions;
