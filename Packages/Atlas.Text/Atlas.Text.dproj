@@ -80,6 +80,7 @@
         <DCCReference Include="Source\Fuzzy\Atlas.Text.Fuzzy.pas"/>
         <DCCReference Include="Source\Jsonc\Atlas.Text.Jsonc.pas"/>
         <DCCReference Include="Source\Entities\Atlas.Text.Entities.pas"/>
+        <DCCReference Include="Source\Defines\Atlas.Text.Defines.pas"/>
         <BuildConfiguration Include="Base">
             <Key>Base</Key>
         </BuildConfiguration>

@@ -456,6 +456,16 @@
       "text": "Nimmt alle heutigen Regeltreffer des aktiven Projekts in atlas-baseline.json auf; danach meldet Atlas nur neue. Zählt neue, entfernte und unveränderte Treffer und nennt vorher Einträge, deren Datei es nicht mehr gibt.",
       "textEn": "Records all current rule findings of the active project in atlas-baseline.json; afterwards Atlas reports only new ones. Counts added, removed and unchanged findings and first names entries whose file no longer exists.",
       "image": "Tipps\\baseline.png"
+    },
+    {
+      "id": "projectSetup",
+      "command": "Atlas.ProjectSetup",
+      "setting": "WelcomePageProjectSetup",
+      "title": "Projekt für Atlas einrichten",
+      "titleEn": "Set up project for Atlas",
+      "text": "Eine Karte je Projekt: atlas.json aus einer Vorlage anlegen, Baseline erzeugen, fehlende Units und Defines ohne Quelle finden. Jeder Schritt läuft nur auf Klick; darunter „Neu mit Atlas“ für Unit, Formular und Testklasse.",
+      "textEn": "One card per project: create atlas.json from a template, create the baseline, find missing units and defines without a source. Every step runs only on click; below it “New with Atlas” for unit, form and test class.",
+      "image": "Tipps\\einrichten.png"
     }
   ]
 }

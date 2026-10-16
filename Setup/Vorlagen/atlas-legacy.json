@@ -1,0 +1,10 @@
+{
+  "$schema": "https://raw.githubusercontent.com/xKnockOut/Atlas/main/schemas/atlas.schema.json",
+  "profile": "standard",
+  "minConfidence": "high",
+  "excludeTests": true,
+  "exclude": ["ThirdParty/**", "__history/**", "__recovery/**"],
+  "overrides": [
+    { "files": ["Generated/**"], "rules": { "*": "off" } }
+  ]
+}

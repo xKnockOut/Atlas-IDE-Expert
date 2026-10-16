@@ -67,6 +67,8 @@ type
     FSnippetProviderRef: IAtlasCompletionProvider;
     // Eigene Postfix-Vorlagen (#188): gehen an den Server, neu nach Änderung, neuem Server oder einer Minute.
     FPostfixSnippets: TAtlasSnippetList;
+    // Eigene Dateivorlagen (#759, Kopf "file:") für „Neu mit Atlas“; nicht in der Vervollständigung.
+    FFileSnippets: TAtlasSnippetList;
     FPostfixSession: TLspSession;
     FPostfixSent: UInt64;
     FSnippetStamp: string;
@@ -178,6 +180,9 @@ type
     /// <summary>Alle Code-Vorlagen (mitgeliefert, Live Templates der IDE, eigene) für das Erzeugen-Menü (#719);
     /// leer, wenn Code-Vorlagen aus sind (completion.snippets).</summary>
     function Snippets: TAtlasSnippetList;
+    /// <summary>Eigene Dateivorlagen (#759) aus dem Ordner der Code-Vorlagen; leer, wenn Code-Vorlagen aus sind.
+    /// </summary>
+    function FileSnippets: TAtlasSnippetList;
     /// <summary>Setzt ASnippet am Cursor von AView ein, mit Einrückung der Zeile und Platzhaltern (#719).</summary>
     procedure InsertSnippet(const AView: IOTAEditView; const ASnippet: TAtlasSnippet);
   end;
@@ -806,6 +811,9 @@ begin
   FPostfixSnippets := TAtlasSnippets.Postfixes(Own);
   FPostfixSession := nil;
   Own := TAtlasSnippets.WithoutPostfix(Own);
+  // Dateivorlagen (#759) legen eine ganze Datei an; „Neu mit Atlas“ holt sie über FileSnippets.
+  FFileSnippets := TAtlasSnippets.FileTemplates(Own);
+  Own := TAtlasSnippets.WithoutFileTemplates(Own);
   Ide := TAtlasLiveTemplates.LoadFolder(IdeFolder, Stats);
   // Ohne Datei- und Ordnernamen: Das Diagnoselog nennt keine Namen (#647).
   Log(Format('Code-Vorlagen: %d eigene, %d fehlerhafte übersprungen; %d aus der IDE, %d übersprungen, ' +
@@ -1444,6 +1452,15 @@ begin
     Exit;
   RefreshSnippets;
   Result := FSnippetProvider.Snippets;
+end;
+
+function TAtlasEditorCompletion.FileSnippets: TAtlasSnippetList;
+begin
+  Result := nil;
+  if not TAtlasIdeSettings.Current.Snippets then
+    Exit;
+  RefreshSnippets;
+  Result := FFileSnippets;
 end;
 
 procedure TAtlasEditorCompletion.InsertSnippet(const AView: IOTAEditView; const ASnippet: TAtlasSnippet);

@@ -60,6 +60,8 @@ type
     /// <summary>Abschnitt "baseline" (#97) für Projektverlauf (#758) und Einrichtung (#759).</summary>
     [Test]
     procedure BaselineRoundTripAndUnknownFields;
+    [Test]
+    procedure SetupRoundTripAndLimits;
   end;
 
 implementation
@@ -520,6 +522,71 @@ begin
   Json := TAtlasProjectSummaries.ToJson(Read);
   Assert.Contains(Json, '"trend":[1,2]');
   Assert.IsTrue(Pos('"updated"', Json) = 0, Json);
+end;
+
+procedure TAtlasProjectSummaryTests.SetupRoundTripAndLimits;
+var
+  Summary, Read: TAtlasProjectSummary;
+  Stamp: TDateTime;
+  Json: string;
+  Finding: TAtlasSetupFinding;
+  Index: Integer;
+begin
+  Stamp := EncodeDate(2026, 10, 15) + EncodeTime(9, 30, 0, 0);
+  Summary := TAtlasProjectSummary.Create(Project);
+  Assert.IsFalse(Summary.Setup.Known);
+  Assert.IsFalse(Summary.Setup.PathsClean);
+  Summary.Setup.Known := True;
+  Summary.Setup.Dismissed := True;
+  Summary.Setup.DismissedAt := Stamp;
+  Json := TAtlasProjectSummaries.ToJson(Summary);
+  Assert.Contains(Json, '"setup":{"dismissed":true,"dismissedAt":"2026-10-15T09:30:00Z"}');
+  Summary.Setup.Dismissed := False;
+  Summary.Setup.Checked := True;
+  Summary.Setup.CheckedAt := Stamp;
+  Summary.Setup.Files := 12;
+  Summary.Setup.MissingUnitCount := 60;
+  Summary.Setup.UndefinedDefineCount := 1;
+  for Index := 1 to 60 do
+  begin
+    Finding.Name := 'Unit' + IntToStr(Index);
+    Finding.FileName := 'Src\Main.pas';
+    Finding.Line := Index;
+    Finding.Count := 1;
+    Summary.Setup.MissingUnits := Summary.Setup.MissingUnits + [Finding];
+  end;
+  Finding.Name := 'USE_LOG';
+  Finding.FileName := '';
+  Finding.Line := 0;
+  Finding.Count := 3;
+  Summary.Setup.UndefinedDefines := [Finding];
+  Json := TAtlasProjectSummaries.ToJson(Summary);
+  Assert.Contains(Json, '"setup":{"paths":{"at":"2026-10-15T09:30:00Z","files":12,"unreadable":0,' +
+    '"missingUnits":60,"undefinedDefines":1,"units":[{"name":"Unit1","file":"Src\\Main.pas","line":1,"count":1}');
+  Assert.Contains(Json, '"defines":[{"name":"USE_LOG","count":3}]');
+  Assert.IsTrue(Pos('"Unit51"', Json) = 0, 'höchstens MaxFindings je Liste');
+  Assert.IsTrue(TAtlasProjectSummaries.Parse(Json, Read));
+  Assert.IsTrue(Read.Setup.Known);
+  Assert.IsFalse(Read.Setup.Dismissed);
+  Assert.IsTrue(Read.Setup.Checked);
+  Assert.IsTrue(Read.Setup.CheckedAt = Stamp);
+  Assert.AreEqual(12, Read.Setup.Files);
+  Assert.AreEqual(60, Read.Setup.MissingUnitCount);
+  Assert.AreEqual(TAtlasProjectSetup.MaxFindings, Integer(Length(Read.Setup.MissingUnits)));
+  Assert.AreEqual('Src\Main.pas', Read.Setup.MissingUnits[0].FileName);
+  Assert.AreEqual(3, Read.Setup.UndefinedDefines[0].Count);
+  Assert.IsFalse(Read.Setup.PathsClean);
+  // Sauber; unbekannte Felder bleiben, Zähler nie kleiner als die Funde.
+  Assert.IsTrue(TAtlasProjectSummaries.Parse('{"setup": {"dismissed": false, "x": 1, "paths": {"at": ' +
+    '"2026-10-15T09:30:00Z", "missingUnits": 0, "undefinedDefines": 0, "units": [], "defines": [], "y": 2}}}', Read));
+  Assert.IsTrue(Read.Setup.PathsClean);
+  Json := TAtlasProjectSummaries.ToJson(Read);
+  Assert.Contains(Json, '"x":1');
+  Assert.Contains(Json, '"y":2');
+  Assert.IsTrue(TAtlasProjectSummaries.Parse('{"setup": {"paths": {"missingUnits": 0, "units": [{"name": "A"}, ' +
+    '{"file": "ohne Namen"}]}}}', Read));
+  Assert.AreEqual(1, Read.Setup.MissingUnitCount);
+  Assert.AreEqual(1, Read.Setup.MissingUnits[0].Count);
 end;
 
 initialization
