@@ -30,6 +30,8 @@ type
     [Test]
     procedure ReadsCodeLens;
     [Test]
+    procedure MetricsSwitchesOffMetricRules;
+    [Test]
     procedure ChecksMetricLimitOption;
     [Test]
     procedure ChecksTodoKeywordsOption;
@@ -85,6 +87,8 @@ type
 implementation
 
 uses
+  Atlas.Common.Rules.Contract,
+  Atlas.Common.Rules.Engine,
   System.SysUtils,
   System.IOUtils,
   Atlas.Common.Configuration.Contract,
@@ -663,6 +667,30 @@ begin
   // Die Datei ersetzt den Block aus dem Editor.
   Settings := TConfigurationParser.ParseLayered('{"codeLens": {"metrics": false}}', '{"codeLens": {}}', Issues);
   Assert.IsTrue(Settings.CodeLens.Metrics);
+end;
+
+procedure TConfigurationParserTests.MetricsSwitchesOffMetricRules;
+var
+  Settings: TServerSettings;
+  Issues: TArray<TConfigurationIssue>;
+  Length_, Other: TRuleDescriptor;
+begin
+  Length_ := TRuleDescriptor.Create('metric-method-length', TRuleSeverity.Warning, 'Länge');
+  Other := TRuleDescriptor.Create('empty-except', TRuleSeverity.Warning, 'Leer');
+  Settings := Parse('{}', Issues);
+  Assert.IsTrue(Settings.Metrics, 'Kennzahlen standardmäßig an');
+  Assert.AreNotEqual(Ord(TRuleSeverity.Off), Ord(TRuleEngine.EffectiveSeverity(Length_, Settings, '')));
+  Settings := Parse('{"metrics": false}', Issues);
+  Assert.AreEqual(0, Integer(Length(Issues)));
+  Assert.IsFalse(Settings.Metrics);
+  Assert.AreEqual(Ord(TRuleSeverity.Off), Ord(TRuleEngine.EffectiveSeverity(Length_, Settings, '')));
+  Assert.AreNotEqual(Ord(TRuleSeverity.Off), Ord(TRuleEngine.EffectiveSeverity(Other, Settings, '')),
+    'andere Regeln bleiben');
+  // Das Projekt setzt die Regel ausdrücklich: sie gilt trotz des globalen Schalters.
+  Settings := Parse('{"metrics": false, "rules": {"metric-method-length": "error"}}', Issues);
+  Assert.AreEqual(Ord(TRuleSeverity.Error), Ord(TRuleEngine.EffectiveSeverity(Length_, Settings, '')));
+  Parse('{"metrics": 1}', Issues);
+  Assert.AreEqual(1, Integer(Length(Issues)));
 end;
 
 procedure TConfigurationParserTests.ChecksMetricLimitOption;

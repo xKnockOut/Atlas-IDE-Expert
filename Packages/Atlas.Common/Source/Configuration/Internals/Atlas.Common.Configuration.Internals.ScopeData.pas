@@ -3,12 +3,13 @@
 // Erzeugt von Tools/Update-ConfigDoc.ps1 aus schemas/atlas.schema.json (x-scope);
 // nicht von Hand ändern. Ort jedes Schlüssels: global = %APPDATA%\Atlas\settings.json,
 // Projekt = atlas.json. Gemischte Objekte stehen je Glied als "objekt.glied" da.
+// Schlüssel mit x-scope "both" stehen in beiden Listen.
 
 interface
 
 const
   /// <summary>Schlüssel für alle Projekte (settings.json).</summary>
-  GlobalSettingPaths: array[0..24] of string = (
+  GlobalSettingPaths: array[0..26] of string = (
     'delphiVersion',
     'language',
     'compiler',
@@ -18,6 +19,7 @@ const
     'completion.keywords',
     'completion.postfixTemplates',
     'usesCommand',
+    'metrics',
     'slashCommands',
     'memoryBudgetMb',
     'index.projectGroup',
@@ -33,7 +35,8 @@ const
     'mcp.disabledTools',
     'logLevel',
     'logFile',
-    'traceFile');
+    'traceFile',
+    'rules');
   /// <summary>Schlüssel des Projekts (atlas.json).</summary>
   ProjectSettingPaths: array[0..24] of string = (
     'encoding',

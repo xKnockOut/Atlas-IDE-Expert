@@ -9,7 +9,9 @@
 // Filter entfernt aus einem Text die Schlüssel des anderen Orts und meldet sie
 // als Warnung; ein Schlüssel am falschen Ort wirkt also nicht, auch nicht als
 // Überschreibung. Gemischte Objekte (index, completion) werden je Glied
-// gefiltert. Die Zuordnung erzeugt Tools/Update-ConfigDoc.ps1 aus x-scope im
+// gefiltert. Ausnahme rules (x-scope "both"): Prüfregeln gelten global für alle
+// Projekte, atlas.json übersteuert je Regel (Effective führt Objekte je Glied
+// zusammen). Die Zuordnung erzeugt Tools/Update-ConfigDoc.ps1 aus x-scope im
 // Schema (Internals.ScopeData).
 // Effective setzt die Ebenen zusammen: global < Editor < Projekt. Die
 // Editor-Ebene (initializationOptions und didChangeConfiguration) zählt wie
@@ -27,8 +29,9 @@ uses
 
 type
 {$SCOPEDENUMS ON}
-  /// <summary>Unknown: Schlüssel, den das Schema nicht kennt; der Parser meldet ihn selbst.</summary>
-  TConfigurationScope = (Unknown, Global, Project);
+  /// <summary>Unknown: Schlüssel, den das Schema nicht kennt; der Parser meldet ihn selbst. Both: an beiden
+  /// Orten erlaubt (rules), das Projekt übersteuert je Glied.</summary>
+  TConfigurationScope = (Unknown, Global, Project, Both);
 {$SCOPEDENUMS OFF}
 
   TConfigurationScopes = class
@@ -114,6 +117,8 @@ class function TConfigurationScopes.ScopeOf(const APath: string): TConfiguration
 var
   Dot: Integer;
 begin
+  if Listed(APath, GlobalSettingPaths) and Listed(APath, ProjectSettingPaths) then
+    Exit(TConfigurationScope.Both);
   if Listed(APath, GlobalSettingPaths) then
     Exit(TConfigurationScope.Global);
   if Listed(APath, ProjectSettingPaths) then
@@ -174,7 +179,7 @@ var
 
   function Keeps(AScope: TConfigurationScope): Boolean;
   begin
-    Result := (AScope = TConfigurationScope.Unknown) or (AScope = AKeep);
+    Result := (AScope = TConfigurationScope.Unknown) or (AScope = TConfigurationScope.Both) or (AScope = AKeep);
   end;
 
 begin

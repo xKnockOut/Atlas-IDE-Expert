@@ -42,6 +42,7 @@ type
 implementation
 
 uses
+  Winapi.Windows,
   System.Generics.Collections,
   Vcl.Controls,
   Vcl.Graphics,
@@ -240,6 +241,9 @@ begin
     begin
       Theme(Plugin.FClient);
       Plugin.FClient.UpdateContent;
+      // Auch Panels und Überschriften, nicht nur die Zeichenflächen: sonst bleibt der alte Hintergrund stehen.
+      if Plugin.FClient.HandleAllocated then
+        RedrawWindow(Plugin.FClient.Handle, nil, 0, RDW_ERASE or RDW_INVALIDATE or RDW_ALLCHILDREN or RDW_FRAME);
     end;
 end;
 

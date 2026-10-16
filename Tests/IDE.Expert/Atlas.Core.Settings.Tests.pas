@@ -1029,7 +1029,8 @@ begin
   Assert.DoesNotContain(Paths, '|index.projectGroup|');
   Assert.DoesNotContain(Paths, '|hints.xmlDocFull|');
   Assert.DoesNotContain(Paths, '|delphiVersion|');
-  Assert.DoesNotContain(Paths, '|rules|');
+  // rules gilt an beiden Orten (x-scope "both"): Tabelle auch in den globalen Einstellungen.
+  Assert.Contains(Paths, '|rules|');
   // Jedes umgeleitete Feld ist im Schema global.
   for Field in Fields do
     if Pos('|' + Field.Path + '|', '|index.projectGroup|memoryBudgetMb|compiler.onSave|slashCommands.enabled|') > 0 then

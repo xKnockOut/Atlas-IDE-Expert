@@ -14,7 +14,8 @@
     - Wächter: Die Schlüssel in Atlas.Common.Configuration.Parser müssen genau
       denen im Schema entsprechen (Validierung und Schichtung).
     - Atlas.Common.Configuration.Internals.ScopeData: Ort jedes Schlüssels aus
-      x-scope ("global" = %APPDATA%\Atlas\settings.json, "project" = atlas.json).
+      x-scope ("global" = %APPDATA%\Atlas\settings.json, "project" = atlas.json,
+      "both" = an beiden Orten, das Projekt übersteuert je Glied; steht in beiden Listen).
       Jeder Schlüssel der obersten Ebene braucht x-scope; ein Glied darf mit
       eigenem x-scope abweichen (gemischtes Objekt wie index, completion).
 
@@ -61,6 +62,7 @@ function Scope-Of([hashtable] $Node, [string] $Inherited) { if (Has $Node 'x-sco
 function Scope-Text([string] $Scope) {
     if ($Scope -eq 'global') { return 'global (settings.json)' }
     if ($Scope -eq 'project') { return 'Projekt (atlas.json)' }
+    if ($Scope -eq 'both') { return 'global und Projekt' }
     return ''
 }
 
@@ -94,7 +96,7 @@ $Out = New-Object System.Text.StringBuilder
 [void]$Out.AppendLine()
 [void]$Out.AppendLine((Escape $Schema['description']))
 [void]$Out.AppendLine()
-[void]$Out.AppendLine('Jeder Schlüssel hat genau einen Ort (Spalte „Ort“): Projekt-Schlüssel stehen in `atlas.json` im Projektordner (im Plugin *Atlas › Projekt-Einstellungen*), globale in `%APPDATA%\Atlas\settings.json` für alle Projekte (im Plugin *Tools › Optionen › Atlas*). Ein Schlüssel am falschen Ort wird ignoriert und als Warnung gemeldet. Fehlende Schlüssel nehmen den Standardwert. In der IDE bestimmt die laufende IDE die Delphi-Version (`delphiVersion` gilt dort nicht). Die Prüfregeln stehen in [Regeln.md](Regeln.md).')
+[void]$Out.AppendLine('Jeder Schlüssel hat genau einen Ort (Spalte „Ort“): Projekt-Schlüssel stehen in `atlas.json` im Projektordner (im Plugin *Atlas › Projekt-Einstellungen*), globale in `%APPDATA%\Atlas\settings.json` für alle Projekte (im Plugin *Tools › Optionen › Atlas*). Ausnahme `rules`: Prüfregeln gehen an beiden Orten, global für alle Projekte, `atlas.json` übersteuert je Regel. Ein Schlüssel am falschen Ort wird ignoriert und als Warnung gemeldet. Fehlende Schlüssel nehmen den Standardwert. In der IDE bestimmt die laufende IDE die Delphi-Version (`delphiVersion` gilt dort nicht). Die Prüfregeln stehen in [Regeln.md](Regeln.md).')
 [void]$Out.AppendLine()
 [void]$Out.AppendLine('`atlas.json` liegt im Repository und gilt für alle im Team (#486). Zugangsdaten (Schlüssel wie `token`, `password`, `user` auf jeder Ebene, Adressen wie `https://user:pw@…` oder `?token=…`) und absolute Pfade (Laufwerk oder UNC) in den Pfad-Einstellungen (`project`, `testUnits.folder`, `testUnits.project`, `exclude`, `index.exclude`, `overrides[].files`) werden beim Lesen ignoriert und als Warnung gemeldet. Glob-Muster ab dem Projektordner (`/Generated/**`) und relative Pfade (`..\Tests`) bleiben erlaubt. Die globale `settings.json` ist persönlich und davon ausgenommen. Die Team-Einstellungen des Plugins stehen in der eigenen Projektdatei `.atlas` (siehe [Einstellungen.md](Einstellungen.md)).')
 [void]$Out.AppendLine()
@@ -142,7 +144,7 @@ foreach ($Name in $Schema['properties'].Keys) {
     if (Has $P 'properties') { $Setting += ': ' + (($P['properties'].Keys | ForEach-Object { '`' + $_ + '`' }) -join ', ') }
     $Default = if ($P.ContainsKey('default')) { Format-Value $P['default'] } else { '–' }
     $Scope = Scope-Of $P ''
-    $Source = if ($Scope -eq 'global') { 'settings.json (Tools › Optionen › Atlas)' } else { 'atlas.json (Atlas › Projekt-Einstellungen)' }
+    $Source = if ($Scope -eq 'global') { 'settings.json (Tools › Optionen › Atlas)' } elseif ($Scope -eq 'both') { 'settings.json (Tools › Optionen › Atlas) und atlas.json (Atlas › Projekt-Einstellungen)' } else { 'atlas.json (Atlas › Projekt-Einstellungen)' }
     if (Has $P 'properties') {
         $Other = @($P['properties'].Keys | Where-Object { (Scope-Of $P['properties'][$_] $Scope) -ne $Scope })
         if ($Other.Count -gt 0) {
@@ -252,7 +254,7 @@ foreach ($Name in $SchemaKeys) {
     foreach ($Meta in 'x-page', 'x-control', 'x-issue', 'x-scope') {
         if (-not (Has $P $Meta)) { $Problems.Add("Schema: ""$Name"" ohne $Meta") }
     }
-    if ((Has $P 'x-scope') -and ('global', 'project' -cnotcontains $P['x-scope'])) { $Problems.Add("Schema: ""$Name"" mit x-scope ""$($P['x-scope'])""; erlaubt sind global und project") }
+    if ((Has $P 'x-scope') -and ('global', 'project', 'both' -cnotcontains $P['x-scope'])) { $Problems.Add("Schema: ""$Name"" mit x-scope ""$($P['x-scope'])""; erlaubt sind global, project und both") }
     if (Has $P 'properties') {
         foreach ($Sub in $P['properties'].Keys) {
             $S = $P['properties'][$Sub]
@@ -323,6 +325,7 @@ foreach ($Name in $Schema['properties'].Keys) {
         }
     }
     elseif ($Scope -eq 'global') { $GlobalPaths.Add($Name) }
+    elseif ($Scope -eq 'both') { $GlobalPaths.Add($Name); $ProjectPaths.Add($Name) }
     else { $ProjectPaths.Add($Name) }
 }
 function Pascal-List([string] $Name, $Items) {
@@ -337,7 +340,8 @@ $ScopeLines = @(
     'unit Atlas.Common.Configuration.Internals.ScopeData;', '',
     '// Erzeugt von Tools/Update-ConfigDoc.ps1 aus schemas/atlas.schema.json (x-scope);',
     '// nicht von Hand ändern. Ort jedes Schlüssels: global = %APPDATA%\Atlas\settings.json,',
-    '// Projekt = atlas.json. Gemischte Objekte stehen je Glied als "objekt.glied" da.', '',
+    '// Projekt = atlas.json. Gemischte Objekte stehen je Glied als "objekt.glied" da.',
+    '// Schlüssel mit x-scope "both" stehen in beiden Listen.', '',
     'interface', '', 'const', '  /// <summary>Schlüssel für alle Projekte (settings.json).</summary>') +
     (Pascal-List 'GlobalSettingPaths' $GlobalPaths) +
     @('  /// <summary>Schlüssel des Projekts (atlas.json).</summary>') +

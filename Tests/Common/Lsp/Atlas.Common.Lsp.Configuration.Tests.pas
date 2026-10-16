@@ -290,7 +290,8 @@ begin
   Assert.AreEqual('Win64', FConfiguration.Settings.Platform);
   Assert.AreEqual(TServerSettings.Default.Config, FConfiguration.Settings.Config);
   Assert.AreEqual('en', FConfiguration.Settings.Language);
-  Assert.AreEqual(0, Integer(Length(FConfiguration.Settings.Rules)), 'Regeln nur im Projekt');
+  // Ausnahme rules (x-scope "both"): global für alle Projekte, atlas.json übersteuert je Regel.
+  Assert.AreEqual(2, Integer(Length(FConfiguration.Settings.Rules)), 'Regeln auch global');
   FConfiguration.SetEditorSettings('{"language": "de"}');
   Assert.AreEqual('de', FConfiguration.Settings.Language);
   FConfiguration.SetEditorSettings('');
