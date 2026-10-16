@@ -39,6 +39,9 @@
 // etwa die Metriken des Projekts nach einem Build; ebenso abgesichert.
 // RunCommandsAsync (#68) schickt mehrere Befehle nacheinander in einem
 // Hintergrundlauf, etwa Metriken und TODOs nach einem Build.
+// Serverprozess, Ordnerbeobachter und die Quellen von Vervollständigung und
+// Parameter-Hint aus dem Kern setzt die Kompositionswurzel ein
+// (TAtlasCodeInsightAdapters, A-09).
 
 interface
 
@@ -49,10 +52,10 @@ uses
   System.SyncObjs,
   ToolsAPI,
   Atlas.Core.Status.Lines,
-  Atlas.Core.Lsp.Adapters.ServerProcess,
+  Atlas.Core.Lsp.Client,
   Atlas.Core.Lsp.Session,
   Atlas.Core.Files.WatchedChanges,
-  Atlas.Core.Files.Adapters.FolderWatcher,
+  Atlas.Core.Signature.Contract,
   Atlas.IDE.Completion.Editor,
   Atlas.IDE.Signature.Editor,
   Atlas.IDE.Hover.Editor,
@@ -62,11 +65,21 @@ uses
   Atlas.IDE.Problems.Controller;
 
 type
+  /// <summary>Adapter des Kerns, eingesetzt von der Kompositionswurzel.</summary>
+  TAtlasCodeInsightAdapters = record
+    /// <summary>Startet AtlasServer.exe; löst bei Fehlern EOSError aus.</summary>
+    NewServer: TFunc<string, string, IAtlasLspServer>;
+    NewFolderWatcher: TFunc<TAtlasWatchedChanges, IAtlasFolderWatcher>;
+    NewCompletionSources: TAtlasCompletionSourcesFactory;
+    NewSignatureSource: TFunc<TAtlasSessionFunc, IAtlasSignatureSource>;
+  end;
+
   TAtlasCodeInsightManager = class(TInterfacedObject, IOTACodeInsightManager, IOTACodeInsightManager90,
     IOTACodeInsightSelection)
   private
     FEnabled: Boolean;
-    FServer: TLspServerProcess;
+    FAdapters: TAtlasCodeInsightAdapters;
+    FServer: IAtlasLspServer;
     FSession: TLspSession;
     FLastError: string;
     // Ob AtlasServer.exe da ist, höchstens alle paar Sekunden neu geprüft.
@@ -78,7 +91,7 @@ type
     FContextsChecked: Cardinal;
     /// <summary>Änderungen außerhalb der IDE (#395).</summary>
     FFileChanges: TAtlasWatchedChanges;
-    FFolderWatcher: TAtlasFolderWatcher;
+    FFolderWatcher: IAtlasFolderWatcher;
     FDiagnose: Boolean;
     FCompletion: TAtlasEditorCompletion;
     FSignature: TAtlasEditorSignature;
@@ -153,7 +166,7 @@ type
     class function DiagnoseLog: string; static;
     /// <summary>Server ohne eingestellten Pfad: neben dem Plugin, sonst Output\Win64\Debug\Bin im Repo.</summary>
     class function DefaultServerPath: string; static;
-    constructor Create;
+    constructor Create(const AAdapters: TAtlasCodeInsightAdapters);
     destructor Destroy; override;
     /// <summary>Benachrichtigung an den Server, falls eine Sitzung läuft (#527); übernimmt AParams.
     /// Startet den Server dafür nicht.</summary>
@@ -241,22 +254,23 @@ uses
   System.StrUtils,
   System.RegularExpressions,
   System.Win.Registry,
-  Atlas.IDE.Settings.Store,
+  Atlas.IDE.Foundation.Settings,
   Atlas.Core.Diagnostics.Hangs,
   Atlas.Core.Lsp.Client,
   Atlas.Core.Problems.Contract,
   Winapi.Windows,
-  Atlas.IDE.Editor.Buffer,
-  Atlas.IDE.Editor.Snapshot,
+  Atlas.IDE.Foundation.EditorBuffer,
+  Atlas.IDE.Foundation.EditorSnapshot,
   Atlas.Core.Completion.Word,
-  Atlas.Core.Projects.Context,
+  Atlas.Core.Projects.Contract,
   Atlas.IDE.Projects.Context,
   Atlas.Core.Lsp.WorkspaceEdits,
   Atlas.UI.Strings,
   Atlas.IDE.Editor.WorkspaceEdit,
   Atlas.Core.Diagnostics.MainThread,
   Atlas.Core.Diagnostics.TimeLimit,
-  Atlas.Core.Diagnostics.Shutdown;
+  Atlas.Core.Diagnostics.Shutdown,
+  Atlas.Core.Editor.WorkspacePlan;
 
 var
   /// <summary>Lebender Manager; nach dem Freigeben nil, damit späte applyEdit-Aufrufe nichts mehr tun.</summary>
@@ -293,9 +307,10 @@ end;
 
 { TAtlasCodeInsightManager }
 
-constructor TAtlasCodeInsightManager.Create;
+constructor TAtlasCodeInsightManager.Create(const AAdapters: TAtlasCodeInsightAdapters);
 begin
   inherited Create;
+  FAdapters := AAdapters;
   LiveManager := Self;
   FEnabled := True;
   FDiagnose := DiagnoseEnabled;
@@ -304,7 +319,7 @@ begin
   FCommandIdle := TEvent.Create(nil, True, True, '');
   Diagnose('Plugin geladen: ' + GetModuleName(HInstance));
   FFileChanges := TAtlasWatchedChanges.Create;
-  FFolderWatcher := TAtlasFolderWatcher.Create(FFileChanges);
+  FFolderWatcher := FAdapters.NewFolderWatcher(FFileChanges);
   // Gemeinsamer Pufferstand für Probleme und Inlay-Hints (P-04).
   TAtlasEditorSnapshots.Install;
   FProblems := TAtlasProblemsController.Create(
@@ -376,7 +391,7 @@ begin
   if LiveManager = Self then
     LiveManager := nil;
   // Hält die Beobachter-Threads an; erst danach darf der Sammler weg.
-  FreeAndNil(FFolderWatcher);
+  FFolderWatcher := nil;
   FreeAndNil(FFileChanges);
   // Vor der Sitzung: wartet auf laufende Anfragen und meldet Tasten und Beobachter ab.
   FreeAndNil(FInlayHints);
@@ -540,7 +555,7 @@ begin
     Diagnose('Sitzung beendet, während ein Zeitlimit-Arbeiter noch lief');
   FCommandIdle.WaitFor(5000);
   FreeAndNil(FSession);
-  FreeAndNil(FServer);
+  FServer := nil;
 end;
 
 procedure TAtlasCodeInsightManager.SetPhase(APhase: TAtlasServerPhase; const AError: string);
@@ -765,7 +780,7 @@ begin
   end;
   SetPhase(TAtlasServerPhase.Starting, '');
   try
-    FServer := TLspServerProcess.Create(Path, Arguments);
+    FServer := FAdapters.NewServer(Path, Arguments);
     // Ende des Prozesses (z. B. im Task-Manager beendet) färbt das Statusfeld sofort rot (#591).
     FServer.Client.OnClosed :=
       procedure
@@ -866,7 +881,8 @@ begin
             Reason := 'Dateioperationen (anlegen, umbenennen, löschen) werden nicht unterstützt.'
           else
             try
-              Outcome := TAtlasIdeWorkspaceEdit.Apply(AEdit, TAtlasIdeSettings.Current.OpenForEdits,
+              Outcome := TAtlasIdeWorkspaceEdit.Apply(AEdit,
+                TAtlasUnopenedPolicies.FromSetting(TAtlasIdeSettings.Current.OpenForEdits),
                 TAtlasStrings.Text(TAtlasTextId.UndoActionServer));
               Manager.Diagnose(Format('workspace/applyEdit: %d Änderungen in %d Dateien %s', [Outcome.Edits,
                 Outcome.Files, Outcome.Error]));
@@ -1058,11 +1074,12 @@ function TAtlasCodeInsightManager.Signature: TAtlasEditorSignature;
 begin
   if FSignature = nil then
     FSignature := TAtlasEditorSignature.Create(
-      function: TLspSession
-      begin
-        // Aufgerufen im Zeitlimit-Arbeiter (#493): nur eine laufende Sitzung, nie ein Start (A-01).
-        Result := RunningSession;
-      end,
+      FAdapters.NewSignatureSource(
+        function: TLspSession
+        begin
+          // Aufgerufen im Zeitlimit-Arbeiter (#493): nur eine laufende Sitzung, nie ein Start (A-01).
+          Result := RunningSession;
+        end),
       function: Boolean
       begin
         Result := (FCompletion <> nil) and FCompletion.Visible;
@@ -1087,7 +1104,8 @@ begin
       procedure(const AMessage: string)
       begin
         Diagnose(AMessage);
-      end);
+      end,
+      FAdapters.NewCompletionSources);
     // Nach "Add(|)" den Parameter-Hint öffnen (#430).
     FCompletion.OnOpenSignature :=
       procedure

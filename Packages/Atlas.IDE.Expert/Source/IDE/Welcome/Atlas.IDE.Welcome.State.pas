@@ -73,7 +73,7 @@ uses
   Atlas.Core.Settings.Plugin,
   Atlas.UI.Strings,
   Atlas.UI.Welcome.Frame,
-  Atlas.IDE.Settings.Store;
+  Atlas.IDE.Foundation.Settings;
 
 var
   // Laufende Quelle; für Arbeit, die über die Nachrichtenschleife kommt.

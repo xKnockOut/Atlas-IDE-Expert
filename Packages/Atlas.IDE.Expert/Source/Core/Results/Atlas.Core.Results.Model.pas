@@ -10,6 +10,7 @@ interface
 
 uses
   System.SysUtils,
+  Atlas.Core.Lsp.Contract,
   Atlas.Core.Lsp.WorkspaceEdits;
 
 type
@@ -36,34 +37,10 @@ type
   /// <summary>Liefert den Text einer Datei (offener Puffer oder Platte); '' wenn sie fehlt.</summary>
   TAtlasReadText = reference to function(const AFileName: string): string;
 
-  TAtlasSymbol = record
-    Name: string;
-    /// <summary>Enthaltende Klasse oder Unit (containerName).</summary>
-    Container: string;
-    /// <summary>LSP SymbolKind.</summary>
-    Kind: Integer;
-    FileName: string;
-    Line: Integer;
-    Character: Integer;
-  end;
-
-{$SCOPEDENUMS ON}
-  /// <summary>Richtung einer Hierarchie: Aufrufer, Aufgerufene, Vorfahren, Nachfahren.</summary>
-  TAtlasHierarchyDirection = (Incoming, Outgoing, Supertypes, Subtypes);
-{$SCOPEDENUMS OFF}
-
-  TAtlasHierarchyItem = record
-    Name: string;
-    Detail: string;
-    /// <summary>LSP SymbolKind.</summary>
-    Kind: Integer;
-    FileName: string;
-    /// <summary>Anfang des Namens (selectionRange), 0-basiert.</summary>
-    Line: Integer;
-    Character: Integer;
-    /// <summary>Der Eintrag als JSON, so wie ihn der Server für Folgeanfragen zurückhaben will.</summary>
-    Raw: string;
-  end;
+  /// <summary>Seit A-09 im Lsp-Feature (Atlas.Core.Lsp.Contract); Aliase für bestehende Nutzer.</summary>
+  TAtlasSymbol = Atlas.Core.Lsp.Contract.TAtlasSymbol;
+  TAtlasHierarchyDirection = Atlas.Core.Lsp.Contract.TAtlasHierarchyDirection;
+  TAtlasHierarchyItem = Atlas.Core.Lsp.Contract.TAtlasHierarchyItem;
 
   TAtlasResults = class
   public

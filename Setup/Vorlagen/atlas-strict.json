@@ -1,0 +1,7 @@
+{
+  "$schema": "https://raw.githubusercontent.com/xKnockOut/Atlas/main/schemas/atlas.schema.json",
+  "profile": "strict",
+  "minConfidence": "low",
+  "testProfile": "standard",
+  "exclude": ["__history/**", "__recovery/**"]
+}

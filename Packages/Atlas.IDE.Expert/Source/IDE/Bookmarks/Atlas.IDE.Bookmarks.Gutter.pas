@@ -22,7 +22,7 @@ uses
   Atlas.Core.Style.Color,
   Atlas.Core.Style.Palette,
   Atlas.Core.Bookmarks.Store,
-  Atlas.IDE.Editor.GutterMarks;
+  Atlas.IDE.Foundation.GutterMarks;
 
 type
   TAtlasIdeBookmarksGutter = class(TAtlasGutterLayer)
@@ -47,7 +47,7 @@ uses
   Atlas.Core.Editor.LineAnchor,
   Atlas.UI.Strings,
   Atlas.IDE.Bookmarks.Service,
-  Atlas.IDE.Settings.Store;
+  Atlas.IDE.Foundation.Settings;
 
 { TAtlasIdeBookmarksGutter }
 

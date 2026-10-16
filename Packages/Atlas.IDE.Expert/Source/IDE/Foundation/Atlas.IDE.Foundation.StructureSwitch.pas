@@ -1,4 +1,4 @@
-﻿unit Atlas.IDE.Editor.Structure;
+﻿unit Atlas.IDE.Foundation.StructureSwitch;
 
 // Schaltet Anzeigen der IDE ab, die Atlas selbst übernimmt, und stellt sie
 // wieder her, wenn die Atlas-Anzeige aus ist:
@@ -53,7 +53,7 @@ uses
   Atlas.Core.Settings.Plugin,
   Atlas.Core.Editor.Guides,
   Atlas.UI.Strings,
-  Atlas.IDE.Settings.Store;
+  Atlas.IDE.Foundation.Settings;
 
 const
   StructureKey = '\Editor\Highlight\Structural Highlighting';

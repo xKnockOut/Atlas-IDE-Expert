@@ -159,9 +159,9 @@ uses
   Atlas.UI.Popup.Window,
   Atlas.UI.Commands.KeyMap,
   Atlas.UI.Strings,
-  Atlas.IDE.Settings.Store,
-  Atlas.IDE.Editor.Style,
-  Atlas.IDE.Commands.Keys,
+  Atlas.IDE.Foundation.Settings,
+  Atlas.IDE.Foundation.EditorStyle,
+  Atlas.IDE.Foundation.Keys,
   Atlas.IDE.Commands.KeyMap;
 
 function Ticks: UInt64;

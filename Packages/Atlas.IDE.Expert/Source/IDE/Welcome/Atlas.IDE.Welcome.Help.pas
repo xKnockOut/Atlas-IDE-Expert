@@ -76,7 +76,7 @@ uses
   Atlas.Core.Welcome.Help,
   Atlas.UI.Welcome.Frame,
   Atlas.UI.Diagnostics.ReportDialog,
-  Atlas.IDE.Settings.Store,
+  Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Diagnostics.BugReport,
   Atlas.IDE.Diagnostics.Timing;
 

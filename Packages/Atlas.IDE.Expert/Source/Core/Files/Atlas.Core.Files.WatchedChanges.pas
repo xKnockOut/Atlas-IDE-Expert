@@ -63,6 +63,15 @@ type
     class function Roots(const AProjects: TArray<string>; const AExists: TAtlasPathExists): TArray<string>; static;
   end;
 
+  /// <summary>Beobachtet Ordner und meldet an TAtlasWatchedChanges; die Freigabe hält die Threads an. Die
+  /// Umsetzung (TAtlasFolderWatcher) setzt die Kompositionswurzel ein (A-09).</summary>
+  IAtlasFolderWatcher = interface
+    ['{967E5852-0525-40F5-815C-047BF4E416F1}']
+    /// <summary>Beobachtet genau diese Ordner; neue starten, weggefallene enden.</summary>
+    procedure SetRoots(const ARoots: TArray<string>);
+    function Roots: TArray<string>;
+  end;
+
 implementation
 
 { TAtlasFileChange }

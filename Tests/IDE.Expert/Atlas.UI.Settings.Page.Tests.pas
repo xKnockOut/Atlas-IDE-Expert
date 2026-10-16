@@ -573,11 +573,17 @@ begin
     Page.WelcomeHelp.Checked := False;
     Page.WelcomeHelpReportUrl.Text := ' https://example.org/issues/new ';
     Page.WelcomeHelpReportFolder.Text := ' D:\Diagnose ';
+    Assert.IsTrue(Page.WelcomeProjectSetup.Checked, 'Vorgabe an (#759)');
+    Assert.IsTrue(Page.WelcomeNewFromTemplate.Checked, 'Vorgabe an (#759)');
+    Page.WelcomeProjectSetup.Checked := False;
+    Page.WelcomeNewFromTemplate.Checked := False;
     Saved := TAtlasPluginSettings.Defaults;
     Page.SaveTo(Saved);
     Assert.IsFalse(Saved.WelcomePageHelp);
     Assert.AreEqual('https://example.org/issues/new', Saved.WelcomePageHelpReportUrl);
     Assert.AreEqual('D:\Diagnose', Saved.WelcomePageHelpReportFolder);
+    Assert.IsFalse(Saved.WelcomePageProjectSetup);
+    Assert.IsFalse(Saved.WelcomePageNewFromTemplate);
     Assert.IsFalse(Saved.WelcomePage);
     Assert.AreEqual('dockWindow', Saved.WelcomePageHost);
     Assert.AreEqual('atlas', Saved.WelcomePageLayout);

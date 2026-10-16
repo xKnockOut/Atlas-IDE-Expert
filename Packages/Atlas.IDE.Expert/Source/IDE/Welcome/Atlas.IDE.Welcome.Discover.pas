@@ -105,7 +105,7 @@ uses
   Atlas.Core.Commands.ShortcutTips,
   Atlas.UI.Strings,
   Atlas.UI.Welcome.Frame,
-  Atlas.IDE.Settings.Store,
+  Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Commands.Usage,
   Atlas.IDE.Commands.ShortcutTips,
   Atlas.IDE.Results.Commands;

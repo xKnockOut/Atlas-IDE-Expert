@@ -1,4 +1,4 @@
-﻿unit Atlas.IDE.Editor.Style;
+﻿unit Atlas.IDE.Foundation.EditorStyle;
 
 // Aussehen der Atlas-Fenster in der IDE (#411, #412, #445): Hell oder Dunkel
 // nach dem aktiven IDE-Thema, ersatzweise nach der Windows-Einstellung

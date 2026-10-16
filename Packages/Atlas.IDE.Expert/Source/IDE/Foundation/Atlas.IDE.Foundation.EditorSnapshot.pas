@@ -1,4 +1,4 @@
-﻿unit Atlas.IDE.Editor.Snapshot;
+﻿unit Atlas.IDE.Foundation.EditorSnapshot;
 
 // Gemeinsamer Stand des Editorpuffers für Probleme und Inlay-Hints (P-04):
 // Beide Zeitgeber fragten bisher je Takt den ganzen Puffer ab und verglichen
@@ -45,7 +45,7 @@ uses
   System.Generics.Collections,
   DockForm,
   Atlas.Core.Editor.SnapshotPolicy,
-  Atlas.IDE.Editor.Buffer;
+  Atlas.IDE.Foundation.EditorBuffer;
 
 type
   TEntry = record

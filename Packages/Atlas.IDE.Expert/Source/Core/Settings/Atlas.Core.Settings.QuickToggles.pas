@@ -312,6 +312,9 @@ begin
     '"WelcomePage":{"type":"boolean","x-feature":"WelcomePage",' +
       '"default":true,"x-page":"Willkommensseite","x-quickToggle":true,' +
       '"x-caption":"Atlas auf der Willkommensseite","x-captionEn":"Atlas on the welcome page","x-issue":"#753"},' +
+    '"WelcomePageProjectSetup":{"type":"boolean","x-feature":"WelcomePage",' +
+      '"default":true,"x-page":"Willkommensseite","x-quickToggle":true,' +
+      '"x-caption":"Projekt für Atlas einrichten","x-captionEn":"Set up project for Atlas","x-issue":"#759"},' +
     '"ShortcutTips":{"type":"boolean","x-feature":"ShortcutTips",' +
       '"default":true,"x-page":"Allgemein","x-quickToggle":true,' +
       '"x-caption":"Tastenkürzel-Tipps","x-captionEn":"Keyboard shortcut tips","x-issue":"#600"},' +

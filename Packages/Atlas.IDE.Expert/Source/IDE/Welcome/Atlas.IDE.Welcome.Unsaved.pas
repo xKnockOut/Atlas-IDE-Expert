@@ -118,8 +118,8 @@ uses
   Atlas.UI.Strings,
   Atlas.UI.Welcome.Frame,
   Atlas.UI.Welcome.Push,
-  Atlas.IDE.Settings.Store,
-  Atlas.IDE.Results.Window,
+  Atlas.IDE.Foundation.Settings,
+  Atlas.IDE.Foundation.ResultsWindow,
   Atlas.IDE.Vcs.Service,
   Atlas.IDE.Welcome.Search,
   Atlas.IDE.Welcome.Projects;

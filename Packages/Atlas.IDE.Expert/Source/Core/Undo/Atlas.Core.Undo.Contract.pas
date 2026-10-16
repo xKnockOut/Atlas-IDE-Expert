@@ -119,6 +119,21 @@ type
     procedure Clear;
   end;
 
+  TAtlasUndoFileProc = reference to procedure(const AFileName, AProject: string);
+
+  /// <summary>Haken des Plattenziels: Projekt und Papierkorb kennt nur die IDE-Schicht.</summary>
+  TAtlasUndoDiskHooks = record
+    OnAddToProject: TAtlasUndoFileProc;
+    OnRemoveFromProject: TAtlasUndoFileProc;
+    /// <summary>Datei in den Papierkorb verschieben; nil = löschen.</summary>
+    OnRecycle: TProc<string>;
+  end;
+
+  /// <summary>Legt das Plattenziel an; die Kompositionswurzel setzt den Adapter ein.</summary>
+  TAtlasUndoDiskFactory = reference to function(const AHooks: TAtlasUndoDiskHooks): IAtlasUndoTarget;
+  /// <summary>Legt die Sicherung im Ordner AFolder an (AMaxBytes = 0: ohne Begrenzung, nur zum Leeren).</summary>
+  TAtlasUndoStoreFactory = reference to function(const AFolder: string; AMaxBytes: Int64): IAtlasUndoStore;
+
 implementation
 
 { TAtlasFileChange }

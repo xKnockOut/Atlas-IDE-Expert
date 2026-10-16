@@ -8,8 +8,8 @@ name: Release
 #    SIGN_CERT_PASSWORD gesetzt sind.
 #    Baut außerdem Plugin (Win32 und Win64) und Installer (#495) und packt sie
 #    mit dem Server, whatsnew.json und den Beispielen (#756), tips.json und den
-#    Bildern der Tipps (#757) und der lokalen HTML-Doku (#766) in
-#    atlas-ide-expert-<Version>.zip.
+#    Bildern der Tipps (#757), der lokalen HTML-Doku (#766) und den Vorlagen
+#    für atlas.json (#759) in atlas-ide-expert-<Version>.zip.
 # 3. Packt das Claude-Code-Plugin mit der EXE.
 # 4. Legt ein GitHub Release mit EXE, ZIP, Plugin, der Versionsdatei
 #    atlas-version.json (Update-Prüfung des Plugins, #495) und dem Abschnitt aus
@@ -121,6 +121,8 @@ jobs:
           Copy-Item 'Setup\Tipps' "$dist\Tipps" -Recurse
           # „Atlas-Doku“ der Willkommensseite (#766): Nutzer-Doku als HTML im Ordner Doku.
           ./Tools/Build-Docs.ps1 -OutDir "$dist\Doku"
+          # „Projekt für Atlas einrichten“ (#759): Vorlagen für atlas.json im Ordner Vorlagen.
+          Copy-Item 'Setup\Vorlagen' "$dist\Vorlagen" -Recurse
           Copy-Item 'Output\Win32\Release\Bpl\Atlas.IDE.Expert*.bpl' "$dist\Win32"
           Copy-Item 'Output\Win64\Release\Bpl\Atlas.IDE.Expert*.bpl' "$dist\Win64"
           if (-not (Get-ChildItem "$dist\Win32\*.bpl")) { throw 'Win32-BPL fehlt' }

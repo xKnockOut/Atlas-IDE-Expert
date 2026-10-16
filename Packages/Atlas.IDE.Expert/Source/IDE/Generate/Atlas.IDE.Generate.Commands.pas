@@ -37,6 +37,7 @@ type
     FMessage: TProc<string>;
     FSnippets: TFunc<TAtlasSnippetList>;
     FInsertSnippet: TProc<IOTAEditView, TAtlasSnippet>;
+    FApplyAction: TProc<TLspCodeAction>;
     FRecent: TAtlasGenerateRecent;
     FRecentLoaded: Boolean;
   private
@@ -47,9 +48,11 @@ type
   public
     /// <summary>ASessionOf: laufende Sitzung oder nil; AMessage: Zeile für die Meldungsansicht; ASnippets: alle
     /// Code-Vorlagen der Vervollständigung (leer, wenn sie aus sind); AInsertSnippet setzt eine Vorlage mit
-    /// Platzhaltern am Cursor ein.</summary>
+    /// Platzhaltern am Cursor ein; AApplyAction wendet eine Code-Aktion an (Editorbefehle; als Haken, damit das
+    /// Erzeugen-Menü sie nicht importiert, A-09).</summary>
     class procedure Install(const ASessionOf: TFunc<TLspSession>; const AMessage: TProc<string>;
-      const ASnippets: TFunc<TAtlasSnippetList>; const AInsertSnippet: TProc<IOTAEditView, TAtlasSnippet>); static;
+      const ASnippets: TFunc<TAtlasSnippetList>; const AInsertSnippet: TProc<IOTAEditView, TAtlasSnippet>;
+      const AApplyAction: TProc<TLspCodeAction>); static;
     class procedure Uninstall; static;
     /// <summary>Menü mit allen eingestellten Gruppen.</summary>
     class procedure Show; overload; static;
@@ -77,11 +80,11 @@ uses
   Atlas.Core.Generate.Protocol,
   Atlas.UI.Strings,
   Atlas.UI.Generate.Window,
-  Atlas.IDE.Editor.Buffer,
-  Atlas.IDE.Editor.Style,
+  Atlas.IDE.Foundation.EditorBuffer,
+  Atlas.IDE.Foundation.EditorStyle,
   Atlas.IDE.Editor.WorkspaceEdit,
-  Atlas.IDE.Settings.Store,
-  Atlas.IDE.Commands.Editor;
+  Atlas.IDE.Foundation.Settings,
+  Atlas.Core.Editor.WorkspacePlan;
 
 const
   // Wie die Code-Aktionen: Der Server darf etwas rechnen (Vorfahren, Index).
@@ -111,12 +114,14 @@ end;
 { TAtlasIdeGenerate }
 
 class procedure TAtlasIdeGenerate.Install(const ASessionOf: TFunc<TLspSession>; const AMessage: TProc<string>;
-  const ASnippets: TFunc<TAtlasSnippetList>; const AInsertSnippet: TProc<IOTAEditView, TAtlasSnippet>);
+  const ASnippets: TFunc<TAtlasSnippetList>; const AInsertSnippet: TProc<IOTAEditView, TAtlasSnippet>;
+  const AApplyAction: TProc<TLspCodeAction>);
 begin
   FSessionOf := ASessionOf;
   FMessage := AMessage;
   FSnippets := ASnippets;
   FInsertSnippet := AInsertSnippet;
+  FApplyAction := AApplyAction;
   FRecent := TAtlasGenerateRecent.Create;
   FRecentLoaded := False;
 end;
@@ -129,6 +134,7 @@ begin
   FMessage := nil;
   FSnippets := nil;
   FInsertSnippet := nil;
+  FApplyAction := nil;
 end;
 
 class function TAtlasIdeGenerate.Session: TLspSession;
@@ -249,7 +255,8 @@ begin
   Edit.Files := [Default(TLspFileEdits)];
   Edit.Files[0].FileName := FileName;
   Edit.Files[0].Edits := Edits;
-  Outcome := TAtlasIdeWorkspaceEdit.Apply(Edit, False, TAtlasGenerateWindow.EntryCaption(AEntry));
+  Outcome := TAtlasIdeWorkspaceEdit.Apply(Edit, TAtlasUnopenedPolicy.WriteToDisk,
+    TAtlasGenerateWindow.EntryCaption(AEntry));
   if Outcome.Error <> '' then
     ASay(TAtlasStrings.Fmt(TAtlasTextId.EditFailed, [Outcome.Error]));
 end;
@@ -424,8 +431,8 @@ begin
               if Assigned(FInsertSnippet) and (Entry.Source >= 0) and (Entry.Source <= High(Snippets)) then
                 FInsertSnippet(View, Snippets[Entry.Source]);
           else
-            if (Entry.Source >= 0) and (Entry.Source <= High(Actions)) then
-              TAtlasIdeEditorCommands.ApplyAction(Actions[Entry.Source]);
+            if Assigned(FApplyAction) and (Entry.Source >= 0) and (Entry.Source <= High(Actions)) then
+              FApplyAction(Actions[Entry.Source]);
           end;
         end);
     end;

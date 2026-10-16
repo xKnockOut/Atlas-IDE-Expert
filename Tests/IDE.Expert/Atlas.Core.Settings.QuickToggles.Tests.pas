@@ -154,6 +154,11 @@ begin
   Assert.AreEqual('Editor', Toggle.Page);
   Assert.IsFalse(Toggle.Drawing);
   Assert.AreEqual('Palette', Toggle.Feature);
+  // Einrichtungskarte und Befehl Atlas.ProjectSetup (#759): eigener Schalter auf der Seite Willkommensseite.
+  Assert.IsTrue(TAtlasQuickToggles.Find(Toggles, 'WelcomePageProjectSetup', Toggle));
+  Assert.AreEqual('Willkommensseite', Toggle.Page);
+  Assert.IsFalse(Toggle.Drawing);
+  Assert.AreEqual('WelcomePage', Toggle.Feature);
   // Jeder Schalter ist eine Einstellung des Plugins.
   for Toggle in Toggles do
   begin

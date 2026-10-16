@@ -101,7 +101,7 @@ uses
   Atlas.Core.Settings.Plugin,
   Atlas.Core.Diagnostics.Shutdown,
   Atlas.UI.Strings,
-  Atlas.IDE.Settings.Store;
+  Atlas.IDE.Foundation.Settings;
 
 { TAtlasIdeUpdates }
 

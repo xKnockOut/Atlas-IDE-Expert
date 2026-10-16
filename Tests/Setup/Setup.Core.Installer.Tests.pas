@@ -329,6 +329,8 @@ begin
   Result.Files.Add(Source + '\Tipps\code-aktionen.png');
   Result.Files.Add(Source + '\Doku\index.html');
   Result.Files.Add(Source + '\Doku\Einstellungen.html');
+  Result.Files.Add(Source + '\Vorlagen\atlas-existing.json');
+  Result.Files.Add(Source + '\Vorlagen\atlas-strict.json');
 end;
 
 function Find(const AIdes: TArray<TSetupIde>; const AId: string): TSetupIde;
@@ -467,6 +469,9 @@ begin
     // „Atlas-Doku“ der Willkommensseite (#766): lokale HTML-Doku im Ordner Doku.
     Assert.IsTrue(Sys.FileExists(Target + '\Doku\index.html'));
     Assert.IsTrue(Sys.FileExists(Target + '\Doku\Einstellungen.html'));
+    // Einrichtung „Projekt für Atlas einrichten“ (#759): Vorlagen für atlas.json im Ordner Vorlagen.
+    Assert.IsTrue(Sys.FileExists(Target + '\Vorlagen\atlas-existing.json'));
+    Assert.IsTrue(Sys.FileExists(Target + '\Vorlagen\atlas-strict.json'));
     Assert.AreEqual(TSetupIdes.PackageDescription, Sys.ReadString('Software\Embarcadero\BDS\23.0\Known Packages',
       Target + '\Win32\Atlas.IDE.Expert290.bpl'));
     Assert.AreEqual(TSetupIdes.PackageDescription, Sys.ReadString(
@@ -511,6 +516,7 @@ begin
   Sys.Files.Add(Target + '\Beispiele\Alt.pas');
   Sys.Files.Add(Target + '\Tipps\alt.png');
   Sys.Files.Add(Target + '\Doku\Alt.html');
+  Sys.Files.Add(Target + '\Vorlagen\atlas-alt.json');
   Installer := TSetupInstaller.Create(Keep, Paths, '1.1.0');
   try
     Assert.IsTrue(Installer.Install([Find(Installer.Detect, '23.0-Win32')]));
@@ -526,6 +532,8 @@ begin
     Assert.IsTrue(Sys.FileExists(Target + '\Tipps\code-aktionen.png'));
     Assert.IsFalse(Sys.FileExists(Target + '\Doku\Alt.html'), 'Doku gilt je Version (#766)');
     Assert.IsTrue(Sys.FileExists(Target + '\Doku\index.html'));
+    Assert.IsFalse(Sys.FileExists(Target + '\Vorlagen\atlas-alt.json'), 'Vorlagen gelten je Version (#759)');
+    Assert.IsTrue(Sys.FileExists(Target + '\Vorlagen\atlas-strict.json'));
     // Zweiter Lauf (Aktualisierung): weiterhin genau eine Registrierung.
     Assert.IsTrue(Installer.Install([Find(Installer.Detect, '23.0-Win32')]));
     Assert.AreEqual(2, Integer(Length(Sys.ValueNames(Key))));

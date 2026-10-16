@@ -49,7 +49,7 @@ implementation
 uses
   Atlas.Core.Diagnostics.Guard,
   Winapi.Windows,
-  Atlas.IDE.Editor.Style;
+  Atlas.IDE.Foundation.EditorStyle;
 
 { TAtlasEditorPreview.TEvents }
 
