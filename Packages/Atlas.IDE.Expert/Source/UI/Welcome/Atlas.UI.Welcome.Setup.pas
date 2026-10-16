@@ -123,6 +123,9 @@ type
     class function StepCaption(AStep: TAtlasSetupStep; const ACard: TAtlasSetupCard; ANow: UInt64): string; static;
     /// <summary>Zeile eines Funds der Pfadprüfung.</summary>
     class function FindingCaption(const ALine: TAtlasSetupLine): string; static;
+    /// <summary>Zeilen unter „Suchpfade und Defines prüfen“: Fehler, Stand der Gruppe, Zahlen, unsichere Funde.
+    /// </summary>
+    class function PathsCaption(const ACard: TAtlasSetupCard): string; static;
     property Source: IAtlasSetupSource read FSource write SetSource;
     property Card: TAtlasSetupCard read FCard;
     property BaselineInfo: TLabel read FBaselineInfo;
@@ -140,6 +143,7 @@ uses
   Vcl.Themes,
   Atlas.Core.Diagnostics.MainThread,
   Atlas.Core.Diagnostics.Guard,
+  Atlas.Core.Projects.Summary,
   Atlas.UI.Strings;
 
 const
@@ -295,12 +299,46 @@ end;
 
 class function TAtlasWelcomeSetupFrame.FindingCaption(const ALine: TAtlasSetupLine): string;
 begin
-  if ALine.Kind = TAtlasSetupFindingKind.MissingUnit then
+  // Unsicher (Suchpfad mit unbekanntem Makro übersprungen): mit den Makros, damit es nicht wie ein Fehler wirkt.
+  if ALine.Uncertain and (ALine.Kind = TAtlasSetupFindingKind.MissingUnit) then
+    Result := TAtlasStrings.Fmt(TAtlasTextId.WelcomeSetupMissingUnitUncertain, [ALine.Name, ALine.Macros,
+      ALine.FileName, ALine.Line])
+  else if ALine.Uncertain then
+    Result := TAtlasStrings.Fmt(TAtlasTextId.WelcomeSetupUndefinedDefineUncertain, [ALine.Name, ALine.Macros,
+      ALine.FileName, ALine.Line])
+  else if ALine.Kind = TAtlasSetupFindingKind.MissingUnit then
     Result := TAtlasStrings.Fmt(TAtlasTextId.WelcomeSetupMissingUnit, [ALine.Name, ALine.FileName, ALine.Line])
   else
     Result := TAtlasStrings.Fmt(TAtlasTextId.WelcomeSetupUndefinedDefine, [ALine.Name, ALine.FileName, ALine.Line]);
   if ALine.Count > 1 then
     Result := Result + ' ' + TAtlasStrings.Fmt(TAtlasTextId.WelcomeSetupTimes, [ALine.Count]);
+  // Projektgruppe: Projekt vorn.
+  if ALine.Project <> '' then
+    Result := TAtlasStrings.Fmt(TAtlasTextId.WelcomeSetupFindingInProject, [ALine.Project, Result]);
+end;
+
+class function TAtlasWelcomeSetupFrame.PathsCaption(const ACard: TAtlasSetupCard): string;
+var
+  Setup: TAtlasProjectSetup;
+  Parts: TArray<string>;
+  Uncertain: Integer;
+begin
+  if ACard.Paths = TAtlasSetupRun.Failed then
+    Exit(ACard.PathsError);
+  Parts := nil;
+  Setup := ACard.Facts.Setup;
+  // Projektgruppe: noch nicht alle Projekte geprüft.
+  if (ACard.GroupProjects > 0) and (ACard.GroupChecked < ACard.GroupProjects) then
+    Parts := Parts + [TAtlasStrings.Fmt(TAtlasTextId.WelcomeSetupPathsGroup, [ACard.GroupChecked,
+      ACard.GroupProjects])];
+  if (Setup.Checked or (ACard.GroupChecked > 0)) and (Setup.MissingUnitCount + Setup.UndefinedDefineCount > 0) then
+    Parts := Parts + [TAtlasStrings.Fmt(TAtlasTextId.WelcomeSetupPathsSummary, [Setup.MissingUnitCount,
+      Setup.UndefinedDefineCount, Setup.Files])];
+  Uncertain := Setup.UncertainUnitCount + Setup.UncertainDefineCount;
+  if Uncertain > 0 then
+    Parts := Parts + [TAtlasStrings.Fmt(TAtlasTextId.WelcomeSetupPathsUncertain, [Uncertain,
+      TAtlasWelcomeSetup.MacroList(Setup.SkippedMacros)])];
+  Result := string.Join(sLineBreak, Parts);
 end;
 
 function TAtlasWelcomeSetupFrame.Button(AButton: TAtlasSetupButton): TButton;
@@ -446,12 +484,7 @@ begin
   else if FCard.Baseline = TAtlasSetupRun.Failed then
     FBaselineInfo.Caption := FCard.BaselineError;
   FBaselineInfo.Visible := Show and (FBaselineInfo.Caption <> '');
-  FPathsInfo.Caption := '';
-  if FCard.Paths = TAtlasSetupRun.Failed then
-    FPathsInfo.Caption := FCard.PathsError
-  else if FCard.Facts.Setup.Checked and not FCard.Facts.Setup.PathsClean then
-    FPathsInfo.Caption := TAtlasStrings.Fmt(TAtlasTextId.WelcomeSetupPathsSummary,
-      [FCard.Facts.Setup.MissingUnitCount, FCard.Facts.Setup.UndefinedDefineCount, FCard.Facts.Setup.Files]);
+  FPathsInfo.Caption := PathsCaption(FCard);
   FPathsInfo.Visible := Show and (FPathsInfo.Caption <> '');
   Lines := nil;
   More := 0;
