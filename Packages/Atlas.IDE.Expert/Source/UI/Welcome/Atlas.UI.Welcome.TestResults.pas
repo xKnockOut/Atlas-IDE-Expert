@@ -183,6 +183,9 @@ type
     /// <summary>AUser vorbelegt; das Token nie (es steht nur im Anmeldespeicher). False bei Abbruch. Beide leer =
     /// Zugang entfernen.</summary>
     class function Ask(const AServer: string; var AUser, AToken: string): Boolean; static;
+    /// <summary>Nur ein Token, verdeckt, mit eigenem Titel und eigener Beschriftung (Issue-Tracker, #765). False bei
+    /// Abbruch; leer = Zugang entfernen.</summary>
+    class function AskToken(const ATitle, ALabel: string; var AToken: string): Boolean; static;
   end;
 
 implementation
@@ -1153,6 +1156,19 @@ begin
   AUser := Trim(Values[0]);
   AToken := Trim(Values[1]);
   Values[1] := '';
+end;
+
+class function TAtlasCiLoginPrompt.AskToken(const ATitle, ALabel: string; var AToken: string): Boolean;
+var
+  Values: array of string;
+begin
+  SetLength(Values, 1);
+  Values[0] := '';
+  Result := InputQuery(ATitle, [#31 + ALabel], Values);
+  if not Result then
+    Exit;
+  AToken := Trim(Values[0]);
+  Values[0] := '';
 end;
 
 end.
