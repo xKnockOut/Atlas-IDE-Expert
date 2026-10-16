@@ -1536,7 +1536,12 @@
       "default": true,
       "x-key": "welcomePage.projectStatus",
       "x-area": "welcome",
-      "x-page": "Willkommensseite"
+      "x-feature": "WelcomePage",
+      "x-page": "Willkommensseite",
+      "x-quickToggle": true,
+      "x-caption": "Bereich „Projekte“",
+      "x-captionEn": "Section “Projects”",
+      "x-issue": "#767"
     },
     "WelcomePageMaxProjects": {
       "type": "integer",
@@ -1557,7 +1562,12 @@
       "default": true,
       "x-key": "welcomePage.unsaved",
       "x-area": "welcome",
-      "x-page": "Willkommensseite"
+      "x-feature": "WelcomePage",
+      "x-page": "Willkommensseite",
+      "x-quickToggle": true,
+      "x-caption": "Bereich „Nicht gesichert“",
+      "x-captionEn": "Section “Not saved”",
+      "x-issue": "#767"
     },
     "WelcomePageUnsavedMinAgeHours": {
       "type": "integer",
@@ -1592,7 +1602,12 @@
       "default": true,
       "x-key": "welcomePage.statusTile",
       "x-area": "welcome",
-      "x-page": "Willkommensseite"
+      "x-feature": "WelcomePage",
+      "x-page": "Willkommensseite",
+      "x-quickToggle": true,
+      "x-caption": "Zustandskachel „Atlas“",
+      "x-captionEn": "Status tile “Atlas”",
+      "x-issue": "#767"
     },
     "WelcomePageStatusTileOnlyProblems": {
       "type": "boolean",
@@ -1606,7 +1621,12 @@
       "default": true,
       "x-key": "welcomePage.discover",
       "x-area": "welcome",
-      "x-page": "Willkommensseite"
+      "x-feature": "WelcomePage",
+      "x-page": "Willkommensseite",
+      "x-quickToggle": true,
+      "x-caption": "Karte „Atlas entdecken“",
+      "x-captionEn": "Card “Discover Atlas”",
+      "x-issue": "#767"
     },
     "TipsUsageTracking": {
       "type": "boolean",
@@ -1620,7 +1640,12 @@
       "default": true,
       "x-key": "welcomePage.help",
       "x-area": "welcome",
-      "x-page": "Willkommensseite"
+      "x-feature": "WelcomePage",
+      "x-page": "Willkommensseite",
+      "x-quickToggle": true,
+      "x-caption": "Bereich „Hilfe“",
+      "x-captionEn": "Section “Help”",
+      "x-issue": "#767"
     },
     "WelcomePageHelpReportUrl": {
       "type": "string",
@@ -1649,7 +1674,12 @@
       "default": true,
       "x-key": "welcomePage.continue",
       "x-area": "welcome",
-      "x-page": "Willkommensseite"
+      "x-feature": "WelcomePage",
+      "x-page": "Willkommensseite",
+      "x-quickToggle": true,
+      "x-caption": "Bereich „Weiterarbeiten“",
+      "x-captionEn": "Section “Continue”",
+      "x-issue": "#767"
     },
     "WelcomePageContinueCount": {
       "type": "integer",
@@ -1684,7 +1714,12 @@
       "default": true,
       "x-key": "welcomePage.trends",
       "x-area": "welcome",
-      "x-page": "Willkommensseite"
+      "x-feature": "WelcomePage",
+      "x-page": "Willkommensseite",
+      "x-quickToggle": true,
+      "x-caption": "Bereich „Projektverlauf“",
+      "x-captionEn": "Section “Project history”",
+      "x-issue": "#767"
     },
     "WelcomePageTrendsPoints": {
       "type": "integer",
@@ -1705,7 +1740,12 @@
       "default": true,
       "x-key": "welcomePage.tests",
       "x-area": "welcome",
-      "x-page": "Willkommensseite"
+      "x-feature": "WelcomePage",
+      "x-page": "Willkommensseite",
+      "x-quickToggle": true,
+      "x-caption": "Bereich „Testergebnisse“",
+      "x-captionEn": "Section “Test results”",
+      "x-issue": "#767"
     },
     "WelcomePageTestsMaxFailures": {
       "type": "integer",
@@ -1857,6 +1897,42 @@
       "x-caption": "Zugang zum Issue-Tracker",
       "x-captionEn": "Issue tracker access",
       "x-issue": "#765"
+    },
+    "WelcomePageCustomLayout": {
+      "type": "boolean",
+      "default": true,
+      "x-key": "welcomePage.customLayout",
+      "x-area": "welcome",
+      "x-feature": "WelcomePage",
+      "x-page": "Willkommensseite",
+      "x-quickToggle": true,
+      "x-caption": "Willkommensseite anpassen",
+      "x-captionEn": "Customize the welcome page",
+      "x-issue": "#767"
+    },
+    "WelcomePageColumns": {
+      "type": "integer",
+      "default": 2,
+      "x-key": "welcomePage.columns",
+      "x-area": "welcome",
+      "x-page": "Willkommensseite",
+      "x-issue": "#767"
+    },
+    "WelcomePageLayouts": {
+      "type": "string",
+      "default": "",
+      "x-key": "welcomePage.layouts",
+      "x-area": "welcome",
+      "x-page": "Willkommensseite",
+      "x-issue": "#767"
+    },
+    "WelcomePageActiveLayout": {
+      "type": "string",
+      "default": "Standard",
+      "x-key": "welcomePage.activeLayout",
+      "x-area": "welcome",
+      "x-page": "Willkommensseite",
+      "x-issue": "#767"
     },
     "NotificationsSources": {
       "type": "string",

@@ -388,6 +388,16 @@
       "image": "Tipps\\atlas-start.png"
     },
     {
+      "id": "welcomeCustomize",
+      "command": "Atlas.WelcomeCustomize",
+      "setting": "WelcomePageCustomLayout",
+      "title": "Willkommensseite anpassen",
+      "titleEn": "Customize the welcome page",
+      "text": "„Seite anpassen“ ordnet die Atlas-Bereiche frei: am Griff ziehen oder Strg+Pfeiltasten, Breite und Auge je Bereich, „Bereich hinzufügen“ und Spalten. Mehrere Layouts wie „Arbeit“ und „Präsentation“ schalten sich im Kopf um.",
+      "textEn": "“Customize page” arranges the Atlas areas freely: drag the grip or use Ctrl+arrow keys, width and eye per area, “Add area” and columns. Several layouts such as “Work” and “Presentation” switch in the header.",
+      "image": "Tipps\\seite-anpassen.png"
+    },
+    {
       "id": "whatsNew",
       "command": "Atlas.WhatsNew",
       "usage": [

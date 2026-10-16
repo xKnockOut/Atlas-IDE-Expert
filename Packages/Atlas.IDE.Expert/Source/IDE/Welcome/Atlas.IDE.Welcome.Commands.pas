@@ -48,6 +48,12 @@
 // - Bereich „<Projekt> für Atlas einrichten“ (#759, Setup): atlas.json,
 //   Baseline, Suchpfade und Defines je Projekt sowie „Neu mit Atlas“; meldet
 //   sich selbst an.
+// - Seite anpassen (#767, Layouts): Bearbeitungsmodus, Anordnung, Breite,
+//   Spalten, mehrere Layouts und Ein-/Ausblenden über die Einstellungen der
+//   Bereiche; gilt im Atlas-Layout und im Fenster „Atlas-Start“ (dort mit
+//   gefalteten Spalten, wenn es schmal ist). Mit welcomePage.layout = off
+//   ordnet die IDE ihre Plugins selbst; „Seite anpassen“ öffnet dann
+//   „Atlas-Start“. Neue Bereiche meldet „Neu in Atlas“.
 // Die Willkommensseite startet keinen Server und liest nur lokale Daten;
 // einzige Ausnahme ist die Abfrage beim Build-Server (#763,
 // welcomePage.tests.ci, Vorgabe aus).
@@ -78,7 +84,8 @@ uses
   Atlas.IDE.Welcome.State,
   Atlas.IDE.Welcome.Discover,
   Atlas.IDE.Welcome.Help,
-  Atlas.IDE.Welcome.Setup;
+  Atlas.IDE.Welcome.Setup,
+  Atlas.IDE.Welcome.Layouts;
 
 type
   TAtlasIdeWelcome = class
@@ -132,6 +139,10 @@ type
     FSetup: TAtlasIdeSetup;
     // Hält die Quelle des Bereichs „Projekt für Atlas einrichten“ am Leben; die Frames halten sie ebenfalls.
     FSetupRef: IInterface;
+    FLayouts: TAtlasIdeWelcomeLayouts;
+    // Hält die Quelle für „Seite anpassen“ am Leben; die Tafeln halten sie ebenfalls.
+    FLayoutsRef: IInterface;
+    procedure Announce(const AIds: TArray<string>);
     procedure SetWhatsNew(AValue: TAtlasIdeWhatsNew);
     procedure SetState(AValue: TAtlasIdeWelcomeState);
     procedure SetDiscover(AValue: TAtlasIdeDiscover);
@@ -152,7 +163,8 @@ type
     function FactoryOf(const APluginId: string): TAtlasWelcomeClientFactory;
     procedure UpdateSection(const AId: string);
     procedure RefreshClient(AClient: TAtlasWelcomeFrame);
-    procedure FillBoard(ABoard: TAtlasWelcomeBoardFrame; AColumns: Integer);
+    /// <summary>Tafel füllen; AFold: Fenster „Atlas-Start“ (Spalten falten, wenn es schmal ist).</summary>
+    procedure FillBoard(ABoard: TAtlasWelcomeBoardFrame; AFold: Boolean);
     procedure FillHeader(AHeader: TAtlasWelcomeHeaderFrame);
     procedure UpdateHeaders;
     function WelcomeKey: string;
@@ -180,6 +192,9 @@ type
     procedure ShowWhatsNew(AView: TAtlasWhatsNewView);
     procedure ApplyLayout;
     procedure ResetLayout;
+    /// <summary>Befehl „Willkommensseite anpassen“ (#767): Bearbeitungsmodus an/aus; ohne Tafel auf der
+    /// Willkommensseite im Fenster „Atlas-Start“.</summary>
+    procedure Customize;
     procedure ThemeChanged;
     /// <summary>Wird für Tests ersetzt; Vorgabe: Registry der IDE.</summary>
     property Access: IAtlasRegistryAccess read FAccess write FAccess;
@@ -215,6 +230,8 @@ type
     /// <summary>Bereich „Projekt für Atlas einrichten“ (#759); gehört danach der Steuerung (Start beim Setzen).
     /// nil = ohne.</summary>
     property Setup: TAtlasIdeSetup read FSetup write SetSetup;
+    /// <summary>Quelle für „Seite anpassen“ (#767); gehört der Steuerung.</summary>
+    property Layouts: TAtlasIdeWelcomeLayouts read FLayouts;
     class function HeaderInfo(const AServer: TAtlasServerInfo; AIndexing: Boolean; APercent, AUnits: Integer;
       AHour: Integer; const AFirstName: string; AGreeting: Boolean): TAtlasWelcomeHeaderInfo; static;
   end;
@@ -231,9 +248,11 @@ uses
   Atlas.Core.Status.Registry,
   Atlas.Core.Welcome.Greeting,
   Atlas.Core.Welcome.Layout,
+  Atlas.Core.Welcome.Layouts,
   Atlas.Core.Welcome.HostLayout,
   Atlas.UI.Strings,
   Atlas.UI.Welcome.WhatsNew,
+  Atlas.UI.Welcome.Arrange,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Welcome.Registry,
   Atlas.IDE.Welcome.Window;
@@ -288,6 +307,19 @@ begin
   FUnits := AUnits;
   FMessage := AMessage;
   FAccess := TAtlasIdeRegistryAccess.Create;
+  FLayouts := TAtlasIdeWelcomeLayouts.Create(
+    procedure
+    begin
+      if Instance <> nil then
+        Instance.Sync;
+    end);
+  FLayoutsRef := FLayouts;
+  FLayouts.OnAnnounce :=
+    procedure(AIds: TArray<string>)
+    begin
+      if Instance <> nil then
+        Instance.Announce(AIds);
+    end;
   FSectionsListener := TAtlasWelcomeSections.Default.AddListener(
     procedure(AId: string)
     begin
@@ -301,7 +333,7 @@ begin
   TAtlasIdeWelcomeWindow.OnFrame :=
     procedure(ABoard: TAtlasWelcomeBoardFrame)
     begin
-      FillBoard(ABoard, 1);
+      FillBoard(ABoard, True);
     end;
   CheckPending;
 end;
@@ -369,6 +401,8 @@ begin
   FHelpRef := nil;
   FSetup := nil;
   FSetupRef := nil;
+  FLayouts := nil;
+  FLayoutsRef := nil;
   inherited;
 end;
 
@@ -607,20 +641,77 @@ begin
   AttachMenu(AHeader);
 end;
 
-procedure TAtlasIdeWelcome.FillBoard(ABoard: TAtlasWelcomeBoardFrame; AColumns: Integer);
+procedure TAtlasIdeWelcome.FillBoard(ABoard: TAtlasWelcomeBoardFrame; AFold: Boolean);
 var
   Layout: TAtlasWelcomeLayout;
+  Board: TAtlasWelcomeBoardFrame;
 begin
   if ABoard = nil then
     Exit;
-  Layout := TAtlasWelcomeLayout.Atlas;
-  // Nach einem Update steht „Neu in Atlas“ oben in der ersten Spalte (#756).
-  if (FWhatsNew <> nil) and FWhatsNew.OnTop then
+  Board := ABoard;
+  // Eigenes Layout (#767) bzw. das feste Atlas-Layout (#753); neue Bereiche nach Höhe in die Spalte mit dem
+  // meisten Platz.
+  Layout := FLayouts.BoardLayout(
+    function(const AId: string): Integer
+    var
+      View: TAtlasWelcomeSectionFrame;
+    begin
+      View := Board.View(AId);
+      if View <> nil then
+        Result := View.Height
+      else
+        Result := TAtlasWelcomeSectionFrame.DefaultBodyHeight;
+    end);
+  // Nach einem Update steht „Neu in Atlas“ oben in der ersten Spalte (#756); beim Anpassen der echte Platz.
+  if (FWhatsNew <> nil) and FWhatsNew.OnTop and not FLayouts.Editing then
     Layout := Layout.MovedToTop(TAtlasWelcomeIds.News);
   ABoard.Header.Visible := Settings.WelcomePageHeader;
   FillHeader(ABoard.Header);
   AttachMenu(ABoard);
-  ABoard.Rebuild(TAtlasWelcomeSections.Default.Visible, Layout, AColumns);
+  ABoard.AutoFold := AFold;
+  ABoard.Source := FLayouts;
+  ABoard.Rebuild(TAtlasWelcomeSections.Default.Visible, Layout, Layout.Columns);
+end;
+
+procedure TAtlasIdeWelcome.Announce(const AIds: TArray<string>);
+var
+  Items: TArray<TAtlasWhatsNewItem>;
+  Item: TAtlasWhatsNewItem;
+  Section: TAtlasWelcomeSection;
+  Id: string;
+begin
+  if FWhatsNew = nil then
+    Exit;
+  Items := nil;
+  for Id in AIds do
+  begin
+    if not TAtlasWelcomeSections.Default.Find(Id, Section) then
+      Continue;
+    Item := Default(TAtlasWhatsNewItem);
+    Item.Title := TAtlasStrings.Fmt(TAtlasTextId.WelcomeArrangeNewSection, [Section.Title]);
+    Item.Text := TAtlasStrings.Text(TAtlasTextId.WelcomeArrangeNewSectionText);
+    Item.Setting := TAtlasWelcomeCustomizing.SettingOf(Id);
+    Item.Command := TAtlasIdeWelcomeLayouts.CommandId;
+    Items := Items + [Item];
+  end;
+  FWhatsNew.Announce(Items);
+end;
+
+procedure TAtlasIdeWelcome.Customize;
+begin
+  TAtlasGuard.Run(TAtlasFeature.WelcomePage,
+    procedure
+    var
+      Client: TAtlasWelcomeFrame;
+    begin
+      if not FLayouts.CanCustomize then
+        Exit;
+      // Ohne Tafel auf der Willkommensseite (welcomePage.layout = off oder Host „Atlas-Start“) im Fenster.
+      Client := TAtlasIdeWelcomePage.Client(TAtlasWelcomeIds.PluginId(TAtlasWelcomeIds.Board));
+      if not FLayouts.Editing and not (Client is TAtlasWelcomeBoardFrame) then
+        ShowStart;
+      FLayouts.SetEditing(not FLayouts.Editing);
+    end);
 end;
 
 procedure TAtlasIdeWelcome.Sync;
@@ -705,12 +796,12 @@ begin
       begin
         if FShownHost <> 'dockWindow' then
           TAtlasIdeWelcomeWindow.Show;
-        FillBoard(TAtlasIdeWelcomeWindow.ExistingBoard, 1);
+        FillBoard(TAtlasIdeWelcomeWindow.ExistingBoard, True);
       end
       else if Host = '' then
         TAtlasIdeWelcomeWindow.Hide
       else
-        FillBoard(TAtlasIdeWelcomeWindow.ExistingBoard, 1);
+        FillBoard(TAtlasIdeWelcomeWindow.ExistingBoard, True);
       FShownHost := Host;
       // welcomePage.layout in den Optionen umgeschaltet: wie die Menübefehle, aber ohne Meldung.
       if (FLastLayout <> '') and not SameText(FLastLayout, Current.WelcomePageLayout) then
@@ -764,7 +855,7 @@ begin
   else if SameText(Id, TAtlasWelcomeIds.Board) then
   begin
     Board := TAtlasWelcomeBoardFrame.Create(AOwner);
-    FillBoard(Board, 2);
+    FillBoard(Board, False);
     Result := Board;
   end
   else
@@ -853,7 +944,7 @@ end;
 procedure TAtlasIdeWelcome.RefreshClient(AClient: TAtlasWelcomeFrame);
 begin
   if AClient is TAtlasWelcomeBoardFrame then
-    FillBoard(TAtlasWelcomeBoardFrame(AClient), 2)
+    FillBoard(TAtlasWelcomeBoardFrame(AClient), False)
   else if AClient is TAtlasWelcomeHeaderFrame then
     FillHeader(TAtlasWelcomeHeaderFrame(AClient))
   else if AClient <> nil then
@@ -985,7 +1076,7 @@ begin
   TAtlasGuard.Run(TAtlasFeature.WelcomePage,
     procedure
     begin
-      FillBoard(TAtlasIdeWelcomeWindow.Show, 1);
+      FillBoard(TAtlasIdeWelcomeWindow.Show, True);
     end);
 end;
 
