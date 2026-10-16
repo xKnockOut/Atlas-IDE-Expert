@@ -434,6 +434,7 @@ Jeder Branch baut auf dem vorigen auf. Nichts davon ist gebaut, getestet oder in
 - **Nachtrag 16.10., 1:40 Uhr:** Block J `claude/code-review-fixes-awz1nk-host` (Host-Umbau S-02, D-08, A-08, A-11; neue Einstellung `mcp.globalSettings`) ohne Konflikte gemergt; damit sind alle Code-Review-Blöcke in main. Prüfskripte grün, nicht gebaut.
 - **Nachtrag 16.10., 2 Uhr:** `feature/486-projektdatei` (#486, Projektdatei `.atlas`) ohne Konflikte gemergt (Branch enthielt main bereits). Prüfskripte grün, nicht gebaut.
 - **Nachtrag 16.10., 2:50 Uhr:** `feature/261-compiler-backend` (#261, Kompilieren ohne Kommandozeilen-Compiler) ohne Konflikte gemergt. Prüfskripte grün, nicht gebaut.
+- **Nachtrag 16.10., 3:45 Uhr:** `feature/69-tests-ausfuehren` (#69, DUnitX-Tests ausführen, Ergebnisse als Probleme) ohne Konflikte gemergt. Prüfskripte grün, nicht gebaut.
 
 ## Code-Review Block C: Heißer Pfad des Servers (15.10.2026, Branch `claude/code-review-fixes-awz1nk-heisser-pfad` auf Block B, nicht gepusht)
 - **Umfang:** P-01, P-02, P-05 (Rest), P-06, P-07, P-08 (ohne `Semantics.ControlFlow`), P-11, P-12 (Rest), P-13, P-17 nach dem Plan `C-server-hotpath`.
