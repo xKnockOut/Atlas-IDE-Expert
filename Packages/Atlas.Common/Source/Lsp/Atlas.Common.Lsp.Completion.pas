@@ -98,6 +98,36 @@ type
   /// <summary>Zeitmessung je Anfrage (#616), z. B. für ILogger.Debug.</summary>
   TCompletionLogProc = reference to procedure(const AText: string);
 
+  /// <summary>Ergebnis eines Falls der Vervollständigung (Code-Review S-01): weiter mit dem nächsten Fall oder
+  /// fertig mit TCompletionAnswer.Exclusive.</summary>
+  TCompletionOutcome = (Next, Answered);
+
+  /// <summary>Antwort im Aufbau (Code-Review S-01, 4.2 Schritt 5): Hinweise oben, vorab bestimmte Einträge
+  /// (Aufzählungswerte, Komponenten; bei Staffelung schon gesendet), die allgemeine Liste und der Schluss
+  /// (Code-Vorlagen, Deklarieren). Ein exklusiver Fall antwortet mit Exclusive allein.</summary>
+  TCompletionAnswer = class
+  public
+    Hints: TArray<TCompletionItem>;
+    Prefetched: TArray<TCompletionItem>;
+    Body: TArray<TCompletionItem>;
+    Tail: TArray<TCompletionItem>;
+    Incomplete: Boolean;
+    Exclusive: TCompletionItems;
+    /// <summary>Postfix-Vorlagen des Dokuments (#188), gesetzt vor der allgemeinen Liste.</summary>
+    Postfix: TPostfixOptions;
+    /// <summary>partialResultToken (#616); '' ohne Staffelung.</summary>
+    Token: string;
+    /// <summary>Schon als $/progress gesendete Einträge; die Antwort setzt sortText dahinter fort.</summary>
+    SentCount: Integer;
+    Partial: TCompletionPartialProc;
+    Cancellation: IJsonRpcCancellationToken;
+    Forms: TCompletionFormFunc;
+  end;
+
+  /// <summary>Ein Fall von textDocument/completion; die Reihenfolge legt TLspCompletion.RegisterCases fest.
+  /// </summary>
+  TCompletionCase = reference to function(ARequest: TCompletionRequest; AAnswer: TCompletionAnswer): TCompletionOutcome;
+
   TLspCompletion = class
   public const
     Method = 'textDocument/completion';
@@ -134,6 +164,10 @@ type
     FCacheText: string;
     // Auszüge der Formulardateien (Code-Review P-06); eigene Sperre.
     FForms: TFormSnapshotCache;
+    // Fälle von textDocument/completion in fester Reihenfolge (Code-Review S-01): ohne und mit Syntaxbaum.
+    FTextCases: TArray<TCompletionCase>;
+    FTreeCases: TArray<TCompletionCase>;
+    procedure RegisterCases;
     procedure HandlePostfixTemplates(const AParams: TJSONValue);
     /// <summary>Formular zur Unit über FReadText, zwischengespeichert je Stand der Formulardatei.</summary>
     function FormSnapshot(const ASourceFile, ASourceText: string; out ASnapshot: TFormSnapshot): Boolean;
@@ -348,6 +382,7 @@ implementation
 uses
   Atlas.Common.Lsp.Internals.Namespaces,
   Atlas.Common.Lsp.Internals.CompletionSource,
+  Atlas.Common.Lsp.CompletionJson,
   System.Math,
   System.StrUtils,
   System.Diagnostics,
@@ -539,6 +574,7 @@ begin
   FEnsureUnit := AEnsureUnit;
   FCacheLock := TObject.Create;
   FForms := TFormSnapshotCache.Create;
+  RegisterCases;
 end;
 
 destructor TLspCompletion.Destroy;
@@ -1430,159 +1466,14 @@ end;
 
 class function TLspCompletion.ToJson(const AItems: TCompletionItems): TJSONObject;
 begin
-  Result := TJSONObject.Create;
-  Result.AddPair('isIncomplete', TJSONBool.Create(AItems.Incomplete));
-  Result.AddPair('items', ToJson(AItems.Items, 0));
+  Result := CompletionListToJson(AItems.Items, AItems.Incomplete, 0);
 end;
 
 class function TLspCompletion.ToJson(const AItems: TArray<TCompletionItem>; AFirstSort: Integer): TJSONArray;
-var
-  Edits, Overloads: TJSONArray;
-  Entry, EditJson, Data: TJSONObject;
-  Edit: TRuleEdit;
-  Index: Integer;
-  Position: TTextPosition;
-  Text: string;
 begin
-  Result := TJSONArray.Create;
-  for Index := 0 to High(AItems) do
-  begin
-    Entry := TJSONObject.Create;
-    Result.AddElement(Entry);
-    Entry.AddPair('label', AItems[Index].Name);
-    Entry.AddPair('kind', TJSONNumber.Create(AItems[Index].Kind));
-    if AItems[Index].Detail <> '' then
-      Entry.AddPair('detail', AItems[Index].Detail);
-    if AItems[Index].FilterText <> '' then
-      Entry.AddPair('filterText', AItems[Index].FilterText);
-    if AItems[Index].HasTextEdit then
-    begin
-      EditJson := TJSONObject.Create;
-      Entry.AddPair('textEdit', EditJson);
-      EditJson.AddPair('range', TLspPositions.RangeToJson(AItems[Index].TextEdit.Range));
-      EditJson.AddPair('newText', AItems[Index].TextEdit.NewText);
-    end
-    else if AItems[Index].InsertText <> '' then
-      Entry.AddPair('insertText', AItems[Index].InsertText);
-    // Code-Vorlagen mit Platzhaltern (#51): InsertTextFormat.Snippet.
-    if AItems[Index].Snippet then
-      Entry.AddPair('insertTextFormat', TJSONNumber.Create(2));
-    if Length(AItems[Index].AdditionalEdits) > 0 then
-    begin
-      Edits := TJSONArray.Create;
-      Entry.AddPair('additionalTextEdits', Edits);
-      for Edit in AItems[Index].AdditionalEdits do
-      begin
-        EditJson := TJSONObject.Create;
-        Edits.AddElement(EditJson);
-        EditJson.AddPair('range', TLspPositions.RangeToJson(Edit.Range));
-        EditJson.AddPair('newText', Edit.NewText);
-      end;
-    end;
-    // Reihenfolge wie geliefert: beste Punktzahl, dann nächster Gültigkeitsbereich.
-    Entry.AddPair('sortText', Format('%.5d', [AFirstSort + Index]));
-    if (AItems[Index].SourceFile <> '') or (AItems[Index].Expected <> '') or
-      (AItems[Index].Action <> '') or (AItems[Index].Condition <> '') or
-      (AItems[Index].Scope > 0) or (AItems[Index].Ordinal > 0) or AItems[Index].Pinned or AItems[Index].Hint or
-      (AItems[Index].Form <> '') or (AItems[Index].Sender <> '') or (AItems[Index].DataSet <> '') or
-      (AItems[Index].Guard <> '') then
-    begin
-      Data := TJSONObject.Create;
-      if AItems[Index].SourceFile <> '' then
-      begin
-        Data.AddPair('file', AItems[Index].SourceFile);
-        Data.AddPair('line', TJSONNumber.Create(AItems[Index].SourcePosition.Line));
-        Data.AddPair('character', TJSONNumber.Create(AItems[Index].SourcePosition.Character));
-      end;
-      if AItems[Index].Expected <> '' then
-      begin
-        Data.AddPair('expected', AItems[Index].Expected);
-        Data.AddPair('fits', TJSONBool.Create(AItems[Index].Fits));
-      end;
-      if AItems[Index].Action <> '' then
-        Data.AddPair('action', AItems[Index].Action);
-      // Für die Atlas-Oberfläche: Herkunft, Vererbungstiefe, Helper, Überladungen (#419, #425, #456).
-      if AItems[Index].Container <> '' then
-        Data.AddPair('container', AItems[Index].Container);
-      if AItems[Index].Depth > 0 then
-        Data.AddPair('depth', TJSONNumber.Create(AItems[Index].Depth));
-      if AItems[Index].IsHelper then
-        Data.AddPair('helper', TJSONBool.Create(True));
-      if AItems[Index].HasParameters then
-        Data.AddPair('parameters', TJSONBool.Create(True));
-      // Bedingte Deklarationen (#476).
-      if AItems[Index].Condition <> '' then
-        Data.AddPair('condition', AItems[Index].Condition);
-      if AItems[Index].Unavailable then
-        Data.AddPair('unavailable', TJSONBool.Create(True));
-      if AItems[Index].Scope > 0 then
-        Data.AddPair('scope', TJSONNumber.Create(AItems[Index].Scope));
-      // Aufzählungen und Mengen (#448).
-      if AItems[Index].Ordinal > 0 then
-        Data.AddPair('ordinal', TJSONNumber.Create(AItems[Index].Ordinal));
-      if AItems[Index].SetOf <> '' then
-      begin
-        Data.AddPair('setOf', AItems[Index].SetOf);
-        Data.AddPair('checked', TJSONBool.Create(AItems[Index].SetChecked));
-        Data.AddPair('setRange', TLspPositions.RangeToJson(AItems[Index].SetRange));
-      end;
-      // case vervollständigen (#449).
-      if AItems[Index].Pinned then
-        Data.AddPair('pinned', TJSONBool.Create(True));
-      if AItems[Index].Count > 0 then
-        Data.AddPair('count', TJSONNumber.Create(AItems[Index].Count));
-      // Unbekannter Name (#471).
-      if AItems[Index].Unknown <> '' then
-        Data.AddPair('unknown', AItems[Index].Unknown);
-      // Interface implementieren (#466).
-      if AItems[Index].Batch then
-        Data.AddPair('batch', TJSONBool.Create(True));
-      if AItems[Index].Hint then
-        Data.AddPair('hint', TJSONBool.Create(True));
-      // Komponenten aus dem Formular (#455).
-      if AItems[Index].Form <> '' then
-        Data.AddPair('form', AItems[Index].Form);
-      if AItems[Index].ByType then
-        Data.AddPair('byType', TJSONBool.Create(True));
-      // Sender mit Typumwandlung (#480).
-      if AItems[Index].Sender <> '' then
-      begin
-        Data.AddPair('sender', AItems[Index].Sender);
-        Data.AddPair('senderOf', AItems[Index].SenderOf);
-      end;
-      // Feld- und Parameternamen (#461).
-      if AItems[Index].DataSet <> '' then
-      begin
-        Data.AddPair('dataSet', AItems[Index].DataSet);
-        if AItems[Index].DataSource <> '' then
-          Data.AddPair('dataSource', AItems[Index].DataSource);
-      end;
-      // Freigabe absichern (#489).
-      if AItems[Index].Guard <> '' then
-        Data.AddPair('guard', AItems[Index].Guard);
-      if AItems[Index].UnitName <> '' then
-        Data.AddPair('unit', AItems[Index].UnitName);
-      if Length(AItems[Index].Hides) > 0 then
-      begin
-        Overloads := TJSONArray.Create;
-        Data.AddPair('hides', Overloads);
-        for Text in AItems[Index].Hides do
-          Overloads.Add(Text);
-      end;
-      if Length(AItems[Index].Overloads) > 0 then
-      begin
-        Overloads := TJSONArray.Create;
-        Data.AddPair('overloads', Overloads);
-        for Position in AItems[Index].Overloads do
-          Overloads.AddElement(TJSONObject.Create.AddPair('line', TJSONNumber.Create(Position.Line))
-            .AddPair('character', TJSONNumber.Create(Position.Character)));
-      end;
-      Entry.AddPair('data', Data);
-    end;
-  end;
+  Result := CompletionItemsToJson(AItems, AFirstSort);
 end;
 
-/// <summary>AItems ohne die Namen aus ANames (#448: Aufzählungswerte, die schon vorab kamen).</summary>
 /// <summary>AItems ohne die Schlüsselwörter aus AddKeywords (#31).</summary>
 function WithoutKeywords(const AItems: TArray<TCompletionItem>): TArray<TCompletionItem>;
 var
@@ -1590,6 +1481,7 @@ var
   Count: Integer;
 begin
   // Einmal anlegen statt je Eintrag anhängen (Code-Review P-08), wie WithoutNames.
+  Result := nil;
   SetLength(Result, Length(AItems));
   Count := 0;
   for Item in AItems do
@@ -1601,6 +1493,7 @@ begin
   SetLength(Result, Count);
 end;
 
+/// <summary>AItems ohne die Namen aus ANames (#448: vorab bestimmte Einträge).</summary>
 function WithoutNames(const AItems, ANames: TArray<TCompletionItem>): TArray<TCompletionItem>;
 var
   Names: TDictionary<string, Boolean>;
@@ -1613,6 +1506,7 @@ begin
   try
     for Item in ANames do
       Names.AddOrSetValue(LowerCase(Item.Name), True);
+    Result := nil;
     SetLength(Result, Length(AItems));
     Count := 0;
     for Item in AItems do
@@ -1627,44 +1521,246 @@ begin
   end;
 end;
 
+/// <summary>Läuft ACases der Reihe nach, bis einer antwortet; True dann.</summary>
+function RunCases(const ACases: TArray<TCompletionCase>; ARequest: TCompletionRequest;
+  AAnswer: TCompletionAnswer): Boolean;
+var
+  Step: TCompletionCase;
+begin
+  for Step in ACases do
+    if Step(ARequest, AAnswer) = TCompletionOutcome.Answered then
+      Exit(True);
+  Result := False;
+end;
+
+/// <summary>Hängt ACase an ACases an.</summary>
+procedure AddCase(var ACases: TArray<TCompletionCase>; const ACase: TCompletionCase);
+begin
+  SetLength(ACases, Length(ACases) + 1);
+  ACases[High(ACases)] := ACase;
+end;
+
+procedure TLspCompletion.RegisterCases;
+begin
+  // Ohne Syntaxbaum, in dieser Reihenfolge (Code-Review S-01): Schnellbefehle (#293), Direktiven (#102),
+  // Feld- und Parameternamen im String-Literal (#461).
+  AddCase(FTextCases,
+    function(ARequest: TCompletionRequest; AAnswer: TCompletionAnswer): TCompletionOutcome
+    var
+      Disabled: TArray<string>;
+    begin
+      Result := TCompletionOutcome.Next;
+      Disabled := nil;
+      if (not Assigned(FSlashCommandsFor) or FSlashCommandsFor(ARequest.Uri, Disabled)) and
+        SlashItems(ARequest, Disabled, AAnswer.Exclusive) then
+        Result := TCompletionOutcome.Answered;
+    end);
+  AddCase(FTextCases,
+    function(ARequest: TCompletionRequest; AAnswer: TCompletionAnswer): TCompletionOutcome
+    begin
+      Result := TCompletionOutcome.Next;
+      if DirectiveItems(ARequest, AAnswer.Exclusive) then
+        Result := TCompletionOutcome.Answered;
+    end);
+  AddCase(FTextCases,
+    function(ARequest: TCompletionRequest; AAnswer: TCompletionAnswer): TCompletionOutcome
+    begin
+      Result := TCompletionOutcome.Next;
+      if DataNameItems(ARequest, AAnswer.Exclusive) then
+        Result := TCompletionOutcome.Answered;
+    end);
+  // Mit Baum und Resolver, in dieser Reihenfolge.
+  // Freigabe absichern (#489): Das Plugin fragt nach dem ";" bzw. dem Zeilenende (#10) hinter einem
+  // übernommenen Konstruktor mit diesem Auslöser; dann gibt es nur dieses Angebot oder nichts.
+  AddCase(FTreeCases,
+    function(ARequest: TCompletionRequest; AAnswer: TCompletionAnswer): TCompletionOutcome
+    begin
+      Result := TCompletionOutcome.Next;
+      if (ARequest.Trigger <> ';') and (ARequest.Trigger <> #10) then
+        Exit;
+      if not (ARequest.Settings.OfferTryFinally and GuardItems(ARequest, ARequest.Trigger = #10,
+        AAnswer.Exclusive)) then
+        AAnswer.Exclusive := Default(TCompletionItems);
+      Result := TCompletionOutcome.Answered;
+    end);
+  // Methoden überschreiben (#443) vor der allgemeinen Vervollständigung.
+  AddCase(FTreeCases,
+    function(ARequest: TCompletionRequest; AAnswer: TCompletionAnswer): TCompletionOutcome
+    begin
+      Result := TCompletionOutcome.Next;
+      if OverrideItems(ARequest, AAnswer.Exclusive) then
+        Result := TCompletionOutcome.Answered;
+    end);
+  // Property-Zugriffe (#31): nach read bzw. write nur passende Felder und Methoden.
+  AddCase(FTreeCases,
+    function(ARequest: TCompletionRequest; AAnswer: TCompletionAnswer): TCompletionOutcome
+    begin
+      Result := TCompletionOutcome.Next;
+      if PropertyItems(ARequest, AAnswer.Exclusive) then
+        Result := TCompletionOutcome.Answered;
+    end);
+  // Ereignis-Zuweisung (#444).
+  AddCase(FTreeCases,
+    function(ARequest: TCompletionRequest; AAnswer: TCompletionAnswer): TCompletionOutcome
+    begin
+      Result := TCompletionOutcome.Next;
+      if EventItems(ARequest, AAnswer.Exclusive) then
+        Result := TCompletionOutcome.Answered;
+    end);
+  // Interface implementieren (#466): auf leerer Zeile der Klasse nur die fehlenden Methoden mit
+  // Kontrollkästchen; bei angefangenem Wort ein Hinweis oben in der normalen Liste.
+  AddCase(FTreeCases,
+    function(ARequest: TCompletionRequest; AAnswer: TCompletionAnswer): TCompletionOutcome
+    var
+      Items: TArray<TCompletionItem>;
+      Batch: Boolean;
+    begin
+      Result := TCompletionOutcome.Next;
+      if not InterfaceItems(ARequest, Items, Batch) then
+        Exit;
+      if Batch then
+      begin
+        AAnswer.Exclusive := Default(TCompletionItems);
+        AAnswer.Exclusive.Items := Items;
+        Exit(TCompletionOutcome.Answered);
+      end;
+      AAnswer.Hints := Items;
+    end);
+  // Aufzählungen und Mengen (#448): im Mengenkonstruktor nur dessen Werte; sonst die Werte des erwarteten
+  // Aufzählungstyps vorab und vor der übrigen Liste. Atlas fragt bei "[" mit triggerCharacter: ohne Menge
+  // nichts.
+  AddCase(FTreeCases,
+    function(ARequest: TCompletionRequest; AAnswer: TCompletionAnswer): TCompletionOutcome
+    var
+      Items: TArray<TCompletionItem>;
+      SetMode: Boolean;
+    begin
+      Result := TCompletionOutcome.Next;
+      if EnumItems(ARequest, Items, SetMode) then
+        AAnswer.Prefetched := Items;
+      if SetMode or (ARequest.Trigger = '[') then
+      begin
+        AAnswer.Exclusive := Default(TCompletionItems);
+        if SetMode then
+          AAnswer.Exclusive.Items := AAnswer.Prefetched;
+        Result := TCompletionOutcome.Answered;
+      end;
+    end);
+  // Komponenten aus dem Formular (#455) wie die Aufzählungswerte vorab und vor der übrigen Liste.
+  AddCase(FTreeCases,
+    function(ARequest: TCompletionRequest; AAnswer: TCompletionAnswer): TCompletionOutcome
+    var
+      Items: TArray<TCompletionItem>;
+    begin
+      Result := TCompletionOutcome.Next;
+      if ComponentItemsFromForm(ARequest, AAnswer.Forms, Items) then
+        AAnswer.Prefetched := AAnswer.Prefetched + Items;
+    end);
+  // Postfix-Vorlagen je Dokument; gestaffelt (#616), wenn der Client einen partialResultToken mitschickt:
+  // Teilergebnisse als $/progress mit CompletionItem[], die vorab bestimmten Einträge zuerst, der Rest in
+  // der Antwort. Zwischen den Stufen bricht eine veraltete Anfrage ab.
+  AddCase(FTreeCases,
+    function(ARequest: TCompletionRequest; AAnswer: TCompletionAnswer): TCompletionOutcome
+    var
+      Notify: TCompletionNotifyProc;
+      Params: TJSONObject;
+    begin
+      Result := TCompletionOutcome.Next;
+      if Assigned(FPostfixFor) then
+        AAnswer.Postfix := FPostfixFor(ARequest.Uri)
+      else
+        AAnswer.Postfix := TPostfixOptions.Default;
+      AAnswer.Postfix.Snippet := FSnippetSupport;
+      AAnswer.Postfix.Custom := CustomPostfix;
+      if AAnswer.Token = '' then
+        Exit;
+      Notify := FNotify;
+      AAnswer.Partial :=
+        procedure(const AItems: TArray<TCompletionItem>)
+        var
+          Items: TArray<TCompletionItem>;
+          Progress: TJSONObject;
+        begin
+          AAnswer.Cancellation.ThrowIfCancellationRequested;
+          // Die vorab bestimmten Einträge kamen schon (#448).
+          Items := WithoutNames(AItems, AAnswer.Prefetched);
+          if Length(Items) = 0 then
+            Exit;
+          Progress := TJSONObject.Create;
+          Progress.AddPair('token', AAnswer.Token);
+          Progress.AddPair('value', ToJson(Items, AAnswer.SentCount));
+          Inc(AAnswer.SentCount, Length(Items));
+          Notify('$/progress', Progress);
+        end;
+      if Length(AAnswer.Prefetched) > 0 then
+      begin
+        Params := TJSONObject.Create;
+        Params.AddPair('token', AAnswer.Token);
+        Params.AddPair('value', ToJson(AAnswer.Prefetched, AAnswer.SentCount));
+        Inc(AAnswer.SentCount, Length(AAnswer.Prefetched));
+        Notify('$/progress', Params);
+      end;
+    end);
+  // Sender mit Typumwandlung (#480): statt der Mitglieder von TObject die des zugewiesenen Komponententyps.
+  AddCase(FTreeCases,
+    function(ARequest: TCompletionRequest; AAnswer: TCompletionAnswer): TCompletionOutcome
+    begin
+      Result := TCompletionOutcome.Next;
+      if SenderItemsFromForm(ARequest, AAnswer.Forms, AAnswer.Exclusive) then
+        Result := TCompletionOutcome.Answered;
+    end);
+  // Die allgemeine Liste ohne die vorab bestimmten Namen; Schlüsselwörter abschaltbar (#31,
+  // completion.keywords).
+  AddCase(FTreeCases,
+    function(ARequest: TCompletionRequest; AAnswer: TCompletionAnswer): TCompletionOutcome
+    var
+      Collected: TCompletionItems;
+    begin
+      Result := TCompletionOutcome.Next;
+      Collected := Collect(ARequest, AAnswer.Postfix, AAnswer.Partial);
+      AAnswer.Body := WithoutNames(Collected.Items, AAnswer.Prefetched);
+      if not ARequest.Settings.Keywords then
+        AAnswer.Body := WithoutKeywords(AAnswer.Body);
+      AAnswer.Incomplete := Collected.Incomplete;
+    end);
+  // Kontextabhängige Code-Vorlagen (#51) am Ende der Liste.
+  AddCase(FTreeCases,
+    function(ARequest: TCompletionRequest; AAnswer: TCompletionAnswer): TCompletionOutcome
+    begin
+      Result := TCompletionOutcome.Next;
+      AAnswer.Tail := AAnswer.Tail + ContextItems(ARequest, Namespaces, FSnippetSupport);
+    end);
+  // Unbekannter Name (#471): Deklarieren am Ende. Die Einträge hängen am getippten Namen, deshalb neu fragen.
+  AddCase(FTreeCases,
+    function(ARequest: TCompletionRequest; AAnswer: TCompletionAnswer): TCompletionOutcome
+    var
+      Declares: TArray<TCompletionItem>;
+    begin
+      Result := TCompletionOutcome.Next;
+      if DeclareItems(ARequest, AAnswer.Postfix.InlineVar, AAnswer.Prefetched + AAnswer.Body + AAnswer.Tail,
+        Declares) then
+      begin
+        AAnswer.Tail := AAnswer.Tail + Declares;
+        AAnswer.Incomplete := True;
+      end;
+    end);
+end;
+
 function TLspCompletion.Handle(const AParams: TJSONValue; const ACancellation: IJsonRpcCancellationToken): TJSONValue;
 var
   Cancellation: IPascalCancellation;
-  Uri: string;
+  Uri, Trigger: string;
   PositionValue: TJSONValue;
   Document: ITextDocument;
   Request: TCompletionRequest;
+  Answer: TCompletionAnswer;
   Shared: ISharedSyntaxTree;
   Resolver: TNameResolver;
-  Directives, Overrides, Events: TCompletionItems;
-  Postfix: TPostfixOptions;
-  Disabled: TArray<string>;
-  Token: string;
-  Cancel: IJsonRpcCancellationToken;
-  Notify: TCompletionNotifyProc;
-  Partial: TCompletionPartialProc;
-  SentCount: Integer;
-  Collected: TCompletionItems;
+  Items: TArray<TCompletionItem>;
   Watch: TStopwatch;
   ParseMs: Int64;
-  Enums: TArray<TCompletionItem>;
-  SetMode: Boolean;
-  Trigger: string;
-  EnumParams: TJSONObject;
-  Declares: TArray<TCompletionItem>;
-  Hints: TArray<TCompletionItem>;
-  Components: TArray<TCompletionItem>;
-  Senders: TCompletionItems;
-  Batch: Boolean;
-  Forms: TCompletionFormFunc;
 begin
   Watch := TStopwatch.StartNew;
-  // Formulare über den Zwischenspeicher der Instanz (Code-Review P-06).
-  Forms :=
-    function(const ASourceFile, ASourceText: string; out ASnapshot: TFormSnapshot): Boolean
-    begin
-      Result := FormSnapshot(ASourceFile, ASourceText, ASnapshot);
-    end;
   if not ((AParams is TJSONObject) and TJSONObject(AParams).TryGetValue<string>('textDocument.uri', Uri) and
     TJSONObject(AParams).TryGetValue<TJSONValue>('position', PositionValue)) then
     raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams,
@@ -1677,6 +1773,7 @@ begin
   Cancellation := TRequestCancellation.Create(ACancellation);
   // Eine Anfrage für alle Fälle (Code-Review S-01): Text, Datei, Position und was je Dokument gilt.
   Request := TCompletionRequest.Create(Document, TDocumentUris.ToPath(Uri), TLspPositions.ReadPosition(PositionValue));
+  Answer := TCompletionAnswer.Create;
   try
     Request.Uri := Uri;
     Request.Index := FIndex;
@@ -1684,15 +1781,17 @@ begin
     Trigger := '';
     TJSONObject(AParams).TryGetValue<string>('context.triggerCharacter', Trigger);
     Request.Trigger := Trigger;
-    Disabled := nil;
-    if (not Assigned(FSlashCommandsFor) or FSlashCommandsFor(Uri, Disabled)) and
-      SlashItems(Request, Disabled, Directives) then
-      Exit(ToJson(Directives));
-    if DirectiveItems(Request, Directives) then
-      Exit(ToJson(Directives));
-    // Feld- und Parameternamen im String-Literal (#461).
-    if DataNameItems(Request, Directives) then
-      Exit(ToJson(Directives));
+    Answer.Cancellation := ACancellation;
+    // Formulare über den Zwischenspeicher der Instanz (Code-Review P-06).
+    Answer.Forms :=
+      function(const ASourceFile, ASourceText: string; out ASnapshot: TFormSnapshot): Boolean
+      begin
+        Result := FormSnapshot(ASourceFile, ASourceText, ASnapshot);
+      end;
+    if Assigned(FNotify) and (TJSONObject(AParams).GetValue('partialResultToken') is TJSONString) then
+      Answer.Token := TJSONString(TJSONObject(AParams).GetValue('partialResultToken')).Value;
+    if RunCases(FTextCases, Request, Answer) then
+      Exit(ToJson(Answer.Exclusive));
     Shared := TSyntaxTreeCache.Get(Document, Cancellation);
     Request.Tree := Shared.Tree;
     ACancellation.ThrowIfCancellationRequested;
@@ -1710,124 +1809,25 @@ begin
           Request.Settings := FSettingsFor(Uri)
         else
           Request.Settings := TCompletionSettings.Default;
-        // Freigabe absichern (#489): Das Plugin fragt nach dem ";" bzw. dem Zeilenende (#10) hinter einem
-        // übernommenen Konstruktor mit diesem Auslöser; dann gibt es nur dieses Angebot oder nichts.
-        if (Trigger = ';') or (Trigger = #10) then
-        begin
-          if not (Request.Settings.OfferTryFinally and GuardItems(Request, Trigger = #10, Senders)) then
-            Senders := Default(TCompletionItems);
-          Exit(ToJson(Senders));
-        end;
         if Assigned(FMatchingFor) then
           Request.Matching := FMatchingFor(Uri)
         else
           Request.Matching := TCompletionMatching.Fuzzy;
-        // Methoden überschreiben (#443) vor der allgemeinen Vervollständigung.
-        if OverrideItems(Request, Overrides) then
-          Exit(ToJson(Overrides));
-        // Property-Zugriffe (#31): nach read bzw. write nur passende Felder und Methoden.
-        if PropertyItems(Request, Overrides) then
-          Exit(ToJson(Overrides));
-        // Ereignis-Zuweisung (#444).
-        if EventItems(Request, Events) then
-          Exit(ToJson(Events));
-        // Interface implementieren (#466): auf leerer Zeile der Klasse nur die fehlenden Methoden mit
-        // Kontrollkästchen; bei angefangenem Wort ein Hinweis oben in der normalen Liste.
-        if not InterfaceItems(Request, Hints, Batch) then
-          Hints := nil
-        else if Batch then
-        begin
-          Collected := Default(TCompletionItems);
-          Collected.Items := Hints;
-          Exit(ToJson(Collected));
-        end;
-        // Aufzählungen und Mengen (#448): im Mengenkonstruktor nur dessen Werte; sonst die Werte des erwarteten
-        // Aufzählungstyps vor der übrigen Liste. Atlas fragt bei "[" mit triggerCharacter: ohne Menge nichts.
-        if not EnumItems(Request, Enums, SetMode) then
-          Enums := nil;
-        if SetMode or (Trigger = '[') then
-        begin
-          Collected := Default(TCompletionItems);
-          if SetMode then
-            Collected.Items := Enums;
-          Exit(ToJson(Collected));
-        end;
-        // Komponenten aus dem Formular (#455) wie die Aufzählungswerte vorab und vor der übrigen Liste.
-        if ComponentItemsFromForm(Request, Forms, Components) then
-          Enums := Enums + Components;
-        if Assigned(FPostfixFor) then
-          Postfix := FPostfixFor(Uri)
-        else
-          Postfix := TPostfixOptions.Default;
-        Postfix.Snippet := FSnippetSupport;
-        Postfix.Custom := CustomPostfix;
-        // Gestaffelt (#616), wenn der Client einen partialResultToken mitschickt: Teilergebnisse als $/progress
-        // mit CompletionItem[], der Rest in der Antwort. Zwischen den Stufen bricht eine veraltete Anfrage ab.
-        Token := '';
-        Partial := nil;
-        SentCount := 0;
-        if Assigned(FNotify) and (TJSONObject(AParams).GetValue('partialResultToken') is TJSONString) then
-          Token := TJSONString(TJSONObject(AParams).GetValue('partialResultToken')).Value;
-        if Token <> '' then
-        begin
-          Cancel := ACancellation;
-          Notify := FNotify;
-          Partial :=
-            procedure(const AItems: TArray<TCompletionItem>)
-            var
-              Params: TJSONObject;
-              Items: TArray<TCompletionItem>;
-            begin
-              Cancel.ThrowIfCancellationRequested;
-              // Die Werte der Aufzählung kamen schon vorab (#448).
-              Items := WithoutNames(AItems, Enums);
-              if Length(Items) = 0 then
-                Exit;
-              Params := TJSONObject.Create;
-              Params.AddPair('token', Token);
-              Params.AddPair('value', ToJson(Items, SentCount));
-              Inc(SentCount, Length(Items));
-              Notify('$/progress', Params);
-            end;
-          // Aufzählungswerte zuerst (#448).
-          if Length(Enums) > 0 then
-          begin
-            EnumParams := TJSONObject.Create;
-            EnumParams.AddPair('token', Token);
-            EnumParams.AddPair('value', ToJson(Enums, SentCount));
-            Inc(SentCount, Length(Enums));
-            Notify('$/progress', EnumParams);
-          end;
-        end;
-        // Sender mit Typumwandlung (#480): statt der Mitglieder von TObject die des zugewiesenen Komponententyps.
-        if SenderItemsFromForm(Request, Forms, Senders) then
-          Exit(ToJson(Senders));
-        Collected := Collect(Request, Postfix, Partial);
-        Collected.Items := WithoutNames(Collected.Items, Enums);
-        // Schlüsselwörter abschaltbar (#31, completion.keywords).
-        if not Request.Settings.Keywords then
-          Collected.Items := WithoutKeywords(Collected.Items);
-        // Kontextabhängige Code-Vorlagen (#51) am Ende der Liste.
-        Collected.Items := Collected.Items + ContextItems(Request, Namespaces, FSnippetSupport);
-        // Unbekannter Name (#471): Deklarieren am Ende. Die Einträge hängen am getippten Namen, deshalb neu fragen.
-        if DeclareItems(Request, Postfix.InlineVar, Enums + Collected.Items, Declares) then
-        begin
-          Collected.Items := Collected.Items + Declares;
-          Collected.Incomplete := True;
-        end;
-        if Token = '' then
-          Collected.Items := Enums + Collected.Items;
-        Collected.Items := Hints + Collected.Items;
-        Result := TJSONObject.Create;
-        TJSONObject(Result).AddPair('isIncomplete', TJSONBool.Create(Collected.Incomplete));
-        TJSONObject(Result).AddPair('items', ToJson(Collected.Items, SentCount));
+        if RunCases(FTreeCases, Request, Answer) then
+          Exit(ToJson(Answer.Exclusive));
+        // Hinweise oben, die vorab gesendeten Einträge nur ohne Staffelung in der Antwort.
+        Items := Answer.Hints;
+        if Answer.Token = '' then
+          Items := Items + Answer.Prefetched;
+        Items := Items + Answer.Body + Answer.Tail;
+        Result := CompletionListToJson(Items, Answer.Incomplete, Answer.SentCount);
         // Vorab als $/progress gesendete Einträge zählen mit (#616).
-        TRequestDiagnostics.ResultCount(SentCount + Length(Collected.Items));
-        if SentCount + Length(Collected.Items) = 0 then
+        TRequestDiagnostics.ResultCount(Answer.SentCount + Length(Items));
+        if Answer.SentCount + Length(Items) = 0 then
           TRequestDiagnostics.DefaultReason('noCandidates');
         if Assigned(FLog) then
           FLog(Format('completion: %d Einträge (%d vorab), unvollständig %s, Baum %d ms, gesamt %d ms',
-            [SentCount + Length(Collected.Items), SentCount, BoolToStr(Collected.Incomplete, True), ParseMs,
+            [Answer.SentCount + Length(Items), Answer.SentCount, BoolToStr(Answer.Incomplete, True), ParseMs,
             Watch.ElapsedMilliseconds]));
       finally
         Resolver.UnpinTree;
@@ -1836,6 +1836,7 @@ begin
       Resolver.Free;
     end;
   finally
+    Answer.Free;
     Request.Free;
   end;
 end;
