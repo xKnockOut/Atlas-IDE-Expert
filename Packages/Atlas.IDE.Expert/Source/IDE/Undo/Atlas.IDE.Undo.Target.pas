@@ -49,8 +49,8 @@ uses
   Atlas.Core.Undo.Adapters.DiskTarget,
   Atlas.IDE.Editor.Buffer,
   Atlas.IDE.Editor.Snapshot,
-  Atlas.IDE.Editor.WorkspaceEdit,
-  Atlas.IDE.Forms.Designer;
+  Atlas.IDE.Forms.Designer,
+  Atlas.IDE.Foundation.Files;
 
 { TAtlasIdeUndoTarget }
 
@@ -90,7 +90,7 @@ class function TAtlasIdeUndoTarget.ProjectOf(const AProject: string): IOTAProjec
 begin
   Result := nil;
   if AProject <> '' then
-    Supports(TAtlasIdeWorkspaceEdit.ProjectModule(AProject), IOTAProject, Result);
+    Supports(TAtlasIdeFiles.ProjectModule(AProject), IOTAProject, Result);
 end;
 
 function TAtlasIdeUndoTarget.Read(const AFileName: string; out AContent: TAtlasTextFileContent): Boolean;
@@ -98,19 +98,19 @@ var
   Buffer: IOTAEditBuffer;
   Text: string;
 begin
-  if not TAtlasIdeWorkspaceEdit.IsProjectFile(AFileName) then
+  if not TAtlasIdeFiles.IsProjectFile(AFileName) then
   begin
-    Buffer := TAtlasIdeWorkspaceEdit.BufferOf(AFileName);
+    Buffer := TAtlasIdeFiles.BufferOf(AFileName);
     if Buffer <> nil then
     begin
-      AContent := TAtlasIdeWorkspaceEdit.DiskEncoding(AFileName);
+      AContent := TAtlasIdeFiles.DiskEncoding(AFileName);
       AContent.Text := TAtlasEditorBuffer.Text(Buffer);
       Exit(True);
     end;
     // Formular im Designer: der Stand des Designers, nicht die Datei.
     if TAtlasIdeForms.CurrentText(AFileName, Text) then
     begin
-      AContent := TAtlasIdeWorkspaceEdit.DiskEncoding(AFileName);
+      AContent := TAtlasIdeFiles.DiskEncoding(AFileName);
       AContent.Text := Text;
       Exit(True);
     end;
@@ -146,18 +146,18 @@ var
   Old, Reason: string;
   FormChanges: TArray<TAtlasFormEventChange>;
 begin
-  if TAtlasIdeWorkspaceEdit.IsProjectFile(AFileName) then
+  if TAtlasIdeFiles.IsProjectFile(AFileName) then
   begin
     // Projektdatei: nie als Text; ungespeicherte Projektänderungen nicht verwerfen.
-    Module := TAtlasIdeWorkspaceEdit.ProjectModule(AFileName);
-    if (Module <> nil) and TAtlasIdeWorkspaceEdit.ProjectModified(Module) then
+    Module := TAtlasIdeFiles.ProjectModule(AFileName);
+    if (Module <> nil) and TAtlasIdeFiles.ProjectModified(Module) then
       raise EInOutError.Create('Projekt hat ungespeicherte Änderungen; bitte erst speichern');
     FDisk.Write(AFileName, AContent);
     if (Module <> nil) and Supports(BorlandIDEServices, IOTAActionServices, Actions) then
       Actions.ReloadFile(AFileName);
     Exit;
   end;
-  Buffer := TAtlasIdeWorkspaceEdit.BufferOf(AFileName);
+  Buffer := TAtlasIdeFiles.BufferOf(AFileName);
   if Buffer <> nil then
   begin
     if Buffer.IsReadOnly then

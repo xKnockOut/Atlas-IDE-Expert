@@ -121,7 +121,8 @@ uses
   Atlas.IDE.Undo.Changes,
   Atlas.IDE.Notes.Service,
   Atlas.IDE.Bookmarks.Service,
-  Atlas.IDE.Generate.Commands;
+  Atlas.IDE.Generate.Commands,
+  Atlas.Core.Editor.WorkspacePlan;
 
 const
   // Code-Aktionen und Befehle des Servers; Befehle können projektweit arbeiten.
@@ -778,7 +779,8 @@ begin
     Exit;
   end;
   // Anlegen und ins Testprojekt eintragen (#274), dann öffnen.
-  Outcome := TAtlasIdeWorkspaceEdit.Apply(Edit, TAtlasIdeSettings.Current.OpenForEdits,
+  Outcome := TAtlasIdeWorkspaceEdit.Apply(Edit,
+    TAtlasUnopenedPolicies.FromSetting(TAtlasIdeSettings.Current.OpenForEdits),
     TAtlasStrings.Fmt(TAtlasTextId.TestUnitLensCreate, [Info.Counterpart]));
   if Outcome.Error <> '' then
   begin
@@ -890,7 +892,9 @@ begin
   // LSP: erst die Änderung, dann der Befehl.
   if not AAction.Edit.IsEmpty then
   begin
-    Outcome := TAtlasIdeWorkspaceEdit.Apply(AAction.Edit, TAtlasIdeSettings.Current.OpenForEdits, AAction.Title);
+    Outcome := TAtlasIdeWorkspaceEdit.Apply(AAction.Edit,
+      TAtlasUnopenedPolicies.FromSetting(TAtlasIdeSettings.Current.OpenForEdits),
+      AAction.Title);
     if Outcome.Error <> '' then
     begin
       Say(TAtlasStrings.Fmt(TAtlasTextId.EditFailed, [Outcome.Error]));
@@ -1042,7 +1046,8 @@ begin
   Edit.Files := [Default(TLspFileEdits)];
   Edit.Files[0].FileName := FileName;
   Edit.Files[0].Edits := Edits;
-  Outcome := TAtlasIdeWorkspaceEdit.Apply(Edit, False, TAtlasStrings.Text(TAtlasTextId.UndoActionSlash));
+  Outcome := TAtlasIdeWorkspaceEdit.Apply(Edit, TAtlasUnopenedPolicy.WriteToDisk,
+    TAtlasStrings.Text(TAtlasTextId.UndoActionSlash));
   if Outcome.Error <> '' then
   begin
     Say(TAtlasStrings.Fmt(TAtlasTextId.EditFailed, [Outcome.Error]));

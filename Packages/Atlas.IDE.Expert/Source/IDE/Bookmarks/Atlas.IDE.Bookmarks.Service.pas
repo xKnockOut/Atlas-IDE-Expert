@@ -110,7 +110,8 @@ uses
   Atlas.IDE.Editor.GutterMarks,
   Atlas.IDE.Results.Commands,
   Atlas.IDE.Bookmarks.Window,
-  Atlas.IDE.Settings.Store;
+  Atlas.IDE.Settings.Store,
+  Atlas.IDE.Foundation.Files;
 
 { TAtlasIdeBookmarks }
 
@@ -181,7 +182,7 @@ end;
 
 class function TAtlasIdeBookmarks.ResolveProject(const AFileName: string): string;
 begin
-  Result := TAtlasIdeWorkspaceEdit.ProjectOfFile(AFileName);
+  Result := TAtlasIdeFiles.ProjectOfFile(AFileName);
   if Result = '' then
     Result := ActiveProject;
   if (Result <> '') and (FProjectOf <> nil) then

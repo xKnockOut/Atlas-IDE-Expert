@@ -46,7 +46,9 @@ uses
   Atlas.Core.Lsp.TextChanges,
   Atlas.Core.Lsp.WorkspaceEdits,
   Atlas.IDE.Editor.Buffer,
-  Atlas.IDE.Editor.WorkspaceEdit;
+  Atlas.IDE.Editor.WorkspaceEdit,
+  Atlas.IDE.Foundation.Files,
+  Atlas.Core.Editor.WorkspacePlan;
 
 constructor TAtlasIdeEditInbox.Create(const AOnMessage: TAtlasEditInboxProc);
 begin
@@ -117,7 +119,7 @@ var
 begin
   if not TAtlasEditInbox.Take(ARequestFile, Request) then
     Exit;
-  Buffer := TAtlasIdeWorkspaceEdit.BufferOf(Request.FileName);
+  Buffer := TAtlasIdeFiles.BufferOf(Request.FileName);
   if Buffer = nil then
   begin
     TAtlasEditInbox.Answer(FFolder, Request, False, True, 'nicht offen');
@@ -142,7 +144,8 @@ begin
   Edit.Files := [Default(TLspFileEdits)];
   Edit.Files[0].FileName := Request.FileName;
   Edit.Files[0].Edits := [TextEdit];
-  Outcome := TAtlasIdeWorkspaceEdit.Apply(Edit, False, TAtlasStrings.Text(TAtlasTextId.UndoActionMcp));
+  Outcome := TAtlasIdeWorkspaceEdit.Apply(Edit, TAtlasUnopenedPolicy.WriteToDisk,
+    TAtlasStrings.Text(TAtlasTextId.UndoActionMcp));
   if Outcome.Error <> '' then
   begin
     TAtlasEditInbox.Answer(FFolder, Request, False, False, Outcome.Error);

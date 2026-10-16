@@ -113,7 +113,8 @@ uses
   Atlas.IDE.Notes.Gutter,
   Atlas.IDE.Bookmarks.Service,
   Atlas.IDE.Bookmarks.Gutter,
-  Atlas.IDE.Editor.GutterMarks;
+  Atlas.IDE.Editor.GutterMarks,
+  Atlas.Core.Editor.WorkspacePlan;
 
 var
   ManagerIndex: Integer = -1;
@@ -642,7 +643,8 @@ procedure RenameSymbol;
 begin
   if Manager = nil then
     Exit;
-  TAtlasIdeRename.Execute(Manager.ActiveSession, TAtlasIdeSettings.Current.OpenForEdits,
+  TAtlasIdeRename.Execute(Manager.ActiveSession,
+    TAtlasUnopenedPolicies.FromSetting(TAtlasIdeSettings.Current.OpenForEdits),
     procedure(AText: string)
     begin
       GuardWarning(AText);
