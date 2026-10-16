@@ -16,6 +16,9 @@ type
   [TestFixture]
   TAtlasWelcomeIssuesFrameTests = class
   public
+    /// <summary>Erste Benutzung ungemessen vorwegnehmen (Warteschlange des Hauptthreads, Menüs).</summary>
+    [SetupFixture]
+    procedure WarmUpFirstUse;
     [Test]
     procedure TextsFollowMockup;
     [Test]
@@ -144,6 +147,16 @@ begin
 end;
 
 { TAtlasWelcomeIssuesFrameTests }
+
+procedure TAtlasWelcomeIssuesFrameTests.WarmUpFirstUse;
+begin
+  try
+    ClicksReachSource;
+  except
+    on Exception do
+      ;
+  end;
+end;
 
 procedure TAtlasWelcomeIssuesFrameTests.TextsFollowMockup;
 var

@@ -85,7 +85,7 @@ type
     MonoFont = 'Consolas';
   private
     FSource: IAtlasIssuesSource;
-    FBox: TPaintBox;
+    FBox: TAtlasWelcomeCanvas;
     FView: TAtlasIssuesView;
     FKeyRects: TArray<TRect>;
     FPullRects: TArray<TRect>;
@@ -152,7 +152,7 @@ type
     class function NowUtc: TDateTime; static;
     property Source: IAtlasIssuesSource read FSource write SetSource;
     property View: TAtlasIssuesView read FView;
-    property PaintBox: TPaintBox read FBox;
+    property PaintBox: TAtlasWelcomeCanvas read FBox;
     property Menu: TPopupMenu read FMenu;
     property BrowseItem: TMenuItem read FBrowseItem;
     property BrowsePullItem: TMenuItem read FBrowsePullItem;
@@ -226,7 +226,7 @@ begin
   inherited Create(AOwner);
   FMenuRow := -1;
   FView := Default(TAtlasIssuesView);
-  FBox := TPaintBox.Create(Self);
+  FBox := TAtlasWelcomeCanvas.Create(Self);
   FBox.Parent := Body;
   FBox.Align := alClient;
   FBox.ShowHint := True;
