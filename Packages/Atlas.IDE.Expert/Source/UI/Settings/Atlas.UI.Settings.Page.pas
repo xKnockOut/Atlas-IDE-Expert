@@ -73,7 +73,11 @@ type
   TAtlasSettingsPage = class(TFrame)
   private
     FPages: TPageControl;
+    /// <summary>Bereiche als Liste links (statt Reiterzeilen, die bei vielen Bereichen überlappten).</summary>
+    FNav: TListBox;
     FSheet: TTabSheet;
+    /// <summary>Rollbarer Inhalt des aktuellen Reiters; nimmt die Elemente auf.</summary>
+    FContent: TScrollBox;
     // Reiter hängen erst mit dem Fensterhandle am PageControl (CreateWnd): Die IDE und die Tests
     // erzeugen die Seite, bevor sie ein übergeordnetes Fenster hat.
     FSheets: TArray<TTabSheet>;
@@ -312,6 +316,7 @@ type
     FWidths: TAtlasPluginSettings;
     FNextTop: Integer;
     FOnResetHistory: TProc;
+    procedure NavClick(Sender: TObject);
   protected
     procedure CreateWnd; override;
   private
@@ -390,6 +395,8 @@ type
     procedure RefreshFavorites;
     /// <summary>Reiter der Seite, einer je Bereich (#227).</summary>
     property Pages: TPageControl read FPages;
+    /// <summary>Liste der Bereiche links; schaltet Pages um.</summary>
+    property Navigation: TListBox read FNav;
     /// <summary>Zum Testen: Liste und Schaltflächen der Sicherung.</summary>
     property FuseList: TListBox read FFuseList;
     property FuseEnableSelected: TButton read FFuseEnableSelected;
@@ -715,11 +722,18 @@ begin
   Title.Caption := TAtlasStrings.Text(TAtlasTextId.SettingsTitle);
   Title.Font.Style := [fsBold];
   // Reiter je Bereich (#227); jeder stapelt seine Elemente neu von oben. Viele Reiter: in Zeilen.
+  // Bereiche als Liste links; die Reiter selbst bleiben unsichtbar und werden von der Liste umgeschaltet.
+  FNav := TListBox.Create(Self);
+  FNav.Parent := Self;
+  FNav.Align := alLeft;
+  FNav.AlignWithMargins := True;
+  FNav.Width := 150;
+  FNav.IntegralHeight := False;
+  FNav.OnClick := NavClick;
   FPages := TPageControl.Create(Self);
   FPages.Parent := Self;
   FPages.Align := alClient;
   FPages.AlignWithMargins := True;
-  FPages.MultiLine := True;
   FPages.Top := 100;
 
   AddSheet(TAtlasTextId.SettingsTabGeneral);
@@ -1220,6 +1234,14 @@ begin
   FSheet := TTabSheet.Create(Self);
   FSheet.Caption := TAtlasStrings.Text(AId);
   FSheets := FSheets + [FSheet];
+  // Rollbar: Lange Reiter passten sonst nicht in die Optionsseite und wurden abgeschnitten.
+  FContent := TScrollBox.Create(Self);
+  FContent.Parent := FSheet;
+  FContent.Align := alClient;
+  FContent.BorderStyle := bsNone;
+  FContent.ParentBackground := True;
+  FContent.VertScrollBar.Tracking := True;
+  FContent.HorzScrollBar.Visible := False;
   FNextTop := 100;
 end;
 
@@ -1230,12 +1252,28 @@ begin
   inherited CreateWnd;
   for Sheet in FSheets do
     if Sheet.PageControl = nil then
+    begin
       Sheet.PageControl := FPages;
+      Sheet.TabVisible := False;
+    end;
+  // Die Liste braucht ein Fenster für ihre Einträge (wie die Reiter).
+  FNav.Items.Clear;
+  for Sheet in FSheets do
+    FNav.Items.Add(Sheet.Caption);
   if FPages.PageCount > 0 then
+  begin
     FPages.ActivePageIndex := 0;
+    FNav.ItemIndex := 0;
+  end;
   // Die Liste der Sicherung braucht ein Fenster; vorher bleibt sie leer.
   RefreshFuse;
   RefreshFavorites;
+end;
+
+procedure TAtlasSettingsPage.NavClick(Sender: TObject);
+begin
+  if (FNav.ItemIndex >= 0) and (FNav.ItemIndex < FPages.PageCount) then
+    FPages.ActivePageIndex := FNav.ItemIndex;
 end;
 
 procedure TAtlasSettingsPage.AddFavoritesSection;
@@ -1611,7 +1649,7 @@ end;
 function TAtlasSettingsPage.AddCheck(const ACaption: string): TCheckBox;
 begin
   Result := TCheckBox.Create(Self);
-  Result.Parent := FSheet;
+  Result.Parent := FContent;
   Result.Align := alTop;
   Result.AlignWithMargins := True;
   Result.Caption := ACaption;
@@ -1624,7 +1662,7 @@ function TAtlasSettingsPage.AddPanel(AHeight: Integer): TWinControl;
 begin
   // Kein TPanel: Das zeichnet im IDE-Thema einen eigenen Hintergrund (dunkle Streifen im Reiter).
   Result := TAtlasSettingsRow.Create(Self);
-  Result.Parent := FSheet;
+  Result.Parent := FContent;
   Result.Align := alTop;
   Result.AlignWithMargins := True;
   Result.Height := AHeight;
