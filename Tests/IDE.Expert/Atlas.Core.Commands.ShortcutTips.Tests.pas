@@ -377,6 +377,11 @@ begin
   Assert.IsTrue(Func = TAtlasKeyFunction.Completion);
   Assert.IsTrue(TAtlasShortcutTips.IsKeyOnly('Atlas.Signature', Func));
   Assert.IsTrue(TAtlasShortcutTips.IsKeyOnly('Atlas.WelcomeSearch', Func));
+  // Schnellaktionen der Willkommensseite (#764): Knopf und Taste, kein Befehl der Palette.
+  Assert.IsTrue(TAtlasShortcutTips.IsKeyOnly('Atlas.WelcomeQuickBuild', Func));
+  Assert.IsTrue(Func = TAtlasKeyFunction.WelcomeQuickBuild);
+  Assert.IsTrue(TAtlasShortcutTips.IsKeyOnly('Atlas.WelcomeQuickTests', Func));
+  Assert.IsTrue(Func = TAtlasKeyFunction.WelcomeQuickTests);
   Assert.IsFalse(TAtlasShortcutTips.IsKeyOnly('Atlas.ExpandSelection', Func), 'Befehl der Palette');
   Assert.IsFalse(TAtlasShortcutTips.IsKeyOnly('Atlas.QuickToggles', Func), 'Befehl der Palette');
   Assert.IsFalse(TAtlasShortcutTips.IsKeyOnly('Atlas.Rename', Func), 'keine Atlas-Taste');

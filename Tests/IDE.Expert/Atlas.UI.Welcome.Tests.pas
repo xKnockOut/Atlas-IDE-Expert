@@ -115,6 +115,10 @@ type
     /// </summary>
     [Test]
     procedure ClickSelectsForHistory;
+    /// <summary>Schnellaktionen (#764): Knöpfe je Zeile, Tasten ohne Maus, Enter öffnet, aus = keine Knöpfe.
+    /// </summary>
+    [Test]
+    procedure QuickActionsInRows;
   end;
 
   [TestFixture]
@@ -133,6 +137,10 @@ type
     procedure SavedTabFiltersAndOpens;
     [Test]
     procedure WithoutSavedOnlyRecent;
+    /// <summary>Schnellaktionen (#764) in „Zuletzt“: Knöpfe je Arbeitsstand, Enter setzt fort, Strg+B baut.
+    /// </summary>
+    [Test]
+    procedure QuickActionsInRecent;
   end;
 
   [TestFixture]
@@ -285,6 +293,9 @@ uses
   Atlas.Core.Welcome.Continue,
   Atlas.Core.Welcome.Saved,
   Atlas.UI.Welcome.Continue,
+  Atlas.Core.Welcome.QuickActions,
+  Atlas.UI.Welcome.QuickActions,
+  Atlas.UI.Welcome.QuickActions.Tests,
   System.IOUtils,
   Vcl.Imaging.pngimage;
 
@@ -1378,6 +1389,57 @@ begin
     Assert.AreEqual(0, Frame.HitTest(20, Row div 2).Row);
     Assert.AreEqual(1, Frame.HitTest(20, Row + Row div 2).Row);
     Assert.AreEqual(-1, Frame.HitTest(20, 5 * Row).Row, 'unter der letzten Zeile');
+  finally
+    Host.Free;
+  end;
+end;
+
+procedure TAtlasWelcomeProjectsFrameTests.QuickActionsInRows;
+var
+  Host: TForm;
+  Fake: TFakeProjects;
+  Source: IAtlasProjectsSource;
+  Quick: TAtlasFakeQuickActions;
+  QuickSource: IAtlasQuickActionsSource;
+  Frame: TAtlasWelcomeProjectsFrame;
+begin
+  Fake := TFakeProjects.Create;
+  Source := Fake;
+  Quick := TAtlasFakeQuickActions.Create;
+  QuickSource := Quick;
+  Fake.FEntries := [ProjectEntry('C:\P\Eins.dproj', 0), ProjectEntry('C:\P\Zwei.dproj', 0)];
+  Host := TForm.CreateNew(nil);
+  try
+    Frame := ProjectsFrame(Host, Source);
+    Frame.QuickActions := QuickSource;
+    Assert.AreEqual(6, Integer(Length(Frame.Quick.ButtonsOf(0))));
+    // items ohne console: nur dieser Knopf fehlt.
+    Quick.Items := TAtlasWelcomeQuickActions.ParseItems('build,tests,run,pull,folder');
+    Frame.UpdateContent;
+    Assert.AreEqual(5, Integer(Length(Frame.Quick.ButtonsOf(0))));
+    Assert.AreEqual(-1, TAtlasWelcomeQuickActions.IndexOf(Frame.Quick.ButtonsOf(0), TAtlasQuickAction.Console));
+    Fake.Calls := nil;
+    // Ohne Maus: Pfeil ab, Strg+B, Strg+T, Pos1 und Enter öffnet.
+    Quick.FTests := ['C:\P\Tests\Zwei.Tests.dproj'];
+    Assert.IsTrue(Frame.Quick.HandleKey(VK_DOWN, []));
+    Assert.IsTrue(Frame.Quick.HandleKey(Ord('B'), [ssCtrl]));
+    Assert.IsTrue(Frame.Quick.HandleKey(Ord('T'), [ssCtrl]));
+    Assert.IsTrue(Frame.Quick.HandleKey(VK_HOME, []));
+    Assert.IsTrue(Frame.Quick.HandleKey(VK_RETURN, []));
+    Assert.AreEqual(0, Integer(Length(Quick.Calls)), 'alles über die Nachrichtenschleife');
+    CheckSynchronize;
+    Assert.AreEqual(2, Integer(Length(Quick.Calls)));
+    Assert.AreEqual('build C:\P\Zwei.dproj', Quick.Calls[0]);
+    Assert.AreEqual('tests C:\P\Zwei.dproj', Quick.Calls[1]);
+    Assert.AreEqual(1, Integer(Length(Fake.Calls)));
+    Assert.AreEqual('open C:\P\Zwei.dproj', Fake.Calls[0]);
+    // Ausgeschaltet bzw. ohne Quelle: keine Knöpfe, Tasten bleiben bei der IDE.
+    Quick.IsOn := False;
+    Frame.UpdateContent;
+    Assert.AreEqual(0, Integer(Length(Frame.Quick.ButtonsOf(0))));
+    Assert.IsFalse(Frame.Quick.HandleKey(Ord('B'), [ssCtrl]));
+    Frame.QuickActions := nil;
+    Assert.IsFalse(Frame.Quick.Active);
   finally
     Host.Free;
   end;
@@ -3101,6 +3163,50 @@ begin
     Assert.AreEqual('commit C:\Repo\Atlas.dproj abc1234', Fake.Calls[1]);
     Assert.AreEqual(-1, Frame.HitTest(20, -5).Row, 'über der ersten Zeile');
     Assert.AreEqual(1, Frame.HitTest(20, Frame.RowTop(1) + 4).Row);
+  finally
+    Host.Free;
+  end;
+end;
+
+procedure TAtlasWelcomeContinueFrameTests.QuickActionsInRecent;
+var
+  Host: TForm;
+  Fake: TFakeContinue;
+  Source: IAtlasContinueSource;
+  Quick: TAtlasFakeQuickActions;
+  QuickSource: IAtlasQuickActionsSource;
+  Frame: TAtlasWelcomeContinueFrame;
+begin
+  Fake := TFakeContinue.Create;
+  Source := Fake;
+  Quick := TAtlasFakeQuickActions.Create;
+  QuickSource := Quick;
+  Fake.FEntries := [ContinueEntry('C:\Repo\Atlas.dproj', 7, Now), ContinueEntry('C:\Alt\Alt.groupproj', 2, Now)];
+  Host := TForm.CreateNew(nil);
+  try
+    Frame := TAtlasWelcomeContinueFrame.Create(Host);
+    Frame.Parent := Host;
+    Frame.Width := 600;
+    Frame.Source := Source;
+    Assert.AreEqual(0, Integer(Length(Frame.Quick.ButtonsOf(0))), 'ohne Quelle keine Knöpfe');
+    Frame.QuickActions := QuickSource;
+    Assert.AreEqual(6, Integer(Length(Frame.Quick.ButtonsOf(1))));
+    Assert.IsTrue(Frame.Quick.Sink.Visible, 'Tastatur auf „Zuletzt“');
+    Fake.Calls := nil;
+    // Ohne Maus: Pfeil ab, Strg+B baut die Gruppe, Pos1 und Enter setzen fort.
+    Assert.IsTrue(Frame.Quick.HandleKey(VK_DOWN, []));
+    Assert.IsTrue(Frame.Quick.HandleKey(Ord('B'), [ssCtrl]));
+    Assert.IsTrue(Frame.Quick.HandleKey(VK_HOME, []));
+    Assert.IsTrue(Frame.Quick.HandleKey(VK_RETURN, []));
+    CheckSynchronize;
+    Assert.AreEqual(1, Integer(Length(Quick.Calls)));
+    Assert.AreEqual('build C:\Alt\Alt.groupproj', Quick.Calls[0]);
+    Assert.AreEqual(1, Integer(Length(Fake.Calls)));
+    Assert.AreEqual('resume C:\Alt\Alt.groupproj', Fake.Calls[0]);
+    // Ausgeschaltet: keine Knöpfe mehr.
+    Quick.IsOn := False;
+    Frame.UpdateContent;
+    Assert.AreEqual(0, Integer(Length(Frame.Quick.ButtonsOf(1))));
   finally
     Host.Free;
   end;

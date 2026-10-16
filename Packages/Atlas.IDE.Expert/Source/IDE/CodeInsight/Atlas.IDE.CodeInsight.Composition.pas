@@ -103,6 +103,8 @@ uses
   Atlas.IDE.Foundation.Symbol,
   Atlas.Core.Welcome.Sections,
   Atlas.Core.Welcome.WhatsNew,
+  Atlas.Core.Welcome.QuickActions,
+  Atlas.Core.StartProfiles.Store,
   Atlas.UI.Welcome.Frame,
   Atlas.Core.Commands.Palette,
   Atlas.IDE.Welcome.Search,
@@ -122,6 +124,7 @@ uses
   Atlas.UI.Todos.Dialog,
   Atlas.IDE.Welcome.Unsaved,
   Atlas.IDE.Welcome.Continue,
+  Atlas.IDE.Welcome.QuickActions,
   Atlas.IDE.Welcome.State,
   Atlas.IDE.Welcome.Discover,
   Atlas.IDE.Welcome.Help,
@@ -1917,6 +1920,9 @@ begin
           procedure
           begin
             Welcome.Projects.RecordTests(AProject, ATests);
+            // Schnellaktion „Tests“ (#764): Ergebnis in der Zeile des Projekts.
+            if Welcome.QuickActions <> nil then
+              Welcome.QuickActions.TestsFinished(AProject, ATests);
           end);
     end;
   Tests.OnLastFailed :=
@@ -2276,6 +2282,71 @@ begin
     begin
       GuardWarning(AText);
     end);
+  // Schnellaktionen je Projekt (#764) in „Projekte“ und „Weiterarbeiten“: bauen über den Läufer der Builds auf
+  // Auftrag (#261, Release-Wächter #533), Tests über #69, Startprofile über #575. Meldungen tragen Pfade und gehen
+  // deshalb nur in die Meldungsansicht.
+  Welcome.QuickActions := TAtlasIdeQuickActions.Create(Welcome.Projects,
+    procedure(AText: string)
+    begin
+      MessageLine(AText);
+    end);
+  Welcome.QuickActions.OnBuild :=
+    function(const AProject, AConfiguration, APlatform: string; const ADone: TAtlasQuickBuildDone;
+      out AReason: string): Boolean
+    var
+      Request: TAtlasBuildRequest;
+    begin
+      if BuildRunner = nil then
+      begin
+        AReason := TAtlasStrings.Text(TAtlasTextId.TestsNoBuildRunner);
+        Exit(False);
+      end;
+      Request := Default(TAtlasBuildRequest);
+      Request.Project := AProject;
+      Request.Kind := TAtlasCompileKind.Build;
+      Request.Configuration := AConfiguration;
+      Request.Platform := APlatform;
+      Result := BuildRunner.Start(Request, TAtlasWelcomeQuickActions.RequestedBy,
+        procedure(const AReport: TAtlasBuildReport; const AError: string)
+        begin
+          ADone(AReport.Succeeded, AError);
+        end, AReason);
+    end;
+  Welcome.QuickActions.OnTests :=
+    function(const ATestProject: string; out AReason: string): Boolean
+    begin
+      if Tests = nil then
+      begin
+        AReason := TAtlasStrings.Text(TAtlasTextId.WelcomeQuickReasonTestsOff);
+        Exit(False);
+      end;
+      Result := Tests.RunProject(ATestProject, AReason);
+    end;
+  Welcome.QuickActions.OnTestsBusy :=
+    function: Boolean
+    begin
+      Result := (Tests <> nil) and Tests.Busy;
+    end;
+  Welcome.QuickActions.OnIdeBusy :=
+    function: Boolean
+    begin
+      Result := ((BuildRunner <> nil) and BuildRunner.Busy) or ((Tests <> nil) and Tests.Busy);
+    end;
+  Welcome.QuickActions.OnProfiles :=
+    function(const AProject: string; out AActive: string): TArray<string>
+    var
+      Entry: TAtlasStartProfileEntry;
+    begin
+      Result := nil;
+      for Entry in TAtlasIdeStartProfiles.Profiles(AProject) do
+        Result := Result + [Entry.Profile.Name];
+      AActive := TAtlasIdeStartProfiles.ActiveName(AProject);
+    end;
+  Welcome.QuickActions.OnRun :=
+    function(const AProject, AProfile: string; out AReason: string): Boolean
+    begin
+      Result := TAtlasIdeStartProfiles.Run(AProject, AProfile, True, AReason);
+    end;
   // Bereich „Weiterarbeiten“ (#755): Arbeitsstand beim Schließen, eingehende Commits (#571) und „Gemerkt“.
   Welcome.ContinueWork := TAtlasIdeContinue.Create(
     procedure(AText: string)

@@ -37,6 +37,7 @@ uses
   Atlas.Core.Settings.TeamFile,
   Atlas.Core.Build.ReleaseGuard,
   Atlas.Core.Projects.Summary,
+  Atlas.Core.Welcome.QuickActions,
   Atlas.Core.Completion.Favorites,
   Atlas.Core.Diagnostics.Hangs,
   Atlas.Core.Diagnostics.Guard,
@@ -287,6 +288,11 @@ type
     FWelcomeTestsCiInterval: TEdit;
     FWelcomeTestsCiNotify: TCheckBox;
     FCiLogin: TCheckBox;
+    FWelcomeQuickActions: TCheckBox;
+    FWelcomeQuickActionsItems: array[TAtlasQuickAction] of TCheckBox;
+    FWelcomeQuickActionsConsole: TEdit;
+    FWelcomeQuickActionsBuildKey: TEdit;
+    FWelcomeQuickActionsTestKey: TEdit;
     FWelcomeUnsaved: TCheckBox;
     FWelcomeUnsavedMinAge: TEdit;
     FWelcomeUnsavedWarn: TEdit;
@@ -484,6 +490,12 @@ type
     property WelcomeTestsCiInterval: TEdit read FWelcomeTestsCiInterval;
     property WelcomeTestsCiNotify: TCheckBox read FWelcomeTestsCiNotify;
     property CiLogin: TCheckBox read FCiLogin;
+    /// <summary>Zum Testen: Schnellaktionen je Projekt (#764).</summary>
+    property WelcomeQuickActions: TCheckBox read FWelcomeQuickActions;
+    function WelcomeQuickActionsItem(AAction: TAtlasQuickAction): TCheckBox;
+    property WelcomeQuickActionsConsole: TEdit read FWelcomeQuickActionsConsole;
+    property WelcomeQuickActionsBuildKey: TEdit read FWelcomeQuickActionsBuildKey;
+    property WelcomeQuickActionsTestKey: TEdit read FWelcomeQuickActionsTestKey;
     property WelcomeUnsaved: TCheckBox read FWelcomeUnsaved;
     property WelcomeUnsavedMinAge: TEdit read FWelcomeUnsavedMinAge;
     property WelcomeUnsavedWarn: TEdit read FWelcomeUnsavedWarn;
@@ -608,6 +620,26 @@ uses
   Atlas.UI.Notifications.Window;
 
 /// <summary>Bezeichnung einer Reihe des Projektverlaufs (#758) wie auf ihrer Kachel.</summary>
+function QuickActionTitle(AAction: TAtlasQuickAction): string;
+begin
+  // Beschriftung des Knopfs ohne „ ▾“ (#764).
+  case AAction of
+    TAtlasQuickAction.Build:
+      Result := TAtlasStrings.Text(TAtlasTextId.WelcomeQuickBuild);
+    TAtlasQuickAction.Tests:
+      Result := TAtlasStrings.Text(TAtlasTextId.WelcomeQuickTests);
+    TAtlasQuickAction.Run:
+      Result := TAtlasStrings.Text(TAtlasTextId.WelcomeQuickRun);
+    TAtlasQuickAction.Pull:
+      Result := TAtlasStrings.Text(TAtlasTextId.WelcomeQuickPull);
+    TAtlasQuickAction.Folder:
+      Result := TAtlasStrings.Text(TAtlasTextId.WelcomeQuickFolder);
+  else
+    Result := TAtlasStrings.Text(TAtlasTextId.WelcomeQuickConsole);
+  end;
+  Result := Trim(StringReplace(Result, #$25BE, '', [rfReplaceAll]));
+end;
+
 function TrendSeriesTitle(ASeries: TAtlasTrendSeries): string;
 begin
   case ASeries of
@@ -1033,6 +1065,7 @@ end;
 procedure TAtlasSettingsPage.AddWelcomeSection;
 var
   Series: TAtlasTrendSeries;
+  Action: TAtlasQuickAction;
   Panel: TWinControl;
 begin
   // Atlas-Bereiche auf der Willkommensseite (#753).
@@ -1078,6 +1111,14 @@ begin
   FWelcomeTestsCiInterval := AddNumber(TAtlasStrings.Text(TAtlasTextId.SettingsWelcomeTestsCiInterval));
   FWelcomeTestsCiNotify := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsWelcomeTestsCiNotify));
   FCiLogin := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsCiLogin));
+  // Schnellaktionen je Projekt (#764): Schalter, je Knopf ein Häkchen, Programm für „Konsole“, zwei Tasten.
+  FWelcomeQuickActions := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsWelcomeQuickActions));
+  for Action := Low(TAtlasQuickAction) to High(TAtlasQuickAction) do
+    FWelcomeQuickActionsItems[Action] := AddCheck(TAtlasStrings.Fmt(TAtlasTextId.SettingsWelcomeQuickActionsItem,
+      [QuickActionTitle(Action)]));
+  FWelcomeQuickActionsConsole := AddTextLine(TAtlasStrings.Text(TAtlasTextId.SettingsWelcomeQuickActionsConsole));
+  FWelcomeQuickActionsBuildKey := AddKey(TAtlasStrings.Text(TAtlasTextId.SettingsWelcomeQuickActionsBuildKey));
+  FWelcomeQuickActionsTestKey := AddKey(TAtlasStrings.Text(TAtlasTextId.SettingsWelcomeQuickActionsTestKey));
   // Bereich „Nicht gesichert“ (#762).
   FWelcomeUnsaved := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsWelcomeUnsaved));
   FWelcomeUnsavedMinAge := AddNumber(TAtlasStrings.Text(TAtlasTextId.SettingsWelcomeUnsavedMinAge));
@@ -1911,10 +1952,17 @@ begin
   Result := FWelcomeTrendsSeries[ASeries];
 end;
 
+function TAtlasSettingsPage.WelcomeQuickActionsItem(AAction: TAtlasQuickAction): TCheckBox;
+begin
+  Result := FWelcomeQuickActionsItems[AAction];
+end;
+
 procedure TAtlasSettingsPage.LoadFrom(const ASettings: TAtlasPluginSettings);
 var
   Shown: TAtlasTrendSeriesList;
   Series, Wanted: TAtlasTrendSeries;
+  Items: TAtlasQuickActions;
+  Action: TAtlasQuickAction;
 begin
   FWidths := ASettings;
   FEnabled.Checked := ASettings.Enabled;
@@ -2110,6 +2158,13 @@ begin
   FWelcomeTestsCiInterval.Text := IntToStr(ASettings.WelcomePageTestsCiIntervalMinutes);
   FWelcomeTestsCiNotify.Checked := ASettings.WelcomePageTestsCiNotify;
   FCiLogin.Checked := ASettings.CiLogin;
+  FWelcomeQuickActions.Checked := ASettings.WelcomePageQuickActions;
+  Items := TAtlasWelcomeQuickActions.ParseItems(ASettings.WelcomePageQuickActionsItems);
+  for Action := Low(TAtlasQuickAction) to High(TAtlasQuickAction) do
+    FWelcomeQuickActionsItems[Action].Checked := Action in Items;
+  FWelcomeQuickActionsConsole.Text := ASettings.WelcomePageQuickActionsConsole;
+  FWelcomeQuickActionsBuildKey.Text := ShortCutToText(TShortCut(ASettings.WelcomePageQuickActionsBuildKey));
+  FWelcomeQuickActionsTestKey.Text := ShortCutToText(TShortCut(ASettings.WelcomePageQuickActionsTestKey));
   FWelcomeUnsaved.Checked := ASettings.WelcomePageUnsaved;
   FWelcomeUnsavedMinAge.Text := IntToStr(ASettings.WelcomePageUnsavedMinAgeHours);
   FWelcomeUnsavedWarn.Text := IntToStr(ASettings.WelcomePageUnsavedWarnHours);
@@ -2132,6 +2187,8 @@ procedure TAtlasSettingsPage.SaveTo(var ASettings: TAtlasPluginSettings);
 var
   Shown: TAtlasTrendSeriesList;
   Series: TAtlasTrendSeries;
+  Items: TAtlasQuickActions;
+  Action: TAtlasQuickAction;
 begin
   ASettings.Enabled := FEnabled.Checked;
   ASettings.ServerPath := Trim(FServerPath.Text);
@@ -2323,6 +2380,16 @@ begin
     ASettings.WelcomePageTestsCiIntervalMinutes);
   ASettings.WelcomePageTestsCiNotify := FWelcomeTestsCiNotify.Checked;
   ASettings.CiLogin := FCiLogin.Checked;
+  ASettings.WelcomePageQuickActions := FWelcomeQuickActions.Checked;
+  Items := [];
+  for Action := Low(TAtlasQuickAction) to High(TAtlasQuickAction) do
+    if FWelcomeQuickActionsItems[Action].Checked then
+      Include(Items, Action);
+  ASettings.WelcomePageQuickActionsItems := TAtlasWelcomeQuickActions.ItemsText(Items);
+  ASettings.WelcomePageQuickActionsConsole := TAtlasWelcomeQuickActions.NormalizedConsole(
+    FWelcomeQuickActionsConsole.Text);
+  ASettings.WelcomePageQuickActionsBuildKey := Integer(TextToShortCut(Trim(FWelcomeQuickActionsBuildKey.Text)));
+  ASettings.WelcomePageQuickActionsTestKey := Integer(TextToShortCut(Trim(FWelcomeQuickActionsTestKey.Text)));
   ASettings.WelcomePageUnsaved := FWelcomeUnsaved.Checked;
   ASettings.WelcomePageUnsavedMinAgeHours := StrToIntDef(Trim(FWelcomeUnsavedMinAge.Text),
     ASettings.WelcomePageUnsavedMinAgeHours);

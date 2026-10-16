@@ -25,6 +25,8 @@
 //             (Git Credential Manager fragt nicht, git selbst ruft kein
 //             Kennwortfenster; ohne Konsole und mit stdin NUL fragt git auch
 //             im Terminal nicht nach. Das Zeitlimit setzt der Aufrufer.)
+// Holen (IAtlasVcsUpdate, #764):
+//   Pull      -c credential.interactive=never -c core.askPass= pull --ff-only --no-rebase --quiet
 // ChangeMarker liest nur Dateien: .git/HEAD (Inhalt und Zeitstempel), die
 // Datei des Branchs unter refs/heads und packed-refs. In Worktrees und
 // Submodulen ist .git eine Datei mit "gitdir: …".
@@ -37,7 +39,8 @@ uses
   Atlas.Core.Vcs.Tools;
 
 type
-  TAtlasGitVersionControl = class(TInterfacedObject, IAtlasVersionControl, IAtlasVcsLocalWork, IAtlasVcsIncoming)
+  TAtlasGitVersionControl = class(TInterfacedObject, IAtlasVersionControl, IAtlasVcsLocalWork, IAtlasVcsIncoming,
+    IAtlasVcsUpdate)
   private
     FRoot: string;
     FCommand: TAtlasVcsCommand;
@@ -70,6 +73,8 @@ type
     function Incoming(const AUpstream: string; const AExclude: TArray<string>; AMax: Integer;
       out ACommits: TArray<TAtlasVcsIncomingCommit>): TAtlasVcsOutcome;
     function Fetch(const ARemote: string): TAtlasVcsOutcome;
+    { IAtlasVcsUpdate }
+    function Pull: TAtlasVcsOutcome;
     /// <summary>Ordner mit den Verwaltungsdaten: ARoot\.git oder das Ziel von "gitdir:"; '' ohne.</summary>
     class function GitDir(const ARoot: string): string; static;
   end;
@@ -441,6 +446,15 @@ begin
   if ARemote <> '' then
     Arguments := Arguments + [ARemote];
   Result := Git(Arguments, Output);
+end;
+
+function TAtlasGitVersionControl.Pull: TAtlasVcsOutcome;
+var
+  Output: TBytes;
+begin
+  // Nur vorwärts: kein Merge-Commit, kein Rebase; weicht der Branch ab, endet git mit Fehler.
+  Result := Git(['-c', 'credential.interactive=never', '-c', 'core.askPass=', 'pull', '--ff-only', '--no-rebase',
+    '--quiet'], Output);
 end;
 
 class function TAtlasGitVersionControl.GitDir(const ARoot: string): string;
