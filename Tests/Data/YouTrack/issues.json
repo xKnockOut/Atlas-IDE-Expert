@@ -1,0 +1,26 @@
+[
+  {
+    "idReadable": "ATL-123",
+    "numberInProject": 123,
+    "summary": "Tracker im Plugin anbinden",
+    "customFields": [
+      {"name": "Priority", "value": {"name": "Major", "$type": "EnumBundleElement"}, "$type": "SingleEnumIssueCustomField"},
+      {"name": "State", "value": {"name": "In Progress", "$type": "StateBundleElement"}, "$type": "StateIssueCustomField"},
+      {"name": "Assignee", "value": {"name": "Beispiel", "$type": "User"}, "$type": "SingleUserIssueCustomField"},
+      {"name": "Sprints", "value": [{"name": "Sprint 42", "$type": "Sprint"}], "$type": "MultiValueIssueCustomField"}
+    ],
+    "$type": "Issue"
+  },
+  {
+    "idReadable": "ATL-7",
+    "numberInProject": 7,
+    "summary": "Größere Änderung ohne Felder",
+    "customFields": [
+      {"name": "Zustand", "value": {"presentation": "Offen"}},
+      {"name": "Priorität", "value": null}
+    ]
+  },
+  {
+    "summary": "ohne Kennung"
+  }
+]

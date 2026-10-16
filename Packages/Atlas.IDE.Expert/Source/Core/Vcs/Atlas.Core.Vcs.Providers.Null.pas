@@ -4,7 +4,7 @@
 // git bzw. svn fehlt. Alle Aufrufe kehren sofort ohne Prozess zurück und
 // liefern keine Versionsangaben, nie einen Fehler; Outcome sagt, warum. Das
 // gilt auch für IAtlasVcsLocalWork (#762), IAtlasVcsIncoming (#755) und
-// IAtlasVcsUpdate (#764).
+// IAtlasVcsUpdate (#764) und IAtlasVcsBranching (#765).
 
 interface
 
@@ -14,7 +14,7 @@ uses
 
 type
   TAtlasNullVersionControl = class(TInterfacedObject, IAtlasVersionControl, IAtlasVcsLocalWork, IAtlasVcsIncoming,
-    IAtlasVcsUpdate)
+    IAtlasVcsUpdate, IAtlasVcsBranching)
   private
     FOutcome: TAtlasVcsOutcome;
   public
@@ -43,6 +43,11 @@ type
     function Fetch(const ARemote: string): TAtlasVcsOutcome;
     { IAtlasVcsUpdate }
     function Pull: TAtlasVcsOutcome;
+    { IAtlasVcsBranching }
+    function BranchExists(const AName: string; out AExists: Boolean): TAtlasVcsOutcome;
+    function CreateBranch(const AName, ABase, AMessage: string): TAtlasVcsOutcome;
+    function SwitchBranch(const AName: string): TAtlasVcsOutcome;
+    function HookFolders(out AHooks, AGitDir: string): TAtlasVcsOutcome;
     property Outcome: TAtlasVcsOutcome read FOutcome;
   end;
 
@@ -163,6 +168,31 @@ end;
 
 function TAtlasNullVersionControl.Pull: TAtlasVcsOutcome;
 begin
+  Result := FOutcome;
+end;
+
+{ IAtlasVcsBranching (#765) }
+
+function TAtlasNullVersionControl.BranchExists(const AName: string; out AExists: Boolean): TAtlasVcsOutcome;
+begin
+  AExists := False;
+  Result := FOutcome;
+end;
+
+function TAtlasNullVersionControl.CreateBranch(const AName, ABase, AMessage: string): TAtlasVcsOutcome;
+begin
+  Result := FOutcome;
+end;
+
+function TAtlasNullVersionControl.SwitchBranch(const AName: string): TAtlasVcsOutcome;
+begin
+  Result := FOutcome;
+end;
+
+function TAtlasNullVersionControl.HookFolders(out AHooks, AGitDir: string): TAtlasVcsOutcome;
+begin
+  AHooks := '';
+  AGitDir := '';
   Result := FOutcome;
 end;
 

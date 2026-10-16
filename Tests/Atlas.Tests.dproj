@@ -424,6 +424,12 @@
         <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Ci\Atlas.Core.Ci.Internals.Addresses.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Ci\Atlas.Core.Ci.Providers.Jenkins.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Ci.Providers.Jenkins.Tests.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Tracker\Atlas.Core.Tracker.Contract.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Tracker\Atlas.Core.Tracker.Naming.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Tracker\Atlas.Core.Tracker.Providers.GitHub.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Tracker\Atlas.Core.Tracker.Providers.YouTrack.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Tracker\Atlas.Core.Tracker.CommitHook.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.Core.Tracker.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Projects\Atlas.Core.Projects.Summary.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Projects.Summary.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Tests\Atlas.Core.Tests.Run.pas"/>
@@ -502,6 +508,8 @@
         <DCCReference Include="IDE.Expert\Atlas.Core.Welcome.Trends.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Welcome\Atlas.Core.Welcome.TestResults.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Welcome.TestResults.Tests.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Welcome\Atlas.Core.Welcome.Issues.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.Core.Welcome.Issues.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Welcome\Atlas.Core.Welcome.Unsaved.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Welcome.Unsaved.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Welcome\Atlas.Core.Welcome.State.pas"/>
@@ -539,6 +547,8 @@
         <DCCReference Include="IDE.Expert\Atlas.UI.Welcome.QuickActions.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\UI\Welcome\Atlas.UI.Welcome.TestResults.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.UI.Welcome.TestResults.Tests.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\UI\Welcome\Atlas.UI.Welcome.Issues.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.UI.Welcome.Issues.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\UI\Status\Atlas.UI.Status.Window.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.UI.Status.Window.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Notifications\Atlas.Core.Notifications.Contract.pas"/>
