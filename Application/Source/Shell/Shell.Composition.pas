@@ -363,6 +363,8 @@ uses
   Shell.SlashHost,
   Shell.VcsChanges,
   Shell.Bootstrap,
+  Shell.Commands.Build,
+  Shell.Commands.Index,
   Atlas.Common.Rules.Engine,
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.TreeCache,
@@ -388,15 +390,6 @@ uses
   Atlas.Common.Projects.Contract,
   Atlas.Common.Projects.GroupReader,
   Atlas.Common.JsonRpc.Messages;
-
-function StringsToJson(const AValues: TArray<string>): TJSONArray;
-var
-  Value: string;
-begin
-  Result := TJSONArray.Create;
-  for Value in AValues do
-    Result.Add(Value);
-end;
 
 // Mitschnitt anlegen. Rotiert bei Überlänge (#283). Hält ihn schon ein anderer
 // Server (jede RAD-Studio-IDE startet einen eigenen), weicht er auf einen Namen
@@ -1024,33 +1017,14 @@ begin
   FCommands.Register(TLspFormFiles.ConvertCommand,
     function(const AArguments: TJSONArray): TJSONValue
     var
-      Files: TArray<string>;
-      FileName, Form, Backup, Extension: string;
       Converted, Backups: Integer;
     begin
-      // Mit URI eine Datei, sonst alle Formulare neben den Projekt-Units.
-      Files := nil;
-      if (AArguments <> nil) and (AArguments.Count > 0) and (AArguments.Items[0] is TJSONString) then
-        Files := [TDocumentUris.ToPath(AArguments.Items[0].Value)]
-      else
-        for FileName in ProjectSourceFiles do
-          for Extension in TArray<string>.Create('.dfm', '.fmx') do
-            if FileExists(ChangeFileExt(FileName, Extension)) then
-              Files := Files + [ChangeFileExt(FileName, Extension)];
-      Converted := 0;
-      Backups := 0;
-      for Form in Files do
-        try
-          if TDfmBinary.ConvertFile(Form, Backup) then
-          begin
-            Inc(Converted);
-            if Backup <> '' then
-              Inc(Backups);
-          end;
-        except
-          on E: Exception do
-            FLogger.Warning(Format('%s nicht umgewandelt: %s', [Form, E.Message]));
-        end;
+      // Mit URI eine Datei, sonst alle Formulare neben den Projekt-Units (Logik in Shell.Commands.Build).
+      Converted := TBuildCommands.ConvertForms(TBuildCommands.FormFiles(AArguments, ProjectSourceFiles,
+        function(AFileName: string): Boolean
+        begin
+          Result := FileExists(AFileName);
+        end), FLogger, Backups);
       FLogger.Info(Format('%d binäre Formulare in Text umgewandelt, %d Sicherungskopien (.bak)',
         [Converted, Backups]));
       Result := TJSONString.Create(Format('%d Formulare umgewandelt', [Converted]));
@@ -1201,12 +1175,10 @@ begin
     var
       Workspace: TShellWorkspace;
       Targets: TArray<TShellWorkspace>;
-      Before, Freed: Int64;
+      Freed: Int64;
       Removed: Integer;
-      Answer: TJSONObject;
     begin
-      // „Index löschen“ (#492): alle Caches auf der Platte, auch anderer Projekte und IDE-Versionen;
-      // gesperrte Caches anderer Serverinstanzen bleiben. Danach die eigenen Ordner neu indizieren.
+      // „Index löschen“ (#492, Logik in Shell.Commands.Index): Caches freigeben, alle löschen, neu indizieren.
       TMonitor.Enter(FWorkspacesLock);
       try
         Targets := FWorkspaces.ToArray;
@@ -1215,61 +1187,31 @@ begin
       end;
       for Workspace in Targets do
         Workspace.ReleaseCache;
-      Before := TIndexCacheDirectory.TotalSize(TIndexCacheDirectory.DefaultRoot);
-      Removed := TIndexCacheDirectory.Clear(TIndexCacheDirectory.DefaultRoot);
-      Freed := Before - TIndexCacheDirectory.TotalSize(TIndexCacheDirectory.DefaultRoot);
+      Removed := TIndexCommands.ClearCaches(TIndexCacheDirectory.DefaultRoot, Freed);
       FLogger.Info(Format('Index gelöscht: %d Caches, %d KB; %d Ordner werden neu indiziert',
         [Removed, Freed div 1024, Length(Targets)]));
       for Workspace in Targets do
         Workspace.Rebuild;
-      Answer := TJSONObject.Create;
-      Answer.AddPair('removed', TJSONNumber.Create(Removed));
-      Answer.AddPair('freedBytes', TJSONNumber.Create(Freed));
-      Result := Answer;
+      Result := TIndexCommands.Answer(Removed, Freed);
     end);
   FCommands.Register(SelectBuildCommand,
     function(const AArguments: TJSONArray): TJSONValue
     var
-      Options: TJSONObject;
-      Config, Platform, Uri, Error: string;
+      Args: TSelectBuildArgs;
+      Error: string;
       Workspace: TShellWorkspace;
       Targets: TArray<TShellWorkspace>;
       Project: TProjectInfo;
       Items: TJSONArray;
-      Item: TJSONObject;
-      DefinesValue, Define: TJSONValue;
-      Defines: TArray<string>;
-      HasDefines: Boolean;
     begin
-      // Argument: {"config": "Release", "platform": "Win64", "uri": "…", "defines": ["DEBUG"]};
-      // alle Felder optional. Ohne Konfiguration, Plattform und Symbole nur die aktuelle Auswahl
-      // je Projekt (#46). "defines" ersetzt die Symbole der .dproj (Projektoptionen der IDE, #615).
-      Config := '';
-      Platform := '';
-      Uri := '';
-      Defines := nil;
-      HasDefines := False;
-      if (AArguments <> nil) and (AArguments.Count > 0) and (AArguments.Items[0] is TJSONObject) then
-      begin
-        Options := TJSONObject(AArguments.Items[0]);
-        Options.TryGetValue<string>('config', Config);
-        Options.TryGetValue<string>('platform', Platform);
-        Options.TryGetValue<string>('uri', Uri);
-        DefinesValue := Options.GetValue('defines');
-        if DefinesValue is TJSONArray then
-        begin
-          HasDefines := True;
-          for Define in TJSONArray(DefinesValue) do
-            if Define is TJSONString then
-              Defines := Defines + [TJSONString(Define).Value];
-        end;
-      end;
+      // Argumente und Antwort in Shell.Commands.Build; ohne Änderung nur die aktuelle Auswahl je Projekt (#46).
+      Args := TSelectBuildArgs.Parse(AArguments);
       Targets := nil;
       TMonitor.Enter(FWorkspacesLock);
       try
-        if Uri <> '' then
+        if Args.Uri <> '' then
         begin
-          Workspace := WorkspaceOf(TDocumentUris.ToPath(Uri));
+          Workspace := WorkspaceOf(TDocumentUris.ToPath(Args.Uri));
           if Workspace <> nil then
             Targets := [Workspace];
         end
@@ -1278,23 +1220,15 @@ begin
       finally
         TMonitor.Exit(FWorkspacesLock);
       end;
-      if (Config <> '') or (Platform <> '') or HasDefines then
+      if Args.Changes then
         for Workspace in Targets do
-          if Workspace.Project(Project) and not Workspace.SelectBuild(Config, Platform, Defines, HasDefines, Error) then
+          if Workspace.Project(Project) and
+            not Workspace.SelectBuild(Args.Config, Args.Platform, Args.Defines, Args.HasDefines, Error) then
             raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams, Error);
       Items := TJSONArray.Create;
       for Workspace in Targets do
         if Workspace.Project(Project) then
-        begin
-          Item := TJSONObject.Create;
-          Item.AddPair('folder', Workspace.Name);
-          Item.AddPair('project', Project.FileName);
-          Item.AddPair('config', IfThen(Config <> '', Config, Project.Config));
-          Item.AddPair('platform', IfThen(Platform <> '', Platform, Project.Platform));
-          Item.AddPair('configs', StringsToJson(Project.Configs));
-          Item.AddPair('platforms', StringsToJson(Project.Platforms));
-          Items.AddElement(Item);
-        end;
+          Items.AddElement(TBuildCommands.ProjectItem(Workspace.Name, Project, Args));
       Result := TJSONObject.Create(TJSONPair.Create('projects', Items));
     end);
   FCommands.Attach(FDispatcher);

@@ -156,6 +156,12 @@ begin
     Assert.IsTrue(Found['sortUses'].Kind = TAtlasSettingKind.Choice);
     Assert.IsTrue(Found['profile'].Kind = TAtlasSettingKind.Text);
     Assert.AreEqual('Allgemein', TAtlasSettingsSchema.Pages(Fields)[0]);
+    // D-08: Schalter für die globale Datei im MCP-Modus, als Kontrollkästchen der Projekt-Einstellungen.
+    Assert.IsTrue(Found['mcp.globalSettings'].Kind = TAtlasSettingKind.Boolean_);
+    Assert.AreEqual('MCP', Found['mcp.globalSettings'].Page);
+    Assert.IsFalse(Found['mcp.globalSettings'].Global, 'gehört nach atlas.json');
+    Assert.AreEqual('true', Found['mcp.globalSettings'].DefaultJson);
+    Assert.IsTrue(Found['mcp.disabledTools'].Global);
   finally
     Found.Free;
   end;

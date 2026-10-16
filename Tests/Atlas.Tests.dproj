@@ -608,6 +608,9 @@
         <DCCReference Include="Application\Shell\Shell.SlashHost.Tests.pas"/>
         <DCCReference Include="Application\Shell\Shell.Workspace.Tests.pas"/>
         <DCCReference Include="Application\Shell\Shell.Bootstrap.Tests.pas"/>
+        <DCCReference Include="..\Application\Source\Shell\Shell.Commands.Build.pas"/>
+        <DCCReference Include="..\Application\Source\Shell\Shell.Commands.Index.pas"/>
+        <DCCReference Include="Application\Shell\Shell.Commands.Tests.pas"/>
         <BuildConfiguration Include="Base">
             <Key>Base</Key>
         </BuildConfiguration>
