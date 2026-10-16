@@ -9,7 +9,7 @@ uses
   System.SysUtils,
   System.Classes,
   Atlas.Common.Logging.Contract,
-  Atlas.Common.Logging.Providers.RotatingFileStream;
+  Atlas.Common.Logging.RotatingFileStream;
 
 type
   TStreamLogSink = class(TInterfacedObject, ILogSink)

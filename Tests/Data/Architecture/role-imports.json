@@ -1,0 +1,610 @@
+{
+  "description": "Fallliste der Rollenmatrix (Konzept 8.1/8.3, docs/Architektur.md). Beide Umsetzungen prüfen sie: TArchitectureMatrix (Atlas.Common.Rules.Builtin.Architecture, Test MatrixCasesFromFile) und Tools/Check-PackageDependencies.ps1 -SelfTest.",
+  "prefixes": [
+    "Atlas.Text",
+    "Atlas.Common",
+    "Atlas.Windows",
+    "Atlas.Core",
+    "Atlas.UI",
+    "Atlas.IDE"
+  ],
+  "hostRoles": [
+    "Foundation",
+    "Core",
+    "Shell",
+    "Adapters",
+    "Platform"
+  ],
+  "cases": [
+    {
+      "from": "Atlas.Common.Alpha.Contract.Sache",
+      "to": "Atlas.Common.Alpha.Contract.Sache",
+      "allowed": true
+    },
+    {
+      "from": "Atlas.Common.Alpha.Contract.Sache",
+      "to": "Atlas.Windows.Beta.Contract.Sache",
+      "allowed": true
+    },
+    {
+      "from": "Atlas.Common.Alpha.Contract.Sache",
+      "to": "Atlas.Common.Alpha.Internals.Sache",
+      "allowed": false
+    },
+    {
+      "from": "Atlas.Common.Alpha.Contract.Sache",
+      "to": "Atlas.Windows.Beta.Internals.Sache",
+      "allowed": false
+    },
+    {
+      "from": "Atlas.Common.Alpha.Contract.Sache",
+      "to": "Atlas.Common.Alpha.Providers.Sache",
+      "allowed": false
+    },
+    {
+      "from": "Atlas.Common.Alpha.Contract.Sache",
+      "to": "Atlas.Windows.Beta.Providers.Sache",
+      "allowed": false
+    },
+    {
+      "from": "Atlas.Common.Alpha.Contract.Sache",
+      "to": "Atlas.Common.Alpha.Adapters.Sache",
+      "allowed": false
+    },
+    {
+      "from": "Atlas.Common.Alpha.Contract.Sache",
+      "to": "Atlas.Windows.Beta.Adapters.Sache",
+      "allowed": false
+    },
+    {
+      "from": "Atlas.Common.Alpha.Contract.Sache",
+      "to": "Atlas.Common.Alpha.Sache",
+      "allowed": false
+    },
+    {
+      "from": "Atlas.Common.Alpha.Contract.Sache",
+      "to": "Atlas.Windows.Beta.Sache",
+      "allowed": false
+    },
+    {
+      "from": "Atlas.Common.Alpha.Contract.Sache",
+      "to": "Atlas.Common.Alpha.Composition.Sache",
+      "allowed": false
+    },
+    {
+      "from": "Atlas.Common.Alpha.Contract.Sache",
+      "to": "Atlas.Windows.Beta.Composition.Sache",
+      "allowed": false
+    },
+    {
+      "from": "Atlas.Common.Alpha.Contract.Sache",
+      "to": "Atlas.Common.Alpha.Hosting.Sache",
+      "allowed": false
+    },
+    {
+      "from": "Atlas.Common.Alpha.Contract.Sache",
+      "to": "Atlas.Windows.Beta.Hosting.Sache",
+      "allowed": false
+    },
+    {
+      "from": "Atlas.Common.Alpha.Contract.Sache",
+      "to": "Shell.Sache",
+      "allowed": false
+    },
+    {
+      "from": "Atlas.Common.Alpha.Internals.Sache",
+      "to": "Atlas.Common.Alpha.Contract.Sache",
+      "allowed": true
+    },
+    {
+      "from": "Atlas.Common.Alpha.Internals.Sache",
+      "to": "Atlas.Windows.Beta.Contract.Sache",
+      "allowed": true
+    },
+    {
+      "from": "Atlas.Common.Alpha.Internals.Sache",
+      "to": "Atlas.Common.Alpha.Internals.Sache",
+      "allowed": true
+    },
+    {
+      "from": "Atlas.Common.Alpha.Internals.Sache",
+      "to": "Atlas.Windows.Beta.Internals.Sache",
+      "allowed": false
+    },
+    {
+      "from": "Atlas.Common.Alpha.Internals.Sache",
+      "to": "Atlas.Common.Alpha.Providers.Sache",
+      "allowed": false
+    },
+    {
+      "from": "Atlas.Common.Alpha.Internals.Sache",
+      "to": "Atlas.Windows.Beta.Providers.Sache",
+      "allowed": false
+    },
+    {
+      "from": "Atlas.Common.Alpha.Internals.Sache",
+      "to": "Atlas.Common.Alpha.Adapters.Sache",
+      "allowed": false
+    },
+    {
+      "from": "Atlas.Common.Alpha.Internals.Sache",
+      "to": "Atlas.Windows.Beta.Adapters.Sache",
+      "allowed": false
+    },
+    {
+      "from": "Atlas.Common.Alpha.Internals.Sache",
+      "to": "Atlas.Common.Alpha.Sache",
+      "allowed": false
+    },
+    {
+      "from": "Atlas.Common.Alpha.Internals.Sache",
+      "to": "Atlas.Windows.Beta.Sache",
+      "allowed": true
+    },
+    {
+      "from": "Atlas.Common.Alpha.Internals.Sache",
+      "to": "Atlas.Common.Alpha.Composition.Sache",
+      "allowed": false
+    },
+    {
+      "from": "Atlas.Common.Alpha.Internals.Sache",
+      "to": "Atlas.Windows.Beta.Composition.Sache",
+      "allowed": false
+    },
+    {
+      "from": "Atlas.Common.Alpha.Internals.Sache",
+      "to": "Atlas.Common.Alpha.Hosting.Sache",
+      "allowed": false
+    },
+    {
+      "from": "Atlas.Common.Alpha.Internals.Sache",
+      "to": "Atlas.Windows.Beta.Hosting.Sache",
+      "allowed": false
+    },
+    {
+      "from": "Atlas.Common.Alpha.Internals.Sache",
+      "to": "Shell.Sache",
+      "allowed": false
+    },
+    {
+      "from": "Atlas.Common.Alpha.Providers.Sache",
+      "to": "Atlas.Common.Alpha.Contract.Sache",
+      "allowed": true
+    },
+    {
+      "from": "Atlas.Common.Alpha.Providers.Sache",
+      "to": "Atlas.Windows.Beta.Contract.Sache",
+      "allowed": true
+    },
+    {
+      "from": "Atlas.Common.Alpha.Providers.Sache",
+      "to": "Atlas.Common.Alpha.Internals.Sache",
+      "allowed": true
+    },
+    {
+      "from": "Atlas.Common.Alpha.Providers.Sache",
+      "to": "Atlas.Windows.Beta.Internals.Sache",
+      "allowed": false
+    },
+    {
+      "from": "Atlas.Common.Alpha.Providers.Sache",
+      "to": "Atlas.Common.Alpha.Providers.Sache",
+      "allowed": false
+    },
+    {
+      "from": "Atlas.Common.Alpha.Providers.Sache",
+      "to": "Atlas.Windows.Beta.Providers.Sache",
+      "allowed": false
+    },
+    {
+      "from": "Atlas.Common.Alpha.Providers.Sache",
+      "to": "Atlas.Common.Alpha.Adapters.Sache",
+      "allowed": false
+    },
+    {
+      "from": "Atlas.Common.Alpha.Providers.Sache",
+      "to": "Atlas.Windows.Beta.Adapters.Sache",
+      "allowed": false
+    },
+    {
+      "from": "Atlas.Common.Alpha.Providers.Sache",
+      "to": "Atlas.Common.Alpha.Sache",
+      "allowed": true
+    },
+    {
+      "from": "Atlas.Common.Alpha.Providers.Sache",
+      "to": "Atlas.Windows.Beta.Sache",
+      "allowed": true
+    },
+    {
+      "from": "Atlas.Common.Alpha.Providers.Sache",
+      "to": "Atlas.Common.Alpha.Composition.Sache",
+      "allowed": false
+    },
+    {
+      "from": "Atlas.Common.Alpha.Providers.Sache",
+      "to": "Atlas.Windows.Beta.Composition.Sache",
+      "allowed": false
+    },
+    {
+      "from": "Atlas.Common.Alpha.Providers.Sache",
+      "to": "Atlas.Common.Alpha.Hosting.Sache",
+      "allowed": false
+    },
+    {
+      "from": "Atlas.Common.Alpha.Providers.Sache",
+      "to": "Atlas.Windows.Beta.Hosting.Sache",
+      "allowed": false
+    },
+    {
+      "from": "Atlas.Common.Alpha.Providers.Sache",
+      "to": "Shell.Sache",
+      "allowed": false
+    },
+    {
+      "from": "Atlas.Common.Alpha.Adapters.Sache",
+      "to": "Atlas.Common.Alpha.Contract.Sache",
+      "allowed": true
+    },
+    {
+      "from": "Atlas.Common.Alpha.Adapters.Sache",
+      "to": "Atlas.Windows.Beta.Contract.Sache",
+      "allowed": true
+    },
+    {
+      "from": "Atlas.Common.Alpha.Adapters.Sache",
+      "to": "Atlas.Common.Alpha.Internals.Sache",
+      "allowed": true
+    },
+    {
+      "from": "Atlas.Common.Alpha.Adapters.Sache",
+      "to": "Atlas.Windows.Beta.Internals.Sache",
+      "allowed": false
+    },
+    {
+      "from": "Atlas.Common.Alpha.Adapters.Sache",
+      "to": "Atlas.Common.Alpha.Providers.Sache",
+      "allowed": false
+    },
+    {
+      "from": "Atlas.Common.Alpha.Adapters.Sache",
+      "to": "Atlas.Windows.Beta.Providers.Sache",
+      "allowed": false
+    },
+    {
+      "from": "Atlas.Common.Alpha.Adapters.Sache",
+      "to": "Atlas.Common.Alpha.Adapters.Sache",
+      "allowed": false
+    },
+    {
+      "from": "Atlas.Common.Alpha.Adapters.Sache",
+      "to": "Atlas.Windows.Beta.Adapters.Sache",
+      "allowed": false
+    },
+    {
+      "from": "Atlas.Common.Alpha.Adapters.Sache",
+      "to": "Atlas.Common.Alpha.Sache",
+      "allowed": true
+    },
+    {
+      "from": "Atlas.Common.Alpha.Adapters.Sache",
+      "to": "Atlas.Windows.Beta.Sache",
+      "allowed": true
+    },
+    {
+      "from": "Atlas.Common.Alpha.Adapters.Sache",
+      "to": "Atlas.Common.Alpha.Composition.Sache",
+      "allowed": false
+    },
+    {
+      "from": "Atlas.Common.Alpha.Adapters.Sache",
+      "to": "Atlas.Windows.Beta.Composition.Sache",
+      "allowed": false
+    },
+    {
+      "from": "Atlas.Common.Alpha.Adapters.Sache",
+      "to": "Atlas.Common.Alpha.Hosting.Sache",
+      "allowed": false
+    },
+    {
+      "from": "Atlas.Common.Alpha.Adapters.Sache",
+      "to": "Atlas.Windows.Beta.Hosting.Sache",
+      "allowed": false
+    },
+    {
+      "from": "Atlas.Common.Alpha.Adapters.Sache",
+      "to": "Shell.Sache",
+      "allowed": false
+    },
+    {
+      "from": "Atlas.Common.Alpha.Sache",
+      "to": "Atlas.Common.Alpha.Contract.Sache",
+      "allowed": true
+    },
+    {
+      "from": "Atlas.Common.Alpha.Sache",
+      "to": "Atlas.Windows.Beta.Contract.Sache",
+      "allowed": true
+    },
+    {
+      "from": "Atlas.Common.Alpha.Sache",
+      "to": "Atlas.Common.Alpha.Internals.Sache",
+      "allowed": true
+    },
+    {
+      "from": "Atlas.Common.Alpha.Sache",
+      "to": "Atlas.Windows.Beta.Internals.Sache",
+      "allowed": false
+    },
+    {
+      "from": "Atlas.Common.Alpha.Sache",
+      "to": "Atlas.Common.Alpha.Providers.Sache",
+      "allowed": false
+    },
+    {
+      "from": "Atlas.Common.Alpha.Sache",
+      "to": "Atlas.Windows.Beta.Providers.Sache",
+      "allowed": false
+    },
+    {
+      "from": "Atlas.Common.Alpha.Sache",
+      "to": "Atlas.Common.Alpha.Adapters.Sache",
+      "allowed": false
+    },
+    {
+      "from": "Atlas.Common.Alpha.Sache",
+      "to": "Atlas.Windows.Beta.Adapters.Sache",
+      "allowed": false
+    },
+    {
+      "from": "Atlas.Common.Alpha.Sache",
+      "to": "Atlas.Common.Alpha.Sache",
+      "allowed": true
+    },
+    {
+      "from": "Atlas.Common.Alpha.Sache",
+      "to": "Atlas.Windows.Beta.Sache",
+      "allowed": true
+    },
+    {
+      "from": "Atlas.Common.Alpha.Sache",
+      "to": "Atlas.Common.Alpha.Composition.Sache",
+      "allowed": false
+    },
+    {
+      "from": "Atlas.Common.Alpha.Sache",
+      "to": "Atlas.Windows.Beta.Composition.Sache",
+      "allowed": false
+    },
+    {
+      "from": "Atlas.Common.Alpha.Sache",
+      "to": "Atlas.Common.Alpha.Hosting.Sache",
+      "allowed": false
+    },
+    {
+      "from": "Atlas.Common.Alpha.Sache",
+      "to": "Atlas.Windows.Beta.Hosting.Sache",
+      "allowed": false
+    },
+    {
+      "from": "Atlas.Common.Alpha.Sache",
+      "to": "Shell.Sache",
+      "allowed": false
+    },
+    {
+      "from": "Atlas.Common.Alpha.Composition.Sache",
+      "to": "Atlas.Common.Alpha.Contract.Sache",
+      "allowed": true
+    },
+    {
+      "from": "Atlas.Common.Alpha.Composition.Sache",
+      "to": "Atlas.Windows.Beta.Contract.Sache",
+      "allowed": true
+    },
+    {
+      "from": "Atlas.Common.Alpha.Composition.Sache",
+      "to": "Atlas.Common.Alpha.Internals.Sache",
+      "allowed": false
+    },
+    {
+      "from": "Atlas.Common.Alpha.Composition.Sache",
+      "to": "Atlas.Windows.Beta.Internals.Sache",
+      "allowed": false
+    },
+    {
+      "from": "Atlas.Common.Alpha.Composition.Sache",
+      "to": "Atlas.Common.Alpha.Providers.Sache",
+      "allowed": true
+    },
+    {
+      "from": "Atlas.Common.Alpha.Composition.Sache",
+      "to": "Atlas.Windows.Beta.Providers.Sache",
+      "allowed": false
+    },
+    {
+      "from": "Atlas.Common.Alpha.Composition.Sache",
+      "to": "Atlas.Common.Alpha.Adapters.Sache",
+      "allowed": true
+    },
+    {
+      "from": "Atlas.Common.Alpha.Composition.Sache",
+      "to": "Atlas.Windows.Beta.Adapters.Sache",
+      "allowed": false
+    },
+    {
+      "from": "Atlas.Common.Alpha.Composition.Sache",
+      "to": "Atlas.Common.Alpha.Sache",
+      "allowed": true
+    },
+    {
+      "from": "Atlas.Common.Alpha.Composition.Sache",
+      "to": "Atlas.Windows.Beta.Sache",
+      "allowed": true
+    },
+    {
+      "from": "Atlas.Common.Alpha.Composition.Sache",
+      "to": "Atlas.Common.Alpha.Composition.Sache",
+      "allowed": true
+    },
+    {
+      "from": "Atlas.Common.Alpha.Composition.Sache",
+      "to": "Atlas.Windows.Beta.Composition.Sache",
+      "allowed": false
+    },
+    {
+      "from": "Atlas.Common.Alpha.Composition.Sache",
+      "to": "Atlas.Common.Alpha.Hosting.Sache",
+      "allowed": false
+    },
+    {
+      "from": "Atlas.Common.Alpha.Composition.Sache",
+      "to": "Atlas.Windows.Beta.Hosting.Sache",
+      "allowed": false
+    },
+    {
+      "from": "Atlas.Common.Alpha.Composition.Sache",
+      "to": "Shell.Sache",
+      "allowed": false
+    },
+    {
+      "from": "Atlas.Common.Alpha.Hosting.Sache",
+      "to": "Atlas.Common.Alpha.Contract.Sache",
+      "allowed": true
+    },
+    {
+      "from": "Atlas.Common.Alpha.Hosting.Sache",
+      "to": "Atlas.Windows.Beta.Contract.Sache",
+      "allowed": true
+    },
+    {
+      "from": "Atlas.Common.Alpha.Hosting.Sache",
+      "to": "Atlas.Common.Alpha.Internals.Sache",
+      "allowed": false
+    },
+    {
+      "from": "Atlas.Common.Alpha.Hosting.Sache",
+      "to": "Atlas.Windows.Beta.Internals.Sache",
+      "allowed": false
+    },
+    {
+      "from": "Atlas.Common.Alpha.Hosting.Sache",
+      "to": "Atlas.Common.Alpha.Providers.Sache",
+      "allowed": true
+    },
+    {
+      "from": "Atlas.Common.Alpha.Hosting.Sache",
+      "to": "Atlas.Windows.Beta.Providers.Sache",
+      "allowed": false
+    },
+    {
+      "from": "Atlas.Common.Alpha.Hosting.Sache",
+      "to": "Atlas.Common.Alpha.Adapters.Sache",
+      "allowed": true
+    },
+    {
+      "from": "Atlas.Common.Alpha.Hosting.Sache",
+      "to": "Atlas.Windows.Beta.Adapters.Sache",
+      "allowed": false
+    },
+    {
+      "from": "Atlas.Common.Alpha.Hosting.Sache",
+      "to": "Atlas.Common.Alpha.Sache",
+      "allowed": true
+    },
+    {
+      "from": "Atlas.Common.Alpha.Hosting.Sache",
+      "to": "Atlas.Windows.Beta.Sache",
+      "allowed": true
+    },
+    {
+      "from": "Atlas.Common.Alpha.Hosting.Sache",
+      "to": "Atlas.Common.Alpha.Composition.Sache",
+      "allowed": true
+    },
+    {
+      "from": "Atlas.Common.Alpha.Hosting.Sache",
+      "to": "Atlas.Windows.Beta.Composition.Sache",
+      "allowed": false
+    },
+    {
+      "from": "Atlas.Common.Alpha.Hosting.Sache",
+      "to": "Atlas.Common.Alpha.Hosting.Sache",
+      "allowed": true
+    },
+    {
+      "from": "Atlas.Common.Alpha.Hosting.Sache",
+      "to": "Atlas.Windows.Beta.Hosting.Sache",
+      "allowed": false
+    },
+    {
+      "from": "Atlas.Common.Alpha.Hosting.Sache",
+      "to": "Shell.Sache",
+      "allowed": false
+    },
+    {
+      "from": "Shell.Sache",
+      "to": "Atlas.Common.Beta.Contract.Sache",
+      "allowed": true
+    },
+    {
+      "from": "Shell.Sache",
+      "to": "Atlas.Common.Beta.Internals.Sache",
+      "allowed": false
+    },
+    {
+      "from": "Shell.Sache",
+      "to": "Atlas.Common.Beta.Providers.Sache",
+      "allowed": true
+    },
+    {
+      "from": "Shell.Sache",
+      "to": "Atlas.Common.Beta.Adapters.Sache",
+      "allowed": true
+    },
+    {
+      "from": "Shell.Sache",
+      "to": "Atlas.Common.Beta.Sache",
+      "allowed": true
+    },
+    {
+      "from": "Shell.Sache",
+      "to": "Atlas.Common.Beta.Composition.Sache",
+      "allowed": true
+    },
+    {
+      "from": "Shell.Sache",
+      "to": "Atlas.Common.Beta.Hosting.Sache",
+      "allowed": true
+    },
+    {
+      "from": "Shell.Sache",
+      "to": "Core.Sache",
+      "allowed": true
+    },
+    {
+      "from": "Atlas.Common.Alpha.Contract.Sache",
+      "to": "System.SysUtils",
+      "allowed": true
+    },
+    {
+      "from": "Setup.Core.Plan",
+      "to": "Atlas.Common.Alpha.Internals.Sache",
+      "allowed": true
+    },
+    {
+      "from": "Atlas.Common.Alpha",
+      "to": "Atlas.Common.Alpha.Internals.Sache",
+      "allowed": true
+    },
+    {
+      "from": "atlas.common.alpha.providers.sache",
+      "to": "Atlas.Common.ALPHA.Internals.Sache",
+      "allowed": true
+    },
+    {
+      "from": "Atlas.Core.Alpha.Sache",
+      "to": "Atlas.Common.Alpha.Internals.Sache",
+      "allowed": false
+    }
+  ]
+}

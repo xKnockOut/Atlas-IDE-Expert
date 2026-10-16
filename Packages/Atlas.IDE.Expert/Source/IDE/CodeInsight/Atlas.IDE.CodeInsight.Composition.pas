@@ -263,7 +263,6 @@ begin
   Messages.AddTitleMessage(AText, Group);
 end;
 
-/// <summary>„Symbol umbenennen…“ (#397) aus Menü und Palette.</summary>
 /// <summary>„Fehlerbericht erstellen…“ (#108) aus Menü, Palette und dem Fenster des abgesicherten Starts.</summary>
 procedure CreateBugReport;
 begin
@@ -638,6 +637,7 @@ begin
   ProjectTodos(Filter);
 end;
 
+/// <summary>„Symbol umbenennen…“ (#397) aus Menü und Palette.</summary>
 procedure RenameSymbol;
 begin
   if Manager = nil then
