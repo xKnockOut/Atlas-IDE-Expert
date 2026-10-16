@@ -17,7 +17,8 @@ interface
 
 uses
   System.SysUtils,
-  Atlas.Core.Lsp.Session;
+  Atlas.Core.Lsp.Session,
+  Atlas.Core.Editor.WorkspacePlan;
 
 type
   TAtlasIdeRename = class
@@ -25,9 +26,10 @@ type
     /// <summary>Schickt dem Server den aktuellen Text aller offenen, schon abgeglichenen Dateien und
     /// der im Designer offenen Formulare (#402).</summary>
     class procedure SyncOpenBuffers(ASession: TLspSession); static;
-    /// <summary>ASession: laufende Sitzung oder nil; AOpenUnopened: nicht geöffnete Dateien öffnen
-    /// statt sie auf die Platte zu schreiben; AMessage: Zeile für die Meldungsansicht.</summary>
-    class procedure Execute(ASession: TLspSession; AOpenUnopened: Boolean; const AMessage: TProc<string>); static;
+    /// <summary>ASession: laufende Sitzung oder nil; APolicy: nicht geöffnete Dateien öffnen
+    /// oder auf die Platte schreiben; AMessage: Zeile für die Meldungsansicht.</summary>
+    class procedure Execute(ASession: TLspSession; APolicy: TAtlasUnopenedPolicy;
+      const AMessage: TProc<string>); static;
   end;
 
 implementation
@@ -41,10 +43,11 @@ uses
   Atlas.Core.Lsp.WorkspaceEdits,
   Atlas.Core.Results.Model,
   Atlas.UI.Results.RenamePreview,
-  Atlas.IDE.Editor.Buffer,
+  Atlas.IDE.Foundation.EditorBuffer,
   Atlas.IDE.Editor.WorkspaceEdit,
   Atlas.IDE.Forms.Designer,
-  Atlas.IDE.Hover.Editor;
+  Atlas.IDE.Foundation.Files,
+  Atlas.IDE.Foundation.Navigation;
 
 const
   // Projektweit über viele Units; deutlich länger als eine Hover-Anfrage.
@@ -57,14 +60,15 @@ var
 begin
   for FileName in ASession.SyncedFiles do
   begin
-    Buffer := TAtlasIdeWorkspaceEdit.BufferOf(FileName);
+    Buffer := TAtlasIdeFiles.BufferOf(FileName);
     if Buffer <> nil then
       ASession.Sync(FileName, TAtlasEditorBuffer.Text(Buffer));
   end;
   TAtlasIdeForms.SyncNow(ASession);
 end;
 
-class procedure TAtlasIdeRename.Execute(ASession: TLspSession; AOpenUnopened: Boolean; const AMessage: TProc<string>);
+class procedure TAtlasIdeRename.Execute(ASession: TLspSession; APolicy: TAtlasUnopenedPolicy;
+  const AMessage: TProc<string>);
 var
   Editors: IOTAEditorServices;
   View: IOTAEditView;
@@ -152,10 +156,10 @@ begin
     TAtlasResults.Group(Preview),
     procedure(const AFileName: string; ALine, ACharacter: Integer)
     begin
-      TAtlasEditorHover.GoToLocation(AFileName, ALine, ACharacter);
+      TAtlasIdeNavigation.GoToLocation(AFileName, ALine, ACharacter);
     end) then
     Exit;
-  Outcome := TAtlasIdeWorkspaceEdit.Apply(Edit, AOpenUnopened,
+  Outcome := TAtlasIdeWorkspaceEdit.Apply(Edit, APolicy,
     TAtlasStrings.Fmt(TAtlasTextId.UndoActionRename, [OldName, NewName]));
   if Outcome.Error <> '' then
     AMessage(TAtlasStrings.Fmt(TAtlasTextId.EditFailed, [Outcome.Error]))

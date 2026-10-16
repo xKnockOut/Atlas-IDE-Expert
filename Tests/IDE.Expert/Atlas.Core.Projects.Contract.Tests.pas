@@ -1,4 +1,4 @@
-﻿unit Atlas.Core.Projects.Context.Tests;
+﻿unit Atlas.Core.Projects.Contract.Tests;
 
 // Tests für den Projektkontext des Plugins (#396).
 
@@ -31,7 +31,7 @@ uses
   System.Generics.Collections,
   System.SysUtils,
   System.JSON,
-  Atlas.Core.Projects.Context;
+  Atlas.Core.Projects.Contract;
 
 function Sample: TAtlasProjectContext;
 begin

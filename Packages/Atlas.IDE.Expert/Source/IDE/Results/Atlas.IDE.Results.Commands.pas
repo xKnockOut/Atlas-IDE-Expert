@@ -54,12 +54,12 @@ uses
   Atlas.Core.Commands.Palette,
   Atlas.UI.Strings,
   Atlas.UI.Commands.Palette,
-  Atlas.IDE.Editor.Buffer,
-  Atlas.IDE.Editor.Style,
+  Atlas.IDE.Foundation.EditorBuffer,
+  Atlas.IDE.Foundation.EditorStyle,
   Atlas.IDE.Editor.WorkspaceEdit,
   Atlas.IDE.Editor.Rename,
-  Atlas.IDE.Hover.Editor,
-  Atlas.IDE.Results.Window;
+  Atlas.IDE.Foundation.ResultsWindow,
+  Atlas.IDE.Foundation.Navigation;
 
 const
   // Projektweit über viele Units; deutlich länger als ein Hover.
@@ -134,7 +134,7 @@ end;
 
 class procedure TAtlasIdeResults.Open(const AFileName: string; ALine, ACharacter: Integer);
 begin
-  TAtlasEditorHover.GoToLocation(AFileName, ALine, ACharacter);
+  TAtlasIdeNavigation.GoToLocation(AFileName, ALine, ACharacter);
 end;
 
 class function TAtlasIdeResults.AtCursor(out AFileName: string; out ALine, ACharacter: Integer;

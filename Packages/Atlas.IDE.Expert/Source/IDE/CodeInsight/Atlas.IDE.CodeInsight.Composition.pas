@@ -44,7 +44,7 @@ uses
   Atlas.IDE.Build.Notifier,
   Atlas.IDE.Build.MessageView,
   Atlas.Core.Diagnostics.Hangs,
-  Atlas.IDE.Settings.Store,
+  Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Diagnostics.Watchdog,
   Atlas.IDE.Diagnostics.Export,
   Atlas.IDE.Diagnostics.BugReport,
@@ -53,7 +53,7 @@ uses
   Atlas.IDE.Files.Reloader,
   Atlas.IDE.Commands.Palette,
   Atlas.IDE.Editor.Pairs,
-  Atlas.IDE.Editor.Structure,
+  Atlas.IDE.Foundation.StructureSwitch,
   Atlas.IDE.Files.DirtyExport,
   Atlas.IDE.Files.EditInbox,
   Atlas.IDE.Build.CheckOnSave,
@@ -79,7 +79,7 @@ uses
   Atlas.Core.Diagnostics.Shutdown,
   Atlas.Core.Diagnostics.TimeLimit,
   Atlas.Core.Diagnostics.MainThread,
-  Atlas.IDE.Commands.Keys,
+  Atlas.IDE.Foundation.Keys,
   Atlas.IDE.Commands.KeyMap,
   Atlas.IDE.Commands.Usage,
   Atlas.IDE.Commands.ShortcutTips,
@@ -88,8 +88,8 @@ uses
   Atlas.Core.Updates.Check,
   Atlas.Core.Updates.Adapters.HttpSource,
   Atlas.IDE.Updates.Check,
-  Atlas.IDE.Results.Window,
-  Atlas.IDE.Style.Symbol,
+  Atlas.IDE.Foundation.ResultsWindow,
+  Atlas.IDE.Foundation.Symbol,
   Atlas.Core.Welcome.Sections,
   Atlas.Core.Welcome.WhatsNew,
   Atlas.UI.Welcome.Frame,
@@ -113,7 +113,28 @@ uses
   Atlas.IDE.Notes.Gutter,
   Atlas.IDE.Bookmarks.Service,
   Atlas.IDE.Bookmarks.Gutter,
-  Atlas.IDE.Editor.GutterMarks;
+  Atlas.IDE.Foundation.GutterMarks,
+  Atlas.Core.Editor.WorkspacePlan,
+  Atlas.IDE.Editor.TestUnitLens,
+  Atlas.IDE.Completion.Editor,
+  Atlas.Core.Undo.Contract,
+  Atlas.Core.Undo.Adapters.DiskTarget,
+  Atlas.Core.Undo.Adapters.FileStore,
+  Atlas.IDE.Undo.Target,
+  Atlas.Core.Vcs.Contract,
+  Atlas.Core.Vcs.Composition,
+  Atlas.Core.Vcs.Tools,
+  Atlas.Core.Vcs.Adapters.ProcessRunner,
+  Atlas.Core.Lsp.Client,
+  Atlas.Core.Lsp.Adapters.ServerProcess,
+  Atlas.Core.Files.WatchedChanges,
+  Atlas.Core.Files.Adapters.FolderWatcher,
+  Atlas.Core.Signature.Contract,
+  Atlas.Core.Signature.Providers.Server,
+  Atlas.Core.Completion.Providers.Server,
+  Atlas.Core.Completion.Providers.Snippets,
+  Atlas.Core.Completion.Providers.XmlDoc,
+  Atlas.Core.Diagnostics.FeatureTable;
 
 var
   ManagerIndex: Integer = -1;
@@ -171,6 +192,11 @@ var
   KeysWatched: Boolean;
   // Atlas-Bereiche auf der Willkommensseite und Fenster „Atlas-Start“ (#753).
   Welcome: TAtlasIdeWelcome;
+  // Dienste für Notizen (#545) und Lesezeichen (#622) gestartet.
+  NotesStarted: Boolean;
+  BookmarksStarted: Boolean;
+  // Teile des Plugins in Startreihenfolge (Code-Review S-03); gefüllt beim ersten RegisterFeatures.
+  Features: TAtlasFeatureTable;
 
 const
   // Ab dieser Dauer ein Hinweis im Meldungsfenster (#501).
@@ -264,6 +290,95 @@ begin
 end;
 
 /// <summary>„Fehlerbericht erstellen…“ (#108) aus Menü, Palette und dem Fenster des abgesicherten Starts.</summary>
+// Serverprozess, Ordnerbeobachter und Quellen von Vervollständigung und
+// Parameter-Hint aus dem Kern (A-09).
+function CodeInsightAdapters: TAtlasCodeInsightAdapters;
+begin
+  Result.NewServer :=
+    function(AExeName, AArguments: string): IAtlasLspServer
+    begin
+      Result := TLspServerProcess.Create(AExeName, AArguments);
+    end;
+  Result.NewFolderWatcher :=
+    function(AChanges: TAtlasWatchedChanges): IAtlasFolderWatcher
+    begin
+      Result := TAtlasFolderWatcher.Create(AChanges);
+    end;
+  Result.NewSignatureSource :=
+    function(ASession: TAtlasSessionFunc): IAtlasSignatureSource
+    begin
+      Result := TAtlasServerSignatureProvider.Create(ASession);
+    end;
+  Result.NewCompletionSources :=
+    function(const ASession: TAtlasSessionFunc; const ALog: TAtlasLogProc): TAtlasCompletionSources
+    var
+      Server: TAtlasServerCompletionProvider;
+      Snippets: TAtlasSnippetCompletionProvider;
+    begin
+      Server := TAtlasServerCompletionProvider.Create(ASession);
+      Server.OnLog :=
+        procedure(const AMessage: string)
+        begin
+          ALog(AMessage);
+        end;
+      Snippets := TAtlasSnippetCompletionProvider.Create(TAtlasSnippets.BuiltIn);
+      // Die Schnittstellen halten die Quellen; die Funktionen greifen über die Objekte zu.
+      Result.Server := Server;
+      Result.XmlDoc := TAtlasXmlDocCompletionProvider.Create;
+      Result.Snippets := Snippets;
+      Result.Shutdown :=
+        procedure
+        begin
+          Server.Shutdown;
+          Snippets.Shutdown;
+        end;
+      Result.SetSnippetsEnabled :=
+        procedure(AEnabled: Boolean)
+        begin
+          Snippets.Enabled := AEnabled;
+          Server.Snippets := AEnabled;
+        end;
+      Result.SetSnippetList :=
+        procedure(AList: TAtlasSnippetList)
+        begin
+          Snippets.SetSnippets(AList);
+        end;
+      Result.SnippetList :=
+        function: TAtlasSnippetList
+        begin
+          Result := Snippets.Snippets;
+        end;
+    end;
+end;
+
+// Versionsverwaltung: Prozessläufer und Auswahl des Kerns (A-09).
+function VcsBackend: TAtlasIdeVcsBackend;
+begin
+  Result.NewRunner :=
+    function(ACancelled: TFunc<Boolean>): IAtlasVcsRunner
+    begin
+      Result := TAtlasVcsProcessRunner.Create(False, ACancelled);
+    end;
+  Result.Open :=
+    function(const AFolder: string; AProvider: TAtlasVcsProvider; const ARunner: IAtlasVcsRunner;
+      ATimeoutMs: Cardinal): IAtlasVersionControl
+    begin
+      if ATimeoutMs = 0 then
+        Exit(TAtlasVersionControl.Open(AFolder, AProvider, ARunner));
+      Result := TAtlasVersionControl.Open(AFolder, AProvider, ARunner,
+        function(AKind: TAtlasVcsKind): string
+        begin
+          Result := TAtlasVcsTools.Find(AKind);
+        end,
+        ATimeoutMs);
+    end;
+  Result.SetToolMissing :=
+    procedure(AHandler: TProc<TAtlasVcsKind>)
+    begin
+      TAtlasVcsNotices.OnToolMissing := AHandler;
+    end;
+end;
+
 procedure CreateBugReport;
 begin
   TAtlasIdeBugReport.Execute(
@@ -642,17 +757,86 @@ procedure RenameSymbol;
 begin
   if Manager = nil then
     Exit;
-  TAtlasIdeRename.Execute(Manager.ActiveSession, TAtlasIdeSettings.Current.OpenForEdits,
+  TAtlasIdeRename.Execute(Manager.ActiveSession,
+    TAtlasUnopenedPolicies.FromSetting(TAtlasIdeSettings.Current.OpenForEdits),
     procedure(AText: string)
     begin
       GuardWarning(AText);
     end);
 end;
 
+// Sichtbarkeit von Palettenbefehlen nach Einstellung.
+function BaselineUpdateVisible: Boolean;
+begin
+  Result := TAtlasIdeSettings.Current.BaselineUpdate;
+end;
+
+function BookmarksNamedVisible: Boolean;
+begin
+  Result := TAtlasIdeSettings.Current.BookmarksNamed;
+end;
+
+function DiagnosticModeVisible: Boolean;
+begin
+  Result := TAtlasIdeSettings.Current.DiagnosticMode;
+end;
+
+function GenerateMenuVisible: Boolean;
+begin
+  Result := TAtlasIdeSettings.Current.GenerateMenu;
+end;
+
+function MetricsReportVisible: Boolean;
+begin
+  Result := TAtlasIdeSettings.Current.MetricsReport;
+end;
+
+function NotesVisible: Boolean;
+begin
+  Result := TAtlasIdeSettings.Current.Notes;
+end;
+
+function TodoListVisible: Boolean;
+begin
+  Result := TAtlasIdeSettings.Current.TodoList;
+end;
+
 procedure RegisterPalette;
+
+  procedure Add(const AId: string; ATextId: TAtlasTextId; const AProc: TProc); overload;
+  begin
+    Palette.RegisterCommand(AId, TAtlasStrings.Text(ATextId), '', AProc);
+  end;
+
+  /// <summary>Befehl nur sichtbar, solange AVisible True liefert (#520).</summary>
+  procedure Add(const AId: string; ATextId: TAtlasTextId; const AProc: TProc; const AVisible: TFunc<Boolean>);
+    overload;
+  begin
+    Palette.RegisterCommand(AId, TAtlasStrings.Text(ATextId), '', AProc, AVisible);
+  end;
+
+  function Hierarchy(ADirection: TAtlasHierarchyDirection): TProc;
+  begin
+    Result :=
+      procedure
+      begin
+        TAtlasIdeResults.ShowHierarchy(ADirection);
+      end;
+  end;
+
+  /// <summary>AProc abgesichert je Feature (#493).</summary>
+  function Guarded(AFeature: TAtlasFeature; const AProc: TProc): TProc;
+  begin
+    Result :=
+      procedure
+      begin
+        TAtlasGuard.Run(AFeature, AProc);
+      end;
+  end;
+
 begin
   Palette := TAtlasIdePalette.Create;
-  Palette.RegisterCommand('Atlas.Log', TAtlasStrings.Text(TAtlasTextId.PaletteLog), '',
+  Add('Atlas.Log', TAtlasTextId.PaletteLog,
     procedure
     var
       Actions: IOTAActionServices;
@@ -660,150 +844,36 @@ begin
       if Supports(BorlandIDEServices, IOTAActionServices, Actions) and FileExists(TAtlasCodeInsightManager.DiagnoseLog) then
         Actions.OpenFile(TAtlasCodeInsightManager.DiagnoseLog);
     end);
-  Palette.RegisterCommand('Atlas.Rename', TAtlasStrings.Text(TAtlasTextId.RenameMenu), '',
-    procedure
-    begin
-      RenameSymbol;
-    end);
+  Add('Atlas.Rename', TAtlasTextId.RenameMenu, RenameSymbol);
   // Ergebnisfenster (#400).
-  Palette.RegisterCommand('Atlas.References', TAtlasStrings.Text(TAtlasTextId.MenuReferences), '',
-    procedure
-    begin
-      TAtlasIdeResults.FindReferences;
-    end);
-  Palette.RegisterCommand('Atlas.Implementations', TAtlasStrings.Text(TAtlasTextId.MenuImplementations), '',
-    procedure
-    begin
-      TAtlasIdeResults.FindImplementations;
-    end);
-  Palette.RegisterCommand('Atlas.SymbolSearch', TAtlasStrings.Text(TAtlasTextId.MenuSymbolSearch), '',
-    procedure
-    begin
-      TAtlasIdeResults.SearchSymbol;
-    end);
-  Palette.RegisterCommand('Atlas.Callers', TAtlasStrings.Text(TAtlasTextId.MenuIncoming), '',
-    procedure
-    begin
-      TAtlasIdeResults.ShowHierarchy(TAtlasHierarchyDirection.Incoming);
-    end);
-  Palette.RegisterCommand('Atlas.Calls', TAtlasStrings.Text(TAtlasTextId.MenuOutgoing), '',
-    procedure
-    begin
-      TAtlasIdeResults.ShowHierarchy(TAtlasHierarchyDirection.Outgoing);
-    end);
-  Palette.RegisterCommand('Atlas.Supertypes', TAtlasStrings.Text(TAtlasTextId.MenuSupertypes), '',
-    procedure
-    begin
-      TAtlasIdeResults.ShowHierarchy(TAtlasHierarchyDirection.Supertypes);
-    end);
-  Palette.RegisterCommand('Atlas.Subtypes', TAtlasStrings.Text(TAtlasTextId.MenuSubtypes), '',
-    procedure
-    begin
-      TAtlasIdeResults.ShowHierarchy(TAtlasHierarchyDirection.Subtypes);
-    end);
-  Palette.RegisterCommand('Atlas.ResultsWindow', TAtlasStrings.Text(TAtlasTextId.MenuResultsWindow), '',
-    procedure
-    begin
-      TAtlasIdeResults.ShowWindow;
-    end);
+  Add('Atlas.References', TAtlasTextId.MenuReferences, TAtlasIdeResults.FindReferences);
+  Add('Atlas.Implementations', TAtlasTextId.MenuImplementations, TAtlasIdeResults.FindImplementations);
+  Add('Atlas.SymbolSearch', TAtlasTextId.MenuSymbolSearch, TAtlasIdeResults.SearchSymbol);
+  Add('Atlas.Callers', TAtlasTextId.MenuIncoming, Hierarchy(TAtlasHierarchyDirection.Incoming));
+  Add('Atlas.Calls', TAtlasTextId.MenuOutgoing, Hierarchy(TAtlasHierarchyDirection.Outgoing));
+  Add('Atlas.Supertypes', TAtlasTextId.MenuSupertypes, Hierarchy(TAtlasHierarchyDirection.Supertypes));
+  Add('Atlas.Subtypes', TAtlasTextId.MenuSubtypes, Hierarchy(TAtlasHierarchyDirection.Subtypes));
+  Add('Atlas.ResultsWindow', TAtlasTextId.MenuResultsWindow, TAtlasIdeResults.ShowWindow);
   // Atlas-Änderungen über mehrere Dateien (#721).
-  Palette.RegisterCommand('Atlas.UndoChange', TAtlasStrings.Text(TAtlasTextId.UndoMenu), '',
-    procedure
-    begin
-      TAtlasIdeUndo.UndoLast;
-    end);
-  Palette.RegisterCommand('Atlas.RedoChange', TAtlasStrings.Text(TAtlasTextId.RedoMenu), '',
-    procedure
-    begin
-      TAtlasIdeUndo.RedoLast;
-    end);
-  Palette.RegisterCommand('Atlas.ChangeList', TAtlasStrings.Text(TAtlasTextId.UndoListMenu), '',
-    procedure
-    begin
-      TAtlasIdeUndo.ShowList;
-    end);
+  Add('Atlas.UndoChange', TAtlasTextId.UndoMenu, TAtlasIdeUndo.UndoLast);
+  Add('Atlas.RedoChange', TAtlasTextId.RedoMenu, TAtlasIdeUndo.RedoLast);
+  Add('Atlas.ChangeList', TAtlasTextId.UndoListMenu, TAtlasIdeUndo.ShowList);
   // Persönliche Notizen (#545); nur sichtbar, solange die Einstellung an ist.
-  Palette.RegisterCommand('Atlas.NoteAdd', TAtlasStrings.Text(TAtlasTextId.NotesMenuAdd), '',
-    procedure
-    begin
-      TAtlasGuard.Run(TAtlasFeature.Notes,
-        procedure
-        begin
-          TAtlasIdeNotes.AddOrEdit;
-        end);
-    end,
-    function: Boolean
-    begin
-      Result := TAtlasIdeSettings.Current.Notes;
-    end);
-  Palette.RegisterCommand('Atlas.NoteDelete', TAtlasStrings.Text(TAtlasTextId.NotesMenuDelete), '',
-    procedure
-    begin
-      TAtlasGuard.Run(TAtlasFeature.Notes,
-        procedure
-        begin
-          TAtlasIdeNotes.DeleteAtLine;
-        end);
-    end,
-    function: Boolean
-    begin
-      Result := TAtlasIdeSettings.Current.Notes;
-    end);
-  Palette.RegisterCommand('Atlas.NoteList', TAtlasStrings.Text(TAtlasTextId.NotesMenuList), '',
-    procedure
-    begin
-      TAtlasGuard.Run(TAtlasFeature.Notes,
-        procedure
-        begin
-          TAtlasIdeNotes.ShowList;
-        end);
-    end,
-    function: Boolean
-    begin
-      Result := TAtlasIdeSettings.Current.Notes;
-    end);
+  Add('Atlas.NoteAdd', TAtlasTextId.NotesMenuAdd,
+    Guarded(TAtlasFeature.Notes, TAtlasIdeNotes.AddOrEdit), NotesVisible);
+  Add('Atlas.NoteDelete', TAtlasTextId.NotesMenuDelete,
+    Guarded(TAtlasFeature.Notes, TAtlasIdeNotes.DeleteAtLine), NotesVisible);
+  Add('Atlas.NoteList', TAtlasTextId.NotesMenuList,
+    Guarded(TAtlasFeature.Notes, TAtlasIdeNotes.ShowList), NotesVisible);
   // Benannte Lesezeichen (#622); nur sichtbar, solange bookmarks.named an ist.
-  Palette.RegisterCommand('Atlas.BookmarkAdd', TAtlasStrings.Text(TAtlasTextId.BookmarksMenuAdd), '',
-    procedure
-    begin
-      TAtlasGuard.Run(TAtlasFeature.Bookmarks,
-        procedure
-        begin
-          TAtlasIdeBookmarks.AddBookmark;
-        end);
-    end,
-    function: Boolean
-    begin
-      Result := TAtlasIdeSettings.Current.BookmarksNamed;
-    end);
-  Palette.RegisterCommand('Atlas.BookmarkGoTo', TAtlasStrings.Text(TAtlasTextId.BookmarksMenuGoTo), '',
-    procedure
-    begin
-      TAtlasGuard.Run(TAtlasFeature.Bookmarks,
-        procedure
-        begin
-          TAtlasIdeBookmarks.GoToBookmark;
-        end);
-    end,
-    function: Boolean
-    begin
-      Result := TAtlasIdeSettings.Current.BookmarksNamed;
-    end);
-  Palette.RegisterCommand('Atlas.BookmarkWindow', TAtlasStrings.Text(TAtlasTextId.BookmarksMenuWindow), '',
-    procedure
-    begin
-      TAtlasGuard.Run(TAtlasFeature.Bookmarks,
-        procedure
-        begin
-          TAtlasIdeBookmarks.ShowWindow;
-        end);
-    end,
-    function: Boolean
-    begin
-      Result := TAtlasIdeSettings.Current.BookmarksNamed;
-    end);
+  Add('Atlas.BookmarkAdd', TAtlasTextId.BookmarksMenuAdd,
+    Guarded(TAtlasFeature.Bookmarks, TAtlasIdeBookmarks.AddBookmark), BookmarksNamedVisible);
+  Add('Atlas.BookmarkGoTo', TAtlasTextId.BookmarksMenuGoTo,
+    Guarded(TAtlasFeature.Bookmarks, TAtlasIdeBookmarks.GoToBookmark), BookmarksNamedVisible);
+  Add('Atlas.BookmarkWindow', TAtlasTextId.BookmarksMenuWindow,
+    Guarded(TAtlasFeature.Bookmarks, TAtlasIdeBookmarks.ShowWindow), BookmarksNamedVisible);
   // Erzeugen-Menü (#719); nur sichtbar, solange keys.generateMenu an ist.
-  Palette.RegisterCommand('Atlas.GenerateMenu', TAtlasStrings.Text(TAtlasTextId.GenerateMenuCommand), '',
+  Add('Atlas.GenerateMenu', TAtlasTextId.GenerateMenuCommand,
     procedure
     begin
       TAtlasGuard.Run(TAtlasFeature.EditorCommands,
@@ -811,115 +881,50 @@ begin
         begin
           TAtlasIdeGenerate.Show;
         end);
-    end,
-    function: Boolean
-    begin
-      Result := TAtlasIdeSettings.Current.GenerateMenu;
-    end);
+    end, GenerateMenuVisible);
   // Editorbefehle (#399).
-  Palette.RegisterCommand('Atlas.CodeActions', TAtlasStrings.Text(TAtlasTextId.EditorActions), '',
-    procedure
-    begin
-      TAtlasIdeEditorCommands.CodeActions;
-    end);
-  Palette.RegisterCommand('Atlas.ExpandSelection', TAtlasStrings.Text(TAtlasTextId.EditorExpand), '',
-    procedure
-    begin
-      TAtlasIdeEditorCommands.ExpandSelection;
-    end);
-  Palette.RegisterCommand('Atlas.ShrinkSelection', TAtlasStrings.Text(TAtlasTextId.EditorShrink), '',
-    procedure
-    begin
-      TAtlasIdeEditorCommands.ShrinkSelection;
-    end);
-  Palette.RegisterCommand('Atlas.TypeDefinition', TAtlasStrings.Text(TAtlasTextId.EditorTypeDefinition), '',
-    procedure
-    begin
-      TAtlasIdeEditorCommands.GoToTypeDefinition;
-    end);
-  Palette.RegisterCommand('Atlas.ToggleMethod', TAtlasStrings.Text(TAtlasTextId.EditorMethodToggle), '',
-    procedure
-    begin
-      TAtlasIdeEditorCommands.ToggleMethod;
-    end);
-  Palette.RegisterCommand('Atlas.CopyQualifiedName', TAtlasStrings.Text(TAtlasTextId.EditorCopyQualified), '',
+  Add('Atlas.CodeActions', TAtlasTextId.EditorActions, TAtlasIdeEditorCommands.CodeActions);
+  Add('Atlas.ExpandSelection', TAtlasTextId.EditorExpand, TAtlasIdeEditorCommands.ExpandSelection);
+  Add('Atlas.ShrinkSelection', TAtlasTextId.EditorShrink, TAtlasIdeEditorCommands.ShrinkSelection);
+  Add('Atlas.TypeDefinition', TAtlasTextId.EditorTypeDefinition, TAtlasIdeEditorCommands.GoToTypeDefinition);
+  Add('Atlas.ToggleMethod', TAtlasTextId.EditorMethodToggle, TAtlasIdeEditorCommands.ToggleMethod);
+  Add('Atlas.CopyQualifiedName', TAtlasTextId.EditorCopyQualified,
     procedure
     begin
       TAtlasIdeEditorCommands.CopyQualifiedName(False);
     end);
-  Palette.RegisterCommand('Atlas.CopyQualifiedNameParams', TAtlasStrings.Text(TAtlasTextId.EditorCopyQualifiedParams),
-    '',
+  Add('Atlas.CopyQualifiedNameParams', TAtlasTextId.EditorCopyQualifiedParams,
     procedure
     begin
       TAtlasIdeEditorCommands.CopyQualifiedName(True);
     end);
-  Palette.RegisterCommand('Atlas.SwitchTestUnit', TAtlasStrings.Text(TAtlasTextId.EditorTestUnit), '',
-    procedure
-    begin
-      TAtlasIdeEditorCommands.SwitchTestUnit;
-    end);
-  Palette.RegisterCommand('Atlas.UnitSearch', TAtlasStrings.Text(TAtlasTextId.UnitSearchTitle), '',
+  Add('Atlas.SwitchTestUnit', TAtlasTextId.EditorTestUnit, TAtlasIdeEditorCommands.SwitchTestUnit);
+  Add('Atlas.UnitSearch', TAtlasTextId.UnitSearchTitle,
     procedure
     begin
       TAtlasIdeUnitSearch.Show;
     end);
-  Palette.RegisterCommand('Atlas.UnitSearchIde', TAtlasStrings.Text(TAtlasTextId.UnitSearchIdeDialog), '',
-    procedure
-    begin
-      TAtlasIdeUnitSearch.ShowIdeDialog;
-    end);
-  Palette.RegisterCommand('Atlas.ResetHistory', TAtlasStrings.Text(TAtlasTextId.PaletteResetHistory), '',
-    procedure
-    begin
-      TAtlasIdeHistory.Reset;
-    end);
+  Add('Atlas.UnitSearchIde', TAtlasTextId.UnitSearchIdeDialog, TAtlasIdeUnitSearch.ShowIdeDialog);
+  Add('Atlas.ResetHistory', TAtlasTextId.PaletteResetHistory, TAtlasIdeHistory.Reset);
   // Metrikbericht des Projekts (#66); nur sichtbar, solange die Einstellung MetricsReport an ist.
-  Palette.RegisterCommand('Atlas.MetricsReport', TAtlasStrings.Text(TAtlasTextId.MetricsReportCommand), '',
-    procedure
-    begin
-      MetricsReport;
-    end,
-    function: Boolean
-    begin
-      Result := TAtlasIdeSettings.Current.MetricsReport;
-    end);
+  Add('Atlas.MetricsReport', TAtlasTextId.MetricsReportCommand, MetricsReport, MetricsReportVisible);
   // TODO-Liste des Projekts (#68): ohne Filter (alle offenen) und mit Filterdialog; nur sichtbar, solange die
   // Einstellung TodoList an ist.
-  Palette.RegisterCommand('Atlas.TodoList', TAtlasStrings.Text(TAtlasTextId.TodoListCommand), '',
+  Add('Atlas.TodoList', TAtlasTextId.TodoListCommand,
     procedure
     begin
       ProjectTodos(Default(TAtlasTodoFilter));
-    end,
-    function: Boolean
-    begin
-      Result := TAtlasIdeSettings.Current.TodoList;
-    end);
-  Palette.RegisterCommand('Atlas.TodoListFilter', TAtlasStrings.Text(TAtlasTextId.TodoFilterCommand), '',
-    procedure
-    begin
-      FilterProjectTodos;
-    end,
-    function: Boolean
-    begin
-      Result := TAtlasIdeSettings.Current.TodoList;
-    end);
+    end, TodoListVisible);
+  Add('Atlas.TodoListFilter', TAtlasTextId.TodoFilterCommand, FilterProjectTodos, TodoListVisible);
   // Baseline des Projekts aktualisieren (#97); nur sichtbar, solange die Einstellung BaselineUpdate an ist.
-  Palette.RegisterCommand('Atlas.UpdateBaseline', TAtlasStrings.Text(TAtlasTextId.BaselineUpdateCommand), '',
-    procedure
-    begin
-      UpdateBaseline;
-    end,
-    function: Boolean
-    begin
-      Result := TAtlasIdeSettings.Current.BaselineUpdate;
-    end);
-  Palette.RegisterCommand('Atlas.CheckNow', TAtlasStrings.Text(TAtlasTextId.PaletteCheckNow), '',
+  Add('Atlas.UpdateBaseline', TAtlasTextId.BaselineUpdateCommand, UpdateBaseline, BaselineUpdateVisible);
+  Add('Atlas.CheckNow', TAtlasTextId.PaletteCheckNow,
     procedure
     begin
       if CheckOnSave <> nil then
         CheckOnSave.CheckNow;
     end);
-  Palette.RegisterCommand('Atlas.ExportDiagnostics', TAtlasStrings.Text(TAtlasTextId.DiagExportMenu), '',
+  Add('Atlas.ExportDiagnostics', TAtlasTextId.DiagExportMenu,
     procedure
     begin
       TAtlasIdeDiagnosticExport.Execute(
@@ -928,42 +933,34 @@ begin
           GuardWarning(AText);
         end);
     end);
-  Palette.RegisterCommand('Atlas.BugReport', TAtlasStrings.Text(TAtlasTextId.BugReportMenu), '',
-    procedure
-    begin
-      CreateBugReport;
-    end);
-  Palette.RegisterCommand('Atlas.ProjectSettings', TAtlasStrings.Text(TAtlasTextId.ProjectSettingsTitle), '',
-    procedure
-    begin
-      TAtlasProjectSettings.Execute;
-    end);
-  Palette.RegisterCommand('Atlas.WelcomeStart', TAtlasStrings.Text(TAtlasTextId.MenuWelcomeStart), '',
+  Add('Atlas.BugReport', TAtlasTextId.BugReportMenu, CreateBugReport);
+  Add('Atlas.ProjectSettings', TAtlasTextId.ProjectSettingsTitle, TAtlasProjectSettings.Execute);
+  Add('Atlas.WelcomeStart', TAtlasTextId.MenuWelcomeStart,
     procedure
     begin
       if (Welcome <> nil) and TAtlasIdeSettings.Current.WelcomePage then
         Welcome.ShowStart;
     end);
-  Palette.RegisterCommand('Atlas.WelcomeApply', TAtlasStrings.Text(TAtlasTextId.MenuWelcomeApply), '',
+  Add('Atlas.WelcomeApply', TAtlasTextId.MenuWelcomeApply,
     procedure
     begin
       if (Welcome <> nil) and TAtlasIdeSettings.Current.WelcomePage then
         Welcome.ApplyLayout;
     end);
-  Palette.RegisterCommand('Atlas.WelcomeReset', TAtlasStrings.Text(TAtlasTextId.MenuWelcomeReset), '',
+  Add('Atlas.WelcomeReset', TAtlasTextId.MenuWelcomeReset,
     procedure
     begin
       if Welcome <> nil then
         Welcome.ResetLayout;
     end);
   // Karte „Neu in Atlas“ (#756): wie das Kontextmenü; zeigt die Willkommensseite bzw. „Atlas-Start“.
-  Palette.RegisterCommand('Atlas.WhatsNew', TAtlasStrings.Text(TAtlasTextId.WelcomeNewsShowCurrent), '',
+  Add('Atlas.WhatsNew', TAtlasTextId.WelcomeNewsShowCurrent,
     procedure
     begin
       if (Welcome <> nil) and (Welcome.WhatsNew <> nil) and TAtlasIdeSettings.Current.WelcomePage then
         Welcome.ShowWhatsNew(TAtlasWhatsNewView.Current);
     end);
-  Palette.RegisterCommand('Atlas.WhatsNewAll', TAtlasStrings.Text(TAtlasTextId.WelcomeNewsShowAllCommand), '',
+  Add('Atlas.WhatsNewAll', TAtlasTextId.WelcomeNewsShowAllCommand,
     procedure
     begin
       if (Welcome <> nil) and (Welcome.WhatsNew <> nil) and TAtlasIdeSettings.Current.WelcomePage then
@@ -971,13 +968,13 @@ begin
     end);
   // Künstlicher Hänger für den Einfrier-Wächter (#501): nur im Diagnosemodus (#479, Code-Review S-07).
   // Bereich „Weiterarbeiten“ (#755): obersten Arbeitsstand fortsetzen.
-  Palette.RegisterCommand('Atlas.Continue', TAtlasStrings.Text(TAtlasTextId.WelcomeContinueCommand), '',
+  Add('Atlas.Continue', TAtlasTextId.WelcomeContinueCommand,
     procedure
     begin
       if (Welcome <> nil) and (Welcome.ContinueWork <> nil) then
         Welcome.ContinueWork.ResumeLatest;
     end);
-  Palette.RegisterCommand('Atlas.HangTest', TAtlasStrings.Text(TAtlasTextId.SettingsHangTest), '',
+  Add('Atlas.HangTest', TAtlasTextId.SettingsHangTest,
     procedure
     var
       Activity: IInterface;
@@ -987,11 +984,7 @@ begin
         Exit;
       Activity := TAtlasActivity.Scope('Wächter-Test');
       Sleep(1000);
-    end,
-    function: Boolean
-    begin
-      Result := TAtlasIdeSettings.Current.DiagnosticMode;
-    end);
+    end, DiagnosticModeVisible);
 end;
 
 /// <summary>„Protokoll öffnen“ (#591): Diagnoseprotokoll, sonst das Protokoll der Sicherung.</summary>
@@ -1351,403 +1344,878 @@ begin
       else
         Result := nil;
     end;
+  Hooks.ServerPath :=
+    function: string
+    var
+      Arguments: string;
+    begin
+      Result := TAtlasCodeInsightManager.ServerPath(Arguments);
+    end;
   Setup := TAtlasIdeSetupChecklist.Create(TAtlasStatusRegistry.Default, Hooks);
+end;
+
+/// <summary>Optionsseiten (#227) mit ihren Haken (A-09): Die Seiten importieren die Features nicht, die sie
+/// bedienen.</summary>
+procedure RegisterOptions;
+var
+  Hooks: TAtlasOptionsHooks;
+begin
+  Hooks := Default(TAtlasOptionsHooks);
+  Hooks.ResetHistory :=
+    procedure
+    begin
+      TAtlasIdeHistory.Reset;
+    end;
+  Hooks.Command :=
+    function(ACommand: string): TJSONValue
+    begin
+      // Kennzahlen, „Index neu aufbauen“ und „Index löschen“ der Einstellungsseite (#492).
+      if Manager <> nil then
+        Result := Manager.ExecuteServerCommand(ACommand)
+      else
+        Result := nil;
+    end;
+  Hooks.ResetUsage :=
+    procedure
+    begin
+      TAtlasIdeCommandUsage.ResetCounts;
+    end;
+  Hooks.UnblockTips :=
+    procedure
+    begin
+      TAtlasIdeDiscover.UnblockAll;
+    end;
+  Hooks.ServerPath :=
+    function: string
+    var
+      Arguments: string;
+    begin
+      Result := TAtlasCodeInsightManager.ServerPath(Arguments);
+    end;
+  Hooks.DefaultServerPath :=
+    function: string
+    begin
+      Result := TAtlasCodeInsightManager.DefaultServerPath;
+    end;
+  Hooks.IdeTemplateFolder :=
+    function: string
+    begin
+      Result := TAtlasEditorCompletion.IdeTemplateFolder;
+    end;
+  Hooks.SnippetFolder :=
+    function: string
+    begin
+      Result := TAtlasEditorCompletion.SnippetFolder;
+    end;
+  TAtlasOptionsRegistration.Register(Hooks);
 end;
 
 /// <summary>Meldet an, was die Stufe des abgesicherten Starts (#722) und die Einstellungen erlauben; mehrfach
 /// aufrufbar. Normal: alles. Abgesichert: Serververbindung, Statusfeld, Einstellungen, Palette und Menü; dazu,
 /// was ein Schnellschalter wieder einschaltet. Minimal: nur Einstellungsseite und Statusfeld.</summary>
-procedure RegisterFeatures;
+procedure StartManager;
 var
   Services: IOTACodeInsightServices;
-  Settings: TAtlasPluginSettings;
-  Full, Basic: Boolean;
 begin
-  Settings := TAtlasIdeSettings.Current;
-  Full := Level = TAtlasSafeLevel.Normal;
-  Basic := Level <> TAtlasSafeLevel.Minimal;
-  if Basic and (ManagerIndex < 0) and Supports(BorlandIDEServices, IOTACodeInsightServices, Services) then
+  if Supports(BorlandIDEServices, IOTACodeInsightServices, Services) then
   begin
-    Manager := TAtlasCodeInsightManager.Create;
+    Manager := TAtlasCodeInsightManager.Create(CodeInsightAdapters);
     ManagerIndex := Services.AddCodeInsightManager(Manager);
   end;
-  // Notifier und Hintergrundaufgaben nur im normalen Betrieb bzw. wenn ihr Schalter wieder an ist.
-  if (Compile = nil) and (Full or Settings.CheckOnSave) then
-    RegisterCompileEvents;
-  if (Watchdog = nil) and Full and StartupDone then
+end;
+
+procedure StopManager;
+var
+  Services: IOTACodeInsightServices;
+begin
+  if (ManagerIndex >= 0) and Supports(BorlandIDEServices, IOTACodeInsightServices, Services) then
+    Services.RemoveCodeInsightManager(ManagerIndex);
+  ManagerIndex := -1;
+  Manager := nil;
+end;
+
+procedure StartWatchdog;
+begin
+  // Später angemeldet (Schnellschalter) misst der Wächter ab jetzt, beim Laden ab dem Laden.
+  if StartupDone then
     RegisterWatchdog(TAtlasWatchdog.Timestamp)
-  else if (Watchdog = nil) and Full then
+  else
     RegisterWatchdog(LoadedAt);
-  if (CheckOnSave = nil) and (Compile <> nil) then
-    CheckOnSave := TAtlasIdeCheckOnSave.Create(Compile.Events,
-      procedure(AText: string)
-      begin
-        if Manager <> nil then
-          Manager.Report(AText);
-      end);
-  if Basic and not CommandsInstalled then
-  begin
-    CommandsInstalled := True;
-    TAtlasIdeResults.Install(
-      function: TLspSession
-      begin
-        Result := nil;
-        if Manager <> nil then
-          Result := Manager.ActiveSession;
-      end,
-      procedure(AText: string)
-      begin
-        GuardWarning(AText);
-      end);
-    TAtlasIdeEditorCommands.Install(
-      function: TLspSession
-      begin
-        Result := nil;
-        if Manager <> nil then
-          Result := Manager.ActiveSession;
-      end,
-      procedure(AText: string)
-      begin
-        GuardWarning(AText);
-      end);
-    // Erzeugen-Menü (#719): Vorlagen und ihr Einsetzen mit Platzhaltern kommen aus der Vervollständigung.
-    TAtlasIdeGenerate.Install(
-      function: TLspSession
-      begin
-        Result := nil;
-        if Manager <> nil then
-          Result := Manager.ActiveSession;
-      end,
-      procedure(AText: string)
-      begin
-        GuardWarning(AText);
-      end,
-      function: TAtlasSnippetList
-      begin
-        Result := nil;
-        if Manager <> nil then
-          Result := Manager.Completion.Snippets;
-      end,
-      procedure(AView: IOTAEditView; ASnippet: TAtlasSnippet)
-      begin
-        if Manager <> nil then
-          Manager.Completion.InsertSnippet(AView, ASnippet);
-      end);
-    // Units suchen (#777): übernimmt Strg+F12, solange die Einstellungen es wollen.
-    TAtlasIdeUnitSearch.Install(
-      function: TLspSession
-      begin
-        Result := nil;
-        if Manager <> nil then
-          Result := Manager.ActiveSession;
-      end,
-      procedure(AText: string)
-      begin
-        GuardWarning(AText);
-      end);
-  end;
-  // Änderungsprotokoll vor den Tasten: Strg+Alt+Z braucht es (#721).
-  if Basic and (TAtlasIdeUndo.Journal = nil) then
-    TAtlasIdeUndo.Start(
-      procedure(AText: string)
-      begin
-        GuardWarning(AText);
-      end,
-      procedure(AText: string)
-      begin
-        TAtlasGuard.Log(AText);
-      end);
-  // Update-Prüfung nur nach Zustimmung und höchstens einmal täglich (#495).
-  if Basic and (Updates = nil) then
-  begin
-    Updates := TAtlasIdeUpdates.Create(nil);
-    Updates.Start(TAtlasUpdates.StateFile, TAtlasHttpVersionSource.Create,
-      procedure(AText: string)
-      begin
-        MessageLine(AText);
-      end,
-      procedure(AText: string)
-      begin
-        TAtlasGuard.Log(AText);
-      end);
-    // Zeile „Version“ im Statusfeld und in der Zustandskachel (#754).
-    Updates.ShowStatus(TAtlasStatusRegistry.Default);
-  end;
-  if Basic and (EditorKeys = nil) then
-    EditorKeys := TAtlasIdeEditorKeys.Create;
-  // Designer-Notifier nur im normalen Betrieb (#722).
-  if Full and (Forms = nil) then
-    Forms := TAtlasIdeForms.Create(
-      function: TLspSession
-      begin
-        Result := nil;
-        if Manager <> nil then
-          Result := Manager.RunningSession;
-      end,
-      procedure(AText: string)
-      begin
-        if Manager <> nil then
-          Manager.Report(AText);
-      end);
-  // Diagnosemodus (#479): ohne Einstellung nur Taste und Befehl, keine Messung.
-  if Basic and (DiagnosticMode = nil) then
-    DiagnosticMode := TAtlasIdeDiagnosticMode.Create(TAtlasStatusRegistry.Default);
-  // Einrichtung (#625): auch abgesichert, sie fragt den Server nie selbst und startet ihn nur auf Knopfdruck.
-  if Basic and (Setup = nil) and (StatusLines <> nil) then
-    CreateSetup;
-  // Tastenkürzel-Übersicht (#520): auch abgesichert, sie liest nur die Belegungen der IDE.
-  if Basic and (KeyMap = nil) then
-    KeyMap := TAtlasIdeKeyMap.Create;
-  // Gemeinsame Zählung (#757): vor den Tastenkürzel-Tipps und der Willkommensseite, die sie nutzen.
-  if Basic and (CommandUsage = nil) then
-  begin
-    CommandUsage := TAtlasIdeCommandUsage.Create;
-    // Nach „Zählung zurücksetzen“: „Noch nie benutzt“ auf der Karte sofort.
-    CommandUsage.OnReset :=
-      procedure
-      begin
-        if (Welcome <> nil) and (Welcome.Discover <> nil) then
-          Welcome.Discover.Refresh;
+end;
+
+procedure StartCheckOnSave;
+begin
+  CheckOnSave := TAtlasIdeCheckOnSave.Create(Compile.Events,
+    procedure(AText: string)
+    begin
+      if Manager <> nil then
+        Manager.Report(AText);
+    end);
+end;
+
+procedure StartCommands;
+begin
+  CommandsInstalled := True;
+  TAtlasIdeResults.Install(
+    function: TLspSession
+    begin
+      Result := nil;
+      if Manager <> nil then
+        Result := Manager.ActiveSession;
+    end,
+    procedure(AText: string)
+    begin
+      GuardWarning(AText);
+    end);
+  TAtlasIdeEditorCommands.Install(
+    function: TLspSession
+    begin
+      Result := nil;
+      if Manager <> nil then
+        Result := Manager.ActiveSession;
+    end,
+    procedure(AText: string)
+    begin
+      GuardWarning(AText);
+    end);
+  // Klick auf die Testunit-Lens (#189); die Lens kennt die Editorbefehle nicht (A-09).
+  TAtlasEditorTestUnitLens.OnSwitchTestUnit :=
+    procedure
+    begin
+      TAtlasIdeEditorCommands.SwitchTestUnit;
+    end;
+  // Erzeugen-Menü (#719): Vorlagen und ihr Einsetzen mit Platzhaltern kommen aus der Vervollständigung.
+  TAtlasIdeGenerate.Install(
+    function: TLspSession
+    begin
+      Result := nil;
+      if Manager <> nil then
+        Result := Manager.ActiveSession;
+    end,
+    procedure(AText: string)
+    begin
+      GuardWarning(AText);
+    end,
+    function: TAtlasSnippetList
+    begin
+      Result := nil;
+      if Manager <> nil then
+        Result := Manager.Completion.Snippets;
+    end,
+    procedure(AView: IOTAEditView; ASnippet: TAtlasSnippet)
+    begin
+      if Manager <> nil then
+        Manager.Completion.InsertSnippet(AView, ASnippet);
+    end,
+    procedure(AAction: TLspCodeAction)
+    begin
+      TAtlasIdeEditorCommands.ApplyAction(AAction);
+    end);
+  // Units suchen (#777): übernimmt Strg+F12, solange die Einstellungen es wollen.
+  TAtlasIdeUnitSearch.Install(
+    function: TLspSession
+    begin
+      Result := nil;
+      if Manager <> nil then
+        Result := Manager.ActiveSession;
+    end,
+    procedure(AText: string)
+    begin
+      GuardWarning(AText);
+    end);
+end;
+
+procedure StopCommands;
+begin
+  TAtlasIdeUnitSearch.Uninstall;
+  TAtlasIdeGenerate.Uninstall;
+  TAtlasEditorTestUnitLens.OnSwitchTestUnit := nil;
+  TAtlasIdeEditorCommands.Uninstall;
+  TAtlasIdeResults.Uninstall;
+  CommandsInstalled := False;
+end;
+
+procedure StartUndo;
+begin
+  // Adapter des Kerns setzt nur die Kompositionswurzel ein (A-09).
+  TAtlasIdeUndoTarget.DiskFactory :=
+    function(const AHooks: TAtlasUndoDiskHooks): IAtlasUndoTarget
+    var
+      Disk: TAtlasUndoDiskTarget;
+    begin
+      Disk := TAtlasUndoDiskTarget.Create;
+      Disk.OnAddToProject := AHooks.OnAddToProject;
+      Disk.OnRemoveFromProject := AHooks.OnRemoveFromProject;
+      Disk.OnRecycle := AHooks.OnRecycle;
+      Result := Disk;
+    end;
+  TAtlasIdeUndo.StoreFactory :=
+    function(const AFolder: string; AMaxBytes: Int64): IAtlasUndoStore
+    begin
+      Result := TAtlasUndoFileStore.Create(AFolder, AMaxBytes);
+    end;
+  TAtlasIdeUndo.Start(
+    procedure(AText: string)
+    begin
+      GuardWarning(AText);
+    end,
+    procedure(AText: string)
+    begin
+      TAtlasGuard.Log(AText);
+    end);
+end;
+
+procedure StartUpdates;
+begin
+  Updates := TAtlasIdeUpdates.Create(nil);
+  Updates.Start(TAtlasUpdates.StateFile, TAtlasHttpVersionSource.Create,
+    procedure(AText: string)
+    begin
+      MessageLine(AText);
+    end,
+    procedure(AText: string)
+    begin
+      TAtlasGuard.Log(AText);
+    end);
+  // Zeile „Version“ im Statusfeld und in der Zustandskachel (#754).
+  Updates.ShowStatus(TAtlasStatusRegistry.Default);
+end;
+
+procedure StartForms;
+begin
+  Forms := TAtlasIdeForms.Create(
+    function: TLspSession
+    begin
+      Result := nil;
+      if Manager <> nil then
+        Result := Manager.RunningSession;
+    end,
+    procedure(AText: string)
+    begin
+      if Manager <> nil then
+        Manager.Report(AText);
+    end);
+end;
+
+procedure StartCommandUsage;
+begin
+  CommandUsage := TAtlasIdeCommandUsage.Create;
+  // Nach „Zählung zurücksetzen“: „Noch nie benutzt“ auf der Karte sofort.
+  CommandUsage.OnReset :=
+    procedure
+    begin
+      if (Welcome <> nil) and (Welcome.Discover <> nil) then
+        Welcome.Discover.Refresh;
+    end;
+end;
+
+procedure StartShortcutTips;
+begin
+  ShortcutTips := TAtlasIdeShortcutTips.Create(CommandUsage);
+  ShortcutTips.CountAlways := TAtlasIdeSettings.Current.WelcomePage and TAtlasIdeSettings.Current.WelcomePageDiscover and
+    TAtlasIdeSettings.Current.TipsUsageTracking;
+end;
+
+procedure StartPalette;
+begin
+  RegisterPalette;
+  // Atlas-Befehle zeigen ihre Taste (#520).
+  Palette.ShortCutOf :=
+    function(AId: string): string
+    begin
+      Result := TAtlasIdeKeyMap.AtlasShortCut(AId);
+    end;
+  if QuickToggles <> nil then
+    QuickToggles.RegisterCommands(Palette);
+  if DiagnosticMode <> nil then
+    DiagnosticMode.RegisterCommands(Palette);
+  if Setup <> nil then
+    Setup.RegisterCommands(Palette);
+  if KeyMap <> nil then
+    KeyMap.RegisterCommands(Palette);
+end;
+
+procedure StartNotes;
+begin
+  TAtlasIdeNotes.Start(
+    procedure(AText: string)
+    begin
+      MessageLine(AText);
+    end);
+  NotesStarted := True;
+end;
+
+procedure StopNotes;
+begin
+  TAtlasIdeNotes.Release;
+  NotesStarted := False;
+end;
+
+procedure StartBookmarks;
+begin
+  TAtlasIdeBookmarks.Start(
+    procedure(AText: string)
+    begin
+      MessageLine(AText);
+    end);
+  BookmarksStarted := True;
+end;
+
+procedure StopBookmarks;
+begin
+  TAtlasIdeBookmarks.Release;
+  BookmarksStarted := False;
+end;
+
+procedure StartGutterMarks;
+begin
+  GutterMarks := TAtlasIdeGutterMarks.Create;
+  GutterMarks.Add(TAtlasIdeNotesGutter.Create);
+  GutterMarks.Add(TAtlasIdeBookmarksGutter.Create);
+end;
+
+procedure StartCompletionKey;
+begin
+  CompletionKey := TAtlasIdeKeyBinding.Create('Atlas.Completion', 'Atlas-Vervollständigung',
+    TAtlasFeature.Completion,
+    procedure
+    begin
+      if Manager <> nil then
+        Manager.OpenCompletion;
+    end);
+end;
+
+procedure StartSignatureKey;
+begin
+  SignatureKey := TAtlasIdeKeyBinding.Create('Atlas.Signature', 'Atlas-Parameter-Hint',
+    TAtlasFeature.Signature,
+    procedure
+    begin
+      if Manager <> nil then
+        Manager.OpenSignature;
+    end);
+end;
+
+procedure WatchKeys;
+begin
+  KeysWatched := True;
+  TAtlasMainThread.ForceQueue(TAtlasFeature.Settings,
+    procedure
+    begin
+      TAtlasGuard.Run(TAtlasFeature.Settings,
+        procedure
+        begin
+          TAtlasIdeKeys.ReportForeignCompletion;
+        end);
+    end);
+  // Neue Packages können Tasten belegen oder eine eigene Vervollständigung mitbringen (#494).
+  TAtlasIdeKeys.WatchPackages(
+    procedure
+    begin
+      RebindKeys;
+      TAtlasIdeKeys.ReportForeignCompletion;
+      // Neue Belegungen anderer Erweiterungen gegen die Atlas-Tasten prüfen (#520).
+      if KeyMap <> nil then
+        KeyMap.CheckNow;
+      // Neue Aktionen und Tasten für die Tastenkürzel-Tipps (#600).
+      if ShortcutTips <> nil then
+        ShortcutTips.KeysChanged;
+    end);
+end;
+
+procedure UnwatchKeys;
+begin
+  TAtlasIdeKeys.UnwatchPackages;
+  KeysWatched := False;
+end;
+
+procedure StartWelcome;
+begin
+  Welcome := TAtlasIdeWelcome.Create(
+    function: TAtlasServerInfo
+    begin
+      if Manager <> nil then
+        Result := Manager.ServerInfo
+      else
+        Result := Default(TAtlasServerInfo);
+    end,
+    function(out APercent: Integer): Boolean
+    begin
+      APercent := -1;
+      Result := (Manager <> nil) and Manager.ServerIndexing(APercent);
+    end,
+    function: Integer
+    begin
+      Result := -1;
+      if StatusLines <> nil then
+        Result := StatusLines.Units;
+    end,
+    procedure(AText: string)
+    begin
+      GuardWarning(AText);
+    end);
+  // Suchfeld im Kopf (#760): Befehle aus der Palette, sobald es sie gibt.
+  Welcome.Search := TAtlasIdeWelcomeSearch.Create(
+    function: TArray<TAtlasCommand>
+    begin
+      Result := nil;
+      if Palette <> nil then
+        Result := Palette.AtlasCommands;
+    end,
+    procedure(AId: string)
+    begin
+      if Palette <> nil then
+        Palette.Execute(AId);
+    end);
+  // Karte „Neu in Atlas“ (#756): „Ausprobieren“ führt Atlas-Befehle der Palette aus.
+  Welcome.WhatsNew := TAtlasIdeWhatsNew.Create(
+    function(AId: string): Boolean
+    var
+      Command: TAtlasCommand;
+    begin
+      Result := False;
+      if Palette <> nil then
+        for Command in Palette.AtlasCommands do
+          if SameText(Command.Id, AId) then
+            Exit(True);
+    end,
+    procedure(AId: string)
+    begin
+      if Palette <> nil then
+        Palette.Execute(AId);
+    end,
+    procedure(AText: string)
+    begin
+      GuardWarning(AText);
+    end);
+  // Bereich „Projekte“ (#592): Zustand je Projekt aus den Projekt-Zusammenfassungen.
+  Welcome.Projects := TAtlasIdeProjects.Create(
+    procedure(AText: string)
+    begin
+      GuardWarning(AText);
+    end);
+  // Bereich „Projektverlauf“ (#758): Linien über die letzten Builds des in „Projekte“ gewählten Projekts.
+  Welcome.Trends := TAtlasIdeTrends.Create(Welcome.Projects);
+  // Bereich „Nicht gesichert“ (#762): nicht Gesichertes je Projekt über die VCS-Schnittstelle (#571).
+  Welcome.Unsaved := TAtlasIdeUnsaved.Create(
+    procedure(AText: string)
+    begin
+      GuardWarning(AText);
+    end);
+  // Bereich „Weiterarbeiten“ (#755): Arbeitsstand beim Schließen, eingehende Commits (#571) und „Gemerkt“.
+  Welcome.ContinueWork := TAtlasIdeContinue.Create(
+    procedure(AText: string)
+    begin
+      GuardWarning(AText);
+    end);
+  // Zustandskachel „Atlas“ (#754): dieselben Zeilen wie das Statusfeld (#591).
+  Welcome.State := CreateWelcomeState;
+  // Karte „Atlas entdecken“ (#757): Befehle und Tasten aus der Palette, „Ausprobieren“ führt sie aus.
+  Welcome.Discover := TAtlasIdeDiscover.Create(
+    function: TArray<TAtlasCommand>
+    begin
+      Result := nil;
+      if Palette <> nil then
+        Result := Palette.AtlasCommands;
+    end,
+    procedure(AId: string)
+    begin
+      if Palette = nil then
+        Exit;
+      // Tipp zur Befehlspalette: „Ausprobieren“ öffnet sie.
+      if SameText(AId, TAtlasShortcutTips.PaletteCommandId) then
+        Palette.Show
+      else
+        Palette.Execute(AId);
+    end,
+    procedure(AText: string)
+    begin
+      GuardWarning(AText);
+    end);
+  // Bereich „Hilfe und Rückmeldung“ (#766): „Tastenkürzel“ zeigt die Übersicht aus #520 mit allen Kürzeln.
+  Welcome.Help := TAtlasIdeHelp.Create(
+    procedure
+    begin
+      if KeyMap <> nil then
+        KeyMap.ShowAll;
+    end);
+end;
+
+procedure StopWelcome;
+begin
+  FreeAndNil(Welcome);
+  TAtlasWelcomeViews.Release;
+  TAtlasWelcomeSections.ReleaseDefault;
+end;
+
+procedure StartMainMenu;
+begin
+  CreateMainMenu;
+  MainMenu.OnRename := RenameSymbol;
+  MainMenu.OnSetup :=
+    procedure
+    begin
+      if Setup <> nil then
+        Setup.ShowWindow;
+    end;
+  MainMenu.OnKeyMap :=
+    procedure
+    begin
+      if KeyMap <> nil then
+        KeyMap.ShowWindow;
+    end;
+  MainMenu.OnWelcome :=
+    procedure(ACommand: TAtlasWelcomeCommand)
+    begin
+      if Welcome = nil then
+        Exit;
+      case ACommand of
+        TAtlasWelcomeCommand.Start:
+          Welcome.ShowStart;
+        TAtlasWelcomeCommand.Apply:
+          Welcome.ApplyLayout;
+      else
+        Welcome.ResetLayout;
       end;
-  end;
+    end;
+end;
+
+procedure StartEditInbox;
+begin
+  EditInbox := TAtlasIdeEditInbox.Create(
+    procedure(const AText: string)
+    begin
+      GuardWarning(AText);
+    end);
+end;
+
+/// <summary>Teile des Plugins in Startreihenfolge (Code-Review S-03); StopAll baut sie rückwärts ab.
+/// Normal = nur im normalen Start, Safe = auch abgesichert, Minimal = immer (#722).</summary>
+procedure AddFeatures;
+begin
+  Features := TAtlasFeatureTable.Create;
+  Features.Add('Manager', TAtlasSafeLevel.Safe,
+    function: Boolean
+    begin
+      Result := ManagerIndex >= 0;
+    end,
+    StartManager, StopManager);
+  // Notifier und Hintergrundaufgaben nur im normalen Betrieb bzw. wenn ihr Schalter wieder an ist.
+  Features.Add('Compile',
+    function(ALevel: TAtlasSafeLevel): Boolean
+    begin
+      Result := (ALevel = TAtlasSafeLevel.Normal) or TAtlasIdeSettings.Current.CheckOnSave;
+    end,
+    function: Boolean
+    begin
+      Result := Compile <> nil;
+    end,
+    RegisterCompileEvents,
+    procedure
+    begin
+      FreeAndNil(Compile);
+    end);
+  Features.Add('Watchdog', TAtlasSafeLevel.Normal,
+    function: Boolean
+    begin
+      Result := Watchdog <> nil;
+    end,
+    StartWatchdog, UnregisterWatchdog);
+  Features.Add('CheckOnSave',
+    function(ALevel: TAtlasSafeLevel): Boolean
+    begin
+      Result := Compile <> nil;
+    end,
+    function: Boolean
+    begin
+      Result := CheckOnSave <> nil;
+    end,
+    StartCheckOnSave,
+    procedure
+    begin
+      FreeAndNil(CheckOnSave);
+    end);
+  Features.Add('Commands', TAtlasSafeLevel.Safe,
+    function: Boolean
+    begin
+      Result := CommandsInstalled;
+    end,
+    StartCommands, StopCommands);
+  // Änderungsprotokoll vor den Tasten: Strg+Alt+Z braucht es (#721).
+  Features.Add('Undo', TAtlasSafeLevel.Safe,
+    function: Boolean
+    begin
+      Result := TAtlasIdeUndo.Journal <> nil;
+    end,
+    StartUndo, TAtlasIdeUndo.Stop);
+  // Update-Prüfung nur nach Zustimmung und höchstens einmal täglich (#495).
+  Features.Add('Updates', TAtlasSafeLevel.Safe,
+    function: Boolean
+    begin
+      Result := Updates <> nil;
+    end,
+    StartUpdates,
+    procedure
+    begin
+      FreeAndNil(Updates);
+    end);
+  Features.Add('EditorKeys', TAtlasSafeLevel.Safe,
+    function: Boolean
+    begin
+      Result := EditorKeys <> nil;
+    end,
+    procedure
+    begin
+      EditorKeys := TAtlasIdeEditorKeys.Create;
+    end,
+    procedure
+    begin
+      FreeAndNil(EditorKeys);
+    end);
+  // Designer-Notifier nur im normalen Betrieb (#722).
+  Features.Add('Forms', TAtlasSafeLevel.Normal,
+    function: Boolean
+    begin
+      Result := Forms <> nil;
+    end,
+    StartForms,
+    procedure
+    begin
+      FreeAndNil(Forms);
+    end);
+  // Diagnosemodus (#479): ohne Einstellung nur Taste und Befehl, keine Messung.
+  Features.Add('DiagnosticMode', TAtlasSafeLevel.Safe,
+    function: Boolean
+    begin
+      Result := DiagnosticMode <> nil;
+    end,
+    procedure
+    begin
+      DiagnosticMode := TAtlasIdeDiagnosticMode.Create(TAtlasStatusRegistry.Default);
+    end,
+    procedure
+    begin
+      FreeAndNil(DiagnosticMode);
+    end);
+  // Einrichtung (#625): auch abgesichert, sie fragt den Server nie selbst und startet ihn nur auf Knopfdruck.
+  Features.Add('Setup',
+    function(ALevel: TAtlasSafeLevel): Boolean
+    begin
+      Result := (ALevel <> TAtlasSafeLevel.Minimal) and (StatusLines <> nil);
+    end,
+    function: Boolean
+    begin
+      Result := Setup <> nil;
+    end,
+    CreateSetup,
+    procedure
+    begin
+      FreeAndNil(Setup);
+    end);
+  // Tastenkürzel-Übersicht (#520): auch abgesichert, sie liest nur die Belegungen der IDE.
+  Features.Add('KeyMap', TAtlasSafeLevel.Safe,
+    function: Boolean
+    begin
+      Result := KeyMap <> nil;
+    end,
+    procedure
+    begin
+      KeyMap := TAtlasIdeKeyMap.Create;
+    end,
+    procedure
+    begin
+      FreeAndNil(KeyMap);
+    end);
+  // Gemeinsame Zählung (#757): vor den Tastenkürzel-Tipps und der Willkommensseite, die sie nutzen; Abbau
+  // danach, er speichert die Zählung.
+  Features.Add('CommandUsage', TAtlasSafeLevel.Safe,
+    function: Boolean
+    begin
+      Result := CommandUsage <> nil;
+    end,
+    StartCommandUsage,
+    procedure
+    begin
+      FreeAndNil(CommandUsage);
+    end);
   // Tastenkürzel-Tipps (#600): Beobachtung an oder aus nach shortcutTips.enabled (ApplySettings); zählt auch
   // für „Atlas entdecken“ (#757), solange die Karte und die Zählung an sind.
-  if Full and (ShortcutTips = nil) and (CommandUsage <> nil) then
-  begin
-    ShortcutTips := TAtlasIdeShortcutTips.Create(CommandUsage);
-    ShortcutTips.CountAlways := Settings.WelcomePage and Settings.WelcomePageDiscover and
-      Settings.TipsUsageTracking;
-  end;
-  if Basic and (Palette = nil) then
-  begin
-    RegisterPalette;
-    // Atlas-Befehle zeigen ihre Taste (#520).
-    Palette.ShortCutOf :=
-      function(AId: string): string
-      begin
-        Result := TAtlasIdeKeyMap.AtlasShortCut(AId);
-      end;
-    if QuickToggles <> nil then
-      QuickToggles.RegisterCommands(Palette);
-    if DiagnosticMode <> nil then
-      DiagnosticMode.RegisterCommands(Palette);
-    if Setup <> nil then
-      Setup.RegisterCommands(Palette);
-    if KeyMap <> nil then
-      KeyMap.RegisterCommands(Palette);
-  end;
+  Features.Add('ShortcutTips',
+    function(ALevel: TAtlasSafeLevel): Boolean
+    begin
+      Result := (ALevel = TAtlasSafeLevel.Normal) and (CommandUsage <> nil);
+    end,
+    function: Boolean
+    begin
+      Result := ShortcutTips <> nil;
+    end,
+    StartShortcutTips,
+    procedure
+    begin
+      FreeAndNil(ShortcutTips);
+    end);
+  Features.Add('Palette', TAtlasSafeLevel.Safe,
+    function: Boolean
+    begin
+      Result := Palette <> nil;
+    end,
+    StartPalette,
+    procedure
+    begin
+      FreeAndNil(Palette);
+    end);
   // Editor-Zeichnungen.
-  if (Pairs = nil) and (Full or Settings.PairColors or Settings.PairGuides or Settings.InactiveDim) then
-    Pairs := TAtlasEditorPairs.Create;
+  Features.Add('Pairs',
+    function(ALevel: TAtlasSafeLevel): Boolean
+    begin
+      Result := (ALevel = TAtlasSafeLevel.Normal) or TAtlasIdeSettings.Current.PairColors or
+        TAtlasIdeSettings.Current.PairGuides or TAtlasIdeSettings.Current.InactiveDim;
+    end,
+    function: Boolean
+    begin
+      Result := Pairs <> nil;
+    end,
+    procedure
+    begin
+      Pairs := TAtlasEditorPairs.Create;
+    end,
+    procedure
+    begin
+      FreeAndNil(Pairs);
+    end);
   // Persönliche Notizen (#545): Befehle auch abgesichert (nur lokale Dateien), die Rinne wie die übrigen
   // Zeichnungen nur im normalen Start oder mit eingeschalteter Einstellung.
-  if Basic then
-    TAtlasIdeNotes.Start(
-      procedure(AText: string)
-      begin
-        MessageLine(AText);
-      end);
+  Features.Add('Notes', TAtlasSafeLevel.Safe,
+    function: Boolean
+    begin
+      Result := NotesStarted;
+    end,
+    StartNotes, StopNotes);
   // Benannte Lesezeichen (#622): Befehle auch abgesichert; die Rinne teilt sich die Zeichenschicht mit den
   // Notizen, jede Schicht folgt ihrer Einstellung.
-  if Basic then
-    TAtlasIdeBookmarks.Start(
-      procedure(AText: string)
-      begin
-        MessageLine(AText);
-      end);
-  if (GutterMarks = nil) and Basic and (Full or Settings.Notes or Settings.BookmarksNamed) then
-  begin
-    GutterMarks := TAtlasIdeGutterMarks.Create;
-    GutterMarks.Add(TAtlasIdeNotesGutter.Create);
-    GutterMarks.Add(TAtlasIdeBookmarksGutter.Create);
-  end;
-  if (CompletionKey = nil) and Basic and (Full or Settings.Enabled) then
-    CompletionKey := TAtlasIdeKeyBinding.Create('Atlas.Completion', 'Atlas-Vervollständigung',
-      TAtlasFeature.Completion,
-      procedure
-      begin
-        if Manager <> nil then
-          Manager.OpenCompletion;
-      end);
-  if (SignatureKey = nil) and Basic and (Full or Settings.Enabled) then
-    SignatureKey := TAtlasIdeKeyBinding.Create('Atlas.Signature', 'Atlas-Parameter-Hint',
-      TAtlasFeature.Signature,
-      procedure
-      begin
-        if Manager <> nil then
-          Manager.OpenSignature;
-      end);
-  if Basic and not KeysWatched then
-  begin
-    KeysWatched := True;
-    TAtlasMainThread.ForceQueue(TAtlasFeature.Settings,
-      procedure
-      begin
-        TAtlasGuard.Run(TAtlasFeature.Settings,
-          procedure
-          begin
-            TAtlasIdeKeys.ReportForeignCompletion;
-          end);
-      end);
-    // Neue Packages können Tasten belegen oder eine eigene Vervollständigung mitbringen (#494).
-    TAtlasIdeKeys.WatchPackages(
-      procedure
-      begin
-        RebindKeys;
-        TAtlasIdeKeys.ReportForeignCompletion;
-        // Neue Belegungen anderer Erweiterungen gegen die Atlas-Tasten prüfen (#520).
-        if KeyMap <> nil then
-          KeyMap.CheckNow;
-        // Neue Aktionen und Tasten für die Tastenkürzel-Tipps (#600).
-        if ShortcutTips <> nil then
-          ShortcutTips.KeysChanged;
-      end);
-  end;
-  // Willkommensseite (#753): auch abgesichert, sie startet keinen Server und liest nur lokale Daten.
-  if Basic and (Welcome = nil) and (StatusLines <> nil) then
-  begin
-    Welcome := TAtlasIdeWelcome.Create(
-      function: TAtlasServerInfo
-      begin
-        if Manager <> nil then
-          Result := Manager.ServerInfo
-        else
-          Result := Default(TAtlasServerInfo);
-      end,
-      function(out APercent: Integer): Boolean
-      begin
-        APercent := -1;
-        Result := (Manager <> nil) and Manager.ServerIndexing(APercent);
-      end,
-      function: Integer
-      begin
-        Result := -1;
-        if StatusLines <> nil then
-          Result := StatusLines.Units;
-      end,
-      procedure(AText: string)
-      begin
-        GuardWarning(AText);
-      end);
-    // Suchfeld im Kopf (#760): Befehle aus der Palette, sobald es sie gibt.
-    Welcome.Search := TAtlasIdeWelcomeSearch.Create(
-      function: TArray<TAtlasCommand>
-      begin
-        Result := nil;
-        if Palette <> nil then
-          Result := Palette.AtlasCommands;
-      end,
-      procedure(AId: string)
-      begin
-        if Palette <> nil then
-          Palette.Execute(AId);
-      end);
-    // Karte „Neu in Atlas“ (#756): „Ausprobieren“ führt Atlas-Befehle der Palette aus.
-    Welcome.WhatsNew := TAtlasIdeWhatsNew.Create(
-      function(AId: string): Boolean
-      var
-        Command: TAtlasCommand;
-      begin
-        Result := False;
-        if Palette <> nil then
-          for Command in Palette.AtlasCommands do
-            if SameText(Command.Id, AId) then
-              Exit(True);
-      end,
-      procedure(AId: string)
-      begin
-        if Palette <> nil then
-          Palette.Execute(AId);
-      end,
-      procedure(AText: string)
-      begin
-        GuardWarning(AText);
-      end);
-    // Bereich „Projekte“ (#592): Zustand je Projekt aus den Projekt-Zusammenfassungen.
-    Welcome.Projects := TAtlasIdeProjects.Create(
-      procedure(AText: string)
-      begin
-        GuardWarning(AText);
-      end);
-    // Bereich „Projektverlauf“ (#758): Linien über die letzten Builds des in „Projekte“ gewählten Projekts.
-    Welcome.Trends := TAtlasIdeTrends.Create(Welcome.Projects);
-    // Bereich „Nicht gesichert“ (#762): nicht Gesichertes je Projekt über die VCS-Schnittstelle (#571).
-    Welcome.Unsaved := TAtlasIdeUnsaved.Create(
-      procedure(AText: string)
-      begin
-        GuardWarning(AText);
-      end);
-    // Bereich „Weiterarbeiten“ (#755): Arbeitsstand beim Schließen, eingehende Commits (#571) und „Gemerkt“.
-    Welcome.ContinueWork := TAtlasIdeContinue.Create(
-      procedure(AText: string)
-      begin
-        GuardWarning(AText);
-      end);
-    // Zustandskachel „Atlas“ (#754): dieselben Zeilen wie das Statusfeld (#591).
-    Welcome.State := CreateWelcomeState;
-    // Karte „Atlas entdecken“ (#757): Befehle und Tasten aus der Palette, „Ausprobieren“ führt sie aus.
-    Welcome.Discover := TAtlasIdeDiscover.Create(
-      function: TArray<TAtlasCommand>
-      begin
-        Result := nil;
-        if Palette <> nil then
-          Result := Palette.AtlasCommands;
-      end,
-      procedure(AId: string)
-      begin
-        if Palette = nil then
-          Exit;
-        // Tipp zur Befehlspalette: „Ausprobieren“ öffnet sie.
-        if SameText(AId, TAtlasShortcutTips.PaletteCommandId) then
-          Palette.Show
-        else
-          Palette.Execute(AId);
-      end,
-      procedure(AText: string)
-      begin
-        GuardWarning(AText);
-      end);
-    // Bereich „Hilfe und Rückmeldung“ (#766): „Tastenkürzel“ zeigt die Übersicht aus #520 mit allen Kürzeln.
-    Welcome.Help := TAtlasIdeHelp.Create(
-      procedure
-      begin
-        if KeyMap <> nil then
-          KeyMap.ShowAll;
-      end);
-  end;
+  Features.Add('Bookmarks', TAtlasSafeLevel.Safe,
+    function: Boolean
+    begin
+      Result := BookmarksStarted;
+    end,
+    StartBookmarks, StopBookmarks);
+  // Nach Notizen und Lesezeichen, Abbau davor: Die Rinne liest deren Listen (#545, #622).
+  Features.Add('GutterMarks',
+    function(ALevel: TAtlasSafeLevel): Boolean
+    begin
+      Result := (ALevel <> TAtlasSafeLevel.Minimal) and ((ALevel = TAtlasSafeLevel.Normal) or
+        TAtlasIdeSettings.Current.Notes or TAtlasIdeSettings.Current.BookmarksNamed);
+    end,
+    function: Boolean
+    begin
+      Result := GutterMarks <> nil;
+    end,
+    StartGutterMarks,
+    procedure
+    begin
+      FreeAndNil(GutterMarks);
+    end);
+  Features.Add('CompletionKey',
+    function(ALevel: TAtlasSafeLevel): Boolean
+    begin
+      Result := (ALevel <> TAtlasSafeLevel.Minimal) and ((ALevel = TAtlasSafeLevel.Normal) or
+        TAtlasIdeSettings.Current.Enabled);
+    end,
+    function: Boolean
+    begin
+      Result := CompletionKey <> nil;
+    end,
+    StartCompletionKey,
+    procedure
+    begin
+      FreeAndNil(CompletionKey);
+    end);
+  Features.Add('SignatureKey',
+    function(ALevel: TAtlasSafeLevel): Boolean
+    begin
+      Result := (ALevel <> TAtlasSafeLevel.Minimal) and ((ALevel = TAtlasSafeLevel.Normal) or
+        TAtlasIdeSettings.Current.Enabled);
+    end,
+    function: Boolean
+    begin
+      Result := SignatureKey <> nil;
+    end,
+    StartSignatureKey,
+    procedure
+    begin
+      FreeAndNil(SignatureKey);
+    end);
+  Features.Add('KeysWatched', TAtlasSafeLevel.Safe,
+    function: Boolean
+    begin
+      Result := KeysWatched;
+    end,
+    WatchKeys, UnwatchKeys);
+  // Willkommensseite (#753): auch abgesichert, sie startet keinen Server und liest nur lokale Daten. Abbau
+  // vor dem Statusfeld, dessen Registry sie beobachtet.
+  Features.Add('Welcome',
+    function(ALevel: TAtlasSafeLevel): Boolean
+    begin
+      Result := (ALevel <> TAtlasSafeLevel.Minimal) and (StatusLines <> nil);
+    end,
+    function: Boolean
+    begin
+      Result := Welcome <> nil;
+    end,
+    StartWelcome, StopWelcome);
+  Features.Add('MainMenu', TAtlasSafeLevel.Safe,
+    function: Boolean
+    begin
+      Result := MainMenu <> nil;
+    end,
+    StartMainMenu,
+    procedure
+    begin
+      FreeAndNil(MainMenu);
+    end);
+  Features.Add('DirtyExport', TAtlasSafeLevel.Normal,
+    function: Boolean
+    begin
+      Result := DirtyExport <> nil;
+    end,
+    procedure
+    begin
+      DirtyExport := TAtlasDirtyExport.Create;
+    end,
+    procedure
+    begin
+      FreeAndNil(DirtyExport);
+    end);
+  Features.Add('EditInbox', TAtlasSafeLevel.Normal,
+    function: Boolean
+    begin
+      Result := EditInbox <> nil;
+    end,
+    StartEditInbox,
+    procedure
+    begin
+      FreeAndNil(EditInbox);
+    end);
+  Features.Add('Reloader', TAtlasSafeLevel.Normal,
+    function: Boolean
+    begin
+      Result := Reloader <> nil;
+    end,
+    CreateReloader,
+    procedure
+    begin
+      FreeAndNil(Reloader);
+    end);
+end;
+
+/// <summary>Gewünschte, noch fehlende Teile starten (beim Laden und nach jeder Einstellungsänderung).</summary>
+procedure RegisterFeatures;
+begin
+  if Features = nil then
+    AddFeatures;
+  Features.StartWanted(Level);
   if Welcome <> nil then
     Welcome.Sync;
-  if Basic and (MainMenu = nil) then
-  begin
-    CreateMainMenu;
-    MainMenu.OnRename := RenameSymbol;
-    MainMenu.OnSetup :=
-      procedure
-      begin
-        if Setup <> nil then
-          Setup.ShowWindow;
-      end;
-    MainMenu.OnKeyMap :=
-      procedure
-      begin
-        if KeyMap <> nil then
-          KeyMap.ShowWindow;
-      end;
-    MainMenu.OnWelcome :=
-      procedure(ACommand: TAtlasWelcomeCommand)
-      begin
-        if Welcome = nil then
-          Exit;
-        case ACommand of
-          TAtlasWelcomeCommand.Start:
-            Welcome.ShowStart;
-          TAtlasWelcomeCommand.Apply:
-            Welcome.ApplyLayout;
-        else
-          Welcome.ResetLayout;
-        end;
-      end;
-  end;
   if MainMenu <> nil then
   begin
     MainMenu.UpdateWelcome;
@@ -1761,18 +2229,8 @@ begin
         if StatusField <> nil then
           StatusField.RequestRefresh;
       end;
-  if (DirtyExport = nil) and Full then
-    DirtyExport := TAtlasDirtyExport.Create;
-  if (EditInbox = nil) and Full then
-    EditInbox := TAtlasIdeEditInbox.Create(
-      procedure(const AText: string)
-      begin
-        GuardWarning(AText);
-      end);
   // Eigene Blocklinien: Strukturhervorhebung der IDE abgleichen (#514).
   TAtlasIdeStructureSwitch.Sync;
-  if (Reloader = nil) and Full then
-    CreateReloader;
   RebindKeys;
 end;
 
@@ -1818,7 +2276,7 @@ begin
   TAtlasGuard.OnWarning := GuardWarning;
   TAtlasStrings.Language := IdeLanguage;
   // Versionsverwaltung (#571): Aufrufe im Hintergrund; fehlt git bzw. svn, einmal eine Zeile.
-  TAtlasIdeVcs.Start(MessageLine);
+  TAtlasIdeVcs.Start(MessageLine, VcsBackend);
   // Atlas-Symbol (#751): Startbildschirm, Info-Dialog und Bildliste immer, auch abgesichert.
   TAtlasIdeSymbol.Register;
   TAtlasIdeSymbol.OnThemeChanged :=
@@ -1901,19 +2359,7 @@ begin
       else
         Result := nil;
     end;
-  TAtlasOptionsRegistration.Register(
-    procedure
-    begin
-      TAtlasIdeHistory.Reset;
-    end,
-    function(ACommand: string): TJSONValue
-    begin
-      // Kennzahlen, „Index neu aufbauen“ und „Index löschen“ der Einstellungsseite (#492).
-      if Manager <> nil then
-        Result := Manager.ExecuteServerCommand(ACommand)
-      else
-        Result := nil;
-    end);
+  RegisterOptions;
   // Ladezeit bis zur freien Nachrichtenschleife: zu lange zählt beim nächsten Start wie ein Absturz (#722).
   TAtlasMainThread.ForceQueue(TAtlasFeature.Settings,
     procedure
@@ -1932,7 +2378,6 @@ end;
 
 procedure Unregister;
 var
-  Services: IOTACodeInsightServices;
   StartedAt: UInt64;
   Stopped: Boolean;
 begin
@@ -1946,67 +2391,26 @@ begin
   TAtlasGuard.OnWarning := nil;
   TAtlasGuard.OnFailure := nil;
   TAtlasIdeSettings.OnChanged := nil;
-  if KeysWatched then
-    TAtlasIdeKeys.UnwatchPackages;
-  KeysWatched := False;
   // Sauberes Ende: Startmarke löschen, Absturzzähler zurück (#722).
   if SafeMode <> nil then
     SafeMode.Stop;
   FreeAndNil(SafeMode);
-  // Vor dem Statusfeld: Der Diagnosemodus hat eine Zeile in dessen Registry (#479).
-  FreeAndNil(DiagnosticMode);
-  // Vor dem Statusfeld: Die Einrichtung hat eine Zeile in dessen Registry und liest StatusLines (#625).
-  FreeAndNil(Setup);
-  // Vor der Übersicht: Der Link „Alle Kürzel“ öffnet sie (#600); speichert die Zählung.
-  FreeAndNil(ShortcutTips);
-  FreeAndNil(KeyMap);
-  // Vor dem Statusfeld: Die Update-Prüfung hat die Zeile „Version“ in dessen Registry (#754).
-  FreeAndNil(Updates);
+  // Rückwärts zur Startreihenfolge (Code-Review S-03): Palette vor den Teilen, deren Befehle sie hält,
+  // Tastenkürzel-Tipps und Willkommensseite vor der Zählung, Rinne vor Notizen und Lesezeichen, Prüfung beim
+  // Speichern vor den Compiler-Ereignissen, der Manager zuletzt. Alles vor dem Statusfeld: Diagnosemodus,
+  // Einrichtung, Update-Prüfung und Willkommensseite haben Zeilen in dessen Registry (#479, #625, #754).
+  if Features <> nil then
+    Features.StopAll;
   FreeAndNil(QuickToggles);
-  FreeAndNil(SignatureKey);
-  FreeAndNil(CompletionKey);
-  FreeAndNil(EditInbox);
-  FreeAndNil(DirtyExport);
-  // Vor dem Statusfeld: Die Willkommensseite beobachtet dessen Registry.
-  FreeAndNil(Welcome);
-  // Nach den Tastenkürzel-Tipps und der Willkommensseite, die sie nutzen; speichert die Zählung (#757).
-  FreeAndNil(CommandUsage);
-  TAtlasWelcomeViews.Release;
-  TAtlasWelcomeSections.ReleaseDefault;
   UnregisterStatusField;
-  FreeAndNil(MainMenu);
-  FreeAndNil(Forms);
-  FreeAndNil(EditorKeys);
-  TAtlasIdeUndo.Stop;
-  if CommandsInstalled then
-  begin
-    TAtlasIdeUnitSearch.Uninstall;
-    TAtlasIdeGenerate.Uninstall;
-    TAtlasIdeEditorCommands.Uninstall;
-    TAtlasIdeResults.Uninstall;
-  end;
-  CommandsInstalled := False;
-  FreeAndNil(Pairs);
-  // Vor dem Notiz- und dem Lesezeichendienst: Die Rinne liest deren Listen (#545, #622).
-  FreeAndNil(GutterMarks);
-  TAtlasIdeNotes.Release;
-  TAtlasIdeBookmarks.Release;
-  FreeAndNil(CheckOnSave);
-  FreeAndNil(Palette);
-  FreeAndNil(Reloader);
-  UnregisterWatchdog;
-  FreeAndNil(Compile);
   TAtlasOptionsRegistration.Unregister;
   TAtlasProjectSettings.Command := nil;
   TAtlasIdeHistory.Release;
   TAtlasIdeFavorites.Release;
   TAtlasIdeSymbol.Unregister;
   TAtlasIdeSettings.Release;
-  if (ManagerIndex >= 0) and Supports(BorlandIDEServices, IOTACodeInsightServices, Services) then
-    Services.RemoveCodeInsightManager(ManagerIndex);
-  ManagerIndex := -1;
-  Manager := nil;
   Stopped := TAtlasTimeLimit.StopAll(TAtlasShutdown.StopMs);
+  FreeAndNil(Features);
   TAtlasGuard.Log(Format('Atlas entladen in %d ms; Hintergrund-Threads beendet: %s',
     [TThread.GetTickCount64 - StartedAt, BoolToStr(Stopped, True)]));
 end;

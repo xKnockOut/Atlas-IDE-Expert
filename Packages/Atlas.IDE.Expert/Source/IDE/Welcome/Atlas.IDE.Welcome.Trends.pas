@@ -53,7 +53,7 @@ uses
   System.Classes,
   Atlas.Core.Welcome.Projects,
   Atlas.UI.Welcome.Frame,
-  Atlas.IDE.Settings.Store;
+  Atlas.IDE.Foundation.Settings;
 
 { TAtlasIdeTrends }
 

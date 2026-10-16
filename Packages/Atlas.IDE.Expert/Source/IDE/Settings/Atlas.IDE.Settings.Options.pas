@@ -26,9 +26,31 @@ type
   /// <summary>Befehl an den Server; Ergebnis gehört dem Aufrufer, nil ohne Server.</summary>
   TAtlasServerCommand = reference to function(ACommand: string): TJSONValue;
 
+  /// <summary>Was die Optionsseiten von anderen Features brauchen; setzt die Composition (A-09: die Seiten
+  /// importieren Befehlszählung, Tipps, Code Insight-Manager und Vervollständigung nicht). Nicht gesetzte Haken
+  /// bleiben ohne Wirkung bzw. liefern ''.</summary>
+  TAtlasOptionsHooks = record
+    /// <summary>Lernende Gewichtung zurücksetzen (#418).</summary>
+    ResetHistory: TProc;
+    /// <summary>Befehl an den Server (#492).</summary>
+    Command: TAtlasServerCommand;
+    /// <summary>Zählung der Befehle zurücksetzen (#757).</summary>
+    ResetUsage: TProc;
+    /// <summary>Gesperrte Tipps wieder zeigen (#757).</summary>
+    UnblockTips: TProc;
+    /// <summary>Pfad der AtlasServer.exe nach den Einstellungen.</summary>
+    ServerPath: TFunc<string>;
+    /// <summary>Pfad der mitgelieferten AtlasServer.exe.</summary>
+    DefaultServerPath: TFunc<string>;
+    /// <summary>Ordner der Live Templates der IDE (#487).</summary>
+    IdeTemplateFolder: TFunc<string>;
+    /// <summary>Ordner der eigenen Code-Vorlagen (#51).</summary>
+    SnippetFolder: TFunc<string>;
+  end;
+
   TAtlasOptionsRegistration = class
   public
-    class procedure Register(const AResetHistory: TProc; const ACommand: TAtlasServerCommand); static;
+    class procedure Register(const AHooks: TAtlasOptionsHooks); static;
     class procedure Unregister; static;
   end;
 
@@ -45,7 +67,6 @@ uses
   Atlas.Core.Completion.LiveTemplates,
   Atlas.Core.Completion.SnippetCatalog,
   Atlas.UI.Settings.SnippetsPage,
-  Atlas.IDE.Completion.Editor,
   ToolsAPI,
   Atlas.Core.Settings.Plugin,
   Atlas.Core.Lsp.Progress,
@@ -56,24 +77,18 @@ uses
   Atlas.IDE.Settings.Project,
   Atlas.IDE.Settings.ServerTool,
   Atlas.UI.Strings,
-  Atlas.IDE.Commands.Keys,
-  Atlas.IDE.Commands.Usage,
+  Atlas.IDE.Foundation.Keys,
   Atlas.Core.Completion.Favorites,
   Atlas.IDE.Completion.Favorites,
-  Atlas.IDE.Welcome.Discover,
-  Atlas.IDE.Editor.Structure,
-  Atlas.IDE.CodeInsight.Manager,
-  Atlas.IDE.Settings.Store;
+  Atlas.IDE.Foundation.StructureSwitch,
+  Atlas.IDE.Foundation.Settings;
 
 type
   TAtlasAddInOptions = class(TInterfacedObject, INTAAddInOptions)
   private
     FPage: TAtlasSettingsPage;
-    FResetHistory: TProc;
-    FCommand: TAtlasServerCommand;
     function Run(const ACommand: string; out AAnswer: TJSONValue): Boolean;
   public
-    constructor Create(const AResetHistory: TProc; const ACommand: TAtlasServerCommand);
     function GetArea: string;
     function GetCaption: string;
     function GetFrameClass: TCustomFrameClass;
@@ -133,21 +148,24 @@ var
   ServerOptions: INTAAddInOptions;
   SnippetOptions: INTAAddInOptions;
   KeysOptions: INTAAddInOptions;
+  /// <summary>Gesetzt von Register, geleert von Unregister.</summary>
+  Hooks: TAtlasOptionsHooks;
+
+/// <summary>Ergebnis eines Hakens; '' ohne Haken.</summary>
+function HookText(const AHook: TFunc<string>): string;
+begin
+  Result := '';
+  if Assigned(AHook) then
+    Result := AHook();
+end;
 
 { TAtlasAddInOptions }
-
-constructor TAtlasAddInOptions.Create(const AResetHistory: TProc; const ACommand: TAtlasServerCommand);
-begin
-  inherited Create;
-  FResetHistory := AResetHistory;
-  FCommand := ACommand;
-end;
 
 function TAtlasAddInOptions.Run(const ACommand: string; out AAnswer: TJSONValue): Boolean;
 begin
   AAnswer := nil;
-  if Assigned(FCommand) then
-    AAnswer := FCommand(ACommand);
+  if Assigned(Hooks.Command) then
+    AAnswer := Hooks.Command(ACommand);
   Result := AAnswer <> nil;
 end;
 
@@ -170,14 +188,14 @@ end;
 procedure TAtlasAddInOptions.FrameCreated(AFrame: TCustomFrame);
 begin
   FPage := AFrame as TAtlasSettingsPage;
-  FPage.DefaultServerPath := TAtlasCodeInsightManager.DefaultServerPath;
+  FPage.DefaultServerPath := HookText(Hooks.DefaultServerPath);
   // Version der gewählten AtlasServer.exe (#227).
   FPage.OnServerVersion :=
     function(APath: string): string
     begin
       Result := TAtlasServerTool.FileVersion(APath);
     end;
-  FPage.OnResetHistory := FResetHistory;
+  FPage.OnResetHistory := Hooks.ResetHistory;
   // Angeheftete Favoriten (#458): Liste und Entfernen.
   FPage.OnRemoveFavorites :=
     procedure(AKeys: TArray<string>)
@@ -200,7 +218,8 @@ begin
       TAtlasGuard.Run(TAtlasFeature.Settings,
         procedure
         begin
-          TAtlasIdeCommandUsage.ResetCounts;
+          if Assigned(Hooks.ResetUsage) then
+            Hooks.ResetUsage();
         end);
     end;
   FPage.OnUnblockTips :=
@@ -209,7 +228,8 @@ begin
       TAtlasGuard.Run(TAtlasFeature.Settings,
         procedure
         begin
-          TAtlasIdeDiscover.UnblockAll;
+          if Assigned(Hooks.UnblockTips) then
+            Hooks.UnblockTips();
         end);
     end;
   // Symbolindex (#492): vor LoadFrom, das die Kennzahlen gleich anzeigt.
@@ -323,8 +343,8 @@ begin
     FPage := AFrame as TAtlasSnippetsPage;
     Ide := nil;
     if TAtlasIdeSettings.Current.ImportIdeTemplates then
-      Ide := TAtlasLiveTemplates.LoadFolder(TAtlasEditorCompletion.IdeTemplateFolder, Stats);
-    Own := TAtlasSnippets.LoadFolder(TAtlasEditorCompletion.SnippetFolder, Errors);
+      Ide := TAtlasLiveTemplates.LoadFolder(HookText(Hooks.IdeTemplateFolder), Stats);
+    Own := TAtlasSnippets.LoadFolder(HookText(Hooks.SnippetFolder), Errors);
     FPage.Load(TAtlasSnippetCatalog.Create(TAtlasSnippets.BuiltIn, Ide, Own));
   except
     on E: Exception do
@@ -336,7 +356,7 @@ procedure TAtlasSnippetOptions.DialogClosed(Accepted: Boolean);
 begin
   try
     if Accepted and (FPage <> nil) and (FPage.Catalog <> nil) and FPage.Catalog.Modified then
-      FPage.Catalog.Save(TAtlasEditorCompletion.SnippetFolder);
+      FPage.Catalog.Save(HookText(Hooks.SnippetFolder));
     FPage := nil;
   except
     on E: Exception do
@@ -440,10 +460,8 @@ end;
 { TAtlasServerOptions }
 
 function ServerExe: string;
-var
-  Arguments: string;
 begin
-  Result := TAtlasCodeInsightManager.ServerPath(Arguments);
+  Result := HookText(Hooks.ServerPath);
 end;
 
 /// <summary>atlas-baseline.json des aktiven Projekts (oder der alte Name, wenn nur er existiert); '' ohne Projekt.
@@ -618,13 +636,14 @@ end;
 
 { TAtlasOptionsRegistration }
 
-class procedure TAtlasOptionsRegistration.Register(const AResetHistory: TProc; const ACommand: TAtlasServerCommand);
+class procedure TAtlasOptionsRegistration.Register(const AHooks: TAtlasOptionsHooks);
 var
   Services: INTAEnvironmentOptionsServices;
 begin
   if (Options = nil) and Supports(BorlandIDEServices, INTAEnvironmentOptionsServices, Services) then
   begin
-    Options := TAtlasAddInOptions.Create(AResetHistory, ACommand);
+    Hooks := AHooks;
+    Options := TAtlasAddInOptions.Create;
     Services.RegisterAddInOptions(Options);
     SnippetOptions := TAtlasSnippetOptions.Create;
     Services.RegisterAddInOptions(SnippetOptions);
@@ -654,6 +673,7 @@ begin
   KeysOptions := nil;
   ServerOptions := nil;
   Options := nil;
+  Hooks := Default(TAtlasOptionsHooks);
 end;
 
 end.

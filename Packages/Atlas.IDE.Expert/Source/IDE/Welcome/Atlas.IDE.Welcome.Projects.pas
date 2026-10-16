@@ -167,7 +167,7 @@ uses
   Atlas.Core.Welcome.Search,
   Atlas.UI.Strings,
   Atlas.UI.Welcome.Frame,
-  Atlas.IDE.Settings.Store,
+  Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Results.Commands,
   Atlas.IDE.Problems.Controller,
   Atlas.IDE.Vcs.Service,

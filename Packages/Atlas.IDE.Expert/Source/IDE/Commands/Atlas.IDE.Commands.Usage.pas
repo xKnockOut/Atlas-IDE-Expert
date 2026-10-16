@@ -76,7 +76,7 @@ uses
   System.IOUtils,
   Atlas.Core.Diagnostics.Guard,
   Atlas.Core.Settings.Plugin,
-  Atlas.IDE.Settings.Store;
+  Atlas.IDE.Foundation.Settings;
 
 /// <summary>Textdatei als UTF-8; ohne Byte-Order-Mark; '' bei Fehler.</summary>
 function ReadText(const AFileName: string): string;
