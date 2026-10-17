@@ -408,6 +408,7 @@ uses
   Atlas.Common.Lsp.SignatureHelp,
   System.RegularExpressions,
   Atlas.Common.Editing.CommandSource,
+  Atlas.Common.Editing.SlashMenu,
   Atlas.Common.Diagnostics.RequestScope,
   Atlas.Common.Lsp.CompletionEnums,
   Atlas.Common.Editing.DataFieldNames,
@@ -458,18 +459,35 @@ end;
 
 function SlashItems(ARequest: TCompletionRequest; const ADisabled: TArray<string>; out AItems: TCompletionItems): Boolean;
 var
-  Before, Name, Arguments: string;
+  Before, Name, Arguments, Choice: string;
+  Choices: TArray<string>;
   Command: TSlashCommand;
   Item: TCompletionItem;
 begin
   AItems := Default(TCompletionItems);
-  // Nur "/name" ohne Argumente vor dem Cursor; danach vervollständigen die Befehle selbst (#294 ff.).
+  // "/name" ohne Argumente vor dem Cursor; danach vervollständigen die Befehle selbst (#294 ff.), /sort und
+  // /filter mit Sammlungen und Mitgliedern des Elementtyps (#319).
   Before := ARequest.LineBefore;
   if Trim(Before) = '/' then
     Name := ''
-  else if not TSlashCommandRegistry.Split(Before, Name, Arguments) or (Arguments <> '') or
-    (Before[Length(Before)] = ' ') then
-    Exit(False);
+  else if not TSlashCommandRegistry.Split(Before, Name, Arguments) then
+    Exit(False)
+  else if (Arguments <> '') or (Before[Length(Before)] = ' ') then
+  begin
+    if MatchText(Name, ADisabled) or
+      not TSlashCommandRegistry.IsCodeLine(TPascalLexer.Tokenize(ARequest.Text), ARequest.Position.Line) then
+      Exit(False);
+    Choices := TSlashMenu.ArgumentChoices(ARequest.Text, ARequest.Position.Line, Name, Arguments, ARequest.Index);
+    for Choice in Choices do
+    begin
+      Item := Default(TCompletionItem);
+      Item.Name := Choice;
+      Item.Kind := KindField;
+      Item.Detail := '/' + Name;
+      AItems.Items := AItems.Items + [Item];
+    end;
+    Exit(Length(Choices) > 0);
+  end;
   if not TSlashCommandRegistry.IsCodeLine(TPascalLexer.Tokenize(ARequest.Text), ARequest.Position.Line) then
     Exit(False);
   for Command in TSlashCommandRegistry.Shared.Matching(Name, ADisabled) do
@@ -1868,74 +1886,15 @@ end;
 
 /// <summary>Deklaration von ARange; über mehr als MaxLines Zeilen (Klassen, Records) nur die erste.</summary>
 function DeclarationOf(const ALines: TArray<string>; const ARange: TTextRange): string;
-const
-  MaxLines = 6;
-  MaxLength = 600;
-var
-  Line, Last: Integer;
 begin
-  Result := '';
-  Last := ARange.EndPos.Line;
-  if Last - ARange.StartPos.Line >= MaxLines then
-    Last := ARange.StartPos.Line;
-  for Line := ARange.StartPos.Line to Last do
-  begin
-    if (Line < 0) or (Line > High(ALines)) then
-      Break;
-    if Line = ARange.StartPos.Line then
-      Result := Trim(Copy(ALines[Line], ARange.StartPos.Character + 1, MaxInt))
-    else
-      Result := Result + ' ' + Trim(ALines[Line]);
-  end;
-  while Pos('  ', Result) > 0 do
-    Result := StringReplace(Result, '  ', ' ', [rfReplaceAll]);
-  if Length(Result) > MaxLength then
-    Result := Copy(Result, 1, MaxLength) + ' …';
+  Result := TInterfaceStubs.DeclarationOf(ALines, ARange);
 end;
 
 /// <summary>Vorfahrenliste der Klasse ab Zeile AStartLine wie im Quelltext, samt Typargumenten
 /// ("TInterfacedObject", "IComparer<TKunde>"); nil, wenn kein "class(" folgt (#466).</summary>
 function HeaderAncestors(const ALines: TArray<string>; AStartLine: Integer): TArray<string>;
-var
-  Text, Part: string;
-  Line, Index, Depth: Integer;
-  Match: TMatch;
 begin
-  Result := nil;
-  Text := '';
-  for Line := AStartLine to Min(AStartLine + 5, High(ALines)) do
-    Text := Text + ' ' + ALines[Line];
-  Match := TRegEx.Match(Text, '=\s*class\s*(?:sealed\s*|abstract\s*)?\(', [roIgnoreCase]);
-  if not Match.Success then
-    Exit;
-  Depth := 0;
-  Part := '';
-  for Index := Match.Index + Match.Length to Length(Text) do
-  begin
-    case Text[Index] of
-      '(', '<':
-        Inc(Depth);
-      ')', '>':
-        begin
-          if Depth = 0 then
-          begin
-            if Trim(Part) <> '' then
-              Result := Result + [StringReplace(Trim(Part), ' ', '', [rfReplaceAll])];
-            Exit;
-          end;
-          Dec(Depth);
-        end;
-      ',':
-        if Depth = 0 then
-        begin
-          Result := Result + [StringReplace(Trim(Part), ' ', '', [rfReplaceAll])];
-          Part := '';
-          Continue;
-        end;
-    end;
-    Part := Part + Text[Index];
-  end;
-  Result := nil;
+  Result := TInterfaceStubs.HeaderAncestors(ALines, AStartLine);
 end;
 
 /// <summary>Zeilen von AFileName, je Datei einmal gelesen (Code-Review P-07); AText für die eigene Datei
@@ -1961,32 +1920,14 @@ end;
 
 /// <summary>Setzt Bindungen "T=TKunde" wortweise in AText ein (#466).</summary>
 function SubstituteWords(const AText: string; const ABindings: TArray<string>): string;
-var
-  Binding: string;
-  Equal: Integer;
 begin
-  Result := AText;
-  for Binding in ABindings do
-  begin
-    Equal := Pos('=', Binding);
-    Result := TRegEx.Replace(Result, '(?<![\w.])' + TRegEx.Escape(Copy(Binding, 1, Equal - 1)) + '(?![\w])',
-      Copy(Binding, Equal + 1, MaxInt).Replace('$', '$$'));
-  end;
+  Result := TInterfaceStubs.SubstituteWords(AText, ABindings);
 end;
 
 /// <summary>"IComparer<TKunde>" aus Container und Bindungen; ohne Bindungen der Container.</summary>
 function GenericName(const AContainer: string; const ABindings: TArray<string>): string;
-var
-  Binding: string;
-  Values: TArray<string>;
 begin
-  Result := AContainer;
-  if Length(ABindings) = 0 then
-    Exit;
-  Values := nil;
-  for Binding in ABindings do
-    Values := Values + [Copy(Binding, Pos('=', Binding) + 1, MaxInt)];
-  Result := Result + '<' + string.Join(', ', Values) + '>';
+  Result := TInterfaceStubs.GenericName(AContainer, ABindings);
 end;
 
 /// <summary>Direktiven einer Deklaration (virtual, override, deprecated ...); ADeprecated: Text

@@ -189,7 +189,7 @@ begin
   try
     // Nie ein leeres except: protokollieren und weiterwerfen.
     Result := Wrap(Source, 'except', ['try'], ['except', '  on E: Exception do', '  begin',
-      '    OutputDebugString(PChar(E.ClassName + '': '' + E.Message));', '    raise;', '  end;', 'end;'], '  ',
+      '    ' + LogStatement(AContext, 'E.ClassName + '': '' + E.Message'), '    raise;', '  end;', 'end;'], '  ',
       AEdits, AReason);
   finally
     Source.Free;

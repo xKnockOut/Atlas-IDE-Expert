@@ -92,6 +92,8 @@ Jeder Schlüssel hat genau einen Ort (Spalte „Ort“): Projekt-Schlüssel steh
 | `slashCommands.enabled` | global (settings.json) | boolean | `true` |  | Schnellbefehle auswerten. |
 | `slashCommands.disabled` | global (settings.json) | array<string> | `` |  | Abgeschaltete Befehle ohne /, z. B. ["uses"]. usesCommand: false wirkt wie "uses" in dieser Liste. |
 | `slashCommands.headerTemplate` | global (settings.json) | string | `""` |  | Vorlage für /header mit den Platzhaltern {unit}, {jahr} und {autor}. Leer: die Vorlage der Regel file-header, sonst ein einfacher Kopf. |
+| `slashCommands.logCall` | global (settings.json) | string | `""` |  | Protokollaufruf für /log, /except und /measure: ein Routinenname wie "Log.Debug" bekommt den Text als Argument, {text} setzt ihn an diese Stelle, z. B. "Logger.Send(TLogLevel.Debug, {text})". Leer: OutputDebugString(PChar(…)). |
+| `slashCommands.componentPalette` | global (settings.json) | string | `"Eigene"` |  | Palettenseite, auf der /component die neue Komponente mit RegisterComponents einträgt. |
 
 ## index
 

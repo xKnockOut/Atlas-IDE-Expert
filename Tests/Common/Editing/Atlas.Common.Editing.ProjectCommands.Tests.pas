@@ -1,7 +1,8 @@
 ﻿unit Atlas.Common.Editing.ProjectCommands.Tests;
 
-// Tests für die Schnellbefehle /define, /searchpath, /config und /dfm (#301) sowie /unit und /open (#297)
-// mit einem Host, der Dateien im Speicher hält und Aufrufe mitschreibt.
+// Tests für die Schnellbefehle /define, /searchpath, /config und /dfm (#301), /unit und /open (#297),
+// /component (#299), /log und /except mit slashCommands.logCall (#304) und /event (#295)
+// und /test (#295) mit einem Host, der Dateien im Speicher hält und Aufrufe mitschreibt.
 
 interface
 
@@ -34,6 +35,26 @@ type
     procedure OpenFindsInSearchPath;
     [Test]
     procedure OpenUnknownFails;
+    [Test]
+    procedure LogUsesConfiguredCall;
+    [Test]
+    procedure ExceptUsesConfiguredCall;
+    [Test]
+    procedure ComponentGoesIntoPackage;
+    [Test]
+    procedure ComponentAncestorFromIndex;
+    [Test]
+    procedure ComponentWrongPlaceFails;
+    [Test]
+    procedure EventForFormAndComponent;
+    [Test]
+    procedure EventWrongPlaceFails;
+    [Test]
+    procedure TestCreatesTestUnit;
+    [Test]
+    procedure TestAddsToExistingTestUnit;
+    [Test]
+    procedure TestWrongPlaceFails;
   end;
 
 implementation
@@ -49,7 +70,11 @@ uses
   Atlas.Common.Rules.Contract,
   Atlas.Common.Pascal.Parser,
   Atlas.Common.Pascal.SyntaxTree,
-  Atlas.Common.Editing.SlashCommands;
+  Atlas.Common.Index.Contract,
+  Atlas.Common.Index.SymbolIndex,
+  Atlas.Common.Index.Extractor,
+  Atlas.Common.Editing.SlashCommands,
+  Atlas.Text.Lines;
 
 type
   TFakeHost = class(TInterfacedObject, ISlashHost)
@@ -64,6 +89,10 @@ type
     Selection: TTextRange;
     WrittenFiles: TArray<TSlashFile>;
     ShowAfterWrite: string;
+    LogCallValue: string;
+    PaletteValue: string;
+    TestTarget: TSlashTestUnit;
+    TestReason: string;
     constructor Create;
     destructor Destroy; override;
     function Project(const AUri: string; out AProject: TProjectInfo): Boolean;
@@ -74,6 +103,10 @@ type
     procedure ShowDocument(const AFileName: string; const ASelection: TTextRange);
     function HeaderTemplate(const AUri: string): string;
     procedure WriteFiles(const AUri: string; const AFiles: TArray<TSlashFile>; const AShow: string);
+    function Setting(const AUri, AName: string): string;
+    function TestUnit(const AUri, AText: string; out ATarget: TSlashTestUnit): Boolean;
+    procedure Notify(const AUri, AMessage: string);
+    procedure MoveCursor(const AUri: string; const APosition: TTextPosition);
   end;
 
 const
@@ -198,6 +231,31 @@ procedure TFakeHost.WriteFiles(const AUri: string; const AFiles: TArray<TSlashFi
 begin
   WrittenFiles := AFiles;
   ShowAfterWrite := AShow;
+end;
+
+function TFakeHost.Setting(const AUri, AName: string): string;
+begin
+  if AName = TSlashSettings.LogCall then
+    Result := LogCallValue
+  else if AName = TSlashSettings.ComponentPalette then
+    Result := PaletteValue
+  else
+    Result := '';
+end;
+
+function TFakeHost.TestUnit(const AUri, AText: string; out ATarget: TSlashTestUnit): Boolean;
+begin
+  ATarget := TestTarget;
+  ATarget.Reason := TestReason;
+  Result := TestReason = '';
+end;
+
+procedure TFakeHost.Notify(const AUri, AMessage: string);
+begin
+end;
+
+procedure TFakeHost.MoveCursor(const AUri: string; const APosition: TTextPosition);
+begin
 end;
 
 function Run(const ACommand: string; const AHost: ISlashHost; out AEdits: TArray<TRuleEdit>): Boolean;
@@ -416,6 +474,434 @@ begin
   // Stehen gebliebene Zeile: Hinweis statt Löschen.
   Problems := TSlashCommandRegistry.Shared.Problems(Format(FormUnit, ['/open Fehlt']), nil);
   Assert.AreEqual(1, Integer(Length(Problems)));
+end;
+
+/// <summary>FormUnit mit ACommand und angewandten AEdits; von hinten, damit frühere Positionen gültig bleiben.</summary>
+function Expanded(const ACommand: string; const AEdits: TArray<TRuleEdit>): string;
+var
+  Table: TLineTable;
+  Index, Start, Stop: Integer;
+begin
+  Result := Format(FormUnit, [ACommand]);
+  for Index := High(AEdits) downto 0 do
+  begin
+    Table := TLineTable.Build(Result);
+    Start := Table.OffsetAt(AEdits[Index].Range.StartPos);
+    Stop := Table.OffsetAt(AEdits[Index].Range.EndPos);
+    Result := Copy(Result, 1, Start) + AEdits[Index].NewText + Copy(Result, Stop + 1, MaxInt);
+  end;
+end;
+
+procedure TProjectCommandsTests.LogUsesConfiguredCall;
+var
+  Host: TFakeHost;
+  Keep: ISlashHost;
+  Edits: TArray<TRuleEdit>;
+  Text: string;
+begin
+  Host := TFakeHost.Create;
+  Keep := Host;
+  // Ohne Einstellung: OutputDebugString.
+  Assert.IsTrue(Run('/log', Keep, Edits));
+  Text := Expanded('/log', Edits);
+  Assert.IsTrue(Pos('  OutputDebugString(PChar(''Main.TForm1.Button1Click''));', Text) > 0, Text);
+  // Routinenname: bekommt den Text als Argument.
+  Host.LogCallValue := 'Log.Debug';
+  Assert.IsTrue(Run('/log', Keep, Edits));
+  Text := Expanded('/log', Edits);
+  Assert.IsTrue(Pos('  Log.Debug(''Main.TForm1.Button1Click'');', Text) > 0, Text);
+  // Vorlage mit {text}.
+  Host.LogCallValue := 'Logger.Send(TLogLevel.Debug, {text});';
+  Assert.IsTrue(Run('/log Start', Keep, Edits));
+  Text := Expanded('/log Start', Edits);
+  Assert.IsTrue(Pos('  Logger.Send(TLogLevel.Debug, ''Main.TForm1.Button1Click: Start'');', Text) > 0, Text);
+end;
+
+procedure TProjectCommandsTests.ExceptUsesConfiguredCall;
+const
+  Body = '/except'#10'  Close;';
+var
+  Host: TFakeHost;
+  Keep: ISlashHost;
+  Edits: TArray<TRuleEdit>;
+  Text: string;
+  Problems: TArray<TSlashProblem>;
+begin
+  Host := TFakeHost.Create;
+  Keep := Host;
+  Host.LogCallValue := 'Log.Error';
+  Assert.IsTrue(Run(Body, Keep, Edits));
+  Text := Expanded(Body, Edits);
+  Assert.IsTrue(Pos('      Log.Error(E.ClassName + '': '' + E.Message);'#10'      raise;', Text) > 0, Text);
+  // Falscher Ort: außerhalb einer Routine bleibt die Zeile mit Hinweis stehen.
+  Problems := TSlashCommandRegistry.Shared.Problems('unit U;'#10'interface'#10'/except'#10'implementation'#10 +
+    'end.', nil);
+  Assert.AreEqual(1, Integer(Length(Problems)));
+end;
+
+const
+  PackageText =
+    'package Paket;'#13#10 +
+    'requires'#13#10 +
+    '  rtl,'#13#10 +
+    '  vcl;'#13#10 +
+    'contains'#13#10 +
+    '  Main in ''Main.pas'';'#13#10 +
+    'end.'#13#10;
+
+function RunWithIndex(const ACommand: string; const AHost: ISlashHost; const AIndex: ISymbolIndex;
+  out AEdits: TArray<TRuleEdit>): Boolean;
+begin
+  Result := TSlashCommandRegistry.Shared.AfterEnter(Format(FormUnit, [ACommand]), TTextPosition.Create(10, 0), nil,
+    nil, AEdits, AIndex, '', TDocumentUris.FromPath(TPath.Combine(GetCurrentDir, 'Main.pas')), AHost);
+end;
+
+procedure TProjectCommandsTests.ComponentGoesIntoPackage;
+var
+  Host: TFakeHost;
+  Keep: ISlashHost;
+  Edits: TArray<TRuleEdit>;
+  Text: string;
+begin
+  Host := TFakeHost.Create;
+  Keep := Host;
+  Host.Info.FileName := TPath.Combine(GetCurrentDir, 'Paket.dproj');
+  Host.Info.MainSource := TPath.Combine(GetCurrentDir, 'Paket.dpk');
+  Host.Files.Add('Paket.dproj', Dproj);
+  Host.Files.Add('Paket.dpk', PackageText);
+  Host.PaletteValue := 'Firma';
+  Assert.IsTrue(Run('/component TZaehler', Keep, Edits));
+  Assert.AreEqual(3, Integer(Length(Host.WrittenFiles)));
+  Text := Host.WrittenFiles[0].Text;
+  Assert.IsTrue(SameFile('Zaehler.pas', Host.WrittenFiles[0].FileName), Host.WrittenFiles[0].FileName);
+  Assert.IsTrue(Parses(Text), Text);
+  Assert.IsTrue(Pos('  TZaehler = class(TComponent)', Text) > 0, Text);
+  Assert.IsTrue(Pos('  published', Text) > 0, Text);
+  Assert.IsTrue(Pos('RegisterComponents(''Firma'', [TZaehler]);', Text) > 0, Text);
+  // In der .dpk unter contains, nicht unter requires.
+  Assert.IsTrue(Pos('contains'#13#10'  Main in ''Main.pas'','#13#10'  Zaehler in ''Zaehler.pas'';',
+    Host.WrittenFiles[1].Text) > 0, Host.WrittenFiles[1].Text);
+  Assert.IsTrue(Pos('<DCCReference Include="Zaehler.pas"/>', Host.WrittenFiles[2].Text) > 0);
+  Assert.AreEqual(Host.WrittenFiles[0].FileName, Host.ShowAfterWrite);
+  // Ohne Einstellung: Palettenseite "Eigene".
+  Host.PaletteValue := '';
+  Assert.IsTrue(Run('/component TZaehler2', Keep, Edits));
+  Assert.IsTrue(Pos('RegisterComponents(''Eigene'', [TZaehler2]);', Host.WrittenFiles[0].Text) > 0);
+end;
+
+procedure TProjectCommandsTests.ComponentAncestorFromIndex;
+var
+  Host: TFakeHost;
+  Keep: ISlashHost;
+  Edits: TArray<TRuleEdit>;
+  Index: ISymbolIndex;
+  Text: string;
+begin
+  Host := TFakeHost.Create;
+  Keep := Host;
+  // Ohne Projekt: nur die Unit, Vorfahr samt Unit aus dem Index.
+  Host.Info.FileName := '';
+  Host.Files.Remove('App.dproj');
+  Index := TSymbolIndex.Create;
+  Index.AddUnit(TIndexExtractor.ExtractText('unit Vcl.StdCtrls;'#10'interface'#10'type'#10 +
+    '  TButton = class(TObject)'#10'  end;'#10'implementation'#10'end.', 'C:\Lib\Vcl.StdCtrls.pas', nil));
+  Assert.IsTrue(RunWithIndex('/component TMyButton : TButton', Keep, Index, Edits));
+  Assert.AreEqual(1, Integer(Length(Host.WrittenFiles)));
+  Text := Host.WrittenFiles[0].Text;
+  Assert.IsTrue(Pos('  System.SysUtils, System.Classes, Vcl.StdCtrls;', Text) > 0, Text);
+  Assert.IsTrue(Pos('  TMyButton = class(TButton)', Text) > 0, Text);
+  Assert.IsTrue(SameFile('MyButton.pas', Host.WrittenFiles[0].FileName), Host.WrittenFiles[0].FileName);
+end;
+
+procedure TProjectCommandsTests.ComponentWrongPlaceFails;
+var
+  Host: TFakeHost;
+  Keep: ISlashHost;
+  Edits: TArray<TRuleEdit>;
+  Problems: TArray<TSlashProblem>;
+begin
+  Host := TFakeHost.Create;
+  Keep := Host;
+  // Kein Name, unbekannter Vorfahr, ohne Editor.
+  Assert.IsFalse(Run('/component', Keep, Edits));
+  Assert.IsFalse(Run('/component TA : TUnbekannt', Keep, Edits));
+  Assert.IsFalse(Run('/component TA', nil, Edits));
+  Assert.AreEqual(0, Integer(Length(Host.WrittenFiles)));
+  Problems := TSlashCommandRegistry.Shared.Problems(Format(FormUnit, ['/component TA : TUnbekannt']), nil);
+  Assert.AreEqual(1, Integer(Length(Problems)));
+end;
+
+const
+  EventLib =
+    'unit Vcl.Lib;'#10'interface'#10'type'#10 +
+    '  TNotifyEvent = procedure(Sender: TObject) of object;'#10 +
+    '  TCloseQueryEvent = procedure(Sender: TObject; var CanClose: Boolean) of object;'#10 +
+    '  THelpEvent = function(Command: Word; Data: NativeInt; var CallHelp: Boolean): Boolean of object;'#10 +
+    '  TControl = class'#10'  published'#10'    property OnClick: TNotifyEvent read FOnClick write FOnClick;'#10 +
+    '  end;'#10'  TButton = class(TControl)'#10'  end;'#10'  TForm = class(TControl)'#10'  published'#10 +
+    '    property OnCreate: TNotifyEvent read FOnCreate write FOnCreate;'#10 +
+    '    property OnCloseQuery: TCloseQueryEvent read FOnCloseQuery write FOnCloseQuery;'#10 +
+    '    property OnHelp: THelpEvent read FOnHelp write FOnHelp;'#10'  end;'#10 +
+    'implementation'#10'end.';
+
+  EventUnit =
+    'unit Main;'#10 +                                       // 0
+    'interface'#10 +                                        // 1
+    'uses Vcl.Lib;'#10 +                                    // 2
+    'type'#10 +                                             // 3
+    '  TForm1 = class(TForm)'#10 +                          // 4
+    '    Button1: TButton;'#10 +                            // 5
+    '    procedure Button1Click(Sender: TObject);'#10 +     // 6
+    '  private'#10 +                                       // 7
+    '  end;'#10 +                                           // 8
+    'implementation'#10 +                                   // 9
+    'procedure TForm1.Button1Click(Sender: TObject);'#10 +  // 10
+    'begin'#10 +                                            // 11
+    '  %s'#10 +                                             // 12 Befehl
+    'end;'#10 +                                             // 13
+    'end.';
+
+  EventForm =
+    'object Form1: TForm1'#13#10 +
+    '  Caption = ''Haupt'''#13#10 +
+    '  object Button1: TButton'#13#10 +
+    '    Left = 8'#13#10 +
+    '  end'#13#10 +
+    'end'#13#10;
+
+function EventIndex: ISymbolIndex;
+begin
+  Result := TSymbolIndex.Create;
+  Result.AddUnit(TIndexExtractor.ExtractText(EventLib, 'C:\Lib\Vcl.Lib.pas', nil));
+end;
+
+function RunEvent(const ACommand: string; const AHost: ISlashHost; out AText: string): Boolean;
+var
+  Edits: TArray<TRuleEdit>;
+  Table: TLineTable;
+  Index, Next, Start, Stop: Integer;
+  Swap: TRuleEdit;
+begin
+  AText := Format(EventUnit, [ACommand]);
+  Result := TSlashCommandRegistry.Shared.AfterEnter(AText, TTextPosition.Create(13, 0), nil, nil, Edits,
+    EventIndex, '', TDocumentUris.FromPath(TPath.Combine(GetCurrentDir, 'Main.pas')), AHost);
+  // Von hinten anwenden, damit frühere Positionen gültig bleiben.
+  Table := TLineTable.Build(AText);
+  for Index := 0 to High(Edits) do
+    for Next := Index + 1 to High(Edits) do
+      if Table.OffsetAt(Edits[Next].Range.StartPos) > Table.OffsetAt(Edits[Index].Range.StartPos) then
+      begin
+        Swap := Edits[Index];
+        Edits[Index] := Edits[Next];
+        Edits[Next] := Swap;
+      end;
+  for Index := 0 to High(Edits) do
+  begin
+    Start := Table.OffsetAt(Edits[Index].Range.StartPos);
+    Stop := Table.OffsetAt(Edits[Index].Range.EndPos);
+    AText := Copy(AText, 1, Start) + Edits[Index].NewText + Copy(AText, Stop + 1, MaxInt);
+  end;
+end;
+
+procedure TProjectCommandsTests.EventForFormAndComponent;
+var
+  Host: TFakeHost;
+  Keep: ISlashHost;
+  Text: string;
+begin
+  Host := TFakeHost.Create;
+  Keep := Host;
+  Host.Files.Remove('Main.dfm');
+  Host.Files.Add('Main.dfm', EventForm);
+  // Ereignis des Formulars: FormCreate im ersten Abschnitt, Zuweisung hinter Caption.
+  Assert.IsTrue(RunEvent('/event OnCreate', Keep, Text), '/event OnCreate');
+  Assert.IsTrue(Pos('    procedure Button1Click(Sender: TObject);'#10'    procedure FormCreate(Sender: TObject);'#10 +
+    '  private', Text) > 0, Text);
+  Assert.IsTrue(Pos('procedure TForm1.FormCreate(Sender: TObject);'#10'begin'#10#10'end;', Text) > 0, Text);
+  Assert.IsTrue(Parses(Text), Text);
+  Assert.AreEqual(1, Integer(Length(Host.WrittenFiles)));
+  Assert.AreEqual('object Form1: TForm1'#13#10'  Caption = ''Haupt'''#13#10'  OnCreate = FormCreate'#13#10 +
+    '  object Button1: TButton'#13#10'    Left = 8'#13#10'  end'#13#10'end'#13#10, Host.WrittenFiles[0].Text);
+  // var-Parameter und Funktionen übernehmen die Signatur des Typs.
+  Assert.IsTrue(RunEvent('/event OnCloseQuery', Keep, Text), '/event OnCloseQuery');
+  Assert.IsTrue(Pos('procedure FormCloseQuery(Sender: TObject; var CanClose: Boolean);', Text) > 0, Text);
+  Assert.IsTrue(RunEvent('/event OnHelp', Keep, Text), '/event OnHelp');
+  Assert.IsTrue(Pos('function TForm1.FormHelp(Command: Word; Data: NativeInt; var CallHelp: Boolean): Boolean;',
+    Text) > 0, Text);
+  // Komponente: Button1Click gibt es schon als Methode, also Button1Click2; Zuweisung im Objekt Button1.
+  Assert.IsTrue(RunEvent('/event Button1.OnClick', Keep, Text), '/event Button1.OnClick');
+  Assert.IsTrue(Pos('    procedure Button1Click2(Sender: TObject);', Text) > 0, Text);
+  Assert.IsTrue(Pos('    Left = 8'#13#10'    OnClick = Button1Click2'#13#10'  end', Host.WrittenFiles[0].Text) > 0,
+    Host.WrittenFiles[0].Text);
+end;
+
+procedure TProjectCommandsTests.EventWrongPlaceFails;
+var
+  Host: TFakeHost;
+  Keep: ISlashHost;
+  Text: string;
+begin
+  Host := TFakeHost.Create;
+  Keep := Host;
+  // Main.dfm weist Button1.OnClick schon zu.
+  Assert.IsFalse(RunEvent('/event Button1.OnClick', Keep, Text));
+  Assert.IsFalse(RunEvent('/event Button2.OnClick', Keep, Text));
+  Assert.IsFalse(RunEvent('/event Button1.OnGibtsNicht', Keep, Text));
+  Assert.IsFalse(RunEvent('/event Click', Keep, Text));
+  Assert.IsFalse(RunEvent('/event OnCreate', nil, Text));
+  Host.Files.Remove('Main.dfm');
+  Assert.IsFalse(RunEvent('/event OnCreate', Keep, Text));
+  Assert.AreEqual(0, Integer(Length(Host.WrittenFiles)));
+end;
+
+{ /test }
+
+const
+  KundenUnit =
+    'unit Kunden;'#13#10 +                                     // 0
+    'interface'#13#10 +                                        // 1
+    'type'#13#10 +                                             // 2
+    '  TKunde = class'#13#10 +                                 // 3
+    '  private'#13#10 +                                        // 4
+    '    function Pruefe: Boolean;'#13#10 +                    // 5
+    '  public'#13#10 +                                         // 6
+    '    function Berechne(A: Integer): Integer;'#13#10 +      // 7
+    '  end;'#13#10 +                                           // 8
+    'implementation'#13#10 +                                   // 9
+    'function TKunde.Pruefe: Boolean;'#13#10 +                 // 10
+    'begin'#13#10 +                                            // 11
+    '  %s'#13#10 +                                             // 12 Befehl in Pruefe
+    '  Result := True;'#13#10 +                                // 13
+    'end;'#13#10 +                                             // 14
+    'function TKunde.Berechne(A: Integer): Integer;'#13#10 +   // 15
+    'begin'#13#10 +                                            // 16
+    '  %s'#13#10 +                                             // 17 Befehl in Berechne
+    '  Result := A;'#13#10 +                                   // 18
+    'end;'#13#10 +                                             // 19
+    'end.'#13#10;
+
+  KundenTests =
+    'unit Kunden.Tests;'#13#10 +
+    'interface'#13#10 +
+    'uses'#13#10 +
+    '  DUnitX.TestFramework;'#13#10 +
+    'type'#13#10 +
+    '  [TestFixture]'#13#10 +
+    '  TKundeTests = class'#13#10 +
+    '  public'#13#10 +
+    '    [Test]'#13#10 +
+    '    procedure TestBerechne;'#13#10 +
+    '  end;'#13#10 +
+    'implementation'#13#10 +
+    'procedure TKundeTests.TestBerechne;'#13#10 +
+    'begin'#13#10 +
+    'end;'#13#10 +
+    #13#10 +
+    'initialization'#13#10 +
+    '  TDUnitX.RegisterTestFixture(TKundeTests);'#13#10 +
+    'end.'#13#10;
+
+  TestProgramText =
+    'program AppTests;'#13#10 +
+    'uses'#13#10 +
+    '  DUnitX.TestFramework;'#13#10 +
+    'begin'#13#10 +
+    'end.'#13#10;
+
+function RunTest(const AText: string; ALine: Integer; const AHost: ISlashHost; out AEdits: TArray<TRuleEdit>;
+  out AReason: string): Boolean;
+var
+  Problems: TArray<TSlashProblem>;
+begin
+  Result := TSlashCommandRegistry.Shared.AfterEnter(AText, TTextPosition.Create(ALine + 1, 0), nil, nil, AEdits,
+    nil, '', TDocumentUris.FromPath(TPath.Combine(GetCurrentDir, 'Kunden.pas')), AHost);
+  AReason := '';
+  if not Result then
+  begin
+    Problems := TSlashCommandRegistry.Shared.Problems(AText, nil);
+    if Length(Problems) > 0 then
+      AReason := Problems[0].Message;
+  end;
+end;
+
+procedure TProjectCommandsTests.TestCreatesTestUnit;
+var
+  Host: TFakeHost;
+  Keep: ISlashHost;
+  Edits: TArray<TRuleEdit>;
+  Reason, Text: string;
+begin
+  Host := TFakeHost.Create;
+  Keep := Host;
+  Host.Files.Add('AppTests.dpr', TestProgramText);
+  Host.Files.Add('AppTests.dproj', Dproj);
+  Host.TestTarget.UnitName := 'Kunden.Tests';
+  Host.TestTarget.FileName := TPath.Combine(GetCurrentDir, 'Kunden.Tests.pas');
+  Host.TestTarget.TestProgram := TPath.Combine(GetCurrentDir, 'AppTests.dpr');
+  // Private Methode: das Gerüst hat nur TestBerechne, /test ergänzt TestPruefe.
+  Assert.IsTrue(RunTest(Format(KundenUnit, ['/test', '']), 12, Keep, Edits, Reason), Reason);
+  Assert.AreEqual(1, Integer(Length(Edits)));
+  Assert.AreEqual(3, Integer(Length(Host.WrittenFiles)));
+  Assert.IsTrue(Host.WrittenFiles[0].New);
+  Text := Host.WrittenFiles[0].Text;
+  Assert.IsTrue(Parses(Text), Text);
+  Assert.IsTrue(ContainsStr(Text, '    procedure TestBerechne;'), Text);
+  Assert.IsTrue(ContainsStr(Text, '    [Test]'#13#10'    procedure TestPruefe;'#13#10'  end;'), Text);
+  Assert.IsTrue(ContainsStr(Text, 'procedure TKundeTests.TestPruefe;'#13#10'begin'#13#10 +
+    '  Assert.Fail(''Test für TKunde.Pruefe fehlt noch'');'), Text);
+  Assert.IsTrue(ContainsStr(Text, '  Kunden;'), Text);
+  Assert.IsTrue(ContainsStr(Host.WrittenFiles[1].Text, 'Kunden.Tests in ''Kunden.Tests.pas'''),
+    Host.WrittenFiles[1].Text);
+  Assert.IsTrue(ContainsStr(Host.WrittenFiles[2].Text, '<DCCReference Include="Kunden.Tests.pas"/>'),
+    Host.WrittenFiles[2].Text);
+  Assert.IsTrue(SameFile('Kunden.Tests.pas', Host.ShowAfterWrite), Host.ShowAfterWrite);
+end;
+
+procedure TProjectCommandsTests.TestAddsToExistingTestUnit;
+var
+  Host: TFakeHost;
+  Keep: ISlashHost;
+  Edits: TArray<TRuleEdit>;
+  Reason, Text: string;
+begin
+  Host := TFakeHost.Create;
+  Keep := Host;
+  Host.Files.Add('Kunden.Tests.pas', KundenTests);
+  Host.TestTarget.UnitName := 'Kunden.Tests';
+  Host.TestTarget.FileName := TPath.Combine(GetCurrentDir, 'Kunden.Tests.pas');
+  Host.TestTarget.Exists := True;
+  // TestBerechne gibt es: der neue Test heißt TestBerechne2; Kunden kommt ins uses.
+  Assert.IsTrue(RunTest(Format(KundenUnit, ['', '/test']), 17, Keep, Edits, Reason), Reason);
+  Assert.AreEqual(1, Integer(Length(Host.WrittenFiles)));
+  Assert.IsFalse(Host.WrittenFiles[0].New);
+  Text := Host.WrittenFiles[0].Text;
+  Assert.IsTrue(Parses(Text), Text);
+  Assert.IsTrue(ContainsStr(Text, '    procedure TestBerechne;'#13#10'    [Test]'#13#10 +
+    '    procedure TestBerechne2;'#13#10'  end;'), Text);
+  Assert.IsTrue(ContainsStr(Text, 'procedure TKundeTests.TestBerechne2;'), Text);
+  Assert.IsTrue(ContainsStr(Text, '  DUnitX.TestFramework,'#13#10'  Kunden;'), Text);
+  Assert.IsTrue(Pos('procedure TKundeTests.TestBerechne2;', Text) < Pos('initialization', Text), Text);
+end;
+
+procedure TProjectCommandsTests.TestWrongPlaceFails;
+var
+  Host: TFakeHost;
+  Keep: ISlashHost;
+  Edits: TArray<TRuleEdit>;
+  Reason, Text: string;
+begin
+  Host := TFakeHost.Create;
+  Keep := Host;
+  Host.TestTarget.FileName := TPath.Combine(GetCurrentDir, 'Kunden.Tests.pas');
+  // In der Klassendeklaration statt im Rumpf einer Methode.
+  Text := StringReplace(Format(KundenUnit, ['', '']), '  private'#13#10, '  private'#13#10'    /test'#13#10, []);
+  Assert.IsFalse(RunTest(Text, 5, Keep, Edits, Reason));
+  Assert.IsTrue(ContainsStr(Reason, 'Rumpf'), Reason);
+  Assert.AreEqual(0, Integer(Length(Host.WrittenFiles)));
+  // Ohne Testprojekt: nichts wird geschrieben.
+  Host.TestReason := 'Kein Testprojekt gefunden';
+  Assert.IsFalse(RunTest(Format(KundenUnit, ['/test', '']), 12, Keep, Edits, Reason));
+  Assert.AreEqual(0, Integer(Length(Host.WrittenFiles)));
 end;
 
 initialization

@@ -149,6 +149,7 @@ var
   Actions: IOTAActionServices;
   Old, Reason: string;
   FormChanges: TArray<TAtlasFormEventChange>;
+  FormProperties: TArray<TAtlasFormPropertyChange>;
 begin
   if TAtlasIdeFiles.IsProjectFile(AFileName) then
   begin
@@ -171,10 +172,11 @@ begin
   end;
   if TAtlasIdeForms.CurrentText(AFileName, Old) then
   begin
-    // Wie beim Umbenennen (#402): Im Designer setzt Atlas nur Ereignis-Zuordnungen.
-    if not TAtlasFormChanges.Diff(Old, AContent.Text, FormChanges, Reason) then
-      raise EInOutError.CreateFmt('im Designer offen; dort ändert Atlas nur Ereignis-Zuordnungen (%s)', [Reason]);
-    Reason := TAtlasIdeForms.Apply(AFileName, FormChanges);
+    // Wie beim Umbenennen (#402): Im Designer setzt Atlas Ereignis-Zuordnungen und Eigenschaften (#309).
+    if not TAtlasFormChanges.Diff(Old, AContent.Text, FormChanges, FormProperties, Reason) then
+      raise EInOutError.CreateFmt('im Designer offen; dort ändert Atlas nur Ereignis-Zuordnungen und ' +
+        'Eigenschaften (%s)', [Reason]);
+    Reason := TAtlasIdeForms.Apply(AFileName, FormChanges, FormProperties);
     if Reason <> '' then
       raise EInOutError.Create(Reason);
     Exit;

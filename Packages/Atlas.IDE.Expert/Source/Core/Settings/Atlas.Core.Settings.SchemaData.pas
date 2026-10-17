@@ -11,7 +11,7 @@ function AtlasSchemaJson: string;
 implementation
 
 const
-  Lines: array[0..1054] of string = (
+  Lines: array[0..1066] of string = (
     '{',
     '  "$schema": "http://json-schema.org/draft-07/schema#",',
     '  "title": "Atlas-Konfiguration",',
@@ -529,6 +529,18 @@ const
     '          "type": "string",',
     '          "default": "",',
     '          "description": "Vorlage für /header mit den Platzhaltern {unit}, {jahr} und {autor}. Leer: die Vorlage der Regel file-header, sonst ein einfacher Kopf."',
+    '        },',
+    '        "logCall": {',
+    '          "type": "string",',
+    '          "default": "",',
+    '          "description": "Protokollaufruf für /log, /except und /measure: ein Routinenname wie \"Log.Debug\" bekommt den Text als Argument, {text} setzt ihn an diese Stelle, z. B. \"Logger.Send(TLogLe' + 'vel.Debug, {text})\". Leer: OutputDebugString(PChar(…)).",',
+    '          "x-issue": "#304"',
+    '        },',
+    '        "componentPalette": {',
+    '          "type": "string",',
+    '          "default": "Eigene",',
+    '          "description": "Palettenseite, auf der /component die neue Komponente mit RegisterComponents einträgt.",',
+    '          "x-issue": "#299"',
     '        }',
     '      },',
     '      "x-scope": "global",',
@@ -583,7 +595,7 @@ const
     '          "message": { "type": "string", "description": "Meldung; ohne Angabe aus Klasse, Property und Bedingung gebildet." },',
     '          "severity": { "type": "string", "enum": ["off", "hint", "info", "warning", "error"], "default": "warning", "description": "Schweregrad der Meldung." },',
     '          "includeDescendants": { "type": "boolean", "default": true, "description": "Gilt auch für Nachfahren der Klasse." },',
-    '          "fix": { "type": "string", "enum": ["auto", "prompt", "none"], "default": "prompt", "description": "Korrektur: auto sicher mit source.fixAll, prompt nur als Code-Aktion, none keine (Korrektu' + 'r folgt)." },',
+    '          "fix": { "type": "string", "enum": ["auto", "prompt", "none"], "default": "prompt", "description": "Korrektur: auto sicher mit source.fixAll, prompt nur als Code-Aktion, none keine." },',
     '          "exclude": { "type": "array", "items": { "type": "string" }, "default": [], "description": "Glob-Muster für Dateien, die die Regel nicht prüft." }',
     '        }',
     '      },',

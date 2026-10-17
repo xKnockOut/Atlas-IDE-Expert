@@ -6,6 +6,8 @@
 //                            begin F := Value; Changed; end" (Invalidate bei Controls)
 //   /loaded                  Loaded mit inherited (nur TComponent-Nachfahren)
 //   /notification [FFeld]    Notification für Komponentenfelder und FreeNotification im Setter
+//   /event Button1.OnClick   Handler mit der Signatur des Ereignistyps im Formular anlegen und in der
+//                            DFM bzw. FMX zuweisen (#295); "/event OnCreate" für das Formular selbst
 // Ob eine Klasse von TComponent bzw. TControl abstammt, ergibt sich aus der
 // Vorfahrenkette in der Unit und im Symbolindex.
 
@@ -14,7 +16,7 @@ interface
 uses
   Atlas.Common.Editing.SlashCommands;
 
-/// <summary>Trägt /notify, /changed, /loaded und /notification in ARegistry ein.</summary>
+/// <summary>Trägt /notify, /changed, /loaded, /notification und /event in ARegistry ein.</summary>
 procedure RegisterComponentCommands(ARegistry: TSlashCommandRegistry);
 
 implementation
@@ -25,7 +27,13 @@ uses
   Atlas.Common.Documents.Contract,
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Index.Contract,
+  Atlas.Common.Documents.Uris,
+  Atlas.Common.Dfm.Contract,
+  Atlas.Common.Dfm.Parser,
+  Atlas.Common.Semantics.NameResolver,
+  Atlas.Common.Editing.ClassCompletion,
   Atlas.Common.Editing.ClassCommands,
+  Atlas.Text.Lines,
   Atlas.Common.Editing.ClassMembers,
   Atlas.Common.Editing.CommandSource;
 
@@ -63,16 +71,19 @@ end;
 
 { /notify }
 
-/// <summary>Parameterliste des Ereignistyps ohne Klammern, z. B. "Sender: TObject; const AText: string".</summary>
-function EventParameters(ASource: TCommandSource; const AIndex: ISymbolIndex; const ATypeName: string;
-  out AParameters: string): Boolean;
+/// <summary>Methodenzeigertyp ATypeName: "procedure" bzw. "function", Parameterliste ohne Klammern und
+/// Ergebnistyp ('' bei Prozeduren). False ohne "of object".</summary>
+function EventSignature(ASource: TCommandSource; const AIndex: ISymbolIndex; const ATypeName: string;
+  out AKind, AParameters, AResultType: string): Boolean;
 var
   Symbol: TIndexSymbol;
   Location: TSymbolLocation;
-  Text, FileText: string;
-  Open, Close: Integer;
+  Text, FileText, Tail: string;
+  Open, Close, OfPos: Integer;
 begin
+  AKind := 'procedure';
   AParameters := '';
+  AResultType := '';
   if SameText(ATypeName, 'TNotifyEvent') then
   begin
     AParameters := 'Sender: TObject';
@@ -82,18 +93,44 @@ begin
   for Symbol in ASource.UnitIndex.Symbols do
     if SameText(Symbol.Name, ATypeName) and (Symbol.Container = '') then
       Text := RangeText(ASource.Lines, Symbol.Range);
+  // Aus dem Index: der Kopf der Deklaration (#492), sonst der Text der Datei.
   if (Text = '') and (AIndex <> nil) then
     for Location in AIndex.FindSymbols(ATypeName) do
-      if LoadText(Location.FileName, FileText) then
+      if ContainsText(Location.Symbol.Signature, 'of object') then
+      begin
+        Text := Location.Symbol.Signature;
+        Break;
+      end
+      else if LoadText(Location.FileName, FileText) then
       begin
         Text := RangeText(FileText.Replace(#13#10, #10).Split([#10]), Location.Symbol.Range);
         Break;
       end;
   Open := Pos('(', Text);
   Close := LastDelimiter(')', Text);
-  Result := (Text <> '') and ContainsText(Text, 'of object');
-  if Result and (Open > 0) and (Close > Open) then
-    AParameters := Trim(Copy(Text, Open + 1, Close - Open - 1));
+  OfPos := Pos('of object', LowerCase(Text));
+  Result := (Text <> '') and (OfPos > 0);
+  if not Result then
+    Exit;
+  if ContainsText(Copy(Text, 1, OfPos), 'function') then
+    AKind := 'function';
+  if (Open > 0) and (Close > Open) and (Close < OfPos) then
+    AParameters := Trim(Copy(Text, Open + 1, Close - Open - 1))
+  else
+    Close := Pos(AKind, LowerCase(Text)) + Length(AKind) - 1;
+  // Ergebnis: zwischen ")" bzw. "function" und "of object" hinter dem Doppelpunkt.
+  Tail := Trim(Copy(Text, Close + 1, OfPos - Close - 1));
+  if (AKind = 'function') and StartsStr(':', Tail) then
+    AResultType := Trim(Copy(Tail, 2, MaxInt));
+end;
+
+/// <summary>Parameterliste des Ereignistyps ohne Klammern, z. B. "Sender: TObject; const AText: string".</summary>
+function EventParameters(ASource: TCommandSource; const AIndex: ISymbolIndex; const ATypeName: string;
+  out AParameters: string): Boolean;
+var
+  Kind, ResultType: string;
+begin
+  Result := EventSignature(ASource, AIndex, ATypeName, Kind, AParameters, ResultType);
 end;
 
 function ExecuteNotify(const AContext: TSlashContext; out AEdits: TArray<TTextEdit>; out AReason: string): Boolean;
@@ -345,6 +382,200 @@ begin
   end;
 end;
 
+{ /event }
+
+/// <summary>Zeile, vor der ein Handler in den ersten (published) Abschnitt des Formulars kommt: die erste
+/// Sichtbarkeitszeile, sonst das "end" der Klasse.</summary>
+function HandlerLine(ASource: TCommandSource; const AClass: TIndexSymbol): Integer;
+var
+  Line: Integer;
+  Word: string;
+begin
+  for Line := AClass.Range.StartPos.Line + 1 to AClass.Range.EndPos.Line - 1 do
+  begin
+    Word := LowerCase(Trim(ASource.Lines[Line]));
+    if (Word = 'private') or (Word = 'protected') or (Word = 'public') or (Word = 'published') or
+      StartsStr('strict ', Word) then
+      Exit(Line);
+  end;
+  Result := AClass.Range.EndPos.Line;
+end;
+
+/// <summary>Objekt AName in AObject oder darunter; nil ohne.</summary>
+function FindDfmObject(AObject: TDfmObject; const AName: string): TDfmObject;
+var
+  Child: TDfmObject;
+begin
+  if SameText(AObject.Name, AName) then
+    Exit(AObject);
+  for Child in AObject.Children do
+  begin
+    Result := FindDfmObject(Child, AName);
+    if Result <> nil then
+      Exit;
+  end;
+  Result := nil;
+end;
+
+/// <summary>Einrückung der Zeile ALine in ALines.</summary>
+function LineIndent(const ALines: TArray<string>; ALine: Integer): string;
+begin
+  Result := '';
+  if (ALine >= 0) and (ALine <= High(ALines)) then
+    Result := Copy(ALines[ALine], 1, Length(ALines[ALine]) - Length(TrimLeft(ALines[ALine])));
+end;
+
+function ExecuteEvent(const AContext: TSlashContext; out AEdits: TArray<TTextEdit>; out AReason: string): Boolean;
+const
+  Usage = 'Erwartet wird /event Button1.OnClick bzw. /event OnCreate';
+var
+  Source: TCommandSource;
+  ClassSymbol, Symbol, Existing: TIndexSymbol;
+  Own: TUnitIndex;
+  Component, Event, ComponentType, Base, Handler, FileName, FormFile, FormText, Extension, Kind, Params,
+    ResultType, Header, Body, Declaration, LB, Indent, NewForm, FormLB, Uri: string;
+  Dot, Number, Line: Integer;
+  Resolver: TNameResolver;
+  TypeSymbol, EventSymbol: TResolvedSymbol;
+  Document: TDfmDocument;
+  Target: TDfmObject;
+  FormLines: TArray<string>;
+  Prop: TDfmProperty;
+  Edit: TTextEdit;
+  Host: ISlashHost;
+  Chain: TArray<string>;
+begin
+  AEdits := nil;
+  Dot := Pos('.', AContext.Arguments);
+  if Dot > 0 then
+  begin
+    Component := Trim(Copy(AContext.Arguments, 1, Dot - 1));
+    Event := Trim(Copy(AContext.Arguments, Dot + 1, MaxInt));
+  end
+  else
+  begin
+    Component := '';
+    Event := Trim(AContext.Arguments);
+  end;
+  if ((Component <> '') and not IsValidIdent(Component)) or not IsValidIdent(Event) or
+    not StartsText('On', Event) or (Length(Event) < 3) then
+    Exit(Fail(Usage, AReason));
+  if AContext.Host = nil then
+    Exit(Fail('/event braucht den Editor', AReason));
+  Source := TCommandSource.Create(AContext);
+  try
+    if not Source.ClassAt(ClassSymbol) then
+      Exit(Fail('/event gilt nur in einer Formularklasse oder einer ihrer Methoden', AReason));
+    // Typ der Komponente: Feld der Klasse, ohne Komponente die Klasse selbst.
+    ComponentType := ClassSymbol.Name;
+    if Component <> '' then
+    begin
+      ComponentType := '';
+      for Symbol in Source.UnitIndex.Symbols do
+        if (Symbol.Kind = TIndexSymbolKind.Field) and SameText(Symbol.Container, ClassSymbol.Name) and
+          SameText(Symbol.Name, Component) then
+          ComponentType := Symbol.TypeName;
+      if ComponentType = '' then
+        Exit(Fail(Format('%s hat kein Feld %s', [ClassSymbol.Name, Component]), AReason));
+    end;
+    FileName := '';
+    if AContext.Uri <> '' then
+      FileName := TDocumentUris.ToPath(AContext.Uri);
+    Own := Source.UnitIndex;
+    Own.FileName := FileName;
+    Resolver := TNameResolver.Create(AContext.Index);
+    try
+      Resolver.Namespaces := AContext.Namespaces;
+      if not Resolver.ResolveNameFrom(Own, ComponentType, TypeSymbol) or
+        not Resolver.DeclaredMember(TypeSymbol, Event, EventSymbol) or
+        (EventSymbol.SymbolKind <> TIndexSymbolKind.Property_) or (EventSymbol.TypeName = '') then
+        Exit(Fail(Format('%s hat kein Ereignis %s', [ComponentType, Event]), AReason));
+    finally
+      Resolver.Free;
+    end;
+    Chain := EventSymbol.TypeName.Split(['.']);
+    if not EventSignature(Source, AContext.Index, Chain[High(Chain)], Kind, Params, ResultType) then
+      Exit(Fail(Format('Ereignistyp %s nicht gefunden (procedure(...) of object)', [EventSymbol.TypeName]),
+        AReason));
+    // Name wie in der IDE: Button1Click, für das Formular selbst FormCreate.
+    if Component <> '' then
+      Base := Component
+    else if DescendsFrom(Ancestors(Source, AContext.Index, ClassSymbol.Name), ['TDataModule']) then
+      Base := 'DataModule'
+    else if DescendsFrom(Ancestors(Source, AContext.Index, ClassSymbol.Name), ['TFrame']) then
+      Base := 'Frame'
+    else
+      Base := 'Form';
+    Base := Base + Copy(Event, 3, MaxInt);
+    Handler := Base;
+    Number := 1;
+    while FindMember(Source, ClassSymbol, Handler, [TIndexSymbolKind.Method], Existing) do
+    begin
+      Inc(Number);
+      Handler := Base + IntToStr(Number);
+    end;
+    // Formulardatei neben der Unit: Zuweisung eintragen.
+    FormFile := '';
+    for Extension in TArray<string>.Create('.dfm', '.fmx') do
+      if (FormFile = '') and (FileName <> '') and AContext.Host.ReadFile(ChangeFileExt(FileName, Extension),
+        FormText) then
+        FormFile := ChangeFileExt(FileName, Extension);
+    if FormFile = '' then
+      Exit(Fail('Neben der Unit liegt keine .dfm oder .fmx', AReason));
+    Document := TDfmParser.Parse(FormText);
+    try
+      if Document.Root = nil then
+        Exit(Fail(Format('%s ist keine Text-DFM', [ExtractFileName(FormFile)]), AReason));
+      if Component = '' then
+        Target := Document.Root
+      else
+        Target := FindDfmObject(Document.Root, Component);
+      if Target = nil then
+        Exit(Fail(Format('%s steht nicht in %s', [Component, ExtractFileName(FormFile)]), AReason));
+      for Prop in Target.Properties do
+        if SameText(Prop.Name, Event) then
+          Exit(Fail(Format('%s ist schon %s zugewiesen', [AContext.Arguments, Trim(Prop.Value)]), AReason));
+      // Hinter die letzte Eigenschaft des Objekts, ohne Eigenschaften hinter seine Kopfzeile.
+      FormLines := TTextLines.SplitLines(FormText, FormLB);
+      Line := Target.Range.StartPos.Line;
+      Indent := LineIndent(FormLines, Line) + '  ';
+      for Prop in Target.Properties do
+        if Prop.ValueRange.EndPos.Line > Line then
+          Line := Prop.ValueRange.EndPos.Line;
+      Insert(Indent + Event + ' = ' + Handler, FormLines, Line + 1);
+      NewForm := TTextLines.JoinLines(FormLines, FormLB);
+    finally
+      Document.Free;
+    end;
+    LB := Source.LineBreak;
+    Header := Kind + ' ' + Handler;
+    if Params <> '' then
+      Header := Header + '(' + Params + ')';
+    if ResultType <> '' then
+      Header := Header + ': ' + ResultType;
+    Declaration := Header + ';';
+    Header := Kind + ' ' + ClassSymbol.Name + '.' + Copy(Header, Length(Kind) + 2, MaxInt);
+    Body := Header + ';' + LB + 'begin' + LB + LB + 'end;';
+    Line := HandlerLine(Source, ClassSymbol);
+    AEdits := [Source.BeforeLine(Line, Source.Indent(ClassSymbol.Range.EndPos.Line) + '  ' + Declaration)];
+    if TClassCompletion.BodyEdit(Source.Tree, Source.Text, ClassSymbol.Name, Body, Edit) then
+      AEdits := AEdits + [Edit]
+    else
+      AEdits := AEdits + [Source.AddBody(ClassSymbol.Name, Body)];
+    AEdits := AEdits + [Source.RemoveCommand];
+  finally
+    Source.Free;
+  end;
+  Host := AContext.Host;
+  Uri := AContext.Uri;
+  AContext.Defer(
+    procedure
+    begin
+      Host.WriteFiles(Uri, [TSlashFile.Create(FormFile, NewForm, False)], '');
+    end);
+  Result := True;
+end;
+
 function Command(const AName, ASummary, AExample: string; const AExecute: TSlashExecute): TSlashCommand;
 begin
   Result.Name := AName;
@@ -360,6 +591,8 @@ begin
   ARegistry.Register(Command('changed', 'Setter mit Änderungsprüfung und Benachrichtigung', '/changed Farbe',
     ExecuteChanged));
   ARegistry.Register(Command('loaded', 'Loaded überschreiben', '/loaded', ExecuteLoaded));
+  ARegistry.Register(Command('event', 'Ereignis-Handler anlegen und in der DFM zuweisen', '/event Button1.OnClick',
+    ExecuteEvent));
   ARegistry.Register(Command('notification', 'Notification für Komponentenfelder', '/notification FDataSource',
     ExecuteNotification));
 end;

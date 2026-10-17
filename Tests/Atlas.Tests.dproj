@@ -187,6 +187,7 @@
         <DCCReference Include="Support\Atlas.Tests.LeakMonitor.pas"/>
         <DCCReference Include="Support\Atlas.Tests.LeakMonitor.Tests.pas"/>
         <DCCReference Include="Support\Atlas.Tests.RuleAssert.pas"/>
+        <DCCReference Include="Support\Atlas.Tests.SlashHost.pas"/>
         <DCCReference Include="Common\Rules\Atlas.Common.Rules.Engine.Tests.pas"/>
         <DCCReference Include="Common\Rules\Atlas.Common.Rules.Derived.Tests.pas"/>
         <DCCReference Include="Common\Rules\Atlas.Common.Rules.GoldenCorpus.Tests.pas"/>
@@ -210,6 +211,7 @@
         <DCCReference Include="Common\Editing\Atlas.Common.Editing.SlashMenu.Tests.pas"/>
         <DCCReference Include="Common\Editing\Atlas.Common.Editing.MaintenanceCommands.Tests.pas"/>
         <DCCReference Include="Common\Editing\Atlas.Common.Editing.TypeCommands.Tests.pas"/>
+        <DCCReference Include="Common\Editing\Atlas.Common.Editing.TypeCommands.JsonGolden.pas"/>
         <DCCReference Include="Common\Editing\Atlas.Common.Editing.CollectionCommands.Tests.pas"/>
         <DCCReference Include="Common\Editing\Atlas.Common.Editing.UnitTemplates.Tests.pas"/>
         <DCCReference Include="Common\Editing\Atlas.Common.Editing.TestUnits.Tests.pas"/>
@@ -270,6 +272,7 @@
         <DCCReference Include="Common\Mcp\Atlas.Common.Mcp.CodeTools.Tests.pas"/>
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.PullDiagnostics.Tests.pas"/>
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.ApplyEdit.Tests.pas"/>
+        <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.DfmPropertyRules.Tests.pas"/>
         <DCCReference Include="Common\Editing\Atlas.Common.Editing.Formatter.Tests.pas"/>
         <DCCReference Include="Common\Editing\Atlas.Common.Editing.DocumentLinks.Tests.pas"/>
         <DCCReference Include="Common\Editing\Atlas.Common.Editing.Colors.Tests.pas"/>

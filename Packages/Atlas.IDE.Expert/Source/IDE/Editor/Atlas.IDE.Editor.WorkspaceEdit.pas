@@ -10,9 +10,10 @@
 //     atlas.json über TAtlasEncodingDefault, #121).
 //   - Formulare, die im Designer offen sind (#402): nie auf die Platte, sonst
 //     überschreibt der Designer die Änderung beim Speichern. Geänderte
-//     Ereignis-Zuordnungen setzt TAtlasIdeForms im Designer, und zwar nach den
-//     Units, damit die umbenannten Handler dort schon stehen; andere
-//     Änderungen an offenen Formularen lehnt Atlas ab. Nicht geöffnete
+//     Ereignis-Zuordnungen und einzeilige Eigenschaften (#309) setzt
+//     TAtlasIdeForms im Designer, und zwar nach den Units, damit die
+//     umbenannten Handler dort schon stehen; andere Änderungen an offenen
+//     Formularen lehnt Atlas ab. Nicht geöffnete
 //     Formulare öffnet Atlas nicht, sondern schreibt die Datei; ein binär
 //     gespeichertes Formular lehnt es ab (#121).
 //   - Projektdateien (.dproj, .groupproj, etwa von /define): nie als Text
@@ -96,6 +97,8 @@ type
     /// <summary>Formular im Designer (#402): Ereignis-Zuordnungen statt Text.</summary>
     IsForm: Boolean;
     FormChanges: TArray<TAtlasFormEventChange>;
+    /// <summary>Eigenschaften im Designer (#309).</summary>
+    FormProperties: TArray<TAtlasFormPropertyChange>;
     /// <summary>Geladenes Projekt zur Projektdatei; nach dem Schreiben neu laden.</summary>
     Project: IOTAModule;
     /// <summary>Für das Änderungsprotokoll (#721): Inhalt vorher und nachher.</summary>
@@ -171,15 +174,16 @@ begin
   Result := TAtlasIdeFiles.ProjectModule(AProjectFile) <> nil;
 end;
 
-/// <summary>Formular im Designer (#402): nur Ereignis-Zuordnungen; '' oder der Grund der Ablehnung.</summary>
+/// <summary>Formular im Designer (#402): Ereignis-Zuordnungen und einzeilige Eigenschaften (#309); '' oder der
+/// Grund der Ablehnung.</summary>
 function PrepareForm(const AEntry: TAtlasPlannedEdit; var AFile: TPreparedFile): string;
 var
   Sent: string;
 begin
   AFile.IsForm := True;
   if AEntry.HasBase then
-    Exit('im Designer offen; dort ändert Atlas nur Ereignis-Zuordnungen');
-  Result := TAtlasIdeForms.Check(AEntry.FileName, AEntry.Edits, AFile.FormChanges);
+    Exit('im Designer offen; dort ändert Atlas nur Ereignis-Zuordnungen und Eigenschaften');
+  Result := TAtlasIdeForms.Check(AEntry.FileName, AEntry.Edits, AFile.FormChanges, AFile.FormProperties);
   if Result <> '' then
     Exit;
   // Check hat den Text schon geprüft; vorher ist der Stand, den der Server kennt.
@@ -352,7 +356,7 @@ begin
       begin
         if not Prepared.IsForm then
           Continue;
-        Error := TAtlasIdeForms.Apply(Prepared.FileName, Prepared.FormChanges);
+        Error := TAtlasIdeForms.Apply(Prepared.FileName, Prepared.FormChanges, Prepared.FormProperties);
         if Error <> '' then
         begin
           // Die Units sind schon geändert (je Datei rückgängig zu machen); das Formular blieb, wie es war.

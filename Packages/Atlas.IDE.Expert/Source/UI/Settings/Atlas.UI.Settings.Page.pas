@@ -155,6 +155,8 @@ type
     FBaselineUpdate: TCheckBox;
     /// <summary>Befehl in der Befehlspalette (#66).</summary>
     FMetricsReport: TCheckBox;
+    /// <summary>Befehle in der Befehlspalette (#309).</summary>
+    FDfmPropertyRules: TCheckBox;
     FPairGuides: TCheckBox;
     FPairOwners: TCheckBox;
     FPairGuideWidth: TEdit;
@@ -1093,6 +1095,7 @@ begin
   FTodoList := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsTodoList));
   FBaselineUpdate := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsBaselineUpdate));
   FMetricsReport := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsMetricsReport));
+  FDfmPropertyRules := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsDfmPropertyRules));
 
   // Eigene Paarfarben und deren Reihenfolge je Thema.
   AddSheet(TAtlasTextId.SettingsTabColors);
@@ -1947,6 +1950,7 @@ begin
   FMarks.Bind(FTodoList, ['TodoList']);
   FMarks.Bind(FBaselineUpdate, ['BaselineUpdate']);
   FMarks.Bind(FMetricsReport, ['MetricsReport']);
+  FMarks.Bind(FDfmPropertyRules, ['DfmPropertyRules']);
   FMarks.Bind(FPairGuides, ['PairGuides']);
   FMarks.Bind(FPairOwners, ['PairOwners']);
   FMarks.Bind(FPairGuideWidth, ['PairGuideWidth']);
@@ -2886,6 +2890,7 @@ begin
   FTodoList.Checked := ASettings.TodoList;
   FBaselineUpdate.Checked := ASettings.BaselineUpdate;
   FMetricsReport.Checked := ASettings.MetricsReport;
+  FDfmPropertyRules.Checked := ASettings.DfmPropertyRules;
   FPairGuides.Checked := ASettings.PairGuides;
   FPairOwners.Checked := ASettings.PairOwners;
   FPairGuideWidth.Text := IntToStr(ASettings.PairGuideWidth);
@@ -3137,6 +3142,7 @@ begin
   ASettings.TodoList := FTodoList.Checked;
   ASettings.BaselineUpdate := FBaselineUpdate.Checked;
   ASettings.MetricsReport := FMetricsReport.Checked;
+  ASettings.DfmPropertyRules := FDfmPropertyRules.Checked;
   ASettings.PairGuides := FPairGuides.Checked;
   ASettings.PairOwners := FPairOwners.Checked;
   ASettings.PairGuideWidth := StrToIntDef(FPairGuideWidth.Text, ASettings.PairGuideWidth);

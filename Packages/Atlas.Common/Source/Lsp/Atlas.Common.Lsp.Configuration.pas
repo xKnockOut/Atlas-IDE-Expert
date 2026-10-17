@@ -19,6 +19,9 @@
 //   und initializationOptions (Abschnitt "atlas") und zählen wie global; das
 //   IDE-Plugin nutzt diesen Weg nicht mehr. Reihenfolge: global < Editor <
 //   atlas.json (TConfigurationScopes.Effective).
+// - Meldungen, die den Index brauchen (unbekannte Klasse oder Property einer
+//   Eigenschaftsregel, #309), liefert ExtraIssues; nach dem Indexaufbau sendet
+//   Revalidate die Meldungen der Datei neu.
 
 interface
 
@@ -33,6 +36,8 @@ uses
 type
   /// <summary>Liest eine Datei; False, wenn sie nicht existiert.</summary>
   TConfigurationFileReader = reference to function(const AFileName: string; out AText: string): Boolean;
+  /// <summary>Weitere Meldungen zu den Einstellungen einer atlas.json, z. B. über den Index (#309).</summary>
+  TConfigurationExtraIssues = reference to function(const ASettings: TServerSettings): TArray<TConfigurationIssue>;
 
   TLspConfiguration = class
   public const
@@ -51,6 +56,7 @@ type
     FPrimaryFileName: string;
     FLegacyFileName: string;
     FOnChanged: TConfigurationChangedEvent;
+    FExtraIssues: TConfigurationExtraIssues;
     // Nur im Thread der Nachrichtenschleife benutzt.
     FFileText: string;
     FEditorText: string;
@@ -61,8 +67,8 @@ type
     procedure Apply(const ASettings: TServerSettings);
     procedure Publish(const AUri: string; AVersion: Integer; const AIssues: TArray<TConfigurationIssue>);
     procedure LoadFromDisk;
-    /// <summary>Meldungen zu atlas.json: Parser und Schlüssel, die nicht ins Projekt gehören.</summary>
-    class function FileIssues(const AText: string): TArray<TConfigurationIssue>; static;
+    /// <summary>Meldungen zu atlas.json: Parser, Schlüssel, die nicht ins Projekt gehören, und ExtraIssues.</summary>
+    function FileIssues(const AText: string): TArray<TConfigurationIssue>;
     function IsWorkspaceFile(const AUri: string): Boolean;
     function GetSettings: TServerSettings;
   public
@@ -83,6 +89,9 @@ type
     /// <summary>Eine Datei hat sich außerhalb des Editors geändert: Ist es die Konfigurationsdatei dieses
     /// Arbeitsbereichs und nicht im Editor geöffnet, wird sie neu gelesen (True).</summary>
     function FileChanged(const AFileName: string): Boolean;
+    /// <summary>Sendet die Meldungen der gelesenen Datei neu, etwa wenn der Index fertig ist (#309). Nur im
+    /// Thread der Nachrichtenschleife.</summary>
+    procedure Revalidate;
     /// <summary>Liest atlas.json aus ARootPath; ohne Datei gelten die Vorgaben.</summary>
     procedure LoadWorkspace(const ARootPath: string); overload;
     /// <summary>Wie LoadWorkspace(ARootPath), setzt vorher die globale Datei AGlobalText ohne eigene
@@ -109,6 +118,8 @@ type
     property FileText: string read FFileText;
     property EditorText: string read FEditorText;
     property GlobalText: string read FGlobalText;
+    /// <summary>Weitere Meldungen in atlas.json; ohne Zuweisung keine.</summary>
+    property ExtraIssues: TConfigurationExtraIssues read FExtraIssues write FExtraIssues;
     /// <summary>Wird nach jeder Übernahme neuer Einstellungen aufgerufen.</summary>
     property OnChanged: TConfigurationChangedEvent read FOnChanged write FOnChanged;
   end;
@@ -168,13 +179,30 @@ begin
   Apply(TConfigurationParser.Parse(TConfigurationScopes.Effective(FGlobalText, FEditorText, FFileText), Ignored));
 end;
 
-class function TLspConfiguration.FileIssues(const AText: string): TArray<TConfigurationIssue>;
+function TLspConfiguration.FileIssues(const AText: string): TArray<TConfigurationIssue>;
 var
   Misplaced: TArray<TConfigurationIssue>;
+  Settings: TServerSettings;
 begin
-  TConfigurationParser.Parse(AText, Result);
+  Settings := TConfigurationParser.Parse(AText, Result);
   TConfigurationScopes.Filter(AText, TConfigurationScope.Project, Misplaced);
   Result := Result + Misplaced;
+  if Assigned(FExtraIssues) then
+    Result := Result + FExtraIssues(Settings);
+end;
+
+procedure TLspConfiguration.Revalidate;
+var
+  Uri: string;
+  Document: ITextDocument;
+begin
+  if FFileName = '' then
+    Exit;
+  Uri := TDocumentUris.FromPath(FFileName);
+  if (FStore <> nil) and FStore.TryGet(Uri, Document) then
+    Publish(Uri, Document.Version, FileIssues(Document.Text))
+  else if FFileText <> '' then
+    Publish(Uri, -1, FileIssues(FFileText));
 end;
 
 procedure TLspConfiguration.HandleDidChangeConfiguration(const AParams: TJSONValue);

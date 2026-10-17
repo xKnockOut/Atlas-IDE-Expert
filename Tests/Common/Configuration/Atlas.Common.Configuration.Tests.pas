@@ -370,6 +370,20 @@ begin
   Assert.AreEqual(2, Integer(Length(Issues)));
   Settings := TConfigurationParser.ParseLayered('{"slashCommands": {"disabled": ["uses"]}}', '{}', Issues);
   Assert.AreEqual(1, Integer(Length(Settings.SlashCommandsDisabled)));
+  // Protokollaufruf für /log und /except (#304)
+  Assert.AreEqual('', Parse('{}', Issues).SlashLogCall);
+  Settings := Parse('{"slashCommands": {"logCall": "Log.Debug"}}', Issues);
+  Assert.AreEqual(0, Integer(Length(Issues)));
+  Assert.AreEqual('Log.Debug', Settings.SlashLogCall);
+  Settings := Parse('{"slashCommands": {"logCall": 3}}', Issues);
+  Assert.AreEqual('', Settings.SlashLogCall);
+  Assert.AreEqual(1, Integer(Length(Issues)));
+  Settings := TConfigurationParser.ParseLayered('{"slashCommands": {"logCall": "Log.Debug"}}', '{}', Issues);
+  Assert.AreEqual('Log.Debug', Settings.SlashLogCall);
+  // Palettenseite für /component (#299)
+  Assert.AreEqual('Eigene', Parse('{}', Issues).SlashComponentPalette);
+  Assert.AreEqual('Firma', Parse('{"slashCommands": {"componentPalette": "Firma"}}', Issues).SlashComponentPalette);
+  Assert.AreEqual(0, Integer(Length(Issues)));
   // Vervollständigung (#229)
   Assert.IsTrue(Parse('{}', Issues).Completion.Matching = TCompletionMatching.Fuzzy);
   Assert.IsTrue(Parse('{"completion": {"matching": "prefix"}}', Issues).Completion.Matching = TCompletionMatching.Prefix);

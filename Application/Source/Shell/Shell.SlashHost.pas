@@ -34,6 +34,10 @@ type
   TWorkspaceOfFunc = reference to function(const AUri: string): TShellWorkspace;
   TReadTextFunc = reference to function(const AFileName: string; out AText: string): Boolean;
   THeaderTemplateFunc = reference to function(const AUri: string): string;
+  /// <summary>Wert der Einstellung slashCommands.AName zur Datei AUri.</summary>
+  TSlashSettingFunc = reference to function(const AUri, AName: string): string;
+  /// <summary>Testunit zur Unit AUri mit Text AText (/test, #295).</summary>
+  TSlashTestUnitFunc = reference to function(const AUri, AText: string; out ATarget: TSlashTestUnit): Boolean;
 
   TShellSlashHost = class(TInterfacedObject, ISlashHost)
   private
@@ -46,6 +50,8 @@ type
     FDispatcher: TJsonRpcDispatcher;
     FClientAppliesEdits: TFunc<Boolean>;
     FRunInLoop: TJsonRpcScheduler;
+    FSettingOf: TSlashSettingFunc;
+    FTestUnitOf: TSlashTestUnitFunc;
     function ClientWrites: Boolean;
     /// <summary>Schickt AEdit (wird übernommen) an den Client; nach Erfolg Reload und AAfter.</summary>
     procedure SendEdit(const AUri, ADescription: string; AEdit: TJSONObject; const AAfter: TProc);
@@ -65,6 +71,14 @@ type
     procedure ShowDocument(const AFileName: string; const ASelection: TTextRange);
     function HeaderTemplate(const AUri: string): string;
     procedure WriteFiles(const AUri: string; const AFiles: TArray<TSlashFile>; const AShow: string);
+    function Setting(const AUri, AName: string): string;
+    function TestUnit(const AUri, AText: string; out ATarget: TSlashTestUnit): Boolean;
+    procedure Notify(const AUri, AMessage: string);
+    procedure MoveCursor(const AUri: string; const APosition: TTextPosition);
+    /// <summary>Einstellungen slashCommands.* zur Datei (#299, #304); ohne Zuweisung ''.</summary>
+    property SettingOf: TSlashSettingFunc read FSettingOf write FSettingOf;
+    /// <summary>Testunit zur Unit (/test, #295); ohne Zuweisung keine.</summary>
+    property TestUnitOf: TSlashTestUnitFunc read FTestUnitOf write FTestUnitOf;
     /// <summary>Stellt Arbeit in die Nachrichtenschleife (TJsonRpcConnection.Queue). Reload und SelectBuild
     /// laufen nur dort (Code-Review A-03); ohne Zuweisung (Tests) sofort.</summary>
     property RunInLoop: TJsonRpcScheduler read FRunInLoop write FRunInLoop;
@@ -293,6 +307,138 @@ end;
 function TShellSlashHost.HeaderTemplate(const AUri: string): string;
 begin
   Result := FHeaderTemplate(AUri);
+end;
+
+function TShellSlashHost.Setting(const AUri, AName: string): string;
+begin
+  Result := '';
+  if Assigned(FSettingOf) then
+    Result := FSettingOf(AUri, AName);
+end;
+
+function TShellSlashHost.TestUnit(const AUri, AText: string; out ATarget: TSlashTestUnit): Boolean;
+begin
+  ATarget := Default(TSlashTestUnit);
+  if not Assigned(FTestUnitOf) then
+  begin
+    ATarget.Reason := 'Testunits sind hier nicht verfügbar';
+    Exit(False);
+  end;
+  Result := FTestUnitOf(AUri, AText, ATarget);
+end;
+
+procedure TShellSlashHost.Notify(const AUri, AMessage: string);
+var
+  Transport: IJsonRpcTransport;
+  Text: string;
+begin
+  // Erst nach der Antwort mit den Änderungen (Nachrichtenschleife), damit der Hinweis zu ihnen passt.
+  Transport := FTransport;
+  Text := 'Atlas: ' + AMessage;
+  InLoop(
+    procedure
+    var
+      Message: TJSONObject;
+    begin
+      Message := TJSONObject.Create;
+      try
+        Message.AddPair('jsonrpc', '2.0');
+        Message.AddPair('method', 'window/showMessage');
+        Message.AddPair('params', TJSONObject.Create.AddPair('type', TJSONNumber.Create(3)).AddPair('message', Text));
+        Transport.WriteMessage(Message);
+      finally
+        Message.Free;
+      end;
+    end);
+end;
+
+procedure TShellSlashHost.MoveCursor(const AUri: string; const APosition: TTextPosition);
+var
+  Transport: IJsonRpcTransport;
+  FileName: string;
+  Target: TTextRange;
+begin
+  // Wie Notify erst nach der Antwort: Die Position gilt im Text mit den Änderungen.
+  Transport := FTransport;
+  FileName := TDocumentUris.ToPath(AUri);
+  Target := TTextRange.Create(APosition, APosition);
+  InLoop(
+    procedure
+    begin
+      SendShowDocument(Transport, FileName, Target);
+    end);
+end;
+
+procedure TShellSlashHost.WriteFiles(const AUri: string; const AFiles: TArray<TSlashFile>; const AShow: string);
+var
+  Changes: TArray<TLspFileChange>;
+  Item: TSlashFile;
+  FileFormat: TFileFormat;
+  OldText, Show, Uri, Description: string;
+  Transport: IJsonRpcTransport;
+  WorkspaceOf: TWorkspaceOfFunc;
+  Names: TArray<string>;
+begin
+  // const-Parameter lassen sich nicht einfangen.
+  Transport := FTransport;
+  Show := AShow;
+  Names := nil;
+  for Item in AFiles do
+    Names := Names + [ExtractFileName(Item.FileName)];
+  Description := string.Join(', ', Names);
+  try
+    // In der IDE über das Plugin, damit neue und geänderte Dateien in ihren Puffern landen (#397).
+    if ClientWrites then
+    begin
+      Changes := nil;
+      for Item in AFiles do
+      begin
+        OldText := '';
+        if not Item.New then
+          OldText := TFileEncoding.LoadFromFile(Item.FileName, FileFormat);
+        Changes := Changes + [TLspFileChange.Create(Item.FileName, OldText, Item.Text, Item.New)];
+      end;
+      SendEdit(AUri, Description, TLspApplyEdit.Files(Changes),
+        procedure
+        begin
+          if Show <> '' then
+            SendShowDocument(Transport, Show, TTextRange.Create(0, 0, 0, 0));
+        end);
+      Exit;
+    end;
+    for Item in AFiles do
+    begin
+      if Item.New then
+      begin
+        ForceDirectories(ExtractFileDir(Item.FileName));
+        FileFormat := TFileFormat.Create(TFileEncodingKind.Utf8Bom, TLineBreakStyle.CRLF);
+      end
+      else
+        TFileEncoding.LoadFromFile(Item.FileName, FileFormat);
+      TFileEncoding.SaveToFile(Item.FileName, Item.Text, FileFormat);
+    end;
+    FLogger.Info(Format('%s geschrieben (Schnellbefehl)', [Description]));
+  except
+    on E: Exception do
+    begin
+      FLogger.Error(Format('%s ließ sich nicht schreiben: %s', [Description, E.Message]));
+      Exit;
+    end;
+  end;
+  WorkspaceOf := FWorkspaceOf;
+  Uri := AUri;
+  InLoop(
+    procedure
+    var
+      Target: TShellWorkspace;
+    begin
+      // In der Schleife neu suchen: Bis dahin kann der Ordner geschlossen worden sein.
+      Target := WorkspaceOf(Uri);
+      if Target <> nil then
+        Target.Reload;
+      if Show <> '' then
+        SendShowDocument(Transport, Show, TTextRange.Create(0, 0, 0, 0));
+    end);
 end;
 
 end.

@@ -399,6 +399,10 @@ begin
     end
     else if Key = 'headerTemplate' then
       ExpectString(ANode[Index], 'headerTemplate', FSettings.SlashHeaderTemplate)
+    else if Key = 'logCall' then
+      ExpectString(ANode[Index], 'logCall', FSettings.SlashLogCall)
+    else if Key = 'componentPalette' then
+      ExpectString(ANode[Index], 'componentPalette', FSettings.SlashComponentPalette)
     else
       Report(ANode.KeyStarts[Index], ANode.KeyStarts[Index] + Length(Key) + 2,
         Format('Unbekannte Einstellung "slashCommands.%s"', [Key]), False);
@@ -696,14 +700,22 @@ begin
     ReportNode(ANode, 'Eine Eigenschaftsregel muss ein Objekt sein: { "class": …, "property": …, "condition": … }');
     Exit(False);
   end;
+  ARule.ClassRange := TTextRange.Create(PositionAt(ANode.Start), PositionAt(ANode.Start + 1));
+  ARule.PropertyRange := ARule.ClassRange;
   for Index := 0 to ANode.Count - 1 do
   begin
     Key := ANode.Keys[Index];
     Value := ANode[Index];
     if Key = 'class' then
-      ExpectString(Value, Key, ARule.ClassName)
+    begin
+      ExpectString(Value, Key, ARule.ClassName);
+      ARule.ClassRange := TTextRange.Create(PositionAt(Value.Start), PositionAt(Value.Stop));
+    end
     else if Key = 'property' then
-      ExpectString(Value, Key, ARule.PropertyPath)
+    begin
+      ExpectString(Value, Key, ARule.PropertyPath);
+      ARule.PropertyRange := TTextRange.Create(PositionAt(Value.Start), PositionAt(Value.Stop));
+    end
     else if Key = 'value' then
       ExpectString(Value, Key, ARule.Value)
     else if Key = 'message' then
@@ -1702,6 +1714,8 @@ begin
       Result.SlashCommands := FileSettings.SlashCommands;
       Result.SlashCommandsDisabled := FileSettings.SlashCommandsDisabled;
       Result.SlashHeaderTemplate := FileSettings.SlashHeaderTemplate;
+      Result.SlashLogCall := FileSettings.SlashLogCall;
+      Result.SlashComponentPalette := FileSettings.SlashComponentPalette;
     end
     else if Key = 'sortUses' then
     begin

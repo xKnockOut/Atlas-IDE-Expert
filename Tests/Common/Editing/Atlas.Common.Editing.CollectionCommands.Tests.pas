@@ -32,6 +32,12 @@ type
     [Test]
     procedure FilterCollectsMatches;
     [Test]
+    procedure FilterWithoutInlineVariables;
+    [Test]
+    procedure WrongPlaceFails;
+    [Test]
+    procedure ChoicesForSortAndFilter;
+    [Test]
     procedure CompareFunctionByType;
     [Test]
     procedure OutsideClassAndRoutineFails;
@@ -271,8 +277,53 @@ var
 begin
   Text := InRoutine('/filter Kunden Aktiv and (Umsatz > 0)');
   Assert.Contains(Text, '  var Treffer := TList<TKunde>.Create;'#10'  try'#10'    for var K in Kunden do'#10 +
-    '      if K.Aktiv and (Umsatz > 0) then'#10'        Treffer.Add(K);');
+    '      if K.Aktiv and (K.Umsatz > 0) then'#10'        Treffer.Add(K);');
   Assert.Contains(InRoutine('/filter Kunden not Aktiv'), 'if not K.Aktiv then');
+  // Nur Mitglieder des Elementtyps, nicht Funktionen, Konstanten oder Mitglieder dahinter.
+  Assert.Contains(InRoutine('/filter Kunden (Umsatz > Grenze) or SameText(Name, K.Name)'),
+    'if (K.Umsatz > Grenze) or SameText(K.Name, K.Name) then');
+end;
+
+procedure TCollectionCommandsTests.FilterWithoutInlineVariables;
+var
+  Edits: TArray<TRuleEdit>;
+  Text: string;
+begin
+  // Delphi 10.2 (BDS 19.0) kennt keine Inline-Variablen (#109): beide in den var-Abschnitt.
+  Assert.IsTrue(TSlashCommandRegistry.Shared.AfterEnter(Format(RoutineUnit, ['/filter Kunden Aktiv']),
+    TTextPosition.Create(15, 0), nil, nil, Edits, nil, '19.0'));
+  Text := Apply(Format(RoutineUnit, ['/filter Kunden Aktiv']), Edits);
+  Assert.IsTrue(Parses(Text), Text);
+  Assert.Contains(Text, 'procedure P(Kunden: TList<TKunde>);'#10'var'#10'  Treffer: TList<TKunde>;'#10 +
+    '  K: TKunde;'#10'begin'#10);
+  Assert.Contains(Text, '  Treffer := TList<TKunde>.Create;'#10'  try'#10'    for K in Kunden do'#10);
+  Assert.DoesNotContain(Text, 'var Treffer');
+end;
+
+procedure TCollectionCommandsTests.WrongPlaceFails;
+const
+  UnitLevel = 'unit U;'#10'interface'#10'%s'#10'implementation'#10'end.';
+begin
+  Assert.AreEqual('/dict gilt nur in einer Klasse oder im Rumpf einer Routine',
+    ProblemOf(Format(UnitLevel, ['/dict FCache: string, Integer'])));
+  Assert.AreEqual('/sort gilt nur im Rumpf einer Routine', ProblemOf(Format(ClassUnit, ['/sort FListe Name', ''])));
+  Assert.AreEqual('/filter gilt nur im Rumpf einer Routine',
+    ProblemOf(Format(ClassUnit, ['/filter FListe Aktiv', ''])));
+end;
+
+procedure TCollectionCommandsTests.ChoicesForSortAndFilter;
+var
+  Context: TSlashContext;
+  Text: string;
+begin
+  // Erst die Sammlungen im Gültigkeitsbereich, dann Felder und Properties des Elementtyps.
+  Text := Format(RoutineUnit, ['/sort ']);
+  Context := Default(TSlashContext);
+  Context.Text := Text;
+  Context.Line := 14;
+  Assert.AreEqual('Kunden', string.Join(',', CollectionChoices(Context, '')));
+  Assert.AreEqual('Name,Umsatz,Aktiv', string.Join(',', CollectionChoices(Context, 'Kunden')));
+  Assert.AreEqual(0, Integer(Length(CollectionChoices(Context, 'Unbekannt'))));
 end;
 
 procedure TCollectionCommandsTests.CompareFunctionByType;

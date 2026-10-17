@@ -43,6 +43,7 @@ uses
   Atlas.Core.Lsp.WorkspaceEdits,
   Atlas.Core.Results.Model,
   Atlas.UI.Results.RenamePreview,
+  Atlas.UI.Results.Frame,
   Atlas.IDE.Foundation.EditorBuffer,
   Atlas.IDE.Editor.WorkspaceEdit,
   Atlas.IDE.Forms.Designer,
@@ -80,6 +81,7 @@ var
   Edit: TLspWorkspaceEdit;
   Outcome: TAtlasWorkspaceEditResult;
   Preview: TArray<TAtlasResultEntry>;
+  Open: TAtlasResultsOpen;
 begin
   if ASession = nil then
   begin
@@ -151,13 +153,15 @@ begin
     begin
       Result := TAtlasIdeWorkspaceEdit.CurrentText(AFileName);
     end);
-  if not TAtlasRenamePreview.Execute(TAtlasStrings.Fmt(TAtlasTextId.RenamePreviewTitle, [OldName, NewName]),
-    TAtlasStrings.Fmt(TAtlasTextId.RenamePreviewHint, [Edit.EditCount, Length(Edit.Files)]),
-    TAtlasResults.Group(Preview),
+  // Typisierte Variable: Execute ist überladen (Delphi und anonyme Methoden).
+  Open :=
     procedure(const AFileName: string; ALine, ACharacter: Integer)
     begin
       TAtlasIdeNavigation.GoToLocation(AFileName, ALine, ACharacter);
-    end) then
+    end;
+  if not TAtlasRenamePreview.Execute(TAtlasStrings.Fmt(TAtlasTextId.RenamePreviewTitle, [OldName, NewName]),
+    TAtlasStrings.Fmt(TAtlasTextId.RenamePreviewHint, [Edit.EditCount, Length(Edit.Files)]),
+    TAtlasResults.Group(Preview), Open) then
     Exit;
   Outcome := TAtlasIdeWorkspaceEdit.Apply(Edit, APolicy,
     TAtlasStrings.Fmt(TAtlasTextId.UndoActionRename, [OldName, NewName]));

@@ -10,6 +10,8 @@
 //   - ClassEdits: Abschnitt, Kommentar "{ IExporter }" und Deklaration vor dem "end" der Klasse. Alle Einfügungen
 //     eines Interfaces stehen an derselben Stelle; Merge fasst sie zu einer Änderung zusammen und lässt
 //     doppelte Abschnitte und Kommentare weg.
+//   - DeclarationOf, HeaderAncestors, SubstituteWords, GenericName: Deklarationstext, Vorfahrenliste aus dem
+//     Quelltext und Typargumente generischer Interfaces, für Vervollständigung und /intf gleich.
 
 interface
 
@@ -50,6 +52,15 @@ type
     /// <summary>Fasst Änderungen mit gleichem Bereich zusammen: Texte in der Reihenfolge des ersten Auftretens,
     /// gleiche Texte nur einmal. Bereiche bleiben in der Reihenfolge ihres ersten Auftretens.</summary>
     class function Merge(const AEdits: TArray<TTextEdit>): TArray<TTextEdit>; static;
+    /// <summary>Deklaration von ARange; über mehr als MaxLines Zeilen (Klassen, Records) nur die erste.</summary>
+    class function DeclarationOf(const ALines: TArray<string>; const ARange: TTextRange): string; static;
+    /// <summary>Vorfahrenliste der Klasse ab Zeile AStartLine wie im Quelltext, samt Typargumenten
+    /// ("TInterfacedObject", "IComparer<TKunde>"); nil, wenn kein "class(" folgt (#466).</summary>
+    class function HeaderAncestors(const ALines: TArray<string>; AStartLine: Integer): TArray<string>; static;
+    /// <summary>Setzt Bindungen "T=TKunde" wortweise in AText ein (#466).</summary>
+    class function SubstituteWords(const AText: string; const ABindings: TArray<string>): string; static;
+    /// <summary>"IComparer<TKunde>" aus Container und Bindungen; ohne Bindungen der Container.</summary>
+    class function GenericName(const AContainer: string; const ABindings: TArray<string>): string; static;
   end;
 
 implementation
@@ -57,6 +68,7 @@ implementation
 uses
   System.SysUtils,
   System.StrUtils,
+  System.Math,
   System.RegularExpressions;
 
 class function TInterfaceStubs.Split(const ADeclaration: string; out AIsClass: Boolean; out AKind, AHead,
@@ -226,6 +238,103 @@ begin
     Seen[Found] := Seen[Found] + Edit.NewText + #0;
     Result[Found].NewText := Result[Found].NewText + Edit.NewText;
   end;
+end;
+
+class function TInterfaceStubs.DeclarationOf(const ALines: TArray<string>; const ARange: TTextRange): string;
+const
+  MaxLines = 6;
+  MaxLength = 600;
+var
+  Line, Last: Integer;
+begin
+  Result := '';
+  Last := ARange.EndPos.Line;
+  if Last - ARange.StartPos.Line >= MaxLines then
+    Last := ARange.StartPos.Line;
+  for Line := ARange.StartPos.Line to Last do
+  begin
+    if (Line < 0) or (Line > High(ALines)) then
+      Break;
+    if Line = ARange.StartPos.Line then
+      Result := Trim(Copy(ALines[Line], ARange.StartPos.Character + 1, MaxInt))
+    else
+      Result := Result + ' ' + Trim(ALines[Line]);
+  end;
+  while Pos('  ', Result) > 0 do
+    Result := StringReplace(Result, '  ', ' ', [rfReplaceAll]);
+  if Length(Result) > MaxLength then
+    Result := Copy(Result, 1, MaxLength) + ' …';
+end;
+
+class function TInterfaceStubs.HeaderAncestors(const ALines: TArray<string>; AStartLine: Integer): TArray<string>;
+var
+  Text, Part: string;
+  Line, Index, Depth: Integer;
+  Match: TMatch;
+begin
+  Result := nil;
+  Text := '';
+  for Line := AStartLine to Min(AStartLine + 5, High(ALines)) do
+    Text := Text + ' ' + ALines[Line];
+  Match := TRegEx.Match(Text, '=\s*class\s*(?:sealed\s*|abstract\s*)?\(', [roIgnoreCase]);
+  if not Match.Success then
+    Exit;
+  Depth := 0;
+  Part := '';
+  for Index := Match.Index + Match.Length to Length(Text) do
+  begin
+    case Text[Index] of
+      '(', '<':
+        Inc(Depth);
+      ')', '>':
+        begin
+          if Depth = 0 then
+          begin
+            if Trim(Part) <> '' then
+              Result := Result + [StringReplace(Trim(Part), ' ', '', [rfReplaceAll])];
+            Exit;
+          end;
+          Dec(Depth);
+        end;
+      ',':
+        if Depth = 0 then
+        begin
+          Result := Result + [StringReplace(Trim(Part), ' ', '', [rfReplaceAll])];
+          Part := '';
+          Continue;
+        end;
+    end;
+    Part := Part + Text[Index];
+  end;
+  Result := nil;
+end;
+
+class function TInterfaceStubs.SubstituteWords(const AText: string; const ABindings: TArray<string>): string;
+var
+  Binding: string;
+  Equal: Integer;
+begin
+  Result := AText;
+  for Binding in ABindings do
+  begin
+    Equal := Pos('=', Binding);
+    Result := TRegEx.Replace(Result, '(?<![\w.])' + TRegEx.Escape(Copy(Binding, 1, Equal - 1)) + '(?![\w])',
+      Copy(Binding, Equal + 1, MaxInt).Replace('$', '$$'));
+  end;
+end;
+
+class function TInterfaceStubs.GenericName(const AContainer: string; const ABindings: TArray<string>): string;
+var
+  Binding: string;
+  Values: TArray<string>;
+begin
+  Result := AContainer;
+  if Length(ABindings) = 0 then
+    Exit;
+  Values := nil;
+  for Binding in ABindings do
+    Values := Values + [Copy(Binding, Pos('=', Binding) + 1, MaxInt)];
+  Result := Result + '<' + string.Join(', ', Values) + '>';
 end;
 
 end.
