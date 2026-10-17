@@ -554,7 +554,13 @@ type
     NavLastEditCommand, NavListCommand, NavListPrompt, NavKindBack, NavKindAhead, NavKindEdit, NavEmpty,
     SettingsNavHistory, PeekDefinitionCommand, PeekReferencesCommand, PeekTitleDefinition, PeekTitleReferences,
     PeekImplementation, PeekNoDefinition, PeekNoReferences, PeekKeysHint, PeekNoImplementation, SettingsPeek,
-    SettingsPeekHeight, SettingsPeekImplementation);
+    SettingsPeekHeight, SettingsPeekImplementation, OutlineCaption, OutlineCommand, OutlineSearchHint,
+    OutlineVisibilityButton, OutlineKindButton, OutlineSortSource, OutlineSortAlphabetical, OutlineVisPrivate,
+    OutlineVisProtected, OutlineVisPublic, OutlineVisPublished, OutlineKindTypes, OutlineKindFields,
+    OutlineKindMethods, OutlineKindProperties, OutlineKindConstants, OutlineKindVariables, OutlineKindRoutines,
+    OutlineKindEnumMembers, OutlineShowAll, OutlineUnimplemented, OutlineEmpty, OutlineNoServer, OutlineNoMatch,
+    OutlineGoToDeclaration, OutlineGoToImplementation, OutlineFollowCursor, SettingsOutline,
+    SettingsOutlineAlphabetical, SettingsOutlineFollowCursor);
 
   TAtlasStrings = class
   private class var
@@ -1613,7 +1619,13 @@ const
      'Implementierung · %s:%d', 'Keine Definition für „%s“ gefunden.', 'Keine Referenzen auf „%s“ gefunden.',
      'Esc schließt · Enter öffnet · Bild auf/ab scrollt', 'Keine Implementierung',
      'Definition und Referenzen einblenden (Alt+F12, Umschalt+Alt+F12)', 'Höhe des Fensters (Editorzeilen)',
-     'Bei Methoden auch die Implementierung zeigen'),
+     'Bei Methoden auch die Implementierung zeigen', 'Gliederung', 'Gliederung …', 'Gliederung durchsuchen',
+     'Sichtbarkeit', 'Art', 'Quelltextreihenfolge', 'Alphabetisch', 'private', 'protected', 'public', 'published',
+     'Typen', 'Felder', 'Methoden', 'Eigenschaften', 'Konstanten', 'Variablen', 'Routinen', 'Aufzählungswerte',
+     'Alle zeigen', 'nicht implementiert', 'Keine Gliederung: Unit im Editor öffnen.',
+     'Keine Gliederung: Der Atlas-Server läuft nicht.', 'Kein Eintrag passt zum Filter.', 'Zur Deklaration',
+     'Zur Implementierung', 'Cursor folgen', 'Fenster „Gliederung“ mit Filter', 'Alphabetisch sortieren',
+     'Eintrag am Cursor hervorheben'),
     ('Enter to accept · Esc to close', '%d of %d', 'No matches for “%s”', 'Backspace widens the search',
      'No suggestions here', 'Esc closes', 'No details for this entry', 'Overload', 'Deprecated: %s', 'Deprecated.',
      'Inherited from %s', 'Inherited', 'optional, default %s', 'No overload with %d parameters.', '… %d more',
@@ -2594,7 +2606,12 @@ const
      'Peek definition', 'Peek references', 'Definition: %s', 'References to %s (%d)', 'Implementation · %s:%d',
      'No definition found for "%s".', 'No references to "%s" found.', 'Esc closes · Enter opens · Page Up/Down scrolls',
      'No implementation', 'Peek definition and references (Alt+F12, Shift+Alt+F12)', 'Window height (editor lines)',
-     'Also show the implementation of methods'));
+     'Also show the implementation of methods', 'Outline', 'Outline …', 'Search outline', 'Visibility', 'Kind',
+     'Source order', 'Alphabetical', 'private', 'protected', 'public', 'published', 'Types', 'Fields', 'Methods',
+     'Properties', 'Constants', 'Variables', 'Routines', 'Enum values', 'Show all', 'not implemented',
+     'No outline: open a unit in the editor.', 'No outline: the Atlas server is not running.',
+     'No entry matches the filter.', 'Go to declaration', 'Go to implementation', 'Follow cursor',
+     'Outline window with filter', 'Sort alphabetically', 'Highlight the entry at the cursor'));
 
 { TAtlasStrings }
 
