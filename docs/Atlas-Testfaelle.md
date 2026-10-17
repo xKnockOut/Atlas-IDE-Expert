@@ -1915,6 +1915,7 @@ Voraussetzung für EX2 bis EX7: mindestens eine Einstellung trägt `x-experiment
 | FZ7 | Datei ohne Befunde, Strg+Alt+F8 | Zeile „Atlas: Keine Befunde in dieser Datei.“ in der Meldungsansicht |
 | FZ8 | Statusleiste ansehen, dann auf den Zähler klicken | „Fehler 1 · Warnungen 2 · Hinweise 0“ stimmt mit der Liste „Atlas-Probleme“ überein; der Klick öffnet das Meldungsfenster |
 | FZ9 | `editor.inlineDiagnostics` = aus, `problems.statusCounter` aus, Tasten leer | Kein Text am Zeilenende, kein Zähler, Tasten frei; Atlas verhält sich wie ohne die Funktion |
+| FZ10 | Rechtsklick auf den Fehlertext › „Nur hier“, dann „In dieser Datei“, dann „Überall“ | Erst verschwindet der Text an dieser Codezeile, dann in der Datei (Einträge in `.atlas`); „Überall“ stellt `editor.inlineDiagnostics` auf aus, „Rückgängig“ auf den alten Modus |
 
 ## Rekursion im Rand (#623)
 
