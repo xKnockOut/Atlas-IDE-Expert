@@ -40,6 +40,8 @@ type
     procedure BreadcrumbsOptions;
     [Test]
     procedure JumpToMatchOptions;
+    [Test]
+    procedure MoveLinesOptions;
     /// <summary>Änderungsmarken und Zeilenhistorie (#507): Vorgaben, Tasten, Speichern und Laden.</summary>
     [Test]
     procedure GitChangeOptions;
@@ -1179,6 +1181,33 @@ begin
   Loaded.JumpToMatchKey := $1FFFF;
   Loaded.Normalize;
   Assert.AreEqual($FFFF, Loaded.JumpToMatchKey);
+end;
+
+procedure TAtlasPluginSettingsTests.MoveLinesOptions;
+var
+  Settings, Loaded: TAtlasPluginSettings;
+  Store: IAtlasSettingsStore;
+begin
+  Settings := TAtlasPluginSettings.Defaults;
+  Assert.IsTrue(Settings.MoveLines);
+  Assert.AreEqual($8026, Settings.MoveLinesUpKey, 'Alt+↑');
+  Assert.AreEqual($8028, Settings.MoveLinesDownKey, 'Alt+↓');
+  Assert.AreEqual($A026, Settings.DuplicateLinesUpKey, 'Umschalt+Alt+↑');
+  Assert.AreEqual($A028, Settings.DuplicateLinesDownKey, 'Umschalt+Alt+↓');
+  Settings.MoveLines := False;
+  Settings.MoveLinesUpKey := 0;
+  Settings.DuplicateLinesDownKey := $C044;
+  Store := TMemoryStore.Create;
+  Settings.Save(Store);
+  Loaded := TAtlasPluginSettings.Defaults;
+  Loaded.Load(Store);
+  Assert.IsFalse(Loaded.MoveLines);
+  Assert.AreEqual(0, Loaded.MoveLinesUpKey);
+  Assert.AreEqual($8028, Loaded.MoveLinesDownKey);
+  Assert.AreEqual($C044, Loaded.DuplicateLinesDownKey);
+  Loaded.DuplicateLinesUpKey := $20000;
+  Loaded.Normalize;
+  Assert.AreEqual($FFFF, Loaded.DuplicateLinesUpKey);
 end;
 
 procedure TAtlasPluginSettingsTests.GitChangeOptions;

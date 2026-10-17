@@ -569,7 +569,8 @@ type
     ElementGitBlame, ElementGitBlamePlural, SettingsOverviewRuler, SettingsOverviewDiagnostics, SettingsOverviewSearch,
     SettingsOverviewChanges, SettingsOverviewBreakpoints, SettingsOverviewBookmarks, SettingsOverviewCursor,
     OverviewLine, OverviewBreakpoint, OverviewBookmark, OverviewSearch, OverviewModified, OverviewDeleted,
-    OverviewCursor);
+    OverviewCursor, MoveLinesUpCommand, MoveLinesDownCommand, DuplicateLinesUpCommand, DuplicateLinesDownCommand,
+    SettingsMoveLines, MoveLinesNoNeighbour);
 
   TAtlasStrings = class
   private class var
@@ -1645,7 +1646,10 @@ const
      'Änderungsmarke', 'Änderungsmarken', 'Zeilenhistorie', 'Zeilenhistorie', 'Übersichtsleiste an der Scrollleiste',
      'Fehler und Warnungen', 'Treffer des markierten Texts', 'Änderungen gegenüber dem Repository', 'Haltepunkte',
      'Lesezeichen', 'Cursorposition', 'Zeile %d', 'Haltepunkt', 'Lesezeichen %d', 'Treffer: %s',
-     'Geändert seit dem letzten Commit', 'Gelöscht seit dem letzten Commit', 'Cursor'),
+     'Geändert seit dem letzten Commit', 'Gelöscht seit dem letzten Commit', 'Cursor',
+     'Zeilen nach oben verschieben', 'Zeilen nach unten verschieben', 'Zeilen darüber duplizieren',
+     'Zeilen darunter duplizieren', 'Zeilen und Methoden verschieben und duplizieren (Alt+↑/↓, Umschalt+Alt+↑/↓)',
+     'Keine Nachbarmethode, an der die Methode vorbei kann'),
     ('Enter to accept · Esc to close', '%d of %d', 'No matches for “%s”', 'Backspace widens the search',
      'No suggestions here', 'Esc closes', 'No details for this entry', 'Overload', 'Deprecated: %s', 'Deprecated.',
      'Inherited from %s', 'Inherited', 'optional, default %s', 'No overload with %d parameters.', '… %d more',
@@ -2641,7 +2645,9 @@ const
      'Author: %s'#10'Date: %s'#10#10'%s', 'change mark', 'change marks', 'line history', 'line history',
      'Overview ruler next to the scroll bar', 'Errors and warnings', 'Matches of the selected text',
      'Changes against the repository', 'Breakpoints', 'Bookmarks', 'Cursor position', 'Line %d', 'Breakpoint',
-     'Bookmark %d', 'Match: %s', 'Changed since the last commit', 'Deleted since the last commit', 'Cursor'));
+     'Bookmark %d', 'Match: %s', 'Changed since the last commit', 'Deleted since the last commit', 'Cursor',
+     'Move lines up', 'Move lines down', 'Duplicate lines above', 'Duplicate lines below',
+     'Move and duplicate lines and methods (Alt+↑/↓, Shift+Alt+↑/↓)', 'No neighbouring method to move past'));
 
 { TAtlasStrings }
 

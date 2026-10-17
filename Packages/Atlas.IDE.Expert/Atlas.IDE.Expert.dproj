@@ -285,6 +285,7 @@
         <DCCReference Include="Source\Core\Editor\Atlas.Core.Editor.Pairs.pas"/>
         <DCCReference Include="Source\Core\Editor\Atlas.Core.Editor.Match.pas"/>
         <DCCReference Include="Source\Core\Editor\Atlas.Core.Editor.LineChanges.pas"/>
+        <DCCReference Include="Source\Core\Editor\Atlas.Core.Editor.LineMove.pas"/>
         <DCCReference Include="Source\Core\Editor\Atlas.Core.Editor.Overview.pas"/>
         <DCCReference Include="Source\UI\Editor\Atlas.UI.Editor.OverviewRuler.pas"/>
         <DCCReference Include="Source\IDE\Editor\Atlas.IDE.Editor.OverviewRuler.pas"/>
@@ -479,6 +480,7 @@
         <DCCReference Include="Source\Core\Vcs\Atlas.Core.Vcs.Adapters.ProcessRunner.pas"/>
         <DCCReference Include="Source\IDE\Vcs\Atlas.IDE.Vcs.Service.pas"/>
         <DCCReference Include="Source\IDE\Editor\Atlas.IDE.Editor.LineChanges.pas"/>
+        <DCCReference Include="Source\IDE\Editor\Atlas.IDE.Editor.LineMove.pas"/>
         <DCCReference Include="Source\Core\Build\Atlas.Core.Build.Target.pas"/>
         <DCCReference Include="Source\IDE\Build\Atlas.IDE.Build.Target.pas"/>
         <DCCReference Include="Source\Core\Editor\Atlas.Core.Editor.LineAnchor.pas"/>
