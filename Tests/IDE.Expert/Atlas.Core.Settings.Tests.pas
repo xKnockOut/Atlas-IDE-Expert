@@ -56,6 +56,8 @@ type
     procedure SmartPasteOptions;
     [Test]
     procedure StickyScrollOptions;
+    [Test]
+    procedure MinimapOptions;
     /// <summary>Änderungsmarken und Zeilenhistorie (#507): Vorgaben, Tasten, Speichern und Laden.</summary>
     [Test]
     procedure GitChangeOptions;
@@ -1310,6 +1312,64 @@ begin
   Loaded.StickyScrollMaxLines := 99;
   Loaded.Normalize;
   Assert.AreEqual(TAtlasPluginSettings.MaxStickyLines, Loaded.StickyScrollMaxLines);
+end;
+
+procedure TAtlasPluginSettingsTests.MinimapOptions;
+var
+  Settings, Loaded: TAtlasPluginSettings;
+  Store: IAtlasSettingsStore;
+begin
+  // #873: experimentell, also aus; Vorgaben laut Issue; Speichern, Laden, Klemmen.
+  Settings := TAtlasPluginSettings.Defaults;
+  Assert.IsFalse(Settings.Minimap);
+  Assert.AreEqual('blocks', Settings.MinimapRender);
+  Assert.AreEqual(120, Settings.MinimapWidth);
+  Assert.AreEqual(1, Settings.MinimapScale);
+  Assert.AreEqual(120, Settings.MinimapMaxColumn);
+  Assert.AreEqual('right', Settings.MinimapSide);
+  Assert.AreEqual('always', Settings.MinimapShowSlider);
+  Assert.IsTrue(Settings.MinimapSectionHeaders and Settings.MinimapHighlightMethod and Settings.MinimapMarkers and
+    Settings.MinimapClickJumps);
+  Assert.IsFalse(Settings.MinimapNoticeShown);
+  Settings.Minimap := True;
+  Settings.MinimapRender := 'characters';
+  Settings.MinimapWidth := 90;
+  Settings.MinimapScale := 2;
+  Settings.MinimapMaxColumn := 80;
+  Settings.MinimapSide := 'left';
+  Settings.MinimapShowSlider := 'mouseover';
+  Settings.MinimapSectionHeaders := False;
+  Settings.MinimapHighlightMethod := False;
+  Settings.MinimapMarkers := False;
+  Settings.MinimapClickJumps := False;
+  Settings.MinimapNoticeShown := True;
+  Store := TMemoryStore.Create;
+  Settings.Save(Store);
+  Loaded := TAtlasPluginSettings.Defaults;
+  Loaded.Load(Store);
+  Assert.IsTrue(Loaded.Minimap);
+  Assert.AreEqual('characters', Loaded.MinimapRender);
+  Assert.AreEqual(90, Loaded.MinimapWidth);
+  Assert.AreEqual(2, Loaded.MinimapScale);
+  Assert.AreEqual(80, Loaded.MinimapMaxColumn);
+  Assert.AreEqual('left', Loaded.MinimapSide);
+  Assert.AreEqual('mouseover', Loaded.MinimapShowSlider);
+  Assert.IsFalse(Loaded.MinimapSectionHeaders or Loaded.MinimapHighlightMethod or Loaded.MinimapMarkers or
+    Loaded.MinimapClickJumps);
+  Assert.IsTrue(Loaded.MinimapNoticeShown);
+  Loaded.MinimapRender := 'pixel';
+  Loaded.MinimapSide := 'oben';
+  Loaded.MinimapShowSlider := '';
+  Loaded.MinimapWidth := 1;
+  Loaded.MinimapScale := 9;
+  Loaded.MinimapMaxColumn := 100000;
+  Loaded.Normalize;
+  Assert.AreEqual('blocks', Loaded.MinimapRender);
+  Assert.AreEqual('right', Loaded.MinimapSide);
+  Assert.AreEqual('always', Loaded.MinimapShowSlider);
+  Assert.AreEqual(TAtlasPluginSettings.MinMinimapWidth, Loaded.MinimapWidth);
+  Assert.AreEqual(TAtlasPluginSettings.MaxMinimapScale, Loaded.MinimapScale);
+  Assert.AreEqual(TAtlasPluginSettings.MaxMinimapColumn, Loaded.MinimapMaxColumn);
 end;
 
 procedure TAtlasPluginSettingsTests.MultiCursorOptions;

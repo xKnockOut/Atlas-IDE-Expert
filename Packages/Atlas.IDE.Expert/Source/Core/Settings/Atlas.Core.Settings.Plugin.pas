@@ -48,6 +48,13 @@ type
     /// <summary>Grenzen für editor.stickyScrollMaxLines (#506).</summary>
     MinStickyLines = 1;
     MaxStickyLines = 10;
+    /// <summary>Grenzen für editor.minimap.width, .scale und .maxColumn (#873).</summary>
+    MinMinimapWidth = 40;
+    MaxMinimapWidth = 400;
+    MinMinimapScale = 1;
+    MaxMinimapScale = 3;
+    MinMinimapColumn = 20;
+    MaxMinimapColumn = 500;
     /// <summary>Grenzen für editor.blockEndLabels.minLines (#620).</summary>
     MinBlockEndLines = 1;
     MaxBlockEndLines = 1000;
@@ -553,6 +560,30 @@ type
     /// <summary>Höchstzahl seiner Zeilen, MinStickyLines bis MaxStickyLines (#506,
     /// editor.stickyScrollMaxLines).</summary>
     StickyScrollMaxLines: Integer;
+    /// <summary>Minimap neben der Scrollleiste (#873, editor.minimap, experimentell).</summary>
+    Minimap: Boolean;
+    /// <summary>Darstellung: blocks oder characters (#873, editor.minimap.render).</summary>
+    MinimapRender: string;
+    /// <summary>Breite in Pixeln bei 96 DPI, MinMinimapWidth bis MaxMinimapWidth (#873).</summary>
+    MinimapWidth: Integer;
+    /// <summary>Maßstab 1 bis 3, Pixel je Zeile = 2 × Maßstab (#873).</summary>
+    MinimapScale: Integer;
+    /// <summary>Höchste gezeigte Spalte (#873).</summary>
+    MinimapMaxColumn: Integer;
+    /// <summary>Seite: right oder left (#873).</summary>
+    MinimapSide: string;
+    /// <summary>Schieber: always oder mouseover (#873).</summary>
+    MinimapShowSlider: string;
+    /// <summary>Überschriften für Klassen und Methoden (#873).</summary>
+    MinimapSectionHeaders: Boolean;
+    /// <summary>Aktuelle Methode hinterlegen (#873).</summary>
+    MinimapHighlightMethod: Boolean;
+    /// <summary>Marken zeigen: Fehler, Suchtreffer, Git-Änderungen (#873).</summary>
+    MinimapMarkers: Boolean;
+    /// <summary>Klick springt an die Stelle; sonst scrollt er nur (#873).</summary>
+    MinimapClickJumps: Boolean;
+    /// <summary>Hinweis „IDE-Minimap ist auch sichtbar“ schon gezeigt (#873, interner Zustand).</summary>
+    MinimapNoticeShown: Boolean;
     /// <summary>Kürzel „Brotkrumenleiste“ (#590, keys.breadcrumbs); Vorgabe Strg+Umschalt+Punkt.</summary>
     BreadcrumbsKey: Integer;
     /// <summary>Änderungsmarken in der Rinne (#507, editor.gitGutter).</summary>
@@ -1198,6 +1229,18 @@ begin
   Result.BreadcrumbsShowUnit := False;
   Result.StickyScroll := False;
   Result.StickyScrollMaxLines := 3;
+  Result.Minimap := False;
+  Result.MinimapRender := 'blocks';
+  Result.MinimapWidth := 120;
+  Result.MinimapScale := 1;
+  Result.MinimapMaxColumn := 120;
+  Result.MinimapSide := 'right';
+  Result.MinimapShowSlider := 'always';
+  Result.MinimapSectionHeaders := True;
+  Result.MinimapHighlightMethod := True;
+  Result.MinimapMarkers := True;
+  Result.MinimapClickJumps := True;
+  Result.MinimapNoticeShown := False;
   Result.BreadcrumbsKey := $60BE; // Strg+Umschalt+.
   Result.GitGutter := True;
   Result.GitBlame := False;
@@ -1415,6 +1458,12 @@ begin
   LastEditKey := EnsureRange(LastEditKey, 0, $FFFF);
   PeekHeightLines := EnsureRange(PeekHeightLines, MinPeekLines, MaxPeekLines);
   StickyScrollMaxLines := EnsureRange(StickyScrollMaxLines, MinStickyLines, MaxStickyLines);
+  MinimapRender := Choice(MinimapRender, ['blocks', 'characters']);
+  MinimapWidth := EnsureRange(MinimapWidth, MinMinimapWidth, MaxMinimapWidth);
+  MinimapScale := EnsureRange(MinimapScale, MinMinimapScale, MaxMinimapScale);
+  MinimapMaxColumn := EnsureRange(MinimapMaxColumn, MinMinimapColumn, MaxMinimapColumn);
+  MinimapSide := Choice(MinimapSide, ['right', 'left']);
+  MinimapShowSlider := Choice(MinimapShowSlider, ['always', 'mouseover']);
   PeekDefinitionKey := EnsureRange(PeekDefinitionKey, 0, $FFFF);
   PeekReferencesKey := EnsureRange(PeekReferencesKey, 0, $FFFF);
   BreadcrumbsKey := EnsureRange(BreadcrumbsKey, 0, $FFFF);
@@ -1670,6 +1719,19 @@ begin
   BreadcrumbsShowUnit := AStore.ReadInteger('BreadcrumbsShowUnit', BoolValue(Default.BreadcrumbsShowUnit)) <> 0;
   StickyScroll := AStore.ReadInteger('StickyScroll', BoolValue(Default.StickyScroll)) <> 0;
   StickyScrollMaxLines := AStore.ReadInteger('StickyScrollMaxLines', Default.StickyScrollMaxLines);
+  Minimap := AStore.ReadInteger('Minimap', BoolValue(Default.Minimap)) <> 0;
+  MinimapRender := AStore.ReadString('MinimapRender', Default.MinimapRender);
+  MinimapWidth := AStore.ReadInteger('MinimapWidth', Default.MinimapWidth);
+  MinimapScale := AStore.ReadInteger('MinimapScale', Default.MinimapScale);
+  MinimapMaxColumn := AStore.ReadInteger('MinimapMaxColumn', Default.MinimapMaxColumn);
+  MinimapSide := AStore.ReadString('MinimapSide', Default.MinimapSide);
+  MinimapShowSlider := AStore.ReadString('MinimapShowSlider', Default.MinimapShowSlider);
+  MinimapSectionHeaders := AStore.ReadInteger('MinimapSectionHeaders', BoolValue(Default.MinimapSectionHeaders)) <> 0;
+  MinimapHighlightMethod := AStore.ReadInteger('MinimapHighlightMethod',
+    BoolValue(Default.MinimapHighlightMethod)) <> 0;
+  MinimapMarkers := AStore.ReadInteger('MinimapMarkers', BoolValue(Default.MinimapMarkers)) <> 0;
+  MinimapClickJumps := AStore.ReadInteger('MinimapClickJumps', BoolValue(Default.MinimapClickJumps)) <> 0;
+  MinimapNoticeShown := AStore.ReadInteger('MinimapNoticeShown', BoolValue(Default.MinimapNoticeShown)) <> 0;
   BreadcrumbsKey := AStore.ReadInteger('BreadcrumbsKey', Default.BreadcrumbsKey);
   GitGutter := AStore.ReadInteger('GitGutter', BoolValue(Default.GitGutter)) <> 0;
   GitBlame := AStore.ReadInteger('GitBlame', BoolValue(Default.GitBlame)) <> 0;
@@ -1988,6 +2050,18 @@ begin
   AStore.WriteInteger('BreadcrumbsShowUnit', BoolValue(BreadcrumbsShowUnit));
   AStore.WriteInteger('StickyScroll', BoolValue(StickyScroll));
   AStore.WriteInteger('StickyScrollMaxLines', StickyScrollMaxLines);
+  AStore.WriteInteger('Minimap', BoolValue(Minimap));
+  AStore.WriteString('MinimapRender', MinimapRender);
+  AStore.WriteInteger('MinimapWidth', MinimapWidth);
+  AStore.WriteInteger('MinimapScale', MinimapScale);
+  AStore.WriteInteger('MinimapMaxColumn', MinimapMaxColumn);
+  AStore.WriteString('MinimapSide', MinimapSide);
+  AStore.WriteString('MinimapShowSlider', MinimapShowSlider);
+  AStore.WriteInteger('MinimapSectionHeaders', BoolValue(MinimapSectionHeaders));
+  AStore.WriteInteger('MinimapHighlightMethod', BoolValue(MinimapHighlightMethod));
+  AStore.WriteInteger('MinimapMarkers', BoolValue(MinimapMarkers));
+  AStore.WriteInteger('MinimapClickJumps', BoolValue(MinimapClickJumps));
+  AStore.WriteInteger('MinimapNoticeShown', BoolValue(MinimapNoticeShown));
   AStore.WriteInteger('BreadcrumbsKey', BreadcrumbsKey);
   AStore.WriteInteger('GitGutter', BoolValue(GitGutter));
   AStore.WriteInteger('GitBlame', BoolValue(GitBlame));
