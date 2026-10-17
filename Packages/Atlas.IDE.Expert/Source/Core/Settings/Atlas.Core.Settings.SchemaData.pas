@@ -11,7 +11,7 @@ function AtlasSchemaJson: string;
 implementation
 
 const
-  Lines: array[0..1226] of string = (
+  Lines: array[0..1233] of string = (
     '{',
     '  "$schema": "http://json-schema.org/draft-07/schema#",',
     '  "title": "Atlas-Konfiguration",',
@@ -578,6 +578,13 @@ const
     '          "default": true,',
     '          "description": "Code-Aktion „with auflösen“: Bezeichner im with-Rumpf, die zu einem Mitglied eines with-Ausdrucks gehören, bekommen diesen Ausdruck vorangestellt (innerstes Element zuerst); ' + 'aufwendige Ausdrücke vom Klassentyp kommen vorher in eine lokale Variable. Ist ein Bezeichner nicht eindeutig auflösbar, gibt es die Aktion nicht.",',
     '          "x-issue": "#50"',
+    '        },',
+    '        "inline": {',
+    '          "type": "boolean",',
+    '          "default": false,',
+    '          "description": "Code-Aktionen „Variable einbetten“ und „Methode einbetten“ auf einer lokalen Variablen bzw. einem Aufruf: Die Variable verschwindet, ihre Stellen bekommen den Ausdruck; der A' + 'ufruf wird durch den Rumpf ersetzt (lokale Namen eindeutig umbenannt, Argumente eingesetzt oder in Hilfsvariablen, Mitglieder mit dem Empfänger, das Ergebnis direkt oder in einer Variablen wie AddResu' + 'lt). Angeboten nur, wenn Datenfluss und Namensauflösung zeigen, dass sich die Bedeutung nicht ändert. Hilfsvariablen als Inline-Variable oder im var-Abschnitt nach refactoring.inlineVar.",',
+    '          "x-experimental": true,',
+    '          "x-issue": "#103"',
     '        },',
     '        "createMethod": {',
     '          "type": "boolean",',

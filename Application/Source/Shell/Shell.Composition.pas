@@ -2662,7 +2662,8 @@ begin
   if not FDocuments.TryGet(AUri, Document) or not SameText(ExtractFileExt(TDocumentUris.ToPath(AUri)), '.pas') then
     Exit;
   Context := RefactoringContextFor(AUri);
-  if not (Context.Settings.Extract or Context.Settings.CompleteCase or Context.Settings.ResolveWith) then
+  if not (Context.Settings.Extract or Context.Settings.CompleteCase or Context.Settings.ResolveWith or
+    Context.Settings.CreateMethod or Context.Settings.InlineCode) then
     Exit;
   Shared := TSyntaxTreeCache.Get(Document, nil);
   for Action in TLspRefactorings.Actions(Shared.Tree, Document.Text, ARange, Context) do
