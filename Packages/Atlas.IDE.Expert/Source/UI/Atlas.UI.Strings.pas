@@ -525,7 +525,9 @@ type
     WelcomeArrangeDescNews, WelcomeArrangeDescDiscover, WelcomeArrangeDescSetup, WelcomeArrangeDescIssues,
     WelcomeArrangeDescHelp, CommandWelcomeCustomize, SettingsWelcomeCustomLayout, SettingsWelcomeColumns,
     SettingsWelcomeActiveLayout, SettingsWelcomeLayoutNew, SettingsWelcomeLayoutRename,
-    SettingsWelcomeLayoutDelete);
+    SettingsWelcomeLayoutDelete, SettingsDfmPropertyRules, DfmRulesFormCommand, DfmRulesProjectCommand,
+    DfmRulesGroupCommand, DfmRulesNoForm, DfmRulesNoProject, DfmRulesNothing, DfmRulesFailed, DfmRulesPreviewTitle,
+    DfmRulesPreviewHint, DfmRulesPreviewApply, DfmRulesDone);
 
   TAtlasStrings = class
   private class var
@@ -1523,7 +1525,13 @@ const
      'Mir zugewiesene Issues aus dem Tracker', 'Doku, Tastenkürzel und „Problem melden“',
      'Willkommensseite anpassen',
      'Willkommensseite frei anordnen („Seite anpassen“, Befehl Atlas.WelcomeCustomize)', 'Spalten der Seite:',
-     'Aktives Layout:', 'Neu …', 'Umbenennen …', 'Löschen'),
+     'Aktives Layout:', 'Neu …', 'Umbenennen …', 'Löschen',
+     'Befehle „Eigenschaftsregeln anwenden“ in der Befehlspalette', 'Eigenschaftsregeln anwenden: Formular',
+     'Eigenschaftsregeln anwenden: Projekt', 'Eigenschaftsregeln anwenden: Projektgruppe',
+     'Im Editor ist keine Unit mit Formular offen.', 'Kein aktives Projekt.',
+     'Eigenschaftsregeln: nichts zu ändern.', 'Eigenschaftsregeln anwenden fehlgeschlagen: %s',
+     'Eigenschaftsregeln anwenden', '%d Änderungen in %d Formulardateien', 'Anwenden',
+     'Eigenschaftsregeln: %d Änderungen in %d Dateien übernommen.'),
     ('Enter to accept · Esc to close', '%d of %d', 'No matches for “%s”', 'Backspace widens the search',
      'No suggestions here', 'Esc closes', 'No details for this entry', 'Overload', 'Deprecated: %s', 'Deprecated.',
      'Inherited from %s', 'Inherited', 'optional, default %s', 'No overload with %d parameters.', '… %d more',
@@ -2451,7 +2459,13 @@ const
      'Issues assigned to me in the tracker', 'Docs, keyboard shortcuts and “Report a problem”',
      'Customize welcome page',
      'Arrange the welcome page freely (“Customize page”, command Atlas.WelcomeCustomize)', 'Page columns:',
-     'Active layout:', 'New…', 'Rename…', 'Delete'));
+     'Active layout:', 'New…', 'Rename…', 'Delete',
+     'Commands “Apply property rules” in the command palette', 'Apply property rules: form',
+     'Apply property rules: project', 'Apply property rules: project group',
+     'No unit with a form is open in the editor.', 'No active project.',
+     'Property rules: nothing to change.', 'Applying property rules failed: %s',
+     'Apply property rules', '%d changes in %d form files', 'Apply',
+     'Property rules: %d changes in %d files applied.'));
 
 { TAtlasStrings }
 

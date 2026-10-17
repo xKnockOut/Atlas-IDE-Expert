@@ -23,6 +23,10 @@ type
     procedure RejectsOtherChanges;
     [Test]
     procedure ReadsObjectNames;
+    [Test]
+    procedure FindsPropertyChanges;
+    [Test]
+    procedure ReadsStringValues;
   end;
 
   /// <summary>Wurzel wie ein Datenmodul: schreibt die eigenen Komponenten mit.</summary>
@@ -161,6 +165,56 @@ begin
     Changes, Reason), 'Zeile hinzugefügt');
   Assert.IsFalse(TAtlasFormChanges.Diff(Form, Form.Replace('OnClick = Button1Click', 'OnPress = Button1Click'),
     Changes, Reason), 'anderes Ereignis');
+end;
+
+procedure TAtlasFormsTests.FindsPropertyChanges;
+var
+  Changes: TArray<TAtlasFormEventChange>;
+  Properties: TArray<TAtlasFormPropertyChange>;
+  Reason: string;
+begin
+  // Eigenschaftsregeln (#309): geänderter Wert, eingefügte Zeile; Ereignisse wie bisher.
+  Assert.IsTrue(TAtlasFormChanges.Diff(Form, Form.Replace('''OK''', '''Speichern''')
+    .Replace('    object Button1: TButton'#13#10, '    object Button1: TButton'#13#10'      Default = True'#13#10)
+    .Replace('OnCreate = FormCreate', 'OnCreate = Startup'), Changes, Properties, Reason), Reason);
+  Assert.AreEqual(1, Integer(Length(Changes)));
+  Assert.AreEqual(2, Integer(Length(Properties)));
+  Assert.AreEqual('Button1', Properties[0].Component);
+  Assert.AreEqual('Default', Properties[0].PropertyPath);
+  Assert.AreEqual('True', Properties[0].Value);
+  Assert.IsFalse(Properties[0].Removed);
+  Assert.AreEqual('Caption', Properties[1].PropertyPath);
+  Assert.AreEqual('''Speichern''', Properties[1].Value);
+  // Entfernte Zeile (Rückgängig): zurück zum Vorgabewert.
+  Assert.IsTrue(TAtlasFormChanges.Diff(Form, Form.Replace('  Caption = ''Kunden'''#13#10, ''), Changes, Properties,
+    Reason), Reason);
+  Assert.AreEqual(1, Integer(Length(Properties)));
+  Assert.AreEqual('', Properties[0].Component, 'das Formular selbst');
+  Assert.IsTrue(Properties[0].Removed);
+  // Verschachtelte Pfade zählen, Kollektionseinträge und neue Objekte nicht.
+  Assert.IsTrue(TAtlasFormChanges.Diff(Form, Form.Replace('  Caption = ''Kunden'''#13#10,
+    '  Caption = ''Kunden'''#13#10'  Font.Name = ''Segoe UI'''#13#10), Changes, Properties, Reason), Reason);
+  Assert.AreEqual('Font.Name', Properties[0].PropertyPath);
+  Assert.IsFalse(TAtlasFormChanges.Diff(Form, Form.Replace('''Name''', '''Vorname'''), Changes, Properties, Reason),
+    'Kollektionseintrag');
+  Assert.IsFalse(TAtlasFormChanges.Diff(Form, Form.Replace('  object Grid: TDBGrid'#13#10,
+    '  object Neu: TButton'#13#10'  end'#13#10'  object Grid: TDBGrid'#13#10), Changes, Properties, Reason),
+    'neues Objekt');
+  // Die alte Überladung bleibt bei Ereignissen.
+  Assert.IsFalse(TAtlasFormChanges.Diff(Form, Form.Replace('''OK''', '''Speichern'''), Changes, Reason));
+end;
+
+procedure TAtlasFormsTests.ReadsStringValues;
+var
+  Text: string;
+begin
+  Assert.IsTrue(TAtlasFormChanges.StringValue('''Segoe UI''', Text));
+  Assert.AreEqual('Segoe UI', Text);
+  Assert.IsTrue(TAtlasFormChanges.StringValue('''It''''s''', Text));
+  Assert.AreEqual('It''s', Text);
+  Assert.IsTrue(TAtlasFormChanges.StringValue('''Gr''#252''n''', Text));
+  Assert.AreEqual('Gr' + Char(252) + 'n', Text);
+  Assert.IsFalse(TAtlasFormChanges.StringValue('True', Text));
 end;
 
 procedure TAtlasFormsTests.ReadsObjectNames;

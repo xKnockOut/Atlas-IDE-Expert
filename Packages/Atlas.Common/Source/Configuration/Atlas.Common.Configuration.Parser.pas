@@ -700,14 +700,22 @@ begin
     ReportNode(ANode, 'Eine Eigenschaftsregel muss ein Objekt sein: { "class": …, "property": …, "condition": … }');
     Exit(False);
   end;
+  ARule.ClassRange := TTextRange.Create(PositionAt(ANode.Start), PositionAt(ANode.Start + 1));
+  ARule.PropertyRange := ARule.ClassRange;
   for Index := 0 to ANode.Count - 1 do
   begin
     Key := ANode.Keys[Index];
     Value := ANode[Index];
     if Key = 'class' then
-      ExpectString(Value, Key, ARule.ClassName)
+    begin
+      ExpectString(Value, Key, ARule.ClassName);
+      ARule.ClassRange := TTextRange.Create(PositionAt(Value.Start), PositionAt(Value.Stop));
+    end
     else if Key = 'property' then
-      ExpectString(Value, Key, ARule.PropertyPath)
+    begin
+      ExpectString(Value, Key, ARule.PropertyPath);
+      ARule.PropertyRange := TTextRange.Create(PositionAt(Value.Start), PositionAt(Value.Stop));
+    end
     else if Key = 'value' then
       ExpectString(Value, Key, ARule.Value)
     else if Key = 'message' then

@@ -277,6 +277,18 @@
       "x-captionEn": "Metrics report",
       "x-issue": "#66"
     },
+    "DfmPropertyRules": {
+      "type": "boolean",
+      "default": true,
+      "x-key": "dfmPropertyRules.apply",
+      "x-area": "editor",
+      "x-feature": "Palette",
+      "x-page": "Editor",
+      "x-quickToggle": true,
+      "x-caption": "Eigenschaftsregeln anwenden",
+      "x-captionEn": "Apply property rules",
+      "x-issue": "#309"
+    },
     "TeamFile": {
       "type": "boolean",
       "default": true,

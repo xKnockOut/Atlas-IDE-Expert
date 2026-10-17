@@ -49,6 +49,9 @@ type
     procedure EachKeyHasOnePlace;
     [Test]
     procedure ReloadsChangedFileUnlessOpen;
+    /// <summary>Meldungen über den Index (#309) kommen über ExtraIssues und nach Revalidate erneut.</summary>
+    [Test]
+    procedure ExtraIssuesAndRevalidate;
   end;
 
 implementation
@@ -185,6 +188,49 @@ begin
   end;
   // Eine andere Datei als die des Arbeitsbereichs ändert die Einstellungen nicht.
   Assert.AreEqual(0, FChanges);
+end;
+
+procedure TLspConfigurationTests.ExtraIssuesAndRevalidate;
+var
+  Message: TJSONObject;
+  Known: Boolean;
+begin
+  Known := False;
+  FConfiguration.ExtraIssues :=
+    function(const ASettings: TServerSettings): TArray<TConfigurationIssue>
+    var
+      Issue: TConfigurationIssue;
+    begin
+      Result := nil;
+      if Known then
+        Exit;
+      Issue := Default(TConfigurationIssue);
+      Issue.Range := ASettings.DfmPropertyRules[0].ClassRange;
+      Issue.Message := 'unbekannt: ' + ASettings.DfmPropertyRules[0].ClassName;
+      Result := [Issue];
+    end;
+  FDiskText := '{"dfmPropertyRules": [{"class": "TLabelX", "property": "Transparent", "value": "True"}]}';
+  FConfiguration.LoadWorkspace(Root);
+  Assert.AreEqual(1, Integer(FCapture.Count));
+  Message := FCapture.MessageAt(0);
+  try
+    Assert.AreEqual(1, Message.GetValue<TJSONArray>('params.diagnostics').Count);
+    Assert.AreEqual('unbekannt: TLabelX', Message.GetValue<string>('params.diagnostics[0].message'));
+    Assert.AreEqual(32, Message.GetValue<Integer>('params.diagnostics[0].range.start.character'));
+  finally
+    Message.Free;
+  end;
+  // Später kennt der Index die Klasse: Revalidate sendet die Meldungen neu, jetzt ohne.
+  Known := True;
+  FConfiguration.Revalidate;
+  Assert.AreEqual(2, Integer(FCapture.Count));
+  Message := FCapture.MessageAt(1);
+  try
+    Assert.AreEqual(0, Message.GetValue<TJSONArray>('params.diagnostics').Count);
+  finally
+    Message.Free;
+  end;
+  FConfiguration.ExtraIssues := nil;
 end;
 
 procedure TLspConfigurationTests.AppliesEditsAndRevertsOnClose;

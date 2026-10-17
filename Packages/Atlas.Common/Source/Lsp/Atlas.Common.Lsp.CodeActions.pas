@@ -128,24 +128,34 @@ begin
   Result.AddPair('codeActionKinds', Kinds);
 end;
 
-class function TLspCodeActions.ActionToJson(const AUri: string; const AAction: TCodeAction): TJSONObject;
+function EditsToJson(const AEdits: TArray<TTextEdit>): TJSONArray;
 var
-  Edits: TJSONArray;
-  Edit: TRuleEdit;
-  Item, Changes, WorkspaceEdit, Diagnostic, Command: TJSONObject;
-  Diagnostics, Arguments: TJSONArray;
-  Argument: string;
+  Edit: TTextEdit;
+  Item: TJSONObject;
 begin
-  Edits := TJSONArray.Create;
-  for Edit in AAction.Edits do
+  Result := TJSONArray.Create;
+  for Edit in AEdits do
   begin
     Item := TJSONObject.Create;
     Item.AddPair('range', TLspPositions.RangeToJson(Edit.Range));
     Item.AddPair('newText', Edit.NewText);
-    Edits.AddElement(Item);
+    Result.AddElement(Item);
   end;
+end;
+
+class function TLspCodeActions.ActionToJson(const AUri: string; const AAction: TCodeAction): TJSONObject;
+var
+  FileEdits: TFileTextEdits;
+  Changes, WorkspaceEdit, Diagnostic, Command: TJSONObject;
+  Diagnostics, Arguments: TJSONArray;
+  Argument: string;
+begin
   Changes := TJSONObject.Create;
-  Changes.AddPair(AUri, Edits);
+  // Nur Edits in anderen Dateien (Formulardatei, #309): das Dokument bleibt unverändert.
+  if (AAction.Edits <> nil) or (AAction.FileEdits = nil) then
+    Changes.AddPair(AUri, EditsToJson(AAction.Edits));
+  for FileEdits in AAction.FileEdits do
+    Changes.AddPair(TDocumentUris.FromPath(FileEdits.FileName), EditsToJson(FileEdits.Edits));
   WorkspaceEdit := TJSONObject.Create;
   WorkspaceEdit.AddPair('changes', Changes);
   Result := TJSONObject.Create;
@@ -263,6 +273,7 @@ begin
     Context.EnsureUnit := Rules.EnsureUnit;
     Context.Namespaces := Rules.Namespaces;
     Context.FormText := Rules.FormText;
+    Context.FormFile := Rules.FormFile;
     Context.ReadFile := Rules.ReadFile;
     Findings := TRuleEngine.Run(Rules.Rules, Rules.Settings, Context);
   end;

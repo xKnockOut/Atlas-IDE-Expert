@@ -134,6 +134,7 @@ contains
   Atlas.IDE.Generate.Commands in 'Source\IDE\Generate\Atlas.IDE.Generate.Commands.pas',
   Atlas.IDE.Generate.NewFile in 'Source\IDE\Generate\Atlas.IDE.Generate.NewFile.pas',
   Atlas.IDE.Editor.Rename in 'Source\IDE\Editor\Atlas.IDE.Editor.Rename.pas',
+  Atlas.IDE.Editor.DfmPropertyRules in 'Source\IDE\Editor\Atlas.IDE.Editor.DfmPropertyRules.pas',
   Atlas.IDE.Foundation.KeyHook in 'Source\IDE\Foundation\Atlas.IDE.Foundation.KeyHook.pas',
   Atlas.IDE.Signature.Editor in 'Source\IDE\Signature\Atlas.IDE.Signature.Editor.pas',
   Atlas.IDE.Completion.Editor in 'Source\IDE\Completion\Atlas.IDE.Completion.Editor.pas',

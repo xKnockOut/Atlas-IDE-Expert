@@ -46,6 +46,9 @@ type
     Safe: Boolean;
     /// <summary>Eine von mehreren gleichwertigen Korrekturen (#125): keine wird als bevorzugt angeboten.</summary>
     Alternative: Boolean;
+    /// <summary>Datei, die die Edits ändern, z. B. die Formulardatei neben der Unit (#309);
+    /// '' = die geprüfte Datei.</summary>
+    FileName: string;
     constructor Create(const ATitle: string; const AEdits: TArray<TRuleEdit>; ASafe: Boolean = False);
   end;
 
@@ -98,6 +101,9 @@ type
     Namespaces: TArray<string>;
     /// <summary>Inhalt der Formulardatei (.dfm/.fmx) neben der Unit (#123); '' ohne.</summary>
     FormText: string;
+    /// <summary>Pfad der Formulardatei aus FormText (#309); '' ohne. Korrekturen in der Formulardatei
+    /// gibt es nur damit.</summary>
+    FormFile: string;
     /// <summary>Eingestellte Delphi-Version (BDS-Nummer, #109); '' = unbekannt. Setzt TRuleEngine.Run
     /// aus den Einstellungen, wenn der Aufrufer sie nicht angibt.</summary>
     DelphiVersion: string;
@@ -187,6 +193,7 @@ begin
   Edits := AEdits;
   Safe := ASafe;
   Alternative := False;
+  FileName := '';
 end;
 
 end.

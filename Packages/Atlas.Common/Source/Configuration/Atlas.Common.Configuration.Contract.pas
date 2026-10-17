@@ -171,6 +171,9 @@ type
     Fix: TDfmFixMode;
     /// <summary>Glob-Muster für Dateien, die die Regel nicht prüft.</summary>
     Exclude: TArray<string>;
+    /// <summary>Stellen von "class" und "property" in atlas.json für Meldungen mit Index (#309).</summary>
+    ClassRange: TTextRange;
+    PropertyRange: TTextRange;
   end;
 
   /// <summary>Formatierung (#43). Given sagt, welche Werte aus atlas.json bzw. dem
