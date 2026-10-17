@@ -358,6 +358,10 @@ begin
   Assert.IsFalse(EntryOf(Entries, TAtlasKeyFunction.PeekDefinition).Disabled);
   Assert.AreEqual('Atlas.PeekDefinition', TAtlasKeyMap.CommandIdOf(TAtlasKeyFunction.PeekDefinition));
   Assert.AreEqual('Atlas.PeekReferences', TAtlasKeyMap.CommandIdOf(TAtlasKeyFunction.PeekReferences));
+  // Brotkrumenleiste (#590): Strg+Umschalt+. als Editorbefehl.
+  Assert.AreEqual($60BE, Integer(EntryOf(Entries, TAtlasKeyFunction.Breadcrumbs).Key));
+  Assert.IsFalse(EntryOf(Entries, TAtlasKeyFunction.Breadcrumbs).Disabled);
+  Assert.AreEqual('Atlas.Breadcrumbs', TAtlasKeyMap.CommandIdOf(TAtlasKeyFunction.Breadcrumbs));
   Assert.AreEqual(Ord(TAtlasKeySource.Binding), Ord(TAtlasKeyMap.SourceOf(TAtlasKeyFunction.TestUnit)));
   Settings.EditorKeysPriority := True;
   Assert.IsTrue(EntryOf(TAtlasKeyEntry.AllFromSettings(Settings), TAtlasKeyFunction.UnitSearch).Priority);
@@ -387,6 +391,7 @@ begin
   Settings.QuickOpen := False;
   Settings.NavHistory := False;
   Settings.Peek := False;
+  Settings.Breadcrumbs := False;
   Entries := TAtlasKeyEntry.AllFromSettings(Settings);
   for Entry in Entries do
     if Entry.Func in [TAtlasKeyFunction.MethodToggleUp, TAtlasKeyFunction.MethodToggleDown,
@@ -395,7 +400,7 @@ begin
       TAtlasKeyFunction.WelcomeQuickBuild, TAtlasKeyFunction.WelcomeQuickTests, TAtlasKeyFunction.NextProblem,
       TAtlasKeyFunction.PreviousProblem, TAtlasKeyFunction.QuickOpen, TAtlasKeyFunction.NavBack,
       TAtlasKeyFunction.NavForward, TAtlasKeyFunction.LastEdit, TAtlasKeyFunction.PeekDefinition,
-      TAtlasKeyFunction.PeekReferences] then
+      TAtlasKeyFunction.PeekReferences, TAtlasKeyFunction.Breadcrumbs] then
     begin
       Assert.IsTrue(Entry.Disabled, 'abgeschaltet: ' + IntToStr(Ord(Entry.Func)));
       Assert.AreEqual(Ord(TAtlasKeyStatus.NoKey), Ord(Entry.Status('IDE: Klassennavigation')),

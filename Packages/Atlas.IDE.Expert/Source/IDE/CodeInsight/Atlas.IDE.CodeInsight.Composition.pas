@@ -72,7 +72,9 @@ uses
   Atlas.IDE.Commands.QuickOpen,
   Atlas.IDE.Editor.NavHistory,
   Atlas.IDE.Results.Peek,
+  Atlas.IDE.Outline.Cache,
   Atlas.IDE.Outline.Service,
+  Atlas.IDE.Outline.Breadcrumbs,
   Atlas.IDE.UnitSearch.Commands,
   Atlas.IDE.Generate.Commands,
   Atlas.IDE.Generate.NewFile,
@@ -907,6 +909,11 @@ begin
   Result := TAtlasIdeSettings.Current.Outline;
 end;
 
+function BreadcrumbsVisible: Boolean;
+begin
+  Result := TAtlasIdeBreadcrumbs.Enabled;
+end;
+
 function DiagnosticModeVisible: Boolean;
 begin
   Result := TAtlasIdeSettings.Current.DiagnosticMode;
@@ -1048,6 +1055,9 @@ begin
   // Gliederungsfenster (#537); nur sichtbar, solange outline.enabled an ist.
   Add('Atlas.Outline', TAtlasTextId.OutlineCommand,
     Guarded(TAtlasFeature.EditorCommands, TAtlasIdeOutline.ShowWindow), OutlineVisible);
+  // Brotkrumenleiste (#590): Fokus auf das letzte Glied; nur sichtbar, solange editor.breadcrumbs an ist.
+  Add('Atlas.Breadcrumbs', TAtlasTextId.BreadcrumbsCommand,
+    Guarded(TAtlasFeature.EditorCommands, TAtlasIdeBreadcrumbs.Focus), BreadcrumbsVisible);
   Add('Atlas.Callers', TAtlasTextId.MenuIncoming, Hierarchy(TAtlasHierarchyDirection.Incoming));
   Add('Atlas.Calls', TAtlasTextId.MenuOutgoing, Hierarchy(TAtlasHierarchyDirection.Outgoing));
   Add('Atlas.Supertypes', TAtlasTextId.MenuSupertypes, Hierarchy(TAtlasHierarchyDirection.Supertypes));
@@ -1959,14 +1969,16 @@ begin
   TAtlasIdeNavHistory.Install;
   // Definition und Referenzen einblenden (#505).
   TAtlasIdePeek.Install;
-  // Gliederungsfenster (#537).
-  TAtlasIdeOutline.Install(
+  // Gemeinsamer Stand der Gliederung, Gliederungsfenster (#537) und Brotkrumenleiste (#590).
+  TAtlasIdeOutlineCache.Install(
     function: TLspSession
     begin
       Result := nil;
       if Manager <> nil then
         Result := Manager.ActiveSession;
     end);
+  TAtlasIdeOutline.Install;
+  TAtlasIdeBreadcrumbs.Install;
   // Schnell öffnen (#503): Dateiliste im Hintergrund, zuletzt geöffnete Dateien zählen.
   TAtlasIdeQuickOpen.Install(
     function: TLspSession
@@ -1993,7 +2005,9 @@ procedure StopCommands;
 begin
   TAtlasIdeQuickOpen.Uninstall;
   TAtlasIdePeek.Uninstall;
+  TAtlasIdeBreadcrumbs.Uninstall;
   TAtlasIdeOutline.Uninstall;
+  TAtlasIdeOutlineCache.Uninstall;
   TAtlasIdeNavHistory.Uninstall;
   TAtlasIdeUnitSearch.Uninstall;
   TAtlasIdeGenerate.Uninstall;
@@ -3292,6 +3306,7 @@ begin
         ShortcutTips.ThemeChanged;
       TAtlasIdeBookmarks.ThemeChanged;
       TAtlasIdeOutline.ThemeChanged;
+      TAtlasIdeBreadcrumbs.ThemeChanged;
     end;
   // Zuerst entscheiden, ob Atlas abgesichert startet (#722): Davon hängt ab, was angemeldet wird.
   if SafeMode = nil then
@@ -3333,6 +3348,8 @@ begin
       TAtlasIdeBookmarks.ApplySettings;
       // outline.* (#537).
       TAtlasIdeOutline.ApplySettings;
+      // editor.breadcrumbs* (#590).
+      TAtlasIdeBreadcrumbs.ApplySettings;
       // notifications.* (#601): an oder aus, Höchstzahl, Verhalten je Quelle.
       if Notifications <> nil then
         Notifications.ApplySettings;
