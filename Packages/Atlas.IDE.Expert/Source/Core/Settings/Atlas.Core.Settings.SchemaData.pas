@@ -11,7 +11,7 @@ function AtlasSchemaJson: string;
 implementation
 
 const
-  Lines: array[0..1109] of string = (
+  Lines: array[0..1127] of string = (
     '{',
     '  "$schema": "http://json-schema.org/draft-07/schema#",',
     '  "title": "Atlas-Konfiguration",',
@@ -549,6 +549,24 @@ const
     '      "x-page": "Editor",',
     '      "x-control": "Kontrollkästchen",',
     '      "x-issue": "#66"',
+    '    },',
+    '    "experimental": {',
+    '      "type": "object",',
+    '      "description": "Experimentelle Funktionen (#834): riskant oder noch unreif, abschaltbar, als „Experimentell“ gekennzeichnet und nach der Installation aus.",',
+    '      "additionalProperties": false,',
+    '      "properties": {',
+    '        "enabled": {',
+    '          "type": "boolean",',
+    '          "default": false,',
+    '          "description": "Hauptschalter: false = keine experimentelle Funktion wirkt, auch wenn ihr eigener Schalter an ist; die Einzelschalter behalten ihren Wert. true = die Einzelschalter (Kennzeic' + 'hen „Experimentell“, Vorgabe aus) gelten.",',
+    '          "x-issue": "#834"',
+    '        }',
+    '      },',
+    '      "x-scope": "global",',
+    '      "x-area": "general",',
+    '      "x-page": "Allgemein",',
+    '      "x-control": "Kontrollkästchen „Experimentelle Funktionen erlauben“",',
+    '      "x-issue": "#834"',
     '    },',
     '    "slashCommands": {',
     '      "type": "object",',

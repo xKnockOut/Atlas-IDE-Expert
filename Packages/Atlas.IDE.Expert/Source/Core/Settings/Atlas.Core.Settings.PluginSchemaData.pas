@@ -12,11 +12,11 @@ function AtlasPluginSchemaJson: string;
 implementation
 
 const
-  Lines: array[0..2007] of string = (
+  Lines: array[0..2018] of string = (
     '{',
     '  "$schema": "http://json-schema.org/draft-07/schema#",',
     '  "title": "Atlas-Plugin-Einstellungen",',
-    '  "description": "Katalog der Einstellungen des IDE-Plugins (#227, #604, #723). Schlüssel = Name in TAtlasPluginSettings.Load/Save (Registry HKCU\\Software\\Atlas\\IdePlugin; ein Teil liegt in %APPDAT' + 'A%\\Atlas\\settings.json). x-key: Schlüssel in Doku und Exportdatei atlas-settings.json; x-area: Bereich für Export, Import und Zurücksetzen (x-areas); x-page: Seite; x-state: interner Zustand (nicht ' + 'exportiert, nicht zurückgesetzt, nicht markiert); x-machine: gilt nur für diesen Rechner (nicht exportiert); x-path: Pfad (Benutzerordner als Pfadmakro, sonst ausgelassen); x-secret: Zugangsdaten; x-f' + 'ormerKeys: frühere Schlüssel, die der Import umrechnet; x-format \"shortcut\": Tastenkürzel (TShortCut) für die Anzeige; x-team: Pfad in der Projektdatei .atlas, deren Wert die Einstellung überdeckt; ' + 'x-project: Pfad in atlas.json, dessen Wert sie überdeckt; x-quickToggle, x-caption, x-captionEn, x-drawing, x-feature: Schnellschalter (#604). Neue Plugin-Einstellung: Eintrag hier (mit x-key, x-area,' + ' x-page), Feld in TAtlasPluginSettings, Test; dann pwsh Tools/Update-ConfigDoc.ps1.",',
+    '  "description": "Katalog der Einstellungen des IDE-Plugins (#227, #604, #723). Schlüssel = Name in TAtlasPluginSettings.Load/Save (Registry HKCU\\Software\\Atlas\\IdePlugin; ein Teil liegt in %APPDAT' + 'A%\\Atlas\\settings.json). x-key: Schlüssel in Doku und Exportdatei atlas-settings.json; x-area: Bereich für Export, Import und Zurücksetzen (x-areas); x-page: Seite; x-state: interner Zustand (nicht ' + 'exportiert, nicht zurückgesetzt, nicht markiert); x-machine: gilt nur für diesen Rechner (nicht exportiert); x-path: Pfad (Benutzerordner als Pfadmakro, sonst ausgelassen); x-secret: Zugangsdaten; x-f' + 'ormerKeys: frühere Schlüssel, die der Import umrechnet; x-format \"shortcut\": Tastenkürzel (TShortCut) für die Anzeige; x-team: Pfad in der Projektdatei .atlas, deren Wert die Einstellung überdeckt; ' + 'x-project: Pfad in atlas.json, dessen Wert sie überdeckt; x-quickToggle, x-caption, x-captionEn, x-drawing, x-feature: Schnellschalter (#604); x-experimental: experimentelle Funktion (#834), Vorgabe a' + 'us, wirkt nur mit experimental.enabled. Neue Plugin-Einstellung: Eintrag hier (mit x-key, x-area, x-page), Feld in TAtlasPluginSettings, Test; dann pwsh Tools/Update-ConfigDoc.ps1.",',
     '  "x-version": 1,',
     '  "x-areas": {',
     '    "editor": {',
@@ -92,6 +92,17 @@ const
     '      "x-caption": "Diagnosemodus",',
     '      "x-captionEn": "Diagnostic mode",',
     '      "x-issue": "#479"',
+    '    },',
+    '    "ExperimentalEnabled": {',
+    '      "type": "boolean",',
+    '      "default": false,',
+    '      "x-key": "experimental.enabled",',
+    '      "x-area": "general",',
+    '      "x-page": "Allgemein",',
+    '      "x-quickToggle": true,',
+    '      "x-caption": "Experimentelle Funktionen erlauben",',
+    '      "x-captionEn": "Allow experimental features",',
+    '      "x-issue": "#834"',
     '    },',
     '    "PairColors": {',
     '      "type": "boolean",',
@@ -295,7 +306,7 @@ const
     '    "DfmPropertyRules": {',
     '      "type": "boolean",',
     '      "default": true,',
-    '      "x-key": "dfmPropertyRules.apply",',
+    '      "x-key": "dfmRules.apply",',
     '      "x-area": "editor",',
     '      "x-feature": "Palette",',
     '      "x-page": "Editor",',

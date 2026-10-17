@@ -16,7 +16,58 @@ uses
   System.SysUtils;
 
 const
-  Profile0: array[0..48] of string = (
+  Profile0: array[0..49] of string = (
+    '{',
+    '  "format": "atlas-settings",',
+    '  "formatVersion": 1,',
+    '  "schemaVersion": 1,',
+    '  "name": "Alles an, auch experimentell",',
+    '  "nameEn": "Everything on, including experimental",',
+    '  "description": "Wie „Alles an“, dazu der Hauptschalter experimental.enabled und alle experimentellen Funktionen (#834). Andere Werte bleiben (Zusammenführen).",',
+    '  "descriptionEn": "Like “Everything on”, plus the master switch experimental.enabled and every experimental feature (#834). Other values stay (merge).",',
+    '  "mode": "merge",',
+    '  "settings": {',
+    '    "completion.enabled": true,',
+    '    "highlight.pairColors": true,',
+    '    "highlight.pairGuides": true,',
+    '    "highlight.pairOwners": true,',
+    '    "highlight.inactiveDim": true,',
+    '    "problems.enabled": true,',
+    '    "inlayHints.parameterNames": true,',
+    '    "notes.enabled": true,',
+    '    "bookmarks.named": true,',
+    '    "codeLens.metrics": true,',
+    '    "codeLens.tests": true,',
+    '    "keys.generateMenu": true,',
+    '    "todos.list": true,',
+    '    "baseline.update": true,',
+    '    "metrics.report": true,',
+    '    "dfmRules.apply": true,',
+    '    "editor.hoverTooltip": true,',
+    '    "completion.filterChips": true,',
+    '    "completion.preview": true,',
+    '    "completion.groupInherited": true,',
+    '    "completion.learning": true,',
+    '    "completion.favorites": true,',
+    '    "build.checkOnSave": true,',
+    '    "compiler.mcpBuild": true,',
+    '    "build.onOpen": true,',
+    '    "startProfiles.enabled": true,',
+    '    "startProfiles.statusField": true,',
+    '    "tests.run": true,',
+    '    "tests.afterBuild": true,',
+    '    "tests.debug": true,',
+    '    "build.releaseGuard": true,',
+    '    "welcomePage.enabled": true,',
+    '    "welcomePage.projectSetup": true,',
+    '    "welcomePage.tests.ci.login": true,',
+    '    "welcomePage.quickActions": true,',
+    '    "shortcutTips.enabled": true,',
+    '    "notifications.enabled": true,',
+    '    "experimental.enabled": true',
+    '  }',
+    '}');
+  Profile1: array[0..48] of string = (
     '{',
     '  "format": "atlas-settings",',
     '  "formatVersion": 1,',
@@ -42,7 +93,7 @@ const
     '    "todos.list": true,',
     '    "baseline.update": true,',
     '    "metrics.report": true,',
-    '    "dfmPropertyRules.apply": true,',
+    '    "dfmRules.apply": true,',
     '    "editor.hoverTooltip": true,',
     '    "completion.filterChips": true,',
     '    "completion.preview": true,',
@@ -66,7 +117,7 @@ const
     '    "notifications.enabled": true',
     '  }',
     '}');
-  Profile1: array[0..10] of string = (
+  Profile2: array[0..10] of string = (
     '{',
     '  "format": "atlas-settings",',
     '  "formatVersion": 1,',
@@ -78,7 +129,7 @@ const
     '  "mode": "replace",',
     '  "settings": {}',
     '}');
-  Profile2: array[0..48] of string = (
+  Profile3: array[0..48] of string = (
     '{',
     '  "format": "atlas-settings",',
     '  "formatVersion": 1,',
@@ -104,7 +155,7 @@ const
     '    "todos.list": false,',
     '    "baseline.update": false,',
     '    "metrics.report": false,',
-    '    "dfmPropertyRules.apply": false,',
+    '    "dfmRules.apply": false,',
     '    "editor.hoverTooltip": false,',
     '    "completion.filterChips": false,',
     '    "completion.preview": false,',
@@ -140,21 +191,24 @@ end;
 
 function AtlasProfileFiles: TArray<string>;
 begin
-  SetLength(Result, 3);
-  Result[0] := 'alles-an.json';
-  Result[1] := 'atlas-standard.json';
-  Result[2] := 'minimal.json';
+  SetLength(Result, 4);
+  Result[0] := 'alles-an-experimentell.json';
+  Result[1] := 'alles-an.json';
+  Result[2] := 'atlas-standard.json';
+  Result[3] := 'minimal.json';
 end;
 
 function AtlasProfileJson(const AFileName: string): string;
 begin
   Result := '';
-  if SameText(AFileName, 'alles-an.json') then
+  if SameText(AFileName, 'alles-an-experimentell.json') then
     Result := Joined(Profile0);
-  if SameText(AFileName, 'atlas-standard.json') then
+  if SameText(AFileName, 'alles-an.json') then
     Result := Joined(Profile1);
-  if SameText(AFileName, 'minimal.json') then
+  if SameText(AFileName, 'atlas-standard.json') then
     Result := Joined(Profile2);
+  if SameText(AFileName, 'minimal.json') then
+    Result := Joined(Profile3);
 end;
 
 end.

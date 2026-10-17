@@ -62,6 +62,9 @@ type
     TeamPath: string;
     /// <summary>Teilschema für die Prüfung eines Werts.</summary>
     SchemaJson: string;
+    /// <summary>Experimentelle Funktion (x-experimental, #834): Vorgabe aus, wirkt nur mit experimental.enabled.
+    /// </summary>
+    Experimental: Boolean;
     /// <summary>Wird exportiert, importiert und zurückgesetzt (weder Zustand noch Rechnerwert).</summary>
     function Transferable: Boolean;
   end;
@@ -338,6 +341,7 @@ begin
       Entry.ProjectPath := TextOf(Schema, 'x-project');
       Entry.TeamPath := TextOf(Schema, 'x-team');
       Entry.SchemaJson := Schema.ToJSON;
+      Entry.Experimental := Flag(Schema, 'x-experimental');
       FEntries.Add(Entry);
     end;
   finally
@@ -350,14 +354,21 @@ var
   Entry: TAtlasCatalogEntry;
   Plugin, Index: Integer;
 begin
-  // Pfad mit Plugin-Einstellung (umgeleitet, x-plugin): nur einmal, als Plugin-Einstellung.
-  if IndexOfKey(AKey) >= 0 then
-    Exit;
-  Plugin := -1;
-  if TextOf(ASchema, 'x-plugin') <> '' then
+  // Pfad mit Plugin-Einstellung (umgeleitet, x-plugin): nur einmal, als Plugin-Einstellung; x-experimental
+  // gilt an beiden Stellen.
+  Plugin := IndexOfKey(AKey);
+  if (Plugin < 0) and (TextOf(ASchema, 'x-plugin') <> '') then
     Plugin := IndexOfName(TextOf(ASchema, 'x-plugin'));
   if Plugin >= 0 then
+  begin
+    if Flag(ASchema, 'x-experimental') then
+    begin
+      Entry := FEntries[Plugin];
+      Entry.Experimental := True;
+      FEntries[Plugin] := Entry;
+    end;
     Exit;
+  end;
   Entry := Default(TAtlasCatalogEntry);
   Entry.Key := AKey;
   Entry.Name := AKey;
@@ -381,6 +392,7 @@ begin
   Entry.Secret := Flag(ASchema, 'x-secret');
   Entry.FormerKeys := StringsOf(ASchema, 'x-formerKeys');
   Entry.SchemaJson := ASchema.ToJSON;
+  Entry.Experimental := Flag(ASchema, 'x-experimental');
   FEntries.Add(Entry);
 end;
 
