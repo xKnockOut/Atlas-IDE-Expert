@@ -607,6 +607,8 @@ type
     ContinuePatternMinLines: Integer;
     /// <summary>Mehrere Einfügemarken (#589, editor.multiCursor, experimentell).</summary>
     MultiCursor: Boolean;
+    /// <summary>Lokale Bezeichner beim Tippen mitziehen (#658, editor.linkedEditing, experimentell).</summary>
+    LinkedEditing: Boolean;
     /// <summary>MultiCursorModifierAlt oder MultiCursorModifierCtrl (#589, editor.multiCursorModifier).</summary>
     MultiCursorModifier: string;
     /// <summary>Kürzel der Mehrfachmarken (#589, keys.multiCursor.*): nächstes Vorkommen (Strg+D), Überspringen
@@ -1211,6 +1213,7 @@ begin
   Result.ContinuePattern := True;
   Result.ContinuePatternMinLines := 2;
   Result.MultiCursor := False;
+  Result.LinkedEditing := False;
   Result.MultiCursorModifier := MultiCursorModifierAlt;
   Result.MultiCursorNextKey := $4044; // Strg+D
   Result.MultiCursorSkipKey := $4044; // Strg+K, Strg+D
@@ -1680,6 +1683,7 @@ begin
   ContinuePattern := AStore.ReadInteger('ContinuePattern', BoolValue(Default.ContinuePattern)) <> 0;
   ContinuePatternMinLines := AStore.ReadInteger('ContinuePatternMinLines', Default.ContinuePatternMinLines);
   MultiCursor := AStore.ReadInteger('MultiCursor', BoolValue(Default.MultiCursor)) <> 0;
+  LinkedEditing := AStore.ReadInteger('LinkedEditing', BoolValue(Default.LinkedEditing)) <> 0;
   MultiCursorModifier := AStore.ReadString('MultiCursorModifier', Default.MultiCursorModifier);
   MultiCursorNextKey := AStore.ReadInteger('MultiCursorNextKey', Default.MultiCursorNextKey);
   MultiCursorSkipKey := AStore.ReadInteger('MultiCursorSkipKey', Default.MultiCursorSkipKey);
@@ -1990,6 +1994,7 @@ begin
   AStore.WriteInteger('ContinuePattern', BoolValue(ContinuePattern));
   AStore.WriteInteger('ContinuePatternMinLines', ContinuePatternMinLines);
   AStore.WriteInteger('MultiCursor', BoolValue(MultiCursor));
+  AStore.WriteInteger('LinkedEditing', BoolValue(LinkedEditing));
   AStore.WriteString('MultiCursorModifier', MultiCursorModifier);
   AStore.WriteInteger('MultiCursorNextKey', MultiCursorNextKey);
   AStore.WriteInteger('MultiCursorSkipKey', MultiCursorSkipKey);

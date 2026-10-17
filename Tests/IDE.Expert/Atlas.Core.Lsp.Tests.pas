@@ -79,6 +79,9 @@ type
     procedure ReadsCodeActionsAndRunsCommands;
     [Test]
     procedure RequestsTypingSelectionAndTypeDefinition;
+    /// <summary>#658: linkedEditingRange mit "atlasLocals", Antwort unverändert an den Aufrufer.</summary>
+    [Test]
+    procedure RequestsLinkedLocals;
     [Test]
     procedure RequestsDeclarationsAndDefinitions;
     [Test]
@@ -1704,6 +1707,38 @@ begin
     Locations := Session.TypeDefinition('C:\P\A.pas', 3, 4);
     Assert.AreEqual(1, Integer(Length(Locations)));
     Assert.AreEqual(12, Locations[0].Line);
+  finally
+    Session.Free;
+    Client.Free;
+    Seen.Free;
+    Replies.Free;
+  end;
+end;
+
+procedure TLspSessionTests.RequestsLinkedLocals;
+var
+  Replies: TDictionary<string, string>;
+  Seen: TStringList;
+  Client: TLspClient;
+  Session: TLspSession;
+  Answer: TJSONValue;
+begin
+  Replies := TDictionary<string, string>.Create;
+  Seen := TStringList.Create;
+  Client := CannedClient(Replies, Seen);
+  Session := TLspSession.Create(Client);
+  try
+    Replies.Add('textDocument/linkedEditingRange', '{"ranges":[{"start":{"line":3,"character":2},' +
+      '"end":{"line":3,"character":8}}],"atlasConflicts":[]}');
+    Answer := Session.LinkedLocals('C:\P\A.pas', 3, 4);
+    try
+      Assert.IsTrue(Answer is TJSONObject);
+      Assert.AreEqual(1, TJSONObject(Answer).GetValue<TJSONArray>('ranges').Count);
+    finally
+      Answer.Free;
+    end;
+    Assert.Contains(Seen.Text, '"atlasLocals":true');
+    Assert.Contains(Seen.Text, '"position":{"line":3,"character":4}');
   finally
     Session.Free;
     Client.Free;
