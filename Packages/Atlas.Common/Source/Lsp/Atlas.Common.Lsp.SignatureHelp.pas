@@ -5,6 +5,11 @@
 // (TXmlDoc mit <inheritdoc/>, #654).
 // Der Aufruf wird an den Tokens vor dem Cursor erkannt: die innerste offene Klammer hinter
 // einem Bezeichner; Kommas auf derselben Ebene zählen den aktiven Parameter.
+// Überladungen nach Argumenttypen (#498): Jedes bisherige Argument bekommt einen Typ (Literale: Zeichen, String,
+// Zahl, Boolean, nil, Menge; Bezeichner über die Namensauflösung, Aufzählungswerte über ihren Typ) und wird mit dem
+// Parametertyp verglichen (TNameResolver.ArgumentFits). Unbekannte Typen gelten als verträglich. Jede Signatur
+// trägt das Ergebnis in data.fits und data.mismatch (erstes unverträgliches Argument, -1); vorgewählt wird die
+// erste verträgliche mit genug Parametern.
 
 interface
 
@@ -28,6 +33,10 @@ type
     /// <summary>Nullbasiert.</summary>
     ActiveParameter: Integer;
     Found: Boolean;
+    /// <summary>Tokens der bisherigen Argumente (Index in ATree.Tokens, Last einschließlich), das gerade getippte
+    /// eingeschlossen; First &gt; Last bei leerem Argument (#498).</summary>
+    ArgumentFirst: TArray<Integer>;
+    ArgumentLast: TArray<Integer>;
   end;
 
   TSignatureParameter = record
@@ -35,6 +44,8 @@ type
     StartIndex: Integer;
     EndIndex: Integer;
     Documentation: string;
+    /// <summary>Typ hinter dem Doppelpunkt ohne Vorgabewert; '' bei untypisierten Parametern (#498).</summary>
+    TypeName: string;
   end;
 
   TSignature = record
@@ -43,6 +54,10 @@ type
     Parameters: TArray<TSignatureParameter>;
     /// <summary>Kopf mit Typ-Präfix (procedure TFoo.Bar), also der Rumpf einer Methode.</summary>
     Qualified: Boolean;
+    /// <summary>Alle bisherigen Argumente sind mit ihren Parametern verträglich (#498).</summary>
+    Fits: Boolean;
+    /// <summary>Erstes unverträgliches Argument, -1 ohne.</summary>
+    Mismatch: Integer;
   end;
 
   TSignatureHelp = record
@@ -75,6 +90,12 @@ type
     class function Capability: TJSONObject; static;
     /// <summary>Innerster offener Aufruf vor APosition.</summary>
     class function CallSiteAt(ATree: TSyntaxTree; const APosition: TTextPosition): TCallSite; static;
+    /// <summary>Typ des Arguments aus ATokens[AFirst..ALast] (#498): Char, string, Integer, Double, Boolean, nil,
+    /// [] oder der Typ eines Bezeichners; '' wenn unbekannt.</summary>
+    class function ArgumentType(AResolver: TNameResolver; ATree: TSyntaxTree; const AFileName: string;
+      AFirst, ALast: Integer): string; static;
+    /// <summary>Setzt Fits und Mismatch von ASignature für AArgumentTypes.</summary>
+    class procedure Match(var ASignature: TSignature; const AArgumentTypes: TArray<string>); static;
     /// <summary>Kopf einer Routine ab ALine/AColumn bis zum ; hinter der Parameterliste, auf eine Zeile gebracht.</summary>
     class function ParseSignature(const ALines: TArray<string>; ALine, AColumn: Integer): TSignature; static;
     class function HelpAt(AResolver: TNameResolver; const AIndex: ISymbolIndex; ATree: TSyntaxTree;
@@ -90,6 +111,7 @@ implementation
 uses
   Atlas.Common.Lsp.Internals.Namespaces,
   Atlas.Common.Index.Files,
+  System.Math,
   System.StrUtils,
   System.Generics.Collections,
   Atlas.Common.Documents.Uris,
@@ -185,8 +207,9 @@ end;
 class function TLspSignatureHelp.CallSiteAt(ATree: TSyntaxTree; const APosition: TTextPosition): TCallSite;
 var
   Tokens: TArray<TPascalToken>;
-  Index, Last, Depth, Commas, Previous: Integer;
+  Index, Last, Depth, Commas, Previous, SpanEnd: Integer;
   Token: TPascalToken;
+  Firsts, Lasts: TArray<Integer>;
 begin
   Result := Default(TCallSite);
   if ATree = nil then
@@ -201,6 +224,10 @@ begin
   end;
   Depth := 0;
   Commas := 0;
+  // Argumente rückwärts gesammelt (#498): SpanEnd ist das letzte Token des Arguments links vom nächsten Komma.
+  SpanEnd := Last;
+  Firsts := nil;
+  Lasts := nil;
   for Index := Last downto 0 do
   begin
     Token := Tokens[Index];
@@ -223,15 +250,27 @@ begin
         Result.NamePosition := Tokens[Previous].StartPos;
         Result.ActiveParameter := Commas;
         Result.Found := True;
+        Firsts := [Index + 1] + Firsts;
+        Lasts := [SpanEnd] + Lasts;
+        Result.ArgumentFirst := Firsts;
+        Result.ArgumentLast := Lasts;
         Exit;
       end;
       // Klammer um einen Ausdruck oder eine Menge: sie ist selbst ein Argument des äußeren Aufrufs.
       Commas := 0;
+      Firsts := nil;
+      Lasts := nil;
+      SpanEnd := Last;
     end
     else if Depth = 0 then
     begin
       if Token.IsSymbol(',') then
-        Inc(Commas)
+      begin
+        Inc(Commas);
+        Firsts := [Index + 1] + Firsts;
+        Lasts := [SpanEnd] + Lasts;
+        SpanEnd := Index - 1;
+      end
       else if Token.IsSymbol(';') or Token.IsKeyword('begin') or Token.IsKeyword('end') or
         Token.IsKeyword('then') or Token.IsKeyword('do') or Token.IsKeyword('var') then
         Exit;
@@ -249,8 +288,8 @@ var
 
   procedure AddGroup(AFrom, ATo: Integer);
   var
-    GroupText, NamesText, Item, Modifier: string;
-    Offset, Skip, ColonAt, Search: Integer;
+    GroupText, NamesText, Item, Modifier, TypeText: string;
+    Offset, Skip, ColonAt, Search, EqualAt: Integer;
   begin
     // AFrom/ATo sind 1-basierte Positionen in Text; ATo exklusiv.
     GroupText := Copy(Text, AFrom, ATo - AFrom);
@@ -260,10 +299,22 @@ var
     if GroupText = '' then
       Exit;
     ColonAt := Pos(':', GroupText);
+    TypeText := '';
     if ColonAt = 0 then
       NamesText := GroupText
     else
+    begin
       NamesText := Copy(GroupText, 1, ColonAt - 1);
+      // Typ ohne Vorgabewert, ohne Unit davor (System.Boolean → Boolean, #498).
+      TypeText := Copy(GroupText, ColonAt + 1, MaxInt);
+      EqualAt := Pos('=', TypeText);
+      if EqualAt > 0 then
+        TypeText := Copy(TypeText, 1, EqualAt - 1);
+      TypeText := Trim(TypeText);
+      if (Pos('<', TypeText) = 0) and (Pos(' ', TypeText) = 0) and (LastDelimiter('.', TypeText) > 0) then
+        TypeText := Copy(TypeText, LastDelimiter('.', TypeText) + 1, MaxInt);
+    end;
+    Parameter.TypeName := TypeText;
     // const/var/out/constref vor den Namen überspringen.
     for Modifier in ParameterModifiers do
       if StartsText(Modifier, NamesText) then
@@ -291,6 +342,8 @@ var
 
 begin
   Result := Default(TSignature);
+  Result.Fits := True;
+  Result.Mismatch := -1;
   // Kopf einsammeln: bis zum ; außerhalb von Klammern.
   Raw := '';
   Depth := 0;
@@ -376,6 +429,127 @@ begin
   end;
 end;
 
+/// <summary>Name ohne Unit bzw. umgebenden Typ davor (System.Boolean → Boolean); Generics bleiben.</summary>
+function LastPart(const AName: string): string;
+begin
+  if Pos('<', AName) > 0 then
+    Result := AName
+  else
+    Result := Copy(AName, LastDelimiter('.', AName) + 1, MaxInt);
+end;
+
+/// <summary>Zeichen in einem String-Literal ('it''s' = 4); -1 bei mehrzeiligen.</summary>
+function LiteralLength(const AText: string): Integer;
+begin
+  if StartsStr('''''''', AText) then
+    Exit(-1);
+  Result := Length(StringReplace(Copy(AText, 2, Length(AText) - 2), '''''', '''', [rfReplaceAll]));
+end;
+
+class function TLspSignatureHelp.ArgumentType(AResolver: TNameResolver; ATree: TSyntaxTree; const AFileName: string;
+  AFirst, ALast: Integer): string;
+var
+  Tokens, Parts: TArray<TPascalToken>;
+  Token: TPascalToken;
+  Index, Chars, Start, Count: Integer;
+  Literal: Boolean;
+  Resolved: TResolvedSymbol;
+begin
+  Result := '';
+  if (ATree = nil) or (AFirst > ALast) then
+    Exit;
+  Tokens := ATree.Tokens;
+  Parts := nil;
+  for Index := Max(AFirst, 0) to Min(ALast, High(Tokens)) do
+    if not (Tokens[Index].Kind in [TPascalTokenKind.Comment, TPascalTokenKind.Directive]) then
+      Parts := Parts + [Tokens[Index]];
+  if Length(Parts) = 0 then
+    Exit;
+  if Parts[0].IsSymbol('[') then
+    Exit('[]');
+  // Zeichen und Strings, auch zusammengesetzt wie 'a'#13'b'; ein offenes Literal wird noch getippt.
+  Chars := 0;
+  Literal := True;
+  for Token in Parts do
+    if not Token.Terminated then
+      Exit
+    else if Token.Kind = TPascalTokenKind.StringLiteral then
+    begin
+      Count := LiteralLength(Token.Text);
+      if Count < 0 then
+        Exit('string');
+      Inc(Chars, Count);
+    end
+    else if Token.Kind = TPascalTokenKind.CharLiteral then
+      Inc(Chars)
+    else
+      Literal := False;
+  if Literal then
+  begin
+    if Chars = 1 then
+      Result := 'Char'
+    else
+      Result := 'string';
+    Exit;
+  end;
+  // Zahlen, auch mit Vorzeichen.
+  Start := 0;
+  if (Length(Parts) = 2) and (Parts[0].IsSymbol('-') or Parts[0].IsSymbol('+')) then
+    Start := 1;
+  if (Length(Parts) = Start + 1) and (Parts[Start].Kind = TPascalTokenKind.Number) then
+  begin
+    if not CharInSet(Parts[Start].Text[1], ['$', '%']) and ((Pos('.', Parts[Start].Text) > 0) or
+      ContainsText(Parts[Start].Text, 'e')) then
+      Result := 'Double'
+    else
+      Result := 'Integer';
+    Exit;
+  end;
+  if Length(Parts) = 1 then
+  begin
+    if Parts[0].IsKeyword('nil') then
+      Exit('nil');
+    if (Parts[0].Kind = TPascalTokenKind.Identifier) and (SameText(Parts[0].Text, 'True') or
+      SameText(Parts[0].Text, 'False')) then
+      Exit('Boolean');
+  end;
+  // Bezeichner oder Kette A.B.C; alles andere (Aufrufe, Ausdrücke) bleibt unbekannt.
+  if not Odd(Length(Parts)) then
+    Exit;
+  for Index := 0 to High(Parts) do
+    if Odd(Index) and not Parts[Index].IsSymbol('.') then
+      Exit
+    else if not Odd(Index) and (Parts[Index].Kind <> TPascalTokenKind.Identifier) then
+      Exit;
+  if AResolver = nil then
+    Exit;
+  Resolved := AResolver.Resolve(ATree, AFileName, Parts[High(Parts)].StartPos);
+  if not (Resolved.Kind in [TResolvedKind.Symbol, TResolvedKind.Local]) then
+    Exit;
+  // Aufzählungswerte tragen ihren Typ als Container; Routinen bleiben unbekannt (Methodenzeiger).
+  if Resolved.SymbolKind = TIndexSymbolKind.EnumMember then
+    Result := LastPart(Resolved.Container)
+  else if Resolved.SymbolKind in [TIndexSymbolKind.Variable, TIndexSymbolKind.Field, TIndexSymbolKind.Property_,
+    TIndexSymbolKind.Constant] then
+    Result := LastPart(Trim(Resolved.TypeName));
+end;
+
+class procedure TLspSignatureHelp.Match(var ASignature: TSignature; const AArgumentTypes: TArray<string>);
+var
+  Index: Integer;
+begin
+  ASignature.Fits := True;
+  ASignature.Mismatch := -1;
+  // Zu viele Argumente zählt der Hint selbst; hier nur die Typen.
+  for Index := 0 to Min(High(AArgumentTypes), High(ASignature.Parameters)) do
+    if not TNameResolver.ArgumentFits(ASignature.Parameters[Index].TypeName, AArgumentTypes[Index]) then
+    begin
+      ASignature.Fits := False;
+      ASignature.Mismatch := Index;
+      Exit;
+    end;
+end;
+
 procedure ApplyDocumentation(var ASignature: TSignature; const ADoc: TXmlDoc);
 var
   Section: TXmlDocSection;
@@ -425,6 +599,7 @@ var
   Key: string;
   Index: Integer;
   Reader: TDocReadText;
+  ArgumentTypes: TArray<string>;
 begin
   Result := Default(TSignatureHelp);
   Site := CallSiteAt(ATree, APosition);
@@ -494,20 +669,36 @@ begin
     Starts.Free;
   end;
   Result.ActiveParameter := Site.ActiveParameter;
-  // Erste Überladung mit genug Parametern.
-  Result.ActiveSignature := 0;
+  // Argumenttypen (#498), erst nach dem Einsammeln der Überladungen aufgelöst.
+  ArgumentTypes := nil;
+  for Index := 0 to High(Site.ArgumentFirst) do
+    ArgumentTypes := ArgumentTypes + [ArgumentType(AResolver, ATree, AFileName, Site.ArgumentFirst[Index],
+      Site.ArgumentLast[Index])];
   for Index := 0 to High(Result.Signatures) do
-    if Length(Result.Signatures[Index].Parameters) > Site.ActiveParameter then
+    Match(Result.Signatures[Index], ArgumentTypes);
+  // Erste verträgliche Überladung mit genug Parametern, sonst die erste mit genug Parametern.
+  Result.ActiveSignature := -1;
+  for Index := 0 to High(Result.Signatures) do
+    if (Length(Result.Signatures[Index].Parameters) > Site.ActiveParameter) and Result.Signatures[Index].Fits then
     begin
       Result.ActiveSignature := Index;
       Break;
     end;
+  if Result.ActiveSignature < 0 then
+    for Index := 0 to High(Result.Signatures) do
+      if Length(Result.Signatures[Index].Parameters) > Site.ActiveParameter then
+      begin
+        Result.ActiveSignature := Index;
+        Break;
+      end;
+  if Result.ActiveSignature < 0 then
+    Result.ActiveSignature := 0;
 end;
 
 class function TLspSignatureHelp.ToJson(const AHelp: TSignatureHelp): TJSONValue;
 var
   Signatures, Parameters, LabelRange: TJSONArray;
-  Signature, Parameter, Documentation: TJSONObject;
+  Signature, Parameter, Documentation, Data: TJSONObject;
   Item: TSignature;
   Index: Integer;
 begin
@@ -539,6 +730,11 @@ begin
       if Item.Parameters[Index].Documentation <> '' then
         Parameter.AddPair('documentation', Item.Parameters[Index].Documentation);
     end;
+    // Verträglichkeit der bisherigen Argumente (#498), für den Parameter-Hint des Plugins.
+    Data := TJSONObject.Create;
+    Data.AddPair('fits', TJSONBool.Create(Item.Fits));
+    Data.AddPair('mismatch', TJSONNumber.Create(Item.Mismatch));
+    Signature.AddPair('data', Data);
   end;
   Result := TJSONObject.Create;
   TJSONObject(Result).AddPair('signatures', Signatures);
