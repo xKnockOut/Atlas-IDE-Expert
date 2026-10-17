@@ -295,6 +295,10 @@ begin
       Result := 'Atlas.Notifications';
     TAtlasKeyFunction.HideElement:
       Result := 'Atlas.HideElement';
+    TAtlasKeyFunction.NextProblem:
+      Result := 'Atlas.NextProblem';
+    TAtlasKeyFunction.PreviousProblem:
+      Result := 'Atlas.PreviousProblem';
   else
     Result := '';
   end;

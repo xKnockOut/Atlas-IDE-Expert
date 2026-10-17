@@ -10,6 +10,13 @@
 // Unterdrückungskommentar (dann meldet der Server sie nicht mehr), andere
 // (Compiler) einen Eintrag in .atlas je Codezeile oder Datei; jede gezeichnete
 // Unterstreichung meldet sich mit Regel bei TAtlasIdeElements.
+// Fehlertext am Zeilenende (#509, editor.inlineDiagnostics): hinter dem
+// letzten Zeichen der Text der schwersten Diagnose, die in der Zeile beginnt,
+// gekürzt und mit „(+n)“ für weitere, in ihrer Farbe gedimmt zum Hintergrund
+// des Editors. Den Platz hinter dem Zeilenende teilt er mit Inlay-Hints und
+// Blockende-Beschriftungen (TAtlasLineTail). In der Cursorzeile erscheint der
+// Text erst eine Sekunde nach dem letzten Tastendruck; ein Zeitgeber zeichnet
+// danach neu.
 
 interface
 
@@ -17,6 +24,8 @@ uses
   System.SysUtils,
   System.Types,
   Vcl.Controls,
+  Vcl.ExtCtrls,
+  Vcl.Graphics,
   ToolsAPI,
   ToolsAPI.Editor,
   Atlas.Core.Problems.Contract,
@@ -35,6 +44,19 @@ type
     FEventsRef: INTACodeEditorEvents;
     FIndex: Integer;
     FStore: TAtlasProblemStore;
+    // Fehlertext am Zeilenende (#509).
+    FFont: TFont;
+    FFontKey: string;
+    FTimer: TTimer;
+    FCursorKey: string;
+    FCursorText: string;
+    FTypedAt: Cardinal;
+    /// <summary>Merkt Tastendrücke in der Cursorzeile; True, solange die Pause nicht um ist.</summary>
+    function Typing(const AFileName: string; ALine: Integer; const AText: string): Boolean;
+    procedure TimerTick(Sender: TObject);
+    procedure EnsureFont(const AEditorFont: TFont);
+    procedure PaintInline(const Rect: TRect; const Context: INTACodeEditorPaintContext;
+      const AProblems: TArray<TAtlasProblem>; const AText: string; ATabWidth: Integer);
     procedure PaintLine(const Rect: TRect; const Stage: TPaintLineStage; const BeforeEvent: Boolean;
       var AllowDefaultPainting: Boolean; const Context: INTACodeEditorPaintContext);
   public
@@ -51,7 +73,6 @@ uses
   Atlas.Core.Diagnostics.Guard,
   Winapi.Windows,
   System.Math,
-  Vcl.Graphics,
   Atlas.Core.Settings.Plugin,
   Atlas.Core.Style.Color,
   Atlas.Core.Style.Palette,
@@ -62,7 +83,9 @@ uses
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Foundation.Elements,
   Atlas.Core.Editor.Elements,
-  Atlas.Core.Editor.Hide;
+  Atlas.Core.Editor.Hide,
+  Atlas.Core.Editor.LineTail,
+  Atlas.Core.Problems.Inline;
 
 { TAtlasProblemsPainter.TEvents }
 
@@ -88,6 +111,11 @@ begin
   FEvents := TEvents.Create;
   FEventsRef := FEvents;
   FEvents.OnEditorPaintLine := PaintLine;
+  FFont := TFont.Create;
+  FTimer := TTimer.Create(nil);
+  FTimer.Enabled := False;
+  FTimer.Interval := TAtlasInlineDiagnostics.PauseMs;
+  FTimer.OnTimer := TimerTick;
   if Supports(BorlandIDEServices, INTACodeEditorServices, Services) then
     FIndex := Services.AddEditorEventsNotifier(FEventsRef);
 end;
@@ -101,7 +129,51 @@ begin
     Services.RemoveEditorEventsNotifier(FIndex);
   FEvents.OnEditorPaintLine := nil;
   FEventsRef := nil;
+  FreeAndNil(FTimer);
+  FreeAndNil(FFont);
   inherited Destroy;
+end;
+
+procedure TAtlasProblemsPainter.TimerTick(Sender: TObject);
+begin
+  FTimer.Enabled := False;
+  Invalidate;
+end;
+
+function TAtlasProblemsPainter.Typing(const AFileName: string; ALine: Integer; const AText: string): Boolean;
+var
+  Key: string;
+begin
+  Key := AFileName + '|' + IntToStr(ALine);
+  // Zeile gewechselt: nur merken. Gleiche Zeile mit anderem Text: getippt.
+  if Key <> FCursorKey then
+  begin
+    FCursorKey := Key;
+    FCursorText := AText;
+  end
+  else if AText <> FCursorText then
+  begin
+    FCursorText := AText;
+    FTypedAt := GetTickCount;
+    if FTypedAt = 0 then
+      FTypedAt := 1;
+    // Nach der Pause einmal neu zeichnen.
+    FTimer.Enabled := False;
+    FTimer.Enabled := True;
+  end;
+  Result := not TAtlasInlineDiagnostics.PauseOver(FTypedAt, GetTickCount);
+end;
+
+procedure TAtlasProblemsPainter.EnsureFont(const AEditorFont: TFont);
+var
+  Key: string;
+begin
+  Key := AEditorFont.Name + '|' + IntToStr(AEditorFont.Size) + '|' + IntToStr(AEditorFont.PixelsPerInch);
+  if Key = FFontKey then
+    Exit;
+  FFont.Assign(AEditorFont);
+  FFont.Style := [fsItalic];
+  FFontKey := Key;
 end;
 
 class procedure TAtlasProblemsPainter.Invalidate;
@@ -118,6 +190,55 @@ begin
   Result := Length(TAtlasPairs.DisplayLine(Copy(ALine, 1, Max(0, ACharacter)), ATabWidth)) + 1;
 end;
 
+procedure TAtlasProblemsPainter.PaintInline(const Rect: TRect; const Context: INTACodeEditorPaintContext;
+  const AProblems: TArray<TAtlasProblem>; const AText: string; ATabWidth: Integer);
+const
+  // Deckkraft der Farbe über dem Hintergrund: gedimmt, aber lesbar.
+  Strength = 0.7;
+var
+  Mode: TAtlasInlineDiagnosticsMode;
+  Found: TAtlasInlineDiagnostic;
+  Caption, Key: string;
+  Cell: TRect;
+  DC: HDC;
+  Saved, X, Top: Integer;
+  Sample: COLORREF;
+  Front: TAtlasColor;
+  Size: TSize;
+begin
+  Mode := TAtlasIdeSettings.InlineDiagnosticsMode;
+  if (Mode = TAtlasInlineDiagnosticsMode.Off) or
+    not TAtlasInlineDiagnostics.Pick(AProblems, Context.LogicalLineNum - 1, Mode, Found) then
+    Exit;
+  Caption := TAtlasInlineDiagnostics.Caption(Found);
+  if Caption = '' then
+    Exit;
+  // Zwei Zeichen hinter dem letzten Zeichen, hinter Inlay-Hints und Beschriftungen derselben Zeile.
+  Cell := Context.EditorState.GetCharacterPosPx(ColumnOf(AText, Length(TrimRight(AText)), ATabWidth) + 2,
+    Context.EditorLineNum);
+  Key := TAtlasLineTail.KeyOf(Context.FileName, Context.LogicalLineNum, Context.EditorLineNum, Rect.Top);
+  X := TAtlasLineTail.Start(Self, Key, Cell.Left);
+  DC := Context.Canvas.Handle;
+  // Hintergrund des Editor-Farbschemas am rechten Rand (dort steht nichts), nicht das IDE-Thema.
+  Sample := GetPixel(DC, Rect.Right - 2, Rect.Top + 1);
+  if Sample = CLR_INVALID then
+    Sample := COLORREF(ColorToRGB(Context.Canvas.Brush.Color));
+  Front := TAtlasColorMath.Mix(ProblemColor(TAtlasIdeStyle.Colors, Found.Problem), TAtlasColor(Sample), Strength);
+  EnsureFont(Context.Canvas.Font);
+  Saved := SaveDC(DC);
+  try
+    SelectObject(DC, FFont.Handle);
+    SetTextColor(DC, COLORREF(ColorToRGB(TColor(Front))));
+    SetBkMode(DC, TRANSPARENT);
+    GetTextExtentPoint32W(DC, PChar(Caption), Length(Caption), Size);
+    Top := Rect.Top + Max(0, (Rect.Bottom - Rect.Top - Size.cy) div 2);
+    TextOutW(DC, X, Top, PChar(Caption), Length(Caption));
+  finally
+    RestoreDC(DC, Saved);
+  end;
+  TAtlasLineTail.Finish(Self, Key, X + Size.cx);
+end;
+
 procedure TAtlasProblemsPainter.PaintLine(const Rect: TRect; const Stage: TPaintLineStage; const BeforeEvent: Boolean;
   var AllowDefaultPainting: Boolean; const Context: INTACodeEditorPaintContext);
 var
@@ -131,7 +252,7 @@ var
   DC: HDC;
   Saved: Integer;
   Pen, Old: HGDIOBJ;
-  Up: Boolean;
+  Up, Busy: Boolean;
   Target: TAtlasHideTarget;
 begin
   // Durch die Sicherung abgeschaltet (#493).
@@ -153,6 +274,9 @@ begin
       Exit;
     TabWidth := TAtlasEditorBuffer.TabWidth(Context.EditView.Buffer);
     Text := Stored;
+    // Tipp-Pause in der Cursorzeile (#509): vor dem Vergleich, denn beim Tippen weicht der Text kurz ab.
+    Busy := (Context.EditView.CursorPos.Line = Context.LogicalLineNum) and
+      Typing(Context.FileName, Line, LineState.Text);
     // Nur, wenn die Zeile im Editor der im Speicher entspricht.
     if TrimRight(TAtlasPairs.DisplayLine(LineState.Text, TabWidth)) <>
       TrimRight(TAtlasPairs.DisplayLine(Text, TabWidth)) then
@@ -238,6 +362,8 @@ begin
     finally
       RestoreDC(DC, Saved);
     end;
+    if not Busy then
+      PaintInline(Rect, Context, Problems, Text, TabWidth);
   except
     // Zeichnen darf die IDE nie stören.
     on E: Exception do

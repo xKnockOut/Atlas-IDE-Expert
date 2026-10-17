@@ -213,6 +213,15 @@ type
     Problems: Boolean;
     /// <summary>Probleme zusätzlich im Meldungsfenster auflisten (Gruppe „Atlas-Probleme“); nur mit Problems.</summary>
     ProblemsList: Boolean;
+    /// <summary>Fehlertext am Zeilenende (#509): 'off', 'errors' (Vorgabe), 'errorsAndWarnings', 'all'; nur mit
+    /// Problems.</summary>
+    InlineDiagnostics: string;
+    /// <summary>Zähler „Fehler/Warnungen/Hinweise“ in der Statusleiste (#509); Klick öffnet die Liste.</summary>
+    ProblemsStatusCounter: Boolean;
+    /// <summary>Nächster bzw. vorheriger Befund in der Datei (#509, TShortCut, 0 = keins; Vorgabe Strg+Alt+F8
+    /// und Strg+Alt+Umschalt+F8).</summary>
+    NextProblemKey: Integer;
+    PreviousProblemKey: Integer;
     /// <summary>Syntaxprüfung des Compilers nach dem Speichern (#548). Schließt CompileOnSave aus: Die
     /// Optionsseite bietet eine Auswahl „Nach dem Speichern“ (aus, Syntaxprüfung, Kompilieren).</summary>
     CheckOnSave: Boolean;
@@ -883,6 +892,10 @@ begin
   Result.PairColorsDark := '';
   Result.Problems := True;
   Result.ProblemsList := True;
+  Result.InlineDiagnostics := 'errors';
+  Result.ProblemsStatusCounter := True;
+  Result.NextProblemKey := $C077; // Strg+Alt+F8
+  Result.PreviousProblemKey := $E077; // Strg+Alt+Umschalt+F8
   // Die Prüfung in der IDE zeigt deren Fortschritt; Standard ist die Prüfung des Servers mit dcc (compiler.onSave).
   Result.CheckOnSave := False;
   Result.CompileOnSave := False;
@@ -1162,6 +1175,9 @@ begin
   UnitSearchKey := EnsureRange(UnitSearchKey, 0, $FFFF);
   BookmarkKey := EnsureRange(BookmarkKey, 0, $FFFF);
   HideElementKey := EnsureRange(HideElementKey, 0, $FFFF);
+  InlineDiagnostics := Choice(InlineDiagnostics, ['errors', 'off', 'errorsAndWarnings', 'all']);
+  NextProblemKey := EnsureRange(NextProblemKey, 0, $FFFF);
+  PreviousProblemKey := EnsureRange(PreviousProblemKey, 0, $FFFF);
   GenerateMenuKey := EnsureRange(GenerateMenuKey, 0, $FFFF);
   GenerateMenuGroups := TAtlasGenerateLists.NormalizeGroups(GenerateMenuGroups);
   GenerateMenuHidden := TAtlasGenerateLists.NormalizeHidden(GenerateMenuHidden);
@@ -1250,6 +1266,10 @@ begin
   PairColorsDark := AStore.ReadString('PairColorsDark', Default.PairColorsDark);
   Problems := AStore.ReadInteger('Problems', BoolValue(Default.Problems)) <> 0;
   ProblemsList := AStore.ReadInteger('ProblemsList', BoolValue(Default.ProblemsList)) <> 0;
+  InlineDiagnostics := AStore.ReadString('InlineDiagnostics', Default.InlineDiagnostics);
+  ProblemsStatusCounter := AStore.ReadInteger('ProblemsStatusCounter', BoolValue(Default.ProblemsStatusCounter)) <> 0;
+  NextProblemKey := AStore.ReadInteger('NextProblemKey', Default.NextProblemKey);
+  PreviousProblemKey := AStore.ReadInteger('PreviousProblemKey', Default.PreviousProblemKey);
   CheckOnSave := AStore.ReadInteger('CheckOnSave', BoolValue(Default.CheckOnSave)) <> 0;
   CheckOnSaveDelayMs := AStore.ReadInteger('CheckOnSaveDelayMs', Default.CheckOnSaveDelayMs);
   CheckOnSaveMaxMs := AStore.ReadInteger('CheckOnSaveMaxMs', Default.CheckOnSaveMaxMs);
@@ -1507,6 +1527,10 @@ begin
   AStore.WriteString('PairColorsDark', PairColorsDark);
   AStore.WriteInteger('Problems', BoolValue(Problems));
   AStore.WriteInteger('ProblemsList', BoolValue(ProblemsList));
+  AStore.WriteString('InlineDiagnostics', InlineDiagnostics);
+  AStore.WriteInteger('ProblemsStatusCounter', BoolValue(ProblemsStatusCounter));
+  AStore.WriteInteger('NextProblemKey', NextProblemKey);
+  AStore.WriteInteger('PreviousProblemKey', PreviousProblemKey);
   AStore.WriteInteger('CheckOnSave', BoolValue(CheckOnSave));
   AStore.WriteInteger('CheckOnSaveDelayMs', CheckOnSaveDelayMs);
   AStore.WriteInteger('CheckOnSaveMaxMs', CheckOnSaveMaxMs);

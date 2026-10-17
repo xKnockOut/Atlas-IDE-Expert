@@ -1901,3 +1901,17 @@ Voraussetzung für EX2 bis EX7: mindestens eine Einstellung trägt `x-experiment
 | UU7 | Eintrag in einem inaktiven `{$IFDEF}`-Zweig | Zählt nicht als ungenutzt, wird nur als inaktiver Zweig abgeblendet |
 | UU8 | Syntaxfehler in der Unit | Keine uses-Hinweise, bis der Fehler behoben ist |
 | UU9 | `editor.dimUnusedUses` aus bzw. „Element ausblenden“ › Ungenutzte uses | Kein Abblenden und keine Hover-Links mehr |
+
+## Fehlertext am Zeilenende (#509)
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| FZ1 | Syntaxfehler in einer Zeile, Vorgabe „Nur Fehler“ | Hinter dem letzten Zeichen steht der Fehlertext in gedimmtem Rot, kursiv |
+| FZ2 | Zeile mit zwei Fehlern und einer Warnung, Modus „Alle“ | Nur der linke Fehler steht da, dahinter „(+2)“ |
+| FZ3 | Zeile mit nur einer Warnung, Modus „Nur Fehler“ | Kein Text am Zeilenende, Wellenlinie bleibt |
+| FZ4 | In der Zeile mit dem Fehler tippen | Der Text verschwindet beim Tippen und erscheint eine Sekunde nach dem letzten Tastendruck wieder |
+| FZ5 | Zeile mit Inlay-Hint bzw. Blockende-Beschriftung und Fehler | Beide stehen nebeneinander, nichts überlappt |
+| FZ6 | Strg+Alt+F8 mehrmals, dann Strg+Alt+Umschalt+F8 | Der Cursor springt von Befund zu Befund, am Dateiende wieder zum ersten; zurück entsprechend |
+| FZ7 | Datei ohne Befunde, Strg+Alt+F8 | Zeile „Atlas: Keine Befunde in dieser Datei.“ in der Meldungsansicht |
+| FZ8 | Statusleiste ansehen, dann auf den Zähler klicken | „Fehler 1 · Warnungen 2 · Hinweise 0“ stimmt mit der Liste „Atlas-Probleme“ überein; der Klick öffnet das Meldungsfenster |
+| FZ9 | `editor.inlineDiagnostics` = aus, `problems.statusCounter` aus, Tasten leer | Kein Text am Zeilenende, kein Zähler, Tasten frei; Atlas verhält sich wie ohne die Funktion |
