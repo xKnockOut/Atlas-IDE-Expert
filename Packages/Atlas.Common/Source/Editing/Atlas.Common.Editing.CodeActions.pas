@@ -42,6 +42,10 @@ const
   UsesRemoveTag = 'uses.remove';
   UsesRemoveAllTag = 'uses.removeAll';
   UsesMoveTag = 'uses.move';
+  /// <summary>Fehlende Methodenrümpfe (#42) und fehlende case-Zweige (#50); „Anweisung vervollständigen“ des
+  /// Plugins sucht sie (#697).</summary>
+  ClassBodiesTag = 'class.bodies';
+  CaseCompleteTag = 'case.complete';
 
 type
   /// <summary>Edits in einer anderen Datei als dem Dokument der Aktion, z. B. der Formulardatei (#309).</summary>

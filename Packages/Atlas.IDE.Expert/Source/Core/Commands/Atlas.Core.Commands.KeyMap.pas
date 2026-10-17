@@ -329,6 +329,8 @@ begin
       Result := 'Atlas.DuplicateLinesUp';
     TAtlasKeyFunction.DuplicateLinesDown:
       Result := 'Atlas.DuplicateLinesDown';
+    TAtlasKeyFunction.CompleteStatement:
+      Result := 'Atlas.CompleteStatement';
   else
     Result := '';
   end;

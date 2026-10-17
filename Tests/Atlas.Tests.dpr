@@ -621,6 +621,8 @@ uses
   Atlas.Core.Editor.LineMove.Tests in 'IDE.Expert\Atlas.Core.Editor.LineMove.Tests.pas',
   Atlas.Core.Editor.CommentContinuation in '..\Packages\Atlas.IDE.Expert\Source\Core\Editor\Atlas.Core.Editor.CommentContinuation.pas',
   Atlas.Core.Editor.CommentContinuation.Tests in 'IDE.Expert\Atlas.Core.Editor.CommentContinuation.Tests.pas',
+  Atlas.Core.Editor.StatementCompletion in '..\Packages\Atlas.IDE.Expert\Source\Core\Editor\Atlas.Core.Editor.StatementCompletion.pas',
+  Atlas.Core.Editor.StatementCompletion.Tests in 'IDE.Expert\Atlas.Core.Editor.StatementCompletion.Tests.pas',
   Atlas.Core.Editor.Overview in '..\Packages\Atlas.IDE.Expert\Source\Core\Editor\Atlas.Core.Editor.Overview.pas',
   Atlas.Core.Editor.Overview.Tests in 'IDE.Expert\Atlas.Core.Editor.Overview.Tests.pas',
   Atlas.UI.Editor.OverviewRuler in '..\Packages\Atlas.IDE.Expert\Source\UI\Editor\Atlas.UI.Editor.OverviewRuler.pas',

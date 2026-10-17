@@ -215,7 +215,12 @@ begin
     for Action in TLspRefactorings.Actions(Tree, AText, TTextRange.Create(TTextPosition.Create(ALine, ACharacter),
       TTextPosition.Create(ALine, ACharacter)), Context) do
       if Action.Title = ATitle then
+      begin
+        // case vervollständigen trägt die Kennung für das Plugin (#697).
+        if ATitle.StartsWith('case ') then
+          Assert.AreEqual(CaseCompleteTag, Action.Tag);
         Exit(TChangeSignature.ApplyEdits(AText, Action.Edits));
+      end;
   finally
     Tree.Free;
   end;
