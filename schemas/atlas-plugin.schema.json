@@ -201,6 +201,19 @@
       "x-captionEn": "Inlay hints",
       "x-issue": "#401"
     },
+    "InlayTypeHints": {
+      "type": "boolean",
+      "default": true,
+      "x-key": "inlayHints.inferredTypes",
+      "x-area": "editor",
+      "x-feature": "InlayHints",
+      "x-page": "Editor",
+      "x-quickToggle": true,
+      "x-drawing": true,
+      "x-caption": "Typmarken",
+      "x-captionEn": "Type marks",
+      "x-issue": "#453"
+    },
     "BlockEndLabels": {
       "type": "boolean",
       "default": true,

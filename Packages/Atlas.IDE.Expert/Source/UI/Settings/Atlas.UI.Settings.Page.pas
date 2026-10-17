@@ -141,6 +141,8 @@ type
     FInactiveDim: TCheckBox;
     FOpenForEdits: TCheckBox;
     FInlayHints: TCheckBox;
+    /// <summary>Typmarken von Inline-Variablen (#453).</summary>
+    FInlayTypeHints: TCheckBox;
     /// <summary>Blockende-Beschriftungen (#620).</summary>
     FBlockEndLabels: TCheckBox;
     FBlockEndLabelsMinLines: TEdit;
@@ -745,6 +747,8 @@ type
     property BookmarkKey: TEdit read FBookmarkKey;
     /// <summary>Zum Testen: Blockende-Beschriftungen (#620) und Taste „Element ausblenden …“ (#628).</summary>
     property BlockEndLabelsCheck: TCheckBox read FBlockEndLabels;
+    /// <summary>Zum Testen: Typmarken von Inline-Variablen (#453).</summary>
+    property InlayTypeHintsCheck: TCheckBox read FInlayTypeHints;
     property BlockEndLabelsMinLinesEdit: TEdit read FBlockEndLabelsMinLines;
     property DimUnusedUsesCheck: TCheckBox read FDimUnusedUses;
     property RecursionMarkersCheck: TCheckBox read FRecursionMarkers;
@@ -1134,6 +1138,8 @@ begin
   FPairColors.OnClick := PairColorsClick;
   FInactiveDim := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsInactiveDim));
   FInlayHints := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsInlayHints));
+  // Typmarken von Inline-Variablen (#453), unabhängig von den Parameternamen.
+  FInlayTypeHints := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsInlayTypeHints));
   // Beschriftung hinter dem end langer Blöcke (#620).
   FBlockEndLabels := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsBlockEndLabels));
   FBlockEndLabelsMinLines := AddNumber(TAtlasStrings.Text(TAtlasTextId.SettingsBlockEndLabelsMinLines));
@@ -1303,6 +1309,7 @@ begin
   Bind('InlineDiagnostics', FInlineDiagnostics);
   Bind('ProblemsStatusCounter', FProblemsStatusCounter);
   Bind('InlayHints', FInlayHints);
+  Bind('InlayTypeHints', FInlayTypeHints);
   Bind('Problems', FProblems);
   Bind('Notes', FNotes);
   Bind('BookmarksNamed', FBookmarksNamed);
@@ -2083,6 +2090,7 @@ begin
   FMarks.Bind(FPairColors, ['PairColors']);
   FMarks.Bind(FInactiveDim, ['InactiveDim']);
   FMarks.Bind(FInlayHints, ['InlayHints']);
+  FMarks.Bind(FInlayTypeHints, ['InlayTypeHints']);
   FMarks.Bind(FBlockEndLabels, ['BlockEndLabels']);
   FMarks.Bind(FBlockEndLabelsMinLines, ['BlockEndLabelsMinLines']);
   FMarks.Bind(FDimUnusedUses, ['DimUnusedUses']);
@@ -3038,6 +3046,7 @@ begin
   FPairColors.Checked := ASettings.PairColors;
   FInactiveDim.Checked := ASettings.InactiveDim;
   FInlayHints.Checked := ASettings.InlayHints;
+  FInlayTypeHints.Checked := ASettings.InlayTypeHints;
   FBlockEndLabels.Checked := ASettings.BlockEndLabels;
   FBlockEndLabelsMinLines.Text := IntToStr(ASettings.BlockEndLabelsMinLines);
   FDimUnusedUses.Checked := ASettings.DimUnusedUses;
@@ -3303,6 +3312,7 @@ begin
   ASettings.PairColors := FPairColors.Checked;
   ASettings.InactiveDim := FInactiveDim.Checked;
   ASettings.InlayHints := FInlayHints.Checked;
+  ASettings.InlayTypeHints := FInlayTypeHints.Checked;
   ASettings.BlockEndLabels := FBlockEndLabels.Checked;
   ASettings.BlockEndLabelsMinLines := StrToIntDef(FBlockEndLabelsMinLines.Text, ASettings.BlockEndLabelsMinLines);
   ASettings.DimUnusedUses := FDimUnusedUses.Checked;

@@ -15,6 +15,8 @@
 // hinter dem end langer Blöcke, inlayHints.endMarkers) liegen getrennt von den
 // Parameternamen und haben eine eigene Einstellung (BlockEndLabels). Keine Marke,
 // wenn hinter dem end schon ein Kommentar steht; lange Texte enden mit „…“.
+// Typmarken (#453): der abgeleitete Typ von var X := …, const X = … und for var X in … (kind 1) liegt
+// ebenfalls getrennt, mit eigener Einstellung (InlayTypeHints), und erscheint als „: TStringList“.
 
 interface
 
@@ -32,6 +34,8 @@ type
     Name: string;
     /// <summary>Endmarke hinter einem end (#620) statt Parametername.</summary>
     EndLabel: Boolean;
+    /// <summary>Typmarke (#453): Name ist der abgeleitete Typ ohne ":".</summary>
+    TypeHint: Boolean;
     /// <summary>Endmarke: Anfang des Blocks (0-basiert), zu dem ein Klick springt; nur mit HasBlock.</summary>
     BlockLine: Integer;
     BlockCharacter: Integer;
@@ -46,6 +50,8 @@ type
     MaxValueLength = 24;
     /// <summary>Längster Text einer Blockende-Beschriftung, danach „…“.</summary>
     MaxEndLabelLength = 40;
+    /// <summary>Längster gezeigter Typ einer Typmarke (#453), danach „…“.</summary>
+    MaxTypeLength = 40;
   private type
     TEntry = class
       Text: string;
@@ -53,6 +59,7 @@ type
       Covered: TArray<Boolean>;
       Hints: TArray<TAtlasInlayHint>;
       Ends: TArray<TAtlasInlayHint>;
+      Types: TArray<TAtlasInlayHint>;
     end;
   private
     FEntries: TObjectDictionary<string, TEntry>;
@@ -87,6 +94,10 @@ type
     procedure Put(const AFileName, AText: string; AFrom, ATo: Integer; const AHints: TArray<TAtlasInlayHint>);
     /// <summary>Beschriftungen („Name = Wert“) der Zeile in Reihenfolge.</summary>
     function OnLine(const AFileName: string; ALine: Integer): TArray<string>;
+    /// <summary>Typmarken („: TStringList“, #453) der Zeile in Reihenfolge.</summary>
+    function TypesOnLine(const AFileName: string; ALine: Integer): TArray<string>;
+    /// <summary>„: Typ“, lange Typen gekürzt.</summary>
+    class function TypeLabelOf(const ATypeName: string): string; static;
     /// <summary>Blockende-Beschriftung der Zeile: AText ist der Text der Marke ohne "//" (Anker), ALabel die
     /// gezeigte Beschriftung („// TKunde.Speichern“); False ohne.</summary>
     function EndLabelOn(const AFileName: string; ALine: Integer; out AText, ALabel: string): Boolean; overload;
@@ -187,6 +198,7 @@ begin
   SetLength(Entry.Covered, Length(Entry.Lines));
   Entry.Hints := nil;
   Entry.Ends := nil;
+  Entry.Types := nil;
 end;
 
 function TAtlasInlayHintStore.Missing(const AFileName: string; AFirst, ALast: Integer; out AFrom, ATo: Integer): Boolean;
@@ -222,6 +234,7 @@ var
   Line: Integer;
   Hint, Known: TAtlasInlayHint;
   Duplicate: Boolean;
+  Order: IComparer<TAtlasInlayHint>;
 begin
   Entry := Find(AFileName);
   if (Entry = nil) or (Entry.Text <> AText) then
@@ -244,6 +257,18 @@ begin
         Entry.Ends := Entry.Ends + [Hint];
       Continue;
     end;
+    // Typmarke (#453): jede Stelle einmal.
+    if Hint.TypeHint then
+    begin
+      if (Hint.Line < AFrom) or (Hint.Line > ATo) or (Hint.Line > High(Entry.Lines)) or (Hint.Name = '') then
+        Continue;
+      Duplicate := False;
+      for Known in Entry.Types do
+        Duplicate := Duplicate or ((Known.Line = Hint.Line) and (Known.Character = Hint.Character));
+      if not Duplicate then
+        Entry.Types := Entry.Types + [Hint];
+      Continue;
+    end;
     if (Hint.Line < AFrom) or (Hint.Line > ATo) or (Hint.Line > High(Entry.Lines)) or (Hint.Name = '') or
       not IsLiteralAt(Entry.Lines[Hint.Line], Hint.Character) then
       Continue;
@@ -258,13 +283,15 @@ begin
     if not Duplicate then
       Entry.Hints := Entry.Hints + [Hint];
   end;
-  TArray.Sort<TAtlasInlayHint>(Entry.Hints, TComparer<TAtlasInlayHint>.Construct(
+  Order := TComparer<TAtlasInlayHint>.Construct(
     function(const ALeft, ARight: TAtlasInlayHint): Integer
     begin
       Result := ALeft.Line - ARight.Line;
       if Result = 0 then
         Result := ALeft.Character - ARight.Character;
-    end));
+    end);
+  TArray.Sort<TAtlasInlayHint>(Entry.Hints, Order);
+  TArray.Sort<TAtlasInlayHint>(Entry.Types, Order);
 end;
 
 function TAtlasInlayHintStore.OnLine(const AFileName: string; ALine: Integer): TArray<string>;
@@ -279,6 +306,28 @@ begin
   for Hint in Entry.Hints do
     if Hint.Line = ALine then
       Result := Result + [LabelOf(Hint.Name, ArgumentAt(Entry.Lines[ALine], Hint.Character))];
+end;
+
+function TAtlasInlayHintStore.TypesOnLine(const AFileName: string; ALine: Integer): TArray<string>;
+var
+  Entry: TEntry;
+  Hint: TAtlasInlayHint;
+begin
+  Result := nil;
+  Entry := Find(AFileName);
+  if Entry = nil then
+    Exit;
+  // In Spaltenreihenfolge, wie die Variablen in der Zeile stehen.
+  for Hint in Entry.Types do
+    if Hint.Line = ALine then
+      Result := Result + [TypeLabelOf(Hint.Name)];
+end;
+
+class function TAtlasInlayHintStore.TypeLabelOf(const ATypeName: string): string;
+begin
+  Result := ': ' + ATypeName;
+  if Length(Result) > MaxTypeLength + 2 then
+    Result := Copy(Result, 1, MaxTypeLength + 1) + '…';
 end;
 
 function TAtlasInlayHintStore.EndLabelOn(const AFileName: string; ALine: Integer; out AText, ALabel: string): Boolean;

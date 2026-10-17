@@ -547,7 +547,8 @@ type
     SettingsListModeRest, SettingsListScope, SettingsListScopeMembers, SettingsListScopeEverywhere,
     TypeArgHeader, TypeArgHeaderPlain, TypeArgOnlyClasses, TypeArgOnlyValues, TypeArgOnlyConstructible,
     TypeArgImplements, TypeArgDescends, TypeArgHiddenFooter, TypeArgKindClasses, TypeArgKindRecords,
-    TypeArgKindInterfaces, TypeArgKindEnums, TypeArgKindBasic);
+    TypeArgKindInterfaces, TypeArgKindEnums, TypeArgKindBasic, SettingsInlayTypeHints, ElementInlayTypeHints,
+    ElementInlayTypeHintsPlural);
 
   TAtlasStrings = class
   private class var
@@ -1595,7 +1596,8 @@ const
      'Mitgliederlisten nach „.“', 'Alle Listen', '%s: %s · %s', 'Typargument %s', 'nur Klassen',
      'nur Records und Grundtypen', 'nur Klassen mit parameterlosem Konstruktor', 'nur Typen, die %s implementieren',
      'nur Typen, die von %s abgeleitet sind', 'Ausgeblendet: %s', 'Klassen', 'Records', 'Interfaces',
-     'Aufzählungen', 'Grundtypen'),
+     'Aufzählungen', 'Grundtypen', 'Typ von Inline-Variablen hinter dem Zeilenende zeigen (var X := …)',
+     'Typmarke', 'Typmarken'),
     ('Enter to accept · Esc to close', '%d of %d', 'No matches for “%s”', 'Backspace widens the search',
      'No suggestions here', 'Esc closes', 'No details for this entry', 'Overload', 'Deprecated: %s', 'Deprecated.',
      'Inherited from %s', 'Inherited', 'optional, default %s', 'No overload with %d parameters.', '… %d more',
@@ -2566,7 +2568,8 @@ const
      'Matches, then the rest dimmed', 'Applies to:', 'Member lists after “.”', 'All lists', '%s: %s · %s',
      'Type argument %s', 'classes only', 'records and basic types only',
      'only classes with a parameterless constructor', 'only types implementing %s', 'only types descending from %s',
-     'Hidden: %s', 'classes', 'records', 'interfaces', 'enumerations', 'basic types'));
+     'Hidden: %s', 'classes', 'records', 'interfaces', 'enumerations', 'basic types',
+     'Show the type of inline variables at the line end (var X := …)', 'type mark', 'type marks'));
 
 { TAtlasStrings }
 

@@ -62,6 +62,8 @@ type
     class function Stored: TAtlasPluginSettings; static;
     /// <summary>Plugin eingeschaltet und Inlay-Hints an; ohne Kopie des Einstellungsrecords (P-10).</summary>
     class function InlayHintsOn: Boolean; static;
+    /// <summary>Plugin eingeschaltet und Typmarken an (#453); ohne Kopie des Einstellungsrecords.</summary>
+    class function InlayTypeHintsOn: Boolean; static;
     /// <summary>Plugin eingeschaltet und Blockende-Beschriftungen an (#620); ohne Kopie des Einstellungsrecords.
     /// </summary>
     class function BlockEndLabelsOn: Boolean; static;
@@ -324,6 +326,12 @@ class function TAtlasIdeSettings.InlayHintsOn: Boolean;
 begin
   EnsureLoaded;
   Result := FEffective.Enabled and FEffective.InlayHints;
+end;
+
+class function TAtlasIdeSettings.InlayTypeHintsOn: Boolean;
+begin
+  EnsureLoaded;
+  Result := FEffective.Enabled and FEffective.InlayTypeHints;
 end;
 
 class function TAtlasIdeSettings.BlockEndLabelsOn: Boolean;

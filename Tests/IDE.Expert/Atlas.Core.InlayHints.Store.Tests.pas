@@ -26,6 +26,10 @@ type
     /// Kommentar, lange Texte gekürzt.</summary>
     [Test]
     procedure KeepsEndLabelsApart;
+    /// <summary>Typmarken (#453): getrennt von den Parameternamen, auch vor Nicht-Literalen, je Stelle einmal.
+    /// </summary>
+    [Test]
+    procedure KeepsTypeHintsApart;
   end;
 
 implementation
@@ -161,6 +165,37 @@ begin
     Assert.AreEqual('AOwner = nil|Exclusive = True|FileName = ''sehr langer Dateiname,…',
       string.Join('|', Store.OnLine('A.pas', 2)));
     Assert.AreEqual('Count = 3', string.Join('|', Store.OnLine('A.pas', 3)), 'Name steht schon im Argument');
+  finally
+    Store.Free;
+  end;
+end;
+
+procedure TAtlasInlayHintStoreTests.KeepsTypeHintsApart;
+var
+  Store: TAtlasInlayHintStore;
+  Text: string;
+  Types: TArray<TAtlasInlayHint>;
+  Index: Integer;
+begin
+  Text := 'begin' + sLineBreak +
+    '  var Count := Lines.Count;' + sLineBreak +
+    '  for var Item in Liste do' + sLineBreak +
+    'end;';
+  Types := [H(1, 11, 'Integer'), H(2, 14, StringOfChar('T', 60)), H(1, 11, 'Integer'), H(3, 0, '')];
+  for Index := 0 to High(Types) do
+    Types[Index].TypeHint := True;
+  Store := TAtlasInlayHintStore.Create;
+  try
+    Store.SetText('A.pas', Text);
+    Store.Put('A.pas', Text, 0, 3, Types);
+    Assert.AreEqual(': Integer', string.Join('|', Store.TypesOnLine('A.pas', 1)), 'einmal');
+    Assert.AreEqual(0, Integer(Length(Store.OnLine('A.pas', 1))), 'keine Parameternamen');
+    Assert.IsTrue(Store.TypesOnLine('A.pas', 2)[0].EndsWith('…'), 'gekürzt');
+    Assert.AreEqual(Integer(TAtlasInlayHintStore.MaxTypeLength + 2), Integer(Length(Store.TypesOnLine('A.pas', 2)[0])));
+    Assert.AreEqual(0, Integer(Length(Store.TypesOnLine('A.pas', 3))), 'ohne Typ');
+    // Neuer Text verwirft auch die Typmarken.
+    Store.SetText('A.pas', Text + ' ');
+    Assert.AreEqual(0, Integer(Length(Store.TypesOnLine('A.pas', 1))));
   finally
     Store.Free;
   end;
