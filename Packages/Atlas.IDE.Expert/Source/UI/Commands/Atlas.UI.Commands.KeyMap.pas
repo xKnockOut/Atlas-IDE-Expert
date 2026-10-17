@@ -296,6 +296,10 @@ begin
       Id := TAtlasTextId.JumpToMatchCommand;
     TAtlasKeyFunction.JumpToMatchSelect:
       Id := TAtlasTextId.JumpToMatchSelectCommand;
+    TAtlasKeyFunction.NextChange:
+      Id := TAtlasTextId.NextChangeCommand;
+    TAtlasKeyFunction.PreviousChange:
+      Id := TAtlasTextId.PreviousChangeCommand;
   else
     Id := TAtlasTextId.KeyMapUnitSearchIde;
   end;

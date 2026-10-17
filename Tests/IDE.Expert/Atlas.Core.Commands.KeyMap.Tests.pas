@@ -368,6 +368,12 @@ begin
   Assert.IsFalse(EntryOf(Entries, TAtlasKeyFunction.JumpToMatchSelect).Disabled);
   Assert.AreEqual('Atlas.JumpToMatch', TAtlasKeyMap.CommandIdOf(TAtlasKeyFunction.JumpToMatch));
   Assert.AreEqual('Atlas.JumpToMatchSelect', TAtlasKeyMap.CommandIdOf(TAtlasKeyFunction.JumpToMatchSelect));
+  // Nächste/vorherige Änderung (#507): Strg+Alt+Bild↓ und Strg+Alt+Bild↑.
+  Assert.AreEqual($C022, Integer(EntryOf(Entries, TAtlasKeyFunction.NextChange).Key));
+  Assert.AreEqual($C021, Integer(EntryOf(Entries, TAtlasKeyFunction.PreviousChange).Key));
+  Assert.IsFalse(EntryOf(Entries, TAtlasKeyFunction.NextChange).Disabled);
+  Assert.AreEqual('Atlas.NextChange', TAtlasKeyMap.CommandIdOf(TAtlasKeyFunction.NextChange));
+  Assert.AreEqual('Atlas.PreviousChange', TAtlasKeyMap.CommandIdOf(TAtlasKeyFunction.PreviousChange));
   Assert.AreEqual(Ord(TAtlasKeySource.Binding), Ord(TAtlasKeyMap.SourceOf(TAtlasKeyFunction.TestUnit)));
   Settings.EditorKeysPriority := True;
   Assert.IsTrue(EntryOf(TAtlasKeyEntry.AllFromSettings(Settings), TAtlasKeyFunction.UnitSearch).Priority);
@@ -399,6 +405,7 @@ begin
   Settings.Peek := False;
   Settings.Breadcrumbs := False;
   Settings.JumpToMatch := False;
+  Settings.GitGutter := False;
   Entries := TAtlasKeyEntry.AllFromSettings(Settings);
   for Entry in Entries do
     if Entry.Func in [TAtlasKeyFunction.MethodToggleUp, TAtlasKeyFunction.MethodToggleDown,
@@ -408,7 +415,7 @@ begin
       TAtlasKeyFunction.PreviousProblem, TAtlasKeyFunction.QuickOpen, TAtlasKeyFunction.NavBack,
       TAtlasKeyFunction.NavForward, TAtlasKeyFunction.LastEdit, TAtlasKeyFunction.PeekDefinition,
       TAtlasKeyFunction.PeekReferences, TAtlasKeyFunction.Breadcrumbs, TAtlasKeyFunction.JumpToMatch,
-      TAtlasKeyFunction.JumpToMatchSelect] then
+      TAtlasKeyFunction.JumpToMatchSelect, TAtlasKeyFunction.NextChange, TAtlasKeyFunction.PreviousChange] then
     begin
       Assert.IsTrue(Entry.Disabled, 'abgeschaltet: ' + IntToStr(Ord(Entry.Func)));
       Assert.AreEqual(Ord(TAtlasKeyStatus.NoKey), Ord(Entry.Status('IDE: Klassennavigation')),

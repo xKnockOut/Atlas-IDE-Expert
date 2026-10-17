@@ -317,6 +317,10 @@ begin
       Result := 'Atlas.JumpToMatch';
     TAtlasKeyFunction.JumpToMatchSelect:
       Result := 'Atlas.JumpToMatchSelect';
+    TAtlasKeyFunction.NextChange:
+      Result := 'Atlas.NextChange';
+    TAtlasKeyFunction.PreviousChange:
+      Result := 'Atlas.PreviousChange';
   else
     Result := '';
   end;

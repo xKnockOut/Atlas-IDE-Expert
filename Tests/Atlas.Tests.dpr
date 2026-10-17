@@ -614,6 +614,8 @@ uses
   Atlas.Core.Editor.Pairs.Tests in 'IDE.Expert\Atlas.Core.Editor.Pairs.Tests.pas',
   Atlas.Core.Editor.Match in '..\Packages\Atlas.IDE.Expert\Source\Core\Editor\Atlas.Core.Editor.Match.pas',
   Atlas.Core.Editor.Match.Tests in 'IDE.Expert\Atlas.Core.Editor.Match.Tests.pas',
+  Atlas.Core.Editor.LineChanges in '..\Packages\Atlas.IDE.Expert\Source\Core\Editor\Atlas.Core.Editor.LineChanges.pas',
+  Atlas.Core.Editor.LineChanges.Tests in 'IDE.Expert\Atlas.Core.Editor.LineChanges.Tests.pas',
   Atlas.Core.Editor.SnapshotPolicy.Tests in 'IDE.Expert\Atlas.Core.Editor.SnapshotPolicy.Tests.pas',
   Atlas.Core.Editor.CloseRules.Tests in 'IDE.Expert\Atlas.Core.Editor.CloseRules.Tests.pas',
   Atlas.Core.Build.Messages in '..\Packages\Atlas.IDE.Expert\Source\Core\Build\Atlas.Core.Build.Messages.pas',

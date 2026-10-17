@@ -40,6 +40,9 @@ type
     procedure BreadcrumbsOptions;
     [Test]
     procedure JumpToMatchOptions;
+    /// <summary>Änderungsmarken und Zeilenhistorie (#507): Vorgaben, Tasten, Speichern und Laden.</summary>
+    [Test]
+    procedure GitChangeOptions;
     /// <summary>Erzeugen-Menü (#719): Vorgaben, Normalisieren, Speichern und Laden.</summary>
     [Test]
     procedure GenerateMenuOptions;
@@ -1173,6 +1176,35 @@ begin
   Loaded.JumpToMatchKey := $1FFFF;
   Loaded.Normalize;
   Assert.AreEqual($FFFF, Loaded.JumpToMatchKey);
+end;
+
+procedure TAtlasPluginSettingsTests.GitChangeOptions;
+var
+  Settings, Loaded: TAtlasPluginSettings;
+  Store: IAtlasSettingsStore;
+begin
+  Settings := TAtlasPluginSettings.Defaults;
+  Assert.IsTrue(Settings.GitGutter);
+  Assert.IsFalse(Settings.GitBlame, 'blame nur auf Wunsch');
+  Assert.AreEqual($C022, Settings.NextChangeKey, 'Strg+Alt+Bild↓');
+  Assert.AreEqual($C021, Settings.PreviousChangeKey, 'Strg+Alt+Bild↑');
+  Settings.GitGutter := False;
+  Settings.GitBlame := True;
+  Settings.NextChangeKey := 0;
+  Settings.PreviousChangeKey := $4074;
+  Store := TMemoryStore.Create;
+  Settings.Save(Store);
+  Loaded := TAtlasPluginSettings.Defaults;
+  Loaded.Load(Store);
+  Assert.IsFalse(Loaded.GitGutter);
+  Assert.IsTrue(Loaded.GitBlame);
+  Assert.AreEqual(0, Loaded.NextChangeKey);
+  Assert.AreEqual($4074, Loaded.PreviousChangeKey);
+  Loaded.NextChangeKey := -1;
+  Loaded.PreviousChangeKey := $20000;
+  Loaded.Normalize;
+  Assert.AreEqual(0, Loaded.NextChangeKey);
+  Assert.AreEqual($FFFF, Loaded.PreviousChangeKey);
 end;
 
 { TAtlasSettingsScopesTests }

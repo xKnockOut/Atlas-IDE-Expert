@@ -96,7 +96,8 @@ uses
   Atlas.IDE.Generate.Commands,
   Atlas.IDE.Editor.Hide,
   Atlas.IDE.Notifications.Service,
-  Atlas.IDE.Outline.Breadcrumbs;
+  Atlas.IDE.Outline.Breadcrumbs,
+  Atlas.IDE.Vcs.LineChanges;
 
 { TAtlasIdeEditorKeys.TBinding }
 
@@ -446,6 +447,28 @@ begin
             TAtlasIdeBreadcrumbs.Focus;
           end);
       end);
+  // Nächste/vorherige Änderung (#507): aus = beide Tasten bleiben frei.
+  if Settings.GitGutter then
+  begin
+    AddKey(Settings.NextChangeKey, TAtlasStrings.Text(TAtlasTextId.NextChangeCommand),
+      procedure
+      begin
+        TAtlasGuard.Run(TAtlasFeature.EditorCommands,
+          procedure
+          begin
+            TAtlasIdeLineChanges.GoToChange(True);
+          end);
+      end);
+    AddKey(Settings.PreviousChangeKey, TAtlasStrings.Text(TAtlasTextId.PreviousChangeCommand),
+      procedure
+      begin
+        TAtlasGuard.Run(TAtlasFeature.EditorCommands,
+          procedure
+          begin
+            TAtlasIdeLineChanges.GoToChange(False);
+          end);
+      end);
+  end;
   AddKey(Settings.UndoKey, TAtlasStrings.Text(TAtlasTextId.UndoMenu),
     procedure
     begin
