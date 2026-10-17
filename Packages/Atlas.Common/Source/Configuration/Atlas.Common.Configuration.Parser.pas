@@ -1160,6 +1160,16 @@ begin
         else
           ReportNode(ANode[Index], 'Erlaubt sind "private" und "protected"');
     end
+    else if Key = 'resourceStrings' then
+      ExpectBoolean(ANode[Index], Key, FSettings.Completion.ResourceStrings)
+    else if Key = 'resourceStringUnit' then
+    begin
+      if ExpectString(ANode[Index], Key, Text) then
+        if (Text = '') or IsValidIdent(Text, True) then
+          FSettings.Completion.ResourceStringUnit := Text
+        else
+          ReportNode(ANode[Index], 'Erwartet wird ein Unit-Name wie "App.Texte" oder ""');
+    end
     else if Key = 'freeStyle' then
     begin
       if ExpectString(ANode[Index], Key, Text) then

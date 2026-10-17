@@ -166,6 +166,8 @@ contains
   Atlas.Common.Editing.CreateMethod in 'Source\Editing\Atlas.Common.Editing.CreateMethod.pas',
   Atlas.Common.Editing.NameSuggestions in 'Source\Editing\Atlas.Common.Editing.NameSuggestions.pas',
   Atlas.Common.Editing.AccessorCreation in 'Source\Editing\Atlas.Common.Editing.AccessorCreation.pas',
+  Atlas.Common.Editing.ResourceStrings in 'Source\Editing\Atlas.Common.Editing.ResourceStrings.pas',
+  Atlas.Common.Lsp.ResourceStringCommands in 'Source\Lsp\Atlas.Common.Lsp.ResourceStringCommands.pas',
   Atlas.Common.Lsp.Refactorings in 'Source\Lsp\Atlas.Common.Lsp.Refactorings.pas',
   Atlas.Common.Editing.DeclareUnknown in 'Source\Editing\Atlas.Common.Editing.DeclareUnknown.pas',
   Atlas.Common.Editing.InterfaceStubs in 'Source\Editing\Atlas.Common.Editing.InterfaceStubs.pas',

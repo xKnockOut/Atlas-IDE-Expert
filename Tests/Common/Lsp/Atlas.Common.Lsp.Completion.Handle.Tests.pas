@@ -80,6 +80,16 @@ type
     /// <summary>#452: Vorgabe der Projektdatei geht vor; completion.nameSuggestions aus schaltet ab.</summary>
     [Test]
     procedure NameSuggestionsForcedAndSwitchedOff;
+    [Test]
+    procedure ResourceStringInOwnUnit;
+    [Test]
+    procedure ResourceStringAsLinkedSnippet;
+    [Test]
+    procedure ResourceStringReusesSameText;
+    [Test]
+    procedure ResourceStringInConfiguredUnit;
+    [Test]
+    procedure ResourceStringOnlyInvokedAndSwitchable;
   end;
 
 implementation
@@ -811,6 +821,169 @@ begin
   Answer := Complete(FieldSite);
   try
     Assert.IsFalse(Labels(Answer).Contains('Customers'), Answer.ToJSON);
+  finally
+    Answer.Free;
+  end;
+end;
+
+const
+  FrageUnit =
+    'unit Haupt;'#10 +
+    'interface'#10 +
+    'implementation'#10 +
+    'uses'#10 +
+    '  Dialogs;'#10 +
+    #10 +
+    'procedure Frage;'#10 +
+    'begin'#10 +
+    '  ShowMessage(''Eintrag wirklich l|öschen?'');'#10 +
+    'end;'#10 +
+    #10 +
+    'end.';
+  TexteFile = 'C:\P\Texte.pas';
+  TexteUnit =
+    'unit Texte;'#10 +
+    'interface'#10 +
+    'resourcestring'#10 +
+    '  SOk = ''OK'';'#10 +
+    'implementation'#10 +
+    'end.';
+
+function FirstItem(AResult: TJSONObject): TJSONObject;
+begin
+  Result := (AResult.GetValue('items') as TJSONArray).Items[0] as TJSONObject;
+end;
+
+procedure TLspCompletionHandleTests.ResourceStringInOwnUnit;
+var
+  Answer, Item: TJSONObject;
+  Extra: TJSONArray;
+begin
+  Answer := Complete(FrageUnit);
+  try
+    // Abnahme: Das Literal wird zum Bezeichner, der Abschnitt hinter dem uses enthält den Text unverändert.
+    Assert.AreEqual('Als resourcestring auslagern', Labels(Answer), Answer.ToJSON);
+    Item := FirstItem(Answer);
+    Assert.AreEqual('SEintragWirklichLoeschen', Item.GetValue<string>('textEdit.newText'));
+    Assert.AreEqual(8, Item.GetValue<Integer>('textEdit.range.start.line'));
+    Assert.AreEqual(14, Item.GetValue<Integer>('textEdit.range.start.character'));
+    Assert.AreEqual(41, Item.GetValue<Integer>('textEdit.range.end.character'));
+    Extra := Item.GetValue('additionalTextEdits') as TJSONArray;
+    Assert.AreEqual(1, Extra.Count);
+    Assert.AreEqual(#10#10'resourcestring'#10'  SEintragWirklichLoeschen = ''Eintrag wirklich löschen?'';',
+      Extra.Items[0].GetValue<string>('newText'));
+    Assert.AreEqual(4, Extra.Items[0].GetValue<Integer>('range.start.line'));
+    Assert.AreEqual('create', Item.GetValue<string>('data.action'));
+    Assert.IsNull(Item.GetValue('insertTextFormat'));
+    Assert.IsNull(Item.GetValue('command'));
+  finally
+    Answer.Free;
+  end;
+end;
+
+procedure TLspCompletionHandleTests.ResourceStringAsLinkedSnippet;
+var
+  Answer, Item: TJSONObject;
+begin
+  FCompletion.SnippetSupport := True;
+  Answer := Complete(StringReplace(FrageUnit, 'Eintrag wirklich', 'Preis in $ wirklich', []));
+  try
+    // Platzhalter-Modus (#51): derselbe Platzhalter an der Stelle und im Abschnitt, "$" maskiert.
+    Item := FirstItem(Answer);
+    Assert.AreEqual(2, Item.GetValue<Integer>('insertTextFormat'));
+    Assert.AreEqual('${1:SPreisInWirklichLoeschen}', Item.GetValue<string>('textEdit.newText'));
+    Assert.IsTrue(Item.GetValue<Boolean>('data.linkedEdits'), Item.ToJSON);
+    Assert.Contains((Item.GetValue('additionalTextEdits') as TJSONArray).Items[0].GetValue<string>('newText'),
+      '  ${1:SPreisInWirklichLoeschen} = ''Preis in \$ wirklich löschen?'';');
+  finally
+    Answer.Free;
+  end;
+end;
+
+procedure TLspCompletionHandleTests.ResourceStringReusesSameText;
+var
+  Answer: TJSONObject;
+  Items: TJSONArray;
+begin
+  Answer := Complete(StringReplace(FrageUnit, '  Dialogs;'#10, '  Dialogs;'#10#10'resourcestring'#10 +
+    '  SFrage = ''Eintrag wirklich löschen?'';'#10'  SEintragWirklichLoeschen = ''anders'';'#10, []));
+  try
+    // Abnahme: Bei gleichem Text steht der vorhandene Bezeichner vorn; der neue Name bekommt eine Ziffer.
+    Assert.AreEqual('Vorhandenen verwenden: SFrage Als resourcestring auslagern', Labels(Answer), Answer.ToJSON);
+    Assert.AreEqual('SFrage', FirstItem(Answer).GetValue<string>('textEdit.newText'));
+    Assert.IsNull(FirstItem(Answer).GetValue('additionalTextEdits'));
+    Items := Answer.GetValue('items') as TJSONArray;
+    Assert.AreEqual('SEintragWirklichLoeschen2', Items.Items[1].GetValue<string>('textEdit.newText'));
+  finally
+    Answer.Free;
+  end;
+end;
+
+procedure TLspCompletionHandleTests.ResourceStringInConfiguredUnit;
+var
+  Answer, Item: TJSONObject;
+  Arguments: TJSONArray;
+begin
+  AddUnit(TexteFile, TexteUnit);
+  FCompletion.SettingsFor :=
+    function(const AUri: string): TCompletionSettings
+    begin
+      Result := TCompletionSettings.Default;
+      Result.ResourceStringUnit := 'Texte';
+    end;
+  Answer := Complete(FrageUnit);
+  try
+    Item := FirstItem(Answer);
+    Assert.AreEqual('SEintragWirklichLoeschen', Item.GetValue<string>('textEdit.newText'), Answer.ToJSON);
+    Assert.AreEqual('atlas.server.addResourceString', Item.GetValue<string>('command.command'));
+    Arguments := (Item.GetValue('command') as TJSONObject).GetValue('arguments') as TJSONArray;
+    Assert.AreEqual(3, Arguments.Count, Item.ToJSON);
+    Assert.AreEqual(TexteFile, Arguments.Items[0].Value);
+    Assert.AreEqual('SEintragWirklichLoeschen', Arguments.Items[1].Value);
+    Assert.AreEqual('''Eintrag wirklich löschen?''', Arguments.Items[2].Value);
+    // Die Unit kommt ins uses der implementation.
+    Assert.Contains((Item.GetValue('additionalTextEdits') as TJSONArray).Items[0].GetValue<string>('newText'),
+      'Texte');
+  finally
+    Answer.Free;
+  end;
+  // Gleicher Text in der festgelegten Unit.
+  Answer := Complete(StringReplace(FrageUnit, 'Eintrag wirklich l|öschen?', 'O|K', []));
+  try
+    Assert.AreEqual('Vorhandenen verwenden: SOk Als resourcestring auslagern', Labels(Answer), Answer.ToJSON);
+  finally
+    Answer.Free;
+  end;
+end;
+
+procedure TLspCompletionHandleTests.ResourceStringOnlyInvokedAndSwitchable;
+var
+  Answer: TJSONObject;
+begin
+  // Mit Auslösezeichen nicht, nur mit Strg+Leer.
+  Answer := Complete(FrageUnit, '.', '');
+  try
+    Assert.IsFalse(Labels(Answer).Contains('resourcestring'), Answer.ToJSON);
+  finally
+    Answer.Free;
+  end;
+  // In einer Konstanten nicht.
+  Answer := Complete(StringReplace(FrageUnit, 'implementation'#10, 'implementation'#10'const'#10 +
+    '  CText = ''Kon|stante'';'#10, []).Replace('l|ö', 'lö'));
+  try
+    Assert.IsFalse(Labels(Answer).Contains('resourcestring'), Answer.ToJSON);
+  finally
+    Answer.Free;
+  end;
+  FCompletion.SettingsFor :=
+    function(const AUri: string): TCompletionSettings
+    begin
+      Result := TCompletionSettings.Default;
+      Result.ResourceStrings := False;
+    end;
+  Answer := Complete(FrageUnit);
+  try
+    Assert.IsFalse(Labels(Answer).Contains('resourcestring'), Answer.ToJSON);
   finally
     Answer.Free;
   end;

@@ -168,6 +168,13 @@ type
     /// <summary>Code-Vorlage (#51): Text mit Platzhaltern (${1:Name}, $0); '' sonst. Beim Übernehmen setzt der
     /// Editor ihn mit der Einrückung der Zeile ein und startet den Platzhalter-Modus.</summary>
     Snippet: string;
+    /// <summary>Auch die AdditionalEdits tragen Platzhalter im Format von Snippet (#473); gleiche Nummern sind mit
+    /// denen des Haupttexts verknüpft (der Name eines resourcestring an Stelle und Deklaration).</summary>
+    LinkedEdits: Boolean;
+    /// <summary>Befehl des Servers, den der Editor nach dem Übernehmen ausführt (workspace/executeCommand, #473);
+    /// '' ohne. CommandArguments: die Argumente als JSON-Array.</summary>
+    Command: string;
+    CommandArguments: string;
     /// <summary>Typargument nach "TFoo&lt;" (#450): Typparameter ("T"), sein Constraint ("class"), der Code der
     /// Erklärung (classes, values, constructible, implements:X, descends:X) und die ausgeblendeten Arten
     /// ("records,enums"); '' sonst.</summary>

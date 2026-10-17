@@ -143,6 +143,9 @@ type
     /// <summary>Setzt die Vorlage von AItem statt des Worts bis AEnd (0-basiert) ein.</summary>
     procedure CommitSnippet(const AView: IOTAEditView; const AItem: TAtlasCompletionItem; const AText,
       ALineText: string; ALine, AEnd: Integer);
+    /// <summary>Befehl des Eintrags nach dem Übernehmen (#473): workspace/executeCommand; die Änderungen des
+    /// Servers kommen danach über workspace/applyEdit.</summary>
+    procedure RunCommand(const AItem: TAtlasCompletionItem);
     /// <summary>Eigene Vorlagen neu lesen, wenn sich der Ordner geändert hat (höchstens alle 3 s).</summary>
     procedure RefreshSnippets;
     /// <summary>Eigene Postfix-Vorlagen (#188) an den Server schicken (atlas/postfixTemplates).</summary>
@@ -212,6 +215,7 @@ type
 implementation
 
 uses
+  System.JSON,
   Atlas.Core.Diagnostics.MainThread,
   Atlas.Core.Diagnostics.Guard,
   Atlas.Core.Diagnostics.Timing,
@@ -327,7 +331,17 @@ type
     IsWord: Boolean;
     /// <summary>Stelle des entfernten "$0" in Text (ab 1) bei Zusatzänderungen (#472); 0 ohne.</summary>
     Marker: Integer;
+    /// <summary>Verknüpfte Platzhalter in Text (#473), Offsets ab dem Anfang von Text.</summary>
+    Stops: TArray<TAtlasSnippetStop>;
+    /// <summary>Zeichenoffsets von Start und Stop im Text vor dem Einsetzen.</summary>
+    CharStart: Integer;
+    CharStop: Integer;
   end;
+
+const
+  /// <summary>Wartezeit auf den Befehl eines Eintrags (#473); der Server antwortet, bevor er applyEdit schickt.
+  /// </summary>
+  CommandTimeoutMs = 3000;
 
 type
   /// <summary>Tasten des Popups über den gemeinsamen Hook; Priorität vor dem Parameter-Hint.</summary>
@@ -1452,7 +1466,37 @@ begin
             Invoke(View, True);
         end);
   end;
+  RunCommand(AItem);
   ActiveChanged;
+end;
+
+procedure TAtlasEditorCompletion.RunCommand(const AItem: TAtlasCompletionItem);
+var
+  Session: TLspSession;
+  Arguments: TJSONValue;
+  Answer: TJSONValue;
+begin
+  if (AItem.Command = '') or not Assigned(FSession) then
+    Exit;
+  Session := FSession();
+  if (Session = nil) or not Session.Initialized then
+  begin
+    Log('Befehl des Eintrags nicht ausgeführt: keine Sitzung');
+    Exit;
+  end;
+  Arguments := TJSONObject.ParseJSONValue(AItem.CommandArguments);
+  if not (Arguments is TJSONArray) then
+  begin
+    Arguments.Free;
+    Arguments := TJSONArray.Create;
+  end;
+  Answer := Session.ExecuteCommand(AItem.Command, TJSONArray(Arguments), CommandTimeoutMs);
+  try
+    if Answer = nil then
+      Log('Befehl des Eintrags ohne Antwort');
+  finally
+    Answer.Free;
+  end;
 end;
 
 procedure TAtlasEditorCompletion.CommitSnippet(const AView: IOTAEditView; const AItem: TAtlasCompletionItem;
@@ -1464,7 +1508,11 @@ var
   Edits: TList<TPendingEdit>;
   Edit: TPendingEdit;
   TextEdit: TAtlasTextEdit;
-  WordStart, SnippetChar, CharShift: Integer;
+  WordStart, SnippetChar, CharShift, Shift: Integer;
+  Linked: TAtlasSnippetExpansion;
+  Stop: TAtlasSnippetStop;
+  Field: TAtlasPlaceholderField;
+  Fields: TArray<TAtlasPlaceholderField>;
 begin
   // Zeilenumbrüche wie im Puffer, Einrückung wie die aktuelle Zeile.
   LineBreak := TTextLines.LineBreakOf(AText);
@@ -1480,6 +1528,16 @@ begin
     Edit.Stop := TAtlasEditorBuffer.ByteOffset(AText, ALine - 1, AEnd);
     Edit.Text := Expansion.Text;
     Edit.IsWord := True;
+    Edit.Stops := nil;
+    Edit.CharStart := SnippetChar;
+    Edit.CharStop := TAtlasEditorBuffer.CharOffset(AText, ALine - 1, AEnd);
+    // Reicht der textEdit über das Wort hinaus (das ganze Literal, #473), bis zu seinem Ende ersetzen.
+    if AItem.HasTextEdit and (TAtlasEditorBuffer.ByteOffset(AText, AItem.TextEdit.EndLine,
+      AItem.TextEdit.EndCharacter) > Edit.Stop) then
+    begin
+      Edit.Stop := TAtlasEditorBuffer.ByteOffset(AText, AItem.TextEdit.EndLine, AItem.TextEdit.EndCharacter);
+      Edit.CharStop := TAtlasEditorBuffer.CharOffset(AText, AItem.TextEdit.EndLine, AItem.TextEdit.EndCharacter);
+    end;
     Edits.Add(Edit);
     // Setter-Deklaration und -Rumpf der Vorlage „prop“ u. ä.; davor liegende verschieben den Platzhalter-Text.
     CharShift := 0;
@@ -1487,13 +1545,21 @@ begin
     begin
       Edit.Start := TAtlasEditorBuffer.ByteOffset(AText, TextEdit.StartLine, TextEdit.StartCharacter);
       Edit.Stop := TAtlasEditorBuffer.ByteOffset(AText, TextEdit.EndLine, TextEdit.EndCharacter);
+      Edit.CharStart := TAtlasEditorBuffer.CharOffset(AText, TextEdit.StartLine, TextEdit.StartCharacter);
+      Edit.CharStop := TAtlasEditorBuffer.CharOffset(AText, TextEdit.EndLine, TextEdit.EndCharacter);
       Edit.Text := TextEdit.NewText;
+      Edit.Stops := nil;
+      // Verknüpfte Platzhalter (#473): ohne Einrückung, Zeilenumbrüche wie im Puffer.
+      if AItem.LinkedEdits then
+      begin
+        Linked := TAtlasSnippets.Expand(TextEdit.NewText, '', LineBreak);
+        Edit.Text := Linked.Text;
+        Edit.Stops := Linked.Stops;
+      end;
       Edit.IsWord := False;
       Edits.Add(Edit);
       if Edit.Start < Edits[0].Start then
-        Inc(CharShift, Length(TextEdit.NewText) -
-          (TAtlasEditorBuffer.CharOffset(AText, TextEdit.EndLine, TextEdit.EndCharacter) -
-          TAtlasEditorBuffer.CharOffset(AText, TextEdit.StartLine, TextEdit.StartCharacter)));
+        Inc(CharShift, Length(Edit.Text) - (Edit.CharStop - Edit.CharStart));
     end;
     Edits.Sort(TComparer<TPendingEdit>.Construct(
       function(const A, B: TPendingEdit): Integer
@@ -1502,18 +1568,30 @@ begin
       end));
     // Ein Schreiber = ein Undo-Schritt für das Einsetzen; er schreibt nur vorwärts.
     Writer := AView.Buffer.CreateUndoableWriter;
+    Fields := nil;
+    Shift := 0;
     for Edit in Edits do
     begin
       Writer.CopyTo(Edit.Start);
       Writer.DeleteTo(Edit.Stop);
       Writer.Insert(PAnsiChar(UTF8Encode(Edit.Text)));
+      // Lage der verknüpften Platzhalter im Text danach (Zeichen).
+      for Stop in Edit.Stops do
+      begin
+        Field.Number := Stop.Number;
+        Field.Start := Edit.CharStart + Shift + Stop.Start;
+        Field.Length := Stop.Length;
+        Fields := Fields + [Field];
+      end;
+      Inc(Shift, Length(Edit.Text) - (Edit.CharStop - Edit.CharStart));
     end;
     Writer := nil;
   finally
     Edits.Free;
   end;
   Document := TAtlasEditorBuffer.Text(AView.Buffer);
-  FPlaceholders.Start(AView, AText, Document, SnippetChar + CharShift, Expansion);
+  FPlaceholders.Start(AView, AText, Document, SnippetChar + CharShift, Expansion, Fields);
+  RunCommand(AItem);
   Log(Format('Code-Vorlage eingesetzt: %d Platzhalter, %d weitere Änderungen',
     [Integer(Length(Expansion.Stops)), Integer(Length(AItem.AdditionalEdits))]));
 end;

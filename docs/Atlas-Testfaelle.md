@@ -2183,3 +2183,19 @@ Voraussetzung für EX2 bis EX7: mindestens eine Einstellung trägt `x-experiment
 | EZ8 | In der Unit `TPunkt = record X, Y: Integer; end;`, in der Klasse `property Punkt: TPunkt read FPunkt write `, „SetPunkt anlegen“ | Setter weist `FPunkt := Value;` ohne Vergleich zu; die Datei übersetzt |
 | EZ9 | Getter bzw. Feld gibt es schon | Kein Eintrag „… anlegen“ für dieses Mitglied |
 | EZ10 | `completion.createAccessors` aus, EZ1 | Nur vorhandene Felder und Methoden, keine „… anlegen“-Einträge |
+
+## String als resourcestring auslagern (#473)
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| RS1 | In einer Methode `ShowMessage('Datei konnte nicht gespeichert werden');`, Cursor ins Literal, Strg+Leertaste | Oben „Als resourcestring auslagern“ (Aktionsfarbe), Detail zeigt `SDateiKonnteNichtGespeichert = '…';` |
+| RS2 | RS1 übernehmen | Literal ersetzt durch `SDateiKonnteNichtGespeichert`; hinter den uses des implementation-Teils steht `resourcestring` mit dem Eintrag; Strg+Z nimmt beides zurück |
+| RS3 | RS2, im Platzhaltermodus den Namen zu `SSpeichernFehlgeschlagen` ändern | Name in der Deklaration ändert sich mit; Tab bzw. Enter beendet den Modus |
+| RS4 | Zweites Literal mit demselben Text, Strg+Leertaste | Zuerst „Vorhandenen verwenden: SSpeichernFehlgeschlagen“, danach „Als resourcestring auslagern“; der erste Eintrag ersetzt nur das Literal |
+| RS5 | Vorhandener Abschnitt `resourcestring` mit Einträgen, neues Literal auslagern | Eintrag am Ende des Abschnitts mit gleicher Einrückung, kein zweiter Abschnitt |
+| RS6 | Literal `'Fehler: %s in Zeile %d'` | Name `SFehlerInZeile`; gibt es den Namen schon, `SFehlerInZeile2` |
+| RS7 | `'Erste Zeile'#13#10'Zweite Zeile'` auslagern | Ganzer Ausdruck wird ein Eintrag mit `#13#10` |
+| RS8 | In `atlas.json` `completion.resourceStringUnit` auf `App.Texte` (Unit im Projekt), Literal in einer anderen Unit auslagern | `App.Texte` steht in den uses, der Eintrag im resourcestring-Abschnitt ihres interface-Teils (Puffer geändert, noch nicht gespeichert); der Name in der aktuellen Unit ist nicht als Platzhalter verknüpft |
+| RS9 | Cursor in `const C = 'Text';`, in `[Attr('x y')]`, in `case S of 'ab': …` und in `procedure P(const S: string = 'xy')`, Strg+Leertaste | Kein Eintrag „Als resourcestring auslagern“ |
+| RS10 | Literal `'x'` bzw. `''` | Kein Eintrag (könnte ein Char sein) |
+| RS11 | `completion.resourceStrings` aus, RS1 | Kein Eintrag |
