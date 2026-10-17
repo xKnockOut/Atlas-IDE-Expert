@@ -11,7 +11,9 @@
 // Strg+Alt+K, nur solange bookmarks.named an ist) sowie die Liste der
 // Benachrichtigungen (#601, Strg+Umschalt+Alt+N, nur solange
 // notifications.enabled an ist) und die Brotkrumenleiste (#590,
-// Strg+Umschalt+., nur solange editor.breadcrumbs an ist). Jede Taste wird wie
+// Strg+Umschalt+., nur solange editor.breadcrumbs an ist) sowie der Sprung
+// zum Gegenstück (#635, Strg+Ü bzw. Strg+Umschalt+Ü zum Markieren, nur
+// solange keys.jumpToMatch an ist). Jede Taste wird wie
 // die der Befehlspalette vorher auf Konflikte geprüft (#494); ohne Vorrang
 // bleibt eine fremde Belegung aktiv. Nach geänderten Einstellungen meldet
 // Rebind die Bindung neu an. Der Befehl läuft nach der Tastenverarbeitung
@@ -419,6 +421,20 @@ begin
             TAtlasIdeNotifications.ShowList;
           end);
       end);
+  // Sprung zum Gegenstück (#635): aus = Strg+Ü und Strg+Umschalt+Ü bleiben frei.
+  if Settings.JumpToMatch then
+  begin
+    AddKey(Settings.JumpToMatchKey, TAtlasStrings.Text(TAtlasTextId.JumpToMatchCommand),
+      procedure
+      begin
+        TAtlasIdeEditorCommands.JumpToMatch(False);
+      end);
+    AddKey(Settings.JumpToMatchSelectKey, TAtlasStrings.Text(TAtlasTextId.JumpToMatchSelectCommand),
+      procedure
+      begin
+        TAtlasIdeEditorCommands.JumpToMatch(True);
+      end);
+  end;
   // Brotkrumenleiste (#590): aus = Strg+Umschalt+. bleibt frei.
   if Settings.Breadcrumbs then
     AddKey(Settings.BreadcrumbsKey, TAtlasStrings.Text(TAtlasTextId.BreadcrumbsCommand),

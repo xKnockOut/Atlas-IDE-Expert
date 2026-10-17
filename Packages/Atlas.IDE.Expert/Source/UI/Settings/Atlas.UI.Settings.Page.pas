@@ -262,6 +262,9 @@ type
     FBreadcrumbs: TCheckBox;
     FBreadcrumbsShowUnit: TCheckBox;
     FBreadcrumbsKey: TEdit;
+    FJumpToMatch: TCheckBox;
+    FJumpToMatchKey: TEdit;
+    FJumpToMatchSelectKey: TEdit;
     FBookmarkKey: TEdit;
     /// <summary>„Element ausblenden …“ (#628).</summary>
     FHideElementKey: TEdit;
@@ -1261,6 +1264,10 @@ begin
   FMethodToggle := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsMethodToggle));
   FMethodToggleUpKey := AddKey(TAtlasStrings.Text(TAtlasTextId.SettingsMethodToggleUp));
   FMethodToggleDownKey := AddKey(TAtlasStrings.Text(TAtlasTextId.SettingsMethodToggleDown));
+  // Sprung zum Gegenstück (#635); aus: beide Tasten bleiben frei.
+  FJumpToMatch := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsJumpToMatch));
+  FJumpToMatchKey := AddKey(TAtlasStrings.Text(TAtlasTextId.JumpToMatchCommand));
+  FJumpToMatchSelectKey := AddKey(TAtlasStrings.Text(TAtlasTextId.JumpToMatchSelectCommand));
   FTestUnitKey := AddKey(TAtlasStrings.Text(TAtlasTextId.EditorTestUnit));
   // Navigationsverlauf über Dateien (#504).
   FNavHistory := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsNavHistory));
@@ -2096,6 +2103,9 @@ begin
   FMarks.Bind(FBreadcrumbs, ['Breadcrumbs']);
   FMarks.Bind(FBreadcrumbsShowUnit, ['BreadcrumbsShowUnit']);
   FMarks.Bind(FBreadcrumbsKey, ['BreadcrumbsKey']);
+  FMarks.Bind(FJumpToMatch, ['JumpToMatch']);
+  FMarks.Bind(FJumpToMatchKey, ['JumpToMatchKey']);
+  FMarks.Bind(FJumpToMatchSelectKey, ['JumpToMatchSelectKey']);
   FMarks.Bind(FBookmarkKey, ['BookmarkKey']);
   FMarks.Bind(FHideElementKey, ['HideElementKey']);
   FMarks.Bind(FNextProblemKey, ['NextProblemKey']);
@@ -3074,6 +3084,9 @@ begin
   FBreadcrumbs.Checked := ASettings.Breadcrumbs;
   FBreadcrumbsShowUnit.Checked := ASettings.BreadcrumbsShowUnit;
   FBreadcrumbsKey.Text := ShortCutToText(TShortCut(ASettings.BreadcrumbsKey));
+  FJumpToMatch.Checked := ASettings.JumpToMatch;
+  FJumpToMatchKey.Text := ShortCutToText(TShortCut(ASettings.JumpToMatchKey));
+  FJumpToMatchSelectKey.Text := ShortCutToText(TShortCut(ASettings.JumpToMatchSelectKey));
   FBookmarkKey.Text := ShortCutToText(TShortCut(ASettings.BookmarkKey));
   FHideElementKey.Text := ShortCutToText(TShortCut(ASettings.HideElementKey));
   FNextProblemKey.Text := ShortCutToText(TShortCut(ASettings.NextProblemKey));
@@ -3357,6 +3370,9 @@ begin
   ASettings.Breadcrumbs := FBreadcrumbs.Checked;
   ASettings.BreadcrumbsShowUnit := FBreadcrumbsShowUnit.Checked;
   ASettings.BreadcrumbsKey := Integer(TextToShortCut(Trim(FBreadcrumbsKey.Text)));
+  ASettings.JumpToMatch := FJumpToMatch.Checked;
+  ASettings.JumpToMatchKey := Integer(TextToShortCut(Trim(FJumpToMatchKey.Text)));
+  ASettings.JumpToMatchSelectKey := Integer(TextToShortCut(Trim(FJumpToMatchSelectKey.Text)));
   ASettings.BookmarkKey := Integer(TextToShortCut(Trim(FBookmarkKey.Text)));
   ASettings.HideElementKey := Integer(TextToShortCut(Trim(FHideElementKey.Text)));
   ASettings.NextProblemKey := Integer(TextToShortCut(Trim(FNextProblemKey.Text)));

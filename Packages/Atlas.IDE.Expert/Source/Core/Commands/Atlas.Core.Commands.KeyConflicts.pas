@@ -44,7 +44,8 @@ type
     ExpandSelection, ShrinkSelection, GoToImplementation, TypeDefinition, UndoChange, RedoChange, WelcomeSearch,
     MethodToggleUp, MethodToggleDown, TestUnit, UnitSearch, UnitSearchIde, Bookmark, GenerateMenu,
     Notifications, WelcomeQuickBuild, WelcomeQuickTests, HideElement, NextProblem, PreviousProblem, QuickOpen,
-    NavBack, NavForward, LastEdit, PeekDefinition, PeekReferences, Breadcrumbs);
+    NavBack, NavForward, LastEdit, PeekDefinition, PeekReferences, Breadcrumbs, JumpToMatch,
+    JumpToMatchSelect);
   TAtlasKeyChoice = (UseAtlas, LeaveOther, OtherKey);
   /// <summary>NoKey: keine Taste; IdeKey: Taste der IDE über Code Insight, Atlas belegt nichts selbst;
   /// Free: Atlas belegt die freie Taste; AtlasWins: belegt, Atlas hat Vorrang; Left: belegt, Atlas
@@ -199,7 +200,10 @@ begin
     Create(TAtlasKeyFunction.PeekDefinition, Word(ASettings.PeekDefinitionKey), Shared, ASettings.Peek),
     Create(TAtlasKeyFunction.PeekReferences, Word(ASettings.PeekReferencesKey), Shared, ASettings.Peek),
     // Brotkrumenleiste (#590).
-    Create(TAtlasKeyFunction.Breadcrumbs, Word(ASettings.BreadcrumbsKey), Shared, ASettings.Breadcrumbs)];
+    Create(TAtlasKeyFunction.Breadcrumbs, Word(ASettings.BreadcrumbsKey), Shared, ASettings.Breadcrumbs),
+    // Sprung zum Gegenstück (#635).
+    Create(TAtlasKeyFunction.JumpToMatch, Word(ASettings.JumpToMatchKey), Shared, ASettings.JumpToMatch),
+    Create(TAtlasKeyFunction.JumpToMatchSelect, Word(ASettings.JumpToMatchSelectKey), Shared, ASettings.JumpToMatch)];
 end;
 
 class procedure TAtlasKeyEntry.ToSettings(const AEntries: TArray<TAtlasKeyEntry>;
@@ -297,6 +301,10 @@ begin
         ASettings.PeekReferencesKey := Entry.Key;
       TAtlasKeyFunction.Breadcrumbs:
         ASettings.BreadcrumbsKey := Entry.Key;
+      TAtlasKeyFunction.JumpToMatch:
+        ASettings.JumpToMatchKey := Entry.Key;
+      TAtlasKeyFunction.JumpToMatchSelect:
+        ASettings.JumpToMatchSelectKey := Entry.Key;
       // Strg+F12 ist fest; ein- und ausgeschaltet wird über unitSearch.replaceIdeDialog.
       TAtlasKeyFunction.UnitSearchIde:
         ;

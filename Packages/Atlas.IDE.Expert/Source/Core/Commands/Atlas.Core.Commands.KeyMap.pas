@@ -313,6 +313,10 @@ begin
       Result := 'Atlas.PeekReferences';
     TAtlasKeyFunction.Breadcrumbs:
       Result := 'Atlas.Breadcrumbs';
+    TAtlasKeyFunction.JumpToMatch:
+      Result := 'Atlas.JumpToMatch';
+    TAtlasKeyFunction.JumpToMatchSelect:
+      Result := 'Atlas.JumpToMatchSelect';
   else
     Result := '';
   end;
