@@ -93,6 +93,7 @@ Jeder Schlüssel hat genau einen Ort (Spalte „Ort“): Projekt-Schlüssel steh
 | `refactoring.syncSignatures` | Projekt (atlas.json) | boolean | `true` |  | Weichen Deklaration und Implementierung voneinander ab, die Aktionen „Implementierung an Deklaration angleichen“ und umgekehrt anbieten. |
 | `refactoring.tryFinally` | Projekt (atlas.json) | boolean | `true` |  | Code-Aktion „try/finally ergänzen“ nach X := TFoo.Create(…) für lokale Variablen (bei Result: try/except, das nur im Fehlerfall freigibt). Der try-Block schließt die folgenden Anweisungen bis zum Blockende bzw. bis zum Ende der Auswahl ein. |
 | `refactoring.classActions` | Projekt (atlas.json) | boolean | `true` |  | Code-Aktionen in einer Klassendeklaration: „Getter, Setter und Feld erzeugen“ auf einer Property ohne read/write, „Methoden von IFoo implementieren“ und „Name überschreiben“ für virtuelle Methoden der Vorfahren. |
+| `refactoring.explicitType` | Projekt (atlas.json) | boolean | `true` |  | Code-Aktion „Typ ausschreiben“ auf dem Namen von var X := …, const X = … und for var X in … ohne Typangabe: fügt den abgeleiteten Typ ein (var Count: Integer := Lines.Count) und trägt seine Unit bei Bedarf ins uses ein. |
 
 ## completeBlocks
 
@@ -148,7 +149,7 @@ Jeder Schlüssel hat genau einen Ort (Spalte „Ort“): Projekt-Schlüssel steh
 | Schlüssel | Ort | Typ | Standard | Werte | Bedeutung |
 |---|---|---|---|---|---|
 | `inlayHints.parameterNames` | global (settings.json) | boolean | `true` |  | Parameternamen vor den Argumenten eines Aufrufs. |
-| `inlayHints.inferredTypes` | global (settings.json) | boolean | `true` |  | Abgeleiteter Typ hinter var X := …. |
+| `inlayHints.inferredTypes` | global (settings.json) | boolean | `true` |  | Abgeleiteter Typ hinter var X := …, const X = … und for var X in … (im Plugin als Typmarke am Zeilenende). |
 | `inlayHints.endMarkers` | global (settings.json) | boolean | `true` |  | Hinter dem end langer Blöcke anzeigen, was dort endet. |
 | `inlayHints.endMarkerMinLines` | global (settings.json) | integer | `20` | 1… | Mindestlänge eines Blocks in Zeilen für eine Endmarkierung. |
 

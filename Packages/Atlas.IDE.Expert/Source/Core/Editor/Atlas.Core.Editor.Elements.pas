@@ -57,7 +57,9 @@ type
     /// <summary>Rekursionssymbol in der Rinne (#623).</summary>
     Recursion,
     /// <summary>Fehlertext am Zeilenende (#509).</summary>
-    InlineDiagnostics);
+    InlineDiagnostics,
+    /// <summary>Abgeleiteter Typ von Inline-Variablen (#453).</summary>
+    InlayTypeHints);
   TAtlasHideScope = (Here, InFile, Everywhere);
 {$SCOPEDENUMS OFF}
   TAtlasHideScopes = set of TAtlasHideScope;
@@ -165,6 +167,8 @@ begin
     // Text hinter dem Zeilenende wie eine Beschriftung; „Überall“ setzt editor.inlineDiagnostics auf aus.
     TAtlasDrawnElement.InlineDiagnostics:
       Result := Make(AElement, 'InlineDiagnostics', AllScopes, True, False);
+    TAtlasDrawnElement.InlayTypeHints:
+      Result := Make(AElement, 'InlayTypeHints', AllScopes, True, False);
   else
     Result := Make(AElement, '', [], False, False);
   end;
