@@ -307,6 +307,10 @@ begin
       Result := 'Atlas.NavForward';
     TAtlasKeyFunction.LastEdit:
       Result := 'Atlas.LastEdit';
+    TAtlasKeyFunction.PeekDefinition:
+      Result := 'Atlas.PeekDefinition';
+    TAtlasKeyFunction.PeekReferences:
+      Result := 'Atlas.PeekReferences';
   else
     Result := '';
   end;

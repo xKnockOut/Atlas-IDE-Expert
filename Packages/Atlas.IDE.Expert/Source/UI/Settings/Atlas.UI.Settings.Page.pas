@@ -251,6 +251,11 @@ type
     FNavBackKey: TEdit;
     FNavForwardKey: TEdit;
     FLastEditKey: TEdit;
+    FPeek: TCheckBox;
+    FPeekHeightLines: TEdit;
+    FPeekShowImplementation: TCheckBox;
+    FPeekDefinitionKey: TEdit;
+    FPeekReferencesKey: TEdit;
     FBookmarkKey: TEdit;
     /// <summary>„Element ausblenden …“ (#628).</summary>
     FHideElementKey: TEdit;
@@ -1252,6 +1257,12 @@ begin
   FNavBackKey := AddKey(TAtlasStrings.Text(TAtlasTextId.NavBackCommand));
   FNavForwardKey := AddKey(TAtlasStrings.Text(TAtlasTextId.NavForwardCommand));
   FLastEditKey := AddKey(TAtlasStrings.Text(TAtlasTextId.NavLastEditCommand));
+  // Definition und Referenzen einblenden (#505).
+  FPeek := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsPeek));
+  FPeekHeightLines := AddNumber(TAtlasStrings.Text(TAtlasTextId.SettingsPeekHeight));
+  FPeekShowImplementation := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsPeekImplementation));
+  FPeekDefinitionKey := AddKey(TAtlasStrings.Text(TAtlasTextId.PeekDefinitionCommand));
+  FPeekReferencesKey := AddKey(TAtlasStrings.Text(TAtlasTextId.PeekReferencesCommand));
   // „Lesezeichen setzen…“ (#622).
   FBookmarkKey := AddKey(TAtlasStrings.Text(TAtlasTextId.BookmarksMenuAdd));
   // „Element ausblenden …“ am gezeichneten Element (#628).
@@ -2060,6 +2071,11 @@ begin
   FMarks.Bind(FNavBackKey, ['NavBackKey']);
   FMarks.Bind(FNavForwardKey, ['NavForwardKey']);
   FMarks.Bind(FLastEditKey, ['LastEditKey']);
+  FMarks.Bind(FPeek, ['Peek']);
+  FMarks.Bind(FPeekHeightLines, ['PeekHeightLines']);
+  FMarks.Bind(FPeekShowImplementation, ['PeekShowImplementation']);
+  FMarks.Bind(FPeekDefinitionKey, ['PeekDefinitionKey']);
+  FMarks.Bind(FPeekReferencesKey, ['PeekReferencesKey']);
   FMarks.Bind(FBookmarkKey, ['BookmarkKey']);
   FMarks.Bind(FHideElementKey, ['HideElementKey']);
   FMarks.Bind(FNextProblemKey, ['NextProblemKey']);
@@ -3027,6 +3043,11 @@ begin
   FNavBackKey.Text := ShortCutToText(TShortCut(ASettings.NavBackKey));
   FNavForwardKey.Text := ShortCutToText(TShortCut(ASettings.NavForwardKey));
   FLastEditKey.Text := ShortCutToText(TShortCut(ASettings.LastEditKey));
+  FPeek.Checked := ASettings.Peek;
+  FPeekHeightLines.Text := IntToStr(ASettings.PeekHeightLines);
+  FPeekShowImplementation.Checked := ASettings.PeekShowImplementation;
+  FPeekDefinitionKey.Text := ShortCutToText(TShortCut(ASettings.PeekDefinitionKey));
+  FPeekReferencesKey.Text := ShortCutToText(TShortCut(ASettings.PeekReferencesKey));
   FBookmarkKey.Text := ShortCutToText(TShortCut(ASettings.BookmarkKey));
   FHideElementKey.Text := ShortCutToText(TShortCut(ASettings.HideElementKey));
   FNextProblemKey.Text := ShortCutToText(TShortCut(ASettings.NextProblemKey));
@@ -3299,6 +3320,11 @@ begin
   ASettings.NavBackKey := Integer(TextToShortCut(Trim(FNavBackKey.Text)));
   ASettings.NavForwardKey := Integer(TextToShortCut(Trim(FNavForwardKey.Text)));
   ASettings.LastEditKey := Integer(TextToShortCut(Trim(FLastEditKey.Text)));
+  ASettings.Peek := FPeek.Checked;
+  ASettings.PeekHeightLines := StrToIntDef(FPeekHeightLines.Text, ASettings.PeekHeightLines);
+  ASettings.PeekShowImplementation := FPeekShowImplementation.Checked;
+  ASettings.PeekDefinitionKey := Integer(TextToShortCut(Trim(FPeekDefinitionKey.Text)));
+  ASettings.PeekReferencesKey := Integer(TextToShortCut(Trim(FPeekReferencesKey.Text)));
   ASettings.BookmarkKey := Integer(TextToShortCut(Trim(FBookmarkKey.Text)));
   ASettings.HideElementKey := Integer(TextToShortCut(Trim(FHideElementKey.Text)));
   ASettings.NextProblemKey := Integer(TextToShortCut(Trim(FNextProblemKey.Text)));

@@ -43,6 +43,8 @@ type
     MinCheckMax = 200;
     MaxCheckMax = 20000;
     MaxXmlDocLines = 50;
+    MinPeekLines = 5;
+    MaxPeekLines = 60;
     /// <summary>Grenzen für editor.blockEndLabels.minLines (#620).</summary>
     MinBlockEndLines = 1;
     MaxBlockEndLines = 1000;
@@ -510,6 +512,16 @@ type
     NavForwardKey: Integer;
     /// <summary>Kürzel „Letzte Bearbeitungsstelle“ (#504, keys.lastEdit); Vorgabe Strg+Alt+Q.</summary>
     LastEditKey: Integer;
+    /// <summary>Definition und Referenzen einblenden (#505, peek.enabled).</summary>
+    Peek: Boolean;
+    /// <summary>Höhe des Peek-Fensters in Editorzeilen (#505, peek.heightLines), MinPeekLines bis MaxPeekLines.</summary>
+    PeekHeightLines: Integer;
+    /// <summary>Bei Routinen auch die Implementierung zeigen (#505, peek.showImplementation).</summary>
+    PeekShowImplementation: Boolean;
+    /// <summary>Kürzel „Definition einblenden“ (#505, keys.peekDefinition); Vorgabe Alt+F12.</summary>
+    PeekDefinitionKey: Integer;
+    /// <summary>Kürzel „Referenzen einblenden“ (#505, keys.peekReferences); Vorgabe Umschalt+Alt+F12.</summary>
+    PeekReferencesKey: Integer;
     /// <summary>Hauptschalter der Atlas-Willkommensseite (#753, welcomePage.enabled): Atlas-Bereiche auf der
     /// Willkommensseite der IDE und Fenster „Atlas-Start“.</summary>
     WelcomePage: Boolean;
@@ -1050,6 +1062,11 @@ begin
   Result.NavBackKey := $8025; // Alt+Links
   Result.NavForwardKey := $8027; // Alt+Rechts
   Result.LastEditKey := $C051; // Strg+Alt+Q
+  Result.Peek := True;
+  Result.PeekHeightLines := 15;
+  Result.PeekShowImplementation := True;
+  Result.PeekDefinitionKey := $807B; // Alt+F12
+  Result.PeekReferencesKey := $A07B; // Umschalt+Alt+F12
   Result.WelcomePage := True;
   Result.WelcomePageHost := 'welcomePage';
   Result.WelcomePageLayout := 'off';
@@ -1228,6 +1245,9 @@ begin
   NavBackKey := EnsureRange(NavBackKey, 0, $FFFF);
   NavForwardKey := EnsureRange(NavForwardKey, 0, $FFFF);
   LastEditKey := EnsureRange(LastEditKey, 0, $FFFF);
+  PeekHeightLines := EnsureRange(PeekHeightLines, MinPeekLines, MaxPeekLines);
+  PeekDefinitionKey := EnsureRange(PeekDefinitionKey, 0, $FFFF);
+  PeekReferencesKey := EnsureRange(PeekReferencesKey, 0, $FFFF);
   BookmarkKey := EnsureRange(BookmarkKey, 0, $FFFF);
   HideElementKey := EnsureRange(HideElementKey, 0, $FFFF);
   InlineDiagnostics := Choice(InlineDiagnostics, ['errors', 'off', 'errorsAndWarnings', 'all']);
@@ -1447,6 +1467,12 @@ begin
   NavBackKey := AStore.ReadInteger('NavBackKey', Default.NavBackKey);
   NavForwardKey := AStore.ReadInteger('NavForwardKey', Default.NavForwardKey);
   LastEditKey := AStore.ReadInteger('LastEditKey', Default.LastEditKey);
+  Peek := AStore.ReadInteger('Peek', BoolValue(Default.Peek)) <> 0;
+  PeekHeightLines := AStore.ReadInteger('PeekHeightLines', Default.PeekHeightLines);
+  PeekShowImplementation := AStore.ReadInteger('PeekShowImplementation',
+    BoolValue(Default.PeekShowImplementation)) <> 0;
+  PeekDefinitionKey := AStore.ReadInteger('PeekDefinitionKey', Default.PeekDefinitionKey);
+  PeekReferencesKey := AStore.ReadInteger('PeekReferencesKey', Default.PeekReferencesKey);
   WelcomePage := AStore.ReadInteger('WelcomePage', BoolValue(Default.WelcomePage)) <> 0;
   WelcomePageHost := AStore.ReadString('WelcomePageHost', Default.WelcomePageHost);
   WelcomePageLayout := AStore.ReadString('WelcomePageLayout', Default.WelcomePageLayout);
@@ -1714,6 +1740,11 @@ begin
   AStore.WriteInteger('NavBackKey', NavBackKey);
   AStore.WriteInteger('NavForwardKey', NavForwardKey);
   AStore.WriteInteger('LastEditKey', LastEditKey);
+  AStore.WriteInteger('Peek', BoolValue(Peek));
+  AStore.WriteInteger('PeekHeightLines', PeekHeightLines);
+  AStore.WriteInteger('PeekShowImplementation', BoolValue(PeekShowImplementation));
+  AStore.WriteInteger('PeekDefinitionKey', PeekDefinitionKey);
+  AStore.WriteInteger('PeekReferencesKey', PeekReferencesKey);
   AStore.WriteInteger('WelcomePage', BoolValue(WelcomePage));
   AStore.WriteString('WelcomePageHost', WelcomePageHost);
   AStore.WriteString('WelcomePageLayout', WelcomePageLayout);

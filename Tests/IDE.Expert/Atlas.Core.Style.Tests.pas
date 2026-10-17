@@ -93,6 +93,10 @@ type
     procedure NameAfterDotIsNoKeyword;
     [Test]
     procedure FindsDefaultValues;
+    [Test]
+    procedure ParenStarIsComment;
+    [Test]
+    procedure CommentsSpanLines;
   end;
 
   [TestFixture]
@@ -463,6 +467,44 @@ begin
   Assert.AreEqual('[ = nil][ = []]', Defaults('procedure P(A: TFoo = nil; B: TArray<Integer> = [])'));
   Assert.AreEqual('', Defaults('procedure X(A: array of Integer)'));
   Assert.AreEqual('', Defaults('property Items[Index: Integer]: string read Get; default;'));
+end;
+
+procedure TAtlasSyntaxTests.ParenStarIsComment;
+begin
+  Assert.AreEqual('k:begin|p: |c:(* alt *)|p: X|', Describe('begin (* alt *) X'));
+  Assert.AreEqual('p:Add(A)|', Describe('Add(A)'));
+end;
+
+function DescribeLines(const ALines: TArray<string>): string;
+var
+  Lines: TArray<TAtlasTokens>;
+  Line: Integer;
+  Token: TAtlasToken;
+const
+  Names: array[TAtlasTokenKind] of string = ('p', 'k', 's', 'c', 'n');
+begin
+  Result := '';
+  Lines := TAtlasSyntax.LineTokens(ALines);
+  for Line := 0 to High(Lines) do
+  begin
+    for Token in Lines[Line] do
+      Result := Result + Names[Token.Kind] + ':' + Copy(ALines[Line], Token.Start + 1, Token.Stop - Token.Start) + '|';
+    Result := Result + '/';
+  end;
+end;
+
+procedure TAtlasSyntaxTests.CommentsSpanLines;
+begin
+  Assert.AreEqual('k:begin|p: |c:{ eins|/c:zwei|/c:drei }|p: X;|/k:end|p:;|/',
+    DescribeLines(['begin { eins', 'zwei', 'drei } X;', 'end;']));
+  Assert.AreEqual('c:(* a|/c:*)|p: |k:if|/',
+    DescribeLines(['(* a', '*) if']));
+  // Im String und nach // öffnet "{" keinen Kommentar.
+  Assert.AreEqual('p:S := |s:''{''|p:;|/p:X|/',
+    DescribeLines(['S := ''{'';', 'X']));
+  Assert.AreEqual('p:X; |c:// {|/k:end|/',
+    DescribeLines(['X; // {', 'end']));
+  Assert.AreEqual('/c:{|/', DescribeLines(['', '{']));
 end;
 
 { TAtlasPresentationTests }

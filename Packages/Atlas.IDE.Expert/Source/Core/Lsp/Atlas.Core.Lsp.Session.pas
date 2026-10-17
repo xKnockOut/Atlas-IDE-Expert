@@ -249,6 +249,10 @@ type
     class function LocationsOf(const AResponse: TJSONValue): TArray<TLspLocation>; static;
     function Definition(const AFileName, AText: string; ALine, ACharacter: Integer;
       out ALocation: TLspLocation): Boolean;
+    /// <summary>textDocument/definition ohne Abgleich (#505): alle Ziele; Sync vorher.</summary>
+    function Definitions(const AFileName: string; ALine, ACharacter: Integer): TArray<TLspLocation>;
+    /// <summary>textDocument/declaration ohne Abgleich (#505): alle Ziele; Sync vorher.</summary>
+    function Declarations(const AFileName: string; ALine, ACharacter: Integer): TArray<TLspLocation>;
     /// <summary>
     /// textDocument/completion ohne Abgleich: Sync vorher im Hauptthread. Darf aus einem
     /// anderen Thread kommen, solange die Sitzung lebt. Liefert die Antwort (CompletionList,
@@ -1569,6 +1573,30 @@ begin
     ALocation.Line := Range.GetValue<Integer>('start.line', 0);
     ALocation.Character := Range.GetValue<Integer>('start.character', 0);
     Result := ALocation.FileName <> '';
+  finally
+    Response.Free;
+  end;
+end;
+
+function TLspSession.Definitions(const AFileName: string; ALine, ACharacter: Integer): TArray<TLspLocation>;
+var
+  Response: TJSONValue;
+begin
+  Response := FClient.Request('textDocument/definition', PositionParams(AFileName, ALine, ACharacter), FTimeoutMs);
+  try
+    Result := LocationsOf(Response);
+  finally
+    Response.Free;
+  end;
+end;
+
+function TLspSession.Declarations(const AFileName: string; ALine, ACharacter: Integer): TArray<TLspLocation>;
+var
+  Response: TJSONValue;
+begin
+  Response := FClient.Request('textDocument/declaration', PositionParams(AFileName, ALine, ACharacter), FTimeoutMs);
+  try
+    Result := LocationsOf(Response);
   finally
     Response.Free;
   end;
