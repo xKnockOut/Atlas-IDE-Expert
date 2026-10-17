@@ -174,10 +174,12 @@ uses
   Atlas.Core.Build.Inbox,
   Atlas.Core.Build.ReleaseGuard,
   Atlas.Core.Problems.Contract,
+  Atlas.Core.Problems.Inline,
   Atlas.Core.Projects.Summary,
   Atlas.Core.Tests.Run,
   Atlas.Core.Tests.Debug,
   Atlas.IDE.Problems.Controller,
+  Atlas.IDE.Problems.MessageList,
   Atlas.IDE.Tests.Runner,
   Atlas.IDE.Tests.Debug,
   Atlas.IDE.Tests.Lens;
@@ -1049,6 +1051,17 @@ begin
   // Ausblenden am Element (#628).
   Add('Atlas.HideElement', TAtlasTextId.HideElementCommand,
     Guarded(TAtlasFeature.EditorCommands, TAtlasIdeHide.ShowForCommand));
+  // Nächster/vorheriger Befund (#509).
+  Add('Atlas.NextProblem', TAtlasTextId.ProblemNextCommand,
+    procedure
+    begin
+      TAtlasIdeEditorCommands.StepProblem(True);
+    end);
+  Add('Atlas.PreviousProblem', TAtlasTextId.ProblemPreviousCommand,
+    procedure
+    begin
+      TAtlasIdeEditorCommands.StepProblem(False);
+    end);
   Add('Atlas.ExpandSelection', TAtlasTextId.EditorExpand, TAtlasIdeEditorCommands.ExpandSelection);
   Add('Atlas.ShrinkSelection', TAtlasTextId.EditorShrink, TAtlasIdeEditorCommands.ShrinkSelection);
   Add('Atlas.TypeDefinition', TAtlasTextId.EditorTypeDefinition, TAtlasIdeEditorCommands.GoToTypeDefinition);
@@ -1313,6 +1326,9 @@ begin
   Result := TAtlasIdeWelcomeState.Create(TAtlasStatusRegistry.Default, Actions);
 end;
 
+const
+  ProblemCountsExtra = 'problemCounts';
+
 procedure RegisterStatusField;
 begin
   StatusLines := TAtlasIdeStatusLines.Create(TAtlasStatusRegistry.Default,
@@ -1356,6 +1372,25 @@ begin
     begin
       if Manager <> nil then
         Manager.RestartServer;
+    end;
+  // Fehlerzähler (#509) als Zusatzfeld; ein Klick öffnet die Liste „Atlas-Probleme“.
+  TAtlasProblemsController.OnCounts :=
+    procedure(AShow: Boolean; const ACounts: TAtlasProblemCounts)
+    begin
+      if StatusField = nil then
+        Exit;
+      if not AShow then
+      begin
+        StatusField.SetExtra(ProblemCountsExtra, '', '', nil);
+        Exit;
+      end;
+      StatusField.SetExtra(ProblemCountsExtra, TAtlasStrings.Fmt(TAtlasTextId.ProblemCounterText,
+        [ACounts.Errors, ACounts.Warnings, ACounts.Hints]), TAtlasStrings.Fmt(TAtlasTextId.ProblemCounterHint,
+        [ACounts.Errors, ACounts.Warnings, ACounts.Hints]),
+        procedure(APoint: TPoint)
+        begin
+          TAtlasProblemsList.ShowList;
+        end);
     end;
 end;
 
@@ -1401,6 +1436,7 @@ end;
 
 procedure UnregisterStatusField;
 begin
+  TAtlasProblemsController.OnCounts := nil;
   if Manager <> nil then
     Manager.OnServerChanged := nil;
   FreeAndNil(StatusField);
@@ -1839,6 +1875,14 @@ begin
     begin
       TAtlasIdeEditorCommands.ApplyTagged(TLspRange.Create(AProblem.StartLine, AProblem.StartCharacter,
         AProblem.EndLine, AProblem.EndCharacter), ATag);
+    end;
+  // Nächster/vorheriger Befund (#509): alle Befunde der Datei aus dem Problemspeicher.
+  TAtlasIdeEditorCommands.OnProblemsOf :=
+    function(const AFileName: string): TArray<TAtlasProblem>
+    begin
+      Result := nil;
+      if TAtlasProblemsController.Current <> nil then
+        Result := TAtlasProblemsController.Current.ForFile(AFileName);
     end;
   // Erzeugen-Menü (#719): Vorlagen und ihr Einsetzen mit Platzhaltern kommen aus der Vervollständigung.
   TAtlasIdeGenerate.Install(

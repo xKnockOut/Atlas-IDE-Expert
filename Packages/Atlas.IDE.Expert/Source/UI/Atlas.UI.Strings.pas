@@ -537,7 +537,10 @@ type
     SettingsFilter, SettingsFilterAll, SettingsFilterModified, SettingsFilterExperimental, WelcomeNewsExperimental,
     SettingsDimUnusedUses, ElementUnusedUses, ElementUnusedUsesPlural, UsesUnusedHint, UsesInitializationHint,
     UsesAllowlistHint, UsesImplementationHint, ProblemsSourceUses, UsesRemove, UsesRemoveAll, UsesMove,
-    UsesActionMissing);
+    UsesActionMissing,
+    SettingsInlineDiagnostics, SettingsInlineDiagnosticsOff, SettingsInlineDiagnosticsErrors,
+    SettingsInlineDiagnosticsWarnings, SettingsInlineDiagnosticsAll, SettingsProblemsStatusCounter, ProblemNextCommand,
+    ProblemPreviousCommand, ProblemNoneInFile, ProblemCounterText, ProblemCounterHint);
 
   TAtlasStrings = class
   private class var
@@ -1568,7 +1571,11 @@ const
      '%s steht in usesKeep (atlas.json) und wird nicht als ungenutzt gezeigt',
      '%s wird nur in der implementation gebraucht', 'Atlas · uses', 'Entfernen', 'Alle ungenutzten entfernen',
      'In implementation-uses verschieben',
-     'Atlas: Das geht hier nicht sicher (Direktive oder Kommentar in der uses-Liste).'),
+     'Atlas: Das geht hier nicht sicher (Direktive oder Kommentar in der uses-Liste).',
+     'Fehlertext am Zeilenende:', 'Aus', 'Nur Fehler', 'Fehler und Warnungen', 'Alle',
+     'Zähler „Fehler/Warnungen/Hinweise“ in der Statusleiste', 'Nächster Befund', 'Vorheriger Befund',
+     'Atlas: Keine Befunde in dieser Datei.', 'Fehler %d · Warnungen %d · Hinweise %d',
+     '%d Fehler, %d Warnungen, %d Hinweise in Atlas-Probleme. Klick öffnet die Liste.'),
     ('Enter to accept · Esc to close', '%d of %d', 'No matches for “%s”', 'Backspace widens the search',
      'No suggestions here', 'Esc closes', 'No details for this entry', 'Overload', 'Deprecated: %s', 'Deprecated.',
      'Inherited from %s', 'Inherited', 'optional, default %s', 'No overload with %d parameters.', '… %d more',
@@ -2528,7 +2535,11 @@ const
      '%s is listed in usesKeep (atlas.json) and not shown as unused',
      '%s is only needed in the implementation', 'Atlas · uses', 'Remove', 'Remove all unused',
      'Move to implementation uses',
-     'Atlas: This cannot be done safely here (directive or comment in the uses list).'));
+     'Atlas: This cannot be done safely here (directive or comment in the uses list).',
+     'Error text at line end:', 'Off', 'Errors only', 'Errors and warnings', 'All',
+     'Error/warning/hint counter in the status bar', 'Next finding', 'Previous finding',
+     'Atlas: No findings in this file.', 'Errors %d · Warnings %d · Hints %d',
+     '%d errors, %d warnings, %d hints in Atlas problems. Click opens the list.'));
 
 { TAtlasStrings }
 

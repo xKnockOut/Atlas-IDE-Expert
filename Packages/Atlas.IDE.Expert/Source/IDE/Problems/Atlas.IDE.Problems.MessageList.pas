@@ -25,6 +25,8 @@ type
     procedure Update(AStore: TAtlasProblemStore);
     /// <summary>Gruppe entfernen (Liste abgeschaltet).</summary>
     procedure Clear;
+    /// <summary>Meldungsfenster mit der Gruppe „Atlas-Probleme“ zeigen (Klick auf den Zähler, #509).</summary>
+    class procedure ShowList; static;
   end;
 
 implementation
@@ -112,6 +114,14 @@ begin
       Entry.Problem.StartLine + 1, Entry.Problem.StartCharacter + 1, nil, LineRef, Target);
   if Total > Length(Entries) then
     Messages.AddTitleMessage(TAtlasStrings.Fmt(TAtlasTextId.ProblemsMore, [Total - Length(Entries)]), Target);
+end;
+
+class procedure TAtlasProblemsList.ShowList;
+var
+  Messages: IOTAMessageServices;
+begin
+  if Supports(BorlandIDEServices, IOTAMessageServices, Messages) then
+    Messages.ShowMessageView(Group(Messages, False));
 end;
 
 procedure TAtlasProblemsList.Clear;
