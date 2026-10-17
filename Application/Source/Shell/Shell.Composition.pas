@@ -293,6 +293,10 @@ type
     function ChangeSignature(const AArguments: TJSONArray; APrepare: Boolean): TJSONValue;
     /// <summary>Code-Aktion „Signatur ändern …“ an APosition (#100).</summary>
     function ChangeSignatureActions(const AUri: string; const APosition: TTextPosition): TArray<TJSONObject>;
+    /// <summary>„Klasse in eigene Unit verschieben“ (#103): das WorkspaceEdit für Name und Stelle.</summary>
+    function MoveClass(const AArguments: TJSONArray): TJSONValue;
+    /// <summary>Code-Aktion „Klasse … in eigene Unit verschieben …“ an APosition (#103).</summary>
+    function MoveClassActions(const AUri: string; const APosition: TTextPosition): TArray<TJSONObject>;
     /// <summary>„Typ ausschreiben“ (#453) für die Inline-Variable an APosition.</summary>
     function ExplicitTypeActions(const AUri: string; const APosition: TTextPosition): TArray<TJSONObject>;
     /// <summary>Extrahieren, „case vervollständigen“ und „with auflösen“ (#50).</summary>
@@ -428,6 +432,7 @@ uses
   Atlas.Common.Lsp.FormFiles,
   Atlas.Common.Lsp.DfmPropertyRules,
   Atlas.Common.Lsp.ChangeSignature,
+  Atlas.Common.Lsp.MoveClass,
   Atlas.Common.Lsp.Contract,
   Atlas.Common.Lsp.Positions,
   Atlas.Common.Semantics.NameResolver,
@@ -1238,6 +1243,7 @@ begin
     begin
       Result := FTestUnits.Actions(AUri, ARange.StartPos.Line);
       Result := Result + ChangeSignatureActions(AUri, ARange.StartPos);
+      Result := Result + MoveClassActions(AUri, ARange.StartPos);
       Result := Result + ExplicitTypeActions(AUri, ARange.StartPos);
       Result := Result + RefactoringActions(AUri, ARange);
     end;
@@ -1294,6 +1300,11 @@ begin
     function(const AArguments: TJSONArray): TJSONValue
     begin
       Result := ChangeSignature(AArguments, False);
+    end);
+  FCommands.Register(TLspMoveClass.ApplyCommand,
+    function(const AArguments: TJSONArray): TJSONValue
+    begin
+      Result := MoveClass(AArguments);
     end);
   FCommands.Register(TLspMetrics.Command,
     function(const AArguments: TJSONArray): TJSONValue
@@ -2607,6 +2618,83 @@ begin
   finally
     Resolver.Free;
   end;
+end;
+
+function TServerComposition.MoveClassActions(const AUri: string;
+  const APosition: TTextPosition): TArray<TJSONObject>;
+var
+  Document: ITextDocument;
+  Shared: ISharedSyntaxTree;
+  Resolver: TNameResolver;
+begin
+  Result := nil;
+  if not RefactoringSettingsFor(AUri).MoveClass or not FDocuments.TryGet(AUri, Document) or
+    not SameText(ExtractFileExt(TDocumentUris.ToPath(AUri)), '.pas') then
+    Exit;
+  Shared := TSyntaxTreeCache.Get(Document, nil);
+  Resolver := TNameResolver.Create(FIndex, EnsureUnit);
+  try
+    Resolver.Namespaces := FRename.Namespaces;
+    Result := TLspMoveClass.Actions(True, Resolver, Shared.Tree, TDocumentUris.ToPath(AUri), Document.Text, AUri,
+      APosition);
+  finally
+    Resolver.Free;
+  end;
+end;
+
+function TServerComposition.MoveClass(const AArguments: TJSONArray): TJSONValue;
+var
+  Uri, FileName: string;
+  Position: TTextPosition;
+  Document: ITextDocument;
+  Shared: ISharedSyntaxTree;
+  Resolver: TNameResolver;
+  Context: TMoveClassContext;
+  Workspace: TShellWorkspace;
+  Answer: TJSONObject;
+begin
+  // Argumente: URI, Position, Name der neuen Unit.
+  if (AArguments = nil) or (AArguments.Count < 3) then
+    raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams, 'Argumente "uri", "position" und "name" fehlen');
+  Uri := AArguments.Items[0].Value;
+  Position := TLspPositions.ReadPosition(AArguments.Items[1]);
+  if not RefactoringSettingsFor(Uri).MoveClass then
+    raise EJsonRpcError.Create(TLspErrorCode.RequestFailed,
+      '"Klasse verschieben" ist abgeschaltet (refactoring.moveClass).');
+  if not FDocuments.TryGet(Uri, Document) then
+    raise EJsonRpcError.Create(TLspErrorCode.RequestFailed, 'Die Datei ist nicht geöffnet.');
+  FileName := TDocumentUris.ToPath(Uri);
+  Context := Default(TMoveClassContext);
+  Context.Index := FIndex;
+  Context.Files := ProjectSourceFiles;
+  Context.ReadText := ReadSourceText;
+  Context.Exists :=
+    function(const AFileName: string): Boolean
+    var
+      Open: ITextDocument;
+    begin
+      Result := FileExists(AFileName) or FDocuments.TryGet(TDocumentUris.FromPath(AFileName), Open);
+    end;
+  TMonitor.Enter(FWorkspacesLock);
+  try
+    Workspace := PickWorkspace(FileName);
+    Context.HasProject := (Workspace <> nil) and Workspace.Project(Context.Project);
+  finally
+    TMonitor.Exit(FWorkspacesLock);
+  end;
+  Shared := TSyntaxTreeCache.Get(Document, nil);
+  Resolver := TNameResolver.Create(FIndex, EnsureUnit);
+  try
+    Resolver.Namespaces := FRename.Namespaces;
+    Answer := TLspMoveClass.Execute(Resolver, Shared.Tree, FileName, Document.Text, Position,
+      AArguments.Items[2].Value, Context);
+  finally
+    Resolver.Free;
+  end;
+  // Nur Zahlen ins Log, keine Namen und Pfade (#647).
+  FLogger.Info(Format('Klasse verschieben: %d Dateiänderungen',
+    [TJSONArray(TJSONObject(Answer.GetValue('edit')).GetValue('documentChanges')).Count]));
+  Result := Answer;
 end;
 
 function TServerComposition.ExplicitTypeActions(const AUri: string;

@@ -139,6 +139,19 @@ begin
     end;
 end;
 
+/// <summary>Vorher und Nachher müssen fehlerfrei parsen (Abnahme von #103).</summary>
+procedure CheckParses(const AText: string);
+var
+  Tree: TSyntaxTree;
+begin
+  Tree := TPascalParser.Parse(AText);
+  try
+    Assert.AreEqual(0, Integer(Length(Tree.Diagnostics)), AText);
+  finally
+    Tree.Free;
+  end;
+end;
+
 function Options(AInline: Boolean): TInlineOptions;
 begin
   Result := TInlineOptions.Default;
@@ -155,12 +168,14 @@ var
   Action: TCodeAction;
 begin
   Text := Unmark(AMarked, Position);
+  CheckParses(Text);
   Tree := TPascalParser.Parse(Text);
   try
     if not TInlineRefactoring.InlineVariable(TInlineSource.Create('u.pas', Text, Tree), Position, Options(True),
       Action, AReason) then
       Exit('-');
     Result := TChangeSignature.ApplyEdits(Text, Action.Edits);
+    CheckParses(Result);
   finally
     Tree.Free;
   end;
@@ -187,6 +202,7 @@ begin
   ATitle := '';
   AReason := '';
   Text := Unmark(AMarked, Position);
+  CheckParses(Text);
   Tree := TPascalParser.Parse(Text);
   try
     Source := TInlineSource.Create('u.pas', Text, Tree);
@@ -200,6 +216,7 @@ begin
       Exit('-');
     ATitle := Action.Title;
     Result := TChangeSignature.ApplyEdits(Text, Action.Edits);
+    CheckParses(Result);
   finally
     Tree.Free;
   end;
@@ -376,10 +393,10 @@ end;
 
 procedure TInlineTests.InlineMethodWithReceiverAndGuard;
 const
-  Head: array[0..17] of string = ('type', '  TCounter = class', '  private', '    FCount: Integer;', '  public',
-    '    function Add(AValue: Integer): Integer;', '  end;', '', 'function TCounter.Add(AValue: Integer): Integer;',
-    'begin', '  if AValue < 0 then', '    Exit(0);', '  FCount := FCount + AValue;', '  Result := FCount;', 'end;',
-    '', 'procedure P(C: TCounter);', 'var');
+  Head: array[0..18] of string = ('type', '  TCounter = class', '  private', '    FCount: Integer;', '  public',
+    '    function Add(AValue: Integer): Integer;', '    procedure Run(C: TCounter);', '  end;', '',
+    'function TCounter.Add(AValue: Integer): Integer;', 'begin', '  if AValue < 0 then', '    Exit(0);',
+    '  FCount := FCount + AValue;', '  Result := FCount;', 'end;', '', 'procedure TCounter.Run(C: TCounter);', 'var');
 var
   Title, Reason: string;
 begin
@@ -390,6 +407,11 @@ begin
     Method(Join(['unit U;', '', 'interface', '', 'implementation', '']) + Join(Head) +
     Join(['  Y: Integer;', 'begin', '  Y := C.|Add(5);', 'end;', '', 'end.']), True, Title, Reason));
   Assert.AreEqual('Methode Add einbetten', Title);
+  // Außerhalb der Klasse ist das private Feld nicht zugänglich.
+  Assert.AreEqual('-', Method(Join(['unit U;', '', 'interface', '', 'implementation', '']) +
+    Join(Slice(Head, 17)) + Join(['procedure P(C: TCounter);', 'var', '  Y: Integer;', 'begin',
+    '  Y := C.|Add(5);', 'end;', '', 'end.']), True, Title, Reason));
+  Assert.Contains(Reason, 'nicht sichtbar');
 end;
 
 procedure TInlineTests.InlineProcedureGuardNegates;
@@ -425,6 +447,11 @@ begin
   Assert.AreEqual('-', Method(Unit_(['function G: string;', 'begin', '  Result := Result + ''a'';', 'end;', '',
     'procedure P;', 'begin', '  Writeln(|G());', 'end;']), True, Title, Reason));
   Assert.Contains(Reason, 'Result');
+  // Result in einer Schleife gesetzt.
+  Assert.AreEqual('-', Method(Unit_(['function S(A: Integer): Integer;', 'var', '  I: Integer;', 'begin',
+    '  Result := 0;', '  for I := 1 to A do', '    Result := Result + I;', 'end;', '', 'procedure P;', 'begin',
+    '  Writeln(|S(3));', 'end;']), True, Title, Reason));
+  Assert.Contains(Reason, 'Schleife');
   // Aufruf davor in derselben Anweisung.
   Assert.AreEqual('-', Method(Unit_(['function H(A: Integer): Integer;', 'begin', '  Log(A);', '  Result := A;',
     'end;', '', 'procedure P;', 'begin', '  Writeln(Next() + |H(1));', 'end;']), True, Title, Reason));

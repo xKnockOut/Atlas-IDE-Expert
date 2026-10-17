@@ -178,6 +178,7 @@
         <DCCReference Include="Source\IDE\Editor\Atlas.IDE.Editor.Rename.pas"/>
         <DCCReference Include="Source\IDE\Editor\Atlas.IDE.Editor.DfmPropertyRules.pas"/>
         <DCCReference Include="Source\IDE\Editor\Atlas.IDE.Editor.ChangeSignature.pas"/>
+        <DCCReference Include="Source\IDE\Editor\Atlas.IDE.Editor.MoveClass.pas"/>
         <DCCReference Include="Source\IDE\Foundation\Atlas.IDE.Foundation.KeyHook.pas"/>
         <DCCReference Include="Source\IDE\Signature\Atlas.IDE.Signature.Editor.pas"/>
         <DCCReference Include="Source\IDE\Completion\Atlas.IDE.Completion.Editor.pas"/>

@@ -11,7 +11,7 @@ function AtlasSchemaJson: string;
 implementation
 
 const
-  Lines: array[0..1233] of string = (
+  Lines: array[0..1240] of string = (
     '{',
     '  "$schema": "http://json-schema.org/draft-07/schema#",',
     '  "title": "Atlas-Konfiguration",',
@@ -583,6 +583,13 @@ const
     '          "type": "boolean",',
     '          "default": false,',
     '          "description": "Code-Aktionen „Variable einbetten“ und „Methode einbetten“ auf einer lokalen Variablen bzw. einem Aufruf: Die Variable verschwindet, ihre Stellen bekommen den Ausdruck; der A' + 'ufruf wird durch den Rumpf ersetzt (lokale Namen eindeutig umbenannt, Argumente eingesetzt oder in Hilfsvariablen, Mitglieder mit dem Empfänger, das Ergebnis direkt oder in einer Variablen wie AddResu' + 'lt). Angeboten nur, wenn Datenfluss und Namensauflösung zeigen, dass sich die Bedeutung nicht ändert. Hilfsvariablen als Inline-Variable oder im var-Abschnitt nach refactoring.inlineVar.",',
+    '          "x-experimental": true,',
+    '          "x-issue": "#103"',
+    '        },',
+    '        "moveClass": {',
+    '          "type": "boolean",',
+    '          "default": false,',
+    '          "description": "Code-Aktion „Klasse in eigene Unit verschieben …“ auf der ersten Zeile einer Klassen- oder Record-Deklaration: Die Deklaration samt Attributen, Kommentar und Methodenrümpfen ' + 'kommt in eine neue Unit neben der alten (Name aus dem Klassennamen ohne T, im Dialog änderbar). Die neue Unit steht danach in .dpr bzw. .dpk und .dproj; ihre uses entstehen aus den benötigten Namen, u' + 'nd alle Units, die die Klasse verwenden, binden sie ein. Nicht angeboten bei Zugriff auf Namen aus dem implementation-Teil der alten Unit, Kreisverweis, Formularklassen und bedingter Übersetzung.",',
     '          "x-experimental": true,',
     '          "x-issue": "#103"',
     '        },',

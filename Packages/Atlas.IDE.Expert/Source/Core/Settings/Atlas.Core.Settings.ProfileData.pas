@@ -16,7 +16,7 @@ uses
   System.SysUtils;
 
 const
-  Profile0: array[0..53] of string = (
+  Profile0: array[0..54] of string = (
     '{',
     '  "format": "atlas-settings",',
     '  "formatVersion": 1,',
@@ -68,7 +68,8 @@ const
     '    "editor.multiCursor": true,',
     '    "editor.linkedEditing": true,',
     '    "editor.stickyScroll": true,',
-    '    "refactoring.inline": true',
+    '    "refactoring.inline": true,',
+    '    "refactoring.moveClass": true',
     '  }',
     '}');
   Profile1: array[0..48] of string = (

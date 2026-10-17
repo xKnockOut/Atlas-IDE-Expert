@@ -281,6 +281,8 @@ type
     ResolveWith: Boolean;
     /// <summary>Code-Aktionen „Variable einbetten“ und „Methode einbetten“ (#103, experimentell).</summary>
     InlineCode: Boolean;
+    /// <summary>Code-Aktion „Klasse in eigene Unit verschieben“ (#103, experimentell).</summary>
+    MoveClass: Boolean;
     /// <summary>Methode aus Aufruf anlegen (#472).</summary>
     CreateMethod: Boolean;
     /// <summary>Abschnitt der neuen Methode in der eigenen Unit: private, protected oder public (#472).</summary>
@@ -681,6 +683,7 @@ begin
   Result.CompleteCase := True;
   Result.ResolveWith := True;
   Result.InlineCode := False;
+  Result.MoveClass := False;
   Result.CreateMethod := True;
   Result.CreateMethodSection := 'private';
   Result.CreateMethodCaretInBody := False;

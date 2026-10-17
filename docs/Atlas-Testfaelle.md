@@ -1257,9 +1257,28 @@ Vorher: *Tools › Optionen › Atlas › Allgemein* „Experimentelle Funktione
 | IN8 | `Show(IntToStr(N))` mit `procedure Show(const S: string)`, die `S` zweimal liest und eine lokale `N` hat | Hilfsvariable `var S: string := IntToStr(N);`, die lokale Variable heißt `N2`; mit `refactoring.inlineVar` aus stehen beide im var-Abschnitt |
 | IN9 | Funktion mit `if A < 0 then Exit(0);` am Anfang | Variable `NameResult`, daraus wird `if … then NameResult := 0 else begin … end`; der Aufruf wird `NameResult` |
 | IN10 | Aufruf in `if X > 0 then Log2(X);` | Der Rumpf steht in `begin … end` |
-| IN11 | Rekursive Routine, Konstruktor, zwei Exit, Rumpf mit asm, with oder inherited | Keine Aktion |
+| IN11 | Rekursive Routine, Konstruktor, zwei Exit, `Result` in einer Schleife gesetzt, Rumpf mit asm, with oder inherited; Methode mit Zugriff auf ein `private`-Feld, aufgerufen außerhalb ihrer Klasse | Keine Aktion |
 | IN12 | Nach dem Einbetten übersetzen (Strg+F9) | 0 Fehler; das Verhalten ist unverändert |
 | IN13 | Einstellung bzw. Hauptschalter „Experimentelle Funktionen“ aus | Keine Einbetten-Aktionen |
+
+## Klasse in eigene Unit verschieben (#103, experimentell)
+
+Vorher: „Experimentelle Funktionen erlauben“ an, in `atlas.json` `"refactoring": {"moveClass": true}`. Ein Projekt mit `Lager.pas` (Klasse `TStock` im interface, Methodenrümpfe im implementation, Felder mit Typen aus anderen Units) und einer zweiten Unit, die `Lager` einbindet und `TStock` verwendet.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| MC1 | Alt+Enter auf der Zeile `TStock = class` | „Klasse TStock in eigene Unit verschieben …“; auf anderen Zeilen nicht |
+| MC2 | Aktion wählen | Eingabe „Name der neuen Unit“ mit Vorschlag `Stock` |
+| MC3 | Namen auf `Lager.Bestand` ändern, bestätigen | Vorschau mit `Lager.Bestand.pas` (neu), `Lager.pas`, der zweiten Unit, `.dpr` und `.dproj`; „Verschieben“ übernimmt, die neue Unit öffnet sich |
+| MC4 | Neue Unit ansehen | Deklaration samt Doku-Kommentar und Attributen im interface, alle Rümpfe im implementation; uses nur mit den Units, deren Namen der Code braucht (Deklaration im interface, nur Rümpfe im implementation) |
+| MC5 | `Lager.pas` ansehen | Klasse, Vorwärtsdeklaration und Rümpfe weg, ein leerer type-Abschnitt ganz; verwendet `Lager` die Klasse noch, steht die neue Unit in seinem uses |
+| MC6 | Zweite Unit, `.dpr`, `.dproj` ansehen | Neue Unit im uses neben `Lager`, `Lager.TStock` heißt jetzt `Lager.Bestand.TStock`; `.dpr` mit `Lager.Bestand in 'Lager.Bestand.pas'`, `.dproj` mit DCCReference |
+| MC7 | Projekt übersetzen (Strg+F9) | 0 Fehler, 0 Warnungen |
+| MC8 | Klasse liest eine Variable bzw. ruft eine Routine aus dem implementation-Teil von `Lager` | Keine Aktion |
+| MC9 | Klasse erbt von einer Klasse aus `Lager`, und das interface von `Lager` verwendet `TStock` (z. B. `TStocks = array of TStock`) | Keine Aktion (Kreisverweis) |
+| MC10 | Formularklasse (`TForm1 = class(TForm)` mit `{$R *.dfm}`), Rumpf in `{$IFDEF}` | Keine Aktion |
+| MC11 | Als Namen eine vorhandene Unit eingeben | Meldung „… gibt es schon“, nichts geändert |
+| MC12 | Einstellung bzw. Hauptschalter „Experimentelle Funktionen“ aus | Keine Aktion |
 
 ## Anweisung vervollständigen (#697)
 
