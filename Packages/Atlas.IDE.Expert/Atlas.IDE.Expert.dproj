@@ -157,6 +157,7 @@
         <DCCReference Include="Source\Core\Editor\Atlas.Core.Editor.ChangeSignature.pas"/>
         <DCCReference Include="Source\Core\Editor\Atlas.Core.Editor.TestUnit.pas"/>
         <DCCReference Include="Source\IDE\Editor\Atlas.IDE.Editor.MetricsLens.pas"/>
+        <DCCReference Include="Source\IDE\Editor\Atlas.IDE.Editor.RecursionGutter.pas"/>
         <DCCReference Include="Source\Core\Editor\Atlas.Core.Editor.Metrics.pas"/>
         <DCCReference Include="Source\Core\Projects\Atlas.Core.Projects.Todos.pas"/>
         <DCCReference Include="Source\Core\Projects\Atlas.Core.Projects.Baseline.pas"/>
@@ -286,6 +287,7 @@
         <DCCReference Include="Source\Core\Problems\Atlas.Core.Problems.Colors.pas"/>
         <DCCReference Include="Source\Core\Problems\Atlas.Core.Problems.Inline.pas"/>
         <DCCReference Include="Source\Core\Editor\Atlas.Core.Editor.LineTail.pas"/>
+        <DCCReference Include="Source\Core\Editor\Atlas.Core.Editor.Recursion.pas"/>
         <DCCReference Include="Source\Core\Problems\Atlas.Core.Problems.Store.pas"/>
         <DCCReference Include="Source\IDE\Editor\Atlas.IDE.Editor.Pairs.pas"/>
         <DCCReference Include="Source\IDE\Foundation\Atlas.IDE.Foundation.StructureSwitch.pas"/>

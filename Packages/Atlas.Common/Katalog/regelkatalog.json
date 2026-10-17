@@ -226,6 +226,15 @@
       "good": "type\n  TFoo = class\n    destructor Destroy; override;\n  end;"
     },
     {
+      "id": "recursive-property-accessor",
+      "name": "Property accessor calls itself",
+      "category": "bug",
+      "severity": "warning",
+      "description": "A getter reads its own property or a setter writes its own property. The accessor calls itself endlessly and ends in a stack overflow. Use the field instead.",
+      "bad": "function TFoo.GetName: string;\nbegin\n  Result := Name;\nend;",
+      "good": "function TFoo.GetName: string;\nbegin\n  Result := FName;\nend;"
+    },
+    {
       "id": "component-create-without-override",
       "name": "Component constructor without override",
       "category": "bug",

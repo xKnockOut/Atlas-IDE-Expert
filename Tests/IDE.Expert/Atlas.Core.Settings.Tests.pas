@@ -697,6 +697,8 @@ begin
   Settings.BlockEndLabels := False;
   Settings.BlockEndLabelsMinLines := 40;
   Settings.DimUnusedUses := False;
+  Settings.RecursionMarkers := False;
+  Settings.RecursionMarkersDepth := 7;
   Settings.InlineDiagnostics := 'off';
   Settings.ProblemsStatusCounter := False;
   Settings.NextProblemKey := 0;
@@ -709,6 +711,8 @@ begin
   Assert.IsFalse(Loaded.BlockEndLabels, 'abschaltbar');
   Assert.AreEqual(40, Loaded.BlockEndLabelsMinLines);
   Assert.IsFalse(Loaded.DimUnusedUses, 'uses-Abblenden abschaltbar');
+  Assert.IsFalse(Loaded.RecursionMarkers, 'Rekursionssymbole abschaltbar (#623)');
+  Assert.AreEqual(7, Loaded.RecursionMarkersDepth);
   Assert.AreEqual('off', Loaded.InlineDiagnostics, 'Fehlertext abschaltbar');
   Assert.IsFalse(Loaded.ProblemsStatusCounter, 'Zähler abschaltbar');
   Assert.AreEqual(0, Loaded.NextProblemKey);

@@ -141,6 +141,7 @@ uses
   Atlas.IDE.Vcs.Service,
   Atlas.IDE.Notes.Service,
   Atlas.IDE.Notes.Gutter,
+  Atlas.IDE.Editor.RecursionGutter,
   Atlas.IDE.Bookmarks.Service,
   Atlas.IDE.Bookmarks.Gutter,
   Atlas.IDE.Foundation.GutterMarks,
@@ -2215,6 +2216,14 @@ begin
   GutterMarks := TAtlasIdeGutterMarks.Create;
   GutterMarks.Add(TAtlasIdeNotesGutter.Create);
   GutterMarks.Add(TAtlasIdeBookmarksGutter.Create);
+  // Rekursionssymbole (#623); fragt den Server nur, wenn er ohnehin läuft.
+  GutterMarks.Add(TAtlasIdeRecursionGutter.Create(
+    function: TLspSession
+    begin
+      Result := nil;
+      if Manager <> nil then
+        Result := Manager.RunningSession;
+    end));
 end;
 
 procedure StartCompletionKey;
@@ -3014,12 +3023,14 @@ begin
       Result := BookmarksStarted;
     end,
     StartBookmarks, StopBookmarks);
-  // Nach Notizen und Lesezeichen, Abbau davor: Die Rinne liest deren Listen (#545, #622).
+  // Nach Notizen und Lesezeichen, Abbau davor: Die Rinne liest deren Listen (#545, #622); dazu die
+  // Rekursionssymbole (#623).
   Features.AddWanted('GutterMarks',
     function(ALevel: TAtlasSafeLevel): Boolean
     begin
       Result := (ALevel <> TAtlasSafeLevel.Minimal) and ((ALevel = TAtlasSafeLevel.Normal) or
-        TAtlasIdeSettings.Current.Notes or TAtlasIdeSettings.Current.BookmarksNamed);
+        TAtlasIdeSettings.Current.Notes or TAtlasIdeSettings.Current.BookmarksNamed or
+        TAtlasIdeSettings.Current.RecursionMarkers);
     end,
     function: Boolean
     begin

@@ -68,6 +68,10 @@ type
     /// <summary>Plugin eingeschaltet und ungenutzte uses abblenden an (#621); ohne Kopie des Einstellungsrecords.
     /// </summary>
     class function DimUnusedUsesOn: Boolean; static;
+    /// <summary>Plugin eingeschaltet und Rekursionssymbole an (#623); ohne Kopie des Einstellungsrecords.</summary>
+    class function RecursionMarkersOn: Boolean; static;
+    /// <summary>editor.recursionMarkers.depth (#623).</summary>
+    class function RecursionMarkersDepth: Integer; static;
     /// <summary>Plugin eingeschaltet und Problem-Markierungen an; ohne Kopie des Einstellungsrecords (P-10).</summary>
     class function ProblemMarksOn: Boolean; static;
     /// <summary>Fehlertext am Zeilenende (#509); Off, wenn das Plugin oder die Problem-Markierungen aus sind.
@@ -332,6 +336,18 @@ class function TAtlasIdeSettings.DimUnusedUsesOn: Boolean;
 begin
   EnsureLoaded;
   Result := FEffective.Enabled and FEffective.DimUnusedUses;
+end;
+
+class function TAtlasIdeSettings.RecursionMarkersOn: Boolean;
+begin
+  EnsureLoaded;
+  Result := FEffective.Enabled and FEffective.RecursionMarkers;
+end;
+
+class function TAtlasIdeSettings.RecursionMarkersDepth: Integer;
+begin
+  EnsureLoaded;
+  Result := FEffective.RecursionMarkersDepth;
 end;
 
 class function TAtlasIdeSettings.ProblemMarksOn: Boolean;

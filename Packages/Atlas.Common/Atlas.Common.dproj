@@ -250,7 +250,9 @@
         <DCCReference Include="Source\Todos\Atlas.Common.Todos.Scanner.pas"/>
         <DCCReference Include="Source\Todos\Atlas.Common.Todos.Report.pas"/>
         <DCCReference Include="Source\Rules\Builtin\Atlas.Common.Rules.Builtin.Todos.pas"/>
+        <DCCReference Include="Source\Rules\Builtin\Atlas.Common.Rules.Builtin.Recursion.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.Todos.pas"/>
+        <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.Recursion.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.Baseline.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.SemanticTokens.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.Commands.pas"/>
@@ -303,6 +305,7 @@
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.TestUnits.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.UnitSearch.pas"/>
         <DCCReference Include="Source\Semantics\Atlas.Common.Semantics.ControlFlow.pas"/>
+        <DCCReference Include="Source\Semantics\Atlas.Common.Semantics.Recursion.pas"/>
         <DCCReference Include="Source\Semantics\Atlas.Common.Semantics.NameResolver.pas"/>
         <DCCReference Include="Source\Semantics\Atlas.Common.Semantics.Attributes.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.Definition.pas"/>

@@ -753,12 +753,16 @@ begin
     Assert.AreEqual(ShortCutToText($40BE), Page.HideElementKey.Text, 'Strg+.');
     Assert.AreEqual('25', Page.BlockEndLabelsMinLinesEdit.Text, 'Mindestlänge (#620)');
     Assert.IsTrue(Page.DimUnusedUsesCheck.Checked, 'uses abblenden standardmäßig an (#621)');
+    Assert.IsTrue(Page.RecursionMarkersCheck.Checked, 'Rekursionssymbole standardmäßig an (#623)');
+    Assert.AreEqual('4', Page.RecursionMarkersDepthEdit.Text);
     // Fehlertext am Zeilenende, Zähler und Sprungtasten (#509).
     Assert.AreEqual(1, Page.InlineDiagnostics.Choice, 'nur Fehler');
     Assert.IsTrue(Page.ProblemsStatusCounterCheck.Checked);
     Assert.AreEqual(ShortCutToText($C077), Page.NextProblemKey.Text);
     Page.BlockEndLabelsCheck.Checked := False;
     Page.DimUnusedUsesCheck.Checked := False;
+    Page.RecursionMarkersCheck.Checked := False;
+    Page.RecursionMarkersDepthEdit.Text := '2';
     Page.InlineDiagnostics.Choice := 2;
     Page.ProblemsStatusCounterCheck.Checked := False;
     Page.PreviousProblemKey.Text := '';
@@ -769,6 +773,8 @@ begin
     Assert.IsFalse(Saved.BlockEndLabels, 'abschaltbar');
     Assert.AreEqual(30, Saved.BlockEndLabelsMinLines);
     Assert.IsFalse(Saved.DimUnusedUses);
+    Assert.IsFalse(Saved.RecursionMarkers);
+    Assert.AreEqual(2, Saved.RecursionMarkersDepth);
     Assert.AreEqual('errorsAndWarnings', Saved.InlineDiagnostics);
     Assert.IsFalse(Saved.ProblemsStatusCounter);
     Assert.AreEqual($C077, Saved.NextProblemKey);
@@ -777,6 +783,7 @@ begin
     Page.LoadFrom(Saved);
     Assert.IsFalse(Page.BlockEndLabelsCheck.Checked);
     Assert.IsFalse(Page.DimUnusedUsesCheck.Checked);
+    Assert.IsFalse(Page.RecursionMarkersCheck.Checked);
     Assert.AreEqual(2, Page.InlineDiagnostics.Choice);
     Assert.AreEqual('', Page.HideElementKey.Text);
   finally
