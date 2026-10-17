@@ -259,6 +259,8 @@ type
     TryFinally: Boolean;
     /// <summary>Klassen-Aktionen: Getter/Setter/Feld, Interface-Methoden, Überschreiben (#42).</summary>
     ClassActions: Boolean;
+    /// <summary>Code-Aktion „Typ ausschreiben“ für var X := … ohne Typangabe (#453).</summary>
+    ExplicitType: Boolean;
     class function Default: TRefactoringSettings; static;
   end;
 
@@ -646,6 +648,7 @@ begin
   Result.SyncSignatures := True;
   Result.TryFinally := True;
   Result.ClassActions := True;
+  Result.ExplicitType := True;
 end;
 
 { TCompletionSettings }

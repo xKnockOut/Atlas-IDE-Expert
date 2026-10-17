@@ -288,6 +288,8 @@ type
     function ChangeSignature(const AArguments: TJSONArray; APrepare: Boolean): TJSONValue;
     /// <summary>Code-Aktion „Signatur ändern …“ an APosition (#100).</summary>
     function ChangeSignatureActions(const AUri: string; const APosition: TTextPosition): TArray<TJSONObject>;
+    /// <summary>„Typ ausschreiben“ (#453) für die Inline-Variable an APosition.</summary>
+    function ExplicitTypeActions(const AUri: string; const APosition: TTextPosition): TArray<TJSONObject>;
     /// <summary>Inhalt des Status-Befehls (#28).</summary>
     function CollectBookmarks: TArray<TBookmarkHit>;
     function CollectStatus: TServerStatus;
@@ -1164,6 +1166,7 @@ begin
     begin
       Result := FTestUnits.Actions(AUri, ARange.StartPos.Line);
       Result := Result + ChangeSignatureActions(AUri, ARange.StartPos);
+      Result := Result + ExplicitTypeActions(AUri, ARange.StartPos);
     end;
   FCodeActions.Attach(FDispatcher);
   FDocumentLinks := TLspDocumentLinks.Create(FDocuments,
@@ -2516,6 +2519,34 @@ begin
   try
     Resolver.Namespaces := FRename.Namespaces;
     Result := TLspChangeSignature.Actions(True, Resolver, Shared.Tree, TDocumentUris.ToPath(AUri), AUri, APosition);
+  finally
+    Resolver.Free;
+  end;
+end;
+
+function TServerComposition.ExplicitTypeActions(const AUri: string;
+  const APosition: TTextPosition): TArray<TJSONObject>;
+var
+  Document: ITextDocument;
+  Shared: ISharedSyntaxTree;
+  Resolver: TNameResolver;
+  Action: TCodeAction;
+  LineBreak: string;
+begin
+  Result := nil;
+  if not RefactoringSettingsFor(AUri).ExplicitType or not FDocuments.TryGet(AUri, Document) or
+    not SameText(ExtractFileExt(TDocumentUris.ToPath(AUri)), '.pas') then
+    Exit;
+  Shared := TSyntaxTreeCache.Get(Document, nil);
+  LineBreak := #10;
+  if Pos(#13#10, Document.Text) > 0 then
+    LineBreak := #13#10;
+  Resolver := TNameResolver.Create(FIndex, EnsureUnit);
+  try
+    Resolver.Namespaces := FRename.Namespaces;
+    if TLspInlayHints.ExplicitTypeAction(Resolver, Shared.Tree, TDocumentUris.ToPath(AUri), APosition, LineBreak,
+      Action) then
+      Result := [TLspCodeActions.ActionToJson(AUri, Action)];
   finally
     Resolver.Free;
   end;

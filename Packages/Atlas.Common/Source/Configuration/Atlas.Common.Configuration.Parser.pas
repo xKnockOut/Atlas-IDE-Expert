@@ -995,6 +995,8 @@ begin
       ExpectBoolean(ANode[Index], Key, FSettings.Refactoring.TryFinally)
     else if Key = 'classActions' then
       ExpectBoolean(ANode[Index], Key, FSettings.Refactoring.ClassActions)
+    else if Key = 'explicitType' then
+      ExpectBoolean(ANode[Index], Key, FSettings.Refactoring.ExplicitType)
     else
       Report(ANode.KeyStarts[Index], ANode.KeyStarts[Index] + Length(Key) + 2,
         Format('Unbekannte Einstellung "refactoring.%s"', [Key]), False);

@@ -11,7 +11,7 @@ function AtlasSchemaJson: string;
 implementation
 
 const
-  Lines: array[0..1144] of string = (
+  Lines: array[0..1150] of string = (
     '{',
     '  "$schema": "http://json-schema.org/draft-07/schema#",',
     '  "title": "Atlas-Konfiguration",',
@@ -522,12 +522,18 @@ const
     '          "default": true,',
     '          "description": "Code-Aktionen in einer Klassendeklaration: „Getter, Setter und Feld erzeugen“ auf einer Property ohne read/write, „Methoden von IFoo implementieren“ und „Name überschreiben“ ' + 'für virtuelle Methoden der Vorfahren.",',
     '          "x-issue": "#42"',
+    '        },',
+    '        "explicitType": {',
+    '          "type": "boolean",',
+    '          "default": true,',
+    '          "description": "Code-Aktion „Typ ausschreiben“ auf dem Namen von var X := …, const X = … und for var X in … ohne Typangabe: fügt den abgeleiteten Typ ein (var Count: Integer := Lines.Count) ' + 'und trägt seine Unit bei Bedarf ins uses ein.",',
+    '          "x-issue": "#453"',
     '        }',
     '      },',
     '      "x-scope": "project",',
     '      "x-page": "Vervollständigung",',
     '      "x-control": "Kontrollkästchen",',
-    '      "x-issue": "#42, #50, #100, #188"',
+    '      "x-issue": "#42, #50, #100, #188, #453"',
     '    },',
     '    "usesCommand": {',
     '      "type": "boolean",',
@@ -826,7 +832,7 @@ const
     '        "inferredTypes": {',
     '          "type": "boolean",',
     '          "default": true,',
-    '          "description": "Abgeleiteter Typ hinter var X := …."',
+    '          "description": "Abgeleiteter Typ hinter var X := …, const X = … und for var X in … (im Plugin als Typmarke am Zeilenende)."',
     '        },',
     '        "endMarkers": {',
     '          "type": "boolean",',
@@ -844,7 +850,7 @@ const
     '      "x-area": "editor",',
     '      "x-page": "Editor",',
     '      "x-control": "Kontrollkästchen, Zahlenfeld",',
-    '      "x-issue": "#35"',
+    '      "x-issue": "#35, #453"',
     '    },',
     '    "codeLens": {',
     '      "type": "object",',

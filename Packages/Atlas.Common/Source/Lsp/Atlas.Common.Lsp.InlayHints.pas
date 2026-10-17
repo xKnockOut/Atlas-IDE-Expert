@@ -3,7 +3,9 @@
 // Inlay Hints (textDocument/inlayHint):
 //   - Parameternamen vor den Argumenten eines Aufrufs (über die Parameterhilfe, #32);
 //     entfällt, wenn das Argument schon so heißt,
-//   - abgeleiteter Typ hinter var X := … (Literale, Konstruktoren, Funktionen, Variablen),
+//   - abgeleiteter Typ hinter var X := …, const X = … und for var X in … (Literale, Konstruktoren, Funktionen,
+//     Variablen, Elemente von Arrays und Enumeratoren; #453), dazu die Aktion „Typ ausschreiben“
+//     (ExplicitTypeAction) mit uses-Eintrag für die Unit des Typs,
 //   - Endmarkierungen hinter dem end langer Blöcke: Routine, Typ, if/while/for/with/case/try.
 // Was erscheint, steuert "inlayHints" in atlas.json.
 
@@ -19,6 +21,7 @@ uses
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Index.Contract,
   Atlas.Common.Semantics.NameResolver,
+  Atlas.Common.Editing.CodeActions,
   Atlas.Common.Lsp.Hover;
 
 type
@@ -32,6 +35,22 @@ type
     /// <summary>Endmarke (#620): Anfang des Blocks, zu dem ein Klick springt; nur mit HasBlockStart.</summary>
     BlockStart: TTextPosition;
     HasBlockStart: Boolean;
+  end;
+
+  /// <summary>Abgeleiteter Typ einer Inline-Variablen ohne Typangabe (#453).</summary>
+  TInferredType = record
+    Name: string;
+    NameStart: TTextPosition;
+    /// <summary>Ende des Namens: Stelle der Marke und von ": Typ".</summary>
+    NameEnd: TTextPosition;
+    /// <summary>Typ wie im Quelltext, z. B. "TList&lt;TKunde&gt;".</summary>
+    TypeName: string;
+    /// <summary>Laufvariable in for var X in ….</summary>
+    ForIn: Boolean;
+    /// <summary>Unit der Typdeklaration, wenn die Namensauflösung sie kennt; '' sonst.</summary>
+    TypeUnit: string;
+    /// <summary>Symbol, von dessen Unit aus TypeName gilt (Funktion, Feld, Enumerator); Name '' ohne.</summary>
+    Origin: TResolvedSymbol;
   end;
 
   /// <summary>Einstellungen für das Dokument AUri.</summary>
@@ -67,6 +86,14 @@ type
       const ATreeText, AFileName: string; const ARange: TTextRange; const AReadText: THoverReadText): TArray<TInlayHint>; static;
     class function InferredTypes(AResolver: TNameResolver; ATree: TSyntaxTree; const AFileName: string;
       const ARange: TTextRange): TArray<TInlayHint>; static;
+    /// <summary>Inline-Variablen, -Konstanten und for-in-Laufvariablen ohne Typangabe in ARange mit ihrem
+    /// abgeleiteten Typ (#453).</summary>
+    class function Inferred(AResolver: TNameResolver; ATree: TSyntaxTree; const AFileName: string;
+      const ARange: TTextRange): TArray<TInferredType>; static;
+    /// <summary>„Typ ausschreiben“ (#453) für die Inline-Variable, auf deren Namen APosition steht: fügt
+    /// ": Typ" ein und trägt fehlende Units des Typs ins uses ein. False ohne Treffer.</summary>
+    class function ExplicitTypeAction(AResolver: TNameResolver; ATree: TSyntaxTree; const AFileName: string;
+      const APosition: TTextPosition; const ALineBreak: string; out AAction: TCodeAction): Boolean; static;
     class function EndMarkers(ATree: TSyntaxTree; const ARange: TTextRange; AMinLines: Integer): TArray<TInlayHint>; static;
     /// <summary>Alle eingeschalteten Hinweise in ARange, nach Position sortiert.</summary>
     class function Collect(AResolver: TNameResolver; const AIndex: ISymbolIndex; ATree: TSyntaxTree;
@@ -89,6 +116,9 @@ uses
   Atlas.Common.Pascal.Contract,
   Atlas.Common.Pascal.TreeCache,
   Atlas.Common.Lsp.SignatureHelp,
+  Atlas.Common.Editing.InterfaceStubs,
+  Atlas.Common.Editing.PostfixTemplates,
+  Atlas.Common.Editing.UsesClause,
   Atlas.Common.Lsp.Internals.Cancellation;
 
 type
@@ -346,129 +376,349 @@ begin
   end;
 end;
 
-class function TLspInlayHints.InferredTypes(AResolver: TNameResolver; ATree: TSyntaxTree; const AFileName: string;
-  const ARange: TTextRange): TArray<TInlayHint>;
+/// <summary>Typ wie im Quelltext: eingebaut mit Namen, generisch mit eingesetzten Typargumenten ohne Unit.</summary>
+function TypeDisplay(AResolver: TNameResolver; const AType: TResolvedSymbol): string;
+var
+  Binding: string;
+  Values: TArray<string>;
+begin
+  Result := AType.Name;
+  if Length(AType.Bindings) = 0 then
+    Exit;
+  Values := nil;
+  for Binding in AType.Bindings do
+    Values := Values + [AResolver.UnqualifyType(Copy(Binding, Pos('=', Binding) + 1, MaxInt))];
+  Result := Result + '<' + string.Join(', ', Values) + '>';
+end;
+
+/// <summary>Typtext mit eingesetzten Bindungen ("T" wird zu "TKunde"), ohne Unit davor.</summary>
+function BoundText(AResolver: TNameResolver; const AText: string; const ABindings: TArray<string>): string;
+var
+  Binding: string;
+  Unqualified: TArray<string>;
+begin
+  Unqualified := nil;
+  for Binding in ABindings do
+    Unqualified := Unqualified + [Copy(Binding, 1, Pos('=', Binding)) +
+      AResolver.UnqualifyType(Copy(Binding, Pos('=', Binding) + 1, MaxInt))];
+  Result := TInterfaceStubs.SubstituteWords(AText, Unqualified);
+end;
+
+/// <summary>Elementtyp für "for var X in Ausdruck" (#453): Kette A.B.C; Array-Typen, string und
+/// GetEnumerator.Current.</summary>
+function ForInElement(AResolver: TNameResolver; ATree: TSyntaxTree; const AFileName: string;
+  const ATokens: TArray<TPascalToken>; AFirst, ALast: Integer; out AOrigin: TResolvedSymbol): string;
+var
+  Names: TArray<string>;
+  Index: Integer;
+  Owner, TypeInfo, Member: TResolvedSymbol;
+  TypeFound: Boolean;
+  OwnerType: string;
+begin
+  Result := '';
+  AOrigin := Default(TResolvedSymbol);
+  // Nur eine Kette A.B.C ohne Aufruf.
+  Names := nil;
+  Index := AFirst;
+  while Index <= ALast do
+  begin
+    if ATokens[Index].Kind <> TPascalTokenKind.Identifier then
+      Exit;
+    Names := Names + [CleanName(ATokens[Index].Text)];
+    Index := NextToken(ATokens, Index);
+    if Index > ALast then
+      Break;
+    if not ATokens[Index].IsSymbol('.') then
+      Exit;
+    Index := NextToken(ATokens, Index);
+  end;
+  if (Length(Names) = 0) or not AResolver.ChainType(ATree, AFileName, Names, ATokens[ALast].Offset, Owner, TypeInfo,
+    TypeFound) then
+    Exit;
+  AOrigin := Owner;
+  OwnerType := Owner.TypeName;
+  if Owner.TypeArgs <> '' then
+    OwnerType := OwnerType + '<' + Owner.TypeArgs + '>';
+  Result := TPostfixTemplates.ElementOf(OwnerType);
+  if (Result = '') and TypeFound then
+    Result := TPostfixTemplates.ElementOf(TypeInfo.TypeName);
+  if Result <> '' then
+    Exit;
+  if TPostfixTemplates.IsStringType(Owner.TypeName) or
+    (TypeFound and TypeInfo.Builtin and TPostfixTemplates.IsStringType(TypeInfo.Name)) then
+    Exit('Char');
+  if not TypeFound or TypeInfo.Builtin then
+    Exit;
+  // Enumerator: Current von GetEnumerator, mit eingesetzten Typparametern.
+  for Member in AResolver.MemberCandidates(ATree, AFileName, Names + ['GetEnumerator'], ATokens[ALast].Offset) do
+    if SameText(Member.Name, 'Current') and (Member.TypeName <> '') then
+    begin
+      AOrigin := Member;
+      Exit(BoundText(AResolver, Member.TypeName, Member.Bindings));
+    end;
+end;
+
+class function TLspInlayHints.Inferred(AResolver: TNameResolver; ATree: TSyntaxTree; const AFileName: string;
+  const ARange: TTextRange): TArray<TInferredType>;
 var
   Tokens: TArray<TPascalToken>;
   Nodes: TList<TSyntaxNode>;
   Node: TSyntaxNode;
   Index, NameToken, Assign, First, Last, Scan, Depth: Integer;
-  TypeName: string;
-  Resolved: TResolvedSymbol;
-  Hint: TInlayHint;
-  List: TList<TInlayHint>;
+  TypeName, TypeUnit: string;
+  Resolved, Owner, TypeInfo, Origin: TResolvedSymbol;
+  TypeFound: Boolean;
+  Found: TInferredType;
+  List: TList<TInferredType>;
   Typed: Boolean;
 begin
   Tokens := ATree.Tokens;
   Nodes := TList<TSyntaxNode>.Create;
-  List := TList<TInlayHint>.Create;
+  List := TList<TInferredType>.Create;
   try
-    CollectNodes(ATree.Root, [TSyntaxKind.InlineVar, TSyntaxKind.InlineConst], Nodes);
+    CollectNodes(ATree.Root, [TSyntaxKind.InlineVar, TSyntaxKind.InlineConst, TSyntaxKind.ForInStatement], Nodes);
     for Node in Nodes do
     begin
       if not InRange(ARange, Node.StartPos) or (Pos(',', Node.Name) > 0) then
         Continue;
-      // var X := …: Name, dann ":=" ohne ":" davor.
-      NameToken := -1;
-      Assign := -1;
-      Typed := False;
-      Index := FirstTokenAt(Tokens, Node.StartOffset);
-      while (Index <= High(Tokens)) and (Tokens[Index].Offset < Node.EndOffset) do
-      begin
-        if (NameToken < 0) and (Tokens[Index].Kind = TPascalTokenKind.Identifier) then
-          NameToken := Index
-        else if Tokens[Index].IsSymbol(':') then
-          Typed := True
-        else if Tokens[Index].IsSymbol(':=') then
-        begin
-          Assign := Index;
-          Break;
-        end;
-        Inc(Index);
-      end;
-      if Typed or (NameToken < 0) or (Assign < 0) then
-        Continue;
-      First := NextToken(Tokens, Assign);
-      Last := First;
-      while (NextToken(Tokens, Last) <= High(Tokens)) and (Tokens[NextToken(Tokens, Last)].Offset < Node.EndOffset) and
-        not Tokens[NextToken(Tokens, Last)].IsSymbol(';') do
-        Last := NextToken(Tokens, Last);
-      if First > High(Tokens) then
-        Continue;
       TypeName := '';
-      if First = Last then
-        case Tokens[First].Kind of
-          TPascalTokenKind.Number:
-            if (Tokens[First].Text[1] <> '$') and (Tokens[First].Text[1] <> '%') and
-              ((Pos('.', Tokens[First].Text) > 0) or (Pos('e', LowerCase(Tokens[First].Text)) > 0)) then
-              TypeName := 'Extended'
-            else
-              TypeName := 'Integer';
-          TPascalTokenKind.StringLiteral:
-            if (Length(Tokens[First].Text) = 3) or (Tokens[First].Text = '''''''''') then
-              TypeName := 'Char'
-            else
-              TypeName := 'string';
-          TPascalTokenKind.CharLiteral:
-            TypeName := 'Char';
-          TPascalTokenKind.Identifier:
-            if SameText(Tokens[First].Text, 'True') or SameText(Tokens[First].Text, 'False') then
-              TypeName := 'Boolean';
-        end;
-      if (TypeName = '') and (Tokens[First].Kind = TPascalTokenKind.Identifier) then
+      TypeUnit := '';
+      Origin := Default(TResolvedSymbol);
+      NameToken := -1;
+      if Node.Kind = TSyntaxKind.ForInStatement then
       begin
-        // Kette A.B.C, optional mit einem Aufruf (…) am Ende, sonst nichts.
-        Scan := First;
-        while (NextToken(Tokens, Scan) <= Last) and Tokens[NextToken(Tokens, Scan)].IsSymbol('.') and
-          (NextToken(Tokens, NextToken(Tokens, Scan)) <= Last) and
-          (Tokens[NextToken(Tokens, NextToken(Tokens, Scan))].Kind = TPascalTokenKind.Identifier) do
-          Scan := NextToken(Tokens, NextToken(Tokens, Scan));
-        Index := Scan;
-        if (Index < Last) and Tokens[NextToken(Tokens, Index)].IsSymbol('(') then
+        // for var X in Ausdruck do: "var", Name, dann "in" ohne ":" dazwischen.
+        Index := FirstTokenAt(Tokens, Node.StartOffset);
+        if (Index + 3 > High(Tokens)) or not Tokens[Index].IsKeyword('for') then
+          Continue;
+        Index := NextToken(Tokens, Index);
+        if not Tokens[Index].IsKeyword('var') then
+          Continue;
+        NameToken := NextToken(Tokens, Index);
+        First := NextToken(Tokens, NameToken);
+        if (First > High(Tokens)) or not Tokens[First].IsKeyword('in') then
+          Continue;
+        First := NextToken(Tokens, First);
+        Last := First;
+        while (NextToken(Tokens, Last) <= High(Tokens)) and not Tokens[NextToken(Tokens, Last)].IsKeyword('do') and
+          (Tokens[NextToken(Tokens, Last)].Offset < Node.EndOffset) do
+          Last := NextToken(Tokens, Last);
+        if First > High(Tokens) then
+          Continue;
+        TypeName := ForInElement(AResolver, ATree, AFileName, Tokens, First, Last, Origin);
+      end
+      else
+      begin
+        // var X := …: Name, dann ":=" ohne ":" davor; const X = … mit "=".
+        Assign := -1;
+        Typed := False;
+        Index := FirstTokenAt(Tokens, Node.StartOffset);
+        while (Index <= High(Tokens)) and (Tokens[Index].Offset < Node.EndOffset) do
         begin
-          Depth := 0;
-          Index := NextToken(Tokens, Index);
-          while Index <= Last do
+          if (NameToken < 0) and (Tokens[Index].Kind = TPascalTokenKind.Identifier) then
+            NameToken := Index
+          else if Tokens[Index].IsSymbol(':') then
+            Typed := True
+          else if Tokens[Index].IsSymbol(':=') or ((Node.Kind = TSyntaxKind.InlineConst) and
+            Tokens[Index].IsSymbol('=')) then
           begin
-            if Tokens[Index].IsSymbol('(') then
-              Inc(Depth)
-            else if Tokens[Index].IsSymbol(')') then
-            begin
-              Dec(Depth);
-              if Depth = 0 then
-                Break;
-            end;
+            Assign := Index;
+            Break;
+          end;
+          Inc(Index);
+        end;
+        if Typed or (NameToken < 0) or (Assign < 0) then
+          Continue;
+        First := NextToken(Tokens, Assign);
+        Last := First;
+        while (NextToken(Tokens, Last) <= High(Tokens)) and (Tokens[NextToken(Tokens, Last)].Offset < Node.EndOffset) and
+          not Tokens[NextToken(Tokens, Last)].IsSymbol(';') do
+          Last := NextToken(Tokens, Last);
+        if First > High(Tokens) then
+          Continue;
+        if First = Last then
+          case Tokens[First].Kind of
+            TPascalTokenKind.Number:
+              if (Tokens[First].Text[1] <> '$') and (Tokens[First].Text[1] <> '%') and
+                ((Pos('.', Tokens[First].Text) > 0) or (Pos('e', LowerCase(Tokens[First].Text)) > 0)) then
+                TypeName := 'Extended'
+              else
+                TypeName := 'Integer';
+            TPascalTokenKind.StringLiteral:
+              if (Length(Tokens[First].Text) = 3) or (Tokens[First].Text = '''''''''') then
+                TypeName := 'Char'
+              else
+                TypeName := 'string';
+            TPascalTokenKind.CharLiteral:
+              TypeName := 'Char';
+            TPascalTokenKind.Identifier:
+              if SameText(Tokens[First].Text, 'True') or SameText(Tokens[First].Text, 'False') then
+                TypeName := 'Boolean';
+          end;
+        // Typ aus dem Ausdruck über die Namensauflösung (#453): auch generisch, TList<TKunde>.Create.
+        if (TypeName = '') and AResolver.ChainType(ATree, AFileName, [CleanName(Tokens[NameToken].Text)],
+          Node.EndOffset, Owner, TypeInfo, TypeFound) and TypeFound and (TypeInfo.Name <> '') then
+        begin
+          TypeName := TypeDisplay(AResolver, TypeInfo);
+          if not TypeInfo.Builtin then
+            TypeUnit := TypeInfo.UnitName;
+          Origin := TypeInfo;
+        end;
+        if (TypeName = '') and (Tokens[First].Kind = TPascalTokenKind.Identifier) then
+        begin
+          // Kette A.B.C, optional mit einem Aufruf (…) am Ende, sonst nichts.
+          Scan := First;
+          while (NextToken(Tokens, Scan) <= Last) and Tokens[NextToken(Tokens, Scan)].IsSymbol('.') and
+            (NextToken(Tokens, NextToken(Tokens, Scan)) <= Last) and
+            (Tokens[NextToken(Tokens, NextToken(Tokens, Scan))].Kind = TPascalTokenKind.Identifier) do
+            Scan := NextToken(Tokens, NextToken(Tokens, Scan));
+          Index := Scan;
+          if (Index < Last) and Tokens[NextToken(Tokens, Index)].IsSymbol('(') then
+          begin
+            Depth := 0;
             Index := NextToken(Tokens, Index);
+            while Index <= Last do
+            begin
+              if Tokens[Index].IsSymbol('(') then
+                Inc(Depth)
+              else if Tokens[Index].IsSymbol(')') then
+              begin
+                Dec(Depth);
+                if Depth = 0 then
+                  Break;
+              end;
+              Index := NextToken(Tokens, Index);
+            end;
+          end;
+          if Index = Last then
+          begin
+            Resolved := AResolver.Resolve(ATree, AFileName, Tokens[Scan].StartPos);
+            if Resolved.Found and (Resolved.Kind <> TResolvedKind.UnitName) then
+              Origin := Resolved;
+            if Resolved.Found and (Resolved.Kind <> TResolvedKind.UnitName) then
+              if Resolved.SymbolKind = TIndexSymbolKind.Constructor_ then
+                TypeName := Resolved.Container
+              else if Resolved.IsType then
+                // Typumwandlung TFoo(X)
+                TypeName := Resolved.Name
+              else if Resolved.TypeName <> '' then
+                TypeName := BoundText(AResolver, Resolved.TypeName, Resolved.Bindings)
+              else if Resolved.SymbolKind = TIndexSymbolKind.EnumMember then
+                // Enum-Werte stehen im Index unter ihrem Typ.
+                TypeName := Resolved.Container;
           end;
         end;
-        if Index = Last then
-        begin
-          Resolved := AResolver.Resolve(ATree, AFileName, Tokens[Scan].StartPos);
-          if Resolved.Found and (Resolved.Kind <> TResolvedKind.UnitName) then
-            if Resolved.SymbolKind = TIndexSymbolKind.Constructor_ then
-              TypeName := Resolved.Container
-            else if Resolved.IsType then
-              // Typumwandlung TFoo(X)
-              TypeName := Resolved.Name
-            else if Resolved.TypeName <> '' then
-              TypeName := Resolved.TypeName
-            else if Resolved.SymbolKind = TIndexSymbolKind.EnumMember then
-              // Enum-Werte stehen im Index unter ihrem Typ.
-              TypeName := Resolved.Container;
-        end;
       end;
-      if TypeName = '' then
+      if (TypeName = '') or (NameToken < 0) then
         Continue;
+      Found := Default(TInferredType);
+      Found.NameStart := Tokens[NameToken].StartPos;
+      Found.NameEnd := Tokens[NameToken].EndPos;
+      Found.Name := CleanName(Tokens[NameToken].Text);
+      Found.TypeName := TypeName;
+      Found.ForIn := Node.Kind = TSyntaxKind.ForInStatement;
+      Found.TypeUnit := TypeUnit;
+      Found.Origin := Origin;
+      List.Add(Found);
+    end;
+    Result := List.ToArray;
+  finally
+    List.Free;
+    Nodes.Free;
+  end;
+end;
+
+class function TLspInlayHints.InferredTypes(AResolver: TNameResolver; ATree: TSyntaxTree; const AFileName: string;
+  const ARange: TTextRange): TArray<TInlayHint>;
+var
+  Found: TInferredType;
+  Hint: TInlayHint;
+  List: TList<TInlayHint>;
+begin
+  List := TList<TInlayHint>.Create;
+  try
+    for Found in Inferred(AResolver, ATree, AFileName, ARange) do
+    begin
       Hint := Default(TInlayHint);
-      Hint.Position := Tokens[NameToken].EndPos;
-      Hint.Text := ': ' + TypeName;
+      Hint.Position := Found.NameEnd;
+      Hint.Text := ': ' + Found.TypeName;
       Hint.Kind := KindType;
       List.Add(Hint);
     end;
     Result := List.ToArray;
   finally
     List.Free;
-    Nodes.Free;
+  end;
+end;
+
+class function TLspInlayHints.ExplicitTypeAction(AResolver: TNameResolver; ATree: TSyntaxTree;
+  const AFileName: string; const APosition: TTextPosition; const ALineBreak: string;
+  out AAction: TCodeAction): Boolean;
+var
+  Found, Candidate: TInferredType;
+  Tokens: TArray<TPascalToken>;
+  Own, FromUnit: TUnitIndex;
+  Used, Words, Added: TArray<string>;
+  OwnName, Word, Base, UnitName: string;
+  Resolved: TResolvedSymbol;
+  Edit: TTextEdit;
+  Index, Offset: Integer;
+begin
+  AAction := Default(TCodeAction);
+  Result := False;
+  if (ATree = nil) or (ATree.Root = nil) then
+    Exit;
+  for Candidate in Inferred(AResolver, ATree, AFileName, TTextRange.Create(APosition.Line, 0, APosition.Line,
+    MaxInt)) do
+    if (Candidate.NameStart.Line = APosition.Line) and (Candidate.NameStart.Character <= APosition.Character) and
+      (APosition.Character <= Candidate.NameEnd.Character) then
+    begin
+      Found := Candidate;
+      Result := True;
+      Break;
+    end;
+  if not Result then
+    Exit;
+  AAction.Title := 'Typ ausschreiben';
+  AAction.Kind := RewriteKind;
+  AAction.Edits := [TTextEdit.Create(TTextRange.Create(Found.NameEnd, Found.NameEnd), ': ' + Found.TypeName)];
+  // Units der Namen im Typ (#180), die hier noch nicht sichtbar sind.
+  Tokens := ATree.Tokens;
+  Offset := 0;
+  for Index := 0 to High(Tokens) do
+    if (Tokens[Index].StartPos.Line = Found.NameStart.Line) and
+      (Tokens[Index].StartPos.Character = Found.NameStart.Character) then
+    begin
+      Offset := Tokens[Index].Offset;
+      Break;
+    end;
+  Own := AResolver.ExtractedUnit(ATree, AFileName);
+  OwnName := TUsesClauses.OwnName(Tokens);
+  Used := TUsesClauses.UsedUnits(Tokens);
+  Added := nil;
+  Base := Found.TypeName;
+  if Pos('<', Base) > 0 then
+    Base := Copy(Base, 1, Pos('<', Base) - 1);
+  Words := Found.TypeName.Split([' ', '<', '>', ',', '^', '[', ']', '(', ')'], TStringSplitOptions.ExcludeEmpty);
+  for Word in Words do
+  begin
+    if SameText(Word, 'array') or SameText(Word, 'of') or SameText(Word, 'string') or
+      AResolver.ResolveTypeFrom(Own, Word, Resolved) then
+      Continue;
+    UnitName := '';
+    if SameText(Word, Base) and (Found.TypeUnit <> '') then
+      UnitName := Found.TypeUnit
+    else if (Found.Origin.Name <> '') and AResolver.DeclaringUnit(Found.Origin, FromUnit) and
+      AResolver.ResolveTypeFrom(FromUnit, Word, Resolved) and not Resolved.Builtin then
+      UnitName := Resolved.UnitName;
+    if (UnitName = '') or SameText(UnitName, OwnName) or SameText(UnitName, 'System') or
+      TUsesClauses.IsUsed(Used, UnitName, AResolver.Namespaces) or (IndexText(UnitName, Added) >= 0) then
+      Continue;
+    if TUsesClauses.AddUnit(Tokens, Offset, UnitName, ALineBreak, Edit) then
+    begin
+      AAction.Edits := AAction.Edits + [Edit];
+      Added := Added + [UnitName];
+    end;
   end;
 end;
 
