@@ -299,6 +299,8 @@ begin
       Result := 'Atlas.NextProblem';
     TAtlasKeyFunction.PreviousProblem:
       Result := 'Atlas.PreviousProblem';
+    TAtlasKeyFunction.QuickOpen:
+      Result := 'Atlas.QuickOpen';
   else
     Result := '';
   end;

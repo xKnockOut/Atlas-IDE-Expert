@@ -81,6 +81,7 @@ uses
   Atlas.IDE.Foundation.Keys,
   Atlas.IDE.Commands.Editor,
   Atlas.IDE.Results.Commands,
+  Atlas.IDE.Commands.QuickOpen,
   Atlas.IDE.UnitSearch.Commands,
   Atlas.IDE.Undo.Changes,
   Atlas.IDE.Bookmarks.Service,
@@ -311,6 +312,17 @@ begin
       procedure
       begin
         TAtlasIdeUnitSearch.Show;
+      end);
+  // Schnell öffnen (#503): aus = Strg+P bleibt der IDE.
+  if Settings.QuickOpen then
+    AddKey(Settings.QuickOpenKey, TAtlasStrings.Text(TAtlasTextId.QuickOpenTitle),
+      procedure
+      begin
+        TAtlasGuard.Run(TAtlasFeature.Palette,
+          procedure
+          begin
+            TAtlasIdeQuickOpen.Show;
+          end);
       end);
   // Benannte Lesezeichen (#622): aus = keine Taste, die IDE-Lesezeichen bleiben unberührt.
   if Settings.BookmarksNamed then

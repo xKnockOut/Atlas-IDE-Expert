@@ -339,6 +339,10 @@ begin
   Assert.AreEqual(Ord(TAtlasKeySource.Binding), Ord(TAtlasKeyMap.SourceOf(TAtlasKeyFunction.PreviousProblem)));
   Assert.AreEqual('Atlas.NextProblem', TAtlasKeyMap.CommandIdOf(TAtlasKeyFunction.NextProblem));
   Assert.AreEqual('Atlas.PreviousProblem', TAtlasKeyMap.CommandIdOf(TAtlasKeyFunction.PreviousProblem));
+  // Schnell öffnen (#503): Strg+P als Editorbefehl.
+  Assert.AreEqual($4050, Integer(EntryOf(Entries, TAtlasKeyFunction.QuickOpen).Key));
+  Assert.IsFalse(EntryOf(Entries, TAtlasKeyFunction.QuickOpen).Disabled);
+  Assert.AreEqual('Atlas.QuickOpen', TAtlasKeyMap.CommandIdOf(TAtlasKeyFunction.QuickOpen));
   Assert.AreEqual(Ord(TAtlasKeySource.Binding), Ord(TAtlasKeyMap.SourceOf(TAtlasKeyFunction.TestUnit)));
   Settings.EditorKeysPriority := True;
   Assert.IsTrue(EntryOf(TAtlasKeyEntry.AllFromSettings(Settings), TAtlasKeyFunction.UnitSearch).Priority);
@@ -365,13 +369,14 @@ begin
   Settings.Notifications := False;
   Settings.WelcomePageQuickActions := False;
   Settings.Problems := False;
+  Settings.QuickOpen := False;
   Entries := TAtlasKeyEntry.AllFromSettings(Settings);
   for Entry in Entries do
     if Entry.Func in [TAtlasKeyFunction.MethodToggleUp, TAtlasKeyFunction.MethodToggleDown,
       TAtlasKeyFunction.UnitSearch, TAtlasKeyFunction.UnitSearchIde, TAtlasKeyFunction.WelcomeSearch,
       TAtlasKeyFunction.Bookmark, TAtlasKeyFunction.GenerateMenu, TAtlasKeyFunction.Notifications,
       TAtlasKeyFunction.WelcomeQuickBuild, TAtlasKeyFunction.WelcomeQuickTests, TAtlasKeyFunction.NextProblem,
-      TAtlasKeyFunction.PreviousProblem] then
+      TAtlasKeyFunction.PreviousProblem, TAtlasKeyFunction.QuickOpen] then
     begin
       Assert.IsTrue(Entry.Disabled, 'abgeschaltet: ' + IntToStr(Ord(Entry.Func)));
       Assert.AreEqual(Ord(TAtlasKeyStatus.NoKey), Ord(Entry.Status('IDE: Klassennavigation')),

@@ -285,6 +285,7 @@ begin
   Assert.AreEqual('Element ausblenden', TAtlasKeyMapWindow.FunctionCaption(TAtlasKeyFunction.HideElement));
   Assert.AreEqual('Nächster Befund', TAtlasKeyMapWindow.FunctionCaption(TAtlasKeyFunction.NextProblem));
   Assert.AreEqual('Vorheriger Befund', TAtlasKeyMapWindow.FunctionCaption(TAtlasKeyFunction.PreviousProblem));
+  Assert.AreEqual('Schnell öffnen', TAtlasKeyMapWindow.FunctionCaption(TAtlasKeyFunction.QuickOpen));
   // #764: Schnellaktionen der Willkommensseite.
   Assert.AreEqual('Schnellaktion „Öffnen und bauen“',
     TAtlasKeyMapWindow.FunctionCaption(TAtlasKeyFunction.WelcomeQuickBuild));

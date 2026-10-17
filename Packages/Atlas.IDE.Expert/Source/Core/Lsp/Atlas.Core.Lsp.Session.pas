@@ -218,6 +218,12 @@ type
     function Implementations(const AFileName: string; ALine, ACharacter: Integer): TArray<TLspLocation>;
     /// <summary>Projektweite Symbolsuche (workspace/symbol, #400); unscharf filtert der Server.</summary>
     function WorkspaceSymbols(const AQuery: string; ATimeoutMs: Cardinal): TArray<TAtlasSymbol>;
+    /// <summary>Gliederung einer Datei (textDocument/documentSymbol, #503), flach in Dateireihenfolge.</summary>
+    function DocumentSymbols(const AFileName: string; ATimeoutMs: Cardinal): TArray<TAtlasSymbol>;
+    /// <summary>DocumentSymbol[] (mit children; Container = Name des Elternsymbols) oder SymbolInformation[]
+    /// einer documentSymbol-Antwort, flach; AFileName für Symbole ohne Ort.</summary>
+    class function SymbolsOfDocument(const AResponse: TJSONValue; const AFileName: string): TArray<TAtlasSymbol>;
+      static;
     /// <summary>Wurzeln einer Hierarchie am Fundort (prepareCallHierarchy bzw. prepareTypeHierarchy, #400).</summary>
     function PrepareHierarchy(ADirection: TAtlasHierarchyDirection; const AFileName: string; ALine,
       ACharacter: Integer): TArray<TAtlasHierarchyItem>;
@@ -1029,6 +1035,75 @@ begin
       Symbol.Character := Locations[0].Character;
       Result := Result + [Symbol];
     end;
+  finally
+    Response.Free;
+  end;
+end;
+
+class function TLspSession.SymbolsOfDocument(const AResponse: TJSONValue;
+  const AFileName: string): TArray<TAtlasSymbol>;
+var
+  Found: TArray<TAtlasSymbol>;
+
+  procedure AddAll(const AItems: TJSONValue; const AContainer: string);
+  var
+    Item: TJSONValue;
+    Entry: TJSONObject;
+    Symbol: TAtlasSymbol;
+    Locations: TArray<TLspLocation>;
+  begin
+    if not (AItems is TJSONArray) then
+      Exit;
+    for Item in TJSONArray(AItems) do
+    begin
+      if not (Item is TJSONObject) then
+        Continue;
+      Entry := TJSONObject(Item);
+      Symbol := Default(TAtlasSymbol);
+      Symbol.Name := Entry.GetValue<string>('name', '');
+      Symbol.Kind := Entry.GetValue<Integer>('kind', 0);
+      Symbol.FileName := AFileName;
+      if Entry.GetValue('location') <> nil then
+      begin
+        // SymbolInformation: Ort und Container stehen am Eintrag.
+        Symbol.Container := Entry.GetValue<string>('containerName', '');
+        Locations := LocationsOf(Entry.GetValue('location'));
+        if Length(Locations) > 0 then
+        begin
+          Symbol.FileName := Locations[0].FileName;
+          Symbol.Line := Locations[0].Line;
+          Symbol.Character := Locations[0].Character;
+        end;
+      end
+      else
+      begin
+        Symbol.Container := AContainer;
+        Symbol.Line := Entry.GetValue<Integer>('selectionRange.start.line',
+          Entry.GetValue<Integer>('range.start.line', 0));
+        Symbol.Character := Entry.GetValue<Integer>('selectionRange.start.character',
+          Entry.GetValue<Integer>('range.start.character', 0));
+      end;
+      if Symbol.Name <> '' then
+        Found := Found + [Symbol];
+      AddAll(Entry.GetValue('children'), Symbol.Name);
+    end;
+  end;
+
+begin
+  Found := nil;
+  AddAll(AResponse, '');
+  Result := Found;
+end;
+
+function TLspSession.DocumentSymbols(const AFileName: string; ATimeoutMs: Cardinal): TArray<TAtlasSymbol>;
+var
+  Response: TJSONValue;
+begin
+  Response := FClient.Request('textDocument/documentSymbol',
+    TJSONObject.Create(TJSONPair.Create('textDocument', TJSONObject.Create(TJSONPair.Create('uri',
+    PathToUri(AFileName))))), ATimeoutMs);
+  try
+    Result := SymbolsOfDocument(Response, AFileName);
   finally
     Response.Free;
   end;
