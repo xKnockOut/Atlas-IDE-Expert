@@ -834,6 +834,7 @@ begin
     else
       AAction.Title := Format('%d fehlende Methodenrümpfe für %s erzeugen', [Missing.Count, TypeName]);
     AAction.Kind := RewriteKind;
+    AAction.Tag := ClassBodiesTag;
     Result := True;
   finally
     Implemented.Free;

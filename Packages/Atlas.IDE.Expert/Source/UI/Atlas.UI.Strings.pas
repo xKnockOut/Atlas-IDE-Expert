@@ -571,7 +571,10 @@ type
     OverviewLine, OverviewBreakpoint, OverviewBookmark, OverviewSearch, OverviewModified, OverviewDeleted,
     OverviewCursor, MoveLinesUpCommand, MoveLinesDownCommand, DuplicateLinesUpCommand, DuplicateLinesDownCommand,
     SettingsMoveLines, MoveLinesNoNeighbour, SettingsContinueComments, SettingsContinueCommentsLineComments,
-    SettingsContinueCommentsLists, SettingsContinueCommentsBlockPrefix);
+    SettingsContinueCommentsLists, SettingsContinueCommentsBlockPrefix, CompleteStatementCommand,
+    SettingsCompleteStatement, SettingsCompleteStatementBeginEnd, SettingsBeginEndAlways, SettingsBeginEndMultiLine,
+    SettingsBeginEndNever, SettingsCompleteStatementTryKind, CompleteStatementTryFinally, CompleteStatementTryExcept,
+    SettingsTryKindAsk, SettingsCompleteStatementMethodBody);
 
   TAtlasStrings = class
   private class var
@@ -1652,7 +1655,10 @@ const
      'Zeilen darunter duplizieren', 'Zeilen und Methoden verschieben und duplizieren (Alt+↑/↓, Umschalt+Alt+↑/↓)',
      'Keine Nachbarmethode, an der die Methode vorbei kann',
      'Kommentar beim Enter fortsetzen (//, ///, Blockkommentare)', 'Auch //-Zeilen fortsetzen (sonst nur ///)',
-     'Aufzählungen fortsetzen und hochzählen (- , * , 1. )', 'Präfix in Blockkommentaren (leer = nur einrücken):'),
+     'Aufzählungen fortsetzen und hochzählen (- , * , 1. )', 'Präfix in Blockkommentaren (leer = nur einrücken):',
+     'Anweisung vervollständigen', 'Anweisung vervollständigen (Klammern, then/do/of, begin/end, Semikolon)',
+     'begin/end ergänzen:', 'immer', 'bei mehreren Anweisungen', 'nie', 'Gerüst nach try:', 'try … finally … end;',
+     'try … except … end;', 'jedes Mal fragen', 'Bei Methodendeklarationen den Rumpf anlegen'),
     ('Enter to accept · Esc to close', '%d of %d', 'No matches for “%s”', 'Backspace widens the search',
      'No suggestions here', 'Esc closes', 'No details for this entry', 'Overload', 'Deprecated: %s', 'Deprecated.',
      'Inherited from %s', 'Inherited', 'optional, default %s', 'No overload with %d parameters.', '… %d more',
@@ -2652,7 +2658,10 @@ const
      'Move lines up', 'Move lines down', 'Duplicate lines above', 'Duplicate lines below',
      'Move and duplicate lines and methods (Alt+↑/↓, Shift+Alt+↑/↓)', 'No neighbouring method to move past',
      'Continue comments on Enter (//, ///, block comments)', 'Also continue // lines (otherwise /// only)',
-     'Continue and number lists (- , * , 1. )', 'Prefix in block comments (empty = indent only):'));
+     'Continue and number lists (- , * , 1. )', 'Prefix in block comments (empty = indent only):',
+     'Complete statement', 'Complete statement (brackets, then/do/of, begin/end, semicolon)', 'Add begin/end:',
+     'always', 'for several statements', 'never', 'Skeleton after try:', 'try … finally … end;',
+     'try … except … end;', 'ask every time', 'Create the body for method declarations'));
 
 { TAtlasStrings }
 

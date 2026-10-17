@@ -47,7 +47,7 @@ type
     Notifications, WelcomeQuickBuild, WelcomeQuickTests, HideElement, NextProblem, PreviousProblem, QuickOpen,
     NavBack, NavForward, LastEdit, PeekDefinition, PeekReferences, Breadcrumbs, JumpToMatch,
     JumpToMatchSelect, NextChange, PreviousChange, MoveLinesUp, MoveLinesDown, DuplicateLinesUp,
-    DuplicateLinesDown);
+    DuplicateLinesDown, CompleteStatement);
   TAtlasKeyChoice = (UseAtlas, LeaveOther, OtherKey);
   /// <summary>NoKey: keine Taste; IdeKey: Taste der IDE über Code Insight, Atlas belegt nichts selbst;
   /// Free: Atlas belegt die freie Taste; AtlasWins: belegt, Atlas hat Vorrang; Left: belegt, Atlas
@@ -214,7 +214,10 @@ begin
     Create(TAtlasKeyFunction.MoveLinesUp, Word(ASettings.MoveLinesUpKey), True, ASettings.MoveLines),
     Create(TAtlasKeyFunction.MoveLinesDown, Word(ASettings.MoveLinesDownKey), True, ASettings.MoveLines),
     Create(TAtlasKeyFunction.DuplicateLinesUp, Word(ASettings.DuplicateLinesUpKey), True, ASettings.MoveLines),
-    Create(TAtlasKeyFunction.DuplicateLinesDown, Word(ASettings.DuplicateLinesDownKey), True, ASettings.MoveLines)];
+    Create(TAtlasKeyFunction.DuplicateLinesDown, Word(ASettings.DuplicateLinesDownKey), True, ASettings.MoveLines),
+    // Anweisung vervollständigen (#697): Strg+Umschalt+Enter sucht in der IDE Referenzen; bewusst übernommen.
+    Create(TAtlasKeyFunction.CompleteStatement, Word(ASettings.CompleteStatementKey), True,
+      ASettings.CompleteStatement)];
 end;
 
 class procedure TAtlasKeyEntry.ToSettings(const AEntries: TArray<TAtlasKeyEntry>;
@@ -328,6 +331,8 @@ begin
         ASettings.DuplicateLinesUpKey := Entry.Key;
       TAtlasKeyFunction.DuplicateLinesDown:
         ASettings.DuplicateLinesDownKey := Entry.Key;
+      TAtlasKeyFunction.CompleteStatement:
+        ASettings.CompleteStatementKey := Entry.Key;
       // Strg+F12 ist fest; ein- und ausgeschaltet wird über unitSearch.replaceIdeDialog.
       TAtlasKeyFunction.UnitSearchIde:
         ;
@@ -397,7 +402,9 @@ begin
     // Zeilen verschieben und duplizieren (#634) nimmt diese Tasten mit Vorrang.
     TAtlasKeyOwner.Create(scAlt or $26, 'IDE: Code-Browsing (Deklaration suchen)'), // VK_UP
     TAtlasKeyOwner.Create(scShift or scAlt or $26, 'IDE: Spaltenblock nach oben markieren'),
-    TAtlasKeyOwner.Create(scShift or scAlt or $28, 'IDE: Spaltenblock nach unten markieren')]; // VK_DOWN
+    TAtlasKeyOwner.Create(scShift or scAlt or $28, 'IDE: Spaltenblock nach unten markieren'), // VK_DOWN
+    // Anweisung vervollständigen (#697) nimmt Strg+Umschalt+Enter mit Vorrang.
+    TAtlasKeyOwner.Create(scCtrl or scShift or $0D, 'IDE: Referenzen suchen')]; // VK_RETURN
 end;
 
 class function TAtlasKeyConflicts.OwnerOf(AShortCut: Word; const AKeys: TArray<TAtlasKeyOwner>): string;

@@ -45,6 +45,9 @@ type
     /// <summary>Kommentar beim Enter fortsetzen (#696): Vorgaben, Speichern, Laden, Präfix normalisieren.</summary>
     [Test]
     procedure ContinueCommentsOptions;
+    /// <summary>Anweisung vervollständigen (#697): Vorgaben, Speichern, Laden, unbekannte Werte.</summary>
+    [Test]
+    procedure CompleteStatementOptions;
     /// <summary>Änderungsmarken und Zeilenhistorie (#507): Vorgaben, Tasten, Speichern und Laden.</summary>
     [Test]
     procedure GitChangeOptions;
@@ -1241,6 +1244,39 @@ begin
   Loaded.ContinueCommentsBlockPrefix := '   ';
   Loaded.Normalize;
   Assert.AreEqual('', Loaded.ContinueCommentsBlockPrefix);
+end;
+
+procedure TAtlasPluginSettingsTests.CompleteStatementOptions;
+var
+  Settings, Loaded: TAtlasPluginSettings;
+  Store: IAtlasSettingsStore;
+begin
+  Settings := TAtlasPluginSettings.Defaults;
+  Assert.IsTrue(Settings.CompleteStatement);
+  Assert.AreEqual($600D, Settings.CompleteStatementKey, 'Strg+Umschalt+Enter');
+  Assert.AreEqual('multiLine', Settings.CompleteStatementBeginEnd);
+  Assert.AreEqual('finally', Settings.CompleteStatementTryKind);
+  Assert.IsTrue(Settings.CompleteStatementMethodBody);
+  Settings.CompleteStatement := False;
+  Settings.CompleteStatementKey := 0;
+  Settings.CompleteStatementBeginEnd := 'always';
+  Settings.CompleteStatementTryKind := 'ask';
+  Settings.CompleteStatementMethodBody := False;
+  Store := TMemoryStore.Create;
+  Settings.Save(Store);
+  Loaded := TAtlasPluginSettings.Defaults;
+  Loaded.Load(Store);
+  Assert.IsFalse(Loaded.CompleteStatement);
+  Assert.AreEqual(0, Loaded.CompleteStatementKey);
+  Assert.AreEqual('always', Loaded.CompleteStatementBeginEnd);
+  Assert.AreEqual('ask', Loaded.CompleteStatementTryKind);
+  Assert.IsFalse(Loaded.CompleteStatementMethodBody);
+  // Unbekannte Werte fallen auf die Vorgabe zurück, Groß-/Kleinschreibung wird angeglichen.
+  Loaded.CompleteStatementBeginEnd := 'MULTILINE';
+  Loaded.CompleteStatementTryKind := 'irgendwas';
+  Loaded.Normalize;
+  Assert.AreEqual('multiLine', Loaded.CompleteStatementBeginEnd);
+  Assert.AreEqual('finally', Loaded.CompleteStatementTryKind);
 end;
 
 procedure TAtlasPluginSettingsTests.GitChangeOptions;

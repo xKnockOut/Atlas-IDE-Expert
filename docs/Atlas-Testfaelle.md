@@ -1161,6 +1161,27 @@ Vorbereitung: Git-Projekt `GitDemo` mit `.atlas` `"tracker": {"provider": "githu
 | ZV12 | Tastenübersicht öffnen | Alt+↑ und Umschalt+Alt+↑/↓ als Konflikt mit der IDE (Atlas gewinnt) |
 | ZV13 | Optionen › Atlas › Befehle: „Zeilen und Methoden verschieben …“ aus | Alt+↑/↓ gehören wieder der IDE (Alt+↑ = Code-Browsing), Palettenbefehle fehlen; Tasten änderbar |
 
+## Anweisung vervollständigen (#697)
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| AV1 | `if A > 0`, Strg+Umschalt+Enter | `if A > 0 then`, Cursor eingerückt in der Zeile darunter |
+| AV2 | `while not Eof(F`, `with Liste`, `on E: EConvertError` | Klammer zu, ` do`, Cursor eingerückt darunter |
+| AV3 | `for I := 0` | `for I := 0 to  do`, Cursor an der Grenze; `for S in Liste` bekommt ` do` |
+| AV4 | `if A` über zwei eingerückten Anweisungen, Vorgabe „bei mehreren Anweisungen“ | `begin` und `end;` um beide, Cursor hinter der letzten |
+| AV5 | Optionen › Atlas › Editor: begin/end „immer“ bzw. „nie“, AV1 wiederholen | Mit `begin`/Cursorzeile/`end;` bzw. ohne |
+| AV6 | `if A` direkt vor einer `else`-Zeile, „immer“ | `end` ohne Semikolon |
+| AV7 | `ShowMessage('Hallo` und `Add(A,` | `ShowMessage('Hallo');` bzw. `Add(A, |);` mit Cursor vor der Klammer |
+| AV8 | `B := 1;` vor einer `else`-Zeile | Das Semikolon fällt weg |
+| AV9 | `A := B;` (vollständig) | Cursor in einer neuen Zeile darunter, gleich eingerückt |
+| AV10 | `case Kind` mit `Kind: TAlign` | `case Kind of`, alle Werte als Zweige, `end;`, Cursor im ersten Zweig vor `;` |
+| AV11 | `try` allein; „Gerüst nach try“ auf finally, except und „jedes Mal fragen“ | `try`/Cursor/`finally`/`end;` bzw. except; bei „fragen“ erst eine Auswahl |
+| AV12 | `repeat` über einer eingerückten Anweisung | `until ;` dahinter, Cursor vor dem Semikolon |
+| AV13 | Im Typ `procedure Lauf(A: Integer` | `procedure Lauf(A: Integer);`, im implementation-Teil `procedure TFoo.Lauf(A: Integer);` mit `begin`/`end;`, Cursor bleibt in der Deklaration; mit „Rumpf anlegen“ aus nur das Semikolon |
+| AV14 | Im implementation-Teil `procedure TFoo.Lauf` ohne Rumpf | Semikolon, `begin`, Cursorzeile, `end;` |
+| AV15 | Nach AV10 bzw. AV13 einmal Strg+Z | Alles ist weg, die Zeile steht wie vorher |
+| AV16 | Tastenübersicht öffnen; Optionen › Atlas › Editor: „Anweisung vervollständigen“ aus | Strg+Umschalt+Enter als Konflikt mit „Referenzen suchen“ (Atlas gewinnt); ausgeschaltet gehört die Taste wieder der IDE, der Palettenbefehl fehlt |
+
 ## Kommentar beim Enter fortsetzen (#696)
 
 | Nr. | Schritte | Erwartet |
