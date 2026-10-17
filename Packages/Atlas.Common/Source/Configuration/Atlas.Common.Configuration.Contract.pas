@@ -259,6 +259,9 @@ type
     /// <summary>Delphi-Version als BDS-Version der Registry, z. B. "37.0" (Produktnummern wie "12" werden
     /// beim Lesen umgerechnet, siehe BdsVersionOf); '' = passend zur ProjectVersion der .dproj, sonst neueste installierte (#47).</summary>
     DelphiVersion: string;
+    /// <summary>Stelle des Werts von "delphiVersion" in der gelesenen Datei, für die Warnung, wenn diese
+    /// Version nicht installiert ist (#47); leer ohne Angabe.</summary>
+    DelphiVersionRange: TTextRange;
     /// <summary>Sprache der Meldungen, "de" oder "en".</summary>
     Language: string;
     /// <summary>Vorgabe-Codepage für Dateien ohne BOM, wenn die Erkennung nicht entscheidet (#121);

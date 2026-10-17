@@ -908,6 +908,7 @@ var
   Resolver: TUnitResolver;
   FileExistsFunc: TFunc<string, Boolean>;
   ProjectVersion, Version: string;
+  ConfiguredMissing: Boolean;
   ListUnits: TIndexListUnits;
   Excluded: TIndexExcluded;
   Exclude, Files, SearchFiles, LibraryFiles: TArray<string>;
@@ -942,7 +943,14 @@ begin
     if HasContext and (Context.BdsVersion <> '') and (IndexText(Context.BdsVersion, TDelphiInstallation.Versions) >= 0) then
       Version := Context.BdsVersion
     else
-      Version := TDelphiVersions.Choose(ASettings.DelphiVersion, ProjectVersion, TDelphiInstallation.Versions);
+    begin
+      Version := TDelphiVersions.Choose(ASettings.DelphiVersion, ProjectVersion, TDelphiInstallation.Versions,
+        ConfiguredMissing);
+      // Die Warnung steht auch an "delphiVersion" in atlas.json (#47).
+      if ConfiguredMissing then
+        FLogger.Warning(Format('%s: delphiVersion %s ist nicht installiert; automatisch gewählt: %s',
+          [FName, ASettings.DelphiVersion, Version]));
+    end;
     if Version <> '' then
     begin
       Installation := TDelphiInstallation.Create(Version);

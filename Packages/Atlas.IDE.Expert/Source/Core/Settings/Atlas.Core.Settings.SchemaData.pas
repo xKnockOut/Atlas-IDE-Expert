@@ -24,7 +24,7 @@ const
     '    "delphiVersion": {',
     '      "type": "string",',
     '      "pattern": "^[0-9]+(\\.[0-9]+)?$",',
-    '      "description": "Delphi-Version als Produktnummer (\"13\", \"12\", \"10.4\") oder wie in der Registry (\"37.0\" für Delphi 13, \"23.0\" für Delphi 12). Leer: neueste installierte Version.",',
+    '      "description": "Delphi-Version als Produktnummer (\"13\", \"12\", \"10.4\") oder wie in der Registry (\"37.0\" für Delphi 13, \"23.0\" für Delphi 12). Leer: passend zur ProjectVersion der .dproj' + ', sonst die nächsthöhere, sonst die neueste installierte Version. Ist die eingestellte Version nicht installiert, warnt das Serverprotokoll mit der Stelle in settings.json, und die automatische Wahl g' + 'reift. In der IDE gilt immer die laufende IDE.",',
     '      "examples": [',
     '        "37.0",',
     '        "23.0"',

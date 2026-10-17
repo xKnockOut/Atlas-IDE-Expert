@@ -2,8 +2,10 @@
 
 // Auswahl der Delphi-Version je Projekt (#47).
 //
-// Reihenfolge: "delphiVersion" aus der Konfiguration, sonst die zur
-// <ProjectVersion> der .dproj passende Installation, sonst die neueste.
+// Reihenfolge: "delphiVersion" aus der Konfiguration, wenn sie installiert ist,
+// sonst die zur <ProjectVersion> der .dproj passende Installation, sonst die
+// nächsthöhere, sonst die neueste. Eine konfigurierte, aber fehlende Version
+// ergibt eine Warnung an "delphiVersion" in atlas.json (ConfigurationIssues).
 // Die Zuordnung ProjectVersion -> BDS-Version ist eine Näherung: Die IDE
 // schreibt beim Speichern ihre eigene ProjectVersion, Zwischenstände einer
 // Hauptversion liegen in einem Bereich.
@@ -11,7 +13,8 @@
 interface
 
 uses
-  System.SysUtils;
+  System.SysUtils,
+  Atlas.Common.Configuration.Contract;
 
 type
   TDelphiVersions = record
@@ -22,11 +25,19 @@ type
     class function BdsForProjectVersion(const AProjectVersion: string): string; static;
     /// <summary>Produktname, z. B. "Delphi 12" für "23.0"; sonst "BDS 23.0".</summary>
     class function ProductName(const ABdsVersion: string): string; static;
-    /// <summary>Zu verwendende Version aus den installierten (aufsteigend sortiert).
-    /// Konfigurierte Version gewinnt immer, auch wenn sie nicht installiert ist.
-    /// Sonst die passende, sonst die nächsthöhere, sonst die neueste Installation.</summary>
+    /// <summary>Ist ABdsVersion unter AInstalled (Zahlenvergleich, "23" = "23.0")?</summary>
+    class function IsInstalled(const ABdsVersion: string; const AInstalled: TArray<string>): Boolean; static;
+    /// <summary>Zu verwendende Version aus den installierten (aufsteigend sortiert): die konfigurierte, wenn
+    /// sie installiert ist, sonst die passende, sonst die nächsthöhere, sonst die neueste Installation.
+    /// AConfiguredMissing = konfiguriert, aber nicht installiert.</summary>
+    class function Choose(const AConfigured, AProjectVersion: string; const AInstalled: TArray<string>;
+      out AConfiguredMissing: Boolean): string; overload; static;
+    /// <summary>Wie oben, ohne Rückmeldung zur konfigurierten Version.</summary>
     class function Choose(const AConfigured, AProjectVersion: string;
-      const AInstalled: TArray<string>): string; static;
+      const AInstalled: TArray<string>): string; overload; static;
+    /// <summary>Warnung an "delphiVersion", wenn die Version aus ASettings nicht installiert ist (#47).</summary>
+    class function ConfigurationIssues(const ASettings: TServerSettings;
+      const AInstalled: TArray<string>): TArray<TConfigurationIssue>; static;
   end;
 
 implementation
@@ -93,14 +104,40 @@ begin
   Result := 'BDS ' + ABdsVersion;
 end;
 
+class function TDelphiVersions.IsInstalled(const ABdsVersion: string; const AInstalled: TArray<string>): Boolean;
+var
+  Version: string;
+begin
+  Result := False;
+  if ToNumber(ABdsVersion) = 0 then
+    Exit;
+  for Version in AInstalled do
+    if ToNumber(Version) = ToNumber(ABdsVersion) then
+      Exit(True);
+end;
+
 class function TDelphiVersions.Choose(const AConfigured, AProjectVersion: string;
   const AInstalled: TArray<string>): string;
+var
+  Missing: Boolean;
+begin
+  Result := Choose(AConfigured, AProjectVersion, AInstalled, Missing);
+end;
+
+class function TDelphiVersions.Choose(const AConfigured, AProjectVersion: string; const AInstalled: TArray<string>;
+  out AConfiguredMissing: Boolean): string;
 var
   Wanted: string;
   Version: string;
 begin
+  AConfiguredMissing := False;
   if AConfigured <> '' then
-    Exit(AConfigured);
+  begin
+    if IsInstalled(AConfigured, AInstalled) then
+      Exit(AConfigured);
+    // Fehlt sie, liefe das Projekt ohne Bibliothekspfade; die automatische Wahl greift (#47).
+    AConfiguredMissing := True;
+  end;
   if Length(AInstalled) = 0 then
     Exit('');
   Wanted := BdsForProjectVersion(AProjectVersion);
@@ -109,6 +146,30 @@ begin
       if ToNumber(Version) >= ToNumber(Wanted) then
         Exit(Version);
   Result := AInstalled[High(AInstalled)];
+end;
+
+class function TDelphiVersions.ConfigurationIssues(const ASettings: TServerSettings;
+  const AInstalled: TArray<string>): TArray<TConfigurationIssue>;
+var
+  Issue: TConfigurationIssue;
+  Fallback: string;
+  Missing: Boolean;
+begin
+  Result := nil;
+  if (ASettings.DelphiVersion = '') or IsInstalled(ASettings.DelphiVersion, AInstalled) then
+    Exit;
+  Fallback := Choose(ASettings.DelphiVersion, '', AInstalled, Missing);
+  Issue := Default(TConfigurationIssue);
+  Issue.Range := ASettings.DelphiVersionRange;
+  Issue.IsError := False;
+  if Fallback = '' then
+    Issue.Message := Format('%s (BDS %s) ist nicht installiert und keine andere Delphi-Version gefunden; ' +
+      'Bibliothekspfade und RTL-Quellen fehlen', [ProductName(ASettings.DelphiVersion), ASettings.DelphiVersion])
+  else
+    Issue.Message := Format('%s (BDS %s) ist nicht installiert; Atlas wählt die Version automatisch ' +
+      '(je Projekt nach ProjectVersion der .dproj, sonst %s)', [ProductName(ASettings.DelphiVersion),
+      ASettings.DelphiVersion, ProductName(Fallback)]);
+  Result := [Issue];
 end;
 
 end.
