@@ -135,7 +135,7 @@ const
     TAtlasTextId.ElementBookmarks, TAtlasTextId.ElementPairColors, TAtlasTextId.ElementPairGuides,
     TAtlasTextId.ElementPairOwners, TAtlasTextId.ElementInactiveDim, TAtlasTextId.ElementCompletionPreview,
     TAtlasTextId.ElementUnusedUses, TAtlasTextId.ElementRecursion, TAtlasTextId.ElementInlineDiagnostics,
-    TAtlasTextId.ElementInlayTypeHints);
+    TAtlasTextId.ElementInlayTypeHints, TAtlasTextId.ElementGitGutter, TAtlasTextId.ElementGitBlame);
   Plural: array[TAtlasDrawnElement] of TAtlasTextId = (TAtlasTextId.ElementCodeLensMetricsPlural,
     TAtlasTextId.ElementCodeLensTestsPlural, TAtlasTextId.ElementCodeLensTestUnitPlural,
     TAtlasTextId.ElementBlockEndLabelsPlural, TAtlasTextId.ElementInlayHintsPlural,
@@ -144,7 +144,7 @@ const
     TAtlasTextId.ElementPairOwnersPlural, TAtlasTextId.ElementInactiveDimPlural,
     TAtlasTextId.ElementCompletionPreviewPlural, TAtlasTextId.ElementUnusedUsesPlural,
     TAtlasTextId.ElementRecursionPlural, TAtlasTextId.ElementInlineDiagnosticsPlural,
-    TAtlasTextId.ElementInlayTypeHintsPlural);
+    TAtlasTextId.ElementInlayTypeHintsPlural, TAtlasTextId.ElementGitGutterPlural, TAtlasTextId.ElementGitBlamePlural);
 begin
   if APlural then
     Result := TAtlasStrings.Text(Plural[AElement])

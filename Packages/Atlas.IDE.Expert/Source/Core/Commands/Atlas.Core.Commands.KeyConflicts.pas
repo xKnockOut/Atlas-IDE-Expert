@@ -45,7 +45,7 @@ type
     MethodToggleUp, MethodToggleDown, TestUnit, UnitSearch, UnitSearchIde, Bookmark, GenerateMenu,
     Notifications, WelcomeQuickBuild, WelcomeQuickTests, HideElement, NextProblem, PreviousProblem, QuickOpen,
     NavBack, NavForward, LastEdit, PeekDefinition, PeekReferences, Breadcrumbs, JumpToMatch,
-    JumpToMatchSelect);
+    JumpToMatchSelect, NextChange, PreviousChange);
   TAtlasKeyChoice = (UseAtlas, LeaveOther, OtherKey);
   /// <summary>NoKey: keine Taste; IdeKey: Taste der IDE über Code Insight, Atlas belegt nichts selbst;
   /// Free: Atlas belegt die freie Taste; AtlasWins: belegt, Atlas hat Vorrang; Left: belegt, Atlas
@@ -203,7 +203,10 @@ begin
     Create(TAtlasKeyFunction.Breadcrumbs, Word(ASettings.BreadcrumbsKey), Shared, ASettings.Breadcrumbs),
     // Sprung zum Gegenstück (#635).
     Create(TAtlasKeyFunction.JumpToMatch, Word(ASettings.JumpToMatchKey), Shared, ASettings.JumpToMatch),
-    Create(TAtlasKeyFunction.JumpToMatchSelect, Word(ASettings.JumpToMatchSelectKey), Shared, ASettings.JumpToMatch)];
+    Create(TAtlasKeyFunction.JumpToMatchSelect, Word(ASettings.JumpToMatchSelectKey), Shared, ASettings.JumpToMatch),
+    // Nächste/vorherige Änderung (#507).
+    Create(TAtlasKeyFunction.NextChange, Word(ASettings.NextChangeKey), Shared, ASettings.GitGutter),
+    Create(TAtlasKeyFunction.PreviousChange, Word(ASettings.PreviousChangeKey), Shared, ASettings.GitGutter)];
 end;
 
 class procedure TAtlasKeyEntry.ToSettings(const AEntries: TArray<TAtlasKeyEntry>;
@@ -305,6 +308,10 @@ begin
         ASettings.JumpToMatchKey := Entry.Key;
       TAtlasKeyFunction.JumpToMatchSelect:
         ASettings.JumpToMatchSelectKey := Entry.Key;
+      TAtlasKeyFunction.NextChange:
+        ASettings.NextChangeKey := Entry.Key;
+      TAtlasKeyFunction.PreviousChange:
+        ASettings.PreviousChangeKey := Entry.Key;
       // Strg+F12 ist fest; ein- und ausgeschaltet wird über unitSearch.replaceIdeDialog.
       TAtlasKeyFunction.UnitSearchIde:
         ;

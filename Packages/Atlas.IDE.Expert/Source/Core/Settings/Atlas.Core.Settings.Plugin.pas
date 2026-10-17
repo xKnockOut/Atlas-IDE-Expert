@@ -534,6 +534,14 @@ type
     BreadcrumbsShowUnit: Boolean;
     /// <summary>Kürzel „Brotkrumenleiste“ (#590, keys.breadcrumbs); Vorgabe Strg+Umschalt+Punkt.</summary>
     BreadcrumbsKey: Integer;
+    /// <summary>Änderungsmarken in der Rinne (#507, editor.gitGutter).</summary>
+    GitGutter: Boolean;
+    /// <summary>Zeilenhistorie am Ende der Cursorzeile (#507, editor.gitBlame).</summary>
+    GitBlame: Boolean;
+    /// <summary>Kürzel „Nächste Änderung“ (#507, keys.nextChange); Vorgabe Strg+Alt+Bild↓.</summary>
+    NextChangeKey: Integer;
+    /// <summary>Kürzel „Vorherige Änderung“ (#507, keys.previousChange); Vorgabe Strg+Alt+Bild↑.</summary>
+    PreviousChangeKey: Integer;
     /// <summary>Sprung zum Gegenstück (#635, keys.jumpToMatch).</summary>
     JumpToMatch: Boolean;
     /// <summary>Kürzel „Zum Gegenstück springen“ (#635, keys.jumpToMatchShortcut); Vorgabe Strg+Ü.</summary>
@@ -1091,6 +1099,11 @@ begin
   Result.Breadcrumbs := True;
   Result.BreadcrumbsShowUnit := False;
   Result.BreadcrumbsKey := $60BE; // Strg+Umschalt+.
+  Result.GitGutter := True;
+  Result.GitBlame := False;
+  // Strg+Alt+↑/↓ springt in RAD Studio schon zwischen Methoden.
+  Result.NextChangeKey := $C022; // Strg+Alt+Bild↓
+  Result.PreviousChangeKey := $C021; // Strg+Alt+Bild↑
   Result.JumpToMatch := True;
   Result.JumpToMatchKey := $40BA; // Strg+Ü (VK_OEM_1 auf deutscher Tastatur)
   Result.JumpToMatchSelectKey := $60BA; // Strg+Umschalt+Ü
@@ -1276,6 +1289,8 @@ begin
   PeekDefinitionKey := EnsureRange(PeekDefinitionKey, 0, $FFFF);
   PeekReferencesKey := EnsureRange(PeekReferencesKey, 0, $FFFF);
   BreadcrumbsKey := EnsureRange(BreadcrumbsKey, 0, $FFFF);
+  NextChangeKey := EnsureRange(NextChangeKey, 0, $FFFF);
+  PreviousChangeKey := EnsureRange(PreviousChangeKey, 0, $FFFF);
   JumpToMatchKey := EnsureRange(JumpToMatchKey, 0, $FFFF);
   JumpToMatchSelectKey := EnsureRange(JumpToMatchSelectKey, 0, $FFFF);
   BookmarkKey := EnsureRange(BookmarkKey, 0, $FFFF);
@@ -1509,6 +1524,10 @@ begin
   Breadcrumbs := AStore.ReadInteger('Breadcrumbs', BoolValue(Default.Breadcrumbs)) <> 0;
   BreadcrumbsShowUnit := AStore.ReadInteger('BreadcrumbsShowUnit', BoolValue(Default.BreadcrumbsShowUnit)) <> 0;
   BreadcrumbsKey := AStore.ReadInteger('BreadcrumbsKey', Default.BreadcrumbsKey);
+  GitGutter := AStore.ReadInteger('GitGutter', BoolValue(Default.GitGutter)) <> 0;
+  GitBlame := AStore.ReadInteger('GitBlame', BoolValue(Default.GitBlame)) <> 0;
+  NextChangeKey := AStore.ReadInteger('NextChangeKey', Default.NextChangeKey);
+  PreviousChangeKey := AStore.ReadInteger('PreviousChangeKey', Default.PreviousChangeKey);
   JumpToMatch := AStore.ReadInteger('JumpToMatch', BoolValue(Default.JumpToMatch)) <> 0;
   JumpToMatchKey := AStore.ReadInteger('JumpToMatchKey', Default.JumpToMatchKey);
   JumpToMatchSelectKey := AStore.ReadInteger('JumpToMatchSelectKey', Default.JumpToMatchSelectKey);
@@ -1790,6 +1809,10 @@ begin
   AStore.WriteInteger('Breadcrumbs', BoolValue(Breadcrumbs));
   AStore.WriteInteger('BreadcrumbsShowUnit', BoolValue(BreadcrumbsShowUnit));
   AStore.WriteInteger('BreadcrumbsKey', BreadcrumbsKey);
+  AStore.WriteInteger('GitGutter', BoolValue(GitGutter));
+  AStore.WriteInteger('GitBlame', BoolValue(GitBlame));
+  AStore.WriteInteger('NextChangeKey', NextChangeKey);
+  AStore.WriteInteger('PreviousChangeKey', PreviousChangeKey);
   AStore.WriteInteger('JumpToMatch', BoolValue(JumpToMatch));
   AStore.WriteInteger('JumpToMatchKey', JumpToMatchKey);
   AStore.WriteInteger('JumpToMatchSelectKey', JumpToMatchSelectKey);
