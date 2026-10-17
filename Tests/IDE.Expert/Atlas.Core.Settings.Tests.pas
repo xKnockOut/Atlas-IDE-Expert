@@ -1291,6 +1291,8 @@ begin
   // #589: experimentell, also aus; Klick mit Alt; Kürzel Strg+D, Alt+Umschalt+I, Strg+Alt+↑/↓.
   Settings := TAtlasPluginSettings.Defaults;
   Assert.IsFalse(Settings.MultiCursor);
+  // #658 ebenso experimentell.
+  Assert.IsFalse(Settings.LinkedEditing);
   Assert.AreEqual('alt', Settings.MultiCursorModifier);
   Assert.AreEqual($4044, Settings.MultiCursorNextKey, 'Strg+D');
   Assert.AreEqual($4044, Settings.MultiCursorSkipKey, 'Strg+K, Strg+D');
@@ -1298,6 +1300,7 @@ begin
   Assert.AreEqual($C026, Settings.MultiCursorAboveKey, 'Strg+Alt+Hoch');
   Assert.AreEqual($C028, Settings.MultiCursorBelowKey, 'Strg+Alt+Runter');
   Settings.MultiCursor := True;
+  Settings.LinkedEditing := True;
   Settings.MultiCursorModifier := 'ctrl';
   Settings.MultiCursorNextKey := 0;
   Settings.MultiCursorSkipKey := $4053;
@@ -1309,6 +1312,7 @@ begin
   Loaded := TAtlasPluginSettings.Defaults;
   Loaded.Load(Store);
   Assert.IsTrue(Loaded.MultiCursor);
+  Assert.IsTrue(Loaded.LinkedEditing);
   Assert.AreEqual('ctrl', Loaded.MultiCursorModifier);
   Assert.AreEqual(0, Loaded.MultiCursorNextKey);
   Assert.AreEqual($4053, Loaded.MultiCursorSkipKey);

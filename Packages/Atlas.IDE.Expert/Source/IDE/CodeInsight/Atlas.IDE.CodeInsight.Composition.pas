@@ -81,6 +81,7 @@ uses
   Atlas.IDE.Editor.CommentContinuation,
   Atlas.IDE.Editor.PatternContinuation,
   Atlas.IDE.Editor.MultiCursor,
+  Atlas.IDE.Editor.LinkedEditing,
   Atlas.IDE.Editor.StatementCompletion,
   Atlas.IDE.Editor.OverviewRuler,
   Atlas.IDE.UnitSearch.Commands,
@@ -2146,16 +2147,37 @@ begin
     begin
       Result := (Manager <> nil) and Manager.CompletionVisible;
     end);
-  // Mehrere Einfügemarken (#589, experimentell): nie bei offener Vervollständigung oder im Platzhalter-Modus.
+  // Mehrere Einfügemarken (#589, experimentell): nie bei offener Vervollständigung, im Platzhalter-Modus oder
+  // während Bezeichner mitgezogen werden (#658).
   TAtlasIdeMultiCursor.Install(
     function: Boolean
     begin
-      Result := (Manager <> nil) and (Manager.CompletionVisible or Manager.PlaceholdersActive);
+      Result := ((Manager <> nil) and (Manager.CompletionVisible or Manager.PlaceholdersActive)) or
+        TAtlasIdeLinkedEditing.Active;
     end,
     procedure(const AText, AHint: string)
     begin
       if StatusField <> nil then
         StatusField.SetExtra('multiCursor', AText, AHint, nil);
+    end);
+  // Bezeichner live mitziehen (#658, experimentell): ebenso nie neben Vervollständigung, Platzhaltern und
+  // mehreren Einfügemarken.
+  TAtlasIdeLinkedEditing.Install(
+    function: Boolean
+    begin
+      Result := ((Manager <> nil) and (Manager.CompletionVisible or Manager.PlaceholdersActive)) or
+        TAtlasIdeMultiCursor.Active;
+    end,
+    function: TLspSession
+    begin
+      Result := nil;
+      if Manager <> nil then
+        Result := Manager.RunningSession;
+    end,
+    procedure(const AText, AHint: string)
+    begin
+      if StatusField <> nil then
+        StatusField.SetExtra('linkedEditing', AText, AHint, nil);
     end);
   // Übersichtsleiste an der Scrollleiste (#519).
   TAtlasIdeOverviewRuler.Install;
@@ -2189,6 +2211,7 @@ begin
   TAtlasIdeOverviewRuler.Uninstall;
   TAtlasIdeLineChanges.Uninstall;
   TAtlasIdeLineMove.Uninstall;
+  TAtlasIdeLinkedEditing.Uninstall;
   TAtlasIdeMultiCursor.Uninstall;
   TAtlasIdePatternContinuation.Uninstall;
   TAtlasIdeCommentContinuation.Uninstall;

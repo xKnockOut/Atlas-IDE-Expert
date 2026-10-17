@@ -634,6 +634,8 @@ uses
   Atlas.Core.Editor.PatternContinuation.Tests in 'IDE.Expert\Atlas.Core.Editor.PatternContinuation.Tests.pas',
   Atlas.Core.Editor.MultiCursor in '..\Packages\Atlas.IDE.Expert\Source\Core\Editor\Atlas.Core.Editor.MultiCursor.pas',
   Atlas.Core.Editor.MultiCursor.Tests in 'IDE.Expert\Atlas.Core.Editor.MultiCursor.Tests.pas',
+  Atlas.Core.Editor.LinkedEditing in '..\Packages\Atlas.IDE.Expert\Source\Core\Editor\Atlas.Core.Editor.LinkedEditing.pas',
+  Atlas.Core.Editor.LinkedEditing.Tests in 'IDE.Expert\Atlas.Core.Editor.LinkedEditing.Tests.pas',
   Atlas.Core.Editor.StatementCompletion in '..\Packages\Atlas.IDE.Expert\Source\Core\Editor\Atlas.Core.Editor.StatementCompletion.pas',
   Atlas.Core.Editor.StatementCompletion.Tests in 'IDE.Expert\Atlas.Core.Editor.StatementCompletion.Tests.pas',
   Atlas.Core.Editor.Overview in '..\Packages\Atlas.IDE.Expert\Source\Core\Editor\Atlas.Core.Editor.Overview.pas',
