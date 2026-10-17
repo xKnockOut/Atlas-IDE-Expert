@@ -33,6 +33,7 @@ type
     [Test]
     procedure CommandJson;
     [Test]
+    [Category('Benchmark')]
     procedure FiveThousandLinesUnderFiftyMilliseconds;
   end;
 

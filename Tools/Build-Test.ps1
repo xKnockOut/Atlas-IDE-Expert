@@ -18,7 +18,8 @@
        klassische IDE muss dabei neu geschrieben sein (#78). Die BPL heißt
        wegen LIBSUFFIX AUTO je IDE-Version anders, z. B.
        Atlas.IDE.Expert370.bpl (#281).
-    4. Atlas.Tests.exe --exitbehavior:Continue mit NUnit-XML als Ergebnis.
+    4. Atlas.Tests.exe --exitbehavior:Continue mit NUnit-XML als Ergebnis;
+       die Benchmarks (Kategorie Benchmark, #415) nur mit -Benchmarks.
     5. cc.ps1 quit, wiederholt, solange die IDE beschäftigt ist.
 
     Exit-Code 0: alles grün. 1: Build-Fehler, Hinweis oder Warnung.
@@ -27,6 +28,7 @@
 .EXAMPLE
     pwsh Tools/Build-Test.ps1
     pwsh Tools/Build-Test.ps1 -Win32 -ResultFile Output\dunitx.xml
+    pwsh Tools/Build-Test.ps1 -Benchmarks
 #>
 [CmdletBinding()]
 param(
@@ -36,6 +38,7 @@ param(
     [switch] $Win32,
     [string] $ResultFile = 'dunitx-ergebnisse.xml',
     [switch] $SkipTests,
+    [switch] $Benchmarks,
     [int] $QuitAttempts = 10,
     [int] $QuitDelaySeconds = 5
 )
@@ -172,7 +175,10 @@ try {
         $exitCode = 1
     } elseif (-not $SkipTests) {
         Write-Step 'DUnitX-Tests ausführen'
-        & $TestExe '--exitbehavior:Continue' "--xmlfile:$ResultFile"
+        # Benchmarks laufen getrennt von den Funktionstests (#415), wie Tests\Tests.bat.
+        $filter = '--exclude:Benchmark'
+        if ($Benchmarks) { $filter = '--include:Benchmark' }
+        & $TestExe $filter '--exitbehavior:Continue' "--xmlfile:$ResultFile"
         if ($LASTEXITCODE -ne 0) {
             Write-Step "Tests fehlgeschlagen (Exit-Code $LASTEXITCODE)"
             $exitCode = 2

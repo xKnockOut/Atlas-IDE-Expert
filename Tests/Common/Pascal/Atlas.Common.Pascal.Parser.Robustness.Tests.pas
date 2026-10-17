@@ -30,8 +30,10 @@ type
     [IgnoreMemoryLeaks]
     procedure ParsesDelphiSourceCorpus;
     [Test]
+    [Category('Benchmark')]
     procedure SyntaxDiagnosticsWithin200Ms;
     [Test]
+    [Category('Benchmark')]
     procedure OutlineAndFoldingWithin100Ms;
   end;
 

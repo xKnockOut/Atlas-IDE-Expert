@@ -42,6 +42,8 @@ type
     procedure TypeMismatchDimsAndSkipsOverload;
     [Test]
     procedure ReadsArgumentFitFromServer;
+    [Test]
+    procedure TooManyArgumentsCountsOnly;
   end;
 
 implementation
@@ -356,6 +358,27 @@ begin
   Assert.IsFalse(TAtlasCallScanner.RemovedClosingParen('Foo(True)', 'Foo(Tr)'));
   Assert.IsFalse(TAtlasCallScanner.RemovedClosingParen('Foo(', 'Foo'));
   Assert.IsFalse(TAtlasCallScanner.RemovedClosingParen('', ''));
+end;
+
+procedure TAtlasSignatureControllerTests.TooManyArgumentsCountsOnly;
+var
+  Help: TAtlasSignatureHelp;
+begin
+  // StrToInt(Edit1.Text, 10 (#439): eine Überladung mit einem Parameter, zweites Argument zu viel.
+  Help := Default(TAtlasSignatureHelp);
+  SetLength(Help.Signatures, 2);
+  SetLength(Help.Signatures[0].Parameters, 1);
+  SetLength(Help.Signatures[1].Parameters, 1);
+  Assert.IsFalse(TAtlasSignatureController.TooManyArguments(Help, 0));
+  Assert.IsTrue(TAtlasSignatureController.TooManyArguments(Help, 1));
+  // Nur die Anzahl zählt: ein unverträglicher Typ ist kein Fehlerzustand.
+  Help.Signatures[0].TypeMismatch := True;
+  Assert.IsFalse(TAtlasSignatureController.TooManyArguments(Help, 0));
+  // Leere Klammern passen immer, ohne Signaturen gibt es keinen Fehler.
+  Assert.IsTrue(TAtlasSignatureController.CountFits(Default(TAtlasSignature), 0));
+  Assert.IsFalse(TAtlasSignatureController.CountFits(Default(TAtlasSignature), 1));
+  Assert.IsFalse(TAtlasSignatureController.TooManyArguments(Default(TAtlasSignatureHelp), 3));
+  Help := Default(TAtlasSignatureHelp);
 end;
 
 initialization

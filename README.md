@@ -125,8 +125,12 @@ Output goes to `Output\<platform>\<config>\` (`Bin`, `Bpl`, `Dcp`, `Dcu`).
 
 ## Testing
 
+The DUnitX tests run without an open IDE, after building `Atlas.Tests` (Win64):
+
 ```bat
-Output\Win64\Debug\Bin\Atlas.Tests.exe --exit:Continue
+Tests\Tests.bat              :: functional tests without benchmarks
+Tests\Tests.bat benchmark    :: benchmarks only (category Benchmark)
+Tests\Tests.bat alle         :: both
 ```
 
 Check scripts (also run as GitHub Actions):
@@ -134,6 +138,7 @@ Check scripts (also run as GitHub Actions):
 ```powershell
 pwsh Tools/Check-PackageDependencies.ps1   # packages keep their dependencies
 pwsh Tools/Check-ConsoleOutput.ps1         # no Write/Writeln to stdout
+pwsh Tools/Check-TestCoverage.ps1          # every unit with logic has tests, every test unit runs
 ```
 
 ## CI

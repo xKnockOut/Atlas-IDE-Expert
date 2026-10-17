@@ -144,18 +144,13 @@ end;
 
 function TAtlasSignatureHint.Fits(AIndex: Integer): Boolean;
 begin
-  // Wie im Controller: Der erste Parameter passt immer.
-  Result := (FParameter = 0) or (FParameter < Length(FHelp.Signatures[AIndex].Parameters));
+  // Wie im Controller nach der Anzahl.
+  Result := TAtlasSignatureController.CountFits(FHelp.Signatures[AIndex], FParameter);
 end;
 
 function TAtlasSignatureHint.TooMany: Boolean;
-var
-  Index: Integer;
 begin
-  Result := Length(FHelp.Signatures) > 0;
-  for Index := 0 to High(FHelp.Signatures) do
-    if Fits(Index) then
-      Exit(False);
+  Result := TAtlasSignatureController.TooManyArguments(FHelp, FParameter);
 end;
 
 function TAtlasSignatureHint.ParameterDoc(out AName, AText: string): Boolean;

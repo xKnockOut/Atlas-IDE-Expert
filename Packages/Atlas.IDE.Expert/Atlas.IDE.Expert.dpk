@@ -185,6 +185,7 @@ contains
   Atlas.IDE.Commands.MainMenu in 'Source\IDE\Commands\Atlas.IDE.Commands.MainMenu.pas',
   Atlas.Core.Completion.Ranking in 'Source\Core\Completion\Atlas.Core.Completion.Ranking.pas',
   Atlas.Core.Completion.Sets in 'Source\Core\Completion\Atlas.Core.Completion.Sets.pas',
+  Atlas.Core.Completion.Width in 'Source\Core\Completion\Atlas.Core.Completion.Width.pas',
   Atlas.Core.Completion.Usage in 'Source\Core\Completion\Atlas.Core.Completion.Usage.pas',
   Atlas.IDE.Completion.History in 'Source\IDE\Completion\Atlas.IDE.Completion.History.pas',
   Atlas.Core.Completion.Favorites in 'Source\Core\Completion\Atlas.Core.Completion.Favorites.pas',
