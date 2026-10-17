@@ -409,6 +409,8 @@ uses
   System.RegularExpressions,
   Atlas.Common.Editing.CommandSource,
   Atlas.Common.Editing.SlashMenu,
+  Atlas.Common.Rules.Catalog,
+  Atlas.Common.Rules.Catalog.Data,
   Atlas.Common.Diagnostics.RequestScope,
   Atlas.Common.Lsp.CompletionEnums,
   Atlas.Common.Editing.DataFieldNames,
@@ -457,12 +459,36 @@ begin
   end;
 end;
 
+function TypeUnitEdits(AResolver: TNameResolver; const AIndex: ISymbolIndex; ATree: TSyntaxTree;
+  const AFileName, ATypeName, ALineBreak: string; AOffset: Integer): TArray<TRuleEdit>; forward;
+
+/// <summary>Kennungen des eingebauten Regelkatalogs für /ignore (#293); sonst leer.</summary>
+function RuleIds(AKind: TSlashArgumentKind): TArray<string>;
+var
+  Catalog: TRuleCatalog;
+  Entry: TRuleCatalogEntry;
+begin
+  Result := nil;
+  if AKind <> TSlashArgumentKind.Rules then
+    Exit;
+  Catalog := TRuleCatalog.Create(RuleCatalogBaseJson);
+  try
+    for Entry in Catalog.Entries do
+      Result := Result + [Entry.Id];
+  finally
+    Catalog.Free;
+  end;
+end;
+
 function SlashItems(ARequest: TCompletionRequest; const ADisabled: TArray<string>; out AItems: TCompletionItems): Boolean;
 var
   Before, Name, Arguments, Choice: string;
   Choices: TArray<string>;
   Command: TSlashCommand;
   Item: TCompletionItem;
+  Kind: TSlashArgumentKind;
+  Tree: TSyntaxTree;
+  Resolver: TNameResolver;
 begin
   AItems := Default(TCompletionItems);
   // "/name" ohne Argumente vor dem Cursor; danach vervollständigen die Befehle selbst (#294 ff.), /sort und
@@ -477,14 +503,34 @@ begin
     if MatchText(Name, ADisabled) or
       not TSlashCommandRegistry.IsCodeLine(TPascalLexer.Tokenize(ARequest.Text), ARequest.Position.Line) then
       Exit(False);
-    Choices := TSlashMenu.ArgumentChoices(ARequest.Text, ARequest.Position.Line, Name, Arguments, ARequest.Index);
-    for Choice in Choices do
-    begin
-      Item := Default(TCompletionItem);
-      Item.Name := Choice;
-      Item.Kind := KindField;
-      Item.Detail := '/' + Name;
-      AItems.Items := AItems.Items + [Item];
+    Kind := TSlashMenu.ArgumentKind(Name, Arguments);
+    Choices := TSlashMenu.ArgumentChoices(ARequest.Text, ARequest.Position.Line, Name, Arguments, ARequest.Index,
+      RuleIds(Kind));
+    Tree := nil;
+    Resolver := nil;
+    try
+      // Typen aus nicht eingebundenen Units bringen ihren uses-Eintrag mit (#294, #180); dieser Fall läuft vor
+      // dem Syntaxbaum der Anfrage, daher ein eigener.
+      if (Kind in [TSlashArgumentKind.Types, TSlashArgumentKind.Interfaces, TSlashArgumentKind.Exceptions]) and
+        (ARequest.Index <> nil) and (Length(Choices) > 0) then
+      begin
+        Tree := TSyntaxTreeCache.Parse(ARequest.Text);
+        Resolver := TNameResolver.Create(ARequest.Index);
+      end;
+      for Choice in Choices do
+      begin
+        Item := Default(TCompletionItem);
+        Item.Name := Choice;
+        Item.Kind := KindField;
+        Item.Detail := '/' + Name;
+        if Resolver <> nil then
+          Item.AdditionalEdits := TypeUnitEdits(Resolver, ARequest.Index, Tree, ARequest.FileName, Choice,
+            ARequest.LineBreak, ARequest.OffsetAt(ARequest.Position));
+        AItems.Items := AItems.Items + [Item];
+      end;
+    finally
+      Resolver.Free;
+      Tree.Free;
     end;
     Exit(Length(Choices) > 0);
   end;

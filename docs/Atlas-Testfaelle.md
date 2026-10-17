@@ -1200,7 +1200,7 @@ Vorbereitung: wie bei #69, Projektgruppe mit der Anwendung (aktiv) und dem Testp
 | TD18 | Anwendung läuft im Debugger, „Debuggen“ an einem Test | Meldung „Der Debugger läuft schon; erst beenden.“; nichts ändert sich |
 | TD19 | Fehler im Testprojekt einbauen, TD2 | Meldung, dass der Build fehlschlug; aktives Projekt und Startparameter unverändert, keine Datei `atlas-debug-*.xml` im Temp-Ordner |
 | TD20 | Schnellschalter „Test debuggen“ aus | Ohne Neustart: Marken „Debuggen“, Befehl „Test am Cursor debuggen“, Eintrag im Kontextmenü (meldet „ausgeschaltet“) und Tipp „Einzelnen Test debuggen“ verschwinden; „Test ausführen“ bleibt |
-| TD21 | „Code Lens „Test ausführen““ (`codeLens.tests`) aus | Keine Marken, weder „Test ausführen“ noch „Debuggen“ (Akzeptanz: mit codeLens.tests aus ist die Funktion in der Code Lens aus); Befehle und Kontextmenü gelten weiter nach „Test debuggen“ |
+| TD21 | „Code Lens „Test ausführen““ (`codeLens.tests`) aus | Keine Marken, weder „Test ausführen“ noch „Debuggen“; auch die Befehle „Test am Cursor debuggen/ausführen“ und die Einträge im Kontextmenü sind aus (Akzeptanz: Atlas verhält sich wie ohne die Funktion) (**Abnahme**) |
 | TD22 | „DUnitX-Tests ausführen“ aus | Auch „Test debuggen“ ist aus: keine Marken, keine Befehle, Kontextmenü meldet „ausgeschaltet“ |
 | TD23 | Testprojekt nur für Win64, aktive Plattform der Anwendung Win32, TD2 | Gebaut und gestartet wird Win64 des Testprojekts |
 
@@ -1838,3 +1838,15 @@ Voraussetzung für EX2 bis EX7: mindestens eine Einstellung trägt `x-experiment
 | EX8 | Profil „Alles an“ importieren, dann „Alles an, auch experimentell“ | „Alles an“ lässt experimental.enabled aus; das zweite Profil schaltet es und alle experimentellen Funktionen ein |
 | EX9 | whatsnew.json mit einem Eintrag `"experimental": true`, Willkommensseite „Neu in Atlas“ | Eintrag steht nach den übrigen unter „Experimentell (wirkt erst mit …)“ |
 | EX10 | Englische IDE | Hauptschalter, Hinweis, Filter und Kennzeichnung auf Englisch |
+
+## Schnellbefehle: Argumente und Formatstil (#293, #294)
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| SB1 | In einer Routine `/uses Sys` tippen | Vorschläge aus dem Index: `System.SysUtils`, `System.Classes` … (**Abnahme**) |
+| SB2 | `/var Liste: TStringL` tippen, `TStringList` wählen, Enter | Variable angelegt; fehlt `System.Classes` in uses, kommt der Eintrag mit (**Abnahme**) |
+| SB3 | `/intf `, `/raise `, `/override `, `/ignore unused-` tippen | Interfaces, Ausnahmeklassen, überschreibbare Methoden bzw. Regelkennungen |
+| SB4 | `.editorconfig` mit `indent_style = tab`, in einer Routine nach `Liste := TStringList.Create;` `/try` und Enter | try/finally mit Tabulatoren eingerückt, nicht mit Leerzeichen (**Abnahme**) |
+| SB5 | `"format": {"indentSize": 4}` in atlas.json, `/prop Name: string` in einer Methode | Feld, Property und Setter mit vier Leerzeichen je Ebene |
+| SB6 | `delphiVersion` 19.0 (10.2), `/var I := 0` | Zeile bleibt stehen, Hinweis „Inline-Variablen gibt es erst ab Delphi 10.3 …“ (**Abnahme**) |
+| SB7 | `/const Max = 10` im interface-Teil außerhalb einer Routine; `/const! X = 1` in einer Unit ohne implementation | Beide bleiben stehen mit Hinweis |

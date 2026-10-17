@@ -27,6 +27,7 @@ uses
   Atlas.Common.Documents.Contract,
   Atlas.Common.Index.Contract,
   Atlas.Common.Rules.Contract,
+  Atlas.Common.Configuration.Contract,
   Atlas.Common.Editing.SlashCommands,
   Atlas.Common.Editing.SlashMenu,
   Atlas.Common.Lsp.Completion;
@@ -34,6 +35,8 @@ uses
 type
   /// <summary>Delphi-Version (BDS-Nummer) je Dokument; '' = unbekannt.</summary>
   TSlashMenuVersionFunc = reference to function(const AUri: string): string;
+  /// <summary>Formatstil je Dokument (#43: .editorconfig und "format").</summary>
+  TSlashMenuStyleFunc = reference to function(const AUri: string): TFormatStyle;
 
   TLspSlashMenu = class
   public const
@@ -46,6 +49,7 @@ type
     FStore: IDocumentStore;
     FSlashCommandsFor: TSlashCommandsProvider;
     FDelphiVersionFor: TSlashMenuVersionFunc;
+    FFormatStyleFor: TSlashMenuStyleFunc;
     FIndex: ISymbolIndex;
     FSlashHost: ISlashHost;
     FCompletion: TLspCompletion;
@@ -64,6 +68,8 @@ type
     /// <summary>Ohne Zuweisung sind alle Schnellbefehle eingeschaltet.</summary>
     property SlashCommandsFor: TSlashCommandsProvider read FSlashCommandsFor write FSlashCommandsFor;
     property DelphiVersionFor: TSlashMenuVersionFunc read FDelphiVersionFor write FDelphiVersionFor;
+    /// <summary>Einrückung der Befehle (#43); ohne Zuweisung zwei Leerzeichen je Ebene.</summary>
+    property FormatStyleFor: TSlashMenuStyleFunc read FFormatStyleFor write FFormatStyleFor;
     /// <summary>Index für Vorfahren aus anderen Units (/override, /ctor owner); nil ohne.</summary>
     property Index: ISymbolIndex read FIndex write FIndex;
     /// <summary>Projekt und Editor für Befehle wie /define; nil ohne.</summary>
@@ -78,7 +84,6 @@ implementation
 uses
   Atlas.Text.Lines,
   Atlas.Common.JsonRpc.Contract,
-  Atlas.Common.Configuration.Contract,
   Atlas.Common.Documents.Uris,
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.TreeCache,
@@ -314,6 +319,7 @@ end;
 function TLspSlashMenu.ExecuteRun(const AArguments: TJSONArray): TJSONValue;
 var
   Uri, Version, Reason: string;
+  Style: TFormatStyle;
   Spot: TSlashSpot;
   Document: ITextDocument;
   Disabled: TArray<string>;
@@ -331,11 +337,14 @@ begin
     Version := '';
     if Assigned(FDelphiVersionFor) then
       Version := FDelphiVersionFor(Uri);
+    Style := TFormatStyle.Default;
+    if Assigned(FFormatStyleFor) then
+      Style := FFormatStyleFor(Uri);
     if SameText(StringAt(AArguments, 3), ImplementName) then
       RunImplement(Uri, Document.Text, Spot, StringAt(AArguments, 4), Edits, Reason)
     else
       TSlashMenu.Run(TSlashCommandRegistry.Shared, Document.Text, Spot, StringAt(AArguments, 3),
-        StringAt(AArguments, 4), Disabled, FIndex, Version, Uri, FSlashHost, Edits, Reason);
+        StringAt(AArguments, 4), Disabled, FIndex, Version, Uri, FSlashHost, Style, Edits, Reason);
   end;
   Result := TJSONObject.Create;
   try
