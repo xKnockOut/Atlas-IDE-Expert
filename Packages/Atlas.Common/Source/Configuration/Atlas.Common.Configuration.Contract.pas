@@ -257,6 +257,9 @@ type
     /// <summary>Passt ein Eintrag nicht zum erwarteten Typ, die übliche Umwandlung als weiteren Eintrag (#490).
     /// </summary>
     TypeConversion: TCompletionTypeConversion;
+    /// <summary>Hinter "Ausdruck." am Anweisungsanfang „Alle Felder zuweisen (n)“ für Records und Klassen
+    /// (#491).</summary>
+    AssignAllFields: Boolean;
     class function Default: TCompletionSettings; static;
   end;
 
@@ -718,6 +721,7 @@ begin
   Result.ResourceStrings := True;
   Result.ResourceStringUnit := '';
   Result.TypeConversion := TCompletionTypeConversion.Off;
+  Result.AssignAllFields := False;
 end;
 
 { TServerSettings }

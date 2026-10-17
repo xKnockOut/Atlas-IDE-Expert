@@ -491,6 +491,13 @@
           "x-offValue": "off",
           "x-issue": "#490"
         },
+        "assignAllFields": {
+          "type": "boolean",
+          "default": false,
+          "description": "Hinter einem Record- oder Klassenausdruck mit Punkt am Anfang einer Anweisung (Opts.) steht „Alle Felder zuweisen (n)“ ganz oben: je öffentlich beschreibbarem Feld und jeder Property eine Zeile Opts.Feld := Platzhalter; in Deklarationsreihenfolge, mit 0, '', False, nil oder dem ersten Aufzählungswert als Vorgabe im Platzhalter-Modus. Felder, die die folgenden Zeilen schon zuweisen, fallen weg. Bei mehr als 15 Feldern zuerst eine Liste mit Kontrollkästchen.",
+          "x-experimental": true,
+          "x-issue": "#491"
+        },
         "nameSuggestions": {
           "type": "boolean",
           "default": true,

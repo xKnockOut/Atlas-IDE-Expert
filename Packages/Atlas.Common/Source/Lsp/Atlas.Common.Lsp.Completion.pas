@@ -307,6 +307,13 @@ type
     /// </summary>
     class function InterfaceItems(ARequest: TCompletionRequest; out AItems: TArray<TCompletionItem>;
       out ABatch: Boolean): Boolean; overload; static;
+    /// <summary>„Alle Felder zuweisen (n)“ (#491) hinter "Ausdruck." am Anfang einer Anweisung, wenn der Ausdruck
+    /// ein Record oder eine Klasse ist und completion.assignAllFields gilt: je öffentlich beschreibbarem Feld und
+    /// jeder Property eine Zuweisung, in Deklarationsreihenfolge; was die folgenden Zeilen schon zuweisen, fällt
+    /// weg. Mit ASnippets im Platzhalter-Modus; mehr als 15 Felder kommen als Assignments für die Liste mit
+    /// Kontrollkästchen. False außerhalb dieses Kontexts oder ohne Felder.</summary>
+    class function AssignAllItem(ARequest: TCompletionRequest; ASnippets: Boolean;
+      out AItem: TCompletionItem): Boolean; static;
     /// <summary>Komponenten des Formulars zur Unit (#455), wenn der Cursor ohne Punkt in einer Methode der
     /// Formularklasse steht. Quelle ist die Formulardatei über AReadText, also der Stand im Designer, solange das
     /// Formular offen ist. Je Komponente ein Feld mit ihrem Typ als Detail und Form = Formularname. Passt der Name
@@ -441,6 +448,7 @@ uses
   Atlas.Common.Lsp.FuzzyMatch,
   Atlas.Common.Editing.UsesClause,
   Atlas.Common.Editing.CaseCompletion,
+  Atlas.Common.Editing.AssignFields,
   Atlas.Common.Editing.DeclareUnknown,
   Atlas.Common.Editing.CreateMethod,
   Atlas.Common.Editing.NameSuggestions,
@@ -1977,6 +1985,16 @@ begin
     begin
       Result := TCompletionOutcome.Next;
       if Assigned(FWithFor) and WithItem(ARequest, FWithFor, Item) then
+        AAnswer.Hints := AAnswer.Hints + [Item];
+    end);
+  // Alle Felder zuweisen (#491): hinter "Ausdruck." am Anweisungsanfang ganz oben, die übrige Liste bleibt.
+  AddCase(FTreeCases,
+    function(ARequest: TCompletionRequest; AAnswer: TCompletionAnswer): TCompletionOutcome
+    var
+      Item: TCompletionItem;
+    begin
+      Result := TCompletionOutcome.Next;
+      if AssignAllItem(ARequest, FSnippetSupport, Item) then
         AAnswer.Hints := AAnswer.Hints + [Item];
     end);
   // Namensvorschläge (#452): an der Namensposition einer Deklaration mit bekanntem Typ nur die Namen.
@@ -4460,6 +4478,225 @@ begin
   if not EnumOf(AResolver, AIndex, ATree, AText, AFileName, TypeInfo, AReadText, False, Enum) then
     Exit;
   AValues := Enum.Values;
+  Result := True;
+end;
+
+/// <summary>Steht vor APosition (Anfang einer Kette) der Anfang einer Anweisung? Davor ";", ein Schlüsselwort,
+/// nach dem eine Anweisung beginnt, eine case-Marke oder nichts.</summary>
+function AtStatementStart(const ATokens: TArray<TPascalToken>; const APosition: TTextPosition): Boolean;
+var
+  Index: Integer;
+begin
+  Index := -1;
+  while (Index < High(ATokens)) and (ComparePositions(ATokens[Index + 1].EndPos, APosition) <= 0) do
+    Inc(Index);
+  while (Index >= 0) and (ATokens[Index].Kind in [TPascalTokenKind.Comment, TPascalTokenKind.Directive]) do
+    Dec(Index);
+  Result := (Index < 0) or ATokens[Index].IsSymbol(';') or ATokens[Index].IsSymbol(':') or
+    ATokens[Index].IsKeyword('begin') or ATokens[Index].IsKeyword('then') or ATokens[Index].IsKeyword('else') or
+    ATokens[Index].IsKeyword('do') or ATokens[Index].IsKeyword('try') or ATokens[Index].IsKeyword('finally') or
+    ATokens[Index].IsKeyword('except') or ATokens[Index].IsKeyword('repeat') or
+    ATokens[Index].IsKeyword('otherwise');
+end;
+
+/// <summary>Vorgabe für ein Feld vom Typ ATypeName (#491): eingebaute Typen aus dem Text, sonst über die
+/// Namensauflösung (Aufzählung → erster Wert, Klasse und Interface → nil), Aliase verfolgt; sonst Default(T).
+/// </summary>
+function AssignValue(ARequest: TCompletionRequest; AOffset: Integer; const ATypeName: string): string;
+var
+  Kind: TAssignValueKind;
+  TypeInfo: TResolvedSymbol;
+  Enum: TEnumType;
+  Current, First, Source, Declaration: string;
+  Step: Integer;
+begin
+  Current := ATypeName;
+  for Step := 1 to 4 do
+  begin
+    if TAssignFields.KindOfText(Current, Kind) then
+      Exit(TAssignFields.DefaultValue(Kind, ATypeName, ''));
+    // Typargumente gehören nicht zum Namen: TList<Integer> ist eine Klasse.
+    if Pos('<', Current) > 0 then
+      Current := Trim(Copy(Current, 1, Pos('<', Current) - 1));
+    TypeInfo := TypeAt(ARequest.Resolver, ARequest.Index, ARequest.Tree, ARequest.FileName, AOffset, Current);
+    if not TypeInfo.Found or not TypeInfo.IsType then
+      Break;
+    case TypeInfo.SymbolKind of
+      TIndexSymbolKind.ClassType, TIndexSymbolKind.InterfaceType:
+        Exit('nil');
+      TIndexSymbolKind.EnumType, TIndexSymbolKind.TypeAlias:
+        if EnumOf(ARequest.Resolver, ARequest.Index, ARequest.Tree, ARequest.Text, ARequest.FileName, TypeInfo,
+          ARequest.ReadText, False, Enum) then
+        begin
+          First := Enum.Values[0];
+          if Enum.Scoped then
+            First := Enum.Name + '.' + First;
+          Exit(TAssignFields.DefaultValue(TAssignValueKind.Enum, ATypeName, First));
+        end;
+    end;
+    if TypeInfo.SymbolKind <> TIndexSymbolKind.TypeAlias then
+      Break;
+    // "TKinds = set of TKind": die rechte Seite steht nur im Quelltext.
+    if SourceOf(TypeInfo, ARequest.Text, ARequest.FileName, ARequest.ReadText, Source) then
+    begin
+      Declaration := RangeText(Source, TypeInfo.Range);
+      if (Pos('=', Declaration) > 0) and TAssignFields.KindOfText(Trim(StringReplace(Copy(Declaration,
+        Pos('=', Declaration) + 1, MaxInt), ';', '', [])), Kind) then
+        Exit(TAssignFields.DefaultValue(Kind, ATypeName, ''));
+    end;
+    if TypeInfo.TypeName = '' then
+      Break;
+    Current := TypeInfo.TypeName;
+    if TypeInfo.TypeArgs <> '' then
+      Current := Current + '<' + TypeInfo.TypeArgs + '>';
+  end;
+  Result := TAssignFields.DefaultValue(TAssignValueKind.Other, ATypeName, '');
+end;
+
+class function TLspCompletion.AssignAllItem(ARequest: TCompletionRequest; ASnippets: Boolean;
+  out AItem: TCompletionItem): Boolean;
+var
+  Context: TCompletionContext;
+  Owner, TypeInfo, Swap: TResolvedSymbol;
+  Candidates: TArray<TResolvedSymbol>;
+  TypeFound: Boolean;
+  LineText, Expr, Indent, LineBreak, TypeText: string;
+  Members: TArray<TAssignMember>;
+  Member: TAssignMember;
+  Fields: TArray<TAssignField>;
+  Field: TAssignField;
+  Assignment: TCompletionAssignment;
+  Values: TDictionary<string, string>;
+  Index, Other: Integer;
+
+  function Before(const A, B: TResolvedSymbol): Boolean;
+  begin
+    // Vorfahren zuerst, darin nach der Stelle der Deklaration.
+    if A.Depth <> B.Depth then
+      Exit(A.Depth > B.Depth);
+    if not SameText(A.FileName, B.FileName) then
+      Exit(CompareText(A.FileName, B.FileName) < 0);
+    Result := ComparePositions(A.Range.StartPos, B.Range.StartPos) < 0;
+  end;
+
+begin
+  AItem := Default(TCompletionItem);
+  Result := False;
+  if not ARequest.Settings.AssignAllFields or (ARequest.Tree = nil) or (ARequest.Text = '') then
+    Exit;
+  Context := Analyze(ARequest.Tree, ARequest.Position);
+  if (Context.Kind <> TCompletionContextKind.Member) or (Context.Prefix <> '') or
+    (Context.ChainStart.Line <> ARequest.Position.Line) or (Context.DotPos.Line <> ARequest.Position.Line) then
+    Exit;
+  // Am Anfang einer Anweisung, allein in der Zeile.
+  LineText := ARequest.LineText(ARequest.Position.Line);
+  if (Trim(Copy(LineText, 1, Context.ChainStart.Character)) <> '') or
+    (Trim(Copy(LineText, ARequest.Position.Character + 1, MaxInt)) <> '') or
+    not AtStatementStart(ARequest.Tree.Tokens, Context.ChainStart) then
+    Exit;
+  // Ein Wert vom Typ Record oder Klasse; TFoo. allein ist ein Typ, TFoo(X). eine Typumwandlung.
+  if not ARequest.Resolver.ChainType(ARequest.Tree, ARequest.FileName, Context.Names, Context.Offset, Owner,
+    TypeInfo, TypeFound) or not TypeFound or (Owner.Kind = TResolvedKind.UnitName) or
+    (Owner.IsType and not Context.Called) or TypeInfo.Builtin or not (TypeInfo.SymbolKind in
+    [TIndexSymbolKind.ClassType, TIndexSymbolKind.ObjectType, TIndexSymbolKind.RecordType]) then
+    Exit;
+  Candidates := ARequest.Resolver.MemberCandidates(ARequest.Tree, ARequest.FileName, Context.Names, Context.Offset);
+  // "property Caption;" hebt nur die Sichtbarkeit an: Typ, Zugriff und Stelle der Deklaration weiter oben.
+  for Index := 0 to High(Candidates) do
+    if (Candidates[Index].SymbolKind = TIndexSymbolKind.Property_) and (Candidates[Index].TypeName = '') and
+      ARequest.Resolver.TypedProperty(TypeInfo, Candidates[Index].Name, Swap, Other) then
+    begin
+      Swap.Visibility := Candidates[Index].Visibility;
+      Swap.Depth := Other;
+      Candidates[Index] := Swap;
+    end;
+  // Wenige Mitglieder: Einfügen genügt.
+  for Index := 1 to High(Candidates) do
+  begin
+    Other := Index;
+    while (Other > 0) and Before(Candidates[Other], Candidates[Other - 1]) do
+    begin
+      Swap := Candidates[Other];
+      Candidates[Other] := Candidates[Other - 1];
+      Candidates[Other - 1] := Swap;
+      Dec(Other);
+    end;
+  end;
+  Members := nil;
+  for Index := 0 to High(Candidates) do
+  begin
+    if Candidates[Index].IsHelper or not (Candidates[Index].SymbolKind in [TIndexSymbolKind.Field,
+      TIndexSymbolKind.Property_]) then
+      Continue;
+    Member := Default(TAssignMember);
+    Member.Name := Candidates[Index].Name;
+    Member.Kind := Candidates[Index].SymbolKind;
+    Member.Signature := Candidates[Index].Signature;
+    TypeText := Candidates[Index].TypeName;
+    if (TypeText <> '') and (Candidates[Index].TypeArgs <> '') then
+      TypeText := TypeText + '<' + Candidates[Index].TypeArgs + '>';
+    // Generische Typen: TPair<string, Integer>.Key ist ein string.
+    Member.TypeName := SubstituteWords(TypeText, Candidates[Index].Bindings);
+    Member.Visibility := Candidates[Index].Visibility;
+    Member.MaxArgs := Candidates[Index].MaxArgs;
+    Members := Members + [Member];
+  end;
+  Fields := nil;
+  Values := TDictionary<string, string>.Create;
+  try
+    for Member in TAssignFields.Merge(Members) do
+    begin
+      if not TAssignFields.Writable(Member) then
+        Continue;
+      Field.Name := Member.Name;
+      Field.TypeName := Member.TypeName;
+      if not Values.TryGetValue(LowerCase(Member.TypeName), Field.Value) then
+      begin
+        Field.Value := AssignValue(ARequest, Context.Offset, Member.TypeName);
+        Values.Add(LowerCase(Member.TypeName), Field.Value);
+      end;
+      Fields := Fields + [Field];
+    end;
+  finally
+    Values.Free;
+  end;
+  Expr := Copy(LineText, Context.ChainStart.Character + 1, Context.DotPos.Character - Context.ChainStart.Character);
+  // Was die folgenden Zeilen schon zuweisen, fällt weg; die Zahl im Titel zählt nur den Rest.
+  Fields := TAssignFields.Without(Fields, TAssignFields.AssignedAfter(TextLines(ARequest.Text),
+    ARequest.Position.Line, Expr));
+  if Length(Fields) = 0 then
+    Exit;
+  Indent := Copy(LineText, 1, Context.ChainStart.Character);
+  LineBreak := ARequest.LineBreak;
+  AItem.Name := TAssignFields.Title(Length(Fields));
+  AItem.Kind := KindSnippet;
+  AItem.Detail := TypeInfo.Name;
+  AItem.Fits := True;
+  AItem.Pinned := True;
+  // Erzeugt Code: Atlas zeigt die Zusatzänderungen nicht als uses-Ergänzung.
+  AItem.Action := 'assign';
+  AItem.HasTextEdit := True;
+  AItem.TextEdit := TRuleEdit.Create(TTextRange.Create(Context.ChainStart, ARequest.Position), '');
+  if Length(Fields) > TAssignFields.ListThreshold then
+  begin
+    // Zuerst die Liste mit Kontrollkästchen: je Zeile die Zuweisung samt Umbruch für die nächste.
+    AItem.TextEdit.NewText := Expr + '.';
+    for Field in Fields do
+    begin
+      Assignment.Name := Field.Name;
+      Assignment.Detail := Field.TypeName;
+      Assignment.Text := TAssignFields.Line(Expr, Field) + LineBreak + Indent;
+      AItem.Assignments := AItem.Assignments + [Assignment];
+    end;
+  end
+  else if ASnippets then
+  begin
+    // Platzhalter-Modus (#51): Zeilen mit #10, die Einrückung setzt der Editor.
+    AItem.Snippet := True;
+    AItem.TextEdit.NewText := TAssignFields.Snippet(Expr, Fields);
+  end
+  else
+    AItem.TextEdit.NewText := TAssignFields.Plain(Expr, Indent, LineBreak, Fields);
   Result := True;
 end;
 

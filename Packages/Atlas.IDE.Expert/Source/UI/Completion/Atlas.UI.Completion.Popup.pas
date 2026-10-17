@@ -605,6 +605,9 @@ begin
     // Komponenten aus dem Formular (#455): „Formular frmMain“.
     else if FItems[FOrder[APosition + 1]].Form <> '' then
       Text := TAtlasStrings.Fmt(TAtlasTextId.FormHeader, [FItems[FOrder[APosition + 1]].Form])
+    // Alle Felder zuweisen (#491): „Alle Felder zuweisen · TOptions“.
+    else if FItems[FOrder[APosition + 1]].Assign then
+      Text := TAtlasStrings.Fmt(TAtlasTextId.AssignHeader, [FItems[FOrder[APosition + 1]].SetOf])
     // Interface implementieren (#466): „Fehlende Methoden von IExporter, IFlush“.
     else if FItems[FOrder[APosition + 1]].Batch then
       Text := TAtlasStrings.Fmt(TAtlasTextId.BatchHeader, [FItems[FOrder[APosition + 1]].SetOf])
