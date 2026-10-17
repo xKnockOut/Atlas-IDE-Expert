@@ -552,7 +552,9 @@ type
     QuickOpenOriginLibrary, QuickOpenLine, QuickOpenLineHint, QuickOpenBuilding, QuickOpenNoEditor,
     SettingsQuickOpen, SettingsQuickOpenLibrary, SettingsQuickOpenKey, NavBackCommand, NavForwardCommand,
     NavLastEditCommand, NavListCommand, NavListPrompt, NavKindBack, NavKindAhead, NavKindEdit, NavEmpty,
-    SettingsNavHistory);
+    SettingsNavHistory, PeekDefinitionCommand, PeekReferencesCommand, PeekTitleDefinition, PeekTitleReferences,
+    PeekImplementation, PeekNoDefinition, PeekNoReferences, PeekKeysHint, PeekNoImplementation, SettingsPeek,
+    SettingsPeekHeight, SettingsPeekImplementation);
 
   TAtlasStrings = class
   private class var
@@ -1606,7 +1608,12 @@ const
      'Keine Datei im Editor', 'Schnell öffnen (Datei und Symbol, Strg+P)', 'Auch die Quellen von RTL und VCL',
      'Taste für „Schnell öffnen“', 'Zurück (Navigationsverlauf)', 'Vor (Navigationsverlauf)',
      'Letzte Bearbeitungsstelle', 'Navigationsverlauf …', 'Verlauf filtern', 'zurück', 'vor', 'Änderung',
-     'Noch kein Verlauf', 'Navigationsverlauf über Dateien (Alt+Links/Rechts, Strg+Alt+Q)'),
+     'Noch kein Verlauf', 'Navigationsverlauf über Dateien (Alt+Links/Rechts, Strg+Alt+Q)',
+     'Definition einblenden', 'Referenzen einblenden', 'Definition: %s', 'Referenzen auf %s (%d)',
+     'Implementierung · %s:%d', 'Keine Definition für „%s“ gefunden.', 'Keine Referenzen auf „%s“ gefunden.',
+     'Esc schließt · Enter öffnet · Bild auf/ab scrollt', 'Keine Implementierung',
+     'Definition und Referenzen einblenden (Alt+F12, Umschalt+Alt+F12)', 'Höhe des Fensters (Editorzeilen)',
+     'Bei Methoden auch die Implementierung zeigen'),
     ('Enter to accept · Esc to close', '%d of %d', 'No matches for “%s”', 'Backspace widens the search',
      'No suggestions here', 'Esc closes', 'No details for this entry', 'Overload', 'Deprecated: %s', 'Deprecated.',
      'Inherited from %s', 'Inherited', 'optional, default %s', 'No overload with %d parameters.', '… %d more',
@@ -2583,7 +2590,11 @@ const
      'Line %d', 'Enter a line number', 'Building the file list …', 'No file in the editor',
      'Quick open (file and symbol, Ctrl+P)', 'Also the RTL and VCL sources', 'Key for “Quick open”', 'Back (navigation history)',
      'Forward (navigation history)', 'Last edit location', 'Navigation history …', 'Filter history', 'back',
-     'forward', 'edit', 'No history yet', 'Navigation history across files (Alt+Left/Right, Ctrl+Alt+Q)'));
+     'forward', 'edit', 'No history yet', 'Navigation history across files (Alt+Left/Right, Ctrl+Alt+Q)',
+     'Peek definition', 'Peek references', 'Definition: %s', 'References to %s (%d)', 'Implementation · %s:%d',
+     'No definition found for "%s".', 'No references to "%s" found.', 'Esc closes · Enter opens · Page Up/Down scrolls',
+     'No implementation', 'Peek definition and references (Alt+F12, Shift+Alt+F12)', 'Window height (editor lines)',
+     'Also show the implementation of methods'));
 
 { TAtlasStrings }
 

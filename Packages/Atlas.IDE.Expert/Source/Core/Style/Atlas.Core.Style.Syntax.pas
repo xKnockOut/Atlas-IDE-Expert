@@ -3,7 +3,8 @@
 // Einfache Syntaxfärbung für Deklarationen und Signaturen in Detailpanel und
 // Parameter-Hint: Schlüsselwörter (samt Direktiven wie overload und dem Typ
 // string), String-Literale, Kommentare, Zahlen. Kein Parser: Es geht nur um
-// die Farbe kurzer Einzeiler, wie im Entwurf.
+// die Farbe kurzer Einzeiler, wie im Entwurf. LineTokens färbt mehrere Zeilen
+// (Peek, #505) und trägt offene {…}- und (*…*)-Kommentare in die Folgezeilen.
 
 interface
 
@@ -29,6 +30,8 @@ type
     class function IsKeyword(const AWord: string): Boolean; static;
     /// <summary>Lückenlose Zerlegung von AText; benachbarte Plain-Stücke sind zusammengefasst.</summary>
     class function Tokens(const AText: string): TAtlasTokens; static;
+    /// <summary>Tokens je Zeile; Kommentare über mehrere Zeilen bleiben Kommentar.</summary>
+    class function LineTokens(const ALines: TArray<string>): TArray<TAtlasTokens>; static;
     /// <summary>Standardwerte der Parameter (#441): je Parameter der Bereich " = Wert" (0-basiert, Stop
     /// exklusiv, X = Start, Y = Stop) innerhalb der äußersten Klammern einer Signatur.</summary>
     class function DefaultRanges(const ASignature: string): TArray<TPoint>; static;
@@ -110,6 +113,14 @@ begin
       Inc(Index);
       Kind := TAtlasTokenKind.Comment;
     end
+    else if (AText[Index] = '(') and (Index < Length(AText)) and (AText[Index + 1] = '*') then
+    begin
+      Inc(Index, 2);
+      while (Index < Length(AText)) and not ((AText[Index] = '*') and (AText[Index + 1] = ')')) do
+        Inc(Index);
+      Inc(Index, 2);
+      Kind := TAtlasTokenKind.Comment;
+    end
     else if (AText[Index] = '/') and (Index < Length(AText)) and (AText[Index + 1] = '/') then
     begin
       Index := Length(AText) + 1;
@@ -142,6 +153,109 @@ begin
     Emit(Start - 1, Index - 1, Kind);
   end;
   SetLength(Result, Count);
+end;
+
+type
+{$SCOPEDENUMS ON}
+  TOpenComment = (None, Brace, ParenStar);
+{$SCOPEDENUMS OFF}
+
+/// <summary>Kommentar, der am Ende von AText (ab dem 1-basierten AFrom) offen bleibt.</summary>
+function OpenAtEnd(const AText: string; AFrom: Integer): TOpenComment;
+var
+  Index: Integer;
+begin
+  Result := TOpenComment.None;
+  Index := AFrom;
+  while Index <= Length(AText) do
+  begin
+    case AText[Index] of
+      '''':
+        begin
+          Inc(Index);
+          while (Index <= Length(AText)) and (AText[Index] <> '''') do
+            Inc(Index);
+        end;
+      '/':
+        if (Index < Length(AText)) and (AText[Index + 1] = '/') then
+          Exit;
+      '{':
+        begin
+          while (Index <= Length(AText)) and (AText[Index] <> '}') do
+            Inc(Index);
+          if Index > Length(AText) then
+            Exit(TOpenComment.Brace);
+        end;
+      '(':
+        if (Index < Length(AText)) and (AText[Index + 1] = '*') then
+        begin
+          Inc(Index, 2);
+          while (Index < Length(AText)) and not ((AText[Index] = '*') and (AText[Index + 1] = ')')) do
+            Inc(Index);
+          if Index >= Length(AText) then
+            Exit(TOpenComment.ParenStar);
+          Inc(Index);
+        end;
+    end;
+    Inc(Index);
+  end;
+end;
+
+class function TAtlasSyntax.LineTokens(const ALines: TArray<string>): TArray<TAtlasTokens>;
+var
+  Line, Close, Offset, Index: Integer;
+  State: TOpenComment;
+  Text: string;
+  Rest: TAtlasTokens;
+  Head: TAtlasToken;
+begin
+  Result := nil;
+  SetLength(Result, Length(ALines));
+  State := TOpenComment.None;
+  for Line := 0 to High(ALines) do
+  begin
+    Text := ALines[Line];
+    Offset := 0;
+    Result[Line] := nil;
+    if State <> TOpenComment.None then
+    begin
+      // Ende des offenen Kommentars suchen (1-basiert, Close hinter dem Ende).
+      Close := 0;
+      if State = TOpenComment.Brace then
+      begin
+        Index := Pos('}', Text);
+        if Index > 0 then
+          Close := Index + 1;
+      end
+      else
+      begin
+        Index := Pos('*)', Text);
+        if Index > 0 then
+          Close := Index + 2;
+      end;
+      Head.Start := 0;
+      Head.Kind := TAtlasTokenKind.Comment;
+      if Close = 0 then
+      begin
+        Head.Stop := Length(Text);
+        if Head.Stop > 0 then
+          Result[Line] := [Head];
+        Continue;
+      end;
+      Head.Stop := Close - 1;
+      Result[Line] := [Head];
+      Offset := Close - 1;
+      State := TOpenComment.None;
+    end;
+    Rest := Tokens(Copy(Text, Offset + 1, MaxInt));
+    for Index := 0 to High(Rest) do
+    begin
+      Inc(Rest[Index].Start, Offset);
+      Inc(Rest[Index].Stop, Offset);
+    end;
+    Result[Line] := Result[Line] + Rest;
+    State := OpenAtEnd(Text, Offset + 1);
+  end;
 end;
 
 class function TAtlasSyntax.DefaultRanges(const ASignature: string): TArray<TPoint>;

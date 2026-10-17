@@ -287,6 +287,8 @@ begin
   Assert.AreEqual('Vorheriger Befund', TAtlasKeyMapWindow.FunctionCaption(TAtlasKeyFunction.PreviousProblem));
   Assert.AreEqual('Schnell öffnen', TAtlasKeyMapWindow.FunctionCaption(TAtlasKeyFunction.QuickOpen));
   Assert.AreEqual('Letzte Bearbeitungsstelle', TAtlasKeyMapWindow.FunctionCaption(TAtlasKeyFunction.LastEdit));
+  Assert.AreEqual('Definition einblenden', TAtlasKeyMapWindow.FunctionCaption(TAtlasKeyFunction.PeekDefinition));
+  Assert.AreEqual('Referenzen einblenden', TAtlasKeyMapWindow.FunctionCaption(TAtlasKeyFunction.PeekReferences));
   // #764: Schnellaktionen der Willkommensseite.
   Assert.AreEqual('Schnellaktion „Öffnen und bauen“',
     TAtlasKeyMapWindow.FunctionCaption(TAtlasKeyFunction.WelcomeQuickBuild));

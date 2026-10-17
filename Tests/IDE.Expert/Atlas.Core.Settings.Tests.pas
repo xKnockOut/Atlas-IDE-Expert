@@ -31,6 +31,8 @@ type
     procedure QuickOpenOptions;
     [Test]
     procedure NavHistoryOptions;
+    [Test]
+    procedure PeekOptions;
     /// <summary>Erzeugen-Menü (#719): Vorgaben, Normalisieren, Speichern und Laden.</summary>
     [Test]
     procedure GenerateMenuOptions;
@@ -1061,6 +1063,40 @@ begin
   Assert.AreEqual(0, Loaded.NavBackKey);
   Assert.AreEqual($C027, Loaded.NavForwardKey);
   Assert.AreEqual(0, Loaded.LastEditKey);
+end;
+
+procedure TAtlasPluginSettingsTests.PeekOptions;
+var
+  Settings, Loaded: TAtlasPluginSettings;
+  Store: IAtlasSettingsStore;
+begin
+  // Definition einblenden (#505): an, 15 Zeilen, mit Implementierung, Alt+F12 und Umschalt+Alt+F12.
+  Settings := TAtlasPluginSettings.Defaults;
+  Assert.IsTrue(Settings.Peek);
+  Assert.AreEqual(15, Settings.PeekHeightLines);
+  Assert.IsTrue(Settings.PeekShowImplementation);
+  Assert.AreEqual($807B, Settings.PeekDefinitionKey);
+  Assert.AreEqual($A07B, Settings.PeekReferencesKey);
+  Settings.PeekHeightLines := 2;
+  Settings.Normalize;
+  Assert.AreEqual(TAtlasPluginSettings.MinPeekLines, Settings.PeekHeightLines);
+  Settings.PeekHeightLines := 1000;
+  Settings.Normalize;
+  Assert.AreEqual(TAtlasPluginSettings.MaxPeekLines, Settings.PeekHeightLines);
+  Settings.Peek := False;
+  Settings.PeekHeightLines := 20;
+  Settings.PeekShowImplementation := False;
+  Settings.PeekDefinitionKey := 0;
+  Settings.PeekReferencesKey := $C07B;
+  Store := TMemoryStore.Create;
+  Settings.Save(Store);
+  Loaded := Default(TAtlasPluginSettings);
+  Loaded.Load(Store);
+  Assert.IsFalse(Loaded.Peek);
+  Assert.AreEqual(20, Loaded.PeekHeightLines);
+  Assert.IsFalse(Loaded.PeekShowImplementation);
+  Assert.AreEqual(0, Loaded.PeekDefinitionKey);
+  Assert.AreEqual($C07B, Loaded.PeekReferencesKey);
 end;
 
 { TAtlasSettingsScopesTests }

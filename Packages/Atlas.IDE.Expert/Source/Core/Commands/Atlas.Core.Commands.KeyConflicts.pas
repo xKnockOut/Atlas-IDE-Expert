@@ -37,13 +37,14 @@ type
   /// eigene Taste für „Units suchen“, die Übernahme von Strg+F12 durch „Units suchen“ (#777) und „Lesezeichen
   /// setzen…“ (#622), das Erzeugen-Menü (#719), die Benachrichtigungen (#601) und die Schnellaktionen der
   /// Willkommensseite „Öffnen und bauen“ und „Tests“ (#764), „Element ausblenden …“ (#628), nächster und voriger
-  /// Befund (#509), „Schnell öffnen“ (#503) sowie Zurück, Vor und letzte Bearbeitungsstelle (#504). Neue Funktionen
+  /// Befund (#509), „Schnell öffnen“ (#503), Zurück, Vor und letzte Bearbeitungsstelle (#504) sowie Definition und
+  /// Referenzen einblenden (#505). Neue Funktionen
   /// nur hinten anhängen: Die Ordnungszahl steckt in Kennungen der Übersicht.</summary>
   TAtlasKeyFunction = (Palette, Check, Completion, Signature, QuickToggle, DiagnosticMode, CodeActions,
     ExpandSelection, ShrinkSelection, GoToImplementation, TypeDefinition, UndoChange, RedoChange, WelcomeSearch,
     MethodToggleUp, MethodToggleDown, TestUnit, UnitSearch, UnitSearchIde, Bookmark, GenerateMenu,
     Notifications, WelcomeQuickBuild, WelcomeQuickTests, HideElement, NextProblem, PreviousProblem, QuickOpen,
-    NavBack, NavForward, LastEdit);
+    NavBack, NavForward, LastEdit, PeekDefinition, PeekReferences);
   TAtlasKeyChoice = (UseAtlas, LeaveOther, OtherKey);
   /// <summary>NoKey: keine Taste; IdeKey: Taste der IDE über Code Insight, Atlas belegt nichts selbst;
   /// Free: Atlas belegt die freie Taste; AtlasWins: belegt, Atlas hat Vorrang; Left: belegt, Atlas
@@ -193,7 +194,10 @@ begin
     // Verlauf führt deren Sprünge mit, darum mit Vorrang. Aus = die IDE behält die Tasten.
     Create(TAtlasKeyFunction.NavBack, Word(ASettings.NavBackKey), True, ASettings.NavHistory),
     Create(TAtlasKeyFunction.NavForward, Word(ASettings.NavForwardKey), True, ASettings.NavHistory),
-    Create(TAtlasKeyFunction.LastEdit, Word(ASettings.LastEditKey), Shared, ASettings.NavHistory)];
+    Create(TAtlasKeyFunction.LastEdit, Word(ASettings.LastEditKey), Shared, ASettings.NavHistory),
+    // Definition und Referenzen einblenden (#505).
+    Create(TAtlasKeyFunction.PeekDefinition, Word(ASettings.PeekDefinitionKey), Shared, ASettings.Peek),
+    Create(TAtlasKeyFunction.PeekReferences, Word(ASettings.PeekReferencesKey), Shared, ASettings.Peek)];
 end;
 
 class procedure TAtlasKeyEntry.ToSettings(const AEntries: TArray<TAtlasKeyEntry>;
@@ -285,6 +289,10 @@ begin
         ASettings.NavForwardKey := Entry.Key;
       TAtlasKeyFunction.LastEdit:
         ASettings.LastEditKey := Entry.Key;
+      TAtlasKeyFunction.PeekDefinition:
+        ASettings.PeekDefinitionKey := Entry.Key;
+      TAtlasKeyFunction.PeekReferences:
+        ASettings.PeekReferencesKey := Entry.Key;
       // Strg+F12 ist fest; ein- und ausgeschaltet wird über unitSearch.replaceIdeDialog.
       TAtlasKeyFunction.UnitSearchIde:
         ;

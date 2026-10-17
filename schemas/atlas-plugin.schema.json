@@ -1674,6 +1674,59 @@
       "x-page": "Befehle",
       "x-issue": "#504"
     },
+    "Peek": {
+      "description": "Definition einblenden (Alt+F12) und Referenzen einblenden (Umschalt+Alt+F12): Quelltext des Ziels in einem Fenster unter der Zeile, ohne die Datei zu wechseln; bei mehreren Zielen eine Liste links. Nur lesen.",
+      "type": "boolean",
+      "default": true,
+      "x-key": "peek.enabled",
+      "x-area": "editor",
+      "x-feature": "EditorCommands",
+      "x-page": "Befehle",
+      "x-quickToggle": true,
+      "x-caption": "Definition einblenden",
+      "x-captionEn": "Peek definition",
+      "x-issue": "#505"
+    },
+    "PeekHeightLines": {
+      "description": "Höhe des Fensters von „Definition einblenden“ in Editorzeilen (5 bis 60).",
+      "type": "integer",
+      "default": 15,
+      "minimum": 5,
+      "maximum": 60,
+      "x-key": "peek.heightLines",
+      "x-area": "editor",
+      "x-page": "Befehle",
+      "x-issue": "#505"
+    },
+    "PeekShowImplementation": {
+      "description": "Bei Methoden und Routinen unter der Deklaration auch die Implementierung zeigen.",
+      "type": "boolean",
+      "default": true,
+      "x-key": "peek.showImplementation",
+      "x-area": "editor",
+      "x-page": "Befehle",
+      "x-issue": "#505"
+    },
+    "PeekDefinitionKey": {
+      "description": "Tastenkürzel „Definition einblenden“ (0 = keins).",
+      "type": "integer",
+      "default": 32891,
+      "x-key": "keys.peekDefinition",
+      "x-area": "keys",
+      "x-format": "shortcut",
+      "x-page": "Befehle",
+      "x-issue": "#505"
+    },
+    "PeekReferencesKey": {
+      "description": "Tastenkürzel „Referenzen einblenden“ (0 = keins).",
+      "type": "integer",
+      "default": 41083,
+      "x-key": "keys.peekReferences",
+      "x-area": "keys",
+      "x-format": "shortcut",
+      "x-page": "Befehle",
+      "x-issue": "#505"
+    },
     "WelcomePageHost": {
       "type": "string",
       "enum": [
