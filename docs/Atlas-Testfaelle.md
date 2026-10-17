@@ -1280,6 +1280,25 @@ Vorher: „Experimentelle Funktionen erlauben“ an, in `atlas.json` `"refactori
 | MC11 | Als Namen eine vorhandene Unit eingeben | Meldung „… gibt es schon“, nichts geändert |
 | MC12 | Einstellung bzw. Hauptschalter „Experimentelle Funktionen“ aus | Keine Aktion |
 
+## uses nachziehen nach dem Umbenennen einer Unit (#512, experimentell)
+
+Vorher: „Experimentelle Funktionen erlauben“ an, in `atlas.json` `"refactoring": {"unitRenameFollowUp": "ask"}`. Eine Projektgruppe mit zwei Projekten; im ersten `Kunden.pas` (Klasse `TKunde`) und drei Units, die `Kunden` einbinden, eine davon schreibt `Kunden.TKunde`; im zweiten Projekt eine weitere Unit, die `Kunden` über den Suchpfad einbindet.
+
+Verhalten der IDE (erwartet, in UN1 festhalten): „Umbenennen“ in der Projektverwaltung benennt `Kunden.pas` und `Kunden.dfm` auf der Platte um, ändert den Eintrag in `.dpr` (`KundenDaten in 'KundenDaten.pas'`) und `.dproj` (DCCReference) und vermutlich den Kopf `unit Kunden;`. Die uses der anderen Units bleiben `Kunden`; übersetzen meldet dann F2613 „Unit 'Kunden' nicht gefunden“.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| UN1 | Hauptschalter aus, `Kunden.pas` in der Projektverwaltung in `KundenDaten.pas` umbenennen; Datei, `.dpr`, `.dproj` und die drei Units ansehen, dann Strg+F9 | Ergebnis als Verhalten der IDE in diesem Abschnitt eintragen (Kopf angepasst oder nicht, `.dfm` umbenannt, uses unverändert, Fehlermeldung) |
+| UN2 | Schalter an, rückgängig machen, erneut umbenennen | Nach kurzer Pause Hinweis unten rechts „3 Units verwenden noch Kunden. Anpassen?“ (eine mehr, wenn die IDE den Kopf nicht angepasst hat) mit „In der Projektgruppe: 4 Units.“ und den Links „Im Projekt anpassen …“ und „In der Projektgruppe anpassen …“; Zeile in der Meldungsansicht; Eintrag in der Benachrichtigungszentrale; der Editor behält den Fokus |
+| UN3 | „Im Projekt anpassen …“ | Vorschau „Unit umbenannt“ mit den drei Units (und dem Kopf von `KundenDaten.pas`, falls die IDE ihn nicht geändert hat); „Anpassen“ übernimmt; `Kunden.TKunde` heißt `KundenDaten.TKunde`; Strg+F9 ohne Fehler |
+| UN4 | Nach UN3 Strg+Alt+Z | Alle Änderungen in einem Schritt zurück |
+| UN5 | Wie UN2, dann „In der Projektgruppe anpassen …“ aus der Benachrichtigungszentrale | Vorschau mit vier Units, auch aus dem zweiten Projekt |
+| UN6 | Eine Unit hat schon `uses Kunden, KundenDaten;` | Dort entfällt nur `Kunden` |
+| UN7 | Eine Unit deklariert eine Variable `Kunden` und schreibt `Kunden.Count` | Diese Stelle bleibt; der uses-Eintrag wird geändert |
+| UN8 | Hinweis erscheint, nichts wählen (warten, bis er verschwindet) | Keine Datei geändert |
+| UN9 | Verhalten der Quelle „Unit umbenannt“ im Kontextmenü der Zentrale auf „collect“ bzw. „off“ | collect: nur der Eintrag, kein Hinweis unten rechts, keine Zeile; off: gar nichts |
+| UN10 | `"unitRenameFollowUp": "off"` bzw. Hauptschalter aus, umbenennen | Kein Hinweis, kein Eintrag; Atlas verhält sich wie ohne die Funktion |
+
 ## Anweisung vervollständigen (#697)
 
 | Nr. | Schritte | Erwartet |

@@ -80,7 +80,7 @@ implementation
 
 function ExperimentalSettingPaths: TArray<string>;
 begin
-  Result := ['refactoring.inline', 'refactoring.moveClass'];
+  Result := ['refactoring.inline', 'refactoring.moveClass', 'refactoring.unitRenameFollowUp'];
 end;
 
 end.

@@ -225,7 +225,7 @@ foreach ($Name in $Schema['properties'].Keys) {
 [void]$Table.AppendLine('| Tastenkonflikte | Tastenkürzel-Übersicht (#520): Menüeintrag *Atlas › Tastenkürzel-Übersicht…* und Befehl der Befehlspalette (`keys.overview`) mit allen Kürzeln aus IDE, Atlas und anderen Erweiterungen, Konflikten in Rot und HTML-Export; beim Start die Atlas-Tasten prüfen und jeden Konflikt einmal in der Meldungsansicht melden (`keys.startupCheck`) | an, an | Plugin (Registry `KeyOverview`, `KeyStartupCheck`); Export in `%LOCALAPPDATA%\Atlas\Tastenkuerzel.html` | nein | Kontrollkästchen, Kontrollkästchen | #520 |')
 [void]$Table.AppendLine('| Allgemein | Tastenkürzel-Tipps (`shortcutTips.enabled`, Schnellschalter): wer eine IDE- oder Atlas-Aktion mit Kürzel per Maus (Hauptmenü, Kontextmenü, Werkzeugleiste, Befehlspalette) aufruft, sieht 4 s lang unten rechts im Editor das Kürzel mit Tastenkappen, „Nicht mehr zeigen“ und „Alle Kürzel“; höchstens ein Tipp je Aktion und Tag, keiner nach dreimaliger Nutzung des Kürzels, nicht bei angehaltener Debug-Sitzung oder offenem modalem Dialog, höchstens alle 30 s; für welche Befehle (`shortcutTips.scope`: atlas = nur Atlas-Befehle, all = auch die der IDE); Zählung je Befehl auch für die Spalte „Selten per Tastatur“ der Tastenkürzel-Übersicht und die Karte „Atlas entdecken“ (#757); Titel des Tipps aus `tips.json`, wenn es dort einen Tipp zum Befehl gibt | an, all | Plugin (Registry `ShortcutTips`, `ShortcutTipsScope`); Zählung je Befehl nur lokal in `%LOCALAPPDATA%\Atlas\usage.json` (#757), letzter Tipp und „Nicht mehr zeigen“ je Befehl in `%LOCALAPPDATA%\Atlas\shortcut-tips.json` | nein | Kontrollkästchen, Auswahl | #600 |')
 [void]$Table.AppendLine('| Allgemein | Benachrichtigungszentrale (`notifications.enabled`, Schnellschalter): Build fertig, Hintergrundprüfung, neu geladene Dateien, Server-Neustarts und -Meldungen sowie Tastenkürzel-Tipps landen als Einträge in einer Liste über dem Atlas-Statusfeld (Klick auf die Zahl im Feld, Befehl *Atlas.Notifications*, Tastenkürzel); neueste zuerst mit Symbol nach Schwere, Titel, Text, Quelle und Uhrzeit, ungelesene hinterlegt, Aktionen wie „Zum Fehler“, „Vergleichen“, „Protokoll öffnen“ als Knöpfe; „Alle gelesen“, „Liste leeren“, Filter nach Quelle; gleichartige Hinweise innerhalb von 10 s werden zusammengefasst („3 × Server neu gestartet“); die Zahl im Statusfeld zählt die ungelesenen in der Farbe des schwersten; gilt für die IDE-Sitzung; aus: jede Funktion zeigt ihre Hinweise wie bisher, nichts wird gesammelt | an | Plugin (Registry `Notifications`) | nein | Kontrollkästchen | #601 |')
-[void]$Table.AppendLine('| Allgemein | Verhalten je Quelle (`notifications.sources`): `quelle=verhalten`, kommagetrennt; Quellen build, check, reload, server, buildServer (Build-Server rot geworden, #763), shortcutTips, openBuild (Zusammenfassung „Beim Öffnen gebaut“, `build.onOpen`), hidden (Hinweis „Ausgeblendet · Rückgängig“ und Ablehnungen beim Ausblenden am Element, #628); Verhalten show = einblenden und sammeln, collect = nur sammeln (keine eigene Einblendung bzw. keine Zeile im Meldungsfenster), off = weder noch; auch im Kontextmenü eines Eintrags; „Build fertig“ hat noch keine eigene Einblendung (#535), dort wirken show und collect gleich | leer (alle show) | Plugin (Registry `NotificationsSources`) | nein | Auswahl (Quelle, Verhalten) | #601, #763, #628 |')
+[void]$Table.AppendLine('| Allgemein | Verhalten je Quelle (`notifications.sources`): `quelle=verhalten`, kommagetrennt; Quellen build, check, reload, server, buildServer (Build-Server rot geworden, #763), shortcutTips, openBuild (Zusammenfassung „Beim Öffnen gebaut“, `build.onOpen`), hidden (Hinweis „Ausgeblendet · Rückgängig“ und Ablehnungen beim Ausblenden am Element, #628), unitRename (Hinweis „N Units verwenden noch …“ nach dem Umbenennen einer Unit, #512); Verhalten show = einblenden und sammeln, collect = nur sammeln (keine eigene Einblendung bzw. keine Zeile im Meldungsfenster), off = weder noch; auch im Kontextmenü eines Eintrags; „Build fertig“ hat noch keine eigene Einblendung (#535), dort wirken show und collect gleich | leer (alle show) | Plugin (Registry `NotificationsSources`) | nein | Auswahl (Quelle, Verhalten) | #601, #763, #628, #512 |')
 [void]$Table.AppendLine('| Allgemein | Höchstzahl der Einträge in der Liste der Benachrichtigungen (`notifications.maxEntries`, 10–1000); ältere fallen weg | 200 | Plugin (Registry `NotificationsMaxEntries`) | nein | Zahl | #601 |')
 [void]$Table.AppendLine('| Allgemein | Abgesicherter Start nach einem Absturz: Rückfrage (`safeMode.askAfterCrash`), ohne Rückfrage nach zwei Abstürzen (`safeMode.autoAfterRepeatedCrash`), Taste beim Laden (`safeMode.startupKey`: shift, ctrl, none), längste Ladezeit (`safeMode.startupTimeoutMs`), gemerkte Einstellungsstände (`safeMode.keepSettingsHistory`) | an, an, shift, 10000, 5 | Plugin (Registry `SafeAskAfterCrash`, `SafeAutoAfterRepeatedCrash`, `SafeStartupKey`, `SafeStartupTimeoutMs`, `SafeKeepSettingsHistory`); Kommandozeile `-AtlasSafeMode`, Umgebungsvariable `ATLAS_SAFE_MODE=1` | nein | Kontrollkästchen, Kontrollkästchen, Auswahl, Zahl (1000–120000), Zahl (0–50) | #722 |')
 [void]$Table.AppendLine('| Allgemein | Atlas-Änderungen über mehrere Dateien zurücknehmen: an/aus (`undo.multiFile`), Anzahl Sätze (`undo.multiFile.depth`), über Neustarts sichern (`undo.multiFile.persist`) bis höchstens MB (`undo.multiFile.maxSizeMb`), bei Konflikten (`undo.multiFile.onConflict`: partial, abort), neu angelegte Dateien (`undo.multiFile.newFiles`: recycleBin, delete, keep), Tasten Zurücknehmen und Wiederherstellen | an, 20, an, 50, partial, recycleBin, Strg+Alt+Z, Strg+Alt+Umschalt+Z | Plugin (Registry `UndoMultiFile`, `UndoMultiFileDepth`, `UndoMultiFilePersist`, `UndoMultiFileMaxSizeMb`, `UndoMultiFileOnConflict`, `UndoMultiFileNewFiles`, `UndoKey`, `RedoKey`); Sicherung in `%LOCALAPPDATA%\Atlas\undo` | nein | Kontrollkästchen, Zahl (1–200), Kontrollkästchen, Zahl (1–1024), Auswahl, Auswahl, Tastenkürzel, Tastenkürzel | #721 |')
@@ -429,19 +429,38 @@ foreach ($Name in $PluginSchema['properties'].Keys) { Check-Experimental "Plugin
 if ($ServerExperimental -ccontains $MasterPath) { $Problems.Add("Schema: der Hauptschalter ""$MasterPath"" darf nicht selbst experimentell sein") }
 foreach ($Name in $PluginExperimental) { if ($PluginSchema['properties'][$Name]['x-key'] -ceq $MasterPath) { $Problems.Add("Plugin-Katalog: der Hauptschalter ""$Name"" darf nicht selbst experimentell sein") } }
 $ExperimentalKeys = @($PluginExperimental | ForEach-Object { $PluginSchema['properties'][$_]['x-key'] }) + @($ServerExperimental)
+# Ausgeschaltet ist false bzw. x-offValue (Aufzählungen wie "off"); eingeschaltet jeder andere Wert.
+function Off-Value-Of([string] $Key) {
+    foreach ($Name in $PluginSchema['properties'].Keys) {
+        $N = $PluginSchema['properties'][$Name]
+        if ($N['x-key'] -ceq $Key) { if ($N.ContainsKey('x-offValue')) { return $N['x-offValue'] }; return $false }
+    }
+    $N = $Schema
+    foreach ($Part in $Key.Split('.')) {
+        if (-not ((Has $N 'properties') -and $N['properties'].ContainsKey($Part))) { return $false }
+        $N = $N['properties'][$Part]
+    }
+    if ($N.ContainsKey('x-offValue')) { return $N['x-offValue'] }
+    return $false
+}
+function Is-On([string] $Key, $Value) {
+    if ($null -eq $Value) { return $false }
+    if ($Value -is [bool]) { return $Value }
+    return (ConvertTo-Json -InputObject $Value -Compress) -cne (ConvertTo-Json -InputObject (Off-Value-Of $Key) -Compress)
+}
 $AllOnPath = Join-Path $ProfileFolder 'alles-an.json'
 $AllOnExperimentalPath = Join-Path $ProfileFolder 'alles-an-experimentell.json'
 if (Test-Path $AllOnPath) {
     $AllOn = (Get-Content -Raw -Encoding utf8 $AllOnPath | ConvertFrom-Json -AsHashtable)['settings']
     foreach ($Key in @($MasterPath) + $ExperimentalKeys) {
-        if ($AllOn.ContainsKey($Key) -and ($AllOn[$Key] -eq $true)) { $Problems.Add("Setup/Profile/alles-an.json: ""$Key"" ist experimentell und gehört nur in alles-an-experimentell.json") }
+        if ($AllOn.ContainsKey($Key) -and (Is-On $Key $AllOn[$Key])) { $Problems.Add("Setup/Profile/alles-an.json: ""$Key"" ist experimentell und gehört nur in alles-an-experimentell.json") }
     }
 }
 if (-not (Test-Path $AllOnExperimentalPath)) { $Problems.Add('Setup/Profile/alles-an-experimentell.json fehlt (Profil „Alles an, auch experimentell“)') }
 else {
     $AllOnExperimental = (Get-Content -Raw -Encoding utf8 $AllOnExperimentalPath | ConvertFrom-Json -AsHashtable)['settings']
     foreach ($Key in @($MasterPath) + $ExperimentalKeys) {
-        if (-not ($AllOnExperimental.ContainsKey($Key) -and ($AllOnExperimental[$Key] -eq $true))) { $Problems.Add("Setup/Profile/alles-an-experimentell.json: ""$Key"" muss true sein") }
+        if (-not ($AllOnExperimental.ContainsKey($Key) -and (Is-On $Key $AllOnExperimental[$Key]))) { $Problems.Add("Setup/Profile/alles-an-experimentell.json: ""$Key"" muss eingeschaltet sein (true bzw. ein anderer Wert als x-offValue)") }
     }
 }
 

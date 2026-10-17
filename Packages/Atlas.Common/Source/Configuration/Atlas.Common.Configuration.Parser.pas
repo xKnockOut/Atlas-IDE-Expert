@@ -1007,6 +1007,14 @@ begin
       ExpectBoolean(ANode[Index], Key, FSettings.Refactoring.InlineCode)
     else if Key = 'moveClass' then
       ExpectBoolean(ANode[Index], Key, FSettings.Refactoring.MoveClass)
+    else if Key = 'unitRenameFollowUp' then
+    begin
+      if ExpectString(ANode[Index], Key, Value) then
+        if SameText(Value, 'ask') or SameText(Value, 'off') then
+          FSettings.Refactoring.UnitRenameFollowUp := SameText(Value, 'ask')
+        else
+          ReportNode(ANode[Index], '"refactoring.unitRenameFollowUp" muss "ask" oder "off" sein');
+    end
     else if Key = 'createMethod' then
       ExpectBoolean(ANode[Index], Key, FSettings.Refactoring.CreateMethod)
     else if Key = 'createMethodSection' then
