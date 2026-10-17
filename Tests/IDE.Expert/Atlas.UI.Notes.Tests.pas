@@ -60,6 +60,9 @@ type
     procedure MeasuresWrappedText;
     [Test]
     procedure SeveralNotesOnOneLine;
+    /// <summary>#623: Links unter dem Text machen den Tooltip höher; ohne Zeichnen gibt es kein Klickziel.</summary>
+    [Test]
+    procedure LinksAddLines;
   end;
 
 implementation
@@ -380,6 +383,28 @@ begin
     Assert.AreEqual('Eine Zeile' + #13#10 + 'Noch eine', Tip.Text);
     Long := Tip.Measure('Notiz', StringOfChar('x', 20) + ' ' + StringOfChar('y', 400));
     Assert.IsTrue(Long.cx <= TAtlasNoteTip.MaxWidth + 2 * TAtlasNoteTip.Padding, 'Breite begrenzt');
+  finally
+    Tip.Free;
+  end;
+end;
+
+procedure TAtlasNoteTipTests.LinksAddLines;
+var
+  Tip: TAtlasNoteTip;
+  Plain, Linked: TSize;
+begin
+  Tip := TAtlasNoteTip.Create(nil);
+  try
+    Tip.Colors := TAtlasColors.Light;
+    Tip.SetScaling(96, 1, 'Segoe UI', 9);
+    Plain := Tip.Measure('Rekursion über 2 Methoden', 'Speichern → Pruefen → Speichern');
+    Linked := Tip.Measure('Rekursion über 2 Methoden', 'Speichern → Pruefen → Speichern',
+      ['TFoo.Speichern', 'TFoo.Pruefen']);
+    Assert.IsTrue(Linked.cy > Plain.cy, 'zwei Zeilen mehr');
+    Assert.AreEqual(2, Integer(Length(Tip.Links)));
+    Assert.AreEqual(-1, Tip.LinkAt(1, 1), 'noch nicht gezeichnet');
+    Tip.Measure('Notiz', 'Text');
+    Assert.AreEqual(0, Integer(Length(Tip.Links)), 'ohne Links wieder leer');
   finally
     Tip.Free;
   end;

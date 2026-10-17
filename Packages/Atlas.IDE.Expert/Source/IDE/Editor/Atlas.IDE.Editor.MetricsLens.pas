@@ -9,7 +9,9 @@
 // - Zeichnen: hinter dem Ende der Kopfzeile jeder implementierten Methode
 //   (plsEndPaint) eine Marke mit den Werten; ein Wert über dem Grenzwert ist
 //   markiert und die Marke in der Warnfarbe. Die IDE kann keine eigene Zeile
-//   über der Methode einfügen, darum steht die Lens hinter dem Kopf.
+//   über der Methode einfügen, darum steht die Lens hinter dem Kopf. Den Platz
+//   hinter dem Zeilenende teilt sie über TAtlasLineTail mit Inlay-Hints und
+//   dem Fehlertext am Zeilenende (#509).
 // - Kein Klickziel: Die Werte sind Information; die Regeln metric-* melden
 //   Überschreitungen als Problem.
 // Abschaltbar über die Einstellung „Code Lens mit Code-Metriken“
@@ -88,6 +90,7 @@ uses
   Atlas.Core.Style.Color,
   Atlas.Core.Style.Palette,
   Atlas.Core.Editor.Pairs,
+  Atlas.Core.Editor.LineTail,
   Atlas.UI.Strings,
   Atlas.Core.Editor.Elements,
   Atlas.IDE.Foundation.EditorBuffer,
@@ -283,6 +286,8 @@ var
   OldPen: TPen;
   Back, Tone: TAtlasColor;
   Sample: COLORREF;
+  TailKey: string;
+  X: Integer;
 begin
   if BeforeEvent or (Stage <> plsEndPaint) or (Context = nil) or not FShowing then
     Exit;
@@ -307,6 +312,8 @@ begin
     TabWidth := TAtlasEditorBuffer.TabWidth(Context.EditView.Buffer);
     Column := Length(TrimRight(TAtlasPairs.DisplayLine(Line, TabWidth))) + 1;
     Cell := Context.EditorState.GetCharacterPosPx(Column + 3, Context.EditorLineNum);
+    TailKey := TAtlasLineTail.KeyOf(Context.FileName, Context.LogicalLineNum, Context.EditorLineNum, Rect.Top);
+    X := TAtlasLineTail.Start(Self, TailKey, Cell.Left);
     Canvas := Context.Canvas;
     Sample := GetPixel(Canvas.Handle, Cell.Left, Rect.Top + 1);
     if Sample = CLR_INVALID then
@@ -332,11 +339,12 @@ begin
       Height := Canvas.TextHeight('Xg');
       Width := Canvas.TextWidth(Text);
       Top := Rect.Top + Max(0, (Rect.Bottom - Rect.Top - Height - 2) div 2);
-      Pill := TRect.Create(Cell.Left, Top, Cell.Left + Width + 10, Top + Height + 2);
+      Pill := TRect.Create(X, Top, X + Width + 10, Top + Height + 2);
       Canvas.Brush.Style := bsSolid;
       Canvas.RoundRect(Pill.Left, Pill.Top, Pill.Right, Pill.Bottom, 6, 6);
       Canvas.Brush.Style := bsClear;
       Canvas.TextOut(Pill.Left + 5, Pill.Top + 1, Text);
+      TAtlasLineTail.Finish(Self, TailKey, Pill.Right);
       TAtlasIdeElements.Painted(TAtlasDrawnElement.CodeLensMetrics, Context.FileName, Context.LogicalLineNum - 1,
         Method.Name, Pill, Context.EditView.TopRow, Rect.Height);
     finally

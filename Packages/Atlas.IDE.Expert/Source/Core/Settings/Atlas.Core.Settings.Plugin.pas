@@ -46,6 +46,9 @@ type
     /// <summary>Grenzen für editor.blockEndLabels.minLines (#620).</summary>
     MinBlockEndLines = 1;
     MaxBlockEndLines = 1000;
+    /// <summary>Grenzen für editor.recursionMarkers.depth (#623); wie TRecursionAnalysis im Server.</summary>
+    MinRecursionDepth = 1;
+    MaxRecursionDepth = 16;
     /// <summary>Verzögerung bis zum automatischen Öffnen der Liste (ARG-046, #227); 0 = sofort.</summary>
     MaxOpenDelay = 2000;
     /// <summary>Speichergrenze des Symbolindex im Server (#492); 0 = unbegrenzt.</summary>
@@ -181,6 +184,11 @@ type
     /// <summary>Ungenutzte uses-Einträge abblenden (#621, editor.dimUnusedUses); der Tooltip nennt den Grund und
     /// bietet Entfernen und Verschieben an. Aus: weder Abblenden noch Hinweise.</summary>
     DimUnusedUses: Boolean;
+    /// <summary>Rekursionssymbol (↻) in der Rinne neben Aufrufen, die zur Methode zurückführen (#623,
+    /// editor.recursionMarkers); der Tooltip zeigt die Kette, jede Methode anklickbar.</summary>
+    RecursionMarkers: Boolean;
+    /// <summary>Höchstens so viele Methoden auf einem Kreis (#623, editor.recursionMarkers.depth).</summary>
+    RecursionMarkersDepth: Integer;
     /// <summary>Persönliche Notizen an Codezeilen (#545): Symbol in der Rinne, Befehle und Liste; gespeichert in
     /// %LOCALAPPDATA%\Atlas\Notes\, nie im Quelltext.</summary>
     Notes: Boolean;
@@ -878,6 +886,8 @@ begin
   Result.BlockEndLabels := True;
   Result.BlockEndLabelsMinLines := 25;
   Result.DimUnusedUses := True;
+  Result.RecursionMarkers := True;
+  Result.RecursionMarkersDepth := 4;
   Result.Notes := True;
   Result.BookmarksNamed := True;
   Result.BookmarksShared := False;
@@ -1090,6 +1100,7 @@ begin
     CompileOnSave := False;
   XmlDocMaxLines := EnsureRange(XmlDocMaxLines, 0, MaxXmlDocLines);
   BlockEndLabelsMinLines := EnsureRange(BlockEndLabelsMinLines, MinBlockEndLines, MaxBlockEndLines);
+  RecursionMarkersDepth := EnsureRange(RecursionMarkersDepth, MinRecursionDepth, MaxRecursionDepth);
   OpenDelayMs := EnsureRange(OpenDelayMs, 0, MaxOpenDelay);
   MemoryBudgetMb := EnsureRange(MemoryBudgetMb, 0, MaxMemoryBudgetMb);
   // TShortCut ist ein Word.
@@ -1252,6 +1263,8 @@ begin
   BlockEndLabels := AStore.ReadInteger('BlockEndLabels', BoolValue(Default.BlockEndLabels)) <> 0;
   BlockEndLabelsMinLines := AStore.ReadInteger('BlockEndLabelsMinLines', Default.BlockEndLabelsMinLines);
   DimUnusedUses := AStore.ReadInteger('DimUnusedUses', BoolValue(Default.DimUnusedUses)) <> 0;
+  RecursionMarkers := AStore.ReadInteger('RecursionMarkers', BoolValue(Default.RecursionMarkers)) <> 0;
+  RecursionMarkersDepth := AStore.ReadInteger('RecursionMarkersDepth', Default.RecursionMarkersDepth);
   Notes := AStore.ReadInteger('Notes', BoolValue(Default.Notes)) <> 0;
   BookmarksNamed := AStore.ReadInteger('BookmarksNamed', BoolValue(Default.BookmarksNamed)) <> 0;
   BookmarksShared := AStore.ReadInteger('BookmarksShared', BoolValue(Default.BookmarksShared)) <> 0;
@@ -1513,6 +1526,8 @@ begin
   AStore.WriteInteger('BlockEndLabels', BoolValue(BlockEndLabels));
   AStore.WriteInteger('BlockEndLabelsMinLines', BlockEndLabelsMinLines);
   AStore.WriteInteger('DimUnusedUses', BoolValue(DimUnusedUses));
+  AStore.WriteInteger('RecursionMarkers', BoolValue(RecursionMarkers));
+  AStore.WriteInteger('RecursionMarkersDepth', RecursionMarkersDepth);
   AStore.WriteInteger('Notes', BoolValue(Notes));
   AStore.WriteInteger('BookmarksNamed', BoolValue(BookmarksNamed));
   AStore.WriteInteger('BookmarksShared', BoolValue(BookmarksShared));

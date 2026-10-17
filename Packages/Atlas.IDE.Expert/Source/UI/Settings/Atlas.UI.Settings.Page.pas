@@ -142,6 +142,8 @@ type
     FBlockEndLabels: TCheckBox;
     FBlockEndLabelsMinLines: TEdit;
     FDimUnusedUses: TCheckBox;
+    FRecursionMarkers: TCheckBox;
+    FRecursionMarkersDepth: TEdit;
     /// <summary>Fehlertext am Zeilenende (#509): aus, nur Fehler, Fehler und Warnungen, alle.</summary>
     FInlineDiagnostics: TAtlasChoiceBox;
     FNotes: TCheckBox;
@@ -739,6 +741,8 @@ type
     property BlockEndLabelsCheck: TCheckBox read FBlockEndLabels;
     property BlockEndLabelsMinLinesEdit: TEdit read FBlockEndLabelsMinLines;
     property DimUnusedUsesCheck: TCheckBox read FDimUnusedUses;
+    property RecursionMarkersCheck: TCheckBox read FRecursionMarkers;
+    property RecursionMarkersDepthEdit: TEdit read FRecursionMarkersDepth;
     property HideElementKey: TEdit read FHideElementKey;
     /// <summary>Zum Testen: Fehlertext am Zeilenende, Zähler und Sprungtasten (#509).</summary>
     property InlineDiagnostics: TAtlasChoiceBox read FInlineDiagnostics;
@@ -1120,6 +1124,9 @@ begin
   FBlockEndLabels := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsBlockEndLabels));
   FBlockEndLabelsMinLines := AddNumber(TAtlasStrings.Text(TAtlasTextId.SettingsBlockEndLabelsMinLines));
   FDimUnusedUses := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsDimUnusedUses));
+  // Rekursionssymbole im Rand (#623).
+  FRecursionMarkers := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsRecursionMarkers));
+  FRecursionMarkersDepth := AddNumber(TAtlasStrings.Text(TAtlasTextId.SettingsRecursionMarkersDepth));
   // Fehlertext am Zeilenende (#509); die Reihenfolge folgt TAtlasInlineDiagnosticsMode.
   FInlineDiagnostics := AddChoice(TAtlasStrings.Text(TAtlasTextId.SettingsInlineDiagnostics),
     [TAtlasStrings.Text(TAtlasTextId.SettingsInlineDiagnosticsOff),
@@ -1278,6 +1285,7 @@ begin
   Bind('CodeLensTestUnit', FCodeLensTestUnit);
   Bind('BlockEndLabels', FBlockEndLabels);
   Bind('DimUnusedUses', FDimUnusedUses);
+  Bind('RecursionMarkers', FRecursionMarkers);
   Bind('InlineDiagnostics', FInlineDiagnostics);
   Bind('ProblemsStatusCounter', FProblemsStatusCounter);
   Bind('InlayHints', FInlayHints);
@@ -2062,6 +2070,8 @@ begin
   FMarks.Bind(FBlockEndLabels, ['BlockEndLabels']);
   FMarks.Bind(FBlockEndLabelsMinLines, ['BlockEndLabelsMinLines']);
   FMarks.Bind(FDimUnusedUses, ['DimUnusedUses']);
+  FMarks.Bind(FRecursionMarkers, ['RecursionMarkers']);
+  FMarks.Bind(FRecursionMarkersDepth, ['RecursionMarkersDepth']);
   FMarks.Bind(FInlineDiagnostics, ['InlineDiagnostics']);
   FMarks.Bind(FNotes, ['Notes']);
   FMarks.Bind(FBookmarksNamed, ['BookmarksNamed']);
@@ -3013,6 +3023,8 @@ begin
   FBlockEndLabels.Checked := ASettings.BlockEndLabels;
   FBlockEndLabelsMinLines.Text := IntToStr(ASettings.BlockEndLabelsMinLines);
   FDimUnusedUses.Checked := ASettings.DimUnusedUses;
+  FRecursionMarkers.Checked := ASettings.RecursionMarkers;
+  FRecursionMarkersDepth.Text := IntToStr(ASettings.RecursionMarkersDepth);
   FInlineDiagnostics.Choice := Ord(TAtlasInlineDiagnostics.ModeOf(ASettings.InlineDiagnostics));
   FNotes.Checked := ASettings.Notes;
   FBookmarksNamed.Checked := ASettings.BookmarksNamed;
@@ -3272,6 +3284,8 @@ begin
   ASettings.BlockEndLabels := FBlockEndLabels.Checked;
   ASettings.BlockEndLabelsMinLines := StrToIntDef(FBlockEndLabelsMinLines.Text, ASettings.BlockEndLabelsMinLines);
   ASettings.DimUnusedUses := FDimUnusedUses.Checked;
+  ASettings.RecursionMarkers := FRecursionMarkers.Checked;
+  ASettings.RecursionMarkersDepth := StrToIntDef(FRecursionMarkersDepth.Text, ASettings.RecursionMarkersDepth);
   ASettings.InlineDiagnostics := TAtlasInlineDiagnostics.ModeName(
     TAtlasInlineDiagnosticsMode(EnsureRange(FInlineDiagnostics.Choice, 0, Ord(High(TAtlasInlineDiagnosticsMode)))));
   ASettings.Notes := FNotes.Checked;

@@ -12,7 +12,7 @@ function AtlasPluginSchemaJson: string;
 implementation
 
 const
-  Lines: array[0..2079] of string = (
+  Lines: array[0..2101] of string = (
     '{',
     '  "$schema": "http://json-schema.org/draft-07/schema#",',
     '  "title": "Atlas-Plugin-Einstellungen",',
@@ -167,6 +167,28 @@ const
     '      "x-caption": "Ungenutzte uses-Einträge abblenden",',
     '      "x-captionEn": "Dim unused uses entries",',
     '      "x-issue": "#621"',
+    '    },',
+    '    "RecursionMarkers": {',
+    '      "type": "boolean",',
+    '      "default": true,',
+    '      "x-key": "editor.recursionMarkers",',
+    '      "x-area": "editor",',
+    '      "x-feature": "EditorCommands",',
+    '      "x-page": "Editor",',
+    '      "x-quickToggle": true,',
+    '      "x-drawing": true,',
+    '      "x-caption": "Rekursionssymbole",',
+    '      "x-captionEn": "Recursion markers",',
+    '      "x-issue": "#623"',
+    '    },',
+    '    "RecursionMarkersDepth": {',
+    '      "type": "integer",',
+    '      "default": 4,',
+    '      "description": "Höchstens so viele Methoden auf einem Kreis über andere Methoden derselben Unit (1 bis 16; 1 = nur direkte Rekursion).",',
+    '      "x-key": "editor.recursionMarkers.depth",',
+    '      "x-area": "editor",',
+    '      "x-page": "Editor",',
+    '      "x-issue": "#623"',
     '    },',
     '    "Problems": {',
     '      "type": "boolean",',

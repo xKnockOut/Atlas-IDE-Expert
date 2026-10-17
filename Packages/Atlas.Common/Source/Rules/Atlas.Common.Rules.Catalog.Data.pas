@@ -246,6 +246,15 @@ begin
     '      "good": "type\n  TFoo = class\n    destructor Destroy; override;\n  end;"' + #10 +
     '    },' + #10 +
     '    {' + #10 +
+    '      "id": "recursive-property-accessor",' + #10 +
+    '      "name": "Property accessor calls itself",' + #10 +
+    '      "category": "bug",' + #10 +
+    '      "severity": "warning",' + #10 +
+    '      "description": "A getter reads its own property or a setter writes its own property. The accessor calls itself endlessly and ends in a stack overflow. Use the field instead.",' + #10 +
+    '      "bad": "function TFoo.GetName: string;\nbegin\n  Result := Name;\nend;",' + #10 +
+    '      "good": "function TFoo.GetName: string;\nbegin\n  Result := FName;\nend;"' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
     '      "id": "component-create-without-override",' + #10 +
     '      "name": "Component constructor without override",' + #10 +
     '      "category": "bug",' + #10 +
@@ -965,6 +974,11 @@ begin
     '      "id": "destroy-without-override",' + #10 +
     '      "name": "Destroy ohne override",' + #10 +
     '      "description": "Ein destructor Destroy ist ohne override deklariert. Free ruft TObject.Destroy auf, dieser Destruktor läuft also nie."' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "recursive-property-accessor",' + #10 +
+    '      "name": "Property-Accessor ruft sich selbst auf",' + #10 +
+    '      "description": "Ein Getter liest seine eigene Property oder ein Setter schreibt sie. Der Accessor ruft sich endlos selbst auf und endet im Stapelüberlauf. Stattdessen das Feld verwenden."' + #10 +
     '    },' + #10 +
     '    {' + #10 +
     '      "id": "component-create-without-override",' + #10 +
