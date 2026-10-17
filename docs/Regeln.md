@@ -6,6 +6,7 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 |---|---|---|---|
 | [`syntax`](#syntax) | Syntaxfehler | Bug | Fehler |
 | [`unused-suppression`](#unused-suppression) | Ungenutzte Unterdrückung | Code Smell | Hinweis |
+| [`unknown-rule-id`](#unknown-rule-id) | Unbekannte Regelkennung | Code Smell | Hinweis |
 | [`bidi-control`](#bidi-control) | Bidirektionales Steuerzeichen | Schwachstelle | Fehler |
 | [`invisible-char`](#invisible-char) | Unsichtbares Zeichen | Sicherheits-Hotspot | Warnung |
 | [`control-char`](#control-char) | Steuerzeichen | Bug | Fehler |
@@ -138,6 +139,27 @@ Richtig:
 
 ```pascal
 X := 1;
+```
+
+<a id="unknown-rule-id"></a>
+## unknown-rule-id
+
+**Unbekannte Regelkennung** · Code Smell · Hinweis
+
+Ein lsp-ignore-Kommentar nennt eine Regelkennung, die es nicht gibt, und unterdrückt deshalb nichts. Die Meldung schlägt die ähnlichste bekannte Kennung vor (Tippfehler); ein solcher Kommentar zählt nicht zusätzlich als unused-suppression.
+
+Mit Treffer:
+
+```pascal
+// lsp-ignore: empty-exept
+try X; except end;
+```
+
+Richtig:
+
+```pascal
+// lsp-ignore: empty-except
+try X; except end;
 ```
 
 <a id="bidi-control"></a>

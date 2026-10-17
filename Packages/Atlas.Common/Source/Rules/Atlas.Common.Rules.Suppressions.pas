@@ -7,13 +7,16 @@
 //   // lsp-ignore: regel-a -- Begründung       ab "--" folgt freier Text
 // "*" steht für alle Regeln. Kommentare in { } und (* *) zählen ebenso.
 // Merkt sich, welche Kommentare tatsächlich etwas unterdrückt haben, damit
-// ungenutzte gemeldet werden können (#147).
+// ungenutzte gemeldet werden können (#147). Jede Kennung hat ihre Stelle im
+// Kommentar (IdRanges), damit die Engine unbekannte Kennungen genau markiert
+// und mit Suggest einen Tippfehler-Vorschlag macht (#41).
 
 interface
 
 uses
   System.SysUtils,
   System.StrUtils,
+  System.Math,
   System.Generics.Collections,
   Atlas.Common.Documents.Contract,
   Atlas.Common.Pascal.Contract;
@@ -26,6 +29,8 @@ type
     TargetLine: Integer;
     /// <summary>Regelkennungen in Kleinbuchstaben, "*" für alle.</summary>
     Ids: TArray<string>;
+    /// <summary>Stelle jeder Kennung (gleicher Index wie Ids); bei mehrzeiligen Kommentaren der Kommentar.</summary>
+    IdRanges: TArray<TTextRange>;
     /// <summary>Der Kommentar steht allein in seiner Zeile.</summary>
     OwnLine: Boolean;
     Used: Boolean;
@@ -45,6 +50,8 @@ type
     function UnusedEntries: TArray<TSuppressionEntry>;
     class function LineMarker: string; static;
     class function FileMarker: string; static;
+    /// <summary>Ähnlichste Kennung aus AKnown für einen Tippfehler in AId; '' ohne passende.</summary>
+    class function Suggest(const AId: string; const AKnown: TArray<string>): string; static;
   end;
 
 implementation
@@ -88,7 +95,75 @@ begin
   end;
 end;
 
+/// <summary>Stellen der Kennungen AIds im Kommentar AToken, ab dem Marker gesucht.</summary>
+function IdRangesOf(const AToken: TPascalToken; const AMarker: string; const AIds: TArray<string>): TArray<TTextRange>;
+var
+  Lower: string;
+  Index, Found, Cursor: Integer;
+begin
+  SetLength(Result, Length(AIds));
+  Lower := LowerCase(AToken.Text);
+  Cursor := Pos(AMarker, Lower) + Length(AMarker);
+  for Index := 0 to High(AIds) do
+  begin
+    Result[Index] := TTextRange.Create(AToken.StartPos, AToken.EndPos);
+    Found := PosEx(AIds[Index], Lower, Cursor);
+    if Found = 0 then
+      Continue;
+    Cursor := Found + Length(AIds[Index]);
+    // Nur einzeilige Kommentare genau; sonst bleibt der ganze Kommentar.
+    if (AToken.StartPos.Line = AToken.EndPos.Line) and (Pos(#10, Copy(AToken.Text, 1, Found)) = 0) then
+      Result[Index] := TTextRange.Create(AToken.StartPos.Line, AToken.StartPos.Character + Found - 1,
+        AToken.StartPos.Line, AToken.StartPos.Character + Found - 1 + Length(AIds[Index]));
+  end;
+end;
+
+/// <summary>Editierabstand nach Levenshtein, ohne Groß-/Kleinschreibung.</summary>
+function Distance(const A, B: string): Integer;
+var
+  Previous, Current: TArray<Integer>;
+  I, J, Cost: Integer;
+begin
+  SetLength(Previous, Length(B) + 1);
+  SetLength(Current, Length(B) + 1);
+  for J := 0 to Length(B) do
+    Previous[J] := J;
+  for I := 1 to Length(A) do
+  begin
+    Current[0] := I;
+    for J := 1 to Length(B) do
+    begin
+      Cost := 1;
+      if UpCase(A[I]) = UpCase(B[J]) then
+        Cost := 0;
+      Current[J] := Min(Min(Previous[J] + 1, Current[J - 1] + 1), Previous[J - 1] + Cost);
+    end;
+    Previous := Copy(Current);
+  end;
+  Result := Previous[Length(B)];
+end;
+
 { TSuppressions }
+
+class function TSuppressions.Suggest(const AId: string; const AKnown: TArray<string>): string;
+var
+  Known: string;
+  Best, Current, Limit: Integer;
+begin
+  Result := '';
+  // Höchstens ein Viertel der Zeichen falsch, mindestens 1, höchstens 3.
+  Limit := Max(1, Min(3, Length(AId) div 4));
+  Best := Limit + 1;
+  for Known in AKnown do
+  begin
+    Current := Distance(AId, Known);
+    if Current < Best then
+    begin
+      Best := Current;
+      Result := LowerCase(Known);
+    end;
+  end;
+end;
 
 class function TSuppressions.LineMarker: string;
 begin
@@ -125,11 +200,13 @@ begin
     if StartsText(FileMarker, Lower) then
     begin
       Entry.Ids := SplitIds(Copy(Body, Length(FileMarker) + 1, MaxInt));
+      Entry.IdRanges := IdRangesOf(ATokens[I], FileMarker, Entry.Ids);
       Entry.TargetLine := -1;
     end
     else if StartsText(LineMarker, Lower) then
     begin
       Entry.Ids := SplitIds(Copy(Body, Length(LineMarker) + 1, MaxInt));
+      Entry.IdRanges := IdRangesOf(ATokens[I], LineMarker, Entry.Ids);
       if LastCodeLine = ATokens[I].StartPos.Line then
         Entry.TargetLine := ATokens[I].StartPos.Line
       else
