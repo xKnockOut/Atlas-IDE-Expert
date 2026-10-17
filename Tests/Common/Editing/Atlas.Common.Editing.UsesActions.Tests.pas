@@ -1,6 +1,7 @@
 ﻿unit Atlas.Common.Editing.UsesActions.Tests;
 
-// Tests für die uses-Aktionen (#284).
+// Tests für die uses-Aktionen (#284) und die Prüfung einzelner Einträge zum
+// Abblenden (#621).
 
 interface
 
@@ -35,6 +36,19 @@ type
     procedure ApplyingTwiceGivesSameResult;
     [Test]
     procedure AddsUnitsToMatchingSection;
+    /// <summary>#621: ungenutzt, wegen initialization oder usesKeep behalten, nur in der implementation.</summary>
+    [Test]
+    procedure EntriesNameTheirState;
+    /// <summary>#621: In {$IFDEF}-Listen zählt nur der aktive Zweig, auch für die Bezeichner.</summary>
+    [Test]
+    procedure EntriesFollowActiveBranch;
+    /// <summary>#621: Einzelne Einträge streichen ergibt parsbaren Code, auch mit Direktiven und Kommentaren.
+    /// </summary>
+    [Test]
+    procedure RemoveEntriesKeepsCodeValid;
+    /// <summary>#621: Code-Aktionen am Eintrag mit Kennung für den Hover.</summary>
+    [Test]
+    procedure ActionsAtEntryCarryTags;
   end;
 
 implementation
@@ -48,7 +62,9 @@ uses
   Atlas.Common.Pascal.Parser,
   Atlas.Common.Rules.Contract,
   Atlas.Common.Editing.UsesClause,
-  Atlas.Common.Editing.UsesActions;
+  Atlas.Common.Editing.UsesActions,
+  Atlas.Common.Editing.CodeActions,
+  Atlas.Common.Lsp.InactiveRegions;
 
 /// <summary>Kleiner Index: Units.A (Foo), Units.B (Bar), Units.Reg (Init), Units.C (Baz, Mitglied Qux).</summary>
 function Info(const AUnitName: string): TUsesUnitInfo;
@@ -302,6 +318,147 @@ begin
   Text := 'program P;'#10'uses'#10'  Units.B;'#10'begin'#10'end.';
   Assert.IsTrue(TUsesActions.AddUnits(TPascalLexer.Tokenize(Text), ['Units.C'], Declaring, nil, #10, Edits, Added));
   Assert.AreEqual('program P;'#10'uses'#10'  Units.B,'#10'  Units.C;'#10'begin'#10'end.', Apply(Text, Edits));
+end;
+
+/// <summary>"Name:Zustand" je Eintrag, mit "|" getrennt.</summary>
+function States(const AText: string; const AInactive: TArray<TTextRange>; const AKeep: TArray<string>): string;
+const
+  Names: array[TUsesEntryState] of string = ('unused', 'init', 'keep', 'impl');
+var
+  Entry: TUsesEntry;
+begin
+  Result := '';
+  for Entry in TUsesActions.Entries(TPascalLexer.Tokenize(AText), AInactive, Info, AKeep) do
+    Result := Result + Entry.Name + ':' + Names[Entry.State] + '|';
+end;
+
+procedure TUsesActionsTests.EntriesNameTheirState;
+var
+  Text: string;
+  Entries: TArray<TUsesEntry>;
+begin
+  Text := Source('Units.A, Units.B, Units.Reg, Units.C, Vcl.Unbekannt', '', '',
+    'procedure P;'#10'begin'#10'  Foo;'#10'end;'#10);
+  Assert.AreEqual('Units.A:impl|Units.B:unused|Units.Reg:init|Units.C:keep|', States(Text, nil, ['units.c']));
+  // Position des Namens: Units.B in Zeile 3 hinter "  Units.A, ".
+  Entries := TUsesActions.Entries(TPascalLexer.Tokenize(Text), nil, Info, nil);
+  Assert.AreEqual(3, Entries[1].Range.StartPos.Line);
+  Assert.AreEqual(11, Entries[1].Range.StartPos.Character);
+  Assert.AreEqual(18, Entries[1].Range.EndPos.Character);
+  // Im interface benutzt: unauffällig.
+  Text := Source('Units.A', 'procedure P(X: Foo);'#10, '', 'procedure P(X: Foo);'#10'begin'#10'end;'#10);
+  Assert.AreEqual('', States(Text, nil, nil));
+end;
+
+procedure TUsesActionsTests.EntriesFollowActiveBranch;
+var
+  Text: string;
+begin
+  Text := Source('Units.A, {$IFDEF X}Units.B,{$ENDIF} Units.C', '', '',
+    'procedure P;'#10'begin'#10'  Baz;'#10'  {$IFDEF X}Bar;{$ENDIF}'#10'end;'#10);
+  // X nicht gesetzt: Units.B steht im inaktiven Zweig und fällt nicht auf; Units.A ist ungenutzt.
+  Assert.AreEqual('Units.A:unused|Units.C:impl|', States(Text, TLspInactiveRegions.Ranges(Text, []), nil));
+  // X gesetzt: Units.B wird im aktiven Zweig benutzt.
+  Assert.AreEqual('Units.A:unused|Units.B:impl|Units.C:impl|', States(Text, TLspInactiveRegions.Ranges(Text, ['X']),
+    nil));
+  // Benutzt nur im inaktiven Zweig zählt nicht.
+  Text := Source('', '', 'Units.B', 'procedure P;'#10'begin'#10'  {$IFDEF X}Bar;{$ENDIF}'#10'end;'#10);
+  Assert.AreEqual('Units.B:unused|', States(Text, TLspInactiveRegions.Ranges(Text, []), nil));
+  Assert.AreEqual('', States(Text, TLspInactiveRegions.Ranges(Text, ['X']), nil));
+end;
+
+/// <summary>Streicht die Einträge ANames (Bereiche aus References) und prüft, dass das Ergebnis parst.</summary>
+function RemoveNamed(const AText: string; const ANames: TArray<string>; out AResult: string): Boolean;
+var
+  Reference: TUsesReference;
+  Ranges: TArray<TTextRange>;
+  Name: string;
+  Edit: TTextEdit;
+  Tree: TSyntaxTree;
+begin
+  Ranges := nil;
+  for Reference in TUsesClauses.References(TPascalLexer.Tokenize(AText)) do
+    for Name in ANames do
+      if SameText(Reference.Name, Name) then
+        Ranges := Ranges + [Reference.Range];
+  Result := TUsesActions.RemoveEntries(AText, Ranges, Edit);
+  AResult := AText;
+  if not Result then
+    Exit;
+  AResult := Apply(AText, [Edit]);
+  Tree := TPascalParser.Parse(AResult);
+  try
+    Assert.AreEqual(0, Integer(Length(Tree.Diagnostics)), AResult);
+  finally
+    Tree.Free;
+  end;
+end;
+
+procedure TUsesActionsTests.RemoveEntriesKeepsCodeValid;
+var
+  Text, Removed: string;
+begin
+  Text := Source('Units.A, Units.B', '', '', '');
+  Assert.IsTrue(RemoveNamed(Text, ['Units.B'], Removed));
+  Assert.AreEqual(Source('Units.A', '', '', ''), Removed);
+  Assert.IsTrue(RemoveNamed(Text, ['Units.A'], Removed));
+  Assert.AreEqual(Source('Units.B', '', '', ''), Removed);
+  // Alle: das ganze uses mit seiner Zeile.
+  Assert.IsTrue(RemoveNamed(Text, ['Units.A', 'Units.B'], Removed));
+  Assert.AreEqual('unit U;'#10'interface'#10'implementation'#10'end.', Removed);
+  Text := 'unit U;'#10'interface'#10'uses Units.A;'#10'implementation'#10'end.';
+  Assert.IsTrue(RemoveNamed(Text, ['Units.A'], Removed));
+  Assert.AreEqual('unit U;'#10'interface'#10'implementation'#10'end.', Removed);
+  // Mehrzeilig: der Eintrag mit seiner Zeile.
+  Text := 'unit U;'#10'interface'#10'uses'#10'  Units.A,'#10'  Units.B,'#10'  Units.C;'#10'implementation'#10'end.';
+  Assert.IsTrue(RemoveNamed(Text, ['Units.B'], Removed));
+  Assert.AreEqual('unit U;'#10'interface'#10'uses'#10'  Units.A,'#10'  Units.C;'#10'implementation'#10'end.', Removed);
+  // Direktiven: im Zweig mit dem Komma dahinter; ein Komma jenseits einer Direktive fasst Atlas nicht an.
+  Text := Source('Units.A, {$IFDEF X}Units.B, {$ENDIF}Units.C', '', '', '');
+  Assert.IsTrue(RemoveNamed(Text, ['Units.B'], Removed));
+  Assert.AreEqual(Source('Units.A, {$IFDEF X}{$ENDIF}Units.C', '', '', ''), Removed);
+  Assert.IsTrue(RemoveNamed(Text, ['Units.A'], Removed));
+  Assert.AreEqual(Source('{$IFDEF X}Units.B, {$ENDIF}Units.C', '', '', ''), Removed);
+  Assert.IsFalse(RemoveNamed(Text, ['Units.C'], Removed), 'Komma liegt im Zweig');
+  // Kommentar am Eintrag davor bleibt.
+  Text := 'unit U;'#10'interface'#10'uses'#10'  Units.A, // a'#10'  Units.B;'#10'implementation'#10'end.';
+  Assert.IsTrue(RemoveNamed(Text, ['Units.B'], Removed));
+  Assert.AreEqual('unit U;'#10'interface'#10'uses'#10'  Units.A // a'#10'  ;'#10'implementation'#10'end.', Removed);
+  // "in 'datei'" gehört dazu, CRLF bleibt.
+  Text := 'program P;'#13#10'uses'#13#10'  Units.A in ''a.pas'','#13#10'  Units.B;'#13#10'begin'#13#10'end.';
+  Assert.IsTrue(RemoveNamed(Text, ['Units.A'], Removed));
+  Assert.AreEqual('program P;'#13#10'uses'#13#10'  Units.B;'#13#10'begin'#13#10'end.', Removed);
+end;
+
+procedure TUsesActionsTests.ActionsAtEntryCarryTags;
+var
+  Text, Found: string;
+  Context: TUsesContext;
+  Action: TCodeAction;
+  Tree: TSyntaxTree;
+begin
+  Text := Source('Units.A, Units.B, Units.C', '', '', 'procedure P;'#10'begin'#10'  Foo;'#10'end;'#10);
+  Context := Default(TUsesContext);
+  Context.Info := Info;
+  Tree := TPascalParser.Parse(Text);
+  try
+    // Cursor auf Units.B (Zeile 3, Spalte 12).
+    Found := '';
+    for Action in TCodeActions.UsesActions(Text, Tree, TTextRange.Create(3, 12, 3, 12), Context, nil, True,
+      False) do
+      if Action.Tag <> '' then
+        Found := Found + Action.Title + '=' + Action.Tag + '|';
+    Assert.AreEqual('Units.B entfernen=uses.remove|Alle ungenutzten uses entfernen (2)=uses.removeAll|', Found);
+    // Auf Units.A: nur in der implementation gebraucht, die Aktion für alle trägt die Kennung.
+    Found := '';
+    for Action in TCodeActions.UsesActions(Text, Tree, TTextRange.Create(3, 3, 3, 3), Context, nil, True,
+      False) do
+      if Action.Tag <> '' then
+        Found := Found + Action.Title + '=' + Action.Tag + '|';
+    Assert.AreEqual('Units.A ins implementation-uses verschieben=uses.move|', Found);
+  finally
+    Tree.Free;
+  end;
 end;
 
 initialization

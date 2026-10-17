@@ -676,6 +676,7 @@ begin
   Settings.Normalize;
   Assert.AreEqual(0, Settings.HideElementKey, 'negativ = keine Taste');
   Assert.AreEqual(25, TAtlasPluginSettings.Defaults.BlockEndLabelsMinLines, 'Mindestlänge (#620)');
+  Assert.IsTrue(Settings.DimUnusedUses, 'ungenutzte uses standardmäßig abgeblendet (#621)');
   Settings.BlockEndLabelsMinLines := 0;
   Settings.Normalize;
   Assert.AreEqual(TAtlasPluginSettings.MinBlockEndLines, Settings.BlockEndLabelsMinLines, 'unten begrenzt');
@@ -684,6 +685,7 @@ begin
   Assert.AreEqual(TAtlasPluginSettings.MaxBlockEndLines, Settings.BlockEndLabelsMinLines, 'oben begrenzt');
   Settings.BlockEndLabels := False;
   Settings.BlockEndLabelsMinLines := 40;
+  Settings.DimUnusedUses := False;
   Settings.HideElementKey := 0;
   Store := TMemoryStore.Create;
   Settings.Save(Store);
@@ -691,6 +693,7 @@ begin
   Loaded.Load(Store);
   Assert.IsFalse(Loaded.BlockEndLabels, 'abschaltbar');
   Assert.AreEqual(40, Loaded.BlockEndLabelsMinLines);
+  Assert.IsFalse(Loaded.DimUnusedUses, 'uses-Abblenden abschaltbar');
   Assert.AreEqual(0, Loaded.HideElementKey, '0 = keine Taste');
 end;
 

@@ -133,14 +133,15 @@ const
     TAtlasTextId.ElementCodeLensTests, TAtlasTextId.ElementCodeLensTestUnit, TAtlasTextId.ElementBlockEndLabels,
     TAtlasTextId.ElementInlayHints, TAtlasTextId.ElementProblems, TAtlasTextId.ElementNotes,
     TAtlasTextId.ElementBookmarks, TAtlasTextId.ElementPairColors, TAtlasTextId.ElementPairGuides,
-    TAtlasTextId.ElementPairOwners, TAtlasTextId.ElementInactiveDim, TAtlasTextId.ElementCompletionPreview);
+    TAtlasTextId.ElementPairOwners, TAtlasTextId.ElementInactiveDim, TAtlasTextId.ElementCompletionPreview,
+    TAtlasTextId.ElementUnusedUses);
   Plural: array[TAtlasDrawnElement] of TAtlasTextId = (TAtlasTextId.ElementCodeLensMetricsPlural,
     TAtlasTextId.ElementCodeLensTestsPlural, TAtlasTextId.ElementCodeLensTestUnitPlural,
     TAtlasTextId.ElementBlockEndLabelsPlural, TAtlasTextId.ElementInlayHintsPlural,
     TAtlasTextId.ElementProblemsPlural, TAtlasTextId.ElementNotesPlural, TAtlasTextId.ElementBookmarksPlural,
     TAtlasTextId.ElementPairColorsPlural, TAtlasTextId.ElementPairGuidesPlural,
     TAtlasTextId.ElementPairOwnersPlural, TAtlasTextId.ElementInactiveDimPlural,
-    TAtlasTextId.ElementCompletionPreviewPlural);
+    TAtlasTextId.ElementCompletionPreviewPlural, TAtlasTextId.ElementUnusedUsesPlural);
 begin
   if APlural then
     Result := TAtlasStrings.Text(Plural[AElement])

@@ -150,6 +150,8 @@ uses
   Atlas.IDE.StartProfiles.Service,
   Atlas.Core.Editor.WorkspacePlan,
   Atlas.IDE.Editor.TestUnitLens,
+  Atlas.IDE.Hover.Editor,
+  Atlas.Core.Lsp.TextChanges,
   Atlas.IDE.Completion.Editor,
   Atlas.Core.Undo.Contract,
   Atlas.Core.Undo.Adapters.DiskTarget,
@@ -1831,6 +1833,13 @@ begin
     begin
       TAtlasIdeEditorCommands.SwitchTestUnit;
     end;
+  // Aktionen unter uses-Hinweisen im Tooltip (#621): über die Code-Aktionen mit Kennung.
+  TAtlasEditorHover.OnProblemAction :=
+    procedure(const AProblem: TAtlasProblem; const ATag: string)
+    begin
+      TAtlasIdeEditorCommands.ApplyTagged(TLspRange.Create(AProblem.StartLine, AProblem.StartCharacter,
+        AProblem.EndLine, AProblem.EndCharacter), ATag);
+    end;
   // Erzeugen-Menü (#719): Vorlagen und ihr Einsetzen mit Platzhaltern kommen aus der Vervollständigung.
   TAtlasIdeGenerate.Install(
     function: TLspSession
@@ -1877,6 +1886,7 @@ begin
   TAtlasIdeUnitSearch.Uninstall;
   TAtlasIdeGenerate.Uninstall;
   TAtlasEditorTestUnitLens.OnSwitchTestUnit := nil;
+  TAtlasEditorHover.OnProblemAction := nil;
   TAtlasIdeEditorCommands.Uninstall;
   TAtlasIdeResults.Uninstall;
   CommandsInstalled := False;

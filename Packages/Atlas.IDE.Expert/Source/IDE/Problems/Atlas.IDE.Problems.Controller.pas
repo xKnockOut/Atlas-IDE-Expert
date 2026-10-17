@@ -13,9 +13,10 @@
 //     anderen Projektdateien (#82).
 //   - In der IDE geschlossene Dateien bekommen didClose; dann liefert sie der
 //     Server wieder über workspace/diagnostic.
-// Inaktive {$IFDEF}-Zweige (#615) kommen mit denselben Diagnosen. Darum holt
-// der Controller auch bei ausgeschalteten Problemen, solange das Abblenden an
-// ist; dann ohne Projekt-Thread, Wellenlinien und Meldungsliste. Nebenbei
+// Inaktive {$IFDEF}-Zweige (#615) und Hinweise zu uses-Einträgen (#621) kommen
+// mit denselben Diagnosen. Darum holt der Controller auch bei ausgeschalteten
+// Problemen, solange eins der Abblenden an ist; dann ohne Projekt-Thread,
+// Wellenlinien und Meldungsliste. Nebenbei
 // meldet er Konfiguration, Plattform und Defines der IDE an den Server
 // (Atlas.IDE.Build.Target).
 // Ergebnisse kommen über TThread.Queue in den Hauptthread; der Speicher wird
@@ -149,8 +150,11 @@ type
     /// <summary>Auf die Threads warten (Teil 2); danach darf die Sitzung enden.</summary>
     procedure WaitShutdown;
     /// <summary>Probleme an der Stelle (0-basiert) für den Hover-Tooltip; mit Abblenden auch der Hinweis
-    /// „Inaktiv: Bedingung … nicht erfüllt“ eines inaktiven Zweigs (#615).</summary>
+    /// „Inaktiv: Bedingung … nicht erfüllt“ eines inaktiven Zweigs (#615) und mit DimUnusedUses der Grund eines
+    /// auffälligen uses-Eintrags (#621).</summary>
     function ProblemsAt(const AFileName: string; ALine, ACharacter: Integer): TArray<TAtlasProblem>;
+    /// <summary>Text zum uses-Hinweis in der Sprache des Plugins („Aus Vcl.Grids wird nichts verwendet“).</summary>
+    class function UsesHint(const AProblem: TAtlasProblem): string; static;
     property Store: TAtlasProblemStore read FStore;
     /// <summary>Speicher des laufenden Controllers für andere Zeichner (inaktive Zweige, #615); nil ohne.</summary>
     class function Current: TAtlasProblemStore; static;
@@ -499,7 +503,7 @@ var
   Settings: TAtlasPluginSettings;
 begin
   Settings := TAtlasIdeSettings.Current;
-  Result := Settings.Enabled and (Settings.Problems or Settings.InactiveDim);
+  Result := Settings.Enabled and (Settings.Problems or Settings.InactiveDim or Settings.DimUnusedUses);
 end;
 
 function TAtlasProblemsController.ShowProblems: Boolean;
@@ -713,19 +717,44 @@ end;
 function TAtlasProblemsController.ProblemsAt(const AFileName: string; ALine, ACharacter: Integer): TArray<TAtlasProblem>;
 var
   Problem: TAtlasProblem;
+  Unused: Integer;
 begin
   Result := nil;
   if ShowProblems then
     Result := FStore.At(AFileName, ALine, ACharacter);
-  if not ShowInactive then
+  if ShowInactive then
+    for Problem in FStore.InactiveAt(AFileName, ALine, ACharacter) do
+    begin
+      Result := Result + [Problem];
+      // Hinweis in der Sprache des Plugins statt der Meldung des Servers.
+      Result[High(Result)].Message := Problem.InactiveHint(TAtlasStrings.Text(TAtlasTextId.InactiveCondition),
+        TAtlasStrings.Text(TAtlasTextId.InactiveTarget), TAtlasStrings.Text(TAtlasTextId.InactiveRegion));
+    end;
+  // uses-Einträge (#621): Grund in der Sprache des Plugins, Zahl der ungenutzten für „Alle entfernen“.
+  if not TAtlasIdeSettings.DimUnusedUsesOn then
     Exit;
-  for Problem in FStore.InactiveAt(AFileName, ALine, ACharacter) do
+  Unused := Length(FStore.UnusedUses(AFileName));
+  for Problem in FStore.UsesAt(AFileName, ALine, ACharacter) do
   begin
     Result := Result + [Problem];
-    // Hinweis in der Sprache des Plugins statt der Meldung des Servers.
-    Result[High(Result)].Message := Problem.InactiveHint(TAtlasStrings.Text(TAtlasTextId.InactiveCondition),
-      TAtlasStrings.Text(TAtlasTextId.InactiveTarget), TAtlasStrings.Text(TAtlasTextId.InactiveRegion));
+    Result[High(Result)].Message := UsesHint(Problem);
+    Result[High(Result)].UsesUnusedCount := Unused;
   end;
+end;
+
+class function TAtlasProblemsController.UsesHint(const AProblem: TAtlasProblem): string;
+var
+  Id: TAtlasTextId;
+begin
+  if AProblem.UsesState = TAtlasProblem.UsesInitialization then
+    Id := TAtlasTextId.UsesInitializationHint
+  else if AProblem.UsesState = TAtlasProblem.UsesAllowlist then
+    Id := TAtlasTextId.UsesAllowlistHint
+  else if AProblem.UsesState = TAtlasProblem.UsesImplementation then
+    Id := TAtlasTextId.UsesImplementationHint
+  else
+    Id := TAtlasTextId.UsesUnusedHint;
+  Result := TAtlasStrings.Fmt(Id, [AProblem.UsesUnit]);
 end;
 
 end.

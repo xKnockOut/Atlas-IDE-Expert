@@ -78,6 +78,10 @@ type
     procedure AddsCompilerMessagesToOpenDocuments;
     [Test]
     procedure PublishesCompilerMessagesForClosedFiles;
+    /// <summary>#621: ungenutzte uses mit Tag Unnecessary und data.uses, behaltene ohne Tag; nichts bei
+    /// Syntaxfehlern.</summary>
+    [Test]
+    procedure ReportsUnusedUsesUnlessSyntaxErrors;
   end;
 
 implementation
@@ -96,6 +100,7 @@ uses
   Atlas.Common.Rules.Builtin,
   Atlas.Common.Documents.Uris,
   Atlas.Common.Compiler.Contract,
+  Atlas.Common.Editing.UsesActions,
   Atlas.Common.Lsp.SyntaxDiagnostics;
 
 function CompilerMessage(ALine, AColumn: Integer; ASeverity: TCompilerSeverity): TCompilerMessage;
@@ -644,6 +649,66 @@ begin
       Assert.AreEqual(2, Items.Items[0].GetValue<Integer>('severity'));
     finally
       Message.Free;
+    end;
+  finally
+    Diagnostics.Free;
+  end;
+end;
+
+procedure TLspSyntaxDiagnosticsTests.ReportsUnusedUsesUnlessSyntaxErrors;
+const
+  Code = 'unit U;'#10'interface'#10'uses'#10'  Vcl.Grids, Units.Reg;'#10'implementation'#10'end.';
+var
+  Diagnostics: TLspSyntaxDiagnostics;
+  Document: ITextDocument;
+  Params: TJSONObject;
+  Items: TJSONArray;
+begin
+  Diagnostics := TLspSyntaxDiagnostics.Create(FStore, FTransport, 0);
+  try
+    Diagnostics.UsesProvider :=
+      function(const AUri: string; out AContext: TUsesContext): Boolean
+      begin
+        AContext := Default(TUsesContext);
+        AContext.Info :=
+          function(const AUnitName: string): TUsesUnitInfo
+          begin
+            Result := Default(TUsesUnitInfo);
+            Result.Known := True;
+            Result.Names := ['TStringGrid'];
+            Result.HasInitialization := SameText(AUnitName, 'Units.Reg');
+          end;
+        Result := True;
+      end;
+    Document := FStore.Open(Uri, 'objectpascal', 1, Code);
+    Params := Diagnostics.Compute(Document);
+    try
+      Items := Params.GetValue<TJSONArray>('diagnostics');
+      Assert.AreEqual(2, Items.Count);
+      Assert.AreEqual('Aus Vcl.Grids wird nichts verwendet', Items.Items[0].GetValue<string>('message'));
+      Assert.AreEqual(1, Items.Items[0].GetValue<TJSONArray>('tags').Count);
+      Assert.AreEqual(4, Items.Items[0].GetValue<Integer>('severity'));
+      Assert.AreEqual('Vcl.Grids', Items.Items[0].GetValue<string>('data.uses.unit'));
+      Assert.AreEqual('unused', Items.Items[0].GetValue<string>('data.uses.state'));
+      Assert.AreEqual(3, Items.Items[0].GetValue<Integer>('range.start.line'));
+      Assert.AreEqual(2, Items.Items[0].GetValue<Integer>('range.start.character'));
+      Assert.AreEqual(11, Items.Items[0].GetValue<Integer>('range.end.character'));
+      Assert.AreEqual('Units.Reg wird wegen initialization nicht als ungenutzt gezeigt',
+        Items.Items[1].GetValue<string>('message'));
+      Assert.IsNull(TJSONObject(Items.Items[1]).GetValue('tags'));
+      Assert.AreEqual('initialization', Items.Items[1].GetValue<string>('data.uses.state'));
+    finally
+      Params.Free;
+    end;
+    // Syntaxfehler: keine uses-Hinweise, nur der Fehler.
+    Document := FStore.Change(Uri, 2, [TTextChange.Full(Code.Replace('implementation', 'implementation'#10'procedure'))]);
+    Params := Diagnostics.Compute(Document);
+    try
+      Items := Params.GetValue<TJSONArray>('diagnostics');
+      Assert.IsTrue(Items.Count > 0);
+      Assert.AreEqual(0, Pos('uses', Params.ToJSON), Params.ToJSON);
+    finally
+      Params.Free;
     end;
   finally
     Diagnostics.Free;
