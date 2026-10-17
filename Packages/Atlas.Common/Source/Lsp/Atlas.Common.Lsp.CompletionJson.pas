@@ -191,6 +191,27 @@ begin
     AData.AddPair('lossy', AItem.Lossy);
 end;
 
+// Alle Felder zuweisen (#491): Zeilen für die Liste mit Kontrollkästchen.
+procedure WriteAssignments(const AItem: TCompletionItem; AData: TJSONObject);
+var
+  Lines: TJSONArray;
+  Line: TJSONObject;
+  Assignment: TCompletionAssignment;
+begin
+  if Length(AItem.Assignments) = 0 then
+    Exit;
+  Lines := TJSONArray.Create;
+  AData.AddPair('assign', Lines);
+  for Assignment in AItem.Assignments do
+  begin
+    Line := TJSONObject.Create;
+    Line.AddPair('name', Assignment.Name);
+    Line.AddPair('detail', Assignment.Detail);
+    Line.AddPair('text', Assignment.Text);
+    Lines.AddElement(Line);
+  end;
+end;
+
 // Feld- und Parameternamen (#461).
 procedure WriteDataSet(const AItem: TCompletionItem; AData: TJSONObject);
 begin
@@ -272,17 +293,19 @@ end;
 const
   /// <summary>Reihenfolge der Felder unter data; das Plugin liest nach Namen, die Golden-Tests nach Text.
   /// </summary>
-  DataWriters: array[0..28] of TItemDataWriter = (WriteSource, WriteExpected, WriteAction, WriteContainer,
+  DataWriters: array[0..29] of TItemDataWriter = (WriteSource, WriteExpected, WriteAction, WriteContainer,
     WriteDepth, WriteHelper, WriteParameters, WriteCondition, WriteUnavailable, WriteScope, WriteOrdinal,
     WriteSetOf, WriteLinked, WritePinned, WriteCount, WriteUnknown, WriteBatch, WriteHint, WriteForm, WriteByType, WriteSender,
-    WriteConversion, WriteDataSet, WriteGuard, WriteUnit, WriteHides, WriteOverloads, WriteTypeArg, WriteBindings);
+    WriteConversion, WriteAssignments, WriteDataSet, WriteGuard, WriteUnit, WriteHides, WriteOverloads, WriteTypeArg,
+    WriteBindings);
 
 function NeedsData(const AItem: TCompletionItem): Boolean;
 begin
   Result := (AItem.SourceFile <> '') or (AItem.Expected <> '') or (AItem.Action <> '') or (AItem.Condition <> '') or
     (AItem.Scope > 0) or (AItem.Ordinal > 0) or AItem.Pinned or AItem.LinkedEdits or AItem.Hint or (AItem.Form <> '') or
     (AItem.Sender <> '') or (AItem.DataSet <> '') or (AItem.Guard <> '') or (AItem.TypeParam <> '') or
-    (Length(AItem.Bindings) > 0) or (AItem.Conversion <> '') or (AItem.Lossy <> '');
+    (Length(AItem.Bindings) > 0) or (AItem.Conversion <> '') or (AItem.Lossy <> '') or
+    (Length(AItem.Assignments) > 0);
 end;
 
 function EditToJson(const AEdit: TRuleEdit): TJSONObject;

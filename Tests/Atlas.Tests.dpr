@@ -724,6 +724,7 @@ uses
   Atlas.Common.Rules.Builtin.DfmProperties.Tests in 'Common\Rules\Builtin\Atlas.Common.Rules.Builtin.DfmProperties.Tests.pas',
   Atlas.Common.Editing.PostfixTemplates.Tests in 'Common\Editing\Atlas.Common.Editing.PostfixTemplates.Tests.pas',
   Atlas.Common.Editing.CaseCompletion.Tests in 'Common\Editing\Atlas.Common.Editing.CaseCompletion.Tests.pas',
+  Atlas.Common.Editing.AssignFields.Tests in 'Common\Editing\Atlas.Common.Editing.AssignFields.Tests.pas',
   Atlas.Common.Editing.RoutineLocals.Tests in 'Common\Editing\Atlas.Common.Editing.RoutineLocals.Tests.pas',
   Atlas.Common.Editing.MoveClass.Tests in 'Common\Editing\Atlas.Common.Editing.MoveClass.Tests.pas',
   Atlas.Common.Editing.UnitRename.Tests in 'Common\Editing\Atlas.Common.Editing.UnitRename.Tests.pas',

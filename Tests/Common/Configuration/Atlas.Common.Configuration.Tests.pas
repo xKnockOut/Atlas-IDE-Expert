@@ -436,6 +436,12 @@ begin
   Assert.IsTrue(Parse('{"completion": {"typeConversion": "immer"}}', Issues).Completion.TypeConversion =
     TCompletionTypeConversion.Off);
   Assert.AreEqual(1, Integer(Length(Issues)));
+  // Alle Felder zuweisen (#491, experimentell)
+  Assert.IsFalse(Parse('{}', Issues).Completion.AssignAllFields);
+  Assert.IsTrue(Parse('{"completion": {"assignAllFields": true}}', Issues).Completion.AssignAllFields);
+  Assert.AreEqual(0, Integer(Length(Issues)));
+  Parse('{"completion": {"assignAllFields": 1}}', Issues);
+  Assert.AreEqual(1, Integer(Length(Issues)));
   // Freigabe absichern (#489)
   Assert.IsTrue(Parse('{}', Issues).Completion.OfferTryFinally);
   Assert.IsTrue(Parse('{}', Issues).Completion.FreeStyle = TCompletionFreeStyle.Free);
