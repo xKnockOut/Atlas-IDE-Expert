@@ -75,6 +75,7 @@ uses
   Atlas.IDE.Outline.Cache,
   Atlas.IDE.Outline.Service,
   Atlas.IDE.Outline.Breadcrumbs,
+  Atlas.IDE.Outline.StickyScroll,
   Atlas.IDE.Editor.LineChanges,
   Atlas.Core.Editor.LineMove,
   Atlas.IDE.Editor.LineMove,
@@ -2109,6 +2110,8 @@ begin
     end);
   TAtlasIdeOutline.Install;
   TAtlasIdeBreadcrumbs.Install;
+  // Mitlaufender Kopf (#506) aus demselben Gliederungsstand.
+  TAtlasIdeStickyScroll.Install;
   // Änderungsmarken und Zeilenhistorie (#507).
   TAtlasIdeLineChanges.Install(
     procedure(AText: string)
@@ -2207,6 +2210,7 @@ procedure StopCommands;
 begin
   TAtlasIdeQuickOpen.Uninstall;
   TAtlasIdePeek.Uninstall;
+  TAtlasIdeStickyScroll.Uninstall;
   TAtlasIdeBreadcrumbs.Uninstall;
   TAtlasIdeOverviewRuler.Uninstall;
   TAtlasIdeLineChanges.Uninstall;
@@ -3562,6 +3566,8 @@ begin
       TAtlasIdeOutline.ApplySettings;
       // editor.breadcrumbs* (#590).
       TAtlasIdeBreadcrumbs.ApplySettings;
+      // editor.stickyScroll* (#506).
+      TAtlasIdeStickyScroll.ApplySettings;
       // editor.gitGutter, editor.gitBlame (#507).
       TAtlasIdeLineChanges.ApplySettings;
       // editor.overviewRuler, editor.overviewRulerKinds (#519).

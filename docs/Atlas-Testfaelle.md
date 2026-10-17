@@ -1224,6 +1224,23 @@ Vorher: *Tools › Optionen › Atlas › Allgemein* „Experimentelle Funktione
 | LE10 | Vervollständigung offen, Platzhalter-Modus (`tryf` + Enter) oder mehrere Einfügemarken; SyncEdit der IDE | Kein Mitziehen; SyncEdit läuft ungestört |
 | LE11 | Einstellung bzw. Hauptschalter „Experimentelle Funktionen“ aus | Tippen wie ohne Plugin, keine Anfragen an den Server |
 
+## Mitlaufender Kopf (#506, experimentell)
+
+Vorher: *Tools › Optionen › Atlas › Allgemein* „Experimentelle Funktionen erlauben“, *Editor* „Mitlaufender Kopf“ an, Höchstzahl 3. Eine Unit mit einer Klasse über viele Zeilen im interface, einer Methode mit 300 Zeilen, einer Methode mit zwei langen inneren Funktionen und danach langem eigenem Rumpf, und einer Methode mit vier verschachtelten Ebenen, deren dritte einen Kopf über zwei Zeilen hat.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| SS1 | In der langen Methode bis Zeile 200 scrollen | Oben steht `procedure TFoo.Lang;` in Editorschrift und -hintergrund, darunter eine Trennlinie; der Code läuft darunter weiter |
+| SS2 | In die erste innere Funktion scrollen | Zwei Zeilen: oben der Kopf der Methode, darunter eingerückt der Kopf der inneren Funktion |
+| SS3 | Weiter in den Rumpf der Methode hinter beiden inneren Funktionen scrollen | Nur noch der Kopf der Methode |
+| SS4 | In die vierte Ebene scrollen | Drei Zeilen: `TFoo.Tief › Lokal` (zusammengefasst, gedämpft), der gekürzte Kopf `function Pruefe(…): Boolean;`, dann `procedure Innen;`; mit Höchstzahl 1 eine Zeile `TFoo.Tief › Lokal › Pruefe › Innen`, mit 4 vier Zeilen |
+| SS5 | Auf eine Kopfzeile klicken (auch auf die Zusammenfassung) | Der Cursor steht auf dem Namen im Kopf (bei der Zusammenfassung der innerste Block in ihr), der Editor zeigt die Stelle |
+| SS6 | Innerhalb der Klassendeklaration im interface scrollen | Oben steht `TFoo = class(TBar)`, bis `end;` der Klasse erreicht ist |
+| SS7 | Mit Rollrad, Bildlaufleiste, Bild↑/↓ und Strg+↑/↓ schnell scrollen | Keine verschobenen oder doppelten Kopfzeilen; nach jedem Bildlauf stimmt der Kopf |
+| SS8 | Methode bearbeiten, kurz warten | Nach der Tipppause stimmen die Köpfe mit dem neuen Text |
+| SS9 | Helles und dunkles Editor-Farbschema | Hintergrund und Schrift passen zum Schema |
+| SS10 | Einstellung bzw. Hauptschalter „Experimentelle Funktionen“ aus | Kein Kopf, Klicks in die oberen Zeilen setzen wie sonst den Cursor |
+
 ## Anweisung vervollständigen (#697)
 
 | Nr. | Schritte | Erwartet |

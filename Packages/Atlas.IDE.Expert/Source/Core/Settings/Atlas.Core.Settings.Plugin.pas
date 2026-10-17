@@ -45,6 +45,9 @@ type
     MaxXmlDocLines = 50;
     MinPeekLines = 5;
     MaxPeekLines = 60;
+    /// <summary>Grenzen für editor.stickyScrollMaxLines (#506).</summary>
+    MinStickyLines = 1;
+    MaxStickyLines = 10;
     /// <summary>Grenzen für editor.blockEndLabels.minLines (#620).</summary>
     MinBlockEndLines = 1;
     MaxBlockEndLines = 1000;
@@ -545,6 +548,11 @@ type
     Breadcrumbs: Boolean;
     /// <summary>Unit-Namen als erstes Glied (#590, editor.breadcrumbsShowUnit).</summary>
     BreadcrumbsShowUnit: Boolean;
+    /// <summary>Mitlaufender Kopf (#506, editor.stickyScroll, experimentell).</summary>
+    StickyScroll: Boolean;
+    /// <summary>Höchstzahl seiner Zeilen, MinStickyLines bis MaxStickyLines (#506,
+    /// editor.stickyScrollMaxLines).</summary>
+    StickyScrollMaxLines: Integer;
     /// <summary>Kürzel „Brotkrumenleiste“ (#590, keys.breadcrumbs); Vorgabe Strg+Umschalt+Punkt.</summary>
     BreadcrumbsKey: Integer;
     /// <summary>Änderungsmarken in der Rinne (#507, editor.gitGutter).</summary>
@@ -1185,6 +1193,8 @@ begin
   Result.OutlineFollowCursor := True;
   Result.Breadcrumbs := True;
   Result.BreadcrumbsShowUnit := False;
+  Result.StickyScroll := False;
+  Result.StickyScrollMaxLines := 3;
   Result.BreadcrumbsKey := $60BE; // Strg+Umschalt+.
   Result.GitGutter := True;
   Result.GitBlame := False;
@@ -1400,6 +1410,7 @@ begin
   NavForwardKey := EnsureRange(NavForwardKey, 0, $FFFF);
   LastEditKey := EnsureRange(LastEditKey, 0, $FFFF);
   PeekHeightLines := EnsureRange(PeekHeightLines, MinPeekLines, MaxPeekLines);
+  StickyScrollMaxLines := EnsureRange(StickyScrollMaxLines, MinStickyLines, MaxStickyLines);
   PeekDefinitionKey := EnsureRange(PeekDefinitionKey, 0, $FFFF);
   PeekReferencesKey := EnsureRange(PeekReferencesKey, 0, $FFFF);
   BreadcrumbsKey := EnsureRange(BreadcrumbsKey, 0, $FFFF);
@@ -1652,6 +1663,8 @@ begin
   OutlineFollowCursor := AStore.ReadInteger('OutlineFollowCursor', BoolValue(Default.OutlineFollowCursor)) <> 0;
   Breadcrumbs := AStore.ReadInteger('Breadcrumbs', BoolValue(Default.Breadcrumbs)) <> 0;
   BreadcrumbsShowUnit := AStore.ReadInteger('BreadcrumbsShowUnit', BoolValue(Default.BreadcrumbsShowUnit)) <> 0;
+  StickyScroll := AStore.ReadInteger('StickyScroll', BoolValue(Default.StickyScroll)) <> 0;
+  StickyScrollMaxLines := AStore.ReadInteger('StickyScrollMaxLines', Default.StickyScrollMaxLines);
   BreadcrumbsKey := AStore.ReadInteger('BreadcrumbsKey', Default.BreadcrumbsKey);
   GitGutter := AStore.ReadInteger('GitGutter', BoolValue(Default.GitGutter)) <> 0;
   GitBlame := AStore.ReadInteger('GitBlame', BoolValue(Default.GitBlame)) <> 0;
@@ -1967,6 +1980,8 @@ begin
   AStore.WriteInteger('OutlineFollowCursor', BoolValue(OutlineFollowCursor));
   AStore.WriteInteger('Breadcrumbs', BoolValue(Breadcrumbs));
   AStore.WriteInteger('BreadcrumbsShowUnit', BoolValue(BreadcrumbsShowUnit));
+  AStore.WriteInteger('StickyScroll', BoolValue(StickyScroll));
+  AStore.WriteInteger('StickyScrollMaxLines', StickyScrollMaxLines);
   AStore.WriteInteger('BreadcrumbsKey', BreadcrumbsKey);
   AStore.WriteInteger('GitGutter', BoolValue(GitGutter));
   AStore.WriteInteger('GitBlame', BoolValue(GitBlame));

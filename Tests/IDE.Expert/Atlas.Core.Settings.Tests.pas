@@ -52,6 +52,8 @@ type
     procedure ContinuePatternOptions;
     [Test]
     procedure MultiCursorOptions;
+    [Test]
+    procedure StickyScrollOptions;
     /// <summary>Änderungsmarken und Zeilenhistorie (#507): Vorgaben, Tasten, Speichern und Laden.</summary>
     [Test]
     procedure GitChangeOptions;
@@ -1281,6 +1283,31 @@ begin
   Loaded.Normalize;
   Assert.AreEqual('multiLine', Loaded.CompleteStatementBeginEnd);
   Assert.AreEqual('finally', Loaded.CompleteStatementTryKind);
+end;
+
+procedure TAtlasPluginSettingsTests.StickyScrollOptions;
+var
+  Settings, Loaded: TAtlasPluginSettings;
+  Store: IAtlasSettingsStore;
+begin
+  // #506: experimentell, also aus; drei Zeilen; Grenzen 1 bis 10.
+  Settings := TAtlasPluginSettings.Defaults;
+  Assert.IsFalse(Settings.StickyScroll);
+  Assert.AreEqual(3, Settings.StickyScrollMaxLines);
+  Settings.StickyScroll := True;
+  Settings.StickyScrollMaxLines := 5;
+  Store := TMemoryStore.Create;
+  Settings.Save(Store);
+  Loaded := TAtlasPluginSettings.Defaults;
+  Loaded.Load(Store);
+  Assert.IsTrue(Loaded.StickyScroll);
+  Assert.AreEqual(5, Loaded.StickyScrollMaxLines);
+  Loaded.StickyScrollMaxLines := 0;
+  Loaded.Normalize;
+  Assert.AreEqual(TAtlasPluginSettings.MinStickyLines, Loaded.StickyScrollMaxLines);
+  Loaded.StickyScrollMaxLines := 99;
+  Loaded.Normalize;
+  Assert.AreEqual(TAtlasPluginSettings.MaxStickyLines, Loaded.StickyScrollMaxLines);
 end;
 
 procedure TAtlasPluginSettingsTests.MultiCursorOptions;
