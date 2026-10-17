@@ -48,6 +48,8 @@ type
     [Test]
     procedure ChoicesStatic;
     [Test]
+    procedure ArgumentChoicesForSortAndFilter;
+    [Test]
     procedure MapEditsKeepsIndentAndLineBreak;
   end;
 
@@ -390,6 +392,22 @@ begin
   Assert.IsTrue(MatchText('<>', TSlashMenu.Choices(ClassUnit, Spot(11), 'operator', nil)));
   Assert.AreEqual('DEBUG', TSlashMenu.Choices(ClassUnit, Spot(26), 'ifdef', nil)[0]);
   Assert.AreEqual(0, Integer(Length(TSlashMenu.Choices(ClassUnit, Spot(11), 'prop', nil))), 'freie Eingabe');
+end;
+
+procedure TSlashMenuTests.ArgumentChoicesForSortAndFilter;
+const
+  Text =
+    'unit U;'#10'interface'#10'type'#10'  TKunde = class'#10'  public'#10'    Name: string;'#10 +
+    '    property Umsatz: Double read FUmsatz;'#10'  end;'#10'implementation'#10 +
+    'procedure P;'#10'var'#10'  Kunden: TObjectList<TKunde>;'#10'begin'#10'  %s'#10'end;'#10'end.';
+begin
+  // Menü: ohne Argument die Sammlungen; beim Tippen nach dem Leerzeichen die Mitglieder des Elementtyps.
+  Assert.AreEqual('Kunden', string.Join(',', TSlashMenu.Choices(Format(Text, ['']), Spot(13), 'sort', nil)));
+  Assert.AreEqual('Kunden', string.Join(',', TSlashMenu.ArgumentChoices(Format(Text, ['/filter Ku']), 13, 'filter',
+    'Ku', nil)));
+  Assert.AreEqual('Name,Umsatz', string.Join(',', TSlashMenu.ArgumentChoices(Format(Text, ['/sort Kunden -']), 13,
+    'sort', 'Kunden -', nil)));
+  Assert.AreEqual(0, Integer(Length(TSlashMenu.ArgumentChoices(Format(Text, ['/list ']), 13, 'list', '', nil))));
 end;
 
 procedure TSlashMenuTests.MapEditsKeepsIndentAndLineBreak;

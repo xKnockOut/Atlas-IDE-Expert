@@ -65,6 +65,7 @@ uses
   Atlas.IDE.Settings.Project,
   Atlas.IDE.Commands.MainMenu,
   Atlas.IDE.Editor.Rename,
+  Atlas.IDE.Editor.DfmPropertyRules,
   Atlas.Core.Results.Model,
   Atlas.IDE.Results.Commands,
   Atlas.IDE.Commands.Editor,
@@ -847,6 +848,24 @@ begin
     end);
 end;
 
+/// <summary>„Eigenschaftsregeln anwenden“ (#309) für Formular, Projekt oder Projektgruppe.</summary>
+procedure ApplyDfmPropertyRules(AScope: TAtlasDfmRulesScope);
+begin
+  if (Manager = nil) or not TAtlasIdeSettings.Current.DfmPropertyRules then
+    Exit;
+  TAtlasIdeDfmPropertyRules.Execute(Manager.ActiveSession, AScope,
+    TAtlasUnopenedPolicies.FromSetting(TAtlasIdeSettings.Current.OpenForEdits),
+    procedure(AText: string)
+    begin
+      GuardWarning(AText);
+    end);
+end;
+
+function DfmPropertyRulesVisible: Boolean;
+begin
+  Result := TAtlasIdeSettings.Current.DfmPropertyRules;
+end;
+
 // Sichtbarkeit von Palettenbefehlen nach Einstellung.
 function BaselineUpdateVisible: Boolean;
 begin
@@ -1061,6 +1080,22 @@ begin
   Add('Atlas.TodoListFilter', TAtlasTextId.TodoFilterCommand, FilterProjectTodos, TodoListVisible);
   // Baseline des Projekts aktualisieren (#97); nur sichtbar, solange die Einstellung BaselineUpdate an ist.
   Add('Atlas.UpdateBaseline', TAtlasTextId.BaselineUpdateCommand, UpdateBaseline, BaselineUpdateVisible);
+  // Eigenschaftsregeln anwenden (#309); nur sichtbar, solange die Einstellung DfmPropertyRules an ist.
+  Add('Atlas.ApplyDfmRulesForm', TAtlasTextId.DfmRulesFormCommand,
+    procedure
+    begin
+      ApplyDfmPropertyRules(TAtlasDfmRulesScope.Form);
+    end, DfmPropertyRulesVisible);
+  Add('Atlas.ApplyDfmRulesProject', TAtlasTextId.DfmRulesProjectCommand,
+    procedure
+    begin
+      ApplyDfmPropertyRules(TAtlasDfmRulesScope.Project);
+    end, DfmPropertyRulesVisible);
+  Add('Atlas.ApplyDfmRulesGroup', TAtlasTextId.DfmRulesGroupCommand,
+    procedure
+    begin
+      ApplyDfmPropertyRules(TAtlasDfmRulesScope.Group);
+    end, DfmPropertyRulesVisible);
   // Projektdatei .atlas (#486) anlegen bzw. öffnen; nur sichtbar, solange die Einstellung TeamFile an ist.
   Add('Atlas.TeamFile', TAtlasTextId.TeamFileCommand, TAtlasIdeTeamFile.OpenInEditor, TeamFileVisible);
   // Liste der Benachrichtigungen (#601); nur sichtbar, solange die Zentrale an ist.

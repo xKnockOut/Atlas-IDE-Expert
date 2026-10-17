@@ -280,6 +280,8 @@ type
     function GitStateOf(const AFileName: string): string;
     /// <summary>Projektdateien aller Ordner und geöffnete Dokumente, für Referenzen und Umbenennen.</summary>
     function ProjectSourceFiles: TArray<string>;
+    /// <summary>Befehl „Eigenschaftsregeln anwenden“ (#309): WorkspaceEdit über die Formulardateien.</summary>
+    function ApplyDfmPropertyRules(const AArguments: TJSONArray): TJSONValue;
     /// <summary>Inhalt des Status-Befehls (#28).</summary>
     function CollectBookmarks: TArray<TBookmarkHit>;
     function CollectStatus: TServerStatus;
@@ -391,16 +393,20 @@ uses
   Atlas.Common.Documents.Providers.DocumentStore,
   Atlas.Common.Documents.FileEncoding,
   Atlas.Common.Documents.Uris,
+  Atlas.Common.Editing.SlashCommands,
   Shell.SlashHost,
   Shell.VcsChanges,
   Shell.Bootstrap,
   Shell.Commands.Build,
   Shell.Commands.Index,
   Atlas.Common.Rules.Engine,
+  Atlas.Common.Rules.Contract,
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.TreeCache,
   Atlas.Common.Rules.Builtin.General,
   Atlas.Common.Lsp.FormFiles,
+  Atlas.Common.Lsp.DfmPropertyRules,
+  Atlas.Common.Rules.Builtin.DfmProperties,
   Atlas.Common.Dfm.FormModel,
   Atlas.Common.Dfm.BinaryForm,
   Atlas.Common.Editing.CodeActions,
@@ -674,6 +680,70 @@ begin
     begin
       if (FConnection = nil) or not FConnection.Queue(AWork) then
         FLogger.Warning('Schnellbefehl: Projekt nicht neu geladen, die Verbindung ist beendet');
+    end;
+  // Testunit für /test (#295): dieselbe Suche wie die Code-Aktion aus #274.
+  SlashHost.TestUnitOf :=
+    function(const AUri, AText: string; out ATarget: TSlashTestUnit): Boolean
+    var
+      Context: TTestUnitContext;
+      Target: TTestUnitTarget;
+    begin
+      ATarget := Default(TSlashTestUnit);
+      if not TestUnitContextFor(AUri, Context) then
+      begin
+        ATarget.Reason := 'Datei gehört zu keinem Arbeitsbereich';
+        Exit(False);
+      end;
+      Target := TLspTestUnits.Resolve(TDocumentUris.ToPath(AUri), AText, -1, Context);
+      ATarget.UnitName := Target.Counterpart;
+      ATarget.TestProgram := Context.TestProgram;
+      if Target.UnitName = '' then
+        ATarget.Reason := 'Die Datei ist keine Unit'
+      else if Target.IsTest then
+        ATarget.Reason := 'Die Datei ist selbst eine Testunit'
+      else if Target.CounterpartFile <> '' then
+      begin
+        ATarget.FileName := Target.CounterpartFile;
+        ATarget.Exists := True;
+      end
+      else if Target.CanCreate then
+        ATarget.FileName := Target.NewFile
+      else
+        ATarget.Reason := Target.Reason;
+      Result := ATarget.Reason = '';
+    end;
+  // Protokollaufruf (#304) und Palettenseite (#299) aus der atlas.json des Ordners.
+  SlashHost.SettingOf :=
+    function(const AUri, AName: string): string
+    var
+      Workspace: TShellWorkspace;
+      Settings: TServerSettings;
+    begin
+      TMonitor.Enter(FWorkspacesLock);
+      try
+        Workspace := PickWorkspace(TDocumentUris.ToPath(AUri));
+        if Workspace = nil then
+          Settings := FLooseSettings
+        else
+          Settings := Workspace.Configuration.Settings;
+      finally
+        TMonitor.Exit(FWorkspacesLock);
+      end;
+      if AName = TSlashSettings.LogCall then
+        Result := Settings.SlashLogCall
+      else if AName = TSlashSettings.ComponentPalette then
+        Result := Settings.SlashComponentPalette
+      else if AName = TSlashSettings.InterfaceSection then
+        case Settings.Completion.InterfaceSection of
+          TCompletionInterfaceSection.Private:
+            Result := 'private';
+          TCompletionInterfaceSection.Protected:
+            Result := 'protected';
+        else
+          Result := 'public';
+        end
+      else
+        Result := '';
     end;
   FFormatting.SlashHost := SlashHost;
   FFormatting.Attach(FDispatcher);
@@ -1094,6 +1164,11 @@ begin
       FLogger.Info(Format('%d binäre Formulare in Text umgewandelt, %d Sicherungskopien (.bak)',
         [Converted, Backups]));
       Result := TJSONString.Create(Format('%d Formulare umgewandelt', [Converted]));
+    end);
+  FCommands.Register(TLspDfmPropertyRules.Command,
+    function(const AArguments: TJSONArray): TJSONValue
+    begin
+      Result := ApplyDfmPropertyRules(AArguments);
     end);
   FCommands.Register(TLspMetrics.Command,
     function(const AArguments: TJSONArray): TJSONValue
@@ -1713,6 +1788,24 @@ begin
       FRequestTimeout := ASettings.RequestTimeoutMs;
       FDiagnostics.ApplySettings(ASettings);
     end;
+  // Eigenschaftsregeln mit unbekannter Klasse oder Property (#309): erst mit fertigem Index, sonst
+  // fehlten die Klassen nur, weil sie noch nicht gelesen sind; IndexFinished prüft dann neu.
+  Workspace.Configuration.ExtraIssues :=
+    function(const ASettings: TServerSettings): TArray<TConfigurationIssue>
+    begin
+      Result := nil;
+      if (Length(ASettings.DfmPropertyRules) = 0) or ProjectIndexPending or (Length(FIndex.Units) = 0) then
+        Exit;
+      Result := TDfmPropertyCheckRule.ConfigurationIssues(ASettings.DfmPropertyRules, FIndex,
+        function(const AFileName: string; out AData: TBytes): Boolean
+        var
+          Text: string;
+        begin
+          Result := ReadSourceText(AFileName, Text);
+          if Result then
+            AData := TEncoding.UTF8.GetBytes(Text);
+        end);
+    end;
   Workspace.Configuration.SetGlobalSettings(FGlobalSettings);
   Workspace.Configuration.SetEditorSettings(FEditorSettings);
   TMonitor.Enter(FWorkspacesLock);
@@ -1966,7 +2059,26 @@ begin
   // In einer Projektgruppe erst, wenn kein Projekt mehr indiziert wird: Sonst prüfte jedes fertige
   // Projekt alle Dateien neu (CPU-Last beim Start).
   if not ProjectIndexPending then
+  begin
     FSyntaxDiagnostics.RefreshLater;
+    // Meldungen in atlas.json, die den Index brauchen (#309); Publish nur in der Nachrichtenschleife.
+    if FConnection <> nil then
+      FConnection.Queue(
+        procedure
+        var
+          Workspace: TShellWorkspace;
+          Workspaces: TArray<TShellWorkspace>;
+        begin
+          TMonitor.Enter(FWorkspacesLock);
+          try
+            Workspaces := FWorkspaces.ToArray;
+          finally
+            TMonitor.Exit(FWorkspacesLock);
+          end;
+          for Workspace in Workspaces do
+            Workspace.Configuration.Revalidate;
+        end);
+  end;
 end;
 
 function TServerComposition.ProjectIndexPending: Boolean;
@@ -2269,6 +2381,68 @@ begin
   // Geöffnete Dateien außerhalb des Projekts zählen mit.
   for Document in FDocuments.Documents do
     Result := Result + [TDocumentUris.ToPath(Document.Uri)];
+end;
+
+function TServerComposition.ApplyDfmPropertyRules(const AArguments: TJSONArray): TJSONValue;
+var
+  Uri, Scope, FileName: string;
+  Units: TArray<string>;
+  Workspace, Picked: TShellWorkspace;
+  Files, Edits: Integer;
+begin
+  // Argumente: URI der Unit oder Formulardatei, Bereich form (Vorgabe), project oder group.
+  if (AArguments = nil) or (AArguments.Count = 0) then
+    raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams, 'Argument "uri" fehlt');
+  Uri := AArguments.Items[0].Value;
+  Scope := TLspDfmPropertyRules.ScopeForm;
+  if AArguments.Count > 1 then
+    Scope := AArguments.Items[1].Value;
+  FileName := TLspDfmPropertyRules.UnitOf(TDocumentUris.ToPath(Uri));
+  Units := nil;
+  if SameText(Scope, TLspDfmPropertyRules.ScopeForm) then
+    Units := [FileName]
+  else
+  begin
+    TMonitor.Enter(FWorkspacesLock);
+    try
+      Picked := PickWorkspace(FileName);
+      for Workspace in FWorkspaces do
+        if SameText(Scope, TLspDfmPropertyRules.ScopeGroup) or (Workspace = Picked) then
+          Units := Units + Workspace.ProjectFiles;
+    finally
+      TMonitor.Exit(FWorkspacesLock);
+    end;
+  end;
+  Result := TLspDfmPropertyRules.BuildEdit(Units,
+    function(const AFileName: string; out AFindings: TArray<TRuleFinding>): Boolean
+    var
+      Context: TRuleCheckContext;
+      Rule: IRule;
+      Rules: TArray<IRule>;
+      Text: string;
+      Tree: TSyntaxTree;
+    begin
+      AFindings := nil;
+      Result := SameText(ExtractFileExt(AFileName), '.pas') and
+        RuleContextFor(TDocumentUris.FromPath(AFileName), Context) and (Context.FormFile <> '') and
+        ReadSourceText(AFileName, Text);
+      if not Result then
+        Exit;
+      // Nur dfm-property; RuleFindings zieht die Baseline nicht ab, der Befehl korrigiert alle Verstöße.
+      Rules := nil;
+      for Rule in Context.Rules do
+        if SameText(Rule.Descriptor.Id, TLspDfmPropertyRules.RuleId) then
+          Rules := Rules + [Rule];
+      Context.Rules := Rules;
+      Tree := TSyntaxTreeCache.Parse(Text);
+      try
+        AFindings := TLspSyntaxDiagnostics.RuleFindings(Text, Tree, Context);
+      finally
+        Tree.Free;
+      end;
+    end, Files, Edits);
+  // Nur Zahlen ins Log, keine Pfade (#647).
+  FLogger.Info(Format('Eigenschaftsregeln: %d Änderungen in %d Formulardateien vorgeschlagen', [Edits, Files]));
 end;
 
 function TServerComposition.CollectBookmarks: TArray<TBookmarkHit>;
@@ -2605,10 +2779,16 @@ begin
   AContext.Index := FIndex;
   AContext.EnsureUnit := EnsureUnit;
   // Formulardatei neben der Unit für den Abgleich von Feldern und Objekten (#123).
-  if SameText(ExtractFileExt(FileName), '.pas') and
-    not ReadSourceText(ChangeFileExt(FileName, '.dfm'), AContext.FormText) and
-    not ReadSourceText(ChangeFileExt(FileName, '.fmx'), AContext.FormText) then
-    AContext.FormText := '';
+  // Mit Pfad, damit Korrekturen die Formulardatei ändern können (#309).
+  if SameText(ExtractFileExt(FileName), '.pas') then
+  begin
+    if ReadSourceText(ChangeFileExt(FileName, '.dfm'), AContext.FormText) then
+      AContext.FormFile := ChangeFileExt(FileName, '.dfm')
+    else if ReadSourceText(ChangeFileExt(FileName, '.fmx'), AContext.FormText) then
+      AContext.FormFile := ChangeFileExt(FileName, '.fmx')
+    else
+      AContext.FormText := '';
+  end;
   // Ressourcen neben der Unit, z. B. die .dcr mit den Palettensymbolen (#114).
   Folder := ExtractFilePath(FileName);
   AContext.ReadFile :=

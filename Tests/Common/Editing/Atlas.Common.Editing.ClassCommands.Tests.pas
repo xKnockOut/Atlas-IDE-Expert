@@ -1,6 +1,6 @@
 ﻿unit Atlas.Common.Editing.ClassCommands.Tests;
 
-// Tests für die Schnellbefehle /impl, /ctor, /dtor, /override und /msg (#295).
+// Tests für die Schnellbefehle /impl, /ctor, /dtor, /override, /msg und /intf (#295).
 
 interface
 
@@ -40,12 +40,25 @@ type
     procedure SignatureHelpers;
     [Test]
     procedure ResultsParseWithoutErrors;
+    [Test]
+    procedure DtorKeepsPassedReferences;
+    [Test]
+    procedure DtorExtendsExisting;
+    [Test]
+    procedure DtorAndMsgWrongPlaceFail;
+    [Test]
+    procedure IntfAddsInterfaceAndMethods;
+    [Test]
+    procedure IntfWithoutAncestorList;
+    [Test]
+    procedure IntfWrongPlaceFails;
   end;
 
 implementation
 
 uses
   System.SysUtils,
+  System.StrUtils,
   System.IOUtils,
   System.Generics.Collections,
   System.Generics.Defaults,
@@ -314,6 +327,163 @@ begin
     Text := Expand(Command);
     Assert.IsTrue(Parses(Text), Command + ': ' + Text);
   end;
+end;
+
+/// <summary>Anzahl der Vorkommen von ASub in AText.</summary>
+function Occurrences(const AText, ASub: string): Integer;
+var
+  Start: Integer;
+begin
+  Result := 0;
+  Start := Pos(ASub, AText);
+  while Start > 0 do
+  begin
+    Inc(Result);
+    Start := PosEx(ASub, AText, Start + Length(ASub));
+  end;
+end;
+
+procedure TClassCommandsTests.DtorKeepsPassedReferences;
+var
+  Text, Source: string;
+  Edits: TArray<TRuleEdit>;
+begin
+  // Übergebene Referenz (FListe := AListe) gehört dem Aufrufer und wird nicht freigegeben.
+  Source := StringReplace(WithCommand('/dtor'), '    procedure Stop;'#10, '    constructor Create(AListe: TStringList);'#10,
+    []);
+  Source := StringReplace(Source, 'procedure TFoo.Run;', 'constructor TFoo.Create(AListe: TStringList);'#10'begin'#10 +
+    '  FListe := AListe;'#10'end;'#10#10'procedure TFoo.Run;', []);
+  Assert.IsTrue(Run(Source, 15, Edits));
+  Text := Apply(Source, Edits);
+  Assert.IsTrue(Pos('destructor TFoo.Destroy;'#10'begin'#10'  inherited;'#10'end;', Text) > 0, Text);
+  Assert.AreEqual(0, Pos('FreeAndNil(FListe)', Text), Text);
+end;
+
+procedure TClassCommandsTests.DtorExtendsExisting;
+var
+  Text, Source: string;
+  Edits: TArray<TRuleEdit>;
+begin
+  // Vorhandener Destruktor gibt FListe schon frei; FName2 kommt vor inherited dazu.
+  Source := StringReplace(WithCommand('/dtor'), '    procedure Stop;'#10,
+    '    constructor Create;'#10'    destructor Destroy; override;'#10, []);
+  Source := StringReplace(Source, '    FName: string;'#10, '    FName: string;'#10'    FWeitere: TStringList;'#10, []);
+  Source := StringReplace(Source, 'procedure TFoo.Run;', 'constructor TFoo.Create;'#10'begin'#10 +
+    '  FListe := TStringList.Create;'#10'  FWeitere := TStringList.Create;'#10'end;'#10#10 +
+    'destructor TFoo.Destroy;'#10'begin'#10'  FListe.Free;'#10'  inherited;'#10'end;'#10#10'procedure TFoo.Run;', []);
+  Assert.IsTrue(Run(Source, 17, Edits));
+  Text := Apply(Source, Edits);
+  Assert.IsTrue(Pos('destructor TFoo.Destroy;'#10'begin'#10'  FListe.Free;'#10'  FreeAndNil(FWeitere);'#10 +
+    '  inherited;'#10'end;', Text) > 0, Text);
+  // Keine zweite Deklaration und kein zweiter Rumpf.
+  Assert.AreEqual(1, Occurrences(Text, 'destructor Destroy; override;'), Text);
+  Assert.AreEqual(1, Occurrences(Text, 'destructor TFoo.Destroy;'), Text);
+  Assert.IsTrue(Parses(Text), Text);
+  // Alles schon freigegeben: Hinweis.
+  Source := StringReplace(Source, '  inherited;'#10'end;'#10#10'procedure TFoo.Run;',
+    '  FWeitere.Free;'#10'  inherited;'#10'end;'#10#10'procedure TFoo.Run;', []);
+  Assert.IsFalse(Run(Source, 17, Edits));
+end;
+
+procedure TClassCommandsTests.DtorAndMsgWrongPlaceFail;
+const
+  Text = 'unit U;'#10'interface'#10'implementation'#10'procedure P;'#10'begin'#10'  %s'#10'end;'#10'end.';
+var
+  Edits: TArray<TRuleEdit>;
+  Problems: TArray<TSlashProblem>;
+begin
+  Assert.IsFalse(Run(Format(Text, ['/dtor']), 5, Edits));
+  Problems := TSlashCommandRegistry.Shared.Problems(Format(Text, ['/dtor']), nil);
+  Assert.AreEqual(1, Integer(Length(Problems)));
+  Assert.AreEqual('/dtor gilt nur in einer Klasse oder einer ihrer Methoden', Problems[0].Message);
+  Assert.IsFalse(Run(Format(Text, ['/msg WM_SIZE']), 5, Edits));
+  Problems := TSlashCommandRegistry.Shared.Problems(Format(Text, ['/msg WM_SIZE']), nil);
+  Assert.AreEqual(1, Integer(Length(Problems)));
+  Assert.AreEqual('/msg gilt nur in einer Klasse oder einer ihrer Methoden', Problems[0].Message);
+  // Ohne Botschaft.
+  Assert.IsFalse(Run(WithCommand('/msg'), 15, Edits));
+end;
+
+const
+  IntfUnit =
+    'unit U;'#10 +                                  // 0
+    'interface'#10 +                                // 1
+    'type'#10 +                                     // 2
+    '  IExporter = interface'#10 +                  // 3
+    '    procedure Export(const AFileName: string);'#10 + // 4
+    '    function Count: Integer;'#10 +             // 5
+    '  end;'#10 +                                   // 6
+    '  TFoo = %s'#10 +                              // 7
+    '  public'#10 +                                 // 8
+    '    procedure Run;'#10 +                       // 9
+    '    %s'#10 +                                   // 10 Befehl
+    '  end;'#10 +                                   // 11
+    'implementation'#10 +                           // 12
+    #10 +                                           // 13
+    'procedure TFoo.Run;'#10 +                      // 14
+    'begin'#10 +                                    // 15
+    'end;'#10 +                                     // 16
+    #10 +                                           // 17
+    'end.';
+
+procedure TClassCommandsTests.IntfAddsInterfaceAndMethods;
+var
+  Text, Source: string;
+  Edits: TArray<TRuleEdit>;
+begin
+  Source := Format(IntfUnit, ['class(TInterfacedObject)', '/intf IExporter']);
+  Assert.IsTrue(Run(Source, 10, Edits));
+  Text := Apply(Source, Edits);
+  Assert.IsTrue(Pos('  TFoo = class(TInterfacedObject, IExporter)', Text) > 0, Text);
+  Assert.IsTrue(Pos('procedure Export(const AFileName: string);', Text) > 0, Text);
+  Assert.IsTrue(Pos('function Count: Integer;', Text) > 0, Text);
+  Assert.IsTrue(Pos('procedure TFoo.Export(const AFileName: string);', Text) > 0, Text);
+  Assert.IsTrue(Pos('function TFoo.Count: Integer;', Text) > 0, Text);
+  Assert.AreEqual(0, Pos('/intf', Text), Text);
+  Assert.IsTrue(Parses(Text), Text);
+  // Schon angehängt, aber eine Methode fehlt: nur die fehlende, Kopf bleibt.
+  Source := Format(IntfUnit, ['class(TInterfacedObject, IExporter)', '/intf IExporter']);
+  Source := StringReplace(Source, '    procedure Run;'#10, '    procedure Run;'#10'    function Count: Integer;'#10, []);
+  Source := StringReplace(Source, 'procedure TFoo.Run;', 'function TFoo.Count: Integer;'#10'begin'#10 +
+    '  Result := 0;'#10'end;'#10#10'procedure TFoo.Run;', []);
+  Assert.IsTrue(Run(Source, 11, Edits));
+  Text := Apply(Source, Edits);
+  Assert.IsTrue(Pos('  TFoo = class(TInterfacedObject, IExporter)'#10, Text) > 0, Text);
+  Assert.IsTrue(Pos('procedure TFoo.Export(const AFileName: string);', Text) > 0, Text);
+  Assert.AreEqual(1, Occurrences(Text, 'function TFoo.Count'), Text);
+  Assert.IsTrue(Parses(Text), Text);
+end;
+
+procedure TClassCommandsTests.IntfWithoutAncestorList;
+var
+  Text, Source: string;
+  Edits: TArray<TRuleEdit>;
+begin
+  Source := Format(IntfUnit, ['class', '/intf IExporter']);
+  Assert.IsTrue(Run(Source, 10, Edits));
+  Text := Apply(Source, Edits);
+  Assert.IsTrue(Pos('  TFoo = class(TInterfacedObject, IExporter)'#10, Text) > 0, Text);
+  Assert.IsTrue(Parses(Text), Text);
+end;
+
+procedure TClassCommandsTests.IntfWrongPlaceFails;
+var
+  Edits: TArray<TRuleEdit>;
+  Source: string;
+begin
+  // Unbekanntes Interface, kein Interface, ohne Namen.
+  Assert.IsFalse(Run(Format(IntfUnit, ['class', '/intf IUnbekannt']), 10, Edits));
+  Assert.IsFalse(Run(Format(IntfUnit, ['class', '/intf TFoo']), 10, Edits));
+  Assert.IsFalse(Run(Format(IntfUnit, ['class', '/intf']), 10, Edits));
+  // Schon vollständig.
+  Source := Format(IntfUnit, ['class(TInterfacedObject, IExporter)', '/intf IExporter']);
+  Source := StringReplace(Source, '    procedure Run;'#10, '    procedure Run;'#10 +
+    '    procedure Export(const AFileName: string);'#10'    function Count: Integer;'#10, []);
+  Assert.IsFalse(Run(Source, 12, Edits));
+  // In einer Methode statt in der Deklaration.
+  Source := StringReplace(Format(IntfUnit, ['class', '']), 'procedure TFoo.Run;'#10'begin'#10,
+    'procedure TFoo.Run;'#10'begin'#10'  /intf IExporter'#10, []);
+  Assert.IsFalse(Run(Source, 16, Edits));
 end;
 
 initialization

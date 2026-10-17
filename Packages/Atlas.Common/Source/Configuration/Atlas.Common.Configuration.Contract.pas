@@ -171,6 +171,9 @@ type
     Fix: TDfmFixMode;
     /// <summary>Glob-Muster für Dateien, die die Regel nicht prüft.</summary>
     Exclude: TArray<string>;
+    /// <summary>Stellen von "class" und "property" in atlas.json für Meldungen mit Index (#309).</summary>
+    ClassRange: TTextRange;
+    PropertyRange: TTextRange;
   end;
 
   /// <summary>Formatierung (#43). Given sagt, welche Werte aus atlas.json bzw. dem
@@ -303,6 +306,11 @@ type
     SlashCommandsDisabled: TArray<string>;
     /// <summary>Vorlage für /header mit {unit}, {jahr}, {autor} (#306); '' = Vorlage der Regel file-header.</summary>
     SlashHeaderTemplate: string;
+    /// <summary>Protokollaufruf für /log, /except und /measure (#304): Routinenname oder Vorlage mit {text};
+    /// '' = OutputDebugString.</summary>
+    SlashLogCall: string;
+    /// <summary>Palettenseite für /component (#299).</summary>
+    SlashComponentPalette: string;
     /// <summary>"uses aufräumen" (source.organizeImports) sortiert alphabetisch; Vorgabe aus,
     /// weil die Reihenfolge die Initialisierung bestimmt (#182).</summary>
     SortUses: Boolean;
@@ -656,6 +664,8 @@ begin
   Result.SlashCommands := True;
   Result.SlashCommandsDisabled := nil;
   Result.SlashHeaderTemplate := '';
+  Result.SlashLogCall := '';
+  Result.SlashComponentPalette := 'Eigene';
   Result.SortUses := False;
   Result.SortUsesByNamespace := False;
   Result.UsesKeep := nil;

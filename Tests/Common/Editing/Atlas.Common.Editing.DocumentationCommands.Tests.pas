@@ -16,6 +16,8 @@ type
     [Test]
     procedure HeaderUpdatesYear;
     [Test]
+    procedure HeaderWrongPlace;
+    [Test]
     procedure DeprecatedAtMethodDeclaration;
     [Test]
     procedure DeprecatedType;
@@ -89,6 +91,19 @@ begin
     'implementation'#10'end.', 2));
   Assert.AreEqual('// (c) 2010-' + IntToStr(CurrentYear) + #10'unit U;'#10'interface'#10'implementation'#10'end.',
     Expand('// (c) 2010-2020'#10'unit U;'#10'/header'#10'interface'#10'implementation'#10'end.', 2));
+end;
+
+procedure TDocumentationCommandsTests.HeaderWrongPlace;
+const
+  Include = '/header'#10'procedure P;'#10'begin'#10'end;'#10;
+var
+  Problems: TArray<TSlashProblem>;
+begin
+  // Include-Datei ohne unit: kein Kopf, die Befehlszeile bleibt mit Hinweis stehen.
+  Assert.AreEqual('', Expand(Include, 0));
+  Problems := TSlashCommandRegistry.Shared.Problems(Include, nil);
+  Assert.AreEqual(1, Integer(Length(Problems)));
+  Assert.AreEqual('/header gilt nur in einer Unit', Problems[0].Message);
 end;
 
 procedure TDocumentationCommandsTests.DeprecatedAtMethodDeclaration;

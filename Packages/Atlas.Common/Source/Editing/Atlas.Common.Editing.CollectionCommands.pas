@@ -21,13 +21,21 @@ procedure RegisterCollectionCommands(ARegistry: TSlashCommandRegistry);
 /// <summary>Vergleichsfunktion für zwei Werte vom Typ ATypeName, z. B. CompareText; AUnit ist die nötige Unit.</summary>
 function CompareFunction(const ATypeName: string; out AUnit: string): string;
 
+/// <summary>Argumente für /sort und /filter (#319): ohne ACollection die Sammlungen im Gültigkeitsbereich der
+/// Befehlszeile (Felder der Klasse, globale und lokale Variablen mit Typargumenten), sonst die Felder und
+/// Properties ihres Elementtyps aus Datei und Index.</summary>
+function CollectionChoices(const AContext: TSlashContext; const ACollection: string): TArray<string>;
+
 implementation
 
 uses
   System.SysUtils,
   System.StrUtils,
   Atlas.Common.Documents.Contract,
+  Atlas.Common.Pascal.Contract,
   Atlas.Common.Pascal.SyntaxTree,
+  Atlas.Common.Pascal.Lexer,
+  Atlas.Common.Pascal.LanguageFeatures,
   Atlas.Common.Index.Contract,
   Atlas.Common.Editing.CommandSource,
   Atlas.Common.Editing.TypeCommands;
@@ -390,23 +398,73 @@ begin
   end;
 end;
 
-/// <summary>Bedingung mit dem Element als Bezug: "Aktiv" wird "K.Aktiv", "not Aktiv" wird "not K.Aktiv".</summary>
-function ElementCondition(const AVariable, ACondition: string): string;
+/// <summary>Ist AName ein Feld, eine Property oder Methode von AType (Datei oder Index)?</summary>
+function IsMember(ASource: TCommandSource; const AIndex: ISymbolIndex; const AType, AName: string): Boolean;
+var
+  Symbol: TIndexSymbol;
+  Location: TSymbolLocation;
 begin
-  if StartsText('not ', ACondition) then
-    Result := 'not ' + ElementCondition(AVariable, Trim(Copy(ACondition, 5, MaxInt)))
-  else if (ACondition <> '') and CharInSet(ACondition[1], ['A'..'Z', 'a'..'z', '_']) and
-    not StartsText(AVariable + '.', ACondition) then
-    Result := AVariable + '.' + ACondition
-  else
-    Result := ACondition;
+  for Symbol in ASource.UnitIndex.Symbols do
+    if SameText(Symbol.Container, AType) and SameText(Symbol.Name, AName) then
+      Exit(True);
+  if AIndex <> nil then
+    for Location in AIndex.FindSymbols(AName) do
+      if SameText(Location.Symbol.Container, AType) then
+        Exit(True);
+  Result := False;
+end;
+
+/// <summary>Bedingung mit dem Element als Bezug: Jeder Bezeichner, der ein Mitglied von AElement ist, bekommt
+/// AVariable davor ("Aktiv and (Umsatz > 0)" wird "K.Aktiv and (K.Umsatz > 0)"). Sind die Mitglieder unbekannt,
+/// nur der erste Bezeichner ("not Aktiv" wird "not K.Aktiv").</summary>
+function ElementCondition(ASource: TCommandSource; const AIndex: ISymbolIndex; const AElement, AVariable,
+  ACondition: string): string;
+var
+  Tokens: TArray<TPascalToken>;
+  Index, Last, Start: Integer;
+  AfterDot, Known, Prefix, First: Boolean;
+begin
+  Tokens := TPascalLexer.Tokenize(ACondition);
+  Known := False;
+  for Index := 0 to High(Tokens) do
+    if (Tokens[Index].Kind = TPascalTokenKind.Identifier) and
+      IsMember(ASource, AIndex, AElement, Tokens[Index].Text) then
+      Known := True;
+  Result := '';
+  Last := 0;
+  AfterDot := False;
+  First := True;
+  for Index := 0 to High(Tokens) do
+  begin
+    if Tokens[Index].Kind = TPascalTokenKind.Comment then
+      Continue;
+    Prefix := False;
+    if (Tokens[Index].Kind = TPascalTokenKind.Identifier) and not AfterDot then
+    begin
+      if Known then
+        Prefix := IsMember(ASource, AIndex, AElement, Tokens[Index].Text)
+      else
+        Prefix := First and not SameText(Tokens[Index].Text, AVariable);
+      First := False;
+    end;
+    if Prefix then
+    begin
+      Start := Tokens[Index].StartPos.Character;
+      Result := Result + Copy(ACondition, Last + 1, Start - Last) + AVariable + '.';
+      Last := Start;
+    end;
+    AfterDot := Tokens[Index].IsSymbol('.');
+  end;
+  Result := Result + Copy(ACondition, Last + 1, MaxInt);
 end;
 
 function ExecuteFilter(const AContext: TSlashContext; out AEdits: TArray<TTextEdit>; out AReason: string): Boolean;
 var
   Source: TCommandSource;
-  Arguments, Collection, Condition, Element, Variable, Indent, Text, LB: string;
+  Routine: TSyntaxNode;
+  Arguments, Collection, Condition, Element, Variable, Indent, Text, LB, Head, Loop: string;
   Space: Integer;
+  UseInline: Boolean;
 begin
   AEdits := nil;
   Arguments := Trim(AContext.Arguments);
@@ -417,7 +475,8 @@ begin
     Exit(Fail('Erwartet wird /filter Liste Bedingung', AReason));
   Source := TCommandSource.Create(AContext);
   try
-    if Source.RoutineAt = nil then
+    Routine := Source.RoutineAt;
+    if Routine = nil then
       Exit(Fail('/filter gilt nur im Rumpf einer Routine', AReason));
     Element := ElementType(Source, Collection);
     if Element = '' then
@@ -431,18 +490,109 @@ begin
     Variable := UpperCase(Variable);
     Indent := Source.Indent(Source.Line);
     LB := Source.LineBreak;
-    Text := Indent + 'var Treffer := TList<' + Element + '>.Create;' + LB +
+    // Vor Delphi 10.3 (#109) gibt es keine Inline-Variablen: beide in den var-Abschnitt.
+    UseInline := TLanguageFeatures.IsAvailable(TLanguageFeature.InlineVariable, AContext.DelphiVersion);
+    if UseInline then
+    begin
+      Head := 'var Treffer := ';
+      Loop := 'for var ';
+    end
+    else
+    begin
+      Head := 'Treffer := ';
+      Loop := 'for ';
+    end;
+    Text := Indent + Head + 'TList<' + Element + '>.Create;' + LB +
       Indent + 'try' + LB +
-      Indent + '  for var ' + Variable + ' in ' + Collection + ' do' + LB +
-      Indent + '    if ' + ElementCondition(Variable, Condition) + ' then' + LB +
+      Indent + '  ' + Loop + Variable + ' in ' + Collection + ' do' + LB +
+      Indent + '    if ' + ElementCondition(Source, AContext.Index, Element, Variable, Condition) + ' then' + LB +
       Indent + '      Treffer.Add(' + Variable + ');' + LB +
       Indent + '  ' + LB +
       Indent + 'finally' + LB +
       Indent + '  Treffer.Free;' + LB +
       Indent + 'end;' + LB;
     AEdits := [TTextEdit.Create(TTextRange.Create(Source.Line, 0, Source.Line + 1, 0), Text)];
+    if not UseInline then
+      AEdits := [AddLocal(Source, Routine, TSyntaxKind.VarSection, 'var', 'Treffer: TList<' + Element + '>;' + LB +
+        Source.Indent(Routine.StartPos.Line) + '  ' + Variable + ': ' + Element + ';')] + AEdits;
     AddUses(Source, AContext, Source.Line, ['System.Generics.Collections'], AEdits);
     Result := True;
+  finally
+    Source.Free;
+  end;
+end;
+
+procedure AddName(var ANames: TArray<string>; const AName: string);
+begin
+  if (AName <> '') and not MatchText(AName, ANames) then
+    ANames := ANames + [AName];
+end;
+
+/// <summary>Sammlungen im Gültigkeitsbereich der Befehlszeile.</summary>
+function CollectionNames(ASource: TCommandSource): TArray<string>;
+var
+  Symbol, ClassSymbol: TIndexSymbol;
+  HasClass: Boolean;
+  Routine: TSyntaxNode;
+  Index, Colon: Integer;
+  Part, Declared, Name: string;
+begin
+  Result := nil;
+  HasClass := ASource.ClassAt(ClassSymbol);
+  for Symbol in ASource.UnitIndex.Symbols do
+    if (Symbol.Kind in [TIndexSymbolKind.Field, TIndexSymbolKind.Property_, TIndexSymbolKind.Variable]) and
+      (Symbol.TypeArgs <> '') and ((Symbol.Container = '') or (HasClass and
+      SameText(Symbol.Container, ClassSymbol.Name))) then
+      AddName(Result, Symbol.Name);
+  // Parameter und lokale Variablen: "A, B: TList<T>" im Kopf oder var-Abschnitt, "var Name := TList<T>.Create".
+  Routine := ASource.RoutineAt;
+  if Routine = nil then
+    Exit;
+  for Index := Routine.StartPos.Line to ASource.Line - 1 do
+    for Part in StringReplace(ASource.Lines[Index], '(', ';', [rfReplaceAll]).Split([';']) do
+    begin
+      Declared := Trim(Part);
+      if StartsText('var ', Declared) or StartsText('out ', Declared) then
+        Declared := Trim(Copy(Declared, 5, MaxInt))
+      else if StartsText('const ', Declared) then
+        Declared := Trim(Copy(Declared, 7, MaxInt));
+      Colon := Pos(':', Declared);
+      if (Colon = 0) or (Pos('<', Declared) < Colon) then
+        Continue;
+      for Name in Copy(Declared, 1, Colon - 1).Split([',']) do
+        if IsValidIdent(Trim(Name)) then
+          AddName(Result, Trim(Name));
+    end;
+end;
+
+function CollectionChoices(const AContext: TSlashContext; const ACollection: string): TArray<string>;
+var
+  Source: TCommandSource;
+  Element: string;
+  Symbol: TIndexSymbol;
+  Location: TSymbolLocation;
+  Found: TUnitIndex;
+begin
+  Result := nil;
+  Source := TCommandSource.Create(AContext);
+  try
+    if ACollection = '' then
+      Exit(CollectionNames(Source));
+    Element := ElementType(Source, ACollection);
+    if Element = '' then
+      Exit;
+    for Symbol in Source.UnitIndex.Symbols do
+      if (Symbol.Kind in [TIndexSymbolKind.Field, TIndexSymbolKind.Property_]) and
+        SameText(Symbol.Container, Element) then
+        AddName(Result, Symbol.Name);
+    if AContext.Index = nil then
+      Exit;
+    for Location in AContext.Index.FindSymbols(Element) do
+      if (Location.Symbol.Container = '') and AContext.Index.FindFile(Location.FileName, Found) then
+        for Symbol in Found.Symbols do
+          if (Symbol.Kind in [TIndexSymbolKind.Field, TIndexSymbolKind.Property_]) and
+            SameText(Symbol.Container, Element) then
+            AddName(Result, Symbol.Name);
   finally
     Source.Free;
   end;

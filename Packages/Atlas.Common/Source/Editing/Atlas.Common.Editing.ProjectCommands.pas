@@ -9,6 +9,10 @@
 //   /unit Name         neue Unit neben der Datei anlegen, in .dpr/.dpk und .dproj
 //                      eintragen und öffnen (#297)
 //   /open Unit         Unit aus Index, Projekt oder Suchpfad öffnen (#297)
+//   /component TMyButton : TButton  Komponenten-Unit mit Register anlegen, in
+//                      .dpk bzw. .dpr und .dproj eintragen und öffnen (#299)
+//   /test              DUnitX-Test für die Methode um den Cursor in der Testunit
+//                      (#295); legt sie wie die Code-Aktion aus #274 an, wenn sie fehlt
 // Die Befehle prüfen alles vorab; Schreiben, Umschalten und Springen laufen
 // erst nach Erfolg über ISlashHost (TSlashContext.Defer). Ohne Host (Prüfung
 // stehen gebliebener Zeilen) passen sie nicht.
@@ -18,7 +22,8 @@ interface
 uses
   Atlas.Common.Editing.SlashCommands;
 
-/// <summary>Trägt /define, /define!, /searchpath, /config, /dfm, /unit und /open in ARegistry ein.</summary>
+/// <summary>Trägt /define, /define!, /searchpath, /config, /dfm, /unit, /open, /component und /test in ARegistry
+/// ein.</summary>
 procedure RegisterProjectCommands(ARegistry: TSlashCommandRegistry);
 
 implementation
@@ -38,6 +43,11 @@ uses
   Atlas.Common.Editing.UnitTemplates,
   Atlas.Common.Editing.TestUnits,
   Atlas.Common.Editing.CommandSource,
+  Atlas.Common.Editing.UsesClause,
+  Atlas.Common.Pascal.Contract,
+  Atlas.Common.Pascal.Lexer,
+  Atlas.Common.Pascal.TreeCache,
+  Atlas.Common.Index.Extractor,
   Atlas.Text.Lines;
 
 /// <summary>Projekt und .dproj-Text zur Datei des Befehls; False mit Grund.</summary>
@@ -272,10 +282,14 @@ begin
   Result := 'unit ' + AUnitName + ';' + LB + LB + 'interface' + LB + LB + 'implementation' + LB + LB + 'end.' + LB;
 end;
 
-function ExecuteUnit(const AContext: TSlashContext; out AEdits: TArray<TTextEdit>; out AReason: string): Boolean;
+/// <summary>Legt AFileName neben der Datei des Befehls mit AText an, trägt sie in .dpr/.dpk und .dproj ein,
+/// wenn ein Projekt geladen ist, und öffnet sie danach. ANeedsProject: ohne Projekt nicht anlegen.</summary>
+function AddNewUnit(const AContext: TSlashContext; const AName, AText: string; ANeedsProject: Boolean;
+  out AEdits: TArray<TTextEdit>; out AReason: string): Boolean;
 var
   Project: TProjectInfo;
-  ProjectText, Name, Folder, FileName, Existing, MainText, Uri: string;
+  HasProject: Boolean;
+  ProjectText, Folder, FileName, Existing, MainText, Uri: string;
   Item: TProjectUnit;
   Edit: TTextEdit;
   Files: TArray<TSlashFile>;
@@ -283,37 +297,51 @@ var
   Source: TCommandSource;
 begin
   AEdits := nil;
-  Name := UnitNameOf(AContext.Arguments);
-  if Name = '' then
-    Exit(Fail('Erwartet wird ein Unit-Name, z. B. /unit Kunden.Daten', AReason));
-  if not LoadProject(AContext, Project, ProjectText, AReason) then
-    Exit(False);
-  for Item in Project.Units do
-    if SameText(Item.Name, Name) then
-      Exit(Fail(Format('%s steht schon im Projekt', [Name]), AReason));
+  if ANeedsProject then
+  begin
+    if not LoadProject(AContext, Project, ProjectText, AReason) then
+      Exit(False);
+    HasProject := True;
+  end
+  else
+  begin
+    if AContext.Host = nil then
+      Exit(Fail(Format('/%s braucht den Editor', [AContext.Name]), AReason));
+    HasProject := AContext.Host.Project(AContext.Uri, Project) and
+      AContext.Host.ReadFile(Project.FileName, ProjectText);
+  end;
+  if HasProject then
+    for Item in Project.Units do
+      if SameText(Item.Name, AName) then
+        Exit(Fail(Format('%s steht schon im Projekt', [AName]), AReason));
   // Neben die Datei des Befehls, ohne Datei neben die .dproj.
   if AContext.Uri <> '' then
     Folder := TProjectPaths.DirectoryOf(TDocumentUris.ToPath(AContext.Uri))
+  else if HasProject then
+    Folder := TProjectPaths.DirectoryOf(Project.FileName)
   else
-    Folder := TProjectPaths.DirectoryOf(Project.FileName);
-  FileName := TProjectPaths.Combine(Folder, Name + '.pas');
+    Exit(Fail(Format('/%s braucht eine gespeicherte Datei', [AContext.Name]), AReason));
+  FileName := TProjectPaths.Combine(Folder, AName + '.pas');
   if AContext.Host.ReadFile(FileName, Existing) then
     Exit(Fail(Format('%s gibt es schon', [ExtractFileName(FileName)]), AReason));
-  Files := [TSlashFile.Create(FileName, NewUnitText(Name), True)];
-  // Hauptdatei: uses der .dpr bzw. contains der .dpk.
-  if (Project.MainSource <> '') and AContext.Host.ReadFile(Project.MainSource, MainText) then
+  Files := [TSlashFile.Create(FileName, AText, True)];
+  if HasProject then
   begin
-    if not TUnitTemplates.UnitProgramEdit(MainText, Name,
-      TTestUnits.RelativePath(TProjectPaths.DirectoryOf(Project.MainSource), FileName), Edit) then
-      Exit(Fail(Format('%s hat kein uses bzw. contains für %s', [ExtractFileName(Project.MainSource), Name]),
-        AReason));
-    Files := Files + [TSlashFile.Create(Project.MainSource, Applied(MainText, Edit), False)];
+    // Hauptdatei: uses der .dpr bzw. contains der .dpk.
+    if (Project.MainSource <> '') and AContext.Host.ReadFile(Project.MainSource, MainText) then
+    begin
+      if not TUnitTemplates.UnitProgramEdit(MainText, AName,
+        TTestUnits.RelativePath(TProjectPaths.DirectoryOf(Project.MainSource), FileName), Edit) then
+        Exit(Fail(Format('%s hat kein uses bzw. contains für %s', [ExtractFileName(Project.MainSource), AName]),
+          AReason));
+      Files := Files + [TSlashFile.Create(Project.MainSource, Applied(MainText, Edit), False)];
+    end;
+    if not TUnitTemplates.ProjectEdit(ProjectText,
+      TTestUnits.RelativePath(TProjectPaths.DirectoryOf(Project.FileName), FileName), '', TFormKind.Form, False,
+      Edit) then
+      Exit(Fail(Format('%s hat keinen Platz für DCCReference', [ExtractFileName(Project.FileName)]), AReason));
+    Files := Files + [TSlashFile.Create(Project.FileName, Applied(ProjectText, Edit), False)];
   end;
-  if not TUnitTemplates.ProjectEdit(ProjectText,
-    TTestUnits.RelativePath(TProjectPaths.DirectoryOf(Project.FileName), FileName), '', TFormKind.Form, False,
-    Edit) then
-    Exit(Fail(Format('%s hat keinen Platz für DCCReference', [ExtractFileName(Project.FileName)]), AReason));
-  Files := Files + [TSlashFile.Create(Project.FileName, Applied(ProjectText, Edit), False)];
   Source := TCommandSource.Create(AContext);
   try
     AEdits := [Source.RemoveCommand];
@@ -328,6 +356,75 @@ begin
       Host.WriteFiles(Uri, Files, FileName);
     end);
   Result := True;
+end;
+
+function ExecuteUnit(const AContext: TSlashContext; out AEdits: TArray<TTextEdit>; out AReason: string): Boolean;
+var
+  Name: string;
+begin
+  AEdits := nil;
+  Name := UnitNameOf(AContext.Arguments);
+  if Name = '' then
+    Exit(Fail('Erwartet wird ein Unit-Name, z. B. /unit Kunden.Daten', AReason));
+  Result := AddNewUnit(AContext, Name, NewUnitText(Name), True, AEdits, AReason);
+end;
+
+{ /component }
+
+/// <summary>Unit, die die Klasse AClassName deklariert, aus dem Index; '' ohne.</summary>
+function ClassUnit(const AContext: TSlashContext; const AClassName: string): string;
+var
+  Location: TSymbolLocation;
+begin
+  Result := '';
+  if AContext.Index = nil then
+    Exit;
+  for Location in AContext.Index.FindSymbols(AClassName) do
+    if (Location.Symbol.Kind = TIndexSymbolKind.ClassType) and (Location.Symbol.Container = '') and
+      (Location.UnitName <> '') then
+      Exit(Location.UnitName);
+end;
+
+function ExecuteComponent(const AContext: TSlashContext; out AEdits: TArray<TTextEdit>;
+  out AReason: string): Boolean;
+const
+  Usage = 'Erwartet wird /component TMyButton : TButton';
+var
+  ClassName, Ancestor, AncestorUnit, UnitName, Palette: string;
+  Colon: Integer;
+begin
+  AEdits := nil;
+  Colon := Pos(':', AContext.Arguments);
+  if Colon > 0 then
+  begin
+    ClassName := Trim(Copy(AContext.Arguments, 1, Colon - 1));
+    Ancestor := Trim(Copy(AContext.Arguments, Colon + 1, MaxInt));
+  end
+  else
+  begin
+    ClassName := Trim(AContext.Arguments);
+    Ancestor := 'TComponent';
+  end;
+  if not IsValidIdent(ClassName) or not IsValidIdent(Ancestor, True) then
+    Exit(Fail(Usage, AReason));
+  // TComponent steht in System.Classes, das das Gerüst immer einträgt.
+  AncestorUnit := '';
+  if not SameText(Ancestor, 'TComponent') then
+  begin
+    AncestorUnit := ClassUnit(AContext, Ancestor);
+    if AncestorUnit = '' then
+      Exit(Fail(Format('Die Klasse %s kennt der Index nicht', [Ancestor]), AReason));
+    if SameText(AncestorUnit, 'System.Classes') or SameText(AncestorUnit, 'System.SysUtils') then
+      AncestorUnit := '';
+  end;
+  UnitName := TUnitTemplates.InstanceName(ClassName);
+  Palette := '';
+  if AContext.Host <> nil then
+    Palette := Trim(AContext.Host.Setting(AContext.Uri, TSlashSettings.ComponentPalette));
+  if Palette = '' then
+    Palette := TSlashSettings.DefaultPalette;
+  Result := AddNewUnit(AContext, UnitName, TUnitTemplates.ComponentUnit(UnitName, ClassName, Ancestor,
+    AncestorUnit, Palette, #13#10), False, AEdits, AReason);
 end;
 
 { /open }
@@ -411,6 +508,190 @@ begin
   Result := True;
 end;
 
+{ /test }
+
+/// <summary>Zeile von "end" der Klassendeklaration ASymbol; -1 ohne.</summary>
+function ClassEndLine(const ALines: TArray<string>; const ASymbol: TIndexSymbol): Integer;
+begin
+  Result := ASymbol.Range.EndPos.Line;
+  if Result > High(ALines) then
+    Result := High(ALines);
+  while (Result > ASymbol.Range.StartPos.Line) and not StartsText('end', TrimLeft(ALines[Result])) do
+    Dec(Result);
+  if Result <= ASymbol.Range.StartPos.Line then
+    Result := -1;
+end;
+
+/// <summary>Zeile, vor der neue Rümpfe stehen: initialization, finalization bzw. "end."; -1 ohne.</summary>
+function BodyLine(const ALines: TArray<string>): Integer;
+var
+  Index: Integer;
+  Line: string;
+begin
+  Result := -1;
+  for Index := High(ALines) downto 0 do
+  begin
+    Line := LowerCase(Trim(ALines[Index]));
+    if (Result < 0) and Line.StartsWith('end.') then
+      Result := Index
+    else if (Result >= 0) and ((Line = 'initialization') or (Line = 'finalization')) then
+      Result := Index;
+  end;
+end;
+
+/// <summary>Trägt in die Testunit AText den Test ATestName (nummeriert, wenn es ihn gibt) für ATarget in die
+/// Testklasse AFixture ein, samt Rumpf und AUnitName im uses. AOnlyIfMissing: einen vorhandenen Test
+/// gleichen Namens nicht noch einmal anlegen (frisches Gerüst).</summary>
+function AddTestMethod(const AText, AFixture, ATestName, ATarget, AUnitName: string; AOnlyIfMissing: Boolean;
+  out ANewText, AReason: string): Boolean;
+var
+  Tree: TSyntaxTree;
+  Index: TUnitIndex;
+  Symbol, Fixture: TIndexSymbol;
+  Found: Boolean;
+  Lines: TArray<string>;
+  Names: TArray<string>;
+  LineBreak, Name, Indent: string;
+  EndLine, Body, Number: Integer;
+  Tokens: TArray<TPascalToken>;
+  UsesEdit: TTextEdit;
+  HasUses: Boolean;
+begin
+  ANewText := '';
+  Tree := TSyntaxTreeCache.Parse(AText);
+  try
+    Index := TIndexExtractor.Extract(Tree, '');
+  finally
+    Tree.Free;
+  end;
+  Found := False;
+  Fixture := Default(TIndexSymbol);
+  for Symbol in Index.Symbols do
+    if (Symbol.Kind = TIndexSymbolKind.ClassType) and (Symbol.Container = '') then
+    begin
+      if SameText(Symbol.Name, AFixture) then
+      begin
+        Fixture := Symbol;
+        Found := True;
+        Break;
+      end;
+      if not Found then
+      begin
+        Fixture := Symbol;
+        Found := True;
+      end;
+    end;
+  if not Found then
+    Exit(Fail('Die Testunit hat keine Testklasse', AReason));
+  Names := nil;
+  for Symbol in Index.Symbols do
+    if (Symbol.Kind = TIndexSymbolKind.Method) and SameText(Symbol.Container, Fixture.Name) then
+      Names := Names + [Symbol.Name];
+  Name := ATestName;
+  if MatchText(Name, Names) and AOnlyIfMissing then
+  begin
+    ANewText := AText;
+    Exit(True);
+  end;
+  Number := 1;
+  while MatchText(Name, Names) do
+  begin
+    Inc(Number);
+    Name := ATestName + IntToStr(Number);
+  end;
+  LineBreak := TTextLines.LineBreakOf(AText);
+  Lines := AText.Split([LineBreak]);
+  EndLine := ClassEndLine(Lines, Fixture);
+  Body := BodyLine(Lines);
+  if (EndLine < 0) or (Body < 0) then
+    Exit(Fail('Testklasse oder Ende der Testunit nicht gefunden', AReason));
+  // uses vor dem Einfügen bestimmen; der Edit liegt vor allen anderen Stellen.
+  Tokens := TPascalLexer.Tokenize(AText);
+  HasUses := TUsesClauses.IsUsed(TUsesClauses.UsedUnits(Tokens), AUnitName, nil) or
+    not TUsesClauses.AddUnit(Tokens, TLineTable.Build(AText).OffsetAt(Fixture.Range.StartPos), AUnitName, LineBreak,
+    UsesEdit);
+  Indent := Copy(Lines[EndLine], 1, Length(Lines[EndLine]) - Length(TrimLeft(Lines[EndLine]))) + '  ';
+  Lines[Body] := 'procedure ' + Fixture.Name + '.' + Name + ';' + LineBreak + 'begin' + LineBreak +
+    '  Assert.Fail(' + QuotedStr('Test für ' + ATarget + ' fehlt noch') + ');' + LineBreak + 'end;' + LineBreak +
+    LineBreak + Lines[Body];
+  Lines[EndLine] := Indent + '[Test]' + LineBreak + Indent + 'procedure ' + Name + ';' + LineBreak + Lines[EndLine];
+  ANewText := string.Join(LineBreak, Lines);
+  if not HasUses then
+    ANewText := Applied(ANewText, UsesEdit);
+  Result := True;
+end;
+
+function ExecuteTest(const AContext: TSlashContext; out AEdits: TArray<TTextEdit>; out AReason: string): Boolean;
+var
+  Source: TCommandSource;
+  Routine: TSyntaxNode;
+  Target: TSlashTestUnit;
+  RoutineName, ClassName, MethodName, UnitName, TestText, NewText, MainText, ProjectFile, ProjectText,
+    Relative, Uri: string;
+  Dot, Bracket: Integer;
+  Files: TArray<TSlashFile>;
+  Edit: TTextEdit;
+  Host: ISlashHost;
+begin
+  AEdits := nil;
+  Source := TCommandSource.Create(AContext);
+  try
+    Routine := Source.RoutineAt;
+    if Routine = nil then
+      Exit(Fail('/test gilt nur im Rumpf einer Methode oder Routine', AReason));
+    if AContext.Host = nil then
+      Exit(Fail('/test braucht den Editor', AReason));
+    RoutineName := Routine.Name;
+    Dot := LastDelimiter('.', RoutineName);
+    ClassName := Copy(RoutineName, 1, Dot - 1);
+    MethodName := Copy(RoutineName, Dot + 1, MaxInt);
+    Bracket := Pos('<', ClassName);
+    if Bracket > 0 then
+      ClassName := Copy(ClassName, 1, Bracket - 1);
+    UnitName := Source.UnitIndex.UnitName;
+    if (UnitName = '') or (MethodName = '') then
+      Exit(Fail('/test gilt nur in einer Unit', AReason));
+    if not AContext.Host.TestUnit(AContext.Uri, Source.Text, Target) then
+      Exit(Fail(Target.Reason, AReason));
+    if Target.Exists then
+    begin
+      if not AContext.Host.ReadFile(Target.FileName, TestText) then
+        Exit(Fail(Format('%s lässt sich nicht lesen', [ExtractFileName(Target.FileName)]), AReason));
+    end
+    else
+      TestText := TTestUnits.UnitText(Target.UnitName, Source.UnitIndex, ClassName, #13#10);
+    if ClassName <> '' then
+      RoutineName := ClassName + '.' + MethodName;
+    if not AddTestMethod(TestText, TTestUnits.FixtureName(ClassName, UnitName), 'Test' + MethodName, RoutineName,
+      UnitName, not Target.Exists, NewText, AReason) then
+      Exit(False);
+    Files := [TSlashFile.Create(Target.FileName, NewText, not Target.Exists)];
+    if not Target.Exists then
+    begin
+      // Ins Testprojekt wie die Code-Aktion aus #274: uses der .dpr und DCCReference der .dproj.
+      Relative := TTestUnits.RelativePath(TProjectPaths.DirectoryOf(Target.TestProgram), Target.FileName);
+      if AContext.Host.ReadFile(Target.TestProgram, MainText) and
+        TUnitTemplates.UnitProgramEdit(MainText, Target.UnitName, Relative, Edit) then
+        Files := Files + [TSlashFile.Create(Target.TestProgram, Applied(MainText, Edit), False)];
+      ProjectFile := ChangeFileExt(Target.TestProgram, '.dproj');
+      if AContext.Host.ReadFile(ProjectFile, ProjectText) and (Pos('"' + Relative + '"', ProjectText) = 0) and
+        TUnitTemplates.ProjectEdit(ProjectText, Relative, '', TFormKind.Form, False, Edit) then
+        Files := Files + [TSlashFile.Create(ProjectFile, Applied(ProjectText, Edit), False)];
+    end;
+    AEdits := [Source.RemoveCommand];
+  finally
+    Source.Free;
+  end;
+  Host := AContext.Host;
+  Uri := AContext.Uri;
+  AContext.Defer(
+    procedure
+    begin
+      Host.WriteFiles(Uri, Files, Target.FileName);
+    end);
+  Result := True;
+end;
+
 function Command(const AName, ASummary, AExample: string; const AExecute: TSlashExecute): TSlashCommand;
 begin
   Result.Name := AName;
@@ -433,6 +714,10 @@ begin
   ARegistry.Register(Command('unit', 'Neue Unit anlegen, ins Projekt eintragen und öffnen', '/unit Kunden.Daten',
     ExecuteUnit));
   ARegistry.Register(Command('open', 'Unit aus dem Suchpfad öffnen', '/open System.SysUtils', ExecuteOpen));
+  ARegistry.Register(Command('component', 'Neue Komponenten-Unit mit Register anlegen und ins Projekt eintragen',
+    '/component TMyButton : TButton', ExecuteComponent));
+  ARegistry.Register(Command('test', 'DUnitX-Test für die aktuelle Methode anlegen, Testunit bei Bedarf',
+    '/test', ExecuteTest));
 end;
 
 end.

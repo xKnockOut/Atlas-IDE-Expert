@@ -43,6 +43,38 @@ begin
   Result := not (Before(A.EndPos, B.StartPos) or Before(B.EndPos, A.StartPos));
 end;
 
+function FileEditsIndex(const AAction: TCodeAction; const AFileName: string): Integer;
+var
+  Index: Integer;
+begin
+  for Index := 0 to High(AAction.FileEdits) do
+    if SameText(AAction.FileEdits[Index].FileName, AFileName) then
+      Exit(Index);
+  Result := -1;
+end;
+
+/// <summary>Edits der Korrektur in die Aktion: ins Dokument oder in die Datei der Korrektur (#309).</summary>
+procedure AddFixEdits(var AAction: TCodeAction; const AFix: TRuleFix);
+var
+  Index: Integer;
+  Entry: TFileTextEdits;
+begin
+  if AFix.FileName = '' then
+  begin
+    AAction.Edits := AAction.Edits + AFix.Edits;
+    Exit;
+  end;
+  Index := FileEditsIndex(AAction, AFix.FileName);
+  if Index < 0 then
+  begin
+    Entry.FileName := AFix.FileName;
+    Entry.Edits := AFix.Edits;
+    AAction.FileEdits := AAction.FileEdits + [Entry];
+  end
+  else
+    AAction.FileEdits[Index].Edits := AAction.FileEdits[Index].Edits + AFix.Edits;
+end;
+
 { TRuleCodeActions }
 
 class function TRuleCodeActions.ForFindings(const AFindings: TArray<TRuleFinding>; const AText: string;
@@ -64,7 +96,7 @@ begin
       Action := Default(TCodeAction);
       Action.Title := Fix.Title;
       Action.Kind := QuickFixKind;
-      Action.Edits := Fix.Edits;
+      AddFixEdits(Action, Fix);
       Action.IsPreferred := First and not Fix.Alternative;
       Action.RuleId := Finding.RuleId;
       Action.DiagnosticRange := Finding.Range;
@@ -92,6 +124,8 @@ var
   Fix: TRuleFix;
   Edit, Taken: TTextEdit;
   Fits: Boolean;
+  Target: Integer;
+  Existing: TArray<TTextEdit>;
 begin
   AAction := Default(TCodeAction);
   AAction.Title := 'Alle sicheren Korrekturen anwenden';
@@ -101,17 +135,25 @@ begin
     begin
       if not Fix.Safe then
         Continue;
+      // Überlappung je Datei: das Dokument oder z. B. die Formulardatei (#309).
+      Target := FileEditsIndex(AAction, Fix.FileName);
+      if Fix.FileName = '' then
+        Existing := AAction.Edits
+      else if Target >= 0 then
+        Existing := AAction.FileEdits[Target].Edits
+      else
+        Existing := nil;
       Fits := True;
       for Edit in Fix.Edits do
-        for Taken in AAction.Edits do
+        for Taken in Existing do
           if Overlaps(Edit.Range, Taken.Range) then
             Fits := False;
       // Eine Korrektur ganz oder gar nicht; die übersprungene kommt beim nächsten Lauf.
       if Fits then
-        AAction.Edits := AAction.Edits + Fix.Edits;
+        AddFixEdits(AAction, Fix);
       Break;
     end;
-  Result := AAction.Edits <> nil;
+  Result := (AAction.Edits <> nil) or (AAction.FileEdits <> nil);
 end;
 
 class function TRuleCodeActions.ForRange(const AFindings: TArray<TRuleFinding>; const AText: string;

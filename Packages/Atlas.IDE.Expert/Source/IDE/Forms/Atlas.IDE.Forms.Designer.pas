@@ -14,8 +14,9 @@
 // - Änderungen des Servers an einem offenen Formular (Umbenennen eines
 //   Handlers, #397) schreibt Atlas nicht auf die Platte, sonst überschreibt
 //   der Designer sie beim Speichern: TAtlasFormChanges vergleicht den
-//   gesendeten mit dem geänderten Text, die Ereignis-Zuordnungen setzt Atlas
-//   im Designer. Andere Änderungen an offenen Formularen lehnt Atlas ab.
+//   gesendeten mit dem geänderten Text, die Ereignis-Zuordnungen und einzeilige
+//   Eigenschaften (Eigenschaftsregeln, #309) setzt Atlas im Designer über RTTI.
+//   Andere Änderungen an offenen Formularen lehnt Atlas ab.
 // Nur im Hauptthread.
 
 interface
@@ -77,11 +78,15 @@ type
     class function CurrentText(const AFileName: string; out AText: string): Boolean; static;
     /// <summary>Ist AFileName (.dfm/.fmx) gerade im Designer offen?</summary>
     class function IsOpen(const AFileName: string): Boolean; static;
-    /// <summary>Lassen sich AEdits im offenen Formular ausführen? '' und AChanges, sonst der Grund.</summary>
+    /// <summary>Lassen sich AEdits im offenen Formular ausführen? '' mit AChanges und AProperties, sonst der
+    /// Grund.</summary>
     class function Check(const AFileName: string; const AEdits: TArray<TLspTextEdit>;
-      out AChanges: TArray<TAtlasFormEventChange>): string; static;
-    /// <summary>Setzt die Ereignis-Zuordnungen im Designer; '' bei Erfolg, sonst der Grund (nichts geändert).</summary>
-    class function Apply(const AFileName: string; const AChanges: TArray<TAtlasFormEventChange>): string; static;
+      out AChanges: TArray<TAtlasFormEventChange>; out AProperties: TArray<TAtlasFormPropertyChange>): string;
+      static;
+    /// <summary>Setzt Ereignis-Zuordnungen und Eigenschaften (#309) im Designer; '' bei Erfolg, sonst der
+    /// Grund (nichts geändert).</summary>
+    class function Apply(const AFileName: string; const AChanges: TArray<TAtlasFormEventChange>;
+      const AProperties: TArray<TAtlasFormPropertyChange>): string; static;
   end;
 
 implementation
@@ -162,6 +167,127 @@ begin
     begin
       Result := Designer.GetMethodName(AMethod);
     end);
+end;
+
+const
+  /// <summary>PropInfo.Default ohne default-Angabe (wie in System.Classes).</summary>
+  NoDefaultValue = Integer($80000000);
+
+/// <summary>Löst APath (auch Font.Name) an AComponent auf; '' oder der Grund.</summary>
+function ResolveProperty(AComponent: TObject; const APath: string; out AInstance: TObject;
+  out AProp: PPropInfo): string;
+var
+  Parts: TArray<string>;
+  Index: Integer;
+begin
+  AInstance := AComponent;
+  AProp := nil;
+  Parts := APath.Split(['.']);
+  if Length(Parts) = 0 then
+    Exit('ohne Eigenschaft');
+  for Index := 0 to High(Parts) - 1 do
+  begin
+    AProp := GetPropInfo(AInstance, Parts[Index]);
+    if (AProp = nil) or (AProp^.PropType^.Kind <> tkClass) then
+      Exit(Format('%s ist keine Objekt-Eigenschaft', [Parts[Index]]));
+    AInstance := GetObjectProp(AInstance, AProp);
+    if AInstance = nil then
+      Exit(Format('%s ist nicht gesetzt', [Parts[Index]]));
+  end;
+  AProp := GetPropInfo(AInstance, Parts[High(Parts)]);
+  if (AProp = nil) or (AProp^.SetProc = nil) then
+    Exit(Format('%s lässt sich nicht setzen', [APath]));
+  Result := '';
+end;
+
+/// <summary>DFM-Wert aus AChange in die Eigenschaft; mit ACheckOnly nur prüfen. '' oder der Grund.</summary>
+function AssignValue(AInstance: TObject; AProp: PPropInfo; const AChange: TAtlasFormPropertyChange;
+  ACheckOnly: Boolean): string;
+var
+  Text: string;
+  Number: Integer;
+  Number64: Int64;
+  Float: Double;
+  IdentToInt: TIdentToInt;
+  Kind: TTypeKind;
+begin
+  Result := '';
+  Kind := AProp^.PropType^.Kind;
+  if AChange.Removed then
+  begin
+    // Zeile entfernt (Rückgängig, #721): zurück zum Vorgabewert der Deklaration.
+    if Kind in [tkInteger, tkChar, tkWChar, tkEnumeration, tkSet] then
+    begin
+      if AProp^.Default = NoDefaultValue then
+        Exit(Format('%s hat keinen Vorgabewert', [AChange.PropertyPath]));
+      if not ACheckOnly then
+        SetOrdProp(AInstance, AProp, AProp^.Default);
+    end
+    else if Kind in [tkString, tkLString, tkWString, tkUString] then
+    begin
+      if not ACheckOnly then
+        SetStrProp(AInstance, AProp, '');
+    end
+    else
+      Result := Format('%s hat keinen Vorgabewert', [AChange.PropertyPath]);
+    Exit;
+  end;
+  case Kind of
+    tkString, tkLString, tkWString, tkUString:
+      begin
+        if not TAtlasFormChanges.StringValue(AChange.Value, Text) then
+          Exit(Format('%s: kein String-Wert', [AChange.PropertyPath]));
+        if not ACheckOnly then
+          SetStrProp(AInstance, AProp, Text);
+      end;
+    tkInteger:
+      begin
+        if not TryStrToInt(AChange.Value, Number) then
+        begin
+          // Bezeichner wie clRed oder crHandPoint.
+          IdentToInt := FindIdentToInt(AProp^.PropType^);
+          if not Assigned(IdentToInt) or not IdentToInt(AChange.Value, Number) then
+            Exit(Format('%s: %s ist keine Zahl', [AChange.PropertyPath, AChange.Value]));
+        end;
+        if not ACheckOnly then
+          SetOrdProp(AInstance, AProp, Number);
+      end;
+    tkInt64:
+      begin
+        if not TryStrToInt64(AChange.Value, Number64) then
+          Exit(Format('%s: %s ist keine Zahl', [AChange.PropertyPath, AChange.Value]));
+        if not ACheckOnly then
+          SetInt64Prop(AInstance, AProp, Number64);
+      end;
+    tkEnumeration:
+      begin
+        Number := GetEnumValue(AProp^.PropType^, AChange.Value);
+        if Number < 0 then
+          Exit(Format('%s: unbekannter Wert %s', [AChange.PropertyPath, AChange.Value]));
+        if not ACheckOnly then
+          SetOrdProp(AInstance, AProp, Number);
+      end;
+    tkSet:
+      begin
+        try
+          Number := StringToSet(AProp, AChange.Value);
+        except
+          on EPropertyConvertError do
+            Exit(Format('%s: unbekanntes Element in %s', [AChange.PropertyPath, AChange.Value]));
+        end;
+        if not ACheckOnly then
+          SetOrdProp(AInstance, AProp, Number);
+      end;
+    tkFloat:
+      begin
+        if not TryStrToFloat(AChange.Value, Float, TFormatSettings.Invariant) then
+          Exit(Format('%s: %s ist keine Zahl', [AChange.PropertyPath, AChange.Value]));
+        if not ACheckOnly then
+          SetFloatProp(AInstance, AProp, Float);
+      end;
+  else
+    Result := Format('%s: Typ wird im Designer nicht gesetzt', [AChange.PropertyPath]);
+  end;
 end;
 
 { TAtlasIdeForms.TNotification }
@@ -366,11 +492,12 @@ begin
 end;
 
 class function TAtlasIdeForms.Check(const AFileName: string; const AEdits: TArray<TLspTextEdit>;
-  out AChanges: TArray<TAtlasFormEventChange>): string;
+  out AChanges: TArray<TAtlasFormEventChange>; out AProperties: TArray<TAtlasFormPropertyChange>): string;
 var
   Sent, Edited, Reason: string;
 begin
   AChanges := nil;
+  AProperties := nil;
   // Die Positionen des Servers beziehen sich auf den Text, den Atlas zuletzt geschickt hat.
   if (FCurrent = nil) or not FCurrent.FTexts.TryGetValue(Key(AFileName), Sent) then
     Exit('im Designer offen, aber noch nicht an den Server gemeldet');
@@ -380,21 +507,27 @@ begin
     on E: ELspEditError do
       Exit(E.Message);
   end;
-  if not TAtlasFormChanges.Diff(Sent, Edited, AChanges, Reason) then
-    Exit(Format('im Designer offen; dort ändert Atlas nur Ereignis-Zuordnungen (%s)', [Reason]));
+  if not TAtlasFormChanges.Diff(Sent, Edited, AChanges, AProperties, Reason) then
+    Exit(Format('im Designer offen; dort ändert Atlas nur Ereignis-Zuordnungen und einzeilige Eigenschaften (%s)',
+      [Reason]));
   Result := '';
 end;
 
-class function TAtlasIdeForms.Apply(const AFileName: string; const AChanges: TArray<TAtlasFormEventChange>): string;
+class function TAtlasIdeForms.Apply(const AFileName: string; const AChanges: TArray<TAtlasFormEventChange>;
+  const AProperties: TArray<TAtlasFormPropertyChange>): string;
 var
   Editor: IOTAFormEditor;
   Designer: IDesigner;
   Root, Component: TComponent;
   Targets: TArray<TComponent>;
-  Properties: TArray<PPropInfo>;
+  Properties, ValueProps: TArray<PPropInfo>;
+  ValueTargets: TArray<TObject>;
   PropInfo: PPropInfo;
+  Instance: TObject;
   Change: TAtlasFormEventChange;
+  Prop: TAtlasFormPropertyChange;
   Index: Integer;
+  Reason: string;
 begin
   Editor := EditorOf(AFileName);
   Root := RootOf(Editor);
@@ -421,10 +554,30 @@ begin
     Targets := Targets + [Component];
     Properties := Properties + [PropInfo];
   end;
+  ValueTargets := nil;
+  ValueProps := nil;
+  for Prop in AProperties do
+  begin
+    if Prop.Component = '' then
+      Component := Root
+    else
+      Component := Root.FindComponent(Prop.Component);
+    if Component = nil then
+      Exit(Format('Komponente %s nicht gefunden', [Prop.Component]));
+    Reason := ResolveProperty(Component, Prop.PropertyPath, Instance, PropInfo);
+    if Reason = '' then
+      Reason := AssignValue(Instance, PropInfo, Prop, True);
+    if Reason <> '' then
+      Exit(Format('%s: %s', [Component.Name, Reason]));
+    ValueTargets := ValueTargets + [Instance];
+    ValueProps := ValueProps + [PropInfo];
+  end;
   for Index := 0 to High(AChanges) do
     SetMethodProp(Targets[Index], Properties[Index], Designer.CreateMethod(AChanges[Index].NewHandler,
       GetTypeData(Properties[Index]^.PropType^)));
-  if Length(AChanges) > 0 then
+  for Index := 0 to High(AProperties) do
+    AssignValue(ValueTargets[Index], ValueProps[Index], AProperties[Index], False);
+  if (Length(AChanges) > 0) or (Length(AProperties) > 0) then
   begin
     Designer.Modified;
     if FCurrent <> nil then

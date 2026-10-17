@@ -254,6 +254,7 @@
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.SemanticTokens.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.Commands.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.ApplyEdit.pas"/>
+        <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.DfmPropertyRules.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.Status.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.DocWiki.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.CompilerDirectives.pas"/>

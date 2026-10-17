@@ -74,6 +74,10 @@ type
 function SplitDeclaration(const AArguments: string; ASeparator: Char; out AName, AValue: string): Boolean;
 /// <summary>Setzt AReasonOut und liefert False.</summary>
 function Fail(const AReason: string; out AReasonOut: string): Boolean;
+/// <summary>Anweisung, die den String-Ausdruck AExpression protokolliert: slashCommands.logCall (#304) vom
+/// Host, sonst OutputDebugString(PChar(…)). Ein Routinenname bekommt den Ausdruck als Argument, {text}
+/// steht für ihn.</summary>
+function LogStatement(const AContext: TSlashContext; const AExpression: string): string;
 /// <summary>Zeile des Tokens, das den Block um ALine schließt; -1 ohne. Für die Befehlszeile mit
 /// ASource.WrapUntil (#719) diese Zeile, wenn sie im Block liegt, sonst -1.</summary>
 function BlockEnd(ASource: TCommandSource; ALine: Integer): Integer;
@@ -347,6 +351,23 @@ function Fail(const AReason: string; out AReasonOut: string): Boolean;
 begin
   AReasonOut := AReason;
   Result := False;
+end;
+
+function LogStatement(const AContext: TSlashContext; const AExpression: string): string;
+var
+  Call: string;
+begin
+  Call := '';
+  if AContext.Host <> nil then
+    Call := Trim(AContext.Host.Setting(AContext.Uri, TSlashSettings.LogCall));
+  if Call = '' then
+    Exit(Format('OutputDebugString(PChar(%s));', [AExpression]));
+  if Pos('{text}', Call) > 0 then
+    Result := StringReplace(Call, '{text}', AExpression, [rfReplaceAll])
+  else
+    Result := Call + '(' + AExpression + ')';
+  if not EndsStr(';', Result) then
+    Result := Result + ';';
 end;
 
 function BlockEndOfTokens(ASource: TCommandSource; ALine: Integer): Integer;
