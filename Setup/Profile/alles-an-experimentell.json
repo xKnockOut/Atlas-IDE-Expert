@@ -48,6 +48,7 @@
     "experimental.enabled": true,
     "editor.multiCursor": true,
     "editor.linkedEditing": true,
-    "editor.stickyScroll": true
+    "editor.stickyScroll": true,
+    "refactoring.inline": true
   }
 }

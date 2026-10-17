@@ -1,7 +1,8 @@
 ﻿unit Atlas.Common.Lsp.Refactorings.Tests;
 
 // Tests für die Code-Aktionen aus #50 mit Namensauflösung: „case
-// vervollständigen“, „with auflösen“, Typabfrage und Schalter.
+// vervollständigen“, „with auflösen“, Typabfrage und Schalter; dazu Einbetten
+// (#103) über die Namensauflösung und aus einer anderen Unit.
 
 interface
 
@@ -42,6 +43,10 @@ type
     /// <summary>#472: Nach "(" als einziger Eintrag; bekannte Namen und Abschalten ohne Angebot.</summary>
     [Test]
     procedure CompletionOffersCreateAfterParen;
+    /// <summary>#103: Methode aus einer anderen Unit, private Mitglieder, Variable mit Seiteneffekt und
+    /// Schalter.</summary>
+    [Test]
+    procedure InlinesOverTheIndex;
   end;
 
 implementation
@@ -150,6 +155,50 @@ const
     'implementation'#10 +
     'end.'#10;
 
+  LagerFile = 'C:\P\Lager.pas';
+  KasseFile = 'C:\P\Kasse.pas';
+
+  UnitLager =
+    'unit Lager;'#10 +
+    'interface'#10 +
+    'type'#10 +
+    '  TLager = class'#10 +
+    '  private'#10 +
+    '    FBestand: Integer;'#10 +
+    '  public'#10 +
+    '    Anzahl: Integer;'#10 +
+    '    function Doppelt: Integer;'#10 +
+    '    procedure Zugang(AMenge: Integer);'#10 +
+    '  end;'#10 +
+    'implementation'#10 +
+    'function TLager.Doppelt: Integer;'#10 +
+    'begin'#10 +
+    '  Result := Anzahl * 2;'#10 +
+    'end;'#10 +
+    'procedure TLager.Zugang(AMenge: Integer);'#10 +
+    'begin'#10 +
+    '  FBestand := FBestand + AMenge;'#10 +
+    'end;'#10 +
+    'end.'#10;
+
+  UnitKasse =
+    'unit Kasse;'#10 +                         // 0
+    'interface'#10 +                           // 1
+    'uses Lager;'#10 +                         // 2
+    'implementation'#10 +                      // 3
+    'procedure Zeige(const A: Integer);'#10 +  // 4
+    'begin'#10 +                               // 5
+    'end;'#10 +                                // 6
+    'procedure Buche(L: TLager);'#10 +         // 7
+    'var'#10 +                                 // 8
+    '  X: Integer;'#10 +                       // 9
+    'begin'#10 +                               // 10
+    '  X := L.Doppelt + 1;'#10 +               // 11
+    '  Zeige(X);'#10 +                         // 12
+    '  L.Zugang(X);'#10 +                      // 13
+    'end;'#10 +                                // 14
+    'end.'#10;
+
 function ReadFile(const AFileName: string; out AText: string): Boolean;
 begin
   Result := True;
@@ -159,6 +208,10 @@ begin
     AText := UnitRechner
   else if SameText(AFileName, KundenFile) then
     AText := UnitKunden
+  else if SameText(AFileName, LagerFile) then
+    AText := UnitLager
+  else if SameText(AFileName, KasseFile) then
+    AText := UnitKasse
   else
     Result := False;
 end;
@@ -486,6 +539,60 @@ begin
   finally
     Dispatcher.Free;
     Completion.Free;
+  end;
+end;
+
+procedure TLspRefactoringsTests.InlinesOverTheIndex;
+var
+  Kasse: TRefactoringContext;
+  Tree: TSyntaxTree;
+  Action: TCodeAction;
+  Titles_, Result_: string;
+
+  function Run(ALine, ACharacter: Integer; const ATitle: string): string;
+  var
+    Item: TCodeAction;
+  begin
+    Result := '-';
+    Titles_ := '';
+    for Item in TLspRefactorings.Actions(Tree, UnitKasse, TTextRange.Create(TTextPosition.Create(ALine, ACharacter),
+      TTextPosition.Create(ALine, ACharacter)), Kasse) do
+    begin
+      Titles_ := Titles_ + Item.Title + '|';
+      if Item.Title = ATitle then
+        Result := TChangeSignature.ApplyEdits(UnitKasse, Item.Edits);
+    end;
+  end;
+
+begin
+  FIndex.AddUnit(TIndexExtractor.ExtractText(UnitLager, LagerFile, nil));
+  FIndex.AddUnit(TIndexExtractor.ExtractText(UnitKasse, KasseFile, nil));
+  Kasse := Context;
+  Kasse.FileName := KasseFile;
+  Tree := TPascalParser.Parse(UnitKasse);
+  try
+    // Experimentell: ohne Schalter nichts.
+    Assert.AreEqual('-', Run(11, 10, 'Methode Doppelt einbetten'));
+    Kasse.Settings.InlineCode := True;
+    // Öffentliches Feld aus der anderen Unit: mit dem Empfänger eingesetzt.
+    Result_ := Run(11, 10, 'Methode Doppelt einbetten');
+    Assert.AreEqual(StringReplace(UnitKasse, 'X := L.Doppelt + 1;', 'X := (L.Anzahl * 2) + 1;', []), Result_);
+    // Privates Feld einer anderen Unit: kein Angebot.
+    Assert.AreEqual('-', Run(13, 5, 'Methode Zugang einbetten'));
+    // Die Variable: Der Ausdruck ruft auf, wird aber nur einmal und ohne Lesen davor gebraucht. L.Zugang(X) kennt
+    // die Datenflussanalyse nicht; X könnte dort ein var-Argument sein, also kein Angebot.
+    Assert.AreEqual('-', Run(9, 2, 'Variable X einbetten'), Titles_);
+    Result_ := StringReplace(UnitKasse, '  L.Zugang(X);'#10, '', []);
+    Tree.Free;
+    Tree := TPascalParser.Parse(Result_);
+    for Action in TLspRefactorings.Actions(Tree, Result_, TTextRange.Create(TTextPosition.Create(9, 2),
+      TTextPosition.Create(9, 2)), Kasse) do
+      if Action.Title = 'Variable X einbetten' then
+        Titles_ := TChangeSignature.ApplyEdits(Result_, Action.Edits);
+    Assert.AreEqual(StringReplace(StringReplace(Result_, 'var'#10'  X: Integer;'#10, '', []),
+      '  X := L.Doppelt + 1;'#10'  Zeige(X);', '  Zeige(L.Doppelt + 1);', []), Titles_);
+  finally
+    Tree.Free;
   end;
 end;
 

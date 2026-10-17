@@ -270,7 +270,9 @@
         <DCCReference Include="Common\Editing\Atlas.Common.Editing.RecordCommands.Tests.pas"/>
         <DCCReference Include="Common\Editing\Atlas.Common.Editing.PostfixTemplates.Tests.pas"/>
         <DCCReference Include="Common\Editing\Atlas.Common.Editing.CaseCompletion.Tests.pas"/>
+        <DCCReference Include="Common\Editing\Atlas.Common.Editing.RoutineLocals.Tests.pas"/>
         <DCCReference Include="Common\Editing\Atlas.Common.Editing.Extract.Tests.pas"/>
+        <DCCReference Include="Common\Editing\Atlas.Common.Editing.Inline.Tests.pas"/>
         <DCCReference Include="Common\Editing\Atlas.Common.Editing.WithResolution.Tests.pas"/>
         <DCCReference Include="Common\Editing\Atlas.Common.Editing.CreateMethod.Tests.pas"/>
         <DCCReference Include="Common\Editing\Atlas.Common.Editing.NameSuggestions.Tests.pas"/>

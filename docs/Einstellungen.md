@@ -21,7 +21,7 @@ Alle Einstellungen mit Seite und Bedienelement im Einstellungs-Plugin (#227). Ei
 | Compiler | `compiler`: `onSave`, `backend`, `ideCommand` | – | settings.json (Tools › Optionen › Atlas) | nein | Kontrollkästchen, Auswahl, Datei wählen | #40, #261 |
 | Allgemein | `vcs`: `provider` | – | settings.json (Tools › Optionen › Atlas) | nein | Auswahl | #571 |
 | Vervollständigung | `completion`: `matching`, `interfaceSection`, `senderCast`, `offerTryFinally`, `freeStyle`, `keywords`, `postfixTemplates`, `genericConstraints`, `createAccessors`, `accessorSection`, `resourceStrings`, `resourceStringUnit`, `nameSuggestions` | – | settings.json (Tools › Optionen › Atlas); `interfaceSection`, `senderCast`, `freeStyle`, `createAccessors`, `accessorSection`, `resourceStringUnit` in atlas.json | nein | Auswahl | #31, #188, #229, #450, #452, #466, #467, #473, #480, #489 |
-| Vervollständigung | `refactoring`: `inlineVar`, `changeSignature`, `newParameter`, `virtualOverload`, `syncSignatures`, `tryFinally`, `classActions`, `explicitType`, `extract`, `completeCase`, `resolveWith`, `createMethod`, `createMethodSection`, `createMethodCaret`, `constParameters` | – | atlas.json (Atlas › Projekt-Einstellungen) | nein | Kontrollkästchen | #42, #50, #100, #188, #453, #472 |
+| Vervollständigung | `refactoring`: `inlineVar`, `changeSignature`, `newParameter`, `virtualOverload`, `syncSignatures`, `tryFinally`, `classActions`, `explicitType`, `extract`, `completeCase`, `resolveWith`, `inline` (experimentell), `createMethod`, `createMethodSection`, `createMethodCaret`, `constParameters` | – | atlas.json (Atlas › Projekt-Einstellungen) | nein | Kontrollkästchen | #42, #50, #100, #188, #453, #472 |
 | Eingabehilfen | `usesCommand` | `true` | settings.json (Tools › Optionen › Atlas) | nein | Kontrollkästchen | #254 |
 | Eingabehilfen | `completeBlocks`: `docComment` | – | settings.json (Tools › Optionen › Atlas) | nein | Kontrollkästchen | #88 |
 | Editor | `metrics` | `true` | settings.json (Tools › Optionen › Atlas) | nein | Kontrollkästchen | #66 |
@@ -153,3 +153,4 @@ Riskante oder unreife Funktionen kommen als **experimentell** (#834): Sie haben 
 | `editor.multiCursor` | Plugin (Registry `MultiCursor`) | Editor | #589 |
 | `editor.linkedEditing` | Plugin (Registry `LinkedEditing`) | Editor | #658 |
 | `editor.stickyScroll` | Plugin (Registry `StickyScroll`) | Editor | #506 |
+| `refactoring.inline` | Projekt (atlas.json) | Vervollständigung | #103 |

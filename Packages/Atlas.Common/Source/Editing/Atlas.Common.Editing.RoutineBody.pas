@@ -66,6 +66,12 @@ type
     /// <summary>Zeile, vor der eine neue Routine entsteht: Anfang von ARoutine samt Kommentaren direkt darüber.
     /// </summary>
     class function RoutineInsertLine(const AText: string; ARoutine: TSyntaxNode): Integer; static;
+    /// <summary>Kette ohne Aufrufe (A, A.B, A[I]): könnte ein var-Argument sein.</summary>
+    class function IsVariableChain(ANode: TSyntaxNode): Boolean; static;
+    /// <summary>Anweisung, vor die eine Variable für den Ausdruck ANode kommt; nil, wenn der Ausdruck dort nicht
+    /// ohne Bedeutungsänderung vorab berechnet werden kann (Ziel einer Zuweisung, var-Argument, Schleifen- oder
+    /// case-Bedingung, rechte Seite von and/or, Zweig ohne begin, anonyme Methode, with, asm).</summary>
+    class function HostStatement(ANode, ABody: TSyntaxNode): TSyntaxNode; static;
   end;
 
 implementation
@@ -443,6 +449,66 @@ begin
       Dec(Result)
     else
       Break;
+  end;
+end;
+
+class function TRoutineBody.IsVariableChain(ANode: TSyntaxNode): Boolean;
+begin
+  case ANode.Kind of
+    TSyntaxKind.Identifier:
+      Result := True;
+    TSyntaxKind.MemberAccess, TSyntaxKind.Dereference:
+      Result := IsVariableChain(ANode[0]);
+    TSyntaxKind.IndexAccess:
+      Result := IsVariableChain(ANode[0]);
+  else
+    Result := False;
+  end;
+end;
+
+class function TRoutineBody.HostStatement(ANode, ABody: TSyntaxNode): TSyntaxNode;
+var
+  Node, Child: TSyntaxNode;
+begin
+  Result := nil;
+  Child := ANode;
+  Node := ANode.Parent;
+  while (Node <> nil) and (Node <> ABody) do
+  begin
+    case Node.Kind of
+      TSyntaxKind.AnonymousMethod, TSyntaxKind.WithStatement, TSyntaxKind.AsmBlock:
+        Exit;
+      TSyntaxKind.AssignStatement:
+        if Node[0] = Child then
+          Exit;
+      TSyntaxKind.Call:
+        if Node[0] = Child then
+          Exit
+        else if IsVariableChain(Child) and (Child = ANode) then
+          Exit;
+      TSyntaxKind.WhileStatement, TSyntaxKind.RepeatStatement:
+        // Bedingungen laufen mehrfach.
+        if not TRoutineBody.IsStatement(Child) then
+          Exit;
+      TSyntaxKind.CaseItem:
+        if not TRoutineBody.IsStatement(Child) then
+          Exit;
+      TSyntaxKind.IfExpr, TSyntaxKind.BinaryExpr:
+        // Kurzschluss: rechts nur, wenn links es zulässt.
+        if (Node.ChildCount > 1) and (Child <> Node[0]) and (SameText(Node.Name, 'and') or
+          SameText(Node.Name, 'or') or (Node.Kind = TSyntaxKind.IfExpr)) then
+          Exit;
+    end;
+    if TRoutineBody.IsStatement(Node) then
+    begin
+      if TRoutineBody.InList(Node) then
+        Exit(Node);
+      // Zweig ohne begin (if A then X := F(Y)): vorab rechnen änderte die Bedeutung.
+      if (Node.Parent <> nil) and not (Node.Parent.Kind in [TSyntaxKind.Block]) then
+        Exit;
+    end;
+    Child := Node;
+    Node := Node.Parent;
   end;
 end;
 

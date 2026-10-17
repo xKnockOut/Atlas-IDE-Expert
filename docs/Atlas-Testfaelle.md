@@ -1241,6 +1241,26 @@ Vorher: *Tools › Optionen › Atlas › Allgemein* „Experimentelle Funktione
 | SS9 | Helles und dunkles Editor-Farbschema | Hintergrund und Schrift passen zum Schema |
 | SS10 | Einstellung bzw. Hauptschalter „Experimentelle Funktionen“ aus | Kein Kopf, Klicks in die oberen Zeilen setzen wie sonst den Cursor |
 
+## Variable und Methode einbetten (#103, experimentell)
+
+Vorher: *Tools › Optionen › Atlas › Allgemein* „Experimentelle Funktionen erlauben“ an, in `atlas.json` `"refactoring": {"inline": true}`. Eine Unit mit einer Klasse `TLager` (privates Feld, öffentliches Feld `Anzahl`, Funktion `Doppelt` mit `Result := Anzahl * 2`) und einer zweiten Unit, die `TLager` benutzt.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| IN1 | `X := 1 + 2; Y := X * 3;`: Alt+Enter auf `X` | „Variable X einbetten“; danach `Y := (1 + 2) * 3;`, die Zuweisung und `X` im var-Abschnitt sind weg (der ganze Abschnitt, wenn es der letzte Eintrag war) |
+| IN2 | `var S := 'a'; Writeln(S); Writeln(S);`, auf `S` einbetten | `Writeln('a');` zweimal, die Inline-Variable ist weg |
+| IN3 | `X := A; A := 5; Writeln(X);` bzw. zwei Zuweisungen an `X` bzw. `X` nur in einem if-Zweig gesetzt | Keine Aktion |
+| IN4 | `X := FCount; Inc(FCount); Writeln(X);` | Keine Aktion; ohne `Inc` dazwischen wird `X` zu `FCount` |
+| IN5 | `X := Next(); Y := X;` bzw. `Y := A + X;` | Erst wird `Y := Next();`, im zweiten Fall keine Aktion (die Reihenfolge änderte sich) |
+| IN6 | In der zweiten Unit `X := L.Doppelt + 1;`, Alt+Enter auf `Doppelt` | „Methode Doppelt einbetten“; danach `X := (L.Anzahl * 2) + 1;`, die Unit von `TLager` bleibt unverändert |
+| IN7 | Aufruf einer Methode, die ein privates Feld von `TLager` liest, aus der zweiten Unit | Keine Aktion |
+| IN8 | `Show(IntToStr(N))` mit `procedure Show(const S: string)`, die `S` zweimal liest und eine lokale `N` hat | Hilfsvariable `var S: string := IntToStr(N);`, die lokale Variable heißt `N2`; mit `refactoring.inlineVar` aus stehen beide im var-Abschnitt |
+| IN9 | Funktion mit `if A < 0 then Exit(0);` am Anfang | Variable `NameResult`, daraus wird `if … then NameResult := 0 else begin … end`; der Aufruf wird `NameResult` |
+| IN10 | Aufruf in `if X > 0 then Log2(X);` | Der Rumpf steht in `begin … end` |
+| IN11 | Rekursive Routine, Konstruktor, zwei Exit, Rumpf mit asm, with oder inherited | Keine Aktion |
+| IN12 | Nach dem Einbetten übersetzen (Strg+F9) | 0 Fehler; das Verhalten ist unverändert |
+| IN13 | Einstellung bzw. Hauptschalter „Experimentelle Funktionen“ aus | Keine Einbetten-Aktionen |
+
 ## Anweisung vervollständigen (#697)
 
 | Nr. | Schritte | Erwartet |

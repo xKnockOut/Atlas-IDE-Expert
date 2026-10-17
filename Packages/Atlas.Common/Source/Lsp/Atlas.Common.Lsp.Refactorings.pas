@@ -13,8 +13,12 @@
 // Dazu „Methode aus Aufruf anlegen“ (#472): Typen der Argumente über
 // denselben Probetext, Rückgabetyp über den erwarteten Typ (#417), Zielklasse
 // über den Typ des Qualifizierers; Klassen aus Bibliotheken bekommen nichts.
-// Was refactoring.extract, .completeCase, .resolveWith und .createMethod
-// abschalten, kommt nicht.
+// Dazu „Variable einbetten“ und „Methode einbetten“ (#103, experimentell):
+// Bedeutung der Namen über TNameResolver.ResolveChain, der Rumpf der Methode
+// über die Deklaration (auch aus einer anderen Unit des Projekts, nicht aus
+// Bibliotheken).
+// Was refactoring.extract, .completeCase, .resolveWith, .createMethod und
+// .inline abschalten, kommt nicht.
 
 interface
 
@@ -28,6 +32,7 @@ uses
   Atlas.Common.Editing.CodeActions,
   Atlas.Common.Editing.Extract,
   Atlas.Common.Editing.WithResolution,
+  Atlas.Common.Editing.Inline,
   Atlas.Common.Lsp.CompletionRequest;
 
 type
@@ -75,7 +80,12 @@ type
     class function CreateMethod(AResolver: TNameResolver; ATree: TSyntaxTree; const AText: string;
       const APosition: TTextPosition; const AContext: TRefactoringContext; ACaretMarker: Boolean;
       out ACreated: TCreatedMethod): Boolean; static;
-    /// <summary>Alle eingeschalteten Aktionen aus #50 und #472 für ARange.</summary>
+    /// <summary>Bedeutung von Namen für das Einbetten (#103) über AResolver.</summary>
+    class function InlineLookup(AResolver: TNameResolver): TInlineLookup; static;
+    /// <summary>„Variable einbetten“ und „Methode einbetten“ (#103) für APosition.</summary>
+    class function InlineActions(AResolver: TNameResolver; ATree: TSyntaxTree; const AText: string;
+      const APosition: TTextPosition; const AContext: TRefactoringContext): TArray<TCodeAction>; static;
+    /// <summary>Alle eingeschalteten Aktionen aus #50, #103 und #472 für ARange.</summary>
     class function Actions(ATree: TSyntaxTree; const AText: string; const ARange: TTextRange;
       const AContext: TRefactoringContext): TArray<TCodeAction>; static;
   end;
@@ -422,6 +432,132 @@ begin
   Result := True;
 end;
 
+class function TLspRefactorings.InlineLookup(AResolver: TNameResolver): TInlineLookup;
+begin
+  Result :=
+    function(ATree: TSyntaxTree; const AFileName: string; const ANames: TArray<string>;
+      AOffset: Integer): TInlineMeaning
+    var
+      Resolved: TResolvedSymbol;
+    begin
+      Result := Default(TInlineMeaning);
+      Resolved := AResolver.ResolveChain(ATree, AFileName, ANames, AOffset);
+      if not Resolved.Found then
+        Exit;
+      Result.Found := True;
+      // Gleiche Deklaration: gleiche Art, Unit, Datei, Name und Stelle.
+      Result.Key := LowerCase(Format('%d|%s|%s|%s|%d:%d', [Ord(Resolved.Kind), Resolved.UnitName, Resolved.FileName,
+        Resolved.QualifiedName, Resolved.Range.StartPos.Line, Resolved.Range.StartPos.Character]));
+      Result.IsType := Resolved.IsType;
+      Result.IsRoutine := Resolved.SymbolKind in [TIndexSymbolKind.Method, TIndexSymbolKind.Constructor_,
+        TIndexSymbolKind.Routine];
+      Result.IsMember := (Resolved.Kind = TResolvedKind.Symbol) and (Resolved.Container <> '') and
+        (Resolved.SymbolKind in [TIndexSymbolKind.Field, TIndexSymbolKind.Property_, TIndexSymbolKind.Method,
+        TIndexSymbolKind.Constructor_]);
+      Result.Container := Resolved.Container;
+      case Resolved.Visibility of
+        TIndexVisibility.Protected:
+          Result.Visibility := TInlineVisibility.Protected;
+        TIndexVisibility.StrictProtected:
+          Result.Visibility := TInlineVisibility.StrictProtected;
+        TIndexVisibility.Private:
+          Result.Visibility := TInlineVisibility.Private;
+        TIndexVisibility.StrictPrivate:
+          Result.Visibility := TInlineVisibility.StrictPrivate;
+      else
+        Result.Visibility := TInlineVisibility.Public;
+      end;
+    end;
+end;
+
+/// <summary>Passt der Rumpf ARoutine zu ACount Argumenten (Pflichtparameter bis alle Parameter)?</summary>
+function AcceptsArguments(ARoutine: TSyntaxNode; ACount: Integer): Boolean;
+var
+  Header, Parameters: TSyntaxNode;
+  Index, Total, Required, Names: Integer;
+begin
+  Total := 0;
+  Required := 0;
+  Header := ARoutine.FindChild(TSyntaxKind.RoutineHeader);
+  Parameters := nil;
+  if Header <> nil then
+    Parameters := Header.FindChild(TSyntaxKind.Parameters);
+  if Parameters <> nil then
+    for Index := 0 to Parameters.ChildCount - 1 do
+    begin
+      Names := Length(Parameters[Index].Name.Split([',']));
+      Inc(Total, Names);
+      if Parameters[Index].ChildCount < 2 then
+        Inc(Required, Names);
+    end;
+  Result := (ACount >= Required) and (ACount <= Total);
+end;
+
+class function TLspRefactorings.InlineActions(AResolver: TNameResolver; ATree: TSyntaxTree; const AText: string;
+  const APosition: TTextPosition; const AContext: TRefactoringContext): TArray<TCodeAction>;
+var
+  Options: TInlineOptions;
+  Source, Callee: TInlineSource;
+  Action: TCodeAction;
+  Call: TInlineCall;
+  Resolved: TResolvedSymbol;
+  Owner: TUnitIndex;
+  Name, CalleeText: string;
+  CalleeTree: TSyntaxTree;
+  Routine, Candidate: TSyntaxNode;
+  Count: Integer;
+begin
+  Result := nil;
+  Options := TInlineOptions.Default;
+  Options.InlineVar := AContext.InlineVar;
+  Options.Style := AContext.Style;
+  Options.Lookup := InlineLookup(AResolver);
+  Source := TInlineSource.Create(AContext.FileName, AText, ATree);
+  if TInlineRefactoring.InlineVariable(Source, APosition, Options, Action) then
+    Result := Result + [Action];
+  if not TInlineRefactoring.CallAt(ATree, AText, APosition, Call) then
+    Exit;
+  Resolved := AResolver.Resolve(ATree, AContext.FileName, Call.NamePos);
+  if not Resolved.Found or (Resolved.Kind <> TResolvedKind.Symbol) or
+    not (Resolved.SymbolKind in [TIndexSymbolKind.Method, TIndexSymbolKind.Routine]) or
+    not AResolver.DeclaringUnit(Resolved, Owner) or Owner.Library_ then
+    Exit;
+  Name := Resolved.Name;
+  if Resolved.Container <> '' then
+    Name := Resolved.Container + '.' + Name;
+  CalleeTree := nil;
+  try
+    if SameText(Owner.FileName, AContext.FileName) then
+      Callee := Source
+    else
+    begin
+      if not (Assigned(AContext.ReadText) and AContext.ReadText(Owner.FileName, CalleeText)) then
+        Exit;
+      CalleeTree := TPascalParser.Parse(CalleeText);
+      Callee := TInlineSource.Create(Owner.FileName, CalleeText, CalleeTree);
+      AResolver.PinTree(CalleeTree, Owner.FileName);
+    end;
+    try
+      // Überladungen: der einzige Rumpf, der zur Zahl der Argumente passt.
+      Routine := nil;
+      Count := 0;
+      for Candidate in TInlineRefactoring.FindRoutines(Callee.Tree, Name) do
+        if AcceptsArguments(Candidate, Length(Call.Arguments)) then
+        begin
+          Routine := Candidate;
+          Inc(Count);
+        end;
+      if (Count = 1) and TInlineRefactoring.InlineMethod(Source, APosition, Callee, Routine, Options, Action) then
+        Result := Result + [Action];
+    finally
+      if CalleeTree <> nil then
+        AResolver.UnpinTree;
+    end;
+  finally
+    CalleeTree.Free;
+  end;
+end;
+
 class function TLspRefactorings.Actions(ATree: TSyntaxTree; const AText: string; const ARange: TTextRange;
   const AContext: TRefactoringContext): TArray<TCodeAction>;
 var
@@ -434,7 +570,8 @@ begin
     Exit;
   if AContext.Settings.Extract then
     Result := Result + TExtractRefactoring.Actions(AText, ATree, ARange, OptionsOf(AContext));
-  if not (AContext.Settings.CompleteCase or AContext.Settings.ResolveWith or AContext.Settings.CreateMethod) then
+  if not (AContext.Settings.CompleteCase or AContext.Settings.ResolveWith or AContext.Settings.CreateMethod or
+    AContext.Settings.InlineCode) then
     Exit;
   Resolver := NewResolver(AContext);
   try
@@ -454,6 +591,8 @@ begin
         Action.FileEdits := Created.FileEdits;
         Result := Result + [Action];
       end;
+      if AContext.Settings.InlineCode then
+        Result := Result + InlineActions(Resolver, ATree, AText, ARange.StartPos, AContext);
     finally
       Resolver.UnpinTree;
     end;
