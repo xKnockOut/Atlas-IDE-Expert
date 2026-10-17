@@ -553,6 +553,17 @@ type
     JumpToMatchKey: Integer;
     /// <summary>Kürzel „Bis zum Gegenstück markieren“ (#635, keys.jumpToMatchSelect); Vorgabe Strg+Umschalt+Ü.</summary>
     JumpToMatchSelectKey: Integer;
+    /// <summary>Zeilen und Methoden verschieben und duplizieren (#634, keys.moveLines).</summary>
+    MoveLines: Boolean;
+    /// <summary>Kürzel „Zeilen nach oben verschieben“ (#634, keys.moveLinesUp); Vorgabe Alt+↑.</summary>
+    MoveLinesUpKey: Integer;
+    /// <summary>Kürzel „Zeilen nach unten verschieben“ (#634, keys.moveLinesDown); Vorgabe Alt+↓.</summary>
+    MoveLinesDownKey: Integer;
+    /// <summary>Kürzel „Zeilen darüber duplizieren“ (#634, keys.duplicateLinesUp); Vorgabe Umschalt+Alt+↑.</summary>
+    DuplicateLinesUpKey: Integer;
+    /// <summary>Kürzel „Zeilen darunter duplizieren“ (#634, keys.duplicateLinesDown); Vorgabe Umschalt+Alt+↓.
+    /// </summary>
+    DuplicateLinesDownKey: Integer;
     /// <summary>Hauptschalter der Atlas-Willkommensseite (#753, welcomePage.enabled): Atlas-Bereiche auf der
     /// Willkommensseite der IDE und Fenster „Atlas-Start“.</summary>
     WelcomePage: Boolean;
@@ -1115,6 +1126,11 @@ begin
   Result.JumpToMatch := True;
   Result.JumpToMatchKey := $40BA; // Strg+Ü (VK_OEM_1 auf deutscher Tastatur)
   Result.JumpToMatchSelectKey := $60BA; // Strg+Umschalt+Ü
+  Result.MoveLines := True;
+  Result.MoveLinesUpKey := $8026; // Alt+↑
+  Result.MoveLinesDownKey := $8028; // Alt+↓
+  Result.DuplicateLinesUpKey := $A026; // Umschalt+Alt+↑
+  Result.DuplicateLinesDownKey := $A028; // Umschalt+Alt+↓
   Result.WelcomePage := True;
   Result.WelcomePageHost := 'welcomePage';
   Result.WelcomePageLayout := 'off';
@@ -1302,6 +1318,10 @@ begin
   OverviewRulerKinds := TAtlasOverviewKindNames.Normalize(OverviewRulerKinds);
   JumpToMatchKey := EnsureRange(JumpToMatchKey, 0, $FFFF);
   JumpToMatchSelectKey := EnsureRange(JumpToMatchSelectKey, 0, $FFFF);
+  MoveLinesUpKey := EnsureRange(MoveLinesUpKey, 0, $FFFF);
+  MoveLinesDownKey := EnsureRange(MoveLinesDownKey, 0, $FFFF);
+  DuplicateLinesUpKey := EnsureRange(DuplicateLinesUpKey, 0, $FFFF);
+  DuplicateLinesDownKey := EnsureRange(DuplicateLinesDownKey, 0, $FFFF);
   BookmarkKey := EnsureRange(BookmarkKey, 0, $FFFF);
   HideElementKey := EnsureRange(HideElementKey, 0, $FFFF);
   InlineDiagnostics := Choice(InlineDiagnostics, ['errors', 'off', 'errorsAndWarnings', 'all']);
@@ -1542,6 +1562,11 @@ begin
   JumpToMatch := AStore.ReadInteger('JumpToMatch', BoolValue(Default.JumpToMatch)) <> 0;
   JumpToMatchKey := AStore.ReadInteger('JumpToMatchKey', Default.JumpToMatchKey);
   JumpToMatchSelectKey := AStore.ReadInteger('JumpToMatchSelectKey', Default.JumpToMatchSelectKey);
+  MoveLines := AStore.ReadInteger('MoveLines', BoolValue(Default.MoveLines)) <> 0;
+  MoveLinesUpKey := AStore.ReadInteger('MoveLinesUpKey', Default.MoveLinesUpKey);
+  MoveLinesDownKey := AStore.ReadInteger('MoveLinesDownKey', Default.MoveLinesDownKey);
+  DuplicateLinesUpKey := AStore.ReadInteger('DuplicateLinesUpKey', Default.DuplicateLinesUpKey);
+  DuplicateLinesDownKey := AStore.ReadInteger('DuplicateLinesDownKey', Default.DuplicateLinesDownKey);
   WelcomePage := AStore.ReadInteger('WelcomePage', BoolValue(Default.WelcomePage)) <> 0;
   WelcomePageHost := AStore.ReadString('WelcomePageHost', Default.WelcomePageHost);
   WelcomePageLayout := AStore.ReadString('WelcomePageLayout', Default.WelcomePageLayout);
@@ -1829,6 +1854,11 @@ begin
   AStore.WriteInteger('JumpToMatch', BoolValue(JumpToMatch));
   AStore.WriteInteger('JumpToMatchKey', JumpToMatchKey);
   AStore.WriteInteger('JumpToMatchSelectKey', JumpToMatchSelectKey);
+  AStore.WriteInteger('MoveLines', BoolValue(MoveLines));
+  AStore.WriteInteger('MoveLinesUpKey', MoveLinesUpKey);
+  AStore.WriteInteger('MoveLinesDownKey', MoveLinesDownKey);
+  AStore.WriteInteger('DuplicateLinesUpKey', DuplicateLinesUpKey);
+  AStore.WriteInteger('DuplicateLinesDownKey', DuplicateLinesDownKey);
   AStore.WriteInteger('WelcomePage', BoolValue(WelcomePage));
   AStore.WriteString('WelcomePageHost', WelcomePageHost);
   AStore.WriteString('WelcomePageLayout', WelcomePageLayout);

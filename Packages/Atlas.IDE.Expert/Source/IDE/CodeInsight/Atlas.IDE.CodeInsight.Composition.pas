@@ -76,6 +76,8 @@ uses
   Atlas.IDE.Outline.Service,
   Atlas.IDE.Outline.Breadcrumbs,
   Atlas.IDE.Editor.LineChanges,
+  Atlas.Core.Editor.LineMove,
+  Atlas.IDE.Editor.LineMove,
   Atlas.IDE.Editor.OverviewRuler,
   Atlas.IDE.UnitSearch.Commands,
   Atlas.IDE.Generate.Commands,
@@ -941,6 +943,31 @@ begin
   TAtlasIdeLineChanges.GoToChange(False);
 end;
 
+function MoveLinesVisible: Boolean;
+begin
+  Result := TAtlasIdeLineMove.Enabled;
+end;
+
+procedure MoveLinesUp;
+begin
+  TAtlasIdeLineMove.Run(TAtlasLineMoveKind.MoveUp);
+end;
+
+procedure MoveLinesDown;
+begin
+  TAtlasIdeLineMove.Run(TAtlasLineMoveKind.MoveDown);
+end;
+
+procedure DuplicateLinesUp;
+begin
+  TAtlasIdeLineMove.Run(TAtlasLineMoveKind.DuplicateUp);
+end;
+
+procedure DuplicateLinesDown;
+begin
+  TAtlasIdeLineMove.Run(TAtlasLineMoveKind.DuplicateDown);
+end;
+
 function BreadcrumbsVisible: Boolean;
 begin
   Result := TAtlasIdeBreadcrumbs.Enabled;
@@ -1100,6 +1127,15 @@ begin
     ChangesVisible);
   Add('Atlas.PreviousChange', TAtlasTextId.PreviousChangeCommand,
     Guarded(TAtlasFeature.EditorCommands, PreviousChange), ChangesVisible);
+  // Zeilen verschieben und duplizieren (#634); nur sichtbar, solange keys.moveLines an ist.
+  Add('Atlas.MoveLinesUp', TAtlasTextId.MoveLinesUpCommand, Guarded(TAtlasFeature.EditorCommands, MoveLinesUp),
+    MoveLinesVisible);
+  Add('Atlas.MoveLinesDown', TAtlasTextId.MoveLinesDownCommand,
+    Guarded(TAtlasFeature.EditorCommands, MoveLinesDown), MoveLinesVisible);
+  Add('Atlas.DuplicateLinesUp', TAtlasTextId.DuplicateLinesUpCommand,
+    Guarded(TAtlasFeature.EditorCommands, DuplicateLinesUp), MoveLinesVisible);
+  Add('Atlas.DuplicateLinesDown', TAtlasTextId.DuplicateLinesDownCommand,
+    Guarded(TAtlasFeature.EditorCommands, DuplicateLinesDown), MoveLinesVisible);
   Add('Atlas.Callers', TAtlasTextId.MenuIncoming, Hierarchy(TAtlasHierarchyDirection.Incoming));
   Add('Atlas.Calls', TAtlasTextId.MenuOutgoing, Hierarchy(TAtlasHierarchyDirection.Outgoing));
   Add('Atlas.Supertypes', TAtlasTextId.MenuSupertypes, Hierarchy(TAtlasHierarchyDirection.Supertypes));
@@ -2027,6 +2063,12 @@ begin
     begin
       GuardWarning(AText);
     end);
+  // Zeilen verschieben und duplizieren (#634): Meldung ohne Nachbarmethode.
+  TAtlasIdeLineMove.Install(
+    procedure(AText: string)
+    begin
+      GuardWarning(AText);
+    end);
   // Übersichtsleiste an der Scrollleiste (#519).
   TAtlasIdeOverviewRuler.Install;
   // Schnell öffnen (#503): Dateiliste im Hintergrund, zuletzt geöffnete Dateien zählen.
@@ -2058,6 +2100,7 @@ begin
   TAtlasIdeBreadcrumbs.Uninstall;
   TAtlasIdeOverviewRuler.Uninstall;
   TAtlasIdeLineChanges.Uninstall;
+  TAtlasIdeLineMove.Uninstall;
   TAtlasIdeOutline.Uninstall;
   TAtlasIdeOutlineCache.Uninstall;
   TAtlasIdeNavHistory.Uninstall;

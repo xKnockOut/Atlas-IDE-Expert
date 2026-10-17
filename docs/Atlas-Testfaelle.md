@@ -1143,6 +1143,24 @@ Vorbereitung: Git-Projekt `GitDemo` mit `.atlas` `"tracker": {"provider": "githu
 | DI6 | Optionen › Atlas › Befehle: „Zwischen Deklaration und Implementierung wechseln“ aus, OK | Strg+Umschalt+↑/↓ macht wieder die IDE; Menü *Atlas* › „Deklaration/Implementierung wechseln“ geht weiter |
 | DI7 | Taste 1 auf Strg+Alt+D ändern, Taste 2 leeren, OK | Strg+Alt+D wechselt; Strg+Umschalt+↑ macht die IDE, Strg+Umschalt+↓ ebenso |
 | DI8 | Menü *Atlas*, Kontextmenü *Atlas* und Befehlspalette „Deklaration/Implementierung wechseln“ | Sprung wie DI1; außerhalb einer Methode Zeile „Am Cursor steht keine Methode …“ in der Meldungsansicht |
+## Zeilen und Blöcke verschieben und duplizieren (#634)
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| ZV1 | Cursor in einer Anweisungszeile, Alt+↓ und Alt+↑ | Die Zeile tauscht mit der darunter bzw. darüber, der Cursor bleibt an derselben Stelle der Zeile |
+| ZV2 | Drei Zeilen teilweise markieren, Alt+↓ | Alle drei wandern, die Markierung bleibt auf ihnen |
+| ZV3 | Markierung bis an den Anfang der Folgezeile (ganze Zeilen markiert), Alt+↑ | Die Folgezeile wandert nicht mit |
+| ZV4 | Anweisung vor `while X do` / `begin`, mehrmals Alt+↓ bis hinter `end;` | Über `begin` eine Ebene tiefer (Blockeinzug der IDE), über `end;` wieder zurück; über `finally` und `end else begin` unverändert |
+| ZV5 | Mit Tabulator eingerückte Zeile über ein `begin` | Ein Tabulator mehr statt Leerzeichen |
+| ZV6 | Umschalt+Alt+↓ bzw. Umschalt+Alt+↑ auf einer Zeile und auf einer Markierung | Kopie darunter bzw. darüber, Cursor und Markierung stehen auf der Kopie |
+| ZV7 | Cursor ohne Markierung auf `procedure TFoo.A;` mit `/// Kommentar` darüber, Alt+↓ | Die ganze Methode samt Kommentar steht hinter der nächsten Methode; `{ TFoo }`-Kommentare und Leerzeilen dazwischen bleiben in der Mitte |
+| ZV8 | Wie ZV7 auf der letzten Methode bzw. mit `var` zwischen den Methoden | Nichts ändert sich, in der Meldungsansicht „Keine Nachbarmethode, …“ |
+| ZV9 | Fünfmal Alt+↓ hintereinander, dann einmal Strg+Z | Der Text steht wieder wie vor dem ersten Druck |
+| ZV10 | Alt+↓, dann etwas tippen, dann Alt+↓, Strg+Z | Strg+Z nimmt nur das zweite Verschieben zurück |
+| ZV11 | Alt+↑ in der ersten, Alt+↓ in der letzten Zeile; schreibgeschützte Datei | Nichts passiert |
+| ZV12 | Tastenübersicht öffnen | Alt+↑ und Umschalt+Alt+↑/↓ als Konflikt mit der IDE (Atlas gewinnt) |
+| ZV13 | Optionen › Atlas › Befehle: „Zeilen und Methoden verschieben …“ aus | Alt+↑/↓ gehören wieder der IDE (Alt+↑ = Code-Browsing), Palettenbefehle fehlen; Tasten änderbar |
+
 ## Sprung zum Gegenstück (#635)
 
 | Nr. | Schritte | Erwartet |

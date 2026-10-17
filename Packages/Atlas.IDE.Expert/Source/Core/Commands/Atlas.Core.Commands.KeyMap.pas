@@ -321,6 +321,14 @@ begin
       Result := 'Atlas.NextChange';
     TAtlasKeyFunction.PreviousChange:
       Result := 'Atlas.PreviousChange';
+    TAtlasKeyFunction.MoveLinesUp:
+      Result := 'Atlas.MoveLinesUp';
+    TAtlasKeyFunction.MoveLinesDown:
+      Result := 'Atlas.MoveLinesDown';
+    TAtlasKeyFunction.DuplicateLinesUp:
+      Result := 'Atlas.DuplicateLinesUp';
+    TAtlasKeyFunction.DuplicateLinesDown:
+      Result := 'Atlas.DuplicateLinesDown';
   else
     Result := '';
   end;
