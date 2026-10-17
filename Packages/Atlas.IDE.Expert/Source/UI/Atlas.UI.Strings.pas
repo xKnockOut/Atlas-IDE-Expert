@@ -542,7 +542,9 @@ type
     SettingsInlineDiagnosticsWarnings, SettingsInlineDiagnosticsAll, SettingsProblemsStatusCounter, ProblemNextCommand,
     ProblemPreviousCommand, ProblemNoneInFile, ProblemCounterText, ProblemCounterHint,
     SettingsRecursionMarkers, SettingsRecursionMarkersDepth, ElementRecursion, ElementRecursionPlural,
-    RecursionTipDirect, RecursionTipChain, ElementInlineDiagnostics, ElementInlineDiagnosticsPlural);
+    RecursionTipDirect, RecursionTipChain, ElementInlineDiagnostics, ElementInlineDiagnosticsPlural,
+    CompletionRestHeader, CountHitsRest, SettingsListMode, SettingsListModeFilter, SettingsListModeAll,
+    SettingsListModeRest, SettingsListScope, SettingsListScopeMembers, SettingsListScopeEverywhere);
 
   TAtlasStrings = class
   private class var
@@ -1580,7 +1582,9 @@ const
      '%d Fehler, %d Warnungen, %d Hinweise in Atlas-Probleme. Klick öffnet die Liste.',
      'Rekursionssymbole im Rand', 'Höchstlänge der Kette (Methoden):', 'Rekursionssymbol', 'Rekursionssymbole',
      'Rekursion: ruft sich selbst auf', 'Rekursion über %d Methoden', 'Fehlertext am Zeilenende',
-     'Fehlertexte am Zeilenende'),
+     'Fehlertexte am Zeilenende', 'Weitere Einträge', '%d Treffer · %d weitere', 'Beim Tippen zeigen:',
+     'Nur Treffer', 'Alle Einträge, Treffer oben', 'Treffer, darunter gedämpft der Rest', 'Gilt für:',
+     'Mitgliederlisten nach „.“', 'Alle Listen'),
     ('Enter to accept · Esc to close', '%d of %d', 'No matches for “%s”', 'Backspace widens the search',
      'No suggestions here', 'Esc closes', 'No details for this entry', 'Overload', 'Deprecated: %s', 'Deprecated.',
      'Inherited from %s', 'Inherited', 'optional, default %s', 'No overload with %d parameters.', '… %d more',
@@ -2546,7 +2550,9 @@ const
      'Atlas: No findings in this file.', 'Errors %d · Warnings %d · Hints %d',
      '%d errors, %d warnings, %d hints in Atlas problems. Click opens the list.',
      'Recursion markers in the gutter', 'Maximum chain length (methods):', 'Recursion marker', 'Recursion markers',
-     'Recursion: calls itself', 'Recursion over %d methods', 'Error text at line end', 'Error texts at line end'));
+     'Recursion: calls itself', 'Recursion over %d methods', 'Error text at line end', 'Error texts at line end',
+     'More entries', '%d matches · %d more', 'While typing, show:', 'Only matches', 'All entries, matches on top',
+     'Matches, then the rest dimmed', 'Applies to:', 'Member lists after “.”', 'All lists'));
 
 { TAtlasStrings }
 

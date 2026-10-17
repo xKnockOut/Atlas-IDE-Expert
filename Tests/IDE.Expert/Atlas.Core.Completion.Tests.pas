@@ -76,6 +76,9 @@ type
     procedure CommitTextKeepsTypedCaseWhenOff;
     [Test]
     procedure Filters5000EntriesWithin12ms;
+    /// <summary>Mit dem Rest der Liste (#497) bleibt ein Filterschritt unter 16 ms (#409).</summary>
+    [Test]
+    procedure Orders5000EntriesWithRestWithin16ms;
   end;
 
   [TestFixture]
@@ -666,6 +669,46 @@ begin
     TArray.Sort<Int64>(Times);
     Assert.IsTrue(Times[2] <= 12, Format('Filtern nach "%s" dauerte %d ms', [Pattern, Times[2]]));
   end;
+end;
+
+procedure TAtlasMatchingBudgetTests.Orders5000EntriesWithRestWithin16ms;
+const
+  Words: array[0..11] of string = ('Add', 'String', 'List', 'Item', 'Get', 'Set', 'Count', 'Object', 'Begin',
+    'Update', 'Index', 'Value');
+var
+  Items: TAtlasCompletionItems;
+  Index, Run, RestStart: Integer;
+  Pattern: string;
+  Watch: TStopwatch;
+  Times: TArray<Int64>;
+  Options: TAtlasRankOptions;
+  Order: TArray<Integer>;
+begin
+  SetLength(Items, 5000);
+  for Index := 0 to High(Items) do
+  begin
+    Items[Index].Name := Words[Index mod 12] + Words[(Index div 12) mod 12] + Words[(Index div 144) mod 12] +
+      IntToStr(Index);
+    Items[Index].Rank := Index;
+  end;
+  Options := TAtlasRankOptions.Defaults;
+  Options.ListMode := TAtlasListMode.Rest;
+  for Pattern in ['A', 'AddS', 'ASL', 'xyz'] do
+  begin
+    Order := TAtlasRanking.Order(Items, Pattern, Options, RestStart);
+    Assert.AreEqual(5000, TAtlasRanking.ItemCount(Order), 'Alle Einträge bleiben sichtbar');
+    Times := nil;
+    for Run := 1 to 5 do
+    begin
+      Watch := TStopwatch.StartNew;
+      TAtlasRanking.Order(Items, Pattern, Options, RestStart);
+      Times := Times + [Watch.ElapsedMilliseconds];
+    end;
+    TArray.Sort<Int64>(Times);
+    Assert.IsTrue(Times[2] <= 16, Format('Ordnen mit Rest nach "%s" dauerte %d ms', [Pattern, Times[2]]));
+  end;
+  Items := nil;
+  Order := nil;
 end;
 
 { TAtlasWordTests }

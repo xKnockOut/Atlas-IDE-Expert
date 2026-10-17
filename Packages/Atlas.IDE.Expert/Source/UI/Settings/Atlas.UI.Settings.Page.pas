@@ -123,6 +123,9 @@ type
     FFilterChips: TCheckBox;
     FLearning: TCheckBox;
     FGroupInherited: TCheckBox;
+    /// <summary>Listenmodus beim Tippen und sein Geltungsbereich (#497).</summary>
+    FListMode: TAtlasChoiceBox;
+    FListScope: TAtlasChoiceBox;
     FPreview: TCheckBox;
     FHoverTooltip: TCheckBox;
     FXmlDocFull: TCheckBox;
@@ -711,6 +714,9 @@ type
     /// <summary>Zum Testen: Beim Öffnen bauen.</summary>
     property OpenBuildChoice: TAtlasChoiceBox read FOpenBuild;
     property OpenBuildScopeChoice: TAtlasChoiceBox read FOpenBuildScope;
+    /// <summary>Zum Testen: Listenmodus der Vervollständigung (#497).</summary>
+    property ListModeChoice: TAtlasChoiceBox read FListMode;
+    property ListScopeChoice: TAtlasChoiceBox read FListScope;
     property OpenBuildDelayEdit: TEdit read FOpenBuildDelay;
     property OpenBuildExcludeEdit: TEdit read FOpenBuildExclude;
     /// <summary>Zum Testen: Tests ausführen (#69).</summary>
@@ -807,6 +813,7 @@ uses
   Atlas.Core.Notifications.Contract,
   Atlas.Core.Notifications.Sources,
   Atlas.Core.Build.OpenBuild,
+  Atlas.Core.Completion.Ranking,
   Atlas.Core.Settings.Transfer,
   Atlas.Core.Settings.Experimental,
   Atlas.UI.Notifications.Window;
@@ -1075,6 +1082,13 @@ begin
   FLearning := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsLearning));
   FFavorites := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsFavorites));
   FGroupInherited := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsGroupInherited));
+  // In der Reihenfolge von TAtlasListMode bzw. TAtlasListScope.
+  FListMode := AddChoice(TAtlasStrings.Text(TAtlasTextId.SettingsListMode),
+    [TAtlasStrings.Text(TAtlasTextId.SettingsListModeFilter), TAtlasStrings.Text(TAtlasTextId.SettingsListModeAll),
+    TAtlasStrings.Text(TAtlasTextId.SettingsListModeRest)]);
+  FListScope := AddChoice(TAtlasStrings.Text(TAtlasTextId.SettingsListScope),
+    [TAtlasStrings.Text(TAtlasTextId.SettingsListScopeMembers),
+    TAtlasStrings.Text(TAtlasTextId.SettingsListScopeEverywhere)]);
   FPreview := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsPreview));
   Panel := AddPanel(32);
   FResetHistory := TButton.Create(Self);
@@ -2052,6 +2066,8 @@ begin
   FMarks.Bind(FLearning, ['Learning']);
   FMarks.Bind(FFavorites, ['Favorites']);
   FMarks.Bind(FGroupInherited, ['GroupInherited']);
+  FMarks.Bind(FListMode, ['CompletionListMode']);
+  FMarks.Bind(FListScope, ['CompletionListScope']);
   FMarks.Bind(FPreview, ['Preview']);
   FMarks.Bind(FSnippets, ['Snippets']);
   FMarks.Bind(FImportIdeTemplates, ['ImportIdeTemplates']);
@@ -3004,6 +3020,8 @@ begin
   FLearning.Checked := ASettings.Learning;
   FFavorites.Checked := ASettings.Favorites;
   FGroupInherited.Checked := ASettings.GroupInherited;
+  FListMode.Choice := Ord(TAtlasListModes.ModeOf(ASettings.CompletionListMode));
+  FListScope.Choice := Ord(TAtlasListModes.ScopeOf(ASettings.CompletionListScope));
   FPreview.Checked := ASettings.Preview;
   FSnippets.Checked := ASettings.Snippets;
   FImportIdeTemplates.Checked := ASettings.ImportIdeTemplates;
@@ -3266,6 +3284,10 @@ begin
   ASettings.Learning := FLearning.Checked;
   ASettings.Favorites := FFavorites.Checked;
   ASettings.GroupInherited := FGroupInherited.Checked;
+  if (FListMode.Choice >= Ord(Low(TAtlasListMode))) and (FListMode.Choice <= Ord(High(TAtlasListMode))) then
+    ASettings.CompletionListMode := TAtlasListModes.ModeNames[TAtlasListMode(FListMode.Choice)];
+  if (FListScope.Choice >= Ord(Low(TAtlasListScope))) and (FListScope.Choice <= Ord(High(TAtlasListScope))) then
+    ASettings.CompletionListScope := TAtlasListModes.ScopeNames[TAtlasListScope(FListScope.Choice)];
   ASettings.Preview := FPreview.Checked;
   ASettings.Snippets := FSnippets.Checked;
   ASettings.ImportIdeTemplates := FImportIdeTemplates.Checked;
