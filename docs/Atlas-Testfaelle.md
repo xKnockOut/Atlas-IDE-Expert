@@ -1200,7 +1200,7 @@ Vorbereitung: wie bei #69, Projektgruppe mit der Anwendung (aktiv) und dem Testp
 | TD18 | Anwendung läuft im Debugger, „Debuggen“ an einem Test | Meldung „Der Debugger läuft schon; erst beenden.“; nichts ändert sich |
 | TD19 | Fehler im Testprojekt einbauen, TD2 | Meldung, dass der Build fehlschlug; aktives Projekt und Startparameter unverändert, keine Datei `atlas-debug-*.xml` im Temp-Ordner |
 | TD20 | Schnellschalter „Test debuggen“ aus | Ohne Neustart: Marken „Debuggen“, Befehl „Test am Cursor debuggen“, Eintrag im Kontextmenü (meldet „ausgeschaltet“) und Tipp „Einzelnen Test debuggen“ verschwinden; „Test ausführen“ bleibt |
-| TD21 | „Code Lens „Test ausführen““ (`codeLens.tests`) aus | Keine Marken, weder „Test ausführen“ noch „Debuggen“ (Akzeptanz: mit codeLens.tests aus ist die Funktion in der Code Lens aus); Befehle und Kontextmenü gelten weiter nach „Test debuggen“ |
+| TD21 | „Code Lens „Test ausführen““ (`codeLens.tests`) aus | Keine Marken, weder „Test ausführen“ noch „Debuggen“; auch die Befehle „Test am Cursor debuggen/ausführen“ und die Einträge im Kontextmenü sind aus (Akzeptanz: Atlas verhält sich wie ohne die Funktion) (**Abnahme**) |
 | TD22 | „DUnitX-Tests ausführen“ aus | Auch „Test debuggen“ ist aus: keine Marken, keine Befehle, Kontextmenü meldet „ausgeschaltet“ |
 | TD23 | Testprojekt nur für Win64, aktive Plattform der Anwendung Win32, TD2 | Gebaut und gestartet wird Win64 des Testprojekts |
 

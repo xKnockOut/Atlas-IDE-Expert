@@ -189,10 +189,13 @@ begin
   Assert.IsTrue(TAtlasTestDebug.RunWanted(Settings));
   Assert.IsTrue(TAtlasTestDebug.LensWanted(Settings));
   Assert.IsTrue(TAtlasTestDebug.LensDebugWanted(Settings));
-  // codeLens.tests aus: keine Lens, weder „Test ausführen“ noch „Debuggen“.
+  // codeLens.tests aus: keine Lens, weder „Test ausführen“ noch „Debuggen“, auch nicht über Befehl und
+  // Kontextmenü (#585: Atlas verhält sich wie ohne die Funktion).
   Settings.CodeLensTests := False;
   Assert.IsFalse(TAtlasTestDebug.LensWanted(Settings));
   Assert.IsFalse(TAtlasTestDebug.LensDebugWanted(Settings));
+  Assert.IsFalse(TAtlasTestDebug.DebugWanted(Settings));
+  Assert.IsFalse(TAtlasTestDebug.RunWanted(Settings));
   Settings := TAtlasPluginSettings.Defaults;
   Settings.TestDebug := False;
   Assert.IsFalse(TAtlasTestDebug.DebugWanted(Settings));
