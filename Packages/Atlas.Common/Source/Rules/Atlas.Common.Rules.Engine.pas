@@ -303,6 +303,7 @@ begin
         Context.DelphiVersion := Settings.DelphiVersion;
       Context.Options := RuleOptions(Descriptor.Id, Settings);
       Context.DfmPropertyRules := Settings.DfmPropertyRules;
+      Context.NoSignatureSync := not Settings.Refactoring.SyncSignatures;
       if IsExceptedByOptions(Context.Options, Context.RelativePath, Context.UnitName) then
         Continue;
       // Erst in einer Interface-Variablen halten: Check nimmt den Report als

@@ -128,6 +128,9 @@ var
 begin
   AFixes := nil;
   Result := TClassCompletion.SignatureFixes(AContext.Tree, AContext.Text, AMethod, Actions);
+  // refactoring.syncSignatures aus: die Meldung bleibt, die Angleich-Aktionen entfallen.
+  if AContext.NoSignatureSync then
+    Exit;
   for Action in Actions do
     AFixes := AFixes + [Alternative(TRuleFix.Create(Action.Title, Action.Edits), True)];
 end;

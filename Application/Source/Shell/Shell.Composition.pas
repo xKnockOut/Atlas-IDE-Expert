@@ -282,6 +282,10 @@ type
     function ProjectSourceFiles: TArray<string>;
     /// <summary>Befehl „Eigenschaftsregeln anwenden“ (#309): WorkspaceEdit über die Formulardateien.</summary>
     function ApplyDfmPropertyRules(const AArguments: TJSONArray): TJSONValue;
+    /// <summary>„Signatur ändern“ (#100): APrepare = Parameter und Einschränkungen, sonst das WorkspaceEdit.</summary>
+    function ChangeSignature(const AArguments: TJSONArray; APrepare: Boolean): TJSONValue;
+    /// <summary>Code-Aktion „Signatur ändern …“ an APosition (#100).</summary>
+    function ChangeSignatureActions(const AUri: string; const APosition: TTextPosition): TArray<TJSONObject>;
     /// <summary>Inhalt des Status-Befehls (#28).</summary>
     function CollectBookmarks: TArray<TBookmarkHit>;
     function CollectStatus: TServerStatus;
@@ -406,6 +410,10 @@ uses
   Atlas.Common.Rules.Builtin.General,
   Atlas.Common.Lsp.FormFiles,
   Atlas.Common.Lsp.DfmPropertyRules,
+  Atlas.Common.Lsp.ChangeSignature,
+  Atlas.Common.Lsp.Contract,
+  Atlas.Common.Lsp.Positions,
+  Atlas.Common.Semantics.NameResolver,
   Atlas.Common.Rules.Builtin.DfmProperties,
   Atlas.Common.Dfm.FormModel,
   Atlas.Common.Dfm.BinaryForm,
@@ -1125,6 +1133,7 @@ begin
     function(const AUri: string; const ARange: TTextRange): TArray<TJSONObject>
     begin
       Result := FTestUnits.Actions(AUri, ARange.StartPos.Line);
+      Result := Result + ChangeSignatureActions(AUri, ARange.StartPos);
     end;
   FCodeActions.Attach(FDispatcher);
   FDocumentLinks := TLspDocumentLinks.Create(FDocuments,
@@ -1169,6 +1178,16 @@ begin
     function(const AArguments: TJSONArray): TJSONValue
     begin
       Result := ApplyDfmPropertyRules(AArguments);
+    end);
+  FCommands.Register(TLspChangeSignature.PrepareCommand,
+    function(const AArguments: TJSONArray): TJSONValue
+    begin
+      Result := ChangeSignature(AArguments, True);
+    end);
+  FCommands.Register(TLspChangeSignature.ApplyCommand,
+    function(const AArguments: TJSONArray): TJSONValue
+    begin
+      Result := ChangeSignature(AArguments, False);
     end);
   FCommands.Register(TLspMetrics.Command,
     function(const AArguments: TJSONArray): TJSONValue
@@ -2443,6 +2462,79 @@ begin
     end, Files, Edits);
   // Nur Zahlen ins Log, keine Pfade (#647).
   FLogger.Info(Format('Eigenschaftsregeln: %d Änderungen in %d Formulardateien vorgeschlagen', [Edits, Files]));
+end;
+
+function TServerComposition.ChangeSignatureActions(const AUri: string;
+  const APosition: TTextPosition): TArray<TJSONObject>;
+var
+  Document: ITextDocument;
+  Shared: ISharedSyntaxTree;
+  Resolver: TNameResolver;
+begin
+  Result := nil;
+  if not RefactoringSettingsFor(AUri).ChangeSignature or not FDocuments.TryGet(AUri, Document) or
+    not SameText(ExtractFileExt(TDocumentUris.ToPath(AUri)), '.pas') then
+    Exit;
+  Shared := TSyntaxTreeCache.Get(Document, nil);
+  Resolver := TNameResolver.Create(FIndex, EnsureUnit);
+  try
+    Resolver.Namespaces := FRename.Namespaces;
+    Result := TLspChangeSignature.Actions(True, Resolver, Shared.Tree, TDocumentUris.ToPath(AUri), AUri, APosition);
+  finally
+    Resolver.Free;
+  end;
+end;
+
+function TServerComposition.ChangeSignature(const AArguments: TJSONArray; APrepare: Boolean): TJSONValue;
+var
+  Uri, FileName: string;
+  Position: TTextPosition;
+  Document: ITextDocument;
+  Shared: ISharedSyntaxTree;
+  Resolver: TNameResolver;
+  Settings: TRefactoringSettings;
+  Mode: TNewParameterMode;
+  Request: TChangeSignatureRequest;
+  Outcome: TChangeSignatureOutcome;
+begin
+  // Argumente: URI, Position, beim Ausführen die neue Signatur (TLspChangeSignature.ReadRequest).
+  if (AArguments = nil) or (AArguments.Count < 2) then
+    raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams, 'Argumente "uri" und "position" fehlen');
+  Uri := AArguments.Items[0].Value;
+  Position := TLspPositions.ReadPosition(AArguments.Items[1]);
+  Settings := RefactoringSettingsFor(Uri);
+  if not Settings.ChangeSignature then
+    raise EJsonRpcError.Create(TLspErrorCode.RequestFailed,
+      '"Signatur ändern" ist abgeschaltet (refactoring.changeSignature).');
+  if not FDocuments.TryGet(Uri, Document) then
+    raise EJsonRpcError.Create(TLspErrorCode.RequestFailed, 'Die Datei ist nicht geöffnet.');
+  FileName := TDocumentUris.ToPath(Uri);
+  Mode := TNewParameterMode.UpdateCallers;
+  if Settings.NewParameterOverload then
+    Mode := TNewParameterMode.Overload;
+  Shared := TSyntaxTreeCache.Get(Document, nil);
+  Resolver := TNameResolver.Create(FIndex, EnsureUnit);
+  try
+    Resolver.Namespaces := FRename.Namespaces;
+    if APrepare then
+      Exit(TLspChangeSignature.InfoToJson(TLspChangeSignature.Prepare(Resolver, FIndex, Shared.Tree, FileName,
+        Position, ProjectSourceFiles, ReadSourceText, nil), Mode, Settings.VirtualOverload));
+    if AArguments.Count < 3 then
+      raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams, 'Argument mit der neuen Signatur fehlt');
+    Request := TLspChangeSignature.ReadRequest(AArguments.Items[2], Mode, Settings.VirtualOverload);
+    Outcome := TLspChangeSignature.Execute(Resolver, FIndex, Shared.Tree, FileName, Position, Request,
+      ProjectSourceFiles, ReadSourceText,
+      function(const AFileName: string): Boolean
+      begin
+        Result := FileExists(AFileName) and FileIsReadOnly(AFileName);
+      end, nil);
+  finally
+    Resolver.Free;
+  end;
+  // Nur Zahlen ins Log, keine Namen und Pfade (#647).
+  FLogger.Info(Format('Signatur ändern: %d Änderungen, %d Warnungen', [Length(Outcome.Edits),
+    Length(Outcome.Warnings)]));
+  Result := TLspChangeSignature.OutcomeToJson(Outcome);
 end;
 
 function TServerComposition.CollectBookmarks: TArray<TBookmarkHit>;
