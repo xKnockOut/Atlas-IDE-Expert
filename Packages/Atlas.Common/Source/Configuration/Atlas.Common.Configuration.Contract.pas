@@ -244,6 +244,14 @@ type
     /// <summary>Inline-Variablen (var X := …) erzeugen, wenn die Sprachversion sie kennt; sonst Eintrag im
     /// var-Abschnitt.</summary>
     InlineVar: Boolean;
+    /// <summary>Code-Aktion „Signatur ändern …“ (#100).</summary>
+    ChangeSignature: Boolean;
+    /// <summary>Neue Parameter: alte Signatur als Überladung behalten (True) oder alle Aufrufer anpassen.</summary>
+    NewParameterOverload: Boolean;
+    /// <summary>Die Überladung bei virtuellen Methoden ebenfalls virtual machen.</summary>
+    VirtualOverload: Boolean;
+    /// <summary>Aktionen, die Deklaration und Implementierung angleichen.</summary>
+    SyncSignatures: Boolean;
     class function Default: TRefactoringSettings; static;
   end;
 
@@ -615,6 +623,10 @@ end;
 class function TRefactoringSettings.Default: TRefactoringSettings;
 begin
   Result.InlineVar := True;
+  Result.ChangeSignature := True;
+  Result.NewParameterOverload := True;
+  Result.VirtualOverload := False;
+  Result.SyncSignatures := True;
 end;
 
 { TCompletionSettings }

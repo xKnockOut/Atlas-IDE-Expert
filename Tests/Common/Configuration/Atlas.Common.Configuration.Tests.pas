@@ -427,6 +427,18 @@ begin
   Assert.AreEqual(0, Integer(Length(Issues)));
   Parse('{"refactoring": {"inline": false}}', Issues);
   Assert.AreEqual(1, Integer(Length(Issues)));
+  // Signatur ändern (#100)
+  Assert.IsTrue(Parse('{}', Issues).Refactoring.ChangeSignature);
+  Assert.IsTrue(Parse('{}', Issues).Refactoring.NewParameterOverload);
+  Assert.IsFalse(Parse('{}', Issues).Refactoring.VirtualOverload);
+  Assert.IsTrue(Parse('{}', Issues).Refactoring.SyncSignatures);
+  Assert.IsFalse(Parse('{"refactoring": {"changeSignature": false}}', Issues).Refactoring.ChangeSignature);
+  Assert.IsFalse(Parse('{"refactoring": {"newParameter": "updateCallers"}}', Issues).Refactoring.NewParameterOverload);
+  Assert.IsTrue(Parse('{"refactoring": {"virtualOverload": true}}', Issues).Refactoring.VirtualOverload);
+  Assert.IsFalse(Parse('{"refactoring": {"syncSignatures": false}}', Issues).Refactoring.SyncSignatures);
+  Assert.AreEqual(0, Integer(Length(Issues)));
+  Parse('{"refactoring": {"newParameter": "default"}}', Issues);
+  Assert.AreEqual(1, Integer(Length(Issues)));
   // Speicherbudget (#185)
   Assert.AreEqual(768, Parse('{}', Issues).MemoryBudgetMb, 'Vorgabe 768 MB (Rückmeldung 15.10.2026)');
   Assert.AreEqual(0, Parse('{"memoryBudgetMb": 0}', Issues).MemoryBudgetMb, '0 = unbegrenzt');

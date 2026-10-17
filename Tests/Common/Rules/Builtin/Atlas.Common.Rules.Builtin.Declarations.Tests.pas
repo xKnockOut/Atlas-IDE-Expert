@@ -37,6 +37,8 @@ type
     [Test]
     procedure ModifierMismatchAlignsBothWays;
     [Test]
+    procedure SyncActionCanBeSwitchedOff;
+    [Test]
     procedure DefaultsStayInDeclaration;
     [Test]
     procedure AmbiguousOverloadOffersNoAlignment;
@@ -202,6 +204,24 @@ begin
   Lines[Edit.Range.StartPos.Line] := Copy(Line, 1, Edit.Range.StartPos.Character) + Edit.NewText +
     Copy(Line, Edit.Range.EndPos.Character + 1, MaxInt);
   Result := string.Join(#10, Lines);
+end;
+
+procedure TDeclarationRulesTests.SyncActionCanBeSwitchedOff;
+var
+  Source: string;
+  Findings: TArray<TRuleFinding>;
+begin
+  // refactoring.syncSignatures aus (#100): Meldung bleibt, nur "Rumpf erzeugen" wird angeboten.
+  Source := ClassUnit('    procedure Foo(A: Integer);', 'procedure TFoo.Foo(const A: Integer);'#10'begin'#10'end;');
+  Findings := TRuleAssert.Findings(TDeclaredNotImplementedRule.Create, Source,
+    '{"refactoring": {"syncSignatures": false}}');
+  Assert.AreEqual(1, Integer(Length(Findings)));
+  Assert.Contains(Findings[0].Message, 'andere Signatur');
+  Assert.AreEqual(1, Integer(Length(Findings[0].Fixes)));
+  Findings := TRuleAssert.Findings(TImplementedNotDeclaredRule.Create, Source,
+    '{"refactoring": {"syncSignatures": false}}');
+  // Nur noch "Deklaration ergänzen".
+  Assert.AreEqual(1, Integer(Length(Findings[0].Fixes)));
 end;
 
 procedure TDeclarationRulesTests.ModifierMismatchAlignsBothWays;
