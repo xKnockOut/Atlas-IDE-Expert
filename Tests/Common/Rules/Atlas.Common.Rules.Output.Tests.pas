@@ -42,6 +42,8 @@ type
     [Test]
     procedure SarifMessageEnglishWithoutConfidence;
     [Test]
+    procedure JsonConfidenceInProperties;
+    [Test]
     procedure FileUriEncodesSpecialCharacters;
     [Test]
     procedure FindGitRootWalksUp;
@@ -208,7 +210,7 @@ begin
     TFindingsFormat.Json, nil);
   Assert.AreEqual('{"files":[{"path":"Src/U.pas","findings":[{"rule":"a","severity":"warning",' +
     '"confidence":"high","message":"Meldung","range":{"start":{"line":1,"character":2},' +
-    '"end":{"line":1,"character":5}}}]}],"summary":{"files":1,"errors":0,"warnings":1,' +
+    '"end":{"line":1,"character":5}},"properties":{"confidence":"high"}}]}],"summary":{"files":1,"errors":0,"warnings":1,' +
     '"information":0,"hints":0}}', Output);
 end;
 
@@ -262,6 +264,19 @@ begin
   Assert.IsTrue(Pos('"message":{"text":"Syntax error"}', Output) > 0, Output);
   Assert.AreEqual(0, Pos('Konfidenz', Output), Output);
   Assert.IsTrue(Pos('"properties":{"confidence":"medium","detail":"Meldung"}', Output) > 0, Output);
+end;
+
+procedure TLinterOutputTests.JsonConfidenceInProperties;
+var
+  Finding: TRuleFinding;
+  Output: string;
+begin
+  Finding := MakeFinding('a', TRuleSeverity.Hint);
+  Finding.Confidence := TRuleConfidence.Low;
+  Output := TFindingsOutput.Render([MakeFile('U.pas', [Finding])], TFindingsFormat.Json, nil);
+  Assert.IsTrue(Pos('"properties":{"confidence":"low"}', Output) > 0, Output);
+  Assert.IsTrue(Pos('"message":"Meldung"', Output) > 0, Output);
+  Assert.AreEqual(0, Pos('Konfidenz', Output), Output);
 end;
 
 procedure TLinterOutputTests.FileUriEncodesSpecialCharacters;

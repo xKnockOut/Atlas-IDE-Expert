@@ -34,6 +34,18 @@ type
     procedure TimeRulesCoversEveryRule;
     [Test]
     procedure ReferenceProjectMatchesMarkers;
+    [Test]
+    procedure MutationsParseAndReportBadLines;
+    [Test]
+    procedure MutateNeedsUniqueSearchAndUnescapes;
+    [Test]
+    procedure DetectedNeedsMoreFindingsOfRule;
+    [Test]
+    procedure HitRatesPerRule;
+    [Test]
+    procedure ReferenceProjectMutationsAreFound;
+    [Test]
+    procedure ReferenceRatingsAreValid;
   end;
 
 implementation
@@ -42,11 +54,13 @@ uses
   System.SysUtils,
   System.IOUtils,
   Atlas.Common.Documents.Contract,
+  Atlas.Common.Documents.FileEncoding,
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Rules.Contract,
   Atlas.Common.Rules.Checker,
   Atlas.Common.Rules.Builtin,
-  Atlas.Common.Rules.GoldenCorpus;
+  Atlas.Common.Rules.GoldenCorpus,
+  System.StrUtils;
 
 function Finding(const ARuleId: string; ALine: Integer): TRuleFinding;
 begin
@@ -186,6 +200,14 @@ begin
   Result := '';
 end;
 
+/// <summary>Text einer Datei des Referenzprojekts ohne BOM, wie ihn der Server liest.</summary>
+function ReadSource(const AFileName: string): string;
+var
+  Format: TFileFormat;
+begin
+  Result := TFileEncoding.Decode(TFile.ReadAllBytes(AFileName), Format);
+end;
+
 procedure TGoldenCorpusTests.WarmUp;
 var
   Folder, FileName, Text: string;
@@ -199,7 +221,7 @@ begin
   Texts := nil;
   for FileName in TDirectory.GetFiles(TPath.Combine(Folder, 'Source'), '*.pas') do
   begin
-    Text := TFile.ReadAllText(FileName, TEncoding.UTF8);
+    Text := ReadSource(FileName);
     Texts := Texts + [Text];
     TFileChecker.CheckText(Rules, TServerSettings.Default, ExtractFileName(FileName), Text);
   end;
@@ -223,7 +245,7 @@ begin
   Known := [SyntaxRuleId];
   for Rule in Rules do
     Known := Known + [Rule.Descriptor.Id];
-  Text := TFile.ReadAllText(TPath.Combine(Folder, 'geplante-regeln.txt'), TEncoding.UTF8);
+  Text := ReadSource(TPath.Combine(Folder, 'geplante-regeln.txt'));
   Planned := TGoldenCorpus.PlannedIds(Text);
   // Jede geplante ID gehört zu einem offenen Issue (#94).
   Problems := '';
@@ -233,7 +255,7 @@ begin
   Markers := 0;
   for FileName in TDirectory.GetFiles(TPath.Combine(Folder, 'Source'), '*.pas') do
   begin
-    Text := TFile.ReadAllText(FileName, TEncoding.UTF8);
+    Text := ReadSource(FileName);
     Texts := Texts + [Text];
     Inc(Markers, Length(TGoldenCorpus.Markers(Text)));
     Outcome := TGoldenCorpus.Compare(ExtractFileName(FileName), TGoldenCorpus.Markers(Text),
@@ -249,6 +271,171 @@ begin
   for Timing in TGoldenCorpus.TimeRules(Rules, TServerSettings.Default, Texts) do
     System.Writeln(Format('  %s: %.1f ms', [Timing.RuleId, Timing.Milliseconds]));
   Assert.AreEqual('', Problems, 'Golden-Korpus weicht ab:' + Problems);
+end;
+
+procedure TGoldenCorpusTests.MutationsParseAndReportBadLines;
+var
+  Mutations: TArray<TRuleMutation>;
+  Errors: TArray<string>;
+begin
+  Mutations := TGoldenCorpus.Mutations('# Kommentar'#10#10'self-assignment | A.pas | X := Y; | X := X;'#10 +
+    'empty-except | B.pas | a \| b | c'#10'kaputt | A.pas'#10, Errors);
+  Assert.AreEqual(2, Integer(Length(Mutations)));
+  Assert.AreEqual('self-assignment', Mutations[0].RuleId);
+  Assert.AreEqual('A.pas', Mutations[0].FileName);
+  Assert.AreEqual('X := Y;', Mutations[0].Search);
+  Assert.AreEqual('X := X;', Mutations[0].Replacement);
+  Assert.AreEqual(3, Mutations[0].Line);
+  // \| trennt nicht.
+  Assert.AreEqual('a \| b', Mutations[1].Search);
+  Assert.AreEqual(1, Integer(Length(Errors)));
+  Assert.IsTrue(Pos('Zeile 5', Errors[0]) > 0, Errors[0]);
+end;
+
+procedure TGoldenCorpusTests.MutateNeedsUniqueSearchAndUnescapes;
+var
+  Mutation: TRuleMutation;
+  Mutated: string;
+begin
+  Mutation := Default(TRuleMutation);
+  Mutation.Search := 'A := 1;\nB';
+  Mutation.Replacement := 'A := ''\u202E'';\nB';
+  Assert.IsTrue(TGoldenCorpus.Mutate('X'#13#10'A := 1;'#13#10'B;', Mutation, Mutated));
+  Assert.AreEqual('X'#13#10'A := ''' + Char($202E) + ''';'#13#10'B;', Mutated);
+  // Zweimal vorhanden oder fehlend: keine Mutation.
+  Mutation.Search := 'A';
+  Assert.IsFalse(TGoldenCorpus.Mutate('A A', Mutation, Mutated));
+  Assert.IsFalse(TGoldenCorpus.Mutate('B', Mutation, Mutated));
+end;
+
+procedure TGoldenCorpusTests.DetectedNeedsMoreFindingsOfRule;
+begin
+  Assert.IsTrue(TGoldenCorpus.Detected([Finding('a', 1)], [Finding('a', 1), Finding('a', 4)], 'a'));
+  Assert.IsFalse(TGoldenCorpus.Detected([Finding('a', 1)], [Finding('a', 1), Finding('b', 4)], 'a'));
+  Assert.IsFalse(TGoldenCorpus.Detected(nil, nil, 'a'));
+end;
+
+procedure TGoldenCorpusTests.HitRatesPerRule;
+var
+  Mutations: TArray<TRuleMutation>;
+  Rates: TArray<TRuleHitRate>;
+begin
+  SetLength(Mutations, 3);
+  Mutations[0].RuleId := 'b';
+  Mutations[1].RuleId := 'a';
+  Mutations[2].RuleId := 'b';
+  Rates := TGoldenCorpus.HitRates(Mutations, [True, False, False]);
+  Assert.AreEqual(2, Integer(Length(Rates)));
+  Assert.AreEqual('a', Rates[0].RuleId);
+  Assert.AreEqual(0.0, Rates[0].HitRate, 0.001);
+  Assert.AreEqual(2, Rates[1].Mutations);
+  Assert.AreEqual(0.5, Rates[1].HitRate, 0.001);
+  Mutations := nil;
+end;
+
+/// <summary>Standardeinstellungen, dazu ADescriptor ausdrücklich eingeschaltet (auch experimentelle und
+/// freiwillige Regeln) und jede Konfidenz gemeldet: Die Mutation misst, ob die Regel den Fehler überhaupt
+/// erkennt, nicht die Schwelle des Projekts.</summary>
+function MutationSettings(const ADescriptor: TRuleDescriptor): TServerSettings;
+var
+  Setting: TRuleSetting;
+begin
+  Result := TServerSettings.Default;
+  Setting := Default(TRuleSetting);
+  Setting.Id := ADescriptor.Id;
+  Setting.Severity := ADescriptor.DefaultSeverity;
+  Result.Rules := Result.Rules + [Setting];
+  Result.MinConfidence := TRuleConfidence.Low;
+  Result.MinConfidenceGiven := True;
+end;
+
+procedure TGoldenCorpusTests.ReferenceProjectMutationsAreFound;
+var
+  Folder, FileName, Text, Mutated, Problems, Line: string;
+  Rules: TArray<IRule>;
+  Rule: IRule;
+  Known, Errors: TArray<string>;
+  Mutations: TArray<TRuleMutation>;
+  Mutation: TRuleMutation;
+  Found: TArray<Boolean>;
+  Rate: TRuleHitRate;
+  Detected: Boolean;
+  Settings: TServerSettings;
+  RuleIndex: Integer;
+begin
+  Folder := ReferenceFolder;
+  if Folder = '' then
+    Assert.Pass('Referenzprojekt nicht gefunden; Prüfung übersprungen');
+  Rules := BuiltinRules;
+  Known := nil;
+  for Rule in Rules do
+    Known := Known + [Rule.Descriptor.Id];
+  Mutations := TGoldenCorpus.Mutations(ReadSource(TPath.Combine(Folder, 'mutationen.txt')),
+    Errors);
+  Problems := '';
+  for Line in Errors do
+    Problems := Problems + sLineBreak + 'mutationen.txt ' + Line;
+  Assert.IsTrue(Length(Mutations) > 0, 'Keine Mutationen gefunden');
+  Found := nil;
+  for Mutation in Mutations do
+  begin
+    Detected := False;
+    FileName := TPath.Combine(TPath.Combine(Folder, 'Source'), Mutation.FileName);
+    RuleIndex := IndexText(Mutation.RuleId, Known);
+    if RuleIndex < 0 then
+      Problems := Problems + sLineBreak + Format('Zeile %d: unbekannte Regel %s', [Mutation.Line, Mutation.RuleId])
+    else if not TFile.Exists(FileName) then
+      Problems := Problems + sLineBreak + Format('Zeile %d: Datei %s fehlt', [Mutation.Line, Mutation.FileName])
+    else
+    begin
+      Text := ReadSource(FileName);
+      if not TGoldenCorpus.Mutate(Text, Mutation, Mutated) then
+        Problems := Problems + sLineBreak + Format('Zeile %d: Suchtext nicht genau einmal in %s',
+          [Mutation.Line, Mutation.FileName])
+      else
+      begin
+        Settings := MutationSettings(Rules[RuleIndex].Descriptor);
+        Detected := TGoldenCorpus.Detected(TFileChecker.CheckText(Rules, Settings, Mutation.FileName, Text),
+          TFileChecker.CheckText(Rules, Settings, Mutation.FileName, Mutated), Mutation.RuleId);
+        if not Detected then
+          Problems := Problems + sLineBreak + Format('Zeile %d: %s findet die Mutation in %s nicht',
+            [Mutation.Line, Mutation.RuleId, Mutation.FileName]);
+      end;
+    end;
+    Found := Found + [Detected];
+  end;
+  // Trefferquote je Regel ins Protokoll (wie die Laufzeit oben).
+  for Rate in TGoldenCorpus.HitRates(Mutations, Found) do
+    System.Writeln(Format('  %s: %d von %d gefunden', [Rate.RuleId, Rate.Found, Rate.Mutations]));
+  Assert.AreEqual('', Problems, 'Mutationen:' + Problems);
+end;
+
+procedure TGoldenCorpusTests.ReferenceRatingsAreValid;
+var
+  Folder, Problems: string;
+  Known: TArray<string>;
+  Rule: IRule;
+  Rates: TArray<TRuleRate>;
+  Rate: TRuleRate;
+begin
+  Folder := ReferenceFolder;
+  if Folder = '' then
+    Assert.Pass('Referenzprojekt nicht gefunden; Prüfung übersprungen');
+  Known := nil;
+  for Rule in BuiltinRules do
+    Known := Known + [Rule.Descriptor.Id];
+  // Rates wirft bei ungültiger Bewertung; die Quote ist so aus der Datei reproduzierbar.
+  Rates := TGoldenCorpus.Rates(ReadSource(TPath.Combine(Folder, 'bewertungen.csv')));
+  Assert.IsTrue(Length(Rates) > 0, 'bewertungen.csv enthält keine Bewertungen');
+  Problems := '';
+  for Rate in Rates do
+  begin
+    if IndexText(Rate.RuleId, Known) < 0 then
+      Problems := Problems + sLineBreak + 'unbekannte Regel ' + Rate.RuleId;
+    System.Writeln(Format('  %s: %d richtig, %d falsch, Fehlalarmquote %.1f %%',
+      [Rate.RuleId, Rate.Correct, Rate.Wrong, Rate.FalseAlarmRate * 100], TFormatSettings.Invariant));
+  end;
+  Assert.AreEqual('', Problems, 'bewertungen.csv:' + Problems);
 end;
 
 initialization

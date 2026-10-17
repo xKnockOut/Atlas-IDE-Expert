@@ -9,6 +9,8 @@
 // Dateien außerhalb als absoluter file:-URI. message.text ist der englische
 // Katalogname der Regel ohne Konfidenz-Zusatz; die Konfidenz steht in
 // properties.confidence, die deutsche Meldung des Treffers in properties.detail.
+// Im JSON steht die Konfidenz ebenso in properties.confidence und zusätzlich
+// als "confidence" neben "severity" (älteres Feld, bleibt erhalten).
 //
 // Baseline (#97): Trägt TCheckedFile.Marks die Treffer mit Fingerabdrücken,
 // bekommt jedes Ergebnis partialFingerprints mit dem Baseline-Fingerabdruck
@@ -315,7 +317,10 @@ begin
         Builder.Append(',"confidence":').Append(TFindingsOutput.JsonString(ConfidenceName(Finding.Confidence)));
         Builder.Append(',"message":').Append(TFindingsOutput.JsonString(Finding.Message));
         Builder.Append(',"range":{"start":').Append(JsonPosition(Finding.Range.StartPos));
-        Builder.Append(',"end":').Append(JsonPosition(Finding.Range.EndPos)).Append('}}');
+        Builder.Append(',"end":').Append(JsonPosition(Finding.Range.EndPos)).Append('}');
+        // Wie in SARIF unter properties (#144); "confidence" oben bleibt für bestehende Auswertungen.
+        Builder.Append(',"properties":{"confidence":').Append(
+          TFindingsOutput.JsonString(ConfidenceName(Finding.Confidence))).Append('}}');
       end;
       Builder.Append(']}');
     end;
