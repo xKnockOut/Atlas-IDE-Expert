@@ -223,6 +223,8 @@ type
   TCompletionSenderCast = (AsOperator, HardCast);
   /// <summary>Freigabe im finally von „Freigabe absichern“ (#489): "List.Free" oder "FreeAndNil(List)".</summary>
   TCompletionFreeStyle = (Free, FreeAndNil);
+  /// <summary>Abschnitt der Zugriffsmethoden, die die Vervollständigung nach read/write anlegt (#467).</summary>
+  TCompletionAccessorSection = (Private, Protected);
   {$SCOPEDENUMS OFF}
 
   TCompletionSettings = record
@@ -241,6 +243,9 @@ type
     GenericConstraints: Boolean;
     /// <summary>Namensvorschläge aus dem Typ an Namenspositionen von Deklarationen (#452).</summary>
     NameSuggestions: Boolean;
+    /// <summary>Nach read/write einer Eigenschaft Feld, Getter und Setter anlegen (#467).</summary>
+    CreateAccessors: Boolean;
+    AccessorSection: TCompletionAccessorSection;
     class function Default: TCompletionSettings; static;
   end;
 
@@ -687,6 +692,8 @@ begin
   Result.PostfixTemplates := True;
   Result.GenericConstraints := True;
   Result.NameSuggestions := True;
+  Result.CreateAccessors := True;
+  Result.AccessorSection := TCompletionAccessorSection.Private;
 end;
 
 { TServerSettings }

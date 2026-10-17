@@ -240,6 +240,9 @@ type
     /// <summary>Wie oben, mit Baum, Resolver und Matching aus ARequest.</summary>
     class function PropertyItems(ARequest: TCompletionRequest; out AItems: TCompletionItems): Boolean; overload;
       static;
+    /// <summary>„Feld F&lt;Name&gt; anlegen“, „Get&lt;Name&gt; anlegen“ bzw. „Set&lt;Name&gt; anlegen“ (#467).</summary>
+    class function AccessorItems(ARequest: TCompletionRequest; const APropertyName, APropertyType,
+      AIndexParameters: string; AIsWrite: Boolean; const APrefix: string): TArray<TCompletionItem>; static;
     /// <summary>Schlüsselwörter für APlace (#31), klein geschrieben.</summary>
     class function Keywords(APlace: TCompletionPlace): TArray<string>; static;
     /// <summary>completionItem.documentationFormat aus initialize (#31): True, wenn der Client Markdown zuerst
@@ -442,6 +445,7 @@ uses
   Atlas.Common.Lsp.SignatureHelp,
   System.RegularExpressions,
   Atlas.Common.Editing.CommandSource,
+  Atlas.Common.Editing.AccessorCreation,
   Atlas.Common.Editing.SlashMenu,
   Atlas.Common.Rules.Catalog,
   Atlas.Common.Rules.Catalog.Data,
@@ -2587,6 +2591,80 @@ begin
   end;
 end;
 
+class function TLspCompletion.AccessorItems(ARequest: TCompletionRequest; const APropertyName, APropertyType,
+  AIndexParameters: string; AIsWrite: Boolean; const APrefix: string): TArray<TCompletionItem>;
+const
+  Titles: array[TAccessorKind] of string = ('Feld %s anlegen', '%s anlegen', '%s anlegen');
+var
+  Slash: TSlashContext;
+  Source: TCommandSource;
+  ClassSymbol: TIndexSymbol;
+  Kinds: TArray<TAccessorKind>;
+  Kind: TAccessorKind;
+  Plan: TAccessorPlan;
+  Edits: TArray<TTextEdit>;
+  WithField: Boolean;
+  Item: TCompletionItem;
+  Lines: TArray<string>;
+begin
+  Result := nil;
+  // Ein Feld nur ohne Indexparameter: read FWert[I] gibt es nicht.
+  Kinds := nil;
+  if AIndexParameters = '' then
+    Kinds := [TAccessorKind.Field];
+  if AIsWrite then
+    Kinds := Kinds + [TAccessorKind.Setter]
+  else
+    Kinds := Kinds + [TAccessorKind.Getter];
+  Lines := ARequest.Lines;
+  Slash := Default(TSlashContext);
+  Slash.Text := ARequest.Text;
+  Slash.Line := ARequest.Position.Line;
+  if ARequest.Position.Line <= High(Lines) then
+    Slash.LineText := Lines[ARequest.Position.Line];
+  Slash.Index := ARequest.Index;
+  Source := TCommandSource.Create(Slash);
+  try
+    if not Source.ClassAt(ClassSymbol) then
+      Exit;
+    for Kind in Kinds do
+    begin
+      Plan := Default(TAccessorPlan);
+      Plan.Kind := Kind;
+      Plan.PropertyName := APropertyName;
+      Plan.PropertyType := APropertyType.Trim;
+      Plan.IndexParameters := AIndexParameters;
+      Plan.MethodSection := 'private';
+      if ARequest.Settings.AccessorSection = TCompletionAccessorSection.Protected then
+        Plan.MethodSection := 'protected';
+      if not TAccessorCreation.Edits(Source, ARequest.Index, ClassSymbol, Plan, Edits, WithField) then
+        Continue;
+      Item := Default(TCompletionItem);
+      Item.Name := Format(Titles[Kind], [Plan.Name]);
+      Item.Kind := KindMethod;
+      if Kind = TAccessorKind.Field then
+        Item.Kind := KindField;
+      Item.Detail := TAccessorCreation.Declaration(Plan);
+      Item.Fits := True;
+      Item.Pinned := True;
+      Item.Action := 'create';
+      Item.HasTextEdit := True;
+      // Der getippte Anfang wird zum Namen: "read Ca|" → "read FCaption".
+      Item.TextEdit := TRuleEdit.Create(TTextRange.Create(TTextPosition.Create(ARequest.Position.Line,
+        ARequest.Position.Character - Length(APrefix)), ARequest.Position), Plan.Name);
+      Item.AdditionalEdits := Edits;
+      if WithField then
+      begin
+        Plan.Kind := TAccessorKind.Field;
+        Item.Detail := Item.Detail + ' + ' + TAccessorCreation.Declaration(Plan);
+      end;
+      Result := Result + [Item];
+    end;
+  finally
+    Source.Free;
+  end;
+end;
+
 class function TLspCompletion.PropertyItems(ARequest: TCompletionRequest; out AItems: TCompletionItems): Boolean;
 var
   Match: TMatch;
@@ -2600,7 +2678,7 @@ begin
   AItems := Default(TCompletionItems);
   Result := False;
   // "  property Wert[I: Integer]: Double read |", auch mit "index 3" und schon gesetztem read vor write.
-  Match := TRegEx.Match(ARequest.LineBefore, '^\s*(?:class\s+)?property\s+\w+\s*(\[[^\]]*\])?\s*:\s*' +
+  Match := TRegEx.Match(ARequest.LineBefore, '^\s*(?:class\s+)?property\s+(\w+)\s*(\[[^\]]*\])?\s*:\s*' +
     '([\w.<>, ]+?)\s+(?:index\s+\S+\s+)?(?:read\s+\w+\s+)?(read|write)\s+(\w*)$', [roIgnoreCase]);
   if not Match.Success then
     Exit;
@@ -2608,12 +2686,16 @@ begin
   if not EnclosingType(UnitIndex, ARequest.Position.Line, True, TypeName) then
     Exit;
   Result := True;
-  PropType := Match.Groups[2].Value;
-  IsWrite := SameText(Match.Groups[3].Value, 'write');
-  Prefix := Match.Groups[4].Value;
+  PropType := Match.Groups[3].Value;
+  IsWrite := SameText(Match.Groups[4].Value, 'write');
+  Prefix := Match.Groups[5].Value;
+  // Feld und Zugriffsmethoden anlegen (#467): oben vor den passenden Mitgliedern.
+  if ARequest.Settings.CreateAccessors then
+    AItems.Items := AccessorItems(ARequest, Match.Groups[1].Value, PropType,
+      Match.Groups[2].Value.Trim(['[', ']']).Trim, IsWrite, Prefix);
   // Indexparameter: "[I, J: Integer; const S: string]" sind drei.
   IndexCount := 0;
-  for Param in Match.Groups[1].Value.Trim(['[', ']']).Split([';']) do
+  for Param in Match.Groups[2].Value.Trim(['[', ']']).Split([';']) do
     if Pos(':', Param) > 0 then
       Inc(IndexCount, Length(Copy(Param, 1, Pos(':', Param) - 1).Split([','])));
   for Candidate in ARequest.Resolver.AccessorCandidates(UnitIndex, TypeName) do

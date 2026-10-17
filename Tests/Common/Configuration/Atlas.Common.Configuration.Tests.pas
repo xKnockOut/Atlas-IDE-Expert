@@ -448,6 +448,16 @@ begin
   // Namensvorschläge (#452)
   Assert.IsTrue(Parse('{}', Issues).Completion.NameSuggestions);
   Assert.IsFalse(Parse('{"completion": {"nameSuggestions": false}}', Issues).Completion.NameSuggestions);
+  // Feld und Zugriffsmethoden nach read/write (#467)
+  Assert.IsTrue(Parse('{}', Issues).Completion.CreateAccessors);
+  Assert.IsFalse(Parse('{"completion": {"createAccessors": false}}', Issues).Completion.CreateAccessors);
+  Assert.IsTrue(Parse('{}', Issues).Completion.AccessorSection = TCompletionAccessorSection.Private);
+  Assert.IsTrue(Parse('{"completion": {"accessorSection": "protected"}}', Issues).Completion.AccessorSection =
+    TCompletionAccessorSection.Protected);
+  Assert.AreEqual(0, Integer(Length(Issues)));
+  Assert.IsTrue(Parse('{"completion": {"accessorSection": "public"}}', Issues).Completion.AccessorSection =
+    TCompletionAccessorSection.Private);
+  Assert.AreEqual(1, Integer(Length(Issues)));
   Assert.IsTrue(Parse('{}', Issues).Refactoring.InlineVar);
   Assert.IsFalse(Parse('{"refactoring": {"inlineVar": false}}', Issues).Refactoring.InlineVar);
   Assert.AreEqual(0, Integer(Length(Issues)));

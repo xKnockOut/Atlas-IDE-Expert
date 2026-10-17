@@ -2168,3 +2168,18 @@ Voraussetzung für EX2 bis EX7: mindestens eine Einstellung trägt `x-experiment
 | NV6 | Projekt ohne F-Konvention, in `.atlas` `"naming": {"field": "F"}` eintragen und speichern, NV1 | Nach höchstens 2 s `FCustomers`, `FCustomerList`, `FList`; mit `"field": ""` ohne Präfix trotz F-Konvention |
 | NV7 | `completion.nameSuggestions` aus, NV1 | Keine Namensvorschläge; die Vervollständigung verhält sich wie vorher |
 
+
+## Feld und Zugriffsmethoden anlegen (#467)
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| EZ1 | Klasse mit `private FName: string;` und `public`, darunter `property Caption: string read ` tippen | Oben „Feld FCaption anlegen“ und „GetCaption anlegen“ (Aktionsfarbe), danach passende vorhandene Felder und Funktionen |
+| EZ2 | EZ1, „Feld FCaption anlegen“ wählen | Zeile lautet `read FCaption`; hinter `FName: string;` steht `FCaption: string;`; Strg+Z nimmt beides in einem Schritt zurück |
+| EZ3 | EZ2, weiter mit ` write ` und „SetCaption anlegen“ | `write SetCaption`; `procedure SetCaption(const Value: string);` am Ende von private; in der implementation `procedure TFoo.SetCaption` mit `if FCaption <> Value then` |
+| EZ4 | `property Titel: string read GetTitel write ` ohne Feld FTitel, „SetTitel anlegen“ | Feld `FTitel: string;` und Setter entstehen zusammen; das Detail zeigt beide Deklarationen |
+| EZ5 | Klasse mit `strict private` und `private`, „Feld FWert anlegen“ | Das Feld steht unter `strict private` |
+| EZ6 | `completion.accessorSection` auf protected, Klasse ohne protected vor der Eigenschaft, „GetCaption anlegen“ | Vor der Eigenschaft entsteht `protected` mit der Deklaration, danach wieder `public`; die Datei übersetzt |
+| EZ7 | `property Items[Index: Integer]: Double read ` | Nur „GetItems anlegen“ (kein Feld); `function GetItems(Index: Integer): Double;`, Rumpf `Result := Default(Double);` |
+| EZ8 | In der Unit `TPunkt = record X, Y: Integer; end;`, in der Klasse `property Punkt: TPunkt read FPunkt write `, „SetPunkt anlegen“ | Setter weist `FPunkt := Value;` ohne Vergleich zu; die Datei übersetzt |
+| EZ9 | Getter bzw. Feld gibt es schon | Kein Eintrag „… anlegen“ für dieses Mitglied |
+| EZ10 | `completion.createAccessors` aus, EZ1 | Nur vorhandene Felder und Methoden, keine „… anlegen“-Einträge |

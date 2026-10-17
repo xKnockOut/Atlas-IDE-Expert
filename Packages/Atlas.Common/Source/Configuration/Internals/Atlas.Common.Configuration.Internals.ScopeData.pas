@@ -42,7 +42,7 @@ const
     'logFile',
     'traceFile');
   /// <summary>Schlüssel des Projekts (atlas.json).</summary>
-  ProjectSettingPaths: array[0..24] of string = (
+  ProjectSettingPaths: array[0..26] of string = (
     'encoding',
     'project',
     'config',
@@ -56,6 +56,8 @@ const
     'completion.interfaceSection',
     'completion.senderCast',
     'completion.freeStyle',
+    'completion.createAccessors',
+    'completion.accessorSection',
     'refactoring',
     'sortUses',
     'usesKeep',
