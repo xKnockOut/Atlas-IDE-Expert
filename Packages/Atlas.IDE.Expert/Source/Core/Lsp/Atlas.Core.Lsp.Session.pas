@@ -220,6 +220,9 @@ type
     function WorkspaceSymbols(const AQuery: string; ATimeoutMs: Cardinal): TArray<TAtlasSymbol>;
     /// <summary>Gliederung einer Datei (textDocument/documentSymbol, #503), flach in Dateireihenfolge.</summary>
     function DocumentSymbols(const AFileName: string; ATimeoutMs: Cardinal): TArray<TAtlasSymbol>;
+    /// <summary>Unveränderte Antwort von textDocument/documentSymbol samt Atlas-Angaben (Gliederungsfenster,
+    /// #537); der Aufrufer gibt sie frei, nil ohne Antwort.</summary>
+    function DocumentSymbolTree(const AFileName: string; ATimeoutMs: Cardinal): TJSONValue;
     /// <summary>DocumentSymbol[] (mit children; Container = Name des Elternsymbols) oder SymbolInformation[]
     /// einer documentSymbol-Antwort, flach; AFileName für Symbole ohne Ort.</summary>
     class function SymbolsOfDocument(const AResponse: TJSONValue; const AFileName: string): TArray<TAtlasSymbol>;
@@ -1099,13 +1102,18 @@ begin
   Result := Found;
 end;
 
+function TLspSession.DocumentSymbolTree(const AFileName: string; ATimeoutMs: Cardinal): TJSONValue;
+begin
+  Result := FClient.Request('textDocument/documentSymbol',
+    TJSONObject.Create(TJSONPair.Create('textDocument', TJSONObject.Create(TJSONPair.Create('uri',
+    PathToUri(AFileName))))), ATimeoutMs);
+end;
+
 function TLspSession.DocumentSymbols(const AFileName: string; ATimeoutMs: Cardinal): TArray<TAtlasSymbol>;
 var
   Response: TJSONValue;
 begin
-  Response := FClient.Request('textDocument/documentSymbol',
-    TJSONObject.Create(TJSONPair.Create('textDocument', TJSONObject.Create(TJSONPair.Create('uri',
-    PathToUri(AFileName))))), ATimeoutMs);
+  Response := DocumentSymbolTree(AFileName, ATimeoutMs);
   try
     Result := SymbolsOfDocument(Response, AFileName);
   finally

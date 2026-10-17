@@ -27,6 +27,8 @@ type
     procedure HandlesRequestThroughDispatcher;
     [Test]
     procedure ReturnsNullForUnknownDocument;
+    [Test]
+    procedure MarksVisibilityAndMethodFlags;
   end;
 
 implementation
@@ -295,6 +297,86 @@ begin
   finally
     Feature.Free;
     Dispatcher.Free;
+  end;
+end;
+
+const
+  FormCode =
+    'unit F;'#13#10 +
+    'interface'#13#10 +
+    'type'#13#10 +
+    '  TForm1 = class(TForm)'#13#10 +
+    '    Button1: TButton;'#13#10 +
+    '    procedure Button1Click(Sender: TObject);'#13#10 +
+    '  private'#13#10 +
+    '    FCount: Integer;'#13#10 +
+    '    procedure Missing;'#13#10 +
+    '  strict protected'#13#10 +
+    '    procedure Paint; override;'#13#10 +
+    '    procedure Draw; virtual; abstract;'#13#10 +
+    '  public'#13#10 +
+    '    class function Make: TForm1;'#13#10 +
+    '    class property Count: Integer read FCount;'#13#10 +
+    '  end;'#13#10 +
+    '  TPlain = class'#13#10 +
+    '    X: Integer;'#13#10 +
+    '  end;'#13#10 +
+    'implementation'#13#10 +
+    'procedure TForm1.Button1Click(Sender: TObject); begin end;'#13#10 +
+    'procedure TForm1.Paint; begin end;'#13#10 +
+    'class function TForm1.Make: TForm1; begin Result := nil; end;'#13#10 +
+    'end.';
+
+function Extra(const ASymbols: TJSONArray; const APath: array of string; const AKey: string): string;
+var
+  Symbol, Extras: TJSONObject;
+  Value: TJSONValue;
+begin
+  Result := '';
+  Symbol := FindSymbol(ASymbols, APath);
+  Assert.IsNotNull(Symbol, APath[High(APath)]);
+  Extras := Symbol.GetValue('atlas') as TJSONObject;
+  if Extras = nil then
+    Exit;
+  Value := Extras.GetValue(AKey);
+  if Value <> nil then
+    Result := Value.Value;
+end;
+
+procedure TLspDocumentSymbolsTests.MarksVisibilityAndMethodFlags;
+var
+  Tree: TSyntaxTree;
+  Symbols: TJSONArray;
+begin
+  Tree := TPascalParser.Parse(FormCode);
+  try
+    Symbols := TLspDocumentSymbols.BuildSymbols(Tree, FormCode);
+  finally
+    Tree.Free;
+  end;
+  try
+    // Ohne Angabe bei Klassen mit Vorfahr: published (Formularfelder und Ereignis-Handler).
+    Assert.AreEqual('published', Extra(Symbols, ['F', 'interface', 'TForm1', 'Button1'], 'visibility'));
+    Assert.AreEqual('published', Extra(Symbols, ['F', 'interface', 'TForm1', 'Button1Click'], 'visibility'));
+    Assert.AreEqual('private', Extra(Symbols, ['F', 'interface', 'TForm1', 'FCount'], 'visibility'));
+    Assert.AreEqual('true', Extra(Symbols, ['F', 'interface', 'TForm1', 'Missing'], 'unimplemented'));
+    Assert.AreEqual('', Extra(Symbols, ['F', 'interface', 'TForm1', 'Paint'], 'unimplemented'));
+    Assert.AreEqual('strict protected', Extra(Symbols, ['F', 'interface', 'TForm1', 'Paint'], 'visibility'));
+    Assert.AreEqual('true', Extra(Symbols, ['F', 'interface', 'TForm1', 'Paint'], 'override'));
+    Assert.AreEqual('true', Extra(Symbols, ['F', 'interface', 'TForm1', 'Draw'], 'virtual'));
+    Assert.AreEqual('true', Extra(Symbols, ['F', 'interface', 'TForm1', 'Draw'], 'abstract'));
+    // Abstrakte Methoden brauchen keinen Rumpf.
+    Assert.AreEqual('', Extra(Symbols, ['F', 'interface', 'TForm1', 'Draw'], 'unimplemented'));
+    Assert.AreEqual('true', Extra(Symbols, ['F', 'interface', 'TForm1', 'Make'], 'classMember'));
+    Assert.AreEqual('public', Extra(Symbols, ['F', 'interface', 'TForm1', 'Make'], 'visibility'));
+    Assert.AreEqual('true', Extra(Symbols, ['F', 'interface', 'TForm1', 'Count'], 'classMember'));
+    Assert.AreEqual('', Extra(Symbols, ['F', 'interface', 'TForm1', 'Button1Click'], 'classMember'));
+    // Ohne Vorfahr: public.
+    Assert.AreEqual('public', Extra(Symbols, ['F', 'interface', 'TPlain', 'X'], 'visibility'));
+    // Rümpfe im implementation-Abschnitt tragen nichts.
+    Assert.IsNull(FindSymbol(Symbols, ['F', 'implementation', 'TForm1.Paint']).GetValue('atlas'));
+  finally
+    Symbols.Free;
   end;
 end;
 

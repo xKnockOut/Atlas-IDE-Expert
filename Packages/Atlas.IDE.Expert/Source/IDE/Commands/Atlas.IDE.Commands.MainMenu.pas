@@ -24,7 +24,8 @@
 // „Atlas-Änderungen“ (#721) gehen an TAtlasIdeUndo.
 // Persönliche Notizen (#545) gehen an TAtlasIdeNotes; sichtbar nur bei
 // eingeschalteter Einstellung „Notizen“. Benannte Lesezeichen (#622) gehen an
-// TAtlasIdeBookmarks; sichtbar nur bei bookmarks.named.
+// TAtlasIdeBookmarks; sichtbar nur bei bookmarks.named. „Gliederung …“ (#537)
+// öffnet TAtlasIdeOutline; sichtbar nur bei outline.enabled.
 // Das Atlas-Symbol (#751) steht am Menü und an den Einträgen für Einstellungen
 // und Optionen; UpdateImage wählt nach einem Themenwechsel die passende Variante.
 // Willkommensseite (#753): „Atlas-Start“ (auch unter Ansicht), „Atlas-Layout
@@ -77,6 +78,8 @@ type
     FBookmarkItems: TArray<TMenuItem>;
     /// <summary>„Erzeugen…“ (#719), sichtbar nach keys.generateMenu.</summary>
     FGenerateItem: TMenuItem;
+    /// <summary>„Gliederung …“ (#537), sichtbar nach outline.enabled.</summary>
+    FOutlineItem: TMenuItem;
     /// <summary>Untermenü „Notizen und Lesezeichen“ (#545, #622).</summary>
     FNotesGroup: TMenuItem;
     procedure WelcomeClick(Sender: TObject);
@@ -86,6 +89,7 @@ type
     procedure UndoClick(Sender: TObject);
     procedure NotesClick(Sender: TObject);
     procedure BookmarksClick(Sender: TObject);
+    procedure OutlineClick(Sender: TObject);
     function AddItem(AText: TAtlasTextId; ATag: Integer; AOnClick: TNotifyEvent): TMenuItem; overload;
     function AddItem(const ACaption: string; ATag: Integer; AOnClick: TNotifyEvent): TMenuItem; overload;
     /// <summary>Untermenü im Atlas-Menü; folgende AddItem landen darin.</summary>
@@ -139,6 +143,7 @@ uses
   Atlas.IDE.Undo.Changes,
   Atlas.IDE.Notes.Service,
   Atlas.IDE.Bookmarks.Service,
+  Atlas.IDE.Outline.Service,
   Atlas.IDE.Commands.Editor,
   Atlas.IDE.UnitSearch.Commands,
   Atlas.IDE.Generate.Commands,
@@ -227,6 +232,7 @@ begin
   AddItem(TAtlasTextId.EditorTestUnit, 7, EditorClick);
   AddItem(TAtlasTextId.EditorExpand, 1, EditorClick);
   AddItem(TAtlasTextId.EditorShrink, 2, EditorClick);
+  FOutlineItem := AddItem(TAtlasTextId.OutlineCommand, 0, OutlineClick);
   // Der IDE-Dialog, falls Atlas Strg+F12 übernimmt.
   AddItem(TAtlasTextId.UnitSearchIdeDialog, 9, EditorClick);
   AddGroup(TAtlasTextId.MenuGroupSearch);
@@ -561,6 +567,9 @@ begin
   // Erzeugen-Menü (#719) nach keys.generateMenu.
   if FGenerateItem <> nil then
     FGenerateItem.Visible := TAtlasIdeSettings.Current.GenerateMenu;
+  // Gliederung (#537) nach outline.enabled.
+  if FOutlineItem <> nil then
+    FOutlineItem.Visible := TAtlasIdeSettings.Current.Outline;
   // Benannte Lesezeichen (#622) nach bookmarks.named.
   for Item in FBookmarkItems do
     Item.Visible := TAtlasIdeSettings.Current.BookmarksNamed;
@@ -709,6 +718,16 @@ begin
       else
         TAtlasIdeBookmarks.ShowWindow;
       end;
+    end);
+end;
+
+procedure TAtlasMainMenu.OutlineClick(Sender: TObject);
+begin
+  TAtlasIdeShortcutTips.Invoked('Atlas.Outline');
+  TAtlasGuard.Run(TAtlasFeature.EditorCommands,
+    procedure
+    begin
+      TAtlasIdeOutline.ShowWindow;
     end);
 end;
 
