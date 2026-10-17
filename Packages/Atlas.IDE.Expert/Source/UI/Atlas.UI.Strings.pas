@@ -582,7 +582,9 @@ type
     SettingsMultiCursorAbove, SettingsMultiCursorBelow, SettingsLinkedEditing, LinkedEditingCount,
     LinkedEditingReserved, LinkedEditingVisible, LinkedEditingRestoreHint, SettingsStickyScroll,
     SettingsStickyScrollMaxLines, MoveClassTitle, MoveClassPrompt, MoveClassFailed, MoveClassNothing,
-    MoveClassPreviewHint, MoveClassApply, MoveClassDone, MoveClassWarning);
+    MoveClassPreviewHint, MoveClassApply, MoveClassDone, MoveClassWarning, UnitRenameTitle, UnitRenameNotice,
+    UnitRenameNoticeOne, UnitRenameGroupCount, UnitRenameProject, UnitRenameGroup, UnitRenamePreviewHint,
+    UnitRenameApply, UnitRenameDone, UnitRenameFailed, UnitRenameNothing, UnitRenameReport);
 
   TAtlasStrings = class
   private class var
@@ -1682,7 +1684,13 @@ const
      'Höchstzahl der Kopfzeilen (1 bis 10):',
      'Klasse in eigene Unit verschieben', 'Name der neuen Unit:', 'Klasse verschieben fehlgeschlagen: %s',
      'Klasse verschieben: nichts zu ändern.', 'Neue Unit %s: %d Änderungen in %d Dateien', 'Verschieben',
-     'Klasse nach %s verschoben: %d Änderungen in %d Dateien übernommen.', 'Hinweis: %s'),
+     'Klasse nach %s verschoben: %d Änderungen in %d Dateien übernommen.', 'Hinweis: %s',
+     'Unit umbenannt', '%d Units verwenden noch %s. Anpassen?', 'Eine Unit verwendet noch %s. Anpassen?',
+     'In der Projektgruppe: %d Units.', 'Im Projekt anpassen …', 'In der Projektgruppe anpassen …',
+     '%s → %s: %d Änderungen in %d Dateien', 'Anpassen',
+     'Nach dem Umbenennen von %s in %s nachgezogen: %d Änderungen in %d Dateien.',
+     'uses nachziehen fehlgeschlagen: %s', 'Keine Unit verwendet noch %s.',
+     '%s in %s umbenannt: noch verwendet im Projekt von %d, in der Projektgruppe von %d Units.'),
     ('Enter to accept · Esc to close', '%d of %d', 'No matches for “%s”', 'Backspace widens the search',
      'No suggestions here', 'Esc closes', 'No details for this entry', 'Overload', 'Deprecated: %s', 'Deprecated.',
      'Inherited from %s', 'Inherited', 'optional, default %s', 'No overload with %d parameters.', '… %d more',
@@ -2700,7 +2708,13 @@ const
      'Maximum header lines (1 to 10):',
      'Move class to its own unit', 'Name of the new unit:', 'Moving the class failed: %s',
      'Move class: nothing to change.', 'New unit %s: %d changes in %d files', 'Move',
-     'Class moved to %s: %d changes in %d files applied.', 'Note: %s'));
+     'Class moved to %s: %d changes in %d files applied.', 'Note: %s',
+     'Unit renamed', '%d units still use %s. Update them?', 'One unit still uses %s. Update it?',
+     'In the project group: %d units.', 'Update in project …', 'Update in project group …',
+     '%s → %s: %d changes in %d files', 'Update',
+     'Updated after renaming %s to %s: %d changes in %d files.',
+     'Updating uses failed: %s', 'No unit uses %s anymore.',
+     '%s renamed to %s: still used by %d units in the project, %d in the project group.'));
 
 { TAtlasStrings }
 

@@ -38,6 +38,8 @@ type
     OpenBuild = 'openBuild';
     /// <summary>Ausblenden direkt am Element (#628): „Ausgeblendet · Rückgängig“.</summary>
     Hidden = 'hidden';
+    /// <summary>uses nachziehen nach dem Umbenennen einer Unit (#512).</summary>
+    UnitRename = 'unitRename';
   public
     /// <summary>Bekannte Quellen in fester Reihenfolge (Optionsseite, Filter).</summary>
     class function Known: TArray<string>; static;
@@ -65,7 +67,7 @@ implementation
 
 class function TAtlasNotificationSources.Known: TArray<string>;
 begin
-  Result := [Build, Check, Reload, Server, ShortcutTips, BuildServer, OpenBuild, Hidden];
+  Result := [Build, Check, Reload, Server, ShortcutTips, BuildServer, OpenBuild, Hidden, UnitRename];
 end;
 
 class function TAtlasNotificationSources.ModeName(AMode: TAtlasNotificationMode): string;

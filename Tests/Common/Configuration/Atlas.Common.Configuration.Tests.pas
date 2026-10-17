@@ -502,6 +502,12 @@ begin
   Assert.IsTrue(Parse('{"refactoring": {"inline": true}}', Issues).Refactoring.InlineCode);
   Assert.IsFalse(Parse('{}', Issues).Refactoring.MoveClass);
   Assert.IsTrue(Parse('{"refactoring": {"moveClass": true}}', Issues).Refactoring.MoveClass);
+  // #512: uses nachziehen, experimentell und daher "off".
+  Assert.IsFalse(Parse('{}', Issues).Refactoring.UnitRenameFollowUp);
+  Assert.IsTrue(Parse('{"refactoring": {"unitRenameFollowUp": "ask"}}', Issues).Refactoring.UnitRenameFollowUp);
+  Assert.IsFalse(Parse('{"refactoring": {"unitRenameFollowUp": "off"}}', Issues).Refactoring.UnitRenameFollowUp);
+  Parse('{"refactoring": {"unitRenameFollowUp": "yes"}}', Issues);
+  Assert.AreEqual(1, Integer(Length(Issues)));
   // #472: Methode aus Aufruf anlegen.
   Assert.IsTrue(Parse('{}', Issues).Refactoring.CreateMethod);
   Assert.AreEqual('private', Parse('{}', Issues).Refactoring.CreateMethodSection);

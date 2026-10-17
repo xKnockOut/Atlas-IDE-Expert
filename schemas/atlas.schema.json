@@ -579,6 +579,15 @@
           "x-experimental": true,
           "x-issue": "#103"
         },
+        "unitRenameFollowUp": {
+          "type": "string",
+          "enum": ["ask", "off"],
+          "default": "off",
+          "description": "Nach dem Umbenennen einer Unit in der Projektverwaltung (die IDE passt nur .dpr und .dproj an) meldet Atlas in der Benachrichtigungszentrale, wie viele Units den alten Namen noch verwenden, und bietet an, uses-Einträge und qualifizierte Bezeichner (Alt.TKlasse) im Projekt oder in der Projektgruppe nachzuziehen, mit Vorschau und rückgängig machbar. ask: anbieten; off: aus.",
+          "x-experimental": true,
+          "x-offValue": "off",
+          "x-issue": "#512"
+        },
         "createMethod": {
           "type": "boolean",
           "default": true,
