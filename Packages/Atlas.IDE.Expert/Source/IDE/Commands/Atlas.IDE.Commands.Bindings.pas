@@ -86,6 +86,7 @@ uses
   Atlas.IDE.Results.Commands,
   Atlas.IDE.Commands.QuickOpen,
   Atlas.IDE.Editor.NavHistory,
+  Atlas.IDE.Results.Peek,
   Atlas.IDE.UnitSearch.Commands,
   Atlas.IDE.Undo.Changes,
   Atlas.IDE.Bookmarks.Service,
@@ -362,6 +363,28 @@ begin
           procedure
           begin
             TAtlasIdeNavHistory.GoLastEdit;
+          end);
+      end);
+  end;
+  // Definition und Referenzen einblenden (#505).
+  if Settings.Peek then
+  begin
+    AddKey(Settings.PeekDefinitionKey, TAtlasStrings.Text(TAtlasTextId.PeekDefinitionCommand),
+      procedure
+      begin
+        TAtlasGuard.Run(TAtlasFeature.EditorCommands,
+          procedure
+          begin
+            TAtlasIdePeek.PeekDefinition;
+          end);
+      end);
+    AddKey(Settings.PeekReferencesKey, TAtlasStrings.Text(TAtlasTextId.PeekReferencesCommand),
+      procedure
+      begin
+        TAtlasGuard.Run(TAtlasFeature.EditorCommands,
+          procedure
+          begin
+            TAtlasIdePeek.PeekReferences;
           end);
       end);
   end;

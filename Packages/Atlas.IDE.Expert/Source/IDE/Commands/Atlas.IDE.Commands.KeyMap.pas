@@ -124,7 +124,7 @@ const
   // derselben Taste gilt die zuletzt angemeldete. 3 = Editorbefehle (eine Bindung); Strg+F12 (#777) ist keine
   // Bindung, sondern eine Aktion und bekommt ihren Platz in der Aktionsliste.
   BindOrder: array[TAtlasKeyFunction] of Integer = (1, 2, 4, 5, 6, 7, 3, 3, 3, 3, 3, 3, 3, 8, 3, 3, 3, 3, 0, 3, 3, 3,
-    8, 8, 3, 3, 3, 3, 3, 3, 3);
+    8, 8, 3, 3, 3, 3, 3, 3, 3, 3, 3);
 
 type
   /// <summary>Herkunft je Modul, einmal ermittelt.</summary>
