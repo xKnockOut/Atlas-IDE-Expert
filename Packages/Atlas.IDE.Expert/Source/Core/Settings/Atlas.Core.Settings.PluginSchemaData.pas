@@ -12,7 +12,7 @@ function AtlasPluginSchemaJson: string;
 implementation
 
 const
-  Lines: array[0..2027] of string = (
+  Lines: array[0..2039] of string = (
     '{',
     '  "$schema": "http://json-schema.org/draft-07/schema#",',
     '  "title": "Atlas-Plugin-Einstellungen",',
@@ -155,6 +155,18 @@ const
     '      "x-caption": "Inaktive {$IFDEF}-Zweige ausgrauen",',
     '      "x-captionEn": "Dim inactive {$IFDEF} branches",',
     '      "x-issue": "#615"',
+    '    },',
+    '    "DimUnusedUses": {',
+    '      "type": "boolean",',
+    '      "default": true,',
+    '      "x-key": "editor.dimUnusedUses",',
+    '      "x-area": "editor",',
+    '      "x-feature": "Pairs",',
+    '      "x-page": "Editor",',
+    '      "x-drawing": true,',
+    '      "x-caption": "Ungenutzte uses-Einträge abblenden",',
+    '      "x-captionEn": "Dim unused uses entries",',
+    '      "x-issue": "#621"',
     '    },',
     '    "Problems": {',
     '      "type": "boolean",',

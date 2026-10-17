@@ -1152,6 +1152,9 @@ begin
     end;
   FTestPrograms := TDictionary<string, TPair<string, UInt64>>.Create;
   FTestUnits := TLspTestUnits.Create(FDocuments, TestUnitContextFor);
+  // Ungenutzte uses (#621): dieselbe Analyse wie die uses-Aktionen, auch für die Diagnosen.
+  FSyntaxDiagnostics.UsesProvider := FCodeActions.UsesContextFor;
+  FCodeActions.DefinesFor := DefinesFor;
   FCodeActions.ExtraActions :=
     function(const AUri: string; const ARange: TTextRange): TArray<TJSONObject>
     begin

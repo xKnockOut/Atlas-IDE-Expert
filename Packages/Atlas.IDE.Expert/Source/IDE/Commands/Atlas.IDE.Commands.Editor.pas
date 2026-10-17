@@ -80,6 +80,10 @@ type
     /// <summary>Code-Aktion anwenden: erst die Änderung, dann der Befehl; auch für das Erzeugen-Menü (#719).
     /// </summary>
     class procedure ApplyAction(const AAction: TLspCodeAction); static;
+    /// <summary>Code-Aktion mit Kennung ATag (data.tag) für ARange der oberen Datei holen und anwenden, etwa
+    /// „Entfernen“ aus dem Tooltip eines uses-Eintrags (#621). Ohne solche Aktion eine Zeile in der
+    /// Meldungsansicht.</summary>
+    class procedure ApplyTagged(const ARange: TLspRange; const ATag: string); static;
     class procedure ExpandSelection; static;
     class procedure ShrinkSelection; static;
     class procedure GoToTypeDefinition; static;
@@ -929,6 +933,36 @@ end;
 class procedure TAtlasIdeEditorCommands.ApplyAction(const AAction: TLspCodeAction);
 begin
   Apply(AAction);
+end;
+
+class procedure TAtlasIdeEditorCommands.ApplyTagged(const ARange: TLspRange; const ATag: string);
+var
+  View: IOTAEditView;
+  FileName: string;
+  Lines: TArray<string>;
+  Selection: TLspRange;
+  Found: TArray<TLspCodeAction>;
+  Action: TLspCodeAction;
+begin
+  // Current gleicht den Text ab; der Bereich stammt aus den Diagnosen desselben Stands.
+  if not Current(View, FileName, Lines, Selection) then
+    Exit;
+  try
+    Found := Session.CodeActions(FileName, ARange);
+  except
+    on E: ELspClientError do
+    begin
+      Say(TAtlasStrings.Fmt(TAtlasTextId.EditorFailed, [E.Message]));
+      Exit;
+    end;
+  end;
+  for Action in Found do
+    if SameText(Action.Tag, ATag) and (Action.Disabled = '') then
+    begin
+      Apply(Action);
+      Exit;
+    end;
+  Say(TAtlasStrings.Text(TAtlasTextId.UsesActionMissing));
 end;
 
 class procedure TAtlasIdeEditorCommands.Apply(const AAction: TLspCodeAction);

@@ -45,6 +45,10 @@ type
     procedure ProblemColorFadedMixesSurface;
     [Test]
     procedure ProblemColorHintMuted;
+    /// <summary>#621: uses-Hinweise aus data.uses; nur ungenutzte werden abgeblendet, keiner ist ein Problem
+    /// oder inaktiver Zweig.</summary>
+    [Test]
+    procedure UsesHintsAreKeptApart;
   end;
 
 implementation
@@ -472,6 +476,57 @@ begin
   Faded.Stale := True;
   Assert.AreEqual(TAtlasColorMath.Mix(Colors.Warn, Colors.Surface, AtlasMixFaded), ProblemColor(Colors, Faded));
   Assert.AreEqual(0.55, AtlasMixFaded, 0.0001);
+end;
+
+procedure TAtlasProblemsTests.UsesHintsAreKeptApart;
+var
+  Item: TJSONObject;
+  Unused, Kept, Inactive: TAtlasProblem;
+  Store: TAtlasProblemStore;
+  Spans: TArray<TAtlasColumnSpan>;
+begin
+  Item := TJSONObject.ParseJSONValue('{"range":{"start":{"line":3,"character":2},"end":{"line":3,"character":11}},' +
+    '"severity":4,"tags":[1],"source":"Atlas","message":"Aus Vcl.Grids wird nichts verwendet",' +
+    '"data":{"uses":{"unit":"Vcl.Grids","state":"unused"}}}') as TJSONObject;
+  try
+    Unused := TAtlasProblem.FromJson(Item);
+  finally
+    Item.Free;
+  end;
+  Assert.IsTrue(Unused.IsUses);
+  Assert.IsTrue(Unused.Unnecessary);
+  Assert.AreEqual('Vcl.Grids', Unused.UsesUnit);
+  Assert.AreEqual(TAtlasProblem.UsesUnused, Unused.UsesState);
+  Kept := Problem(3, 13, 'Units.Reg wird wegen initialization nicht als ungenutzt gezeigt', 'Atlas',
+    TAtlasProblemSeverity.Hint);
+  Kept.EndCharacter := 22;
+  Kept.UsesUnit := 'Units.Reg';
+  Kept.UsesState := TAtlasProblem.UsesInitialization;
+  Inactive := Problem(5, 0, 'inaktiv');
+  Inactive.EndLine := 6;
+  Inactive.Unnecessary := True;
+  Store := TAtlasProblemStore.Create;
+  try
+    Store.Update('C:\P\U.pas', 'unit U;'#10'interface'#10'uses'#10'  Vcl.Grids, Units.Reg;'#10'implementation'#10 +
+      'x'#10'end.', True, [Unused, Kept, Inactive, Problem(4, 0, 'echt')], '1', True);
+    Assert.AreEqual(1, Integer(Length(Store.ForFile('C:\P\U.pas'))), 'nur das echte Problem');
+    Assert.AreEqual(1, Integer(Length(Store.Inactive('C:\P\U.pas'))), 'nur der Zweig');
+    Assert.AreEqual(1, Integer(Length(Store.UnusedUses('C:\P\U.pas'))));
+    Spans := Store.UsesSpans('C:\P\U.pas', 3, 4);
+    Assert.AreEqual(1, Integer(Length(Spans)));
+    Assert.AreEqual(3, Spans[0].First);
+    Assert.AreEqual(11, Spans[0].Last);
+    Assert.AreEqual(0, Integer(Length(Store.InactiveSpans('C:\P\U.pas', 3, 4))), 'kein inaktiver Zweig');
+    Assert.AreEqual(1, Integer(Length(Store.UsesAt('C:\P\U.pas', 3, 5))));
+    Assert.AreEqual(TAtlasProblem.UsesInitialization, Store.UsesAt('C:\P\U.pas', 3, 15)[0].UsesState);
+    Assert.AreEqual(0, Integer(Length(Store.UsesAt('C:\P\U.pas', 4, 1))));
+    // Nach einer Änderung in der Zeile: nichts abgeblendet, bis neue Diagnosen kommen.
+    Store.Edit('C:\P\U.pas', 'unit U;'#10'interface'#10'uses'#10'  Vcl.Grids, Units.Re;'#10'implementation'#10 +
+      'x'#10'end.');
+    Assert.AreEqual(0, Integer(Length(Store.UsesSpans('C:\P\U.pas', 3, 4))));
+  finally
+    Store.Free;
+  end;
 end;
 
 procedure TAtlasProblemsTests.ProblemColorHintMuted;

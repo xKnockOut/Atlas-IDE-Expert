@@ -64,6 +64,9 @@ type
     /// <summary>Plugin eingeschaltet und Blockende-Beschriftungen an (#620); ohne Kopie des Einstellungsrecords.
     /// </summary>
     class function BlockEndLabelsOn: Boolean; static;
+    /// <summary>Plugin eingeschaltet und ungenutzte uses abblenden an (#621); ohne Kopie des Einstellungsrecords.
+    /// </summary>
+    class function DimUnusedUsesOn: Boolean; static;
     /// <summary>Plugin eingeschaltet und Problem-Markierungen an; ohne Kopie des Einstellungsrecords (P-10).</summary>
     class function ProblemMarksOn: Boolean; static;
     /// <summary>Übernimmt und speichert ASettings (gespeicherte Werte, ohne Sitzungswerte).</summary>
@@ -317,6 +320,12 @@ class function TAtlasIdeSettings.BlockEndLabelsOn: Boolean;
 begin
   EnsureLoaded;
   Result := FEffective.Enabled and FEffective.BlockEndLabels;
+end;
+
+class function TAtlasIdeSettings.DimUnusedUsesOn: Boolean;
+begin
+  EnsureLoaded;
+  Result := FEffective.Enabled and FEffective.DimUnusedUses;
 end;
 
 class function TAtlasIdeSettings.ProblemMarksOn: Boolean;

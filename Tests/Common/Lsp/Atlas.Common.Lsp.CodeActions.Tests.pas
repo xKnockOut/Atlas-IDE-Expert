@@ -36,6 +36,9 @@ type
     procedure SettingsSwitchThemOff;
     [Test]
     procedure TryFinallyFollowsFormatStyle;
+    /// <summary>#621: „X entfernen“ am uses-Eintrag mit data.tag; inaktive Zweige über DefinesFor.</summary>
+    [Test]
+    procedure UsesEntryActionsCarryTag;
   end;
 
 implementation
@@ -45,7 +48,8 @@ uses
   System.StrUtils,
   System.Generics.Collections,
   Atlas.Common.Documents.Uris,
-  Atlas.Common.Documents.Providers.DocumentStore;
+  Atlas.Common.Documents.Providers.DocumentStore,
+  Atlas.Common.Editing.UsesActions;
 
 const
   LB = #13#10;
@@ -175,6 +179,61 @@ begin
         NewText := TJSONObject(Edits.Items[0]).GetValue<string>('newText');
       end;
     Assert.IsTrue(Pos('try' + LB + #9'  L.Add(nil);', NewText) > 0, NewText);
+  finally
+    Response.Free;
+  end;
+end;
+
+procedure TLspCodeActionsTests.UsesEntryActionsCarryTag;
+const
+  UsesText = 'unit Haupt;' + LB + 'interface' + LB + 'uses' + LB + '  Vcl.Grids, Vcl.Menus, {$IFDEF X}Vcl.Forms, {$ENDIF}Vcl.Dialogs;' +
+    LB + 'implementation' + LB + 'end.';
+var
+  Uri, Tags: string;
+  Request, Response: TJSONObject;
+  Item, Data: TJSONValue;
+begin
+  FActions.UsesContextFor :=
+    function(const AUri: string; out AContext: TUsesContext): Boolean
+    begin
+      AContext := Default(TUsesContext);
+      AContext.Info :=
+        function(const AUnitName: string): TUsesUnitInfo
+        begin
+          Result := Default(TUsesUnitInfo);
+          // Vcl.Dialogs kennt der Index nicht.
+          Result.Known := not SameText(AUnitName, 'Vcl.Dialogs');
+        end;
+      Result := True;
+    end;
+  // Projekt ohne X: der Zweig mit Vcl.Forms ist inaktiv.
+  FActions.DefinesFor :=
+    function(const AUri: string; out ADefines: TArray<string>): Boolean
+    begin
+      ADefines := ['DEBUG'];
+      Result := True;
+    end;
+  Uri := TDocumentUris.FromPath(FileName);
+  FStore.Open(Uri, 'delphi', 1, UsesText);
+  Request := TJSONObject.ParseJSONValue('{"jsonrpc":"2.0","id":7,"method":"textDocument/codeAction","params":' +
+    '{"textDocument":{"uri":"' + Uri.Replace('\', '\\') + '"},"range":{"start":{"line":3,"character":4},' +
+    '"end":{"line":3,"character":4}},"context":{"diagnostics":[]}}}') as TJSONObject;
+  try
+    Response := FDispatcher.DispatchMessage(Request);
+  finally
+    Request.Free;
+  end;
+  try
+    Tags := '';
+    for Item in Response.GetValue<TJSONArray>('result') do
+    begin
+      Data := TJSONObject(Item).GetValue('data');
+      if Data is TJSONObject then
+        Tags := Tags + TJSONObject(Item).GetValue<string>('title') + '=' + TJSONObject(Data).GetValue<string>('tag') +
+          '|';
+    end;
+    // X fehlt: Vcl.Forms zählt nicht, also zwei ungenutzte (Vcl.Grids, Vcl.Menus).
+    Assert.AreEqual('Vcl.Grids entfernen=uses.remove|Alle ungenutzten uses entfernen (2)=uses.removeAll|', Tags);
   finally
     Response.Free;
   end;

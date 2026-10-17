@@ -38,6 +38,10 @@ const
   RemoveUnusedKind = 'source.removeUnusedImports';
   /// <summary>Client-Befehl, der das erste Argument in die Zwischenablage legt (#312).</summary>
   CopyTextCommand = 'atlas.copyText';
+  /// <summary>Kennungen der uses-Aktionen für den Hover des Plugins (#621), in data.tag.</summary>
+  UsesRemoveTag = 'uses.remove';
+  UsesRemoveAllTag = 'uses.removeAll';
+  UsesMoveTag = 'uses.move';
 
 type
   /// <summary>Edits in einer anderen Datei als dem Dokument der Aktion, z. B. der Formulardatei (#309).</summary>
@@ -61,6 +65,8 @@ type
     /// <summary>Befehl statt oder nach den Edits, z. B. für Dateiumwandlungen; '' ohne.</summary>
     Command: string;
     CommandArguments: TArray<string>;
+    /// <summary>Kennung für Clients, die eine bestimmte Aktion suchen (UsesRemoveTag, #621); '' ohne.</summary>
+    Tag: string;
   end;
 
   TCodeActions = class
@@ -83,7 +89,13 @@ type
     /// interface-Units ins implementation verschieben (Rewrite). Mit ARemoveUnused zusätzlich
     /// "ungenutzte uses entfernen" (source.removeUnusedImports).</summary>
     class function UsesActions(const AText: string; ATree: TSyntaxTree; const ARange: TTextRange;
-      const AContext: TUsesContext; AEditing, ARemoveUnused: Boolean): TArray<TCodeAction>; static;
+      const AContext: TUsesContext; AEditing, ARemoveUnused: Boolean): TArray<TCodeAction>; overload; static;
+    /// <summary>Wie oben, dazu für die Einträge an ARange (#621): „X entfernen“, „Alle ungenutzten uses
+    /// entfernen“ (ab zwei) und „X ins implementation-uses verschieben“, mit Tag. AInactive: inaktive Zweige,
+    /// die bei der Prüfung nicht zählen.</summary>
+    class function UsesActions(const AText: string; ATree: TSyntaxTree; const ARange: TTextRange;
+      const AContext: TUsesContext; const AInactive: TArray<TTextRange>; AEditing,
+      ARemoveUnused: Boolean): TArray<TCodeAction>; overload; static;
     /// <summary>"Zuweisungen umkehren" für die Zeilen von ARange (#313); False, wenn keine passt.</summary>
     class function SwapAssignments(const AText: string; const ARange: TTextRange; const AReadOnly: TReadOnlyCheck;
       out AAction: TCodeAction): Boolean; static;
@@ -423,13 +435,36 @@ end;
 
 class function TCodeActions.UsesActions(const AText: string; ATree: TSyntaxTree; const ARange: TTextRange;
   const AContext: TUsesContext; AEditing, ARemoveUnused: Boolean): TArray<TCodeAction>;
+begin
+  Result := UsesActions(AText, ATree, ARange, AContext, nil, AEditing, ARemoveUnused);
+end;
+
+/// <summary>Überschneiden sich die Bereiche? Enden zählen mit, damit ein Cursor am Namen trifft.</summary>
+function Touches(const A, B: TTextRange): Boolean;
+
+  function Before(const X, Y: TTextPosition): Boolean;
+  begin
+    Result := (X.Line < Y.Line) or ((X.Line = Y.Line) and (X.Character < Y.Character));
+  end;
+
+begin
+  Result := not (Before(A.EndPos, B.StartPos) or Before(B.EndPos, A.StartPos));
+end;
+
+class function TCodeActions.UsesActions(const AText: string; ATree: TSyntaxTree; const ARange: TTextRange;
+  const AContext: TUsesContext; const AInactive: TArray<TTextRange>; AEditing,
+  ARemoveUnused: Boolean): TArray<TCodeAction>;
 var
   Tokens: TArray<TPascalToken>;
-  Units: TArray<string>;
+  Units, Movable: TArray<string>;
   UnitName: string;
   Action: TCodeAction;
   Edit: TTextEdit;
   Edits: TArray<TTextEdit>;
+  Entries: TArray<TUsesEntry>;
+  Entry: TUsesEntry;
+  Unused: TArray<TTextRange>;
+  Index: Integer;
 begin
   Result := nil;
   if not Assigned(AContext.Info) then
@@ -450,6 +485,7 @@ begin
   if AEditing then
   begin
     Units := TUsesActions.MovableUnits(Tokens, AContext.Info);
+    Movable := Units;
     if TUsesActions.MoveUnits(Tokens, AText, Units, TTextLines.LineBreakOf(AText), Edits) then
     begin
       Action := Default(TCodeAction);
@@ -468,6 +504,60 @@ begin
       Action.Title := Format('Ungenutzte uses entfernen (%s)', [string.Join(', ', Units)]);
       Action.Kind := RemoveUnusedKind;
       Action.Edits := Edits;
+      Result := Result + [Action];
+    end;
+  end;
+  if not AEditing then
+    Exit;
+  // Einzelne Einträge an der Stelle (#621), auch in Listen mit {$IFDEF}.
+  Entries := TUsesActions.Entries(Tokens, AInactive, AContext.Info, AContext.Keep);
+  Unused := nil;
+  for Entry in Entries do
+    if Entry.State = TUsesEntryState.Unused then
+      Unused := Unused + [Entry.Range];
+  for Entry in Entries do
+  begin
+    if not Touches(Entry.Range, ARange) then
+      Continue;
+    if Entry.State = TUsesEntryState.Unused then
+    begin
+      if TUsesActions.RemoveEntries(AText, [Entry.Range], Edit) then
+      begin
+        Action := Default(TCodeAction);
+        Action.Title := Format('%s entfernen', [Entry.Name]);
+        Action.Kind := QuickFixKind;
+        Action.Edits := [Edit];
+        Action.IsPreferred := True;
+        Action.Tag := UsesRemoveTag;
+        Result := Result + [Action];
+      end;
+      if (Length(Unused) > 1) and TUsesActions.RemoveEntries(AText, Unused, Edit) then
+      begin
+        Action := Default(TCodeAction);
+        Action.Title := Format('Alle ungenutzten uses entfernen (%d)', [Length(Unused)]);
+        Action.Kind := QuickFixKind;
+        Action.Edits := [Edit];
+        Action.Tag := UsesRemoveAllTag;
+        Result := Result + [Action];
+      end;
+    end
+    else if Entry.State <> TUsesEntryState.OnlyImplementation then
+      Continue
+    // Allein verschiebbar: Die Aktion für alle oben hat schon denselben Titel und bekommt die Kennung.
+    else if (Length(Movable) = 1) and SameText(Movable[0], Entry.Name) then
+    begin
+      for Index := 0 to High(Result) do
+        if (Result[Index].Kind = RewriteKind) and
+          SameText(Result[Index].Title, Format('%s ins implementation-uses verschieben', [Entry.Name])) then
+          Result[Index].Tag := UsesMoveTag;
+    end
+    else if TUsesActions.MoveUnits(Tokens, AText, [Entry.Name], TTextLines.LineBreakOf(AText), Edits) then
+    begin
+      Action := Default(TCodeAction);
+      Action.Title := Format('%s ins implementation-uses verschieben', [Entry.Name]);
+      Action.Kind := RewriteKind;
+      Action.Edits := Edits;
+      Action.Tag := UsesMoveTag;
       Result := Result + [Action];
     end;
   end;

@@ -25,6 +25,8 @@
 // Anweisungen und ausgegraute Zweige lassen sich je Datei über .atlas
 // abschalten („In dieser Datei ausblenden“); was gezeichnet ist, meldet sich
 // je Zeile bei TAtlasIdeElements.
+// Ungenutzte uses-Einträge (#621, DimUnusedUses) dimmen wie inaktive Zweige,
+// mit eigenem Schalter und eigenem Element.
 
 interface
 
@@ -73,6 +75,9 @@ type
     FTabWidth: Integer;
     // Tabweite für inaktive Bereiche, je Zeichnen einmal gelesen; -1 = noch nicht.
     FDimTabWidth: Integer;
+    /// <summary>Was InactiveSpans für die Zeile geliefert hat: inaktive Zweige, ungenutzte uses (#621).</summary>
+    FBranchesDimmed: Boolean;
+    FUsesDimmed: Boolean;
     // Besitzer mitgefärbt beim letzten Refresh (#653).
     FOwners: Boolean;
     // Hintergrund des Editors aus dem letzten Lauf; bestimmt hell/dunkel (#653).
@@ -91,6 +96,8 @@ type
     procedure Refresh(const Context: INTACodeEditorPaintContext);
     /// <summary>Inaktive Spalten der Zeile des Laufs (#615); nil ohne oder bei ausgeschalteter Einstellung.</summary>
     function InactiveSpans(const Context: INTACodeEditorPaintContext): TArray<TAtlasColumnSpan>;
+    /// <summary>Gezeichnete Abblendung der Zeile melden (#628): Zweige und uses-Einträge getrennt.</summary>
+    procedure ReportDimmed(const Context: INTACodeEditorPaintContext; ALine: Integer; const ARect: TRect);
     /// <summary>Lauf in einer Farbe selbst zeichnen (Hintergrund wie vorbereitet).</summary>
     class procedure PaintRun(const ARect: TRect; const AText: string; const AContext: INTACodeEditorPaintContext;
       AColor: TColor); static;
@@ -284,15 +291,22 @@ var
   Settings: TAtlasPluginSettings;
   Store: TAtlasProblemStore;
   View: IOTAEditView;
+  Branches, UnusedUses: Boolean;
+  EntrySpans: TArray<TAtlasColumnSpan>;
 begin
   Result := nil;
+  FBranchesDimmed := False;
+  FUsesDimmed := False;
   Settings := TAtlasIdeSettings.Current;
   Store := TAtlasProblemsController.Current;
-  if not (Settings.Enabled and Settings.InactiveDim) or (Store = nil) then
+  if not Settings.Enabled or (Store = nil) then
     Exit;
-  if Length(Store.Inactive(Context.FileName)) = 0 then
-    Exit;
-  if TAtlasIdeElements.FileHidden(TAtlasDrawnElement.InactiveDim, Context.FileName) then
+  // Inaktive Zweige (#615) und ungenutzte uses-Einträge (#621) dimmen gleich, mit eigenem Schalter.
+  Branches := Settings.InactiveDim and (Length(Store.Inactive(Context.FileName)) > 0) and
+    not TAtlasIdeElements.FileHidden(TAtlasDrawnElement.InactiveDim, Context.FileName);
+  UnusedUses := Settings.DimUnusedUses and (Length(Store.UnusedUses(Context.FileName)) > 0) and
+    not TAtlasIdeElements.FileHidden(TAtlasDrawnElement.UnusedUses, Context.FileName);
+  if not (Branches or UnusedUses) then
     Exit;
   if FDimTabWidth < 0 then
   begin
@@ -302,7 +316,28 @@ begin
     else
       FDimTabWidth := 8;
   end;
-  Result := Store.InactiveSpans(Context.FileName, Context.LogicalLineNum - 1, FDimTabWidth);
+  if Branches then
+  begin
+    Result := Store.InactiveSpans(Context.FileName, Context.LogicalLineNum - 1, FDimTabWidth);
+    FBranchesDimmed := Length(Result) > 0;
+  end;
+  if UnusedUses then
+  begin
+    EntrySpans := Store.UsesSpans(Context.FileName, Context.LogicalLineNum - 1, FDimTabWidth);
+    FUsesDimmed := Length(EntrySpans) > 0;
+    Result := Result + EntrySpans;
+  end;
+end;
+
+procedure TAtlasEditorPairs.ReportDimmed(const Context: INTACodeEditorPaintContext; ALine: Integer;
+  const ARect: TRect);
+begin
+  if FBranchesDimmed then
+    TAtlasIdeElements.Painted(TAtlasDrawnElement.InactiveDim, Context.FileName, ALine, '', ARect,
+      TopRowOf(Context), ARect.Height);
+  if FUsesDimmed then
+    TAtlasIdeElements.Painted(TAtlasDrawnElement.UnusedUses, Context.FileName, ALine, '', ARect,
+      TopRowOf(Context), ARect.Height);
 end;
 
 class procedure TAtlasEditorPairs.PaintRun(const ARect: TRect; const AText: string;
@@ -386,8 +421,7 @@ begin
       begin
         PaintRun(Rect, Text, Context, Dim);
         AllowDefaultPainting := False;
-        TAtlasIdeElements.Painted(TAtlasDrawnElement.InactiveDim, Context.FileName, Line, '', Rect,
-          TopRowOf(Context), Rect.Height);
+        ReportDimmed(Context, Line, Rect);
         Exit;
       end;
       // Teile einer Zeile nur, wenn der Lauf dort im Text der Diagnosen steht (wie bei den Paaren).
@@ -445,8 +479,7 @@ begin
       for Index := 0 to High(Dimmed) do
         if Dimmed[Index] then
         begin
-          TAtlasIdeElements.Painted(TAtlasDrawnElement.InactiveDim, Context.FileName, Line, '', Rect,
-            TopRowOf(Context), Rect.Height);
+          ReportDimmed(Context, Line, Rect);
           Break;
         end;
     // Lauf selbst zeichnen: Hintergrund wie vorbereitet, Zeichen in fester Zellbreite.

@@ -141,6 +141,7 @@ type
     /// <summary>Blockende-Beschriftungen (#620).</summary>
     FBlockEndLabels: TCheckBox;
     FBlockEndLabelsMinLines: TEdit;
+    FDimUnusedUses: TCheckBox;
     FNotes: TCheckBox;
     FBookmarksNamed: TCheckBox;
     FBookmarksShared: TCheckBox;
@@ -730,6 +731,7 @@ type
     /// <summary>Zum Testen: Blockende-Beschriftungen (#620) und Taste „Element ausblenden …“ (#628).</summary>
     property BlockEndLabelsCheck: TCheckBox read FBlockEndLabels;
     property BlockEndLabelsMinLinesEdit: TEdit read FBlockEndLabelsMinLines;
+    property DimUnusedUsesCheck: TCheckBox read FDimUnusedUses;
     property HideElementKey: TEdit read FHideElementKey;
     /// <summary>Zum Testen: Erzeugen-Menü (#719).</summary>
     property GenerateMenuCheck: TCheckBox read FGenerateMenu;
@@ -1104,6 +1106,7 @@ begin
   // Beschriftung hinter dem end langer Blöcke (#620).
   FBlockEndLabels := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsBlockEndLabels));
   FBlockEndLabelsMinLines := AddNumber(TAtlasStrings.Text(TAtlasTextId.SettingsBlockEndLabelsMinLines));
+  FDimUnusedUses := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsDimUnusedUses));
   // Persönliche Notizen an Codezeilen (#545).
   FNotes := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsNotes));
   // Benannte Lesezeichen (#622): Funktion und Ablage für das Team; die Taste steht bei den Editorbefehlen.
@@ -1251,6 +1254,7 @@ begin
   Bind('CodeLensTests', FCodeLensTests);
   Bind('CodeLensTestUnit', FCodeLensTestUnit);
   Bind('BlockEndLabels', FBlockEndLabels);
+  Bind('DimUnusedUses', FDimUnusedUses);
   Bind('InlayHints', FInlayHints);
   Bind('Problems', FProblems);
   Bind('Notes', FNotes);
@@ -2030,6 +2034,7 @@ begin
   FMarks.Bind(FInlayHints, ['InlayHints']);
   FMarks.Bind(FBlockEndLabels, ['BlockEndLabels']);
   FMarks.Bind(FBlockEndLabelsMinLines, ['BlockEndLabelsMinLines']);
+  FMarks.Bind(FDimUnusedUses, ['DimUnusedUses']);
   FMarks.Bind(FNotes, ['Notes']);
   FMarks.Bind(FBookmarksNamed, ['BookmarksNamed']);
   FMarks.Bind(FBookmarksShared, ['BookmarksShared']);
@@ -2976,6 +2981,7 @@ begin
   FInlayHints.Checked := ASettings.InlayHints;
   FBlockEndLabels.Checked := ASettings.BlockEndLabels;
   FBlockEndLabelsMinLines.Text := IntToStr(ASettings.BlockEndLabelsMinLines);
+  FDimUnusedUses.Checked := ASettings.DimUnusedUses;
   FNotes.Checked := ASettings.Notes;
   FBookmarksNamed.Checked := ASettings.BookmarksNamed;
   FBookmarksShared.Checked := ASettings.BookmarksShared;
@@ -3230,6 +3236,7 @@ begin
   ASettings.InlayHints := FInlayHints.Checked;
   ASettings.BlockEndLabels := FBlockEndLabels.Checked;
   ASettings.BlockEndLabelsMinLines := StrToIntDef(FBlockEndLabelsMinLines.Text, ASettings.BlockEndLabelsMinLines);
+  ASettings.DimUnusedUses := FDimUnusedUses.Checked;
   ASettings.Notes := FNotes.Checked;
   ASettings.BookmarksNamed := FBookmarksNamed.Checked;
   ASettings.BookmarksShared := FBookmarksShared.Checked;

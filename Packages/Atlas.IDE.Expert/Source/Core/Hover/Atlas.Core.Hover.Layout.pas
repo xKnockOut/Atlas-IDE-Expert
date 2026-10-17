@@ -11,6 +11,9 @@
 // mit Verweisen, Beschreibung mit Platz für die XMLDoc, Vererbung bzw.
 // Zieltyp und Aktionsleiste auf Randflächen; die letzte Randfläche sitzt beim
 // Zeichnen am unteren Fensterrand (Anchor).
+// Unter einem Hinweis zu einem uses-Eintrag (#621) stehen seine Aktionen als
+// Links: Entfernen, Alle ungenutzten entfernen (ab zwei), In implementation-uses
+// verschieben; ihre Klickfläche trägt Problem und Aktion (ProblemActionCode).
 
 interface
 
@@ -28,7 +31,9 @@ type
   TAtlasHoverAction = (Navigate, Usages, Copy, Help);
   /// <summary>Schriften des Tooltips: UI, Editorschrift, beide verkleinert, Badge.</summary>
   TAtlasHoverFont = (Ui, Mono, SmallUi, SmallMono, Badge);
-  TAtlasHoverHitKind = (Link, Ancestor, Path, Back, Action);
+  TAtlasHoverHitKind = (Link, Ancestor, Path, Back, Action, ProblemAction);
+  /// <summary>Aktion unter einem Problem im Tooltip (#621).</summary>
+  TAtlasHoverProblemAction = (RemoveUses, RemoveAllUses, MoveUses);
   /// <summary>Fill: Fläche; Line: waagrechte Linie; Text: Text ab Rect.TopLeft; CenterText: zentriert in
   /// Rect; Frame: umrandetes Rechteck mit Fläche Back; RoundFill: gefülltes Rechteck mit Radius; Block:
   /// umbrechender Text in Rect (UI-Schrift, Ellipse); Styled: eingefärbte Deklaration From..Till; Doc: XMLDoc
@@ -92,6 +97,11 @@ type
     SourceAtlas: string;
     SourceCompiler: string;
     SourceInactive: string;
+    /// <summary>Herkunft eines uses-Hinweises und seine Aktionen (#621).</summary>
+    SourceUses: string;
+    UsesRemove: string;
+    UsesRemoveAll: string;
+    UsesMove: string;
     Stale: string;
     /// <summary>Zeile „Konfidenz: …“ je Problem in der Reihenfolge von View.Problems; '' ohne.</summary>
     Confidences: TArray<string>;
@@ -152,6 +162,10 @@ type
     AnchorShift: Integer;
     class function Build(const AInput: TAtlasHoverInput; const AMeasure: IAtlasHoverMeasure): TAtlasHoverLayout;
       static;
+    /// <summary>Index der Klickfläche ProblemAction: Problem in View.Problems und Aktion (#621).</summary>
+    class function ProblemActionCode(AProblem: Integer; AAction: TAtlasHoverProblemAction): Integer; static;
+    class procedure DecodeProblemAction(ACode: Integer; out AProblem: Integer;
+      out AAction: TAtlasHoverProblemAction); static;
     /// <summary>Index der Klickfläche unter APoint; -1 ohne.</summary>
     function HitAt(const APoint: TPoint): Integer;
     /// <summary>Ist die Klickfläche AHot (Index in Hits) von Art AKind und Index AIndex?</summary>
@@ -210,6 +224,7 @@ type
     procedure EndFlow;
     procedure Chip(const AText: string; ACurrent: Boolean; AIndex: Integer);
     procedure ActionItem(const AKey, ACaption: string; AAction: TAtlasHoverAction; AEnabled: Boolean);
+    procedure ProblemLink(const ACaption: string; AProblem: Integer; AAction: TAtlasHoverProblemAction);
     procedure BandContent(AKind: Integer);
     procedure Band(AKind: Integer; ALast: Boolean);
     procedure DrawPart(AFrom, ATill: Integer);
@@ -495,6 +510,16 @@ begin
     AddHit(TAtlasHoverHitKind.Action, Ord(AAction), Rect(Start, FY, FX, FY + FRowHeight));
 end;
 
+procedure TBuilder.ProblemLink(const ACaption: string; AProblem: Integer; AAction: TAtlasHoverProblemAction);
+var
+  Code: Integer;
+begin
+  if FX > FLeft then
+    Inc(FX, Scale(12));
+  Code := TAtlasHoverLayout.ProblemActionCode(AProblem, AAction);
+  Flow(ACaption, FColors.Accent, False, TAtlasHoverHitKind.ProblemAction, Code, Code, FColors.Accent);
+end;
+
 procedure TBuilder.BandContent(AKind: Integer);
 var
   Chain: TArray<Integer>;
@@ -656,6 +681,7 @@ var
   Caption: string;
   SmallFace: TAtlasHoverFace;
   Bar: TAtlasHoverItem;
+  OldFont: TAtlasHoverFont;
 begin
   // Probleme an der Mausposition: Farbbalken, Meldung, darunter Code und Herkunft
   // und bei Regeltreffern die Konfidenz.
@@ -669,6 +695,8 @@ begin
     Dec(FY, Scale(4));
     if Problem.IsCompiler then
       Caption := FInput.Texts.SourceCompiler
+    else if Problem.IsUses then
+      Caption := FInput.Texts.SourceUses
     else if Problem.Unnecessary then
       // Inaktiver {$IFDEF}-Zweig (#615).
       Caption := FInput.Texts.SourceInactive
@@ -687,6 +715,25 @@ begin
       AddText(FLeft, FY, Caption, SmallFace, FColors.Muted);
     end;
     Inc(FY, Height(SmallFace) + Scale(6));
+    // Aktionen zum uses-Eintrag (#621).
+    if (Problem.UsesState = TAtlasProblem.UsesUnused) or (Problem.UsesState = TAtlasProblem.UsesImplementation) then
+    begin
+      OldFont := FFlowFont;
+      FFlowFont := TAtlasHoverFont.SmallUi;
+      FX := FLeft;
+      FRowHeight := 0;
+      if Problem.UsesState = TAtlasProblem.UsesUnused then
+      begin
+        ProblemLink(FInput.Texts.UsesRemove, Index, TAtlasHoverProblemAction.RemoveUses);
+        if Problem.UsesUnusedCount > 1 then
+          ProblemLink(FInput.Texts.UsesRemoveAll, Index, TAtlasHoverProblemAction.RemoveAllUses);
+      end
+      else
+        ProblemLink(FInput.Texts.UsesMove, Index, TAtlasHoverProblemAction.MoveUses);
+      EndFlow;
+      Inc(FY, Scale(6));
+      FFlowFont := OldFont;
+    end;
     FLeft := Scale(11);
     Bar := NewItem(TAtlasHoverItemKind.RoundFill, Rect(FLeft, Start + Scale(1), FLeft + Scale(3), FY - Scale(7)),
       ProblemColor(FColors, Problem));
@@ -889,6 +936,18 @@ begin
     if Hits[Index].Rect.Contains(APoint) then
       Exit(Index);
   Result := -1;
+end;
+
+class function TAtlasHoverLayout.ProblemActionCode(AProblem: Integer; AAction: TAtlasHoverProblemAction): Integer;
+begin
+  Result := AProblem * (Ord(High(TAtlasHoverProblemAction)) + 1) + Ord(AAction);
+end;
+
+class procedure TAtlasHoverLayout.DecodeProblemAction(ACode: Integer; out AProblem: Integer;
+  out AAction: TAtlasHoverProblemAction);
+begin
+  AProblem := ACode div (Ord(High(TAtlasHoverProblemAction)) + 1);
+  AAction := TAtlasHoverProblemAction(ACode mod (Ord(High(TAtlasHoverProblemAction)) + 1));
 end;
 
 function TAtlasHoverLayout.IsHot(AHot: Integer; AKind: TAtlasHoverHitKind; AIndex: Integer): Boolean;

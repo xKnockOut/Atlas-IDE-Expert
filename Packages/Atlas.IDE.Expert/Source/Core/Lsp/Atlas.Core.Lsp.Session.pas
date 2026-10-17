@@ -69,6 +69,8 @@ type
     Command: string;
     /// <summary>Argumente des Befehls als JSON-Array; '[]' ohne.</summary>
     ArgumentsJson: string;
+    /// <summary>Kennung aus data.tag, z. B. "uses.remove" (#621); '' ohne.</summary>
+    Tag: string;
     /// <summary>Aus einem Eintrag der Antwort: CodeAction oder Command; False bei anderem.</summary>
     class function FromJson(const AValue: TJSONValue; out AAction: TLspCodeAction): Boolean; static;
   end;
@@ -870,6 +872,7 @@ begin
   AAction.Preferred := Item.GetValue<Boolean>('isPreferred', False);
   AAction.Disabled := Item.GetValue<string>('disabled.reason', '');
   AAction.Edit := TLspWorkspaceEdit.FromJson(Item.GetValue('edit'));
+  AAction.Tag := Item.GetValue<string>('data.tag', '');
 end;
 
 function TLspSession.CodeActions(const AFileName: string; const ARange: TLspRange): TArray<TLspCodeAction>;

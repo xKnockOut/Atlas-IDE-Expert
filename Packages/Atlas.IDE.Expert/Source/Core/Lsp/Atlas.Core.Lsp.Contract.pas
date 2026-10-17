@@ -19,6 +19,11 @@ type
   TAtlasProblem = record
   public const
     CompilerSource = 'dcc';
+    /// <summary>Zustände aus data.uses.state (#621).</summary>
+    UsesUnused = 'unused';
+    UsesInitialization = 'initialization';
+    UsesAllowlist = 'allowlist';
+    UsesImplementation = 'implementation';
   public
     StartLine: Integer;
     StartCharacter: Integer;
@@ -39,9 +44,18 @@ type
     InactiveCondition: string;
     InactivePlatform: string;
     InactiveConfig: string;
+    /// <summary>uses-Eintrag aus data.uses (#621): Unit und Zustand (UsesUnused, UsesInitialization,
+    /// UsesAllowlist, UsesImplementation); beides '' bei anderen Meldungen.</summary>
+    UsesUnit: string;
+    UsesState: string;
+    /// <summary>Ungenutzte uses-Einträge der Datei, für „Alle ungenutzten entfernen“ im Hover; setzt der
+    /// Controller, 0 sonst.</summary>
+    UsesUnusedCount: Integer;
     /// <summary>Text geändert, seit die Meldung entstand: blass zeigen.</summary>
     Stale: Boolean;
     function IsCompiler: Boolean;
+    /// <summary>Hinweis zu einem uses-Eintrag (#621), kein Problem für Liste und Wellenlinie.</summary>
+    function IsUses: Boolean;
     /// <summary>Liegt die Stelle (0-basiert) im Bereich? Leere Bereiche zählen als ein Zeichen.</summary>
     function Contains(ALine, ACharacter: Integer): Boolean;
     /// <summary>"Meldung (Code)" bzw. nur die Meldung.</summary>
@@ -93,6 +107,11 @@ begin
   Result := SameText(Source, CompilerSource);
 end;
 
+function TAtlasProblem.IsUses: Boolean;
+begin
+  Result := UsesState <> '';
+end;
+
 function TAtlasProblem.Contains(ALine, ACharacter: Integer): Boolean;
 var
   Last: Integer;
@@ -133,7 +152,7 @@ end;
 
 class function TAtlasProblem.FromJson(const AItem: TJSONObject): TAtlasProblem;
 var
-  Tags, CodeValue, Data, Inactive: TJSONValue;
+  Tags, CodeValue, Data, Inactive, UsesData: TJSONValue;
   Tag: TJSONValue;
 begin
   Result := Default(TAtlasProblem);
@@ -168,6 +187,12 @@ begin
       Result.InactiveCondition := TJSONObject(Inactive).GetValue<string>('condition', '');
       Result.InactivePlatform := TJSONObject(Inactive).GetValue<string>('platform', '');
       Result.InactiveConfig := TJSONObject(Inactive).GetValue<string>('config', '');
+    end;
+    UsesData := TJSONObject(Data).GetValue('uses');
+    if UsesData is TJSONObject then
+    begin
+      Result.UsesUnit := TJSONObject(UsesData).GetValue<string>('unit', '');
+      Result.UsesState := TJSONObject(UsesData).GetValue<string>('state', '');
     end;
   end;
   Tags := AItem.GetValue('tags');
