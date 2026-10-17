@@ -1930,3 +1930,15 @@ Voraussetzung für EX2 bis EX7: mindestens eine Einstellung trägt `x-experiment
 | RK7 | Setter `SetTitle` mit `Self.Title := AValue` ohne Feld `FTitle` | Warnung ohne Korrektur |
 | RK8 | Zeile mit dem Aufruf bearbeiten | Pfeil verschwindet und kommt nach der Tipp-Pause mit der neuen Antwort wieder |
 | RK9 | `editor.recursionMarkers` aus bzw. „Element ausblenden“ › Rekursionssymbole; Regel `recursive-property-accessor` auf `off` | Keine Pfeile, keine Anfrage an den Server; keine Warnung |
+
+## Vervollständigung: Treffer und Rest (#497)
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| LM1 | Vorgabe (`completion.listMode` = filter): `List.` und `As` tippen | Nur `Assign` und weitere Treffer, wie bisher |
+| LM2 | `completion.listMode` = all, `List.` und `As` tippen | Alle Mitglieder sichtbar, `Assign` oben und gewählt, darunter die übrigen ohne Überschrift |
+| LM3 | `completion.listMode` = rest, `List.` und `As` tippen | Treffer oben, darunter „Weitere Einträge“ und gedämpft der Rest; Fußzeile „n Treffer · m weitere“ |
+| LM4 | Wie LM3, `Zq` tippen | Nichts gewählt, Fußzeile „Keine Treffer für ‚Zq‘“; Enter fügt eine neue Zeile ein, ↓ wählt den ersten Eintrag |
+| LM5 | Wie LM3, Bild↓, Ende, Pos1 | Überschrift wird übersprungen, Ende erreicht den letzten Eintrag des Rests |
+| LM6 | Wie LM3, Strg+Leer in einer leeren Zeile, `Fo` tippen | Nur Treffer (Bereich „Mitgliederlisten“); mit `completion.listMode.scope` = everywhere auch hier der Rest |
+| LM7 | Wie LM3 mit 5000 Einträgen (große Klasse) schnell tippen | Liste folgt ohne Verzögerung (Filterschritt ≤ 16 ms) |

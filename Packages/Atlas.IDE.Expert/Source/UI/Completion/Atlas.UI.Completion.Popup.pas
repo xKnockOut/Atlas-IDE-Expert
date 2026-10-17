@@ -34,6 +34,8 @@
 // Stern, beim Überfahren einer Zeile erscheint ein leerer. Klick auf den Stern meldet OnFavorite, ohne die
 // Auswahl zu ändern. ShowNotice zeigt einen Hinweis links in der Fußzeile („Schon 5 Favoriten bei TDataSet …“)
 // bis zum nächsten getippten Zeichen bzw. Schließen.
+// Rest der Liste (#497): Einträge unter der Überschrift „Weitere Einträge“ (TAtlasRanking.RestHeader) sind
+// gedämpft; die Fußzeile nennt „n Treffer · m weitere“ bzw. „Keine Treffer“, wenn nur der Rest steht.
 
 interface
 
@@ -127,6 +129,8 @@ type
     FOnOverload: TAtlasOverloadEvent;
     FOnDocLink: TAtlasDocLinkEvent;
     FDimInherited: Boolean;
+    // Position der Überschrift „Weitere Einträge“ (#497); -1 ohne.
+    FRestFrom: Integer;
     FLimited: Boolean;
     FDimRow: Boolean;
     // Zeile einer Aktion („Neue Methode …“, #444): Name in Akzentfarbe.
@@ -297,6 +301,7 @@ begin
   SetAccessible(UiaListControlType, TAtlasStrings.Text(TAtlasTextId.AccessCompletion));
   FVisibleRows := DefaultVisibleRows;
   FSelected := -1;
+  FRestFrom := -1;
   FDetailView := TAtlasDetailView.Create;
   FHoverPosition := -1;
   FTip := TAtlasTextTip.Create(Self);
@@ -555,9 +560,13 @@ begin
   for Index in FOrder do
     if (Index >= 0) and FItems[Index].Fits and not FItems[Index].IsAction then
       Inc(Fitting);
-  if TAtlasRanking.OnlyTypos(FOrder) then
-    // Nur ähnliche Namen (#485): kein echter Treffer für das Getippte.
+  if TAtlasRanking.OnlyTypos(FOrder) or (FRestFrom = 0) then
+    // Nur ähnliche Namen (#485) bzw. nur der Rest (#497): kein echter Treffer für das Getippte.
     Result := TAtlasStrings.Fmt(TAtlasTextId.NoMatchesFor, [FPattern])
+  else if FRestFrom > 0 then
+    // Treffer, darunter der gedämpfte Rest (#497).
+    Result := TAtlasStrings.Fmt(TAtlasTextId.CountHitsRest, [TAtlasRanking.ItemCount(Copy(FOrder, 0, FRestFrom)),
+      TAtlasRanking.ItemCount(Copy(FOrder, FRestFrom, MaxInt))])
   else if Fitting > 0 then
     Result := TAtlasStrings.Fmt(TAtlasTextId.CountFits, [Fitting, TAtlasRanking.ItemCount(FOrder)])
   else
@@ -577,6 +586,9 @@ begin
   // Tippfehler-Treffer (#485).
   if FOrder[APosition] = TAtlasRanking.TypoHeader then
     Text := TAtlasStrings.Text(TAtlasTextId.DidYouMean)
+  // Rest der Liste ohne Treffer (#497).
+  else if FOrder[APosition] = TAtlasRanking.RestHeader then
+    Text := TAtlasStrings.Text(TAtlasTextId.CompletionRestHeader)
   // Unbekannter Name (#471): „TotalCount ist unbekannt“.
   else if (FOrder[APosition] = TAtlasRanking.UnknownHeader) and (APosition < High(FOrder)) and
     (FOrder[APosition + 1] >= 0) then
@@ -809,6 +821,7 @@ procedure TAtlasCompletionPopup.ShowList(const AItems: TAtlasCompletionItems; co
   ASelected: Integer; const APattern: string);
 var
   SameList: Boolean;
+  Index: Integer;
 begin
   // Nur die Auswahl bewegt (Pfeiltasten): dieselben Arrays, Breite nicht neu messen (#616).
   SameList := not FShowingEmpty and (Pointer(AItems) = Pointer(FItems)) and (Pointer(AOrder) = Pointer(FOrder)) and
@@ -821,6 +834,13 @@ begin
   FOrder := AOrder;
   FSelected := ASelected;
   FPattern := APattern;
+  FRestFrom := -1;
+  for Index := 0 to High(FOrder) do
+    if FOrder[Index] = TAtlasRanking.RestHeader then
+    begin
+      FRestFrom := Index;
+      Break;
+    end;
   EnsureSelectedVisible;
   if SameList then
     Relayout
@@ -913,6 +933,7 @@ begin
   FItems := nil;
   FOrder := nil;
   FSelected := -1;
+  FRestFrom := -1;
   FTop := 0;
   FEmptyPrefix := APrefix;
   FEmptyTotal := ATotal;
@@ -1166,7 +1187,9 @@ begin
   Row := RowRect(ARow);
   // Geerbte Member mit 62 % Deckkraft (#419); die gewählte Zeile bleibt voll lesbar.
   // Geerbt (#419) bzw. in der aktiven Konfiguration nicht vorhanden (#476): 62 % Deckkraft.
-  FDimRow := ((FDimInherited and (Item.Depth > 0)) or Item.Unavailable) and (APosition <> FSelected);
+  // Rest ohne Treffer (#497) ebenso.
+  FDimRow := ((FDimInherited and (Item.Depth > 0)) or Item.Unavailable or ((FRestFrom >= 0) and
+    (APosition > FRestFrom))) and (APosition <> FSelected);
   if APosition = FSelected then
     FillRounded(Row, Colors.Selection, 4);
   // Favoriten (#458): gefüllter Stern bei angehefteten Einträgen, leerer beim Überfahren.
