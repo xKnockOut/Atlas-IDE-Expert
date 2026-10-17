@@ -54,6 +54,7 @@
     "refactoring.unitRenameFollowUp": "ask",
     "editor.smartPaste": "both",
     "completion.typeConversion": "helper",
-    "completion.assignAllFields": true
+    "completion.assignAllFields": true,
+    "editor.minimap": true
   }
 }

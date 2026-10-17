@@ -265,6 +265,17 @@ type
     // Mitlaufender Kopf (#506).
     FStickyScroll: TCheckBox;
     FStickyScrollMaxLines: TEdit;
+    FMinimap: TCheckBox;
+    FMinimapRender: TAtlasChoiceBox;
+    FMinimapWidth: TEdit;
+    FMinimapScale: TEdit;
+    FMinimapMaxColumn: TEdit;
+    FMinimapSide: TAtlasChoiceBox;
+    FMinimapShowSlider: TAtlasChoiceBox;
+    FMinimapSectionHeaders: TCheckBox;
+    FMinimapHighlightMethod: TCheckBox;
+    FMinimapMarkers: TCheckBox;
+    FMinimapClickJumps: TCheckBox;
     FBreadcrumbsKey: TEdit;
     FGitGutter: TCheckBox;
     FGitBlame: TCheckBox;
@@ -691,6 +702,9 @@ type
     property MultiCursor: TCheckBox read FMultiCursor;
     property StickyScroll: TCheckBox read FStickyScroll;
     property StickyScrollMaxLines: TEdit read FStickyScrollMaxLines;
+    property Minimap: TCheckBox read FMinimap;
+    property MinimapRender: TAtlasChoiceBox read FMinimapRender;
+    property MinimapWidth: TEdit read FMinimapWidth;
     property LinkedEditing: TCheckBox read FLinkedEditing;
     property SmartPaste: TAtlasChoiceBox read FSmartPaste;
     property MultiCursorModifier: TAtlasChoiceBox read FMultiCursorModifier;
@@ -1236,6 +1250,22 @@ begin
   // Mitlaufender Kopf (#506, experimentell).
   FStickyScroll := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsStickyScroll));
   FStickyScrollMaxLines := AddNumber(TAtlasStrings.Text(TAtlasTextId.SettingsStickyScrollMaxLines));
+  // Minimap neben der Scrollleiste (#873, experimentell).
+  FMinimap := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsMinimap));
+  FMinimapRender := AddChoice(TAtlasStrings.Text(TAtlasTextId.SettingsMinimapRender),
+    [TAtlasStrings.Text(TAtlasTextId.SettingsMinimapBlocks), TAtlasStrings.Text(TAtlasTextId.SettingsMinimapCharacters)]);
+  FMinimapWidth := AddNumber(TAtlasStrings.Text(TAtlasTextId.SettingsMinimapWidth));
+  FMinimapScale := AddNumber(TAtlasStrings.Text(TAtlasTextId.SettingsMinimapScale));
+  FMinimapMaxColumn := AddNumber(TAtlasStrings.Text(TAtlasTextId.SettingsMinimapMaxColumn));
+  FMinimapSide := AddChoice(TAtlasStrings.Text(TAtlasTextId.SettingsMinimapSide),
+    [TAtlasStrings.Text(TAtlasTextId.SettingsMinimapRight), TAtlasStrings.Text(TAtlasTextId.SettingsMinimapLeft)]);
+  FMinimapShowSlider := AddChoice(TAtlasStrings.Text(TAtlasTextId.SettingsMinimapSlider),
+    [TAtlasStrings.Text(TAtlasTextId.SettingsMinimapSliderAlways),
+    TAtlasStrings.Text(TAtlasTextId.SettingsMinimapSliderHover)]);
+  FMinimapSectionHeaders := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsMinimapHeaders));
+  FMinimapHighlightMethod := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsMinimapMethod));
+  FMinimapMarkers := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsMinimapMarkers));
+  FMinimapClickJumps := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsMinimapClickJumps));
   // Änderungsmarken und Zeilenhistorie (#507).
   FGitGutter := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsGitGutter));
   FNextChangeKey := AddKey(TAtlasStrings.Text(TAtlasTextId.NextChangeCommand));
@@ -2232,6 +2262,17 @@ begin
   FMarks.Bind(FBreadcrumbsKey, ['BreadcrumbsKey']);
   FMarks.Bind(FStickyScroll, ['StickyScroll']);
   FMarks.Bind(FStickyScrollMaxLines, ['StickyScrollMaxLines']);
+  FMarks.Bind(FMinimap, ['Minimap']);
+  FMarks.Bind(FMinimapRender, ['MinimapRender']);
+  FMarks.Bind(FMinimapWidth, ['MinimapWidth']);
+  FMarks.Bind(FMinimapScale, ['MinimapScale']);
+  FMarks.Bind(FMinimapMaxColumn, ['MinimapMaxColumn']);
+  FMarks.Bind(FMinimapSide, ['MinimapSide']);
+  FMarks.Bind(FMinimapShowSlider, ['MinimapShowSlider']);
+  FMarks.Bind(FMinimapSectionHeaders, ['MinimapSectionHeaders']);
+  FMarks.Bind(FMinimapHighlightMethod, ['MinimapHighlightMethod']);
+  FMarks.Bind(FMinimapMarkers, ['MinimapMarkers']);
+  FMarks.Bind(FMinimapClickJumps, ['MinimapClickJumps']);
   FMarks.Bind(FGitGutter, ['GitGutter']);
   FMarks.Bind(FGitBlame, ['GitBlame']);
   FMarks.Bind(FNextChangeKey, ['NextChangeKey']);
@@ -3249,6 +3290,17 @@ begin
   FBreadcrumbsKey.Text := ShortCutToText(TShortCut(ASettings.BreadcrumbsKey));
   FStickyScroll.Checked := ASettings.StickyScroll;
   FStickyScrollMaxLines.Text := IntToStr(ASettings.StickyScrollMaxLines);
+  FMinimap.Checked := ASettings.Minimap;
+  FMinimapRender.Choice := Max(0, IndexText(ASettings.MinimapRender, ['blocks', 'characters']));
+  FMinimapWidth.Text := IntToStr(ASettings.MinimapWidth);
+  FMinimapScale.Text := IntToStr(ASettings.MinimapScale);
+  FMinimapMaxColumn.Text := IntToStr(ASettings.MinimapMaxColumn);
+  FMinimapSide.Choice := Max(0, IndexText(ASettings.MinimapSide, ['right', 'left']));
+  FMinimapShowSlider.Choice := Max(0, IndexText(ASettings.MinimapShowSlider, ['always', 'mouseover']));
+  FMinimapSectionHeaders.Checked := ASettings.MinimapSectionHeaders;
+  FMinimapHighlightMethod.Checked := ASettings.MinimapHighlightMethod;
+  FMinimapMarkers.Checked := ASettings.MinimapMarkers;
+  FMinimapClickJumps.Checked := ASettings.MinimapClickJumps;
   FGitGutter.Checked := ASettings.GitGutter;
   FGitBlame.Checked := ASettings.GitBlame;
   FNextChangeKey.Text := ShortCutToText(TShortCut(ASettings.NextChangeKey));
@@ -3583,6 +3635,23 @@ begin
   ASettings.BreadcrumbsKey := Integer(TextToShortCut(Trim(FBreadcrumbsKey.Text)));
   ASettings.StickyScroll := FStickyScroll.Checked;
   ASettings.StickyScrollMaxLines := StrToIntDef(FStickyScrollMaxLines.Text, ASettings.StickyScrollMaxLines);
+  ASettings.Minimap := FMinimap.Checked;
+  ASettings.MinimapRender := 'blocks';
+  if FMinimapRender.Choice = 1 then
+    ASettings.MinimapRender := 'characters';
+  ASettings.MinimapWidth := StrToIntDef(FMinimapWidth.Text, ASettings.MinimapWidth);
+  ASettings.MinimapScale := StrToIntDef(FMinimapScale.Text, ASettings.MinimapScale);
+  ASettings.MinimapMaxColumn := StrToIntDef(FMinimapMaxColumn.Text, ASettings.MinimapMaxColumn);
+  ASettings.MinimapSide := 'right';
+  if FMinimapSide.Choice = 1 then
+    ASettings.MinimapSide := 'left';
+  ASettings.MinimapShowSlider := 'always';
+  if FMinimapShowSlider.Choice = 1 then
+    ASettings.MinimapShowSlider := 'mouseover';
+  ASettings.MinimapSectionHeaders := FMinimapSectionHeaders.Checked;
+  ASettings.MinimapHighlightMethod := FMinimapHighlightMethod.Checked;
+  ASettings.MinimapMarkers := FMinimapMarkers.Checked;
+  ASettings.MinimapClickJumps := FMinimapClickJumps.Checked;
   ASettings.GitGutter := FGitGutter.Checked;
   ASettings.GitBlame := FGitBlame.Checked;
   ASettings.NextChangeKey := Integer(TextToShortCut(Trim(FNextChangeKey.Text)));

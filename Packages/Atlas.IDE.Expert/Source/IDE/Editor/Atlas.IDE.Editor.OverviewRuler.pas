@@ -17,9 +17,14 @@
 // - editor.overviewRuler aus entfernt alle Streifen, editor.overviewRulerKinds
 //   wählt die Arten.
 // Minimap der IDE: Die Open Tools API bietet für sie keine Zeichen-Ereignisse,
-// deshalb ein eigener Streifen (docs/Architektur.md). Nur im Hauptthread.
+// deshalb ein eigener Streifen (docs/Architektur.md). Die Minimap (#873)
+// sammelt ihre Marken über CollectMarks. Nur im Hauptthread.
 
 interface
+
+uses
+  ToolsAPI,
+  Atlas.Core.Editor.Overview;
 
 type
   TAtlasIdeOverviewRuler = class
@@ -30,6 +35,10 @@ type
     class procedure Uninstall; static;
     class procedure ApplySettings; static;
     class procedure ThemeChanged; static;
+    /// <summary>Marken der Arten AKinds für AView (ALineCount Zeilen): Befunde, Treffer von ASearchTerm in den
+    /// Zeilen ASearchLines, Änderungen, Haltepunkte, Lesezeichen, Cursor.</summary>
+    class function CollectMarks(const AView: IOTAEditView; ALineCount: Integer; AKinds: TAtlasOverviewKinds;
+      const ASearchTerm: string; const ASearchLines: TArray<Integer>): TAtlasOverviewMarks; static;
   end;
 
 implementation
@@ -43,12 +52,10 @@ uses
   System.Generics.Collections,
   Vcl.Controls,
   Vcl.ExtCtrls,
-  ToolsAPI,
   Atlas.Text.Lines,
   Atlas.Core.Diagnostics.Guard,
   Atlas.Core.Problems.Contract,
   Atlas.Core.Problems.Store,
-  Atlas.Core.Editor.Overview,
   Atlas.Core.Editor.LineChanges,
   Atlas.UI.Strings,
   Atlas.UI.Notes.Tip,
@@ -290,6 +297,12 @@ begin
 end;
 
 function TOverviewState.Collect(const AView: IOTAEditView; ALineCount: Integer): TAtlasOverviewMarks;
+begin
+  Result := TAtlasIdeOverviewRuler.CollectMarks(AView, ALineCount, FKinds, FSearchTerm, FSearchLines);
+end;
+
+class function TAtlasIdeOverviewRuler.CollectMarks(const AView: IOTAEditView; ALineCount: Integer;
+  AKinds: TAtlasOverviewKinds; const ASearchTerm: string; const ASearchLines: TArray<Integer>): TAtlasOverviewMarks;
 var
   Store: TAtlasProblemStore;
   Problem: TAtlasProblem;
@@ -304,7 +317,7 @@ var
 begin
   Result := nil;
   FileName := AView.Buffer.FileName;
-  if TAtlasOverviewKind.Diagnostics in FKinds then
+  if TAtlasOverviewKind.Diagnostics in AKinds then
   begin
     Store := TAtlasProblemsController.Current;
     if Store <> nil then
@@ -325,11 +338,11 @@ begin
           Max(1, Problem.EndLine - Problem.StartLine + 1), Problem.Message)];
       end;
   end;
-  if (TAtlasOverviewKind.Search in FKinds) and (FSearchTerm <> '') then
-    for Line in FSearchLines do
+  if (TAtlasOverviewKind.Search in AKinds) and (ASearchTerm <> '') then
+    for Line in ASearchLines do
       Result := Result + [TAtlasOverviewMark.Create(TAtlasOverviewMarkKind.Search, Line, 1,
-        TAtlasStrings.Fmt(TAtlasTextId.OverviewSearch, [FSearchTerm]))];
-  if (TAtlasOverviewKind.Changes in FKinds) and TAtlasIdeLineChanges.Snapshot(FileName, Changes, ChangeLines) and
+        TAtlasStrings.Fmt(TAtlasTextId.OverviewSearch, [ASearchTerm]))];
+  if (TAtlasOverviewKind.Changes in AKinds) and TAtlasIdeLineChanges.Snapshot(FileName, Changes, ChangeLines) and
     (ChangeLines = ALineCount) then
     for Change in Changes do
       case Change.Kind of
@@ -343,7 +356,7 @@ begin
         Result := Result + [TAtlasOverviewMark.Create(TAtlasOverviewMarkKind.Deleted,
           Min(Change.Line, Max(0, ALineCount - 1)), 1, TAtlasStrings.Text(TAtlasTextId.OverviewDeleted))];
       end;
-  if TAtlasOverviewKind.Breakpoints in FKinds then
+  if TAtlasOverviewKind.Breakpoints in AKinds then
   begin
     Services := Debugger;
     if Services <> nil then
@@ -355,7 +368,7 @@ begin
             1, TAtlasStrings.Text(TAtlasTextId.OverviewBreakpoint))];
       end;
   end;
-  if TAtlasOverviewKind.Bookmarks in FKinds then
+  if TAtlasOverviewKind.Bookmarks in AKinds then
     for Index := 0 to BookmarkCount - 1 do
     begin
       Bookmark := AView.BookmarkPos[Index];
@@ -363,7 +376,7 @@ begin
         Result := Result + [TAtlasOverviewMark.Create(TAtlasOverviewMarkKind.Bookmark, Bookmark.Line - 1, 1,
           TAtlasStrings.Fmt(TAtlasTextId.OverviewBookmark, [Index]))];
     end;
-  if TAtlasOverviewKind.Cursor in FKinds then
+  if TAtlasOverviewKind.Cursor in AKinds then
     Result := Result + [TAtlasOverviewMark.Create(TAtlasOverviewMarkKind.Cursor, AView.CursorPos.Line - 1, 1,
       TAtlasStrings.Text(TAtlasTextId.OverviewCursor))];
 end;
