@@ -10,6 +10,9 @@
 // Textfelder behalten ihr eigenes Menü (Ausschneiden, Kopieren, Einfügen).
 // Welche Namen geändert sind, bestimmt die Seite (TAtlasSettingsTransfer);
 // diese Klasse zeigt es nur an und meldet Änderungen und Menüklicks.
+// Experimentelle Einstellungen (#834) tragen hinter ihrer Beschriftung das
+// Kennzeichen „[Experimentell]“ als Text (nicht nur Farbe, #447). Filter blendet
+// in den Reitern alles aus, was nicht geändert bzw. nicht experimentell ist.
 
 interface
 
@@ -23,6 +26,9 @@ uses
   Vcl.Menus;
 
 type
+  /// <summary>Filter der Optionsseite (#834): alle, nur geänderte, nur experimentelle Einstellungen.</summary>
+  TAtlasSettingsFilter = (sfAll, sfModified, sfExperimental);
+
   TAtlasSettingsBinding = record
     Control: TControl;
     /// <summary>Beschriftung, die den Punkt trägt; beim Kontrollkästchen nil (der Punkt steht in seinem Text).</summary>
@@ -34,6 +40,8 @@ type
     Text: string;
     Hint: string;
     Marked: Boolean;
+    /// <summary>Gehört zu einer experimentellen Einstellung (#834).</summary>
+    Experimental: Boolean;
     /// <summary>Vorheriges OnClick bzw. OnChange; wird weiter aufgerufen.</summary>
     Changed: TNotifyEvent;
   end;
@@ -51,7 +59,15 @@ type
     FOnChanged: TNotifyEvent;
     FOnReset: TProc<TArray<string>>;
     FOnResetPage: TNotifyEvent;
+    FFilter: TAtlasSettingsFilter;
+    FHidden: TList<TControl>;
+    /// <summary>Ursprüngliche Lage der Elemente der gefilterten Reiter; der Filter rückt die sichtbaren zusammen.</summary>
+    FTops: TDictionary<TControl, Integer>;
+    procedure Restore;
+    procedure Compact(AContainer: TWinControl);
     function IndexOfControl(AControl: TObject): Integer;
+    procedure Render(AIndex: Integer);
+    function Matches(const ABinding: TAtlasSettingsBinding; AFilter: TAtlasSettingsFilter): Boolean;
     function FindCaption(AControl: TControl): TLabel;
     procedure ControlChanged(Sender: TObject);
     procedure MenuPopup(Sender: TObject);
@@ -74,6 +90,15 @@ type
     function NamesOf(AControl: TObject): TArray<string>;
     /// <summary>Trägt AControl (oder seine Beschriftung) einen Punkt?</summary>
     function IsMarked(AControl: TControl): Boolean;
+    /// <summary>Bindungen mit einem Namen aus ANames als experimentell kennzeichnen (#834).</summary>
+    procedure MarkExperimental(const ANames: TArray<string>);
+    /// <summary>Gibt es eine experimentelle Bindung?</summary>
+    function HasExperimental: Boolean;
+    /// <summary>Ist AControl (oder seine Beschriftung) als experimentell gekennzeichnet?</summary>
+    function IsExperimental(AControl: TControl): Boolean;
+    /// <summary>Zeilen der Reiter nach AFilter zeigen; sfAll stellt alles wieder her, wie es vorher war.</summary>
+    procedure ApplyFilter(AFilter: TAtlasSettingsFilter);
+    property Filter: TAtlasSettingsFilter read FFilter;
     /// <summary>Während des Ladens melden Änderungen nichts.</summary>
     procedure BeginLoad;
     procedure EndLoad;
@@ -102,6 +127,8 @@ constructor TAtlasSettingsMarks.Create(AOwner: TComponent);
 begin
   inherited Create(AOwner);
   FBindings := TList<TAtlasSettingsBinding>.Create;
+  FHidden := TList<TControl>.Create;
+  FTops := TDictionary<TControl, Integer>.Create;
   FMenu := TPopupMenu.Create(Self);
   FMenu.OnPopup := MenuPopup;
   FResetItem := TMenuItem.Create(FMenu);
@@ -117,6 +144,8 @@ end;
 
 destructor TAtlasSettingsMarks.Destroy;
 begin
+  FTops.Free;
+  FHidden.Free;
   FBindings.Free;
   inherited;
 end;
@@ -254,16 +283,26 @@ end;
 procedure TAtlasSettingsMarks.Apply(AIndex: Integer; AMarked: Boolean);
 var
   Binding: TAtlasSettingsBinding;
-  Text, Hint: string;
 begin
   Binding := FBindings[AIndex];
   if Binding.Marked = AMarked then
     Exit;
   Binding.Marked := AMarked;
   FBindings[AIndex] := Binding;
+  Render(AIndex);
+end;
+
+procedure TAtlasSettingsMarks.Render(AIndex: Integer);
+var
+  Binding: TAtlasSettingsBinding;
+  Text, Hint: string;
+begin
+  Binding := FBindings[AIndex];
   Text := Binding.Text;
   Hint := Binding.Hint;
-  if AMarked then
+  if Binding.Experimental then
+    Text := Text + '  [' + TAtlasStrings.Text(TAtlasTextId.SettingsExperimentalTag) + ']';
+  if Binding.Marked then
   begin
     Text := Dot + Text;
     Hint := TAtlasStrings.Text(TAtlasTextId.SettingsModifiedHint);
@@ -332,6 +371,171 @@ var
 begin
   Index := IndexOfControl(AControl);
   Result := (Index >= 0) and FBindings[Index].Marked;
+end;
+
+procedure TAtlasSettingsMarks.MarkExperimental(const ANames: TArray<string>);
+var
+  Index: Integer;
+  Binding: TAtlasSettingsBinding;
+  Name, Experimental: string;
+  Found: Boolean;
+begin
+  for Index := 0 to FBindings.Count - 1 do
+  begin
+    Binding := FBindings[Index];
+    Found := False;
+    for Name in Binding.Names do
+      for Experimental in ANames do
+        if SameText(Name, Experimental) then
+          Found := True;
+    if Found = Binding.Experimental then
+      Continue;
+    Binding.Experimental := Found;
+    FBindings[Index] := Binding;
+    Render(Index);
+  end;
+end;
+
+function TAtlasSettingsMarks.HasExperimental: Boolean;
+var
+  Binding: TAtlasSettingsBinding;
+begin
+  for Binding in FBindings do
+    if Binding.Experimental then
+      Exit(True);
+  Result := False;
+end;
+
+function TAtlasSettingsMarks.IsExperimental(AControl: TControl): Boolean;
+var
+  Index: Integer;
+begin
+  Index := IndexOfControl(AControl);
+  Result := (Index >= 0) and FBindings[Index].Experimental;
+end;
+
+function TAtlasSettingsMarks.Matches(const ABinding: TAtlasSettingsBinding; AFilter: TAtlasSettingsFilter): Boolean;
+begin
+  case AFilter of
+    sfModified:
+      Result := ABinding.Marked;
+    sfExperimental:
+      Result := ABinding.Experimental;
+  else
+    Result := True;
+  end;
+end;
+
+procedure TAtlasSettingsMarks.ApplyFilter(AFilter: TAtlasSettingsFilter);
+
+  // Element direkt im Reiter (rollbarer Inhalt), das AControl trägt: die Zeile oder das Element selbst.
+  function RowOf(AControl: TControl): TControl;
+  begin
+    Result := AControl;
+    while (Result <> nil) and (Result.Parent <> nil) and not (Result.Parent is TScrollingWinControl) do
+      Result := Result.Parent;
+  end;
+
+var
+  Shown, Containers: TList<TControl>;
+  Binding: TAtlasSettingsBinding;
+  Row: TControl;
+  Container: TWinControl;
+  Index, Child: Integer;
+begin
+  Restore;
+  FFilter := AFilter;
+  if AFilter = sfAll then
+    Exit;
+  Shown := TList<TControl>.Create;
+  Containers := TList<TControl>.Create;
+  try
+    for Binding in FBindings do
+    begin
+      Row := RowOf(Binding.Control);
+      if (Row = nil) or (Row.Parent = nil) then
+        Continue;
+      if not Containers.Contains(Row.Parent) then
+        Containers.Add(Row.Parent);
+      if Matches(Binding, AFilter) then
+      begin
+        Shown.Add(Row);
+        // Beschriftung in eigener Zeile darüber (AddTextLine) bleibt mit sichtbar.
+        if Binding.Caption <> nil then
+          Shown.Add(RowOf(Binding.Caption));
+      end;
+    end;
+    for Index := 0 to Containers.Count - 1 do
+    begin
+      Container := TWinControl(Containers[Index]);
+      // Lage im nicht gerollten Zustand merken.
+      if Container is TScrollingWinControl then
+        TScrollingWinControl(Container).VertScrollBar.Position := 0;
+      for Child := 0 to Container.ControlCount - 1 do
+      begin
+        FTops.AddOrSetValue(Container.Controls[Child], Container.Controls[Child].Top);
+        if Container.Controls[Child].Visible and not Shown.Contains(Container.Controls[Child]) then
+        begin
+          Container.Controls[Child].Visible := False;
+          FHidden.Add(Container.Controls[Child]);
+        end;
+      end;
+      Compact(Container);
+    end;
+  finally
+    Containers.Free;
+    Shown.Free;
+  end;
+end;
+
+procedure TAtlasSettingsMarks.Restore;
+var
+  Row: TControl;
+  Pair: TPair<TControl, Integer>;
+begin
+  // Vorher ausgeblendete Zeilen wieder zeigen (sie waren beim Filtern sichtbar) und an ihren Platz rücken.
+  for Row in FHidden do
+    Row.Visible := True;
+  FHidden.Clear;
+  for Pair in FTops do
+    if Pair.Key.Parent is TScrollingWinControl then
+      TScrollingWinControl(Pair.Key.Parent).VertScrollBar.Position := 0;
+  for Pair in FTops do
+    Pair.Key.Top := Pair.Value;
+  FTops.Clear;
+end;
+
+procedure TAtlasSettingsMarks.Compact(AContainer: TWinControl);
+var
+  Tops: TList<Integer>;
+  Child, Index, Shift, Top: Integer;
+  Visible: Boolean;
+begin
+  // Die Reiter stapeln ihre Zeilen mit festen Abständen; ausgeblendete Zeilen hinterließen Lücken.
+  // Zeilen mit gleicher Oberkante gelten als eine; sie fällt nur weg, wenn alle ihre Elemente ausgeblendet sind.
+  Tops := TList<Integer>.Create;
+  try
+    for Child := 0 to AContainer.ControlCount - 1 do
+      if not Tops.Contains(FTops[AContainer.Controls[Child]]) then
+        Tops.Add(FTops[AContainer.Controls[Child]]);
+    Tops.Sort;
+    Shift := 0;
+    for Index := 0 to Tops.Count - 1 do
+    begin
+      Top := Tops[Index];
+      Visible := False;
+      for Child := 0 to AContainer.ControlCount - 1 do
+        if (FTops[AContainer.Controls[Child]] = Top) and AContainer.Controls[Child].Visible then
+        begin
+          Visible := True;
+          AContainer.Controls[Child].Top := Top - Shift;
+        end;
+      if not Visible and (Index < Tops.Count - 1) then
+        Inc(Shift, Tops[Index + 1] - Top);
+    end;
+  finally
+    Tops.Free;
+  end;
 end;
 
 procedure TAtlasSettingsMarks.BeginLoad;

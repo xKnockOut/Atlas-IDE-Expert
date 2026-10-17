@@ -375,6 +375,9 @@ type
     /// anderen Atlas-Tasten (#494).</summary>
     DiagnosticModeKey: Integer;
     DiagnosticModeKeyPriority: Boolean;
+    /// <summary>Hauptschalter der experimentellen Funktionen (#834, experimental.enabled, liegt in settings.json):
+    /// aus = keine Einstellung mit x-experimental wirkt, auch wenn sie an ist; Vorgabe aus.</summary>
+    ExperimentalEnabled: Boolean;
     /// <summary>Prüfliste „Atlas-Einrichtung“ beim IDE-Start zeigen, solange nicht alles grün ist (#625,
     /// ui.setupChecklist); aus: nur auf Abruf (Menü Atlas, Befehlspalette, Statusfeld).</summary>
     SetupChecklist: Boolean;
@@ -938,6 +941,7 @@ begin
   Result.DiagnosticMode := False;
   Result.DiagnosticModeKey := $E044; // Strg+Umschalt+Alt+D
   Result.DiagnosticModeKeyPriority := False;
+  Result.ExperimentalEnabled := False;
   Result.SetupChecklist := True;
   Result.SetupChecklistSeen := False;
   Result.KeyOverview := True;
@@ -1304,6 +1308,7 @@ begin
   DiagnosticModeKey := AStore.ReadInteger('DiagnosticModeKey', Default.DiagnosticModeKey);
   DiagnosticModeKeyPriority :=
     AStore.ReadInteger('DiagnosticModeKeyPriority', BoolValue(Default.DiagnosticModeKeyPriority)) <> 0;
+  ExperimentalEnabled := AStore.ReadInteger('ExperimentalEnabled', BoolValue(Default.ExperimentalEnabled)) <> 0;
   SetupChecklist := AStore.ReadInteger('SetupChecklist', BoolValue(Default.SetupChecklist)) <> 0;
   SetupChecklistSeen := AStore.ReadInteger('SetupChecklistSeen', BoolValue(Default.SetupChecklistSeen)) <> 0;
   KeyOverview := AStore.ReadInteger('KeyOverview', BoolValue(Default.KeyOverview)) <> 0;
@@ -1553,6 +1558,7 @@ begin
   AStore.WriteInteger('DiagnosticMode', BoolValue(DiagnosticMode));
   AStore.WriteInteger('DiagnosticModeKey', DiagnosticModeKey);
   AStore.WriteInteger('DiagnosticModeKeyPriority', BoolValue(DiagnosticModeKeyPriority));
+  AStore.WriteInteger('ExperimentalEnabled', BoolValue(ExperimentalEnabled));
   AStore.WriteInteger('SetupChecklist', BoolValue(SetupChecklist));
   AStore.WriteInteger('SetupChecklistSeen', BoolValue(SetupChecklistSeen));
   AStore.WriteInteger('KeyOverview', BoolValue(KeyOverview));

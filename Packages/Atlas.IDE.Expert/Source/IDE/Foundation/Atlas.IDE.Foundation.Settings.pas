@@ -16,6 +16,9 @@
 // Abgesicherter Start (#722): Vor jeder gespeicherten Änderung kommt der alte
 // Stand in die Einstellungsstände (%APPDATA%\Atlas\settings-history.json),
 // höchstens safeMode.keepSettingsHistory; Restore setzt auf einen davon zurück.
+// Experimentelle Funktionen (#834): Ohne Hauptschalter experimental.enabled
+// liefert Current für jede Einstellung mit x-experimental die Vorgabe; Stored
+// behält den gespeicherten Wert.
 
 interface
 
@@ -24,6 +27,7 @@ uses
   Atlas.Core.Files.TextFile,
   Atlas.Core.Settings.Plugin,
   Atlas.Core.Settings.History,
+  Atlas.Core.Settings.Catalog,
   Atlas.Core.Settings.QuickToggles;
 
 type
@@ -38,7 +42,11 @@ type
     FHistory: TAtlasSettingsHistory;
     FOnChanged: TProc;
     FLoaded: Boolean;
+    FExperimental: TArray<TAtlasCatalogEntry>;
+    FExperimentalRead: Boolean;
     class procedure EnsureLoaded; static;
+    /// <summary>Gespeichert, darüber Sitzungswerte, ohne Hauptschalter experimentelle Werte auf Vorgabe.</summary>
+    class function Effective: TAtlasPluginSettings; static;
     class procedure Changed; static;
     class function HistoryFile: string; static;
     class procedure SaveHistory; static;
@@ -72,6 +80,11 @@ type
     class function SessionFlag(const AKey: string; out AValue: Boolean): Boolean; static;
     /// <summary>Schnellschalter aus Plugin-Katalog und atlas.schema.json in der Sprache der Oberfläche.</summary>
     class function QuickToggles: TArray<TAtlasQuickToggle>; static;
+    /// <summary>Experimentelle Plugin-Einstellungen aus dem Katalog (#834), einmal gelesen.</summary>
+    class function ExperimentalEntries: TArray<TAtlasCatalogEntry>; static;
+    /// <summary>Schlüssel der experimentellen Schalter, die gerade wirken (Plugin und settings.json); leer ohne
+    /// Hauptschalter. Für Statusfeld, Fehlerbericht und Diagnoselog.</summary>
+    class function ActiveExperimental: TArray<string>; static;
     /// <summary>Gemerkte Einstellungsstände, neuester zuerst (#722).</summary>
     class function History: TAtlasSettingsHistory; static;
     /// <summary>Gespeicherte Einstellungen auf Stand AIndex zurücksetzen; der jetzige Stand wird selbst
@@ -98,6 +111,7 @@ uses
   Atlas.Core.Settings.SchemaData,
   Atlas.Core.Settings.Layers,
   Atlas.Core.Settings.Scopes,
+  Atlas.Core.Settings.Experimental,
   Atlas.UI.Strings;
 
 type
@@ -249,7 +263,42 @@ begin
     SaveGlobal(Content, Routed.Text);
   FStored.Load(Store);
   FLoaded := True;
-  FEffective := FSession.Apply(FStored, QuickToggles);
+  FEffective := Effective;
+end;
+
+class function TAtlasIdeSettings.ExperimentalEntries: TArray<TAtlasCatalogEntry>;
+var
+  Catalog: TAtlasSettingsCatalog;
+begin
+  if not FExperimentalRead then
+  begin
+    Catalog := TAtlasSettingsCatalog.CreateDefault;
+    try
+      FExperimental := TAtlasExperimental.PluginEntries(Catalog);
+    finally
+      Catalog.Free;
+    end;
+    FExperimentalRead := True;
+  end;
+  Result := FExperimental;
+end;
+
+class function TAtlasIdeSettings.Effective: TAtlasPluginSettings;
+begin
+  Result := TAtlasExperimental.Apply(FSession.Apply(FStored, QuickToggles), ExperimentalEntries);
+end;
+
+class function TAtlasIdeSettings.ActiveExperimental: TArray<string>;
+var
+  Catalog: TAtlasSettingsCatalog;
+begin
+  EnsureLoaded;
+  Catalog := TAtlasSettingsCatalog.CreateDefault;
+  try
+    Result := TAtlasExperimental.Active(FSession.Apply(FStored, QuickToggles), GlobalText, Catalog);
+  finally
+    Catalog.Free;
+  end;
 end;
 
 class function TAtlasIdeSettings.Current: TAtlasPluginSettings;
@@ -284,7 +333,7 @@ end;
 
 class procedure TAtlasIdeSettings.Changed;
 begin
-  FEffective := FSession.Apply(FStored, QuickToggles);
+  FEffective := Effective;
   if Assigned(FOnChanged) then
     FOnChanged();
 end;
@@ -392,6 +441,8 @@ end;
 class procedure TAtlasIdeSettings.Release;
 begin
   FreeAndNil(FHistory);
+  FExperimental := nil;
+  FExperimentalRead := False;
 end;
 
 class function TAtlasIdeSettings.QuickToggles: TArray<TAtlasQuickToggle>;

@@ -407,6 +407,8 @@ begin
     Name.SetBounds(Gap * 2, Y, 400, 16);
     Name.Font.Style := [fsBold];
     Name.Caption := Field.Path;
+    if Field.Experimental then
+      Name.Caption := Name.Caption + '  [' + TAtlasStrings.Text(TAtlasTextId.SettingsExperimentalTag) + ']';
     Inc(Y, 20);
     if Field.Description <> '' then
       Inc(Y, AddLabel(Field.Description, Y).Height + 4);

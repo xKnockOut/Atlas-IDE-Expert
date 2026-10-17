@@ -84,7 +84,7 @@ const
     'Nichts zu tun: Die Einstellungen sind schon so.',
     'Aufruf: %s' + sLineBreak + sLineBreak +
       'AtlasSetup /exportSettings <Datei> [/areas:editor,build] [/secrets:placeholder]' + sLineBreak +
-      'AtlasSetup /importSettings <Datei|minimal|atlas-standard|alles-an> [/replace|/merge] [/areas:…]' + sLineBreak +
+      'AtlasSetup /importSettings <Datei|minimal|atlas-standard|alles-an|alles-an-experimentell> [/replace|/merge] [/areas:…]' + sLineBreak +
       'AtlasSetup /resetSettings [/areas:…]' + sLineBreak + 'Jeweils mit /quiet ohne Meldung.',
     'Datei nicht gefunden: %s',
     'Keine Einstellungsdatei von Atlas: %s',
@@ -133,7 +133,7 @@ const
     'Nothing to do: the settings are already like that.',
     'Usage: %s' + sLineBreak + sLineBreak +
       'AtlasSetup /exportSettings <file> [/areas:editor,build] [/secrets:placeholder]' + sLineBreak +
-      'AtlasSetup /importSettings <file|minimal|atlas-standard|alles-an> [/replace|/merge] [/areas:…]' + sLineBreak +
+      'AtlasSetup /importSettings <file|minimal|atlas-standard|alles-an|alles-an-experimentell> [/replace|/merge] [/areas:…]' + sLineBreak +
       'AtlasSetup /resetSettings [/areas:…]' + sLineBreak + 'Add /quiet to suppress this message.',
     'File not found: %s',
     'Not an Atlas settings file: %s',

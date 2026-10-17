@@ -39,6 +39,8 @@ type
     procedure ModeNamesRoundTrip;
     [Test]
     procedure AnnouncedItemsJoinTheirVersion;
+    [Test]
+    procedure ExperimentalItemsComeLast;
   end;
 
 implementation
@@ -71,7 +73,39 @@ begin
   end;
 end;
 
+function Titles(const AItems: TArray<TAtlasWhatsNewItem>): string;
+var
+  Item: TAtlasWhatsNewItem;
+begin
+  Result := '';
+  for Item in AItems do
+  begin
+    if Result <> '' then
+      Result := Result + ',';
+    Result := Result + Item.Title;
+  end;
+end;
+
 { TAtlasWhatsNewTests }
+
+procedure TAtlasWhatsNewTests.ExperimentalItemsComeLast;
+var
+  Parsed: TAtlasWhatsNewVersions;
+  Items: TArray<TAtlasWhatsNewItem>;
+begin
+  // #834: experimental als Wahrheitswert oder Text; ohne Feld nicht experimentell.
+  Parsed := TAtlasWhatsNew.Parse('{"versions": [{"version": "1.1.0", "items": [' +
+    '{"title": "Mehrfachcursor", "experimental": true}, {"title": "Suche"},' +
+    '{"title": "Live-Umbenennen", "experimental": "true"}, {"title": "Karte", "experimental": false}]}]}');
+  Assert.AreEqual(4, Integer(Length(Parsed[0].Items)));
+  Assert.IsTrue(Parsed[0].Items[0].Experimental);
+  Assert.IsFalse(Parsed[0].Items[1].Experimental);
+  Assert.IsTrue(Parsed[0].Items[2].Experimental);
+  Assert.IsFalse(Parsed[0].Items[3].Experimental);
+  Items := TAtlasWhatsNew.Ordered(Parsed[0].Items);
+  Assert.AreEqual('Suche,Karte,Mehrfachcursor,Live-Umbenennen', Titles(Items));
+  Assert.AreEqual('', Titles(TAtlasWhatsNew.Ordered(nil)));
+end;
 
 procedure TAtlasWhatsNewTests.ParsesAllFields;
 var

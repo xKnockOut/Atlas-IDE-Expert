@@ -38,6 +38,9 @@ type
     procedure KeepsRelativePathsAndGlobs;
     [Test]
     procedure GlobalFileKeepsPersonalPaths;
+    /// <summary>#834: Hauptschalter experimental.enabled; ohne ihn fallen experimentelle Schlüssel weg.</summary>
+    [Test]
+    procedure ExperimentalKeysNeedMasterSwitch;
   end;
 
 implementation
@@ -282,6 +285,42 @@ begin
   // settings.json ist persönlich: absolute Pfade bleiben, keine Meldung.
   Assert.AreEqual(Text, TConfigurationScopes.Filter(Text, TConfigurationScope.Global, Issues));
   Assert.AreEqual(0, Integer(Length(Issues)));
+end;
+
+procedure TConfigurationScopesTests.ExperimentalKeysNeedMasterSwitch;
+const
+  Paths: array[0..1] of string = ('refactoring.liveRename', 'smartPaste');
+var
+  List: TArray<string>;
+  Issues: TArray<TConfigurationIssue>;
+  Text: string;
+begin
+  List := nil;
+  for Text in Paths do
+    List := List + [Text];
+  // Hauptschalter: global, Vorgabe aus, vom Parser gelesen.
+  Assert.IsTrue(TConfigurationScopes.ScopeOf('experimental.enabled') = TConfigurationScope.Global);
+  Assert.IsFalse(TServerSettings.Default.ExperimentalEnabled);
+  Assert.IsTrue(TConfigurationParser.Parse('{"experimental": {"enabled": true}}', Issues).ExperimentalEnabled);
+  Assert.AreEqual(0, Integer(Length(Issues)));
+  TConfigurationParser.Parse('{"experimental": {"enabled": true, "x": 1}}', Issues);
+  Assert.AreEqual(1, Integer(Length(Issues)), 'unbekanntes Glied gemeldet');
+  Assert.IsFalse(TConfigurationScopes.ExperimentalEnabled('{"experimental": {"enabled": false}}'));
+  Assert.IsFalse(TConfigurationScopes.ExperimentalEnabled(''));
+  // Ohne Hauptschalter: Glied und ganzer Schlüssel fallen weg, die übrigen bleiben.
+  Text := TConfigurationScopes.WithoutExperimental(
+    '{"refactoring": {"liveRename": true, "preview": false}, "smartPaste": true, "metrics": false}', List);
+  Assert.AreEqual('{"refactoring": {"preview": false}, "metrics": false}', Text);
+  // Mit Hauptschalter bleibt der Text, wie er ist.
+  Text := '{"experimental": {"enabled": true}, "smartPaste": true}';
+  Assert.AreEqual(Text, TConfigurationScopes.WithoutExperimental(Text, List));
+  // Ohne experimentelle Schlüssel, ohne Liste, bei ungültigem Text: unverändert.
+  Assert.AreEqual('{"metrics": false}', TConfigurationScopes.WithoutExperimental('{"metrics": false}', List));
+  Assert.AreEqual('{"smartPaste": true}', TConfigurationScopes.WithoutExperimental('{"smartPaste": true}', nil));
+  Assert.AreEqual('{kaputt', TConfigurationScopes.WithoutExperimental('{kaputt', List));
+  // Die echte Liste aus dem Schema enthält nie den Hauptschalter.
+  for Text in ExperimentalSettingPaths do
+    Assert.AreNotEqual('experimental.enabled', Text);
 end;
 
 initialization

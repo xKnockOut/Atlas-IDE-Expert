@@ -532,7 +532,9 @@ type
     SigVirtual, SigFieldName, SigFieldType, SigFieldModifier, SigFieldValue, SigAdd, SigRemove, SigUp, SigDown,
     SigColName, SigColType, SigColModifier, SigColValue, SigNewName, SigBadName, SigDuplicate, SigMissingType,
     SigMissingValue, SigAfterDefault, SigTypesFixed, SigFailed, SigNothing, SigPreviewTitle, SigPreviewHint,
-    SigPreviewApply, SigDone);
+    SigPreviewApply, SigDone,
+    SettingsExperimentalEnabled, SettingsExperimentalTag, SettingsExperimentalOff, SettingsExperimentalAllow,
+    SettingsFilter, SettingsFilterAll, SettingsFilterModified, SettingsFilterExperimental, WelcomeNewsExperimental);
 
   TAtlasStrings = class
   private class var
@@ -1552,7 +1554,11 @@ const
      'Die Methode ist an %s gebunden; der Ereignistyp stammt nicht aus dem Projekt. Parameter lassen sich nur ' +
      'umbenennen.',
      'Signatur ändern fehlgeschlagen: %s', 'Signatur ändern: nichts zu ändern.', 'Signatur ändern',
-     '%d Änderungen in %d Dateien', 'Ändern', 'Signatur geändert: %d Änderungen in %d Dateien übernommen.'),
+     '%d Änderungen in %d Dateien', 'Ändern', 'Signatur geändert: %d Änderungen in %d Dateien übernommen.',
+     'Experimentelle Funktionen erlauben (experimental.enabled)', 'Experimentell',
+     '⚠ Experimentelle Funktionen sind aus. Ihre Schalter wirken erst mit „Experimentelle Funktionen erlauben“.',
+     'Erlauben', 'Filter:', 'Alle', 'Geändert', 'Nur experimentelle',
+     'Experimentell (wirkt erst mit „Experimentelle Funktionen erlauben“ in den Einstellungen)'),
     ('Enter to accept · Esc to close', '%d of %d', 'No matches for “%s”', 'Backspace widens the search',
      'No suggestions here', 'Esc closes', 'No details for this entry', 'Overload', 'Deprecated: %s', 'Deprecated.',
      'Inherited from %s', 'Inherited', 'optional, default %s', 'No overload with %d parameters.', '… %d more',
@@ -2501,7 +2507,11 @@ const
      'The new parameter “%s” would follow a parameter with a default value. Please insert it further up.',
      'The method is bound to %s; the event type does not come from the project. Parameters can only be renamed.',
      'Changing the signature failed: %s', 'Change signature: nothing to change.', 'Change signature',
-     '%d changes in %d files', 'Change', 'Signature changed: %d changes in %d files applied.'));
+     '%d changes in %d files', 'Change', 'Signature changed: %d changes in %d files applied.',
+     'Allow experimental features (experimental.enabled)', 'Experimental',
+     '⚠ Experimental features are off. Their switches only work with “Allow experimental features”.',
+     'Allow', 'Filter:', 'All', 'Changed', 'Experimental only',
+     'Experimental (only works with “Allow experimental features” in the settings)'));
 
 { TAtlasStrings }
 

@@ -11,6 +11,12 @@
       Angaben x-page, x-control, x-issue, x-commandLine und x-restart.
       x-quickToggle (mit x-plugin, x-caption, x-captionEn) an einer booleschen
       Einstellung macht sie zum Schnellschalter im Plugin (#604).
+    - x-experimental (#834) an einer Einstellung beider Schemata: experimentelle
+      Funktion, Kennzeichen in Konfiguration.md und Einstellungen.md (Abschnitt
+      „Experimentelle Funktionen“), Liste ExperimentalSettingPaths in ScopeData.
+      Wächter: Vorgabe aus (false bzw. x-offValue), nie am Hauptschalter
+      experimental.enabled, nie an einem ganzen Objekt; Profil „Alles an“ lässt
+      sie aus, Profil „Alles an, auch experimentell“ schaltet alle ein.
     - Wächter: Die Schlüssel in Atlas.Common.Configuration.Parser müssen genau
       denen im Schema entsprechen (Validierung und Schichtung).
     - Atlas.Common.Configuration.Internals.ScopeData: Ort jedes Schlüssels aus
@@ -68,6 +74,22 @@ function Format-Value($Value) {
 
 function Escape([string] $Text) { $Text.Replace('|', '\|').Replace("`r", '').Replace("`n", ' ') }
 
+# Experimentelle Funktionen (#834)
+$MasterPath = 'experimental.enabled'
+$ExperimentalNote = 'Experimentell (Vorgabe aus; wirkt nur mit `experimental.enabled`). '
+function Is-Experimental([hashtable] $Node) { (Has $Node 'x-experimental') -and ($Node['x-experimental'] -eq $true) }
+$ServerExperimental = New-Object System.Collections.Generic.List[string]
+foreach ($Name in $Schema['properties'].Keys) {
+    if ($Name -eq '$schema') { continue }
+    $P = $Schema['properties'][$Name]
+    if (Is-Experimental $P) { $ServerExperimental.Add($Name) }
+    if (Has $P 'properties') {
+        foreach ($Sub in $P['properties'].Keys) { if (Is-Experimental $P['properties'][$Sub]) { $ServerExperimental.Add("$Name.$Sub") } }
+    }
+}
+$PluginExperimental = New-Object System.Collections.Generic.List[string]
+foreach ($Name in $PluginSchema['properties'].Keys) { if (Is-Experimental $PluginSchema['properties'][$Name]) { $PluginExperimental.Add($Name) } }
+
 # Ort eines Schlüssels: eigenes x-scope, sonst das des Objekts.
 function Scope-Of([hashtable] $Node, [string] $Inherited) { if (Has $Node 'x-scope') { $Node['x-scope'] } else { $Inherited } }
 
@@ -92,6 +114,7 @@ function Write-Table([System.Text.StringBuilder] $Out, [hashtable] $Properties, 
                   elseif ((Has $P 'minimum') -or (Has $P 'maximum')) { "$(if (Has $P 'minimum') { $P['minimum'] } else { '' })…$(if (Has $P 'maximum') { $P['maximum'] } else { '' })" }
                   else { '' }
         $Description = if (Has $P 'description') { Escape $P['description'] } else { '' }
+        if (Is-Experimental $P) { $Description = "**$($ExperimentalNote.TrimEnd())** $Description" }
         $Place = Scope-Text (Scope-Of $P $ParentScope)
         if (Has $P 'properties') {
             $Inner = @($P['properties'].Values | ForEach-Object { Scope-Of $_ (Scope-Of $P $ParentScope) } | Sort-Object -Unique)
@@ -153,7 +176,8 @@ foreach ($Name in $Schema['properties'].Keys) {
     if ($Name -eq '$schema') { continue }
     $P = $Schema['properties'][$Name]
     $Setting = '`' + $Name + '`'
-    if (Has $P 'properties') { $Setting += ': ' + (($P['properties'].Keys | ForEach-Object { '`' + $_ + '`' }) -join ', ') }
+    if (Is-Experimental $P) { $Setting += ' (experimentell)' }
+    if (Has $P 'properties') { $Setting += ': ' + (($P['properties'].Keys | ForEach-Object { if (Is-Experimental $P['properties'][$_]) { '`' + $_ + '` (experimentell)' } else { '`' + $_ + '`' } }) -join ', ') }
     $Default = if ($P.ContainsKey('default')) { Format-Value $P['default'] } else { '–' }
     $Scope = Scope-Of $P ''
     $Source = if ($Scope -eq 'global') { 'settings.json (Tools › Optionen › Atlas)' } elseif ($Scope -eq 'both') { 'settings.json (Tools › Optionen › Atlas) und atlas.json (Atlas › Projekt-Einstellungen)' } else { 'atlas.json (Atlas › Projekt-Einstellungen)' }
@@ -214,7 +238,7 @@ foreach ($Name in $Schema['properties'].Keys) {
 [void]$Table.AppendLine('| Editor | Code-Metriken (#66): Code Lens hinter dem Kopf jeder implementierten Methode mit Länge, Verschachtelungstiefe, zyklomatischer und kognitiver Komplexität und Parameteranzahl, Werte über dem Grenzwert markiert (`codeLens.metrics`, Schnellschalter; Grenzwerte als `max` der Regeln `metric-*` in atlas.json); Befehl „Metrikbericht des Projekts“ (*Atlas.MetricsReport*, Befehlspalette, abschaltbar mit `metrics.report`, Schnellschalter; aus = der Befehl verschwindet) schreibt den Markdown-Bericht des aktiven Projekts nach `%LOCALAPPDATA%\Atlas\Berichte\Metriken-<Projekt>.md` und öffnet ihn; nach jedem Build (nicht nach einer Hintergrundprüfung) legt das Plugin die Zusammenfassung im Abschnitt `metrics` der Projekt-Zusammenfassung ab (Projektverlauf #758) | an, an | Plugin (Registry `CodeLensMetrics`, umgeleitet nach settings.json `codeLens.metrics`; Registry `MetricsReport`); Zusammenfassung in `%LOCALAPPDATA%\Atlas\projects\<Schlüssel>.json` | nein | Kontrollkästchen, Kontrollkästchen | #66 |')
 [void]$Table.AppendLine('| Editor | TODO-Übersicht (#68): Befehle „TODOs des Projekts“ (*Atlas.TodoList*) und „TODOs des Projekts filtern …“ (*Atlas.TodoListFilter*, Kategorie, Person, Unit, Marke, Erledigte) in der Befehlspalette (`todos.list`, Schnellschalter; aus = beide Befehle verschwinden) listen die offenen `// TODO`, `// FIXME` und `{ TODO … }` des aktiven Projekts nach Unit im Ergebnisfenster; Marken als `keywords` der Regel `todo-comment` in atlas.json (Vorgabe `TODO`, `FIXME`), Hinweise im Editor nur mit eingeschalteter Regel; nach jedem Build legt das Plugin die Zählung im Abschnitt `todos` der Projekt-Zusammenfassung ab (Projektverlauf #758) | an, Hinweise aus | Plugin (Registry `TodoList`); Server (atlas.json `rules.todo-comment`: Schweregrad und `keywords`); Zusammenfassung in `%LOCALAPPDATA%\Atlas\projects\<Schlüssel>.json` | nein | Kontrollkästchen; Regel und Marken nur in atlas.json | #68 |')
 [void]$Table.AppendLine('| Editor | Baseline für Altprojekte (#97): Befehl „Baseline des Projekts aktualisieren“ (*Atlas.UpdateBaseline*, Befehlspalette, abschaltbar mit `baseline.update`, Schnellschalter; aus = der Befehl verschwindet, die Baseline wirkt weiter) lässt den Server (`atlas.updateBaseline`) alle Dateien des aktiven Projekts prüfen und `atlas-baseline.json` im Arbeitsbereich neu schreiben; vorher nennt er Einträge, deren Datei es nicht mehr gibt, und fragt nach, danach stehen die Zähler (neu, entfernt, unverändert) im Meldungsfenster; nach jedem Build und nach dem Aktualisieren legt das Plugin den Stand der Baseline im Abschnitt `baseline` der Projekt-Zusammenfassung ab (Projektverlauf #758, Einrichtung #759) | an | Plugin (Registry `BaselineUpdate`); Zusammenfassung in `%LOCALAPPDATA%\Atlas\projects\<Schlüssel>.json` | nein | Kontrollkästchen | #97 |')
-[void]$Table.AppendLine('| Editor | Eigenschaftsregeln für Formulare (#309): Befehle „Eigenschaftsregeln anwenden: Formular“, „…: Projekt“ und „…: Projektgruppe“ (*Atlas.ApplyDfmRulesForm*, *Atlas.ApplyDfmRulesProject*, *Atlas.ApplyDfmRulesGroup*, Befehlspalette, abschaltbar mit `dfmPropertyRules.apply`, Schnellschalter; aus = die Befehle verschwinden, Regel `dfm-property` und Schnellkorrektur bleiben) lassen den Server (`atlas.server.applyDfmPropertyRules`) die Korrekturen aller Regeln aus `dfmPropertyRules` in den Formulardateien sammeln; eine Vorschau zeigt jede geänderte Zeile vorher und nachher, erst „Anwenden“ übernimmt sie (offene Formulare im Designer, die übrigen auf der Platte) | an | Plugin (Registry `DfmPropertyRules`) | nein | Kontrollkästchen | #309 |')
+[void]$Table.AppendLine('| Editor | Eigenschaftsregeln für Formulare (#309): Befehle „Eigenschaftsregeln anwenden: Formular“, „…: Projekt“ und „…: Projektgruppe“ (*Atlas.ApplyDfmRulesForm*, *Atlas.ApplyDfmRulesProject*, *Atlas.ApplyDfmRulesGroup*, Befehlspalette, abschaltbar mit `dfmRules.apply`, Schnellschalter; aus = die Befehle verschwinden, Regel `dfm-property` und Schnellkorrektur bleiben) lassen den Server (`atlas.server.applyDfmPropertyRules`) die Korrekturen aller Regeln aus `dfmPropertyRules` in den Formulardateien sammeln; eine Vorschau zeigt jede geänderte Zeile vorher und nachher, erst „Anwenden“ übernimmt sie (offene Formulare im Designer, die übrigen auf der Platte) | an | Plugin (Registry `DfmPropertyRules`) | nein | Kontrollkästchen | #309 |')
 [void]$Table.AppendLine('| Editor | Persönliche Notizen an Codezeilen (`notes.enabled`, Schnellschalter): *Atlas › Notiz an dieser Zeile…* (Befehlspalette, Atlas-Untermenü im Editor-Kontextmenü; nach Rechtsklick in die Rinne für die angeklickte Zeile) legt eine ein- oder mehrzeilige Notiz an, ein Symbol in der Rinne zeigt sie, Überfahren zeigt den Text; *Atlas › Notizen des Projekts* listet alle im Ergebnisfenster (Datei, Zeile, Text, Doppelklick springt, verwaiste Notizen gesondert); die Notiz folgt ihrer Zeile über Inhalt und je zwei Nachbarzeilen | an | Plugin (Registry `Notes`); Notizen je Projekt in `%LOCALAPPDATA%\Atlas\Notes\<Schlüssel>.json`, nie im Repository | nein | Kontrollkästchen | #545 |')
 [void]$Table.AppendLine('| Editor | Benannte Lesezeichen (`bookmarks.named`, Schnellschalter): *Atlas › Lesezeichen setzen…* (Strg+Alt+K, Befehlspalette, Atlas-Untermenü im Editor-Kontextmenü; nach Rechtsklick in die Rinne für die angeklickte Zeile) fragt nach dem Namen und schlägt Methode und Zeilenbeginn vor; ein Band in der Rinne zeigt das Lesezeichen, Überfahren zeigt den Namen; *Atlas › Gehe zu Lesezeichen…* sucht unscharf über Name, Datei und Methode; das Seitenfenster *Atlas › Lesezeichen-Fenster* listet Name, Datei, Methode und Zeilenvorschau mit Filter (Klick oder Enter springt, F2 benennt um, Entf löscht, Ziehen sortiert); das Lesezeichen sucht zuerst seine Methode und dann den Zeilentext darin, fehlt beides, steht es als „nicht gefunden“ in der Liste; aus: alles ruht, die IDE-Lesezeichen bleiben unberührt | an | Plugin (Registry `BookmarksNamed`) | nein | Kontrollkästchen | #622 |')
 [void]$Table.AppendLine('| Editor | Lesezeichen im Repository für das Team (`bookmarks.shared`): `atlas-bookmarks.json` neben der .dproj zum Einchecken statt der persönlichen `.atlas-bookmarks.json` (die Atlas lokal in `.git/info/exclude` einträgt); gibt es die Team-Datei noch nicht, gelten zunächst die persönlichen Lesezeichen | aus | Plugin (Registry `BookmarksShared`) | nein | Kontrollkästchen | #622 |')
@@ -291,6 +315,29 @@ foreach ($Area in $AreaKeys.PSBase.Keys) {
     [void]$Table.AppendLine("| $($PluginSchema['x-areas'][$Area]['caption']) (``$Area``) | $($AreaKeys[$Area] -join ', ') |")
 }
 [void]$Table.AppendLine("| nicht exportiert (Zustand, nur dieser Rechner) | $($Skipped -join ', ') |")
+[void]$Table.AppendLine()
+[void]$Table.AppendLine('## Experimentelle Funktionen')
+[void]$Table.AppendLine()
+[void]$Table.AppendLine('Riskante oder unreife Funktionen kommen als **experimentell** (#834): Sie haben einen eigenen Schalter, sind auf der Optionsseite und im Schnellschalter (#604) mit „Experimentell“ gekennzeichnet und nach der Installation aus. Der Hauptschalter `experimental.enabled` (*Tools › Optionen › Atlas › Allgemein*, Schnellschalter „Experimentelle Funktionen erlauben“, Vorgabe aus) gibt sie frei: Ist er aus, wirkt keine experimentelle Funktion, auch wenn ihr Schalter an ist; die Schalter behalten ihren Wert. Das Profil „Alles an“ (#723) schaltet sie nicht ein, dafür gibt es „Alles an, auch experimentell“. Statusfeld (Tooltip), Fehlerbericht und Diagnoselog nennen die wirksamen experimentellen Schalter (nur Schlüssel). Wird eine Funktion stabil, fällt `x-experimental` weg; ein gespeicherter Wert bleibt.')
+[void]$Table.AppendLine()
+if (($ServerExperimental.Count + $PluginExperimental.Count) -eq 0) { [void]$Table.AppendLine('Zurzeit ist keine Funktion experimentell.') }
+else {
+    [void]$Table.AppendLine('| Schlüssel | Ort | Seite | Herkunft |')
+    [void]$Table.AppendLine('|---|---|---|---|')
+    foreach ($Name in $PluginExperimental) {
+        $P = $PluginSchema['properties'][$Name]
+        $Issue = if (Has $P 'x-issue') { $P['x-issue'] } else { '' }
+        [void]$Table.AppendLine("| ``$($P['x-key'])`` | Plugin (Registry ``$Name``) | $($P['x-page']) | $Issue |")
+    }
+    foreach ($Path in $ServerExperimental) {
+        $Parts = $Path.Split('.')
+        $P = $Schema['properties'][$Parts[0]]
+        $Node = if ($Parts.Count -gt 1) { $P['properties'][$Parts[1]] } else { $P }
+        $Issue = if (Has $Node 'x-issue') { $Node['x-issue'] } elseif (Has $P 'x-issue') { $P['x-issue'] } else { '' }
+        $Place = if ($Parts.Count -gt 1) { Scope-Of $Node (Scope-Of $P '') } else { Scope-Of $P '' }
+        [void]$Table.AppendLine("| ``$Path`` | $(Scope-Text $Place) | $($P['x-page']) | $Issue |")
+    }
+}
 $TableText = $Table.ToString().Replace("`r`n", "`n")
 
 # --- Wächter: Schlüssel im Parser ---
@@ -356,6 +403,42 @@ foreach ($Name in $Schema['properties'].Keys) {
             if (('global', 'both' -ccontains (Scope-Of $S $Scope)) -and -not (Has $S 'x-area') -and -not (Has $P 'x-area')) { $Problems.Add("Schema: globaler Schlüssel ""$Name.$Sub"" ohne x-area") }
             if ((Has $S 'x-area') -and -not $PluginSchema['x-areas'].Contains($S['x-area'])) { $Problems.Add("Schema: ""$Name.$Sub"" mit unbekanntem Bereich ""$($S['x-area'])""") }
         }
+    }
+}
+
+# --- Wächter: experimentelle Funktionen (#834) ---
+function Check-Experimental([string] $Where, [hashtable] $Node) {
+    if (-not (Is-Experimental $Node)) { return }
+    if (Has $Node 'properties') { $Problems.Add("${Where}: x-experimental gehört an die einzelnen Einstellungen, nicht an das Objekt"); return }
+    if (-not $Node.ContainsKey('default')) { $Problems.Add("${Where}: experimentell (x-experimental) ohne default; die Vorgabe muss aus sein"); return }
+    $Off = if ($Node.ContainsKey('x-offValue')) { $Node['x-offValue'] } else { $false }
+    if ((ConvertTo-Json -InputObject $Node['default'] -Compress) -cne (ConvertTo-Json -InputObject $Off -Compress)) {
+        $Problems.Add("${Where}: experimentell (x-experimental), aber Vorgabe $(Format-Value $Node['default']) statt aus ($(Format-Value $Off))")
+    }
+}
+foreach ($Name in $Schema['properties'].Keys) {
+    if ($Name -eq '$schema') { continue }
+    $P = $Schema['properties'][$Name]
+    Check-Experimental "Schema ""$Name""" $P
+    if (Has $P 'properties') { foreach ($Sub in $P['properties'].Keys) { Check-Experimental "Schema ""$Name.$Sub""" $P['properties'][$Sub] } }
+}
+foreach ($Name in $PluginSchema['properties'].Keys) { Check-Experimental "Plugin-Katalog ""$Name""" $PluginSchema['properties'][$Name] }
+if ($ServerExperimental -ccontains $MasterPath) { $Problems.Add("Schema: der Hauptschalter ""$MasterPath"" darf nicht selbst experimentell sein") }
+foreach ($Name in $PluginExperimental) { if ($PluginSchema['properties'][$Name]['x-key'] -ceq $MasterPath) { $Problems.Add("Plugin-Katalog: der Hauptschalter ""$Name"" darf nicht selbst experimentell sein") } }
+$ExperimentalKeys = @($PluginExperimental | ForEach-Object { $PluginSchema['properties'][$_]['x-key'] }) + @($ServerExperimental)
+$AllOnPath = Join-Path $ProfileFolder 'alles-an.json'
+$AllOnExperimentalPath = Join-Path $ProfileFolder 'alles-an-experimentell.json'
+if (Test-Path $AllOnPath) {
+    $AllOn = (Get-Content -Raw -Encoding utf8 $AllOnPath | ConvertFrom-Json -AsHashtable)['settings']
+    foreach ($Key in @($MasterPath) + $ExperimentalKeys) {
+        if ($AllOn.ContainsKey($Key) -and ($AllOn[$Key] -eq $true)) { $Problems.Add("Setup/Profile/alles-an.json: ""$Key"" ist experimentell und gehört nur in alles-an-experimentell.json") }
+    }
+}
+if (-not (Test-Path $AllOnExperimentalPath)) { $Problems.Add('Setup/Profile/alles-an-experimentell.json fehlt (Profil „Alles an, auch experimentell“)') }
+else {
+    $AllOnExperimental = (Get-Content -Raw -Encoding utf8 $AllOnExperimentalPath | ConvertFrom-Json -AsHashtable)['settings']
+    foreach ($Key in @($MasterPath) + $ExperimentalKeys) {
+        if (-not ($AllOnExperimental.ContainsKey($Key) -and ($AllOnExperimental[$Key] -eq $true))) { $Problems.Add("Setup/Profile/alles-an-experimentell.json: ""$Key"" muss true sein") }
     }
 }
 
@@ -484,7 +567,12 @@ $ScopeLines = @(
     (Pascal-List 'GlobalSettingPaths' $GlobalPaths) +
     @('  /// <summary>Schlüssel des Projekts (atlas.json).</summary>') +
     (Pascal-List 'ProjectSettingPaths' $ProjectPaths) +
-    @('', 'implementation', '', 'end.')
+    @('', '/// <summary>Experimentelle Schlüssel (x-experimental, #834): wirken nur mit experimental.enabled.</summary>',
+      'function ExperimentalSettingPaths: TArray<string>;', '', 'implementation', '',
+      'function ExperimentalSettingPaths: TArray<string>;', 'begin')
+if ($ServerExperimental.Count -eq 0) { $ScopeLines += '  Result := nil;' }
+else { $ScopeLines += '  Result := [' + (($ServerExperimental | ForEach-Object { "'$_'" }) -join ', ') + '];' }
+$ScopeLines += @('end;', '', 'end.')
 $ScopeText = ($ScopeLines -join "`r`n") + "`r`n"
 $CurrentScope = if (Test-Path $ScopeUnitPath) { [IO.File]::ReadAllText($ScopeUnitPath, $Utf8).TrimStart([char]0xFEFF) } else { '' }
 if ($CurrentScope -ne $ScopeText) {

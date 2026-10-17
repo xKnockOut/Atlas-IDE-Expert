@@ -82,6 +82,7 @@ uses
   Atlas.IDE.Status.Lines,
   Atlas.IDE.Settings.QuickToggles,
   Atlas.IDE.Settings.Transfer,
+  Atlas.IDE.Settings.Experimental,
   Atlas.Core.Status.Contract,
   Atlas.Core.Notifications.Contract,
   Atlas.Core.Notifications.Center,
@@ -3178,6 +3179,7 @@ begin
   if Notifications = nil then
     StartNotifications;
   RegisterFeatures;
+  TAtlasIdeExperimental.ApplySettings;
   // Geänderte Tastenkürzel sofort neu belegen; fremde Vervollständigung melden (#494).
   TAtlasIdeSettings.OnChanged :=
     procedure
@@ -3201,6 +3203,8 @@ begin
         Notifications.ApplySettings;
       // Projektdatei .atlas an oder aus (#486).
       TAtlasIdeTeamFile.Refresh;
+      // Wirksame experimentelle Funktionen im Statusfeld und im Protokoll (#834).
+      TAtlasIdeExperimental.ApplySettings;
       // startProfiles.enabled aus: Zeitgeber und Feld weg (RegisterFeatures startet sie wieder);
       // startProfiles.statusField oder .atlas geändert: Feld neu melden (#575).
       if not TAtlasIdeSettings.Current.StartProfiles then
@@ -3261,6 +3265,7 @@ begin
   // in nicht mehr geladenem Code (Code-Review A-02). Queue im Hauptthread läuft weiter sofort.
   TAtlasMainThread.Stop;
   TAtlasIdeVcs.Stop;
+  TAtlasIdeExperimental.Stop;
   TAtlasGuard.OnWarning := nil;
   TAtlasGuard.OnFailure := nil;
   TAtlasIdeSettings.OnChanged := nil;

@@ -23,7 +23,7 @@
     "todos.list": true,
     "baseline.update": true,
     "metrics.report": true,
-    "dfmPropertyRules.apply": true,
+    "dfmRules.apply": true,
     "editor.hoverTooltip": true,
     "completion.filterChips": true,
     "completion.preview": true,
