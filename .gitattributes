@@ -9,3 +9,4 @@
 *.groupproj text eol=crlf
 *.ps1      text eol=crlf
 *.res      binary
+*.bat      text eol=crlf
