@@ -255,6 +255,9 @@ begin
       Result := TAtlasKeySource.Window;
     TAtlasKeyFunction.UnitSearchIde:
       Result := TAtlasKeySource.Action;
+    // Überspringen (#589): nur nach Strg+K, solange mehrere Einfügemarken aktiv sind; keine Bindung der IDE.
+    TAtlasKeyFunction.MultiCursorSkip:
+      Result := TAtlasKeySource.Window;
   else
     Result := TAtlasKeySource.Binding;
   end;
@@ -331,6 +334,14 @@ begin
       Result := 'Atlas.DuplicateLinesDown';
     TAtlasKeyFunction.CompleteStatement:
       Result := 'Atlas.CompleteStatement';
+    TAtlasKeyFunction.MultiCursorNext:
+      Result := 'Atlas.MultiCursorNext';
+    TAtlasKeyFunction.MultiCursorLineEnds:
+      Result := 'Atlas.MultiCursorLineEnds';
+    TAtlasKeyFunction.MultiCursorAbove:
+      Result := 'Atlas.MultiCursorAbove';
+    TAtlasKeyFunction.MultiCursorBelow:
+      Result := 'Atlas.MultiCursorBelow';
   else
     Result := '';
   end;

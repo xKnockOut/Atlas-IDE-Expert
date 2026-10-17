@@ -192,6 +192,8 @@ type
     /// <summary>Bricht laufende Serveranfragen ab und wartet auf sie; vor dem Freigeben der Sitzung.</summary>
     procedure Shutdown;
     function Visible: Boolean;
+    /// <summary>Läuft gerade der Platzhalter-Modus einer Vorlage (#51)?</summary>
+    function PlaceholdersActive: Boolean;
     /// <summary>Wurde in der Zeile des Cursors gerade ein Konstruktor übernommen (#489)? Dann fragt ";" dort
     /// nach „Mit try…finally absichern“.</summary>
     function GuardPending(const AView: IOTAEditView): Boolean;
@@ -621,6 +623,11 @@ begin
     Exit;
   Session := FSession();
   Result := (Session <> nil) and (Session.IndexingText <> '');
+end;
+
+function TAtlasEditorCompletion.PlaceholdersActive: Boolean;
+begin
+  Result := (FPlaceholders <> nil) and FPlaceholders.Active;
 end;
 
 function TAtlasEditorCompletion.Visible: Boolean;
