@@ -25,6 +25,11 @@ type
     Label_: string;
     Documentation: string;
     Parameters: TArray<TAtlasSignatureParameter>;
+    /// <summary>Ein bisheriges Argument passt nach seinem Typ nicht (#498, data.fits vom Server); False, wenn alle
+    /// passen oder der Server nichts sagt.</summary>
+    TypeMismatch: Boolean;
+    /// <summary>Erstes unverträgliches Argument (0-basiert), nur mit TypeMismatch.</summary>
+    MismatchArgument: Integer;
   end;
 
   TAtlasSignatureHelp = record

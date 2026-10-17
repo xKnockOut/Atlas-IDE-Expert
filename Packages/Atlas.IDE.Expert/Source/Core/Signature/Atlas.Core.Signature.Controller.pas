@@ -7,6 +7,9 @@
 //   - Weitertippen: Übersteigt der aktive Parameter die gezeigte Signatur, wechselt
 //     der Hint zur nächsten passenden (z. B. Format mit TFormatSettings). Von Hand
 //     gewählte Überladungen (Alt+↑/↓) bleiben erreichbar, auch wenn sie nicht passen.
+//   - Argumenttypen (#498): Meldet der Server, dass ein bisheriges Argument nicht zum Parametertyp passt
+//     (TypeMismatch), passt die Überladung nicht, erscheint gedämpft und wird nicht vorgewählt. Die Zahl der
+//     Argumente zählt weiter lokal.
 
 interface
 
@@ -64,8 +67,10 @@ end;
 
 function TAtlasSignatureController.Fits(ASignature, AParameter: Integer): Boolean;
 begin
-  // Der erste Parameter passt immer, auch bei Routinen ohne Parameter (leere Klammern).
-  Result := (AParameter = 0) or (AParameter < Length(FHelp.Signatures[ASignature].Parameters));
+  // Der erste Parameter passt immer, auch bei Routinen ohne Parameter (leere Klammern); ein Argument mit
+  // unverträglichem Typ nie (#498).
+  Result := ((AParameter = 0) or (AParameter < Length(FHelp.Signatures[ASignature].Parameters))) and
+    not FHelp.Signatures[ASignature].TypeMismatch;
 end;
 
 function TAtlasSignatureController.FirstFitting(AParameter: Integer): Integer;
