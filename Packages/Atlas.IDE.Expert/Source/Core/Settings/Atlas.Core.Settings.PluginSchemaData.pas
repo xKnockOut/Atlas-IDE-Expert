@@ -12,7 +12,7 @@ function AtlasPluginSchemaJson: string;
 implementation
 
 const
-  Lines: array[0..2677] of string = (
+  Lines: array[0..2691] of string = (
     '{',
     '  "$schema": "http://json-schema.org/draft-07/schema#",',
     '  "title": "Atlas-Plugin-Einstellungen",',
@@ -1313,6 +1313,20 @@ const
     '      "x-caption": "Mehrere Einfügemarken",',
     '      "x-captionEn": "Multiple cursors",',
     '      "x-issue": "#589"',
+    '    },',
+    '    "LinkedEditing": {',
+    '      "description": "Bezeichner live mitziehen: Tippt oder löscht man im Namen einer lokalen Variable, eines Parameters, einer lokalen Konstante, einer Inline- oder Schleifenvariable, ändern sich all' + 'e Vorkommen in derselben Routine mit (ohne vorheriges Markieren). Das bearbeitete Vorkommen ist durchgezogen eingerahmt, die übrigen gestrichelt, dazu „4 Vorkommen“. Felder, Methoden, Typen und global' + 'e Symbole bleiben beim Umbenennen über den Server. Ein reserviertes Wort oder ein in der Routine schon sichtbarer Name färbt die Rahmen rot; Esc stellt dann den alten Namen wieder her. Enter, Esc, Ver' + 'lassen des Namens oder Dateiwechsel beenden; Strg+Z stellt alle Vorkommen auf einmal zurück.",',
+    '      "type": "boolean",',
+    '      "default": false,',
+    '      "x-key": "editor.linkedEditing",',
+    '      "x-area": "editor",',
+    '      "x-feature": "EditorCommands",',
+    '      "x-page": "Editor",',
+    '      "x-experimental": true,',
+    '      "x-quickToggle": true,',
+    '      "x-caption": "Bezeichner live mitziehen",',
+    '      "x-captionEn": "Linked editing of local identifiers",',
+    '      "x-issue": "#658"',
     '    },',
     '    "MultiCursorModifier": {',
     '      "description": "Taste, mit der ein Klick eine weitere Marke setzt: alt (Alt+Klick) oder ctrl (Strg+Klick; dann springt Strg+Klick nicht mehr zur Deklaration).",',

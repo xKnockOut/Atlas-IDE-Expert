@@ -657,8 +657,6 @@ begin
   FDocumentSymbols.Attach(FDispatcher);
   FFoldingRanges := TLspFoldingRanges.Create(FDocuments);
   FFoldingRanges.Attach(FDispatcher);
-  FLinkedEditing := TLspLinkedEditing.Create(FDocuments);
-  FLinkedEditing.Attach(FDispatcher);
   FFormatting := TLspFormatting.Create(FDocuments, FormatStyleFor,
     function(const AFileName: string; out AText: string): Boolean
     begin
@@ -914,6 +912,9 @@ begin
       end;
     end;
   FDocumentHighlights.Attach(FDispatcher);
+  // Lokale Bezeichner brauchen den Index (#658).
+  FLinkedEditing := TLspLinkedEditing.Create(FDocuments, FIndex, EnsureUnit);
+  FLinkedEditing.Attach(FDispatcher);
   FReferences := TLspReferences.Create(FDocuments, FIndex,
     ReadSourceText,
     ProjectSourceFiles,
@@ -3138,6 +3139,7 @@ begin
   FDefinition.Namespaces := Namespaces;
   FHover.Namespaces := Namespaces;
   FDocumentHighlights.Namespaces := Namespaces;
+  FLinkedEditing.Namespaces := Namespaces;
   FReferences.Namespaces := Namespaces;
   FRename.Namespaces := Namespaces;
   FCompletion.Namespaces := Namespaces;

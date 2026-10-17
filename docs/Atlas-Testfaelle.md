@@ -1206,6 +1206,24 @@ Vorher: *Tools › Optionen › Atlas › Allgemein* „Experimentelle Funktione
 | MC16 | Optionen: Klick mit „Strg+Klick“, Kürzel ändern; dann „Mehrere Einfügemarken“ bzw. Hauptschalter „Experimentelle Funktionen“ aus | Strg+Klick setzt Marken, neue Kürzel wirken; ausgeschaltet gehören alle Tasten wieder der IDE |
 | MC17 | RAD Studio 13: eigene Mehrfachmarke der IDE suchen (Menüs, Tastenbelegung) | Falls vorhanden: Zusammenspiel mit Atlas notieren (Issue) |
 
+## Bezeichner live mitziehen (#658, experimentell)
+
+Vorher: *Tools › Optionen › Atlas › Allgemein* „Experimentelle Funktionen erlauben“, *Editor* „Lokale Bezeichner beim Tippen mitziehen“ an. Eine Methode mit lokaler Variable `Zeilen`, Parameter `Anzahl`, Konstante `Rand`, `for var I` und `var Doppelt := …`, dazu ein Feld `Zeilen` der Klasse.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| LE1 | Cursor in `Zeilen` (Verwendung im Rumpf), kurz warten, `Max` am Ende tippen | Beim ersten Zeichen Rahmen um alle Vorkommen in der Methode, das bearbeitete durchgezogen, die übrigen gestrichelt, dahinter „5 Vorkommen“; alle heißen `ZeilenMax`; `Self.Zeilen`, `'Zeilen'` und `{ Zeilen }` unverändert |
+| LE2 | LE1, dann Strg+Z | Ein Schritt stellt alle Vorkommen auf `Zeilen` zurück; Strg+Umschalt+Z bringt `ZeilenMax` zurück |
+| LE3 | In `Anzahl`, `Rand`, `I` und `Doppelt` am Anfang ein Zeichen einfügen | Jeweils alle Vorkommen der Routine ändern sich, auch die Deklaration im Kopf bzw. im `const`-Abschnitt |
+| LE4 | Namen mit Rücktaste ganz löschen, dann neu tippen | Leere Vorkommen bleiben als schmale Rahmen sichtbar; der neue Name steht überall |
+| LE5 | Den Namen zu `Anzahl` bzw. `begin` ändern | Rahmen und Marke rot, „Konflikt mit Parameter Anzahl“ bzw. „„begin“ ist ein reserviertes Wort“, auch im Statusfeld; Esc stellt den alten Namen wieder her |
+| LE6 | Während der Sitzung Enter, Esc, Leerzeichen, Punkt, Pfeil aus dem Namen hinaus, Klick in eine andere Zeile, Dateiwechsel, F12 | Sitzung endet, Rahmen weg; Enter fügt keinen Zeilenumbruch ein, Leerzeichen und Punkt schreibt die IDE wie sonst |
+| LE7 | Cursor auf einem Feld, einer Methode, einem Typ oder einer globalen Variable, Zeichen tippen | Kein Mitziehen; die IDE tippt normal |
+| LE8 | Im Namen Strg+V mit einem Bezeichner | Die übrigen Vorkommen bekommen den eingefügten Namen (danach je Taste ein Rückgängig-Schritt) |
+| LE9 | Haltepunkt und Lesezeichen in Zeilen zwischen den Vorkommen, dann umbenennen | Beide bleiben an ihrer Zeile |
+| LE10 | Vervollständigung offen, Platzhalter-Modus (`tryf` + Enter) oder mehrere Einfügemarken; SyncEdit der IDE | Kein Mitziehen; SyncEdit läuft ungestört |
+| LE11 | Einstellung bzw. Hauptschalter „Experimentelle Funktionen“ aus | Tippen wie ohne Plugin, keine Anfragen an den Server |
+
 ## Anweisung vervollständigen (#697)
 
 | Nr. | Schritte | Erwartet |

@@ -94,19 +94,12 @@ type
 implementation
 
 uses
-  System.StrUtils;
-
-const
-  Reserved: array[0..64] of string = ('and', 'array', 'as', 'asm', 'begin', 'case', 'class', 'const', 'constructor',
-    'destructor', 'dispinterface', 'div', 'do', 'downto', 'else', 'end', 'except', 'exports', 'file', 'finalization',
-    'finally', 'for', 'function', 'goto', 'if', 'implementation', 'in', 'inherited', 'initialization', 'inline',
-    'interface', 'is', 'label', 'library', 'mod', 'nil', 'not', 'object', 'of', 'or', 'packed', 'procedure', 'program',
-    'property', 'raise', 'record', 'repeat', 'resourcestring', 'set', 'shl', 'shr', 'string', 'then', 'threadvar',
-    'to', 'try', 'type', 'unit', 'until', 'uses', 'var', 'while', 'with', 'xor', 'out');
+  System.StrUtils,
+  Atlas.Core.Editor.LinkedEditing;
 
 function IsName(const AName: string): Boolean;
 begin
-  Result := IsValidIdent(AName) and (IndexText(AName, Reserved) < 0);
+  Result := IsValidIdent(AName) and not TAtlasLinkedEditing.IsReserved(AName);
 end;
 
 { TAtlasSignatureRow }

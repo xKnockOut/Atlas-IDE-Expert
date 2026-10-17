@@ -244,6 +244,9 @@ type
       ATabSize: Integer; AInsertSpaces: Boolean; ATimeoutMs: Cardinal): TArray<TLspTextEdit>;
     /// <summary>Umgebende Bereiche am Fundort, innen zuerst (textDocument/selectionRange, #399).</summary>
     function SelectionRanges(const AFileName: string; ALine, ACharacter: Integer): TArray<TLspRange>;
+    /// <summary>textDocument/linkedEditingRange nur für lokale Bezeichner ("atlasLocals", #658): Antwort des
+    /// Servers (Aufrufer gibt frei), nil ohne Antwort. Threadsicher wie die übrigen Anfragen.</summary>
+    function LinkedLocals(const AFileName: string; ALine, ACharacter: Integer): TJSONValue;
     /// <summary>Typ des Symbols (textDocument/typeDefinition, #399).</summary>
     function TypeDefinition(const AFileName: string; ALine, ACharacter: Integer): TArray<TLspLocation>;
     /// <summary>Editorspalte (1-basiert) zum Zeichenindex (0-basiert); Umkehrung von ColumnToIndex.</summary>
@@ -983,6 +986,15 @@ begin
   finally
     Response.Free;
   end;
+end;
+
+function TLspSession.LinkedLocals(const AFileName: string; ALine, ACharacter: Integer): TJSONValue;
+var
+  Params: TJSONObject;
+begin
+  Params := PositionParams(AFileName, ALine, ACharacter);
+  Params.AddPair('atlasLocals', TJSONBool.Create(True));
+  Result := FClient.Request('textDocument/linkedEditingRange', Params, FTimeoutMs);
 end;
 
 function TLspSession.TypeDefinition(const AFileName: string; ALine, ACharacter: Integer): TArray<TLspLocation>;

@@ -1558,6 +1558,8 @@ begin
   try
     Page.LoadFrom(Settings);
     Assert.IsFalse(Page.MultiCursor.Checked);
+    // #658 steht daneben, ebenfalls experimentell und aus.
+    Assert.IsFalse(Page.LinkedEditing.Checked);
     Assert.AreEqual(0, Page.MultiCursorModifier.Choice);
     Assert.AreEqual(ShortCutToText(TShortCut($4044)), Page.MultiCursorNextKey.Text);
     Assert.AreEqual(ShortCutToText(TShortCut($4044)), Page.MultiCursorSkipKey.Text);
@@ -1565,6 +1567,7 @@ begin
     Assert.AreEqual(ShortCutToText(TShortCut($C026)), Page.MultiCursorAboveKey.Text);
     Assert.AreEqual(ShortCutToText(TShortCut($C028)), Page.MultiCursorBelowKey.Text);
     Page.MultiCursor.Checked := True;
+    Page.LinkedEditing.Checked := True;
     Page.MultiCursorModifier.Choice := 1;
     Page.MultiCursorNextKey.Text := '';
     Page.MultiCursorSkipKey.Text := ShortCutToText(TShortCut($4053));
@@ -1574,6 +1577,7 @@ begin
     Saved := TAtlasPluginSettings.Defaults;
     Page.SaveTo(Saved);
     Assert.IsTrue(Saved.MultiCursor);
+    Assert.IsTrue(Saved.LinkedEditing);
     Assert.AreEqual('ctrl', Saved.MultiCursorModifier);
     Assert.AreEqual(0, Saved.MultiCursorNextKey);
     Assert.AreEqual($4053, Saved.MultiCursorSkipKey);

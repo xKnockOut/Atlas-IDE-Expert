@@ -161,6 +161,7 @@ uses
   Atlas.IDE.Editor.EnterWatch,
   Atlas.IDE.Editor.PatternContinuation,
   Atlas.IDE.Editor.MultiCursor,
+  Atlas.IDE.Editor.LinkedEditing,
   Atlas.Core.Editor.WorkspacePlan,
   Atlas.IDE.Foundation.Navigation;
 
@@ -219,9 +220,11 @@ begin
     procedure
     begin
       TAtlasIdeEditorCommands.EnsureContextMenus;
-      // Ein Mustervorschlag gilt nur in seiner Ansicht (#671), ebenso Zusatzmarken (#589).
+      // Ein Mustervorschlag gilt nur in seiner Ansicht (#671), ebenso Zusatzmarken (#589) und das Mitziehen von
+      // Bezeichnern (#658).
       TAtlasIdePatternContinuation.Dismiss;
       TAtlasIdeMultiCursor.Dismiss;
+      TAtlasIdeLinkedEditing.Dismiss;
     end);
 end;
 
@@ -248,6 +251,12 @@ begin
     procedure
     begin
       TAtlasIdeMultiCursor.EditorModified(View);
+    end);
+  // Bezeichner live mitziehen (#658): Änderungen der IDE am Namen nachziehen, sonst die Antwort verwerfen.
+  TAtlasGuard.Run(TAtlasFeature.EditorCommands,
+    procedure
+    begin
+      TAtlasIdeLinkedEditing.EditorModified(View);
     end);
 end;
 
