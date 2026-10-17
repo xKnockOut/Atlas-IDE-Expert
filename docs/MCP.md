@@ -59,7 +59,7 @@ ergibt einen Werkzeugfehler mit Begründung. Geschrieben wird nur im Arbeitsordn
 | `find_symbol` | `name` | Fundstellen mit Art, Typ, Unit, Datei:Zeile; ohne exakten Treffer Teilstring-Suche |
 | `get_declaration` | `name` | Quelltext der Deklaration, auch aus RTL/VCL |
 | `get_type_hierarchy` | `name` | Vorfahren bis zur Wurzel, Nachfahren rekursiv |
-| `get_component_info` | `name` | published-Properties mit Typ und Default, Ereignisse mit Signatur, Vorfahrenkette, Palettenseite aus `RegisterComponents`, Package aus `contains` der .dpk; ohne Quellen ein Hinweis statt leerer Liste |
+| `get_component_info` | `name` | published-Properties mit Typ und Default (ausdrücklich, implizit, `nodefault`, `stored`), Ereignisse mit Signatur, Vorfahrenkette, Palettenseite aus `RegisterComponents`, Package aus `contains` der .dpk; ohne Quellen ein Hinweis statt leerer Liste |
 | `get_unit_outline` | `unit` | uses-Listen und Symbole einer Unit mit Zeilennummern |
 | `find_references` | `name` | Verwendungen im Projekt mit Datei:Zeile und Quelltextzeile |
 | `get_call_hierarchy` | `name`, `direction` | Aufrufer (`incoming`) und Aufgerufene (`outgoing`), Standard beides |

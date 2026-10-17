@@ -416,8 +416,8 @@ begin
       if not Member.IsEvent then
       begin
         Line := Format('  %s: %s', [Member.Name, Member.TypeName]);
-        if Member.DefaultValue <> '' then
-          Line := Line + ' default ' + Member.DefaultValue;
+        if TPublishedMembers.DefaultText(Member) <> '' then
+          Line := Line + ' ' + TPublishedMembers.DefaultText(Member);
         if not SameText(Member.DeclaringClass, Found[0].Symbol.Name) then
           Line := Line + ' (aus ' + Member.DeclaringClass + ')';
         Lines.Add(Line);
