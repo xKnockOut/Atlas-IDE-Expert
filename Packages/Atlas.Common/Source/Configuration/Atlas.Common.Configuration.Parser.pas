@@ -1148,6 +1148,18 @@ begin
       ExpectBoolean(ANode[Index], Key, FSettings.Completion.GenericConstraints)
     else if Key = 'nameSuggestions' then
       ExpectBoolean(ANode[Index], Key, FSettings.Completion.NameSuggestions)
+    else if Key = 'createAccessors' then
+      ExpectBoolean(ANode[Index], Key, FSettings.Completion.CreateAccessors)
+    else if Key = 'accessorSection' then
+    begin
+      if ExpectString(ANode[Index], Key, Text) then
+        if Text = 'private' then
+          FSettings.Completion.AccessorSection := TCompletionAccessorSection.Private
+        else if Text = 'protected' then
+          FSettings.Completion.AccessorSection := TCompletionAccessorSection.Protected
+        else
+          ReportNode(ANode[Index], 'Erlaubt sind "private" und "protected"');
+    end
     else if Key = 'freeStyle' then
     begin
       if ExpectString(ANode[Index], Key, Text) then
