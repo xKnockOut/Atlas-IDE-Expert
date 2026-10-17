@@ -80,7 +80,7 @@ implementation
 
 function ExperimentalSettingPaths: TArray<string>;
 begin
-  Result := nil;
+  Result := ['refactoring.inline'];
 end;
 
 end.
