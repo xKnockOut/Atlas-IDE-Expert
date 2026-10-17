@@ -37,12 +37,13 @@ type
   /// eigene Taste für „Units suchen“, die Übernahme von Strg+F12 durch „Units suchen“ (#777) und „Lesezeichen
   /// setzen…“ (#622), das Erzeugen-Menü (#719), die Benachrichtigungen (#601) und die Schnellaktionen der
   /// Willkommensseite „Öffnen und bauen“ und „Tests“ (#764), „Element ausblenden …“ (#628), nächster und voriger
-  /// Befund (#509) sowie „Schnell öffnen“ (#503). Neue Funktionen
+  /// Befund (#509), „Schnell öffnen“ (#503) sowie Zurück, Vor und letzte Bearbeitungsstelle (#504). Neue Funktionen
   /// nur hinten anhängen: Die Ordnungszahl steckt in Kennungen der Übersicht.</summary>
   TAtlasKeyFunction = (Palette, Check, Completion, Signature, QuickToggle, DiagnosticMode, CodeActions,
     ExpandSelection, ShrinkSelection, GoToImplementation, TypeDefinition, UndoChange, RedoChange, WelcomeSearch,
     MethodToggleUp, MethodToggleDown, TestUnit, UnitSearch, UnitSearchIde, Bookmark, GenerateMenu,
-    Notifications, WelcomeQuickBuild, WelcomeQuickTests, HideElement, NextProblem, PreviousProblem, QuickOpen);
+    Notifications, WelcomeQuickBuild, WelcomeQuickTests, HideElement, NextProblem, PreviousProblem, QuickOpen,
+    NavBack, NavForward, LastEdit);
   TAtlasKeyChoice = (UseAtlas, LeaveOther, OtherKey);
   /// <summary>NoKey: keine Taste; IdeKey: Taste der IDE über Code Insight, Atlas belegt nichts selbst;
   /// Free: Atlas belegt die freie Taste; AtlasWins: belegt, Atlas hat Vorrang; Left: belegt, Atlas
@@ -187,7 +188,12 @@ begin
     Create(TAtlasKeyFunction.NextProblem, Word(ASettings.NextProblemKey), Shared, ASettings.Problems),
     Create(TAtlasKeyFunction.PreviousProblem, Word(ASettings.PreviousProblemKey), Shared, ASettings.Problems),
     // Schnell öffnen (#503): aus = Strg+P bleibt der IDE.
-    Create(TAtlasKeyFunction.QuickOpen, Word(ASettings.QuickOpenKey), Shared, ASettings.QuickOpen)];
+    Create(TAtlasKeyFunction.QuickOpen, Word(ASettings.QuickOpenKey), Shared, ASettings.QuickOpen),
+    // Navigationsverlauf (#504): Alt+Links/Rechts sind in der IDE „Zurück/Vor“ ihrer eigenen Navigation; der Atlas-
+    // Verlauf führt deren Sprünge mit, darum mit Vorrang. Aus = die IDE behält die Tasten.
+    Create(TAtlasKeyFunction.NavBack, Word(ASettings.NavBackKey), True, ASettings.NavHistory),
+    Create(TAtlasKeyFunction.NavForward, Word(ASettings.NavForwardKey), True, ASettings.NavHistory),
+    Create(TAtlasKeyFunction.LastEdit, Word(ASettings.LastEditKey), Shared, ASettings.NavHistory)];
 end;
 
 class procedure TAtlasKeyEntry.ToSettings(const AEntries: TArray<TAtlasKeyEntry>;
@@ -273,6 +279,12 @@ begin
         ASettings.PreviousProblemKey := Entry.Key;
       TAtlasKeyFunction.QuickOpen:
         ASettings.QuickOpenKey := Entry.Key;
+      TAtlasKeyFunction.NavBack:
+        ASettings.NavBackKey := Entry.Key;
+      TAtlasKeyFunction.NavForward:
+        ASettings.NavForwardKey := Entry.Key;
+      TAtlasKeyFunction.LastEdit:
+        ASettings.LastEditKey := Entry.Key;
       // Strg+F12 ist fest; ein- und ausgeschaltet wird über unitSearch.replaceIdeDialog.
       TAtlasKeyFunction.UnitSearchIde:
         ;

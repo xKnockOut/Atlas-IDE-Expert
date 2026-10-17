@@ -1631,6 +1631,49 @@
       "x-page": "Units suchen",
       "x-issue": "#503"
     },
+    "NavHistory": {
+      "description": "Navigationsverlauf über Dateien: Sprünge (andere Datei oder mehr als 10 Zeilen) und Bearbeitungsstellen merken; Zurück, Vor, letzte Bearbeitungsstelle und Liste. Höchstens 100 Einträge, nur für die laufende Sitzung.",
+      "type": "boolean",
+      "default": true,
+      "x-key": "navHistory.enabled",
+      "x-area": "editor",
+      "x-feature": "EditorCommands",
+      "x-page": "Befehle",
+      "x-quickToggle": true,
+      "x-caption": "Navigationsverlauf",
+      "x-captionEn": "Navigation history",
+      "x-issue": "#504"
+    },
+    "NavBackKey": {
+      "description": "Tastenkürzel „Zurück“ im Navigationsverlauf (0 = keins). Ersetzt mit Vorrang das Zurück der IDE, dessen Sprünge der Verlauf mitführt.",
+      "type": "integer",
+      "default": 32805,
+      "x-key": "keys.navBack",
+      "x-area": "keys",
+      "x-format": "shortcut",
+      "x-page": "Befehle",
+      "x-issue": "#504"
+    },
+    "NavForwardKey": {
+      "description": "Tastenkürzel „Vor“ im Navigationsverlauf (0 = keins).",
+      "type": "integer",
+      "default": 32807,
+      "x-key": "keys.navForward",
+      "x-area": "keys",
+      "x-format": "shortcut",
+      "x-page": "Befehle",
+      "x-issue": "#504"
+    },
+    "LastEditKey": {
+      "description": "Tastenkürzel „Letzte Bearbeitungsstelle“ (0 = keins); jeder weitere Druck geht eine Änderung weiter zurück.",
+      "type": "integer",
+      "default": 49233,
+      "x-key": "keys.lastEdit",
+      "x-area": "keys",
+      "x-format": "shortcut",
+      "x-page": "Befehle",
+      "x-issue": "#504"
+    },
     "WelcomePageHost": {
       "type": "string",
       "enum": [

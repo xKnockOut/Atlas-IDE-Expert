@@ -501,6 +501,15 @@ type
     QuickOpenLibrary: Boolean;
     /// <summary>Kürzel für „Schnell öffnen“ (#503, keys.quickOpen, TShortCut, 0 = keins); Vorgabe Strg+P.</summary>
     QuickOpenKey: Integer;
+    /// <summary>Navigationsverlauf über Dateien (#504, navHistory.enabled): Sprünge und Bearbeitungsstellen
+    /// merken, Zurück/Vor, letzte Bearbeitungsstelle, Liste.</summary>
+    NavHistory: Boolean;
+    /// <summary>Kürzel „Zurück“ (#504, keys.navBack, TShortCut, 0 = keins); Vorgabe Alt+Links.</summary>
+    NavBackKey: Integer;
+    /// <summary>Kürzel „Vor“ (#504, keys.navForward); Vorgabe Alt+Rechts.</summary>
+    NavForwardKey: Integer;
+    /// <summary>Kürzel „Letzte Bearbeitungsstelle“ (#504, keys.lastEdit); Vorgabe Strg+Alt+Q.</summary>
+    LastEditKey: Integer;
     /// <summary>Hauptschalter der Atlas-Willkommensseite (#753, welcomePage.enabled): Atlas-Bereiche auf der
     /// Willkommensseite der IDE und Fenster „Atlas-Start“.</summary>
     WelcomePage: Boolean;
@@ -1037,6 +1046,10 @@ begin
   Result.QuickOpen := True;
   Result.QuickOpenLibrary := False;
   Result.QuickOpenKey := $4050; // Strg+P
+  Result.NavHistory := True;
+  Result.NavBackKey := $8025; // Alt+Links
+  Result.NavForwardKey := $8027; // Alt+Rechts
+  Result.LastEditKey := $C051; // Strg+Alt+Q
   Result.WelcomePage := True;
   Result.WelcomePageHost := 'welcomePage';
   Result.WelcomePageLayout := 'off';
@@ -1212,6 +1225,9 @@ begin
   UnitSearchDefaultScope := Choice(UnitSearchDefaultScope, ['group', 'project', 'searchPath', 'library']);
   UnitSearchKey := EnsureRange(UnitSearchKey, 0, $FFFF);
   QuickOpenKey := EnsureRange(QuickOpenKey, 0, $FFFF);
+  NavBackKey := EnsureRange(NavBackKey, 0, $FFFF);
+  NavForwardKey := EnsureRange(NavForwardKey, 0, $FFFF);
+  LastEditKey := EnsureRange(LastEditKey, 0, $FFFF);
   BookmarkKey := EnsureRange(BookmarkKey, 0, $FFFF);
   HideElementKey := EnsureRange(HideElementKey, 0, $FFFF);
   InlineDiagnostics := Choice(InlineDiagnostics, ['errors', 'off', 'errorsAndWarnings', 'all']);
@@ -1427,6 +1443,10 @@ begin
   QuickOpen := AStore.ReadInteger('QuickOpen', BoolValue(Default.QuickOpen)) <> 0;
   QuickOpenLibrary := AStore.ReadInteger('QuickOpenLibrary', BoolValue(Default.QuickOpenLibrary)) <> 0;
   QuickOpenKey := AStore.ReadInteger('QuickOpenKey', Default.QuickOpenKey);
+  NavHistory := AStore.ReadInteger('NavHistory', BoolValue(Default.NavHistory)) <> 0;
+  NavBackKey := AStore.ReadInteger('NavBackKey', Default.NavBackKey);
+  NavForwardKey := AStore.ReadInteger('NavForwardKey', Default.NavForwardKey);
+  LastEditKey := AStore.ReadInteger('LastEditKey', Default.LastEditKey);
   WelcomePage := AStore.ReadInteger('WelcomePage', BoolValue(Default.WelcomePage)) <> 0;
   WelcomePageHost := AStore.ReadString('WelcomePageHost', Default.WelcomePageHost);
   WelcomePageLayout := AStore.ReadString('WelcomePageLayout', Default.WelcomePageLayout);
@@ -1690,6 +1710,10 @@ begin
   AStore.WriteInteger('QuickOpen', BoolValue(QuickOpen));
   AStore.WriteInteger('QuickOpenLibrary', BoolValue(QuickOpenLibrary));
   AStore.WriteInteger('QuickOpenKey', QuickOpenKey);
+  AStore.WriteInteger('NavHistory', BoolValue(NavHistory));
+  AStore.WriteInteger('NavBackKey', NavBackKey);
+  AStore.WriteInteger('NavForwardKey', NavForwardKey);
+  AStore.WriteInteger('LastEditKey', LastEditKey);
   AStore.WriteInteger('WelcomePage', BoolValue(WelcomePage));
   AStore.WriteString('WelcomePageHost', WelcomePageHost);
   AStore.WriteString('WelcomePageLayout', WelcomePageLayout);

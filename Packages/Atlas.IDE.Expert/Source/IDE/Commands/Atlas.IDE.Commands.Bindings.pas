@@ -59,6 +59,9 @@ type
     FKeys: TArray<TKey>;
     FBound: string;
     procedure AddKey(AKey: Integer; const AWhat: string; const AProc: TProc);
+    /// <summary>Wie AddKey mit eigenem Vorrang statt des gemeinsamen (Zurück/Vor, #504). Eigener Name statt
+    /// Überladung: anonyme Methoden als Argument vertragen keine Überladungen.</summary>
+    procedure AddPriorityKey(AKey: Integer; const AWhat: string; const AProc: TProc; APriority: Boolean);
     /// <summary>ACheck False: ohne Konfliktprüfung, weil die Taste ohne Treffer ohnehin an die IDE weitergeht.</summary>
     procedure AddAttemptKey(AKey: Integer; const AWhat: string; const AAttempt: TFunc<Boolean>;
       ACheck: Boolean = True);
@@ -82,6 +85,7 @@ uses
   Atlas.IDE.Commands.Editor,
   Atlas.IDE.Results.Commands,
   Atlas.IDE.Commands.QuickOpen,
+  Atlas.IDE.Editor.NavHistory,
   Atlas.IDE.UnitSearch.Commands,
   Atlas.IDE.Undo.Changes,
   Atlas.IDE.Bookmarks.Service,
@@ -183,10 +187,16 @@ begin
 end;
 
 procedure TAtlasIdeEditorKeys.AddKey(AKey: Integer; const AWhat: string; const AProc: TProc);
+begin
+  AddPriorityKey(AKey, AWhat, AProc, TAtlasIdeSettings.Current.EditorKeysPriority);
+end;
+
+procedure TAtlasIdeEditorKeys.AddPriorityKey(AKey: Integer; const AWhat: string; const AProc: TProc;
+  APriority: Boolean);
 var
   Key: TKey;
 begin
-  if not TAtlasIdeKeys.Decide(Word(AKey), TAtlasIdeSettings.Current.EditorKeysPriority, AWhat) then
+  if not TAtlasIdeKeys.Decide(Word(AKey), APriority, AWhat) then
     Exit;
   Key.Key := Word(AKey);
   Key.Proc := AProc;
@@ -324,6 +334,37 @@ begin
             TAtlasIdeQuickOpen.Show;
           end);
       end);
+  // Navigationsverlauf (#504): aus = Alt+Links/Rechts bleiben Zurück/Vor der IDE.
+  if Settings.NavHistory then
+  begin
+    AddPriorityKey(Settings.NavBackKey, TAtlasStrings.Text(TAtlasTextId.NavBackCommand),
+      procedure
+      begin
+        TAtlasGuard.Run(TAtlasFeature.EditorCommands,
+          procedure
+          begin
+            TAtlasIdeNavHistory.GoBack;
+          end);
+      end, True);
+    AddPriorityKey(Settings.NavForwardKey, TAtlasStrings.Text(TAtlasTextId.NavForwardCommand),
+      procedure
+      begin
+        TAtlasGuard.Run(TAtlasFeature.EditorCommands,
+          procedure
+          begin
+            TAtlasIdeNavHistory.GoForward;
+          end);
+      end, True);
+    AddKey(Settings.LastEditKey, TAtlasStrings.Text(TAtlasTextId.NavLastEditCommand),
+      procedure
+      begin
+        TAtlasGuard.Run(TAtlasFeature.EditorCommands,
+          procedure
+          begin
+            TAtlasIdeNavHistory.GoLastEdit;
+          end);
+      end);
+  end;
   // Benannte Lesezeichen (#622): aus = keine Taste, die IDE-Lesezeichen bleiben unberührt.
   if Settings.BookmarksNamed then
     AddKey(Settings.BookmarkKey, TAtlasStrings.Text(TAtlasTextId.BookmarksMenuAdd),

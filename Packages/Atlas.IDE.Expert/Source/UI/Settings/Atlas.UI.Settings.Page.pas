@@ -247,6 +247,10 @@ type
     FMethodToggleUpKey: TEdit;
     FMethodToggleDownKey: TEdit;
     FTestUnitKey: TEdit;
+    FNavHistory: TCheckBox;
+    FNavBackKey: TEdit;
+    FNavForwardKey: TEdit;
+    FLastEditKey: TEdit;
     FBookmarkKey: TEdit;
     /// <summary>„Element ausblenden …“ (#628).</summary>
     FHideElementKey: TEdit;
@@ -1243,6 +1247,11 @@ begin
   FMethodToggleUpKey := AddKey(TAtlasStrings.Text(TAtlasTextId.SettingsMethodToggleUp));
   FMethodToggleDownKey := AddKey(TAtlasStrings.Text(TAtlasTextId.SettingsMethodToggleDown));
   FTestUnitKey := AddKey(TAtlasStrings.Text(TAtlasTextId.EditorTestUnit));
+  // Navigationsverlauf über Dateien (#504).
+  FNavHistory := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsNavHistory));
+  FNavBackKey := AddKey(TAtlasStrings.Text(TAtlasTextId.NavBackCommand));
+  FNavForwardKey := AddKey(TAtlasStrings.Text(TAtlasTextId.NavForwardCommand));
+  FLastEditKey := AddKey(TAtlasStrings.Text(TAtlasTextId.NavLastEditCommand));
   // „Lesezeichen setzen…“ (#622).
   FBookmarkKey := AddKey(TAtlasStrings.Text(TAtlasTextId.BookmarksMenuAdd));
   // „Element ausblenden …“ am gezeichneten Element (#628).
@@ -2047,6 +2056,10 @@ begin
   FMarks.Bind(FMethodToggleUpKey, ['MethodToggleUpKey']);
   FMarks.Bind(FMethodToggleDownKey, ['MethodToggleDownKey']);
   FMarks.Bind(FTestUnitKey, ['TestUnitKey']);
+  FMarks.Bind(FNavHistory, ['NavHistory']);
+  FMarks.Bind(FNavBackKey, ['NavBackKey']);
+  FMarks.Bind(FNavForwardKey, ['NavForwardKey']);
+  FMarks.Bind(FLastEditKey, ['LastEditKey']);
   FMarks.Bind(FBookmarkKey, ['BookmarkKey']);
   FMarks.Bind(FHideElementKey, ['HideElementKey']);
   FMarks.Bind(FNextProblemKey, ['NextProblemKey']);
@@ -3010,6 +3023,10 @@ begin
   FMethodToggleUpKey.Text := ShortCutToText(TShortCut(ASettings.MethodToggleUpKey));
   FMethodToggleDownKey.Text := ShortCutToText(TShortCut(ASettings.MethodToggleDownKey));
   FTestUnitKey.Text := ShortCutToText(TShortCut(ASettings.TestUnitKey));
+  FNavHistory.Checked := ASettings.NavHistory;
+  FNavBackKey.Text := ShortCutToText(TShortCut(ASettings.NavBackKey));
+  FNavForwardKey.Text := ShortCutToText(TShortCut(ASettings.NavForwardKey));
+  FLastEditKey.Text := ShortCutToText(TShortCut(ASettings.LastEditKey));
   FBookmarkKey.Text := ShortCutToText(TShortCut(ASettings.BookmarkKey));
   FHideElementKey.Text := ShortCutToText(TShortCut(ASettings.HideElementKey));
   FNextProblemKey.Text := ShortCutToText(TShortCut(ASettings.NextProblemKey));
@@ -3278,6 +3295,10 @@ begin
   ASettings.MethodToggleUpKey := Integer(TextToShortCut(Trim(FMethodToggleUpKey.Text)));
   ASettings.MethodToggleDownKey := Integer(TextToShortCut(Trim(FMethodToggleDownKey.Text)));
   ASettings.TestUnitKey := Integer(TextToShortCut(Trim(FTestUnitKey.Text)));
+  ASettings.NavHistory := FNavHistory.Checked;
+  ASettings.NavBackKey := Integer(TextToShortCut(Trim(FNavBackKey.Text)));
+  ASettings.NavForwardKey := Integer(TextToShortCut(Trim(FNavForwardKey.Text)));
+  ASettings.LastEditKey := Integer(TextToShortCut(Trim(FLastEditKey.Text)));
   ASettings.BookmarkKey := Integer(TextToShortCut(Trim(FBookmarkKey.Text)));
   ASettings.HideElementKey := Integer(TextToShortCut(Trim(FHideElementKey.Text)));
   ASettings.NextProblemKey := Integer(TextToShortCut(Trim(FNextProblemKey.Text)));
