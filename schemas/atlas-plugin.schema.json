@@ -1727,6 +1727,37 @@
       "x-page": "Befehle",
       "x-issue": "#505"
     },
+    "Outline": {
+      "description": "Andockbares Fenster „Gliederung“: Typen mit Feldern, Methoden und Eigenschaften sowie globale Routinen, Konstanten und Variablen der aktiven Unit, mit Suche, Filter nach Sichtbarkeit und Art und Markierung nicht implementierter Methoden.",
+      "type": "boolean",
+      "default": true,
+      "x-key": "outline.enabled",
+      "x-area": "editor",
+      "x-feature": "EditorCommands",
+      "x-page": "Befehle",
+      "x-quickToggle": true,
+      "x-caption": "Gliederung",
+      "x-captionEn": "Outline",
+      "x-issue": "#537"
+    },
+    "OutlineAlphabetical": {
+      "description": "Gliederung alphabetisch statt in Quelltextreihenfolge sortieren (auch über den Knopf im Fenster).",
+      "type": "boolean",
+      "default": false,
+      "x-key": "outline.alphabetical",
+      "x-area": "editor",
+      "x-page": "Befehle",
+      "x-issue": "#537"
+    },
+    "OutlineFollowCursor": {
+      "description": "In der Gliederung den Eintrag am Cursor hervorheben und mitlaufen lassen.",
+      "type": "boolean",
+      "default": true,
+      "x-key": "outline.followCursor",
+      "x-area": "editor",
+      "x-page": "Befehle",
+      "x-issue": "#537"
+    },
     "WelcomePageHost": {
       "type": "string",
       "enum": [

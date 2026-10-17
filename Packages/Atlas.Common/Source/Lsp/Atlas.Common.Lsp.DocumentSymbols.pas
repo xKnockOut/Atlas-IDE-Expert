@@ -4,6 +4,15 @@
 // DocumentSymbol-Liste aus dem Syntaxbaum. Die Wurzel ist die Unit (bzw. das
 // Programm), darunter interface und implementation, darunter Typen mit ihren
 // Mitgliedern, Konstanten, Variablen und Routinen.
+//
+// Für das Gliederungsfenster des Plugins (#537) tragen Symbole zusätzlich ein
+// Objekt "atlas" (vom LSP nicht vorgesehen, andere Clients übergehen es):
+//   - visibility: Sichtbarkeit von Mitgliedern ("private", "strict protected",
+//     …). Ohne Angabe gilt bei Klassen mit Vorfahr (außer TObject,
+//     TInterfacedObject und Ausnahmen) "published" wie bei {$M+}-Klassen
+//     (Formulare, Komponenten), sonst "public".
+//   - classMember, override, virtual, abstract: nur wenn wahr.
+//   - unimplemented: deklarierte Methode ohne Rumpf (#124, TClassCompletion).
 
 interface
 
@@ -49,12 +58,15 @@ type
     /// <summary>Registriert die Anfrage am Dispatcher.</summary>
     procedure Attach(ADispatcher: TJsonRpcDispatcher);
     /// <summary>Gliederung des Baums. Der Aufrufer übernimmt das Array.</summary>
-    class function BuildSymbols(ATree: TSyntaxTree): TJSONArray; static;
+    class function BuildSymbols(ATree: TSyntaxTree): TJSONArray; overload; static;
+    /// <summary>Wie oben; markiert zusätzlich deklarierte Methoden ohne Rumpf (#124, #537) aus AText.</summary>
+    class function BuildSymbols(ATree: TSyntaxTree; const AText: string): TJSONArray; overload; static;
   end;
 
 implementation
 
 uses
+  Atlas.Common.Editing.ClassCompletion,
   Atlas.Common.Dfm.Contract,
   Atlas.Common.Dfm.Parser,
   Atlas.Common.Lsp.FormFiles,
@@ -68,6 +80,13 @@ type
   TSymbolBuilder = class
   private
     FTokens: TArray<TPascalToken>;
+    /// <summary>Aktuelle Sichtbarkeit in einem Typ; '' außerhalb.</summary>
+    FVisibility: string;
+    /// <summary>Namensanfang deklarierter Methoden ohne Rumpf (#124).</summary>
+    FUnimplemented: TArray<TTextPosition>;
+    function IsClassMember(ANode: TSyntaxNode): Boolean;
+    procedure AddExtras(ASymbol: TJSONObject; ANode: TSyntaxNode; ARoutine: Boolean);
+    function DefaultVisibility(ABody: TSyntaxNode): string;
     function TokenIndexAt(AOffset: Integer): Integer;
     function NameRange(ANode: TSyntaxNode; const AName: string): TTextRange;
     function NewSymbol(ANode: TSyntaxNode; const AName: string; AKind: Integer;
@@ -80,7 +99,7 @@ type
     procedure MoveChildren(ASource: TJSONArray; ATarget: TJSONObject);
     procedure AddNames(ANode: TSyntaxNode; ATarget: TJSONArray; AKind: Integer);
   public
-    constructor Create(const ATokens: TArray<TPascalToken>);
+    constructor Create(const ATokens: TArray<TPascalToken>; const AUnimplemented: TArray<TTextPosition>);
     function Build(ARoot: TSyntaxNode): TJSONArray;
   end;
 
@@ -91,10 +110,90 @@ end;
 
 { TSymbolBuilder }
 
-constructor TSymbolBuilder.Create(const ATokens: TArray<TPascalToken>);
+constructor TSymbolBuilder.Create(const ATokens: TArray<TPascalToken>;
+  const AUnimplemented: TArray<TTextPosition>);
 begin
   inherited Create;
   FTokens := ATokens;
+  FUnimplemented := AUnimplemented;
+end;
+
+function TSymbolBuilder.IsClassMember(ANode: TSyntaxNode): Boolean;
+var
+  Index: Integer;
+begin
+  // "class procedure", "class function": class steht vorn; bei "class property" und "class var" hat der
+  // Parser das Wort schon übersprungen, es steht also davor.
+  Index := TokenIndexAt(ANode.StartOffset);
+  while (Index < Length(FTokens)) and (FTokens[Index].Kind in [TPascalTokenKind.Comment, TPascalTokenKind.Directive]) do
+    Inc(Index);
+  if (Index < Length(FTokens)) and FTokens[Index].IsKeyword('class') then
+    Exit(True);
+  Dec(Index);
+  while (Index >= 0) and (FTokens[Index].Kind in [TPascalTokenKind.Comment, TPascalTokenKind.Directive]) do
+    Dec(Index);
+  Result := (Index >= 0) and FTokens[Index].IsKeyword('class');
+end;
+
+function TSymbolBuilder.DefaultVisibility(ABody: TSyntaxNode): string;
+var
+  Index: Integer;
+  Ancestor: string;
+begin
+  Result := 'public';
+  if not (ABody.Kind in [TSyntaxKind.ClassType, TSyntaxKind.ObjectType]) then
+    Exit;
+  // Ohne Angabe sind Mitglieder von {$M+}-Klassen published. Ob ein Vorfahr {$M+} hat, weiß die Gliederung
+  // nicht; Formulare, Frames und Komponenten haben einen Vorfahren, schlichte Klassen meist keinen.
+  for Index := 0 to ABody.ChildCount - 1 do
+    if (ABody[Index].Kind = TSyntaxKind.TypeReference) and (ABody[Index].Name <> '') then
+    begin
+      Ancestor := LowerCase(ABody[Index].Name);
+      if (Ancestor <> 'tobject') and (Ancestor <> 'system.tobject') and (Ancestor <> 'tinterfacedobject') and
+        not Ancestor.EndsWith('exception') then
+        Result := 'published';
+      Exit;
+    end;
+end;
+
+procedure TSymbolBuilder.AddExtras(ASymbol: TJSONObject; ANode: TSyntaxNode; ARoutine: Boolean);
+var
+  Extras: TJSONObject;
+  Index: Integer;
+  Start: TTextPosition;
+  Position: TTextPosition;
+  Directive: string;
+begin
+  Extras := TJSONObject.Create;
+  if FVisibility <> '' then
+    Extras.AddPair('visibility', FVisibility);
+  if IsClassMember(ANode) then
+    Extras.AddPair('classMember', TJSONBool.Create(True));
+  if ARoutine then
+  begin
+    for Index := 0 to ANode.ChildCount - 1 do
+      if ANode[Index].Kind = TSyntaxKind.Directive then
+      begin
+        Directive := ANode[Index].Name;
+        if ((Directive = 'override') or (Directive = 'virtual') or (Directive = 'abstract')) and
+          (Extras.GetValue(Directive) = nil) then
+          Extras.AddPair(Directive, TJSONBool.Create(True));
+        // dynamic ist virtuell wie virtual.
+        if (Directive = 'dynamic') and (Extras.GetValue('virtual') = nil) then
+          Extras.AddPair('virtual', TJSONBool.Create(True));
+      end;
+    Start := NameRange(ANode, ANode.Name).StartPos;
+    for Position in FUnimplemented do
+      if (Position.Line = Start.Line) and (Position.Character = Start.Character) then
+      begin
+        Extras.AddPair('unimplemented', TJSONBool.Create(True));
+        Break;
+      end;
+  end;
+  if Extras.Count > 0 then
+    ASymbol.AddPair('atlas', Extras)
+  else
+    Extras.Free;
 end;
 
 function TSymbolBuilder.TokenIndexAt(AOffset: Integer): Integer;
@@ -191,6 +290,7 @@ var
   Index: Integer;
   Kind: Integer;
   Detail: string;
+  Outer: string;
 begin
   Body := nil;
   for Index := 0 to ADecl.ChildCount - 1 do
@@ -243,12 +343,16 @@ begin
   else if Body.Kind in [TSyntaxKind.ClassType, TSyntaxKind.ObjectType, TSyntaxKind.HelperType,
     TSyntaxKind.RecordType, TSyntaxKind.InterfaceType] then
   begin
+    // Verschachtelte Typen haben eigene Abschnitte; danach gilt wieder der äußere.
+    Outer := FVisibility;
+    FVisibility := DefaultVisibility(Body);
     Members := TJSONArray.Create;
     try
       AddDeclarations(Body, Members, True);
       MoveChildren(Members, Result);
     finally
       Members.Free;
+      FVisibility := Outer;
     end;
   end;
 end;
@@ -256,10 +360,16 @@ end;
 procedure TSymbolBuilder.AddNames(ANode: TSyntaxNode; ATarget: TJSONArray; AKind: Integer);
 var
   Name: string;
+  Symbol: TJSONObject;
 begin
   // Felder und Variablen mit mehreren Namen: A, B: Integer.
   for Name in ANode.Name.Split([',']) do
-    ATarget.AddElement(NewSymbol(ANode, Name.Trim, AKind));
+  begin
+    Symbol := NewSymbol(ANode, Name.Trim, AKind);
+    if AKind = TLspSymbolKind.Field then
+      AddExtras(Symbol, ANode, False);
+    ATarget.AddElement(Symbol);
+  end;
 end;
 
 procedure TSymbolBuilder.AddDeclarations(ANode: TSyntaxNode; ATarget: TJSONArray; AInType: Boolean);
@@ -275,14 +385,23 @@ var
   Symbol: TJSONObject;
   Nested: TJSONArray;
   Index: Integer;
+  Outer: string;
 begin
   case ANode.Kind of
+    TSyntaxKind.Visibility:
+      if AInType then
+        FVisibility := ANode.Name;
     TSyntaxKind.TypeSection, TSyntaxKind.ConstSection, TSyntaxKind.VarSection, TSyntaxKind.VariantPart:
       AddDeclarations(ANode, ATarget, AInType);
     TSyntaxKind.TypeDecl:
       ATarget.AddElement(TypeSymbol(ANode));
     TSyntaxKind.ConstDecl:
-      ATarget.AddElement(NewSymbol(ANode, ANode.Name, TLspSymbolKind.Constant));
+      begin
+        Symbol := NewSymbol(ANode, ANode.Name, TLspSymbolKind.Constant);
+        if AInType then
+          AddExtras(Symbol, ANode, False);
+        ATarget.AddElement(Symbol);
+      end;
     TSyntaxKind.VarDecl:
       if AInType then
         AddNames(ANode, ATarget, TLspSymbolKind.Field)
@@ -291,15 +410,28 @@ begin
     TSyntaxKind.Field:
       AddNames(ANode, ATarget, TLspSymbolKind.Field);
     TSyntaxKind.PropertyDecl:
-      ATarget.AddElement(NewSymbol(ANode, ANode.Name, TLspSymbolKind.Property_));
+      begin
+        Symbol := NewSymbol(ANode, ANode.Name, TLspSymbolKind.Property_);
+        if AInType then
+          AddExtras(Symbol, ANode, False);
+        ATarget.AddElement(Symbol);
+      end;
     TSyntaxKind.RoutineHeader:
-      ATarget.AddElement(NewSymbol(ANode, ANode.Name, RoutineKind(ANode, AInType)));
+      begin
+        Symbol := NewSymbol(ANode, ANode.Name, RoutineKind(ANode, AInType));
+        if AInType then
+          AddExtras(Symbol, ANode, True);
+        ATarget.AddElement(Symbol);
+      end;
     TSyntaxKind.RoutineDecl:
       begin
         Symbol := NewSymbol(ANode, ANode.Name, RoutineKind(ANode, AInType));
         ATarget.AddElement(Symbol);
         // Lokale Routinen, Typen und Konstanten unter der Routine. Der eigene
         // Kopf ist ebenfalls ein Kind und darf nicht noch einmal erscheinen.
+        // Sie liegen außerhalb jedes Typs: keine Sichtbarkeit.
+        Outer := FVisibility;
+        FVisibility := '';
         Nested := TJSONArray.Create;
         try
           for Index := 0 to ANode.ChildCount - 1 do
@@ -308,6 +440,7 @@ begin
           MoveChildren(Nested, Symbol);
         finally
           Nested.Free;
+          FVisibility := Outer;
         end;
       end;
   end;
@@ -375,7 +508,25 @@ class function TLspDocumentSymbols.BuildSymbols(ATree: TSyntaxTree): TJSONArray;
 var
   Builder: TSymbolBuilder;
 begin
-  Builder := TSymbolBuilder.Create(ATree.Tokens);
+  Builder := TSymbolBuilder.Create(ATree.Tokens, nil);
+  try
+    Result := Builder.Build(ATree.Root);
+  finally
+    Builder.Free;
+  end;
+end;
+
+class function TLspDocumentSymbols.BuildSymbols(ATree: TSyntaxTree; const AText: string): TJSONArray;
+var
+  Builder: TSymbolBuilder;
+  Missing: TArray<TTextPosition>;
+  Method: TUnmatchedMethod;
+begin
+  Missing := nil;
+  for Method in TClassCompletion.Unmatched(ATree, AText) do
+    if Method.Declared then
+      Missing := Missing + [Method.Symbol.SelectionRange.StartPos];
+  Builder := TSymbolBuilder.Create(ATree.Tokens, Missing);
   try
     Result := Builder.Build(ATree.Root);
   finally
@@ -413,7 +564,7 @@ begin
   Shared := TSyntaxTreeCache.Get(Document, Cancellation);
   Tree := Shared.Tree;
   ACancellation.ThrowIfCancellationRequested;
-  Result := BuildSymbols(Tree);
+  Result := BuildSymbols(Tree, Document.Text);
 end;
 
 end.

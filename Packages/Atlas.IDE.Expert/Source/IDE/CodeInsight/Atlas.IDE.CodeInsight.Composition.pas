@@ -72,6 +72,7 @@ uses
   Atlas.IDE.Commands.QuickOpen,
   Atlas.IDE.Editor.NavHistory,
   Atlas.IDE.Results.Peek,
+  Atlas.IDE.Outline.Service,
   Atlas.IDE.UnitSearch.Commands,
   Atlas.IDE.Generate.Commands,
   Atlas.IDE.Generate.NewFile,
@@ -901,6 +902,11 @@ begin
   Result := TAtlasIdeSettings.Current.Peek;
 end;
 
+function OutlineVisible: Boolean;
+begin
+  Result := TAtlasIdeSettings.Current.Outline;
+end;
+
 function DiagnosticModeVisible: Boolean;
 begin
   Result := TAtlasIdeSettings.Current.DiagnosticMode;
@@ -1039,6 +1045,9 @@ begin
     Guarded(TAtlasFeature.EditorCommands, TAtlasIdePeek.PeekDefinition), PeekVisible);
   Add('Atlas.PeekReferences', TAtlasTextId.PeekReferencesCommand,
     Guarded(TAtlasFeature.EditorCommands, TAtlasIdePeek.PeekReferences), PeekVisible);
+  // Gliederungsfenster (#537); nur sichtbar, solange outline.enabled an ist.
+  Add('Atlas.Outline', TAtlasTextId.OutlineCommand,
+    Guarded(TAtlasFeature.EditorCommands, TAtlasIdeOutline.ShowWindow), OutlineVisible);
   Add('Atlas.Callers', TAtlasTextId.MenuIncoming, Hierarchy(TAtlasHierarchyDirection.Incoming));
   Add('Atlas.Calls', TAtlasTextId.MenuOutgoing, Hierarchy(TAtlasHierarchyDirection.Outgoing));
   Add('Atlas.Supertypes', TAtlasTextId.MenuSupertypes, Hierarchy(TAtlasHierarchyDirection.Supertypes));
@@ -1950,6 +1959,14 @@ begin
   TAtlasIdeNavHistory.Install;
   // Definition und Referenzen einblenden (#505).
   TAtlasIdePeek.Install;
+  // Gliederungsfenster (#537).
+  TAtlasIdeOutline.Install(
+    function: TLspSession
+    begin
+      Result := nil;
+      if Manager <> nil then
+        Result := Manager.ActiveSession;
+    end);
   // Schnell öffnen (#503): Dateiliste im Hintergrund, zuletzt geöffnete Dateien zählen.
   TAtlasIdeQuickOpen.Install(
     function: TLspSession
@@ -1976,6 +1993,7 @@ procedure StopCommands;
 begin
   TAtlasIdeQuickOpen.Uninstall;
   TAtlasIdePeek.Uninstall;
+  TAtlasIdeOutline.Uninstall;
   TAtlasIdeNavHistory.Uninstall;
   TAtlasIdeUnitSearch.Uninstall;
   TAtlasIdeGenerate.Uninstall;
@@ -3273,6 +3291,7 @@ begin
       if ShortcutTips <> nil then
         ShortcutTips.ThemeChanged;
       TAtlasIdeBookmarks.ThemeChanged;
+      TAtlasIdeOutline.ThemeChanged;
     end;
   // Zuerst entscheiden, ob Atlas abgesichert startet (#722): Davon hängt ab, was angemeldet wird.
   if SafeMode = nil then
@@ -3312,6 +3331,8 @@ begin
         DiagnosticMode.ApplySettings;
       // bookmarks.named und bookmarks.shared (#622).
       TAtlasIdeBookmarks.ApplySettings;
+      // outline.* (#537).
+      TAtlasIdeOutline.ApplySettings;
       // notifications.* (#601): an oder aus, Höchstzahl, Verhalten je Quelle.
       if Notifications <> nil then
         Notifications.ApplySettings;
