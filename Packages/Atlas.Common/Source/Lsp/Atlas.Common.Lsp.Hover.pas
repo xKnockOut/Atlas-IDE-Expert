@@ -595,7 +595,8 @@ begin
           end;
           Result := Assigned(AReadText) and AReadText(AName, AText);
         end;
-      Result.Members := TPublishedMembers.ToMarkdown(TPublishedMembers.Collect(AIndex, Symbol.Name, ReadText));
+      Result.Members := TPublishedMembers.ToMarkdown(TPublishedMembers.Collect(AIndex, Symbol.Name, ReadText),
+        TPublishedMembers.DefaultProperty(AIndex, Symbol.Name, ReadText));
       if SameText(Targets[0].FileName, AFileName) then
         Result.Messages := TMessageHandlers.Overview(AResolver, AIndex, ATree, AFileName, Symbol.Name,
           function(const AName: string; out AText: string): Boolean
