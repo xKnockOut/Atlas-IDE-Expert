@@ -41,6 +41,8 @@ type
     /// </summary>
     [Test]
     procedure OpenBuildRoundTrip;
+    [Test]
+    procedure ListModeRoundTrip;
     /// <summary>#69: Code Lens auf dem Reiter Editor, Tests ausführen, vorher bauen, nach dem Build und
     /// build.zeroHints (#530) auf dem Reiter Compiler.</summary>
     [Test]
@@ -694,6 +696,34 @@ begin
     Assert.IsFalse(Saved.McpBuild, 'abschaltbar');
     Page.LoadFrom(Saved);
     Assert.IsFalse(Page.McpBuildCheck.Checked);
+  finally
+    Page.Free;
+  end;
+end;
+
+procedure TAtlasSettingsPageTests.ListModeRoundTrip;
+var
+  Page: TAtlasSettingsPage;
+  Saved: TAtlasPluginSettings;
+begin
+  // Listenmodus der Vervollständigung (#497).
+  Page := TAtlasSettingsPage.Create(nil);
+  try
+    Page.LoadFrom(TAtlasPluginSettings.Defaults);
+    Assert.AreEqual(0, Page.ListModeChoice.Choice, 'nur Treffer');
+    Assert.AreEqual(0, Page.ListScopeChoice.Choice, 'Mitgliederlisten');
+    Page.ListModeChoice.Choice := 2;
+    Page.ListScopeChoice.Choice := 1;
+    Saved := TAtlasPluginSettings.Defaults;
+    Page.SaveTo(Saved);
+    Assert.AreEqual('rest', Saved.CompletionListMode);
+    Assert.AreEqual('everywhere', Saved.CompletionListScope);
+    Page.ListModeChoice.Choice := 1;
+    Page.SaveTo(Saved);
+    Assert.AreEqual('all', Saved.CompletionListMode);
+    Page.LoadFrom(Saved);
+    Assert.AreEqual(1, Page.ListModeChoice.Choice);
+    Assert.AreEqual(1, Page.ListScopeChoice.Choice);
   finally
     Page.Free;
   end;

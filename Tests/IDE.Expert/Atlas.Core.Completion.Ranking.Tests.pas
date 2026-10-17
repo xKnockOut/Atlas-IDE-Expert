@@ -31,6 +31,16 @@ type
     procedure SenderItemsGetHeaderAndTag;
     [Test]
     procedure DataNamesCarrySource;
+    [Test]
+    procedure ListModeFilterShowsOnlyMatches;
+    [Test]
+    procedure ListModeAllAppendsRestWithoutHeader;
+    [Test]
+    procedure ListModeRestUnderHeader;
+    [Test]
+    procedure ListModeRestSkipsTyposAndEmptyPattern;
+    [Test]
+    procedure ListModeNames;
   end;
 
   [TestFixture]
@@ -46,6 +56,10 @@ type
     procedure SelectionSkipsHeaders;
     [Test]
     procedure TypingDiscardsGuardOffer;
+    [Test]
+    procedure RestOnlyInMemberListsByDefault;
+    [Test]
+    procedure RestWithoutMatchSelectsNothing;
   end;
 
 implementation
@@ -165,7 +179,102 @@ begin
     Member('BeginUpdate', 'TStrings', 1, 2), Member('Assign', 'TPersistent', 2, 3)];
 end;
 
+function RestItems: TAtlasCompletionItems;
+begin
+  Result := [Member('Add', 'TStrings', 0, 0), Member('Assign', 'TPersistent', 0, 1),
+    Member('BeginUpdate', 'TStrings', 0, 2), Member('Clear', 'TStrings', 0, 3), Member('Sort', 'TStringList', 0, 4)];
+end;
+
+function RestOptions(AMode: TAtlasListMode): TAtlasRankOptions;
+begin
+  Result := TAtlasRankOptions.Defaults;
+  Result.ListMode := AMode;
+end;
+
 { TAtlasRankingTests }
+
+procedure TAtlasRankingTests.ListModeFilterShowsOnlyMatches;
+var
+  Items: TAtlasCompletionItems;
+  Order: TArray<Integer>;
+  RestStart: Integer;
+begin
+  // Heutiger Stand (#497, Variante 1): nur Treffer.
+  Items := RestItems;
+  Order := TAtlasRanking.Order(Items, 'As', RestOptions(TAtlasListMode.Filter), RestStart);
+  Assert.AreEqual('Assign', Names(Items, Order));
+  Assert.AreEqual(-1, RestStart);
+end;
+
+procedure TAtlasRankingTests.ListModeAllAppendsRestWithoutHeader;
+var
+  Items: TAtlasCompletionItems;
+  Order: TArray<Integer>;
+  RestStart: Integer;
+begin
+  // Variante 2: alles sichtbar, Treffer oben, der Rest in Rangfolge ohne Überschrift.
+  Items := RestItems;
+  Order := TAtlasRanking.Order(Items, 'As', RestOptions(TAtlasListMode.All), RestStart);
+  Assert.AreEqual('Assign,Add,BeginUpdate,Clear,Sort', Names(Items, Order));
+  Assert.AreEqual(1, RestStart);
+end;
+
+procedure TAtlasRankingTests.ListModeRestUnderHeader;
+var
+  Items: TAtlasCompletionItems;
+  Order: TArray<Integer>;
+  RestStart: Integer;
+  Options: TAtlasRankOptions;
+begin
+  // Variante 3: Treffer, darunter abgesetzt „Weitere Einträge“.
+  Items := RestItems;
+  Order := TAtlasRanking.Order(Items, 'As', RestOptions(TAtlasListMode.Rest), RestStart);
+  Assert.AreEqual('Assign,#,Add,BeginUpdate,Clear,Sort', Names(Items, Order));
+  Assert.AreEqual(TAtlasRanking.RestHeader, Order[1]);
+  Assert.AreEqual(2, RestStart);
+  // Der Chip schränkt auch den Rest ein.
+  Items := Items + [Member('Count', 'TStrings', 0, 5, TAtlasItemKind.Property_)];
+  Order := TAtlasRanking.Order(Items, 'As', RestOptions(TAtlasListMode.Rest), RestStart);
+  Assert.AreEqual('Assign,#,Add,BeginUpdate,Clear,Sort,Count', Names(Items, Order));
+  Options := RestOptions(TAtlasListMode.Rest);
+  Options.Chip := TAtlasChip.Methods;
+  Order := TAtlasRanking.Order(Items, 'Co', Options, RestStart);
+  Assert.AreEqual('#,Add,Assign,BeginUpdate,Clear,Sort', Names(Items, Order));
+  Assert.AreEqual(1, RestStart);
+  Items := nil;
+  Order := nil;
+end;
+
+procedure TAtlasRankingTests.ListModeRestSkipsTyposAndEmptyPattern;
+var
+  Items: TAtlasCompletionItems;
+  Order: TArray<Integer>;
+  RestStart: Integer;
+begin
+  Items := RestItems;
+  // Ohne Präfix gibt es keinen Rest: alle Einträge sind Treffer.
+  Order := TAtlasRanking.Order(Items, '', RestOptions(TAtlasListMode.Rest), RestStart);
+  Assert.AreEqual('Add,Assign,BeginUpdate,Clear,Sort', Names(Items, Order));
+  Assert.AreEqual(-1, RestStart);
+  // Tippfehler (#485) stehen unter „Meintest du“ und nicht noch einmal im Rest.
+  Order := TAtlasRanking.Order(Items, 'Cleer', RestOptions(TAtlasListMode.Rest), RestStart);
+  Assert.AreEqual('#,Clear,#,Add,Assign,BeginUpdate,Sort', Names(Items, Order));
+  Assert.AreEqual(TAtlasRanking.TypoHeader, Order[0]);
+  Assert.AreEqual(TAtlasRanking.RestHeader, Order[2]);
+  Assert.AreEqual(3, RestStart);
+  Items := nil;
+  Order := nil;
+end;
+
+procedure TAtlasRankingTests.ListModeNames;
+begin
+  Assert.IsTrue(TAtlasListModes.ModeOf('filter') = TAtlasListMode.Filter);
+  Assert.IsTrue(TAtlasListModes.ModeOf(' ALL ') = TAtlasListMode.All);
+  Assert.IsTrue(TAtlasListModes.ModeOf('rest') = TAtlasListMode.Rest);
+  Assert.IsTrue(TAtlasListModes.ModeOf('alles') = TAtlasListMode.Filter, 'Unbekanntes wird Filter');
+  Assert.IsTrue(TAtlasListModes.ScopeOf('everywhere') = TAtlasListScope.Everywhere);
+  Assert.IsTrue(TAtlasListModes.ScopeOf('') = TAtlasListScope.Members);
+end;
 
 procedure TAtlasRankingTests.GroupsInheritedMembersWithHeaders;
 var
@@ -556,6 +665,106 @@ begin
     Assert.AreEqual('Mit try…finally absichern', Item.Name);
     Controller.UpdatePrefix('L');
     Assert.IsFalse(Controller.Active);
+  finally
+    Controller.Free;
+  end;
+end;
+
+function MemberContext(const APrefix: string): TAtlasContext;
+begin
+  Result := Context(APrefix);
+  Result.Kind := TAtlasContextKind.MemberAccess;
+end;
+
+procedure TAtlasUsageTests.RestOnlyInMemberListsByDefault;
+var
+  View: TRecordingView;
+  ViewRef: IAtlasCompletionView;
+  Controller: TAtlasCompletionController;
+begin
+  View := TRecordingView.Create;
+  ViewRef := View;
+  Controller := TAtlasCompletionController.Create(TAtlasFixedCompletionProvider.Create(RestItems) as
+    IAtlasCompletionProvider, ViewRef);
+  try
+    Controller.ListMode := TAtlasListMode.Rest;
+    // Strg+Leer (alle sichtbaren Namen): nur Treffer, solange der Bereich Members ist.
+    Controller.Start(Context(''));
+    Assert.IsTrue(Wait(
+      function: Boolean
+      begin
+        Result := not Controller.Loading;
+      end));
+    Controller.UpdatePrefix('As');
+    Assert.AreEqual('Assign', View.Names);
+    Assert.AreEqual(-1, Controller.RestStart);
+    // Nach ".": Treffer, darunter der Rest.
+    Controller.Start(MemberContext(''));
+    Assert.IsTrue(Wait(
+      function: Boolean
+      begin
+        Result := not Controller.Loading;
+      end));
+    Controller.UpdatePrefix('As');
+    Assert.AreEqual('Assign,#,Add,BeginUpdate,Clear,Sort', View.Names);
+    Assert.AreEqual(0, View.Selected, 'Bester Treffer gewählt');
+    Assert.AreEqual(2, Controller.RestStart);
+    // Bild↓/Ende überspringen die Überschrift und erreichen das Ende des Rests.
+    Controller.HandleKey(TAtlasNavigationKey.Down);
+    Assert.AreEqual(2, View.Selected, 'Überschrift übersprungen');
+    Controller.HandleKey(TAtlasNavigationKey.Last);
+    Assert.AreEqual(5, View.Selected);
+    // Überall: auch ohne ".".
+    Controller.ListScope := TAtlasListScope.Everywhere;
+    Controller.Start(Context(''));
+    Assert.IsTrue(Wait(
+      function: Boolean
+      begin
+        Result := not Controller.Loading;
+      end));
+    Controller.UpdatePrefix('As');
+    Assert.AreEqual('Assign,#,Add,BeginUpdate,Clear,Sort', View.Names);
+  finally
+    Controller.Free;
+  end;
+end;
+
+procedure TAtlasUsageTests.RestWithoutMatchSelectsNothing;
+var
+  View: TRecordingView;
+  ViewRef: IAtlasCompletionView;
+  Controller: TAtlasCompletionController;
+  Item: TAtlasCompletionItem;
+begin
+  View := TRecordingView.Create;
+  ViewRef := View;
+  Controller := TAtlasCompletionController.Create(TAtlasFixedCompletionProvider.Create(RestItems) as
+    IAtlasCompletionProvider, ViewRef);
+  try
+    Controller.ListMode := TAtlasListMode.All;
+    Controller.Start(MemberContext(''));
+    Assert.IsTrue(Wait(
+      function: Boolean
+      begin
+        Result := not Controller.Loading;
+      end));
+    // Kein Treffer für "Zq": alles sichtbar, nichts gewählt; Enter gehört dem Editor.
+    Controller.UpdatePrefix('Zq');
+    Assert.AreEqual('Add,Assign,BeginUpdate,Clear,Sort', View.Names);
+    Assert.AreEqual(0, Controller.RestStart);
+    Assert.IsTrue(Controller.Passive);
+    Assert.AreEqual(-1, View.Selected);
+    Assert.IsFalse(Controller.CanCommitOnCharacter);
+    // Eine Pfeiltaste wählt den ersten Eintrag.
+    Controller.HandleKey(TAtlasNavigationKey.Down);
+    Assert.IsFalse(Controller.Passive);
+    Assert.IsTrue(Controller.SelectedItem(Item));
+    Assert.AreEqual('Add', Item.Name);
+    // Mit Treffer wieder der beste gewählt.
+    Controller.UpdatePrefix('Cl');
+    Assert.AreEqual('Clear,Add,Assign,BeginUpdate,Sort', View.Names);
+    Assert.AreEqual(0, View.Selected);
+    Assert.IsFalse(Controller.Passive);
   finally
     Controller.Free;
   end;

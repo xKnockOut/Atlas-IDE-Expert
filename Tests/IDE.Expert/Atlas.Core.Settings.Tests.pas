@@ -53,6 +53,8 @@ type
     /// build.onOpenExclude mit Vorgaben, Normalisieren, Speichern und Laden.</summary>
     [Test]
     procedure BuildOnOpenOptions;
+    [Test]
+    procedure CompletionListModeOptions;
   end;
 
   [TestFixture]
@@ -76,6 +78,7 @@ uses
   System.SysUtils,
   System.Generics.Collections,
   Atlas.Core.Notifications.Center,
+  Atlas.Core.Completion.Ranking,
   Atlas.Core.Welcome.QuickActions,
   Atlas.Core.Tracker.Naming,
   Atlas.Core.Welcome.Issues,
@@ -894,6 +897,48 @@ begin
   Assert.AreEqual('active', Loaded.BuildOnOpenScope);
   Assert.AreEqual(5000, Loaded.BuildOnOpenDelayMs);
   Assert.AreEqual('Atlas.IDE.Expert, Demo', Loaded.BuildOnOpenExclude);
+end;
+
+procedure TAtlasPluginSettingsTests.CompletionListModeOptions;
+var
+  Settings, Loaded: TAtlasPluginSettings;
+  Store: IAtlasSettingsStore;
+  Mode: TAtlasListMode;
+  Scope: TAtlasListScope;
+begin
+  // Listenmodus der Vervollständigung (#497): standardmäßig nur Treffer, gilt in Mitgliederlisten.
+  Settings := TAtlasPluginSettings.Defaults;
+  Assert.AreEqual('filter', Settings.CompletionListMode);
+  Assert.AreEqual('members', Settings.CompletionListScope);
+  Settings.CompletionListMode := 'REST';
+  Settings.CompletionListScope := 'Everywhere';
+  Settings.Normalize;
+  Assert.AreEqual('rest', Settings.CompletionListMode);
+  Assert.AreEqual('everywhere', Settings.CompletionListScope);
+  Store := TMemoryStore.Create;
+  Settings.Save(Store);
+  Loaded := TAtlasPluginSettings.Defaults;
+  Loaded.Load(Store);
+  Assert.AreEqual('rest', Loaded.CompletionListMode);
+  Assert.AreEqual('everywhere', Loaded.CompletionListScope);
+  Settings.CompletionListMode := 'alles';
+  Settings.CompletionListScope := 'nirgends';
+  Settings.Normalize;
+  Assert.AreEqual('filter', Settings.CompletionListMode);
+  Assert.AreEqual('members', Settings.CompletionListScope);
+  // Dieselben Namen wie TAtlasListModes in der Vervollständigung.
+  for Mode := Low(TAtlasListMode) to High(TAtlasListMode) do
+  begin
+    Settings.CompletionListMode := TAtlasListModes.ModeNames[Mode];
+    Settings.Normalize;
+    Assert.AreEqual(TAtlasListModes.ModeNames[Mode], Settings.CompletionListMode);
+  end;
+  for Scope := Low(TAtlasListScope) to High(TAtlasListScope) do
+  begin
+    Settings.CompletionListScope := TAtlasListModes.ScopeNames[Scope];
+    Settings.Normalize;
+    Assert.AreEqual(TAtlasListModes.ScopeNames[Scope], Settings.CompletionListScope);
+  end;
 end;
 
 procedure TAtlasPluginSettingsTests.UnitSearchOptions;
