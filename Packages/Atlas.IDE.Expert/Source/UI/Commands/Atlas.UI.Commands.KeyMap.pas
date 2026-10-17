@@ -280,6 +280,12 @@ begin
       Id := TAtlasTextId.ProblemPreviousCommand;
     TAtlasKeyFunction.QuickOpen:
       Id := TAtlasTextId.QuickOpenTitle;
+    TAtlasKeyFunction.NavBack:
+      Id := TAtlasTextId.NavBackCommand;
+    TAtlasKeyFunction.NavForward:
+      Id := TAtlasTextId.NavForwardCommand;
+    TAtlasKeyFunction.LastEdit:
+      Id := TAtlasTextId.NavLastEditCommand;
   else
     Id := TAtlasTextId.KeyMapUnitSearchIde;
   end;

@@ -1992,3 +1992,18 @@ Voraussetzung für EX2 bis EX7: mindestens eine Einstellung trägt `x-experiment
 | QO8 | Anderes Projekt öffnen, dann Strg+P | Dateien des neuen Projekts gelistet |
 | QO9 | `quickOpen.librarySources` an, `sysutils` | `System.SysUtils.pas` mit „Bibliothek“ |
 | QO10 | `quickOpen.enabled` aus | Strg+P macht wieder, was die IDE dafür vorsieht; Befehl fehlt in der Palette |
+
+## Navigationsverlauf über Dateien (#504)
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| NH1 | In Unit A Zeile 12 Strg+Klick nach B, dort Strg+Klick nach C, dann zweimal Alt+Links | Wieder in A, Zeile 12 |
+| NH2 | Nach NH1 zweimal Alt+Rechts | Erst B, dann C |
+| NH3 | In A Zeile 40 merken (Sprung weg und zurück), dann oberhalb 5 Zeilen einfügen, Alt+Links/Rechts | Eintrag zeigt auf dieselbe Codezeile (jetzt 45) |
+| NH4 | In B etwas ändern, nach C springen, Strg+Alt+Q | Springt in B an die Änderung |
+| NH5 | Änderungen in A, B, C; Strg+Alt+Q dreimal | C, B, A nacheinander |
+| NH6 | Mit Pfeiltasten 5 Zeilen nach unten | Kein Eintrag (unter 11 Zeilen) |
+| NH7 | Befehlspalette „Navigationsverlauf …“ | Liste mit Datei:Zeile, Auszug, „zurück/vor/Änderung · Uhrzeit“; Enter springt |
+| NH8 | Datei aus dem Verlauf schließen, Alt+Links | Datei öffnet sich wieder an der Stelle |
+| NH9 | Tastenkonflikte öffnen | Alt+Links/Rechts: Atlas hat Vorrang vor „Zurück/Vor“ der IDE; keine Taste doppelt |
+| NH10 | `navHistory.enabled` aus | Alt+Links/Rechts wieder Zurück/Vor der IDE; Befehle fehlen in der Palette |
