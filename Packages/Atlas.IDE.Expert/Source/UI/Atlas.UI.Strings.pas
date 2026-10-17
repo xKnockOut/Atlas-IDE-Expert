@@ -561,7 +561,8 @@ type
     OutlineKindEnumMembers, OutlineShowAll, OutlineUnimplemented, OutlineEmpty, OutlineNoServer, OutlineNoMatch,
     OutlineGoToDeclaration, OutlineGoToImplementation, OutlineFollowCursor, SettingsOutline,
     SettingsOutlineAlphabetical, SettingsOutlineFollowCursor, BreadcrumbsCommand, BreadcrumbsCurrent,
-    SettingsBreadcrumbs, SettingsBreadcrumbsShowUnit, BreadcrumbsEmpty);
+    SettingsBreadcrumbs, SettingsBreadcrumbsShowUnit, BreadcrumbsEmpty, JumpToMatchCommand, JumpToMatchSelectCommand,
+    SettingsJumpToMatch);
 
   TAtlasStrings = class
   private class var
@@ -1627,7 +1628,8 @@ const
      'Keine Gliederung: Der Atlas-Server läuft nicht.', 'Kein Eintrag passt zum Filter.', 'Zur Deklaration',
      'Zur Implementierung', 'Cursor folgen', 'Fenster „Gliederung“ mit Filter', 'Alphabetisch sortieren',
      'Eintrag am Cursor hervorheben', 'Brotkrumenleiste', 'aktuell', 'Brotkrumenleiste über dem Editor',
-     'Unit-Namen als erstes Glied zeigen', 'Keine Gliederung an dieser Stelle'),
+     'Unit-Namen als erstes Glied zeigen', 'Keine Gliederung an dieser Stelle', 'Zum Gegenstück springen',
+     'Bis zum Gegenstück markieren', 'Sprung zum Gegenstück (begin/end, Klammern, $IFDEF, Methoden)'),
     ('Enter to accept · Esc to close', '%d of %d', 'No matches for “%s”', 'Backspace widens the search',
      'No suggestions here', 'Esc closes', 'No details for this entry', 'Overload', 'Deprecated: %s', 'Deprecated.',
      'Inherited from %s', 'Inherited', 'optional, default %s', 'No overload with %d parameters.', '… %d more',
@@ -2614,7 +2616,8 @@ const
      'No outline: open a unit in the editor.', 'No outline: the Atlas server is not running.',
      'No entry matches the filter.', 'Go to declaration', 'Go to implementation', 'Follow cursor',
      'Outline window with filter', 'Sort alphabetically', 'Highlight the entry at the cursor', 'Breadcrumbs',
-     'current', 'Breadcrumbs above the editor', 'Show the unit name as first item', 'No outline at this position'));
+     'current', 'Breadcrumbs above the editor', 'Show the unit name as first item', 'No outline at this position',
+     'Jump to match', 'Select to match', 'Jump to the counterpart (begin/end, brackets, $IFDEF, methods)'));
 
 { TAtlasStrings }
 

@@ -38,6 +38,8 @@ type
     procedure OutlineOptions;
     [Test]
     procedure BreadcrumbsOptions;
+    [Test]
+    procedure JumpToMatchOptions;
     /// <summary>Erzeugen-Menü (#719): Vorgaben, Normalisieren, Speichern und Laden.</summary>
     [Test]
     procedure GenerateMenuOptions;
@@ -1147,6 +1149,30 @@ begin
   Loaded.BreadcrumbsKey := -5;
   Loaded.Normalize;
   Assert.AreEqual(0, Loaded.BreadcrumbsKey);
+end;
+
+procedure TAtlasPluginSettingsTests.JumpToMatchOptions;
+var
+  Settings, Loaded: TAtlasPluginSettings;
+  Store: IAtlasSettingsStore;
+begin
+  Settings := TAtlasPluginSettings.Defaults;
+  Assert.IsTrue(Settings.JumpToMatch);
+  Assert.AreEqual($40BA, Settings.JumpToMatchKey, 'Strg+Ü');
+  Assert.AreEqual($60BA, Settings.JumpToMatchSelectKey, 'Strg+Umschalt+Ü');
+  Settings.JumpToMatch := False;
+  Settings.JumpToMatchKey := $4042;
+  Settings.JumpToMatchSelectKey := 0;
+  Store := TMemoryStore.Create;
+  Settings.Save(Store);
+  Loaded := TAtlasPluginSettings.Defaults;
+  Loaded.Load(Store);
+  Assert.IsFalse(Loaded.JumpToMatch);
+  Assert.AreEqual($4042, Loaded.JumpToMatchKey);
+  Assert.AreEqual(0, Loaded.JumpToMatchSelectKey);
+  Loaded.JumpToMatchKey := $1FFFF;
+  Loaded.Normalize;
+  Assert.AreEqual($FFFF, Loaded.JumpToMatchKey);
 end;
 
 { TAtlasSettingsScopesTests }
