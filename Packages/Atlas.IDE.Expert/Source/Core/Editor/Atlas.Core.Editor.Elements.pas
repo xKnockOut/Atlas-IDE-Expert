@@ -51,7 +51,9 @@ type
     /// <summary>Abgeblendete inaktive {$IFDEF}-Zweige (#615).</summary>
     InactiveDim,
     /// <summary>Vorschau des gewählten Vorschlags im Editor (#434).</summary>
-    CompletionPreview);
+    CompletionPreview,
+    /// <summary>Abgeblendete ungenutzte uses-Einträge (#621).</summary>
+    UnusedUses);
   TAtlasHideScope = (Here, InFile, Everywhere);
 {$SCOPEDENUMS OFF}
   TAtlasHideScopes = set of TAtlasHideScope;
@@ -152,6 +154,8 @@ begin
     // Die Vorschau steht nur, solange die Liste offen ist: weder Stelle noch Datei sind dauerhaft.
     TAtlasDrawnElement.CompletionPreview:
       Result := Make(AElement, 'Preview', [TAtlasHideScope.Everywhere], False, False);
+    TAtlasDrawnElement.UnusedUses:
+      Result := Make(AElement, 'DimUnusedUses', FileScopes, False, False);
   else
     Result := Make(AElement, '', [], False, False);
   end;

@@ -752,16 +752,20 @@ begin
     Assert.IsTrue(Page.BlockEndLabelsCheck.Checked, 'standardmäßig an');
     Assert.AreEqual(ShortCutToText($40BE), Page.HideElementKey.Text, 'Strg+.');
     Assert.AreEqual('25', Page.BlockEndLabelsMinLinesEdit.Text, 'Mindestlänge (#620)');
+    Assert.IsTrue(Page.DimUnusedUsesCheck.Checked, 'uses abblenden standardmäßig an (#621)');
     Page.BlockEndLabelsCheck.Checked := False;
+    Page.DimUnusedUsesCheck.Checked := False;
     Page.BlockEndLabelsMinLinesEdit.Text := '30';
     Page.HideElementKey.Text := '';
     Saved := TAtlasPluginSettings.Defaults;
     Page.SaveTo(Saved);
     Assert.IsFalse(Saved.BlockEndLabels, 'abschaltbar');
     Assert.AreEqual(30, Saved.BlockEndLabelsMinLines);
+    Assert.IsFalse(Saved.DimUnusedUses);
     Assert.AreEqual(0, Saved.HideElementKey, 'leer = keine Taste');
     Page.LoadFrom(Saved);
     Assert.IsFalse(Page.BlockEndLabelsCheck.Checked);
+    Assert.IsFalse(Page.DimUnusedUsesCheck.Checked);
     Assert.AreEqual('', Page.HideElementKey.Text);
   finally
     Page.Free;

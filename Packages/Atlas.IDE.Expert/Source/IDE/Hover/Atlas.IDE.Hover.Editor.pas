@@ -18,7 +18,9 @@
 //     der Maus über dem Tooltip F12, Umschalt+F12, Strg+C und F1 für den
 //     angezeigten Typ.
 // Probleme (#398): Liegt unter der Maus ein Problem, zeigt der Tooltip es oben
-// an, auch ohne Bezeichner (dann nur das Problem).
+// an, auch ohne Bezeichner (dann nur das Problem). Aktionen unter einem
+// uses-Hinweis (#621) gehen über OnProblemAction mit der Kennung der
+// Code-Aktion (uses.remove, uses.removeAll, uses.move) an die Befehle.
 // Die IDE zeigt dann keinen eigenen Tooltip: GetHintText und GetHelpInsightHtml
 // liefern '' (Manager). Bedient Atlas die Datei nicht (Hauptschalter, Server
 // fehlt, Sicherung), übernimmt die IDE und der Atlas-Tooltip bleibt zu.
@@ -54,6 +56,8 @@ type
     TArray<TAtlasProblem>;
   /// <summary>Bedient Atlas die Datei? Sonst zeigt die IDE ihren eigenen Tooltip.</summary>
   TAtlasHoverHandlesFunc = reference to function(const AFileName: string): Boolean;
+  /// <summary>Code-Aktion mit Kennung ATag für den Bereich des Problems ausführen (#621).</summary>
+  TAtlasHoverProblemActionProc = reference to procedure(const AProblem: TAtlasProblem; const ATag: string);
 
   /// <summary>Lebt der Tooltip noch? Hintergrund-Anfragen prüfen das, bevor sie ihr Ergebnis zeigen.</summary>
   TAtlasHoverAlive = class(TInterfacedObject)
@@ -62,6 +66,8 @@ type
   end;
 
   TAtlasEditorHover = class
+  private class var
+    FOnProblemAction: TAtlasHoverProblemActionProc;
   private type
     TEvents = class(TNTACodeEditorNotifier)
     protected
@@ -134,6 +140,7 @@ type
     procedure TipAction(Sender: TObject; AAction: TAtlasHoverAction);
     /// <summary>Link (href) in der XMLDoc (#654): im Browser öffnen.</summary>
     procedure TipUrl(Sender: TObject; const AUrl: string);
+    procedure TipProblemAction(Sender: TObject; AProblem: Integer; AAction: TAtlasHoverProblemAction);
     function CurrentSession: TLspSession;
     function Fetch(const ARef: TAtlasHoverTypeRef; out AData: TAtlasHoverData): Boolean;
     function CurrentView: TAtlasHoverView;
@@ -156,6 +163,9 @@ type
     /// <summary>Laufende Anfragen abwarten, bevor die Sitzung wegfällt (Neustart, Abschalten; Code-Review A-07).
     /// Ihre Ergebnisse zeigt der Tooltip nicht mehr. Nur im Hauptthread.</summary>
     procedure Shutdown;
+    /// <summary>Aktion unter einem uses-Hinweis (#621); setzt die Kompositionswurzel (der Tooltip kennt die
+    /// Editorbefehle nicht, A-09), ohne Zuweisung keine.</summary>
+    class property OnProblemAction: TAtlasHoverProblemActionProc read FOnProblemAction write FOnProblemAction;
   end;
 
 implementation
@@ -241,6 +251,7 @@ begin
   FTip.OnBack := TipBack;
   FTip.OnAction := TipAction;
   FTip.OnUrl := TipUrl;
+  FTip.OnProblemAction := TipProblemAction;
   FKeys := THoverKeys.Create(Self);
   FHistory := TAtlasHoverHistory.Create(Fetch);
   FAlive := TAtlasHoverAlive.Create;
@@ -732,6 +743,24 @@ procedure TAtlasEditorHover.TipAction(Sender: TObject; AAction: TAtlasHoverActio
 begin
   try
     Execute(AAction);
+  except
+    on E: Exception do
+      TAtlasGuard.Report(TAtlasFeature.Hover, E);
+  end;
+end;
+
+procedure TAtlasEditorHover.TipProblemAction(Sender: TObject; AProblem: Integer; AAction: TAtlasHoverProblemAction);
+const
+  Tags: array[TAtlasHoverProblemAction] of string = ('uses.remove', 'uses.removeAll', 'uses.move');
+var
+  Problem: TAtlasProblem;
+begin
+  try
+    if not Assigned(FOnProblemAction) or (AProblem < 0) or (AProblem > High(FTip.View.Problems)) then
+      Exit;
+    Problem := FTip.View.Problems[AProblem];
+    Hide;
+    FOnProblemAction(Problem, Tags[AAction]);
   except
     on E: Exception do
       TAtlasGuard.Report(TAtlasFeature.Hover, E);

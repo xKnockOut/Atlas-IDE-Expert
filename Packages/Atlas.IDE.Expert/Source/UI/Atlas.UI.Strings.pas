@@ -534,7 +534,10 @@ type
     SigMissingValue, SigAfterDefault, SigTypesFixed, SigFailed, SigNothing, SigPreviewTitle, SigPreviewHint,
     SigPreviewApply, SigDone,
     SettingsExperimentalEnabled, SettingsExperimentalTag, SettingsExperimentalOff, SettingsExperimentalAllow,
-    SettingsFilter, SettingsFilterAll, SettingsFilterModified, SettingsFilterExperimental, WelcomeNewsExperimental);
+    SettingsFilter, SettingsFilterAll, SettingsFilterModified, SettingsFilterExperimental, WelcomeNewsExperimental,
+    SettingsDimUnusedUses, ElementUnusedUses, ElementUnusedUsesPlural, UsesUnusedHint, UsesInitializationHint,
+    UsesAllowlistHint, UsesImplementationHint, ProblemsSourceUses, UsesRemove, UsesRemoveAll, UsesMove,
+    UsesActionMissing);
 
   TAtlasStrings = class
   private class var
@@ -1559,7 +1562,13 @@ const
      'Experimentelle Funktionen erlauben (experimental.enabled)', 'Experimentell',
      '⚠ Experimentelle Funktionen sind aus. Ihre Schalter wirken erst mit „Experimentelle Funktionen erlauben“.',
      'Erlauben', 'Filter:', 'Alle', 'Geändert', 'Nur experimentelle',
-     'Experimentell (wirkt erst mit „Experimentelle Funktionen erlauben“ in den Einstellungen)'),
+     'Experimentell (wirkt erst mit „Experimentelle Funktionen erlauben“ in den Einstellungen)',
+     'Ungenutzte uses-Einträge abblenden', 'ungenutzter uses-Eintrag', 'ungenutzte uses-Einträge',
+     'Aus %s wird nichts verwendet', '%s wird wegen initialization nicht als ungenutzt gezeigt',
+     '%s steht in usesKeep (atlas.json) und wird nicht als ungenutzt gezeigt',
+     '%s wird nur in der implementation gebraucht', 'Atlas · uses', 'Entfernen', 'Alle ungenutzten entfernen',
+     'In implementation-uses verschieben',
+     'Atlas: Das geht hier nicht sicher (Direktive oder Kommentar in der uses-Liste).'),
     ('Enter to accept · Esc to close', '%d of %d', 'No matches for “%s”', 'Backspace widens the search',
      'No suggestions here', 'Esc closes', 'No details for this entry', 'Overload', 'Deprecated: %s', 'Deprecated.',
      'Inherited from %s', 'Inherited', 'optional, default %s', 'No overload with %d parameters.', '… %d more',
@@ -2513,7 +2522,13 @@ const
      'Allow experimental features (experimental.enabled)', 'Experimental',
      '⚠ Experimental features are off. Their switches only work with “Allow experimental features”.',
      'Allow', 'Filter:', 'All', 'Changed', 'Experimental only',
-     'Experimental (only works with “Allow experimental features” in the settings)'));
+     'Experimental (only works with “Allow experimental features” in the settings)',
+     'Dim unused uses entries', 'unused uses entry', 'unused uses entries',
+     'Nothing from %s is used', '%s is not shown as unused because of its initialization',
+     '%s is listed in usesKeep (atlas.json) and not shown as unused',
+     '%s is only needed in the implementation', 'Atlas · uses', 'Remove', 'Remove all unused',
+     'Move to implementation uses',
+     'Atlas: This cannot be done safely here (directive or comment in the uses list).'));
 
 { TAtlasStrings }
 

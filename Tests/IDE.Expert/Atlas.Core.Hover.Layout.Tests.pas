@@ -47,6 +47,9 @@ type
     procedure HitAtFindsActionRect;
     [Test]
     procedure BuildIsDeterministic;
+    /// <summary>#621: uses-Hinweise bringen ihre Aktionen als Klickflächen mit.</summary>
+    [Test]
+    procedure UsesProblemsOfferActions;
   end;
 
 implementation
@@ -425,6 +428,57 @@ begin
     Assert.AreEqual(A.Items[Index].Text, B.Items[Index].Text);
   end;
   Assert.AreEqual(A.Height, B.Height);
+end;
+
+procedure THoverLayoutTests.UsesProblemsOfferActions;
+
+  function Codes(const ALayout: TAtlasHoverLayout): string;
+  var
+    Hit: TAtlasHoverHit;
+    Problem: Integer;
+    Action: TAtlasHoverProblemAction;
+  begin
+    Result := '';
+    for Hit in ALayout.Hits do
+      if Hit.Kind = TAtlasHoverHitKind.ProblemAction then
+      begin
+        TAtlasHoverLayout.DecodeProblemAction(Hit.Index, Problem, Action);
+        Result := Result + IntToStr(Problem) + ':' + IntToStr(Ord(Action)) + '|';
+      end;
+  end;
+
+var
+  HoverView: TAtlasHoverView;
+  Plain, Unused, Moved: TAtlasProblem;
+  HoverInput: TAtlasHoverInput;
+  Problem: Integer;
+  Action: TAtlasHoverProblemAction;
+begin
+  TAtlasHoverLayout.DecodeProblemAction(TAtlasHoverLayout.ProblemActionCode(3,
+    TAtlasHoverProblemAction.MoveUses), Problem, Action);
+  Assert.AreEqual(3, Problem);
+  Assert.IsTrue(Action = TAtlasHoverProblemAction.MoveUses);
+  Plain := Default(TAtlasProblem);
+  Plain.Message := 'x';
+  Unused := Plain;
+  Unused.Severity := TAtlasProblemSeverity.Hint;
+  Unused.UsesUnit := 'Vcl.Grids';
+  Unused.UsesState := TAtlasProblem.UsesUnused;
+  Unused.UsesUnusedCount := 1;
+  Moved := Unused;
+  Moved.UsesState := TAtlasProblem.UsesImplementation;
+  HoverView := View('');
+  HoverView.Problems := [Plain, Unused, Moved];
+  HoverInput := Input(HoverView, 300);
+  HoverInput.Texts.UsesRemove := 'Entfernen';
+  HoverInput.Texts.UsesRemoveAll := 'Alle entfernen';
+  HoverInput.Texts.UsesMove := 'Verschieben';
+  // Ein ungenutzter Eintrag: nur „Entfernen“; der zweite Hinweis bietet „Verschieben“.
+  Assert.AreEqual('1:0|2:2|', Codes(Build(HoverInput)));
+  Unused.UsesUnusedCount := 2;
+  HoverView.Problems := [Plain, Unused, Moved];
+  HoverInput.View := HoverView;
+  Assert.AreEqual('1:0|1:1|2:2|', Codes(Build(HoverInput)));
 end;
 
 initialization

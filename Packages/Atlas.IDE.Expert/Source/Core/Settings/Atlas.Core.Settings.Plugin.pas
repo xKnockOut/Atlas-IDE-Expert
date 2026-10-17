@@ -178,6 +178,9 @@ type
     /// <summary>Beschriftung erst ab so vielen Zeilen Blocklänge (#620, editor.blockEndLabels.minLines); geht mit
     /// der Anfrage an den Server und ersetzt dort inlayHints.endMarkerMinLines.</summary>
     BlockEndLabelsMinLines: Integer;
+    /// <summary>Ungenutzte uses-Einträge abblenden (#621, editor.dimUnusedUses); der Tooltip nennt den Grund und
+    /// bietet Entfernen und Verschieben an. Aus: weder Abblenden noch Hinweise.</summary>
+    DimUnusedUses: Boolean;
     /// <summary>Persönliche Notizen an Codezeilen (#545): Symbol in der Rinne, Befehle und Liste; gespeichert in
     /// %LOCALAPPDATA%\Atlas\Notes\, nie im Quelltext.</summary>
     Notes: Boolean;
@@ -865,6 +868,7 @@ begin
   Result.InlayHints := False;
   Result.BlockEndLabels := True;
   Result.BlockEndLabelsMinLines := 25;
+  Result.DimUnusedUses := True;
   Result.Notes := True;
   Result.BookmarksNamed := True;
   Result.BookmarksShared := False;
@@ -1231,6 +1235,7 @@ begin
   InlayHints := AStore.ReadInteger('InlayHints', BoolValue(Default.InlayHints)) <> 0;
   BlockEndLabels := AStore.ReadInteger('BlockEndLabels', BoolValue(Default.BlockEndLabels)) <> 0;
   BlockEndLabelsMinLines := AStore.ReadInteger('BlockEndLabelsMinLines', Default.BlockEndLabelsMinLines);
+  DimUnusedUses := AStore.ReadInteger('DimUnusedUses', BoolValue(Default.DimUnusedUses)) <> 0;
   Notes := AStore.ReadInteger('Notes', BoolValue(Default.Notes)) <> 0;
   BookmarksNamed := AStore.ReadInteger('BookmarksNamed', BoolValue(Default.BookmarksNamed)) <> 0;
   BookmarksShared := AStore.ReadInteger('BookmarksShared', BoolValue(Default.BookmarksShared)) <> 0;
@@ -1487,6 +1492,7 @@ begin
   AStore.WriteInteger('InlayHints', BoolValue(InlayHints));
   AStore.WriteInteger('BlockEndLabels', BoolValue(BlockEndLabels));
   AStore.WriteInteger('BlockEndLabelsMinLines', BlockEndLabelsMinLines);
+  AStore.WriteInteger('DimUnusedUses', BoolValue(DimUnusedUses));
   AStore.WriteInteger('Notes', BoolValue(Notes));
   AStore.WriteInteger('BookmarksNamed', BoolValue(BookmarksNamed));
   AStore.WriteInteger('BookmarksShared', BoolValue(BookmarksShared));

@@ -54,6 +54,9 @@ type
   TAtlasHoverIndexEvent = procedure(Sender: TObject; AIndex: Integer) of object;
   TAtlasHoverActionEvent = procedure(Sender: TObject; AAction: TAtlasHoverAction) of object;
   TAtlasHoverUrlEvent = procedure(Sender: TObject; const AUrl: string) of object;
+  /// <summary>Klick auf eine Aktion unter einem Problem (#621); AProblem ist der Index in View.Problems.</summary>
+  TAtlasHoverProblemActionEvent = procedure(Sender: TObject; AProblem: Integer;
+    AAction: TAtlasHoverProblemAction) of object;
 
   TAtlasHoverTip = class(TAtlasPopupWindow)
   public const
@@ -70,6 +73,7 @@ type
     FOnBack: TNotifyEvent;
     FOnAction: TAtlasHoverActionEvent;
     FOnUrl: TAtlasHoverUrlEvent;
+    FOnProblemAction: TAtlasHoverProblemActionEvent;
     FDoc: TAtlasDocView;
     /// <summary>Linke obere Ecke der Doku beim letzten Zeichnen bzw. Messen.</summary>
     FDocLeft: Integer;
@@ -119,6 +123,8 @@ type
     property OnAction: TAtlasHoverActionEvent read FOnAction write FOnAction;
     /// <summary>Klick auf einen Link (href) in der Doku.</summary>
     property OnUrl: TAtlasHoverUrlEvent read FOnUrl write FOnUrl;
+    /// <summary>Aktion unter einem uses-Hinweis (#621).</summary>
+    property OnProblemAction: TAtlasHoverProblemActionEvent read FOnProblemAction write FOnProblemAction;
   end;
 
 implementation
@@ -342,6 +348,10 @@ begin
   Result.SourceAtlas := TAtlasStrings.Text(TAtlasTextId.ProblemsSourceAtlas);
   Result.SourceCompiler := TAtlasStrings.Text(TAtlasTextId.ProblemsSourceCompiler);
   Result.SourceInactive := TAtlasStrings.Text(TAtlasTextId.ProblemsSourceInactive);
+  Result.SourceUses := TAtlasStrings.Text(TAtlasTextId.ProblemsSourceUses);
+  Result.UsesRemove := TAtlasStrings.Text(TAtlasTextId.UsesRemove);
+  Result.UsesRemoveAll := TAtlasStrings.Text(TAtlasTextId.UsesRemoveAll);
+  Result.UsesMove := TAtlasStrings.Text(TAtlasTextId.UsesMove);
   Result.Stale := TAtlasStrings.Text(TAtlasTextId.ProblemsStale);
   Result.Confidences := nil;
   SetLength(Result.Confidences, Length(FView.Problems));
@@ -608,8 +618,9 @@ end;
 
 procedure TAtlasHoverTip.MouseDown(Button: TMouseButton; Shift: TShiftState; X, Y: Integer);
 var
-  Index: Integer;
+  Index, ProblemIndex: Integer;
   Hit: TAtlasHoverHit;
+  ProblemAction: TAtlasHoverProblemAction;
 begin
   inherited;
   if Button <> mbLeft then
@@ -637,6 +648,12 @@ begin
     TAtlasHoverHitKind.Action:
       if Assigned(FOnAction) then
         FOnAction(Self, TAtlasHoverAction(Hit.Index));
+    TAtlasHoverHitKind.ProblemAction:
+      if Assigned(FOnProblemAction) then
+      begin
+        TAtlasHoverLayout.DecodeProblemAction(Hit.Index, ProblemIndex, ProblemAction);
+        FOnProblemAction(Self, ProblemIndex, ProblemAction);
+      end;
   end;
 end;
 

@@ -24,6 +24,9 @@ type
     procedure InitializeParamsWithoutOptionsHasNoInitializationOptions;
     [Test]
     procedure ApplyEditAnswerOmitsEmptyReason;
+    /// <summary>#621: data.tag einer CodeAction landet in Tag.</summary>
+    [Test]
+    procedure CodeActionCarriesTag;
   end;
 
 implementation
@@ -154,6 +157,27 @@ begin
     Assert.AreEqual('Datei schreibgeschützt', Answer.GetValue<string>('failureReason'));
   finally
     Answer.Free;
+  end;
+end;
+
+procedure TLspInitializeParamsTests.CodeActionCarriesTag;
+var
+  Value: TJSONValue;
+  Action: TLspCodeAction;
+begin
+  Value := TJSONObject.ParseJSONValue('{"title":"Vcl.Grids entfernen","kind":"quickfix","data":{"tag":"uses.remove"}}');
+  try
+    Assert.IsTrue(TLspCodeAction.FromJson(Value, Action));
+    Assert.AreEqual('uses.remove', Action.Tag);
+  finally
+    Value.Free;
+  end;
+  Value := TJSONObject.ParseJSONValue('{"title":"Ohne","kind":"quickfix"}');
+  try
+    Assert.IsTrue(TLspCodeAction.FromJson(Value, Action));
+    Assert.AreEqual('', Action.Tag);
+  finally
+    Value.Free;
   end;
 end;
 

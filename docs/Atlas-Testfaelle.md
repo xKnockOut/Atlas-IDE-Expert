@@ -1887,3 +1887,17 @@ Voraussetzung für EX2 bis EX7: mindestens eine Einstellung trägt `x-experiment
 | BE4 | *Tools › Optionen › Atlas*, „ab Zeilen“ auf 5 stellen | Auch kurze Blöcke ab fünf Zeilen bekommen eine Beschriftung; der Wert gilt sofort |
 | BE5 | Linksklick auf eine Beschriftung | Der Cursor springt an den Anfang des Blocks |
 | BE6 | `editor.blockEndLabels` aus | Keine Beschriftungen, auch nicht bei eingeschalteten Inlay-Hints |
+
+## Ungenutzte uses abblenden (#621)
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| UU1 | Unit mit `uses Vcl.Grids, System.SysUtils;`, nur `IntToStr` verwendet | `Vcl.Grids` erscheint abgeblendet, `System.SysUtils` normal |
+| UU2 | Maus über `Vcl.Grids` | Hover „Aus Vcl.Grids wird nichts verwendet“ mit dem Link „Entfernen“; Klick entfernt den Eintrag samt Komma, der Code bleibt übersetzbar |
+| UU3 | Zwei ungenutzte Einträge, Hover über einen | Zusätzlich „Alle ungenutzten entfernen“; danach steht kein leeres `uses;` da |
+| UU4 | Unit, die nur in `initialization` wirkt (z. B. Registrierung), ungenutzt | Nicht abgeblendet; Hover nennt „nur für initialization behalten“ ohne Links |
+| UU5 | Eintrag in `uses.keep` der `atlas.json` | Nicht abgeblendet; Hover nennt die Liste |
+| UU6 | Interface-uses-Eintrag, der nur im implementation-Teil gebraucht wird | Hover bietet „Ins implementation-uses verschieben“ |
+| UU7 | Eintrag in einem inaktiven `{$IFDEF}`-Zweig | Zählt nicht als ungenutzt, wird nur als inaktiver Zweig abgeblendet |
+| UU8 | Syntaxfehler in der Unit | Keine uses-Hinweise, bis der Fehler behoben ist |
+| UU9 | `editor.dimUnusedUses` aus bzw. „Element ausblenden“ › Ungenutzte uses | Kein Abblenden und keine Hover-Links mehr |
