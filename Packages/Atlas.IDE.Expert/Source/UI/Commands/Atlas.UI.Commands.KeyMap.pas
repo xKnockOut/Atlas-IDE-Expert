@@ -278,6 +278,8 @@ begin
       Id := TAtlasTextId.ProblemNextCommand;
     TAtlasKeyFunction.PreviousProblem:
       Id := TAtlasTextId.ProblemPreviousCommand;
+    TAtlasKeyFunction.QuickOpen:
+      Id := TAtlasTextId.QuickOpenTitle;
   else
     Id := TAtlasTextId.KeyMapUnitSearchIde;
   end;

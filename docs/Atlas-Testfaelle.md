@@ -1977,3 +1977,18 @@ Voraussetzung für EX2 bis EX7: mindestens eine Einstellung trägt `x-experiment
 | IT5 | Cursor auf `Kunde` aus IT3, Alt+Enter, „Typ ausschreiben“ | `for var Kunde: TCustomer in Liste do`; fehlt die Unit von `TCustomer` in uses, wird sie ergänzt |
 | IT6 | Plugin-Einstellung „Typmarken“ aus | Keine Typmarken, Parameternamen bleiben |
 | IT7 | `refactoring.explicitType` aus | Aktion „Typ ausschreiben“ fehlt |
+
+## Datei und Symbol schnell öffnen (#503)
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| QO1 | Projektgruppe mit vielen Dateien, Strg+P, `frmhaupt` | `FrmHaupt.pas` oben, sofort ohne spürbare Verzögerung; Pfad gedimmt, rechts „Projekt“ |
+| QO2 | Strg+P ohne Eingabe | Offene Dateien oben, dann zuletzt geöffnete, dann Projektdateien |
+| QO3 | `@Laden` in einer Unit mit Methode `Laden` | Enter springt zur Methode |
+| QO4 | `#TKunde` | Klasse `TKunde` aus einer anderen Unit des Projekts; Enter öffnet sie an der Deklaration |
+| QO5 | `:120` | Cursor springt in Zeile 120 der aktuellen Datei |
+| QO6 | `kunden:42` | `Kunden.pas` öffnet sich in Zeile 42 |
+| QO7 | Unit, die nur über den Suchpfad erreichbar ist, suchen und mit Enter öffnen | Öffnet; rechts „Suchpfad“ |
+| QO8 | Anderes Projekt öffnen, dann Strg+P | Dateien des neuen Projekts gelistet |
+| QO9 | `quickOpen.librarySources` an, `sysutils` | `System.SysUtils.pas` mit „Bibliothek“ |
+| QO10 | `quickOpen.enabled` aus | Strg+P macht wieder, was die IDE dafür vorsieht; Befehl fehlt in der Palette |

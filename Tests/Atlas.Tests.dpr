@@ -584,6 +584,8 @@ uses
   Setup.Core.SettingsCommand.Tests in 'Setup\Setup.Core.SettingsCommand.Tests.pas',
   Atlas.Core.Commands.Palette in '..\Packages\Atlas.IDE.Expert\Source\Core\Commands\Atlas.Core.Commands.Palette.pas',
   Atlas.Core.Commands.Palette.Tests in 'IDE.Expert\Atlas.Core.Commands.Palette.Tests.pas',
+  Atlas.Core.Commands.QuickOpen in '..\Packages\Atlas.IDE.Expert\Source\Core\Commands\Atlas.Core.Commands.QuickOpen.pas',
+  Atlas.Core.Commands.QuickOpen.Tests in 'IDE.Expert\Atlas.Core.Commands.QuickOpen.Tests.pas',
   Atlas.Core.Editor.Pairs in '..\Packages\Atlas.IDE.Expert\Source\Core\Editor\Atlas.Core.Editor.Pairs.pas',
   Atlas.Core.Editor.SnapshotPolicy in '..\Packages\Atlas.IDE.Expert\Source\Core\Editor\Atlas.Core.Editor.SnapshotPolicy.pas',
   Atlas.Core.Editor.CloseRules in '..\Packages\Atlas.IDE.Expert\Source\Core\Editor\Atlas.Core.Editor.CloseRules.pas',

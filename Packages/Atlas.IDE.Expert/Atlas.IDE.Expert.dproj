@@ -279,6 +279,8 @@
         <DCCReference Include="Source\Core\Commands\Atlas.Core.Commands.Palette.pas"/>
         <DCCReference Include="Source\UI\Commands\Atlas.UI.Commands.Palette.pas"/>
         <DCCReference Include="Source\IDE\Commands\Atlas.IDE.Commands.Palette.pas"/>
+        <DCCReference Include="Source\Core\Commands\Atlas.Core.Commands.QuickOpen.pas"/>
+        <DCCReference Include="Source\IDE\Commands\Atlas.IDE.Commands.QuickOpen.pas"/>
         <DCCReference Include="Source\Core\Editor\Atlas.Core.Editor.Pairs.pas"/>
         <DCCReference Include="Source\Core\Editor\Atlas.Core.Editor.SnapshotPolicy.pas"/>
         <DCCReference Include="Source\Core\Editor\Atlas.Core.Editor.CloseRules.pas"/>
