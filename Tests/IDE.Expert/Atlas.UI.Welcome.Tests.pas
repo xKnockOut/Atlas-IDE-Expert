@@ -359,6 +359,7 @@ type
     procedure OpenDocs;
     procedure ShowKeys;
     procedure ReportProblem;
+    procedure Donate;
   end;
 
   /// <summary>Quelle des Bereichs „Projekt für Atlas einrichten“ für die Tests; merkt sich die Aufrufe.</summary>
@@ -2790,6 +2791,11 @@ begin
   Calls := Calls + ['report'];
 end;
 
+procedure TFakeHelp.Donate;
+begin
+  Calls := Calls + ['donate'];
+end;
+
 { TAtlasWelcomeHelpFrameTests }
 
 procedure TAtlasWelcomeHelpFrameTests.TextsFollowLanguage;
@@ -2803,9 +2809,11 @@ begin
     Assert.AreEqual('Atlas-Doku', TAtlasWelcomeHelpFrame.ButtonCaption(TAtlasHelpButton.Docs));
     Assert.AreEqual('Tastenkürzel', TAtlasWelcomeHelpFrame.ButtonCaption(TAtlasHelpButton.Keys));
     Assert.AreEqual('Problem melden …', TAtlasWelcomeHelpFrame.ButtonCaption(TAtlasHelpButton.Report));
+    Assert.AreEqual('Atlas unterstützen ♥', TAtlasWelcomeHelpFrame.ButtonCaption(TAtlasHelpButton.Donate));
     TAtlasStrings.Language := TAtlasLanguage.English;
     Assert.AreEqual('Help and feedback', TAtlasWelcomeHelpFrame.TitleText);
     Assert.AreEqual('Report a problem …', TAtlasWelcomeHelpFrame.ButtonCaption(TAtlasHelpButton.Report));
+    Assert.AreEqual('Support Atlas ♥', TAtlasWelcomeHelpFrame.ButtonCaption(TAtlasHelpButton.Donate));
   finally
     TAtlasStrings.Language := Saved;
   end;
@@ -2876,18 +2884,20 @@ begin
     Frame.Button(TAtlasHelpButton.Docs).Click;
     Frame.Button(TAtlasHelpButton.Keys).Click;
     Frame.Button(TAtlasHelpButton.Report).Click;
+    Frame.Button(TAtlasHelpButton.Donate).Click;
     Assert.AreEqual(0, Integer(Length(Fake.Calls)), 'über die Nachrichtenschleife');
     CheckSynchronize;
-    Assert.AreEqual(3, Integer(Length(Fake.Calls)));
+    Assert.AreEqual(4, Integer(Length(Fake.Calls)));
     Assert.AreEqual('docs', Fake.Calls[0]);
     Assert.AreEqual('keys', Fake.Calls[1]);
     Assert.AreEqual('report', Fake.Calls[2]);
+    Assert.AreEqual('donate', Fake.Calls[3]);
     // Ausgegrauter Knopf tut nichts.
     Fake.Keys := False;
     Frame.UpdateContent;
     Frame.ClickButton(TAtlasHelpButton.Keys);
     CheckSynchronize;
-    Assert.AreEqual(3, Integer(Length(Fake.Calls)));
+    Assert.AreEqual(4, Integer(Length(Fake.Calls)));
   finally
     Host.Free;
   end;
