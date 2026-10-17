@@ -19,6 +19,15 @@
       "good": "X := 1;"
     },
     {
+      "id": "unknown-rule-id",
+      "name": "Unknown rule id",
+      "category": "code-smell",
+      "severity": "hint",
+      "description": "An lsp-ignore comment names a rule id that does not exist, so it suppresses nothing. The message suggests the most similar known id (typo); such a comment is not also reported as unused-suppression.",
+      "bad": "// lsp-ignore: empty-exept\ntry X; except end;",
+      "good": "// lsp-ignore: empty-except\ntry X; except end;"
+    },
+    {
       "id": "bidi-control",
       "name": "Bidirectional control character",
       "category": "vulnerability",

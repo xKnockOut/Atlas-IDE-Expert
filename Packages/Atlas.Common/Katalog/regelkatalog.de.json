@@ -11,6 +11,11 @@
       "description": "Ein lsp-ignore-Kommentar unterdrückt keinen Treffer und kann entfernt werden."
     },
     {
+      "id": "unknown-rule-id",
+      "name": "Unbekannte Regelkennung",
+      "description": "Ein lsp-ignore-Kommentar nennt eine Regelkennung, die es nicht gibt, und unterdrückt deshalb nichts. Die Meldung schlägt die ähnlichste bekannte Kennung vor (Tippfehler); ein solcher Kommentar zählt nicht zusätzlich als unused-suppression."
+    },
+    {
       "id": "bidi-control",
       "name": "Bidirektionales Steuerzeichen",
       "description": "Bidirektionale Steuerzeichen können Code anders anzeigen, als er kompiliert wird (Trojan Source); auch in Formulardateien. Richtungsmarken in RTL-Text nur mit niedriger Konfidenz."

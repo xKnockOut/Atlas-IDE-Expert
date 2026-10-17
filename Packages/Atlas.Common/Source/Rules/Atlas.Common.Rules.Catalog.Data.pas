@@ -39,6 +39,15 @@ begin
     '      "good": "X := 1;"' + #10 +
     '    },' + #10 +
     '    {' + #10 +
+    '      "id": "unknown-rule-id",' + #10 +
+    '      "name": "Unknown rule id",' + #10 +
+    '      "category": "code-smell",' + #10 +
+    '      "severity": "hint",' + #10 +
+    '      "description": "An lsp-ignore comment names a rule id that does not exist, so it suppresses nothing. The message suggests the most similar known id (typo); such a comment is not also reported as' + ' unused-suppression.",' + #10 +
+    '      "bad": "// lsp-ignore: empty-exept\ntry X; except end;",' + #10 +
+    '      "good": "// lsp-ignore: empty-except\ntry X; except end;"' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
     '      "id": "bidi-control",' + #10 +
     '      "name": "Bidirectional control character",' + #10 +
     '      "category": "vulnerability",' + #10 +
@@ -841,6 +850,11 @@ begin
     '      "id": "unused-suppression",' + #10 +
     '      "name": "Ungenutzte Unterdrückung",' + #10 +
     '      "description": "Ein lsp-ignore-Kommentar unterdrückt keinen Treffer und kann entfernt werden."' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "unknown-rule-id",' + #10 +
+    '      "name": "Unbekannte Regelkennung",' + #10 +
+    '      "description": "Ein lsp-ignore-Kommentar nennt eine Regelkennung, die es nicht gibt, und unterdrückt deshalb nichts. Die Meldung schlägt die ähnlichste bekannte Kennung vor (Tippfehler); ein sol' + 'cher Kommentar zählt nicht zusätzlich als unused-suppression."' + #10 +
     '    },' + #10 +
     '    {' + #10 +
     '      "id": "bidi-control",' + #10 +

@@ -250,8 +250,9 @@ end;
 
 procedure TCodeActionTests.SuppressionForUnknownRuleNotReported;
 begin
+  // Kennung einer Regel, die hier nicht lief: keine unused-suppression (unbekannte Kennungen siehe #41).
   TRuleAssert.Silent(TMarkerRule.Create,
-    'unit U; interface implementation' + LB + 'var X: Integer; // lsp-ignore: other-rule' + LB + 'end.');
+    'unit U; interface implementation' + LB + 'var X: Integer; // lsp-ignore: empty-except' + LB + 'end.');
 end;
 
 procedure TCodeActionTests.SwapAssignmentsIsRewrite;
