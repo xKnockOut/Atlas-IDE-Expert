@@ -3,7 +3,8 @@
 // Vorschau vor dem Umbenennen (#400), reine VCL: alle betroffenen Zeilen
 // nach Unit gruppiert, je Zeile vorher und nachher („alt  →  neu“). Erst
 // „Umbenennen“ übernimmt die Änderungen; Doppelklick zeigt die Stelle im
-// Editor, ohne den Dialog zu schließen.
+// Editor, ohne den Dialog zu schließen. Andere Befehle mit WorkspaceEdit
+// (Eigenschaftsregeln anwenden, #309) nennen ihren eigenen Knopf.
 
 interface
 
@@ -22,7 +23,10 @@ type
   public
     /// <summary>True, wenn der Benutzer „Umbenennen“ wählt. AOnOpen zeigt eine Stelle (darf nil sein).</summary>
     class function Execute(const ATitle, AHint: string; const AGroups: TArray<TAtlasResultGroup>;
-      const AOnOpen: TAtlasResultsOpen): Boolean; static;
+      const AOnOpen: TAtlasResultsOpen): Boolean; overload; static;
+    /// <summary>Wie oben mit eigener Beschriftung AApply für den Knopf, der übernimmt.</summary>
+    class function Execute(const ATitle, AHint, AApply: string; const AGroups: TArray<TAtlasResultGroup>;
+      const AOnOpen: TAtlasResultsOpen): Boolean; overload; static;
   end;
 
 implementation
@@ -32,6 +36,12 @@ uses
 
 class function TAtlasRenamePreview.Execute(const ATitle, AHint: string; const AGroups: TArray<TAtlasResultGroup>;
   const AOnOpen: TAtlasResultsOpen): Boolean;
+begin
+  Result := Execute(ATitle, AHint, TAtlasStrings.Text(TAtlasTextId.RenamePreviewApply), AGroups, AOnOpen);
+end;
+
+class function TAtlasRenamePreview.Execute(const ATitle, AHint, AApply: string;
+  const AGroups: TArray<TAtlasResultGroup>; const AOnOpen: TAtlasResultsOpen): Boolean;
 var
   Dialog: TForm;
   Results: TAtlasResultsFrame;
@@ -62,7 +72,7 @@ begin
     Cancel.Anchors := [akTop, akRight];
     Apply := TButton.Create(Dialog);
     Apply.Parent := Buttons;
-    Apply.Caption := TAtlasStrings.Text(TAtlasTextId.RenamePreviewApply);
+    Apply.Caption := AApply;
     Apply.ModalResult := mrOk;
     Apply.Default := True;
     Apply.Width := Cancel.Width;

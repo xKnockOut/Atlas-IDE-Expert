@@ -35,10 +35,19 @@ const
   CopyTextCommand = 'atlas.copyText';
 
 type
+  /// <summary>Edits in einer anderen Datei als dem Dokument der Aktion, z. B. der Formulardatei (#309).</summary>
+  TFileTextEdits = record
+    FileName: string;
+    Edits: TArray<TTextEdit>;
+  end;
+
   TCodeAction = record
     Title: string;
     Kind: string;
+    /// <summary>Edits im Dokument der Aktion.</summary>
     Edits: TArray<TTextEdit>;
+    /// <summary>Edits in weiteren Dateien (#309); nil = keine.</summary>
+    FileEdits: TArray<TFileTextEdits>;
     IsPreferred: Boolean;
     /// <summary>Regelkennung des behobenen Treffers, sonst ''.</summary>
     RuleId: string;

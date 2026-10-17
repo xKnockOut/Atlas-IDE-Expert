@@ -457,7 +457,7 @@ begin
     '      "name": "Component property violates a property rule",' + #10 +
     '      "category": "code-smell",' + #10 +
     '      "severity": "warning",' + #10 +
-    '      "description": "A component property in the form file does not meet a rule from dfmPropertyRules in atlas.json (class, property, condition, value). A property that is not stored counts with its ' + 'default value; objects of the ancestor form are only reported where this form sets the value itself.",' + #10 +
+    '      "description": "A component property in the form file does not meet a rule from dfmPropertyRules in atlas.json (class, property, condition, value). A property that is not stored counts with its ' + 'default value; objects of the ancestor form are only reported where this form sets the value itself. The quick fix sets the value in the form file (fix: auto also with source.fixAll); the command \"Ap' + 'ply property rules\" corrects one form, the project or the group with a preview.",' + #10 +
     '      "bad": "// dfmPropertyRules: TLabel.Transparent = True\nobject Label1: TLabel\n  Caption = ''Name''\nend",' + #10 +
     '      "good": "object Label1: TLabel\n  Caption = ''Name''\n  Transparent = True\nend"' + #10 +
     '    },' + #10 +
@@ -1075,7 +1075,7 @@ begin
     '    {' + #10 +
     '      "id": "dfm-property",' + #10 +
     '      "name": "Komponenten-Property verletzt eine Eigenschaftsregel",' + #10 +
-    '      "description": "Eine Komponenten-Property in der Formulardatei erfüllt eine Regel aus dfmPropertyRules in atlas.json nicht (Klasse, Property, Bedingung, Wert). Nicht gespeicherte Properties zähl' + 'en mit ihrem default-Wert; Objekte aus dem Vorfahrenformular werden nur gemeldet, wenn dieses Formular den Wert selbst setzt."' + #10 +
+    '      "description": "Eine Komponenten-Property in der Formulardatei erfüllt eine Regel aus dfmPropertyRules in atlas.json nicht (Klasse, Property, Bedingung, Wert). Nicht gespeicherte Properties zähl' + 'en mit ihrem default-Wert; Objekte aus dem Vorfahrenformular werden nur gemeldet, wenn dieses Formular den Wert selbst setzt. Die Schnellkorrektur setzt den Wert in der Formulardatei (fix: auto auch m' + 'it source.fixAll); der Befehl \"Eigenschaftsregeln anwenden\" korrigiert ein Formular, das Projekt oder die Gruppe mit Vorschau."' + #10 +
     '    },' + #10 +
     '    {' + #10 +
     '      "id": "foreign-form-control-access",' + #10 +

@@ -12,7 +12,7 @@ function AtlasPluginSchemaJson: string;
 implementation
 
 const
-  Lines: array[0..1995] of string = (
+  Lines: array[0..2007] of string = (
     '{',
     '  "$schema": "http://json-schema.org/draft-07/schema#",',
     '  "title": "Atlas-Plugin-Einstellungen",',
@@ -291,6 +291,18 @@ const
     '      "x-caption": "Metrikbericht",',
     '      "x-captionEn": "Metrics report",',
     '      "x-issue": "#66"',
+    '    },',
+    '    "DfmPropertyRules": {',
+    '      "type": "boolean",',
+    '      "default": true,',
+    '      "x-key": "dfmPropertyRules.apply",',
+    '      "x-area": "editor",',
+    '      "x-feature": "Palette",',
+    '      "x-page": "Editor",',
+    '      "x-quickToggle": true,',
+    '      "x-caption": "Eigenschaftsregeln anwenden",',
+    '      "x-captionEn": "Apply property rules",',
+    '      "x-issue": "#309"',
     '    },',
     '    "TeamFile": {',
     '      "type": "boolean",',

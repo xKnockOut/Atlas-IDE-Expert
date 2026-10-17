@@ -304,6 +304,9 @@ type
     /// <summary>Befehl „Metrikbericht des Projekts“ (#66, Atlas.MetricsReport) in der Befehlspalette; aus = der
     /// Befehl verschwindet. Die Zusammenfassung nach dem Build hängt an der Willkommensseite.</summary>
     MetricsReport: Boolean;
+    /// <summary>Befehle „Eigenschaftsregeln anwenden“ (#309) für Formular, Projekt und Projektgruppe in der
+    /// Befehlspalette; aus = die Befehle verschwinden. Regel dfm-property und Schnellkorrektur bleiben.</summary>
+    DfmPropertyRules: Boolean;
     /// <summary>Projektdatei .atlas lesen (#486): Einstellungen für alle im Team aus dem Repository, Vorrang vor
     /// den persönlichen; dazu der Befehl „Projektdatei .atlas öffnen“ (Atlas.TeamFile) mit Tipp. Aus = nur die
     /// persönlichen Einstellungen gelten, Befehl und Tipp verschwinden.</summary>
@@ -905,6 +908,7 @@ begin
   Result.TodoList := True;
   Result.BaselineUpdate := True;
   Result.MetricsReport := True;
+  Result.DfmPropertyRules := True;
   Result.TeamFile := True;
   Result.EditorKeysPriority := False;
   Result.SlashCommands := True;
@@ -1267,6 +1271,7 @@ begin
   TodoList := AStore.ReadInteger('TodoList', BoolValue(Default.TodoList)) <> 0;
   BaselineUpdate := AStore.ReadInteger('BaselineUpdate', BoolValue(Default.BaselineUpdate)) <> 0;
   MetricsReport := AStore.ReadInteger('MetricsReport', BoolValue(Default.MetricsReport)) <> 0;
+  DfmPropertyRules := AStore.ReadInteger('DfmPropertyRules', BoolValue(Default.DfmPropertyRules)) <> 0;
   TeamFile := AStore.ReadInteger('TeamFile', BoolValue(Default.TeamFile)) <> 0;
   EditorKeysPriority := AStore.ReadInteger('EditorKeysPriority', BoolValue(Default.EditorKeysPriority)) <> 0;
   SlashCommands := AStore.ReadInteger('SlashCommands', BoolValue(Default.SlashCommands)) <> 0;
@@ -1519,6 +1524,7 @@ begin
   AStore.WriteInteger('TodoList', BoolValue(TodoList));
   AStore.WriteInteger('BaselineUpdate', BoolValue(BaselineUpdate));
   AStore.WriteInteger('MetricsReport', BoolValue(MetricsReport));
+  AStore.WriteInteger('DfmPropertyRules', BoolValue(DfmPropertyRules));
   AStore.WriteInteger('TeamFile', BoolValue(TeamFile));
   AStore.WriteInteger('EditorKeysPriority', BoolValue(EditorKeysPriority));
   AStore.WriteInteger('SlashCommands', BoolValue(SlashCommands));

@@ -61,6 +61,8 @@ type
     Namespaces: TArray<string>;
     /// <summary>Formulardatei neben der Unit (#123); '' ohne.</summary>
     FormText: string;
+    /// <summary>Pfad der Formulardatei (#309); '' ohne.</summary>
+    FormFile: string;
     /// <summary>Dateien neben der Unit, z. B. .dcr (#114); nil = keine.</summary>
     ReadFile: TRuleFileReader;
     /// <summary>Abbruch zwischen den Prüfregeln; nil = nie. Setzt Compute.</summary>
@@ -849,6 +851,7 @@ begin
   Context.EnsureUnit := ARules.EnsureUnit;
   Context.Namespaces := ARules.Namespaces;
   Context.FormText := ARules.FormText;
+  Context.FormFile := ARules.FormFile;
   Context.ReadFile := ARules.ReadFile;
   Context.Cancelled := ARules.Cancelled;
   Result := TRuleEngine.Run(ARules.Rules, ARules.Settings, Context);

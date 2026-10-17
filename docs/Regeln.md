@@ -1220,7 +1220,7 @@ ed1: DataField = 'Name'; ed2: DataField = 'Vorname'
 
 **Komponenten-Property verletzt eine Eigenschaftsregel** · Code Smell · Warnung
 
-Eine Komponenten-Property in der Formulardatei erfüllt eine Regel aus dfmPropertyRules in atlas.json nicht (Klasse, Property, Bedingung, Wert). Nicht gespeicherte Properties zählen mit ihrem default-Wert; Objekte aus dem Vorfahrenformular werden nur gemeldet, wenn dieses Formular den Wert selbst setzt.
+Eine Komponenten-Property in der Formulardatei erfüllt eine Regel aus dfmPropertyRules in atlas.json nicht (Klasse, Property, Bedingung, Wert). Nicht gespeicherte Properties zählen mit ihrem default-Wert; Objekte aus dem Vorfahrenformular werden nur gemeldet, wenn dieses Formular den Wert selbst setzt. Die Schnellkorrektur setzt den Wert in der Formulardatei (fix: auto auch mit source.fixAll); der Befehl "Eigenschaftsregeln anwenden" korrigiert ein Formular, das Projekt oder die Gruppe mit Vorschau.
 
 Mit Treffer:
 

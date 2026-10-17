@@ -16,7 +16,7 @@ uses
   System.SysUtils;
 
 const
-  Profile0: array[0..47] of string = (
+  Profile0: array[0..48] of string = (
     '{',
     '  "format": "atlas-settings",',
     '  "formatVersion": 1,',
@@ -42,6 +42,7 @@ const
     '    "todos.list": true,',
     '    "baseline.update": true,',
     '    "metrics.report": true,',
+    '    "dfmPropertyRules.apply": true,',
     '    "editor.hoverTooltip": true,',
     '    "completion.filterChips": true,',
     '    "completion.preview": true,',
@@ -77,7 +78,7 @@ const
     '  "mode": "replace",',
     '  "settings": {}',
     '}');
-  Profile2: array[0..47] of string = (
+  Profile2: array[0..48] of string = (
     '{',
     '  "format": "atlas-settings",',
     '  "formatVersion": 1,',
@@ -103,6 +104,7 @@ const
     '    "todos.list": false,',
     '    "baseline.update": false,',
     '    "metrics.report": false,',
+    '    "dfmPropertyRules.apply": false,',
     '    "editor.hoverTooltip": false,',
     '    "completion.filterChips": false,',
     '    "completion.preview": false,',
