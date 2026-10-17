@@ -20,6 +20,9 @@
 // BDSLIB, BDSBIN, BDSINCLUDE), BDSCOMMONDIR, BDSUSERDIR und
 // BDSCatalogRepository der Version, Projekt, Plattform und Konfiguration;
 // zuletzt die Umgebung des Prozesses.
+//
+// Präfixe (#452): Read übernimmt die Vorgaben unter "naming" aus der
+// Projektdatei .atlas (#486, nur wenn sie eingeschaltet und gültig ist).
 
 interface
 
@@ -59,7 +62,9 @@ uses
   System.IOUtils,
   System.Variants,
   System.Win.Registry,
-  Winapi.Windows;
+  Winapi.Windows,
+  Atlas.Core.Settings.TeamFile,
+  Atlas.IDE.Foundation.TeamFile;
 
 /// <summary>Konfiguration AConfiguration ('' = aktive), für APlatform deren Plattformkonfiguration; nil ohne.
 /// </summary>
@@ -178,6 +183,22 @@ begin
     Result := Services.GetBaseRegistryKey;
 end;
 
+procedure ReadNaming(var AContext: TAtlasProjectContext);
+var
+  Team: TAtlasTeamSettings;
+  Kind: TAtlasNamingKind;
+begin
+  Team := TAtlasIdeTeamFile.ForProject(AContext.Project);
+  if not Team.Valid then
+    Exit;
+  for Kind := Low(TAtlasNamingKind) to High(TAtlasNamingKind) do
+    if Team.HasNaming[Kind] then
+    begin
+      AContext.HasNaming[TAtlasProjectNamingKind(Ord(Kind))] := True;
+      AContext.Naming[TAtlasProjectNamingKind(Ord(Kind))] := Team.Naming[Kind];
+    end;
+end;
+
 class function TAtlasIdeProjectContext.Read(const AProject: IOTAProject): TAtlasProjectContext;
 var
   BaseKey: string;
@@ -193,6 +214,7 @@ begin
   Result.BdsVersion := TAtlasProjectContext.VersionOfRegistryKey(BaseKey);
   ReadOptions(AProject, Result);
   Result.LibraryPaths := LibraryPaths(BaseKey, Result.Platform);
+  ReadNaming(Result);
 end;
 
 class function TAtlasIdeProjectContext.Macros(const AContext: TAtlasProjectContext): TAtlasPathMacros;

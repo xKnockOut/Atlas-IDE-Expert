@@ -975,6 +975,21 @@ begin
         AEdits := Created.Edits;
       end;
     end;
+  // Präfix der Namensvorschläge (#452): Vorgabe der Projektdatei .atlas aus dem Projektkontext der IDE, sonst die
+  // Zählung im Index.
+  FCompletion.NamingFor :=
+    function(const AUri: string; AKind: TNamingKind): string
+    var
+      Workspace: TShellWorkspace;
+      Project: TProjectInfo;
+      Context: TIdeProjectContext;
+    begin
+      Workspace := WorkspaceOf(TDocumentUris.ToPath(AUri));
+      if (Workspace <> nil) and Workspace.Project(Project) and FIdeProject.Find(Project.FileName, Context) and
+        Context.HasNaming[AKind] then
+        Exit(Context.Naming[AKind]);
+      Result := TLspCompletion.NamingPrefix(FIndex, AKind);
+    end;
   // Für completionItem/resolve (Detailpanel von Atlas, #405); Anzeige von XMLDoc (#654).
   FCompletion.HintsFor := HintSettingsFor;
   FCompletion.ReadText := ReadSourceText;

@@ -110,6 +110,11 @@ type
     /// als Unavailable erfassen (#476).</summary>
     class procedure AnnotateConditions(var AUnit: TUnitIndex; const AText: string;
       const AConditionals: TArray<TConditionalRange>); static;
+    /// <summary>Beginnt AName mit APrefix vor einem Großbuchstaben (FName, AValue, LIndex)?</summary>
+    class function HasNamePrefix(const AName, APrefix: string): Boolean; static;
+    /// <summary>Felder (auch in Records und var-Abschnitten von Klassen), Parameter und lokale Variablen
+    /// (var-Abschnitte von Routinen und Inline-Variablen) unter ARoot, gezählt mit Präfix (#452).</summary>
+    class function NamingOf(ARoot: TSyntaxNode): TNamingCounts; static;
   end;
 
 implementation
@@ -909,6 +914,73 @@ begin
   end;
   DropForwards;
   AUnit.Symbols := FSymbols.ToArray;
+  AUnit.Naming := NamingOf(ARoot);
+end;
+
+class function TIndexExtractor.HasNamePrefix(const AName, APrefix: string): Boolean;
+begin
+  Result := (APrefix <> '') and (Length(AName) > Length(APrefix)) and StartsStr(APrefix, AName) and
+    CharInSet(AName[Length(APrefix) + 1], ['A'..'Z']);
+end;
+
+/// <summary>Art der Namen in ANode (Field, VarDecl, Parameter, InlineVar); False für globale Variablen,
+/// Konstanten und alles andere.</summary>
+function NamingKindOf(ANode: TSyntaxNode; out AKind: TNamingKind): Boolean;
+var
+  Owner: TSyntaxNode;
+begin
+  Result := True;
+  AKind := TNamingKind.Local;
+  case ANode.Kind of
+    TSyntaxKind.Field:
+      AKind := TNamingKind.Field;
+    TSyntaxKind.Parameter:
+      AKind := TNamingKind.Parameter;
+    TSyntaxKind.InlineVar:
+      AKind := TNamingKind.Local;
+    TSyntaxKind.VarDecl:
+      begin
+        // Nächster Besitzer entscheidet: Typ = Feld, Routine = lokal, sonst global.
+        Owner := ANode.Parent;
+        while (Owner <> nil) and not (Owner.Kind in [TSyntaxKind.ClassType, TSyntaxKind.ObjectType,
+          TSyntaxKind.RecordType, TSyntaxKind.HelperType, TSyntaxKind.RoutineDecl]) do
+          Owner := Owner.Parent;
+        if Owner = nil then
+          Exit(False);
+        if Owner.Kind = TSyntaxKind.RoutineDecl then
+          AKind := TNamingKind.Local
+        else
+          AKind := TNamingKind.Field;
+      end;
+  else
+    Result := False;
+  end;
+end;
+
+class function TIndexExtractor.NamingOf(ARoot: TSyntaxNode): TNamingCounts;
+var
+  Counts: TNamingCounts;
+begin
+  Counts := Default(TNamingCounts);
+  if ARoot <> nil then
+    ARoot.Walk(
+      function(ANode: TSyntaxNode): Boolean
+      var
+        Kind: TNamingKind;
+        Name: string;
+      begin
+        Result := True;
+        if not NamingKindOf(ANode, Kind) then
+          Exit;
+        for Name in ANode.Name.Split([',']) do
+          if Trim(Name) <> '' then
+          begin
+            Inc(Counts[Kind].Total);
+            if HasNamePrefix(Trim(Name), NamingPrefixes[Kind]) then
+              Inc(Counts[Kind].Prefixed);
+          end;
+      end);
+  Result := Counts;
 end;
 
 class function TIndexExtractor.Extract(ATree: TSyntaxTree; const AFileName: string): TUnitIndex;

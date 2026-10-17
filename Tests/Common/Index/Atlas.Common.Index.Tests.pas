@@ -989,6 +989,9 @@ begin
   Original.HasInitialization := True;
   Original.Includes := ['C:\Inc\a.inc', 'C:\Inc\b|c.inc'];
   Original.IncludeStamps := [11, 22];
+  Original.Naming[TNamingKind.Field].Total := 7;
+  Original.Naming[TNamingKind.Field].Prefixed := 5;
+  Original.Naming[TNamingKind.Local].Total := 300;
   Symbol := Default(TIndexSymbol);
   Symbol.Name := 'TListe';
   Symbol.TypeName := 'TDictionary<string,Integer>';
@@ -1007,6 +1010,10 @@ begin
   Assert.IsFalse(U.Compact);
   Assert.AreEqual('C:\Inc\b|c.inc', U.Includes[1]);
   Assert.AreEqual<Int64>(22, U.IncludeStamps[1]);
+  Assert.AreEqual(7, U.Naming[TNamingKind.Field].Total);
+  Assert.AreEqual(5, U.Naming[TNamingKind.Field].Prefixed);
+  Assert.AreEqual(300, U.Naming[TNamingKind.Local].Total);
+  Assert.AreEqual(0, U.Naming[TNamingKind.Parameter].Total);
   Assert.AreEqual<NativeInt>(1, Length(U.Symbols));
   Assert.AreEqual('TDictionary<string,Integer>', U.Symbols[0].TypeName);
   Assert.AreEqual(Symbol.Condition, U.Symbols[0].Condition);

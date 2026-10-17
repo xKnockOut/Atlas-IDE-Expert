@@ -3,7 +3,7 @@
 // Dateien der zuletzt geöffneten Projekte für das Suchfeld der
 // Willkommensseite (#760), aus dem Index-Cache des Servers (#16) auf der
 // Platte, ohne laufenden Server. Das Plugin bindet Atlas.Common nicht ein,
-// deshalb steht hier ein kleiner Leser für Format 15 von
+// deshalb steht hier ein kleiner Leser für Format 16 von
 // Atlas.Common.Index.Cache: Kopf mit Prüfsumme, Texttabelle und die Köpfe der
 // Units; Symbol- und Verwendungsblöcke werden übersprungen. Andere Version,
 // falsche Prüfsumme oder fremder Inhalt ergeben eine leere Liste statt
@@ -42,7 +42,7 @@ type
 
   TAtlasWelcomeIndexFiles = class
   public const
-    FormatVersion = 15;
+    FormatVersion = 16;
     CacheFileName = 'index.atlasidx';
     IndexFolder = 'Index';
     LibraryFolder = 'Bibliothek';
@@ -218,7 +218,7 @@ var
   Reader: TReader;
   Strings: TArray<string>;
   Found: TList<TAtlasIndexFile>;
-  Index, Count, Size, Flags: Integer;
+  Index, Count, Size, Flags, Part: Integer;
   Stored: Cardinal;
   Entry: TAtlasIndexFile;
 begin
@@ -273,6 +273,8 @@ begin
         Reader.SkipList; // uses (implementation)
         Reader.SkipList; // Include-Dateien
         Reader.SkipList; // Include-Zeitstempel
+        for Part := 1 to 6 do
+          Reader.ReadVar; // Präfix-Zählung (#452): je Art Anzahl und mit Präfix
         Reader.ReadVar; // Symbolzahl
         Reader.ReadVar; // nicht verfügbar
         Reader.Skip(Reader.ReadCount); // Symbolblock
