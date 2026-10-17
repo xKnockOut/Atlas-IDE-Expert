@@ -80,6 +80,7 @@ Jeder Schlüssel hat genau einen Ort (Spalte „Ort“): Projekt-Schlüssel steh
 | `completion.freeStyle` | Projekt (atlas.json) | string | `"free"` | `"free"`, `"freeAndNil"` | Freigabe im finally von „Freigabe absichern“: "free" schreibt Liste.Free, "freeAndNil" schreibt FreeAndNil(Liste). |
 | `completion.keywords` | global (settings.json) | boolean | `true` |  | Schlüsselwörter passend zur Stelle vorschlagen (in Anweisungen begin, try …, im Klassenrumpf property, private …, nach ":" string, array …), sobald ein Zeichen getippt ist. |
 | `completion.postfixTemplates` | global (settings.json) | boolean | `true` |  | Postfix-Vorlagen hinter einem Ausdruck anbieten: Liste.for wird zu for var Item in Liste do, FKunde.notnil zu if Assigned(FKunde) then, dazu tryf, ifa, fmt, nil, not, if, forin, free, try, var, exit und eigene Vorlagen mit "postfix: true". |
+| `completion.genericConstraints` | global (settings.json) | boolean | `true` |  | Nach "TObjectList<" nur Typen vorschlagen, die die Constraints des Typparameters erfüllen (class, record, constructor, Interface oder Klasse), mit Überschrift „T: class · nur Klassen“ und den ausgeblendeten Arten in der Fußzeile. |
 
 ## refactoring
 

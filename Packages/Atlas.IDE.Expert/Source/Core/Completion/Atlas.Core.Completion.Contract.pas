@@ -168,6 +168,13 @@ type
     /// <summary>Code-Vorlage (#51): Text mit Platzhaltern (${1:Name}, $0); '' sonst. Beim Übernehmen setzt der
     /// Editor ihn mit der Einrückung der Zeile ein und startet den Platzhalter-Modus.</summary>
     Snippet: string;
+    /// <summary>Typargument nach "TFoo&lt;" (#450): Typparameter ("T"), sein Constraint ("class"), der Code der
+    /// Erklärung (classes, values, constructible, implements:X, descends:X) und die ausgeblendeten Arten
+    /// ("records,enums"); '' sonst.</summary>
+    TypeParam: string;
+    Constraint: string;
+    ConstraintHint: string;
+    HiddenKinds: string;
     /// <summary>Zahl der Überladungen samt dieser (mindestens 1).</summary>
     function OverloadCount: Integer;
   end;

@@ -30,6 +30,8 @@ type
     [Test]
     procedure SenderItemsGetHeaderAndTag;
     [Test]
+    procedure TypeArgumentsGetHeaderAndFooter;
+    [Test]
     procedure DataNamesCarrySource;
     [Test]
     procedure ListModeFilterShowsOnlyMatches;
@@ -482,6 +484,30 @@ begin
   // Ohne Sender keine Überschrift.
   Items[0].Sender := '';
   Assert.AreEqual('Caption', Names(Items, TAtlasRanking.Order(Items, 'Cap', Options)));
+end;
+
+procedure TAtlasRankingTests.TypeArgumentsGetHeaderAndFooter;
+var
+  Json: TJSONObject;
+  Items: TAtlasCompletionItems;
+  Options: TAtlasRankOptions;
+begin
+  // Typargumente (#450): eine Überschrift mit dem Constraint über der Liste, ausgeblendete Arten für die Fußzeile.
+  Json := TJSONObject.ParseJSONValue('{"label":"TKunde","kind":7,"detail":"Listen","data":{"typeParam":"T",' +
+    '"constraint":"class","constraintHint":"classes","hiddenKinds":"records,enums"}}') as TJSONObject;
+  try
+    Items := [TAtlasServerCompletionProvider.ItemFromLsp(Json, 0)];
+  finally
+    Json.Free;
+  end;
+  Assert.AreEqual('T', Items[0].TypeParam);
+  Assert.AreEqual('class', Items[0].Constraint);
+  Assert.AreEqual('classes', Items[0].ConstraintHint);
+  Assert.AreEqual('records,enums', TAtlasItemPresentation.HiddenKinds(Items));
+  Options := TAtlasRankOptions.Defaults;
+  Assert.AreEqual('#,TKunde', Names(Items, TAtlasRanking.Order(Items, 'TK', Options)));
+  Items[0].TypeParam := '';
+  Assert.AreEqual('TKunde', Names(Items, TAtlasRanking.Order(Items, 'TK', Options)));
 end;
 
 procedure TAtlasRankingTests.DataNamesCarrySource;
