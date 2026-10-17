@@ -11,6 +11,9 @@
 // (der Aufrufer filtert und ordnet selbst), QueryDelay 0 fragt bei jedem
 // Tastendruck sofort, und OnHighlight bestimmt den hervorgehobenen Text
 // (Suchtext ohne Präfix wie "@").
+// Sprungmenü der Brotkrumenleiste (#590): ShowAt öffnet unter einem Punkt,
+// InitialId wählt bei leerer Eingabe den aktuellen Eintrag, OnExecuteShift
+// erfährt zusätzlich, ob mit Umschalt+Enter ausgeführt wurde.
 
 interface
 
@@ -48,6 +51,9 @@ type
     FKeepOrder: Boolean;
     FPresorted: Boolean;
     FOnHighlight: TFunc<string, string>;
+    FInitialId: string;
+    FShiftExecuted: Boolean;
+    FOnExecuteShift: TProc<TAtlasCommand, Boolean>;
     procedure PatternChanged;
     procedure QueryTick(Sender: TObject);
     function RowHeight: Integer;
@@ -77,6 +83,8 @@ type
       AHistory: TAtlasCommandHistory; const AColors: TAtlasColors);
     /// <summary>Oben mittig über AArea (Editor bzw. Hauptfenster).</summary>
     procedure ShowOver(const AArea: TRect);
+    /// <summary>Linke obere Ecke bei APoint (Bildschirm), AWidth breit; bleibt im Arbeitsbereich.</summary>
+    procedure ShowAt(const APoint: TPoint; AWidth: Integer);
     /// <summary>Einträge ersetzen (etwa die erste Liste, wenn OnQuery das Fenster braucht).</summary>
     procedure SetCommands(const ACommands: TArray<TAtlasCommand>);
     /// <summary>Nach dem Schließen; das Fenster gibt sich danach selbst frei.</summary>
@@ -94,6 +102,10 @@ type
     property QueryDelay: Integer read GetQueryDelay write SetQueryDelay;
     /// <summary>Text, dessen Zeichen in den Einträgen hervorgehoben werden; ohne die Eingabe selbst.</summary>
     property OnHighlight: TFunc<string, string> read FOnHighlight write FOnHighlight;
+    /// <summary>Eintrag, der bei leerer Eingabe gewählt ist (Kennung); vor ShowAt setzen.</summary>
+    property InitialId: string read FInitialId write FInitialId;
+    /// <summary>Wie OnExecute, mit True nach Umschalt+Enter; ersetzt OnExecute, wenn gesetzt.</summary>
+    property OnExecuteShift: TProc<TAtlasCommand, Boolean> read FOnExecuteShift write FOnExecuteShift;
   end;
 
 implementation
@@ -219,6 +231,24 @@ begin
   SetFocus;
 end;
 
+procedure TAtlasPaletteWindow.ShowAt(const APoint: TPoint; AWidth: Integer);
+var
+  Area: TRect;
+  Height_, Left_, Top_: Integer;
+begin
+  Area := Screen.MonitorFromPoint(APoint).WorkareaRect;
+  Height_ := InputHeight + VisibleRows * RowHeight + ScaleValue(8);
+  Left_ := Max(Area.Left, Min(APoint.X, Area.Right - AWidth));
+  Top_ := APoint.Y;
+  if Top_ + Height_ > Area.Bottom then
+    Top_ := Max(Area.Top, Area.Bottom - Height_);
+  SetBounds(Left_, Top_, AWidth, Height_);
+  // Leere Eingabe: der aktuelle Eintrag ist gewählt.
+  Refilter;
+  Show;
+  SetFocus;
+end;
+
 procedure TAtlasPaletteWindow.SetCommands(const ACommands: TArray<TAtlasCommand>);
 begin
   FCommands := ACommands;
@@ -239,6 +269,13 @@ begin
     FOrder := TAtlasCommandPalette.Order(FCommands, FPattern, FHistory, FKeepOrder);
   FSelected := 0;
   FTop := 0;
+  if (FPattern = '') and (FInitialId <> '') then
+    for Index := 0 to High(FOrder) do
+      if FCommands[FOrder[Index]].Id = FInitialId then
+      begin
+        Select(Index);
+        Break;
+      end;
   Invalidate;
 end;
 
@@ -258,13 +295,27 @@ procedure TAtlasPaletteWindow.Execute;
 var
   Command: TAtlasCommand;
   Handler: TProc<TAtlasCommand>;
+  ShiftHandler: TProc<TAtlasCommand, Boolean>;
+  Shifted: Boolean;
 begin
   if (Length(FOrder) = 0) or FExecuting then
     Exit;
   FExecuting := True;
   Command := FCommands[FOrder[FSelected]];
   Handler := FOnExecute;
+  ShiftHandler := FOnExecuteShift;
+  Shifted := FShiftExecuted;
   Close;
+  if Assigned(ShiftHandler) then
+  begin
+    TAtlasMainThread.ForceQueue(TAtlasFeature.Palette,
+      procedure
+      begin
+        ShiftHandler(Command, Shifted);
+      end);
+    Release;
+    Exit;
+  end;
   // Erst nach dem Schließen ausführen: Der Befehl öffnet evtl. selbst einen Dialog.
   if Assigned(Handler) then
     TAtlasMainThread.ForceQueue(TAtlasFeature.Palette,
@@ -291,7 +342,10 @@ begin
     VK_ESCAPE:
       FormDeactivate(Self);
     VK_RETURN:
-      Execute;
+      begin
+        FShiftExecuted := ssShift in Shift;
+        Execute;
+      end;
     VK_UP:
       Select(FSelected - 1);
     VK_DOWN:
