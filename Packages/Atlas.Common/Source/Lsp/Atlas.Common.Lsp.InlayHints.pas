@@ -29,6 +29,9 @@ type
     Kind: Integer;
     PaddingLeft: Boolean;
     PaddingRight: Boolean;
+    /// <summary>Endmarke (#620): Anfang des Blocks, zu dem ein Klick springt; nur mit HasBlockStart.</summary>
+    BlockStart: TTextPosition;
+    HasBlockStart: Boolean;
   end;
 
   /// <summary>Einstellungen für das Dokument AUri.</summary>
@@ -38,6 +41,11 @@ type
   public const
     Method = 'textDocument/inlayHint';
     MaxLabelLength = 50;
+    /// <summary>Längste Bedingung einer Endmarke (#620), danach „…“.</summary>
+    MaxEndLabelLength = 40;
+    /// <summary>Mindestlänge des Blocks aus der Anfrage (#620, editor.blockEndLabels.minLines im Plugin); geht
+    /// inlayHints.endMarkerMinLines vor.</summary>
+    MinLinesParam = 'atlas.endMarkerMinLines';
   private
     FStore: IDocumentStore;
     FIndex: ISymbolIndex;
@@ -172,7 +180,7 @@ begin
 end;
 
 /// <summary>Kopfzeile eines Blocks als Text, z. B. "if Assigned(FTheme)".</summary>
-function HeaderText(const ATokens: TArray<TPascalToken>; AFirst, ALast: Integer): string;
+function HeaderText(const ATokens: TArray<TPascalToken>; AFirst, ALast, AMaxLength: Integer): string;
 var
   Index: Integer;
   Token: TPascalToken;
@@ -195,8 +203,8 @@ begin
     Result := Result + Token.Text;
     Glue := Token.IsSymbol('(') or Token.IsSymbol('[') or Token.IsSymbol('.');
     AfterName := Token.Kind = TPascalTokenKind.Identifier;
-    if Length(Result) > TLspInlayHints.MaxLabelLength then
-      Exit(Copy(Result, 1, TLspInlayHints.MaxLabelLength) + '…');
+    if Length(Result) > AMaxLength then
+      Exit(TrimRight(Copy(Result, 1, AMaxLength)) + '…');
   end;
 end;
 
@@ -502,11 +510,17 @@ begin
       case Node.Kind of
         TSyntaxKind.RoutineDecl, TSyntaxKind.TypeDecl:
           Text := Node.Name;
+        // Woran der Block endet: try (finally) bzw. try (except).
         TSyntaxKind.TryStatement:
-          Text := 'try';
+          if Node.FindChild(TSyntaxKind.FinallyBlock) <> nil then
+            Text := 'try (finally)'
+          else if Node.FindChild(TSyntaxKind.ExceptBlock) <> nil then
+            Text := 'try (except)'
+          else
+            Text := 'try';
       else
         First := FirstTokenAt(Tokens, Node.StartOffset);
-        Text := HeaderText(Tokens, First, EndToken);
+        Text := HeaderText(Tokens, First, EndToken, MaxEndLabelLength);
       end;
       if Text = '' then
         Continue;
@@ -515,11 +529,21 @@ begin
       Next := NextToken(Tokens, EndToken);
       if (Next <= High(Tokens)) and (Tokens[Next].IsSymbol(';') or Tokens[Next].IsSymbol('.')) and
         (Tokens[Next].StartPos.Line = Tokens[EndToken].EndPos.Line) then
+      begin
         Hint.Position := Tokens[Next].EndPos;
+        EndToken := Next;
+      end;
       if not InRange(ARange, Hint.Position) then
+        Continue;
+      // Steht hinter dem end schon ein Kommentar, sagt der genug.
+      Next := EndToken + 1;
+      if (Next <= High(Tokens)) and (Tokens[Next].Kind = TPascalTokenKind.Comment) and
+        (Tokens[Next].StartPos.Line = Hint.Position.Line) then
         Continue;
       Hint.Text := '// ' + Text;
       Hint.PaddingLeft := True;
+      Hint.BlockStart := Node.StartPos;
+      Hint.HasBlockStart := True;
       List.Add(Hint);
     end;
     Result := List.ToArray;
@@ -573,6 +597,10 @@ begin
       Entry.AddPair('paddingLeft', TJSONBool.Create(True));
     if Hint.PaddingRight then
       Entry.AddPair('paddingRight', TJSONBool.Create(True));
+    // Blockanfang für den Sprung per Klick (#620).
+    if Hint.HasBlockStart then
+      Entry.AddPair('data', TJSONObject.Create(TJSONPair.Create('blockStart',
+        TLspPositions.PositionToJson(Hint.BlockStart))));
   end;
 end;
 
@@ -586,6 +614,7 @@ var
   Shared: ISharedSyntaxTree;
   Resolver: TNameResolver;
   Settings: TInlayHintSettings;
+  MinLines: Integer;
 begin
   if not ((AParams is TJSONObject) and TJSONObject(AParams).TryGetValue<string>('textDocument.uri', Uri) and
     TJSONObject(AParams).TryGetValue<TJSONValue>('range', RangeValue)) then
@@ -596,6 +625,9 @@ begin
     Settings := FSettings(Uri)
   else
     Settings := TInlayHintSettings.Default;
+  // Mindestlänge des Plugins (#620).
+  if TJSONObject(AParams).TryGetValue<Integer>(MinLinesParam, MinLines) and (MinLines > 0) then
+    Settings.EndMarkerMinLines := MinLines;
   Cancellation := TRequestCancellation.Create(ACancellation);
   Shared := TSyntaxTreeCache.Get(Document, Cancellation);
   Tree := Shared.Tree;
