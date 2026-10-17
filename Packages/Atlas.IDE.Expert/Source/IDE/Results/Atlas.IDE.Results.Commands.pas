@@ -20,9 +20,6 @@ type
   private
     class var FSessionOf: TFunc<TLspSession>;
     class var FMessage: TProc<string>;
-    class procedure Say(const AText: string); static;
-    /// <summary>Symbol am Cursor: Datei, Position und Name; False (mit Meldung) ohne Server oder Editor.</summary>
-    class function AtCursor(out AFileName: string; out ALine, ACharacter: Integer; out AName: string): Boolean; static;
     class function Entries(const ALocations: TArray<TLspLocation>): TArray<TAtlasResultEntry>; static;
   public
     /// <summary>ASessionOf: laufende Sitzung oder nil; AMessage: Zeile für die Meldungsansicht.</summary>
@@ -30,6 +27,11 @@ type
     class procedure Uninstall; static;
     /// <summary>Laufende Sitzung oder nil; startet keinen Server (auch für das Suchfeld der Willkommensseite, #760).</summary>
     class function Session: TLspSession; static;
+    /// <summary>Zeile für die Meldungsansicht (auch für Definition einblenden, #505).</summary>
+    class procedure Say(const AText: string); static;
+    /// <summary>Symbol am Cursor: Datei, Position und Name; False (mit Meldung) ohne Server oder Editor. Gleicht
+    /// vorher alle offenen Puffer mit dem Server ab.</summary>
+    class function AtCursor(out AFileName: string; out ALine, ACharacter: Integer; out AName: string): Boolean; static;
     class procedure FindReferences; static;
     class procedure FindImplementations; static;
     class procedure ShowHierarchy(ADirection: TAtlasHierarchyDirection); static;

@@ -2007,3 +2007,20 @@ Voraussetzung für EX2 bis EX7: mindestens eine Einstellung trägt `x-experiment
 | NH8 | Datei aus dem Verlauf schließen, Alt+Links | Datei öffnet sich wieder an der Stelle |
 | NH9 | Tastenkonflikte öffnen | Alt+Links/Rechts: Atlas hat Vorrang vor „Zurück/Vor“ der IDE; keine Taste doppelt |
 | NH10 | `navHistory.enabled` aus | Alt+Links/Rechts wieder Zurück/Vor der IDE; Befehle fehlen in der Palette |
+
+## Definition einblenden (#505)
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| PK1 | Cursor auf einen Methodenaufruf, Alt+F12 | Fenster unter der Zeile, so breit wie der Editor, etwa 15 Zeilen hoch; oben die Deklaration (Zielzeile hinterlegt, Name hervorgehoben), darunter „Implementierung · Datei:Zeile“ und der Rumpf |
+| PK2 | Alt+F12 auf einer Methode mit drei Überladungen | Liste links mit drei Einträgen (Datei:Zeile, Auszug); Pfeil ab/auf wechselt, rechts jeweils Deklaration und Implementierung |
+| PK3 | Fenster offen, Escape | Fenster zu, Cursor und oberste Zeile im Editor unverändert |
+| PK4 | Fenster offen, Enter | Datei des Ziels öffnet sich an der Zielzeile (auch eine geschlossene Unit) |
+| PK5 | Lange Implementierung, Bild ab/auf | Ausschnitt scrollt seitenweise; rechts zeigt ein Balken die Lage |
+| PK6 | Umschalt+Alt+F12 auf einem Bezeichner mit Referenzen | Titel „Referenzen auf … (n)“, links je Fundstelle ein Eintrag, rechts die Umgebung (3 Zeilen davor) |
+| PK7 | Dunkles IDE-Thema, Editor gezoomt (Strg+Mausrad), Alt+F12 | Farben, Schrift und Größe wie im Editor; Schlüsselwörter, Strings und Kommentare (auch über mehrere Zeilen) eingefärbt |
+| PK8 | Cursor in der letzten sichtbaren Editorzeile, Alt+F12 | Fenster steht über der Zeile statt darunter |
+| PK9 | Fenster offen, weitertippen oder mit der Maus in den Editor klicken | Fenster schließt sich; die Taste kommt im Editor an |
+| PK10 | `peek.showImplementation` aus | Nur die Deklaration, keine Trennzeile |
+| PK11 | `peek.heightLines` auf 30 | Fenster doppelt so hoch |
+| PK12 | `peek.enabled` aus | Alt+F12 und Umschalt+Alt+F12 machen, was die IDE dafür vorsieht; Befehle fehlen in der Palette |

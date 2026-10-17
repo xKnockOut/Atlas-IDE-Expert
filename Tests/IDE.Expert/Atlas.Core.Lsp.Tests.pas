@@ -80,6 +80,8 @@ type
     [Test]
     procedure RequestsTypingSelectionAndTypeDefinition;
     [Test]
+    procedure RequestsDeclarationsAndDefinitions;
+    [Test]
     procedure MapsIndexBackToColumn;
     [Test]
     procedure WrapsServerSettings;
@@ -1702,6 +1704,41 @@ begin
     Locations := Session.TypeDefinition('C:\P\A.pas', 3, 4);
     Assert.AreEqual(1, Integer(Length(Locations)));
     Assert.AreEqual(12, Locations[0].Line);
+  finally
+    Session.Free;
+    Client.Free;
+    Seen.Free;
+    Replies.Free;
+  end;
+end;
+
+procedure TLspSessionTests.RequestsDeclarationsAndDefinitions;
+var
+  Replies: TDictionary<string, string>;
+  Seen: TStringList;
+  Client: TLspClient;
+  Session: TLspSession;
+  Locations: TArray<TLspLocation>;
+begin
+  Replies := TDictionary<string, string>.Create;
+  Seen := TStringList.Create;
+  Client := CannedClient(Replies, Seen);
+  Session := TLspSession.Create(Client);
+  try
+    Replies.Add('textDocument/declaration', '[{"uri":"file:///c:/p/kunde.pas","range":{"start":' +
+      '{"line":12,"character":4},"end":{"line":12,"character":8}}}]');
+    Replies.Add('textDocument/definition', '[{"uri":"file:///c:/p/kunde.pas","range":{"start":' +
+      '{"line":40,"character":15},"end":{"line":40,"character":19}}},{"uri":"file:///c:/p/b.pas","range":' +
+      '{"start":{"line":2,"character":0},"end":{"line":2,"character":1}}}]');
+    Locations := Session.Declarations('C:\P\A.pas', 3, 4);
+    Assert.AreEqual(1, Integer(Length(Locations)));
+    Assert.AreEqual(12, Locations[0].Line);
+    Assert.AreEqual(4, Locations[0].Character);
+    Assert.Contains(Seen.Text, 'textDocument/declaration');
+    Locations := Session.Definitions('C:\P\A.pas', 3, 4);
+    Assert.AreEqual(2, Integer(Length(Locations)));
+    Assert.AreEqual(40, Locations[0].Line);
+    Assert.AreEqual(2, Locations[1].Line);
   finally
     Session.Free;
     Client.Free;

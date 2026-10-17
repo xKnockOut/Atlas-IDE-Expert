@@ -286,6 +286,10 @@ begin
       Id := TAtlasTextId.NavForwardCommand;
     TAtlasKeyFunction.LastEdit:
       Id := TAtlasTextId.NavLastEditCommand;
+    TAtlasKeyFunction.PeekDefinition:
+      Id := TAtlasTextId.PeekDefinitionCommand;
+    TAtlasKeyFunction.PeekReferences:
+      Id := TAtlasTextId.PeekReferencesCommand;
   else
     Id := TAtlasTextId.KeyMapUnitSearchIde;
   end;

@@ -71,6 +71,7 @@ uses
   Atlas.IDE.Commands.Editor,
   Atlas.IDE.Commands.QuickOpen,
   Atlas.IDE.Editor.NavHistory,
+  Atlas.IDE.Results.Peek,
   Atlas.IDE.UnitSearch.Commands,
   Atlas.IDE.Generate.Commands,
   Atlas.IDE.Generate.NewFile,
@@ -895,6 +896,11 @@ begin
   Result := TAtlasIdeSettings.Current.NavHistory;
 end;
 
+function PeekVisible: Boolean;
+begin
+  Result := TAtlasIdeSettings.Current.Peek;
+end;
+
 function DiagnosticModeVisible: Boolean;
 begin
   Result := TAtlasIdeSettings.Current.DiagnosticMode;
@@ -1029,6 +1035,10 @@ begin
     Guarded(TAtlasFeature.EditorCommands, TAtlasIdeNavHistory.GoLastEdit), NavHistoryVisible);
   Add('Atlas.NavList', TAtlasTextId.NavListCommand,
     Guarded(TAtlasFeature.EditorCommands, TAtlasIdeNavHistory.ShowList), NavHistoryVisible);
+  Add('Atlas.PeekDefinition', TAtlasTextId.PeekDefinitionCommand,
+    Guarded(TAtlasFeature.EditorCommands, TAtlasIdePeek.PeekDefinition), PeekVisible);
+  Add('Atlas.PeekReferences', TAtlasTextId.PeekReferencesCommand,
+    Guarded(TAtlasFeature.EditorCommands, TAtlasIdePeek.PeekReferences), PeekVisible);
   Add('Atlas.Callers', TAtlasTextId.MenuIncoming, Hierarchy(TAtlasHierarchyDirection.Incoming));
   Add('Atlas.Calls', TAtlasTextId.MenuOutgoing, Hierarchy(TAtlasHierarchyDirection.Outgoing));
   Add('Atlas.Supertypes', TAtlasTextId.MenuSupertypes, Hierarchy(TAtlasHierarchyDirection.Supertypes));
@@ -1938,6 +1948,8 @@ begin
     end);
   // Navigationsverlauf (#504): Sprünge und Bearbeitungsstellen der Sitzung.
   TAtlasIdeNavHistory.Install;
+  // Definition und Referenzen einblenden (#505).
+  TAtlasIdePeek.Install;
   // Schnell öffnen (#503): Dateiliste im Hintergrund, zuletzt geöffnete Dateien zählen.
   TAtlasIdeQuickOpen.Install(
     function: TLspSession
@@ -1963,6 +1975,7 @@ end;
 procedure StopCommands;
 begin
   TAtlasIdeQuickOpen.Uninstall;
+  TAtlasIdePeek.Uninstall;
   TAtlasIdeNavHistory.Uninstall;
   TAtlasIdeUnitSearch.Uninstall;
   TAtlasIdeGenerate.Uninstall;
