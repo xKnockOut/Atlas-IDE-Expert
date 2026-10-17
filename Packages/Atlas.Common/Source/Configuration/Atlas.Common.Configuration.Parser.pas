@@ -1297,7 +1297,10 @@ begin
           else if BdsVersionOf(Text) = '' then
             ReportNode(Value, 'Unbekannte Delphi-Version; erwartet z. B. "13" oder "37.0" für Delphi 13, "12" oder "23.0" für Delphi 12')
           else
+          begin
             FSettings.DelphiVersion := BdsVersionOf(Text);
+            FSettings.DelphiVersionRange := TTextRange.Create(PositionAt(Value.Start), PositionAt(Value.Stop));
+          end;
       end
       else if Key = 'language' then
       begin
@@ -1662,7 +1665,10 @@ begin
     Exit;
   for Key in RootKeys(AFileText) do
     if Key = 'delphiVersion' then
-      Result.DelphiVersion := FileSettings.DelphiVersion
+    begin
+      Result.DelphiVersion := FileSettings.DelphiVersion;
+      Result.DelphiVersionRange := FileSettings.DelphiVersionRange;
+    end
     else if Key = 'language' then
       Result.Language := FileSettings.Language
     else if Key = 'encoding' then
