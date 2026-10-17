@@ -27,6 +27,9 @@ type
     /// <summary>#621: data.tag einer CodeAction landet in Tag.</summary>
     [Test]
     procedure CodeActionCarriesTag;
+    /// <summary>#503: Gliederung flach, Container = Elternsymbol; SymbolInformation ebenso.</summary>
+    [Test]
+    procedure DocumentSymbolsAreFlattened;
   end;
 
 implementation
@@ -36,6 +39,7 @@ uses
   System.SysUtils,
   System.JSON,
   Atlas.Core.Projects.Contract,
+  Atlas.Core.Lsp.Contract,
   Atlas.Core.Lsp.Session;
 
 function Context(const AProject: string): TAtlasProjectContext;
@@ -179,6 +183,43 @@ begin
   finally
     Value.Free;
   end;
+end;
+
+procedure TLspInitializeParamsTests.DocumentSymbolsAreFlattened;
+var
+  Response: TJSONValue;
+  Symbols: TArray<TAtlasSymbol>;
+begin
+  Response := TJSONObject.ParseJSONValue('[{"name":"TKunde","kind":5,"range":{"start":{"line":3,"character":2}},' +
+    '"selectionRange":{"start":{"line":3,"character":4}},"children":[{"name":"Laden","kind":6,' +
+    '"selectionRange":{"start":{"line":9,"character":14}}}]},{"name":"Hilfe","kind":12,' +
+    '"range":{"start":{"line":20,"character":0}}}]');
+  try
+    Symbols := TLspSession.SymbolsOfDocument(Response, 'C:\P\Kunden.pas');
+  finally
+    Response.Free;
+  end;
+  Assert.AreEqual(3, Integer(Length(Symbols)));
+  Assert.AreEqual('TKunde', Symbols[0].Name);
+  Assert.AreEqual(4, Symbols[0].Character);
+  Assert.AreEqual('Laden', Symbols[1].Name);
+  Assert.AreEqual('TKunde', Symbols[1].Container);
+  Assert.AreEqual(9, Symbols[1].Line);
+  Assert.AreEqual('C:\P\Kunden.pas', Symbols[1].FileName);
+  Assert.AreEqual('Hilfe', Symbols[2].Name);
+  Assert.AreEqual(20, Symbols[2].Line);
+  Assert.AreEqual('', Symbols[2].Container);
+  Response := TJSONObject.ParseJSONValue('[{"name":"Laden","kind":6,"containerName":"TKunde",' +
+    '"location":{"uri":"file:///C:/P/Kunden.pas","range":{"start":{"line":7,"character":3}}}}]');
+  try
+    Symbols := TLspSession.SymbolsOfDocument(Response, 'C:\P\Kunden.pas');
+  finally
+    Response.Free;
+  end;
+  Assert.AreEqual(1, Integer(Length(Symbols)));
+  Assert.AreEqual('TKunde', Symbols[0].Container);
+  Assert.AreEqual(7, Symbols[0].Line);
+  Assert.AreEqual(Integer(0), Integer(Length(TLspSession.SymbolsOfDocument(nil, 'x'))));
 end;
 
 initialization

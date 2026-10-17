@@ -69,6 +69,7 @@ uses
   Atlas.Core.Results.Model,
   Atlas.IDE.Results.Commands,
   Atlas.IDE.Commands.Editor,
+  Atlas.IDE.Commands.QuickOpen,
   Atlas.IDE.UnitSearch.Commands,
   Atlas.IDE.Generate.Commands,
   Atlas.IDE.Generate.NewFile,
@@ -883,6 +884,11 @@ begin
   Result := TAtlasIdeSettings.Current.BookmarksNamed;
 end;
 
+function QuickOpenVisible: Boolean;
+begin
+  Result := TAtlasIdeSettings.Current.QuickOpen;
+end;
+
 function DiagnosticModeVisible: Boolean;
 begin
   Result := TAtlasIdeSettings.Current.DiagnosticMode;
@@ -1005,6 +1011,9 @@ begin
   Add('Atlas.References', TAtlasTextId.MenuReferences, TAtlasIdeResults.FindReferences);
   Add('Atlas.Implementations', TAtlasTextId.MenuImplementations, TAtlasIdeResults.FindImplementations);
   Add('Atlas.SymbolSearch', TAtlasTextId.MenuSymbolSearch, TAtlasIdeResults.SearchSymbol);
+  // Schnell öffnen (#503); nur sichtbar, solange quickOpen.enabled an ist.
+  Add('Atlas.QuickOpen', TAtlasTextId.QuickOpenTitle, Guarded(TAtlasFeature.Palette, TAtlasIdeQuickOpen.Show),
+    QuickOpenVisible);
   Add('Atlas.Callers', TAtlasTextId.MenuIncoming, Hierarchy(TAtlasHierarchyDirection.Incoming));
   Add('Atlas.Calls', TAtlasTextId.MenuOutgoing, Hierarchy(TAtlasHierarchyDirection.Outgoing));
   Add('Atlas.Supertypes', TAtlasTextId.MenuSupertypes, Hierarchy(TAtlasHierarchyDirection.Supertypes));
@@ -1912,6 +1921,14 @@ begin
     begin
       TAtlasIdeEditorCommands.ApplyAction(AAction);
     end);
+  // Schnell öffnen (#503): Dateiliste im Hintergrund, zuletzt geöffnete Dateien zählen.
+  TAtlasIdeQuickOpen.Install(
+    function: TLspSession
+    begin
+      Result := nil;
+      if Manager <> nil then
+        Result := Manager.ActiveSession;
+    end);
   // Units suchen (#777): übernimmt Strg+F12, solange die Einstellungen es wollen.
   TAtlasIdeUnitSearch.Install(
     function: TLspSession
@@ -1928,6 +1945,7 @@ end;
 
 procedure StopCommands;
 begin
+  TAtlasIdeQuickOpen.Uninstall;
   TAtlasIdeUnitSearch.Uninstall;
   TAtlasIdeGenerate.Uninstall;
   TAtlasEditorTestUnitLens.OnSwitchTestUnit := nil;

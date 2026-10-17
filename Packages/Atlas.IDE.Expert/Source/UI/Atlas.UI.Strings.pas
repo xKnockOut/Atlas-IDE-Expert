@@ -548,7 +548,9 @@ type
     TypeArgHeader, TypeArgHeaderPlain, TypeArgOnlyClasses, TypeArgOnlyValues, TypeArgOnlyConstructible,
     TypeArgImplements, TypeArgDescends, TypeArgHiddenFooter, TypeArgKindClasses, TypeArgKindRecords,
     TypeArgKindInterfaces, TypeArgKindEnums, TypeArgKindBasic, SettingsInlayTypeHints, ElementInlayTypeHints,
-    ElementInlayTypeHintsPlural);
+    ElementInlayTypeHintsPlural, QuickOpenTitle, QuickOpenPrompt, QuickOpenOriginProject, QuickOpenOriginSearchPath,
+    QuickOpenOriginLibrary, QuickOpenLine, QuickOpenLineHint, QuickOpenBuilding, QuickOpenNoEditor,
+    SettingsQuickOpen, SettingsQuickOpenLibrary, SettingsQuickOpenKey);
 
   TAtlasStrings = class
   private class var
@@ -1597,7 +1599,10 @@ const
      'nur Records und Grundtypen', 'nur Klassen mit parameterlosem Konstruktor', 'nur Typen, die %s implementieren',
      'nur Typen, die von %s abgeleitet sind', 'Ausgeblendet: %s', 'Klassen', 'Records', 'Interfaces',
      'Aufzählungen', 'Grundtypen', 'Typ von Inline-Variablen hinter dem Zeilenende zeigen (var X := …)',
-     'Typmarke', 'Typmarken'),
+     'Typmarke', 'Typmarken', 'Schnell öffnen', 'Datei suchen · @ Symbol der Datei · # Symbol im Projekt · : Zeile',
+     'Projekt', 'Suchpfad', 'Bibliothek', 'Zeile %d', 'Zeilennummer eingeben', 'Dateiliste wird aufgebaut …',
+     'Keine Datei im Editor', 'Schnell öffnen (Datei und Symbol, Strg+P)', 'Auch die Quellen von RTL und VCL',
+     'Taste für „Schnell öffnen“'),
     ('Enter to accept · Esc to close', '%d of %d', 'No matches for “%s”', 'Backspace widens the search',
      'No suggestions here', 'Esc closes', 'No details for this entry', 'Overload', 'Deprecated: %s', 'Deprecated.',
      'Inherited from %s', 'Inherited', 'optional, default %s', 'No overload with %d parameters.', '… %d more',
@@ -2569,7 +2574,10 @@ const
      'Type argument %s', 'classes only', 'records and basic types only',
      'only classes with a parameterless constructor', 'only types implementing %s', 'only types descending from %s',
      'Hidden: %s', 'classes', 'records', 'interfaces', 'enumerations', 'basic types',
-     'Show the type of inline variables at the line end (var X := …)', 'type mark', 'type marks'));
+     'Show the type of inline variables at the line end (var X := …)', 'type mark', 'type marks', 'Quick open',
+     'Search files · @ symbol in file · # symbol in project · : line', 'Project', 'Search path', 'Library',
+     'Line %d', 'Enter a line number', 'Building the file list …', 'No file in the editor',
+     'Quick open (file and symbol, Ctrl+P)', 'Also the RTL and VCL sources', 'Key for “Quick open”'));
 
 { TAtlasStrings }
 
