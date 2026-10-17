@@ -73,6 +73,8 @@ type
   TAtlasWhatsNewRow = record
     Version: string;
     Item: TAtlasWhatsNewItem;
+    /// <summary>Überschrift „Experimentell“ vor der ersten experimentellen Zeile (#834); sonst nil.</summary>
+    Section: TLabel;
     Title: TLabel;
     Key: TLabel;
     Text: TLabel;
@@ -309,7 +311,8 @@ var
   Heading: TLabel;
   Switch: TAtlasWhatsNewSwitch;
   KeyText: string;
-  Headed: Boolean;
+  Headed, InExperimental: Boolean;
+  Section: TLabel;
 begin
   FUpdating := True;
   try
@@ -334,9 +337,21 @@ begin
       end;
       if not IsExpanded(Version.Version) then
         Continue;
-      for Item in Version.Items do
+      InExperimental := False;
+      // Experimentelle Einträge nach den übrigen unter eigener Überschrift (#834).
+      for Item in TAtlasWhatsNew.Ordered(Version.Items) do
       begin
+        Section := nil;
+        if Item.Experimental and not InExperimental then
+        begin
+          InExperimental := True;
+          Section := Add(TLabel.Create(nil));
+          Section.Caption := TAtlasStrings.Text(TAtlasTextId.WelcomeNewsExperimental);
+          Section.Font.Style := [fsItalic];
+          Section.Font.Color := clGrayText;
+        end;
         Row := Default(TAtlasWhatsNewRow);
+        Row.Section := Section;
         Row.Version := Version.Version;
         Row.Item := Item;
         Row.Title := Add(TLabel.Create(nil));
@@ -416,6 +431,11 @@ var
   begin
     Left := ScaleValue(Indent);
     Right := Width - ScaleValue(Indent);
+    if ARow.Section <> nil then
+    begin
+      ARow.Section.SetBounds(Left, Top, ARow.Section.Width, ARow.Section.Height);
+      Inc(Top, ARow.Section.Height + Gap div 2);
+    end;
     if ARow.TryButton <> nil then
     begin
       Dec(Right, ScaleValue(TryWidth));

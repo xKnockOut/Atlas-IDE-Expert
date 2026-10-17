@@ -8,7 +8,8 @@
 // (Atlas.Core.Settings.Transfer): nur geänderte Werte, keine Zugangsdaten und
 // Benutzerpfade, Projekt- und Teamwerte bleiben unberührt. Vor Import und
 // Zurücksetzen kommt eine Sicherung nach %APPDATA%\Atlas\Backups
-// (settings.backupBeforeImport). Profile: minimal, atlas-standard, alles-an.
+// (settings.backupBeforeImport). Profile: minimal, atlas-standard, alles-an,
+// alles-an-experimentell (#834).
 // Gelesen und geschrieben wird nur über ISetupSystem (Registry
 // HKCU\Software\Atlas\IdePlugin und settings.json), darum mit einer Attrappe
 // testbar. Eine laufende IDE übernimmt die Werte erst beim nächsten Start.
@@ -241,7 +242,7 @@ begin
     ASystem.DeleteFile(Join(Folder, Name));
 end;
 
-/// <summary>Profilname ohne Pfad und Endung (minimal, atlas-standard, alles-an) → Inhalt; sonst ''.</summary>
+/// <summary>Profilname ohne Pfad und Endung (minimal, atlas-standard, alles-an, alles-an-experimentell) → Inhalt; sonst ''.</summary>
 function ProfileText(const AName: string): string;
 var
   FileName: string;

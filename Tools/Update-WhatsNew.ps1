@@ -16,6 +16,11 @@
       command  Atlas-Befehl der Befehlspalette für „Ausprobieren“
       sample   Beispieldatei relativ zum Installationsordner (Setup/Beispiele -> Beispiele\…)
       line     Zeile in der Beispieldatei ab 1
+      experimental  true, wenn die Funktion experimentell ist (#834); ebenso alle
+               Einträge unter einer Überschrift „### Experimentell“ der Version
+
+    Experimentelle Einträge zeigt die Karte in einem eigenen Abschnitt
+    „Experimentell“ mit dem Hinweis auf den Hauptschalter.
 
     Ohne Markierung kommt ein Eintrag nicht auf die Karte. Markdown (`code`,
     *kursiv*, **fett**, Links) wird zu Text. Mit -Unreleased zählt der
@@ -36,7 +41,7 @@ param(
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
-$Fields = 'title', 'text', 'setting', 'key', 'command', 'sample', 'line'
+$Fields = 'title', 'text', 'setting', 'key', 'command', 'sample', 'line', 'experimental'
 
 function ConvertFrom-Markdown([string] $Text) {
     $Text = [regex]::Replace($Text, '\[([^\]]*)\]\([^)]*\)', '$1')
@@ -77,6 +82,10 @@ function ConvertTo-WhatsNewItem([string] $Line) {
     $Item = [ordered]@{ title = $Title; text = $Text }
     foreach ($Name in $Values.Keys) {
         if ($Name -eq 'line') { $Item.line = [int] $Values[$Name] }
+        elseif ($Name -eq 'experimental') {
+            if ($Values[$Name] -notin 'true', 'false') { throw "experimental muss true oder false sein: $Line" }
+            if ($Values[$Name] -eq 'true') { $Item.experimental = $true }
+        }
         elseif ($Name -eq 'sample') { $Item.sample = $Values[$Name].Replace('/', '\') }
         else { $Item[$Name] = $Values[$Name] }
     }
@@ -89,10 +98,16 @@ function ConvertTo-WhatsNewItem([string] $Line) {
 
 $Versions = [System.Collections.Generic.List[object]]::new()
 $Current = $null
+$InExperimental = $false
 foreach ($Line in Get-Content -Encoding utf8 (Join-Path $Root 'CHANGELOG.md')) {
+    if ($Line -match '^###\s+(.*?)\s*$') {
+        $InExperimental = $Matches[1] -eq 'Experimentell'
+        continue
+    }
     if ($Line -match '^## \[([^\]]+)\]') {
         $Name = $Matches[1]
         $Current = $null
+        $InExperimental = $false
         if ($Name -eq 'Unveröffentlicht') {
             if (-not $Unreleased) { continue }
             $Name = $Unreleased
@@ -103,7 +118,9 @@ foreach ($Line in Get-Content -Encoding utf8 (Join-Path $Root 'CHANGELOG.md')) {
     }
     if ($null -eq $Current -or $Line -notmatch '^\s*-\s') { continue }
     $Item = ConvertTo-WhatsNewItem $Line
-    if ($null -ne $Item) { $Current.items.Add($Item) }
+    if ($null -eq $Item) { continue }
+    if ($InExperimental) { $Item.experimental = $true }
+    $Current.items.Add($Item)
 }
 
 $Result = [ordered]@{ versions = @($Versions | Where-Object { $_.items.Count -gt 0 } | ForEach-Object {

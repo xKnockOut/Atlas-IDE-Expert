@@ -383,6 +383,11 @@ type
     FSettingsBackupBeforeImport: TCheckBox;
     FSettingsExportSecrets: TAtlasChoiceBox;
     FTransferBar: TWinControl;
+    /// <summary>Hauptschalter der experimentellen Funktionen (#834), Hinweis darüber und Filter unten.</summary>
+    FExperimentalEnabled: TCheckBox;
+    FExperimentalBanner: TWinControl;
+    FFilterRow: TWinControl;
+    FFilter: TAtlasChoiceBox;
     FExportButton: TButton;
     FImportButton: TButton;
     FProfileButton: TButton;
@@ -447,6 +452,12 @@ type
     procedure ResetWidthsClick(Sender: TObject);
     procedure HangTestClick(Sender: TObject);
     procedure DiagnosticModeClick(Sender: TObject);
+    procedure ExperimentalAllowClick(Sender: TObject);
+    procedure FilterChange(Sender: TObject);
+    /// <summary>Kopfzeile mit Hinweis und Knopf „Erlauben“, solange experimental.enabled aus ist (#834).</summary>
+    procedure AddExperimentalBanner;
+    /// <summary>Zeile unten mit dem Filter Alle / Geändert / Nur experimentelle (#834).</summary>
+    procedure AddFilterRow;
     procedure PairColorsClick(Sender: TObject);
     procedure FuseEnableSelectedClick(Sender: TObject);
     procedure FuseEnableAllClick(Sender: TObject);
@@ -551,6 +562,9 @@ type
     /// <summary>Zum Testen: Einstellungen des Statusfelds (#591).</summary>
     property StatusField: TCheckBox read FStatusField;
     property DiagnosticMode: TCheckBox read FDiagnosticMode;
+    property ExperimentalEnabled: TCheckBox read FExperimentalEnabled;
+    property ExperimentalBanner: TWinControl read FExperimentalBanner;
+    property Filter: TAtlasChoiceBox read FFilter;
     /// <summary>Zeile mit „Wächter testen“; nur im Diagnosemodus sichtbar (Code-Review S-07).</summary>
     property HangTestRow: TWinControl read FHangTestRow;
     property SetupChecklist: TCheckBox read FSetupChecklist;
@@ -773,6 +787,7 @@ uses
   Atlas.Core.Notifications.Sources,
   Atlas.Core.Build.OpenBuild,
   Atlas.Core.Settings.Transfer,
+  Atlas.Core.Settings.Experimental,
   Atlas.UI.Notifications.Window;
 
 /// <summary>Bezeichnung einer Reihe des Projektverlaufs (#758) wie auf ihrer Kachel.</summary>
@@ -924,6 +939,7 @@ begin
   Title.Top := 12;
   Title.Caption := TAtlasStrings.Text(TAtlasTextId.SettingsTitle);
   Title.Font.Style := [fsBold];
+  AddExperimentalBanner;
   // Reiter je Bereich (#227); jeder stapelt seine Elemente neu von oben. Viele Reiter: in Zeilen.
   // Bereiche als Liste links; die Reiter selbst bleiben unsichtbar und werden von der Liste umgeschaltet.
   FNav := TListBox.Create(Self);
@@ -998,6 +1014,8 @@ begin
   FDiagnosticMode := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsDiagnosticMode));
   // Prüfliste der Einrichtung beim Start (#625); aus: nur auf Abruf.
   FSetupChecklist := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsSetupChecklist));
+  // Hauptschalter der experimentellen Funktionen (#834).
+  FExperimentalEnabled := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsExperimentalEnabled));
   // Tastenkürzel-Tipps (#600); Reihenfolge wie TAtlasTipScope: atlas, all.
   FShortcutTips := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsShortcutTips));
   FShortcutTipsScope := AddChoice(TAtlasStrings.Text(TAtlasTextId.SettingsShortcutTipsScope),
@@ -1258,7 +1276,75 @@ begin
   Bind('WelcomePageColumns', FWelcomeColumns);
   Bind('WelcomePageActiveLayout', FWelcomeActiveLayout);
   Bind('WelcomePageLayouts', FWelcomeActiveLayout);
+  Bind('ExperimentalEnabled', FExperimentalEnabled);
   BindControls;
+  AddFilterRow;
+end;
+
+procedure TAtlasSettingsPage.AddExperimentalBanner;
+var
+  Text: TLabel;
+  Button: TButton;
+begin
+  FExperimentalBanner := TAtlasSettingsRow.Create(Self);
+  FExperimentalBanner.Parent := Self;
+  FExperimentalBanner.Align := alTop;
+  FExperimentalBanner.AlignWithMargins := True;
+  FExperimentalBanner.Top := 50;
+  FExperimentalBanner.Height := 28;
+  FExperimentalBanner.Visible := False;
+  Button := TButton.Create(Self);
+  Button.Parent := FExperimentalBanner;
+  Button.Align := alRight;
+  Button.Width := 90;
+  Button.Caption := TAtlasStrings.Text(TAtlasTextId.SettingsExperimentalAllow);
+  Button.OnClick := ExperimentalAllowClick;
+  Text := TLabel.Create(Self);
+  Text.Parent := FExperimentalBanner;
+  Text.Align := alClient;
+  Text.Layout := tlCenter;
+  Text.WordWrap := True;
+  Text.Caption := TAtlasStrings.Text(TAtlasTextId.SettingsExperimentalOff);
+end;
+
+procedure TAtlasSettingsPage.AddFilterRow;
+var
+  Caption: TLabel;
+begin
+  FFilterRow := TAtlasSettingsRow.Create(Self);
+  FFilterRow.Parent := Self;
+  FFilterRow.Align := alBottom;
+  FFilterRow.AlignWithMargins := True;
+  FFilterRow.Height := 26;
+  Caption := TLabel.Create(Self);
+  Caption.Parent := FFilterRow;
+  Caption.Left := 0;
+  Caption.Top := 5;
+  Caption.Caption := TAtlasStrings.Text(TAtlasTextId.SettingsFilter);
+  // Reihenfolge wie TAtlasSettingsFilter.
+  FFilter := TAtlasChoiceBox.Create(Self);
+  FFilter.Parent := FFilterRow;
+  FFilter.Left := 60;
+  FFilter.Top := 1;
+  FFilter.Width := 180;
+  FFilter.SetChoices([TAtlasStrings.Text(TAtlasTextId.SettingsFilterAll),
+    TAtlasStrings.Text(TAtlasTextId.SettingsFilterModified),
+    TAtlasStrings.Text(TAtlasTextId.SettingsFilterExperimental)]);
+  FFilter.Choice := 0;
+  FFilter.OnChange := FilterChange;
+  FMarks.MarkExperimental(TAtlasExperimental.PluginNames(Catalog));
+end;
+
+procedure TAtlasSettingsPage.ExperimentalAllowClick(Sender: TObject);
+begin
+  // Wie ein Klick auf das Kontrollkästchen: Punkte und Hinweis folgen über die Bindung.
+  FExperimentalEnabled.Checked := True;
+end;
+
+procedure TAtlasSettingsPage.FilterChange(Sender: TObject);
+begin
+  if (FFilter.Choice >= Ord(Low(TAtlasSettingsFilter))) and (FFilter.Choice <= Ord(High(TAtlasSettingsFilter))) then
+    FMarks.ApplyFilter(TAtlasSettingsFilter(FFilter.Choice));
 end;
 
 procedure TAtlasSettingsPage.Bind(const AKey: string; AControl: TControl);
@@ -1961,6 +2047,7 @@ begin
   FMarks.Bind(FProblemsList, ['ProblemsList']);
   FMarks.Bind(FStatusField, ['StatusField']);
   FMarks.Bind(FDiagnosticMode, ['DiagnosticMode']);
+  FMarks.Bind(FExperimentalEnabled, ['ExperimentalEnabled']);
   FMarks.Bind(FSetupChecklist, ['SetupChecklist']);
   FMarks.Bind(FShortcutTips, ['ShortcutTips']);
   FMarks.Bind(FShortcutTipsScope, ['ShortcutTipsScope']);
@@ -2118,6 +2205,10 @@ begin
   if FSettingsMarkModified.Checked then
     Modified := TAtlasSettingsTransfer.ModifiedNames(Catalog, CurrentSettings);
   FMarks.Show(Modified, FSettingsMarkModified.Checked);
+  FExperimentalBanner.Visible := FMarks.HasExperimental and not FExperimentalEnabled.Checked;
+  // Geänderte Werte ändern sich mit jeder Eingabe; der Filter folgt.
+  if FMarks.Filter = sfModified then
+    FMarks.ApplyFilter(sfModified);
 end;
 
 procedure TAtlasSettingsPage.MarksChanged(Sender: TObject);
@@ -2902,6 +2993,7 @@ begin
   FProblemsList.Checked := ASettings.ProblemsList;
   FStatusField.Checked := ASettings.StatusField;
   FDiagnosticMode.Checked := ASettings.DiagnosticMode;
+  FExperimentalEnabled.Checked := ASettings.ExperimentalEnabled;
   // Checked löst OnClick nur bei einer Änderung aus.
   FHangTestRow.Visible := ASettings.DiagnosticMode;
   FSetupChecklist.Checked := ASettings.SetupChecklist;
@@ -3153,6 +3245,7 @@ begin
   ASettings.ProblemsList := FProblemsList.Checked;
   ASettings.StatusField := FStatusField.Checked;
   ASettings.DiagnosticMode := FDiagnosticMode.Checked;
+  ASettings.ExperimentalEnabled := FExperimentalEnabled.Checked;
   ASettings.SetupChecklist := FSetupChecklist.Checked;
   ASettings.ShortcutTips := FShortcutTips.Checked;
   ASettings.ShortcutTipsScope := TAtlasShortcutTips.ScopeName(TAtlasTipScope(EnsureRange(FShortcutTipsScope.Choice,

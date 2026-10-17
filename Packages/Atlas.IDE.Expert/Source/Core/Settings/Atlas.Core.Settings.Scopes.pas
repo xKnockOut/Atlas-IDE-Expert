@@ -91,6 +91,7 @@ begin
     Setting('InlayHints', 'inlayHints.parameterNames', True),
     Setting('CodeLensMetrics', 'codeLens.metrics', True),
     Setting('Metrics', 'metrics', True),
+    Setting('ExperimentalEnabled', 'experimental.enabled', True),
     Setting('CompileOnSave', 'compiler.onSave', True)];
 end;
 

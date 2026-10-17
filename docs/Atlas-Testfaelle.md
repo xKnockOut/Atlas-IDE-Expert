@@ -1821,3 +1821,20 @@ Voraussetzung: VCL-Quellen über die Bibliothekspfade im Index.
 | DC2 | Kommentar vorhanden, Parameter `Discount: Double` ergänzen, Alt+Enter auf der Deklaration | „Fehlende <param> ergänzen“ fügt genau `<param name="Discount">` ein (**Abnahme**) |
 | DC3 | Parameter `Rate` in `Factor` umbenennen, Alt+Enter | „Dokumentation an die Signatur anpassen“: `<param name="Rate">…</param>` wird zu `<!-- entfernt: Rate: … -->`, die Beschreibung bleibt, `<param name="Factor">` kommt dazu |
 | DC4 | In `settings.json` `"completeBlocks": {"docComment": false}`, Server neu laden, `///` tippen | `///` bleibt stehen, kein Gerüst, keine Code-Aktionen zum Kommentar (**Abnahme**) |
+
+## Kennzeichnung „Experimentell“ (#834)
+
+Voraussetzung für EX2 bis EX7: mindestens eine Einstellung trägt `x-experimental` (die ersten kommen mit Block C; zum Testen vorübergehend an einer Einstellung im Plugin-Katalog setzen und `pwsh Tools/Update-ConfigDoc.ps1` ausführen).
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| EX1 | Optionsseite, Reiter „Allgemein“ | Kontrollkästchen „Experimentelle Funktionen erlauben (experimental.enabled)“, aus (**Abnahme**) |
+| EX2 | Experimentelle Einstellung suchen | Beschriftung endet auf „[Experimentell]“; oben der Hinweis „⚠ Experimentelle Funktionen sind aus …“ mit „Erlauben“ (**Abnahme**) |
+| EX3 | Experimentellen Schalter an, Hauptschalter aus, OK | Funktion bleibt aus; der Schalter bleibt gespeichert (**Abnahme**) |
+| EX4 | „Erlauben“ im Hinweis, OK | Hinweis verschwindet, Funktion wirkt ohne Neustart der IDE; Statusfeld-Tooltip „Experimentell an: …“ (**Abnahme**) |
+| EX5 | Unten „Filter:“ auf „Nur experimentelle“, dann „Geändert“, dann „Alle“ | Nur experimentelle bzw. geänderte Einstellungen sichtbar; „Alle“ zeigt wieder alles |
+| EX6 | Schnellschalter (#604) öffnen | Experimentelle Einträge tragen „[Experimentell]“ |
+| EX7 | Fehlerbericht erzeugen (EX4 aktiv) | Zeile „- Experimentell: …“ nennt die aktiven experimentellen Schalter; ohne aktive „keine“ (**Abnahme**) |
+| EX8 | Profil „Alles an“ importieren, dann „Alles an, auch experimentell“ | „Alles an“ lässt experimental.enabled aus; das zweite Profil schaltet es und alle experimentellen Funktionen ein |
+| EX9 | whatsnew.json mit einem Eintrag `"experimental": true`, Willkommensseite „Neu in Atlas“ | Eintrag steht nach den übrigen unter „Experimentell (wirkt erst mit …)“ |
+| EX10 | Englische IDE | Hauptschalter, Hinweis, Filter und Kennzeichnung auf Englisch |

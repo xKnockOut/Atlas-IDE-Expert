@@ -16,7 +16,9 @@
 // Welche Versionen die Karte zeigt, regelt welcomePage.whatsNew: off nie,
 // afterUpdate einmalig nach einem Versionswechsel (alle übersprungenen
 // Versionen, nach Version gruppiert), always immer (dann ohne Ungelesenes die
-// Neuerungen der aktuellen Version). Die zuletzt gesehene Version steht in
+// Neuerungen der aktuellen Version). "experimental": true kennzeichnet eine
+// experimentelle Funktion (#834); die Karte zeigt solche Einträge nach den
+// übrigen unter einer eigenen Überschrift. Die zuletzt gesehene Version steht in
 // der Registry des Plugins; bei der ersten Installation gibt es nichts
 // Ungelesenes.
 
@@ -36,6 +38,8 @@ type
     Sample: string;
     /// <summary>Zeile in Sample ab 1; 0 = Anfang.</summary>
     Line: Integer;
+    /// <summary>Experimentelle Funktion (#834): eigener Abschnitt auf der Karte.</summary>
+    Experimental: Boolean;
   end;
 
   TAtlasWhatsNewVersion = record
@@ -74,6 +78,9 @@ type
     /// zuerst). Einträge mit einem Titel, den die Version schon hat, fallen weg (#767: neue Bereiche).</summary>
     class function WithItems(const AVersions: TAtlasWhatsNewVersions; const AVersion: string;
       const AItems: TArray<TAtlasWhatsNewItem>): TAtlasWhatsNewVersions; static;
+    /// <summary>AItems mit den übrigen Einträgen zuerst und den experimentellen danach, jeweils in der
+    /// Reihenfolge der Datei (#834).</summary>
+    class function Ordered(const AItems: TArray<TAtlasWhatsNewItem>): TArray<TAtlasWhatsNewItem>; static;
     /// <summary>Einstellung welcomePage.whatsNew; Unbekanntes gilt als afterUpdate.</summary>
     class function ModeOf(const AValue: string): TAtlasWhatsNewMode; static;
     class function ModeName(AMode: TAtlasWhatsNewMode): string; static;
@@ -117,6 +124,14 @@ begin
     Result := StrToIntDef(TJSONString(Value).Value, 0);
   if Result < 0 then
     Result := 0;
+end;
+
+function Flag(AObject: TJSONObject; const AName: string): Boolean;
+var
+  Value: TJSONValue;
+begin
+  Value := AObject.GetValue(AName);
+  Result := ((Value is TJSONBool) and TJSONBool(Value).AsBoolean) or ((Value is TJSONString) and SameText(Trim(TJSONString(Value).Value), 'true'));
 end;
 
 class function TAtlasWhatsNew.Parse(const AJson: string): TAtlasWhatsNewVersions;
@@ -163,6 +178,7 @@ begin
         Item.Command := Text(TJSONObject(ItemValue), 'command');
         Item.Sample := Text(TJSONObject(ItemValue), 'sample');
         Item.Line := Number(TJSONObject(ItemValue), 'line');
+        Item.Experimental := Flag(TJSONObject(ItemValue), 'experimental');
         if Item.Title <> '' then
           Version.Items := Version.Items + [Item];
       end;
@@ -351,6 +367,21 @@ begin
   // Eine neu angelegte Version ohne Einträge gäbe es in Parse nicht.
   if Length(Result[Target].Items) = 0 then
     Delete(Result, Target, 1);
+end;
+
+class function TAtlasWhatsNew.Ordered(const AItems: TArray<TAtlasWhatsNewItem>): TArray<TAtlasWhatsNewItem>;
+var
+  Item: TAtlasWhatsNewItem;
+  Later: TArray<TAtlasWhatsNewItem>;
+begin
+  Result := nil;
+  Later := nil;
+  for Item in AItems do
+    if Item.Experimental then
+      Later := Later + [Item]
+    else
+      Result := Result + [Item];
+  Result := Result + Later;
 end;
 
 class function TAtlasWhatsNew.ModeOf(const AValue: string): TAtlasWhatsNewMode;

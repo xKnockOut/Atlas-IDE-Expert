@@ -808,7 +808,7 @@ var
   Name: string;
   Issues: TArray<string>;
 begin
-  Assert.AreEqual(3, Integer(Length(AtlasProfileFiles)));
+  Assert.AreEqual(4, Integer(Length(AtlasProfileFiles)));
   for Name in AtlasProfileFiles do
   begin
     Assert.IsTrue(AtlasProfileJson(Name) <> '', Name);
