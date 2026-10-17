@@ -359,41 +359,116 @@ end;
 
 { /encapsulate }
 
+/// <summary>Ein Feldname mit F-Präfix: FName, nicht Farbe.</summary>
+function HasFieldPrefix(const AName: string): Boolean;
+begin
+  Result := (Length(AName) >= 2) and CharInSet(AName[1], ['F', 'f']) and CharInSet(AName[2], ['A'..'Z']);
+end;
+
+/// <summary>Benennt in den Methodenrümpfen von AClassName das Feld AOld in ANew um: der Name allein
+/// oder hinter "Self.", nicht hinter einem anderen Ausdruck mit Punkt.</summary>
+function RenameInMethods(ASource: TCommandSource; const AClassName, AOld, ANew: string): TArray<TTextEdit>;
+var
+  Tokens: TArray<TPascalToken>;
+  Ranges: TArray<TTextRange>;
+  Node: TSyntaxNode;
+  Index, Before: Integer;
+  Range: TTextRange;
+  Inside: Boolean;
+
+  procedure Collect(ANode: TSyntaxNode);
+  var
+    Child: Integer;
+  begin
+    if (ANode.Kind = TSyntaxKind.RoutineDecl) and StartsText(AClassName + '.', ANode.Name) then
+    begin
+      Ranges := Ranges + [TTextRange.Create(ANode.StartPos, ANode.EndPos)];
+      Exit;
+    end;
+    for Child := 0 to ANode.ChildCount - 1 do
+      Collect(ANode[Child]);
+  end;
+
+begin
+  Result := nil;
+  Ranges := nil;
+  Node := ASource.Tree.Root;
+  Collect(Node);
+  Tokens := TPascalLexer.Tokenize(ASource.Text);
+  for Index := 0 to High(Tokens) do
+  begin
+    if (Tokens[Index].Kind <> TPascalTokenKind.Identifier) or not SameText(Tokens[Index].Text, AOld) then
+      Continue;
+    Inside := False;
+    for Range in Ranges do
+      if (Tokens[Index].StartPos.Line > Range.StartPos.Line) and (Tokens[Index].StartPos.Line <= Range.EndPos.Line) then
+        Inside := True;
+    if not Inside then
+      Continue;
+    Before := Index - 1;
+    while (Before >= 0) and (Tokens[Before].Kind in [TPascalTokenKind.Comment, TPascalTokenKind.Directive]) do
+      Dec(Before);
+    if (Before >= 0) and Tokens[Before].IsSymbol('.') then
+    begin
+      Dec(Before);
+      while (Before >= 0) and (Tokens[Before].Kind in [TPascalTokenKind.Comment, TPascalTokenKind.Directive]) do
+        Dec(Before);
+      if (Before < 0) or not SameText(Tokens[Before].Text, 'Self') then
+        Continue;
+    end;
+    Result := Result + [TTextEdit.Create(TTextRange.Create(Tokens[Index].StartPos, Tokens[Index].EndPos), ANew)];
+  end;
+end;
+
 function ExecuteEncapsulate(const AContext: TSlashContext; out AEdits: TArray<TTextEdit>;
   out AReason: string): Boolean;
 var
   Source: TCommandSource;
   ClassSymbol, Field, Symbol: TIndexSymbol;
-  Name, FieldName: string;
-  Found: Boolean;
+  Name, FieldName, OldName: string;
+  Found, Rename: Boolean;
 begin
   AEdits := nil;
-  FieldName := Trim(AContext.Arguments);
-  if not IsValidIdent(FieldName) then
+  OldName := Trim(AContext.Arguments);
+  if not IsValidIdent(OldName) then
     Exit(Fail('Erwartet wird /encapsulate FName', AReason));
-  if not StartsText('F', FieldName) or (Length(FieldName) < 2) then
-    Exit(Fail('/encapsulate braucht ein Feld mit F-Präfix; sonst zuerst umbenennen', AReason));
-  Name := Copy(FieldName, 2, MaxInt);
+  // Ohne F-Präfix (#298): das Feld heißt danach FName, die Property trägt den alten Namen, damit
+  // Verwendungen außerhalb der Klasse gültig bleiben; in den eigenen Methoden wird es umbenannt.
+  Rename := not HasFieldPrefix(OldName);
+  if Rename then
+  begin
+    Name := OldName;
+    FieldName := 'F' + UpperCase(Copy(OldName, 1, 1)) + Copy(OldName, 2, MaxInt);
+  end
+  else
+  begin
+    Name := Copy(OldName, 2, MaxInt);
+    FieldName := OldName;
+  end;
   Source := TCommandSource.Create(AContext);
   try
     if not Source.ClassAt(ClassSymbol) then
       Exit(Fail('/encapsulate gilt nur in einer Klasse oder einer ihrer Methoden', AReason));
     Found := False;
     for Symbol in FieldsOf(Source, ClassSymbol) do
-      if SameText(Symbol.Name, FieldName) then
+    begin
+      if SameText(Symbol.Name, OldName) then
       begin
         Field := Symbol;
         Found := True;
       end;
+      if Rename and SameText(Symbol.Name, FieldName) then
+        Exit(Fail(Format('%s gibt es schon in %s', [FieldName, ClassSymbol.Name]), AReason));
+    end;
     if not Found then
-      Exit(Fail('Kein Feld ' + FieldName + ' in ' + ClassSymbol.Name, AReason));
+      Exit(Fail('Kein Feld ' + OldName + ' in ' + ClassSymbol.Name, AReason));
     if Field.Visibility in [TIndexVisibility.Private, TIndexVisibility.StrictPrivate] then
-      Exit(Fail(FieldName + ' ist schon private', AReason));
+      Exit(Fail(OldName + ' ist schon private', AReason));
     // Nur Felder, die allein in ihrer Zeile stehen ("FName: string;").
     if (Field.Range.StartPos.Line <> Field.Range.EndPos.Line) or
-      not StartsText(FieldName + ':', StringReplace(Trim(Source.Lines[Field.Range.StartPos.Line]), ' :', ':', [])) or
+      not StartsText(OldName + ':', StringReplace(Trim(Source.Lines[Field.Range.StartPos.Line]), ' :', ':', [])) or
       (Pos(',', Source.Lines[Field.Range.StartPos.Line]) > 0) then
-      Exit(Fail(FieldName + ' muss allein in seiner Zeile deklariert sein', AReason));
+      Exit(Fail(OldName + ' muss allein in seiner Zeile deklariert sein', AReason));
     AEdits := AddToClass(Source, ClassSymbol, ['private', Format('%s: %s;', [FieldName, Field.TypeName]),
       Format('procedure Set%s(const Value: %s);', [Name, Field.TypeName]), 'public',
       Format('property %s: %s read %s write Set%s;', [Name, Field.TypeName, FieldName, Name])],
@@ -403,6 +478,8 @@ begin
     // Alte Deklaration entfernen.
     AEdits := AEdits + [TTextEdit.Create(TTextRange.Create(Field.Range.StartPos.Line, 0,
       Field.Range.StartPos.Line + 1, 0), ''), Source.RemoveCommand];
+    if Rename then
+      AEdits := AEdits + RenameInMethods(Source, ClassSymbol.Name, OldName, FieldName);
     Result := True;
   finally
     Source.Free;

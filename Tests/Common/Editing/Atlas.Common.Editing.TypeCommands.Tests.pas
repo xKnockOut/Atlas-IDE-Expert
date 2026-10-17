@@ -1,6 +1,8 @@
 ﻿unit Atlas.Common.Editing.TypeCommands.Tests;
 
 // Tests für die Schnellbefehle /enum, /helper, /singleton, /encapsulate, /assign und /json (#298).
+// /json gegen die Golden-Datei Atlas.Common.Editing.TypeCommands.JsonGolden, die zugleich übersetzt
+// wird und den Rundweg FromJson(ToJson(X)) prüft.
 
 interface
 
@@ -22,6 +24,8 @@ type
     [Test]
     procedure HelperForRecordAndClass;
     [Test]
+    procedure HelperInRoutineFails;
+    [Test]
     procedure SingletonAddsInstance;
     [Test]
     procedure SingletonOutsideClassFails;
@@ -30,6 +34,8 @@ type
     [Test]
     procedure EncapsulatePrivateFieldFails;
     [Test]
+    procedure EncapsulateKeepsUsesOutsideClass;
+    [Test]
     procedure AssignCopiesFields;
     [Test]
     procedure AssignOutsideClassFails;
@@ -37,6 +43,10 @@ type
     procedure JsonForSimpleFields;
     [Test]
     procedure JsonOutsideTypeFails;
+    [Test]
+    procedure JsonMatchesGoldenFile;
+    [Test]
+    procedure JsonRoundTripKeepsValues;
     [Test]
     procedure ThreadWithoutTypeSection;
     [Test]
@@ -53,6 +63,8 @@ implementation
 
 uses
   System.SysUtils,
+  System.IOUtils,
+  System.JSON,
   System.Generics.Collections,
   System.Generics.Defaults,
   Atlas.Common.Documents.Contract,
@@ -60,7 +72,8 @@ uses
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.Parser,
   Atlas.Common.Editing.SlashCommands,
-  Atlas.Common.Editing.TypeCommands;
+  Atlas.Common.Editing.TypeCommands,
+  Atlas.Common.Editing.TypeCommands.JsonGolden;
 
 function Run(const AText: string; ALine: Integer; out AEdits: TArray<TRuleEdit>): Boolean;
 begin
@@ -271,6 +284,144 @@ end;
 procedure TTypeCommandsTests.JsonOutsideTypeFails;
 begin
   Assert.AreEqual('/json gilt nur in einer Klasse oder einer ihrer Methoden', ProblemOf(Format(TypeUnit, ['/json'])));
+end;
+
+procedure TTypeCommandsTests.HelperInRoutineFails;
+const
+  Text = 'unit U;'#10'interface'#10'implementation'#10'procedure P;'#10'begin'#10'  /helper TA'#10'end;'#10'end.';
+begin
+  Assert.AreEqual('/helper gilt nur auf Unit-Ebene', ProblemOf(Text));
+  Assert.AreEqual('/helper gilt nur auf Unit-Ebene', ProblemOf(Format(ClassUnit, ['/helper TA'])));
+end;
+
+procedure TTypeCommandsTests.EncapsulateKeepsUsesOutsideClass;
+const
+  Text =
+    'unit U;'#10 +                                  // 0
+    'interface'#10 +                                // 1
+    'type'#10 +                                     // 2
+    '  TKunde = class'#10 +                         // 3
+    '  public'#10 +                                 // 4
+    '    Name: string;'#10 +                        // 5
+    '    procedure Zeige;'#10 +                     // 6
+    '    /encapsulate Name'#10 +                    // 7 Befehl
+    '  end;'#10 +                                   // 8
+    'implementation'#10 +                           // 9
+    'procedure TKunde.Zeige;'#10 +                  // 10
+    'begin'#10 +                                    // 11
+    '  Name := Name + Self.Name;'#10 +              // 12
+    'end;'#10 +                                     // 13
+    'procedure Setze(K: TKunde);'#10 +              // 14
+    'begin'#10 +                                    // 15
+    '  K.Name := ''x'';'#10 +                        // 16
+    'end;'#10 +                                     // 17
+    'end.';
+var
+  Result_: string;
+begin
+  Result_ := Expand(Text, 7);
+  Assert.IsTrue(Parses(Result_), Result_);
+  Assert.IsTrue(Pos('  private'#10'    FName: string;'#10'    procedure SetName(const Value: string);'#10 +
+    '  public'#10'    property Name: string read FName write SetName;'#10'  end;', Result_) > 0, Result_);
+  // In den eigenen Methoden das Feld, außerhalb der Klasse bleibt die Stelle wie sie war.
+  Assert.IsTrue(Pos('  FName := FName + Self.FName;', Result_) > 0, Result_);
+  Assert.IsTrue(Pos('procedure Setze(K: TKunde);'#10'begin'#10'  K.Name := ''x'';'#10'end;', Result_) > 0, Result_);
+  // Mit F-Präfix bleibt jede Verwendung unverändert.
+  Result_ := Expand(StringReplace(StringReplace(Text, 'Name: string', 'FName: string', []), '/encapsulate Name',
+    '/encapsulate FName', []), 7);
+  Assert.IsTrue(Pos('  Name := Name + Self.Name;', Result_) > 0, Result_);
+  Assert.IsTrue(Pos('  K.Name := ''x'';', Result_) > 0, Result_);
+end;
+
+const
+  JsonBefore =
+    'unit Atlas.Common.Editing.TypeCommands.JsonGolden;'#13#10 +
+    #13#10 +
+    '// Golden-Datei für /json (#298): genau das, was /json aus der Klasse ohne'#13#10 +
+    '// ToJson und FromJson erzeugt. Der Test vergleicht die Ausgabe mit dieser'#13#10 +
+    '// Datei und prüft mit dem übersetzten Code, dass FromJson(ToJson(X)) gleiche'#13#10 +
+    '// Feldwerte ergibt. Nicht von Hand ändern, sondern neu erzeugen.'#13#10 +
+    #13#10 +
+    'interface'#13#10 +
+    #13#10 +
+    'uses'#13#10 +
+    '  System.Generics.Collections,'#13#10 +
+    '  System.JSON;'#13#10 +
+    #13#10 +
+    'type'#13#10 +
+    '  TJsonKunde = class'#13#10 +
+    '  public'#13#10 +
+    '    FName: string;'#13#10 +
+    '    FAlter: Integer;'#13#10 +
+    '    FUmsatz: Double;'#13#10 +
+    '    FAktiv: Boolean;'#13#10 +
+    '    /json'#13#10 +                                // 20
+    '  end;'#13#10 +
+    #13#10 +
+    'implementation'#13#10 +
+    #13#10 +
+    'end.'#13#10;
+
+/// <summary>Datei unter Tests/ ab dem Programmordner bzw. dem aktuellen Ordner aufwärts; '' ohne.</summary>
+function TestsFile(const ARelative: string): string;
+var
+  Starts: TArray<string>;
+  Start, Directory: string;
+begin
+  Starts := [ExtractFileDir(ParamStr(0)), GetCurrentDir];
+  for Start in Starts do
+  begin
+    Directory := Start;
+    while Directory <> '' do
+    begin
+      Result := TPath.Combine(Directory, TPath.Combine('Tests', ARelative));
+      if TFile.Exists(Result) then
+        Exit;
+      if ExtractFileDir(Directory) = Directory then
+        Break;
+      Directory := ExtractFileDir(Directory);
+    end;
+  end;
+  Result := '';
+end;
+
+procedure TTypeCommandsTests.JsonMatchesGoldenFile;
+var
+  FileName, Golden: string;
+begin
+  FileName := TestsFile(TPath.Combine('Common', TPath.Combine('Editing',
+    'Atlas.Common.Editing.TypeCommands.JsonGolden.pas')));
+  Assert.IsTrue(FileName <> '', 'Golden-Datei nicht gefunden');
+  Golden := TFile.ReadAllText(FileName, TEncoding.UTF8);
+  if (Golden <> '') and (Golden[1] = #$FEFF) then
+    Delete(Golden, 1, 1);
+  Assert.AreEqual(Golden, Expand(JsonBefore, 20));
+end;
+
+procedure TTypeCommandsTests.JsonRoundTripKeepsValues;
+var
+  Original, Copied: TJsonKunde;
+  Json: TJSONObject;
+begin
+  Copied := nil;
+  Json := nil;
+  Original := TJsonKunde.Create;
+  try
+    Original.FName := 'Müller';
+    Original.FAlter := 42;
+    Original.FUmsatz := 1234.5;
+    Original.FAktiv := True;
+    Json := Original.ToJson;
+    Copied := TJsonKunde.FromJson(Json);
+    Assert.AreEqual(Original.FName, Copied.FName);
+    Assert.AreEqual(Original.FAlter, Copied.FAlter);
+    Assert.AreEqual(Original.FUmsatz, Copied.FUmsatz, 0.0001);
+    Assert.IsTrue(Copied.FAktiv);
+  finally
+    Copied.Free;
+    Json.Free;
+    Original.Free;
+  end;
 end;
 
 procedure TTypeCommandsTests.ThreadWithoutTypeSection;
