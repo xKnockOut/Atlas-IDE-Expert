@@ -60,6 +60,7 @@ uses
   Atlas.Common.Lsp.Status,
   Atlas.Common.Lsp.QualifiedNames,
   Atlas.Common.Lsp.StringLiteralCommands,
+  Atlas.Common.Lsp.ResourceStringCommands,
   Atlas.Common.Editing.StringLiterals,
   Atlas.Common.JsonRpc.Statistics,
   Atlas.Common.Logging.Providers.RecentSink,
@@ -155,6 +156,8 @@ type
     FDocumentLinks: TLspDocumentLinks;
     FColors: TLspColors;
     FCommands: TLspCommands;
+    /// <summary>Schreibt einen resourcestring in eine andere Unit (#473); über den Host der Schnellbefehle.</summary>
+    FResourceStringWrite: TResourceStringWrite;
     FStatistics: IJsonRpcStatistics;
     /// <summary>Letzte Logzeilen für den Fehlerbericht (#108); nil ohne CreateForStdio.</summary>
     FRecentLog: IRecentLogLines;
@@ -647,6 +650,7 @@ end;
 procedure TServerComposition.WireEditing;
 var
   SlashHost: TShellSlashHost;
+  KeepHost: ISlashHost;
 begin
   FDocumentSymbols := TLspDocumentSymbols.Create(FDocuments);
   FDocumentSymbols.Attach(FDispatcher);
@@ -772,6 +776,13 @@ begin
         Result := '';
     end;
   FFormatting.SlashHost := SlashHost;
+  // resourcestring in eine andere Unit (#473): Die Schnittstelle hält den Host am Leben.
+  KeepHost := SlashHost;
+  FResourceStringWrite :=
+    procedure(const AFileName, ANewText: string; const AEdit: TTextEdit)
+    begin
+      (KeepHost as TShellSlashHost).EditFile(TDocumentUris.FromPath(AFileName), AFileName, ANewText, AEdit);
+    end;
   FFormatting.Attach(FDispatcher);
   // Erzeugen-Menü (#719): dieselben Schalter, Versionen und derselbe Host wie die Schnellbefehle nach Enter.
   FSlashMenu := TLspSlashMenu.Create(FDocuments);
@@ -1352,6 +1363,11 @@ begin
     begin
       Result := TQualifiedNames.Execute(FDocuments, FIndex,
         EnsureUnit, FDefinition.Namespaces, AArguments);
+    end);
+  FCommands.Register(TResourceStringCommands.AddCommand,
+    function(const AArguments: TJSONArray): TJSONValue
+    begin
+      Result := TResourceStringCommands.ExecuteAdd(ReadSourceText, FResourceStringWrite, AArguments);
     end);
   FCommands.Register(TStringLiteralCommands.PlainTextCommand,
     function(const AArguments: TJSONArray): TJSONValue

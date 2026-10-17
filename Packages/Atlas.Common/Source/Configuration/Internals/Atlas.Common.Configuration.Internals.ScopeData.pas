@@ -9,7 +9,7 @@ interface
 
 const
   /// <summary>Schlüssel für alle Projekte (settings.json).</summary>
-  GlobalSettingPaths: array[0..30] of string = (
+  GlobalSettingPaths: array[0..31] of string = (
     'delphiVersion',
     'language',
     'rules',
@@ -20,6 +20,7 @@ const
     'completion.keywords',
     'completion.postfixTemplates',
     'completion.genericConstraints',
+    'completion.resourceStrings',
     'completion.nameSuggestions',
     'usesCommand',
     'completeBlocks',
@@ -42,7 +43,7 @@ const
     'logFile',
     'traceFile');
   /// <summary>Schlüssel des Projekts (atlas.json).</summary>
-  ProjectSettingPaths: array[0..26] of string = (
+  ProjectSettingPaths: array[0..27] of string = (
     'encoding',
     'project',
     'config',
@@ -58,6 +59,7 @@ const
     'completion.freeStyle',
     'completion.createAccessors',
     'completion.accessorSection',
+    'completion.resourceStringUnit',
     'refactoring',
     'sortUses',
     'usesKeep',

@@ -140,6 +140,13 @@ type
     /// <summary>InsertText bzw. TextEdit.NewText ist ein LSP-Snippet mit Platzhaltern (#51); dann
     /// insertTextFormat = 2. Nur an Clients mit snippetSupport.</summary>
     Snippet: Boolean;
+    /// <summary>Auch die AdditionalEdits sind LSP-Snippets; gleiche Nummern sind mit denen des Haupttexts verknüpft
+    /// (resourcestring auslagern, #473: der Name im Abschnitt und an der Stelle).</summary>
+    LinkedEdits: Boolean;
+    /// <summary>Befehl, den der Client nach dem Übernehmen über workspace/executeCommand ausführt; '' ohne.</summary>
+    Command: string;
+    CommandTitle: string;
+    CommandArguments: TArray<string>;
     /// <summary>Typargument (#450): Typparameter ("T"), sein Constraint ("class, constructor"), der Code der
     /// Erklärung (classes, values, constructible, implements:IFoo, descends:TBasis) und die ausgeblendeten Arten
     /// (classes, records, interfaces, enums, basic, durch Kommas getrennt); '' sonst.</summary>

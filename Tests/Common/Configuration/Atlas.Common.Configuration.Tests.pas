@@ -458,6 +458,16 @@ begin
   Assert.IsTrue(Parse('{"completion": {"accessorSection": "public"}}', Issues).Completion.AccessorSection =
     TCompletionAccessorSection.Private);
   Assert.AreEqual(1, Integer(Length(Issues)));
+  // String als resourcestring auslagern (#473)
+  Assert.IsTrue(Parse('{}', Issues).Completion.ResourceStrings);
+  Assert.IsFalse(Parse('{"completion": {"resourceStrings": false}}', Issues).Completion.ResourceStrings);
+  Assert.AreEqual('', Parse('{}', Issues).Completion.ResourceStringUnit);
+  Assert.AreEqual('App.Texte', Parse('{"completion": {"resourceStringUnit": "App.Texte"}}',
+    Issues).Completion.ResourceStringUnit);
+  Assert.AreEqual(0, Integer(Length(Issues)));
+  Assert.AreEqual('', Parse('{"completion": {"resourceStringUnit": "App Texte"}}',
+    Issues).Completion.ResourceStringUnit);
+  Assert.AreEqual(1, Integer(Length(Issues)));
   Assert.IsTrue(Parse('{}', Issues).Refactoring.InlineVar);
   Assert.IsFalse(Parse('{"refactoring": {"inlineVar": false}}', Issues).Refactoring.InlineVar);
   Assert.AreEqual(0, Integer(Length(Issues)));

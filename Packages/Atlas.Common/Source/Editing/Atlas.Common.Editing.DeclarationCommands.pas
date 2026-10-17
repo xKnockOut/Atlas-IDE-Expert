@@ -30,7 +30,8 @@ uses
   Atlas.Common.Index.Contract,
   Atlas.Common.Pascal.LanguageFeatures,
   Atlas.Common.Editing.ClassMembers,
-  Atlas.Common.Editing.CommandSource;
+  Atlas.Common.Editing.CommandSource,
+  Atlas.Common.Editing.ResourceStrings;
 
 { /var und /const }
 
@@ -209,43 +210,6 @@ end;
 
 { /resstr }
 
-/// <summary>SFehlerBeimLaden aus "Fehler beim Laden"; Umlaute als ae, oe, ue, ss.</summary>
-function ResourceName(const AText: string): string;
-var
-  Index: Integer;
-  Upper: Boolean;
-  Letter: string;
-begin
-  Result := 'S';
-  Upper := True;
-  for Index := 1 to Length(AText) do
-  begin
-    case AText[Index] of
-      'ä': Letter := 'ae';
-      'ö': Letter := 'oe';
-      'ü': Letter := 'ue';
-      'Ä': Letter := 'Ae';
-      'Ö': Letter := 'Oe';
-      'Ü': Letter := 'Ue';
-      'ß': Letter := 'ss';
-      'A'..'Z', 'a'..'z', '0'..'9': Letter := AText[Index];
-    else
-      Letter := '';
-      Upper := True;
-    end;
-    if Letter = '' then
-      Continue;
-    if Upper then
-      Letter := UpperCase(Copy(Letter, 1, 1)) + Copy(Letter, 2, MaxInt);
-    Upper := False;
-    Result := Result + Letter;
-    if Length(Result) >= 32 then
-      Break;
-  end;
-  if Result = 'S' then
-    Result := 'SText';
-end;
-
 function ExecuteResStr(const AContext: TSlashContext; out AEdits: TArray<TTextEdit>; out AReason: string): Boolean;
 var
   Source: TCommandSource;
@@ -274,7 +238,8 @@ begin
     Value := Literal.Text;
     Name := AContext.Arguments;
     if not IsValidIdent(Name) then
-      Name := ResourceName(StringReplace(Copy(Value, 2, Length(Value) - 2), '''''', '''', [rfReplaceAll]));
+      Name := TResourceStrings.NameFor(StringReplace(Copy(Value, 2, Length(Value) - 2), '''''', '''',
+        [rfReplaceAll]));
     // Vorhandener resourcestring-Abschnitt hinter implementation: dort anhängen.
     Last := -1;
     for Index := Start + 1 to Source.Line - 1 do

@@ -694,6 +694,8 @@ uses
   Atlas.Common.Editing.CreateMethod.Tests in 'Common\Editing\Atlas.Common.Editing.CreateMethod.Tests.pas',
   Atlas.Common.Editing.NameSuggestions.Tests in 'Common\Editing\Atlas.Common.Editing.NameSuggestions.Tests.pas',
   Atlas.Common.Editing.AccessorCreation.Tests in 'Common\Editing\Atlas.Common.Editing.AccessorCreation.Tests.pas',
+  Atlas.Common.Editing.ResourceStrings.Tests in 'Common\Editing\Atlas.Common.Editing.ResourceStrings.Tests.pas',
+  Atlas.Common.Lsp.ResourceStringCommands.Tests in 'Common\Lsp\Atlas.Common.Lsp.ResourceStringCommands.Tests.pas',
   Atlas.Common.Lsp.Refactorings.Tests in 'Common\Lsp\Atlas.Common.Lsp.Refactorings.Tests.pas',
   Atlas.Common.Editing.DeclareUnknown.Tests in 'Common\Editing\Atlas.Common.Editing.DeclareUnknown.Tests.pas',
   Atlas.Common.Editing.InterfaceStubs.Tests in 'Common\Editing\Atlas.Common.Editing.InterfaceStubs.Tests.pas',

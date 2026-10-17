@@ -89,7 +89,10 @@ type
     /// <summary>ABefore: Puffertext vor dem Einsetzen, ADocument: Text danach, AOffset: Anfang der Vorlage
     /// darin. Ohne Platzhalter steht nur der Cursor an der Endposition.</summary>
     procedure Start(const AView: IOTAEditView; const ABefore, ADocument: string; AOffset: Integer;
-      const AExpansion: TAtlasSnippetExpansion);
+      const AExpansion: TAtlasSnippetExpansion); overload;
+    /// <summary>Wie oben, mit verknüpften Platzhaltern außerhalb der Vorlage (Offsets in ADocument, #473).</summary>
+    procedure Start(const AView: IOTAEditView; const ABefore, ADocument: string; AOffset: Integer;
+      const AExpansion: TAtlasSnippetExpansion; const ALinked: TArray<TAtlasPlaceholderField>); overload;
     procedure Stop;
     function Active: Boolean;
     /// <summary>Aus EditorViewModified.</summary>
@@ -204,6 +207,14 @@ end;
 procedure TAtlasEditorPlaceholders.Start(const AView: IOTAEditView; const ABefore, ADocument: string;
   AOffset: Integer; const AExpansion: TAtlasSnippetExpansion);
 begin
+  Start(AView, ABefore, ADocument, AOffset, AExpansion, nil);
+end;
+
+procedure TAtlasEditorPlaceholders.Start(const AView: IOTAEditView; const ABefore, ADocument: string;
+  AOffset: Integer; const AExpansion: TAtlasSnippetExpansion; const ALinked: TArray<TAtlasPlaceholderField>);
+var
+  Field: TAtlasPlaceholderField;
+begin
   Stop;
   if (AView = nil) or (AView.Buffer = nil) then
     Exit;
@@ -211,6 +222,8 @@ begin
   FFileName := AView.Buffer.FileName;
   FBefore := ABefore;
   FSession := TAtlasPlaceholderSession.Create(ADocument, AOffset, AExpansion);
+  for Field in ALinked do
+    FSession.Link(Field);
   if not AExpansion.HasPlaceholders then
   begin
     Finish(True);

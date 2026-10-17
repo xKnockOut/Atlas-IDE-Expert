@@ -58,6 +58,8 @@ type
     class function ItemsFromLsp(AResponse: TJSONValue; AFirstRank: Integer = 0): TAtlasCompletionItems; static;
     /// <summary>AItems ohne Code-Vorlagen des Servers (Einträge mit Snippet, #51); Postfix-Vorlagen bleiben.</summary>
     class function WithoutSnippets(const AItems: TAtlasCompletionItems): TAtlasCompletionItems; static;
+    /// <summary>AItem ohne Platzhalter: Vorgabetexte eingesetzt, auch in verknüpften Zusatzänderungen.</summary>
+    class function Plain(const AItem: TAtlasCompletionItem): TAtlasCompletionItem; static;
     /// <summary>Details aus der Antwort auf completionItem/resolve (data.atlas, sonst detail/documentation).</summary>
     class function DetailsFromLsp(AResponse: TJSONValue): TAtlasItemDetails; static;
     { IAtlasCompletionResolver }
@@ -148,6 +150,7 @@ var
   Documentation, Edits, Value, Overloads: TJSONValue;
   Edit: TAtlasTextEdit;
   Data, Twin: TJSONObject;
+  Index: Integer;
 begin
   Result := Default(TAtlasCompletionItem);
   Result.Name := AItem.GetValue<string>('label', '');
@@ -227,6 +230,8 @@ begin
     Result.Constraint := Data.GetValue<string>('constraint', '');
     Result.ConstraintHint := Data.GetValue<string>('constraintHint', '');
     Result.HiddenKinds := Data.GetValue<string>('hiddenKinds', '');
+    // resourcestring auslagern (#473): Platzhalter auch in den weiteren Änderungen.
+    Result.LinkedEdits := Data.GetValue<Boolean>('linkedEdits', False);
     Overloads := Data.GetValue('overloads');
     if Overloads is TJSONArray then
       for Value in TJSONArray(Overloads) do
@@ -276,6 +281,45 @@ begin
     else
       Result.Snippet := TAtlasSnippets.FromLsp(Result.Name);
   end;
+  if Result.Snippet = '' then
+    Result.LinkedEdits := False;
+  if Result.LinkedEdits then
+    for Index := 0 to High(Result.AdditionalEdits) do
+      Result.AdditionalEdits[Index].NewText := TAtlasSnippets.FromLsp(Result.AdditionalEdits[Index].NewText);
+  // Befehl nach dem Übernehmen (#473), etwa den resourcestring in eine andere Unit schreiben.
+  if AItem.GetValue('command') is TJSONObject then
+  begin
+    Result.Command := TJSONObject(AItem.GetValue('command')).GetValue<string>('command', '');
+    Result.CommandArguments := '[]';
+    if TJSONObject(AItem.GetValue('command')).GetValue('arguments') is TJSONArray then
+      Result.CommandArguments := TJSONObject(AItem.GetValue('command')).GetValue('arguments').ToJSON;
+  end;
+end;
+
+class function TAtlasServerCompletionProvider.Plain(const AItem: TAtlasCompletionItem): TAtlasCompletionItem;
+
+  function Expanded(const AText: string): string;
+  begin
+    // Zeilenumbrüche wie geliefert: Der Server schreibt die des Dokuments.
+    if Pos(#13#10, AText) > 0 then
+      Result := TAtlasSnippets.Expand(AText, '', #13#10).Text
+    else
+      Result := TAtlasSnippets.Expand(AText, '', #10).Text;
+  end;
+
+var
+  Index: Integer;
+begin
+  Result := AItem;
+  if Result.HasTextEdit then
+    Result.TextEdit.NewText := Expanded(Result.Snippet)
+  else
+    Result.InsertText := Expanded(Result.Snippet);
+  if Result.LinkedEdits then
+    for Index := 0 to High(Result.AdditionalEdits) do
+      Result.AdditionalEdits[Index].NewText := Expanded(Result.AdditionalEdits[Index].NewText);
+  Result.Snippet := '';
+  Result.LinkedEdits := False;
 end;
 
 class function TAtlasServerCompletionProvider.WithoutSnippets(
@@ -284,10 +328,13 @@ var
   Item: TAtlasCompletionItem;
 begin
   Result := nil;
-  // Postfix-Vorlagen (#188) haben ihren eigenen Schalter completion.postfixTemplates.
+  // Postfix-Vorlagen (#188) haben ihren eigenen Schalter completion.postfixTemplates. Einträge, die Code erzeugen
+  // (resourcestring auslagern, #473), bleiben ohne Platzhalter.
   for Item in AItems do
     if (Item.Snippet = '') or Item.Postfix then
-      Result := Result + [Item];
+      Result := Result + [Item]
+    else if Item.IsAction then
+      Result := Result + [Plain(Item)];
 end;
 
 class function TAtlasServerCompletionProvider.ItemsFromLsp(AResponse: TJSONValue;

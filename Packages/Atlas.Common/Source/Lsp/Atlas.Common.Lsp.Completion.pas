@@ -240,6 +240,11 @@ type
     /// <summary>Wie oben, mit Baum, Resolver und Matching aus ARequest.</summary>
     class function PropertyItems(ARequest: TCompletionRequest; out AItems: TCompletionItems): Boolean; overload;
       static;
+    /// <summary>Strg+Leer im String-Literal (#473): „Als resourcestring auslagern“ und, bei gleichem Text,
+    /// „Vorhandenen verwenden“. ASnippets: Name als verknüpfter Platzhalter an Stelle und Deklaration. False
+    /// außerhalb eines Literals, an unzulässigen Stellen, mit Auslösezeichen oder abgeschaltet.</summary>
+    class function ResourceStringItems(ARequest: TCompletionRequest; ASnippets: Boolean;
+      out AItems: TCompletionItems): Boolean; static;
     /// <summary>„Feld F&lt;Name&gt; anlegen“, „Get&lt;Name&gt; anlegen“ bzw. „Set&lt;Name&gt; anlegen“ (#467).</summary>
     class function AccessorItems(ARequest: TCompletionRequest; const APropertyName, APropertyType,
       AIndexParameters: string; AIsWrite: Boolean; const APrefix: string): TArray<TCompletionItem>; static;
@@ -446,6 +451,7 @@ uses
   System.RegularExpressions,
   Atlas.Common.Editing.CommandSource,
   Atlas.Common.Editing.AccessorCreation,
+  Atlas.Common.Editing.ResourceStrings,
   Atlas.Common.Editing.SlashMenu,
   Atlas.Common.Rules.Catalog,
   Atlas.Common.Rules.Catalog.Data,
@@ -1917,6 +1923,14 @@ begin
         Result := TCompletionOutcome.Answered;
     end);
   // Mit Baum und Resolver, in dieser Reihenfolge.
+  // String als resourcestring auslagern (#473): Strg+Leer im String-Literal; sonst bietet die Liste dort nichts.
+  AddCase(FTreeCases,
+    function(ARequest: TCompletionRequest; AAnswer: TCompletionAnswer): TCompletionOutcome
+    begin
+      Result := TCompletionOutcome.Next;
+      if ResourceStringItems(ARequest, FSnippetSupport, AAnswer.Exclusive) then
+        Result := TCompletionOutcome.Answered;
+    end);
   // Freigabe absichern (#489): Das Plugin fragt nach dem ";" bzw. dem Zeilenende (#10) hinter einem
   // übernommenen Konstruktor mit diesem Auslöser; dann gibt es nur dieses Angebot oder nichts.
   AddCase(FTreeCases,
@@ -2589,6 +2603,118 @@ begin
   finally
     Request.Free;
   end;
+end;
+
+class function TLspCompletion.ResourceStringItems(ARequest: TCompletionRequest; ASnippets: Boolean;
+  out AItems: TCompletionItems): Boolean;
+const
+  AddCommand = 'atlas.server.addResourceString';
+var
+  Literal: TResourceLiteral;
+  Entries, TargetEntries: TArray<TResourceEntry>;
+  Existing: TResourceEntry;
+  Taken: TArray<string>;
+  Symbol: TIndexSymbol;
+  Target: TUnitIndex;
+  TargetText, Name, Declaration, LB, Range: string;
+  HasTarget, HasExisting: Boolean;
+  Edit, UsesEdit: TTextEdit;
+  UsesEdits: TArray<TRuleEdit>;
+  Item: TCompletionItem;
+begin
+  AItems := Default(TCompletionItems);
+  Result := False;
+  if not ARequest.Settings.ResourceStrings or (ARequest.Trigger <> '') or (ARequest.Tree = nil) or
+    not TResourceStrings.LiteralAt(ARequest.Text, ARequest.Tree.Tokens, ARequest.Position, Literal) or
+    not TResourceStrings.Allowed(ARequest.Tree, Literal.StartOffset) then
+    Exit;
+  LB := ARequest.LineBreak;
+  Entries := TResourceStrings.Entries(ARequest.Text, ARequest.Tree.Tokens);
+  Taken := nil;
+  for Symbol in ARequest.UnitIndex.Symbols do
+    Taken := Taken + [Symbol.Name];
+  for Existing in Entries do
+    Taken := Taken + [Existing.Name];
+  // Festgelegte Unit (completion.resourceStringUnit): nur wenn der Index sie kennt und sie lesbar ist.
+  HasTarget := False;
+  TargetText := '';
+  UsesEdits := nil;
+  if (ARequest.Settings.ResourceStringUnit <> '') and
+    not SameText(ARequest.Settings.ResourceStringUnit, TUsesClauses.OwnName(ARequest.Tree.Tokens)) and
+    (ARequest.Index <> nil) and ARequest.Index.FindUnit(ARequest.Settings.ResourceStringUnit, Target) and
+    Assigned(ARequest.ReadText) and ARequest.ReadText(Target.FileName, TargetText) then
+  begin
+    HasTarget := True;
+    TargetEntries := TResourceStrings.Entries(TargetText, TPascalLexer.Tokenize(TargetText));
+    for Symbol in Target.Symbols do
+      Taken := Taken + [Symbol.Name];
+    for Existing in TargetEntries do
+      Taken := Taken + [Existing.Name];
+    if not TUsesClauses.IsUsed(TUsesClauses.UsedUnits(ARequest.Tree.Tokens), Target.UnitName,
+      ARequest.Resolver.Namespaces) and TUsesClauses.AddUnit(ARequest.Tree.Tokens, Literal.StartOffset,
+      Target.UnitName, LB, UsesEdit) then
+      UsesEdits := [UsesEdit];
+    HasExisting := TResourceStrings.SameText(TargetEntries, Literal.Text, True, -1, Existing);
+  end
+  else
+    HasExisting := TResourceStrings.SameText(Entries, Literal.Text, False, Literal.Range.StartPos.Line, Existing);
+  Range := Literal.Source;
+  if Length(Range) > 40 then
+    Range := Copy(Range, 1, 39) + '…';
+  // Gleicher Text schon vorhanden: zuerst diesen verwenden.
+  if HasExisting then
+  begin
+    Item := Default(TCompletionItem);
+    Item.Name := Format('Vorhandenen verwenden: %s', [Existing.Name]);
+    Item.Kind := KindConstant;
+    Item.Detail := Format('%s = %s', [Existing.Name, Existing.Value]);
+    Item.Fits := True;
+    Item.Pinned := True;
+    Item.Action := 'create';
+    Item.HasTextEdit := True;
+    Item.TextEdit := TRuleEdit.Create(Literal.Range, Existing.Name);
+    Item.AdditionalEdits := UsesEdits;
+    AItems.Items := AItems.Items + [Item];
+  end;
+  Name := TResourceStrings.UniqueName(TResourceStrings.NameFor(Literal.Text), Taken);
+  Declaration := Format('%s = %s;', [Name, Literal.Source]);
+  Item := Default(TCompletionItem);
+  Item.Name := 'Als resourcestring auslagern';
+  Item.Kind := KindConstant;
+  Item.Fits := True;
+  Item.Pinned := True;
+  Item.Action := 'create';
+  Item.HasTextEdit := True;
+  if HasTarget then
+  begin
+    // Der Eintrag in der anderen Unit kommt über den Befehl; deren Puffer ist ein eigener Undo-Schritt.
+    Item.Detail := Format('%s = %s in %s', [Name, Range, Target.UnitName]);
+    Item.TextEdit := TRuleEdit.Create(Literal.Range, Name);
+    Item.AdditionalEdits := UsesEdits;
+    Item.Command := AddCommand;
+    Item.CommandTitle := Item.Name;
+    Item.CommandArguments := [Target.FileName, Name, Literal.Source];
+  end
+  else
+  begin
+    if not TResourceStrings.Insertion(ARequest.Text, ARequest.Tree.Tokens, False, Literal.Range.StartPos.Line,
+      Declaration, LB, Edit) then
+      Exit(Length(AItems.Items) > 0);
+    Item.Detail := Format('%s = %s', [Name, Range]);
+    Item.TextEdit := TRuleEdit.Create(Literal.Range, Name);
+    // Platzhalter-Modus (#51): Der Name ist an beiden Stellen derselbe Platzhalter.
+    if ASnippets then
+    begin
+      Item.Snippet := True;
+      Item.LinkedEdits := True;
+      Item.TextEdit.NewText := '${1:' + Name + '}';
+      Edit.NewText := StringReplace(TContextSnippets.Escape(Edit.NewText), Name + ' = ', '${1:' + Name + '} = ',
+        []);
+    end;
+    Item.AdditionalEdits := [Edit];
+  end;
+  AItems.Items := AItems.Items + [Item];
+  Result := True;
 end;
 
 class function TLspCompletion.AccessorItems(ARequest: TCompletionRequest; const APropertyName, APropertyType,
