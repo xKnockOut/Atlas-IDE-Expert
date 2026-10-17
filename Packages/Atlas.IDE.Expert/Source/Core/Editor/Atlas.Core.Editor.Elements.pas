@@ -63,7 +63,9 @@ type
     /// <summary>Änderungsmarke gegenüber dem Repository in der Rinne (#507).</summary>
     GitGutter,
     /// <summary>Zeilenhistorie (blame) am Ende der Cursorzeile (#507).</summary>
-    GitBlame);
+    GitBlame,
+    /// <summary>Vorgeschlagene nächste Zeile eines Musters (#671).</summary>
+    PatternPreview);
   TAtlasHideScope = (Here, InFile, Everywhere);
 {$SCOPEDENUMS OFF}
   TAtlasHideScopes = set of TAtlasHideScope;
@@ -178,6 +180,9 @@ begin
       Result := Make(AElement, 'GitGutter', FileScopes, False, True);
     TAtlasDrawnElement.GitBlame:
       Result := Make(AElement, 'GitBlame', FileScopes, True, False);
+    // Wie die Vorschau der Vervollständigung nur bis zum nächsten Tastendruck sichtbar.
+    TAtlasDrawnElement.PatternPreview:
+      Result := Make(AElement, 'ContinuePattern', [TAtlasHideScope.Everywhere], False, False);
   else
     Result := Make(AElement, '', [], False, False);
   end;

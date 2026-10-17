@@ -306,6 +306,7 @@
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.AccessorCreation.pas"/>
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.ResourceStrings.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.ResourceStringCommands.pas"/>
+        <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.EnumValueCommands.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.Refactorings.pas"/>
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.DeclareUnknown.pas"/>
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.InterfaceStubs.pas"/>

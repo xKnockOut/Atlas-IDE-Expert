@@ -158,7 +158,8 @@ uses
   Atlas.IDE.Editor.Hide,
   Atlas.Core.Problems.Inline,
   Atlas.IDE.Editor.ChangeSignature,
-  Atlas.IDE.Editor.CommentContinuation,
+  Atlas.IDE.Editor.EnterWatch,
+  Atlas.IDE.Editor.PatternContinuation,
   Atlas.Core.Editor.WorkspacePlan,
   Atlas.IDE.Foundation.Navigation;
 
@@ -217,6 +218,8 @@ begin
     procedure
     begin
       TAtlasIdeEditorCommands.EnsureContextMenus;
+      // Ein Mustervorschlag gilt nur in seiner Ansicht (#671).
+      TAtlasIdePatternContinuation.Dismiss;
     end);
 end;
 
@@ -230,11 +233,13 @@ begin
     begin
       TAtlasIdeEditorCommands.EditorModified(View);
     end);
-  // Kommentar beim Enter fortsetzen (#696), unabhängig von den Schrägstrich-Befehlen.
+  // Zeilenumbruch für Kommentar und Muster fortsetzen (#696, #671), unabhängig von den Schrägstrich-Befehlen;
+  // ein sichtbarer Mustervorschlag verschwindet mit jeder Änderung.
   TAtlasGuard.Run(TAtlasFeature.EditorCommands,
     procedure
     begin
-      TAtlasIdeCommentContinuation.EditorModified(View);
+      TAtlasIdePatternContinuation.EditorModified(View);
+      TAtlasEnterWatch.EditorModified(View);
     end);
 end;
 

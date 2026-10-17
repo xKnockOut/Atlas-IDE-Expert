@@ -574,7 +574,8 @@ type
     SettingsContinueCommentsLists, SettingsContinueCommentsBlockPrefix, CompleteStatementCommand,
     SettingsCompleteStatement, SettingsCompleteStatementBeginEnd, SettingsBeginEndAlways, SettingsBeginEndMultiLine,
     SettingsBeginEndNever, SettingsCompleteStatementTryKind, CompleteStatementTryFinally, CompleteStatementTryExcept,
-    SettingsTryKindAsk, SettingsCompleteStatementMethodBody);
+    SettingsTryKindAsk, SettingsCompleteStatementMethodBody, SettingsContinuePattern, SettingsContinuePatternMinLines,
+    ElementPatternPreview, ElementPatternPreviewPlural);
 
   TAtlasStrings = class
   private class var
@@ -1658,7 +1659,10 @@ const
      'Aufzählungen fortsetzen und hochzählen (- , * , 1. )', 'Präfix in Blockkommentaren (leer = nur einrücken):',
      'Anweisung vervollständigen', 'Anweisung vervollständigen (Klammern, then/do/of, begin/end, Semikolon)',
      'begin/end ergänzen:', 'immer', 'bei mehreren Anweisungen', 'nie', 'Gerüst nach try:', 'try … finally … end;',
-     'try … except … end;', 'jedes Mal fragen', 'Bei Methodendeklarationen den Rumpf anlegen'),
+     'try … except … end;', 'jedes Mal fragen', 'Bei Methodendeklarationen den Rumpf anlegen',
+     'Muster fortsetzen: nächste Zeile nach Enter vorschlagen (Tab übernimmt)',
+     'Gleichförmige Zeilen mindestens (2–5):',
+     'Mustervorschlag', 'Mustervorschläge'),
     ('Enter to accept · Esc to close', '%d of %d', 'No matches for “%s”', 'Backspace widens the search',
      'No suggestions here', 'Esc closes', 'No details for this entry', 'Overload', 'Deprecated: %s', 'Deprecated.',
      'Inherited from %s', 'Inherited', 'optional, default %s', 'No overload with %d parameters.', '… %d more',
@@ -2661,7 +2665,9 @@ const
      'Continue and number lists (- , * , 1. )', 'Prefix in block comments (empty = indent only):',
      'Complete statement', 'Complete statement (brackets, then/do/of, begin/end, semicolon)', 'Add begin/end:',
      'always', 'for several statements', 'never', 'Skeleton after try:', 'try … finally … end;',
-     'try … except … end;', 'ask every time', 'Create the body for method declarations'));
+     'try … except … end;', 'ask every time', 'Create the body for method declarations',
+     'Continue patterns: suggest the next line after Enter (Tab accepts)', 'Minimum uniform lines (2–5):',
+     'pattern suggestion', 'pattern suggestions'));
 
 { TAtlasStrings }
 

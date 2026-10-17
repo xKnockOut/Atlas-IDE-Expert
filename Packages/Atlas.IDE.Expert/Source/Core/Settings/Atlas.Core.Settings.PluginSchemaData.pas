@@ -12,7 +12,7 @@ function AtlasPluginSchemaJson: string;
 implementation
 
 const
-  Lines: array[0..2577] of string = (
+  Lines: array[0..2600] of string = (
     '{',
     '  "$schema": "http://json-schema.org/draft-07/schema#",',
     '  "title": "Atlas-Plugin-Einstellungen",',
@@ -1276,6 +1276,29 @@ const
     '      "x-area": "editor",',
     '      "x-page": "Editor",',
     '      "x-issue": "#697"',
+    '    },',
+    '    "ContinuePattern": {',
+    '      "description": "Nach Enter die nächste Zeile eines erkannten Musters als Schattentext vorschlagen (Zahlen-, Zeichen- und Aufzählungsfolgen, nummerierte Bezeichner); Tab übernimmt, Weitertippen v' + 'erwirft.",',
+    '      "type": "boolean",',
+    '      "default": true,',
+    '      "x-key": "editor.continuePattern",',
+    '      "x-area": "editor",',
+    '      "x-feature": "EditorCommands",',
+    '      "x-page": "Editor",',
+    '      "x-quickToggle": true,',
+    '      "x-drawing": true,',
+    '      "x-caption": "Muster fortsetzen",',
+    '      "x-captionEn": "Continue patterns",',
+    '      "x-issue": "#671"',
+    '    },',
+    '    "ContinuePatternMinLines": {',
+    '      "description": "Mindestanzahl gleichförmiger Zeilen derselben Einrückung, bevor Atlas ein Muster vorschlägt (2 bis 5).",',
+    '      "type": "integer",',
+    '      "default": 2,',
+    '      "x-key": "editor.continuePattern.minLines",',
+    '      "x-area": "editor",',
+    '      "x-page": "Editor",',
+    '      "x-issue": "#671"',
     '    },',
     '    "ContinueCommentsBlockPrefix": {',
     '      "description": "Präfix neuer Zeilen in Blockkommentaren, etwa „ * “ (hinter dem Einzug der öffnenden Zeile); leer = nur einrücken, unter den Text hinter der Klammer.",',
