@@ -408,6 +408,7 @@ uses
   Atlas.Common.Lsp.SignatureHelp,
   System.RegularExpressions,
   Atlas.Common.Editing.CommandSource,
+  Atlas.Common.Editing.SlashMenu,
   Atlas.Common.Diagnostics.RequestScope,
   Atlas.Common.Lsp.CompletionEnums,
   Atlas.Common.Editing.DataFieldNames,
@@ -458,18 +459,35 @@ end;
 
 function SlashItems(ARequest: TCompletionRequest; const ADisabled: TArray<string>; out AItems: TCompletionItems): Boolean;
 var
-  Before, Name, Arguments: string;
+  Before, Name, Arguments, Choice: string;
+  Choices: TArray<string>;
   Command: TSlashCommand;
   Item: TCompletionItem;
 begin
   AItems := Default(TCompletionItems);
-  // Nur "/name" ohne Argumente vor dem Cursor; danach vervollständigen die Befehle selbst (#294 ff.).
+  // "/name" ohne Argumente vor dem Cursor; danach vervollständigen die Befehle selbst (#294 ff.), /sort und
+  // /filter mit Sammlungen und Mitgliedern des Elementtyps (#319).
   Before := ARequest.LineBefore;
   if Trim(Before) = '/' then
     Name := ''
-  else if not TSlashCommandRegistry.Split(Before, Name, Arguments) or (Arguments <> '') or
-    (Before[Length(Before)] = ' ') then
-    Exit(False);
+  else if not TSlashCommandRegistry.Split(Before, Name, Arguments) then
+    Exit(False)
+  else if (Arguments <> '') or (Before[Length(Before)] = ' ') then
+  begin
+    if MatchText(Name, ADisabled) or
+      not TSlashCommandRegistry.IsCodeLine(TPascalLexer.Tokenize(ARequest.Text), ARequest.Position.Line) then
+      Exit(False);
+    Choices := TSlashMenu.ArgumentChoices(ARequest.Text, ARequest.Position.Line, Name, Arguments, ARequest.Index);
+    for Choice in Choices do
+    begin
+      Item := Default(TCompletionItem);
+      Item.Name := Choice;
+      Item.Kind := KindField;
+      Item.Detail := '/' + Name;
+      AItems.Items := AItems.Items + [Item];
+    end;
+    Exit(Length(Choices) > 0);
+  end;
   if not TSlashCommandRegistry.IsCodeLine(TPascalLexer.Tokenize(ARequest.Text), ARequest.Position.Line) then
     Exit(False);
   for Command in TSlashCommandRegistry.Shared.Matching(Name, ADisabled) do

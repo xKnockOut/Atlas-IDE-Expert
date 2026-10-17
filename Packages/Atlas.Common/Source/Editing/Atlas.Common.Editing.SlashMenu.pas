@@ -81,6 +81,10 @@ type
     /// </summary>
     class function Choices(const AText: string; const ASpot: TSlashSpot; const AName: string;
       const AIndex: ISymbolIndex): TArray<string>; static;
+    /// <summary>Vorschläge beim Tippen der Argumente in der Befehlszeile ALine von AText (AArguments bis zum
+    /// Cursor): /sort und /filter erst Sammlungen, dann Felder und Properties des Elementtyps (#319).</summary>
+    class function ArgumentChoices(const AText: string; ALine: Integer; const AName, AArguments: string;
+      const AIndex: ISymbolIndex): TArray<string>; static;
     /// <summary>Führt "/AName AArguments" an ASpot aus; AEdits beziehen sich auf AText. False mit AReason, wenn der
     /// Befehl dort nicht passt oder abgeschaltet ist.</summary>
     class function Run(ARegistry: TSlashCommandRegistry; const AText: string; const ASpot: TSlashSpot; const AName,
@@ -104,6 +108,7 @@ uses
   Atlas.Common.Pascal.Lexer,
   Atlas.Common.Editing.CommandSource,
   Atlas.Common.Editing.ClassCommands,
+  Atlas.Common.Editing.CollectionCommands,
   Atlas.Common.Editing.RecordCommands;
 
 const
@@ -190,6 +195,8 @@ begin
     Entry('list', [TSlashPlace.ClassBody, TSlashPlace.Routine], TSlashGroup.Generate, TSlashArgument.Required),
     Entry('dict', [TSlashPlace.ClassBody, TSlashPlace.Routine], TSlashGroup.Generate, TSlashArgument.Required),
     Entry('dict!', [TSlashPlace.ClassBody, TSlashPlace.Routine], TSlashGroup.Generate, TSlashArgument.Required),
+    Entry('sort', InRoutine, TSlashGroup.Generate, TSlashArgument.Required, True, False, ''),
+    Entry('filter', InRoutine, TSlashGroup.Generate, TSlashArgument.Required, True, False, ''),
     Entry('operator', [TSlashPlace.RecordBody], TSlashGroup.Generate, TSlashArgument.Required, True, True, ' '),
     Entry('guid', [TSlashPlace.InterfaceBody], TSlashGroup.Generate, TSlashArgument.None),
     Entry('var', InRoutine, TSlashGroup.Generate, TSlashArgument.Required),
@@ -477,7 +484,31 @@ begin
   else if SameText(AName, 'equals') then
     Result := EqualsFields(Context)
   else if SameText(AName, 'encapsulate') then
-    Result := EncapsulateFields(Context);
+    Result := EncapsulateFields(Context)
+  else if SameText(AName, 'sort') or SameText(AName, 'filter') then
+    Result := CollectionChoices(Context, '');
+end;
+
+class function TSlashMenu.ArgumentChoices(const AText: string; ALine: Integer; const AName, AArguments: string;
+  const AIndex: ISymbolIndex): TArray<string>;
+var
+  Context: TSlashContext;
+  Space: Integer;
+begin
+  Result := nil;
+  if not SameText(AName, 'sort') and not SameText(AName, 'filter') then
+    Exit;
+  Context := Default(TSlashContext);
+  Context.Text := AText;
+  Context.Line := ALine;
+  Context.Name := AName;
+  Context.Index := AIndex;
+  // Erst die Sammlung, nach dem Leerzeichen die Mitglieder ihres Elementtyps.
+  Space := Pos(' ', TrimLeft(AArguments));
+  if Space = 0 then
+    Result := CollectionChoices(Context, '')
+  else
+    Result := CollectionChoices(Context, Copy(TrimLeft(AArguments), 1, Space - 1));
 end;
 
 class function TSlashMenu.Run(ARegistry: TSlashCommandRegistry; const AText: string; const ASpot: TSlashSpot;
