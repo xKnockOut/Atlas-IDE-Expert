@@ -84,6 +84,8 @@ type
     [Test]
     procedure MultiCursorRoundTrip;
     [Test]
+    procedure StickyScrollRoundTrip;
+    [Test]
     procedure WelcomeSettingsRoundTrip;
     /// <summary>Freies Layout (#767): Schalter, Spalten, Layouts anlegen, wechseln, umbenennen, löschen; je
     /// Layout eigene Sichtbarkeit; Reveal der neuen Einstellungen.</summary>
@@ -1584,6 +1586,29 @@ begin
     Assert.AreEqual($C049, Saved.MultiCursorLineEndsKey);
     Assert.AreEqual($A026, Saved.MultiCursorAboveKey);
     Assert.AreEqual($A028, Saved.MultiCursorBelowKey);
+  finally
+    Page.Free;
+  end;
+end;
+
+procedure TAtlasSettingsPageTests.StickyScrollRoundTrip;
+var
+  Page: TAtlasSettingsPage;
+  Settings, Saved: TAtlasPluginSettings;
+begin
+  // #506: Schalter und Höchstzahl der Zeilen.
+  Settings := TAtlasPluginSettings.Defaults;
+  Page := TAtlasSettingsPage.Create(nil);
+  try
+    Page.LoadFrom(Settings);
+    Assert.IsFalse(Page.StickyScroll.Checked);
+    Assert.AreEqual('3', Page.StickyScrollMaxLines.Text);
+    Page.StickyScroll.Checked := True;
+    Page.StickyScrollMaxLines.Text := '2';
+    Saved := TAtlasPluginSettings.Defaults;
+    Page.SaveTo(Saved);
+    Assert.IsTrue(Saved.StickyScroll);
+    Assert.AreEqual(2, Saved.StickyScrollMaxLines);
   finally
     Page.Free;
   end;

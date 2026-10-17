@@ -580,7 +580,8 @@ type
     MultiCursorStatusHint, SettingsMultiCursor, SettingsMultiCursorModifier, SettingsMultiCursorAlt,
     SettingsMultiCursorCtrl, SettingsMultiCursorNext, SettingsMultiCursorSkip, SettingsMultiCursorLineEnds,
     SettingsMultiCursorAbove, SettingsMultiCursorBelow, SettingsLinkedEditing, LinkedEditingCount,
-    LinkedEditingReserved, LinkedEditingVisible, LinkedEditingRestoreHint);
+    LinkedEditingReserved, LinkedEditingVisible, LinkedEditingRestoreHint, SettingsStickyScroll,
+    SettingsStickyScrollMaxLines);
 
   TAtlasStrings = class
   private class var
@@ -1675,7 +1676,9 @@ const
      'Alt+Klick', 'Strg+Klick', 'Wort/nächstes Vorkommen:', 'Überspringen (nach Strg+K):',
      'Marken an Zeilenenden:', 'Marke darüber:', 'Marke darunter:',
      'Lokale Bezeichner beim Tippen mitziehen (Variablen, Parameter, Konstanten)', '%d Vorkommen',
-     '„%s“ ist ein reserviertes Wort', 'Konflikt mit %s', 'Esc stellt den alten Namen wieder her'),
+     '„%s“ ist ein reserviertes Wort', 'Konflikt mit %s', 'Esc stellt den alten Namen wieder her',
+     'Mitlaufender Kopf: Kopfzeilen der umgebenden Klasse und Routinen oben im Editor',
+     'Höchstzahl der Kopfzeilen (1 bis 10):'),
     ('Enter to accept · Esc to close', '%d of %d', 'No matches for “%s”', 'Backspace widens the search',
      'No suggestions here', 'Esc closes', 'No details for this entry', 'Overload', 'Deprecated: %s', 'Deprecated.',
      'Inherited from %s', 'Inherited', 'optional, default %s', 'No overload with %d parameters.', '… %d more',
@@ -2688,7 +2691,9 @@ const
      'Alt+click', 'Ctrl+click', 'Word/next occurrence:', 'Skip (after Ctrl+K):', 'Cursors at line ends:',
      'Cursor above:', 'Cursor below:',
      'Rename local identifiers while typing (variables, parameters, constants)', '%d occurrences',
-     '“%s” is a reserved word', 'Conflicts with %s', 'Esc restores the old name'));
+     '“%s” is a reserved word', 'Conflicts with %s', 'Esc restores the old name',
+     'Sticky scroll: headers of the enclosing class and routines on top of the editor',
+     'Maximum header lines (1 to 10):'));
 
 { TAtlasStrings }
 
