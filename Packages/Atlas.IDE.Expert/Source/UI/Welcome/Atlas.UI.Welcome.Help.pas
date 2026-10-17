@@ -2,9 +2,9 @@
 
 // Bereich „Hilfe und Rückmeldung“ der Willkommensseite (#766), ohne Open
 // Tools API:
-//   [Atlas-Doku] [Tastenkürzel] [Problem melden …]
+//   [Atlas-Doku] [Tastenkürzel] [Problem melden …] [Atlas unterstützen ♥]
 //   Nichts wird automatisch gesendet.
-// Ein schmaler Bereich mit drei Knöpfen, bei zu wenig Breite in weiteren
+// Ein schmaler Bereich mit vier Knöpfen, bei zu wenig Breite in weiteren
 // Reihen. „Tastenkürzel“ ist ausgegraut, wenn die Übersicht aus #520
 // abgeschaltet ist (keys.overview). Aktionen kommen über IAtlasHelpSource
 // aus der IDE-Schicht; Klicks rufen die Quelle über die Nachrichtenschleife
@@ -32,6 +32,8 @@ type
     procedure ShowKeys;
     /// <summary>„Problem melden …“: Dialog mit Diagnosepaket.</summary>
     procedure ReportProblem;
+    /// <summary>„Atlas unterstützen“: Spendenseite im Browser.</summary>
+    procedure Donate;
   end;
 
   TAtlasWelcomeHelpFrame = class(TAtlasWelcomeSectionFrame)
@@ -109,6 +111,8 @@ begin
       Result := TAtlasStrings.Text(TAtlasTextId.WelcomeHelpDocs);
     TAtlasHelpButton.Keys:
       Result := TAtlasStrings.Text(TAtlasTextId.WelcomeHelpKeys);
+    TAtlasHelpButton.Donate:
+      Result := TAtlasStrings.Text(TAtlasTextId.WelcomeHelpDonate);
   else
     Result := TAtlasStrings.Text(TAtlasTextId.WelcomeHelpReport);
   end;
@@ -215,6 +219,8 @@ begin
           Source.OpenDocs;
         TAtlasHelpButton.Keys:
           Source.ShowKeys;
+        TAtlasHelpButton.Donate:
+          Source.Donate;
       else
         Source.ReportProblem;
       end;
