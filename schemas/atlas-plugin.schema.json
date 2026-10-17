@@ -1177,6 +1177,43 @@
       "x-page": "Befehle",
       "x-issue": "#634"
     },
+    "ContinueComments": {
+      "description": "Kommentar beim Enter fortsetzen: Nach einer //- oder ///-Zeile bekommt die neue Zeile Einrückung und Präfix, in einem offenen { … }- bzw. (* … *)-Block den Einzug. Enter auf einer Zeile nur mit Präfix beendet den Kommentar; Strg+Z nimmt nur das Präfix zurück.",
+      "type": "boolean",
+      "default": true,
+      "x-key": "editor.continueComments",
+      "x-area": "editor",
+      "x-feature": "EditorCommands",
+      "x-page": "Editor",
+      "x-issue": "#696"
+    },
+    "ContinueCommentsLineComments": {
+      "description": "Auch //-Zeilen fortsetzen; aus = nur XMLDoc-Kommentare (///).",
+      "type": "boolean",
+      "default": true,
+      "x-key": "editor.continueComments.lineComments",
+      "x-area": "editor",
+      "x-page": "Editor",
+      "x-issue": "#696"
+    },
+    "ContinueCommentsLists": {
+      "description": "Aufzählungen im Kommentar fortsetzen: „- “ und „* “ übernehmen, „1. “ bzw. „1) “ hochzählen; ein leerer Punkt beendet die Aufzählung.",
+      "type": "boolean",
+      "default": true,
+      "x-key": "editor.continueComments.lists",
+      "x-area": "editor",
+      "x-page": "Editor",
+      "x-issue": "#696"
+    },
+    "ContinueCommentsBlockPrefix": {
+      "description": "Präfix neuer Zeilen in Blockkommentaren, etwa „ * “ (hinter dem Einzug der öffnenden Zeile); leer = nur einrücken, unter den Text hinter der Klammer.",
+      "type": "string",
+      "default": "",
+      "x-key": "editor.continueComments.blockPrefix",
+      "x-area": "editor",
+      "x-page": "Editor",
+      "x-issue": "#696"
+    },
     "TestUnitKey": {
       "type": "integer",
       "default": 0,
