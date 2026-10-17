@@ -28,6 +28,8 @@
 //   - Favoriten (#458, Item.Favorite): vor allen anderen Gruppen, auch vor Hinweisen und Formularkomponenten,
 //     unabhängig von Lernen und Rang, aber nur, wenn sie zum getippten Präfix passen. Ohne Überschrift; die
 //     Gruppen danach beginnen wie am Anfang der Liste.
+//   - Typkonvertierung (#490): Ein Umwandlungseintrag (Conversion) steht direkt über seinem Original
+//     (ConvertFrom) und nur, wenn das Original sichtbar ist; er zählt weder zu Gruppen noch zum Rest.
 //   - Rest der Liste (#497, TAtlasListMode): Filter zeigt nur Treffer. All hängt mit Präfix die übrigen Einträge
 //     des Kontexts ohne Überschrift hinter die Treffer, Rest unter der Überschrift RestHeader („Weitere
 //     Einträge“, gedämpft). Beide in Rang- und Namensfolge, ohne Aktionen, Hinweise und Tippfehler-Treffer,
@@ -239,6 +241,7 @@ begin
     for Index := 0 to High(Items) do
       if not Shown[Index] and (AScores[Index] = TAtlasCompletionMatcher.NoMatch) and
         TAtlasRanking.Matches(Items[Index], AOptions.Chip) and not Items[Index].IsAction and
+        (Items[Index].Conversion = '') and
         not Items[Index].Hint and not Items[Index].Pinned and (Items[Index].Unknown = '') then
         Rest.Add(Index);
     Rest.Sort(TComparer<Integer>.Construct(
@@ -255,6 +258,38 @@ begin
     Result := Rest.ToArray;
   finally
     Rest.Free;
+  end;
+end;
+
+/// <summary>Umwandlungseinträge (#490) je direkt vor ihr Original in AOrder; jeder höchstens einmal.</summary>
+function WithConversions(const AItems: TAtlasCompletionItems; const AOrder: TArray<Integer>;
+  const AOptions: TAtlasRankOptions): TArray<Integer>;
+var
+  Placed: TArray<Boolean>;
+  Index, Conversion: Integer;
+  Any: Boolean;
+begin
+  Any := False;
+  for Index := 0 to High(AItems) do
+    if AItems[Index].Conversion <> '' then
+      Any := True;
+  if not Any then
+    Exit(AOrder);
+  SetLength(Placed, Length(AItems));
+  Result := nil;
+  for Index in AOrder do
+  begin
+    if Index >= 0 then
+      for Conversion := 0 to High(AItems) do
+        if not Placed[Conversion] and (AItems[Conversion].Conversion <> '') and
+          SameText(AItems[Conversion].ConvertFrom, AItems[Index].Name) and
+          TAtlasRanking.Matches(AItems[Conversion], AOptions.Chip) then
+        begin
+          Placed[Conversion] := True;
+          Result := Result + [Conversion];
+          Break;
+        end;
+    Result := Result + [Index];
   end;
 end;
 
@@ -291,7 +326,8 @@ begin
     for Index := 0 to High(Items) do
     begin
       Scores[Index] := TAtlasCompletionMatcher.NoMatch;
-      if not TAtlasRanking.Matches(Items[Index], Options.Chip) then
+      // Umwandlungen (#490) setzt WithConversions vor ihr Original.
+      if not TAtlasRanking.Matches(Items[Index], Options.Chip) or (Items[Index].Conversion <> '') then
         Continue;
       if Items[Index].IsAction or Items[Index].Pinned or Items[Index].Hint or Items[Index].ByType then
         Scores[Index] := 0
@@ -411,12 +447,16 @@ begin
       Container := Items[Index].DeclaringClass;
       Ordered.Add(Index);
     end;
-    Result := Ordered.ToArray;
+    Result := WithConversions(Items, Ordered.ToArray, Options);
     // Tippfehler (#485): wenig reguläre Treffer, dann bis zu MaxTypos ähnliche Namen unter „Meintest du“, vor
     // der Gruppe des unbekannten Namens (#471), die nicht als Treffer zählt.
-    Unknown := Ordered.IndexOf(UnknownHeader);
-    if Unknown < 0 then
-      Unknown := Ordered.Count;
+    Unknown := Length(Result);
+    for Position := 0 to High(Result) do
+      if Result[Position] = UnknownHeader then
+      begin
+        Unknown := Position;
+        Break;
+      end;
     if (ItemCount(Copy(Result, 0, Unknown)) < MinRegular) and (TAtlasCompletionMatcher.TypoLimit(APattern) > 0) then
       Result := Copy(Result, 0, Unknown) + Typos(Items, APattern, Options, Scores, Boosts) +
         Copy(Result, Unknown, MaxInt);
@@ -470,7 +510,7 @@ begin
     for Index := 0 to High(Items) do
     begin
       // Nur, was nicht schon regulär passt; keine Aktionen.
-      if Items[Index].IsAction or not Matches(Items[Index], AOptions.Chip) or
+      if Items[Index].IsAction or not Matches(Items[Index], AOptions.Chip) or (Items[Index].Conversion <> '') or
         (AScores[Index] <> TAtlasCompletionMatcher.NoMatch) then
         Continue;
       Distances[Index] := TAtlasCompletionMatcher.TypoDistance(APattern, NameOf(Items[Index]));
@@ -504,8 +544,10 @@ var
 begin
   for Chip := Low(TAtlasChip) to High(TAtlasChip) do
     Result[Chip] := 0;
+  // Umwandlungen (#490) zählen nicht doppelt.
   for Item in AItems do
-    if TAtlasCompletionMatcher.Score(APattern, NameOf(Item)) <> TAtlasCompletionMatcher.NoMatch then
+    if (Item.Conversion = '') and (TAtlasCompletionMatcher.Score(APattern, NameOf(Item)) <>
+      TAtlasCompletionMatcher.NoMatch) then
     begin
       Inc(Result[TAtlasChip.All]);
       if ChipOf(Item) <> TAtlasChip.All then

@@ -1318,6 +1318,23 @@ Vorher: „Experimentelle Funktionen erlauben“ an, auf der Seite Editor „Ein
 | SP11 | Server beendet bzw. Datei `.dfm` | Kein Fenster, keine Meldung; Einrücken geht ohne Server (nur Pascal-Dateien) |
 | SP12 | Einstellung „Aus“ bzw. Hauptschalter „Experimentelle Funktionen“ aus | Atlas verhält sich wie ohne die Funktion |
 
+## Typkonvertierung vorschlagen (#490, experimentell)
+
+Vorher: „Experimentelle Funktionen erlauben“ an, in `atlas.json` `"completion": {"typeConversion": "helper"}`. Ein Formular mit `lblCount: TLabel`, eine `TStringList` `Lines`, Variablen `I: Integer`, `D: Double`, `S: string`, `Align: TAlign`; `System.TypInfo` nicht im uses.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| TK1 | `lblCount.Caption := Lines.Cou` tippen | Oben `Count.ToString` mit Marke „→ TCaption“, direkt darunter `Count` (Integer); Enter setzt `Lines.Count.ToString` ein |
+| TK2 | Wie TK1, `Count` wählen | `Lines.Count` eingefügt, Atlas ändert nichts weiter |
+| TK3 | `"typeConversion": "function"`, dann wie TK1 | Eintrag `IntToStr(Count)`; Enter setzt `IntToStr(Lines.Count)` ein |
+| TK4 | `S := Ali` (Variable `Align: TAlign`) | `GetEnumName(TypeInfo(TAlign), Ord(Align))`; nach Enter steht `System.TypInfo` im uses |
+| TK5 | `I := S` bzw. `D := S` | `S.ToInteger` bzw. `S.ToDouble` (Funktionsstil `StrToInt(S)`, `StrToFloat(S)`) |
+| TK6 | `S := ` mit einer Boolean-Variable | `B.ToString(TUseBoolStrs.True)` bzw. `BoolToStr(B, True)`; Ergebnis „True“/„False“, nicht „-1“ |
+| TK7 | `S := ` mit `Now` bzw. einer TDateTime-Variable | `DateTimeToStr(…)` in beiden Stilen |
+| TK8 | `I := D` | Kein Umwandlungseintrag; im Detailpanel zu `D`: „Double passt nicht verlustfrei zu Integer: Round(…) rundet, Trunc(…) schneidet ab.“ |
+| TK9 | `ShowMessage(Lines.Cou` (Parameter string) | Wie TK1, als Argument |
+| TK10 | `"typeConversion": "off"` bzw. Hauptschalter aus | Keine Umwandlungseinträge, kein Hinweis |
+
 ## Anweisung vervollständigen (#697)
 
 | Nr. | Schritte | Erwartet |

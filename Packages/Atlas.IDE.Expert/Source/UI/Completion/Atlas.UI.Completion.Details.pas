@@ -317,6 +317,10 @@ begin
   // Verdeckte Deklarationen weiter außen (#488).
   for Text in FDetails.Hides do
     Block(TAtlasStrings.Fmt(TAtlasTextId.HidesDeclaration, [Text]), AColors.Muted, [fsItalic]);
+  // Gleitkomma für eine Ganzzahl (#490): keine Umwandlung vorgeschlagen, nur der Hinweis.
+  if FDetails.LossyFrom <> '' then
+    Block(TAtlasStrings.Fmt(TAtlasTextId.CompletionLossyHint, [FDetails.LossyFrom, FDetails.LossyTo]), AColors.Warn,
+      []);
   // 4.–6. Veraltung, Verfügbarkeit und XMLDoc; ohne Inhalt keine Trennlinie und keine leeren Abschnitte.
   if FDetails.IsDeprecated or not FDocData.IsEmpty or (FDetails.Availability <> '') then
   begin

@@ -11,7 +11,7 @@ function AtlasSchemaJson: string;
 implementation
 
 const
-  Lines: array[0..1249] of string = (
+  Lines: array[0..1258] of string = (
     '{',
     '  "$schema": "http://json-schema.org/draft-07/schema#",',
     '  "title": "Atlas-Konfiguration",',
@@ -496,6 +496,15 @@ const
     '          "default": "",',
     '          "description": "Unit, in deren interface-Teil ausgelagerte resourcestrings kommen (etwa App.Texte); sie wird bei Bedarf in uses eingetragen. Leer: implementation-Teil der eigenen Unit."',
     '        },',
+    '        "typeConversion": {',
+    '          "type": "string",',
+    '          "enum": ["off", "helper", "function"],',
+    '          "default": "off",',
+    '          "description": "Passt ein Eintrag nicht zum erwarteten Typ (Zuweisung, Argument), schlägt Atlas die übliche Umwandlung als weiteren Eintrag direkt über dem Original vor, etwa Count.ToString ' + 'für eine String-Zuweisung: Zahl, Boolean, Datum und Aufzählung nach string, string nach Zahl. helper: Helper-Stil (X.ToString, X.ToInteger), wo es einen gibt, sonst Funktion; function: Funktionsstil (' + 'IntToStr(X), StrToInt(X)); off: aus. Benötigte Units kommen ins uses. Für Gleitkomma nach Ganzzahl nur ein Hinweis auf Round und Trunc im Detailpanel.",',
+    '          "x-experimental": true,',
+    '          "x-offValue": "off",',
+    '          "x-issue": "#490"',
+    '        },',
     '        "nameSuggestions": {',
     '          "type": "boolean",',
     '          "default": true,',
@@ -506,7 +515,7 @@ const
     '      "x-area": "completion",',
     '      "x-page": "Vervollständigung",',
     '      "x-control": "Auswahl",',
-    '      "x-issue": "#31, #188, #229, #450, #452, #466, #467, #473, #480, #489"',
+    '      "x-issue": "#31, #188, #229, #450, #452, #466, #467, #473, #480, #489, #490"',
     '    },',
     '    "refactoring": {',
     '      "type": "object",',

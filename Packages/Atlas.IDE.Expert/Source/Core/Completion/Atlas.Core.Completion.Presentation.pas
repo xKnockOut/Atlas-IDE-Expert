@@ -318,6 +318,9 @@ begin
   // Sender mit Typumwandlung (#480).
   if AItem.Sender <> '' then
     Result := Result + [MakeTag('als ' + AItem.Sender, TAtlasTagKind.Accent)];
+  // Typkonvertierung (#490).
+  if AItem.Conversion <> '' then
+    Result := Result + [MakeTag('→ ' + AItem.Conversion, TAtlasTagKind.Accent)];
   case AItem.Usage of
     TAtlasUsageMark.Recent:
       begin

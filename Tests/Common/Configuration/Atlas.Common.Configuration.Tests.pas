@@ -426,6 +426,16 @@ begin
   Assert.IsTrue(Parse('{"completion": {"senderCast": "hart"}}', Issues).Completion.SenderCast =
     TCompletionSenderCast.AsOperator);
   Assert.AreEqual(1, Integer(Length(Issues)));
+  // Typkonvertierung vorschlagen (#490, experimentell)
+  Assert.IsTrue(Parse('{}', Issues).Completion.TypeConversion = TCompletionTypeConversion.Off);
+  Assert.IsTrue(Parse('{"completion": {"typeConversion": "helper"}}', Issues).Completion.TypeConversion =
+    TCompletionTypeConversion.Helper);
+  Assert.IsTrue(Parse('{"completion": {"typeConversion": "function"}}', Issues).Completion.TypeConversion =
+    TCompletionTypeConversion.Function_);
+  Assert.AreEqual(0, Integer(Length(Issues)));
+  Assert.IsTrue(Parse('{"completion": {"typeConversion": "immer"}}', Issues).Completion.TypeConversion =
+    TCompletionTypeConversion.Off);
+  Assert.AreEqual(1, Integer(Length(Issues)));
   // Freigabe absichern (#489)
   Assert.IsTrue(Parse('{}', Issues).Completion.OfferTryFinally);
   Assert.IsTrue(Parse('{}', Issues).Completion.FreeStyle = TCompletionFreeStyle.Free);

@@ -588,7 +588,7 @@ type
     SmartPasteNone, SmartPasteOne, SmartPasteTitle, SmartPasteNoUnit, SmartPasteAccept, SmartPasteCancel,
     SmartPasteUsesTitle, SmartPasteDone, SmartPasteImplementation, SmartPasteFailed,
     SettingsSmartPaste, SettingsSmartPasteOff, SettingsSmartPasteUses, SettingsSmartPasteIndent,
-    SettingsSmartPasteBoth);
+    SettingsSmartPasteBoth, CompletionLossyHint);
 
   TAtlasStrings = class
   private class var
@@ -1699,7 +1699,8 @@ const
      'Übernehmen (Enter)', 'Verwerfen (Esc)', 'uses ergänzen', 'Ergänzt: %s',
      'Wegen Zirkelbezug im implementation-Teil: %s', 'uses ergänzen fehlgeschlagen: %s',
      'Einfügen mit uses-Ergänzung und Einrückung (experimentell)', 'Aus', 'Nur uses ergänzen', 'Nur einrücken',
-     'uses ergänzen und einrücken'),
+     'uses ergänzen und einrücken',
+     '%s passt nicht verlustfrei zu %s: Round(…) rundet, Trunc(…) schneidet ab.'),
     ('Enter to accept · Esc to close', '%d of %d', 'No matches for “%s”', 'Backspace widens the search',
      'No suggestions here', 'Esc closes', 'No details for this entry', 'Overload', 'Deprecated: %s', 'Deprecated.',
      'Inherited from %s', 'Inherited', 'optional, default %s', 'No overload with %d parameters.', '… %d more',
@@ -2728,7 +2729,8 @@ const
      'Accept (Enter)', 'Discard (Esc)', 'Add uses', 'Added: %s',
      'Because of a circular reference in the implementation section: %s', 'Adding uses failed: %s',
      'Paste with uses completion and indentation (experimental)', 'Off', 'Add uses only', 'Indent only',
-     'Add uses and indent'));
+     'Add uses and indent',
+     '%s does not fit %s without loss: Round(…) rounds, Trunc(…) truncates.'));
 
 { TAtlasStrings }
 

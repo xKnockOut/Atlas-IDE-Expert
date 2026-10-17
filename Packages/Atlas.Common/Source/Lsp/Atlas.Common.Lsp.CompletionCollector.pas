@@ -74,6 +74,14 @@ type
 
   TTypeFamily = (None, Integer_, Float, String_, Char_, Boolean_);
 
+  /// <summary>Übliche Umwandlung eines Werts in den erwarteten Typ (#490): Text mit dem Ausdruck, benötigte
+  /// Units; Lossy bei Gleitkomma nach Ganzzahl (dann ohne Text, nur der Hinweis auf Round und Trunc).</summary>
+  TTypeConversion = record
+    Text: string;
+    Units: TArray<string>;
+    Lossy: Boolean;
+  end;
+
   TCompletionCollector = class
   private
     // Nicht besessen.
@@ -90,7 +98,17 @@ type
     FTruncated: Boolean;
     FImportsCapped: Boolean;
     FAnyFits: Boolean;
+    // Typkonvertierung (#490): Grundtyp nach Aliasen und Aufzählungstypen je Typname.
+    FBaseTypes: TDictionary<string, string>;
+    FUsed: TArray<string>;
+    FUsedReady: Boolean;
     function MemberFits(const AMember: TResolvedSymbol): Boolean;
+    /// <summary>Typ nach Aliasen bis zu einem eingebauten Typ oder TDateTime (TCaption → string); Aufzählungen
+    /// mit dem Präfix "enum:". Unbekannte bleiben, wie sie sind.</summary>
+    function BaseType(const AType: string): string;
+    /// <summary>Umwandlungseintrag zu AOriginal (#490) bzw. Hinweis Lossy daran; False ohne Umwandlung.</summary>
+    function Conversion(const AName: string; const ASymbol: TResolvedSymbol; var AOriginal: TScoredItem;
+      out AConverted: TScoredItem): Boolean;
     /// <summary>Bereichsstufe (#488) für einen Eintrag aus AMember; 0 ohne Symbol oder nach einem Punkt.</summary>
     function ScopeOf(const AMember: TResolvedSymbol; out AUnitName: string): Integer;
     procedure MarkOwnConditions;
@@ -151,6 +169,11 @@ function TypeFamily(const APlain: string): TTypeFamily;
 /// Integer zu Gleitkomma, Char zu String. ACheckDescent: Beides sind keine eingebauten Typen; ob AActual
 /// von AExpected abstammt, muss die Namensauflösung klären.</summary>
 function TypeFits(const AActual, AExpected: string; out ACheckDescent: Boolean): Boolean;
+/// <summary>Umwandlung von AExpression (Typ AActual, nach Aliasen) in AExpected (#490): Zahl, Boolean,
+/// TDateTime/TDate/TTime und Aufzählung (AEnumType, '' sonst) nach string; string nach Ganzzahl und
+/// Gleitkomma. AHelper: Helper-Stil (X.ToString), wo es ihn gibt. False ohne Umwandlung und ohne Hinweis.</summary>
+function TypeConversion(const AActual, AExpected, AEnumType, AExpression: string; AHelper: Boolean;
+  out AResult: TTypeConversion): Boolean;
 /// <summary>Punktzahl von AName; TFuzzyMatch.NoMatch, wenn er nicht passt.</summary>
 function MatchScore(const AName, APrefix: string; AMatching: TCompletionMatching): Integer;
 /// <summary>Vorfilter des Resolvers (#616): nur Namen, die zu APrefix passen. GetEnumerator bleibt, weil die
@@ -255,6 +278,82 @@ begin
   Result := False;
 end;
 
+function TypeConversion(const AActual, AExpected, AEnumType, AExpression: string; AHelper: Boolean;
+  out AResult: TTypeConversion): Boolean;
+var
+  Actual, Expected: TTypeFamily;
+  Plain, Text, Helper: string;
+begin
+  AResult := Default(TTypeConversion);
+  Plain := PlainType(AActual);
+  Actual := TypeFamily(Plain);
+  Expected := TypeFamily(PlainType(AExpected));
+  Text := '';
+  Helper := '';
+  if Expected = TTypeFamily.String_ then
+  begin
+    if AEnumType <> '' then
+    begin
+      Text := 'GetEnumName(TypeInfo(' + AEnumType + '), Ord(' + AExpression + '))';
+      AResult.Units := ['System.TypInfo'];
+    end
+    else if Plain = 'tdatetime' then
+      Text := 'DateTimeToStr(' + AExpression + ')'
+    else if Plain = 'tdate' then
+      Text := 'DateToStr(' + AExpression + ')'
+    else if Plain = 'ttime' then
+      Text := 'TimeToStr(' + AExpression + ')'
+    else if Actual = TTypeFamily.Integer_ then
+    begin
+      Text := 'IntToStr(' + AExpression + ')';
+      Helper := AExpression + '.ToString';
+    end
+    else if Actual = TTypeFamily.Float then
+    begin
+      Text := 'FloatToStr(' + AExpression + ')';
+      Helper := AExpression + '.ToString';
+    end
+    else if Actual = TTypeFamily.Boolean_ then
+    begin
+      // Ohne TUseBoolStrs.True liefert der Helper "-1" und "0".
+      Text := 'BoolToStr(' + AExpression + ', True)';
+      Helper := AExpression + '.ToString(TUseBoolStrs.True)';
+    end;
+  end
+  else if (Actual = TTypeFamily.String_) and (Expected = TTypeFamily.Integer_) then
+  begin
+    if MatchText(PlainType(AExpected), ['int64', 'uint64']) then
+    begin
+      Text := 'StrToInt64(' + AExpression + ')';
+      Helper := AExpression + '.ToInt64';
+    end
+    else
+    begin
+      Text := 'StrToInt(' + AExpression + ')';
+      Helper := AExpression + '.ToInteger';
+    end;
+  end
+  else if (Actual = TTypeFamily.String_) and (Expected = TTypeFamily.Float) then
+  begin
+    Text := 'StrToFloat(' + AExpression + ')';
+    Helper := AExpression + '.ToDouble';
+  end
+  else if (Actual = TTypeFamily.Float) and (Expected = TTypeFamily.Integer_) then
+  begin
+    // Verlustbehaftet: kein Vorschlag, nur der Hinweis.
+    AResult.Lossy := True;
+    Exit(True);
+  end;
+  if Text = '' then
+    Exit(False);
+  if AHelper and (Helper <> '') then
+    Text := Helper;
+  AResult.Text := Text;
+  if AResult.Units = nil then
+    AResult.Units := ['System.SysUtils'];
+  Result := True;
+end;
+
 function MatchScore(const AName, APrefix: string; AMatching: TCompletionMatching): Integer;
 begin
   if APrefix = '' then
@@ -292,6 +391,7 @@ begin
   if ARequest.Tree <> nil then
     FOwnUnit := TUsesClauses.OwnName(ARequest.Tree.Tokens);
   FDescends := TDictionary<string, Boolean>.Create;
+  FBaseTypes := TDictionary<string, string>.Create;
   FSentNames := TDictionary<string, Boolean>.Create;
   FList := TList<TScoredItem>.Create(TScoredItemComparer.Create);
 end;
@@ -300,6 +400,7 @@ destructor TCompletionCollector.Destroy;
 begin
   FList.Free;
   FSentNames.Free;
+  FBaseTypes.Free;
   FDescends.Free;
   inherited;
 end;
@@ -326,6 +427,124 @@ begin
       FExpected);
     FDescends.Add(LowerCase(TypeText), Result);
   end;
+end;
+
+function TCompletionCollector.BaseType(const AType: string): string;
+var
+  Current: TResolvedSymbol;
+  Depth: Integer;
+
+  function Known(const AText: string): Boolean;
+  begin
+    Result := (TypeFamily(PlainType(AText)) <> TTypeFamily.None) or
+      MatchText(PlainType(AText), ['tdatetime', 'tdate', 'ttime']);
+  end;
+
+begin
+  Result := AType;
+  if (AType = '') or Known(AType) then
+    Exit;
+  // Übliche Aliase der RTL und VCL auch ohne deren Quellen im Index.
+  if MatchText(PlainType(AType), ['tcaption', 'tfilename']) then
+    Exit('string');
+  if FBaseTypes.TryGetValue(LowerCase(AType), Result) then
+    Exit;
+  Result := AType;
+  Current := FRequest.Resolver.ResolveChain(FRequest.Tree, FRequest.FileName, AType.Split(['.']), FContext.Offset);
+  Depth := 0;
+  while Current.Found and Current.IsType and (Depth < 8) do
+  begin
+    if Current.SymbolKind = TIndexSymbolKind.EnumType then
+    begin
+      Result := 'enum:' + AType;
+      Break;
+    end;
+    if (Current.SymbolKind <> TIndexSymbolKind.TypeAlias) or (Current.TypeName = '') then
+      Break;
+    // "TCaption = type string": das Wort type gehört nicht zum Namen.
+    Result := Trim(Current.TypeName);
+    if Result.StartsWith('type ', True) then
+      Result := Trim(Copy(Result, 6, MaxInt));
+    if Known(Result) then
+      Break;
+    Current := FRequest.Resolver.ResolveChain(FRequest.Tree, FRequest.FileName, Result.Split(['.']),
+      FContext.Offset);
+    Inc(Depth);
+  end;
+  FBaseTypes.AddOrSetValue(LowerCase(AType), Result);
+end;
+
+function TCompletionCollector.Conversion(const AName: string; const ASymbol: TResolvedSymbol;
+  var AOriginal: TScoredItem; out AConverted: TScoredItem): Boolean;
+var
+  Actual, Expected, EnumType, Expression, Shown: string;
+  Converted, Display: TTypeConversion;
+  Helper: Boolean;
+  Start: TTextPosition;
+  UnitName: string;
+  Edit: TRuleEdit;
+begin
+  Result := False;
+  AConverted := Default(TScoredItem);
+  // Nur Werte ohne Pflichtargumente; Typen, Aufzählungswerte und Importe mit eigenem uses-Eintrag nicht.
+  if (FRequest.Settings.TypeConversion = TCompletionTypeConversion.Off) or (FExpected = '') or
+    (ASymbol.Name = '') or ASymbol.IsType or (ASymbol.SymbolKind = TIndexSymbolKind.EnumMember) or
+    (ASymbol.MinArgs > 0) or (ASymbol.TypeName = '') or (AOriginal.Item.AdditionalEdits <> nil) or
+    AOriginal.Item.Unavailable or (FContext.Filter <> TCompletionFilter.Any) or (FRequest.Tree = nil) then
+    Exit;
+  Actual := BaseType(ASymbol.TypeName);
+  Expected := BaseType(FExpected);
+  EnumType := '';
+  if Actual.StartsWith('enum:') then
+  begin
+    EnumType := FRequest.Resolver.UnqualifyType(Copy(Actual, 6, MaxInt), FOwnUnit);
+    Actual := '';
+  end;
+  if Expected.StartsWith('enum:') then
+    Exit;
+  Helper := FRequest.Settings.TypeConversion = TCompletionTypeConversion.Helper;
+  // Eingesetzt wird die ganze Kette: "Lines.Cou" → "IntToStr(Lines.Count)"; gezeigt nur der Name.
+  if FContext.Kind = TCompletionContextKind.Member then
+  begin
+    Start := FContext.ChainStart;
+    Expression := Copy(FRequest.Text, FRequest.OffsetAt(Start) + 1,
+      FRequest.OffsetAt(FContext.DotPos) - FRequest.OffsetAt(Start)) + '.' + AName;
+  end
+  else
+  begin
+    Start := TTextPosition.Create(FRequest.Position.Line, FRequest.Position.Character - Length(FContext.Prefix));
+    Expression := AName;
+  end;
+  if (Start.Character < 0) or not TypeConversion(Actual, Expected, EnumType, Expression, Helper, Converted) then
+    Exit;
+  if Converted.Lossy then
+  begin
+    AOriginal.Item.Lossy := ASymbol.TypeName;
+    Exit;
+  end;
+  TypeConversion(Actual, Expected, EnumType, AName, Helper, Display);
+  Shown := Display.Text;
+  AConverted := AOriginal;
+  AConverted.Item.Name := Shown;
+  AConverted.Item.FilterText := AName;
+  AConverted.Item.Conversion := FExpected;
+  AConverted.Item.ConvertFrom := AName;
+  AConverted.Item.Overloads := nil;
+  AConverted.Item.HasParameters := False;
+  AConverted.Item.HasTextEdit := True;
+  AConverted.Item.TextEdit := TRuleEdit.Create(TTextRange.Create(Start, FRequest.Position), Converted.Text);
+  // Benötigte Units wie bei #180.
+  if not FUsedReady then
+  begin
+    FUsed := TUsesClauses.UsedUnits(FRequest.Tree.Tokens);
+    FUsedReady := True;
+  end;
+  for UnitName in Converted.Units do
+    if not TUsesClauses.IsUsed(FUsed, UnitName, FRequest.Resolver.Namespaces) and
+      not TUsesClauses.IsUsed(FUsed, UnitName, ['System']) and
+      TUsesClauses.AddUnit(FRequest.Tree.Tokens, FContext.Offset, UnitName, #13#10, Edit) then
+      AConverted.Item.AdditionalEdits := AConverted.Item.AdditionalEdits + [Edit];
+  Result := True;
 end;
 
 function TCompletionCollector.ScopeOf(const AMember: TResolvedSymbol; out AUnitName: string): Integer;
@@ -368,7 +587,7 @@ end;
 function TCompletionCollector.Add(const AName, ADetail: string; AKind, APenalty: Integer;
   const ASymbol: TResolvedSymbol; const AEdits: TArray<TRuleEdit>): Boolean;
 var
-  Scored: TScoredItem;
+  Scored, Converted: TScoredItem;
   Range: TTextRange;
   Params, UnitName, Binding: string;
 begin
@@ -412,6 +631,12 @@ begin
   Scored.Item.Fits := (FExpected <> '') and (ASymbol.Name <> '') and MemberFits(ASymbol);
   if Scored.Item.Fits then
     FAnyFits := True;
+  // Typkonvertierung (#490): Umwandlung direkt vor dem Original, das mit seinem Typ wählbar bleibt.
+  if not Scored.Item.Fits and Conversion(AName, ASymbol, Scored, Converted) then
+  begin
+    Converted.Order := FList.Count;
+    FList.Add(Converted);
+  end;
   Scored.Order := FList.Count;
   FList.Add(Scored);
   Result := True;

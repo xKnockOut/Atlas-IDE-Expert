@@ -1174,6 +1174,18 @@ begin
     end
     else if Key = 'resourceStrings' then
       ExpectBoolean(ANode[Index], Key, FSettings.Completion.ResourceStrings)
+    else if Key = 'typeConversion' then
+    begin
+      if ExpectString(ANode[Index], Key, Text) then
+        if Text = 'off' then
+          FSettings.Completion.TypeConversion := TCompletionTypeConversion.Off
+        else if Text = 'helper' then
+          FSettings.Completion.TypeConversion := TCompletionTypeConversion.Helper
+        else if Text = 'function' then
+          FSettings.Completion.TypeConversion := TCompletionTypeConversion.Function_
+        else
+          ReportNode(ANode[Index], 'Erlaubt sind "off", "helper" und "function"');
+    end
     else if Key = 'resourceStringUnit' then
     begin
       if ExpectString(ANode[Index], Key, Text) then
