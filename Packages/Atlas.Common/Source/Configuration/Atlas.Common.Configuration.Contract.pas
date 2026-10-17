@@ -279,6 +279,8 @@ type
     CompleteCase: Boolean;
     /// <summary>Code-Aktion „with auflösen“ (#50).</summary>
     ResolveWith: Boolean;
+    /// <summary>Code-Aktionen „Variable einbetten“ und „Methode einbetten“ (#103, experimentell).</summary>
+    InlineCode: Boolean;
     /// <summary>Methode aus Aufruf anlegen (#472).</summary>
     CreateMethod: Boolean;
     /// <summary>Abschnitt der neuen Methode in der eigenen Unit: private, protected oder public (#472).</summary>
@@ -678,6 +680,7 @@ begin
   Result.Extract := True;
   Result.CompleteCase := True;
   Result.ResolveWith := True;
+  Result.InlineCode := False;
   Result.CreateMethod := True;
   Result.CreateMethodSection := 'private';
   Result.CreateMethodCaretInBody := False;

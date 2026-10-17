@@ -471,7 +471,7 @@ begin
   Assert.IsTrue(Parse('{}', Issues).Refactoring.InlineVar);
   Assert.IsFalse(Parse('{"refactoring": {"inlineVar": false}}', Issues).Refactoring.InlineVar);
   Assert.AreEqual(0, Integer(Length(Issues)));
-  Parse('{"refactoring": {"inline": false}}', Issues);
+  Parse('{"refactoring": {"inlineVars": false}}', Issues);
   Assert.AreEqual(1, Integer(Length(Issues)));
   // Signatur ändern (#100)
   Assert.IsTrue(Parse('{}', Issues).Refactoring.ChangeSignature);
@@ -497,6 +497,9 @@ begin
   Assert.IsFalse(Parse('{"refactoring": {"extract": false}}', Issues).Refactoring.Extract);
   Assert.IsFalse(Parse('{"refactoring": {"completeCase": false}}', Issues).Refactoring.CompleteCase);
   Assert.IsFalse(Parse('{"refactoring": {"resolveWith": false}}', Issues).Refactoring.ResolveWith);
+  // #103: Einbetten, experimentell und daher aus.
+  Assert.IsFalse(Parse('{}', Issues).Refactoring.InlineCode);
+  Assert.IsTrue(Parse('{"refactoring": {"inline": true}}', Issues).Refactoring.InlineCode);
   // #472: Methode aus Aufruf anlegen.
   Assert.IsTrue(Parse('{}', Issues).Refactoring.CreateMethod);
   Assert.AreEqual('private', Parse('{}', Issues).Refactoring.CreateMethodSection);
