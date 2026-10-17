@@ -716,6 +716,8 @@
         <DCCReference Include="IDE.Expert\Atlas.Core.Editor.PatternContinuation.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Editor\Atlas.Core.Editor.MultiCursor.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Editor.MultiCursor.Tests.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Editor\Atlas.Core.Editor.LinkedEditing.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.Core.Editor.LinkedEditing.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Editor\Atlas.Core.Editor.StatementCompletion.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Editor.StatementCompletion.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Editor\Atlas.Core.Editor.Overview.pas"/>

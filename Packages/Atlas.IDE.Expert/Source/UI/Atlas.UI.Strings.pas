@@ -579,7 +579,8 @@ type
     MultiCursorLineEndsCommand, MultiCursorAboveCommand, MultiCursorBelowCommand, MultiCursorStatus,
     MultiCursorStatusHint, SettingsMultiCursor, SettingsMultiCursorModifier, SettingsMultiCursorAlt,
     SettingsMultiCursorCtrl, SettingsMultiCursorNext, SettingsMultiCursorSkip, SettingsMultiCursorLineEnds,
-    SettingsMultiCursorAbove, SettingsMultiCursorBelow);
+    SettingsMultiCursorAbove, SettingsMultiCursorBelow, SettingsLinkedEditing, LinkedEditingCount,
+    LinkedEditingReserved, LinkedEditingVisible, LinkedEditingRestoreHint);
 
   TAtlasStrings = class
   private class var
@@ -1672,7 +1673,9 @@ const
      '%d Einfügemarken', 'Mehrere Einfügemarken aktiv; Esc oder ein Klick beendet sie',
      'Mehrere Einfügemarken (Alt+Klick, Strg+D, Alt+Umschalt+I, Strg+Alt+↑/↓)', 'Klick mit neuer Marke:',
      'Alt+Klick', 'Strg+Klick', 'Wort/nächstes Vorkommen:', 'Überspringen (nach Strg+K):',
-     'Marken an Zeilenenden:', 'Marke darüber:', 'Marke darunter:'),
+     'Marken an Zeilenenden:', 'Marke darüber:', 'Marke darunter:',
+     'Lokale Bezeichner beim Tippen mitziehen (Variablen, Parameter, Konstanten)', '%d Vorkommen',
+     '„%s“ ist ein reserviertes Wort', 'Konflikt mit %s', 'Esc stellt den alten Namen wieder her'),
     ('Enter to accept · Esc to close', '%d of %d', 'No matches for “%s”', 'Backspace widens the search',
      'No suggestions here', 'Esc closes', 'No details for this entry', 'Overload', 'Deprecated: %s', 'Deprecated.',
      'Inherited from %s', 'Inherited', 'optional, default %s', 'No overload with %d parameters.', '… %d more',
@@ -2683,7 +2686,9 @@ const
      '%d cursors', 'Multiple cursors active; Esc or a click ends them',
      'Multiple cursors (Alt+click, Ctrl+D, Alt+Shift+I, Ctrl+Alt+Up/Down)', 'Click with new cursor:',
      'Alt+click', 'Ctrl+click', 'Word/next occurrence:', 'Skip (after Ctrl+K):', 'Cursors at line ends:',
-     'Cursor above:', 'Cursor below:'));
+     'Cursor above:', 'Cursor below:',
+     'Rename local identifiers while typing (variables, parameters, constants)', '%d occurrences',
+     '“%s” is a reserved word', 'Conflicts with %s', 'Esc restores the old name'));
 
 { TAtlasStrings }
 
