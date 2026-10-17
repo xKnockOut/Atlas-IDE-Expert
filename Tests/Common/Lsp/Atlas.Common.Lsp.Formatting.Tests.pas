@@ -22,6 +22,9 @@ type
     procedure FormattingStopsWhenCancelled;
     [Test]
     procedure DocCommentAfterSlashIsSwitchable;
+    /// <summary>#293/#43: Schnellbefehle nach Enter rücken nach den Editor-Optionen ein (hier Tabulatoren).</summary>
+    [Test]
+    procedure SlashCommandFollowsEditorOptions;
   end;
 
 implementation
@@ -125,6 +128,43 @@ begin
     // completeBlocks.docComment = false: "///" bleibt, wie getippt.
     Enabled := False;
     Assert.AreEqual(0, EditCountOf(Dispatcher, Request), 'Gerüst abgeschaltet');
+  finally
+    Formatting.Free;
+    Dispatcher.Free;
+  end;
+end;
+
+procedure TLspFormattingTests.SlashCommandFollowsEditorOptions;
+const
+  Request = '{"jsonrpc":"2.0","id":1,"method":"textDocument/onTypeFormatting","params":{"textDocument":{"uri":"' +
+    CancelUri + '"},"position":{"line":9,"character":1},"ch":"\n",' +
+    '"options":{"tabSize":4,"insertSpaces":false}}}';
+var
+  Store: IDocumentStore;
+  Formatting: TLspFormatting;
+  Dispatcher: TJsonRpcDispatcher;
+  Message_, Response: TJSONObject;
+begin
+  Store := TDocumentStore.Create;
+  Store.Open(CancelUri, 'objectpascal', 1, 'unit Unit1;'#10'interface'#10'implementation'#10'procedure P;'#10 +
+    'var'#10#9'Liste: TStringList;'#10'begin'#10#9'Liste := TStringList.Create;'#10#9'/try'#10#9#10 +
+    #9'Liste.Sort;'#10'end;'#10'end.');
+  Dispatcher := TJsonRpcDispatcher.Create;
+  Formatting := TLspFormatting.Create(Store, nil, nil);
+  try
+    Formatting.Attach(Dispatcher);
+    Message_ := TJSONObject.ParseJSONValue(Request) as TJSONObject;
+    try
+      Response := Dispatcher.DispatchMessage(Message_);
+      try
+        Assert.IsTrue(Pos('\t\tListe.Sort', Response.ToJSON) > 0, Response.ToJSON);
+        Assert.AreEqual(0, Pos('  \tListe.Sort', Response.ToJSON), Response.ToJSON);
+      finally
+        Response.Free;
+      end;
+    finally
+      Message_.Free;
+    end;
   finally
     Formatting.Free;
     Dispatcher.Free;

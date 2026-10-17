@@ -370,6 +370,15 @@ begin
   Assert.AreEqual(2, Integer(Length(Issues)));
   Settings := TConfigurationParser.ParseLayered('{"slashCommands": {"disabled": ["uses"]}}', '{}', Issues);
   Assert.AreEqual(1, Integer(Length(Settings.SlashCommandsDisabled)));
+  // Alias usesCommand aus #254: Vorgabe an, false schaltet /uses ab, atlas.json überdeckt den Editor.
+  Assert.IsTrue(Parse('{}', Issues).UsesCommand);
+  Settings := Parse('{"usesCommand": false}', Issues);
+  Assert.AreEqual(0, Integer(Length(Issues)));
+  Assert.IsFalse(Settings.UsesCommand);
+  Parse('{"usesCommand": "nein"}', Issues);
+  Assert.AreEqual(1, Integer(Length(Issues)));
+  Settings := TConfigurationParser.ParseLayered('{"usesCommand": true}', '{"usesCommand": false}', Issues);
+  Assert.IsFalse(Settings.UsesCommand, 'atlas.json gilt vor den Editor-Einstellungen');
   // Gerüst des Dokumentationskommentars (#88)
   Assert.IsTrue(Parse('{}', Issues).CompleteBlocksDocComment);
   Settings := Parse('{"completeBlocks": {"docComment": false}}', Issues);

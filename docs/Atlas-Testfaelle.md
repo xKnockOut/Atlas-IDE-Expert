@@ -1838,3 +1838,15 @@ Voraussetzung für EX2 bis EX7: mindestens eine Einstellung trägt `x-experiment
 | EX8 | Profil „Alles an“ importieren, dann „Alles an, auch experimentell“ | „Alles an“ lässt experimental.enabled aus; das zweite Profil schaltet es und alle experimentellen Funktionen ein |
 | EX9 | whatsnew.json mit einem Eintrag `"experimental": true`, Willkommensseite „Neu in Atlas“ | Eintrag steht nach den übrigen unter „Experimentell (wirkt erst mit …)“ |
 | EX10 | Englische IDE | Hauptschalter, Hinweis, Filter und Kennzeichnung auf Englisch |
+
+## Schnellbefehle: Argumente und Formatstil (#293, #294)
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| SB1 | In einer Routine `/uses Sys` tippen | Vorschläge aus dem Index: `System.SysUtils`, `System.Classes` … (**Abnahme**) |
+| SB2 | `/var Liste: TStringL` tippen, `TStringList` wählen, Enter | Variable angelegt; fehlt `System.Classes` in uses, kommt der Eintrag mit (**Abnahme**) |
+| SB3 | `/intf `, `/raise `, `/override `, `/ignore unused-` tippen | Interfaces, Ausnahmeklassen, überschreibbare Methoden bzw. Regelkennungen |
+| SB4 | `.editorconfig` mit `indent_style = tab`, in einer Routine nach `Liste := TStringList.Create;` `/try` und Enter | try/finally mit Tabulatoren eingerückt, nicht mit Leerzeichen (**Abnahme**) |
+| SB5 | `"format": {"indentSize": 4}` in atlas.json, `/prop Name: string` in einer Methode | Feld, Property und Setter mit vier Leerzeichen je Ebene |
+| SB6 | `delphiVersion` 19.0 (10.2), `/var I := 0` | Zeile bleibt stehen, Hinweis „Inline-Variablen gibt es erst ab Delphi 10.3 …“ (**Abnahme**) |
+| SB7 | `/const Max = 10` im interface-Teil außerhalb einer Routine; `/const! X = 1` in einer Unit ohne implementation | Beide bleiben stehen mit Hinweis |

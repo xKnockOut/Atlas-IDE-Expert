@@ -49,6 +49,9 @@ type
     procedure ChoicesStatic;
     [Test]
     procedure ArgumentChoicesForSortAndFilter;
+    /// <summary>#293: Units, Typen, Interfaces, Ausnahmen, Methoden und Regeln als Argumente.</summary>
+    [Test]
+    procedure ArgumentChoicesFromIndexAndCatalog;
     [Test]
     procedure MapEditsKeepsIndentAndLineBreak;
   end;
@@ -63,6 +66,9 @@ uses
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.Parser,
   Atlas.Common.Editing.SlashCommands,
+  Atlas.Common.Index.Contract,
+  Atlas.Common.Index.Extractor,
+  Atlas.Common.Index.SymbolIndex,
   Atlas.Common.Editing.SlashMenu;
 
 const
@@ -408,6 +414,54 @@ begin
   Assert.AreEqual('Name,Umsatz', string.Join(',', TSlashMenu.ArgumentChoices(Format(Text, ['/sort Kunden -']), 13,
     'sort', 'Kunden -', nil)));
   Assert.AreEqual(0, Integer(Length(TSlashMenu.ArgumentChoices(Format(Text, ['/list ']), 13, 'list', '', nil))));
+end;
+
+procedure TSlashMenuTests.ArgumentChoicesFromIndexAndCatalog;
+const
+  Library_ =
+    'unit Kunden.Daten;'#10'interface'#10'type'#10 +
+    '  TKunde = class'#10'    procedure Laden;'#10'  end;'#10 +
+    '  TKundenArt = (kaNeu, kaAlt);'#10 +
+    '  IExporter = interface'#10'  end;'#10 +
+    '  EImportFehler = class(Exception)'#10'  end;'#10 +
+    'implementation'#10'end.';
+var
+  Index: ISymbolIndex;
+  Tree: TSyntaxTree;
+
+  function Choices(const AName, AArguments: string): string;
+  begin
+    Result := string.Join(',', TSlashMenu.ArgumentChoices(ClassUnit, 11, AName, AArguments, Index));
+  end;
+
+begin
+  Index := TSymbolIndex.Create;
+  Tree := TPascalParser.Parse(Library_);
+  try
+    Index.AddUnit(TIndexExtractor.Extract(Tree, 'C:\P\Kunden.Daten.pas'));
+  finally
+    Tree.Free;
+  end;
+  Assert.AreEqual('Kunden.Daten', Choices('uses', 'Ku'));
+  Assert.AreEqual('Kunden.Daten', Choices('open', ''));
+  Assert.AreEqual('', Choices('uses', 'Vcl'));
+  // Typen erst hinter dem Doppelpunkt; nur Typen auf Unit-Ebene.
+  Assert.AreEqual('', Choices('var', 'Liste'));
+  Assert.AreEqual('TKunde,TKundenArt', Choices('var', 'Liste: TKu'));
+  Assert.AreEqual('TKunde,TKundenArt', Choices('field', 'FKunde:TK'));
+  Assert.AreEqual('TKunde,TKundenArt', Choices('helper', 'TK'));
+  Assert.AreEqual('', Choices('helper', 'TKunde Na'));
+  Assert.AreEqual('IExporter', Choices('intf', ''));
+  Assert.AreEqual('EImportFehler', Choices('raise', ''));
+  Assert.AreEqual('', Choices('raise', 'EImportFehler Dat'), 'die Meldung ist frei');
+  // Methoden zum Überschreiben (ohne Index aus der Datei) und Regeln aus dem Katalog.
+  Assert.AreEqual('Malen', string.Join(',', TSlashMenu.ArgumentChoices(ClassUnit, 11, 'override', 'Ma', nil)));
+  Assert.AreEqual('unused-local,unused-parameter', string.Join(',', TSlashMenu.ArgumentChoices(ClassUnit, 11,
+    'ignore', 'unused-', nil, ['with-statement', 'unused-parameter', 'unused-local'])));
+  Assert.AreEqual(0, Integer(Length(TSlashMenu.ArgumentChoices(ClassUnit, 11, 'ignore', 'unused-local Gr', nil,
+    ['unused-local']))));
+  Assert.IsTrue(TSlashMenu.ArgumentKind('var', 'X: T') = TSlashArgumentKind.Types);
+  Assert.AreEqual('TK', TSlashMenu.CurrentWord('FKunde:TK'));
 end;
 
 procedure TSlashMenuTests.MapEditsKeepsIndentAndLineBreak;

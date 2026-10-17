@@ -28,6 +28,7 @@ uses
   Atlas.Common.Pascal.Contract,
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Index.Contract,
+  Atlas.Common.Pascal.LanguageFeatures,
   Atlas.Common.Editing.ClassMembers,
   Atlas.Common.Editing.CommandSource;
 
@@ -54,6 +55,9 @@ begin
         Value := Trim(Copy(Value, 1, Length(Value) - 1));
       if (Name = '') or (Value = '') then
         Exit(Fail('Erwartet wird /var Name := Ausdruck', AReason));
+      if not TLanguageFeatures.IsAvailable(TLanguageFeature.InlineVariable, AContext.DelphiVersion) then
+        Exit(Fail(Format('Inline-Variablen gibt es erst ab Delphi 10.3 (eingestellt: %s); /var Name: Typ legt ' +
+          'eine lokale Variable an', [AContext.DelphiVersion]), AReason));
       AEdits := [TTextEdit.Create(TTextRange.Create(Source.Line, 0, Source.Line, Length(AContext.LineText)),
         Copy(AContext.LineText, 1, Pos('/', AContext.LineText) - 1) +
         Format('var %s := %s;', [Name, Value]))];

@@ -199,7 +199,7 @@ procedure RegisterMaintenanceCommands(ARegistry: TSlashCommandRegistry);
 begin
   ARegistry.Register(Command('sortuses', 'uses-Listen sortieren', '/sortuses', ExecuteSortUses));
   ARegistry.Register(Command('ignore', 'Prüfregel für die Zeile darunter unterdrücken',
-    '/ignore unused-variable Absicht', ExecuteIgnore));
+    '/ignore unused-local Absicht', ExecuteIgnore));
   ARegistry.Register(Command('todo', 'TODO-Kommentar für die IDE-TODO-Liste', '/todo Fehlerfall prüfen',
     ExecuteTodo));
   ARegistry.Register(Command('doc', 'XML-Doc-Gerüst für die Routine darunter', '/doc', ExecuteDoc));
