@@ -997,6 +997,12 @@ begin
       ExpectBoolean(ANode[Index], Key, FSettings.Refactoring.ClassActions)
     else if Key = 'explicitType' then
       ExpectBoolean(ANode[Index], Key, FSettings.Refactoring.ExplicitType)
+    else if Key = 'extract' then
+      ExpectBoolean(ANode[Index], Key, FSettings.Refactoring.Extract)
+    else if Key = 'completeCase' then
+      ExpectBoolean(ANode[Index], Key, FSettings.Refactoring.CompleteCase)
+    else if Key = 'resolveWith' then
+      ExpectBoolean(ANode[Index], Key, FSettings.Refactoring.ResolveWith)
     else
       Report(ANode.KeyStarts[Index], ANode.KeyStarts[Index] + Length(Key) + 2,
         Format('Unbekannte Einstellung "refactoring.%s"', [Key]), False);

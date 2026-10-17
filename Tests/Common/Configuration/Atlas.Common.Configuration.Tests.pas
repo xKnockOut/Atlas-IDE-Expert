@@ -467,6 +467,13 @@ begin
   // Typ ausschreiben (#453)
   Assert.IsTrue(Parse('{}', Issues).Refactoring.ExplicitType);
   Assert.IsFalse(Parse('{"refactoring": {"explicitType": false}}', Issues).Refactoring.ExplicitType);
+  // #50: Extrahieren, case vervollständigen und with auflösen.
+  Assert.IsTrue(Parse('{}', Issues).Refactoring.Extract);
+  Assert.IsTrue(Parse('{}', Issues).Refactoring.CompleteCase);
+  Assert.IsTrue(Parse('{}', Issues).Refactoring.ResolveWith);
+  Assert.IsFalse(Parse('{"refactoring": {"extract": false}}', Issues).Refactoring.Extract);
+  Assert.IsFalse(Parse('{"refactoring": {"completeCase": false}}', Issues).Refactoring.CompleteCase);
+  Assert.IsFalse(Parse('{"refactoring": {"resolveWith": false}}', Issues).Refactoring.ResolveWith);
   Assert.AreEqual(0, Integer(Length(Issues)));
   Parse('{"refactoring": {"newParameter": "default"}}', Issues);
   Assert.AreEqual(1, Integer(Length(Issues)));

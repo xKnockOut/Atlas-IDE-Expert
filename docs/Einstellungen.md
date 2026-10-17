@@ -21,7 +21,7 @@ Alle Einstellungen mit Seite und Bedienelement im Einstellungs-Plugin (#227). Ei
 | Compiler | `compiler`: `onSave`, `backend`, `ideCommand` | – | settings.json (Tools › Optionen › Atlas) | nein | Kontrollkästchen, Auswahl, Datei wählen | #40, #261 |
 | Allgemein | `vcs`: `provider` | – | settings.json (Tools › Optionen › Atlas) | nein | Auswahl | #571 |
 | Vervollständigung | `completion`: `matching`, `interfaceSection`, `senderCast`, `offerTryFinally`, `freeStyle`, `keywords`, `postfixTemplates`, `genericConstraints` | – | settings.json (Tools › Optionen › Atlas); `interfaceSection`, `senderCast`, `freeStyle` in atlas.json | nein | Auswahl | #31, #188, #229, #450, #466, #480, #489 |
-| Vervollständigung | `refactoring`: `inlineVar`, `changeSignature`, `newParameter`, `virtualOverload`, `syncSignatures`, `tryFinally`, `classActions`, `explicitType` | – | atlas.json (Atlas › Projekt-Einstellungen) | nein | Kontrollkästchen | #42, #50, #100, #188, #453 |
+| Vervollständigung | `refactoring`: `inlineVar`, `changeSignature`, `newParameter`, `virtualOverload`, `syncSignatures`, `tryFinally`, `classActions`, `explicitType`, `extract`, `completeCase`, `resolveWith` | – | atlas.json (Atlas › Projekt-Einstellungen) | nein | Kontrollkästchen | #42, #50, #100, #188, #453 |
 | Eingabehilfen | `usesCommand` | `true` | settings.json (Tools › Optionen › Atlas) | nein | Kontrollkästchen | #254 |
 | Eingabehilfen | `completeBlocks`: `docComment` | – | settings.json (Tools › Optionen › Atlas) | nein | Kontrollkästchen | #88 |
 | Editor | `metrics` | `true` | settings.json (Tools › Optionen › Atlas) | nein | Kontrollkästchen | #66 |
