@@ -262,6 +262,9 @@ type
     FOutlineFollowCursor: TCheckBox;
     FBreadcrumbs: TCheckBox;
     FBreadcrumbsShowUnit: TCheckBox;
+    // Mitlaufender Kopf (#506).
+    FStickyScroll: TCheckBox;
+    FStickyScrollMaxLines: TEdit;
     FBreadcrumbsKey: TEdit;
     FGitGutter: TCheckBox;
     FGitBlame: TCheckBox;
@@ -685,6 +688,8 @@ type
     property ContinuePattern: TCheckBox read FContinuePattern;
     property ContinuePatternMinLines: TEdit read FContinuePatternMinLines;
     property MultiCursor: TCheckBox read FMultiCursor;
+    property StickyScroll: TCheckBox read FStickyScroll;
+    property StickyScrollMaxLines: TEdit read FStickyScrollMaxLines;
     property LinkedEditing: TCheckBox read FLinkedEditing;
     property MultiCursorModifier: TAtlasChoiceBox read FMultiCursorModifier;
     property MultiCursorNextKey: TEdit read FMultiCursorNextKey;
@@ -1225,6 +1230,9 @@ begin
   FBreadcrumbs := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsBreadcrumbs));
   FBreadcrumbsShowUnit := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsBreadcrumbsShowUnit));
   FBreadcrumbsKey := AddKey(TAtlasStrings.Text(TAtlasTextId.BreadcrumbsCommand));
+  // Mitlaufender Kopf (#506, experimentell).
+  FStickyScroll := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsStickyScroll));
+  FStickyScrollMaxLines := AddNumber(TAtlasStrings.Text(TAtlasTextId.SettingsStickyScrollMaxLines));
   // Änderungsmarken und Zeilenhistorie (#507).
   FGitGutter := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsGitGutter));
   FNextChangeKey := AddKey(TAtlasStrings.Text(TAtlasTextId.NextChangeCommand));
@@ -2214,6 +2222,8 @@ begin
   FMarks.Bind(FBreadcrumbs, ['Breadcrumbs']);
   FMarks.Bind(FBreadcrumbsShowUnit, ['BreadcrumbsShowUnit']);
   FMarks.Bind(FBreadcrumbsKey, ['BreadcrumbsKey']);
+  FMarks.Bind(FStickyScroll, ['StickyScroll']);
+  FMarks.Bind(FStickyScrollMaxLines, ['StickyScrollMaxLines']);
   FMarks.Bind(FGitGutter, ['GitGutter']);
   FMarks.Bind(FGitBlame, ['GitBlame']);
   FMarks.Bind(FNextChangeKey, ['NextChangeKey']);
@@ -3228,6 +3238,8 @@ begin
   FBreadcrumbs.Checked := ASettings.Breadcrumbs;
   FBreadcrumbsShowUnit.Checked := ASettings.BreadcrumbsShowUnit;
   FBreadcrumbsKey.Text := ShortCutToText(TShortCut(ASettings.BreadcrumbsKey));
+  FStickyScroll.Checked := ASettings.StickyScroll;
+  FStickyScrollMaxLines.Text := IntToStr(ASettings.StickyScrollMaxLines);
   FGitGutter.Checked := ASettings.GitGutter;
   FGitBlame.Checked := ASettings.GitBlame;
   FNextChangeKey.Text := ShortCutToText(TShortCut(ASettings.NextChangeKey));
@@ -3559,6 +3571,8 @@ begin
   ASettings.Breadcrumbs := FBreadcrumbs.Checked;
   ASettings.BreadcrumbsShowUnit := FBreadcrumbsShowUnit.Checked;
   ASettings.BreadcrumbsKey := Integer(TextToShortCut(Trim(FBreadcrumbsKey.Text)));
+  ASettings.StickyScroll := FStickyScroll.Checked;
+  ASettings.StickyScrollMaxLines := StrToIntDef(FStickyScrollMaxLines.Text, ASettings.StickyScrollMaxLines);
   ASettings.GitGutter := FGitGutter.Checked;
   ASettings.GitBlame := FGitBlame.Checked;
   ASettings.NextChangeKey := Integer(TextToShortCut(Trim(FNextChangeKey.Text)));

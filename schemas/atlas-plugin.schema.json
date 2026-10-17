@@ -2068,6 +2068,31 @@
       "x-page": "Editor",
       "x-issue": "#590"
     },
+    "StickyScroll": {
+      "description": "Mitlaufender Kopf: Die Kopfzeilen der umgebenden Klasse bzw. des Records und der Routinen bleiben oben im Editor stehen, bis der Block endet. Verschachtelte Routinen stapeln sich (die äußere oben); im Rumpf der äußeren Routine steht nur ihr Kopf. Bei mehr Ebenen als erlaubt bleibt die innerste sichtbar, die äußeren werden zu einer Zeile „A › B › C“ zusammengefasst. Mehrzeilige Köpfe werden mit „(…)“ auf eine Zeile gekürzt. Klick auf eine Kopfzeile springt dorthin.",
+      "type": "boolean",
+      "default": false,
+      "x-key": "editor.stickyScroll",
+      "x-area": "editor",
+      "x-feature": "EditorCommands",
+      "x-page": "Editor",
+      "x-experimental": true,
+      "x-quickToggle": true,
+      "x-caption": "Mitlaufender Kopf",
+      "x-captionEn": "Sticky scroll",
+      "x-issue": "#506"
+    },
+    "StickyScrollMaxLines": {
+      "description": "Höchstzahl der Kopfzeilen des mitlaufenden Kopfs (1 bis 10).",
+      "type": "integer",
+      "default": 3,
+      "minimum": 1,
+      "maximum": 10,
+      "x-key": "editor.stickyScrollMaxLines",
+      "x-area": "editor",
+      "x-page": "Editor",
+      "x-issue": "#506"
+    },
     "BreadcrumbsKey": {
       "description": "Tastenkürzel „Brotkrumenleiste“: Leiste bedienen, danach ←/→ wechseln das Glied, ↓ öffnet das Menü (0 = keins).",
       "type": "integer",

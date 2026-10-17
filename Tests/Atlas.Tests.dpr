@@ -550,6 +550,8 @@ uses
   Atlas.UI.Outline.Frame.Tests in 'IDE.Expert\Atlas.UI.Outline.Frame.Tests.pas',
   Atlas.Core.Outline.Breadcrumbs in '..\Packages\Atlas.IDE.Expert\Source\Core\Outline\Atlas.Core.Outline.Breadcrumbs.pas',
   Atlas.Core.Outline.Breadcrumbs.Tests in 'IDE.Expert\Atlas.Core.Outline.Breadcrumbs.Tests.pas',
+  Atlas.Core.Outline.StickyScroll in '..\Packages\Atlas.IDE.Expert\Source\Core\Outline\Atlas.Core.Outline.StickyScroll.pas',
+  Atlas.Core.Outline.StickyScroll.Tests in 'IDE.Expert\Atlas.Core.Outline.StickyScroll.Tests.pas',
   Atlas.UI.Outline.Breadcrumbs in '..\Packages\Atlas.IDE.Expert\Source\UI\Outline\Atlas.UI.Outline.Breadcrumbs.pas',
   Atlas.UI.Outline.Breadcrumbs.Tests in 'IDE.Expert\Atlas.UI.Outline.Breadcrumbs.Tests.pas',
   Atlas.UI.Editor.Hide.Tests in 'IDE.Expert\Atlas.UI.Editor.Hide.Tests.pas',
