@@ -22,6 +22,12 @@ type
     procedure InlineVarReplacesLine;
     [Test]
     procedure VarOutsideRoutineFails;
+    /// <summary>#294: Inline-Variable vor Delphi 10.3 bleibt stehen und bekommt einen Hinweis.</summary>
+    [Test]
+    procedure InlineVarNeedsDelphi103;
+    /// <summary>#294: /const außerhalb einer Routine und /prop außerhalb einer Klasse bleiben stehen.</summary>
+    [Test]
+    procedure ConstAndPropOutsideFail;
     [Test]
     procedure ConstLocalAndImplementation;
     [Test]
@@ -181,6 +187,50 @@ begin
   Problems := TSlashCommandRegistry.Shared.Problems(Text, nil);
   Assert.AreEqual(1, Integer(Length(Problems)));
   Assert.AreEqual('/var gilt nur im Rumpf einer Routine', Problems[0].Message);
+end;
+
+procedure TDeclarationCommandsTests.InlineVarNeedsDelphi103;
+var
+  Edits: TArray<TRuleEdit>;
+  Problems: TArray<TSlashProblem>;
+begin
+  // Delphi 10.2 (BDS 19.0): kein Inline-var; 10.3 (20.0) und unbekannt: erlaubt.
+  Assert.IsFalse(TSlashCommandRegistry.Shared.AfterEnter(WithCommand('/var I := 0'), TTextPosition.Create(17, 0),
+    nil, nil, Edits, nil, '19.0'));
+  Problems := TSlashCommandRegistry.Shared.Problems(WithCommand('/var I := 0'), nil, nil, '19.0');
+  Assert.AreEqual(1, Integer(Length(Problems)));
+  Assert.IsTrue(Problems[0].Message.StartsWith('Inline-Variablen gibt es erst ab Delphi 10.3'), Problems[0].Message);
+  Assert.IsTrue(TSlashCommandRegistry.Shared.AfterEnter(WithCommand('/var I := 0'), TTextPosition.Create(17, 0),
+    nil, nil, Edits, nil, '20.0'));
+  // Die lokale Variable geht in jeder Version.
+  Assert.IsTrue(TSlashCommandRegistry.Shared.AfterEnter(WithCommand('/var I: Integer'), TTextPosition.Create(17, 0),
+    nil, nil, Edits, nil, '19.0'));
+end;
+
+procedure TDeclarationCommandsTests.ConstAndPropOutsideFail;
+const
+  Outside = 'unit U;'#10'interface'#10'%s'#10#10'implementation'#10'end.';
+var
+  Ok: Boolean;
+  Edits: TArray<TRuleEdit>;
+  Problems: TArray<TSlashProblem>;
+begin
+  Assert.IsFalse(Run(Format(Outside, ['/const Max = 10']), 2, Edits));
+  Problems := TSlashCommandRegistry.Shared.Problems(Format(Outside, ['/const Max = 10']), nil);
+  Assert.AreEqual(1, Integer(Length(Problems)));
+  Assert.AreEqual('/const gilt nur im Rumpf einer Routine; /const! schreibt in die implementation',
+    Problems[0].Message);
+  // /const! braucht die implementation.
+  Ok := Run('unit U;'#10'interface'#10'/const! Max = 10'#10#10'end.', 2, Edits);
+  if Ok then
+    Assert.Fail(Apply('unit U;'#10'interface'#10'/const! Max = 10'#10#10'end.', Edits));
+  Assert.IsFalse(Run('unit U;'#10'interface'#10'implementation'#10'procedure P;'#10'begin'#10 +
+    '  /prop Name: string'#10#10'end;'#10'end.', 5, Edits));
+  Problems := TSlashCommandRegistry.Shared.Problems('unit U;'#10'interface'#10'implementation'#10'procedure P;'#10 +
+    'begin'#10'  /prop Name: string'#10#10'end;'#10'end.', nil);
+  Assert.AreEqual(1, Integer(Length(Problems)));
+  Assert.IsTrue(Problems[0].Message.StartsWith('/prop'), Problems[0].Message);
+  Assert.AreEqual(5, Problems[0].Range.StartPos.Line);
 end;
 
 procedure TDeclarationCommandsTests.ConstLocalAndImplementation;

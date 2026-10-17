@@ -69,9 +69,9 @@ type
     class function Parameters(const AExisting: string; const ANames: TArray<string>;
       const AXmlFile: string): string; static;
     /// <summary>„Test debuggen“ (Befehl, Kontextmenü, Marke der Code Lens) verfügbar: Atlas an, Tests ausführen
-    /// (TestRun) und Test debuggen (TestDebug).</summary>
+    /// (TestRun), Test debuggen (TestDebug) und codeLens.tests (#585: aus = wie ohne die Funktion).</summary>
     class function DebugWanted(const ASettings: TAtlasPluginSettings): Boolean; static;
-    /// <summary>„Test ausführen“ am Cursor verfügbar: Atlas an und Tests ausführen (TestRun).</summary>
+    /// <summary>„Test ausführen“ am Cursor verfügbar: Atlas an, Tests ausführen (TestRun) und codeLens.tests.</summary>
     class function RunWanted(const ASettings: TAtlasPluginSettings): Boolean; static;
     /// <summary>Code Lens an Tests: Atlas an, codeLens.tests und TestRun; ohne sie verhält sich Atlas wie ohne
     /// Lens (#585, gemeinsamer Schlüssel mit #69).</summary>
@@ -270,12 +270,12 @@ end;
 
 class function TAtlasTestDebug.DebugWanted(const ASettings: TAtlasPluginSettings): Boolean;
 begin
-  Result := ASettings.Enabled and ASettings.TestRun and ASettings.TestDebug;
+  Result := RunWanted(ASettings) and ASettings.TestDebug;
 end;
 
 class function TAtlasTestDebug.RunWanted(const ASettings: TAtlasPluginSettings): Boolean;
 begin
-  Result := ASettings.Enabled and ASettings.TestRun;
+  Result := ASettings.Enabled and ASettings.TestRun and ASettings.CodeLensTests;
 end;
 
 class function TAtlasTestDebug.LensWanted(const ASettings: TAtlasPluginSettings): Boolean;

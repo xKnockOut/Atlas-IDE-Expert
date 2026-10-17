@@ -289,6 +289,10 @@ begin
   Section := FTree.Root.FindChild(TSyntaxKind.ImplementationSection);
   if Section = nil then
     Exit;
+  // Der fehlertolerante Parser legt den Abschnitt auch ohne das Schlüsselwort an (#294).
+  if (Section.StartPos.Line > High(FLines)) or not StartsText('implementation', TrimLeft(FLines[Section.StartPos.Line]))
+  then
+    Exit;
   Result := Section.StartPos.Line;
   UsesNode := Section.FindChild(TSyntaxKind.UsesClause);
   if UsesNode <> nil then

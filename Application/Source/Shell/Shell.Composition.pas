@@ -765,6 +765,18 @@ begin
   FSlashMenu.SlashCommandsFor := SlashCommandsFor;
   FSlashMenu.DelphiVersionFor := DelphiVersionFor;
   FSlashMenu.SlashHost := SlashHost;
+  // Einrückung wie beim Formatieren (#43), ohne Editor-Optionen: .editorconfig und "format".
+  FSlashMenu.FormatStyleFor :=
+    function(const AUri: string): TFormatStyle
+    begin
+      Result := TLspFormatting.Resolve(nil, TDocumentUris.ToPath(AUri), FormatStyleFor(AUri),
+        function(const AFileName: string; out AText: string): Boolean
+        begin
+          Result := FileExists(AFileName);
+          if Result then
+            AText := TFile.ReadAllText(AFileName);
+        end);
+    end;
   FSelectionRanges := TLspSelectionRanges.Create(FDocuments);
   FSelectionRanges.Attach(FDispatcher);
 end;

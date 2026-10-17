@@ -22,6 +22,7 @@ interface
 uses
   Atlas.Common.Documents.Contract,
   Atlas.Common.Index.Contract,
+  Atlas.Common.Configuration.Contract,
   Atlas.Common.Editing.SlashCommands;
 
 type
@@ -31,6 +32,8 @@ type
   /// <summary>Gruppe im Erzeugen-Menü; Umschließen nur mit Markierung.</summary>
   TSlashGroup = (Generate, Surround);
   TSlashArgument = (None, Optional, Required);
+  /// <summary>Art der Vorschläge beim Tippen der Argumente (#293).</summary>
+  TSlashArgumentKind = (None, Collection, Units, Types, Interfaces, Exceptions, Overrides, Rules);
   {$SCOPEDENUMS OFF}
   TSlashPlaces = set of TSlashPlace;
 
@@ -57,6 +60,9 @@ type
   end;
 
   TSlashMenu = class
+  public const
+    /// <summary>Höchstzahl der Vorschläge aus dem Index beim Tippen der Argumente.</summary>
+    MaxChoices = 200;
   public
     /// <summary>Alle Befehle des Menüs in Menüreihenfolge.</summary>
     class function Catalog: TArray<TSlashMenuEntry>; static;
@@ -82,14 +88,32 @@ type
     class function Choices(const AText: string; const ASpot: TSlashSpot; const AName: string;
       const AIndex: ISymbolIndex): TArray<string>; static;
     /// <summary>Vorschläge beim Tippen der Argumente in der Befehlszeile ALine von AText (AArguments bis zum
-    /// Cursor): /sort und /filter erst Sammlungen, dann Felder und Properties des Elementtyps (#319).</summary>
+    /// Cursor, #293): /sort und /filter erst Sammlungen, dann Felder und Properties des Elementtyps (#319);
+    /// /uses und /open Units; Typen hinter dem ":" von /var, /field, /prop, /list, /future und als Argument von
+    /// /helper; Interfaces bei /intf, Ausnahmeklassen bei /raise und /exception; überschreibbare Methoden bei
+    /// /override; Regelkennungen aus ARuleIds bei /ignore. Gefiltert nach dem angefangenen Wort, höchstens
+    /// MaxChoices.</summary>
     class function ArgumentChoices(const AText: string; ALine: Integer; const AName, AArguments: string;
-      const AIndex: ISymbolIndex): TArray<string>; static;
+      const AIndex: ISymbolIndex; const ARuleIds: TArray<string>): TArray<string>; overload; static;
+    /// <summary>Wie oben, ohne Regelkennungen.</summary>
+    class function ArgumentChoices(const AText: string; ALine: Integer; const AName, AArguments: string;
+      const AIndex: ISymbolIndex): TArray<string>; overload; static;
+    /// <summary>Art der Vorschläge für "/AName AArguments" (#293); bei Typen ergänzt die Vervollständigung den
+    /// uses-Eintrag der gewählten Typ-Unit (#294, #180).</summary>
+    class function ArgumentKind(const AName, AArguments: string): TSlashArgumentKind; static;
+    /// <summary>Das angefangene Wort am Ende von AArguments (nach Leerzeichen, Komma oder Doppelpunkt).</summary>
+    class function CurrentWord(const AArguments: string): string; static;
     /// <summary>Führt "/AName AArguments" an ASpot aus; AEdits beziehen sich auf AText. False mit AReason, wenn der
     /// Befehl dort nicht passt oder abgeschaltet ist.</summary>
     class function Run(ARegistry: TSlashCommandRegistry; const AText: string; const ASpot: TSlashSpot; const AName,
       AArguments: string; const ADisabled: TArray<string>; const AIndex: ISymbolIndex; const ADelphiVersion,
-      AUri: string; const AHost: ISlashHost; out AEdits: TArray<TTextEdit>; out AReason: string): Boolean; static;
+      AUri: string; const AHost: ISlashHost; out AEdits: TArray<TTextEdit>; out AReason: string): Boolean;
+      overload; static;
+    /// <summary>Wie Run, mit der Einrückung nach AStyle (#43).</summary>
+    class function Run(ARegistry: TSlashCommandRegistry; const AText: string; const ASpot: TSlashSpot; const AName,
+      AArguments: string; const ADisabled: TArray<string>; const AIndex: ISymbolIndex; const ADelphiVersion,
+      AUri: string; const AHost: ISlashHost; const AStyle: TFormatStyle; out AEdits: TArray<TTextEdit>;
+      out AReason: string): Boolean; overload; static;
     /// <summary>Rechnet Änderungen am Text mit der gedachten Zeile ACommandLine (Text ACommandText) auf den Text
     /// ohne sie um. Was die Änderungen von der Zeile nicht überdecken (Einrückung davor, Zeilenende), bleibt wie
     /// im gedachten Text erhalten.</summary>
@@ -109,7 +133,9 @@ uses
   Atlas.Common.Editing.CommandSource,
   Atlas.Common.Editing.ClassCommands,
   Atlas.Common.Editing.CollectionCommands,
-  Atlas.Common.Editing.RecordCommands;
+  Atlas.Common.Editing.RecordCommands,
+  System.Generics.Collections,
+  System.Generics.Defaults;
 
 const
   /// <summary>Häufige Symbole für /ifdef.</summary>
@@ -489,32 +515,172 @@ begin
     Result := CollectionChoices(Context, '');
 end;
 
+class function TSlashMenu.CurrentWord(const AArguments: string): string;
+var
+  Index: Integer;
+begin
+  Index := Length(AArguments);
+  while (Index > 0) and not CharInSet(AArguments[Index], [' ', ',', ':', #9, '(', ';']) do
+    Dec(Index);
+  Result := Copy(AArguments, Index + 1, MaxInt);
+end;
+
+class function TSlashMenu.ArgumentKind(const AName, AArguments: string): TSlashArgumentKind;
+var
+  Words: Integer;
+  Trimmed: string;
+begin
+  Trimmed := TrimLeft(AArguments);
+  // Fertige Wörter vor dem angefangenen.
+  Words := Length(Trim(Copy(Trimmed, 1, Length(Trimmed) - Length(CurrentWord(Trimmed)))).Split([' ', ','],
+    TStringSplitOptions.ExcludeEmpty));
+  Result := TSlashArgumentKind.None;
+  if MatchText(AName, ['sort', 'filter']) then
+    Result := TSlashArgumentKind.Collection
+  else if MatchText(AName, ['uses', 'open']) then
+    Result := TSlashArgumentKind.Units
+  else if MatchText(AName, ['var', 'field', 'prop', 'list', 'future']) then
+  begin
+    // Erst der freie Name, hinter dem ":" der Typ.
+    if Pos(':', Trimmed) > 0 then
+      Result := TSlashArgumentKind.Types;
+  end
+  else if SameText(AName, 'helper') and (Words = 0) then
+    Result := TSlashArgumentKind.Types
+  else if SameText(AName, 'intf') then
+    Result := TSlashArgumentKind.Interfaces
+  else if MatchText(AName, ['raise', 'exception']) and (Words = 0) then
+    Result := TSlashArgumentKind.Exceptions
+  else if SameText(AName, 'override') then
+    Result := TSlashArgumentKind.Overrides
+  else if SameText(AName, 'ignore') and (Words = 0) then
+    Result := TSlashArgumentKind.Rules;
+end;
+
+/// <summary>Namen aus AIndex auf Unit-Ebene zu AKind, die mit APrefix beginnen; nach Namen sortiert, ohne
+/// doppelte, höchstens TSlashMenu.MaxChoices.</summary>
+function IndexChoices(const AIndex: ISymbolIndex; AKind: TSlashArgumentKind; const APrefix: string): TArray<string>;
+var
+  Names: TList<string>;
+  UnitIndex: TUnitIndex;
+  Symbol: TIndexSymbol;
+  Wanted: set of TIndexSymbolKind;
+  Index: Integer;
+begin
+  Result := nil;
+  if AIndex = nil then
+    Exit;
+  Names := TList<string>.Create;
+  try
+    case AKind of
+      TSlashArgumentKind.Interfaces:
+        Wanted := [TIndexSymbolKind.InterfaceType];
+      TSlashArgumentKind.Exceptions:
+        Wanted := [TIndexSymbolKind.ClassType];
+    else
+      Wanted := [TIndexSymbolKind.ClassType, TIndexSymbolKind.ObjectType, TIndexSymbolKind.RecordType,
+        TIndexSymbolKind.InterfaceType, TIndexSymbolKind.EnumType, TIndexSymbolKind.TypeAlias];
+    end;
+    for UnitIndex in AIndex.Units do
+    begin
+      if AKind = TSlashArgumentKind.Units then
+      begin
+        if StartsText(APrefix, UnitIndex.UnitName) then
+          Names.Add(UnitIndex.UnitName);
+        Continue;
+      end;
+      for Symbol in UnitIndex.Symbols do
+        if (Symbol.Container = '') and (Symbol.Kind in Wanted) and StartsText(APrefix, Symbol.Name) and
+          ((AKind <> TSlashArgumentKind.Exceptions) or
+          ((Length(Symbol.Name) > 1) and CharInSet(Symbol.Name[1], ['E', 'e']))) then
+          Names.Add(Symbol.Name);
+    end;
+    Names.Sort(TComparer<string>.Construct(
+      function(const A, B: string): Integer
+      begin
+        Result := CompareText(A, B);
+      end));
+    for Index := 0 to Names.Count - 1 do
+    begin
+      if Length(Result) >= TSlashMenu.MaxChoices then
+        Break;
+      if (Length(Result) = 0) or not SameText(Result[High(Result)], Names[Index]) then
+        Result := Result + [Names[Index]];
+    end;
+  finally
+    Names.Free;
+  end;
+end;
+
+function Filtered(const AChoices: TArray<string>; const APrefix: string): TArray<string>;
+var
+  Choice: string;
+begin
+  Result := nil;
+  for Choice in AChoices do
+    if StartsText(APrefix, Choice) then
+      Result := Result + [Choice];
+end;
+
 class function TSlashMenu.ArgumentChoices(const AText: string; ALine: Integer; const AName, AArguments: string;
   const AIndex: ISymbolIndex): TArray<string>;
+begin
+  Result := ArgumentChoices(AText, ALine, AName, AArguments, AIndex, nil);
+end;
+
+class function TSlashMenu.ArgumentChoices(const AText: string; ALine: Integer; const AName, AArguments: string;
+  const AIndex: ISymbolIndex; const ARuleIds: TArray<string>): TArray<string>;
 var
   Context: TSlashContext;
   Space: Integer;
+  Kind: TSlashArgumentKind;
+  Prefix: string;
 begin
   Result := nil;
-  if not SameText(AName, 'sort') and not SameText(AName, 'filter') then
+  Kind := ArgumentKind(AName, AArguments);
+  if Kind = TSlashArgumentKind.None then
     Exit;
   Context := Default(TSlashContext);
   Context.Text := AText;
   Context.Line := ALine;
   Context.Name := AName;
   Context.Index := AIndex;
-  // Erst die Sammlung, nach dem Leerzeichen die Mitglieder ihres Elementtyps.
-  Space := Pos(' ', TrimLeft(AArguments));
-  if Space = 0 then
-    Result := CollectionChoices(Context, '')
+  Prefix := CurrentWord(AArguments);
+  case Kind of
+    TSlashArgumentKind.Collection:
+      begin
+        // Erst die Sammlung, nach dem Leerzeichen die Mitglieder ihres Elementtyps.
+        Space := Pos(' ', TrimLeft(AArguments));
+        if Space = 0 then
+          Result := CollectionChoices(Context, '')
+        else
+          Result := CollectionChoices(Context, Copy(TrimLeft(AArguments), 1, Space - 1));
+      end;
+    TSlashArgumentKind.Overrides:
+      Result := Filtered(OverrideCandidates(Context), Prefix);
+    TSlashArgumentKind.Rules:
+      begin
+        Result := Filtered(ARuleIds, Prefix);
+        TArray.Sort<string>(Result);
+      end;
   else
-    Result := CollectionChoices(Context, Copy(TrimLeft(AArguments), 1, Space - 1));
+    Result := IndexChoices(AIndex, Kind, Prefix);
+  end;
 end;
 
 class function TSlashMenu.Run(ARegistry: TSlashCommandRegistry; const AText: string; const ASpot: TSlashSpot;
   const AName, AArguments: string; const ADisabled: TArray<string>; const AIndex: ISymbolIndex;
   const ADelphiVersion, AUri: string; const AHost: ISlashHost; out AEdits: TArray<TTextEdit>;
   out AReason: string): Boolean;
+begin
+  Result := Run(ARegistry, AText, ASpot, AName, AArguments, ADisabled, AIndex, ADelphiVersion, AUri, AHost,
+    TFormatStyle.Default, AEdits, AReason);
+end;
+
+class function TSlashMenu.Run(ARegistry: TSlashCommandRegistry; const AText: string; const ASpot: TSlashSpot;
+  const AName, AArguments: string; const ADisabled: TArray<string>; const AIndex: ISymbolIndex;
+  const ADelphiVersion, AUri: string; const AHost: ISlashHost; const AStyle: TFormatStyle;
+  out AEdits: TArray<TTextEdit>; out AReason: string): Boolean;
 var
   Virtual, Command, LineBreak: string;
   CommandLine, WrapUntil: Integer;
@@ -532,7 +698,7 @@ begin
     Exit(False);
   end;
   Result := ARegistry.Run(Virtual, CommandLine, WrapUntil, nil, ADisabled, AIndex, ADelphiVersion, AUri, AHost,
-    Edits, AReason);
+    AStyle, Edits, AReason);
   if not Result then
     Exit;
   LineBreak := TTextLines.LineBreakOf(AText);

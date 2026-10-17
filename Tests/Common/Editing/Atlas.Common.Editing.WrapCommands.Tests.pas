@@ -15,6 +15,9 @@ type
     procedure TryFreesLastCreatedLocal;
     [Test]
     procedure TryOnResultUsesExcept;
+    /// <summary>#293/#43: Einrückung nach dem Formatstil der Datei (vier Leerzeichen, Tabulator).</summary>
+    [Test]
+    procedure TryFollowsFormatStyle;
     [Test]
     procedure TryWithoutObjectFails;
     [Test]
@@ -56,6 +59,7 @@ uses
   System.Generics.Defaults,
   Atlas.Common.Documents.Contract,
   Atlas.Common.Rules.Contract,
+  Atlas.Common.Configuration.Contract,
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.Parser,
   Atlas.Common.Editing.SlashCommands,
@@ -183,6 +187,35 @@ begin
   Assert.IsTrue(Run(Text, 15, Edits));
   Text := Apply(Text, Edits);
   Assert.IsTrue(Pos('  except'#10'    Result.Free;'#10'    raise;'#10'  end;'#10'end;', Text) > 0, Text);
+end;
+
+procedure TWrapCommandsTests.TryFollowsFormatStyle;
+var
+  Text, Wide: string;
+  Style: TFormatStyle;
+  Edits: TArray<TRuleEdit>;
+begin
+  // Datei mit vier Leerzeichen je Ebene.
+  Wide := StringReplace(WithCommand('/try'), #10'  ', #10'    ', [rfReplaceAll]);
+  Style := TFormatStyle.Default;
+  Style.IndentSize := 4;
+  Assert.IsTrue(TSlashCommandRegistry.Shared.AfterEnter(Wide, TTextPosition.Create(16, 0), nil, nil, nil, '', '',
+    nil, Style, Edits));
+  Text := Apply(Wide, Edits);
+  Assert.IsTrue(Pos('begin'#10'    Liste := TStringList.Create;'#10'    try'#10'        Liste.Add(''a'');'#10 +
+    '        Liste.Sort;'#10'    finally'#10'        Liste.Free;'#10'    end;'#10'end;', Text) > 0, Text);
+  // Tabulatoren.
+  Wide := StringReplace(WithCommand('/try'), #10'  ', #10#9, [rfReplaceAll]);
+  Style.UseTabs := True;
+  Assert.IsTrue(TSlashCommandRegistry.Shared.AfterEnter(Wide, TTextPosition.Create(16, 0), nil, nil, nil, '', '',
+    nil, Style, Edits));
+  Text := Apply(Wide, Edits);
+  Assert.IsTrue(Pos('begin'#10#9'Liste := TStringList.Create;'#10#9'try'#10#9#9'Liste.Add(''a'');'#10 +
+    #9#9'Liste.Sort;'#10#9'finally'#10#9#9'Liste.Free;'#10#9'end;'#10'end;', Text) > 0, Text);
+  // Vorgabestil (zwei Leerzeichen): Reindent ändert nichts.
+  Assert.IsTrue(Run(WithCommand('/try'), 15, Edits));
+  Assert.AreEqual(Apply(WithCommand('/try'), Edits), Apply(WithCommand('/try'),
+    TSlashCommandRegistry.Reindent(WithCommand('/try'), Edits, TFormatStyle.Default)));
 end;
 
 procedure TWrapCommandsTests.TryWithoutObjectFails;
