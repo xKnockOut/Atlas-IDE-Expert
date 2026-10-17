@@ -55,7 +55,9 @@ type
     /// <summary>Abgeblendete ungenutzte uses-Einträge (#621).</summary>
     UnusedUses,
     /// <summary>Rekursionssymbol in der Rinne (#623).</summary>
-    Recursion);
+    Recursion,
+    /// <summary>Fehlertext am Zeilenende (#509).</summary>
+    InlineDiagnostics);
   TAtlasHideScope = (Here, InFile, Everywhere);
 {$SCOPEDENUMS OFF}
   TAtlasHideScopes = set of TAtlasHideScope;
@@ -160,6 +162,9 @@ begin
       Result := Make(AElement, 'DimUnusedUses', FileScopes, False, False);
     TAtlasDrawnElement.Recursion:
       Result := Make(AElement, 'RecursionMarkers', AllScopes, False, True);
+    // Text hinter dem Zeilenende wie eine Beschriftung; „Überall“ setzt editor.inlineDiagnostics auf aus.
+    TAtlasDrawnElement.InlineDiagnostics:
+      Result := Make(AElement, 'InlineDiagnostics', AllScopes, True, False);
   else
     Result := Make(AElement, '', [], False, False);
   end;
