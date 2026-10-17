@@ -82,6 +82,8 @@ type
     [Test]
     procedure ContinuePatternRoundTrip;
     [Test]
+    procedure MultiCursorRoundTrip;
+    [Test]
     procedure WelcomeSettingsRoundTrip;
     /// <summary>Freies Layout (#767): Schalter, Spalten, Layouts anlegen, wechseln, umbenennen, löschen; je
     /// Layout eigene Sichtbarkeit; Reveal der neuen Einstellungen.</summary>
@@ -1540,6 +1542,44 @@ begin
     Assert.AreEqual('never', Saved.CompleteStatementBeginEnd);
     Assert.AreEqual('ask', Saved.CompleteStatementTryKind);
     Assert.IsFalse(Saved.CompleteStatementMethodBody);
+  finally
+    Page.Free;
+  end;
+end;
+
+procedure TAtlasSettingsPageTests.MultiCursorRoundTrip;
+var
+  Page: TAtlasSettingsPage;
+  Settings, Saved: TAtlasPluginSettings;
+begin
+  // #589: Schalter, Klicktaste und die fünf Kürzel.
+  Settings := TAtlasPluginSettings.Defaults;
+  Page := TAtlasSettingsPage.Create(nil);
+  try
+    Page.LoadFrom(Settings);
+    Assert.IsFalse(Page.MultiCursor.Checked);
+    Assert.AreEqual(0, Page.MultiCursorModifier.Choice);
+    Assert.AreEqual(ShortCutToText(TShortCut($4044)), Page.MultiCursorNextKey.Text);
+    Assert.AreEqual(ShortCutToText(TShortCut($4044)), Page.MultiCursorSkipKey.Text);
+    Assert.AreEqual(ShortCutToText(TShortCut($A049)), Page.MultiCursorLineEndsKey.Text);
+    Assert.AreEqual(ShortCutToText(TShortCut($C026)), Page.MultiCursorAboveKey.Text);
+    Assert.AreEqual(ShortCutToText(TShortCut($C028)), Page.MultiCursorBelowKey.Text);
+    Page.MultiCursor.Checked := True;
+    Page.MultiCursorModifier.Choice := 1;
+    Page.MultiCursorNextKey.Text := '';
+    Page.MultiCursorSkipKey.Text := ShortCutToText(TShortCut($4053));
+    Page.MultiCursorLineEndsKey.Text := ShortCutToText(TShortCut($C049));
+    Page.MultiCursorAboveKey.Text := ShortCutToText(TShortCut($A026));
+    Page.MultiCursorBelowKey.Text := ShortCutToText(TShortCut($A028));
+    Saved := TAtlasPluginSettings.Defaults;
+    Page.SaveTo(Saved);
+    Assert.IsTrue(Saved.MultiCursor);
+    Assert.AreEqual('ctrl', Saved.MultiCursorModifier);
+    Assert.AreEqual(0, Saved.MultiCursorNextKey);
+    Assert.AreEqual($4053, Saved.MultiCursorSkipKey);
+    Assert.AreEqual($C049, Saved.MultiCursorLineEndsKey);
+    Assert.AreEqual($A026, Saved.MultiCursorAboveKey);
+    Assert.AreEqual($A028, Saved.MultiCursorBelowKey);
   finally
     Page.Free;
   end;

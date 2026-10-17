@@ -310,6 +310,16 @@ begin
       Id := TAtlasTextId.DuplicateLinesDownCommand;
     TAtlasKeyFunction.CompleteStatement:
       Id := TAtlasTextId.CompleteStatementCommand;
+    TAtlasKeyFunction.MultiCursorNext:
+      Id := TAtlasTextId.MultiCursorNextCommand;
+    TAtlasKeyFunction.MultiCursorSkip:
+      Id := TAtlasTextId.MultiCursorSkipCommand;
+    TAtlasKeyFunction.MultiCursorLineEnds:
+      Id := TAtlasTextId.MultiCursorLineEndsCommand;
+    TAtlasKeyFunction.MultiCursorAbove:
+      Id := TAtlasTextId.MultiCursorAboveCommand;
+    TAtlasKeyFunction.MultiCursorBelow:
+      Id := TAtlasTextId.MultiCursorBelowCommand;
   else
     Id := TAtlasTextId.KeyMapUnitSearchIde;
   end;

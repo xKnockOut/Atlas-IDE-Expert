@@ -193,6 +193,8 @@ type
     function RunningSession: TLspSession;
     /// <summary>Ist die Liste der Vervollständigung offen (#671)?</summary>
     function CompletionVisible: Boolean;
+    /// <summary>Läuft der Platzhalter-Modus einer Vorlage (#589: dann keine Mehrfachmarken)?</summary>
+    function PlaceholdersActive: Boolean;
     /// <summary>Gespeichert: didSave an den Server, falls eine Sitzung läuft (Prüfung mit dcc).</summary>
     procedure NotifySaved(const AFileName: string);
     /// <summary>Zeile im Diagnoseprotokoll (nur mit Diagnose = 1).</summary>
@@ -1088,6 +1090,11 @@ end;
 function TAtlasCodeInsightManager.CompletionVisible: Boolean;
 begin
   Result := (FCompletion <> nil) and FCompletion.Visible;
+end;
+
+function TAtlasCodeInsightManager.PlaceholdersActive: Boolean;
+begin
+  Result := (FCompletion <> nil) and FCompletion.PlaceholdersActive;
 end;
 
 function TAtlasCodeInsightManager.RunningSession: TLspSession;

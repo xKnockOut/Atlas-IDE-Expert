@@ -50,6 +50,8 @@ type
     procedure CompleteStatementOptions;
     [Test]
     procedure ContinuePatternOptions;
+    [Test]
+    procedure MultiCursorOptions;
     /// <summary>Änderungsmarken und Zeilenhistorie (#507): Vorgaben, Tasten, Speichern und Laden.</summary>
     [Test]
     procedure GitChangeOptions;
@@ -1279,6 +1281,49 @@ begin
   Loaded.Normalize;
   Assert.AreEqual('multiLine', Loaded.CompleteStatementBeginEnd);
   Assert.AreEqual('finally', Loaded.CompleteStatementTryKind);
+end;
+
+procedure TAtlasPluginSettingsTests.MultiCursorOptions;
+var
+  Settings, Loaded: TAtlasPluginSettings;
+  Store: IAtlasSettingsStore;
+begin
+  // #589: experimentell, also aus; Klick mit Alt; Kürzel Strg+D, Alt+Umschalt+I, Strg+Alt+↑/↓.
+  Settings := TAtlasPluginSettings.Defaults;
+  Assert.IsFalse(Settings.MultiCursor);
+  Assert.AreEqual('alt', Settings.MultiCursorModifier);
+  Assert.AreEqual($4044, Settings.MultiCursorNextKey, 'Strg+D');
+  Assert.AreEqual($4044, Settings.MultiCursorSkipKey, 'Strg+K, Strg+D');
+  Assert.AreEqual($A049, Settings.MultiCursorLineEndsKey, 'Alt+Umschalt+I');
+  Assert.AreEqual($C026, Settings.MultiCursorAboveKey, 'Strg+Alt+Hoch');
+  Assert.AreEqual($C028, Settings.MultiCursorBelowKey, 'Strg+Alt+Runter');
+  Settings.MultiCursor := True;
+  Settings.MultiCursorModifier := 'ctrl';
+  Settings.MultiCursorNextKey := 0;
+  Settings.MultiCursorSkipKey := $4053;
+  Settings.MultiCursorLineEndsKey := $C049;
+  Settings.MultiCursorAboveKey := $A026;
+  Settings.MultiCursorBelowKey := $A028;
+  Store := TMemoryStore.Create;
+  Settings.Save(Store);
+  Loaded := TAtlasPluginSettings.Defaults;
+  Loaded.Load(Store);
+  Assert.IsTrue(Loaded.MultiCursor);
+  Assert.AreEqual('ctrl', Loaded.MultiCursorModifier);
+  Assert.AreEqual(0, Loaded.MultiCursorNextKey);
+  Assert.AreEqual($4053, Loaded.MultiCursorSkipKey);
+  Assert.AreEqual($C049, Loaded.MultiCursorLineEndsKey);
+  Assert.AreEqual($A026, Loaded.MultiCursorAboveKey);
+  Assert.AreEqual($A028, Loaded.MultiCursorBelowKey);
+  // Unbekannte Taste fällt auf alt zurück; Kürzel bleiben ein Word.
+  Loaded.MultiCursorModifier := 'shift';
+  Loaded.MultiCursorBelowKey := $1FFFF;
+  Loaded.Normalize;
+  Assert.AreEqual('alt', Loaded.MultiCursorModifier);
+  Assert.AreEqual($FFFF, Loaded.MultiCursorBelowKey);
+  Loaded.MultiCursorModifier := 'CTRL';
+  Loaded.Normalize;
+  Assert.AreEqual('ctrl', Loaded.MultiCursorModifier);
 end;
 
 procedure TAtlasPluginSettingsTests.ContinuePatternOptions;

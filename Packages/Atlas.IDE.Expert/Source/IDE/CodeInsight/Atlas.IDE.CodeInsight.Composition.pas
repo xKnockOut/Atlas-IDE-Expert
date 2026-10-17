@@ -80,6 +80,7 @@ uses
   Atlas.IDE.Editor.LineMove,
   Atlas.IDE.Editor.CommentContinuation,
   Atlas.IDE.Editor.PatternContinuation,
+  Atlas.IDE.Editor.MultiCursor,
   Atlas.IDE.Editor.StatementCompletion,
   Atlas.IDE.Editor.OverviewRuler,
   Atlas.IDE.UnitSearch.Commands,
@@ -981,6 +982,31 @@ begin
   TAtlasIdeStatementCompletion.Run;
 end;
 
+function MultiCursorVisible: Boolean;
+begin
+  Result := TAtlasIdeMultiCursor.Enabled;
+end;
+
+procedure MultiCursorNext;
+begin
+  TAtlasIdeMultiCursor.TryNext;
+end;
+
+procedure MultiCursorLineEnds;
+begin
+  TAtlasIdeMultiCursor.TryLineEnds;
+end;
+
+procedure MultiCursorAbove;
+begin
+  TAtlasIdeMultiCursor.TryVertical(True);
+end;
+
+procedure MultiCursorBelow;
+begin
+  TAtlasIdeMultiCursor.TryVertical(False);
+end;
+
 function BreadcrumbsVisible: Boolean;
 begin
   Result := TAtlasIdeBreadcrumbs.Enabled;
@@ -1152,6 +1178,15 @@ begin
   // Anweisung vervollständigen (#697).
   Add('Atlas.CompleteStatement', TAtlasTextId.CompleteStatementCommand,
     Guarded(TAtlasFeature.EditorCommands, CompleteStatement), CompleteStatementVisible);
+  // Mehrere Einfügemarken (#589).
+  Add('Atlas.MultiCursorNext', TAtlasTextId.MultiCursorNextCommand,
+    Guarded(TAtlasFeature.EditorCommands, MultiCursorNext), MultiCursorVisible);
+  Add('Atlas.MultiCursorLineEnds', TAtlasTextId.MultiCursorLineEndsCommand,
+    Guarded(TAtlasFeature.EditorCommands, MultiCursorLineEnds), MultiCursorVisible);
+  Add('Atlas.MultiCursorAbove', TAtlasTextId.MultiCursorAboveCommand,
+    Guarded(TAtlasFeature.EditorCommands, MultiCursorAbove), MultiCursorVisible);
+  Add('Atlas.MultiCursorBelow', TAtlasTextId.MultiCursorBelowCommand,
+    Guarded(TAtlasFeature.EditorCommands, MultiCursorBelow), MultiCursorVisible);
   Add('Atlas.Callers', TAtlasTextId.MenuIncoming, Hierarchy(TAtlasHierarchyDirection.Incoming));
   Add('Atlas.Calls', TAtlasTextId.MenuOutgoing, Hierarchy(TAtlasHierarchyDirection.Outgoing));
   Add('Atlas.Supertypes', TAtlasTextId.MenuSupertypes, Hierarchy(TAtlasHierarchyDirection.Supertypes));
@@ -2111,6 +2146,17 @@ begin
     begin
       Result := (Manager <> nil) and Manager.CompletionVisible;
     end);
+  // Mehrere Einfügemarken (#589, experimentell): nie bei offener Vervollständigung oder im Platzhalter-Modus.
+  TAtlasIdeMultiCursor.Install(
+    function: Boolean
+    begin
+      Result := (Manager <> nil) and (Manager.CompletionVisible or Manager.PlaceholdersActive);
+    end,
+    procedure(const AText, AHint: string)
+    begin
+      if StatusField <> nil then
+        StatusField.SetExtra('multiCursor', AText, AHint, nil);
+    end);
   // Übersichtsleiste an der Scrollleiste (#519).
   TAtlasIdeOverviewRuler.Install;
   // Schnell öffnen (#503): Dateiliste im Hintergrund, zuletzt geöffnete Dateien zählen.
@@ -2143,6 +2189,7 @@ begin
   TAtlasIdeOverviewRuler.Uninstall;
   TAtlasIdeLineChanges.Uninstall;
   TAtlasIdeLineMove.Uninstall;
+  TAtlasIdeMultiCursor.Uninstall;
   TAtlasIdePatternContinuation.Uninstall;
   TAtlasIdeCommentContinuation.Uninstall;
   TAtlasIdeStatementCompletion.Uninstall;
