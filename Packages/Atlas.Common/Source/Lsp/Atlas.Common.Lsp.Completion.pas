@@ -413,6 +413,7 @@ uses
   Atlas.Common.Rules.Catalog.Data,
   Atlas.Common.Diagnostics.RequestScope,
   Atlas.Common.Lsp.CompletionEnums,
+  Atlas.Common.Lsp.CompletionGenerics,
   Atlas.Common.Editing.DataFieldNames,
   Atlas.Common.Editing.GuardFree,
   Atlas.Common.Editing.ContextSnippets;
@@ -852,6 +853,8 @@ var
   Index, Last: Integer;
   Token: TPascalToken;
   Names: TList<string>;
+  Site: TGenericArgSite;
+  Before: Integer;
 begin
   Result := Default(TCompletionContext);
   Result.Kind := TCompletionContextKind.None;
@@ -873,6 +876,19 @@ begin
     Result.Offset := Token.Offset + Length(Token.Text);
     if ComparePositions(APosition, Token.EndPos) < 0 then
     begin
+      // "TFoo<|>": Der Lexer liest "<>" als ein Token; Typargument wie nach "TFoo<" (#450).
+      Before := PreviousIndex(Tokens, Last);
+      if Token.IsSymbol('<>') and (APosition.Character = Token.StartPos.Character + 1) and (Before >= 0) and
+        (Tokens[Before].Kind = TPascalTokenKind.Identifier) then
+      begin
+        Result.Kind := TCompletionContextKind.Scope;
+        Result.Offset := Token.Offset + 1;
+        Result.Place := PlaceAt(ATree.Root, Result.Offset);
+        Result.Generic := True;
+        Result.GenericOwnerPos := Tokens[Before].StartPos;
+        Result.GenericParam := 0;
+        Exit;
+      end;
       // Cursor mitten in einem Token: in Kommentaren, Strings und Zahlen nichts anbieten.
       if Token.Kind <> TPascalTokenKind.Identifier then
         Exit;
@@ -957,6 +973,17 @@ begin
     Result.Filter := TCompletionFilter.InheritedCall
   else if TypePosition(Tokens, Last, Result.Place, Result.TypeKeywords) then
     Result.Filter := TCompletionFilter.Types;
+  // Typargument nach "TFoo<" (#450); ob TFoo ein generischer Typ ist, klärt Collect.
+  if Result.Filter <> TCompletionFilter.InheritedCall then
+  begin
+    Site := TCompletionGenerics.SiteAt(Tokens, Last);
+    if Site.Found then
+    begin
+      Result.Generic := True;
+      Result.GenericOwnerPos := Site.OwnerPosition;
+      Result.GenericParam := Site.Parameter;
+    end;
+  end;
 end;
 
 class function TLspCompletion.KindOf(AKind: TIndexSymbolKind): Integer;
@@ -1433,10 +1460,32 @@ var
   UnitInfo: TUnitIndex;
   Expected: string;
   Collector: TCompletionCollector;
+  GenericOwner, Candidate: TResolvedSymbol;
+  OnPartial: TCompletionPartialProc;
 begin
   Result := Default(TCompletionItems);
   Postfix := nil;
   Context := Analyze(ARequest.Tree, ARequest.Position);
+  // Typargument (#450): nur Typen, gefiltert nach den Constraints. Nicht gestaffelt, weil erst die ganze
+  // Liste gefiltert wird.
+  GenericOwner := Default(TResolvedSymbol);
+  OnPartial := AOnPartial;
+  if Context.Generic and ARequest.Settings.GenericConstraints then
+  begin
+    Context.Generic := False;
+    for Candidate in ARequest.Resolver.ResolveAll(ARequest.Tree, ARequest.FileName, Context.GenericOwnerPos) do
+      if Candidate.IsType and (Candidate.TypeParams <> '') then
+      begin
+        GenericOwner := Candidate;
+        Context.Generic := True;
+        Context.Filter := TCompletionFilter.Types;
+        Context.TypeKeywords := False;
+        OnPartial := nil;
+        Break;
+      end;
+  end
+  else
+    Context.Generic := False;
   // Diagnoselog (#647): nur Art und Längen, nie die Namen selbst.
   TRequestDiagnostics.Note('ctx', ContextCodes[Context.Kind]);
   TRequestDiagnostics.Note('prefixLen', Length(Context.Prefix));
@@ -1451,7 +1500,7 @@ begin
   // gepinnt, zählt das nur hoch.
   if ARequest.Tree <> nil then
     ARequest.Resolver.PinTree(ARequest.Tree, ARequest.FileName);
-  Collector := TCompletionCollector.Create(ARequest, Context, Expected, AOnPartial);
+  Collector := TCompletionCollector.Create(ARequest, Context, Expected, OnPartial);
   try
     case Context.Kind of
       TCompletionContextKind.UsesClause:
@@ -1521,6 +1570,8 @@ begin
         end;
     end;
     Result.Items := Collector.Finish(Result.Incomplete);
+    if Context.Generic then
+      Result.Items := TCompletionGenerics.Apply(ARequest, Context, GenericOwner, Result.Items);
     Result.Items := Result.Items + Postfix;
   finally
     Collector.Free;
@@ -2160,9 +2211,10 @@ function TLspCompletion.HandleResolve(const AParams: TJSONValue;
   const ACancellation: IJsonRpcCancellationToken): TJSONValue;
 var
   Item, Data, Details: TJSONObject;
-  Documentation: TJSONValue;
+  Documentation, Binding: TJSONValue;
   FileName, Text: string;
   Position: TTextPosition;
+  Bindings: TArray<string>;
 begin
   if not (AParams is TJSONObject) then
     raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams, 'CompletionItem fehlt in ' + ResolveMethod);
@@ -2178,6 +2230,16 @@ begin
   if not ReadCached(FileName, Text) then
     Exit;
   Details := TLspCompletion.Details(FIndex, FileName, Text, Position, ReadCached);
+  // Gebundene Typparameter (#450): "procedure Add(const Value: T)" wird zu "... Value: TKunde)".
+  Bindings := nil;
+  if Data.GetValue('bindings') is TJSONArray then
+    for Binding in TJSONArray(Data.GetValue('bindings')) do
+      Bindings := Bindings + [Binding.Value];
+  if (Length(Bindings) > 0) and Details.TryGetValue<string>('declaration', Text) then
+  begin
+    Details.RemovePair('declaration').Free;
+    Details.AddPair('declaration', SubstituteWords(Text, Bindings));
+  end;
   // Für Atlas (Detailpanel) strukturiert in data.atlas; für andere Clients detail und documentation.
   if Details.TryGetValue<string>('declaration', Text) then
   begin

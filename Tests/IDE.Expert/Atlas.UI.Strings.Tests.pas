@@ -19,6 +19,8 @@ type
     procedure ConfidenceLineForRuleFindings;
     [Test]
     procedure DocLabelsGerman;
+    [Test]
+    procedure TypeArgHeadingAndFooter;
   end;
 
 implementation
@@ -90,6 +92,34 @@ begin
     TAtlasStrings.Language := TAtlasLanguage.English;
     Assert.AreEqual('Enter to accept · Esc to close', TAtlasStrings.Text(TAtlasTextId.FooterKeys));
     Assert.AreEqual('3 of 84', TAtlasStrings.Fmt(TAtlasTextId.CountOf, [3, 84]));
+  finally
+    TAtlasStrings.Language := Saved;
+  end;
+end;
+
+procedure TAtlasStringsTests.TypeArgHeadingAndFooter;
+var
+  Saved: TAtlasLanguage;
+begin
+  // Typargumente (#450).
+  Saved := TAtlasStrings.Language;
+  try
+    TAtlasStrings.Language := TAtlasLanguage.German;
+    Assert.AreEqual('T: class · nur Klassen', TAtlasStrings.TypeArgHeading('T', 'class', 'classes'));
+    Assert.AreEqual('T: record · nur Records und Grundtypen', TAtlasStrings.TypeArgHeading('T', 'record', 'values'));
+    Assert.AreEqual('T: class, constructor · nur Klassen mit parameterlosem Konstruktor',
+      TAtlasStrings.TypeArgHeading('T', 'class, constructor', 'constructible'));
+    Assert.AreEqual('T: IVergleich · nur Typen, die IVergleich implementieren',
+      TAtlasStrings.TypeArgHeading('T', 'IVergleich', 'implements:IVergleich'));
+    Assert.AreEqual('T: TBasis · nur Typen, die von TBasis abgeleitet sind',
+      TAtlasStrings.TypeArgHeading('T', 'TBasis', 'descends:TBasis'));
+    Assert.AreEqual('Typargument V', TAtlasStrings.TypeArgHeading('V', '', ''));
+    Assert.AreEqual('Ausgeblendet: Records, Aufzählungen, Grundtypen',
+      TAtlasStrings.TypeArgHidden('records,enums,basic'));
+    Assert.AreEqual('', TAtlasStrings.TypeArgHidden(''));
+    TAtlasStrings.Language := TAtlasLanguage.English;
+    Assert.AreEqual('T: class · classes only', TAtlasStrings.TypeArgHeading('T', 'class', 'classes'));
+    Assert.AreEqual('Hidden: interfaces', TAtlasStrings.TypeArgHidden('interfaces'));
   finally
     TAtlasStrings.Language := Saved;
   end;

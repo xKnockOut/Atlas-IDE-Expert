@@ -11,7 +11,7 @@ function AtlasSchemaJson: string;
 implementation
 
 const
-  Lines: array[0..1139] of string = (
+  Lines: array[0..1144] of string = (
     '{',
     '  "$schema": "http://json-schema.org/draft-07/schema#",',
     '  "title": "Atlas-Konfiguration",',
@@ -463,13 +463,18 @@ const
     '          "type": "boolean",',
     '          "default": true,',
     '          "description": "Postfix-Vorlagen hinter einem Ausdruck anbieten: Liste.for wird zu for var Item in Liste do, FKunde.notnil zu if Assigned(FKunde) then, dazu tryf, ifa, fmt, nil, not, if, for' + 'in, free, try, var, exit und eigene Vorlagen mit \"postfix: true\"."',
+    '        },',
+    '        "genericConstraints": {',
+    '          "type": "boolean",',
+    '          "default": true,',
+    '          "description": "Nach \"TObjectList<\" nur Typen vorschlagen, die die Constraints des Typparameters erfüllen (class, record, constructor, Interface oder Klasse), mit Überschrift „T: class · n' + 'ur Klassen“ und den ausgeblendeten Arten in der Fußzeile."',
     '        }',
     '      },',
     '      "x-scope": "global",',
     '      "x-area": "completion",',
     '      "x-page": "Vervollständigung",',
     '      "x-control": "Auswahl",',
-    '      "x-issue": "#31, #188, #229, #466, #480, #489"',
+    '      "x-issue": "#31, #188, #229, #450, #466, #480, #489"',
     '    },',
     '    "refactoring": {',
     '      "type": "object",',

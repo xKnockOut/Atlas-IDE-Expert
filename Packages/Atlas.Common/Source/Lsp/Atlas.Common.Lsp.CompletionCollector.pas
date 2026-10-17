@@ -164,6 +164,7 @@ uses
   System.StrUtils,
   Atlas.Common.Index.NameIndex,
   Atlas.Common.Editing.UsesClause,
+  Atlas.Common.Editing.InterfaceStubs,
   Atlas.Common.Lsp.FuzzyMatch;
 
 function CompletionKindOf(AKind: TIndexSymbolKind): Integer;
@@ -369,7 +370,7 @@ function TCompletionCollector.Add(const AName, ADetail: string; AKind, APenalty:
 var
   Scored: TScoredItem;
   Range: TTextRange;
-  Params, UnitName: string;
+  Params, UnitName, Binding: string;
 begin
   // Jeder Eintrag frisch (Code-Review S-01): Nichts bleibt vom vorigen stehen, z. B. HasTextEdit und TextEdit
   // (im Plugin löschte das alles bis zum Wort).
@@ -380,7 +381,11 @@ begin
   Dec(Scored.Score, APenalty);
   Scored.Item.Name := AName;
   Scored.Item.AdditionalEdits := AEdits;
-  Scored.Item.Detail := ADetail;
+  // Gebundene Typparameter (#450): FItems: TObjectList<TKunde> zeigt Add(const Value: TKunde), ohne Unit davor.
+  for Binding in ASymbol.Bindings do
+    Scored.Item.Bindings := Scored.Item.Bindings + [Copy(Binding, 1, Pos('=', Binding)) +
+      FRequest.Resolver.UnqualifyType(Copy(Binding, Pos('=', Binding) + 1, MaxInt), FOwnUnit)];
+  Scored.Item.Detail := TInterfaceStubs.SubstituteWords(ADetail, Scored.Item.Bindings);
   Scored.Item.Kind := AKind;
   // Wo die Deklaration steht, für completionItem/resolve.
   Scored.Item.SourceFile := ASymbol.FileName;

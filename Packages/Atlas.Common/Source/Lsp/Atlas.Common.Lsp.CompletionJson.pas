@@ -222,19 +222,48 @@ begin
       .AddPair('character', TJSONNumber.Create(Position.Character)));
 end;
 
+/// <summary>Typargument (#450): typeParam, constraint, constraintHint, hiddenKinds.</summary>
+procedure WriteTypeArg(const AItem: TCompletionItem; AData: TJSONObject);
+begin
+  if AItem.TypeParam = '' then
+    Exit;
+  AData.AddPair('typeParam', AItem.TypeParam);
+  if AItem.Constraint <> '' then
+    AData.AddPair('constraint', AItem.Constraint);
+  if AItem.ConstraintHint <> '' then
+    AData.AddPair('constraintHint', AItem.ConstraintHint);
+  if AItem.HiddenKinds <> '' then
+    AData.AddPair('hiddenKinds', AItem.HiddenKinds);
+end;
+
+/// <summary>Gebundene Typparameter (#450) für completionItem/resolve.</summary>
+procedure WriteBindings(const AItem: TCompletionItem; AData: TJSONObject);
+var
+  Bindings: TJSONArray;
+  Text: string;
+begin
+  if Length(AItem.Bindings) = 0 then
+    Exit;
+  Bindings := TJSONArray.Create;
+  AData.AddPair('bindings', Bindings);
+  for Text in AItem.Bindings do
+    Bindings.Add(Text);
+end;
+
 const
   /// <summary>Reihenfolge der Felder unter data; das Plugin liest nach Namen, die Golden-Tests nach Text.
   /// </summary>
-  DataWriters: array[0..24] of TItemDataWriter = (WriteSource, WriteExpected, WriteAction, WriteContainer,
+  DataWriters: array[0..26] of TItemDataWriter = (WriteSource, WriteExpected, WriteAction, WriteContainer,
     WriteDepth, WriteHelper, WriteParameters, WriteCondition, WriteUnavailable, WriteScope, WriteOrdinal,
     WriteSetOf, WritePinned, WriteCount, WriteUnknown, WriteBatch, WriteHint, WriteForm, WriteByType, WriteSender,
-    WriteDataSet, WriteGuard, WriteUnit, WriteHides, WriteOverloads);
+    WriteDataSet, WriteGuard, WriteUnit, WriteHides, WriteOverloads, WriteTypeArg, WriteBindings);
 
 function NeedsData(const AItem: TCompletionItem): Boolean;
 begin
   Result := (AItem.SourceFile <> '') or (AItem.Expected <> '') or (AItem.Action <> '') or (AItem.Condition <> '') or
     (AItem.Scope > 0) or (AItem.Ordinal > 0) or AItem.Pinned or AItem.Hint or (AItem.Form <> '') or
-    (AItem.Sender <> '') or (AItem.DataSet <> '') or (AItem.Guard <> '');
+    (AItem.Sender <> '') or (AItem.DataSet <> '') or (AItem.Guard <> '') or (AItem.TypeParam <> '') or
+    (Length(AItem.Bindings) > 0);
 end;
 
 function EditToJson(const AEdit: TRuleEdit): TJSONObject;

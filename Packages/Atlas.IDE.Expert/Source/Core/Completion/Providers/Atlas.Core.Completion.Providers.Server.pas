@@ -222,6 +222,11 @@ begin
     Result.DataSource := Data.GetValue<string>('dataSource', '');
     // Freigabe absichern (#489).
     Result.Guard := Data.GetValue<string>('guard', '') <> '';
+    // Typargumente nach den Constraints (#450).
+    Result.TypeParam := Data.GetValue<string>('typeParam', '');
+    Result.Constraint := Data.GetValue<string>('constraint', '');
+    Result.ConstraintHint := Data.GetValue<string>('constraintHint', '');
+    Result.HiddenKinds := Data.GetValue<string>('hiddenKinds', '');
     Overloads := Data.GetValue('overloads');
     if Overloads is TJSONArray then
       for Value in TJSONArray(Overloads) do

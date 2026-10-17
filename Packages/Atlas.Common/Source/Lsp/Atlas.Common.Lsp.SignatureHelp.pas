@@ -122,6 +122,7 @@ uses
   Atlas.Common.Pascal.XmlDoc,
   Atlas.Common.Lsp.Documentation,
   Atlas.Common.Lsp.Internals.Cancellation,
+  Atlas.Common.Editing.InterfaceStubs,
   Atlas.Text.Lines;
 
 const
@@ -600,6 +601,9 @@ var
   Index: Integer;
   Reader: TDocReadText;
   ArgumentTypes: TArray<string>;
+  SignatureLines, Bindings: TArray<string>;
+  Line: Integer;
+  Binding: string;
 begin
   Result := Default(TSignatureHelp);
   Site := CallSiteAt(ATree, APosition);
@@ -615,6 +619,11 @@ begin
   Lines := TTextLines.SplitLines(Text);
   Reader := TLspDocumentation.Reader(AFileName, ATreeText, AReadText);
   Starts := TList<TTextPosition>.Create;
+  // Typargumente ohne Unit davor ("T=TKunde" statt "T=Listen.TKunde").
+  Bindings := nil;
+  for Binding in Resolved.Bindings do
+    Bindings := Bindings + [Copy(Binding, 1, Pos('=', Binding)) +
+      AResolver.UnqualifyType(Copy(Binding, Pos('=', Binding) + 1, MaxInt))];
   StartSymbols := TList<TResolvedSymbol>.Create;
   Signatures := TList<TSignature>.Create;
   Seen := TList<string>.Create;
@@ -651,7 +660,16 @@ begin
       Start := Starts[Index];
       if (Start.Line < 0) or (Start.Line > High(Lines)) then
         Continue;
-      Signature := ParseSignature(Lines, Start.Line, Start.Character);
+      // Gebundene Typparameter (#450): FItems: TObjectList<TKunde> zeigt Add(const Value: TKunde). Nur die
+      // Zeilen des Kopfs; die Spalte des Anfangs bleibt, weil davor kein Typparameter steht.
+      SignatureLines := Lines;
+      if Length(Bindings) > 0 then
+      begin
+        SignatureLines := Copy(Lines);
+        for Line := Start.Line to Min(High(SignatureLines), Start.Line + MaxHeaderLines) do
+          SignatureLines[Line] := TInterfaceStubs.SubstituteWords(SignatureLines[Line], Bindings);
+      end;
+      Signature := ParseSignature(SignatureLines, Start.Line, Start.Character);
       // Deklaration und Rumpf derselben Routine nur einmal; die Deklaration steht vorn und trägt die Doku.
       Key := UpperCase(StringReplace(Signature.Text, ' ', '', [rfReplaceAll]));
       if (Signature.Text = '') or Signature.Qualified or Seen.Contains(Key) then

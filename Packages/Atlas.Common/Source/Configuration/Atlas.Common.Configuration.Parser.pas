@@ -1116,6 +1116,8 @@ begin
       ExpectBoolean(ANode[Index], Key, FSettings.Completion.Keywords)
     else if Key = 'postfixTemplates' then
       ExpectBoolean(ANode[Index], Key, FSettings.Completion.PostfixTemplates)
+    else if Key = 'genericConstraints' then
+      ExpectBoolean(ANode[Index], Key, FSettings.Completion.GenericConstraints)
     else if Key = 'freeStyle' then
     begin
       if ExpectString(ANode[Index], Key, Text) then
