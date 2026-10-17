@@ -495,6 +495,12 @@ type
     UnitSearchDefaultScope: string;
     /// <summary>Eigenes Kürzel für das Atlas-Fenster (#777, TShortCut, 0 = keins); Strg+F12 über replaceIdeDialog.</summary>
     UnitSearchKey: Integer;
+    /// <summary>Datei und Symbol schnell öffnen (#503, quickOpen.enabled): Fenster mit Präfixen @, #, :.</summary>
+    QuickOpen: Boolean;
+    /// <summary>Auch die Quellen von RTL/VCL ($(BDS)\source) auflisten (#503, quickOpen.librarySources).</summary>
+    QuickOpenLibrary: Boolean;
+    /// <summary>Kürzel für „Schnell öffnen“ (#503, keys.quickOpen, TShortCut, 0 = keins); Vorgabe Strg+P.</summary>
+    QuickOpenKey: Integer;
     /// <summary>Hauptschalter der Atlas-Willkommensseite (#753, welcomePage.enabled): Atlas-Bereiche auf der
     /// Willkommensseite der IDE und Fenster „Atlas-Start“.</summary>
     WelcomePage: Boolean;
@@ -1028,6 +1034,9 @@ begin
   Result.UnitSearchGroupBy := 'project';
   Result.UnitSearchDefaultScope := 'group';
   Result.UnitSearchKey := 0;
+  Result.QuickOpen := True;
+  Result.QuickOpenLibrary := False;
+  Result.QuickOpenKey := $4050; // Strg+P
   Result.WelcomePage := True;
   Result.WelcomePageHost := 'welcomePage';
   Result.WelcomePageLayout := 'off';
@@ -1202,6 +1211,7 @@ begin
   UnitSearchGroupBy := Choice(UnitSearchGroupBy, ['project', 'folder', 'none']);
   UnitSearchDefaultScope := Choice(UnitSearchDefaultScope, ['group', 'project', 'searchPath', 'library']);
   UnitSearchKey := EnsureRange(UnitSearchKey, 0, $FFFF);
+  QuickOpenKey := EnsureRange(QuickOpenKey, 0, $FFFF);
   BookmarkKey := EnsureRange(BookmarkKey, 0, $FFFF);
   HideElementKey := EnsureRange(HideElementKey, 0, $FFFF);
   InlineDiagnostics := Choice(InlineDiagnostics, ['errors', 'off', 'errorsAndWarnings', 'all']);
@@ -1414,6 +1424,9 @@ begin
   UnitSearchGroupBy := AStore.ReadString('UnitSearchGroupBy', Default.UnitSearchGroupBy);
   UnitSearchDefaultScope := AStore.ReadString('UnitSearchDefaultScope', Default.UnitSearchDefaultScope);
   UnitSearchKey := AStore.ReadInteger('UnitSearchKey', Default.UnitSearchKey);
+  QuickOpen := AStore.ReadInteger('QuickOpen', BoolValue(Default.QuickOpen)) <> 0;
+  QuickOpenLibrary := AStore.ReadInteger('QuickOpenLibrary', BoolValue(Default.QuickOpenLibrary)) <> 0;
+  QuickOpenKey := AStore.ReadInteger('QuickOpenKey', Default.QuickOpenKey);
   WelcomePage := AStore.ReadInteger('WelcomePage', BoolValue(Default.WelcomePage)) <> 0;
   WelcomePageHost := AStore.ReadString('WelcomePageHost', Default.WelcomePageHost);
   WelcomePageLayout := AStore.ReadString('WelcomePageLayout', Default.WelcomePageLayout);
@@ -1674,6 +1687,9 @@ begin
   AStore.WriteString('UnitSearchGroupBy', UnitSearchGroupBy);
   AStore.WriteString('UnitSearchDefaultScope', UnitSearchDefaultScope);
   AStore.WriteInteger('UnitSearchKey', UnitSearchKey);
+  AStore.WriteInteger('QuickOpen', BoolValue(QuickOpen));
+  AStore.WriteInteger('QuickOpenLibrary', BoolValue(QuickOpenLibrary));
+  AStore.WriteInteger('QuickOpenKey', QuickOpenKey);
   AStore.WriteInteger('WelcomePage', BoolValue(WelcomePage));
   AStore.WriteString('WelcomePageHost', WelcomePageHost);
   AStore.WriteString('WelcomePageLayout', WelcomePageLayout);

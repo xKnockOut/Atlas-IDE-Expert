@@ -1599,6 +1599,38 @@
       "x-format": "shortcut",
       "x-page": "Units suchen"
     },
+    "QuickOpen": {
+      "description": "Datei und Symbol schnell öffnen (Strg+P): unscharfe Suche über Projekt, Projektgruppe und Suchpfad; @ Symbole der Datei, # Symbole im Projekt, :123 Zeile, Datei:123 Datei in Zeile.",
+      "type": "boolean",
+      "default": true,
+      "x-key": "quickOpen.enabled",
+      "x-area": "editor",
+      "x-feature": "Palette",
+      "x-page": "Units suchen",
+      "x-quickToggle": true,
+      "x-caption": "Schnell öffnen",
+      "x-captionEn": "Quick open",
+      "x-issue": "#503"
+    },
+    "QuickOpenLibrary": {
+      "description": "„Schnell öffnen“ listet auch die Quellen von RTL und VCL ($(BDS)\\source).",
+      "type": "boolean",
+      "default": false,
+      "x-key": "quickOpen.librarySources",
+      "x-area": "editor",
+      "x-page": "Units suchen",
+      "x-issue": "#503"
+    },
+    "QuickOpenKey": {
+      "description": "Tastenkürzel für „Schnell öffnen“ (0 = keins).",
+      "type": "integer",
+      "default": 16464,
+      "x-key": "keys.quickOpen",
+      "x-area": "keys",
+      "x-format": "shortcut",
+      "x-page": "Units suchen",
+      "x-issue": "#503"
+    },
     "WelcomePageHost": {
       "type": "string",
       "enum": [

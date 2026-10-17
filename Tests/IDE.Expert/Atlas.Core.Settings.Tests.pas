@@ -27,6 +27,8 @@ type
     procedure OneActionAfterSaving;
     [Test]
     procedure UnitSearchOptions;
+    [Test]
+    procedure QuickOpenOptions;
     /// <summary>Erzeugen-Menü (#719): Vorgaben, Normalisieren, Speichern und Laden.</summary>
     [Test]
     procedure GenerateMenuOptions;
@@ -1005,6 +1007,31 @@ begin
   Assert.AreEqual('folder', Loaded.UnitSearchGroupBy);
   Assert.AreEqual('library', Loaded.UnitSearchDefaultScope);
   Assert.AreEqual($6055, Loaded.UnitSearchKey);
+end;
+
+procedure TAtlasPluginSettingsTests.QuickOpenOptions;
+var
+  Settings, Loaded: TAtlasPluginSettings;
+  Store: IAtlasSettingsStore;
+begin
+  // Schnell öffnen (#503): an, ohne RTL/VCL-Quellen, Strg+P.
+  Settings := TAtlasPluginSettings.Defaults;
+  Assert.IsTrue(Settings.QuickOpen);
+  Assert.IsFalse(Settings.QuickOpenLibrary);
+  Assert.AreEqual($4050, Settings.QuickOpenKey);
+  Settings.QuickOpenKey := $1FFFF;
+  Settings.Normalize;
+  Assert.AreEqual($FFFF, Settings.QuickOpenKey);
+  Settings.QuickOpen := False;
+  Settings.QuickOpenLibrary := True;
+  Settings.QuickOpenKey := $6050;
+  Store := TMemoryStore.Create;
+  Settings.Save(Store);
+  Loaded := Default(TAtlasPluginSettings);
+  Loaded.Load(Store);
+  Assert.IsFalse(Loaded.QuickOpen);
+  Assert.IsTrue(Loaded.QuickOpenLibrary);
+  Assert.AreEqual($6050, Loaded.QuickOpenKey);
 end;
 
 { TAtlasSettingsScopesTests }

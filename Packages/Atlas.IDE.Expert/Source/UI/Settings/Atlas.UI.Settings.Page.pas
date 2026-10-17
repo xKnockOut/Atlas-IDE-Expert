@@ -302,6 +302,9 @@ type
     FUnitSearchActions: TCheckBox;
     FUnitSearchAddUses: TCheckBox;
     FUnitSearchKey: TEdit;
+    FQuickOpen: TCheckBox;
+    FQuickOpenLibrary: TCheckBox;
+    FQuickOpenKey: TEdit;
     FWelcomeEnabled: TCheckBox;
     FWelcomeHost: TAtlasChoiceBox;
     FWelcomeLayout: TCheckBox;
@@ -2173,6 +2176,9 @@ begin
   FMarks.Bind(FUnitSearchMultiSelect, ['UnitSearchMultiSelect']);
   FMarks.Bind(FUnitSearchActions, ['UnitSearchActions']);
   FMarks.Bind(FUnitSearchAddUses, ['UnitSearchActionsAddUses']);
+  FMarks.Bind(FQuickOpen, ['QuickOpen']);
+  FMarks.Bind(FQuickOpenLibrary, ['QuickOpenLibrary']);
+  FMarks.Bind(FQuickOpenKey, ['QuickOpenKey']);
   FMarks.Bind(FWelcomeEnabled, ['WelcomePage']);
   FMarks.Bind(FWelcomeHost, ['WelcomePageHost']);
   FMarks.Bind(FWelcomeLayout, ['WelcomePageLayout']);
@@ -2698,6 +2704,11 @@ begin
   FUnitSearchMultiSelect := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsUnitSearchMultiSelect));
   FUnitSearchActions := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsUnitSearchActions));
   FUnitSearchAddUses := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsUnitSearchAddUses));
+  // Datei und Symbol schnell öffnen (#503).
+  AddTitle(TAtlasTextId.QuickOpenTitle);
+  FQuickOpen := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsQuickOpen));
+  FQuickOpenLibrary := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsQuickOpenLibrary));
+  FQuickOpenKey := AddKey(TAtlasStrings.Text(TAtlasTextId.SettingsQuickOpenKey));
 end;
 
 procedure TAtlasSettingsPage.AddUndoSection;
@@ -3160,6 +3171,9 @@ begin
   FUnitSearchMultiSelect.Checked := ASettings.UnitSearchMultiSelect;
   FUnitSearchActions.Checked := ASettings.UnitSearchActions;
   FUnitSearchAddUses.Checked := ASettings.UnitSearchActionsAddUses;
+  FQuickOpen.Checked := ASettings.QuickOpen;
+  FQuickOpenLibrary.Checked := ASettings.QuickOpenLibrary;
+  FQuickOpenKey.Text := ShortCutToText(TShortCut(ASettings.QuickOpenKey));
   FWelcomeEnabled.Checked := ASettings.WelcomePage;
   FWelcomeHost.Choice := 0;
   if ASettings.WelcomePageHost = 'dockWindow' then
@@ -3422,6 +3436,9 @@ begin
   ASettings.UnitSearchMultiSelect := FUnitSearchMultiSelect.Checked;
   ASettings.UnitSearchActions := FUnitSearchActions.Checked;
   ASettings.UnitSearchActionsAddUses := FUnitSearchAddUses.Checked;
+  ASettings.QuickOpen := FQuickOpen.Checked;
+  ASettings.QuickOpenLibrary := FQuickOpenLibrary.Checked;
+  ASettings.QuickOpenKey := Integer(TextToShortCut(Trim(FQuickOpenKey.Text)));
   ASettings.WelcomePage := FWelcomeEnabled.Checked;
   ASettings.WelcomePageHost := 'welcomePage';
   if FWelcomeHost.Choice = 1 then

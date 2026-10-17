@@ -36,12 +36,13 @@ type
   /// der Willkommensseite, Deklaration ⇄ Implementierung mit zwei Tasten (#775), Unit ⇄ Testunit (#189), die
   /// eigene Taste für „Units suchen“, die Übernahme von Strg+F12 durch „Units suchen“ (#777) und „Lesezeichen
   /// setzen…“ (#622), das Erzeugen-Menü (#719), die Benachrichtigungen (#601) und die Schnellaktionen der
-  /// Willkommensseite „Öffnen und bauen“ und „Tests“ (#764) sowie „Element ausblenden …“ (#628). Neue Funktionen
+  /// Willkommensseite „Öffnen und bauen“ und „Tests“ (#764), „Element ausblenden …“ (#628), nächster und voriger
+  /// Befund (#509) sowie „Schnell öffnen“ (#503). Neue Funktionen
   /// nur hinten anhängen: Die Ordnungszahl steckt in Kennungen der Übersicht.</summary>
   TAtlasKeyFunction = (Palette, Check, Completion, Signature, QuickToggle, DiagnosticMode, CodeActions,
     ExpandSelection, ShrinkSelection, GoToImplementation, TypeDefinition, UndoChange, RedoChange, WelcomeSearch,
     MethodToggleUp, MethodToggleDown, TestUnit, UnitSearch, UnitSearchIde, Bookmark, GenerateMenu,
-    Notifications, WelcomeQuickBuild, WelcomeQuickTests, HideElement, NextProblem, PreviousProblem);
+    Notifications, WelcomeQuickBuild, WelcomeQuickTests, HideElement, NextProblem, PreviousProblem, QuickOpen);
   TAtlasKeyChoice = (UseAtlas, LeaveOther, OtherKey);
   /// <summary>NoKey: keine Taste; IdeKey: Taste der IDE über Code Insight, Atlas belegt nichts selbst;
   /// Free: Atlas belegt die freie Taste; AtlasWins: belegt, Atlas hat Vorrang; Left: belegt, Atlas
@@ -184,7 +185,9 @@ begin
     Create(TAtlasKeyFunction.HideElement, Word(ASettings.HideElementKey), True),
     // Nächster/vorheriger Befund (#509): nur mit Problemen im Editor.
     Create(TAtlasKeyFunction.NextProblem, Word(ASettings.NextProblemKey), Shared, ASettings.Problems),
-    Create(TAtlasKeyFunction.PreviousProblem, Word(ASettings.PreviousProblemKey), Shared, ASettings.Problems)];
+    Create(TAtlasKeyFunction.PreviousProblem, Word(ASettings.PreviousProblemKey), Shared, ASettings.Problems),
+    // Schnell öffnen (#503): aus = Strg+P bleibt der IDE.
+    Create(TAtlasKeyFunction.QuickOpen, Word(ASettings.QuickOpenKey), Shared, ASettings.QuickOpen)];
 end;
 
 class procedure TAtlasKeyEntry.ToSettings(const AEntries: TArray<TAtlasKeyEntry>;
@@ -268,6 +271,8 @@ begin
         ASettings.NextProblemKey := Entry.Key;
       TAtlasKeyFunction.PreviousProblem:
         ASettings.PreviousProblemKey := Entry.Key;
+      TAtlasKeyFunction.QuickOpen:
+        ASettings.QuickOpenKey := Entry.Key;
       // Strg+F12 ist fest; ein- und ausgeschaltet wird über unitSearch.replaceIdeDialog.
       TAtlasKeyFunction.UnitSearchIde:
         ;

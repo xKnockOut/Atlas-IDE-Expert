@@ -7,6 +7,10 @@
 // Escape oder ein Klick daneben schließt.
 // Mit OnQuery (Symbolsuche, #400) holt das Fenster die Einträge 150 ms nach
 // der letzten Eingabe neu und ordnet sie dann wie die Befehle.
+// Schnell öffnen (#503): Mit Presorted bleibt die Reihenfolge von OnQuery
+// (der Aufrufer filtert und ordnet selbst), QueryDelay 0 fragt bei jedem
+// Tastendruck sofort, und OnHighlight bestimmt den hervorgehobenen Text
+// (Suchtext ohne Präfix wie "@").
 
 interface
 
@@ -42,6 +46,8 @@ type
     FQueryTimer: TTimer;
     FPrompt: string;
     FKeepOrder: Boolean;
+    FPresorted: Boolean;
+    FOnHighlight: TFunc<string, string>;
     procedure PatternChanged;
     procedure QueryTick(Sender: TObject);
     function RowHeight: Integer;
@@ -54,6 +60,10 @@ type
     procedure DrawHighlighted(const AText: string; const ARect: TRect);
     procedure FormDeactivate(Sender: TObject);
     procedure SetKeepOrder(AValue: Boolean);
+    procedure SetPresorted(AValue: Boolean);
+    function GetQueryDelay: Integer;
+    procedure SetQueryDelay(AValue: Integer);
+    function HighlightPattern: string;
   protected
     procedure CreateParams(var Params: TCreateParams); override;
     procedure Paint; override;
@@ -67,6 +77,8 @@ type
       AHistory: TAtlasCommandHistory; const AColors: TAtlasColors);
     /// <summary>Oben mittig über AArea (Editor bzw. Hauptfenster).</summary>
     procedure ShowOver(const AArea: TRect);
+    /// <summary>Einträge ersetzen (etwa die erste Liste, wenn OnQuery das Fenster braucht).</summary>
+    procedure SetCommands(const ACommands: TArray<TAtlasCommand>);
     /// <summary>Nach dem Schließen; das Fenster gibt sich danach selbst frei.</summary>
     property OnExecute: TProc<TAtlasCommand> read FOnExecute write FOnExecute;
     property Pattern: string read FPattern;
@@ -76,6 +88,12 @@ type
     property Prompt: string read FPrompt write FPrompt;
     /// <summary>Reihenfolge der Einträge beibehalten statt alphabetisch (Code-Aktionen, #399); vor ShowOver setzen.</summary>
     property KeepOrder: Boolean read FKeepOrder write SetKeepOrder;
+    /// <summary>Einträge in der Reihenfolge von OnQuery bzw. ACommands zeigen, ohne zu filtern (#503).</summary>
+    property Presorted: Boolean read FPresorted write SetPresorted;
+    /// <summary>Wartezeit vor OnQuery in ms, Standard 150; 0 = sofort bei jeder Eingabe.</summary>
+    property QueryDelay: Integer read GetQueryDelay write SetQueryDelay;
+    /// <summary>Text, dessen Zeichen in den Einträgen hervorgehoben werden; ohne die Eingabe selbst.</summary>
+    property OnHighlight: TFunc<string, string> read FOnHighlight write FOnHighlight;
   end;
 
 implementation
@@ -120,9 +138,12 @@ begin
   Refilter;
   if Assigned(FOnQuery) then
   begin
-    // Neu starten: erst nach einer Tipppause fragen.
     FQueryTimer.Enabled := False;
-    FQueryTimer.Enabled := True;
+    if FQueryTimer.Interval = 0 then
+      QueryTick(FQueryTimer)
+    else
+      // Neu starten: erst nach einer Tipppause fragen.
+      FQueryTimer.Enabled := True;
   end;
 end;
 
@@ -139,6 +160,29 @@ procedure TAtlasPaletteWindow.SetKeepOrder(AValue: Boolean);
 begin
   FKeepOrder := AValue;
   Refilter;
+end;
+
+procedure TAtlasPaletteWindow.SetPresorted(AValue: Boolean);
+begin
+  FPresorted := AValue;
+  Refilter;
+end;
+
+function TAtlasPaletteWindow.GetQueryDelay: Integer;
+begin
+  Result := Integer(FQueryTimer.Interval);
+end;
+
+procedure TAtlasPaletteWindow.SetQueryDelay(AValue: Integer);
+begin
+  FQueryTimer.Interval := Cardinal(Max(0, AValue));
+end;
+
+function TAtlasPaletteWindow.HighlightPattern: string;
+begin
+  Result := FPattern;
+  if Assigned(FOnHighlight) then
+    Result := FOnHighlight(FPattern);
 end;
 
 procedure TAtlasPaletteWindow.CreateParams(var Params: TCreateParams);
@@ -175,9 +219,24 @@ begin
   SetFocus;
 end;
 
-procedure TAtlasPaletteWindow.Refilter;
+procedure TAtlasPaletteWindow.SetCommands(const ACommands: TArray<TAtlasCommand>);
 begin
-  FOrder := TAtlasCommandPalette.Order(FCommands, FPattern, FHistory, FKeepOrder);
+  FCommands := ACommands;
+  Refilter;
+end;
+
+procedure TAtlasPaletteWindow.Refilter;
+var
+  Index: Integer;
+begin
+  if FPresorted then
+  begin
+    SetLength(FOrder, Length(FCommands));
+    for Index := 0 to High(FCommands) do
+      FOrder[Index] := Index;
+  end
+  else
+    FOrder := TAtlasCommandPalette.Order(FCommands, FPattern, FHistory, FKeepOrder);
   FSelected := 0;
   FTop := 0;
   Invalidate;
@@ -296,7 +355,7 @@ var
   Chunk: string;
 begin
   SetLength(Marks, Length(AText) + 1);
-  for Position in TAtlasItemPresentation.Highlights(FPattern, AText) do
+  for Position in TAtlasItemPresentation.Highlights(HighlightPattern, AText) do
     if (Position >= 1) and (Position <= Length(AText)) then
       Marks[Position] := True;
   X := ARect.Left;
