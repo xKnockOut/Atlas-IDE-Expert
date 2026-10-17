@@ -15,7 +15,7 @@ uses
 
 type
 {$SCOPEDENUMS ON}
-  TAtlasHelpButton = (Docs, Keys, Report);
+  TAtlasHelpButton = (Docs, Keys, Report, Donate);
 {$SCOPEDENUMS OFF}
 
   TAtlasHelp = class
@@ -24,6 +24,8 @@ type
     DocsIndex = 'index.html';
     /// <summary>Doku-Seite des Repositorys, wenn keine installierte Doku da ist.</summary>
     DocsUrl = 'https://github.com/xKnockOut/Atlas-IDE-Expert/tree/main/docs';
+    /// <summary>„Atlas unterstützen“: Spendenseite (PayPal), fest; nichts wird gesendet.</summary>
+    DonateUrl = 'https://www.paypal.com/paypalme/xKnockOut288';
   public
     /// <summary>Doku\index.html im Ordner APluginDir oder eine Ebene darüber (BPL in Win32\ bzw. Win64\);
     /// '' ohne. AExists prüft eine Datei.</summary>
