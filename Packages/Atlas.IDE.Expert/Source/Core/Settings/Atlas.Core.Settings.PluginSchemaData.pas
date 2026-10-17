@@ -12,7 +12,7 @@ function AtlasPluginSchemaJson: string;
 implementation
 
 const
-  Lines: array[0..2018] of string = (
+  Lines: array[0..2027] of string = (
     '{',
     '  "$schema": "http://json-schema.org/draft-07/schema#",',
     '  "title": "Atlas-Plugin-Einstellungen",',
@@ -193,6 +193,15 @@ const
     '      "x-drawing": true,',
     '      "x-caption": "Blockende-Beschriftungen",',
     '      "x-captionEn": "Block end labels",',
+    '      "x-issue": "#620"',
+    '    },',
+    '    "BlockEndLabelsMinLines": {',
+    '      "type": "integer",',
+    '      "default": 25,',
+    '      "description": "Blockende-Beschriftung erst ab so vielen Zeilen Blocklänge (1 bis 1000); ersetzt inlayHints.endMarkerMinLines des Servers.",',
+    '      "x-key": "editor.blockEndLabels.minLines",',
+    '      "x-area": "editor",',
+    '      "x-page": "Editor",',
     '      "x-issue": "#620"',
     '    },',
     '    "Notes": {',

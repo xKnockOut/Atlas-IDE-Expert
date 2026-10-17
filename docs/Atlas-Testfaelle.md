@@ -1876,3 +1876,14 @@ Voraussetzung für EX2 bis EX7: mindestens eine Einstellung trägt `x-experiment
 | KA5 | Cursor außerhalb einer Klassendeklaration (Methodenrumpf, implementation) | Keine Klassen-Aktionen |
 | KA6 | `"refactoring": {"classActions": false}` | Keine Klassen-Aktionen |
 | KA7 | `.editorconfig` mit `indent_size = 4` | Die erzeugten Rümpfe rücken um vier Leerzeichen ein |
+
+## Blockende-Beschriftungen (#620)
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| BE1 | Methode mit mehr als 25 Zeilen, `editor.blockEndLabels` an | Hinter dem `end;` der Methode steht leise „// TKunde.Speichern“ |
+| BE2 | Lange `if`-, `for`-, `while`-, `case`-, `with`- und `try`-Blöcke | Beschriftung mit dem Kopf („// if Bedingung“, „// try (finally)“, „// try (except)“); Köpfe über 40 Zeichen enden mit „…“ |
+| BE3 | Hinter dem `end;` steht schon ein Kommentar | Keine Beschriftung |
+| BE4 | *Tools › Optionen › Atlas*, „ab Zeilen“ auf 5 stellen | Auch kurze Blöcke ab fünf Zeilen bekommen eine Beschriftung; der Wert gilt sofort |
+| BE5 | Linksklick auf eine Beschriftung | Der Cursor springt an den Anfang des Blocks |
+| BE6 | `editor.blockEndLabels` aus | Keine Beschriftungen, auch nicht bei eingeschalteten Inlay-Hints |

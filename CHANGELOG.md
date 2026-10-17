@@ -28,6 +28,7 @@ Server und Claude-Code-Plugin tragen immer dieselbe Version.
 
 - `/var Name := Ausdruck` meldet vor Delphi 10.3 einen Hinweis statt einer Inline-Variablen (#294); `/const!` in einer Unit ohne implementation bleibt stehen, statt hinter `end.` zu schreiben.
 - Test debuggen und „Test am Cursor ausführen“ gibt es nur mit `codeLens.tests` (#585).
+- Blockende-Beschriftungen (#620): Köpfe für `if`, Schleifen, `case`, `with` und `try` („try (finally)“), auf 40 Zeichen gekürzt, keine Beschriftung vor einem vorhandenen Kommentar; Mindestlänge `editor.blockEndLabels.minLines` (Vorgabe 25) auf der Optionsseite; ein Klick auf die Beschriftung springt zum Blockanfang.
 - Code-Aktion „try/finally ergänzen“ (#42) entscheidet über den Syntaxbaum: keine Aktion für Felder (auch `Self.F`), Owner, Übergabe an Listen oder ohne folgende Anweisung; Inline-Variablen und mehrzeilige `Create(`-Aufrufe werden erkannt. Der `try`-Block schließt die folgenden Anweisungen bis zum Blockende bzw. bis zum Ende der Auswahl ein, eine vorhandene Freigabe am Ende wandert ins `finally`, die Einrückung folgt dem Formatstil. Golden-Datei im Test.
 
 ### Tests
