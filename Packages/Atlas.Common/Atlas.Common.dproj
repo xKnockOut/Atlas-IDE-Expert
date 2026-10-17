@@ -311,6 +311,7 @@
         <DCCReference Include="Source\Semantics\Atlas.Common.Semantics.Attributes.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.Definition.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.PublishedMembers.pas"/>
+        <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.TypeInfoClasses.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.Hover.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.HoverTypes.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.Documentation.pas"/>

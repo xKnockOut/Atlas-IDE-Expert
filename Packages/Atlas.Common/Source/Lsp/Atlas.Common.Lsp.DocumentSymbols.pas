@@ -22,7 +22,9 @@ uses
   Atlas.Common.JsonRpc.Contract,
   Atlas.Common.JsonRpc.Dispatcher,
   Atlas.Common.Documents.Contract,
-  Atlas.Common.Pascal.SyntaxTree;
+  Atlas.Common.Index.Contract,
+  Atlas.Common.Pascal.SyntaxTree,
+  Atlas.Common.Lsp.TypeInfoClasses;
 
 type
   /// <summary>Werte für SymbolKind des LSP (Auswahl).</summary>
@@ -52,6 +54,8 @@ type
     Method = 'textDocument/documentSymbol';
   private
     FStore: IDocumentStore;
+    FIndex: ISymbolIndex;
+    FReadText: TTypeInfoReadText;
     function HandleDocumentSymbol(const AParams: TJSONValue; const ACancellation: IJsonRpcCancellationToken): TJSONValue;
   public
     constructor Create(const AStore: IDocumentStore);
@@ -61,11 +65,20 @@ type
     class function BuildSymbols(ATree: TSyntaxTree): TJSONArray; overload; static;
     /// <summary>Wie oben; markiert zusätzlich deklarierte Methoden ohne Rumpf (#124, #537) aus AText.</summary>
     class function BuildSymbols(ATree: TSyntaxTree; const AText: string): TJSONArray; overload; static;
+    /// <summary>Wie oben; die Standardsichtbarkeit (published bei {$M+}-Klassen, #537) folgt den Vorfahren über
+    /// AIndex und liest deren Dateien mit AReadText (beide dürfen nil sein).</summary>
+    class function BuildSymbols(ATree: TSyntaxTree; const AText: string; const AIndex: ISymbolIndex;
+      const AReadText: TTypeInfoReadText): TJSONArray; overload; static;
+    /// <summary>Symbolindex für die Vorfahren (#537); ohne gelten nur die bekannten Klassen der RTL/VCL/FMX.</summary>
+    property Index: ISymbolIndex read FIndex write FIndex;
+    /// <summary>Liest die Datei eines Vorfahren aus dem Index.</summary>
+    property ReadText: TTypeInfoReadText read FReadText write FReadText;
   end;
 
 implementation
 
 uses
+  System.Generics.Collections,
   Atlas.Common.Editing.ClassCompletion,
   Atlas.Common.Dfm.Contract,
   Atlas.Common.Dfm.Parser,
@@ -84,9 +97,14 @@ type
     FVisibility: string;
     /// <summary>Namensanfang deklarierter Methoden ohne Rumpf (#124).</summary>
     FUnimplemented: TArray<TTextPosition>;
+    /// <summary>Aktive Token (ohne inaktive Zweige) für den Schalter {$M+}.</summary>
+    FActive: TArray<TPascalToken>;
+    FTypeInfo: TTypeInfoClasses;
+    /// <summary>Klassen dieser Datei: mit RTTI für published übersetzt?</summary>
+    FLocalTypeInfo: TDictionary<string, Boolean>;
     function IsClassMember(ANode: TSyntaxNode): Boolean;
     procedure AddExtras(ASymbol: TJSONObject; ANode: TSyntaxNode; ARoutine: Boolean);
-    function DefaultVisibility(ABody: TSyntaxNode): string;
+    function DefaultVisibility(ADecl, ABody: TSyntaxNode): string;
     function TokenIndexAt(AOffset: Integer): Integer;
     function NameRange(ANode: TSyntaxNode; const AName: string): TTextRange;
     function NewSymbol(ANode: TSyntaxNode; const AName: string; AKind: Integer;
@@ -100,6 +118,11 @@ type
     procedure AddNames(ANode: TSyntaxNode; ATarget: TJSONArray; AKind: Integer);
   public
     constructor Create(const ATokens: TArray<TPascalToken>; const AUnimplemented: TArray<TTextPosition>);
+      overload;
+    /// <summary>AActive: aktive Token für {$M+}; ATypeInfo gehört weiter dem Aufrufer.</summary>
+    constructor Create(const ATokens: TArray<TPascalToken>; const AUnimplemented: TArray<TTextPosition>;
+      const AActive: TArray<TPascalToken>; ATypeInfo: TTypeInfoClasses); overload;
+    destructor Destroy; override;
     function Build(ARoot: TSyntaxNode): TJSONArray;
   end;
 
@@ -113,9 +136,24 @@ end;
 constructor TSymbolBuilder.Create(const ATokens: TArray<TPascalToken>;
   const AUnimplemented: TArray<TTextPosition>);
 begin
+  Create(ATokens, AUnimplemented, ATokens, nil);
+end;
+
+constructor TSymbolBuilder.Create(const ATokens: TArray<TPascalToken>; const AUnimplemented: TArray<TTextPosition>;
+  const AActive: TArray<TPascalToken>; ATypeInfo: TTypeInfoClasses);
+begin
   inherited Create;
   FTokens := ATokens;
   FUnimplemented := AUnimplemented;
+  FActive := AActive;
+  FTypeInfo := ATypeInfo;
+  FLocalTypeInfo := TDictionary<string, Boolean>.Create;
+end;
+
+destructor TSymbolBuilder.Destroy;
+begin
+  FLocalTypeInfo.Free;
+  inherited Destroy;
 end;
 
 function TSymbolBuilder.IsClassMember(ANode: TSyntaxNode): Boolean;
@@ -135,25 +173,37 @@ begin
   Result := (Index >= 0) and FTokens[Index].IsKeyword('class');
 end;
 
-function TSymbolBuilder.DefaultVisibility(ABody: TSyntaxNode): string;
+function TSymbolBuilder.DefaultVisibility(ADecl, ABody: TSyntaxNode): string;
 var
   Index: Integer;
-  Ancestor: string;
+  Ancestor, Key: string;
+  TypeInfo: Boolean;
 begin
   Result := 'public';
   if not (ABody.Kind in [TSyntaxKind.ClassType, TSyntaxKind.ObjectType]) then
     Exit;
-  // Ohne Angabe sind Mitglieder von {$M+}-Klassen published. Ob ein Vorfahr {$M+} hat, weiß die Gliederung
-  // nicht; Formulare, Frames und Komponenten haben einen Vorfahren, schlichte Klassen meist keinen.
-  for Index := 0 to ABody.ChildCount - 1 do
-    if (ABody[Index].Kind = TSyntaxKind.TypeReference) and (ABody[Index].Name <> '') then
-    begin
-      Ancestor := LowerCase(ABody[Index].Name);
-      if (Ancestor <> 'tobject') and (Ancestor <> 'system.tobject') and (Ancestor <> 'tinterfacedobject') and
-        not Ancestor.EndsWith('exception') then
-        Result := 'published';
-      Exit;
-    end;
+  // Ohne Angabe sind Mitglieder published, wenn die Klasse mit RTTI für published übersetzt wird: {$M+} bzw.
+  // {$TYPEINFO ON} bei der Deklaration oder ein so übersetzter Vorfahr (TPersistent und Nachfahren).
+  TypeInfo := TTypeInfoClasses.SwitchAt(FActive, ADecl.StartPos);
+  if not TypeInfo then
+    for Index := 0 to ABody.ChildCount - 1 do
+      if (ABody[Index].Kind = TSyntaxKind.TypeReference) and (ABody[Index].Name <> '') then
+      begin
+        // Nur der erste Eintrag ist der Vorfahr, die übrigen sind Interfaces.
+        Ancestor := ABody[Index].Name;
+        Key := LowerCase(Copy(Ancestor, LastDelimiter('.', Ancestor) + 1, MaxInt));
+        if not FLocalTypeInfo.TryGetValue(Key, TypeInfo) then
+        begin
+          if FTypeInfo <> nil then
+            TypeInfo := FTypeInfo.HasTypeInfo(Ancestor)
+          else
+            TypeInfo := TTypeInfoClasses.KnownTypeInfoClass(Ancestor);
+        end;
+        Break;
+      end;
+  FLocalTypeInfo.AddOrSetValue(LowerCase(ADecl.Name), TypeInfo);
+  if TypeInfo then
+    Result := 'published';
 end;
 
 procedure TSymbolBuilder.AddExtras(ASymbol: TJSONObject; ANode: TSyntaxNode; ARoutine: Boolean);
@@ -345,7 +395,7 @@ begin
   begin
     // Verschachtelte Typen haben eigene Abschnitte; danach gilt wieder der äußere.
     Outer := FVisibility;
-    FVisibility := DefaultVisibility(Body);
+    FVisibility := DefaultVisibility(ADecl, Body);
     Members := TJSONArray.Create;
     try
       AddDeclarations(Body, Members, True);
@@ -517,20 +567,32 @@ begin
 end;
 
 class function TLspDocumentSymbols.BuildSymbols(ATree: TSyntaxTree; const AText: string): TJSONArray;
+begin
+  Result := BuildSymbols(ATree, AText, nil, nil);
+end;
+
+class function TLspDocumentSymbols.BuildSymbols(ATree: TSyntaxTree; const AText: string;
+  const AIndex: ISymbolIndex; const AReadText: TTypeInfoReadText): TJSONArray;
 var
   Builder: TSymbolBuilder;
   Missing: TArray<TTextPosition>;
   Method: TUnmatchedMethod;
+  TypeInfo: TTypeInfoClasses;
 begin
   Missing := nil;
   for Method in TClassCompletion.Unmatched(ATree, AText) do
     if Method.Declared then
       Missing := Missing + [Method.Symbol.SelectionRange.StartPos];
-  Builder := TSymbolBuilder.Create(ATree.Tokens, Missing);
+  TypeInfo := TTypeInfoClasses.Create(AIndex, AReadText);
   try
-    Result := Builder.Build(ATree.Root);
+    Builder := TSymbolBuilder.Create(ATree.Tokens, Missing, TTypeInfoClasses.ActiveTokens(AText), TypeInfo);
+    try
+      Result := Builder.Build(ATree.Root);
+    finally
+      Builder.Free;
+    end;
   finally
-    Builder.Free;
+    TypeInfo.Free;
   end;
 end;
 
@@ -564,7 +626,7 @@ begin
   Shared := TSyntaxTreeCache.Get(Document, Cancellation);
   Tree := Shared.Tree;
   ACancellation.ThrowIfCancellationRequested;
-  Result := BuildSymbols(Tree, Document.Text);
+  Result := BuildSymbols(Tree, Document.Text, FIndex, FReadText);
 end;
 
 end.

@@ -839,6 +839,9 @@ procedure TServerComposition.WireIndex;
 begin
   FIndex := TSymbolIndex.Create;
   FFormatting.Index := FIndex;
+  // Standardsichtbarkeit published über die Vorfahren (#537).
+  FDocumentSymbols.Index := FIndex;
+  FDocumentSymbols.ReadText := ReadSourceText;
   FSlashMenu.Index := FIndex;
   FEndReason := TDiagnosticEndReason.InputClosed;
   FRequestTimeout := RequestTimeoutMs;
