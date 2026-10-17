@@ -305,6 +305,9 @@ type
     /// <summary>Schnellbefehl "/uses Unit" nach Enter auswerten (#254); false wirkt wie "uses" in
     /// SlashCommandsDisabled.</summary>
     UsesCommand: Boolean;
+    /// <summary>Gerüst des Dokumentationskommentars nach dem dritten "/" und die Code-Aktionen dazu
+    /// ("completeBlocks.docComment", #88).</summary>
+    CompleteBlocksDocComment: Boolean;
     /// <summary>Kennzahlen überhaupt ("metrics", global): false schaltet die Code Lens der Kennzahlen und
     /// alle Regeln metric-* ab. Eine Regel, die das Projekt unter "rules" ausdrücklich setzt, gilt trotzdem.</summary>
     Metrics: Boolean;
@@ -672,6 +675,7 @@ begin
   Result.Completion := TCompletionSettings.Default;
   Result.Refactoring := TRefactoringSettings.Default;
   Result.UsesCommand := True;
+  Result.CompleteBlocksDocComment := True;
   Result.Metrics := True;
   Result.SlashCommands := True;
   Result.SlashCommandsDisabled := nil;

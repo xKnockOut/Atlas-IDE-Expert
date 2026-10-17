@@ -30,6 +30,8 @@ uses
 type
   /// <summary>Einstellung "sortUses" für AUri.</summary>
   TSortUsesProvider = reference to function(const AUri: string): Boolean;
+  /// <summary>Einstellung "completeBlocks.docComment" für AUri (#88).</summary>
+  TDocCommentsProvider = reference to function(const AUri: string): Boolean;
   /// <summary>Einstellungen "stringLiteral" für AUri und ob ein mehrzeiliger String entsteht (#312).</summary>
   TStringLiteralProvider = reference to function(const AUri: string;
     out AMultiline: Boolean): TStringLiteralSettings;
@@ -58,6 +60,7 @@ type
     FFormActions: TFormActionsFunc;
     FStringLiteralFor: TStringLiteralProvider;
     FMemberOrderFor: TMemberOrderProvider;
+    FDocCommentsFor: TDocCommentsProvider;
     FExtraActions: TExtraActionsFunc;
     function HandleCodeAction(const AParams: TJSONValue; const ACancellation: IJsonRpcCancellationToken): TJSONValue;
   public
@@ -77,6 +80,8 @@ type
     property StringLiteralFor: TStringLiteralProvider read FStringLiteralFor write FStringLiteralFor;
     /// <summary>Ohne Zuweisung gelten die Vorgaben von "memberOrder".</summary>
     property MemberOrderFor: TMemberOrderProvider read FMemberOrderFor write FMemberOrderFor;
+    /// <summary>Ohne Zuweisung gibt es die Aktionen zum Dokumentationskommentar (#88).</summary>
+    property DocCommentsFor: TDocCommentsProvider read FDocCommentsFor write FDocCommentsFor;
     /// <summary>Aktionen in .dfm/.fmx; ohne Zuweisung keine.</summary>
     property FormActions: TFormActionsFunc read FFormActions write FFormActions;
     /// <summary>Weitere Aktionen in Units (Testunit anlegen und wechseln, #274/#189); ohne Zuweisung keine.</summary>
@@ -318,8 +323,8 @@ begin
   end;
   for Action in UsesActions do
     TJSONArray(Result).AddElement(ActionToJson(Uri, Action));
-  // Dokumentationskommentar erzeugen bzw. an die Signatur anpassen (#88).
-  if WantsEditing then
+  // Dokumentationskommentar erzeugen bzw. an die Signatur anpassen (#88), abschaltbar.
+  if WantsEditing and (not Assigned(FDocCommentsFor) or FDocCommentsFor(Uri)) then
     for Action in TDocComments.Actions(Document.Text, Tree, Range.StartPos.Line) do
       TJSONArray(Result).AddElement(ActionToJson(Uri, Action));
   // Klassenmitglieder ordnen (#89).

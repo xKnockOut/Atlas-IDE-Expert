@@ -1812,3 +1812,12 @@ Voraussetzung: VCL-Quellen über die Bibliothekspfade im Index.
 | HK2 | Eigene Klasse mit `TMeinRueckruf = procedure(Sender: TObject) of object` und `property OnlineStatus: Boolean` published, Maus über die Klasse | `TMeinRueckruf`-Property unter „Ereignisse“, `OnlineStatus` unter den Properties (**Abnahme**) |
 | HK3 | Properties mit `default 5`, ohne Angabe (Boolean), `nodefault`, `stored False` | „= `5`“, „= `False` (implizit)“, „· nodefault“, „· stored `False`“ (**Abnahme**) |
 | HK4 | Maus über `TStrings` | Erste Zeile „Standard-Property: `Strings[Index: Integer]: string`“, kein Vorgabewert (**Abnahme**) |
+
+## Dokumentationskommentar-Gerüst (#88)
+
+| Nr. | Schritt | Erwartet |
+|---|---|---|
+| DC1 | Über `function CalcDiscount(Customer: TCustomer; Rate: Double): Currency;` eine leere Zeile, `///` tippen | `summary`, zwei `param` und `returns`; Tab springt in die Beschreibungen (**Abnahme**) |
+| DC2 | Kommentar vorhanden, Parameter `Discount: Double` ergänzen, Alt+Enter auf der Deklaration | „Fehlende <param> ergänzen“ fügt genau `<param name="Discount">` ein (**Abnahme**) |
+| DC3 | Parameter `Rate` in `Factor` umbenennen, Alt+Enter | „Dokumentation an die Signatur anpassen“: `<param name="Rate">…</param>` wird zu `<!-- entfernt: Rate: … -->`, die Beschreibung bleibt, `<param name="Factor">` kommt dazu |
+| DC4 | In `settings.json` `"completeBlocks": {"docComment": false}`, Server neu laden, `///` tippen | `///` bleibt stehen, kein Gerüst, keine Code-Aktionen zum Kommentar (**Abnahme**) |
