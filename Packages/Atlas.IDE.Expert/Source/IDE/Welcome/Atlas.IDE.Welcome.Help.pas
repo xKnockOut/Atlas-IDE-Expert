@@ -57,6 +57,7 @@ type
     procedure OpenDocs;
     procedure ShowKeys;
     procedure ReportProblem;
+    procedure Donate;
   end;
 
 implementation
@@ -199,6 +200,16 @@ begin
     begin
       if Active and KeysAvailable then
         FShowKeys();
+    end);
+end;
+
+procedure TAtlasIdeHelp.Donate;
+begin
+  TAtlasGuard.Run(TAtlasFeature.WelcomePage,
+    procedure
+    begin
+      if Active then
+        OpenTarget(TAtlasHelp.DonateUrl);
     end);
 end;
 
