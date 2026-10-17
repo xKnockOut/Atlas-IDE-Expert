@@ -333,6 +333,7 @@
         <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Completion\Atlas.Core.Completion.Word.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Style.Tests.pas"/>
         <DCCReference Include="Common\Pascal\Atlas.Common.Pascal.XmlDoc.Tests.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Settings\Atlas.Core.Settings.OverviewKinds.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Settings\Atlas.Core.Settings.Plugin.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Settings.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Settings\Atlas.Core.Settings.JsonText.pas"/>
@@ -689,6 +690,10 @@
         <DCCReference Include="IDE.Expert\Atlas.Core.Editor.Match.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Editor\Atlas.Core.Editor.LineChanges.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Editor.LineChanges.Tests.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Editor\Atlas.Core.Editor.Overview.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.Core.Editor.Overview.Tests.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\UI\Editor\Atlas.UI.Editor.OverviewRuler.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.UI.Editor.OverviewRuler.Tests.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Editor.SnapshotPolicy.Tests.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Editor.CloseRules.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Build\Atlas.Core.Build.Messages.pas"/>

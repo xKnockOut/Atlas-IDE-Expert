@@ -12,7 +12,7 @@ function AtlasPluginSchemaJson: string;
 implementation
 
 const
-  Lines: array[0..2410] of string = (
+  Lines: array[0..2433] of string = (
     '{',
     '  "$schema": "http://json-schema.org/draft-07/schema#",',
     '  "title": "Atlas-Plugin-Einstellungen",',
@@ -1882,6 +1882,29 @@ const
     '      "x-format": "shortcut",',
     '      "x-page": "Editor",',
     '      "x-issue": "#507"',
+    '    },',
+    '    "OverviewRuler": {',
+    '      "description": "Übersichtsleiste rechts neben der Scrollleiste: Marken für die ganze Datei (Fehler und Warnungen, Treffer des markierten Texts, Änderungen, Haltepunkte, Lesezeichen, Cursor); Kli' + 'ck springt zur Stelle, Überfahren zeigt die Zeile.",',
+    '      "type": "boolean",',
+    '      "default": true,',
+    '      "x-key": "editor.overviewRuler",',
+    '      "x-area": "editor",',
+    '      "x-feature": "EditorCommands",',
+    '      "x-page": "Editor",',
+    '      "x-quickToggle": true,',
+    '      "x-caption": "Übersichtsleiste",',
+    '      "x-captionEn": "Overview ruler",',
+    '      "x-issue": "#519"',
+    '    },',
+    '    "OverviewRulerKinds": {',
+    '      "description": "Welche Arten von Marken die Übersichtsleiste zeigt, kommagetrennt: diagnostics, search, changes, breakpoints, bookmarks, cursor; unbekannte Namen fallen weg.",',
+    '      "type": "string",',
+    '      "default": "diagnostics,search,changes,breakpoints,bookmarks,cursor",',
+    '      "x-key": "editor.overviewRulerKinds",',
+    '      "x-area": "editor",',
+    '      "x-page": "Editor",',
+    '      "x-control": "Kontrollkästchen je Art",',
+    '      "x-issue": "#519"',
     '    },',
     '    "WelcomePageHost": {',
     '      "type": "string",',

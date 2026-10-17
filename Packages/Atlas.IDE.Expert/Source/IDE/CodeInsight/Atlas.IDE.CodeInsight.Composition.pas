@@ -75,7 +75,8 @@ uses
   Atlas.IDE.Outline.Cache,
   Atlas.IDE.Outline.Service,
   Atlas.IDE.Outline.Breadcrumbs,
-  Atlas.IDE.Vcs.LineChanges,
+  Atlas.IDE.Editor.LineChanges,
+  Atlas.IDE.Editor.OverviewRuler,
   Atlas.IDE.UnitSearch.Commands,
   Atlas.IDE.Generate.Commands,
   Atlas.IDE.Generate.NewFile,
@@ -2026,6 +2027,8 @@ begin
     begin
       GuardWarning(AText);
     end);
+  // Übersichtsleiste an der Scrollleiste (#519).
+  TAtlasIdeOverviewRuler.Install;
   // Schnell öffnen (#503): Dateiliste im Hintergrund, zuletzt geöffnete Dateien zählen.
   TAtlasIdeQuickOpen.Install(
     function: TLspSession
@@ -2053,6 +2056,7 @@ begin
   TAtlasIdeQuickOpen.Uninstall;
   TAtlasIdePeek.Uninstall;
   TAtlasIdeBreadcrumbs.Uninstall;
+  TAtlasIdeOverviewRuler.Uninstall;
   TAtlasIdeLineChanges.Uninstall;
   TAtlasIdeOutline.Uninstall;
   TAtlasIdeOutlineCache.Uninstall;
@@ -3356,6 +3360,7 @@ begin
       TAtlasIdeOutline.ThemeChanged;
       TAtlasIdeBreadcrumbs.ThemeChanged;
       TAtlasIdeLineChanges.ThemeChanged;
+      TAtlasIdeOverviewRuler.ThemeChanged;
     end;
   // Zuerst entscheiden, ob Atlas abgesichert startet (#722): Davon hängt ab, was angemeldet wird.
   if SafeMode = nil then
@@ -3401,6 +3406,8 @@ begin
       TAtlasIdeBreadcrumbs.ApplySettings;
       // editor.gitGutter, editor.gitBlame (#507).
       TAtlasIdeLineChanges.ApplySettings;
+      // editor.overviewRuler, editor.overviewRulerKinds (#519).
+      TAtlasIdeOverviewRuler.ApplySettings;
       // notifications.* (#601): an oder aus, Höchstzahl, Verhalten je Quelle.
       if Notifications <> nil then
         Notifications.ApplySettings;

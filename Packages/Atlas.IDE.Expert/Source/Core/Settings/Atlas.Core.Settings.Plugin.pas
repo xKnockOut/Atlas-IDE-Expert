@@ -542,6 +542,11 @@ type
     NextChangeKey: Integer;
     /// <summary>Kürzel „Vorherige Änderung“ (#507, keys.previousChange); Vorgabe Strg+Alt+Bild↑.</summary>
     PreviousChangeKey: Integer;
+    /// <summary>Übersichtsleiste an der Scrollleiste (#519, editor.overviewRuler).</summary>
+    OverviewRuler: Boolean;
+    /// <summary>Arten der Übersichtsleiste, kommagetrennt (#519, editor.overviewRulerKinds); siehe
+    /// TAtlasOverviewKindNames.</summary>
+    OverviewRulerKinds: string;
     /// <summary>Sprung zum Gegenstück (#635, keys.jumpToMatch).</summary>
     JumpToMatch: Boolean;
     /// <summary>Kürzel „Zum Gegenstück springen“ (#635, keys.jumpToMatchShortcut); Vorgabe Strg+Ü.</summary>
@@ -746,6 +751,7 @@ uses
   Atlas.Core.Build.Events,
   Atlas.Core.Build.ReleaseGuard,
   Atlas.Core.Build.OpenBuild,
+  Atlas.Core.Settings.OverviewKinds,
   Atlas.Core.Notifications.Sources;
 
 const
@@ -1104,6 +1110,8 @@ begin
   // Strg+Alt+↑/↓ springt in RAD Studio schon zwischen Methoden.
   Result.NextChangeKey := $C022; // Strg+Alt+Bild↓
   Result.PreviousChangeKey := $C021; // Strg+Alt+Bild↑
+  Result.OverviewRuler := True;
+  Result.OverviewRulerKinds := TAtlasOverviewKindNames.Text(TAtlasOverviewKindNames.All);
   Result.JumpToMatch := True;
   Result.JumpToMatchKey := $40BA; // Strg+Ü (VK_OEM_1 auf deutscher Tastatur)
   Result.JumpToMatchSelectKey := $60BA; // Strg+Umschalt+Ü
@@ -1291,6 +1299,7 @@ begin
   BreadcrumbsKey := EnsureRange(BreadcrumbsKey, 0, $FFFF);
   NextChangeKey := EnsureRange(NextChangeKey, 0, $FFFF);
   PreviousChangeKey := EnsureRange(PreviousChangeKey, 0, $FFFF);
+  OverviewRulerKinds := TAtlasOverviewKindNames.Normalize(OverviewRulerKinds);
   JumpToMatchKey := EnsureRange(JumpToMatchKey, 0, $FFFF);
   JumpToMatchSelectKey := EnsureRange(JumpToMatchSelectKey, 0, $FFFF);
   BookmarkKey := EnsureRange(BookmarkKey, 0, $FFFF);
@@ -1528,6 +1537,8 @@ begin
   GitBlame := AStore.ReadInteger('GitBlame', BoolValue(Default.GitBlame)) <> 0;
   NextChangeKey := AStore.ReadInteger('NextChangeKey', Default.NextChangeKey);
   PreviousChangeKey := AStore.ReadInteger('PreviousChangeKey', Default.PreviousChangeKey);
+  OverviewRuler := AStore.ReadInteger('OverviewRuler', BoolValue(Default.OverviewRuler)) <> 0;
+  OverviewRulerKinds := AStore.ReadString('OverviewRulerKinds', Default.OverviewRulerKinds);
   JumpToMatch := AStore.ReadInteger('JumpToMatch', BoolValue(Default.JumpToMatch)) <> 0;
   JumpToMatchKey := AStore.ReadInteger('JumpToMatchKey', Default.JumpToMatchKey);
   JumpToMatchSelectKey := AStore.ReadInteger('JumpToMatchSelectKey', Default.JumpToMatchSelectKey);
@@ -1813,6 +1824,8 @@ begin
   AStore.WriteInteger('GitBlame', BoolValue(GitBlame));
   AStore.WriteInteger('NextChangeKey', NextChangeKey);
   AStore.WriteInteger('PreviousChangeKey', PreviousChangeKey);
+  AStore.WriteInteger('OverviewRuler', BoolValue(OverviewRuler));
+  AStore.WriteString('OverviewRulerKinds', OverviewRulerKinds);
   AStore.WriteInteger('JumpToMatch', BoolValue(JumpToMatch));
   AStore.WriteInteger('JumpToMatchKey', JumpToMatchKey);
   AStore.WriteInteger('JumpToMatchSelectKey', JumpToMatchSelectKey);

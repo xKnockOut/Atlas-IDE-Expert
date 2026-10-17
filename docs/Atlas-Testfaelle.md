@@ -1182,6 +1182,26 @@ Vorbereitung: Git-Projekt `GitDemo` mit `.atlas` `"tracker": {"provider": "githu
 | GM18 | Helles und dunkles Thema der IDE wechseln | Grün, Blau und Rot passen sich dem Grund der Rinne an, Historie bleibt lesbar |
 | GM19 | Marken neben Breakpoint, Lesezeichen und den eigenen Änderungsbalken der IDE | Nichts verdeckt Breakpoints oder Lesezeichen; Lage zu den IDE-Balken prüfen und ggf. melden |
 
+## Übersichtsleiste an der Scrollleiste (#519)
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| UL1 | Unit öffnen | Rechts neben dem Editor ein schmaler Streifen; heller Block zeigt den sichtbaren Bereich, eine Linie den Cursor |
+| UL2 | Datei mit 1000 Zeilen, Fehler in Zeile 900 einbauen | Rote Marke rechts unten im Streifen (Akzeptanzkriterium); Warnungen gelb, Hinweise gedämpft |
+| UL3 | Auf die Marke klicken | Editor springt zu Zeile 900 (Akzeptanzkriterium) |
+| UL4 | Neben die Marken klicken | Sprung zur Zeile an der Stelle (proportional) |
+| UL5 | Strg+F, Suchbegriff eingeben, suchen | Der gefundene Text ist markiert; der Streifen zeigt alle Zeilen mit dem Begriff (Akzeptanzkriterium) |
+| UL6 | Ein Wort markieren, dann Markierung aufheben | Treffer erscheinen bzw. verschwinden; mehrzeilige Markierung zeigt keine Treffer |
+| UL7 | Zeilen ändern, hinzufügen, löschen (Git-Repository, #507) | Grün, Blau, Rot links im Streifen an den Stellen der Rinnenmarken |
+| UL8 | Haltepunkt setzen, Lesezeichen Strg+Umschalt+1 setzen | Rote Marke bzw. Lesezeichenmarke in der Mitte des Streifens |
+| UL9 | Maus über eine Marke halten | Vorschau links neben dem Streifen: „Zeile 900 · Meldung“ und der Text der Zeile |
+| UL10 | Zweites Editorfenster öffnen (Ansicht › Neues Editorfenster) | Auch dort ein Streifen; er folgt seiner Datei, sobald das Fenster vorn ist |
+| UL11 | Optionen › Atlas › Editor: Häkchen „Treffer“ und „Cursor“ aus | Keine Treffer- und Cursormarken mehr, Rest bleibt |
+| UL12 | „Übersichtsleiste“ aus (Optionen oder Schnellschalter) | Streifen verschwindet in allen Fenstern, der Editor ist wieder so breit wie ohne Atlas (Akzeptanzkriterium) |
+| UL13 | Helles und dunkles Thema wechseln | Streifen und Farben passen zum Thema |
+| UL14 | Datei mit 10 000 Zeilen, Wort mit vielen Treffern markieren, tippen (Einfrier-Wächter #501 an) | Keine Hänger; Treffer folgen nach der Tipp-Pause |
+| UL15 | Minimap der IDE einschalten (RAD Studio 12/13) | Streifen liegt rechts davon, verdeckt nichts |
+
 ## DUnitX-Tests ausführen (#69)
 
 Vorbereitung: RAD Studio mit Atlas-Plugin; Projektgruppe mit einer Anwendung und einem DUnitX-Testprojekt aus der Vorlage von RAD Studio (Hauptdatei mit `DUnitX.TestFramework` und `TDUnitXXMLNUnitFileLogger`), darin eine Fixture mit einem bestehenden Test, einem Test `Assert.AreEqual(0, 1)` und einem `[TestCase]`. Meldungsansicht, Reiter „Atlas“.
