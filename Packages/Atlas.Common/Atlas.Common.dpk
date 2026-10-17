@@ -174,6 +174,7 @@ contains
   Atlas.Common.Editing.DeclarationCommands in 'Source\Editing\Atlas.Common.Editing.DeclarationCommands.pas',
   Atlas.Common.Editing.CommandSource in 'Source\Editing\Atlas.Common.Editing.CommandSource.pas',
   Atlas.Common.Editing.ClassCommands in 'Source\Editing\Atlas.Common.Editing.ClassCommands.pas',
+  Atlas.Common.Editing.ClassActions in 'Source\Editing\Atlas.Common.Editing.ClassActions.pas',
   Atlas.Common.Editing.WrapCommands in 'Source\Editing\Atlas.Common.Editing.WrapCommands.pas',
   Atlas.Common.Editing.SlashMenu in 'Source\Editing\Atlas.Common.Editing.SlashMenu.pas',
   Atlas.Common.Editing.RefactoringCommands in 'Source\Editing\Atlas.Common.Editing.RefactoringCommands.pas',

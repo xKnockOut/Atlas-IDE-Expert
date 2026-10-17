@@ -1,4 +1,4 @@
-# Changelog
+﻿# Changelog
 
 Alle nennenswerten Änderungen an Atlas (Server und VS-Code-Erweiterung).
 Format nach [Keep a Changelog](https://keepachangelog.com/de/1.1.0/), Versionen nach [SemVer](https://semver.org/lang/de/).
@@ -17,6 +17,7 @@ Server und Claude-Code-Plugin tragen immer dieselbe Version.
 - Dokumentationskommentar abschaltbar (#88): `completeBlocks.docComment` (Vorgabe an) schaltet die Vervollständigung nach `///` und die Codeaktionen dazu; überzählige `<param>`-Einträge werden als `<!-- entfernt: Name: … -->` markiert statt gelöscht.
 - Hinweis `unknown-rule-id` (#41): eine unbekannte Regelkennung in `lsp-ignore` oder `rules` meldet „Unbekannte Regelkennung "x"; gemeint ist vermutlich "y"“ mit Schnellkorrektur; sie gilt nicht mehr zusätzlich als `unused-suppression`. Über `rules` abschaltbar.
 - Kennzeichnung „Experimentell“ (#834): Hauptschalter `experimental.enabled` (Vorgabe aus) auf dem Reiter „Allgemein“; experimentelle Funktionen tragen „[Experimentell]“ auf der Optionsseite, im Projektdialog und in den Schnellschaltern, wirken nur mit dem Hauptschalter und stehen im Statusfeld-Tooltip und im Fehlerbericht. Filter „Nur experimentelle“, Profil „Alles an, auch experimentell“, Schema-Marker `x-experimental` mit Prüfung in `Update-ConfigDoc.ps1`, eigener Abschnitt in „Neu in Atlas“. <!-- whatsnew setting=ExperimentalEnabled -->
+- Klassen-Aktionen als Code-Aktionen (#42): „Getter, Setter und Feld erzeugen“ auf einer Property ohne read/write, „Methoden von IFoo implementieren“ für Interfaces im Kopf der Klasse, „Name überschreiben“ für virtuelle Methoden der Vorfahren; mit denselben Erzeugern wie `/prop`, `/intf` und `/override`, Golden-Datei je Aktion. Abschaltbar über `refactoring.classActions`, try/finally über `refactoring.tryFinally`.
 - Schnellbefehle (#293, #294): nach `/name ` schlägt die Vervollständigung Units (`/uses`, `/open`), Typen (hinter `:` von `/var`, `/field`, `/prop`, `/list`, `/future`, bei `/helper`), Interfaces (`/intf`), Ausnahmeklassen (`/raise`, `/exception`), überschreibbare Methoden (`/override`) und Regelkennungen (`/ignore`) vor; gewählte Typen bringen ihren uses-Eintrag mit. Die Befehle rücken nach dem Formatstil der Datei ein (Editor-Optionen, `.editorconfig`, `format`).
 
 ### Geändert
@@ -27,6 +28,7 @@ Server und Claude-Code-Plugin tragen immer dieselbe Version.
 
 - `/var Name := Ausdruck` meldet vor Delphi 10.3 einen Hinweis statt einer Inline-Variablen (#294); `/const!` in einer Unit ohne implementation bleibt stehen, statt hinter `end.` zu schreiben.
 - Test debuggen und „Test am Cursor ausführen“ gibt es nur mit `codeLens.tests` (#585).
+- Code-Aktion „try/finally ergänzen“ (#42) entscheidet über den Syntaxbaum: keine Aktion für Felder (auch `Self.F`), Owner, Übergabe an Listen oder ohne folgende Anweisung; Inline-Variablen und mehrzeilige `Create(`-Aufrufe werden erkannt. Der `try`-Block schließt die folgenden Anweisungen bis zum Blockende bzw. bis zum Ende der Auswahl ein, eine vorhandene Freigabe am Ende wandert ins `finally`, die Einrückung folgt dem Formatstil. Golden-Datei im Test.
 
 ### Tests
 - Alias `usesCommand` (#293), Formulardateien abgeleiteter Klassen (#44), `/header` am falschen Ort (#306), FireMonkey-Plattformansichten bei Sprung und Umbenennen (#87).

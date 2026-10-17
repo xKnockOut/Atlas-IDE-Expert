@@ -157,6 +157,7 @@
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.DeclarationCommands.pas"/>
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.CommandSource.pas"/>
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.ClassCommands.pas"/>
+        <DCCReference Include="Source\Editing\Atlas.Common.Editing.ClassActions.pas"/>
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.WrapCommands.pas"/>
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.SlashMenu.pas"/>
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.RefactoringCommands.pas"/>

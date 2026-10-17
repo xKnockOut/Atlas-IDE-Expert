@@ -991,6 +991,10 @@ begin
       ExpectBoolean(ANode[Index], Key, FSettings.Refactoring.VirtualOverload)
     else if Key = 'syncSignatures' then
       ExpectBoolean(ANode[Index], Key, FSettings.Refactoring.SyncSignatures)
+    else if Key = 'tryFinally' then
+      ExpectBoolean(ANode[Index], Key, FSettings.Refactoring.TryFinally)
+    else if Key = 'classActions' then
+      ExpectBoolean(ANode[Index], Key, FSettings.Refactoring.ClassActions)
     else
       Report(ANode.KeyStarts[Index], ANode.KeyStarts[Index] + Length(Key) + 2,
         Format('Unbekannte Einstellung "refactoring.%s"', [Key]), False);
