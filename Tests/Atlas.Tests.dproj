@@ -758,6 +758,10 @@
         <DCCReference Include="..\Application\Source\Shell\Shell.Commands.Build.pas"/>
         <DCCReference Include="..\Application\Source\Shell\Shell.Commands.Index.pas"/>
         <DCCReference Include="Application\Shell\Shell.Commands.Tests.pas"/>
+        <DCCReference Include="..\Application\Source\Shell\Shell.VcsChanges.pas"/>
+        <DCCReference Include="Application\Shell\Shell.VcsChanges.Tests.pas"/>
+        <DCCReference Include="..\Application\Source\Shell\Shell.Linter.pas"/>
+        <DCCReference Include="Application\Shell\Shell.Linter.Tests.pas"/>
         <BuildConfiguration Include="Base">
             <Key>Base</Key>
         </BuildConfiguration>

@@ -80,6 +80,7 @@ type
   TSvnChanges = class(TVcsChanges)
   private
     FVcs: IAtlasVersionControl;
+    FSvn: string;
     function Svn(const AArguments: TArray<string>): TArray<string>;
   public
     /// <summary>AWorkingCopy: gefundene SVN-Arbeitskopie; ASvn: vollständiger Pfad von svn.</summary>
@@ -246,6 +247,9 @@ var
   Runner: IAtlasVcsRunner;
 begin
   inherited Create(AProcess, AWorkingDir);
+  FSvn := ASvn;
+  if FSvn = '' then
+    FSvn := 'svn';
   // Kommandozeile: kein Fenster, der Hauptthread darf warten.
   Runner := TAtlasVcsProcessRunner.Create(True, nil);
   FVcs := TAtlasVersionControl.ForWorkingCopy(AWorkingCopy, Runner, ASvn, TAtlasVcsCommand.DefaultTimeoutMs * 4);
@@ -260,7 +264,8 @@ function TSvnChanges.Svn(const AArguments: TArray<string>): TArray<string>;
 var
   ExitCode: Integer;
 begin
-  Result := Run('svn', ['--non-interactive'] + AArguments, True, ExitCode);
+  // Der von Detect gefundene Pfad, auch wenn svn nicht in PATH liegt (z. B. TortoiseSVN).
+  Result := Run(FSvn, ['--non-interactive'] + AArguments, True, ExitCode);
 end;
 
 procedure TSvnChanges.Load(const ARef: string; AMergeBase, ADefaultBase, AIncludeUncommitted, AWithLines: Boolean);
