@@ -617,6 +617,9 @@ type
     MultiCursor: Boolean;
     /// <summary>Lokale Bezeichner beim Tippen mitziehen (#658, editor.linkedEditing, experimentell).</summary>
     LinkedEditing: Boolean;
+    /// <summary>Einfügen mit uses-Ergänzung (#515, editor.smartPaste, experimentell): off, uses, indent, both.
+    /// </summary>
+    SmartPaste: string;
     /// <summary>MultiCursorModifierAlt oder MultiCursorModifierCtrl (#589, editor.multiCursorModifier).</summary>
     MultiCursorModifier: string;
     /// <summary>Kürzel der Mehrfachmarken (#589, keys.multiCursor.*): nächstes Vorkommen (Strg+D), Überspringen
@@ -1224,6 +1227,7 @@ begin
   Result.ContinuePatternMinLines := 2;
   Result.MultiCursor := False;
   Result.LinkedEditing := False;
+  Result.SmartPaste := 'off';
   Result.MultiCursorModifier := MultiCursorModifierAlt;
   Result.MultiCursorNextKey := $4044; // Strg+D
   Result.MultiCursorSkipKey := $4044; // Strg+K, Strg+D
@@ -1428,6 +1432,7 @@ begin
   CompleteStatementBeginEnd := Choice(CompleteStatementBeginEnd, [BeginEndMultiLine, BeginEndAlways, BeginEndNever]);
   CompleteStatementTryKind := Choice(CompleteStatementTryKind, [TryKindFinally, TryKindExcept, TryKindAsk]);
   MultiCursorModifier := Choice(MultiCursorModifier, [MultiCursorModifierAlt, MultiCursorModifierCtrl]);
+  SmartPaste := Choice(SmartPaste, ['off', 'uses', 'indent', 'both']);
   MultiCursorNextKey := EnsureRange(MultiCursorNextKey, 0, $FFFF);
   MultiCursorSkipKey := EnsureRange(MultiCursorSkipKey, 0, $FFFF);
   MultiCursorLineEndsKey := EnsureRange(MultiCursorLineEndsKey, 0, $FFFF);
@@ -1698,6 +1703,7 @@ begin
   MultiCursor := AStore.ReadInteger('MultiCursor', BoolValue(Default.MultiCursor)) <> 0;
   LinkedEditing := AStore.ReadInteger('LinkedEditing', BoolValue(Default.LinkedEditing)) <> 0;
   MultiCursorModifier := AStore.ReadString('MultiCursorModifier', Default.MultiCursorModifier);
+  SmartPaste := AStore.ReadString('SmartPaste', Default.SmartPaste);
   MultiCursorNextKey := AStore.ReadInteger('MultiCursorNextKey', Default.MultiCursorNextKey);
   MultiCursorSkipKey := AStore.ReadInteger('MultiCursorSkipKey', Default.MultiCursorSkipKey);
   MultiCursorLineEndsKey := AStore.ReadInteger('MultiCursorLineEndsKey', Default.MultiCursorLineEndsKey);
@@ -2011,6 +2017,7 @@ begin
   AStore.WriteInteger('MultiCursor', BoolValue(MultiCursor));
   AStore.WriteInteger('LinkedEditing', BoolValue(LinkedEditing));
   AStore.WriteString('MultiCursorModifier', MultiCursorModifier);
+  AStore.WriteString('SmartPaste', SmartPaste);
   AStore.WriteInteger('MultiCursorNextKey', MultiCursorNextKey);
   AStore.WriteInteger('MultiCursorSkipKey', MultiCursorSkipKey);
   AStore.WriteInteger('MultiCursorLineEndsKey', MultiCursorLineEndsKey);

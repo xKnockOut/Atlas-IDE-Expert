@@ -75,6 +75,7 @@ implementation
 
 uses
   System.StrUtils,
+  System.Generics.Collections,
   Atlas.Core.Lsp.Session;
 
 { TAtlasUnitRenameEvent }
