@@ -279,6 +279,10 @@ type
     /// <summary>Kurzer Text zu einer verdeckten Deklaration (#488): "lokale Variable X", "Parameter X",
     /// "Feld TKunde.X", "Eigenschaft TKunde.X", "Methode TKunde.X", "Kunde.X".</summary>
     class function ShadowText(const ASymbol: TResolvedSymbol): string; static;
+    /// <summary>Passt ein Argument vom Typ AArg zu einem Parameter vom Typ AParam (#498)? Gleiche Typfamilie,
+    /// Char an string, Ganzzahl an Gleitkomma, nil an Zeiger und Klassen, [] an Mengen und offene Arrays; Klassen
+    /// ohne Vererbungsprüfung. '' (unbekannt) passt immer.</summary>
+    class function ArgumentFits(const AParam, AArg: string): Boolean; static;
     /// <summary>Mitglieder hinter A.B. (samt geerbter) bzw. interface-Symbole, wenn die Kette eine Unit ist.</summary>
     function MemberCandidates(ATree: TSyntaxTree; const AFileName: string; const ANames: TArray<string>;
       AOffset: Integer): TArray<TResolvedSymbol>;
@@ -377,6 +381,9 @@ const
     'Byte', 'Word', 'ShortInt', 'SmallInt', 'LongInt', 'LongWord', 'Int8', 'UInt8');
   FloatTypes: array[0..4] of string = ('Double', 'Single', 'Extended', 'Currency', 'Real');
   StringTypes: array[0..4] of string = ('string', 'UnicodeString', 'AnsiString', 'WideString', 'ShortString');
+  CharTypes: array[0..2] of string = ('Char', 'WideChar', 'AnsiChar');
+  /// <summary>Nehmen ein String-Literal und nil an (#498).</summary>
+  PCharTypes: array[0..2] of string = ('PChar', 'PWideChar', 'PAnsiChar');
 
 function NoResult: TResolvedSymbol;
 begin
@@ -526,13 +533,20 @@ function SameFamily(const A, B: string): Boolean;
 begin
   Result := SameText(A, B) or
     (MatchText(A, StringTypes) and MatchText(B, StringTypes)) or
+    (MatchText(A, CharTypes) and MatchText(B, CharTypes)) or
     (MatchText(A, IntegerTypes) and MatchText(B, IntegerTypes));
 end;
 
-/// <summary>Passt ein Argument vom Typ AArg zum Parameter vom Typ AParam? '' = unbekannt.</summary>
+/// <summary>Passt ein Argument vom Typ AArg zum Parameter vom Typ AParam? '' = unbekannt; 'nil' für nil.</summary>
 function ArgFits(const AParam, AArg: string): Boolean;
 begin
-  if (AParam = '') or (AArg = '') then
+  if (AParam = '') or (AArg = '') or SameText(AParam, 'Variant') or SameText(AParam, 'OleVariant') then
+    Exit(True);
+  // nil (#498): Zeiger, Klassen, Interfaces, Methodenzeiger, dynamische Arrays, aber keine einfachen Typen.
+  if SameText(AArg, 'nil') then
+    Exit(SameText(AParam, 'Pointer') or MatchText(AParam, PCharTypes) or not IsBuiltinName(AParam));
+  // String-Literal an PChar.
+  if MatchText(AParam, PCharTypes) and (MatchText(AArg, StringTypes) or MatchText(AArg, CharTypes)) then
     Exit(True);
   if AArg = '[]' then
     Exit(StartsText('array of', AParam) or StartsText('set of', AParam) or (Pos('<', AParam) = 0));
@@ -541,7 +555,7 @@ begin
   Result := SameFamily(AParam, AArg) or
     // Ganzzahl an Gleitkomma, Char an string.
     (MatchText(AParam, FloatTypes) and (MatchText(AArg, IntegerTypes) or MatchText(AArg, FloatTypes))) or
-    (MatchText(AParam, StringTypes) and SameText(AArg, 'Char')) or
+    (MatchText(AParam, StringTypes) and MatchText(AArg, CharTypes)) or
     // Klassen: ohne Vererbungsprüfung als passend werten, nur eingebaute Typen schließen aus.
     (not IsBuiltinName(AParam) and not IsBuiltinName(AArg));
 end;
@@ -2132,6 +2146,11 @@ begin
   else
     Result := (ANear.Kind <> AOuter.Kind) or not SameText(ANear.Container, AOuter.Container) or
       not SameText(ANear.FileName, AOuter.FileName);
+end;
+
+class function TNameResolver.ArgumentFits(const AParam, AArg: string): Boolean;
+begin
+  Result := ArgFits(AParam, AArg);
 end;
 
 class function TNameResolver.ShadowText(const ASymbol: TResolvedSymbol): string;

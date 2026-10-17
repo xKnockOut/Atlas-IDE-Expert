@@ -106,7 +106,7 @@ var
   Signatures, Parameters, LabelValue: TJSONValue;
   Signature: TAtlasSignature;
   Parameter: TAtlasSignatureParameter;
-  Item, ParameterItem: TJSONValue;
+  Item, ParameterItem, Data: TJSONValue;
   Position: Integer;
 begin
   Result := Default(TAtlasSignatureHelp);
@@ -126,6 +126,14 @@ begin
     Signature := Default(TAtlasSignature);
     Signature.Label_ := TJSONObject(Item).GetValue<string>('label', '');
     Signature.Documentation := DocumentationText(TJSONObject(Item).GetValue('documentation'));
+    // Argumenttypen (#498): data.fits = false dämpft die Überladung.
+    Data := TJSONObject(Item).GetValue('data');
+    if (Data is TJSONObject) and (TJSONObject(Data).GetValue('fits') is TJSONBool) and
+      not TJSONBool(TJSONObject(Data).GetValue('fits')).AsBoolean then
+    begin
+      Signature.TypeMismatch := True;
+      Signature.MismatchArgument := TJSONObject(Data).GetValue<Integer>('mismatch', 0);
+    end;
     Parameters := TJSONObject(Item).GetValue('parameters');
     if Parameters is TJSONArray then
       for ParameterItem in TJSONArray(Parameters) do
