@@ -51,6 +51,7 @@ uses
   Atlas.Core.Style.Color,
   Atlas.Core.Completion.Contract,
   Atlas.Core.Completion.Controller,
+  Atlas.Core.Completion.Width,
   Atlas.Core.Completion.Presentation,
   Atlas.Core.Completion.Ranking,
   Atlas.Core.Completion.Favorites,
@@ -78,8 +79,8 @@ type
   TAtlasCompletionPopup = class(TAtlasPopupWindow, IAtlasCompletionView)
   public const
     DefaultVisibleRows = 9;
-    MinWidth = 280;
-    MaxWidth = 720;
+    MinWidth = TAtlasPopupWidth.MinListWidth;
+    MaxWidth = TAtlasPopupWidth.MaxListWidth;
     DefaultPanelWidth = 320;
     CollapsedPanelWidth = 22;
   private
@@ -335,10 +336,7 @@ end;
 
 function TAtlasCompletionPopup.ListWidth: Integer;
 begin
-  if FManualListWidth > 0 then
-    Result := Scale(FManualListWidth)
-  else
-    Result := FSessionWidth;
+  Result := TAtlasPopupWidth.Effective(Scale(FManualListWidth), FSessionWidth);
 end;
 
 function TAtlasCompletionPopup.Logical(APixels: Integer): Integer;
@@ -777,13 +775,13 @@ begin
   Widest := Max(Widest, Canvas.TextWidth(TAtlasStrings.Text(TAtlasTextId.FooterKeys) + '    ' +
     TAtlasStrings.Fmt(TAtlasTextId.CountFits, [999, 9999])) + Scale(18));
   Canvas.Font := Font;
-  Result := EnsureRange(Widest, Scale(MinWidth), Scale(MaxWidth));
+  Result := TAtlasPopupWidth.Fit(Widest, Scale(MinWidth), Scale(MaxWidth));
 end;
 
 procedure TAtlasCompletionPopup.PlaceAndShow;
 begin
   // Nur wachsen, nie schrumpfen, solange die Sitzung läuft (#416).
-  FSessionWidth := Max(FSessionWidth, MeasureWidth);
+  FSessionWidth := TAtlasPopupWidth.Grow(FSessionWidth, MeasureWidth);
   Relayout;
 end;
 
@@ -1515,11 +1513,12 @@ begin
   // Ziehen (#416): Bildschirmkoordinaten, weil das Fenster beim Ziehen mitwächst.
   if FDrag <> TAtlasDragKind.None then
   begin
-    Width := FDragStartWidth + FDragSign * (Mouse.CursorPos.X - FDragStartX);
+    Width := Logical(FDragStartWidth + FDragSign * (Mouse.CursorPos.X - FDragStartX));
     if FDrag = TAtlasDragKind.ListWidth then
-      FManualListWidth := EnsureRange(Logical(Width), MinWidth, MaxWidth)
+      FManualListWidth := TAtlasPopupWidth.Fit(Width, MinWidth, MaxWidth)
     else
-      FPanelWidthSetting := EnsureRange(Logical(Width), 220, 600);
+      FPanelWidthSetting := TAtlasPopupWidth.Fit(Width, TAtlasPopupWidth.MinPanelWidth,
+        TAtlasPopupWidth.MaxPanelWidth);
     Relayout;
     Invalidate;
     Exit;

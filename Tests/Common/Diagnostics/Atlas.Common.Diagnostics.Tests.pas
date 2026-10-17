@@ -45,6 +45,7 @@ type
     [Test]
     procedure DroppedLinesAreCounted;
     [Test]
+    [Category('Benchmark')]
     procedure LoggingCostsLessThanOneMillisecond;
     [Test]
     procedure LogFolderReportsRunsWithoutEnd;

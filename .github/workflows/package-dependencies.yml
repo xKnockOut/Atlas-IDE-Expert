@@ -31,6 +31,9 @@ jobs:
       - name: Keine doppelten XML-Doku-Kommentare (Code-Review K-04)
         shell: pwsh
         run: ./Tools/Check-DocComments.ps1
+      - name: Jede Unit mit Logik hat Tests, jede Testunit läuft (#415)
+        shell: pwsh
+        run: ./Tools/Check-TestCoverage.ps1
       - name: Regelkatalog aktuell und vollständig
         shell: pwsh
         run: ./Tools/Update-RuleCatalog.ps1 -Check
