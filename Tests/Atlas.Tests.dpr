@@ -236,6 +236,7 @@ uses
   Atlas.Common.Editing.SlashMenu.Tests in 'Common\Editing\Atlas.Common.Editing.SlashMenu.Tests.pas',
   Atlas.Common.Editing.MaintenanceCommands.Tests in 'Common\Editing\Atlas.Common.Editing.MaintenanceCommands.Tests.pas',
   Atlas.Common.Editing.TypeCommands.Tests in 'Common\Editing\Atlas.Common.Editing.TypeCommands.Tests.pas',
+  Atlas.Common.Editing.TypeCommands.JsonGolden in 'Common\Editing\Atlas.Common.Editing.TypeCommands.JsonGolden.pas',
   Atlas.Common.Editing.CollectionCommands.Tests in 'Common\Editing\Atlas.Common.Editing.CollectionCommands.Tests.pas',
   Atlas.Common.Editing.UnitTemplates.Tests in 'Common\Editing\Atlas.Common.Editing.UnitTemplates.Tests.pas',
   Atlas.Common.Editing.TestUnits.Tests in 'Common\Editing\Atlas.Common.Editing.TestUnits.Tests.pas',
