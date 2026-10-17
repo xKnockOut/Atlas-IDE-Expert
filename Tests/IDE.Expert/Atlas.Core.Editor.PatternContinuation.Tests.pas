@@ -59,6 +59,7 @@ type
     [Test]
     procedure ContainsWordMatchesWholeWords;
     [Test]
+    [Category('Benchmark')]
     procedure LargeUnitIsFast;
   end;
 

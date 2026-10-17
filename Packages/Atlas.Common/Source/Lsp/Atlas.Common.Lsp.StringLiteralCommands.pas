@@ -38,7 +38,9 @@ uses
 function DocumentOf(const AStore: IDocumentStore; const AArguments: TJSONArray; ACount: Integer;
   out APosition: TTextPosition): ITextDocument;
 begin
-  if (AArguments = nil) or (AArguments.Count < ACount) or not (AArguments.Items[0] is TJSONString) then
+  // TJSONNumber erbt von TJSONString: Zahlen sind weder URI noch Text (#415).
+  if (AArguments = nil) or (AArguments.Count < ACount) or not (AArguments.Items[0] is TJSONString) or
+    (AArguments.Items[0] is TJSONNumber) then
     raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams, 'Erwartet werden URI und Position');
   if not AStore.TryGet(AArguments.Items[0].Value, Result) then
     raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams, 'Dokument ist nicht geöffnet: ' +
@@ -71,7 +73,7 @@ var
   Index: Integer;
 begin
   Document := DocumentOf(AStore, AArguments, 3, Position);
-  if not (AArguments.Items[2] is TJSONString) then
+  if not (AArguments.Items[2] is TJSONString) or (AArguments.Items[2] is TJSONNumber) then
     raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams, 'Erwartet wird der Text als drittes Argument');
   Lines := Document.Text.Split([#10]);
   Line := '';

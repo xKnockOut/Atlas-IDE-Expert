@@ -49,6 +49,11 @@ type
     /// <summary>Passt der aktive Parameter zur Überladung AIndex (sonst gedämpft gezeigt)?</summary>
     function OverloadFits(AIndex: Integer): Boolean;
     procedure Close;
+    /// <summary>Reicht ASignature für so viele Argumente (AParameter 0-basiert)? Nur die Anzahl: Der erste
+    /// Parameter passt immer, auch bei leeren Klammern.</summary>
+    class function CountFits(const ASignature: TAtlasSignature; AParameter: Integer): Boolean; static;
+    /// <summary>Fehlerzustand (#439): Keine Überladung erlaubt so viele Argumente; Typen zählen nicht.</summary>
+    class function TooManyArguments(const AHelp: TAtlasSignatureHelp; AParameter: Integer): Boolean; static;
     property Active: Boolean read FActive;
     property Signature: Integer read FSignature;
     property Parameter: Integer read FParameter;
@@ -65,12 +70,26 @@ begin
   FView := AView;
 end;
 
+class function TAtlasSignatureController.CountFits(const ASignature: TAtlasSignature; AParameter: Integer): Boolean;
+begin
+  Result := (AParameter = 0) or (AParameter < Length(ASignature.Parameters));
+end;
+
+class function TAtlasSignatureController.TooManyArguments(const AHelp: TAtlasSignatureHelp;
+  AParameter: Integer): Boolean;
+var
+  Signature: TAtlasSignature;
+begin
+  Result := Length(AHelp.Signatures) > 0;
+  for Signature in AHelp.Signatures do
+    if CountFits(Signature, AParameter) then
+      Exit(False);
+end;
+
 function TAtlasSignatureController.Fits(ASignature, AParameter: Integer): Boolean;
 begin
-  // Der erste Parameter passt immer, auch bei Routinen ohne Parameter (leere Klammern); ein Argument mit
-  // unverträglichem Typ nie (#498).
-  Result := ((AParameter = 0) or (AParameter < Length(FHelp.Signatures[ASignature].Parameters))) and
-    not FHelp.Signatures[ASignature].TypeMismatch;
+  // Nach der Anzahl; ein Argument mit unverträglichem Typ passt nie (#498).
+  Result := CountFits(FHelp.Signatures[ASignature], AParameter) and not FHelp.Signatures[ASignature].TypeMismatch;
 end;
 
 function TAtlasSignatureController.FirstFitting(AParameter: Integer): Integer;
