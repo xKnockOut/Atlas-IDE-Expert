@@ -179,6 +179,18 @@ begin
   AData.AddPair('senderOf', AItem.SenderOf);
 end;
 
+// Typkonvertierung (#490): Umwandlungseintrag und Hinweis bei Gleitkomma nach Ganzzahl.
+procedure WriteConversion(const AItem: TCompletionItem; AData: TJSONObject);
+begin
+  if AItem.Conversion <> '' then
+  begin
+    AData.AddPair('conversion', AItem.Conversion);
+    AData.AddPair('convertFrom', AItem.ConvertFrom);
+  end;
+  if AItem.Lossy <> '' then
+    AData.AddPair('lossy', AItem.Lossy);
+end;
+
 // Feld- und Parameternamen (#461).
 procedure WriteDataSet(const AItem: TCompletionItem; AData: TJSONObject);
 begin
@@ -260,17 +272,17 @@ end;
 const
   /// <summary>Reihenfolge der Felder unter data; das Plugin liest nach Namen, die Golden-Tests nach Text.
   /// </summary>
-  DataWriters: array[0..27] of TItemDataWriter = (WriteSource, WriteExpected, WriteAction, WriteContainer,
+  DataWriters: array[0..28] of TItemDataWriter = (WriteSource, WriteExpected, WriteAction, WriteContainer,
     WriteDepth, WriteHelper, WriteParameters, WriteCondition, WriteUnavailable, WriteScope, WriteOrdinal,
     WriteSetOf, WriteLinked, WritePinned, WriteCount, WriteUnknown, WriteBatch, WriteHint, WriteForm, WriteByType, WriteSender,
-    WriteDataSet, WriteGuard, WriteUnit, WriteHides, WriteOverloads, WriteTypeArg, WriteBindings);
+    WriteConversion, WriteDataSet, WriteGuard, WriteUnit, WriteHides, WriteOverloads, WriteTypeArg, WriteBindings);
 
 function NeedsData(const AItem: TCompletionItem): Boolean;
 begin
   Result := (AItem.SourceFile <> '') or (AItem.Expected <> '') or (AItem.Action <> '') or (AItem.Condition <> '') or
     (AItem.Scope > 0) or (AItem.Ordinal > 0) or AItem.Pinned or AItem.LinkedEdits or AItem.Hint or (AItem.Form <> '') or
     (AItem.Sender <> '') or (AItem.DataSet <> '') or (AItem.Guard <> '') or (AItem.TypeParam <> '') or
-    (Length(AItem.Bindings) > 0);
+    (Length(AItem.Bindings) > 0) or (AItem.Conversion <> '') or (AItem.Lossy <> '');
 end;
 
 function EditToJson(const AEdit: TRuleEdit): TJSONObject;

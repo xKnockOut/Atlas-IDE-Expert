@@ -225,6 +225,9 @@ type
   TCompletionFreeStyle = (Free, FreeAndNil);
   /// <summary>Abschnitt der Zugriffsmethoden, die die Vervollständigung nach read/write anlegt (#467).</summary>
   TCompletionAccessorSection = (Private, Protected);
+  /// <summary>Typkonvertierung vorschlagen (#490): aus, Helper-Stil (Count.ToString) oder Funktionsstil
+  /// (IntToStr(Count)).</summary>
+  TCompletionTypeConversion = (Off, Helper, Function_);
   {$SCOPEDENUMS OFF}
 
   TCompletionSettings = record
@@ -251,6 +254,9 @@ type
     /// <summary>Unit für ausgelagerte resourcestrings (interface-Teil); '' = implementation der eigenen Unit.
     /// </summary>
     ResourceStringUnit: string;
+    /// <summary>Passt ein Eintrag nicht zum erwarteten Typ, die übliche Umwandlung als weiteren Eintrag (#490).
+    /// </summary>
+    TypeConversion: TCompletionTypeConversion;
     class function Default: TCompletionSettings; static;
   end;
 
@@ -711,6 +717,7 @@ begin
   Result.AccessorSection := TCompletionAccessorSection.Private;
   Result.ResourceStrings := True;
   Result.ResourceStringUnit := '';
+  Result.TypeConversion := TCompletionTypeConversion.Off;
 end;
 
 { TServerSettings }

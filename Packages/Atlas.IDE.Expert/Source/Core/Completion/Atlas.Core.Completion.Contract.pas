@@ -159,6 +159,13 @@ type
     Sender: string;
     /// <summary>Komponenten, denen der Ereignisbehandler zugewiesen ist: "btnSave, btnLoad".</summary>
     SenderOf: string;
+    /// <summary>Typkonvertierung (#490): Umwandlung in diesen Typ („→ string“), Name ist der Ausdruck
+    /// (Count.ToString); ConvertFrom ist der Name des Originals, vor dem der Eintrag steht und nach dem er
+    /// filtert. '' bei anderen Einträgen.</summary>
+    Conversion: string;
+    ConvertFrom: string;
+    /// <summary>Gleitkommawert für eine Ganzzahl (#490): sein Typ; das Detailpanel nennt Round und Trunc.</summary>
+    Lossy: string;
     /// <summary>Feld- oder Parametername (#461): Datenmenge, aus der er stammt; '' sonst.</summary>
     DataSet: string;
     /// <summary>Kurzform der SQL-Anweisung für die Fußzeile; '' ohne Anweisung.</summary>
@@ -218,6 +225,9 @@ type
     Hides: TArray<string>;
     /// <summary>Warum der Eintrag im aktiven Ziel fehlt (#476); '' = verfügbar.</summary>
     Availability: string;
+    /// <summary>Gleitkomma für eine Ganzzahl (#490): Typ des Werts und erwarteter Typ; '' sonst.</summary>
+    LossyFrom: string;
+    LossyTo: string;
     function IsEmpty: Boolean;
   end;
 
@@ -268,7 +278,7 @@ end;
 
 function TAtlasItemDetails.IsEmpty: Boolean;
 begin
-  Result := (Declaration = '') and (Summary = '') and (UnitName = '') and (Availability = '');
+  Result := (Declaration = '') and (Summary = '') and (UnitName = '') and (Availability = '') and (LossyFrom = '');
 end;
 
 end.

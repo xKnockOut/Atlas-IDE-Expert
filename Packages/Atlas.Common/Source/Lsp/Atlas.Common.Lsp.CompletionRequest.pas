@@ -157,6 +157,14 @@ type
     /// <summary>Gebundene Typparameter des umgebenden Typs ("T=TKunde", #450); Detail ist schon eingesetzt,
     /// completionItem/resolve setzt sie in Deklaration und Dokumentation ein.</summary>
     Bindings: TArray<string>;
+    /// <summary>Typkonvertierung (#490): Umwandlungseintrag in diesen erwarteten Typ ("string"), Name ist der
+    /// gezeigte Ausdruck (Count.ToString), TextEdit setzt die ganze Kette ein; ConvertFrom ist der Name des
+    /// Originals, vor dem Atlas ihn zeigt. '' bei anderen Einträgen.</summary>
+    Conversion: string;
+    ConvertFrom: string;
+    /// <summary>Gleitkommawert für eine Ganzzahl (#490): sein Typ ("Double"); Atlas weist im Detailpanel auf
+    /// Round und Trunc hin. '' sonst.</summary>
+    Lossy: string;
   end;
 
   TCompletionItems = record
