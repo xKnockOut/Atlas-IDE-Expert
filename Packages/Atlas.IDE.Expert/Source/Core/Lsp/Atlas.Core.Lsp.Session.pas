@@ -1144,9 +1144,9 @@ begin
       if not (Item is TJSONObject) then
         Continue;
       Entry := TJSONObject(Item);
-      // Parameternamen (kind 2) und Endmarken ohne kind mit "// …" (#620).
+      // Parameternamen (kind 2), Typmarken (kind 1, #453) und Endmarken ohne kind mit "// …" (#620).
       Kind := Entry.GetValue<Integer>('kind', 0);
-      if (Kind <> 2) and (Kind <> 0) then
+      if (Kind <> 2) and (Kind <> 1) and (Kind <> 0) then
         Continue;
       // label ist ein String oder eine Liste von InlayHintLabelPart.
       Text := '';
@@ -1170,6 +1170,13 @@ begin
         Hint.BlockLine := Entry.GetValue<Integer>('data.blockStart.line', -1);
         Hint.BlockCharacter := Entry.GetValue<Integer>('data.blockStart.character', 0);
         Hint.HasBlock := Hint.BlockLine >= 0;
+      end
+      else if Kind = 1 then
+      begin
+        // ": TStringList" ohne Doppelpunkt.
+        Hint.TypeHint := True;
+        if Text.StartsWith(':') then
+          Text := Trim(Copy(Text, 2, MaxInt));
       end
       else if Text.EndsWith(':') then
         Text := TrimRight(Copy(Text, 1, Length(Text) - 1));

@@ -1965,3 +1965,15 @@ Voraussetzung für EX2 bis EX7: mindestens eine Einstellung trägt `x-experiment
 | TA5 | `FItems: TObjectList<TCustomer>`, dann `FItems.Add(` | Parameter-Hint zeigt `Value: TCustomer`; in der Liste nach `FItems.` und im Detailpanel steht `TCustomer` statt `T` |
 | TA6 | `if Anzahl < ` tippen | Normale Vervollständigung ohne Überschrift |
 | TA7 | `completion.genericConstraints` aus, dann TA1 | Normale Liste ohne Filter und Überschrift |
+
+## Typ von Inline-Variablen (#453)
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| IT1 | `var Anzahl := 42;` | Typmarke „: Integer“ am Zeilenende |
+| IT2 | `const Name = 'Atlas';` | Typmarke „: string“ |
+| IT3 | `var Liste := TObjectList<TCustomer>.Create;`, dann `for var Kunde in Liste do` | Typmarke „: TObjectList<TCustomer>“ bzw. „: TCustomer“ |
+| IT4 | `for var C in 'abc' do` | Typmarke „: Char“ |
+| IT5 | Cursor auf `Kunde` aus IT3, Alt+Enter, „Typ ausschreiben“ | `for var Kunde: TCustomer in Liste do`; fehlt die Unit von `TCustomer` in uses, wird sie ergänzt |
+| IT6 | Plugin-Einstellung „Typmarken“ aus | Keine Typmarken, Parameternamen bleiben |
+| IT7 | `refactoring.explicitType` aus | Aktion „Typ ausschreiben“ fehlt |

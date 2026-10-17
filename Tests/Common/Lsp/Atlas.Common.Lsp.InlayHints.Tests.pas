@@ -37,6 +37,12 @@ type
     /// <summary>#620: Blockanfang in data, Mindestlänge aus der Anfrage.</summary>
     [Test]
     procedure EndMarkersCarryBlockStartAndRequestMinLines;
+    /// <summary>#453: for var X in …, Inline-Konstanten und generische Typen.</summary>
+    [Test]
+    procedure InferredTypesOfForInConstAndGenerics;
+    /// <summary>#453: „Typ ausschreiben“ mit uses-Eintrag für die Unit des Typs.</summary>
+    [Test]
+    procedure ExplicitTypeWritesTypeAndUses;
   end;
 
 implementation
@@ -53,7 +59,8 @@ uses
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.Parser,
   Atlas.Common.Index.SymbolIndex,
-  Atlas.Common.Index.Extractor;
+  Atlas.Common.Index.Extractor,
+  Atlas.Common.Editing.CodeActions;
 
 const
   HauptFile = 'C:\P\Haupt.pas';
@@ -149,6 +156,72 @@ const
     'end;'#10 +                                            // 10
     'end.';
 
+  DatenFile = 'C:\P\Daten.pas';
+  QuelleFile = 'C:\P\Quelle.pas';
+  NutzerFile = 'C:\P\Nutzer.pas';
+
+  UnitDaten =
+    'unit Daten;'#10 +
+    'interface'#10 +
+    'type'#10 +
+    '  TDaten = class'#10 +
+    '  end;'#10 +
+    '  TEnum<T> = class'#10 +
+    '    function GetCurrent: T;'#10 +
+    '    function MoveNext: Boolean;'#10 +
+    '    property Current: T read GetCurrent;'#10 +
+    '  end;'#10 +
+    '  TListe<T> = class'#10 +
+    '    function GetEnumerator: TEnum<T>;'#10 +
+    '  end;'#10 +
+    'implementation'#10 +
+    'function TEnum<T>.GetCurrent: T;'#10 +
+    'begin'#10 +
+    'end;'#10 +
+    'function TEnum<T>.MoveNext: Boolean;'#10 +
+    'begin'#10 +
+    'end;'#10 +
+    'function TListe<T>.GetEnumerator: TEnum<T>;'#10 +
+    'begin'#10 +
+    'end;'#10 +
+    'end.';
+
+  UnitQuelle =
+    'unit Quelle;'#10 +
+    'interface'#10 +
+    'uses Daten;'#10 +
+    'var'#10 +
+    '  Kunden: TListe<TDaten>;'#10 +
+    'function Lade: TDaten;'#10 +
+    'implementation'#10 +
+    'function Lade: TDaten;'#10 +
+    'begin'#10 +
+    'end;'#10 +
+    'end.';
+
+  UnitNutzer =
+    'unit Nutzer;'#10 +                              // 0
+    'interface'#10 +                                 // 1
+    'uses Quelle;'#10 +                              // 2
+    'implementation'#10 +                            // 3
+    'procedure P;'#10 +                              // 4
+    'var'#10 +                                       // 5
+    '  Zahlen: TArray<Integer>;'#10 +                // 6
+    '  Text: string;'#10 +                           // 7
+    'begin'#10 +                                     // 8
+    '  var X := Lade;'#10 +                          // 9
+    '  for var Z in Zahlen do'#10 +                  // 10
+    '    ;'#10 +                                     // 11
+    '  for var K in Kunden do'#10 +                  // 12
+    '    ;'#10 +                                     // 13
+    '  for var C in Text do'#10 +                    // 14
+    '    ;'#10 +                                     // 15
+    '  const N = 5;'#10 +                            // 16
+    '  for var T: Integer in Zahlen do'#10 +         // 17
+    '    ;'#10 +                                     // 18
+    'end;'#10 +                                      // 19
+    'end.';
+
 function ReadFile(const AFileName: string; out AText: string): Boolean;
 begin
   AText := UnitWerkzeug;
@@ -206,6 +279,55 @@ begin
   try
     Assert.AreEqual('8:7 : Integer|9:7 : string|10:7 : TFoo|11:7 : Integer|13:7 : TFarbe|',
       Describe(TLspInlayHints.InferredTypes(FResolver, Tree, HauptFile, WholeFile)));
+  finally
+    Tree.Free;
+  end;
+end;
+
+procedure TLspInlayHintsTests.InferredTypesOfForInConstAndGenerics;
+var
+  Tree: TSyntaxTree;
+begin
+  FIndex.AddUnit(TIndexExtractor.ExtractText(UnitDaten, DatenFile, nil));
+  FIndex.AddUnit(TIndexExtractor.ExtractText(UnitQuelle, QuelleFile, nil));
+  Tree := TPascalParser.Parse(UnitNutzer);
+  try
+    // Zeile 17 hat schon einen Typ.
+    Assert.AreEqual('9:7 : TDaten|10:11 : Integer|12:11 : TDaten|14:11 : Char|16:9 : Integer|',
+      Describe(TLspInlayHints.InferredTypes(FResolver, Tree, NutzerFile, WholeFile)));
+  finally
+    Tree.Free;
+  end;
+end;
+
+procedure TLspInlayHintsTests.ExplicitTypeWritesTypeAndUses;
+var
+  Tree: TSyntaxTree;
+  Action: TCodeAction;
+begin
+  FIndex.AddUnit(TIndexExtractor.ExtractText(UnitDaten, DatenFile, nil));
+  FIndex.AddUnit(TIndexExtractor.ExtractText(UnitQuelle, QuelleFile, nil));
+  Tree := TPascalParser.Parse(UnitNutzer);
+  try
+    // Auf dem Namen X: ": TDaten" und uses Daten, weil Nutzer nur Quelle einbindet.
+    Assert.IsTrue(TLspInlayHints.ExplicitTypeAction(FResolver, Tree, NutzerFile, TTextPosition.Create(9, 6), #10,
+      Action));
+    Assert.AreEqual('Typ ausschreiben', Action.Title);
+    Assert.AreEqual(2, Integer(Length(Action.Edits)));
+    Assert.AreEqual(': TDaten', Action.Edits[0].NewText);
+    Assert.AreEqual(9, Action.Edits[0].Range.StartPos.Line);
+    Assert.AreEqual(7, Action.Edits[0].Range.StartPos.Character);
+    Assert.IsTrue(Action.Edits[1].NewText.Contains('Daten'), Action.Edits[1].NewText);
+    // Integer braucht keine Unit.
+    Assert.IsTrue(TLspInlayHints.ExplicitTypeAction(FResolver, Tree, NutzerFile, TTextPosition.Create(10, 10), #10,
+      Action));
+    Assert.AreEqual(1, Integer(Length(Action.Edits)));
+    Assert.AreEqual(': Integer', Action.Edits[0].NewText);
+    // Mit Typ bzw. neben dem Namen nichts.
+    Assert.IsFalse(TLspInlayHints.ExplicitTypeAction(FResolver, Tree, NutzerFile, TTextPosition.Create(17, 10), #10,
+      Action));
+    Assert.IsFalse(TLspInlayHints.ExplicitTypeAction(FResolver, Tree, NutzerFile, TTextPosition.Create(9, 12), #10,
+      Action));
   finally
     Tree.Free;
   end;

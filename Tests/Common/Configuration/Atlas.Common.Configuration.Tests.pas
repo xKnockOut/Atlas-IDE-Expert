@@ -464,6 +464,9 @@ begin
   Assert.IsTrue(Parse('{}', Issues).Refactoring.ClassActions);
   Assert.IsFalse(Parse('{"refactoring": {"tryFinally": false}}', Issues).Refactoring.TryFinally);
   Assert.IsFalse(Parse('{"refactoring": {"classActions": false}}', Issues).Refactoring.ClassActions);
+  // Typ ausschreiben (#453)
+  Assert.IsTrue(Parse('{}', Issues).Refactoring.ExplicitType);
+  Assert.IsFalse(Parse('{"refactoring": {"explicitType": false}}', Issues).Refactoring.ExplicitType);
   Assert.AreEqual(0, Integer(Length(Issues)));
   Parse('{"refactoring": {"newParameter": "default"}}', Issues);
   Assert.AreEqual(1, Integer(Length(Issues)));
