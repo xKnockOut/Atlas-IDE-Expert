@@ -31,6 +31,10 @@ type
     procedure JumpsFromFormToClass;
     [Test]
     procedure NoJumpWithoutUnit;
+    /// <summary>#44: Ein Handler, der nur in der Vorfahrklasse steht, ergibt in einer inherited-DFM kein
+    /// falsches Ziel (auch nicht eine gleichnamige Methode einer anderen Klasse der Unit).</summary>
+    [Test]
+    procedure InheritedHandlerHasNoWrongTarget;
     [Test]
     procedure BuildsSymbolsAndFolding;
   end;
@@ -94,6 +98,44 @@ begin
   Result := SameText(ExtractFileName(AFileName), 'Unit1.pas');
   if Result then
     AText := FormUnit;
+end;
+
+const
+  InheritedForm =
+    'inherited Form2: TForm2'#10 +                  // 0
+    '  inherited Button1: TButton'#10 +             // 1
+    '    OnClick = Button1Click'#10 +               // 2
+    '  end'#10 +                                    // 3
+    '  object Button2: TButton'#10 +                // 4
+    '    OnClick = Button2Click'#10 +               // 5
+    '  end'#10 +                                    // 6
+    'end'#10;
+  InheritedUnit =
+    'unit Unit2;'#10 +                              // 0
+    'interface'#10 +                                // 1
+    'uses Unit1;'#10 +                              // 2
+    'type'#10 +                                     // 3
+    '  TForm2 = class(TForm1)'#10 +                 // 4
+    '    Button2: TButton;'#10 +                    // 5
+    '    procedure Button2Click(Sender: TObject);'#10 + // 6
+    '  end;'#10 +                                   // 7
+    '  THelfer = class'#10 +                        // 8
+    '    procedure Button1Click(Sender: TObject);'#10 + // 9
+    '  end;'#10 +                                   // 10
+    'implementation'#10 +                           // 11
+    'procedure TForm2.Button2Click(Sender: TObject);'#10 + // 12
+    'begin'#10 +                                    // 13
+    'end;'#10 +                                     // 14
+    'procedure THelfer.Button1Click(Sender: TObject);'#10 + // 15
+    'begin'#10 +                                    // 16
+    'end;'#10 +                                     // 17
+    'end.'#10;
+
+function ReadInheritedUnit(const AFileName: string; out AText: string): Boolean;
+begin
+  Result := SameText(ExtractFileName(AFileName), 'Unit2.pas');
+  if Result then
+    AText := InheritedUnit;
 end;
 
 function NoUnit(const AFileName: string; out AText: string): Boolean;
@@ -248,6 +290,20 @@ begin
   Assert.AreEqual(0, Integer(Length(TDfmNavigation.Targets(Form, 'C:\P\Unit1.dfm', Position(8, 16), NoUnit))));
   // Auf einem gewöhnlichen Wert gibt es kein Ziel.
   Assert.AreEqual(0, Integer(Length(TDfmNavigation.Targets(Form, 'C:\P\Unit1.dfm', Position(1, 9), ReadUnit))));
+end;
+
+procedure TDfmTests.InheritedHandlerHasNoWrongTarget;
+var
+  Targets: TArray<TDfmTarget>;
+begin
+  // Button1Click gehört zu TForm1 (Vorfahr, andere Unit); THelfer.Button1Click ist nicht gemeint.
+  Targets := TDfmNavigation.Targets(InheritedForm, 'C:\P\Unit2.dfm', Position(2, 16), ReadInheritedUnit);
+  Assert.AreEqual(0, Integer(Length(Targets)));
+  // Der eigene Handler der abgeleiteten Klasse wird gefunden, die Implementierung gewinnt.
+  Targets := TDfmNavigation.Targets(InheritedForm, 'C:\P\Unit2.dfm', Position(5, 16), ReadInheritedUnit);
+  Assert.AreEqual(1, Integer(Length(Targets)));
+  Assert.AreEqual('C:\P\Unit2.pas', Targets[0].FileName);
+  Assert.AreEqual(12, Targets[0].SelectionRange.StartPos.Line);
 end;
 
 procedure TDfmTests.BuildsSymbolsAndFolding;
