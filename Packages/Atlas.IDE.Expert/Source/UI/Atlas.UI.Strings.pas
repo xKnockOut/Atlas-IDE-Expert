@@ -527,7 +527,12 @@ type
     SettingsWelcomeActiveLayout, SettingsWelcomeLayoutNew, SettingsWelcomeLayoutRename,
     SettingsWelcomeLayoutDelete, SettingsDfmPropertyRules, DfmRulesFormCommand, DfmRulesProjectCommand,
     DfmRulesGroupCommand, DfmRulesNoForm, DfmRulesNoProject, DfmRulesNothing, DfmRulesFailed, DfmRulesPreviewTitle,
-    DfmRulesPreviewHint, DfmRulesPreviewApply, DfmRulesDone);
+    DfmRulesPreviewHint, DfmRulesPreviewApply, DfmRulesDone,
+    SigTitle, SigCancel, SigPreviewButton, SigEventFixed, SigWarning, SigModeOverload, SigModeCallers, SigModeForced,
+    SigVirtual, SigFieldName, SigFieldType, SigFieldModifier, SigFieldValue, SigAdd, SigRemove, SigUp, SigDown,
+    SigColName, SigColType, SigColModifier, SigColValue, SigNewName, SigBadName, SigDuplicate, SigMissingType,
+    SigMissingValue, SigAfterDefault, SigTypesFixed, SigFailed, SigNothing, SigPreviewTitle, SigPreviewHint,
+    SigPreviewApply, SigDone);
 
   TAtlasStrings = class
   private class var
@@ -1531,7 +1536,23 @@ const
      'Im Editor ist keine Unit mit Formular offen.', 'Kein aktives Projekt.',
      'Eigenschaftsregeln: nichts zu ändern.', 'Eigenschaftsregeln anwenden fehlgeschlagen: %s',
      'Eigenschaftsregeln anwenden', '%d Änderungen in %d Formulardateien', 'Anwenden',
-     'Eigenschaftsregeln: %d Änderungen in %d Dateien übernommen.'),
+     'Eigenschaftsregeln: %d Änderungen in %d Dateien übernommen.',
+     'Signatur ändern: %s', 'Abbrechen', 'Vorschau …',
+     'Die Methode ist an %s gebunden; der Ereignistyp stammt nicht aus dem Projekt. Parameter lassen sich nur ' +
+     'umbenennen.', 'Hinweis: %s',
+     'Neue Parameter: alte Signatur als Überladung behalten (Aufrufer bleiben unverändert)',
+     'Neue Parameter: alle Aufrufer ändern', 'nicht möglich bei Interface-Methoden und gebundenen Ereignissen',
+     'Überladung bei virtuellen Methoden ebenfalls virtual', '&Name:', '&Typ:', '&Modifizierer:',
+     'Wert für die &Aufrufer:', '&Hinzufügen', '&Entfernen', 'Nach &oben', 'Nach &unten', 'Name', 'Typ',
+     'Modifizierer', 'Wert / Standard', 'Neu',
+     '„%s“ ist kein gültiger Parametername.', 'Der Parameter „%s“ steht zweimal in der Liste.',
+     'Für den neuen Parameter „%s“ fehlt der Typ.',
+     'Für den neuen Parameter „%s“ fehlt der Wert, den die bisherigen Aufrufer übergeben.',
+     'Der neue Parameter „%s“ stünde hinter einem Parameter mit Standardwert. Bitte weiter vorn einfügen.',
+     'Die Methode ist an %s gebunden; der Ereignistyp stammt nicht aus dem Projekt. Parameter lassen sich nur ' +
+     'umbenennen.',
+     'Signatur ändern fehlgeschlagen: %s', 'Signatur ändern: nichts zu ändern.', 'Signatur ändern',
+     '%d Änderungen in %d Dateien', 'Ändern', 'Signatur geändert: %d Änderungen in %d Dateien übernommen.'),
     ('Enter to accept · Esc to close', '%d of %d', 'No matches for “%s”', 'Backspace widens the search',
      'No suggestions here', 'Esc closes', 'No details for this entry', 'Overload', 'Deprecated: %s', 'Deprecated.',
      'Inherited from %s', 'Inherited', 'optional, default %s', 'No overload with %d parameters.', '… %d more',
@@ -2465,7 +2486,22 @@ const
      'No unit with a form is open in the editor.', 'No active project.',
      'Property rules: nothing to change.', 'Applying property rules failed: %s',
      'Apply property rules', '%d changes in %d form files', 'Apply',
-     'Property rules: %d changes in %d files applied.'));
+     'Property rules: %d changes in %d files applied.',
+     'Change signature: %s', 'Cancel', 'Preview …',
+     'The method is bound to %s; the event type does not come from the project. Parameters can only be renamed.',
+     'Note: %s',
+     'New parameters: keep the old signature as an overload (callers stay unchanged)',
+     'New parameters: change all callers', 'not possible for interface methods and bound events',
+     'Make the overload virtual as well for virtual methods', '&Name:', '&Type:', '&Modifier:',
+     'Value for &callers:', '&Add', '&Remove', 'Move &up', 'Move &down', 'Name', 'Type',
+     'Modifier', 'Value / default', 'New',
+     '“%s” is not a valid parameter name.', 'The parameter “%s” appears twice in the list.',
+     'The new parameter “%s” has no type.',
+     'The new parameter “%s” has no value for the existing callers.',
+     'The new parameter “%s” would follow a parameter with a default value. Please insert it further up.',
+     'The method is bound to %s; the event type does not come from the project. Parameters can only be renamed.',
+     'Changing the signature failed: %s', 'Change signature: nothing to change.', 'Change signature',
+     '%d changes in %d files', 'Change', 'Signature changed: %d changes in %d files applied.'));
 
 { TAtlasStrings }
 

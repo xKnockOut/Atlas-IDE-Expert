@@ -84,6 +84,10 @@ Jeder Schlüssel hat genau einen Ort (Spalte „Ort“): Projekt-Schlüssel steh
 | Schlüssel | Ort | Typ | Standard | Werte | Bedeutung |
 |---|---|---|---|---|---|
 | `refactoring.inlineVar` | Projekt (atlas.json) | boolean | `true` |  | Inline-Variablen (for var Item in …, var Name := …) erzeugen, wenn die Delphi-Version sie kennt (ab 10.3). Aus: Atlas trägt die Variable in den var-Abschnitt der Routine ein. |
+| `refactoring.changeSignature` | Projekt (atlas.json) | boolean | `true` |  | Code-Aktion „Signatur ändern …“: Parameter hinzufügen, entfernen, umsortieren und umbenennen samt Aufrufern, Überschreibungen, Interfaces und gebundenen Ereignissen. |
+| `refactoring.newParameter` | Projekt (atlas.json) | string | `"overload"` | `"overload"`, `"updateCallers"` | Neue Parameter: overload behält die alte Signatur als Überladung, die mit dem angegebenen Wert weiterreicht (Aufrufer bleiben); updateCallers ändert alle Aufrufer. Interface-Methoden und gebundene Handler gehen nur mit updateCallers. Standardwerte erzeugt Atlas nie. |
+| `refactoring.virtualOverload` | Projekt (atlas.json) | boolean | `false` |  | Die Überladung mit der alten Signatur bei virtuellen Methoden ebenfalls virtual machen. |
+| `refactoring.syncSignatures` | Projekt (atlas.json) | boolean | `true` |  | Weichen Deklaration und Implementierung voneinander ab, die Aktionen „Implementierung an Deklaration angleichen“ und umgekehrt anbieten. |
 
 ## slashCommands
 

@@ -1784,3 +1784,20 @@ Vorbereitung: Plugin (Win32 und Win64) gebaut und installiert; *Tools › Option
 | FL20 | Einstellungen exportieren (Bereich Willkommensseite), auf einem zweiten Profil importieren; „Seite zurücksetzen“ | `welcomePage.layouts`, `.activeLayout`, `.columns`, `.customLayout` in der Datei und nach dem Import wirksam; Zurücksetzen bringt ein Layout „Standard“ |
 | FL21 | Eigenes Layout gespeichert; Registry-Wert `WelcomePageLayouts` von Hand ohne `atlas.help` speichern, IDE neu starten | „Hilfe“ steht am Ende der Spalte mit dem meisten Platz; „Neu in Atlas“ meldet „Neuer Bereich: Hilfe und Rückmeldung“ |
 | FL22 | IDE-Thema hell ↔ dunkel, 100 %, 150 %, 200 % | Leisten, Griff, Werkzeuge und Einfügelinie lesbar und passend skaliert |
+
+## Signatur ändern (#100)
+
+Voraussetzung: Projekt mit `TBasis.Lauf(A: Integer)` (virtual), `TAbgeleitet.Lauf` (override), Aufrufern in zwei Units und einem Formular mit `Button1Click` an `OnClick`.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| SG1 | Cursor auf `Lauf` im Rumpf, Strg+. › „Signatur ändern …“ | Dialog mit `A: Integer`, Vorschau der heutigen Signatur, „Vorschau …“ ausgegraut |
+| SG2 | „Hinzufügen“, Name `B`, Typ `Integer`, Wert `0`; „alte Signatur als Überladung“ bleibt gewählt; „Vorschau …“, „Ändern“ | `TBasis` hat die neue `Lauf(A: Integer; B: Integer); virtual; overload;` und die alte `Lauf(A: Integer); overload;` (nicht virtual), die `Lauf(A, 0)` aufruft; `TAbgeleitet` nur die neue Signatur mit `override`; Aufrufer unverändert; kein `= 0` (**Abnahme**) |
+| SG3 | Rückgängig; wie SG2, aber „alle Aufrufer ändern“ | Keine Überladung; jeder Aufrufer übergibt `, 0` (**Abnahme**) |
+| SG4 | Zwei Parameter vertauschen | Alle Aufrufer in allen Units des Projekts vertauschen die Argumente (**Abnahme**) |
+| SG5 | Parameter entfernen, der im Rumpf benutzt wird | Meldung mit Datei und Zeile, nichts geändert (**Abnahme**) |
+| SG6 | „Signatur ändern …“ auf `Button1Click`, Parameter hinzufügen | Hinweis „gebunden an TNotifyEvent … nur umbenennen“, Fehlerzeile, „Vorschau …“ gesperrt; Umbenennen von `Sender` geht (**Abnahme**) |
+| SG7 | Methode eines Interfaces, Parameter hinzufügen | „Überladung“ ausgegraut mit Begründung; Interface und alle Implementierungen ändern sich (**Abnahme**) |
+| SG8 | Ein Aufrufer liegt in einer schreibgeschützten Datei; Methode an einen Methodenzeiger zugewiesen | Vorschau nennt beide Warnungen; die Datei bleibt unverändert |
+| SG9 | `refactoring.changeSignature` auf `false` in atlas.json | Keine Code-Aktion „Signatur ändern …“ mehr (**Abnahme**) |
+| SG10 | Englische IDE | Dialog, Fehler und Meldungen auf Englisch |

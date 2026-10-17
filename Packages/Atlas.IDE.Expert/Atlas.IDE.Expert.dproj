@@ -154,6 +154,7 @@
         <DCCReference Include="Source\IDE\InlayHints\Atlas.IDE.InlayHints.Editor.pas"/>
         <DCCReference Include="Source\IDE\Editor\Atlas.IDE.Editor.TestUnitLens.pas"/>
         <DCCReference Include="Source\Core\Editor\Atlas.Core.Editor.WorkspacePlan.pas"/>
+        <DCCReference Include="Source\Core\Editor\Atlas.Core.Editor.ChangeSignature.pas"/>
         <DCCReference Include="Source\Core\Editor\Atlas.Core.Editor.TestUnit.pas"/>
         <DCCReference Include="Source\IDE\Editor\Atlas.IDE.Editor.MetricsLens.pas"/>
         <DCCReference Include="Source\Core\Editor\Atlas.Core.Editor.Metrics.pas"/>
@@ -175,6 +176,7 @@
         <DCCReference Include="Source\IDE\Generate\Atlas.IDE.Generate.NewFile.pas"/>
         <DCCReference Include="Source\IDE\Editor\Atlas.IDE.Editor.Rename.pas"/>
         <DCCReference Include="Source\IDE\Editor\Atlas.IDE.Editor.DfmPropertyRules.pas"/>
+        <DCCReference Include="Source\IDE\Editor\Atlas.IDE.Editor.ChangeSignature.pas"/>
         <DCCReference Include="Source\IDE\Foundation\Atlas.IDE.Foundation.KeyHook.pas"/>
         <DCCReference Include="Source\IDE\Signature\Atlas.IDE.Signature.Editor.pas"/>
         <DCCReference Include="Source\IDE\Completion\Atlas.IDE.Completion.Editor.pas"/>
@@ -473,6 +475,7 @@
         <DCCReference Include="Source\Core\Editor\Atlas.Core.Editor.Elements.pas"/>
         <DCCReference Include="Source\Core\Editor\Atlas.Core.Editor.Hide.pas"/>
         <DCCReference Include="Source\UI\Editor\Atlas.UI.Editor.Hide.pas"/>
+        <DCCReference Include="Source\UI\Editor\Atlas.UI.Editor.ChangeSignature.pas"/>
         <DCCReference Include="Source\IDE\Foundation\Atlas.IDE.Foundation.Elements.pas"/>
         <DCCReference Include="Source\IDE\Editor\Atlas.IDE.Editor.Hide.pas"/>
         <DCCReference Include="Source\IDE\Notes\Atlas.IDE.Notes.Service.pas"/>
