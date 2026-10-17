@@ -77,7 +77,24 @@ Der Test protokolliert außerdem die Laufzeit je Regel.
 Bewertungen von Treffern aus echten Projekten stehen in
 `bewertungen.csv` mit den Spalten Regel-ID, Datei, Zeile, Bewertung und Datum.
 Die Bewertung ist `richtig` oder `falsch`.
-`pwsh Tools/Get-RuleQuality.ps1` berechnet daraus die Fehlalarmquote je Regel.
+`pwsh Tools/Get-RuleQuality.ps1` berechnet daraus die Fehlalarmquote je Regel;
+`TGoldenCorpusTests.ReferenceRatingsAreValid` prüft die Datei und protokolliert
+dieselbe Quote. Die erste Stichprobe (17.10.2026) stammt aus dem Quelltext von
+Atlas selbst: alle Treffer der Standardeinstellungen außer den Kennzahlen
+(`metric-*`), von `format-without-settings` und `security-insecure-http` nur
+jeder zehnte bzw. vierte.
+
+### Trefferquote (Mutationen)
+
+`mutationen.txt` baut gezielt Fehler in die Units unter `Source` ein, je Zeile
+`regel-id | Datei | Suchtext | Ersatz`. Der Suchtext muss in der Datei genau
+einmal vorkommen; `\n` steht für einen Zeilenumbruch, `\uXXXX` für ein Zeichen,
+`\|` und `\\` für die Zeichen selbst. `TGoldenCorpusTests.ReferenceProjectMutationsAreFound`
+prüft jede Mutation einzeln: Die Regel ist dafür ausdrücklich eingeschaltet (auch
+experimentelle und freiwillige) und jede Konfidenz zählt. Gefunden ist die
+Mutation, wenn die Regel danach mehr Treffer meldet als vorher. Der Test
+protokolliert die Trefferquote je Regel und schlägt fehl, wenn eine Mutation
+nicht gefunden wird.
 
 ## Öffnen
 

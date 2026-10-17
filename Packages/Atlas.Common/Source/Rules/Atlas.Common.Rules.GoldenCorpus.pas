@@ -8,6 +8,12 @@
 // eine Regel noch geplant sind, gelten als Fehler; jede geplante ID nennt das
 // offene Issue, das sie umsetzt (#94). Dazu Fehlalarmquoten aus
 // den manuellen Bewertungen (bewertungen.csv) und die Laufzeit je Regel.
+//
+// Trefferquote über Mutationen (mutationen.txt): Jede Zeile
+//   regel-id | Datei | Suchtext | Ersatz
+// baut in eine fehlerfreie Datei des Korpus gezielt einen Fehler ein. Der
+// Suchtext muss genau einmal vorkommen; \n, \uXXXX, \| und \\ sind
+// Escapes. Die Regel muss danach mehr Treffer melden als vorher.
 
 interface
 
@@ -57,6 +63,25 @@ type
     Milliseconds: Double;
   end;
 
+  /// <summary>Ein gezielt eingebauter Fehler: Suchtext in Datei durch Ersatz ersetzen.</summary>
+  TRuleMutation = record
+    RuleId: string;
+    FileName: string;
+    Search: string;
+    Replacement: string;
+    /// <summary>Zeile in der Mutationsliste, ab 1.</summary>
+    Line: Integer;
+  end;
+
+  /// <summary>Trefferquote einer Regel über ihre Mutationen.</summary>
+  TRuleHitRate = record
+    RuleId: string;
+    Mutations: Integer;
+    Found: Integer;
+    /// <summary>Anteil gefundener Mutationen zwischen 0 und 1; 0 ohne Mutationen.</summary>
+    function HitRate: Double;
+  end;
+
   TGoldenCorpus = class
   public
     /// <summary>Alle Markierungen in AText.</summary>
@@ -71,6 +96,17 @@ type
     /// <summary>Quoten je Regel aus einer CSV "Regel-ID,Datei,Zeile,Bewertung,Datum" mit Kopfzeile;
     /// Bewertung ist "richtig" oder "falsch". Nach Regel-ID sortiert.</summary>
     class function Rates(const ACsv: string): TArray<TRuleRate>; static;
+    /// <summary>Mutationen aus einer Liste "regel-id | Datei | Suchtext | Ersatz"; leere Zeilen und # werden
+    /// übersprungen. AErrors: Zeilen, die nicht vier Teile haben.</summary>
+    class function Mutations(const AText: string; out AErrors: TArray<string>): TArray<TRuleMutation>; static;
+    /// <summary>AText mit eingebautem Fehler; False, wenn der Suchtext nicht genau einmal vorkommt.
+    /// \n im Ersatz wird zum Zeilenumbruch von AText.</summary>
+    class function Mutate(const AText: string; const AMutation: TRuleMutation; out AMutated: string): Boolean; static;
+    /// <summary>Meldet ARuleId nach der Mutation mehr Treffer als vorher?</summary>
+    class function Detected(const ABefore, AAfter: TArray<TRuleFinding>; const ARuleId: string): Boolean; static;
+    /// <summary>Trefferquote je Regel; AFound[i] gehört zu AMutations[i]. Nach Regel-ID sortiert.</summary>
+    class function HitRates(const AMutations: TArray<TRuleMutation>;
+      const AFound: TArray<Boolean>): TArray<TRuleHitRate>; static;
     /// <summary>Laufzeit jeder Regel allein über alle ATexts.</summary>
     class function TimeRules(const ARules: TArray<IRule>; const ASettings: TServerSettings;
       const ATexts: TArray<string>): TArray<TRuleTiming>; static;
@@ -121,6 +157,16 @@ begin
     Result := 0
   else
     Result := Wrong / (Correct + Wrong);
+end;
+
+{ TRuleHitRate }
+
+function TRuleHitRate.HitRate: Double;
+begin
+  if Mutations = 0 then
+    Result := 0
+  else
+    Result := Found / Mutations;
 end;
 
 { TGoldenCorpus }
@@ -280,6 +326,175 @@ begin
         [Index + 1, Columns[3]]);
   end;
   // Wenige Regeln: einfaches Einfügesortieren.
+  for Index := 1 to High(Result) do
+  begin
+    Temp := Result[Index];
+    Swap := Index - 1;
+    while (Swap >= 0) and (CompareText(Result[Swap].RuleId, Temp.RuleId) > 0) do
+    begin
+      Result[Swap + 1] := Result[Swap];
+      Dec(Swap);
+    end;
+    Result[Swap + 1] := Temp;
+  end;
+end;
+
+/// <summary>Teile einer Mutationszeile an " | ", \| bleibt im Teil.</summary>
+function SplitParts(const ALine: string): TArray<string>;
+var
+  Index: Integer;
+  Part: string;
+begin
+  Result := nil;
+  Part := '';
+  Index := 1;
+  while Index <= Length(ALine) do
+  begin
+    if (ALine[Index] = '\') and (Index < Length(ALine)) then
+    begin
+      // Escapes bleiben für Unescape stehen.
+      Part := Part + ALine[Index] + ALine[Index + 1];
+      Inc(Index, 2);
+      Continue;
+    end;
+    if ALine[Index] = '|' then
+    begin
+      Result := Result + [Trim(Part)];
+      Part := '';
+    end
+    else
+      Part := Part + ALine[Index];
+    Inc(Index);
+  end;
+  Result := Result + [Trim(Part)];
+end;
+
+/// <summary>\n, \uXXXX, \| und \\ auflösen; ALineBreak für \n.</summary>
+function Unescape(const AText, ALineBreak: string): string;
+var
+  Index, Code: Integer;
+begin
+  Result := '';
+  Index := 1;
+  while Index <= Length(AText) do
+  begin
+    if (AText[Index] = '\') and (Index < Length(AText)) then
+    begin
+      case AText[Index + 1] of
+        'n':
+          begin
+            Result := Result + ALineBreak;
+            Inc(Index, 2);
+            Continue;
+          end;
+        'u':
+          if TryStrToInt('$' + Copy(AText, Index + 2, 4), Code) then
+          begin
+            Result := Result + Char(Code);
+            Inc(Index, 6);
+            Continue;
+          end;
+        '|', '\':
+          begin
+            Result := Result + AText[Index + 1];
+            Inc(Index, 2);
+            Continue;
+          end;
+      end;
+    end;
+    Result := Result + AText[Index];
+    Inc(Index);
+  end;
+end;
+
+class function TGoldenCorpus.Mutations(const AText: string; out AErrors: TArray<string>): TArray<TRuleMutation>;
+var
+  Lines, Parts: TArray<string>;
+  Index: Integer;
+  Line: string;
+  Mutation: TRuleMutation;
+begin
+  Result := nil;
+  AErrors := nil;
+  Lines := TTextLines.SplitLines(AText);
+  for Index := 0 to High(Lines) do
+  begin
+    Line := Trim(Lines[Index]);
+    if (Line = '') or StartsStr('#', Line) then
+      Continue;
+    Parts := SplitParts(Line);
+    if (Length(Parts) <> 4) or (Parts[0] = '') or (Parts[1] = '') or (Parts[2] = '') then
+    begin
+      AErrors := AErrors + [Format('Zeile %d: erwartet "regel-id | Datei | Suchtext | Ersatz"', [Index + 1])];
+      Continue;
+    end;
+    Mutation.RuleId := Parts[0];
+    Mutation.FileName := Parts[1];
+    Mutation.Search := Parts[2];
+    Mutation.Replacement := Parts[3];
+    Mutation.Line := Index + 1;
+    Result := Result + [Mutation];
+  end;
+end;
+
+class function TGoldenCorpus.Mutate(const AText: string; const AMutation: TRuleMutation;
+  out AMutated: string): Boolean;
+var
+  LineBreak, Search: string;
+  First: Integer;
+begin
+  AMutated := AText;
+  LineBreak := #10;
+  if Pos(#13#10, AText) > 0 then
+    LineBreak := #13#10;
+  Search := Unescape(AMutation.Search, LineBreak);
+  First := Pos(Search, AText);
+  Result := (First > 0) and (Pos(Search, AText, First + 1) = 0);
+  if Result then
+    AMutated := Copy(AText, 1, First - 1) + Unescape(AMutation.Replacement, LineBreak) +
+      Copy(AText, First + Length(Search), MaxInt);
+end;
+
+class function TGoldenCorpus.Detected(const ABefore, AAfter: TArray<TRuleFinding>; const ARuleId: string): Boolean;
+
+  function CountOf(const AFindings: TArray<TRuleFinding>): Integer;
+  var
+    Finding: TRuleFinding;
+  begin
+    Result := 0;
+    for Finding in AFindings do
+      if SameText(Finding.RuleId, ARuleId) then
+        Inc(Result);
+  end;
+
+begin
+  Result := CountOf(AAfter) > CountOf(ABefore);
+end;
+
+class function TGoldenCorpus.HitRates(const AMutations: TArray<TRuleMutation>;
+  const AFound: TArray<Boolean>): TArray<TRuleHitRate>;
+var
+  Index, Rate, Swap: Integer;
+  Temp: TRuleHitRate;
+begin
+  Result := nil;
+  for Index := 0 to High(AMutations) do
+  begin
+    Rate := -1;
+    for Swap := 0 to High(Result) do
+      if SameText(Result[Swap].RuleId, AMutations[Index].RuleId) then
+        Rate := Swap;
+    if Rate < 0 then
+    begin
+      Temp := Default(TRuleHitRate);
+      Temp.RuleId := AMutations[Index].RuleId;
+      Result := Result + [Temp];
+      Rate := High(Result);
+    end;
+    Inc(Result[Rate].Mutations);
+    if (Index <= High(AFound)) and AFound[Index] then
+      Inc(Result[Rate].Found);
+  end;
   for Index := 1 to High(Result) do
   begin
     Temp := Result[Index];
