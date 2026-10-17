@@ -43,6 +43,8 @@ type
     Global: Boolean;
     /// <summary>x-scope "both": an beiden Orten, das Projekt übersteuert je Glied (rules).</summary>
     Both: Boolean;
+    /// <summary>x-experimental (#834): experimentelle Funktion, wirkt nur mit experimental.enabled.</summary>
+    Experimental: Boolean;
     /// <summary>x-control verlangt eine Dateiauswahl.</summary>
     function PicksFile: Boolean;
     /// <summary>Passt AJson (JSON-Text) zur Art des Felds? Sonst bleibt der Wert unangetastet.</summary>
@@ -190,7 +192,7 @@ var
 
   function Make(const APath, APage: string; ASchema: TJSONObject; const AFallback, AScope: string): TAtlasSettingField;
   var
-    Default_, Examples, Example, Restart: TJSONValue;
+    Default_, Examples, Example, Restart, Experimental: TJSONValue;
   begin
     Result := Default(TAtlasSettingField);
     Result.Path := APath;
@@ -211,6 +213,8 @@ var
     Result.Restart := (Restart is TJSONBool) and TJSONBool(Restart).AsBoolean;
     Result.Global := ASchema.GetValue<string>('x-scope', AScope) = 'global';
     Result.Both := ASchema.GetValue<string>('x-scope', AScope) = 'both';
+    Experimental := ASchema.GetValue('x-experimental');
+    Result.Experimental := (Experimental is TJSONBool) and TJSONBool(Experimental).AsBoolean;
   end;
 
 begin

@@ -105,6 +105,12 @@ type
     /// <summary>Reiter „Projektdatei“ (#486): jeder Wert mit „aus .atlas“, Hinweise, Öffnen.</summary>
     [Test]
     procedure TeamFileTabShowsValuesFromAtlas;
+    /// <summary>Hauptschalter für experimentelle Funktionen (#834): Vorgabe aus, Rundweg, Filterzeile.</summary>
+    [Test]
+    procedure ExperimentalSwitchRoundTrips;
+    /// <summary>Filter „Nur experimentelle“ und „Geändert“ (#834): Kennzeichen, Ausblenden, Zusammenrücken, Wiederherstellen.</summary>
+    [Test]
+    procedure FilterHidesAndRestoresRows;
   end;
 
 implementation
@@ -139,6 +145,8 @@ uses
   Vcl.Menus,
   Vcl.Forms,
   Vcl.ComCtrls,
+  Vcl.StdCtrls,
+  Atlas.UI.Settings.Marks,
   Atlas.UI.Strings;
 
 procedure TAtlasSettingsPageTests.WarmUp;
@@ -817,6 +825,87 @@ begin
     Assert.IsTrue(Page.BookmarksSharedCheck.Checked);
   finally
     Page.Free;
+  end;
+end;
+
+procedure TAtlasSettingsPageTests.ExperimentalSwitchRoundTrips;
+var
+  Page: TAtlasSettingsPage;
+  Settings, Saved: TAtlasPluginSettings;
+begin
+  Settings := TAtlasPluginSettings.Defaults;
+  Assert.IsFalse(Settings.ExperimentalEnabled);
+  Page := TAtlasSettingsPage.Create(nil);
+  try
+    Page.LoadFrom(Settings);
+    Assert.IsFalse(Page.ExperimentalEnabled.Checked);
+    Assert.IsNotNull(Page.Filter);
+    Assert.AreEqual(0, Page.Filter.Choice);
+    // Ohne experimentelle Einstellung im Katalog kein Hinweis.
+    Assert.AreEqual(Page.Marks.HasExperimental, Page.ExperimentalBanner.Visible);
+    Page.ExperimentalEnabled.Checked := True;
+    Saved := TAtlasPluginSettings.Defaults;
+    Page.SaveTo(Saved);
+    Assert.IsTrue(Saved.ExperimentalEnabled);
+    Page.LoadFrom(Saved);
+    Assert.IsTrue(Page.ExperimentalEnabled.Checked);
+    Assert.IsFalse(Page.ExperimentalBanner.Visible);
+  finally
+    Page.Free;
+  end;
+end;
+
+procedure TAtlasSettingsPageTests.FilterHidesAndRestoresRows;
+var
+  Owner: TComponent;
+  Box: TScrollBox;
+  Marks: TAtlasSettingsMarks;
+  First, Second, Third: TCheckBox;
+
+  function Check(const ACaption: string; ATop: Integer): TCheckBox;
+  begin
+    Result := TCheckBox.Create(Owner);
+    Result.Parent := Box;
+    Result.Caption := ACaption;
+    Result.Top := ATop;
+  end;
+
+begin
+  Owner := TComponent.Create(nil);
+  try
+    Box := TScrollBox.Create(Owner);
+    Marks := TAtlasSettingsMarks.Create(Owner);
+    First := Check('Erste', 10);
+    Second := Check('Zweite', 40);
+    Third := Check('Dritte', 70);
+    Marks.Bind(First, ['First']);
+    Marks.Bind(Second, ['Second']);
+    Marks.Bind(Third, ['Third']);
+    Marks.MarkExperimental(['third']);
+    Assert.IsTrue(Marks.HasExperimental);
+    Assert.IsTrue(Marks.IsExperimental(Third));
+    Assert.IsFalse(Marks.IsExperimental(First));
+    Assert.AreEqual('Dritte  [' + TAtlasStrings.Text(TAtlasTextId.SettingsExperimentalTag) + ']', string(Third.Caption));
+    Marks.ApplyFilter(sfExperimental);
+    Assert.IsFalse(First.Visible);
+    Assert.IsFalse(Second.Visible);
+    Assert.IsTrue(Third.Visible);
+    // Rückt an den Platz der ersten Zeile.
+    Assert.AreEqual(10, Third.Top);
+    Marks.Show(['Second'], True);
+    Marks.ApplyFilter(sfModified);
+    Assert.IsFalse(First.Visible);
+    Assert.IsTrue(Second.Visible);
+    Assert.IsFalse(Third.Visible);
+    Assert.AreEqual(10, Second.Top);
+    Marks.ApplyFilter(sfAll);
+    Assert.IsTrue(First.Visible and Second.Visible and Third.Visible);
+    Assert.AreEqual(10, First.Top);
+    Assert.AreEqual(40, Second.Top);
+    Assert.AreEqual(70, Third.Top);
+    Assert.IsTrue(Marks.Filter = sfAll);
+  finally
+    Owner.Free;
   end;
 end;
 

@@ -20,6 +20,10 @@
 // Projekt-Ort entfernt zusätzlich Zugangsdaten und absolute Pfade und meldet
 // sie (#486, Internals.Forbidden); dieselbe Sperre gilt im Plugin für die
 // Projektdatei .atlas.
+// Experimentelle Schlüssel (x-experimental, #834) wirken nur mit dem
+// Hauptschalter experimental.enabled; ohne ihn entfernt Effective sie aus dem
+// zusammengesetzten Text, es gelten ihre Vorgaben. Die Dateien behalten die
+// Werte.
 
 interface
 
@@ -53,6 +57,12 @@ type
     /// <summary>Wirksamer Text aus globaler Datei, Editor-Einstellungen und atlas.json, jeweils auf ihren
     /// Ort gefiltert; je Schlüssel gilt die oberste Ebene, Objekte werden je Glied zusammengeführt.</summary>
     class function Effective(const AGlobalText, AEditorText, AProjectText: string): string; static;
+    /// <summary>Steht in AText "experimental": {"enabled": true}?</summary>
+    class function ExperimentalEnabled(const AText: string): Boolean; static;
+    /// <summary>Ohne Hauptschalter in AText fallen die Schlüssel aus APaths ("objekt" oder "objekt.glied")
+    /// weg, damit ihre Vorgaben gelten (#834). Mit Hauptschalter, ohne solche Schlüssel, bei leerem oder
+    /// ungültigem Text genau AText.</summary>
+    class function WithoutExperimental(const AText: string; const APaths: TArray<string>): string; static;
     /// <summary>%APPDATA%\Atlas\settings.json; '' ohne AAppData.</summary>
     class function GlobalFile(const AAppData: string): string; static;
   end;
@@ -256,9 +266,75 @@ end;
 
 class function TConfigurationScopes.Effective(const AGlobalText, AEditorText, AProjectText: string): string;
 begin
-  Result := TConfigurationParser.MergeText(TConfigurationParser.MergeText(
+  Result := WithoutExperimental(TConfigurationParser.MergeText(TConfigurationParser.MergeText(
     Filter(AGlobalText, TConfigurationScope.Global), Filter(AEditorText, TConfigurationScope.Global)),
-    Filter(AProjectText, TConfigurationScope.Project));
+    Filter(AProjectText, TConfigurationScope.Project)), ExperimentalSettingPaths);
+end;
+
+class function TConfigurationScopes.ExperimentalEnabled(const AText: string): Boolean;
+var
+  Ignored: TArray<TConfigurationIssue>;
+begin
+  Result := (Trim(AText) <> '') and TConfigurationParser.Parse(AText, Ignored).ExperimentalEnabled;
+end;
+
+class function TConfigurationScopes.WithoutExperimental(const AText: string; const APaths: TArray<string>): string;
+var
+  Root, Value: TJsonNode;
+  Index, Sub: Integer;
+  Key: string;
+  Parts, Members: TArray<string>;
+  Removed, SubRemoved: Boolean;
+begin
+  Result := AText;
+  if (Length(APaths) = 0) or (Trim(AText) = '') or ExperimentalEnabled(AText) then
+    Exit;
+  try
+    Root := TJsonTree.Parse(AText);
+  except
+    // Syntaxfehler meldet der Parser.
+    on EJsonTreeError do
+      Exit;
+  end;
+  try
+    if Root.Kind <> TJsonKind.Object_ then
+      Exit;
+    Parts := nil;
+    Removed := False;
+    for Index := 0 to Root.Count - 1 do
+    begin
+      Key := Root.Keys[Index];
+      Value := Root[Index];
+      if Listed(Key, APaths) then
+      begin
+        Removed := True;
+        Continue;
+      end;
+      if Value.Kind <> TJsonKind.Object_ then
+      begin
+        Parts := Parts + [QuoteKey(Key) + ': ' + NodeText(AText, Value)];
+        Continue;
+      end;
+      Members := nil;
+      SubRemoved := False;
+      for Sub := 0 to Value.Count - 1 do
+        if Listed(Key + '.' + Value.Keys[Sub], APaths) then
+          SubRemoved := True
+        else
+          Members := Members + [QuoteKey(Value.Keys[Sub]) + ': ' + NodeText(AText, Value[Sub])];
+      if not SubRemoved then
+        Parts := Parts + [QuoteKey(Key) + ': ' + NodeText(AText, Value)]
+      else
+      begin
+        Removed := True;
+        Parts := Parts + [QuoteKey(Key) + ': {' + string.Join(', ', Members) + '}'];
+      end;
+    end;
+    if Removed then
+      Result := '{' + string.Join(', ', Parts) + '}';
+  finally
+    Root.Free;
+  end;
 end;
 
 class function TConfigurationScopes.GlobalFile(const AAppData: string): string;

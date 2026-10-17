@@ -106,6 +106,7 @@ begin
   Input.Roots := ProjectRoots;
   Input.Identity := Identity;
   Input.Settings := SettingsJson;
+  Input.Experimental := TAtlasIdeSettings.ActiveExperimental;
   Input.PluginLog := TAtlasBugReport.Tail(TPath.Combine(TAtlasRotatingLog.DefaultFolder, 'atlas.log'),
     TAtlasBugReport.LogLines);
   Answer := nil;

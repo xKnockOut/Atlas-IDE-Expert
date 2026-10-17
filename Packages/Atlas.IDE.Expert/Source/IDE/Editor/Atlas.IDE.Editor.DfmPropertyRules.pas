@@ -8,7 +8,7 @@
 // Umbenennen und übernimmt erst nach Bestätigung. Offene Formulare ändert
 // TAtlasIdeWorkspaceEdit im Designer, nicht geöffnete auf der Platte; die
 // Units bleiben unverändert. Die Befehle verschwinden mit der Einstellung
-// DfmPropertyRules (dfmPropertyRules.apply). Nur im Hauptthread.
+// DfmPropertyRules (dfmRules.apply). Nur im Hauptthread.
 
 interface
 

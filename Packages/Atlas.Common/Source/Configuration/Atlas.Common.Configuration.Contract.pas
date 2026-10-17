@@ -311,6 +311,10 @@ type
     /// <summary>Gerüst des Dokumentationskommentars nach dem dritten "/" und die Code-Aktionen dazu
     /// ("completeBlocks.docComment", #88).</summary>
     CompleteBlocksDocComment: Boolean;
+    /// <summary>Hauptschalter der experimentellen Funktionen ("experimental.enabled", global, #834). Aus: Die
+    /// Schlüssel mit x-experimental fallen schon beim Zusammensetzen der Ebenen weg
+    /// (TConfigurationScopes.Effective), es gelten ihre Vorgaben.</summary>
+    ExperimentalEnabled: Boolean;
     /// <summary>Kennzahlen überhaupt ("metrics", global): false schaltet die Code Lens der Kennzahlen und
     /// alle Regeln metric-* ab. Eine Regel, die das Projekt unter "rules" ausdrücklich setzt, gilt trotzdem.</summary>
     Metrics: Boolean;
@@ -679,6 +683,7 @@ begin
   Result.Refactoring := TRefactoringSettings.Default;
   Result.UsesCommand := True;
   Result.CompleteBlocksDocComment := True;
+  Result.ExperimentalEnabled := False;
   Result.Metrics := True;
   Result.SlashCommands := True;
   Result.SlashCommandsDisabled := nil;

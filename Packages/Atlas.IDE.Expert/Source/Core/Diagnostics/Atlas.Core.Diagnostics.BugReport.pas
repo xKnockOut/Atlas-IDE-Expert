@@ -22,6 +22,8 @@ type
     Platform: string;
     /// <summary>Einstellungen des Plugins als JSON.</summary>
     Settings: string;
+    /// <summary>Wirksame experimentelle Schalter (#834), nur Schlüssel; leer = keine.</summary>
+    Experimental: TArray<string>;
     PluginLog: TArray<string>;
     /// <summary>Text des Servers; '' wenn er nicht läuft oder nicht antwortet.</summary>
     ServerReport: string;
@@ -109,7 +111,13 @@ begin
     Builder.Append('## Plugin').Append(sLineBreak).Append(sLineBreak);
     Builder.Append('- Atlas: ').Append(AInput.PluginVersion).Append(sLineBreak);
     Builder.Append('- IDE: ').Append(AInput.IdeVersion).Append(sLineBreak);
-    Builder.Append('- Plattform: ').Append(AInput.Platform).Append(sLineBreak).Append(sLineBreak);
+    Builder.Append('- Plattform: ').Append(AInput.Platform).Append(sLineBreak);
+    Builder.Append('- Experimentell: ');
+    if Length(AInput.Experimental) = 0 then
+      Builder.Append('keine')
+    else
+      Builder.Append(string.Join(', ', AInput.Experimental));
+    Builder.Append(sLineBreak).Append(sLineBreak);
 
     Builder.Append('### Einstellungen').Append(sLineBreak).Append(sLineBreak);
     Text := AInput.Settings;

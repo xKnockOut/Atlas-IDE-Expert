@@ -37,6 +37,9 @@ jobs:
       - name: Konfigurationsdoku aktuell
         shell: pwsh
         run: ./Tools/Update-ConfigDoc.ps1 -Check
+      - name: Wächter für experimentelle Funktionen (#834)
+        shell: pwsh
+        run: ./Tools/Test-Experimental.ps1
       - name: Markierungen für „Neu in Atlas“ lesbar (#756)
         shell: pwsh
         run: ./Tools/Update-WhatsNew.ps1 -Unreleased 0.0.0 -OutFile "$env:RUNNER_TEMP/whatsnew.json"

@@ -39,6 +39,8 @@ type
     /// <summary>Feature der Absturzsicherung (#493, Name aus TAtlasFeature) für den Vorschlag nach einem
     /// Absturz (#722); '' ohne.</summary>
     Feature: string;
+    /// <summary>Experimentelle Funktion (x-experimental, #834): Kennzeichen „Experimentell“ im Fenster.</summary>
+    Experimental: Boolean;
   end;
 
   TAtlasQuickToggleGroup = record
@@ -272,6 +274,7 @@ begin
       Toggle.ProjectPath := ASchema.GetValue<string>('x-project', '');
       Toggle.Drawing := IsTrue(ASchema, 'x-drawing');
       Toggle.Feature := ASchema.GetValue<string>('x-feature', '');
+      Toggle.Experimental := IsTrue(ASchema, 'x-experimental');
       List := List + [Toggle];
     end);
   Walk(AProjectSchema,
@@ -293,6 +296,7 @@ begin
         if SameText(List[Index].Key, Key) then
         begin
           List[Index].ProjectPath := ProjectPath;
+          List[Index].Experimental := List[Index].Experimental or IsTrue(ASchema, 'x-experimental');
           Exit;
         end;
       Toggle := Default(TAtlasQuickToggle);
@@ -302,6 +306,7 @@ begin
       Toggle.ProjectPath := ProjectPath;
       Toggle.Drawing := IsTrue(ASchema, 'x-drawing');
       Toggle.Feature := ASchema.GetValue<string>('x-feature', '');
+      Toggle.Experimental := IsTrue(ASchema, 'x-experimental');
       List := List + [Toggle];
     end);
   // Nach Seiten ordnen, Reihenfolge der Seiten wie ihr erstes Auftreten.

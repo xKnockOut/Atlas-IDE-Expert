@@ -225,6 +225,9 @@ begin
     Row := Default(TRow);
     Row.Item := Index;
     Row.Text := FItems[Index].Toggle.Caption;
+    // Kennzeichen als Text (#834, Barrierefreiheit #447).
+    if FItems[Index].Toggle.Experimental then
+      Row.Text := Row.Text + '  [' + TAtlasStrings.Text(TAtlasTextId.SettingsExperimentalTag) + ']';
     FRows := FRows + [Row];
   end;
 end;

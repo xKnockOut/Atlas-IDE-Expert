@@ -31,6 +31,7 @@ Jeder Schlüssel hat genau einen Ort (Spalte „Ort“): Projekt-Schlüssel steh
 | `usesCommand` | global (settings.json) | boolean | `true` |  | Eine Zeile "/uses Unit1, Unit2" wird nach Enter gelöscht und die Units kommen ins passende uses. |
 | `completeBlocks` | global (settings.json) | object | – |  | Eingabehilfen, die beim Tippen Code ergänzen. |
 | `metrics` | global (settings.json) | boolean | `true` |  | Kennzahlen überhaupt: false schaltet die Kennzahlen über den Methoden (codeLens.metrics) und alle Regeln metric-* für alle Projekte ab. Ein Projekt übersteuert das je Regel, indem es sie in atlas.json unter "rules" ausdrücklich setzt, z. B. "metric-method-length": "warning". |
+| `experimental` | global (settings.json) | object | – |  | Experimentelle Funktionen (#834): riskant oder noch unreif, abschaltbar, als „Experimentell“ gekennzeichnet und nach der Installation aus. |
 | `slashCommands` | global (settings.json) | object | – |  | Schnellbefehle: Eine Zeile, die mit /name beginnt, wird nach Enter ausgeführt und verschwindet. Nach / schlägt die Vervollständigung alle Befehle vor. |
 | `sortUses` | Projekt (atlas.json) | boolean string | `false` | `true`, `false`, `"alphabetic"`, `"namespace"` | "uses aufräumen" (source.organizeImports, z. B. beim Speichern) sortiert die uses: true oder "alphabetic" alphabetisch, "namespace" nach Namespace gruppiert (System, Vcl, ... und Units ohne Namespace zuletzt). Achtung: Die Reihenfolge bestimmt die Initialisierung der Units. |
 | `usesKeep` | Projekt (atlas.json) | array<string> | `` |  | Units, die "ungenutzte uses entfernen" nie entfernt, zusätzlich zu allen Units mit initialization-Abschnitt. |
@@ -95,6 +96,12 @@ Jeder Schlüssel hat genau einen Ort (Spalte „Ort“): Projekt-Schlüssel steh
 | Schlüssel | Ort | Typ | Standard | Werte | Bedeutung |
 |---|---|---|---|---|---|
 | `completeBlocks.docComment` | global (settings.json) | boolean | `true` |  | Gerüst des Dokumentationskommentars nach dem dritten / über einer Deklaration erzeugen (summary, typeparam, param, returns), dazu die Code-Aktionen „Dokumentationskommentar erzeugen“ und „Dokumentation an die Signatur anpassen“. Überzählige param werden dabei als <!-- entfernt: Name --> markiert, nicht gelöscht. false: /// bleibt, wie getippt. |
+
+## experimental
+
+| Schlüssel | Ort | Typ | Standard | Werte | Bedeutung |
+|---|---|---|---|---|---|
+| `experimental.enabled` | global (settings.json) | boolean | `false` |  | Hauptschalter: false = keine experimentelle Funktion wirkt, auch wenn ihr eigener Schalter an ist; die Einzelschalter behalten ihren Wert. true = die Einzelschalter (Kennzeichen „Experimentell“, Vorgabe aus) gelten. |
 
 ## slashCommands
 
