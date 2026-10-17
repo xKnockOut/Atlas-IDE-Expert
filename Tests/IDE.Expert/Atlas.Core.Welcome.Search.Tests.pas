@@ -150,6 +150,8 @@ begin
       PutVar(Body, IndexOf('Atlas.inc'));
       PutVar(Body, 1); // Include-Zeitstempel
       PutVar(Body, 3); // -2 als ZigZag
+      for Index := 1 to 6 do
+        PutVar(Body, Index); // Präfix-Zählung (#452)
       PutVar(Body, 2); // Symbolzahl
       PutVar(Body, 1); // nicht verfügbar
       PutVar(Body, 200); // Blocklänge über ein Byte hinaus
@@ -238,7 +240,7 @@ var
   Files: TArray<TAtlasIndexFile>;
   Reason: string;
 begin
-  Files := TAtlasWelcomeIndexFiles.Read(CacheBytes(SampleUnits, 15), Reason);
+  Files := TAtlasWelcomeIndexFiles.Read(CacheBytes(SampleUnits, 16), Reason);
   Assert.AreEqual('', Reason);
   Assert.AreEqual(3, Integer(Length(Files)));
   Assert.AreEqual('Atlas', Files[0].UnitName);
@@ -250,7 +252,7 @@ procedure TAtlasWelcomeIndexFilesTests.RejectsOtherVersion;
 var
   Reason: string;
 begin
-  Assert.AreEqual(0, Integer(Length(TAtlasWelcomeIndexFiles.Read(CacheBytes(SampleUnits, 14), Reason))));
+  Assert.AreEqual(0, Integer(Length(TAtlasWelcomeIndexFiles.Read(CacheBytes(SampleUnits, 15), Reason))));
   Assert.AreEqual('andere Formatversion', Reason);
   Assert.AreEqual(0, Integer(Length(TAtlasWelcomeIndexFiles.Read(TEncoding.ASCII.GetBytes('{"units":[]}'), Reason))));
   Assert.AreNotEqual('', Reason);
@@ -268,7 +270,7 @@ var
   Data: TBytes;
   Reason: string;
 begin
-  Data := CacheBytes(SampleUnits, 15);
+  Data := CacheBytes(SampleUnits, 16);
   Data[High(Data) - 10] := Data[High(Data) - 10] xor $55;
   Assert.AreEqual(0, Integer(Length(TAtlasWelcomeIndexFiles.Read(Data, Reason))));
   Assert.AreEqual('Prüfsumme stimmt nicht', Reason);
@@ -282,7 +284,7 @@ var
   Reason: string;
 begin
   // Abgeschnitten, Prüfsumme passend neu berechnet: der Inhalt selbst muss auffallen.
-  Data := CacheBytes(SampleUnits, 15);
+  Data := CacheBytes(SampleUnits, 16);
   Cut := Copy(Data, 0, Length(Data) - 50);
   Sum := Checksum(Cut, 13);
   for Index := 0 to 3 do
@@ -295,7 +297,7 @@ procedure TAtlasWelcomeIndexFilesTests.MainFileAndSameProject;
 var
   Files: TArray<TAtlasIndexFile>;
 begin
-  Files := TAtlasWelcomeIndexFiles.Read(CacheBytes(SampleUnits, 15));
+  Files := TAtlasWelcomeIndexFiles.Read(CacheBytes(SampleUnits, 16));
   Assert.AreEqual('C:\Projekte\Atlas\Atlas.dpr', TAtlasWelcomeIndexFiles.MainFileOf(Files));
   Assert.IsTrue(TAtlasWelcomeIndexFiles.SameProject('c:\projekte\atlas\Atlas.dproj', 'C:\Projekte\Atlas\Atlas.dpr'));
   Assert.IsFalse(TAtlasWelcomeIndexFiles.SameProject('C:\Projekte\Atlas\AtlasTests.dproj',

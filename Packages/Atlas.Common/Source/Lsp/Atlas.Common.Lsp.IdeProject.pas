@@ -13,6 +13,10 @@
 // $(Name) löst der Server mit den Variablen der Installation auf, relative
 // Pfade gelten ab dem Projektordner. Ohne Plugin (CLI, MCP) bleibt es beim
 // Lesen der .dproj (#14).
+// Präfixe (#452): Unter "naming" ({"field": "F", "parameter": "A", "local": "L"})
+// meldet das Plugin die Vorgaben der Projektdatei .atlas (#486). Sie ändern nur
+// die Namensvorschläge der Vervollständigung, nie den Index; eine Änderung
+// allein löst deshalb kein OnChanged aus.
 
 interface
 
@@ -21,6 +25,7 @@ uses
   System.JSON,
   System.Generics.Collections,
   Atlas.Common.JsonRpc.Dispatcher,
+  Atlas.Common.Index.Contract,
   Atlas.Common.Projects.Contract;
 
 type
@@ -38,10 +43,15 @@ type
     Namespaces: TArray<string>;
     /// <summary>Bibliothekspfade der IDE für die Plattform; leer = aus der Registry der Installation.</summary>
     LibraryPaths: TArray<string>;
+    /// <summary>Präfix-Vorgaben der Projektdatei (#452); nur mit HasNaming, '' = ohne Präfix.</summary>
+    Naming: array[TNamingKind] of string;
+    HasNaming: array[TNamingKind] of Boolean;
     /// <summary>Kontext aus einem JSON-Objekt; Project = '' bei ungültigen Parametern.</summary>
     class function FromJson(const AValue: TJSONValue): TIdeProjectContext; static;
-    /// <summary>Vergleichsschlüssel: gleich, wenn sich für den Server nichts ändert.</summary>
+    /// <summary>Vergleichsschlüssel: gleich, wenn sich für Index und Projekt nichts ändert (ohne Naming).</summary>
     function Key: string;
+    /// <summary>Vergleichsschlüssel der Präfix-Vorgaben.</summary>
+    function NamingKey: string;
     /// <summary>Übernimmt Symbole, Suchpfade und Namespaces in AProject ($(Name) mit AVariables,
     /// Pfade ab dem Projektordner, ohne Doppelte).</summary>
     procedure ApplyTo(var AProject: TProjectInfo; const AVariables: TArray<TPair<string, string>>);
@@ -66,7 +76,8 @@ type
     procedure Attach(ADispatcher: TJsonRpcDispatcher);
     /// <summary>Kontexte aus den Parametern von initialize (initializationOptions.projectContexts).</summary>
     procedure LoadInitialize(const AParams: TJSONValue);
-    /// <summary>Merkt sich AContext; True, wenn er neu ist oder sich geändert hat. Threadsicher.</summary>
+    /// <summary>Merkt sich AContext; True, wenn er neu ist oder sich Key geändert hat (eine neue Präfix-Vorgabe
+    /// allein wird gemerkt, ergibt aber False). Threadsicher.</summary>
     function Update(const AContext: TIdeProjectContext): Boolean;
     /// <summary>Gemeldeter Kontext des Projekts AProjectFile; False ohne. Threadsicher.</summary>
     function Find(const AProjectFile: string; out AContext: TIdeProjectContext): Boolean;
@@ -79,6 +90,9 @@ implementation
 uses
   System.StrUtils,
   Atlas.Common.Projects.Paths;
+
+const
+  NamingKeys: array[TNamingKind] of string = ('field', 'parameter', 'local');
 
 function StringsOf(AObject: TJSONObject; const AName: string; out AFound: Boolean): TArray<string>;
 var
@@ -133,8 +147,10 @@ end;
 
 class function TIdeProjectContext.FromJson(const AValue: TJSONValue): TIdeProjectContext;
 var
-  Item: TJSONObject;
+  Item, Prefixes: TJSONObject;
   HasDefines, HasPaths, HasNamespaces, Ignored: Boolean;
+  Kind: TNamingKind;
+  Prefix: TJSONValue;
 begin
   Result := Default(TIdeProjectContext);
   if not (AValue is TJSONObject) then
@@ -149,6 +165,27 @@ begin
   Result.Namespaces := StringsOf(Item, 'namespaces', HasNamespaces);
   Result.HasOptions := HasDefines or HasPaths or HasNamespaces;
   Result.LibraryPaths := StringsOf(Item, 'libraryPaths', Ignored);
+  if Item.TryGetValue<TJSONObject>('naming', Prefixes) then
+    for Kind := Low(TNamingKind) to High(TNamingKind) do
+    begin
+      Prefix := Prefixes.GetValue(NamingKeys[Kind]);
+      // TJSONNumber erbt von TJSONString.
+      if (Prefix is TJSONString) and not (Prefix is TJSONNumber) then
+      begin
+        Result.HasNaming[Kind] := True;
+        Result.Naming[Kind] := Trim(Prefix.Value);
+      end;
+    end;
+end;
+
+function TIdeProjectContext.NamingKey: string;
+var
+  Kind: TNamingKind;
+begin
+  Result := '';
+  for Kind := Low(TNamingKind) to High(TNamingKind) do
+    if HasNaming[Kind] then
+      Result := Result + NamingKeys[Kind] + '=' + Naming[Kind] + '|';
 end;
 
 function TIdeProjectContext.Key: string;
@@ -238,7 +275,7 @@ begin
   TMonitor.Enter(FLock);
   try
     Result := not FContexts.TryGetValue(Key, Known) or (Known.Key <> AContext.Key);
-    if Result then
+    if Result or (Known.NamingKey <> AContext.NamingKey) then
       FContexts.AddOrSetValue(Key, AContext);
   finally
     TMonitor.Exit(FLock);

@@ -239,6 +239,8 @@ type
     /// <summary>Nach "TFoo&lt;" nur Typen, die die Constraints erfüllen, mit Überschrift und Fußzeile (#450).
     /// </summary>
     GenericConstraints: Boolean;
+    /// <summary>Namensvorschläge aus dem Typ an Namenspositionen von Deklarationen (#452).</summary>
+    NameSuggestions: Boolean;
     class function Default: TCompletionSettings; static;
   end;
 
@@ -684,6 +686,7 @@ begin
   Result.Keywords := True;
   Result.PostfixTemplates := True;
   Result.GenericConstraints := True;
+  Result.NameSuggestions := True;
 end;
 
 { TServerSettings }

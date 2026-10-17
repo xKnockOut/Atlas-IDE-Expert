@@ -9,6 +9,9 @@
 // löst sie mit den Variablen der Installation auf.
 // Contract des Features Projects (A-09, früher Atlas.Core.Projects.Context): Der LSP-Client
 // importiert nur ihn, nicht die übrigen Projects-Units.
+// Präfixe (#452): Gibt die Projektdatei .atlas (#486) unter "naming" Präfixe für
+// Felder, Parameter oder lokale Variablen vor, gehen sie unter "naming" mit; sie
+// gelten für die Namensvorschläge vor der Zählung im Projekt.
 
 interface
 
@@ -17,6 +20,11 @@ uses
   System.JSON;
 
 type
+  {$SCOPEDENUMS ON}
+  /// <summary>Art einer Präfix-Vorgabe; Reihenfolge wie TAtlasNamingKind der Projektdatei.</summary>
+  TAtlasProjectNamingKind = (Field, Parameter, Local);
+  {$SCOPEDENUMS OFF}
+
   TAtlasProjectContext = record
   public const
     /// <summary>IOTABuildConfiguration.GetValue mit geerbten Werten.</summary>
@@ -36,6 +44,9 @@ type
     SearchPaths: TArray<string>;
     Namespaces: TArray<string>;
     LibraryPaths: TArray<string>;
+    /// <summary>Präfix-Vorgaben der Projektdatei (#452); nur mit HasNaming gesetzt, '' = ohne Präfix.</summary>
+    Naming: array[TAtlasProjectNamingKind] of string;
+    HasNaming: array[TAtlasProjectNamingKind] of Boolean;
     /// <summary>Woher Defines, Suchpfade und Namespaces kommen (nur fürs Protokoll, nicht für den
     /// Server): SourceConfiguration, SourceResolved, SourceOptions oder ''.</summary>
     Source: string;
@@ -59,6 +70,9 @@ type
   end;
 
 implementation
+
+const
+  NamingKeys: array[TAtlasProjectNamingKind] of string = ('field', 'parameter', 'local');
 
 function JsonList(const AItems: TArray<string>): TJSONArray;
 var
@@ -117,13 +131,21 @@ begin
 end;
 
 function TAtlasProjectContext.Key: string;
+var
+  Kind: TAtlasProjectNamingKind;
 begin
   Result := AnsiUpperCase(Project) + '|' + Configuration + '|' + Platform + '|' + BdsVersion + '|' +
     string.Join(';', Defines) + '|' + string.Join(';', SearchPaths) + '|' + string.Join(';', Namespaces) + '|' +
     string.Join(';', LibraryPaths);
+  for Kind := Low(TAtlasProjectNamingKind) to High(TAtlasProjectNamingKind) do
+    if HasNaming[Kind] then
+      Result := Result + '|' + NamingKeys[Kind] + '=' + Naming[Kind];
 end;
 
 function TAtlasProjectContext.ToJson: TJSONObject;
+var
+  Kind: TAtlasProjectNamingKind;
+  Prefixes: TJSONObject;
 begin
   Result := TJSONObject.Create;
   Result.AddPair('project', Project);
@@ -136,6 +158,17 @@ begin
   Result.AddPair('namespaces', JsonList(Namespaces));
   if Length(LibraryPaths) > 0 then
     Result.AddPair('libraryPaths', JsonList(LibraryPaths));
+  Prefixes := nil;
+  for Kind := Low(TAtlasProjectNamingKind) to High(TAtlasProjectNamingKind) do
+    if HasNaming[Kind] then
+    begin
+      if Prefixes = nil then
+      begin
+        Prefixes := TJSONObject.Create;
+        Result.AddPair('naming', Prefixes);
+      end;
+      Prefixes.AddPair(NamingKeys[Kind], Naming[Kind]);
+    end;
 end;
 
 end.
