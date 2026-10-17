@@ -1127,6 +1127,56 @@
       "x-page": "Befehle",
       "x-issue": "#635"
     },
+    "MoveLines": {
+      "description": "Zeilen verschieben (Alt+↑/↓) und duplizieren (Umschalt+Alt+↑/↓), über Blockgrenzen mit angepasstem Einzug; auf einem Methodenkopf ohne Markierung die ganze Methode. Aus = die Tasten bleiben der IDE.",
+      "type": "boolean",
+      "default": true,
+      "x-key": "keys.moveLines",
+      "x-area": "keys",
+      "x-feature": "EditorCommands",
+      "x-page": "Befehle",
+      "x-issue": "#634"
+    },
+    "MoveLinesUpKey": {
+      "description": "Tastenkürzel „Zeilen nach oben verschieben“ (0 = keins).",
+      "type": "integer",
+      "default": 32806,
+      "x-key": "keys.moveLinesUp",
+      "x-area": "keys",
+      "x-format": "shortcut",
+      "x-page": "Befehle",
+      "x-issue": "#634"
+    },
+    "MoveLinesDownKey": {
+      "description": "Tastenkürzel „Zeilen nach unten verschieben“ (0 = keins).",
+      "type": "integer",
+      "default": 32808,
+      "x-key": "keys.moveLinesDown",
+      "x-area": "keys",
+      "x-format": "shortcut",
+      "x-page": "Befehle",
+      "x-issue": "#634"
+    },
+    "DuplicateLinesUpKey": {
+      "description": "Tastenkürzel „Zeilen darüber duplizieren“ (0 = keins).",
+      "type": "integer",
+      "default": 40998,
+      "x-key": "keys.duplicateLinesUp",
+      "x-area": "keys",
+      "x-format": "shortcut",
+      "x-page": "Befehle",
+      "x-issue": "#634"
+    },
+    "DuplicateLinesDownKey": {
+      "description": "Tastenkürzel „Zeilen darunter duplizieren“ (0 = keins).",
+      "type": "integer",
+      "default": 41000,
+      "x-key": "keys.duplicateLinesDown",
+      "x-area": "keys",
+      "x-format": "shortcut",
+      "x-page": "Befehle",
+      "x-issue": "#634"
+    },
     "TestUnitKey": {
       "type": "integer",
       "default": 0,

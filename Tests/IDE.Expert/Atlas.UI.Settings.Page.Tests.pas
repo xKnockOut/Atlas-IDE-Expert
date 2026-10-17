@@ -74,6 +74,8 @@ type
     [Test]
     procedure MethodToggleRoundTrip;
     [Test]
+    procedure MoveLinesRoundTrip;
+    [Test]
     procedure WelcomeSettingsRoundTrip;
     /// <summary>Freies Layout (#767): Schalter, Spalten, Layouts anlegen, wechseln, umbenennen, löschen; je
     /// Layout eigene Sichtbarkeit; Reveal der neuen Einstellungen.</summary>
@@ -1447,6 +1449,33 @@ begin
     Assert.AreEqual('delete', Saved.UndoMultiFileNewFiles);
     Assert.AreEqual(Settings.UndoKey, Saved.UndoKey);
     Assert.AreEqual(Settings.RedoKey, Saved.RedoKey);
+  finally
+    Page.Free;
+  end;
+end;
+
+procedure TAtlasSettingsPageTests.MoveLinesRoundTrip;
+var
+  Page: TAtlasSettingsPage;
+  Settings, Saved: TAtlasPluginSettings;
+begin
+  // #634: Schalter und Tasten; leeres Feld = keine Taste.
+  Settings := TAtlasPluginSettings.Defaults;
+  Page := TAtlasSettingsPage.Create(nil);
+  try
+    Page.LoadFrom(Settings);
+    Assert.IsTrue(Page.MoveLines.Checked);
+    Assert.AreEqual(ShortCutToText(TShortCut($8026)), Page.MoveLinesUpKey.Text);
+    Assert.AreEqual(ShortCutToText(TShortCut($A028)), Page.DuplicateLinesDownKey.Text);
+    Page.MoveLines.Checked := False;
+    Page.MoveLinesUpKey.Text := '';
+    Page.DuplicateLinesDownKey.Text := ShortCutToText(TShortCut($C044));
+    Saved := TAtlasPluginSettings.Defaults;
+    Page.SaveTo(Saved);
+    Assert.IsFalse(Saved.MoveLines);
+    Assert.AreEqual(0, Saved.MoveLinesUpKey);
+    Assert.AreEqual($8028, Saved.MoveLinesDownKey);
+    Assert.AreEqual($C044, Saved.DuplicateLinesDownKey);
   finally
     Page.Free;
   end;
