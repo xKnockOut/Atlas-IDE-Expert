@@ -292,6 +292,10 @@ begin
       Id := TAtlasTextId.PeekReferencesCommand;
     TAtlasKeyFunction.Breadcrumbs:
       Id := TAtlasTextId.BreadcrumbsCommand;
+    TAtlasKeyFunction.JumpToMatch:
+      Id := TAtlasTextId.JumpToMatchCommand;
+    TAtlasKeyFunction.JumpToMatchSelect:
+      Id := TAtlasTextId.JumpToMatchSelectCommand;
   else
     Id := TAtlasTextId.KeyMapUnitSearchIde;
   end;

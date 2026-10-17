@@ -101,6 +101,9 @@ type
     class function TryToggleMethod: Boolean; static;
     /// <summary>Wie TryToggleMethod, für Menü und Palette: ohne Gegenstück eine Zeile in der Meldungsansicht.</summary>
     class procedure ToggleMethod; static;
+    /// <summary>Sprung zum Gegenstück (#635) reihum; mit ASelect vom Cursor bis zum Gegenstück markieren. Ohne
+    /// eindeutiges Gegenstück passiert nichts.</summary>
+    class procedure JumpToMatch(ASelect: Boolean); static;
     /// <summary>F3 bzw. Umschalt+F3 mit einzeiliger Markierung: nächstes bzw. vorheriges Vorkommen markieren
     /// und als Suchtext der IDE übernehmen. False ohne solche Markierung (die Taste geht an die IDE).</summary>
     class function TryFindSelection(ABackward: Boolean): Boolean; static;
@@ -139,6 +142,7 @@ uses
   Atlas.Core.Commands.Palette,
   Atlas.Core.Editor.Selection,
   Atlas.Core.Editor.MethodToggle,
+  Atlas.Core.Editor.Match,
   Atlas.Core.Editor.TestUnit,
   Atlas.UI.Strings,
   Atlas.UI.Commands.Palette,
@@ -709,6 +713,45 @@ begin
   View.MoveViewToCursor;
   View.Paint;
   Result := True;
+end;
+
+class procedure TAtlasIdeEditorCommands.JumpToMatch(ASelect: Boolean);
+var
+  Editors: IOTAEditorServices;
+  View: IOTAEditView;
+  Text, LineText: string;
+  Lines: TArray<string>;
+  Cursor: TOTAEditPos;
+  TabWidth, Row, Character: Integer;
+  Target, Start, Stop: TAtlasMatchSpot;
+begin
+  if not TAtlasIdeSettings.Current.JumpToMatch then
+    Exit;
+  if not Supports(BorlandIDEServices, IOTAEditorServices, Editors) then
+    Exit;
+  View := Editors.TopView;
+  if (View = nil) or (View.Buffer = nil) then
+    Exit;
+  Text := TAtlasEditorBuffer.Text(View.Buffer);
+  Lines := Text.Split([#13#10, #10]);
+  TabWidth := TAtlasEditorBuffer.TabWidth(View.Buffer);
+  Cursor := View.CursorPos;
+  Row := Cursor.Line - 1;
+  LineText := '';
+  if (Row >= 0) and (Row < Length(Lines)) then
+    LineText := Lines[Row];
+  Character := TLspSession.ColumnToIndex(LineText, Cursor.Col, TabWidth);
+  if ASelect then
+  begin
+    if TAtlasJumpToMatch.Selection(Text, Row, Character, Start, Stop) then
+      Select(View, Lines, TLspRange.Create(Start.Line, Start.Character, Stop.Line, Stop.Character));
+    Exit;
+  end;
+  if not TAtlasJumpToMatch.Target(Text, Row, Character, Target) then
+    Exit;
+  View.CursorPos := EditPos(Lines, TLspTextPosition.Create(Target.Line, Target.Character), TabWidth);
+  View.MoveViewToCursor;
+  View.Paint;
 end;
 
 class procedure TAtlasIdeEditorCommands.StepProblem(AForward: Boolean);

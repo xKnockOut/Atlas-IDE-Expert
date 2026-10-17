@@ -909,6 +909,21 @@ begin
   Result := TAtlasIdeSettings.Current.Outline;
 end;
 
+function JumpToMatchVisible: Boolean;
+begin
+  Result := TAtlasIdeSettings.Current.JumpToMatch;
+end;
+
+procedure JumpToMatch;
+begin
+  TAtlasIdeEditorCommands.JumpToMatch(False);
+end;
+
+procedure SelectToMatch;
+begin
+  TAtlasIdeEditorCommands.JumpToMatch(True);
+end;
+
 function BreadcrumbsVisible: Boolean;
 begin
   Result := TAtlasIdeBreadcrumbs.Enabled;
@@ -1058,6 +1073,11 @@ begin
   // Brotkrumenleiste (#590): Fokus auf das letzte Glied; nur sichtbar, solange editor.breadcrumbs an ist.
   Add('Atlas.Breadcrumbs', TAtlasTextId.BreadcrumbsCommand,
     Guarded(TAtlasFeature.EditorCommands, TAtlasIdeBreadcrumbs.Focus), BreadcrumbsVisible);
+  // Sprung zum Gegenstück (#635); nur sichtbar, solange keys.jumpToMatch an ist.
+  Add('Atlas.JumpToMatch', TAtlasTextId.JumpToMatchCommand, Guarded(TAtlasFeature.EditorCommands, JumpToMatch),
+    JumpToMatchVisible);
+  Add('Atlas.JumpToMatchSelect', TAtlasTextId.JumpToMatchSelectCommand,
+    Guarded(TAtlasFeature.EditorCommands, SelectToMatch), JumpToMatchVisible);
   Add('Atlas.Callers', TAtlasTextId.MenuIncoming, Hierarchy(TAtlasHierarchyDirection.Incoming));
   Add('Atlas.Calls', TAtlasTextId.MenuOutgoing, Hierarchy(TAtlasHierarchyDirection.Outgoing));
   Add('Atlas.Supertypes', TAtlasTextId.MenuSupertypes, Hierarchy(TAtlasHierarchyDirection.Supertypes));

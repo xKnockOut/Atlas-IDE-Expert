@@ -1143,6 +1143,21 @@ Vorbereitung: Git-Projekt `GitDemo` mit `.atlas` `"tracker": {"provider": "githu
 | DI6 | Optionen › Atlas › Befehle: „Zwischen Deklaration und Implementierung wechseln“ aus, OK | Strg+Umschalt+↑/↓ macht wieder die IDE; Menü *Atlas* › „Deklaration/Implementierung wechseln“ geht weiter |
 | DI7 | Taste 1 auf Strg+Alt+D ändern, Taste 2 leeren, OK | Strg+Alt+D wechselt; Strg+Umschalt+↑ macht die IDE, Strg+Umschalt+↓ ebenso |
 | DI8 | Menü *Atlas*, Kontextmenü *Atlas* und Befehlspalette „Deklaration/Implementierung wechseln“ | Sprung wie DI1; außerhalb einer Methode Zeile „Am Cursor steht keine Methode …“ in der Meldungsansicht |
+## Sprung zum Gegenstück (#635)
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| GS1 | Cursor auf `begin` einer Methode, Strg+Ü, noch einmal Strg+Ü | Cursor auf dem passenden `end`, dann zurück auf `begin` |
+| GS2 | Cursor auf `try` eines try/finally, dreimal Strg+Ü | `finally`, dann `end`, dann wieder `try`; ebenso mit except |
+| GS3 | Auf `case`, `record`, `class` (mit Rumpf) und `repeat` | Sprung zum `end` bzw. `until` und zurück |
+| GS4 | Cursor vor `(` bzw. `[` in einem Ausdruck mit verschachtelten Klammern | Sprung zur passenden schließenden Klammer und zurück |
+| GS5 | `{$IFDEF DEBUG}` … `{$ELSE}` … `{$ENDIF}` in einer Release-Konfiguration (Zweig ausgegraut) | Reihum IFDEF → ELSE → ENDIF |
+| GS6 | Cursor auf dem Methodennamen in der Klassendeklaration, Strg+Ü; dann auf `procedure` | Sprung zum Namen in der Implementierung; auf `procedure` passiert nichts |
+| GS7 | `end` in einem String und in einem Kommentar | Kein Sprung |
+| GS8 | Ein `end` löschen, Cursor auf ein `begin` davor | Kein Sprung an eine falsche Stelle |
+| GS9 | Cursor auf `begin`, Strg+Umschalt+Ü; auf `end`, Strg+Umschalt+Ü | Markierung vom Cursor bis hinter `end` bzw. ab `begin` bis zum Cursor |
+| GS10 | Optionen › Atlas › Befehle: „Sprung zum Gegenstück“ aus | Strg+Ü und Strg+Umschalt+Ü tun nichts mehr, Palettenbefehle fehlen; Tasten änderbar und in der Tastenübersicht |
+
 ## DUnitX-Tests ausführen (#69)
 
 Vorbereitung: RAD Studio mit Atlas-Plugin; Projektgruppe mit einer Anwendung und einem DUnitX-Testprojekt aus der Vorlage von RAD Studio (Hauptdatei mit `DUnitX.TestFramework` und `TDUnitXXMLNUnitFileLogger`), darin eine Fixture mit einem bestehenden Test, einem Test `Assert.AreEqual(0, 1)` und einem `[TestCase]`. Meldungsansicht, Reiter „Atlas“.

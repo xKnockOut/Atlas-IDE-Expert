@@ -362,6 +362,12 @@ begin
   Assert.AreEqual($60BE, Integer(EntryOf(Entries, TAtlasKeyFunction.Breadcrumbs).Key));
   Assert.IsFalse(EntryOf(Entries, TAtlasKeyFunction.Breadcrumbs).Disabled);
   Assert.AreEqual('Atlas.Breadcrumbs', TAtlasKeyMap.CommandIdOf(TAtlasKeyFunction.Breadcrumbs));
+  // Sprung zum Gegenstück (#635): Strg+Ü und Strg+Umschalt+Ü.
+  Assert.AreEqual($40BA, Integer(EntryOf(Entries, TAtlasKeyFunction.JumpToMatch).Key));
+  Assert.AreEqual($60BA, Integer(EntryOf(Entries, TAtlasKeyFunction.JumpToMatchSelect).Key));
+  Assert.IsFalse(EntryOf(Entries, TAtlasKeyFunction.JumpToMatchSelect).Disabled);
+  Assert.AreEqual('Atlas.JumpToMatch', TAtlasKeyMap.CommandIdOf(TAtlasKeyFunction.JumpToMatch));
+  Assert.AreEqual('Atlas.JumpToMatchSelect', TAtlasKeyMap.CommandIdOf(TAtlasKeyFunction.JumpToMatchSelect));
   Assert.AreEqual(Ord(TAtlasKeySource.Binding), Ord(TAtlasKeyMap.SourceOf(TAtlasKeyFunction.TestUnit)));
   Settings.EditorKeysPriority := True;
   Assert.IsTrue(EntryOf(TAtlasKeyEntry.AllFromSettings(Settings), TAtlasKeyFunction.UnitSearch).Priority);
@@ -392,6 +398,7 @@ begin
   Settings.NavHistory := False;
   Settings.Peek := False;
   Settings.Breadcrumbs := False;
+  Settings.JumpToMatch := False;
   Entries := TAtlasKeyEntry.AllFromSettings(Settings);
   for Entry in Entries do
     if Entry.Func in [TAtlasKeyFunction.MethodToggleUp, TAtlasKeyFunction.MethodToggleDown,
@@ -400,7 +407,8 @@ begin
       TAtlasKeyFunction.WelcomeQuickBuild, TAtlasKeyFunction.WelcomeQuickTests, TAtlasKeyFunction.NextProblem,
       TAtlasKeyFunction.PreviousProblem, TAtlasKeyFunction.QuickOpen, TAtlasKeyFunction.NavBack,
       TAtlasKeyFunction.NavForward, TAtlasKeyFunction.LastEdit, TAtlasKeyFunction.PeekDefinition,
-      TAtlasKeyFunction.PeekReferences, TAtlasKeyFunction.Breadcrumbs] then
+      TAtlasKeyFunction.PeekReferences, TAtlasKeyFunction.Breadcrumbs, TAtlasKeyFunction.JumpToMatch,
+      TAtlasKeyFunction.JumpToMatchSelect] then
     begin
       Assert.IsTrue(Entry.Disabled, 'abgeschaltet: ' + IntToStr(Ord(Entry.Func)));
       Assert.AreEqual(Ord(TAtlasKeyStatus.NoKey), Ord(Entry.Status('IDE: Klassennavigation')),

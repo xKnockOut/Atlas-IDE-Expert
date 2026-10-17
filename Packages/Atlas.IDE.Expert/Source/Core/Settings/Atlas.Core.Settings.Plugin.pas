@@ -534,6 +534,12 @@ type
     BreadcrumbsShowUnit: Boolean;
     /// <summary>Kürzel „Brotkrumenleiste“ (#590, keys.breadcrumbs); Vorgabe Strg+Umschalt+Punkt.</summary>
     BreadcrumbsKey: Integer;
+    /// <summary>Sprung zum Gegenstück (#635, keys.jumpToMatch).</summary>
+    JumpToMatch: Boolean;
+    /// <summary>Kürzel „Zum Gegenstück springen“ (#635, keys.jumpToMatchShortcut); Vorgabe Strg+Ü.</summary>
+    JumpToMatchKey: Integer;
+    /// <summary>Kürzel „Bis zum Gegenstück markieren“ (#635, keys.jumpToMatchSelect); Vorgabe Strg+Umschalt+Ü.</summary>
+    JumpToMatchSelectKey: Integer;
     /// <summary>Hauptschalter der Atlas-Willkommensseite (#753, welcomePage.enabled): Atlas-Bereiche auf der
     /// Willkommensseite der IDE und Fenster „Atlas-Start“.</summary>
     WelcomePage: Boolean;
@@ -1085,6 +1091,9 @@ begin
   Result.Breadcrumbs := True;
   Result.BreadcrumbsShowUnit := False;
   Result.BreadcrumbsKey := $60BE; // Strg+Umschalt+.
+  Result.JumpToMatch := True;
+  Result.JumpToMatchKey := $40BA; // Strg+Ü (VK_OEM_1 auf deutscher Tastatur)
+  Result.JumpToMatchSelectKey := $60BA; // Strg+Umschalt+Ü
   Result.WelcomePage := True;
   Result.WelcomePageHost := 'welcomePage';
   Result.WelcomePageLayout := 'off';
@@ -1267,6 +1276,8 @@ begin
   PeekDefinitionKey := EnsureRange(PeekDefinitionKey, 0, $FFFF);
   PeekReferencesKey := EnsureRange(PeekReferencesKey, 0, $FFFF);
   BreadcrumbsKey := EnsureRange(BreadcrumbsKey, 0, $FFFF);
+  JumpToMatchKey := EnsureRange(JumpToMatchKey, 0, $FFFF);
+  JumpToMatchSelectKey := EnsureRange(JumpToMatchSelectKey, 0, $FFFF);
   BookmarkKey := EnsureRange(BookmarkKey, 0, $FFFF);
   HideElementKey := EnsureRange(HideElementKey, 0, $FFFF);
   InlineDiagnostics := Choice(InlineDiagnostics, ['errors', 'off', 'errorsAndWarnings', 'all']);
@@ -1498,6 +1509,9 @@ begin
   Breadcrumbs := AStore.ReadInteger('Breadcrumbs', BoolValue(Default.Breadcrumbs)) <> 0;
   BreadcrumbsShowUnit := AStore.ReadInteger('BreadcrumbsShowUnit', BoolValue(Default.BreadcrumbsShowUnit)) <> 0;
   BreadcrumbsKey := AStore.ReadInteger('BreadcrumbsKey', Default.BreadcrumbsKey);
+  JumpToMatch := AStore.ReadInteger('JumpToMatch', BoolValue(Default.JumpToMatch)) <> 0;
+  JumpToMatchKey := AStore.ReadInteger('JumpToMatchKey', Default.JumpToMatchKey);
+  JumpToMatchSelectKey := AStore.ReadInteger('JumpToMatchSelectKey', Default.JumpToMatchSelectKey);
   WelcomePage := AStore.ReadInteger('WelcomePage', BoolValue(Default.WelcomePage)) <> 0;
   WelcomePageHost := AStore.ReadString('WelcomePageHost', Default.WelcomePageHost);
   WelcomePageLayout := AStore.ReadString('WelcomePageLayout', Default.WelcomePageLayout);
@@ -1776,6 +1790,9 @@ begin
   AStore.WriteInteger('Breadcrumbs', BoolValue(Breadcrumbs));
   AStore.WriteInteger('BreadcrumbsShowUnit', BoolValue(BreadcrumbsShowUnit));
   AStore.WriteInteger('BreadcrumbsKey', BreadcrumbsKey);
+  AStore.WriteInteger('JumpToMatch', BoolValue(JumpToMatch));
+  AStore.WriteInteger('JumpToMatchKey', JumpToMatchKey);
+  AStore.WriteInteger('JumpToMatchSelectKey', JumpToMatchSelectKey);
   AStore.WriteInteger('WelcomePage', BoolValue(WelcomePage));
   AStore.WriteString('WelcomePageHost', WelcomePageHost);
   AStore.WriteString('WelcomePageLayout', WelcomePageLayout);
