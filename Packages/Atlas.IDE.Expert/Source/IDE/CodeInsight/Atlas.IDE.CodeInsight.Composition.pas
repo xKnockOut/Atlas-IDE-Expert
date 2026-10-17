@@ -87,6 +87,7 @@ uses
   Atlas.IDE.Editor.SmartPaste,
   Atlas.IDE.Editor.StatementCompletion,
   Atlas.IDE.Editor.OverviewRuler,
+  Atlas.IDE.Editor.Minimap,
   Atlas.IDE.UnitSearch.Commands,
   Atlas.IDE.Generate.Commands,
   Atlas.IDE.Generate.NewFile,
@@ -2221,6 +2222,8 @@ begin
     end);
   // Übersichtsleiste an der Scrollleiste (#519).
   TAtlasIdeOverviewRuler.Install;
+  // Minimap neben der Scrollleiste (#873, experimentell); fragt die Gliederung über TAtlasIdeOutlineCache.
+  TAtlasIdeMinimap.Install;
   // Schnell öffnen (#503): Dateiliste im Hintergrund, zuletzt geöffnete Dateien zählen.
   TAtlasIdeQuickOpen.Install(
     function: TLspSession
@@ -2249,6 +2252,7 @@ begin
   TAtlasIdePeek.Uninstall;
   TAtlasIdeStickyScroll.Uninstall;
   TAtlasIdeBreadcrumbs.Uninstall;
+  TAtlasIdeMinimap.Uninstall;
   TAtlasIdeOverviewRuler.Uninstall;
   TAtlasIdeLineChanges.Uninstall;
   TAtlasIdeLineMove.Uninstall;
@@ -3573,6 +3577,7 @@ begin
       TAtlasIdeBreadcrumbs.ThemeChanged;
       TAtlasIdeLineChanges.ThemeChanged;
       TAtlasIdeOverviewRuler.ThemeChanged;
+      TAtlasIdeMinimap.ThemeChanged;
     end;
   // Zuerst entscheiden, ob Atlas abgesichert startet (#722): Davon hängt ab, was angemeldet wird.
   if SafeMode = nil then
@@ -3622,6 +3627,8 @@ begin
       TAtlasIdeLineChanges.ApplySettings;
       // editor.overviewRuler, editor.overviewRulerKinds (#519).
       TAtlasIdeOverviewRuler.ApplySettings;
+      // editor.minimap* (#873, experimentell).
+      TAtlasIdeMinimap.ApplySettings;
       // notifications.* (#601): an oder aus, Höchstzahl, Verhalten je Quelle.
       if Notifications <> nil then
         Notifications.ApplySettings;

@@ -589,7 +589,11 @@ type
     SmartPasteNone, SmartPasteOne, SmartPasteTitle, SmartPasteNoUnit, SmartPasteAccept, SmartPasteCancel,
     SmartPasteUsesTitle, SmartPasteDone, SmartPasteImplementation, SmartPasteFailed,
     SettingsSmartPaste, SettingsSmartPasteOff, SettingsSmartPasteUses, SettingsSmartPasteIndent,
-    SettingsSmartPasteBoth, CompletionLossyHint);
+    SettingsSmartPasteBoth, CompletionLossyHint, SettingsMinimap, SettingsMinimapRender, SettingsMinimapBlocks,
+    SettingsMinimapCharacters, SettingsMinimapWidth, SettingsMinimapScale, SettingsMinimapMaxColumn,
+    SettingsMinimapSide, SettingsMinimapRight, SettingsMinimapLeft, SettingsMinimapSlider, SettingsMinimapSliderAlways,
+    SettingsMinimapSliderHover, SettingsMinimapHeaders, SettingsMinimapMethod, SettingsMinimapMarkers,
+    SettingsMinimapClickJumps, MinimapNoticeTitle, MinimapNoticeText, MinimapHideIde, MinimapTurnOff);
 
   TAtlasStrings = class
   private class var
@@ -1702,7 +1706,14 @@ const
      'Wegen Zirkelbezug im implementation-Teil: %s', 'uses ergänzen fehlgeschlagen: %s',
      'Einfügen mit uses-Ergänzung und Einrückung (experimentell)', 'Aus', 'Nur uses ergänzen', 'Nur einrücken',
      'uses ergänzen und einrücken',
-     '%s passt nicht verlustfrei zu %s: Round(…) rundet, Trunc(…) schneidet ab.'),
+     '%s passt nicht verlustfrei zu %s: Round(…) rundet, Trunc(…) schneidet ab.',
+     'Minimap neben der Scrollleiste (experimentell)', 'Darstellung der Minimap:', 'Balken je Wort',
+     'Winzige Zeichen', 'Breite der Minimap (Pixel):', 'Maßstab der Minimap (1–3):', 'Höchste gezeigte Spalte:',
+     'Seite der Minimap:', 'Rechts', 'Links', 'Sichtbereich zeigen:', 'Immer', 'Nur beim Überfahren',
+     'Überschriften für Klassen und Methoden', 'Aktuelle Methode hinterlegen',
+     'Marken zeigen (Fehler, Suchtreffer, Git-Änderungen)', 'Klick springt an die Stelle (sonst nur scrollen)',
+     'Zwei Minimaps sichtbar', 'Die IDE zeigt ihre eigene Minimap neben der von Atlas.', 'IDE-Minimap ausblenden',
+     'Atlas-Minimap aus'),
     ('Enter to accept · Esc to close', '%d of %d', 'No matches for “%s”', 'Backspace widens the search',
      'No suggestions here', 'Esc closes', 'No details for this entry', 'Overload', 'Deprecated: %s', 'Deprecated.',
      'Inherited from %s', 'Inherited', 'optional, default %s', 'No overload with %d parameters.', '… %d more',
@@ -2733,7 +2744,13 @@ const
      'Because of a circular reference in the implementation section: %s', 'Adding uses failed: %s',
      'Paste with uses completion and indentation (experimental)', 'Off', 'Add uses only', 'Indent only',
      'Add uses and indent',
-     '%s does not fit %s without loss: Round(…) rounds, Trunc(…) truncates.'));
+     '%s does not fit %s without loss: Round(…) rounds, Trunc(…) truncates.',
+     'Minimap next to the scroll bar (experimental)', 'Minimap rendering:', 'Bar per word', 'Tiny characters',
+     'Minimap width (pixels):', 'Minimap scale (1–3):', 'Highest column shown:', 'Minimap side:', 'Right', 'Left',
+     'Show visible area:', 'Always', 'Only on mouse over', 'Headers for classes and methods',
+     'Highlight the current method', 'Show markers (errors, search hits, Git changes)',
+     'Click jumps to the spot (otherwise it only scrolls)', 'Two minimaps visible',
+     'The IDE shows its own minimap next to the Atlas one.', 'Hide IDE minimap', 'Turn Atlas minimap off'));
 
 { TAtlasStrings }
 

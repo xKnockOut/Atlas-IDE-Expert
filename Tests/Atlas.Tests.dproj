@@ -743,6 +743,10 @@
         <DCCReference Include="IDE.Expert\Atlas.Core.Editor.Overview.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\UI\Editor\Atlas.UI.Editor.OverviewRuler.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.UI.Editor.OverviewRuler.Tests.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Editor\Atlas.Core.Editor.Minimap.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.Core.Editor.Minimap.Tests.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\UI\Editor\Atlas.UI.Editor.Minimap.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.UI.Editor.Minimap.Tests.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Editor.SnapshotPolicy.Tests.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Editor.CloseRules.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Build\Atlas.Core.Build.Messages.pas"/>
