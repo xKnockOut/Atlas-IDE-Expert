@@ -59,6 +59,7 @@ type
     [Test]
     procedure SwitchingUsagesOnRereadsCachedUnits;
     [Test]
+    [Category('Benchmark')]
     procedure ReopensThousandUnitsFromCacheWithinThreeSeconds;
     [Test]
     procedure SavedDeclarationIsAvailableWithinOneSecond;

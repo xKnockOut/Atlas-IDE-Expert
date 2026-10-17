@@ -117,6 +117,10 @@
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.Status.Tests.pas"/>
         <DCCReference Include="Common\Diagnostics\Atlas.Common.Diagnostics.BugReport.Tests.pas"/>
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.QualifiedNames.Tests.pas"/>
+        <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.StringLiteralCommands.Tests.pas"/>
+        <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.Internals.Cancellation.Tests.pas"/>
+        <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.WorkDoneProgress.Tests.pas"/>
+        <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.Documentation.Tests.pas"/>
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.TestUnits.Tests.pas"/>
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.SlashMenu.Tests.pas"/>
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.UnitSearch.Tests.pas"/>
@@ -172,11 +176,13 @@
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.Internals.FormCache.Tests.pas"/>
         <DCCReference Include="Common\JsonRpc\Atlas.Common.JsonRpc.Watchdog.Tests.pas"/>
         <DCCReference Include="Common\JsonRpc\Atlas.Common.JsonRpc.CurrentRequest.Tests.pas"/>
+        <DCCReference Include="Common\JsonRpc\Atlas.Common.JsonRpc.Messages.Tests.pas"/>
         <DCCReference Include="Windows\Diagnostics\Atlas.Windows.Diagnostics.StackTrace.Tests.pas"/>
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.SyntaxDiagnostics.Tests.pas"/>
         <DCCReference Include="Common\Configuration\Atlas.Common.Configuration.Tests.pas"/>
         <DCCReference Include="Common\Configuration\Atlas.Common.Configuration.Scopes.Tests.pas"/>
         <DCCReference Include="Common\Configuration\Atlas.Common.Configuration.JsonTree.Tests.pas"/>
+        <DCCReference Include="Common\Configuration\Atlas.Common.Configuration.Internals.Forbidden.Tests.pas"/>
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.Configuration.Tests.pas"/>
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.SettingsCommands.Tests.pas"/>
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.DocumentSymbols.Tests.pas"/>
@@ -343,6 +349,7 @@
         <DCCReference Include="IDE.Expert\Atlas.Core.Style.Tests.pas"/>
         <DCCReference Include="Common\Pascal\Atlas.Common.Pascal.XmlDoc.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Settings\Atlas.Core.Settings.OverviewKinds.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.Core.Settings.OverviewKinds.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Settings\Atlas.Core.Settings.Plugin.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Settings.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Settings\Atlas.Core.Settings.JsonText.pas"/>
@@ -402,6 +409,8 @@
         <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Completion\Atlas.Core.Completion.Ranking.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Completion\Atlas.Core.Completion.Sets.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Completion.Sets.Tests.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Completion\Atlas.Core.Completion.Width.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.Core.Completion.Width.Tests.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Completion.Declare.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Completion\Atlas.Core.Completion.Usage.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Completion.Ranking.Tests.pas"/>
@@ -749,6 +758,10 @@
         <DCCReference Include="..\Application\Source\Shell\Shell.Commands.Build.pas"/>
         <DCCReference Include="..\Application\Source\Shell\Shell.Commands.Index.pas"/>
         <DCCReference Include="Application\Shell\Shell.Commands.Tests.pas"/>
+        <DCCReference Include="..\Application\Source\Shell\Shell.VcsChanges.pas"/>
+        <DCCReference Include="Application\Shell\Shell.VcsChanges.Tests.pas"/>
+        <DCCReference Include="..\Application\Source\Shell\Shell.Linter.pas"/>
+        <DCCReference Include="Application\Shell\Shell.Linter.Tests.pas"/>
         <BuildConfiguration Include="Base">
             <Key>Base</Key>
         </BuildConfiguration>

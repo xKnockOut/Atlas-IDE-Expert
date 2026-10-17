@@ -16,6 +16,7 @@ type
     [Test]
     procedure CollectsListedFilesWithoutDuplicates;
     [Test]
+    [Category('Benchmark')]
     procedure FindsFormUnitInLargeGroupQuickly;
     [Test]
     procedure OpenThenRecentThenProjectThenRest;

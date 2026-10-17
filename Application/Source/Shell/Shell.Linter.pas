@@ -285,7 +285,7 @@ end;
 /// <summary>Zähler nach --update-baseline auf stderr (#97).</summary>
 procedure ReportBaselineUpdate(const AUpdate: TBaselineUpdate; const APath: string);
 begin
-  WriteError(Format('Baseline geschrieben: %s (%d Treffer in %d Dateien; %d neu, %d entfernt, %d unverändert)',
+  WriteError(Format('Baseline geschrieben: %s (%d Treffer, %d Dateien geprüft; %d neu, %d entfernt, %d unverändert)',
     [APath, AUpdate.Total, AUpdate.Files, AUpdate.Added, AUpdate.Removed, AUpdate.Unchanged]));
   if AUpdate.Completed > 0 then
     WriteError(Format('%d Einträge der älteren Baseline um die Routine ergänzt', [AUpdate.Completed]));

@@ -1318,10 +1318,11 @@ begin
       Watch := TStopwatch.StartNew;
       Result := FBaseline.Execute(AArguments);
       if Result is TJSONObject then
-        FLogger.Info(Format('Baseline aktualisiert: %d Treffer in %d Dateien (%d neu, %d entfernt, %d ohne Datei), ' +
-          '%d ms', [TJSONObject(Result).GetValue<Integer>('total', -1), TJSONObject(Result).GetValue<Integer>('files',
-          -1), TJSONObject(Result).GetValue<Integer>('added', -1), TJSONObject(Result).GetValue<Integer>('removed',
-          -1), TJSONObject(Result).GetValue<Integer>('orphaned.count', -1), Watch.ElapsedMilliseconds]));
+        FLogger.Info(Format('Baseline aktualisiert: %d Treffer, %d Dateien geprüft ' +
+          '(%d neu, %d entfernt, %d ohne Datei), %d ms', [TJSONObject(Result).GetValue<Integer>('total', -1),
+          TJSONObject(Result).GetValue<Integer>('files', -1), TJSONObject(Result).GetValue<Integer>('added', -1),
+          TJSONObject(Result).GetValue<Integer>('removed', -1),
+          TJSONObject(Result).GetValue<Integer>('orphaned.count', -1), Watch.ElapsedMilliseconds]));
     end);
   FCommands.Register(TLspSlashMenu.MenuCommand,
     function(const AArguments: TJSONArray): TJSONValue

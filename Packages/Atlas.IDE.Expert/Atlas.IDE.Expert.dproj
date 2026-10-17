@@ -241,6 +241,7 @@
         <DCCReference Include="Source\IDE\Commands\Atlas.IDE.Commands.MainMenu.pas"/>
         <DCCReference Include="Source\Core\Completion\Atlas.Core.Completion.Ranking.pas"/>
         <DCCReference Include="Source\Core\Completion\Atlas.Core.Completion.Sets.pas"/>
+        <DCCReference Include="Source\Core\Completion\Atlas.Core.Completion.Width.pas"/>
         <DCCReference Include="Source\Core\Completion\Atlas.Core.Completion.Usage.pas"/>
         <DCCReference Include="Source\IDE\Completion\Atlas.IDE.Completion.History.pas"/>
         <DCCReference Include="Source\Core\Completion\Atlas.Core.Completion.Favorites.pas"/>

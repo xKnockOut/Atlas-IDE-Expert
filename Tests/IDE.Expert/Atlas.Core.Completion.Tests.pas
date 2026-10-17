@@ -75,9 +75,11 @@ type
     [Test]
     procedure CommitTextKeepsTypedCaseWhenOff;
     [Test]
+    [Category('Benchmark')]
     procedure Filters5000EntriesWithin12ms;
     /// <summary>Mit dem Rest der Liste (#497) bleibt ein Filterschritt unter 16 ms (#409).</summary>
     [Test]
+    [Category('Benchmark')]
     procedure Orders5000EntriesWithRestWithin16ms;
   end;
 
