@@ -62,6 +62,7 @@ uses
   Atlas.IDE.Build.Inbox,
   Atlas.IDE.Build.ReleaseGuard,
   Atlas.IDE.Build.OpenBuild,
+  Atlas.IDE.Editor.UnitRename,
   Atlas.IDE.Settings.Project,
   Atlas.IDE.Commands.MainMenu,
   Atlas.IDE.Editor.Rename,
@@ -225,6 +226,7 @@ var
   // Beim Öffnen eines Projekts oder einer Projektgruppe einmal bauen (build.onOpen); lebt mit den
   // Compile-Ereignissen.
   OpenBuild: TAtlasIdeOpenBuild;
+  UnitRename: TAtlasIdeUnitRename;
   // DUnitX-Tests ausführen samt Code Lens (#69), abschaltbar über TestRun bzw. CodeLensTests.
   Tests: TAtlasIdeTests;
   // Einzelnen Test ausführen bzw. im Debugger starten (#585), lebt mit Tests; abschaltbar über TestDebug.
@@ -2013,6 +2015,22 @@ begin
     end);
 end;
 
+procedure StartUnitRename;
+begin
+  UnitRename := TAtlasIdeUnitRename.Create(
+    function: TLspSession
+    begin
+      Result := nil;
+      if Manager <> nil then
+        Result := Manager.ActiveSession;
+    end,
+    procedure(AText: string)
+    begin
+      if Manager <> nil then
+        Manager.Report(AText);
+    end);
+end;
+
 procedure StartOpenBuild;
 begin
   OpenBuild := TAtlasIdeOpenBuild.Create(Compile.Events,
@@ -3126,6 +3144,18 @@ begin
     procedure
     begin
       FreeAndNil(OpenBuild);
+    end);
+  // uses nachziehen nach dem Umbenennen einer Unit (#512): ob es angeboten wird, entscheidet der Server
+  // (refactoring.unitRenameFollowUp).
+  Features.Add('UnitRename', TAtlasSafeLevel.Normal,
+    function: Boolean
+    begin
+      Result := UnitRename <> nil;
+    end,
+    StartUnitRename,
+    procedure
+    begin
+      FreeAndNil(UnitRename);
     end);
   // DUnitX-Tests (#69): nur im normalen Start und solange TestRun an ist; baut über BuildRunner, wenn er läuft.
   Features.AddWanted('Tests',

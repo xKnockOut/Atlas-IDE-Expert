@@ -295,6 +295,7 @@ type
     function ChangeSignatureActions(const AUri: string; const APosition: TTextPosition): TArray<TJSONObject>;
     /// <summary>„Klasse in eigene Unit verschieben“ (#103): das WorkspaceEdit für Name und Stelle.</summary>
     function MoveClass(const AArguments: TJSONArray): TJSONValue;
+    function UnitRenamed(const AArguments: TJSONArray): TJSONValue;
     /// <summary>Code-Aktion „Klasse … in eigene Unit verschieben …“ an APosition (#103).</summary>
     function MoveClassActions(const AUri: string; const APosition: TTextPosition): TArray<TJSONObject>;
     /// <summary>„Typ ausschreiben“ (#453) für die Inline-Variable an APosition.</summary>
@@ -433,6 +434,7 @@ uses
   Atlas.Common.Lsp.DfmPropertyRules,
   Atlas.Common.Lsp.ChangeSignature,
   Atlas.Common.Lsp.MoveClass,
+  Atlas.Common.Lsp.UnitRename,
   Atlas.Common.Lsp.Contract,
   Atlas.Common.Lsp.Positions,
   Atlas.Common.Semantics.NameResolver,
@@ -1305,6 +1307,11 @@ begin
     function(const AArguments: TJSONArray): TJSONValue
     begin
       Result := MoveClass(AArguments);
+    end);
+  FCommands.Register(TLspUnitRename.Command,
+    function(const AArguments: TJSONArray): TJSONValue
+    begin
+      Result := UnitRenamed(AArguments);
     end);
   FCommands.Register(TLspMetrics.Command,
     function(const AArguments: TJSONArray): TJSONValue
@@ -2694,6 +2701,34 @@ begin
   // Nur Zahlen ins Log, keine Namen und Pfade (#647).
   FLogger.Info(Format('Klasse verschieben: %d Dateiänderungen',
     [TJSONArray(TJSONObject(Answer.GetValue('edit')).GetValue('documentChanges')).Count]));
+  Result := Answer;
+end;
+
+function TServerComposition.UnitRenamed(const AArguments: TJSONArray): TJSONValue;
+var
+  OldUri, NewUri: string;
+  Files: TArray<string>;
+  Item: TJSONValue;
+  Answer: TJSONObject;
+begin
+  // Argumente: alte URI, neue URI, URIs der Dateien des Bereichs (#512).
+  if (AArguments = nil) or (AArguments.Count < 3) or not (AArguments.Items[2] is TJSONArray) then
+    raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams, 'Argumente "old", "new" und "files" fehlen');
+  OldUri := AArguments.Items[0].Value;
+  NewUri := AArguments.Items[1].Value;
+  if not RefactoringSettingsFor(NewUri).UnitRenameFollowUp then
+  begin
+    Answer := TJSONObject.Create;
+    Answer.AddPair('enabled', TJSONBool.Create(False));
+    Exit(Answer);
+  end;
+  Files := nil;
+  for Item in TJSONArray(AArguments.Items[2]) do
+    Files := Files + [TDocumentUris.ToPath(Item.Value)];
+  Answer := TLspUnitRename.Execute(TDocumentUris.ToPath(OldUri), TDocumentUris.ToPath(NewUri), Files, ReadSourceText);
+  // Nur Zahlen ins Log, keine Namen und Pfade (#647).
+  FLogger.Info(Format('Unit umbenannt: %d von %d Dateien betroffen',
+    [(Answer.GetValue('count') as TJSONNumber).AsInt, Length(Files)]));
   Result := Answer;
 end;
 
