@@ -127,6 +127,7 @@
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.Rename.Tests.pas"/>
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.Completion.Tests.pas"/>
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.Completion.Handle.Tests.pas"/>
+        <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.CodeActions.Tests.pas"/>
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.Completion.Contexts.Tests.pas"/>
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.CompletionEnums.Tests.pas"/>
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.CompletionRequest.Tests.pas"/>
@@ -214,6 +215,10 @@
         <DCCReference Include="Common\Editing\Atlas.Common.Editing.TypeCommands.Tests.pas"/>
         <DCCReference Include="Common\Editing\Atlas.Common.Editing.TypeCommands.JsonGolden.pas"/>
         <DCCReference Include="Common\Editing\Atlas.Common.Editing.CodeActions.TryFinallyGolden.pas"/>
+        <DCCReference Include="Common\Editing\Atlas.Common.Editing.ClassActions.Tests.pas"/>
+        <DCCReference Include="Common\Editing\Atlas.Common.Editing.ClassActions.PropertyGolden.pas"/>
+        <DCCReference Include="Common\Editing\Atlas.Common.Editing.ClassActions.InterfaceGolden.pas"/>
+        <DCCReference Include="Common\Editing\Atlas.Common.Editing.ClassActions.OverrideGolden.pas"/>
         <DCCReference Include="Common\Editing\Atlas.Common.Editing.CollectionCommands.Tests.pas"/>
         <DCCReference Include="Common\Editing\Atlas.Common.Editing.UnitTemplates.Tests.pas"/>
         <DCCReference Include="Common\Editing\Atlas.Common.Editing.TestUnits.Tests.pas"/>

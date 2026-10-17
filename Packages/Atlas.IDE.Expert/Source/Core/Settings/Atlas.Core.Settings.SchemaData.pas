@@ -11,7 +11,7 @@ function AtlasSchemaJson: string;
 implementation
 
 const
-  Lines: array[0..1127] of string = (
+  Lines: array[0..1139] of string = (
     '{',
     '  "$schema": "http://json-schema.org/draft-07/schema#",',
     '  "title": "Atlas-Konfiguration",',
@@ -505,12 +505,24 @@ const
     '          "default": true,',
     '          "description": "Weichen Deklaration und Implementierung voneinander ab, die Aktionen „Implementierung an Deklaration angleichen“ und umgekehrt anbieten.",',
     '          "x-issue": "#100"',
+    '        },',
+    '        "tryFinally": {',
+    '          "type": "boolean",',
+    '          "default": true,',
+    '          "description": "Code-Aktion „try/finally ergänzen“ nach X := TFoo.Create(…) für lokale Variablen (bei Result: try/except, das nur im Fehlerfall freigibt). Der try-Block schließt die folgende' + 'n Anweisungen bis zum Blockende bzw. bis zum Ende der Auswahl ein.",',
+    '          "x-issue": "#42"',
+    '        },',
+    '        "classActions": {',
+    '          "type": "boolean",',
+    '          "default": true,',
+    '          "description": "Code-Aktionen in einer Klassendeklaration: „Getter, Setter und Feld erzeugen“ auf einer Property ohne read/write, „Methoden von IFoo implementieren“ und „Name überschreiben“ ' + 'für virtuelle Methoden der Vorfahren.",',
+    '          "x-issue": "#42"',
     '        }',
     '      },',
     '      "x-scope": "project",',
     '      "x-page": "Vervollständigung",',
     '      "x-control": "Kontrollkästchen",',
-    '      "x-issue": "#50, #100, #188"',
+    '      "x-issue": "#42, #50, #100, #188"',
     '    },',
     '    "usesCommand": {',
     '      "type": "boolean",',

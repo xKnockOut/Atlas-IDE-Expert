@@ -90,6 +90,8 @@ Jeder Schlüssel hat genau einen Ort (Spalte „Ort“): Projekt-Schlüssel steh
 | `refactoring.newParameter` | Projekt (atlas.json) | string | `"overload"` | `"overload"`, `"updateCallers"` | Neue Parameter: overload behält die alte Signatur als Überladung, die mit dem angegebenen Wert weiterreicht (Aufrufer bleiben); updateCallers ändert alle Aufrufer. Interface-Methoden und gebundene Handler gehen nur mit updateCallers. Standardwerte erzeugt Atlas nie. |
 | `refactoring.virtualOverload` | Projekt (atlas.json) | boolean | `false` |  | Die Überladung mit der alten Signatur bei virtuellen Methoden ebenfalls virtual machen. |
 | `refactoring.syncSignatures` | Projekt (atlas.json) | boolean | `true` |  | Weichen Deklaration und Implementierung voneinander ab, die Aktionen „Implementierung an Deklaration angleichen“ und umgekehrt anbieten. |
+| `refactoring.tryFinally` | Projekt (atlas.json) | boolean | `true` |  | Code-Aktion „try/finally ergänzen“ nach X := TFoo.Create(…) für lokale Variablen (bei Result: try/except, das nur im Fehlerfall freigibt). Der try-Block schließt die folgenden Anweisungen bis zum Blockende bzw. bis zum Ende der Auswahl ein. |
+| `refactoring.classActions` | Projekt (atlas.json) | boolean | `true` |  | Code-Aktionen in einer Klassendeklaration: „Getter, Setter und Feld erzeugen“ auf einer Property ohne read/write, „Methoden von IFoo implementieren“ und „Name überschreiben“ für virtuelle Methoden der Vorfahren. |
 
 ## completeBlocks
 
