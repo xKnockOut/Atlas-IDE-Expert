@@ -32,7 +32,8 @@
 interface
 
 uses
-  System.SysUtils;
+  System.SysUtils,
+  Atlas.Common.Documents.Contract;
 
 type
   /// <summary>Ansi1252 heißt ANSI mit der Codepage aus TFileFormat.CodePage (Standard 1252).</summary>
@@ -80,6 +81,16 @@ type
     function Describe: string;
   end;
 
+  /// <summary>Ungültiges UTF-8 in einer Datei (#150): das erste Byte der Fehlstelle und seine Stelle im
+  /// dekodierten Text.</summary>
+  TInvalidUtf8 = record
+    Value: Byte;
+    /// <summary>Ab 0 in den Bytes der Datei.</summary>
+    ByteOffset: Integer;
+    /// <summary>Zeile und Spalte (UTF-16) im Text, den Decode mit dem Format liefert.</summary>
+    Position: TTextPosition;
+  end;
+
   TFileEncoding = class
   public const
     Utf8CodePage = 65001;
@@ -101,6 +112,12 @@ type
     class function ParseCodePage(const AText: string; out ACodePage: Integer): Boolean; static;
     /// <summary>Binäres Formular (beginnt mit TPF0 bzw. der Ressourcen-Kennung).</summary>
     class function IsBinaryForm(const ABytes: TBytes): Boolean; static;
+    /// <summary>
+    /// Fehlstellen in UTF-8 (#150), je eine für eine zu kurze oder ungültige Folge, mit Stelle im Text, den
+    /// Decode mit AFormat liefert: bei UTF-8 dort ein U+FFFD, bei ANSI ein Zeichen je Byte. ANSI-Dateien
+    /// ohne gültige Mehrbytefolge sind echtes ANSI und liefern nichts; UTF-16 ebenso.
+    /// </summary>
+    class function InvalidUtf8(const ABytes: TBytes; const AFormat: TFileFormat): TArray<TInvalidUtf8>; static;
     /// <summary>Vorhandene Datei, die ein binäres Formular ist; False, wenn sie fehlt oder nicht lesbar ist.</summary>
     class function IsBinaryFormFile(const AFileName: string): Boolean; static;
     /// <summary>
@@ -444,6 +461,93 @@ end;
 class function TFileEncoding.ParseCodePage(const AText: string; out ACodePage: Integer): Boolean;
 begin
   Result := TTextEncodingProbe.ParseCodePage(AText, ACodePage);
+end;
+
+class function TFileEncoding.InvalidUtf8(const ABytes: TBytes; const AFormat: TFileFormat): TArray<TInvalidUtf8>;
+var
+  Index, Count, Valid, Line, Column: Integer;
+  Lead: Byte;
+  CodePoint: Cardinal;
+  Item: TInvalidUtf8;
+  Multibyte: Boolean;
+begin
+  Result := nil;
+  if AFormat.Encoding in [TFileEncodingKind.Utf16LE, TFileEncodingKind.Utf16BE] then
+    Exit;
+  Index := 0;
+  if AFormat.Encoding = TFileEncodingKind.Utf8Bom then
+    Index := 3;
+  Line := 0;
+  Column := 0;
+  Multibyte := False;
+  while Index < Length(ABytes) do
+  begin
+    Lead := ABytes[Index];
+    if Lead < $80 then
+    begin
+      if Lead = 10 then
+      begin
+        Inc(Line);
+        Column := 0;
+      end
+      else
+        Inc(Column);
+      Inc(Index);
+      Continue;
+    end;
+    Count := 0;
+    CodePoint := 0;
+    if (Lead >= $C2) and (Lead <= $DF) then
+    begin
+      Count := 1;
+      CodePoint := Lead and $1F;
+    end
+    else if (Lead >= $E0) and (Lead <= $EF) then
+    begin
+      Count := 2;
+      CodePoint := Lead and $0F;
+    end
+    else if (Lead >= $F0) and (Lead <= $F4) then
+    begin
+      Count := 3;
+      CodePoint := Lead and $07;
+    end;
+    // Gültige Folgebytes zählen; eine zu kurze Folge ist eine Fehlstelle samt ihrer Folgebytes.
+    Valid := 0;
+    while (Valid < Count) and (Index + Valid + 1 < Length(ABytes)) and
+      ((ABytes[Index + Valid + 1] and $C0) = $80) do
+    begin
+      CodePoint := (CodePoint shl 6) or (ABytes[Index + Valid + 1] and $3F);
+      Inc(Valid);
+    end;
+    if (Count > 0) and (Valid = Count) and not (((Count = 2) and (CodePoint < $800)) or
+      ((Count = 3) and (CodePoint < $10000)) or (CodePoint > $10FFFF) or
+      ((CodePoint >= $D800) and (CodePoint <= $DFFF))) then
+    begin
+      Multibyte := True;
+      // Im ANSI-Text ein Zeichen je Byte, im UTF-8-Text eines bzw. ein Surrogatpaar.
+      if AFormat.Encoding = TFileEncodingKind.Ansi1252 then
+        Inc(Column, Count + 1)
+      else if CodePoint >= $10000 then
+        Inc(Column, 2)
+      else
+        Inc(Column);
+      Inc(Index, Count + 1);
+      Continue;
+    end;
+    Item.Value := Lead;
+    Item.ByteOffset := Index;
+    Item.Position := TTextPosition.Create(Line, Column);
+    Result := Result + [Item];
+    if AFormat.Encoding = TFileEncodingKind.Ansi1252 then
+      Inc(Column, Valid + 1)
+    else
+      Inc(Column);
+    Inc(Index, Valid + 1);
+  end;
+  // ANSI ohne eine einzige gültige UTF-8-Folge: kein beschädigtes UTF-8, sondern ANSI.
+  if (AFormat.Encoding = TFileEncodingKind.Ansi1252) and not Multibyte then
+    Result := nil;
 end;
 
 class function TFileEncoding.IsBinaryForm(const ABytes: TBytes): Boolean;

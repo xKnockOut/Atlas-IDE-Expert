@@ -43,7 +43,7 @@ begin
     '      "name": "Bidirectional control character",' + #10 +
     '      "category": "vulnerability",' + #10 +
     '      "severity": "error",' + #10 +
-    '      "description": "Bidirectional control characters can make code display differently from how it compiles (Trojan Source).",' + #10 +
+    '      "description": "Bidirectional control characters can make code display differently from how it compiles (Trojan Source); also in form files. Direction marks in RTL text only with low confidence.' + '",' + #10 +
     '      "bad": "if IsAdmin then { U+202E } begin",' + #10 +
     '      "good": "if IsAdmin then begin"' + #10 +
     '    },' + #10 +
@@ -52,7 +52,7 @@ begin
     '      "name": "Invisible character",' + #10 +
     '      "category": "security-hotspot",' + #10 +
     '      "severity": "warning",' + #10 +
-    '      "description": "Invisible or zero-width characters in the source code.",' + #10 +
+    '      "description": "Invisible or zero-width characters in the source code and form files; medium confidence in strings and comments.",' + #10 +
     '      "bad": "Count{U+200B} := 0;",' + #10 +
     '      "good": "Count := 0;"' + #10 +
     '    },' + #10 +
@@ -61,7 +61,7 @@ begin
     '      "name": "Control character",' + #10 +
     '      "category": "bug",' + #10 +
     '      "severity": "error",' + #10 +
-    '      "description": "NUL or control characters or invalid bytes (U+FFFD) in the source code.",' + #10 +
+    '      "description": "NUL or control characters or invalid UTF-8 bytes in the source code and the form file; invalid bytes with exact line and column.",' + #10 +
     '      "bad": "S := ''abc{U+0000}'';",' + #10 +
     '      "good": "S := ''abc'' + #0;"' + #10 +
     '    },' + #10 +
@@ -845,17 +845,17 @@ begin
     '    {' + #10 +
     '      "id": "bidi-control",' + #10 +
     '      "name": "Bidirektionales Steuerzeichen",' + #10 +
-    '      "description": "Bidirektionale Steuerzeichen können Code anders anzeigen, als er kompiliert wird (Trojan Source)."' + #10 +
+    '      "description": "Bidirektionale Steuerzeichen können Code anders anzeigen, als er kompiliert wird (Trojan Source); auch in Formulardateien. Richtungsmarken in RTL-Text nur mit niedriger Konfidenz' + '."' + #10 +
     '    },' + #10 +
     '    {' + #10 +
     '      "id": "invisible-char",' + #10 +
     '      "name": "Unsichtbares Zeichen",' + #10 +
-    '      "description": "Unsichtbare oder Nullbreiten-Zeichen im Quelltext."' + #10 +
+    '      "description": "Unsichtbare oder Nullbreiten-Zeichen im Quelltext und in Formulardateien; in Strings und Kommentaren mittlere Konfidenz."' + #10 +
     '    },' + #10 +
     '    {' + #10 +
     '      "id": "control-char",' + #10 +
     '      "name": "Steuerzeichen",' + #10 +
-    '      "description": "NUL- und Steuerzeichen oder ungültige Bytes (U+FFFD) im Quelltext."' + #10 +
+    '      "description": "NUL- und Steuerzeichen oder ungültige UTF-8-Bytes im Quelltext und in der Formulardatei; ungültige Bytes mit genauer Zeile und Spalte."' + #10 +
     '    },' + #10 +
     '    {' + #10 +
     '      "id": "confusable-identifier",' + #10 +

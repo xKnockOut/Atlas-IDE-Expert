@@ -38,6 +38,10 @@ type
     procedure SurveyCountsEncodings;
     [Test]
     procedure SurveyDetectsMixedProjects;
+    [Test]
+    procedure InvalidUtf8GivesLineAndColumn;
+    [Test]
+    procedure InvalidUtf8InPlainAnsiIsEmpty;
   end;
 
   /// <summary>Vorgabe-Kodierung je Ordner und Schutz binärer Formulare (#121).</summary>
@@ -492,6 +496,36 @@ begin
   Assert.AreEqual('1 Datei in Windows-1250', Survey.Describe);
   Survey.AnsiCodePage := TFileEncoding.Utf8CodePage;
   Assert.AreEqual('1 Datei in Windows-1252', Survey.Describe);
+end;
+
+procedure TFileEncodingTests.InvalidUtf8GivesLineAndColumn;
+var
+  Data: TBytes;
+  Format: TFileFormat;
+  Invalid: TArray<TInvalidUtf8>;
+begin
+  // BOM, "a" LF, Emoji (vier Bytes, zwei UTF-16-Einheiten), zu kurzes E2 82, "b", einzelnes $FF.
+  Data := Bytes([$EF, $BB, $BF, Ord('a'), 10, $F0, $9F, $98, $80, $E2, $82, Ord('b'), $FF]);
+  Format := TFileFormat.Create(TFileEncodingKind.Utf8Bom, TLineBreakStyle.LF);
+  Invalid := TFileEncoding.InvalidUtf8(Data, Format);
+  Assert.AreEqual(2, Integer(Length(Invalid)));
+  Assert.AreEqual(1, Invalid[0].Position.Line);
+  Assert.AreEqual(2, Invalid[0].Position.Character);
+  Assert.AreEqual(9, Invalid[0].ByteOffset);
+  Assert.AreEqual($E2, Integer(Invalid[0].Value));
+  Assert.AreEqual(4, Invalid[1].Position.Character);
+  // Gelesen als ANSI: ein Zeichen je Byte.
+  Format := TFileFormat.Create(TFileEncodingKind.Ansi1252, TLineBreakStyle.LF);
+  Invalid := TFileEncoding.InvalidUtf8(Copy(Data, 3, MaxInt), Format);
+  Assert.AreEqual(4, Invalid[0].Position.Character);
+end;
+
+procedure TFileEncodingTests.InvalidUtf8InPlainAnsiIsEmpty;
+var
+  Format: TFileFormat;
+begin
+  Format := TFileFormat.Create(TFileEncodingKind.Ansi1252, TLineBreakStyle.CRLF);
+  Assert.AreEqual(0, Integer(Length(TFileEncoding.InvalidUtf8(Bytes([Ord('a'), $E4, Ord('b')]), Format))));
 end;
 
 initialization
