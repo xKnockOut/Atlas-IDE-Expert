@@ -24,6 +24,7 @@ uses
   Atlas.Common.Editing.CodeActions,
   Atlas.Common.Rules.CodeActions,
   Atlas.Common.Editing.UsesActions,
+  Atlas.Common.Editing.ClassActions,
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Lsp.SyntaxDiagnostics;
 
@@ -45,6 +46,10 @@ type
   TMemberOrderProvider = reference to function(const AUri: string): TMemberOrderSettings;
   /// <summary>Formatstil für AUri (#43), etwa für die Einrückung von try/finally (#42).</summary>
   TCodeActionStyleProvider = reference to function(const AUri: string): TFormatStyle;
+  /// <summary>Einstellungen "refactoring" für AUri, etwa tryFinally und classActions (#42).</summary>
+  TCodeActionRefactoringProvider = reference to function(const AUri: string): TRefactoringSettings;
+  /// <summary>Index, Namespaces und Version für die Klassen-Aktionen (#42).</summary>
+  TClassActionContextProvider = reference to function(const AUri: string): TClassActionContext;
 
   /// <summary>Weitere Aktionen als fertige LSP-CodeActions, etwa mit Dateioperationen (#274). Der
   /// Aufrufer übernimmt die Objekte.</summary>
@@ -64,6 +69,8 @@ type
     FMemberOrderFor: TMemberOrderProvider;
     FDocCommentsFor: TDocCommentsProvider;
     FFormatStyleFor: TCodeActionStyleProvider;
+    FRefactoringFor: TCodeActionRefactoringProvider;
+    FClassActionContextFor: TClassActionContextProvider;
     FExtraActions: TExtraActionsFunc;
     function HandleCodeAction(const AParams: TJSONValue; const ACancellation: IJsonRpcCancellationToken): TJSONValue;
   public
@@ -87,6 +94,11 @@ type
     property DocCommentsFor: TDocCommentsProvider read FDocCommentsFor write FDocCommentsFor;
     /// <summary>Ohne Zuweisung gilt der Standard-Formatstil.</summary>
     property FormatStyleFor: TCodeActionStyleProvider read FFormatStyleFor write FFormatStyleFor;
+    /// <summary>Ohne Zuweisung gelten die Vorgaben (try/finally und Klassen-Aktionen an).</summary>
+    property RefactoringFor: TCodeActionRefactoringProvider read FRefactoringFor write FRefactoringFor;
+    /// <summary>Ohne Zuweisung laufen die Klassen-Aktionen ohne Index, nur mit der Datei.</summary>
+    property ClassActionContextFor: TClassActionContextProvider read FClassActionContextFor
+      write FClassActionContextFor;
     /// <summary>Aktionen in .dfm/.fmx; ohne Zuweisung keine.</summary>
     property FormActions: TFormActionsFunc read FFormActions write FFormActions;
     /// <summary>Weitere Aktionen in Units (Testunit anlegen und wechseln, #274/#189); ohne Zuweisung keine.</summary>
@@ -241,6 +253,9 @@ var
   OrderEdit: TRuleEdit;
   Extra: TJSONObject;
   Style: TFormatStyle;
+  Refactoring: TRefactoringSettings;
+  RangeActions: TArray<TCodeAction>;
+  ClassContext: TClassActionContext;
 begin
   if not ((AParams is TJSONObject) and TJSONObject(AParams).TryGetValue<string>('textDocument.uri', Uri) and
     TJSONObject(AParams).TryGetValue<TJSONValue>('range', RangeValue)) then
@@ -302,8 +317,30 @@ begin
       Style := FFormatStyleFor(Uri)
     else
       Style := TFormatStyle.Default;
-    for Action in TRuleCodeActions.ForRange(Findings, Document.Text, Tree, Range, Style) do
+    if Assigned(FRefactoringFor) then
+      Refactoring := FRefactoringFor(Uri)
+    else
+      Refactoring := TRefactoringSettings.Default;
+    if Refactoring.TryFinally then
+      RangeActions := TRuleCodeActions.ForRange(Findings, Document.Text, Tree, Range, Style)
+    else
+      RangeActions := TRuleCodeActions.ForFindings(Findings, Document.Text, Range);
+    for Action in RangeActions do
       TJSONArray(Result).AddElement(ActionToJson(Uri, Action));
+    // Klassen-Aktionen (#42): Getter/Setter/Feld, Interface-Methoden, Überschreiben.
+    if Refactoring.ClassActions then
+    begin
+      if Assigned(FClassActionContextFor) then
+        ClassContext := FClassActionContextFor(Uri)
+      else
+      begin
+        ClassContext := TClassActionContext.Default;
+        ClassContext.Uri := Uri;
+      end;
+      ClassContext.Style := Style;
+      for Action in TClassActions.Actions(Document.Text, Tree, Range.StartPos.Line, ClassContext) do
+        TJSONArray(Result).AddElement(ActionToJson(Uri, Action));
+    end;
   end;
   // Befund als Prompt kopieren (#158): den Text kopiert der Client (Befehl atlas.copyText).
   if WantsEditing then

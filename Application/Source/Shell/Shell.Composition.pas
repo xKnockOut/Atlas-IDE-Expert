@@ -422,6 +422,7 @@ uses
   Atlas.Common.Dfm.FormModel,
   Atlas.Common.Dfm.BinaryForm,
   Atlas.Common.Editing.CodeActions,
+  Atlas.Common.Editing.ClassActions,
   Atlas.Common.Index.SymbolIndex,
   Atlas.Common.Editing.UsesActions,
   Atlas.Common.Editing.TestUnits,
@@ -1051,6 +1052,16 @@ begin
   FCodeActions.DocCommentsFor := DocCommentsFor;
   // try/finally rückt wie das Formatieren ein (#42, #43).
   FCodeActions.FormatStyleFor := ResolvedFormatStyleFor;
+  FCodeActions.RefactoringFor := RefactoringSettingsFor;
+  FCodeActions.ClassActionContextFor :=
+    function(const AUri: string): TClassActionContext
+    begin
+      Result := TClassActionContext.Default;
+      Result.Index := FIndex;
+      Result.DelphiVersion := DelphiVersionFor(AUri);
+      Result.Uri := AUri;
+      Result.Host := FFormatting.SlashHost;
+    end;
   FCodeActions.MemberOrderFor :=
     function(const AUri: string): TMemberOrderSettings
     var
