@@ -26,7 +26,11 @@ type
     [Test]
     procedure ActionAddsMissingParam;
     [Test]
-    procedure ActionRemovesStaleParam;
+    procedure ActionMarksStaleParam;
+    [Test]
+    procedure ActionMarksMultilineStaleParam;
+    [Test]
+    procedure ActionMarksRenamedParamAndAddsNew;
   end;
 
 implementation
@@ -184,18 +188,63 @@ begin
   Assert.AreEqual(0, Integer(Length(ActionsAt(Text, 8))));
 end;
 
-procedure TDocCommentsTests.ActionRemovesStaleParam;
+procedure TDocCommentsTests.ActionMarksStaleParam;
 var
   Text: string;
   Found: TArray<TCodeAction>;
 begin
   Text := StringReplace(Format(Source, ['/// <summary>F</summary>']), '    procedure Bar',
-    '    /// <param name="Alt">a</param>'#10'    procedure Bar', []);
+    '    /// <param name="Alt">a -- b</param>'#10'    procedure Bar', []);
   Found := ActionsAt(Text, 8);
   Assert.AreEqual(1, Integer(Length(Found)));
   Assert.AreEqual('Dokumentation an die Signatur anpassen', Found[0].Title);
-  Assert.AreEqual('', Found[0].Edits[0].NewText);
+  Assert.AreEqual(1, Integer(Length(Found[0].Edits)));
+  // Nicht gelöscht, sondern markiert; die Beschreibung bleibt, "--" wird ersetzt.
+  Assert.AreEqual('<!-- entfernt: Alt: a – b -->', Found[0].Edits[0].NewText);
   Assert.AreEqual(7, Found[0].Edits[0].Range.StartPos.Line);
+  Assert.AreEqual(8, Found[0].Edits[0].Range.StartPos.Character);
+  Assert.AreEqual(7, Found[0].Edits[0].Range.EndPos.Line);
+  Assert.AreEqual(Length('    /// <param name="Alt">a -- b</param>'), Found[0].Edits[0].Range.EndPos.Character);
+  // Markierte Zeilen zählen nicht mehr als Parameter: danach passt alles.
+  Text := StringReplace(Text, '<param name="Alt">a -- b</param>', '<!-- entfernt: Alt: a – b -->', []);
+  Assert.AreEqual(0, Integer(Length(ActionsAt(Text, 8))));
+  // Ohne Beschreibung nur der Name.
+  Text := StringReplace(Text, '<!-- entfernt: Alt: a – b -->', '<param name="Alt"></param>', []);
+  Assert.AreEqual('<!-- entfernt: Alt -->', ActionsAt(Text, 8)[0].Edits[0].NewText);
+end;
+
+procedure TDocCommentsTests.ActionMarksMultilineStaleParam;
+var
+  Text: string;
+  Found: TArray<TCodeAction>;
+begin
+  Text := StringReplace(Format(Source, ['/// <summary>F</summary>']), '    procedure Bar',
+    '    /// <param name="Alt">'#10'    ///   a'#10'    /// </param>'#10'    procedure Bar', []);
+  // Zeilen 7 bis 9 Kommentar, 10 Bar.
+  Found := ActionsAt(Text, 10);
+  Assert.AreEqual(1, Integer(Length(Found)));
+  Assert.AreEqual(2, Integer(Length(Found[0].Edits)));
+  Assert.AreEqual('<!-- entfernt: Alt:', Found[0].Edits[0].NewText);
+  Assert.AreEqual(7, Found[0].Edits[0].Range.StartPos.Line);
+  Assert.AreEqual('-->', Found[0].Edits[1].NewText);
+  Assert.AreEqual(9, Found[0].Edits[1].Range.StartPos.Line);
+  Assert.AreEqual(8, Found[0].Edits[1].Range.StartPos.Character);
+end;
+
+procedure TDocCommentsTests.ActionMarksRenamedParamAndAddsNew;
+var
+  Text: string;
+  Found: TArray<TCodeAction>;
+begin
+  // Foo hat A und B; der Kommentar kennt noch "Alt" statt "A".
+  Text := StringReplace(Format(Source, ['/// <summary>F</summary>']), '    function Foo',
+    '    /// <param name="Alt">a</param>'#10'    /// <param name="B">b</param>'#10'    function Foo', []);
+  Found := ActionsAt(Text, 8);
+  Assert.AreEqual(1, Integer(Length(Found)));
+  Assert.AreEqual(2, Integer(Length(Found[0].Edits)));
+  Assert.AreEqual('<!-- entfernt: Alt: a -->', Found[0].Edits[0].NewText);
+  Assert.AreEqual(8, Found[0].Edits[1].Range.StartPos.Line);
+  Assert.AreEqual('    /// <param name="A"></param>'#10, Found[0].Edits[1].NewText);
 end;
 
 initialization

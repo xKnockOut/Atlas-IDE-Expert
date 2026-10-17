@@ -299,6 +299,8 @@ type
     function DelphiVersionFor(const AUri: string): string;
     /// <summary>Schnellbefehle (#293): False = aus; ADisabled samt "uses" bei usesCommand = false.</summary>
     function SlashCommandsFor(const AUri: string; out ADisabled: TArray<string>): Boolean;
+    /// <summary>"completeBlocks.docComment" (#88).</summary>
+    function DocCommentsFor(const AUri: string): Boolean;
     function InlayHintSettingsFor(const AUri: string): TInlayHintSettings;
     /// <summary>Einstellungen, Wurzel und Dateien für die Code-Metriken (#66): Datei, Projekt (.dproj/.dpr/.dpk),
     /// Ordner oder '' (einziger Arbeitsbereich).</summary>
@@ -646,6 +648,7 @@ begin
     end);
   FFormatting.SlashCommandsFor := SlashCommandsFor;
   FFormatting.DelphiVersionFor := DelphiVersionFor;
+  FFormatting.DocCommentsFor := DocCommentsFor;
   SlashHost := TShellSlashHost.Create(
     function(const AUri: string): TShellWorkspace
     begin
@@ -1039,6 +1042,7 @@ begin
       end;
     end;
   FCodeActions.StringLiteralFor := StringLiteralFor;
+  FCodeActions.DocCommentsFor := DocCommentsFor;
   FCodeActions.MemberOrderFor :=
     function(const AUri: string): TMemberOrderSettings
     var
@@ -2748,6 +2752,11 @@ begin
   // usesCommand bleibt als Alias erhalten (#254).
   if not Settings.UsesCommand then
     ADisabled := ADisabled + ['uses'];
+end;
+
+function TServerComposition.DocCommentsFor(const AUri: string): Boolean;
+begin
+  Result := SettingsFor(AUri).CompleteBlocksDocComment;
 end;
 
 function TServerComposition.DelphiVersionFor(const AUri: string): string;
