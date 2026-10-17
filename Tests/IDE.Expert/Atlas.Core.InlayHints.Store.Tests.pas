@@ -171,6 +171,7 @@ var
   Store: TAtlasInlayHintStore;
   Text, Anchor, Caption: string;
   Ends: TArray<TAtlasInlayHint>;
+  Hint: TAtlasInlayHint;
 begin
   Text := 'begin' + sLineBreak +
     'end;' + sLineBreak +
@@ -184,6 +185,9 @@ begin
   Ends[2].EndLabel := True;
   Ends[3].EndLabel := True;
   Ends[4].EndLabel := True;
+  Ends[0].BlockLine := 0;
+  Ends[0].BlockCharacter := 2;
+  Ends[0].HasBlock := True;
   Store := TAtlasInlayHintStore.Create;
   try
     Store.SetText('A.pas', Text);
@@ -191,6 +195,10 @@ begin
     Assert.IsTrue(Store.EndLabelOn('A.pas', 1, Anchor, Caption));
     Assert.AreEqual('TKunde.Speichern', Anchor);
     Assert.AreEqual('// TKunde.Speichern', Caption);
+    Assert.IsTrue(Store.EndLabelOn('A.pas', 1, Anchor, Caption, Hint), 'mit Blockanfang (#620)');
+    Assert.IsTrue(Hint.HasBlock);
+    Assert.AreEqual(0, Hint.BlockLine);
+    Assert.AreEqual(2, Hint.BlockCharacter);
     Assert.AreEqual(0, Integer(Length(Store.OnLine('A.pas', 1))), 'keine Parameternamen');
     Assert.IsFalse(Store.EndLabelOn('A.pas', 2, Anchor, Caption), 'Kommentar steht schon dahinter');
     Assert.IsTrue(Store.EndLabelOn('A.pas', 3, Anchor, Caption));

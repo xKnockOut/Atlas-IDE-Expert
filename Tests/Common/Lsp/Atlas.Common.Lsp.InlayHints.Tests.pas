@@ -28,12 +28,26 @@ type
     procedure EndMarkersBehindLongBlocks;
     [Test]
     procedure SettingsSwitchHintsOffAndSort;
+    /// <summary>#620: jede Blockart mit Beschriftung und Blockanfang, mit Mindestlänge 1.</summary>
+    [Test]
+    procedure EndMarkersForEveryBlockKind;
+    /// <summary>#620: Kommentar hinter dem end, kurze Blöcke und lange Bedingungen.</summary>
+    [Test]
+    procedure EndMarkersSkipCommentsAndShorten;
+    /// <summary>#620: Blockanfang in data, Mindestlänge aus der Anfrage.</summary>
+    [Test]
+    procedure EndMarkersCarryBlockStartAndRequestMinLines;
   end;
 
 implementation
 
 uses
   System.SysUtils,
+  System.JSON,
+  System.Generics.Collections,
+  Atlas.Common.JsonRpc.Dispatcher,
+  Atlas.Common.Documents.Uris,
+  Atlas.Common.Documents.Providers.DocumentStore,
   Atlas.Common.Documents.Contract,
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Pascal.SyntaxTree,
@@ -83,6 +97,56 @@ const
     '    A := 2;'#10 +                               // 16
     '  end;'#10 +                                    // 17
     'end;'#10 +                                      // 18
+    'end.';
+
+  UnitBloecke =
+    'unit Bloecke;'#10 +                                   // 0
+    'interface'#10 +                                       // 1
+    'type'#10 +                                            // 2
+    '  TKunde = class'#10 +                                // 3
+    '    procedure Speichern;'#10 +                        // 4
+    '  end;'#10 +                                          // 5
+    '  TPunkt = record'#10 +                               // 6
+    '    X: Integer;'#10 +                                 // 7
+    '  end;'#10 +                                          // 8
+    'implementation'#10 +                                  // 9
+    'procedure TKunde.Speichern;'#10 +                     // 10
+    'var'#10 +                                             // 11
+    '  I, Art, Betrag, Limit: Integer;'#10 +               // 12
+    'begin'#10 +                                           // 13
+    '  for I := 0 to 9 do'#10 +                            // 14
+    '  begin'#10 +                                         // 15
+    '  end;'#10 +                                          // 16
+    '  while not Fertig do'#10 +                           // 17
+    '  begin'#10 +                                         // 18
+    '  end;'#10 +                                          // 19
+    '  case Art of'#10 +                                   // 20
+    '    1: ;'#10 +                                        // 21
+    '  end;'#10 +                                          // 22
+    '  if Betrag > Limit then'#10 +                        // 23
+    '  begin'#10 +                                         // 24
+    '  end;'#10 +                                          // 25
+    '  try'#10 +                                           // 26
+    '  finally'#10 +                                       // 27
+    '  end;'#10 +                                          // 28
+    '  try'#10 +                                           // 29
+    '  except'#10 +                                        // 30
+    '  end;'#10 +                                          // 31
+    'end;'#10 +                                            // 32
+    'end.';
+
+  UnitKommentar =
+    'unit K;'#10 +                                         // 0
+    'implementation'#10 +                                  // 1
+    'procedure P;'#10 +                                    // 2
+    'begin'#10 +                                           // 3
+    '  if EineSehrLangeBedingungMitVielenZeichen and NochEineBedingung then'#10 + // 4
+    '  begin'#10 +                                         // 5
+    '  end;'#10 +                                          // 6
+    '  while A do'#10 +                                    // 7
+    '  begin'#10 +                                         // 8
+    '  end; // Schleife'#10 +                              // 9
+    'end;'#10 +                                            // 10
     'end.';
 
 function ReadFile(const AFileName: string; out AText: string): Boolean;
@@ -180,6 +244,113 @@ begin
     Assert.AreEqual('9:7 : string|10:7 : TFoo|11:7 : Integer|13:7 : TFarbe|18:4 // Arbeite|', Describe(Hints));
   finally
     Tree.Free;
+  end;
+end;
+
+/// <summary>Endmarken mit Blockanfang: "Zeile:Spalte Text @Anfangszeile:Anfangsspalte|".</summary>
+function DescribeEnds(const AHints: TArray<TInlayHint>): string;
+var
+  Hint: TInlayHint;
+begin
+  Result := '';
+  for Hint in AHints do
+    Result := Result + Format('%d:%d %s @%d:%d|', [Hint.Position.Line, Hint.Position.Character, Hint.Text,
+      Hint.BlockStart.Line, Hint.BlockStart.Character]);
+end;
+
+procedure TLspInlayHintsTests.EndMarkersForEveryBlockKind;
+var
+  Tree: TSyntaxTree;
+  Found: string;
+begin
+  Tree := TPascalParser.Parse(UnitBloecke);
+  try
+    Found := DescribeEnds(TLspInlayHints.EndMarkers(Tree, WholeFile, 1));
+    Assert.IsTrue(Pos('5:6 // TKunde @3:2|', Found) > 0, Found);
+    Assert.IsTrue(Pos('8:6 // TPunkt @6:2|', Found) > 0, Found);
+    Assert.IsTrue(Pos('32:4 // TKunde.Speichern @10:0|', Found) > 0, Found);
+    Assert.IsTrue(Pos('16:6 // for I := 0 to 9 @14:2|', Found) > 0, Found);
+    Assert.IsTrue(Pos('19:6 // while not Fertig @17:2|', Found) > 0, Found);
+    Assert.IsTrue(Pos('22:6 // case Art @20:2|', Found) > 0, Found);
+    Assert.IsTrue(Pos('25:6 // if Betrag > Limit @23:2|', Found) > 0, Found);
+    Assert.IsTrue(Pos('28:6 // try (finally) @26:2|', Found) > 0, Found);
+    Assert.IsTrue(Pos('31:6 // try (except) @29:2|', Found) > 0, Found);
+  finally
+    Tree.Free;
+  end;
+end;
+
+procedure TLspInlayHintsTests.EndMarkersSkipCommentsAndShorten;
+var
+  Tree: TSyntaxTree;
+  Found: string;
+begin
+  Tree := TPascalParser.Parse(UnitKommentar);
+  try
+    Found := Describe(TLspInlayHints.EndMarkers(Tree, WholeFile, 1));
+    // Nach 40 Zeichen gekürzt; hinter "end; // Schleife" keine Marke.
+    Assert.IsTrue(Pos('6:6 // if EineSehrLangeBedingungMitVielenZeiche…|', Found) > 0, Found);
+    Assert.AreEqual(0, Pos('// while', Found), Found);
+    Assert.IsTrue(Pos('10:4 // P|', Found) > 0, Found);
+    // Unter der Mindestlänge: nur die Routine (9 Zeilen).
+    Assert.AreEqual('10:4 // P|', Describe(TLspInlayHints.EndMarkers(Tree, WholeFile, 4)));
+  finally
+    Tree.Free;
+  end;
+end;
+
+procedure TLspInlayHintsTests.EndMarkersCarryBlockStartAndRequestMinLines;
+var
+  Store: IDocumentStore;
+  Hints: TLspInlayHints;
+  Dispatcher: TJsonRpcDispatcher;
+  Uri: string;
+
+  function Labels(const AExtra: string): string;
+  var
+    Request, Response: TJSONObject;
+    Item: TJSONValue;
+  begin
+    Request := TJSONObject.ParseJSONValue('{"jsonrpc":"2.0","id":1,"method":"textDocument/inlayHint","params":' +
+      '{"textDocument":{"uri":"' + Uri.Replace('\', '\\') + '"},"range":{"start":{"line":0,"character":0},' +
+      '"end":{"line":40,"character":0}}' + AExtra + '}}') as TJSONObject;
+    try
+      Response := Dispatcher.DispatchMessage(Request);
+    finally
+      Request.Free;
+    end;
+    try
+      Result := '';
+      for Item in Response.GetValue<TJSONArray>('result') do
+        if TJSONObject(Item).GetValue('data') <> nil then
+          Result := Result + Format('%s @%d|', [TJSONObject(Item).GetValue<string>('label'),
+            TJSONObject(Item).GetValue<Integer>('data.blockStart.line')]);
+    finally
+      Response.Free;
+    end;
+  end;
+
+begin
+  Store := TDocumentStore.Create;
+  Hints := TLspInlayHints.Create(Store, FIndex, ReadFile,
+    function(const AUri: string): TInlayHintSettings
+    begin
+      Result := TInlayHintSettings.Default;
+      Result.ParameterNames := False;
+      Result.InferredTypes := False;
+    end);
+  Dispatcher := TJsonRpcDispatcher.Create;
+  try
+    Hints.Attach(Dispatcher);
+    Uri := TDocumentUris.FromPath(HauptFile);
+    Store.Open(Uri, 'delphi', 1, UnitBloecke);
+    // Vorgabe 20 Zeilen: nur die Routine (23 Zeilen).
+    Assert.AreEqual('// TKunde.Speichern @10|', Labels(''));
+    // Mindestlänge aus der Anfrage: auch die Klasse (3 Zeilen).
+    Assert.IsTrue(Pos('// TKunde @3|', Labels(',"atlas":{"endMarkerMinLines":3}')) > 0);
+  finally
+    Dispatcher.Free;
+    Hints.Free;
   end;
 end;
 

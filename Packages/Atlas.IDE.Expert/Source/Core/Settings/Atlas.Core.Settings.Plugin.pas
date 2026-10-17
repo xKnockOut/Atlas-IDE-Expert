@@ -43,6 +43,9 @@ type
     MinCheckMax = 200;
     MaxCheckMax = 20000;
     MaxXmlDocLines = 50;
+    /// <summary>Grenzen für editor.blockEndLabels.minLines (#620).</summary>
+    MinBlockEndLines = 1;
+    MaxBlockEndLines = 1000;
     /// <summary>Verzögerung bis zum automatischen Öffnen der Liste (ARG-046, #227); 0 = sofort.</summary>
     MaxOpenDelay = 2000;
     /// <summary>Speichergrenze des Symbolindex im Server (#492); 0 = unbegrenzt.</summary>
@@ -172,6 +175,9 @@ type
     /// grauer Pille; Quelle sind die Endmarken des Servers (inlayHints.endMarkers, Mindestlänge
     /// inlayHints.endMarkerMinLines in atlas.json); unabhängig von InlayHints.</summary>
     BlockEndLabels: Boolean;
+    /// <summary>Beschriftung erst ab so vielen Zeilen Blocklänge (#620, editor.blockEndLabels.minLines); geht mit
+    /// der Anfrage an den Server und ersetzt dort inlayHints.endMarkerMinLines.</summary>
+    BlockEndLabelsMinLines: Integer;
     /// <summary>Persönliche Notizen an Codezeilen (#545): Symbol in der Rinne, Befehle und Liste; gespeichert in
     /// %LOCALAPPDATA%\Atlas\Notes\, nie im Quelltext.</summary>
     Notes: Boolean;
@@ -858,6 +864,7 @@ begin
   Result.OpenForEdits := True;
   Result.InlayHints := False;
   Result.BlockEndLabels := True;
+  Result.BlockEndLabelsMinLines := 25;
   Result.Notes := True;
   Result.BookmarksNamed := True;
   Result.BookmarksShared := False;
@@ -1065,6 +1072,7 @@ begin
   if CheckOnSave then
     CompileOnSave := False;
   XmlDocMaxLines := EnsureRange(XmlDocMaxLines, 0, MaxXmlDocLines);
+  BlockEndLabelsMinLines := EnsureRange(BlockEndLabelsMinLines, MinBlockEndLines, MaxBlockEndLines);
   OpenDelayMs := EnsureRange(OpenDelayMs, 0, MaxOpenDelay);
   MemoryBudgetMb := EnsureRange(MemoryBudgetMb, 0, MaxMemoryBudgetMb);
   // TShortCut ist ein Word.
@@ -1222,6 +1230,7 @@ begin
   OpenForEdits := AStore.ReadInteger('OpenForEdits', BoolValue(Default.OpenForEdits)) <> 0;
   InlayHints := AStore.ReadInteger('InlayHints', BoolValue(Default.InlayHints)) <> 0;
   BlockEndLabels := AStore.ReadInteger('BlockEndLabels', BoolValue(Default.BlockEndLabels)) <> 0;
+  BlockEndLabelsMinLines := AStore.ReadInteger('BlockEndLabelsMinLines', Default.BlockEndLabelsMinLines);
   Notes := AStore.ReadInteger('Notes', BoolValue(Default.Notes)) <> 0;
   BookmarksNamed := AStore.ReadInteger('BookmarksNamed', BoolValue(Default.BookmarksNamed)) <> 0;
   BookmarksShared := AStore.ReadInteger('BookmarksShared', BoolValue(Default.BookmarksShared)) <> 0;
@@ -1477,6 +1486,7 @@ begin
   AStore.WriteInteger('OpenForEdits', BoolValue(OpenForEdits));
   AStore.WriteInteger('InlayHints', BoolValue(InlayHints));
   AStore.WriteInteger('BlockEndLabels', BoolValue(BlockEndLabels));
+  AStore.WriteInteger('BlockEndLabelsMinLines', BlockEndLabelsMinLines);
   AStore.WriteInteger('Notes', BoolValue(Notes));
   AStore.WriteInteger('BookmarksNamed', BoolValue(BookmarksNamed));
   AStore.WriteInteger('BookmarksShared', BoolValue(BookmarksShared));

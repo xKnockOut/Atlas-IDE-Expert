@@ -675,13 +675,22 @@ begin
   Settings.HideElementKey := -5;
   Settings.Normalize;
   Assert.AreEqual(0, Settings.HideElementKey, 'negativ = keine Taste');
+  Assert.AreEqual(25, TAtlasPluginSettings.Defaults.BlockEndLabelsMinLines, 'Mindestlänge (#620)');
+  Settings.BlockEndLabelsMinLines := 0;
+  Settings.Normalize;
+  Assert.AreEqual(TAtlasPluginSettings.MinBlockEndLines, Settings.BlockEndLabelsMinLines, 'unten begrenzt');
+  Settings.BlockEndLabelsMinLines := 5000;
+  Settings.Normalize;
+  Assert.AreEqual(TAtlasPluginSettings.MaxBlockEndLines, Settings.BlockEndLabelsMinLines, 'oben begrenzt');
   Settings.BlockEndLabels := False;
+  Settings.BlockEndLabelsMinLines := 40;
   Settings.HideElementKey := 0;
   Store := TMemoryStore.Create;
   Settings.Save(Store);
   Loaded := TAtlasPluginSettings.Defaults;
   Loaded.Load(Store);
   Assert.IsFalse(Loaded.BlockEndLabels, 'abschaltbar');
+  Assert.AreEqual(40, Loaded.BlockEndLabelsMinLines);
   Assert.AreEqual(0, Loaded.HideElementKey, '0 = keine Taste');
 end;
 
