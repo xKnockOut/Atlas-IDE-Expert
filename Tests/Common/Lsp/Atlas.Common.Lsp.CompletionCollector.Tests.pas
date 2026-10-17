@@ -1,7 +1,7 @@
 ﻿unit Atlas.Common.Lsp.CompletionCollector.Tests;
 
 // Sammler der Vervollständigung (Code-Review S-01, Block H Schritt 3): kein geteilter Zustand zwischen
-// Einträgen, Strafpunkte legen die Gruppen fest, Staffelung und Unvollständigkeit.
+// Einträgen, Strafpunkte legen die Gruppen fest, Staffelung und Unvollständigkeit; Typkonvertierung (#490).
 
 interface
 
@@ -29,6 +29,10 @@ type
     procedure TypeFitsFamiliesAndDescent;
     [Test]
     procedure ScopeOnlyInScopeContext;
+    [Test]
+    procedure TypeConversionPairs;
+    [Test]
+    procedure ConversionStandsBeforeOriginal;
   end;
 
 implementation
@@ -39,6 +43,12 @@ uses
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Rules.Contract,
   Atlas.Common.Semantics.NameResolver,
+  Atlas.Common.Index.Contract,
+  Atlas.Common.Index.SymbolIndex,
+  Atlas.Common.Index.Extractor,
+  Atlas.Common.Pascal.SyntaxTree,
+  Atlas.Common.Pascal.Parser,
+  Atlas.Common.Lsp.Completion,
   Atlas.Common.Lsp.CompletionCollector;
 
 function TCompletionCollectorTests.ScopeContext(const APrefix: string): TCompletionContext;
@@ -258,6 +268,143 @@ begin
   finally
     Request.Free;
   end;
+end;
+
+function Converted(const AActual, AExpected: string; AHelper: Boolean): string;
+var
+  Conversion: TTypeConversion;
+begin
+  Result := '-';
+  if TypeConversion(AActual, AExpected, '', 'X', AHelper, Conversion) then
+    if Conversion.Lossy then
+      Result := 'lossy'
+    else
+      Result := Conversion.Text + ' | ' + string.Join(',', Conversion.Units);
+end;
+
+procedure TCompletionCollectorTests.TypeConversionPairs;
+var
+  Conversion: TTypeConversion;
+begin
+  // Tabelle aus #490, Funktions- und Helper-Stil.
+  Assert.AreEqual('IntToStr(X) | System.SysUtils', Converted('Integer', 'string', False));
+  Assert.AreEqual('X.ToString | System.SysUtils', Converted('Int64', 'string', True));
+  Assert.AreEqual('StrToInt(X) | System.SysUtils', Converted('string', 'Integer', False));
+  Assert.AreEqual('X.ToInteger | System.SysUtils', Converted('string', 'Integer', True));
+  Assert.AreEqual('X.ToInt64 | System.SysUtils', Converted('string', 'Int64', True));
+  Assert.AreEqual('FloatToStr(X) | System.SysUtils', Converted('Currency', 'string', False));
+  Assert.AreEqual('X.ToString | System.SysUtils', Converted('Double', 'string', True));
+  Assert.AreEqual('StrToFloat(X) | System.SysUtils', Converted('string', 'Double', False));
+  Assert.AreEqual('X.ToDouble | System.SysUtils', Converted('string', 'Double', True));
+  Assert.AreEqual('BoolToStr(X, True) | System.SysUtils', Converted('Boolean', 'string', False));
+  Assert.AreEqual('X.ToString(TUseBoolStrs.True) | System.SysUtils', Converted('Boolean', 'string', True));
+  // TDateTime und Aufzählung haben keinen Helper: immer die Funktion.
+  Assert.AreEqual('DateTimeToStr(X) | System.SysUtils', Converted('TDateTime', 'string', True));
+  Assert.IsTrue(TypeConversion('', 'string', 'TFarbe', 'X', True, Conversion));
+  Assert.AreEqual('GetEnumName(TypeInfo(TFarbe), Ord(X))', Conversion.Text);
+  Assert.AreEqual('System.TypInfo', string.Join(',', Conversion.Units));
+  // Verlustbehaftet nur als Hinweis; Passendes und Unbekanntes ohne Umwandlung.
+  Assert.AreEqual('lossy', Converted('Double', 'Integer', True));
+  Assert.AreEqual('-', Converted('Integer', 'Double', True));
+  Assert.AreEqual('-', Converted('string', 'string', True));
+  Assert.AreEqual('-', Converted('TKunde', 'string', True));
+end;
+
+procedure TCompletionCollectorTests.ConversionStandsBeforeOriginal;
+const
+  FileName = 'C:\P\Haupt.pas';
+  Head =
+    'unit Haupt;'#10 +
+    'interface'#10 +
+    'uses'#10 +
+    '  System.Classes;'#10 +
+    'type'#10 +
+    '  TFarbe = (Rot, Gruen);'#10 +
+    '  TListe = class'#10 +
+    '    Count: Integer;'#10 +
+    '    Preis: Double;'#10 +
+    '    Farbe: TFarbe;'#10 +
+    '  end;'#10 +
+    '  TCaption = type string;'#10 +
+    '  TLabel = class'#10 +
+    '    Caption: TCaption;'#10 +
+    '  end;'#10 +
+    'implementation'#10 +
+    'procedure Run;'#10 +
+    'var'#10 +
+    '  Lines: TListe;'#10 +
+    '  lblCount: TLabel;'#10 +
+    '  I: Integer;'#10 +
+    'begin'#10 +
+    '  ';
+  Tail = #10'end;'#10'end.'#10;
+
+  function Items(const ALine: string; AStyle: TCompletionTypeConversion): TArray<TCompletionItem>;
+  var
+    Index: ISymbolIndex;
+    Text: string;
+    Tree: TSyntaxTree;
+    Resolver: TNameResolver;
+    Request: TCompletionRequest;
+    Settings: TCompletionSettings;
+    Postfix: TPostfixOptions;
+  begin
+    Text := Head + ALine + Tail;
+    Index := TSymbolIndex.Create;
+    Index.AddUnit(TIndexExtractor.ExtractText(Text, FileName, nil));
+    Tree := TPascalParser.Parse(Text);
+    Resolver := TNameResolver.Create(Index);
+    Request := TCompletionRequest.Create(Text, FileName, TTextPosition.Create(22, 2 + Length(ALine)));
+    try
+      Request.Tree := Tree;
+      Request.Resolver := Resolver;
+      Request.Index := Index;
+      Request.Matching := TCompletionMatching.Prefix;
+      Settings := TCompletionSettings.Default;
+      Settings.TypeConversion := AStyle;
+      Request.Settings := Settings;
+      Postfix := TPostfixOptions.Default;
+      Postfix.Enabled := False;
+      Result := TLspCompletion.Collect(Request, Postfix, nil).Items;
+    finally
+      Request.Free;
+      Resolver.Free;
+      Tree.Free;
+    end;
+  end;
+
+var
+  List: TArray<TCompletionItem>;
+begin
+  // Aus #490: "lblCount.Caption := Lines.Cou" zeigt Count.ToString mit "→ string" vor Count.
+  List := Items('lblCount.Caption := Lines.Cou', TCompletionTypeConversion.Helper);
+  Assert.AreEqual('Count.ToString Count', Joined(List));
+  Assert.AreEqual('TCaption', List[0].Conversion);
+  Assert.AreEqual('Count', List[0].ConvertFrom);
+  Assert.AreEqual('Count', List[0].FilterText);
+  Assert.IsTrue(List[0].HasTextEdit);
+  Assert.AreEqual('Lines.Count.ToString', List[0].TextEdit.NewText);
+  Assert.AreEqual(22, List[0].TextEdit.Range.StartPos.Line);
+  Assert.AreEqual(22, List[0].TextEdit.Range.StartPos.Character);
+  Assert.AreEqual(31, List[0].TextEdit.Range.EndPos.Character);
+  Assert.AreEqual(1, Integer(Length(List[0].AdditionalEdits)), 'System.SysUtils ins uses');
+  Assert.AreEqual('', List[1].Conversion);
+  Assert.IsFalse(List[1].HasTextEdit);
+  // Funktionsstil setzt die ganze Kette ein.
+  List := Items('lblCount.Caption := Lines.Cou', TCompletionTypeConversion.Function_);
+  Assert.AreEqual('IntToStr(Count) Count', Joined(List));
+  Assert.AreEqual('IntToStr(Lines.Count)', List[0].TextEdit.NewText);
+  // Aufzählung nach string mit System.TypInfo.
+  List := Items('lblCount.Caption := Lines.Far', TCompletionTypeConversion.Helper);
+  Assert.AreEqual('GetEnumName(TypeInfo(TFarbe), Ord(Lines.Farbe))', List[0].TextEdit.NewText);
+  // Gleitkomma nach Ganzzahl: kein Eintrag, nur der Hinweis am Original.
+  List := Items('I := Lines.Pre', TCompletionTypeConversion.Helper);
+  Assert.AreEqual('Preis', Joined(List));
+  Assert.AreEqual('Double', List[0].Lossy);
+  // Aus: nichts dazu.
+  List := Items('lblCount.Caption := Lines.Cou', TCompletionTypeConversion.Off);
+  Assert.AreEqual('Count', Joined(List));
+  Assert.AreEqual('', List[0].Lossy);
 end;
 
 initialization

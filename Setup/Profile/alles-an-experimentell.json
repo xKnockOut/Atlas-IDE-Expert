@@ -52,6 +52,7 @@
     "refactoring.inline": true,
     "refactoring.moveClass": true,
     "refactoring.unitRenameFollowUp": "ask",
-    "editor.smartPaste": "both"
+    "editor.smartPaste": "both",
+    "completion.typeConversion": "helper"
   }
 }
