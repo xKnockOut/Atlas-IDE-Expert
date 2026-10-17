@@ -11,7 +11,7 @@ function AtlasSchemaJson: string;
 implementation
 
 const
-  Lines: array[0..1150] of string = (
+  Lines: array[0..1168] of string = (
     '{',
     '  "$schema": "http://json-schema.org/draft-07/schema#",',
     '  "title": "Atlas-Konfiguration",',
@@ -528,6 +528,24 @@ const
     '          "default": true,',
     '          "description": "Code-Aktion „Typ ausschreiben“ auf dem Namen von var X := …, const X = … und for var X in … ohne Typangabe: fügt den abgeleiteten Typ ein (var Count: Integer := Lines.Count) ' + 'und trägt seine Unit bei Bedarf ins uses ein.",',
     '          "x-issue": "#453"',
+    '        },',
+    '        "extract": {',
+    '          "type": "boolean",',
+    '          "default": true,',
+    '          "description": "Code-Aktionen „Methode extrahieren“ (markierte Anweisungen werden eine neue Methode bzw. Routine; Parameter nach Datenfluss: nur gelesen const, geschrieben und danach gelesen' + ' var bzw. out, nur innen lokale Variable), „Variable einführen“ (auch für alle textgleichen Vorkommen im Block) und „Konstante extrahieren“ (in der Routine oder in der Unit). Inline-Variable oder var-' + 'Abschnitt nach inlineVar.",',
+    '          "x-issue": "#50"',
+    '        },',
+    '        "completeCase": {',
+    '          "type": "boolean",',
+    '          "default": true,',
+    '          "description": "Code-Aktion „case vervollständigen“: ergänzt bei case über einem Aufzählungstyp genau die fehlenden Werte als leere Zweige in Deklarationsreihenfolge. Mit else heißt sie „Feh' + 'lende Werte vor else ergänzen“ und ist nicht die bevorzugte Aktion.",',
+    '          "x-issue": "#50"',
+    '        },',
+    '        "resolveWith": {',
+    '          "type": "boolean",',
+    '          "default": true,',
+    '          "description": "Code-Aktion „with auflösen“: Bezeichner im with-Rumpf, die zu einem Mitglied eines with-Ausdrucks gehören, bekommen diesen Ausdruck vorangestellt (innerstes Element zuerst); ' + 'aufwendige Ausdrücke vom Klassentyp kommen vorher in eine lokale Variable. Ist ein Bezeichner nicht eindeutig auflösbar, gibt es die Aktion nicht.",',
+    '          "x-issue": "#50"',
     '        }',
     '      },',
     '      "x-scope": "project",',

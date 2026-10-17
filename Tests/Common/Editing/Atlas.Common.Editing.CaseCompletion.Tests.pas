@@ -23,6 +23,12 @@ type
     procedure KeepsBranchIndentAndScopedPrefix;
     [Test]
     procedure IgnoresOtherPlaces;
+    /// <summary>#50: „case vervollständigen“ auf einer fertigen case-Anweisung.</summary>
+    [Test]
+    procedure CompletesWholeCaseStatement;
+    /// <summary>#50: Mit else-Teil kommen die Werte davor; Präfix und Fälle ohne Angebot.</summary>
+    [Test]
+    procedure CompletesBeforeElseAndRejects;
   end;
 
 implementation
@@ -32,6 +38,9 @@ uses
   Atlas.Common.Documents.Contract,
   Atlas.Common.Pascal.Contract,
   Atlas.Common.Pascal.Lexer,
+  Atlas.Common.Pascal.SyntaxTree,
+  Atlas.Common.Pascal.Parser,
+  Atlas.Common.Editing.ChangeSignature,
   Atlas.Common.Editing.CaseCompletion;
 
 const
@@ -168,6 +177,80 @@ begin
   Assert.AreEqual('-', Branches('begin'#10'  A := 1;'#10'  |'#10'end;'));
   // Mitten in einer Liste "skCircle, |" ergänzt Atlas nur einzelne Werte.
   Assert.AreEqual('-', Branches('begin'#10'  case Shape.Kind of'#10'    skCircle, |'#10'  end;'#10'end;'));
+end;
+
+const
+  Aligns: array[0..6] of string = ('alNone', 'alTop', 'alBottom', 'alLeft', 'alRight', 'alClient', 'alCustom');
+
+function AlignValues: TArray<string>;
+var
+  Index: Integer;
+begin
+  SetLength(Result, Length(Aligns));
+  for Index := 0 to High(Aligns) do
+    Result[Index] := Aligns[Index];
+end;
+
+/// <summary>Ergebnis von Complete für die case-Anweisung in Zeile 1 von AText; '-' ohne Angebot.</summary>
+function CompleteText(const AText, APrefix: string; out ACount: Integer; out AHasElse: Boolean): string;
+var
+  Tree: TSyntaxTree;
+  CaseNode: TSyntaxNode;
+  Edits: TArray<TTextEdit>;
+begin
+  ACount := 0;
+  AHasElse := False;
+  Tree := TPascalParser.Parse(AText);
+  try
+    CaseNode := TCaseCompletion.CaseAt(Tree, TTextPosition.Create(3, 4));
+    if (CaseNode = nil) or not TCaseCompletion.Complete(AText, Tree, CaseNode, AlignValues, APrefix, Edits, ACount,
+      AHasElse) then
+      Exit('-');
+    Result := TChangeSignature.ApplyEdits(AText, Edits);
+  finally
+    Tree.Free;
+  end;
+end;
+
+procedure TCaseCompletionTests.CompletesWholeCaseStatement;
+var
+  Count: Integer;
+  HasElse: Boolean;
+begin
+  // Abnahmefall: TAlign mit drei vorhandenen Werten, vier fehlen; das ";" hinter dem letzten Zweig kommt dazu.
+  Assert.AreEqual(
+    'procedure P(A: TAlign);'#10'begin'#10'  case A of'#10'    alNone: X;'#10'    alTop, alBottom: Y;'#10 +
+    '    alLeft: ;'#10'    alRight: ;'#10'    alClient: ;'#10'    alCustom: ;'#10'  end;'#10'end;'#10,
+    CompleteText('procedure P(A: TAlign);'#10'begin'#10'  case A of'#10'    alNone: X;'#10'    alTop, alBottom: Y'#10 +
+    '  end;'#10'end;'#10, '', Count, HasElse));
+  Assert.AreEqual(4, Count);
+  Assert.IsFalse(HasElse);
+end;
+
+procedure TCaseCompletionTests.CompletesBeforeElseAndRejects;
+var
+  Count: Integer;
+  HasElse: Boolean;
+  All: string;
+  Index: Integer;
+begin
+  Assert.AreEqual(
+    'procedure P(A: TAlign);'#10'begin'#10'  case A of'#10'    TAlign.alNone: X;'#10'    TAlign.alTop: ;'#10 +
+    '    TAlign.alBottom: ;'#10'    TAlign.alLeft: ;'#10'    TAlign.alRight: ;'#10'    TAlign.alClient: ;'#10 +
+    '    TAlign.alCustom: ;'#10'  else'#10'    Z;'#10'  end;'#10'end;'#10,
+    CompleteText('procedure P(A: TAlign);'#10'begin'#10'  case A of'#10'    TAlign.alNone: X;'#10'  else'#10 +
+    '    Z;'#10'  end;'#10'end;'#10, 'TAlign.', Count, HasElse));
+  Assert.AreEqual(6, Count);
+  Assert.IsTrue(HasElse);
+  // Nichts fehlt: keine Aktion.
+  All := '';
+  for Index := 0 to High(Aligns) do
+    All := All + '    ' + Aligns[Index] + ': ;'#10;
+  Assert.AreEqual('-', CompleteText('procedure P(A: TAlign);'#10'begin'#10'  case A of'#10 + All + '  end;'#10 +
+    'end;'#10, '', Count, HasElse));
+  // Eine Marke, die kein Wert ist.
+  Assert.AreEqual('-', CompleteText('procedure P(A: TAlign);'#10'begin'#10'  case A of'#10'    1: X;'#10'  end;'#10 +
+    'end;'#10, '', Count, HasElse));
 end;
 
 initialization

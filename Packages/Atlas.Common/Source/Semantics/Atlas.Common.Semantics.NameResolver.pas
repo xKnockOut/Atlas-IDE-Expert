@@ -212,6 +212,8 @@ type
     function ExprSymbol(ANode: TSyntaxNode; out AResult: TResolvedSymbol): Boolean;
     function ArgTypes(ANode: TSyntaxNode; AFirst: Integer): TArray<string>;
     function LookupWith(const AName: string; out AResults: TArray<TResolvedSymbol>; out AStop: Boolean): Boolean;
+    function LookupWithOwner(const AName: string; out AResults: TArray<TResolvedSymbol>; out AStop: Boolean;
+      out AWith: TSyntaxNode; out AElement: Integer): Boolean;
     function FindReceiver(AEndOffset: Integer): TSyntaxNode;
     function FindCall(ACalleeEnd: Integer): TSyntaxNode;
     function IsForVar(ANode: TSyntaxNode): Boolean;
@@ -258,6 +260,11 @@ type
     function Resolve(ATree: TSyntaxTree; const AFileName: string; const APosition: TTextPosition): TResolvedSymbol;
     /// <summary>Wie Resolve, aber alle gleich guten Kandidaten, wenn die Überladung nicht eindeutig ist (#263).</summary>
     function ResolveAll(ATree: TSyntaxTree; const AFileName: string; const APosition: TTextPosition): TArray<TResolvedSymbol>;
+    /// <summary>„with auflösen“ (#50): with-Anweisung und Element (Index unter ihren Kindern), dessen Mitglied
+    /// AName an AOffset ist; innerstes with und darin das letzte Element zuerst. False ohne Treffer; AUnknown, wenn
+    /// der Typ eines Elements unbekannt ist und der Name dazugehören könnte.</summary>
+    function WithMember(ATree: TSyntaxTree; const AFileName, AName: string; AOffset: Integer; out AWith: TSyntaxNode;
+      out AElement: Integer; out AUnknown: Boolean): Boolean;
     /// <summary>Löst die Kette ANames (A.B.C) so auf, wie sie an AOffset stünde.</summary>
     function ResolveChain(ATree: TSyntaxTree; const AFileName: string; const ANames: TArray<string>;
       AOffset: Integer; AInherited: Boolean = False): TResolvedSymbol;
@@ -1951,6 +1958,24 @@ end;
 function TNameResolver.LookupWith(const AName: string; out AResults: TArray<TResolvedSymbol>;
   out AStop: Boolean): Boolean;
 var
+  WithNode: TSyntaxNode;
+  Element: Integer;
+begin
+  Result := LookupWithOwner(AName, AResults, AStop, WithNode, Element);
+end;
+
+function TNameResolver.WithMember(ATree: TSyntaxTree; const AFileName, AName: string; AOffset: Integer;
+  out AWith: TSyntaxNode; out AElement: Integer; out AUnknown: Boolean): Boolean;
+var
+  Results: TArray<TResolvedSymbol>;
+begin
+  Prepare(ATree, AFileName, AOffset);
+  Result := LookupWithOwner(AName, Results, AUnknown, AWith, AElement);
+end;
+
+function TNameResolver.LookupWithOwner(const AName: string; out AResults: TArray<TResolvedSymbol>;
+  out AStop: Boolean; out AWith: TSyntaxNode; out AElement: Integer): Boolean;
+var
   Withs: TList<TSyntaxNode>;
   Node, WithNode: TSyntaxNode;
   Index: Integer;
@@ -1962,6 +1987,8 @@ begin
   Result := False;
   AStop := False;
   AResults := nil;
+  AWith := nil;
+  AElement := -1;
   if FTree = nil then
     Exit;
   // with-Anweisungen, in deren Rumpf FOffset liegt, innerste zuerst.
@@ -2000,7 +2027,11 @@ begin
         end;
         AResults := FindMembers(TypeInfo, AName);
         if Length(AResults) > 0 then
+        begin
+          AWith := WithNode;
+          AElement := Index;
           Exit(True);
+        end;
       end;
   finally
     Withs.Free;
