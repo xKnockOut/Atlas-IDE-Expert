@@ -1249,7 +1249,7 @@ const
      'Server nicht bereit oder Zeitlimit überschritten).',
      'Baseline wird aktualisiert: Atlas prüft alle Dateien des Projekts …',
      'Baseline aktualisieren: Der Atlas-Server ist gerade beschäftigt; bitte gleich noch einmal versuchen.',
-     'Baseline geschrieben: %s (%d Treffer in %d Dateien; %d neu, %d entfernt, %d unverändert)',
+     'Baseline geschrieben: %s (%d Treffer, %d Dateien geprüft; %d neu, %d entfernt, %d unverändert)',
      'Baseline: %d Einträge der älteren Baseline um die Routine ergänzt.',
      'Baseline: %d Einträge ohne Datei entfernt (umbenannt, verschoben oder gelöscht):', '  %s (%d Treffer)',
      '  … und %d weitere',

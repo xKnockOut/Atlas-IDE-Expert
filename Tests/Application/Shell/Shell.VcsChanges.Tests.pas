@@ -51,6 +51,8 @@ type
     [Test]
     procedure SvnComparesWithRevision;
     [Test]
+    procedure SvnUsesDetectedPath;
+    [Test]
     procedure FindProgramKeepsUnknownName;
   end;
 
@@ -75,6 +77,7 @@ type
     FExitCodes: TDictionary<string, Integer>;
     FCalls: TList<string>;
     FWorkingDirs: TList<string>;
+    FExecutables: TList<string>;
   public
     constructor Create;
     destructor Destroy; override;
@@ -85,6 +88,8 @@ type
     /// <summary>"git -c core.quotepath=on rev-parse --show-toplevel" usw.; Programm ohne Pfad und .exe.</summary>
     property Calls: TList<string> read FCalls;
     property WorkingDirs: TList<string> read FWorkingDirs;
+    /// <summary>Programm genau wie übergeben, mit Pfad.</summary>
+    property Executables: TList<string> read FExecutables;
   end;
 
 const
@@ -97,10 +102,12 @@ begin
   FExitCodes := TDictionary<string, Integer>.Create;
   FCalls := TList<string>.Create;
   FWorkingDirs := TList<string>.Create;
+  FExecutables := TList<string>.Create;
 end;
 
 destructor TFakeProcess.Destroy;
 begin
+  FExecutables.Free;
   FWorkingDirs.Free;
   FCalls.Free;
   FExitCodes.Free;
@@ -127,6 +134,7 @@ begin
   Arguments := string.Join(' ', ARequest.Arguments);
   FCalls.Add(ChangeFileExt(ExtractFileName(ARequest.Executable), '') + ' ' + Arguments);
   FWorkingDirs.Add(ARequest.WorkingDir);
+  FExecutables.Add(ARequest.Executable);
   Result := 0;
   if FExitCodes.ContainsKey(Arguments) then
     Result := FExitCodes[Arguments];
@@ -479,6 +487,33 @@ begin
     Assert.AreEqual(1, Integer(Length(Changes.Lines[0].Spans)));
     Assert.AreEqual(1, Changes.Lines[0].Spans[0].First);
     Assert.AreEqual(2, Changes.Lines[0].Spans[0].Last);
+  finally
+    Changes.Free;
+  end;
+  WorkingCopy := Default(TAtlasVcsWorkingCopy);
+end;
+
+procedure TShellVcsChangesTests.SvnUsesDetectedPath;
+var
+  Process: TFakeProcess;
+  Keep: ICompilerProcess;
+  Changes: TSvnChanges;
+  WorkingCopy: TAtlasVcsWorkingCopy;
+  Svn: string;
+begin
+  // svn liegt nicht in PATH, Detect hat es z. B. bei TortoiseSVN gefunden.
+  Svn := TPath.Combine(FFolder, 'atlas-svn-4711.exe');
+  Process := TFakeProcess.Create;
+  Keep := Process;
+  Process.Answer('--non-interactive diff --summarize -r 7', ['M       A.pas']);
+  WorkingCopy.Kind := TAtlasVcsKind.Svn;
+  WorkingCopy.Root := FFolder;
+  Changes := TSvnChanges.Create(Keep, FFolder, WorkingCopy, Svn);
+  try
+    Changes.Load('7', False, False, False, False);
+    Assert.AreEqual(1, Process.Calls.Count);
+    Assert.AreEqual(Svn, Process.Executables[0]);
+    Assert.AreEqual('atlas-svn-4711 --non-interactive diff --summarize -r 7', Process.Calls[0]);
   finally
     Changes.Free;
   end;
