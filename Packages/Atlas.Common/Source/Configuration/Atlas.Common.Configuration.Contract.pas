@@ -236,6 +236,9 @@ type
     Keywords: Boolean;
     /// <summary>Postfix-Vorlagen (.for, .notnil …) hinter Ausdrücken anbieten (#188).</summary>
     PostfixTemplates: Boolean;
+    /// <summary>Nach "TFoo&lt;" nur Typen, die die Constraints erfüllen, mit Überschrift und Fußzeile (#450).
+    /// </summary>
+    GenericConstraints: Boolean;
     class function Default: TCompletionSettings; static;
   end;
 
@@ -656,6 +659,7 @@ begin
   Result.FreeStyle := TCompletionFreeStyle.Free;
   Result.Keywords := True;
   Result.PostfixTemplates := True;
+  Result.GenericConstraints := True;
 end;
 
 { TServerSettings }

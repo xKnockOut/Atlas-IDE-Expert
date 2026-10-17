@@ -2243,7 +2243,7 @@ end;
 procedure TNameResolver.CollectMembers(const AType: TResolvedSymbol; AList: TList<TResolvedSymbol>;
   ASeen: TDictionary<string, Boolean>);
 var
-  Current, Ancestor, Helper: TResolvedSymbol;
+  Current, Ancestor, Helper, Member: TResolvedSymbol;
   OwnerUnit, HelperUnit: TUnitIndex;
   Position, Depth: Integer;
   TypeName: string;
@@ -2266,7 +2266,12 @@ begin
         if IsVisible(OwnerUnit.Symbols[Position], OwnerUnit, Current) then
         begin
           if NameWanted(OwnerUnit.Symbols[Position].Name) then
-            AddCandidate(AList, ASeen, MemberOf(FromSymbol(OwnerUnit, OwnerUnit.Symbols[Position]), Depth, False));
+          begin
+            // Gebundene Typparameter des Typs (#450): Mitglieder von TObjectList<TKunde> kennen T=TKunde.
+            Member := MemberOf(FromSymbol(OwnerUnit, OwnerUnit.Symbols[Position]), Depth, False);
+            Member.Bindings := Current.Bindings;
+            AddCandidate(AList, ASeen, Member);
+          end;
         end
         else
           // Unsichtbare Deklaration: auch ihren Rumpf aus implementation nicht anbieten.
