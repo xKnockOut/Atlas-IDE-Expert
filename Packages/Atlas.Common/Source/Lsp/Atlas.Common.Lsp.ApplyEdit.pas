@@ -9,7 +9,8 @@ interface
 
 uses
   System.SysUtils,
-  System.JSON;
+  System.JSON,
+  Atlas.Common.Documents.Contract;
 
 type
   /// <summary>Eine Datei in einem WorkspaceEdit mit mehreren Dateien (#297).</summary>
@@ -35,6 +36,9 @@ type
     /// <summary>WorkspaceEdit mit documentChanges: neue Dateien anlegen und füllen, vorhandene ganz ersetzen,
     /// in der Reihenfolge von AChanges. Der Aufrufer übernimmt das Objekt.</summary>
     class function Files(const AChanges: TArray<TLspFileChange>): TJSONObject; static;
+    /// <summary>WorkspaceEdit mit den Änderungen AEdits in einer Datei (changes). Der Aufrufer übernimmt das
+    /// Objekt.</summary>
+    class function TextEdits(const AFileName: string; const AEdits: TArray<TTextEdit>): TJSONObject; static;
     /// <summary>Vollständige Anfrage mit id AId; übernimmt AEdit. Der Aufrufer übernimmt das Ergebnis.</summary>
     class function Request(const AId, ALabel: string; AEdit: TJSONObject): TJSONObject; static;
     /// <summary>Antwort des Clients: True bei applied; sonst AReason (failureReason bzw. Fehlermeldung).</summary>
@@ -44,7 +48,6 @@ type
 implementation
 
 uses
-  Atlas.Common.Documents.Contract,
   Atlas.Common.Documents.Uris,
   Atlas.Common.Lsp.Positions;
 
@@ -139,6 +142,27 @@ begin
   Edit.AddPair('newText', ANewText);
   Edits := TJSONArray.Create;
   Edits.AddElement(Edit);
+  Changes := TJSONObject.Create;
+  Changes.AddPair(TDocumentUris.FromPath(AFileName), Edits);
+  Result := TJSONObject.Create;
+  Result.AddPair('changes', Changes);
+end;
+
+class function TLspApplyEdit.TextEdits(const AFileName: string; const AEdits: TArray<TTextEdit>): TJSONObject;
+var
+  Edits: TJSONArray;
+  Edit: TJSONObject;
+  Item: TTextEdit;
+  Changes: TJSONObject;
+begin
+  Edits := TJSONArray.Create;
+  for Item in AEdits do
+  begin
+    Edit := TJSONObject.Create;
+    Edit.AddPair('range', TLspPositions.RangeToJson(Item.Range));
+    Edit.AddPair('newText', Item.NewText);
+    Edits.AddElement(Edit);
+  end;
   Changes := TJSONObject.Create;
   Changes.AddPair(TDocumentUris.FromPath(AFileName), Edits);
   Result := TJSONObject.Create;

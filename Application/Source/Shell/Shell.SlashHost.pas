@@ -54,7 +54,10 @@ type
     FTestUnitOf: TSlashTestUnitFunc;
     function ClientWrites: Boolean;
     /// <summary>Schickt AEdit (wird übernommen) an den Client; nach Erfolg Reload und AAfter.</summary>
-    procedure SendEdit(const AUri, ADescription: string; AEdit: TJSONObject; const AAfter: TProc);
+    procedure SendEdit(const AUri, ADescription: string; AEdit: TJSONObject; const AAfter: TProc); overload;
+    /// <summary>Wie oben; AReload: Ordner nach Erfolg neu laden (Projektdateien), sonst nur protokollieren.</summary>
+    procedure SendEdit(const AUri, ADescription: string; AEdit: TJSONObject; const AAfter: TProc;
+      AReload: Boolean); overload;
     function WriteThroughClient(const AUri, AFileName, AText: string): Boolean;
     /// <summary>Führt AWork im Thread der Nachrichtenschleife aus (über RunInLoop), sonst sofort.</summary>
     procedure InLoop(const AWork: TProc);
@@ -75,6 +78,10 @@ type
     function TestUnit(const AUri, AText: string; out ATarget: TSlashTestUnit): Boolean;
     procedure Notify(const AUri, AMessage: string);
     procedure MoveCursor(const AUri: string; const APosition: TTextPosition);
+    /// <summary>Eine Änderung an einer Quelldatei (resourcestring in eine andere Unit, #473): im Editor über
+    /// workspace/applyEdit in deren Puffer, ohne neu zu laden; ohne Editor ANewText auf die Platte in der
+    /// Kodierung der Datei.</summary>
+    procedure EditFile(const AUri, AFileName, ANewText: string; const AEdit: TTextEdit);
     /// <summary>Einstellungen slashCommands.* zur Datei (#299, #304); ohne Zuweisung ''.</summary>
     property SettingOf: TSlashSettingFunc read FSettingOf write FSettingOf;
     /// <summary>Testunit zur Unit (/test, #295); ohne Zuweisung keine.</summary>
@@ -155,7 +162,14 @@ begin
 end;
 
 procedure TShellSlashHost.SendEdit(const AUri, ADescription: string; AEdit: TJSONObject; const AAfter: TProc);
+begin
+  SendEdit(AUri, ADescription, AEdit, AAfter, True);
+end;
+
+procedure TShellSlashHost.SendEdit(const AUri, ADescription: string; AEdit: TJSONObject; const AAfter: TProc;
+  AReload: Boolean);
 var
+  Reload: Boolean;
   Id, Uri, Description: string;
   Request: TJSONObject;
   Logger: ILogger;
@@ -171,6 +185,7 @@ begin
   Uri := AUri;
   Description := ADescription;
   After := AAfter;
+  Reload := AReload;
   FDispatcher.ExpectResponse(Id,
     procedure(const AResponse: TJSONObject)
     var
@@ -181,7 +196,9 @@ begin
       if TLspApplyEdit.ReadResult(AResponse, Reason) then
       begin
         Logger.Info(Format('%s geändert (Schnellbefehl, über den Editor)', [Description]));
-        Target := WorkspaceOf(Uri);
+        Target := nil;
+        if Reload then
+          Target := WorkspaceOf(Uri);
         if Target <> nil then
           Target.Reload;
         if Assigned(After) then
@@ -223,6 +240,20 @@ begin
     Exit;
   OldText := TFileEncoding.LoadFromFile(AFileName, FileFormat);
   SendEdit(AUri, ExtractFileName(AFileName), TLspApplyEdit.ReplaceAll(AFileName, OldText, AText), nil);
+end;
+
+procedure TShellSlashHost.EditFile(const AUri, AFileName, ANewText: string; const AEdit: TTextEdit);
+var
+  FileFormat: TFileFormat;
+begin
+  if ClientWrites then
+  begin
+    SendEdit(AUri, 'Die Unit für resourcestrings', TLspApplyEdit.TextEdits(AFileName, [AEdit]), nil, False);
+    Exit;
+  end;
+  TFileEncoding.LoadFromFile(AFileName, FileFormat);
+  TFileEncoding.SaveToFile(AFileName, ANewText, FileFormat);
+  FLogger.Info('resourcestring eingetragen');
 end;
 
 procedure TShellSlashHost.InLoop(const AWork: TProc);

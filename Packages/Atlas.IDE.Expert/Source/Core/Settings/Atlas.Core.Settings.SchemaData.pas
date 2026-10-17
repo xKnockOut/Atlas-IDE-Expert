@@ -11,7 +11,7 @@ function AtlasSchemaJson: string;
 implementation
 
 const
-  Lines: array[0..1215] of string = (
+  Lines: array[0..1226] of string = (
     '{',
     '  "$schema": "http://json-schema.org/draft-07/schema#",',
     '  "title": "Atlas-Konfiguration",',
@@ -485,6 +485,17 @@ const
     '          "default": "private",',
     '          "description": "Abschnitt der Klasse, in den „GetName anlegen“ und „SetName anlegen“ die Zugriffsmethoden schreiben."',
     '        },',
+    '        "resourceStrings": {',
+    '          "type": "boolean",',
+    '          "default": true,',
+    '          "description": "Strg+Leertaste in einem String-Literal bietet „Als resourcestring auslagern“ an: Name aus den ersten Wörtern (S + CamelCase, Umlaute ersetzt), Eintrag im resourcestring-Absch' + 'nitt; gibt es den Text schon, zusätzlich „Vorhandenen verwenden“. Nicht in Konstanten, Attributen, case-Marken und Parametervorgaben."',
+    '        },',
+    '        "resourceStringUnit": {',
+    '          "x-scope": "project",',
+    '          "type": "string",',
+    '          "default": "",',
+    '          "description": "Unit, in deren interface-Teil ausgelagerte resourcestrings kommen (etwa App.Texte); sie wird bei Bedarf in uses eingetragen. Leer: implementation-Teil der eigenen Unit."',
+    '        },',
     '        "nameSuggestions": {',
     '          "type": "boolean",',
     '          "default": true,',
@@ -495,7 +506,7 @@ const
     '      "x-area": "completion",',
     '      "x-page": "Vervollständigung",',
     '      "x-control": "Auswahl",',
-    '      "x-issue": "#31, #188, #229, #450, #452, #466, #467, #480, #489"',
+    '      "x-issue": "#31, #188, #229, #450, #452, #466, #467, #473, #480, #489"',
     '    },',
     '    "refactoring": {',
     '      "type": "object",',

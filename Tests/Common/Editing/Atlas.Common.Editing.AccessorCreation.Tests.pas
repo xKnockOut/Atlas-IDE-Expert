@@ -446,4 +446,7 @@ begin
     'Index: Integer', 'private')));
 end;
 
+initialization
+  TDUnitX.RegisterTestFixture(TAccessorCreationTests);
+
 end.
