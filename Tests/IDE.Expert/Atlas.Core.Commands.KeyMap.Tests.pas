@@ -343,6 +343,15 @@ begin
   Assert.AreEqual($4050, Integer(EntryOf(Entries, TAtlasKeyFunction.QuickOpen).Key));
   Assert.IsFalse(EntryOf(Entries, TAtlasKeyFunction.QuickOpen).Disabled);
   Assert.AreEqual('Atlas.QuickOpen', TAtlasKeyMap.CommandIdOf(TAtlasKeyFunction.QuickOpen));
+  // Navigationsverlauf (#504): Alt+Links/Rechts mit Vorrang (der Verlauf führt die Sprünge der IDE mit),
+  // Strg+Alt+Q mit dem gemeinsamen Vorrang der Editorbefehle.
+  Assert.AreEqual($8025, Integer(EntryOf(Entries, TAtlasKeyFunction.NavBack).Key));
+  Assert.AreEqual($8027, Integer(EntryOf(Entries, TAtlasKeyFunction.NavForward).Key));
+  Assert.AreEqual($C051, Integer(EntryOf(Entries, TAtlasKeyFunction.LastEdit).Key));
+  Assert.IsTrue(EntryOf(Entries, TAtlasKeyFunction.NavBack).Priority);
+  Assert.IsFalse(EntryOf(Entries, TAtlasKeyFunction.LastEdit).Priority);
+  Assert.AreEqual('Atlas.NavBack', TAtlasKeyMap.CommandIdOf(TAtlasKeyFunction.NavBack));
+  Assert.AreEqual('Atlas.LastEdit', TAtlasKeyMap.CommandIdOf(TAtlasKeyFunction.LastEdit));
   Assert.AreEqual(Ord(TAtlasKeySource.Binding), Ord(TAtlasKeyMap.SourceOf(TAtlasKeyFunction.TestUnit)));
   Settings.EditorKeysPriority := True;
   Assert.IsTrue(EntryOf(TAtlasKeyEntry.AllFromSettings(Settings), TAtlasKeyFunction.UnitSearch).Priority);
@@ -370,13 +379,15 @@ begin
   Settings.WelcomePageQuickActions := False;
   Settings.Problems := False;
   Settings.QuickOpen := False;
+  Settings.NavHistory := False;
   Entries := TAtlasKeyEntry.AllFromSettings(Settings);
   for Entry in Entries do
     if Entry.Func in [TAtlasKeyFunction.MethodToggleUp, TAtlasKeyFunction.MethodToggleDown,
       TAtlasKeyFunction.UnitSearch, TAtlasKeyFunction.UnitSearchIde, TAtlasKeyFunction.WelcomeSearch,
       TAtlasKeyFunction.Bookmark, TAtlasKeyFunction.GenerateMenu, TAtlasKeyFunction.Notifications,
       TAtlasKeyFunction.WelcomeQuickBuild, TAtlasKeyFunction.WelcomeQuickTests, TAtlasKeyFunction.NextProblem,
-      TAtlasKeyFunction.PreviousProblem, TAtlasKeyFunction.QuickOpen] then
+      TAtlasKeyFunction.PreviousProblem, TAtlasKeyFunction.QuickOpen, TAtlasKeyFunction.NavBack,
+      TAtlasKeyFunction.NavForward, TAtlasKeyFunction.LastEdit] then
     begin
       Assert.IsTrue(Entry.Disabled, 'abgeschaltet: ' + IntToStr(Ord(Entry.Func)));
       Assert.AreEqual(Ord(TAtlasKeyStatus.NoKey), Ord(Entry.Status('IDE: Klassennavigation')),

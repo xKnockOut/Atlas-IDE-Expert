@@ -29,6 +29,8 @@ type
     procedure UnitSearchOptions;
     [Test]
     procedure QuickOpenOptions;
+    [Test]
+    procedure NavHistoryOptions;
     /// <summary>Erzeugen-Menü (#719): Vorgaben, Normalisieren, Speichern und Laden.</summary>
     [Test]
     procedure GenerateMenuOptions;
@@ -1032,6 +1034,33 @@ begin
   Assert.IsFalse(Loaded.QuickOpen);
   Assert.IsTrue(Loaded.QuickOpenLibrary);
   Assert.AreEqual($6050, Loaded.QuickOpenKey);
+end;
+
+procedure TAtlasPluginSettingsTests.NavHistoryOptions;
+var
+  Settings, Loaded: TAtlasPluginSettings;
+  Store: IAtlasSettingsStore;
+begin
+  // Navigationsverlauf (#504): an, Alt+Links, Alt+Rechts, Strg+Alt+Q.
+  Settings := TAtlasPluginSettings.Defaults;
+  Assert.IsTrue(Settings.NavHistory);
+  Assert.AreEqual($8025, Settings.NavBackKey);
+  Assert.AreEqual($8027, Settings.NavForwardKey);
+  Assert.AreEqual($C051, Settings.LastEditKey);
+  Settings.NavHistory := False;
+  Settings.NavBackKey := 0;
+  Settings.NavForwardKey := $C027;
+  Settings.LastEditKey := -5;
+  Settings.Normalize;
+  Assert.AreEqual(0, Settings.LastEditKey);
+  Store := TMemoryStore.Create;
+  Settings.Save(Store);
+  Loaded := Default(TAtlasPluginSettings);
+  Loaded.Load(Store);
+  Assert.IsFalse(Loaded.NavHistory);
+  Assert.AreEqual(0, Loaded.NavBackKey);
+  Assert.AreEqual($C027, Loaded.NavForwardKey);
+  Assert.AreEqual(0, Loaded.LastEditKey);
 end;
 
 { TAtlasSettingsScopesTests }

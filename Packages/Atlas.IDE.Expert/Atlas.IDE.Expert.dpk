@@ -418,6 +418,8 @@ contains
   Atlas.UI.Editor.ChangeSignature in 'Source\UI\Editor\Atlas.UI.Editor.ChangeSignature.pas',
   Atlas.IDE.Foundation.Elements in 'Source\IDE\Foundation\Atlas.IDE.Foundation.Elements.pas',
   Atlas.IDE.Editor.Hide in 'Source\IDE\Editor\Atlas.IDE.Editor.Hide.pas',
+  Atlas.Core.Editor.NavHistory in 'Source\Core\Editor\Atlas.Core.Editor.NavHistory.pas',
+  Atlas.IDE.Editor.NavHistory in 'Source\IDE\Editor\Atlas.IDE.Editor.NavHistory.pas',
   Atlas.IDE.Notes.Service in 'Source\IDE\Notes\Atlas.IDE.Notes.Service.pas',
   Atlas.IDE.Notes.Gutter in 'Source\IDE\Notes\Atlas.IDE.Notes.Gutter.pas',
   Atlas.Core.Bookmarks.Store in 'Source\Core\Bookmarks\Atlas.Core.Bookmarks.Store.pas',

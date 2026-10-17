@@ -550,7 +550,9 @@ type
     TypeArgKindInterfaces, TypeArgKindEnums, TypeArgKindBasic, SettingsInlayTypeHints, ElementInlayTypeHints,
     ElementInlayTypeHintsPlural, QuickOpenTitle, QuickOpenPrompt, QuickOpenOriginProject, QuickOpenOriginSearchPath,
     QuickOpenOriginLibrary, QuickOpenLine, QuickOpenLineHint, QuickOpenBuilding, QuickOpenNoEditor,
-    SettingsQuickOpen, SettingsQuickOpenLibrary, SettingsQuickOpenKey);
+    SettingsQuickOpen, SettingsQuickOpenLibrary, SettingsQuickOpenKey, NavBackCommand, NavForwardCommand,
+    NavLastEditCommand, NavListCommand, NavListPrompt, NavKindBack, NavKindAhead, NavKindEdit, NavEmpty,
+    SettingsNavHistory);
 
   TAtlasStrings = class
   private class var
@@ -1602,7 +1604,9 @@ const
      'Typmarke', 'Typmarken', 'Schnell öffnen', 'Datei suchen · @ Symbol der Datei · # Symbol im Projekt · : Zeile',
      'Projekt', 'Suchpfad', 'Bibliothek', 'Zeile %d', 'Zeilennummer eingeben', 'Dateiliste wird aufgebaut …',
      'Keine Datei im Editor', 'Schnell öffnen (Datei und Symbol, Strg+P)', 'Auch die Quellen von RTL und VCL',
-     'Taste für „Schnell öffnen“'),
+     'Taste für „Schnell öffnen“', 'Zurück (Navigationsverlauf)', 'Vor (Navigationsverlauf)',
+     'Letzte Bearbeitungsstelle', 'Navigationsverlauf …', 'Verlauf filtern', 'zurück', 'vor', 'Änderung',
+     'Noch kein Verlauf', 'Navigationsverlauf über Dateien (Alt+Links/Rechts, Strg+Alt+Q)'),
     ('Enter to accept · Esc to close', '%d of %d', 'No matches for “%s”', 'Backspace widens the search',
      'No suggestions here', 'Esc closes', 'No details for this entry', 'Overload', 'Deprecated: %s', 'Deprecated.',
      'Inherited from %s', 'Inherited', 'optional, default %s', 'No overload with %d parameters.', '… %d more',
@@ -2577,7 +2581,9 @@ const
      'Show the type of inline variables at the line end (var X := …)', 'type mark', 'type marks', 'Quick open',
      'Search files · @ symbol in file · # symbol in project · : line', 'Project', 'Search path', 'Library',
      'Line %d', 'Enter a line number', 'Building the file list …', 'No file in the editor',
-     'Quick open (file and symbol, Ctrl+P)', 'Also the RTL and VCL sources', 'Key for “Quick open”'));
+     'Quick open (file and symbol, Ctrl+P)', 'Also the RTL and VCL sources', 'Key for “Quick open”', 'Back (navigation history)',
+     'Forward (navigation history)', 'Last edit location', 'Navigation history …', 'Filter history', 'back',
+     'forward', 'edit', 'No history yet', 'Navigation history across files (Alt+Left/Right, Ctrl+Alt+Q)'));
 
 { TAtlasStrings }
 
