@@ -676,6 +676,37 @@ begin
       if (FConnection = nil) or not FConnection.Queue(AWork) then
         FLogger.Warning('Schnellbefehl: Projekt nicht neu geladen, die Verbindung ist beendet');
     end;
+  // Testunit für /test (#295): dieselbe Suche wie die Code-Aktion aus #274.
+  SlashHost.TestUnitOf :=
+    function(const AUri, AText: string; out ATarget: TSlashTestUnit): Boolean
+    var
+      Context: TTestUnitContext;
+      Target: TTestUnitTarget;
+    begin
+      ATarget := Default(TSlashTestUnit);
+      if not TestUnitContextFor(AUri, Context) then
+      begin
+        ATarget.Reason := 'Datei gehört zu keinem Arbeitsbereich';
+        Exit(False);
+      end;
+      Target := TLspTestUnits.Resolve(TDocumentUris.ToPath(AUri), AText, -1, Context);
+      ATarget.UnitName := Target.Counterpart;
+      ATarget.TestProgram := Context.TestProgram;
+      if Target.UnitName = '' then
+        ATarget.Reason := 'Die Datei ist keine Unit'
+      else if Target.IsTest then
+        ATarget.Reason := 'Die Datei ist selbst eine Testunit'
+      else if Target.CounterpartFile <> '' then
+      begin
+        ATarget.FileName := Target.CounterpartFile;
+        ATarget.Exists := True;
+      end
+      else if Target.CanCreate then
+        ATarget.FileName := Target.NewFile
+      else
+        ATarget.Reason := Target.Reason;
+      Result := ATarget.Reason = '';
+    end;
   // Protokollaufruf (#304) und Palettenseite (#299) aus der atlas.json des Ordners.
   SlashHost.SettingOf :=
     function(const AUri, AName: string): string

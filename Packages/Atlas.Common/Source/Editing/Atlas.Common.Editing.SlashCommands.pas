@@ -37,6 +37,20 @@ type
     class function Create(const AFileName, AText: string; ANew: Boolean): TSlashFile; static;
   end;
 
+  /// <summary>Testunit zur Unit einer Datei (/test, #295), wie sie die Code-Aktion aus #274 findet.</summary>
+  TSlashTestUnit = record
+    /// <summary>Name der Testunit, z. B. Kunden.Tests.</summary>
+    UnitName: string;
+    /// <summary>Datei der Testunit: die vorhandene oder die neu anzulegende.</summary>
+    FileName: string;
+    /// <summary>Die Testunit gibt es schon.</summary>
+    Exists: Boolean;
+    /// <summary>Testprogramm (.dpr), in das eine neue Testunit eingetragen wird.</summary>
+    TestProgram: string;
+    /// <summary>Warum es keine Testunit gibt und keine angelegt wird; sonst ''.</summary>
+    Reason: string;
+  end;
+
   /// <summary>Zugriff auf Projekt und Editor für Befehle, die mehr als die Datei ändern (#301).</summary>
   ISlashHost = interface
     ['{8E4A2C61-3B7D-4F95-A0C8-5D1E9F27B364}']
@@ -58,6 +72,8 @@ type
     procedure WriteFiles(const AUri: string; const AFiles: TArray<TSlashFile>; const AShow: string);
     /// <summary>Einstellung slashCommands.AName zur Datei AUri (Namen in TSlashSettings); '' ohne.</summary>
     function Setting(const AUri, AName: string): string;
+    /// <summary>Testunit zur Unit AUri mit Text AText (/test, #295); False mit ATarget.Reason.</summary>
+    function TestUnit(const AUri, AText: string; out ATarget: TSlashTestUnit): Boolean;
   end;
 
   /// <summary>Namen der Einstellungen, die Befehle über ISlashHost.Setting lesen.</summary>

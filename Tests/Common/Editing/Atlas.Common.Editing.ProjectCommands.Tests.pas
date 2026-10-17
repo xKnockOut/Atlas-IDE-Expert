@@ -2,7 +2,7 @@
 
 // Tests für die Schnellbefehle /define, /searchpath, /config und /dfm (#301), /unit und /open (#297),
 // /component (#299), /log und /except mit slashCommands.logCall (#304) und /event (#295)
-// mit einem Host, der Dateien im Speicher hält und Aufrufe mitschreibt.
+// und /test (#295) mit einem Host, der Dateien im Speicher hält und Aufrufe mitschreibt.
 
 interface
 
@@ -49,6 +49,12 @@ type
     procedure EventForFormAndComponent;
     [Test]
     procedure EventWrongPlaceFails;
+    [Test]
+    procedure TestCreatesTestUnit;
+    [Test]
+    procedure TestAddsToExistingTestUnit;
+    [Test]
+    procedure TestWrongPlaceFails;
   end;
 
 implementation
@@ -85,6 +91,8 @@ type
     ShowAfterWrite: string;
     LogCallValue: string;
     PaletteValue: string;
+    TestTarget: TSlashTestUnit;
+    TestReason: string;
     constructor Create;
     destructor Destroy; override;
     function Project(const AUri: string; out AProject: TProjectInfo): Boolean;
@@ -96,6 +104,7 @@ type
     function HeaderTemplate(const AUri: string): string;
     procedure WriteFiles(const AUri: string; const AFiles: TArray<TSlashFile>; const AShow: string);
     function Setting(const AUri, AName: string): string;
+    function TestUnit(const AUri, AText: string; out ATarget: TSlashTestUnit): Boolean;
   end;
 
 const
@@ -230,6 +239,13 @@ begin
     Result := PaletteValue
   else
     Result := '';
+end;
+
+function TFakeHost.TestUnit(const AUri, AText: string; out ATarget: TSlashTestUnit): Boolean;
+begin
+  ATarget := TestTarget;
+  ATarget.Reason := TestReason;
+  Result := TestReason = '';
 end;
 
 function Run(const ACommand: string; const AHost: ISlashHost; out AEdits: TArray<TRuleEdit>): Boolean;
@@ -725,6 +741,156 @@ begin
   Assert.IsFalse(RunEvent('/event OnCreate', nil, Text));
   Host.Files.Remove('Main.dfm');
   Assert.IsFalse(RunEvent('/event OnCreate', Keep, Text));
+  Assert.AreEqual(0, Integer(Length(Host.WrittenFiles)));
+end;
+
+{ /test }
+
+const
+  KundenUnit =
+    'unit Kunden;'#13#10 +                                     // 0
+    'interface'#13#10 +                                        // 1
+    'type'#13#10 +                                             // 2
+    '  TKunde = class'#13#10 +                                 // 3
+    '  private'#13#10 +                                        // 4
+    '    function Pruefe: Boolean;'#13#10 +                    // 5
+    '  public'#13#10 +                                         // 6
+    '    function Berechne(A: Integer): Integer;'#13#10 +      // 7
+    '  end;'#13#10 +                                           // 8
+    'implementation'#13#10 +                                   // 9
+    'function TKunde.Pruefe: Boolean;'#13#10 +                 // 10
+    'begin'#13#10 +                                            // 11
+    '  %s'#13#10 +                                             // 12 Befehl in Pruefe
+    '  Result := True;'#13#10 +                                // 13
+    'end;'#13#10 +                                             // 14
+    'function TKunde.Berechne(A: Integer): Integer;'#13#10 +   // 15
+    'begin'#13#10 +                                            // 16
+    '  %s'#13#10 +                                             // 17 Befehl in Berechne
+    '  Result := A;'#13#10 +                                   // 18
+    'end;'#13#10 +                                             // 19
+    'end.'#13#10;
+
+  KundenTests =
+    'unit Kunden.Tests;'#13#10 +
+    'interface'#13#10 +
+    'uses'#13#10 +
+    '  DUnitX.TestFramework;'#13#10 +
+    'type'#13#10 +
+    '  [TestFixture]'#13#10 +
+    '  TKundeTests = class'#13#10 +
+    '  public'#13#10 +
+    '    [Test]'#13#10 +
+    '    procedure TestBerechne;'#13#10 +
+    '  end;'#13#10 +
+    'implementation'#13#10 +
+    'procedure TKundeTests.TestBerechne;'#13#10 +
+    'begin'#13#10 +
+    'end;'#13#10 +
+    #13#10 +
+    'initialization'#13#10 +
+    '  TDUnitX.RegisterTestFixture(TKundeTests);'#13#10 +
+    'end.'#13#10;
+
+  TestProgramText =
+    'program AppTests;'#13#10 +
+    'uses'#13#10 +
+    '  DUnitX.TestFramework;'#13#10 +
+    'begin'#13#10 +
+    'end.'#13#10;
+
+function RunTest(const AText: string; ALine: Integer; const AHost: ISlashHost; out AEdits: TArray<TRuleEdit>;
+  out AReason: string): Boolean;
+var
+  Problems: TArray<TSlashProblem>;
+begin
+  Result := TSlashCommandRegistry.Shared.AfterEnter(AText, TTextPosition.Create(ALine + 1, 0), nil, nil, AEdits,
+    nil, '', TDocumentUris.FromPath(TPath.Combine(GetCurrentDir, 'Kunden.pas')), AHost);
+  AReason := '';
+  if not Result then
+  begin
+    Problems := TSlashCommandRegistry.Shared.Problems(AText, nil);
+    if Length(Problems) > 0 then
+      AReason := Problems[0].Message;
+  end;
+end;
+
+procedure TProjectCommandsTests.TestCreatesTestUnit;
+var
+  Host: TFakeHost;
+  Keep: ISlashHost;
+  Edits: TArray<TRuleEdit>;
+  Reason, Text: string;
+begin
+  Host := TFakeHost.Create;
+  Keep := Host;
+  Host.Files.Add('AppTests.dpr', TestProgramText);
+  Host.Files.Add('AppTests.dproj', Dproj);
+  Host.TestTarget.UnitName := 'Kunden.Tests';
+  Host.TestTarget.FileName := TPath.Combine(GetCurrentDir, 'Kunden.Tests.pas');
+  Host.TestTarget.TestProgram := TPath.Combine(GetCurrentDir, 'AppTests.dpr');
+  // Private Methode: das Gerüst hat nur TestBerechne, /test ergänzt TestPruefe.
+  Assert.IsTrue(RunTest(Format(KundenUnit, ['/test', '']), 12, Keep, Edits, Reason), Reason);
+  Assert.AreEqual(1, Integer(Length(Edits)));
+  Assert.AreEqual(3, Integer(Length(Host.WrittenFiles)));
+  Assert.IsTrue(Host.WrittenFiles[0].New);
+  Text := Host.WrittenFiles[0].Text;
+  Assert.IsTrue(Parses(Text), Text);
+  Assert.IsTrue(ContainsStr(Text, '    procedure TestBerechne;'), Text);
+  Assert.IsTrue(ContainsStr(Text, '    [Test]'#13#10'    procedure TestPruefe;'#13#10'  end;'), Text);
+  Assert.IsTrue(ContainsStr(Text, 'procedure TKundeTests.TestPruefe;'#13#10'begin'#13#10 +
+    '  Assert.Fail(''Test für TKunde.Pruefe fehlt noch'');'), Text);
+  Assert.IsTrue(ContainsStr(Text, '  Kunden;'), Text);
+  Assert.IsTrue(ContainsStr(Host.WrittenFiles[1].Text, 'Kunden.Tests in ''Kunden.Tests.pas'''),
+    Host.WrittenFiles[1].Text);
+  Assert.IsTrue(ContainsStr(Host.WrittenFiles[2].Text, '<DCCReference Include="Kunden.Tests.pas"/>'),
+    Host.WrittenFiles[2].Text);
+  Assert.IsTrue(SameFile('Kunden.Tests.pas', Host.ShowAfterWrite), Host.ShowAfterWrite);
+end;
+
+procedure TProjectCommandsTests.TestAddsToExistingTestUnit;
+var
+  Host: TFakeHost;
+  Keep: ISlashHost;
+  Edits: TArray<TRuleEdit>;
+  Reason, Text: string;
+begin
+  Host := TFakeHost.Create;
+  Keep := Host;
+  Host.Files.Add('Kunden.Tests.pas', KundenTests);
+  Host.TestTarget.UnitName := 'Kunden.Tests';
+  Host.TestTarget.FileName := TPath.Combine(GetCurrentDir, 'Kunden.Tests.pas');
+  Host.TestTarget.Exists := True;
+  // TestBerechne gibt es: der neue Test heißt TestBerechne2; Kunden kommt ins uses.
+  Assert.IsTrue(RunTest(Format(KundenUnit, ['', '/test']), 17, Keep, Edits, Reason), Reason);
+  Assert.AreEqual(1, Integer(Length(Host.WrittenFiles)));
+  Assert.IsFalse(Host.WrittenFiles[0].New);
+  Text := Host.WrittenFiles[0].Text;
+  Assert.IsTrue(Parses(Text), Text);
+  Assert.IsTrue(ContainsStr(Text, '    procedure TestBerechne;'#13#10'    [Test]'#13#10 +
+    '    procedure TestBerechne2;'#13#10'  end;'), Text);
+  Assert.IsTrue(ContainsStr(Text, 'procedure TKundeTests.TestBerechne2;'), Text);
+  Assert.IsTrue(ContainsStr(Text, '  DUnitX.TestFramework,'#13#10'  Kunden;'), Text);
+  Assert.IsTrue(Pos('procedure TKundeTests.TestBerechne2;', Text) < Pos('initialization', Text), Text);
+end;
+
+procedure TProjectCommandsTests.TestWrongPlaceFails;
+var
+  Host: TFakeHost;
+  Keep: ISlashHost;
+  Edits: TArray<TRuleEdit>;
+  Reason, Text: string;
+begin
+  Host := TFakeHost.Create;
+  Keep := Host;
+  Host.TestTarget.FileName := TPath.Combine(GetCurrentDir, 'Kunden.Tests.pas');
+  // In der Klassendeklaration statt im Rumpf einer Methode.
+  Text := StringReplace(Format(KundenUnit, ['', '']), '  private'#13#10, '  private'#13#10'    /test'#13#10, []);
+  Assert.IsFalse(RunTest(Text, 5, Keep, Edits, Reason));
+  Assert.IsTrue(ContainsStr(Reason, 'Rumpf'), Reason);
+  Assert.AreEqual(0, Integer(Length(Host.WrittenFiles)));
+  // Ohne Testprojekt: nichts wird geschrieben.
+  Host.TestReason := 'Kein Testprojekt gefunden';
+  Assert.IsFalse(RunTest(Format(KundenUnit, ['/test', '']), 12, Keep, Edits, Reason));
   Assert.AreEqual(0, Integer(Length(Host.WrittenFiles)));
 end;
 

@@ -36,6 +36,8 @@ type
   THeaderTemplateFunc = reference to function(const AUri: string): string;
   /// <summary>Wert der Einstellung slashCommands.AName zur Datei AUri.</summary>
   TSlashSettingFunc = reference to function(const AUri, AName: string): string;
+  /// <summary>Testunit zur Unit AUri mit Text AText (/test, #295).</summary>
+  TSlashTestUnitFunc = reference to function(const AUri, AText: string; out ATarget: TSlashTestUnit): Boolean;
 
   TShellSlashHost = class(TInterfacedObject, ISlashHost)
   private
@@ -49,6 +51,7 @@ type
     FClientAppliesEdits: TFunc<Boolean>;
     FRunInLoop: TJsonRpcScheduler;
     FSettingOf: TSlashSettingFunc;
+    FTestUnitOf: TSlashTestUnitFunc;
     function ClientWrites: Boolean;
     /// <summary>Schickt AEdit (wird übernommen) an den Client; nach Erfolg Reload und AAfter.</summary>
     procedure SendEdit(const AUri, ADescription: string; AEdit: TJSONObject; const AAfter: TProc);
@@ -69,8 +72,11 @@ type
     function HeaderTemplate(const AUri: string): string;
     procedure WriteFiles(const AUri: string; const AFiles: TArray<TSlashFile>; const AShow: string);
     function Setting(const AUri, AName: string): string;
+    function TestUnit(const AUri, AText: string; out ATarget: TSlashTestUnit): Boolean;
     /// <summary>Einstellungen slashCommands.* zur Datei (#299, #304); ohne Zuweisung ''.</summary>
     property SettingOf: TSlashSettingFunc read FSettingOf write FSettingOf;
+    /// <summary>Testunit zur Unit (/test, #295); ohne Zuweisung keine.</summary>
+    property TestUnitOf: TSlashTestUnitFunc read FTestUnitOf write FTestUnitOf;
     /// <summary>Stellt Arbeit in die Nachrichtenschleife (TJsonRpcConnection.Queue). Reload und SelectBuild
     /// laufen nur dort (Code-Review A-03); ohne Zuweisung (Tests) sofort.</summary>
     property RunInLoop: TJsonRpcScheduler read FRunInLoop write FRunInLoop;
@@ -306,6 +312,17 @@ begin
   Result := '';
   if Assigned(FSettingOf) then
     Result := FSettingOf(AUri, AName);
+end;
+
+function TShellSlashHost.TestUnit(const AUri, AText: string; out ATarget: TSlashTestUnit): Boolean;
+begin
+  ATarget := Default(TSlashTestUnit);
+  if not Assigned(FTestUnitOf) then
+  begin
+    ATarget.Reason := 'Testunits sind hier nicht verfügbar';
+    Exit(False);
+  end;
+  Result := FTestUnitOf(AUri, AText, ATarget);
 end;
 
 procedure TShellSlashHost.WriteFiles(const AUri: string; const AFiles: TArray<TSlashFile>; const AShow: string);
