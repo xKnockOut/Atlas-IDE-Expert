@@ -11,7 +11,7 @@ function AtlasSchemaJson: string;
 implementation
 
 const
-  Lines: array[0..1199] of string = (
+  Lines: array[0..1215] of string = (
     '{',
     '  "$schema": "http://json-schema.org/draft-07/schema#",',
     '  "title": "Atlas-Konfiguration",',
@@ -469,6 +469,22 @@ const
     '          "default": true,',
     '          "description": "Nach \"TObjectList<\" nur Typen vorschlagen, die die Constraints des Typparameters erfüllen (class, record, constructor, Interface oder Klasse), mit Überschrift „T: class · n' + 'ur Klassen“ und den ausgeblendeten Arten in der Fußzeile."',
     '        },',
+    '        "createAccessors": {',
+    '          "x-scope": "project",',
+    '          "type": "boolean",',
+    '          "default": true,',
+    '          "description": "Nach read bzw. write einer Eigenschaftsdeklaration oben in der Liste „Feld FName anlegen“, „GetName anlegen“ und „SetName anlegen“ anbieten: Feld im private-Abschnitt (strict' + ' private, wenn die Klasse ihn nutzt), Methoden im Abschnitt nach accessorSection, Setter mit Änderungsprüfung."',
+    '        },',
+    '        "accessorSection": {',
+    '          "x-scope": "project",',
+    '          "type": "string",',
+    '          "enum": [',
+    '            "private",',
+    '            "protected"',
+    '          ],',
+    '          "default": "private",',
+    '          "description": "Abschnitt der Klasse, in den „GetName anlegen“ und „SetName anlegen“ die Zugriffsmethoden schreiben."',
+    '        },',
     '        "nameSuggestions": {',
     '          "type": "boolean",',
     '          "default": true,',
@@ -479,7 +495,7 @@ const
     '      "x-area": "completion",',
     '      "x-page": "Vervollständigung",',
     '      "x-control": "Auswahl",',
-    '      "x-issue": "#31, #188, #229, #450, #452, #466, #480, #489"',
+    '      "x-issue": "#31, #188, #229, #450, #452, #466, #467, #480, #489"',
     '    },',
     '    "refactoring": {',
     '      "type": "object",',

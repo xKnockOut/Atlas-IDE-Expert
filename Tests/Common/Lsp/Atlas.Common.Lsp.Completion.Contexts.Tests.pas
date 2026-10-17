@@ -45,6 +45,10 @@ type
     [Test]
     procedure PropertyWriteOffersMatchingSetters;
     [Test]
+    procedure PropertyOffersAccessorCreation;
+    [Test]
+    procedure AccessorCreationFollowsSettings;
+    [Test]
     procedure OverrideKeywordOffersVirtualMethods;
     [Test]
     procedure KeywordsFitThePlace;
@@ -63,7 +67,8 @@ uses
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.Parser,
   Atlas.Common.Index.SymbolIndex,
-  Atlas.Common.Index.Extractor;
+  Atlas.Common.Index.Extractor,
+  Atlas.Common.Lsp.CompletionRequest;
 
 const
   HauptFile = 'C:\P\Haupt.pas';
@@ -334,7 +339,8 @@ begin
     Assert.AreEqual('FWert GetWert Zaehler Anzahl', Names(Items));
     Assert.IsTrue(TLspCompletion.PropertyItems(FResolver, Tree, Text, HauptFile,
       PositionOf(Text, 'string read '), TCompletionMatching.Prefix, Items));
-    Assert.AreEqual('GetItem', Names(Items));
+    // Dazu „GetItems anlegen“ (#467) oben; ein Feld gibt es zu Indexeigenschaften nicht.
+    Assert.AreEqual('GetItems anlegen GetItem', Names(Items));
     // Außerhalb einer property-Zeile kein Kontext.
     Assert.IsFalse(TLspCompletion.PropertyItems(FResolver, Tree, Text, HauptFile,
       PositionOf(Text, 'FWert: '), TCompletionMatching.Prefix, Items));
@@ -372,6 +378,106 @@ begin
   finally
     Tree.Free;
   end;
+end;
+
+const
+  UnitEigenschaft =
+    'unit Haupt;'#10 +
+    'interface'#10 +
+    'type'#10 +
+    '  TFoo = class'#10 +
+    '  private'#10 +
+    '    FName: string;'#10 +
+    '  public'#10 +
+    '    property Caption: string read Ca'#10 +
+    '    property Titel: string read FName write '#10 +
+    '  end;'#10 +
+    'implementation'#10 +
+    'end.';
+
+/// <summary>Einträge nach "read Ca" bzw. "write " in UnitEigenschaft mit ASettings.</summary>
+function AccessorItemsAt(AResolver: TNameResolver; const AMarker: string;
+  const ASettings: TCompletionSettings): TCompletionItems;
+var
+  Request: TCompletionRequest;
+  Tree: TSyntaxTree;
+  Lines: TArray<string>;
+  Line: Integer;
+  Position: TTextPosition;
+begin
+  Lines := string(UnitEigenschaft).Split([#10]);
+  Position := TTextPosition.Create(0, 0);
+  for Line := 0 to High(Lines) do
+    if Pos(AMarker, Lines[Line]) > 0 then
+      Position := TTextPosition.Create(Line, Pos(AMarker, Lines[Line]) - 1 + Length(AMarker));
+  Tree := TPascalParser.Parse(UnitEigenschaft);
+  Request := TCompletionRequest.Create(UnitEigenschaft, HauptFile, Position);
+  try
+    Request.Tree := Tree;
+    Request.Resolver := AResolver;
+    Request.Matching := TCompletionMatching.Prefix;
+    Request.Settings := ASettings;
+    Assert.IsTrue(TLspCompletion.PropertyItems(Request, Result));
+  finally
+    Request.Free;
+    Tree.Free;
+  end;
+end;
+
+procedure TLspCompletionContextTests.PropertyOffersAccessorCreation;
+var
+  Items: TCompletionItems;
+  Item: TCompletionItem;
+  Edit: TTextEdit;
+  Inserted: string;
+begin
+  // #467: Nach "read Ca" stehen „Feld FCaption anlegen“ und „GetCaption anlegen“ oben.
+  Items := AccessorItemsAt(FResolver, 'read Ca', TCompletionSettings.Default);
+  Assert.AreEqual('Feld FCaption anlegen GetCaption anlegen', Names(Items));
+  Item := Items.Items[0];
+  Assert.AreEqual('create', Item.Action);
+  Assert.IsTrue(Item.Pinned);
+  Assert.AreEqual('FCaption: string;', Item.Detail);
+  // "Ca" wird zu "FCaption"; das Feld kommt hinter FName.
+  Assert.IsTrue(Item.HasTextEdit);
+  Assert.AreEqual('FCaption', Item.TextEdit.NewText);
+  Assert.AreEqual(Integer(7), Item.TextEdit.Range.StartPos.Line);
+  Assert.AreEqual(Integer(34), Item.TextEdit.Range.StartPos.Character);
+  Assert.AreEqual(Integer(36), Item.TextEdit.Range.EndPos.Character);
+  Assert.AreEqual(Integer(1), Integer(Length(Item.AdditionalEdits)));
+  Assert.AreEqual(#10'    FCaption: string;', Item.AdditionalEdits[0].NewText);
+  // Der Getter hat Deklaration und Rumpf.
+  Inserted := '';
+  for Edit in Items.Items[1].AdditionalEdits do
+    Inserted := Inserted + Edit.NewText;
+  Assert.Contains(Inserted, 'function GetCaption: string;');
+  Assert.Contains(Inserted, 'function TFoo.GetCaption: string;');
+  // Nach "write " ohne Feld FTitel: „Feld FTitel anlegen“, „SetTitel anlegen“ legt das Feld mit an; danach das
+  // vorhandene Feld FName.
+  Items := AccessorItemsAt(FResolver, 'FName write ', TCompletionSettings.Default);
+  Assert.AreEqual('Feld FTitel anlegen SetTitel anlegen FName', Names(Items));
+  Assert.AreEqual('procedure SetTitel(const Value: string); + FTitel: string;', Items.Items[1].Detail);
+end;
+
+procedure TLspCompletionContextTests.AccessorCreationFollowsSettings;
+var
+  Settings: TCompletionSettings;
+  Items: TCompletionItems;
+  Edit: TTextEdit;
+  Inserted: string;
+begin
+  Settings := TCompletionSettings.Default;
+  Settings.AccessorSection := TCompletionAccessorSection.Protected;
+  Items := AccessorItemsAt(FResolver, 'read Ca', Settings);
+  Inserted := '';
+  for Edit in Items.Items[1].AdditionalEdits do
+    Inserted := Inserted + Edit.NewText;
+  // Kein protected vor der Eigenschaft: eigener Abschnitt, danach weiter public.
+  Assert.Contains(Inserted, '  protected'#10'    function GetCaption: string;'#10'  public'#10);
+  // Abgeschaltet: nur vorhandene Mitglieder.
+  Settings.CreateAccessors := False;
+  Items := AccessorItemsAt(FResolver, 'read Ca', Settings);
+  Assert.AreEqual('', Names(Items));
 end;
 
 procedure TLspCompletionContextTests.OverrideKeywordOffersVirtualMethods;
