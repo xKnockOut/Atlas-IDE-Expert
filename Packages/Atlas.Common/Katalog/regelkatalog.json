@@ -23,7 +23,7 @@
       "name": "Bidirectional control character",
       "category": "vulnerability",
       "severity": "error",
-      "description": "Bidirectional control characters can make code display differently from how it compiles (Trojan Source).",
+      "description": "Bidirectional control characters can make code display differently from how it compiles (Trojan Source); also in form files. Direction marks in RTL text only with low confidence.",
       "bad": "if IsAdmin then { U+202E } begin",
       "good": "if IsAdmin then begin"
     },
@@ -32,7 +32,7 @@
       "name": "Invisible character",
       "category": "security-hotspot",
       "severity": "warning",
-      "description": "Invisible or zero-width characters in the source code.",
+      "description": "Invisible or zero-width characters in the source code and form files; medium confidence in strings and comments.",
       "bad": "Count{U+200B} := 0;",
       "good": "Count := 0;"
     },
@@ -41,7 +41,7 @@
       "name": "Control character",
       "category": "bug",
       "severity": "error",
-      "description": "NUL or control characters or invalid bytes (U+FFFD) in the source code.",
+      "description": "NUL or control characters or invalid UTF-8 bytes in the source code and the form file; invalid bytes with exact line and column.",
       "bad": "S := 'abc{U+0000}';",
       "good": "S := 'abc' + #0;"
     },
