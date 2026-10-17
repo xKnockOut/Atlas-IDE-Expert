@@ -1,7 +1,8 @@
 ﻿unit Atlas.IDE.Completion.Preview;
 
 // Vorschau des gewählten Eintrags im Editor (#434): Der noch fehlende Teil
-// steht kursiv und gedämpft hinter dem Cursor. Nur gezeichnet über die
+// steht kursiv und gedämpft hinter dem Cursor. Ebenso der Vorschlag von
+// „Muster fortsetzen“ (#671, Element PatternPreview, nur in der Cursorzeile). Nur gezeichnet über die
 // Zeichenereignisse der Code-Editor-API (ToolsAPI.Editor, PaintLine nach dem
 // Zeichnen der Zeile); Datei und Undo-Liste bleiben unberührt. Beim Wechsel
 // des Texts wird nur die betroffene Zeile neu gezeichnet. Die gezeichnete
@@ -16,7 +17,8 @@ uses
   System.Types,
   Vcl.Graphics,
   ToolsAPI,
-  ToolsAPI.Editor;
+  ToolsAPI.Editor,
+  Atlas.Core.Editor.Elements;
 
 type
   TAtlasEditorPreview = class
@@ -35,6 +37,8 @@ type
     FLine: Integer;
     FColumn: Integer;
     FText: string;
+    FElement: TAtlasDrawnElement;
+    FFollowCursor: Boolean;
     procedure PaintLine(const Rect: TRect; const Stage: TPaintLineStage; const BeforeEvent: Boolean;
       var AllowDefaultPainting: Boolean; const Context: INTACodeEditorPaintContext);
     procedure InvalidateLine(ALine: Integer);
@@ -44,6 +48,10 @@ type
     /// <summary>AText hinter der Editorspalte AColumn (1-basiert) in Zeile ALine von AFileName zeigen.</summary>
     procedure Show(const AFileName: string; ALine, AColumn: Integer; const AText: string);
     procedure Clear;
+    /// <summary>Unter diesem Element meldet sich die gezeichnete Vorschau; Vorgabe CompletionPreview.</summary>
+    property Element: TAtlasDrawnElement read FElement write FElement;
+    /// <summary>Nur zeichnen, solange der Cursor der Ansicht in der Zeile steht.</summary>
+    property FollowCursor: Boolean read FFollowCursor write FFollowCursor;
   end;
 
 implementation
@@ -51,7 +59,6 @@ implementation
 uses
   Atlas.Core.Diagnostics.Guard,
   Winapi.Windows,
-  Atlas.Core.Editor.Elements,
   Atlas.IDE.Foundation.EditorStyle,
   Atlas.IDE.Foundation.Elements;
 
@@ -75,6 +82,7 @@ var
 begin
   inherited Create;
   FIndex := -1;
+  FElement := TAtlasDrawnElement.CompletionPreview;
   FEvents := TEvents.Create;
   FEventsRef := FEvents;
   FEvents.OnEditorPaintLine := PaintLine;
@@ -138,6 +146,8 @@ begin
     if BeforeEvent or (Stage <> plsEndPaint) or (FText = '') or (Context = nil) or
       (Context.LogicalLineNum <> FLine) or not SameText(Context.FileName, FFileName) then
       Exit;
+    if FFollowCursor and ((Context.EditView = nil) or (Context.EditView.CursorPos.Line <> FLine)) then
+      Exit;
     Cell := Context.EditorState.GetCharacterPosPx(FColumn, Context.EditorLineNum);
     Canvas := Context.Canvas;
     Top := Rect.Top + (Rect.Height - Canvas.TextHeight('Wg')) div 2;
@@ -162,7 +172,7 @@ begin
       TopRow := 0;
       if Context.EditView <> nil then
         TopRow := Context.EditView.TopRow;
-      TAtlasIdeElements.Painted(TAtlasDrawnElement.CompletionPreview, Context.FileName, FLine - 1, '',
+      TAtlasIdeElements.Painted(FElement, Context.FileName, FLine - 1, '',
         TRect.Create(Cell.Left, Rect.Top, Cell.Left + Size.cx, Rect.Bottom), TopRow, Rect.Height);
     finally
       Italic.Free;
