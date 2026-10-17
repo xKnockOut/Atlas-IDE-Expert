@@ -266,6 +266,7 @@
         <DCCReference Include="Common\Editing\Atlas.Common.Editing.CaseCompletion.Tests.pas"/>
         <DCCReference Include="Common\Editing\Atlas.Common.Editing.Extract.Tests.pas"/>
         <DCCReference Include="Common\Editing\Atlas.Common.Editing.WithResolution.Tests.pas"/>
+        <DCCReference Include="Common\Editing\Atlas.Common.Editing.CreateMethod.Tests.pas"/>
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.Refactorings.Tests.pas"/>
         <DCCReference Include="Common\Editing\Atlas.Common.Editing.DeclareUnknown.Tests.pas"/>
         <DCCReference Include="Common\Editing\Atlas.Common.Editing.InterfaceStubs.Tests.pas"/>

@@ -1003,6 +1003,26 @@ begin
       ExpectBoolean(ANode[Index], Key, FSettings.Refactoring.CompleteCase)
     else if Key = 'resolveWith' then
       ExpectBoolean(ANode[Index], Key, FSettings.Refactoring.ResolveWith)
+    else if Key = 'createMethod' then
+      ExpectBoolean(ANode[Index], Key, FSettings.Refactoring.CreateMethod)
+    else if Key = 'createMethodSection' then
+    begin
+      if ExpectString(ANode[Index], Key, Value) then
+        if MatchText(Value, ['private', 'protected', 'public']) then
+          FSettings.Refactoring.CreateMethodSection := LowerCase(Value)
+        else
+          ReportNode(ANode[Index], '"refactoring.createMethodSection" muss "private", "protected" oder "public" sein');
+    end
+    else if Key = 'createMethodCaret' then
+    begin
+      if ExpectString(ANode[Index], Key, Value) then
+        if SameText(Value, 'call') or SameText(Value, 'body') then
+          FSettings.Refactoring.CreateMethodCaretInBody := SameText(Value, 'body')
+        else
+          ReportNode(ANode[Index], '"refactoring.createMethodCaret" muss "call" oder "body" sein');
+    end
+    else if Key = 'constParameters' then
+      ExpectBoolean(ANode[Index], Key, FSettings.Refactoring.ConstParameters)
     else
       Report(ANode.KeyStarts[Index], ANode.KeyStarts[Index] + Length(Key) + 2,
         Format('Unbekannte Einstellung "refactoring.%s"', [Key]), False);
