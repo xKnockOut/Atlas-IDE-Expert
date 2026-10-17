@@ -27,6 +27,8 @@ type
     [Test]
     procedure SwitchedOffFunctionsAreNoConflict;
     [Test]
+    procedure MultiCursorKeys;
+    [Test]
     procedure UnitSearchTakesOverIdeKey;
     [Test]
     procedure ParsesGermanAndEnglishShortCuts;
@@ -396,6 +398,43 @@ begin
   Entries := TAtlasKeyEntry.AllFromSettings(Settings);
   Assert.IsFalse(EntryOf(Entries, TAtlasKeyFunction.MethodToggleUp).Disabled);
   Assert.IsTrue(EntryOf(Entries, TAtlasKeyFunction.MethodToggleDown).Disabled);
+end;
+
+procedure TAtlasKeyMapTests.MultiCursorKeys;
+var
+  Settings, Saved: TAtlasPluginSettings;
+  Entries: TArray<TAtlasKeyEntry>;
+begin
+  // #589: Vorgabe aus (experimentell), dann kein Konflikt; eingeschaltet mit Vorrang vor „Quelltext formatieren“.
+  Settings := TAtlasPluginSettings.Defaults;
+  Entries := TAtlasKeyEntry.AllFromSettings(Settings);
+  Assert.IsTrue(EntryOf(Entries, TAtlasKeyFunction.MultiCursorNext).Disabled);
+  Assert.AreEqual(Ord(TAtlasKeyStatus.NoKey), Ord(EntryOf(Entries, TAtlasKeyFunction.MultiCursorNext).Status(
+    'IDE: Quelltext formatieren')));
+  Settings.MultiCursor := True;
+  Entries := TAtlasKeyEntry.AllFromSettings(Settings);
+  Assert.IsFalse(EntryOf(Entries, TAtlasKeyFunction.MultiCursorNext).Disabled);
+  Assert.AreEqual($4044, Integer(EntryOf(Entries, TAtlasKeyFunction.MultiCursorNext).Key));
+  Assert.AreEqual($4044, Integer(EntryOf(Entries, TAtlasKeyFunction.MultiCursorSkip).Key));
+  Assert.AreEqual($A049, Integer(EntryOf(Entries, TAtlasKeyFunction.MultiCursorLineEnds).Key));
+  Assert.AreEqual($C026, Integer(EntryOf(Entries, TAtlasKeyFunction.MultiCursorAbove).Key));
+  Assert.AreEqual($C028, Integer(EntryOf(Entries, TAtlasKeyFunction.MultiCursorBelow).Key));
+  Assert.IsTrue(EntryOf(Entries, TAtlasKeyFunction.MultiCursorBelow).Priority);
+  Assert.AreEqual(Ord(TAtlasKeyStatus.AtlasWins), Ord(EntryOf(Entries, TAtlasKeyFunction.MultiCursorNext).Status(
+    'IDE: Quelltext formatieren')));
+  Assert.AreEqual('Atlas.MultiCursorNext', TAtlasKeyMap.CommandIdOf(TAtlasKeyFunction.MultiCursorNext));
+  Assert.AreEqual('Atlas.MultiCursorLineEnds', TAtlasKeyMap.CommandIdOf(TAtlasKeyFunction.MultiCursorLineEnds));
+  Assert.AreEqual('Atlas.MultiCursorAbove', TAtlasKeyMap.CommandIdOf(TAtlasKeyFunction.MultiCursorAbove));
+  Assert.AreEqual('Atlas.MultiCursorBelow', TAtlasKeyMap.CommandIdOf(TAtlasKeyFunction.MultiCursorBelow));
+  // Überspringen ist kein Befehl und keine Bindung: nur nach Strg+K bei aktiven Marken.
+  Assert.AreEqual('', TAtlasKeyMap.CommandIdOf(TAtlasKeyFunction.MultiCursorSkip));
+  Assert.AreEqual(Ord(TAtlasKeySource.Window), Ord(TAtlasKeyMap.SourceOf(TAtlasKeyFunction.MultiCursorSkip)));
+  Assert.AreEqual(Ord(TAtlasKeyContext.Editor), Ord(TAtlasKeyMap.ContextOf(TAtlasKeyFunction.MultiCursorSkip)));
+  // Zurück in die Einstellungen.
+  Entries[High(Entries)].Key := $A028;
+  Saved := Settings;
+  TAtlasKeyEntry.ToSettings(Entries, Saved);
+  Assert.AreEqual($A028, Saved.MultiCursorBelowKey);
 end;
 
 procedure TAtlasKeyMapTests.SwitchedOffFunctionsAreNoConflict;

@@ -160,6 +160,7 @@ uses
   Atlas.IDE.Editor.ChangeSignature,
   Atlas.IDE.Editor.EnterWatch,
   Atlas.IDE.Editor.PatternContinuation,
+  Atlas.IDE.Editor.MultiCursor,
   Atlas.Core.Editor.WorkspacePlan,
   Atlas.IDE.Foundation.Navigation;
 
@@ -218,8 +219,9 @@ begin
     procedure
     begin
       TAtlasIdeEditorCommands.EnsureContextMenus;
-      // Ein Mustervorschlag gilt nur in seiner Ansicht (#671).
+      // Ein Mustervorschlag gilt nur in seiner Ansicht (#671), ebenso Zusatzmarken (#589).
       TAtlasIdePatternContinuation.Dismiss;
+      TAtlasIdeMultiCursor.Dismiss;
     end);
 end;
 
@@ -240,6 +242,12 @@ begin
     begin
       TAtlasIdePatternContinuation.EditorModified(View);
       TAtlasEnterWatch.EditorModified(View);
+    end);
+  // Mehrfachmarken (#589): fremde Änderungen an allen Marken nachziehen.
+  TAtlasGuard.Run(TAtlasFeature.EditorCommands,
+    procedure
+    begin
+      TAtlasIdeMultiCursor.EditorModified(View);
     end);
 end;
 

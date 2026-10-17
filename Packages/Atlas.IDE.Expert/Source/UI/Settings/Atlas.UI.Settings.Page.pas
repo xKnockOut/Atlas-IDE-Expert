@@ -288,6 +288,14 @@ type
     FCompleteStatementMethodBody: TCheckBox;
     FContinuePattern: TCheckBox;
     FContinuePatternMinLines: TEdit;
+    // Mehrere Einfügemarken (#589).
+    FMultiCursor: TCheckBox;
+    FMultiCursorModifier: TAtlasChoiceBox;
+    FMultiCursorNextKey: TEdit;
+    FMultiCursorSkipKey: TEdit;
+    FMultiCursorLineEndsKey: TEdit;
+    FMultiCursorAboveKey: TEdit;
+    FMultiCursorBelowKey: TEdit;
     FBookmarkKey: TEdit;
     /// <summary>„Element ausblenden …“ (#628).</summary>
     FHideElementKey: TEdit;
@@ -675,6 +683,13 @@ type
     property CompleteStatementMethodBody: TCheckBox read FCompleteStatementMethodBody;
     property ContinuePattern: TCheckBox read FContinuePattern;
     property ContinuePatternMinLines: TEdit read FContinuePatternMinLines;
+    property MultiCursor: TCheckBox read FMultiCursor;
+    property MultiCursorModifier: TAtlasChoiceBox read FMultiCursorModifier;
+    property MultiCursorNextKey: TEdit read FMultiCursorNextKey;
+    property MultiCursorSkipKey: TEdit read FMultiCursorSkipKey;
+    property MultiCursorLineEndsKey: TEdit read FMultiCursorLineEndsKey;
+    property MultiCursorAboveKey: TEdit read FMultiCursorAboveKey;
+    property MultiCursorBelowKey: TEdit read FMultiCursorBelowKey;
     property RedoKey: TEdit read FRedoKey;
     property UpdatesCheck: TCheckBox read FUpdatesCheck;
     property BugReportAnonymize: TCheckBox read FBugReportAnonymize;
@@ -1239,6 +1254,16 @@ begin
   // Muster fortsetzen (#671).
   FContinuePattern := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsContinuePattern));
   FContinuePatternMinLines := AddNumber(TAtlasStrings.Text(TAtlasTextId.SettingsContinuePatternMinLines));
+  // Mehrere Einfügemarken (#589, experimentell).
+  FMultiCursor := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsMultiCursor));
+  FMultiCursorModifier := AddChoice(TAtlasStrings.Text(TAtlasTextId.SettingsMultiCursorModifier),
+    [TAtlasStrings.Text(TAtlasTextId.SettingsMultiCursorAlt),
+    TAtlasStrings.Text(TAtlasTextId.SettingsMultiCursorCtrl)]);
+  FMultiCursorNextKey := AddKey(TAtlasStrings.Text(TAtlasTextId.SettingsMultiCursorNext));
+  FMultiCursorSkipKey := AddKey(TAtlasStrings.Text(TAtlasTextId.SettingsMultiCursorSkip));
+  FMultiCursorLineEndsKey := AddKey(TAtlasStrings.Text(TAtlasTextId.SettingsMultiCursorLineEnds));
+  FMultiCursorAboveKey := AddKey(TAtlasStrings.Text(TAtlasTextId.SettingsMultiCursorAbove));
+  FMultiCursorBelowKey := AddKey(TAtlasStrings.Text(TAtlasTextId.SettingsMultiCursorBelow));
   FOverviewKinds[TAtlasOverviewKind.Bookmarks] := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsOverviewBookmarks));
   FOverviewKinds[TAtlasOverviewKind.Cursor] := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsOverviewCursor));
   // Rekursionssymbole im Rand (#623).
@@ -2211,6 +2236,13 @@ begin
   FMarks.Bind(FCompleteStatementMethodBody, ['CompleteStatementMethodBody']);
   FMarks.Bind(FContinuePattern, ['ContinuePattern']);
   FMarks.Bind(FContinuePatternMinLines, ['ContinuePatternMinLines']);
+  FMarks.Bind(FMultiCursor, ['MultiCursor']);
+  FMarks.Bind(FMultiCursorModifier, ['MultiCursorModifier']);
+  FMarks.Bind(FMultiCursorNextKey, ['MultiCursorNextKey']);
+  FMarks.Bind(FMultiCursorSkipKey, ['MultiCursorSkipKey']);
+  FMarks.Bind(FMultiCursorLineEndsKey, ['MultiCursorLineEndsKey']);
+  FMarks.Bind(FMultiCursorAboveKey, ['MultiCursorAboveKey']);
+  FMarks.Bind(FMultiCursorBelowKey, ['MultiCursorBelowKey']);
   FMarks.Bind(FBookmarkKey, ['BookmarkKey']);
   FMarks.Bind(FHideElementKey, ['HideElementKey']);
   FMarks.Bind(FNextProblemKey, ['NextProblemKey']);
@@ -3227,6 +3259,15 @@ begin
   FCompleteStatementMethodBody.Checked := ASettings.CompleteStatementMethodBody;
   FContinuePattern.Checked := ASettings.ContinuePattern;
   FContinuePatternMinLines.Text := IntToStr(ASettings.ContinuePatternMinLines);
+  FMultiCursor.Checked := ASettings.MultiCursor;
+  FMultiCursorModifier.Choice := 0;
+  if ASettings.MultiCursorModifier = TAtlasPluginSettings.MultiCursorModifierCtrl then
+    FMultiCursorModifier.Choice := 1;
+  FMultiCursorNextKey.Text := ShortCutToText(TShortCut(ASettings.MultiCursorNextKey));
+  FMultiCursorSkipKey.Text := ShortCutToText(TShortCut(ASettings.MultiCursorSkipKey));
+  FMultiCursorLineEndsKey.Text := ShortCutToText(TShortCut(ASettings.MultiCursorLineEndsKey));
+  FMultiCursorAboveKey.Text := ShortCutToText(TShortCut(ASettings.MultiCursorAboveKey));
+  FMultiCursorBelowKey.Text := ShortCutToText(TShortCut(ASettings.MultiCursorBelowKey));
   FBookmarkKey.Text := ShortCutToText(TShortCut(ASettings.BookmarkKey));
   FHideElementKey.Text := ShortCutToText(TShortCut(ASettings.HideElementKey));
   FNextProblemKey.Text := ShortCutToText(TShortCut(ASettings.NextProblemKey));
@@ -3556,6 +3597,15 @@ begin
   ASettings.CompleteStatementMethodBody := FCompleteStatementMethodBody.Checked;
   ASettings.ContinuePattern := FContinuePattern.Checked;
   ASettings.ContinuePatternMinLines := StrToIntDef(FContinuePatternMinLines.Text, ASettings.ContinuePatternMinLines);
+  ASettings.MultiCursor := FMultiCursor.Checked;
+  ASettings.MultiCursorModifier := TAtlasPluginSettings.MultiCursorModifierAlt;
+  if FMultiCursorModifier.Choice = 1 then
+    ASettings.MultiCursorModifier := TAtlasPluginSettings.MultiCursorModifierCtrl;
+  ASettings.MultiCursorNextKey := Integer(TextToShortCut(Trim(FMultiCursorNextKey.Text)));
+  ASettings.MultiCursorSkipKey := Integer(TextToShortCut(Trim(FMultiCursorSkipKey.Text)));
+  ASettings.MultiCursorLineEndsKey := Integer(TextToShortCut(Trim(FMultiCursorLineEndsKey.Text)));
+  ASettings.MultiCursorAboveKey := Integer(TextToShortCut(Trim(FMultiCursorAboveKey.Text)));
+  ASettings.MultiCursorBelowKey := Integer(TextToShortCut(Trim(FMultiCursorBelowKey.Text)));
   ASettings.BookmarkKey := Integer(TextToShortCut(Trim(FBookmarkKey.Text)));
   ASettings.HideElementKey := Integer(TextToShortCut(Trim(FHideElementKey.Text)));
   ASettings.NextProblemKey := Integer(TextToShortCut(Trim(FNextProblemKey.Text)));
