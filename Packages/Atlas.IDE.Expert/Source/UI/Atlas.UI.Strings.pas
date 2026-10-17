@@ -542,7 +542,7 @@ type
     SettingsInlineDiagnosticsWarnings, SettingsInlineDiagnosticsAll, SettingsProblemsStatusCounter, ProblemNextCommand,
     ProblemPreviousCommand, ProblemNoneInFile, ProblemCounterText, ProblemCounterHint,
     SettingsRecursionMarkers, SettingsRecursionMarkersDepth, ElementRecursion, ElementRecursionPlural,
-    RecursionTipDirect, RecursionTipChain);
+    RecursionTipDirect, RecursionTipChain, ElementInlineDiagnostics, ElementInlineDiagnosticsPlural);
 
   TAtlasStrings = class
   private class var
@@ -1579,7 +1579,8 @@ const
      'Atlas: Keine Befunde in dieser Datei.', 'Fehler %d · Warnungen %d · Hinweise %d',
      '%d Fehler, %d Warnungen, %d Hinweise in Atlas-Probleme. Klick öffnet die Liste.',
      'Rekursionssymbole im Rand', 'Höchstlänge der Kette (Methoden):', 'Rekursionssymbol', 'Rekursionssymbole',
-     'Rekursion: ruft sich selbst auf', 'Rekursion über %d Methoden'),
+     'Rekursion: ruft sich selbst auf', 'Rekursion über %d Methoden', 'Fehlertext am Zeilenende',
+     'Fehlertexte am Zeilenende'),
     ('Enter to accept · Esc to close', '%d of %d', 'No matches for “%s”', 'Backspace widens the search',
      'No suggestions here', 'Esc closes', 'No details for this entry', 'Overload', 'Deprecated: %s', 'Deprecated.',
      'Inherited from %s', 'Inherited', 'optional, default %s', 'No overload with %d parameters.', '… %d more',
@@ -2545,7 +2546,7 @@ const
      'Atlas: No findings in this file.', 'Errors %d · Warnings %d · Hints %d',
      '%d errors, %d warnings, %d hints in Atlas problems. Click opens the list.',
      'Recursion markers in the gutter', 'Maximum chain length (methods):', 'Recursion marker', 'Recursion markers',
-     'Recursion: calls itself', 'Recursion over %d methods'));
+     'Recursion: calls itself', 'Recursion over %d methods', 'Error text at line end', 'Error texts at line end'));
 
 { TAtlasStrings }
 

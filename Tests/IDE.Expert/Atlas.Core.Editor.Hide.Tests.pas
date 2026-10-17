@@ -247,6 +247,16 @@ begin
   Assert.AreEqual('off', Settings.WelcomePageWhatsNew);
   Assert.IsTrue(TAtlasHide.Restore(Settings, 'WelcomePageWhatsNew', Old));
   Assert.AreEqual('afterUpdate', Settings.WelcomePageWhatsNew);
+  // Fehlertext am Zeilenende (#509): „Überall“ stellt den Modus auf aus, Rückgängig auf den alten.
+  Assert.IsTrue(TAtlasHide.Plan(TAtlasHideTarget.Create(TAtlasDrawnElement.InlineDiagnostics, Unit1, 8, 'X := 1;'),
+    TAtlasHideScope.Everywhere, Code, '', Plan, Refusal));
+  Assert.AreEqual('InlineDiagnostics', Plan.SettingKey);
+  Settings.InlineDiagnostics := 'all';
+  Assert.IsTrue(TAtlasHide.SwitchOff(Settings, Plan.SettingKey, Old));
+  Assert.AreEqual('all', Old);
+  Assert.AreEqual('off', Settings.InlineDiagnostics);
+  Assert.IsTrue(TAtlasHide.Restore(Settings, Plan.SettingKey, Old));
+  Assert.AreEqual('all', Settings.InlineDiagnostics);
   Assert.IsFalse(TAtlasHide.SwitchOff(Settings, 'GibtEsNicht', Old));
   Assert.IsFalse(TAtlasHide.Restore(Settings, 'GibtEsNicht', '1'));
 end;

@@ -33,6 +33,7 @@ uses
   System.JSON,
   System.Generics.Collections,
   Atlas.Core.Editor.Elements,
+  Atlas.Core.Editor.Hide,
   Atlas.Core.Settings.Plugin,
   Atlas.Core.Settings.History,
   Atlas.Core.Settings.QuickToggles,
@@ -58,6 +59,14 @@ begin
       Assert.IsTrue(Key <> '', 'Element ohne Schlüssel');
       Entry := TJSONObject(Properties).GetValue(Key);
       Assert.IsTrue(Entry is TJSONObject, 'nicht im Katalog: ' + Key);
+      // Auswahl mit "off" (Fehlertext am Zeilenende #509): „Überall“ setzt "off"; „Alles aus“ erfasst sie über
+      // die Problem-Markierungen, von denen sie abhängt.
+      if TJSONObject(Entry).GetValue<string>('type', '') = 'string' then
+      begin
+        Assert.IsTrue(Pos('"off"', TJSONObject(Entry).GetValue('enum').ToJSON) > 0, 'Auswahl ohne off: ' + Key);
+        Assert.IsTrue(TAtlasHide.IsOn(TAtlasPluginSettings.Defaults, Key), 'standardmäßig aus: ' + Key);
+        Continue;
+      end;
       Assert.IsTrue(TJSONObject(Entry).GetValue('x-drawing') is TJSONBool, 'ohne x-drawing: ' + Key);
       Assert.IsTrue(TJSONBool(TJSONObject(Entry).GetValue('x-drawing')).AsBoolean, 'keine Zeichnung: ' + Key);
       // Über den Namen schaltbar: „Überall ausblenden“ setzt genau diesen Wert.
