@@ -500,6 +500,8 @@ begin
   // #103: Einbetten, experimentell und daher aus.
   Assert.IsFalse(Parse('{}', Issues).Refactoring.InlineCode);
   Assert.IsTrue(Parse('{"refactoring": {"inline": true}}', Issues).Refactoring.InlineCode);
+  Assert.IsFalse(Parse('{}', Issues).Refactoring.MoveClass);
+  Assert.IsTrue(Parse('{"refactoring": {"moveClass": true}}', Issues).Refactoring.MoveClass);
   // #472: Methode aus Aufruf anlegen.
   Assert.IsTrue(Parse('{}', Issues).Refactoring.CreateMethod);
   Assert.AreEqual('private', Parse('{}', Issues).Refactoring.CreateMethodSection);
