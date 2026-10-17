@@ -1182,6 +1182,30 @@ Vorbereitung: Git-Projekt `GitDemo` mit `.atlas` `"tracker": {"provider": "githu
 | MF15 | Optionen › Atlas › Editor: Mindestzeilen 3, MF1 wiederholen; dann „Muster fortsetzen“ aus | Erst ab drei Zeilen; ausgeschaltet nie ein Vorschlag |
 | MF16 | Bei sichtbarem Vorschlag Rechtsklick in den Schattentext, *Atlas › Element ausblenden …* | Nur „Mustervorschläge überall ausblenden“; danach ist „Muster fortsetzen“ aus (#628) |
 
+## Mehrere Einfügemarken (#589, experimentell)
+
+Vorher: *Tools › Optionen › Atlas › Allgemein* „Experimentelle Funktionen erlauben“, *Editor* „Mehrere Einfügemarken“ an.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| MC1 | `TKundeFeld = (kfName, kfNameZusatz, kfOrtName)`, `Name` in `kfName` markieren, zweimal Strg+D, `Bez` tippen | `TKundeFeld = (kfBez, kfBezZusatz, kfOrtBez)`; Statusfeld zeigt während des Modus „3 Einfügemarken“ |
+| MC2 | MC1, dann Strg+Z | Alle drei Stellen in einem Schritt zurück, die drei Markierungen stehen wieder |
+| MC3 | Fünf Zeilen markieren, Alt+Umschalt+I, `;` tippen | Jede der fünf Zeilen endet mit `;` |
+| MC4 | Dreizeiligen Text kopieren, drei Marken mit Alt+Klick, Strg+V | Jede Marke bekommt eine Zeile; mit zwei Marken überall der ganze Text |
+| MC5 | Mehrere Marken, Esc | Genau eine Marke an der Hauptposition; Statusfeld leer |
+| MC6 | Modus aus: Strg+D ohne Wort am Cursor, Alt+Klick bei ausgeschalteter Einstellung, Alt+Umschalt+Ziehen | Verhalten wie ohne Plugin (Quelltext formatieren, Spaltenblock) |
+| MC7 | Strg+D auf einem Wort, dann Strg+D bis zu einem unerwünschten Vorkommen, Strg+K, Strg+D | Das letzte Vorkommen fällt weg, das nächste kommt dazu; am Dateiende geht die Suche von vorn weiter |
+| MC8 | Strg+Alt+↓ dreimal in einer langen Zeile über kürzeren | Marken in derselben Spalte, bei kürzeren Zeilen am Zeilenende |
+| MC9 | Mehrere Marken, ←/→, Strg+←/→, Pos1/Ende, mit Umschalt; zwei Marken aufeinander zu bewegen | Alle Marken bewegen sich bzw. markieren; überlappende werden eine |
+| MC10 | Mehrere Marken, Rücktaste am Zeilenanfang, Entf am Zeilenende, Enter in eingerückter Zeile | Zeilen werden an allen Marken verbunden bzw. getrennt, Enter übernimmt den Einzug |
+| MC11 | Mehrere Marken ohne Markierung, `Na` tippen, Strg+Leer, Vorschlag `Name` übernehmen | `Name` steht an allen Marken; Liste und Parameter-Hint nur an der Hauptmarke |
+| MC12 | Markierungen an drei Marken, Strg+C, dann in eine leere Datei einfügen | Drei Zeilen mit den markierten Texten |
+| MC13 | Mehrere Marken, dann Speichern, Wechsel in eine andere Datei, F12 zum Formular bzw. einfacher Klick | Jeweils nur noch eine Marke |
+| MC14 | Windows-Animationen aus (*Barrierefreiheit › Animationseffekte*) | Zusatzmarken blinken nicht |
+| MC15 | `tryf` + Enter (Platzhalter-Modus), dann Strg+D | Strg+D bewirkt nichts; SyncEdit der IDE vorher prüfen: Strg+D dort wirkungslos, Mehrfachmarken stören SyncEdit und Live-Templates nicht |
+| MC16 | Optionen: Klick mit „Strg+Klick“, Kürzel ändern; dann „Mehrere Einfügemarken“ bzw. Hauptschalter „Experimentelle Funktionen“ aus | Strg+Klick setzt Marken, neue Kürzel wirken; ausgeschaltet gehören alle Tasten wieder der IDE |
+| MC17 | RAD Studio 13: eigene Mehrfachmarke der IDE suchen (Menüs, Tastenbelegung) | Falls vorhanden: Zusammenspiel mit Atlas notieren (Issue) |
+
 ## Anweisung vervollständigen (#697)
 
 | Nr. | Schritte | Erwartet |

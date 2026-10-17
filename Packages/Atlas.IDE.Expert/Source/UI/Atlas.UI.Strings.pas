@@ -575,7 +575,11 @@ type
     SettingsCompleteStatement, SettingsCompleteStatementBeginEnd, SettingsBeginEndAlways, SettingsBeginEndMultiLine,
     SettingsBeginEndNever, SettingsCompleteStatementTryKind, CompleteStatementTryFinally, CompleteStatementTryExcept,
     SettingsTryKindAsk, SettingsCompleteStatementMethodBody, SettingsContinuePattern, SettingsContinuePatternMinLines,
-    ElementPatternPreview, ElementPatternPreviewPlural);
+    ElementPatternPreview, ElementPatternPreviewPlural, MultiCursorNextCommand, MultiCursorSkipCommand,
+    MultiCursorLineEndsCommand, MultiCursorAboveCommand, MultiCursorBelowCommand, MultiCursorStatus,
+    MultiCursorStatusHint, SettingsMultiCursor, SettingsMultiCursorModifier, SettingsMultiCursorAlt,
+    SettingsMultiCursorCtrl, SettingsMultiCursorNext, SettingsMultiCursorSkip, SettingsMultiCursorLineEnds,
+    SettingsMultiCursorAbove, SettingsMultiCursorBelow);
 
   TAtlasStrings = class
   private class var
@@ -1662,7 +1666,13 @@ const
      'try … except … end;', 'jedes Mal fragen', 'Bei Methodendeklarationen den Rumpf anlegen',
      'Muster fortsetzen: nächste Zeile nach Enter vorschlagen (Tab übernimmt)',
      'Gleichförmige Zeilen mindestens (2–5):',
-     'Mustervorschlag', 'Mustervorschläge'),
+     'Mustervorschlag', 'Mustervorschläge',
+     'Wort bzw. nächstes Vorkommen markieren (Mehrfachmarken)', 'Vorkommen überspringen (Mehrfachmarken)',
+     'Marken an die Zeilenenden setzen', 'Marke in der Zeile darüber', 'Marke in der Zeile darunter',
+     '%d Einfügemarken', 'Mehrere Einfügemarken aktiv; Esc oder ein Klick beendet sie',
+     'Mehrere Einfügemarken (Alt+Klick, Strg+D, Alt+Umschalt+I, Strg+Alt+↑/↓)', 'Klick mit neuer Marke:',
+     'Alt+Klick', 'Strg+Klick', 'Wort/nächstes Vorkommen:', 'Überspringen (nach Strg+K):',
+     'Marken an Zeilenenden:', 'Marke darüber:', 'Marke darunter:'),
     ('Enter to accept · Esc to close', '%d of %d', 'No matches for “%s”', 'Backspace widens the search',
      'No suggestions here', 'Esc closes', 'No details for this entry', 'Overload', 'Deprecated: %s', 'Deprecated.',
      'Inherited from %s', 'Inherited', 'optional, default %s', 'No overload with %d parameters.', '… %d more',
@@ -2667,7 +2677,13 @@ const
      'always', 'for several statements', 'never', 'Skeleton after try:', 'try … finally … end;',
      'try … except … end;', 'ask every time', 'Create the body for method declarations',
      'Continue patterns: suggest the next line after Enter (Tab accepts)', 'Minimum uniform lines (2–5):',
-     'pattern suggestion', 'pattern suggestions'));
+     'pattern suggestion', 'pattern suggestions',
+     'Select word or next occurrence (multiple cursors)', 'Skip occurrence (multiple cursors)',
+     'Add cursors at line ends', 'Add cursor on the line above', 'Add cursor on the line below',
+     '%d cursors', 'Multiple cursors active; Esc or a click ends them',
+     'Multiple cursors (Alt+click, Ctrl+D, Alt+Shift+I, Ctrl+Alt+Up/Down)', 'Click with new cursor:',
+     'Alt+click', 'Ctrl+click', 'Word/next occurrence:', 'Skip (after Ctrl+K):', 'Cursors at line ends:',
+     'Cursor above:', 'Cursor below:'));
 
 { TAtlasStrings }
 

@@ -19,7 +19,8 @@
 //   suchen“ (#777, eigene Taste und Übernahme von Strg+F12) und von
 //   „Lesezeichen setzen…“ (#622, Strg+Alt+K) und des Erzeugen-Menüs (#719,
 //   Alt+Einfg) und von „Element ausblenden …“ (#628, Strg+.) und von Zeilen
-//   verschieben und duplizieren (#634, Alt+↑/↓, Umschalt+Alt+↑/↓). Ist eine Funktion
+//   verschieben und duplizieren (#634, Alt+↑/↓, Umschalt+Alt+↑/↓) und der Mehrfachmarken (#589, Strg+D,
+//   Strg+K Strg+D, Alt+Umschalt+I, Strg+Alt+↑/↓). Ist eine Funktion
 //   abgeschaltet, steht ihr Eintrag mit Disabled in der Liste: Atlas belegt die
 //   Taste dann nicht, also ist sie auch kein Konflikt.
 // Kürzel sind TShortCut-Werte (Word) wie in Vcl.Menus.
@@ -47,7 +48,8 @@ type
     Notifications, WelcomeQuickBuild, WelcomeQuickTests, HideElement, NextProblem, PreviousProblem, QuickOpen,
     NavBack, NavForward, LastEdit, PeekDefinition, PeekReferences, Breadcrumbs, JumpToMatch,
     JumpToMatchSelect, NextChange, PreviousChange, MoveLinesUp, MoveLinesDown, DuplicateLinesUp,
-    DuplicateLinesDown, CompleteStatement);
+    DuplicateLinesDown, CompleteStatement, MultiCursorNext, MultiCursorSkip, MultiCursorLineEnds,
+    MultiCursorAbove, MultiCursorBelow);
   TAtlasKeyChoice = (UseAtlas, LeaveOther, OtherKey);
   /// <summary>NoKey: keine Taste; IdeKey: Taste der IDE über Code Insight, Atlas belegt nichts selbst;
   /// Free: Atlas belegt die freie Taste; AtlasWins: belegt, Atlas hat Vorrang; Left: belegt, Atlas
@@ -217,7 +219,16 @@ begin
     Create(TAtlasKeyFunction.DuplicateLinesDown, Word(ASettings.DuplicateLinesDownKey), True, ASettings.MoveLines),
     // Anweisung vervollständigen (#697): Strg+Umschalt+Enter sucht in der IDE Referenzen; bewusst übernommen.
     Create(TAtlasKeyFunction.CompleteStatement, Word(ASettings.CompleteStatementKey), True,
-      ASettings.CompleteStatement)];
+      ASettings.CompleteStatement),
+    // Mehrfachmarken (#589, experimentell): bewusst eingeschaltet, darum mit Vorrang (Strg+D formatiert in der IDE
+    // den Quelltext; ohne Wort am Cursor geht die Taste dorthin weiter). Überspringen wirkt nur nach Strg+K,
+    // solange mehrere Marken aktiv sind. Aus = die IDE behält die Tasten.
+    Create(TAtlasKeyFunction.MultiCursorNext, Word(ASettings.MultiCursorNextKey), True, ASettings.MultiCursor),
+    Create(TAtlasKeyFunction.MultiCursorSkip, Word(ASettings.MultiCursorSkipKey), True, ASettings.MultiCursor),
+    Create(TAtlasKeyFunction.MultiCursorLineEnds, Word(ASettings.MultiCursorLineEndsKey), True,
+      ASettings.MultiCursor),
+    Create(TAtlasKeyFunction.MultiCursorAbove, Word(ASettings.MultiCursorAboveKey), True, ASettings.MultiCursor),
+    Create(TAtlasKeyFunction.MultiCursorBelow, Word(ASettings.MultiCursorBelowKey), True, ASettings.MultiCursor)];
 end;
 
 class procedure TAtlasKeyEntry.ToSettings(const AEntries: TArray<TAtlasKeyEntry>;
@@ -333,6 +344,16 @@ begin
         ASettings.DuplicateLinesDownKey := Entry.Key;
       TAtlasKeyFunction.CompleteStatement:
         ASettings.CompleteStatementKey := Entry.Key;
+      TAtlasKeyFunction.MultiCursorNext:
+        ASettings.MultiCursorNextKey := Entry.Key;
+      TAtlasKeyFunction.MultiCursorSkip:
+        ASettings.MultiCursorSkipKey := Entry.Key;
+      TAtlasKeyFunction.MultiCursorLineEnds:
+        ASettings.MultiCursorLineEndsKey := Entry.Key;
+      TAtlasKeyFunction.MultiCursorAbove:
+        ASettings.MultiCursorAboveKey := Entry.Key;
+      TAtlasKeyFunction.MultiCursorBelow:
+        ASettings.MultiCursorBelowKey := Entry.Key;
       // Strg+F12 ist fest; ein- und ausgeschaltet wird über unitSearch.replaceIdeDialog.
       TAtlasKeyFunction.UnitSearchIde:
         ;

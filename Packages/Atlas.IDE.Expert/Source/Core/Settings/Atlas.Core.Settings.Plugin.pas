@@ -107,6 +107,9 @@ type
     TryKindFinally = 'finally';
     TryKindExcept = 'except';
     TryKindAsk = 'ask';
+    /// <summary>Werte von editor.multiCursorModifier (#589): Taste für den Klick mit neuer Marke.</summary>
+    MultiCursorModifierAlt = 'alt';
+    MultiCursorModifierCtrl = 'ctrl';
     /// <summary>Grenzen für notifications.maxEntries (#601); wie TAtlasNotificationCenter.MinEntries/MaxMaxEntries
     /// (Test prüft Gleichheit).</summary>
     MinNotificationEntries = 10;
@@ -602,6 +605,18 @@ type
     /// <summary>Mindestzahl gleichförmiger Zeilen, MinPatternLines bis MaxPatternLines (#671,
     /// editor.continuePattern.minLines).</summary>
     ContinuePatternMinLines: Integer;
+    /// <summary>Mehrere Einfügemarken (#589, editor.multiCursor, experimentell).</summary>
+    MultiCursor: Boolean;
+    /// <summary>MultiCursorModifierAlt oder MultiCursorModifierCtrl (#589, editor.multiCursorModifier).</summary>
+    MultiCursorModifier: string;
+    /// <summary>Kürzel der Mehrfachmarken (#589, keys.multiCursor.*): nächstes Vorkommen (Strg+D), Überspringen
+    /// (zweite Taste nach Strg+K, Vorgabe Strg+D), Marken an den Zeilenenden (Alt+Umschalt+I), Marke darüber
+    /// bzw. darunter (Strg+Alt+↑/↓).</summary>
+    MultiCursorNextKey: Integer;
+    MultiCursorSkipKey: Integer;
+    MultiCursorLineEndsKey: Integer;
+    MultiCursorAboveKey: Integer;
+    MultiCursorBelowKey: Integer;
     /// <summary>Hauptschalter der Atlas-Willkommensseite (#753, welcomePage.enabled): Atlas-Bereiche auf der
     /// Willkommensseite der IDE und Fenster „Atlas-Start“.</summary>
     WelcomePage: Boolean;
@@ -1195,6 +1210,13 @@ begin
   Result.CompleteStatementMethodBody := True;
   Result.ContinuePattern := True;
   Result.ContinuePatternMinLines := 2;
+  Result.MultiCursor := False;
+  Result.MultiCursorModifier := MultiCursorModifierAlt;
+  Result.MultiCursorNextKey := $4044; // Strg+D
+  Result.MultiCursorSkipKey := $4044; // Strg+K, Strg+D
+  Result.MultiCursorLineEndsKey := $A049; // Alt+Umschalt+I
+  Result.MultiCursorAboveKey := $C026; // Strg+Alt+↑
+  Result.MultiCursorBelowKey := $C028; // Strg+Alt+↓
   Result.WelcomePage := True;
   Result.WelcomePageHost := 'welcomePage';
   Result.WelcomePageLayout := 'off';
@@ -1391,6 +1413,12 @@ begin
   CompleteStatementKey := EnsureRange(CompleteStatementKey, 0, $FFFF);
   CompleteStatementBeginEnd := Choice(CompleteStatementBeginEnd, [BeginEndMultiLine, BeginEndAlways, BeginEndNever]);
   CompleteStatementTryKind := Choice(CompleteStatementTryKind, [TryKindFinally, TryKindExcept, TryKindAsk]);
+  MultiCursorModifier := Choice(MultiCursorModifier, [MultiCursorModifierAlt, MultiCursorModifierCtrl]);
+  MultiCursorNextKey := EnsureRange(MultiCursorNextKey, 0, $FFFF);
+  MultiCursorSkipKey := EnsureRange(MultiCursorSkipKey, 0, $FFFF);
+  MultiCursorLineEndsKey := EnsureRange(MultiCursorLineEndsKey, 0, $FFFF);
+  MultiCursorAboveKey := EnsureRange(MultiCursorAboveKey, 0, $FFFF);
+  MultiCursorBelowKey := EnsureRange(MultiCursorBelowKey, 0, $FFFF);
   BookmarkKey := EnsureRange(BookmarkKey, 0, $FFFF);
   HideElementKey := EnsureRange(HideElementKey, 0, $FFFF);
   InlineDiagnostics := Choice(InlineDiagnostics, ['errors', 'off', 'errorsAndWarnings', 'all']);
@@ -1651,6 +1679,13 @@ begin
     BoolValue(Default.CompleteStatementMethodBody)) <> 0;
   ContinuePattern := AStore.ReadInteger('ContinuePattern', BoolValue(Default.ContinuePattern)) <> 0;
   ContinuePatternMinLines := AStore.ReadInteger('ContinuePatternMinLines', Default.ContinuePatternMinLines);
+  MultiCursor := AStore.ReadInteger('MultiCursor', BoolValue(Default.MultiCursor)) <> 0;
+  MultiCursorModifier := AStore.ReadString('MultiCursorModifier', Default.MultiCursorModifier);
+  MultiCursorNextKey := AStore.ReadInteger('MultiCursorNextKey', Default.MultiCursorNextKey);
+  MultiCursorSkipKey := AStore.ReadInteger('MultiCursorSkipKey', Default.MultiCursorSkipKey);
+  MultiCursorLineEndsKey := AStore.ReadInteger('MultiCursorLineEndsKey', Default.MultiCursorLineEndsKey);
+  MultiCursorAboveKey := AStore.ReadInteger('MultiCursorAboveKey', Default.MultiCursorAboveKey);
+  MultiCursorBelowKey := AStore.ReadInteger('MultiCursorBelowKey', Default.MultiCursorBelowKey);
   WelcomePage := AStore.ReadInteger('WelcomePage', BoolValue(Default.WelcomePage)) <> 0;
   WelcomePageHost := AStore.ReadString('WelcomePageHost', Default.WelcomePageHost);
   WelcomePageLayout := AStore.ReadString('WelcomePageLayout', Default.WelcomePageLayout);
@@ -1954,6 +1989,13 @@ begin
   AStore.WriteInteger('CompleteStatementMethodBody', BoolValue(CompleteStatementMethodBody));
   AStore.WriteInteger('ContinuePattern', BoolValue(ContinuePattern));
   AStore.WriteInteger('ContinuePatternMinLines', ContinuePatternMinLines);
+  AStore.WriteInteger('MultiCursor', BoolValue(MultiCursor));
+  AStore.WriteString('MultiCursorModifier', MultiCursorModifier);
+  AStore.WriteInteger('MultiCursorNextKey', MultiCursorNextKey);
+  AStore.WriteInteger('MultiCursorSkipKey', MultiCursorSkipKey);
+  AStore.WriteInteger('MultiCursorLineEndsKey', MultiCursorLineEndsKey);
+  AStore.WriteInteger('MultiCursorAboveKey', MultiCursorAboveKey);
+  AStore.WriteInteger('MultiCursorBelowKey', MultiCursorBelowKey);
   AStore.WriteInteger('WelcomePage', BoolValue(WelcomePage));
   AStore.WriteString('WelcomePageHost', WelcomePageHost);
   AStore.WriteString('WelcomePageLayout', WelcomePageLayout);

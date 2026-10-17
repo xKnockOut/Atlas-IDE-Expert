@@ -45,6 +45,7 @@
     "welcomePage.quickActions": true,
     "shortcutTips.enabled": true,
     "notifications.enabled": true,
-    "experimental.enabled": true
+    "experimental.enabled": true,
+    "editor.multiCursor": true
   }
 }

@@ -15,7 +15,9 @@
 // zum Gegenstück (#635, Strg+Ü bzw. Strg+Umschalt+Ü zum Markieren, nur
 // solange keys.jumpToMatch an ist) und Zeilen verschieben bzw. duplizieren
 // (#634, Alt+↑/↓ und Umschalt+Alt+↑/↓ mit Vorrang, nur solange keys.moveLines
-// an ist). Jede Taste wird wie
+// an ist) sowie die Mehrfachmarken (#589, Strg+D, Alt+Umschalt+I,
+// Strg+Alt+↑/↓ mit Rückfall an die IDE, nur solange editor.multiCursor an
+// ist). Jede Taste wird wie
 // die der Befehlspalette vorher auf Konflikte geprüft (#494); ohne Vorrang
 // bleibt eine fremde Belegung aktiv. Nach geänderten Einstellungen meldet
 // Rebind die Bindung neu an. Der Befehl läuft nach der Tastenverarbeitung
@@ -102,7 +104,8 @@ uses
   Atlas.IDE.Editor.LineChanges,
   Atlas.Core.Editor.LineMove,
   Atlas.IDE.Editor.LineMove,
-  Atlas.IDE.Editor.StatementCompletion;
+  Atlas.IDE.Editor.StatementCompletion,
+  Atlas.IDE.Editor.MultiCursor;
 
 /// <summary>Zeilen verschieben bzw. duplizieren (#634), gesichert.</summary>
 procedure RunLineMove(AKind: TAtlasLineMoveKind);
@@ -231,6 +234,9 @@ procedure TAtlasIdeEditorKeys.AddAttemptKey(AKey: Integer; const AWhat: string; 
 var
   Existing, Key: TKey;
 begin
+  // 0 = keine Taste.
+  if AKey = 0 then
+    Exit;
   // Dieselbe Taste zweimal (beide Felder gleich belegt) nur einmal binden.
   for Existing in FKeys do
     if Existing.Key = Word(AKey) then
@@ -520,6 +526,31 @@ begin
             TAtlasIdeStatementCompletion.Run;
           end);
       end, True);
+  // Mehrere Einfügemarken (#589, experimentell): mit Rückfall, ohne Treffer behält die IDE die Taste (Strg+D =
+  // Quelltext formatieren). Bewusst eingeschaltet, darum ohne Konfliktprüfung.
+  if Settings.MultiCursor then
+  begin
+    AddAttemptKey(Settings.MultiCursorNextKey, TAtlasStrings.Text(TAtlasTextId.MultiCursorNextCommand),
+      function: Boolean
+      begin
+        Result := TAtlasIdeMultiCursor.TryNext;
+      end, False);
+    AddAttemptKey(Settings.MultiCursorLineEndsKey, TAtlasStrings.Text(TAtlasTextId.MultiCursorLineEndsCommand),
+      function: Boolean
+      begin
+        Result := TAtlasIdeMultiCursor.TryLineEnds;
+      end, False);
+    AddAttemptKey(Settings.MultiCursorAboveKey, TAtlasStrings.Text(TAtlasTextId.MultiCursorAboveCommand),
+      function: Boolean
+      begin
+        Result := TAtlasIdeMultiCursor.TryVertical(True);
+      end, False);
+    AddAttemptKey(Settings.MultiCursorBelowKey, TAtlasStrings.Text(TAtlasTextId.MultiCursorBelowCommand),
+      function: Boolean
+      begin
+        Result := TAtlasIdeMultiCursor.TryVertical(False);
+      end, False);
+  end;
   AddKey(Settings.UndoKey, TAtlasStrings.Text(TAtlasTextId.UndoMenu),
     procedure
     begin
