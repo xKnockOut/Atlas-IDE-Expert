@@ -374,6 +374,14 @@ begin
   Assert.IsFalse(EntryOf(Entries, TAtlasKeyFunction.NextChange).Disabled);
   Assert.AreEqual('Atlas.NextChange', TAtlasKeyMap.CommandIdOf(TAtlasKeyFunction.NextChange));
   Assert.AreEqual('Atlas.PreviousChange', TAtlasKeyMap.CommandIdOf(TAtlasKeyFunction.PreviousChange));
+  // Zeilen verschieben und duplizieren (#634): mit Vorrang, die IDE-Belegung steht als Konflikt da.
+  Assert.AreEqual($8026, Integer(EntryOf(Entries, TAtlasKeyFunction.MoveLinesUp).Key));
+  Assert.AreEqual($A028, Integer(EntryOf(Entries, TAtlasKeyFunction.DuplicateLinesDown).Key));
+  Assert.IsTrue(EntryOf(Entries, TAtlasKeyFunction.MoveLinesDown).Priority);
+  Assert.AreEqual(Ord(TAtlasKeyStatus.AtlasWins), Ord(EntryOf(Entries, TAtlasKeyFunction.MoveLinesUp).Status(
+    TAtlasKeyConflicts.OwnerOf($8026, TAtlasKeyConflicts.KnownIdeKeys))));
+  Assert.AreEqual('Atlas.MoveLinesUp', TAtlasKeyMap.CommandIdOf(TAtlasKeyFunction.MoveLinesUp));
+  Assert.AreEqual('Atlas.DuplicateLinesDown', TAtlasKeyMap.CommandIdOf(TAtlasKeyFunction.DuplicateLinesDown));
   Assert.AreEqual(Ord(TAtlasKeySource.Binding), Ord(TAtlasKeyMap.SourceOf(TAtlasKeyFunction.TestUnit)));
   Settings.EditorKeysPriority := True;
   Assert.IsTrue(EntryOf(TAtlasKeyEntry.AllFromSettings(Settings), TAtlasKeyFunction.UnitSearch).Priority);
@@ -406,6 +414,7 @@ begin
   Settings.Breadcrumbs := False;
   Settings.JumpToMatch := False;
   Settings.GitGutter := False;
+  Settings.MoveLines := False;
   Entries := TAtlasKeyEntry.AllFromSettings(Settings);
   for Entry in Entries do
     if Entry.Func in [TAtlasKeyFunction.MethodToggleUp, TAtlasKeyFunction.MethodToggleDown,
@@ -415,7 +424,9 @@ begin
       TAtlasKeyFunction.PreviousProblem, TAtlasKeyFunction.QuickOpen, TAtlasKeyFunction.NavBack,
       TAtlasKeyFunction.NavForward, TAtlasKeyFunction.LastEdit, TAtlasKeyFunction.PeekDefinition,
       TAtlasKeyFunction.PeekReferences, TAtlasKeyFunction.Breadcrumbs, TAtlasKeyFunction.JumpToMatch,
-      TAtlasKeyFunction.JumpToMatchSelect, TAtlasKeyFunction.NextChange, TAtlasKeyFunction.PreviousChange] then
+      TAtlasKeyFunction.JumpToMatchSelect, TAtlasKeyFunction.NextChange, TAtlasKeyFunction.PreviousChange,
+      TAtlasKeyFunction.MoveLinesUp, TAtlasKeyFunction.MoveLinesDown, TAtlasKeyFunction.DuplicateLinesUp,
+      TAtlasKeyFunction.DuplicateLinesDown] then
     begin
       Assert.IsTrue(Entry.Disabled, 'abgeschaltet: ' + IntToStr(Ord(Entry.Func)));
       Assert.AreEqual(Ord(TAtlasKeyStatus.NoKey), Ord(Entry.Status('IDE: Klassennavigation')),

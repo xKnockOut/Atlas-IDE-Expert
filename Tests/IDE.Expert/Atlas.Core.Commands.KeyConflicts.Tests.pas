@@ -34,6 +34,9 @@ begin
     'Makro');
   Assert.AreEqual('', TAtlasKeyConflicts.OwnerOf(TAtlasKeyConflicts.CheckDefault, TAtlasKeyConflicts.KnownIdeKeys));
   Assert.AreEqual('', TAtlasKeyConflicts.OwnerOf(0, TAtlasKeyConflicts.KnownIdeKeys));
+  // Zeilen verschieben (#634): Alt+↑ und Umschalt+Alt+↑/↓ gehören in der IDE schon anderen Funktionen.
+  Assert.Contains(TAtlasKeyConflicts.OwnerOf($8026, TAtlasKeyConflicts.KnownIdeKeys), 'Code-Browsing');
+  Assert.Contains(TAtlasKeyConflicts.OwnerOf($A028, TAtlasKeyConflicts.KnownIdeKeys), 'Spaltenblock');
 end;
 
 procedure TAtlasKeyConflictsTests.BindsOnlyWhenFreeOrPreferred;

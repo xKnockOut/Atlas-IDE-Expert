@@ -272,6 +272,11 @@ type
     FJumpToMatch: TCheckBox;
     FJumpToMatchKey: TEdit;
     FJumpToMatchSelectKey: TEdit;
+    FMoveLines: TCheckBox;
+    FMoveLinesUpKey: TEdit;
+    FMoveLinesDownKey: TEdit;
+    FDuplicateLinesUpKey: TEdit;
+    FDuplicateLinesDownKey: TEdit;
     FBookmarkKey: TEdit;
     /// <summary>„Element ausblenden …“ (#628).</summary>
     FHideElementKey: TEdit;
@@ -643,6 +648,10 @@ type
     property MethodToggle: TCheckBox read FMethodToggle;
     property MethodToggleUpKey: TEdit read FMethodToggleUpKey;
     property MethodToggleDownKey: TEdit read FMethodToggleDownKey;
+    /// <summary>Zum Testen: Zeilen verschieben und duplizieren (#634).</summary>
+    property MoveLines: TCheckBox read FMoveLines;
+    property MoveLinesUpKey: TEdit read FMoveLinesUpKey;
+    property DuplicateLinesDownKey: TEdit read FDuplicateLinesDownKey;
     property RedoKey: TEdit read FRedoKey;
     property UpdatesCheck: TCheckBox read FUpdatesCheck;
     property BugReportAnonymize: TCheckBox read FBugReportAnonymize;
@@ -1290,6 +1299,12 @@ begin
   FJumpToMatch := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsJumpToMatch));
   FJumpToMatchKey := AddKey(TAtlasStrings.Text(TAtlasTextId.JumpToMatchCommand));
   FJumpToMatchSelectKey := AddKey(TAtlasStrings.Text(TAtlasTextId.JumpToMatchSelectCommand));
+  // Zeilen verschieben und duplizieren (#634); aus: die Tasten bleiben der IDE.
+  FMoveLines := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsMoveLines));
+  FMoveLinesUpKey := AddKey(TAtlasStrings.Text(TAtlasTextId.MoveLinesUpCommand));
+  FMoveLinesDownKey := AddKey(TAtlasStrings.Text(TAtlasTextId.MoveLinesDownCommand));
+  FDuplicateLinesUpKey := AddKey(TAtlasStrings.Text(TAtlasTextId.DuplicateLinesUpCommand));
+  FDuplicateLinesDownKey := AddKey(TAtlasStrings.Text(TAtlasTextId.DuplicateLinesDownCommand));
   FTestUnitKey := AddKey(TAtlasStrings.Text(TAtlasTextId.EditorTestUnit));
   // Navigationsverlauf über Dateien (#504).
   FNavHistory := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsNavHistory));
@@ -2139,6 +2154,11 @@ begin
   FMarks.Bind(FJumpToMatch, ['JumpToMatch']);
   FMarks.Bind(FJumpToMatchKey, ['JumpToMatchKey']);
   FMarks.Bind(FJumpToMatchSelectKey, ['JumpToMatchSelectKey']);
+  FMarks.Bind(FMoveLines, ['MoveLines']);
+  FMarks.Bind(FMoveLinesUpKey, ['MoveLinesUpKey']);
+  FMarks.Bind(FMoveLinesDownKey, ['MoveLinesDownKey']);
+  FMarks.Bind(FDuplicateLinesUpKey, ['DuplicateLinesUpKey']);
+  FMarks.Bind(FDuplicateLinesDownKey, ['DuplicateLinesDownKey']);
   FMarks.Bind(FBookmarkKey, ['BookmarkKey']);
   FMarks.Bind(FHideElementKey, ['HideElementKey']);
   FMarks.Bind(FNextProblemKey, ['NextProblemKey']);
@@ -3130,6 +3150,11 @@ begin
   FJumpToMatch.Checked := ASettings.JumpToMatch;
   FJumpToMatchKey.Text := ShortCutToText(TShortCut(ASettings.JumpToMatchKey));
   FJumpToMatchSelectKey.Text := ShortCutToText(TShortCut(ASettings.JumpToMatchSelectKey));
+  FMoveLines.Checked := ASettings.MoveLines;
+  FMoveLinesUpKey.Text := ShortCutToText(TShortCut(ASettings.MoveLinesUpKey));
+  FMoveLinesDownKey.Text := ShortCutToText(TShortCut(ASettings.MoveLinesDownKey));
+  FDuplicateLinesUpKey.Text := ShortCutToText(TShortCut(ASettings.DuplicateLinesUpKey));
+  FDuplicateLinesDownKey.Text := ShortCutToText(TShortCut(ASettings.DuplicateLinesDownKey));
   FBookmarkKey.Text := ShortCutToText(TShortCut(ASettings.BookmarkKey));
   FHideElementKey.Text := ShortCutToText(TShortCut(ASettings.HideElementKey));
   FNextProblemKey.Text := ShortCutToText(TShortCut(ASettings.NextProblemKey));
@@ -3428,6 +3453,11 @@ begin
   ASettings.JumpToMatch := FJumpToMatch.Checked;
   ASettings.JumpToMatchKey := Integer(TextToShortCut(Trim(FJumpToMatchKey.Text)));
   ASettings.JumpToMatchSelectKey := Integer(TextToShortCut(Trim(FJumpToMatchSelectKey.Text)));
+  ASettings.MoveLines := FMoveLines.Checked;
+  ASettings.MoveLinesUpKey := Integer(TextToShortCut(Trim(FMoveLinesUpKey.Text)));
+  ASettings.MoveLinesDownKey := Integer(TextToShortCut(Trim(FMoveLinesDownKey.Text)));
+  ASettings.DuplicateLinesUpKey := Integer(TextToShortCut(Trim(FDuplicateLinesUpKey.Text)));
+  ASettings.DuplicateLinesDownKey := Integer(TextToShortCut(Trim(FDuplicateLinesDownKey.Text)));
   ASettings.BookmarkKey := Integer(TextToShortCut(Trim(FBookmarkKey.Text)));
   ASettings.HideElementKey := Integer(TextToShortCut(Trim(FHideElementKey.Text)));
   ASettings.NextProblemKey := Integer(TextToShortCut(Trim(FNextProblemKey.Text)));

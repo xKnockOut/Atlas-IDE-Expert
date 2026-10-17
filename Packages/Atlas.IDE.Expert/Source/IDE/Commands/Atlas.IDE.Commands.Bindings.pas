@@ -13,7 +13,9 @@
 // notifications.enabled an ist) und die Brotkrumenleiste (#590,
 // Strg+Umschalt+., nur solange editor.breadcrumbs an ist) sowie der Sprung
 // zum Gegenstück (#635, Strg+Ü bzw. Strg+Umschalt+Ü zum Markieren, nur
-// solange keys.jumpToMatch an ist). Jede Taste wird wie
+// solange keys.jumpToMatch an ist) und Zeilen verschieben bzw. duplizieren
+// (#634, Alt+↑/↓ und Umschalt+Alt+↑/↓ mit Vorrang, nur solange keys.moveLines
+// an ist). Jede Taste wird wie
 // die der Befehlspalette vorher auf Konflikte geprüft (#494); ohne Vorrang
 // bleibt eine fremde Belegung aktiv. Nach geänderten Einstellungen meldet
 // Rebind die Bindung neu an. Der Befehl läuft nach der Tastenverarbeitung
@@ -97,7 +99,19 @@ uses
   Atlas.IDE.Editor.Hide,
   Atlas.IDE.Notifications.Service,
   Atlas.IDE.Outline.Breadcrumbs,
-  Atlas.IDE.Editor.LineChanges;
+  Atlas.IDE.Editor.LineChanges,
+  Atlas.Core.Editor.LineMove,
+  Atlas.IDE.Editor.LineMove;
+
+/// <summary>Zeilen verschieben bzw. duplizieren (#634), gesichert.</summary>
+procedure RunLineMove(AKind: TAtlasLineMoveKind);
+begin
+  TAtlasGuard.Run(TAtlasFeature.EditorCommands,
+    procedure
+    begin
+      TAtlasIdeLineMove.Run(AKind);
+    end);
+end;
 
 { TAtlasIdeEditorKeys.TBinding }
 
@@ -468,6 +482,31 @@ begin
             TAtlasIdeLineChanges.GoToChange(False);
           end);
       end);
+  end;
+  // Zeilen verschieben und duplizieren (#634): Die Tasten gehören in der IDE dem Code-Browsing und der
+  // Spaltenmarkierung; bewusst übernommen, darum mit Vorrang. Aus = die IDE behält sie.
+  if Settings.MoveLines then
+  begin
+    AddPriorityKey(Settings.MoveLinesUpKey, TAtlasStrings.Text(TAtlasTextId.MoveLinesUpCommand),
+      procedure
+      begin
+        RunLineMove(TAtlasLineMoveKind.MoveUp);
+      end, True);
+    AddPriorityKey(Settings.MoveLinesDownKey, TAtlasStrings.Text(TAtlasTextId.MoveLinesDownCommand),
+      procedure
+      begin
+        RunLineMove(TAtlasLineMoveKind.MoveDown);
+      end, True);
+    AddPriorityKey(Settings.DuplicateLinesUpKey, TAtlasStrings.Text(TAtlasTextId.DuplicateLinesUpCommand),
+      procedure
+      begin
+        RunLineMove(TAtlasLineMoveKind.DuplicateUp);
+      end, True);
+    AddPriorityKey(Settings.DuplicateLinesDownKey, TAtlasStrings.Text(TAtlasTextId.DuplicateLinesDownCommand),
+      procedure
+      begin
+        RunLineMove(TAtlasLineMoveKind.DuplicateDown);
+      end, True);
   end;
   AddKey(Settings.UndoKey, TAtlasStrings.Text(TAtlasTextId.UndoMenu),
     procedure

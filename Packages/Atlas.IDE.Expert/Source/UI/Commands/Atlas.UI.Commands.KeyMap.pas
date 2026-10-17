@@ -300,6 +300,14 @@ begin
       Id := TAtlasTextId.NextChangeCommand;
     TAtlasKeyFunction.PreviousChange:
       Id := TAtlasTextId.PreviousChangeCommand;
+    TAtlasKeyFunction.MoveLinesUp:
+      Id := TAtlasTextId.MoveLinesUpCommand;
+    TAtlasKeyFunction.MoveLinesDown:
+      Id := TAtlasTextId.MoveLinesDownCommand;
+    TAtlasKeyFunction.DuplicateLinesUp:
+      Id := TAtlasTextId.DuplicateLinesUpCommand;
+    TAtlasKeyFunction.DuplicateLinesDown:
+      Id := TAtlasTextId.DuplicateLinesDownCommand;
   else
     Id := TAtlasTextId.KeyMapUnitSearchIde;
   end;

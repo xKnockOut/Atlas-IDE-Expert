@@ -18,7 +18,8 @@
 //   (#775), des Wechsels Unit ⇄ Testunit (#189), des Fensters „Units
 //   suchen“ (#777, eigene Taste und Übernahme von Strg+F12) und von
 //   „Lesezeichen setzen…“ (#622, Strg+Alt+K) und des Erzeugen-Menüs (#719,
-//   Alt+Einfg) und von „Element ausblenden …“ (#628, Strg+.). Ist eine Funktion
+//   Alt+Einfg) und von „Element ausblenden …“ (#628, Strg+.) und von Zeilen
+//   verschieben und duplizieren (#634, Alt+↑/↓, Umschalt+Alt+↑/↓). Ist eine Funktion
 //   abgeschaltet, steht ihr Eintrag mit Disabled in der Liste: Atlas belegt die
 //   Taste dann nicht, also ist sie auch kein Konflikt.
 // Kürzel sind TShortCut-Werte (Word) wie in Vcl.Menus.
@@ -45,7 +46,8 @@ type
     MethodToggleUp, MethodToggleDown, TestUnit, UnitSearch, UnitSearchIde, Bookmark, GenerateMenu,
     Notifications, WelcomeQuickBuild, WelcomeQuickTests, HideElement, NextProblem, PreviousProblem, QuickOpen,
     NavBack, NavForward, LastEdit, PeekDefinition, PeekReferences, Breadcrumbs, JumpToMatch,
-    JumpToMatchSelect, NextChange, PreviousChange);
+    JumpToMatchSelect, NextChange, PreviousChange, MoveLinesUp, MoveLinesDown, DuplicateLinesUp,
+    DuplicateLinesDown);
   TAtlasKeyChoice = (UseAtlas, LeaveOther, OtherKey);
   /// <summary>NoKey: keine Taste; IdeKey: Taste der IDE über Code Insight, Atlas belegt nichts selbst;
   /// Free: Atlas belegt die freie Taste; AtlasWins: belegt, Atlas hat Vorrang; Left: belegt, Atlas
@@ -206,7 +208,13 @@ begin
     Create(TAtlasKeyFunction.JumpToMatchSelect, Word(ASettings.JumpToMatchSelectKey), Shared, ASettings.JumpToMatch),
     // Nächste/vorherige Änderung (#507).
     Create(TAtlasKeyFunction.NextChange, Word(ASettings.NextChangeKey), Shared, ASettings.GitGutter),
-    Create(TAtlasKeyFunction.PreviousChange, Word(ASettings.PreviousChangeKey), Shared, ASettings.GitGutter)];
+    Create(TAtlasKeyFunction.PreviousChange, Word(ASettings.PreviousChangeKey), Shared, ASettings.GitGutter),
+    // Zeilen verschieben und duplizieren (#634): Alt+↑ ist in der IDE Code-Browsing, Umschalt+Alt+↑/↓ markiert
+    // Spaltenblöcke; bewusst übernommen, darum mit Vorrang. Aus = die IDE behält die Tasten.
+    Create(TAtlasKeyFunction.MoveLinesUp, Word(ASettings.MoveLinesUpKey), True, ASettings.MoveLines),
+    Create(TAtlasKeyFunction.MoveLinesDown, Word(ASettings.MoveLinesDownKey), True, ASettings.MoveLines),
+    Create(TAtlasKeyFunction.DuplicateLinesUp, Word(ASettings.DuplicateLinesUpKey), True, ASettings.MoveLines),
+    Create(TAtlasKeyFunction.DuplicateLinesDown, Word(ASettings.DuplicateLinesDownKey), True, ASettings.MoveLines)];
 end;
 
 class procedure TAtlasKeyEntry.ToSettings(const AEntries: TArray<TAtlasKeyEntry>;
@@ -312,6 +320,14 @@ begin
         ASettings.NextChangeKey := Entry.Key;
       TAtlasKeyFunction.PreviousChange:
         ASettings.PreviousChangeKey := Entry.Key;
+      TAtlasKeyFunction.MoveLinesUp:
+        ASettings.MoveLinesUpKey := Entry.Key;
+      TAtlasKeyFunction.MoveLinesDown:
+        ASettings.MoveLinesDownKey := Entry.Key;
+      TAtlasKeyFunction.DuplicateLinesUp:
+        ASettings.DuplicateLinesUpKey := Entry.Key;
+      TAtlasKeyFunction.DuplicateLinesDown:
+        ASettings.DuplicateLinesDownKey := Entry.Key;
       // Strg+F12 ist fest; ein- und ausgeschaltet wird über unitSearch.replaceIdeDialog.
       TAtlasKeyFunction.UnitSearchIde:
         ;
@@ -377,7 +393,11 @@ end;
 class function TAtlasKeyConflicts.KnownIdeKeys: TArray<TAtlasKeyOwner>;
 begin
   Result := [TAtlasKeyOwner.Create(scCtrl or scShift or Ord('P'), 'IDE: Tastaturmakro abspielen'),
-    TAtlasKeyOwner.Create(scCtrl or scShift or Ord('R'), 'IDE: Tastaturmakro aufzeichnen')];
+    TAtlasKeyOwner.Create(scCtrl or scShift or Ord('R'), 'IDE: Tastaturmakro aufzeichnen'),
+    // Zeilen verschieben und duplizieren (#634) nimmt diese Tasten mit Vorrang.
+    TAtlasKeyOwner.Create(scAlt or $26, 'IDE: Code-Browsing (Deklaration suchen)'), // VK_UP
+    TAtlasKeyOwner.Create(scShift or scAlt or $26, 'IDE: Spaltenblock nach oben markieren'),
+    TAtlasKeyOwner.Create(scShift or scAlt or $28, 'IDE: Spaltenblock nach unten markieren')]; // VK_DOWN
 end;
 
 class function TAtlasKeyConflicts.OwnerOf(AShortCut: Word; const AKeys: TArray<TAtlasKeyOwner>): string;
