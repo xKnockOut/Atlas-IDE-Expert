@@ -84,6 +84,7 @@ uses
   Atlas.IDE.Editor.PatternContinuation,
   Atlas.IDE.Editor.MultiCursor,
   Atlas.IDE.Editor.LinkedEditing,
+  Atlas.IDE.Editor.SmartPaste,
   Atlas.IDE.Editor.StatementCompletion,
   Atlas.IDE.Editor.OverviewRuler,
   Atlas.IDE.UnitSearch.Commands,
@@ -2200,6 +2201,24 @@ begin
       if StatusField <> nil then
         StatusField.SetExtra('linkedEditing', AText, AHint, nil);
     end);
+  // Einfügen mit uses-Ergänzung (#515, experimentell): nie neben Vervollständigung, Platzhaltern, mehreren
+  // Einfügemarken und dem Mitziehen von Bezeichnern; Ergebnis nur in der Meldungsansicht.
+  TAtlasIdeSmartPaste.Install(
+    function: Boolean
+    begin
+      Result := ((Manager <> nil) and (Manager.CompletionVisible or Manager.PlaceholdersActive)) or
+        TAtlasIdeMultiCursor.Active or TAtlasIdeLinkedEditing.Active;
+    end,
+    function: TLspSession
+    begin
+      Result := nil;
+      if Manager <> nil then
+        Result := Manager.RunningSession;
+    end,
+    procedure(AText: string)
+    begin
+      MessageLine(AText);
+    end);
   // Übersichtsleiste an der Scrollleiste (#519).
   TAtlasIdeOverviewRuler.Install;
   // Schnell öffnen (#503): Dateiliste im Hintergrund, zuletzt geöffnete Dateien zählen.
@@ -2233,6 +2252,7 @@ begin
   TAtlasIdeOverviewRuler.Uninstall;
   TAtlasIdeLineChanges.Uninstall;
   TAtlasIdeLineMove.Uninstall;
+  TAtlasIdeSmartPaste.Uninstall;
   TAtlasIdeLinkedEditing.Uninstall;
   TAtlasIdeMultiCursor.Uninstall;
   TAtlasIdePatternContinuation.Uninstall;

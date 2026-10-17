@@ -12,7 +12,7 @@ function AtlasPluginSchemaJson: string;
 implementation
 
 const
-  Lines: array[0..2716] of string = (
+  Lines: array[0..2736] of string = (
     '{',
     '  "$schema": "http://json-schema.org/draft-07/schema#",',
     '  "title": "Atlas-Plugin-Einstellungen",',
@@ -1327,6 +1327,26 @@ const
     '      "x-caption": "Bezeichner live mitziehen",',
     '      "x-captionEn": "Linked editing of local identifiers",',
     '      "x-issue": "#658"',
+    '    },',
+    '    "SmartPaste": {',
+    '      "description": "Nach dem Einfügen eines Blocks: fehlende Units im uses ergänzen (uses), den Block an die Einfügestelle einrücken (indent), beides (both) oder nichts (off).",',
+    '      "type": "string",',
+    '      "enum": [',
+    '        "off",',
+    '        "uses",',
+    '        "indent",',
+    '        "both"',
+    '      ],',
+    '      "default": "off",',
+    '      "x-key": "editor.smartPaste",',
+    '      "x-area": "editor",',
+    '      "x-feature": "EditorCommands",',
+    '      "x-page": "Editor",',
+    '      "x-experimental": true,',
+    '      "x-offValue": "off",',
+    '      "x-caption": "Einfügen mit uses-Ergänzung",',
+    '      "x-captionEn": "Paste with uses completion",',
+    '      "x-issue": "#515"',
     '    },',
     '    "MultiCursorModifier": {',
     '      "description": "Taste, mit der ein Klick eine weitere Marke setzt: alt (Alt+Klick) oder ctrl (Strg+Klick; dann springt Strg+Klick nicht mehr zur Deklaration).",',

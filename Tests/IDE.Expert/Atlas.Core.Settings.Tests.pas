@@ -53,6 +53,8 @@ type
     [Test]
     procedure MultiCursorOptions;
     [Test]
+    procedure SmartPasteOptions;
+    [Test]
     procedure StickyScrollOptions;
     /// <summary>Änderungsmarken und Zeilenhistorie (#507): Vorgaben, Tasten, Speichern und Laden.</summary>
     [Test]
@@ -1355,6 +1357,28 @@ begin
   Loaded.MultiCursorModifier := 'CTRL';
   Loaded.Normalize;
   Assert.AreEqual('ctrl', Loaded.MultiCursorModifier);
+end;
+
+procedure TAtlasPluginSettingsTests.SmartPasteOptions;
+var
+  Settings, Loaded: TAtlasPluginSettings;
+  Store: IAtlasSettingsStore;
+begin
+  // #515: experimentell, also aus; vier Werte, Unbekanntes fällt auf off zurück.
+  Settings := TAtlasPluginSettings.Defaults;
+  Assert.AreEqual('off', Settings.SmartPaste);
+  Settings.SmartPaste := 'indent';
+  Store := TMemoryStore.Create;
+  Settings.Save(Store);
+  Loaded := TAtlasPluginSettings.Defaults;
+  Loaded.Load(Store);
+  Assert.AreEqual('indent', Loaded.SmartPaste);
+  Loaded.SmartPaste := 'BOTH';
+  Loaded.Normalize;
+  Assert.AreEqual('both', Loaded.SmartPaste);
+  Loaded.SmartPaste := 'immer';
+  Loaded.Normalize;
+  Assert.AreEqual('off', Loaded.SmartPaste);
 end;
 
 procedure TAtlasPluginSettingsTests.ContinuePatternOptions;

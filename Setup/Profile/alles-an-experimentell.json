@@ -51,6 +51,7 @@
     "editor.stickyScroll": true,
     "refactoring.inline": true,
     "refactoring.moveClass": true,
-    "refactoring.unitRenameFollowUp": "ask"
+    "refactoring.unitRenameFollowUp": "ask",
+    "editor.smartPaste": "both"
   }
 }

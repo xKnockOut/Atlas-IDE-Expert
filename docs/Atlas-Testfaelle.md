@@ -1299,6 +1299,25 @@ Verhalten der IDE (erwartet, in UN1 festhalten): „Umbenennen“ in der Projekt
 | UN9 | Verhalten der Quelle „Unit umbenannt“ im Kontextmenü der Zentrale auf „collect“ bzw. „off“ | collect: nur der Eintrag, kein Hinweis unten rechts, keine Zeile; off: gar nichts |
 | UN10 | `"unitRenameFollowUp": "off"` bzw. Hauptschalter aus, umbenennen | Kein Hinweis, kein Eintrag; Atlas verhält sich wie ohne die Funktion |
 
+## Einfügen mit uses-Ergänzung (#515, experimentell)
+
+Vorher: „Experimentelle Funktionen erlauben“ an, auf der Seite Editor „Einfügen mit uses-Ergänzung und Einrückung“ auf „uses ergänzen und einrücken“ (`editor.smartPaste` = `both`). Eine Unit `Ziel.pas` mit `uses System.SysUtils;` im interface und einer Methode mit `begin … end`; in einer zweiten Unit ein Block, der `TJSONObject`, `TStringList` und `TList` verwendet, eingerückt mit 6 Leerzeichen.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| SP1 | Block kopieren, in `Ziel.pas` in der Zeile nach `begin` am Zeilenanfang mit Strg+V einfügen | Block steht eine Stufe unter `begin` (Blockeinrückung), die Abstände innerhalb bleiben; Cursor am Ende des Blocks; danach unter der Einfügestelle das Fenster „2 Units ergänzen: System.JSON, System.Classes“ mit der Zeile „› TList:  keine · System.Classes · System.Generics.Collections“ |
+| SP2 | Im Fenster → drücken, dann Enter | Überschrift zählt drei Units; nach Enter stehen sie im uses des implementation-Teils (Block steht in einer Methode), Zeile „Ergänzt: …“ in der Meldungsansicht; der Editor behält den Fokus |
+| SP3 | Nach SP2 zweimal Strg+Z | Erst die uses-Einträge zurück, dann die Einrückung; ein drittes Strg+Z nimmt das Einfügen selbst zurück |
+| SP4 | Wie SP1, dann Esc | Fenster zu, uses unverändert, Einrückung bleibt |
+| SP5 | Wie SP1, dann ein Zeichen tippen bzw. woanders klicken | Fenster zu, das Zeichen kommt im Editor an |
+| SP6 | Block in den interface-Teil einfügen (z. B. Typdeklaration mit `TJSONObject`) | Einträge ins interface-uses; eine Unit, die `Ziel` selbst im interface verwendet, kommt wegen Zirkelbezug ins implementation-uses und steht als eigene Zeile in der Meldungsansicht |
+| SP7 | Über das Kontextmenü „Einfügen“ bzw. Umschalt+Einfg einfügen | Wie SP1 |
+| SP8 | Einzeiligen kurzen Text (`Foo(1);`) einfügen | Nichts geschieht |
+| SP9 | Einstellung auf „Nur einrücken“ bzw. „Nur uses ergänzen“ | Nur das eine; bei „Nur uses ergänzen“ bleibt die Einrückung aus der Quelle |
+| SP10 | Mitten in eine Zeile mit Code einfügen | Keine Einrückung; das Fenster erscheint trotzdem, wenn Units fehlen |
+| SP11 | Server beendet bzw. Datei `.dfm` | Kein Fenster, keine Meldung; Einrücken geht ohne Server (nur Pascal-Dateien) |
+| SP12 | Einstellung „Aus“ bzw. Hauptschalter „Experimentelle Funktionen“ aus | Atlas verhält sich wie ohne die Funktion |
+
 ## Anweisung vervollständigen (#697)
 
 | Nr. | Schritte | Erwartet |

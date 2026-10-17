@@ -29,6 +29,7 @@ implementation
 
 uses
   System.StrUtils,
+  System.Generics.Collections,
   Atlas.Common.Documents.Contract,
   Atlas.Common.Documents.Uris,
   Atlas.Common.Pascal.SyntaxTree,

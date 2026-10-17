@@ -84,6 +84,8 @@ type
     [Test]
     procedure MultiCursorRoundTrip;
     [Test]
+    procedure SmartPasteRoundTrip;
+    [Test]
     procedure StickyScrollRoundTrip;
     [Test]
     procedure WelcomeSettingsRoundTrip;
@@ -1586,6 +1588,34 @@ begin
     Assert.AreEqual($C049, Saved.MultiCursorLineEndsKey);
     Assert.AreEqual($A026, Saved.MultiCursorAboveKey);
     Assert.AreEqual($A028, Saved.MultiCursorBelowKey);
+  finally
+    Page.Free;
+  end;
+end;
+
+procedure TAtlasSettingsPageTests.SmartPasteRoundTrip;
+var
+  Page: TAtlasSettingsPage;
+  Settings, Saved: TAtlasPluginSettings;
+  Index: Integer;
+const
+  Values: array[0..3] of string = ('off', 'uses', 'indent', 'both');
+begin
+  // #515: Auswahl mit vier Einträgen, Vorgabe aus.
+  Settings := TAtlasPluginSettings.Defaults;
+  Page := TAtlasSettingsPage.Create(nil);
+  try
+    Page.LoadFrom(Settings);
+    Assert.AreEqual(0, Page.SmartPaste.Choice);
+    for Index := 0 to High(Values) do
+    begin
+      Settings.SmartPaste := Values[Index];
+      Page.LoadFrom(Settings);
+      Assert.AreEqual(Index, Page.SmartPaste.Choice);
+      Saved := TAtlasPluginSettings.Defaults;
+      Page.SaveTo(Saved);
+      Assert.AreEqual(Values[Index], Saved.SmartPaste);
+    end;
   finally
     Page.Free;
   end;
