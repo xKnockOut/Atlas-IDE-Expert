@@ -41,6 +41,8 @@ type
     class function MinConfidence(const ASettings: TServerSettings; const AProfile: string): TRuleConfidence; static;
     /// <summary>Kategorie aus dem Regelkatalog, '' wenn die Regel dort fehlt.</summary>
     class function CategoryOf(const ARuleId: string): string; static;
+    /// <summary>Alle Regelkennungen des Katalogs in Kleinbuchstaben, sortiert (#41: unknown-rule-id).</summary>
+    class function KnownRuleIds: TArray<string>; static;
     /// <summary>True, wenn die Unit ein Test-Framework einbindet; Weiterleitung an TUsesClauses.IsTestUnit.</summary>
     class function IsTestUnit(const ATokens: TArray<TPascalToken>): Boolean; static;
   end;
@@ -165,6 +167,15 @@ class function TRuleProfiles.CategoryOf(const ARuleId: string): string;
 begin
   if (Categories = nil) or not Categories.TryGetValue(LowerCase(ARuleId), Result) then
     Result := '';
+end;
+
+class function TRuleProfiles.KnownRuleIds: TArray<string>;
+begin
+  Result := nil;
+  if Categories = nil then
+    Exit;
+  Result := Categories.Keys.ToArray;
+  TArray.Sort<string>(Result);
 end;
 
 class function TRuleProfiles.IsTestUnit(const ATokens: TArray<TPascalToken>): Boolean;

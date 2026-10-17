@@ -6,6 +6,26 @@ Server und Claude-Code-Plugin tragen immer dieselbe Version.
 
 ## [Unveröffentlicht]
 
+### Neu
+- Schnellbefehle: `/case` ergänzt fehlende Aufzählungswerte (#296), `/unit` und `/open` (#297), `/component` mit Eintrag in die `.dpk` (#299), `/intf` und `/event` (#295), `/test` legt einen DUnitX-Test für die aktuelle Methode an (#295), `/json` mit Golden-Datei und Rundweg (#298), Vorschläge für `/sort` und `/filter` (#319).
+- Einstellung `slashCommands.logCall` für `/log`, `/except` und `/measure` (#304).
+- Eigenschaftsregeln (#309): Schnellkorrektur direkt in der Formulardatei, „Alle korrigieren“, Befehl „Eigenschaftsregeln anwenden“ (`atlas.server.applyDfmPropertyRules`, Einstellung `dfmPropertyRules.apply`), eigene Meldungen in der `atlas.json`.
+- Signatur ändern (#100): Kern im Server, Dialog mit Vorschau im Plugin.
+- Hover über Komponentenklassen (#110): Ereignisse am Typ, `default`-Varianten und die Standard-Property.
+- Unicode-Sicherheit (#150): auch in Formulardateien, ungültige Bytes, gebündelte Meldungen, Korrekturen und Konfidenz.
+- Mutationstests (#152): `Tests/Referenzprojekt/mutationen.txt` baut 25 Fehler gezielt ein, jeder muss von seiner Regel gefunden werden; `bewertungen.csv` enthält die ersten 73 bewerteten Treffer, der Test gibt die Fehlalarmquote je Regel aus.
+- Dokumentationskommentar abschaltbar (#88): `completeBlocks.docComment` (Vorgabe an) schaltet die Vervollständigung nach `///` und die Codeaktionen dazu; überzählige `<param>`-Einträge werden als `<!-- entfernt: Name: … -->` markiert statt gelöscht.
+- Hinweis `unknown-rule-id` (#41): eine unbekannte Regelkennung in `lsp-ignore` oder `rules` meldet „Unbekannte Regelkennung "x"; gemeint ist vermutlich "y"“ mit Schnellkorrektur; sie gilt nicht mehr zusätzlich als `unused-suppression`. Über `rules` abschaltbar.
+
+### Geändert
+- JSON-Ausgabe (#144): jeder Befund trägt die Konfidenz zusätzlich unter `properties.confidence` wie in SARIF.
+- Delphi-Version (#47): Ist die in `settings.json` eingetragene `delphiVersion` nicht installiert, warnt Atlas an der Stelle und wählt automatisch, statt die fehlende Version zu verwenden.
+- `/dtor` ergänzt einen vorhandenen Destruktor (#295), `/encapsulate` ohne `F`-Präfix im Namen der Property (#298), `/filter` ohne Inline-Variablen und mit dem Element vor jedem Mitglied (#319).
+- `/task` meldet verschobene Zeilen und Lesen nach dem Task, `/future` setzt den Cursor (#322).
+
+### Tests
+- `/header` am falschen Ort (#306), FireMonkey-Plattformansichten bei Sprung und Umbenennen (#87).
+
 ## [1.0.0] - 2026-10-16
 
 ### Neu

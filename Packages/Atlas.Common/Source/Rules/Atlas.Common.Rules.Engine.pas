@@ -17,6 +17,11 @@
 // alle genannten Regeln gelaufen sind, damit Kommentare für abgeschaltete
 // oder unbekannte Regeln nicht stören.
 //
+// Eine Kennung im Unterdrückungskommentar, die weder im Regelkatalog noch
+// unter den übergebenen Regeln steht, meldet die Engine als Hinweis
+// "unknown-rule-id" mit Tippfehler-Vorschlag und Korrektur (#41). Ein solcher
+// Kommentar zählt nicht zusätzlich als "unused-suppression".
+//
 // Regelprofile, Pfadregeln und das Ausnehmen von Test-Units (#146) wertet
 // TRuleProfiles aus; maßgeblich ist das Profil in ASettings.Profile, für
 // Test-Units und Testprojekte ASettings.TestProfile, falls gesetzt.
@@ -36,6 +41,7 @@ uses
 
 const
   UnusedSuppressionRuleId = 'unused-suppression';
+  UnknownRuleIdRuleId = 'unknown-rule-id';
 
 type
   TRuleEngine = class
@@ -63,6 +69,7 @@ implementation
 
 uses
   System.JSON,
+  System.StrUtils,
   System.Diagnostics,
   System.Generics.Defaults,
   Atlas.Common.Diagnostics.RequestScope,
@@ -264,6 +271,9 @@ var
   Elapsed: Int64;
   Shared: TRuleContext;
   OwnCache: IRuleDerivedCache;
+  Known: TArray<string>;
+  Index: Integer;
+  Suggestion: string;
 begin
   if (AContext.RelativePath <> '') and ASettings.IsExcluded(AContext.RelativePath) then
     Exit(nil);
@@ -351,6 +361,38 @@ begin
         Finding.Fixes := [TRuleFix.Create('Unterdrückung entfernen', [TRuleEdit.Create(Removal, '')], True)];
         Kept.Add(Finding);
       end;
+
+    if (Suppressions <> nil) and (Length(Suppressions.Entries) > 0) and
+      (ASettings.RuleSeverity(UnknownRuleIdRuleId, TRuleSeverity.Hint) <> TRuleSeverity.Off) then
+    begin
+      Known := TRuleProfiles.KnownRuleIds;
+      for Rule in ARules do
+        Known := Known + [LowerCase(Rule.Descriptor.Id)];
+      for Entry in Suppressions.Entries do
+        for Index := 0 to High(Entry.Ids) do
+        begin
+          Id := Entry.Ids[Index];
+          if (Id = '*') or (IndexText(Id, Known) >= 0) then
+            Continue;
+          Suggestion := TSuppressions.Suggest(Id, Known);
+          Finding := Default(TRuleFinding);
+          Finding.RuleId := UnknownRuleIdRuleId;
+          Finding.Range := Entry.IdRanges[Index];
+          Finding.Severity := ASettings.RuleSeverity(UnknownRuleIdRuleId, TRuleSeverity.Hint);
+          Finding.Confidence := TRuleConfidence.High;
+          if Suggestion = '' then
+            Finding.Message := Format('Unbekannte Regelkennung "%s"; die Unterdrückung wirkt nicht', [Id])
+          else
+          begin
+            Finding.Message := Format('Unbekannte Regelkennung "%s"; gemeint ist vermutlich "%s"', [Id, Suggestion]);
+            // Nur genau markierte Kennungen ersetzen, nicht den ganzen Kommentar.
+            if Entry.IdRanges[Index].StartPos.Line = Entry.IdRanges[Index].EndPos.Line then
+              Finding.Fixes := [TRuleFix.Create(Format('Durch "%s" ersetzen', [Suggestion]),
+                [TRuleEdit.Create(Entry.IdRanges[Index], Suggestion)], True)];
+          end;
+          Kept.Add(Finding);
+        end;
+    end;
 
     Kept.Sort(TComparer<TRuleFinding>.Construct(CompareFindings));
     Result := Kept.ToArray;
