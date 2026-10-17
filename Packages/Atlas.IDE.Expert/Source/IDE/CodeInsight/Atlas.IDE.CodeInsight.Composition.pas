@@ -79,6 +79,7 @@ uses
   Atlas.Core.Editor.LineMove,
   Atlas.IDE.Editor.LineMove,
   Atlas.IDE.Editor.CommentContinuation,
+  Atlas.IDE.Editor.StatementCompletion,
   Atlas.IDE.Editor.OverviewRuler,
   Atlas.IDE.UnitSearch.Commands,
   Atlas.IDE.Generate.Commands,
@@ -969,6 +970,16 @@ begin
   TAtlasIdeLineMove.Run(TAtlasLineMoveKind.DuplicateDown);
 end;
 
+function CompleteStatementVisible: Boolean;
+begin
+  Result := TAtlasIdeStatementCompletion.Enabled;
+end;
+
+procedure CompleteStatement;
+begin
+  TAtlasIdeStatementCompletion.Run;
+end;
+
 function BreadcrumbsVisible: Boolean;
 begin
   Result := TAtlasIdeBreadcrumbs.Enabled;
@@ -1137,6 +1148,9 @@ begin
     Guarded(TAtlasFeature.EditorCommands, DuplicateLinesUp), MoveLinesVisible);
   Add('Atlas.DuplicateLinesDown', TAtlasTextId.DuplicateLinesDownCommand,
     Guarded(TAtlasFeature.EditorCommands, DuplicateLinesDown), MoveLinesVisible);
+  // Anweisung vervollständigen (#697).
+  Add('Atlas.CompleteStatement', TAtlasTextId.CompleteStatementCommand,
+    Guarded(TAtlasFeature.EditorCommands, CompleteStatement), CompleteStatementVisible);
   Add('Atlas.Callers', TAtlasTextId.MenuIncoming, Hierarchy(TAtlasHierarchyDirection.Incoming));
   Add('Atlas.Calls', TAtlasTextId.MenuOutgoing, Hierarchy(TAtlasHierarchyDirection.Outgoing));
   Add('Atlas.Supertypes', TAtlasTextId.MenuSupertypes, Hierarchy(TAtlasHierarchyDirection.Supertypes));
@@ -2070,6 +2084,18 @@ begin
     begin
       GuardWarning(AText);
     end);
+  // Anweisung vervollständigen (#697): Rumpf und case-Zweige vom Server.
+  TAtlasIdeStatementCompletion.Install(
+    function: TLspSession
+    begin
+      Result := nil;
+      if Manager <> nil then
+        Result := Manager.ActiveSession;
+    end,
+    procedure(AText: string)
+    begin
+      GuardWarning(AText);
+    end);
   // Kommentar beim Enter fortsetzen (#696): beobachtet Enter, ohne die Taste zu binden.
   TAtlasIdeCommentContinuation.Install;
   // Übersichtsleiste an der Scrollleiste (#519).
@@ -2105,6 +2131,7 @@ begin
   TAtlasIdeLineChanges.Uninstall;
   TAtlasIdeLineMove.Uninstall;
   TAtlasIdeCommentContinuation.Uninstall;
+  TAtlasIdeStatementCompletion.Uninstall;
   TAtlasIdeOutline.Uninstall;
   TAtlasIdeOutlineCache.Uninstall;
   TAtlasIdeNavHistory.Uninstall;

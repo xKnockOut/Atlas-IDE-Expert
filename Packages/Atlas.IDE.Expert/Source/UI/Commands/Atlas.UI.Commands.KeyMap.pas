@@ -308,6 +308,8 @@ begin
       Id := TAtlasTextId.DuplicateLinesUpCommand;
     TAtlasKeyFunction.DuplicateLinesDown:
       Id := TAtlasTextId.DuplicateLinesDownCommand;
+    TAtlasKeyFunction.CompleteStatement:
+      Id := TAtlasTextId.CompleteStatementCommand;
   else
     Id := TAtlasTextId.KeyMapUnitSearchIde;
   end;

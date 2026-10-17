@@ -155,6 +155,8 @@ begin
   // Cursor auf der Typzeile: alle fehlenden Rümpfe.
   Assert.IsTrue(ActionAt(Leer, 3, Action));
   Assert.AreEqual('2 fehlende Methodenrümpfe für TFoo erzeugen', Action.Title);
+  // Kennung für „Anweisung vervollständigen“ im Plugin (#697).
+  Assert.AreEqual(ClassBodiesTag, Action.Tag);
   Text := Apply(Leer, Action);
   Assert.Contains(Text, 'procedure TFoo.Lauf(A: Integer);'#10'begin'#10#10'end;'#10#10 +
     'function TFoo.Wert: string;'#10'begin'#10#10'end;'#10#10'end.');

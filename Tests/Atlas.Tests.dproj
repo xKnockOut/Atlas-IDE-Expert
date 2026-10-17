@@ -702,6 +702,8 @@
         <DCCReference Include="IDE.Expert\Atlas.Core.Editor.LineMove.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Editor\Atlas.Core.Editor.CommentContinuation.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Editor.CommentContinuation.Tests.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Editor\Atlas.Core.Editor.StatementCompletion.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.Core.Editor.StatementCompletion.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Editor\Atlas.Core.Editor.Overview.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Editor.Overview.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\UI\Editor\Atlas.UI.Editor.OverviewRuler.pas"/>

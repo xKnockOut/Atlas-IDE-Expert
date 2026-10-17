@@ -382,6 +382,12 @@ begin
     TAtlasKeyConflicts.OwnerOf($8026, TAtlasKeyConflicts.KnownIdeKeys))));
   Assert.AreEqual('Atlas.MoveLinesUp', TAtlasKeyMap.CommandIdOf(TAtlasKeyFunction.MoveLinesUp));
   Assert.AreEqual('Atlas.DuplicateLinesDown', TAtlasKeyMap.CommandIdOf(TAtlasKeyFunction.DuplicateLinesDown));
+  // Anweisung vervollständigen (#697): Strg+Umschalt+Enter mit Vorrang vor „Referenzen suchen“.
+  Assert.AreEqual($600D, Integer(EntryOf(Entries, TAtlasKeyFunction.CompleteStatement).Key));
+  Assert.IsTrue(EntryOf(Entries, TAtlasKeyFunction.CompleteStatement).Priority);
+  Assert.AreEqual(Ord(TAtlasKeyStatus.AtlasWins), Ord(EntryOf(Entries, TAtlasKeyFunction.CompleteStatement).Status(
+    TAtlasKeyConflicts.OwnerOf($600D, TAtlasKeyConflicts.KnownIdeKeys))));
+  Assert.AreEqual('Atlas.CompleteStatement', TAtlasKeyMap.CommandIdOf(TAtlasKeyFunction.CompleteStatement));
   Assert.AreEqual(Ord(TAtlasKeySource.Binding), Ord(TAtlasKeyMap.SourceOf(TAtlasKeyFunction.TestUnit)));
   Settings.EditorKeysPriority := True;
   Assert.IsTrue(EntryOf(TAtlasKeyEntry.AllFromSettings(Settings), TAtlasKeyFunction.UnitSearch).Priority);
@@ -415,6 +421,7 @@ begin
   Settings.JumpToMatch := False;
   Settings.GitGutter := False;
   Settings.MoveLines := False;
+  Settings.CompleteStatement := False;
   Entries := TAtlasKeyEntry.AllFromSettings(Settings);
   for Entry in Entries do
     if Entry.Func in [TAtlasKeyFunction.MethodToggleUp, TAtlasKeyFunction.MethodToggleDown,
@@ -426,7 +433,7 @@ begin
       TAtlasKeyFunction.PeekReferences, TAtlasKeyFunction.Breadcrumbs, TAtlasKeyFunction.JumpToMatch,
       TAtlasKeyFunction.JumpToMatchSelect, TAtlasKeyFunction.NextChange, TAtlasKeyFunction.PreviousChange,
       TAtlasKeyFunction.MoveLinesUp, TAtlasKeyFunction.MoveLinesDown, TAtlasKeyFunction.DuplicateLinesUp,
-      TAtlasKeyFunction.DuplicateLinesDown] then
+      TAtlasKeyFunction.DuplicateLinesDown, TAtlasKeyFunction.CompleteStatement] then
     begin
       Assert.IsTrue(Entry.Disabled, 'abgeschaltet: ' + IntToStr(Ord(Entry.Func)));
       Assert.AreEqual(Ord(TAtlasKeyStatus.NoKey), Ord(Entry.Status('IDE: Klassennavigation')),

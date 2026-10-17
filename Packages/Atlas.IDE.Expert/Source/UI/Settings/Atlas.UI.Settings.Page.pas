@@ -281,6 +281,11 @@ type
     FContinueCommentsLineComments: TCheckBox;
     FContinueCommentsLists: TCheckBox;
     FContinueCommentsBlockPrefix: TEdit;
+    FCompleteStatement: TCheckBox;
+    FCompleteStatementKey: TEdit;
+    FCompleteStatementBeginEnd: TAtlasChoiceBox;
+    FCompleteStatementTryKind: TAtlasChoiceBox;
+    FCompleteStatementMethodBody: TCheckBox;
     FBookmarkKey: TEdit;
     /// <summary>„Element ausblenden …“ (#628).</summary>
     FHideElementKey: TEdit;
@@ -660,6 +665,12 @@ type
     property ContinueComments: TCheckBox read FContinueComments;
     property ContinueCommentsLists: TCheckBox read FContinueCommentsLists;
     property ContinueCommentsBlockPrefix: TEdit read FContinueCommentsBlockPrefix;
+    /// <summary>Zum Testen: Anweisung vervollständigen (#697).</summary>
+    property CompleteStatement: TCheckBox read FCompleteStatement;
+    property CompleteStatementKey: TEdit read FCompleteStatementKey;
+    property CompleteStatementBeginEnd: TAtlasChoiceBox read FCompleteStatementBeginEnd;
+    property CompleteStatementTryKind: TAtlasChoiceBox read FCompleteStatementTryKind;
+    property CompleteStatementMethodBody: TCheckBox read FCompleteStatementMethodBody;
     property RedoKey: TEdit read FRedoKey;
     property UpdatesCheck: TCheckBox read FUpdatesCheck;
     property BugReportAnonymize: TCheckBox read FBugReportAnonymize;
@@ -1211,6 +1222,16 @@ begin
   FContinueCommentsLineComments := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsContinueCommentsLineComments));
   FContinueCommentsLists := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsContinueCommentsLists));
   FContinueCommentsBlockPrefix := AddTextLine(TAtlasStrings.Text(TAtlasTextId.SettingsContinueCommentsBlockPrefix));
+  // Anweisung vervollständigen (#697).
+  FCompleteStatement := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsCompleteStatement));
+  FCompleteStatementKey := AddKey(TAtlasStrings.Text(TAtlasTextId.CompleteStatementCommand));
+  FCompleteStatementBeginEnd := AddChoice(TAtlasStrings.Text(TAtlasTextId.SettingsCompleteStatementBeginEnd),
+    [TAtlasStrings.Text(TAtlasTextId.SettingsBeginEndAlways),
+    TAtlasStrings.Text(TAtlasTextId.SettingsBeginEndMultiLine), TAtlasStrings.Text(TAtlasTextId.SettingsBeginEndNever)]);
+  FCompleteStatementTryKind := AddChoice(TAtlasStrings.Text(TAtlasTextId.SettingsCompleteStatementTryKind),
+    [TAtlasStrings.Text(TAtlasTextId.CompleteStatementTryFinally),
+    TAtlasStrings.Text(TAtlasTextId.CompleteStatementTryExcept), TAtlasStrings.Text(TAtlasTextId.SettingsTryKindAsk)]);
+  FCompleteStatementMethodBody := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsCompleteStatementMethodBody));
   FOverviewKinds[TAtlasOverviewKind.Bookmarks] := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsOverviewBookmarks));
   FOverviewKinds[TAtlasOverviewKind.Cursor] := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsOverviewCursor));
   // Rekursionssymbole im Rand (#623).
@@ -2176,6 +2197,11 @@ begin
   FMarks.Bind(FContinueCommentsLineComments, ['ContinueCommentsLineComments']);
   FMarks.Bind(FContinueCommentsLists, ['ContinueCommentsLists']);
   FMarks.Bind(FContinueCommentsBlockPrefix, ['ContinueCommentsBlockPrefix']);
+  FMarks.Bind(FCompleteStatement, ['CompleteStatement']);
+  FMarks.Bind(FCompleteStatementKey, ['CompleteStatementKey']);
+  FMarks.Bind(FCompleteStatementBeginEnd, ['CompleteStatementBeginEnd']);
+  FMarks.Bind(FCompleteStatementTryKind, ['CompleteStatementTryKind']);
+  FMarks.Bind(FCompleteStatementMethodBody, ['CompleteStatementMethodBody']);
   FMarks.Bind(FBookmarkKey, ['BookmarkKey']);
   FMarks.Bind(FHideElementKey, ['HideElementKey']);
   FMarks.Bind(FNextProblemKey, ['NextProblemKey']);
@@ -3176,6 +3202,20 @@ begin
   FContinueCommentsLineComments.Checked := ASettings.ContinueCommentsLineComments;
   FContinueCommentsLists.Checked := ASettings.ContinueCommentsLists;
   FContinueCommentsBlockPrefix.Text := ASettings.ContinueCommentsBlockPrefix;
+  FCompleteStatement.Checked := ASettings.CompleteStatement;
+  FCompleteStatementKey.Text := ShortCutToText(TShortCut(ASettings.CompleteStatementKey));
+  // Reihenfolge der Auswahl: always, multiLine, never bzw. finally, except, ask.
+  FCompleteStatementBeginEnd.Choice := 1;
+  if ASettings.CompleteStatementBeginEnd = TAtlasPluginSettings.BeginEndAlways then
+    FCompleteStatementBeginEnd.Choice := 0
+  else if ASettings.CompleteStatementBeginEnd = TAtlasPluginSettings.BeginEndNever then
+    FCompleteStatementBeginEnd.Choice := 2;
+  FCompleteStatementTryKind.Choice := 0;
+  if ASettings.CompleteStatementTryKind = TAtlasPluginSettings.TryKindExcept then
+    FCompleteStatementTryKind.Choice := 1
+  else if ASettings.CompleteStatementTryKind = TAtlasPluginSettings.TryKindAsk then
+    FCompleteStatementTryKind.Choice := 2;
+  FCompleteStatementMethodBody.Checked := ASettings.CompleteStatementMethodBody;
   FBookmarkKey.Text := ShortCutToText(TShortCut(ASettings.BookmarkKey));
   FHideElementKey.Text := ShortCutToText(TShortCut(ASettings.HideElementKey));
   FNextProblemKey.Text := ShortCutToText(TShortCut(ASettings.NextProblemKey));
@@ -3484,6 +3524,25 @@ begin
   ASettings.ContinueCommentsLists := FContinueCommentsLists.Checked;
   // Leerraum am Rand gehört zum Präfix (' * ').
   ASettings.ContinueCommentsBlockPrefix := FContinueCommentsBlockPrefix.Text;
+  ASettings.CompleteStatement := FCompleteStatement.Checked;
+  ASettings.CompleteStatementKey := Integer(TextToShortCut(Trim(FCompleteStatementKey.Text)));
+  case FCompleteStatementBeginEnd.Choice of
+    0:
+      ASettings.CompleteStatementBeginEnd := TAtlasPluginSettings.BeginEndAlways;
+    2:
+      ASettings.CompleteStatementBeginEnd := TAtlasPluginSettings.BeginEndNever;
+  else
+    ASettings.CompleteStatementBeginEnd := TAtlasPluginSettings.BeginEndMultiLine;
+  end;
+  case FCompleteStatementTryKind.Choice of
+    1:
+      ASettings.CompleteStatementTryKind := TAtlasPluginSettings.TryKindExcept;
+    2:
+      ASettings.CompleteStatementTryKind := TAtlasPluginSettings.TryKindAsk;
+  else
+    ASettings.CompleteStatementTryKind := TAtlasPluginSettings.TryKindFinally;
+  end;
+  ASettings.CompleteStatementMethodBody := FCompleteStatementMethodBody.Checked;
   ASettings.BookmarkKey := Integer(TextToShortCut(Trim(FBookmarkKey.Text)));
   ASettings.HideElementKey := Integer(TextToShortCut(Trim(FHideElementKey.Text)));
   ASettings.NextProblemKey := Integer(TextToShortCut(Trim(FNextProblemKey.Text)));

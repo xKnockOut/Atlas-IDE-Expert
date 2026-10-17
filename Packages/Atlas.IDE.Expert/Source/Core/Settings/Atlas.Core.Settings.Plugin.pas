@@ -97,6 +97,13 @@ type
     DefaultIssuesCommitPattern = '{kennung} ';
     /// <summary>Höchstlänge der Texte unter welcomePage.issues.* (#765).</summary>
     MaxIssuesText = 200;
+    /// <summary>Werte von editor.completeStatement.beginEnd und .tryKind (#697).</summary>
+    BeginEndAlways = 'always';
+    BeginEndMultiLine = 'multiLine';
+    BeginEndNever = 'never';
+    TryKindFinally = 'finally';
+    TryKindExcept = 'except';
+    TryKindAsk = 'ask';
     /// <summary>Grenzen für notifications.maxEntries (#601); wie TAtlasNotificationCenter.MinEntries/MaxMaxEntries
     /// (Test prüft Gleichheit).</summary>
     MinNotificationEntries = 10;
@@ -573,6 +580,19 @@ type
     /// <summary>Präfix in Blockkommentaren, etwa ' * '; leer = nur einrücken (#696,
     /// editor.continueComments.blockPrefix).</summary>
     ContinueCommentsBlockPrefix: string;
+    /// <summary>Anweisung vervollständigen (#697, editor.completeStatement).</summary>
+    CompleteStatement: Boolean;
+    /// <summary>Kürzel „Anweisung vervollständigen“ (#697, keys.completeStatement); Vorgabe Strg+Umschalt+Enter.
+    /// </summary>
+    CompleteStatementKey: Integer;
+    /// <summary>begin/end ergänzen: BeginEndAlways, BeginEndMultiLine, BeginEndNever (#697,
+    /// editor.completeStatement.beginEnd).</summary>
+    CompleteStatementBeginEnd: string;
+    /// <summary>Gerüst nach try: TryKindFinally, TryKindExcept, TryKindAsk (#697, editor.completeStatement.tryKind).
+    /// </summary>
+    CompleteStatementTryKind: string;
+    /// <summary>Methodenrumpf anlegen (#697, editor.completeStatement.methodBody).</summary>
+    CompleteStatementMethodBody: Boolean;
     /// <summary>Hauptschalter der Atlas-Willkommensseite (#753, welcomePage.enabled): Atlas-Bereiche auf der
     /// Willkommensseite der IDE und Fenster „Atlas-Start“.</summary>
     WelcomePage: Boolean;
@@ -1159,6 +1179,11 @@ begin
   Result.ContinueCommentsLineComments := True;
   Result.ContinueCommentsLists := True;
   Result.ContinueCommentsBlockPrefix := '';
+  Result.CompleteStatement := True;
+  Result.CompleteStatementKey := $600D; // Strg+Umschalt+Enter
+  Result.CompleteStatementBeginEnd := BeginEndMultiLine;
+  Result.CompleteStatementTryKind := TryKindFinally;
+  Result.CompleteStatementMethodBody := True;
   Result.WelcomePage := True;
   Result.WelcomePageHost := 'welcomePage';
   Result.WelcomePageLayout := 'off';
@@ -1351,6 +1376,9 @@ begin
   DuplicateLinesUpKey := EnsureRange(DuplicateLinesUpKey, 0, $FFFF);
   DuplicateLinesDownKey := EnsureRange(DuplicateLinesDownKey, 0, $FFFF);
   ContinueCommentsBlockPrefix := NormalizedBlockPrefix(ContinueCommentsBlockPrefix);
+  CompleteStatementKey := EnsureRange(CompleteStatementKey, 0, $FFFF);
+  CompleteStatementBeginEnd := Choice(CompleteStatementBeginEnd, [BeginEndMultiLine, BeginEndAlways, BeginEndNever]);
+  CompleteStatementTryKind := Choice(CompleteStatementTryKind, [TryKindFinally, TryKindExcept, TryKindAsk]);
   BookmarkKey := EnsureRange(BookmarkKey, 0, $FFFF);
   HideElementKey := EnsureRange(HideElementKey, 0, $FFFF);
   InlineDiagnostics := Choice(InlineDiagnostics, ['errors', 'off', 'errorsAndWarnings', 'all']);
@@ -1603,6 +1631,12 @@ begin
     BoolValue(Default.ContinueCommentsLists)) <> 0;
   ContinueCommentsBlockPrefix := AStore.ReadString('ContinueCommentsBlockPrefix',
     Default.ContinueCommentsBlockPrefix);
+  CompleteStatement := AStore.ReadInteger('CompleteStatement', BoolValue(Default.CompleteStatement)) <> 0;
+  CompleteStatementKey := AStore.ReadInteger('CompleteStatementKey', Default.CompleteStatementKey);
+  CompleteStatementBeginEnd := AStore.ReadString('CompleteStatementBeginEnd', Default.CompleteStatementBeginEnd);
+  CompleteStatementTryKind := AStore.ReadString('CompleteStatementTryKind', Default.CompleteStatementTryKind);
+  CompleteStatementMethodBody := AStore.ReadInteger('CompleteStatementMethodBody',
+    BoolValue(Default.CompleteStatementMethodBody)) <> 0;
   WelcomePage := AStore.ReadInteger('WelcomePage', BoolValue(Default.WelcomePage)) <> 0;
   WelcomePageHost := AStore.ReadString('WelcomePageHost', Default.WelcomePageHost);
   WelcomePageLayout := AStore.ReadString('WelcomePageLayout', Default.WelcomePageLayout);
@@ -1899,6 +1933,11 @@ begin
   AStore.WriteInteger('ContinueCommentsLineComments', BoolValue(ContinueCommentsLineComments));
   AStore.WriteInteger('ContinueCommentsLists', BoolValue(ContinueCommentsLists));
   AStore.WriteString('ContinueCommentsBlockPrefix', ContinueCommentsBlockPrefix);
+  AStore.WriteInteger('CompleteStatement', BoolValue(CompleteStatement));
+  AStore.WriteInteger('CompleteStatementKey', CompleteStatementKey);
+  AStore.WriteString('CompleteStatementBeginEnd', CompleteStatementBeginEnd);
+  AStore.WriteString('CompleteStatementTryKind', CompleteStatementTryKind);
+  AStore.WriteInteger('CompleteStatementMethodBody', BoolValue(CompleteStatementMethodBody));
   AStore.WriteInteger('WelcomePage', BoolValue(WelcomePage));
   AStore.WriteString('WelcomePageHost', WelcomePageHost);
   AStore.WriteString('WelcomePageLayout', WelcomePageLayout);

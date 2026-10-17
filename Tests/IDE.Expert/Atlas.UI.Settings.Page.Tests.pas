@@ -78,6 +78,8 @@ type
     [Test]
     procedure ContinueCommentsRoundTrip;
     [Test]
+    procedure CompleteStatementRoundTrip;
+    [Test]
     procedure WelcomeSettingsRoundTrip;
     /// <summary>Freies Layout (#767): Schalter, Spalten, Layouts anlegen, wechseln, umbenennen, löschen; je
     /// Layout eigene Sichtbarkeit; Reveal der neuen Einstellungen.</summary>
@@ -1505,6 +1507,37 @@ begin
     Assert.IsFalse(Saved.ContinueCommentsLists);
     Assert.IsTrue(Saved.ContinueCommentsLineComments);
     Assert.AreEqual(' * ', Saved.ContinueCommentsBlockPrefix);
+  finally
+    Page.Free;
+  end;
+end;
+
+procedure TAtlasSettingsPageTests.CompleteStatementRoundTrip;
+var
+  Page: TAtlasSettingsPage;
+  Settings, Saved: TAtlasPluginSettings;
+begin
+  // #697: Schalter, Taste und beide Auswahlen.
+  Settings := TAtlasPluginSettings.Defaults;
+  Page := TAtlasSettingsPage.Create(nil);
+  try
+    Page.LoadFrom(Settings);
+    Assert.IsTrue(Page.CompleteStatement.Checked);
+    Assert.AreEqual(ShortCutToText(TShortCut($600D)), Page.CompleteStatementKey.Text);
+    Assert.AreEqual(1, Page.CompleteStatementBeginEnd.Choice);
+    Assert.AreEqual(0, Page.CompleteStatementTryKind.Choice);
+    Page.CompleteStatement.Checked := False;
+    Page.CompleteStatementKey.Text := '';
+    Page.CompleteStatementBeginEnd.Choice := 2;
+    Page.CompleteStatementTryKind.Choice := 2;
+    Page.CompleteStatementMethodBody.Checked := False;
+    Saved := TAtlasPluginSettings.Defaults;
+    Page.SaveTo(Saved);
+    Assert.IsFalse(Saved.CompleteStatement);
+    Assert.AreEqual(0, Saved.CompleteStatementKey);
+    Assert.AreEqual('never', Saved.CompleteStatementBeginEnd);
+    Assert.AreEqual('ask', Saved.CompleteStatementTryKind);
+    Assert.IsFalse(Saved.CompleteStatementMethodBody);
   finally
     Page.Free;
   end;

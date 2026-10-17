@@ -101,7 +101,8 @@ uses
   Atlas.IDE.Outline.Breadcrumbs,
   Atlas.IDE.Editor.LineChanges,
   Atlas.Core.Editor.LineMove,
-  Atlas.IDE.Editor.LineMove;
+  Atlas.IDE.Editor.LineMove,
+  Atlas.IDE.Editor.StatementCompletion;
 
 /// <summary>Zeilen verschieben bzw. duplizieren (#634), gesichert.</summary>
 procedure RunLineMove(AKind: TAtlasLineMoveKind);
@@ -508,6 +509,17 @@ begin
         RunLineMove(TAtlasLineMoveKind.DuplicateDown);
       end, True);
   end;
+  // Anweisung vervollständigen (#697): Strg+Umschalt+Enter sucht in der IDE Referenzen; mit Vorrang übernommen.
+  if Settings.CompleteStatement then
+    AddPriorityKey(Settings.CompleteStatementKey, TAtlasStrings.Text(TAtlasTextId.CompleteStatementCommand),
+      procedure
+      begin
+        TAtlasGuard.Run(TAtlasFeature.EditorCommands,
+          procedure
+          begin
+            TAtlasIdeStatementCompletion.Run;
+          end);
+      end, True);
   AddKey(Settings.UndoKey, TAtlasStrings.Text(TAtlasTextId.UndoMenu),
     procedure
     begin
