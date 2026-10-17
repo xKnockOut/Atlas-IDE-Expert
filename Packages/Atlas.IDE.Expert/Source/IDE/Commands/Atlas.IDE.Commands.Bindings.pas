@@ -286,6 +286,20 @@ begin
             TAtlasGuard.Report(TAtlasFeature.EditorCommands, E);
         end;
       end, False);
+  // Nächster/vorheriger Befund (#509): nur mit Problemen im Editor.
+  if Settings.Problems then
+  begin
+    AddKey(Settings.NextProblemKey, TAtlasStrings.Text(TAtlasTextId.ProblemNextCommand),
+      procedure
+      begin
+        TAtlasIdeEditorCommands.StepProblem(True);
+      end);
+    AddKey(Settings.PreviousProblemKey, TAtlasStrings.Text(TAtlasTextId.ProblemPreviousCommand),
+      procedure
+      begin
+        TAtlasIdeEditorCommands.StepProblem(False);
+      end);
+  end;
   AddKey(Settings.TestUnitKey, TAtlasStrings.Text(TAtlasTextId.EditorTestUnit),
     procedure
     begin

@@ -26,6 +26,7 @@ uses
   System.SysUtils,
   Atlas.Core.Files.TextFile,
   Atlas.Core.Settings.Plugin,
+  Atlas.Core.Problems.Inline,
   Atlas.Core.Settings.History,
   Atlas.Core.Settings.Catalog,
   Atlas.Core.Settings.QuickToggles;
@@ -69,6 +70,11 @@ type
     class function DimUnusedUsesOn: Boolean; static;
     /// <summary>Plugin eingeschaltet und Problem-Markierungen an; ohne Kopie des Einstellungsrecords (P-10).</summary>
     class function ProblemMarksOn: Boolean; static;
+    /// <summary>Fehlertext am Zeilenende (#509); Off, wenn das Plugin oder die Problem-Markierungen aus sind.
+    /// </summary>
+    class function InlineDiagnosticsMode: TAtlasInlineDiagnosticsMode; static;
+    /// <summary>Plugin, Probleme und Zähler in der Statusleiste an (#509).</summary>
+    class function ProblemsStatusCounterOn: Boolean; static;
     /// <summary>Übernimmt und speichert ASettings (gespeicherte Werte, ohne Sitzungswerte).</summary>
     class procedure Update(const ASettings: TAtlasPluginSettings); static;
     /// <summary>Inhalt von %APPDATA%\Atlas\settings.json ('' ohne Datei) für Export und Import (#723).</summary>
@@ -332,6 +338,21 @@ class function TAtlasIdeSettings.ProblemMarksOn: Boolean;
 begin
   EnsureLoaded;
   Result := FEffective.Enabled and FEffective.Problems;
+end;
+
+class function TAtlasIdeSettings.InlineDiagnosticsMode: TAtlasInlineDiagnosticsMode;
+begin
+  EnsureLoaded;
+  if FEffective.Enabled and FEffective.Problems then
+    Result := TAtlasInlineDiagnostics.ModeOf(FEffective.InlineDiagnostics)
+  else
+    Result := TAtlasInlineDiagnosticsMode.Off;
+end;
+
+class function TAtlasIdeSettings.ProblemsStatusCounterOn: Boolean;
+begin
+  EnsureLoaded;
+  Result := FEffective.Enabled and FEffective.Problems and FEffective.ProblemsStatusCounter;
 end;
 
 class function TAtlasIdeSettings.Stored: TAtlasPluginSettings;

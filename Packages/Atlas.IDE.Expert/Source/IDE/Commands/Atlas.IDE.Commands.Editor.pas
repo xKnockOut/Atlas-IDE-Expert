@@ -28,6 +28,9 @@
 //   OnDebugTest (A-09: die Befehle importieren die Tests nicht).
 // - „Element ausblenden …“ (#628): Menü zum gezeichneten Element an der Stelle
 //   des Rechtsklicks bzw. in der Zeile der Schreibmarke (TAtlasIdeHide).
+// - Nächster bzw. vorheriger Befund in der oberen Datei (#509): alle Atlas-
+//   Diagnosen der Datei aus OnProblemsOf (setzt die Composition aus dem
+//   Problemspeicher), am Ende wieder von vorn; ohne Server.
 // Vor jeder Anfrage bekommt der Server den aktuellen Text der Datei.
 // Meldungen nur als Zeile in der Meldungsansicht, nie als Dialog.
 
@@ -40,7 +43,12 @@ uses
   Atlas.Core.Lsp.TextChanges,
   Atlas.Core.Lsp.Session,
   Atlas.Core.Editor.SlashTrigger,
+  Atlas.Core.Problems.Contract,
   Atlas.IDE.Commands.ContextMenu;
+
+type
+  /// <summary>Befunde einer Datei (#509).</summary>
+  TAtlasProblemsOfFunc = reference to function(const AFileName: string): TArray<TAtlasProblem>;
 
 type
   TAtlasIdeEditorCommands = class
@@ -57,6 +65,7 @@ type
     FAnchor: TLspTextPosition;
     FOnRunTest: TProc;
     FOnDebugTest: TProc;
+    FProblemsOf: TAtlasProblemsOfFunc;
   private
     class function Session: TLspSession; static;
     class procedure Say(const AText: string); static;
@@ -107,6 +116,11 @@ type
     class property OnRunTest: TProc read FOnRunTest write FOnRunTest;
     /// <summary>Kontextmenü „Test am Cursor debuggen“ (#585); nil = ausgeschaltet.</summary>
     class property OnDebugTest: TProc read FOnDebugTest write FOnDebugTest;
+    /// <summary>Cursor zum nächsten (AForward) bzw. vorherigen Befund der oberen Datei (#509); ohne Befund eine
+    /// Zeile in der Meldungsansicht.</summary>
+    class procedure StepProblem(AForward: Boolean); static;
+    /// <summary>Befunde einer Datei für StepProblem; setzt die Composition, nil = keine.</summary>
+    class property OnProblemsOf: TAtlasProblemsOfFunc read FProblemsOf write FProblemsOf;
   end;
 
 implementation
@@ -138,6 +152,7 @@ uses
   Atlas.IDE.Bookmarks.Service,
   Atlas.IDE.Generate.Commands,
   Atlas.IDE.Editor.Hide,
+  Atlas.Core.Problems.Inline,
   Atlas.IDE.Editor.ChangeSignature,
   Atlas.Core.Editor.WorkspacePlan,
   Atlas.IDE.Foundation.Navigation;
@@ -428,6 +443,26 @@ begin
           TAtlasIdeBookmarks.GoToBookmark;
         end);
     end);
+  // Nächster/vorheriger Befund (#509).
+  FContextMenu.Add('-', nil, nil);
+  FContextMenu.Add('Atlas.NextProblem', TAtlasStrings.Text(TAtlasTextId.ProblemNextCommand),
+    function: Integer
+    begin
+      Result := TAtlasIdeSettings.Current.NextProblemKey;
+    end,
+    procedure
+    begin
+      StepProblem(True);
+    end);
+  FContextMenu.Add('Atlas.PreviousProblem', TAtlasStrings.Text(TAtlasTextId.ProblemPreviousCommand),
+    function: Integer
+    begin
+      Result := TAtlasIdeSettings.Current.PreviousProblemKey;
+    end,
+    procedure
+    begin
+      StepProblem(False);
+    end);
   // Ausblenden am Element (#628): nach einem Rechtsklick auf ein Element im Text oder in der Rinne für dieses.
   FContextMenu.Add('-', nil, nil);
   FContextMenu.Add('Atlas.HideElement', TAtlasStrings.Text(TAtlasTextId.HideElementCommand),
@@ -463,6 +498,7 @@ begin
   FreeAndNil(FContextMenu);
   FSessionOf := nil;
   FMessage := nil;
+  FProblemsOf := nil;
 end;
 
 class procedure TAtlasIdeEditorCommands.EnsureContextMenus;
@@ -673,6 +709,43 @@ begin
   View.MoveViewToCursor;
   View.Paint;
   Result := True;
+end;
+
+class procedure TAtlasIdeEditorCommands.StepProblem(AForward: Boolean);
+var
+  Editors: IOTAEditorServices;
+  View: IOTAEditView;
+  Lines: TArray<string>;
+  LineText: string;
+  Problems: TArray<TAtlasProblem>;
+  Target: TAtlasProblem;
+  Cursor: TOTAEditPos;
+  TabWidth, Row: Integer;
+begin
+  if not Supports(BorlandIDEServices, IOTAEditorServices, Editors) then
+    Exit;
+  View := Editors.TopView;
+  if (View = nil) or (View.Buffer = nil) then
+    Exit;
+  Problems := nil;
+  if Assigned(FProblemsOf) and TAtlasIdeSettings.ProblemMarksOn then
+    Problems := FProblemsOf(View.Buffer.FileName);
+  Lines := TAtlasEditorBuffer.Text(View.Buffer).Split([#13#10, #10]);
+  TabWidth := TAtlasEditorBuffer.TabWidth(View.Buffer);
+  Cursor := View.CursorPos;
+  Row := Cursor.Line - 1;
+  LineText := '';
+  if (Row >= 0) and (Row < Length(Lines)) then
+    LineText := Lines[Row];
+  if not TAtlasInlineDiagnostics.Next(Problems, Row, TLspSession.ColumnToIndex(LineText, Cursor.Col, TabWidth),
+    AForward, Target) then
+  begin
+    Say(TAtlasStrings.Text(TAtlasTextId.ProblemNoneInFile));
+    Exit;
+  end;
+  View.CursorPos := EditPos(Lines, TLspTextPosition.Create(Target.StartLine, Target.StartCharacter), TabWidth);
+  View.MoveViewToCursor;
+  View.Paint;
 end;
 
 class function TAtlasIdeEditorCommands.TryFindSelection(ABackward: Boolean): Boolean;

@@ -142,6 +142,8 @@ type
     FBlockEndLabels: TCheckBox;
     FBlockEndLabelsMinLines: TEdit;
     FDimUnusedUses: TCheckBox;
+    /// <summary>Fehlertext am Zeilenende (#509): aus, nur Fehler, Fehler und Warnungen, alle.</summary>
+    FInlineDiagnostics: TAtlasChoiceBox;
     FNotes: TCheckBox;
     FBookmarksNamed: TCheckBox;
     FBookmarksShared: TCheckBox;
@@ -168,6 +170,8 @@ type
     FDarkSwatches: array[0..4] of TShape;
     FProblems: TCheckBox;
     FProblemsList: TCheckBox;
+    /// <summary>Zähler in der Statusleiste (#509).</summary>
+    FProblemsStatusCounter: TCheckBox;
     FStatusField: TCheckBox;
     FDiagnosticMode: TCheckBox;
     FSetupChecklist: TCheckBox;
@@ -239,6 +243,9 @@ type
     FBookmarkKey: TEdit;
     /// <summary>„Element ausblenden …“ (#628).</summary>
     FHideElementKey: TEdit;
+    /// <summary>Nächster/vorheriger Befund (#509).</summary>
+    FNextProblemKey: TEdit;
+    FPreviousProblemKey: TEdit;
     FUndoKey: TEdit;
     FRedoKey: TEdit;
     FEditorKeysPriority: TCheckBox;
@@ -733,6 +740,11 @@ type
     property BlockEndLabelsMinLinesEdit: TEdit read FBlockEndLabelsMinLines;
     property DimUnusedUsesCheck: TCheckBox read FDimUnusedUses;
     property HideElementKey: TEdit read FHideElementKey;
+    /// <summary>Zum Testen: Fehlertext am Zeilenende, Zähler und Sprungtasten (#509).</summary>
+    property InlineDiagnostics: TAtlasChoiceBox read FInlineDiagnostics;
+    property ProblemsStatusCounterCheck: TCheckBox read FProblemsStatusCounter;
+    property NextProblemKey: TEdit read FNextProblemKey;
+    property PreviousProblemKey: TEdit read FPreviousProblemKey;
     /// <summary>Zum Testen: Erzeugen-Menü (#719).</summary>
     property GenerateMenuCheck: TCheckBox read FGenerateMenu;
     property GenerateMenuKey: TEdit read FGenerateMenuKey;
@@ -778,6 +790,7 @@ implementation
 
 uses
   System.Math,
+  Atlas.Core.Problems.Inline,
   Atlas.Core.Product.Version,
   Atlas.Core.Updates.Check,
   Atlas.Core.Undo.Contract,
@@ -1107,6 +1120,12 @@ begin
   FBlockEndLabels := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsBlockEndLabels));
   FBlockEndLabelsMinLines := AddNumber(TAtlasStrings.Text(TAtlasTextId.SettingsBlockEndLabelsMinLines));
   FDimUnusedUses := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsDimUnusedUses));
+  // Fehlertext am Zeilenende (#509); die Reihenfolge folgt TAtlasInlineDiagnosticsMode.
+  FInlineDiagnostics := AddChoice(TAtlasStrings.Text(TAtlasTextId.SettingsInlineDiagnostics),
+    [TAtlasStrings.Text(TAtlasTextId.SettingsInlineDiagnosticsOff),
+    TAtlasStrings.Text(TAtlasTextId.SettingsInlineDiagnosticsErrors),
+    TAtlasStrings.Text(TAtlasTextId.SettingsInlineDiagnosticsWarnings),
+    TAtlasStrings.Text(TAtlasTextId.SettingsInlineDiagnosticsAll)]);
   // Persönliche Notizen an Codezeilen (#545).
   FNotes := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsNotes));
   // Benannte Lesezeichen (#622): Funktion und Ablage für das Team; die Taste steht bei den Editorbefehlen.
@@ -1153,6 +1172,7 @@ begin
   AddSheet(TAtlasTextId.SettingsTabCompiler);
   FProblems := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsProblems));
   FProblemsList := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsProblemsList));
+  FProblemsStatusCounter := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsProblemsStatusCounter));
   // Reihenfolge: nichts, Syntaxprüfung (CheckOnSave), Kompilieren (CompileOnSave).
   FAfterSave := AddChoice(TAtlasStrings.Text(TAtlasTextId.SettingsCheckOnSave),
     [TAtlasStrings.Text(TAtlasTextId.SettingsAfterSaveNone), TAtlasStrings.Text(TAtlasTextId.SettingsAfterSaveCheck),
@@ -1197,6 +1217,9 @@ begin
   FBookmarkKey := AddKey(TAtlasStrings.Text(TAtlasTextId.BookmarksMenuAdd));
   // „Element ausblenden …“ am gezeichneten Element (#628).
   FHideElementKey := AddKey(TAtlasStrings.Text(TAtlasTextId.HideElementCommand));
+  // Nächster/vorheriger Befund (#509).
+  FNextProblemKey := AddKey(TAtlasStrings.Text(TAtlasTextId.ProblemNextCommand));
+  FPreviousProblemKey := AddKey(TAtlasStrings.Text(TAtlasTextId.ProblemPreviousCommand));
   FUndoKey := AddKey(TAtlasStrings.Text(TAtlasTextId.UndoMenu));
   FRedoKey := AddKey(TAtlasStrings.Text(TAtlasTextId.RedoMenu));
   FEditorKeysPriority := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsEditorKeysPriority));
@@ -1255,6 +1278,8 @@ begin
   Bind('CodeLensTestUnit', FCodeLensTestUnit);
   Bind('BlockEndLabels', FBlockEndLabels);
   Bind('DimUnusedUses', FDimUnusedUses);
+  Bind('InlineDiagnostics', FInlineDiagnostics);
+  Bind('ProblemsStatusCounter', FProblemsStatusCounter);
   Bind('InlayHints', FInlayHints);
   Bind('Problems', FProblems);
   Bind('Notes', FNotes);
@@ -1992,6 +2017,8 @@ begin
   FMarks.Bind(FTestUnitKey, ['TestUnitKey']);
   FMarks.Bind(FBookmarkKey, ['BookmarkKey']);
   FMarks.Bind(FHideElementKey, ['HideElementKey']);
+  FMarks.Bind(FNextProblemKey, ['NextProblemKey']);
+  FMarks.Bind(FPreviousProblemKey, ['PreviousProblemKey']);
   FMarks.Bind(FUndoKey, ['UndoKey']);
   FMarks.Bind(FRedoKey, ['RedoKey']);
   FMarks.Bind(FUpdatesCheck, ['UpdatesCheck']);
@@ -2035,6 +2062,7 @@ begin
   FMarks.Bind(FBlockEndLabels, ['BlockEndLabels']);
   FMarks.Bind(FBlockEndLabelsMinLines, ['BlockEndLabelsMinLines']);
   FMarks.Bind(FDimUnusedUses, ['DimUnusedUses']);
+  FMarks.Bind(FInlineDiagnostics, ['InlineDiagnostics']);
   FMarks.Bind(FNotes, ['Notes']);
   FMarks.Bind(FBookmarksNamed, ['BookmarksNamed']);
   FMarks.Bind(FBookmarksShared, ['BookmarksShared']);
@@ -2054,6 +2082,7 @@ begin
   FMarks.Bind(FDarkSwatches[0], ['PairColorsDark']);
   FMarks.Bind(FProblems, ['Problems']);
   FMarks.Bind(FProblemsList, ['ProblemsList']);
+  FMarks.Bind(FProblemsStatusCounter, ['ProblemsStatusCounter']);
   FMarks.Bind(FStatusField, ['StatusField']);
   FMarks.Bind(FDiagnosticMode, ['DiagnosticMode']);
   FMarks.Bind(FExperimentalEnabled, ['ExperimentalEnabled']);
@@ -2938,6 +2967,8 @@ begin
   FTestUnitKey.Text := ShortCutToText(TShortCut(ASettings.TestUnitKey));
   FBookmarkKey.Text := ShortCutToText(TShortCut(ASettings.BookmarkKey));
   FHideElementKey.Text := ShortCutToText(TShortCut(ASettings.HideElementKey));
+  FNextProblemKey.Text := ShortCutToText(TShortCut(ASettings.NextProblemKey));
+  FPreviousProblemKey.Text := ShortCutToText(TShortCut(ASettings.PreviousProblemKey));
   FEditorKeysPriority.Checked := ASettings.EditorKeysPriority;
   FSlashCommands.Checked := ASettings.SlashCommands;
   FGenerateMenu.Checked := ASettings.GenerateMenu;
@@ -2982,6 +3013,7 @@ begin
   FBlockEndLabels.Checked := ASettings.BlockEndLabels;
   FBlockEndLabelsMinLines.Text := IntToStr(ASettings.BlockEndLabelsMinLines);
   FDimUnusedUses.Checked := ASettings.DimUnusedUses;
+  FInlineDiagnostics.Choice := Ord(TAtlasInlineDiagnostics.ModeOf(ASettings.InlineDiagnostics));
   FNotes.Checked := ASettings.Notes;
   FBookmarksNamed.Checked := ASettings.BookmarksNamed;
   FBookmarksShared.Checked := ASettings.BookmarksShared;
@@ -3002,6 +3034,7 @@ begin
   ShowPairs(FDarkSwatches, TAtlasColors.Dark.WithPairs(ASettings.PairColorsDark).Pairs);
   FProblems.Checked := ASettings.Problems;
   FProblemsList.Checked := ASettings.ProblemsList;
+  FProblemsStatusCounter.Checked := ASettings.ProblemsStatusCounter;
   FStatusField.Checked := ASettings.StatusField;
   FDiagnosticMode.Checked := ASettings.DiagnosticMode;
   FExperimentalEnabled.Checked := ASettings.ExperimentalEnabled;
@@ -3194,6 +3227,8 @@ begin
   ASettings.TestUnitKey := Integer(TextToShortCut(Trim(FTestUnitKey.Text)));
   ASettings.BookmarkKey := Integer(TextToShortCut(Trim(FBookmarkKey.Text)));
   ASettings.HideElementKey := Integer(TextToShortCut(Trim(FHideElementKey.Text)));
+  ASettings.NextProblemKey := Integer(TextToShortCut(Trim(FNextProblemKey.Text)));
+  ASettings.PreviousProblemKey := Integer(TextToShortCut(Trim(FPreviousProblemKey.Text)));
   ASettings.UndoKey := Integer(TextToShortCut(Trim(FUndoKey.Text)));
   ASettings.RedoKey := Integer(TextToShortCut(Trim(FRedoKey.Text)));
   ASettings.UpdatesCheck := FUpdatesCheck.Checked;
@@ -3237,6 +3272,8 @@ begin
   ASettings.BlockEndLabels := FBlockEndLabels.Checked;
   ASettings.BlockEndLabelsMinLines := StrToIntDef(FBlockEndLabelsMinLines.Text, ASettings.BlockEndLabelsMinLines);
   ASettings.DimUnusedUses := FDimUnusedUses.Checked;
+  ASettings.InlineDiagnostics := TAtlasInlineDiagnostics.ModeName(
+    TAtlasInlineDiagnosticsMode(EnsureRange(FInlineDiagnostics.Choice, 0, Ord(High(TAtlasInlineDiagnosticsMode)))));
   ASettings.Notes := FNotes.Checked;
   ASettings.BookmarksNamed := FBookmarksNamed.Checked;
   ASettings.BookmarksShared := FBookmarksShared.Checked;
@@ -3256,6 +3293,7 @@ begin
   ASettings.PairColorsDark := PairsSetting(FDarkSwatches, TAtlasColors.Dark.Pairs);
   ASettings.Problems := FProblems.Checked;
   ASettings.ProblemsList := FProblemsList.Checked;
+  ASettings.ProblemsStatusCounter := FProblemsStatusCounter.Checked;
   ASettings.StatusField := FStatusField.Checked;
   ASettings.DiagnosticMode := FDiagnosticMode.Checked;
   ASettings.ExperimentalEnabled := FExperimentalEnabled.Checked;

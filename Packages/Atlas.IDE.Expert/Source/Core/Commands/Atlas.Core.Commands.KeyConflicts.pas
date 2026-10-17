@@ -41,7 +41,7 @@ type
   TAtlasKeyFunction = (Palette, Check, Completion, Signature, QuickToggle, DiagnosticMode, CodeActions,
     ExpandSelection, ShrinkSelection, GoToImplementation, TypeDefinition, UndoChange, RedoChange, WelcomeSearch,
     MethodToggleUp, MethodToggleDown, TestUnit, UnitSearch, UnitSearchIde, Bookmark, GenerateMenu,
-    Notifications, WelcomeQuickBuild, WelcomeQuickTests, HideElement);
+    Notifications, WelcomeQuickBuild, WelcomeQuickTests, HideElement, NextProblem, PreviousProblem);
   TAtlasKeyChoice = (UseAtlas, LeaveOther, OtherKey);
   /// <summary>NoKey: keine Taste; IdeKey: Taste der IDE über Code Insight, Atlas belegt nichts selbst;
   /// Free: Atlas belegt die freie Taste; AtlasWins: belegt, Atlas hat Vorrang; Left: belegt, Atlas
@@ -181,7 +181,10 @@ begin
       ASettings.WelcomePage and ASettings.WelcomePageQuickActions),
     // Ausblenden am Element (#628): nimmt die Taste nur auf einer Zeile mit Atlas-Element, sonst geht sie an die
     // IDE weiter (Strg+. = IDE Insight); darum immer mit Vorrang, ohne fremde Belegung abzuschalten.
-    Create(TAtlasKeyFunction.HideElement, Word(ASettings.HideElementKey), True)];
+    Create(TAtlasKeyFunction.HideElement, Word(ASettings.HideElementKey), True),
+    // Nächster/vorheriger Befund (#509): nur mit Problemen im Editor.
+    Create(TAtlasKeyFunction.NextProblem, Word(ASettings.NextProblemKey), Shared, ASettings.Problems),
+    Create(TAtlasKeyFunction.PreviousProblem, Word(ASettings.PreviousProblemKey), Shared, ASettings.Problems)];
 end;
 
 class procedure TAtlasKeyEntry.ToSettings(const AEntries: TArray<TAtlasKeyEntry>;
@@ -261,6 +264,10 @@ begin
         ASettings.WelcomePageQuickActionsTestKey := Entry.Key;
       TAtlasKeyFunction.HideElement:
         ASettings.HideElementKey := Entry.Key;
+      TAtlasKeyFunction.NextProblem:
+        ASettings.NextProblemKey := Entry.Key;
+      TAtlasKeyFunction.PreviousProblem:
+        ASettings.PreviousProblemKey := Entry.Key;
       // Strg+F12 ist fest; ein- und ausgeschaltet wird über unitSearch.replaceIdeDialog.
       TAtlasKeyFunction.UnitSearchIde:
         ;

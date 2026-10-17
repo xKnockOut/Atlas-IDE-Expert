@@ -830,6 +830,24 @@
       "x-page": "Befehle",
       "x-issue": "#628"
     },
+    "NextProblemKey": {
+      "type": "integer",
+      "default": 49271,
+      "x-key": "keys.nextProblem",
+      "x-area": "keys",
+      "x-format": "shortcut",
+      "x-page": "Befehle",
+      "x-issue": "#509"
+    },
+    "PreviousProblemKey": {
+      "type": "integer",
+      "default": 57463,
+      "x-key": "keys.previousProblem",
+      "x-area": "keys",
+      "x-format": "shortcut",
+      "x-page": "Befehle",
+      "x-issue": "#509"
+    },
     "ServerPath": {
       "type": "string",
       "default": "",
@@ -873,6 +891,28 @@
       "x-key": "problems.list",
       "x-area": "editor",
       "x-page": "Compiler"
+    },
+    "ProblemsStatusCounter": {
+      "type": "boolean",
+      "default": true,
+      "x-key": "problems.statusCounter",
+      "x-area": "editor",
+      "x-page": "Compiler",
+      "x-issue": "#509"
+    },
+    "InlineDiagnostics": {
+      "type": "string",
+      "enum": [
+        "off",
+        "errors",
+        "errorsAndWarnings",
+        "all"
+      ],
+      "default": "errors",
+      "x-key": "editor.inlineDiagnostics",
+      "x-area": "editor",
+      "x-page": "Editor",
+      "x-issue": "#509"
     },
     "CheckOnSaveDelayMs": {
       "type": "integer",

@@ -332,6 +332,13 @@ begin
   Assert.IsTrue(EntryOf(Entries, TAtlasKeyFunction.HideElement).Priority);
   Assert.IsFalse(EntryOf(Entries, TAtlasKeyFunction.HideElement).Disabled);
   Assert.AreEqual('Atlas.HideElement', TAtlasKeyMap.CommandIdOf(TAtlasKeyFunction.HideElement));
+  // Nächster/vorheriger Befund (#509): Strg+Alt+F8 und Strg+Alt+Umschalt+F8 als Editorbefehle.
+  Assert.AreEqual($C077, Integer(EntryOf(Entries, TAtlasKeyFunction.NextProblem).Key));
+  Assert.AreEqual($E077, Integer(EntryOf(Entries, TAtlasKeyFunction.PreviousProblem).Key));
+  Assert.IsFalse(EntryOf(Entries, TAtlasKeyFunction.NextProblem).Disabled);
+  Assert.AreEqual(Ord(TAtlasKeySource.Binding), Ord(TAtlasKeyMap.SourceOf(TAtlasKeyFunction.PreviousProblem)));
+  Assert.AreEqual('Atlas.NextProblem', TAtlasKeyMap.CommandIdOf(TAtlasKeyFunction.NextProblem));
+  Assert.AreEqual('Atlas.PreviousProblem', TAtlasKeyMap.CommandIdOf(TAtlasKeyFunction.PreviousProblem));
   Assert.AreEqual(Ord(TAtlasKeySource.Binding), Ord(TAtlasKeyMap.SourceOf(TAtlasKeyFunction.TestUnit)));
   Settings.EditorKeysPriority := True;
   Assert.IsTrue(EntryOf(TAtlasKeyEntry.AllFromSettings(Settings), TAtlasKeyFunction.UnitSearch).Priority);
@@ -357,12 +364,14 @@ begin
   Settings.GenerateMenu := False;
   Settings.Notifications := False;
   Settings.WelcomePageQuickActions := False;
+  Settings.Problems := False;
   Entries := TAtlasKeyEntry.AllFromSettings(Settings);
   for Entry in Entries do
     if Entry.Func in [TAtlasKeyFunction.MethodToggleUp, TAtlasKeyFunction.MethodToggleDown,
       TAtlasKeyFunction.UnitSearch, TAtlasKeyFunction.UnitSearchIde, TAtlasKeyFunction.WelcomeSearch,
       TAtlasKeyFunction.Bookmark, TAtlasKeyFunction.GenerateMenu, TAtlasKeyFunction.Notifications,
-      TAtlasKeyFunction.WelcomeQuickBuild, TAtlasKeyFunction.WelcomeQuickTests] then
+      TAtlasKeyFunction.WelcomeQuickBuild, TAtlasKeyFunction.WelcomeQuickTests, TAtlasKeyFunction.NextProblem,
+      TAtlasKeyFunction.PreviousProblem] then
     begin
       Assert.IsTrue(Entry.Disabled, 'abgeschaltet: ' + IntToStr(Ord(Entry.Func)));
       Assert.AreEqual(Ord(TAtlasKeyStatus.NoKey), Ord(Entry.Status('IDE: Klassennavigation')),

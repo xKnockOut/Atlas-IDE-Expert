@@ -19,6 +19,10 @@
 // Wellenlinien und Meldungsliste. Nebenbei
 // meldet er Konfiguration, Plattform und Defines der IDE an den Server
 // (Atlas.IDE.Build.Target).
+// Zähler für die Statusleiste (#509): nach jeder Änderung des Speichers gehen
+// Fehler, Warnungen und Hinweise wie in der Liste „Atlas-Probleme“ (ohne
+// Compilermeldungen) an OnCounts; mit problems.statusCounter aus einmal
+// AShow = False.
 // Ergebnisse kommen über TThread.Queue in den Hauptthread; der Speicher wird
 // nur dort benutzt. Shutdown hält die Threads an, bevor die Sitzung endet: Der
 // Manager schließt dazwischen die Verbindung, damit laufende Anfragen sofort
@@ -35,6 +39,7 @@ uses
   Atlas.Core.Lsp.Session,
   Atlas.Core.Problems.Contract,
   Atlas.Core.Problems.Store,
+  Atlas.Core.Problems.Inline,
   Atlas.IDE.Problems.Painter,
   Atlas.IDE.Problems.MessageList,
   Atlas.IDE.Build.Target;
@@ -43,6 +48,8 @@ type
   /// <summary>Sitzung, auf Wunsch gestartet; nil, wenn keine läuft bzw. der Start scheitert.</summary>
   TAtlasProblemsSessionFunc = reference to function(AStart: Boolean): TLspSession;
   TAtlasProblemsLogProc = reference to procedure(const AMessage: string);
+  /// <summary>Zähler für die Statusleiste (#509); AShow False = Feld entfernen.</summary>
+  TAtlasProblemCountsProc = reference to procedure(AShow: Boolean; const ACounts: TAtlasProblemCounts);
 
   TAtlasProblemsController = class
   private type
@@ -128,6 +135,11 @@ type
     // Nach gescheitertem Serverstart erst später wieder versuchen.
     FRetryAt: Cardinal;
     FBuildTarget: TAtlasIdeBuildTarget;
+    // Zähler (#509): zuletzt gemeldeter Stand.
+    FCountsShown: Boolean;
+    FCountsVersion: Integer;
+    class var FOnCounts: TAtlasProblemCountsProc;
+    procedure PublishCounts;
     procedure Tick(Sender: TObject);
     procedure EnsureWorkers(ASession: TLspSession);
     procedure StopWorkers(AWait: Boolean);
@@ -158,6 +170,10 @@ type
     property Store: TAtlasProblemStore read FStore;
     /// <summary>Speicher des laufenden Controllers für andere Zeichner (inaktive Zweige, #615); nil ohne.</summary>
     class function Current: TAtlasProblemStore; static;
+    /// <summary>Zähler aller Befunde in AStore wie in der Liste (#509).</summary>
+    class function CountsOf(AStore: TAtlasProblemStore): TAtlasProblemCounts; static;
+    /// <summary>Empfänger der Zähler (#509); setzt die Composition, nil = keiner. Im Hauptthread.</summary>
+    class property OnCounts: TAtlasProblemCountsProc read FOnCounts write FOnCounts;
   end;
 
 implementation
@@ -668,10 +684,40 @@ begin
     end;
 end;
 
+class function TAtlasProblemsController.CountsOf(AStore: TAtlasProblemStore): TAtlasProblemCounts;
+var
+  FileName: string;
+  All: TArray<TAtlasProblem>;
+begin
+  All := nil;
+  if AStore <> nil then
+    for FileName in AStore.Files do
+      All := All + AStore.ForFile(FileName);
+  Result := TAtlasInlineDiagnostics.Counts(All);
+end;
+
+procedure TAtlasProblemsController.PublishCounts;
+var
+  Show: Boolean;
+begin
+  if not Assigned(FOnCounts) then
+    Exit;
+  Show := Active and TAtlasIdeSettings.ProblemsStatusCounterOn;
+  if (Show = FCountsShown) and (not Show or (FCountsVersion = FStore.Version)) then
+    Exit;
+  FCountsShown := Show;
+  FCountsVersion := FStore.Version;
+  if Show then
+    FOnCounts(True, CountsOf(FStore))
+  else
+    FOnCounts(False, Default(TAtlasProblemCounts));
+end;
+
 procedure TAtlasProblemsController.Publish;
 var
   Show: Boolean;
 begin
+  PublishCounts;
   if FStore.Version <> FPaintedVersion then
   begin
     FPaintedVersion := FStore.Version;

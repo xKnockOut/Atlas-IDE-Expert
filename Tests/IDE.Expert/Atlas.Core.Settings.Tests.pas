@@ -677,6 +677,17 @@ begin
   Assert.AreEqual(0, Settings.HideElementKey, 'negativ = keine Taste');
   Assert.AreEqual(25, TAtlasPluginSettings.Defaults.BlockEndLabelsMinLines, 'Mindestlänge (#620)');
   Assert.IsTrue(Settings.DimUnusedUses, 'ungenutzte uses standardmäßig abgeblendet (#621)');
+  // Fehlertext am Zeilenende, Zähler und Sprungtasten (#509).
+  Assert.AreEqual('errors', Settings.InlineDiagnostics);
+  Assert.IsTrue(Settings.ProblemsStatusCounter);
+  Assert.AreEqual($C077, Settings.NextProblemKey);
+  Assert.AreEqual($E077, Settings.PreviousProblemKey);
+  Settings.InlineDiagnostics := 'ALL';
+  Settings.Normalize;
+  Assert.AreEqual('all', Settings.InlineDiagnostics, 'Schreibweise des Schemas');
+  Settings.InlineDiagnostics := 'unsinn';
+  Settings.Normalize;
+  Assert.AreEqual('errors', Settings.InlineDiagnostics, 'Unbekanntes = Vorgabe');
   Settings.BlockEndLabelsMinLines := 0;
   Settings.Normalize;
   Assert.AreEqual(TAtlasPluginSettings.MinBlockEndLines, Settings.BlockEndLabelsMinLines, 'unten begrenzt');
@@ -686,6 +697,10 @@ begin
   Settings.BlockEndLabels := False;
   Settings.BlockEndLabelsMinLines := 40;
   Settings.DimUnusedUses := False;
+  Settings.InlineDiagnostics := 'off';
+  Settings.ProblemsStatusCounter := False;
+  Settings.NextProblemKey := 0;
+  Settings.PreviousProblemKey := $6077;
   Settings.HideElementKey := 0;
   Store := TMemoryStore.Create;
   Settings.Save(Store);
@@ -694,6 +709,10 @@ begin
   Assert.IsFalse(Loaded.BlockEndLabels, 'abschaltbar');
   Assert.AreEqual(40, Loaded.BlockEndLabelsMinLines);
   Assert.IsFalse(Loaded.DimUnusedUses, 'uses-Abblenden abschaltbar');
+  Assert.AreEqual('off', Loaded.InlineDiagnostics, 'Fehlertext abschaltbar');
+  Assert.IsFalse(Loaded.ProblemsStatusCounter, 'Zähler abschaltbar');
+  Assert.AreEqual(0, Loaded.NextProblemKey);
+  Assert.AreEqual($6077, Loaded.PreviousProblemKey);
   Assert.AreEqual(0, Loaded.HideElementKey, '0 = keine Taste');
 end;
 

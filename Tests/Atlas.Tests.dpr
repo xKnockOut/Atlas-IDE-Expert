@@ -589,6 +589,7 @@ uses
   Atlas.Core.Problems.Colors in '..\Packages\Atlas.IDE.Expert\Source\Core\Problems\Atlas.Core.Problems.Colors.pas',
   Atlas.Core.Problems.Store in '..\Packages\Atlas.IDE.Expert\Source\Core\Problems\Atlas.Core.Problems.Store.pas',
   Atlas.Core.Problems.Tests in 'IDE.Expert\Atlas.Core.Problems.Tests.pas',
+  Atlas.Core.Problems.Inline.Tests in 'IDE.Expert\Atlas.Core.Problems.Inline.Tests.pas',
   Atlas.Core.Editor.Pairs.Tests in 'IDE.Expert\Atlas.Core.Editor.Pairs.Tests.pas',
   Atlas.Core.Editor.SnapshotPolicy.Tests in 'IDE.Expert\Atlas.Core.Editor.SnapshotPolicy.Tests.pas',
   Atlas.Core.Editor.CloseRules.Tests in 'IDE.Expert\Atlas.Core.Editor.CloseRules.Tests.pas',
