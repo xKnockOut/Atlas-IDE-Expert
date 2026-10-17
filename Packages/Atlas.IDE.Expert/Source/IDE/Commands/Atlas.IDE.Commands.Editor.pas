@@ -158,6 +158,7 @@ uses
   Atlas.IDE.Editor.Hide,
   Atlas.Core.Problems.Inline,
   Atlas.IDE.Editor.ChangeSignature,
+  Atlas.IDE.Editor.CommentContinuation,
   Atlas.Core.Editor.WorkspacePlan,
   Atlas.IDE.Foundation.Navigation;
 
@@ -228,6 +229,12 @@ begin
     procedure
     begin
       TAtlasIdeEditorCommands.EditorModified(View);
+    end);
+  // Kommentar beim Enter fortsetzen (#696), unabhängig von den Schrägstrich-Befehlen.
+  TAtlasGuard.Run(TAtlasFeature.EditorCommands,
+    procedure
+    begin
+      TAtlasIdeCommentContinuation.EditorModified(View);
     end);
 end;
 

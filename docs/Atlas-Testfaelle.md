@@ -1161,6 +1161,24 @@ Vorbereitung: Git-Projekt `GitDemo` mit `.atlas` `"tracker": {"provider": "githu
 | ZV12 | Tastenübersicht öffnen | Alt+↑ und Umschalt+Alt+↑/↓ als Konflikt mit der IDE (Atlas gewinnt) |
 | ZV13 | Optionen › Atlas › Befehle: „Zeilen und Methoden verschieben …“ aus | Alt+↑/↓ gehören wieder der IDE (Alt+↑ = Code-Browsing), Palettenbefehle fehlen; Tasten änderbar |
 
+## Kommentar beim Enter fortsetzen (#696)
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| KF1 | Am Ende von `  // Text` Enter | Neue Zeile `  // `, Cursor dahinter |
+| KF2 | Am Ende einer `/// <summary>`-Zeile Enter | Neue Zeile mit `/// ` |
+| KF3 | Mitten in `// Erster zweiter` vor „zweiter“ Enter | `// Erster` und `// zweiter`, Cursor vor „zweiter“ |
+| KF4 | In der leeren Zeile `// ` (nur Präfix) Enter | Das Präfix verschwindet, Cursor eingerückt in dieser Zeile, der Kommentar ist zu Ende |
+| KF5 | `// - eins`, `// 1. eins`, `// 9) neun` jeweils am Ende Enter | `// - `, `// 2. `, `// 10) ` |
+| KF6 | Unterpunkt `//   - zwei`, Enter; dann auf dem leeren Punkt `//   - ` Enter | Erst `//   - `, dann fällt das Aufzählungszeichen weg, der Kommentar bleibt |
+| KF7 | Hinter `A := 1; // Kommentar` Enter | Keine Fortsetzung, nur der Einzug der IDE |
+| KF8 | In `{ Text` bzw. `(* Text` (nicht geschlossen) Enter | Neue Zeile unter dem Text hinter der Klammer eingerückt |
+| KF9 | Optionen › Atlas › Editor: Präfix `␣*␣`, in `(* Text` Enter, dann vor `*)` Enter | ` * ` hinter dem Einzug der öffnenden Zeile; vor `*)` nur der Einzug plus ein Leerzeichen |
+| KF10 | Nach KF1 Strg+Z | Nur das Präfix ist weg, die neue Zeile bleibt |
+| KF11 | Zeile `// a` samt Zeilenumbruch kopieren und einfügen; Strg+Enter, Enter in der Vervollständigungsliste | Keine Fortsetzung |
+| KF12 | Optionen › Atlas › Editor: „Auch //-Zeilen fortsetzen“ aus | `//` wird nicht mehr fortgesetzt, `///` weiter |
+| KF13 | „Aufzählungen fortsetzen“ aus bzw. „Kommentar beim Enter fortsetzen“ aus | Aufzählungszeichen werden nicht übernommen bzw. Enter verhält sich wie ohne Atlas |
+
 ## Sprung zum Gegenstück (#635)
 
 | Nr. | Schritte | Erwartet |

@@ -76,6 +76,8 @@ type
     [Test]
     procedure MoveLinesRoundTrip;
     [Test]
+    procedure ContinueCommentsRoundTrip;
+    [Test]
     procedure WelcomeSettingsRoundTrip;
     /// <summary>Freies Layout (#767): Schalter, Spalten, Layouts anlegen, wechseln, umbenennen, löschen; je
     /// Layout eigene Sichtbarkeit; Reveal der neuen Einstellungen.</summary>
@@ -1476,6 +1478,33 @@ begin
     Assert.AreEqual(0, Saved.MoveLinesUpKey);
     Assert.AreEqual($8028, Saved.MoveLinesDownKey);
     Assert.AreEqual($C044, Saved.DuplicateLinesDownKey);
+  finally
+    Page.Free;
+  end;
+end;
+
+procedure TAtlasSettingsPageTests.ContinueCommentsRoundTrip;
+var
+  Page: TAtlasSettingsPage;
+  Settings, Saved: TAtlasPluginSettings;
+begin
+  // #696: Schalter und Präfix; Leerraum am Rand des Präfixes bleibt.
+  Settings := TAtlasPluginSettings.Defaults;
+  Page := TAtlasSettingsPage.Create(nil);
+  try
+    Page.LoadFrom(Settings);
+    Assert.IsTrue(Page.ContinueComments.Checked);
+    Assert.IsTrue(Page.ContinueCommentsLists.Checked);
+    Assert.AreEqual('', Page.ContinueCommentsBlockPrefix.Text);
+    Page.ContinueComments.Checked := False;
+    Page.ContinueCommentsLists.Checked := False;
+    Page.ContinueCommentsBlockPrefix.Text := ' * ';
+    Saved := TAtlasPluginSettings.Defaults;
+    Page.SaveTo(Saved);
+    Assert.IsFalse(Saved.ContinueComments);
+    Assert.IsFalse(Saved.ContinueCommentsLists);
+    Assert.IsTrue(Saved.ContinueCommentsLineComments);
+    Assert.AreEqual(' * ', Saved.ContinueCommentsBlockPrefix);
   finally
     Page.Free;
   end;

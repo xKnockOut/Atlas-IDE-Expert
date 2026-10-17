@@ -277,6 +277,10 @@ type
     FMoveLinesDownKey: TEdit;
     FDuplicateLinesUpKey: TEdit;
     FDuplicateLinesDownKey: TEdit;
+    FContinueComments: TCheckBox;
+    FContinueCommentsLineComments: TCheckBox;
+    FContinueCommentsLists: TCheckBox;
+    FContinueCommentsBlockPrefix: TEdit;
     FBookmarkKey: TEdit;
     /// <summary>„Element ausblenden …“ (#628).</summary>
     FHideElementKey: TEdit;
@@ -652,6 +656,10 @@ type
     property MoveLines: TCheckBox read FMoveLines;
     property MoveLinesUpKey: TEdit read FMoveLinesUpKey;
     property DuplicateLinesDownKey: TEdit read FDuplicateLinesDownKey;
+    /// <summary>Zum Testen: Kommentar beim Enter fortsetzen (#696).</summary>
+    property ContinueComments: TCheckBox read FContinueComments;
+    property ContinueCommentsLists: TCheckBox read FContinueCommentsLists;
+    property ContinueCommentsBlockPrefix: TEdit read FContinueCommentsBlockPrefix;
     property RedoKey: TEdit read FRedoKey;
     property UpdatesCheck: TCheckBox read FUpdatesCheck;
     property BugReportAnonymize: TCheckBox read FBugReportAnonymize;
@@ -1198,6 +1206,11 @@ begin
   FOverviewKinds[TAtlasOverviewKind.Changes] := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsOverviewChanges));
   FOverviewKinds[TAtlasOverviewKind.Breakpoints] :=
     AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsOverviewBreakpoints));
+  // Kommentar beim Enter fortsetzen (#696).
+  FContinueComments := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsContinueComments));
+  FContinueCommentsLineComments := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsContinueCommentsLineComments));
+  FContinueCommentsLists := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsContinueCommentsLists));
+  FContinueCommentsBlockPrefix := AddTextLine(TAtlasStrings.Text(TAtlasTextId.SettingsContinueCommentsBlockPrefix));
   FOverviewKinds[TAtlasOverviewKind.Bookmarks] := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsOverviewBookmarks));
   FOverviewKinds[TAtlasOverviewKind.Cursor] := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsOverviewCursor));
   // Rekursionssymbole im Rand (#623).
@@ -2159,6 +2172,10 @@ begin
   FMarks.Bind(FMoveLinesDownKey, ['MoveLinesDownKey']);
   FMarks.Bind(FDuplicateLinesUpKey, ['DuplicateLinesUpKey']);
   FMarks.Bind(FDuplicateLinesDownKey, ['DuplicateLinesDownKey']);
+  FMarks.Bind(FContinueComments, ['ContinueComments']);
+  FMarks.Bind(FContinueCommentsLineComments, ['ContinueCommentsLineComments']);
+  FMarks.Bind(FContinueCommentsLists, ['ContinueCommentsLists']);
+  FMarks.Bind(FContinueCommentsBlockPrefix, ['ContinueCommentsBlockPrefix']);
   FMarks.Bind(FBookmarkKey, ['BookmarkKey']);
   FMarks.Bind(FHideElementKey, ['HideElementKey']);
   FMarks.Bind(FNextProblemKey, ['NextProblemKey']);
@@ -3155,6 +3172,10 @@ begin
   FMoveLinesDownKey.Text := ShortCutToText(TShortCut(ASettings.MoveLinesDownKey));
   FDuplicateLinesUpKey.Text := ShortCutToText(TShortCut(ASettings.DuplicateLinesUpKey));
   FDuplicateLinesDownKey.Text := ShortCutToText(TShortCut(ASettings.DuplicateLinesDownKey));
+  FContinueComments.Checked := ASettings.ContinueComments;
+  FContinueCommentsLineComments.Checked := ASettings.ContinueCommentsLineComments;
+  FContinueCommentsLists.Checked := ASettings.ContinueCommentsLists;
+  FContinueCommentsBlockPrefix.Text := ASettings.ContinueCommentsBlockPrefix;
   FBookmarkKey.Text := ShortCutToText(TShortCut(ASettings.BookmarkKey));
   FHideElementKey.Text := ShortCutToText(TShortCut(ASettings.HideElementKey));
   FNextProblemKey.Text := ShortCutToText(TShortCut(ASettings.NextProblemKey));
@@ -3458,6 +3479,11 @@ begin
   ASettings.MoveLinesDownKey := Integer(TextToShortCut(Trim(FMoveLinesDownKey.Text)));
   ASettings.DuplicateLinesUpKey := Integer(TextToShortCut(Trim(FDuplicateLinesUpKey.Text)));
   ASettings.DuplicateLinesDownKey := Integer(TextToShortCut(Trim(FDuplicateLinesDownKey.Text)));
+  ASettings.ContinueComments := FContinueComments.Checked;
+  ASettings.ContinueCommentsLineComments := FContinueCommentsLineComments.Checked;
+  ASettings.ContinueCommentsLists := FContinueCommentsLists.Checked;
+  // Leerraum am Rand gehört zum Präfix (' * ').
+  ASettings.ContinueCommentsBlockPrefix := FContinueCommentsBlockPrefix.Text;
   ASettings.BookmarkKey := Integer(TextToShortCut(Trim(FBookmarkKey.Text)));
   ASettings.HideElementKey := Integer(TextToShortCut(Trim(FHideElementKey.Text)));
   ASettings.NextProblemKey := Integer(TextToShortCut(Trim(FNextProblemKey.Text)));

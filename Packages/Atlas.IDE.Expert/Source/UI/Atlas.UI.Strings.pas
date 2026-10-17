@@ -570,7 +570,8 @@ type
     SettingsOverviewChanges, SettingsOverviewBreakpoints, SettingsOverviewBookmarks, SettingsOverviewCursor,
     OverviewLine, OverviewBreakpoint, OverviewBookmark, OverviewSearch, OverviewModified, OverviewDeleted,
     OverviewCursor, MoveLinesUpCommand, MoveLinesDownCommand, DuplicateLinesUpCommand, DuplicateLinesDownCommand,
-    SettingsMoveLines, MoveLinesNoNeighbour);
+    SettingsMoveLines, MoveLinesNoNeighbour, SettingsContinueComments, SettingsContinueCommentsLineComments,
+    SettingsContinueCommentsLists, SettingsContinueCommentsBlockPrefix);
 
   TAtlasStrings = class
   private class var
@@ -1649,7 +1650,9 @@ const
      'Geändert seit dem letzten Commit', 'Gelöscht seit dem letzten Commit', 'Cursor',
      'Zeilen nach oben verschieben', 'Zeilen nach unten verschieben', 'Zeilen darüber duplizieren',
      'Zeilen darunter duplizieren', 'Zeilen und Methoden verschieben und duplizieren (Alt+↑/↓, Umschalt+Alt+↑/↓)',
-     'Keine Nachbarmethode, an der die Methode vorbei kann'),
+     'Keine Nachbarmethode, an der die Methode vorbei kann',
+     'Kommentar beim Enter fortsetzen (//, ///, Blockkommentare)', 'Auch //-Zeilen fortsetzen (sonst nur ///)',
+     'Aufzählungen fortsetzen und hochzählen (- , * , 1. )', 'Präfix in Blockkommentaren (leer = nur einrücken):'),
     ('Enter to accept · Esc to close', '%d of %d', 'No matches for “%s”', 'Backspace widens the search',
      'No suggestions here', 'Esc closes', 'No details for this entry', 'Overload', 'Deprecated: %s', 'Deprecated.',
      'Inherited from %s', 'Inherited', 'optional, default %s', 'No overload with %d parameters.', '… %d more',
@@ -2647,7 +2650,9 @@ const
      'Changes against the repository', 'Breakpoints', 'Bookmarks', 'Cursor position', 'Line %d', 'Breakpoint',
      'Bookmark %d', 'Match: %s', 'Changed since the last commit', 'Deleted since the last commit', 'Cursor',
      'Move lines up', 'Move lines down', 'Duplicate lines above', 'Duplicate lines below',
-     'Move and duplicate lines and methods (Alt+↑/↓, Shift+Alt+↑/↓)', 'No neighbouring method to move past'));
+     'Move and duplicate lines and methods (Alt+↑/↓, Shift+Alt+↑/↓)', 'No neighbouring method to move past',
+     'Continue comments on Enter (//, ///, block comments)', 'Also continue // lines (otherwise /// only)',
+     'Continue and number lists (- , * , 1. )', 'Prefix in block comments (empty = indent only):'));
 
 { TAtlasStrings }
 

@@ -42,6 +42,9 @@ type
     procedure JumpToMatchOptions;
     [Test]
     procedure MoveLinesOptions;
+    /// <summary>Kommentar beim Enter fortsetzen (#696): Vorgaben, Speichern, Laden, Präfix normalisieren.</summary>
+    [Test]
+    procedure ContinueCommentsOptions;
     /// <summary>Änderungsmarken und Zeilenhistorie (#507): Vorgaben, Tasten, Speichern und Laden.</summary>
     [Test]
     procedure GitChangeOptions;
@@ -1208,6 +1211,36 @@ begin
   Loaded.DuplicateLinesUpKey := $20000;
   Loaded.Normalize;
   Assert.AreEqual($FFFF, Loaded.DuplicateLinesUpKey);
+end;
+
+procedure TAtlasPluginSettingsTests.ContinueCommentsOptions;
+var
+  Settings, Loaded: TAtlasPluginSettings;
+  Store: IAtlasSettingsStore;
+begin
+  Settings := TAtlasPluginSettings.Defaults;
+  Assert.IsTrue(Settings.ContinueComments);
+  Assert.IsTrue(Settings.ContinueCommentsLineComments);
+  Assert.IsTrue(Settings.ContinueCommentsLists);
+  Assert.AreEqual('', Settings.ContinueCommentsBlockPrefix);
+  Settings.ContinueComments := False;
+  Settings.ContinueCommentsLists := False;
+  Settings.ContinueCommentsBlockPrefix := ' * ';
+  Store := TMemoryStore.Create;
+  Settings.Save(Store);
+  Loaded := TAtlasPluginSettings.Defaults;
+  Loaded.Load(Store);
+  Assert.IsFalse(Loaded.ContinueComments);
+  Assert.IsTrue(Loaded.ContinueCommentsLineComments);
+  Assert.IsFalse(Loaded.ContinueCommentsLists);
+  // Leerraum am Rand bleibt.
+  Assert.AreEqual(' * ', Loaded.ContinueCommentsBlockPrefix);
+  Loaded.ContinueCommentsBlockPrefix := ' *'#9'1234567890';
+  Loaded.Normalize;
+  Assert.AreEqual(' * 12345', Loaded.ContinueCommentsBlockPrefix);
+  Loaded.ContinueCommentsBlockPrefix := '   ';
+  Loaded.Normalize;
+  Assert.AreEqual('', Loaded.ContinueCommentsBlockPrefix);
 end;
 
 procedure TAtlasPluginSettingsTests.GitChangeOptions;
