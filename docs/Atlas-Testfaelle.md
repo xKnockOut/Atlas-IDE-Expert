@@ -1801,3 +1801,14 @@ Voraussetzung: Projekt mit `TBasis.Lauf(A: Integer)` (virtual), `TAbgeleitet.Lau
 | SG8 | Ein Aufrufer liegt in einer schreibgeschützten Datei; Methode an einen Methodenzeiger zugewiesen | Vorschau nennt beide Warnungen; die Datei bleibt unverändert |
 | SG9 | `refactoring.changeSignature` auf `false` in atlas.json | Keine Code-Aktion „Signatur ändern …“ mehr (**Abnahme**) |
 | SG10 | Englische IDE | Dialog, Fehler und Meldungen auf Englisch |
+
+## Hover über Komponentenklassen (#110)
+
+Voraussetzung: VCL-Quellen über die Bibliothekspfade im Index.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| HK1 | Maus über `TButton` | `Caption` und `OnClick` stehen unter *TControl* (deklarierende Klasse) (**Abnahme**) |
+| HK2 | Eigene Klasse mit `TMeinRueckruf = procedure(Sender: TObject) of object` und `property OnlineStatus: Boolean` published, Maus über die Klasse | `TMeinRueckruf`-Property unter „Ereignisse“, `OnlineStatus` unter den Properties (**Abnahme**) |
+| HK3 | Properties mit `default 5`, ohne Angabe (Boolean), `nodefault`, `stored False` | „= `5`“, „= `False` (implizit)“, „· nodefault“, „· stored `False`“ (**Abnahme**) |
+| HK4 | Maus über `TStrings` | Erste Zeile „Standard-Property: `Strings[Index: Integer]: string`“, kein Vorgabewert (**Abnahme**) |
