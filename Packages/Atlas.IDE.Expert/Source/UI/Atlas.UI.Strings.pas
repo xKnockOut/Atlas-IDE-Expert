@@ -562,7 +562,11 @@ type
     OutlineGoToDeclaration, OutlineGoToImplementation, OutlineFollowCursor, SettingsOutline,
     SettingsOutlineAlphabetical, SettingsOutlineFollowCursor, BreadcrumbsCommand, BreadcrumbsCurrent,
     SettingsBreadcrumbs, SettingsBreadcrumbsShowUnit, BreadcrumbsEmpty, JumpToMatchCommand, JumpToMatchSelectCommand,
-    SettingsJumpToMatch);
+    SettingsJumpToMatch, SettingsGitGutter, SettingsGitBlame, NextChangeCommand, PreviousChangeCommand,
+    ChangeOldTitle, ChangeAddedTitle, ChangeRevert, ChangeRevertAction, ChangeMoreLines, BlameJustNow, BlameMinutes,
+    BlameHours, BlameYesterday, BlameDays, BlameMonth, BlameMonths, BlameYear, BlameYears, BlameUncommitted,
+    BlameUnsaved, BlameLine, BlameCommitTitle, BlameCommitText, ElementGitGutter, ElementGitGutterPlural,
+    ElementGitBlame, ElementGitBlamePlural);
 
   TAtlasStrings = class
   private class var
@@ -1629,7 +1633,13 @@ const
      'Zur Implementierung', 'Cursor folgen', 'Fenster „Gliederung“ mit Filter', 'Alphabetisch sortieren',
      'Eintrag am Cursor hervorheben', 'Brotkrumenleiste', 'aktuell', 'Brotkrumenleiste über dem Editor',
      'Unit-Namen als erstes Glied zeigen', 'Keine Gliederung an dieser Stelle', 'Zum Gegenstück springen',
-     'Bis zum Gegenstück markieren', 'Sprung zum Gegenstück (begin/end, Klammern, $IFDEF, Methoden)'),
+     'Bis zum Gegenstück markieren', 'Sprung zum Gegenstück (begin/end, Klammern, $IFDEF, Methoden)',
+     'Änderungsmarken in der Rinne (Git, SVN)', 'Zeilenhistorie (blame) am Ende der Cursorzeile',
+     'Nächste Änderung', 'Vorherige Änderung', 'Stand im Repository', 'Neu seit dem letzten Commit',
+     'Zurücksetzen', 'Änderung zurücksetzen', '… %d weitere Zeilen', 'gerade eben', 'vor %d Min.', 'vor %d Std.',
+     'gestern', 'vor %d Tagen', 'vor 1 Monat', 'vor %d Monaten', 'vor 1 Jahr', 'vor %d Jahren',
+     'Noch nicht übernommen', 'Noch nicht gespeichert', '%s, %s · %s', 'Commit %s', 'Autor: %s'#10'Datum: %s'#10#10'%s',
+     'Änderungsmarke', 'Änderungsmarken', 'Zeilenhistorie', 'Zeilenhistorie'),
     ('Enter to accept · Esc to close', '%d of %d', 'No matches for “%s”', 'Backspace widens the search',
      'No suggestions here', 'Esc closes', 'No details for this entry', 'Overload', 'Deprecated: %s', 'Deprecated.',
      'Inherited from %s', 'Inherited', 'optional, default %s', 'No overload with %d parameters.', '… %d more',
@@ -2617,7 +2627,12 @@ const
      'No entry matches the filter.', 'Go to declaration', 'Go to implementation', 'Follow cursor',
      'Outline window with filter', 'Sort alphabetically', 'Highlight the entry at the cursor', 'Breadcrumbs',
      'current', 'Breadcrumbs above the editor', 'Show the unit name as first item', 'No outline at this position',
-     'Jump to match', 'Select to match', 'Jump to the counterpart (begin/end, brackets, $IFDEF, methods)'));
+     'Jump to match', 'Select to match', 'Jump to the counterpart (begin/end, brackets, $IFDEF, methods)',
+     'Change marks in the gutter (Git, SVN)', 'Line history (blame) at the end of the cursor line', 'Next change',
+     'Previous change', 'Version in the repository', 'New since the last commit', 'Revert', 'Revert change',
+     '… %d more lines', 'just now', '%d min. ago', '%d hr. ago', 'yesterday', '%d days ago', '1 month ago',
+     '%d months ago', '1 year ago', '%d years ago', 'Not committed yet', 'Not saved yet', '%s, %s · %s', 'Commit %s',
+     'Author: %s'#10'Date: %s'#10#10'%s', 'change mark', 'change marks', 'line history', 'line history'));
 
 { TAtlasStrings }
 

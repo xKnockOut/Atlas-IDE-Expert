@@ -293,6 +293,8 @@ begin
   Assert.AreEqual('Zum Gegenstück springen', TAtlasKeyMapWindow.FunctionCaption(TAtlasKeyFunction.JumpToMatch));
   Assert.AreEqual('Bis zum Gegenstück markieren',
     TAtlasKeyMapWindow.FunctionCaption(TAtlasKeyFunction.JumpToMatchSelect));
+  Assert.AreEqual('Nächste Änderung', TAtlasKeyMapWindow.FunctionCaption(TAtlasKeyFunction.NextChange));
+  Assert.AreEqual('Vorherige Änderung', TAtlasKeyMapWindow.FunctionCaption(TAtlasKeyFunction.PreviousChange));
   // #764: Schnellaktionen der Willkommensseite.
   Assert.AreEqual('Schnellaktion „Öffnen und bauen“',
     TAtlasKeyMapWindow.FunctionCaption(TAtlasKeyFunction.WelcomeQuickBuild));

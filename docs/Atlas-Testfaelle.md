@@ -1158,6 +1158,30 @@ Vorbereitung: Git-Projekt `GitDemo` mit `.atlas` `"tracker": {"provider": "githu
 | GS9 | Cursor auf `begin`, Strg+Umschalt+Ü; auf `end`, Strg+Umschalt+Ü | Markierung vom Cursor bis hinter `end` bzw. ab `begin` bis zum Cursor |
 | GS10 | Optionen › Atlas › Befehle: „Sprung zum Gegenstück“ aus | Strg+Ü und Strg+Umschalt+Ü tun nichts mehr, Palettenbefehle fehlen; Tasten änderbar und in der Tastenübersicht |
 
+## Änderungsmarken und Zeilenhistorie (#507)
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| GM1 | Unit aus einem Git-Repository ohne lokale Änderungen öffnen | Keine Marken in der Rinne |
+| GM2 | Eine neue Zeile tippen, kurz warten | Grüner Balken rechts in der Rinne an der neuen Zeile (Akzeptanzkriterium) |
+| GM3 | Eine bestehende Zeile ändern | Blauer Balken an der Zeile; zwei geänderte Zeilen ergeben einen durchgehenden Balken |
+| GM4 | Zwei Zeilen löschen; danach die letzten Zeilen der Datei löschen | Rotes Dreieck oben an der Zeile unter der Lücke; am Dateiende unten an der letzten Zeile |
+| GM5 | Auf den blauen Balken klicken | Kleines Fenster „Stand im Repository“ mit den alten Zeilen und dem Link „Zurücksetzen“; Maus aus dem Fenster heraus oder Klick in den Editor schließt es |
+| GM6 | „Zurücksetzen“ klicken, dann Strg+Z | Alter Block wieder da, Marke weg; Strg+Z stellt die Änderung in einem Schritt wieder her (Akzeptanzkriterium); bei Blöcken am Dateiende ebenso |
+| GM7 | Klick auf grünen Balken bzw. rotes Dreieck, „Zurücksetzen“ | Neue Zeilen verschwinden bzw. gelöschte stehen wieder da |
+| GM8 | Strg+Alt+Bild↓ mehrmals, dann Strg+Alt+Bild↑; auch über die Palette „Nächste Änderung“ | Cursor springt von Block zu Block, am Ende wieder zum ersten; rückwärts entsprechend |
+| GM9 | Änderung committen (Kommandozeile oder IDE) | Innerhalb von etwa einer Sekunde verschwinden die Marken der übernommenen Zeilen |
+| GM10 | Datei außerhalb jeder Arbeitskopie, nicht versionierte Datei in einer Arbeitskopie, Rechner ohne git im Pfad | Keine Marken, keine Meldungen außer dem einmaligen Hinweis „git fehlt“ aus #571, keine Hänger |
+| GM11 | SVN-Arbeitskopie (vcs.provider auto) | Marken gegenüber BASE wie bei Git; Zeilenhistorie ohne Betreff („Autor, vor 3 Tagen“) |
+| GM12 | Optionen › Atlas › Editor: „Zeilenhistorie“ an, Cursor auf verschiedene Zeilen | Am Ende der Cursorzeile gedimmt „Autor, vor 3 Tagen · Betreff“ (Akzeptanzkriterium), hinter Inlay-Hints und Fehlertext ohne Überlappung |
+| GM13 | Cursorzeile ändern (nicht speichern); dann speichern; dann committen | „Noch nicht gespeichert“, nach dem Speichern „Noch nicht übernommen“, nach dem Commit Autor und „gerade eben“ |
+| GM14 | Maus auf den Historientext halten | Nach kurzer Zeit Fenster „Commit …“ mit vollständiger Revision, Autor, Datum (Ortszeit) und Betreff |
+| GM15 | Unit mit 10 000 Zeilen, Einfrier-Wächter (#501) an; Datei öffnen, oben und unten tippen, speichern | Keine Hänger-Meldung, Tippen flüssig; Marken erscheinen kurz nach der Pause (Akzeptanzkriterium) |
+| GM16 | Rechtsklick auf eine Marke bzw. den Historientext › Ausblenden „in dieser Datei“ | Element in dieser Datei weg, Eintrag in .atlas; „Überall“ schaltet die Einstellung aus (#628) |
+| GM17 | Optionen: „Änderungsmarken“ aus; „Zeilenhistorie“ aus | Keine Marken, Strg+Alt+Bild↓/↑ frei, Palettenbefehle fehlen, kein git-Aufruf mehr (Protokoll); ohne Historie nichts am Zeilenende (Akzeptanzkriterium) |
+| GM18 | Helles und dunkles Thema der IDE wechseln | Grün, Blau und Rot passen sich dem Grund der Rinne an, Historie bleibt lesbar |
+| GM19 | Marken neben Breakpoint, Lesezeichen und den eigenen Änderungsbalken der IDE | Nichts verdeckt Breakpoints oder Lesezeichen; Lage zu den IDE-Balken prüfen und ggf. melden |
+
 ## DUnitX-Tests ausführen (#69)
 
 Vorbereitung: RAD Studio mit Atlas-Plugin; Projektgruppe mit einer Anwendung und einem DUnitX-Testprojekt aus der Vorlage von RAD Studio (Hauptdatei mit `DUnitX.TestFramework` und `TDUnitXXMLNUnitFileLogger`), darin eine Fixture mit einem bestehenden Test, einem Test `Assert.AreEqual(0, 1)` und einem `[TestCase]`. Meldungsansicht, Reiter „Atlas“.
