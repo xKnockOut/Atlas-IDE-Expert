@@ -252,6 +252,7 @@ contains
   Atlas.Common.Semantics.Attributes in 'Source\Semantics\Atlas.Common.Semantics.Attributes.pas',
   Atlas.Common.Lsp.Definition in 'Source\Lsp\Atlas.Common.Lsp.Definition.pas',
   Atlas.Common.Lsp.PublishedMembers in 'Source\Lsp\Atlas.Common.Lsp.PublishedMembers.pas',
+  Atlas.Common.Lsp.TypeInfoClasses in 'Source\Lsp\Atlas.Common.Lsp.TypeInfoClasses.pas',
   Atlas.Common.Lsp.Hover in 'Source\Lsp\Atlas.Common.Lsp.Hover.pas',
   Atlas.Common.Lsp.HoverTypes in 'Source\Lsp\Atlas.Common.Lsp.HoverTypes.pas',
   Atlas.Common.Lsp.Documentation in 'Source\Lsp\Atlas.Common.Lsp.Documentation.pas',
