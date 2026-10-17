@@ -44,6 +44,7 @@ uses
   Atlas.Common.Lsp.References,
   Atlas.Common.Lsp.Rename,
   Atlas.Common.Lsp.Completion,
+  Atlas.Common.Lsp.Refactorings,
   Atlas.Common.Pascal.LanguageFeatures,
   Atlas.Common.Lsp.SignatureHelp,
   Atlas.Common.Lsp.Hierarchies,
@@ -290,6 +291,10 @@ type
     function ChangeSignatureActions(const AUri: string; const APosition: TTextPosition): TArray<TJSONObject>;
     /// <summary>„Typ ausschreiben“ (#453) für die Inline-Variable an APosition.</summary>
     function ExplicitTypeActions(const AUri: string; const APosition: TTextPosition): TArray<TJSONObject>;
+    /// <summary>Extrahieren, „case vervollständigen“ und „with auflösen“ (#50).</summary>
+    function RefactoringActions(const AUri: string; const ARange: TTextRange): TArray<TJSONObject>;
+    /// <summary>Index, Einstellungen, Sprachversion und Formatstil für die Aktionen aus #50.</summary>
+    function RefactoringContextFor(const AUri: string): TRefactoringContext;
     /// <summary>Inhalt des Status-Befehls (#28).</summary>
     function CollectBookmarks: TArray<TBookmarkHit>;
     function CollectStatus: TServerStatus;
@@ -426,6 +431,7 @@ uses
   Atlas.Common.Dfm.FormModel,
   Atlas.Common.Dfm.BinaryForm,
   Atlas.Common.Editing.CodeActions,
+  Atlas.Common.Lsp.CompletionRequest,
   Atlas.Common.Editing.ClassActions,
   Atlas.Common.Index.SymbolIndex,
   Atlas.Common.Editing.UsesActions,
@@ -934,6 +940,20 @@ begin
       Result.InlineVar := RefactoringSettingsFor(AUri).InlineVar and
         TLanguageFeatures.IsAvailable(TLanguageFeature.InlineVariable, DelphiVersionFor(AUri));
     end;
+  // with auflösen über Strg+Leer auf with (#50), abschaltbar mit refactoring.resolveWith.
+  FCompletion.WithFor :=
+    function(ARequest: TCompletionRequest; out AEdits: TArray<TTextEdit>): Boolean
+    var
+      Context: TRefactoringContext;
+      Action: TCodeAction;
+    begin
+      AEdits := nil;
+      Context := RefactoringContextFor(ARequest.Uri);
+      Result := Context.Settings.ResolveWith and TLspRefactorings.WithAction(ARequest.Resolver, ARequest.Tree,
+        ARequest.Text, ARequest.Position, Context, Action);
+      if Result then
+        AEdits := Action.Edits;
+    end;
   // Für completionItem/resolve (Detailpanel von Atlas, #405); Anzeige von XMLDoc (#654).
   FCompletion.HintsFor := HintSettingsFor;
   FCompletion.ReadText := ReadSourceText;
@@ -1170,6 +1190,7 @@ begin
       Result := FTestUnits.Actions(AUri, ARange.StartPos.Line);
       Result := Result + ChangeSignatureActions(AUri, ARange.StartPos);
       Result := Result + ExplicitTypeActions(AUri, ARange.StartPos);
+      Result := Result + RefactoringActions(AUri, ARange);
     end;
   FCodeActions.Attach(FDispatcher);
   FDocumentLinks := TLspDocumentLinks.Create(FDocuments,
@@ -2553,6 +2574,38 @@ begin
   finally
     Resolver.Free;
   end;
+end;
+
+function TServerComposition.RefactoringContextFor(const AUri: string): TRefactoringContext;
+begin
+  Result := Default(TRefactoringContext);
+  Result.Settings := RefactoringSettingsFor(AUri);
+  Result.Index := FIndex;
+  Result.EnsureUnit := EnsureUnit;
+  Result.Namespaces := FRename.Namespaces;
+  Result.FileName := TDocumentUris.ToPath(AUri);
+  Result.ReadText := ReadSourceText;
+  Result.InlineVar := Result.Settings.InlineVar and
+    TLanguageFeatures.IsAvailable(TLanguageFeature.InlineVariable, DelphiVersionFor(AUri));
+  Result.Style := ResolvedFormatStyleFor(AUri);
+end;
+
+function TServerComposition.RefactoringActions(const AUri: string; const ARange: TTextRange): TArray<TJSONObject>;
+var
+  Document: ITextDocument;
+  Shared: ISharedSyntaxTree;
+  Context: TRefactoringContext;
+  Action: TCodeAction;
+begin
+  Result := nil;
+  if not FDocuments.TryGet(AUri, Document) or not SameText(ExtractFileExt(TDocumentUris.ToPath(AUri)), '.pas') then
+    Exit;
+  Context := RefactoringContextFor(AUri);
+  if not (Context.Settings.Extract or Context.Settings.CompleteCase or Context.Settings.ResolveWith) then
+    Exit;
+  Shared := TSyntaxTreeCache.Get(Document, nil);
+  for Action in TLspRefactorings.Actions(Shared.Tree, Document.Text, ARange, Context) do
+    Result := Result + [TLspCodeActions.ActionToJson(AUri, Action)];
 end;
 
 function TServerComposition.ChangeSignature(const AArguments: TJSONArray; APrepare: Boolean): TJSONValue;

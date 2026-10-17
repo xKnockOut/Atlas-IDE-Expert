@@ -10,13 +10,16 @@
 //   - BranchesText: je fehlendem Wert eine Zeile "<Wert>: ;" in Deklarationsreihenfolge, eine Ebene tiefer als
 //     case; "$0" markiert die Cursorposition vor dem ";" des ersten neuen Zweigs.
 // Ob "end" fehlt, entscheidet die Einrückung: Ein "end" links von der case-Zeile gehört zum umgebenden Block.
+// Für die Code-Aktion (#50) findet CaseAt die case-Anweisung am Cursor, und Complete ergänzt genau die
+// fehlenden Werte als leere Zweige vor dem else bzw. dem end (fehlt vor ihnen das ";", kommt es dazu).
 
 interface
 
 uses
   System.SysUtils,
   Atlas.Common.Documents.Contract,
-  Atlas.Common.Pascal.Contract;
+  Atlas.Common.Pascal.Contract,
+  Atlas.Common.Pascal.SyntaxTree;
 
 type
   TCaseBranchSlot = record
@@ -50,6 +53,16 @@ type
       const APrefix, ALineBreak: string): string; static;
     /// <summary>Text für EndInsert, wenn "end" fehlt und Zweige folgen; '' sonst.</summary>
     class function EndText(const ASlot: TCaseBranchSlot; const ALineBreak: string): string; static;
+    /// <summary>Innerste case-Anweisung, in der APosition liegt; nil ohne.</summary>
+    class function CaseAt(ATree: TSyntaxTree; const APosition: TTextPosition): TSyntaxNode; static;
+    /// <summary>Stelle hinter dem "of" der case-Anweisung ACase; False ohne.</summary>
+    class function OfPosition(ATree: TSyntaxTree; ACase: TSyntaxNode; out APosition: TTextPosition): Boolean;
+      static;
+    /// <summary>Zweige "<Wert>: ;" für die Werte aus AValues ohne Marke, in Deklarationsreihenfolge vor dem else
+    /// (AHasElse) bzw. vor dem end. False, wenn nichts fehlt, eine Marke kein Wert ist oder end fehlt.</summary>
+    class function Complete(const AText: string; ATree: TSyntaxTree; ACase: TSyntaxNode;
+      const AValues: TArray<string>; const APrefix: string; out AEdits: TArray<TTextEdit>; out ACount: Integer;
+      out AHasElse: Boolean): Boolean; static;
   end;
 
 implementation
@@ -391,6 +404,134 @@ begin
   Result := '';
   if not ASlot.HasEnd and ASlot.Following then
     Result := ALineBreak + ASlot.CaseIndent + 'end;';
+end;
+
+function Contains(ANode: TSyntaxNode; const APosition: TTextPosition): Boolean;
+begin
+  Result := (Compare(ANode.StartPos, APosition) <= 0) and (Compare(APosition, ANode.EndPos) <= 0);
+end;
+
+class function TCaseCompletion.CaseAt(ATree: TSyntaxTree; const APosition: TTextPosition): TSyntaxNode;
+var
+  Node: TSyntaxNode;
+  Index: Integer;
+  Descended: Boolean;
+begin
+  Result := nil;
+  if (ATree = nil) or (ATree.Root = nil) then
+    Exit;
+  Node := ATree.Root;
+  repeat
+    Descended := False;
+    for Index := 0 to Node.ChildCount - 1 do
+      if Contains(Node[Index], APosition) then
+      begin
+        Node := Node[Index];
+        if Node.Kind = TSyntaxKind.CaseStatement then
+          Result := Node;
+        Descended := True;
+        Break;
+      end;
+  until not Descended;
+end;
+
+/// <summary>Index des ersten Tokens ab AOffset.</summary>
+function TokenAt(const ATokens: TArray<TPascalToken>; AOffset: Integer): Integer;
+begin
+  Result := 0;
+  while (Result <= High(ATokens)) and (ATokens[Result].Offset < AOffset) do
+    Inc(Result);
+end;
+
+class function TCaseCompletion.OfPosition(ATree: TSyntaxTree; ACase: TSyntaxNode;
+  out APosition: TTextPosition): Boolean;
+var
+  Tokens: TArray<TPascalToken>;
+  Index, Parens: Integer;
+begin
+  Result := False;
+  Tokens := ATree.Tokens;
+  Index := TokenAt(Tokens, ACase.StartOffset);
+  Parens := 0;
+  while (Index <= High(Tokens)) and (Tokens[Index].Offset < ACase.EndOffset) do
+  begin
+    if Tokens[Index].IsSymbol('(') or Tokens[Index].IsSymbol('[') then
+      Inc(Parens)
+    else if Tokens[Index].IsSymbol(')') or Tokens[Index].IsSymbol(']') then
+      Dec(Parens)
+    else if (Parens = 0) and Tokens[Index].IsKeyword('of') then
+    begin
+      APosition := Tokens[Index].EndPos;
+      Exit(True);
+    end;
+    Inc(Index);
+  end;
+end;
+
+class function TCaseCompletion.Complete(const AText: string; ATree: TSyntaxTree; ACase: TSyntaxNode;
+  const AValues: TArray<string>; const APrefix: string; out AEdits: TArray<TTextEdit>; out ACount: Integer;
+  out AHasElse: Boolean): Boolean;
+var
+  Tokens: TArray<TPascalToken>;
+  OfPos: TTextPosition;
+  Slot: TCaseBranchSlot;
+  Absent: TArray<string>;
+  ElseNode: TSyntaxNode;
+  Anchor, Before, Index: Integer;
+  LineBreak, Branches, Semicolon: string;
+begin
+  AEdits := nil;
+  ACount := 0;
+  AHasElse := False;
+  Result := False;
+  if (ACase = nil) or not OfPosition(ATree, ACase, OfPos) then
+    Exit;
+  Tokens := ATree.Tokens;
+  if not BranchSlot(AText, Tokens, OfPos, Slot) or not Slot.HasEnd or not Missing(AValues, Slot.Labels, Absent) or
+    (Absent = nil) then
+    Exit;
+  // Anker: "else" der case-Anweisung, sonst ihr "end".
+  ElseNode := ACase.FindChild(TSyntaxKind.CaseElse);
+  AHasElse := ElseNode <> nil;
+  if AHasElse then
+    Anchor := TokenAt(Tokens, ElseNode.StartOffset)
+  else
+  begin
+    Anchor := TokenAt(Tokens, ACase.EndOffset) - 1;
+    while (Anchor >= 0) and IsTrivia(Tokens[Anchor]) do
+      Dec(Anchor);
+  end;
+  if (Anchor < 0) or (Anchor > High(Tokens)) or not (Tokens[Anchor].IsKeyword('else') or
+    Tokens[Anchor].IsKeyword('end')) then
+    Exit;
+  Before := Prev(Tokens, Anchor);
+  if Before < 0 then
+    Exit;
+  if Pos(#13#10, AText) > 0 then
+    LineBreak := #13#10
+  else
+    LineBreak := #10;
+  Semicolon := '';
+  if not (Tokens[Before].IsSymbol(';') or Tokens[Before].IsKeyword('of')) then
+    Semicolon := ';';
+  Branches := '';
+  for Index := 0 to High(Absent) do
+    Branches := Branches + LineBreak + Slot.BranchIndent + APrefix + Absent[Index] + ': ;';
+  // Vom letzten Token davor (auch einem Kommentar) bis vor den Anker: neue Zeilen, dann der Anker in der
+  // Einrückung von case. Das fehlende ";" gehört hinter den Zweig, nicht hinter seinen Kommentar.
+  if Before = Anchor - 1 then
+    AEdits := [TTextEdit.Create(TTextRange.Create(Tokens[Before].EndPos, Tokens[Anchor].StartPos),
+      Semicolon + Branches + LineBreak + Slot.CaseIndent)]
+  else
+  begin
+    AEdits := [TTextEdit.Create(TTextRange.Create(Tokens[Anchor - 1].EndPos, Tokens[Anchor].StartPos),
+      Branches + LineBreak + Slot.CaseIndent)];
+    if Semicolon <> '' then
+      AEdits := AEdits + [TTextEdit.Create(TTextRange.Create(Tokens[Before].EndPos, Tokens[Before].EndPos),
+        Semicolon)];
+  end;
+  ACount := Length(Absent);
+  Result := True;
 end;
 
 end.

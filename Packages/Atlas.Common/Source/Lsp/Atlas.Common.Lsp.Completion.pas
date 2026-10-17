@@ -97,6 +97,9 @@ type
 
   /// <summary>Zeitmessung je Anfrage (#616), z. B. für ILogger.Debug.</summary>
   TCompletionLogProc = reference to procedure(const AText: string);
+  /// <summary>„with auflösen“ über Strg+Leer auf with (#50): Änderungen für die with-Anweisung am Cursor; False
+  /// ohne Angebot.</summary>
+  TCompletionWithFunc = reference to function(ARequest: TCompletionRequest; out AEdits: TArray<TTextEdit>): Boolean;
 
   /// <summary>Ergebnis eines Falls der Vervollständigung (Code-Review S-01): weiter mit dem nächsten Fall oder
   /// fertig mit TCompletionAnswer.Exclusive.</summary>
@@ -149,6 +152,7 @@ type
     FReadText: TCompletionReadText;
     FSlashCommandsFor: TSlashCommandsProvider;
     FPostfixFor: TPostfixOptionsFunc;
+    FWithFor: TCompletionWithFunc;
     FHintsFor: TDocHintsProvider;
     FNotify: TCompletionNotifyProc;
     FLog: TCompletionLogProc;
@@ -254,6 +258,11 @@ type
     /// <summary>Wie oben, mit Baum, Resolver, Index, ReadText und Matching aus ARequest.</summary>
     class function EnumItems(ARequest: TCompletionRequest; out AItems: TArray<TCompletionItem>;
       out ASetMode: Boolean): Boolean; overload; static;
+    /// <summary>„case vervollständigen“ (#50): Werte der Aufzählung, über die die case-Anweisung verzweigt, deren
+    /// "of" vor APosition endet; APrefix ist "TAlign." bei {$SCOPEDENUMS ON}. False ohne Aufzählungstyp.</summary>
+    class function CaseValues(AResolver: TNameResolver; const AIndex: ISymbolIndex; ATree: TSyntaxTree;
+      const AText, AFileName: string; const APosition: TTextPosition; const AReadText: TCompletionReadText;
+      out AValues: TArray<string>; out APrefix: string): Boolean; static;
     /// <summary>Unbekannter Name am Cursor im Rumpf einer Routine (#471): lokale Variable (mit AInlineVar auch als
     /// Inline-var), Feld der Klasse (F-Konvention, die Verwendung wird umbenannt) und, wenn der Name als Wert
     /// dient, Konstante in der implementation. Typ aus der rechten Seite einer Zuweisung, sonst aus dem
@@ -360,6 +369,8 @@ type
     property SlashCommandsFor: TSlashCommandsProvider read FSlashCommandsFor write FSlashCommandsFor;
     /// <summary>Postfix-Vorlagen je Dokument (#188); ohne Zuweisung an und mit Inline-Variable.</summary>
     property PostfixFor: TPostfixOptionsFunc read FPostfixFor write FPostfixFor;
+    /// <summary>„with auflösen“ auf dem Wort with (#50); ohne Zuweisung kein Eintrag.</summary>
+    property WithFor: TCompletionWithFunc read FWithFor write FWithFor;
     /// <summary>Anzeige von XMLDoc (#654) als data.atlas.xmlDoc; ohne Zuweisung fehlt das Feld.</summary>
     property HintsFor: TDocHintsProvider read FHintsFor write FHintsFor;
     /// <summary>Für Teilergebnisse über $/progress (#616); ohne Zuweisung kommt alles in der Antwort.</summary>
@@ -1649,6 +1660,48 @@ begin
   Result := False;
 end;
 
+/// <summary>„with auflösen“ (#50) als Eintrag, wenn der Cursor auf dem Wort with steht: die Hauptänderung
+/// entfernt das Wort (eine Zeile, mit dem Cursor), der Rest der Anweisung kommt als Zusatzänderung.</summary>
+function WithItem(ARequest: TCompletionRequest; const AWithFor: TCompletionWithFunc;
+  out AItem: TCompletionItem): Boolean;
+var
+  Tokens: TArray<TPascalToken>;
+  Index: Integer;
+  Edits: TArray<TTextEdit>;
+  Edit: TTextEdit;
+  Found: Boolean;
+begin
+  AItem := Default(TCompletionItem);
+  Result := False;
+  Tokens := ARequest.Tree.Tokens;
+  Index := 0;
+  while (Index <= High(Tokens)) and (ComparePositions(Tokens[Index].EndPos, ARequest.Position) < 0) do
+    Inc(Index);
+  if (Index > High(Tokens)) or not Tokens[Index].IsKeyword('with') or
+    (ComparePositions(Tokens[Index].StartPos, ARequest.Position) > 0) or not AWithFor(ARequest, Edits) then
+    Exit;
+  AItem.Name := 'with auflösen';
+  AItem.Kind := KindSnippet;
+  AItem.Detail := 'Atlas';
+  AItem.Fits := True;
+  AItem.Pinned := True;
+  AItem.Action := 'with';
+  AItem.HasTextEdit := True;
+  AItem.TextEdit := TRuleEdit.Create(TTextRange.Create(Tokens[Index].StartPos, Tokens[Index].EndPos), '');
+  Found := False;
+  for Edit in Edits do
+    if (Edit.Range.StartPos.Line = Tokens[Index].StartPos.Line) and
+      (Edit.Range.StartPos.Character = Tokens[Index].StartPos.Character) then
+    begin
+      AItem.AdditionalEdits := AItem.AdditionalEdits + [TRuleEdit.Create(TTextRange.Create(Tokens[Index].EndPos,
+        Edit.Range.EndPos), Edit.NewText)];
+      Found := True;
+    end
+    else
+      AItem.AdditionalEdits := AItem.AdditionalEdits + [Edit];
+  Result := Found;
+end;
+
 /// <summary>Hängt ACase an ACases an.</summary>
 procedure AddCase(var ACases: TArray<TCompletionCase>; const ACase: TCompletionCase);
 begin
@@ -1698,6 +1751,16 @@ begin
         AAnswer.Exclusive)) then
         AAnswer.Exclusive := Default(TCompletionItems);
       Result := TCompletionOutcome.Answered;
+    end);
+  // with auflösen (#50): auf dem Wort with oben in der Liste, die übrige Liste bleibt.
+  AddCase(FTreeCases,
+    function(ARequest: TCompletionRequest; AAnswer: TCompletionAnswer): TCompletionOutcome
+    var
+      Item: TCompletionItem;
+    begin
+      Result := TCompletionOutcome.Next;
+      if Assigned(FWithFor) and WithItem(ARequest, FWithFor, Item) then
+        AAnswer.Hints := AAnswer.Hints + [Item];
     end);
   // Methoden überschreiben (#443) vor der allgemeinen Vervollständigung.
   AddCase(FTreeCases,
@@ -3931,6 +3994,32 @@ begin
       Item.Expected := Expected;
       AItems := AItems + [Item];
     end;
+  Result := True;
+end;
+
+class function TLspCompletion.CaseValues(AResolver: TNameResolver; const AIndex: ISymbolIndex; ATree: TSyntaxTree;
+  const AText, AFileName: string; const APosition: TTextPosition; const AReadText: TCompletionReadText;
+  out AValues: TArray<string>; out APrefix: string): Boolean;
+var
+  Expected: string;
+  TypeInfo: TResolvedSymbol;
+  Enum: TEnumType;
+begin
+  AValues := nil;
+  APrefix := '';
+  Result := False;
+  if ATree = nil then
+    Exit;
+  // Am Anfang eines Zweigs ist der erwartete Typ der des Selektors (#448).
+  Expected := ExpectedType(AResolver, ATree, AFileName, APosition);
+  if Expected = '' then
+    Exit;
+  TypeInfo := TypeAt(AResolver, AIndex, ATree, AFileName, OffsetOf(AText, APosition), Expected);
+  if not EnumOf(AResolver, AIndex, ATree, AText, AFileName, TypeInfo, AReadText, False, Enum) then
+    Exit;
+  AValues := Enum.Values;
+  if Enum.Scoped then
+    APrefix := Enum.Name + '.';
   Result := True;
 end;
 
