@@ -73,6 +73,8 @@ type
     procedure WriteFiles(const AUri: string; const AFiles: TArray<TSlashFile>; const AShow: string);
     function Setting(const AUri, AName: string): string;
     function TestUnit(const AUri, AText: string; out ATarget: TSlashTestUnit): Boolean;
+    procedure Notify(const AUri, AMessage: string);
+    procedure MoveCursor(const AUri: string; const APosition: TTextPosition);
     /// <summary>Einstellungen slashCommands.* zur Datei (#299, #304); ohne Zuweisung ''.</summary>
     property SettingOf: TSlashSettingFunc read FSettingOf write FSettingOf;
     /// <summary>Testunit zur Unit (/test, #295); ohne Zuweisung keine.</summary>
@@ -323,6 +325,48 @@ begin
     Exit(False);
   end;
   Result := FTestUnitOf(AUri, AText, ATarget);
+end;
+
+procedure TShellSlashHost.Notify(const AUri, AMessage: string);
+var
+  Transport: IJsonRpcTransport;
+  Text: string;
+begin
+  // Erst nach der Antwort mit den Änderungen (Nachrichtenschleife), damit der Hinweis zu ihnen passt.
+  Transport := FTransport;
+  Text := 'Atlas: ' + AMessage;
+  InLoop(
+    procedure
+    var
+      Message: TJSONObject;
+    begin
+      Message := TJSONObject.Create;
+      try
+        Message.AddPair('jsonrpc', '2.0');
+        Message.AddPair('method', 'window/showMessage');
+        Message.AddPair('params', TJSONObject.Create.AddPair('type', TJSONNumber.Create(3)).AddPair('message', Text));
+        Transport.WriteMessage(Message);
+      finally
+        Message.Free;
+      end;
+    end);
+end;
+
+procedure TShellSlashHost.MoveCursor(const AUri: string; const APosition: TTextPosition);
+var
+  Transport: IJsonRpcTransport;
+  FileName: string;
+  Target: TTextRange;
+begin
+  // Wie Notify erst nach der Antwort: Die Position gilt im Text mit den Änderungen.
+  Transport := FTransport;
+  FileName := TDocumentUris.ToPath(AUri);
+  Target := TTextRange.Create(APosition, APosition);
+  InLoop(
+    procedure
+    begin
+      SendShowDocument(Transport, FileName, Target);
+    end);
 end;
 
 procedure TShellSlashHost.WriteFiles(const AUri: string; const AFiles: TArray<TSlashFile>; const AShow: string);

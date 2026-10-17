@@ -152,6 +152,7 @@ uses
   Atlas.Tests.LeakMonitor in 'Support\Atlas.Tests.LeakMonitor.pas',
   Atlas.Tests.LeakMonitor.Tests in 'Support\Atlas.Tests.LeakMonitor.Tests.pas',
   Atlas.Tests.RuleAssert in 'Support\Atlas.Tests.RuleAssert.pas',
+  Atlas.Tests.SlashHost in 'Support\Atlas.Tests.SlashHost.pas',
   Atlas.Common.Rules.Engine.Tests in 'Common\Rules\Atlas.Common.Rules.Engine.Tests.pas',
   Atlas.Common.Rules.Derived.Tests in 'Common\Rules\Atlas.Common.Rules.Derived.Tests.pas',
   Atlas.Common.Rules.GoldenCorpus.Tests in 'Common\Rules\Atlas.Common.Rules.GoldenCorpus.Tests.pas',

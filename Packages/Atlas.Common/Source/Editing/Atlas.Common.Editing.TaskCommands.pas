@@ -90,12 +90,102 @@ end;
 
 { /task }
 
+/// <summary>Lokale Variablen von ARoutine: var-Abschnitt und Inline-Variablen vor Zeile ABefore.</summary>
+function LocalNames(ARoutine: TSyntaxNode; ABefore: Integer): TArray<string>;
+var
+  Names: TArray<string>;
+
+  procedure Collect(ANode: TSyntaxNode; AInSection: Boolean);
+  var
+    Index: Integer;
+  begin
+    if ANode.StartPos.Line >= ABefore then
+      Exit;
+    if ((ANode.Kind = TSyntaxKind.VarDecl) and AInSection) or (ANode.Kind = TSyntaxKind.InlineVar) then
+      if (ANode.Name <> '') and not MatchText(ANode.Name, Names) then
+        Names := Names + [ANode.Name];
+    // Anonyme Methoden und lokale Routinen haben eigene Variablen.
+    if (ANode <> ARoutine) and (ANode.Kind in [TSyntaxKind.AnonymousMethod, TSyntaxKind.RoutineDecl]) then
+      Exit;
+    for Index := 0 to ANode.ChildCount - 1 do
+      Collect(ANode[Index], AInSection or ((ANode = ARoutine) and (ANode[Index].Kind = TSyntaxKind.VarSection)));
+  end;
+
+begin
+  Names := nil;
+  Collect(ARoutine, False);
+  Result := Names;
+end;
+
+/// <summary>Ziele der Zuweisungen und von Inc/Dec in ATokens.</summary>
+function WrittenNames(const ATokens: TTokens): TArray<string>;
+var
+  Index, Prev: Integer;
+begin
+  Result := nil;
+  for Index := 0 to High(ATokens) do
+  begin
+    if ATokens[Index].IsSymbol(':=') and (Index > 0) then
+    begin
+      Prev := Index - 1;
+      if (ATokens[Prev].Kind = TPascalTokenKind.Identifier) and ((Prev = 0) or ATokens[Prev - 1].IsSymbol(';') or
+        (ATokens[Prev - 1].Kind = TPascalTokenKind.Keyword)) and not MatchText(ATokens[Prev].Text, Result) then
+        Result := Result + [ATokens[Prev].Text];
+    end;
+    if MatchText(ATokens[Index].Text, ['Inc', 'Dec']) and (Index + 2 <= High(ATokens)) and
+      ATokens[Index + 1].IsSymbol('(') and (ATokens[Index + 2].Kind = TPascalTokenKind.Identifier) and
+      not MatchText(ATokens[Index + 2].Text, Result) then
+      Result := Result + [ATokens[Index + 2].Text];
+  end;
+end;
+
+function LinesText(ASource: TCommandSource; AFirst, ALast: Integer): string;
+var
+  Line: Integer;
+begin
+  Result := '';
+  for Line := AFirst to ALast do
+    Result := Result + ASource.Lines[Line] + #10;
+end;
+
+/// <summary>Lokale Variablen, die in den Zeilen AFirst..ALast (dem Task) geschrieben und nach ALast in der Routine
+/// noch gelesen werden (#143): Der Task läuft nebenläufig, das Lesen sieht den Wert nicht sicher.</summary>
+function ReadAfterTask(ASource: TCommandSource; ARoutine: TSyntaxNode; AFirst, ALast: Integer): TArray<string>;
+var
+  Locals, Written: TArray<string>;
+  After: TTokens;
+  Name: string;
+  Index: Integer;
+begin
+  Result := nil;
+  Locals := LocalNames(ARoutine, ASource.Line);
+  Written := WrittenNames(TPascalLexer.Tokenize(LinesText(ASource, AFirst, ALast)));
+  if ALast + 1 > ARoutine.EndPos.Line then
+    Exit;
+  After := TPascalLexer.Tokenize(LinesText(ASource, ALast + 1, ARoutine.EndPos.Line));
+  for Name in Written do
+  begin
+    if not MatchText(Name, Locals) then
+      Continue;
+    for Index := 0 to High(After) do
+      if (After[Index].Kind = TPascalTokenKind.Identifier) and SameText(After[Index].Text, Name) and
+        ((Index = High(After)) or not After[Index + 1].IsSymbol(':=')) then
+      begin
+        Result := Result + [Name];
+        Break;
+      end;
+  end;
+end;
+
 function ExecuteTask(const AContext: TSlashContext; out AEdits: TArray<TTextEdit>; out AReason: string): Boolean;
 var
   Source: TCommandSource;
   Types: TDeclaredTypes;
   First, Last, Split, Line: Integer;
-  Indent, LB, Text: string;
+  Indent, LB, Text, Uri: string;
+  Notes: TArray<string>;
+  Host: ISlashHost;
+  ReadAfter: TArray<string>;
 begin
   AEdits := nil;
   Source := TCommandSource.Create(AContext);
@@ -136,6 +226,29 @@ begin
     Text := Text + Indent + '  end);' + LB;
     AEdits := [TTextEdit.Create(TTextRange.Create(Source.Line, 0, Last + 1, 0), Text)];
     AddUses(Source, AContext, Source.Line, ['System.Threading', 'System.Classes'], AEdits);
+    // Hinweise: welche Zeilen in den Hauptthread wandern und welche Variablen danach gelesen werden.
+    Notes := nil;
+    if Split = Last then
+      Notes := Notes + [Format('Zeile %d fasst VCL-Objekte an und läuft jetzt über TThread.Queue im Hauptthread',
+        [Split + 1])]
+    else if Split < Last then
+      Notes := Notes + [Format('Zeilen %d bis %d fassen VCL-Objekte an und laufen jetzt über TThread.Queue im ' +
+        'Hauptthread', [Split + 1, Last + 1])];
+    ReadAfter := ReadAfterTask(Source, Source.RoutineAt, First, Last);
+    if Length(ReadAfter) > 0 then
+      Notes := Notes + [Format('%s wird im Task geschrieben und danach gelesen; der Task läuft nebenläufig, ' +
+        'der Wert steht dort nicht sicher fest', [string.Join(', ', ReadAfter)])];
+    Host := AContext.Host;
+    Uri := AContext.Uri;
+    if (Host <> nil) and (Length(Notes) > 0) then
+    begin
+      Text := '/task: ' + string.Join('. ', Notes) + '.';
+      AContext.Defer(
+        procedure
+        begin
+          Host.Notify(Uri, Text);
+        end);
+    end;
     Result := True;
   finally
     Source.Free;
@@ -296,11 +409,32 @@ end;
 
 { /future }
 
+/// <summary>Zeilenzahl, um die AEdits den Text vor Zeile ALine verlängern.</summary>
+function LinesAddedBefore(const AEdits: TArray<TTextEdit>; ALine: Integer): Integer;
+var
+  Edit: TTextEdit;
+  Added, Index: Integer;
+begin
+  Result := 0;
+  for Edit in AEdits do
+    if Edit.Range.EndPos.Line <= ALine then
+    begin
+      Added := 0;
+      for Index := 1 to Length(Edit.NewText) do
+        if Edit.NewText[Index] = #10 then
+          Inc(Added);
+      Inc(Result, Added - (Edit.Range.EndPos.Line - Edit.Range.StartPos.Line));
+    end;
+end;
+
 function ExecuteFuture(const AContext: TSlashContext; out AEdits: TArray<TTextEdit>; out AReason: string): Boolean;
 var
   Source: TCommandSource;
-  Name, TypeName, Head: string;
+  Name, TypeName, Head, Uri, Indent: string;
   UseInline: Boolean;
+  Stop: Integer;
+  Host: ISlashHost;
+  Cursor: TTextPosition;
 begin
   AEdits := nil;
   if not SplitDeclaration(AContext.Arguments, ':', Name, TypeName) then
@@ -312,7 +446,9 @@ begin
       Head := Format('var %s := TTask.Future<%s>(', [Name, TypeName])
     else
       Head := Format('%s := TTask.Future<%s>(', [Name, TypeName]);
-    Result := Wrap(Source, 'future', [Head, Format('  function: %s', [TypeName]), '  begin'], ['  end);'], '    ',
+    // Zeile hinter dem Future, an der Name.Value gebraucht wird; dorthin kommt der Cursor.
+    Stop := BlockEnd(Source, Source.Line);
+    Result := Wrap(Source, 'future', [Head, Format('  function: %s', [TypeName]), '  begin'], ['  end);', ''], '    ',
       AEdits, AReason);
     if not Result then
       Exit;
@@ -321,6 +457,19 @@ begin
       AEdits := AEdits + [AddLocal(Source, Source.RoutineAt, TSyntaxKind.VarSection, 'var',
         Format('%s: IFuture<%s>;', [Name, TypeName]))];
     AddUses(Source, AContext, Source.Line, ['System.Threading'], AEdits);
+    Host := AContext.Host;
+    if (Host <> nil) and (Stop > 0) then
+    begin
+      // Die leere Zeile am Ende des Futures steht im neuen Text vor der Zeile Stop.
+      Indent := Source.Indent(Source.Line);
+      Cursor := TTextPosition.Create(Stop - 1 + LinesAddedBefore(AEdits, Stop), Length(Indent));
+      Uri := AContext.Uri;
+      AContext.Defer(
+        procedure
+        begin
+          Host.MoveCursor(Uri, Cursor);
+        end);
+    end;
   finally
     Source.Free;
   end;

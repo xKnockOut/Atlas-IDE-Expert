@@ -105,6 +105,8 @@ type
     procedure WriteFiles(const AUri: string; const AFiles: TArray<TSlashFile>; const AShow: string);
     function Setting(const AUri, AName: string): string;
     function TestUnit(const AUri, AText: string; out ATarget: TSlashTestUnit): Boolean;
+    procedure Notify(const AUri, AMessage: string);
+    procedure MoveCursor(const AUri: string; const APosition: TTextPosition);
   end;
 
 const
@@ -246,6 +248,14 @@ begin
   ATarget := TestTarget;
   ATarget.Reason := TestReason;
   Result := TestReason = '';
+end;
+
+procedure TFakeHost.Notify(const AUri, AMessage: string);
+begin
+end;
+
+procedure TFakeHost.MoveCursor(const AUri: string; const APosition: TTextPosition);
+begin
 end;
 
 function Run(const ACommand: string; const AHost: ISlashHost; out AEdits: TArray<TRuleEdit>): Boolean;
