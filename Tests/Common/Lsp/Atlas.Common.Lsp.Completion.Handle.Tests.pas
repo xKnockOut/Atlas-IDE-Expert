@@ -45,6 +45,8 @@ type
     [Test]
     procedure SlashCommandComesFirst;
     [Test]
+    procedure SlashSortOffersCollectionsThenMembers;
+    [Test]
     procedure DataNameInStringIsExclusive;
     [Test]
     procedure GuardTriggerOffersOnlyGuard;
@@ -289,6 +291,43 @@ begin
     for Index := 0 to ItemCount(Answer) - 1 do
       Assert.AreEqual(14, ItemAt(Answer, Index).GetValue<Integer>('kind'));
     Assert.IsFalse(Answer.ToJSON.Contains('"Wert"'), Answer.ToJSON);
+  finally
+    Answer.Free;
+  end;
+end;
+
+procedure TLspCompletionHandleTests.SlashSortOffersCollectionsThenMembers;
+const
+  Source =
+    'unit Haupt;'#13#10 +
+    'interface'#13#10 +
+    'type'#13#10 +
+    '  TKunde = class'#13#10 +
+    '  public'#13#10 +
+    '    Name: string;'#13#10 +
+    '    Umsatz: Double;'#13#10 +
+    '  end;'#13#10 +
+    'implementation'#13#10 +
+    'procedure Laden(Kunden: TList<TKunde>);'#13#10 +
+    'var'#13#10 +
+    '  Wert: Integer;'#13#10 +
+    'begin'#13#10 +
+    '  %s|'#13#10 +
+    'end;'#13#10 +
+    'end.';
+var
+  Answer: TJSONObject;
+begin
+  // #319: nach /sort die Sammlungen, nach der Sammlung die Mitglieder des Elementtyps.
+  Answer := Complete(Format(Source, ['/sort ']));
+  try
+    Assert.AreEqual('Kunden', Labels(Answer));
+  finally
+    Answer.Free;
+  end;
+  Answer := Complete(Format(Source, ['/filter Kunden Ums']));
+  try
+    Assert.AreEqual('Name Umsatz', Labels(Answer));
   finally
     Answer.Free;
   end;
