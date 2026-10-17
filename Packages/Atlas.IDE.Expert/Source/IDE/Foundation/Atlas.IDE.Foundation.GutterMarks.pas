@@ -10,7 +10,8 @@
 //   Schichten (IconRect). Rechteck, Zeile und Symbole jeder gezeichneten
 //   Rinnenzeile werden gemerkt.
 // - Überfahren eines Symbols zeigt nach HoverMs den Tooltip seiner Schicht
-//   (TAtlasNoteTip).
+//   (TAtlasNoteTip), auf Wunsch der Schicht mit anklickbaren Links darunter
+//   (TipLinks, OpenLink; etwa die Kette der Rekursionssymbole #623).
 // - Rechtsklick in die Rinne merkt die Zeile für die Befehle im
 //   Atlas-Untermenü des Kontextmenüs (TakeLine, höchstens LineMs alt, gleiche
 //   Datei); jeder andere Klick vergisst sie.
@@ -67,6 +68,10 @@ type
       ABack: TAtlasColor); virtual; abstract;
     /// <summary>Überschrift und Text des Tooltips; False ohne Markierung.</summary>
     function TipText(const AFileName: string; ALine: Integer; out ATitle, AText: string): Boolean; virtual; abstract;
+    /// <summary>Links unter dem Text des Tooltips; ohne Überschreiben keine.</summary>
+    function TipLinks(const AFileName: string; ALine: Integer): TArray<string>; virtual;
+    /// <summary>Klick auf Link Nummer AIndex (ab 0) des Tooltips an ALine.</summary>
+    procedure OpenLink(const AFileName: string; ALine, AIndex: Integer); virtual;
   end;
 
   TAtlasIdeGutterMarks = class
@@ -162,6 +167,18 @@ uses
   Atlas.IDE.Foundation.EditorStyle,
   Atlas.IDE.Foundation.Elements;
 
+{ TAtlasGutterLayer }
+
+function TAtlasGutterLayer.TipLinks(const AFileName: string; ALine: Integer): TArray<string>;
+begin
+  Result := nil;
+end;
+
+procedure TAtlasGutterLayer.OpenLink(const AFileName: string; ALine, AIndex: Integer);
+begin
+  // Ohne Links nichts zu tun.
+end;
+
 { TAtlasIdeGutterMarks.TEvents }
 
 function TAtlasIdeGutterMarks.TEvents.AllowedEvents: TCodeEditorEvents;
@@ -212,6 +229,7 @@ begin
   FEvents.OnEditorMouseMove := nil;
   FEvents.OnEditorMouseDown := nil;
   FEventsRef := nil;
+  FTip.OnLink := nil;
   FTip.Free;
   FRows.Free;
   FLayers.Free;
@@ -576,7 +594,8 @@ end;
 procedure TAtlasIdeGutterMarks.ShowTip;
 var
   Layer: TAtlasGutterLayer;
-  Title, Text: string;
+  Title, Text, FileName: string;
+  Line: Integer;
 begin
   if (FHoverLayer < 0) or (FHoverLayer >= FLayers.Count) then
   begin
@@ -590,8 +609,18 @@ begin
     Exit;
   end;
   FTip.GuardFeature := Layer.Feature;
+  FileName := FHover.FileName;
+  Line := FHover.Line;
+  // Ein Klick auf einen Link geht an die Schicht; danach schließt der Tooltip.
+  FTip.OnLink :=
+    procedure(AIndex: Integer)
+    begin
+      HideTip;
+      FHovering := False;
+      Layer.OpenLink(FileName, Line, AIndex);
+    end;
   TAtlasIdeStyle.Apply(FTip, FHoverScreen);
-  FTip.ShowNote(Title, Text, Point(FHoverScreen.Right + 4, FHoverScreen.Bottom + 2));
+  FTip.ShowNote(Title, Text, Layer.TipLinks(FileName, Line), Point(FHoverScreen.Right + 4, FHoverScreen.Bottom + 2));
 end;
 
 procedure TAtlasIdeGutterMarks.HideTip;

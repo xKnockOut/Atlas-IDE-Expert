@@ -98,6 +98,7 @@
         <DCCReference Include="Common\Index\Atlas.Common.Index.Memory.Tests.pas"/>
         <DCCReference Include="Common\Index\Atlas.Common.Index.Content.Tests.pas"/>
         <DCCReference Include="Common\Semantics\Atlas.Common.Semantics.ControlFlow.Tests.pas"/>
+        <DCCReference Include="Common\Semantics\Atlas.Common.Semantics.Recursion.Tests.pas"/>
         <DCCReference Include="Common\Semantics\Atlas.Common.Semantics.NameResolver.Tests.pas"/>
         <DCCReference Include="Common\Semantics\Atlas.Common.Semantics.Attributes.Tests.pas"/>
         <DCCReference Include="Common\Semantics\Atlas.Common.Semantics.NameResolverStage2.Tests.pas"/>
@@ -147,6 +148,7 @@
         <DCCReference Include="Common\Todos\Atlas.Common.Todos.Report.Tests.pas"/>
         <DCCReference Include="Common\Rules\Builtin\Atlas.Common.Rules.Builtin.Todos.Tests.pas"/>
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.Todos.Tests.pas"/>
+        <DCCReference Include="Common\Rules\Builtin\Atlas.Common.Rules.Builtin.Recursion.Tests.pas"/>
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.Baseline.Tests.pas"/>
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.SemanticTokens.Tests.pas"/>
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.WorkspaceSymbols.Tests.pas"/>
@@ -663,6 +665,7 @@
         <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Problems\Atlas.Core.Problems.Store.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Problems.Tests.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Problems.Inline.Tests.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.Core.Editor.Recursion.Tests.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Editor.Pairs.Tests.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Editor.SnapshotPolicy.Tests.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Editor.CloseRules.Tests.pas"/>
