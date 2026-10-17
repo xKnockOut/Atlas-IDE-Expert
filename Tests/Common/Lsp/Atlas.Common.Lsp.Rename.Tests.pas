@@ -45,6 +45,8 @@ type
     [Test]
     procedure RenamesHandlersInFmxViews;
     [Test]
+    procedure RenamesHandlerMethodInFmxViews;
+    [Test]
     procedure RejectsParameterThatWouldHideField;
     [Test]
     procedure RejectsFieldThatWouldBeHiddenByLocal;
@@ -424,6 +426,31 @@ begin
   // Objektname und Zuordnung OnClick in beiden Formularen.
   Assert.AreEqual(2, Fmx);
   Assert.AreEqual(2, Windows);
+end;
+
+procedure TLspRenameTests.RenamesHandlerMethodInFmxViews;
+var
+  Edit: TRenameEdit;
+  Fmx, Windows: Integer;
+begin
+  // Abnahme #87: Umbenennen von Button1Click ändert die Zuordnung in Maske.fmx und Maske.Windows.fmx.
+  Fmx := 0;
+  Windows := 0;
+  for Edit in FormEdits('Button1Click(Sender', 'Speichern', False, True) do
+    if SameText(Edit.FileName, MaskeFmx) then
+    begin
+      Inc(Fmx);
+      Assert.AreEqual('Speichern', Edit.NewText);
+    end
+    else if SameText(Edit.FileName, MaskeWindowsFmx) then
+    begin
+      Inc(Windows);
+      Assert.AreEqual('Speichern', Edit.NewText);
+    end
+    else
+      Assert.AreEqual(MaskeFile, Edit.FileName, 'nur Unit und Formulare');
+  Assert.AreEqual(1, Fmx);
+  Assert.AreEqual(1, Windows);
 end;
 
 procedure TLspRenameTests.RejectsParameterThatWouldHideField;

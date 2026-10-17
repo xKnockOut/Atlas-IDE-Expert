@@ -24,6 +24,8 @@ type
     [Test]
     procedure JumpsFromEventToImplementation;
     [Test]
+    procedure JumpsFromPlatformViewToUnit;
+    [Test]
     procedure JumpsFromComponentToField;
     [Test]
     procedure JumpsFromFormToClass;
@@ -207,6 +209,20 @@ begin
   Assert.AreEqual(1, Integer(Length(Targets)));
   Assert.AreEqual('C:\P\Unit1.pas', Targets[0].FileName);
   Assert.AreEqual(8, Targets[0].SelectionRange.StartPos.Line);
+end;
+
+procedure TDfmTests.JumpsFromPlatformViewToUnit;
+var
+  Targets: TArray<TDfmTarget>;
+begin
+  // Abnahme #87: F12 auf einen Handler in Unit1.Windows.fmx springt in Unit1.pas, nicht Unit1.Windows.pas.
+  Targets := TDfmNavigation.Targets(Form, 'C:\P\Unit1.Windows.fmx', Position(8, 16), ReadUnit);
+  Assert.AreEqual(1, Integer(Length(Targets)));
+  Assert.AreEqual('C:\P\Unit1.pas', Targets[0].FileName);
+  Assert.AreEqual(8, Targets[0].SelectionRange.StartPos.Line);
+  Targets := TDfmNavigation.Targets(Form, 'C:\P\Unit1.Android.fmx', Position(8, 16), ReadUnit);
+  Assert.AreEqual(1, Integer(Length(Targets)));
+  Assert.AreEqual('C:\P\Unit1.pas', Targets[0].FileName);
 end;
 
 procedure TDfmTests.JumpsFromComponentToField;
