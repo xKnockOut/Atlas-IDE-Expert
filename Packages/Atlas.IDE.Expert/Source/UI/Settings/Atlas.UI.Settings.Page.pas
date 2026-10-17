@@ -294,6 +294,7 @@ type
     // Mehrere Einfügemarken (#589).
     FMultiCursor: TCheckBox;
     FLinkedEditing: TCheckBox;
+    FSmartPaste: TAtlasChoiceBox;
     FMultiCursorModifier: TAtlasChoiceBox;
     FMultiCursorNextKey: TEdit;
     FMultiCursorSkipKey: TEdit;
@@ -691,6 +692,7 @@ type
     property StickyScroll: TCheckBox read FStickyScroll;
     property StickyScrollMaxLines: TEdit read FStickyScrollMaxLines;
     property LinkedEditing: TCheckBox read FLinkedEditing;
+    property SmartPaste: TAtlasChoiceBox read FSmartPaste;
     property MultiCursorModifier: TAtlasChoiceBox read FMultiCursorModifier;
     property MultiCursorNextKey: TEdit read FMultiCursorNextKey;
     property MultiCursorSkipKey: TEdit read FMultiCursorSkipKey;
@@ -886,6 +888,7 @@ implementation
 
 uses
   System.Math,
+  System.StrUtils,
   Atlas.Core.Problems.Inline,
   Atlas.Core.Product.Version,
   Atlas.Core.Updates.Check,
@@ -1276,6 +1279,11 @@ begin
   FMultiCursorBelowKey := AddKey(TAtlasStrings.Text(TAtlasTextId.SettingsMultiCursorBelow));
   // Bezeichner live mitziehen (#658, experimentell).
   FLinkedEditing := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsLinkedEditing));
+  // Einfügen mit uses-Ergänzung (#515, experimentell).
+  FSmartPaste := AddChoice(TAtlasStrings.Text(TAtlasTextId.SettingsSmartPaste),
+    [TAtlasStrings.Text(TAtlasTextId.SettingsSmartPasteOff), TAtlasStrings.Text(TAtlasTextId.SettingsSmartPasteUses),
+    TAtlasStrings.Text(TAtlasTextId.SettingsSmartPasteIndent),
+    TAtlasStrings.Text(TAtlasTextId.SettingsSmartPasteBoth)]);
   FOverviewKinds[TAtlasOverviewKind.Bookmarks] := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsOverviewBookmarks));
   FOverviewKinds[TAtlasOverviewKind.Cursor] := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsOverviewCursor));
   // Rekursionssymbole im Rand (#623).
@@ -2258,6 +2266,7 @@ begin
   FMarks.Bind(FMultiCursorAboveKey, ['MultiCursorAboveKey']);
   FMarks.Bind(FMultiCursorBelowKey, ['MultiCursorBelowKey']);
   FMarks.Bind(FLinkedEditing, ['LinkedEditing']);
+  FMarks.Bind(FSmartPaste, ['SmartPaste']);
   FMarks.Bind(FBookmarkKey, ['BookmarkKey']);
   FMarks.Bind(FHideElementKey, ['HideElementKey']);
   FMarks.Bind(FNextProblemKey, ['NextProblemKey']);
@@ -3278,6 +3287,7 @@ begin
   FContinuePatternMinLines.Text := IntToStr(ASettings.ContinuePatternMinLines);
   FMultiCursor.Checked := ASettings.MultiCursor;
   FLinkedEditing.Checked := ASettings.LinkedEditing;
+  FSmartPaste.Choice := Max(0, IndexText(ASettings.SmartPaste, ['off', 'uses', 'indent', 'both']));
   FMultiCursorModifier.Choice := 0;
   if ASettings.MultiCursorModifier = TAtlasPluginSettings.MultiCursorModifierCtrl then
     FMultiCursorModifier.Choice := 1;
@@ -3619,6 +3629,15 @@ begin
   ASettings.ContinuePatternMinLines := StrToIntDef(FContinuePatternMinLines.Text, ASettings.ContinuePatternMinLines);
   ASettings.MultiCursor := FMultiCursor.Checked;
   ASettings.LinkedEditing := FLinkedEditing.Checked;
+  ASettings.SmartPaste := 'off';
+  case FSmartPaste.Choice of
+    1:
+      ASettings.SmartPaste := 'uses';
+    2:
+      ASettings.SmartPaste := 'indent';
+    3:
+      ASettings.SmartPaste := 'both';
+  end;
   ASettings.MultiCursorModifier := TAtlasPluginSettings.MultiCursorModifierAlt;
   if FMultiCursorModifier.Choice = 1 then
     ASettings.MultiCursorModifier := TAtlasPluginSettings.MultiCursorModifierCtrl;

@@ -164,6 +164,7 @@ uses
   Atlas.IDE.Editor.PatternContinuation,
   Atlas.IDE.Editor.MultiCursor,
   Atlas.IDE.Editor.LinkedEditing,
+  Atlas.IDE.Editor.SmartPaste,
   Atlas.Core.Editor.WorkspacePlan,
   Atlas.IDE.Foundation.Navigation;
 
@@ -227,6 +228,8 @@ begin
       TAtlasIdePatternContinuation.Dismiss;
       TAtlasIdeMultiCursor.Dismiss;
       TAtlasIdeLinkedEditing.Dismiss;
+      // Einfügen mit uses-Ergänzung (#515): Das Fenster gilt nur in seiner Ansicht.
+      TAtlasIdeSmartPaste.Dismiss;
     end);
 end;
 
@@ -259,6 +262,12 @@ begin
     procedure
     begin
       TAtlasIdeLinkedEditing.EditorModified(View);
+    end);
+  // Einfügen mit uses-Ergänzung (#515): nach einem Einfügen sehen, ein offenes Fenster schließen.
+  TAtlasGuard.Run(TAtlasFeature.EditorCommands,
+    procedure
+    begin
+      TAtlasIdeSmartPaste.EditorModified(View);
     end);
 end;
 
