@@ -17,6 +17,11 @@
 // mit der Quelle "dcc" dazu, auch für Dateien, die nicht geöffnet sind.
 // Include-Dateien (#264) sucht der Präprozessor über IncludePathsProvider;
 // ein Include-Zyklus ist eine Warnung, eine nicht gefundene Datei ein Hinweis.
+// Mit UsesProvider (#621) kommen ungenutzte uses-Einträge als Hinweise mit
+// dem Tag Unnecessary dazu („Aus Vcl.Grids wird nichts verwendet“), dazu ohne
+// Tag die, die wegen initialization oder "usesKeep" bleiben, und interface-
+// Einträge, die nur die implementation braucht; Unit und Zustand stehen in
+// data.uses. Inaktive Zweige zählen nicht. Bei Syntaxfehlern fehlen sie.
 
 interface
 
@@ -33,7 +38,8 @@ uses
   Atlas.Common.Rules.Baseline,
   Atlas.Common.Compiler.Contract,
   Atlas.Common.Lsp.InactiveRegions,
-  Atlas.Common.Lsp.Internals.Debouncer;
+  Atlas.Common.Lsp.Internals.Debouncer,
+  Atlas.Common.Editing.UsesActions;
 
 type
   /// <summary>Symbole für das Dokument AUri; False, wenn kein Projekt sie festlegt.
@@ -73,6 +79,8 @@ type
   TRuleContextProvider = reference to function(const AUri: string; out AContext: TRuleCheckContext): Boolean;
   /// <summary>Meldungen des letzten Compilerlaufs zur Datei AFileName. Hintergrund-Thread.</summary>
   TCompilerMessagesProvider = reference to function(const AFileName: string): TArray<TCompilerMessage>;
+  /// <summary>Index und Einstellungen für die uses-Prüfung (#284, #621); False ohne Index.</summary>
+  TUsesContextProvider = reference to function(const AUri: string; out AContext: TUsesContext): Boolean;
 
   TLspSyntaxDiagnostics = class
   public const
@@ -86,6 +94,11 @@ type
     InactiveMessage = 'Inaktiver Bereich (bedingte Kompilierung)';
     InactiveConditionMessage = 'Inaktiv: Bedingung %s nicht erfüllt';
     InactiveTargetSuffix = ' (Zielplattform %s · %s)';
+    /// <summary>Meldungen zu uses-Einträgen (#621).</summary>
+    UsesUnusedMessage = 'Aus %s wird nichts verwendet';
+    UsesInitializationMessage = '%s wird wegen initialization nicht als ungenutzt gezeigt';
+    UsesAllowlistMessage = '%s steht in usesKeep und wird nicht als ungenutzt gezeigt';
+    UsesImplementationMessage = '%s wird nur in der implementation gebraucht';
   private
     FStore: IDocumentStore;
     FTransport: IJsonRpcTransport;
@@ -100,6 +113,7 @@ type
     FTargetProvider: TBuildTargetProvider;
     FRuleProvider: TRuleContextProvider;
     FCompilerProvider: TCompilerMessagesProvider;
+    FUsesProvider: TUsesContextProvider;
     FPullMode: Boolean;
     FOnPullChanged: TProc;
     procedure HandleDocumentEvent(AKind: TDocumentEventKind; const ADocument: ITextDocument);
@@ -120,6 +134,8 @@ type
     procedure SetRuleProvider(const AValue: TRuleContextProvider);
     function CurrentCompilerMessages(const AFileName: string): TArray<TCompilerMessage>;
     procedure SetCompilerProvider(const AValue: TCompilerMessagesProvider);
+    function CurrentUses(const AUri: string; out AContext: TUsesContext): Boolean;
+    procedure SetUsesProvider(const AValue: TUsesContextProvider);
   public
     /// <summary>Bei ADelayMs = 0 wird sofort im Thread der Nachrichtenschleife geparst.</summary>
     constructor Create(const AStore: IDocumentStore; const ATransport: IJsonRpcTransport;
@@ -176,6 +192,11 @@ type
     procedure RefreshFiles(const AFileNames: TArray<string>);
     /// <summary>Parameter mit leerer Liste, z. B. nach dem Schließen. Der Aufrufer übernimmt das Objekt.</summary>
     class function BuildEmptyParams(const AUri: string): TJSONObject; static;
+    /// <summary>Auffällige uses-Einträge von AText als Diagnosen in AItems (#621); AInactive zählt nicht.</summary>
+    class procedure AddUsesDiagnostics(AItems: TJSONArray; const AText: string;
+      const AInactive: TArray<TTextRange>; const AContext: TUsesContext); static;
+    /// <summary>Name des Zustands in data.uses.state: unused, initialization, allowlist, implementation.</summary>
+    class function UsesStateName(AState: TUsesEntryState): string; static;
     /// <summary>Wird bei Ausnahmen beim Parsen im Hintergrund aufgerufen.</summary>
     property OnError: TProc<Exception> read GetOnError write SetOnError;
     /// <summary>Liefert die Symbole für das Abblenden inaktiver Bereiche.</summary>
@@ -188,6 +209,8 @@ type
     property RuleProvider: TRuleContextProvider write SetRuleProvider;
     /// <summary>Liefert die Meldungen des letzten Compilerlaufs; ohne Provider keine.</summary>
     property CompilerMessagesProvider: TCompilerMessagesProvider write SetCompilerProvider;
+    /// <summary>Index und usesKeep für ungenutzte uses (#621); ohne Provider keine.</summary>
+    property UsesProvider: TUsesContextProvider write SetUsesProvider;
     /// <summary>Der Client holt Diagnosen selbst ab (#82): nichts senden, bei Änderungen
     /// stattdessen OnPullChanged aufrufen.</summary>
     property PullMode: Boolean read FPullMode write FPullMode;
@@ -213,7 +236,8 @@ uses
   Atlas.Common.Dfm.Contract,
   Atlas.Common.Dfm.Parser,
   Atlas.Common.Dfm.FormModel,
-  Atlas.Common.Lsp.FormFiles;
+  Atlas.Common.Lsp.FormFiles,
+  Atlas.Common.Pascal.Lexer;
 
 // Übernimmt AParams.
 procedure Send(const ATransport: IJsonRpcTransport; AParams: TJSONObject);
@@ -398,6 +422,85 @@ begin
     FRuleProvider := AValue;
   finally
     TMonitor.Exit(FDefinesLock);
+  end;
+end;
+
+function TLspSyntaxDiagnostics.CurrentUses(const AUri: string; out AContext: TUsesContext): Boolean;
+var
+  Provider: TUsesContextProvider;
+begin
+  TMonitor.Enter(FDefinesLock);
+  try
+    Provider := FUsesProvider;
+  finally
+    TMonitor.Exit(FDefinesLock);
+  end;
+  AContext := Default(TUsesContext);
+  Result := Assigned(Provider) and Provider(AUri, AContext);
+end;
+
+procedure TLspSyntaxDiagnostics.SetUsesProvider(const AValue: TUsesContextProvider);
+begin
+  TMonitor.Enter(FDefinesLock);
+  try
+    FUsesProvider := AValue;
+  finally
+    TMonitor.Exit(FDefinesLock);
+  end;
+end;
+
+class function TLspSyntaxDiagnostics.UsesStateName(AState: TUsesEntryState): string;
+begin
+  case AState of
+    TUsesEntryState.KeptForInitialization:
+      Result := 'initialization';
+    TUsesEntryState.KeptByAllowlist:
+      Result := 'allowlist';
+    TUsesEntryState.OnlyImplementation:
+      Result := 'implementation';
+  else
+    Result := 'unused';
+  end;
+end;
+
+class procedure TLspSyntaxDiagnostics.AddUsesDiagnostics(AItems: TJSONArray; const AText: string;
+  const AInactive: TArray<TTextRange>; const AContext: TUsesContext);
+var
+  Entry: TUsesEntry;
+  Item, Data: TJSONObject;
+  Tags: TJSONArray;
+  Message: string;
+begin
+  for Entry in TUsesActions.Entries(TPascalLexer.Tokenize(AText), AInactive, AContext.Info, AContext.Keep) do
+  begin
+    case Entry.State of
+      TUsesEntryState.KeptForInitialization:
+        Message := UsesInitializationMessage;
+      TUsesEntryState.KeptByAllowlist:
+        Message := UsesAllowlistMessage;
+      TUsesEntryState.OnlyImplementation:
+        Message := UsesImplementationMessage;
+    else
+      Message := UsesUnusedMessage;
+    end;
+    Item := TJSONObject.Create;
+    Item.AddPair('range', TLspPositions.RangeToJson(Entry.Range));
+    Item.AddPair('severity', TJSONNumber.Create(TLspDiagnosticSeverity.Hint));
+    Item.AddPair('source', Source);
+    Item.AddPair('message', Format(Message, [Entry.Name]));
+    // Nur ungenutzte blendet der Editor ab.
+    if Entry.State = TUsesEntryState.Unused then
+    begin
+      Tags := TJSONArray.Create;
+      // DiagnosticTag.Unnecessary
+      Tags.Add(1);
+      Item.AddPair('tags', Tags);
+    end;
+    Data := TJSONObject.Create;
+    Data.AddPair('unit', Entry.Name);
+    Data.AddPair('state', UsesStateName(Entry.State));
+    Item.AddPair('data', TJSONObject.Create(TJSONPair.Create('uses', Data)));
+    AItems.AddElement(Item);
   end;
 end;
 
@@ -603,6 +706,9 @@ var
   Issues: TArray<TPreprocessorIssue>;
   Issue: TPreprocessorIssue;
   Item: TJSONObject;
+  UsesContext: TUsesContext;
+  Value: TJSONValue;
+  HasSyntaxErrors: Boolean;
 begin
   // Formulardateien (#44): nur Lesefehler der DFM, keine Pascal-Prüfungen.
   if TDfmParser.IsFormFile(ADocument.Uri) then
@@ -645,6 +751,17 @@ begin
     Item.AddPair('source', Source);
     Item.AddPair('message', Issue.Message);
     Items.AddElement(Item);
+  end;
+  // Ungenutzte uses (#621): nicht bei Syntaxfehlern (Fehler von Atlas ohne Regelkennung), dann fehlen Bezeichner.
+  if CurrentUses(ADocument.Uri, UsesContext) then
+  begin
+    HasSyntaxErrors := False;
+    for Value in Items do
+      if (Value is TJSONObject) and (TJSONObject(Value).GetValue<Integer>('severity', 0) =
+        TLspDiagnosticSeverity.Error) and (TJSONObject(Value).GetValue('code') = nil) then
+        HasSyntaxErrors := True;
+    if not HasSyntaxErrors then
+      AddUsesDiagnostics(Items, ADocument.Text, TLspInactiveRegions.RangesOf(Inactive), UsesContext);
   end;
   for Compiled in CurrentCompilerMessages(TDocumentUris.ToPath(ADocument.Uri)) do
     if Compiled.Line < ADocument.LineCount then

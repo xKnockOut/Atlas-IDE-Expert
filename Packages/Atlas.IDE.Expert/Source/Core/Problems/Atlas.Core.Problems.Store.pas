@@ -17,6 +17,9 @@
 // neu aufbauen.
 // Inaktive {$IFDEF}-Zweige (#615) liefert InactiveSpans je Zeile als Spalten
 // des Editors, auch für Zweige, die innerhalb einer Zeile beginnen oder enden.
+// Hinweise zu uses-Einträgen (#621, data.uses) sind weder Probleme noch
+// inaktive Zweige: UsesSpans liefert die ungenutzten zum Abblenden, UsesAt die
+// an einer Stelle für den Tooltip.
 // Fehlgeschlagene Tests (#69) stehen als dritte Art neben Atlas- und
 // Compilermeldungen (Quelle "DUnitX"): SetTests ersetzt die eines Testlaufs,
 // Update des Servers lässt sie stehen, Edit führt sie wie Atlas-Meldungen mit.
@@ -64,6 +67,8 @@ type
       VisibleValid: Boolean;
       InactiveList: TArray<TAtlasProblem>;
       InactiveValid: Boolean;
+      UsesList: TArray<TAtlasProblem>;
+      UsesValid: Boolean;
       // Zeilen von Text, bei Bedarf.
       Lines: TArray<string>;
       LinesValid: Boolean;
@@ -74,6 +79,9 @@ type
     function Find(const AFileName: string): TEntry;
     function Ensure(const AFileName: string): TEntry;
     class procedure Shift(AEntry: TEntry; const ANewText: string); static;
+    /// <summary>Spalten der Bereiche AProblems in der Zeile (wie InactiveSpans).</summary>
+    function SpansOf(const AFileName: string; const AProblems: TArray<TAtlasProblem>;
+      ALine, ATabWidth: Integer): TArray<TAtlasColumnSpan>;
   public
     constructor Create;
     destructor Destroy; override;
@@ -105,6 +113,12 @@ type
     function InactiveSpans(const AFileName: string; ALine, ATabWidth: Integer): TArray<TAtlasColumnSpan>;
     /// <summary>Inaktive Bereiche an der Stelle (0-basiert), für den Hinweis im Tooltip.</summary>
     function InactiveAt(const AFileName: string; ALine, ACharacter: Integer): TArray<TAtlasProblem>;
+    /// <summary>Ungenutzte uses-Einträge der Datei (#621).</summary>
+    function UnusedUses(const AFileName: string): TArray<TAtlasProblem>;
+    /// <summary>Spalten ungenutzter uses-Einträge in der Zeile (0-basiert), wie InactiveSpans.</summary>
+    function UsesSpans(const AFileName: string; ALine, ATabWidth: Integer): TArray<TAtlasColumnSpan>;
+    /// <summary>Hinweise zu uses-Einträgen an der Stelle (0-basiert), auch behaltene und verschiebbare.</summary>
+    function UsesAt(const AFileName: string; ALine, ACharacter: Integer): TArray<TAtlasProblem>;
     /// <summary>Probleme, die die Zeile (0-basiert) berühren.</summary>
     function OnLine(const AFileName: string; ALine: Integer): TArray<TAtlasProblem>;
     /// <summary>Probleme an der Stelle (0-basiert).</summary>
@@ -224,6 +238,7 @@ begin
   Entry.FromServer := True;
   Entry.VisibleValid := False;
   Entry.InactiveValid := False;
+  Entry.UsesValid := False;
   Inc(FVersion);
 end;
 
@@ -266,6 +281,7 @@ begin
   AEntry.LinesValid := False;
   AEntry.VisibleValid := False;
   AEntry.InactiveValid := False;
+  AEntry.UsesValid := False;
 end;
 
 function TAtlasProblemStore.Inactive(const AFileName: string): TArray<TAtlasProblem>;
@@ -281,13 +297,56 @@ begin
   if Entry.InactiveValid then
     Exit(Entry.InactiveList);
   for Problem in Entry.Atlas do
-    if Problem.Unnecessary then
+    if Problem.Unnecessary and not Problem.IsUses then
       Result := Result + [Problem];
   Entry.InactiveList := Result;
   Entry.InactiveValid := True;
 end;
 
+function TAtlasProblemStore.UnusedUses(const AFileName: string): TArray<TAtlasProblem>;
+var
+  Entry: TEntry;
+  Problem: TAtlasProblem;
+begin
+  Result := nil;
+  Entry := Find(AFileName);
+  if Entry = nil then
+    Exit;
+  if Entry.UsesValid then
+    Exit(Entry.UsesList);
+  for Problem in Entry.Atlas do
+    if Problem.UsesState = TAtlasProblem.UsesUnused then
+      Result := Result + [Problem];
+  Entry.UsesList := Result;
+  Entry.UsesValid := True;
+end;
+
+function TAtlasProblemStore.UsesSpans(const AFileName: string; ALine, ATabWidth: Integer): TArray<TAtlasColumnSpan>;
+begin
+  Result := SpansOf(AFileName, UnusedUses(AFileName), ALine, ATabWidth);
+end;
+
+function TAtlasProblemStore.UsesAt(const AFileName: string; ALine, ACharacter: Integer): TArray<TAtlasProblem>;
+var
+  Entry: TEntry;
+  Problem: TAtlasProblem;
+begin
+  Result := nil;
+  Entry := Find(AFileName);
+  if Entry = nil then
+    Exit;
+  for Problem in Entry.Atlas do
+    if Problem.IsUses and Problem.Contains(ALine, ACharacter) then
+      Result := Result + [Problem];
+end;
+
 function TAtlasProblemStore.InactiveSpans(const AFileName: string; ALine, ATabWidth: Integer): TArray<TAtlasColumnSpan>;
+begin
+  Result := SpansOf(AFileName, Inactive(AFileName), ALine, ATabWidth);
+end;
+
+function TAtlasProblemStore.SpansOf(const AFileName: string; const AProblems: TArray<TAtlasProblem>;
+  ALine, ATabWidth: Integer): TArray<TAtlasColumnSpan>;
 var
   Problem: TAtlasProblem;
   Text: string;
@@ -297,7 +356,7 @@ begin
   Result := nil;
   HasText := False;
   Text := '';
-  for Problem in Inactive(AFileName) do
+  for Problem in AProblems do
   begin
     if (ALine < Problem.StartLine) or (ALine > Problem.EndLine) then
       Continue;
@@ -498,7 +557,8 @@ begin
   Visible := nil;
   for Problem in Entry.Compiler + Entry.Atlas + Entry.Tests do
   begin
-    if Problem.Unnecessary then
+    // Inaktive Zweige und uses-Hinweise (#621) sind keine Probleme.
+    if Problem.Unnecessary or Problem.IsUses then
       Continue;
     Duplicate := False;
     for Other in Visible do

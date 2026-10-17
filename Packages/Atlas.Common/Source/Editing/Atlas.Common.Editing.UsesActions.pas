@@ -12,6 +12,11 @@
 //   Units aus "usesKeep" und Einträge in Listen mit {$IFDEF} oder Kommentaren.
 // - Verschoben wird eine interface-Unit, deren Symbole nur im implementation-
 //   Teil vorkommen, sofern das implementation-uses schlicht ist.
+// - Entries (#621) nennt je Eintrag, warum er im Editor auffällt: ungenutzt
+//   (abgeblendet), ungenutzt, aber wegen initialization oder "usesKeep"
+//   behalten, oder nur in der implementation gebraucht. Inaktive Zweige der
+//   bedingten Kompilierung zählen dabei nicht, so werden auch Listen mit
+//   {$IFDEF} geprüft. RemoveEntries streicht einzelne Einträge auch dort.
 
 interface
 
@@ -45,8 +50,39 @@ type
     Namespaces: TArray<string>;
   end;
 
+  {$SCOPEDENUMS ON}
+  /// <summary>Warum ein uses-Eintrag im Editor auffällt (#621).</summary>
+  TUsesEntryState = (
+    /// <summary>Aus der Unit wird nichts verwendet: abblenden.</summary>
+    Unused,
+    /// <summary>Ungenutzt, aber mit initialization/finalization: bleibt.</summary>
+    KeptForInitialization,
+    /// <summary>Ungenutzt, aber in "usesKeep": bleibt.</summary>
+    KeptByAllowlist,
+    /// <summary>Steht im interface, gebraucht wird sie nur in der implementation.</summary>
+    OnlyImplementation);
+  {$SCOPEDENUMS OFF}
+
+  /// <summary>Ein auffälliger uses-Eintrag mit Position des Namens (#621).</summary>
+  TUsesEntry = record
+    Name: string;
+    Range: TTextRange;
+    State: TUsesEntryState;
+  end;
+
   TUsesActions = class
   public
+    /// <summary>Auffällige Einträge der uses-Listen in Quelltextreihenfolge (#621). Token in AInactive
+    /// (inaktive Zweige) zählen nicht: weder ihre Einträge noch ihre Bezeichner. Unbekannte Units entfallen,
+    /// ebenso benutzte, die richtig stehen.</summary>
+    class function Entries(const ATokens: TArray<TPascalToken>; const AInactive: TArray<TTextRange>;
+      const AInfo: TUsesUnitInfoFunc; const AKeep: TArray<string>): TArray<TUsesEntry>; static;
+    /// <summary>Ein Edit, das die Einträge an ARanges (Bereiche der Namen) streicht (#621), auch aus Listen mit
+    /// Direktiven oder Kommentaren: mit dem Komma davor oder dahinter, der einzige Eintrag mit dem ganzen uses.
+    /// False, wenn ein Bereich keinen Eintrag trifft oder das Komma nur über eine Direktive hinweg zu erreichen
+    /// wäre.</summary>
+    class function RemoveEntries(const AText: string; const ARanges: TArray<TTextRange>;
+      out AEdit: TTextEdit): Boolean; static;
     /// <summary>Entfernbare Units in Reihenfolge der uses-Listen.</summary>
     class function UnusedUnits(const ATokens: TArray<TPascalToken>; const AInfo: TUsesUnitInfoFunc;
       const AKeep: TArray<string>): TArray<string>; static;
@@ -79,7 +115,9 @@ implementation
 uses
   System.Math,
   System.Generics.Collections,
-  Atlas.Common.Editing.UsesClause;
+  Atlas.Common.Pascal.Lexer,
+  Atlas.Common.Editing.UsesClause,
+  Atlas.Text.Lines;
 
 const
   InInterfacePart = 1;
@@ -164,6 +202,271 @@ begin
       if Result = InInterfacePart or InImplementationPart then
         Exit;
     end;
+end;
+
+function IsBefore(const A, B: TTextPosition): Boolean;
+begin
+  Result := (A.Line < B.Line) or ((A.Line = B.Line) and (A.Character < B.Character));
+end;
+
+function InsideAny(const APosition: TTextPosition; const ARanges: TArray<TTextRange>): Boolean;
+var
+  Range: TTextRange;
+begin
+  for Range in ARanges do
+    if not IsBefore(APosition, Range.StartPos) and IsBefore(APosition, Range.EndPos) then
+      Exit(True);
+  Result := False;
+end;
+
+class function TUsesActions.Entries(const ATokens: TArray<TPascalToken>; const AInactive: TArray<TTextRange>;
+  const AInfo: TUsesUnitInfoFunc; const AKeep: TArray<string>): TArray<TUsesEntry>;
+var
+  Active: TArray<TPascalToken>;
+  Count, Index, Usage: Integer;
+  Clauses: TArray<TUsesClauseInfo>;
+  Clause: TUsesClauseInfo;
+  References: TArray<TUsesReference>;
+  Reference: TUsesReference;
+  Identifiers: TDictionary<string, Integer>;
+  Seen: TArray<string>;
+  Info: TUsesUnitInfo;
+  Entry: TUsesEntry;
+begin
+  Result := nil;
+  if not Assigned(AInfo) then
+    Exit;
+  // Nur der aktive Zweig: so gelten auch Listen mit {$IFDEF}.
+  if AInactive = nil then
+    Active := ATokens
+  else
+  begin
+    SetLength(Active, Length(ATokens));
+    Count := 0;
+    for Index := 0 to High(ATokens) do
+      if not InsideAny(ATokens[Index].StartPos, AInactive) then
+      begin
+        Active[Count] := ATokens[Index];
+        Inc(Count);
+      end;
+    SetLength(Active, Count);
+  end;
+  Clauses := TUsesClauses.Clauses(Active);
+  References := TUsesClauses.References(Active);
+  Seen := nil;
+  Identifiers := CollectIdentifiers(Active, Clauses);
+  try
+    for Clause in Clauses do
+      for Reference in References do
+      begin
+        if IsBefore(Reference.Range.StartPos, Active[Clause.UsesIndex].EndPos) or
+          IsBefore(Active[Clause.Semicolon].StartPos, Reference.Range.EndPos) then
+          Continue;
+        // Doppelte Einträge räumt "uses aufräumen" auf, nicht das Abblenden.
+        if ContainsText_(Seen, Reference.Name) then
+          Continue;
+        Seen := Seen + [Reference.Name];
+        Info := AInfo(Reference.Name);
+        if not Info.Known then
+          Continue;
+        Usage := UsageOf(Reference.Name, Info, Identifiers);
+        Entry.Name := Reference.Name;
+        Entry.Range := Reference.Range;
+        if Usage = 0 then
+        begin
+          if ContainsText_(AKeep, Reference.Name) then
+            Entry.State := TUsesEntryState.KeptByAllowlist
+          else if Info.HasInitialization then
+            Entry.State := TUsesEntryState.KeptForInitialization
+          else
+            Entry.State := TUsesEntryState.Unused;
+        end
+        else if Clause.InInterface and (Usage = InImplementationPart) and not Info.HasInitialization then
+          Entry.State := TUsesEntryState.OnlyImplementation
+        else
+          Continue;
+        Result := Result + [Entry];
+      end;
+  finally
+    Identifiers.Free;
+  end;
+end;
+
+type
+  TCut = record
+    First: Integer;
+    Till: Integer;
+  end;
+
+/// <summary>Nächstes Token ohne Kommentare ab AIndex in Richtung AStep; ABlocked, wenn dabei eine Direktive
+/// liegt, ACommented bei Kommentaren. -1 am Rand.</summary>
+function Significant(const ATokens: TArray<TPascalToken>; AIndex, AStep: Integer;
+  out ABlocked, ACommented: Boolean): Integer;
+begin
+  ABlocked := False;
+  ACommented := False;
+  Result := AIndex + AStep;
+  while (Result >= 0) and (Result <= High(ATokens)) do
+  begin
+    if ATokens[Result].Kind = TPascalTokenKind.Directive then
+      ABlocked := True
+    else if ATokens[Result].Kind = TPascalTokenKind.Comment then
+      ACommented := True
+    else
+      Exit;
+    Inc(Result, AStep);
+  end;
+  Result := -1;
+end;
+
+function TokenEnd(const AToken: TPascalToken): Integer;
+begin
+  Result := AToken.Offset + Length(AToken.Text);
+end;
+
+/// <summary>Was zu streichen ist, um den Eintrag an ARange zu entfernen; False, wenn es nicht sicher geht.</summary>
+function CutsFor(const ATokens: TArray<TPascalToken>; const AText: string; const ARange: TTextRange;
+  out ACuts: TArray<TCut>): Boolean;
+var
+  Index, First, Last, Previous, Next, LineStart, LineEnd: Integer;
+  PreviousBlocked, NextBlocked, PreviousCommented, NextCommented, Blocked, Commented: Boolean;
+  Cut: TCut;
+begin
+  ACuts := nil;
+  First := -1;
+  Last := -1;
+  for Index := 0 to High(ATokens) do
+  begin
+    if (ATokens[Index].StartPos = ARange.StartPos) and (ATokens[Index].Kind = TPascalTokenKind.Identifier) then
+      First := Index;
+    if (First >= 0) and (ATokens[Index].EndPos = ARange.EndPos) then
+    begin
+      Last := Index;
+      Break;
+    end;
+  end;
+  if (First < 0) or (Last < 0) then
+    Exit(False);
+  Next := Significant(ATokens, Last, 1, NextBlocked, NextCommented);
+  // "in 'datei.pas'" gehört zum Eintrag.
+  if (Next >= 0) and ATokens[Next].IsKeyword('in') then
+  begin
+    Last := Significant(ATokens, Next, 1, Blocked, Commented);
+    if (Last < 0) or Blocked or (ATokens[Last].Kind <> TPascalTokenKind.StringLiteral) then
+      Exit(False);
+    Next := Significant(ATokens, Last, 1, NextBlocked, NextCommented);
+  end;
+  if Next < 0 then
+    Exit(False);
+  Previous := Significant(ATokens, First, -1, PreviousBlocked, PreviousCommented);
+  if Previous < 0 then
+    Exit(False);
+  if ATokens[Previous].IsSymbol(',') and not PreviousBlocked then
+  begin
+    // "A, B" → "A"; mit Kommentar dazwischen bleibt er stehen, nur Komma und Name gehen.
+    if PreviousCommented then
+    begin
+      Cut.First := ATokens[Previous].Offset;
+      Cut.Till := TokenEnd(ATokens[Previous]);
+      ACuts := ACuts + [Cut];
+      Cut.First := ATokens[First].Offset;
+    end
+    else
+      Cut.First := ATokens[Previous].Offset;
+    Cut.Till := TokenEnd(ATokens[Last]);
+    ACuts := ACuts + [Cut];
+    Exit(True);
+  end;
+  if ATokens[Next].IsSymbol(',') and not NextBlocked then
+  begin
+    Cut.First := ATokens[First].Offset;
+    if NextCommented then
+    begin
+      Cut.Till := TokenEnd(ATokens[Last]);
+      ACuts := ACuts + [Cut];
+      Cut.First := ATokens[Next].Offset;
+      Cut.Till := TokenEnd(ATokens[Next]);
+    end
+    else
+    begin
+      // "A, B" → "B", auch über den Zeilenumbruch einer mehrzeiligen Liste.
+      Cut.Till := TokenEnd(ATokens[Next]);
+      while (Cut.Till < Length(AText)) and CharInSet(AText[Cut.Till + 1], [' ', #9, #13, #10]) do
+        Inc(Cut.Till);
+    end;
+    ACuts := ACuts + [Cut];
+    Exit(True);
+  end;
+  // Einziger Eintrag: das ganze uses, mit der Zeile, wenn sonst nichts darauf steht.
+  if not (ATokens[Previous].IsKeyword('uses') and ATokens[Next].IsSymbol(';')) or PreviousBlocked or
+    NextBlocked or PreviousCommented or NextCommented then
+    Exit(False);
+  Cut.First := ATokens[Previous].Offset;
+  Cut.Till := TokenEnd(ATokens[Next]);
+  LineStart := Cut.First;
+  while (LineStart > 0) and CharInSet(AText[LineStart], [' ', #9]) do
+    Dec(LineStart);
+  LineEnd := Cut.Till;
+  while (LineEnd < Length(AText)) and CharInSet(AText[LineEnd + 1], [' ', #9]) do
+    Inc(LineEnd);
+  if ((LineStart = 0) or CharInSet(AText[LineStart], [#13, #10])) and
+    ((LineEnd = Length(AText)) or CharInSet(AText[LineEnd + 1], [#13, #10])) then
+  begin
+    Cut.First := LineStart;
+    Cut.Till := LineEnd;
+    if (Cut.Till < Length(AText)) and (AText[Cut.Till + 1] = #13) then
+      Inc(Cut.Till);
+    if (Cut.Till < Length(AText)) and (AText[Cut.Till + 1] = #10) then
+      Inc(Cut.Till);
+  end;
+  ACuts := ACuts + [Cut];
+  Result := True;
+end;
+
+class function TUsesActions.RemoveEntries(const AText: string; const ARanges: TArray<TTextRange>;
+  out AEdit: TTextEdit): Boolean;
+var
+  Sorted: TArray<TTextRange>;
+  Swap: TTextRange;
+  Text: string;
+  Index, Other, Prefix, Suffix: Integer;
+  Cuts: TArray<TCut>;
+  Lines: TLineTable;
+begin
+  AEdit := Default(TTextEdit);
+  if ARanges = nil then
+    Exit(False);
+  // Von hinten nach vorn: Was weiter vorn steht, behält seine Position.
+  Sorted := Copy(ARanges);
+  for Index := 0 to High(Sorted) - 1 do
+    for Other := Index + 1 to High(Sorted) do
+      if IsBefore(Sorted[Index].StartPos, Sorted[Other].StartPos) then
+      begin
+        Swap := Sorted[Index];
+        Sorted[Index] := Sorted[Other];
+        Sorted[Other] := Swap;
+      end;
+  Text := AText;
+  for Index := 0 to High(Sorted) do
+  begin
+    if not CutsFor(TPascalLexer.Tokenize(Text), Text, Sorted[Index], Cuts) then
+      Exit(False);
+    // Die Schnitte liegen aufsteigend: von hinten streichen.
+    for Other := High(Cuts) downto 0 do
+      Delete(Text, Cuts[Other].First + 1, Cuts[Other].Till - Cuts[Other].First);
+  end;
+  // Ein Edit über den geänderten Teil.
+  Prefix := 0;
+  while (Prefix < Length(Text)) and (Prefix < Length(AText)) and (Text[Prefix + 1] = AText[Prefix + 1]) do
+    Inc(Prefix);
+  Suffix := 0;
+  while (Suffix < Length(Text) - Prefix) and (Suffix < Length(AText) - Prefix) and
+    (Text[Length(Text) - Suffix] = AText[Length(AText) - Suffix]) do
+    Inc(Suffix);
+  Lines := TLineTable.Build(AText);
+  AEdit := TTextEdit.Create(TTextRange.Create(Lines.PositionAt(Prefix), Lines.PositionAt(Length(AText) - Suffix)),
+    Copy(Text, Prefix + 1, Length(Text) - Prefix - Suffix));
+  Result := True;
 end;
 
 class function TUsesActions.UnusedUnits(const ATokens: TArray<TPascalToken>; const AInfo: TUsesUnitInfoFunc;

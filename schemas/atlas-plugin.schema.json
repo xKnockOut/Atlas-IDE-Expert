@@ -141,6 +141,18 @@
       "x-captionEn": "Dim inactive {$IFDEF} branches",
       "x-issue": "#615"
     },
+    "DimUnusedUses": {
+      "type": "boolean",
+      "default": true,
+      "x-key": "editor.dimUnusedUses",
+      "x-area": "editor",
+      "x-feature": "Pairs",
+      "x-page": "Editor",
+      "x-drawing": true,
+      "x-caption": "Ungenutzte uses-Einträge abblenden",
+      "x-captionEn": "Dim unused uses entries",
+      "x-issue": "#621"
+    },
     "Problems": {
       "type": "boolean",
       "default": true,

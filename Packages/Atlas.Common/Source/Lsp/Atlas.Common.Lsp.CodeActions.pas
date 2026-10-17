@@ -37,8 +37,9 @@ type
   TStringLiteralProvider = reference to function(const AUri: string;
     out AMultiline: Boolean): TStringLiteralSettings;
 
-  /// <summary>Index und Einstellungen für die uses-Aktionen; False ohne Index.</summary>
-  TUsesContextProvider = reference to function(const AUri: string; out AContext: TUsesContext): Boolean;
+  /// <summary>Index und Einstellungen für die uses-Aktionen; False ohne Index. Dieselbe Art wie bei den
+  /// Diagnosen, die ungenutzte uses melden (#621).</summary>
+  TUsesContextProvider = Atlas.Common.Lsp.SyntaxDiagnostics.TUsesContextProvider;
   /// <summary>Aktionen in Formulardateien, z. B. binär gespeicherte in Text umwandeln (#122).</summary>
   TFormActionsFunc = reference to function(const AUri, AText: string; const ARange: TTextRange): TArray<TCodeAction>;
 
@@ -72,6 +73,7 @@ type
     FRefactoringFor: TCodeActionRefactoringProvider;
     FClassActionContextFor: TClassActionContextProvider;
     FExtraActions: TExtraActionsFunc;
+    FDefinesFor: TDefinesProvider;
     function HandleCodeAction(const AParams: TJSONValue; const ACancellation: IJsonRpcCancellationToken): TJSONValue;
   public
     constructor Create(const AStore: IDocumentStore; const ARuleProvider: TRuleContextProvider);
@@ -103,6 +105,9 @@ type
     property FormActions: TFormActionsFunc read FFormActions write FFormActions;
     /// <summary>Weitere Aktionen in Units (Testunit anlegen und wechseln, #274/#189); ohne Zuweisung keine.</summary>
     property ExtraActions: TExtraActionsFunc read FExtraActions write FExtraActions;
+    /// <summary>Symbole des Projekts für die uses-Einträge in {$IFDEF}-Zweigen (#621); ohne Zuweisung zählen alle
+    /// Zweige.</summary>
+    property DefinesFor: TDefinesProvider read FDefinesFor write FDefinesFor;
   end;
 
 implementation
@@ -120,7 +125,8 @@ uses
   Atlas.Common.Documents.Uris,
   Atlas.Common.Dfm.Parser,
   Atlas.Common.Index.Contract,
-  Atlas.Common.Editing.AssignmentSwap;
+  Atlas.Common.Editing.AssignmentSwap,
+  Atlas.Common.Lsp.InactiveRegions;
 
 { TLspCodeActions }
 
@@ -196,6 +202,9 @@ begin
   end;
   if AAction.IsPreferred then
     Result.AddPair('isPreferred', TJSONBool.Create(True));
+  // Kennung für Clients, die eine bestimmte Aktion suchen (#621).
+  if AAction.Tag <> '' then
+    Result.AddPair('data', TJSONObject.Create(TJSONPair.Create('tag', AAction.Tag)));
   if AAction.RuleId <> '' then
   begin
     Diagnostic := TJSONObject.Create;
@@ -256,6 +265,8 @@ var
   Refactoring: TRefactoringSettings;
   RangeActions: TArray<TCodeAction>;
   ClassContext: TClassActionContext;
+  Defines: TArray<string>;
+  Inactive: TArray<TTextRange>;
 begin
   if not ((AParams is TJSONObject) and TJSONObject(AParams).TryGetValue<string>('textDocument.uri', Uri) and
     TJSONObject(AParams).TryGetValue<TJSONValue>('range', RangeValue)) then
@@ -306,8 +317,13 @@ begin
   HasCompletion := WantsEditing and TClassCompletion.MissingBodies(Tree, Document.Text, Range.StartPos, Completion);
   UsesActions := nil;
   if (WantsEditing or WantsRemoveUnused) and Assigned(FUsesContextFor) and FUsesContextFor(Uri, UsesContext) then
-    UsesActions := TCodeActions.UsesActions(Document.Text, Tree, Range, UsesContext, WantsEditing,
+  begin
+    Inactive := nil;
+    if WantsEditing and Assigned(FDefinesFor) and FDefinesFor(Uri, Defines) then
+      Inactive := TLspInactiveRegions.Ranges(Document.Text, Defines);
+    UsesActions := TCodeActions.UsesActions(Document.Text, Tree, Range, UsesContext, Inactive, WantsEditing,
       WantsRemoveUnused);
+  end;
   ACancellation.ThrowIfCancellationRequested;
   // Erst jetzt anlegen: Ein Abbruch oben soll kein Objekt zurücklassen.
   Result := TJSONArray.Create;
