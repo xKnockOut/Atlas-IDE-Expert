@@ -954,6 +954,27 @@ begin
       if Result then
         AEdits := Action.Edits;
     end;
+  // Methode aus Aufruf anlegen nach "(" bzw. mit Strg+Leer (#472), abschaltbar mit refactoring.createMethod.
+  FCompletion.CreateFor :=
+    function(ARequest: TCompletionRequest; out ATitle, ADetail: string; out AEdits: TArray<TTextEdit>): Boolean
+    var
+      Context: TRefactoringContext;
+      Created: TCreatedMethod;
+    begin
+      ATitle := '';
+      ADetail := '';
+      AEdits := nil;
+      Context := RefactoringContextFor(ARequest.Uri);
+      // Nur Änderungen in dieser Datei; die Klasse in einer anderen Unit bekommt die Code-Aktion.
+      Result := Context.Settings.CreateMethod and TLspRefactorings.CreateMethod(ARequest.Resolver, ARequest.Tree,
+        ARequest.Text, ARequest.Position, Context, True, Created) and (Created.FileEdits = nil);
+      if Result then
+      begin
+        ATitle := Created.Title;
+        ADetail := Created.Detail;
+        AEdits := Created.Edits;
+      end;
+    end;
   // Für completionItem/resolve (Detailpanel von Atlas, #405); Anzeige von XMLDoc (#654).
   FCompletion.HintsFor := HintSettingsFor;
   FCompletion.ReadText := ReadSourceText;

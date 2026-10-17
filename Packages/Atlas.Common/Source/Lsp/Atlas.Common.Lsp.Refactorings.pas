@@ -10,8 +10,11 @@
 //     Namensauflösung je Probe (der Probebaum lebt nur kurz).
 //   - Aufzählungswerte über TLspCompletion.CaseValues (#448).
 //   - Herkunft über TNameResolver.WithMember.
-// Was refactoring.extract, .completeCase und .resolveWith abschalten, kommt
-// nicht.
+// Dazu „Methode aus Aufruf anlegen“ (#472): Typen der Argumente über
+// denselben Probetext, Rückgabetyp über den erwarteten Typ (#417), Zielklasse
+// über den Typ des Qualifizierers; Klassen aus Bibliotheken bekommen nichts.
+// Was refactoring.extract, .completeCase, .resolveWith und .createMethod
+// abschalten, kommt nicht.
 
 interface
 
@@ -40,6 +43,18 @@ type
     Style: TFormatStyle;
   end;
 
+  /// <summary>Ergebnis von „Methode aus Aufruf anlegen“ (#472).</summary>
+  TCreatedMethod = record
+    /// <summary>„Methode CalcDiscount anlegen“, „Routine … anlegen“ bzw. „Methode … in TFoo anlegen“.</summary>
+    Title: string;
+    /// <summary>Kopf der Deklaration ohne Klasse.</summary>
+    Detail: string;
+    /// <summary>Edits in dieser Datei.</summary>
+    Edits: TArray<TTextEdit>;
+    /// <summary>Edits in der Datei einer anderen Klasse des Projekts; nil sonst.</summary>
+    FileEdits: TArray<TFileTextEdits>;
+  end;
+
   TLspRefactorings = class
   public
     /// <summary>Typabfrage für Probetexte der Datei AContext.FileName.</summary>
@@ -54,7 +69,13 @@ type
     /// <summary>„with auflösen“ für die with-Anweisung an APosition.</summary>
     class function WithAction(AResolver: TNameResolver; ATree: TSyntaxTree; const AText: string;
       const APosition: TTextPosition; const AContext: TRefactoringContext; out AAction: TCodeAction): Boolean; static;
-    /// <summary>Alle eingeschalteten Aktionen aus #50 für ARange.</summary>
+    /// <summary>„Methode aus Aufruf anlegen“ für den Aufruf an APosition (#472). Mit ACaretMarker steht "$0" in der
+    /// leeren Zeile des Rumpfs, wenn refactoring.createMethodCaret "body" ist. False, wenn der Name bekannt ist,
+    /// kein Aufruf dort steht oder die Klasse des Qualifizierers nicht zum Projekt gehört.</summary>
+    class function CreateMethod(AResolver: TNameResolver; ATree: TSyntaxTree; const AText: string;
+      const APosition: TTextPosition; const AContext: TRefactoringContext; ACaretMarker: Boolean;
+      out ACreated: TCreatedMethod): Boolean; static;
+    /// <summary>Alle eingeschalteten Aktionen aus #50 und #472 für ARange.</summary>
     class function Actions(ATree: TSyntaxTree; const AText: string; const ARange: TTextRange;
       const AContext: TRefactoringContext): TArray<TCodeAction>; static;
   end;
@@ -62,8 +83,13 @@ type
 implementation
 
 uses
+  System.StrUtils,
   Atlas.Text.Lines,
+  Atlas.Common.Pascal.Contract,
   Atlas.Common.Pascal.Parser,
+  Atlas.Common.Editing.RoutineBody,
+  Atlas.Common.Editing.UsesClause,
+  Atlas.Common.Editing.CreateMethod,
   Atlas.Common.Editing.CaseCompletion,
   Atlas.Common.Lsp.InlayHints,
   Atlas.Common.Lsp.Completion;
@@ -107,6 +133,7 @@ begin
           if (Found.NameStart.Line = ANamePos.Line) and (Found.NameStart.Character = ANamePos.Character) then
           begin
             Result.Name := Found.TypeName;
+            Result.TypeUnit := Found.TypeUnit;
             Base := Found.TypeName;
             if Pos('<', Base) > 0 then
               Base := Copy(Base, 1, Pos('<', Base) - 1);
@@ -127,11 +154,23 @@ begin
                 Result.IsValue := True
               else
                 case Resolved.SymbolKind of
-                  TIndexSymbolKind.ClassType, TIndexSymbolKind.InterfaceType:
+                  TIndexSymbolKind.ClassType:
                     Result.IsReference := True;
-                  TIndexSymbolKind.RecordType, TIndexSymbolKind.ObjectType, TIndexSymbolKind.EnumType:
+                  TIndexSymbolKind.InterfaceType:
+                  begin
+                    Result.IsReference := True;
+                    Result.IsInterface := True;
+                  end;
+                  TIndexSymbolKind.RecordType, TIndexSymbolKind.ObjectType:
+                  begin
+                    Result.IsValue := True;
+                    Result.IsRecord := True;
+                  end;
+                  TIndexSymbolKind.EnumType:
                     Result.IsValue := True;
                 end;
+            if (Result.TypeUnit = '') and Resolved.Found and not Resolved.Builtin then
+              Result.TypeUnit := Resolved.UnitName;
             Break;
           end;
       finally
@@ -211,18 +250,190 @@ begin
     WithLookup(AResolver, ATree, AContext.FileName), OptionsOf(AContext), AAction);
 end;
 
+class function TLspRefactorings.CreateMethod(AResolver: TNameResolver; ATree: TSyntaxTree; const AText: string;
+  const APosition: TTextPosition; const AContext: TRefactoringContext; ACaretMarker: Boolean;
+  out ACreated: TCreatedMethod): Boolean;
+var
+  Tokens: TArray<TPascalToken>;
+  Site: TCreateCallSite;
+  Routine, ClassBody: TSyntaxNode;
+  Probe: TTypeProbe;
+  Plan: TCreateMethodPlan;
+  Parameter: TCreateParameter;
+  Probed, Owner: TProbedType;
+  Names: TArray<string>;
+  Units: TArray<string>;
+  StatementOffset, Index, Offset: Integer;
+  StatementPos: TTextPosition;
+  Resolved: TResolvedSymbol;
+  OwnerUnit: TUnitIndex;
+  OwnerName, OtherText, LineBreak, UnitName: string;
+  OtherTree: TSyntaxTree;
+  Edits: TArray<TTextEdit>;
+  Edit: TTextEdit;
+  Files: TFileTextEdits;
+
+  function ProbeOf(const AExpression: string): TProbedType;
+  begin
+    // "var AtlasProbe := Ausdruck; " direkt vor der Anweisung, damit dieselben Namen sichtbar sind.
+    Result := Probe(Copy(AText, 1, StatementOffset) + 'var ' + TExtractRefactoring.ProbeName + ' := ' + AExpression +
+      '; ' + Copy(AText, StatementOffset + 1, MaxInt), TTextPosition.Create(StatementPos.Line,
+      StatementPos.Character + 4));
+  end;
+
+begin
+  ACreated := Default(TCreatedMethod);
+  Result := False;
+  if (ATree = nil) or (ATree.Root = nil) then
+    Exit;
+  Tokens := ATree.Tokens;
+  if not TCreateMethod.Site(Tokens, APosition, Site) then
+    Exit;
+  Routine := TRoutineBody.RoutineAt(ATree, Tokens[Site.NameIndex].Offset);
+  if (Routine = nil) or AResolver.Resolve(ATree, AContext.FileName, Site.NameRange.StartPos).Found then
+    Exit;
+  Probe := TLspRefactorings.Probe(AContext);
+  StatementOffset := Tokens[Site.StatementStart].Offset;
+  StatementPos := Tokens[Site.StatementStart].StartPos;
+  Plan := Default(TCreateMethodPlan);
+  Plan.Name := Site.Name;
+  Plan.Style := AContext.Style;
+  Plan.Section := AContext.Settings.CreateMethodSection;
+  Plan.CaretInBody := ACaretMarker and AContext.Settings.CreateMethodCaretInBody;
+  // Parameter: Typ aus dem Literal bzw. über den Probetext, Name aus dem Argument bzw. dem Typ.
+  Names := nil;
+  Units := nil;
+  for Index := 0 to High(Site.Arguments) do
+  begin
+    Parameter := Default(TCreateParameter);
+    Probed := Default(TProbedType);
+    Parameter.TypeName := TCreateMethod.LiteralType(Tokens, Site.Arguments[Index]);
+    if Parameter.TypeName = '' then
+    begin
+      Probed := ProbeOf(Site.Arguments[Index].Text);
+      Parameter.TypeName := Probed.Name;
+      if Probed.TypeUnit <> '' then
+        Units := Units + [Probed.TypeUnit];
+    end;
+    if Parameter.TypeName = '' then
+      Parameter.TypeName := TCreateMethod.TypePlaceholder;
+    Parameter.IsConst := AContext.Settings.ConstParameters and TCreateMethod.WantsConst(Parameter.TypeName,
+      Probed.IsRecord, Probed.IsInterface);
+    Parameter.Name := TCreateMethod.ArgumentName(Tokens, Site.Arguments[Index]);
+    if Parameter.Name = '' then
+      Parameter.Name := TCreateMethod.NameFromType(Parameter.TypeName);
+    Names := Names + [Parameter.Name];
+    Plan.Parameters := Plan.Parameters + [Parameter];
+  end;
+  Names := TCreateMethod.UniqueNames(Names);
+  for Index := 0 to High(Plan.Parameters) do
+    Plan.Parameters[Index].Name := Names[Index];
+  // Rückgabe: Prozedur als eigene Anweisung, Boolean in Bedingungen, sonst der erwartete Typ.
+  case Site.Context of
+    TCallContext.Statement:
+      Plan.ResultType := '';
+    TCallContext.Condition:
+      Plan.ResultType := 'Boolean';
+  else
+    Plan.ResultType := TLspCompletion.ExpectedType(AResolver, ATree, AContext.FileName, Site.NameRange.StartPos);
+    if (Plan.ResultType = '') and (Site.Target <> '') then
+    begin
+      Probed := ProbeOf(Site.Target);
+      Plan.ResultType := Probed.Name;
+      if Probed.TypeUnit <> '' then
+        Units := Units + [Probed.TypeUnit];
+    end;
+    if Plan.ResultType = '' then
+      Plan.ResultType := TCreateMethod.TypePlaceholder;
+  end;
+  // Ziel: ohne Qualifizierer (oder Self) die eigene Klasse bzw. eine Routine davor.
+  if (Site.Qualifier = '') or SameText(Site.Qualifier, 'Self') then
+  begin
+    if Pos('.', Routine.Name) > 0 then
+    begin
+      Plan.TypeName := Copy(Routine.Name, 1, LastDelimiter('.', Routine.Name) - 1);
+      Index := TRoutineBody.TokenAt(Tokens, Routine.StartOffset);
+      Plan.IsClassMethod := (Index <= High(Tokens)) and Tokens[Index].IsKeyword('class');
+      if not TCreateMethod.MethodEdits(AText, ATree, Plan, ACreated.Edits) then
+        Exit;
+      ACreated.Title := Format('Methode %s anlegen', [Plan.Name]);
+    end
+    else if SameText(Site.Qualifier, 'Self') then
+      Exit
+    else
+    begin
+      ACreated.Edits := [TCreateMethod.RoutineEdit(AText, Routine, Plan)];
+      ACreated.Title := Format('Routine %s anlegen', [Plan.Name]);
+    end;
+    ACreated.Detail := TCreateMethod.Header(Plan, False);
+    Exit(True);
+  end;
+  // Mit Qualifizierer: Klasse bzw. Record des Objekts, nur aus dem Projekt.
+  Owner := ProbeOf(Site.Qualifier);
+  if (Owner.Name = '') or Owner.IsInterface or not (Owner.IsReference or Owner.IsRecord) then
+    Exit;
+  OwnerName := Owner.Name;
+  if Pos('<', OwnerName) > 0 then
+    Exit;
+  Offset := Tokens[Site.CallStart].Offset;
+  Resolved := AResolver.ResolveChain(ATree, AContext.FileName, OwnerName.Split(['.']), Offset);
+  if not (Resolved.Found and Resolved.IsType) or Resolved.Builtin or
+    not AResolver.DeclaringUnit(Resolved, OwnerUnit) or OwnerUnit.Library_ then
+    Exit;
+  Plan.TypeName := Resolved.Name;
+  if (Resolved.Container <> '') and (Pos('.', Plan.TypeName) = 0) then
+    Plan.TypeName := Resolved.Container + '.' + Plan.TypeName;
+  ACreated.Title := Format('Methode %s in %s anlegen', [Plan.Name, Plan.TypeName]);
+  if SameText(OwnerUnit.FileName, AContext.FileName) then
+  begin
+    if not TCreateMethod.MethodEdits(AText, ATree, Plan, ACreated.Edits) then
+      Exit;
+  end
+  else
+  begin
+    // Andere Unit: public, damit der Aufruf übersetzt; fehlende Units der Parametertypen ins uses.
+    if not (Assigned(AContext.ReadText) and AContext.ReadText(OwnerUnit.FileName, OtherText)) then
+      Exit;
+    Plan.Section := 'public';
+    Plan.CaretInBody := False;
+    OtherTree := TPascalParser.Parse(OtherText);
+    try
+      if not TCreateMethod.MethodEdits(OtherText, OtherTree, Plan, Edits) then
+        Exit;
+      LineBreak := TTextLines.LineBreakOf(OtherText);
+      ClassBody := TRoutineBody.TypeBody(OtherTree.Root, Resolved.Name);
+      for UnitName in Units do
+        if not SameText(UnitName, OwnerUnit.UnitName) and
+          not TUsesClauses.IsUsed(OwnerUnit.InterfaceUses, UnitName, AContext.Namespaces) and
+          TUsesClauses.AddUnit(OtherTree.Tokens, ClassBody.StartOffset, UnitName, LineBreak, Edit) then
+        begin
+          Edits := Edits + [Edit];
+          OwnerUnit.InterfaceUses := OwnerUnit.InterfaceUses + [UnitName];
+        end;
+    finally
+      OtherTree.Free;
+    end;
+    Files.FileName := OwnerUnit.FileName;
+    Files.Edits := Edits;
+    ACreated.FileEdits := [Files];
+  end;
+  ACreated.Detail := TCreateMethod.Header(Plan, False);
+  Result := True;
+end;
+
 class function TLspRefactorings.Actions(ATree: TSyntaxTree; const AText: string; const ARange: TTextRange;
   const AContext: TRefactoringContext): TArray<TCodeAction>;
 var
   Resolver: TNameResolver;
   Action: TCodeAction;
+  Created: TCreatedMethod;
 begin
   Result := nil;
   if (ATree = nil) or (ATree.Root = nil) then
     Exit;
   if AContext.Settings.Extract then
     Result := Result + TExtractRefactoring.Actions(AText, ATree, ARange, OptionsOf(AContext));
-  if not (AContext.Settings.CompleteCase or AContext.Settings.ResolveWith) then
+  if not (AContext.Settings.CompleteCase or AContext.Settings.ResolveWith or AContext.Settings.CreateMethod) then
     Exit;
   Resolver := NewResolver(AContext);
   try
@@ -232,6 +443,16 @@ begin
         Result := Result + [Action];
       if AContext.Settings.ResolveWith and WithAction(Resolver, ATree, AText, ARange.StartPos, AContext, Action) then
         Result := Result + [Action];
+      if AContext.Settings.CreateMethod and CreateMethod(Resolver, ATree, AText, ARange.StartPos, AContext, False,
+        Created) then
+      begin
+        Action := Default(TCodeAction);
+        Action.Title := Created.Title;
+        Action.Kind := QuickFixKind;
+        Action.Edits := Created.Edits;
+        Action.FileEdits := Created.FileEdits;
+        Result := Result + [Action];
+      end;
     finally
       Resolver.UnpinTree;
     end;

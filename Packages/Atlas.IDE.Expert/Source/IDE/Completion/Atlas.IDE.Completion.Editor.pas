@@ -128,6 +128,12 @@ type
     FGuardFile: string;
     /// <summary>Das nächste automatische Öffnen kommt vom Enter am Ende der Zeile FGuardLine (#489).</summary>
     FGuardNewLine: Boolean;
+    /// <summary>Das nächste automatische Öffnen kommt von einem "(" hinter einem Namen (#472).</summary>
+    FCallOpened: Boolean;
+    /// <summary>Stelle des zuletzt gefragten "(" (Datei, Zeile ab 1, Zeichen), damit Atlas nicht doppelt fragt.</summary>
+    FCallFile: string;
+    FCallLine: Integer;
+    FCallCharacter: Integer;
     procedure Log(const AMessage: string);
     procedure Recheck;
     procedure TimerTick(Sender: TObject);
@@ -319,6 +325,8 @@ type
     Stop: Integer;
     Text: string;
     IsWord: Boolean;
+    /// <summary>Stelle des entfernten "$0" in Text (ab 1) bei Zusatzänderungen (#472); 0 ohne.</summary>
+    Marker: Integer;
   end;
 
 type
@@ -694,8 +702,12 @@ begin
   end
   // Nach dem Zeilenende (Enter) hinter einem übernommenen Konstruktor ohne ";" (#489).
   else if AAutomatic and FGuardNewLine then
-    Context.Trigger := #10;
+    Context.Trigger := #10
+  // Nach "(" hinter einem Namen (#472): nur „Methode anlegen“, wenn der Name unbekannt ist.
+  else if AAutomatic and FCallOpened then
+    Context.Trigger := '(';
   FGuardNewLine := False;
+  FCallOpened := False;
   ApplyStyle(Anchor);
   FPopup.VisibleRows := TAtlasIdeSettings.Current.VisibleRows;
   FPopup.ManualListWidth := TAtlasIdeSettings.Current.ListWidth;
@@ -986,9 +998,12 @@ end;
 
 procedure TAtlasEditorCompletion.EditorModified(const AView: IOTAEditView);
 var
-  RemoveAt: Integer;
+  RemoveAt, Character: Integer;
   View: IOTAEditView;
+  LineText: string;
+  Queued: Boolean;
 begin
+  Queued := False;
   if FController.Active then
     Recheck;
   if FPlaceholders <> nil then
@@ -998,6 +1013,7 @@ begin
   if not FController.Active and GuardNewLine(AView) then
   begin
     FGuardLine := 0;
+    Queued := True;
     View := AView;
     TAtlasMainThread.ForceQueue(TAtlasFeature.Completion,
       procedure
@@ -1009,6 +1025,30 @@ begin
             FGuardNewLine := False;
         end;
       end);
+  end;
+  // "(" hinter einem Namen (#472): fragen, ob der Server die Methode anlegen kann. Nur einmal je Stelle.
+  if not Queued and not FController.Active and (AView <> nil) and (AView.Buffer <> nil) then
+  begin
+    LineText := TAtlasEditorBuffer.LineText(AView, AView.CursorPos.Line);
+    Character := TLspSession.ColumnToIndex(LineText, AView.CursorPos.Col, TAtlasEditorBuffer.TabWidth(AView.Buffer));
+    if TAtlasParentheses.CallOpened(LineText, Character) and not ((FCallLine = AView.CursorPos.Line) and
+      (FCallCharacter = Character) and SameText(FCallFile, AView.Buffer.FileName)) then
+    begin
+      FCallFile := AView.Buffer.FileName;
+      FCallLine := AView.CursorPos.Line;
+      FCallCharacter := Character;
+      View := AView;
+      TAtlasMainThread.ForceQueue(TAtlasFeature.Completion,
+        procedure
+        begin
+          if (View.Buffer <> nil) and not FController.Active then
+          begin
+            FCallOpened := True;
+            if not Invoke(View, True) then
+              FCallOpened := False;
+          end;
+        end);
+    end;
   end;
   // ")" vor der automatischen Klammer (#430): diese überspringen.
   if FAutoParen.Active and (AView <> nil) and (AView.Buffer <> nil) then
@@ -1255,7 +1295,7 @@ var
   TextEdit: TAtlasTextEdit;
   Writer: IOTAEditWriter;
   Cursor: TOTAEditPos;
-  Character, Shift, CursorByte, CaretMarker: Integer;
+  Character, Shift, CursorByte, BodyByte, CaretMarker: Integer;
   NextChar: Char;
   AutoParen: Boolean;
   CharPos: TOTACharPos;
@@ -1318,15 +1358,23 @@ begin
         AItem.TextEdit.EndCharacter));
     Edit.Text := NewText;
     Edit.IsWord := True;
+    Edit.Marker := 0;
     Edits.Add(Edit);
-    // uses-Ergänzung u. ä. (#180); abschaltbar auf der Optionsseite (ARG-046).
-    if TAtlasIdeSettings.Current.AutoUses then
+    // uses-Ergänzung u. ä. (#180); abschaltbar auf der Optionsseite (ARG-046). Einträge, die Code erzeugen
+    // (Methode anlegen, deklarieren), brauchen ihre Zusatzänderungen immer.
+    if TAtlasIdeSettings.Current.AutoUses or AItem.IsAction then
       for TextEdit in AItem.AdditionalEdits do
       begin
         Edit.Start := TAtlasEditorBuffer.ByteOffset(Text, TextEdit.StartLine, TextEdit.StartCharacter);
         Edit.Stop := TAtlasEditorBuffer.ByteOffset(Text, TextEdit.EndLine, TextEdit.EndCharacter);
         Edit.Text := TextEdit.NewText;
         Edit.IsWord := False;
+        // "$0" im neuen Rumpf (#472): Dort steht der Cursor danach, sofern der Haupttext keinen hat.
+        Edit.Marker := Pos('$0', Edit.Text);
+        if Edit.Marker > 0 then
+          Delete(Edit.Text, Edit.Marker, 2);
+        if CaretMarker > 0 then
+          Edit.Marker := 0;
         Edits.Add(Edit);
       end;
     Edits.Sort(TComparer<TPendingEdit>.Construct(
@@ -1338,6 +1386,7 @@ begin
     Writer := View.Buffer.CreateUndoableWriter;
     Shift := 0;
     CursorByte := -1;
+    BodyByte := -1;
     for Edit in Edits do
     begin
       Log(Format('  Änderung Byte %d bis %d (Wortanfang %d, Zeile %d, Ende %d): %d Zeichen',
@@ -1353,10 +1402,14 @@ begin
           CursorByte := Edit.Start + Shift + Length(UTF8Encode(Edit.Text));
         if FCommitEnd >= 0 then
           Inc(CursorByte, FCommitSuffixBytes);
-      end;
+      end
+      else if (Edit.Marker > 0) and (BodyByte < 0) then
+        BodyByte := Edit.Start + Shift + Length(UTF8Encode(Copy(Edit.Text, 1, Edit.Marker - 1)));
       Inc(Shift, Length(UTF8Encode(Edit.Text)) - (Edit.Stop - Edit.Start));
     end;
     Writer := nil;
+    if BodyByte >= 0 then
+      CursorByte := BodyByte;
   finally
     Edits.Free;
   end;

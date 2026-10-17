@@ -21,6 +21,9 @@ type
     procedure FollowsEditsBeforeTheParen;
     [Test]
     procedure StopsWhenParenIsDeletedOrLineReplaced;
+    /// <summary>#472: "(" hinter einem Bezeichner löst „Methode anlegen“ aus, hinter Schlüsselwörtern nicht.</summary>
+    [Test]
+    procedure CallOpenedAfterIdentifier;
   end;
 
   [TestFixture]
@@ -109,6 +112,20 @@ begin
 end;
 
 { TAtlasPreviewTests }
+
+procedure TAtlasParenthesesTests.CallOpenedAfterIdentifier;
+begin
+  Assert.IsTrue(TAtlasParentheses.CallOpened('  Total := CalcDiscount(', 24));
+  Assert.IsTrue(TAtlasParentheses.CallOpened('  Kunde.Speichern(', 18));
+  // Cursor nicht direkt hinter "(", Leerzeichen davor, Schlüsselwort, Zahl, Kommentar und String.
+  Assert.IsFalse(TAtlasParentheses.CallOpened('  Total := CalcDiscount(', 23));
+  Assert.IsFalse(TAtlasParentheses.CallOpened('  Total := (', 12));
+  Assert.IsFalse(TAtlasParentheses.CallOpened('  if (', 6));
+  Assert.IsFalse(TAtlasParentheses.CallOpened('  X := 3(', 9));
+  Assert.IsFalse(TAtlasParentheses.CallOpened('  // Rechne(', 12));
+  Assert.IsFalse(TAtlasParentheses.CallOpened('  S := ''Rechne(', 15));
+  Assert.IsFalse(TAtlasParentheses.CallOpened('(', 1));
+end;
 
 procedure TAtlasPreviewTests.ShowsRestOfName;
 begin
