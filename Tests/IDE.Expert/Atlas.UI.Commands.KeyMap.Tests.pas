@@ -290,6 +290,9 @@ begin
   Assert.AreEqual('Definition einblenden', TAtlasKeyMapWindow.FunctionCaption(TAtlasKeyFunction.PeekDefinition));
   Assert.AreEqual('Referenzen einblenden', TAtlasKeyMapWindow.FunctionCaption(TAtlasKeyFunction.PeekReferences));
   Assert.AreEqual('Brotkrumenleiste', TAtlasKeyMapWindow.FunctionCaption(TAtlasKeyFunction.Breadcrumbs));
+  Assert.AreEqual('Zum Gegenstück springen', TAtlasKeyMapWindow.FunctionCaption(TAtlasKeyFunction.JumpToMatch));
+  Assert.AreEqual('Bis zum Gegenstück markieren',
+    TAtlasKeyMapWindow.FunctionCaption(TAtlasKeyFunction.JumpToMatchSelect));
   // #764: Schnellaktionen der Willkommensseite.
   Assert.AreEqual('Schnellaktion „Öffnen und bauen“',
     TAtlasKeyMapWindow.FunctionCaption(TAtlasKeyFunction.WelcomeQuickBuild));

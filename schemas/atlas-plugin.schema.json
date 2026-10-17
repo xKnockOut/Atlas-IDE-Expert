@@ -1097,6 +1097,36 @@
       "x-format": "shortcut",
       "x-page": "Befehle"
     },
+    "JumpToMatch": {
+      "description": "Sprung zum Gegenstück: begin ⇄ end, try → finally/except → end, repeat ⇄ until, Klammern, {$IFDEF} → {$ELSE} → {$ENDIF} und Methodenname Deklaration ⇄ Implementierung; aus = beide Tasten bleiben frei.",
+      "type": "boolean",
+      "default": true,
+      "x-key": "keys.jumpToMatch",
+      "x-area": "keys",
+      "x-feature": "EditorCommands",
+      "x-page": "Befehle",
+      "x-issue": "#635"
+    },
+    "JumpToMatchKey": {
+      "description": "Tastenkürzel „Zum Gegenstück springen“ (0 = keins).",
+      "type": "integer",
+      "default": 16570,
+      "x-key": "keys.jumpToMatchShortcut",
+      "x-area": "keys",
+      "x-format": "shortcut",
+      "x-page": "Befehle",
+      "x-issue": "#635"
+    },
+    "JumpToMatchSelectKey": {
+      "description": "Tastenkürzel „Bis zum Gegenstück markieren“ (0 = keins).",
+      "type": "integer",
+      "default": 24762,
+      "x-key": "keys.jumpToMatchSelect",
+      "x-area": "keys",
+      "x-format": "shortcut",
+      "x-page": "Befehle",
+      "x-issue": "#635"
+    },
     "TestUnitKey": {
       "type": "integer",
       "default": 0,
