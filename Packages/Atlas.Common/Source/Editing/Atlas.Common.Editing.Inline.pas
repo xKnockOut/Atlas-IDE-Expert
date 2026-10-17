@@ -1081,10 +1081,11 @@ var
 
   function Visible(const AMeaning: TInlineMeaning): Boolean;
   begin
+    // Private Mitglieder nur in der eigenen Klasse, auch wenn Delphi sie in der ganzen Unit zuließe.
     case AMeaning.Visibility of
-      TInlineVisibility.StrictPrivate, TInlineVisibility.StrictProtected:
+      TInlineVisibility.StrictPrivate, TInlineVisibility.StrictProtected, TInlineVisibility.Private:
         Result := SameText(CallerClass, AMeaning.Container) and SameText(ACaller.FileName, ACallee.FileName);
-      TInlineVisibility.Private, TInlineVisibility.Protected:
+      TInlineVisibility.Protected:
         Result := SameText(ACaller.FileName, ACallee.FileName);
     else
       Result := True;
@@ -1239,6 +1240,20 @@ begin
       Exit(Fail('Result wird vor dem Setzen gelesen', AReason));
   finally
     Graph.Free;
+  end;
+  // Result-Zuweisungen in Schleifen lassen sich nicht in eine einzelne Ersetzung übersetzen.
+  if IsFunction then
+  begin
+    Nodes := TList<TSyntaxNode>.Create;
+    try
+      TRoutineLocals.CollectKind(CalleeBody, TSyntaxKind.Identifier, Nodes);
+      for Node in Nodes do
+        if SameText(Node.Name, 'Result') and (TRoutineLocals.AccessOf(Node, CalleeFlow) <> TLocalAccess.Read) and
+          InLoopWithout(Node, CalleeBody, CalleeBody) then
+          Exit(Fail('Result wird in einer Schleife gesetzt', AReason));
+    finally
+      Nodes.Free;
+    end;
   end;
   // Exit: höchstens eins, als letzte Anweisung oder als "if … then Exit" auf oberster Ebene.
   Statements := nil;

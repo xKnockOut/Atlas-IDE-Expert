@@ -1257,7 +1257,7 @@ Vorher: *Tools › Optionen › Atlas › Allgemein* „Experimentelle Funktione
 | IN8 | `Show(IntToStr(N))` mit `procedure Show(const S: string)`, die `S` zweimal liest und eine lokale `N` hat | Hilfsvariable `var S: string := IntToStr(N);`, die lokale Variable heißt `N2`; mit `refactoring.inlineVar` aus stehen beide im var-Abschnitt |
 | IN9 | Funktion mit `if A < 0 then Exit(0);` am Anfang | Variable `NameResult`, daraus wird `if … then NameResult := 0 else begin … end`; der Aufruf wird `NameResult` |
 | IN10 | Aufruf in `if X > 0 then Log2(X);` | Der Rumpf steht in `begin … end` |
-| IN11 | Rekursive Routine, Konstruktor, zwei Exit, Rumpf mit asm, with oder inherited | Keine Aktion |
+| IN11 | Rekursive Routine, Konstruktor, zwei Exit, `Result` in einer Schleife gesetzt, Rumpf mit asm, with oder inherited; Methode mit Zugriff auf ein `private`-Feld, aufgerufen außerhalb ihrer Klasse | Keine Aktion |
 | IN12 | Nach dem Einbetten übersetzen (Strg+F9) | 0 Fehler; das Verhalten ist unverändert |
 | IN13 | Einstellung bzw. Hauptschalter „Experimentelle Funktionen“ aus | Keine Einbetten-Aktionen |
 
