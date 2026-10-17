@@ -49,6 +49,7 @@
     "editor.multiCursor": true,
     "editor.linkedEditing": true,
     "editor.stickyScroll": true,
-    "refactoring.inline": true
+    "refactoring.inline": true,
+    "refactoring.moveClass": true
   }
 }

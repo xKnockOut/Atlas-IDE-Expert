@@ -8,7 +8,8 @@
 //   Puffer über TAtlasIdeWorkspaceEdit (je Datei ein Rückgängig-Schritt, #397)
 //   und führt danach ihren Befehl aus: atlas.copyText legt das erste Argument
 //   in die Zwischenablage, atlas.openFile öffnet die Datei der URI im ersten
-//   Argument (Testunit, #274/#189), alle anderen gehen als
+//   Argument (Testunit, #274/#189), atlas.changeSignature (#100) und
+//   atlas.moveClass (#103) öffnen ihren Dialog, alle anderen gehen als
 //   workspace/executeCommand an den Server.
 // - Auswahl erweitern und verkleinern (textDocument/selectionRange).
 // - Gehe zu Typdefinition (textDocument/typeDefinition); Gehe zu
@@ -158,6 +159,7 @@ uses
   Atlas.IDE.Editor.Hide,
   Atlas.Core.Problems.Inline,
   Atlas.IDE.Editor.ChangeSignature,
+  Atlas.IDE.Editor.MoveClass,
   Atlas.IDE.Editor.EnterWatch,
   Atlas.IDE.Editor.PatternContinuation,
   Atlas.IDE.Editor.MultiCursor,
@@ -1171,6 +1173,17 @@ begin
   begin
     // Client-Befehl: Dialog „Signatur ändern“ (#100); er fragt den Server selbst.
     TAtlasIdeChangeSignature.Execute(Session, AArgumentsJson,
+      TAtlasUnopenedPolicies.FromSetting(TAtlasIdeSettings.Current.OpenForEdits),
+      procedure(AText: string)
+      begin
+        Say(AText);
+      end);
+    Exit;
+  end;
+  if ACommand = TAtlasIdeMoveClass.ClientCommand then
+  begin
+    // Client-Befehl: Name abfragen und „Klasse verschieben“ (#103); er fragt den Server selbst.
+    TAtlasIdeMoveClass.Execute(Session, AArgumentsJson,
       TAtlasUnopenedPolicies.FromSetting(TAtlasIdeSettings.Current.OpenForEdits),
       procedure(AText: string)
       begin

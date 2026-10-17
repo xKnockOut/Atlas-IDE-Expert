@@ -581,7 +581,8 @@ type
     SettingsMultiCursorCtrl, SettingsMultiCursorNext, SettingsMultiCursorSkip, SettingsMultiCursorLineEnds,
     SettingsMultiCursorAbove, SettingsMultiCursorBelow, SettingsLinkedEditing, LinkedEditingCount,
     LinkedEditingReserved, LinkedEditingVisible, LinkedEditingRestoreHint, SettingsStickyScroll,
-    SettingsStickyScrollMaxLines);
+    SettingsStickyScrollMaxLines, MoveClassTitle, MoveClassPrompt, MoveClassFailed, MoveClassNothing,
+    MoveClassPreviewHint, MoveClassApply, MoveClassDone, MoveClassWarning);
 
   TAtlasStrings = class
   private class var
@@ -1678,7 +1679,10 @@ const
      'Lokale Bezeichner beim Tippen mitziehen (Variablen, Parameter, Konstanten)', '%d Vorkommen',
      '„%s“ ist ein reserviertes Wort', 'Konflikt mit %s', 'Esc stellt den alten Namen wieder her',
      'Mitlaufender Kopf: Kopfzeilen der umgebenden Klasse und Routinen oben im Editor',
-     'Höchstzahl der Kopfzeilen (1 bis 10):'),
+     'Höchstzahl der Kopfzeilen (1 bis 10):',
+     'Klasse in eigene Unit verschieben', 'Name der neuen Unit:', 'Klasse verschieben fehlgeschlagen: %s',
+     'Klasse verschieben: nichts zu ändern.', 'Neue Unit %s: %d Änderungen in %d Dateien', 'Verschieben',
+     'Klasse nach %s verschoben: %d Änderungen in %d Dateien übernommen.', 'Hinweis: %s'),
     ('Enter to accept · Esc to close', '%d of %d', 'No matches for “%s”', 'Backspace widens the search',
      'No suggestions here', 'Esc closes', 'No details for this entry', 'Overload', 'Deprecated: %s', 'Deprecated.',
      'Inherited from %s', 'Inherited', 'optional, default %s', 'No overload with %d parameters.', '… %d more',
@@ -2693,7 +2697,10 @@ const
      'Rename local identifiers while typing (variables, parameters, constants)', '%d occurrences',
      '“%s” is a reserved word', 'Conflicts with %s', 'Esc restores the old name',
      'Sticky scroll: headers of the enclosing class and routines on top of the editor',
-     'Maximum header lines (1 to 10):'));
+     'Maximum header lines (1 to 10):',
+     'Move class to its own unit', 'Name of the new unit:', 'Moving the class failed: %s',
+     'Move class: nothing to change.', 'New unit %s: %d changes in %d files', 'Move',
+     'Class moved to %s: %d changes in %d files applied.', 'Note: %s'));
 
 { TAtlasStrings }
 

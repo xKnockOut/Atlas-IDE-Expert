@@ -572,6 +572,13 @@
           "x-experimental": true,
           "x-issue": "#103"
         },
+        "moveClass": {
+          "type": "boolean",
+          "default": false,
+          "description": "Code-Aktion „Klasse in eigene Unit verschieben …“ auf der ersten Zeile einer Klassen- oder Record-Deklaration: Die Deklaration samt Attributen, Kommentar und Methodenrümpfen kommt in eine neue Unit neben der alten (Name aus dem Klassennamen ohne T, im Dialog änderbar). Die neue Unit steht danach in .dpr bzw. .dpk und .dproj; ihre uses entstehen aus den benötigten Namen, und alle Units, die die Klasse verwenden, binden sie ein. Nicht angeboten bei Zugriff auf Namen aus dem implementation-Teil der alten Unit, Kreisverweis, Formularklassen und bedingter Übersetzung.",
+          "x-experimental": true,
+          "x-issue": "#103"
+        },
         "createMethod": {
           "type": "boolean",
           "default": true,
