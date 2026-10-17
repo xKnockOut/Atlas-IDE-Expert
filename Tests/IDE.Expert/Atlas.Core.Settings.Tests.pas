@@ -48,6 +48,8 @@ type
     /// <summary>Anweisung vervollständigen (#697): Vorgaben, Speichern, Laden, unbekannte Werte.</summary>
     [Test]
     procedure CompleteStatementOptions;
+    [Test]
+    procedure ContinuePatternOptions;
     /// <summary>Änderungsmarken und Zeilenhistorie (#507): Vorgaben, Tasten, Speichern und Laden.</summary>
     [Test]
     procedure GitChangeOptions;
@@ -1277,6 +1279,31 @@ begin
   Loaded.Normalize;
   Assert.AreEqual('multiLine', Loaded.CompleteStatementBeginEnd);
   Assert.AreEqual('finally', Loaded.CompleteStatementTryKind);
+end;
+
+procedure TAtlasPluginSettingsTests.ContinuePatternOptions;
+var
+  Settings, Loaded: TAtlasPluginSettings;
+  Store: IAtlasSettingsStore;
+begin
+  Settings := TAtlasPluginSettings.Defaults;
+  Assert.IsTrue(Settings.ContinuePattern);
+  Assert.AreEqual(2, Settings.ContinuePatternMinLines);
+  Settings.ContinuePattern := False;
+  Settings.ContinuePatternMinLines := 4;
+  Store := TMemoryStore.Create;
+  Settings.Save(Store);
+  Loaded := TAtlasPluginSettings.Defaults;
+  Loaded.Load(Store);
+  Assert.IsFalse(Loaded.ContinuePattern);
+  Assert.AreEqual(4, Loaded.ContinuePatternMinLines);
+  // Nur 2 bis 5 Zeilen.
+  Loaded.ContinuePatternMinLines := 1;
+  Loaded.Normalize;
+  Assert.AreEqual(2, Loaded.ContinuePatternMinLines);
+  Loaded.ContinuePatternMinLines := 9;
+  Loaded.Normalize;
+  Assert.AreEqual(5, Loaded.ContinuePatternMinLines);
 end;
 
 procedure TAtlasPluginSettingsTests.GitChangeOptions;

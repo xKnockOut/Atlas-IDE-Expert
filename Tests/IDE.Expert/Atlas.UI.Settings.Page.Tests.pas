@@ -80,6 +80,8 @@ type
     [Test]
     procedure CompleteStatementRoundTrip;
     [Test]
+    procedure ContinuePatternRoundTrip;
+    [Test]
     procedure WelcomeSettingsRoundTrip;
     /// <summary>Freies Layout (#767): Schalter, Spalten, Layouts anlegen, wechseln, umbenennen, löschen; je
     /// Layout eigene Sichtbarkeit; Reveal der neuen Einstellungen.</summary>
@@ -1538,6 +1540,29 @@ begin
     Assert.AreEqual('never', Saved.CompleteStatementBeginEnd);
     Assert.AreEqual('ask', Saved.CompleteStatementTryKind);
     Assert.IsFalse(Saved.CompleteStatementMethodBody);
+  finally
+    Page.Free;
+  end;
+end;
+
+procedure TAtlasSettingsPageTests.ContinuePatternRoundTrip;
+var
+  Page: TAtlasSettingsPage;
+  Settings, Saved: TAtlasPluginSettings;
+begin
+  // #671: Schalter und Mindestzeilen.
+  Settings := TAtlasPluginSettings.Defaults;
+  Page := TAtlasSettingsPage.Create(nil);
+  try
+    Page.LoadFrom(Settings);
+    Assert.IsTrue(Page.ContinuePattern.Checked);
+    Assert.AreEqual('2', Page.ContinuePatternMinLines.Text);
+    Page.ContinuePattern.Checked := False;
+    Page.ContinuePatternMinLines.Text := '3';
+    Saved := TAtlasPluginSettings.Defaults;
+    Page.SaveTo(Saved);
+    Assert.IsFalse(Saved.ContinuePattern);
+    Assert.AreEqual(3, Saved.ContinuePatternMinLines);
   finally
     Page.Free;
   end;

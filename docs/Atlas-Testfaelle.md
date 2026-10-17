@@ -1161,6 +1161,27 @@ Vorbereitung: Git-Projekt `GitDemo` mit `.atlas` `"tracker": {"provider": "githu
 | ZV12 | Tastenübersicht öffnen | Alt+↑ und Umschalt+Alt+↑/↓ als Konflikt mit der IDE (Atlas gewinnt) |
 | ZV13 | Optionen › Atlas › Befehle: „Zeilen und Methoden verschieben …“ aus | Alt+↑/↓ gehören wieder der IDE (Alt+↑ = Code-Browsing), Palettenbefehle fehlen; Tasten änderbar |
 
+## Muster fortsetzen (#671)
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| MF1 | `  Grid.Cells[0, 1] := 'a';` und `  Grid.Cells[0, 2] := 'b';`, am Ende der zweiten Zeile Enter | Schattentext `Grid.Cells[0, 3] := '';` ab dem Cursor |
+| MF2 | MF1, dann Tab | Die Zeile steht im Text, Cursor zwischen den Hochkommas; Strg+Z nimmt nur die Zeile zurück |
+| MF3 | MF1, dann ein Buchstabe bzw. ↓ | Der Vorschlag verschwindet, der Buchstabe steht normal im Text bzw. der Cursor wandert |
+| MF4 | Tab in einer leeren Zeile ohne Muster | Normaler Tab der IDE |
+| MF5 | `Add($08);`, `Add($0A);` bzw. `Add(-3);`, `Add(-2);` | `Add($0C);` bzw. `Add(-1);` |
+| MF6 | `Keys.Add('A');`, `Keys.Add('B');` | `Keys.Add('C');` |
+| MF7 | `TAmpel = (Rot, Gelb, Gruen);` in der Unit, `Zeige(Rot);`, `Zeige(Gelb);` | `Zeige(Gruen);`; nach `Zeige(Gruen);` kein Vorschlag |
+| MF8 | `Button.Align := alNone;`, `Button.Align := alTop;` (TAlign aus Vcl.Controls, Server läuft) | `Button.Align := alBottom;` |
+| MF9 | `Edit1.Text := '';`, `Edit2.Text := '';` mit bzw. ohne `Edit3` im Formular | Vorschlag `Edit3.Text := '';` bzw. keiner |
+| MF10 | Im Typ `Spalte01: Integer;`, `Spalte02: Integer;` | `Spalte03: Integer;` |
+| MF11 | case-Zweige `0: Result := 'Null';`, `1: Result := 'Eins';` | `2: Result := '';`, nach Tab Cursor zwischen den Hochkommas |
+| MF12 | `RegisterClass(TFoo1);`, `RegisterClass(TFoo2);` mit TFoo3 in der Unit | `RegisterClass(TFoo3);` |
+| MF13 | `A[1] := 0;`, `A[2] := 0;`, `A[4] := 0;` bzw. `Show(Alpha);`, `Show(Beta);` | Kein Vorschlag |
+| MF14 | Vervollständigungsliste offen, Enter übernimmt einen Eintrag | Kein Mustervorschlag |
+| MF15 | Optionen › Atlas › Editor: Mindestzeilen 3, MF1 wiederholen; dann „Muster fortsetzen“ aus | Erst ab drei Zeilen; ausgeschaltet nie ein Vorschlag |
+| MF16 | Bei sichtbarem Vorschlag Rechtsklick in den Schattentext, *Atlas › Element ausblenden …* | Nur „Mustervorschläge überall ausblenden“; danach ist „Muster fortsetzen“ aus (#628) |
+
 ## Anweisung vervollständigen (#697)
 
 | Nr. | Schritte | Erwartet |

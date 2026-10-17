@@ -79,6 +79,7 @@ uses
   Atlas.Core.Editor.LineMove,
   Atlas.IDE.Editor.LineMove,
   Atlas.IDE.Editor.CommentContinuation,
+  Atlas.IDE.Editor.PatternContinuation,
   Atlas.IDE.Editor.StatementCompletion,
   Atlas.IDE.Editor.OverviewRuler,
   Atlas.IDE.UnitSearch.Commands,
@@ -2098,6 +2099,18 @@ begin
     end);
   // Kommentar beim Enter fortsetzen (#696): beobachtet Enter, ohne die Taste zu binden.
   TAtlasIdeCommentContinuation.Install;
+  // Muster fortsetzen (#671): nach dem Kommentar, nie bei offener Vervollständigung.
+  TAtlasIdePatternContinuation.Install(
+    function: TLspSession
+    begin
+      Result := nil;
+      if Manager <> nil then
+        Result := Manager.RunningSession;
+    end,
+    function: Boolean
+    begin
+      Result := (Manager <> nil) and Manager.CompletionVisible;
+    end);
   // Übersichtsleiste an der Scrollleiste (#519).
   TAtlasIdeOverviewRuler.Install;
   // Schnell öffnen (#503): Dateiliste im Hintergrund, zuletzt geöffnete Dateien zählen.
@@ -2130,6 +2143,7 @@ begin
   TAtlasIdeOverviewRuler.Uninstall;
   TAtlasIdeLineChanges.Uninstall;
   TAtlasIdeLineMove.Uninstall;
+  TAtlasIdePatternContinuation.Uninstall;
   TAtlasIdeCommentContinuation.Uninstall;
   TAtlasIdeStatementCompletion.Uninstall;
   TAtlasIdeOutline.Uninstall;

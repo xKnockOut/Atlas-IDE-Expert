@@ -280,6 +280,11 @@ type
     class function CaseValues(AResolver: TNameResolver; const AIndex: ISymbolIndex; ATree: TSyntaxTree;
       const AText, AFileName: string; const APosition: TTextPosition; const AReadText: TCompletionReadText;
       out AValues: TArray<string>; out APrefix: string): Boolean; static;
+    /// <summary>Muster fortsetzen (#671): alle Werte des Aufzählungstyps, zu dem der Wert an APosition gehört, in
+    /// Deklarationsreihenfolge (ohne Typpräfix). False, wenn dort kein Aufzählungswert steht.</summary>
+    class function EnumValuesAt(AResolver: TNameResolver; const AIndex: ISymbolIndex; ATree: TSyntaxTree;
+      const AText, AFileName: string; const APosition: TTextPosition; const AReadText: TCompletionReadText;
+      out AValues: TArray<string>): Boolean; static;
     /// <summary>Unbekannter Name am Cursor im Rumpf einer Routine (#471): lokale Variable (mit AInlineVar auch als
     /// Inline-var), Feld der Klasse (F-Konvention, die Verwendung wird umbenannt) und, wenn der Name als Wert
     /// dient, Konstante in der implementation. Typ aus der rechten Seite einer Zuweisung, sonst aus dem
@@ -4430,6 +4435,31 @@ begin
   AValues := Enum.Values;
   if Enum.Scoped then
     APrefix := Enum.Name + '.';
+  Result := True;
+end;
+
+class function TLspCompletion.EnumValuesAt(AResolver: TNameResolver; const AIndex: ISymbolIndex; ATree: TSyntaxTree;
+  const AText, AFileName: string; const APosition: TTextPosition; const AReadText: TCompletionReadText;
+  out AValues: TArray<string>): Boolean;
+var
+  Member, TypeInfo: TResolvedSymbol;
+  Owner: TUnitIndex;
+  Enum: TEnumType;
+begin
+  AValues := nil;
+  Result := False;
+  if ATree = nil then
+    Exit;
+  Member := AResolver.Resolve(ATree, AFileName, APosition);
+  if not Member.Found or (Member.SymbolKind <> TIndexSymbolKind.EnumMember) or (Member.Container = '') then
+    Exit;
+  // Der Typ, wie er an der Stelle sichtbar ist; sonst von der Unit des Werts aus.
+  TypeInfo := TypeAt(AResolver, AIndex, ATree, AFileName, OffsetOf(AText, APosition), Member.Container);
+  if not (TypeInfo.Found and TypeInfo.IsType) and OwnerUnit(AResolver, AIndex, ATree, AFileName, Member, Owner) then
+    AResolver.ResolveTypeFrom(Owner, Member.Container, TypeInfo);
+  if not EnumOf(AResolver, AIndex, ATree, AText, AFileName, TypeInfo, AReadText, False, Enum) then
+    Exit;
+  AValues := Enum.Values;
   Result := True;
 end;
 
