@@ -126,6 +126,7 @@ uses
   Atlas.Common.Dfm.Parser,
   Atlas.Common.Index.Contract,
   Atlas.Common.Editing.AssignmentSwap,
+  Atlas.Common.Editing.Extract,
   Atlas.Common.Lsp.InactiveRegions;
 
 { TLspCodeActions }
@@ -149,6 +150,7 @@ begin
   Kinds := TJSONArray.Create;
   Kinds.Add(QuickFixKind);
   Kinds.Add(RewriteKind);
+  Kinds.Add(ExtractKind);
   Kinds.Add(OrganizeImportsKind);
   Kinds.Add(FixAllKind);
   Kinds.Add(RemoveUnusedKind);
@@ -287,7 +289,8 @@ begin
   if TJSONObject(AParams).TryGetValue<TJSONArray>('context.only', OnlyValue) then
     for Item in OnlyValue do
       Only := Only + [Item.Value];
-  WantsEditing := TCodeActions.KindRequested(QuickFixKind, Only) or TCodeActions.KindRequested(RewriteKind, Only);
+  WantsEditing := TCodeActions.KindRequested(QuickFixKind, Only) or TCodeActions.KindRequested(RewriteKind, Only) or
+    TCodeActions.KindRequested(ExtractKind, Only);
   // source.* nur auf ausdrückliche Anfrage, nicht bei jeder Cursorbewegung.
   WantsOrganize := (Only <> nil) and TCodeActions.KindRequested(OrganizeImportsKind, Only);
   WantsFixAll := (Only <> nil) and TCodeActions.KindRequested(FixAllKind, Only);

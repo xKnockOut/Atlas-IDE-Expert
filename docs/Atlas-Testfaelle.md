@@ -2121,3 +2121,23 @@ Voraussetzung für EX2 bis EX7: mindestens eine Einstellung trägt `x-experiment
 | BK12 | Zweites Editorfenster öffnen (Ansicht › Neues Editorfenster) | Auch dort eine Leiste |
 | BK13 | .txt-Datei aktivieren; Server beenden | Hinweis „Keine Gliederung an dieser Stelle“ bzw. „Der Atlas-Server läuft nicht“, Höhe unverändert |
 | BK14 | `editor.breadcrumbs` aus | Leisten verschwinden, Strg+Umschalt+. ist frei, Palettenbefehl fehlt |
+
+## Extrahieren, case und with (#50)
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| EX1 | In `TRechner.Summe` die Zeilen `Temp := AValue * 2; Total := Total + Temp;` markieren, Alt+Enter, „Methode extrahieren“ | Neue Methode `ExtractedMethod(const AValue: Integer; var Total: Integer)` im private-Abschnitt und als Rumpf vor `Summe`; `Temp` wandert in die neue Methode und fehlt im var-Abschnitt von `Summe`; an der Stelle steht der Aufruf |
+| EX2 | Auswahl in einer globalen Routine, die eine Variable erst setzt und danach liest | Routine davor mit `out`-Parameter |
+| EX3 | Auswahl mit `Exit`, mit `Result :=` bzw. nur halb markierter Anweisung | Aktion fehlt bzw. nennt den Grund („Exit in der Auswahl“) |
+| EX4 | Auswahl mit `Break` in einer Schleife, die nicht mitmarkiert ist | Aktion fehlt; mit der ganzen Schleife markiert wird extrahiert |
+| EX5 | Ausdruck `Kunde.Name + ' ' + Kunde.Vorname` markieren, „Variable einführen“ | `var Value := …;` vor der Anweisung, der Ausdruck wird durch `Value` ersetzt; unter Delphi 10.2 bzw. mit `refactoring.inlineVar` aus Eintrag im var-Abschnitt mit Typ |
+| EX6 | Ausdruck kommt zweimal vor, „Variable einführen (alle 2 Vorkommen)“ | Beide ersetzt; liegt eine Zuweisung an einen Teil dazwischen, wird nur das gewählte ersetzt |
+| EX7 | Literal `0.19` markieren, „Konstante extrahieren“ bzw. „… in der Unit“ | `const NewConstant = 0.19;` in der Routine bzw. im implementation-Teil; das Literal wird ersetzt |
+| EX8 | `case Align of` über `TAlign` mit drei Zweigen, Cursor im case, Alt+Enter | „case vervollständigen (4 fehlende Werte)“ ergänzt `alLeft: ;` … `alCustom: ;` in Deklarationsreihenfolge |
+| EX9 | Dasselbe mit else-Teil | „Fehlende Werte vor else ergänzen“, Zweige stehen vor `else` |
+| EX10 | `with Kunde, Adresse do Name := Ort;` (Name gehört zu Adresse) | „with auflösen“ ergibt `Adresse.Name := Kunde.Ort;`; begin … end des Rumpfs entfällt und die Anweisungen rücken nach links |
+| EX11 | `with HoleKunde(1) do Name := 'x';` | `var Kunde := HoleKunde(1);` und `Kunde.Name := 'x';`; liefert der Ausdruck einen Record, fehlt die Aktion |
+| EX12 | with über eine Variable unbekannten Typs | Aktion fehlt |
+| EX13 | Cursor auf das Wort `with`, Strg+Leertaste | Erster Eintrag „with auflösen“; Enter löst wie EX10 auf |
+| EX14 | `refactoring.extract`, `refactoring.completeCase` bzw. `refactoring.resolveWith` aus | Die jeweiligen Aktionen (und der Eintrag aus EX13) fehlen |
+

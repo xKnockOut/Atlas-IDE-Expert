@@ -298,6 +298,10 @@
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.StringLiterals.pas"/>
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.PostfixTemplates.pas"/>
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.CaseCompletion.pas"/>
+        <DCCReference Include="Source\Editing\Atlas.Common.Editing.RoutineBody.pas"/>
+        <DCCReference Include="Source\Editing\Atlas.Common.Editing.Extract.pas"/>
+        <DCCReference Include="Source\Editing\Atlas.Common.Editing.WithResolution.pas"/>
+        <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.Refactorings.pas"/>
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.DeclareUnknown.pas"/>
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.InterfaceStubs.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.StringLiteralCommands.pas"/>
