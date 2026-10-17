@@ -43,6 +43,9 @@ type
     /// <summary>Änderungsmarken und Zeilenhistorie (#507): Vorgaben, Tasten, Speichern und Laden.</summary>
     [Test]
     procedure GitChangeOptions;
+    /// <summary>Übersichtsleiste (#519): Vorgaben, Arten normalisiert, Speichern und Laden.</summary>
+    [Test]
+    procedure OverviewRulerOptions;
     /// <summary>Erzeugen-Menü (#719): Vorgaben, Normalisieren, Speichern und Laden.</summary>
     [Test]
     procedure GenerateMenuOptions;
@@ -1205,6 +1208,31 @@ begin
   Loaded.Normalize;
   Assert.AreEqual(0, Loaded.NextChangeKey);
   Assert.AreEqual($FFFF, Loaded.PreviousChangeKey);
+end;
+
+procedure TAtlasPluginSettingsTests.OverviewRulerOptions;
+var
+  Settings, Loaded: TAtlasPluginSettings;
+  Store: IAtlasSettingsStore;
+begin
+  Settings := TAtlasPluginSettings.Defaults;
+  Assert.IsTrue(Settings.OverviewRuler);
+  Assert.AreEqual('diagnostics,search,changes,breakpoints,bookmarks,cursor', Settings.OverviewRulerKinds);
+  Settings.OverviewRuler := False;
+  Settings.OverviewRulerKinds := 'changes,diagnostics';
+  Store := TMemoryStore.Create;
+  Settings.Save(Store);
+  Loaded := TAtlasPluginSettings.Defaults;
+  Loaded.Load(Store);
+  Assert.IsFalse(Loaded.OverviewRuler);
+  Loaded.Normalize;
+  Assert.AreEqual('diagnostics,changes', Loaded.OverviewRulerKinds, 'feste Reihenfolge');
+  Loaded.OverviewRulerKinds := 'gibtsnicht, cursor';
+  Loaded.Normalize;
+  Assert.AreEqual('cursor', Loaded.OverviewRulerKinds);
+  Loaded.OverviewRulerKinds := '';
+  Loaded.Normalize;
+  Assert.AreEqual('', Loaded.OverviewRulerKinds, 'leer = keine Marken');
 end;
 
 { TAtlasSettingsScopesTests }

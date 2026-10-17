@@ -46,6 +46,7 @@ uses
   Atlas.Core.Diagnostics.Guard,
   Atlas.Core.Diagnostics.SafeMode,
   Atlas.Core.Settings.Catalog,
+  Atlas.Core.Editor.Overview,
   Atlas.UI.Settings.Marks,
   Atlas.UI.Strings,
   Atlas.Core.Style.Symbol,
@@ -266,6 +267,8 @@ type
     FGitBlame: TCheckBox;
     FNextChangeKey: TEdit;
     FPreviousChangeKey: TEdit;
+    FOverviewRuler: TCheckBox;
+    FOverviewKinds: array[TAtlasOverviewKind] of TCheckBox;
     FJumpToMatch: TCheckBox;
     FJumpToMatchKey: TEdit;
     FJumpToMatchSelectKey: TEdit;
@@ -1178,6 +1181,16 @@ begin
   FNextChangeKey := AddKey(TAtlasStrings.Text(TAtlasTextId.NextChangeCommand));
   FPreviousChangeKey := AddKey(TAtlasStrings.Text(TAtlasTextId.PreviousChangeCommand));
   FGitBlame := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsGitBlame));
+  // Übersichtsleiste (#519): an/aus und je Art ein Häkchen.
+  FOverviewRuler := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsOverviewRuler));
+  FOverviewKinds[TAtlasOverviewKind.Diagnostics] :=
+    AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsOverviewDiagnostics));
+  FOverviewKinds[TAtlasOverviewKind.Search] := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsOverviewSearch));
+  FOverviewKinds[TAtlasOverviewKind.Changes] := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsOverviewChanges));
+  FOverviewKinds[TAtlasOverviewKind.Breakpoints] :=
+    AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsOverviewBreakpoints));
+  FOverviewKinds[TAtlasOverviewKind.Bookmarks] := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsOverviewBookmarks));
+  FOverviewKinds[TAtlasOverviewKind.Cursor] := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsOverviewCursor));
   // Rekursionssymbole im Rand (#623).
   FRecursionMarkers := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsRecursionMarkers));
   FRecursionMarkersDepth := AddNumber(TAtlasStrings.Text(TAtlasTextId.SettingsRecursionMarkersDepth));
@@ -1360,6 +1373,7 @@ begin
   Bind('Breadcrumbs', FBreadcrumbs);
   Bind('GitGutter', FGitGutter);
   Bind('GitBlame', FGitBlame);
+  Bind('OverviewRuler', FOverviewRuler);
   Bind('RecursionMarkers', FRecursionMarkers);
   Bind('InlineDiagnostics', FInlineDiagnostics);
   Bind('ProblemsStatusCounter', FProblemsStatusCounter);
@@ -2086,6 +2100,7 @@ var
   Check: TAtlasReleaseCheck;
   Series: TAtlasTrendSeries;
   Action: TAtlasQuickAction;
+  Kind: TAtlasOverviewKind;
 begin
   // Aus SaveTo: Element und die Einstellungen, die es schreibt. Listen aus mehreren Haken zeigen keinen Punkt
   // (der gälte für jeden Haken), lassen sich aber zurücksetzen.
@@ -2118,6 +2133,9 @@ begin
   FMarks.Bind(FGitBlame, ['GitBlame']);
   FMarks.Bind(FNextChangeKey, ['NextChangeKey']);
   FMarks.Bind(FPreviousChangeKey, ['PreviousChangeKey']);
+  FMarks.Bind(FOverviewRuler, ['OverviewRuler']);
+  for Kind := Low(TAtlasOverviewKind) to High(TAtlasOverviewKind) do
+    FMarks.Bind(FOverviewKinds[Kind], ['OverviewRulerKinds']);
   FMarks.Bind(FJumpToMatch, ['JumpToMatch']);
   FMarks.Bind(FJumpToMatchKey, ['JumpToMatchKey']);
   FMarks.Bind(FJumpToMatchSelectKey, ['JumpToMatchSelectKey']);
@@ -3071,6 +3089,8 @@ var
   Series, Wanted: TAtlasTrendSeries;
   Items: TAtlasQuickActions;
   Action: TAtlasQuickAction;
+  Kind: TAtlasOverviewKind;
+  Kinds: TAtlasOverviewKinds;
 begin
   FWidths := ASettings;
   FEnabled.Checked := ASettings.Enabled;
@@ -3103,6 +3123,10 @@ begin
   FGitBlame.Checked := ASettings.GitBlame;
   FNextChangeKey.Text := ShortCutToText(TShortCut(ASettings.NextChangeKey));
   FPreviousChangeKey.Text := ShortCutToText(TShortCut(ASettings.PreviousChangeKey));
+  FOverviewRuler.Checked := ASettings.OverviewRuler;
+  Kinds := TAtlasOverview.Kinds(ASettings.OverviewRulerKinds);
+  for Kind := Low(TAtlasOverviewKind) to High(TAtlasOverviewKind) do
+    FOverviewKinds[Kind].Checked := Kind in Kinds;
   FJumpToMatch.Checked := ASettings.JumpToMatch;
   FJumpToMatchKey.Text := ShortCutToText(TShortCut(ASettings.JumpToMatchKey));
   FJumpToMatchSelectKey.Text := ShortCutToText(TShortCut(ASettings.JumpToMatchSelectKey));
@@ -3362,6 +3386,8 @@ var
   Series: TAtlasTrendSeries;
   Items: TAtlasQuickActions;
   Action: TAtlasQuickAction;
+  Kind: TAtlasOverviewKind;
+  Kinds: TAtlasOverviewKinds;
 begin
   ASettings.Enabled := FEnabled.Checked;
   ASettings.ServerPath := Trim(FServerPath.Text);
@@ -3393,6 +3419,12 @@ begin
   ASettings.GitBlame := FGitBlame.Checked;
   ASettings.NextChangeKey := Integer(TextToShortCut(Trim(FNextChangeKey.Text)));
   ASettings.PreviousChangeKey := Integer(TextToShortCut(Trim(FPreviousChangeKey.Text)));
+  ASettings.OverviewRuler := FOverviewRuler.Checked;
+  Kinds := [];
+  for Kind := Low(TAtlasOverviewKind) to High(TAtlasOverviewKind) do
+    if FOverviewKinds[Kind].Checked then
+      Include(Kinds, Kind);
+  ASettings.OverviewRulerKinds := TAtlasOverview.KindsText(Kinds);
   ASettings.JumpToMatch := FJumpToMatch.Checked;
   ASettings.JumpToMatchKey := Integer(TextToShortCut(Trim(FJumpToMatchKey.Text)));
   ASettings.JumpToMatchSelectKey := Integer(TextToShortCut(Trim(FJumpToMatchSelectKey.Text)));
