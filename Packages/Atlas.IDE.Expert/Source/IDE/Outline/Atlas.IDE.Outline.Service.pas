@@ -2,11 +2,9 @@
 
 // Gliederungsfenster (#537) in der IDE:
 // - Ein Zeitgeber folgt, solange das Fenster sichtbar ist, der aktiven
-//   Quelltextdatei: Beim Dateiwechsel sofort, nach Änderungen erst nach einer
-//   Tipppause gleicht er den Puffer mit dem Server ab und holt
-//   textDocument/documentSymbol samt Atlas-Angaben (Sichtbarkeit, Marken,
-//   nicht implementiert). Der Stand des Puffers kommt aus
-//   TAtlasEditorSnapshots; der Text wird nur bei einer neuen Version gelesen.
+//   Quelltextdatei. Den Stand der Gliederung liefert TAtlasIdeOutlineCache
+//   (gemeinsam mit der Brotkrumenleiste #590): beim Dateiwechsel sofort, nach
+//   Änderungen erst nach einer Tipppause.
 // - Mit outline.followCursor hebt er den Eintrag am Cursor hervor, ohne zu
 //   springen (im Rumpf einer Methode deren Deklaration).
 // - Klick springt zur Deklaration, Doppelklick zur Implementierung (Rumpf in
@@ -18,16 +16,13 @@
 
 interface
 
-uses
-  System.SysUtils,
-  Atlas.Core.Lsp.Session;
-
 type
   TAtlasIdeOutline = class
   private class var
     FState: TObject;
   public
-    class procedure Install(const ASessionOf: TFunc<TLspSession>); static;
+    /// <summary>Den Server fragt TAtlasIdeOutlineCache (vorher installieren).</summary>
+    class procedure Install; static;
     class procedure Uninstall; static;
     /// <summary>Fenster zeigen und füllen; nichts, solange outline.enabled aus ist.</summary>
     class procedure ShowWindow; static;
@@ -38,65 +33,45 @@ type
 implementation
 
 uses
-  Winapi.Windows,
+  System.SysUtils,
   System.Classes,
-  System.JSON,
   Vcl.ExtCtrls,
   ToolsAPI,
   Atlas.Core.Diagnostics.Guard,
+  Atlas.Core.Lsp.Session,
   Atlas.Core.Outline.Model,
   Atlas.Core.Settings.Plugin,
   Atlas.UI.Strings,
   Atlas.UI.Outline.Frame,
   Atlas.IDE.Foundation.EditorBuffer,
-  Atlas.IDE.Foundation.EditorSnapshot,
   Atlas.IDE.Foundation.Navigation,
   Atlas.IDE.Foundation.Settings,
+  Atlas.IDE.Outline.Cache,
   Atlas.IDE.Outline.Window;
 
 const
   TickMs = 200;
-  /// <summary>Tipppause, nach der die Gliederung neu geholt wird.</summary>
-  PauseMs = 600;
-  /// <summary>Ohne Server: so oft neu versuchen.</summary>
-  RetryMs = 2000;
-  RequestTimeoutMs = 2000;
-  PascalExtensions: array[0..4] of string = ('.pas', '.dpr', '.dpk', '.inc', '.pp');
 
 type
   TOutlineState = class
   private
-    FSessionOf: TFunc<TLspSession>;
     FTimer: TTimer;
     FFileName: string;
-    FVersion: Cardinal;
-    FPendingVersion: Cardinal;
-    FPendingSince: UInt64;
-    /// <summary>Die Gliederung kam vom Server; sonst nach RetryMs neu versuchen.</summary>
-    FLoaded: Boolean;
-    FRetryAt: UInt64;
+    FStamp: Cardinal;
+    FStatus: TAtlasOutlineStatus;
+    FShown: Boolean;
     FCursorLine: Integer;
     FCursorCharacter: Integer;
     procedure Tick(Sender: TObject);
-    procedure Follow;
-    procedure Load(const AView: IOTAEditView; const ASnapshot: TAtlasEditorSnapshot);
+    procedure Follow(const AView: IOTAEditView);
     procedure Wire(AFrame: TAtlasOutlineFrame);
     procedure Open(ANode: Integer; AImplementation: Boolean);
   public
-    constructor Create(const ASessionOf: TFunc<TLspSession>);
+    constructor Create;
     destructor Destroy; override;
     procedure Reset;
+    procedure Update;
   end;
-
-function IsPascal(const AFileName: string): Boolean;
-var
-  Extension: string;
-begin
-  for Extension in PascalExtensions do
-    if SameText(ExtractFileExt(AFileName), Extension) then
-      Exit(True);
-  Result := False;
-end;
 
 function Active: Boolean;
 begin
@@ -105,10 +80,9 @@ end;
 
 { TOutlineState }
 
-constructor TOutlineState.Create(const ASessionOf: TFunc<TLspSession>);
+constructor TOutlineState.Create;
 begin
   inherited Create;
-  FSessionOf := ASessionOf;
   FTimer := TTimer.Create(nil);
   FTimer.Interval := TickMs;
   FTimer.OnTimer := Tick;
@@ -142,10 +116,8 @@ end;
 procedure TOutlineState.Reset;
 begin
   FFileName := '';
-  FVersion := 0;
-  FPendingVersion := 0;
-  FLoaded := False;
-  FRetryAt := 0;
+  FStamp := 0;
+  FShown := False;
   FCursorLine := -1;
   FCursorCharacter := -1;
 end;
@@ -198,61 +170,20 @@ begin
   TAtlasIdeNavigation.GoToLocation(FFileName, Frame.Nodes[Target].NameLine, Frame.Nodes[Target].NameCharacter);
 end;
 
-procedure TOutlineState.Load(const AView: IOTAEditView; const ASnapshot: TAtlasEditorSnapshot);
+procedure TOutlineState.Follow(const AView: IOTAEditView);
 var
   Frame: TAtlasOutlineFrame;
-  Session: TLspSession;
-  Response: TJSONValue;
-begin
-  Frame := TAtlasIdeOutlineWindow.ExistingFrame;
-  FFileName := AView.Buffer.FileName;
-  FVersion := ASnapshot.Version;
-  FPendingVersion := ASnapshot.Version;
-  FCursorLine := -1;
-  Session := nil;
-  if Assigned(FSessionOf) then
-    Session := FSessionOf();
-  if Session = nil then
-  begin
-    FLoaded := False;
-    FRetryAt := GetTickCount64 + RetryMs;
-    Frame.SetMessage(TAtlasStrings.Text(TAtlasTextId.OutlineNoServer));
-    Exit;
-  end;
-  Session.Sync(FFileName, ASnapshot.Text);
-  Response := Session.DocumentSymbolTree(FFileName, RequestTimeoutMs);
-  try
-    FLoaded := Response <> nil;
-    if not FLoaded then
-    begin
-      // Zeitgrenze oder Fehler: die alte Gliederung bleibt stehen, später neu versuchen.
-      FRetryAt := GetTickCount64 + RetryMs;
-      Exit;
-    end;
-    Frame.SetNodes(TAtlasOutline.FromJson(Response));
-  finally
-    Response.Free;
-  end;
-end;
-
-procedure TOutlineState.Follow;
-var
-  Frame: TAtlasOutlineFrame;
-  View: IOTAEditView;
   Cursor: TOTAEditPos;
   Character: Integer;
 begin
   Frame := TAtlasIdeOutlineWindow.ExistingFrame;
-  if (Frame = nil) or not Frame.FollowCursor then
+  if (Frame = nil) or not Frame.FollowCursor or (AView = nil) or (AView.Buffer = nil) then
     Exit;
-  View := TAtlasEditorBuffer.ActiveView;
-  if (View = nil) or (View.Buffer = nil) then
-    Exit;
-  Cursor := View.CursorPos;
+  Cursor := AView.CursorPos;
   if Cursor.Line < 1 then
     Exit;
-  Character := TLspSession.ColumnToIndex(TAtlasEditorBuffer.LineText(View, Cursor.Line), Cursor.Col,
-    TAtlasEditorBuffer.TabWidth(View.Buffer));
+  Character := TLspSession.ColumnToIndex(TAtlasEditorBuffer.LineText(AView, Cursor.Line), Cursor.Col,
+    TAtlasEditorBuffer.TabWidth(AView.Buffer));
   if (Cursor.Line - 1 = FCursorLine) and (Character = FCursorCharacter) then
     Exit;
   FCursorLine := Cursor.Line - 1;
@@ -260,54 +191,57 @@ begin
   Frame.HighlightAt(FCursorLine, FCursorCharacter);
 end;
 
+procedure TOutlineState.Update;
+var
+  Frame: TAtlasOutlineFrame;
+  View: IOTAEditView;
+  Snapshot: TAtlasOutlineSnapshot;
+  Changed: Boolean;
+begin
+  Frame := TAtlasIdeOutlineWindow.ExistingFrame;
+  if Frame = nil then
+    Exit;
+  View := TAtlasEditorBuffer.ActiveView;
+  Snapshot := TAtlasIdeOutlineCache.Refresh(View);
+  Changed := not FShown or (Snapshot.Status <> FStatus) or not SameText(Snapshot.FileName, FFileName) or
+    (Snapshot.Stamp <> FStamp);
+  if Changed then
+  begin
+    FShown := True;
+    FStatus := Snapshot.Status;
+    FFileName := Snapshot.FileName;
+    FStamp := Snapshot.Stamp;
+    FCursorLine := -1;
+    case Snapshot.Status of
+      TAtlasOutlineStatus.NoFile:
+        Frame.SetMessage(TAtlasStrings.Text(TAtlasTextId.OutlineEmpty));
+      TAtlasOutlineStatus.NoServer:
+        Frame.SetMessage(TAtlasStrings.Text(TAtlasTextId.OutlineNoServer));
+      TAtlasOutlineStatus.Ready:
+        Frame.SetNodes(Snapshot.Nodes);
+    end;
+  end;
+  if Snapshot.Status = TAtlasOutlineStatus.Ready then
+    Follow(View);
+end;
+
 procedure TOutlineState.Tick(Sender: TObject);
 begin
-  if not Active or not TAtlasIdeOutlineWindow.Visible or (TAtlasIdeOutlineWindow.ExistingFrame = nil) then
+  if not Active or not TAtlasIdeOutlineWindow.Visible then
     Exit;
   TAtlasGuard.Run(TAtlasFeature.EditorCommands,
     procedure
-    var
-      View: IOTAEditView;
-      Snapshot: TAtlasEditorSnapshot;
-      Moment: UInt64;
     begin
-      View := TAtlasEditorBuffer.ActiveView;
-      if (View = nil) or (View.Buffer = nil) or not IsPascal(View.Buffer.FileName) then
-      begin
-        if FFileName <> '' then
-        begin
-          Reset;
-          TAtlasIdeOutlineWindow.ExistingFrame.SetMessage(TAtlasStrings.Text(TAtlasTextId.OutlineEmpty));
-        end;
-        Exit;
-      end;
-      Snapshot := TAtlasEditorSnapshots.Get(View);
-      Moment := GetTickCount64;
-      if not SameText(View.Buffer.FileName, FFileName) then
-        Load(View, Snapshot)
-      else if Snapshot.Version <> FVersion then
-      begin
-        // Erst nach einer Tipppause neu holen.
-        if Snapshot.Version <> FPendingVersion then
-        begin
-          FPendingVersion := Snapshot.Version;
-          FPendingSince := Moment;
-        end
-        else if Moment - FPendingSince >= PauseMs then
-          Load(View, Snapshot);
-      end
-      else if not FLoaded and (Moment >= FRetryAt) then
-        Load(View, Snapshot);
-      Follow;
+      Update;
     end);
 end;
 
 { TAtlasIdeOutline }
 
-class procedure TAtlasIdeOutline.Install(const ASessionOf: TFunc<TLspSession>);
+class procedure TAtlasIdeOutline.Install;
 begin
   FreeAndNil(FState);
-  FState := TOutlineState.Create(ASessionOf);
+  FState := TOutlineState.Create;
 end;
 
 class procedure TAtlasIdeOutline.Uninstall;
@@ -326,7 +260,7 @@ begin
   if Frame = nil then
     Exit;
   TOutlineState(FState).Reset;
-  TOutlineState(FState).Tick(nil);
+  TOutlineState(FState).Update;
   if Frame.Search.CanFocus then
     Frame.Search.SetFocus;
 end;

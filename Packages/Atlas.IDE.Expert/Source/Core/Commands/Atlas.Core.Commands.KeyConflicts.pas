@@ -44,7 +44,7 @@ type
     ExpandSelection, ShrinkSelection, GoToImplementation, TypeDefinition, UndoChange, RedoChange, WelcomeSearch,
     MethodToggleUp, MethodToggleDown, TestUnit, UnitSearch, UnitSearchIde, Bookmark, GenerateMenu,
     Notifications, WelcomeQuickBuild, WelcomeQuickTests, HideElement, NextProblem, PreviousProblem, QuickOpen,
-    NavBack, NavForward, LastEdit, PeekDefinition, PeekReferences);
+    NavBack, NavForward, LastEdit, PeekDefinition, PeekReferences, Breadcrumbs);
   TAtlasKeyChoice = (UseAtlas, LeaveOther, OtherKey);
   /// <summary>NoKey: keine Taste; IdeKey: Taste der IDE über Code Insight, Atlas belegt nichts selbst;
   /// Free: Atlas belegt die freie Taste; AtlasWins: belegt, Atlas hat Vorrang; Left: belegt, Atlas
@@ -197,7 +197,9 @@ begin
     Create(TAtlasKeyFunction.LastEdit, Word(ASettings.LastEditKey), Shared, ASettings.NavHistory),
     // Definition und Referenzen einblenden (#505).
     Create(TAtlasKeyFunction.PeekDefinition, Word(ASettings.PeekDefinitionKey), Shared, ASettings.Peek),
-    Create(TAtlasKeyFunction.PeekReferences, Word(ASettings.PeekReferencesKey), Shared, ASettings.Peek)];
+    Create(TAtlasKeyFunction.PeekReferences, Word(ASettings.PeekReferencesKey), Shared, ASettings.Peek),
+    // Brotkrumenleiste (#590).
+    Create(TAtlasKeyFunction.Breadcrumbs, Word(ASettings.BreadcrumbsKey), Shared, ASettings.Breadcrumbs)];
 end;
 
 class procedure TAtlasKeyEntry.ToSettings(const AEntries: TArray<TAtlasKeyEntry>;
@@ -293,6 +295,8 @@ begin
         ASettings.PeekDefinitionKey := Entry.Key;
       TAtlasKeyFunction.PeekReferences:
         ASettings.PeekReferencesKey := Entry.Key;
+      TAtlasKeyFunction.Breadcrumbs:
+        ASettings.BreadcrumbsKey := Entry.Key;
       // Strg+F12 ist fest; ein- und ausgeschaltet wird über unitSearch.replaceIdeDialog.
       TAtlasKeyFunction.UnitSearchIde:
         ;

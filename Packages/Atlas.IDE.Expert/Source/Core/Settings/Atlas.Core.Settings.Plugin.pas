@@ -528,6 +528,12 @@ type
     OutlineAlphabetical: Boolean;
     /// <summary>Eintrag am Cursor hervorheben (#537, outline.followCursor).</summary>
     OutlineFollowCursor: Boolean;
+    /// <summary>Brotkrumenleiste über dem Editor (#590, editor.breadcrumbs).</summary>
+    Breadcrumbs: Boolean;
+    /// <summary>Unit-Namen als erstes Glied (#590, editor.breadcrumbsShowUnit).</summary>
+    BreadcrumbsShowUnit: Boolean;
+    /// <summary>Kürzel „Brotkrumenleiste“ (#590, keys.breadcrumbs); Vorgabe Strg+Umschalt+Punkt.</summary>
+    BreadcrumbsKey: Integer;
     /// <summary>Hauptschalter der Atlas-Willkommensseite (#753, welcomePage.enabled): Atlas-Bereiche auf der
     /// Willkommensseite der IDE und Fenster „Atlas-Start“.</summary>
     WelcomePage: Boolean;
@@ -1076,6 +1082,9 @@ begin
   Result.Outline := True;
   Result.OutlineAlphabetical := False;
   Result.OutlineFollowCursor := True;
+  Result.Breadcrumbs := True;
+  Result.BreadcrumbsShowUnit := False;
+  Result.BreadcrumbsKey := $60BE; // Strg+Umschalt+.
   Result.WelcomePage := True;
   Result.WelcomePageHost := 'welcomePage';
   Result.WelcomePageLayout := 'off';
@@ -1257,6 +1266,7 @@ begin
   PeekHeightLines := EnsureRange(PeekHeightLines, MinPeekLines, MaxPeekLines);
   PeekDefinitionKey := EnsureRange(PeekDefinitionKey, 0, $FFFF);
   PeekReferencesKey := EnsureRange(PeekReferencesKey, 0, $FFFF);
+  BreadcrumbsKey := EnsureRange(BreadcrumbsKey, 0, $FFFF);
   BookmarkKey := EnsureRange(BookmarkKey, 0, $FFFF);
   HideElementKey := EnsureRange(HideElementKey, 0, $FFFF);
   InlineDiagnostics := Choice(InlineDiagnostics, ['errors', 'off', 'errorsAndWarnings', 'all']);
@@ -1485,6 +1495,9 @@ begin
   Outline := AStore.ReadInteger('Outline', BoolValue(Default.Outline)) <> 0;
   OutlineAlphabetical := AStore.ReadInteger('OutlineAlphabetical', BoolValue(Default.OutlineAlphabetical)) <> 0;
   OutlineFollowCursor := AStore.ReadInteger('OutlineFollowCursor', BoolValue(Default.OutlineFollowCursor)) <> 0;
+  Breadcrumbs := AStore.ReadInteger('Breadcrumbs', BoolValue(Default.Breadcrumbs)) <> 0;
+  BreadcrumbsShowUnit := AStore.ReadInteger('BreadcrumbsShowUnit', BoolValue(Default.BreadcrumbsShowUnit)) <> 0;
+  BreadcrumbsKey := AStore.ReadInteger('BreadcrumbsKey', Default.BreadcrumbsKey);
   WelcomePage := AStore.ReadInteger('WelcomePage', BoolValue(Default.WelcomePage)) <> 0;
   WelcomePageHost := AStore.ReadString('WelcomePageHost', Default.WelcomePageHost);
   WelcomePageLayout := AStore.ReadString('WelcomePageLayout', Default.WelcomePageLayout);
@@ -1760,6 +1773,9 @@ begin
   AStore.WriteInteger('Outline', BoolValue(Outline));
   AStore.WriteInteger('OutlineAlphabetical', BoolValue(OutlineAlphabetical));
   AStore.WriteInteger('OutlineFollowCursor', BoolValue(OutlineFollowCursor));
+  AStore.WriteInteger('Breadcrumbs', BoolValue(Breadcrumbs));
+  AStore.WriteInteger('BreadcrumbsShowUnit', BoolValue(BreadcrumbsShowUnit));
+  AStore.WriteInteger('BreadcrumbsKey', BreadcrumbsKey);
   AStore.WriteInteger('WelcomePage', BoolValue(WelcomePage));
   AStore.WriteString('WelcomePageHost', WelcomePageHost);
   AStore.WriteString('WelcomePageLayout', WelcomePageLayout);

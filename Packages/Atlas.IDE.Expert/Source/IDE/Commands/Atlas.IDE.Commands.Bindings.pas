@@ -10,7 +10,8 @@
 // nur solange unitSearch.enabled an ist) und „Lesezeichen setzen…“ (#622,
 // Strg+Alt+K, nur solange bookmarks.named an ist) sowie die Liste der
 // Benachrichtigungen (#601, Strg+Umschalt+Alt+N, nur solange
-// notifications.enabled an ist). Jede Taste wird wie
+// notifications.enabled an ist) und die Brotkrumenleiste (#590,
+// Strg+Umschalt+., nur solange editor.breadcrumbs an ist). Jede Taste wird wie
 // die der Befehlspalette vorher auf Konflikte geprüft (#494); ohne Vorrang
 // bleibt eine fremde Belegung aktiv. Nach geänderten Einstellungen meldet
 // Rebind die Bindung neu an. Der Befehl läuft nach der Tastenverarbeitung
@@ -92,7 +93,8 @@ uses
   Atlas.IDE.Bookmarks.Service,
   Atlas.IDE.Generate.Commands,
   Atlas.IDE.Editor.Hide,
-  Atlas.IDE.Notifications.Service;
+  Atlas.IDE.Notifications.Service,
+  Atlas.IDE.Outline.Breadcrumbs;
 
 { TAtlasIdeEditorKeys.TBinding }
 
@@ -415,6 +417,17 @@ begin
           procedure
           begin
             TAtlasIdeNotifications.ShowList;
+          end);
+      end);
+  // Brotkrumenleiste (#590): aus = Strg+Umschalt+. bleibt frei.
+  if Settings.Breadcrumbs then
+    AddKey(Settings.BreadcrumbsKey, TAtlasStrings.Text(TAtlasTextId.BreadcrumbsCommand),
+      procedure
+      begin
+        TAtlasGuard.Run(TAtlasFeature.EditorCommands,
+          procedure
+          begin
+            TAtlasIdeBreadcrumbs.Focus;
           end);
       end);
   AddKey(Settings.UndoKey, TAtlasStrings.Text(TAtlasTextId.UndoMenu),

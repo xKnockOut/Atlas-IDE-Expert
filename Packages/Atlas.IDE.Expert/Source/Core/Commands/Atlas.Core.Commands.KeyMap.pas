@@ -311,6 +311,8 @@ begin
       Result := 'Atlas.PeekDefinition';
     TAtlasKeyFunction.PeekReferences:
       Result := 'Atlas.PeekReferences';
+    TAtlasKeyFunction.Breadcrumbs:
+      Result := 'Atlas.Breadcrumbs';
   else
     Result := '';
   end;

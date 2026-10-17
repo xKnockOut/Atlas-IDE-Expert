@@ -259,6 +259,9 @@ type
     FOutline: TCheckBox;
     FOutlineAlphabetical: TCheckBox;
     FOutlineFollowCursor: TCheckBox;
+    FBreadcrumbs: TCheckBox;
+    FBreadcrumbsShowUnit: TCheckBox;
+    FBreadcrumbsKey: TEdit;
     FBookmarkKey: TEdit;
     /// <summary>„Element ausblenden …“ (#628).</summary>
     FHideElementKey: TEdit;
@@ -1159,6 +1162,10 @@ begin
   FBlockEndLabels := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsBlockEndLabels));
   FBlockEndLabelsMinLines := AddNumber(TAtlasStrings.Text(TAtlasTextId.SettingsBlockEndLabelsMinLines));
   FDimUnusedUses := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsDimUnusedUses));
+  // Brotkrumenleiste (#590).
+  FBreadcrumbs := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsBreadcrumbs));
+  FBreadcrumbsShowUnit := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsBreadcrumbsShowUnit));
+  FBreadcrumbsKey := AddKey(TAtlasStrings.Text(TAtlasTextId.BreadcrumbsCommand));
   // Rekursionssymbole im Rand (#623).
   FRecursionMarkers := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsRecursionMarkers));
   FRecursionMarkersDepth := AddNumber(TAtlasStrings.Text(TAtlasTextId.SettingsRecursionMarkersDepth));
@@ -1334,6 +1341,7 @@ begin
   Bind('CodeLensTestUnit', FCodeLensTestUnit);
   Bind('BlockEndLabels', FBlockEndLabels);
   Bind('DimUnusedUses', FDimUnusedUses);
+  Bind('Breadcrumbs', FBreadcrumbs);
   Bind('RecursionMarkers', FRecursionMarkers);
   Bind('InlineDiagnostics', FInlineDiagnostics);
   Bind('ProblemsStatusCounter', FProblemsStatusCounter);
@@ -2085,6 +2093,9 @@ begin
   FMarks.Bind(FOutline, ['Outline']);
   FMarks.Bind(FOutlineAlphabetical, ['OutlineAlphabetical']);
   FMarks.Bind(FOutlineFollowCursor, ['OutlineFollowCursor']);
+  FMarks.Bind(FBreadcrumbs, ['Breadcrumbs']);
+  FMarks.Bind(FBreadcrumbsShowUnit, ['BreadcrumbsShowUnit']);
+  FMarks.Bind(FBreadcrumbsKey, ['BreadcrumbsKey']);
   FMarks.Bind(FBookmarkKey, ['BookmarkKey']);
   FMarks.Bind(FHideElementKey, ['HideElementKey']);
   FMarks.Bind(FNextProblemKey, ['NextProblemKey']);
@@ -3060,6 +3071,9 @@ begin
   FOutline.Checked := ASettings.Outline;
   FOutlineAlphabetical.Checked := ASettings.OutlineAlphabetical;
   FOutlineFollowCursor.Checked := ASettings.OutlineFollowCursor;
+  FBreadcrumbs.Checked := ASettings.Breadcrumbs;
+  FBreadcrumbsShowUnit.Checked := ASettings.BreadcrumbsShowUnit;
+  FBreadcrumbsKey.Text := ShortCutToText(TShortCut(ASettings.BreadcrumbsKey));
   FBookmarkKey.Text := ShortCutToText(TShortCut(ASettings.BookmarkKey));
   FHideElementKey.Text := ShortCutToText(TShortCut(ASettings.HideElementKey));
   FNextProblemKey.Text := ShortCutToText(TShortCut(ASettings.NextProblemKey));
@@ -3340,6 +3354,9 @@ begin
   ASettings.Outline := FOutline.Checked;
   ASettings.OutlineAlphabetical := FOutlineAlphabetical.Checked;
   ASettings.OutlineFollowCursor := FOutlineFollowCursor.Checked;
+  ASettings.Breadcrumbs := FBreadcrumbs.Checked;
+  ASettings.BreadcrumbsShowUnit := FBreadcrumbsShowUnit.Checked;
+  ASettings.BreadcrumbsKey := Integer(TextToShortCut(Trim(FBreadcrumbsKey.Text)));
   ASettings.BookmarkKey := Integer(TextToShortCut(Trim(FBookmarkKey.Text)));
   ASettings.HideElementKey := Integer(TextToShortCut(Trim(FHideElementKey.Text)));
   ASettings.NextProblemKey := Integer(TextToShortCut(Trim(FNextProblemKey.Text)));
