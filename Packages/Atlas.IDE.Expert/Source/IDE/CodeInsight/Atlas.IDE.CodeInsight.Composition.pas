@@ -70,6 +70,7 @@ uses
   Atlas.IDE.Results.Commands,
   Atlas.IDE.Commands.Editor,
   Atlas.IDE.Commands.QuickOpen,
+  Atlas.IDE.Editor.NavHistory,
   Atlas.IDE.UnitSearch.Commands,
   Atlas.IDE.Generate.Commands,
   Atlas.IDE.Generate.NewFile,
@@ -889,6 +890,11 @@ begin
   Result := TAtlasIdeSettings.Current.QuickOpen;
 end;
 
+function NavHistoryVisible: Boolean;
+begin
+  Result := TAtlasIdeSettings.Current.NavHistory;
+end;
+
 function DiagnosticModeVisible: Boolean;
 begin
   Result := TAtlasIdeSettings.Current.DiagnosticMode;
@@ -1014,6 +1020,15 @@ begin
   // Schnell öffnen (#503); nur sichtbar, solange quickOpen.enabled an ist.
   Add('Atlas.QuickOpen', TAtlasTextId.QuickOpenTitle, Guarded(TAtlasFeature.Palette, TAtlasIdeQuickOpen.Show),
     QuickOpenVisible);
+  // Navigationsverlauf über Dateien (#504); nur sichtbar, solange navHistory.enabled an ist.
+  Add('Atlas.NavBack', TAtlasTextId.NavBackCommand, Guarded(TAtlasFeature.EditorCommands, TAtlasIdeNavHistory.GoBack),
+    NavHistoryVisible);
+  Add('Atlas.NavForward', TAtlasTextId.NavForwardCommand,
+    Guarded(TAtlasFeature.EditorCommands, TAtlasIdeNavHistory.GoForward), NavHistoryVisible);
+  Add('Atlas.LastEdit', TAtlasTextId.NavLastEditCommand,
+    Guarded(TAtlasFeature.EditorCommands, TAtlasIdeNavHistory.GoLastEdit), NavHistoryVisible);
+  Add('Atlas.NavList', TAtlasTextId.NavListCommand,
+    Guarded(TAtlasFeature.EditorCommands, TAtlasIdeNavHistory.ShowList), NavHistoryVisible);
   Add('Atlas.Callers', TAtlasTextId.MenuIncoming, Hierarchy(TAtlasHierarchyDirection.Incoming));
   Add('Atlas.Calls', TAtlasTextId.MenuOutgoing, Hierarchy(TAtlasHierarchyDirection.Outgoing));
   Add('Atlas.Supertypes', TAtlasTextId.MenuSupertypes, Hierarchy(TAtlasHierarchyDirection.Supertypes));
@@ -1921,6 +1936,8 @@ begin
     begin
       TAtlasIdeEditorCommands.ApplyAction(AAction);
     end);
+  // Navigationsverlauf (#504): Sprünge und Bearbeitungsstellen der Sitzung.
+  TAtlasIdeNavHistory.Install;
   // Schnell öffnen (#503): Dateiliste im Hintergrund, zuletzt geöffnete Dateien zählen.
   TAtlasIdeQuickOpen.Install(
     function: TLspSession
@@ -1946,6 +1963,7 @@ end;
 procedure StopCommands;
 begin
   TAtlasIdeQuickOpen.Uninstall;
+  TAtlasIdeNavHistory.Uninstall;
   TAtlasIdeUnitSearch.Uninstall;
   TAtlasIdeGenerate.Uninstall;
   TAtlasEditorTestUnitLens.OnSwitchTestUnit := nil;

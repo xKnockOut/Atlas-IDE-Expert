@@ -301,6 +301,12 @@ begin
       Result := 'Atlas.PreviousProblem';
     TAtlasKeyFunction.QuickOpen:
       Result := 'Atlas.QuickOpen';
+    TAtlasKeyFunction.NavBack:
+      Result := 'Atlas.NavBack';
+    TAtlasKeyFunction.NavForward:
+      Result := 'Atlas.NavForward';
+    TAtlasKeyFunction.LastEdit:
+      Result := 'Atlas.LastEdit';
   else
     Result := '';
   end;

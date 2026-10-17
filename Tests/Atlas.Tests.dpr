@@ -527,6 +527,8 @@ uses
   Atlas.UI.Editor.Hide in '..\Packages\Atlas.IDE.Expert\Source\UI\Editor\Atlas.UI.Editor.Hide.pas',
   Atlas.Core.Editor.Elements.Tests in 'IDE.Expert\Atlas.Core.Editor.Elements.Tests.pas',
   Atlas.Core.Editor.Hide.Tests in 'IDE.Expert\Atlas.Core.Editor.Hide.Tests.pas',
+  Atlas.Core.Editor.NavHistory in '..\Packages\Atlas.IDE.Expert\Source\Core\Editor\Atlas.Core.Editor.NavHistory.pas',
+  Atlas.Core.Editor.NavHistory.Tests in 'IDE.Expert\Atlas.Core.Editor.NavHistory.Tests.pas',
   Atlas.UI.Editor.Hide.Tests in 'IDE.Expert\Atlas.UI.Editor.Hide.Tests.pas',
   Atlas.Core.StartProfiles.Store in '..\Packages\Atlas.IDE.Expert\Source\Core\StartProfiles\Atlas.Core.StartProfiles.Store.pas',
   Atlas.Core.StartProfiles.Tests in 'IDE.Expert\Atlas.Core.StartProfiles.Tests.pas',
