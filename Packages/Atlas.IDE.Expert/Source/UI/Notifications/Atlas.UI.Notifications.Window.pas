@@ -205,6 +205,8 @@ begin
     Result := TAtlasStrings.Text(TAtlasTextId.NotificationsSourceHidden)
   else if SameText(ASource, TAtlasNotificationSources.UnitRename) then
     Result := TAtlasStrings.Text(TAtlasTextId.UnitRenameTitle)
+  else if SameText(ASource, TAtlasNotificationSources.Minimap) then
+    Result := TAtlasStrings.Text(TAtlasTextId.MinimapNoticeTitle)
   else
     Result := ASource;
 end;

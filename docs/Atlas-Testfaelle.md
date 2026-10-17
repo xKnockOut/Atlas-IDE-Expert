@@ -1352,6 +1352,26 @@ Vorher: „Experimentelle Funktionen erlauben“ an, in `atlas.json` `"completio
 | AF9 | Code-Vorlagen aus (Seite Vervollständigung) | Zeilen ohne Platzhalter |
 | AF10 | `"assignAllFields": false` bzw. Hauptschalter aus | Kein Eintrag |
 
+## Minimap neben der Scrollleiste (#873, experimentell)
+
+Vorher: „Experimentelle Funktionen erlauben“ an, auf der Seite Editor „Minimap neben der Scrollleiste“ an. Eine Unit mit mehreren Klassen und Methoden, eine lange Unit (10 000 Zeilen).
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| MM1 | Frische Installation, Optionsseite Editor | Minimap aus, Kennzeichen „Experimentell“; mit dem Hauptschalter aus wirkt sie nicht |
+| MM2 | Minimap an, Unit öffnen | Rechts neben dem Editor (und der Übersichtsleiste) die verkleinerte Datei, Wörter als farbige Balken, der sichtbare Bereich halbtransparent |
+| MM3 | Am Schieber ziehen | Der Editor scrollt flüssig mit, auch in der langen Unit; die Minimap ist dort gestaucht, unten ist das Dateiende |
+| MM4 | Neben den Schieber klicken | Cursor springt an die Zeile, sie steht in der Mitte; mit „Klick springt“ aus scrollt der Editor nur, der Cursor bleibt |
+| MM5 | Klassen und Methoden | Kleine Überschriften (Klassen in Schlüsselwortfarbe) an ihren Startzeilen; „Überschriften“ aus blendet sie aus |
+| MM6 | Cursor in eine Methode | Ihr Bereich ist leicht hinterlegt; beim Wechsel in eine andere Methode wandert das Band |
+| MM7 | Fehler einbauen, ein Wort markieren, eine Zeile ändern (Git) | Rotes Zeilenband am Fehler, Bänder an den Treffern, Streifen am linken Rand an der Änderung; „Marken“ aus nimmt sie weg |
+| MM8 | Einen langen Block falten | Der Block nimmt in der Minimap nur eine Zeile ein; ein Klick darunter trifft die richtige Editorzeile |
+| MM9 | Darstellung „Winzige Zeichen“, Maßstab 3, Breite 80, Seite links | Zeichen statt Balken, höhere Zeilen, schmaler Streifen links neben dem Editor |
+| MM10 | „Sichtbereich zeigen: Nur beim Überfahren“ | Schieber erscheint erst mit der Maus über der Minimap |
+| MM11 | Thema hell und dunkel umschalten | Farben folgen dem Thema |
+| MM12 | IDE-Minimap der IDE zusätzlich sichtbar | Einmal der Hinweis „Zwei Minimaps sichtbar“; „IDE-Minimap ausblenden“ blendet sie für die Sitzung aus, „Atlas-Minimap aus“ schaltet `editor.minimap` aus; danach kein Hinweis mehr |
+| MM13 | Tippen in der langen Unit | Kein Ruckeln; die Minimap folgt nach kurzer Pause |
+
 ## Anweisung vervollständigen (#697)
 
 | Nr. | Schritte | Erwartet |

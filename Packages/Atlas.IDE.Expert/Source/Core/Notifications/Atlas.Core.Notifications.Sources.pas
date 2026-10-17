@@ -40,6 +40,8 @@ type
     Hidden = 'hidden';
     /// <summary>uses nachziehen nach dem Umbenennen einer Unit (#512).</summary>
     UnitRename = 'unitRename';
+    /// <summary>Minimap (#873): Hinweis, wenn auch die Minimap der IDE sichtbar ist.</summary>
+    Minimap = 'minimap';
   public
     /// <summary>Bekannte Quellen in fester Reihenfolge (Optionsseite, Filter).</summary>
     class function Known: TArray<string>; static;
