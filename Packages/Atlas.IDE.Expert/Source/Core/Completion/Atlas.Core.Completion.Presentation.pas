@@ -55,6 +55,8 @@ type
     /// <summary>SQL-Anweisung, aus der die Feld- oder Parameternamen der Liste stammen (#461), für die
     /// Fußzeile; '' bei anderen Listen.</summary>
     class function DataSource(const AItems: TAtlasCompletionItems): string; static;
+    /// <summary>Ausgeblendete Arten der Typargumente (#450), "records,enums"; '' ohne.</summary>
+    class function HiddenKinds(const AItems: TAtlasCompletionItems): string; static;
     /// <summary>Nur das Angebot „Mit try…finally absichern“ (#489) in der Liste?</summary>
     class function Guarding(const AItems: TAtlasCompletionItems): Boolean; static;
   end;
@@ -348,6 +350,16 @@ begin
     Exit(Range(Found, Length(APattern)));
   end;
   Result := SubsequencePositions(APattern, AName);
+end;
+
+class function TAtlasItemPresentation.HiddenKinds(const AItems: TAtlasCompletionItems): string;
+var
+  Item: TAtlasCompletionItem;
+begin
+  for Item in AItems do
+    if Item.HiddenKinds <> '' then
+      Exit(Item.HiddenKinds);
+  Result := '';
 end;
 
 class function TAtlasItemPresentation.DataSource(const AItems: TAtlasCompletionItems): string;

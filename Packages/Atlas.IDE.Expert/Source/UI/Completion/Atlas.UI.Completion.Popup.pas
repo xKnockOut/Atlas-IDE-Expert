@@ -600,6 +600,10 @@ begin
     if (APosition = 0) and (FItems[FOrder[APosition + 1]].Sender <> '') then
       Text := TAtlasStrings.Fmt(TAtlasTextId.SenderHeader, [FItems[FOrder[APosition + 1]].Sender,
         FItems[FOrder[APosition + 1]].SenderOf])
+    // Typargumente (#450): „T: class · nur Klassen“.
+    else if FItems[FOrder[APosition + 1]].TypeParam <> '' then
+      Text := TAtlasStrings.TypeArgHeading(FItems[FOrder[APosition + 1]].TypeParam,
+        FItems[FOrder[APosition + 1]].Constraint, FItems[FOrder[APosition + 1]].ConstraintHint)
     // Komponenten aus dem Formular (#455): „Formular frmMain“.
     else if FItems[FOrder[APosition + 1]].Form <> '' then
       Text := TAtlasStrings.Fmt(TAtlasTextId.FormHeader, [FItems[FOrder[APosition + 1]].Form])
@@ -1316,6 +1320,9 @@ begin
     else if TAtlasItemPresentation.DataSource(FItems) <> '' then
       DrawFooter(TAtlasStrings.Fmt(TAtlasTextId.DataSourceFooter, [TAtlasItemPresentation.DataSource(FItems)]),
         CountText)
+    // Typargumente (#450): „Ausgeblendet: Records, Aufzählungen“.
+    else if TAtlasItemPresentation.HiddenKinds(FItems) <> '' then
+      DrawFooter(TAtlasStrings.TypeArgHidden(TAtlasItemPresentation.HiddenKinds(FItems)), CountText)
     else
       // Tasten, oder das aktive Ziel bei Einträgen mit Bedingung (#476).
       DrawFooter(FooterLeftText, CountText);

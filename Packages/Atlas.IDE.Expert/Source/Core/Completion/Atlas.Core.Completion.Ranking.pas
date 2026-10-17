@@ -392,6 +392,9 @@ begin
       end
       else if (Items[Index].Sender <> '') and (Position = First) then
         Ordered.Add(Header)
+      // Typargumente (#450): eine Überschrift mit dem Constraint über der Liste.
+      else if (Items[Index].TypeParam <> '') and (Position = First) then
+        Ordered.Add(Header)
       // Nach der Formulargruppe eine Überschrift über dem Rest („Weitere“ bzw. die Gruppe zum erwarteten Typ).
       else if (Position > First) and (Items[Found[Position - 1]].Form <> '') then
         Ordered.Add(Header)

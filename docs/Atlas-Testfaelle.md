@@ -1953,3 +1953,15 @@ Voraussetzung für EX2 bis EX7: mindestens eine Einstellung trägt `x-experiment
 | UT4 | `TStringList.Create(dupIgnore, ` | Variante mit `TDuplicates` gewählt |
 | UT5 | `TStringList.Create(Unbekannt, ` (nicht deklarierter Name) | Keine Variante wegen des Typs gedämpft |
 | UT6 | In UT1 mit Alt+↑ die gedämpfte Variante wählen | Sie wird gezeigt, bleibt aber gedämpft |
+
+## Typargumente nach Constraints (#450)
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| TA1 | `L: TObjectList<` tippen | Nur Klassen; Überschrift „T: class · nur Klassen“, Fußzeile „Ausgeblendet: Records, Interfaces, Aufzählungen, Grundtypen“ |
+| TA2 | `D: TDictionary<string, ` tippen | Vorschläge für `TValue` (Überschrift „Typargument TValue“), Records und Grundtypen dabei |
+| TA3 | Eigener Typ `TFabrik<T: class, constructor>`, dann `TFabrik<` | Klassen, deren `Create` Parameter verlangt, fehlen |
+| TA4 | Eigener Typ `TSortierer<T: IComparer>`, dann `TSortierer<` | Nur Klassen, die `IComparer` (auch über ein abgeleitetes Interface) implementieren, und Interfaces davon |
+| TA5 | `FItems: TObjectList<TCustomer>`, dann `FItems.Add(` | Parameter-Hint zeigt `Value: TCustomer`; in der Liste nach `FItems.` und im Detailpanel steht `TCustomer` statt `T` |
+| TA6 | `if Anzahl < ` tippen | Normale Vervollständigung ohne Überschrift |
+| TA7 | `completion.genericConstraints` aus, dann TA1 | Normale Liste ohne Filter und Überschrift |

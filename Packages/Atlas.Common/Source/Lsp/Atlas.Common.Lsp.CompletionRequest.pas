@@ -50,6 +50,11 @@ type
     TypeKeywords: Boolean;
     /// <summary>Bei Scope: Anweisung, Deklaration oder Klassenrumpf (#31).</summary>
     Place: TCompletionPlace;
+    /// <summary>Typargument nach "TFoo&lt;" (#450): Position des Typnamens und aktiver Typparameter (0-basiert).
+    /// Collect löscht Generic wieder, wenn der Name kein generischer Typ ist.</summary>
+    Generic: Boolean;
+    GenericOwnerPos: TTextPosition;
+    GenericParam: Integer;
   end;
 
   TCompletionItem = record
@@ -135,6 +140,16 @@ type
     /// <summary>InsertText bzw. TextEdit.NewText ist ein LSP-Snippet mit Platzhaltern (#51); dann
     /// insertTextFormat = 2. Nur an Clients mit snippetSupport.</summary>
     Snippet: Boolean;
+    /// <summary>Typargument (#450): Typparameter ("T"), sein Constraint ("class, constructor"), der Code der
+    /// Erklärung (classes, values, constructible, implements:IFoo, descends:TBasis) und die ausgeblendeten Arten
+    /// (classes, records, interfaces, enums, basic, durch Kommas getrennt); '' sonst.</summary>
+    TypeParam: string;
+    Constraint: string;
+    ConstraintHint: string;
+    HiddenKinds: string;
+    /// <summary>Gebundene Typparameter des umgebenden Typs ("T=TKunde", #450); Detail ist schon eingesetzt,
+    /// completionItem/resolve setzt sie in Deklaration und Dokumentation ein.</summary>
+    Bindings: TArray<string>;
   end;
 
   TCompletionItems = record

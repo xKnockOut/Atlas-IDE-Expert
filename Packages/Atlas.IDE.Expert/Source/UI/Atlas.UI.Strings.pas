@@ -544,7 +544,10 @@ type
     SettingsRecursionMarkers, SettingsRecursionMarkersDepth, ElementRecursion, ElementRecursionPlural,
     RecursionTipDirect, RecursionTipChain, ElementInlineDiagnostics, ElementInlineDiagnosticsPlural,
     CompletionRestHeader, CountHitsRest, SettingsListMode, SettingsListModeFilter, SettingsListModeAll,
-    SettingsListModeRest, SettingsListScope, SettingsListScopeMembers, SettingsListScopeEverywhere);
+    SettingsListModeRest, SettingsListScope, SettingsListScopeMembers, SettingsListScopeEverywhere,
+    TypeArgHeader, TypeArgHeaderPlain, TypeArgOnlyClasses, TypeArgOnlyValues, TypeArgOnlyConstructible,
+    TypeArgImplements, TypeArgDescends, TypeArgHiddenFooter, TypeArgKindClasses, TypeArgKindRecords,
+    TypeArgKindInterfaces, TypeArgKindEnums, TypeArgKindBasic);
 
   TAtlasStrings = class
   private class var
@@ -555,6 +558,11 @@ type
     class function Fmt(AId: TAtlasTextId; const AArgs: array of const): string; static;
     /// <summary>"Konfidenz: mittel" zu "high", "medium", "low" (#144); '' bei anderem Wert.</summary>
     class function Confidence(const AName: string): string; static;
+    /// <summary>Überschrift über Typargumenten (#450): „T: class · nur Klassen“, ohne Constraint „Typargument T“.
+    /// AHint ist der Code des Servers (classes, values, constructible, implements:X, descends:X).</summary>
+    class function TypeArgHeading(const AParam, AConstraint, AHint: string): string; static;
+    /// <summary>Fußzeile „Ausgeblendet: Records, Aufzählungen“ zu den Codes "records,enums"; '' ohne.</summary>
+    class function TypeArgHidden(const AKinds: string): string; static;
     /// <summary>Überschriften der XMLDoc-Abschnitte in der Sprache der Oberfläche; eine Stelle für Hover und
     /// Detailpanel (D-07).</summary>
     class function DocLabels: TAtlasDocLabels; static;
@@ -1584,7 +1592,10 @@ const
      'Rekursion: ruft sich selbst auf', 'Rekursion über %d Methoden', 'Fehlertext am Zeilenende',
      'Fehlertexte am Zeilenende', 'Weitere Einträge', '%d Treffer · %d weitere', 'Beim Tippen zeigen:',
      'Nur Treffer', 'Alle Einträge, Treffer oben', 'Treffer, darunter gedämpft der Rest', 'Gilt für:',
-     'Mitgliederlisten nach „.“', 'Alle Listen'),
+     'Mitgliederlisten nach „.“', 'Alle Listen', '%s: %s · %s', 'Typargument %s', 'nur Klassen',
+     'nur Records und Grundtypen', 'nur Klassen mit parameterlosem Konstruktor', 'nur Typen, die %s implementieren',
+     'nur Typen, die von %s abgeleitet sind', 'Ausgeblendet: %s', 'Klassen', 'Records', 'Interfaces',
+     'Aufzählungen', 'Grundtypen'),
     ('Enter to accept · Esc to close', '%d of %d', 'No matches for “%s”', 'Backspace widens the search',
      'No suggestions here', 'Esc closes', 'No details for this entry', 'Overload', 'Deprecated: %s', 'Deprecated.',
      'Inherited from %s', 'Inherited', 'optional, default %s', 'No overload with %d parameters.', '… %d more',
@@ -2552,7 +2563,10 @@ const
      'Recursion markers in the gutter', 'Maximum chain length (methods):', 'Recursion marker', 'Recursion markers',
      'Recursion: calls itself', 'Recursion over %d methods', 'Error text at line end', 'Error texts at line end',
      'More entries', '%d matches · %d more', 'While typing, show:', 'Only matches', 'All entries, matches on top',
-     'Matches, then the rest dimmed', 'Applies to:', 'Member lists after “.”', 'All lists'));
+     'Matches, then the rest dimmed', 'Applies to:', 'Member lists after “.”', 'All lists', '%s: %s · %s',
+     'Type argument %s', 'classes only', 'records and basic types only',
+     'only classes with a parameterless constructor', 'only types implementing %s', 'only types descending from %s',
+     'Hidden: %s', 'classes', 'records', 'interfaces', 'enumerations', 'basic types'));
 
 { TAtlasStrings }
 
@@ -2572,6 +2586,49 @@ begin
   Result.Value := Text(TAtlasTextId.DocValue);
   Result.Example := Text(TAtlasTextId.DocExample);
   Result.SeeAlso := Text(TAtlasTextId.DocSeeAlso);
+end;
+
+class function TAtlasStrings.TypeArgHeading(const AParam, AConstraint, AHint: string): string;
+var
+  Explanation: string;
+begin
+  if AHint = 'classes' then
+    Explanation := Text(TAtlasTextId.TypeArgOnlyClasses)
+  else if AHint = 'values' then
+    Explanation := Text(TAtlasTextId.TypeArgOnlyValues)
+  else if AHint = 'constructible' then
+    Explanation := Text(TAtlasTextId.TypeArgOnlyConstructible)
+  else if AHint.StartsWith('implements:') then
+    Explanation := Fmt(TAtlasTextId.TypeArgImplements, [Copy(AHint, Length('implements:') + 1, MaxInt)])
+  else if AHint.StartsWith('descends:') then
+    Explanation := Fmt(TAtlasTextId.TypeArgDescends, [Copy(AHint, Length('descends:') + 1, MaxInt)])
+  else
+    Explanation := '';
+  if (AConstraint = '') or (Explanation = '') then
+    Exit(Fmt(TAtlasTextId.TypeArgHeaderPlain, [AParam]));
+  Result := Fmt(TAtlasTextId.TypeArgHeader, [AParam, AConstraint, Explanation]);
+end;
+
+class function TAtlasStrings.TypeArgHidden(const AKinds: string): string;
+var
+  Kind: string;
+  Names: TArray<string>;
+begin
+  Names := nil;
+  for Kind in AKinds.Split([',']) do
+    if Kind = 'classes' then
+      Names := Names + [Text(TAtlasTextId.TypeArgKindClasses)]
+    else if Kind = 'records' then
+      Names := Names + [Text(TAtlasTextId.TypeArgKindRecords)]
+    else if Kind = 'interfaces' then
+      Names := Names + [Text(TAtlasTextId.TypeArgKindInterfaces)]
+    else if Kind = 'enums' then
+      Names := Names + [Text(TAtlasTextId.TypeArgKindEnums)]
+    else if Kind = 'basic' then
+      Names := Names + [Text(TAtlasTextId.TypeArgKindBasic)];
+  if Length(Names) = 0 then
+    Exit('');
+  Result := Fmt(TAtlasTextId.TypeArgHiddenFooter, [string.Join(', ', Names)]);
 end;
 
 class function TAtlasStrings.Confidence(const AName: string): string;
