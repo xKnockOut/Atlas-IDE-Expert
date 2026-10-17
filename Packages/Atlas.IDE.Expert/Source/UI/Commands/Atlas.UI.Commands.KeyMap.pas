@@ -274,6 +274,10 @@ begin
       Id := TAtlasTextId.SettingsWelcomeQuickActionsTestKey;
     TAtlasKeyFunction.HideElement:
       Id := TAtlasTextId.HideElementCommand;
+    TAtlasKeyFunction.NextProblem:
+      Id := TAtlasTextId.ProblemNextCommand;
+    TAtlasKeyFunction.PreviousProblem:
+      Id := TAtlasTextId.ProblemPreviousCommand;
   else
     Id := TAtlasTextId.KeyMapUnitSearchIde;
   end;

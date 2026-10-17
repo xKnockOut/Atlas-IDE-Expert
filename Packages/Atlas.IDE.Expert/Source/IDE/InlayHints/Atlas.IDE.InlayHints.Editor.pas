@@ -30,6 +30,8 @@
 // - Ausblenden am Element (#628): Inlay-Hints je Codezeile, Beschriftungen je
 //   Text der Beschriftung (oder je Datei) über .atlas; jede gezeichnete Marke
 //   meldet sich bei TAtlasIdeElements.
+// - Platz hinter dem Zeilenende (#509): teilt sich der Zeichner über
+//   TAtlasLineTail mit dem Fehlertext am Zeilenende.
 
 interface
 
@@ -130,7 +132,8 @@ uses
   Atlas.IDE.Foundation.Elements,
   Atlas.IDE.Foundation.Navigation,
   Atlas.Core.Diagnostics.MainThread,
-  Atlas.Core.Editor.Elements;
+  Atlas.Core.Editor.Elements,
+  Atlas.Core.Editor.LineTail;
 
 { TAtlasEditorInlayHints.TEvents }
 
@@ -347,6 +350,7 @@ var
   Saved: Integer;
   Size: TSize;
   ShowNames, ShowEnd: Boolean;
+  TailKey: string;
 begin
   // Durch die Sicherung abgeschaltet (#493).
   if TAtlasGuard.Disabled(TAtlasFeature.InlayHints) then
@@ -385,7 +389,8 @@ begin
     // Zwei Zeichen Abstand hinter dem letzten Zeichen der Zeile.
     Cell := Context.EditorState.GetCharacterPosPx(ColumnOf(Stored, Length(TrimRight(Stored)), TabWidth) + 2,
       Context.EditorLineNum);
-    X := Cell.Left;
+    TailKey := TAtlasLineTail.KeyOf(Context.FileName, Context.LogicalLineNum, Context.EditorLineNum, Rect.Top);
+    X := TAtlasLineTail.Start(Self, TailKey, Cell.Left);
     // Hintergrund des Editor-Farbschemas an der Stelle des Hinweises (hinter dem Zeilenende), nicht das
     // IDE-Thema: Sonst stand gedämpftes Grau auf fast gleichem Grau. Farben nur bei Abweichung neu.
     Sample := GetPixel(DC, X, Rect.Top + 1);
@@ -431,7 +436,9 @@ begin
         TAtlasIdeElements.Painted(TAtlasDrawnElement.BlockEndLabels, Context.FileName, Line, EndText, Pill,
           Context.EditView.TopRow, Rect.Height);
         RememberEnd(Context.FileName, Line, Context.EditView.TopRow, Pill, EndHint);
+        X := Pill.Right;
       end;
+      TAtlasLineTail.Finish(Self, TailKey, X);
     finally
       RestoreDC(DC, Saved);
     end;
