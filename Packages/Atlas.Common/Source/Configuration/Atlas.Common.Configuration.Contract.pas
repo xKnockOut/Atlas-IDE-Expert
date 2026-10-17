@@ -252,6 +252,10 @@ type
     VirtualOverload: Boolean;
     /// <summary>Aktionen, die Deklaration und Implementierung angleichen.</summary>
     SyncSignatures: Boolean;
+    /// <summary>Code-Aktion „try/finally ergänzen“ nach einer Create-Zuweisung (#42).</summary>
+    TryFinally: Boolean;
+    /// <summary>Klassen-Aktionen: Getter/Setter/Feld, Interface-Methoden, Überschreiben (#42).</summary>
+    ClassActions: Boolean;
     class function Default: TRefactoringSettings; static;
   end;
 
@@ -637,6 +641,8 @@ begin
   Result.NewParameterOverload := True;
   Result.VirtualOverload := False;
   Result.SyncSignatures := True;
+  Result.TryFinally := True;
+  Result.ClassActions := True;
 end;
 
 { TCompletionSettings }

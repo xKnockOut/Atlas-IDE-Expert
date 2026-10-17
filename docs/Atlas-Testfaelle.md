@@ -1850,3 +1850,29 @@ Voraussetzung für EX2 bis EX7: mindestens eine Einstellung trägt `x-experiment
 | SB5 | `"format": {"indentSize": 4}` in atlas.json, `/prop Name: string` in einer Methode | Feld, Property und Setter mit vier Leerzeichen je Ebene |
 | SB6 | `delphiVersion` 19.0 (10.2), `/var I := 0` | Zeile bleibt stehen, Hinweis „Inline-Variablen gibt es erst ab Delphi 10.3 …“ (**Abnahme**) |
 | SB7 | `/const Max = 10` im interface-Teil außerhalb einer Routine; `/const! X = 1` in einer Unit ohne implementation | Beide bleiben stehen mit Hinweis |
+
+## Code-Aktion „try/finally ergänzen“ (#42)
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| CA1 | In einer Routine `Liste := TStringList.Create;` mit zwei folgenden Anweisungen, Glühbirne bzw. Code-Aktionen auf der Zeile | „try/finally mit Liste.Free ergänzen“; die beiden Anweisungen stehen im `try`, `Liste.Free;` im `finally`; Projekt kompiliert (**Abnahme**) |
+| CA2 | `FListe := TStringList.Create;` und `Self.FListe := …` in einer Methode | Keine try/finally-Aktion |
+| CA3 | `var Liste := TStringList.Create;` und ein über zwei Zeilen verteilter `Create(`-Aufruf | Aktion wird angeboten; `try` steht hinter der letzten Zeile des Aufrufs |
+| CA4 | Create-Zeile und die nächste Zeile markieren, danach steht noch eine Anweisung | Nur die markierte Anweisung steht im `try`, die übrige danach |
+| CA5 | Steht am Ende schon `Liste.Free;` bzw. `FreeAndNil(Liste);` | Die Freigabe wandert ins `finally`, keine doppelte Freigabe |
+| CA6 | `Result := TStringList.Create;` mit folgendem `Result.Add(…)` | „try/except ergänzen“: `except Result.Free; raise; end;`, kein `finally` |
+| CA7 | `.editorconfig` mit `indent_size = 4` bzw. `indent_style = tab` | Der neue Block rückt um vier Leerzeichen bzw. einen Tabulator ein |
+| CA8 | Create-Zeile ohne folgende Anweisung, mit Owner (`Create(Self)`) oder bei Übergabe an `Add` | Keine Aktion |
+| CA9 | `"refactoring": {"tryFinally": false}` in atlas.json | Keine try/finally-Aktion mehr |
+
+## Klassen-Aktionen als Code-Aktionen (#42)
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| KA1 | In einer Klasse `property Name: string;` ohne read/write, Code-Aktionen auf der Zeile | „Getter, Setter und Feld für Name erzeugen“: `FName`, `GetName`, `SetName` in einem private-Abschnitt davor, Property mit `read GetName write SetName`, Rümpfe in der implementation; Unit kompiliert (**Abnahme**) |
+| KA2 | Wie KA1, `FName` und `GetName` gibt es schon | Nur `SetName` kommt dazu, nichts doppelt |
+| KA3 | `TFoo = class(TInterfacedObject, IFoo)` ohne die Methoden von `IFoo`, Code-Aktionen in der Klasse | „Methoden von IFoo implementieren“ legt Deklarationen und Rümpfe an; danach wird die Aktion nicht mehr angeboten (**Abnahme**) |
+| KA4 | Klasse mit Vorfahr, der virtuelle Methoden hat | Je Methode „Name überschreiben“ (höchstens 20); schon überschriebene fehlen; Rumpf ruft `inherited` (**Abnahme**) |
+| KA5 | Cursor außerhalb einer Klassendeklaration (Methodenrumpf, implementation) | Keine Klassen-Aktionen |
+| KA6 | `"refactoring": {"classActions": false}` | Keine Klassen-Aktionen |
+| KA7 | `.editorconfig` mit `indent_size = 4` | Die erzeugten Rümpfe rücken um vier Leerzeichen ein |
