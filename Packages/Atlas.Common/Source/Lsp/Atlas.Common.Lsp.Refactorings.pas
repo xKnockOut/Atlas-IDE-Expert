@@ -235,6 +235,7 @@ begin
     AAction.IsPreferred := True;
   end;
   AAction.Kind := RewriteKind;
+  AAction.Tag := CaseCompleteTag;
   AAction.Edits := Edits;
   Result := True;
 end;

@@ -296,6 +296,8 @@ begin
   Assert.AreEqual('Nächste Änderung', TAtlasKeyMapWindow.FunctionCaption(TAtlasKeyFunction.NextChange));
   Assert.AreEqual('Vorherige Änderung', TAtlasKeyMapWindow.FunctionCaption(TAtlasKeyFunction.PreviousChange));
   Assert.AreEqual('Zeilen nach oben verschieben', TAtlasKeyMapWindow.FunctionCaption(TAtlasKeyFunction.MoveLinesUp));
+  Assert.AreEqual('Anweisung vervollständigen',
+    TAtlasKeyMapWindow.FunctionCaption(TAtlasKeyFunction.CompleteStatement));
   Assert.AreEqual('Zeilen darunter duplizieren',
     TAtlasKeyMapWindow.FunctionCaption(TAtlasKeyFunction.DuplicateLinesDown));
   // #764: Schnellaktionen der Willkommensseite.
