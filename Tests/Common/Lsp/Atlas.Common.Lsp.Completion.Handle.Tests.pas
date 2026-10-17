@@ -71,6 +71,15 @@ type
     procedure PartialSendsEnumsThenStages;
     [Test]
     procedure SenderCastIsExclusive;
+    /// <summary>#452: Feld vom Typ TCustomerList in einem Projekt mit F-Konvention.</summary>
+    [Test]
+    procedure NameSuggestionsFollowProjectConvention;
+    /// <summary>#452: ohne Konvention kein Präfix, vergebene Namen mit Ziffer.</summary>
+    [Test]
+    procedure NameSuggestionsWithoutConvention;
+    /// <summary>#452: Vorgabe der Projektdatei geht vor; completion.nameSuggestions aus schaltet ab.</summary>
+    [Test]
+    procedure NameSuggestionsForcedAndSwitchedOff;
   end;
 
 implementation
@@ -693,6 +702,115 @@ begin
   try
     Assert.AreEqual('Caption', Labels(Answer));
     Assert.AreEqual('TButton', ItemAt(Answer, 0).GetValue<string>('data.sender'));
+  finally
+    Answer.Free;
+  end;
+end;
+
+const
+  KundenFile = 'C:\P\Kunden.pas';
+
+  /// <summary>Unit mit AFields Feldern, davon APrefixed mit F.</summary>
+  function FieldUnit(AFields, APrefixed: Integer): string;
+  var
+    Index: Integer;
+  begin
+    Result := 'unit Kunden;'#13#10'interface'#13#10'type'#13#10'  TKunde = class'#13#10;
+    for Index := 1 to AFields do
+      if Index <= APrefixed then
+        Result := Result + '    FWert' + IntToStr(Index) + ': Integer;'#13#10
+      else
+        Result := Result + '    Wert' + IntToStr(Index) + ': Integer;'#13#10;
+    Result := Result + '  end;'#13#10'implementation'#13#10'end.';
+  end;
+
+const
+  FieldSite =
+    'unit Haupt;'#13#10 +
+    'interface'#13#10 +
+    'type'#13#10 +
+    '  TForm = class'#13#10 +
+    '  private'#13#10 +
+    '    |: TCustomerList;'#13#10 +
+    '  end;'#13#10 +
+    'implementation'#13#10 +
+    'end.';
+
+procedure TLspCompletionHandleTests.NameSuggestionsFollowProjectConvention;
+var
+  Answer: TJSONObject;
+begin
+  // 3 von 5 Feldern mit F: genau 60 %.
+  AddUnit(KundenFile, FieldUnit(5, 3));
+  Answer := Complete(FieldSite);
+  try
+    Assert.AreEqual('FCustomers FCustomerList FList', Labels(Answer), Answer.ToJSON);
+    Assert.AreEqual(5, ItemAt(Answer, 0).GetValue<Integer>('kind'));
+    Assert.AreEqual('TCustomerList', ItemAt(Answer, 0).GetValue<string>('detail'));
+  finally
+    Answer.Free;
+  end;
+end;
+
+procedure TLspCompletionHandleTests.NameSuggestionsWithoutConvention;
+var
+  Answer: TJSONObject;
+begin
+  // 2 von 5: unter 60 %.
+  AddUnit(KundenFile, FieldUnit(5, 2));
+  Answer := Complete(FieldSite);
+  try
+    Assert.AreEqual('Customers CustomerList List', Labels(Answer), Answer.ToJSON);
+  finally
+    Answer.Free;
+  end;
+  // Lokale Variable: vergebene Namen bekommen eine Ziffer, der Name an der Stelle selbst zählt nicht.
+  Answer := Complete(
+    'unit Haupt;'#13#10 +
+    'interface'#13#10 +
+    'implementation'#13#10 +
+    'procedure Laden(List: Integer);'#13#10 +
+    'var'#13#10 +
+    '  Customers: Integer;'#13#10 +
+    '  Cu|: TCustomerList;'#13#10 +
+    'begin'#13#10 +
+    'end;'#13#10 +
+    'end.');
+  try
+    Assert.AreEqual('Customers2 CustomerList List2', Labels(Answer), Answer.ToJSON);
+    Assert.AreEqual(6, ItemAt(Answer, 0).GetValue<Integer>('kind'));
+  finally
+    Answer.Free;
+  end;
+end;
+
+procedure TLspCompletionHandleTests.NameSuggestionsForcedAndSwitchedOff;
+var
+  Answer: TJSONObject;
+begin
+  AddUnit(KundenFile, FieldUnit(5, 0));
+  FCompletion.NamingFor :=
+    function(const AUri: string; AKind: TNamingKind): string
+    begin
+      Result := '';
+      if AKind = TNamingKind.Field then
+        Result := 'F';
+    end;
+  Answer := Complete(FieldSite);
+  try
+    Assert.AreEqual('FCustomers FCustomerList FList', Labels(Answer), Answer.ToJSON);
+  finally
+    Answer.Free;
+  end;
+  FCompletion.SettingsFor :=
+    function(const AUri: string): TCompletionSettings
+    begin
+      Result := TCompletionSettings.Default;
+      Result.NameSuggestions := False;
+    end;
+  Answer := Complete(FieldSite);
+  try
+    Assert.IsFalse(Labels(Answer).Contains('Customers'), Answer.ToJSON);
   finally
     Answer.Free;
   end;

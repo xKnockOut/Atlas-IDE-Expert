@@ -445,6 +445,9 @@ begin
   // Typargumente nach den Constraints (#450)
   Assert.IsTrue(Parse('{}', Issues).Completion.GenericConstraints);
   Assert.IsFalse(Parse('{"completion": {"genericConstraints": false}}', Issues).Completion.GenericConstraints);
+  // Namensvorschläge (#452)
+  Assert.IsTrue(Parse('{}', Issues).Completion.NameSuggestions);
+  Assert.IsFalse(Parse('{"completion": {"nameSuggestions": false}}', Issues).Completion.NameSuggestions);
   Assert.IsTrue(Parse('{}', Issues).Refactoring.InlineVar);
   Assert.IsFalse(Parse('{"refactoring": {"inlineVar": false}}', Issues).Refactoring.InlineVar);
   Assert.AreEqual(0, Integer(Length(Issues)));

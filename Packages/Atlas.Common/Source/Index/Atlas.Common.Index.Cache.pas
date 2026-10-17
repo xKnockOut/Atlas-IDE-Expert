@@ -70,7 +70,8 @@ type
     // 13: Mitglieder aus nicht geltenden Zweigen in Unavailable (#476).
     // 14: dazu Routinen aus nicht geltenden Zweigen im implementation-Teil.
     // 15: Zusammenführung mit der Kette (Signatur, Direktiven, Kurztext je Symbol, #492).
-    const FormatVersion = 15;
+    // 16: Zählung der Präfixe je Unit (#452).
+    const FormatVersion = 16;
     class function Serialize(const AUnits: TArray<TUnitIndex>): TBytes; static;
     /// <summary>Liest nur die Köpfe; bei falscher Version, falscher Prüfsumme oder fremdem Inhalt leer.</summary>
     class function ReadEntries(const AData: TBytes): TArray<TIndexCacheEntry>; overload; static;
@@ -137,6 +138,8 @@ type
     function ReadByte: Byte;
     function ReadVar: UInt64;
     function ReadCount: Integer;
+    /// <summary>Nicht negative Zahl bis High(Integer), unabhängig von der Dateigröße.</summary>
+    function ReadNumber: Integer;
     function ReadInt: Int64;
     function ReadInt32: Integer;
     function ReadString(const AStrings: TArray<string>): string;
@@ -260,6 +263,16 @@ begin
     Result := Result or (UInt64(Value and $7F) shl Shift);
     Inc(Shift, 7);
   until Value < $80;
+end;
+
+function TCacheReader.ReadNumber: Integer;
+var
+  Value: UInt64;
+begin
+  Value := ReadVar;
+  if Value > UInt64(High(Integer)) then
+    Fail;
+  Result := Integer(Value);
 end;
 
 function TCacheReader.ReadCount: Integer;
@@ -425,6 +438,7 @@ var
   Symbol: TIndexSymbol;
   Usage: TIndexUsage;
   Flags, MagicIndex, ChecksumAt: Integer;
+  Kind: TNamingKind;
   Stamp: Int64;
   Value: string;
   Bytes: TBytes;
@@ -458,6 +472,11 @@ begin
       Body.WriteVar(Length(UnitIndex.IncludeStamps));
       for Stamp in UnitIndex.IncludeStamps do
         Body.WriteInt(Stamp);
+      for Kind := Low(TNamingKind) to High(TNamingKind) do
+      begin
+        Body.WriteVar(UnitIndex.Naming[Kind].Total);
+        Body.WriteVar(UnitIndex.Naming[Kind].Prefixed);
+      end;
       Body.WriteVar(Length(UnitIndex.Symbols));
       Body.WriteVar(Length(UnitIndex.Unavailable));
       // Block erst sammeln, damit seine Länge davor stehen kann.
@@ -578,6 +597,7 @@ var
   Reader: TCacheReader;
   Strings: TArray<string>;
   Index, Count, StampIndex, Flags, Size: Integer;
+  Kind: TNamingKind;
   Entry: TIndexCacheEntry;
   Version: UInt64;
   Stored: Cardinal;
@@ -644,6 +664,12 @@ begin
       SetLength(Entry.Header.IncludeStamps, Reader.ReadCount);
       for StampIndex := 0 to High(Entry.Header.IncludeStamps) do
         Entry.Header.IncludeStamps[StampIndex] := Reader.ReadInt;
+      // Zahlen, keine Längen: ReadCount begrenzte sie auf die Dateigröße.
+      for Kind := Low(TNamingKind) to High(TNamingKind) do
+      begin
+        Entry.Header.Naming[Kind].Total := Reader.ReadNumber;
+        Entry.Header.Naming[Kind].Prefixed := Reader.ReadNumber;
+      end;
       Entry.SymbolCount := Reader.ReadCount;
       Entry.UnavailableCount := Reader.ReadCount;
       Size := Reader.ReadCount;

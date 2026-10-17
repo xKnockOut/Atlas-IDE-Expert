@@ -19,6 +19,9 @@ type
     procedure KeepsDprojValuesWithoutOptions;
     [Test]
     procedure LoadsInitializeAndReportsOnlyChanges;
+    /// <summary>#452: Präfix-Vorgaben werden gemerkt, laden das Projekt aber nicht neu.</summary>
+    [Test]
+    procedure KeepsNamingWithoutReload;
   end;
 
 implementation
@@ -28,6 +31,7 @@ uses
   System.JSON,
   System.Generics.Collections,
   Atlas.Common.JsonRpc.Dispatcher,
+  Atlas.Common.Index.Contract,
   Atlas.Common.Projects.Contract,
   Atlas.Common.Lsp.IdeProject;
 
@@ -149,6 +153,43 @@ begin
     Assert.IsTrue(Store.Find('C:\P\A.dproj', Context));
     Assert.AreEqual('Win32', Context.Platform);
     Assert.IsFalse(Store.Find('C:\P\B.dproj', Context));
+  finally
+    Dispatcher.Free;
+    Store.Free;
+  end;
+end;
+
+procedure TLspIdeProjectTests.KeepsNamingWithoutReload;
+var
+  Store: TLspIdeProject;
+  Dispatcher: TJsonRpcDispatcher;
+  Context: TIdeProjectContext;
+  Changed: Integer;
+begin
+  Context := Parse('{"project":"C:\\P\\A.dproj","naming":{"field":"F","local":"","parameter":3}}');
+  Assert.IsTrue(Context.HasNaming[TNamingKind.Field]);
+  Assert.AreEqual('F', Context.Naming[TNamingKind.Field]);
+  Assert.IsTrue(Context.HasNaming[TNamingKind.Local]);
+  Assert.AreEqual('', Context.Naming[TNamingKind.Local]);
+  // Kein String: keine Vorgabe.
+  Assert.IsFalse(Context.HasNaming[TNamingKind.Parameter]);
+  Store := TLspIdeProject.Create;
+  Dispatcher := TJsonRpcDispatcher.Create;
+  try
+    Changed := 0;
+    Store.OnChanged :=
+      procedure(const AContext: TIdeProjectContext)
+      begin
+        Inc(Changed);
+      end;
+    Store.Attach(Dispatcher);
+    Notify(Dispatcher, '{"project":"C:\\P\\A.dproj","configuration":"Debug"}');
+    Assert.AreEqual(1, Changed);
+    Notify(Dispatcher, '{"project":"C:\\P\\A.dproj","configuration":"Debug","naming":{"field":"F"}}');
+    Assert.AreEqual(1, Changed);
+    Assert.IsTrue(Store.Find('C:\P\A.dproj', Context));
+    Assert.AreEqual('F', Context.Naming[TNamingKind.Field]);
+    Assert.IsFalse(Context.HasNaming[TNamingKind.Local]);
   finally
     Dispatcher.Free;
     Store.Free;
