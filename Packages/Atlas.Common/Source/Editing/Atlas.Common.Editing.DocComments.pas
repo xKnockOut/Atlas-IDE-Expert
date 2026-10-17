@@ -8,6 +8,9 @@
 //   /// <returns></returns>                nur bei Funktionen und Operatoren
 // Properties, Typen, Felder und Konstanten erhalten nur <summary>. Dazu zwei
 // Code-Aktionen: Kommentar erzeugen und <param> an die Signatur anpassen.
+// Beim Anpassen fehlen keine Beschreibungen: Ein <param> ohne Parameter in der
+// Signatur wird zu <!-- entfernt: Name: Beschreibung --> und nicht gelöscht.
+// Abschaltbar mit "completeBlocks.docComment" (Aufrufer prüft die Einstellung).
 
 interface
 
@@ -255,6 +258,47 @@ begin
     Result := Copy(ALine, Start, Stop - Start);
 end;
 
+/// <summary>Bearbeitungen, die den &lt;param&gt; ab Zeile ALine als &lt;!-- entfernt: Name --&gt; markieren;
+/// die Beschreibung bleibt im Kommentar. ALast = letzte Kommentarzeile, bis zu der &lt;/param&gt; gesucht wird.</summary>
+function MarkRemoved(const ALines: TArray<string>; ALine, ALast: Integer; const AName: string): TArray<TTextEdit>;
+const
+  CloseTag = '</param>';
+var
+  Open, OpenEnd, Close, Line: Integer;
+  Description: string;
+begin
+  Open := Pos('<param name="', ALines[ALine]);
+  OpenEnd := PosEx('>', ALines[ALine], Open);
+  Close := PosEx(CloseTag, ALines[ALine], OpenEnd);
+  if Close > 0 then
+  begin
+    // "--" ist in einem XML-Kommentar nicht erlaubt.
+    Description := Trim(StringReplace(Copy(ALines[ALine], OpenEnd + 1, Close - OpenEnd - 1), '--', '–',
+      [rfReplaceAll]));
+    if Description <> '' then
+      Description := ': ' + Description;
+    Result := [TTextEdit.Create(TTextRange.Create(ALine, Open - 1, ALine, Close - 1 + Length(CloseTag)),
+      Format('<!-- entfernt: %s%s -->', [AName, Description]))];
+    Exit;
+  end;
+  // Mehrzeilig: Anfang und Ende des Tags ersetzen, die Zeilen dazwischen bleiben.
+  Result := [TTextEdit.Create(TTextRange.Create(ALine, Open - 1, ALine, OpenEnd),
+    Format('<!-- entfernt: %s:', [AName]))];
+  for Line := ALine + 1 to ALast do
+  begin
+    Close := Pos(CloseTag, ALines[Line]);
+    if Close > 0 then
+    begin
+      Result := Result + [TTextEdit.Create(TTextRange.Create(Line, Close - 1, Line, Close - 1 + Length(CloseTag)),
+        '-->')];
+      Exit;
+    end;
+  end;
+  // Kein Ende gefunden: nur den Anfang markieren und schließen.
+  Result := [TTextEdit.Create(TTextRange.Create(ALine, Open - 1, ALine, OpenEnd),
+    Format('<!-- entfernt: %s -->', [AName]))];
+end;
+
 class function TDocComments.Actions(const AText: string; ATree: TSyntaxTree; ALine: Integer): TArray<TCodeAction>;
 var
   Lines, Existing, Missing: TArray<string>;
@@ -293,7 +337,8 @@ begin
   for Line := First to ALine - 1 do
   begin
     Name := ParamName(Lines[Line]);
-    if (Name <> '') or ContainsText(Lines[Line], '</summary>') or ContainsText(Lines[Line], '<typeparam') then
+    if (Name <> '') or ContainsText(Lines[Line], '</summary>') or ContainsText(Lines[Line], '<typeparam') or
+      ContainsText(Lines[Line], '</param>') then
       Anchor := Line + 1;
     if Name = '' then
       Continue;
@@ -301,7 +346,7 @@ begin
     if IndexText(Name, Signature.Params) < 0 then
     begin
       Stale := True;
-      Action.Edits := Action.Edits + [TTextEdit.Create(TTextRange.Create(Line, 0, Line + 1, 0), '')];
+      Action.Edits := Action.Edits + MarkRemoved(Lines, Line, ALine - 1, Name);
     end;
   end;
   Missing := nil;

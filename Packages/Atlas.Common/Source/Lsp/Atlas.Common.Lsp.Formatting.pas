@@ -28,6 +28,9 @@ type
   /// <summary>Delphi-Version (BDS-Nummer) je Dokument; '' = unbekannt.</summary>
   TFormattingVersionFunc = reference to function(const AUri: string): string;
 
+  /// <summary>Eingabehilfe für AUri eingeschaltet, etwa "completeBlocks.docComment" (#88).</summary>
+  TFormattingEnabledFunc = reference to function(const AUri: string): Boolean;
+
   /// <summary>Block "format" aus atlas.json bzw. dem Editor für AUri.</summary>
   TFormatStyleProvider = reference to function(const AUri: string): TFormatStyle;
 
@@ -42,6 +45,7 @@ type
     FReadFile: TEditorConfigReadFile;
     FSlashCommandsFor: TSlashCommandsProvider;
     FDelphiVersionFor: TFormattingVersionFunc;
+    FDocCommentsFor: TFormattingEnabledFunc;
     FIndex: ISymbolIndex;
     FSlashHost: ISlashHost;
     function HandleOnType(const AParams: TJSONValue; const ACancellation: IJsonRpcCancellationToken): TJSONValue;
@@ -65,6 +69,8 @@ type
     property SlashCommandsFor: TSlashCommandsProvider read FSlashCommandsFor write FSlashCommandsFor;
     /// <summary>Delphi-Version je Dokument für versionsabhängige Schnellbefehle (#303); ohne Zuweisung ''.</summary>
     property DelphiVersionFor: TFormattingVersionFunc read FDelphiVersionFor write FDelphiVersionFor;
+    /// <summary>"completeBlocks.docComment" (#88); ohne Zuweisung eingeschaltet.</summary>
+    property DocCommentsFor: TFormattingEnabledFunc read FDocCommentsFor write FDocCommentsFor;
     /// <summary>Index für Schnellbefehle, die Vorfahren und Interfaces brauchen (#295); nil ohne.</summary>
     property Index: ISymbolIndex read FIndex write FIndex;
   end;
@@ -133,6 +139,9 @@ begin
       Exit;
     if Character = '/' then
     begin
+      // Abgeschaltet: "///" bleibt, wie getippt.
+      if Assigned(FDocCommentsFor) and not FDocCommentsFor(Uri) then
+        Exit;
       // Abbruchsignal an den Parser (Code-Review A-06).
       Cancellation := TRequestCancellation.Create(ACancellation);
       Shared := TSyntaxTreeCache.Get(Document, Cancellation);

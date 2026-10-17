@@ -20,6 +20,8 @@ type
     procedure OnTypeStopsBeforeSlashCommandsWhenCancelled;
     [Test]
     procedure FormattingStopsWhenCancelled;
+    [Test]
+    procedure DocCommentAfterSlashIsSwitchable;
   end;
 
 implementation
@@ -72,7 +74,62 @@ begin
     end;
 end;
 
+/// <summary>Anzahl der Bearbeitungen in der Antwort auf AJson (Anfrage mit id 1); -1 ohne result.</summary>
+function EditCountOf(ADispatcher: TJsonRpcDispatcher; const AJson: string): Integer;
+var
+  Request, Response: TJSONObject;
+  Edits: TJSONArray;
+begin
+  Request := TJSONObject.ParseJSONValue(AJson) as TJSONObject;
+  try
+    Response := ADispatcher.DispatchMessage(Request);
+    try
+      if Response.TryGetValue<TJSONArray>('result', Edits) then
+        Result := Edits.Count
+      else
+        Result := -1;
+    finally
+      Response.Free;
+    end;
+  finally
+    Request.Free;
+  end;
+end;
+
 { TLspFormattingTests }
+
+procedure TLspFormattingTests.DocCommentAfterSlashIsSwitchable;
+const
+  Request = '{"jsonrpc":"2.0","id":1,"method":"textDocument/onTypeFormatting","params":{"textDocument":{"uri":"' +
+    CancelUri + '"},"position":{"line":3,"character":5},"ch":"/"}}';
+var
+  Store: IDocumentStore;
+  Formatting: TLspFormatting;
+  Dispatcher: TJsonRpcDispatcher;
+  Enabled: Boolean;
+begin
+  Store := TDocumentStore.Create;
+  Store.Open(CancelUri, 'objectpascal', 1, 'unit Unit1;'#10'interface'#10#10'  ///'#10 +
+    'procedure Foo(A: Integer);'#10'implementation'#10'procedure Foo(A: Integer);'#10'begin'#10'end;'#10'end.');
+  Dispatcher := TJsonRpcDispatcher.Create;
+  Formatting := TLspFormatting.Create(Store, nil, nil);
+  try
+    Enabled := True;
+    Formatting.DocCommentsFor :=
+      function(const AUri: string): Boolean
+      begin
+        Result := Enabled;
+      end;
+    Formatting.Attach(Dispatcher);
+    Assert.AreEqual(1, EditCountOf(Dispatcher, Request), 'Gerüst eingeschaltet');
+    // completeBlocks.docComment = false: "///" bleibt, wie getippt.
+    Enabled := False;
+    Assert.AreEqual(0, EditCountOf(Dispatcher, Request), 'Gerüst abgeschaltet');
+  finally
+    Formatting.Free;
+    Dispatcher.Free;
+  end;
+end;
 
 procedure TLspFormattingTests.EditorOptionsAreTheBase;
 var

@@ -370,6 +370,17 @@ begin
   Assert.AreEqual(2, Integer(Length(Issues)));
   Settings := TConfigurationParser.ParseLayered('{"slashCommands": {"disabled": ["uses"]}}', '{}', Issues);
   Assert.AreEqual(1, Integer(Length(Settings.SlashCommandsDisabled)));
+  // Gerüst des Dokumentationskommentars (#88)
+  Assert.IsTrue(Parse('{}', Issues).CompleteBlocksDocComment);
+  Settings := Parse('{"completeBlocks": {"docComment": false}}', Issues);
+  Assert.AreEqual(0, Integer(Length(Issues)));
+  Assert.IsFalse(Settings.CompleteBlocksDocComment);
+  Parse('{"completeBlocks": {"docComment": 1, "x": true}}', Issues);
+  Assert.AreEqual(2, Integer(Length(Issues)));
+  Parse('{"completeBlocks": true}', Issues);
+  Assert.AreEqual(1, Integer(Length(Issues)));
+  Settings := TConfigurationParser.ParseLayered('{"completeBlocks": {"docComment": false}}', '{}', Issues);
+  Assert.IsFalse(Settings.CompleteBlocksDocComment);
   // Protokollaufruf für /log und /except (#304)
   Assert.AreEqual('', Parse('{}', Issues).SlashLogCall);
   Settings := Parse('{"slashCommands": {"logCall": "Log.Debug"}}', Issues);

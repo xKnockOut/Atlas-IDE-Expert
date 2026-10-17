@@ -67,6 +67,7 @@ type
     procedure ReadMcp(ANode: TJsonNode);
     procedure ReadUsesKeep(ANode: TJsonNode);
     procedure ReadSlashCommands(ANode: TJsonNode);
+    procedure ReadCompleteBlocks(ANode: TJsonNode);
     procedure ReadSortUses(ANode: TJsonNode);
     procedure ReadInlayHints(ANode: TJsonNode);
     procedure ReadCodeLens(ANode: TJsonNode);
@@ -406,6 +407,27 @@ begin
     else
       Report(ANode.KeyStarts[Index], ANode.KeyStarts[Index] + Length(Key) + 2,
         Format('Unbekannte Einstellung "slashCommands.%s"', [Key]), False);
+  end;
+end;
+
+procedure TValidator.ReadCompleteBlocks(ANode: TJsonNode);
+var
+  Index: Integer;
+  Key: string;
+begin
+  if ANode.Kind <> TJsonKind.Object_ then
+  begin
+    ReportNode(ANode, '"completeBlocks" muss ein Objekt sein');
+    Exit;
+  end;
+  for Index := 0 to ANode.Count - 1 do
+  begin
+    Key := ANode.Keys[Index];
+    if Key = 'docComment' then
+      ExpectBoolean(ANode[Index], Key, FSettings.CompleteBlocksDocComment)
+    else
+      Report(ANode.KeyStarts[Index], ANode.KeyStarts[Index] + Length(Key) + 2,
+        Format('Unbekannte Einstellung "completeBlocks.%s"', [Key]), False);
   end;
 end;
 
@@ -1372,6 +1394,8 @@ begin
         ReadIndex(Value)
       else if Key = 'usesCommand' then
         ExpectBoolean(Value, Key, FSettings.UsesCommand)
+      else if Key = 'completeBlocks' then
+        ReadCompleteBlocks(Value)
       else if Key = 'metrics' then
         ExpectBoolean(Value, Key, FSettings.Metrics)
       else if Key = 'slashCommands' then
@@ -1721,6 +1745,8 @@ begin
     end
     else if Key = 'usesCommand' then
       Result.UsesCommand := FileSettings.UsesCommand
+    else if Key = 'completeBlocks' then
+      Result.CompleteBlocksDocComment := FileSettings.CompleteBlocksDocComment
     else if Key = 'metrics' then
       Result.Metrics := FileSettings.Metrics
     else if Key = 'slashCommands' then

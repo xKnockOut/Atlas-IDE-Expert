@@ -11,7 +11,7 @@ function AtlasSchemaJson: string;
 implementation
 
 const
-  Lines: array[0..1091] of string = (
+  Lines: array[0..1109] of string = (
     '{',
     '  "$schema": "http://json-schema.org/draft-07/schema#",',
     '  "title": "Atlas-Konfiguration",',
@@ -521,6 +521,24 @@ const
     '      "x-page": "Eingabehilfen",',
     '      "x-control": "Kontrollkästchen",',
     '      "x-issue": "#254"',
+    '    },',
+    '    "completeBlocks": {',
+    '      "type": "object",',
+    '      "description": "Eingabehilfen, die beim Tippen Code ergänzen.",',
+    '      "additionalProperties": false,',
+    '      "properties": {',
+    '        "docComment": {',
+    '          "type": "boolean",',
+    '          "default": true,',
+    '          "description": "Gerüst des Dokumentationskommentars nach dem dritten / über einer Deklaration erzeugen (summary, typeparam, param, returns), dazu die Code-Aktionen „Dokumentationskommentar e' + 'rzeugen“ und „Dokumentation an die Signatur anpassen“. Überzählige param werden dabei als <!-- entfernt: Name --> markiert, nicht gelöscht. false: /// bleibt, wie getippt.",',
+    '          "x-issue": "#88"',
+    '        }',
+    '      },',
+    '      "x-scope": "global",',
+    '      "x-area": "codeActions",',
+    '      "x-page": "Eingabehilfen",',
+    '      "x-control": "Kontrollkästchen",',
+    '      "x-issue": "#88"',
     '    },',
     '    "metrics": {',
     '      "type": "boolean",',

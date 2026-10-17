@@ -29,6 +29,7 @@ Jeder Schlüssel hat genau einen Ort (Spalte „Ort“): Projekt-Schlüssel steh
 | `completion` | gemischt, siehe unten | object | – |  | Code-Vervollständigung. |
 | `refactoring` | Projekt (atlas.json) | object | – |  | Code, den Atlas erzeugt. |
 | `usesCommand` | global (settings.json) | boolean | `true` |  | Eine Zeile "/uses Unit1, Unit2" wird nach Enter gelöscht und die Units kommen ins passende uses. |
+| `completeBlocks` | global (settings.json) | object | – |  | Eingabehilfen, die beim Tippen Code ergänzen. |
 | `metrics` | global (settings.json) | boolean | `true` |  | Kennzahlen überhaupt: false schaltet die Kennzahlen über den Methoden (codeLens.metrics) und alle Regeln metric-* für alle Projekte ab. Ein Projekt übersteuert das je Regel, indem es sie in atlas.json unter "rules" ausdrücklich setzt, z. B. "metric-method-length": "warning". |
 | `slashCommands` | global (settings.json) | object | – |  | Schnellbefehle: Eine Zeile, die mit /name beginnt, wird nach Enter ausgeführt und verschwindet. Nach / schlägt die Vervollständigung alle Befehle vor. |
 | `sortUses` | Projekt (atlas.json) | boolean string | `false` | `true`, `false`, `"alphabetic"`, `"namespace"` | "uses aufräumen" (source.organizeImports, z. B. beim Speichern) sortiert die uses: true oder "alphabetic" alphabetisch, "namespace" nach Namespace gruppiert (System, Vcl, ... und Units ohne Namespace zuletzt). Achtung: Die Reihenfolge bestimmt die Initialisierung der Units. |
@@ -88,6 +89,12 @@ Jeder Schlüssel hat genau einen Ort (Spalte „Ort“): Projekt-Schlüssel steh
 | `refactoring.newParameter` | Projekt (atlas.json) | string | `"overload"` | `"overload"`, `"updateCallers"` | Neue Parameter: overload behält die alte Signatur als Überladung, die mit dem angegebenen Wert weiterreicht (Aufrufer bleiben); updateCallers ändert alle Aufrufer. Interface-Methoden und gebundene Handler gehen nur mit updateCallers. Standardwerte erzeugt Atlas nie. |
 | `refactoring.virtualOverload` | Projekt (atlas.json) | boolean | `false` |  | Die Überladung mit der alten Signatur bei virtuellen Methoden ebenfalls virtual machen. |
 | `refactoring.syncSignatures` | Projekt (atlas.json) | boolean | `true` |  | Weichen Deklaration und Implementierung voneinander ab, die Aktionen „Implementierung an Deklaration angleichen“ und umgekehrt anbieten. |
+
+## completeBlocks
+
+| Schlüssel | Ort | Typ | Standard | Werte | Bedeutung |
+|---|---|---|---|---|---|
+| `completeBlocks.docComment` | global (settings.json) | boolean | `true` |  | Gerüst des Dokumentationskommentars nach dem dritten / über einer Deklaration erzeugen (summary, typeparam, param, returns), dazu die Code-Aktionen „Dokumentationskommentar erzeugen“ und „Dokumentation an die Signatur anpassen“. Überzählige param werden dabei als <!-- entfernt: Name --> markiert, nicht gelöscht. false: /// bleibt, wie getippt. |
 
 ## slashCommands
 
