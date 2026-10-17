@@ -428,6 +428,8 @@ uses
   Atlas.Common.Metrics.Contract,
   Atlas.Common.Compiler.OutputParser,
   Atlas.Windows.Compiler.Adapters.ProcessRunner,
+  Atlas.Windows.Projects.DelphiInstallation,
+  Atlas.Common.Projects.DelphiVersions,
   Atlas.Windows.Process.Instances,
   Atlas.Common.Compiler.Edition,
   Atlas.Windows.Console.StdStreams,
@@ -3394,6 +3396,7 @@ end;
 
 procedure TServerComposition.LoadGlobalSettings;
 var
+  Settings: TServerSettings;
   Text: string;
   Workspace: TShellWorkspace;
   Issues, Misplaced: TArray<TConfigurationIssue>;
@@ -3407,12 +3410,16 @@ begin
   UpdateLooseSettings;
   if Text <> '' then
   begin
-    TConfigurationParser.Parse(Text, Issues);
+    Settings := TConfigurationParser.Parse(Text, Issues);
     // Projekt-Schlüssel in der globalen Datei wirken nicht; das Log nennt sie.
     TConfigurationScopes.Filter(Text, TConfigurationScope.Global, Misplaced);
+    // "delphiVersion" ist global: Fehlt die Version, steht die Warnung mit Stelle in settings.json im Log
+    // (#47); die Projekte nehmen dann die automatisch gewählte Version.
+    Misplaced := Misplaced + TDelphiVersions.ConfigurationIssues(Settings, TDelphiInstallation.Versions);
     FLogger.Info(Format('Globale Einstellungen gelesen (%d Meldungen)', [Length(Issues) + Length(Misplaced)]));
     for Issue in Misplaced do
-      FLogger.Warning(Issue.Message);
+      FLogger.Warning(Format('%s(%d,%d): %s', [ExtractFileName(FGlobalSettingsFile), Issue.Range.StartPos.Line + 1,
+        Issue.Range.StartPos.Character + 1, Issue.Message]));
   end;
   for Workspace in FWorkspaces.ToArray do
     Workspace.Configuration.SetGlobalSettings(FGlobalSettings);
