@@ -1,0 +1,532 @@
+﻿unit Atlas.IDE.Editor.OverviewRuler;
+
+// Übersichtsleiste an der Scrollleiste (#519) in der IDE:
+// - Jedes Editorfenster bekommt rechts neben dem Editor (und damit neben
+//   seiner Scrollleiste) einen Streifen (TAtlasOverviewRuler, alRight im
+//   Eltern-Steuerelement des Editors „Editor“). Fenster, die später aufgehen,
+//   bekommen ihn beim nächsten Takt.
+// - Ein Zeitgeber (200 ms) sammelt für die Ansicht vorn die Marken: Befunde
+//   aus TAtlasProblemsController (#398; Fehler, Warnungen, Hinweise, ohne
+//   inaktive Zweige und uses-Einträge), Treffer des markierten Texts (nach
+//   einer Suche ist der Treffer markiert), Änderungen aus
+//   TAtlasIdeLineChanges (#507), Haltepunkte des Debuggers, die
+//   Lesezeichen 0–9 der IDE und den Cursor. Die Treffer sucht er erst nach
+//   einer Tipp-Pause neu; der Streifen zeichnet nur bei geänderten Marken.
+// - Klick springt zur Marke bzw. zur Zeile; Überfahren zeigt nach kurzer
+//   Zeit die Zeile und die Beschreibung der Marke (TAtlasNoteTip).
+// - editor.overviewRuler aus entfernt alle Streifen, editor.overviewRulerKinds
+//   wählt die Arten.
+// Minimap der IDE: Die Open Tools API bietet für sie keine Zeichen-Ereignisse,
+// deshalb ein eigener Streifen (docs/Architektur.md). Nur im Hauptthread.
+
+interface
+
+type
+  TAtlasIdeOverviewRuler = class
+  private class var
+    FState: TObject;
+  public
+    class procedure Install; static;
+    class procedure Uninstall; static;
+    class procedure ApplySettings; static;
+    class procedure ThemeChanged; static;
+  end;
+
+implementation
+
+uses
+  Winapi.Windows,
+  System.SysUtils,
+  System.Classes,
+  System.Types,
+  System.Math,
+  System.Generics.Collections,
+  Vcl.Controls,
+  Vcl.ExtCtrls,
+  ToolsAPI,
+  Atlas.Text.Lines,
+  Atlas.Core.Diagnostics.Guard,
+  Atlas.Core.Problems.Contract,
+  Atlas.Core.Problems.Store,
+  Atlas.Core.Editor.Overview,
+  Atlas.Core.Editor.LineChanges,
+  Atlas.UI.Strings,
+  Atlas.UI.Notes.Tip,
+  Atlas.UI.Editor.OverviewRuler,
+  Atlas.IDE.Foundation.EditorBuffer,
+  Atlas.IDE.Foundation.EditorStyle,
+  Atlas.IDE.Foundation.Navigation,
+  Atlas.IDE.Foundation.Settings,
+  Atlas.IDE.Problems.Controller,
+  Atlas.IDE.Editor.LineChanges;
+
+const
+  TickMs = 200;
+  /// <summary>Tipp-Pause, bevor die Treffer neu gesucht werden.</summary>
+  QuietMs = 400;
+  HoverMs = 250;
+  /// <summary>Höchstlänge der Zeile in der Vorschau.</summary>
+  MaxPreview = 160;
+  BookmarkCount = 10;
+
+type
+  TOverviewState = class;
+
+  /// <summary>Erfährt, wenn die IDE einen Streifen mit seinem Fenster freigibt.</summary>
+  TRulerWatcher = class(TComponent)
+  private
+    FState: TOverviewState;
+  protected
+    procedure Notification(AComponent: TComponent; Operation: TOperation); override;
+  end;
+
+  TOverviewState = class
+  private
+    FTimer: TTimer;
+    FWatcher: TRulerWatcher;
+    FRulers: TList<TAtlasOverviewRuler>;
+    FTip: TAtlasNoteTip;
+    FKinds: TAtlasOverviewKinds;
+    // Treffer: Text des Puffers und Suchtext, zu denen sie gehören.
+    FFileName: string;
+    FText: string;
+    FChangedAt: UInt64;
+    FLines: TArray<string>;
+    FTerm: string;
+    FSearchText: string;
+    FSearchTerm: string;
+    FSearchLines: TArray<Integer>;
+    // Vorschau beim Überfahren.
+    FHoverRuler: TAtlasOverviewRuler;
+    FHoverLine: Integer;
+    FHoverMark: Integer;
+    FHoverPoint: TPoint;
+    FHoverSince: UInt64;
+    procedure Tick(Sender: TObject);
+    function RulerOf(AParent: TWinControl): TAtlasOverviewRuler;
+    function EditorOf(const AWindow: INTAEditWindow): TWinControl;
+    function ActiveRuler: TAtlasOverviewRuler;
+    procedure EnsureRulers;
+    procedure CreateRuler(AParent: TWinControl);
+    procedure Update;
+    function Collect(const AView: IOTAEditView; ALineCount: Integer): TAtlasOverviewMarks;
+    procedure Jump(ARuler: TAtlasOverviewRuler; ALine: Integer);
+    procedure Hover(ARuler: TAtlasOverviewRuler; ALine, AMark: Integer; const APoint: TPoint);
+    procedure HoverEnd;
+    procedure ShowPreview;
+  public
+    constructor Create;
+    destructor Destroy; override;
+    procedure Removed(ARuler: TAtlasOverviewRuler);
+    procedure Reset;
+    procedure ApplyTheme;
+  end;
+
+function Active: Boolean;
+begin
+  Result := TAtlasIdeSettings.Current.OverviewRuler and not TAtlasGuard.Disabled(TAtlasFeature.EditorCommands);
+end;
+
+function Debugger: IOTADebuggerServices;
+begin
+  if not Supports(BorlandIDEServices, IOTADebuggerServices, Result) then
+    Result := nil;
+end;
+
+{ TRulerWatcher }
+
+procedure TRulerWatcher.Notification(AComponent: TComponent; Operation: TOperation);
+begin
+  inherited Notification(AComponent, Operation);
+  if (Operation = opRemove) and (AComponent is TAtlasOverviewRuler) and (FState <> nil) then
+    FState.Removed(TAtlasOverviewRuler(AComponent));
+end;
+
+{ TOverviewState }
+
+constructor TOverviewState.Create;
+begin
+  inherited Create;
+  FRulers := TList<TAtlasOverviewRuler>.Create;
+  FWatcher := TRulerWatcher.Create(nil);
+  FWatcher.FState := Self;
+  FTip := TAtlasNoteTip.Create(nil);
+  FTip.GuardFeature := TAtlasFeature.EditorCommands;
+  FTimer := TTimer.Create(nil);
+  FTimer.Interval := TickMs;
+  FTimer.OnTimer := Tick;
+  FTimer.Enabled := True;
+  Reset;
+end;
+
+destructor TOverviewState.Destroy;
+var
+  Ruler: TAtlasOverviewRuler;
+begin
+  FTimer.Free;
+  FTip.Free;
+  // Streifen selbst freigeben; der Wächter darf dabei nicht mehr zurückschreiben.
+  FWatcher.FState := nil;
+  for Ruler in FRulers.ToArray do
+  begin
+    Ruler.RemoveFreeNotification(FWatcher);
+    Ruler.Free;
+  end;
+  FRulers.Free;
+  FWatcher.Free;
+  inherited Destroy;
+end;
+
+procedure TOverviewState.Removed(ARuler: TAtlasOverviewRuler);
+begin
+  FRulers.Remove(ARuler);
+  if FHoverRuler = ARuler then
+    HoverEnd;
+end;
+
+procedure TOverviewState.Reset;
+begin
+  FFileName := '';
+  FText := '';
+  FLines := nil;
+  FSearchText := '';
+  FSearchTerm := '';
+  FSearchLines := nil;
+  FKinds := TAtlasOverview.Kinds(TAtlasIdeSettings.Current.OverviewRulerKinds);
+  HoverEnd;
+end;
+
+procedure TOverviewState.ApplyTheme;
+var
+  Ruler: TAtlasOverviewRuler;
+begin
+  for Ruler in FRulers do
+    Ruler.SetColors(TAtlasIdeStyle.Colors);
+end;
+
+function TOverviewState.RulerOf(AParent: TWinControl): TAtlasOverviewRuler;
+var
+  Ruler: TAtlasOverviewRuler;
+begin
+  for Ruler in FRulers do
+    if Ruler.Parent = AParent then
+      Exit(Ruler);
+  Result := nil;
+end;
+
+function TOverviewState.EditorOf(const AWindow: INTAEditWindow): TWinControl;
+var
+  Editor: TComponent;
+begin
+  Result := nil;
+  if (AWindow = nil) or (AWindow.Form = nil) then
+    Exit;
+  Editor := AWindow.Form.FindComponent('Editor');
+  if (Editor is TWinControl) and (TWinControl(Editor).Parent <> nil) then
+    Result := TWinControl(Editor);
+end;
+
+procedure TOverviewState.EnsureRulers;
+var
+  Services: INTAEditorServices;
+  Index: Integer;
+  Editor: TWinControl;
+begin
+  if not Supports(BorlandIDEServices, INTAEditorServices, Services) then
+    Exit;
+  for Index := 0 to Services.EditWindowCount - 1 do
+  begin
+    Editor := EditorOf(Services.EditWindow[Index]);
+    if (Editor <> nil) and (RulerOf(Editor.Parent) = nil) then
+      CreateRuler(Editor.Parent);
+  end;
+end;
+
+/// <summary>Eigene Methode: Jeder Streifen braucht seine eigene gefangene Variable.</summary>
+procedure TOverviewState.CreateRuler(AParent: TWinControl);
+var
+  Ruler: TAtlasOverviewRuler;
+begin
+  Ruler := TAtlasOverviewRuler.Create(nil);
+  Ruler.FreeNotification(FWatcher);
+  FRulers.Add(Ruler);
+  Ruler.SetColors(TAtlasIdeStyle.Colors);
+  Ruler.OnJump :=
+    procedure(ALine: Integer)
+    begin
+      TAtlasGuard.Run(TAtlasFeature.EditorCommands,
+        procedure
+        begin
+          Jump(Ruler, ALine);
+        end);
+    end;
+  Ruler.OnHover :=
+    procedure(ALine, AMark: Integer; const APoint: TPoint)
+    begin
+      Hover(Ruler, ALine, AMark, APoint);
+    end;
+  Ruler.OnHoverEnd :=
+    procedure
+    begin
+      HoverEnd;
+    end;
+  // Rechts neben dem Editor: zuerst ganz rechts einhängen, dann rechts ausrichten.
+  Ruler.Left := AParent.ClientWidth;
+  Ruler.Align := alRight;
+  Ruler.Parent := AParent;
+end;
+
+function TOverviewState.ActiveRuler: TAtlasOverviewRuler;
+var
+  Services: INTAEditorServices;
+  Editor: TWinControl;
+begin
+  Result := nil;
+  if not Supports(BorlandIDEServices, INTAEditorServices, Services) then
+    Exit;
+  Editor := EditorOf(Services.TopEditWindow);
+  if Editor <> nil then
+    Result := RulerOf(Editor.Parent);
+end;
+
+function TOverviewState.Collect(const AView: IOTAEditView; ALineCount: Integer): TAtlasOverviewMarks;
+var
+  Store: TAtlasProblemStore;
+  Problem: TAtlasProblem;
+  Kind: TAtlasOverviewMarkKind;
+  Changes: TAtlasLineChangeList;
+  Change: TAtlasLineChange;
+  ChangeLines, Line, Index: Integer;
+  Services: IOTADebuggerServices;
+  Breakpoint: IOTASourceBreakpoint;
+  Bookmark: TOTACharPos;
+  FileName: string;
+begin
+  Result := nil;
+  FileName := AView.Buffer.FileName;
+  if TAtlasOverviewKind.Diagnostics in FKinds then
+  begin
+    Store := TAtlasProblemsController.Current;
+    if Store <> nil then
+      for Problem in Store.ForFile(FileName) do
+      begin
+        // Inaktive Zweige und uses-Einträge sind keine Befunde.
+        if Problem.Unnecessary or (Problem.UsesUnit <> '') then
+          Continue;
+        case Problem.Severity of
+          TAtlasProblemSeverity.Error:
+            Kind := TAtlasOverviewMarkKind.Error;
+          TAtlasProblemSeverity.Warning:
+            Kind := TAtlasOverviewMarkKind.Warning;
+        else
+          Kind := TAtlasOverviewMarkKind.Info;
+        end;
+        Result := Result + [TAtlasOverviewMark.Create(Kind, Problem.StartLine,
+          Max(1, Problem.EndLine - Problem.StartLine + 1), Problem.Message)];
+      end;
+  end;
+  if (TAtlasOverviewKind.Search in FKinds) and (FSearchTerm <> '') then
+    for Line in FSearchLines do
+      Result := Result + [TAtlasOverviewMark.Create(TAtlasOverviewMarkKind.Search, Line, 1,
+        TAtlasStrings.Fmt(TAtlasTextId.OverviewSearch, [FSearchTerm]))];
+  if (TAtlasOverviewKind.Changes in FKinds) and TAtlasIdeLineChanges.Snapshot(FileName, Changes, ChangeLines) and
+    (ChangeLines = ALineCount) then
+    for Change in Changes do
+      case Change.Kind of
+        TAtlasLineChangeKind.Added:
+          Result := Result + [TAtlasOverviewMark.Create(TAtlasOverviewMarkKind.Added, Change.Line, Change.Count,
+            TAtlasStrings.Text(TAtlasTextId.ChangeAddedTitle))];
+        TAtlasLineChangeKind.Modified:
+          Result := Result + [TAtlasOverviewMark.Create(TAtlasOverviewMarkKind.Modified, Change.Line, Change.Count,
+            TAtlasStrings.Text(TAtlasTextId.OverviewModified))];
+      else
+        Result := Result + [TAtlasOverviewMark.Create(TAtlasOverviewMarkKind.Deleted,
+          Min(Change.Line, Max(0, ALineCount - 1)), 1, TAtlasStrings.Text(TAtlasTextId.OverviewDeleted))];
+      end;
+  if TAtlasOverviewKind.Breakpoints in FKinds then
+  begin
+    Services := Debugger;
+    if Services <> nil then
+      for Index := 0 to Services.SourceBkptCount - 1 do
+      begin
+        Breakpoint := Services.SourceBkpts[Index];
+        if (Breakpoint <> nil) and SameText(Breakpoint.FileName, FileName) and (Breakpoint.LineNumber > 0) then
+          Result := Result + [TAtlasOverviewMark.Create(TAtlasOverviewMarkKind.Breakpoint, Breakpoint.LineNumber - 1,
+            1, TAtlasStrings.Text(TAtlasTextId.OverviewBreakpoint))];
+      end;
+  end;
+  if TAtlasOverviewKind.Bookmarks in FKinds then
+    for Index := 0 to BookmarkCount - 1 do
+    begin
+      Bookmark := AView.BookmarkPos[Index];
+      if Bookmark.Line > 0 then
+        Result := Result + [TAtlasOverviewMark.Create(TAtlasOverviewMarkKind.Bookmark, Bookmark.Line - 1, 1,
+          TAtlasStrings.Fmt(TAtlasTextId.OverviewBookmark, [Index]))];
+    end;
+  if TAtlasOverviewKind.Cursor in FKinds then
+    Result := Result + [TAtlasOverviewMark.Create(TAtlasOverviewMarkKind.Cursor, AView.CursorPos.Line - 1, 1,
+      TAtlasStrings.Text(TAtlasTextId.OverviewCursor))];
+end;
+
+procedure TOverviewState.Update;
+var
+  Ruler: TAtlasOverviewRuler;
+  View: IOTAEditView;
+  Block: IOTAEditBlock;
+  Text, Term: string;
+  LineCount: Integer;
+begin
+  EnsureRulers;
+  Ruler := ActiveRuler;
+  View := TAtlasEditorBuffer.ActiveView;
+  if (Ruler = nil) or (View = nil) or (View.Buffer = nil) then
+    Exit;
+  LineCount := View.Buffer.GetLinesInBuffer;
+  // Suchtext aus der Markierung (einzeilig); nur dann kostet der Text des Puffers etwas.
+  Term := '';
+  if TAtlasOverviewKind.Search in FKinds then
+  begin
+    Block := View.Block;
+    if (Block <> nil) and Block.IsValid and (Block.Size > 0) and (Block.StartingRow = Block.EndingRow) then
+      TAtlasOverview.SearchTerm(Block.Text, Term);
+  end;
+  if not SameText(FFileName, View.Buffer.FileName) then
+  begin
+    FFileName := View.Buffer.FileName;
+    FText := '';
+    FSearchText := '';
+    FSearchLines := nil;
+    FChangedAt := 0;
+  end;
+  if Term = '' then
+  begin
+    FSearchTerm := '';
+    FSearchLines := nil;
+  end
+  else
+  begin
+    Text := TAtlasEditorBuffer.Text(View.Buffer);
+    if Text <> FText then
+    begin
+      FText := Text;
+      FChangedAt := TThread.GetTickCount64;
+    end;
+    // Neuer Suchtext sofort, geänderter Text erst nach der Tipp-Pause.
+    if (Term <> FSearchTerm) or ((FText <> FSearchText) and (TThread.GetTickCount64 - FChangedAt >= QuietMs)) then
+    begin
+      FLines := TTextLines.SplitLines(FText);
+      FSearchLines := TAtlasOverview.Occurrences(FLines, Term);
+      FSearchTerm := Term;
+      FSearchText := FText;
+    end;
+  end;
+  Ruler.SetMarks(Collect(View, LineCount), LineCount, View.TopRow - 1, View.BottomRow - 1);
+  // Vorschau nach kurzer Zeit über der Marke.
+  if (FHoverRuler <> nil) and (FHoverLine >= 0) and not FTip.IsShown and
+    (TThread.GetTickCount64 - FHoverSince >= HoverMs) then
+    ShowPreview;
+end;
+
+procedure TOverviewState.Jump(ARuler: TAtlasOverviewRuler; ALine: Integer);
+var
+  View: IOTAEditView;
+begin
+  HoverEnd;
+  View := TAtlasEditorBuffer.ActiveView;
+  if (ARuler <> ActiveRuler) or (View = nil) or (View.Buffer = nil) or (ALine < 0) then
+    Exit;
+  TAtlasIdeNavigation.GoToLocation(View.Buffer.FileName, ALine, 0);
+end;
+
+procedure TOverviewState.Hover(ARuler: TAtlasOverviewRuler; ALine, AMark: Integer; const APoint: TPoint);
+begin
+  if FTip.IsShown then
+    FTip.HidePopup;
+  FHoverRuler := ARuler;
+  FHoverLine := ALine;
+  FHoverMark := AMark;
+  FHoverPoint := APoint;
+  FHoverSince := TThread.GetTickCount64;
+end;
+
+procedure TOverviewState.HoverEnd;
+begin
+  FHoverRuler := nil;
+  FHoverLine := -1;
+  FHoverMark := -1;
+  if (FTip <> nil) and FTip.IsShown then
+    FTip.HidePopup;
+end;
+
+procedure TOverviewState.ShowPreview;
+var
+  View: IOTAEditView;
+  Title, Text: string;
+  Width: Integer;
+begin
+  View := TAtlasEditorBuffer.ActiveView;
+  if (FHoverRuler <> ActiveRuler) or (View = nil) or (View.Buffer = nil) then
+  begin
+    HoverEnd;
+    Exit;
+  end;
+  Title := TAtlasStrings.Fmt(TAtlasTextId.OverviewLine, [FHoverLine + 1]);
+  Text := Trim(TAtlasEditorBuffer.LineText(View, FHoverLine + 1));
+  if Length(Text) > MaxPreview then
+    Text := Copy(Text, 1, MaxPreview) + '…';
+  if (FHoverMark >= 0) and (FHoverMark <= High(FHoverRuler.Marks)) and (FHoverRuler.Marks[FHoverMark].Text <> '') then
+    Title := Title + ' · ' + FHoverRuler.Marks[FHoverMark].Text;
+  if Text = '' then
+    Text := ' ';
+  TAtlasIdeStyle.Apply(FTip, TRect.Create(FHoverPoint, FHoverPoint));
+  // Links neben dem Streifen, damit die Maus ihn nicht verdeckt.
+  Width := FTip.Measure(Title, Text).cx;
+  FTip.ShowNote(Title, Text, Point(FHoverPoint.X - Width - MulDiv(12, FHoverRuler.CurrentPPI, 96), FHoverPoint.Y));
+end;
+
+procedure TOverviewState.Tick(Sender: TObject);
+begin
+  if not Active then
+    Exit;
+  TAtlasGuard.Run(TAtlasFeature.EditorCommands,
+    procedure
+    begin
+      Update;
+    end);
+end;
+
+{ TAtlasIdeOverviewRuler }
+
+class procedure TAtlasIdeOverviewRuler.Install;
+begin
+  FreeAndNil(FState);
+  if Active then
+    FState := TOverviewState.Create;
+end;
+
+class procedure TAtlasIdeOverviewRuler.Uninstall;
+begin
+  FreeAndNil(FState);
+end;
+
+class procedure TAtlasIdeOverviewRuler.ApplySettings;
+begin
+  // Aus: alle Streifen weg, der Editor bekommt seine Breite zurück.
+  if not Active then
+  begin
+    FreeAndNil(FState);
+    Exit;
+  end;
+  if FState = nil then
+    FState := TOverviewState.Create
+  else
+    TOverviewState(FState).Reset;
+end;
+
+class procedure TAtlasIdeOverviewRuler.ThemeChanged;
+begin
+  if FState <> nil then
+    TOverviewState(FState).ApplyTheme;
+end;
+
+end.

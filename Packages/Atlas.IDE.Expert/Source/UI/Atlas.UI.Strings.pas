@@ -566,7 +566,10 @@ type
     ChangeOldTitle, ChangeAddedTitle, ChangeRevert, ChangeRevertAction, ChangeMoreLines, BlameJustNow, BlameMinutes,
     BlameHours, BlameYesterday, BlameDays, BlameMonth, BlameMonths, BlameYear, BlameYears, BlameUncommitted,
     BlameUnsaved, BlameLine, BlameCommitTitle, BlameCommitText, ElementGitGutter, ElementGitGutterPlural,
-    ElementGitBlame, ElementGitBlamePlural);
+    ElementGitBlame, ElementGitBlamePlural, SettingsOverviewRuler, SettingsOverviewDiagnostics, SettingsOverviewSearch,
+    SettingsOverviewChanges, SettingsOverviewBreakpoints, SettingsOverviewBookmarks, SettingsOverviewCursor,
+    OverviewLine, OverviewBreakpoint, OverviewBookmark, OverviewSearch, OverviewModified, OverviewDeleted,
+    OverviewCursor);
 
   TAtlasStrings = class
   private class var
@@ -1639,7 +1642,10 @@ const
      'Zurücksetzen', 'Änderung zurücksetzen', '… %d weitere Zeilen', 'gerade eben', 'vor %d Min.', 'vor %d Std.',
      'gestern', 'vor %d Tagen', 'vor 1 Monat', 'vor %d Monaten', 'vor 1 Jahr', 'vor %d Jahren',
      'Noch nicht übernommen', 'Noch nicht gespeichert', '%s, %s · %s', 'Commit %s', 'Autor: %s'#10'Datum: %s'#10#10'%s',
-     'Änderungsmarke', 'Änderungsmarken', 'Zeilenhistorie', 'Zeilenhistorie'),
+     'Änderungsmarke', 'Änderungsmarken', 'Zeilenhistorie', 'Zeilenhistorie', 'Übersichtsleiste an der Scrollleiste',
+     'Fehler und Warnungen', 'Treffer des markierten Texts', 'Änderungen gegenüber dem Repository', 'Haltepunkte',
+     'Lesezeichen', 'Cursorposition', 'Zeile %d', 'Haltepunkt', 'Lesezeichen %d', 'Treffer: %s',
+     'Geändert seit dem letzten Commit', 'Gelöscht seit dem letzten Commit', 'Cursor'),
     ('Enter to accept · Esc to close', '%d of %d', 'No matches for “%s”', 'Backspace widens the search',
      'No suggestions here', 'Esc closes', 'No details for this entry', 'Overload', 'Deprecated: %s', 'Deprecated.',
      'Inherited from %s', 'Inherited', 'optional, default %s', 'No overload with %d parameters.', '… %d more',
@@ -2632,7 +2638,10 @@ const
      'Previous change', 'Version in the repository', 'New since the last commit', 'Revert', 'Revert change',
      '… %d more lines', 'just now', '%d min. ago', '%d hr. ago', 'yesterday', '%d days ago', '1 month ago',
      '%d months ago', '1 year ago', '%d years ago', 'Not committed yet', 'Not saved yet', '%s, %s · %s', 'Commit %s',
-     'Author: %s'#10'Date: %s'#10#10'%s', 'change mark', 'change marks', 'line history', 'line history'));
+     'Author: %s'#10'Date: %s'#10#10'%s', 'change mark', 'change marks', 'line history', 'line history',
+     'Overview ruler next to the scroll bar', 'Errors and warnings', 'Matches of the selected text',
+     'Changes against the repository', 'Breakpoints', 'Bookmarks', 'Cursor position', 'Line %d', 'Breakpoint',
+     'Bookmark %d', 'Match: %s', 'Changed since the last commit', 'Deleted since the last commit', 'Cursor'));
 
 { TAtlasStrings }
 

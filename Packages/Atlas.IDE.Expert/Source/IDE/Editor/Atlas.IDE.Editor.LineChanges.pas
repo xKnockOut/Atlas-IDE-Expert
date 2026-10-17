@@ -1,4 +1,4 @@
-﻿unit Atlas.IDE.Vcs.LineChanges;
+﻿unit Atlas.IDE.Editor.LineChanges;
 
 // Änderungsmarken und Zeilenhistorie (#507) im Editor:
 // - Ein Zeitgeber (150 ms) beobachtet die Datei im oberen Editor. Liegt sie
@@ -30,7 +30,8 @@
 interface
 
 uses
-  System.SysUtils;
+  System.SysUtils,
+  Atlas.Core.Editor.LineChanges;
 
 type
   TAtlasIdeLineChanges = class
@@ -47,6 +48,10 @@ type
     class procedure GoToChange(AForward: Boolean); static;
     /// <summary>Sind die Änderungsmarken eingeschaltet (für Palette und Tastenkürzel)?</summary>
     class function Enabled: Boolean; static;
+    /// <summary>Letzter Vergleich für AFileName (Übersichtsleiste #519); False ohne (aus, andere Datei, keine
+    /// Arbeitskopie).</summary>
+    class function Snapshot(const AFileName: string; out AChanges: TAtlasLineChangeList;
+      out ALineCount: Integer): Boolean; static;
   end;
 
 implementation
@@ -77,7 +82,6 @@ uses
   Atlas.Core.Lsp.TextChanges,
   Atlas.Core.Lsp.WorkspaceEdits,
   Atlas.Core.Vcs.Contract,
-  Atlas.Core.Editor.LineChanges,
   Atlas.UI.Strings,
   Atlas.UI.Notes.Tip,
   Atlas.IDE.Foundation.EditorBuffer,
@@ -1104,6 +1108,22 @@ begin
   // Die Farben kommen beim Zeichnen aus dem Grund der Rinne.
   if FState <> nil then
     Invalidate;
+end;
+
+class function TAtlasIdeLineChanges.Snapshot(const AFileName: string; out AChanges: TAtlasLineChangeList;
+  out ALineCount: Integer): Boolean;
+var
+  State: TLineChangesState;
+begin
+  AChanges := nil;
+  ALineCount := 0;
+  State := Current;
+  Result := (State <> nil) and State.FGutterOn and State.FHeadOk and (State.FLines <> nil) and
+    SameText(State.FFileName, AFileName);
+  if not Result then
+    Exit;
+  AChanges := State.FChanges;
+  ALineCount := Length(State.FLines);
 end;
 
 class procedure TAtlasIdeLineChanges.GoToChange(AForward: Boolean);

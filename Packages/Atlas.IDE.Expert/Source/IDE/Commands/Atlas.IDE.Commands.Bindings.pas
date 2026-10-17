@@ -97,7 +97,7 @@ uses
   Atlas.IDE.Editor.Hide,
   Atlas.IDE.Notifications.Service,
   Atlas.IDE.Outline.Breadcrumbs,
-  Atlas.IDE.Vcs.LineChanges;
+  Atlas.IDE.Editor.LineChanges;
 
 { TAtlasIdeEditorKeys.TBinding }
 
