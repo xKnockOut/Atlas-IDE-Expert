@@ -564,6 +564,15 @@ type
     /// <summary>Kürzel „Zeilen darunter duplizieren“ (#634, keys.duplicateLinesDown); Vorgabe Umschalt+Alt+↓.
     /// </summary>
     DuplicateLinesDownKey: Integer;
+    /// <summary>Kommentar beim Enter fortsetzen (#696, editor.continueComments).</summary>
+    ContinueComments: Boolean;
+    /// <summary>Auch //-Zeilen fortsetzen, nicht nur /// (#696, editor.continueComments.lineComments).</summary>
+    ContinueCommentsLineComments: Boolean;
+    /// <summary>Aufzählungen fortsetzen und hochzählen (#696, editor.continueComments.lists).</summary>
+    ContinueCommentsLists: Boolean;
+    /// <summary>Präfix in Blockkommentaren, etwa ' * '; leer = nur einrücken (#696,
+    /// editor.continueComments.blockPrefix).</summary>
+    ContinueCommentsBlockPrefix: string;
     /// <summary>Hauptschalter der Atlas-Willkommensseite (#753, welcomePage.enabled): Atlas-Bereiche auf der
     /// Willkommensseite der IDE und Fenster „Atlas-Start“.</summary>
     WelcomePage: Boolean;
@@ -842,6 +851,21 @@ begin
     Result := TAtlasPluginSettings.IssuesStartRemember
   else
     Result := TAtlasPluginSettings.IssuesStartBranch;
+end;
+
+/// <summary>Präfix für Blockkommentare (#696): Steuerzeichen werden Leerzeichen, höchstens acht Zeichen; Leerraum
+/// am Rand bleibt (' * ').</summary>
+function NormalizedBlockPrefix(const AText: string): string;
+var
+  Index: Integer;
+begin
+  Result := Copy(AText, 1, 8);
+  for Index := 1 to Length(Result) do
+    if Ord(Result[Index]) < 32 then
+      Result[Index] := ' ';
+  // Nur Leerraum ist kein Präfix.
+  if Trim(Result) = '' then
+    Result := '';
 end;
 
 /// <summary>Ohne Zeilenumbrüche und Steuerzeichen, höchstens MaxIssuesText Zeichen; ATrim kürzt Leerraum am Rand.
@@ -1131,6 +1155,10 @@ begin
   Result.MoveLinesDownKey := $8028; // Alt+↓
   Result.DuplicateLinesUpKey := $A026; // Umschalt+Alt+↑
   Result.DuplicateLinesDownKey := $A028; // Umschalt+Alt+↓
+  Result.ContinueComments := True;
+  Result.ContinueCommentsLineComments := True;
+  Result.ContinueCommentsLists := True;
+  Result.ContinueCommentsBlockPrefix := '';
   Result.WelcomePage := True;
   Result.WelcomePageHost := 'welcomePage';
   Result.WelcomePageLayout := 'off';
@@ -1322,6 +1350,7 @@ begin
   MoveLinesDownKey := EnsureRange(MoveLinesDownKey, 0, $FFFF);
   DuplicateLinesUpKey := EnsureRange(DuplicateLinesUpKey, 0, $FFFF);
   DuplicateLinesDownKey := EnsureRange(DuplicateLinesDownKey, 0, $FFFF);
+  ContinueCommentsBlockPrefix := NormalizedBlockPrefix(ContinueCommentsBlockPrefix);
   BookmarkKey := EnsureRange(BookmarkKey, 0, $FFFF);
   HideElementKey := EnsureRange(HideElementKey, 0, $FFFF);
   InlineDiagnostics := Choice(InlineDiagnostics, ['errors', 'off', 'errorsAndWarnings', 'all']);
@@ -1567,6 +1596,13 @@ begin
   MoveLinesDownKey := AStore.ReadInteger('MoveLinesDownKey', Default.MoveLinesDownKey);
   DuplicateLinesUpKey := AStore.ReadInteger('DuplicateLinesUpKey', Default.DuplicateLinesUpKey);
   DuplicateLinesDownKey := AStore.ReadInteger('DuplicateLinesDownKey', Default.DuplicateLinesDownKey);
+  ContinueComments := AStore.ReadInteger('ContinueComments', BoolValue(Default.ContinueComments)) <> 0;
+  ContinueCommentsLineComments := AStore.ReadInteger('ContinueCommentsLineComments',
+    BoolValue(Default.ContinueCommentsLineComments)) <> 0;
+  ContinueCommentsLists := AStore.ReadInteger('ContinueCommentsLists',
+    BoolValue(Default.ContinueCommentsLists)) <> 0;
+  ContinueCommentsBlockPrefix := AStore.ReadString('ContinueCommentsBlockPrefix',
+    Default.ContinueCommentsBlockPrefix);
   WelcomePage := AStore.ReadInteger('WelcomePage', BoolValue(Default.WelcomePage)) <> 0;
   WelcomePageHost := AStore.ReadString('WelcomePageHost', Default.WelcomePageHost);
   WelcomePageLayout := AStore.ReadString('WelcomePageLayout', Default.WelcomePageLayout);
@@ -1859,6 +1895,10 @@ begin
   AStore.WriteInteger('MoveLinesDownKey', MoveLinesDownKey);
   AStore.WriteInteger('DuplicateLinesUpKey', DuplicateLinesUpKey);
   AStore.WriteInteger('DuplicateLinesDownKey', DuplicateLinesDownKey);
+  AStore.WriteInteger('ContinueComments', BoolValue(ContinueComments));
+  AStore.WriteInteger('ContinueCommentsLineComments', BoolValue(ContinueCommentsLineComments));
+  AStore.WriteInteger('ContinueCommentsLists', BoolValue(ContinueCommentsLists));
+  AStore.WriteString('ContinueCommentsBlockPrefix', ContinueCommentsBlockPrefix);
   AStore.WriteInteger('WelcomePage', BoolValue(WelcomePage));
   AStore.WriteString('WelcomePageHost', WelcomePageHost);
   AStore.WriteString('WelcomePageLayout', WelcomePageLayout);

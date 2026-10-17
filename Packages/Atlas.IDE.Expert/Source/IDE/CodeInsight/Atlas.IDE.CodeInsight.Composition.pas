@@ -78,6 +78,7 @@ uses
   Atlas.IDE.Editor.LineChanges,
   Atlas.Core.Editor.LineMove,
   Atlas.IDE.Editor.LineMove,
+  Atlas.IDE.Editor.CommentContinuation,
   Atlas.IDE.Editor.OverviewRuler,
   Atlas.IDE.UnitSearch.Commands,
   Atlas.IDE.Generate.Commands,
@@ -2069,6 +2070,8 @@ begin
     begin
       GuardWarning(AText);
     end);
+  // Kommentar beim Enter fortsetzen (#696): beobachtet Enter, ohne die Taste zu binden.
+  TAtlasIdeCommentContinuation.Install;
   // Übersichtsleiste an der Scrollleiste (#519).
   TAtlasIdeOverviewRuler.Install;
   // Schnell öffnen (#503): Dateiliste im Hintergrund, zuletzt geöffnete Dateien zählen.
@@ -2101,6 +2104,7 @@ begin
   TAtlasIdeOverviewRuler.Uninstall;
   TAtlasIdeLineChanges.Uninstall;
   TAtlasIdeLineMove.Uninstall;
+  TAtlasIdeCommentContinuation.Uninstall;
   TAtlasIdeOutline.Uninstall;
   TAtlasIdeOutlineCache.Uninstall;
   TAtlasIdeNavHistory.Uninstall;
