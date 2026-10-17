@@ -921,7 +921,7 @@ end;
 procedure TValidator.ReadRefactoring(ANode: TJsonNode);
 var
   Index: Integer;
-  Key: string;
+  Key, Value: string;
 begin
   if ANode.Kind <> TJsonKind.Object_ then
   begin
@@ -933,6 +933,20 @@ begin
     Key := ANode.Keys[Index];
     if Key = 'inlineVar' then
       ExpectBoolean(ANode[Index], Key, FSettings.Refactoring.InlineVar)
+    else if Key = 'changeSignature' then
+      ExpectBoolean(ANode[Index], Key, FSettings.Refactoring.ChangeSignature)
+    else if Key = 'newParameter' then
+    begin
+      if ExpectString(ANode[Index], Key, Value) then
+        if SameText(Value, 'overload') or SameText(Value, 'updateCallers') then
+          FSettings.Refactoring.NewParameterOverload := SameText(Value, 'overload')
+        else
+          ReportNode(ANode[Index], '"refactoring.newParameter" muss "overload" oder "updateCallers" sein');
+    end
+    else if Key = 'virtualOverload' then
+      ExpectBoolean(ANode[Index], Key, FSettings.Refactoring.VirtualOverload)
+    else if Key = 'syncSignatures' then
+      ExpectBoolean(ANode[Index], Key, FSettings.Refactoring.SyncSignatures)
     else
       Report(ANode.KeyStarts[Index], ANode.KeyStarts[Index] + Length(Key) + 2,
         Format('Unbekannte Einstellung "refactoring.%s"', [Key]), False);

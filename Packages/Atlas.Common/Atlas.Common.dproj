@@ -255,6 +255,7 @@
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.Commands.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.ApplyEdit.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.DfmPropertyRules.pas"/>
+        <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.ChangeSignature.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.Status.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.DocWiki.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.CompilerDirectives.pas"/>
@@ -289,6 +290,7 @@
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.WinApiDocs.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.KeywordReference.pas"/>
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.AssignmentSwap.pas"/>
+        <DCCReference Include="Source\Editing\Atlas.Common.Editing.ChangeSignature.pas"/>
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.StringLiterals.pas"/>
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.PostfixTemplates.pas"/>
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.CaseCompletion.pas"/>

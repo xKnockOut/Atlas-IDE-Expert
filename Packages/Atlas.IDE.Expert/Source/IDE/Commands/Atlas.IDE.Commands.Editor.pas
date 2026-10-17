@@ -134,6 +134,7 @@ uses
   Atlas.IDE.Bookmarks.Service,
   Atlas.IDE.Generate.Commands,
   Atlas.IDE.Editor.Hide,
+  Atlas.IDE.Editor.ChangeSignature,
   Atlas.Core.Editor.WorkspacePlan,
   Atlas.IDE.Foundation.Navigation;
 
@@ -985,6 +986,17 @@ begin
     finally
       Arguments.Free;
     end;
+    Exit;
+  end;
+  if ACommand = TAtlasIdeChangeSignature.ClientCommand then
+  begin
+    // Client-Befehl: Dialog „Signatur ändern“ (#100); er fragt den Server selbst.
+    TAtlasIdeChangeSignature.Execute(Session, AArgumentsJson,
+      TAtlasUnopenedPolicies.FromSetting(TAtlasIdeSettings.Current.OpenForEdits),
+      procedure(AText: string)
+      begin
+        Say(AText);
+      end);
     Exit;
   end;
   Running := Session;
