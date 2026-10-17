@@ -140,6 +140,7 @@ type
     FInlayHints: TCheckBox;
     /// <summary>Blockende-Beschriftungen (#620).</summary>
     FBlockEndLabels: TCheckBox;
+    FBlockEndLabelsMinLines: TEdit;
     FNotes: TCheckBox;
     FBookmarksNamed: TCheckBox;
     FBookmarksShared: TCheckBox;
@@ -728,6 +729,7 @@ type
     property BookmarkKey: TEdit read FBookmarkKey;
     /// <summary>Zum Testen: Blockende-Beschriftungen (#620) und Taste „Element ausblenden …“ (#628).</summary>
     property BlockEndLabelsCheck: TCheckBox read FBlockEndLabels;
+    property BlockEndLabelsMinLinesEdit: TEdit read FBlockEndLabelsMinLines;
     property HideElementKey: TEdit read FHideElementKey;
     /// <summary>Zum Testen: Erzeugen-Menü (#719).</summary>
     property GenerateMenuCheck: TCheckBox read FGenerateMenu;
@@ -1101,6 +1103,7 @@ begin
   FInlayHints := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsInlayHints));
   // Beschriftung hinter dem end langer Blöcke (#620).
   FBlockEndLabels := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsBlockEndLabels));
+  FBlockEndLabelsMinLines := AddNumber(TAtlasStrings.Text(TAtlasTextId.SettingsBlockEndLabelsMinLines));
   // Persönliche Notizen an Codezeilen (#545).
   FNotes := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsNotes));
   // Benannte Lesezeichen (#622): Funktion und Ablage für das Team; die Taste steht bei den Editorbefehlen.
@@ -2026,6 +2029,7 @@ begin
   FMarks.Bind(FInactiveDim, ['InactiveDim']);
   FMarks.Bind(FInlayHints, ['InlayHints']);
   FMarks.Bind(FBlockEndLabels, ['BlockEndLabels']);
+  FMarks.Bind(FBlockEndLabelsMinLines, ['BlockEndLabelsMinLines']);
   FMarks.Bind(FNotes, ['Notes']);
   FMarks.Bind(FBookmarksNamed, ['BookmarksNamed']);
   FMarks.Bind(FBookmarksShared, ['BookmarksShared']);
@@ -2971,6 +2975,7 @@ begin
   FInactiveDim.Checked := ASettings.InactiveDim;
   FInlayHints.Checked := ASettings.InlayHints;
   FBlockEndLabels.Checked := ASettings.BlockEndLabels;
+  FBlockEndLabelsMinLines.Text := IntToStr(ASettings.BlockEndLabelsMinLines);
   FNotes.Checked := ASettings.Notes;
   FBookmarksNamed.Checked := ASettings.BookmarksNamed;
   FBookmarksShared.Checked := ASettings.BookmarksShared;
@@ -3224,6 +3229,7 @@ begin
   ASettings.InactiveDim := FInactiveDim.Checked;
   ASettings.InlayHints := FInlayHints.Checked;
   ASettings.BlockEndLabels := FBlockEndLabels.Checked;
+  ASettings.BlockEndLabelsMinLines := StrToIntDef(FBlockEndLabelsMinLines.Text, ASettings.BlockEndLabelsMinLines);
   ASettings.Notes := FNotes.Checked;
   ASettings.BookmarksNamed := FBookmarksNamed.Checked;
   ASettings.BookmarksShared := FBookmarksShared.Checked;

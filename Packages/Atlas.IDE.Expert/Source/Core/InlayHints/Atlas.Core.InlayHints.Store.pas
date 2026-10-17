@@ -32,6 +32,10 @@ type
     Name: string;
     /// <summary>Endmarke hinter einem end (#620) statt Parametername.</summary>
     EndLabel: Boolean;
+    /// <summary>Endmarke: Anfang des Blocks (0-basiert), zu dem ein Klick springt; nur mit HasBlock.</summary>
+    BlockLine: Integer;
+    BlockCharacter: Integer;
+    HasBlock: Boolean;
   end;
 
   TAtlasInlayHintStore = class
@@ -85,7 +89,10 @@ type
     function OnLine(const AFileName: string; ALine: Integer): TArray<string>;
     /// <summary>Blockende-Beschriftung der Zeile: AText ist der Text der Marke ohne "//" (Anker), ALabel die
     /// gezeigte Beschriftung („// TKunde.Speichern“); False ohne.</summary>
-    function EndLabelOn(const AFileName: string; ALine: Integer; out AText, ALabel: string): Boolean;
+    function EndLabelOn(const AFileName: string; ALine: Integer; out AText, ALabel: string): Boolean; overload;
+    /// <summary>Wie oben, dazu die ganze Marke mit Blockanfang (#620).</summary>
+    function EndLabelOn(const AFileName: string; ALine: Integer; out AText, ALabel: string;
+      out AHint: TAtlasInlayHint): Boolean; overload;
     /// <summary>Zeile im Speicher, zum Vergleich mit dem Editor.</summary>
     function LineText(const AFileName: string; ALine: Integer; out AText: string): Boolean;
     procedure Clear;
@@ -276,11 +283,20 @@ end;
 
 function TAtlasInlayHintStore.EndLabelOn(const AFileName: string; ALine: Integer; out AText, ALabel: string): Boolean;
 var
+  Hint: TAtlasInlayHint;
+begin
+  Result := EndLabelOn(AFileName, ALine, AText, ALabel, Hint);
+end;
+
+function TAtlasInlayHintStore.EndLabelOn(const AFileName: string; ALine: Integer; out AText, ALabel: string;
+  out AHint: TAtlasInlayHint): Boolean;
+var
   Entry: TEntry;
   Hint: TAtlasInlayHint;
 begin
   AText := '';
   ALabel := '';
+  AHint := Default(TAtlasInlayHint);
   Entry := Find(AFileName);
   if Entry = nil then
     Exit(False);
@@ -289,6 +305,7 @@ begin
     begin
       AText := Hint.Name;
       ALabel := EndLabelOf(Hint.Name);
+      AHint := Hint;
       Exit(True);
     end;
   Result := False;

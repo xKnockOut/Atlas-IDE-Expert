@@ -23,7 +23,10 @@
 //   Endmarkierungen des Servers (inlayHints.endMarkers, „// if …“) stehen
 //   hinter dem end langer Blöcke als gedämpfter Text wie ein Kommentar, nicht
 //   als Marke. Abgerufen wird, solange Inlay-Hints oder Beschriftungen an
-//   sind; jede Art zeichnet nur mit ihrer Einstellung.
+//   sind; jede Art zeichnet nur mit ihrer Einstellung. Die Mindestlänge
+//   (BlockEndLabelsMinLines, editor.blockEndLabels.minLines) geht mit jeder
+//   Anfrage an den Server; ändert sie sich, wird neu geholt. Ein Linksklick
+//   auf die Beschriftung springt zum Blockanfang.
 // - Ausblenden am Element (#628): Inlay-Hints je Codezeile, Beschriftungen je
 //   Text der Beschriftung (oder je Datei) über .atlas; jede gezeichnete Marke
 //   meldet sich bei TAtlasIdeElements.
@@ -33,7 +36,9 @@ interface
 uses
   System.SysUtils,
   System.Types,
+  System.Classes,
   Winapi.Windows,
+  Vcl.Controls,
   Vcl.ExtCtrls,
   Vcl.Graphics,
   ToolsAPI,
@@ -52,10 +57,21 @@ type
       function AllowedEvents: TCodeEditorEvents; override;
       function AllowedLineStages: TPaintLineStages; override;
     end;
+    /// <summary>Gezeichnete Blockende-Beschriftung mit Ziel des Klicks (#620).</summary>
+    TEndHit = record
+      FileName: string;
+      Line: Integer;
+      TopRow: Integer;
+      Rect: TRect;
+      BlockLine: Integer;
+      BlockCharacter: Integer;
+    end;
   private const
     QuietMs = 300;
     TimeoutMs = 800;
     RetryMs = 5000;
+    /// <summary>Mehr gemerkte Beschriftungen: alle vergessen (der Editor zeichnet sie ohnehin neu).</summary>
+    MaxEndHits = 500;
   private
     FSession: TAtlasInlayHintsSessionFunc;
     FStore: TAtlasInlayHintStore;
@@ -76,6 +92,8 @@ type
     FTextColor: COLORREF;
     FPen: HGDIOBJ;
     FBrush: HGDIOBJ;
+    FMinLines: Integer;
+    FEndHits: TArray<TEndHit>;
     /// <summary>Baut FHintFont nur neu, wenn sich Name, Größe oder PPI der Editorschrift geändert haben.</summary>
     procedure EnsureHintFont(const AEditorFont: TFont);
     /// <summary>Stift, Pinsel und Textfarbe nur neu, wenn sich der Hintergrund geändert hat.</summary>
@@ -85,6 +103,9 @@ type
     procedure Fetch(const AView: IOTAEditView);
     procedure PaintLine(const Rect: TRect; const Stage: TPaintLineStage; const BeforeEvent: Boolean;
       var AllowDefaultPainting: Boolean; const Context: INTACodeEditorPaintContext);
+    procedure EditorMouseDown(const Editor: TWinControl; Button: TMouseButton; Shift: TShiftState; X, Y: Integer);
+    procedure RememberEnd(const AFileName: string; ALine, ATopRow: Integer; const ARect: TRect;
+      const AHint: TAtlasInlayHint);
     class procedure Invalidate; static;
   public
     constructor Create(const ASession: TAtlasInlayHintsSessionFunc);
@@ -107,13 +128,15 @@ uses
   Atlas.IDE.Foundation.EditorStyle,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Foundation.Elements,
+  Atlas.IDE.Foundation.Navigation,
+  Atlas.Core.Diagnostics.MainThread,
   Atlas.Core.Editor.Elements;
 
 { TAtlasEditorInlayHints.TEvents }
 
 function TAtlasEditorInlayHints.TEvents.AllowedEvents: TCodeEditorEvents;
 begin
-  Result := [cevPaintLineEvents];
+  Result := [cevPaintLineEvents, cevMouseEvents];
 end;
 
 function TAtlasEditorInlayHints.TEvents.AllowedLineStages: TPaintLineStages;
@@ -135,6 +158,7 @@ begin
   FEvents := TEvents.Create;
   FEventsRef := FEvents;
   FEvents.OnEditorPaintLine := PaintLine;
+  FEvents.OnEditorMouseDown := EditorMouseDown;
   if Supports(BorlandIDEServices, INTACodeEditorServices, Services) then
     FIndex := Services.AddEditorEventsNotifier(FEventsRef);
   FTimer := TTimer.Create(nil);
@@ -152,6 +176,7 @@ begin
   if (FIndex >= 0) and Supports(BorlandIDEServices, INTACodeEditorServices, Services) then
     Services.RemoveEditorEventsNotifier(FIndex);
   FEvents.OnEditorPaintLine := nil;
+  FEvents.OnEditorMouseDown := nil;
   FEventsRef := nil;
   FreeColors;
   FHintFont.Free;
@@ -198,6 +223,13 @@ begin
       end;
       Exit;
     end;
+    // Andere Mindestlänge der Beschriftungen (#620): alles neu holen.
+    if FMinLines <> TAtlasIdeSettings.Current.BlockEndLabelsMinLines then
+    begin
+      FMinLines := TAtlasIdeSettings.Current.BlockEndLabelsMinLines;
+      FStore.Clear;
+      FEndHits := nil;
+    end;
     // Ohne Fokus ändert sich der Puffer nur über Neuladen; das markiert den Stand ohnehin als veraltet (P-04).
     if not Application.Active then
       Exit;
@@ -241,7 +273,7 @@ begin
     Exit;
   try
     Session.Sync(FFileName, FText);
-    Hints := Session.InlayHints(FFileName, From, Till, TimeoutMs);
+    Hints := Session.InlayHints(FFileName, From, Till, FMinLines, TimeoutMs);
   except
     on E: ELspClientError do
     begin
@@ -305,6 +337,7 @@ procedure TAtlasEditorInlayHints.PaintLine(const Rect: TRect; const Stage: TPain
 var
   Names: TArray<string>;
   Name, Stored, EndText, EndLabel: string;
+  EndHint: TAtlasInlayHint;
   LineState: INTACodeEditorLineState;
   Line, TabWidth, X, Height, Top: Integer;
   Canvas: TCanvas;
@@ -323,7 +356,7 @@ begin
   try
     Line := Context.LogicalLineNum - 1;
     Names := FStore.OnLine(Context.FileName, Line);
-    ShowEnd := FStore.EndLabelOn(Context.FileName, Line, EndText, EndLabel);
+    ShowEnd := FStore.EndLabelOn(Context.FileName, Line, EndText, EndLabel, EndHint);
     if (Length(Names) = 0) and not ShowEnd then
       Exit;
     // Erst hier: die meisten Zeilen haben keine Hinweise (P-10).
@@ -397,12 +430,78 @@ begin
         TextOutW(DC, Pill.Left + 2, Pill.Top + 1, PChar(EndLabel), Length(EndLabel));
         TAtlasIdeElements.Painted(TAtlasDrawnElement.BlockEndLabels, Context.FileName, Line, EndText, Pill,
           Context.EditView.TopRow, Rect.Height);
+        RememberEnd(Context.FileName, Line, Context.EditView.TopRow, Pill, EndHint);
       end;
     finally
       RestoreDC(DC, Saved);
     end;
   except
     // Zeichnen darf die IDE nie stören.
+    on E: Exception do
+      TAtlasGuard.Report(TAtlasFeature.InlayHints, E);
+  end;
+end;
+
+procedure TAtlasEditorInlayHints.RememberEnd(const AFileName: string; ALine, ATopRow: Integer; const ARect: TRect;
+  const AHint: TAtlasInlayHint);
+var
+  Hit: TEndHit;
+  Index: Integer;
+begin
+  if not AHint.HasBlock then
+    Exit;
+  Hit.FileName := AFileName;
+  Hit.Line := ALine;
+  Hit.TopRow := ATopRow;
+  Hit.Rect := ARect;
+  Hit.BlockLine := AHint.BlockLine;
+  Hit.BlockCharacter := AHint.BlockCharacter;
+  for Index := 0 to High(FEndHits) do
+    if (FEndHits[Index].Line = ALine) and SameText(FEndHits[Index].FileName, AFileName) then
+    begin
+      FEndHits[Index] := Hit;
+      Exit;
+    end;
+  if Length(FEndHits) >= MaxEndHits then
+    FEndHits := nil;
+  FEndHits := FEndHits + [Hit];
+end;
+
+procedure TAtlasEditorInlayHints.EditorMouseDown(const Editor: TWinControl; Button: TMouseButton; Shift: TShiftState;
+  X, Y: Integer);
+var
+  Editors: IOTAEditorServices;
+  View: IOTAEditView;
+  Hit: TEndHit;
+  FileName: string;
+  Line, Character: Integer;
+begin
+  if (Button <> mbLeft) or (Shift * [ssShift, ssCtrl, ssAlt] <> []) or (Length(FEndHits) = 0) or
+    not TAtlasIdeSettings.BlockEndLabelsOn then
+    Exit;
+  try
+    View := nil;
+    if Supports(BorlandIDEServices, IOTAEditorServices, Editors) then
+      View := Editors.TopView;
+    if (View = nil) or (View.Buffer = nil) then
+      Exit;
+    for Hit in FEndHits do
+      // Nur, wenn die Beschriftung noch dort steht: gleiche Datei, nicht gescrollt.
+      if SameText(Hit.FileName, View.Buffer.FileName) and (Hit.TopRow = View.TopRow) and
+        PtInRect(Hit.Rect, Point(X, Y)) then
+      begin
+        FileName := Hit.FileName;
+        Line := Hit.BlockLine;
+        Character := Hit.BlockCharacter;
+        // Erst nach dem Mausereignis: der Editor setzt den Cursor sonst an die Klickstelle.
+        TAtlasMainThread.ForceQueue(TAtlasFeature.InlayHints,
+          procedure
+          begin
+            TAtlasIdeNavigation.GoToLocation(FileName, Line, Character);
+          end);
+        Exit;
+      end;
+  except
     on E: Exception do
       TAtlasGuard.Report(TAtlasFeature.InlayHints, E);
   end;

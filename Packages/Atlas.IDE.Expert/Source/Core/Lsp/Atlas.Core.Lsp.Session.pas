@@ -176,7 +176,11 @@ type
     /// AFromLine..AToLine (0-basiert) ohne Abgleich: Sync vorher (#401). Namen ohne abschließenden Doppelpunkt,
     /// Endmarken ohne "//".</summary>
     function InlayHints(const AFileName: string; AFromLine, AToLine: Integer;
-      ATimeoutMs: Cardinal): TArray<TAtlasInlayHint>;
+      ATimeoutMs: Cardinal): TArray<TAtlasInlayHint>; overload;
+    /// <summary>Wie oben; AEndMarkerMinLines &gt; 0 setzt die Mindestlänge der Endmarken für diese Anfrage
+    /// (#620, editor.blockEndLabels.minLines). Endmarken tragen den Blockanfang aus data.blockStart.</summary>
+    function InlayHints(const AFileName: string; AFromLine, AToLine, AEndMarkerMinLines: Integer;
+      ATimeoutMs: Cardinal): TArray<TAtlasInlayHint>; overload;
     procedure Initialize;
     /// <summary>Parameter von initialize (#396, #397, #408, #648, #652). AApplyEdit: workspace.applyEdit
     /// ankündigen. Gehört dem Aufrufer.</summary>
@@ -1101,6 +1105,12 @@ end;
 
 function TLspSession.InlayHints(const AFileName: string; AFromLine, AToLine: Integer;
   ATimeoutMs: Cardinal): TArray<TAtlasInlayHint>;
+begin
+  Result := InlayHints(AFileName, AFromLine, AToLine, 0, ATimeoutMs);
+end;
+
+function TLspSession.InlayHints(const AFileName: string; AFromLine, AToLine, AEndMarkerMinLines: Integer;
+  ATimeoutMs: Cardinal): TArray<TAtlasInlayHint>;
 var
   Params, Range: TJSONObject;
   Response, Item, Part: TJSONValue;
@@ -1119,6 +1129,9 @@ begin
   Params := TJSONObject.Create;
   Params.AddPair('textDocument', TJSONObject.Create(TJSONPair.Create('uri', PathToUri(AFileName))));
   Params.AddPair('range', Range);
+  if AEndMarkerMinLines > 0 then
+    Params.AddPair('atlas', TJSONObject.Create(TJSONPair.Create('endMarkerMinLines',
+      TJSONNumber.Create(AEndMarkerMinLines))));
   Response := FClient.Request('textDocument/inlayHint', Params, ATimeoutMs);
   try
     if not (Response is TJSONArray) then
@@ -1150,6 +1163,10 @@ begin
           Continue;
         Hint.EndLabel := True;
         Text := Trim(Copy(Text, 3, MaxInt));
+        // Blockanfang für den Sprung per Klick (#620).
+        Hint.BlockLine := Entry.GetValue<Integer>('data.blockStart.line', -1);
+        Hint.BlockCharacter := Entry.GetValue<Integer>('data.blockStart.character', 0);
+        Hint.HasBlock := Hint.BlockLine >= 0;
       end
       else if Text.EndsWith(':') then
         Text := TrimRight(Copy(Text, 1, Length(Text) - 1));
