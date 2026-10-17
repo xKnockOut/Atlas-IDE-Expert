@@ -13,17 +13,17 @@
     {
       "id": "bidi-control",
       "name": "Bidirektionales Steuerzeichen",
-      "description": "Bidirektionale Steuerzeichen können Code anders anzeigen, als er kompiliert wird (Trojan Source)."
+      "description": "Bidirektionale Steuerzeichen können Code anders anzeigen, als er kompiliert wird (Trojan Source); auch in Formulardateien. Richtungsmarken in RTL-Text nur mit niedriger Konfidenz."
     },
     {
       "id": "invisible-char",
       "name": "Unsichtbares Zeichen",
-      "description": "Unsichtbare oder Nullbreiten-Zeichen im Quelltext."
+      "description": "Unsichtbare oder Nullbreiten-Zeichen im Quelltext und in Formulardateien; in Strings und Kommentaren mittlere Konfidenz."
     },
     {
       "id": "control-char",
       "name": "Steuerzeichen",
-      "description": "NUL- und Steuerzeichen oder ungültige Bytes (U+FFFD) im Quelltext."
+      "description": "NUL- und Steuerzeichen oder ungültige UTF-8-Bytes im Quelltext und in der Formulardatei; ungültige Bytes mit genauer Zeile und Spalte."
     },
     {
       "id": "confusable-identifier",
