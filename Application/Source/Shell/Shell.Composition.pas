@@ -296,6 +296,7 @@ type
     /// <summary>„Klasse in eigene Unit verschieben“ (#103): das WorkspaceEdit für Name und Stelle.</summary>
     function MoveClass(const AArguments: TJSONArray): TJSONValue;
     function UnitRenamed(const AArguments: TJSONArray): TJSONValue;
+    function PasteUses(const AArguments: TJSONArray): TJSONValue;
     /// <summary>Code-Aktion „Klasse … in eigene Unit verschieben …“ an APosition (#103).</summary>
     function MoveClassActions(const AUri: string; const APosition: TTextPosition): TArray<TJSONObject>;
     /// <summary>„Typ ausschreiben“ (#453) für die Inline-Variable an APosition.</summary>
@@ -435,6 +436,8 @@ uses
   Atlas.Common.Lsp.ChangeSignature,
   Atlas.Common.Lsp.MoveClass,
   Atlas.Common.Lsp.UnitRename,
+  Atlas.Common.Lsp.SmartPaste,
+  Atlas.Common.Editing.SmartPaste,
   Atlas.Common.Lsp.Contract,
   Atlas.Common.Lsp.Positions,
   Atlas.Common.Semantics.NameResolver,
@@ -1312,6 +1315,11 @@ begin
     function(const AArguments: TJSONArray): TJSONValue
     begin
       Result := UnitRenamed(AArguments);
+    end);
+  FCommands.Register(TLspSmartPaste.Command,
+    function(const AArguments: TJSONArray): TJSONValue
+    begin
+      Result := PasteUses(AArguments);
     end);
   FCommands.Register(TLspMetrics.Command,
     function(const AArguments: TJSONArray): TJSONValue
@@ -2729,6 +2737,50 @@ begin
   // Nur Zahlen ins Log, keine Namen und Pfade (#647).
   FLogger.Info(Format('Unit umbenannt: %d von %d Dateien betroffen',
     [(Answer.GetValue('count') as TJSONNumber).AsInt, Length(Files)]));
+  Result := Answer;
+end;
+
+function TServerComposition.PasteUses(const AArguments: TJSONArray): TJSONValue;
+var
+  Uri: string;
+  Document: ITextDocument;
+  Shared: ISharedSyntaxTree;
+  Context: TUsesContext;
+  Provider: TUsesContextProvider;
+  Answer: TJSONObject;
+begin
+  // Argumente: URI, eingefügter Bereich, optional die gewählten Units (#515).
+  if (AArguments = nil) or (AArguments.Count < 2) then
+    raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams, 'Argumente "uri" und "range" fehlen');
+  Uri := AArguments.Items[0].Value;
+  if not FDocuments.TryGet(Uri, Document) then
+    raise EJsonRpcError.Create(TLspErrorCode.RequestFailed, 'Die Datei ist nicht geöffnet.');
+  Context := Default(TUsesContext);
+  Provider := FCodeActions.UsesContextFor;
+  if Assigned(Provider) and not Provider(Uri, Context) then
+    Context := Default(TUsesContext);
+  Shared := TSyntaxTreeCache.Get(Document, nil);
+  try
+    Answer := TLspSmartPaste.Execute(AArguments, Uri, Document.Text, Shared.Tree, Context,
+      function(const AUnitName: string): TArray<string>
+      var
+        UnitIndex: TUnitIndex;
+      begin
+        Result := nil;
+        EnsureUnit(AUnitName);
+        if FIndex.FindUnit(AUnitName, UnitIndex) then
+          Result := UnitIndex.InterfaceUses;
+      end);
+  except
+    on E: EArgumentException do
+      raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams, E.Message);
+  end;
+  // Nur Zahlen ins Log, keine Namen und Pfade (#647).
+  if Answer.GetValue('units') is TJSONArray then
+    FLogger.Info(Format('Einfügen: %d Units, %d mehrdeutig', [TJSONArray(Answer.GetValue('units')).Count,
+      TJSONArray(Answer.GetValue('choices')).Count]))
+  else
+    FLogger.Info(Format('Einfügen: %d Units eingetragen', [TJSONArray(Answer.GetValue('added')).Count]));
   Result := Answer;
 end;
 

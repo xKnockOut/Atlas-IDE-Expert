@@ -584,7 +584,11 @@ type
     SettingsStickyScrollMaxLines, MoveClassTitle, MoveClassPrompt, MoveClassFailed, MoveClassNothing,
     MoveClassPreviewHint, MoveClassApply, MoveClassDone, MoveClassWarning, UnitRenameTitle, UnitRenameNotice,
     UnitRenameNoticeOne, UnitRenameGroupCount, UnitRenameProject, UnitRenameGroup, UnitRenamePreviewHint,
-    UnitRenameApply, UnitRenameDone, UnitRenameFailed, UnitRenameNothing, UnitRenameReport);
+    UnitRenameApply, UnitRenameDone, UnitRenameFailed, UnitRenameNothing, UnitRenameReport, SmartPasteName,
+    SmartPasteNone, SmartPasteOne, SmartPasteTitle, SmartPasteNoUnit, SmartPasteAccept, SmartPasteCancel,
+    SmartPasteUsesTitle, SmartPasteDone, SmartPasteImplementation, SmartPasteFailed,
+    SettingsSmartPaste, SettingsSmartPasteOff, SettingsSmartPasteUses, SettingsSmartPasteIndent,
+    SettingsSmartPasteBoth);
 
   TAtlasStrings = class
   private class var
@@ -1690,7 +1694,12 @@ const
      '%s → %s: %d Änderungen in %d Dateien', 'Anpassen',
      'Nach dem Umbenennen von %s in %s nachgezogen: %d Änderungen in %d Dateien.',
      'uses nachziehen fehlgeschlagen: %s', 'Keine Unit verwendet noch %s.',
-     '%s in %s umbenannt: noch verwendet im Projekt von %d, in der Projektgruppe von %d Units.'),
+     '%s in %s umbenannt: noch verwendet im Projekt von %d, in der Projektgruppe von %d Units.',
+     'Einfügen mit uses-Ergänzung', 'Keine Unit ergänzen', 'Unit ergänzen: %s', '%d Units ergänzen: %s', 'keine',
+     'Übernehmen (Enter)', 'Verwerfen (Esc)', 'uses ergänzen', 'Ergänzt: %s',
+     'Wegen Zirkelbezug im implementation-Teil: %s', 'uses ergänzen fehlgeschlagen: %s',
+     'Einfügen mit uses-Ergänzung und Einrückung (experimentell)', 'Aus', 'Nur uses ergänzen', 'Nur einrücken',
+     'uses ergänzen und einrücken'),
     ('Enter to accept · Esc to close', '%d of %d', 'No matches for “%s”', 'Backspace widens the search',
      'No suggestions here', 'Esc closes', 'No details for this entry', 'Overload', 'Deprecated: %s', 'Deprecated.',
      'Inherited from %s', 'Inherited', 'optional, default %s', 'No overload with %d parameters.', '… %d more',
@@ -2714,7 +2723,12 @@ const
      '%s → %s: %d changes in %d files', 'Update',
      'Updated after renaming %s to %s: %d changes in %d files.',
      'Updating uses failed: %s', 'No unit uses %s anymore.',
-     '%s renamed to %s: still used by %d units in the project, %d in the project group.'));
+     '%s renamed to %s: still used by %d units in the project, %d in the project group.',
+     'Paste with uses completion', 'Add no unit', 'Add unit: %s', 'Add %d units: %s', 'none',
+     'Accept (Enter)', 'Discard (Esc)', 'Add uses', 'Added: %s',
+     'Because of a circular reference in the implementation section: %s', 'Adding uses failed: %s',
+     'Paste with uses completion and indentation (experimental)', 'Off', 'Add uses only', 'Indent only',
+     'Add uses and indent'));
 
 { TAtlasStrings }
 
