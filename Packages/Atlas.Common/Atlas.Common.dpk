@@ -163,6 +163,7 @@ contains
   Atlas.Common.Editing.RoutineBody in 'Source\Editing\Atlas.Common.Editing.RoutineBody.pas',
   Atlas.Common.Editing.Extract in 'Source\Editing\Atlas.Common.Editing.Extract.pas',
   Atlas.Common.Editing.WithResolution in 'Source\Editing\Atlas.Common.Editing.WithResolution.pas',
+  Atlas.Common.Editing.CreateMethod in 'Source\Editing\Atlas.Common.Editing.CreateMethod.pas',
   Atlas.Common.Lsp.Refactorings in 'Source\Lsp\Atlas.Common.Lsp.Refactorings.pas',
   Atlas.Common.Editing.DeclareUnknown in 'Source\Editing\Atlas.Common.Editing.DeclareUnknown.pas',
   Atlas.Common.Editing.InterfaceStubs in 'Source\Editing\Atlas.Common.Editing.InterfaceStubs.pas',

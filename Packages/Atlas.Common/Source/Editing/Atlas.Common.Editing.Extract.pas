@@ -54,6 +54,12 @@ type
     IsReference: Boolean;
     /// <summary>Record oder anderer Werttyp: Eine Kopie ist ein eigener Wert.</summary>
     IsValue: Boolean;
+    /// <summary>Record (bzw. object): für const-Parameter (#472).</summary>
+    IsRecord: Boolean;
+    /// <summary>Interface: für const-Parameter und weil es keine Rümpfe hat (#472).</summary>
+    IsInterface: Boolean;
+    /// <summary>Deklarierende Unit, auch wenn der Typ sichtbar ist; '' bei eingebauten Typen.</summary>
+    TypeUnit: string;
   end;
 
   /// <summary>Typ der Inline-Variablen ohne Typangabe, deren Name in AText an ANamePos steht.</summary>
@@ -622,98 +628,6 @@ begin
   Result := (Index <= High(ATokens)) and ATokens[Index].IsKeyword('class');
 end;
 
-/// <summary>Deklaration der Klasse bzw. des Records AName in der Datei; nil ohne.</summary>
-function FindTypeBody(ARoot: TSyntaxNode; const AName: string): TSyntaxNode;
-var
-  Nodes: TList<TSyntaxNode>;
-  Node: TSyntaxNode;
-begin
-  Result := nil;
-  Nodes := TList<TSyntaxNode>.Create;
-  try
-    CollectKind(ARoot, TSyntaxKind.TypeDecl, Nodes);
-    for Node in Nodes do
-      if SameText(Node.Name, AName) or StartsText(AName + '<', Node.Name) then
-      begin
-        Result := Node.FindChild(TSyntaxKind.ClassType);
-        if Result = nil then
-          Result := Node.FindChild(TSyntaxKind.RecordType);
-        if Result = nil then
-          Result := Node.FindChild(TSyntaxKind.ObjectType);
-        if Result <> nil then
-          Exit;
-      end;
-  finally
-    Nodes.Free;
-  end;
-end;
-
-/// <summary>Deklaration ADecl im private-Abschnitt der Klasse ABody; ohne Abschnitt ein neuer vor end.</summary>
-function ClassDeclEdit(const AText: string; ATree: TSyntaxTree; ABody: TSyntaxNode; const ADecl: string;
-  const AStyle: TFormatStyle; out AEdit: TTextEdit): Boolean;
-var
-  Index, EndToken: Integer;
-  Visibility, Next: TSyntaxNode;
-  Tokens: TArray<TPascalToken>;
-  Indent, LineBreak: string;
-  Position: TTextPosition;
-begin
-  Result := False;
-  LineBreak := TTextLines.LineBreakOf(AText);
-  Visibility := nil;
-  Next := nil;
-  for Index := 0 to ABody.ChildCount - 1 do
-    if ABody[Index].Kind = TSyntaxKind.Visibility then
-      if Visibility = nil then
-      begin
-        if SameText(ABody[Index].Name, 'private') or SameText(ABody[Index].Name, 'strict private') then
-          Visibility := ABody[Index];
-      end
-      else if Next = nil then
-        Next := ABody[Index];
-  Tokens := ATree.Tokens;
-  EndToken := TRoutineBody.PreviousToken(Tokens, TRoutineBody.TokenAt(Tokens, ABody.EndOffset));
-  if (EndToken < 0) or not Tokens[EndToken].IsKeyword('end') then
-    Exit;
-  if Visibility <> nil then
-  begin
-    Indent := TTextLines.IndentOf(AText, Visibility.StartPos.Line) + TRoutineBody.IndentUnit(AStyle);
-    if Next <> nil then
-      Position := TTextPosition.Create(Next.StartPos.Line, 0)
-    else
-      Position := TTextPosition.Create(Tokens[EndToken].StartPos.Line, 0);
-    AEdit := TTextEdit.Create(TTextRange.Create(Position, Position), Indent + ADecl + LineBreak);
-    Exit(True);
-  end;
-  // Kein private: neuer Abschnitt vor dem end der Klasse, das allein am Zeilenanfang stehen muss.
-  Indent := TTextLines.IndentOf(AText, Tokens[EndToken].StartPos.Line);
-  if Length(Indent) <> Tokens[EndToken].StartPos.Character then
-    Exit;
-  Position := TTextPosition.Create(Tokens[EndToken].StartPos.Line, 0);
-  AEdit := TTextEdit.Create(TTextRange.Create(Position, Position), Indent + 'private' + LineBreak + Indent +
-    TRoutineBody.IndentUnit(AStyle) + ADecl + LineBreak);
-  Result := True;
-end;
-
-/// <summary>Zeile, vor der die neue Routine entsteht: Anfang der Routine samt Kommentaren direkt darüber.</summary>
-function RoutineInsertLine(const AText: string; ARoutine: TSyntaxNode): Integer;
-var
-  Lines: TArray<string>;
-  Line: string;
-begin
-  Lines := TTextLines.SplitLines(AText);
-  Result := ARoutine.StartPos.Line;
-  while Result > 0 do
-  begin
-    Line := Trim(Lines[Result - 1]);
-    if StartsStr('//', Line) or (StartsStr('{', Line) and not StartsStr('{$', Line)) or StartsStr('(*', Line) or
-      ((Line <> '') and EndsStr('}', Line) and not StartsStr('{$', Line) and (Pos('{', Line) = 0)) then
-      Dec(Result)
-    else
-      Break;
-  end;
-end;
-
 /// <summary>Bearbeitungen, die AName aus dem var-Eintrag ADecl entfernen (bei letztem Namen die Zeile).</summary>
 procedure RemoveVariables(const AText: string; ATree: TSyntaxTree; ADecl: TSyntaxNode;
   const ARemoved: TArray<string>; var AEdits: TArray<TTextEdit>);
@@ -1054,7 +968,7 @@ begin
     Name := Qualifier.Substring(Qualifier.LastIndexOf('.') + 1);
     if Pos('<', Name) > 0 then
       Name := Copy(Name, 1, Pos('<', Name) - 1);
-    TypeBody := FindTypeBody(ATree.Root, Name);
+    TypeBody := TRoutineBody.TypeBody(ATree.Root, Name);
     if TypeBody = nil then
       Exit(Fail('Klasse ' + Name + ' nicht in der Datei', AReason));
     IsStatic := False;
@@ -1068,7 +982,7 @@ begin
     ClassDecl := Header + ShortName + Params + ';';
     if IsStatic then
       ClassDecl := ClassDecl + ' static;';
-    if not ClassDeclEdit(AText, ATree, TypeBody, ClassDecl, AOptions.Style, Edit) then
+    if not TRoutineBody.MemberDeclaration(AText, ATree, TypeBody, 'private', ClassDecl, AOptions.Style, Edit) then
       Exit(Fail('Klassendeklaration nicht erweiterbar', AReason));
     Edits := Edits + [Edit];
     MethodText := Indent + Header + Qualifier + '.' + ShortName + Params + ';' + LineBreak;
@@ -1086,7 +1000,7 @@ begin
     BodyText := BodyText + ';';
   MethodText := MethodText + Indent + 'begin' + LineBreak + TRoutineBody.Reindent(BodyText, StatementIndent,
     Indent + Unit_, LineBreak) + LineBreak + Indent + 'end;' + LineBreak + LineBreak;
-  Line := RoutineInsertLine(AText, Routine);
+  Line := TRoutineBody.RoutineInsertLine(AText, Routine);
   Edits := Edits + [TTextEdit.Create(TTextRange.Create(Line, 0, Line, 0), MethodText)];
   // Lokale Variablen, die nur noch die neue Methode braucht.
   if Removed <> nil then
@@ -1377,7 +1291,7 @@ begin
     Outer := Routine;
     while (Outer.Parent <> nil) and (Outer.Parent.Kind = TSyntaxKind.RoutineDecl) do
       Outer := Outer.Parent;
-    Line := RoutineInsertLine(AText, Outer);
+    Line := TRoutineBody.RoutineInsertLine(AText, Outer);
     Indent := TTextLines.IndentOf(AText, Outer.StartPos.Line);
     Edits := [TTextEdit.Create(TTextRange.Create(Line, 0, Line, 0), Indent + 'const' + LineBreak + Indent +
       TRoutineBody.IndentUnit(AOptions.Style) + Name + ' = ' + Value + ';' + LineBreak + LineBreak)];

@@ -6,6 +6,8 @@
 // entsteht. Jede Änderung der Zeile wird mit dem Stand davor verglichen:
 // Einfügungen und Löschungen vor der Klammer verschieben sie; wird sie selbst
 // gelöscht oder ändert sich mehr als ein Zeichen, endet die Verfolgung.
+// Dazu der Auslöser für „Methode aus Aufruf anlegen“ (#472): "(" direkt
+// hinter einem Bezeichner, der kein Schlüsselwort ist.
 
 interface
 
@@ -29,9 +31,15 @@ type
   public
     /// <summary>Klammern ergänzen? Nur Routinen mit Parametern, nicht wenn schon "(" folgt.</summary>
     class function Wanted(AIsRoutine, AHasParameters: Boolean; ANextChar: Char): Boolean; static;
+    /// <summary>Steht vor dem Cursor (0-basiert ACharacter in ALine) ein "(" direkt hinter einem Bezeichner, der
+    /// kein Schlüsselwort ist? Dann fragt Atlas, ob es die Methode anlegen soll (#472).</summary>
+    class function CallOpened(const ALine: string; ACharacter: Integer): Boolean; static;
   end;
 
 implementation
+
+uses
+  System.SysUtils;
 
 { TAtlasAutoParen }
 
@@ -121,6 +129,33 @@ end;
 class function TAtlasParentheses.Wanted(AIsRoutine, AHasParameters: Boolean; ANextChar: Char): Boolean;
 begin
   Result := AIsRoutine and AHasParameters and (ANextChar <> '(');
+end;
+
+class function TAtlasParentheses.CallOpened(const ALine: string; ACharacter: Integer): Boolean;
+const
+  Keywords: array[0..22] of string = ('if', 'while', 'until', 'not', 'and', 'or', 'xor', 'then', 'do', 'of', 'in',
+    'case', 'div', 'mod', 'procedure', 'function', 'array', 'set', 'record', 'with', 'is', 'as', 'inherited');
+var
+  Start, Index: Integer;
+  Word: string;
+begin
+  Result := False;
+  if (ACharacter < 2) or (ACharacter > Length(ALine)) or (ALine[ACharacter] <> '(') then
+    Exit;
+  Start := ACharacter - 1;
+  while (Start >= 1) and CharInSet(ALine[Start], ['A'..'Z', 'a'..'z', '0'..'9', '_']) do
+    Dec(Start);
+  Word := Copy(ALine, Start + 1, ACharacter - 1 - Start);
+  if (Word = '') or CharInSet(Word[1], ['0'..'9']) then
+    Exit;
+  for Index := Low(Keywords) to High(Keywords) do
+    if SameText(Word, Keywords[Index]) then
+      Exit;
+  // Kein Kommentar und kein String davor in der Zeile.
+  if (Pos('//', Copy(ALine, 1, Start)) > 0) or Odd(Length(Copy(ALine, 1, Start)) -
+    Length(StringReplace(Copy(ALine, 1, Start), '''', '', [rfReplaceAll]))) then
+    Exit;
+  Result := True;
 end;
 
 end.

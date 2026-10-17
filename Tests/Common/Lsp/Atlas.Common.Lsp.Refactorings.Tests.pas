@@ -36,6 +36,12 @@ type
     /// <summary>Strg+Leertaste auf dem Wort with bietet „with auflösen“ an.</summary>
     [Test]
     procedure CompletionOffersWithItem;
+    /// <summary>#472: Abnahmefall, Prozedur, Bibliotheksklasse und Klasse in einer anderen Unit.</summary>
+    [Test]
+    procedure CreatesMethodFromCall;
+    /// <summary>#472: Nach "(" als einziger Eintrag; bekannte Namen und Abschalten ohne Angebot.</summary>
+    [Test]
+    procedure CompletionOffersCreateAfterParen;
   end;
 
 implementation
@@ -97,10 +103,64 @@ const
     'end;'#10 +                                                                      // 32
     'end.'#10;
 
+  RechnerFile = 'C:\P\Rechner.pas';
+  KundenFile = 'C:\P\Kunden.pas';
+  BibFile = 'C:\Lib\Bib.pas';
+
+  UnitRechner =
+    'unit Rechner;'#10 +                                       // 0
+    'interface'#10 +                                           // 1
+    'uses Kunden, Bib;'#10 +                                   // 2
+    'type'#10 +                                                // 3
+    '  TRechner = class'#10 +                                  // 4
+    '  public'#10 +                                            // 5
+    '    procedure Rechne(Customer: TCustomer);'#10 +          // 6
+    '  end;'#10 +                                              // 7
+    'implementation'#10 +                                      // 8
+    'procedure TRechner.Rechne(Customer: TCustomer);'#10 +     // 9
+    'var'#10 +                                                 // 10
+    '  Total: Currency;'#10 +                                  // 11
+    '  Liste: TBibListe;'#10 +                                 // 12
+    'begin'#10 +                                               // 13
+    '  Total := CalcDiscount(Customer, 0.1);'#10 +             // 14
+    '  Protokolliere(Customer.Name);'#10 +                     // 15
+    '  Liste.Sortiere(1);'#10 +                                // 16
+    '  Customer.Pruefe(Total);'#10 +                           // 17
+    '  Rechne(Customer);'#10 +                                 // 18
+    'end;'#10 +                                                // 19
+    'end.'#10;
+
+  UnitKunden =
+    'unit Kunden;'#10 +
+    'interface'#10 +
+    'type'#10 +
+    '  TCustomer = class'#10 +
+    '  public'#10 +
+    '    Name: string;'#10 +
+    '  end;'#10 +
+    'implementation'#10 +
+    'end.'#10;
+
+  UnitBib =
+    'unit Bib;'#10 +
+    'interface'#10 +
+    'type'#10 +
+    '  TBibListe = class'#10 +
+    '  end;'#10 +
+    'implementation'#10 +
+    'end.'#10;
+
 function ReadFile(const AFileName: string; out AText: string): Boolean;
 begin
-  AText := UnitHaupt;
-  Result := SameText(AFileName, HauptFile);
+  Result := True;
+  if SameText(AFileName, HauptFile) then
+    AText := UnitHaupt
+  else if SameText(AFileName, RechnerFile) then
+    AText := UnitRechner
+  else if SameText(AFileName, KundenFile) then
+    AText := UnitKunden
+  else
+    Result := False;
 end;
 
 { TLspRefactoringsTests }
@@ -268,6 +328,156 @@ begin
     // Hinter dem Wort nicht.
     Answer := Ask(10);
     Assert.IsFalse(Answer.Contains('"label":"with aufl'), Answer);
+  finally
+    Dispatcher.Free;
+    Completion.Free;
+  end;
+end;
+
+/// <summary>Code-Aktion mit ATitle an ALine:ACharacter von UnitRechner; False ohne.</summary>
+function RechnerAction(const AContext: TRefactoringContext; ALine, ACharacter: Integer; const ATitle: string;
+  out AAction: TCodeAction): Boolean;
+var
+  Tree: TSyntaxTree;
+  Action: TCodeAction;
+begin
+  Result := False;
+  AAction := Default(TCodeAction);
+  Tree := TPascalParser.Parse(UnitRechner);
+  try
+    for Action in TLspRefactorings.Actions(Tree, UnitRechner, TTextRange.Create(TTextPosition.Create(ALine,
+      ACharacter), TTextPosition.Create(ALine, ACharacter)), AContext) do
+      if Action.Title = ATitle then
+      begin
+        AAction := Action;
+        Exit(True);
+      end;
+  finally
+    Tree.Free;
+  end;
+end;
+
+procedure AddRechnerUnits(const AIndex: ISymbolIndex);
+var
+  Bib: TUnitIndex;
+begin
+  AIndex.AddUnit(TIndexExtractor.ExtractText(UnitRechner, RechnerFile, nil));
+  AIndex.AddUnit(TIndexExtractor.ExtractText(UnitKunden, KundenFile, nil));
+  Bib := TIndexExtractor.ExtractText(UnitBib, BibFile, nil);
+  Bib.Library_ := True;
+  AIndex.AddUnit(Bib);
+end;
+
+procedure TLspRefactoringsTests.CreatesMethodFromCall;
+var
+  Rechner: TRefactoringContext;
+  Action: TCodeAction;
+  Result_: string;
+begin
+  AddRechnerUnits(FIndex);
+  Rechner := Context;
+  Rechner.FileName := RechnerFile;
+  // Abnahmefall: Total: Currency, Customer: TCustomer, 0.1 ist ein Satz.
+  Assert.IsTrue(RechnerAction(Rechner, 14, 13, 'Methode CalcDiscount anlegen', Action));
+  Result_ := TChangeSignature.ApplyEdits(UnitRechner, Action.Edits);
+  Assert.IsTrue(Result_.Contains('  private'#10'    function CalcDiscount(Customer: TCustomer; Rate: Double): ' +
+    'Currency;'#10'  end;'), Result_);
+  Assert.IsTrue(Result_.Contains(#10'function TRechner.CalcDiscount(Customer: TCustomer; Rate: Double): Currency;' +
+    #10'begin'#10#10'end;'), Result_);
+  // Ohne Zuweisung eine Prozedur; string als const.
+  Assert.IsTrue(RechnerAction(Rechner, 15, 4, 'Methode Protokolliere anlegen', Action));
+  Assert.IsTrue(TChangeSignature.ApplyEdits(UnitRechner, Action.Edits).Contains(
+    'procedure Protokolliere(const Name: string);'), TChangeSignature.ApplyEdits(UnitRechner, Action.Edits));
+  Rechner.Settings.ConstParameters := False;
+  Assert.IsTrue(RechnerAction(Rechner, 15, 4, 'Methode Protokolliere anlegen', Action));
+  Assert.IsTrue(TChangeSignature.ApplyEdits(UnitRechner, Action.Edits).Contains(
+    'procedure Protokolliere(Name: string);'), TChangeSignature.ApplyEdits(UnitRechner, Action.Edits));
+  // Klasse aus einer Bibliothek: kein Angebot.
+  Assert.IsFalse(RechnerAction(Rechner, 16, 10, 'Methode Sortiere in TBibListe anlegen', Action));
+  // Klasse einer anderen Unit des Projekts: dort public, als Änderung der anderen Datei.
+  Assert.IsTrue(RechnerAction(Rechner, 17, 13, 'Methode Pruefe in TCustomer anlegen', Action));
+  Assert.AreEqual(0, Integer(Length(Action.Edits)));
+  Assert.AreEqual(1, Integer(Length(Action.FileEdits)));
+  Assert.AreEqual(KundenFile, Action.FileEdits[0].FileName);
+  Result_ := TChangeSignature.ApplyEdits(UnitKunden, Action.FileEdits[0].Edits);
+  Assert.IsTrue(Result_.Contains('    Name: string;'#10'    procedure Pruefe(Total: Currency);'#10'  end;'), Result_);
+  Assert.IsTrue(Result_.Contains('procedure TCustomer.Pruefe(Total: Currency);'), Result_);
+  // Bekannter Name und abgeschaltet: nichts.
+  Assert.IsFalse(RechnerAction(Rechner, 18, 4, 'Methode Rechne anlegen', Action));
+  Rechner.Settings.CreateMethod := False;
+  Assert.IsFalse(RechnerAction(Rechner, 14, 13, 'Methode CalcDiscount anlegen', Action));
+end;
+
+procedure TLspRefactoringsTests.CompletionOffersCreateAfterParen;
+var
+  Store: IDocumentStore;
+  Completion: TLspCompletion;
+  Dispatcher: TJsonRpcDispatcher;
+  Uri, Text, Answer: string;
+  Enabled: Boolean;
+
+  function Ask(ALine, ACharacter: Integer; const ATrigger: string): string;
+  var
+    Request, Response: TJSONObject;
+    Trigger: string;
+  begin
+    Trigger := '';
+    if ATrigger <> '' then
+      Trigger := ',"context":{"triggerKind":2,"triggerCharacter":"' + ATrigger + '"}';
+    Request := TJSONObject.ParseJSONValue('{"jsonrpc":"2.0","id":1,"method":"textDocument/completion",' +
+      '"params":{"textDocument":{"uri":"' + Uri.Replace('\', '\\') + '"},"position":{"line":' + IntToStr(ALine) +
+      ',"character":' + IntToStr(ACharacter) + '}' + Trigger + '}}') as TJSONObject;
+    try
+      Response := Dispatcher.DispatchMessage(Request);
+      try
+        Result := Response.ToJSON;
+      finally
+        Response.Free;
+      end;
+    finally
+      Request.Free;
+    end;
+  end;
+
+begin
+  AddRechnerUnits(FIndex);
+  // Zeile 14 gerade getippt: "  Total := CalcDiscount(" ohne Argumente.
+  Text := StringReplace(UnitRechner, '  Total := CalcDiscount(Customer, 0.1);', '  Total := CalcDiscount(', []);
+  Uri := TDocumentUris.FromPath(RechnerFile);
+  Store := TDocumentStore.Create;
+  Store.Open(Uri, 'delphi', 1, Text);
+  Enabled := True;
+  Completion := TLspCompletion.Create(Store, FIndex);
+  Dispatcher := TJsonRpcDispatcher.Create;
+  try
+    Completion.CreateFor :=
+      function(ARequest: TCompletionRequest; out ATitle, ADetail: string; out AEdits: TArray<TTextEdit>): Boolean
+      var
+        Rechner: TRefactoringContext;
+        Created: TCreatedMethod;
+      begin
+        Rechner := Context;
+        Rechner.FileName := RechnerFile;
+        Rechner.Settings.CreateMethodCaretInBody := True;
+        Result := Enabled and TLspRefactorings.CreateMethod(ARequest.Resolver, ARequest.Tree, ARequest.Text,
+          ARequest.Position, Rechner, True, Created);
+        ATitle := Created.Title;
+        ADetail := Created.Detail;
+        AEdits := Created.Edits;
+      end;
+    Completion.Attach(Dispatcher);
+    Answer := Ask(14, 24, '(');
+    Assert.IsTrue(Answer.Contains('"label":"Methode CalcDiscount anlegen"'), Answer);
+    Assert.IsTrue(Answer.Contains('function CalcDiscount: Currency'), Answer);
+    // Cursor danach im Rumpf.
+    Assert.IsTrue(Answer.Contains('begin\n  $0\nend;'), Answer);
+    Assert.IsTrue(Answer.Contains('"action":"create"'), Answer);
+    // Bekannter Name nach "(": leere Liste.
+    Answer := Ask(18, 9, '(');
+    Assert.IsFalse(Answer.Contains('anlegen'), Answer);
+    Enabled := False;
+    Answer := Ask(14, 24, '(');
+    Assert.IsFalse(Answer.Contains('anlegen'), Answer);
   finally
     Dispatcher.Free;
     Completion.Free;

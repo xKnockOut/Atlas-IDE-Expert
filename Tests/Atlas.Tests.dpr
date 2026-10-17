@@ -691,6 +691,7 @@ uses
   Atlas.Common.Editing.CaseCompletion.Tests in 'Common\Editing\Atlas.Common.Editing.CaseCompletion.Tests.pas',
   Atlas.Common.Editing.Extract.Tests in 'Common\Editing\Atlas.Common.Editing.Extract.Tests.pas',
   Atlas.Common.Editing.WithResolution.Tests in 'Common\Editing\Atlas.Common.Editing.WithResolution.Tests.pas',
+  Atlas.Common.Editing.CreateMethod.Tests in 'Common\Editing\Atlas.Common.Editing.CreateMethod.Tests.pas',
   Atlas.Common.Lsp.Refactorings.Tests in 'Common\Lsp\Atlas.Common.Lsp.Refactorings.Tests.pas',
   Atlas.Common.Editing.DeclareUnknown.Tests in 'Common\Editing\Atlas.Common.Editing.DeclareUnknown.Tests.pas',
   Atlas.Common.Editing.InterfaceStubs.Tests in 'Common\Editing\Atlas.Common.Editing.InterfaceStubs.Tests.pas',

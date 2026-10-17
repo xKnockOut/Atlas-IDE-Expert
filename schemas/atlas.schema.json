@@ -532,12 +532,38 @@
           "default": true,
           "description": "Code-Aktion „with auflösen“: Bezeichner im with-Rumpf, die zu einem Mitglied eines with-Ausdrucks gehören, bekommen diesen Ausdruck vorangestellt (innerstes Element zuerst); aufwendige Ausdrücke vom Klassentyp kommen vorher in eine lokale Variable. Ist ein Bezeichner nicht eindeutig auflösbar, gibt es die Aktion nicht.",
           "x-issue": "#50"
+        },
+        "createMethod": {
+          "type": "boolean",
+          "default": true,
+          "description": "Methode aus Aufruf anlegen: Nach \"(\" hinter einem unbekannten Namen und mit Strg+Leer auf einem solchen Aufruf bietet Atlas an, die Methode (in einer Methode der Klasse) bzw. freie Routine anzulegen; bei Obj.Name(…) in der Klasse von Obj, sofern sie zum Projekt gehört (auch als Code-Aktion). Parametertypen aus den Argumenten, Rückgabetyp aus der Zuweisung bzw. dem erwarteten Typ; ohne Zuweisung eine Prozedur.",
+          "x-issue": "#472"
+        },
+        "createMethodSection": {
+          "type": "string",
+          "enum": ["private", "protected", "public"],
+          "default": "private",
+          "description": "Abschnitt der neuen Methode, wenn die Klasse in derselben Unit steht. In einer anderen Unit kommt sie immer nach public, damit der Aufruf übersetzt.",
+          "x-issue": "#472"
+        },
+        "createMethodCaret": {
+          "type": "string",
+          "enum": ["call", "body"],
+          "default": "call",
+          "description": "Wo der Cursor nach „Methode anlegen“ in der Vervollständigung steht: an der Aufrufstelle (call) oder in der leeren Zeile des neuen Rumpfs (body).",
+          "x-issue": "#472"
+        },
+        "constParameters": {
+          "type": "boolean",
+          "default": true,
+          "description": "Erzeugte Parameter für Strings, Records und Interfaces mit const (Methode aus Aufruf anlegen).",
+          "x-issue": "#472"
         }
       },
       "x-scope": "project",
       "x-page": "Vervollständigung",
       "x-control": "Kontrollkästchen",
-      "x-issue": "#42, #50, #100, #188, #453"
+      "x-issue": "#42, #50, #100, #188, #453, #472"
     },
     "usesCommand": {
       "type": "boolean",

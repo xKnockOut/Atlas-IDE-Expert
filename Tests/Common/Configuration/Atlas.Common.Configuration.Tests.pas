@@ -474,9 +474,21 @@ begin
   Assert.IsFalse(Parse('{"refactoring": {"extract": false}}', Issues).Refactoring.Extract);
   Assert.IsFalse(Parse('{"refactoring": {"completeCase": false}}', Issues).Refactoring.CompleteCase);
   Assert.IsFalse(Parse('{"refactoring": {"resolveWith": false}}', Issues).Refactoring.ResolveWith);
+  // #472: Methode aus Aufruf anlegen.
+  Assert.IsTrue(Parse('{}', Issues).Refactoring.CreateMethod);
+  Assert.AreEqual('private', Parse('{}', Issues).Refactoring.CreateMethodSection);
+  Assert.IsFalse(Parse('{}', Issues).Refactoring.CreateMethodCaretInBody);
+  Assert.IsTrue(Parse('{}', Issues).Refactoring.ConstParameters);
+  Assert.IsFalse(Parse('{"refactoring": {"createMethod": false}}', Issues).Refactoring.CreateMethod);
+  Assert.AreEqual('protected', Parse('{"refactoring": {"createMethodSection": "Protected"}}',
+    Issues).Refactoring.CreateMethodSection);
+  Assert.IsTrue(Parse('{"refactoring": {"createMethodCaret": "body"}}', Issues).Refactoring.CreateMethodCaretInBody);
+  Assert.IsFalse(Parse('{"refactoring": {"constParameters": false}}', Issues).Refactoring.ConstParameters);
   Assert.AreEqual(0, Integer(Length(Issues)));
   Parse('{"refactoring": {"newParameter": "default"}}', Issues);
   Assert.AreEqual(1, Integer(Length(Issues)));
+  Parse('{"refactoring": {"createMethodSection": "published", "createMethodCaret": "ende"}}', Issues);
+  Assert.AreEqual(2, Integer(Length(Issues)));
   // Speicherbudget (#185)
   Assert.AreEqual(768, Parse('{}', Issues).MemoryBudgetMb, 'Vorgabe 768 MB (Rückmeldung 15.10.2026)');
   Assert.AreEqual(0, Parse('{"memoryBudgetMb": 0}', Issues).MemoryBudgetMb, '0 = unbegrenzt');

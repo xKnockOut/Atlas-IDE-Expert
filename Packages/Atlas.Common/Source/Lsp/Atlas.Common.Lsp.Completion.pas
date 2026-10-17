@@ -100,6 +100,10 @@ type
   /// <summary>„with auflösen“ über Strg+Leer auf with (#50): Änderungen für die with-Anweisung am Cursor; False
   /// ohne Angebot.</summary>
   TCompletionWithFunc = reference to function(ARequest: TCompletionRequest; out AEdits: TArray<TTextEdit>): Boolean;
+  /// <summary>„Methode aus Aufruf anlegen“ (#472): Titel, Kopf und Änderungen für den Aufruf am Cursor; False ohne
+  /// Angebot (bekannter Name, kein Aufruf, abgeschaltet).</summary>
+  TCompletionCreateFunc = reference to function(ARequest: TCompletionRequest; out ATitle, ADetail: string;
+    out AEdits: TArray<TTextEdit>): Boolean;
 
   /// <summary>Ergebnis eines Falls der Vervollständigung (Code-Review S-01): weiter mit dem nächsten Fall oder
   /// fertig mit TCompletionAnswer.Exclusive.</summary>
@@ -153,6 +157,7 @@ type
     FSlashCommandsFor: TSlashCommandsProvider;
     FPostfixFor: TPostfixOptionsFunc;
     FWithFor: TCompletionWithFunc;
+    FCreateFor: TCompletionCreateFunc;
     FHintsFor: TDocHintsProvider;
     FNotify: TCompletionNotifyProc;
     FLog: TCompletionLogProc;
@@ -371,6 +376,8 @@ type
     property PostfixFor: TPostfixOptionsFunc read FPostfixFor write FPostfixFor;
     /// <summary>„with auflösen“ auf dem Wort with (#50); ohne Zuweisung kein Eintrag.</summary>
     property WithFor: TCompletionWithFunc read FWithFor write FWithFor;
+    /// <summary>„Methode aus Aufruf anlegen“ (#472); ohne Zuweisung kein Eintrag.</summary>
+    property CreateFor: TCompletionCreateFunc read FCreateFor write FCreateFor;
     /// <summary>Anzeige von XMLDoc (#654) als data.atlas.xmlDoc; ohne Zuweisung fehlt das Feld.</summary>
     property HintsFor: TDocHintsProvider read FHintsFor write FHintsFor;
     /// <summary>Für Teilergebnisse über $/progress (#616); ohne Zuweisung kommt alles in der Antwort.</summary>
@@ -408,6 +415,7 @@ uses
   Atlas.Common.Editing.UsesClause,
   Atlas.Common.Editing.CaseCompletion,
   Atlas.Common.Editing.DeclareUnknown,
+  Atlas.Common.Editing.CreateMethod,
   Atlas.Common.Editing.InterfaceStubs,
   Atlas.Common.Dfm.Contract,
   Atlas.Common.Dfm.Parser,
@@ -1702,6 +1710,39 @@ begin
   Result := Found;
 end;
 
+/// <summary>„Methode aus Aufruf anlegen“ (#472) als Eintrag: Nach dem Auslöser "(" bleibt der Text an der
+/// Aufrufstelle, mit Strg+Leer auf dem Namen ersetzt der Eintrag ihn durch sich selbst. Deklaration und Rumpf
+/// kommen als Zusatzänderungen; "$0" darin setzt den Cursor in den Rumpf.</summary>
+function CreateItem(ARequest: TCompletionRequest; const ACreateFor: TCompletionCreateFunc;
+  out AItem: TCompletionItem): Boolean;
+var
+  Site: TCreateCallSite;
+  Title, Detail: string;
+  Edits: TArray<TTextEdit>;
+  Edit: TTextEdit;
+begin
+  AItem := Default(TCompletionItem);
+  Result := False;
+  if (ARequest.Tree = nil) or not TCreateMethod.Site(ARequest.Tree.Tokens, ARequest.Position, Site) or
+    not ACreateFor(ARequest, Title, Detail, Edits) then
+    Exit;
+  AItem.Name := Title;
+  AItem.Kind := KindMethod;
+  AItem.Detail := Detail;
+  AItem.Fits := True;
+  AItem.Pinned := True;
+  AItem.Action := 'create';
+  AItem.Unknown := Site.Name;
+  AItem.HasTextEdit := True;
+  if ARequest.Trigger = '(' then
+    AItem.TextEdit := TRuleEdit.Create(TTextRange.Create(ARequest.Position, ARequest.Position), '')
+  else
+    AItem.TextEdit := TRuleEdit.Create(Site.NameRange, Site.Name);
+  for Edit in Edits do
+    AItem.AdditionalEdits := AItem.AdditionalEdits + [Edit];
+  Result := True;
+end;
+
 /// <summary>Hängt ACase an ACases an.</summary>
 procedure AddCase(var ACases: TArray<TCompletionCase>; const ACase: TCompletionCase);
 begin
@@ -1751,6 +1792,26 @@ begin
         AAnswer.Exclusive)) then
         AAnswer.Exclusive := Default(TCompletionItems);
       Result := TCompletionOutcome.Answered;
+    end);
+  // Methode aus Aufruf anlegen (#472): Nach "(" (Auslöser des Plugins) gibt es nur dieses Angebot oder nichts,
+  // mit Strg+Leer auf dem Namen eines Aufrufs steht es oben in der Liste.
+  AddCase(FTreeCases,
+    function(ARequest: TCompletionRequest; AAnswer: TCompletionAnswer): TCompletionOutcome
+    var
+      Item: TCompletionItem;
+      Found: Boolean;
+    begin
+      Result := TCompletionOutcome.Next;
+      Found := Assigned(FCreateFor) and CreateItem(ARequest, FCreateFor, Item);
+      if ARequest.Trigger = '(' then
+      begin
+        AAnswer.Exclusive := Default(TCompletionItems);
+        if Found then
+          AAnswer.Exclusive.Items := [Item];
+        Result := TCompletionOutcome.Answered;
+      end
+      else if Found then
+        AAnswer.Hints := AAnswer.Hints + [Item];
     end);
   // with auflösen (#50): auf dem Wort with oben in der Liste, die übrige Liste bleibt.
   AddCase(FTreeCases,
