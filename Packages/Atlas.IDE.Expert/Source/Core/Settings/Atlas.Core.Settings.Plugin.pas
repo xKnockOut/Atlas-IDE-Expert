@@ -51,6 +51,9 @@ type
     /// <summary>Grenzen für editor.recursionMarkers.depth (#623); wie TRecursionAnalysis im Server.</summary>
     MinRecursionDepth = 1;
     MaxRecursionDepth = 16;
+    /// <summary>Muster fortsetzen (#671): Mindestzahl gleichförmiger Zeilen.</summary>
+    MinPatternLines = 2;
+    MaxPatternLines = 5;
     /// <summary>Verzögerung bis zum automatischen Öffnen der Liste (ARG-046, #227); 0 = sofort.</summary>
     MaxOpenDelay = 2000;
     /// <summary>Speichergrenze des Symbolindex im Server (#492); 0 = unbegrenzt.</summary>
@@ -593,6 +596,12 @@ type
     CompleteStatementTryKind: string;
     /// <summary>Methodenrumpf anlegen (#697, editor.completeStatement.methodBody).</summary>
     CompleteStatementMethodBody: Boolean;
+    /// <summary>Nächste Zeile eines erkannten Musters als Schattentext vorschlagen (#671, editor.continuePattern).
+    /// </summary>
+    ContinuePattern: Boolean;
+    /// <summary>Mindestzahl gleichförmiger Zeilen, MinPatternLines bis MaxPatternLines (#671,
+    /// editor.continuePattern.minLines).</summary>
+    ContinuePatternMinLines: Integer;
     /// <summary>Hauptschalter der Atlas-Willkommensseite (#753, welcomePage.enabled): Atlas-Bereiche auf der
     /// Willkommensseite der IDE und Fenster „Atlas-Start“.</summary>
     WelcomePage: Boolean;
@@ -1184,6 +1193,8 @@ begin
   Result.CompleteStatementBeginEnd := BeginEndMultiLine;
   Result.CompleteStatementTryKind := TryKindFinally;
   Result.CompleteStatementMethodBody := True;
+  Result.ContinuePattern := True;
+  Result.ContinuePatternMinLines := 2;
   Result.WelcomePage := True;
   Result.WelcomePageHost := 'welcomePage';
   Result.WelcomePageLayout := 'off';
@@ -1275,6 +1286,7 @@ begin
   XmlDocMaxLines := EnsureRange(XmlDocMaxLines, 0, MaxXmlDocLines);
   BlockEndLabelsMinLines := EnsureRange(BlockEndLabelsMinLines, MinBlockEndLines, MaxBlockEndLines);
   RecursionMarkersDepth := EnsureRange(RecursionMarkersDepth, MinRecursionDepth, MaxRecursionDepth);
+  ContinuePatternMinLines := EnsureRange(ContinuePatternMinLines, MinPatternLines, MaxPatternLines);
   OpenDelayMs := EnsureRange(OpenDelayMs, 0, MaxOpenDelay);
   MemoryBudgetMb := EnsureRange(MemoryBudgetMb, 0, MaxMemoryBudgetMb);
   // TShortCut ist ein Word.
@@ -1637,6 +1649,8 @@ begin
   CompleteStatementTryKind := AStore.ReadString('CompleteStatementTryKind', Default.CompleteStatementTryKind);
   CompleteStatementMethodBody := AStore.ReadInteger('CompleteStatementMethodBody',
     BoolValue(Default.CompleteStatementMethodBody)) <> 0;
+  ContinuePattern := AStore.ReadInteger('ContinuePattern', BoolValue(Default.ContinuePattern)) <> 0;
+  ContinuePatternMinLines := AStore.ReadInteger('ContinuePatternMinLines', Default.ContinuePatternMinLines);
   WelcomePage := AStore.ReadInteger('WelcomePage', BoolValue(Default.WelcomePage)) <> 0;
   WelcomePageHost := AStore.ReadString('WelcomePageHost', Default.WelcomePageHost);
   WelcomePageLayout := AStore.ReadString('WelcomePageLayout', Default.WelcomePageLayout);
@@ -1938,6 +1952,8 @@ begin
   AStore.WriteString('CompleteStatementBeginEnd', CompleteStatementBeginEnd);
   AStore.WriteString('CompleteStatementTryKind', CompleteStatementTryKind);
   AStore.WriteInteger('CompleteStatementMethodBody', BoolValue(CompleteStatementMethodBody));
+  AStore.WriteInteger('ContinuePattern', BoolValue(ContinuePattern));
+  AStore.WriteInteger('ContinuePatternMinLines', ContinuePatternMinLines);
   AStore.WriteInteger('WelcomePage', BoolValue(WelcomePage));
   AStore.WriteString('WelcomePageHost', WelcomePageHost);
   AStore.WriteString('WelcomePageLayout', WelcomePageLayout);

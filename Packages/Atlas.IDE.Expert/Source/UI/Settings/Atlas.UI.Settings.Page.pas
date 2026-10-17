@@ -286,6 +286,8 @@ type
     FCompleteStatementBeginEnd: TAtlasChoiceBox;
     FCompleteStatementTryKind: TAtlasChoiceBox;
     FCompleteStatementMethodBody: TCheckBox;
+    FContinuePattern: TCheckBox;
+    FContinuePatternMinLines: TEdit;
     FBookmarkKey: TEdit;
     /// <summary>„Element ausblenden …“ (#628).</summary>
     FHideElementKey: TEdit;
@@ -671,6 +673,8 @@ type
     property CompleteStatementBeginEnd: TAtlasChoiceBox read FCompleteStatementBeginEnd;
     property CompleteStatementTryKind: TAtlasChoiceBox read FCompleteStatementTryKind;
     property CompleteStatementMethodBody: TCheckBox read FCompleteStatementMethodBody;
+    property ContinuePattern: TCheckBox read FContinuePattern;
+    property ContinuePatternMinLines: TEdit read FContinuePatternMinLines;
     property RedoKey: TEdit read FRedoKey;
     property UpdatesCheck: TCheckBox read FUpdatesCheck;
     property BugReportAnonymize: TCheckBox read FBugReportAnonymize;
@@ -1232,6 +1236,9 @@ begin
     [TAtlasStrings.Text(TAtlasTextId.CompleteStatementTryFinally),
     TAtlasStrings.Text(TAtlasTextId.CompleteStatementTryExcept), TAtlasStrings.Text(TAtlasTextId.SettingsTryKindAsk)]);
   FCompleteStatementMethodBody := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsCompleteStatementMethodBody));
+  // Muster fortsetzen (#671).
+  FContinuePattern := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsContinuePattern));
+  FContinuePatternMinLines := AddNumber(TAtlasStrings.Text(TAtlasTextId.SettingsContinuePatternMinLines));
   FOverviewKinds[TAtlasOverviewKind.Bookmarks] := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsOverviewBookmarks));
   FOverviewKinds[TAtlasOverviewKind.Cursor] := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsOverviewCursor));
   // Rekursionssymbole im Rand (#623).
@@ -2202,6 +2209,8 @@ begin
   FMarks.Bind(FCompleteStatementBeginEnd, ['CompleteStatementBeginEnd']);
   FMarks.Bind(FCompleteStatementTryKind, ['CompleteStatementTryKind']);
   FMarks.Bind(FCompleteStatementMethodBody, ['CompleteStatementMethodBody']);
+  FMarks.Bind(FContinuePattern, ['ContinuePattern']);
+  FMarks.Bind(FContinuePatternMinLines, ['ContinuePatternMinLines']);
   FMarks.Bind(FBookmarkKey, ['BookmarkKey']);
   FMarks.Bind(FHideElementKey, ['HideElementKey']);
   FMarks.Bind(FNextProblemKey, ['NextProblemKey']);
@@ -3216,6 +3225,8 @@ begin
   else if ASettings.CompleteStatementTryKind = TAtlasPluginSettings.TryKindAsk then
     FCompleteStatementTryKind.Choice := 2;
   FCompleteStatementMethodBody.Checked := ASettings.CompleteStatementMethodBody;
+  FContinuePattern.Checked := ASettings.ContinuePattern;
+  FContinuePatternMinLines.Text := IntToStr(ASettings.ContinuePatternMinLines);
   FBookmarkKey.Text := ShortCutToText(TShortCut(ASettings.BookmarkKey));
   FHideElementKey.Text := ShortCutToText(TShortCut(ASettings.HideElementKey));
   FNextProblemKey.Text := ShortCutToText(TShortCut(ASettings.NextProblemKey));
@@ -3543,6 +3554,8 @@ begin
     ASettings.CompleteStatementTryKind := TAtlasPluginSettings.TryKindFinally;
   end;
   ASettings.CompleteStatementMethodBody := FCompleteStatementMethodBody.Checked;
+  ASettings.ContinuePattern := FContinuePattern.Checked;
+  ASettings.ContinuePatternMinLines := StrToIntDef(FContinuePatternMinLines.Text, ASettings.ContinuePatternMinLines);
   ASettings.BookmarkKey := Integer(TextToShortCut(Trim(FBookmarkKey.Text)));
   ASettings.HideElementKey := Integer(TextToShortCut(Trim(FHideElementKey.Text)));
   ASettings.NextProblemKey := Integer(TextToShortCut(Trim(FNextProblemKey.Text)));

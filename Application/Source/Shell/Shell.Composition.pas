@@ -59,6 +59,7 @@ uses
   Atlas.Common.Lsp.SemanticTokens,
   Atlas.Common.Lsp.Status,
   Atlas.Common.Lsp.QualifiedNames,
+  Atlas.Common.Lsp.EnumValueCommands,
   Atlas.Common.Lsp.StringLiteralCommands,
   Atlas.Common.Lsp.ResourceStringCommands,
   Atlas.Common.Editing.StringLiterals,
@@ -1363,6 +1364,12 @@ begin
     begin
       Result := TQualifiedNames.Execute(FDocuments, FIndex,
         EnsureUnit, FDefinition.Namespaces, AArguments);
+    end);
+  FCommands.Register(TEnumValueCommands.Command,
+    function(const AArguments: TJSONArray): TJSONValue
+    begin
+      Result := TEnumValueCommands.Execute(FDocuments, FIndex, EnsureUnit, FDefinition.Namespaces, ReadSourceText,
+        AArguments);
     end);
   FCommands.Register(TResourceStringCommands.AddCommand,
     function(const AArguments: TJSONArray): TJSONValue
@@ -3815,6 +3822,7 @@ begin
   Commands.Add(ClearIndexCommand);
   Commands.Add(TBugReport.Command);
   Commands.Add(TQualifiedNames.Command);
+  Commands.Add(TEnumValueCommands.Command);
   Commands.Add(TStringLiteralCommands.PlainTextCommand);
   Commands.Add(TStringLiteralCommands.ToLiteralCommand);
   // Editor-Befehl (#97): Clients wie VS Code bieten ihn damit an.

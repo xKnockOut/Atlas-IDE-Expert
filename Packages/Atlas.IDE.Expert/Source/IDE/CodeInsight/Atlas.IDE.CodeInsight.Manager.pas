@@ -191,6 +191,8 @@ type
     function ActiveSession: TLspSession;
     /// <summary>Laufende, initialisierte Sitzung oder nil; startet keinen Server (#402).</summary>
     function RunningSession: TLspSession;
+    /// <summary>Ist die Liste der Vervollständigung offen (#671)?</summary>
+    function CompletionVisible: Boolean;
     /// <summary>Gespeichert: didSave an den Server, falls eine Sitzung läuft (Prüfung mit dcc).</summary>
     procedure NotifySaved(const AFileName: string);
     /// <summary>Zeile im Diagnoseprotokoll (nur mit Diagnose = 1).</summary>
@@ -1081,6 +1083,11 @@ end;
 function TAtlasCodeInsightManager.ActiveSession: TLspSession;
 begin
   Result := SessionOrNil;
+end;
+
+function TAtlasCodeInsightManager.CompletionVisible: Boolean;
+begin
+  Result := (FCompletion <> nil) and FCompletion.Visible;
 end;
 
 function TAtlasCodeInsightManager.RunningSession: TLspSession;
