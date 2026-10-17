@@ -1,0 +1,31 @@
+# Gezielt eingebaute Fehler für die Trefferquote je Regel (#152).
+# Format: regel-id | Datei unter Source | Suchtext | Ersatz
+# Der Suchtext muss in der Datei genau einmal vorkommen. Escapes: \n
+# (Zeilenumbruch), \uXXXX (Zeichen), \| und \\. Jede Mutation muss von ihrer
+# Regel gefunden werden (mehr Treffer als ohne Mutation); sonst schlägt
+# TGoldenCorpusTests.ReferenceProjectMutationsAreFound fehl.
+self-assignment | Ref.Sprache.Merkmale.pas | Schluessel := ASchluessel; | Schluessel := Schluessel;
+result-not-set | Ref.Sprache.Merkmale.pas | Result := FElemente.Count; | FElemente.TrimExcess;
+empty-except | Ref.Sprache.Merkmale.pas | FElemente.Add(AElement); | try FElemente.Add(AElement); except end;
+with-statement | Ref.Sprache.Merkmale.pas | Result := Self = ''; | with Self do Result := IsEmpty;
+unreachable-code | Ref.Sprache.Merkmale.pas | Result := IntToStr(AWert); | Exit(''); Result := IntToStr(AWert);
+unused-local | Ref.Komponenten.Anzeige.pas | Text: string; | Text, Rest: string;
+bidi-control | Ref.Sprache.Merkmale.pas | Result := 'Win64'; | Result := 'Win‮64';
+invisible-char | Ref.Sprache.Merkmale.pas | Result := 'Win32'; | Result := 'Win​32';
+control-char | Ref.Sprache.Merkmale.pas | Result := 'Andere'; | Result := 'And\u0000ere';
+confusable-identifier | Ref.Sprache.Merkmale.pas | Inc(Result, Quadrat); | Inc(Result, Quаdrat);
+destroy-without-override | Ref.Sprache.Merkmale.pas | destructor Destroy; override; | destructor Destroy;
+bool-compare | Ref.Daten.Suche.pas | begin\n  if Assigned(FAnbieter) then | var\n  Bereit: Boolean;\nbegin\n  Bereit := Assigned(FAnbieter);\n  if Bereit = True then
+redundant-assigned-free | Ref.Sprache.Merkmale.pas | FElemente.Free; | if Assigned(FElemente) then FElemente.Free;
+generic-exception-raised | Ref.Daten.Suche.pas | Result := nil; | raise Exception.Create('Keine Suche angemeldet');
+random-without-randomize | Ref.Sprache.Merkmale.pas | Result := IntToStr(AWert); | Result := IntToStr(Random(AWert));
+todo-comment | Ref.Sprache.Merkmale.pas | // Sprachmerkmale für Navigation, Hover und Prüfregeln. | // TODO: Sprachmerkmale für Navigation, Hover und Prüfregeln.
+component-missing-free-notification | Ref.Komponenten.Anzeige.pas | FVerknuepft.FreeNotification(Self); | FVerknuepft.Tag := 0;
+component-setter-without-invalidate | Ref.Komponenten.Anzeige.pas | FStil := AValue;\n    Invalidate; | FStil := AValue;
+component-missing-inherited | Ref.Komponenten.Anzeige.pas | procedure TRefAnzeige.Notification(AComponent: TComponent; Operation: TOperation);\nbegin\n  inherited; | procedure TRefAnzeige.Notification(AComponent: TComponent; Operation: TOperation);\nbegin
+interface-guid | Ref.Sprache.Merkmale.pas | ['{6F1C2B9E-4A37-4D2B-9E61-3C5A7B8D9E01}'] | // ohne GUID
+float-equality | Ref.Formulare.Detail.pas | begin\n  Anzeige.Wert := Length(NameEdit.Text); | var\n  Anteil: Double;\nbegin\n  Anteil := Length(NameEdit.Text) / 10;\n  if Anteil = 1.5 then\n    Exit;\n  Anzeige.Wert := Length(NameEdit.Text);
+exception-freed | Ref.Daten.Suche.pas | Result := FAnbieter(AName) | try Result := FAnbieter(AName); except on E: Exception do E.Free; end
+catch-all-without-raise | Ref.Formulare.Haupt.pas | Formular.ShowModal; | try Formular.ShowModal; except on E: Exception do Caption := E.Message; end;
+string-concat-in-loop | Ref.Formulare.Haupt.pas | KundenListe.Items.Clear;\n    for var Kunde in TKundenSuche.Suchen(Suche.SuchEdit.Text) do\n      KundenListe.Items.Add(Kunde); | KundenListe.Items.Clear;\n    var Alle: string := '';\n    for var Kunde in TKundenSuche.Suchen(Suche.SuchEdit.Text) do\n      Alle := Alle + Kunde;
+redundant-begin-end | Ref.Formulare.Haupt.pas | KundenListe.Items.Add(Kunde); | begin\n        KundenListe.Items.Add(Kunde);\n      end;
