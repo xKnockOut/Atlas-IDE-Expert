@@ -56,6 +56,16 @@ type
     /// <summary>Text, dessen Zeilen ab der zweiten um ARemove gekürzt (soweit vorhanden) und um AAdd ergänzt
     /// sind; die erste Zeile bekommt nur AAdd.</summary>
     class function Reindent(const ABlock, ARemove, AAdd, ALineBreak: string): string; static;
+    /// <summary>Rumpf (class, record oder object) des Typs AName in der Datei; nil ohne.</summary>
+    class function TypeBody(ARoot: TSyntaxNode; const AName: string): TSyntaxNode; static;
+    /// <summary>Deklaration ADecl am Ende des Abschnitts ASection ("private", "protected", "public") der Klasse
+    /// ABody; bei private zählt auch strict private. Ohne Abschnitt ein neuer vor end, das dann allein am
+    /// Zeilenanfang stehen muss.</summary>
+    class function MemberDeclaration(const AText: string; ATree: TSyntaxTree; ABody: TSyntaxNode;
+      const ASection, ADecl: string; const AStyle: TFormatStyle; out AEdit: TTextEdit): Boolean; static;
+    /// <summary>Zeile, vor der eine neue Routine entsteht: Anfang von ARoutine samt Kommentaren direkt darüber.
+    /// </summary>
+    class function RoutineInsertLine(const AText: string; ARoutine: TSyntaxNode): Integer; static;
   end;
 
 implementation
@@ -337,6 +347,102 @@ begin
     end;
     if Trim(Line) <> '' then
       Result := Result + AAdd + Line;
+  end;
+end;
+
+class function TRoutineBody.TypeBody(ARoot: TSyntaxNode; const AName: string): TSyntaxNode;
+
+  function Find(ANode: TSyntaxNode): TSyntaxNode;
+  var
+    Index: Integer;
+  begin
+    Result := nil;
+    if (ANode.Kind = TSyntaxKind.TypeDecl) and (SameText(ANode.Name, AName) or StartsText(AName + '<', ANode.Name)) then
+    begin
+      Result := ANode.FindChild(TSyntaxKind.ClassType);
+      if Result = nil then
+        Result := ANode.FindChild(TSyntaxKind.RecordType);
+      if Result = nil then
+        Result := ANode.FindChild(TSyntaxKind.ObjectType);
+      if Result <> nil then
+        Exit;
+    end;
+    for Index := 0 to ANode.ChildCount - 1 do
+    begin
+      Result := Find(ANode[Index]);
+      if Result <> nil then
+        Exit;
+    end;
+  end;
+
+begin
+  Result := nil;
+  if ARoot <> nil then
+    Result := Find(ARoot);
+end;
+
+class function TRoutineBody.MemberDeclaration(const AText: string; ATree: TSyntaxTree; ABody: TSyntaxNode;
+  const ASection, ADecl: string; const AStyle: TFormatStyle; out AEdit: TTextEdit): Boolean;
+var
+  Index, EndToken: Integer;
+  Visibility, Next: TSyntaxNode;
+  Tokens: TArray<TPascalToken>;
+  Indent, LineBreak: string;
+  Position: TTextPosition;
+begin
+  Result := False;
+  AEdit := Default(TTextEdit);
+  LineBreak := TTextLines.LineBreakOf(AText);
+  Visibility := nil;
+  Next := nil;
+  for Index := 0 to ABody.ChildCount - 1 do
+    if ABody[Index].Kind = TSyntaxKind.Visibility then
+      if Visibility = nil then
+      begin
+        if SameText(ABody[Index].Name, ASection) or SameText(ABody[Index].Name, 'strict ' + ASection) then
+          Visibility := ABody[Index];
+      end
+      else if Next = nil then
+        Next := ABody[Index];
+  Tokens := ATree.Tokens;
+  EndToken := PreviousToken(Tokens, TokenAt(Tokens, ABody.EndOffset));
+  if (EndToken < 0) or not Tokens[EndToken].IsKeyword('end') then
+    Exit;
+  if Visibility <> nil then
+  begin
+    Indent := TTextLines.IndentOf(AText, Visibility.StartPos.Line) + IndentUnit(AStyle);
+    if Next <> nil then
+      Position := TTextPosition.Create(Next.StartPos.Line, 0)
+    else
+      Position := TTextPosition.Create(Tokens[EndToken].StartPos.Line, 0);
+    AEdit := TTextEdit.Create(TTextRange.Create(Position, Position), Indent + ADecl + LineBreak);
+    Exit(True);
+  end;
+  // Kein passender Abschnitt: neuer Abschnitt vor dem end der Klasse, das allein am Zeilenanfang stehen muss.
+  Indent := TTextLines.IndentOf(AText, Tokens[EndToken].StartPos.Line);
+  if Length(Indent) <> Tokens[EndToken].StartPos.Character then
+    Exit;
+  Position := TTextPosition.Create(Tokens[EndToken].StartPos.Line, 0);
+  AEdit := TTextEdit.Create(TTextRange.Create(Position, Position), Indent + ASection + LineBreak + Indent +
+    IndentUnit(AStyle) + ADecl + LineBreak);
+  Result := True;
+end;
+
+class function TRoutineBody.RoutineInsertLine(const AText: string; ARoutine: TSyntaxNode): Integer;
+var
+  Lines: TArray<string>;
+  Line: string;
+begin
+  Lines := TTextLines.SplitLines(AText);
+  Result := ARoutine.StartPos.Line;
+  while Result > 0 do
+  begin
+    Line := Trim(Lines[Result - 1]);
+    if StartsStr('//', Line) or (StartsStr('{', Line) and not StartsStr('{$', Line)) or StartsStr('(*', Line) or
+      ((Line <> '') and EndsStr('}', Line) and not StartsStr('{$', Line) and (Pos('{', Line) = 0)) then
+      Dec(Result)
+    else
+      Break;
   end;
 end;
 

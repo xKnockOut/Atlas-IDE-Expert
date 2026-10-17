@@ -2141,3 +2141,18 @@ Voraussetzung für EX2 bis EX7: mindestens eine Einstellung trägt `x-experiment
 | EX13 | Cursor auf das Wort `with`, Strg+Leertaste | Erster Eintrag „with auflösen“; Enter löst wie EX10 auf |
 | EX14 | `refactoring.extract`, `refactoring.completeCase` bzw. `refactoring.resolveWith` aus | Die jeweiligen Aktionen (und der Eintrag aus EX13) fehlen |
 
+## Methode aus Aufruf anlegen (#472)
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| MA1 | In einer Methode von TRechner mit `Total: Currency` und Parameter `Customer: TCustomer` die Zeile `Total := CalcDiscount(Customer, 0.1);` tippen, Cursor auf `CalcDiscount`, Strg+Leertaste | Oben „Methode CalcDiscount anlegen“ mit Kopf `function CalcDiscount(Customer: TCustomer; Rate: Double): Currency`; Enter legt die Deklaration im private-Abschnitt und den Rumpf hinter der letzten Methode an, der Cursor bleibt an der Aufrufstelle |
+| MA2 | `Total := Rabatt(` tippen | Direkt nach `(` erscheint nur „Methode Rabatt anlegen“ (ohne Parameter); bei einem bekannten Namen erscheint nichts |
+| MA3 | `Protokolliere(Customer.Name);` | Prozedur `procedure Protokolliere(const Name: string);`; mit `refactoring.constParameters` aus ohne const |
+| MA4 | In einer freien Routine `X := Hole(1);` | „Routine Hole anlegen“ legt `function Hole(Value: Integer): …` vor der aktuellen Routine an |
+| MA5 | `if Pruefe(X) then` | Funktion mit Rückgabetyp Boolean |
+| MA6 | `Liste.Sortiere(1);` mit `Liste: TStringList` | Kein Angebot (Klasse aus der RTL) |
+| MA7 | `Customer.Pruefe(Total);`, TCustomer steht in einer anderen Unit des Projekts, Alt+Enter | „Methode Pruefe in TCustomer anlegen“ ändert die andere Unit: Deklaration unter public, Rumpf, fehlende Units im uses |
+| MA8 | `refactoring.createMethodSection` auf protected, `refactoring.createMethodCaret` auf body, MA1 wiederholen | Deklaration unter protected; der Cursor steht in der leeren Zeile des neuen Rumpfs |
+| MA9 | Automatisches uses in den Plugin-Optionen aus, MA1 | Deklaration und Rumpf entstehen trotzdem |
+| MA10 | `refactoring.createMethod` aus | Weder Eintrag nach `(` noch mit Strg+Leertaste noch Code-Aktion |
+
