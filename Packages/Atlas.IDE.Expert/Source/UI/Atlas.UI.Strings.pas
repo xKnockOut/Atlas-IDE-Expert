@@ -540,7 +540,9 @@ type
     UsesActionMissing,
     SettingsInlineDiagnostics, SettingsInlineDiagnosticsOff, SettingsInlineDiagnosticsErrors,
     SettingsInlineDiagnosticsWarnings, SettingsInlineDiagnosticsAll, SettingsProblemsStatusCounter, ProblemNextCommand,
-    ProblemPreviousCommand, ProblemNoneInFile, ProblemCounterText, ProblemCounterHint);
+    ProblemPreviousCommand, ProblemNoneInFile, ProblemCounterText, ProblemCounterHint,
+    SettingsRecursionMarkers, SettingsRecursionMarkersDepth, ElementRecursion, ElementRecursionPlural,
+    RecursionTipDirect, RecursionTipChain);
 
   TAtlasStrings = class
   private class var
@@ -1575,7 +1577,9 @@ const
      'Fehlertext am Zeilenende:', 'Aus', 'Nur Fehler', 'Fehler und Warnungen', 'Alle',
      'Zähler „Fehler/Warnungen/Hinweise“ in der Statusleiste', 'Nächster Befund', 'Vorheriger Befund',
      'Atlas: Keine Befunde in dieser Datei.', 'Fehler %d · Warnungen %d · Hinweise %d',
-     '%d Fehler, %d Warnungen, %d Hinweise in Atlas-Probleme. Klick öffnet die Liste.'),
+     '%d Fehler, %d Warnungen, %d Hinweise in Atlas-Probleme. Klick öffnet die Liste.',
+     'Rekursionssymbole im Rand', 'Höchstlänge der Kette (Methoden):', 'Rekursionssymbol', 'Rekursionssymbole',
+     'Rekursion: ruft sich selbst auf', 'Rekursion über %d Methoden'),
     ('Enter to accept · Esc to close', '%d of %d', 'No matches for “%s”', 'Backspace widens the search',
      'No suggestions here', 'Esc closes', 'No details for this entry', 'Overload', 'Deprecated: %s', 'Deprecated.',
      'Inherited from %s', 'Inherited', 'optional, default %s', 'No overload with %d parameters.', '… %d more',
@@ -2539,7 +2543,9 @@ const
      'Error text at line end:', 'Off', 'Errors only', 'Errors and warnings', 'All',
      'Error/warning/hint counter in the status bar', 'Next finding', 'Previous finding',
      'Atlas: No findings in this file.', 'Errors %d · Warnings %d · Hints %d',
-     '%d errors, %d warnings, %d hints in Atlas problems. Click opens the list.'));
+     '%d errors, %d warnings, %d hints in Atlas problems. Click opens the list.',
+     'Recursion markers in the gutter', 'Maximum chain length (methods):', 'Recursion marker', 'Recursion markers',
+     'Recursion: calls itself', 'Recursion over %d methods'));
 
 { TAtlasStrings }
 

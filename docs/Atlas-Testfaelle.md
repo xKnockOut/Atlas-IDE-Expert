@@ -1915,3 +1915,17 @@ Voraussetzung für EX2 bis EX7: mindestens eine Einstellung trägt `x-experiment
 | FZ7 | Datei ohne Befunde, Strg+Alt+F8 | Zeile „Atlas: Keine Befunde in dieser Datei.“ in der Meldungsansicht |
 | FZ8 | Statusleiste ansehen, dann auf den Zähler klicken | „Fehler 1 · Warnungen 2 · Hinweise 0“ stimmt mit der Liste „Atlas-Probleme“ überein; der Klick öffnet das Meldungsfenster |
 | FZ9 | `editor.inlineDiagnostics` = aus, `problems.statusCounter` aus, Tasten leer | Kein Text am Zeilenende, kein Zähler, Tasten frei; Atlas verhält sich wie ohne die Funktion |
+
+## Rekursion im Rand (#623)
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| RK1 | `function Fakultaet(N: Integer): Integer` mit `Result := N * Fakultaet(N - 1)` | Kreispfeil in der Rinne neben der Zeile mit dem Aufruf |
+| RK2 | `Speichern` ruft `Pruefen`, `Pruefen` ruft `Speichern` | Pfeil neben beiden Aufrufen; Tooltip „Rekursion über 2 Methoden“ mit „Speichern → Pruefen → Speichern“ |
+| RK3 | Im Tooltip auf „TFoo.Pruefen“ klicken | Der Cursor steht auf dem Namen im Kopf von `TFoo.Pruefen`, der Tooltip schließt |
+| RK4 | Kreis über fünf Methoden, Tiefe 4, dann Tiefe 5 | Erst kein Pfeil, nach dem Umstellen erscheinen die Pfeile |
+| RK5 | `inherited Create;` im Konstruktor, `Other.Run` in `Run`, `P := Run` | Kein Pfeil |
+| RK6 | `function TFoo.GetName: string; begin Result := Name; end;` mit Feld `FName` | Warnung „Getter GetName liest die eigene Property Name …; das Feld FName verwenden“, Schnellkorrektur setzt `FName` ein; zusätzlich Pfeil in der Rinne |
+| RK7 | Setter `SetTitle` mit `Self.Title := AValue` ohne Feld `FTitle` | Warnung ohne Korrektur |
+| RK8 | Zeile mit dem Aufruf bearbeiten | Pfeil verschwindet und kommt nach der Tipp-Pause mit der neuen Antwort wieder |
+| RK9 | `editor.recursionMarkers` aus bzw. „Element ausblenden“ › Rekursionssymbole; Regel `recursive-property-accessor` auf `off` | Keine Pfeile, keine Anfrage an den Server; keine Warnung |

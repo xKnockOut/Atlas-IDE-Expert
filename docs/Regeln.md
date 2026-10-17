@@ -29,6 +29,7 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 | [`declared-not-implemented`](#declared-not-implemented) | Deklariert, aber nicht implementiert | Bug | Fehler |
 | [`implemented-not-declared`](#implemented-not-declared) | Implementiert, aber nicht deklariert | Bug | Fehler |
 | [`destroy-without-override`](#destroy-without-override) | Destroy ohne override | Bug | Warnung |
+| [`recursive-property-accessor`](#recursive-property-accessor) | Property-Accessor ruft sich selbst auf | Bug | Warnung |
 | [`component-create-without-override`](#component-create-without-override) | Komponentenkonstruktor ohne override | Bug | Warnung |
 | [`hides-virtual`](#hides-virtual) | Methode verdeckt virtuelle Methode | Bug | Warnung |
 | [`virtual-instead-of-override`](#virtual-instead-of-override) | virtual statt override | Bug | Warnung |
@@ -723,6 +724,31 @@ type
   TFoo = class
     destructor Destroy; override;
   end;
+```
+
+<a id="recursive-property-accessor"></a>
+## recursive-property-accessor
+
+**Property-Accessor ruft sich selbst auf** · Bug · Warnung
+
+Ein Getter liest seine eigene Property oder ein Setter schreibt sie. Der Accessor ruft sich endlos selbst auf und endet im Stapelüberlauf. Stattdessen das Feld verwenden.
+
+Mit Treffer:
+
+```pascal
+function TFoo.GetName: string;
+begin
+  Result := Name;
+end;
+```
+
+Richtig:
+
+```pascal
+function TFoo.GetName: string;
+begin
+  Result := FName;
+end;
 ```
 
 <a id="component-create-without-override"></a>

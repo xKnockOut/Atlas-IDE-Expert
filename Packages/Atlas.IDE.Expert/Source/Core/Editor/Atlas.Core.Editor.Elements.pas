@@ -53,7 +53,9 @@ type
     /// <summary>Vorschau des gewählten Vorschlags im Editor (#434).</summary>
     CompletionPreview,
     /// <summary>Abgeblendete ungenutzte uses-Einträge (#621).</summary>
-    UnusedUses);
+    UnusedUses,
+    /// <summary>Rekursionssymbol in der Rinne (#623).</summary>
+    Recursion);
   TAtlasHideScope = (Here, InFile, Everywhere);
 {$SCOPEDENUMS OFF}
   TAtlasHideScopes = set of TAtlasHideScope;
@@ -156,6 +158,8 @@ begin
       Result := Make(AElement, 'Preview', [TAtlasHideScope.Everywhere], False, False);
     TAtlasDrawnElement.UnusedUses:
       Result := Make(AElement, 'DimUnusedUses', FileScopes, False, False);
+    TAtlasDrawnElement.Recursion:
+      Result := Make(AElement, 'RecursionMarkers', AllScopes, False, True);
   else
     Result := Make(AElement, '', [], False, False);
   end;

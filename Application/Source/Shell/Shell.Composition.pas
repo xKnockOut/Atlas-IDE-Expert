@@ -52,6 +52,7 @@ uses
   Atlas.Common.Lsp.CodeLens,
   Atlas.Common.Lsp.Metrics,
   Atlas.Common.Lsp.Todos,
+  Atlas.Common.Lsp.Recursion,
   Atlas.Common.Lsp.SlashMenu,
   Atlas.Common.Lsp.Baseline,
   Atlas.Common.Lsp.SemanticTokens,
@@ -139,6 +140,7 @@ type
     FMetrics: TLspMetrics;
     /// <summary>TODO-Übersicht (#68): Befehl atlas.server.todos.</summary>
     FTodos: TLspTodos;
+    FRecursion: TLspRecursion;
     /// <summary>Baseline für Altprojekte (#97): Befehl atlas.updateBaseline.</summary>
     FBaseline: TLspBaseline;
     FSemanticTokens: TLspSemanticTokens;
@@ -992,6 +994,8 @@ begin
   // Gleiche Quelle wie die Metriken: Einstellungen, Wurzel und Dateien des Projektmodells (#14).
   FTodos := TLspTodos.Create(MetricsSourceFor,
     ReadSourceText);
+  // Rekursionssymbole im Editorrand (#623).
+  FRecursion := TLspRecursion.Create(ReadSourceText);
   // Baseline (#97): dieselben Dateien wie die Metriken, Prüfung wie im Editor (Regeln, Index, Formulardatei).
   FBaseline := TLspBaseline.Create(MetricsSourceFor,
     function(const AFileName: string; out ACheck: TLspBaselineCheck): Boolean
@@ -1224,6 +1228,11 @@ begin
     function(const AArguments: TJSONArray): TJSONValue
     begin
       Result := FTodos.Execute(AArguments);
+    end);
+  FCommands.Register(TLspRecursion.Command,
+    function(const AArguments: TJSONArray): TJSONValue
+    begin
+      Result := FRecursion.Execute(AArguments);
     end);
   FCommands.Register(TLspBaseline.Command,
     function(const AArguments: TJSONArray): TJSONValue
@@ -1689,6 +1698,7 @@ begin
   FCodeLens.Free;
   FMetrics.Free;
   FTodos.Free;
+  FRecursion.Free;
   FBaseline.Free;
   FInlayHints.Free;
   FImplementations.Free;

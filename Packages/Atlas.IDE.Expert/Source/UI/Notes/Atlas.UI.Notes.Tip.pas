@@ -4,6 +4,9 @@
 // der Rinne: oben gedämpft „Notiz vom 15.10.2026“, darunter der Text, auch
 // mehrzeilig, umbrochen auf höchstens MaxWidth logische Pixel. Ohne Fokus wie
 // alle Atlas-Fenster (TAtlasPopupWindow), Schrift der Oberfläche.
+// Unter dem Text optional Links, je einer pro Zeile in der Akzentfarbe (etwa
+// die Methoden einer Rekursionskette, #623); ein Klick meldet ihre Nummer an
+// OnLink.
 
 interface
 
@@ -12,6 +15,8 @@ uses
   System.SysUtils,
   System.Classes,
   System.Types,
+  System.SysUtils,
+  Vcl.Controls,
   Vcl.Graphics,
   Atlas.UI.Popup.Window;
 
@@ -24,18 +29,31 @@ type
   private
     FTitle: string;
     FText: string;
+    FLinks: TArray<string>;
+    FLinkRects: TArray<TRect>;
+    FOnLink: TProc<Integer>;
     function TextFlags: Cardinal;
     function MeasureText(AWidth: Integer): TRect;
   protected
     procedure Paint; override;
+    procedure MouseDown(Button: TMouseButton; Shift: TShiftState; X, Y: Integer); override;
+    procedure MouseMove(Shift: TShiftState; X, Y: Integer); override;
   public
     constructor Create(AOwner: TComponent); override;
     /// <summary>Zeigt Überschrift und Text mit der linken oberen Ecke an APoint (Bildschirmkoordinaten).</summary>
-    procedure ShowNote(const ATitle, AText: string; const APoint: TPoint);
+    procedure ShowNote(const ATitle, AText: string; const APoint: TPoint); overload;
+    /// <summary>Wie oben, darunter ALinks (je eine Zeile, anklickbar über OnLink).</summary>
+    procedure ShowNote(const ATitle, AText: string; const ALinks: TArray<string>; const APoint: TPoint); overload;
     /// <summary>Größe für ATitle und AText (ohne zu zeigen), für Tests.</summary>
-    function Measure(const ATitle, AText: string): TSize;
+    function Measure(const ATitle, AText: string): TSize; overload;
+    function Measure(const ATitle, AText: string; const ALinks: TArray<string>): TSize; overload;
+    /// <summary>Nummer des Links unter X/Y (Client-Koordinaten nach dem Zeichnen); -1 ohne.</summary>
+    function LinkAt(X, Y: Integer): Integer;
     property Title: string read FTitle;
     property Text: string read FText;
+    property Links: TArray<string> read FLinks;
+    /// <summary>Klick auf einen Link (Nummer ab 0).</summary>
+    property OnLink: TProc<Integer> read FOnLink write FOnLink;
   end;
 
 implementation
@@ -71,27 +89,49 @@ begin
 end;
 
 function TAtlasNoteTip.Measure(const ATitle, AText: string): TSize;
+begin
+  Result := Measure(ATitle, AText, nil);
+end;
+
+function TAtlasNoteTip.Measure(const ATitle, AText: string; const ALinks: TArray<string>): TSize;
 var
   Body: TRect;
-  TitleWidth, Width: Integer;
+  TitleWidth, Width, LinkWidth, LineHeight: Integer;
+  Link: string;
 begin
   FTitle := ATitle;
+  FLinks := ALinks;
+  FLinkRects := nil;
   // Zeilenumbrüche der Notiz als Windows-Umbrüche, damit DrawText sie einhält.
   FText := AText.Replace(#13#10, #10).Replace(#10, #13#10);
   Canvas.Font := UIFont;
   TitleWidth := Canvas.TextWidth(FTitle);
   Body := MeasureText(Scale(MaxWidth));
   Width := Max(TitleWidth, Body.Width);
+  LineHeight := Canvas.TextHeight('Wg');
+  for Link in FLinks do
+  begin
+    LinkWidth := Canvas.TextWidth(Link);
+    if LinkWidth > Width then
+      Width := LinkWidth;
+  end;
   Result.cx := Min(Width, Scale(MaxWidth)) + 2 * Scale(Padding);
-  Result.cy := Canvas.TextHeight('Wg') + Scale(4) + Body.Height + 2 * Scale(Padding) - Scale(2);
+  Result.cy := LineHeight + Scale(4) + Body.Height + 2 * Scale(Padding) - Scale(2);
+  if Length(FLinks) > 0 then
+    Inc(Result.cy, Scale(6) + Length(FLinks) * (LineHeight + Scale(2)));
 end;
 
 procedure TAtlasNoteTip.ShowNote(const ATitle, AText: string; const APoint: TPoint);
+begin
+  ShowNote(ATitle, AText, nil, APoint);
+end;
+
+procedure TAtlasNoteTip.ShowNote(const ATitle, AText: string; const ALinks: TArray<string>; const APoint: TPoint);
 var
   Area, Bounds: TRect;
   Size: TSize;
 begin
-  Size := Measure(ATitle, AText);
+  Size := Measure(ATitle, AText, ALinks);
   Area := WorkAreaAt(APoint);
   Size.cx := Min(Size.cx, Area.Width);
   Size.cy := Min(Size.cy, Area.Height);
@@ -103,13 +143,49 @@ begin
   SetAccessible(UiaToolTipControlType, ATitle);
   ShowAt(Bounds);
   Invalidate;
-  Announce(ATitle + '. ' + AText);
+  if Length(ALinks) > 0 then
+    Announce(ATitle + '. ' + AText + '. ' + string.Join(', ', ALinks))
+  else
+    Announce(ATitle + '. ' + AText);
+end;
+
+function TAtlasNoteTip.LinkAt(X, Y: Integer): Integer;
+var
+  Index: Integer;
+begin
+  for Index := 0 to High(FLinkRects) do
+    if PtInRect(FLinkRects[Index], Point(X, Y)) then
+      Exit(Index);
+  Result := -1;
+end;
+
+procedure TAtlasNoteTip.MouseDown(Button: TMouseButton; Shift: TShiftState; X, Y: Integer);
+var
+  Index: Integer;
+begin
+  inherited MouseDown(Button, Shift, X, Y);
+  Index := LinkAt(X, Y);
+  if (Button = mbLeft) and (Index >= 0) and Assigned(FOnLink) then
+    TAtlasGuard.Run(GuardFeature,
+      procedure
+      begin
+        FOnLink(Index);
+      end);
+end;
+
+procedure TAtlasNoteTip.MouseMove(Shift: TShiftState; X, Y: Integer);
+begin
+  inherited MouseMove(Shift, X, Y);
+  if LinkAt(X, Y) >= 0 then
+    Cursor := crHandPoint
+  else
+    Cursor := crDefault;
 end;
 
 procedure TAtlasNoteTip.Paint;
 var
-  Area: TRect;
-  TitleHeight: Integer;
+  Area, LinkArea: TRect;
+  TitleHeight, Top, Index: Integer;
 begin
   Canvas.Brush.Style := bsSolid;
   Canvas.Brush.Color := ToColor(Colors.Surface);
@@ -121,9 +197,31 @@ begin
   Area := Rect(Scale(Padding), Scale(Padding) - Scale(2), ClientWidth - Scale(Padding), Scale(Padding) +
     TitleHeight);
   DrawText(Canvas.Handle, PChar(FTitle), -1, Area, DT_LEFT or DT_SINGLELINE or DT_NOPREFIX or DT_END_ELLIPSIS);
-  Canvas.Font.Color := ToColor(Colors.Text);
   Area := Rect(Scale(Padding), Area.Bottom + Scale(4), ClientWidth - Scale(Padding), ClientHeight - Scale(Padding));
+  // MeasureText setzt die Schrift neu: vor der Farbe messen.
+  if Length(FLinks) > 0 then
+    Area.Bottom := Area.Top + MeasureText(Area.Width).Height;
+  Canvas.Brush.Style := bsClear;
+  Canvas.Font.Color := ToColor(Colors.Text);
   DrawText(Canvas.Handle, PChar(FText), -1, Area, TextFlags or DT_END_ELLIPSIS);
+  // Links darunter, je eine Zeile, unterstrichen im Akzent.
+  SetLength(FLinkRects, Length(FLinks));
+  if Length(FLinks) > 0 then
+  begin
+    Canvas.Font.Color := ToColor(Colors.Accent);
+    Canvas.Font.Style := [fsUnderline];
+    Top := Area.Bottom + Scale(6);
+    for Index := 0 to High(FLinks) do
+    begin
+      LinkArea := Rect(Scale(Padding), Top, Min(ClientWidth - Scale(Padding), Scale(Padding) +
+        Canvas.TextWidth(FLinks[Index])), Top + TitleHeight);
+      DrawText(Canvas.Handle, PChar(FLinks[Index]), -1, LinkArea, DT_LEFT or DT_SINGLELINE or DT_NOPREFIX or
+        DT_END_ELLIPSIS);
+      FLinkRects[Index] := LinkArea;
+      Inc(Top, TitleHeight + Scale(2));
+    end;
+    Canvas.Font.Style := [];
+  end;
   Canvas.Brush.Style := bsSolid;
   PaintBorder;
 end;

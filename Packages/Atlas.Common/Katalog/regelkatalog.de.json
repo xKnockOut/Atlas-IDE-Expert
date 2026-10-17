@@ -126,6 +126,11 @@
       "description": "Ein destructor Destroy ist ohne override deklariert. Free ruft TObject.Destroy auf, dieser Destruktor läuft also nie."
     },
     {
+      "id": "recursive-property-accessor",
+      "name": "Property-Accessor ruft sich selbst auf",
+      "description": "Ein Getter liest seine eigene Property oder ein Setter schreibt sie. Der Accessor ruft sich endlos selbst auf und endet im Stapelüberlauf. Stattdessen das Feld verwenden."
+    },
+    {
       "id": "component-create-without-override",
       "name": "Komponentenkonstruktor ohne override",
       "description": "Ein TComponent-Nachfahre deklariert constructor Create(AOwner: TComponent) ohne override. Beim Laden aus der Formulardatei wird der virtuelle Konstruktor benutzt und dieser übergangen."
