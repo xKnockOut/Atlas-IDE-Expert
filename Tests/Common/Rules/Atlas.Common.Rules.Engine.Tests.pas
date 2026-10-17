@@ -44,6 +44,14 @@ type
     [Test]
     procedure SuppressionReasonIsNoId;
     [Test]
+    procedure UnknownRuleIdWithSuggestion;
+    [Test]
+    procedure UnknownRuleIdWithoutSuggestion;
+    [Test]
+    procedure UnknownRuleIdCanBeSwitchedOff;
+    [Test]
+    procedure SuggestsClosestRuleId;
+    [Test]
     procedure PassesFixesThrough;
     [Test]
     procedure SortsByPosition;
@@ -73,6 +81,7 @@ uses
   Atlas.Common.Rules.Contract,
   Atlas.Common.Rules.Registry,
   Atlas.Common.Rules.Engine,
+  Atlas.Common.Rules.Suppressions,
   Atlas.Common.Rules.Derived,
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.Parser,
@@ -313,7 +322,7 @@ end;
 
 procedure TRuleEngineTests.SuppressesWithWildcardInBraceComment;
 begin
-  TRuleAssert.Silent(TMarkerRule.Create, SourceWith('  Marker := 1; { lsp-ignore: other, * }'#13#10));
+  TRuleAssert.Silent(TMarkerRule.Create, SourceWith('  Marker := 1; { lsp-ignore: empty-except, * }'#13#10));
 end;
 
 procedure TRuleEngineTests.SuppressesWholeFile;
@@ -326,8 +335,65 @@ procedure TRuleEngineTests.SuppressionReasonIsNoId;
 begin
   // Nach "--" steht eine Begründung; das "*" darin gilt nicht als Kennung (#297).
   TRuleAssert.Reports(TMarkerRule.Create,
-    SourceWith('  Marker := 1; // lsp-ignore: other -- gilt nicht für *'#13#10), 1);
+    SourceWith('  Marker := 1; // lsp-ignore: empty-except -- gilt nicht für *'#13#10), 1);
   TRuleAssert.Silent(TMarkerRule.Create, SourceWith('  Marker := 1; // lsp-ignore: marker -- Absicht'#13#10));
+end;
+
+procedure TRuleEngineTests.UnknownRuleIdWithSuggestion;
+const
+  Line = '  Marker := 1; // lsp-ignore: empty-exept, marker';
+var
+  Findings: TArray<TRuleFinding>;
+begin
+  // Abnahme #41: Tippfehler ergibt unknown-rule-id mit Vorschlag, aber keine unused-suppression.
+  Findings := TRuleAssert.Findings(TMarkerRule.Create, SourceWith(Line + #13#10));
+  Assert.AreEqual(1, Integer(Length(Findings)));
+  Assert.AreEqual(UnknownRuleIdRuleId, Findings[0].RuleId);
+  Assert.AreEqual(Ord(TRuleSeverity.Hint), Ord(Findings[0].Severity));
+  Assert.IsTrue(Pos('"empty-except"', Findings[0].Message) > 0, Findings[0].Message);
+  // Genau die Kennung ist markiert, die Korrektur ersetzt nur sie.
+  Assert.AreEqual(5, Findings[0].Range.StartPos.Line);
+  Assert.AreEqual(Pos('empty-exept', Line) - 1, Findings[0].Range.StartPos.Character);
+  Assert.AreEqual(Pos('empty-exept', Line) - 1 + Length('empty-exept'), Findings[0].Range.EndPos.Character);
+  Assert.AreEqual(1, Integer(Length(Findings[0].Fixes)));
+  Assert.AreEqual('empty-except', Findings[0].Fixes[0].Edits[0].NewText);
+  // Allein in der Zeile und ohne Treffer darunter: weiterhin keine unused-suppression daneben.
+  Findings := TRuleAssert.Findings(TMarkerRule.Create, SourceWith('  // lsp-ignore: empty-exept'#13#10'  X := 1;'#13#10));
+  Assert.AreEqual(1, Integer(Length(Findings)));
+  Assert.AreEqual(UnknownRuleIdRuleId, Findings[0].RuleId);
+  // Auch in { } und mit Begründung; die Begründung wird nie gelesen.
+  Findings := TRuleAssert.Findings(TMarkerRule.Create,
+    SourceWith('  Marker := 1; { lsp-ignore: marker -- empty-exept }'#13#10));
+  Assert.AreEqual(0, Integer(Length(Findings)));
+end;
+
+procedure TRuleEngineTests.UnknownRuleIdWithoutSuggestion;
+var
+  Findings: TArray<TRuleFinding>;
+begin
+  Findings := TRuleAssert.Findings(TMarkerRule.Create, SourceWith('  X := 1; // lsp-ignore: voellig-anders'#13#10));
+  Assert.AreEqual(1, Integer(Length(Findings)));
+  Assert.AreEqual(UnknownRuleIdRuleId, Findings[0].RuleId);
+  Assert.AreEqual(0, Integer(Length(Findings[0].Fixes)));
+  Assert.IsTrue(Pos('wirkt nicht', Findings[0].Message) > 0, Findings[0].Message);
+  // Kennungen der übergebenen Regeln, des Katalogs und "*" sind bekannt.
+  TRuleAssert.Silent(TMarkerRule.Create, SourceWith('  Marker := 1; // lsp-ignore: marker, *, with-statement'#13#10));
+end;
+
+procedure TRuleEngineTests.UnknownRuleIdCanBeSwitchedOff;
+begin
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TMarkerRule.Create,
+    SourceWith('  X := 1; // lsp-ignore: empty-exept'#13#10), '{"rules": {"unknown-rule-id": "off"}}'))));
+end;
+
+procedure TRuleEngineTests.SuggestsClosestRuleId;
+begin
+  Assert.AreEqual('empty-except', TSuppressions.Suggest('empty-exept', ['with-statement', 'empty-except']));
+  Assert.AreEqual('empty-except', TSuppressions.Suggest('EMPTY-EXCEPT', ['empty-except']));
+  Assert.AreEqual('', TSuppressions.Suggest('voellig-anders', ['with-statement', 'empty-except']));
+  // Kurze Kennungen: höchstens ein Zeichen daneben.
+  Assert.AreEqual('', TSuppressions.Suggest('abc', ['xyz']));
+  Assert.AreEqual('abd', TSuppressions.Suggest('abc', ['abd']));
 end;
 
 procedure TRuleEngineTests.PassesFixesThrough;
