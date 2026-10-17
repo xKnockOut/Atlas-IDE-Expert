@@ -560,7 +560,8 @@ type
     OutlineKindMethods, OutlineKindProperties, OutlineKindConstants, OutlineKindVariables, OutlineKindRoutines,
     OutlineKindEnumMembers, OutlineShowAll, OutlineUnimplemented, OutlineEmpty, OutlineNoServer, OutlineNoMatch,
     OutlineGoToDeclaration, OutlineGoToImplementation, OutlineFollowCursor, SettingsOutline,
-    SettingsOutlineAlphabetical, SettingsOutlineFollowCursor);
+    SettingsOutlineAlphabetical, SettingsOutlineFollowCursor, BreadcrumbsCommand, BreadcrumbsCurrent,
+    SettingsBreadcrumbs, SettingsBreadcrumbsShowUnit, BreadcrumbsEmpty);
 
   TAtlasStrings = class
   private class var
@@ -1625,7 +1626,8 @@ const
      'Alle zeigen', 'nicht implementiert', 'Keine Gliederung: Unit im Editor öffnen.',
      'Keine Gliederung: Der Atlas-Server läuft nicht.', 'Kein Eintrag passt zum Filter.', 'Zur Deklaration',
      'Zur Implementierung', 'Cursor folgen', 'Fenster „Gliederung“ mit Filter', 'Alphabetisch sortieren',
-     'Eintrag am Cursor hervorheben'),
+     'Eintrag am Cursor hervorheben', 'Brotkrumenleiste', 'aktuell', 'Brotkrumenleiste über dem Editor',
+     'Unit-Namen als erstes Glied zeigen', 'Keine Gliederung an dieser Stelle'),
     ('Enter to accept · Esc to close', '%d of %d', 'No matches for “%s”', 'Backspace widens the search',
      'No suggestions here', 'Esc closes', 'No details for this entry', 'Overload', 'Deprecated: %s', 'Deprecated.',
      'Inherited from %s', 'Inherited', 'optional, default %s', 'No overload with %d parameters.', '… %d more',
@@ -2611,7 +2613,8 @@ const
      'Properties', 'Constants', 'Variables', 'Routines', 'Enum values', 'Show all', 'not implemented',
      'No outline: open a unit in the editor.', 'No outline: the Atlas server is not running.',
      'No entry matches the filter.', 'Go to declaration', 'Go to implementation', 'Follow cursor',
-     'Outline window with filter', 'Sort alphabetically', 'Highlight the entry at the cursor'));
+     'Outline window with filter', 'Sort alphabetically', 'Highlight the entry at the cursor', 'Breadcrumbs',
+     'current', 'Breadcrumbs above the editor', 'Show the unit name as first item', 'No outline at this position'));
 
 { TAtlasStrings }
 

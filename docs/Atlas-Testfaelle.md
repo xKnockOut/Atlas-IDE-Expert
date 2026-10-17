@@ -2043,3 +2043,22 @@ Voraussetzung für EX2 bis EX7: mindestens eine Einstellung trägt `x-experiment
 | GL12 | Server beenden | Hinweis „Der Atlas-Server läuft nicht“; nach dem Neustart des Servers kommt die Gliederung wieder |
 | GL13 | Kontextmenü › Cursor folgen aus | Cursorbewegung ändert die Auswahl nicht mehr (`outline.followCursor`) |
 | GL14 | `outline.enabled` aus | Fenster schließt; Eintrag im Atlas-Menü und Palettenbefehl fehlen |
+
+## Brotkrumenleiste mit Sprungmenüs (#590)
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| BK1 | uKundeForm öffnen, Caret in die lokale Prozedur `Pruefe` in `TfrmKunde.btnSpeichernClick` | Leiste über dem Editor: `TfrmKunde › btnSpeichernClick › Pruefe` mit Badges; mit `editor.breadcrumbsShowUnit` steht `uKundeForm` davor |
+| BK2 | Caret in die uses-Klausel, dann nach initialization | Leiste zeigt `uses` bzw. `initialization` |
+| BK3 | Caret im interface auf eine Methodendeklaration | Pfad endet bei Typ › Methode |
+| BK4 | Klick auf `btnSpeichernClick` | Menü unter dem Glied mit allen Methoden von TfrmKunde in Quelltextreihenfolge, btnSpeichernClick gewählt und „aktuell“ |
+| BK5 | Im Menü `sp` tippen, Enter | Nur btnSpeichernClick, SpeichereAdresse, SpaltenBreite; Enter springt zur Implementierung |
+| BK6 | Menü erneut, Methode wählen, Umschalt+Enter; dann eine Methode ohne Rumpf mit Enter | Erst zur Deklaration; ohne Rumpf ebenfalls zur Deklaration |
+| BK7 | Klick auf den Typ | Menü mit allen Typen der Unit |
+| BK8 | Strg+Umschalt+., dann ←, ↓, Esc | Letztes Glied umrahmt; ← wählt das vorige; ↓ öffnet dessen Menü; Esc in der Leiste führt in den Editor zurück |
+| BK9 | In einer Unit mit 5 000 Zeilen den Caret schnell bewegen (Einfrier-Wächter #501 an) | Leiste folgt, keine Serveranfrage im Protokoll, keine Hänger-Meldung |
+| BK10 | Syntaxfehler einbauen, kurz warten | Leiste zeigt weiter den letzten gültigen Stand |
+| BK11 | Fenster schmal ziehen | Vorn erscheint „…“, das letzte Glied bleibt; die Höhe der Leiste ändert sich nie |
+| BK12 | Zweites Editorfenster öffnen (Ansicht › Neues Editorfenster) | Auch dort eine Leiste |
+| BK13 | .txt-Datei aktivieren; Server beenden | Hinweis „Keine Gliederung an dieser Stelle“ bzw. „Der Atlas-Server läuft nicht“, Höhe unverändert |
+| BK14 | `editor.breadcrumbs` aus | Leisten verschwinden, Strg+Umschalt+. ist frei, Palettenbefehl fehlt |

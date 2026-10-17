@@ -290,6 +290,8 @@ begin
       Id := TAtlasTextId.PeekDefinitionCommand;
     TAtlasKeyFunction.PeekReferences:
       Id := TAtlasTextId.PeekReferencesCommand;
+    TAtlasKeyFunction.Breadcrumbs:
+      Id := TAtlasTextId.BreadcrumbsCommand;
   else
     Id := TAtlasTextId.KeyMapUnitSearchIde;
   end;

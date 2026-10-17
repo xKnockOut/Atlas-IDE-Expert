@@ -499,6 +499,10 @@
         </DCCReference>
         <DCCReference Include="Source\IDE\Outline\Atlas.IDE.Outline.Window.pas"/>
         <DCCReference Include="Source\IDE\Outline\Atlas.IDE.Outline.Service.pas"/>
+        <DCCReference Include="Source\IDE\Outline\Atlas.IDE.Outline.Cache.pas"/>
+        <DCCReference Include="Source\Core\Outline\Atlas.Core.Outline.Breadcrumbs.pas"/>
+        <DCCReference Include="Source\UI\Outline\Atlas.UI.Outline.Breadcrumbs.pas"/>
+        <DCCReference Include="Source\IDE\Outline\Atlas.IDE.Outline.Breadcrumbs.pas"/>
         <DCCReference Include="Source\IDE\Notes\Atlas.IDE.Notes.Service.pas"/>
         <DCCReference Include="Source\IDE\Notes\Atlas.IDE.Notes.Gutter.pas"/>
         <DCCReference Include="Source\Core\Bookmarks\Atlas.Core.Bookmarks.Store.pas"/>

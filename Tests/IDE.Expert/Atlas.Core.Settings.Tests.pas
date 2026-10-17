@@ -36,6 +36,8 @@ type
     /// <summary>Gliederungsfenster (#537): an, Quelltextreihenfolge, Cursor folgen; Speichern und Laden.</summary>
     [Test]
     procedure OutlineOptions;
+    [Test]
+    procedure BreadcrumbsOptions;
     /// <summary>Erzeugen-Menü (#719): Vorgaben, Normalisieren, Speichern und Laden.</summary>
     [Test]
     procedure GenerateMenuOptions;
@@ -1121,6 +1123,30 @@ begin
   Assert.IsFalse(Loaded.Outline);
   Assert.IsTrue(Loaded.OutlineAlphabetical);
   Assert.IsFalse(Loaded.OutlineFollowCursor);
+end;
+
+procedure TAtlasPluginSettingsTests.BreadcrumbsOptions;
+var
+  Settings, Loaded: TAtlasPluginSettings;
+  Store: IAtlasSettingsStore;
+begin
+  Settings := TAtlasPluginSettings.Defaults;
+  Assert.IsTrue(Settings.Breadcrumbs);
+  Assert.IsFalse(Settings.BreadcrumbsShowUnit);
+  Assert.AreEqual($60BE, Settings.BreadcrumbsKey, 'Strg+Umschalt+.');
+  Settings.Breadcrumbs := False;
+  Settings.BreadcrumbsShowUnit := True;
+  Settings.BreadcrumbsKey := 0;
+  Store := TMemoryStore.Create;
+  Settings.Save(Store);
+  Loaded := TAtlasPluginSettings.Defaults;
+  Loaded.Load(Store);
+  Assert.IsFalse(Loaded.Breadcrumbs);
+  Assert.IsTrue(Loaded.BreadcrumbsShowUnit);
+  Assert.AreEqual(0, Loaded.BreadcrumbsKey);
+  Loaded.BreadcrumbsKey := -5;
+  Loaded.Normalize;
+  Assert.AreEqual(0, Loaded.BreadcrumbsKey);
 end;
 
 { TAtlasSettingsScopesTests }
