@@ -11,7 +11,7 @@ function AtlasSchemaJson: string;
 implementation
 
 const
-  Lines: array[0..1194] of string = (
+  Lines: array[0..1199] of string = (
     '{',
     '  "$schema": "http://json-schema.org/draft-07/schema#",',
     '  "title": "Atlas-Konfiguration",',
@@ -468,13 +468,18 @@ const
     '          "type": "boolean",',
     '          "default": true,',
     '          "description": "Nach \"TObjectList<\" nur Typen vorschlagen, die die Constraints des Typparameters erfüllen (class, record, constructor, Interface oder Klasse), mit Überschrift „T: class · n' + 'ur Klassen“ und den ausgeblendeten Arten in der Fußzeile."',
+    '        },',
+    '        "nameSuggestions": {',
+    '          "type": "boolean",',
+    '          "default": true,',
+    '          "description": "An der Namensposition einer Deklaration mit bekanntem Typ (var-Abschnitt, Inline-var, Feld, Parameter) Namen aus dem Typ vorschlagen: TCustomerList ergibt Customers, Customer' + 'List und List, mit F, A bzw. L, wenn mindestens 60 % der Deklarationen dieser Art im Projekt das Präfix tragen oder die Projektdatei .atlas es unter naming vorgibt."',
     '        }',
     '      },',
     '      "x-scope": "global",',
     '      "x-area": "completion",',
     '      "x-page": "Vervollständigung",',
     '      "x-control": "Auswahl",',
-    '      "x-issue": "#31, #188, #229, #450, #466, #480, #489"',
+    '      "x-issue": "#31, #188, #229, #450, #452, #466, #480, #489"',
     '    },',
     '    "refactoring": {',
     '      "type": "object",',

@@ -87,6 +87,24 @@ type
     Positions: TArray<TTextPosition>;
   end;
 
+  /// <summary>Art einer Deklaration für die Präfix-Konvention des Projekts (#452).</summary>
+  TNamingKind = (Field, Parameter, Local);
+
+  /// <summary>Deklarationen einer Art und wie viele davon das übliche Präfix tragen (F, A bzw. L vor einem
+  /// Großbuchstaben).</summary>
+  TNamingCount = record
+    Total: Integer;
+    Prefixed: Integer;
+  end;
+
+  TNamingCounts = array[TNamingKind] of TNamingCount;
+
+const
+  /// <summary>Übliche Präfixe je Art (#452): F für Felder, A für Parameter, L für lokale Variablen.</summary>
+  NamingPrefixes: array[TNamingKind] of string = ('F', 'A', 'L');
+
+type
+
   /// <summary>Nachschlagetabelle Name → Positionen in TUnitIndex.Symbols (Diagnoselog 15.10.2026): die
   /// Namensauflösung suchte jeden Bezeichner linear in allen Units der uses-Liste, bei großen Units
   /// (Winapi.Windows, Vcl.Controls) mehrere Sekunden je Datei. Gilt nur für das Symbol-Array, aus dem
@@ -120,6 +138,9 @@ type
     /// <summary>Hat einen initialization- oder finalization-Abschnitt (#284); solche Units
     /// entfernt "ungenutzte uses entfernen" nie, weil sie etwas registrieren können.</summary>
     HasInitialization: Boolean;
+    /// <summary>Felder, Parameter und lokale Variablen der Unit mit Präfix gezählt (#452); daraus ermittelt
+    /// die Vervollständigung die Konvention des Projekts.</summary>
+    Naming: TNamingCounts;
     /// <summary>Deklarationen aus Zweigen, die unter der aktiven Konfiguration nicht gelten (#476):
     /// getrennt von Symbols, damit Namensauflösung, Referenzen und Prüfregeln sie nicht sehen;
     /// nur die Vervollständigung zeigt sie abgeschwächt.</summary>

@@ -2156,3 +2156,15 @@ Voraussetzung für EX2 bis EX7: mindestens eine Einstellung trägt `x-experiment
 | MA9 | Automatisches uses in den Plugin-Optionen aus, MA1 | Deklaration und Rumpf entstehen trotzdem |
 | MA10 | `refactoring.createMethod` aus | Weder Eintrag nach `(` noch mit Strg+Leertaste noch Code-Aktion |
 
+## Namensvorschläge für Variablen (#452)
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| NV1 | Projekt, dessen Felder überwiegend mit `F` beginnen; in einer Klasse unter `private` die Zeile `: TCustomerList;` tippen, Cursor an den Zeilenanfang vor `:`, Strg+Leertaste | Nur `FCustomers`, `FCustomerList`, `FList` mit Symbol `fd`, Typ TCustomerList daneben; Enter setzt den Namen vor `:` |
+| NV2 | Projekt ohne F-Konvention (weniger als 60 % der Felder mit `F`), NV1 wiederholen | `Customers`, `CustomerList`, `List` ohne Präfix |
+| NV3 | In einem var-Abschnitt einer Methode mit Parameter `List: Integer` und lokaler Variable `Customers` die Zeile `Cu: TCustomerList;` tippen, Cursor hinter `Cu`, Strg+Leertaste | `Customers2`, `CustomerList`, `List2` mit Symbol `va`; mit überwiegend `L`-Präfixen im Projekt `LCustomers` … |
+| NV4 | Parameter `procedure Laden(const : TList<TOrder>);`, Cursor vor `:` | `Orders`, `OrderList`, `List` (mit `A`, wenn das Projekt es überwiegend nutzt) |
+| NV5 | `var : TCustomer := nil;` im Rumpf, Cursor vor `:` | `Customer` (bzw. `LCustomer`) |
+| NV6 | Projekt ohne F-Konvention, in `.atlas` `"naming": {"field": "F"}` eintragen und speichern, NV1 | Nach höchstens 2 s `FCustomers`, `FCustomerList`, `FList`; mit `"field": ""` ohne Präfix trotz F-Konvention |
+| NV7 | `completion.nameSuggestions` aus, NV1 | Keine Namensvorschläge; die Vervollständigung verhält sich wie vorher |
+

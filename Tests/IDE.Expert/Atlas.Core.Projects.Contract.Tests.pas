@@ -84,11 +84,19 @@ begin
   Changed := Sample;
   Changed.LibraryPaths := ['$(BDSLIB)\$(Platform)\release'];
   Assert.AreNotEqual(Base.Key, Changed.Key);
+  // Präfix-Vorgabe der Projektdatei (#452), auch eine leere.
+  Changed := Sample;
+  Changed.HasNaming[TAtlasProjectNamingKind.Field] := True;
+  Assert.AreNotEqual(Base.Key, Changed.Key);
+  Base := Changed;
+  Changed.Naming[TAtlasProjectNamingKind.Field] := 'F';
+  Assert.AreNotEqual(Base.Key, Changed.Key);
 end;
 
 procedure TAtlasProjectContextTests.WritesJson;
 var
   Json: TJSONObject;
+  Context: TAtlasProjectContext;
 begin
   Json := Sample.ToJson;
   try
@@ -99,6 +107,18 @@ begin
     Assert.AreEqual('["System","Vcl"]', Json.GetValue<TJSONArray>('namespaces').ToJSON);
     // Ohne Bibliothekspfade nimmt der Server die der Installation.
     Assert.IsNull(Json.FindValue('libraryPaths'));
+    Assert.IsNull(Json.FindValue('naming'));
+  finally
+    Json.Free;
+  end;
+  // Präfix-Vorgaben der Projektdatei (#452): nur die gesetzten, auch leer.
+  Context := Sample;
+  Context.HasNaming[TAtlasProjectNamingKind.Field] := True;
+  Context.Naming[TAtlasProjectNamingKind.Field] := 'F';
+  Context.HasNaming[TAtlasProjectNamingKind.Local] := True;
+  Json := Context.ToJson;
+  try
+    Assert.AreEqual('{"field":"F","local":""}', Json.GetValue<TJSONObject>('naming').ToJSON);
   finally
     Json.Free;
   end;

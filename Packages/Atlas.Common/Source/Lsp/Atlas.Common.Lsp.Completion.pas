@@ -104,6 +104,9 @@ type
   /// Angebot (bekannter Name, kein Aufruf, abgeschaltet).</summary>
   TCompletionCreateFunc = reference to function(ARequest: TCompletionRequest; out ATitle, ADetail: string;
     out AEdits: TArray<TTextEdit>): Boolean;
+  /// <summary>Präfix für Namensvorschläge (#452) der Art AKind im Projekt von AUri: Vorgabe der Projektdatei,
+  /// sonst nach der Zählung im Index (TLspCompletion.NamingPrefix); '' ohne.</summary>
+  TCompletionNamingFunc = reference to function(const AUri: string; AKind: TNamingKind): string;
 
   /// <summary>Ergebnis eines Falls der Vervollständigung (Code-Review S-01): weiter mit dem nächsten Fall oder
   /// fertig mit TCompletionAnswer.Exclusive.</summary>
@@ -158,6 +161,7 @@ type
     FPostfixFor: TPostfixOptionsFunc;
     FWithFor: TCompletionWithFunc;
     FCreateFor: TCompletionCreateFunc;
+    FNamingFor: TCompletionNamingFunc;
     FHintsFor: TDocHintsProvider;
     FNotify: TCompletionNotifyProc;
     FLog: TCompletionLogProc;
@@ -341,6 +345,14 @@ type
     class function SenderItemsFromForm(ARequest: TCompletionRequest; const AForms: TCompletionFormFunc;
       out AItems: TCompletionItems): Boolean; overload; static;
     class function KindOf(AKind: TIndexSymbolKind): Integer; static;
+    /// <summary>Präfix F, A bzw. L für AKind, wenn mindestens 60 % dieser Deklarationen in den Projekt-Units
+    /// von AIndex es tragen (#452); sonst ''.</summary>
+    class function NamingPrefix(const AIndex: ISymbolIndex; AKind: TNamingKind): string; static;
+    /// <summary>Namensvorschläge an der Namensposition einer Deklaration (#452): Namen aus dem Typ mit APrefix,
+    /// vergebene mit Ziffer. False, wenn keine Namensposition mit bekanntem Typ vorliegt oder
+    /// completion.nameSuggestions aus ist.</summary>
+    class function NameItems(ARequest: TCompletionRequest; const ANamingFor: TCompletionNamingFunc;
+      out AItems: TCompletionItems): Boolean; static;
     /// <summary>Kontextabhängige Code-Vorlagen (#51) für die Zeile von APosition: prop, changed, create, free.
     /// Mit ASnippetSupport als LSP-Snippet, sonst als Klartext ohne Platzhalter.</summary>
     class function ContextItems(const AIndex: ISymbolIndex; const ANamespaces: TArray<string>; const AText: string;
@@ -378,6 +390,8 @@ type
     property WithFor: TCompletionWithFunc read FWithFor write FWithFor;
     /// <summary>„Methode aus Aufruf anlegen“ (#472); ohne Zuweisung kein Eintrag.</summary>
     property CreateFor: TCompletionCreateFunc read FCreateFor write FCreateFor;
+    /// <summary>Präfix der Namensvorschläge (#452); ohne gilt NamingPrefix über den Index der Anfrage.</summary>
+    property NamingFor: TCompletionNamingFunc read FNamingFor write FNamingFor;
     /// <summary>Anzeige von XMLDoc (#654) als data.atlas.xmlDoc; ohne Zuweisung fehlt das Feld.</summary>
     property HintsFor: TDocHintsProvider read FHintsFor write FHintsFor;
     /// <summary>Für Teilergebnisse über $/progress (#616); ohne Zuweisung kommt alles in der Antwort.</summary>
@@ -416,6 +430,7 @@ uses
   Atlas.Common.Editing.CaseCompletion,
   Atlas.Common.Editing.DeclareUnknown,
   Atlas.Common.Editing.CreateMethod,
+  Atlas.Common.Editing.NameSuggestions,
   Atlas.Common.Editing.InterfaceStubs,
   Atlas.Common.Dfm.Contract,
   Atlas.Common.Dfm.Parser,
@@ -1743,6 +1758,124 @@ begin
   Result := True;
 end;
 
+class function TLspCompletion.NamingPrefix(const AIndex: ISymbolIndex; AKind: TNamingKind): string;
+var
+  Units: TArray<TUnitIndex>;
+  Count: TNamingCount;
+  Index: Integer;
+begin
+  Result := '';
+  if AIndex = nil then
+    Exit;
+  Count := Default(TNamingCount);
+  Units := AIndex.Units;
+  for Index := 0 to High(Units) do
+    if not Units[Index].Library_ then
+    begin
+      Inc(Count.Total, Units[Index].Naming[AKind].Total);
+      Inc(Count.Prefixed, Units[Index].Naming[AKind].Prefixed);
+    end;
+  if TNameSuggestions.UsesPrefix(Count) then
+    Result := NamingPrefixes[AKind];
+end;
+
+/// <summary>Namen, die an der Namensposition ASite schon vergeben sind: sichtbare Namen (lokal, eigene Klasse,
+/// eigene Unit), bei Feldern die Mitglieder der Klasse, bei Parametern die übrigen Parameter. Der Name, der an
+/// der Stelle selbst steht, zählt nicht.</summary>
+function TakenNames(ARequest: TCompletionRequest; const ASite: TNameSite): TArray<string>;
+var
+  Own, Container: string;
+  Candidate: TResolvedSymbol;
+  Symbol: TIndexSymbol;
+  Node, Child: TSyntaxNode;
+  Index: Integer;
+  Name: string;
+begin
+  Result := nil;
+  Own := '';
+  if ComparePositions(ASite.NameRange.StartPos, ASite.NameRange.EndPos) <> 0 then
+    Own := Copy(ARequest.LineText(ASite.NameRange.StartPos.Line), ASite.NameRange.StartPos.Character + 1,
+      ASite.NameRange.EndPos.Character - ASite.NameRange.StartPos.Character);
+  if ARequest.Resolver <> nil then
+    for Candidate in ARequest.Resolver.OwnScopeCandidates(ARequest.Tree, ARequest.FileName, ASite.Offset) do
+      Result := Result + [Candidate.Name];
+  Node := ARequest.Tree.Root;
+  while Node <> nil do
+  begin
+    Child := nil;
+    for Index := 0 to Node.ChildCount - 1 do
+      if (Node[Index].StartOffset <= ASite.Offset) and (ASite.Offset <= Node[Index].EndOffset) then
+        Child := Node[Index];
+    if Child = nil then
+      Break;
+    Node := Child;
+  end;
+  if ASite.Kind = TNamingKind.Parameter then
+  begin
+    while (Node <> nil) and (Node.Kind <> TSyntaxKind.Parameters) do
+      Node := Node.Parent;
+    if Node <> nil then
+      for Index := 0 to Node.ChildCount - 1 do
+        for Name in Node[Index].Name.Split([',']) do
+          if Trim(Name) <> '' then
+            Result := Result + [Trim(Name)];
+  end
+  else if (ASite.Kind = TNamingKind.Field) and not ASite.Global then
+  begin
+    while (Node <> nil) and not (Node.Kind in [TSyntaxKind.ClassType, TSyntaxKind.ObjectType,
+      TSyntaxKind.RecordType, TSyntaxKind.HelperType]) do
+      Node := Node.Parent;
+    if (Node <> nil) and (Node.Parent <> nil) then
+    begin
+      Container := Node.Parent.Name;
+      for Symbol in ARequest.UnitIndex.Symbols do
+        if (Symbol.Container <> '') and SameText(Symbol.Container.Substring(Symbol.Container.LastIndexOf('.') + 1),
+          Container) then
+          Result := Result + [Symbol.Name];
+    end;
+  end;
+  if Own = '' then
+    Exit;
+  for Index := High(Result) downto 0 do
+    if SameText(Result[Index], Own) then
+      Delete(Result, Index, 1);
+end;
+
+class function TLspCompletion.NameItems(ARequest: TCompletionRequest; const ANamingFor: TCompletionNamingFunc;
+  out AItems: TCompletionItems): Boolean;
+var
+  Site: TNameSite;
+  Prefix, Name: string;
+  Item: TCompletionItem;
+begin
+  AItems := Default(TCompletionItems);
+  Result := False;
+  if not ARequest.Settings.NameSuggestions or (ARequest.Tree = nil) or
+    not TNameSuggestions.Site(ARequest.Tree, ARequest.Position, Site) then
+    Exit;
+  if Site.Global then
+    Prefix := ''
+  else if Assigned(ANamingFor) then
+    Prefix := ANamingFor(ARequest.Uri, Site.Kind)
+  else
+    Prefix := NamingPrefix(ARequest.Index, Site.Kind);
+  for Name in TNameSuggestions.Suggest(Site.TypeText, Prefix, TakenNames(ARequest, Site)) do
+  begin
+    Item := Default(TCompletionItem);
+    Item.Name := Name;
+    if Site.Kind = TNamingKind.Field then
+      Item.Kind := KindField
+    else
+      Item.Kind := KindVariable;
+    Item.Detail := Site.TypeText;
+    Item.Fits := True;
+    Item.HasTextEdit := True;
+    Item.TextEdit := TRuleEdit.Create(Site.NameRange, Name);
+    AItems.Items := AItems.Items + [Item];
+  end;
+  Result := Length(AItems.Items) > 0;
+end;
+
 /// <summary>Hängt ACase an ACases an.</summary>
 procedure AddCase(var ACases: TArray<TCompletionCase>; const ACase: TCompletionCase);
 begin
@@ -1822,6 +1955,14 @@ begin
       Result := TCompletionOutcome.Next;
       if Assigned(FWithFor) and WithItem(ARequest, FWithFor, Item) then
         AAnswer.Hints := AAnswer.Hints + [Item];
+    end);
+  // Namensvorschläge (#452): an der Namensposition einer Deklaration mit bekanntem Typ nur die Namen.
+  AddCase(FTreeCases,
+    function(ARequest: TCompletionRequest; AAnswer: TCompletionAnswer): TCompletionOutcome
+    begin
+      Result := TCompletionOutcome.Next;
+      if NameItems(ARequest, FNamingFor, AAnswer.Exclusive) then
+        Result := TCompletionOutcome.Answered;
     end);
   // Methoden überschreiben (#443) vor der allgemeinen Vervollständigung.
   AddCase(FTreeCases,

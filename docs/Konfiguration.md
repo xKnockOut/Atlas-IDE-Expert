@@ -81,6 +81,7 @@ Jeder Schlüssel hat genau einen Ort (Spalte „Ort“): Projekt-Schlüssel steh
 | `completion.keywords` | global (settings.json) | boolean | `true` |  | Schlüsselwörter passend zur Stelle vorschlagen (in Anweisungen begin, try …, im Klassenrumpf property, private …, nach ":" string, array …), sobald ein Zeichen getippt ist. |
 | `completion.postfixTemplates` | global (settings.json) | boolean | `true` |  | Postfix-Vorlagen hinter einem Ausdruck anbieten: Liste.for wird zu for var Item in Liste do, FKunde.notnil zu if Assigned(FKunde) then, dazu tryf, ifa, fmt, nil, not, if, forin, free, try, var, exit und eigene Vorlagen mit "postfix: true". |
 | `completion.genericConstraints` | global (settings.json) | boolean | `true` |  | Nach "TObjectList<" nur Typen vorschlagen, die die Constraints des Typparameters erfüllen (class, record, constructor, Interface oder Klasse), mit Überschrift „T: class · nur Klassen“ und den ausgeblendeten Arten in der Fußzeile. |
+| `completion.nameSuggestions` | global (settings.json) | boolean | `true` |  | An der Namensposition einer Deklaration mit bekanntem Typ (var-Abschnitt, Inline-var, Feld, Parameter) Namen aus dem Typ vorschlagen: TCustomerList ergibt Customers, CustomerList und List, mit F, A bzw. L, wenn mindestens 60 % der Deklarationen dieser Art im Projekt das Präfix tragen oder die Projektdatei .atlas es unter naming vorgibt. |
 
 ## refactoring
 
