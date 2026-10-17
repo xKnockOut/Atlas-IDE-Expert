@@ -50,6 +50,7 @@
     "editor.linkedEditing": true,
     "editor.stickyScroll": true,
     "refactoring.inline": true,
-    "refactoring.moveClass": true
+    "refactoring.moveClass": true,
+    "refactoring.unitRenameFollowUp": "ask"
   }
 }

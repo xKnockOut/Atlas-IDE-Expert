@@ -203,6 +203,8 @@ begin
     Result := TAtlasStrings.Text(TAtlasTextId.NotificationsSourceOpenBuild)
   else if SameText(ASource, TAtlasNotificationSources.Hidden) then
     Result := TAtlasStrings.Text(TAtlasTextId.NotificationsSourceHidden)
+  else if SameText(ASource, TAtlasNotificationSources.UnitRename) then
+    Result := TAtlasStrings.Text(TAtlasTextId.UnitRenameTitle)
   else
     Result := ASource;
 end;

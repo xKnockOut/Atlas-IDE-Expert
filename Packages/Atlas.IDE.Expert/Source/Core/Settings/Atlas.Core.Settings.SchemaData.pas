@@ -11,7 +11,7 @@ function AtlasSchemaJson: string;
 implementation
 
 const
-  Lines: array[0..1240] of string = (
+  Lines: array[0..1249] of string = (
     '{',
     '  "$schema": "http://json-schema.org/draft-07/schema#",',
     '  "title": "Atlas-Konfiguration",',
@@ -592,6 +592,15 @@ const
     '          "description": "Code-Aktion „Klasse in eigene Unit verschieben …“ auf der ersten Zeile einer Klassen- oder Record-Deklaration: Die Deklaration samt Attributen, Kommentar und Methodenrümpfen ' + 'kommt in eine neue Unit neben der alten (Name aus dem Klassennamen ohne T, im Dialog änderbar). Die neue Unit steht danach in .dpr bzw. .dpk und .dproj; ihre uses entstehen aus den benötigten Namen, u' + 'nd alle Units, die die Klasse verwenden, binden sie ein. Nicht angeboten bei Zugriff auf Namen aus dem implementation-Teil der alten Unit, Kreisverweis, Formularklassen und bedingter Übersetzung.",',
     '          "x-experimental": true,',
     '          "x-issue": "#103"',
+    '        },',
+    '        "unitRenameFollowUp": {',
+    '          "type": "string",',
+    '          "enum": ["ask", "off"],',
+    '          "default": "off",',
+    '          "description": "Nach dem Umbenennen einer Unit in der Projektverwaltung (die IDE passt nur .dpr und .dproj an) meldet Atlas in der Benachrichtigungszentrale, wie viele Units den alten Namen ' + 'noch verwenden, und bietet an, uses-Einträge und qualifizierte Bezeichner (Alt.TKlasse) im Projekt oder in der Projektgruppe nachzuziehen, mit Vorschau und rückgängig machbar. ask: anbieten; off: aus.' + '",',
+    '          "x-experimental": true,',
+    '          "x-offValue": "off",',
+    '          "x-issue": "#512"',
     '        },',
     '        "createMethod": {',
     '          "type": "boolean",',

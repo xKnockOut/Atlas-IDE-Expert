@@ -283,6 +283,9 @@ type
     InlineCode: Boolean;
     /// <summary>Code-Aktion „Klasse in eigene Unit verschieben“ (#103, experimentell).</summary>
     MoveClass: Boolean;
+    /// <summary>Nach dem Umbenennen einer Unit anbieten, uses und qualifizierte Bezeichner nachzuziehen (#512,
+    /// experimentell); "ask" = True, "off" = False.</summary>
+    UnitRenameFollowUp: Boolean;
     /// <summary>Methode aus Aufruf anlegen (#472).</summary>
     CreateMethod: Boolean;
     /// <summary>Abschnitt der neuen Methode in der eigenen Unit: private, protected oder public (#472).</summary>
@@ -684,6 +687,7 @@ begin
   Result.ResolveWith := True;
   Result.InlineCode := False;
   Result.MoveClass := False;
+  Result.UnitRenameFollowUp := False;
   Result.CreateMethod := True;
   Result.CreateMethodSection := 'private';
   Result.CreateMethodCaretInBody := False;
