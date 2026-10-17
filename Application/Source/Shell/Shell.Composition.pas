@@ -311,6 +311,8 @@ type
     /// <summary>"stringLiteral" für AUri; AMultiline nach Stil und Delphi-Version (#312).</summary>
     function StringLiteralFor(const AUri: string; out AMultiline: Boolean): TStringLiteralSettings;
     function FormatStyleFor(const AUri: string): TFormatStyle;
+    /// <summary>Formatstil mit .editorconfig, ohne Editor-Optionen (#43); für Schnellbefehle und try/finally.</summary>
+    function ResolvedFormatStyleFor(const AUri: string): TFormatStyle;
     function RuleContextFor(const AUri: string; out AContext: TRuleCheckContext): Boolean;
     /// <summary>Namespaces aller Projekte an die Features weitergeben, Diagnosen neu prüfen.</summary>
     procedure ProjectLoaded;
@@ -766,17 +768,7 @@ begin
   FSlashMenu.DelphiVersionFor := DelphiVersionFor;
   FSlashMenu.SlashHost := SlashHost;
   // Einrückung wie beim Formatieren (#43), ohne Editor-Optionen: .editorconfig und "format".
-  FSlashMenu.FormatStyleFor :=
-    function(const AUri: string): TFormatStyle
-    begin
-      Result := TLspFormatting.Resolve(nil, TDocumentUris.ToPath(AUri), FormatStyleFor(AUri),
-        function(const AFileName: string; out AText: string): Boolean
-        begin
-          Result := FileExists(AFileName);
-          if Result then
-            AText := TFile.ReadAllText(AFileName);
-        end);
-    end;
+  FSlashMenu.FormatStyleFor := ResolvedFormatStyleFor;
   FSelectionRanges := TLspSelectionRanges.Create(FDocuments);
   FSelectionRanges.Attach(FDispatcher);
 end;
@@ -1057,6 +1049,8 @@ begin
     end;
   FCodeActions.StringLiteralFor := StringLiteralFor;
   FCodeActions.DocCommentsFor := DocCommentsFor;
+  // try/finally rückt wie das Formatieren ein (#42, #43).
+  FCodeActions.FormatStyleFor := ResolvedFormatStyleFor;
   FCodeActions.MemberOrderFor :=
     function(const AUri: string): TMemberOrderSettings
     var
@@ -2865,6 +2859,17 @@ end;
 function TServerComposition.FormatStyleFor(const AUri: string): TFormatStyle;
 begin
   Result := SettingsFor(AUri).Formatting;
+end;
+
+function TServerComposition.ResolvedFormatStyleFor(const AUri: string): TFormatStyle;
+begin
+  Result := TLspFormatting.Resolve(nil, TDocumentUris.ToPath(AUri), FormatStyleFor(AUri),
+    function(const AFileName: string; out AText: string): Boolean
+    begin
+      Result := FileExists(AFileName);
+      if Result then
+        AText := TFile.ReadAllText(AFileName);
+    end);
 end;
 
 function TServerComposition.RuleContextFor(const AUri: string; out AContext: TRuleCheckContext): Boolean;

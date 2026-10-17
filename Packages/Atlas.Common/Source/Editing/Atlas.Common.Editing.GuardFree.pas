@@ -71,6 +71,10 @@ type
     /// <summary>Änderung für AScope; im Text steht "$0" an der Cursorstelle.</summary>
     class function Edit(const AText: string; const AOffer: TGuardOffer; AScope: TGuardScope;
       AStyle: TCompletionFreeStyle): TTextEdit; static;
+    /// <summary>Deklarierter Typ der lokalen Variable AName der Routine um Zeile ALine, deklariert vor ALine
+    /// (var-Abschnitt oder Inline-Variable); False, wenn sie dort nicht lokal ist, etwa ein Feld (#42).</summary>
+    class function LocalVariableType(ATree: TSyntaxTree; const AText, AName: string; ALine: Integer;
+      out AType: string): Boolean; static;
   end;
 
 implementation
@@ -306,6 +310,20 @@ begin
         AOffer.CanEnclose := True;
   end;
   Result := True;
+end;
+
+class function TGuardFree.LocalVariableType(ATree: TSyntaxTree; const AText, AName: string; ALine: Integer;
+  out AType: string): Boolean;
+var
+  Routine: TSyntaxNode;
+begin
+  AType := '';
+  Result := False;
+  if (ATree = nil) or (ATree.Root = nil) then
+    Exit;
+  Routine := RoutineAt(ATree.Root, ALine);
+  if Routine <> nil then
+    Result := LocalType(Routine, AText, AName, ALine - 1, AType);
 end;
 
 class function TGuardFree.Edit(const AText: string; const AOffer: TGuardOffer; AScope: TGuardScope;
