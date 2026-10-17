@@ -53,6 +53,7 @@
     "refactoring.moveClass": true,
     "refactoring.unitRenameFollowUp": "ask",
     "editor.smartPaste": "both",
-    "completion.typeConversion": "helper"
+    "completion.typeConversion": "helper",
+    "completion.assignAllFields": true
   }
 }

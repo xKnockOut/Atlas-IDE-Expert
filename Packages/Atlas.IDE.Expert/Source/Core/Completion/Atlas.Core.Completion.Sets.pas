@@ -11,6 +11,9 @@
 // Enter entfernt das getippte Wort (SetRange) und übernimmt die AdditionalEdits der angehakten Einträge in
 // Ordinal-Reihenfolge. Einfügungen an derselben Stelle (Abschnitt, Kommentar je Interface, Deklarationen bzw.
 // Rümpfe) werden zu einer zusammengefasst, gleiche Texte nur einmal.
+//
+// Alle Felder zuweisen (#491) mit mehr als 15 Feldern: Übernehmen des Eintrags macht aus seinen Assignments
+// dieselbe Liste (AssignItems), alle angehakt; Enter entfernt den Ausdruck und setzt die angehakten Zeilen ein.
 
 interface
 
@@ -30,6 +33,10 @@ type
     /// <summary>Fasst Änderungen mit gleichem Bereich zusammen (#466): Texte in der Reihenfolge des ersten
     /// Auftretens, gleiche nur einmal.</summary>
     class function Merge(const AEdits: TArray<TAtlasTextEdit>): TArray<TAtlasTextEdit>; static;
+    /// <summary>Liste für „Alle Felder zuweisen“ (#491): je Zeile aus AItem.Assignments ein angehakter Eintrag
+    /// (Batch, Assign); SetRange ist der textEdit von AItem (der Ausdruck mit Punkt), jede Zeile kommt an dessen
+    /// Ende. Leer ohne Assignments.</summary>
+    class function AssignItems(const AItem: TAtlasCompletionItem): TAtlasCompletionItems; static;
   end;
 
 implementation
@@ -136,6 +143,46 @@ begin
   end;
 end;
 
+class function TAtlasCompletionSets.AssignItems(const AItem: TAtlasCompletionItem): TAtlasCompletionItems;
+var
+  Index: Integer;
+  Range, Insert: TAtlasTextEdit;
+  Title: string;
+begin
+  Result := nil;
+  if not AItem.HasTextEdit then
+    Exit;
+  Range := AItem.TextEdit;
+  Range.NewText := '';
+  Insert := Range;
+  Insert.StartLine := Range.EndLine;
+  Insert.StartCharacter := Range.EndCharacter;
+  // Überschrift mit dem Typ des Ausdrucks.
+  Title := AItem.Signature;
+  if Title = '' then
+    Title := AItem.Name;
+  SetLength(Result, Length(AItem.Assignments));
+  for Index := 0 to High(AItem.Assignments) do
+  begin
+    Result[Index] := Default(TAtlasCompletionItem);
+    Result[Index].Name := AItem.Assignments[Index].Name;
+    Result[Index].Signature := AItem.Assignments[Index].Detail;
+    Result[Index].Kind := TAtlasItemKind.Field;
+    Result[Index].Batch := True;
+    Result[Index].Assign := True;
+    Result[Index].Ordinal := Index + 1;
+    Result[Index].Checked := True;
+    Result[Index].SetOf := Title;
+    Result[Index].ExpectedType := Title;
+    Result[Index].Fits := True;
+    // Die Zusatzänderung ist kein uses-Eintrag.
+    Result[Index].UnitUsed := True;
+    Result[Index].SetRange := Range;
+    Insert.NewText := AItem.Assignments[Index].Text;
+    Result[Index].AdditionalEdits := [Insert];
+  end;
+end;
+
 class function TAtlasCompletionSets.CommitItem(const AItems: TAtlasCompletionItems): TAtlasCompletionItem;
 var
   Item, Chosen: TAtlasCompletionItem;
@@ -148,6 +195,8 @@ begin
     begin
       Result.Name := Item.SetOf;
       Result.Kind := TAtlasItemKind.Method;
+      // Erzeugt Code: die Zusatzänderungen gelten auch ohne automatische uses-Einträge.
+      Result.IsAction := True;
       Result.HasTextEdit := True;
       Result.TextEdit := Item.SetRange;
       Result.TextEdit.NewText := '';

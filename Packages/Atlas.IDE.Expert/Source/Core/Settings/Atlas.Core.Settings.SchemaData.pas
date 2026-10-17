@@ -11,7 +11,7 @@ function AtlasSchemaJson: string;
 implementation
 
 const
-  Lines: array[0..1258] of string = (
+  Lines: array[0..1265] of string = (
     '{',
     '  "$schema": "http://json-schema.org/draft-07/schema#",',
     '  "title": "Atlas-Konfiguration",',
@@ -504,6 +504,13 @@ const
     '          "x-experimental": true,',
     '          "x-offValue": "off",',
     '          "x-issue": "#490"',
+    '        },',
+    '        "assignAllFields": {',
+    '          "type": "boolean",',
+    '          "default": false,',
+    '          "description": "Hinter einem Record- oder Klassenausdruck mit Punkt am Anfang einer Anweisung (Opts.) steht „Alle Felder zuweisen (n)“ ganz oben: je öffentlich beschreibbarem Feld und jeder ' + 'Property eine Zeile Opts.Feld := Platzhalter; in Deklarationsreihenfolge, mit 0, '''', False, nil oder dem ersten Aufzählungswert als Vorgabe im Platzhalter-Modus. Felder, die die folgenden Zeilen sch' + 'on zuweisen, fallen weg. Bei mehr als 15 Feldern zuerst eine Liste mit Kontrollkästchen.",',
+    '          "x-experimental": true,',
+    '          "x-issue": "#491"',
     '        },',
     '        "nameSuggestions": {',
     '          "type": "boolean",',

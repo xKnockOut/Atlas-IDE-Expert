@@ -851,6 +851,20 @@ var
 begin
   if not SelectedItem(Item) then
     Exit;
+  // Alle Felder zuweisen mit vielen Feldern (#491): erst die Liste mit Kontrollkästchen, Enter übernimmt.
+  if Length(Item.Assignments) > 0 then
+  begin
+    FItems := TAtlasCompletionSets.AssignItems(Item);
+    FToggled := True;
+    // Die Liste zeigt alle Felder, auch wenn hinter dem Punkt schon etwas getippt ist; späte Antworten der
+    // alten Anfrage gehören nicht mehr dazu.
+    FPrefix := '';
+    FChip := TAtlasChip.All;
+    Inc(FGeneration);
+    FLoading := False;
+    Refresh(False);
+    Exit;
+  end;
   if FUsage <> nil then
     FUsage.Record_(Item);
   Close;

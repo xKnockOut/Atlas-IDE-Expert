@@ -301,6 +301,7 @@
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.StringLiterals.pas"/>
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.PostfixTemplates.pas"/>
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.CaseCompletion.pas"/>
+        <DCCReference Include="Source\Editing\Atlas.Common.Editing.AssignFields.pas"/>
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.RoutineBody.pas"/>
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.RoutineLocals.pas"/>
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.MoveClass.pas"/>
