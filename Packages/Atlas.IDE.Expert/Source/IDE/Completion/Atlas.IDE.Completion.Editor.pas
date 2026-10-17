@@ -704,6 +704,9 @@ begin
   // Gruppen geerbter Member (#419), Chips (#422), lernende Gewichtung (#418).
   FController.GroupInherited := TAtlasIdeSettings.Current.GroupInherited;
   FPopup.DimInherited := TAtlasIdeSettings.Current.GroupInherited;
+  // Einträge ohne Treffer zeigen (#497).
+  FController.ListMode := TAtlasListModes.ModeOf(TAtlasIdeSettings.Current.CompletionListMode);
+  FController.ListScope := TAtlasListModes.ScopeOf(TAtlasIdeSettings.Current.CompletionListScope);
   // Während der Server indiziert, liefert er den vorhandenen Stand; die Fußzeile sagt es (#492).
   FPopup.Limited := IndexingNow;
   FPopup.Target := ActiveTarget;

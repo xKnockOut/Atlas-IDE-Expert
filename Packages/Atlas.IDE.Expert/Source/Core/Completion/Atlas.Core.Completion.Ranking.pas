@@ -28,6 +28,10 @@
 //   - Favoriten (#458, Item.Favorite): vor allen anderen Gruppen, auch vor Hinweisen und Formularkomponenten,
 //     unabhängig von Lernen und Rang, aber nur, wenn sie zum getippten Präfix passen. Ohne Überschrift; die
 //     Gruppen danach beginnen wie am Anfang der Liste.
+//   - Rest der Liste (#497, TAtlasListMode): Filter zeigt nur Treffer. All hängt mit Präfix die übrigen Einträge
+//     des Kontexts ohne Überschrift hinter die Treffer, Rest unter der Überschrift RestHeader („Weitere
+//     Einträge“, gedämpft). Beide in Rang- und Namensfolge, ohne Aktionen, Hinweise und Tippfehler-Treffer,
+//     vor der Gruppe des unbekannten Namens.
 
 interface
 
@@ -42,6 +46,24 @@ type
 
   TAtlasChipCounts = array[TAtlasChip] of Integer;
 
+  /// <summary>Was mit Präfix außer den Treffern sichtbar bleibt (#497).</summary>
+  TAtlasListMode = (Filter, All, Rest);
+
+  /// <summary>Wo der Listenmodus gilt (#497): nur in Mitgliederlisten nach "." oder überall.</summary>
+  TAtlasListScope = (Members, Everywhere);
+
+  /// <summary>Schreibweise der Listenmodi in den Einstellungen.</summary>
+  TAtlasListModes = class
+  public const
+    ModeNames: array[TAtlasListMode] of string = ('filter', 'all', 'rest');
+    ScopeNames: array[TAtlasListScope] of string = ('members', 'everywhere');
+  public
+    /// <summary>Modus zu AName (ohne Groß-/Kleinschreibung); Filter bei Unbekanntem.</summary>
+    class function ModeOf(const AName: string): TAtlasListMode; static;
+    /// <summary>Geltungsbereich zu AName; Members bei Unbekanntem.</summary>
+    class function ScopeOf(const AName: string): TAtlasListScope; static;
+  end;
+
   /// <summary>Lernzuschlag 0..99 je Eintragsindex.</summary>
   TAtlasBoostFunc = reference to function(AIndex: Integer): Integer;
 
@@ -49,6 +71,8 @@ type
     GroupInherited: Boolean;
     Chip: TAtlasChip;
     Boost: TAtlasBoostFunc;
+    /// <summary>Übrige Einträge mit Präfix (#497); Filter = nur Treffer.</summary>
+    ListMode: TAtlasListMode;
     class function Defaults: TAtlasRankOptions; static;
   end;
 
@@ -60,6 +84,8 @@ type
     TypoHeader = -2;
     /// <summary>Überschrift „Name ist unbekannt“ vor den Deklarationen (#471).</summary>
     UnknownHeader = -3;
+    /// <summary>Überschrift „Weitere Einträge“ vor dem gedämpften Rest (#497, TAtlasListMode.Rest).</summary>
+    RestHeader = -4;
     /// <summary>Höchstens so viele Tippfehler-Treffer; nur bei weniger regulären als MinRegular.</summary>
     MaxTypos = 5;
     MinRegular = 3;
@@ -72,7 +98,10 @@ type
       const AOptions: TAtlasRankOptions; const AScores, ABoosts: TArray<Integer>): TArray<Integer>; static;
     /// <summary>Anzeigereihenfolge: Indizes in AItems, Header (-1) vor Gruppen geerbter Member.</summary>
     class function Order(const AItems: TAtlasCompletionItems; const APattern: string;
-      const AOptions: TAtlasRankOptions): TArray<Integer>; static;
+      const AOptions: TAtlasRankOptions): TArray<Integer>; overload; static;
+    /// <summary>Wie oben; ARestStart ist die Position des ersten Eintrags ohne Treffer (#497), -1 ohne.</summary>
+    class function Order(const AItems: TAtlasCompletionItems; const APattern: string;
+      const AOptions: TAtlasRankOptions; out ARestStart: Integer): TArray<Integer>; overload; static;
     /// <summary>Treffer je Chip für APattern (unabhängig vom gewählten Chip).</summary>
     class function ChipCounts(const AItems: TAtlasCompletionItems; const APattern: string): TAtlasChipCounts; static;
     /// <summary>Einträge ohne Überschriften.</summary>
@@ -99,6 +128,29 @@ begin
   Result.GroupInherited := False;
   Result.Chip := TAtlasChip.All;
   Result.Boost := nil;
+  Result.ListMode := TAtlasListMode.Filter;
+end;
+
+{ TAtlasListModes }
+
+class function TAtlasListModes.ModeOf(const AName: string): TAtlasListMode;
+var
+  Mode: TAtlasListMode;
+begin
+  Result := TAtlasListMode.Filter;
+  for Mode := Low(TAtlasListMode) to High(TAtlasListMode) do
+    if SameText(Trim(AName), ModeNames[Mode]) then
+      Result := Mode;
+end;
+
+class function TAtlasListModes.ScopeOf(const AName: string): TAtlasListScope;
+var
+  Scope: TAtlasListScope;
+begin
+  Result := TAtlasListScope.Members;
+  for Scope := Low(TAtlasListScope) to High(TAtlasListScope) do
+    if SameText(Trim(AName), ScopeNames[Scope]) then
+      Result := Scope;
 end;
 
 { TAtlasRanking }
@@ -162,6 +214,54 @@ end;
 class function TAtlasRanking.Order(const AItems: TAtlasCompletionItems; const APattern: string;
   const AOptions: TAtlasRankOptions): TArray<Integer>;
 var
+  RestStart: Integer;
+begin
+  Result := Order(AItems, APattern, AOptions, RestStart);
+end;
+
+/// <summary>Einträge ohne Treffer für den Rest der Liste (#497): passend zum Chip, keine Aktionen, Hinweise oder
+/// angehefteten Einträge, nicht schon in AShown; in Rang- und Namensfolge.</summary>
+function RestOf(const AItems: TAtlasCompletionItems; const AOptions: TAtlasRankOptions;
+  const AScores, AShown: TArray<Integer>): TArray<Integer>;
+var
+  Items: TAtlasCompletionItems;
+  Shown: TArray<Boolean>;
+  Rest: TList<Integer>;
+  Index: Integer;
+begin
+  Items := AItems;
+  SetLength(Shown, Length(Items));
+  for Index in AShown do
+    if Index >= 0 then
+      Shown[Index] := True;
+  Rest := TList<Integer>.Create;
+  try
+    for Index := 0 to High(Items) do
+      if not Shown[Index] and (AScores[Index] = TAtlasCompletionMatcher.NoMatch) and
+        TAtlasRanking.Matches(Items[Index], AOptions.Chip) and not Items[Index].IsAction and
+        not Items[Index].Hint and not Items[Index].Pinned and (Items[Index].Unknown = '') then
+        Rest.Add(Index);
+    Rest.Sort(TComparer<Integer>.Construct(
+      function(const A, B: Integer): Integer
+      begin
+        Result := Ord(Items[A].Unavailable) - Ord(Items[B].Unavailable);
+        if Result = 0 then
+          Result := Items[A].Rank - Items[B].Rank;
+        if Result = 0 then
+          Result := CompareText(Items[A].Name, Items[B].Name);
+        if Result = 0 then
+          Result := A - B;
+      end));
+    Result := Rest.ToArray;
+  finally
+    Rest.Free;
+  end;
+end;
+
+class function TAtlasRanking.Order(const AItems: TAtlasCompletionItems; const APattern: string;
+  const AOptions: TAtlasRankOptions; out ARestStart: Integer): TArray<Integer>;
+var
+  Rest: TArray<Integer>;
   Items: TAtlasCompletionItems;
   Scores, Boosts: TArray<Integer>;
   Found, Ordered: TList<Integer>;
@@ -171,6 +271,7 @@ var
   Group: Integer;
   Options: TAtlasRankOptions;
 begin
+  ARestStart := -1;
   Items := AItems;
   Options := AOptions;
   SetLength(Scores, Length(Items));
@@ -189,6 +290,7 @@ begin
   try
     for Index := 0 to High(Items) do
     begin
+      Scores[Index] := TAtlasCompletionMatcher.NoMatch;
       if not TAtlasRanking.Matches(Items[Index], Options.Chip) then
         Continue;
       if Items[Index].IsAction or Items[Index].Pinned or Items[Index].Hint or Items[Index].ByType then
@@ -315,6 +417,31 @@ begin
     if (ItemCount(Copy(Result, 0, Unknown)) < MinRegular) and (TAtlasCompletionMatcher.TypoLimit(APattern) > 0) then
       Result := Copy(Result, 0, Unknown) + Typos(Items, APattern, Options, Scores, Boosts) +
         Copy(Result, Unknown, MaxInt);
+    // Rest der Liste (#497): hinter Treffern und Tippfehlern, vor dem unbekannten Namen.
+    if (Options.ListMode <> TAtlasListMode.Filter) and not NoPattern then
+    begin
+      Rest := RestOf(Items, Options, Scores, Result);
+      if Length(Rest) > 0 then
+      begin
+        Unknown := Length(Result);
+        for Position := 0 to High(Result) do
+          if Result[Position] = UnknownHeader then
+          begin
+            Unknown := Position;
+            Break;
+          end;
+        if Options.ListMode = TAtlasListMode.Rest then
+        begin
+          ARestStart := Unknown + 1;
+          Result := Copy(Result, 0, Unknown) + [RestHeader] + Rest + Copy(Result, Unknown, MaxInt);
+        end
+        else
+        begin
+          ARestStart := Unknown;
+          Result := Copy(Result, 0, Unknown) + Rest + Copy(Result, Unknown, MaxInt);
+        end;
+      end;
+    end;
   finally
     Ordered.Free;
     Found.Free;

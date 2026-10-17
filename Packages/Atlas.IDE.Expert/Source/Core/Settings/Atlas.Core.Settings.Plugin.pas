@@ -153,6 +153,12 @@ type
     Favorites: Boolean;
     /// <summary>Geerbte Member nachrangig und gruppiert (#419).</summary>
     GroupInherited: Boolean;
+    /// <summary>Beim Tippen nur Treffer (filter), alle Einträge mit Treffern oben (all) oder Treffer und darunter
+    /// gedämpft der Rest (rest) (completion.listMode, #497).</summary>
+    CompletionListMode: string;
+    /// <summary>Wo der Listenmodus gilt: Mitgliederlisten nach "." (members) oder überall (everywhere)
+    /// (completion.listMode.scope, #497).</summary>
+    CompletionListScope: string;
     /// <summary>Vorschau des gewählten Eintrags im Editor (#434).</summary>
     Preview: Boolean;
     /// <summary>Eigener Hover-Tooltip (#442).</summary>
@@ -689,6 +695,10 @@ uses
 const
   /// <summary>Reihen des Projektverlaufs (#758) wie TAtlasProjectSummaries.TrendKeys (Test prüft Gleichheit).</summary>
   TrendSeriesNames: array[0..4] of string = ('warnings', 'ruleHits', 'todos', 'duration', 'methodLength');
+  /// <summary>Wie TAtlasListModes.ModeNames bzw. ScopeNames (#497); Settings darf Completion nicht einbinden
+  /// (A-09), der Test prüft Gleichheit.</summary>
+  CompletionListModeNames: array[0..2] of string = ('filter', 'all', 'rest');
+  CompletionListScopeNames: array[0..1] of string = ('members', 'everywhere');
 
 /// <summary>Bekannte Reihen aus AText (Komma, Semikolon, Leerzeichen; Groß-/Kleinschreibung egal) in fester
 /// Reihenfolge, jede einmal.</summary>
@@ -873,6 +883,8 @@ begin
   Result.Learning := True;
   Result.Favorites := True;
   Result.GroupInherited := True;
+  Result.CompletionListMode := CompletionListModeNames[0];
+  Result.CompletionListScope := CompletionListScopeNames[0];
   Result.Preview := False;
   Result.HoverTooltip := True;
   Result.HangThresholdMs := 500;
@@ -1092,6 +1104,8 @@ begin
   CheckOnSaveDelayMs := EnsureRange(CheckOnSaveDelayMs, MinCheckDelay, MaxCheckDelay);
   CheckOnSaveMaxMs := EnsureRange(CheckOnSaveMaxMs, MinCheckMax, MaxCheckMax);
   BuildOnOpenKind := TAtlasOpenBuild.KindName(TAtlasOpenBuild.KindOf(BuildOnOpenKind));
+  CompletionListMode := Choice(CompletionListMode, CompletionListModeNames);
+  CompletionListScope := Choice(CompletionListScope, CompletionListScopeNames);
   BuildOnOpenScope := TAtlasOpenBuild.ScopeNames[TAtlasOpenBuild.ScopeOf(BuildOnOpenScope)];
   BuildOnOpenDelayMs := EnsureRange(BuildOnOpenDelayMs, TAtlasOpenBuild.MinDelayMs, TAtlasOpenBuild.MaxDelayMs);
   BuildOnOpenExclude := TAtlasOpenBuild.NormalizedExclude(BuildOnOpenExclude);
@@ -1250,6 +1264,8 @@ begin
   Learning := AStore.ReadInteger('Learning', BoolValue(Default.Learning)) <> 0;
   Favorites := AStore.ReadInteger('Favorites', BoolValue(Default.Favorites)) <> 0;
   GroupInherited := AStore.ReadInteger('GroupInherited', BoolValue(Default.GroupInherited)) <> 0;
+  CompletionListMode := AStore.ReadString('CompletionListMode', Default.CompletionListMode);
+  CompletionListScope := AStore.ReadString('CompletionListScope', Default.CompletionListScope);
   Preview := AStore.ReadInteger('Preview', BoolValue(Default.Preview)) <> 0;
   HoverTooltip := AStore.ReadInteger('HoverTooltip', BoolValue(Default.HoverTooltip)) <> 0;
   HangThresholdMs := AStore.ReadInteger('HangThresholdMs', Default.HangThresholdMs);
@@ -1513,6 +1529,8 @@ begin
   AStore.WriteInteger('Learning', BoolValue(Learning));
   AStore.WriteInteger('Favorites', BoolValue(Favorites));
   AStore.WriteInteger('GroupInherited', BoolValue(GroupInherited));
+  AStore.WriteString('CompletionListMode', CompletionListMode);
+  AStore.WriteString('CompletionListScope', CompletionListScope);
   AStore.WriteInteger('Preview', BoolValue(Preview));
   AStore.WriteInteger('HoverTooltip', BoolValue(HoverTooltip));
   AStore.WriteInteger('HangThresholdMs', HangThresholdMs);

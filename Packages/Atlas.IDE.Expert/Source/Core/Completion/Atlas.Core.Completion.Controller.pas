@@ -36,6 +36,10 @@
 // die erste Deklaration. Ebenso, wenn oben nur ein Hinweis „n Methoden von I fehlen“ (#466) steht und sonst nichts:
 // Der Hinweis wird nie vorgewählt, die Auswahl beginnt beim ersten Eintrag danach.
 //
+// Listenmodus (#497, TAtlasListMode): Mit All bzw. Rest bleiben beim Tippen auch die Einträge ohne Treffer
+// sichtbar, je nach ListScope nur in Mitgliederlisten nach "." oder überall. Steht kein Treffer oben, ist nichts
+// gewählt (wie bei #471): Enter gehört dem Editor, eine Pfeiltaste wählt den ersten Eintrag.
+//
 // Freigabe absichern (#489): Steht nur dieses Angebot in der Liste, schließt jedes getippte Zeichen sie.
 //
 // Esc (#414): Nach dem Schließen mit Esc öffnet ein automatischer Start im selben Wort (Datei, Zeile,
@@ -115,6 +119,12 @@ type
     FEmpty: Boolean;
     /// <summary>Nur Deklarationen eines unbekannten Namens, noch keine gewählt (#471).</summary>
     FPassive: Boolean;
+    /// <summary>Position des ersten Eintrags ohne Treffer (#497); -1 ohne.</summary>
+    FRestStart: Integer;
+    FListMode: TAtlasListMode;
+    FListScope: TAtlasListScope;
+    /// <summary>Mitgliederliste nach "." (#497).</summary>
+    FMembers: Boolean;
     FIncomplete: Boolean;
     /// <summary>Die nächsten Einträge ersetzen die Liste (laufendes Requery).</summary>
     FReplace: Boolean;
@@ -202,6 +212,12 @@ type
     /// <summary>Geerbte Member gruppieren (#419).</summary>
     property GroupInherited: Boolean read FGroupInherited write FGroupInherited;
     property ChipsEnabled: Boolean read FChipsEnabled write FChipsEnabled;
+    /// <summary>Einträge ohne Treffer zeigen (#497); Filter = nur Treffer.</summary>
+    property ListMode: TAtlasListMode read FListMode write FListMode;
+    /// <summary>Wo ListMode gilt (#497).</summary>
+    property ListScope: TAtlasListScope read FListScope write FListScope;
+    /// <summary>Position des ersten Eintrags ohne Treffer in Order (#497); -1 ohne.</summary>
+    property RestStart: Integer read FRestStart;
     /// <summary>Lernende Gewichtung (#418); nil = aus. Gehört dem Aufrufer.</summary>
     property Usage: TAtlasUsage read FUsage write FUsage;
     /// <summary>Angeheftete Favoriten (#458); nil = aus. Gehört dem Aufrufer.</summary>
@@ -344,6 +360,7 @@ begin
   FFlag.Alive := True;
   FFlagRef := FFlag;
   FSelected := -1;
+  FRestStart := -1;
   FDismissedLine := -1;
 end;
 
@@ -441,6 +458,8 @@ begin
   FChip := TAtlasChip.All;
   FPrefix := AContext.Prefix;
   FTrigger := AContext.Trigger;
+  FMembers := AContext.Kind = TAtlasContextKind.MemberAccess;
+  FRestStart := -1;
   FToggled := False;
   FItems := nil;
   FOrder := nil;
@@ -510,6 +529,7 @@ begin
   FSelected := -1;
   FEmpty := False;
   FPassive := False;
+  FRestStart := -1;
   FView.HideList;
 end;
 
@@ -625,6 +645,8 @@ begin
   Options.GroupInherited := FGroupInherited;
   if FChipsEnabled then
     Options.Chip := FChip;
+  if FMembers or (FListScope = TAtlasListScope.Everywhere) then
+    Options.ListMode := FListMode;
   if FUsage <> nil then
   begin
     Usage := FUsage;
@@ -635,7 +657,7 @@ begin
         Result := Usage.Boost(Items[AIndex]);
       end;
   end;
-  FOrder := TAtlasRanking.Order(FItems, FPrefix, Options);
+  FOrder := TAtlasRanking.Order(FItems, FPrefix, Options, FRestStart);
   if Timings <> nil then
   begin
     Shown := 0;
@@ -662,8 +684,9 @@ begin
       end;
   FEmpty := False;
   // Nur Deklarationen (#471): sichtbar, aber nicht gewählt, solange niemand eine Pfeiltaste drückt.
-  FPassive := (FSelected >= 0) and ((FItems[FOrder[FSelected]].Unknown <> '') or FItems[FOrder[FSelected]].Hint) and
-    ((SelectedIndex < 0) or (FOrder[FSelected] <> SelectedIndex));
+  // Ebenso, wenn oben kein Treffer steht, nur der Rest (#497).
+  FPassive := (FSelected >= 0) and ((FItems[FOrder[FSelected]].Unknown <> '') or FItems[FOrder[FSelected]].Hint or
+    ((FRestStart >= 0) and (FSelected >= FRestStart))) and ((SelectedIndex < 0) or (FOrder[FSelected] <> SelectedIndex));
   if (Timings <> nil) and (FSelected >= 0) then
     Timings.ListShown;
   if FPassive then

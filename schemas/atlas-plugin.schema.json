@@ -418,6 +418,33 @@
       "x-captionEn": "Group inherited members",
       "x-issue": "#419"
     },
+    "CompletionListMode": {
+      "type": "string",
+      "enum": [
+        "filter",
+        "all",
+        "rest"
+      ],
+      "default": "filter",
+      "x-key": "completion.listMode",
+      "x-area": "completion",
+      "x-feature": "Completion",
+      "x-page": "Vervollständigung",
+      "x-issue": "#497"
+    },
+    "CompletionListScope": {
+      "type": "string",
+      "enum": [
+        "members",
+        "everywhere"
+      ],
+      "default": "members",
+      "x-key": "completion.listMode.scope",
+      "x-area": "completion",
+      "x-feature": "Completion",
+      "x-page": "Vervollständigung",
+      "x-issue": "#497"
+    },
     "Learning": {
       "type": "boolean",
       "default": true,
