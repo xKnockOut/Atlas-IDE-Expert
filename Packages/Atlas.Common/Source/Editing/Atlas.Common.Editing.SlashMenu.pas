@@ -202,6 +202,7 @@ begin
     Entry('sql', InRoutine, TSlashGroup.Generate, TSlashArgument.Required),
     Entry('params', InRoutine, TSlashGroup.Generate, TSlashArgument.Required),
     Entry('case', InRoutine, TSlashGroup.Generate, TSlashArgument.None),
+    Entry('test', InRoutine, TSlashGroup.Generate, TSlashArgument.None),
     Entry('record', InUnit, TSlashGroup.Generate, TSlashArgument.Required),
     Entry('enum', InUnit, TSlashGroup.Generate, TSlashArgument.Required),
     Entry('enum!', InUnit, TSlashGroup.Generate, TSlashArgument.Required),
