@@ -211,7 +211,8 @@ begin
     not TAtlasInlineDiagnostics.Pick(AProblems, Context.LogicalLineNum - 1, Mode, Found) then
     Exit;
   Caption := TAtlasInlineDiagnostics.Caption(Found);
-  if Caption = '' then
+  // In .atlas ausgeblendet (#628): an dieser Codezeile oder in der Datei.
+  if (Caption = '') or TAtlasIdeElements.Hidden(TAtlasDrawnElement.InlineDiagnostics, Context.FileName, AText) then
     Exit;
   // Zwei Zeichen hinter dem letzten Zeichen, hinter Inlay-Hints und Beschriftungen derselben Zeile.
   Cell := Context.EditorState.GetCharacterPosPx(ColumnOf(AText, Length(TrimRight(AText)), ATabWidth) + 2,
@@ -237,6 +238,8 @@ begin
     RestoreDC(DC, Saved);
   end;
   TAtlasLineTail.Finish(Self, Key, X + Size.cx);
+  TAtlasIdeElements.Painted(TAtlasDrawnElement.InlineDiagnostics, Context.FileName, Context.LogicalLineNum - 1, AText,
+    TRect.Create(X, Top, X + Size.cx, Top + Size.cy), Context.EditView.TopRow, Rect.Height);
 end;
 
 procedure TAtlasProblemsPainter.PaintLine(const Rect: TRect; const Stage: TPaintLineStage; const BeforeEvent: Boolean;
