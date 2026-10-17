@@ -74,6 +74,12 @@ type
     function Setting(const AUri, AName: string): string;
     /// <summary>Testunit zur Unit AUri mit Text AText (/test, #295); False mit ATarget.Reason.</summary>
     function TestUnit(const AUri, AText: string; out ATarget: TSlashTestUnit): Boolean;
+    /// <summary>Zeigt AMessage als Hinweis im Editor (window/showMessage), nachdem die Änderungen des Befehls
+    /// angekommen sind (/task, #322).</summary>
+    procedure Notify(const AUri, AMessage: string);
+    /// <summary>Setzt den Cursor in AUri auf APosition (im Text nach den Änderungen des Befehls), nachdem sie
+    /// angekommen sind (/future, #322).</summary>
+    procedure MoveCursor(const AUri: string; const APosition: TTextPosition);
   end;
 
   /// <summary>Namen der Einstellungen, die Befehle über ISlashHost.Setting lesen.</summary>
