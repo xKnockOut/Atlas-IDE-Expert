@@ -7,7 +7,12 @@
 //   - "Regel für diese Datei unterdrücken": "// lsp-ignore-file:" in Zeile 1
 //   - "try/finally ergänzen" nach "X := T.Create(...);" mit passendem X.Free;
 //     bei "Result := T.Create(...)" stattdessen try/except, das Result nur im
-//     Fehlerfall freigibt (das Objekt wird ja zurückgegeben)
+//     Fehlerfall freigibt (das Objekt wird ja zurückgegeben). Die Entscheidung
+//     trifft der Syntaxbaum: nur lokale Variablen (auch "var X := …"), keine
+//     Felder und kein Self.F; der Aufruf darf über mehrere Zeilen gehen. Der
+//     try-Block schließt die folgenden Anweisungen bis zum Blockende ein, bei
+//     einer Auswahl bis zu deren Ende; steht dort schon "X.Free;", wandert es
+//     ins finally. Einrückung nach dem Formatstil (#43).
 //   - uses-Aktionen (#284): fehlende Unit ergänzen, ungenutzte entfernen,
 //     ins implementation verschieben (Logik in Editing.UsesActions)
 //   - Zuweisungen umkehren (#313, Logik in Editing.AssignmentSwap)
@@ -62,8 +67,15 @@ type
   public
     class function SuppressLine(const AText: string; ALine: Integer; const ARuleId: string): TTextEdit; static;
     class function SuppressFile(const AText, ARuleId: string): TTextEdit; static;
-    /// <summary>try/finally nach einer Create-Zuweisung in ALine; False, wenn nicht passend.</summary>
-    class function TryFinally(const AText: string; ALine: Integer; out AAction: TCodeAction): Boolean; static;
+    /// <summary>try/finally nach einer Create-Zuweisung in ALine mit Standard-Formatstil; parst AText selbst.
+    /// False, wenn nicht passend.</summary>
+    class function TryFinally(const AText: string; ALine: Integer; out AAction: TCodeAction): Boolean; overload;
+      static;
+    /// <summary>try/finally nach der Create-Zuweisung, die in ARange.StartPos.Line beginnt. Reicht ARange über
+    /// die Anweisung hinaus, endet der try-Block mit der Auswahl, sonst mit dem umgebenden Block. Einrückung
+    /// nach AStyle. False, wenn nicht passend.</summary>
+    class function TryFinally(const AText: string; ATree: TSyntaxTree; const ARange: TTextRange;
+      const AStyle: TFormatStyle; out AAction: TCodeAction): Boolean; overload; static;
     /// <summary>uses aufräumen (doppelte entfernen, mit ASort sortieren); False ohne Änderung.</summary>
     class function OrganizeImports(const AText: string; ASort: Boolean; out AAction: TCodeAction;
       AByNamespace: Boolean = False): Boolean; static;
@@ -88,7 +100,10 @@ implementation
 uses
   System.StrUtils,
   Atlas.Common.Pascal.Contract,
+  System.RegularExpressions,
   Atlas.Common.Pascal.Lexer,
+  Atlas.Common.Pascal.Parser,
+  Atlas.Common.Editing.GuardFree,
   Atlas.Common.Editing.UsesClause,
   Atlas.Common.Editing.StringLiterals,
   Atlas.Text.Lines;
@@ -108,10 +123,130 @@ begin
   end;
 end;
 
-/// <summary>Zeichen eines gepunkteten Namens (Unit.Typ): Bezeichnerzeichen oder ".".</summary>
-function IsDottedNameChar(C: Char): Boolean;
+
+/// <summary>Anweisung, die ein try-Block einschließen kann.</summary>
+function IsStatement(AKind: TSyntaxKind): Boolean;
 begin
-  Result := CharInSet(C, ['A'..'Z', 'a'..'z', '0'..'9', '_', '.']) or (Ord(C) >= 128);
+  Result := AKind in [TSyntaxKind.Block, TSyntaxKind.AsmBlock, TSyntaxKind.AssignStatement,
+    TSyntaxKind.CallStatement, TSyntaxKind.IfStatement, TSyntaxKind.CaseStatement, TSyntaxKind.ForStatement,
+    TSyntaxKind.ForInStatement, TSyntaxKind.WhileStatement, TSyntaxKind.RepeatStatement, TSyntaxKind.WithStatement,
+    TSyntaxKind.TryStatement, TSyntaxKind.RaiseStatement, TSyntaxKind.GotoStatement, TSyntaxKind.LabeledStatement,
+    TSyntaxKind.InlineVar, TSyntaxKind.InlineConst, TSyntaxKind.EmptyStatement];
+end;
+
+/// <summary>Knoten mit einer Folge von Anweisungen, in der try/finally Platz hat.</summary>
+function IsStatementList(AKind: TSyntaxKind): Boolean;
+begin
+  Result := AKind in [TSyntaxKind.Block, TSyntaxKind.TryStatement, TSyntaxKind.FinallyBlock,
+    TSyntaxKind.ExceptBlock, TSyntaxKind.RepeatStatement, TSyntaxKind.CaseElse];
+end;
+
+/// <summary>Zuweisung oder Inline-Variable, die in Zeile ALine beginnt und direkt in einer Anweisungsfolge steht.</summary>
+function CreateStatementAt(ATree: TSyntaxTree; ALine: Integer): TSyntaxNode;
+var
+  Found: TSyntaxNode;
+begin
+  Found := nil;
+  ATree.Root.Walk(
+    function(ANode: TSyntaxNode): Boolean
+    begin
+      if (Found <> nil) or (ANode.StartPos.Line > ALine) or (ANode.EndPos.Line < ALine) then
+        Exit(False);
+      if (ANode.StartPos.Line = ALine) and (ANode.Kind in [TSyntaxKind.AssignStatement, TSyntaxKind.InlineVar]) and
+        (ANode.Parent <> nil) and IsStatementList(ANode.Parent.Kind) then
+      begin
+        Found := ANode;
+        Exit(False);
+      end;
+      Result := True;
+    end);
+  Result := Found;
+end;
+
+function IndexInParent(ANode: TSyntaxNode): Integer;
+var
+  Index: Integer;
+begin
+  for Index := 0 to ANode.Parent.ChildCount - 1 do
+    if ANode.Parent[Index] = ANode then
+      Exit(Index);
+  Result := -1;
+end;
+
+/// <summary>Leerraum und Zeilenumbrüche zu je einem Leerzeichen zusammengefasst.</summary>
+function CollapseSpace(const AText: string): string;
+var
+  Index: Integer;
+  Space: Boolean;
+begin
+  Result := '';
+  Space := False;
+  for Index := 1 to Length(AText) do
+    if CharInSet(AText[Index], [' ', #9, #10, #13]) then
+      Space := True
+    else
+    begin
+      if Space and (Result <> '') then
+        Result := Result + ' ';
+      Space := False;
+      Result := Result + AText[Index];
+    end;
+end;
+
+function SourceOf(const AText: string; ANode: TSyntaxNode): string;
+begin
+  Result := Copy(AText, ANode.StartOffset + 1, ANode.EndOffset - ANode.StartOffset);
+end;
+
+/// <summary>Steht ANode allein auf seinen Zeilen: davor nur Leerraum, danach höchstens ";" und ein //-Kommentar?</summary>
+function OwnsLines(const ALines: TArray<string>; ANode: TSyntaxNode): Boolean;
+var
+  After: string;
+begin
+  Result := False;
+  if (ANode.StartPos.Line > High(ALines)) or (ANode.EndPos.Line > High(ALines)) then
+    Exit;
+  if Trim(Copy(ALines[ANode.StartPos.Line], 1, ANode.StartPos.Character)) <> '' then
+    Exit;
+  After := Trim(Copy(ALines[ANode.EndPos.Line], ANode.EndPos.Character + 1, MaxInt));
+  if StartsStr(';', After) then
+    After := Trim(Copy(After, 2, MaxInt));
+  Result := (After = '') or StartsStr('//', After);
+end;
+
+/// <summary>Gibt die Anweisung AVariable frei (X.Free, X.DisposeOf, FreeAndNil(X))?</summary>
+function IsRelease(const ASource, AVariable: string): Boolean;
+var
+  Escaped: string;
+begin
+  Escaped := TRegEx.Escape(AVariable);
+  Result := TRegEx.IsMatch(ASource, '^\s*(' + Escaped + '\s*\.\s*(Free|DisposeOf)|FreeAndNil\s*\(\s*' + Escaped +
+    '\s*\))\s*;?\s*$', [roIgnoreCase]);
+end;
+
+/// <summary>Freigegeben, zurückgegeben, zugewiesen oder an eine Liste übergeben: Dann gehört das Objekt nicht
+/// in ein finally.</summary>
+function EscapesOrFrees(const ASource, AVariable: string): Boolean;
+var
+  Escaped: string;
+begin
+  Escaped := TRegEx.Escape(AVariable);
+  Result := TRegEx.IsMatch(ASource, '\b' + Escaped + '\s*\.\s*(Free|DisposeOf|Destroy)\b', [roIgnoreCase]) or
+    TRegEx.IsMatch(ASource, '\bFreeAndNil\s*\(\s*' + Escaped + '\s*\)', [roIgnoreCase]) or
+    TRegEx.IsMatch(ASource, ':=\s*' + Escaped + '\s*[;)]', [roIgnoreCase]) or
+    TRegEx.IsMatch(ASource, '\bExit\s*\(\s*' + Escaped + '\s*\)', [roIgnoreCase]) or
+    TRegEx.IsMatch(ASource, '\.\s*(Add|Insert|Push|Enqueue|AddObject|AddPair|AddOrSetValue)\s*\(([^;]*[^\w.])?' +
+      Escaped + '\s*[,)]', [roIgnoreCase]);
+end;
+
+function IndentUnit(const AStyle: TFormatStyle): string;
+begin
+  if AStyle.UseTabs then
+    Exit(#9);
+  if AStyle.IndentSize > 0 then
+    Result := StringOfChar(' ', AStyle.IndentSize)
+  else
+    Result := '  ';
 end;
 
 { TCodeActions }
@@ -144,52 +279,130 @@ end;
 
 class function TCodeActions.TryFinally(const AText: string; ALine: Integer; out AAction: TCodeAction): Boolean;
 var
+  Tree: TSyntaxTree;
+begin
+  Tree := TPascalParser.Parse(AText);
+  try
+    Result := TryFinally(AText, Tree, TTextRange.Create(ALine, 0, ALine, 0), TFormatStyle.Default, AAction);
+  finally
+    Tree.Free;
+  end;
+end;
+
+class function TCodeActions.TryFinally(const AText: string; ATree: TSyntaxTree; const ARange: TTextRange;
+  const AStyle: TFormatStyle; out AAction: TCodeAction): Boolean;
+var
   Lines: TArray<string>;
-  Line, Trimmed, Target, Indent, LB, Next: string;
-  Assign, I: Integer;
+  Statement, Parent, Last, ReleaseNode: TSyntaxNode;
+  Match: TMatch;
+  Target, DeclaredType, Indent, Step, LB, Release, Body, Rest: string;
+  SelectionEnd, Index, First, BodyEnd, Line: Integer;
+  IsResult: Boolean;
 begin
   AAction := Default(TCodeAction);
   Result := False;
   Lines := TTextLines.SplitLines(AText);
-  if (ALine < 0) or (ALine > High(Lines)) then
+  if (ATree = nil) or (ATree.Root = nil) or (ARange.StartPos.Line < 0) or (ARange.StartPos.Line > High(Lines)) then
     Exit;
-  Line := Lines[ALine];
-  Trimmed := Trim(Line);
-  Assign := Pos(':=', Trimmed);
-  if (Assign < 2) or not EndsText(';', Trimmed) or (Pos('.CREATE', UpperCase(Copy(Trimmed, Assign, MaxInt))) = 0) then
+  Statement := CreateStatementAt(ATree, ARange.StartPos.Line);
+  if (Statement = nil) or not OwnsLines(Lines, Statement) then
     Exit;
-  Target := Trim(Copy(Trimmed, 1, Assign - 1));
-  if Target = '' then
+  // Ziel ist ein einfacher Name: Self.F und F[I] sind keine Zuweisung an eine lokale Variable.
+  if (Statement.Kind = TSyntaxKind.AssignStatement) and
+    ((Statement.ChildCount < 2) or (Statement[0].Kind <> TSyntaxKind.Identifier)) then
     Exit;
-  for I := 1 to Length(Target) do
-    if not IsDottedNameChar(Target[I]) then
-      Exit;
-  // Schon geschützt: Die nächste Zeile mit Inhalt beginnt mit try.
-  for I := ALine + 1 to High(Lines) do
+  // Leerraum und Zeilenumbrüche zusammenfassen: Der Aufruf darf über mehrere Zeilen gehen. Leere Alternativen
+  // halten jede Gruppe belegt.
+  Match := TRegEx.Match(CollapseSpace(SourceOf(AText, Statement)),
+    '^(var |)(\w+) ?(:|)([^:=]*):= ?([A-Za-z_][\w.]*)(<[^;()]*>|) ?\. ?Create\w* ?(\(.*\)|) ?;?$',
+    [roIgnoreCase]);
+  if not Match.Success then
+    Exit;
+  Target := Match.Groups[2].Value;
+  IsResult := SameText(Target, 'Result');
+  if SameText(Target, 'Self') then
+    Exit;
+  if Statement.Kind = TSyntaxKind.InlineVar then
+    DeclaredType := Trim(Match.Groups[4].Value)
+  else if not IsResult and not TGuardFree.LocalVariableType(ATree, AText, Target, Statement.StartPos.Line,
+    DeclaredType) then
+    // Feld, globale Variable oder Parameter: Wem das Objekt gehört, sieht man hier nicht.
+    Exit;
+  if TRegEx.IsMatch(DeclaredType, '^I[A-Z]') then
+    Exit;
+  // Ein Owner gibt frei.
+  if TRegEx.IsMatch(Match.Groups[7].Value, '^\( ?(Self|Application|Owner|AOwner) ?[,)]', [roIgnoreCase]) then
+    Exit;
+  // Folgende Anweisungen bis zum Blockende bzw. bis zum Ende der Auswahl.
+  SelectionEnd := ARange.EndPos.Line;
+  if (SelectionEnd > ARange.StartPos.Line) and (ARange.EndPos.Character = 0) then
+    Dec(SelectionEnd);
+  if SelectionEnd <= Statement.EndPos.Line then
+    SelectionEnd := MaxInt;
+  Parent := Statement.Parent;
+  First := IndexInParent(Statement) + 1;
+  // Schon geschützt.
+  if (First < Parent.ChildCount) and (Parent[First].Kind = TSyntaxKind.TryStatement) then
+    Exit;
+  Last := nil;
+  Index := First;
+  while (Index < Parent.ChildCount) and IsStatement(Parent[Index].Kind) and
+    (Parent[Index].StartPos.Line <= SelectionEnd) do
   begin
-    Next := Trim(Lines[I]);
-    if Next = '' then
-      Continue;
-    if SameText(Copy(Next, 1, 3), 'try') and ((Length(Next) = 3) or not IsDottedNameChar(Next[4])) then
-      Exit;
-    Break;
+    if Parent[Index].Kind <> TSyntaxKind.EmptyStatement then
+      Last := Parent[Index];
+    Inc(Index);
   end;
-  Indent := TTextLines.IndentOf(Line);
+  if (Last = nil) or not OwnsLines(Lines, Last) or (Parent[First].StartPos.Line <= Statement.EndPos.Line) then
+    Exit;
+  // Eine Freigabe als letzte Anweisung wandert ins finally; jede andere Freigabe oder Weitergabe verbietet die
+  // Aktion, auch hinter dem eingeschlossenen Teil.
+  ReleaseNode := nil;
+  if not IsResult and IsRelease(SourceOf(AText, Last), Target) then
+    ReleaseNode := Last;
+  Rest := '';
+  for Index := First to Parent.ChildCount - 1 do
+    if Parent[Index] <> ReleaseNode then
+      Rest := Rest + SourceOf(AText, Parent[Index]) + ';' + #10;
+  if not IsResult and EscapesOrFrees(Rest, Target) then
+    Exit;
+  BodyEnd := Last.EndPos.Line;
+  if ReleaseNode <> nil then
+  begin
+    BodyEnd := ReleaseNode.StartPos.Line - 1;
+    // Nur die Freigabe: Der try-Block bliebe leer.
+    if ReleaseNode = Parent[First] then
+      Exit;
+  end;
+  while (BodyEnd > Statement.EndPos.Line) and (Trim(Lines[BodyEnd]) = '') do
+    Dec(BodyEnd);
+  Indent := TTextLines.IndentOf(Lines[Statement.StartPos.Line]);
+  Step := IndentUnit(AStyle);
   LB := TTextLines.LineBreakOf(AText);
+  Body := '';
+  for Line := Statement.EndPos.Line + 1 to BodyEnd do
+  begin
+    if Trim(Lines[Line]) <> '' then
+      Body := Body + Step + Lines[Line];
+    Body := Body + LB;
+  end;
   AAction.Kind := RewriteKind;
-  if SameText(Target, 'Result') then
+  if IsResult then
   begin
     AAction.Title := 'try/except ergänzen (Result bei Fehler freigeben)';
-    AAction.Edits := [TTextEdit.Create(TTextRange.Create(ALine, Length(Line), ALine, Length(Line)),
-      LB + Indent + 'try' + LB + LB + Indent + 'except' + LB + Indent + '  ' + Target + '.Free;' + LB +
-      Indent + '  raise;' + LB + Indent + 'end;')];
+    Body := Body + Indent + 'except' + LB + Indent + Step + 'Result.Free;' + LB + Indent + Step + 'raise;';
   end
   else
   begin
     AAction.Title := Format('try/finally mit %s.Free ergänzen', [Target]);
-    AAction.Edits := [TTextEdit.Create(TTextRange.Create(ALine, Length(Line), ALine, Length(Line)),
-      LB + Indent + 'try' + LB + LB + Indent + 'finally' + LB + Indent + '  ' + Target + '.Free;' + LB + Indent + 'end;')];
+    if ReleaseNode <> nil then
+      Release := Trim(SourceOf(AText, ReleaseNode)) + ';'
+    else
+      Release := Target + '.Free;';
+    Body := Body + Indent + 'finally' + LB + Indent + Step + Release;
   end;
+  AAction.Edits := [TTextEdit.Create(TTextRange.Create(Statement.EndPos.Line, Length(Lines[Statement.EndPos.Line]),
+    Last.EndPos.Line, Length(Lines[Last.EndPos.Line])), LB + Indent + 'try' + LB + Body + LB + Indent + 'end;')];
   Result := True;
 end;
 

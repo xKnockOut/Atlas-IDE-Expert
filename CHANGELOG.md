@@ -1,4 +1,4 @@
-# Changelog
+﻿# Changelog
 
 Alle nennenswerten Änderungen an Atlas (Server und VS-Code-Erweiterung).
 Format nach [Keep a Changelog](https://keepachangelog.com/de/1.1.0/), Versionen nach [SemVer](https://semver.org/lang/de/).
@@ -27,6 +27,7 @@ Server und Claude-Code-Plugin tragen immer dieselbe Version.
 
 - `/var Name := Ausdruck` meldet vor Delphi 10.3 einen Hinweis statt einer Inline-Variablen (#294); `/const!` in einer Unit ohne implementation bleibt stehen, statt hinter `end.` zu schreiben.
 - Test debuggen und „Test am Cursor ausführen“ gibt es nur mit `codeLens.tests` (#585).
+- Code-Aktion „try/finally ergänzen“ (#42) entscheidet über den Syntaxbaum: keine Aktion für Felder (auch `Self.F`), Owner, Übergabe an Listen oder ohne folgende Anweisung; Inline-Variablen und mehrzeilige `Create(`-Aufrufe werden erkannt. Der `try`-Block schließt die folgenden Anweisungen bis zum Blockende bzw. bis zum Ende der Auswahl ein, eine vorhandene Freigabe am Ende wandert ins `finally`, die Einrückung folgt dem Formatstil. Golden-Datei im Test.
 
 ### Tests
 - Alias `usesCommand` (#293), Formulardateien abgeleiteter Klassen (#44), `/header` am falschen Ort (#306), FireMonkey-Plattformansichten bei Sprung und Umbenennen (#87).

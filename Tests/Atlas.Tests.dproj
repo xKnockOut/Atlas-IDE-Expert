@@ -213,6 +213,7 @@
         <DCCReference Include="Common\Editing\Atlas.Common.Editing.MaintenanceCommands.Tests.pas"/>
         <DCCReference Include="Common\Editing\Atlas.Common.Editing.TypeCommands.Tests.pas"/>
         <DCCReference Include="Common\Editing\Atlas.Common.Editing.TypeCommands.JsonGolden.pas"/>
+        <DCCReference Include="Common\Editing\Atlas.Common.Editing.CodeActions.TryFinallyGolden.pas"/>
         <DCCReference Include="Common\Editing\Atlas.Common.Editing.CollectionCommands.Tests.pas"/>
         <DCCReference Include="Common\Editing\Atlas.Common.Editing.UnitTemplates.Tests.pas"/>
         <DCCReference Include="Common\Editing\Atlas.Common.Editing.TestUnits.Tests.pas"/>

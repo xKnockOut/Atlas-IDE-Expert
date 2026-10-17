@@ -9,6 +9,8 @@ interface
 
 uses
   Atlas.Common.Documents.Contract,
+  Atlas.Common.Configuration.Contract,
+  Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Rules.Contract,
   Atlas.Common.Editing.CodeActions;
 
@@ -20,7 +22,10 @@ type
       const ARange: TTextRange): TArray<TCodeAction>; static;
     /// <summary>Alle Aktionen für ARange: Treffer und try/finally in der Startzeile.</summary>
     class function ForRange(const AFindings: TArray<TRuleFinding>; const AText: string;
-      const ARange: TTextRange): TArray<TCodeAction>; static;
+      const ARange: TTextRange): TArray<TCodeAction>; overload; static;
+    /// <summary>Wie oben mit vorhandenem Syntaxbaum und dem Formatstil der Datei für try/finally (#42).</summary>
+    class function ForRange(const AFindings: TArray<TRuleFinding>; const AText: string; ATree: TSyntaxTree;
+      const ARange: TTextRange; const AStyle: TFormatStyle): TArray<TCodeAction>; overload; static;
     /// <summary>Alle als sicher markierten Korrekturen der Datei in einer Aktion; überlappende
     /// Edits werden ausgelassen. False ohne sichere Korrektur.</summary>
     class function FixAll(const AFindings: TArray<TRuleFinding>; out AAction: TCodeAction): Boolean; static;
@@ -163,6 +168,16 @@ var
 begin
   Result := ForFindings(AFindings, AText, ARange);
   if TCodeActions.TryFinally(AText, ARange.StartPos.Line, Action) then
+    Result := Result + [Action];
+end;
+
+class function TRuleCodeActions.ForRange(const AFindings: TArray<TRuleFinding>; const AText: string;
+  ATree: TSyntaxTree; const ARange: TTextRange; const AStyle: TFormatStyle): TArray<TCodeAction>;
+var
+  Action: TCodeAction;
+begin
+  Result := ForFindings(AFindings, AText, ARange);
+  if TCodeActions.TryFinally(AText, ATree, ARange, AStyle, Action) then
     Result := Result + [Action];
 end;
 

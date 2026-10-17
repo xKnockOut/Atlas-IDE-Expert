@@ -43,6 +43,8 @@ type
 
   /// <summary>Einstellungen "memberOrder" für AUri (#89).</summary>
   TMemberOrderProvider = reference to function(const AUri: string): TMemberOrderSettings;
+  /// <summary>Formatstil für AUri (#43), etwa für die Einrückung von try/finally (#42).</summary>
+  TCodeActionStyleProvider = reference to function(const AUri: string): TFormatStyle;
 
   /// <summary>Weitere Aktionen als fertige LSP-CodeActions, etwa mit Dateioperationen (#274). Der
   /// Aufrufer übernimmt die Objekte.</summary>
@@ -61,6 +63,7 @@ type
     FStringLiteralFor: TStringLiteralProvider;
     FMemberOrderFor: TMemberOrderProvider;
     FDocCommentsFor: TDocCommentsProvider;
+    FFormatStyleFor: TCodeActionStyleProvider;
     FExtraActions: TExtraActionsFunc;
     function HandleCodeAction(const AParams: TJSONValue; const ACancellation: IJsonRpcCancellationToken): TJSONValue;
   public
@@ -82,6 +85,8 @@ type
     property MemberOrderFor: TMemberOrderProvider read FMemberOrderFor write FMemberOrderFor;
     /// <summary>Ohne Zuweisung gibt es die Aktionen zum Dokumentationskommentar (#88).</summary>
     property DocCommentsFor: TDocCommentsProvider read FDocCommentsFor write FDocCommentsFor;
+    /// <summary>Ohne Zuweisung gilt der Standard-Formatstil.</summary>
+    property FormatStyleFor: TCodeActionStyleProvider read FFormatStyleFor write FFormatStyleFor;
     /// <summary>Aktionen in .dfm/.fmx; ohne Zuweisung keine.</summary>
     property FormActions: TFormActionsFunc read FFormActions write FFormActions;
     /// <summary>Weitere Aktionen in Units (Testunit anlegen und wechseln, #274/#189); ohne Zuweisung keine.</summary>
@@ -235,6 +240,7 @@ var
   OrderSettings: TMemberOrderSettings;
   OrderEdit: TRuleEdit;
   Extra: TJSONObject;
+  Style: TFormatStyle;
 begin
   if not ((AParams is TJSONObject) and TJSONObject(AParams).TryGetValue<string>('textDocument.uri', Uri) and
     TJSONObject(AParams).TryGetValue<TJSONValue>('range', RangeValue)) then
@@ -291,8 +297,14 @@ begin
   // Erst jetzt anlegen: Ein Abbruch oben soll kein Objekt zurücklassen.
   Result := TJSONArray.Create;
   if WantsEditing then
-    for Action in TRuleCodeActions.ForRange(Findings, Document.Text, Range) do
+  begin
+    if Assigned(FFormatStyleFor) then
+      Style := FFormatStyleFor(Uri)
+    else
+      Style := TFormatStyle.Default;
+    for Action in TRuleCodeActions.ForRange(Findings, Document.Text, Tree, Range, Style) do
       TJSONArray(Result).AddElement(ActionToJson(Uri, Action));
+  end;
   // Befund als Prompt kopieren (#158): den Text kopiert der Client (Befehl atlas.copyText).
   if WantsEditing then
     for Finding in Findings do
