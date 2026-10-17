@@ -499,3 +499,11 @@ Jeder Branch baut auf dem vorigen auf. Nichts davon ist gebaut, getestet oder in
 - **Issues:** #414 geschlossen (Epic #724: alle Punkte erledigt); Willkommensseite #753–#767 samt Epic #761, #719, #723 geschlossen.
 - **Entwickler-Plugin:** Für den Setup-Test aus „Known Packages“ entfernt. Wieder anmelden mit `kette\update-plugin.ps1` (Eintrag `repo\Output\Win32\Debug\Bpl\Atlas.IDE.Expert370.bpl`).
 - **Offen:** manuelle Abnahmefälle im Referenzprojekt, Delphi 12 (#281), Sichtbarkeit des Repos für Updates, CI-Zeilenenden.
+
+## IDE-Absturz beim Win64-Gruppen-Build (17.10.2026, untersucht, nicht behoben)
+- **Bild:** Win64-Gruppen-Build von `Atlas.groupproj`: An `AtlasSetup.dproj` (Win64 in der dproj deaktiviert) meldet die IDE „Zugriffsverletzung … coreide370.bpl (Offset CC303). Lesen von Adresse 00000000“. Ohne Atlas läuft derselbe Build durch.
+- **Ursache eingegrenzt (Bisektion über einen Umgebungsschalter, wieder entfernt):** Es reicht, dass in der Sitzung ein Atlas-Dockfenster über `INTAServices.CreateDockableForm` angelegt wurde, z. B. „Atlas-Diagnose“ (öffnet sich beim Start, wenn `DiagnosticMode` = 1) oder das Ergebnisfenster. Ausblenden oder Freigeben vor dem Compile hilft nicht. Compile-Notifier, Poller, Release-Wächter, Komponentenname des Frames und Fokus sind es nicht.
+- **Beobachtung:** Die IDE übersetzt AtlasSetup trotz deaktivierter Plattform mit `CurrentPlatform` = Win64, und `ProjectCompileFinished` meldet Erfolg. Die Zugriffsverletzung kommt danach in der IDE. `Cancel` in BeforeCompile verhindert sie, bricht aber den ganzen Gruppen-Build ab, deshalb verworfen.
+- **Umgehung:** Win64-Gruppen-Builds Projekt für Projekt (wie `release.yml`), oder AtlasSetup aus der Win64-Gruppe nehmen. `ketteuild-safe.ps1` schaltet jetzt auch das installierte Release-Plugin ab.
+- **Offen:** Entscheidung bei Marco; vermutlich IDE-Fehler (Nachweis mit einem Minimal-Plugin mit einem Dockfenster steht aus).
+- **README:** Spenden-Badge (PayPal) in README.md und README_DE.md, Hinweis „kein Release“ ersetzt.

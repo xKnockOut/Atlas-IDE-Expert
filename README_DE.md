@@ -1,14 +1,16 @@
 # Atlas IDE Expert
 
+[![Spenden mit PayPal](https://img.shields.io/badge/Spenden-PayPal-00457C?logo=paypal)](https://www.paypal.com/paypalme/xKnockOut288)
+
 *English version: [README.md](README.md).*
 
 Experte für RAD Studio (Delphi/Object Pascal): ein IDE-Plugin mit eigener Oberfläche und ein eigener Language Server (LSP), dazu eine MCP-Schnittstelle für Claude Code. Funktionsumfang und Ausbaustufen stehen in den [Issues](https://github.com/xKnockOut/Atlas-IDE-Expert/issues); die Epics #130 bis #139 bilden die Ausbaustufen ab.
 
 ## Schnellstart
 
-Voraussetzung ist RAD Studio bzw. Delphi ab Version 12. Ein fertiges Paket zum Herunterladen gibt es noch nicht: Bisher ist kein [Release](https://github.com/xKnockOut/Atlas-IDE-Expert/releases) veröffentlicht.
+Voraussetzung ist RAD Studio bzw. Delphi ab Version 12. Fertige Pakete stehen unter [Releases](https://github.com/xKnockOut/Atlas-IDE-Expert/releases); Release 1.0.0 enthält das Plugin nur für Delphi 13.
 
-**Weg A – mit Installer (sobald ein Release existiert):**
+**Weg A – mit Installer:**
 
 1. `atlas-ide-expert-<Version>.zip` aus dem Release laden und entpacken.
 2. `AtlasSetup.exe` starten. Er braucht keine Administratorrechte und findet die installierten Delphi-Versionen ab 12 selbst.
