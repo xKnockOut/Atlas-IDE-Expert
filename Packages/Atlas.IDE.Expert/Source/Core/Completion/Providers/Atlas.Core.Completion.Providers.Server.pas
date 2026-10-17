@@ -220,6 +220,12 @@ begin
     // Sender mit Typumwandlung (#480).
     Result.Sender := Data.GetValue<string>('sender', '');
     Result.SenderOf := Data.GetValue<string>('senderOf', '');
+    // Typkonvertierung (#490): filtert nach dem Namen des Originals, nicht nach dem Ausdruck.
+    Result.Conversion := Data.GetValue<string>('conversion', '');
+    Result.ConvertFrom := Data.GetValue<string>('convertFrom', '');
+    if Result.Conversion <> '' then
+      Result.FilterText := Result.ConvertFrom;
+    Result.Lossy := Data.GetValue<string>('lossy', '');
     // Feld- und Parameternamen (#461).
     Result.DataSet := Data.GetValue<string>('dataSet', '');
     Result.DataSource := Data.GetValue<string>('dataSource', '');
@@ -524,11 +530,16 @@ var
   Callback: TAtlasDetailsCallback;
   Item: TJSONObject;
   Hides: TArray<string>;
+  LossyFrom, LossyTo: string;
 begin
   Result := False;
   if AItem.ResolveData = '' then
     Exit;
   Hides := AItem.Hides;
+  LossyFrom := AItem.Lossy;
+  LossyTo := '';
+  if LossyFrom <> '' then
+    LossyTo := AItem.ExpectedType;
   Session := nil;
   if Assigned(FSession) then
     Session := FSession();
@@ -561,6 +572,8 @@ begin
         Response.Free;
       end;
       Details.Hides := Hides;
+      Details.LossyFrom := LossyFrom;
+      Details.LossyTo := LossyTo;
       // Der Rückruf zeigt das Detailpanel; die Hülle zählt seine Fehler für die Vervollständigung (S-05, A-02).
       TAtlasMainThread.Queue(TAtlasFeature.Completion,
         procedure

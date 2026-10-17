@@ -9,7 +9,7 @@ interface
 
 const
   /// <summary>Schlüssel für alle Projekte (settings.json).</summary>
-  GlobalSettingPaths: array[0..31] of string = (
+  GlobalSettingPaths: array[0..32] of string = (
     'delphiVersion',
     'language',
     'rules',
@@ -21,6 +21,7 @@ const
     'completion.postfixTemplates',
     'completion.genericConstraints',
     'completion.resourceStrings',
+    'completion.typeConversion',
     'completion.nameSuggestions',
     'usesCommand',
     'completeBlocks',
@@ -80,7 +81,7 @@ implementation
 
 function ExperimentalSettingPaths: TArray<string>;
 begin
-  Result := ['refactoring.inline', 'refactoring.moveClass', 'refactoring.unitRenameFollowUp'];
+  Result := ['completion.typeConversion', 'refactoring.inline', 'refactoring.moveClass', 'refactoring.unitRenameFollowUp'];
 end;
 
 end.

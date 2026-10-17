@@ -30,6 +30,8 @@ type
     [Test]
     procedure SenderItemsGetHeaderAndTag;
     [Test]
+    procedure ConversionStandsBeforeOriginal;
+    [Test]
     procedure TypeArgumentsGetHeaderAndFooter;
     [Test]
     procedure DataNamesCarrySource;
@@ -484,6 +486,51 @@ begin
   // Ohne Sender keine Überschrift.
   Items[0].Sender := '';
   Assert.AreEqual('Caption', Names(Items, TAtlasRanking.Order(Items, 'Cap', Options)));
+end;
+
+procedure TAtlasRankingTests.ConversionStandsBeforeOriginal;
+const
+  Answers: array[0..3] of string = (
+    '{"label":"Count.ToString","kind":5,"detail":"Integer","filterText":"Count","data":{"expected":"string",' +
+      '"conversion":"string","convertFrom":"Count","scope":0}}',
+    '{"label":"Text","kind":5,"detail":"string","data":{"expected":"string","fits":true}}',
+    '{"label":"Count","kind":5,"detail":"Integer","data":{"expected":"string"}}',
+    '{"label":"Preis","kind":5,"detail":"Double","data":{"expected":"Integer","lossy":"Double"}}');
+var
+  Json: TJSONObject;
+  Items: TAtlasCompletionItems;
+  Options: TAtlasRankOptions;
+  Tag: TAtlasTag;
+  Found: Boolean;
+  Answer: string;
+begin
+  // Typkonvertierung (#490): „Count.ToString → string“ direkt über Count, gefiltert nach dem Namen des Originals.
+  Items := nil;
+  for Answer in Answers do
+  begin
+    Json := TJSONObject.ParseJSONValue(Answer) as TJSONObject;
+    try
+      Items := Items + [TAtlasServerCompletionProvider.ItemFromLsp(Json, Length(Items))];
+    finally
+      Json.Free;
+    end;
+  end;
+  Assert.AreEqual('string', Items[0].Conversion);
+  Assert.AreEqual('Count', Items[0].ConvertFrom);
+  Assert.AreEqual('Count', Items[0].FilterText);
+  Assert.AreEqual('Double', Items[3].Lossy);
+  Items[1].Fits := True;
+  Options := TAtlasRankOptions.Defaults;
+  Assert.AreEqual('#,Count.ToString,Count', Names(Items, TAtlasRanking.Order(Items, 'Cou', Options)));
+  Assert.AreEqual('#,Text,#,Count.ToString,Count,Preis', Names(Items, TAtlasRanking.Order(Items, '', Options)));
+  // Ohne sichtbares Original auch keine Umwandlung; gezählt wird sie nicht.
+  Assert.AreEqual('#,Text', Names(Items, TAtlasRanking.Order(Items, 'Tex', Options)));
+  Assert.AreEqual(1, TAtlasRanking.ChipCounts(Items, 'Cou')[TAtlasChip.All]);
+  Found := False;
+  for Tag in TAtlasItemPresentation.Tags(Items[0]) do
+    if Tag.Text = '→ string' then
+      Found := True;
+  Assert.IsTrue(Found);
 end;
 
 procedure TAtlasRankingTests.TypeArgumentsGetHeaderAndFooter;
