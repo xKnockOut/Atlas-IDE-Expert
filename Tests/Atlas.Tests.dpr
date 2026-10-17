@@ -70,6 +70,7 @@ uses
   Atlas.Common.Lsp.Definition.Tests in 'Common\Lsp\Atlas.Common.Lsp.Definition.Tests.pas',
   Atlas.Common.Lsp.Attributes.Tests in 'Common\Lsp\Atlas.Common.Lsp.Attributes.Tests.pas',
   Atlas.Common.Lsp.PublishedMembers.Tests in 'Common\Lsp\Atlas.Common.Lsp.PublishedMembers.Tests.pas',
+  Atlas.Common.Lsp.TypeInfoClasses.Tests in 'Common\Lsp\Atlas.Common.Lsp.TypeInfoClasses.Tests.pas',
   Atlas.Common.Lsp.References.Tests in 'Common\Lsp\Atlas.Common.Lsp.References.Tests.pas',
   Atlas.Common.Lsp.Rename.Tests in 'Common\Lsp\Atlas.Common.Lsp.Rename.Tests.pas',
   Atlas.Common.Lsp.Completion.Tests in 'Common\Lsp\Atlas.Common.Lsp.Completion.Tests.pas',

@@ -105,6 +105,7 @@
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.Definition.Tests.pas"/>
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.Attributes.Tests.pas"/>
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.PublishedMembers.Tests.pas"/>
+        <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.TypeInfoClasses.Tests.pas"/>
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.Hover.Tests.pas"/>
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.HoverTypes.Tests.pas"/>
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.HoverValues.Tests.pas"/>
