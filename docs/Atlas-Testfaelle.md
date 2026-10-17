@@ -1324,16 +1324,33 @@ Vorher: „Experimentelle Funktionen erlauben“ an, in `atlas.json` `"completio
 
 | Nr. | Schritte | Erwartet |
 |---|---|---|
-| TK1 | `lblCount.Caption := Lines.Cou` tippen | Oben `Count.ToString` mit Marke „→ TCaption“, direkt darunter `Count` (Integer); Enter setzt `Lines.Count.ToString` ein |
-| TK2 | Wie TK1, `Count` wählen | `Lines.Count` eingefügt, Atlas ändert nichts weiter |
-| TK3 | `"typeConversion": "function"`, dann wie TK1 | Eintrag `IntToStr(Count)`; Enter setzt `IntToStr(Lines.Count)` ein |
-| TK4 | `S := Ali` (Variable `Align: TAlign`) | `GetEnumName(TypeInfo(TAlign), Ord(Align))`; nach Enter steht `System.TypInfo` im uses |
-| TK5 | `I := S` bzw. `D := S` | `S.ToInteger` bzw. `S.ToDouble` (Funktionsstil `StrToInt(S)`, `StrToFloat(S)`) |
-| TK6 | `S := ` mit einer Boolean-Variable | `B.ToString(TUseBoolStrs.True)` bzw. `BoolToStr(B, True)`; Ergebnis „True“/„False“, nicht „-1“ |
-| TK7 | `S := ` mit `Now` bzw. einer TDateTime-Variable | `DateTimeToStr(…)` in beiden Stilen |
-| TK8 | `I := D` | Kein Umwandlungseintrag; im Detailpanel zu `D`: „Double passt nicht verlustfrei zu Integer: Round(…) rundet, Trunc(…) schneidet ab.“ |
-| TK9 | `ShowMessage(Lines.Cou` (Parameter string) | Wie TK1, als Argument |
-| TK10 | `"typeConversion": "off"` bzw. Hauptschalter aus | Keine Umwandlungseinträge, kein Hinweis |
+| TV1 | `lblCount.Caption := Lines.Cou` tippen | Oben `Count.ToString` mit Marke „→ TCaption“, direkt darunter `Count` (Integer); Enter setzt `Lines.Count.ToString` ein |
+| TV2 | Wie TV1, `Count` wählen | `Lines.Count` eingefügt, Atlas ändert nichts weiter |
+| TV3 | `"typeConversion": "function"`, dann wie TV1 | Eintrag `IntToStr(Count)`; Enter setzt `IntToStr(Lines.Count)` ein |
+| TV4 | `S := Ali` (Variable `Align: TAlign`) | `GetEnumName(TypeInfo(TAlign), Ord(Align))`; nach Enter steht `System.TypInfo` im uses |
+| TV5 | `I := S` bzw. `D := S` | `S.ToInteger` bzw. `S.ToDouble` (Funktionsstil `StrToInt(S)`, `StrToFloat(S)`) |
+| TV6 | `S := ` mit einer Boolean-Variable | `B.ToString(TUseBoolStrs.True)` bzw. `BoolToStr(B, True)`; Ergebnis „True“/„False“, nicht „-1“ |
+| TV7 | `S := ` mit `Now` bzw. einer TDateTime-Variable | `DateTimeToStr(…)` in beiden Stilen |
+| TV8 | `I := D` | Kein Umwandlungseintrag; im Detailpanel zu `D`: „Double passt nicht verlustfrei zu Integer: Round(…) rundet, Trunc(…) schneidet ab.“ |
+| TV9 | `ShowMessage(Lines.Cou` (Parameter string) | Wie TV1, als Argument |
+| TV10 | `"typeConversion": "off"` bzw. Hauptschalter aus | Keine Umwandlungseinträge, kein Hinweis |
+
+## Alle Felder zuweisen (#491, experimentell)
+
+Vorher: „Experimentelle Funktionen erlauben“ an, in `atlas.json` `"completion": {"assignAllFields": true}`. Ein Record `TOptions = record Header: string; Count: Integer; Kind: TKind; Tags: TKinds; Owner: TObject; end;` (`TKind = (kA, kB)`, `TKinds = set of TKind`), eine Variable `Opts: TOptions`, ein `TButton` `btnSave` auf dem Formular.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| AF1 | Am Anfang einer Anweisung `Opts.` tippen | Ganz oben „Alle Felder zuweisen (5)“ mit Detail `TOptions`, gewählt; darunter die Mitglieder wie bisher |
+| AF2 | AF1, Enter | Fünf Zeilen `Opts.Header := '';` … `Opts.Owner := nil;` in Deklarationsreihenfolge, eingerückt wie die Zeile; Platzhalter-Modus auf `''`, Tab springt zu `0`, `kA`, `[]`, `nil` |
+| AF3 | AF2, Strg+Z | Ein Schritt: wieder `Opts.` |
+| AF4 | Unter der Zeile steht schon `Opts.Header := 'x';`, dann `Opts.` darüber | „Alle Felder zuweisen (4)“, Header fehlt in den Zeilen |
+| AF5 | `X := Opts.` bzw. `TOptions.` bzw. `Foo; Opts.` (Code davor in der Zeile) | Kein Eintrag „Alle Felder zuweisen“ |
+| AF6 | `btnSave.` am Anweisungsanfang (Klasse mit vielen Properties) | „Alle Felder zuweisen (n)“; Enter zeigt erst die Liste „Alle Felder zuweisen · TButton“ mit Kontrollkästchen, alle angehakt |
+| AF7 | AF6, Leertaste auf zwei Zeilen, Enter | Nur die angehakten Zuweisungen, Werte ohne Platzhalter; danach eine leere eingerückte Zeile; ein Rückgängig-Schritt |
+| AF8 | Klasse mit `property Size: Integer read GetSize;`, privaten Feldern und `property Caption;` im published-Teil eines Nachfahren | Size und private Felder fehlen, Caption ist dabei (Typ der geerbten) |
+| AF9 | Code-Vorlagen aus (Seite Vervollständigung) | Zeilen ohne Platzhalter |
+| AF10 | `"assignAllFields": false` bzw. Hauptschalter aus | Kein Eintrag |
 
 ## Anweisung vervollständigen (#697)
 

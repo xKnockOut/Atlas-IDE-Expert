@@ -57,6 +57,15 @@ type
     GenericParam: Integer;
   end;
 
+  /// <summary>Zeile von „Alle Felder zuweisen“ (#491) für die Liste mit Kontrollkästchen.</summary>
+  TCompletionAssignment = record
+    /// <summary>Name des Felds bzw. der Property, Detail ihr Typ.</summary>
+    Name: string;
+    Detail: string;
+    /// <summary>Die Zuweisung samt Zeilenumbruch und Einrückung für die nächste Zeile.</summary>
+    Text: string;
+  end;
+
   TCompletionItem = record
     Name: string;
     Detail: string;
@@ -165,6 +174,9 @@ type
     /// <summary>Gleitkommawert für eine Ganzzahl (#490): sein Typ ("Double"); Atlas weist im Detailpanel auf
     /// Round und Trunc hin. '' sonst.</summary>
     Lossy: string;
+    /// <summary>„Alle Felder zuweisen“ mit mehr als 15 Feldern (#491): Atlas zeigt beim Übernehmen erst diese
+    /// Zeilen mit Kontrollkästchen; TextEdit reicht vom Anfang des Ausdrucks bis zum Cursor.</summary>
+    Assignments: TArray<TCompletionAssignment>;
   end;
 
   TCompletionItems = record

@@ -163,6 +163,7 @@ contains
   Atlas.Common.Editing.StringLiterals in 'Source\Editing\Atlas.Common.Editing.StringLiterals.pas',
   Atlas.Common.Editing.PostfixTemplates in 'Source\Editing\Atlas.Common.Editing.PostfixTemplates.pas',
   Atlas.Common.Editing.CaseCompletion in 'Source\Editing\Atlas.Common.Editing.CaseCompletion.pas',
+  Atlas.Common.Editing.AssignFields in 'Source\Editing\Atlas.Common.Editing.AssignFields.pas',
   Atlas.Common.Editing.RoutineBody in 'Source\Editing\Atlas.Common.Editing.RoutineBody.pas',
   Atlas.Common.Editing.RoutineLocals in 'Source\Editing\Atlas.Common.Editing.RoutineLocals.pas',
   Atlas.Common.Editing.MoveClass in 'Source\Editing\Atlas.Common.Editing.MoveClass.pas',

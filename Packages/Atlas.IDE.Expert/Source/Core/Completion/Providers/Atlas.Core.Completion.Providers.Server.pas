@@ -151,6 +151,7 @@ var
   Edit: TAtlasTextEdit;
   Data, Twin: TJSONObject;
   Index: Integer;
+  Assignment: TAtlasAssignment;
 begin
   Result := Default(TAtlasCompletionItem);
   Result.Name := AItem.GetValue<string>('label', '');
@@ -226,6 +227,17 @@ begin
     if Result.Conversion <> '' then
       Result.FilterText := Result.ConvertFrom;
     Result.Lossy := Data.GetValue<string>('lossy', '');
+    // Alle Felder zuweisen (#491): Zeilen für die Liste mit Kontrollkästchen.
+    if Data.GetValue('assign') is TJSONArray then
+      for Value in TJSONArray(Data.GetValue('assign')) do
+        if Value is TJSONObject then
+        begin
+          Assignment.Name := TJSONObject(Value).GetValue<string>('name', '');
+          Assignment.Detail := TJSONObject(Value).GetValue<string>('detail', '');
+          Assignment.Text := TJSONObject(Value).GetValue<string>('text', '');
+          if Assignment.Name <> '' then
+            Result.Assignments := Result.Assignments + [Assignment];
+        end;
     // Feld- und Parameternamen (#461).
     Result.DataSet := Data.GetValue<string>('dataSet', '');
     Result.DataSource := Data.GetValue<string>('dataSource', '');

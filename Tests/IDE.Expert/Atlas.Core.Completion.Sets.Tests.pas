@@ -2,7 +2,7 @@
 
 // Tests für Aufzählungen und Mengen in der Vervollständigung (#448): Rangfolge, Mengenmodus im Controller,
 // neuer Klammerinhalt und die Felder aus der Antwort des Servers. Dazu „Alle Werte einfügen“ für case (#449) und
-// „Interface implementieren“ (#466) mit Kontrollkästchen und Hinweis.
+// „Interface implementieren“ (#466) mit Kontrollkästchen und Hinweis, „Alle Felder zuweisen“ (#491) mit Liste.
 
 interface
 
@@ -31,6 +31,9 @@ type
     procedure BatchCommitsCheckedMethods;
     [Test]
     procedure HintStaysOnTopWithoutSelection;
+    /// <summary>Alle Felder zuweisen (#491) mit Liste.</summary>
+    [Test]
+    procedure AssignListCommitsCheckedLines;
   end;
 
 implementation
@@ -434,6 +437,76 @@ begin
   Assert.IsTrue(Item.Batch);
   Assert.IsFalse(Item.IsAction);
   Assert.AreEqual('IExporter', Item.SetOf);
+end;
+
+procedure TAtlasCompletionSetsTests.AssignListCommitsCheckedLines;
+var
+  Json: TJSONObject;
+  Item, Committed: TAtlasCompletionItem;
+  Lines: TAtlasCompletionItems;
+  View: TSetView;
+  ViewRef: IAtlasCompletionView;
+  Controller: TAtlasCompletionController;
+  Context: TAtlasContext;
+begin
+  // Wie vom Server (#491): textEdit über "Opts." mit unverändertem Text, die Zeilen unter data.assign.
+  Json := TJSONObject.ParseJSONValue('{"label":"Alle Felder zuweisen (3)","kind":15,"detail":"TOpts",' +
+    '"textEdit":{"range":{"start":{"line":5,"character":2},"end":{"line":5,"character":7}},"newText":"Opts."},' +
+    '"data":{"action":"assign","pinned":true,"assign":[{"name":"A","detail":"Integer","text":"Opts.A := 0;\r\n  "},' +
+    '{"name":"B","detail":"string","text":"Opts.B := '''';\r\n  "},{"name":"C","detail":"Boolean",' +
+    '"text":"Opts.C := False;\r\n  "}]}}') as TJSONObject;
+  try
+    Item := TAtlasServerCompletionProvider.ItemFromLsp(Json, 0);
+  finally
+    Json.Free;
+  end;
+  Assert.AreEqual(3, Integer(Length(Item.Assignments)));
+  Assert.AreEqual('B', Item.Assignments[1].Name);
+  Assert.AreEqual('Opts.C := False;'#13#10'  ', Item.Assignments[2].Text);
+  Lines := TAtlasCompletionSets.AssignItems(Item);
+  Assert.AreEqual(3, Integer(Length(Lines)));
+  Assert.IsTrue(Lines[0].Batch and Lines[0].Assign and Lines[0].Checked);
+  Assert.AreEqual('TOpts', Lines[0].SetOf);
+  Assert.AreEqual(2, Lines[0].SetRange.StartCharacter);
+  Assert.AreEqual(7, Lines[0].SetRange.EndCharacter);
+  Assert.AreEqual(7, Lines[0].AdditionalEdits[0].StartCharacter, 'hinter dem Punkt');
+  View := TSetView.Create;
+  ViewRef := View;
+  Controller := TAtlasCompletionController.Create(TAtlasFixedCompletionProvider.Create([Item]) as
+    IAtlasCompletionProvider, ViewRef);
+  try
+    Controller.OnCommit :=
+      procedure(const AItem: TAtlasCompletionItem)
+      begin
+        Committed := AItem;
+      end;
+    Context := Default(TAtlasContext);
+    Context.FileName := 'C:\P\A.pas';
+    Controller.Start(Context);
+    Assert.IsTrue(WaitFor(
+      function: Boolean
+      begin
+        Result := not Controller.Loading;
+      end));
+    // Enter auf dem Eintrag öffnet erst die Liste, alle angehakt.
+    Assert.IsTrue(Controller.HandleKey(TAtlasNavigationKey.Accept));
+    Assert.IsTrue(Controller.SetMode);
+    Assert.AreEqual('A B C', View.Checked);
+    Assert.AreEqual('', Committed.Name, 'noch nichts übernommen');
+    // B abwählen, dann übernehmen: der Ausdruck weg, die Zeilen von A und C an seiner Stelle.
+    Assert.IsTrue(Controller.HandleKey(TAtlasNavigationKey.Down));
+    Assert.IsTrue(Controller.HandleKey(TAtlasNavigationKey.Toggle));
+    Assert.IsTrue(Controller.HandleKey(TAtlasNavigationKey.Accept));
+    Assert.IsTrue(Committed.HasTextEdit);
+    Assert.IsTrue(Committed.IsAction);
+    Assert.AreEqual('', Committed.TextEdit.NewText);
+    Assert.AreEqual(2, Committed.TextEdit.StartCharacter);
+    Assert.AreEqual(1, Integer(Length(Committed.AdditionalEdits)));
+    Assert.AreEqual('Opts.A := 0;'#13#10'  Opts.C := False;'#13#10'  ', Committed.AdditionalEdits[0].NewText);
+  finally
+    Controller.Free;
+  end;
+  Lines := nil;
 end;
 
 procedure TAtlasCompletionSetsTests.HintStaysOnTopWithoutSelection;

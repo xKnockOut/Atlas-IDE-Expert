@@ -1174,6 +1174,8 @@ begin
     end
     else if Key = 'resourceStrings' then
       ExpectBoolean(ANode[Index], Key, FSettings.Completion.ResourceStrings)
+    else if Key = 'assignAllFields' then
+      ExpectBoolean(ANode[Index], Key, FSettings.Completion.AssignAllFields)
     else if Key = 'typeConversion' then
     begin
       if ExpectString(ANode[Index], Key, Text) then

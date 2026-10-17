@@ -68,6 +68,14 @@ type
     Started: Int64;
   end;
 
+  /// <summary>Zeile von „Alle Felder zuweisen“ (#491): Feld, sein Typ und die Zuweisung samt Zeilenumbruch und
+  /// Einrückung für die nächste Zeile.</summary>
+  TAtlasAssignment = record
+    Name: string;
+    Detail: string;
+    Text: string;
+  end;
+
   TAtlasCompletionItem = record
     Name: string;
     Kind: TAtlasItemKind;
@@ -166,6 +174,11 @@ type
     ConvertFrom: string;
     /// <summary>Gleitkommawert für eine Ganzzahl (#490): sein Typ; das Detailpanel nennt Round und Trunc.</summary>
     Lossy: string;
+    /// <summary>„Alle Felder zuweisen“ mit mehr als 15 Feldern (#491): Übernehmen zeigt erst diese Zeilen mit
+    /// Kontrollkästchen. Leer bei anderen Einträgen.</summary>
+    Assignments: TArray<TAtlasAssignment>;
+    /// <summary>Zeile dieser Liste (#491, Batch): Überschrift „Alle Felder zuweisen · Typ“.</summary>
+    Assign: Boolean;
     /// <summary>Feld- oder Parametername (#461): Datenmenge, aus der er stammt; '' sonst.</summary>
     DataSet: string;
     /// <summary>Kurzform der SQL-Anweisung für die Fußzeile; '' ohne Anweisung.</summary>

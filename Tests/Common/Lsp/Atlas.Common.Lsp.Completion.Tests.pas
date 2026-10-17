@@ -18,6 +18,7 @@ type
     function ItemsAt(const AText, AMarker: string;
       AMatching: TCompletionMatching = TCompletionMatching.Prefix): TCompletionItems;
     function Names(const AItems: TCompletionItems): string;
+    function AssignItem(const AText, AMarker: string; ASnippets, AOn: Boolean; out AItem: TCompletionItem): Boolean;
   public
     /// <summary>Erste Benutzung ungemessen vorwegnehmen.</summary>
     [SetupFixture]
@@ -96,6 +97,11 @@ type
     procedure OffersEnumValuesAndSetValues;
     [Test]
     procedure OffersMissingCaseBranches;
+    /// <summary>Alle Felder zuweisen (#491).</summary>
+    [Test]
+    procedure AssignsAllFields;
+    [Test]
+    procedure AssignsManyFieldsThroughList;
     [Test]
     procedure OffersDeclarationsForUnknownNames;
     [Test]
@@ -150,7 +156,9 @@ uses
   Atlas.Common.Index.SymbolIndex,
   Atlas.Common.Index.Extractor,
   Atlas.Common.Rules.Contract,
-  Atlas.Common.Editing.InterfaceStubs;
+  Atlas.Common.Editing.InterfaceStubs,
+  Atlas.Common.Editing.AssignFields,
+  Atlas.Common.Lsp.CompletionRequest;
 
 const
   HauptFile = 'C:\P\Haupt.pas';
@@ -1680,6 +1688,148 @@ begin
     Resolver.Free;
     Tree.Free;
   end;
+end;
+
+const
+  AssignText =
+    'unit Haupt;'#13#10 +
+    'interface'#13#10 +
+    'type'#13#10 +
+    '  TKind = (kA, kB);'#13#10 +
+    '  TKinds = set of TKind;'#13#10 +
+    '  TOpts = record'#13#10 +
+    '    Header: string;'#13#10 +
+    '    Count: Integer;'#13#10 +
+    '    Kind: TKind;'#13#10 +
+    '  end;'#13#10 +
+    '  TBase = class'#13#10 +
+    '  private'#13#10 +
+    '    FName: string;'#13#10 +
+    '    function GetSize: Integer;'#13#10 +
+    '  protected'#13#10 +
+    '    property Hidden: string read FName write FName;'#13#10 +
+    '  public'#13#10 +
+    '    Tag: Integer;'#13#10 +
+    '    property Name: string read FName write FName;'#13#10 +
+    '    property Size: Integer read GetSize;'#13#10 +
+    '  end;'#13#10 +
+    '  TChild = class(TBase)'#13#10 +
+    '  public'#13#10 +
+    '    Owner: TBase;'#13#10 +
+    '    Flags: TKinds;'#13#10 +
+    '    property Hidden;'#13#10 +
+    '  end;'#13#10 +
+    'implementation'#13#10 +
+    'function TBase.GetSize: Integer;'#13#10 +
+    'begin'#13#10 +
+    '  Result := 0;'#13#10 +
+    'end;'#13#10 +
+    'procedure P(Opts: TOpts; C: TChild);'#13#10 +
+    'var'#13#10 +
+    '  X: TOpts;'#13#10 +
+    'begin'#13#10 +
+    '  Opts.'#13#10 +
+    '  Opts.Header := ''x'';'#13#10 +
+    '  if True then'#13#10 +
+    '    C.'#13#10 +
+    '  X := Opts.'#13#10 +
+    '  TOpts.'#13#10 +
+    'end;'#13#10 +
+    'end.';
+
+function TLspCompletionTests.AssignItem(const AText, AMarker: string; ASnippets, AOn: Boolean;
+  out AItem: TCompletionItem): Boolean;
+var
+  Tree: TSyntaxTree;
+  Request: TCompletionRequest;
+  Settings: TCompletionSettings;
+begin
+  Tree := TPascalParser.Parse(AText);
+  Request := TCompletionRequest.Create(AText, HauptFile, PositionOf(AText, AMarker));
+  try
+    Request.Tree := Tree;
+    Request.Resolver := FResolver;
+    Request.Index := FIndex;
+    Settings := TCompletionSettings.Default;
+    Settings.AssignAllFields := AOn;
+    Request.Settings := Settings;
+    Result := TLspCompletion.AssignAllItem(Request, ASnippets, AItem);
+  finally
+    Request.Free;
+    Tree.Free;
+  end;
+end;
+
+procedure TLspCompletionTests.AssignsAllFields;
+var
+  Item: TCompletionItem;
+  Text: string;
+begin
+  // Abnahme: drei Felder mit Platzhaltern; steht Opts.Header schon in der nächsten Zeile, nur zwei.
+  Text := StringReplace(AssignText, '  Opts.Header := ''x'';'#13#10, '', []);
+  Assert.IsTrue(AssignItem(Text, #10'  Opts.', True, True, Item));
+  Assert.AreEqual('Alle Felder zuweisen (3)', Item.Name);
+  Assert.IsTrue(Item.Pinned);
+  Assert.IsTrue(Item.Snippet);
+  Assert.AreEqual('Opts.Header := ${1:''''};'#10'Opts.Count := ${2:0};'#10'Opts.Kind := ${3:kA};',
+    Item.TextEdit.NewText);
+  Assert.AreEqual(2, Item.TextEdit.Range.StartPos.Character, 'ab dem Anfang des Ausdrucks');
+  Assert.AreEqual(7, Item.TextEdit.Range.EndPos.Character);
+  Assert.IsTrue(AssignItem(AssignText, #10'  Opts.', True, True, Item));
+  Assert.AreEqual('Alle Felder zuweisen (2)', Item.Name);
+  Assert.AreEqual('Opts.Count := ${1:0};'#10'Opts.Kind := ${2:kA};', Item.TextEdit.NewText);
+  // Ohne Platzhalter: Klartext mit der Einrückung der Zeile.
+  Assert.IsTrue(AssignItem(AssignText, #10'  Opts.', False, True, Item));
+  Assert.IsFalse(Item.Snippet);
+  Assert.AreEqual('Opts.Count := 0;'#13#10'  Opts.Kind := kA;', Item.TextEdit.NewText);
+  // Klasse: Vorfahren zuerst; geschützte Property, die der Nachfahr öffentlich macht, ja; nur lesbare und
+  // private nicht.
+  Assert.IsTrue(AssignItem(AssignText, #10'    C.', False, True, Item));
+  Assert.AreEqual('C.Hidden := '''';'#13#10'    C.Tag := 0;'#13#10'    C.Name := '''';'#13#10 +
+    '    C.Owner := nil;'#13#10'    C.Flags := [];', Item.TextEdit.NewText);
+  // Nicht am Anweisungsanfang, nach einem Typ und abgeschaltet: nichts.
+  Assert.IsFalse(AssignItem(AssignText, 'X := Opts.', True, True, Item), 'Zuweisung');
+  Assert.IsFalse(AssignItem(AssignText, '  TOpts.', True, True, Item), 'Typ');
+  Assert.IsFalse(AssignItem(AssignText, #10'  Opts.', True, False, Item), 'abgeschaltet');
+  Item := Default(TCompletionItem);
+end;
+
+procedure TLspCompletionTests.AssignsManyFieldsThroughList;
+var
+  Item: TCompletionItem;
+  Text, Fields: string;
+  Index: Integer;
+  Json: TJSONArray;
+  Data, Line: TJSONObject;
+begin
+  // Mehr als 15 Felder: erst die Liste mit Kontrollkästchen, je Zeile samt Umbruch für die nächste.
+  Fields := '';
+  for Index := 0 to TAssignFields.ListThreshold do
+    Fields := Fields + '    F' + IntToStr(Index) + ': Integer;'#13#10;
+  Text := StringReplace(AssignText, '    Header: string;'#13#10, Fields, []);
+  Text := StringReplace(Text, '  Opts.Header := ''x'';'#13#10, '', []);
+  Assert.IsTrue(AssignItem(Text, #10'  Opts.', True, True, Item));
+  Assert.AreEqual('Alle Felder zuweisen (18)', Item.Name);
+  Assert.IsFalse(Item.Snippet);
+  Assert.AreEqual('Opts.', Item.TextEdit.NewText, 'Text bleibt bis zur Auswahl');
+  Assert.AreEqual(18, Integer(Length(Item.Assignments)));
+  Assert.AreEqual('F0', Item.Assignments[0].Name);
+  Assert.AreEqual('Integer', Item.Assignments[0].Detail);
+  Assert.AreEqual('Opts.F0 := 0;'#13#10'  ', Item.Assignments[0].Text);
+  Assert.AreEqual('Opts.Kind := kA;'#13#10'  ', Item.Assignments[17].Text);
+  // Im JSON unter data.assign.
+  Json := TLspCompletion.ToJson([Item], 0);
+  try
+    Data := TJSONObject(Json.Items[0]).GetValue('data') as TJSONObject;
+    Assert.AreEqual('assign', Data.GetValue<string>('action'));
+    Line := (Data.GetValue('assign') as TJSONArray).Items[0] as TJSONObject;
+    Assert.AreEqual('F0', Line.GetValue<string>('name'));
+    Assert.AreEqual('Integer', Line.GetValue<string>('detail'));
+    Assert.AreEqual('Opts.F0 := 0;'#13#10'  ', Line.GetValue<string>('text'));
+  finally
+    Json.Free;
+  end;
+  Item := Default(TCompletionItem);
 end;
 
 procedure TLspCompletionTests.OffersEnumValuesAndSetValues;

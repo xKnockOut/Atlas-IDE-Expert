@@ -94,6 +94,9 @@ type
     MaxArgs: Integer;
     ParamTypes: TArray<string>;
     IsDefault: Boolean;
+    /// <summary>Kopf der Deklaration wie im Index (#492), bei Properties samt read/write (#491); '' ohne Index.
+    /// </summary>
+    Signature: string;
     /// <summary>Gebundene Typparameter als Name=Typ (bei Mitgliedern die des umgebenden Typs).</summary>
     Bindings: TArray<string>;
     /// <summary>Eingebauter Typ ohne Deklaration im Index (string, Integer ...).</summary>
@@ -256,6 +259,11 @@ type
     destructor Destroy; override;
     /// <summary>Direkter Vorfahr eines Typs (ohne Angabe TObject bzw. IInterface); False ohne oder bei Helfern.</summary>
     function AncestorOf(const AType: TResolvedSymbol; out AAncestor: TResolvedSymbol): Boolean;
+    /// <summary>Deklaration der Property AName mit Typ in AType oder seinen Vorfahren (#491): "property Caption;"
+    /// hebt nur die Sichtbarkeit an, Typ und Zugriff stehen weiter oben. ADepth wie bei MemberCandidates.
+    /// </summary>
+    function TypedProperty(const AType: TResolvedSymbol; const AName: string; out AProperty: TResolvedSymbol;
+      out ADepth: Integer): Boolean;
     /// <summary>Löst den Bezeichner an APosition auf; bei gleich guten Überladungen die erste.</summary>
     function Resolve(ATree: TSyntaxTree; const AFileName: string; const APosition: TTextPosition): TResolvedSymbol;
     /// <summary>Wie Resolve, aber alle gleich guten Kandidaten, wenn die Überladung nicht eindeutig ist (#263).</summary>
@@ -841,6 +849,38 @@ begin
   FUnitHelpers.AddOrSetValue(Key, Entry);
 end;
 
+function TNameResolver.TypedProperty(const AType: TResolvedSymbol; const AName: string;
+  out AProperty: TResolvedSymbol; out ADepth: Integer): Boolean;
+var
+  Current, Ancestor: TResolvedSymbol;
+  OwnerUnit: TUnitIndex;
+  Position, Depth: Integer;
+  TypeName: string;
+begin
+  AProperty := NoResult;
+  ADepth := 0;
+  Current := AType;
+  for Depth := 0 to MaxDepth do
+  begin
+    if Current.Builtin or not UnitOf(Current, OwnerUnit) then
+      Exit(False);
+    TypeName := Current.QualifiedName;
+    for Position := 0 to High(OwnerUnit.Symbols) do
+      if (OwnerUnit.Symbols[Position].Kind = TIndexSymbolKind.Property_) and
+        (OwnerUnit.Symbols[Position].TypeName <> '') and SameText(OwnerUnit.Symbols[Position].Container, TypeName) and
+        SameText(OwnerUnit.Symbols[Position].Name, AName) then
+      begin
+        AProperty := FromSymbol(OwnerUnit, OwnerUnit.Symbols[Position]);
+        ADepth := Depth;
+        Exit(True);
+      end;
+    if not AncestorOf(Current, Ancestor) then
+      Exit(False);
+    Current := Ancestor;
+  end;
+  Result := False;
+end;
+
 function TNameResolver.FromSymbol(const AUnit: TUnitIndex; const ASymbol: TIndexSymbol): TResolvedSymbol;
 begin
   Result := NoResult;
@@ -863,6 +903,7 @@ begin
   Result.MaxArgs := ASymbol.MaxArgs;
   Result.ParamTypes := ASymbol.ParamTypes;
   Result.IsDefault := ASymbol.IsDefault;
+  Result.Signature := ASymbol.Signature;
   Result.InInterface := ASymbol.InInterface;
   Result.IsVirtual := ASymbol.IsVirtual;
   Result.Condition := ASymbol.Condition;
