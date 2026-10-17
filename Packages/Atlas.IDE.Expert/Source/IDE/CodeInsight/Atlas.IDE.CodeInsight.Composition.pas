@@ -75,6 +75,7 @@ uses
   Atlas.IDE.Outline.Cache,
   Atlas.IDE.Outline.Service,
   Atlas.IDE.Outline.Breadcrumbs,
+  Atlas.IDE.Vcs.LineChanges,
   Atlas.IDE.UnitSearch.Commands,
   Atlas.IDE.Generate.Commands,
   Atlas.IDE.Generate.NewFile,
@@ -924,6 +925,21 @@ begin
   TAtlasIdeEditorCommands.JumpToMatch(True);
 end;
 
+function ChangesVisible: Boolean;
+begin
+  Result := TAtlasIdeLineChanges.Enabled;
+end;
+
+procedure NextChange;
+begin
+  TAtlasIdeLineChanges.GoToChange(True);
+end;
+
+procedure PreviousChange;
+begin
+  TAtlasIdeLineChanges.GoToChange(False);
+end;
+
 function BreadcrumbsVisible: Boolean;
 begin
   Result := TAtlasIdeBreadcrumbs.Enabled;
@@ -1078,6 +1094,11 @@ begin
     JumpToMatchVisible);
   Add('Atlas.JumpToMatchSelect', TAtlasTextId.JumpToMatchSelectCommand,
     Guarded(TAtlasFeature.EditorCommands, SelectToMatch), JumpToMatchVisible);
+  // Nächste/vorherige Änderung gegenüber dem Repository (#507); nur sichtbar, solange editor.gitGutter an ist.
+  Add('Atlas.NextChange', TAtlasTextId.NextChangeCommand, Guarded(TAtlasFeature.EditorCommands, NextChange),
+    ChangesVisible);
+  Add('Atlas.PreviousChange', TAtlasTextId.PreviousChangeCommand,
+    Guarded(TAtlasFeature.EditorCommands, PreviousChange), ChangesVisible);
   Add('Atlas.Callers', TAtlasTextId.MenuIncoming, Hierarchy(TAtlasHierarchyDirection.Incoming));
   Add('Atlas.Calls', TAtlasTextId.MenuOutgoing, Hierarchy(TAtlasHierarchyDirection.Outgoing));
   Add('Atlas.Supertypes', TAtlasTextId.MenuSupertypes, Hierarchy(TAtlasHierarchyDirection.Supertypes));
@@ -1999,6 +2020,12 @@ begin
     end);
   TAtlasIdeOutline.Install;
   TAtlasIdeBreadcrumbs.Install;
+  // Änderungsmarken und Zeilenhistorie (#507).
+  TAtlasIdeLineChanges.Install(
+    procedure(AText: string)
+    begin
+      GuardWarning(AText);
+    end);
   // Schnell öffnen (#503): Dateiliste im Hintergrund, zuletzt geöffnete Dateien zählen.
   TAtlasIdeQuickOpen.Install(
     function: TLspSession
@@ -2026,6 +2053,7 @@ begin
   TAtlasIdeQuickOpen.Uninstall;
   TAtlasIdePeek.Uninstall;
   TAtlasIdeBreadcrumbs.Uninstall;
+  TAtlasIdeLineChanges.Uninstall;
   TAtlasIdeOutline.Uninstall;
   TAtlasIdeOutlineCache.Uninstall;
   TAtlasIdeNavHistory.Uninstall;
@@ -3327,6 +3355,7 @@ begin
       TAtlasIdeBookmarks.ThemeChanged;
       TAtlasIdeOutline.ThemeChanged;
       TAtlasIdeBreadcrumbs.ThemeChanged;
+      TAtlasIdeLineChanges.ThemeChanged;
     end;
   // Zuerst entscheiden, ob Atlas abgesichert startet (#722): Davon hängt ab, was angemeldet wird.
   if SafeMode = nil then
@@ -3370,6 +3399,8 @@ begin
       TAtlasIdeOutline.ApplySettings;
       // editor.breadcrumbs* (#590).
       TAtlasIdeBreadcrumbs.ApplySettings;
+      // editor.gitGutter, editor.gitBlame (#507).
+      TAtlasIdeLineChanges.ApplySettings;
       // notifications.* (#601): an oder aus, Höchstzahl, Verhalten je Quelle.
       if Notifications <> nil then
         Notifications.ApplySettings;

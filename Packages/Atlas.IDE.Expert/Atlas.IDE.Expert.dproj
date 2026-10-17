@@ -283,6 +283,7 @@
         <DCCReference Include="Source\IDE\Commands\Atlas.IDE.Commands.QuickOpen.pas"/>
         <DCCReference Include="Source\Core\Editor\Atlas.Core.Editor.Pairs.pas"/>
         <DCCReference Include="Source\Core\Editor\Atlas.Core.Editor.Match.pas"/>
+        <DCCReference Include="Source\Core\Editor\Atlas.Core.Editor.LineChanges.pas"/>
         <DCCReference Include="Source\Core\Editor\Atlas.Core.Editor.SnapshotPolicy.pas"/>
         <DCCReference Include="Source\Core\Editor\Atlas.Core.Editor.CloseRules.pas"/>
         <DCCReference Include="Source\Core\Editor\Atlas.Core.Editor.Guides.pas"/>
@@ -473,6 +474,7 @@
         <DCCReference Include="Source\Core\Vcs\Atlas.Core.Vcs.Worker.pas"/>
         <DCCReference Include="Source\Core\Vcs\Atlas.Core.Vcs.Adapters.ProcessRunner.pas"/>
         <DCCReference Include="Source\IDE\Vcs\Atlas.IDE.Vcs.Service.pas"/>
+        <DCCReference Include="Source\IDE\Vcs\Atlas.IDE.Vcs.LineChanges.pas"/>
         <DCCReference Include="Source\Core\Build\Atlas.Core.Build.Target.pas"/>
         <DCCReference Include="Source\IDE\Build\Atlas.IDE.Build.Target.pas"/>
         <DCCReference Include="Source\Core\Editor\Atlas.Core.Editor.LineAnchor.pas"/>

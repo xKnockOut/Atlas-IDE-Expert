@@ -262,6 +262,10 @@ type
     FBreadcrumbs: TCheckBox;
     FBreadcrumbsShowUnit: TCheckBox;
     FBreadcrumbsKey: TEdit;
+    FGitGutter: TCheckBox;
+    FGitBlame: TCheckBox;
+    FNextChangeKey: TEdit;
+    FPreviousChangeKey: TEdit;
     FJumpToMatch: TCheckBox;
     FJumpToMatchKey: TEdit;
     FJumpToMatchSelectKey: TEdit;
@@ -1169,6 +1173,11 @@ begin
   FBreadcrumbs := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsBreadcrumbs));
   FBreadcrumbsShowUnit := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsBreadcrumbsShowUnit));
   FBreadcrumbsKey := AddKey(TAtlasStrings.Text(TAtlasTextId.BreadcrumbsCommand));
+  // Änderungsmarken und Zeilenhistorie (#507).
+  FGitGutter := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsGitGutter));
+  FNextChangeKey := AddKey(TAtlasStrings.Text(TAtlasTextId.NextChangeCommand));
+  FPreviousChangeKey := AddKey(TAtlasStrings.Text(TAtlasTextId.PreviousChangeCommand));
+  FGitBlame := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsGitBlame));
   // Rekursionssymbole im Rand (#623).
   FRecursionMarkers := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsRecursionMarkers));
   FRecursionMarkersDepth := AddNumber(TAtlasStrings.Text(TAtlasTextId.SettingsRecursionMarkersDepth));
@@ -1349,6 +1358,8 @@ begin
   Bind('BlockEndLabels', FBlockEndLabels);
   Bind('DimUnusedUses', FDimUnusedUses);
   Bind('Breadcrumbs', FBreadcrumbs);
+  Bind('GitGutter', FGitGutter);
+  Bind('GitBlame', FGitBlame);
   Bind('RecursionMarkers', FRecursionMarkers);
   Bind('InlineDiagnostics', FInlineDiagnostics);
   Bind('ProblemsStatusCounter', FProblemsStatusCounter);
@@ -2103,6 +2114,10 @@ begin
   FMarks.Bind(FBreadcrumbs, ['Breadcrumbs']);
   FMarks.Bind(FBreadcrumbsShowUnit, ['BreadcrumbsShowUnit']);
   FMarks.Bind(FBreadcrumbsKey, ['BreadcrumbsKey']);
+  FMarks.Bind(FGitGutter, ['GitGutter']);
+  FMarks.Bind(FGitBlame, ['GitBlame']);
+  FMarks.Bind(FNextChangeKey, ['NextChangeKey']);
+  FMarks.Bind(FPreviousChangeKey, ['PreviousChangeKey']);
   FMarks.Bind(FJumpToMatch, ['JumpToMatch']);
   FMarks.Bind(FJumpToMatchKey, ['JumpToMatchKey']);
   FMarks.Bind(FJumpToMatchSelectKey, ['JumpToMatchSelectKey']);
@@ -3084,6 +3099,10 @@ begin
   FBreadcrumbs.Checked := ASettings.Breadcrumbs;
   FBreadcrumbsShowUnit.Checked := ASettings.BreadcrumbsShowUnit;
   FBreadcrumbsKey.Text := ShortCutToText(TShortCut(ASettings.BreadcrumbsKey));
+  FGitGutter.Checked := ASettings.GitGutter;
+  FGitBlame.Checked := ASettings.GitBlame;
+  FNextChangeKey.Text := ShortCutToText(TShortCut(ASettings.NextChangeKey));
+  FPreviousChangeKey.Text := ShortCutToText(TShortCut(ASettings.PreviousChangeKey));
   FJumpToMatch.Checked := ASettings.JumpToMatch;
   FJumpToMatchKey.Text := ShortCutToText(TShortCut(ASettings.JumpToMatchKey));
   FJumpToMatchSelectKey.Text := ShortCutToText(TShortCut(ASettings.JumpToMatchSelectKey));
@@ -3370,6 +3389,10 @@ begin
   ASettings.Breadcrumbs := FBreadcrumbs.Checked;
   ASettings.BreadcrumbsShowUnit := FBreadcrumbsShowUnit.Checked;
   ASettings.BreadcrumbsKey := Integer(TextToShortCut(Trim(FBreadcrumbsKey.Text)));
+  ASettings.GitGutter := FGitGutter.Checked;
+  ASettings.GitBlame := FGitBlame.Checked;
+  ASettings.NextChangeKey := Integer(TextToShortCut(Trim(FNextChangeKey.Text)));
+  ASettings.PreviousChangeKey := Integer(TextToShortCut(Trim(FPreviousChangeKey.Text)));
   ASettings.JumpToMatch := FJumpToMatch.Checked;
   ASettings.JumpToMatchKey := Integer(TextToShortCut(Trim(FJumpToMatchKey.Text)));
   ASettings.JumpToMatchSelectKey := Integer(TextToShortCut(Trim(FJumpToMatchSelectKey.Text)));

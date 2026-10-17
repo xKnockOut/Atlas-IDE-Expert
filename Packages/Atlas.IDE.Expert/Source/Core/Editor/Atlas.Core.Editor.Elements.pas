@@ -59,7 +59,11 @@ type
     /// <summary>Fehlertext am Zeilenende (#509).</summary>
     InlineDiagnostics,
     /// <summary>Abgeleiteter Typ von Inline-Variablen (#453).</summary>
-    InlayTypeHints);
+    InlayTypeHints,
+    /// <summary>Änderungsmarke gegenüber dem Repository in der Rinne (#507).</summary>
+    GitGutter,
+    /// <summary>Zeilenhistorie (blame) am Ende der Cursorzeile (#507).</summary>
+    GitBlame);
   TAtlasHideScope = (Here, InFile, Everywhere);
 {$SCOPEDENUMS OFF}
   TAtlasHideScopes = set of TAtlasHideScope;
@@ -169,6 +173,11 @@ begin
       Result := Make(AElement, 'InlineDiagnostics', AllScopes, True, False);
     TAtlasDrawnElement.InlayTypeHints:
       Result := Make(AElement, 'InlayTypeHints', AllScopes, True, False);
+    // Marken und Historie hängen an der ganzen Datei im Repository: „Nur hier“ hielte nur bis zum nächsten Commit.
+    TAtlasDrawnElement.GitGutter:
+      Result := Make(AElement, 'GitGutter', FileScopes, False, True);
+    TAtlasDrawnElement.GitBlame:
+      Result := Make(AElement, 'GitBlame', FileScopes, True, False);
   else
     Result := Make(AElement, '', [], False, False);
   end;
