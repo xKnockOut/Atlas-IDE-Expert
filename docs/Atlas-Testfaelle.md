@@ -1942,3 +1942,14 @@ Voraussetzung für EX2 bis EX7: mindestens eine Einstellung trägt `x-experiment
 | LM5 | Wie LM3, Bild↓, Ende, Pos1 | Überschrift wird übersprungen, Ende erreicht den letzten Eintrag des Rests |
 | LM6 | Wie LM3, Strg+Leer in einer leeren Zeile, `Fo` tippen | Nur Treffer (Bereich „Mitgliederlisten“); mit `completion.listMode.scope` = everywhere auch hier der Rest |
 | LM7 | Wie LM3 mit 5000 Einträgen (große Klasse) schnell tippen | Liste folgt ohne Verzögerung (Filterschritt ≤ 16 ms) |
+
+## Parameter-Hint: Überladungen nach Argumenttypen (#498)
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| UT1 | `TStringList.Create('"', ';', ` tippen | `Create(Duplicates: TDuplicates; …)` gedämpft, `Create(QuoteChar, Delimiter: Char; Options: TStringsOptions)` gewählt |
+| UT2 | `TStringList.Create('"'` | Gewählt `Create(QuoteChar, Delimiter: Char)`, nicht `Create(OwnsObjects: Boolean)` |
+| UT3 | `TStringList.Create(True` | `Create(OwnsObjects: Boolean)` gewählt, die Char-Varianten gedämpft |
+| UT4 | `TStringList.Create(dupIgnore, ` | Variante mit `TDuplicates` gewählt |
+| UT5 | `TStringList.Create(Unbekannt, ` (nicht deklarierter Name) | Keine Variante wegen des Typs gedämpft |
+| UT6 | In UT1 mit Alt+↑ die gedämpfte Variante wählen | Sie wird gezeigt, bleibt aber gedämpft |

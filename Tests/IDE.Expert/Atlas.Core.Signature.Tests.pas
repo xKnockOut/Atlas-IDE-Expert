@@ -38,6 +38,10 @@ type
     procedure ManualOverloadSwitchWraps;
     [Test]
     procedure ReadsLspSignatureHelp;
+    [Test]
+    procedure TypeMismatchDimsAndSkipsOverload;
+    [Test]
+    procedure ReadsArgumentFitFromServer;
   end;
 
 implementation
@@ -105,6 +109,21 @@ begin
     Signature('function Format(const Format: string; const Args: array of const; ' +
       'const AFormatSettings: TFormatSettings): string',
       ['const Format: string', 'const Args: array of const', 'const AFormatSettings: TFormatSettings'])];
+end;
+
+function StringListHelp: TAtlasSignatureHelp;
+begin
+  // Wie TStringList.Create('"', ';', (#498): Der Server hat die Variante mit TDuplicates als unverträglich markiert.
+  Result := Default(TAtlasSignatureHelp);
+  Result.ActiveSignature := -1;
+  Result.ActiveParameter := 2;
+  Result.Signatures := [
+    Signature('constructor Create(Duplicates: TDuplicates; Sorted: Boolean; CaseSensitive: Boolean)',
+      ['Duplicates: TDuplicates', 'Sorted: Boolean', 'CaseSensitive: Boolean']),
+    Signature('constructor Create(QuoteChar, Delimiter: Char; Options: TStringsOptions)',
+      ['QuoteChar', 'Delimiter', 'Options: TStringsOptions'])];
+  Result.Signatures[0].TypeMismatch := True;
+  Result.Signatures[0].MismatchArgument := 0;
 end;
 
 { TAtlasCallScannerTests }
@@ -237,6 +256,58 @@ begin
   finally
     Controller.Free;
   end;
+end;
+
+procedure TAtlasSignatureControllerTests.TypeMismatchDimsAndSkipsOverload;
+var
+  View: TFakeSignatureView;
+  ViewRef: IAtlasSignatureView;
+  Controller: TAtlasSignatureController;
+  Help: TAtlasSignatureHelp;
+begin
+  View := TFakeSignatureView.Create;
+  ViewRef := View;
+  Controller := TAtlasSignatureController.Create(ViewRef);
+  try
+    // Gleich viele Parameter, aber nur die Variante mit Char passt nach den Typen.
+    Controller.Show(StringListHelp, 2);
+    Assert.AreEqual(1, View.Signature, 'Verträgliche Variante vorgewählt');
+    Assert.IsFalse(Controller.OverloadFits(0), 'TDuplicates gedämpft');
+    Assert.IsTrue(Controller.OverloadFits(1));
+    // Auch eine vom Server gewählte, aber unverträgliche Variante wird nicht genommen.
+    Help := StringListHelp;
+    Help.ActiveSignature := 0;
+    Controller.Show(Help, 2);
+    Assert.AreEqual(1, View.Signature);
+    // Von Hand bleibt sie erreichbar.
+    Controller.SelectOverload(0);
+    Assert.AreEqual(0, View.Signature);
+    Assert.IsFalse(Controller.OverloadFits(0));
+  finally
+    Controller.Free;
+  end;
+end;
+
+procedure TAtlasSignatureControllerTests.ReadsArgumentFitFromServer;
+var
+  Response: TJSONValue;
+  Help: TAtlasSignatureHelp;
+begin
+  Response := TJSONObject.ParseJSONValue(
+    '{"signatures":[{"label":"constructor Create(OwnsObjects: Boolean)","parameters":[{"label":[19,39]}],' +
+    '"data":{"fits":false,"mismatch":0}},{"label":"constructor Create(QuoteChar, Delimiter: Char)",' +
+    '"parameters":[{"label":[19,28]},{"label":[30,39]}],"data":{"fits":true,"mismatch":-1}},' +
+    '{"label":"constructor Create","parameters":[]}],"activeSignature":1,"activeParameter":0}');
+  try
+    Help := TAtlasServerSignatureProvider.HelpFromLsp(Response);
+  finally
+    Response.Free;
+  end;
+  Assert.AreEqual(3, Integer(Length(Help.Signatures)));
+  Assert.IsTrue(Help.Signatures[0].TypeMismatch);
+  Assert.AreEqual(0, Help.Signatures[0].MismatchArgument);
+  Assert.IsFalse(Help.Signatures[1].TypeMismatch);
+  Assert.IsFalse(Help.Signatures[2].TypeMismatch, 'Ohne Angabe passend');
 end;
 
 procedure TAtlasSignatureControllerTests.ReadsLspSignatureHelp;
