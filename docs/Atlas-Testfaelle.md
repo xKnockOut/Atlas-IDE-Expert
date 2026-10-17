@@ -2024,3 +2024,22 @@ Voraussetzung für EX2 bis EX7: mindestens eine Einstellung trägt `x-experiment
 | PK10 | `peek.showImplementation` aus | Nur die Deklaration, keine Trennzeile |
 | PK11 | `peek.heightLines` auf 30 | Fenster doppelt so hoch |
 | PK12 | `peek.enabled` aus | Alt+F12 und Umschalt+Alt+F12 machen, was die IDE dafür vorsieht; Befehle fehlen in der Palette |
+
+## Gliederungsfenster mit Filter (#537)
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| GL1 | Formular-Unit öffnen, Atlas › Navigation › Gliederung … | Andockbares Fenster mit interface und implementation; darunter TForm1 mit Feldern, Methoden, Eigenschaften, dann globale Konstanten, Variablen und Routinen; Rümpfe von Methoden erscheinen nicht zusätzlich |
+| GL2 | Sichtbarkeit ▾ › published | Nur Formularfelder und Ereignis-Handler, TForm1 gedämpft als Rahmen; der Knopf ist fett |
+| GL3 | Methode deklarieren, ohne Rumpf | Eintrag mit „nicht implementiert“ in Warnfarbe; nach dem Anlegen des Rumpfs (kurze Tipppause) verschwindet die Marke |
+| GL4 | Methoden mit override und class function | Marken „override“ bzw. „class“ hinter dem Namen |
+| GL5 | Im Suchfeld „BuCl“ tippen, Enter | Nur Button1Click (mit Rahmen); Enter springt zur Deklaration; Esc leert die Suche |
+| GL6 | Art ▾ › Eigenschaften, dann Art ▾ › Alle zeigen | Erst nur Eigenschaften, dann wieder alles |
+| GL7 | Sortierknopf | Wechsel zwischen Quelltextreihenfolge und alphabetisch je Ebene; bleibt nach Neustart (`outline.alphabetical`) |
+| GL8 | Cursor im Editor in den Rumpf einer Methode setzen | Deklaration der Methode ist gewählt, zugeklappte Eltern gehen auf; die Datei wechselt nicht |
+| GL9 | Klick auf eine Methode, dann Doppelklick | Klick springt zur Deklaration, Doppelklick zur Implementierung; ohne Rumpf bleibt es bei der Deklaration |
+| GL10 | Pfeil vor TForm1 klicken, weitertippen | TForm1 zugeklappt; bleibt zu, wenn die Gliederung neu kommt |
+| GL11 | Andere Unit aktivieren; dann eine .dfm oder Textdatei | Gliederung wechselt sofort; ohne Pascal-Datei der Hinweis „Unit im Editor öffnen“ |
+| GL12 | Server beenden | Hinweis „Der Atlas-Server läuft nicht“; nach dem Neustart des Servers kommt die Gliederung wieder |
+| GL13 | Kontextmenü › Cursor folgen aus | Cursorbewegung ändert die Auswahl nicht mehr (`outline.followCursor`) |
+| GL14 | `outline.enabled` aus | Fenster schließt; Eintrag im Atlas-Menü und Palettenbefehl fehlen |

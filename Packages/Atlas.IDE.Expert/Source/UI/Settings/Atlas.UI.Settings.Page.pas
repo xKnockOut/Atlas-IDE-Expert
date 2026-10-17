@@ -256,6 +256,9 @@ type
     FPeekShowImplementation: TCheckBox;
     FPeekDefinitionKey: TEdit;
     FPeekReferencesKey: TEdit;
+    FOutline: TCheckBox;
+    FOutlineAlphabetical: TCheckBox;
+    FOutlineFollowCursor: TCheckBox;
     FBookmarkKey: TEdit;
     /// <summary>„Element ausblenden …“ (#628).</summary>
     FHideElementKey: TEdit;
@@ -1263,6 +1266,9 @@ begin
   FPeekShowImplementation := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsPeekImplementation));
   FPeekDefinitionKey := AddKey(TAtlasStrings.Text(TAtlasTextId.PeekDefinitionCommand));
   FPeekReferencesKey := AddKey(TAtlasStrings.Text(TAtlasTextId.PeekReferencesCommand));
+  FOutline := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsOutline));
+  FOutlineAlphabetical := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsOutlineAlphabetical));
+  FOutlineFollowCursor := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsOutlineFollowCursor));
   // „Lesezeichen setzen…“ (#622).
   FBookmarkKey := AddKey(TAtlasStrings.Text(TAtlasTextId.BookmarksMenuAdd));
   // „Element ausblenden …“ am gezeichneten Element (#628).
@@ -2076,6 +2082,9 @@ begin
   FMarks.Bind(FPeekShowImplementation, ['PeekShowImplementation']);
   FMarks.Bind(FPeekDefinitionKey, ['PeekDefinitionKey']);
   FMarks.Bind(FPeekReferencesKey, ['PeekReferencesKey']);
+  FMarks.Bind(FOutline, ['Outline']);
+  FMarks.Bind(FOutlineAlphabetical, ['OutlineAlphabetical']);
+  FMarks.Bind(FOutlineFollowCursor, ['OutlineFollowCursor']);
   FMarks.Bind(FBookmarkKey, ['BookmarkKey']);
   FMarks.Bind(FHideElementKey, ['HideElementKey']);
   FMarks.Bind(FNextProblemKey, ['NextProblemKey']);
@@ -3048,6 +3057,9 @@ begin
   FPeekShowImplementation.Checked := ASettings.PeekShowImplementation;
   FPeekDefinitionKey.Text := ShortCutToText(TShortCut(ASettings.PeekDefinitionKey));
   FPeekReferencesKey.Text := ShortCutToText(TShortCut(ASettings.PeekReferencesKey));
+  FOutline.Checked := ASettings.Outline;
+  FOutlineAlphabetical.Checked := ASettings.OutlineAlphabetical;
+  FOutlineFollowCursor.Checked := ASettings.OutlineFollowCursor;
   FBookmarkKey.Text := ShortCutToText(TShortCut(ASettings.BookmarkKey));
   FHideElementKey.Text := ShortCutToText(TShortCut(ASettings.HideElementKey));
   FNextProblemKey.Text := ShortCutToText(TShortCut(ASettings.NextProblemKey));
@@ -3325,6 +3337,9 @@ begin
   ASettings.PeekShowImplementation := FPeekShowImplementation.Checked;
   ASettings.PeekDefinitionKey := Integer(TextToShortCut(Trim(FPeekDefinitionKey.Text)));
   ASettings.PeekReferencesKey := Integer(TextToShortCut(Trim(FPeekReferencesKey.Text)));
+  ASettings.Outline := FOutline.Checked;
+  ASettings.OutlineAlphabetical := FOutlineAlphabetical.Checked;
+  ASettings.OutlineFollowCursor := FOutlineFollowCursor.Checked;
   ASettings.BookmarkKey := Integer(TextToShortCut(Trim(FBookmarkKey.Text)));
   ASettings.HideElementKey := Integer(TextToShortCut(Trim(FHideElementKey.Text)));
   ASettings.NextProblemKey := Integer(TextToShortCut(Trim(FNextProblemKey.Text)));

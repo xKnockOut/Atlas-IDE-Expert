@@ -33,6 +33,9 @@ type
     procedure NavHistoryOptions;
     [Test]
     procedure PeekOptions;
+    /// <summary>Gliederungsfenster (#537): an, Quelltextreihenfolge, Cursor folgen; Speichern und Laden.</summary>
+    [Test]
+    procedure OutlineOptions;
     /// <summary>Erzeugen-Menü (#719): Vorgaben, Normalisieren, Speichern und Laden.</summary>
     [Test]
     procedure GenerateMenuOptions;
@@ -1097,6 +1100,27 @@ begin
   Assert.IsFalse(Loaded.PeekShowImplementation);
   Assert.AreEqual(0, Loaded.PeekDefinitionKey);
   Assert.AreEqual($C07B, Loaded.PeekReferencesKey);
+end;
+
+procedure TAtlasPluginSettingsTests.OutlineOptions;
+var
+  Settings, Loaded: TAtlasPluginSettings;
+  Store: IAtlasSettingsStore;
+begin
+  Settings := TAtlasPluginSettings.Defaults;
+  Assert.IsTrue(Settings.Outline);
+  Assert.IsFalse(Settings.OutlineAlphabetical);
+  Assert.IsTrue(Settings.OutlineFollowCursor);
+  Settings.Outline := False;
+  Settings.OutlineAlphabetical := True;
+  Settings.OutlineFollowCursor := False;
+  Store := TMemoryStore.Create;
+  Settings.Save(Store);
+  Loaded := TAtlasPluginSettings.Defaults;
+  Loaded.Load(Store);
+  Assert.IsFalse(Loaded.Outline);
+  Assert.IsTrue(Loaded.OutlineAlphabetical);
+  Assert.IsFalse(Loaded.OutlineFollowCursor);
 end;
 
 { TAtlasSettingsScopesTests }

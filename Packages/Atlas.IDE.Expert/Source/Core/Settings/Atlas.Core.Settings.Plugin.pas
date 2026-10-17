@@ -522,6 +522,12 @@ type
     PeekDefinitionKey: Integer;
     /// <summary>Kürzel „Referenzen einblenden“ (#505, keys.peekReferences); Vorgabe Umschalt+Alt+F12.</summary>
     PeekReferencesKey: Integer;
+    /// <summary>Fenster „Gliederung“ (#537, outline.enabled).</summary>
+    Outline: Boolean;
+    /// <summary>Gliederung alphabetisch sortieren (#537, outline.alphabetical).</summary>
+    OutlineAlphabetical: Boolean;
+    /// <summary>Eintrag am Cursor hervorheben (#537, outline.followCursor).</summary>
+    OutlineFollowCursor: Boolean;
     /// <summary>Hauptschalter der Atlas-Willkommensseite (#753, welcomePage.enabled): Atlas-Bereiche auf der
     /// Willkommensseite der IDE und Fenster „Atlas-Start“.</summary>
     WelcomePage: Boolean;
@@ -1067,6 +1073,9 @@ begin
   Result.PeekShowImplementation := True;
   Result.PeekDefinitionKey := $807B; // Alt+F12
   Result.PeekReferencesKey := $A07B; // Umschalt+Alt+F12
+  Result.Outline := True;
+  Result.OutlineAlphabetical := False;
+  Result.OutlineFollowCursor := True;
   Result.WelcomePage := True;
   Result.WelcomePageHost := 'welcomePage';
   Result.WelcomePageLayout := 'off';
@@ -1473,6 +1482,9 @@ begin
     BoolValue(Default.PeekShowImplementation)) <> 0;
   PeekDefinitionKey := AStore.ReadInteger('PeekDefinitionKey', Default.PeekDefinitionKey);
   PeekReferencesKey := AStore.ReadInteger('PeekReferencesKey', Default.PeekReferencesKey);
+  Outline := AStore.ReadInteger('Outline', BoolValue(Default.Outline)) <> 0;
+  OutlineAlphabetical := AStore.ReadInteger('OutlineAlphabetical', BoolValue(Default.OutlineAlphabetical)) <> 0;
+  OutlineFollowCursor := AStore.ReadInteger('OutlineFollowCursor', BoolValue(Default.OutlineFollowCursor)) <> 0;
   WelcomePage := AStore.ReadInteger('WelcomePage', BoolValue(Default.WelcomePage)) <> 0;
   WelcomePageHost := AStore.ReadString('WelcomePageHost', Default.WelcomePageHost);
   WelcomePageLayout := AStore.ReadString('WelcomePageLayout', Default.WelcomePageLayout);
@@ -1745,6 +1757,9 @@ begin
   AStore.WriteInteger('PeekShowImplementation', BoolValue(PeekShowImplementation));
   AStore.WriteInteger('PeekDefinitionKey', PeekDefinitionKey);
   AStore.WriteInteger('PeekReferencesKey', PeekReferencesKey);
+  AStore.WriteInteger('Outline', BoolValue(Outline));
+  AStore.WriteInteger('OutlineAlphabetical', BoolValue(OutlineAlphabetical));
+  AStore.WriteInteger('OutlineFollowCursor', BoolValue(OutlineFollowCursor));
   AStore.WriteInteger('WelcomePage', BoolValue(WelcomePage));
   AStore.WriteString('WelcomePageHost', WelcomePageHost);
   AStore.WriteString('WelcomePageLayout', WelcomePageLayout);
