@@ -48,6 +48,10 @@ type
     /// <summary>ADocument: Text nach dem Einsetzen; AOffset: Anfang des eingesetzten Texts darin.
     /// Ohne $0 endet die Vorlage hinter ihrem Text.</summary>
     constructor Create(const ADocument: string; AOffset: Integer; const AExpansion: TAtlasSnippetExpansion);
+    /// <summary>Weiterer Platzhalter außerhalb der Vorlage (Offset im ganzen Text, #473), verknüpft mit den
+    /// gleich nummerierten; ohne solche Nummer oder mit Nummer 0 übergangen. Der Cursor bleibt in der Vorlage.
+    /// </summary>
+    procedure Link(const AField: TAtlasPlaceholderField);
     /// <summary>Nummer des aktuellen Platzhalters; 0 = Endposition (Modus vorbei).</summary>
     function CurrentNumber: Integer;
     /// <summary>Stelle des aktuellen Platzhalters ab 1 und Zahl der nummerierten, für die Fußzeile.</summary>
@@ -137,6 +141,13 @@ begin
   FOrder := Numbers + [0];
   FCurrent := 0;
   FPrimary := FirstOf(FOrder[0]);
+end;
+
+procedure TAtlasPlaceholderSession.Link(const AField: TAtlasPlaceholderField);
+begin
+  // Hinten anhängen: FirstOf findet zuerst die Platzhalter der Vorlage, dort steht der Cursor.
+  if (AField.Number > 0) and (FirstOf(AField.Number) >= 0) then
+    FFields := FFields + [AField];
 end;
 
 function TAtlasPlaceholderSession.FirstOf(ANumber: Integer): Integer;
@@ -278,7 +289,7 @@ end;
 
 function TAtlasPlaceholderSession.MirrorEdits: TAtlasPlaceholderEdits;
 var
-  Index: Integer;
+  Index, Inner: Integer;
   Value: string;
   Edit: TAtlasPlaceholderEdit;
 begin
@@ -294,6 +305,15 @@ begin
       Edit.Text := Value;
       Result := Result + [Edit];
     end;
+  // Aufsteigend: Verknüpfte Platzhalter außerhalb der Vorlage (#473) können vor ihr liegen.
+  for Index := 1 to High(Result) do
+    for Inner := Index downto 1 do
+      if Result[Inner].Start < Result[Inner - 1].Start then
+      begin
+        Edit := Result[Inner];
+        Result[Inner] := Result[Inner - 1];
+        Result[Inner - 1] := Edit;
+      end;
 end;
 
 procedure TAtlasPlaceholderSession.Applied(const AEdits: TAtlasPlaceholderEdits);

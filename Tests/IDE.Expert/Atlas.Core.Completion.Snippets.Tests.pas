@@ -93,6 +93,8 @@ type
     procedure WithoutEndMarkerEndsBehindSnippet;
     [Test]
     procedure LocatesOffsets;
+    [Test]
+    procedure LinkedFieldOutsideSnippet;
   end;
 
   [TestFixture]
@@ -464,6 +466,48 @@ begin
   TAtlasPlaceholderSession.Locate('ab'#13#10'cde'#10'f', 99, Line, Character);
   Assert.AreEqual(2, Line);
   Assert.AreEqual(1, Character);
+end;
+
+procedure TAtlasPlaceholderSessionTests.LinkedFieldOutsideSnippet;
+const
+  Declaration = '  SName = ''Name'';'#10;
+var
+  Session: TAtlasPlaceholderSession;
+  Document: string;
+  Edits: TAtlasPlaceholderEdits;
+  Field: TAtlasPlaceholderField;
+begin
+  // resourcestring auslagern (#473): Der Name steht in der Deklaration davor und im Literal.
+  Session := Start(Declaration + 'begin'#10'  ShowMessage(', '${1:SName}', ');', Document);
+  try
+    Field.Number := 1;
+    Field.Start := 2;
+    Field.Length := 5;
+    Session.Link(Field);
+    // Unbekannte Nummer und Endposition werden übergangen.
+    Field.Number := 7;
+    Session.Link(Field);
+    Field.Number := 0;
+    Session.Link(Field);
+    Assert.AreEqual(2, Integer(Length(Session.Fields)));
+    Assert.AreEqual(1, Integer(Session.Count));
+    Assert.AreEqual('SName', Session.FieldText(Session.Current));
+    // Im Literal getippt: Die Deklaration davor folgt, der Platzhalter im Literal rückt nach.
+    Document := Replace(Document, Session.Current.Start, Session.Current.Stop, 'SFrage');
+    Assert.IsTrue(Session.Update(Document));
+    Edits := Session.MirrorEdits;
+    Assert.AreEqual(1, Integer(Length(Edits)));
+    Assert.AreEqual(2, Edits[0].Start);
+    Assert.AreEqual('SFrage', Edits[0].Text);
+    Document := Apply(Document, Edits);
+    Session.Applied(Edits);
+    Assert.AreEqual(Document, Session.Text);
+    Assert.AreEqual('  SFrage = ''Name'';'#10'begin'#10'  ShowMessage(SFrage);', Document);
+    Assert.AreEqual(Pos('(SFrage', Document), Session.Current.Start);
+    Assert.AreEqual('SFrage', Session.FieldText(Session.Current));
+  finally
+    Session.Free;
+  end;
 end;
 
 { TAtlasSnippetProviderTests }

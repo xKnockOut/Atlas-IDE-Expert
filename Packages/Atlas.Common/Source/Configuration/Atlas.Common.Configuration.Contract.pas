@@ -246,6 +246,11 @@ type
     /// <summary>Nach read/write einer Eigenschaft Feld, Getter und Setter anlegen (#467).</summary>
     CreateAccessors: Boolean;
     AccessorSection: TCompletionAccessorSection;
+    /// <summary>Im String-Literal mit Strg+Leer „Als resourcestring auslagern“ anbieten (#473).</summary>
+    ResourceStrings: Boolean;
+    /// <summary>Unit für ausgelagerte resourcestrings (interface-Teil); '' = implementation der eigenen Unit.
+    /// </summary>
+    ResourceStringUnit: string;
     class function Default: TCompletionSettings; static;
   end;
 
@@ -694,6 +699,8 @@ begin
   Result.NameSuggestions := True;
   Result.CreateAccessors := True;
   Result.AccessorSection := TCompletionAccessorSection.Private;
+  Result.ResourceStrings := True;
+  Result.ResourceStringUnit := '';
 end;
 
 { TServerSettings }

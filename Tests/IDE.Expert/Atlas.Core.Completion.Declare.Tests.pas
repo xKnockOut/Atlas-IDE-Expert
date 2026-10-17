@@ -18,6 +18,10 @@ type
     procedure ReadsDeclareFieldsFromServer;
     [Test]
     procedure EnterPassesThroughWithoutSelection;
+    [Test]
+    procedure ReadsLinkedEditsAndCommand;
+    [Test]
+    procedure PlainDropsPlaceholdersForActions;
   end;
 
 implementation
@@ -27,6 +31,7 @@ uses
   System.Classes,
   System.JSON,
   Atlas.Core.Completion.Contract,
+  Atlas.Core.Completion.Snippets,
   Atlas.Core.Completion.Controller,
   Atlas.Core.Completion.Ranking,
   Atlas.Core.Completion.Providers.Fixed,
@@ -97,6 +102,28 @@ begin
   Result := Result.Trim;
 end;
 
+const
+  // resourcestring auslagern (#473) mit Platzhalter im Literal und in der Deklaration.
+  ResourceItem =
+    '{"label":"Als resourcestring auslagern","kind":21,"insertTextFormat":2,"textEdit":{"range":{"start":' +
+    '{"line":9,"character":14},"end":{"line":9,"character":21}},"newText":"${1:SFrage}"},' +
+    '"additionalTextEdits":[{"range":{"start":{"line":3,"character":0},"end":{"line":3,"character":0}},' +
+    '"newText":"  ${1:SFrage} = ''Frage?'';\n"}],"command":{"title":"Eintragen","command":' +
+    '"atlas.server.addResourceString","arguments":["C:\\P\\Texte.pas","SFrage","''Frage?''"]},' +
+    '"data":{"action":"create","pinned":true,"linkedEdits":true}}';
+
+function ResourceFromLsp(const AJson: string): TAtlasCompletionItem;
+var
+  Json: TJSONObject;
+begin
+  Json := TJSONObject.ParseJSONValue(AJson) as TJSONObject;
+  try
+    Result := TAtlasServerCompletionProvider.ItemFromLsp(Json, 0);
+  finally
+    Json.Free;
+  end;
+end;
+
 function WaitFor(const ACondition: TFunc<Boolean>): Boolean;
 var
   Start: UInt64;
@@ -147,6 +174,44 @@ begin
   Assert.AreEqual('TotalCount', Item.Unknown);
   Assert.IsTrue(Item.UnitUsed, 'die Zusatzänderung ist keine uses-Ergänzung');
   Assert.AreEqual('TotalCount$0', Item.TextEdit.NewText);
+end;
+
+procedure TAtlasCompletionDeclareTests.ReadsLinkedEditsAndCommand;
+var
+  Item: TAtlasCompletionItem;
+begin
+  Item := ResourceFromLsp(ResourceItem);
+  Assert.IsTrue(Item.IsAction);
+  Assert.IsTrue(Item.LinkedEdits);
+  Assert.AreEqual(TAtlasSnippets.FromLsp('${1:SFrage}'), Item.Snippet);
+  Assert.AreEqual(1, Integer(Length(Item.AdditionalEdits)));
+  Assert.AreEqual(TAtlasSnippets.FromLsp('  ${1:SFrage} = ''Frage?'';'#10), Item.AdditionalEdits[0].NewText);
+  Assert.AreEqual('atlas.server.addResourceString', Item.Command);
+  Assert.AreEqual('["C:\\P\\Texte.pas","SFrage","''Frage?''"]', Item.CommandArguments);
+  // Ohne Vorlage keine verknüpften Änderungen, ohne Argumente eine leere Liste.
+  Item := ResourceFromLsp(StringReplace(StringReplace(ResourceItem, '"insertTextFormat":2,', '', []),
+    ',"arguments":["C:\\P\\Texte.pas","SFrage","''Frage?''"]', '', []));
+  Assert.IsFalse(Item.LinkedEdits);
+  Assert.AreEqual('  ${1:SFrage} = ''Frage?'';'#10, Item.AdditionalEdits[0].NewText);
+  Assert.AreEqual('[]', Item.CommandArguments);
+end;
+
+procedure TAtlasCompletionDeclareTests.PlainDropsPlaceholdersForActions;
+var
+  Items: TAtlasCompletionItems;
+  Snippet: TAtlasCompletionItem;
+begin
+  Snippet := Default(TAtlasCompletionItem);
+  Snippet.Name := 'forin';
+  Snippet.Snippet := TAtlasSnippets.FromLsp('for ${1:Item} in ${2:List} do');
+  Items := TAtlasServerCompletionProvider.WithoutSnippets([ResourceFromLsp(ResourceItem), Snippet]);
+  // Die Vorlage fällt weg, der Eintrag, der Code erzeugt, bleibt mit dem Text der Vorgaben.
+  Assert.AreEqual(1, Integer(Length(Items)));
+  Assert.AreEqual('', Items[0].Snippet);
+  Assert.IsFalse(Items[0].LinkedEdits);
+  Assert.AreEqual('SFrage', Items[0].TextEdit.NewText);
+  Assert.AreEqual('  SFrage = ''Frage?'';'#10, Items[0].AdditionalEdits[0].NewText);
+  Assert.AreEqual('atlas.server.addResourceString', Items[0].Command);
 end;
 
 procedure TAtlasCompletionDeclareTests.EnterPassesThroughWithoutSelection;

@@ -117,6 +117,13 @@ begin
   AData.AddPair('setRange', TLspPositions.RangeToJson(AItem.SetRange));
 end;
 
+// Verknüpfte Platzhalter in den weiteren Änderungen (#473).
+procedure WriteLinked(const AItem: TCompletionItem; AData: TJSONObject);
+begin
+  if AItem.LinkedEdits then
+    AData.AddPair('linkedEdits', TJSONBool.Create(True));
+end;
+
 // case vervollständigen (#449).
 procedure WritePinned(const AItem: TCompletionItem; AData: TJSONObject);
 begin
@@ -253,15 +260,15 @@ end;
 const
   /// <summary>Reihenfolge der Felder unter data; das Plugin liest nach Namen, die Golden-Tests nach Text.
   /// </summary>
-  DataWriters: array[0..26] of TItemDataWriter = (WriteSource, WriteExpected, WriteAction, WriteContainer,
+  DataWriters: array[0..27] of TItemDataWriter = (WriteSource, WriteExpected, WriteAction, WriteContainer,
     WriteDepth, WriteHelper, WriteParameters, WriteCondition, WriteUnavailable, WriteScope, WriteOrdinal,
-    WriteSetOf, WritePinned, WriteCount, WriteUnknown, WriteBatch, WriteHint, WriteForm, WriteByType, WriteSender,
+    WriteSetOf, WriteLinked, WritePinned, WriteCount, WriteUnknown, WriteBatch, WriteHint, WriteForm, WriteByType, WriteSender,
     WriteDataSet, WriteGuard, WriteUnit, WriteHides, WriteOverloads, WriteTypeArg, WriteBindings);
 
 function NeedsData(const AItem: TCompletionItem): Boolean;
 begin
   Result := (AItem.SourceFile <> '') or (AItem.Expected <> '') or (AItem.Action <> '') or (AItem.Condition <> '') or
-    (AItem.Scope > 0) or (AItem.Ordinal > 0) or AItem.Pinned or AItem.Hint or (AItem.Form <> '') or
+    (AItem.Scope > 0) or (AItem.Ordinal > 0) or AItem.Pinned or AItem.LinkedEdits or AItem.Hint or (AItem.Form <> '') or
     (AItem.Sender <> '') or (AItem.DataSet <> '') or (AItem.Guard <> '') or (AItem.TypeParam <> '') or
     (Length(AItem.Bindings) > 0);
 end;
@@ -275,7 +282,9 @@ end;
 
 function ItemToJson(const AItem: TCompletionItem; ASort: Integer): TJSONObject;
 var
-  Edits: TJSONArray;
+  Edits, Arguments: TJSONArray;
+  Command: TJSONObject;
+  Argument: string;
   Edit: TRuleEdit;
   Data: TJSONObject;
   Writer: TItemDataWriter;
@@ -300,6 +309,18 @@ begin
     Result.AddPair('additionalTextEdits', Edits);
     for Edit in AItem.AdditionalEdits do
       Edits.AddElement(EditToJson(Edit));
+  end;
+  // Befehl nach dem Übernehmen (#473): resourcestring in eine andere Unit schreiben.
+  if AItem.Command <> '' then
+  begin
+    Command := TJSONObject.Create;
+    Command.AddPair('title', AItem.CommandTitle);
+    Command.AddPair('command', AItem.Command);
+    Arguments := TJSONArray.Create;
+    for Argument in AItem.CommandArguments do
+      Arguments.Add(Argument);
+    Command.AddPair('arguments', Arguments);
+    Result.AddPair('command', Command);
   end;
   // Reihenfolge wie geliefert: beste Punktzahl, dann nächster Gültigkeitsbereich.
   Result.AddPair('sortText', Format('%.5d', [ASort]));
