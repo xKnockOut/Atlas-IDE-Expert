@@ -46,6 +46,9 @@ type
     procedure SlashCommandComesFirst;
     [Test]
     procedure SlashSortOffersCollectionsThenMembers;
+    /// <summary>#293/#294: Typ im Argument von /var mit uses-Eintrag der Typ-Unit (#180).</summary>
+    [Test]
+    procedure SlashTypeArgumentAddsUses;
     [Test]
     procedure DataNameInStringIsExclusive;
     [Test]
@@ -291,6 +294,31 @@ begin
     for Index := 0 to ItemCount(Answer) - 1 do
       Assert.AreEqual(14, ItemAt(Answer, Index).GetValue<Integer>('kind'));
     Assert.IsFalse(Answer.ToJSON.Contains('"Wert"'), Answer.ToJSON);
+  finally
+    Answer.Free;
+  end;
+end;
+
+procedure TLspCompletionHandleTests.SlashTypeArgumentAddsUses;
+var
+  Answer: TJSONObject;
+  Item: TJSONObject;
+begin
+  AddUnit(TypenFile, UnitTypen);
+  Answer := Complete(
+    'unit Haupt;'#13#10 +
+    'interface'#13#10 +
+    'implementation'#13#10 +
+    'procedure Laden;'#13#10 +
+    'begin'#13#10 +
+    '  /var C: TCon|'#13#10 +
+    'end;'#13#10 +
+    'end.');
+  try
+    Assert.AreEqual('TControl', Labels(Answer));
+    Item := ItemAt(Answer, 0);
+    Assert.IsTrue(Item.GetValue('additionalTextEdits') is TJSONArray, Item.ToJSON);
+    Assert.IsTrue(Pos('Typen', Item.GetValue('additionalTextEdits').ToJSON) > 0, Item.ToJSON);
   finally
     Answer.Free;
   end;

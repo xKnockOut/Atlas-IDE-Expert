@@ -17,6 +17,7 @@ Server und Claude-Code-Plugin tragen immer dieselbe Version.
 - Dokumentationskommentar abschaltbar (#88): `completeBlocks.docComment` (Vorgabe an) schaltet die Vervollständigung nach `///` und die Codeaktionen dazu; überzählige `<param>`-Einträge werden als `<!-- entfernt: Name: … -->` markiert statt gelöscht.
 - Hinweis `unknown-rule-id` (#41): eine unbekannte Regelkennung in `lsp-ignore` oder `rules` meldet „Unbekannte Regelkennung "x"; gemeint ist vermutlich "y"“ mit Schnellkorrektur; sie gilt nicht mehr zusätzlich als `unused-suppression`. Über `rules` abschaltbar.
 - Kennzeichnung „Experimentell“ (#834): Hauptschalter `experimental.enabled` (Vorgabe aus) auf dem Reiter „Allgemein“; experimentelle Funktionen tragen „[Experimentell]“ auf der Optionsseite, im Projektdialog und in den Schnellschaltern, wirken nur mit dem Hauptschalter und stehen im Statusfeld-Tooltip und im Fehlerbericht. Filter „Nur experimentelle“, Profil „Alles an, auch experimentell“, Schema-Marker `x-experimental` mit Prüfung in `Update-ConfigDoc.ps1`, eigener Abschnitt in „Neu in Atlas“. <!-- whatsnew setting=ExperimentalEnabled -->
+- Schnellbefehle (#293, #294): nach `/name ` schlägt die Vervollständigung Units (`/uses`, `/open`), Typen (hinter `:` von `/var`, `/field`, `/prop`, `/list`, `/future`, bei `/helper`), Interfaces (`/intf`), Ausnahmeklassen (`/raise`, `/exception`), überschreibbare Methoden (`/override`) und Regelkennungen (`/ignore`) vor; gewählte Typen bringen ihren uses-Eintrag mit. Die Befehle rücken nach dem Formatstil der Datei ein (Editor-Optionen, `.editorconfig`, `format`).
 
 ### Geändert
 - JSON-Ausgabe (#144): jeder Befund trägt die Konfidenz zusätzlich unter `properties.confidence` wie in SARIF.
@@ -24,8 +25,11 @@ Server und Claude-Code-Plugin tragen immer dieselbe Version.
 - `/dtor` ergänzt einen vorhandenen Destruktor (#295), `/encapsulate` ohne `F`-Präfix im Namen der Property (#298), `/filter` ohne Inline-Variablen und mit dem Element vor jedem Mitglied (#319).
 - `/task` meldet verschobene Zeilen und Lesen nach dem Task, `/future` setzt den Cursor (#322).
 
+- `/var Name := Ausdruck` meldet vor Delphi 10.3 einen Hinweis statt einer Inline-Variablen (#294); `/const!` in einer Unit ohne implementation bleibt stehen, statt hinter `end.` zu schreiben.
+- Test debuggen und „Test am Cursor ausführen“ gibt es nur mit `codeLens.tests` (#585).
+
 ### Tests
-- `/header` am falschen Ort (#306), FireMonkey-Plattformansichten bei Sprung und Umbenennen (#87).
+- Alias `usesCommand` (#293), Formulardateien abgeleiteter Klassen (#44), `/header` am falschen Ort (#306), FireMonkey-Plattformansichten bei Sprung und Umbenennen (#87).
 
 ## [1.0.0] - 2026-10-16
 
