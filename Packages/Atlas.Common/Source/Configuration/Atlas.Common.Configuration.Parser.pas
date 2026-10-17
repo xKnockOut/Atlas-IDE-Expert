@@ -1005,6 +1005,8 @@ begin
       ExpectBoolean(ANode[Index], Key, FSettings.Refactoring.ResolveWith)
     else if Key = 'inline' then
       ExpectBoolean(ANode[Index], Key, FSettings.Refactoring.InlineCode)
+    else if Key = 'moveClass' then
+      ExpectBoolean(ANode[Index], Key, FSettings.Refactoring.MoveClass)
     else if Key = 'createMethod' then
       ExpectBoolean(ANode[Index], Key, FSettings.Refactoring.CreateMethod)
     else if Key = 'createMethodSection' then

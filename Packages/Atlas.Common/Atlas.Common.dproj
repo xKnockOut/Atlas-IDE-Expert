@@ -260,6 +260,7 @@
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.ApplyEdit.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.DfmPropertyRules.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.ChangeSignature.pas"/>
+        <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.MoveClass.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.Status.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.DocWiki.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.CompilerDirectives.pas"/>
@@ -300,6 +301,7 @@
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.CaseCompletion.pas"/>
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.RoutineBody.pas"/>
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.RoutineLocals.pas"/>
+        <DCCReference Include="Source\Editing\Atlas.Common.Editing.MoveClass.pas"/>
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.Extract.pas"/>
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.Inline.pas"/>
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.WithResolution.pas"/>
