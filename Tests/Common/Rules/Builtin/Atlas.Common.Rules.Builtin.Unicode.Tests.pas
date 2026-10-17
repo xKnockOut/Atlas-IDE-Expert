@@ -35,6 +35,36 @@ type
     procedure AsciiIdentifierSilent;
     [Test]
     procedure RegistersAllRules;
+    [Test]
+    procedure HebrewWithRtlMarkIsNoError;
+    [Test]
+    procedure UnclosedOverrideInCommentIsError;
+    [Test]
+    procedure BalancedEmbeddingInRtlStringIsLow;
+    [Test]
+    procedure FiftyZeroWidthSpacesAreOneFinding;
+    [Test]
+    procedure InvisibleInStringIsMediumOutsideHigh;
+    [Test]
+    procedure GreekLetterIsMediumCyrillicLookalikeHigh;
+    [Test]
+    procedure ConfusableFixUsesLatinLetters;
+    [Test]
+    procedure StringFixWritesCharLiteralAndParses;
+    [Test]
+    procedure FixOutsideStringRemovesCharacter;
+    [Test]
+    procedure FormCharCodeIsReported;
+    [Test]
+    procedure FormRawCharGetsFormFix;
+    [Test]
+    procedure InvalidUtf8ByteHasLineAndColumn;
+    [Test]
+    procedure InvalidUtf8InAnsiLookingUtf8File;
+    [Test]
+    procedure PlainAnsiFileIsNoInvalidUtf8;
+    [Test]
+    procedure InvalidUtf8InForm;
   end;
 
 implementation
@@ -45,11 +75,81 @@ uses
   Atlas.Common.Rules.Contract,
   Atlas.Common.Rules.Registry,
   Atlas.Common.Rules.Builtin.Unicode,
+  Atlas.Common.Rules.Engine,
+  Atlas.Common.Configuration.Parser,
+  Atlas.Common.Documents.FileEncoding,
+  Atlas.Common.Documents.Contract,
+  Atlas.Common.Pascal.SyntaxTree,
+  Atlas.Common.Pascal.Parser,
+  Atlas.Text.Lines,
   Atlas.Tests.RuleAssert;
 
 function UnitWith(const ABody: string): string;
 begin
   Result := 'unit U;'#13#10'interface'#13#10'implementation'#13#10 + ABody + #13#10'end.';
+end;
+
+const
+  FormUnit = 'unit Form1;'#13#10'interface'#13#10'type'#13#10'  TForm1 = class(TForm)'#13#10 +
+    '    Button1: TButton;'#13#10'  end;'#13#10'implementation'#13#10'end.';
+
+/// <summary>Prüfung mit Formulardatei und Dateien; AFiles: Name → Bytes.</summary>
+function Run(const ARule: IRule; const ASource, AFormText: string; const AUnitBytes, AFormBytes: TBytes;
+  const AConfig: string): TArray<TRuleFinding>;
+var
+  Context: TRuleContext;
+  Tree: TSyntaxTree;
+  Settings: TServerSettings;
+  Issues: TArray<TConfigurationIssue>;
+begin
+  Settings := TServerSettings.Default;
+  if AConfig <> '' then
+    Settings := TConfigurationParser.Parse(AConfig, Issues);
+  Tree := TPascalParser.Parse(ASource);
+  try
+    Context := Default(TRuleContext);
+    Context.RelativePath := 'Form1.pas';
+    Context.UnitName := 'Form1';
+    Context.Text := ASource;
+    Context.Tree := Tree;
+    Context.FormText := AFormText;
+    if AFormText <> '' then
+      Context.FormFile := 'C:\P\Form1.dfm';
+    Context.ReadFile :=
+      function(const AName: string; out AData: TBytes): Boolean
+      begin
+        Result := True;
+        if SameText(AName, 'Form1.pas') and (AUnitBytes <> nil) then
+          AData := AUnitBytes
+        else if SameText(AName, 'Form1.dfm') and (AFormBytes <> nil) then
+          AData := AFormBytes
+        else
+          Result := False;
+      end;
+    Result := TRuleEngine.Run([ARule], Settings, Context);
+  finally
+    Tree.Free;
+  end;
+end;
+
+function Apply(const AText: string; const AEdit: TTextEdit): string;
+var
+  Table: TLineTable;
+  Start, Stop: Integer;
+begin
+  Table := TLineTable.Build(AText);
+  Start := Table.OffsetAt(AEdit.Range.StartPos);
+  Stop := Table.OffsetAt(AEdit.Range.EndPos);
+  Result := Copy(AText, 1, Start) + AEdit.NewText + Copy(AText, Stop + 1, MaxInt);
+end;
+
+function Bytes(const AValues: array of Byte): TBytes;
+var
+  Index: Integer;
+begin
+  SetLength(Result, Length(AValues));
+  for Index := 0 to High(AValues) do
+    Result[Index] := AValues[Index];
 end;
 
 { TUnicodeRuleTests }
@@ -140,6 +240,229 @@ begin
   finally
     Registry.Free;
   end;
+end;
+
+procedure TUnicodeRuleTests.HebrewWithRtlMarkIsNoError;
+var
+  Source: string;
+  Findings: TArray<TRuleFinding>;
+begin
+  Source := UnitWith('const S = ''' + Char($05E9) + Char($05DC) + Char($05D5) + Char($05DD) + Char($200F) +
+    ' 1'';');
+  TRuleAssert.Silent(TBidiControlRule.Create, Source);
+  Findings := TRuleAssert.Findings(TBidiControlRule.Create, Source, '{ "minConfidence": "low" }');
+  Assert.AreEqual(1, Integer(Length(Findings)));
+  Assert.AreEqual(Ord(TRuleConfidence.Low), Ord(Findings[0].Confidence));
+end;
+
+procedure TUnicodeRuleTests.UnclosedOverrideInCommentIsError;
+var
+  Findings: TArray<TRuleFinding>;
+begin
+  Findings := TRuleAssert.Findings(TBidiControlRule.Create, UnitWith('{ Admin ' + Char($202E) + ' } X := 1;'));
+  Assert.AreEqual(1, Integer(Length(Findings)));
+  Assert.AreEqual(Ord(TRuleSeverity.Error), Ord(Findings[0].Severity));
+  Assert.AreEqual(Ord(TRuleConfidence.High), Ord(Findings[0].Confidence));
+end;
+
+procedure TUnicodeRuleTests.BalancedEmbeddingInRtlStringIsLow;
+begin
+  // Hebräisch mit geschlossenem RLE … PDF im selben String: legitim.
+  TRuleAssert.Silent(TBidiControlRule.Create, UnitWith('const S = ''' + Char($202B) + Char($05E9) + Char($05DC) +
+    Char($202C) + ''';'));
+  // Ohne RTL-Schrift bleibt es ein Fehler.
+  TRuleAssert.Reports(TBidiControlRule.Create, UnitWith('const S = ''' + Char($202B) + 'abc' + Char($202C) + ''';'), 2);
+end;
+
+procedure TUnicodeRuleTests.FiftyZeroWidthSpacesAreOneFinding;
+var
+  Findings: TArray<TRuleFinding>;
+begin
+  Findings := TRuleAssert.Findings(TInvisibleCharRule.Create, UnitWith('const S = ''a' +
+    StringOfChar(Char($200B), 50) + 'b'';'));
+  Assert.AreEqual(1, Integer(Length(Findings)));
+  Assert.AreEqual(12, Findings[0].Range.StartPos.Character);
+  Assert.AreEqual(62, Findings[0].Range.EndPos.Character);
+  Assert.Contains(Findings[0].Message, '50 Zeichen U+200B');
+end;
+
+procedure TUnicodeRuleTests.InvisibleInStringIsMediumOutsideHigh;
+var
+  Findings: TArray<TRuleFinding>;
+begin
+  Findings := TRuleAssert.Findings(TInvisibleCharRule.Create, UnitWith('const S = ''a' + Char($200D) + 'b'';'));
+  Assert.AreEqual(Ord(TRuleConfidence.Medium), Ord(Findings[0].Confidence));
+  Findings := TRuleAssert.Findings(TInvisibleCharRule.Create, UnitWith('const S' + Char($200B) + ' = 1;'));
+  Assert.AreEqual(Ord(TRuleConfidence.High), Ord(Findings[0].Confidence));
+end;
+
+procedure TUnicodeRuleTests.GreekLetterIsMediumCyrillicLookalikeHigh;
+var
+  Findings: TArray<TRuleFinding>;
+begin
+  Findings := TRuleAssert.Findings(TConfusableIdentifierRule.Create, UnitWith('var Winkel' + Char($03B1) +
+    ': Integer;'));
+  Assert.AreEqual(1, Integer(Length(Findings)));
+  Assert.AreEqual(Ord(TRuleConfidence.Medium), Ord(Findings[0].Confidence));
+  Findings := TRuleAssert.Findings(TConfusableIdentifierRule.Create, UnitWith('var D' + Char($0430) +
+    'ten: Integer;'));
+  Assert.AreEqual(Ord(TRuleConfidence.High), Ord(Findings[0].Confidence));
+end;
+
+procedure TUnicodeRuleTests.ConfusableFixUsesLatinLetters;
+var
+  Findings: TArray<TRuleFinding>;
+  Source: string;
+begin
+  Source := UnitWith('var P' + Char($0430) + 'ssw' + Char($043E) + 'rd: Integer;');
+  Findings := TRuleAssert.Findings(TConfusableIdentifierRule.Create, Source);
+  Assert.AreEqual(1, Integer(Length(Findings[0].Fixes)));
+  Assert.AreEqual('Password', Findings[0].Fixes[0].Edits[0].NewText);
+  // Mehrdeutig (Griechisch ohne Gegenstück): keine Korrektur.
+  Findings := TRuleAssert.Findings(TConfusableIdentifierRule.Create, UnitWith('var Winkel' + Char($03B1) +
+    ': Integer;'));
+  Assert.AreEqual(0, Integer(Length(Findings[0].Fixes)));
+end;
+
+procedure TUnicodeRuleTests.StringFixWritesCharLiteralAndParses;
+var
+  Findings: TArray<TRuleFinding>;
+  Source, Fixed: string;
+  Tree: TSyntaxTree;
+begin
+  Source := UnitWith('const S = ''a' + Char($200B) + 'b'';');
+  Findings := TRuleAssert.Findings(TInvisibleCharRule.Create, Source);
+  Assert.AreEqual(1, Integer(Length(Findings[0].Fixes)));
+  Assert.IsTrue(Findings[0].Fixes[0].Safe);
+  Fixed := Apply(Source, Findings[0].Fixes[0].Edits[0]);
+  Assert.AreEqual(UnitWith('const S = ''a''#$200B''b'';'), Fixed);
+  Tree := TPascalParser.Parse(Fixed);
+  try
+    Assert.AreEqual(0, Integer(Length(Tree.Diagnostics)));
+  finally
+    Tree.Free;
+  end;
+  // Am Anfang des Strings: ''#$200B'b' ist ebenso gültig.
+  Source := UnitWith('const S = ''' + Char($200B) + 'b'';');
+  Fixed := Apply(Source, TRuleAssert.Findings(TInvisibleCharRule.Create, Source)[0].Fixes[0].Edits[0]);
+  Tree := TPascalParser.Parse(Fixed);
+  try
+    Assert.AreEqual(0, Integer(Length(Tree.Diagnostics)));
+  finally
+    Tree.Free;
+  end;
+end;
+
+procedure TUnicodeRuleTests.FixOutsideStringRemovesCharacter;
+var
+  Findings: TArray<TRuleFinding>;
+  Source: string;
+begin
+  Source := UnitWith('// Hinweis ' + Char($202E) + 'x');
+  Findings := TRuleAssert.Findings(TBidiControlRule.Create, Source);
+  Assert.AreEqual(UnitWith('// Hinweis x'), Apply(Source, Findings[0].Fixes[0].Edits[0]));
+  Assert.IsFalse(Findings[0].Fixes[0].Safe);
+end;
+
+procedure TUnicodeRuleTests.FormCharCodeIsReported;
+var
+  Findings: TArray<TRuleFinding>;
+begin
+  Findings := Run(TBidiControlRule.Create, FormUnit, 'object Form1: TForm1'#13#10 +
+    '  object Button1: TButton'#13#10'    Caption = ''A''#8238''B'''#13#10'  end'#13#10'end', nil, nil, '');
+  Assert.AreEqual(1, Integer(Length(Findings)));
+  Assert.Contains(Findings[0].Message, 'Zeile 3 (Button1.Caption)');
+  Assert.Contains(Findings[0].Message, 'U+202E');
+  // Gemeldet am Feld Button1 in der Unit.
+  Assert.AreEqual(4, Findings[0].Range.StartPos.Line);
+end;
+
+procedure TUnicodeRuleTests.FormRawCharGetsFormFix;
+var
+  Findings: TArray<TRuleFinding>;
+  Form: string;
+begin
+  Form := 'object Form1: TForm1'#13#10'  Caption = ''A' + Char($200B) + 'B'''#13#10'end';
+  Findings := Run(TInvisibleCharRule.Create, FormUnit, Form, nil, nil, '');
+  Assert.AreEqual(1, Integer(Length(Findings)));
+  Assert.AreEqual(1, Integer(Length(Findings[0].Fixes)));
+  Assert.AreEqual('C:\P\Form1.dfm', Findings[0].Fixes[0].FileName);
+  Assert.AreEqual('object Form1: TForm1'#13#10'  Caption = ''A''#8203''B'''#13#10'end',
+    Apply(Form, Findings[0].Fixes[0].Edits[0]));
+  // Gemeldet an der Formularklasse.
+  Assert.AreEqual(3, Findings[0].Range.StartPos.Line);
+end;
+
+procedure TUnicodeRuleTests.InvalidUtf8ByteHasLineAndColumn;
+var
+  Data: TBytes;
+  Source: string;
+  Format: TFileFormat;
+  Findings: TArray<TRuleFinding>;
+begin
+  // BOM, "unit U;" CRLF "// a" $FF "b": Zeile 1, Spalte 4. Den Text liefert der Dekodierer (Delphi U+FFFD).
+  Data := Bytes([$EF, $BB, $BF, Ord('u'), Ord('n'), Ord('i'), Ord('t'), Ord(' '), Ord('U'), Ord(';'), 13, 10,
+    Ord('/'), Ord('/'), Ord(' '), Ord('a'), $FF, Ord('b'), 13, 10, Ord('i'), Ord('m'), Ord('p'), Ord('l'), Ord('e'),
+    Ord('m'), Ord('e'), Ord('n'), Ord('t'), Ord('a'), Ord('t'), Ord('i'), Ord('o'), Ord('n'), 13, 10, Ord('e'),
+    Ord('n'), Ord('d'), Ord('.')]);
+  Source := TFileEncoding.Decode(Data, Format);
+  Assert.AreEqual(1, Integer(Length(TFileEncoding.InvalidUtf8(Data, Format))), 'Fehlstellen');
+  Findings := Run(TControlCharRule.Create, Source, '', Data, nil, '');
+  Assert.AreEqual(1, Integer(Length(Findings)), 'Datei');
+  Assert.AreEqual(1, Findings[0].Range.StartPos.Line);
+  Assert.AreEqual(4, Findings[0].Range.StartPos.Character);
+  Assert.Contains(Findings[0].Message, '$FF');
+  // Geänderter Puffer: die Stellen der Datei gelten nicht, dann nur U+FFFD.
+  Findings := Run(TControlCharRule.Create, 'unit U;'#13#10'// xa' + Char($FFFD) + 'b', '', Data, nil, '');
+  Assert.AreEqual(1, Integer(Length(Findings)));
+  Assert.Contains(Findings[0].Message, 'U+FFFD');
+end;
+
+procedure TUnicodeRuleTests.InvalidUtf8InAnsiLookingUtf8File;
+var
+  Data: TBytes;
+  Source: string;
+  Format: TFileFormat;
+  Findings: TArray<TRuleFinding>;
+begin
+  // Ohne BOM: gültiges "ä" (C3 A4) und ein einzelnes $FF; Atlas liest die Datei als ANSI.
+  Data := Bytes([Ord('/'), Ord('/'), Ord(' '), $C3, $A4, Ord(' '), $FF, 13, 10, Ord('u'), Ord('n'), Ord('i'),
+    Ord('t'), Ord(' '), Ord('U'), Ord(';')]);
+  Source := TFileEncoding.Decode(Data, Format);
+  Findings := Run(TControlCharRule.Create, Source, '', Data, nil, '');
+  Assert.AreEqual(1, Integer(Length(Findings)));
+  Assert.AreEqual(0, Findings[0].Range.StartPos.Line);
+  Assert.AreEqual(6, Findings[0].Range.StartPos.Character);
+end;
+
+procedure TUnicodeRuleTests.PlainAnsiFileIsNoInvalidUtf8;
+var
+  Data: TBytes;
+  Source: string;
+  Format: TFileFormat;
+begin
+  // Echtes ANSI ("ä" als $E4) ist kein beschädigtes UTF-8.
+  Data := Bytes([Ord('/'), Ord('/'), Ord(' '), $E4, 13, 10, Ord('u'), Ord('n'), Ord('i'), Ord('t'), Ord(' '),
+    Ord('U'), Ord(';')]);
+  Source := TFileEncoding.Decode(Data, Format);
+  Assert.AreEqual(0, Integer(Length(Run(TControlCharRule.Create, Source, '', Data, nil, ''))));
+end;
+
+procedure TUnicodeRuleTests.InvalidUtf8InForm;
+var
+  Data: TBytes;
+  Form: string;
+  Format: TFileFormat;
+  Findings: TArray<TRuleFinding>;
+begin
+  Data := Bytes([$EF, $BB, $BF, Ord('o'), Ord('b'), Ord('j'), Ord('e'), Ord('c'), Ord('t'), Ord(' '), Ord('F'),
+    Ord('o'), Ord('r'), Ord('m'), Ord('1'), Ord(':'), Ord(' '), Ord('T'), Ord('F'), Ord('o'), Ord('r'), Ord('m'),
+    Ord('1'), 13, 10, Ord(' '), Ord(' '), Ord('C'), Ord('a'), Ord('p'), Ord('t'), Ord('i'), Ord('o'), Ord('n'),
+    Ord(' '), Ord('='), Ord(' '), Ord(''''), $E2, $82, Ord(''''), 13, 10, Ord('e'), Ord('n'), Ord('d')]);
+  Form := TFileEncoding.Decode(Data, Format);
+  Findings := Run(TControlCharRule.Create, FormUnit, Form, nil, Data, '');
+  Assert.AreEqual(1, Integer(Length(Findings)), Form);
+  Assert.Contains(Findings[0].Message, 'Zeile 2, Spalte 14');
 end;
 
 initialization

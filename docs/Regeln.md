@@ -145,7 +145,7 @@ X := 1;
 
 **Bidirektionales Steuerzeichen** · Schwachstelle · Fehler
 
-Bidirektionale Steuerzeichen können Code anders anzeigen, als er kompiliert wird (Trojan Source).
+Bidirektionale Steuerzeichen können Code anders anzeigen, als er kompiliert wird (Trojan Source); auch in Formulardateien. Richtungsmarken in RTL-Text nur mit niedriger Konfidenz.
 
 Mit Treffer:
 
@@ -164,7 +164,7 @@ if IsAdmin then begin
 
 **Unsichtbares Zeichen** · Sicherheits-Hotspot · Warnung
 
-Unsichtbare oder Nullbreiten-Zeichen im Quelltext.
+Unsichtbare oder Nullbreiten-Zeichen im Quelltext und in Formulardateien; in Strings und Kommentaren mittlere Konfidenz.
 
 Mit Treffer:
 
@@ -183,7 +183,7 @@ Count := 0;
 
 **Steuerzeichen** · Bug · Fehler
 
-NUL- und Steuerzeichen oder ungültige Bytes (U+FFFD) im Quelltext.
+NUL- und Steuerzeichen oder ungültige UTF-8-Bytes im Quelltext und in der Formulardatei; ungültige Bytes mit genauer Zeile und Spalte.
 
 Mit Treffer:
 
