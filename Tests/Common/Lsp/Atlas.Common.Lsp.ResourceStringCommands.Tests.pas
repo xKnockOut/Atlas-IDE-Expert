@@ -31,6 +31,7 @@ implementation
 uses
   System.SysUtils,
   System.JSON,
+  System.Generics.Collections,
   Atlas.Common.Documents.Contract,
   Atlas.Common.JsonRpc.Contract,
   Atlas.Common.Lsp.ResourceStringCommands;

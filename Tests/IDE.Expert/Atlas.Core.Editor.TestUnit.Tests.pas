@@ -31,6 +31,7 @@ implementation
 uses
   System.SysUtils,
   System.JSON,
+  System.Generics.Collections,
   Atlas.Core.Editor.TestUnit;
 
 function Parse(const AJson: string): TAtlasTestUnitInfo;

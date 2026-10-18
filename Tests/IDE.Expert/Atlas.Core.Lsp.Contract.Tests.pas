@@ -22,6 +22,7 @@ implementation
 uses
   System.SysUtils,
   System.JSON,
+  System.Generics.Collections,
   Atlas.Core.Lsp.Contract,
   Atlas.Core.Problems.Contract,
   Atlas.Core.Results.Model;

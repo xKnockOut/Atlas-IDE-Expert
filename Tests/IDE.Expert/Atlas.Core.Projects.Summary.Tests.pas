@@ -82,6 +82,7 @@ uses
   System.SysUtils,
   System.IOUtils,
   System.JSON,
+  System.Generics.Collections,
   Atlas.Core.Ci.Contract,
   Atlas.Core.Projects.Summary;
 

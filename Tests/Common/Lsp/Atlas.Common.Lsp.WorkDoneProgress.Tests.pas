@@ -33,6 +33,7 @@ uses
   System.SysUtils,
   System.Classes,
   System.JSON,
+  System.Generics.Collections,
   Atlas.Common.JsonRpc.Contract,
   Atlas.Common.Index.Contract,
   Atlas.Common.Lsp.WorkDoneProgress;
@@ -86,7 +87,7 @@ begin
     Progress.Start('Index aufbauen');
     Assert.IsTrue(Progress.Active);
     Assert.AreEqual(0, Progress.Percent);
-    Assert.AreEqual(2, Transport.Messages.Count);
+    Assert.AreEqual(2, Integer(Transport.Messages.Count));
     Assert.Contains(Transport.Messages[0], '"method":"window/workDoneProgress/create"');
     Assert.Contains(Transport.Messages[0], '"id":"atlas/index"');
     Assert.Contains(Transport.Messages[0], '"token":"index"');
@@ -113,17 +114,17 @@ begin
     Progress.Start('Titel');
     // Direkt nach begin: gedrosselt, der Prozentwert gilt trotzdem (#647).
     Progress.Report('A.pas', 10);
-    Assert.AreEqual(2, Transport.Messages.Count);
+    Assert.AreEqual(2, Integer(Transport.Messages.Count));
     Assert.AreEqual(10, Progress.Percent);
     Sleep(TLspWorkDoneProgress.MinReportIntervalMs + 50);
     Progress.Report('B.pas', 20);
-    Assert.AreEqual(3, Transport.Messages.Count);
+    Assert.AreEqual(3, Integer(Transport.Messages.Count));
     Assert.Contains(Transport.Messages[2], '"kind":"report"');
     Assert.Contains(Transport.Messages[2], '"message":"B.pas"');
     Assert.Contains(Transport.Messages[2], '"percentage":20');
     // Gleich danach wieder gedrosselt.
     Progress.Report('C.pas', 30);
-    Assert.AreEqual(3, Transport.Messages.Count);
+    Assert.AreEqual(3, Integer(Transport.Messages.Count));
     Assert.AreEqual(30, Progress.Percent);
   finally
     Progress.Free;
@@ -144,7 +145,7 @@ begin
     Progress.Report('', 40);
     Sleep(TLspWorkDoneProgress.MinReportIntervalMs + 50);
     Progress.Report('ohne Zahl', -1);
-    Assert.AreEqual(3, Transport.Messages.Count);
+    Assert.AreEqual(3, Integer(Transport.Messages.Count));
     Assert.IsFalse(Pos('percentage', Transport.Messages[2]) > 0, Transport.Messages[2]);
     // Ohne Prozentangabe bleibt der letzte Wert.
     Assert.AreEqual(40, Progress.Percent);
@@ -166,12 +167,12 @@ begin
     Progress.Start('Titel');
     Progress.Finish('Fertig');
     Assert.IsFalse(Progress.Active);
-    Assert.AreEqual(3, Transport.Messages.Count);
+    Assert.AreEqual(3, Integer(Transport.Messages.Count));
     Assert.Contains(Transport.Messages[2], '"kind":"end"');
     Assert.Contains(Transport.Messages[2], '"message":"Fertig"');
     Assert.IsFalse(Pos('percentage', Transport.Messages[2]) > 0, Transport.Messages[2]);
     Progress.Finish('Noch einmal');
-    Assert.AreEqual(3, Transport.Messages.Count);
+    Assert.AreEqual(3, Integer(Transport.Messages.Count));
   finally
     Progress.Free;
   end;
@@ -189,7 +190,7 @@ begin
   try
     Progress.Report('A.pas', 50);
     Progress.Finish('Ende');
-    Assert.AreEqual(0, Transport.Messages.Count);
+    Assert.AreEqual(0, Integer(Transport.Messages.Count));
     Assert.AreEqual(0, Progress.Percent);
   finally
     Progress.Free;
@@ -207,12 +208,12 @@ begin
   Keep := Transport;
   Progress := TLspWorkDoneProgress.Create(Keep, 't');
   try
-    Event := Progress.AsIndexProgress;
+    Event := Progress.AsIndexProgress();
     Event(TIndexProgressKind.Started, 'Index', 0);
     Assert.IsTrue(Progress.Active);
     Sleep(TLspWorkDoneProgress.MinReportIntervalMs + 50);
     Event(TIndexProgressKind.Report, 'C:\Projekt\Quellen\Haupt.pas', 25);
-    Assert.AreEqual(3, Transport.Messages.Count);
+    Assert.AreEqual(3, Integer(Transport.Messages.Count));
     Assert.Contains(Transport.Messages[2], '"message":"Haupt.pas"');
     Assert.IsFalse(Pos('Projekt', Transport.Messages[2]) > 0, 'Kein Pfad in der Meldung');
     Event(TIndexProgressKind.Finished, 'Fertig', 100);

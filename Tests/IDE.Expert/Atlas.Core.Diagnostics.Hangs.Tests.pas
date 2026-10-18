@@ -42,7 +42,7 @@ begin
   Monitor := TAtlasHangMonitor.Create(500);
   try
     Assert.AreEqual('', Monitor.Finish(MakeHang(499, '')));
-    Assert.AreEqual(0, Monitor.Count);
+    Assert.AreEqual(0, Integer(Monitor.Count));
   finally
     Monitor.Free;
   end;

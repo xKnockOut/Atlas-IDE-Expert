@@ -18,6 +18,7 @@ uses
   System.SysUtils,
   System.Classes,
   System.Types,
+  System.UITypes,
   Vcl.Controls,
   Vcl.Graphics,
   Atlas.Core.Style.Color,

@@ -22,6 +22,7 @@ implementation
 uses
   System.SysUtils,
   System.JSON,
+  System.Generics.Collections,
   Atlas.Common.Compiler.Contract,
   Atlas.Common.JsonRpc.Dispatcher,
   Atlas.Common.Lsp.IdeBuild;

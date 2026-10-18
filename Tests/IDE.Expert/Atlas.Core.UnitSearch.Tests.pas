@@ -54,6 +54,7 @@ implementation
 
 uses
   System.JSON,
+  System.Generics.Collections,
   System.Diagnostics,
   System.Math;
 
@@ -239,16 +240,16 @@ begin
   // Aktives Projekt oben, dann alphabetisch.
   Assert.IsTrue(Rows[0].IsGroup);
   Assert.AreEqual('Atlas.IDE.Expert', Rows[0].Group);
-  Assert.AreEqual(3, Rows[0].Count);
+  Assert.AreEqual(3, Integer(Rows[0].Count));
   Assert.AreEqual(3 + 1 + 2 + 1 + 2 + 1, Integer(Length(Rows)));
   Assert.AreEqual('Atlas.Common', Rows[4].Group);
-  Assert.AreEqual(2, Rows[4].Count, 'BinaryForm und Optionen.inc');
+  Assert.AreEqual(2, Integer(Rows[4].Count), 'BinaryForm und Optionen.inc');
   // Eingeklappt: nur der Kopf.
   Rows := TAtlasUnitSearch.Rows(List, Order, TAtlasUnitGrouping.Project, Root, 'Atlas.IDE.Expert',
     ['atlas.common'], False);
   Assert.AreEqual(3 + 1 + 1 + 2 + 1, Integer(Length(Rows)));
   Assert.IsTrue(Rows[4].Collapsed);
-  Assert.AreEqual(2, Rows[4].Count);
+  Assert.AreEqual(2, Integer(Rows[4].Count));
   // Ohne Gruppierung keine Köpfe.
   Rows := TAtlasUnitSearch.Rows(List, Order, TAtlasUnitGrouping.None, Root, '', nil, False);
   Assert.AreEqual(Integer(Length(Order)), Integer(Length(Rows)));

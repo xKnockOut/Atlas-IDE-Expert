@@ -194,7 +194,7 @@ uses
   Atlas.Core.Build.Inbox,
   Atlas.Core.Build.ReleaseGuard,
   Atlas.Core.Problems.Contract,
-  Atlas.Core.Problems.Inline,
+  Atlas.Core.Problems.InlineHints,
   Atlas.Core.Projects.Summary,
   Atlas.Core.Tests.Run,
   Atlas.Core.Tests.Debug,

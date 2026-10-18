@@ -293,9 +293,9 @@ begin
     // Tiefe: nur die letzten Sätze bleiben.
     Journal.Options := TAtlasUndoOptions.Defaults;
     Journal.Add('Drei', [TAtlasFileChange.Created('M.pas', '', Content('m'))]);
-    Assert.AreEqual(3, Journal.Count);
+    Assert.AreEqual(3, Integer(Journal.Count));
     Journal.Options := Default(TAtlasUndoOptions);
-    Assert.AreEqual(1, Journal.Count, 'Tiefe mindestens 1');
+    Assert.AreEqual(1, Integer(Journal.Count), 'Tiefe mindestens 1');
     Assert.AreEqual(3, Journal.Sets[0].Id);
   finally
     Journal.Free;
@@ -753,7 +753,7 @@ begin
     // Die Aktion schreibt wie bisher, nur ohne Protokoll.
     Assert.AreEqual(0, Apply(Journal, Target, 'Zwei', ['A.pas', 'a', 'b', 'B.pas', 'c', 'd']));
     Assert.AreEqual('b', Target.Text('A.pas'));
-    Assert.AreEqual(0, Journal.Count);
+    Assert.AreEqual(0, Integer(Journal.Count));
     Assert.IsTrue(Journal.Undo.Disabled);
     Assert.IsTrue(Journal.Redo.Disabled);
   finally

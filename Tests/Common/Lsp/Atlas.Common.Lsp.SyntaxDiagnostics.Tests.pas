@@ -211,7 +211,7 @@ begin
   try
     Diagnostics.Attach;
     FStore.Open(Uri, 'objectpascal', 3, BrokenCode);
-    Assert.AreEqual(1, FCapture.Count);
+    Assert.AreEqual(1, Integer(FCapture.Count));
     Message := FCapture.MessageAt(0);
     try
       Assert.AreEqual('textDocument/publishDiagnostics', Message.GetValue<string>('method'));
@@ -264,7 +264,7 @@ begin
     Diagnostics.Attach;
     FStore.Open(Uri, 'objectpascal', 1, BrokenCode);
     FStore.Change(Uri, 2, [TTextChange.Full(ValidCode)]);
-    Assert.AreEqual(2, FCapture.Count);
+    Assert.AreEqual(2, Integer(FCapture.Count));
     Message := FCapture.MessageAt(1);
     try
       Assert.AreEqual(2, Message.GetValue<Integer>('params.version'));
@@ -287,7 +287,7 @@ begin
     Diagnostics.Attach;
     FStore.Open(Uri, 'objectpascal', 1, BrokenCode);
     FStore.Close(Uri);
-    Assert.AreEqual(2, FCapture.Count);
+    Assert.AreEqual(2, Integer(FCapture.Count));
     Message := FCapture.MessageAt(1);
     try
       Assert.AreEqual(Uri, Message.GetValue<string>('params.uri'));
@@ -349,7 +349,7 @@ begin
     Assert.IsTrue(Watch.ElapsedMilliseconds < 200,
       Format('Diagnose nach %d ms', [Watch.ElapsedMilliseconds]));
     Sleep(TLspSyntaxDiagnostics.DefaultDelayMs * 2);
-    Assert.AreEqual(1, FCapture.Count, 'Nur der letzte Stand wird ausgewertet');
+    Assert.AreEqual(1, Integer(FCapture.Count), 'Nur der letzte Stand wird ausgewertet');
     Message := FCapture.MessageAt(0);
     try
       Assert.AreEqual(6, Message.GetValue<Integer>('params.version'));
@@ -602,7 +602,7 @@ begin
     Message := FCapture.MessageAt(0);
     try
       Items := Message.GetValue<TJSONArray>('params.diagnostics');
-      Assert.AreEqual(2, Items.Count);
+      Assert.AreEqual(2, Integer(Items.Count));
       // Spalte 2 in "  A := 1;": der Bezeichner A.
       Assert.AreEqual(2, Items.Items[0].GetValue<Integer>('range.start.line'));
       Assert.AreEqual(2, Items.Items[0].GetValue<Integer>('range.start.character'));
@@ -637,12 +637,12 @@ begin
       end;
     Diagnostics.Attach;
     Diagnostics.RefreshFiles(['C:\Projekt\B.pas']);
-    Assert.AreEqual(1, FCapture.Count);
+    Assert.AreEqual(1, Integer(FCapture.Count));
     Message := FCapture.MessageAt(0);
     try
       Assert.IsTrue(SameText('C:\Projekt\B.pas', TDocumentUris.ToPath(Message.GetValue<string>('params.uri'))));
       Items := Message.GetValue<TJSONArray>('params.diagnostics');
-      Assert.AreEqual(1, Items.Count);
+      Assert.AreEqual(1, Integer(Items.Count));
       // Ohne Zeilentext: die ganze Zeile bis zum Anfang der nächsten.
       Assert.AreEqual(4, Items.Items[0].GetValue<Integer>('range.start.line'));
       Assert.AreEqual(5, Items.Items[0].GetValue<Integer>('range.end.line'));
@@ -684,7 +684,7 @@ begin
     Params := Diagnostics.Compute(Document);
     try
       Items := Params.GetValue<TJSONArray>('diagnostics');
-      Assert.AreEqual(2, Items.Count);
+      Assert.AreEqual(2, Integer(Items.Count));
       Assert.AreEqual('Aus Vcl.Grids wird nichts verwendet', Items.Items[0].GetValue<string>('message'));
       Assert.AreEqual(1, Items.Items[0].GetValue<TJSONArray>('tags').Count);
       Assert.AreEqual(4, Items.Items[0].GetValue<Integer>('severity'));

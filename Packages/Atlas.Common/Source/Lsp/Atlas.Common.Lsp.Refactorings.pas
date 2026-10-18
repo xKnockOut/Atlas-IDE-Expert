@@ -32,7 +32,7 @@ uses
   Atlas.Common.Editing.CodeActions,
   Atlas.Common.Editing.Extract,
   Atlas.Common.Editing.WithResolution,
-  Atlas.Common.Editing.Inline,
+  Atlas.Common.Editing.Inlining,
   Atlas.Common.Lsp.CompletionRequest;
 
 type

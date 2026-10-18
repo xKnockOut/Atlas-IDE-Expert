@@ -85,7 +85,7 @@ uses
   Atlas.Core.Editor.Elements,
   Atlas.Core.Editor.Hide,
   Atlas.Core.Editor.LineTail,
-  Atlas.Core.Problems.Inline;
+  Atlas.Core.Problems.InlineHints;
 
 { TAtlasProblemsPainter.TEvents }
 

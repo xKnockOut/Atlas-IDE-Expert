@@ -71,7 +71,7 @@ begin
     Assert.AreEqual('Meldung des Servers', Window.Row(0).Title);
     Assert.AreEqual('Server neu gestartet', Window.Row(2).Title);
     // „Alle Quellen“ und die beiden Quellen in der Reihenfolge der Liste.
-    Assert.AreEqual(3, Window.FilterBox.Items.Count);
+    Assert.AreEqual(3, Integer(Window.FilterBox.Items.Count));
     Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.NotificationsFilterAll), Window.FilterBox.Items[0]);
     Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.NotificationsSourceServer), Window.FilterBox.Items[1]);
     Window.SetFilter(TAtlasNotificationSources.Build);
@@ -81,7 +81,7 @@ begin
     Center.Clear;
     Window.Reload;
     Assert.AreEqual(0, Window.RowCount);
-    Assert.AreEqual(2, Window.FilterBox.Items.Count);
+    Assert.AreEqual(2, Integer(Window.FilterBox.Items.Count));
     Assert.AreEqual(1, Window.FilterBox.ItemIndex);
     Window.SetFilter('');
     Assert.AreEqual(0, Window.FilterBox.ItemIndex);
@@ -159,7 +159,7 @@ begin
       end;
     Menu := Window.BuildMenu(0);
     // Gelesen, Trennlinie, Überschrift, drei Verhalten.
-    Assert.AreEqual(6, Menu.Items.Count);
+    Assert.AreEqual(6, Integer(Menu.Items.Count));
     Assert.IsTrue(Menu.Items[0].Enabled);
     Assert.IsFalse(Menu.Items[2].Enabled, 'Überschrift');
     Assert.IsTrue(Menu.Items[3].Checked, 'Vorgabe: einblenden');

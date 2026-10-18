@@ -15,7 +15,6 @@ uses
   System.SysUtils,
   System.Classes,
   System.Types,
-  System.SysUtils,
   Vcl.Controls,
   Vcl.Graphics,
   Atlas.UI.Popup.Window;

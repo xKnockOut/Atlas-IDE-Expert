@@ -36,6 +36,7 @@ uses
   System.SysUtils,
   System.IOUtils,
   System.JSON,
+  System.Generics.Collections,
   Atlas.Common.Projects.Contract,
   Shell.Commands.Build,
   Shell.Commands.Index;

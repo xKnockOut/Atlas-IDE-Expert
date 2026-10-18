@@ -70,7 +70,7 @@ begin
     Assert.AreEqual('atlas/applyEdit/1', Request.GetValue<string>('id'));
     Assert.AreEqual('/define TEST', Request.GetValue<string>('params.label'));
     Changes := Request.GetValue<TJSONObject>('params.edit.changes');
-    Assert.AreEqual(1, Changes.Count);
+    Assert.AreEqual(1, Integer(Changes.Count));
     Assert.Contains(Changes.Pairs[0].JsonString.Value, 'Haupt.dproj');
     Edit := (Changes.Pairs[0].JsonValue as TJSONArray).Items[0] as TJSONObject;
     Assert.AreEqual('<Project/>', Edit.GetValue<string>('newText'));
@@ -94,7 +94,7 @@ begin
   try
     Changes := Edit.GetValue<TJSONArray>('documentChanges');
     // Anlegen, Füllen der neuen Datei, Ersetzen der vorhandenen.
-    Assert.AreEqual(3, Changes.Count);
+    Assert.AreEqual(3, Integer(Changes.Count));
     Item := Changes.Items[0] as TJSONObject;
     Assert.AreEqual('create', Item.GetValue<string>('kind'));
     Assert.Contains(Item.GetValue<string>('uri'), 'Neu.pas');

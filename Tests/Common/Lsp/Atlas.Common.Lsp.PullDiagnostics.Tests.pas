@@ -230,7 +230,7 @@ begin
     Result_ := Fixture.Pull.WorkspaceReport(nil, Token);
     try
       Items := (Result_ as TJSONObject).GetValue<TJSONArray>('items');
-      Assert.AreEqual(1, Items.Count, 'nur die geschlossene Datei');
+      Assert.AreEqual(1, Integer(Items.Count), 'nur die geschlossene Datei');
       Assert.AreEqual(TDocumentUris.FromPath(ClosedFile), Items.Items[0].GetValue<string>('uri'));
       Assert.AreEqual('full', Items.Items[0].GetValue<string>('kind'));
       Assert.IsTrue(Items.Items[0].GetValue<TJSONArray>('items').Count > 0);

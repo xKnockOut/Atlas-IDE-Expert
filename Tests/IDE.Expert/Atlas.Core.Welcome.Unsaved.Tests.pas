@@ -354,7 +354,7 @@ begin
   Assert.AreEqual(3, Integer(Length(View.Rows)), 'Änderungen, Commits, Stash');
   // Älteste zuerst: Änderungen (48 h), Commits (30 h), Stash (5 h).
   Assert.IsTrue(View.Rows[0].Item.Kind = TAtlasUnsavedKind.Changes);
-  Assert.AreEqual(4, View.Rows[0].Item.Count);
+  Assert.AreEqual(4, Integer(View.Rows[0].Item.Count));
   Assert.AreEqual(2, View.Rows[0].Item.Modified);
   Assert.AreEqual(1, View.Rows[0].Item.Added);
   Assert.AreEqual(1, View.Rows[0].Item.Deleted);
@@ -362,7 +362,7 @@ begin
   Assert.AreEqual(2, Value, 'seit 2 Tagen');
   Assert.IsTrue(AgeUnit = TAtlasUnsavedAgeUnit.Days);
   Assert.IsTrue(View.Rows[1].Item.Kind = TAtlasUnsavedKind.Commits);
-  Assert.AreEqual(3, View.Rows[1].Item.Count);
+  Assert.AreEqual(3, Integer(View.Rows[1].Item.Count));
   Assert.AreEqual('main', View.Rows[1].Item.Branches[0]);
   AssertNear(HoursAgo(30), View.Rows[1].Item.Since, 1E-6, 'ältester nicht gepushter Commit');
   Assert.IsTrue(View.Rows[1].Item.CanPush);
@@ -403,7 +403,7 @@ begin
   View := TAtlasWelcomeUnsaved.View([Project('C:\Repo\Demo.dproj', State)], NowUtc, Options);
   Assert.AreEqual(1, Integer(Length(View.Rows)), 'keine Push- oder Stash-Zeile');
   Assert.IsTrue(View.Rows[0].Item.Kind = TAtlasUnsavedKind.Changes);
-  Assert.AreEqual(2, View.Rows[0].Item.Count, '2 Dateien geändert');
+  Assert.AreEqual(2, Integer(View.Rows[0].Item.Count), '2 Dateien geändert');
   Assert.AreEqual(2, View.Rows[0].Item.Modified);
   Assert.AreEqual(0, View.Rows[0].Item.Added);
   Assert.AreEqual('svn', View.Rows[0].VcsKind);
@@ -458,11 +458,11 @@ begin
     Change(Root + '\Demo\Weg.pas', TAtlasVcsChangeKind.Deleted)];
   Assert.IsTrue(TAtlasWelcomeUnsaved.Probe(Vcs, Root + '\demo', NowUtc, FileTimes(), nil, State));
   Assert.IsTrue(State.Find(TAtlasUnsavedKind.Changes, Found));
-  Assert.AreEqual(2, Found.Count, 'nur im Projektordner, ohne Konflikt');
+  Assert.AreEqual(2, Integer(Found.Count), 'nur im Projektordner, ohne Konflikt');
   Assert.AreEqual(1, Found.Deleted);
   AssertNear(HoursAgo(48), Found.Since, 1E-6, '');
   Assert.IsTrue(State.Find(TAtlasUnsavedKind.Conflicts, Found));
-  Assert.AreEqual(1, Found.Count);
+  Assert.AreEqual(1, Integer(Found.Count));
   Assert.IsTrue(TAtlasUnsavedKind.Changes in State.Queried);
   Assert.IsTrue(TAtlasUnsavedKind.Stashes in State.Queried);
   Assert.IsFalse(State.Find(TAtlasUnsavedKind.Stashes, Found), 'keine leeren Arten');
@@ -490,7 +490,7 @@ begin
   Assert.IsTrue(TAtlasWelcomeUnsaved.Probe(Vcs, Root, NowUtc, nil, nil, State));
   Assert.IsFalse(State.Find(TAtlasUnsavedKind.Commits, Found), 'main gleichauf');
   Assert.IsTrue(State.Find(TAtlasUnsavedKind.NoUpstream, Found));
-  Assert.AreEqual(2, Found.Count, 'feature/x und alt');
+  Assert.AreEqual(2, Integer(Found.Count), 'feature/x und alt');
   Assert.AreEqual(3, Found.Commits);
   Assert.AreEqual('feature/x', Found.Branches[0]);
   Assert.AreEqual('alt', Found.Branches[1]);
@@ -522,9 +522,9 @@ begin
   Old := GitState(Root, [Item(TAtlasUnsavedKind.Stashes, 2, 100), Item(TAtlasUnsavedKind.Changes, 9, 100)]);
   Merged := TAtlasWelcomeUnsaved.Merge(Old, State, NowUtc);
   Assert.IsTrue(Merged.Find(TAtlasUnsavedKind.Stashes, Found));
-  Assert.AreEqual(2, Found.Count);
+  Assert.AreEqual(2, Integer(Found.Count));
   Assert.IsTrue(Merged.Find(TAtlasUnsavedKind.Changes, Found));
-  Assert.AreEqual(4, Found.Count, 'Änderungen frisch');
+  Assert.AreEqual(4, Integer(Found.Count), 'Änderungen frisch');
 end;
 
 procedure TAtlasWelcomeUnsavedTests.AgeUnits;
@@ -652,7 +652,7 @@ begin
   New_.Queried := [TAtlasUnsavedKind.Changes, TAtlasUnsavedKind.Conflicts];
   Merged := TAtlasWelcomeUnsaved.Merge(Old, New_, NowUtc);
   Assert.IsTrue(Merged.Find(TAtlasUnsavedKind.Changes, Found));
-  Assert.AreEqual(3, Found.Count);
+  Assert.AreEqual(3, Integer(Found.Count));
   AssertNear(HoursAgo(20), Found.Since, 1E-6, 'seit der ersten Sicht');
   Assert.IsTrue(Merged.Find(TAtlasUnsavedKind.Conflicts, Found));
   AssertNear(NowUtc, Found.Since, 1E-6, 'neu: jetzt');
@@ -720,7 +720,7 @@ begin
   AssertNear(NowUtc, Read_.At, 1E-6, '');
   Assert.AreEqual(3, Integer(Length(Read_.Items)));
   Assert.IsTrue(Read_.Find(TAtlasUnsavedKind.Changes, Found));
-  Assert.AreEqual(4, Found.Count);
+  Assert.AreEqual(4, Integer(Found.Count));
   Assert.AreEqual(2, Found.Modified);
   Assert.AreEqual(1, Found.Added);
   Assert.AreEqual(1, Found.Deleted);

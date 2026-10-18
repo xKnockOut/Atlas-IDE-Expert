@@ -81,7 +81,7 @@ begin
   Dialog := TAtlasTodoFilterDialog.CreateDialog(nil, SampleChoices, Filter);
   try
     Assert.AreEqual('TODOs filtern', Dialog.Caption);
-    Assert.AreEqual(2, Dialog.CategoryBox.Items.Count);
+    Assert.AreEqual(2, Integer(Dialog.CategoryBox.Items.Count));
     Assert.AreEqual('GUI', Dialog.CategoryBox.Items[1]);
     Assert.AreEqual('Rechnung', Dialog.UnitBox.Items[1]);
     Assert.AreEqual('FIXME', Dialog.KeywordBox.Items[0]);

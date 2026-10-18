@@ -226,7 +226,6 @@ var
 begin
   AAction := Default(TCodeAction);
   AReason := '';
-  Result := False;
   if (ATree = nil) or (AWith = nil) or not Assigned(ALookup) then
     Exit(Fail('keine with-Anweisung', AReason));
   Items := Elements(ATree, AWith);

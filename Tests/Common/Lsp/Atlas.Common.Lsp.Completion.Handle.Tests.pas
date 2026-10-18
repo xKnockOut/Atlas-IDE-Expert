@@ -869,7 +869,7 @@ begin
     Assert.AreEqual(14, Item.GetValue<Integer>('textEdit.range.start.character'));
     Assert.AreEqual(41, Item.GetValue<Integer>('textEdit.range.end.character'));
     Extra := Item.GetValue('additionalTextEdits') as TJSONArray;
-    Assert.AreEqual(1, Extra.Count);
+    Assert.AreEqual(1, Integer(Extra.Count));
     Assert.AreEqual(#10#10'resourcestring'#10'  SEintragWirklichLoeschen = ''Eintrag wirklich löschen?'';',
       Extra.Items[0].GetValue<string>('newText'));
     Assert.AreEqual(4, Extra.Items[0].GetValue<Integer>('range.start.line'));
@@ -937,7 +937,7 @@ begin
     Assert.AreEqual('SEintragWirklichLoeschen', Item.GetValue<string>('textEdit.newText'), Answer.ToJSON);
     Assert.AreEqual('atlas.server.addResourceString', Item.GetValue<string>('command.command'));
     Arguments := (Item.GetValue('command') as TJSONObject).GetValue('arguments') as TJSONArray;
-    Assert.AreEqual(3, Arguments.Count, Item.ToJSON);
+    Assert.AreEqual(3, Integer(Arguments.Count), Item.ToJSON);
     Assert.AreEqual(TexteFile, Arguments.Items[0].Value);
     Assert.AreEqual('SEintragWirklichLoeschen', Arguments.Items[1].Value);
     Assert.AreEqual('''Eintrag wirklich löschen?''', Arguments.Items[2].Value);

@@ -82,7 +82,7 @@ begin
     try
       Assert.IsTrue((Answer.GetValue('valid') as TJSONBool).AsBoolean);
       Issues := TJSONArray(Answer.GetValue('issues'));
-      Assert.AreEqual(1, Issues.Count);
+      Assert.AreEqual(1, Integer(Issues.Count));
       Assert.Contains((Issues.Items[0] as TJSONObject).GetValue<string>('message'), '"memoryBudgetMb"');
       Assert.IsFalse(((Issues.Items[0] as TJSONObject).GetValue('error') as TJSONBool).AsBoolean);
     finally
@@ -93,7 +93,7 @@ begin
     Answer := TLspSettingsCommands.Check(Args);
     try
       Issues := TJSONArray(Answer.GetValue('issues'));
-      Assert.AreEqual(1, Issues.Count);
+      Assert.AreEqual(1, Integer(Issues.Count));
       Assert.Contains((Issues.Items[0] as TJSONObject).GetValue<string>('message'), '"platform"');
     finally
       Answer.Free;

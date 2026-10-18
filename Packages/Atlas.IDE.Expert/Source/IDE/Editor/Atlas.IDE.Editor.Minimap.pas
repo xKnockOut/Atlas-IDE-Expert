@@ -577,7 +577,7 @@ begin
   end;
   UpdateContent(View, Minimap);
   UpdateFolds(View, Minimap, LineCount);
-  if not Minimap.Dragging then
+  if not Minimap.SliderDragging then
     Minimap.SetView(View.TopRow - 1, View.BottomRow - 1, View.CursorPos.Line - 1);
   if FOptions.SectionHeaders or FOptions.HighlightMethod then
   begin

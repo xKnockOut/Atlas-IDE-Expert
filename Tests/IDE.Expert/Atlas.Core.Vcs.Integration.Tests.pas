@@ -369,15 +369,15 @@ begin
     NowUtc := TTimeZone.Local.ToUniversalTime(Now);
     Assert.IsTrue(TAtlasWelcomeUnsaved.Probe(Vcs, Folder, NowUtc, nil, nil, State));
     Assert.IsTrue(State.Find(TAtlasUnsavedKind.Changes, Item));
-    Assert.AreEqual(4, Item.Count);
+    Assert.AreEqual(4, Integer(Item.Count));
     Assert.AreEqual(2, Item.Modified);
     Assert.AreEqual(1, Item.Added);
     Assert.AreEqual(1, Item.Deleted);
     Assert.IsTrue(State.Find(TAtlasUnsavedKind.Commits, Item));
-    Assert.AreEqual(3, Item.Count);
+    Assert.AreEqual(3, Integer(Item.Count));
     Assert.IsTrue(Item.Since > 0, 'Alter aus dem ältesten Commit');
     Assert.IsTrue(State.Find(TAtlasUnsavedKind.Stashes, Item));
-    Assert.AreEqual(1, Item.Count);
+    Assert.AreEqual(1, Integer(Item.Count));
     Assert.IsFalse(State.Find(TAtlasUnsavedKind.NoUpstream, Item));
     SetLength(Projects, 1);
     Projects[0] := Default(TAtlasUnsavedProject);
@@ -394,7 +394,7 @@ begin
     Assert.AreEqual(4, Integer(Length(Commits)), 'drei von main und einer eigener, keiner auf origin');
     Assert.IsTrue(TAtlasWelcomeUnsaved.Probe(Vcs, Folder, NowUtc, nil, nil, State));
     Assert.IsTrue(State.Find(TAtlasUnsavedKind.NoUpstream, Item));
-    Assert.AreEqual(1, Item.Count);
+    Assert.AreEqual(1, Integer(Item.Count));
     Assert.AreEqual('feature/lokal', Item.Branches[0]);
 
     // Push erst nach Plan: main auf seinen Upstream, der neue Branch mit --set-upstream.

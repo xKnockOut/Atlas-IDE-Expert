@@ -94,7 +94,7 @@ begin
     Result_ := Server.ListTools;
     try
       Tools := Result_.GetValue<TJSONArray>('tools');
-      Assert.AreEqual(1, Tools.Count);
+      Assert.AreEqual(1, Integer(Tools.Count));
       Assert.AreEqual('echo', Tools.Items[0].GetValue<string>('name'));
       Assert.AreEqual('object', Tools.Items[0].GetValue<string>('inputSchema.type'));
       Assert.AreEqual('text', Tools.Items[0].GetValue<TJSONArray>('inputSchema.required').Items[0].Value);

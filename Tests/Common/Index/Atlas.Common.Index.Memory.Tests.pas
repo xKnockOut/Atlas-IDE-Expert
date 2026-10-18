@@ -81,7 +81,7 @@ begin
     First := Pool.Intern(Copy('TObjekt', 1, MaxInt));
     Second := Pool.Intern(Copy('TObjekt', 1, MaxInt));
     Assert.IsTrue(Pointer(First) = Pointer(Second));
-    Assert.AreEqual(1, Pool.Count);
+    Assert.AreEqual(1, Integer(Pool.Count));
     Assert.AreEqual('', Pool.Intern(''));
   finally
     Pool.Free;

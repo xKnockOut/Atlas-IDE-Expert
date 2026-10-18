@@ -316,7 +316,7 @@ begin
   try
     Symbols := TLspFormFiles.BuildSymbols(Document);
     try
-      Assert.AreEqual(1, Symbols.Count);
+      Assert.AreEqual(1, Integer(Symbols.Count));
       // Gliederung zeigt Name und Typ, wie der Objektinspektor.
       Name := (Symbols.Items[0] as TJSONObject).GetValue<string>('name');
       Assert.AreEqual('Form1: TForm1', Name);

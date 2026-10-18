@@ -776,7 +776,7 @@ begin
   Assert.IsTrue(Queries[0].ContextMs >= 0, 'Kontext gemessen');
   Assert.IsTrue(Queries[0].FilterSortSteps > 0, 'Filtern und Sortieren gemessen');
   Assert.IsTrue(Queries[0].FirstVisibleMs >= 0, 'erste Liste gemessen');
-  Assert.AreEqual(3, Queries[0].Count);
+  Assert.AreEqual(3, Integer(Queries[0].Count));
   // Abnahme: Die Zeit des verzögerten Providers erscheint in Warnfarbe, die des schnellen nicht.
   Rows := TAtlasTimingRows.Build(Queries);
   SlowWarn := False;

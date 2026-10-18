@@ -133,7 +133,7 @@ begin
   Dialog := TAtlasNoteDialog.CreateDialog(nil, 'Notiz – Kunde.pas, Zeile 7', 'Erste' + #10 + 'Zweite', False);
   try
     Assert.AreEqual('Notiz – Kunde.pas, Zeile 7', Dialog.Caption);
-    Assert.AreEqual(2, Dialog.Memo.Lines.Count, 'mehrzeilig');
+    Assert.AreEqual(2, Integer(Dialog.Memo.Lines.Count), 'mehrzeilig');
     Assert.IsTrue(Dialog.Memo.WantReturns, 'Enter beginnt eine neue Zeile');
     Assert.IsTrue(Dialog.CancelButton.Cancel, 'Esc bricht ab');
     Dialog.Memo.Lines.Text := '  Eins' + #13#10 + 'Zwei  ' + #13#10#13#10;
@@ -252,7 +252,7 @@ begin
     Frame.ShowNotes('Notizen', Book.Groups);
     Assert.IsTrue(Frame.ShowsNotes);
     // Gruppe Kunde.pas mit zwei Notizen nach Zeile, dann „Verwaist (1)“.
-    Assert.AreEqual(5, Frame.Tree.Items.Count);
+    Assert.AreEqual(5, Integer(Frame.Tree.Items.Count));
     Assert.AreEqual('Kunde.pas (2)', Frame.Tree.Items[0].Text);
     Assert.AreEqual('6: Klasse aufteilen', Frame.Tree.Items[1].Text);
     Assert.AreEqual('7: Laden prüfen …', Frame.Tree.Items[2].Text, 'erste Zeile mit „…“');

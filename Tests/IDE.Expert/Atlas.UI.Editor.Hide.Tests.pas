@@ -116,7 +116,7 @@ begin
   Menu := TAtlasHideMenu.Create(nil);
   try
     Menu.Build([Target(TAtlasDrawnElement.BlockEndLabels)]);
-    Assert.AreEqual(5, Menu.Menu.Items.Count);
+    Assert.AreEqual(5, Integer(Menu.Menu.Items.Count));
     Assert.AreEqual('Nur hier ausblenden', Menu.Menu.Items[0].Caption);
     Assert.AreEqual('In dieser Datei ausblenden', Menu.Menu.Items[1].Caption);
     Assert.AreEqual('Blockende-Beschriftungen überall ausblenden', Menu.Menu.Items[2].Caption);
@@ -137,12 +137,12 @@ begin
   try
     // Klammerfarben gelten je Datei: kein „Nur hier“.
     Menu.Build([Target(TAtlasDrawnElement.PairColors)]);
-    Assert.AreEqual(4, Menu.Menu.Items.Count);
+    Assert.AreEqual(4, Integer(Menu.Menu.Items.Count));
     Assert.AreEqual('In dieser Datei ausblenden', Menu.Menu.Items[0].Caption);
     Assert.AreEqual('Klammerfarben überall ausblenden', Menu.Menu.Items[1].Caption);
     // Die Vorschau der Vervollständigung nur überall.
     Menu.Build([Target(TAtlasDrawnElement.CompletionPreview)]);
-    Assert.AreEqual(3, Menu.Menu.Items.Count);
+    Assert.AreEqual(3, Integer(Menu.Menu.Items.Count));
     Assert.AreEqual(2, Integer(Length(Menu.Choices)));
     Assert.IsTrue(Menu.Choices[0].Scope = TAtlasHideScope.Everywhere);
   finally
@@ -158,10 +158,10 @@ begin
   try
     Menu.Build([TAtlasHideTarget.Finding('C:\Projekt\Kunde.pas', 3, 'unused-variable', '  X := 1;'),
       Target(TAtlasDrawnElement.InlayHints), Target(TAtlasDrawnElement.InlayHints)]);
-    Assert.AreEqual(2, Menu.Menu.Items.Count, 'gleiches Element nur einmal');
+    Assert.AreEqual(2, Integer(Menu.Menu.Items.Count), 'gleiches Element nur einmal');
     Assert.AreEqual('Befund-Unterstreichung', Menu.Menu.Items[0].Caption);
     Assert.AreEqual('Inlay-Hint', Menu.Menu.Items[1].Caption);
-    Assert.AreEqual(5, Menu.Menu.Items[0].Count);
+    Assert.AreEqual(5, Integer(Menu.Menu.Items[0].Count));
     Assert.AreEqual('Befund-Unterstreichungen überall ausblenden', Menu.Menu.Items[0].Items[2].Caption);
     Assert.AreEqual(8, Integer(Length(Menu.Choices)));
     Assert.AreEqual('unused-variable', Menu.Choices[0].Target.RuleId);
@@ -255,13 +255,13 @@ begin
       Assert.IsFalse(Window.UndoRect.IsEmpty, '„Rückgängig“ ist da');
       Assert.AreEqual('Ausgeblendet', Window.Title);
       Window.ClickUndo;
-      Assert.AreEqual(1, Counter.Count);
+      Assert.AreEqual(1, Integer(Counter.Count));
       Assert.IsFalse(Window.IsShown, 'Klick blendet aus');
       // Ohne Rückgängig (etwa ein abgelehnter Bereich): kein Link, Klick ohne Wirkung.
       Window.ShowNotice('', TAtlasStrings.Text(TAtlasTextId.HideRefusedAlready), False, Point(200, 200));
       Assert.IsTrue(Window.UndoRect.IsEmpty);
       Window.ClickUndo;
-      Assert.AreEqual(1, Counter.Count);
+      Assert.AreEqual(1, Integer(Counter.Count));
     finally
       Window.Dismiss;
     end;

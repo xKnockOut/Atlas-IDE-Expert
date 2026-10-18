@@ -38,6 +38,7 @@ implementation
 uses
   System.SysUtils,
   System.JSON,
+  System.Generics.Collections,
   Atlas.Core.Results.Model,
   Atlas.Core.Projects.Todos;
 

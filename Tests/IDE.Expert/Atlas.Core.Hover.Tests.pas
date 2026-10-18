@@ -48,6 +48,7 @@ implementation
 uses
   System.SysUtils,
   System.JSON,
+  System.Generics.Collections,
   Atlas.Core.Documentation.Contract,
   Atlas.Core.Hover.History;
 
@@ -232,7 +233,7 @@ begin
     Assert.IsFalse(History.Pinned, 'Kurzform');
     Assert.IsTrue(History.Open(Ref('TBFrame', 19)));
     Assert.IsTrue(History.Pinned, 'erster Klick heftet an');
-    Assert.AreEqual(2, History.Count);
+    Assert.AreEqual(2, Integer(History.Count));
     Assert.AreEqual('TBFrame', History.Current.Location.Name);
     Assert.IsTrue(History.Open(Ref('TFrame', 500)));
     // Klick auf TFrame, dann Rücktaste: wieder TBFrame.
@@ -254,7 +255,7 @@ begin
   try
     History.Start(DataFor(Ref('TBFrame', 19)));
     Assert.IsTrue(History.Open(Ref('TBFrame', 19)));
-    Assert.AreEqual(1, History.Count, 'derselbe Typ: kein neuer Eintrag');
+    Assert.AreEqual(1, Integer(History.Count), 'derselbe Typ: kein neuer Eintrag');
     Assert.IsTrue(History.Pinned);
   finally
     History.Free;
@@ -298,7 +299,7 @@ begin
     History.Open(Ref('TC', 3));
     Assert.AreEqual(3, Integer(Length(History.Path)), 'ohne … bei wenigen Einträgen');
     Assert.IsTrue(History.JumpTo(1));
-    Assert.AreEqual(2, History.Count);
+    Assert.AreEqual(2, Integer(History.Count));
     Assert.AreEqual('TB', History.Current.Location.Name);
     Assert.IsFalse(History.JumpTo(5));
   finally
@@ -317,7 +318,7 @@ begin
     NoLocation := Default(TAtlasHoverTypeRef);
     NoLocation.Name := 'TUnbekannt';
     Assert.IsFalse(History.Open(NoLocation));
-    Assert.AreEqual(1, History.Count);
+    Assert.AreEqual(1, Integer(History.Count));
     Assert.IsFalse(History.Pinned);
     History.Clear;
     Assert.IsFalse(History.Open(Ref('TB', 2)), 'ohne Start nichts');

@@ -1,4 +1,4 @@
-﻿unit Atlas.Core.Problems.Inline.Tests;
+﻿unit Atlas.Core.Problems.InlineHints.Tests;
 
 // Tests für den Fehlertext am Zeilenende (#509): Auswahl je Zeile, Modus,
 // Kürzen, Zähler, Sprung zum nächsten Befund, Tipp-Pause und der gemeinsame
@@ -36,7 +36,7 @@ implementation
 uses
   System.SysUtils,
   Atlas.Core.Problems.Contract,
-  Atlas.Core.Problems.Inline,
+  Atlas.Core.Problems.InlineHints,
   Atlas.Core.Editor.LineTail;
 
 function Problem(ALine, ACharacter: Integer; ASeverity: TAtlasProblemSeverity; const AMessage: string): TAtlasProblem;

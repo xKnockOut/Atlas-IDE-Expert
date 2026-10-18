@@ -69,13 +69,18 @@ begin
 end;
 
 procedure TAtlasPopupWidthTests.PanelHasOwnLimits;
+var
+  PanelMin, ListMin: Integer;
 begin
   // Gezogene Panelbreite (#416): eigene Grenzen, unabhängig von der Liste.
   Assert.AreEqual(TAtlasPopupWidth.MaxPanelWidth, TAtlasPopupWidth.Fit(900, TAtlasPopupWidth.MinPanelWidth,
     TAtlasPopupWidth.MaxPanelWidth));
   Assert.AreEqual(TAtlasPopupWidth.MinPanelWidth, TAtlasPopupWidth.Fit(100, TAtlasPopupWidth.MinPanelWidth,
     TAtlasPopupWidth.MaxPanelWidth));
-  Assert.IsTrue(TAtlasPopupWidth.MinPanelWidth < TAtlasPopupWidth.MinListWidth);
+  // Über Variablen: Der Vergleich der Konstanten selbst ergibt W1022.
+  PanelMin := TAtlasPopupWidth.MinPanelWidth;
+  ListMin := TAtlasPopupWidth.MinListWidth;
+  Assert.IsTrue(PanelMin < ListMin);
 end;
 
 initialization

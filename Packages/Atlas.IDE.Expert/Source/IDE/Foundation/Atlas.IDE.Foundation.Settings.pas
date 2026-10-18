@@ -26,7 +26,7 @@ uses
   System.SysUtils,
   Atlas.Core.Files.TextFile,
   Atlas.Core.Settings.Plugin,
-  Atlas.Core.Problems.Inline,
+  Atlas.Core.Problems.InlineHints,
   Atlas.Core.Settings.History,
   Atlas.Core.Settings.Catalog,
   Atlas.Core.Settings.QuickToggles;

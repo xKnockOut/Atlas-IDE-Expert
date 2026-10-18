@@ -1,4 +1,4 @@
-﻿unit Atlas.Common.Editing.Inline.Tests;
+﻿unit Atlas.Common.Editing.Inlining.Tests;
 
 // Tests für Einbetten (#103, Teil A): Variable einbetten (Klammern, var-Abschnitt,
 // Inline-Variable, Ablehnungen nach Datenfluss und Seiteneffekten) und Methode
@@ -61,7 +61,7 @@ uses
   Atlas.Common.Pascal.Parser,
   Atlas.Common.Editing.CodeActions,
   Atlas.Common.Editing.ChangeSignature,
-  Atlas.Common.Editing.Inline;
+  Atlas.Common.Editing.Inlining;
 
 const
   /// <summary>Routine mit const-Parameter: Die Datenflussanalyse weiß, dass Log ihr Argument nicht ändert.</summary>

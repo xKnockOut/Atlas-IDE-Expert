@@ -253,7 +253,7 @@ begin
     Query := Timings.Snapshot[0];
     Assert.AreEqual(1, Integer(Length(Query.Providers)));
     Assert.AreEqual(30.0, Query.Providers[0].Ms, 0.001);
-    Assert.AreEqual(12, Query.Providers[0].Count);
+    Assert.AreEqual(12, Integer(Query.Providers[0].Count));
     Assert.AreEqual(90.0, Before[0].Providers[0].Ms, 0.001);
     // Meldungen zu verdrängten oder unbekannten Abfragen gehen verloren, ohne Fehler.
     Timings.ProviderDone(999, 'Server', 1, 1);

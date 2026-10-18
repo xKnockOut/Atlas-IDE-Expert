@@ -51,6 +51,7 @@ implementation
 uses
   System.SysUtils,
   System.JSON,
+  System.Generics.Collections,
   Atlas.Core.Signature.Contract,
   Atlas.Core.Signature.CallScanner,
   Atlas.Core.Signature.Controller,

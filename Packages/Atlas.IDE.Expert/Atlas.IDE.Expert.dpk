@@ -251,7 +251,7 @@ contains
   Atlas.Core.Editor.Guides in 'Source\Core\Editor\Atlas.Core.Editor.Guides.pas',
   Atlas.Core.Problems.Contract in 'Source\Core\Problems\Atlas.Core.Problems.Contract.pas',
   Atlas.Core.Problems.Colors in 'Source\Core\Problems\Atlas.Core.Problems.Colors.pas',
-  Atlas.Core.Problems.Inline in 'Source\Core\Problems\Atlas.Core.Problems.Inline.pas',
+  Atlas.Core.Problems.InlineHints in 'Source\Core\Problems\Atlas.Core.Problems.InlineHints.pas',
   Atlas.Core.Editor.LineTail in 'Source\Core\Editor\Atlas.Core.Editor.LineTail.pas',
   Atlas.Core.Editor.Recursion in 'Source\Core\Editor\Atlas.Core.Editor.Recursion.pas',
   Atlas.Core.Problems.Store in 'Source\Core\Problems\Atlas.Core.Problems.Store.pas',

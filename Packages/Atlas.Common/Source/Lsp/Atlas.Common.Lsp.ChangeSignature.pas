@@ -1364,7 +1364,6 @@ begin
       FileEdits := Edits[Key];
       if Length(FileEdits) = 0 then
         Continue;
-      Unit_ := nil;
       Name := '';
       for Member in Collector.Members do
         if SameText(UpperCase(Member.FileName), Key) then

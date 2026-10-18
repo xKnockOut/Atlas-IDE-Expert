@@ -349,7 +349,6 @@ var
   Labels: TList<TSyntaxNode>;
   Found: Boolean;
 begin
-  Result := False;
   Nodes := TList<TSyntaxNode>.Create;
   Labels := TList<TSyntaxNode>.Create;
   try

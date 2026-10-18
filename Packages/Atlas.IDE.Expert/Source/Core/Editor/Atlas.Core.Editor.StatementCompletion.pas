@@ -783,9 +783,7 @@ begin
       (Lines[High(Lines) - Last] = Output[Output.Count - 1 - Last]) do
       Inc(Last);
     // Ohne Änderung bleibt nur der Sprung des Cursors.
-    if (Index = Length(Lines)) and (Index = Output.Count) then
-      Index := 0
-    else
+    if (Index <> Length(Lines)) or (Index <> Output.Count) then
     begin
       AEdit.StartLine := Index;
       AEdit.OldCount := Length(Lines) - Index - Last;

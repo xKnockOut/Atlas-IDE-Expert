@@ -33,6 +33,7 @@ implementation
 uses
   System.SysUtils,
   System.JSON,
+  System.Generics.Collections,
   Atlas.Core.Settings.Plugin,
   Atlas.Core.Settings.SchemaData,
   Atlas.Core.Settings.QuickToggles;

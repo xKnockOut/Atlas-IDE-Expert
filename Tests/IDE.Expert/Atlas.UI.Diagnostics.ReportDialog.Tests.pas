@@ -159,7 +159,7 @@ begin
       Assert.IsFalse(Dialog.Check(TAtlasPackagePart.LastData).Checked);
       Assert.IsTrue(Dialog.Check(TAtlasPackagePart.LastData).Enabled, 'Datei vorhanden');
       Assert.AreEqual(4, Integer(Length(Dialog.Files)));
-      Assert.AreEqual(4, Dialog.List.Items.Count, 'jede Datei in der Vorschau');
+      Assert.AreEqual(4, Integer(Dialog.List.Items.Count), 'jede Datei in der Vorschau');
       Assert.AreEqual(TAtlasDiagnosticPackage.InfoFileName, Dialog.List.Items[0].Caption);
       Assert.AreEqual(TAtlasReportDialog.SizeText(Dialog.Files[0].Size), Dialog.List.Items[0].SubItems[0]);
       Assert.IsTrue(Dialog.ZipButton.Enabled);
@@ -167,19 +167,19 @@ begin
       // Ohne Logs: nur Info und Einstellungen.
       Dialog.Check(TAtlasPackagePart.Logs).Checked := False;
       Dialog.Refresh;
-      Assert.AreEqual(2, Dialog.List.Items.Count);
+      Assert.AreEqual(2, Integer(Dialog.List.Items.Count));
       Assert.AreEqual(TAtlasDiagnosticPackage.SettingsFileName, Dialog.List.Items[1].Caption);
       // Mit den letzten Diagnosedaten.
       Dialog.Check(TAtlasPackagePart.LastData).Checked := True;
       Dialog.Refresh;
-      Assert.AreEqual(3, Dialog.List.Items.Count);
+      Assert.AreEqual(3, Integer(Dialog.List.Items.Count));
       Assert.AreEqual(TAtlasDiagnosticPackage.LastDataFileName, Dialog.List.Items[2].Caption);
       // Nichts gewählt: nichts anzulegen.
       Dialog.Check(TAtlasPackagePart.Versions).Checked := False;
       Dialog.Check(TAtlasPackagePart.Settings).Checked := False;
       Dialog.Check(TAtlasPackagePart.LastData).Checked := False;
       Dialog.Refresh;
-      Assert.AreEqual(0, Dialog.List.Items.Count);
+      Assert.AreEqual(0, Integer(Dialog.List.Items.Count));
       Assert.IsFalse(Dialog.ZipButton.Enabled);
       Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.ReportEmpty), Dialog.SummaryLabel.Caption);
       Assert.IsFalse(Dialog.CreateZip, 'leeres Paket wird nicht angelegt');

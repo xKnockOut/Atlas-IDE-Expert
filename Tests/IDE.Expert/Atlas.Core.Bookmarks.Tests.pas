@@ -250,7 +250,7 @@ begin
   Assert.AreEqual(Ord(TAtlasLineMatch.Orphaned), Ord(TAtlasBookmarks.Find(Join(Gone), List.Bookmarks[0], Line)));
   Assert.AreEqual(Old, Line, 'Letzte bekannte Zeile');
   Assert.IsTrue(List.Relocate(KundeFile, Join(Gone)));
-  Assert.AreEqual(1, List.Count, 'Bleibt in der Liste');
+  Assert.AreEqual(1, Integer(List.Count), 'Bleibt in der Liste');
   Assert.IsTrue(List.Bookmarks[0].Lost);
   Assert.AreEqual(Old, List.Bookmarks[0].Line);
   Assert.AreEqual(1, List.LostCount);
@@ -284,7 +284,7 @@ begin
   List := TAtlasBookmarkList.Create(KundeProject);
   List.Add(KundeFile, Join(Lines), Old, 'Rundung', 0);
   Assert.IsTrue(List.Relocate(KundeFile, Join(['unit Kunde;', '', 'interface', '', 'implementation', '', 'end.'])));
-  Assert.AreEqual(1, List.Count);
+  Assert.AreEqual(1, Integer(List.Count));
   Assert.IsTrue(List.Bookmarks[0].Lost);
   Assert.AreEqual('Rundung', List.Bookmarks[0].Name);
   Assert.AreEqual('TKunde.Runde', List.Bookmarks[0].Method, 'Die Methode bleibt gemerkt');
@@ -410,7 +410,7 @@ begin
   Other := List.Add(KundeFile, Join(Code), 25, 'Laden', 0);
   Assert.AreNotEqual('', Id);
   Assert.AreNotEqual(Id, Other);
-  Assert.AreEqual(2, List.Count);
+  Assert.AreEqual(2, Integer(List.Count));
   Assert.AreEqual('Rundung', List.Bookmarks[0].Name);
   Assert.IsTrue(List.Bookmarks[0].Created = EncodeDate(2026, 10, 15));
   Assert.AreEqual(0, List.IndexOf(UpperCase(Id)));
@@ -420,7 +420,7 @@ begin
   Assert.IsFalse(List.Rename('unbekannt', 'X'));
   Assert.IsTrue(List.Remove(Id));
   Assert.IsFalse(List.Remove(Id));
-  Assert.AreEqual(1, List.Count);
+  Assert.AreEqual(1, Integer(List.Count));
   Assert.AreEqual(Other, List.Bookmarks[0].Id);
 end;
 
@@ -636,7 +636,7 @@ begin
     Root.Free;
   end;
   Assert.IsTrue(TAtlasBookmarks.Parse(Json, IncludeTrailingPathDelimiter(FFolder), Back));
-  Assert.AreEqual(2, Back.Count);
+  Assert.AreEqual(2, Integer(Back.Count));
   Assert.AreEqual(Project, Back.Project);
   Assert.IsTrue(TAtlasBookmarks.SameFile(UnitFile, Back.Bookmarks[0].FileName));
   Assert.AreEqual(List.Bookmarks[0].Id, Back.Bookmarks[0].Id);
@@ -665,7 +665,7 @@ var
   Line: Integer;
 begin
   Assert.IsTrue(TAtlasBookmarks.Parse(Json, IncludeTrailingPathDelimiter(FFolder), List));
-  Assert.AreEqual(2, List.Count, 'Einträge ohne Kennung oder Datei fallen weg');
+  Assert.AreEqual(2, Integer(List.Count), 'Einträge ohne Kennung oder Datei fallen weg');
   Assert.AreEqual('Rundung prüfen', List.Bookmarks[0].Name);
   Assert.AreEqual(18, List.Bookmarks[0].Line);
   Assert.AreEqual(5, List.Bookmarks[0].Offset);
@@ -709,7 +709,7 @@ begin
   Assert.IsFalse(TAtlasBookmarks.Parse('kein json', FFolder, List));
   Assert.IsFalse(TAtlasBookmarks.Parse('[1, 2]', FFolder, List));
   Assert.IsFalse(TAtlasBookmarks.Parse('{"format": 2, "bookmarks": []}', FFolder, List));
-  Assert.AreEqual(0, List.Count);
+  Assert.AreEqual(0, Integer(List.Count));
   Assert.IsTrue(TAtlasBookmarks.Parse('{"bookmarks": []}', FFolder, List), 'Ohne format gilt 1');
   Assert.AreEqual(2, TAtlasBookmarks.FormatOf('{"format": 2}'));
   Assert.AreEqual(0, TAtlasBookmarks.FormatOf('kaputt'));
@@ -730,14 +730,14 @@ begin
   Assert.AreEqual(Ord('{'), Integer(Bytes[0]), 'Ohne BOM');
   // „IDE-Neustart“: frisch laden, Lesezeichen und Methode sind wieder da.
   Assert.IsTrue(TAtlasBookmarks.Load(Project, False, Back));
-  Assert.AreEqual(1, Back.Count);
+  Assert.AreEqual(1, Integer(Back.Count));
   Assert.AreEqual(Project, Back.Project);
   Assert.AreEqual('Rundung', Back.Bookmarks[0].Name);
   Assert.IsTrue(TAtlasBookmarks.SameFile(UnitFile, Back.Bookmarks[0].FileName));
   Assert.AreEqual('TKunde.Runde', Back.Bookmarks[0].Method);
   // Auch ein anderes Projekt im selben Ordner liest dieselbe Datei.
   Assert.IsTrue(TAtlasBookmarks.Load(TPath.Combine(FFolder, 'Zweites.dproj'), False, Back));
-  Assert.AreEqual(1, Back.Count);
+  Assert.AreEqual(1, Integer(Back.Count));
   Assert.AreEqual(TPath.Combine(FFolder, 'Zweites.dproj'), Back.Project);
 end;
 
@@ -782,7 +782,7 @@ begin
   FileName := TPath.Combine(FFolder, '.atlas-bookmarks.json');
   WriteText(FileName, '{"format": 2, "bookmarks": []}');
   Assert.IsFalse(TAtlasBookmarks.Load(Project, False, List));
-  Assert.AreEqual(0, List.Count);
+  Assert.AreEqual(0, Integer(List.Count));
   Assert.AreEqual(Project, List.Project);
   List.Add(UnitFile, Join(Code), 18, 'Rundung', 0);
   Assert.IsFalse(TAtlasBookmarks.Save(List, False));
@@ -794,7 +794,7 @@ var
   List: TAtlasBookmarkList;
 begin
   Assert.IsFalse(TAtlasBookmarks.Load(Project, False, List));
-  Assert.AreEqual(0, List.Count);
+  Assert.AreEqual(0, Integer(List.Count));
   Assert.AreEqual(Project, List.Project);
   Assert.IsFalse(TAtlasBookmarks.Load(Project, True, List));
   Assert.IsFalse(TAtlasBookmarks.Load('', False, List));

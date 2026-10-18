@@ -32,6 +32,7 @@ implementation
 uses
   System.SysUtils,
   System.JSON,
+  System.Generics.Collections,
   Atlas.Core.Editor.Recursion,
   Atlas.Core.Editor.Elements,
   Atlas.Core.Settings.Plugin;

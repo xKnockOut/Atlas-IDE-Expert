@@ -276,7 +276,7 @@
         <DCCReference Include="Common\Editing\Atlas.Common.Editing.UnitRename.Tests.pas"/>
         <DCCReference Include="Common\Editing\Atlas.Common.Editing.SmartPaste.Tests.pas"/>
         <DCCReference Include="Common\Editing\Atlas.Common.Editing.Extract.Tests.pas"/>
-        <DCCReference Include="Common\Editing\Atlas.Common.Editing.Inline.Tests.pas"/>
+        <DCCReference Include="Common\Editing\Atlas.Common.Editing.Inlining.Tests.pas"/>
         <DCCReference Include="Common\Editing\Atlas.Common.Editing.WithResolution.Tests.pas"/>
         <DCCReference Include="Common\Editing\Atlas.Common.Editing.CreateMethod.Tests.pas"/>
         <DCCReference Include="Common\Editing\Atlas.Common.Editing.NameSuggestions.Tests.pas"/>
@@ -717,8 +717,12 @@
         <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Problems\Atlas.Core.Problems.Contract.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Problems\Atlas.Core.Problems.Colors.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Problems\Atlas.Core.Problems.Store.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Editor\Atlas.Core.Editor.Recursion.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Problems\Atlas.Core.Problems.InlineHints.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Editor\Atlas.Core.Editor.LineTail.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\UI\Popup\Atlas.UI.Popup.Styled.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Problems.Tests.pas"/>
-        <DCCReference Include="IDE.Expert\Atlas.Core.Problems.Inline.Tests.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.Core.Problems.InlineHints.Tests.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Editor.Recursion.Tests.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Editor.Pairs.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Editor\Atlas.Core.Editor.Match.pas"/>

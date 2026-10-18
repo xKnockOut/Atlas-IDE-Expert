@@ -111,7 +111,7 @@ var
   Index: Integer;
   Listed: string;
 begin
-  Files := TAtlasQuickOpen.Collect(Sources, FakeLister);
+  Files := TAtlasQuickOpen.Collect(Sources, FakeLister());
   Listed := '';
   for Index := 0 to High(Files) do
     Listed := Listed + Files[Index].Name + '=' + IntToStr(Ord(Files[Index].Origin)) + '|';
@@ -123,11 +123,11 @@ begin
   // Bibliothek nur auf Wunsch, mit Unterordnern.
   Input := Sources;
   Input.LibraryFolders := ['C:\BDS\source'];
-  Files := TAtlasQuickOpen.Collect(Input, FakeLister);
+  Files := TAtlasQuickOpen.Collect(Input, FakeLister());
   Assert.AreEqual(8, Integer(Length(Files)));
   Assert.AreEqual(Ord(TAtlasQuickOpenOrigin.Library_), Ord(Files[7].Origin));
   // Abbruch zwischen den Ordnern: nur die Projektdateien.
-  Files := TAtlasQuickOpen.Collect(Input, FakeLister,
+  Files := TAtlasQuickOpen.Collect(Input, FakeLister(),
     function: Boolean
     begin
       Result := True;
@@ -150,7 +150,7 @@ begin
   for Index := 1 to 999 do
     Input.ProjectFiles := Input.ProjectFiles + [Format('C:\Gruppe\P%d\Unit%d.pas', [Index mod 20, Index])];
   Input.ProjectFiles := Input.ProjectFiles + ['C:\Gruppe\Haupt\FrmHaupt.pas'];
-  Files := TAtlasQuickOpen.Collect(Input, FakeLister);
+  Files := TAtlasQuickOpen.Collect(Input, FakeLister());
   Assert.AreEqual(1000, Integer(Length(Files)));
   Watch := TStopwatch.StartNew;
   Order := TAtlasQuickOpen.Order(Files, 'frmhaupt', nil, nil);
@@ -167,7 +167,7 @@ var
   Files: TAtlasQuickOpenFiles;
   Recent: TAtlasCommandHistory;
 begin
-  Files := TAtlasQuickOpen.Collect(Sources, FakeLister);
+  Files := TAtlasQuickOpen.Collect(Sources, FakeLister());
   Recent := TAtlasCommandHistory.Create;
   try
     Recent.Executed(TAtlasQuickOpen.RecentKey('C:\Gruppe\Haupt\Defs.inc'));
@@ -189,7 +189,7 @@ procedure TAtlasQuickOpenTests.PathAndExtensionHelp;
 var
   Files: TAtlasQuickOpenFiles;
 begin
-  Files := TAtlasQuickOpen.Collect(Sources, FakeLister);
+  Files := TAtlasQuickOpen.Collect(Sources, FakeLister());
   Assert.AreEqual('FrmHaupt.dfm|', Names(Files, TAtlasQuickOpen.Order(Files, 'frmhaupt.dfm', nil, nil)));
   Assert.AreEqual('Defs.inc|', Names(Files, TAtlasQuickOpen.Order(Files, 'haupt\defs', nil, nil)));
   Assert.AreEqual('Defs.inc|', Names(Files, TAtlasQuickOpen.Order(Files, 'haupt/defs', nil, nil)));

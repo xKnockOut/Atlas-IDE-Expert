@@ -135,7 +135,7 @@ var
 begin
   Symbols := SymbolsOf(UnitCode);
   try
-    Assert.AreEqual(1, Symbols.Count);
+    Assert.AreEqual(1, Integer(Symbols.Count));
     Assert.AreEqual(
       'U:2(interface:3(TColor:10(Red:22,Green:22),TPoint:23(X:8,Y:8),' +
       'TFoo:5(FValue:8,Create:9,Make:6,Value:7),IBar:11(Run:6),Limit:14,Global:13,Run:12),' +

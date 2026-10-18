@@ -237,6 +237,7 @@ uses
   Atlas.Core.Completion.LiveTemplates,
   Atlas.Core.Projects.Contract,
   Atlas.Core.Completion.Preview,
+  Atlas.Core.Completion.Placeholders,
   Atlas.Core.Settings.Plugin,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Foundation.TeamFile,

@@ -71,6 +71,7 @@ uses
   Atlas.Text.Lines,
   Atlas.Text.Diff,
   Atlas.Core.Diagnostics.Guard,
+  Atlas.Core.Settings.Plugin,
   Atlas.Core.Diagnostics.MainThread,
   Atlas.Core.Files.TextFile,
   Atlas.Core.Style.Color,

@@ -158,6 +158,7 @@ uses
   Vcl.Graphics,
   Vcl.ImageCollection,
   System.JSON,
+  System.Generics.Collections,
   Vcl.Menus,
   Vcl.Forms,
   Vcl.ComCtrls,

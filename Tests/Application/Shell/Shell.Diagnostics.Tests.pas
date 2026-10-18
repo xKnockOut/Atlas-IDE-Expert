@@ -57,6 +57,7 @@ uses
   System.Classes,
   System.IOUtils,
   System.JSON,
+  System.Generics.Collections,
   System.Zip,
   Atlas.Common.Documents.Contract,
   Atlas.Common.Documents.Uris,

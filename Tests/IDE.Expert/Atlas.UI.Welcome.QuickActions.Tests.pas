@@ -516,7 +516,7 @@ begin
     Items := Host.Bar.Menu.Items;
     // Konfiguration und Plattform: Überschrift, „wie in der IDE“, dann jede Kombination; zuletzt benutzt fett.
     Assert.IsTrue(Host.Bar.FillChoices(Items, 0, 0));
-    Assert.AreEqual(7, Items.Count);
+    Assert.AreEqual(7, Integer(Items.Count));
     Assert.AreEqual('Konfiguration und Plattform', StripHotkey(Items[0].Caption));
     Assert.IsFalse(Items[0].Enabled);
     Assert.AreEqual('Wie in der IDE eingestellt', StripHotkey(Items[2].Caption));
@@ -526,7 +526,7 @@ begin
     Items[4].Click;
     // Startprofile: das aktive markiert, „Ohne Startprofil“ zuletzt.
     Assert.IsTrue(Host.Bar.FillChoices(Items, 0, 2));
-    Assert.AreEqual(5, Items.Count);
+    Assert.AreEqual(5, Integer(Items.Count));
     Assert.AreEqual('Startprofil', StripHotkey(Items[0].Caption));
     Assert.AreEqual('Kunde (aktiv)', StripHotkey(Items[2].Caption));
     Assert.AreEqual('Ohne Startprofil', StripHotkey(Items[4].Caption));
@@ -536,7 +536,7 @@ begin
     Assert.IsFalse(Host.Bar.FillChoices(Items, 0, 1));
     Fake.FTests := ['C:\P\Tests\Eins.Tests.dproj', 'C:\P\Test\EinsTest.dproj'];
     Assert.IsTrue(Host.Bar.FillChoices(Items, 0, 1));
-    Assert.AreEqual(4, Items.Count);
+    Assert.AreEqual(4, Integer(Items.Count));
     Assert.AreEqual('Testprojekt', StripHotkey(Items[0].Caption));
     Assert.AreEqual('EinsTest', StripHotkey(Items[3].Caption));
     Items[3].Click;

@@ -59,6 +59,7 @@ implementation
 uses
   System.SysUtils,
   System.JSON,
+  System.Generics.Collections,
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Index.SymbolIndex,
   Atlas.Common.Index.Extractor,
@@ -201,7 +202,7 @@ var
 begin
   Symbol := Member('TKreis', 'Paint');
   Doc := TLspDocumentation.Load(FResolver, Symbol, TLspDocumentation.SplitLines(UnitMain), SymbolLine(Symbol),
-    ReadFiles);
+    ReadFiles());
   Assert.AreEqual('Zeichnet die Form.', Doc.Summary);
   Assert.AreEqual(1, Integer(Length(Doc.Params)));
   Assert.IsTrue(Pos('Breite', Doc.Remarks) > 0, Doc.Remarks);
@@ -214,7 +215,7 @@ var
 begin
   Symbol := Member('TQuadrat', 'Paint');
   Doc := TLspDocumentation.Load(FResolver, Symbol, TLspDocumentation.SplitLines(UnitMain), SymbolLine(Symbol),
-    ReadFiles);
+    ReadFiles());
   Assert.AreEqual('Zeichnet vier Ecken.', Doc.Summary);
   Assert.AreEqual(1, Integer(Length(Doc.Params)), 'Parameter vom Vorfahren');
   Assert.AreEqual('Füllfarbe', Doc.Params[0].Text);
@@ -227,7 +228,7 @@ var
 begin
   Symbol := Member('TLaeufer', 'Lauf');
   Doc := TLspDocumentation.Load(FResolver, Symbol, TLspDocumentation.SplitLines(UnitMain), SymbolLine(Symbol),
-    ReadFiles);
+    ReadFiles());
   Assert.AreEqual('Läuft los.', Doc.Summary);
 end;
 
@@ -238,7 +239,7 @@ var
 begin
   Assert.IsTrue(FResolver.ResolveTypeFrom(MainUnit, 'TKreis', Symbol));
   Doc := TLspDocumentation.Load(FResolver, Symbol, TLspDocumentation.SplitLines(UnitMain), SymbolLine(Symbol),
-    ReadFiles);
+    ReadFiles());
   Assert.AreEqual('Die Basis aller Formen.', Doc.Summary);
 end;
 
@@ -249,7 +250,7 @@ var
 begin
   Assert.IsTrue(FResolver.ResolveNameFrom(MainUnit, 'Male', Symbol));
   Doc := TLspDocumentation.Load(FResolver, Symbol, TLspDocumentation.SplitLines(UnitMain), SymbolLine(Symbol),
-    ReadFiles);
+    ReadFiles());
   Assert.AreEqual('Zeichnet die Form.', Doc.Summary);
 end;
 
@@ -373,7 +374,7 @@ var
   Reader: TDocReadText;
   Text: string;
 begin
-  Reader := TLspDocumentation.Reader(MainFile, 'ungespeichert', ReadFiles);
+  Reader := TLspDocumentation.Reader(MainFile, 'ungespeichert', ReadFiles());
   Assert.IsTrue(Reader('c:\p\haupt.pas', Text));
   Assert.AreEqual('ungespeichert', Text, 'Editorinhalt vor der Datei');
   Assert.IsTrue(Reader(BaseFile, Text));
