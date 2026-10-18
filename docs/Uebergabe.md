@@ -524,3 +524,10 @@ Jeder Branch baut auf dem vorigen auf. Nichts davon ist gebaut, getestet oder in
 - **Umgehung:** Win64-Gruppen-Builds Projekt für Projekt (wie `release.yml`), oder AtlasSetup aus der Win64-Gruppe nehmen. `ketteuild-safe.ps1` schaltet jetzt auch das installierte Release-Plugin ab.
 - **Offen:** Ein Minimal-Plugin mit leerem Dockfenster löst den Absturz nicht aus; Ursache liegt an dem, was die Atlas-Fenster zusätzlich tun (Kandidaten: IDE-Thema auf dem Frame, Fenstersymbol, FreeNotification). Eingrenzung läuft.
 - **README:** Spenden-Badge (PayPal) in README.md und README_DE.md, Hinweis „kein Release“ ersetzt.
+
+## Sammel-Branch claude/merge-all-branches-a7glyv repariert (18.10.2026)
+- Ausgangslage: Merge von claude/restpunkte-70m93a (~120 Commits, 420 Dateien), nie mit Delphi übersetzt.
+- Jetzt: Win64-Gruppe 0/0/0, Win32-Plugin gebaut, 4824 Tests grün, alle Check-Skripte sauber. Commits 4d521311 (übersetzbar) und 1cb31f5e (Tests grün), gepusht auf den Branch, nicht nach main.
+- Wichtigste Korrekturen: Units mit reserviertem Wort umbenannt (Editing.Inline -> Editing.Inlining, Problems.Inline -> Problems.InlineHints), fehlende uses und Testunits, Methodenreferenz-Funktionen mit (), Integer() bei AreEqual, UTF-8-Dekodierung ohne Ausnahme, Parser nur über den Cache, Gliederungsfenster ohne Fenster im Konstruktor, Lecks (KnownRuleIds, Konstruktor am const-Interface-Parameter).
+- Profile: refactoring.* sind Projektwerte und stehen in keinem Profil; Update-ConfigDoc verlangt im Profil „alles-an-experimentell“ nur globale experimentelle Schlüssel.
+- Offen: Merge nach main (Entscheidung Marco). Win64-Absturz an AtlasSetup weiter offen (Bisektion im Stash „Bisektion Win64-Absturz“; nötig sind Atlas-Kern und ein Atlas-Dockfenster, das Minimal-Plugin MiniDock allein löst ihn nicht aus).
