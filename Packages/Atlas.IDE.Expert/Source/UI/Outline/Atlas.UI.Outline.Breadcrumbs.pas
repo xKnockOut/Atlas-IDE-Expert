@@ -47,6 +47,7 @@ type
     function SeparatorWidth: Integer;
     function EllipsisWidth: Integer;
     procedure Layout;
+    function GetFirstShown: Integer;
     procedure SetEmptyText(const AValue: string);
     procedure DrawCrumb(AIndex: Integer);
     procedure DrawSeparator(ALeft: Integer; const AText: string);
@@ -80,7 +81,7 @@ type
     property Crumbs: TAtlasCrumbs read FCrumbs;
     property Selected: Integer read FSelected;
     /// <summary>Erstes sichtbares Glied (davor „…“).</summary>
-    property FirstShown: Integer read FFirstShown;
+    property FirstShown: Integer read GetFirstShown;
     property EmptyText: string read FEmptyText write SetEmptyText;
     property OnOpenMenu: TAtlasCrumbMenuEvent read FOnOpenMenu write FOnOpenMenu;
     property OnLeave: TProc read FOnLeave write FOnLeave;
@@ -226,6 +227,13 @@ begin
   if FCrumbs[AIndex].Badge.Code <> '' then
     Inc(Result, BadgeWidth + Scale(4));
   Canvas.Font := Font;
+end;
+
+function TAtlasBreadcrumbBar.GetFirstShown: Integer;
+begin
+  // Die Aufteilung entsteht erst beim Zeichnen; nach SetCrumbs oder Größenänderung hier nachholen.
+  Layout;
+  Result := FFirstShown;
 end;
 
 procedure TAtlasBreadcrumbBar.Layout;

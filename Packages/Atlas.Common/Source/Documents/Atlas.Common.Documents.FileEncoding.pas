@@ -312,6 +312,83 @@ begin
   end;
 end;
 
+/// <summary>
+/// UTF-8 ab AStart, tolerant: TEncoding.UTF8 wirft unter Delphi bei ungültigen Bytes (EEncodingError). Jede
+/// ungültige oder zu kurze Folge wird zu genau einem U+FFFD, wie InvalidUtf8 sie zählt.
+/// </summary>
+function DecodeUtf8(const ABytes: TBytes; AStart: Integer): string;
+var
+  Index, Count, Valid, Len: Integer;
+  Lead: Byte;
+  CodePoint: Cardinal;
+begin
+  if TTextEncodingProbe.IsValidUtf8(ABytes, AStart) then
+    Exit(TEncoding.UTF8.GetString(ABytes, AStart, Length(ABytes) - AStart));
+  SetLength(Result, 2 * (Length(ABytes) - AStart));
+  Len := 0;
+  Index := AStart;
+  while Index < Length(ABytes) do
+  begin
+    Lead := ABytes[Index];
+    if Lead < $80 then
+    begin
+      Inc(Len);
+      Result[Len] := Char(Lead);
+      Inc(Index);
+      Continue;
+    end;
+    Count := 0;
+    CodePoint := 0;
+    if (Lead >= $C2) and (Lead <= $DF) then
+    begin
+      Count := 1;
+      CodePoint := Lead and $1F;
+    end
+    else if (Lead >= $E0) and (Lead <= $EF) then
+    begin
+      Count := 2;
+      CodePoint := Lead and $0F;
+    end
+    else if (Lead >= $F0) and (Lead <= $F4) then
+    begin
+      Count := 3;
+      CodePoint := Lead and $07;
+    end;
+    Valid := 0;
+    while (Valid < Count) and (Index + Valid + 1 < Length(ABytes)) and
+      ((ABytes[Index + Valid + 1] and $C0) = $80) do
+    begin
+      CodePoint := (CodePoint shl 6) or (ABytes[Index + Valid + 1] and $3F);
+      Inc(Valid);
+    end;
+    if (Count > 0) and (Valid = Count) and not (((Count = 2) and (CodePoint < $800)) or
+      ((Count = 3) and (CodePoint < $10000)) or (CodePoint > $10FFFF) or
+      ((CodePoint >= $D800) and (CodePoint <= $DFFF))) then
+    begin
+      if CodePoint >= $10000 then
+      begin
+        Dec(CodePoint, $10000);
+        Inc(Len);
+        Result[Len] := Char($D800 + (CodePoint shr 10));
+        Inc(Len);
+        Result[Len] := Char($DC00 + (CodePoint and $3FF));
+      end
+      else
+      begin
+        Inc(Len);
+        Result[Len] := Char(CodePoint);
+      end;
+      Inc(Index, Count + 1);
+      Continue;
+    end;
+    // Fehlstelle samt ihrer gültigen Folgebytes: ein Ersatzzeichen.
+    Inc(Len);
+    Result[Len] := Char($FFFD);
+    Inc(Index, Valid + 1);
+  end;
+  SetLength(Result, Len);
+end;
+
 function DecodeUtf16(const ABytes: TBytes; AStart: Integer; ABigEndian: Boolean): string;
 var
   Count: Integer;
@@ -414,9 +491,9 @@ begin
   AFormat.Encoding := DetectEncoding(ABytes, ADefault);
   case AFormat.Encoding of
     TFileEncodingKind.Utf8Bom:
-      Result := TEncoding.UTF8.GetString(ABytes, 3, Length(ABytes) - 3);
+      Result := DecodeUtf8(ABytes, 3);
     TFileEncodingKind.Utf8:
-      Result := TEncoding.UTF8.GetString(ABytes);
+      Result := DecodeUtf8(ABytes, 0);
     TFileEncodingKind.Utf16LE:
       Result := DecodeUtf16(ABytes, 2, False);
     TFileEncodingKind.Utf16BE:
@@ -443,9 +520,9 @@ begin
     AFormat.Encoding := TFileEncodingKind.Ansi1252;
   case AFormat.Encoding of
     TFileEncodingKind.Utf8Bom:
-      Result := TEncoding.UTF8.GetString(ABytes, 3, Length(ABytes) - 3);
+      Result := DecodeUtf8(ABytes, 3);
     TFileEncodingKind.Utf8:
-      Result := TEncoding.UTF8.GetString(ABytes);
+      Result := DecodeUtf8(ABytes, 0);
     TFileEncodingKind.Utf16LE:
       Result := DecodeUtf16(ABytes, 2, False);
     TFileEncodingKind.Utf16BE:

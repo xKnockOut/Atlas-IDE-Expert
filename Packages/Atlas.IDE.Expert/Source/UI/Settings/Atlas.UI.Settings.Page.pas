@@ -1519,6 +1519,7 @@ begin
   Bind('InactiveDim', FInactiveDim);
   Bind('Preview', FPreview);
   Bind('HideElementKey', FHideElementKey);
+  Bind('ContinuePattern', FContinuePattern);
   Bind('WelcomePage', FWelcomeEnabled);
   Bind('WelcomePageHeader', FWelcomeHeader);
   Bind('WelcomePageSearch', FWelcomeSearch);

@@ -428,7 +428,21 @@ foreach ($Name in $Schema['properties'].Keys) {
 foreach ($Name in $PluginSchema['properties'].Keys) { Check-Experimental "Plugin-Katalog ""$Name""" $PluginSchema['properties'][$Name] }
 if ($ServerExperimental -ccontains $MasterPath) { $Problems.Add("Schema: der Hauptschalter ""$MasterPath"" darf nicht selbst experimentell sein") }
 foreach ($Name in $PluginExperimental) { if ($PluginSchema['properties'][$Name]['x-key'] -ceq $MasterPath) { $Problems.Add("Plugin-Katalog: der Hauptschalter ""$Name"" darf nicht selbst experimentell sein") } }
-$ExperimentalKeys = @($PluginExperimental | ForEach-Object { $PluginSchema['properties'][$_]['x-key'] }) + @($ServerExperimental)
+# Profile sind globale Einstellungen: Server-Schlüssel nur mit x-scope global oder both (eigenes oder das des
+# Abschnitts); reine Projektwerte (etwa refactoring.*) stehen in keinem Profil, wie im Katalog des Plugins.
+function Profile-Scope-Of([string] $Key) {
+    $Parts = $Key.Split('.')
+    $Top = $Schema['properties'][$Parts[0]]
+    $Scope = ''
+    if (Has $Top 'x-scope') { $Scope = $Top['x-scope'] }
+    if ($Parts.Count -gt 1) {
+        $Member = $Top['properties'][$Parts[1]]
+        if (Has $Member 'x-scope') { $Scope = $Member['x-scope'] }
+    }
+    return $Scope
+}
+$ProfileServerExperimental = @($ServerExperimental | Where-Object { (Profile-Scope-Of $_) -in @('global', 'both') })
+$ExperimentalKeys = @($PluginExperimental | ForEach-Object { $PluginSchema['properties'][$_]['x-key'] }) + @($ProfileServerExperimental)
 # Ausgeschaltet ist false bzw. x-offValue (Aufzählungen wie "off"); eingeschaltet jeder andere Wert.
 function Off-Value-Of([string] $Key) {
     foreach ($Name in $PluginSchema['properties'].Keys) {

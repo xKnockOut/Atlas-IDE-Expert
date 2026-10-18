@@ -176,10 +176,13 @@ begin
     procedure
     var
       Args: TJSONArray;
+      Store: IDocumentStore;
     begin
+      // Erst in eine Interface-Variable: Ein Konstruktor direkt am const-Parameter würde nie freigegeben.
+      Store := TDocumentStore.Create;
       Args := Arguments(4, 12, '');
       try
-        TStringLiteralCommands.ExecutePlainText(TDocumentStore.Create, Args).Free;
+        TStringLiteralCommands.ExecutePlainText(Store, Args).Free;
       finally
         Args.Free;
       end;

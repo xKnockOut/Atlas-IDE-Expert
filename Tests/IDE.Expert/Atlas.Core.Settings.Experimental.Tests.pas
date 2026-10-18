@@ -217,12 +217,16 @@ begin
       Value := Values.GetValue(Key);
       Assert.IsFalse((Value is TJSONBool) and TJSONBool(Value).AsBoolean, Key);
     end;
-    // „Alles an, auch experimentell“ schaltet alle ein.
+    // „Alles an, auch experimentell“ schaltet alle ein; Auswahlwerte (editor.smartPaste) mit einem Wert außer „off“.
     Values := AllOnExperimental.GetValue('settings') as TJSONObject;
     for Key in Keys do
     begin
       Value := Values.GetValue(Key);
-      Assert.IsTrue((Value is TJSONBool) and TJSONBool(Value).AsBoolean, Key);
+      Assert.IsNotNull(Value, Key);
+      if Value is TJSONBool then
+        Assert.IsTrue(TJSONBool(Value).AsBoolean, Key)
+      else
+        Assert.AreNotEqual('off', Value.Value, Key);
     end;
   finally
     AllOnExperimental.Free;

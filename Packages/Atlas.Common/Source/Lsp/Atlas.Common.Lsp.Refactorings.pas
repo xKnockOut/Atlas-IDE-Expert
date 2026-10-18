@@ -97,6 +97,7 @@ uses
   Atlas.Text.Lines,
   Atlas.Common.Pascal.Contract,
   Atlas.Common.Pascal.Parser,
+  Atlas.Common.Pascal.TreeCache,
   Atlas.Common.Editing.RoutineBody,
   Atlas.Common.Editing.UsesClause,
   Atlas.Common.Editing.CreateMethod,
@@ -135,7 +136,7 @@ begin
       Offset: Integer;
     begin
       Result := Default(TProbedType);
-      Tree := TPascalParser.Parse(AText);
+      Tree := TSyntaxTreeCache.Parse(AText);
       Resolver := NewResolver(Context);
       try
         for Found in TLspInlayHints.Inferred(Resolver, Tree, Context.FileName, TTextRange.Create(ANamePos.Line, 0,
@@ -407,7 +408,7 @@ begin
       Exit;
     Plan.Section := 'public';
     Plan.CaretInBody := False;
-    OtherTree := TPascalParser.Parse(OtherText);
+    OtherTree := TSyntaxTreeCache.Parse(OtherText);
     try
       if not TCreateMethod.MethodEdits(OtherText, OtherTree, Plan, Edits) then
         Exit;
@@ -533,7 +534,7 @@ begin
     begin
       if not (Assigned(AContext.ReadText) and AContext.ReadText(Owner.FileName, CalleeText)) then
         Exit;
-      CalleeTree := TPascalParser.Parse(CalleeText);
+      CalleeTree := TSyntaxTreeCache.Parse(CalleeText);
       Callee := TInlineSource.Create(Owner.FileName, CalleeText, CalleeTree);
       AResolver.PinTree(CalleeTree, Owner.FileName);
     end;

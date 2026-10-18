@@ -1467,6 +1467,7 @@ var
   Items: TJSONArray;
   Change: TParameterChange;
   Text: string;
+  Flag: Boolean;
 begin
   Result := Default(TChangeSignatureRequest);
   Result.Mode := ADefaultMode;
@@ -1475,7 +1476,9 @@ begin
     raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams, 'Die neue Signatur fehlt.');
   if TJSONObject(AValue).TryGetValue<string>('newParameter', Text) then
     Result.Mode := ModeOf(Text, ADefaultMode);
-  TJSONObject(AValue).TryGetValue<Boolean>('virtualOverload', Result.VirtualOverload);
+  // TryGetValue setzt den Ausgabewert unter Delphi auch ohne Feld zurück: nur bei Erfolg übernehmen.
+  if TJSONObject(AValue).TryGetValue<Boolean>('virtualOverload', Flag) then
+    Result.VirtualOverload := Flag;
   Items := TJSONObject(AValue).GetValue('parameters') as TJSONArray;
   if Items = nil then
     raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams, 'Feld "parameters" fehlt.');

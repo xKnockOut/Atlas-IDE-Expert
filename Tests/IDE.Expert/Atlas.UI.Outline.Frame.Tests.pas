@@ -143,7 +143,7 @@ end;
 
 procedure TAtlasOutlineFrameTests.ShowsRowsWithMarks;
 begin
-  Assert.AreEqual('interface,TForm1,Button1,Button1Click,FCount,Missing,Make,implementation', Names(FFrame));
+  Assert.AreEqual('interface,TForm1,Button1,Button1Click,FCount,Missing,Make', Names(FFrame));
   Assert.AreEqual(Integer(Length(FFrame.Rows)), FFrame.List.Count);
   Assert.AreEqual('◆ Button1', FFrame.RowText(RowOf(FFrame, 'Button1')));
   Assert.AreEqual('− Missing · ' + TAtlasStrings.Text(TAtlasTextId.OutlineUnimplemented),
@@ -181,16 +181,16 @@ end;
 procedure TAtlasOutlineFrameTests.CollapsesAndKeepsStateOverRefresh;
 begin
   FFrame.ToggleRow(RowOf(FFrame, 'TForm1'));
-  Assert.AreEqual('interface,TForm1,implementation', Names(FFrame));
+  Assert.AreEqual('interface,TForm1', Names(FFrame));
   // Neue Gliederung (nach dem Tippen): zugeklappt bleibt zugeklappt.
   FFrame.SetNodes(Nodes);
-  Assert.AreEqual('interface,TForm1,implementation', Names(FFrame));
+  Assert.AreEqual('interface,TForm1', Names(FFrame));
   // Mit Suchtext ist alles offen.
   FFrame.Search.Text := 'Make';
   Assert.AreEqual('interface,TForm1,Make', Names(FFrame));
   FFrame.Search.Text := '';
   FFrame.ToggleRow(RowOf(FFrame, 'TForm1'));
-  Assert.AreEqual(8, Integer(Length(FFrame.Rows)));
+  Assert.AreEqual(7, Integer(Length(FFrame.Rows)));
 end;
 
 procedure TAtlasOutlineFrameTests.HighlightsEntryAtCursorWithoutOpening;
@@ -259,7 +259,7 @@ begin
       Follow := AValue;
     end;
   FFrame.Alphabetical := True;
-  Assert.AreEqual('interface,TForm1,Button1,Button1Click,FCount,Make,Missing,implementation', Names(FFrame));
+  Assert.AreEqual('interface,TForm1,Button1,Button1Click,FCount,Make,Missing', Names(FFrame));
   MenuItem(FFrame.ListMenu, TAtlasStrings.Text(TAtlasTextId.OutlineFollowCursor)).Click;
   Assert.IsFalse(Follow);
   Assert.IsFalse(FFrame.FollowCursor);

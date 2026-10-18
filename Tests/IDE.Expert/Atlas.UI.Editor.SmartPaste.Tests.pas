@@ -13,6 +13,9 @@ type
   [TestFixture]
   TAtlasSmartPasteWindowTests = class
   public
+    /// <summary>Erste Benutzung ungemessen vorwegnehmen.</summary>
+    [SetupFixture]
+    procedure WarmUpFirstUse;
     [Test]
     procedure TitleCountsUniqueAndChosenUnits;
     [Test]
@@ -52,6 +55,11 @@ begin
   Result := TAtlasSmartPasteWindow.Create(nil);
   Result.Colors := TAtlasColors.Light;
   Result.SetScaling(96, 1, 'Segoe UI', 9);
+end;
+
+procedure TAtlasSmartPasteWindowTests.WarmUpFirstUse;
+begin
+  TitleCountsUniqueAndChosenUnits;
 end;
 
 procedure TAtlasSmartPasteWindowTests.TitleCountsUniqueAndChosenUnits;

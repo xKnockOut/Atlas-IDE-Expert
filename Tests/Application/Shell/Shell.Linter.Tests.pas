@@ -62,6 +62,7 @@ implementation
 uses
   System.SysUtils,
   System.IOUtils,
+  Atlas.Common.Documents.FileEncoding,
   Shell.CommandLine,
   Shell.Linter;
 
@@ -86,7 +87,8 @@ procedure TShellLinterTests.TearDown;
 begin
   if TDirectory.Exists(FFolder) then
     TDirectory.Delete(FFolder, True);
-  // Der Leckmonitor misst den Saldo von Setup und TearDown.
+  // Der Leckmonitor misst den Saldo von Setup und TearDown; Run merkt sich den Ordner in den Encoding-Vorgaben.
+  TFileEncodingDefaults.Clear;
   FFolder := '';
   FOutput := '';
 end;
