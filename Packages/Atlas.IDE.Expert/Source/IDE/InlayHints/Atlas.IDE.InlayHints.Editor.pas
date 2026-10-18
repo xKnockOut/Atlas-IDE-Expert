@@ -230,6 +230,7 @@ var
   Session: TLspSession;
   First, Last, From, Till: Integer;
   Hints: TArray<TAtlasInlayHint>;
+  Percent: Integer;
 begin
   FStore.SetText(FFileName, FText);
   First := AView.TopRow - 1;
@@ -239,6 +240,12 @@ begin
   Session := FSession();
   if Session = nil then
     Exit;
+  // Server indexiert: Er antwortet erst danach, der Hauptthread würde warten (#874). Später noch einmal.
+  if Session.Indexing(Percent) then
+  begin
+    FRetryAt := GetTickCount + RetryMs;
+    Exit;
+  end;
   try
     Session.Sync(FFileName, FText);
     Hints := Session.InlayHints(FFileName, From, Till, TimeoutMs);
