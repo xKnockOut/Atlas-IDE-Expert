@@ -232,10 +232,17 @@ var
   Arguments: string;
   Answer: TJSONValue;
   Metrics: TAtlasFileMetrics;
+  Percent: Integer;
 begin
   Session := FSession();
   if Session = nil then
     Exit;
+  // Server indexiert: Er antwortet erst danach, der Hauptthread würde warten (#874). Später noch einmal.
+  if Session.Indexing(Percent) then
+  begin
+    FRetryAt := GetTickCount + RetryMs;
+    Exit;
+  end;
   Values := TJSONArray.Create;
   try
     Values.Add(TLspSession.PathToUri(FFileName));
