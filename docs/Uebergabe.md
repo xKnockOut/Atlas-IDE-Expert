@@ -509,3 +509,10 @@ Jeder Branch baut auf dem vorigen auf. Nichts davon ist gebaut, getestet oder in
 - **Behoben (d7c6e381):** TAtlasIdeBuildIdleGate (Core: Atlas.Core.Build.IdleGate mit Tests) öffnet das Fenster erst ohne laufenden Compile und nach 3 s Ruhe. Nachstellung 5× ohne Absturz.
 - **Offen, getrennt davon:** Nach einem Neuladen mitten im Build hängt die Test-IDE beim Beenden gelegentlich mit einer Zugriffsverletzung in rtl370.bpl (Lesen von 006F003E), auch ohne Diagnosemodus (1 von 3). Atlas meldet in diesen Fällen kein „Atlas entladen“.
 - **README:** Spenden-Badge (PayPal) in README.md und README_DE.md, Hinweis „kein Release“ ersetzt.
+
+## Hänger „Die IDE hat … ms nicht reagiert“ (#874, 18.10.2026)
+- Analyse: Stapel aus `Atlas.IDE.Expert370.log` (neben dem Plugin) mit einer Map des installierten Release-Builds aufgelöst. Dazu den Worktree `C:\Projekte\BetterDelphiLSP\wt-map` auf 970f805a mit `DCC_MapFile=3` gebaut; er ist byte-gleich groß. Skript: `scratchpad\mapaddr.py`.
+- Ursache: synchrones Warten im Hauptthread auf den Server (`TLspClient.Request`), während er ein Projekt indexiert. Betroffen sind Inlay-Hinweise, Testunit-Linse und Serverbefehle mit 30 s Zeitlimit (Menü).
+- Umgesetzt (3f9d70b7): Linsen und Inlay-Hinweise fragen während des Indexierens nicht; Menübefehle laufen über `ExecuteServerCommandAsync`; `safeMode.startupTimeoutMs` hat die Vorgabe 30000 ms.
+- Offen: Optionsseite, Prüfliste und Fehlerbericht rufen den Server weiter synchron auf. Server: `workspace/executeCommand` läuft seriell in der Nachrichtenschleife und wartet hinter Reload/`StartIndex`→`Stop`→`WaitFor`; Vorschlag im Issue-Kommentar.
+- Hinweis: Am 18.10.2026 war Atlas beim Benutzer deinstalliert (nur `AtlasSetup.exe` übrig; `%LOCALAPPDATA%\Atlas` und `HKCU\Software\Atlas` fehlten). Das war keine Aktion dieser Sitzung.
