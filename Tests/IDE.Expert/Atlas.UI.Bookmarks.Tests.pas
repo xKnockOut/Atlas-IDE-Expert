@@ -190,9 +190,9 @@ begin
     Frame := TAtlasBookmarksFrame.Create(Host);
     Frame.Parent := Host;
     Frame.SetBookmarks(List, 'Projekt.dproj · lokal', List.Bookmarks[2].Id);
-    Assert.AreEqual(4, Frame.List.Columns.Count);
+    Assert.AreEqual(4, Integer(Frame.List.Columns.Count));
     Assert.AreEqual('Zeilenvorschau', Frame.List.Columns[3].Caption);
-    Assert.AreEqual(3, Frame.List.Items.Count, 'Reihenfolge der Liste');
+    Assert.AreEqual(3, Integer(Frame.List.Items.Count), 'Reihenfolge der Liste');
     Assert.AreEqual('Prüfung', Frame.List.Items[0].Caption);
     Assert.AreEqual('Kunde.pas:9', Frame.List.Items[0].SubItems[0]);
     Assert.AreEqual('TKunde.Laden', Frame.List.Items[0].SubItems[1]);
@@ -230,19 +230,19 @@ begin
     Frame.SetBookmarks(List, '', '');
     Assert.AreEqual('Filtern: Name, Datei, Methode oder Zeile', Frame.Filter.TextHint);
     Frame.Filter.Text := 'kunde laden';
-    Assert.AreEqual(2, Frame.List.Items.Count, 'Datei und Methode zählen');
+    Assert.AreEqual(2, Integer(Frame.List.Items.Count), 'Datei und Methode zählen');
     Frame.Filter.Text := 'lager';
-    Assert.AreEqual(1, Frame.List.Items.Count);
+    Assert.AreEqual(1, Integer(Frame.List.Items.Count));
     Assert.AreEqual('Anfang', Frame.List.Items[0].Caption);
     // Enter im Filterfeld springt zum ersten Treffer.
     Key := VK_RETURN;
     Frame.Filter.OnKeyDown(Frame.Filter, Key, []);
     Assert.AreEqual(List.Bookmarks[1].Id, Opened);
     Frame.Filter.Text := 'gibtsnicht';
-    Assert.AreEqual(0, Frame.List.Items.Count);
+    Assert.AreEqual(0, Integer(Frame.List.Items.Count));
     Assert.IsFalse(Frame.EmptyLabel.Visible, 'Filter ohne Treffer ist kein leeres Projekt');
     Frame.Filter.Text := '';
-    Assert.AreEqual(3, Frame.List.Items.Count);
+    Assert.AreEqual(3, Integer(Frame.List.Items.Count));
   finally
     Host.Free;
   end;
@@ -286,7 +286,7 @@ begin
     Assert.IsFalse(Allow);
     // Kontextmenü: Springen, Umbenennen, Löschen.
     Frame.Menu.OnPopup(Frame.Menu);
-    Assert.AreEqual(3, Frame.Menu.Items.Count);
+    Assert.AreEqual(3, Integer(Frame.Menu.Items.Count));
     Assert.IsTrue(Frame.Menu.Items[1].Enabled);
     Assert.AreEqual('Umbenennen', Frame.Menu.Items[1].Caption);
     Opened := '';

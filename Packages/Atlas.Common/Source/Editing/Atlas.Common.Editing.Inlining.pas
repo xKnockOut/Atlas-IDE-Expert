@@ -1,4 +1,4 @@
-﻿unit Atlas.Common.Editing.Inline;
+﻿unit Atlas.Common.Editing.Inlining;
 
 // Einbetten (#103, Teil A) als Code-Aktionen, ohne Protokollbezug:
 //   - „Variable einbetten“: Eine lokale Variable mit genau einer Zuweisung
@@ -1095,7 +1095,6 @@ var
 begin
   AAction := Default(TCodeAction);
   AReason := '';
-  Result := False;
   if (ACaller.Tree = nil) or (ACallee.Tree = nil) or (ARoutine = nil) then
     Exit(Fail('kein Syntaxbaum', AReason));
   if not CallAt(ACaller.Tree, ACaller.Text, APosition, Call) then

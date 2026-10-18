@@ -126,7 +126,7 @@ begin
   Assert.AreEqual('Server rot', Entry.Title);
   Assert.AreEqual('Server rot', Entry.Caption);
   Assert.AreEqual('Jenkins #482', Entry.Text);
-  Assert.AreEqual(1, Entry.Count);
+  Assert.AreEqual(1, Integer(Entry.Count));
   Assert.IsFalse(Entry.Read);
   Assert.IsTrue(Entry.Time = FNow, 'Zeit der Meldung');
   Assert.AreEqual(1, Center.UnreadCount);
@@ -165,7 +165,7 @@ begin
   Entry := Center.Items()[0];
   Assert.AreEqual('3 × Server neu gestartet', Entry.Caption);
   Assert.AreEqual('Server neu gestartet', Entry.Title);
-  Assert.AreEqual(3, Entry.Count);
+  Assert.AreEqual(3, Integer(Entry.Count));
   Assert.AreEqual(1, Entry.Id, 'Kennung bleibt');
   Assert.AreEqual('dritter', Entry.Text, 'neuester Text');
   Assert.IsTrue(Entry.Time = FNow, 'Zeit der letzten Meldung');

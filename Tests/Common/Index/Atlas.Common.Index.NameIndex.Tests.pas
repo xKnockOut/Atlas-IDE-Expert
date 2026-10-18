@@ -53,7 +53,7 @@ begin
   Index.AddUnit(MakeUnit('Proj', False, [Symbol('TProj', '', True), Symbol('Feld', 'TProj', True),
     Symbol('Intern', '', False)]));
   Names := TImportNameIndex.Build(Index);
-  Assert.AreEqual(2, Names.Count);
+  Assert.AreEqual(2, Integer(Names.Count));
   Assert.AreEqual('TProj', Names.Units[Names.Entries[0].UnitPos].Symbols[Names.Entries[0].SymbolPos].Name);
   Assert.AreEqual('TBib', Names.Units[Names.Entries[1].UnitPos].Symbols[Names.Entries[1].SymbolPos].Name);
 end;

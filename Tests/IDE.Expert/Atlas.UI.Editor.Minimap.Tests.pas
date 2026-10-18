@@ -150,12 +150,12 @@ begin
   Span := FView.SliderSpan;
   // Im Schieber greifen: kein Sprung; ziehen um 20 Pixel = 10 Zeilen bei 2 Pixeln je Zeile.
   TViewAccess(FView).MouseDown(mbLeft, [ssLeft], 5, Span.Top + 2);
-  Assert.IsTrue(FView.Dragging);
+  Assert.IsTrue(FView.SliderDragging);
   Assert.AreEqual(-1, Scrolled);
   TViewAccess(FView).MouseMove([ssLeft], 5, Span.Top + 2 + 20 * FView.Map.RowHeight div 2);
   Assert.AreEqual(20, Scrolled);
   TViewAccess(FView).MouseUp(mbLeft, [], 5, 0);
-  Assert.IsFalse(FView.Dragging);
+  Assert.IsFalse(FView.SliderDragging);
 end;
 
 procedure TAtlasMinimapViewTests.SliderOnlyOnMouseOver;

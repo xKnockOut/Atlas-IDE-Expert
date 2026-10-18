@@ -33,6 +33,7 @@ uses
   System.Classes,
   System.SyncObjs,
   System.JSON,
+  System.Generics.Collections,
   Atlas.Common.JsonRpc.Contract,
   Atlas.Common.JsonRpc.PendingRequests,
   Atlas.Common.JsonRpc.Watchdog;

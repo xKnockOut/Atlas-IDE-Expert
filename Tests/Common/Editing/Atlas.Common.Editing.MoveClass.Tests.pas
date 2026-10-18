@@ -123,7 +123,7 @@ function Relocate(const AText, AMarker: string; out ANewText, AOrigin: string): 
 var
   Reason: string;
 begin
-  Result := Relocate(AText, AMarker, 'Stock', FakeLookup, ANewText, AOrigin, Reason);
+  Result := Relocate(AText, AMarker, 'Stock', FakeLookup(), ANewText, AOrigin, Reason);
   Assert.IsTrue(Result, Reason);
 end;
 
@@ -131,7 +131,7 @@ function Rejected(const AText, AMarker: string): string;
 var
   NewText, Origin: string;
 begin
-  Assert.IsFalse(Relocate(AText, AMarker, 'Stock', FakeLookup, NewText, Origin, Result));
+  Assert.IsFalse(Relocate(AText, AMarker, 'Stock', FakeLookup(), NewText, Origin, Result));
 end;
 
 procedure TMoveClassTests.DefaultUnitNameDropsT;
@@ -236,9 +236,9 @@ begin
     'end;', '{$ENDIF}', '', 'end.']), 'TStock = class'), 'bedingt');
   // Kein Klassentyp an der Stelle, ungültiger Name.
   Assert.IsFalse(Relocate(Join(['unit Lager;', '', 'interface', '', 'type', '  TKind = (kA, kB);', '',
-    'implementation', '', 'end.']), 'TKind', 'Stock', FakeLookup, NewText, Origin, Reason));
+    'implementation', '', 'end.']), 'TKind', 'Stock', FakeLookup(), NewText, Origin, Reason));
   Assert.IsFalse(Relocate(Join(['unit Lager;', '', 'interface', '', 'type', '  TStock = class', '  end;', '',
-    'implementation', '', 'end.']), 'TStock', 'Neue Unit', FakeLookup, NewText, Origin, Reason));
+    'implementation', '', 'end.']), 'TStock', 'Neue Unit', FakeLookup(), NewText, Origin, Reason));
   Assert.Contains(Reason, 'gültig');
 end;
 

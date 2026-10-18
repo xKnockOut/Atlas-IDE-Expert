@@ -30,6 +30,7 @@ implementation
 uses
   System.SysUtils,
   System.JSON,
+  System.Generics.Collections,
   Atlas.Core.Lsp.Session,
   Atlas.Core.Projects.UnitRename;
 
@@ -54,12 +55,12 @@ begin
     Assert.IsFalse(Queue.Add(TAtlasUnitRenameEvent.Create('c:\p\kunden.pas', 'C:\P\KundenDaten.pas', 'C:\P\B.dproj')));
     Assert.IsFalse(Queue.Add(TAtlasUnitRenameEvent.Create('C:\P\Form.dfm', 'C:\P\Neu.dfm', 'C:\P\A.dproj')));
     Assert.IsTrue(Queue.Add(TAtlasUnitRenameEvent.Create('C:\P\Lager.pas', 'C:\P\Bestand.pas', 'C:\P\A.dproj')));
-    Assert.AreEqual(2, Queue.Count);
+    Assert.AreEqual(2, Integer(Queue.Count));
     Items := Queue.Take;
     Assert.AreEqual(2, Integer(Length(Items)));
     Assert.AreEqual('C:\P\A.dproj', Items[0].ProjectFile);
     Assert.AreEqual('C:\P\Bestand.pas', Items[1].NewFile);
-    Assert.AreEqual(0, Queue.Count);
+    Assert.AreEqual(0, Integer(Queue.Count));
   finally
     Queue.Free;
   end;

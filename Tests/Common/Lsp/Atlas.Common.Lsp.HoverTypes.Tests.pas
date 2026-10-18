@@ -285,14 +285,14 @@ begin
     Assert.AreEqual(2, Json.GetValue<Integer>('character'));
     Assert.IsNull(Json.GetValue('origin'), 'leer entfällt');
     Links := Json.GetValue<TJSONArray>('links');
-    Assert.AreEqual(1, Links.Count);
+    Assert.AreEqual(1, Integer(Links.Count));
     Assert.AreEqual('TMitte', Links.Items[0].GetValue<string>('name'));
     Assert.AreEqual(Pos('TMitte', 'TBlatt = class(TMitte)') - 1, Links.Items[0].GetValue<Integer>('start'));
     Assert.AreEqual(6, Links.Items[0].GetValue<Integer>('length'));
     Assert.AreEqual(5, Links.Items[0].GetValue<Integer>('line'));
     Assert.AreEqual('TBlatt', Json.GetValue<string>('chainOf'));
     Ancestors := Json.GetValue<TJSONArray>('ancestors');
-    Assert.AreEqual(4, Ancestors.Count);
+    Assert.AreEqual(4, Integer(Ancestors.Count));
     Assert.AreEqual('TObject', Ancestors.Items[3].GetValue<string>('name'));
     Assert.AreEqual('System', Ancestors.Items[3].GetValue<string>('unit'));
   finally

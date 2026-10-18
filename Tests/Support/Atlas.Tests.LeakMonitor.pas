@@ -82,6 +82,7 @@ uses
   System.Threading,
   System.DateUtils,
   System.JSON,
+  System.Generics.Collections,
   DUnitX.ServiceLocator,
   Atlas.Common.Editing.SlashCommands,
   Atlas.Core.Settings.Catalog,

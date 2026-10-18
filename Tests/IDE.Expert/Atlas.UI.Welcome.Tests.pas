@@ -1244,7 +1244,7 @@ begin
     Board := ArrangeBoard(Host, Keep);
     // Akzeptanz: „Bereich hinzufügen“ listet alle Bereiche; sichtbare sind abgehakt.
     Board.BuildAddMenu;
-    Assert.AreEqual(4, Board.BarMenu.Items.Count);
+    Assert.AreEqual(4, Integer(Board.BarMenu.Items.Count));
     Assert.IsTrue(Board.BarMenu.Items[0].Checked);
     Assert.IsFalse(Board.BarMenu.Items[0].Enabled);
     Assert.IsFalse(Board.BarMenu.Items[2].Checked);
@@ -1290,7 +1290,7 @@ begin
     // Akzeptanz: zwei Layouts lassen sich im Kopf umschalten, auch ohne Bearbeitungsmodus.
     Assert.IsTrue(Board.Bar.IndexOf(TAtlasArrangePartKind.Layout, '') >= 0);
     Board.BuildLayoutMenu;
-    Assert.AreEqual(6, Board.BarMenu.Items.Count, 'zwei Layouts, Strich, Neu, Umbenennen, Löschen');
+    Assert.AreEqual(6, Integer(Board.BarMenu.Items.Count), 'zwei Layouts, Strich, Neu, Umbenennen, Löschen');
     Assert.IsTrue(Board.BarMenu.Items[0].Checked);
     Assert.IsTrue(Board.BarMenu.Items[5].Enabled);
     Board.BarMenu.Items[1].Click;

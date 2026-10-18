@@ -173,7 +173,7 @@ begin
   Sys.WriteText('D:\a.json', Settings('"notes.enabled": false, "tests.afterBuild": true, "gibt.esNicht": 1'));
   Result_ := Run(System_, ['/importSettings', 'D:\a.json']);
   Assert.IsTrue(Result_.Outcome = TSetupSettingsOutcome.Done, Result_.Detail);
-  Assert.AreEqual(2, Result_.Count);
+  Assert.AreEqual(2, Integer(Result_.Count));
   Assert.AreEqual('0', Sys.ReadString(Key, 'Notes'));
   Assert.AreEqual('1', Sys.ReadString(Key, 'TestsAfterBuild'));
   Assert.IsTrue(Contains(Result_.Skipped, 'gibt.esNicht'), 'Unbekanntes gemeldet und übersprungen');
@@ -257,7 +257,7 @@ begin
   Sys.WriteInteger(Key, 'TestsAfterBuild', 1);
   Result_ := Run(System_, ['/resetSettings', '/areas:build']);
   Assert.IsTrue(Result_.Outcome = TSetupSettingsOutcome.Done, Result_.Detail);
-  Assert.AreEqual(1, Result_.Count);
+  Assert.AreEqual(1, Integer(Result_.Count));
   Assert.AreEqual('0', Sys.ReadString(Key, 'TestsAfterBuild'), 'Bereich Build zurückgesetzt');
   Assert.AreEqual('0', Sys.ReadString(Key, 'Notes'), 'Editor bleibt');
   Assert.IsTrue(Sys.FileExists(Result_.BackupFile));

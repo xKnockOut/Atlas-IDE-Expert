@@ -39,7 +39,7 @@ uses
   Atlas.Core.Lsp.Session,
   Atlas.Core.Problems.Contract,
   Atlas.Core.Problems.Store,
-  Atlas.Core.Problems.Inline,
+  Atlas.Core.Problems.InlineHints,
   Atlas.IDE.Problems.Painter,
   Atlas.IDE.Problems.MessageList,
   Atlas.IDE.Build.Target;

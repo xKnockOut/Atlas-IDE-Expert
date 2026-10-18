@@ -44,6 +44,7 @@ uses
   System.SysUtils,
   System.IOUtils,
   System.JSON,
+  System.Generics.Collections,
   Atlas.Common.Compiler.Contract,
   Atlas.Common.Lsp.IdeBuild,
   Atlas.Common.Mcp.BuildTools,

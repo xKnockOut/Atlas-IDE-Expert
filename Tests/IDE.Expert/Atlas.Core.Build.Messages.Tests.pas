@@ -28,6 +28,7 @@ uses
   System.SysUtils,
   System.IOUtils,
   System.JSON,
+  System.Generics.Collections,
   Atlas.Core.Build.Messages;
 
 procedure TAtlasCompilerMessagesTests.SplitsCodeAndSeverity;

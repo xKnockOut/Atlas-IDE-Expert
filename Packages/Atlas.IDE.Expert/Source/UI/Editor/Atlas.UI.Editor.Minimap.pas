@@ -111,7 +111,7 @@ type
     /// <summary>Breite bei APPI.</summary>
     class function ViewWidth(const AOptions: TAtlasMinimapOptions; APPI: Integer): Integer; static;
     property Options: TAtlasMinimapOptions read FOptions;
-    property Dragging: Boolean read FDragging;
+    property SliderDragging: Boolean read FDragging;
     /// <summary>Neue oberste Zeile (0-basiert) beim Ziehen und bei einem Klick ohne Springen.</summary>
     property OnScroll: TProc<Integer> read FOnScroll write FOnScroll;
     /// <summary>Klick springt zur Zeile (0-basiert).</summary>

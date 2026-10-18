@@ -42,6 +42,7 @@ uses
   System.SysUtils,
   System.Classes,
   System.JSON,
+  System.Generics.Collections,
   Atlas.Core.Completion.Contract,
   Atlas.Core.Completion.Controller,
   Atlas.Core.Completion.Ranking,
@@ -342,7 +343,7 @@ begin
     Json.Free;
   end;
   Assert.IsTrue(Pinned.Pinned);
-  Assert.AreEqual(3, Pinned.Count);
+  Assert.AreEqual(3, Integer(Pinned.Count));
   Assert.IsTrue(Pinned.HasTextEdit);
   Assert.IsFalse(Pinned.IsAction, 'kein „Neue Methode …“');
   Tags := TAtlasItemPresentation.Tags(Pinned);

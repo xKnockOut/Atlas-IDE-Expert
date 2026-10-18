@@ -57,7 +57,8 @@ implementation
 
 uses
   System.SysUtils,
-  System.JSON;
+  System.JSON,
+  System.Generics.Collections;
 
 function Measure(const AText: string; const AFace: TAtlasDocFace): Integer;
 begin

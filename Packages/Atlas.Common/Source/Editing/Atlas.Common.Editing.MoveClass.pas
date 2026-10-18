@@ -550,7 +550,6 @@ var
 begin
   APlan := Default(TMoveClassPlan);
   AReason := '';
-  Result := False;
   Decl := ClassAt(ATree, APosition);
   if Decl = nil then
     Exit(Fail('keine Klasse an dieser Stelle', AReason));

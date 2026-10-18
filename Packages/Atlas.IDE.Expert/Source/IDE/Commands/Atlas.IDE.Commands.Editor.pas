@@ -157,7 +157,7 @@ uses
   Atlas.IDE.Bookmarks.Service,
   Atlas.IDE.Generate.Commands,
   Atlas.IDE.Editor.Hide,
-  Atlas.Core.Problems.Inline,
+  Atlas.Core.Problems.InlineHints,
   Atlas.IDE.Editor.ChangeSignature,
   Atlas.IDE.Editor.MoveClass,
   Atlas.IDE.Editor.EnterWatch,

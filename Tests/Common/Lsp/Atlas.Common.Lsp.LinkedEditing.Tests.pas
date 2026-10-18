@@ -343,7 +343,7 @@ begin
     [Conflict]);
   try
     Items := (Json as TJSONObject).GetValue<TJSONArray>('atlasConflicts');
-    Assert.AreEqual(1, Items.Count);
+    Assert.AreEqual(1, Integer(Items.Count));
     Assert.AreEqual('Rand', (Items.Items[0] as TJSONObject).GetValue<string>('name'));
     Assert.AreEqual('lokale Variable Rand', (Items.Items[0] as TJSONObject).GetValue<string>('detail'));
   finally

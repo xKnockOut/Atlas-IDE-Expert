@@ -29,6 +29,7 @@ implementation
 uses
   System.SysUtils,
   System.JSON,
+  System.Generics.Collections,
   Atlas.Core.Lsp.Progress;
 
 procedure Send(const AProgress: ILspProgress; const AJson: string);

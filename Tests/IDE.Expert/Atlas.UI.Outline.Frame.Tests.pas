@@ -42,6 +42,7 @@ implementation
 uses
   System.SysUtils,
   System.JSON,
+  System.Generics.Collections,
   Vcl.Controls,
   Vcl.Menus,
   Atlas.UI.Strings,

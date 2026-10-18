@@ -162,7 +162,7 @@ begin
   Target := TAtlasBuildTarget.Create(Project, 'Release', 'Win64', ['RELEASE', 'TRACE']);
   Arguments := Target.SelectArguments('file:///C:/P/App.dproj', TAtlasBuildTargetAction.Query);
   try
-    Assert.AreEqual(1, Arguments.Count);
+    Assert.AreEqual(1, Integer(Arguments.Count));
     Options := Arguments.Items[0] as TJSONObject;
     Assert.AreEqual('file:///C:/P/App.dproj', Options.GetValue<string>('uri'));
     Assert.IsNull(Options.GetValue('config'), 'Query fragt nur');
@@ -175,7 +175,7 @@ begin
     Assert.AreEqual('Release', Options.GetValue<string>('config'));
     Assert.AreEqual('Win64', Options.GetValue<string>('platform'));
     Defines := Options.GetValue('defines') as TJSONArray;
-    Assert.AreEqual(2, Defines.Count);
+    Assert.AreEqual(2, Integer(Defines.Count));
     Assert.AreEqual('TRACE', Defines.Items[1].Value);
   finally
     Arguments.Free;

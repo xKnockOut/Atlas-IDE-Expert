@@ -106,7 +106,7 @@ var
   Units, Moved: TArray<string>;
 begin
   AMoved := '';
-  if not TSmartPaste.UsesEdits(TPascalLexer.Tokenize(AText), APosition, AUnits, InterfaceUses, ['System'], #10,
+  if not TSmartPaste.UsesEdits(TPascalLexer.Tokenize(AText), APosition, AUnits, InterfaceUses(), ['System'], #10,
     Edits, Units, Moved) then
     Exit('-');
   AMoved := string.Join('|', Moved);
@@ -122,7 +122,7 @@ var
 begin
   Tree := TPascalParser.Parse(Target);
   try
-    Names := TSmartPaste.Missing(TPascalLexer.Tokenize(Target), Tree, Range(6, 11), Declaring, ['System']);
+    Names := TSmartPaste.Missing(TPascalLexer.Tokenize(Target), Tree, Range(6, 11), Declaring(), ['System']);
     Text := '';
     for Item in Names do
       Text := Text + Item.Name + '=' + string.Join(',', Item.Units) + ';';
@@ -130,7 +130,7 @@ begin
     Assert.AreEqual('TJSONObject=System.JSON;TKunde=Kunden;TList=System.Classes,System.Generics.Collections;', Text);
     Assert.AreEqual('System.JSON|Kunden', string.Join('|', TSmartPaste.Certain(Names)), 'mehrdeutig nicht');
     // Format liefert System.SysUtils schon; außerhalb des Bereichs zählt nichts.
-    Names := TSmartPaste.Missing(TPascalLexer.Tokenize(Target), Tree, Range(16, 19), Declaring, ['System']);
+    Names := TSmartPaste.Missing(TPascalLexer.Tokenize(Target), Tree, Range(16, 19), Declaring(), ['System']);
     Assert.AreEqual(1, Integer(Length(Names)));
     Assert.AreEqual('TDataSet', Names[0].Name);
     Assert.AreEqual(0, Integer(Length(TSmartPaste.Missing(TPascalLexer.Tokenize(Target), Tree, Range(6, 11), nil,

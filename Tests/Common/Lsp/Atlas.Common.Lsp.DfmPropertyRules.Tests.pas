@@ -27,6 +27,7 @@ implementation
 uses
   System.SysUtils,
   System.JSON,
+  System.Generics.Collections,
   Atlas.Common.Documents.Contract,
   Atlas.Common.Documents.Uris,
   Atlas.Common.Rules.Contract,
@@ -76,7 +77,7 @@ begin
     Assert.AreEqual(2, Files);
     Assert.AreEqual(3, Edits);
     Changes := Edit.GetValue('documentChanges') as TJSONArray;
-    Assert.AreEqual(2, Changes.Count);
+    Assert.AreEqual(2, Integer(Changes.Count));
     Uri := Changes.Items[0].GetValue<string>('textDocument.uri');
     Assert.AreEqual(TDocumentUris.FromPath('C:\P\A.dfm'), Uri);
     Assert.AreEqual(2, (Changes.Items[0].GetValue<TJSONArray>('edits')).Count);
@@ -142,7 +143,7 @@ begin
   Json := TLspCodeActions.ActionToJson(TDocumentUris.FromPath(UnitA), Actions[0]);
   try
     Changes := Json.GetValue<TJSONObject>('edit.changes');
-    Assert.AreEqual(1, Changes.Count, 'nur die Formulardatei');
+    Assert.AreEqual(1, Integer(Changes.Count), 'nur die Formulardatei');
     Assert.AreEqual(TDocumentUris.FromPath('C:\P\A.dfm'), Changes.Pairs[0].JsonString.Value);
   finally
     Json.Free;

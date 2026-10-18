@@ -81,6 +81,7 @@ uses
   System.SysUtils,
   System.IOUtils,
   System.JSON,
+  System.Generics.Collections,
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Rules.Contract,
   Atlas.Common.Rules.Builtin.Architecture,

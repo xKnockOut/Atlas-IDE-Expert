@@ -120,7 +120,7 @@ begin
   Book := TAtlasNoteBook.Create(Project);
   Id := Book.Add(UnitFile, Code, 8, 'hier noch Rundung prüfen', At(2026, 10, 15, 9, 0, 0));
   Assert.AreNotEqual('', Id);
-  Assert.AreEqual(1, Book.Count);
+  Assert.AreEqual(1, Integer(Book.Count));
   Index := Book.IndexAt('c:/projekte/kunde.pas', 8);
   Assert.AreEqual(0, Index, 'Pfad ohne Groß-/Kleinschreibung');
   Assert.AreEqual(-1, Book.IndexAt(UnitFile, 7));
@@ -135,7 +135,7 @@ begin
   Assert.AreEqual(1, Integer(Length(Book.Files)), 'eine Datei');
   Assert.IsTrue(Book.Remove(Id));
   Assert.IsFalse(Book.Remove(Id));
-  Assert.AreEqual(1, Book.Count);
+  Assert.AreEqual(1, Integer(Book.Count));
 end;
 
 procedure TAtlasNoteStoreTests.RelocateFollowsAndOrphans;
@@ -223,7 +223,7 @@ begin
   Book.Notes[1].Orphaned := True;
   Assert.IsTrue(TAtlasNotes.Parse(TAtlasNotes.ToJson(Book), Read));
   Assert.AreEqual(Project, Read.Project);
-  Assert.AreEqual(2, Read.Count);
+  Assert.AreEqual(2, Integer(Read.Count));
   Assert.AreEqual(Book.Notes[0].Id, Read.Notes[0].Id);
   Assert.AreEqual(UnitFile, Read.Notes[0].FileName);
   Assert.AreEqual('Rundung'#10'prüfen "genau"', Read.Notes[0].Text);
@@ -244,7 +244,7 @@ begin
     ' "lineText": "Result := Round(X);", "before": ["begin", "var X: Double;"], "after": ["end;"],' +
     ' "created": "2026-10-15T09:30:00Z", "changed": "2026-10-15T10:00:00Z"},' +
     '{"file": "ohne Kennung"}, 7]}', Book));
-  Assert.AreEqual(1, Book.Count, 'unvollständige Einträge übergangen');
+  Assert.AreEqual(1, Integer(Book.Count), 'unvollständige Einträge übergangen');
   Assert.AreEqual(41, Book.Notes[0].Line, '"line" zählt ab 1');
   Assert.AreEqual('Result := Round(X);', Book.Notes[0].Anchor.Text);
   Assert.AreEqual('var X: Double;', Book.Notes[0].Anchor.Before[1]);
@@ -282,7 +282,7 @@ begin
   Assert.IsFalse(TAtlasNotes.Parse('kein JSON', Book));
   Assert.IsFalse(TAtlasNotes.Parse('[1, 2]', Book));
   Assert.IsFalse(TAtlasNotes.Parse('{"format": 2, "project": "p", "notes": []}', Book));
-  Assert.AreEqual(0, Book.Count);
+  Assert.AreEqual(0, Integer(Book.Count));
   Assert.AreEqual(2, TAtlasNotes.FormatOf('{"format": 2}'));
 end;
 
@@ -298,7 +298,7 @@ begin
   Assert.IsTrue(FileExists(TAtlasNotes.FileFor(FFolder, Project)));
   Assert.IsFalse(FileExists(TAtlasNotes.FileFor(FFolder, Project) + '.tmp'));
   Assert.IsTrue(TAtlasNotes.Load(FFolder, 'c:/projekte/DEMO.dproj', Read));
-  Assert.AreEqual(1, Read.Count);
+  Assert.AreEqual(1, Integer(Read.Count));
   Assert.AreEqual('Rundung', Read.Notes[0].Text);
 end;
 

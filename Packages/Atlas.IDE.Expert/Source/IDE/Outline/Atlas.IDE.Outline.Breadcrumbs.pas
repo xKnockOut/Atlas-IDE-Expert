@@ -367,7 +367,7 @@ begin
   Window.QueryDelay := 0;
   Window.InitialId := IntToStr(Crumb.Node);
   Window.OnQuery :=
-    function(const APattern: string): TArray<TAtlasCommand>
+    function(APattern: string): TArray<TAtlasCommand>
     begin
       Result := CommandsOf(Nodes, TAtlasBreadcrumbs.Filter(Nodes, Crumb.Siblings, APattern), Crumb.Node);
     end;

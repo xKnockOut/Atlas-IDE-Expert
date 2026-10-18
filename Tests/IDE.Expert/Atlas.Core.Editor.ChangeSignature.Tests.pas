@@ -9,6 +9,7 @@ interface
 uses
   DUnitX.TestFramework,
   System.JSON,
+  System.Generics.Collections,
   Atlas.Core.Editor.ChangeSignature;
 
 type
@@ -87,7 +88,7 @@ var
   Model: TAtlasSignatureModel;
 begin
   Model := Prepared(Basis);
-  Assert.AreEqual(2, Model.Count);
+  Assert.AreEqual(2, Integer(Model.Count));
   Assert.AreEqual('S', Model[1].Name);
   Assert.AreEqual('const', Model[1].Modifier);
   Assert.AreEqual('''x''', Model[1].DefaultValue);
@@ -110,7 +111,7 @@ var
 begin
   Model := Prepared(Basis);
   Assert.AreEqual(1, Model.Add(0, 'B', 'Integer', '', '0'));
-  Assert.AreEqual(3, Model.Count);
+  Assert.AreEqual(3, Integer(Model.Count));
   Assert.AreEqual('B', Model[1].Name);
   Assert.IsTrue(Model[1].IsNew);
   Assert.AreEqual(0, Model.Add(-1, 'C', 'Integer', '', '1'));

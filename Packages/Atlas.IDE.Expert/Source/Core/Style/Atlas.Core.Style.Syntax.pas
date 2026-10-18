@@ -245,7 +245,6 @@ begin
       Head.Stop := Close - 1;
       Result[Line] := [Head];
       Offset := Close - 1;
-      State := TOpenComment.None;
     end;
     Rest := Tokens(Copy(Text, Offset + 1, MaxInt));
     for Index := 0 to High(Rest) do

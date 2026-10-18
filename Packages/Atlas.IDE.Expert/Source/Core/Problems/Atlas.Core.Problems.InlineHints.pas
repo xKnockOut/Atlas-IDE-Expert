@@ -1,4 +1,4 @@
-﻿unit Atlas.Core.Problems.Inline;
+﻿unit Atlas.Core.Problems.InlineHints;
 
 // Fehlertext am Zeilenende (#509), ohne VCL und Open Tools API:
 // - Mode: editor.inlineDiagnostics (off, errors, errorsAndWarnings, all).

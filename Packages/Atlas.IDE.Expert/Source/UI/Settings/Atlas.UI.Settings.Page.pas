@@ -903,7 +903,7 @@ implementation
 uses
   System.Math,
   System.StrUtils,
-  Atlas.Core.Problems.Inline,
+  Atlas.Core.Problems.InlineHints,
   Atlas.Core.Product.Version,
   Atlas.Core.Updates.Check,
   Atlas.Core.Undo.Contract,

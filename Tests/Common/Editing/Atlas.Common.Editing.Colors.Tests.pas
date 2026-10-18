@@ -40,6 +40,7 @@ implementation
 uses
   System.SysUtils,
   System.JSON,
+  System.Generics.Collections,
   Atlas.Common.Editing.Colors,
   Atlas.Common.Lsp.Colors;
 

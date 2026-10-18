@@ -358,7 +358,7 @@ begin
     TAtlasExportOptions.Create(nil, smOmit), Macros());
   Source := TAtlasSettingsTransfer.ParseFile(Result_.Text);
   Assert.IsTrue(Source.Valid, Source.Error);
-  Assert.AreEqual(3, Result_.Count);
+  Assert.AreEqual(3, Integer(Result_.Count));
   Assert.AreEqual(3, Integer(Length(Source.Keys)));
   Assert.Contains(Result_.Text, '"highlight.pairColors": false');
   Assert.Contains(Result_.Text, '"completion.visibleRows": 12');
@@ -371,7 +371,7 @@ begin
   // Ohne Änderungen: leere Liste.
   Result_ := TAtlasSettingsTransfer.ExportSettings(FCatalog, State(TAtlasPluginSettings.Defaults, ''),
     TAtlasExportOptions.Create(nil, smOmit), Macros());
-  Assert.AreEqual(0, Result_.Count);
+  Assert.AreEqual(0, Integer(Result_.Count));
   Assert.IsTrue(TAtlasSettingsTransfer.ParseFile(Result_.Text).Valid);
 end;
 
@@ -386,7 +386,7 @@ begin
   S.BookmarksNamed := False;
   Result_ := TAtlasSettingsTransfer.ExportSettings(FCatalog, State(S, ''),
     TAtlasExportOptions.Create(['highlighting', 'bookmarks'], smOmit), Macros());
-  Assert.AreEqual(2, Result_.Count);
+  Assert.AreEqual(2, Integer(Result_.Count));
   Assert.Contains(Result_.Text, 'highlight.pairColors');
   Assert.Contains(Result_.Text, 'bookmarks.named');
   Assert.DoesNotContain(Result_.Text, 'completion.visibleRows');
@@ -403,7 +403,7 @@ begin
   S.ServerPath := 'D:\Atlas\AtlasServer.exe';
   Result_ := TAtlasSettingsTransfer.ExportSettings(FCatalog, State(S, '{"delphiVersion": "12"}'),
     TAtlasExportOptions.Create(nil, smOmit), Macros());
-  Assert.AreEqual(0, Result_.Count);
+  Assert.AreEqual(0, Integer(Result_.Count));
   Assert.DoesNotContain(Result_.Text, 'AtlasServer');
   Assert.DoesNotContain(Result_.Text, 'delphiVersion');
 end;
@@ -422,7 +422,7 @@ begin
     S.WelcomePageHelpReportUrl := 'https://tracker.example/geheim123';
     Result_ := TAtlasSettingsTransfer.ExportSettings(Catalog, State(S, ''), TAtlasExportOptions.Create(nil, smOmit),
       Macros());
-    Assert.AreEqual(0, Result_.Count);
+    Assert.AreEqual(0, Integer(Result_.Count));
     Assert.DoesNotContain(Result_.Text, 'geheim123');
     Assert.AreEqual(1, Integer(Length(Result_.Omitted)), 'x-secret');
     Assert.AreEqual('tracker.token', Result_.Omitted[0].Key);
@@ -644,11 +644,11 @@ begin
   S := TAtlasPluginSettings.Defaults;
   Result_ := TAtlasSettingsTransfer.ExportSettings(FCatalog, State(S, '{"format": {"useTabs": true}}'),
     TAtlasExportOptions.Create(nil, smOmit), Macros());
-  Assert.AreEqual(0, Result_.Count);
+  Assert.AreEqual(0, Integer(Result_.Count));
   // x-scope "both" (rules): der globale Wert wandert mit, die Vorschau nennt den Projektwert, der ihn überdeckt.
   Result_ := TAtlasSettingsTransfer.ExportSettings(FCatalog, State(S, '{"rules": {"empty-except": "off"}}'),
     TAtlasExportOptions.Create(['rules'], smOmit), Macros());
-  Assert.AreEqual(1, Result_.Count);
+  Assert.AreEqual(1, Integer(Result_.Count));
   Assert.Contains(Result_.Text, '"empty-except"');
   Preview := TAtlasSettingsTransfer.Preview(FCatalog, State(S, ''), TAtlasSettingsTransfer.ParseFile(Result_.Text),
     imMerge, nil, Macros(), '{"rules": {"empty-except": "error"}}', '');
@@ -760,7 +760,7 @@ begin
   S.WelcomePageActiveLayout := 'Arbeit';
   Exported := TAtlasSettingsTransfer.ExportSettings(FCatalog, State(S, ''),
     TAtlasExportOptions.Create(['welcome'], smOmit), Macros());
-  Assert.AreEqual(4, Exported.Count);
+  Assert.AreEqual(4, Integer(Exported.Count));
   Assert.Contains(Exported.Text, '"welcomePage.customLayout": false');
   Assert.Contains(Exported.Text, '"welcomePage.columns": 3');
   Assert.Contains(Exported.Text, '"welcomePage.layouts"');

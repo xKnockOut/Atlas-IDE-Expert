@@ -209,7 +209,7 @@ begin
   View := TAtlasUndoDiffView.CreateView(nil, 'Unterschied', ['=== A.pas ===', '- Alt;', '+ Neu;']);
   try
     Assert.AreEqual('Unterschied', View.Caption);
-    Assert.AreEqual(3, View.Lines.Lines.Count);
+    Assert.AreEqual(3, Integer(View.Lines.Lines.Count));
     Assert.AreEqual('+ Neu;', View.Lines.Lines[2]);
     Assert.IsTrue(View.Lines.ReadOnly);
     Assert.IsTrue(View.CloseButton.Cancel, 'Esc schließt');
@@ -255,8 +255,8 @@ begin
       False);
     Assert.IsTrue(Frame.ShowsChanges);
     // Zwei Sätze mit je zwei Dateien.
-    Assert.AreEqual(6, Frame.Tree.Items.Count);
-    Assert.AreEqual(2, Frame.Tree.Items[0].Count);
+    Assert.AreEqual(6, Integer(Frame.Tree.Items.Count));
+    Assert.AreEqual(2, Integer(Frame.Tree.Items[0].Count));
     Assert.IsTrue(Frame.Tree.Selected = Frame.Tree.Items[0], 'neuester Satz ausgewählt');
     // Menü: angewendeter Satz lässt sich zurücknehmen, aber nicht wiederherstellen.
     Frame.Menu.OnPopup(Frame.Menu);

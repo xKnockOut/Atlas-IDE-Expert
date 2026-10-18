@@ -226,10 +226,10 @@ begin
     // Erneut: lösen.
     Assert.IsTrue(Favorites.Toggle(OtherCase) = TAtlasFavoriteToggle.Removed);
     Assert.IsFalse(Favorites.IsFavorite(Open));
-    Assert.AreEqual(1, Favorites.Count);
+    Assert.AreEqual(1, Integer(Favorites.Count));
     Assert.IsTrue(Favorites.Remove('vcl.dialogs|showmessage'));
     Assert.IsFalse(Favorites.Remove('vcl.dialogs|showmessage'), 'schon gelöst');
-    Assert.AreEqual(0, Favorites.Count);
+    Assert.AreEqual(0, Integer(Favorites.Count));
   finally
     Favorites.Free;
   end;
@@ -254,7 +254,7 @@ begin
     // Nach dem Lösen ist wieder Platz.
     Assert.IsTrue(Favorites.Toggle(Member('M3', 'TDataSet', 0, 0)) = TAtlasFavoriteToggle.Removed);
     Assert.IsTrue(Favorites.Toggle(Member('M6', 'TDataSet', 0, 0)) = TAtlasFavoriteToggle.Added);
-    Assert.AreEqual(6, Favorites.Count);
+    Assert.AreEqual(6, Integer(Favorites.Count));
   finally
     Favorites.Free;
   end;
@@ -285,7 +285,7 @@ begin
     Assert.IsFalse(TAtlasFavorites.CanPin(Item));
     Assert.IsFalse(TAtlasFavorites.CanPin(Member('  ', 'TDataSet', 0, 0)));
     Assert.IsTrue(TAtlasFavorites.CanPin(Member('Open', 'TDataSet', 0, 0)));
-    Assert.AreEqual(0, Favorites.Count);
+    Assert.AreEqual(0, Integer(Favorites.Count));
   finally
     Favorites.Free;
   end;
@@ -340,9 +340,9 @@ begin
   Favorites := TAtlasFavorites.Create;
   try
     Favorites.Parse('{kaputt');
-    Assert.AreEqual(0, Favorites.Count);
+    Assert.AreEqual(0, Integer(Favorites.Count));
     Favorites.Parse('[1, 2]');
-    Assert.AreEqual(0, Favorites.Count);
+    Assert.AreEqual(0, Integer(Favorites.Count));
     Json := '{"version":1,"favorites":[{"type":"TDataSet","member":"Open"},{"type":"tdataset","member":"OPEN"},' +
       '{"type":"TDataSet","member":""},7,{"member":"ohneTyp","added":"gestern"}';
     for Index := 1 to 6 do
@@ -354,7 +354,7 @@ begin
     Items := Favorites.Items;
     Assert.AreEqual('ohneTyp', Items[1].Member);
     Assert.IsTrue(Items[1].Added = 0, 'unlesbares Datum: 0');
-    Assert.AreEqual(7, Favorites.Count);
+    Assert.AreEqual(7, Integer(Favorites.Count));
   finally
     Favorites.Free;
   end;
@@ -375,12 +375,12 @@ begin
     Favorites.SaveToFile(FileName);
     Assert.IsFalse(Favorites.Changed);
     Loaded.LoadFromFile(FileName);
-    Assert.AreEqual(2, Loaded.Count);
+    Assert.AreEqual(2, Integer(Loaded.Count));
     Assert.IsTrue(Loaded.IsFavorite(Member('Open', 'TDataSet', 1, 0)));
     Assert.IsTrue(Loaded.IsFavorite(Member('ParamByName', 'TFDQuery', 0, 0)));
     // Fehlende Datei: leer, kein Fehler.
     Loaded.LoadFromFile(FileName + '.fehlt');
-    Assert.AreEqual(0, Loaded.Count);
+    Assert.AreEqual(0, Integer(Loaded.Count));
     Loaded.Toggle(Member('Close', 'TDataSet', 1, 0));
     Loaded.Clear;
     Assert.IsTrue(Loaded.Changed);

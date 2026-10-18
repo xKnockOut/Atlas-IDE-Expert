@@ -32,6 +32,7 @@ implementation
 uses
   System.SysUtils,
   System.JSON,
+  System.Generics.Collections,
   Atlas.Common.Logging.Contract,
   Atlas.Common.Logging.Providers.RecentSink,
   Atlas.Common.JsonRpc.Statistics,

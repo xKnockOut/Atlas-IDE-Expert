@@ -170,7 +170,7 @@ contains
   Atlas.Common.Editing.UnitRename in 'Source\Editing\Atlas.Common.Editing.UnitRename.pas',
   Atlas.Common.Editing.SmartPaste in 'Source\Editing\Atlas.Common.Editing.SmartPaste.pas',
   Atlas.Common.Editing.Extract in 'Source\Editing\Atlas.Common.Editing.Extract.pas',
-  Atlas.Common.Editing.Inline in 'Source\Editing\Atlas.Common.Editing.Inline.pas',
+  Atlas.Common.Editing.Inlining in 'Source\Editing\Atlas.Common.Editing.Inlining.pas',
   Atlas.Common.Editing.WithResolution in 'Source\Editing\Atlas.Common.Editing.WithResolution.pas',
   Atlas.Common.Editing.CreateMethod in 'Source\Editing\Atlas.Common.Editing.CreateMethod.pas',
   Atlas.Common.Editing.NameSuggestions in 'Source\Editing\Atlas.Common.Editing.NameSuggestions.pas',

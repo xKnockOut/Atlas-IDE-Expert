@@ -99,7 +99,6 @@ type
     FText: string;
     FChangedAt: UInt64;
     FLines: TArray<string>;
-    FTerm: string;
     FSearchText: string;
     FSearchTerm: string;
     FSearchLines: TArray<Integer>;

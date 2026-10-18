@@ -121,7 +121,7 @@ begin
     Notice.DetailsButton.Click;
     Assert.IsTrue(Notice.DetailsVisible);
     Assert.IsTrue(Notice.ClientHeight > Height1, 'Details machen das Fenster höher');
-    Assert.AreEqual(2, Notice.Details.Lines.Count);
+    Assert.AreEqual(2, Integer(Notice.Details.Lines.Count));
     Assert.AreEqual('Fehler Pairs: 2', Notice.Details.Lines[1]);
     Assert.IsTrue(Notice.ExportButton.Visible);
     Assert.IsFalse(Notice.BugButton.Visible, 'ohne Fehlerbericht kein Knopf');

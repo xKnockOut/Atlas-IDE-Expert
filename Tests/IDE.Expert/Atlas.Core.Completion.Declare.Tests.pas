@@ -30,6 +30,7 @@ uses
   System.SysUtils,
   System.Classes,
   System.JSON,
+  System.Generics.Collections,
   Atlas.Core.Completion.Contract,
   Atlas.Core.Completion.Snippets,
   Atlas.Core.Completion.Controller,

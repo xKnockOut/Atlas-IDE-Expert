@@ -329,10 +329,10 @@ begin
   History := TAtlasSettingsHistory.Create;
   try
     History.Push(First, First, Now, 5);
-    Assert.AreEqual(0, History.Count, 'ohne Änderung kein Stand');
+    Assert.AreEqual(0, Integer(History.Count), 'ohne Änderung kein Stand');
     History.Push(First, Second, EncodeDateTime(2026, 10, 14, 8, 0, 0, 0), 5);
     History.Push(Second, Third, EncodeDateTime(2026, 10, 14, 9, 0, 0, 0), 5);
-    Assert.AreEqual(2, History.Count);
+    Assert.AreEqual(2, Integer(History.Count));
     // Neuester zuerst: Stand vor der letzten Änderung.
     Assert.IsFalse(History[0].Settings.PairColors);
     Assert.AreEqual(TAtlasPluginSettings.Defaults.VisibleRows, History[0].Settings.VisibleRows);
@@ -344,20 +344,20 @@ begin
     Loaded := TAtlasSettingsHistory.Create;
     try
       Loaded.LoadJson(History.ToJson);
-      Assert.AreEqual(2, Loaded.Count);
+      Assert.AreEqual(2, Integer(Loaded.Count));
       Assert.IsTrue(Loaded[1].Settings.PairColors);
       Assert.IsTrue(SameDateTime(History[0].ChangedAt, Loaded[0].ChangedAt));
       Loaded.LoadJson('kaputt');
-      Assert.AreEqual(0, Loaded.Count);
+      Assert.AreEqual(0, Integer(Loaded.Count));
     finally
       Loaded.Free;
     end;
     // Höchstens AKeep Stände; 0 merkt nichts.
     History.Push(Third, First, Now, 1);
-    Assert.AreEqual(1, History.Count);
+    Assert.AreEqual(1, Integer(History.Count));
     History.Clear;
     History.Push(First, Second, Now, 0);
-    Assert.AreEqual(0, History.Count);
+    Assert.AreEqual(0, Integer(History.Count));
   finally
     History.Free;
   end;

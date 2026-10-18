@@ -78,6 +78,7 @@ uses
   System.SysUtils,
   System.StrUtils,
   System.JSON,
+  System.Generics.Collections,
   Atlas.Common.JsonRpc.Contract,
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.Parser,

@@ -73,6 +73,7 @@ uses
   System.Classes,
   System.IOUtils,
   System.JSON,
+  System.Generics.Collections,
   Atlas.Core.Completion.Contract,
   Atlas.Core.Completion.Ranking,
   Atlas.Core.Completion.Presentation,
@@ -628,7 +629,7 @@ begin
     Assert.AreEqual(0, Loaded.Boost(Item));
     // Fehlende Datei: leer, kein Fehler.
     Loaded.LoadFromFile(FileName + '.fehlt');
-    Assert.AreEqual(0, Loaded.Count);
+    Assert.AreEqual(0, Integer(Loaded.Count));
   finally
     Loaded.Free;
     Usage.Free;

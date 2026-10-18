@@ -322,7 +322,7 @@ begin
     Assert.AreEqual(InFolder(FFolder, 'Neu.pas'), Changes.Files[2]);
     Assert.AreEqual(InFolder(FFolder, 'Typ.pas'), Changes.Files[3]);
     Assert.AreEqual(0, Integer(Length(Changes.Lines)));
-    Assert.AreEqual(2, Process.Calls.Count);
+    Assert.AreEqual(2, Integer(Process.Calls.Count));
     Assert.AreEqual('git ' + GitPrefix + 'rev-parse --show-toplevel', Process.Calls[0]);
     Assert.AreEqual('git ' + GitPrefix + 'diff --name-status -M --no-color main HEAD', Process.Calls[1]);
     // git läuft im übergebenen Ordner, nicht in der Wurzel.
@@ -346,7 +346,7 @@ begin
   Changes := TGitChanges.Create(Keep, FFolder);
   try
     Changes.Load('main', True, True, False, False);
-    Assert.AreEqual(3, Process.Calls.Count);
+    Assert.AreEqual(3, Integer(Process.Calls.Count));
     Assert.AreEqual('git ' + GitPrefix + 'merge-base main HEAD', Process.Calls[1]);
     Assert.AreEqual('git ' + GitPrefix + 'diff --name-status -M --no-color abc123 HEAD', Process.Calls[2]);
     Assert.AreEqual(1, Integer(Length(Changes.Files)));
@@ -375,7 +375,7 @@ begin
   Changes := TGitChanges.Create(Keep, FFolder);
   try
     Changes.Load('HEAD', False, False, True, True);
-    Assert.AreEqual(4, Process.Calls.Count);
+    Assert.AreEqual(4, Integer(Process.Calls.Count));
     // Ohne HEAD am Ende: Index und Arbeitsverzeichnis gehören dazu.
     Assert.AreEqual('git ' + GitPrefix + 'diff --name-status -M --no-color HEAD', Process.Calls[1]);
     Assert.AreEqual(2, Integer(Length(Changes.Files)));
@@ -430,7 +430,7 @@ begin
     Message := LoadError(Changes, 'main', False);
     Assert.Contains(Message, 'Exit-Code 128');
     Assert.Contains(Message, 'fatal: not a git repository');
-    Assert.AreEqual(1, Process.Calls.Count);
+    Assert.AreEqual(1, Integer(Process.Calls.Count));
   finally
     Changes.Free;
   end;
@@ -474,7 +474,7 @@ begin
     Changes.Load('123', False, False, False, True);
     Assert.AreEqual('SVN', Changes.Name);
     Assert.AreEqual(FFolder, Changes.RepoRoot);
-    Assert.AreEqual(2, Process.Calls.Count);
+    Assert.AreEqual(2, Integer(Process.Calls.Count));
     Assert.AreEqual('svn --non-interactive diff --summarize -r 123', Process.Calls[0]);
     Assert.AreEqual('svn --non-interactive diff --internal-diff -r 123', Process.Calls[1]);
     // svn läuft in der Wurzel der Arbeitskopie: Pfade sind relativ dazu.
@@ -511,7 +511,7 @@ begin
   Changes := TSvnChanges.Create(Keep, FFolder, WorkingCopy, Svn);
   try
     Changes.Load('7', False, False, False, False);
-    Assert.AreEqual(1, Process.Calls.Count);
+    Assert.AreEqual(1, Integer(Process.Calls.Count));
     Assert.AreEqual(Svn, Process.Executables[0]);
     Assert.AreEqual('atlas-svn-4711 --non-interactive diff --summarize -r 7', Process.Calls[0]);
   finally
