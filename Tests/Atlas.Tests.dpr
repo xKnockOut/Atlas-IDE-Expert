@@ -591,6 +591,8 @@ uses
   Atlas.Core.Build.ReleaseGuard.Tests in 'IDE.Expert\Atlas.Core.Build.ReleaseGuard.Tests.pas',
   Atlas.Core.Build.OpenBuild in '..\Packages\Atlas.IDE.Expert\Source\Core\Build\Atlas.Core.Build.OpenBuild.pas',
   Atlas.Core.Build.OpenBuild.Tests in 'IDE.Expert\Atlas.Core.Build.OpenBuild.Tests.pas',
+  Atlas.Core.Build.IdleGate in '..\Packages\Atlas.IDE.Expert\Source\Core\Build\Atlas.Core.Build.IdleGate.pas',
+  Atlas.Core.Build.IdleGate.Tests in 'IDE.Expert\Atlas.Core.Build.IdleGate.Tests.pas',
   Atlas.Common.Mcp.BuildTools.Tests in 'Common\Mcp\Atlas.Common.Mcp.BuildTools.Tests.pas',
   Atlas.Common.Mcp.Paths.Tests in 'Common\Mcp\Atlas.Common.Mcp.Paths.Tests.pas',
   Shell.Workspace in '..\Application\Source\Shell\Shell.Workspace.pas',
