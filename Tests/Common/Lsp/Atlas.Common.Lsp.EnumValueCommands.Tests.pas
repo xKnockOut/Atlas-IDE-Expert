@@ -135,11 +135,16 @@ begin
     procedure
     var
       Arguments: TJSONArray;
+      Store: IDocumentStore;
+      Index: ISymbolIndex;
     begin
+      // Erst in Interface-Variablen: Ein Konstruktor direkt am const-Parameter würde nie freigegeben.
+      Store := TDocumentStore.Create;
+      Index := TSymbolIndex.Create;
       Arguments := TJSONArray.Create;
       try
         Arguments.Add('file:///C:/P/Fehlt.pas');
-        TEnumValueCommands.Execute(TDocumentStore.Create, TSymbolIndex.Create, nil, nil, nil, Arguments).Free;
+        TEnumValueCommands.Execute(Store, Index, nil, nil, nil, Arguments).Free;
       finally
         Arguments.Free;
       end;

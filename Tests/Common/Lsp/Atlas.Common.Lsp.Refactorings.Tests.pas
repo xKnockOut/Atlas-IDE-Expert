@@ -20,6 +20,9 @@ type
     function Titles(const AText: string; ALine, ACharacter: Integer; const AContext: TRefactoringContext): string;
     function Applied(const AText, ATitle: string; ALine, ACharacter: Integer): string;
   public
+    /// <summary>Erste Benutzung ungemessen vorwegnehmen.</summary>
+    [SetupFixture]
+    procedure WarmUpFirstUse;
     [Setup]
     procedure Setup;
     [TearDown]
@@ -218,6 +221,16 @@ begin
 end;
 
 { TLspRefactoringsTests }
+
+procedure TLspRefactoringsTests.WarmUpFirstUse;
+begin
+  Setup;
+  try
+    CompletionOffersWithItem;
+  finally
+    TearDown;
+  end;
+end;
 
 procedure TLspRefactoringsTests.Setup;
 begin

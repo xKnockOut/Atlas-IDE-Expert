@@ -468,8 +468,8 @@ begin
     for Index := 0 to Containers.Count - 1 do
     begin
       Container := TWinControl(Containers[Index]);
-      // Lage im nicht gerollten Zustand merken.
-      if Container is TScrollingWinControl then
+      // Lage im nicht gerollten Zustand merken. Position braucht das Fenster; ohne Fenster ist nichts gerollt.
+      if (Container is TScrollingWinControl) and Container.HandleAllocated then
         TScrollingWinControl(Container).VertScrollBar.Position := 0;
       for Child := 0 to Container.ControlCount - 1 do
       begin
@@ -498,7 +498,7 @@ begin
     Row.Visible := True;
   FHidden.Clear;
   for Pair in FTops do
-    if Pair.Key.Parent is TScrollingWinControl then
+    if (Pair.Key.Parent is TScrollingWinControl) and Pair.Key.Parent.HandleAllocated then
       TScrollingWinControl(Pair.Key.Parent).VertScrollBar.Position := 0;
   for Pair in FTops do
     Pair.Key.Top := Pair.Value;

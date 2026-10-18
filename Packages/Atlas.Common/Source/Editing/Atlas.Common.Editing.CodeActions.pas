@@ -119,6 +119,7 @@ uses
   System.RegularExpressions,
   Atlas.Common.Pascal.Lexer,
   Atlas.Common.Pascal.Parser,
+  Atlas.Common.Pascal.TreeCache,
   Atlas.Common.Editing.GuardFree,
   Atlas.Common.Editing.UsesClause,
   Atlas.Common.Editing.StringLiterals,
@@ -297,7 +298,7 @@ class function TCodeActions.TryFinally(const AText: string; ALine: Integer; out 
 var
   Tree: TSyntaxTree;
 begin
-  Tree := TPascalParser.Parse(AText);
+  Tree := TSyntaxTreeCache.Parse(AText);
   try
     Result := TryFinally(AText, Tree, TTextRange.Create(ALine, 0, ALine, 0), TFormatStyle.Default, AAction);
   finally

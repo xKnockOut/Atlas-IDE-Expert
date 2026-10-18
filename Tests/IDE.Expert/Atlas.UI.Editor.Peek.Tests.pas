@@ -14,6 +14,9 @@ type
   [TestFixture]
   TAtlasPeekUiTests = class
   public
+    /// <summary>Erste Benutzung ungemessen vorwegnehmen.</summary>
+    [SetupFixture]
+    procedure WarmUpFirstUse;
     [Test]
     procedure HeightGrowsWithLines;
     [Test]
@@ -61,6 +64,11 @@ begin
   Result := TAtlasPeekWindow.Create(nil);
   Result.Colors := TAtlasColors.Light;
   Result.SetScaling(96, 1, 'Consolas', 10);
+end;
+
+procedure TAtlasPeekUiTests.WarmUpFirstUse;
+begin
+  HeightGrowsWithLines;
 end;
 
 procedure TAtlasPeekUiTests.HeightGrowsWithLines;

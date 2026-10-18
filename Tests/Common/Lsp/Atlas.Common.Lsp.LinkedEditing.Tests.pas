@@ -20,6 +20,9 @@ type
     /// <summary>Antwort des Handlers als JSON-Text.</summary>
     function Answer(ALine, ACharacter: Integer; ALocalsOnly: Boolean): string;
   public
+    /// <summary>Erste Benutzung ungemessen vorwegnehmen.</summary>
+    [SetupFixture]
+    procedure WarmUpFirstUse;
     [Setup]
     procedure Setup;
     [TearDown]
@@ -131,6 +134,16 @@ const
   LocalFile = 'C:\P\Lokal.pas';
 
 { TLspLinkedEditingTests }
+
+procedure TLspLinkedEditingTests.WarmUpFirstUse;
+begin
+  Setup;
+  try
+    HandlerKeepsMethodsOnlyWithoutLocalsFlag;
+  finally
+    TearDown;
+  end;
+end;
 
 procedure TLspLinkedEditingTests.Setup;
 begin

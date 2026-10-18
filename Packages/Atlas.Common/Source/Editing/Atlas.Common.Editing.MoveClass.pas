@@ -87,6 +87,7 @@ uses
   Atlas.Text.Lines,
   Atlas.Common.Pascal.Contract,
   Atlas.Common.Pascal.Parser,
+  Atlas.Common.Pascal.TreeCache,
   Atlas.Common.Editing.RoutineBody,
   Atlas.Common.Editing.UsesClause,
   Atlas.Common.Editing.ChangeSignature;
@@ -844,14 +845,14 @@ begin
   if Before = 0 then
   begin
     Applied := TChangeSignature.ApplyEdits(AText, Edits);
-    Check := TPascalParser.Parse(Applied);
+    Check := TSyntaxTreeCache.Parse(Applied);
     try
       if Length(Check.Diagnostics) > 0 then
         Exit(Fail('die Ursprungs-Unit parst danach nicht mehr', AReason));
     finally
       Check.Free;
     end;
-    Check := TPascalParser.Parse(APlan.Text);
+    Check := TSyntaxTreeCache.Parse(APlan.Text);
     try
       if Length(Check.Diagnostics) > 0 then
         Exit(Fail('die neue Unit parst nicht', AReason));

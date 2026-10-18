@@ -95,6 +95,10 @@ type
     procedure FollowClick(Sender: TObject);
     procedure SetAlphabetical(AValue: Boolean);
     procedure SetFollowCursor(AValue: Boolean);
+    /// <summary>Die Liste hat ein Fenster oder kann eins bekommen (Formular darüber).</summary>
+    function ListCanHaveHandle: Boolean;
+  protected
+    procedure CreateWnd; override;
   public
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
@@ -250,7 +254,8 @@ begin
   FList.Parent := Self;
   FList.Align := alClient;
   FList.AlignWithMargins := True;
-  FList.Style := lbVirtualOwnerDraw;
+  // Style := lbVirtualOwnerDraw erst in CreateWnd: SetStyle leert die Einträge per
+  // LB_RESETCONTENT und braucht dafür das Fenster, das ohne Parent fehlt.
   FList.ItemHeight := Scale(RowPx);
   FList.PopupMenu := FListMenu;
   FList.OnDrawItem := ListDrawItem;
@@ -271,6 +276,18 @@ begin
   FMessageText := TAtlasStrings.Text(TAtlasTextId.OutlineEmpty);
   UpdateButtons;
   UpdateMessage;
+end;
+
+procedure TAtlasOutlineFrame.CreateWnd;
+begin
+  inherited CreateWnd;
+  FList.Style := lbVirtualOwnerDraw;
+  FList.Count := Length(FRows);
+end;
+
+function TAtlasOutlineFrame.ListCanHaveHandle: Boolean;
+begin
+  Result := FList.HandleAllocated or (GetParentForm(FList) <> nil);
 end;
 
 destructor TAtlasOutlineFrame.Destroy;
@@ -368,7 +385,12 @@ begin
     if (FFilter.Text = '') and (FCollapsed.IndexOf(PathOf(Row.Node)) >= 0) then
       Skip := Row.Depth;
   end;
-  FList.Count := Length(FRows);
+  // Count braucht das Fenster; ohne Formular setzt CreateWnd die Zahl nach.
+  if ListCanHaveHandle then
+  begin
+    FList.HandleNeeded;
+    FList.Count := Length(FRows);
+  end;
   if ASelectedPath <> '' then
     for Index := 0 to High(FRows) do
       if SameText(PathOf(FRows[Index].Node), ASelectedPath) then
@@ -449,6 +471,9 @@ end;
 function TAtlasOutlineFrame.SelectedNode: Integer;
 begin
   Result := -1;
+  // ItemIndex fragt das Fenster ab; ohne Fenster gibt es keine Auswahl.
+  if not FList.HandleAllocated then
+    Exit;
   if (FList.ItemIndex >= 0) and (FList.ItemIndex <= High(FRows)) then
     Result := FRows[FList.ItemIndex].Node;
 end;
@@ -458,7 +483,7 @@ begin
   if (AIndex < 0) or (AIndex > High(FRows)) then
     Exit;
   // ItemIndex braucht das Fenster der Liste und damit ein Formular darüber.
-  if not FList.HandleAllocated and (GetParentForm(FList) = nil) then
+  if not ListCanHaveHandle then
     Exit;
   FList.ItemIndex := AIndex;
   if (AIndex < FList.TopIndex) or (AIndex >= FList.TopIndex + Max(1, FList.ClientHeight div FList.ItemHeight)) then

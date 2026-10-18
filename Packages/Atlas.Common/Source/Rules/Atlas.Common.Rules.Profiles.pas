@@ -170,11 +170,21 @@ begin
 end;
 
 class function TRuleProfiles.KnownRuleIds: TArray<string>;
+var
+  Pair: TPair<string, string>;
+  Index: Integer;
 begin
   Result := nil;
   if Categories = nil then
     Exit;
-  Result := Categories.Keys.ToArray;
+  // Ohne Categories.Keys: Die Sammlung entstünde beim ersten Zugriff und bliebe bis Programmende.
+  SetLength(Result, Categories.Count);
+  Index := 0;
+  for Pair in Categories do
+  begin
+    Result[Index] := Pair.Key;
+    Inc(Index);
+  end;
   TArray.Sort<string>(Result);
 end;
 

@@ -261,6 +261,7 @@ begin
     Settings.UnitSearchEnabled := True;
     Settings.WelcomePage := True;
     Settings.WelcomePageSearch := True;
+    Settings.MultiCursor := True;
     Settings.Save(StoreRef);
     Count := 0;
     for Name in Store.Names.ToArray do
@@ -461,6 +462,7 @@ begin
   Settings.GitGutter := False;
   Settings.MoveLines := False;
   Settings.CompleteStatement := False;
+  Settings.MultiCursor := False;
   Entries := TAtlasKeyEntry.AllFromSettings(Settings);
   for Entry in Entries do
     if Entry.Func in [TAtlasKeyFunction.MethodToggleUp, TAtlasKeyFunction.MethodToggleDown,
@@ -472,7 +474,9 @@ begin
       TAtlasKeyFunction.PeekReferences, TAtlasKeyFunction.Breadcrumbs, TAtlasKeyFunction.JumpToMatch,
       TAtlasKeyFunction.JumpToMatchSelect, TAtlasKeyFunction.NextChange, TAtlasKeyFunction.PreviousChange,
       TAtlasKeyFunction.MoveLinesUp, TAtlasKeyFunction.MoveLinesDown, TAtlasKeyFunction.DuplicateLinesUp,
-      TAtlasKeyFunction.DuplicateLinesDown, TAtlasKeyFunction.CompleteStatement] then
+      TAtlasKeyFunction.DuplicateLinesDown, TAtlasKeyFunction.CompleteStatement, TAtlasKeyFunction.MultiCursorNext,
+      TAtlasKeyFunction.MultiCursorSkip, TAtlasKeyFunction.MultiCursorLineEnds, TAtlasKeyFunction.MultiCursorAbove,
+      TAtlasKeyFunction.MultiCursorBelow] then
     begin
       Assert.IsTrue(Entry.Disabled, 'abgeschaltet: ' + IntToStr(Ord(Entry.Func)));
       Assert.AreEqual(Ord(TAtlasKeyStatus.NoKey), Ord(Entry.Status('IDE: Klassennavigation')),

@@ -811,16 +811,21 @@ begin
     Hints := Session.InlayHints('C:\P\A.pas', 2, 9, 1000);
     // Bis zum Anfang der Zeile nach der letzten, damit sie ganz dabei ist.
     Assert.AreEqual('2-10', Range);
-    Assert.AreEqual(3, Integer(Length(Hints)), 'Parameternamen und Endmarke (#620)');
+    Assert.AreEqual(4, Integer(Length(Hints)), 'Parameternamen, Typmarke (#453) und Endmarke (#620)');
     Assert.AreEqual(3, Hints[0].Line);
     Assert.AreEqual(9, Hints[0].Character);
     Assert.AreEqual('AWert', Hints[0].Name);
     Assert.IsFalse(Hints[0].EndLabel);
-    Assert.AreEqual('AName', Hints[1].Name);
-    Assert.IsFalse(Hints[1].EndLabel);
-    Assert.IsTrue(Hints[2].EndLabel);
-    Assert.AreEqual('TKunde.Speichern', Hints[2].Name);
-    Assert.AreEqual(8, Hints[2].Line);
+    Assert.IsFalse(Hints[0].TypeHint);
+    // Typmarke ohne Doppelpunkt (#453).
+    Assert.IsTrue(Hints[1].TypeHint);
+    Assert.AreEqual('Integer', Hints[1].Name);
+    Assert.AreEqual(4, Hints[1].Line);
+    Assert.AreEqual('AName', Hints[2].Name);
+    Assert.IsFalse(Hints[2].EndLabel);
+    Assert.IsTrue(Hints[3].EndLabel);
+    Assert.AreEqual('TKunde.Speichern', Hints[3].Name);
+    Assert.AreEqual(8, Hints[3].Line);
   finally
     Session.Free;
     Client.Free;

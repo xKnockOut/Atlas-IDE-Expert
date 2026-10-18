@@ -26,6 +26,9 @@ type
     /// <summary>Titel aller Aktionen in Zeile ALine, mit "|" getrennt.</summary>
     function Titles(const AText: string; ALine: Integer): string;
   public
+    /// <summary>Erste Benutzung ungemessen vorwegnehmen.</summary>
+    [SetupFixture]
+    procedure WarmUpFirstUse;
     [Setup]
     procedure Setup;
     [TearDown]
@@ -71,6 +74,16 @@ const
     '  L.Add(nil);' + LB +
     'end;' + LB +
     'end.';
+
+procedure TLspCodeActionsTests.WarmUpFirstUse;
+begin
+  Setup;
+  try
+    OffersTryFinallyAndClassActions;
+  finally
+    TearDown;
+  end;
+end;
 
 procedure TLspCodeActionsTests.Setup;
 begin
