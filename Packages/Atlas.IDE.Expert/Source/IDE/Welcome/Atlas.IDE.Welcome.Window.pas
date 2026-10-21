@@ -30,6 +30,8 @@ type
     class procedure Hide; static;
     class procedure UpdateIcon; static;
     class procedure ApplyTheme; static;
+    /// <summary>Früh (Register): bei der IDE anmelden, damit der Desktop das Fenster speichert und wiederherstellt (#879).</summary>
+    class procedure Prepare; static;
     class procedure Release; static;
   end;
 
@@ -47,7 +49,8 @@ uses
   ToolsAPI,
   Atlas.UI.Strings,
   Atlas.UI.Style.Symbol,
-  Atlas.IDE.Foundation.Symbol;
+  Atlas.IDE.Foundation.Symbol,
+  Atlas.IDE.Foundation.DockWindow;
 
 type
   TStartDock = class(TInterfacedObject, INTACustomDockableForm)
@@ -68,16 +71,9 @@ type
     function EditAction(Action: TEditAction): Boolean;
   end;
 
-  TWatch = class(TComponent)
-  protected
-    procedure Notification(AComponent: TComponent; Operation: TOperation); override;
-  end;
-
 var
-  Dock: INTACustomDockableForm;
-  Form: TCustomForm;
-  Board: TAtlasWelcomeBoardFrame;
-  Watch: TWatch;
+  // Verwaltet Form, Frame und Anmeldung bei der IDE (#879).
+  Host: TAtlasIdeDockWindow;
 
 procedure Theme(AFrame: TCustomFrame);
 var
@@ -106,11 +102,15 @@ begin
 end;
 
 procedure TStartDock.FrameCreated(AFrame: TCustomFrame);
+var
+  Board: TAtlasWelcomeBoardFrame;
 begin
   if not (AFrame is TAtlasWelcomeBoardFrame) then
     Exit;
+  if Host <> nil then
+    Host.FrameCreated(AFrame);
   Board := TAtlasWelcomeBoardFrame(AFrame);
-  Board.FreeNotification(Watch);
+  TAtlasIdeWelcomeWindow.UpdateIcon;
   Theme(Board);
   if Assigned(TAtlasIdeWelcomeWindow.OnFrame) then
     TAtlasIdeWelcomeWindow.OnFrame(Board);
@@ -162,96 +162,78 @@ begin
   Result := False;
 end;
 
-{ TWatch }
-
-procedure TWatch.Notification(AComponent: TComponent; Operation: TOperation);
-begin
-  inherited;
-  if Operation <> opRemove then
-    Exit;
-  if AComponent = Board then
-    Board := nil;
-  if AComponent = Form then
-  begin
-    Form := nil;
-    Board := nil;
-  end;
-end;
-
 const
   // Fenstergröße beim ersten Öffnen (logische Pixel).
   DefaultWidth = 410;
   DefaultHeight = 530;
 
+procedure EnsureHost;
+begin
+  if Host = nil then
+    Host := TAtlasIdeDockWindow.Create(TStartDock.Create, True);
+end;
+
 { TAtlasIdeWelcomeWindow }
 
 class function TAtlasIdeWelcomeWindow.Show: TAtlasWelcomeBoardFrame;
 var
-  Services: INTAServices;
+  Created: Boolean;
 begin
-  if Form = nil then
+  // Lebt die Form noch (X versteckt nur), wird sie samt Gastgebern gezeigt; sonst neu angelegt.
+  EnsureHost;
+  Host.Show(Created);
+  if Created then
   begin
-    if not Supports(BorlandIDEServices, INTAServices, Services) then
-      Exit(nil);
-    if Watch = nil then
-      Watch := TWatch.Create(nil);
-    Dock := TStartDock.Create;
-    Form := Services.CreateDockableForm(Dock);
-    if Form <> nil then
+    // Vorgabe für das frei schwebende Fenster: alle Bereiche ohne Scrollen (410 × 530 bei 100 %).
+    if Host.Form.Floating then
     begin
-      Form.FreeNotification(Watch);
-      // Vorgabe für das frei schwebende Fenster: alle Bereiche ohne Scrollen (410 × 530 bei 100 %).
-      if Form.Floating then
-      begin
-        Form.Width := MulDiv(DefaultWidth, Screen.PixelsPerInch, 96);
-        Form.Height := MulDiv(DefaultHeight, Screen.PixelsPerInch, 96);
-      end;
-      UpdateIcon;
+      Host.Form.Width := MulDiv(DefaultWidth, Screen.PixelsPerInch, 96);
+      Host.Form.Height := MulDiv(DefaultHeight, Screen.PixelsPerInch, 96);
     end;
+    UpdateIcon;
   end;
-  if Form <> nil then
-  begin
-    Form.Show;
-    Form.BringToFront;
-  end;
-  Result := Board;
+  Result := ExistingBoard;
 end;
 
 class function TAtlasIdeWelcomeWindow.ExistingBoard: TAtlasWelcomeBoardFrame;
 begin
   Result := nil;
-  if Form <> nil then
-    Result := Board;
+  if (Host <> nil) and (Host.Frame is TAtlasWelcomeBoardFrame) then
+    Result := TAtlasWelcomeBoardFrame(Host.Frame);
 end;
 
 class function TAtlasIdeWelcomeWindow.Visible: Boolean;
 begin
-  Result := (Form <> nil) and Form.Visible;
+  // Angedockt in verstecktem Gastgeber zählt nicht als sichtbar.
+  Result := (Host <> nil) and Host.Shown;
 end;
 
 class procedure TAtlasIdeWelcomeWindow.Hide;
 begin
-  if Form <> nil then
-    Form.Hide;
+  if Host <> nil then
+    Host.Hide;
 end;
 
 class procedure TAtlasIdeWelcomeWindow.UpdateIcon;
 var
   Icon: TIcon;
 begin
-  if Form = nil then
+  if (Host = nil) or (Host.Form = nil) then
     Exit;
   Icon := TAtlasSymbolImages.Icon(TAtlasIdeSymbol.Current);
   try
     // Icon ist erst in TForm öffentlich.
-    TForm(Form).Icon.Assign(Icon);
+    TForm(Host.Form).Icon.Assign(Icon);
   finally
     Icon.Free;
   end;
 end;
 
 class procedure TAtlasIdeWelcomeWindow.ApplyTheme;
+var
+  Board: TAtlasWelcomeBoardFrame;
 begin
+  Board := ExistingBoard;
   if Board <> nil then
   begin
     Theme(Board);
@@ -260,13 +242,16 @@ begin
   UpdateIcon;
 end;
 
+class procedure TAtlasIdeWelcomeWindow.Prepare;
+begin
+  EnsureHost;
+end;
+
 class procedure TAtlasIdeWelcomeWindow.Release;
 begin
   OnFrame := nil;
-  Board := nil;
-  FreeAndNil(Form);
-  Dock := nil;
-  FreeAndNil(Watch);
+  // Meldet ab und gibt die Form nur frei, wenn die IDE sie nicht schon zerstört hat.
+  FreeAndNil(Host);
 end;
 
 end.

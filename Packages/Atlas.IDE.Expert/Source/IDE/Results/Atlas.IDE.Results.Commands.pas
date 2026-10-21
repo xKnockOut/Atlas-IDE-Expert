@@ -110,6 +110,8 @@ begin
         end);
       Result := Children;
     end;
+  // Früh anmelden: Die IDE speichert das Fenster im Desktop und legt es beim Laden selbst an (#879).
+  TAtlasIdeResultsWindow.Prepare;
 end;
 
 class procedure TAtlasIdeResults.Uninstall;

@@ -164,7 +164,13 @@ uses
   System.StrUtils,
   Atlas.Common.Index.NameIndex,
   Atlas.Common.Editing.UsesClause,
-  Atlas.Common.Lsp.FuzzyMatch;
+  Atlas.Common.Lsp.FuzzyMatch,
+  Atlas.Text.Fuzzy;
+
+const
+  // Kürzel über Wortanfänge (#882): zwischen Anfang (TFuzzyMatch, ab etwa 3000) und Teilwort (höchstens
+  // 2499 mit Wortanfang-Zuschlag), wie im Plugin (TAtlasCompletionMatcher: Anfang vor Kürzel vor Teilwort).
+  WordStartsScore = 2600;
 
 function CompletionKindOf(AKind: TIndexSymbolKind): Integer;
 begin
@@ -265,6 +271,11 @@ begin
     Exit(TFuzzyMatch.NoMatch);
   end;
   Result := TFuzzyMatch.CompletionScore(AName, APrefix);
+  // Kürzel ("bs" → btnSave) vor Teilwort und Teilfolge (#882): Sonst fielen sie beim Kürzen auf MaxItems
+  // hinter bloße Teilwörter zurück und erschienen erst mit passendem Anfang.
+  if (Result <> TFuzzyMatch.NoMatch) and not AName.StartsWith(APrefix, True) and
+    TTextFuzzy.MatchesWordStarts(APrefix, AName) then
+    Result := WordStartsScore - Min(Length(AName) - Length(APrefix), 99);
 end;
 
 function PrefixFilter(const APrefix: string; AMatching: TCompletionMatching): TCandidateNameFilter;
