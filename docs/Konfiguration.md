@@ -190,6 +190,7 @@ Jeder Schlüssel hat genau einen Ort (Spalte „Ort“): Projekt-Schlüssel steh
 | `hints.xmlDocExpand` | global (settings.json) | string | `"last"` | `"collapsed"`, `"last"`, `"expanded"` | XMLDoc beim Öffnen (#770): "collapsed" zeigt nur Deklaration, Summary und „Mehr anzeigen“, "last" wie zuletzt in dieser Sitzung (getrennt für Tooltip und Detailpanel, nach dem Neustart zugeklappt), "expanded" alle Abschnitte mit Überschrift (Parameter, Rückgabe, Ausnahmen, Hinweise, Beispiel …). |
 | `hints.xmlDocFull` | global (settings.json) | boolean | – |  | Veraltet (#770), ersetzt durch xmlDocExpand: true wirkt wie "expanded", false wie "collapsed", solange xmlDocExpand fehlt. |
 | `hints.xmlDocMaxLines` | global (settings.json) | integer | `0` | 0…50 | Höchstzahl der Doku-Zeilen, bevor der Inhalt mit dem Mausrad scrollt (0 = unbegrenzt, nur durch Bildschirm bzw. Popup begrenzt). |
+| `hints.publishedMembers` | global (settings.json) | boolean | `true` |  | Hover über einer Komponentenklasse (#110): published-Properties und Ereignisse samt geerbter in Tabellen mit Typ, Vorgabe (default, implizit, nodefault, stored) und deklarierender Klasse, Filter für geerbte und nur mit Vorgabe, die Standard-Property einer Array-Property und „Liste kopieren“ mit Strg+C. Aus: nur Deklaration, Doku und Vererbung. |
 
 ## directives
 

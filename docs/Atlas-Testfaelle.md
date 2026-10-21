@@ -2730,3 +2730,23 @@ Vorher: Projekt mit Index geladen, eine Unit mit `uses System.SysUtils, System.C
 | UC11 | Die eigene Unit im uses tippen | Sie erscheint nicht |
 | UC12 | Einstellung `completion.usesDetails` aus; UC1 wiederholen | Schlichte Liste aller Units ohne Überschriften, Marken und Fußzeilenhinweis; System.SysUtils erscheint wieder |
 | UC13 | Oberfläche auf Englisch | Überschriften Project, RTL/VCL, Third party; Fußzeile „… is already used and not listed“; Marke „Circular reference“ |
+
+## Komponenten-Hover als Tabelle (#110)
+
+Voraussetzung: VCL-Quellen über die Bibliothekspfade im Index, Atlas-Tooltip an.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| PM1 | Maus über `TButton` | Zusammenfassung „published: n Properties · m Ereignisse“, Umschalter „geerbte“ (an) und „nur mit default“ (aus), darunter PROPERTIES ▾ als Tabelle Name, Typ, Vorgabe, deklariert in (rechtsbündig) |
+| PM2 | Wie PM1, „geerbte“ anklicken | Nur Mitglieder, die TButton selbst deklariert; Zähler bleiben; erneuter Klick zeigt wieder alle |
+| PM3 | „nur mit default“ anklicken | Nur Properties mit Vorgabe (explizit, implizit oder nodefault); Ereignisse bleiben |
+| PM4 | Property ohne Angabe vom Typ Boolean | Vorgabe `False` mit gerahmter Marke „implizit“ |
+| PM5 | Property mit `nodefault` bzw. `stored False` | Spalte Vorgabe „nodefault“ bzw. „… stored False“ |
+| PM6 | Mehr als sieben Properties | „+ n weitere Properties“; Klick zeigt alle, der Tooltip wächst |
+| PM7 | Eigene Klasse mit `TMeinRueckruf = procedure(Sender: TObject) of object` published | Unter EREIGNISSE mit „(of object)“, Notiz „erkannt am Methodenzeiger-Typ, nicht am Namen“ |
+| PM8 | Klick auf PROPERTIES ▾ bzw. EREIGNISSE ▾ | Abschnitt klappt zu (▸), zweiter Klick auf |
+| PM9 | Maus über `TWinControl` | Block ARRAY-PROPERTY „Controls[Index: Integer]“ mit Marke „Standard-Property“ und Notiz „„default“ heißt hier nicht Vorgabewert“ |
+| PM10 | Im Tooltip Strg+C (ohne Auswahl) | Zwischenablage: Klassenname, dann je Zeile Name, Typ, Vorgabe, deklariert in (Tabulatoren), Properties vor Ereignissen, mit den gesetzten Filtern |
+| PM11 | Fußzeile ansehen | „Liste kopieren“ statt „Deklaration kopieren“, Hinweis „geerbte aus der VCL nur mit VCL-Quellen im Index“ |
+| PM12 | `hints.publishedMembers` aus | Keine Mitgliederliste, weder im Tooltip noch im Markdown-Hover |
+| PM13 | Oberfläche auf Englisch | „published: n properties · m events“, Umschalter „inherited“, „only with default“ |

@@ -40,6 +40,7 @@ uses
   Atlas.Common.Pascal.XmlDoc,
   Atlas.Common.Lsp.Documentation,
   Atlas.Common.Lsp.HoverTypes,
+  Atlas.Common.Lsp.PublishedMembers,
   Atlas.Common.Lsp.ConditionalSymbols;
 
 type
@@ -60,6 +61,9 @@ type
     UnitName: string;
     /// <summary>Markdown mit published-Properties und Ereignissen bei Klassen; sonst ''.</summary>
     Members: string;
+    /// <summary>Dieselben Mitglieder und die Standard-Property strukturiert für den Atlas-Tooltip (#110).</summary>
+    PublishedItems: TArray<TPublishedMember>;
+    DefaultProperty: string;
     /// <summary>Link zur DocWiki bei RTL- und VCL-Symbolen (#27); sonst ''.</summary>
     DocWikiUrl: string;
     /// <summary>Microsoft-Link und 64-Bit-Hinweis bei Windows-API-Funktionen (#120); sonst ''.</summary>
@@ -153,7 +157,6 @@ uses
   Atlas.Common.Documents.Uris,
   Atlas.Common.Lsp.Positions,
   Atlas.Common.Lsp.Definition,
-  Atlas.Common.Lsp.PublishedMembers,
   Atlas.Common.Dfm.Contract,
   Atlas.Common.Dfm.FormInfo,
   Atlas.Common.Dfm.Parser,
@@ -272,7 +275,7 @@ var
   Links, Ancestors: TJSONArray;
   Link: THoverLink;
   Ancestor: THoverTypeRef;
-  Item: TJSONObject;
+  Item, Members: TJSONObject;
 begin
   Result := TJSONObject.Create;
   Result.AddPair('declaration', AInfo.Declaration);
@@ -314,6 +317,10 @@ begin
     end;
     Result.AddPair('links', Links);
   end;
+  // published-Properties und Ereignisse (#110).
+  Members := TPublishedMembers.ToJson(AInfo.PublishedItems, AInfo.DefaultProperty);
+  if Members <> nil then
+    Result.AddPair('published', Members);
   if Length(AInfo.Ancestors) > 0 then
   begin
     Result.AddPair('chainOf', AInfo.ChainOf);
@@ -650,8 +657,9 @@ begin
           end;
           Result := Assigned(AReadText) and AReadText(AName, AText);
         end;
-      Result.Members := TPublishedMembers.ToMarkdown(TPublishedMembers.Collect(AIndex, Symbol.Name, ReadText),
-        TPublishedMembers.DefaultProperty(AIndex, Symbol.Name, ReadText));
+      Result.PublishedItems := TPublishedMembers.Collect(AIndex, Symbol.Name, ReadText);
+      Result.DefaultProperty := TPublishedMembers.DefaultProperty(AIndex, Symbol.Name, ReadText);
+      Result.Members := TPublishedMembers.ToMarkdown(Result.PublishedItems, Result.DefaultProperty);
       if SameText(Targets[0].FileName, AFileName) then
         Result.Messages := TMessageHandlers.Overview(AResolver, AIndex, ATree, AFileName, Symbol.Name,
           function(const AName: string; out AText: string): Boolean
@@ -803,6 +811,13 @@ begin
         TLspPositions.ReadPosition(PositionValue), FReadText, DelphiVersion);
     finally
       Resolver.Free;
+    end;
+    // published-Mitglieder abschaltbar (hints.publishedMembers, #110).
+    if Assigned(FHintsFor) and not FHintsFor(Uri).PublishedMembers then
+    begin
+      Info.Members := '';
+      Info.PublishedItems := nil;
+      Info.DefaultProperty := '';
     end;
     if not Info.Found then
     begin

@@ -14,6 +14,13 @@
 // Unter einem Hinweis zu einem uses-Eintrag (#621) stehen seine Aktionen als
 // Links: Entfernen, Alle ungenutzten entfernen (ab zwei), In implementation-uses
 // verschieben; ihre Klickfläche trägt Problem und Aktion (ProblemActionCode).
+// Bei Komponentenklassen (#110) folgt unter der Beschreibung „published: n
+// Properties · m Ereignisse“ mit den Schaltern „geerbte“ und „nur mit
+// default“, dann die Tabellen PROPERTIES (Name, Typ, Vorgabe, deklariert in)
+// und EREIGNISSE, je auf- und zuklappbar und auf die ersten Zeilen gekürzt
+// („+ n weitere …“ zeigt alle), und die Standard-Property einer Array-Property.
+// Die Schalter tragen die Klickfläche Published mit Ord(TAtlasHoverPublishedToggle);
+// TAtlasHoverView.Toggle schaltet um. Strg+C heißt dann „Liste kopieren“.
 
 interface
 
@@ -31,7 +38,10 @@ type
   TAtlasHoverAction = (Navigate, Usages, Copy, Help);
   /// <summary>Schriften des Tooltips: UI, Editorschrift, beide verkleinert, Badge.</summary>
   TAtlasHoverFont = (Ui, Mono, SmallUi, SmallMono, Badge);
-  TAtlasHoverHitKind = (Link, Ancestor, Path, Back, Action, ProblemAction);
+  TAtlasHoverHitKind = (Link, Ancestor, Path, Back, Action, ProblemAction, Published);
+  /// <summary>Schalter der published-Mitglieder (#110): geerbte zeigen, nur mit Vorgabe, Abschnitte zu- bzw.
+  /// aufklappen, alle Zeilen zeigen.</summary>
+  TAtlasHoverPublishedToggle = (ShowInherited, OnlyDefaults, Properties, Events, MoreProperties, MoreEvents);
   /// <summary>Aktion unter einem Problem im Tooltip (#621).</summary>
   TAtlasHoverProblemAction = (RemoveUses, RemoveAllUses, MoveUses);
   /// <summary>Fill: Fläche; Line: waagrechte Linie; Text: Text ab Rect.TopLeft; CenterText: zentriert in
@@ -53,7 +63,17 @@ type
     Problems: TArray<TAtlasProblem>;
     /// <summary>Anzeige der XMLDoc (#654): Angabe des Servers bzw. Einstellungen des Plugins.</summary>
     Display: TAtlasDocDisplay;
+    /// <summary>published-Mitglieder (#110): geerbte ausblenden, nur Properties mit Vorgabe, Abschnitte
+    /// zugeklappt, alle Zeilen statt der ersten.</summary>
+    HideInherited: Boolean;
+    OnlyDefaults: Boolean;
+    PropertiesCollapsed: Boolean;
+    EventsCollapsed: Boolean;
+    AllProperties: Boolean;
+    AllEvents: Boolean;
     class function Create(const AData: TAtlasHoverData): TAtlasHoverView; static;
+    /// <summary>Schaltet den Schalter AToggle der published-Mitglieder um (#110).</summary>
+    procedure Toggle(AToggle: TAtlasHoverPublishedToggle);
   end;
 
   TAtlasHoverFace = record
@@ -103,6 +123,26 @@ type
     UsesRemoveAll: string;
     UsesMove: string;
     Stale: string;
+    /// <summary>published-Mitglieder (#110): Format mit %d, %d für Properties und Ereignisse; Schalter,
+    /// Abschnitte, Spaltenköpfe, Formate „+ %d weitere …“, Hinweise und „Liste kopieren“.</summary>
+    PublishedSummary: string;
+    PublishedInherited: string;
+    PublishedOnlyDefaults: string;
+    PublishedProperties: string;
+    PublishedEvents: string;
+    PublishedName: string;
+    PublishedType: string;
+    PublishedDefault: string;
+    PublishedDeclared: string;
+    PublishedImplicit: string;
+    PublishedMoreProperties: string;
+    PublishedMoreEvents: string;
+    PublishedEventsNote: string;
+    PublishedArrayProperty: string;
+    PublishedDefaultProperty: string;
+    PublishedDefaultPropertyNote: string;
+    PublishedCopyList: string;
+    PublishedVclNote: string;
     /// <summary>Zeile „Konfidenz: …“ je Problem in der Reihenfolge von View.Problems; '' ohne.</summary>
     Confidences: TArray<string>;
   end;
@@ -189,6 +229,10 @@ uses
 const
   BandChain = 0;
   BandActions = 1;
+  /// <summary>So viele Zeilen zeigen die Tabellen der published-Mitglieder, bis „+ n weitere“ geklickt ist.
+  /// </summary>
+  PropertyRows = 7;
+  EventRows = 4;
 
 type
   TBuilder = class
@@ -233,6 +277,9 @@ type
     procedure Header;
     procedure Declaration;
     procedure Description;
+    procedure ToggleChip(const ACaption: string; AOn: Boolean; AToggle: TAtlasHoverPublishedToggle; AX: Integer);
+    procedure MemberSection(AEvents: Boolean);
+    procedure PublishedMembers;
     procedure Run;
   public
     constructor Create(const AInput: TAtlasHoverInput; const AMeasure: IAtlasHoverMeasure);
@@ -262,6 +309,18 @@ begin
   Result.Data := AData;
   Result.UsagesCount := -1;
   Result.Display := TAtlasDocDisplay.Create(TAtlasDocExpand.Last, 0);
+end;
+
+procedure TAtlasHoverView.Toggle(AToggle: TAtlasHoverPublishedToggle);
+begin
+  case AToggle of
+    TAtlasHoverPublishedToggle.ShowInherited: HideInherited := not HideInherited;
+    TAtlasHoverPublishedToggle.OnlyDefaults: OnlyDefaults := not OnlyDefaults;
+    TAtlasHoverPublishedToggle.Properties: PropertiesCollapsed := not PropertiesCollapsed;
+    TAtlasHoverPublishedToggle.Events: EventsCollapsed := not EventsCollapsed;
+    TAtlasHoverPublishedToggle.MoreProperties: AllProperties := not AllProperties;
+    TAtlasHoverPublishedToggle.MoreEvents: AllEvents := not AllEvents;
+  end;
 end;
 
 { TAtlasHoverFace }
@@ -565,13 +624,23 @@ begin
         else
           Caption := FInput.Texts.Usages;
         ActionItem(FInput.Texts.KeyUsages, Caption, TAtlasHoverAction.Usages, True);
-        // Mit Markierung in der Doku kopiert Strg+C diese, sonst die Deklaration.
+        // Mit Markierung in der Doku kopiert Strg+C diese, bei Komponentenklassen die Liste (#110), sonst die
+        // Deklaration.
         if FInput.HasSelection then
           Caption := FInput.Texts.CopySelection
+        else if Length(FData.Members) > 0 then
+          Caption := FInput.Texts.PublishedCopyList
         else
           Caption := FInput.Texts.Copy;
         ActionItem(FInput.Texts.KeyCopy, Caption, TAtlasHoverAction.Copy, True);
         ActionItem('F1', FInput.Texts.Help, TAtlasHoverAction.Help, FData.DocWiki <> '');
+        // Geerbte VCL-Mitglieder kennt der Server nur mit den VCL-Quellen im Index (#110).
+        if (Length(FData.Members) > 0) and (FInput.Texts.PublishedVclNote <> '') then
+        begin
+          Inc(FX, Scale(14));
+          Flow(FInput.Texts.PublishedVclNote, FColors.Muted, False, TAtlasHoverHitKind.Action, -1, -1,
+            FColors.Muted);
+        end;
         EndFlow;
         Inc(FY, Scale(6));
       end;
@@ -869,6 +938,273 @@ begin
   Inc(FY, Scale(1));
 end;
 
+procedure TBuilder.ToggleChip(const ACaption: string; AOn: Boolean; AToggle: TAtlasHoverPublishedToggle;
+  AX: Integer);
+var
+  TextFace: TAtlasHoverFace;
+  Cell: TRect;
+  Item: TAtlasHoverItem;
+  LineColor, TextColor: TAtlasColor;
+begin
+  // Schalter als umrandetes Kästchen: an in Akzentfarbe, aus gedämpft.
+  TextFace := Face(TAtlasHoverFont.SmallUi, False);
+  Cell := Rect(AX, FY, AX + Width(TextFace, ACaption) + Scale(AtlasChipPad), FY + Height(TextFace) + Scale(2));
+  if AOn then
+  begin
+    LineColor := FColors.Accent;
+    TextColor := FColors.Accent;
+  end
+  else
+  begin
+    LineColor := FColors.Line;
+    TextColor := FColors.Muted;
+  end;
+  Item := NewItem(TAtlasHoverItemKind.Frame, Cell, LineColor);
+  Item.Back := FColors.Surface;
+  Item.Radius := AtlasChipRadius;
+  Item.HotKind := TAtlasHoverHitKind.Published;
+  Item.HotIndex := Ord(AToggle);
+  Item.HotColor := FColors.Accent;
+  Add(Item);
+  Item := NewItem(TAtlasHoverItemKind.CenterText, Cell, TextColor);
+  Item.Text := ACaption;
+  Item.Face := TextFace;
+  Item.HotKind := TAtlasHoverHitKind.Published;
+  Item.HotIndex := Ord(AToggle);
+  Item.HotColor := FColors.Accent;
+  Add(Item);
+  AddHit(TAtlasHoverHitKind.Published, Ord(AToggle), Cell);
+end;
+
+procedure TBuilder.MemberSection(AEvents: Boolean);
+var
+  Rows: TArray<Integer>;
+  Row, Shown, Limit, NameX, TypeX, DefaultX, RowHeight, Gap, TagWidth: Integer;
+  Collapsed, ShowAll: Boolean;
+  Caption, TypeText, Declared: string;
+  Toggle, More: TAtlasHoverPublishedToggle;
+  MonoFace, SmallFace, SmallMonoFace, HeadFace: TAtlasHoverFace;
+  Member: TAtlasHoverMember;
+  Item: TAtlasHoverItem;
+  Cell: TRect;
+begin
+  Rows := FData.VisibleMembers(AEvents, not FInput.View.HideInherited, FInput.View.OnlyDefaults);
+  if Length(Rows) = 0 then
+    Exit;
+  if AEvents then
+  begin
+    Caption := FInput.Texts.PublishedEvents;
+    Collapsed := FInput.View.EventsCollapsed;
+    ShowAll := FInput.View.AllEvents;
+    Toggle := TAtlasHoverPublishedToggle.Events;
+    More := TAtlasHoverPublishedToggle.MoreEvents;
+    Limit := EventRows;
+  end
+  else
+  begin
+    Caption := FInput.Texts.PublishedProperties;
+    Collapsed := FInput.View.PropertiesCollapsed;
+    ShowAll := FInput.View.AllProperties;
+    Toggle := TAtlasHoverPublishedToggle.Properties;
+    More := TAtlasHoverPublishedToggle.MoreProperties;
+    Limit := PropertyRows;
+  end;
+  MonoFace := Face(TAtlasHoverFont.Mono, False);
+  SmallFace := Face(TAtlasHoverFont.SmallUi, False);
+  SmallMonoFace := Face(TAtlasHoverFont.SmallMono, False);
+  HeadFace := Face(TAtlasHoverFont.SmallMono, True);
+  Gap := Scale(12);
+  // Abschnittstitel mit ▾ (offen) bzw. ▸ (zu); Klick klappt um.
+  if Collapsed then
+    Caption := AnsiUpperCase(Caption) + ' ▸'
+  else
+    Caption := AnsiUpperCase(Caption) + ' ▾';
+  Cell := Rect(FLeft, FY, FLeft + Width(HeadFace, Caption), FY + Height(HeadFace));
+  Item := NewItem(TAtlasHoverItemKind.Text, Cell, FColors.Muted);
+  Item.Text := Caption;
+  Item.Face := HeadFace;
+  Item.HotKind := TAtlasHoverHitKind.Published;
+  Item.HotIndex := Ord(Toggle);
+  Item.HotColor := FColors.Accent;
+  Add(Item);
+  AddHit(TAtlasHoverHitKind.Published, Ord(Toggle), Cell);
+  Inc(FY, Height(HeadFace) + Scale(5));
+  if Collapsed then
+    Exit;
+  Shown := Length(Rows);
+  if not ShowAll then
+    Shown := Min(Shown, Limit);
+  // Spalten nach den breitesten gezeigten Werten; „deklariert in“ rechtsbündig.
+  NameX := FLeft;
+  TypeX := NameX + Width(SmallFace, FInput.Texts.PublishedName);
+  for Row := 0 to Shown - 1 do
+    TypeX := Max(TypeX, NameX + Width(MonoFace, FData.Members[Rows[Row]].Name));
+  Inc(TypeX, Gap);
+  DefaultX := TypeX + Width(SmallFace, FInput.Texts.PublishedType);
+  for Row := 0 to Shown - 1 do
+  begin
+    TypeText := FData.Members[Rows[Row]].TypeName;
+    DefaultX := Max(DefaultX, TypeX + Width(MonoFace, TypeText));
+  end;
+  Inc(DefaultX, Gap);
+  RowHeight := Height(MonoFace) + Scale(3);
+  if not AEvents then
+  begin
+    AddText(NameX, FY, FInput.Texts.PublishedName, SmallFace, FColors.Muted);
+    AddText(TypeX, FY, FInput.Texts.PublishedType, SmallFace, FColors.Muted);
+    AddText(DefaultX, FY, FInput.Texts.PublishedDefault, SmallFace, FColors.Muted);
+    AddText(FRight - Width(SmallFace, FInput.Texts.PublishedDeclared), FY, FInput.Texts.PublishedDeclared,
+      SmallFace, FColors.Muted);
+    Inc(FY, Height(SmallFace) + Scale(4));
+  end;
+  for Row := 0 to Shown - 1 do
+  begin
+    Member := FData.Members[Rows[Row]];
+    AddText(NameX, FY, Member.Name, MonoFace, FColors.Text);
+    AddText(TypeX, FY, Member.TypeName, MonoFace, FColors.Accent);
+    if AEvents then
+    begin
+      // Am Methodenzeiger-Typ erkannt, nicht am Namen: fremde Typnamen kenntlich machen.
+      if not EndsText('Event', Member.TypeName) then
+        AddText(TypeX + Width(MonoFace, Member.TypeName + ' '), FY + (Height(MonoFace) - Height(SmallFace)) div 2,
+          '(of object)', SmallFace, FColors.Muted);
+    end
+    else
+    begin
+      FX := DefaultX;
+      case Member.DefaultKind of
+        hdExplicit:
+          begin
+            AddText(FX, FY, Member.DefaultValue, MonoFace, FColors.Text);
+            Inc(FX, Width(MonoFace, Member.DefaultValue + ' '));
+          end;
+        hdImplicit:
+          begin
+            AddText(FX, FY, Member.DefaultValue, MonoFace, FColors.Text);
+            Inc(FX, Width(MonoFace, Member.DefaultValue + ' '));
+            // Implizit als gedämpfte Marke.
+            TagWidth := Width(SmallFace, FInput.Texts.PublishedImplicit) + Scale(AtlasChipPad);
+            Cell := Rect(FX, FY + Scale(1), FX + TagWidth, FY + Height(SmallFace) + Scale(3));
+            Item := NewItem(TAtlasHoverItemKind.Frame, Cell, FColors.Line);
+            Item.Back := FColors.Surface;
+            Item.Radius := AtlasChipRadius;
+            Add(Item);
+            Item := NewItem(TAtlasHoverItemKind.CenterText, Cell, FColors.Muted);
+            Item.Text := FInput.Texts.PublishedImplicit;
+            Item.Face := SmallFace;
+            Add(Item);
+            Inc(FX, TagWidth + Scale(4));
+          end;
+        hdNoDefault:
+          begin
+            AddText(FX, FY, 'nodefault', MonoFace, FColors.Muted);
+            Inc(FX, Width(MonoFace, 'nodefault '));
+          end;
+      end;
+      if Member.Stored <> '' then
+        AddText(FX, FY, 'stored ' + Member.Stored, MonoFace, FColors.Muted);
+    end;
+    Declared := Member.DeclaringClass;
+    AddText(FRight - Width(SmallMonoFace, Declared), FY + (Height(MonoFace) - Height(SmallMonoFace)) div 2,
+      Declared, SmallMonoFace, FColors.Muted);
+    Inc(FY, RowHeight);
+  end;
+  // „+ n weitere …“ zeigt alle; bei Ereignissen der Hinweis, woran sie erkannt sind.
+  FX := FLeft;
+  FRowHeight := 0;
+  FFlowFont := TAtlasHoverFont.SmallUi;
+  if Shown < Length(Rows) then
+  begin
+    if AEvents then
+      Caption := Format(FInput.Texts.PublishedMoreEvents, [Length(Rows) - Shown])
+    else
+      Caption := Format(FInput.Texts.PublishedMoreProperties, [Length(Rows) - Shown]);
+    Flow(Caption, FColors.Accent, False, TAtlasHoverHitKind.Published, Ord(More), Ord(More), FColors.Accent);
+  end;
+  if AEvents then
+  begin
+    if FX > FLeft then
+      Flow(' · ', FColors.Muted, False, TAtlasHoverHitKind.Published, -1, -1, FColors.Muted);
+    Flow(FInput.Texts.PublishedEventsNote, FColors.Muted, False, TAtlasHoverHitKind.Published, -1, -1,
+      FColors.Muted);
+  end;
+  if FX > FLeft then
+  begin
+    Inc(FY, Scale(2));
+    EndFlow;
+  end;
+  FFlowFont := TAtlasHoverFont.Ui;
+  Inc(FY, Scale(8));
+end;
+
+procedure TBuilder.PublishedMembers;
+var
+  Summary, Name, Note: string;
+  SmallFace, MonoFace, HeadFace: TAtlasHoverFace;
+  ChipsWidth, InheritedWidth, Bracket, TagWidth: Integer;
+  Cell: TRect;
+  Item: TAtlasHoverItem;
+begin
+  // published-Mitglieder einer Komponentenklasse (#110).
+  if (Length(FData.Members) = 0) and (FData.DefaultProperty = '') then
+    Exit;
+  HorizontalLine(FY);
+  Inc(FY, Scale(7));
+  SmallFace := Face(TAtlasHoverFont.SmallUi, False);
+  MonoFace := Face(TAtlasHoverFont.Mono, False);
+  HeadFace := Face(TAtlasHoverFont.SmallMono, True);
+  if Length(FData.Members) > 0 then
+  begin
+    // „published: 38 Properties · 24 Ereignisse“, rechts die Schalter; ohne Platz darunter.
+    Summary := Format(FInput.Texts.PublishedSummary, [FData.MemberCount(False), FData.MemberCount(True)]);
+    InheritedWidth := Width(SmallFace, FInput.Texts.PublishedInherited) + Scale(AtlasChipPad);
+    ChipsWidth := InheritedWidth + Scale(6) + Width(SmallFace, FInput.Texts.PublishedOnlyDefaults) +
+      Scale(AtlasChipPad);
+    AddText(FLeft, FY + Scale(1), Summary, SmallFace, FColors.Muted);
+    if FLeft + Width(SmallFace, Summary) + Scale(12) + ChipsWidth > FRight then
+      Inc(FY, Height(SmallFace) + Scale(6));
+    ToggleChip(FInput.Texts.PublishedInherited, not FInput.View.HideInherited,
+      TAtlasHoverPublishedToggle.ShowInherited, FRight - ChipsWidth);
+    ToggleChip(FInput.Texts.PublishedOnlyDefaults, FInput.View.OnlyDefaults, TAtlasHoverPublishedToggle.OnlyDefaults,
+      FRight - ChipsWidth + InheritedWidth + Scale(6));
+    Inc(FY, Height(SmallFace) + Scale(10));
+    MemberSection(False);
+    MemberSection(True);
+  end;
+  // Standard-Property: „default“ heißt an einer Array-Property nicht Vorgabewert.
+  if FData.DefaultProperty <> '' then
+  begin
+    AddText(FLeft, FY, AnsiUpperCase(FInput.Texts.PublishedArrayProperty), HeadFace, FColors.Muted);
+    Inc(FY, Height(HeadFace) + Scale(5));
+    Name := FData.DefaultProperty;
+    Bracket := Pos(']', Name);
+    if Bracket > 0 then
+      Name := Copy(Name, 1, Bracket);
+    AddText(FLeft, FY, Name, MonoFace, FColors.Text);
+    FX := FLeft + Width(MonoFace, Name + ' ');
+    TagWidth := Width(SmallFace, FInput.Texts.PublishedDefaultProperty) + Scale(AtlasChipPad);
+    Cell := Rect(FX, FY + Scale(1), FX + TagWidth, FY + Height(SmallFace) + Scale(3));
+    Item := NewItem(TAtlasHoverItemKind.Frame, Cell, FColors.Accent);
+    Item.Back := FColors.Surface;
+    Item.Radius := AtlasChipRadius;
+    Add(Item);
+    Item := NewItem(TAtlasHoverItemKind.CenterText, Cell, FColors.Accent);
+    Item.Text := FInput.Texts.PublishedDefaultProperty;
+    Item.Face := SmallFace;
+    Add(Item);
+    Note := FInput.Texts.PublishedDefaultPropertyNote;
+    if Cell.Right + Scale(8) + Width(SmallFace, Note) <= FRight then
+      AddText(Cell.Right + Scale(8), FY + Scale(1), Note, SmallFace, FColors.Muted)
+    else
+    begin
+      Inc(FY, Height(MonoFace) + Scale(3));
+      AddText(FLeft, FY, Note, SmallFace, FColors.Muted);
+    end;
+    Inc(FY, Height(MonoFace) + Scale(8));
+  end;
+  FX := FLeft;
+end;
+
 procedure TBuilder.Run;
 begin
   FFlowFont := TAtlasHoverFont.Ui;
@@ -895,6 +1231,7 @@ begin
   Header;
   Declaration;
   Description;
+  PublishedMembers;
   // Vererbung bzw. Zieltyp und Aktionsleiste auf eigener Randfläche.
   if Length(FData.Ancestors) > 0 then
     Band(BandChain, not FData.Location.HasLocation);

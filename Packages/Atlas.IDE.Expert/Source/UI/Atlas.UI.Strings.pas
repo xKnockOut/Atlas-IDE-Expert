@@ -608,7 +608,10 @@ type
     ProcessesDirtyNone, ProcessesDirtyNote, ProcessesLog, ProcessesRefresh, ProcessesCopy, ProcessesClose,
     ProcessesEmpty, ProcessesAsking, SettingsDiagnosticsProcesses,
     UsesGroupProject, UsesGroupRtl, UsesGroupLibrary, UsesHiddenOne, UsesHiddenFew, UsesHiddenMore, UsesInInterface,
-    UsesInImplementation, UsesCycleTag, UsesTypesHeading, UsesCycleDirect, UsesCycleChain);
+    UsesInImplementation, UsesCycleTag, UsesTypesHeading, UsesCycleDirect, UsesCycleChain,
+    PublishedSummary, PublishedInherited, PublishedOnlyDefaults, PublishedProperties, PublishedEvents, PublishedName,
+    PublishedType, PublishedDefault, PublishedDeclared, PublishedImplicit, PublishedMoreProperties, PublishedMoreEvents,
+    PublishedEventsNote, PublishedArrayProperty, PublishedDefaultProperty, PublishedDefaultPropertyNote, PublishedCopyList, PublishedVclNote);
 
   TAtlasStrings = class
   private class var
@@ -1805,7 +1808,25 @@ const
      'Zirkelbezug',
      'Exportierte Typen',
      '%s bindet diese Unit im interface-Teil ein',
-     '%s bindet diese Unit über %s im interface-Teil ein'),
+     '%s bindet diese Unit über %s im interface-Teil ein',
+     'published: %d Properties · %d Ereignisse',
+     'geerbte',
+     'nur mit default',
+     'Properties',
+     'Ereignisse',
+     'Name',
+     'Typ',
+     'Vorgabe',
+     'deklariert in',
+     'implizit',
+     '+ %d weitere Properties',
+     '+ %d weitere Ereignisse',
+     'erkannt am Methodenzeiger-Typ, nicht am Namen',
+     'Array-Property',
+     'Standard-Property',
+     '„default“ heißt hier nicht Vorgabewert',
+     'Liste kopieren',
+     'geerbte aus der VCL nur mit VCL-Quellen im Index'),
     ('Enter to accept · Esc to close', '%d of %d', 'No matches for “%s”', 'Backspace widens the search',
      'No suggestions here', 'Esc closes', 'No details for this entry', 'Overload', 'Deprecated: %s', 'Deprecated.',
      'Inherited from %s', 'Inherited', 'optional, default %s', 'No overload with %d parameters.', '… %d more',
@@ -2913,7 +2934,25 @@ const
      'Circular reference',
      'Exported types',
      '%s uses this unit in its interface section',
-     '%s uses this unit via %s in its interface section'));
+     '%s uses this unit via %s in its interface section',
+     'published: %d properties · %d events',
+     'inherited',
+     'only with default',
+     'Properties',
+     'Events',
+     'Name',
+     'Type',
+     'Default',
+     'declared in',
+     'implicit',
+     '+ %d more properties',
+     '+ %d more events',
+     'detected by method pointer type, not by name',
+     'Array property',
+     'Default property',
+     '"default" does not mean a default value here',
+     'Copy list',
+     'inherited VCL members only with VCL sources in the index'));
 
 { TAtlasStrings }
 

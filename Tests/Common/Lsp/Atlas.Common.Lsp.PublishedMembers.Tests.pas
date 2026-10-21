@@ -44,12 +44,15 @@ type
     procedure ArrayDefaultIsDefaultProperty;
     [Test]
     procedure DeclaringClassIsFirstTypedDeclaration;
+    [Test]
+    procedure WritesJsonForTooltip;
   end;
 
 implementation
 
 uses
   System.SysUtils,
+  System.JSON,
   Atlas.Common.Index.SymbolIndex,
   Atlas.Common.Index.Extractor,
   Atlas.Common.Lsp.PublishedMembers;
@@ -308,6 +311,50 @@ begin
   // Gruppen nach deklarierender Klasse: Caption steht unter TBasis, nicht unter TKnopf.
   Text := TPublishedMembers.ToMarkdown(TPublishedMembers.Collect(FIndex, 'TKnopf', ReadSource));
   Assert.IsTrue(Pos('*TBasis*'#10'- `Caption`', Text) > 0, Text);
+end;
+
+procedure TPublishedMembersTests.WritesJsonForTooltip;
+
+  function Member(AJson: TJSONObject; const AName: string): TJSONObject;
+  var
+    Value: TJSONValue;
+  begin
+    for Value in AJson.GetValue<TJSONArray>('members') do
+      if TJSONObject(Value).GetValue<string>('name') = AName then
+        Exit(TJSONObject(Value));
+    Result := nil;
+  end;
+
+var
+  Json: TJSONObject;
+begin
+  // atlas.published (#110): je Mitglied Typ, Vorgabe samt Art, stored, Herkunft und Ereignis.
+  Assert.IsNull(TPublishedMembers.ToJson(nil, ''));
+  Json := TPublishedMembers.ToJson(TPublishedMembers.Collect(FIndex, 'TVarianten', ReadSource),
+    'Strings[Index: Integer]: string');
+  try
+    Assert.AreEqual('Strings[Index: Integer]: string', Json.GetValue<string>('defaultProperty'));
+    Assert.AreEqual('Integer', Member(Json, 'Breite').GetValue<string>('type'));
+    Assert.AreEqual('64', Member(Json, 'Breite').GetValue<string>('default'));
+    Assert.AreEqual('explicit', Member(Json, 'Breite').GetValue<string>('defaultKind'));
+    Assert.AreEqual('implicit', Member(Json, 'Aktiv').GetValue<string>('defaultKind'));
+    Assert.AreEqual('nodefault', Member(Json, 'Zahl').GetValue<string>('defaultKind'));
+    Assert.IsNull(Member(Json, 'Zahl').GetValue('default'));
+    Assert.AreEqual('False', Member(Json, 'Titel').GetValue<string>('stored'));
+    Assert.IsNull(Member(Json, 'Titel').GetValue('defaultKind'));
+    Assert.AreEqual('TVarianten', Member(Json, 'Titel').GetValue<string>('declaringClass'));
+    Assert.IsTrue(Member(Json, 'Rueckruf').GetValue('event') is TJSONTrue);
+    Assert.IsNull(Member(Json, 'OnlineStatus').GetValue('event'));
+  finally
+    Json.Free;
+  end;
+  // Standard-Property allein reicht für ein Objekt.
+  Json := TPublishedMembers.ToJson(nil, 'Items[I: Integer]: string');
+  try
+    Assert.AreEqual(0, Json.GetValue<TJSONArray>('members').Count);
+  finally
+    Json.Free;
+  end;
 end;
 
 initialization
