@@ -617,6 +617,12 @@ begin
     Issues).Refactoring.PropertyFromAccessorsSection);
   Assert.AreEqual('protected', Parse('{"refactoring": {"propertyFromAccessorsHideAccessors": "protected"}}',
     Issues).Refactoring.PropertyFromAccessorsHideAccessors);
+  // #666: Felder im Destruktor freigeben.
+  Assert.IsTrue(Parse('{}', Issues).Refactoring.FreeFields);
+  Assert.AreEqual('free', Parse('{}', Issues).Refactoring.FreeFieldsStyle);
+  Assert.IsFalse(Parse('{"refactoring": {"freeFields": false}}', Issues).Refactoring.FreeFields);
+  Assert.AreEqual('freeAndNil', Parse('{"refactoring": {"freeFieldsStyle": "FreeAndNil"}}',
+    Issues).Refactoring.FreeFieldsStyle);
   Assert.AreEqual(0, Integer(Length(Issues)));
   Parse('{"refactoring": {"propertyFromAccessorsPrefixes": "Get", "propertyFromAccessorsReplaceCalls": "ja", ' +
     '"propertyFromAccessorsSection": "private", "propertyFromAccessorsHideAccessors": "public"}}', Issues);

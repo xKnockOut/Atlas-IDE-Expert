@@ -182,7 +182,8 @@ const
     'ifthen-side-effect,implemented-not-declared,implicit-package-import,int32-mul-overflow,interface-guid,' +
     'invisible-char,' +
     'lock-without-finally,metric-cognitive-complexity,metric-cyclomatic-complexity,metric-method-length,' +
-    'metric-nesting-depth,metric-parameter-count,possibly-uninitialized,raise-in-finally,recursive-property-accessor,redundant-assigned-free,' +
+    'metric-nesting-depth,metric-parameter-count,owned-field-free-unclear,owned-field-not-freed,' +
+    'possibly-uninitialized,raise-in-finally,recursive-property-accessor,redundant-assigned-free,' +
     'result-not-set,' +
     'security-command-injection,security-insecure-http,security-insecure-random,security-sql-injection,' +
     'security-tls-verification-disabled,security-weak-crypto,self-assignment,sizeof-pointer,' +
@@ -207,6 +208,7 @@ begin
     'duplicate-interface-guid,exception-freed,exception-not-raised,float-equality,for-high-to-low,' +
     'form-field-type-mismatch,form-field-without-object,form-object-without-field,hides-virtual,' +
     'ifthen-side-effect,implemented-not-declared,int32-mul-overflow,interface-guid,lock-without-finally,' +
+    'owned-field-free-unclear,owned-field-not-freed,' +
     'possibly-uninitialized,raise-in-finally,recursive-property-accessor,result-not-set,security-command-injection,' +
     'security-sql-injection,security-tls-verification-disabled,self-assignment,sizeof-pointer,' +
     'synchronize-in-destructor,thread-free-with-free-on-terminate,thread-use-after-free-on-terminate,' +

@@ -1,0 +1,688 @@
+﻿unit Atlas.Common.Editing.FreeFields.Tests;
+
+// Tests für „Felder im Destruktor freigeben“ (#666): Erkennung, Ausnahmen,
+// unklare Fälle, Freigabe im vorhandenen und im neuen Destruktor.
+
+interface
+
+uses
+  DUnitX.TestFramework;
+
+type
+  [TestFixture]
+  TFreeFieldsTests = class
+  public
+    [Test]
+    procedure CreatedAndNotFreedIsFound;
+    [Test]
+    procedure OwnerInterfaceAndFreedAreSilent;
+    [Test]
+    procedure RecordWithCreateIsSilent;
+    [Test]
+    procedure CreationInPrivateHelper;
+    [Test]
+    procedure PublicHelperIsNotFollowed;
+    [Test]
+    procedure ReturnedOrPassedIsUnclear;
+    [Test]
+    procedure WritablePropertyIsUnclear;
+    [Test]
+    procedure ObjectListIsNormalField;
+    [Test]
+    procedure MissingDestructorIsCreated;
+    [Test]
+    procedure GenericClassKeepsParameters;
+    [Test]
+    procedure NoPublicSectionGetsOne;
+    [Test]
+    procedure ExistingDestructorBeforeInherited;
+    [Test]
+    procedure ExistingDestructorWithoutInherited;
+    [Test]
+    procedure DeclaredDestructorGetsBody;
+    [Test]
+    procedure ReverseCreationOrder;
+    [Test]
+    procedure FreeAndNilStyle;
+    [Test]
+    procedure ActionsOnFieldAndClass;
+  end;
+
+implementation
+
+uses
+  System.SysUtils,
+  Atlas.Common.Documents.Contract,
+  Atlas.Common.Pascal.SyntaxTree,
+  Atlas.Common.Pascal.Parser,
+  Atlas.Common.Editing.CodeActions,
+  Atlas.Common.Editing.FreeFields;
+
+function Analyze(const AText: string): TArray<TOwnedField>;
+var
+  Tree: TSyntaxTree;
+begin
+  Tree := TPascalParser.Parse(AText);
+  try
+    Result := TFreeFields.Analyze(Tree, AText, nil);
+  finally
+    Tree.Free;
+  end;
+end;
+
+function Parses(const AText: string): Boolean;
+var
+  Tree: TSyntaxTree;
+begin
+  Tree := TPascalParser.Parse(AText);
+  try
+    Result := Length(Tree.Diagnostics) = 0;
+  finally
+    Tree.Free;
+  end;
+end;
+
+/// <summary>Wendet die Edits (nicht überlappend, Zeilen mit #10) von hinten nach vorn an.</summary>
+function Apply(const AText: string; const AEdits: TArray<TTextEdit>): string;
+var
+  Lines: TArray<string>;
+  Offsets: TArray<Integer>;
+  Order: TArray<Integer>;
+  Index, Inner, Swap, Start, Stop: Integer;
+
+  function OffsetOf(const APos: TTextPosition): Integer;
+  begin
+    Result := Offsets[APos.Line] + APos.Character;
+  end;
+
+begin
+  Lines := AText.Split([#10]);
+  SetLength(Offsets, Length(Lines) + 1);
+  Offsets[0] := 0;
+  for Index := 0 to High(Lines) do
+    Offsets[Index + 1] := Offsets[Index] + Length(Lines[Index]) + 1;
+  SetLength(Order, Length(AEdits));
+  for Index := 0 to High(Order) do
+    Order[Index] := Index;
+  for Index := 0 to High(Order) do
+    for Inner := Index + 1 to High(Order) do
+      if OffsetOf(AEdits[Order[Index]].Range.StartPos) < OffsetOf(AEdits[Order[Inner]].Range.StartPos) then
+      begin
+        Swap := Order[Index];
+        Order[Index] := Order[Inner];
+        Order[Inner] := Swap;
+      end;
+  Result := AText;
+  for Index in Order do
+  begin
+    Start := OffsetOf(AEdits[Index].Range.StartPos);
+    Stop := OffsetOf(AEdits[Index].Range.EndPos);
+    Result := Copy(Result, 1, Start) + AEdits[Index].NewText + Copy(Result, Stop + 1, MaxInt);
+  end;
+end;
+
+/// <summary>Alle nicht freigegebenen Felder freigeben; das Ergebnis parst und hat keinen Treffer mehr.</summary>
+function FreeAll(const AText: string; AStyle: TFreeFieldsStyle): string;
+var
+  Tree: TSyntaxTree;
+  Fields, Missing: TArray<TOwnedField>;
+  Field: TOwnedField;
+  Edits: TArray<TTextEdit>;
+begin
+  Tree := TPascalParser.Parse(AText);
+  try
+    Fields := TFreeFields.Analyze(Tree, AText, nil);
+    Missing := nil;
+    for Field in Fields do
+      if Field.State = TOwnedFieldState.NotFreed then
+        Missing := Missing + [Field];
+    Assert.IsTrue(TFreeFields.Edits(Tree, AText, Missing, AStyle, Edits), AText);
+  finally
+    Tree.Free;
+  end;
+  Result := Apply(AText, Edits);
+  Assert.IsTrue(Parses(Result), Result);
+  Assert.AreEqual(0, Integer(Length(Analyze(Result))), Result);
+end;
+
+const
+  OrderList =
+    'unit U;'#10 +
+    'interface'#10 +
+    'type'#10 +
+    '  TOrderList = class'#10 +
+    '  private'#10 +
+    '    FItems: TObjectList<TOrder>;'#10 +
+    '    FIndex: TDictionary<Integer, TOrder>;'#10 +
+    '  public'#10 +
+    '    constructor Create;'#10 +
+    '    procedure Clear;'#10 +
+    '  end;'#10 +
+    'implementation'#10 +
+    'constructor TOrderList.Create;'#10 +
+    'begin'#10 +
+    '  inherited Create;'#10 +
+    '  FItems := TObjectList<TOrder>.Create(True);'#10 +
+    '  FIndex := TDictionary<Integer, TOrder>.Create;'#10 +
+    'end;'#10 +
+    'procedure TOrderList.Clear;'#10 +
+    'begin'#10 +
+    'end;'#10 +
+    'end.';
+
+procedure TFreeFieldsTests.CreatedAndNotFreedIsFound;
+var
+  Fields: TArray<TOwnedField>;
+begin
+  Fields := Analyze(OrderList);
+  Assert.AreEqual(2, Integer(Length(Fields)));
+  Assert.AreEqual('FItems', Fields[0].Name);
+  Assert.AreEqual('TOrderList', Fields[0].ClassName);
+  Assert.AreEqual(3, Fields[0].ClassLine);
+  Assert.AreEqual('TOrderList.Create', Fields[0].CreatedIn);
+  Assert.AreEqual('TObjectList<TOrder>', Fields[0].CreatedType);
+  Assert.AreEqual(5, Fields[0].Range.StartPos.Line);
+  Assert.AreEqual(4, Fields[0].Range.StartPos.Character);
+  Assert.AreEqual(10, Fields[0].Range.EndPos.Character);
+  Assert.AreEqual(Ord(TOwnedFieldState.NotFreed), Ord(Fields[0].State));
+  Assert.AreEqual('FIndex', Fields[1].Name);
+  Assert.AreEqual(1, Fields[1].Order);
+end;
+
+procedure TFreeFieldsTests.OwnerInterfaceAndFreedAreSilent;
+const
+  Text =
+    'unit U;'#10 +
+    'interface'#10 +
+    'type'#10 +
+    '  TPanel2 = class(TCustomPanel)'#10 +
+    '  end;'#10 +
+    '  TView = class(TComponent)'#10 +
+    '  private'#10 +
+    '    FButton: TButton;'#10 +
+    '    FPanel: TPanel2;'#10 +
+    '    FLog: ILog;'#10 +
+    '    FList, FOther: TStringList;'#10 +
+    '    FLater: TStringList;'#10 +
+    '  public'#10 +
+    '    constructor Create(AOwner: TComponent); override;'#10 +
+    '    destructor Destroy; override;'#10 +
+    '  end;'#10 +
+    'implementation'#10 +
+    'constructor TView.Create(AOwner: TComponent);'#10 +
+    'begin'#10 +
+    '  inherited;'#10 +
+    '  FButton := TButton.Create(Self);'#10 +
+    '  FPanel := TPanel2.Create(FHost);'#10 +
+    '  FLog := TFileLog.Create;'#10 +
+    '  FList := TStringList.Create;'#10 +
+    '  Self.FOther := TStringList.Create;'#10 +
+    'end;'#10 +
+    'destructor TView.Destroy;'#10 +
+    'begin'#10 +
+    '  FList.Free;'#10 +
+    '  FreeAndNil(Self.FOther);'#10 +
+    '  inherited;'#10 +
+    'end;'#10 +
+    'end.';
+begin
+  // TButton: Owner Self; TPanel2: TComponent-Nachfahr mit Owner; ILog: Interface; FList, FOther: freigegeben;
+  // FLater: nicht erzeugt.
+  Assert.AreEqual(0, Integer(Length(Analyze(Text))));
+end;
+
+procedure TFreeFieldsTests.RecordWithCreateIsSilent;
+const
+  Text =
+    'unit U;'#10 +
+    'interface'#10 +
+    'type'#10 +
+    '  TPair = record'#10 +
+    '    constructor Create(A: Integer);'#10 +
+    '  end;'#10 +
+    '  TFoo = class'#10 +
+    '  private'#10 +
+    '    FWatch: TStopwatch;'#10 +
+    '    FPair: TPair;'#10 +
+    '    FNil: TButton;'#10 +
+    '  public'#10 +
+    '    constructor Create;'#10 +
+    '  end;'#10 +
+    'implementation'#10 +
+    'constructor TFoo.Create;'#10 +
+    'begin'#10 +
+    '  FWatch := TStopwatch.Create;'#10 +
+    '  FPair := TPair.Create(1);'#10 +
+    '  FNil := TButton.Create(nil);'#10 +
+    'end;'#10 +
+    'end.';
+var
+  Fields: TArray<TOwnedField>;
+begin
+  // Records schweigen; eine Komponente mit Owner nil gehört der Klasse.
+  Fields := Analyze(Text);
+  Assert.AreEqual(1, Integer(Length(Fields)));
+  Assert.AreEqual('FNil', Fields[0].Name);
+end;
+
+procedure TFreeFieldsTests.CreationInPrivateHelper;
+const
+  Text =
+    'unit U;'#10 +
+    'interface'#10 +
+    'type'#10 +
+    '  TFoo = class'#10 +
+    '  strict private'#10 +
+    '    FA: TList;'#10 +
+    '    FB: TList;'#10 +
+    '    procedure Init;'#10 +
+    '  private'#10 +
+    '    procedure InitMore;'#10 +
+    '  public'#10 +
+    '    constructor Create;'#10 +
+    '  end;'#10 +
+    'implementation'#10 +
+    'constructor TFoo.Create;'#10 +
+    'begin'#10 +
+    '  inherited Create;'#10 +
+    '  Init;'#10 +
+    'end;'#10 +
+    'procedure TFoo.Init;'#10 +
+    'begin'#10 +
+    '  FA := TList.Create;'#10 +
+    '  Self.InitMore();'#10 +
+    'end;'#10 +
+    'procedure TFoo.InitMore;'#10 +
+    'begin'#10 +
+    '  FB := TList.Create;'#10 +
+    'end;'#10 +
+    'end.';
+var
+  Fields: TArray<TOwnedField>;
+begin
+  Fields := Analyze(Text);
+  Assert.AreEqual(2, Integer(Length(Fields)));
+  Assert.AreEqual('TFoo.Init', Fields[0].CreatedIn);
+  Assert.AreEqual('TFoo.InitMore', Fields[1].CreatedIn);
+  FreeAll(Text, TFreeFieldsStyle.Free);
+end;
+
+procedure TFreeFieldsTests.PublicHelperIsNotFollowed;
+const
+  Text =
+    'unit U;'#10 +
+    'interface'#10 +
+    'type'#10 +
+    '  TFoo = class'#10 +
+    '  private'#10 +
+    '    FA: TList;'#10 +
+    '  public'#10 +
+    '    constructor Create;'#10 +
+    '    procedure Reset;'#10 +
+    '  end;'#10 +
+    'implementation'#10 +
+    'constructor TFoo.Create;'#10 +
+    'begin'#10 +
+    '  Reset;'#10 +
+    'end;'#10 +
+    'procedure TFoo.Reset;'#10 +
+    'begin'#10 +
+    '  FA := TList.Create;'#10 +
+    'end;'#10 +
+    'end.';
+begin
+  Assert.AreEqual(0, Integer(Length(Analyze(Text))));
+end;
+
+procedure TFreeFieldsTests.ReturnedOrPassedIsUnclear;
+const
+  Text =
+    'unit U;'#10 +
+    'interface'#10 +
+    'type'#10 +
+    '  TFoo = class'#10 +
+    '  private'#10 +
+    '    FA, FB, FC, FD: TList;'#10 +
+    '  public'#10 +
+    '    constructor Create;'#10 +
+    '    function TakeA: TList;'#10 +
+    '    function TakeB: TList;'#10 +
+    '    procedure Hand(AOther: TBar);'#10 +
+    '    procedure SetD(AValue: TList);'#10 +
+    '  end;'#10 +
+    'implementation'#10 +
+    'constructor TFoo.Create;'#10 +
+    'begin'#10 +
+    '  FA := TList.Create;'#10 +
+    '  FB := TList.Create;'#10 +
+    '  FC := TList.Create;'#10 +
+    '  FD := TList.Create;'#10 +
+    'end;'#10 +
+    'function TFoo.TakeA: TList;'#10 +
+    'begin'#10 +
+    '  Result := FA;'#10 +
+    'end;'#10 +
+    'function TFoo.TakeB: TList;'#10 +
+    'begin'#10 +
+    '  Exit(Self.FB);'#10 +
+    'end;'#10 +
+    'procedure TFoo.Hand(AOther: TBar);'#10 +
+    'begin'#10 +
+    '  AOther.Items := FC;'#10 +
+    'end;'#10 +
+    'procedure TFoo.SetD(AValue: TList);'#10 +
+    'begin'#10 +
+    '  FD := AValue;'#10 +
+    'end;'#10 +
+    'end.';
+var
+  Fields: TArray<TOwnedField>;
+  Field: TOwnedField;
+begin
+  Fields := Analyze(Text);
+  Assert.AreEqual(4, Integer(Length(Fields)));
+  for Field in Fields do
+    Assert.AreEqual(Ord(TOwnedFieldState.Unclear), Ord(Field.State), Field.Name);
+  Assert.AreEqual('wird von TFoo.TakeA zurückgegeben', Fields[0].Reason);
+  Assert.AreEqual('wird von TFoo.TakeB zurückgegeben', Fields[1].Reason);
+  Assert.AreEqual('wird in TFoo.Hand an AOther.Items übergeben', Fields[2].Reason);
+  Assert.AreEqual('wird in TFoo.SetD auch ohne Create zugewiesen', Fields[3].Reason);
+end;
+
+procedure TFreeFieldsTests.WritablePropertyIsUnclear;
+const
+  Text =
+    'unit U;'#10 +
+    'interface'#10 +
+    'type'#10 +
+    '  TFoo = class'#10 +
+    '  private'#10 +
+    '    FA, FB: TList;'#10 +
+    '  public'#10 +
+    '    constructor Create;'#10 +
+    '    property A: TList read FA write FA;'#10 +
+    '    property B: TList read FB;'#10 +
+    '  end;'#10 +
+    'implementation'#10 +
+    'constructor TFoo.Create;'#10 +
+    'begin'#10 +
+    '  FA := TList.Create;'#10 +
+    '  FB := TList.Create;'#10 +
+    '  FB := nil;'#10 +
+    '  FB := TList.Create;'#10 +
+    'end;'#10 +
+    'end.';
+var
+  Fields: TArray<TOwnedField>;
+begin
+  Fields := Analyze(Text);
+  Assert.AreEqual(2, Integer(Length(Fields)));
+  Assert.AreEqual(Ord(TOwnedFieldState.Unclear), Ord(Fields[0].State));
+  Assert.AreEqual('kann über die Property A von außen gesetzt werden', Fields[0].Reason);
+  // Nur lesbare Property und nil-Zuweisung lassen das Feld eigen.
+  Assert.AreEqual(Ord(TOwnedFieldState.NotFreed), Ord(Fields[1].State));
+end;
+
+procedure TFreeFieldsTests.ObjectListIsNormalField;
+var
+  Fields: TArray<TOwnedField>;
+begin
+  // Mit OwnsObjects gibt die Liste ihre Elemente frei, sich selbst aber nicht.
+  Fields := Analyze(OrderList);
+  Assert.AreEqual('TObjectList<TOrder>', Fields[0].TypeName);
+  Assert.AreEqual(Ord(TOwnedFieldState.NotFreed), Ord(Fields[0].State));
+end;
+
+procedure TFreeFieldsTests.MissingDestructorIsCreated;
+var
+  Result_: string;
+begin
+  Result_ := FreeAll(OrderList, TFreeFieldsStyle.Free);
+  Assert.AreEqual(
+    'unit U;'#10 +
+    'interface'#10 +
+    'type'#10 +
+    '  TOrderList = class'#10 +
+    '  private'#10 +
+    '    FItems: TObjectList<TOrder>;'#10 +
+    '    FIndex: TDictionary<Integer, TOrder>;'#10 +
+    '  public'#10 +
+    '    constructor Create;'#10 +
+    '    destructor Destroy; override;'#10 +
+    '    procedure Clear;'#10 +
+    '  end;'#10 +
+    'implementation'#10 +
+    'constructor TOrderList.Create;'#10 +
+    'begin'#10 +
+    '  inherited Create;'#10 +
+    '  FItems := TObjectList<TOrder>.Create(True);'#10 +
+    '  FIndex := TDictionary<Integer, TOrder>.Create;'#10 +
+    'end;'#10 +
+    #10 +
+    'destructor TOrderList.Destroy;'#10 +
+    'begin'#10 +
+    '  FIndex.Free;'#10 +
+    '  FItems.Free;'#10 +
+    '  inherited;'#10 +
+    'end;'#10 +
+    'procedure TOrderList.Clear;'#10 +
+    'begin'#10 +
+    'end;'#10 +
+    'end.', Result_);
+end;
+
+procedure TFreeFieldsTests.GenericClassKeepsParameters;
+const
+  Text =
+    'unit U;'#10 +
+    'interface'#10 +
+    'type'#10 +
+    '  TCache<T: class> = class'#10 +
+    '  private'#10 +
+    '    FItems: TList<T>;'#10 +
+    '  public'#10 +
+    '    constructor Create(ACapacity: Integer);'#10 +
+    '  end;'#10 +
+    'implementation'#10 +
+    'constructor TCache<T>.Create(ACapacity: Integer);'#10 +
+    'begin'#10 +
+    '  FItems := TList<T>.Create;'#10 +
+    'end;'#10 +
+    'end.';
+var
+  Result_: string;
+begin
+  Result_ := FreeAll(Text, TFreeFieldsStyle.Free);
+  Assert.IsTrue(Result_.Contains('destructor TCache<T>.Destroy;'#10'begin'#10'  FItems.Free;'#10'  inherited;'),
+    Result_);
+end;
+
+procedure TFreeFieldsTests.NoPublicSectionGetsOne;
+const
+  Text =
+    'unit U;'#10 +
+    'interface'#10 +
+    'type'#10 +
+    '  TFoo = class'#10 +
+    '  protected'#10 +
+    '    FA: TList;'#10 +
+    '    constructor Create;'#10 +
+    '  end;'#10 +
+    'implementation'#10 +
+    'constructor TFoo.Create;'#10 +
+    'begin'#10 +
+    '  FA := TList.Create;'#10 +
+    'end;'#10 +
+    'end.';
+var
+  Result_: string;
+begin
+  Result_ := FreeAll(Text, TFreeFieldsStyle.Free);
+  Assert.IsTrue(Result_.Contains('    constructor Create;'#10'  public'#10'    destructor Destroy; override;'#10 +
+    '  end;'), Result_);
+end;
+
+procedure TFreeFieldsTests.ExistingDestructorBeforeInherited;
+const
+  Text =
+    'unit U;'#10 +
+    'interface'#10 +
+    'type'#10 +
+    '  TFoo = class'#10 +
+    '  private'#10 +
+    '    FA, FB: TList;'#10 +
+    '  public'#10 +
+    '    constructor Create;'#10 +
+    '    destructor Destroy; override;'#10 +
+    '  end;'#10 +
+    'implementation'#10 +
+    'constructor TFoo.Create;'#10 +
+    'begin'#10 +
+    '  FA := TList.Create;'#10 +
+    '  FB := TList.Create;'#10 +
+    'end;'#10 +
+    'destructor TFoo.Destroy;'#10 +
+    'begin'#10 +
+    '  FB.Free;'#10 +
+    '  inherited Destroy;'#10 +
+    'end;'#10 +
+    'end.';
+var
+  Result_: string;
+begin
+  Result_ := FreeAll(Text, TFreeFieldsStyle.Free);
+  Assert.IsTrue(Result_.Contains('  FB.Free;'#10'  FA.Free;'#10'  inherited Destroy;'), Result_);
+end;
+
+procedure TFreeFieldsTests.ExistingDestructorWithoutInherited;
+const
+  Text =
+    'unit U;'#10 +
+    'interface'#10 +
+    'type'#10 +
+    '  TFoo = class'#10 +
+    '  private'#10 +
+    '    FA: TList;'#10 +
+    '  public'#10 +
+    '    constructor Create;'#10 +
+    '    destructor Destroy; override;'#10 +
+    '  end;'#10 +
+    'implementation'#10 +
+    'constructor TFoo.Create;'#10 +
+    'begin'#10 +
+    '  FA := TList.Create;'#10 +
+    'end;'#10 +
+    'destructor TFoo.Destroy;'#10 +
+    'begin'#10 +
+    'end;'#10 +
+    'end.';
+var
+  Result_: string;
+begin
+  Result_ := FreeAll(Text, TFreeFieldsStyle.Free);
+  Assert.IsTrue(Result_.Contains('destructor TFoo.Destroy;'#10'begin'#10'  FA.Free;'#10'end;'), Result_);
+end;
+
+procedure TFreeFieldsTests.DeclaredDestructorGetsBody;
+const
+  Text =
+    'unit U;'#10 +
+    'interface'#10 +
+    'type'#10 +
+    '  TFoo = class'#10 +
+    '  private'#10 +
+    '    FA: TList;'#10 +
+    '  public'#10 +
+    '    constructor Create;'#10 +
+    '    destructor Destroy; override;'#10 +
+    '  end;'#10 +
+    'implementation'#10 +
+    'constructor TFoo.Create;'#10 +
+    'begin'#10 +
+    '  FA := TList.Create;'#10 +
+    'end;'#10 +
+    'end.';
+var
+  Result_: string;
+begin
+  Result_ := FreeAll(Text, TFreeFieldsStyle.Free);
+  // Keine zweite Deklaration, nur der Rumpf.
+  Assert.AreEqual(1, Integer(Length(Result_.Split(['destructor Destroy;'])) - 1), Result_);
+  Assert.IsTrue(Result_.Contains('destructor TFoo.Destroy;'#10'begin'#10'  FA.Free;'#10'  inherited;'#10'end;'),
+    Result_);
+end;
+
+procedure TFreeFieldsTests.ReverseCreationOrder;
+const
+  Text =
+    'unit U;'#10 +
+    'interface'#10 +
+    'type'#10 +
+    '  TFoo = class'#10 +
+    '  private'#10 +
+    '    FC, FA, FB: TList;'#10 +
+    '    procedure Init;'#10 +
+    '  public'#10 +
+    '    constructor Create;'#10 +
+    '  end;'#10 +
+    'implementation'#10 +
+    'constructor TFoo.Create;'#10 +
+    'begin'#10 +
+    '  FA := TList.Create;'#10 +
+    '  Init;'#10 +
+    '  FC := TList.Create;'#10 +
+    'end;'#10 +
+    'procedure TFoo.Init;'#10 +
+    'begin'#10 +
+    '  FB := TList.Create;'#10 +
+    'end;'#10 +
+    'end.';
+var
+  Result_: string;
+begin
+  Result_ := FreeAll(Text, TFreeFieldsStyle.Free);
+  Assert.IsTrue(Result_.Contains('  FC.Free;'#10'  FB.Free;'#10'  FA.Free;'#10'  inherited;'), Result_);
+end;
+
+procedure TFreeFieldsTests.FreeAndNilStyle;
+var
+  Result_: string;
+begin
+  Result_ := FreeAll(OrderList, TFreeFieldsStyle.FreeAndNil);
+  Assert.IsTrue(Result_.Contains('  FreeAndNil(FIndex);'#10'  FreeAndNil(FItems);'#10'  inherited;'), Result_);
+  Assert.AreEqual(Ord(TFreeFieldsStyle.FreeAndNil), Ord(TFreeFields.StyleOf('freeAndNil')));
+  Assert.AreEqual(Ord(TFreeFieldsStyle.Free), Ord(TFreeFields.StyleOf('free')));
+end;
+
+procedure TFreeFieldsTests.ActionsOnFieldAndClass;
+var
+  Tree: TSyntaxTree;
+  Actions: TArray<TCodeAction>;
+begin
+  Tree := TPascalParser.Parse(OrderList);
+  try
+    // Feldzeile: Feld und ganze Klasse.
+    Actions := TFreeFields.Actions(Tree, OrderList, nil, 5, TFreeFieldsStyle.Free, True);
+    Assert.AreEqual(2, Integer(Length(Actions)));
+    Assert.AreEqual('Im Destruktor freigeben', Actions[0].Title);
+    Assert.AreEqual('Alle eigenen Objekte freigeben (2)', Actions[1].Title);
+    Assert.IsTrue(Parses(Apply(OrderList, Actions[0].Edits)));
+    // Ohne Feldaktion (die Regel liefert sie) bleibt die für die Klasse.
+    Actions := TFreeFields.Actions(Tree, OrderList, nil, 5, TFreeFieldsStyle.Free, False);
+    Assert.AreEqual(1, Integer(Length(Actions)));
+    // Kopfzeile der Klasse.
+    Actions := TFreeFields.Actions(Tree, OrderList, nil, 3, TFreeFieldsStyle.Free, True);
+    Assert.AreEqual(1, Integer(Length(Actions)));
+    Assert.AreEqual('Alle eigenen Objekte freigeben (2)', Actions[0].Title);
+    // Andere Zeile.
+    Actions := TFreeFields.Actions(Tree, OrderList, nil, 8, TFreeFieldsStyle.Free, True);
+    Assert.AreEqual(0, Integer(Length(Actions)));
+  finally
+    Tree.Free;
+  end;
+end;
+
+initialization
+  TDUnitX.RegisterTestFixture(TFreeFieldsTests);
+
+end.

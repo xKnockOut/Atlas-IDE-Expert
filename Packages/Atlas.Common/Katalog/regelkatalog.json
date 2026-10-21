@@ -854,6 +854,24 @@
       "description": "A forward declaration whose type is not used before its full declaration in the same type block. Quick fix: remove it.",
       "bad": "type\n  TNode = class;\n  TNode = class\n  end;",
       "good": "type\n  TNode = class\n  end;"
+    },
+    {
+      "id": "owned-field-not-freed",
+      "name": "Owned field not freed",
+      "category": "bug",
+      "severity": "warning",
+      "description": "An object field that the constructor (or a private method it calls) creates with TClass.Create is never freed in the class (no Free, FreeAndNil, Destroy or DisposeOf). Components created with an owner other than nil, interface and record fields are exempt; TObjectList and TObjectDictionary fields are normal fields. Quick fixes: free the field in the destructor, or free all owned objects of the class; a missing destructor is created with override and inherited. The objects are freed before inherited in reverse creation order, as Free or FreeAndNil (refactoring.freeFieldsStyle).",
+      "bad": "constructor TOrderList.Create;\nbegin\n  inherited Create;\n  FItems := TObjectList<TOrder>.Create(True);\nend;",
+      "good": "destructor TOrderList.Destroy;\nbegin\n  FItems.Free;\n  inherited;\nend;"
+    },
+    {
+      "id": "owned-field-free-unclear",
+      "name": "Unclear whether a created field must be freed",
+      "category": "bug",
+      "severity": "hint",
+      "description": "An object field created in the constructor and not freed is also returned (Result := FField, Exit(FField)), handed to a property of another object, assigned without Create or writable through a property (write FField). Whether the class still owns the object is up to the developer, so there is no quick fix.",
+      "bad": "function TCache.Take: TList;\nbegin\n  Result := FList;  // created in Create, never freed\nend;",
+      "good": "function TCache.Take: TList;\nbegin\n  Result := FList;\n  FList := nil;  // ownership passes to the caller\nend;"
     }
   ]
 }
