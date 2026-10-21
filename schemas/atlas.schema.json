@@ -222,6 +222,14 @@
                 "default": true,
                 "description": "Nur empty-statement: leere Blöcke begin … end mit Kommentar darin nicht melden (#912)."
               },
+              "countNames": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "default": ["Count", "Length"],
+                "description": "Nur loop-off-by-one: Namen, die eine Anzahl liefern (Property wie Count oder Funktion wie Length) (#913)."
+              },
               "mutatingMethods": {
                 "type": "array",
                 "items": {

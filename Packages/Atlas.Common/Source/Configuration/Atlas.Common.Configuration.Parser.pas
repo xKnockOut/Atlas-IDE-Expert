@@ -46,6 +46,8 @@ uses
 const
   /// <summary>Optionen von Prüfregeln, die true oder false sein müssen (#909).</summary>
   BooleanRuleOptions: array[0..0] of string = ('allowCommented');
+  /// <summary>Optionen von Prüfregeln, die eine Liste von Texten sein müssen (#909).</summary>
+  StringListRuleOptions: array[0..0] of string = ('countNames');
 
 type
   TValidator = class
@@ -166,6 +168,18 @@ begin
     FSettings.Rules := Rules;
 end;
 
+/// <summary>Array, dessen Einträge alle Texte sind.</summary>
+function IsStringList(ANode: TJsonNode): Boolean;
+var
+  Index: Integer;
+begin
+  Result := ANode.Kind = TJsonKind.Array_;
+  if Result then
+    for Index := 0 to ANode.Count - 1 do
+      if ANode[Index].Kind <> TJsonKind.String_ then
+        Exit(False);
+end;
+
 function TValidator.ParseRules(ANode: TJsonNode; const AName: string; out ARules: TArray<TRuleSetting>): Boolean;
 var
   Index: Integer;
@@ -220,7 +234,9 @@ begin
             CheckTodoKeywords(Value[Inner])
           // Schalter der Regeln (#909), z. B. allowCommented von empty-statement.
           else if (IndexStr(Value.Keys[Inner], BooleanRuleOptions) >= 0) and (Value[Inner].Kind <> TJsonKind.Boolean_) then
-            ReportNode(Value[Inner], Format('"%s" muss true oder false sein', [Value.Keys[Inner]]));
+            ReportNode(Value[Inner], Format('"%s" muss true oder false sein', [Value.Keys[Inner]]))
+          else if (IndexStr(Value.Keys[Inner], StringListRuleOptions) >= 0) and not IsStringList(Value[Inner]) then
+            ReportNode(Value[Inner], Format('"%s" muss eine Liste von Texten sein', [Value.Keys[Inner]]));
         Rule.Options := Copy(FText, Value.Start + 1, Value.Stop - Value.Start);
       end
       else

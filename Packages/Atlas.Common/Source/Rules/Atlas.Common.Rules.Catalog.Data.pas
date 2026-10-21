@@ -1179,6 +1179,27 @@ begin
     '          "description": "Do not report begin { intentionally empty } end."' + #10 +
     '        }' + #10 +
     '      ]' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "loop-off-by-one",' + #10 +
+    '      "name": "Loop runs one step too far",' + #10 +
+    '      "category": "bug",' + #10 +
+    '      "severity": "warning",' + #10 +
+    '      "group": "find-bugs",' + #10 +
+    '      "description": "for I := 0 to List.Count or to Length(A) over zero-based lists and arrays reads one element past the end when the body indexes List[I] or A[I]. With one-based strings it is the o' + 'ther way round: S[0] and for I := 0 to Length(S) read before the first character; {$ZEROBASEDSTRINGS ON} is taken into account. Quick fix: add - 1 or use High(A); for strings Low(S) and High(S). The o' + 'ption countNames lists the names that return a count.",' + #10 +
+    '      "bad": "for I := 0 to Kunden.Count do\n  Ausgabe(Kunden[I].Name);",' + #10 +
+    '      "good": "for I := 0 to Kunden.Count - 1 do\n  Ausgabe(Kunden[I].Name);",' + #10 +
+    '      "options": [' + #10 +
+    '        {' + #10 +
+    '          "name": "countNames",' + #10 +
+    '          "type": "string-list",' + #10 +
+    '          "default": [' + #10 +
+    '            "Count",' + #10 +
+    '            "Length"' + #10 +
+    '          ],' + #10 +
+    '          "description": "Names that return a count (property like Count or function like Length)."' + #10 +
+    '        }' + #10 +
+    '      ]' + #10 +
     '    }' + #10 +
     '  ]' + #10 +
     '}' + #10 +
@@ -1797,6 +1818,17 @@ begin
     '        {' + #10 +
     '          "name": "allowCommented",' + #10 +
     '          "description": "begin { absichtlich leer } end nicht melden."' + #10 +
+    '        }' + #10 +
+    '      ]' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "loop-off-by-one",' + #10 +
+    '      "name": "Schleife läuft einen Schritt zu weit",' + #10 +
+    '      "description": "for I := 0 to Liste.Count oder to Length(A) über nullbasierte Listen und Arrays greift im letzten Durchlauf hinter das Ende, wenn der Rumpf Liste[I] bzw. A[I] liest. Bei einsbasi' + 'erten Strings umgekehrt: S[0] und for I := 0 to Length(S) greifen vor das erste Zeichen; {$ZEROBASEDSTRINGS ON} wird beachtet. Schnellkorrektur: - 1 ergänzen bzw. High(A) verwenden, bei Strings Low(S)' + ' und High(S). Die Option countNames nennt die Namen, die eine Anzahl liefern.",' + #10 +
+    '      "options": [' + #10 +
+    '        {' + #10 +
+    '          "name": "countNames",' + #10 +
+    '          "description": "Namen, die eine Anzahl liefern (Property wie Count oder Funktion wie Length)."' + #10 +
     '        }' + #10 +
     '      ]' + #10 +
     '    }' + #10 +

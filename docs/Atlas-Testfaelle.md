@@ -3135,3 +3135,18 @@ Voraussetzung: Server läuft; Einstellungen auf Vorgabe.
 | ES6 | `while not Bereit do;` direkt vor `end` und `case … else; end` | Keine Meldung |
 | ES7 | `"allowCommented": "ja"` in atlas.json | Diagnose in atlas.json: „"allowCommented" muss true oder false sein“ |
 | ES8 | Seite *Prüfregeln › Fehler finden*, Regel `empty-statement` | Option `allowCommented` als Kontrollkästchen |
+
+## Schleife läuft einen Schritt zu weit (#913)
+
+Voraussetzung: Server läuft; Einstellungen auf Vorgabe; `Kunden: TList<TKunde>`, `Zahlen: TArray<Integer>`, `Text: string`.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| LO1 | `for I := 0 to Kunden.Count do Ausgabe(Kunden[I].Name);` | Gelbe Wellenlinie über `0 to Kunden.Count`: „Obergrenze Kunden.Count: der letzte Durchlauf greift hinter das Listenende (Index Count).“ (**Abnahme**) |
+| LO2 | Alt+Enter „„- 1“ ergänzen“ | `for I := 0 to Kunden.Count - 1 do`; ein Strg+Z nimmt es zurück |
+| LO3 | `for I := 0 to Length(Zahlen) do Zahlen[I] := 0;`, Korrektur | `for I := 0 to High(Zahlen) do` |
+| LO4 | `for I := 0 to Length(Text) do Ausgabe(Text[I]);` | „Strings beginnen bei 1: der erste Durchlauf greift auf Text[0].“; Korrektur `Low(Text) to High(Text)` |
+| LO5 | `if Text[0] = '#' then` | „Strings beginnen bei 1: Text[0] liegt vor dem ersten Zeichen.“; Korrektur `Text[Low(Text)]` |
+| LO6 | `{$ZEROBASEDSTRINGS ON}` am Unit-Anfang, LO5 und `for I := 1 to Length(Text)` | LO5 ohne Meldung; die Schleife meldet „Mit {$ZEROBASEDSTRINGS ON} sind Strings nullbasiert …“ |
+| LO7 | `for I := 0 to Kunden.Count do Ausgabe(IntToStr(I));` (kein `Kunden[I]`) | Keine Meldung |
+| LO8 | `"loop-off-by-one": {"countNames": ["Anzahl"]}`, `for I := 0 to Kunden.Anzahl do … Kunden[I]` | Meldung mit „Index Anzahl“; `Kunden.Count` wird nicht mehr geprüft |
