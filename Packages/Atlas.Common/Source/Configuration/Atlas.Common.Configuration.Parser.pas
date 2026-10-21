@@ -1245,7 +1245,7 @@ end;
 
 procedure TValidator.ReadIndex(ANode: TJsonNode);
 var
-  Index, Item: Integer;
+  Index, Item, Number: Integer;
   Key, Value: string;
 begin
   if ANode.Kind <> TJsonKind.Object_ then
@@ -1264,6 +1264,24 @@ begin
       ExpectBoolean(ANode[Index], Key, FSettings.IndexLibraryPaths)
     else if Key = 'usages' then
       ExpectBoolean(ANode[Index], Key, FSettings.IndexUsages)
+    else if Key = 'removeOrphans' then
+      ExpectBoolean(ANode[Index], Key, FSettings.IndexRemoveOrphans)
+    else if Key = 'cacheMaxAgeDays' then
+    begin
+      if (ANode[Index].Kind = TJsonKind.Number) and TryStrToInt(ANode[Index].Value, Number) and (Number >= 0) and
+        (Number <= 3650) then
+        FSettings.IndexCacheMaxAgeDays := Number
+      else
+        ReportNode(ANode[Index], '"index.cacheMaxAgeDays" muss eine ganze Zahl von 0 bis 3650 sein');
+    end
+    else if Key = 'cacheMaxMb' then
+    begin
+      if (ANode[Index].Kind = TJsonKind.Number) and TryStrToInt(ANode[Index].Value, Number) and (Number >= 0) and
+        (Number <= 1048576) then
+        FSettings.IndexCacheMaxMb := Number
+      else
+        ReportNode(ANode[Index], '"index.cacheMaxMb" muss eine ganze Zahl von 0 bis 1048576 sein');
+    end
     else if Key = 'exclude' then
     begin
       if ANode[Index].Kind <> TJsonKind.Array_ then
@@ -1856,6 +1874,9 @@ begin
       Result.IndexLibraryPaths := FileSettings.IndexLibraryPaths;
       Result.IndexUsages := FileSettings.IndexUsages;
       Result.IndexExclude := FileSettings.IndexExclude;
+      Result.IndexRemoveOrphans := FileSettings.IndexRemoveOrphans;
+      Result.IndexCacheMaxAgeDays := FileSettings.IndexCacheMaxAgeDays;
+      Result.IndexCacheMaxMb := FileSettings.IndexCacheMaxMb;
     end
     else if Key = 'usesCommand' then
       Result.UsesCommand := FileSettings.UsesCommand

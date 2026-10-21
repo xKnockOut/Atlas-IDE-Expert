@@ -70,6 +70,7 @@ Server und Claude-Code-Plugin tragen immer dieselbe Version.
 
 ### Tests
 - Alias `usesCommand` (#293), Formulardateien abgeleiteter Klassen (#44), `/header` am falschen Ort (#306), FireMonkey-Plattformansichten bei Sprung und Umbenennen (#87).
+- Index-Caches aufräumen (#905): Beim Laden eines Projekts löscht der Server die Caches gelöschter Projekte (etwa entfernter Branch-Ordner), Caches im alten Format und die Build-Datei gelöschter Projekte (`index.removeOrphans`, Vorgabe an). Liegt ein Projekt auf einem gerade nicht verbundenen Laufwerk, bleibt sein Cache. Caches, die länger als `index.cacheMaxAgeDays` Tage nicht benutzt wurden (Vorgabe 14, 0 = aus), gehen ebenfalls, auch Bibliotheks-Caches nicht mehr benutzter Delphi-Versionen. Die Höchstgröße des Cache-Ordners ist jetzt einstellbar (`index.cacheMaxMb`, Vorgabe 256, 0 = ohne Grenze); darüber gehen die am längsten nicht benutzten Caches zuerst. Alle drei stehen im Dialog „Weitere globale Einstellungen“. Das Server-Log nennt nur Anzahlen.
 
 ## [1.0.1] - 2026-10-21
 
