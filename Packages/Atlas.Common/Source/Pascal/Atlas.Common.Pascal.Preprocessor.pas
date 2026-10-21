@@ -12,6 +12,8 @@
 // - Bricht nie ab; Fehler (fehlendes $ENDIF, unbekannte Include-Datei,
 //   kaputter Ausdruck) landen in Issues.
 // - Inaktive Bereiche werden für das Abblenden im Editor (#23) gesammelt.
+// - Wirksame $DEFINE/$UNDEF stehen mit Stelle in DefineSites, für Zustand und
+//   Herkunft eines Symbols im Hover (#102).
 
 interface
 
@@ -71,6 +73,16 @@ type
     Active: Boolean;
   end;
 
+  /// <summary>Wirksames $DEFINE bzw. $UNDEF (#102), in Reihenfolge der Verarbeitung. RootPos ist die Stelle in der
+  /// Hauptdatei: die Direktive selbst oder die $I-Direktive, über die die Include-Datei eingebunden ist.</summary>
+  TDefineSite = record
+    FileIndex: Integer;
+    Range: TTextRange;
+    RootPos: TTextPosition;
+    Name: string;
+    Undefine: Boolean;
+  end;
+
   TPreprocessorResult = record
     /// <summary>Aktive Token ohne die verarbeiteten Direktiven.</summary>
     Tokens: TArray<TPascalToken>;
@@ -84,6 +96,8 @@ type
     Issues: TArray<TPreprocessorIssue>;
     /// <summary>Symbole am Ende der Datei (nach $DEFINE/$UNDEF).</summary>
     Defines: TArray<string>;
+    /// <summary>Wirksame $DEFINE und $UNDEF, auch aus Include-Dateien (#102).</summary>
+    DefineSites: TArray<TDefineSite>;
   end;
 
   TPascalPreprocessor = record
@@ -157,9 +171,12 @@ type
     FInactive: TList<TInactiveRange>;
     FConditionals: TList<TConditionalRange>;
     FIssues: TList<TPreprocessorIssue>;
+    FDefineSites: TList<TDefineSite>;
     FIncludeStack: TList<string>;
     // $I-Direktive der Hauptdatei, die gerade verarbeitet wird.
     FRootRange: TTextRange;
+    procedure AddDefineSite(AFileIndex: Integer; const AToken: TPascalToken; const AName: string;
+      AUndefine: Boolean);
     procedure AddIssue(AFileIndex: Integer; const AToken: TPascalToken; const AMessage: string;
       AKind: TPreprocessorIssueKind = TPreprocessorIssueKind.General);
     procedure ProcessText(const AText: string; AFileIndex, ADepth: Integer);
@@ -526,12 +543,14 @@ begin
   FInactive := TList<TInactiveRange>.Create;
   FConditionals := TList<TConditionalRange>.Create;
   FIssues := TList<TPreprocessorIssue>.Create;
+  FDefineSites := TList<TDefineSite>.Create;
   FIncludeStack := TList<string>.Create;
 end;
 
 destructor TPreprocessorRun.Destroy;
 begin
   FIncludeStack.Free;
+  FDefineSites.Free;
   FIssues.Free;
   FInactive.Free;
   FConditionals.Free;
@@ -540,6 +559,24 @@ begin
   FTokens.Free;
   FDefines.Free;
   inherited;
+end;
+
+procedure TPreprocessorRun.AddDefineSite(AFileIndex: Integer; const AToken: TPascalToken; const AName: string;
+  AUndefine: Boolean);
+var
+  Site: TDefineSite;
+begin
+  if AName = '' then
+    Exit;
+  Site.FileIndex := AFileIndex;
+  Site.Range := TTextRange.Create(AToken.StartPos, AToken.EndPos);
+  if AFileIndex = 0 then
+    Site.RootPos := AToken.StartPos
+  else
+    Site.RootPos := FRootRange.StartPos;
+  Site.Name := AName;
+  Site.Undefine := AUndefine;
+  FDefineSites.Add(Site);
 end;
 
 procedure TPreprocessorRun.AddIssue(AFileIndex: Integer; const AToken: TPascalToken; const AMessage: string;
@@ -769,9 +806,15 @@ begin
       else if not Active then
         Continue
       else if Name = 'DEFINE' then
-        FDefines.AddOrSetValue(UpperCase(FirstWord(Argument)), True)
+      begin
+        FDefines.AddOrSetValue(UpperCase(FirstWord(Argument)), True);
+        AddDefineSite(AFileIndex, Token, UpperCase(FirstWord(Argument)), False);
+      end
       else if Name = 'UNDEF' then
-        FDefines.Remove(UpperCase(FirstWord(Argument)))
+      begin
+        FDefines.Remove(UpperCase(FirstWord(Argument)));
+        AddDefineSite(AFileIndex, Token, UpperCase(FirstWord(Argument)), True);
+      end
       else if ((Name = 'I') and not IsSwitch(Argument)) or (Name = 'INCLUDE') then
         Include(IncludeName(Argument), AFileIndex, ADepth, Token)
       else
@@ -819,6 +862,7 @@ begin
   Result.InactiveRanges := FInactive.ToArray;
   Result.Conditionals := FConditionals.ToArray;
   Result.Issues := FIssues.ToArray;
+  Result.DefineSites := FDefineSites.ToArray;
   Defines := TList<string>.Create;
   try
     for Key in FDefines.Keys do

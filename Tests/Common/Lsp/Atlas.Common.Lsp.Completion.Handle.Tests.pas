@@ -14,6 +14,7 @@ uses
   Atlas.Common.Documents.Contract,
   Atlas.Common.Index.Contract,
   Atlas.Common.JsonRpc.Dispatcher,
+  Atlas.Common.Lsp.ConditionalSymbols,
   Atlas.Common.Lsp.Completion;
 
 type
@@ -97,6 +98,10 @@ type
     /// „Parameter abgleichen“; completeBlocks.docComment aus schaltet es ab.</summary>
     [Test]
     procedure DocBlockOffersParameterAdjust;
+    /// <summary>#102: Nach {$IFDEF  kommen die Symbole mit Herkunft, nicht geltende abgeschwächt;
+    /// directives.completion aus lässt die Liste leer.</summary>
+    [Test]
+    procedure DirectiveSymbolsWithOrigin;
   end;
 
 implementation
@@ -1083,6 +1088,41 @@ begin
   Answer := Complete(Source);
   try
     Assert.IsFalse(Labels(Answer).Contains('Parameter abgleichen'), Labels(Answer));
+  finally
+    Answer.Free;
+  end;
+end;
+
+procedure TLspCompletionHandleTests.DirectiveSymbolsWithOrigin;
+var
+  Answer: TJSONObject;
+  Enabled: Boolean;
+begin
+  Enabled := True;
+  FCompletion.SymbolsFor :=
+    function(const AUri: string): TConditionalContext
+    begin
+      Result := TConditionalContext.Default;
+      Result.CompletionEnabled := Enabled;
+      Result.HasDefines := True;
+      Result.Defines := ['DEBUG', 'MSWINDOWS'];
+      Result.Sources := TConditionalSymbols.SourcesOf(['DEBUG'],
+        [TPair<string, string>.Create('DEBUG', 'Konfiguration Debug')], ['MSWINDOWS'], 'Win64');
+    end;
+  Answer := Complete('unit Haupt;'#13#10'{$IFDEF |'#13#10'implementation'#13#10'end.');
+  try
+    Assert.AreEqual('DEBUG', ItemAt(Answer, 0).GetValue<string>('label'));
+    Assert.AreEqual('Konfiguration Debug (.dproj)', ItemAt(Answer, 0).GetValue<string>('detail'));
+    Assert.IsTrue(Labels(Answer).Contains('MSWINDOWS'), Labels(Answer));
+    Assert.IsTrue(Labels(Answer).Contains('LINUX'), Labels(Answer));
+    Assert.IsFalse(Labels(Answer).Contains('ALIGN'), Labels(Answer));
+  finally
+    Answer.Free;
+  end;
+  Enabled := False;
+  Answer := Complete('unit Haupt;'#13#10'{$IFDEF |'#13#10'implementation'#13#10'end.');
+  try
+    Assert.AreEqual(0, ItemCount(Answer), Labels(Answer));
   finally
     Answer.Free;
   end;

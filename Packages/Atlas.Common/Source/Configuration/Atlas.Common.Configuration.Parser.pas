@@ -74,6 +74,7 @@ type
     procedure ReadCodeLens(ANode: TJsonNode);
     procedure CheckTodoKeywords(ANode: TJsonNode);
     procedure ReadHints(ANode: TJsonNode);
+    procedure ReadDirectives(ANode: TJsonNode);
     procedure ReadStringLiteral(ANode: TJsonNode);
     procedure ReadMemberOrder(ANode: TJsonNode);
     procedure ReadTestUnits(ANode: TJsonNode);
@@ -624,6 +625,29 @@ begin
     else
       Report(ANode.KeyStarts[Index], ANode.KeyStarts[Index] + Length(Key) + 2,
         Format('Unbekannte Einstellung "codeLens.%s"', [Key]), False);
+  end;
+end;
+
+procedure TValidator.ReadDirectives(ANode: TJsonNode);
+var
+  Index: Integer;
+  Key: string;
+begin
+  if ANode.Kind <> TJsonKind.Object_ then
+  begin
+    ReportNode(ANode, '"directives" muss ein Objekt sein');
+    Exit;
+  end;
+  for Index := 0 to ANode.Count - 1 do
+  begin
+    Key := ANode.Keys[Index];
+    if Key = 'completion' then
+      ExpectBoolean(ANode[Index], Key, FSettings.Directives.Completion)
+    else if Key = 'hover' then
+      ExpectBoolean(ANode[Index], Key, FSettings.Directives.Hover)
+    else
+      Report(ANode.KeyStarts[Index], ANode.KeyStarts[Index] + Length(Key) + 2,
+        Format('Unbekannte Einstellung "directives.%s"', [Key]), False);
   end;
 end;
 
@@ -1523,6 +1547,8 @@ begin
         ReadCodeLens(Value)
       else if Key = 'hints' then
         ReadHints(Value)
+      else if Key = 'directives' then
+        ReadDirectives(Value)
       else if Key = 'stringLiteral' then
         ReadStringLiteral(Value)
       else if Key = 'memberOrder' then
@@ -1869,6 +1895,8 @@ begin
       Result.CodeLens := FileSettings.CodeLens
     else if Key = 'hints' then
       Result.Hints := FileSettings.Hints
+    else if Key = 'directives' then
+      Result.Directives := FileSettings.Directives
     else if Key = 'stringLiteral' then
       Result.StringLiteral := FileSettings.StringLiteral
     else if Key = 'memberOrder' then

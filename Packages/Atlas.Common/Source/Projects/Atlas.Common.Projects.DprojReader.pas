@@ -7,6 +7,9 @@
 // $(Name)-Verweisen; Imports (CodeGear.Delphi.Targets) werden nicht geladen.
 // Das genügt für Suchpfade, Defines, Namespaces und Hauptdatei, weil die IDE
 // diese Werte vollständig in die .dproj schreibt.
+// Für jedes Symbol in DCC_Define merkt sich der Reader, welche Ebene es
+// hinzugefügt hat (#102): Base, Base_<Plattform>, Cfg_n oder Cfg_n_<Plattform>
+// aus der Bedingung der PropertyGroup.
 
 interface
 
@@ -88,6 +91,38 @@ begin
   end;
 end;
 
+/// <summary>Ebene einer PropertyGroup aus ihrer Bedingung, z. B. "'$(Cfg_1_Win64)'!=''" →
+/// "Konfiguration Debug, Plattform Win64"; ohne Ebene "Projekt".</summary>
+function LevelOf(const ACondition, AConfig: string): string;
+var
+  Start, Stop: Integer;
+  Name, Platform: string;
+begin
+  Result := 'Projekt';
+  Start := Pos('$(Base', ACondition);
+  if Start = 0 then
+    Start := Pos('$(Cfg_', ACondition);
+  if Start = 0 then
+    Exit;
+  Stop := PosEx(')', ACondition, Start);
+  if Stop = 0 then
+    Exit;
+  Name := Copy(ACondition, Start + 2, Stop - Start - 2);
+  Platform := '';
+  if StartsText('Base_', Name) then
+    Platform := Copy(Name, 6, MaxInt)
+  else if StartsText('Cfg_', Name) and (PosEx('_', Name, 5) > 0) then
+    Platform := Copy(Name, PosEx('_', Name, 5) + 1, MaxInt);
+  if StartsText('Cfg_', Name) then
+  begin
+    Result := 'Konfiguration';
+    if AConfig <> '' then
+      Result := Result + ' ' + AConfig;
+  end;
+  if Platform <> '' then
+    Result := Result + ', Plattform ' + Platform;
+end;
+
 /// <summary>Sammelt Konfigurationen und aktivierte Plattformen aus dem ganzen Baum.</summary>
 procedure CollectTargets(AElement: TXmlElement; var AConfigs, APlatforms: TArray<string>);
 var
@@ -125,6 +160,9 @@ var
   Units: TList<TProjectUnit>;
   ProjectUnit: TProjectUnit;
   Include: string;
+  Origins: TArray<TPair<string, string>>;
+  Before: TArray<string>;
+  Define: string;
 begin
   try
     Root := TXmlReader.Parse(AText);
@@ -135,6 +173,7 @@ begin
   Directory := TProjectPaths.DirectoryOf(AFileName);
   Properties := TMSBuildProperties.Create(AOptions.FileExists);
   Units := TList<TProjectUnit>.Create;
+  Origins := nil;
   try
     if Root.Name <> 'Project' then
       raise EProjectError.CreateFmt('%s: Wurzelelement <Project> erwartet', [AFileName]);
@@ -161,8 +200,21 @@ begin
           if ((AOptions.Config <> '') and SameText(Item.Name, 'Config')) or
             ((AOptions.Platform <> '') and SameText(Item.Name, 'Platform')) then
             Continue;
-          if Properties.Evaluate(Item.Attribute('Condition')) then
-            Properties.SetValue(Item.Name, Properties.Expand(Trim(Item.Text)));
+          if not Properties.Evaluate(Item.Attribute('Condition')) then
+            Continue;
+          Before := nil;
+          if SameText(Item.Name, 'DCC_Define') then
+            Before := UniqueUpper(TProjectPaths.SplitList(Properties.Get('DCC_Define')));
+          Properties.SetValue(Item.Name, Properties.Expand(Trim(Item.Text)));
+          // Neue Symbole dieser Ebene (#102).
+          if SameText(Item.Name, 'DCC_Define') then
+            for Define in UniqueUpper(TProjectPaths.SplitList(Properties.Get('DCC_Define'))) do
+              if IndexStr(Define, Before) < 0 then
+              begin
+                SetLength(Origins, Length(Origins) + 1);
+                Origins[High(Origins)].Key := Define;
+                Origins[High(Origins)].Value := LevelOf(Group.Attribute('Condition'), Properties.Get('Config'));
+              end;
         end;
       end
       else if Group.Name = 'ItemGroup' then
@@ -190,6 +242,7 @@ begin
     Result.Config := Properties.Get('Config');
     Result.Platform := Properties.Get('Platform');
     Result.Defines := UniqueUpper(TProjectPaths.SplitList(Properties.Get('DCC_Define')));
+    Result.DefineOrigins := Origins;
     Result.SearchPaths := UniquePaths(Directory, TProjectPaths.SplitList(Properties.Get('DCC_UnitSearchPath')));
     Result.Namespaces := TProjectPaths.SplitList(Properties.Get('DCC_Namespace'));
     Result.Units := Units.ToArray;

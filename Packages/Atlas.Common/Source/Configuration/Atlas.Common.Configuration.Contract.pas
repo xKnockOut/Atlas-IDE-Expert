@@ -91,6 +91,15 @@ type
     class function Default: THintSettings; static;
   end;
 
+  /// <summary>Hilfen in Compiler-Direktiven (#102).</summary>
+  TDirectiveSettings = record
+    /// <summary>Vervollständigung: Direktivennamen, {$WARN}-Bezeichner und bedingte Symbole mit Herkunft.</summary>
+    Completion: Boolean;
+    /// <summary>Hover über Schaltern ({$R+}) und Symbolen ({$IFDEF DEBUG}: Zustand und Herkunft).</summary>
+    Hover: Boolean;
+    class function Default: TDirectiveSettings; static;
+  end;
+
   /// <summary>Hervorheben zusammengehöriger Schlüsselwörter (#307).</summary>
   THighlightSettings = record
     /// <summary>Blockpaare (begin/end, try/finally …) und Routinen.</summary>
@@ -368,6 +377,7 @@ type
     InlayHints: TInlayHintSettings;
     CodeLens: TCodeLensSettings;
     Hints: THintSettings;
+    Directives: TDirectiveSettings;
     Highlight: THighlightSettings;
     Compiler: TCompilerSettings;
     Completion: TCompletionSettings;
@@ -663,6 +673,14 @@ begin
   Result.Project := '';
 end;
 
+{ TDirectiveSettings }
+
+class function TDirectiveSettings.Default: TDirectiveSettings;
+begin
+  Result.Completion := True;
+  Result.Hover := True;
+end;
+
 { THintSettings }
 
 class function THintSettings.Default: THintSettings;
@@ -782,6 +800,7 @@ begin
   Result.InlayHints := TInlayHintSettings.Default;
   Result.CodeLens := TCodeLensSettings.Default;
   Result.Hints := THintSettings.Default;
+  Result.Directives := TDirectiveSettings.Default;
   Result.Highlight := THighlightSettings.Default;
   Result.Compiler := TCompilerSettings.Default;
   Result.Completion := TCompletionSettings.Default;

@@ -44,6 +44,8 @@ type
     [Test]
     procedure ReadsStringLiteral;
     [Test]
+    procedure ReadsDirectives;
+    [Test]
     procedure ReadsMemberOrder;
     [Test]
     procedure ReadsTestUnits;
@@ -667,6 +669,24 @@ begin
   Assert.AreEqual(3, Integer(Length(Issues)));
   Assert.AreEqual(Ord(TStringLiteralBreak.Space), Ord(Settings.StringLiteral.LineBreak));
   Assert.AreEqual(Ord(TStringLiteralStyle.Auto), Ord(Settings.StringLiteral.Style));
+end;
+
+procedure TConfigurationParserTests.ReadsDirectives;
+var
+  Settings: TServerSettings;
+  Issues: TArray<TConfigurationIssue>;
+begin
+  Settings := Parse('{}', Issues);
+  Assert.IsTrue(Settings.Directives.Completion);
+  Assert.IsTrue(Settings.Directives.Hover);
+  Settings := Parse('{"directives": {"completion": false, "hover": false}}', Issues);
+  Assert.AreEqual(0, Integer(Length(Issues)));
+  Assert.IsFalse(Settings.Directives.Completion);
+  Assert.IsFalse(Settings.Directives.Hover);
+  Settings := Parse('{"directives": {"x": 1}}', Issues);
+  Assert.AreEqual(1, Integer(Length(Issues)));
+  Parse('{"directives": 1}', Issues);
+  Assert.AreEqual(1, Integer(Length(Issues)));
 end;
 
 procedure TConfigurationParserTests.ReadsDfmPropertyRules;
