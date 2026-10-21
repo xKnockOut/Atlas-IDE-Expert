@@ -287,6 +287,7 @@ type
     FOutline: TCheckBox;
     FOutlineAlphabetical: TCheckBox;
     FOutlineFollowCursor: TCheckBox;
+    FOutlineConditions: TCheckBox;
     FBreadcrumbs: TCheckBox;
     FBreadcrumbsShowUnit: TCheckBox;
     // Mitlaufender Kopf (#506).
@@ -1645,6 +1646,7 @@ begin
   FOutline := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsOutline));
   FOutlineAlphabetical := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsOutlineAlphabetical));
   FOutlineFollowCursor := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsOutlineFollowCursor));
+  FOutlineConditions := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsOutlineConditions));
   // „Lesezeichen setzen…“ (#622).
   FBookmarkKey := AddKey(TAtlasStrings.Text(TAtlasTextId.BookmarksMenuAdd));
   // „Element ausblenden …“ am gezeichneten Element (#628).
@@ -2479,6 +2481,7 @@ begin
   FMarks.Bind(FOutline, ['Outline']);
   FMarks.Bind(FOutlineAlphabetical, ['OutlineAlphabetical']);
   FMarks.Bind(FOutlineFollowCursor, ['OutlineFollowCursor']);
+  FMarks.Bind(FOutlineConditions, ['OutlineConditions']);
   FMarks.Bind(FBreadcrumbs, ['Breadcrumbs']);
   FMarks.Bind(FBreadcrumbsShowUnit, ['BreadcrumbsShowUnit']);
   FMarks.Bind(FBreadcrumbsKey, ['BreadcrumbsKey']);
@@ -4413,6 +4416,7 @@ begin
   FOutline.Checked := ASettings.Outline;
   FOutlineAlphabetical.Checked := ASettings.OutlineAlphabetical;
   FOutlineFollowCursor.Checked := ASettings.OutlineFollowCursor;
+  FOutlineConditions.Checked := ASettings.OutlineConditions;
   FBreadcrumbs.Checked := ASettings.Breadcrumbs;
   FBreadcrumbsShowUnit.Checked := ASettings.BreadcrumbsShowUnit;
   FBreadcrumbsKey.Text := ShortCutToText(TShortCut(ASettings.BreadcrumbsKey));
@@ -4788,6 +4792,7 @@ begin
   ASettings.Outline := FOutline.Checked;
   ASettings.OutlineAlphabetical := FOutlineAlphabetical.Checked;
   ASettings.OutlineFollowCursor := FOutlineFollowCursor.Checked;
+  ASettings.OutlineConditions := FOutlineConditions.Checked;
   ASettings.Breadcrumbs := FBreadcrumbs.Checked;
   ASettings.BreadcrumbsShowUnit := FBreadcrumbsShowUnit.Checked;
   ASettings.BreadcrumbsKey := Integer(TextToShortCut(Trim(FBreadcrumbsKey.Text)));

@@ -35,6 +35,8 @@ type
     procedure OpensDeclarationAndImplementation;
     [Test]
     procedure SortButtonAndMessage;
+    [Test]
+    procedure ShowsConditionUnlessSwitchedOff;
   end;
 
 implementation
@@ -239,6 +241,22 @@ begin
   FFrame.SelectRow(RowOf(FFrame, 'Missing'));
   FFrame.ListMenu.OnPopup(FFrame.ListMenu);
   Assert.IsFalse(MenuItem(FFrame.ListMenu, TAtlasStrings.Text(TAtlasTextId.OutlineGoToImplementation)).Enabled);
+end;
+
+procedure TAtlasOutlineFrameTests.ShowsConditionUnlessSwitchedOff;
+var
+  List: TAtlasOutlineNodes;
+  Index: Integer;
+begin
+  // #845: Bedingung des aktiven Zweigs hinter dem Eintrag, abschaltbar.
+  List := FFrame.Nodes;
+  for Index := 0 to High(List) do
+    if List[Index].Name = 'Make' then
+      List[Index].Condition := 'CPUX64';
+  FFrame.SetNodes(List);
+  Assert.AreEqual('+ Make · class · CPUX64', FFrame.RowText(RowOf(FFrame, 'Make')));
+  FFrame.ShowConditions := False;
+  Assert.AreEqual('+ Make · class', FFrame.RowText(RowOf(FFrame, 'Make')));
 end;
 
 procedure TAtlasOutlineFrameTests.SortButtonAndMessage;

@@ -642,7 +642,7 @@ type
     UnwrapLine, UnwrapBeginEnd, UnwrapTryFinally, UnwrapTryExcept, UnwrapIfThen, UnwrapIfElse, UnwrapWith, UnwrapFor,
     UnwrapWhile, UnwrapRepeat, UnwrapIfDef, UnwrapRegion, UnwrapKeepFinally, UnwrapDropFinally, UnwrapKeepThen,
     UnwrapKeepElse, UnwrapKeepFirst, UnwrapKeepIfDefElse, UnwrapKeepBranch, UnwrapRaiseNote, UnwrapLoopNote,
-    UnwrapWithNote);
+    UnwrapWithNote, SettingsOutlineConditions);
 
   TAtlasStrings = class
   private class var
@@ -1974,7 +1974,8 @@ const
      '%d. Zweig behalten',
      'Achtung: Der except-Teil enthält %s raise.',
      'Bezüge auf die Schleifenvariable %s bleiben stehen.',
-     'with lässt sich nicht auflösen: %s'),
+     'with lässt sich nicht auflösen: %s',
+     'Bedingung des aktiven {$IFDEF}-Zweigs hinter dem Eintrag zeigen'),
     ('Enter to accept · Esc to close', '%d of %d', 'No matches for “%s”', 'Backspace widens the search',
      'No suggestions here', 'Esc closes', 'No details for this entry', 'Overload', 'Deprecated: %s', 'Deprecated.',
      'Inherited from %s', 'Inherited', 'optional, default %s', 'No overload with %d parameters.', '… %d more',
@@ -3207,7 +3208,8 @@ const
      'keep branch %d',
      'Caution: the except part contains %s raise statements.',
      'References to the loop variable %s stay.',
-     'with cannot be resolved: %s'));
+     'with cannot be resolved: %s',
+     'Show the condition of the active {$IFDEF} branch after the entry'));
 
 { TAtlasStrings }
 

@@ -1191,9 +1191,11 @@ begin
   Assert.IsTrue(Settings.Outline);
   Assert.IsFalse(Settings.OutlineAlphabetical);
   Assert.IsTrue(Settings.OutlineFollowCursor);
+  Assert.IsTrue(Settings.OutlineConditions);
   Settings.Outline := False;
   Settings.OutlineAlphabetical := True;
   Settings.OutlineFollowCursor := False;
+  Settings.OutlineConditions := False;
   Store := TMemoryStore.Create;
   Settings.Save(Store);
   Loaded := TAtlasPluginSettings.Defaults;
@@ -1201,6 +1203,7 @@ begin
   Assert.IsFalse(Loaded.Outline);
   Assert.IsTrue(Loaded.OutlineAlphabetical);
   Assert.IsFalse(Loaded.OutlineFollowCursor);
+  Assert.IsFalse(Loaded.OutlineConditions);
 end;
 
 procedure TAtlasPluginSettingsTests.BreadcrumbsOptions;

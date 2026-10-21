@@ -908,6 +908,8 @@ begin
   FDocuments.Subscribe(HandleDocumentEvent);
   FDispatcher.RegisterNotification(TLspConfiguration.DidChangeConfigurationMethod, HandleDidChangeConfiguration);
   FSyntaxDiagnostics.DefinesProvider := DefinesFor;
+  // Editor-Baum nur aus den aktiven Zweigen des Projekts (#845).
+  TSyntaxTreeCache.SetDefinesProvider(DefinesFor);
   // Zielplattform und Konfiguration für den Hinweis inaktiver Zweige (#615).
   FSyntaxDiagnostics.BuildTargetProvider :=
     function(const AUri: string; out APlatform, AConfig: string): Boolean
@@ -1914,6 +1916,8 @@ begin
   // Syntaxprüfung.
   StopCompiler;
   StopIndexThreads;
+  // Der Baum-Cache ist global; ohne Projekte gelten wieder die Vordefinitionen (#845).
+  TSyntaxTreeCache.SetDefinesProvider(nil);
   // Erst jetzt meldet sich niemand mehr beim Diagnoselog.
   if FDispatcher <> nil then
     FDispatcher.Observer := nil;
