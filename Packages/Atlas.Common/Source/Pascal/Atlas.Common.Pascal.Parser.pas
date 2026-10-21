@@ -19,6 +19,9 @@
 // kaputten Baum. Die Token der inaktiven Zweige bleiben in Tree.Tokens, Positionen
 // stimmen mit dem Text überein. ActiveDiagnostics liefert die Syntaxfehler dieses
 // Baums: inaktive Zweige dürfen Code eines anderen Compilers enthalten.
+// Mit Dateiname und Include-Resolver in den Optionen (#860) wirken $DEFINE aus
+// {$I datei.inc}; der Präprozessor-Lauf geht an den Aufrufer zurück, damit
+// Abblenden und Hinweise ihn nicht wiederholen.
 
 interface
 
@@ -47,12 +50,23 @@ type
     /// <summary>Wie oben, ohne Abbruch und Zweige.</summary>
     class function ParseActive(const AText: string; const ADefines: TArray<string>): TSyntaxTree; overload; static;
     /// <summary>
+    /// Baum aus den aktiven Zweigen unter AOptions (TPascalPreprocessor.EditorOptions mit Dateiname und
+    /// Include-Resolver, #860). AProcessed erhält den Präprozessor-Lauf; ohne bedingte Direktive und ohne
+    /// auflösbares $I läuft keiner (AProcessed.Files leer). Der Aufrufer gibt den Baum frei.
+    /// </summary>
+    class function ParseActive(const AText: string; const AOptions: TPreprocessorOptions;
+      const ACancellation: IPascalCancellation; out AProcessed: TPreprocessorResult): TSyntaxTree;
+      overload; static;
+    /// <summary>
     /// Syntaxfehler nur aus den aktiven Zweigen von $IFDEF/$IF/$ELSE unter ADefines; leer = Vordefinitionen
     /// von Delphi (Win32, aktuelle Version). False, wenn AText keine inaktiven Zweige hat; dann gelten die
     /// Diagnosen von Parse.
     /// </summary>
     class function ActiveDiagnostics(const AText: string; const ADefines: TArray<string>;
-      out ADiagnostics: TArray<TSyntaxDiagnostic>): Boolean; static;
+      out ADiagnostics: TArray<TSyntaxDiagnostic>): Boolean; overload; static;
+    /// <summary>Wie oben unter AOptions, etwa mit Include-Resolver und Dateiname (#860).</summary>
+    class function ActiveDiagnostics(const AText: string; const AOptions: TPreprocessorOptions;
+      out ADiagnostics: TArray<TSyntaxDiagnostic>): Boolean; overload; static;
     /// <summary>Steht ein {$I datei.inc} hinter APrevious (letztes Token ohne Kommentare und Direktiven) an
     /// der Stelle eines Werts, z. B. "V = {$I commit.inc};" (#849)? Dann gehört es als Ausdruck in den Baum.
     /// </summary>
@@ -2604,15 +2618,23 @@ class function TPascalParser.ParseActive(const AText: string; const ADefines: TA
   const ACancellation: IPascalCancellation; out AConditionals: TArray<TConditionalRange>): TSyntaxTree;
 var
   Processed: TPreprocessorResult;
+begin
+  Result := ParseActive(AText, TPascalPreprocessor.EditorOptions(ADefines), ACancellation, Processed);
+  AConditionals := TPascalPreprocessor.MainConditionals(Processed);
+end;
+
+class function TPascalParser.ParseActive(const AText: string; const AOptions: TPreprocessorOptions;
+  const ACancellation: IPascalCancellation; out AProcessed: TPreprocessorResult): TSyntaxTree;
+var
   Parser: TParser;
 begin
-  AConditionals := nil;
-  // Schnell: ohne bedingte Direktive gibt es nichts zu überspringen.
-  if not TPascalPreprocessor.HasConditionals(AText) then
+  AProcessed := Default(TPreprocessorResult);
+  // Schnell: ohne bedingte Direktive und ohne $I gibt es nichts zu überspringen und zu melden.
+  if not TPascalPreprocessor.HasConditionals(AText) and
+    not (Assigned(AOptions.ResolveInclude) and TPascalPreprocessor.HasIncludes(AText)) then
     Exit(Parse(AText, ACancellation));
-  Processed := TPascalPreprocessor.Process(AText, TPascalPreprocessor.EditorOptions(ADefines));
-  AConditionals := TPascalPreprocessor.MainConditionals(Processed);
-  Parser := TParser.Create(AText, ACancellation, TPascalPreprocessor.MainInactive(Processed));
+  AProcessed := TPascalPreprocessor.Process(AText, AOptions);
+  Parser := TParser.Create(AText, ACancellation, TPascalPreprocessor.MainInactive(AProcessed));
   try
     Result := Parser.Run;
   finally
@@ -2629,6 +2651,12 @@ end;
 
 class function TPascalParser.ActiveDiagnostics(const AText: string; const ADefines: TArray<string>;
   out ADiagnostics: TArray<TSyntaxDiagnostic>): Boolean;
+begin
+  Result := ActiveDiagnostics(AText, TPascalPreprocessor.EditorOptions(ADefines), ADiagnostics);
+end;
+
+class function TPascalParser.ActiveDiagnostics(const AText: string; const AOptions: TPreprocessorOptions;
+  out ADiagnostics: TArray<TSyntaxDiagnostic>): Boolean;
 var
   Skip: TArray<TTextRange>;
   Parser: TParser;
@@ -2637,8 +2665,7 @@ begin
   ADiagnostics := nil;
   if not TPascalPreprocessor.HasConditionals(AText) then
     Exit(False);
-  Skip := TPascalPreprocessor.MainInactive(TPascalPreprocessor.Process(AText,
-    TPascalPreprocessor.EditorOptions(ADefines)));
+  Skip := TPascalPreprocessor.MainInactive(TPascalPreprocessor.Process(AText, AOptions));
   if Skip = nil then
     Exit(False);
   Parser := TParser.Create(AText, nil, Skip);

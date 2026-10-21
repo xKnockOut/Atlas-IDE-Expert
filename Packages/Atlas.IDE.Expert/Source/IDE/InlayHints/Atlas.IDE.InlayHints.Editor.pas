@@ -33,6 +33,8 @@
 // - Typmarken (#453, Einstellung InlayTypeHints): der abgeleitete Typ von
 //   var X := …, const X = … und for var X in … als „: TStringList“ in derselben
 //   Pille wie die Parameternamen, hinter ihnen; ausblendbar je Codezeile.
+// - Include-Symbole (#860, Einstellung InlayDefineHints): hinter {$I datei.inc}
+//   „definiert COMPLIB_VCL“ in einer Pille; ausblendbar je Codezeile.
 // - Platz hinter dem Zeilenende (#509): teilt sich der Zeichner über
 //   TAtlasLineTail mit dem Fehlertext am Zeilenende.
 
@@ -136,7 +138,31 @@ uses
   Atlas.IDE.Foundation.Navigation,
   Atlas.Core.Diagnostics.MainThread,
   Atlas.Core.Editor.Elements,
-  Atlas.Core.Editor.LineTail;
+  Atlas.Core.Editor.LineTail,
+  Atlas.UI.Strings;
+
+/// <summary>Zeichnet ALabels als Pillen ab AX (Höhe AHeight ab ATop) und rückt AX hinter die letzte; liefert die
+/// Fläche aller Pillen, leer ohne.</summary>
+function DrawPills(ADC: HDC; const ALabels: TArray<string>; ATop, AHeight: Integer; var AX: Integer): TRect;
+var
+  Name: string;
+  Size: TSize;
+  Pill: TRect;
+begin
+  Result := TRect.Empty;
+  for Name in ALabels do
+  begin
+    GetTextExtentPoint32W(ADC, PChar(Name), Length(Name), Size);
+    Pill := TRect.Create(AX, ATop, AX + Size.cx + 8, ATop + AHeight + 2);
+    RoundRect(ADC, Pill.Left, Pill.Top, Pill.Right, Pill.Bottom, 6, 6);
+    TextOutW(ADC, Pill.Left + 4, Pill.Top + 1, PChar(Name), Length(Name));
+    AX := Pill.Right + 4;
+    if Result.IsEmpty then
+      Result := Pill
+    else
+      Result.Union(Pill);
+  end;
+end;
 
 { TAtlasEditorInlayHints.TEvents }
 
@@ -217,7 +243,7 @@ begin
     Exit;
   try
     if not TAtlasIdeSettings.InlayHintsOn and not TAtlasIdeSettings.InlayTypeHintsOn and
-      not TAtlasIdeSettings.BlockEndLabelsOn then
+      not TAtlasIdeSettings.InlayDefineHintsOn and not TAtlasIdeSettings.BlockEndLabelsOn then
     begin
       if FShowing then
       begin
@@ -349,8 +375,8 @@ end;
 procedure TAtlasEditorInlayHints.PaintLine(const Rect: TRect; const Stage: TPaintLineStage; const BeforeEvent: Boolean;
   var AllowDefaultPainting: Boolean; const Context: INTACodeEditorPaintContext);
 var
-  Names, Types: TArray<string>;
-  Name, Stored, EndText, EndLabel: string;
+  Names, Types, Defines: TArray<string>;
+  Stored, EndText, EndLabel: string;
   EndHint: TAtlasInlayHint;
   LineState: INTACodeEditorLineState;
   Line, TabWidth, X, Height, Top: Integer;
@@ -360,7 +386,8 @@ var
   DC: HDC;
   Saved: Integer;
   Size: TSize;
-  ShowNames, ShowTypes, ShowEnd: Boolean;
+  ShowNames, ShowTypes, ShowDefines, ShowEnd: Boolean;
+  Index: Integer;
   TailKey: string;
 begin
   // Durch die Sicherung abgeschaltet (#493).
@@ -372,14 +399,16 @@ begin
     Line := Context.LogicalLineNum - 1;
     Names := FStore.OnLine(Context.FileName, Line);
     Types := FStore.TypesOnLine(Context.FileName, Line);
+    Defines := FStore.DefinesOnLine(Context.FileName, Line);
     ShowEnd := FStore.EndLabelOn(Context.FileName, Line, EndText, EndLabel, EndHint);
-    if (Length(Names) = 0) and (Length(Types) = 0) and not ShowEnd then
+    if (Length(Names) = 0) and (Length(Types) = 0) and (Length(Defines) = 0) and not ShowEnd then
       Exit;
     // Erst hier: die meisten Zeilen haben keine Hinweise (P-10).
     ShowNames := (Length(Names) > 0) and TAtlasIdeSettings.InlayHintsOn;
     ShowTypes := (Length(Types) > 0) and TAtlasIdeSettings.InlayTypeHintsOn;
+    ShowDefines := (Length(Defines) > 0) and TAtlasIdeSettings.InlayDefineHintsOn;
     ShowEnd := ShowEnd and TAtlasIdeSettings.BlockEndLabelsOn;
-    if not ShowNames and not ShowTypes and not ShowEnd then
+    if not ShowNames and not ShowTypes and not ShowDefines and not ShowEnd then
       Exit;
     LineState := Context.LineState;
     if (LineState = nil) or (Context.EditView = nil) or (Context.EditView.Buffer = nil) or
@@ -395,9 +424,11 @@ begin
       ShowNames := False;
     if ShowTypes and TAtlasIdeElements.Hidden(TAtlasDrawnElement.InlayTypeHints, Context.FileName, Stored) then
       ShowTypes := False;
+    if ShowDefines and TAtlasIdeElements.Hidden(TAtlasDrawnElement.InlayDefineHints, Context.FileName, Stored) then
+      ShowDefines := False;
     if ShowEnd and TAtlasIdeElements.Hidden(TAtlasDrawnElement.BlockEndLabels, Context.FileName, EndText) then
       ShowEnd := False;
-    if not ShowNames and not ShowTypes and not ShowEnd then
+    if not ShowNames and not ShowTypes and not ShowDefines and not ShowEnd then
       Exit;
     Canvas := Context.Canvas;
     DC := Canvas.Handle;
@@ -426,39 +457,24 @@ begin
       Top := Rect.Top + Max(0, (Rect.Bottom - Rect.Top - Height - 2) div 2);
       if ShowNames then
       begin
-        Hints := TRect.Empty;
-        for Name in Names do
-        begin
-          GetTextExtentPoint32W(DC, PChar(Name), Length(Name), Size);
-          Pill := TRect.Create(X, Top, X + Size.cx + 8, Top + Height + 2);
-          RoundRect(DC, Pill.Left, Pill.Top, Pill.Right, Pill.Bottom, 6, 6);
-          TextOutW(DC, Pill.Left + 4, Pill.Top + 1, PChar(Name), Length(Name));
-          X := Pill.Right + 4;
-          if Hints.IsEmpty then
-            Hints := Pill
-          else
-            Hints.Union(Pill);
-        end;
+        Hints := DrawPills(DC, Names, Top, Height, X);
         TAtlasIdeElements.Painted(TAtlasDrawnElement.InlayHints, Context.FileName, Line, Stored, Hints,
           Context.EditView.TopRow, Rect.Height);
       end;
       // Typmarken (#453): „: TStringList“ in derselben Pille.
       if ShowTypes then
       begin
-        Hints := TRect.Empty;
-        for Name in Types do
-        begin
-          GetTextExtentPoint32W(DC, PChar(Name), Length(Name), Size);
-          Pill := TRect.Create(X, Top, X + Size.cx + 8, Top + Height + 2);
-          RoundRect(DC, Pill.Left, Pill.Top, Pill.Right, Pill.Bottom, 6, 6);
-          TextOutW(DC, Pill.Left + 4, Pill.Top + 1, PChar(Name), Length(Name));
-          X := Pill.Right + 4;
-          if Hints.IsEmpty then
-            Hints := Pill
-          else
-            Hints.Union(Pill);
-        end;
+        Hints := DrawPills(DC, Types, Top, Height, X);
         TAtlasIdeElements.Painted(TAtlasDrawnElement.InlayTypeHints, Context.FileName, Line, Stored, Hints,
+          Context.EditView.TopRow, Rect.Height);
+      end;
+      // Include-Symbole (#860): „definiert COMPLIB_VCL“ in der Sprache der IDE.
+      if ShowDefines then
+      begin
+        for Index := 0 to High(Defines) do
+          Defines[Index] := TAtlasStrings.Fmt(TAtlasTextId.InlayDefinesLabel, [Defines[Index]]);
+        Hints := DrawPills(DC, Defines, Top, Height, X);
+        TAtlasIdeElements.Painted(TAtlasDrawnElement.InlayDefineHints, Context.FileName, Line, Stored, Hints,
           Context.EditView.TopRow, Rect.Height);
       end;
       // Blockende-Beschriftung (#620): gedämpfter Text wie ein Kommentar, ohne Rahmen.

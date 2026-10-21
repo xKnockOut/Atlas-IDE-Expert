@@ -63,6 +63,7 @@ Alles Folgende ist in `main` umgesetzt. Funktionen mit *(experimentell)* sind ab
 - **Variante Records**: Felder wie `TRect.Left` oder `TMessage.WParam` stehen in Vervollständigung, Hover, Gehe zu und Gliederung, mit ihrem Zweig als Marke (#846)
 - **Helfer mit Vorfahr**: `class helper (TBaseHelper) for TFoo` wird als Helfer gelesen, und `Foo.` bietet auch die Mitglieder des Vorfahr-Helfers an (#848)
 - **Seltenere Syntax**: mehrere Einschränkungen je Typparameter, benannte OLE-Argumente (`Open(FileName := 'a.docx')`), Aufrufkonventionen ohne Semikolon, `cdecl varargs`, `assembler asm`, lokale Routinen in anonymen Methoden, `{$I datei.inc}` als Wert einer Konstanten und lange `else if`-Ketten ergeben keine Syntaxfehler; unter `{$SCOPEDENUMS ON}` brauchen Werte ihr Typpräfix, Mitglieder aus `{$I}` in einer Klasse gehören zur Klasse (#849)
+- **Defines aus Include-Dateien**: ein `{$DEFINE}` aus einer per `{$I}` eingebundenen Datei gilt für Abblenden, Gliederung, Prüfungen und Linter; ein Inlay Hint hinter `{$I}` nennt die Symbole, die die Datei definiert (#860)
 - **Dokumentationskommentare:** `///` erzeugt das XMLDoc-Gerüst mit Platzhaltern
 - **Anweisung vervollständigen** (Strg+Umschalt+Enter), **Muster fortsetzen** als Schattentext, **Kommentare fortsetzen** beim Enter
 - **Formatieren** nach eigenen Regeln (Strg+Umschalt+Alt+L), weil RAD Studio 13 keinen Formatierer mehr hat
