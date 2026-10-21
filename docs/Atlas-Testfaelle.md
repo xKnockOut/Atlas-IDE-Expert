@@ -3108,3 +3108,15 @@ Voraussetzung: Server läuft; Einstellungen auf Vorgabe.
 | SR4 | `// lsp-ignore: recursive-property-accessor` über der Zeile | Keine Meldung, kein Hinweis „Unbekannte Regelkennung“ |
 | SR5 | `"rules": {"setter-recursion": "off"}` bzw. `{"exclude": ["Alt/*.pas"]}` | Keine Meldung bzw. keine in `Alt/` |
 | SR6 | Fenster „Atlas-Prüfung“ | Befund in Gruppe „Fehler finden“, Kategorie Bug |
+
+## Vorrang von not übersehen (#911)
+
+Voraussetzung: Server läuft; Einstellungen auf Vorgabe; Unit mit `TZustand = (zsNeu, zsOffen, zsGesperrt)`.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| OP1 | `if not Zustand in [zsOffen, zsGesperrt] then` mit `Zustand: TZustand` | Gelbe Wellenlinie über `not Zustand in […]`: „„not“ gilt nur für Zustand, nicht für den in-Ausdruck. Gemeint ist vermutlich not (Zustand in […]).“ (**Abnahme**) |
+| OP2 | Alt+Enter „Klammern setzen: not (Zustand in […])“ | `if not (Zustand in [zsOffen, zsGesperrt]) then`; ein Strg+Z nimmt es zurück; Meldung weg |
+| OP3 | `if not Anzahl = 0 then` mit `Anzahl: Integer` | „„not“ kehrt die Ganzzahl Anzahl bitweise um, nicht den Vergleich. …“ |
+| OP4 | `if not Fertig = True then` mit `Fertig: Boolean` | Keine Meldung |
+| OP5 | `"rules": {"operator-precedence": "off"}` bzw. mit `exclude` | Keine Meldung bzw. keine in den ausgenommenen Dateien |

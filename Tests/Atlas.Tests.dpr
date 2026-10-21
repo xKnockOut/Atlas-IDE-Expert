@@ -112,6 +112,7 @@ uses
   Atlas.Common.Rules.Builtin.Deprecated.Tests in 'Common\Rules\Builtin\Atlas.Common.Rules.Builtin.Deprecated.Tests.pas',
   Atlas.Common.Rules.Builtin.ForwardDeclarations.Tests in 'Common\Rules\Builtin\Atlas.Common.Rules.Builtin.ForwardDeclarations.Tests.pas',
   Atlas.Common.Rules.Builtin.FreeFields.Tests in 'Common\Rules\Builtin\Atlas.Common.Rules.Builtin.FreeFields.Tests.pas',
+  Atlas.Common.Rules.Builtin.Expressions.Tests in 'Common\Rules\Builtin\Atlas.Common.Rules.Builtin.Expressions.Tests.pas',
   Atlas.Common.Rules.Builtin.Packages.Tests in 'Common\Rules\Builtin\Atlas.Common.Rules.Builtin.Packages.Tests.pas',
   Atlas.Common.Lsp.Baseline.Tests in 'Common\Lsp\Atlas.Common.Lsp.Baseline.Tests.pas',
   Atlas.Common.Lsp.SemanticTokens.Tests in 'Common\Lsp\Atlas.Common.Lsp.SemanticTokens.Tests.pas',
