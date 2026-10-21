@@ -56,6 +56,7 @@ type
     FTestUnitOf: TSlashTestUnitFunc;
     FRuleIdsOf: TSlashRuleIdsFunc;
     FUsesContextOf: TSlashUsesContextFunc;
+    FFindingsOf: TSlashFindingsFunc;
     function ClientWrites: Boolean;
     /// <summary>Schickt AEdit (wird übernommen) an den Client; nach Erfolg Reload und AAfter.</summary>
     procedure SendEdit(const AUri, ADescription: string; AEdit: TJSONObject; const AAfter: TProc); overload;
@@ -84,6 +85,7 @@ type
     procedure MoveCursor(const AUri: string; const APosition: TTextPosition);
     function RuleIdsAt(const AUri, AText: string; ALine: Integer; out AIds: TArray<string>): Boolean;
     function UsesContext(const AUri: string; out AContext: TUsesContext): Boolean;
+    function FindingsAt(const AUri, AText: string; ALine: Integer; out AFindings: TArray<TSlashFinding>): Boolean;
     /// <summary>Eine Änderung an einer Quelldatei (resourcestring in eine andere Unit, #473): im Editor über
     /// workspace/applyEdit in deren Puffer, ohne neu zu laden; ohne Editor ANewText auf die Platte in der
     /// Kodierung der Datei.</summary>
@@ -96,6 +98,9 @@ type
     property RuleIdsOf: TSlashRuleIdsFunc read FRuleIdsOf write FRuleIdsOf;
     /// <summary>Index und usesKeep (/sortuses, #297); ohne Zuweisung wird nur sortiert.</summary>
     property UsesContextOf: TSlashUsesContextFunc read FUsesContextOf write FUsesContextOf;
+    /// <summary>Regeltreffer einer Zeile mit Erklärung und sicherer Korrektur (/fix, /explain, #300); ohne
+    /// Zuweisung keine Prüfregeln.</summary>
+    property FindingsOf: TSlashFindingsFunc read FFindingsOf write FFindingsOf;
     /// <summary>Stellt Arbeit in die Nachrichtenschleife (TJsonRpcConnection.Queue). Reload und SelectBuild
     /// laufen nur dort (Code-Review A-03); ohne Zuweisung (Tests) sofort.</summary>
     property RunInLoop: TJsonRpcScheduler read FRunInLoop write FRunInLoop;
@@ -367,6 +372,13 @@ function TShellSlashHost.UsesContext(const AUri: string; out AContext: TUsesCont
 begin
   AContext := Default(TUsesContext);
   Result := Assigned(FUsesContextOf) and FUsesContextOf(AUri, AContext);
+end;
+
+function TShellSlashHost.FindingsAt(const AUri, AText: string; ALine: Integer;
+  out AFindings: TArray<TSlashFinding>): Boolean;
+begin
+  AFindings := nil;
+  Result := Assigned(FFindingsOf) and FFindingsOf(AUri, AText, ALine, AFindings);
 end;
 
 function TShellSlashHost.TestUnit(const AUri, AText: string; out ATarget: TSlashTestUnit): Boolean;

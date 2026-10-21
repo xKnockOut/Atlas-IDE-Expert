@@ -45,6 +45,9 @@ type
     function Entries: TArray<TRuleCatalogEntry>;
     /// <summary>Link zur Benutzerdokumentation der Regel.</summary>
     class function HelpUri(const AId: string): string; static;
+    /// <summary>Ausführliche Erklärung für /explain (#300): Kennung und Name, Beschreibung, Beispiel falsch und
+    /// richtig, Link zur Doku; Zeilen mit ALineBreak getrennt.</summary>
+    class function Explanation(const AEntry: TRuleCatalogEntry; const ALineBreak: string): string; static;
     class function CategoryName(ACategory: TRuleCategory): string; static;
     class function TryParseCategory(const AText: string; out ACategory: TRuleCategory): Boolean; static;
   end;
@@ -217,6 +220,20 @@ end;
 class function TRuleCatalog.HelpUri(const AId: string): string;
 begin
   Result := RuleDocumentationBaseUri + LowerCase(AId);
+end;
+
+class function TRuleCatalog.Explanation(const AEntry: TRuleCatalogEntry; const ALineBreak: string): string;
+begin
+  Result := AEntry.Id;
+  if AEntry.Name <> '' then
+    Result := Result + ': ' + AEntry.Name;
+  if AEntry.Description <> '' then
+    Result := Result + ALineBreak + AEntry.Description;
+  if AEntry.Bad <> '' then
+    Result := Result + ALineBreak + ALineBreak + 'Falsch:' + ALineBreak + AEntry.Bad;
+  if AEntry.Good <> '' then
+    Result := Result + ALineBreak + ALineBreak + 'Richtig:' + ALineBreak + AEntry.Good;
+  Result := Result + ALineBreak + ALineBreak + 'Mehr: ' + HelpUri(AEntry.Id);
 end;
 
 class function TRuleCatalog.CategoryName(ACategory: TRuleCategory): string;
