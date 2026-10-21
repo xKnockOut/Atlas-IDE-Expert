@@ -2497,3 +2497,4 @@ Voraussetzung für EX2 bis EX7: mindestens eine Einstellung trägt `x-experiment
 | SU14 | „Atlas-Suche statt IDE-Suche“ aus | Strg+F und F3 gehören wieder der IDE; Strg+Umschalt+Alt+F öffnet weiter die Atlas-Leiste |
 | SU15 | Helles und dunkles IDE-Thema wechseln, Leiste offen | Leiste folgt dem Thema (Felder, Kästchen, Knöpfe lesbar) |
 | SU16 | Leiste offen, Tastatur in der Leiste: Strg+A, Strg+C, Strg+V, Pfeile im Suchfeld | Wirken im Suchfeld, nicht im Editor |
+| SU17 | Zuletzt mit Bereich Methode gesucht; außerhalb jeder Methode (etwa im interface-Teil) einen Bezeichner markieren, F3 und Umschalt+F3 | Springt zum nächsten bzw. vorigen Vorkommen des markierten Bezeichners in der ganzen Unit; Meldung „außerhalb einer Methode, gesucht wird in der ganzen Unit“; weiteres F3 geht mit dem neuen Suchtext weiter |

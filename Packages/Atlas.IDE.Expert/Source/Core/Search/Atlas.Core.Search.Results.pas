@@ -9,6 +9,9 @@
 //   Zeilentext ohne Einzug; höchstens MaxEntries.
 // - RoutineName: kurzer Name einer Routine aus ihrer Kopfzeile für die
 //   Kopfzeile der Liste („Methode TFoo.Bar“).
+// - FollowSelection: F3 mit einzeiliger Markierung sucht nach dem markierten
+//   Text, wenn er nicht der letzte Suchtext ist (etwa ein Bezeichner außerhalb
+//   jeder Methode).
 
 interface
 
@@ -38,6 +41,11 @@ type
     /// <summary>„TFoo.Bar“ aus „class function TFoo.Bar(const A: Integer): Boolean;“; ohne Namen die Zeile.
     /// </summary>
     class function RoutineName(const ACaption: string): string; static;
+    /// <summary>Suche für F3 mit einzeiliger Markierung ASelected: Ist ein anderer Text markiert als zuletzt
+    /// gesucht, wird er der Suchtext (Bereich Auswahl wird Unit, Bezeichner-Modus nur für einen Bezeichner);
+    /// sonst bleibt ALast. AChanged: Suchtext gewechselt.</summary>
+    class function FollowSelection(const ALast: TAtlasSearchQuery; const ASelected: string;
+      out AChanged: Boolean): TAtlasSearchQuery; static;
   end;
 
 implementation
@@ -108,6 +116,37 @@ begin
   Result := Copy(Text, Start, Stop - Start);
   if Result = '' then
     Result := Text;
+end;
+
+class function TAtlasSearchResults.FollowSelection(const ALast: TAtlasSearchQuery; const ASelected: string;
+  out AChanged: Boolean): TAtlasSearchQuery;
+var
+  Same, Identifier: Boolean;
+  Index: Integer;
+begin
+  Result := ALast;
+  AChanged := False;
+  if (ASelected = '') or (Pos(#10, ASelected) > 0) or (Pos(#13, ASelected) > 0) then
+    Exit;
+  // Steht die Markierung auf einem Treffer der letzten Suche, geht F3 einfach weiter.
+  if ALast.Options.CaseSensitive and not ALast.Options.Identifier then
+    Same := ALast.Text = ASelected
+  else
+    Same := SameText(ALast.Text, ASelected);
+  if Same then
+    Exit;
+  AChanged := True;
+  Result.Text := ASelected;
+  if Result.Scope = TAtlasSearchScope.Selection then
+    Result.Scope := TAtlasSearchScope.UnitFile;
+  Result.Area := TAtlasSearchArea.Create(0, 0, 0, 0);
+  // Bezeichner-Modus findet nur Bezeichner; für „Foo.Bar“ oder „:=“ gilt die Textsuche.
+  Identifier := TTextChars.IsIdentStart(ASelected[1]);
+  for Index := 2 to Length(ASelected) do
+    if not TTextChars.IsIdentChar(ASelected[Index]) then
+      Identifier := False;
+  if not Identifier then
+    Result.Options.Identifier := False;
 end;
 
 end.
