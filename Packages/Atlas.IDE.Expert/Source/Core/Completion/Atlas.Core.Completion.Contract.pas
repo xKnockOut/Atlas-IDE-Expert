@@ -219,6 +219,12 @@ type
     Declaration: string;
     UnitName: string;
     Container: string;
+    /// <summary>Mitglied eines Class- bzw. Record-Helpers (#456): Container ist der Helper, das Panel zeigt
+    /// „Helper · Unit“.</summary>
+    IsHelper: Boolean;
+    /// <summary>Unit, die Enter in die uses einträgt (Helper aus nicht eingebundener Unit, #456); '' sonst.
+    /// </summary>
+    AddsUnit: string;
     /// <summary>public, protected, ... bzw. '' bei Symbolen außerhalb von Klassen.</summary>
     Visibility: string;
     Directives: TArray<string>;
@@ -291,7 +297,8 @@ end;
 
 function TAtlasItemDetails.IsEmpty: Boolean;
 begin
-  Result := (Declaration = '') and (Summary = '') and (UnitName = '') and (Availability = '') and (LossyFrom = '');
+  Result := (Declaration = '') and (Summary = '') and (UnitName = '') and (Availability = '') and (LossyFrom = '') and
+    (AddsUnit = '');
 end;
 
 end.

@@ -504,6 +504,7 @@ begin
     Result.Declaration := StringOf(TJSONObject(Atlas), 'declaration');
     Result.UnitName := StringOf(TJSONObject(Atlas), 'unit');
     Result.Container := StringOf(TJSONObject(Atlas), 'container');
+    Result.IsHelper := TJSONObject(Atlas).GetValue('helper') is TJSONTrue;
     Result.Visibility := StringOf(TJSONObject(Atlas), 'visibility');
     Result.IsDeprecated := TJSONObject(Atlas).GetValue('deprecated') <> nil;
     Result.DeprecatedText := StringOf(TJSONObject(Atlas), 'deprecated');

@@ -306,6 +306,13 @@ type
     /// <summary>Mitglieder hinter A.B. (samt geerbter) bzw. interface-Symbole, wenn die Kette eine Unit ist.</summary>
     function MemberCandidates(ATree: TSyntaxTree; const AFileName: string; const ANames: TArray<string>;
       AOffset: Integer): TArray<TResolvedSymbol>;
+    /// <summary>Typ der Kette A.B samt Vorfahren, nächster zuerst (#456): Ziele für Helper aus nicht
+    /// eingebundenen Units. Leer, wenn die Kette eine Unit oder ihr Typ unbekannt ist.</summary>
+    function ReceiverTypes(ATree: TSyntaxTree; const AFileName: string; const ANames: TArray<string>;
+      AOffset: Integer): TArray<TResolvedSymbol>;
+    /// <summary>Passt der Zieltyp ATarget eines Helpers (ggf. mit Unit-Präfix) zu AType? string und
+    /// UnicodeString gelten als gleich.</summary>
+    class function HelperTargets(const ATarget: string; const AType: TResolvedSymbol): Boolean; static;
     /// <summary>Kette A.B als Wert und ihr Typ (Aliase verfolgt), z. B. für Postfix-Vorlagen (#188).
     /// False, wenn die Kette nicht auflösbar ist; ATypeFound sagt, ob der Typ bekannt ist.</summary>
     function ChainType(ATree: TSyntaxTree; const AFileName: string; const ANames: TArray<string>;
@@ -2710,6 +2717,34 @@ begin
     Result := FPins[PinIndex].Extracted
   else
     Result := TIndexExtractor.Extract(ATree, AFileName);
+end;
+
+function TNameResolver.ReceiverTypes(ATree: TSyntaxTree; const AFileName: string; const ANames: TArray<string>;
+  AOffset: Integer): TArray<TResolvedSymbol>;
+var
+  Owner, Current, Ancestor: TResolvedSymbol;
+  Found: Boolean;
+  Depth: Integer;
+begin
+  Result := nil;
+  if not ChainType(ATree, AFileName, ANames, AOffset, Owner, Current, Found) or not Found then
+    Exit;
+  for Depth := 0 to MaxDepth do
+  begin
+    Result := Result + [Current];
+    if Current.Builtin or not AncestorOf(Current, Ancestor) then
+      Break;
+    Current := Ancestor;
+  end;
+end;
+
+class function TNameResolver.HelperTargets(const ATarget: string; const AType: TResolvedSymbol): Boolean;
+var
+  Name: string;
+begin
+  Name := Copy(ATarget, LastDelimiter('.', ATarget) + 1, MaxInt);
+  Result := SameText(Name, AType.Name) or
+    (MatchText(Name, ['string', 'UnicodeString']) and MatchText(AType.Name, ['string', 'UnicodeString']));
 end;
 
 function TNameResolver.ChainType(ATree: TSyntaxTree; const AFileName: string; const ANames: TArray<string>;
