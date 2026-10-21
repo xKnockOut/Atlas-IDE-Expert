@@ -78,6 +78,7 @@ type
     FOnAction: TAtlasHoverActionEvent;
     FOnUrl: TAtlasHoverUrlEvent;
     FOnProblemAction: TAtlasHoverProblemActionEvent;
+    FProblemActions: Boolean;
     FDoc: TAtlasDocView;
     /// <summary>Linke obere Ecke der Doku beim letzten Zeichnen bzw. Messen.</summary>
     FDocLeft: Integer;
@@ -98,6 +99,10 @@ type
     procedure TogglePublished(AToggle: TAtlasHoverPublishedToggle);
     /// <summary>Höhe neu nach dem Inhalt, Breite bleibt; wächst nach unten, über dem Wort nach oben.</summary>
     procedure Refit;
+    procedure SetProblemActions(AValue: Boolean);
+    /// <summary>Löst die Aktion der Klickfläche AHit (Index in FLayout.Hits) aus, wenn sie zu einem Problem gehört.
+    /// </summary>
+    function FireProblemAction(AHit: Integer): Boolean;
     function LayoutKey(AWidth: Integer): string;
     function Texts: TAtlasHoverTexts;
     /// <summary>Setzt FLayout für die Fensterbreite AWidth mit der jetzigen Doku-Höhe.</summary>
@@ -122,6 +127,16 @@ type
     function HasSelection: Boolean;
     /// <summary>Scrollt die Doku um ASteps Rasterstufen des Mausrads (negativ nach oben).</summary>
     function ScrollDoc(ASteps: Integer): Boolean;
+    /// <summary>Tastatur im Befund-Hover (#909): Tab bzw. Umschalt+Tab markiert die nächste bzw. vorige Aktion
+    /// unter einem Problem; False ohne Aktionen.</summary>
+    function StepProblemAction(AForward: Boolean): Boolean;
+    /// <summary>Enter: löst die per Tab markierte Aktion aus; False, wenn keine markiert ist.</summary>
+    function ActivateProblemAction: Boolean;
+    /// <summary>Alt+Enter: Schnellkorrektur des ersten Befunds mit Korrektur; False ohne.</summary>
+    function ApplyFix: Boolean;
+    function HasProblemActions: Boolean;
+    function HasFix: Boolean;
+    function ProblemActionMarked: Boolean;
     /// <summary>Zeigt AView unter AWord (Bildschirmrechteck des Bezeichners).</summary>
     procedure ShowContent(const AView: TAtlasHoverView; const AWord: TRect);
     /// <summary>Tauscht den Inhalt; Position bleibt, Breite und Höhe wachsen höchstens.</summary>
@@ -137,6 +152,8 @@ type
     property OnUrl: TAtlasHoverUrlEvent read FOnUrl write FOnUrl;
     /// <summary>Aktion unter einem uses-Hinweis (#621).</summary>
     property OnProblemAction: TAtlasHoverProblemActionEvent read FOnProblemAction write FOnProblemAction;
+    /// <summary>Aktionszeile unter Regelbefunden (hover.problemActions, #909).</summary>
+    property ProblemActions: Boolean read FProblemActions write SetProblemActions;
   end;
 
 implementation
@@ -399,6 +416,11 @@ begin
   Result.UsesRemove := TAtlasStrings.Text(TAtlasTextId.UsesRemove);
   Result.UsesRemoveAll := TAtlasStrings.Text(TAtlasTextId.UsesRemoveAll);
   Result.UsesMove := TAtlasStrings.Text(TAtlasTextId.UsesMove);
+  Result.KindError := TAtlasStrings.Text(TAtlasTextId.ProblemsKindError);
+  Result.KindWarning := TAtlasStrings.Text(TAtlasTextId.ProblemsKindWarning);
+  Result.KindInfo := TAtlasStrings.Text(TAtlasTextId.ProblemsKindInfo);
+  Result.Suppress := TAtlasStrings.Text(TAtlasTextId.ProblemsMenuSuppress);
+  Result.Configure := TAtlasStrings.Text(TAtlasTextId.ProblemsMenuConfigure);
   Result.Stale := TAtlasStrings.Text(TAtlasTextId.ProblemsStale);
   Result.DebugPending := TAtlasStrings.Text(TAtlasTextId.HoverDebugPending);
   Result.PublishedSummary := TAtlasStrings.Text(TAtlasTextId.PublishedSummary);
@@ -421,14 +443,16 @@ begin
   Result.PublishedVclNote := TAtlasStrings.Text(TAtlasTextId.PublishedVclNote);
   Result.Confidences := nil;
   SetLength(Result.Confidences, Length(FView.Problems));
+  // Hohe Konfidenz ist der Normalfall und bekommt keine eigene Zeile (#909).
   for Index := 0 to High(FView.Problems) do
-    Result.Confidences[Index] := TAtlasStrings.Confidence(FView.Problems[Index].Confidence);
+    if not SameText(FView.Problems[Index].Confidence, 'high') then
+      Result.Confidences[Index] := TAtlasStrings.Confidence(FView.Problems[Index].Confidence);
 end;
 
 function TAtlasHoverTip.LayoutKey(AWidth: Integer): string;
 begin
-  Result := Format('%d|%d|%d|%d|%d|%d|%d|%d|%d|%d', [AWidth, FDoc.Height, Ord(FDoc.IsEmpty), Ord(FDoc.HasSelection),
-    PPI, Font.Height, UIFont.Height, Integer(Colors.Surface), Integer(Colors.Text), Integer(Colors.Accent)]);
+  Result := Format('%d|%d|%d|%d|%d|%d|%d|%d|%d|%d|%d', [AWidth, FDoc.Height, Ord(FDoc.IsEmpty), Ord(FDoc.HasSelection),
+    Ord(FProblemActions), PPI, Font.Height, UIFont.Height, Integer(Colors.Surface), Integer(Colors.Text), Integer(Colors.Accent)]);
 end;
 
 procedure TAtlasHoverTip.BuildLayout(AWidth: Integer);
@@ -445,6 +469,7 @@ begin
   Input.HasDoc := not FDoc.IsEmpty;
   Input.DocHeight := FDoc.Height;
   Input.HasSelection := FDoc.HasSelection;
+  Input.ProblemActions := FProblemActions;
   FLayout := TAtlasHoverLayout.Build(Input, TTipMeasure.Create(Self));
   FLayoutKey := LayoutKey(AWidth);
   FDocLeft := FLayout.DocLeft;
@@ -694,9 +719,8 @@ end;
 
 procedure TAtlasHoverTip.MouseDown(Button: TMouseButton; Shift: TShiftState; X, Y: Integer);
 var
-  Index, ProblemIndex: Integer;
+  Index: Integer;
   Hit: TAtlasHoverHit;
-  ProblemAction: TAtlasHoverProblemAction;
 begin
   inherited;
   if Button <> mbLeft then
@@ -725,15 +749,75 @@ begin
       if Assigned(FOnAction) then
         FOnAction(Self, TAtlasHoverAction(Hit.Index));
     TAtlasHoverHitKind.ProblemAction:
-      if Assigned(FOnProblemAction) then
-      begin
-        TAtlasHoverLayout.DecodeProblemAction(Hit.Index, ProblemIndex, ProblemAction);
-        FOnProblemAction(Self, ProblemIndex, ProblemAction);
-      end;
+      FireProblemAction(Index);
     // Schalter und Abschnitte der published-Mitglieder (#110).
     TAtlasHoverHitKind.Published:
       TogglePublished(TAtlasHoverPublishedToggle(Hit.Index));
   end;
+end;
+
+procedure TAtlasHoverTip.SetProblemActions(AValue: Boolean);
+begin
+  if FProblemActions = AValue then
+    Exit;
+  FProblemActions := AValue;
+  FHot := -1;
+  FLayoutKey := '';
+  Invalidate;
+end;
+
+function TAtlasHoverTip.FireProblemAction(AHit: Integer): Boolean;
+var
+  ProblemIndex: Integer;
+  ProblemAction: TAtlasHoverProblemAction;
+begin
+  Result := (AHit >= 0) and (AHit <= High(FLayout.Hits)) and
+    (FLayout.Hits[AHit].Kind = TAtlasHoverHitKind.ProblemAction) and Assigned(FOnProblemAction);
+  if not Result then
+    Exit;
+  TAtlasHoverLayout.DecodeProblemAction(FLayout.Hits[AHit].Index, ProblemIndex, ProblemAction);
+  FOnProblemAction(Self, ProblemIndex, ProblemAction);
+end;
+
+function TAtlasHoverTip.HasProblemActions: Boolean;
+begin
+  Result := FLayout.NextProblemHit(-1, True) >= 0;
+end;
+
+function TAtlasHoverTip.HasFix: Boolean;
+begin
+  Result := FLayout.FixProblem >= 0;
+end;
+
+function TAtlasHoverTip.ProblemActionMarked: Boolean;
+begin
+  Result := (FHot >= 0) and (FHot <= High(FLayout.Hits)) and
+    (FLayout.Hits[FHot].Kind = TAtlasHoverHitKind.ProblemAction);
+end;
+
+function TAtlasHoverTip.StepProblemAction(AForward: Boolean): Boolean;
+var
+  Next: Integer;
+begin
+  Next := FLayout.NextProblemHit(FHot, AForward);
+  Result := Next >= 0;
+  if Result and (Next <> FHot) then
+  begin
+    FHot := Next;
+    Invalidate;
+  end;
+end;
+
+function TAtlasHoverTip.ActivateProblemAction: Boolean;
+begin
+  Result := ProblemActionMarked and FireProblemAction(FHot);
+end;
+
+function TAtlasHoverTip.ApplyFix: Boolean;
+begin
+  Result := HasFix and Assigned(FOnProblemAction);
+  if Result then
+    FOnProblemAction(Self, FLayout.FixProblem, TAtlasHoverProblemAction.Fix);
 end;
 
 procedure TAtlasHoverTip.Paint;

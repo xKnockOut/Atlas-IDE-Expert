@@ -2183,10 +2183,16 @@ begin
     begin
       TAtlasIdeEditorCommands.SwitchTestUnit;
     end;
-  // Aktionen unter uses-Hinweisen im Tooltip (#621): über die Code-Aktionen mit Kennung.
+  // Aktionen unter uses-Hinweisen (#621) und Regelbefunden (#909) im Tooltip: über die Code-Aktionen mit
+  // Kennung; „Regel einstellen…“ öffnet die Einstellungsseite auf der Regel.
   TAtlasEditorHover.OnProblemAction :=
     procedure(const AProblem: TAtlasProblem; const ATag: string)
     begin
+      if ATag = 'rule.configure' then
+      begin
+        TAtlasOptionsRegistration.ShowRule(AProblem.Code);
+        Exit;
+      end;
       TAtlasIdeEditorCommands.ApplyTagged(TLspRange.Create(AProblem.StartLine, AProblem.StartCharacter,
         AProblem.EndLine, AProblem.EndCharacter), ATag);
     end;
