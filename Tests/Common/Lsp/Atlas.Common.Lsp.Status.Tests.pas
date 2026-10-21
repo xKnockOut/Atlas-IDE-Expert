@@ -30,6 +30,9 @@ type
     procedure StatusAsMarkdownAndJson;
     [Test]
     procedure StatusShowsCacheAndOffloadMetrics;
+    /// <summary>#46: Konfiguration, Plattform, aktives und ausgewähltes Projekt je Arbeitsbereich.</summary>
+    [Test]
+    procedure StatusShowsProjectChoice;
     /// <summary>#261: Weg zum Compiler mit Grund und Ausweg im Status.</summary>
     [Test]
     procedure StatusShowsCompiler;
@@ -344,6 +347,37 @@ begin
     Assert.AreEqual<Int64>(1024 * 1024, Json.GetValue<Int64>('workspaces[0].libraryCacheBytes'));
     Assert.IsTrue(Json.GetValue<string>('workspaces[0].lastUpdate').StartsWith('2026-10-14T12:30:00'),
       Json.GetValue<string>('workspaces[0].lastUpdate'));
+  finally
+    Json.Free;
+  end;
+end;
+
+procedure TLspStatusTests.StatusShowsProjectChoice;
+var
+  Status: TServerStatus;
+  Workspace: TWorkspaceStatus;
+  Json: TJSONObject;
+begin
+  Workspace := Default(TWorkspaceStatus);
+  Workspace.Name := 'Kern';
+  Workspace.LastIndexMs := -1;
+  Assert.AreEqual('', Workspace.ProjectText);
+  Workspace.Project := 'C:\P\Kern.dproj';
+  Workspace.Config := 'Release';
+  Workspace.Platform := 'Win64';
+  Assert.AreEqual(' · Release/Win64', Workspace.ProjectText);
+  Workspace.BuildChosen := True;
+  Workspace.Active := True;
+  Workspace.Selected := True;
+  Status := Default(TServerStatus);
+  Status.Workspaces := [Workspace];
+  Assert.IsTrue(Pos('- Kern · Release/Win64 (gewählt) · aktiv in der IDE · ausgewählt: Index wird aufgebaut',
+    Status.ToMarkdown) > 0, Status.ToMarkdown);
+  Json := Status.ToJson;
+  try
+    Assert.AreEqual('Release', Json.GetValue<string>('workspaces[0].config'));
+    Assert.IsTrue(Json.GetValue<Boolean>('workspaces[0].buildChosen'));
+    Assert.IsTrue(Json.GetValue<Boolean>('workspaces[0].selected'));
   finally
     Json.Free;
   end;

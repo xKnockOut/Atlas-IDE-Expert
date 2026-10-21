@@ -80,6 +80,9 @@
         <DCCReference Include="Common\Documents\Atlas.Common.Documents.TextDocument.Tests.pas"/>
         <DCCReference Include="Common\Documents\Atlas.Common.Documents.FileEncoding.Tests.pas"/>
         <DCCReference Include="Common\Projects\Atlas.Common.Projects.Tests.pas"/>
+        <DCCReference Include="Common\Projects\Atlas.Common.Projects.PackageReader.Tests.pas"/>
+        <DCCReference Include="Common\Projects\Atlas.Common.Projects.PackageLocator.Tests.pas"/>
+        <DCCReference Include="Common\Projects\Atlas.Common.Projects.Selection.Tests.pas"/>
         <DCCReference Include="Common\Projects\Atlas.Common.Projects.DelphiVersions.Tests.pas"/>
         <DCCReference Include="Common\Projects\Atlas.Common.Projects.DprojEditor.Tests.pas"/>
         <DCCReference Include="Windows\Projects\Atlas.Windows.Projects.DelphiInstallation.Tests.pas"/>
@@ -157,6 +160,7 @@
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.Todos.Tests.pas"/>
         <DCCReference Include="Common\Rules\Builtin\Atlas.Common.Rules.Builtin.Recursion.Tests.pas"/>
         <DCCReference Include="Common\Rules\Builtin\Atlas.Common.Rules.Builtin.Deprecated.Tests.pas"/>
+        <DCCReference Include="Common\Rules\Builtin\Atlas.Common.Rules.Builtin.Packages.Tests.pas"/>
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.Baseline.Tests.pas"/>
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.SemanticTokens.Tests.pas"/>
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.WorkspaceSymbols.Tests.pas"/>

@@ -39,6 +39,7 @@ uses
   Atlas.Common.Rules.Builtin.Todos,
   Atlas.Common.Rules.Builtin.Recursion,
   Atlas.Common.Rules.Builtin.Deprecated,
+  Atlas.Common.Rules.Builtin.Packages,
   Atlas.Common.Rules.Builtin.Unresolved;
 
 function BuiltinRules: TArray<IRule>;
@@ -73,6 +74,7 @@ begin
     RegisterTodoRules(Registry);
     RegisterRecursionRules(Registry);
     RegisterDeprecatedRules(Registry);
+    RegisterPackageRules(Registry);
     Result := Registry.Rules;
   finally
     Registry.Free;
