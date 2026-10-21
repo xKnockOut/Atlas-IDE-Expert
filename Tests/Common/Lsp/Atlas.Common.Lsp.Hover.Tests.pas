@@ -56,6 +56,10 @@ type
     procedure ShowsConstantAndEnumValues;
     [Test]
     procedure ShowsDeprecation;
+    /// <summary>#38: Elemente von Mengenkonstanten, Basistyp und Anzahl bei Mengentypen, Text von
+    /// Resourcestrings auch an der Verwendungsstelle.</summary>
+    [Test]
+    procedure ShowsSetsAndResourceStrings;
     [Test]
     procedure HintsUnknownDataFieldNames;
   end;
@@ -475,6 +479,71 @@ begin
   Info := InfoAt('Alt;');
   Assert.AreEqual('**Veraltet**: Neu verwenden', Info.Deprecation);
   Assert.Contains(Info.ToMarkdown, '**Veraltet**: Neu verwenden');
+end;
+
+procedure TLspHoverTests.ShowsSetsAndResourceStrings;
+const
+  StilFile = 'C:\P\Stile.pas';
+  UnitStile =
+    'unit Stile;'#10 +
+    'interface'#10 +
+    'type'#10 +
+    '  TStil = (sFett, sKursiv, sUnter);'#10 +
+    '  TStile = set of TStil;'#10 +
+    'const'#10 +
+    '  Standard: TStile = [sFett,'#10 +
+    '    sKursiv];'#10 +
+    'resourcestring'#10 +
+    '  SGruss = ''Hallo'' + #13#10 +'#10 +
+    '    ''Welt'';'#10 +
+    'implementation'#10 +
+    'end.';
+  MainText =
+    'unit Haupt;'#10 +
+    'interface'#10 +
+    'uses Stile;'#10 +
+    'implementation'#10 +
+    'procedure Lauf;'#10 +
+    'var'#10 +
+    '  S: TStile;'#10 +
+    'begin'#10 +
+    '  S := Standard;'#10 +
+    '  Writeln(SGruss);'#10 +
+    'end;'#10 +
+    'end.';
+var
+  Index: ISymbolIndex;
+  Resolver: TNameResolver;
+  Tree: TSyntaxTree;
+  ReadText: THoverReadText;
+
+  function At(const AMarker: string): THoverInfo;
+  begin
+    Result := TLspHover.InfoAt(Resolver, Index, Tree, MainText, 'C:\P\Haupt.pas', PositionOf(MainText, AMarker, 1),
+      ReadText, '');
+  end;
+
+begin
+  Index := TSymbolIndex.Create;
+  Index.AddUnit(TIndexExtractor.ExtractText(UnitStile, StilFile, nil));
+  Resolver := TNameResolver.Create(Index);
+  Tree := TPascalParser.Parse(MainText);
+  ReadText :=
+    function(const AFileName: string; out AText: string): Boolean
+    begin
+      Result := SameText(AFileName, StilFile);
+      AText := UnitStile;
+    end;
+  try
+    Assert.AreEqual('[sFett, sKursiv] · 2 Elemente', At('Standard;').Value);
+    Assert.AreEqual('set of TStil · 3 mögliche Elemente', At('TStile;').Value);
+    Assert.AreEqual('''Hallo⏎Welt''', At('SGruss)').Value);
+    Assert.Contains(At('SGruss)').ToMarkdown, 'Wert: `''Hallo⏎Welt''`');
+  finally
+    ReadText := nil;
+    Tree.Free;
+    Resolver.Free;
+  end;
 end;
 
 procedure TLspHoverTests.HintsUnknownDataFieldNames;

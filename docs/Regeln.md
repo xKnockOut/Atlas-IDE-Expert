@@ -95,6 +95,7 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 | [`todo-comment`](#todo-comment) | Offener TODO-Kommentar | Code Smell | Hinweis |
 | [`component-palette-icon`](#component-palette-icon) | Registrierte Komponente ohne Palettensymbol | Code Smell | Hinweis |
 | [`unresolved-identifier`](#unresolved-identifier) | Nicht deklarierter Bezeichner | Bug | Warnung |
+| [`deprecated-symbol`](#deprecated-symbol) | Veraltetes Symbol | Code Smell | Hinweis |
 
 <a id="syntax"></a>
 ## syntax
@@ -2173,4 +2174,27 @@ begin
   Lst := TStringList.Create;
   Lst.Add('x');
 end;
+```
+
+<a id="deprecated-symbol"></a>
+## deprecated-symbol
+
+**Veraltetes Symbol** · Code Smell · Hinweis
+
+Eine Routine, ein Typ, eine Konstante oder ein Mitglied mit deprecated, platform oder experimental wird verwendet (wie Compilerwarnungen W1000, W1002 und W1003). Der Editor streicht den Namen durch; die Meldung nennt den Grund aus deprecated 'Grund'. Die Deklaration und der Kopf ihrer Implementierung werden nicht gemeldet.
+
+Mit Treffer:
+
+```pascal
+procedure Old; deprecated 'Use New';
+...
+Old;
+```
+
+Richtig:
+
+```pascal
+procedure New;
+...
+New;
 ```

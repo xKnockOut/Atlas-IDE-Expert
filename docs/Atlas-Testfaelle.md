@@ -2155,6 +2155,18 @@ Voraussetzung: VCL-Quellen über die Bibliothekspfade im Index.
 | DC9 | Kommentar wie in DC2 (Parameter fehlt), Cursor in eine `///`-Zeile des Blocks, Strg+Leer | Einziger Eintrag „Parameter abgleichen“; Enter ergänzt genau den fehlenden `<param>`, ein überzähliger wird zu `<!-- entfernt: … -->` (**Abnahme**) |
 | DC10 | Passt der Block zur Signatur, Strg+Leer in einer `///`-Zeile | Kein „Parameter abgleichen“; nach `<` weiter die XMLDoc-Tags |
 
+## Hover: Mengen, Resourcestrings, veraltete Symbole (#38)
+
+| Nr. | Schritt | Erwartet |
+|---|---|---|
+| HV1 | `const Stile: TFontStyles = [fsBold, fsItalic];`, Maus über `Stile` an einer Verwendung | „Wert: [fsBold, fsItalic] · 2 Elemente“ (**Abnahme**) |
+| HV2 | Maus über `TFontStyles` | „Wert: set of TFontStyle · 4 mögliche Elemente“ |
+| HV3 | `resourcestring SGruss = 'Hallo' + #13#10 + 'Welt';` über zwei Zeilen, Maus über `SGruss` an der Verwendung | „Wert: 'Hallo⏎Welt'“ (**Abnahme**) |
+| HV4 | `procedure Alt; deprecated 'Nutze Neu';` in einer anderen Unit, `Alt;` aufrufen | `Alt` durchgestrichen, Hinweis „"Alt" ist veraltet: Nutze Neu (deprecated-symbol)“; Hover nennt „Veraltet: Nutze Neu“ (**Abnahme**) |
+| HV5 | Konstante mit `platform`, Klasse mit `experimental` verwenden | „ist plattformspezifisch“ bzw. „ist experimentell“, durchgestrichen |
+| HV6 | Deklaration von `Alt` und `procedure Alt;` im implementation-Teil | Keine Meldung, nicht durchgestrichen |
+| HV7 | `"rules": {"deprecated-symbol": "off"}` in atlas.json | Keine Meldung und kein Durchstreichen mehr (**Abnahme**) |
+
 ## Symbole in Direktiven (#102)
 
 | Nr. | Schritt | Erwartet |
