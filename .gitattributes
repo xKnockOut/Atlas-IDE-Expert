@@ -10,3 +10,4 @@
 *.ps1      text eol=crlf
 *.res      binary
 *.bat      text eol=crlf
+EULA.txt   text eol=crlf

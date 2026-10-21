@@ -22,7 +22,8 @@ type
     StepUninstallEntryRemoved, StepFilesRemoved, StepFilesRemovedLater, StepDataRemoved, StepFailed,
     SettingsTitle, SettingsExported, SettingsImported, SettingsReset, SettingsNothing, SettingsUsage,
     SettingsFileMissing, SettingsFileInvalid, SettingsFailed, SettingsBackup, SettingsSkipped, SettingsOmitted,
-    SettingsRestart);
+    SettingsRestart, LicenseLabel,
+    LicenseAccept);
 {$SCOPEDENUMS OFF}
 
   TSetupTexts = class
@@ -92,7 +93,9 @@ const
     'Sicherung: %s',
     'Übersprungen (unbekannt, ungültig oder Zugangsdaten): %s',
     'Nicht exportiert (Zugangsdaten oder Benutzerpfad): %s',
-    'Eine laufende IDE übernimmt die Werte erst beim nächsten Start.');
+    'Eine laufende IDE übernimmt die Werte erst beim nächsten Start.',
+    'Lizenzvereinbarung (EULA):',
+    'Ich akzeptiere die Lizenzvereinbarung');
   English: array[TSetupTextId] of string = (
     'Atlas IDE Expert %s Setup',
     'Atlas IDE Expert Uninstall',
@@ -141,7 +144,9 @@ const
     'Backup: %s',
     'Skipped (unknown, invalid or credentials): %s',
     'Not exported (credentials or user path): %s',
-    'A running IDE picks up the values the next time it starts.');
+    'A running IDE picks up the values the next time it starts.',
+    'License agreement (EULA):',
+    'I accept the license agreement');
 
 { TSetupTexts }
 

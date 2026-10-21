@@ -3,7 +3,8 @@
 // Installer (#495) gegen eine Attrappe des Systems (Registry und Dateien im
 // Speicher): IDEs finden, nicht unterstützte zeigen, installieren,
 // aktualisieren, laufende IDEs erkennen, deinstallieren ohne Rest unter
-// „Known Packages“, Benutzerdaten nur auf Wunsch entfernen; dazu die Texte.
+// „Known Packages“, Benutzerdaten nur auf Wunsch entfernen, Zustimmung zur
+// Lizenzvereinbarung; dazu die Texte.
 
 interface
 
@@ -82,6 +83,14 @@ type
     procedure UninstallFromInstallDirDeletesLater;
     [Test]
     procedure TextsCoverEveryStepInBothLanguages;
+    [Test]
+    procedure LicenseNormalizesBomAndLineBreaks;
+    [Test]
+    procedure LicenseAskedUntilAccepted;
+    [Test]
+    procedure LicenseAskedAgainAfterChangeOrUninstall;
+    [Test]
+    procedure InstallCopiesLicense;
   end;
 
 implementation
@@ -90,6 +99,7 @@ uses
   System.SysUtils,
   Setup.Core.Ides,
   Setup.Core.Installer,
+  Setup.Core.License,
   Setup.Shell.Texts;
 
 const
@@ -774,6 +784,71 @@ begin
   TSetupTexts.Language := TSetupLanguage.English;
   Assert.AreEqual('Registered in D', TSetupTexts.StepText(TSetupStep.Make(TSetupStepKind.Registered, 'D')));
   TSetupTexts.Language := TSetupLanguage.German;
+end;
+
+procedure TSetupInstallerTests.LicenseNormalizesBomAndLineBreaks;
+begin
+  Assert.AreEqual('A'#13#10'B'#13#10#13#10'C', TSetupLicense.Normalize(#$FEFF'A'#10'B'#13#13#10'C'#10#10'  '));
+  Assert.AreEqual('', TSetupLicense.Normalize(#$FEFF#13#10));
+  // Gleicher Text mit anderen Zeilenumbrüchen gibt denselben Fingerabdruck.
+  Assert.AreEqual(TSetupLicense.Fingerprint('A'#13#10'B'), TSetupLicense.Fingerprint('A'#10'B'#10));
+  Assert.AreNotEqual(TSetupLicense.Fingerprint('A'#13#10'B'), TSetupLicense.Fingerprint('A'#13#10'C'));
+  Assert.AreEqual(64, Length(TSetupLicense.Fingerprint('A')));
+end;
+
+procedure TSetupInstallerTests.LicenseAskedUntilAccepted;
+var
+  Keep: ISetupSystem;
+begin
+  Keep := TFakeSystem.Create;
+  // Ohne EULA.txt (Entwicklerbuild) gibt es nichts zu bestätigen.
+  Assert.IsFalse(TSetupLicense.NeedsAcceptance(Keep, ''));
+  Assert.IsFalse(TSetupLicense.NeedsAcceptance(Keep, #13#10));
+  Assert.IsTrue(TSetupLicense.NeedsAcceptance(Keep, 'MIT'));
+  TSetupLicense.Accept(Keep, 'MIT');
+  Assert.IsFalse(TSetupLicense.NeedsAcceptance(Keep, 'MIT'#13#10));
+  Assert.AreEqual(TSetupLicense.Fingerprint('MIT'), Keep.ReadString(TSetupInstaller.SetupKey,
+    TSetupLicense.AcceptedValue));
+end;
+
+procedure TSetupInstallerTests.LicenseAskedAgainAfterChangeOrUninstall;
+var
+  Keep: ISetupSystem;
+  Installer: TSetupInstaller;
+begin
+  Keep := Prepared;
+  Installer := TSetupInstaller.Create(Keep, Paths, '1.0.0');
+  try
+    Assert.IsTrue(Installer.Install(Installer.Detect));
+    TSetupLicense.Accept(Keep, 'Fassung 1');
+    Assert.IsFalse(TSetupLicense.NeedsAcceptance(Keep, 'Fassung 1'));
+    Assert.IsTrue(TSetupLicense.NeedsAcceptance(Keep, 'Fassung 2'));
+    // Die Deinstallation entfernt Software\Atlas\Setup und damit die Zustimmung.
+    Assert.IsTrue(Installer.Uninstall([], False));
+    Assert.IsTrue(TSetupLicense.NeedsAcceptance(Keep, 'Fassung 1'));
+  finally
+    Installer.Free;
+  end;
+end;
+
+procedure TSetupInstallerTests.InstallCopiesLicense;
+var
+  Sys: TFakeSystem;
+  Keep: ISetupSystem;
+  Installer: TSetupInstaller;
+begin
+  Sys := Prepared;
+  Keep := Sys;
+  Installer := TSetupInstaller.Create(Keep, Paths, '1.0.0');
+  try
+    Assert.IsTrue(Installer.Install(Installer.Detect));
+    Assert.IsTrue(Sys.FileExists(Target + '\' + TSetupLicense.FileName));
+    Assert.IsTrue(Sys.FileExists(Target + '\LICENSE'));
+    Assert.IsTrue(Installer.Uninstall([], False));
+    Assert.IsFalse(Sys.FileExists(Target + '\' + TSetupLicense.FileName));
+  finally
+    Installer.Free;
+  end;
 end;
 
 initialization
