@@ -1205,6 +1205,16 @@
           "description": "Methods that change the list."
         }
       ]
+    },
+    {
+      "id": "use-after-free",
+      "name": "Object used after Free",
+      "category": "bug",
+      "severity": "error",
+      "group": "find-bugs",
+      "description": "After X.Free, X.Destroy, X.DisposeOf, FreeAndNil(X) or Dispose(X), X is used again without a new assignment: a method, field, index or X^, with X, and after Free also Assigned(X) (always True) or a second Free. The rule follows the data flow of the routine; an assignment to X, passing X to a routine, @X and after FreeAndNil a check for nil end the path, ways only through a possible exception are left out. Confidence high when release and access stand one after the other in the same block, otherwise medium. No automatic fix; the action jumps to the release.",
+      "bad": "Bericht.Free;\nProtokoll.Add('Seiten: ' + IntToStr(Bericht.Seiten));",
+      "good": "Protokoll.Add('Seiten: ' + IntToStr(Bericht.Seiten));\nBericht.Free;"
     }
   ]
 }

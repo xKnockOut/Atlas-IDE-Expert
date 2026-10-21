@@ -58,6 +58,8 @@ type
     [Test]
     procedure ValueArgumentIsRead;
     procedure MethodNamedExitIsOrdinaryCall;
+    [Test]
+    procedure ImplicitRaiseEdgesAreMarked;
   end;
 
 implementation
@@ -561,6 +563,38 @@ begin
     Assert.IsTrue(F.Graph.IsReachable(NodeNamed(F, 'Result')) = TFlowAnswer.Yes);
     Assert.AreEqual(0, Integer(Length(F.Graph.UnreachableStatements)));
     Assert.IsTrue(F.Graph.MayEndWithout('Result') = TFlowAnswer.No);
+  finally
+    F.Free;
+  end;
+end;
+
+procedure TControlFlowTests.ImplicitRaiseEdgesAreMarked;
+var
+  F: TFlowFixture;
+
+  function ImplicitEdges(ANode: TFlowNode): Integer;
+  var
+    Next: TFlowNode;
+  begin
+    Result := 0;
+    for Next in ANode.Successors do
+      if ANode.IsImplicitRaiseEdge(Next) then
+        Inc(Result);
+  end;
+
+begin
+  // Ausnahmewege einer Anweisung im try sind markiert (#915); raise und der normale Weg nicht.
+  F := Flow('  Vorher;'#13#10'  try'#13#10'    A;'#13#10'    Werfen;'#13#10'  except'#13#10'    C;'#13#10'  end;'#13#10 +
+    '  try'#13#10'    D;'#13#10'  finally'#13#10'    E;'#13#10'  end;'#13#10'  Result := 1;');
+  try
+    Assert.IsFalse(NodeNamed(F, 'Vorher').MayRaise, 'außerhalb von try');
+    Assert.AreEqual(0, ImplicitEdges(NodeNamed(F, 'Vorher')));
+    Assert.IsTrue(NodeNamed(F, 'A').MayRaise);
+    Assert.AreEqual(2, NodeNamed(F, 'A').Successors.Count);
+    Assert.AreEqual(1, ImplicitEdges(NodeNamed(F, 'A')), 'A: Weg zum except');
+    Assert.AreEqual(1, ImplicitEdges(NodeNamed(F, 'D')), 'D: Weg zur finally-Kopie für Ausnahmen');
+    Assert.IsFalse(NodeNamed(F, 'E').MayRaise, 'finally liegt außerhalb des try-Teils');
+    Assert.IsTrue(F.Graph.IsReachable(NodeNamed(F, 'Result')) = TFlowAnswer.Yes);
   finally
     F.Free;
   end;
