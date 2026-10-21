@@ -13,15 +13,18 @@
 // Jede Schleife verbraucht pro Durchlauf mindestens ein Token oder endet; der
 // Parser terminiert also immer.
 //
-// Direktiven und Kommentare überspringt der Parser. Den Baum baut er aus allen
-// Zweigen der bedingten Kompilierung (#15). Für die Syntaxfehler liest
-// ActiveDiagnostics dagegen nur die Token aktiver Zweige: inaktive Zweige
-// dürfen Code eines anderen Compilers oder gar kein Pascal enthalten.
+// Direktiven und Kommentare überspringt der Parser. Parse baut den Baum aus allen
+// Zweigen der bedingten Kompilierung (#15). ParseActive liest nur die Token
+// aktiver Zweige (#845): Zwei Rümpfe oder Köpfe je Plattform ergeben sonst einen
+// kaputten Baum. Die Token der inaktiven Zweige bleiben in Tree.Tokens, Positionen
+// stimmen mit dem Text überein. ActiveDiagnostics liefert die Syntaxfehler dieses
+// Baums: inaktive Zweige dürfen Code eines anderen Compilers enthalten.
 
 interface
 
 uses
   Atlas.Common.Pascal.Contract,
+  Atlas.Common.Pascal.Preprocessor,
   Atlas.Common.Pascal.SyntaxTree;
 
 type
@@ -33,6 +36,16 @@ type
     /// der Aufrufer prüft das Signal danach selbst.
     /// </summary>
     class function Parse(const AText: string; const ACancellation: IPascalCancellation = nil): TSyntaxTree; static;
+    /// <summary>
+    /// Baum nur aus den aktiven Zweigen unter ADefines (leer = Vordefinitionen, siehe
+    /// TPascalPreprocessor.EditorOptions; #845). AConditionals erhält die Zweige der Datei.
+    /// Der Aufrufer gibt den Baum frei.
+    /// </summary>
+    class function ParseActive(const AText: string; const ADefines: TArray<string>;
+      const ACancellation: IPascalCancellation; out AConditionals: TArray<TConditionalRange>): TSyntaxTree;
+      overload; static;
+    /// <summary>Wie oben, ohne Abbruch und Zweige.</summary>
+    class function ParseActive(const AText: string; const ADefines: TArray<string>): TSyntaxTree; overload; static;
     /// <summary>
     /// Syntaxfehler nur aus den aktiven Zweigen von $IFDEF/$IF/$ELSE unter ADefines; leer = Vordefinitionen
     /// von Delphi (Win32, aktuelle Version). False, wenn AText keine inaktiven Zweige hat; dann gelten die
@@ -48,13 +61,7 @@ uses
   System.SysUtils,
   System.Generics.Collections,
   Atlas.Common.Documents.Contract,
-  Atlas.Common.Pascal.Preprocessor,
   Atlas.Common.Pascal.Lexer;
-
-const
-  /// <summary>Vordefinitionen ohne Projekt: Delphi 13 für Win32.</summary>
-  DefaultPlatform = 'Win32';
-  DefaultCompilerVersion = 37.0;
 
 type
   /// <summary>Wo der Parser nach einem Fehler wieder aufsetzt.</summary>
@@ -2396,37 +2403,45 @@ begin
 end;
 
 
+class function TPascalParser.ParseActive(const AText: string; const ADefines: TArray<string>;
+  const ACancellation: IPascalCancellation; out AConditionals: TArray<TConditionalRange>): TSyntaxTree;
+var
+  Processed: TPreprocessorResult;
+  Parser: TParser;
+begin
+  AConditionals := nil;
+  // Schnell: ohne bedingte Direktive gibt es nichts zu überspringen.
+  if not TPascalPreprocessor.HasConditionals(AText) then
+    Exit(Parse(AText, ACancellation));
+  Processed := TPascalPreprocessor.Process(AText, TPascalPreprocessor.EditorOptions(ADefines));
+  AConditionals := TPascalPreprocessor.MainConditionals(Processed);
+  Parser := TParser.Create(AText, ACancellation, TPascalPreprocessor.MainInactive(Processed));
+  try
+    Result := Parser.Run;
+  finally
+    Parser.Free;
+  end;
+end;
+
+class function TPascalParser.ParseActive(const AText: string; const ADefines: TArray<string>): TSyntaxTree;
+var
+  Conditionals: TArray<TConditionalRange>;
+begin
+  Result := ParseActive(AText, ADefines, nil, Conditionals);
+end;
+
 class function TPascalParser.ActiveDiagnostics(const AText: string; const ADefines: TArray<string>;
   out ADiagnostics: TArray<TSyntaxDiagnostic>): Boolean;
 var
-  Options: TPreprocessorOptions;
-  Processed: TPreprocessorResult;
-  Inactive: TInactiveRange;
   Skip: TArray<TTextRange>;
   Parser: TParser;
   Tree: TSyntaxTree;
 begin
   ADiagnostics := nil;
-  // Schnell: ohne bedingte Direktive gibt es nichts zu überspringen.
-  if (Pos('{$IF', UpperCase(AText)) = 0) and (Pos('(*$IF', UpperCase(AText)) = 0) then
+  if not TPascalPreprocessor.HasConditionals(AText) then
     Exit(False);
-  Options := TPreprocessorOptions.Default;
-  if Length(ADefines) > 0 then
-  begin
-    Options.Defines := ADefines;
-    Options.CompilerVersion := TPascalPreprocessor.CompilerVersionFromDefines(ADefines);
-  end
-  else
-  begin
-    Options.Defines := TPascalPreprocessor.PredefinedSymbols(DefaultPlatform, DefaultCompilerVersion);
-    Options.CompilerVersion := DefaultCompilerVersion;
-  end;
-  Options.RTLVersion := Options.CompilerVersion;
-  Processed := TPascalPreprocessor.Process(AText, Options);
-  Skip := nil;
-  for Inactive in Processed.InactiveRanges do
-    if Inactive.FileIndex = 0 then
-      Skip := Skip + [Inactive.Range];
+  Skip := TPascalPreprocessor.MainInactive(TPascalPreprocessor.Process(AText,
+    TPascalPreprocessor.EditorOptions(ADefines)));
   if Skip = nil then
     Exit(False);
   Parser := TParser.Create(AText, nil, Skip);

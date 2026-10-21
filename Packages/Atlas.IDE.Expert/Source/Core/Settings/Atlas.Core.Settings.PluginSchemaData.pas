@@ -12,7 +12,7 @@ function AtlasPluginSchemaJson: string;
 implementation
 
 const
-  Lines: array[0..3652] of string = (
+  Lines: array[0..3661] of string = (
     '{',
     '  "$schema": "http://json-schema.org/draft-07/schema#",',
     '  "title": "Atlas-Plugin-Einstellungen",',
@@ -2671,6 +2671,15 @@ const
     '      "x-area": "editor",',
     '      "x-page": "Befehle",',
     '      "x-issue": "#537"',
+    '    },',
+    '    "OutlineConditions": {',
+    '      "description": "In der Gliederung hinter dem Eintrag die Bedingung des aktiven {$IFDEF}-Zweigs zeigen, in dem das Symbol oder der Rumpf der Routine steht (z. B. CPUX64).",',
+    '      "type": "boolean",',
+    '      "default": true,',
+    '      "x-key": "outline.conditions",',
+    '      "x-area": "editor",',
+    '      "x-page": "Befehle",',
+    '      "x-issue": "#845"',
     '    },',
     '    "Breadcrumbs": {',
     '      "description": "Brotkrumenleiste über dem Editor: Pfad des Carets (Typ › Methode › lokale Prozedur), jedes Glied öffnet ein Sprungmenü mit seinen Geschwistern.",',

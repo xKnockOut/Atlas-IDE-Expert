@@ -2956,6 +2956,22 @@ Voraussetzung: Einstellungen auf Vorgabe (Blockeinzug 2); Methode mit `if … th
 | NZ11 | Tasten unter Optionen › Befehle › Neue Zeile ober-/unterhalb ändern | Die neuen Tasten wirken, die Tastenübersicht prüft Konflikte |
 | NZ12 | „Neue Zeile ober-/unterhalb“ aus | Umschalt+Enter und Strg+Alt+Enter verhalten sich wie ohne Atlas, die Befehle fehlen in der Palette (**Abnahme**) |
 
+## Editor-Baum nur aus aktiven Zweigen (#845)
+
+Voraussetzung: Einstellungen auf Vorgabe; Projekt mit Win32 und Win64; Unit mit `procedure Foo;` im interface, deren Rumpf im implementation-Teil in `{$IFDEF CPUX64} begin … end; {$ELSE} asm … end; {$ENDIF}` steht, danach `procedure Bar;`; Klasse `TLog = class({$IFDEF MSWINDOWS}TFileLog{$ELSE}TStreamLog{$ENDIF})`; uses mit `{$IFDEF MSWINDOWS}Winapi.Windows,{$ENDIF} {$IFDEF POSIX}Posix.Unistd,{$ENDIF}`.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| AZ1 | Plattform Win64, Gliederung öffnen | Foo mit Marke `CPUX64`, Bar vorhanden, kein `initialization`-Eintrag (**Abnahme**) |
+| AZ2 | Strg+Klick auf einen Aufruf von `Bar` | Springt zu `procedure Bar` (**Abnahme**) |
+| AZ3 | Plattform auf Win32 umstellen, Gliederung ansehen | Gliederung neu, Foo mit der Marke des else-Zweigs (`not CPUX64`), Bar weiter da; der `asm`-Rumpf ist aktiv und ohne Syntaxfehler (**Abnahme**) |
+| AZ4 | Hover auf `TLog` | Vorfahr `TFileLog`, kein Feld `TStreamLog` |
+| AZ5 | Brotkrumenleiste in `Bar` | Pfad endet bei `Bar`, nicht unter `initialization` |
+| AZ6 | Code Lens und Inlay Hints in `Bar` ansehen | Erscheinen wie in anderen Routinen (vorher fehlte Bar im Baum) |
+| AZ7 | Code im inaktiven Zweig ansehen | Weiter abgeblendet, keine Syntaxfehler, keine Regeltreffer |
+| AZ8 | Optionen › Befehle › „Bedingung des aktiven {$IFDEF}-Zweigs hinter dem Eintrag zeigen“ aus | Gliederung ohne Marken |
+| AZ9 | Bezeichner umbenennen, der nur im aktiven Zweig steht | Umbenennt dort; Stellen im inaktiven Zweig bleiben (wie im Index) |
+
 ## Umschließung entfernen (#657)
 
 Voraussetzung: Einstellungen auf Vorgabe; Methode mit `try … finally … end` in einem `if … then begin … end`, darin eine `for`-Schleife; zweite Methode mit `with Edit1, Font do Caption := 'x';`; Abschnitt mit `{$IFDEF DEBUG} … {$ELSE} … {$ENDIF}` und `{$REGION}`.

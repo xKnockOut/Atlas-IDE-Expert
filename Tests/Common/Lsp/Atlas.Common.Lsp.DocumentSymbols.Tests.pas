@@ -29,6 +29,8 @@ type
     procedure ReturnsNullForUnknownDocument;
     [Test]
     procedure MarksVisibilityAndMethodFlags;
+    [Test]
+    procedure ActiveBranchesWithCondition;
   end;
 
 implementation
@@ -256,6 +258,67 @@ begin
       try
         Assert.IsNotNull(Response);
         Assert.AreEqual('U', Response.GetValue<string>('result[0].name'));
+      finally
+        Response.Free;
+      end;
+    finally
+      Request.Free;
+    end;
+  finally
+    Feature.Free;
+    Dispatcher.Free;
+  end;
+end;
+
+procedure TLspDocumentSymbolsTests.ActiveBranchesWithCondition;
+const
+  Code =
+    'unit U;'#10'interface'#10'type'#10'  TLog = class'#10'  {$IFDEF MSWINDOWS}'#10'    FHandle: THandle;'#10 +
+    '    FFile: Integer;'#10'  {$ENDIF}'#10'  {$IFDEF DEBUG}'#10'    FTrace: Integer;'#10'  {$ENDIF}'#10 +
+    '  end;'#10'function Foo: Integer;'#10'procedure Bar;'#10'implementation'#10'function Foo: Integer;'#10 +
+    '{$IFDEF MSWINDOWS}'#10'begin'#10'  Result := 1;'#10'end;'#10'{$ELSE}'#10'begin'#10'  Result := 2;'#10 +
+    'end;'#10'{$ENDIF}'#10'procedure Bar;'#10'begin'#10'end;'#10'end.';
+var
+  Store: IDocumentStore;
+  Feature: TLspDocumentSymbols;
+  Dispatcher: TJsonRpcDispatcher;
+  Request: TJSONObject;
+  Response: TJSONObject;
+  Symbols: TJSONArray;
+
+  function ConditionAt(const APath: array of string): string;
+  var
+    Symbol: TJSONObject;
+  begin
+    Symbol := FindSymbol(Symbols, APath);
+    Assert.IsNotNull(Symbol);
+    Result := Symbol.GetValue<string>('atlas.condition', '');
+  end;
+
+begin
+  // #845: Ohne Projekt gelten die Vordefinitionen (Win32, MSWINDOWS); DEBUG ist nicht gesetzt.
+  Store := TDocumentStore.Create;
+  Store.Open('file:///u.pas', 'objectpascal', 1, Code);
+  Dispatcher := TJsonRpcDispatcher.Create;
+  Feature := TLspDocumentSymbols.Create(Store);
+  try
+    Feature.Attach(Dispatcher);
+    Request := TJSONObject.ParseJSONValue(
+      '{"jsonrpc":"2.0","id":1,"method":"textDocument/documentSymbol",' +
+      '"params":{"textDocument":{"uri":"file:///u.pas"}}}') as TJSONObject;
+    try
+      Response := Dispatcher.DispatchMessage(Request);
+      try
+        Symbols := Response.GetValue('result') as TJSONArray;
+        // Bar steht im Baum, FTrace (DEBUG) nicht.
+        Assert.AreEqual('U:2(interface:3(TLog:5(FHandle:8,FFile:8),Foo:12,Bar:12),' +
+          'implementation:3(Foo:12,Bar:12))', Outline(Symbols));
+        // Nur das erste Symbol im Zweig trägt die Bedingung, die Klasse nicht.
+        Assert.AreEqual('MSWINDOWS', ConditionAt(['U', 'interface', 'TLog', 'FHandle']));
+        Assert.AreEqual('', ConditionAt(['U', 'interface', 'TLog']));
+        // Der Rumpf von Foo steht im Zweig, die Routine davor.
+        Assert.AreEqual('MSWINDOWS', ConditionAt(['U', 'implementation', 'Foo']));
+        Assert.AreEqual('', ConditionAt(['U', 'implementation', 'Bar']));
       finally
         Response.Free;
       end;

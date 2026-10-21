@@ -41,6 +41,9 @@ type
     class function Refresh(const AView: IOTAEditView): TAtlasOutlineSnapshot; static;
     /// <summary>Gemerkten Stand der Datei vergessen (nächstes Refresh fragt sofort).</summary>
     class procedure Invalidate(const AFileName: string); static;
+    /// <summary>Alle gemerkten Stände vergessen, z. B. nach einem Wechsel von Plattform oder Konfiguration:
+    /// Der Server baut den Baum dann aus anderen {$IFDEF}-Zweigen (#845).</summary>
+    class procedure InvalidateAll; static;
     /// <summary>Pascal-Quelltext (.pas, .dpr, .dpk, .inc, .pp)?</summary>
     class function IsPascal(const AFileName: string): Boolean; static;
   end;
@@ -180,6 +183,12 @@ class procedure TAtlasIdeOutlineCache.Invalidate(const AFileName: string);
 begin
   if Entries <> nil then
     Entries.Remove(Key(AFileName));
+end;
+
+class procedure TAtlasIdeOutlineCache.InvalidateAll;
+begin
+  if Entries <> nil then
+    Entries.Clear;
 end;
 
 class function TAtlasIdeOutlineCache.Refresh(const AView: IOTAEditView): TAtlasOutlineSnapshot;
