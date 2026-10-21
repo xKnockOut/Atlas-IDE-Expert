@@ -1,9 +1,15 @@
 ﻿unit Atlas.Common.Editing.MaintenanceCommands;
 
 // Schnellbefehle für Pflege (#297) im Rahmen aus #293:
-//   /sortuses             uses-Listen der Unit sortieren (doppelte entfernen)
-//   /ignore regel [Grund] // lsp-ignore: regel -- Grund für die Zeile darunter
-//   /todo Text            // TODO : Text im Format der IDE-TODO-Liste
+//   /sortuses             uses-Listen der Unit sortieren (doppelte entfernen); mit Index
+//                         auch ungenutzte Units streichen, solche mit initialization
+//                         und die aus usesKeep bleiben (#284, sortUsesRemoveUnused)
+//   /ignore regel [Grund] // lsp-ignore: regel -- Grund für die Zeile darunter; nur
+//                         Regeln, die dort treffen, sonst ein Hinweis
+//   /todo [-oName] [-cKat] Text
+//                         // TODO -oName -cKat : Text im Format der IDE-TODO-Liste;
+//                         Name aus todoOwner bzw. git config user.name, Kategorie aus
+//                         todoCategory
 //   /doc                  XML-Doc-Gerüst für die Routine darunter
 //   /log                  Protokollzeile mit Unit- und Routinennamen (slashCommands.logCall, #304)
 
@@ -11,6 +17,10 @@ interface
 
 uses
   Atlas.Common.Editing.SlashCommands;
+
+const
+  /// <summary>Hinweis, wenn /ignore eine Regel nennt, die in der Zeile darunter nichts meldet.</summary>
+  IgnoreNoHitHint = 'Regel %s meldet in der Zeile darunter nichts';
 
 /// <summary>Trägt die Pflegebefehle in ARegistry ein.</summary>
 procedure RegisterMaintenanceCommands(ARegistry: TSlashCommandRegistry);
@@ -24,23 +34,47 @@ uses
   Atlas.Common.Pascal.Contract,
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.Lexer,
+  Atlas.Common.Documents.Uris,
   Atlas.Common.Editing.UsesClause,
+  Atlas.Common.Editing.UsesActions,
+  Atlas.Common.Editing.GitUser,
   Atlas.Common.Editing.ClassCommands,
   Atlas.Common.Editing.CommandSource;
 
 { /sortuses }
 
+/// <summary>Ungenutzte Units laut Index (#284); nil ohne Host, Index oder bei abgeschalteter Einstellung.</summary>
+function UnusedUnitsOf(const AContext: TSlashContext; const ATokens: TArray<TPascalToken>): TArray<string>;
+var
+  Uses_: TUsesContext;
+begin
+  Result := nil;
+  if (AContext.Host = nil) or
+    SameText(AContext.Host.Setting(AContext.Uri, TSlashSettings.SortUsesRemoveUnused), 'false') then
+    Exit;
+  if AContext.Host.UsesContext(AContext.Uri, Uses_) and Assigned(Uses_.Info) then
+    Result := TUsesActions.UnusedUnits(ATokens, Uses_.Info, Uses_.Keep);
+end;
+
 function ExecuteSortUses(const AContext: TSlashContext; out AEdits: TArray<TTextEdit>; out AReason: string): Boolean;
 var
   Source: TCommandSource;
   Text: string;
+  Tokens: TArray<TPascalToken>;
+  Options: TUsesRewrite;
   Edits: TArray<TTextEdit>;
 begin
   AEdits := nil;
   Source := TCommandSource.Create(AContext);
   try
     Text := Source.Text;
-    if not TUsesClauses.Organize(TPascalLexer.Tokenize(Text), Text, True, Source.LineBreak, Edits) then
+    Tokens := TPascalLexer.Tokenize(Text);
+    // Sortieren, doppelte und ungenutzte streichen in einem Durchgang.
+    Options := Default(TUsesRewrite);
+    Options.Dedupe := True;
+    Options.Sort := True;
+    Options.Drop := UnusedUnitsOf(AContext, Tokens);
+    if not TUsesClauses.Rewrite(Tokens, Text, Options, Source.LineBreak, Edits) then
       Edits := nil;
     AEdits := Edits + [Source.RemoveCommand];
     Result := True;
@@ -66,6 +100,7 @@ var
   Source: TCommandSource;
   Id, Reason, Comment: string;
   Space: Integer;
+  Ids: TArray<string>;
 begin
   AEdits := nil;
   Space := Pos(' ', AContext.Arguments);
@@ -79,6 +114,10 @@ begin
   try
     if (Source.Line >= High(Source.Lines)) or (Trim(Source.Lines[Source.Line + 1]) = '') then
       Exit(Fail('Unter /ignore steht keine Zeile, die unterdrückt werden kann', AReason));
+    // Nur Regeln, die dort treffen; Muster mit * prüfen wir nicht.
+    if (AContext.Host <> nil) and (Pos('*', Id) = 0) and
+      AContext.Host.RuleIdsAt(AContext.Uri, Source.Text, Source.Line + 1, Ids) and not MatchText(Id, Ids) then
+      Exit(Fail(Format(IgnoreNoHitHint, [Id]), AReason));
     Comment := '// lsp-ignore: ' + Id;
     if Reason <> '' then
       Comment := Comment + ' -- ' + Reason;
@@ -91,16 +130,86 @@ end;
 
 { /todo }
 
+/// <summary>Name für -o ohne Angabe: Einstellung todoOwner, git config user.name, dann der Anmeldename.</summary>
+function DefaultOwner(const AContext: TSlashContext): string;
+var
+  Host: ISlashHost;
+  Folder: string;
+begin
+  Host := AContext.Host;
+  Result := Trim(Host.Setting(AContext.Uri, TSlashSettings.TodoOwner));
+  if Result <> '' then
+    Exit;
+  Folder := '';
+  if AContext.Uri <> '' then
+    Folder := ExtractFileDir(TDocumentUris.ToPath(AContext.Uri));
+  Result := TGitUser.NameFor(Folder, TGitUser.HomeFolder,
+    function(const AFileName: string; out AText: string): Boolean
+    begin
+      Result := Host.ReadFile(AFileName, AText);
+    end);
+  if Result = '' then
+    Result := GetEnvironmentVariable('USERNAME');
+  if Result = '' then
+    Result := GetEnvironmentVariable('USER');
+end;
+
+/// <summary>Zerlegt führende -oName und -cKat; AText ist der Rest. -o ohne Namen nimmt den Standardnamen,
+/// -c ohne Kategorie lässt die Kategorie weg (AHasCategory).</summary>
+procedure SplitTodo(const AArguments: string; out AOwner, ACategory, AText: string; out AHasCategory: Boolean);
+var
+  Rest, Word: string;
+  Space: Integer;
+begin
+  AOwner := '';
+  ACategory := '';
+  AHasCategory := False;
+  Rest := Trim(AArguments);
+  while (Length(Rest) >= 2) and (Rest[1] = '-') and CharInSet(Rest[2], ['o', 'O', 'c', 'C']) do
+  begin
+    Space := Pos(' ', Rest);
+    if Space = 0 then
+      Space := Length(Rest) + 1;
+    Word := Copy(Rest, 3, Space - 3);
+    if CharInSet(Rest[2], ['o', 'O']) then
+      AOwner := Word
+    else
+    begin
+      ACategory := Word;
+      AHasCategory := True;
+    end;
+    Rest := Trim(Copy(Rest, Space + 1, MaxInt));
+  end;
+  AText := Rest;
+end;
+
 function ExecuteTodo(const AContext: TSlashContext; out AEdits: TArray<TTextEdit>; out AReason: string): Boolean;
 var
   Source: TCommandSource;
+  Owner, Category, Text, Comment: string;
+  HasCategory: Boolean;
 begin
   AEdits := nil;
-  if AContext.Arguments = '' then
+  SplitTodo(AContext.Arguments, Owner, Category, Text, HasCategory);
+  if Text = '' then
     Exit(Fail('Erwartet wird /todo Text', AReason));
+  // Ohne Host (Prüfung stehen gebliebener Zeilen) nur die Angaben aus der Zeile.
+  if AContext.Host <> nil then
+  begin
+    if Owner = '' then
+      Owner := DefaultOwner(AContext);
+    if not HasCategory then
+      Category := Trim(AContext.Host.Setting(AContext.Uri, TSlashSettings.TodoCategory));
+  end;
+  Comment := '// TODO';
+  if Owner <> '' then
+    Comment := Comment + ' -o' + Owner;
+  if Category <> '' then
+    Comment := Comment + ' -c' + Category;
+  Comment := Comment + ' : ' + Text;
   Source := TCommandSource.Create(AContext);
   try
-    AEdits := [Source.ReplaceWithIndentedLines(['// TODO : ' + AContext.Arguments])];
+    AEdits := [Source.ReplaceWithIndentedLines([Comment])];
     Result := True;
   finally
     Source.Free;

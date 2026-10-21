@@ -1,7 +1,8 @@
 ﻿unit Atlas.Tests.SlashHost;
 
-// Testhilfe für Schnellbefehle: ein Editor-Host ohne Projekt und Dateien, der
-// Hinweise (Notify) und Cursorziele (MoveCursor) mitschreibt.
+// Testhilfe für Schnellbefehle: ein Editor-Host ohne Projekt, der Hinweise
+// (Notify) und Cursorziele (MoveCursor) mitschreibt. Einstellungen, Dateien,
+// Regeltreffer und uses-Kontext lassen sich vorgeben (#297).
 
 interface
 
@@ -9,6 +10,7 @@ uses
   System.SysUtils,
   Atlas.Common.Documents.Contract,
   Atlas.Common.Projects.Contract,
+  Atlas.Common.Editing.UsesActions,
   Atlas.Common.Editing.SlashCommands;
 
 type
@@ -18,6 +20,19 @@ type
     CursorUri: string;
     Cursor: TTextPosition;
     HasCursor: Boolean;
+    /// <summary>Einstellungen als 'name=wert'.</summary>
+    Settings: TArray<string>;
+    /// <summary>Dateien als 'pfad=text'.</summary>
+    Files: TArray<string>;
+    /// <summary>Antwort für RuleIdsAt; ohne HasRuleIds False.</summary>
+    RuleIds: TArray<string>;
+    HasRuleIds: Boolean;
+    /// <summary>Zuletzt bei RuleIdsAt gefragte Zeile; -1 = nie.</summary>
+    RuleLine: Integer;
+    /// <summary>Antwort für UsesContext; ohne HasUses False.</summary>
+    Uses_: TUsesContext;
+    HasUses: Boolean;
+    constructor Create;
     function Project(const AUri: string; out AProject: TProjectInfo): Boolean;
     function ReadFile(const AFileName: string; out AText: string): Boolean;
     function DirectoryExists(const APath: string): Boolean;
@@ -30,9 +45,32 @@ type
     function TestUnit(const AUri, AText: string; out ATarget: TSlashTestUnit): Boolean;
     procedure Notify(const AUri, AMessage: string);
     procedure MoveCursor(const AUri: string; const APosition: TTextPosition);
+    function RuleIdsAt(const AUri, AText: string; ALine: Integer; out AIds: TArray<string>): Boolean;
+    function UsesContext(const AUri: string; out AContext: TUsesContext): Boolean;
   end;
 
 implementation
+
+/// <summary>Wert zu AName aus 'name=wert'-Paaren; False ohne.</summary>
+function ValueOf(const APairs: TArray<string>; const AName: string; out AValue: string): Boolean;
+var
+  Pair: string;
+begin
+  AValue := '';
+  for Pair in APairs do
+    if SameText(Copy(Pair, 1, Pos('=', Pair) - 1), AName) then
+    begin
+      AValue := Copy(Pair, Pos('=', Pair) + 1, MaxInt);
+      Exit(True);
+    end;
+  Result := False;
+end;
+
+constructor TRecordingSlashHost.Create;
+begin
+  inherited Create;
+  RuleLine := -1;
+end;
 
 function TRecordingSlashHost.Project(const AUri: string; out AProject: TProjectInfo): Boolean;
 begin
@@ -42,8 +80,7 @@ end;
 
 function TRecordingSlashHost.ReadFile(const AFileName: string; out AText: string): Boolean;
 begin
-  AText := '';
-  Result := False;
+  Result := ValueOf(Files, AFileName, AText);
 end;
 
 function TRecordingSlashHost.DirectoryExists(const APath: string): Boolean;
@@ -74,7 +111,7 @@ end;
 
 function TRecordingSlashHost.Setting(const AUri, AName: string): string;
 begin
-  Result := '';
+  ValueOf(Settings, AName, Result);
 end;
 
 function TRecordingSlashHost.TestUnit(const AUri, AText: string; out ATarget: TSlashTestUnit): Boolean;
@@ -94,6 +131,20 @@ begin
   CursorUri := AUri;
   Cursor := APosition;
   HasCursor := True;
+end;
+
+function TRecordingSlashHost.RuleIdsAt(const AUri, AText: string; ALine: Integer;
+  out AIds: TArray<string>): Boolean;
+begin
+  RuleLine := ALine;
+  AIds := RuleIds;
+  Result := HasRuleIds;
+end;
+
+function TRecordingSlashHost.UsesContext(const AUri: string; out AContext: TUsesContext): Boolean;
+begin
+  AContext := Uses_;
+  Result := HasUses;
 end;
 
 end.

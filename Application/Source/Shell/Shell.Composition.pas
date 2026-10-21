@@ -63,6 +63,7 @@ uses
   Atlas.Common.Lsp.StringLiteralCommands,
   Atlas.Common.Lsp.ResourceStringCommands,
   Atlas.Common.Editing.StringLiterals,
+  Atlas.Common.Editing.UsesActions,
   Atlas.Common.JsonRpc.Statistics,
   Atlas.Common.Logging.Providers.RecentSink,
   Atlas.Common.Diagnostics.BugReport,
@@ -322,6 +323,11 @@ type
     function DelphiVersionFor(const AUri: string): string;
     /// <summary>Schnellbefehle (#293): False = aus; ADisabled samt "uses" bei usesCommand = false.</summary>
     function SlashCommandsFor(const AUri: string; out ADisabled: TArray<string>): Boolean;
+    /// <summary>Kennungen der Prüfregeln, die in Zeile ALine von AText treffen (/ignore, #297); False ohne
+    /// Prüfregeln für die Datei.</summary>
+    function SlashRuleIdsAt(const AUri, AText: string; ALine: Integer; out AIds: TArray<string>): Boolean;
+    /// <summary>Index und usesKeep für /sortuses (#297); False, solange die Code-Aktionen fehlen.</summary>
+    function SlashUsesContext(const AUri: string; out AContext: TUsesContext): Boolean;
     /// <summary>"completeBlocks.docComment" (#88).</summary>
     function DocCommentsFor(const AUri: string): Boolean;
     function InlayHintSettingsFor(const AUri: string): TInlayHintSettings;
@@ -452,7 +458,6 @@ uses
   Atlas.Common.Lsp.CompletionRequest,
   Atlas.Common.Editing.ClassActions,
   Atlas.Common.Index.SymbolIndex,
-  Atlas.Common.Editing.UsesActions,
   Atlas.Common.Editing.TestUnits,
   Atlas.Common.Rules.Builtin,
   Atlas.Common.Rules.Builtin.Metrics,
@@ -774,6 +779,12 @@ begin
       end;
       if AName = TSlashSettings.LogCall then
         Result := Settings.SlashLogCall
+      else if AName = TSlashSettings.TodoOwner then
+        Result := Settings.SlashTodoOwner
+      else if AName = TSlashSettings.TodoCategory then
+        Result := Settings.SlashTodoCategory
+      else if AName = TSlashSettings.SortUsesRemoveUnused then
+        Result := LowerCase(BoolToStr(Settings.SlashSortUsesRemoveUnused, True))
       else if AName = TSlashSettings.ComponentPalette then
         Result := Settings.SlashComponentPalette
       else if AName = TSlashSettings.InterfaceSection then
@@ -788,6 +799,9 @@ begin
       else
         Result := '';
     end;
+  // /ignore und /sortuses (#297): Regeltreffer der Zeile und ungenutzte uses.
+  SlashHost.RuleIdsOf := SlashRuleIdsAt;
+  SlashHost.UsesContextOf := SlashUsesContext;
   FFormatting.SlashHost := SlashHost;
   // resourcestring in eine andere Unit (#473): Die Schnittstelle hält den Host am Leben.
   KeepHost := SlashHost;
@@ -957,6 +971,7 @@ begin
       Result := CompletionSettingsFor(AUri);
     end;
   FCompletion.SlashCommandsFor := SlashCommandsFor;
+  FCompletion.RuleIdsFor := SlashRuleIdsAt;
   // Postfix-Vorlagen (#188): abschaltbar mit completion.postfixTemplates; for var und var Name := nur, wenn die
   // Sprachversion Inline-Variablen kennt und refactoring.inlineVar sie nicht abschaltet.
   FCompletion.PostfixFor :=
@@ -3114,6 +3129,35 @@ begin
   AStatus.Compiler := Choice.StatusText;
   AStatus.CompilerBackend := TCompilerBackends.BackendText(Choice.Backend);
   AStatus.CompilerReason := Choice.MessageText;
+end;
+
+function TServerComposition.SlashRuleIdsAt(const AUri, AText: string; ALine: Integer;
+  out AIds: TArray<string>): Boolean;
+var
+  Context: TRuleCheckContext;
+  Tree: TSyntaxTree;
+  Finding: TRuleFinding;
+begin
+  AIds := nil;
+  Result := RuleContextFor(AUri, Context);
+  if not Result then
+    Exit;
+  Tree := TSyntaxTreeCache.Parse(AText);
+  try
+    for Finding in TLspSyntaxDiagnostics.RuleFindings(AText, Tree, Context) do
+      if (Finding.Range.StartPos.Line = ALine) and not SameText(Finding.RuleId, 'slash-command') and
+        not MatchText(Finding.RuleId, AIds) then
+        AIds := AIds + [Finding.RuleId];
+  finally
+    Tree.Free;
+  end;
+end;
+
+function TServerComposition.SlashUsesContext(const AUri: string; out AContext: TUsesContext): Boolean;
+begin
+  AContext := Default(TUsesContext);
+  Result := (FCodeActions <> nil) and Assigned(FCodeActions.UsesContextFor) and
+    FCodeActions.UsesContextFor(AUri, AContext);
 end;
 
 function TServerComposition.SlashCommandsFor(const AUri: string; out ADisabled: TArray<string>): Boolean;

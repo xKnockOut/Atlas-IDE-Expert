@@ -133,6 +133,9 @@ Jeder Schlüssel hat genau einen Ort (Spalte „Ort“): Projekt-Schlüssel steh
 | `slashCommands.headerTemplate` | global (settings.json) | string | `""` |  | Vorlage für /header mit den Platzhaltern {unit}, {jahr} und {autor}. Leer: die Vorlage der Regel file-header, sonst ein einfacher Kopf. |
 | `slashCommands.logCall` | global (settings.json) | string | `""` |  | Protokollaufruf für /log, /except und /measure: ein Routinenname wie "Log.Debug" bekommt den Text als Argument, {text} setzt ihn an diese Stelle, z. B. "Logger.Send(TLogLevel.Debug, {text})". Leer: OutputDebugString(PChar(…)). |
 | `slashCommands.componentPalette` | global (settings.json) | string | `"Eigene"` |  | Palettenseite, auf der /component die neue Komponente mit RegisterComponents einträgt. |
+| `slashCommands.todoOwner` | global (settings.json) | string | `""` |  | Name hinter -o, den /todo einträgt. Leer: user.name aus der git-Konfiguration (Repository, dann Benutzerordner), sonst der Anmeldename. /todo -oName in der Zeile geht vor. |
+| `slashCommands.todoCategory` | global (settings.json) | string | `""` |  | Kategorie hinter -c, die /todo einträgt. Leer: keine. /todo -cKategorie in der Zeile geht vor. |
+| `slashCommands.sortUsesRemoveUnused` | global (settings.json) | boolean | `true` |  | /sortuses streicht auch ungenutzte Units laut Index. Units mit initialization oder finalization und die aus usesKeep bleiben. |
 
 ## index
 

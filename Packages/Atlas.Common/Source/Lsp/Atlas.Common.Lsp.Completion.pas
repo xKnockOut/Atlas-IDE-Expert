@@ -158,6 +158,7 @@ type
     FSettingsFor: TCompletionSettingsFunc;
     FReadText: TCompletionReadText;
     FSlashCommandsFor: TSlashCommandsProvider;
+    FRuleIdsFor: TSlashRuleIdsFunc;
     FPostfixFor: TPostfixOptionsFunc;
     FWithFor: TCompletionWithFunc;
     FCreateFor: TCompletionCreateFunc;
@@ -404,6 +405,8 @@ type
     property SettingsFor: TCompletionSettingsFunc read FSettingsFor write FSettingsFor;
     /// <summary>Schnellbefehle nach "/" am Zeilenanfang (#293); ohne Zuweisung alle eingeschaltet.</summary>
     property SlashCommandsFor: TSlashCommandsProvider read FSlashCommandsFor write FSlashCommandsFor;
+    /// <summary>Regeln, die in einer Zeile treffen, für /ignore (#297); ohne Zuweisung der ganze Katalog.</summary>
+    property RuleIdsFor: TSlashRuleIdsFunc read FRuleIdsFor write FRuleIdsFor;
     /// <summary>Postfix-Vorlagen je Dokument (#188); ohne Zuweisung an und mit Inline-Variable.</summary>
     property PostfixFor: TPostfixOptionsFunc read FPostfixFor write FPostfixFor;
     /// <summary>„with auflösen“ auf dem Wort with (#50); ohne Zuweisung kein Eintrag.</summary>
@@ -473,7 +476,8 @@ uses
   Atlas.Common.Lsp.CompletionGenerics,
   Atlas.Common.Editing.DataFieldNames,
   Atlas.Common.Editing.GuardFree,
-  Atlas.Common.Editing.ContextSnippets;
+  Atlas.Common.Editing.ContextSnippets,
+  Atlas.Text.Lines;
 
 const
   /// <summary>Art der Stelle im Diagnoselog (#647).</summary>
@@ -538,7 +542,30 @@ begin
   end;
 end;
 
-function SlashItems(ARequest: TCompletionRequest; const ADisabled: TArray<string>; out AItems: TCompletionItems): Boolean;
+/// <summary>Für /ignore nur die Regeln, die in der Zeile unter dem Befehl treffen (#297); ohne Auskunft der
+/// Katalog.</summary>
+function RuleIdsBelow(ARequest: TCompletionRequest; AKind: TSlashArgumentKind;
+  const ARuleIdsAt: TSlashRuleIdsFunc): TArray<string>;
+var
+  Lines: TArray<string>;
+  LineBreak: string;
+  Line: Integer;
+begin
+  if (AKind = TSlashArgumentKind.Rules) and Assigned(ARuleIdsAt) then
+  begin
+    // Ohne die Befehlszeile prüfen, wie nach dem Ausführen.
+    Lines := TTextLines.SplitLines(ARequest.Text, LineBreak);
+    Line := ARequest.Position.Line;
+    if (Line >= 0) and (Line <= High(Lines)) then
+      Lines[Line] := StringOfChar(' ', Length(Lines[Line]));
+    if ARuleIdsAt(ARequest.Uri, TTextLines.JoinLines(Lines, LineBreak), Line + 1, Result) then
+      Exit;
+  end;
+  Result := RuleIds(AKind);
+end;
+
+function SlashItems(ARequest: TCompletionRequest; const ADisabled: TArray<string>;
+  const ARuleIdsAt: TSlashRuleIdsFunc; out AItems: TCompletionItems): Boolean;
 var
   Before, Name, Arguments, Choice: string;
   Choices: TArray<string>;
@@ -563,7 +590,7 @@ begin
       Exit(False);
     Kind := TSlashMenu.ArgumentKind(Name, Arguments);
     Choices := TSlashMenu.ArgumentChoices(ARequest.Text, ARequest.Position.Line, Name, Arguments, ARequest.Index,
-      RuleIds(Kind));
+      RuleIdsBelow(ARequest, Kind, ARuleIdsAt));
     Tree := nil;
     Resolver := nil;
     try
@@ -1920,7 +1947,7 @@ begin
       Result := TCompletionOutcome.Next;
       Disabled := nil;
       if (not Assigned(FSlashCommandsFor) or FSlashCommandsFor(ARequest.Uri, Disabled)) and
-        SlashItems(ARequest, Disabled, AAnswer.Exclusive) then
+        SlashItems(ARequest, Disabled, FRuleIdsFor, AAnswer.Exclusive) then
         Result := TCompletionOutcome.Answered;
     end);
   AddCase(FTextCases,
