@@ -299,6 +299,8 @@ begin
   Assert.AreEqual('Anweisung vervollständigen',
     TAtlasKeyMapWindow.FunctionCaption(TAtlasKeyFunction.CompleteStatement));
   Assert.AreEqual('Formatieren', TAtlasKeyMapWindow.FunctionCaption(TAtlasKeyFunction.FormatCode));
+  Assert.AreEqual('Blockkommentar umschalten',
+    TAtlasKeyMapWindow.FunctionCaption(TAtlasKeyFunction.ToggleBlockComment));
   Assert.AreEqual('Zeilen darunter duplizieren',
     TAtlasKeyMapWindow.FunctionCaption(TAtlasKeyFunction.DuplicateLinesDown));
   // #764: Schnellaktionen der Willkommensseite.
