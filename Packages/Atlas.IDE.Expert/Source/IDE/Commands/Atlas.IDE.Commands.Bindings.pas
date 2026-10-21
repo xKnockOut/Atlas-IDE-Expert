@@ -17,8 +17,10 @@
 // (#634, Alt+↑/↓ und Umschalt+Alt+↑/↓ mit Vorrang, nur solange keys.moveLines
 // an ist) sowie die Mehrfachmarken (#589, Strg+D, Alt+Umschalt+I,
 // Strg+Alt+↑/↓ mit Rückfall an die IDE, nur solange editor.multiCursor an
-// ist) und Blockkommentar umschalten (#703, Umschalt+Alt+A, nur solange
-// keys.toggleBlockComment an ist). Jede Taste wird wie
+// ist), Blockkommentar umschalten (#703, Umschalt+Alt+A, nur solange
+// keys.toggleBlockComment an ist) und Neue Zeile ober- oder unterhalb (#700,
+// Umschalt+Enter und Strg+Alt+Enter, nur solange keys.newLineAround an
+// ist). Jede Taste wird wie
 // die der Befehlspalette vorher auf Konflikte geprüft (#494); ohne Vorrang
 // bleibt eine fremde Belegung aktiv. Nach geänderten Einstellungen meldet
 // Rebind die Bindung neu an. Der Befehl läuft nach der Tastenverarbeitung
@@ -114,7 +116,9 @@ uses
   Atlas.IDE.Editor.LineMove,
   Atlas.IDE.Editor.StatementCompletion,
   Atlas.IDE.Editor.MultiCursor,
-  Atlas.IDE.Editor.BlockComment;
+  Atlas.IDE.Editor.BlockComment,
+  Atlas.Core.Editor.NewLine,
+  Atlas.IDE.Editor.NewLine;
 
 /// <summary>Zeilen verschieben bzw. duplizieren (#634), gesichert.</summary>
 procedure RunLineMove(AKind: TAtlasLineMoveKind);
@@ -404,6 +408,28 @@ begin
             TAtlasIdeBlockComment.Run;
           end);
       end);
+  // Neue Zeile ober- oder unterhalb (#700): aus = die Tasten gehören der IDE.
+  if Settings.NewLineAround then
+  begin
+    AddKey(Settings.NewLineBelowKey, TAtlasStrings.Text(TAtlasTextId.NewLineBelowCommand),
+      procedure
+      begin
+        TAtlasGuard.Run(TAtlasFeature.EditorCommands,
+          procedure
+          begin
+            TAtlasIdeNewLine.Run(TAtlasNewLineDirection.Below);
+          end);
+      end);
+    AddKey(Settings.NewLineAboveKey, TAtlasStrings.Text(TAtlasTextId.NewLineAboveCommand),
+      procedure
+      begin
+        TAtlasGuard.Run(TAtlasFeature.EditorCommands,
+          procedure
+          begin
+            TAtlasIdeNewLine.Run(TAtlasNewLineDirection.Above);
+          end);
+      end);
+  end;
   // Units suchen (#777): aus = keine eigene Taste (die IDE behält Strg+F12 für ihren Dialog).
   if Settings.UnitSearchEnabled then
     AddKey(Settings.UnitSearchKey, TAtlasStrings.Text(TAtlasTextId.UnitSearchTitle),

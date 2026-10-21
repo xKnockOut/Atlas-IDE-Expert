@@ -337,6 +337,10 @@ type
     FToggleBlockCommentFallback: TAtlasChoiceBox;
     FToggleBlockCommentOwnLines: TCheckBox;
     FToggleBlockCommentScope: TAtlasChoiceBox;
+    FNewLineAround: TCheckBox;
+    FNewLineBelowKey: TEdit;
+    FNewLineAboveKey: TEdit;
+    FNewLineAroundStatementAware: TCheckBox;
     FContinueComments: TCheckBox;
     FContinueCommentsLineComments: TCheckBox;
     FContinueCommentsLists: TCheckBox;
@@ -817,6 +821,11 @@ type
     property ToggleBlockCommentFallback: TAtlasChoiceBox read FToggleBlockCommentFallback;
     property ToggleBlockCommentOwnLines: TCheckBox read FToggleBlockCommentOwnLines;
     property ToggleBlockCommentScope: TAtlasChoiceBox read FToggleBlockCommentScope;
+    /// <summary>Zum Testen: Neue Zeile ober- oder unterhalb (#700).</summary>
+    property NewLineAround: TCheckBox read FNewLineAround;
+    property NewLineBelowKey: TEdit read FNewLineBelowKey;
+    property NewLineAboveKey: TEdit read FNewLineAboveKey;
+    property NewLineAroundStatementAware: TCheckBox read FNewLineAroundStatementAware;
     /// <summary>Zum Testen: Kommentar beim Enter fortsetzen (#696).</summary>
     property ContinueComments: TCheckBox read FContinueComments;
     property ContinueCommentsLists: TCheckBox read FContinueCommentsLists;
@@ -1610,6 +1619,11 @@ begin
   FToggleBlockCommentScope := AddChoice(TAtlasStrings.Text(TAtlasTextId.SettingsToggleBlockCommentScope),
     [TAtlasStrings.Text(TAtlasTextId.ToggleBlockCommentStatement),
     TAtlasStrings.Text(TAtlasTextId.ToggleBlockCommentLine)]);
+  // Neue Zeile ober- oder unterhalb (#700).
+  FNewLineAround := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsNewLineAround));
+  FNewLineBelowKey := AddKey(TAtlasStrings.Text(TAtlasTextId.NewLineBelowCommand));
+  FNewLineAboveKey := AddKey(TAtlasStrings.Text(TAtlasTextId.NewLineAboveCommand));
+  FNewLineAroundStatementAware := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsNewLineAroundStatementAware));
   FTestUnitKey := AddKey(TAtlasStrings.Text(TAtlasTextId.EditorTestUnit));
   // Navigationsverlauf über Dateien (#504).
   FNavHistory := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsNavHistory));
@@ -2508,6 +2522,10 @@ begin
   FMarks.Bind(FToggleBlockCommentFallback, ['ToggleBlockCommentFallback']);
   FMarks.Bind(FToggleBlockCommentOwnLines, ['ToggleBlockCommentOwnLines']);
   FMarks.Bind(FToggleBlockCommentScope, ['ToggleBlockCommentWithoutSelection']);
+  FMarks.Bind(FNewLineAround, ['NewLineAround']);
+  FMarks.Bind(FNewLineBelowKey, ['NewLineBelowKey']);
+  FMarks.Bind(FNewLineAboveKey, ['NewLineAboveKey']);
+  FMarks.Bind(FNewLineAroundStatementAware, ['NewLineAroundStatementAware']);
   FMarks.Bind(FContinueComments, ['ContinueComments']);
   FMarks.Bind(FContinueCommentsLineComments, ['ContinueCommentsLineComments']);
   FMarks.Bind(FContinueCommentsLists, ['ContinueCommentsLists']);
@@ -4446,6 +4464,10 @@ begin
   FToggleBlockCommentOwnLines.Checked := ASettings.ToggleBlockCommentOwnLines;
   FToggleBlockCommentScope.Choice := Max(0, IndexText(ASettings.ToggleBlockCommentWithoutSelection,
     ['statement', 'line']));
+  FNewLineAround.Checked := ASettings.NewLineAround;
+  FNewLineBelowKey.Text := ShortCutToText(TShortCut(ASettings.NewLineBelowKey));
+  FNewLineAboveKey.Text := ShortCutToText(TShortCut(ASettings.NewLineAboveKey));
+  FNewLineAroundStatementAware.Checked := ASettings.NewLineAroundStatementAware;
   FContinueComments.Checked := ASettings.ContinueComments;
   FContinueCommentsLineComments.Checked := ASettings.ContinueCommentsLineComments;
   FContinueCommentsLists.Checked := ASettings.ContinueCommentsLists;
@@ -4832,6 +4854,10 @@ begin
   ASettings.ToggleBlockCommentWithoutSelection := 'statement';
   if FToggleBlockCommentScope.Choice = 1 then
     ASettings.ToggleBlockCommentWithoutSelection := 'line';
+  ASettings.NewLineAround := FNewLineAround.Checked;
+  ASettings.NewLineBelowKey := Integer(TextToShortCut(Trim(FNewLineBelowKey.Text)));
+  ASettings.NewLineAboveKey := Integer(TextToShortCut(Trim(FNewLineAboveKey.Text)));
+  ASettings.NewLineAroundStatementAware := FNewLineAroundStatementAware.Checked;
   ASettings.ContinueComments := FContinueComments.Checked;
   ASettings.ContinueCommentsLineComments := FContinueCommentsLineComments.Checked;
   ASettings.ContinueCommentsLists := FContinueCommentsLists.Checked;

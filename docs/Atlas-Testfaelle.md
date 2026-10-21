@@ -2919,6 +2919,25 @@ Voraussetzung: Einstellungen auf Vorgabe; Unit mit einer Methode mit mehreren An
 | BK11 | „Bevorzugte Form“ auf `(* … *)` | Einfache Markierung bekommt `(* … *)` |
 | BK12 | „Blockkommentar umschalten“ aus | Umschalt+Alt+A tut nichts mehr (Kürzel frei), Befehl fehlt in der Palette (**Abnahme**) |
 
+## Neue Zeile ober- oder unterhalb (#700)
+
+Voraussetzung: Einstellungen auf Vorgabe (Blockeinzug 2); Methode mit `if … then`, `begin … end`, `try … except`, einem Aufruf über drei Zeilen und einem `//`-Kommentar; Klasse mit `private` und `public`.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| NZ1 | Cursor mitten in `Foo(1);`, Umschalt+Enter | Neue Zeile darunter mit demselben Einzug, Cursor an ihrem Ende; `Foo(1);` bleibt ungeteilt (**Abnahme**) |
+| NZ2 | Cursor mitten in `Foo(1);`, Strg+Alt+Enter | Neue Zeile darüber mit demselben Einzug (**Abnahme**) |
+| NZ3 | Strg+Z nach NZ1 | Ein Schritt nimmt die Zeile zurück, die Cursorzeile ist unverändert (**Abnahme**) |
+| NZ4 | Umschalt+Enter in `if A then`, `begin`, `try`, `else`, `case X of`, `repeat`, `while A do` | Neue Zeile eine Ebene tiefer |
+| NZ5 | Strg+Alt+Enter in `end;`, `until A;`, `except`, `finally` | Neue Zeile eine Ebene tiefer, so tief wie der Blockinhalt davor |
+| NZ6 | Umschalt+Enter in `private` bzw. im Klassenkopf `TFoo = class(TBar)` | Neue Zeile eine Ebene tiefer (Feldebene); Strg+Alt+Enter in `public`: so tief wie die Felder davor |
+| NZ7 | Umschalt+Enter in der ersten Zeile des Aufrufs über drei Zeilen | Neue Zeile hinter der letzten Zeile des Aufrufs, Einzug der ersten; Strg+Alt+Enter in der letzten Zeile: vor der ersten (**Abnahme**) |
+| NZ8 | „Mehrzeilige Anweisungen als Ganzes“ aus, NZ7 wiederholen | Neue Zeile direkt unter bzw. über der Cursorzeile mit deren Einzug |
+| NZ9 | Umschalt+Enter in `// Kunde laden` | Neue Zeile `// ` mit Einzug; Strg+Alt+Enter: `// ` darüber |
+| NZ10 | Kommentar fortsetzen (#696) aus, NZ9 wiederholen | Neue Zeile nur mit Einzug |
+| NZ11 | Tasten unter Optionen › Befehle › Neue Zeile ober-/unterhalb ändern | Die neuen Tasten wirken, die Tastenübersicht prüft Konflikte |
+| NZ12 | „Neue Zeile ober-/unterhalb“ aus | Umschalt+Enter und Strg+Alt+Enter verhalten sich wie ohne Atlas, die Befehle fehlen in der Palette (**Abnahme**) |
+
 ## Gleichen Text wie die Markierung hervorheben (#709)
 
 Voraussetzung: Einstellungen auf Vorgabe; Unit, in der `Kunde` mehrfach vorkommt, auch als Teil von `TKunde` und `Kunden`, in einem String und in einem Kommentar.
