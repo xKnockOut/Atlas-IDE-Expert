@@ -109,7 +109,10 @@ type
     FShown: Boolean;
     FActiveBar: TAtlasBreadcrumbBar;
     FToolbars: TAtlasNavigationToolbar;
+    /// <summary>Fenster, das zuletzt unter der Maus über der Leiste lag (Diagnose).</summary>
+    FProbed: HWND;
     procedure Tick(Sender: TObject);
+    procedure Probe;
     function BarOf(AParent: TWinControl): TAtlasBreadcrumbBar;
     function EditorOf(const AWindow: INTAEditWindow): TWinControl;
     procedure EnsureBars;
@@ -496,6 +499,7 @@ begin
   if (ABar <> FActiveBar) or (AIndex < 0) or (AIndex > High(ABar.Crumbs)) or (FFileName = '') then
     Exit;
   Crumb := ABar.Crumbs[AIndex];
+  TAtlasGuard.Log(Format('Brotkrumen: Sprung zu Glied %d', [AIndex]));
   if Crumb.Node < 0 then
   begin
     // Unit-Glied: an den Anfang der Datei.
@@ -517,6 +521,7 @@ var
   Bar: TAtlasBreadcrumbBar;
   Action: TProc;
 begin
+  TAtlasGuard.Log('Brotkrumen: Klick, Menü folgt');
   State := Self;
   Bar := ABar;
   Action := AAction;
@@ -550,7 +555,44 @@ begin
     procedure
     begin
       Update;
+      Probe;
     end);
+end;
+
+/// <summary>Steht die Maus über der Leiste, aber ein anderes Fenster liegt darüber, bekommt die Leiste keine
+/// Mausereignisse. Das Fenster einmal je Wechsel protokollieren und die Leiste nach vorn holen.</summary>
+procedure TBreadcrumbsState.Probe;
+var
+  Bar: TAtlasBreadcrumbBar;
+  Cursor: TPoint;
+  Window: HWND;
+  WindowClass: array[0..255] of Char;
+  Control: TWinControl;
+  Name: string;
+begin
+  Bar := FActiveBar;
+  if (Bar = nil) or not Bar.HandleAllocated or not Bar.Showing or not GetCursorPos(Cursor) then
+    Exit;
+  if not PtInRect(Rect(Bar.ClientToScreen(Point(0, 0)), Bar.ClientToScreen(Point(Bar.Width, Bar.Height))), Cursor) then
+    Exit;
+  Window := WindowFromPoint(Cursor);
+  if Window = FProbed then
+    Exit;
+  FProbed := Window;
+  if Window = Bar.Handle then
+  begin
+    TAtlasGuard.Log('Brotkrumen: Maus kommt an der Leiste an');
+    Exit;
+  end;
+  WindowClass[0] := #0;
+  GetClassName(Window, WindowClass, Length(WindowClass));
+  Control := FindControl(Window);
+  Name := '';
+  if Control <> nil then
+    Name := Control.ClassName + ' ' + Control.Name;
+  TAtlasGuard.Log(Format('Brotkrumen: Über der Leiste liegt ein anderes Fenster (%s, %s); hole die Leiste nach vorn',
+    [string(WindowClass), Name]));
+  Bar.BringToFront;
 end;
 
 { TAtlasIdeBreadcrumbs }
