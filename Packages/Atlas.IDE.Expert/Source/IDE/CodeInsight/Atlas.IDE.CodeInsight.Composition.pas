@@ -3589,6 +3589,7 @@ begin
       TAtlasIdeBookmarks.ThemeChanged;
       TAtlasIdeOutline.ThemeChanged;
       TAtlasIdeBreadcrumbs.ThemeChanged;
+      TAtlasIdeSearch.ThemeChanged;
       TAtlasIdeLineChanges.ThemeChanged;
       TAtlasIdeOverviewRuler.ThemeChanged;
       TAtlasIdeMinimap.ThemeChanged;
@@ -3635,6 +3636,8 @@ begin
       TAtlasIdeOutline.ApplySettings;
       // editor.breadcrumbs* (#590).
       TAtlasIdeBreadcrumbs.ApplySettings;
+      // search.resultsInMessages (#878).
+      TAtlasIdeSearch.ApplySettings;
       // editor.stickyScroll* (#506).
       TAtlasIdeStickyScroll.ApplySettings;
       // editor.gitGutter, editor.gitBlame (#507).

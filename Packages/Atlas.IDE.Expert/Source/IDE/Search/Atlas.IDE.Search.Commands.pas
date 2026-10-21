@@ -1,21 +1,30 @@
 ﻿unit Atlas.IDE.Search.Commands;
 
 // Atlas-Suche im Editor (#877, #878):
-// - Show: Suchdialog (Atlas.UI.Search.Dialog) für die oberste Ansicht. Vorschlag
-//   ist die einzeilige Markierung, sonst der Bezeichner am Cursor, sonst die
-//   letzte Suche. ShowInMethod („In Methode suchen“, #877) stellt den Bereich
-//   auf Methode und die Stufe auf die innerste Routine.
-// - Nach dem Dialog wird der gewählte Treffer markiert (sonst der nächste ab
-//   dem Cursor) und die Suche als „letzte Suche“ gemerkt. Bei Bereich Auswahl
-//   gilt die Auswahl beim Öffnen; sie wandert nicht mit den Treffern.
-// - TryNext (F3/Umschalt+F3): nächster bzw. voriger Treffer der letzten Suche
-//   mit Umlauf (Meldung in der Meldungsansicht). Ohne letzte Suche False: die
-//   Taste geht weiter (Markierung suchen bzw. „Erneut suchen“ der IDE).
-// - Hervorhebung: Solange eine Suche gemerkt ist, rahmt ein Editor-Zeichner
-//   alle Treffer der Datei im Bereich (neu berechnet, wenn sich der Puffer
-//   oder die Suche ändert). ClearHighlights bzw. ein leerer Suchtext beendet sie.
+// - Show: Suchleiste (Atlas.UI.Search.Bar) am unteren Rand des obersten
+//   Editorfensters (alBottom im Eltern-Steuerelement des Editors „Editor“, wie
+//   die Brotkrumenleiste oben). Jedes Editorfenster bekommt beim ersten Öffnen
+//   seine eigene Leiste. Vorschlag ist die einzeilige Markierung, sonst der
+//   Bezeichner am Cursor, sonst die letzte Suche. ShowInMethod („In Methode
+//   suchen“, #877) stellt den Bereich auf Methode und die Stufe auf die
+//   innerste Routine.
+// - Jede Änderung in der Leiste sucht neu: Treffer im Editor gerahmt, Sprung
+//   zum nächsten Treffer ab der Stelle, an der die Leiste geöffnet wurde,
+//   Zähler „n von m“. Bei Bereich Auswahl und Methode gelten Auswahl und
+//   Cursor beim Öffnen; die Auswahl wandert nicht mit den Treffern.
+// - Enter bzw. „In Meldungen“ listet alle Treffer im Reiter „Atlas-Suche“ des
+//   Fensters Meldungen (Atlas.IDE.Search.MessageList, search.resultsInMessages);
+//   dieselbe Suche wird nicht erneut aufgebaut. Der Fokus bleibt in der Leiste.
+// - TryNext (F3/Umschalt+F3, in der Leiste auch Enter/Umschalt+Enter):
+//   nächster bzw. voriger Treffer der letzten Suche mit Umlauf (Meldung in
+//   der Meldungsansicht), auch bei geschlossener Leiste. Ohne letzte Suche
+//   False: die Taste geht weiter (Markierung suchen bzw. „Erneut suchen“ der
+//   IDE).
+// - Esc bzw. × schließt die Leiste, gibt den Fokus an den Editor zurück und
+//   beendet die Hervorhebung; F3 sucht weiter mit der letzten Suche.
 // Tasten: Strg+F/F3/Umschalt+F3 nur mit search.replaceIdeSearch
-// (Atlas.IDE.Commands.Bindings), „In Methode suchen“ immer.
+// (Atlas.IDE.Commands.Bindings), „In Methode suchen“ immer. Nur im
+// Hauptthread.
 
 interface
 
@@ -23,10 +32,12 @@ uses
   System.SysUtils,
   System.Classes,
   System.Types,
+  System.Generics.Collections,
   Vcl.Controls,
   ToolsAPI,
   ToolsAPI.Editor,
-  Atlas.Core.Search.Matching;
+  Atlas.Core.Search.Matching,
+  Atlas.UI.Search.Bar;
 
 type
   TAtlasIdeSearch = class
@@ -56,11 +67,26 @@ type
       constructor Create;
       destructor Destroy; override;
     end;
+
+    /// <summary>Erfährt, wenn die IDE eine Leiste mit ihrem Editorfenster freigibt.</summary>
+    TBarWatcher = class(TComponent)
+    protected
+      procedure Notification(AComponent: TComponent; Operation: TOperation); override;
+    end;
   private class var
     FLast: TAtlasSearchQuery;
     FVersion: Integer;
     FPainter: TPainter;
     FMessage: TProc<string>;
+    FBars: TList<TAtlasSearchBar>;
+    FWatcher: TBarWatcher;
+    // Leiste der laufenden Suche und Stand beim Öffnen.
+    FBar: TAtlasSearchBar;
+    FOrigin: TAtlasSearchPos;
+    FSelection: TAtlasSearchArea;
+    FFileName: string;
+    FHighlight: Boolean;
+    FListedKey: string;
   private
     class procedure Say(const AText: string); static;
     class function TopView(out AView: IOTAEditView): Boolean; static;
@@ -74,17 +100,32 @@ type
       const AHit: TAtlasSearchHit); static;
     class procedure Repaint; static;
     class procedure Open(AInMethod: Boolean); static;
+    // Leisten.
+    class function EditorOf(const AWindow: INTAEditWindow): TWinControl; static;
+    class function BarFor(const AWindow: INTAEditWindow): TAtlasSearchBar; static;
+    class procedure CreateBar(AParent: TWinControl; out ABar: TAtlasSearchBar); static;
+    class procedure Removed(ABar: TAtlasSearchBar); static;
+    class procedure ThemeBar(ABar: TAtlasSearchBar); static;
+    /// <summary>Suche der Leiste übernehmen; AJump: zum nächsten Treffer ab dem Ursprung springen.</summary>
+    class procedure Sync(AJump: Boolean); static;
+    class procedure UpdateCounter; static;
+    class procedure BarStep(ABackward: Boolean); static;
+    class procedure BarList; static;
+    class procedure CloseBar; static;
   public
     /// <summary>Zeichner anmelden; AMessage schreibt eine Zeile in die Meldungsansicht.</summary>
     class procedure Install(const AMessage: TProc<string>); static;
     class procedure Uninstall; static;
-    /// <summary>Suchdialog (Strg+F, Befehl Atlas.Search).</summary>
+    /// <summary>search.resultsInMessages aus: Reiter entfernen und Schaltfläche ausblenden.</summary>
+    class procedure ApplySettings; static;
+    class procedure ThemeChanged; static;
+    /// <summary>Suchleiste (Strg+F, Befehl Atlas.Search).</summary>
     class procedure Show; static;
-    /// <summary>Suchdialog mit Bereich Methode (#877, Befehl Atlas.SearchInMethod).</summary>
+    /// <summary>Suchleiste mit Bereich Methode (#877, Befehl Atlas.SearchInMethod).</summary>
     class procedure ShowInMethod; static;
     /// <summary>F3/Umschalt+F3: False ohne letzte Atlas-Suche oder ohne Editor.</summary>
     class function TryNext(ABackward: Boolean): Boolean; static;
-    /// <summary>Für Palette und Menü: wie TryNext, ohne letzte Suche öffnet sich der Dialog.</summary>
+    /// <summary>Für Palette und Menü: wie TryNext, ohne letzte Suche öffnet sich die Leiste.</summary>
     class procedure FindNext; static;
     class procedure FindPrevious; static;
     class procedure ClearHighlights; static;
@@ -95,16 +136,19 @@ implementation
 uses
   Winapi.Windows,
   Vcl.Graphics,
+  Vcl.Forms,
   Atlas.Core.Diagnostics.Guard,
   Atlas.Core.Lsp.Session,
   Atlas.Core.Style.Palette,
   Atlas.Core.Editor.Pairs,
   Atlas.Core.Search.Scopes,
+  Atlas.Core.Search.Results,
   Atlas.Text.Lines,
   Atlas.UI.Strings,
-  Atlas.UI.Search.Dialog,
   Atlas.IDE.Foundation.EditorBuffer,
-  Atlas.IDE.Foundation.EditorStyle;
+  Atlas.IDE.Foundation.EditorStyle,
+  Atlas.IDE.Foundation.Settings,
+  Atlas.IDE.Search.MessageList;
 
 { TAtlasIdeSearch.TPainter.TEvents }
 
@@ -198,7 +242,8 @@ var
 begin
   if TAtlasGuard.Disabled(TAtlasFeature.EditorCommands) then
     Exit;
-  if BeforeEvent or (Stage <> plsEndPaint) or (Context = nil) or TAtlasIdeSearch.FLast.IsEmpty then
+  if BeforeEvent or (Stage <> plsEndPaint) or (Context = nil) or not TAtlasIdeSearch.FHighlight or
+    TAtlasIdeSearch.FLast.IsEmpty then
     Exit;
   try
     if FCheck then
@@ -244,6 +289,15 @@ begin
   end;
 end;
 
+{ TAtlasIdeSearch.TBarWatcher }
+
+procedure TAtlasIdeSearch.TBarWatcher.Notification(AComponent: TComponent; Operation: TOperation);
+begin
+  inherited Notification(AComponent, Operation);
+  if (Operation = opRemove) and (AComponent is TAtlasSearchBar) then
+    TAtlasIdeSearch.Removed(TAtlasSearchBar(AComponent));
+end;
+
 { TAtlasIdeSearch }
 
 class procedure TAtlasIdeSearch.Install(const AMessage: TProc<string>);
@@ -251,13 +305,66 @@ begin
   FMessage := AMessage;
   if FPainter = nil then
     FPainter := TPainter.Create;
+  if FBars = nil then
+    FBars := TList<TAtlasSearchBar>.Create;
+  if FWatcher = nil then
+    FWatcher := TBarWatcher.Create(nil);
 end;
 
 class procedure TAtlasIdeSearch.Uninstall;
+var
+  Bar: TAtlasSearchBar;
 begin
   FreeAndNil(FPainter);
+  // Leisten selbst freigeben; der Wächter darf dabei nicht mehr zurückschreiben.
+  if FBars <> nil then
+  begin
+    for Bar in FBars.ToArray do
+    begin
+      Bar.RemoveFreeNotification(FWatcher);
+      Bar.Free;
+    end;
+    FreeAndNil(FBars);
+  end;
+  FreeAndNil(FWatcher);
+  FBar := nil;
   FMessage := nil;
+  FHighlight := False;
+  FListedKey := '';
   FLast := Default(TAtlasSearchQuery);
+end;
+
+class procedure TAtlasIdeSearch.ApplySettings;
+var
+  Bar: TAtlasSearchBar;
+  Listed: Boolean;
+begin
+  Listed := TAtlasIdeSettings.Current.SearchResultsInMessages;
+  if not Listed then
+  begin
+    TAtlasIdeSearchMessages.Clear;
+    FListedKey := '';
+  end;
+  if FBars <> nil then
+    for Bar in FBars do
+      Bar.ListVisible := Listed;
+end;
+
+class procedure TAtlasIdeSearch.ThemeChanged;
+var
+  Bar: TAtlasSearchBar;
+begin
+  if FBars <> nil then
+    for Bar in FBars do
+      ThemeBar(Bar);
+end;
+
+class procedure TAtlasIdeSearch.ThemeBar(ABar: TAtlasSearchBar);
+var
+  Theming: IOTAIDEThemingServices;
+begin
+  if Supports(BorlandIDEServices, IOTAIDEThemingServices, Theming) and Theming.IDEThemingEnabled then
+    Theming.ApplyTheme(ABar);
 end;
 
 class procedure TAtlasIdeSearch.Say(const AText: string);
@@ -363,22 +470,107 @@ begin
     View.Paint;
 end;
 
+class function TAtlasIdeSearch.EditorOf(const AWindow: INTAEditWindow): TWinControl;
+var
+  Editor: TComponent;
+begin
+  Result := nil;
+  if (AWindow = nil) or (AWindow.Form = nil) then
+    Exit;
+  Editor := AWindow.Form.FindComponent('Editor');
+  if (Editor is TWinControl) and (TWinControl(Editor).Parent <> nil) then
+    Result := TWinControl(Editor);
+end;
+
+class function TAtlasIdeSearch.BarFor(const AWindow: INTAEditWindow): TAtlasSearchBar;
+var
+  Editor: TWinControl;
+  Bar: TAtlasSearchBar;
+begin
+  Result := nil;
+  Editor := EditorOf(AWindow);
+  if (Editor = nil) or (FBars = nil) then
+    Exit;
+  for Bar in FBars do
+    if Bar.Parent = Editor.Parent then
+      Exit(Bar);
+  CreateBar(Editor.Parent, Result);
+end;
+
+/// <summary>Eigene Methode: Jede Leiste braucht ihre eigene gefangene Variable.</summary>
+class procedure TAtlasIdeSearch.CreateBar(AParent: TWinControl; out ABar: TAtlasSearchBar);
+var
+  Bar: TAtlasSearchBar;
+begin
+  Bar := TAtlasSearchBar.Create(nil);
+  Bar.FreeNotification(FWatcher);
+  FBars.Add(Bar);
+  Bar.Visible := False;
+  Bar.OnQueryChanged :=
+    procedure
+    begin
+      if Bar = FBar then
+        TAtlasGuard.Run(TAtlasFeature.EditorCommands,
+          procedure
+          begin
+            Sync(True);
+          end);
+    end;
+  Bar.OnStep :=
+    procedure(ABackward: Boolean)
+    begin
+      if Bar = FBar then
+        TAtlasGuard.Run(TAtlasFeature.EditorCommands,
+          procedure
+          begin
+            BarStep(ABackward);
+          end);
+    end;
+  Bar.OnList :=
+    procedure
+    begin
+      if Bar = FBar then
+        TAtlasGuard.Run(TAtlasFeature.EditorCommands, BarList);
+    end;
+  Bar.OnClose :=
+    procedure
+    begin
+      if Bar = FBar then
+        TAtlasGuard.Run(TAtlasFeature.EditorCommands, CloseBar);
+    end;
+  // Unter dem Editor: zuerst ganz unten einhängen, dann unten ausrichten.
+  Bar.Top := AParent.ClientHeight;
+  Bar.Align := alBottom;
+  Bar.Parent := AParent;
+  ThemeBar(Bar);
+  ABar := Bar;
+end;
+
+class procedure TAtlasIdeSearch.Removed(ABar: TAtlasSearchBar);
+begin
+  if FBars <> nil then
+    FBars.Remove(ABar);
+  if FBar = ABar then
+    FBar := nil;
+end;
+
 class procedure TAtlasIdeSearch.Open(AInMethod: Boolean);
 var
   View: IOTAEditView;
+  Editors: INTAEditorServices;
+  Bar: TAtlasSearchBar;
   Text, Proposal: string;
   Lines, Levels: TArray<string>;
   Cursor: TAtlasSearchPos;
-  Selection, Area: TAtlasSearchArea;
+  Selection: TAtlasSearchArea;
   HasSelection: Boolean;
   Query: TAtlasSearchQuery;
   Routine: TAtlasSearchRoutine;
-  Hits: TArray<TAtlasSearchHit>;
-  Chosen, Index: Integer;
-  Wrapped: Boolean;
-  Run: TAtlasSearchRun;
 begin
-  if not TopView(View) then
+  if not TopView(View) or not Supports(BorlandIDEServices, INTAEditorServices, Editors) then
+    Exit;
+  Bar := BarFor(Editors.TopEditWindow);
+  if Bar = nil then
     Exit;
   Text := TAtlasEditorBuffer.Text(View.Buffer);
   Lines := TTextLines.SplitLines(Text);
@@ -405,48 +597,185 @@ begin
     Query.Scope := TAtlasSearchScope.Method;
     Query.Level := 0;
   end;
-  Query.Area := Selection;
   Levels := nil;
   for Routine in TAtlasSearchScopes.RoutinesAt(Text, Cursor) do
     Levels := Levels + [Routine.Caption];
-  Run :=
-    procedure(const AQuery: TAtlasSearchQuery; out ACaptions: TArray<string>; out AMessage: string)
-    var
-      Found: TAtlasSearchArea;
-      Hit: TAtlasSearchHit;
-    begin
-      ACaptions := nil;
-      AMessage := '';
-      if not TAtlasSearchScopes.AreaFor(Text, AQuery.Scope, Cursor, Selection, AQuery.Level, Found) then
-      begin
-        if AQuery.Scope = TAtlasSearchScope.Method then
-          AMessage := TAtlasStrings.Text(TAtlasTextId.SearchNoMethod)
-        else
-          AMessage := TAtlasStrings.Text(TAtlasTextId.SearchNoSelection);
-        Exit;
-      end;
-      for Hit in TAtlasTextSearch.FindAll(Lines, AQuery.Text, AQuery.Options, Found) do
-        ACaptions := ACaptions + [TAtlasTextSearch.HitCaption(Lines, Hit)];
-    end;
-  if not TAtlasSearchDialog.Execute(Query, Levels, HasSelection, Run, Chosen) then
+  // Ursprung der Suche: Anfang einer Markierung, sonst der Cursor.
+  FOrigin := Cursor;
+  if HasSelection then
+    FOrigin := Selection.Start;
+  FSelection := Selection;
+  FFileName := View.Buffer.FileName;
+  // Eine andere Leiste (anderes Editorfenster) beenden.
+  if (FBar <> nil) and (FBar <> Bar) then
+    FBar.Visible := False;
+  FBar := Bar;
+  Bar.ListVisible := TAtlasIdeSettings.Current.SearchResultsInMessages;
+  Bar.Prepare(Query, Levels, HasSelection);
+  Bar.Visible := True;
+  Bar.FocusText;
+  // Hervorheben und zählen, ohne zu springen: Der Vorschlag steht meist schon am Cursor.
+  Sync(False);
+end;
+
+class procedure TAtlasIdeSearch.Sync(AJump: Boolean);
+var
+  View: IOTAEditView;
+  Text: string;
+  Lines: TArray<string>;
+  Query: TAtlasSearchQuery;
+  Area: TAtlasSearchArea;
+  Hits: TArray<TAtlasSearchHit>;
+  Index: Integer;
+  Wrapped: Boolean;
+begin
+  if (FBar = nil) or not TopView(View) then
     Exit;
-  if not TAtlasSearchScopes.AreaFor(Text, Query.Scope, Cursor, Selection, Query.Level, Area) then
-    Exit;
-  // Gemerkt wird der Bereich beim Suchen (Auswahl; Methode als Rückfall außerhalb jeder Routine).
-  Query.Area := Area;
-  Query.FileName := View.Buffer.FileName;
-  FLast := Query;
-  Repaint;
-  Hits := TAtlasTextSearch.FindAll(Lines, Query.Text, Query.Options, Area);
-  if Length(Hits) = 0 then
+  Text := TAtlasEditorBuffer.Text(View.Buffer);
+  Lines := TTextLines.SplitLines(Text);
+  // Anderes Dokument im selben Fenster: neuer Ursprung am Cursor, Auswahl gilt nicht mehr.
+  if not SameText(FFileName, View.Buffer.FileName) then
   begin
-    Say(TAtlasStrings.Fmt(TAtlasTextId.SearchNothing, [Query.Text]));
+    FFileName := View.Buffer.FileName;
+    FOrigin := CursorOf(View, Lines);
+    FSelection := TAtlasSearchArea.Create(0, 0, 0, 0);
+  end;
+  Query := FBar.Query;
+  Query.FileName := FFileName;
+  if not TAtlasSearchScopes.AreaFor(Text, Query.Scope, FOrigin, FSelection, Query.Level, Area) then
+  begin
+    Query.Area := TAtlasSearchArea.Create(0, 0, 0, 0);
+    FLast := Query;
+    FHighlight := False;
+    Repaint;
+    if Query.Scope = TAtlasSearchScope.Method then
+      FBar.SetCounter(TAtlasStrings.Text(TAtlasTextId.SearchNoMethod))
+    else
+      FBar.SetCounter(TAtlasStrings.Text(TAtlasTextId.SearchNoSelection));
     Exit;
   end;
-  Index := Chosen;
-  if (Index < 0) or (Index > High(Hits)) then
-    Index := TAtlasTextSearch.Next(Hits, Cursor, False, Wrapped);
-  SelectHit(View, Lines, Hits[Index]);
+  // Gemerkt wird der Bereich beim Suchen (Auswahl; Methode als Rückfall außerhalb jeder Routine).
+  Query.Area := Area;
+  FLast := Query;
+  FHighlight := True;
+  Repaint;
+  Hits := TAtlasTextSearch.FindAll(Lines, Query.Text, Query.Options, Area);
+  if AJump and (Length(Hits) > 0) then
+  begin
+    Index := TAtlasTextSearch.Next(Hits, FOrigin, False, Wrapped);
+    SelectHit(View, Lines, Hits[Index]);
+  end;
+  UpdateCounter;
+end;
+
+class procedure TAtlasIdeSearch.UpdateCounter;
+var
+  View: IOTAEditView;
+  Text: string;
+  Lines: TArray<string>;
+  Area, Selection: TAtlasSearchArea;
+  Hits: TArray<TAtlasSearchHit>;
+  Index: Integer;
+  At: TAtlasSearchPos;
+begin
+  if (FBar = nil) or not FBar.Visible or not TopView(View) then
+    Exit;
+  if FLast.Text = '' then
+  begin
+    FBar.SetCounter('');
+    Exit;
+  end;
+  Text := TAtlasEditorBuffer.Text(View.Buffer);
+  Lines := TTextLines.SplitLines(Text);
+  At := CursorOf(View, Lines);
+  if SelectionOf(View, Lines, Selection) then
+    At := Selection.Start;
+  Hits := nil;
+  if AreaOf(Text, FLast, At, Area) then
+    Hits := TAtlasTextSearch.FindAll(Lines, FLast.Text, FLast.Options, Area);
+  if Length(Hits) = 0 then
+  begin
+    FBar.SetCounter(TAtlasStrings.Text(TAtlasTextId.SearchNoHits));
+    Exit;
+  end;
+  Index := TAtlasSearchResults.IndexAt(Hits, At);
+  if Index >= 0 then
+    FBar.SetCounter(TAtlasStrings.Fmt(TAtlasTextId.SearchHitPosition, [Index + 1, Length(Hits)]))
+  else
+    FBar.SetCounter(TAtlasStrings.Fmt(TAtlasTextId.SearchHitCount, [Length(Hits)]));
+end;
+
+class procedure TAtlasIdeSearch.BarStep(ABackward: Boolean);
+begin
+  Sync(False);
+  TryNext(ABackward);
+end;
+
+class procedure TAtlasIdeSearch.BarList;
+var
+  View: IOTAEditView;
+  Text, Key, Mode, Place: string;
+  Lines: TArray<string>;
+  Area: TAtlasSearchArea;
+  Hits: TArray<TAtlasSearchHit>;
+  Routines: TArray<TAtlasSearchRoutine>;
+begin
+  if (FBar = nil) or not TAtlasIdeSettings.Current.SearchResultsInMessages or not TopView(View) then
+    Exit;
+  Sync(False);
+  if FLast.IsEmpty or FLast.Area.IsEmpty then
+    Exit;
+  Text := TAtlasEditorBuffer.Text(View.Buffer);
+  // Dieselbe Suche im selben Text nicht erneut aufbauen (Enter springt auch nur weiter).
+  Key := FFileName + #0 + FLast.Text + #0 + BoolToStr(FLast.Options.CaseSensitive) +
+    BoolToStr(FLast.Options.WholeWord) + BoolToStr(FLast.Options.Identifier) + #0 + IntToStr(Ord(FLast.Scope)) + #0 +
+    IntToStr(FLast.Area.Start.Line) + ':' + IntToStr(FLast.Area.Start.Character) + '-' +
+    IntToStr(FLast.Area.Stop.Line) + ':' + IntToStr(FLast.Area.Stop.Character) + #0 + Text;
+  if Key = FListedKey then
+    Exit;
+  FListedKey := Key;
+  Lines := TTextLines.SplitLines(Text);
+  Area := FLast.Area;
+  Hits := TAtlasTextSearch.FindAll(Lines, FLast.Text, FLast.Options, Area);
+  Mode := '';
+  if FLast.Options.Identifier then
+    Mode := TAtlasStrings.Text(TAtlasTextId.SearchListIdentifier);
+  Place := '';
+  case FLast.Scope of
+    TAtlasSearchScope.Method:
+      begin
+        Routines := TAtlasSearchScopes.RoutinesAt(Text, Area.Start);
+        if Length(Routines) > 0 then
+          Place := TAtlasStrings.Fmt(TAtlasTextId.SearchListScopeMethod,
+            [TAtlasSearchResults.RoutineName(Routines[0].Caption)]);
+      end;
+    TAtlasSearchScope.Selection:
+      Place := ', ' + TAtlasStrings.Text(TAtlasTextId.SearchScopeSelection);
+  end;
+  TAtlasIdeSearchMessages.Show(FFileName, TAtlasStrings.Fmt(TAtlasTextId.SearchListTitle,
+    [FLast.Text, Mode, ExtractFileName(FFileName), Place, Length(Hits)]),
+    TAtlasSearchResults.Entries(Lines, Hits, TAtlasEditorBuffer.TabWidth(View.Buffer)), Length(Hits));
+  // Das Meldungsfenster nimmt beim Zeigen den Fokus; zurück in die Leiste.
+  if FBar <> nil then
+    FBar.FocusText;
+end;
+
+class procedure TAtlasIdeSearch.CloseBar;
+var
+  Form: TCustomForm;
+  Editor: TComponent;
+begin
+  if FBar = nil then
+    Exit;
+  Form := GetParentForm(FBar);
+  FBar.Visible := False;
+  FHighlight := False;
+  Repaint;
+  if Form = nil then
+    Exit;
+  Editor := Form.FindComponent('Editor');
+  if (Editor is TWinControl) and TWinControl(Editor).CanFocus then
+    TWinControl(Editor).SetFocus;
 end;
 
 class procedure TAtlasIdeSearch.Show;
@@ -498,6 +827,7 @@ begin
   if Wrapped then
     Say(TAtlasStrings.Text(TAtlasTextId.SearchWrapped));
   SelectHit(View, Lines, Hits[Index]);
+  UpdateCounter;
 end;
 
 class procedure TAtlasIdeSearch.FindNext;
@@ -514,8 +844,13 @@ end;
 
 class procedure TAtlasIdeSearch.ClearHighlights;
 begin
-  FLast.Text := '';
-  Repaint;
+  if (FBar <> nil) and FBar.Visible then
+    CloseBar
+  else
+  begin
+    FHighlight := False;
+    Repaint;
+  end;
 end;
 
 end.

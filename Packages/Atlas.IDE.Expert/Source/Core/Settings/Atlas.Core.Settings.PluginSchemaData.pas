@@ -12,7 +12,7 @@ function AtlasPluginSchemaJson: string;
 implementation
 
 const
-  Lines: array[0..2942] of string = (
+  Lines: array[0..2952] of string = (
     '{',
     '  "$schema": "http://json-schema.org/draft-07/schema#",',
     '  "title": "Atlas-Plugin-Einstellungen",',
@@ -930,9 +930,19 @@ const
     '      "default": true,',
     '      "x-key": "search.replaceIdeSearch",',
     '      "x-area": "editor",',
-    '      "x-page": "Befehle",',
+    '      "x-page": "Units suchen",',
     '      "x-control": "Kontrollkästchen",',
-    '      "description": "Atlas-Suche ersetzt die IDE-Suche: Strg+F öffnet im Editor den Atlas-Suchdialog (Bereich Methode, Unit, Auswahl; Groß-/Kleinschreibung, ganzes Wort, Bezeichner statt Text), F3/Um' + 'schalt+F3 springen zum nächsten/vorigen Treffer der letzten Atlas-Suche; aus = Suchen der IDE wie bisher",',
+    '      "description": "Atlas-Suche ersetzt die IDE-Suche: Strg+F öffnet die Suchleiste unter dem Editor (Bereich Methode, Unit, Auswahl; Groß-/Kleinschreibung, ganzes Wort, Bezeichner statt Text), F3/U' + 'mschalt+F3 springen zum nächsten/vorigen Treffer der letzten Atlas-Suche; aus = Suchen der IDE wie bisher",',
+    '      "x-issue": "#878"',
+    '    },',
+    '    "SearchResultsInMessages": {',
+    '      "type": "boolean",',
+    '      "default": true,',
+    '      "x-key": "search.resultsInMessages",',
+    '      "x-area": "editor",',
+    '      "x-page": "Units suchen",',
+    '      "x-control": "Kontrollkästchen",',
+    '      "description": "Treffer der Atlas-Suche im Reiter „Atlas-Suche“ des Fensters Meldungen auflisten (Enter bzw. „In Meldungen“ in der Suchleiste; Doppelklick springt zum Treffer); aus = nur Markier' + 'ungen und Zähler in der Leiste",',
     '      "x-issue": "#878"',
     '    },',
     '    "SearchKey": {',

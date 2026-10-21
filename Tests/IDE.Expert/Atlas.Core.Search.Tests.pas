@@ -33,6 +33,14 @@ type
     [Test]
     procedure WordAtAndHitCaption;
     [Test]
+    procedure IndexAtFindsMarkedOrContainingHit;
+    [Test]
+    procedure EntriesCarryLineColumnAndText;
+    [Test]
+    procedure EntriesAreCapped;
+    [Test]
+    procedure RoutineNameFromHeader;
+    [Test]
     procedure KeysComeFromSettingsAndFollowTheSwitch;
     [Test]
     procedure SettingsDefaultsAndRoundTrip;
@@ -44,6 +52,7 @@ uses
   System.SysUtils,
   Atlas.Core.Search.Matching,
   Atlas.Core.Search.Scopes,
+  Atlas.Core.Search.Results,
   Atlas.Text.Lines,
   Atlas.Core.Settings.Plugin,
   Atlas.Core.Commands.KeyConflicts,
@@ -240,6 +249,64 @@ begin
   Assert.AreEqual('', TAtlasTextSearch.WordAt('', 0));
   Lines := ['x', #9'  Foo := 1;'#13];
   Assert.AreEqual('2: Foo := 1;', TAtlasTextSearch.HitCaption(Lines, TAtlasSearchHit.Create(1, 3, 3)));
+  Assert.AreEqual('Foo := 1;', TAtlasTextSearch.HitText(Lines, TAtlasSearchHit.Create(1, 3, 3)));
+end;
+
+procedure TAtlasSearchTests.IndexAtFindsMarkedOrContainingHit;
+var
+  Hits: TArray<TAtlasSearchHit>;
+begin
+  // Open in Zeile 0 ab 2 und 10, Zeile 3 ab 0.
+  Hits := [TAtlasSearchHit.Create(0, 2, 4), TAtlasSearchHit.Create(0, 10, 4), TAtlasSearchHit.Create(3, 0, 4)];
+  Assert.AreEqual(1, TAtlasSearchResults.IndexAt(Hits, TAtlasSearchPos.Create(0, 10)), 'Anfang der Markierung');
+  Assert.AreEqual(0, TAtlasSearchResults.IndexAt(Hits, TAtlasSearchPos.Create(0, 4)), 'Cursor im Treffer');
+  Assert.AreEqual(0, TAtlasSearchResults.IndexAt(Hits, TAtlasSearchPos.Create(0, 6)), 'Cursor direkt dahinter');
+  Assert.AreEqual(-1, TAtlasSearchResults.IndexAt(Hits, TAtlasSearchPos.Create(0, 7)), 'zwischen zwei Treffern');
+  Assert.AreEqual(2, TAtlasSearchResults.IndexAt(Hits, TAtlasSearchPos.Create(3, 0)));
+  Assert.AreEqual(-1, TAtlasSearchResults.IndexAt(nil, TAtlasSearchPos.Create(0, 0)));
+end;
+
+procedure TAtlasSearchTests.EntriesCarryLineColumnAndText;
+var
+  Lines: TArray<string>;
+  Hits: TArray<TAtlasSearchHit>;
+  Entries: TArray<TAtlasSearchEntry>;
+begin
+  Lines := TTextLines.SplitLines('unit A;'#13#10#9'Open := 1;'#13#10'  if Open > 0 then'#13#10);
+  Hits := TAtlasTextSearch.FindAll(Lines, 'Open', TAtlasSearchOptions.Create(False, True, False),
+    TAtlasSearchArea.Whole(Lines));
+  Entries := TAtlasSearchResults.Entries(Lines, Hits, 4);
+  Assert.AreEqual(2, Integer(Length(Entries)));
+  Assert.AreEqual(2, Entries[0].Line);
+  Assert.AreEqual(5, Entries[0].Column, 'Tab bis Spalte 5 aufgelöst');
+  Assert.AreEqual('Open := 1;', Entries[0].Text);
+  Assert.AreEqual(3, Entries[1].Line);
+  Assert.AreEqual(6, Entries[1].Column);
+  Assert.AreEqual('if Open > 0 then', Entries[1].Text);
+end;
+
+procedure TAtlasSearchTests.EntriesAreCapped;
+var
+  Lines: TArray<string>;
+  Hits: TArray<TAtlasSearchHit>;
+  Index: Integer;
+begin
+  Lines := ['x'];
+  SetLength(Hits, TAtlasSearchResults.MaxEntries + 5);
+  for Index := 0 to High(Hits) do
+    Hits[Index] := TAtlasSearchHit.Create(0, 0, 1);
+  Assert.AreEqual(TAtlasSearchResults.MaxEntries, Integer(Length(TAtlasSearchResults.Entries(Lines, Hits, 2))));
+end;
+
+procedure TAtlasSearchTests.RoutineNameFromHeader;
+begin
+  Assert.AreEqual('ReadLocation', TAtlasSearchResults.RoutineName(
+    'function ReadLocation(const AText: string; out AFileName: string): Boolean;'));
+  Assert.AreEqual('TFoo.Bar', TAtlasSearchResults.RoutineName('class procedure TFoo.Bar;'));
+  Assert.AreEqual('TList<T>.Add', TAtlasSearchResults.RoutineName('function TList<T>.Add(const A: T): Integer;'));
+  Assert.AreEqual('TFoo.Create', TAtlasSearchResults.RoutineName('constructor TFoo.Create(AOwner: TComponent);'));
+  Assert.AreEqual('Inner', TAtlasSearchResults.RoutineName('  procedure Inner'));
+  Assert.AreEqual('begin', TAtlasSearchResults.RoutineName('begin'), 'ohne Namen bleibt die Zeile');
 end;
 
 procedure TAtlasSearchTests.KeysComeFromSettingsAndFollowTheSwitch;
@@ -279,6 +346,7 @@ begin
   Settings := TAtlasPluginSettings.Defaults;
   // Entscheidung #878: Atlas ersetzt die IDE-Suche standardmäßig.
   Assert.IsTrue(Settings.SearchReplaceIde);
+  Assert.IsTrue(Settings.SearchResultsInMessages, 'Liste in den Meldungen standardmäßig an');
   Assert.AreEqual($4046, Settings.SearchKey);
   Assert.AreEqual($72, Settings.SearchNextKey);
   Assert.AreEqual($2072, Settings.SearchPreviousKey);
