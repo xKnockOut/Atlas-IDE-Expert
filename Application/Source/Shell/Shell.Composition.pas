@@ -1570,8 +1570,17 @@ begin
     end);
   FCommands.RegisterConcurrent(TLspSettingsCommands.CatalogCommand,
     function(const AArguments: TJSONArray): TJSONValue
+    var
+      Rule: IRule;
+      Experimental: TArray<string>;
     begin
-      Result := TLspSettingsCommands.Catalog(TLspSettingsCommands.CatalogEntries(AArguments), FGlobalSettingsFile);
+      // Experimentelle Regeln (#834) kennt nur ihr Deskriptor; die Einstellungsseite (#909) markiert sie.
+      Experimental := nil;
+      for Rule in BuiltinRules do
+        if Rule.Descriptor.Experimental then
+          Experimental := Experimental + [Rule.Descriptor.Id];
+      Result := TLspSettingsCommands.Catalog(TLspSettingsCommands.CatalogEntries(AArguments), FGlobalSettingsFile,
+        Experimental);
     end);
   FCommands.RegisterConcurrent(TBugReport.Command,
     function(const AArguments: TJSONArray): TJSONValue

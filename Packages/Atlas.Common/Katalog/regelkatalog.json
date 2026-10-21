@@ -5,6 +5,7 @@
       "name": "Syntax error",
       "category": "bug",
       "severity": "error",
+      "group": "find-bugs",
       "description": "The parser could not read the source code.",
       "bad": "procedure Foo;\nbegin\n  if X then\nend;",
       "good": "procedure Foo;\nbegin\n  if X then\n    Bar;\nend;"
@@ -14,6 +15,7 @@
       "name": "Unused suppression",
       "category": "code-smell",
       "severity": "hint",
+      "group": "internal",
       "description": "An lsp-ignore comment suppresses no finding and can be removed.",
       "bad": "// lsp-ignore: empty-except\nX := 1;",
       "good": "X := 1;"
@@ -23,6 +25,7 @@
       "name": "Unknown rule id",
       "category": "code-smell",
       "severity": "hint",
+      "group": "internal",
       "description": "An lsp-ignore comment names a rule id that does not exist, so it suppresses nothing. The message suggests the most similar known id (typo); such a comment is not also reported as unused-suppression.",
       "bad": "// lsp-ignore: empty-exept\ntry X; except end;",
       "good": "// lsp-ignore: empty-except\ntry X; except end;"
@@ -32,6 +35,7 @@
       "name": "Bidirectional control character",
       "category": "vulnerability",
       "severity": "error",
+      "group": "security",
       "description": "Bidirectional control characters can make code display differently from how it compiles (Trojan Source); also in form files. Direction marks in RTL text only with low confidence.",
       "bad": "if IsAdmin then { U+202E } begin",
       "good": "if IsAdmin then begin"
@@ -41,6 +45,7 @@
       "name": "Invisible character",
       "category": "security-hotspot",
       "severity": "warning",
+      "group": "security",
       "description": "Invisible or zero-width characters in the source code and form files; medium confidence in strings and comments.",
       "bad": "Count{U+200B} := 0;",
       "good": "Count := 0;"
@@ -50,6 +55,7 @@
       "name": "Control character",
       "category": "bug",
       "severity": "error",
+      "group": "security",
       "description": "NUL or control characters or invalid UTF-8 bytes in the source code and the form file; invalid bytes with exact line and column.",
       "bad": "S := 'abc{U+0000}';",
       "good": "S := 'abc' + #0;"
@@ -59,6 +65,7 @@
       "name": "Confusable identifier",
       "category": "security-hotspot",
       "severity": "warning",
+      "group": "security",
       "description": "Identifiers that mix scripts or contain non-ASCII characters can be confused with others.",
       "bad": "var Pаssword: string; { Cyrillic 'а' }",
       "good": "var Password: string;"
@@ -68,33 +75,85 @@
       "name": "Forbidden uses",
       "category": "code-smell",
       "severity": "error",
+      "group": "architecture",
       "description": "A uses entry violates a layer rule configured under \"layers\" in atlas.json, e.g. *.Common.* must not use Vcl.*.",
       "bad": "unit App.Common.Model;\ninterface\nuses Vcl.Forms;",
-      "good": "unit App.Common.Model;\ninterface\nuses System.Classes;"
+      "good": "unit App.Common.Model;\ninterface\nuses System.Classes;",
+      "options": [
+        {
+          "name": "layers",
+          "type": "json",
+          "default": [],
+          "description": "Layer rules: [{\"from\": glob, \"deny\": [globs], \"allow\": [globs]}]."
+        }
+      ]
     },
     {
       "id": "architecture-role-import",
       "name": "Import violates the role matrix",
       "category": "code-smell",
       "severity": "warning",
+      "group": "architecture",
       "description": "A uses entry violates the import matrix of the role concept (output artefact, feature, role: Contract, Internals, Providers, Adapters, Composition, Hosting). Off by default; switch it on in atlas.json with the option \"prefixes\". Approved exceptions go to \"allow\" as \"Source -> Target\" globs.",
       "bad": "unit Atlas.Common.Logging.Contract;\ninterface\nuses Atlas.Common.Logging.Providers.Logger;",
-      "good": "unit Atlas.Common.Logging.Contract;\ninterface\nuses System.SysUtils;"
+      "good": "unit Atlas.Common.Logging.Contract;\ninterface\nuses System.SysUtils;",
+      "options": [
+        {
+          "name": "prefixes",
+          "type": "string-list",
+          "default": [],
+          "description": "Prefixes of the output artefacts, e.g. \"Atlas.Common\"; without them the rule reports nothing."
+        },
+        {
+          "name": "hostRoles",
+          "type": "string-list",
+          "default": [
+            "Foundation",
+            "Core",
+            "Shell",
+            "Adapters",
+            "Platform"
+          ],
+          "description": "First name segments of host units without prefix."
+        },
+        {
+          "name": "allow",
+          "type": "string-list",
+          "default": [],
+          "description": "Approved exceptions \"Source -> Target\" (both globs)."
+        }
+      ]
     },
     {
       "id": "architecture-contract-content",
       "name": "Class in a contract unit",
       "category": "code-smell",
       "severity": "warning",
+      "group": "architecture",
       "description": "A contract unit declares a class in its interface section. Contracts hold only records, interfaces, enumerations and exceptions. Off by default; switch it on in atlas.json with the option \"prefixes\". Approved exceptions go to \"allow\" as \"Unit.Type\" globs.",
       "bad": "unit App.Orders.Contract;\ninterface\ntype\n  TOrderList = class\n  end;",
-      "good": "unit App.Orders.Contract;\ninterface\ntype\n  IOrderList = interface\n  end;"
+      "good": "unit App.Orders.Contract;\ninterface\ntype\n  IOrderList = interface\n  end;",
+      "options": [
+        {
+          "name": "prefixes",
+          "type": "string-list",
+          "default": [],
+          "description": "Prefixes of the output artefacts, e.g. \"Atlas.Common\"."
+        },
+        {
+          "name": "allow",
+          "type": "string-list",
+          "default": [],
+          "description": "Approved exceptions \"Unit.Type\" as glob."
+        }
+      ]
     },
     {
       "id": "thread-vcl-access",
       "name": "VCL access from a thread",
       "category": "bug",
       "severity": "warning",
+      "group": "threads",
       "description": "TThread.Execute, TThread.CreateAnonymousThread or TTask accesses the VCL (Application, Screen, ShowMessage, MessageDlg …) outside Synchronize or Queue. The VCL is not thread-safe.",
       "bad": "procedure TWorker.Execute;\nbegin\n  Application.Title := 'Done';\nend;",
       "good": "procedure TWorker.Execute;\nbegin\n  TThread.Queue(nil, procedure begin Application.Title := 'Done' end);\nend;"
@@ -104,15 +163,25 @@
       "name": "Lock without try/finally",
       "category": "bug",
       "severity": "warning",
+      "group": "threads",
       "description": "A lock (TCriticalSection.Enter/Acquire, TMonitor.Enter, BeginRead/BeginWrite, TSpinLock.Enter, TMutex.Acquire, EnterCriticalSection or a pair from the lockPairs option) is not directly followed by try/finally releasing it. An exception leaves the lock held.",
       "bad": "CS.Enter;\nDoWork;\nCS.Leave;",
-      "good": "CS.Enter;\ntry\n  DoWork;\nfinally\n  CS.Leave;\nend;"
+      "good": "CS.Enter;\ntry\n  DoWork;\nfinally\n  CS.Leave;\nend;",
+      "options": [
+        {
+          "name": "lockPairs",
+          "type": "json",
+          "default": [],
+          "description": "Additional lock pairs as [[\"Lock\", \"Release\"]]."
+        }
+      ]
     },
     {
       "id": "thread-use-after-free-on-terminate",
       "name": "Thread used after start with FreeOnTerminate",
       "category": "bug",
       "severity": "warning",
+      "group": "threads",
       "description": "A thread with FreeOnTerminate := True may free itself as soon as it is started; using the variable afterwards can access a freed object.",
       "bad": "T.FreeOnTerminate := True;\nT.Start;\nLog(T.ThreadID);",
       "good": "Log(T.ThreadID);\nT.FreeOnTerminate := True;\nT.Start;"
@@ -122,6 +191,7 @@
       "name": "Free on a thread with FreeOnTerminate",
       "category": "bug",
       "severity": "error",
+      "group": "threads",
       "description": "Free on a thread with FreeOnTerminate := True frees it twice.",
       "bad": "T.FreeOnTerminate := True;\nT.Start;\nT.Free;",
       "good": "T.FreeOnTerminate := True;\nT.Start;"
@@ -131,6 +201,7 @@
       "name": "Synchronize in thread destructor",
       "category": "bug",
       "severity": "warning",
+      "group": "threads",
       "description": "Synchronize in the destructor of a TThread descendant (or a method it calls) deadlocks: the main thread waits in WaitFor while the thread waits for Synchronize.",
       "bad": "destructor TWorker.Destroy;\nbegin\n  Synchronize(Notify);\n  inherited;\nend;",
       "good": "destructor TWorker.Destroy;\nbegin\n  inherited;\nend;"
@@ -140,6 +211,7 @@
       "name": "Deprecated TThread.Resume/Suspend",
       "category": "code-smell",
       "severity": "warning",
+      "group": "threads",
       "description": "TThread.Resume and Suspend are deprecated. Start a created thread with Start; Suspend has no safe replacement, wait with an event instead.",
       "bad": "FWorker.Resume;",
       "good": "FWorker.Start;"
@@ -149,6 +221,7 @@
       "name": "Function result possibly not set",
       "category": "bug",
       "severity": "warning",
+      "group": "find-bugs",
       "description": "A path through the function ends without assigning Result. The caller then reads an undefined value.",
       "bad": "function Find: Integer;\nbegin\n  if Ok then\n    Result := 1;\nend;",
       "good": "function Find: Integer;\nbegin\n  Result := 0;\n  if Ok then\n    Result := 1;\nend;"
@@ -158,6 +231,7 @@
       "name": "Variable possibly uninitialized",
       "category": "bug",
       "severity": "warning",
+      "group": "find-bugs",
       "description": "A local variable is read on a path where it was never assigned.",
       "bad": "var I: Integer;\nbegin\n  if Ok then\n    I := 1;\n  Writeln(I);\nend;",
       "good": "var I: Integer;\nbegin\n  I := 0;\n  if Ok then\n    I := 1;\n  Writeln(I);\nend;"
@@ -167,6 +241,7 @@
       "name": "Unreachable code",
       "category": "bug",
       "severity": "warning",
+      "group": "find-bugs",
       "description": "A statement after Exit, raise, Abort, Halt, Break, Continue or goto is never executed. Usually a leftover or a misplaced jump. Only the first statement of an unreachable section is reported.",
       "bad": "procedure Save;\nbegin\n  Exit;\n  Store;\nend;",
       "good": "procedure Save;\nbegin\n  if not Ready then\n    Exit;\n  Store;\nend;"
@@ -176,33 +251,61 @@
       "name": "Unused local variable",
       "category": "code-smell",
       "severity": "hint",
+      "group": "style",
       "description": "A local variable is declared but never used. Like compiler hint H2164, but while typing.",
       "bad": "procedure Foo;\nvar\n  I, Count: Integer;\nbegin\n  I := 1;\n  Bar(I);\nend;",
-      "good": "procedure Foo;\nvar\n  I: Integer;\nbegin\n  I := 1;\n  Bar(I);\nend;"
+      "good": "procedure Foo;\nvar\n  I: Integer;\nbegin\n  I := 1;\n  Bar(I);\nend;",
+      "options": [
+        {
+          "name": "ignore",
+          "type": "string-list",
+          "default": [],
+          "description": "Name patterns that are never reported (* and ?)."
+        }
+      ]
     },
     {
       "id": "unused-parameter",
       "name": "Unused parameter",
       "category": "code-smell",
       "severity": "hint",
+      "group": "style",
       "description": "A parameter is never used in the routine body. Overridden and virtual methods, event handlers, published methods, interface implementations and callbacks are exempt.",
       "bad": "function Twice(A, B: Integer): Integer;\nbegin\n  Result := 2 * A;\nend;",
-      "good": "function Twice(A: Integer): Integer;\nbegin\n  Result := 2 * A;\nend;"
+      "good": "function Twice(A: Integer): Integer;\nbegin\n  Result := 2 * A;\nend;",
+      "options": [
+        {
+          "name": "ignore",
+          "type": "string-list",
+          "default": [],
+          "description": "Name patterns that are never reported (* and ?)."
+        }
+      ]
     },
     {
       "id": "unused-assignment",
       "name": "Value assigned is never used",
       "category": "code-smell",
       "severity": "hint",
+      "group": "style",
       "description": "A value assigned to a local variable is overwritten or the routine ends before it is read. Like compiler hint H2077.",
       "bad": "procedure Foo;\nvar\n  I: Integer;\nbegin\n  I := 0;\n  I := Calc;\n  Bar(I);\nend;",
-      "good": "procedure Foo;\nvar\n  I: Integer;\nbegin\n  I := Calc;\n  Bar(I);\nend;"
+      "good": "procedure Foo;\nvar\n  I: Integer;\nbegin\n  I := Calc;\n  Bar(I);\nend;",
+      "options": [
+        {
+          "name": "ignore",
+          "type": "string-list",
+          "default": [],
+          "description": "Name patterns that are never reported (* and ?)."
+        }
+      ]
     },
     {
       "id": "declared-not-implemented",
       "name": "Declared but not implemented",
       "category": "bug",
       "severity": "error",
+      "group": "find-bugs",
       "description": "A method is declared in a class, record or object but has no body in the implementation section. The compiler reports this only when compiling (E2065).",
       "bad": "type\n  TFoo = class\n    procedure Run;\n  end;\n\nimplementation\n\nend.",
       "good": "type\n  TFoo = class\n    procedure Run;\n  end;\n\nimplementation\n\nprocedure TFoo.Run;\nbegin\nend;\n\nend."
@@ -212,6 +315,7 @@
       "name": "Implemented but not declared",
       "category": "bug",
       "severity": "error",
+      "group": "find-bugs",
       "description": "A method body TFoo.Bar has no matching declaration in the type.",
       "bad": "type\n  TFoo = class\n  end;\n\nimplementation\n\nprocedure TFoo.Run;\nbegin\nend;",
       "good": "type\n  TFoo = class\n  private\n    procedure Run;\n  end;\n\nimplementation\n\nprocedure TFoo.Run;\nbegin\nend;"
@@ -221,6 +325,7 @@
       "name": "Destroy without override",
       "category": "bug",
       "severity": "warning",
+      "group": "find-bugs",
       "description": "A destructor Destroy is declared without override. Free calls TObject.Destroy, so this destructor never runs.",
       "bad": "type\n  TFoo = class\n    destructor Destroy;\n  end;",
       "good": "type\n  TFoo = class\n    destructor Destroy; override;\n  end;"
@@ -230,6 +335,7 @@
       "name": "Property accessor calls itself",
       "category": "bug",
       "severity": "warning",
+      "group": "find-bugs",
       "description": "A getter reads its own property or a setter writes its own property. The accessor calls itself endlessly and ends in a stack overflow. Use the field instead.",
       "bad": "function TFoo.GetName: string;\nbegin\n  Result := Name;\nend;",
       "good": "function TFoo.GetName: string;\nbegin\n  Result := FName;\nend;"
@@ -239,6 +345,7 @@
       "name": "Component constructor without override",
       "category": "bug",
       "severity": "warning",
+      "group": "components",
       "description": "A TComponent descendant declares constructor Create(AOwner: TComponent) without override. Components created from a form file are built through the virtual constructor and skip this one.",
       "bad": "type\n  TMyPanel = class(TCustomPanel)\n    constructor Create(AOwner: TComponent);\n  end;",
       "good": "type\n  TMyPanel = class(TCustomPanel)\n    constructor Create(AOwner: TComponent); override;\n  end;"
@@ -248,6 +355,7 @@
       "name": "Method hides virtual method",
       "category": "bug",
       "severity": "warning",
+      "group": "find-bugs",
       "description": "A method has the same name as a virtual method of an ancestor but neither overrides nor reintroduces it (compiler warning W1010).",
       "bad": "type\n  TBase = class\n    procedure Run; virtual;\n  end;\n  TFoo = class(TBase)\n    procedure Run;\n  end;",
       "good": "type\n  TBase = class\n    procedure Run; virtual;\n  end;\n  TFoo = class(TBase)\n    procedure Run; override;\n  end;"
@@ -257,6 +365,7 @@
       "name": "virtual instead of override",
       "category": "bug",
       "severity": "warning",
+      "group": "find-bugs",
       "description": "A descendant declares a method virtual although the ancestor already has a virtual method with the same signature; this starts a new chain instead of overriding.",
       "bad": "type\n  TFoo = class(TBase)\n    procedure Run; virtual;\n  end;",
       "good": "type\n  TFoo = class(TBase)\n    procedure Run; override;\n  end;"
@@ -266,15 +375,25 @@
       "name": "Captured loop variable",
       "category": "bug",
       "severity": "warning",
+      "group": "find-bugs",
       "description": "An anonymous method passed to a deferred API (TThread.Queue, TTask.Run, ...) captures a variable that changes before it runs, such as a for-in loop variable. Delphi captures the variable, not its value.",
       "bad": "for S in List do\n  TThread.Queue(nil, procedure begin Memo1.Lines.Add(S); end);",
-      "good": "function CaptureS(const AValue: string): TProc;\nbegin\n  Result := procedure begin Memo1.Lines.Add(AValue); end;\nend;\n...\nfor S in List do\n  TThread.Queue(nil, CaptureS(S));"
+      "good": "function CaptureS(const AValue: string): TProc;\nbegin\n  Result := procedure begin Memo1.Lines.Add(AValue); end;\nend;\n...\nfor S in List do\n  TThread.Queue(nil, CaptureS(S));",
+      "options": [
+        {
+          "name": "deferredApis",
+          "type": "string-list",
+          "default": [],
+          "description": "Additional deferred APIs (besides TThread.Queue, TTask.Run and others)."
+        }
+      ]
     },
     {
       "id": "component-missing-inherited",
       "name": "Component method without inherited",
       "category": "bug",
       "severity": "warning",
+      "group": "components",
       "description": "An overridden Loaded, CreateParams, CreateWnd, Notification, SetParent, Destroy or Paint of a component does not call inherited, so the VCL skips its own work there. For Paint the confidence is low, because TCustomControl.Paint only draws the design-time frame.",
       "bad": "procedure TMyControl.Loaded;\nbegin\n  UpdateLayout;\nend;",
       "good": "procedure TMyControl.Loaded;\nbegin\n  inherited;\n  UpdateLayout;\nend;"
@@ -284,6 +403,7 @@
       "name": "default does not match constructor",
       "category": "bug",
       "severity": "warning",
+      "group": "components",
       "description": "A property declares a default value, but the constructor sets its field to a different literal. The streaming system does not store values equal to default, so the property is loaded wrongly from the DFM.",
       "bad": "property Size: Integer read FSize write FSize default 5;\n...\nFSize := 10;",
       "good": "property Size: Integer read FSize write FSize default 10;\n...\nFSize := 10;"
@@ -293,6 +413,7 @@
       "name": "Component reference without FreeNotification",
       "category": "bug",
       "severity": "warning",
+      "group": "components",
       "description": "A component property refers to another component, but its setter does not call FreeNotification. When the other component is freed, a dangling pointer remains. Subcomponents created in the constructor are ignored.",
       "bad": "procedure TMyControl.SetLink(const Value: TControl);\nbegin\n  FLink := Value;\nend;",
       "good": "procedure TMyControl.SetLink(const Value: TControl);\nbegin\n  FLink := Value;\n  if Value <> nil then Value.FreeNotification(Self);\nend;"
@@ -302,6 +423,7 @@
       "name": "Setter without Invalidate",
       "category": "code-smell",
       "severity": "hint",
+      "group": "components",
       "description": "A property setter changes a field that Paint reads, but does not call Invalidate (or Repaint, Refresh, Changed). The control keeps showing the old state.",
       "bad": "procedure TMyControl.SetColor(const Value: TColor);\nbegin\n  FColor := Value;\nend;",
       "good": "procedure TMyControl.SetColor(const Value: TColor);\nbegin\n  FColor := Value;\n  Invalidate;\nend;"
@@ -311,6 +433,7 @@
       "name": "Fixed pixel values",
       "category": "code-smell",
       "severity": "warning",
+      "group": "components",
       "description": "Paint or Resize uses fixed pixel values that are too small above 96 dpi. Values passed through ScaleValue or MulDiv, 0, 1 and -1, and factors of multiplications and divisions are not reported.",
       "bad": "Canvas.FillRect(Rect(0, 0, 16, 16));",
       "good": "Canvas.FillRect(Rect(0, 0, ScaleValue(16), ScaleValue(16)));"
@@ -320,6 +443,7 @@
       "name": "Hardcoded color in Paint",
       "category": "code-smell",
       "severity": "hint",
+      "group": "components",
       "description": "Paint uses an RGB literal, a $00BBGGRR constant or a TColor cast. Such colors ignore VCL styles; system colors like clBtnFace are fine.",
       "bad": "Canvas.Brush.Color := $00FF8000;",
       "good": "Canvas.Brush.Color := StyleServices.GetSystemColor(clHighlight);"
@@ -329,6 +453,7 @@
       "name": "Form field without object",
       "category": "bug",
       "severity": "warning",
+      "group": "forms",
       "description": "A published component field of the form class has no object in the .dfm/.fmx next to the unit. After loading, the field stays nil. Fields outside published are not checked.",
       "bad": "Edit1: TEdit;  // object Edit1 was deleted from the form",
       "good": "// remove the field or restore the object"
@@ -338,6 +463,7 @@
       "name": "Form object without field",
       "category": "bug",
       "severity": "warning",
+      "group": "forms",
       "description": "An object of the form file has no field in the form class. Inherited objects, objects inside inline frames, unnamed components and collection items are skipped. The fix adds the field.",
       "bad": "object Button2: TButton  // no Button2 in TForm1",
       "good": "Button2: TButton;"
@@ -347,6 +473,7 @@
       "name": "Form field type differs from object",
       "category": "bug",
       "severity": "warning",
+      "group": "forms",
       "description": "The field type differs from the class of the object in the form file. Without source for the class in the form file, nothing is compared. The fix changes the field type.",
       "bad": "Edit1: TEdit;  // object Edit1: TMaskEdit",
       "good": "Edit1: TMaskEdit;"
@@ -356,6 +483,7 @@
       "name": "Command injection",
       "category": "vulnerability",
       "severity": "warning",
+      "group": "security",
       "description": "ShellExecute, ShellExecuteEx, CreateProcess or WinExec receives an argument built with +, Format or Concat from non-constant values. Input could inject further commands. Without data flow analysis only this simple pattern is found (medium confidence).",
       "bad": "ShellExecute(0, 'open', PChar('cmd /c ' + Edit1.Text), nil, nil, SW_SHOW);",
       "good": "ShellExecute(0, 'open', 'tool.exe', PChar(QuotedArgument), nil, SW_SHOW);  // validated"
@@ -365,6 +493,7 @@
       "name": "Path traversal",
       "category": "vulnerability",
       "severity": "warning",
+      "group": "security",
       "description": "A file access (TFileStream.Create, LoadFromFile, AssignFile, TFile.*) uses a path from input data (Text, ParamStr, Request) without TPath.GetFullPath check. Experimental until data flow analysis is available.",
       "bad": "List.LoadFromFile('C:\\Data\\' + Edit1.Text);",
       "good": "Path := TPath.GetFullPath(TPath.Combine(Root, Edit1.Text));  // then check it starts with Root"
@@ -374,6 +503,7 @@
       "name": "Weak cryptography",
       "category": "security-hotspot",
       "severity": "hint",
+      "group": "security",
       "description": "MD5, SHA-1, DES or RC4 is used. For checksums this is fine; for passwords and signatures it is not. Low confidence, medium when the statement mentions a password, secret or signature.",
       "bad": "Stored := THashSHA1.GetHashString(PasswordText);",
       "good": "Stored := THashSHA2.GetHashString(Salt + PasswordText);"
@@ -383,6 +513,7 @@
       "name": "TLS certificate check disabled",
       "category": "vulnerability",
       "severity": "warning",
+      "group": "security",
       "description": "Indy SSLOptions.VerifyMode := [], an OnVerifyPeer handler that always returns True, or a ValidateServerCertificate handler that sets Accepted := True without a check.",
       "bad": "IdSSL.SSLOptions.VerifyMode := [];",
       "good": "IdSSL.SSLOptions.VerifyMode := [sslvrfPeer];"
@@ -392,6 +523,7 @@
       "name": "Unencrypted http:// URL",
       "category": "security-hotspot",
       "severity": "hint",
+      "group": "security",
       "description": "A string contains an http:// URL. XML namespaces and schema URIs, comments and localhost, 127.0.0.1 and [::1] are skipped. The fix replaces http:// with https://.",
       "bad": "Client.Get('http://api.example.com/data');",
       "good": "Client.Get('https://api.example.com/data');"
@@ -401,6 +533,7 @@
       "name": "Random for security values",
       "category": "security-hotspot",
       "severity": "warning",
+      "group": "security",
       "description": "Random is assigned to a token, password, salt, nonce or key. Random is predictable; use a cryptographic random generator. Missing Randomize is a separate topic (#153).",
       "bad": "Token := IntToStr(Random(MaxInt));",
       "good": "Token := TNetEncoding.Base64URL.EncodeBytesToString(CryptoRandomBytes(32));"
@@ -410,6 +543,7 @@
       "name": "Circular master-detail or data source link",
       "category": "bug",
       "severity": "warning",
+      "group": "forms",
       "description": "MasterSource/DataSource links in the form file form a cycle (tblA → dsB → tblB → dsA → tblA). Opening the datasets recurses or never shows consistent data.",
       "bad": "tblA.MasterSource = dsB; tblB.MasterSource = dsA",
       "good": "tblB.MasterSource = dsA  // tblA has no master"
@@ -419,6 +553,7 @@
       "name": "Master-detail without MasterFields",
       "category": "bug",
       "severity": "warning",
+      "group": "forms",
       "description": "A dataset has MasterSource but no MasterFields. The detail is not filtered and shows all records.",
       "bad": "MasterSource = dsKunden",
       "good": "MasterSource = dsKunden; MasterFields = 'KundenID'"
@@ -428,6 +563,7 @@
       "name": "Required field without visible input control",
       "category": "bug",
       "severity": "warning",
+      "group": "forms",
       "description": "A persistent field with Required = True is bound to no visible data-aware control (a grid without DataField counts for all fields). The user cannot fill it and posting fails.",
       "bad": "tblKundenName: Required = True, no TDBEdit for Name",
       "good": "edName: TDBEdit; DataSource = dsKunden; DataField = 'Name'"
@@ -437,6 +573,7 @@
       "name": "Data-aware control does not fit the field type",
       "category": "bug",
       "severity": "warning",
+      "group": "forms",
       "description": "The control does not suit the persistent field, e.g. TDBEdit on a TBooleanField or blob field, TDBImage on a non-graphic field.",
       "bad": "edAktiv: TDBEdit; DataField = 'Aktiv'  // TBooleanField",
       "good": "cbAktiv: TDBCheckBox; DataField = 'Aktiv'"
@@ -446,6 +583,7 @@
       "name": "Two controls bound to the same field",
       "category": "bug",
       "severity": "warning",
+      "group": "forms",
       "description": "Two input controls use the same DataSource and DataField. Usually a copy-and-paste error. Display controls (TDBText, TDBImage) are ignored.",
       "bad": "ed1, ed2: DataSource = dsA; DataField = 'Name'",
       "good": "ed1: DataField = 'Name'; ed2: DataField = 'Vorname'"
@@ -455,6 +593,7 @@
       "name": "Component property violates a property rule",
       "category": "code-smell",
       "severity": "warning",
+      "group": "forms",
       "description": "A component property in the form file does not meet a rule from dfmPropertyRules in atlas.json (class, property, condition, value). A property that is not stored counts with its default value; objects of the ancestor form are only reported where this form sets the value itself. The quick fix sets the value in the form file (fix: auto also with source.fixAll); the command \"Apply property rules\" corrects one form, the project or the group with a preview.",
       "bad": "// dfmPropertyRules: TLabel.Transparent = True\nobject Label1: TLabel\n  Caption = 'Name'\nend",
       "good": "object Label1: TLabel\n  Caption = 'Name'\n  Transparent = True\nend"
@@ -464,6 +603,7 @@
       "name": "Access to controls of another form",
       "category": "code-smell",
       "severity": "warning",
+      "group": "forms",
       "description": "Code accesses a field of a form or frame from another unit through its global variable (Form2.Edit1.Text). This couples the units tightly; use a method or property of the form.",
       "bad": "Form2.Edit1.Text := 'x';",
       "good": "Form2.Kundenname := 'x';"
@@ -473,6 +613,7 @@
       "name": "SQL text built from values (SQL injection)",
       "category": "vulnerability",
       "severity": "warning",
+      "group": "security",
       "description": "SQL.Text, SQL.Add, CommandText, ExecSQL or Open receives text built with + or Format from non-constant values. User input could inject SQL. Use parameters (:Name, ParamByName). Constants, resourcestrings, IntToStr and QuotedStr are not reported; user input (TEdit.Text, TMemo.Lines) raises the confidence to high.",
       "bad": "Q.SQL.Text := 'select * from K where N = ''' + Edit1.Text + '''';",
       "good": "Q.SQL.Text := 'select * from K where N = :N';\nQ.ParamByName('N').AsString := Edit1.Text;"
@@ -482,6 +623,7 @@
       "name": "Quick command not executed",
       "category": "code-smell",
       "severity": "hint",
+      "group": "internal",
       "description": "A line starting with /name was not executed and stays in the code: the command is unknown, switched off (slashCommands.disabled) or does not fit at this place. The message names the reason. \"/ignore rule\" is also reported when that rule finds nothing in the line below.",
       "bad": "/gibtsnicht X",
       "good": "/uses System.Classes"
@@ -491,6 +633,7 @@
       "name": "Empty except block",
       "category": "code-smell",
       "severity": "warning",
+      "group": "exceptions",
       "description": "An except block without statements swallows every exception. A block that contains only a comment counts as deliberate and is not reported.",
       "bad": "try\n  Save;\nexcept\nend;",
       "good": "try\n  Save;\nexcept\n  on E: EInOutError do\n    Log(E.Message);\nend;"
@@ -500,6 +643,7 @@
       "name": "Interface without GUID",
       "category": "bug",
       "severity": "warning",
+      "group": "find-bugs",
       "description": "An interface declares no GUID. Supports, as and QueryInterface need one. The confidence is high when the interface is used with them in the same file, otherwise low. The quick fix inserts a new GUID.",
       "bad": "type\n  ISaver = interface\n    procedure Save;\n  end;",
       "good": "type\n  ISaver = interface\n    ['{6C1D2A57-0E3B-4F8A-9B2D-5A7E4C3F1D08}']\n    procedure Save;\n  end;"
@@ -509,6 +653,7 @@
       "name": "Two interfaces with the same GUID",
       "category": "bug",
       "severity": "error",
+      "group": "find-bugs",
       "description": "Two interfaces in the file declare the same GUID, usually after copying a declaration. Supports and as then mix them up. The quick fix generates a new GUID.",
       "bad": "ILoader = interface\n  ['{6C1D2A57-0E3B-4F8A-9B2D-5A7E4C3F1D08}']\nend;\nISaver = interface\n  ['{6C1D2A57-0E3B-4F8A-9B2D-5A7E4C3F1D08}']\nend;",
       "good": "ILoader = interface\n  ['{6C1D2A57-0E3B-4F8A-9B2D-5A7E4C3F1D08}']\nend;\nISaver = interface\n  ['{0B9E4F21-7C6D-4A3E-8F15-2D9C7B6A4E31}']\nend;"
@@ -518,15 +663,25 @@
       "name": "File header missing or different",
       "category": "code-smell",
       "severity": "hint",
+      "group": "style",
       "description": "The file does not start with the header from the rule option \"template\". Off by default; switch it on in atlas.json with a template. The quick fix inserts the header.",
       "bad": "unit Tools;",
-      "good": "// Copyright (c) Example GmbH\nunit Tools;"
+      "good": "// Copyright (c) Example GmbH\nunit Tools;",
+      "options": [
+        {
+          "name": "template",
+          "type": "string",
+          "default": "",
+          "description": "Expected file header; placeholders as documented."
+        }
+      ]
     },
     {
       "id": "hardcoded-string",
       "name": "Text in code instead of resourcestring",
       "category": "code-smell",
       "severity": "hint",
+      "group": "style",
       "description": "A string literal with words for people stands in a statement. Move it to a resourcestring so it can be translated. Off by default, low confidence.",
       "bad": "ShowMessage('File not found');",
       "good": "resourcestring\n  SFileNotFound = 'File not found';\n...\nShowMessage(SFileNotFound);"
@@ -536,6 +691,7 @@
       "name": "Assignment to itself",
       "category": "bug",
       "severity": "warning",
+      "group": "find-bugs",
       "description": "A variable, field or property is assigned to itself. Usually a different value was meant, for example a parameter or another field. If a parameter or local variable hides a field of the same name (Name := Name), Atlas offers Self.Name := Name as the fix.",
       "bad": "FName := FName;",
       "good": "FName := AName;"
@@ -545,6 +701,7 @@
       "name": "for loop counts down with to",
       "category": "bug",
       "severity": "warning",
+      "group": "find-bugs",
       "description": "The loop starts at the upper bound (High, Count - 1) and ends at the lower one, but uses to. It never runs; downto was meant.",
       "bad": "for I := High(A) to Low(A) do\n  Save(A[I]);",
       "good": "for I := High(A) downto Low(A) do\n  Save(A[I]);"
@@ -554,6 +711,7 @@
       "name": "Exception created but not raised",
       "category": "bug",
       "severity": "warning",
+      "group": "find-bugs",
       "description": "An exception object is created as a statement on its own. Without raise nothing happens and the object leaks.",
       "bad": "if X = nil then\n  EArgumentException.Create('X missing');",
       "good": "if X = nil then\n  raise EArgumentException.Create('X missing');"
@@ -563,15 +721,32 @@
       "name": "Assert with side effect",
       "category": "bug",
       "severity": "warning",
+      "group": "find-bugs",
       "description": "The argument of Assert changes data (Inc, Dec, a Try… function with an out parameter or a method from the option mutatingMethods). With {$C-} the compiler removes the whole call including the side effect.",
       "bad": "Assert(List.Remove(X) >= 0);",
-      "good": "Index := List.Remove(X);\nAssert(Index >= 0);"
+      "good": "Index := List.Remove(X);\nAssert(Index >= 0);",
+      "options": [
+        {
+          "name": "mutatingMethods",
+          "type": "string-list",
+          "default": [
+            "Add",
+            "Delete",
+            "Remove",
+            "Extract",
+            "Clear",
+            "Insert"
+          ],
+          "description": "Methods that change their object."
+        }
+      ]
     },
     {
       "id": "ifthen-side-effect",
       "name": "IfThen evaluates both branches",
       "category": "bug",
       "severity": "warning",
+      "group": "find-bugs",
       "description": "IfThen is a function: both branches are evaluated before the call. A nil access or a function call in the branch that is not chosen still happens. High confidence when a branch dereferences a name checked in the condition, medium for a function call.",
       "bad": "S := IfThen(Assigned(X), X.Name, '');",
       "good": "if Assigned(X) then S := X.Name else S := '';"
@@ -581,6 +756,7 @@
       "name": "Random without Randomize",
       "category": "code-smell",
       "severity": "hint",
+      "group": "robustness",
       "description": "Random is used, but the unit never calls Randomize, so every start yields the same sequence. Randomize often sits in the .dpr, so the rule is off by default and has low confidence.",
       "bad": "Dice := Random(6) + 1;",
       "good": "Randomize; // once at program start\n...\nDice := Random(6) + 1;"
@@ -590,6 +766,7 @@
       "name": "Int32 multiplication assigned to Int64",
       "category": "bug",
       "severity": "warning",
+      "group": "find-bugs",
       "description": "Both operands have at most 32 bits, so the product is computed in 32 bits and overflows before it is assigned to the Int64 variable. Cast one operand to Int64.",
       "bad": "Total := Width * Height; // Total: Int64; Width, Height: Integer",
       "good": "Total := Int64(Width) * Height;"
@@ -599,6 +776,7 @@
       "name": "SizeOf of a pointer in Move or FillChar",
       "category": "bug",
       "severity": "error",
+      "group": "find-bugs",
       "description": "SizeOf of a pointer, string or dynamic array is the size of the reference (4 or 8 bytes), not of the data. Move and FillChar then copy or clear too little.",
       "bad": "FillChar(Buffer[0], SizeOf(Buffer), 0); // Buffer: TBytes",
       "good": "FillChar(Buffer[0], Length(Buffer) * SizeOf(Buffer[0]), 0);"
@@ -608,6 +786,7 @@
       "name": "Char cast to PChar",
       "category": "bug",
       "severity": "error",
+      "group": "find-bugs",
       "description": "PChar(C) with a Char variable turns the character code into an address. A string was meant.",
       "bad": "ShowMessage(PChar(C)); // C: Char",
       "good": "ShowMessage(PChar(string(C)));"
@@ -617,6 +796,7 @@
       "name": "Floating-point comparison with = or <>",
       "category": "bug",
       "severity": "hint",
+      "group": "find-bugs",
       "description": "Floating-point values are rarely exactly equal after calculations. Compare with SameValue from System.Math and a tolerance. Comparisons with 0 are not reported.",
       "bad": "if Total = Expected then",
       "good": "if SameValue(Total, Expected) then"
@@ -626,6 +806,7 @@
       "name": "Constructor called on an instance",
       "category": "bug",
       "severity": "warning",
+      "group": "find-bugs",
       "description": "Create is called on a variable instead of the class. That does not create a new object; with an unassigned variable it crashes. Class references (class of …) are not reported.",
       "bad": "List.Create; // List: TStringList",
       "good": "List := TStringList.Create;"
@@ -635,6 +816,7 @@
       "name": "Formatting depends on the locale",
       "category": "code-smell",
       "severity": "hint",
+      "group": "robustness",
       "description": "Format with %f, %n, %m, %g or %e and functions like FloatToStr, StrToFloat or DateToStr without a TFormatSettings parameter use the user's locale (decimal separator, date format). For files, protocols and logs pass fixed TFormatSettings. Format('%d', …) is not reported.",
       "bad": "Line := Format('%.2f', [Amount]);",
       "good": "Line := Format('%.2f', [Amount], TFormatSettings.Invariant);"
@@ -644,6 +826,7 @@
       "name": "Generic exception raised",
       "category": "code-smell",
       "severity": "hint",
+      "group": "exceptions",
       "description": "Raising the base class Exception prevents callers from handling the error specifically. Declare a dedicated exception class.",
       "bad": "raise Exception.Create('Customer missing');",
       "good": "raise ECustomerMissing.Create('Customer missing');"
@@ -653,6 +836,7 @@
       "name": "Catch-all handler without re-raise",
       "category": "code-smell",
       "severity": "warning",
+      "group": "exceptions",
       "description": "A handler for Exception that neither re-raises nor ends the program swallows every error, including programming errors. Off by default; intended for library code.",
       "bad": "except\n  on E: Exception do\n    Log(E.Message);\nend;",
       "good": "except\n  on E: Exception do\n  begin\n    Log(E.Message);\n    raise;\n  end;\nend;"
@@ -662,6 +846,7 @@
       "name": "Exception object freed manually",
       "category": "bug",
       "severity": "error",
+      "group": "exceptions",
       "description": "The RTL frees an exception object after its handler or after raise. Freeing it manually causes a double free.",
       "bad": "on E: Exception do\n  E.Free;",
       "good": "on E: Exception do\n  Log(E.Message);"
@@ -671,6 +856,7 @@
       "name": "String concatenation in a loop",
       "category": "code-smell",
       "severity": "hint",
+      "group": "performance",
       "description": "A string variable is extended step by step inside a loop. Delphi usually grows strings in place, so this is reported only with low confidence and is off by default; for many iterations TStringBuilder is faster.",
       "bad": "for I := 1 to 10000 do\n  S := S + IntToStr(I);",
       "good": "Builder := TStringBuilder.Create;\ntry\n  for I := 1 to 10000 do\n    Builder.Append(I);\n  S := Builder.ToString;\nfinally\n  Builder.Free;\nend;"
@@ -680,6 +866,7 @@
       "name": "Expensive call in a loop condition",
       "category": "code-smell",
       "severity": "hint",
+      "group": "performance",
       "description": "The condition of while and until is evaluated on every iteration. Calls like Trim, Format or FileExists and properties like Lines.Text there are recomputed each time; compute them once before the loop. Bounds of for loops are evaluated only once and are not reported. Off by default.",
       "bad": "while I < Length(Trim(Memo.Lines.Text)) do\n  Inc(I);",
       "good": "Text := Trim(Memo.Lines.Text);\nwhile I < Length(Text) do\n  Inc(I);"
@@ -689,6 +876,7 @@
       "name": "Adding items in a loop without BeginUpdate",
       "category": "code-smell",
       "severity": "hint",
+      "group": "performance",
       "description": "Items.Add, Lines.Add and similar calls in a loop repaint the control on every call. Wrap the loop in BeginUpdate and try … finally EndUpdate. Off by default.",
       "bad": "for I := 1 to 1000 do\n  ListBox1.Items.Add(IntToStr(I));",
       "good": "ListBox1.Items.BeginUpdate;\ntry\n  for I := 1 to 1000 do\n    ListBox1.Items.Add(IntToStr(I));\nfinally\n  ListBox1.Items.EndUpdate;\nend;"
@@ -698,6 +886,7 @@
       "name": "Comparison with True or False",
       "category": "code-smell",
       "severity": "hint",
+      "group": "style",
       "description": "Comparing a Boolean with True or False is redundant; use the expression or not directly.",
       "bad": "if Visible = True then\n  Show;",
       "good": "if Visible then\n  Show;"
@@ -707,6 +896,7 @@
       "name": "Assigned check before Free",
       "category": "code-smell",
       "severity": "hint",
+      "group": "style",
       "description": "Free already checks for nil, so testing Assigned before Free or FreeAndNil is redundant.",
       "bad": "if Assigned(List) then\n  List.Free;",
       "good": "List.Free;"
@@ -716,6 +906,7 @@
       "name": "raise in a finally block",
       "category": "bug",
       "severity": "warning",
+      "group": "exceptions",
       "description": "An exception raised in a finally block replaces the exception that is currently propagating, which is then lost.",
       "bad": "try\n  Work;\nfinally\n  raise Exception.Create('Fehler');\nend;",
       "good": "try\n  Work;\nfinally\n  Cleanup;\nend;"
@@ -725,6 +916,7 @@
       "name": "Redundant parentheses",
       "category": "code-smell",
       "severity": "hint",
+      "group": "style",
       "description": "Parentheses around a whole condition or a single identifier add nothing. Off by default.",
       "bad": "if (Done) then\n  Exit;",
       "good": "if Done then\n  Exit;"
@@ -734,6 +926,7 @@
       "name": "begin … end around a single statement",
       "category": "code-smell",
       "severity": "hint",
+      "group": "style",
       "description": "A begin … end block that holds exactly one statement can be removed. Off by default.",
       "bad": "if Done then\nbegin\n  Exit;\nend;",
       "good": "if Done then\n  Exit;"
@@ -743,6 +936,7 @@
       "name": "with statement",
       "category": "code-smell",
       "severity": "hint",
+      "group": "style",
       "description": "Inside a with block it is unclear which object an identifier belongs to, and a new member of the with object silently changes the meaning. Write the expression out or use a local variable.",
       "bad": "with Customer do\n  Name := Edit.Text;",
       "good": "Customer.Name := Edit.Text;"
@@ -752,60 +946,118 @@
       "name": "Method too long",
       "category": "code-smell",
       "severity": "hint",
+      "group": "style",
       "description": "The method has more code lines than the limit (default 60). Blank lines, comments, compiler directives and local routines do not count. Split the method into smaller ones. Set the limit with the option max, e.g. \"rules\": {\"metric-method-length\": {\"max\": 80}}.",
       "bad": "procedure TImport.Run;\nbegin\n  // 120 lines: read, check, convert and save\nend;",
-      "good": "procedure TImport.Run;\nbegin\n  Read;\n  Check;\n  Convert;\n  Save;\nend;"
+      "good": "procedure TImport.Run;\nbegin\n  Read;\n  Check;\n  Convert;\n  Save;\nend;",
+      "options": [
+        {
+          "name": "max",
+          "type": "integer",
+          "default": 60,
+          "description": "Highest allowed number of statement lines."
+        }
+      ]
     },
     {
       "id": "metric-nesting-depth",
       "name": "Nesting too deep",
       "category": "code-smell",
       "severity": "hint",
+      "group": "style",
       "description": "The method nests if, case, loops and try deeper than the limit (default 4). else if stays on the level of its if. Leave early with Exit or Continue, or move inner parts into their own methods. Set the limit with the option max.",
       "bad": "for Item in Items do\n  if Item.Active then\n    for Line in Item.Lines do\n      if Line.Valid then\n        try\n          Save(Line);\n        except\n          Log;\n        end;",
-      "good": "for Item in Items do\n  if Item.Active then\n    SaveLines(Item);"
+      "good": "for Item in Items do\n  if Item.Active then\n    SaveLines(Item);",
+      "options": [
+        {
+          "name": "max",
+          "type": "integer",
+          "default": 4,
+          "description": "Highest allowed nesting depth."
+        }
+      ]
     },
     {
       "id": "metric-cyclomatic-complexity",
       "name": "Cyclomatic complexity too high",
       "category": "code-smell",
       "severity": "hint",
+      "group": "style",
       "description": "The cyclomatic complexity of the method is above the limit (default 15). It starts at 1 and adds 1 for every if, while, repeat and for, every case branch without else, every and/or in a condition and every except on; an except without on counts once. Many paths need many tests. Set the limit with the option max.",
       "bad": "case Kind of\n  1: A;\n  2: B;\n  // ... 20 branches\nend;",
-      "good": "Handlers[Kind]();"
+      "good": "Handlers[Kind]();",
+      "options": [
+        {
+          "name": "max",
+          "type": "integer",
+          "default": 15,
+          "description": "Highest allowed cyclomatic complexity."
+        }
+      ]
     },
     {
       "id": "metric-cognitive-complexity",
       "name": "Cognitive complexity too high",
       "category": "code-smell",
       "severity": "hint",
+      "group": "style",
       "description": "The cognitive complexity of the method is above the limit (default 15). Following SonarSource, if, case, loops and except handlers count 1 plus their nesting level; else, else if, goto and every sequence of equal logical operators count 1. Nested code is harder to read than code in sequence. Set the limit with the option max.",
       "bad": "if A then\n  for I := 0 to N do\n    if B and C or D then\n      while E do\n        F;",
-      "good": "if not A then\n  Exit;\nfor I := 0 to N do\n  ProcessItem(I);"
+      "good": "if not A then\n  Exit;\nfor I := 0 to N do\n  ProcessItem(I);",
+      "options": [
+        {
+          "name": "max",
+          "type": "integer",
+          "default": 15,
+          "description": "Highest allowed cognitive complexity."
+        }
+      ]
     },
     {
       "id": "metric-parameter-count",
       "name": "Too many parameters",
       "category": "code-smell",
       "severity": "hint",
+      "group": "style",
       "description": "The method has more parameters than the limit (default 6). Group related values in a record or class. Set the limit with the option max.",
       "bad": "procedure Book(const AName, AStreet, ACity, AZip: string; AAmount: Currency; ADate: TDate; ANote: string);",
-      "good": "procedure Book(const AAddress: TAddress; const AOrder: TOrder);"
+      "good": "procedure Book(const AAddress: TAddress; const AOrder: TOrder);",
+      "options": [
+        {
+          "name": "max",
+          "type": "integer",
+          "default": 6,
+          "description": "Highest allowed number of parameters."
+        }
+      ]
     },
     {
       "id": "todo-comment",
       "name": "Open TODO comment",
       "category": "code-smell",
       "severity": "hint",
+      "group": "style",
       "description": "A comment starts with a marker for open work: // TODO, // FIXME or the IDE to-do format { TODO 1 -oOwner -cCategory : Text }. The hint shows marker, priority, category, owner and text, so open work appears in the problem list. Off by default; switch it on in atlas.json, e.g. \"rules\": {\"todo-comment\": {\"severity\": \"hint\"}}. Completed entries ({ DONE … }) are never reported. The option keywords sets the markers (default [\"TODO\", \"FIXME\"]); it also applies to get_todos and --todos.",
       "bad": "// TODO 1 -oMarco -cGUI : set focus\nEdit.Text := '';",
-      "good": "Edit.Text := '';\nEdit.SetFocus;"
+      "good": "Edit.Text := '';\nEdit.SetFocus;",
+      "options": [
+        {
+          "name": "keywords",
+          "type": "string-list",
+          "default": [
+            "TODO",
+            "FIXME"
+          ],
+          "description": "Markers of open TODO entries (letters only)."
+        }
+      ]
     },
     {
       "id": "component-palette-icon",
       "name": "Registered component without palette icon",
       "category": "code-smell",
       "severity": "hint",
+      "group": "components",
       "description": "Every class passed to RegisterComponents needs a bitmap named after the class in upper case in a .dcr or .res included with {$R}. From Delphi 11 the sizes 16, 24 and 32 px (NAME16, NAME24, NAME32) are expected as well. Silent when the unit includes no readable resource file.",
       "bad": "{$R *.dcr} // without TMYBUTTON\nRegisterComponents('Samples', [TMyButton]);",
       "good": "{$R *.dcr} // with TMYBUTTON16, TMYBUTTON24, TMYBUTTON32\nRegisterComponents('Samples', [TMyButton]);"
@@ -815,6 +1067,7 @@
       "name": "Unresolved identifier",
       "category": "bug",
       "severity": "warning",
+      "group": "find-bugs",
       "description": "An identifier in a statement is declared neither in the unit nor in the units it uses (like compiler error E2003). Checked while typing, without the compiler; with blocks, asm and anonymous methods are skipped.",
       "bad": "procedure Foo;\nbegin\n  Lst.Add('x');\nend;",
       "good": "procedure Foo;\nvar\n  Lst: TStringList;\nbegin\n  Lst := TStringList.Create;\n  Lst.Add('x');\nend;"
@@ -824,6 +1077,7 @@
       "name": "Deprecated symbol",
       "category": "code-smell",
       "severity": "hint",
+      "group": "style",
       "description": "A routine, type, constant or member marked deprecated, platform or experimental is used (like compiler warnings W1000, W1002 and W1003). The editor strikes the name through; the message carries the reason from deprecated 'reason'. The declaration and the head of its implementation are not reported.",
       "bad": "procedure Old; deprecated 'Use New';\n...\nOld;",
       "good": "procedure New;\n...\nNew;"
@@ -833,6 +1087,7 @@
       "name": "Implicit package import",
       "category": "code-smell",
       "severity": "warning",
+      "group": "packages",
       "description": "In a package (.dpk) a unit from contains uses a unit that is neither in contains nor provided by a package in requires. The compiler pulls it in implicitly (W1033), which later causes duplicate units when another package also contains it. The quick fix adds the unit to contains.",
       "bad": "package Werkzeuge;\nrequires rtl;\ncontains\n  uHaupt in 'uHaupt.pas';  // uHaupt uses uMathe\nend.",
       "good": "package Werkzeuge;\nrequires rtl;\ncontains\n  uHaupt in 'uHaupt.pas',\n  uMathe in 'uMathe.pas';\nend."
@@ -842,6 +1097,7 @@
       "name": "Type used before its declaration",
       "category": "bug",
       "severity": "error",
+      "group": "find-bugs",
       "description": "A class, interface, record or other type is used in a type declaration (field, parameter, result, property, generic argument, class of) but declared only further down in the same scope (like compiler error E2003). Ancestors, aliases and pointer types are not reported. Quick fixes: add a forward declaration at the start of the type block, merge type blocks (const, var and label sections in between move in front of the first block) or move a record up in front of its first user; without a safe fix the message gives the reason.",
       "bad": "type\n  TTree = class\n    FRoot: TNode;\n  end;\n  TNode = class\n  end;",
       "good": "type\n  TNode = class;\n  TTree = class\n    FRoot: TNode;\n  end;\n  TNode = class\n  end;"
@@ -851,6 +1107,7 @@
       "name": "Unneeded forward declaration",
       "category": "code-smell",
       "severity": "hint",
+      "group": "style",
       "description": "A forward declaration whose type is not used before its full declaration in the same type block. Quick fix: remove it.",
       "bad": "type\n  TNode = class;\n  TNode = class\n  end;",
       "good": "type\n  TNode = class\n  end;"
@@ -860,6 +1117,7 @@
       "name": "Owned field not freed",
       "category": "bug",
       "severity": "warning",
+      "group": "find-bugs",
       "description": "An object field that the constructor (or a private method it calls) creates with TClass.Create is never freed in the class (no Free, FreeAndNil, Destroy or DisposeOf). Components created with an owner other than nil, interface and record fields are exempt; TObjectList and TObjectDictionary fields are normal fields. Quick fixes: free the field in the destructor, or free all owned objects of the class; a missing destructor is created with override and inherited. The objects are freed before inherited in reverse creation order, as Free or FreeAndNil (refactoring.freeFieldsStyle).",
       "bad": "constructor TOrderList.Create;\nbegin\n  inherited Create;\n  FItems := TObjectList<TOrder>.Create(True);\nend;",
       "good": "destructor TOrderList.Destroy;\nbegin\n  FItems.Free;\n  inherited;\nend;"
@@ -869,6 +1127,7 @@
       "name": "Unclear whether a created field must be freed",
       "category": "bug",
       "severity": "hint",
+      "group": "find-bugs",
       "description": "An object field created in the constructor and not freed is also returned (Result := FField, Exit(FField)), handed to a property of another object, assigned without Create or writable through a property (write FField). Whether the class still owns the object is up to the developer, so there is no quick fix.",
       "bad": "function TCache.Take: TList;\nbegin\n  Result := FList;  // created in Create, never freed\nend;",
       "good": "function TCache.Take: TList;\nbegin\n  Result := FList;\n  FList := nil;  // ownership passes to the caller\nend;"

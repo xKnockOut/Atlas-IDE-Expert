@@ -37,6 +37,12 @@ type
     Message: string;
     /// <summary>Konfidenz eines Regeltreffers aus data.confidence ("high", "medium", "low", #144); sonst ''.</summary>
     Confidence: string;
+    /// <summary>Kategorie und Gruppe der Regel aus dem Katalog (data.category, data.group, #909), z. B. "bug" und
+    /// "find-bugs"; '' bei Compilermeldungen und Syntaxfehlern ohne Katalog.</summary>
+    Category: string;
+    Group: string;
+    /// <summary>Titel der Schnellkorrektur (data.fix, #909); '' ohne.</summary>
+    FixTitle: string;
     /// <summary>Inaktiver Bereich ({$IFDEF}); kein Problem im eigentlichen Sinn.</summary>
     Unnecessary: Boolean;
     /// <summary>Verwendung eines veralteten Symbols (Tag Deprecated, #38): durchgestrichen statt unterstrichen.
@@ -184,6 +190,9 @@ begin
   if Data is TJSONObject then
   begin
     Result.Confidence := TJSONObject(Data).GetValue<string>('confidence', '');
+    Result.Category := TJSONObject(Data).GetValue<string>('category', '');
+    Result.Group := TJSONObject(Data).GetValue<string>('group', '');
+    Result.FixTitle := TJSONObject(Data).GetValue<string>('fix', '');
     Inactive := TJSONObject(Data).GetValue('inactive');
     if Inactive is TJSONObject then
     begin

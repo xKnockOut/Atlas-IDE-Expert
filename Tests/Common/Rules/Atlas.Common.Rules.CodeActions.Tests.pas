@@ -19,6 +19,8 @@ type
     [Test]
     procedure FindingInRangeGivesFixAndSuppressions;
     [Test]
+    procedure AlternativeFixesCarryNoFixTag;
+    [Test]
     procedure FindingOutsideRangeIgnored;
     [Test]
     procedure ForRangeAddsTryFinally;
@@ -89,6 +91,27 @@ begin
   Assert.IsTrue(Actions[0].IsPreferred);
   Assert.AreEqual(QuickFixKind, Actions[1].Kind);
   Assert.AreEqual('marker', Actions[2].RuleId);
+  // Fenster „Atlas-Prüfung“ und Befund-Hover wählen über die Tags (#909).
+  Assert.AreEqual(RuleFixTag, Actions[0].Tag);
+  Assert.AreEqual(RuleSuppressLineTag, Actions[1].Tag);
+  Assert.AreEqual(RuleSuppressFileTag, Actions[2].Tag);
+end;
+
+procedure TRuleCodeActionTests.AlternativeFixesCarryNoFixTag;
+var
+  Finding: TRuleFinding;
+  Fix: TRuleFix;
+  Actions: TArray<TCodeAction>;
+begin
+  Finding := Default(TRuleFinding);
+  Finding.RuleId := 'marker';
+  Finding.Range := TTextRange.Create(5, 2, 5, 3);
+  Fix := TRuleFix.Create('A', [TRuleEdit.Create(Finding.Range, 'A')]);
+  Fix.Alternative := True;
+  Finding.Fixes := [Fix];
+  Actions := TRuleCodeActions.ForFindings([Finding], Body, TTextRange.Create(5, 0, 5, 0));
+  Assert.AreEqual('', Actions[0].Tag);
+  Assert.IsFalse(Actions[0].IsPreferred);
 end;
 
 procedure TRuleCodeActionTests.FindingOutsideRangeIgnored;

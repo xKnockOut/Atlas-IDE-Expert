@@ -75,6 +75,10 @@ type
     [Test]
     procedure MapsRuleSeverityAndConfidence;
     [Test]
+    procedure DataCarriesGroupCategoryAndFixTitle;
+    [Test]
+    procedure DataSkipsAlternativeFixesAndUnknownRules;
+    [Test]
     procedure AddsCompilerMessagesToOpenDocuments;
     [Test]
     procedure PublishesCompilerMessagesForClosedFiles;
@@ -459,6 +463,61 @@ begin
     Assert.AreEqual('Meldung', Item.GetValue<string>('message'));
     Assert.AreEqual('medium', Item.GetValue<string>('data.confidence'));
     Assert.AreEqual(RuleDocumentationBaseUri + Finding.RuleId, Item.GetValue<string>('codeDescription.href'));
+  finally
+    Item.Free;
+  end;
+end;
+
+procedure TLspSyntaxDiagnosticsTests.DataCarriesGroupCategoryAndFixTitle;
+var
+  Finding: TRuleFinding;
+  Item: TJSONObject;
+begin
+  // Fenster „Atlas-Prüfung“ und Befund-Hover (#909) brauchen Gruppe, Kategorie und Korrekturtitel.
+  Finding := Default(TRuleFinding);
+  Finding.RuleId := 'empty-except';
+  Finding.Message := 'Leerer except-Block';
+  Finding.Severity := TRuleSeverity.Warning;
+  Finding.Fixes := [TRuleFix.Create('Ausnahme protokollieren', nil)];
+  Item := TLspSyntaxDiagnostics.FindingToJson(Finding);
+  try
+    Assert.AreEqual('exceptions', Item.GetValue<string>('data.group'));
+    Assert.AreEqual('code-smell', Item.GetValue<string>('data.category'));
+    Assert.AreEqual('Ausnahme protokollieren', Item.GetValue<string>('data.fix'));
+  finally
+    Item.Free;
+  end;
+end;
+
+procedure TLspSyntaxDiagnosticsTests.DataSkipsAlternativeFixesAndUnknownRules;
+var
+  Finding: TRuleFinding;
+  First, Second: TRuleFix;
+  Item: TJSONObject;
+  Data: TJSONObject;
+begin
+  Finding := Default(TRuleFinding);
+  Finding.RuleId := 'gibt-es-nicht';
+  Finding.Message := 'Meldung';
+  First := TRuleFix.Create('Variante A', nil);
+  First.Alternative := True;
+  Second := TRuleFix.Create('Bevorzugt', nil);
+  Finding.Fixes := [Second, First];
+  Item := TLspSyntaxDiagnostics.FindingToJson(Finding);
+  try
+    Data := Item.GetValue('data') as TJSONObject;
+    Assert.IsNull(Data.FindValue('group'));
+    Assert.IsNull(Data.FindValue('category'));
+    Assert.AreEqual('Bevorzugt', Data.GetValue<string>('fix'));
+  finally
+    Item.Free;
+  end;
+  // Steht eine Alternative vorn, gibt es wie bei den Code-Aktionen keine bevorzugte Korrektur.
+  Finding.Fixes := [First, Second];
+  Item := TLspSyntaxDiagnostics.FindingToJson(Finding);
+  try
+    Data := Item.GetValue('data') as TJSONObject;
+    Assert.IsNull(Data.FindValue('fix'));
   finally
     Item.Free;
   end;
