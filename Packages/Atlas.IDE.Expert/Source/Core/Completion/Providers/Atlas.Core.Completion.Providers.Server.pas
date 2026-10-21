@@ -270,6 +270,9 @@ begin
     Result.UsesTypes := StringsOf(Data.GetValue('usesTypes'));
     Result.UsesTypeCount := Data.GetValue<Integer>('usesTypeCount', 0);
     Result.UsesHidden := StringsOf(Data.GetValue('usesHidden'));
+    // Vollständiger inherited-Aufruf (#482).
+    Result.InheritedMatch := Data.GetValue<string>('inheritedMatch', '');
+    Result.InheritedAbstract := StringsOf(Data.GetValue('inheritedAbstract'));
     // resourcestring auslagern (#473): Platzhalter auch in den weiteren Änderungen.
     Result.LinkedEdits := Data.GetValue<Boolean>('linkedEdits', False);
     Overloads := Data.GetValue('overloads');

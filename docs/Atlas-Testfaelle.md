@@ -2750,3 +2750,19 @@ Voraussetzung: VCL-Quellen über die Bibliothekspfade im Index, Atlas-Tooltip an
 | PM11 | Fußzeile ansehen | „Liste kopieren“ statt „Deklaration kopieren“, Hinweis „geerbte aus der VCL nur mit VCL-Quellen im Index“ |
 | PM12 | `hints.publishedMembers` aus | Keine Mitgliederliste, weder im Tooltip noch im Markdown-Hover |
 | PM13 | Oberfläche auf Englisch | „published: n properties · m events“, Umschalter „inherited“, „only with default“ |
+
+## inherited mit Parametern (#482)
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| IP1 | In `constructor TLogView.Create(AOwner: TComponent)` (Vorfahr TForm) `inherited ` tippen | Erster Eintrag `Create(AOwner)` mit Marke „gleiche Parameter“; Enter ergibt `inherited Create(AOwner);` (**Abnahme**) |
+| IP2 | Wie IP1, Liste ansehen | Danach `CreateNew(AOwner, Dummy)` mit Marke TCustomForm und weitere Konstruktoren der Vorfahren mit ihrer Klasse |
+| IP3 | In `destructor TLogView.Destroy` `inherited ` | `Destroy` zuerst, danach andere Destruktoren der Vorfahren, keine Konstruktoren |
+| IP4 | In `function TLogView.FormatZeile(const AText: string; ALevel: Integer): string` auf leerer Zeile `inherited ` und Enter | `Result := inherited FormatZeile(AText, ALevel);`; die Überladung `FormatZeile(AText)` steht darunter mit Marke „Überladung“ |
+| IP5 | Wie IP4, aber `S := inherited ` | Kein `Result := `, nur der Aufruf |
+| IP6 | Text hinter dem Cursor in der Zeile, etwa `inherited | + 'x';` | Kein Semikolon am Aufruf |
+| IP7 | Vorfahrmethode `procedure Zeichnen; virtual; abstract;`, in `TLogView.Zeichnen` `inherited ` | Kein Eintrag für Zeichnen (**Abnahme**) |
+| IP8 | Wie IP1, wenn ein Vorfahr eine abstrakte Methode hat | Die abstrakte fehlt auch unter den Namen; Fußzeile „TBaseView.Zeichnen ist abstrakt und fehlt“ |
+| IP9 | Parameter mit anderem Namen, aber gleichem Typ (`Besitzer: TComponent`) | `Create(Besitzer)` |
+| IP10 | `completion.inheritedCall` aus | Nur die Namen der Vorfahrmethoden wie bisher, kein Aufruf mit Argumenten |
+| IP11 | Oberfläche auf Englisch | Marken „same parameters“, „overload“; Fußzeile „… is abstract and not listed“ |

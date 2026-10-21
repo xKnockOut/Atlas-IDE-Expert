@@ -192,6 +192,11 @@ type
     UsesTypeCount: Integer;
     /// <summary>In der Liste am Cursor schon eingebundene Units für die Fußzeile.</summary>
     UsesHidden: TArray<string>;
+    /// <summary>Vollständiger inherited-Aufruf (#482): 'same' (gleiche Parameter), 'overload' (andere
+    /// Überladung), 'other' (weiterer Konstruktor bzw. Destruktor); '' bei anderen Einträgen.</summary>
+    InheritedMatch: string;
+    /// <summary>Ausgelassene abstrakte Vorfahrmethoden ("TBasis.Zeichnen") für die Fußzeile.</summary>
+    InheritedAbstract: TArray<string>;
   end;
 
   TCompletionItems = record

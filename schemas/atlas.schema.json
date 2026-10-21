@@ -504,6 +504,12 @@
           "description": "Im uses-Abschnitt: schon eingebundene Units ausblenden (die Fußzeile nennt sie), Units nach Projekt, RTL/VCL und Drittanbietern gruppieren, Kurzformen auf den Namespace ergänzen (Classes → System.Classes), Units aus dem anderen Abschnitt mit „bereits im interface-Teil“ bzw. „… implementation-Teil“ und im interface-Teil Units mit Zirkelbezug markieren; im Detailpanel Pfad und die ersten exportierten Typen. Aus: alle Units des Index als schlichte Liste.",
           "x-issue": "#469"
         },
+        "inheritedCall": {
+          "type": "boolean",
+          "default": true,
+          "description": "Nach „inherited “ zuerst den vollständigen Aufruf der gleichnamigen Vorfahrmethode mit den Parametern der eigenen Methode anbieten (Marke „gleiche Parameter“), dann ihre übrigen Überladungen, in Konstruktoren und Destruktoren auch die übrigen Konstruktoren bzw. Destruktoren der Vorfahren. Abstrakte Vorfahrmethoden fehlen, die Fußzeile nennt sie. In Funktionen ergänzt die Übernahme „Result := “, wenn vor inherited nichts in der Zeile steht. Aus: nur die Namen der Vorfahrmethoden.",
+          "x-issue": "#482"
+        },
         "nameSuggestions": {
           "type": "boolean",
           "default": true,

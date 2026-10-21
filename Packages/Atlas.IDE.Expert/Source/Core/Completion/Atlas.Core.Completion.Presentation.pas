@@ -33,7 +33,7 @@ type
 
   /// <summary>Übersetzbare Marken (#446); Plain = Text unverändert zeigen; Cycle = Zirkelbezug im uses-Abschnitt
   /// (#469).</summary>
-  TAtlasTagId = (Plain, Recent, Frequent, Cycle);
+  TAtlasTagId = (Plain, Recent, Frequent, Cycle, SameParams, Overload);
 
   TAtlasTag = record
     Text: string;
@@ -69,6 +69,9 @@ type
     class function UsesDetails(const AItem: TAtlasCompletionItem): TAtlasItemDetails; static;
     /// <summary>Schon eingebundene Units für die Fußzeile im uses-Abschnitt (#469); leer sonst.</summary>
     class function UsesHidden(const AItems: TAtlasCompletionItems): TArray<string>; static;
+    /// <summary>Ausgelassene abstrakte Vorfahrmethoden für die Fußzeile nach "inherited " (#482); leer sonst.
+    /// </summary>
+    class function InheritedAbstract(const AItems: TAtlasCompletionItems): TArray<string>; static;
     /// <summary>Nur das Angebot „Mit try…finally absichern“ (#489) in der Liste?</summary>
     class function Guarding(const AItems: TAtlasCompletionItems): Boolean; static;
   end;
@@ -309,6 +312,19 @@ begin
     Result := Result + [MakeTag('Zirkelbezug', TAtlasTagKind.Error)];
     Result[High(Result)].Id := TAtlasTagId.Cycle;
   end;
+  // Vollständiger inherited-Aufruf (#482): gleiche Parameter, andere Überladung, sonst die Klasse.
+  if AItem.InheritedMatch = 'same' then
+  begin
+    Result := Result + [MakeTag('gleiche Parameter', TAtlasTagKind.Accent)];
+    Result[High(Result)].Id := TAtlasTagId.SameParams;
+  end
+  else if AItem.InheritedMatch = 'overload' then
+  begin
+    Result := Result + [MakeTag('Überladung', TAtlasTagKind.Neutral)];
+    Result[High(Result)].Id := TAtlasTagId.Overload;
+  end
+  else if (AItem.InheritedMatch = 'other') and (AItem.DeclaringClass <> '') then
+    Result := Result + [MakeTag(AItem.DeclaringClass, TAtlasTagKind.Neutral)];
   MissingName := MissingUnit(AItem);
   if MissingName <> '' then
     Result := Result + [MakeTag('+ ' + MissingName, TAtlasTagKind.Add)];
@@ -431,6 +447,16 @@ begin
   for Item in AItems do
     if Length(Item.UsesHidden) > 0 then
       Exit(Item.UsesHidden);
+  Result := nil;
+end;
+
+class function TAtlasItemPresentation.InheritedAbstract(const AItems: TAtlasCompletionItems): TArray<string>;
+var
+  Item: TAtlasCompletionItem;
+begin
+  for Item in AItems do
+    if Length(Item.InheritedAbstract) > 0 then
+      Exit(Item.InheritedAbstract);
   Result := nil;
 end;
 

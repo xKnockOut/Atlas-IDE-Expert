@@ -611,7 +611,8 @@ type
     UsesInImplementation, UsesCycleTag, UsesTypesHeading, UsesCycleDirect, UsesCycleChain,
     PublishedSummary, PublishedInherited, PublishedOnlyDefaults, PublishedProperties, PublishedEvents, PublishedName,
     PublishedType, PublishedDefault, PublishedDeclared, PublishedImplicit, PublishedMoreProperties, PublishedMoreEvents,
-    PublishedEventsNote, PublishedArrayProperty, PublishedDefaultProperty, PublishedDefaultPropertyNote, PublishedCopyList, PublishedVclNote);
+    PublishedEventsNote, PublishedArrayProperty, PublishedDefaultProperty, PublishedDefaultPropertyNote, PublishedCopyList, PublishedVclNote,
+    InheritedSameTag, InheritedOverloadTag, InheritedAbstractOne, InheritedAbstractMore);
 
   TAtlasStrings = class
   private class var
@@ -633,6 +634,9 @@ type
     /// <summary>Zirkelbezug (#469) zur Kette "uA → uB → Haupt": „uA bindet diese Unit über uB im interface-Teil
     /// ein“; '' ohne.</summary>
     class function UsesCycle(const AChain: string): string; static;
+    /// <summary>Fußzeile nach "inherited " (#482) zu den ausgelassenen abstrakten Vorfahrmethoden
+    /// ("TBasis.Zeichnen"): eine mit Namen, mehrere aufgezählt (höchstens drei, dann „…“); '' ohne.</summary>
+    class function InheritedAbstract(const AMethods: TArray<string>): string; static;
     /// <summary>Überschriften der XMLDoc-Abschnitte in der Sprache der Oberfläche; eine Stelle für Hover und
     /// Detailpanel (D-07).</summary>
     class function DocLabels: TAtlasDocLabels; static;
@@ -1826,7 +1830,11 @@ const
      'Standard-Property',
      '„default“ heißt hier nicht Vorgabewert',
      'Liste kopieren',
-     'geerbte aus der VCL nur mit VCL-Quellen im Index'),
+     'geerbte aus der VCL nur mit VCL-Quellen im Index',
+     'gleiche Parameter',
+     'Überladung',
+     '%s ist abstrakt und fehlt',
+     'Abstrakte Vorfahrmethoden fehlen: %s'),
     ('Enter to accept · Esc to close', '%d of %d', 'No matches for “%s”', 'Backspace widens the search',
      'No suggestions here', 'Esc closes', 'No details for this entry', 'Overload', 'Deprecated: %s', 'Deprecated.',
      'Inherited from %s', 'Inherited', 'optional, default %s', 'No overload with %d parameters.', '… %d more',
@@ -2952,7 +2960,11 @@ const
      'Default property',
      '"default" does not mean a default value here',
      'Copy list',
-     'inherited VCL members only with VCL sources in the index'));
+     'inherited VCL members only with VCL sources in the index',
+     'same parameters',
+     'overload',
+     '%s is abstract and not listed',
+     'Abstract ancestor methods not listed: %s'));
 
 { TAtlasStrings }
 
@@ -3043,6 +3055,17 @@ begin
     2, 3: Result := Fmt(TAtlasTextId.UsesHiddenFew, [string.Join(', ', AUnits)]);
   else
     Result := Fmt(TAtlasTextId.UsesHiddenMore, [string.Join(', ', Copy(AUnits, 0, 2)), Length(AUnits) - 2]);
+  end;
+end;
+
+class function TAtlasStrings.InheritedAbstract(const AMethods: TArray<string>): string;
+begin
+  case Length(AMethods) of
+    0: Result := '';
+    1: Result := Fmt(TAtlasTextId.InheritedAbstractOne, [AMethods[0]]);
+    2, 3: Result := Fmt(TAtlasTextId.InheritedAbstractMore, [string.Join(', ', AMethods)]);
+  else
+    Result := Fmt(TAtlasTextId.InheritedAbstractMore, [string.Join(', ', Copy(AMethods, 0, 3)) + ', …']);
   end;
 end;
 
