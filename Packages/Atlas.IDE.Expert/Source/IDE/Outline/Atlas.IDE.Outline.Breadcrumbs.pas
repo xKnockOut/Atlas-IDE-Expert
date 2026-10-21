@@ -62,6 +62,7 @@ uses
   ToolsAPI,
   Atlas.Text.Lines,
   Atlas.Core.Diagnostics.Guard,
+  Atlas.Core.Diagnostics.MainThread,
   Atlas.Core.Lsp.Session,
   Atlas.Core.Commands.Palette,
   Atlas.Core.Style.Palette,
@@ -118,6 +119,7 @@ type
     procedure OpenList(ABar: TAtlasBreadcrumbBar; const APrompt: string; const AItems: TArray<Integer>;
       ACurrent: Integer; const APoint: TPoint);
     procedure Jump(ABar: TAtlasBreadcrumbBar; AIndex: Integer; ADeclaration: Boolean);
+    procedure Later(ABar: TAtlasBreadcrumbBar; const AAction: TProc);
     procedure ApplyToolbar(AParent: TWinControl);
     procedure Leave(ABar: TAtlasBreadcrumbBar);
     function CommandsOf(const ANodes: TAtlasOutlineNodes; const AIndices: TArray<Integer>;
@@ -283,20 +285,26 @@ begin
   Bar.SeparatorHint := TAtlasStrings.Text(TAtlasTextId.BreadcrumbsChildrenHint);
   Bar.OnOpenMenu :=
     procedure(AIndex: Integer; const APoint: TPoint)
+    var
+      At: TPoint;
     begin
-      TAtlasGuard.Run(TAtlasFeature.EditorCommands,
+      At := APoint;
+      Later(Bar,
         procedure
         begin
-          OpenMenu(Bar, AIndex, APoint);
+          OpenMenu(Bar, AIndex, At);
         end);
     end;
   Bar.OnOpenChildren :=
     procedure(AIndex: Integer; const APoint: TPoint)
+    var
+      At: TPoint;
     begin
-      TAtlasGuard.Run(TAtlasFeature.EditorCommands,
+      At := APoint;
+      Later(Bar,
         procedure
         begin
-          OpenChildren(Bar, AIndex, APoint);
+          OpenChildren(Bar, AIndex, At);
         end);
     end;
   Bar.OnJump :=
@@ -442,7 +450,11 @@ var
   Window: TAtlasPaletteWindow;
 begin
   if (Length(AItems) = 0) or (FFileName = '') then
+  begin
+    TAtlasGuard.Log(Format('Brotkrumen: kein Menü (Einträge %d, Datei %s)', [Length(AItems),
+      BoolToStr(FFileName <> '', True)]));
     Exit;
+  end;
   // Kopien: Das Menü lebt länger als der aktuelle Stand.
   Items := AItems;
   Nodes := FNodes;
@@ -495,6 +507,26 @@ begin
   if Target < 0 then
     Exit;
   TAtlasIdeNavigation.GoToLocation(FFileName, FNodes[Target].NameLine, FNodes[Target].NameCharacter);
+end;
+
+/// <summary>Menü erst nach dem Klick öffnen: Die IDE holt den Fokus in den Editor zurück; ein sofort geöffnetes
+/// Menü verlöre die Aktivierung und ginge gleich wieder zu. Läuft nur, wenn Zustand und Leiste dann noch leben.</summary>
+procedure TBreadcrumbsState.Later(ABar: TAtlasBreadcrumbBar; const AAction: TProc);
+var
+  State: TBreadcrumbsState;
+  Bar: TAtlasBreadcrumbBar;
+  Action: TProc;
+begin
+  State := Self;
+  Bar := ABar;
+  Action := AAction;
+  TAtlasMainThread.ForceQueue(TAtlasFeature.EditorCommands,
+    procedure
+    begin
+      if (TAtlasIdeBreadcrumbs.FState <> State) or not State.FBars.Contains(Bar) then
+        Exit;
+      Action();
+    end);
 end;
 
 procedure TBreadcrumbsState.Leave(ABar: TAtlasBreadcrumbBar);

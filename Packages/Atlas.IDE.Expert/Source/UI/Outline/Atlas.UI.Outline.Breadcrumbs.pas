@@ -5,7 +5,8 @@
 // (#421) und Name, dazwischen „›“. Die Höhe hängt nur von der DPI ab, nie
 // vom Inhalt. Passt der Pfad nicht in die Breite, entfallen vorn Glieder
 // („…“), das letzte bleibt immer sichtbar.
-// - Klick auf ein Glied mit Geschwistern meldet OnOpenMenu (Sprungmenü).
+// - Klick (beim Loslassen) auf ein Glied mit Geschwistern meldet OnOpenMenu
+//   (Sprungmenü).
 // - Klick auf das „›“ hinter einem Glied mit Kindern meldet OnOpenChildren
 //   (wie die Adressleiste im Explorer); hat das letzte Glied Kinder, steht
 //   auch hinter ihm ein „›“.
@@ -75,7 +76,7 @@ type
   protected
     procedure Paint; override;
     procedure Resize; override;
-    procedure MouseDown(Button: TMouseButton; Shift: TShiftState; X, Y: Integer); override;
+    procedure MouseUp(Button: TMouseButton; Shift: TShiftState; X, Y: Integer); override;
     procedure MouseMove(Shift: TShiftState; X, Y: Integer); override;
     procedure KeyDown(var Key: Word; Shift: TShiftState); override;
     procedure DoEnter; override;
@@ -532,11 +533,13 @@ begin
   Invalidate;
 end;
 
-procedure TAtlasBreadcrumbBar.MouseDown(Button: TMouseButton; Shift: TShiftState; X, Y: Integer);
+procedure TAtlasBreadcrumbBar.MouseUp(Button: TMouseButton; Shift: TShiftState; X, Y: Integer);
 var
   Index: Integer;
 begin
-  inherited MouseDown(Button, Shift, X, Y);
+  inherited MouseUp(Button, Shift, X, Y);
+  // Erst beim Loslassen: Beim Drücken holt die IDE den Fokus zurück in den Editor, das Menü ginge sofort
+  // wieder zu.
   if Button <> mbLeft then
     Exit;
   Index := SeparatorAt(X, Y);
