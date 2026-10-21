@@ -306,14 +306,24 @@ begin
     end;
     Inc(Y, Scale(3));
   end;
-  // 3. Unit · Klasse.
+  // 3. Unit · Klasse; bei Helpern „Helper · Unit“ (#456).
   Text := FDetails.UnitName;
-  if FDetails.Container <> '' then
+  if FDetails.IsHelper and (FDetails.Container <> '') then
+  begin
+    if Text <> '' then
+      Text := FDetails.Container + ' · ' + Text
+    else
+      Text := FDetails.Container;
+  end
+  else if FDetails.Container <> '' then
     if Text <> '' then
       Text := Text + ' · ' + FDetails.Container
     else
       Text := FDetails.Container;
   Block(Text, AColors.Muted, []);
+  // Helper aus nicht eingebundener Unit (#456): Enter ergänzt die uses.
+  if FDetails.AddsUnit <> '' then
+    Block(TAtlasStrings.Fmt(TAtlasTextId.HelperAddsUnit, [FDetails.AddsUnit]), AColors.Accent, []);
   // Verdeckte Deklarationen weiter außen (#488).
   for Text in FDetails.Hides do
     Block(TAtlasStrings.Fmt(TAtlasTextId.HidesDeclaration, [Text]), AColors.Muted, [fsItalic]);

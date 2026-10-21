@@ -419,6 +419,17 @@ begin
   Assert.AreEqual('Hängt S an.', Details.Doc.Sections[0].Text);
   Assert.IsTrue(Details.Display.Known);
   Assert.AreEqual(20, Details.Display.MaxLines);
+  Assert.IsFalse(Details.IsHelper);
+  // Mitglied eines Helpers (#456).
+  Response := TJSONObject.ParseJSONValue('{"label":"Trim","data":{"atlas":{"declaration":"function Trim: string;",' +
+    '"unit":"System.SysUtils","container":"TStringHelper","helper":true}}}');
+  try
+    Details := TAtlasServerCompletionProvider.DetailsFromLsp(Response);
+  finally
+    Response.Free;
+  end;
+  Assert.IsTrue(Details.IsHelper);
+  Assert.AreEqual('TStringHelper', Details.Container);
   // Andere Server: detail und documentation.
   Response := TJSONObject.ParseJSONValue('{"label":"X","detail":"X: Integer","documentation":{"value":"Doku"}}');
   try

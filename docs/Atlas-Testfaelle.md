@@ -2167,6 +2167,17 @@ Voraussetzung: VCL-Quellen über die Bibliothekspfade im Index.
 | HV6 | Deklaration von `Alt` und `procedure Alt;` im implementation-Teil | Keine Meldung, nicht durchgestrichen |
 | HV7 | `"rules": {"deprecated-symbol": "off"}` in atlas.json | Keine Meldung und kein Durchstreichen mehr (**Abnahme**) |
 
+## Helper-Methoden in der Vervollständigung (#456)
+
+| Nr. | Schritt | Erwartet |
+|---|---|---|
+| HM1 | `uses System.SysUtils;`, `var S: string;`, `S.` tippen | `Length`, `ToUpper` usw. mit Tag „Helper“ in Akzentfarbe; Detail-Panel rechts „Helper · System.SysUtils“ (**Abnahme**) |
+| HM2 | `Button1.` auf einem Formular, Unit mit `TButtonHelper = class helper for TButton` eingebunden | Eigene Methoden des Helpers mit Tag „Helper“ zwischen den Membern von `TButton`, geerbte ohne Tag |
+| HM3 | Unit `Hilfen` mit `TTextHelper = record helper for string` im Projekt, aber nicht in uses; `S.` tippen | Methoden aus `TTextHelper` mit Tag „+ Hilfen“, im Panel „Enter trägt Hilfen in die uses-Klausel ein; danach gilt dieser Helper.“; Enter fügt `Hilfen` in die uses ein (**Abnahme**) |
+| HM4 | Wie HM3, private Methoden des Helpers | Erscheinen nicht |
+| HM5 | Wie HM3 mit „uses automatisch ergänzen“ aus | Einträge erscheinen ohne Panel-Hinweis, Enter ändert die uses nicht |
+| HM6 | `Hilfen` steht schon in uses | Methoden ohne „+ Hilfen“, kein uses-Eintrag beim Übernehmen |
+
 ## Symbole in Direktiven (#102)
 
 | Nr. | Schritt | Erwartet |

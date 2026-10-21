@@ -142,6 +142,9 @@ type
     /// <summary>Symbole aus nicht eingebundenen Units (#180) mit uses-Eintrag; Projekt-Units vor Bibliotheken.
     /// </summary>
     procedure AddFromOtherUnits;
+    /// <summary>Mitglieder von Helpern für ATypes (Typ und Vorfahren, nächster zuerst) aus nicht eingebundenen
+    /// Units (#456) mit uses-Eintrag, hinter den übrigen Mitgliedern.</summary>
+    procedure AddHelpersFromOtherUnits(const ATypes: TArray<TResolvedSymbol>);
     /// <summary>Schlüsselwörter (#31) mit PenaltyKeyword.</summary>
     procedure AddKeywords(const AWords: TArray<string>);
     /// <summary>Namen des eigenen Bereichs, die gleichnamige Deklarationen aus uses verdecken (#488): vor dem
@@ -851,6 +854,70 @@ begin
           FImportsCapped := True;
           Exit;
         end;
+      end;
+    end;
+  finally
+    Known.Free;
+  end;
+end;
+
+procedure TCompletionCollector.AddHelpersFromOtherUnits(const ATypes: TArray<TResolvedSymbol>);
+var
+  Known: TDictionary<string, Boolean>;
+  Used: TArray<string>;
+  Own: string;
+  Names: TImportNameIndex;
+  Entry: TImportNameEntry;
+  UnitInfo: TUnitIndex;
+  Helper: TIndexSymbol;
+  Edit: TRuleEdit;
+  Member: TResolvedSymbol;
+  Depth, Position, Penalty: Integer;
+begin
+  if Length(ATypes) = 0 then
+    Exit;
+  Known := KnownNames;
+  try
+    Used := TUsesClauses.UsedUnits(FRequest.Tree.Tokens);
+    Own := TUsesClauses.OwnName(FRequest.Tree.Tokens);
+    Names := TImportNames.Current(FRequest.Index);
+    for Entry in Names.Helpers do
+    begin
+      UnitInfo := Names.Units[Entry.UnitPos];
+      if SameText(UnitInfo.UnitName, Own) or TUsesClauses.IsUsed(Used, UnitInfo.UnitName,
+        FRequest.Resolver.Namespaces) or TUsesClauses.IsUsed(Used, UnitInfo.UnitName, ['System']) then
+        Continue;
+      Helper := UnitInfo.Symbols[Entry.SymbolPos];
+      Depth := -1;
+      for Position := 0 to High(ATypes) do
+        if TNameResolver.HelperTargets(Helper.Ancestors[High(Helper.Ancestors)], ATypes[Position]) then
+        begin
+          Depth := Position;
+          Break;
+        end;
+      if Depth < 0 then
+        Continue;
+      if not TUsesClauses.AddUnit(FRequest.Tree.Tokens, FContext.Offset, UnitInfo.UnitName, #13#10, Edit) then
+        Exit;
+      if UnitInfo.Library_ then
+        Penalty := PenaltyLibraryImport
+      else
+        Penalty := PenaltyProjectImport;
+      for Position := 0 to High(UnitInfo.Symbols) do
+      begin
+        if not SameText(UnitInfo.Symbols[Position].Container, Helper.Name) or
+          not (UnitInfo.Symbols[Position].Visibility in [TIndexVisibility.Public, TIndexVisibility.Published]) or
+          Known.ContainsKey(UpperCase(UnitInfo.Symbols[Position].Name)) then
+          Continue;
+        if (FContext.Prefix <> '') and (MatchScore(UnitInfo.Symbols[Position].Name, FContext.Prefix,
+          FRequest.Matching) = TFuzzyMatch.NoMatch) then
+          Continue;
+        Member := FRequest.Resolver.SymbolFrom(UnitInfo, UnitInfo.Symbols[Position]);
+        Member.IsHelper := True;
+        Member.Depth := Depth;
+        if Add(UnitInfo.Symbols[Position].Name, UnitInfo.UnitName + ' (uses ergänzen)',
+          CompletionKindOf(UnitInfo.Symbols[Position].Kind), Penalty, Member, [Edit]) then
+          Known.AddOrSetValue(UpperCase(UnitInfo.Symbols[Position].Name), True);
       end;
     end;
   finally
