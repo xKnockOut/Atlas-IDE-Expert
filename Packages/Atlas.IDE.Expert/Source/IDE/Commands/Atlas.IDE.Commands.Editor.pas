@@ -188,6 +188,7 @@ uses
   Atlas.IDE.Editor.MultiCursor,
   Atlas.IDE.Editor.LinkedEditing,
   Atlas.IDE.Editor.SmartPaste,
+  Atlas.IDE.Editor.Unwrap,
   Atlas.Core.Editor.WorkspacePlan,
   Atlas.IDE.Foundation.Navigation;
 
@@ -253,6 +254,8 @@ begin
       TAtlasIdeLinkedEditing.Dismiss;
       // Einfügen mit uses-Ergänzung (#515): Das Fenster gilt nur in seiner Ansicht.
       TAtlasIdeSmartPaste.Dismiss;
+      // Umschließung entfernen (#657): Liste und Vorschau ebenso.
+      TAtlasIdeUnwrap.Dismiss;
     end);
 end;
 
@@ -291,6 +294,12 @@ begin
     procedure
     begin
       TAtlasIdeSmartPaste.EditorModified(View);
+    end);
+  // Umschließung entfernen (#657): Jede Änderung schließt die Liste ohne Änderung.
+  TAtlasGuard.Run(TAtlasFeature.EditorCommands,
+    procedure
+    begin
+      TAtlasIdeUnwrap.EditorModified(View);
     end);
 end;
 
