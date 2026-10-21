@@ -158,6 +158,10 @@
       "caption": "Blockkommentar umschalten",
       "captionEn": "Toggle block comment"
     },
+    "commands.newLineAround": {
+      "caption": "Neue Zeile ober-/unterhalb",
+      "captionEn": "New line above/below"
+    },
     "commands.moveLines": {
       "caption": "Zeilen verschieben",
       "captionEn": "Move lines"
@@ -1589,6 +1593,52 @@
       "x-page": "Befehle",
       "x-control": "Auswahl",
       "x-issue": "#703"
+    },
+    "NewLineAround": {
+      "description": "Neue Zeile ober- oder unterhalb: Umschalt+Enter fügt unter der Cursorzeile eine Zeile ein, Strg+Alt+Enter darüber, ohne die Zeile zu teilen. Einzug eine Ebene tiefer nach then, do, begin, try, else, of, repeat und Sichtbarkeiten, vor end, until, except, finally und else so tief wie der Blockinhalt; Kommentare werden wie beim Enter fortgesetzt, solange editor.continueComments an ist. Ein Rückgängig-Schritt. Aus = die Tasten gehören der IDE.",
+      "type": "boolean",
+      "default": true,
+      "x-key": "keys.newLineAround",
+      "x-area": "keys",
+      "x-feature": "EditorCommands",
+      "x-page": "Befehle",
+      "x-node": "commands.newLineAround",
+      "x-caption": "Neue Zeile ober-/unterhalb",
+      "x-captionEn": "New line above/below",
+      "x-control": "Kontrollkästchen",
+      "x-issue": "#700"
+    },
+    "NewLineBelowKey": {
+      "description": "Tastenkürzel „Neue Zeile darunter“ (0 = keins).",
+      "type": "integer",
+      "default": 8205,
+      "x-key": "keys.newLineAround.belowKey",
+      "x-area": "keys",
+      "x-format": "shortcut",
+      "x-page": "Befehle",
+      "x-issue": "#700"
+    },
+    "NewLineAboveKey": {
+      "description": "Tastenkürzel „Neue Zeile darüber“ (0 = keins).",
+      "type": "integer",
+      "default": 49165,
+      "x-key": "keys.newLineAround.aboveKey",
+      "x-area": "keys",
+      "x-format": "shortcut",
+      "x-page": "Befehle",
+      "x-issue": "#700"
+    },
+    "NewLineAroundStatementAware": {
+      "description": "Mehrzeilige Anweisungen (etwa ein Aufruf mit Argumenten in Folgezeilen) als Ganzes: Die neue Zeile kommt hinter das Ende bzw. vor den Anfang der Anweisung, mit dem Einzug ihrer ersten Zeile. Aus = immer neben der Cursorzeile mit deren Einzug.",
+      "type": "boolean",
+      "default": true,
+      "x-key": "keys.newLineAround.statementAware",
+      "x-area": "keys",
+      "x-page": "Befehle",
+      "x-caption": "Mehrzeilige Anweisungen als Ganzes",
+      "x-captionEn": "Multi-line statements as a whole",
+      "x-control": "Kontrollkästchen",
+      "x-issue": "#700"
     },
     "ContinueComments": {
       "description": "Kommentar beim Enter fortsetzen: Nach einer //- oder ///-Zeile bekommt die neue Zeile Einrückung und Präfix, in einem offenen { … }- bzw. (* … *)-Block den Einzug. Enter auf einer Zeile nur mit Präfix beendet den Kommentar; Strg+Z nimmt nur das Präfix zurück.",
