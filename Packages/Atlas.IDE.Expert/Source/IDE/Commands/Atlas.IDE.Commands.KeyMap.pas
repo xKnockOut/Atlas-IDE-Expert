@@ -130,6 +130,8 @@ const
     // Atlas-Suche (#877, #878): Editorbefehle.
     3, 3, 3, 3,
     // Formatieren (#43): Editorbefehl.
+    3,
+    // Blockkommentar umschalten (#703): Editorbefehl.
     3);
 
 type

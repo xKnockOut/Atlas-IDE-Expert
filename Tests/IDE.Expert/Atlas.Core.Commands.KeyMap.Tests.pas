@@ -395,6 +395,9 @@ begin
   // Methode (#877) haben.
   Assert.AreEqual($E04C, Integer(EntryOf(Entries, TAtlasKeyFunction.FormatCode).Key));
   Assert.AreEqual('Atlas.FormatCode', TAtlasKeyMap.CommandIdOf(TAtlasKeyFunction.FormatCode));
+  // Blockkommentar umschalten (#703): Umschalt+Alt+A.
+  Assert.AreEqual($A041, Integer(EntryOf(Entries, TAtlasKeyFunction.ToggleBlockComment).Key));
+  Assert.AreEqual('Atlas.ToggleBlockComment', TAtlasKeyMap.CommandIdOf(TAtlasKeyFunction.ToggleBlockComment));
   Assert.AreEqual(Ord(TAtlasKeySource.Binding), Ord(TAtlasKeyMap.SourceOf(TAtlasKeyFunction.TestUnit)));
   Settings.EditorKeysPriority := True;
   Assert.IsTrue(EntryOf(TAtlasKeyEntry.AllFromSettings(Settings), TAtlasKeyFunction.UnitSearch).Priority);
@@ -471,6 +474,7 @@ begin
   Settings.CompleteStatement := False;
   Settings.MultiCursor := False;
   Settings.FormatCode := False;
+  Settings.ToggleBlockComment := False;
   Entries := TAtlasKeyEntry.AllFromSettings(Settings);
   for Entry in Entries do
     if Entry.Func in [TAtlasKeyFunction.MethodToggleUp, TAtlasKeyFunction.MethodToggleDown,
@@ -484,7 +488,7 @@ begin
       TAtlasKeyFunction.MoveLinesUp, TAtlasKeyFunction.MoveLinesDown, TAtlasKeyFunction.DuplicateLinesUp,
       TAtlasKeyFunction.DuplicateLinesDown, TAtlasKeyFunction.CompleteStatement, TAtlasKeyFunction.MultiCursorNext,
       TAtlasKeyFunction.MultiCursorSkip, TAtlasKeyFunction.MultiCursorLineEnds, TAtlasKeyFunction.MultiCursorAbove,
-      TAtlasKeyFunction.MultiCursorBelow, TAtlasKeyFunction.FormatCode] then
+      TAtlasKeyFunction.MultiCursorBelow, TAtlasKeyFunction.FormatCode, TAtlasKeyFunction.ToggleBlockComment] then
     begin
       Assert.IsTrue(Entry.Disabled, 'abgeschaltet: ' + IntToStr(Ord(Entry.Func)));
       Assert.AreEqual(Ord(TAtlasKeyStatus.NoKey), Ord(Entry.Status('IDE: Klassennavigation')),
