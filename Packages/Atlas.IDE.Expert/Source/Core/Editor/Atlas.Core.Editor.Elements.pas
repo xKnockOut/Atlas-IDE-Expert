@@ -71,7 +71,9 @@ type
     /// <summary>Hervorhebung gleichen Texts wie die Markierung samt Anzahl (#709).</summary>
     SelectionMatches,
     /// <summary>Symbole aus Include-Dateien hinter {$I} (#860).</summary>
-    InlayDefineHints);
+    InlayDefineHints,
+    /// <summary>Codes von Steuerzeichen wie ^C (#862).</summary>
+    InlayCharHints);
   TAtlasHideScope = (Here, InFile, Everywhere);
 {$SCOPEDENUMS OFF}
   TAtlasHideScopes = set of TAtlasHideScope;
@@ -196,6 +198,8 @@ begin
       Result := Make(AElement, 'SelectionMatches', FileScopes, True, False);
     TAtlasDrawnElement.InlayDefineHints:
       Result := Make(AElement, 'InlayDefineHints', AllScopes, True, False);
+    TAtlasDrawnElement.InlayCharHints:
+      Result := Make(AElement, 'InlayCharHints', AllScopes, True, False);
   else
     Result := Make(AElement, '', [], False, False);
   end;

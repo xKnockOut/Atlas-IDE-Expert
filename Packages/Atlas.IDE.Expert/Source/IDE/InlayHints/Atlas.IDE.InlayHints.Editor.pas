@@ -35,6 +35,8 @@
 //   Pille wie die Parameternamen, hinter ihnen; ausblendbar je Codezeile.
 // - Include-Symbole (#860, Einstellung InlayDefineHints): hinter {$I datei.inc}
 //   „definiert COMPLIB_VCL“ in einer Pille; ausblendbar je Codezeile.
+// - Steuerzeichen (#862, Einstellung InlayCharHints): hinter ^C in einer
+//   Konstanten der Code „#3“ in einer Pille; ausblendbar je Codezeile.
 // - Platz hinter dem Zeilenende (#509): teilt sich der Zeichner über
 //   TAtlasLineTail mit dem Fehlertext am Zeilenende.
 
@@ -243,7 +245,8 @@ begin
     Exit;
   try
     if not TAtlasIdeSettings.InlayHintsOn and not TAtlasIdeSettings.InlayTypeHintsOn and
-      not TAtlasIdeSettings.InlayDefineHintsOn and not TAtlasIdeSettings.BlockEndLabelsOn then
+      not TAtlasIdeSettings.InlayDefineHintsOn and not TAtlasIdeSettings.InlayCharHintsOn and
+      not TAtlasIdeSettings.BlockEndLabelsOn then
     begin
       if FShowing then
       begin
@@ -375,7 +378,7 @@ end;
 procedure TAtlasEditorInlayHints.PaintLine(const Rect: TRect; const Stage: TPaintLineStage; const BeforeEvent: Boolean;
   var AllowDefaultPainting: Boolean; const Context: INTACodeEditorPaintContext);
 var
-  Names, Types, Defines: TArray<string>;
+  Names, Types, Defines, Chars: TArray<string>;
   Stored, EndText, EndLabel: string;
   EndHint: TAtlasInlayHint;
   LineState: INTACodeEditorLineState;
@@ -386,7 +389,7 @@ var
   DC: HDC;
   Saved: Integer;
   Size: TSize;
-  ShowNames, ShowTypes, ShowDefines, ShowEnd: Boolean;
+  ShowNames, ShowTypes, ShowDefines, ShowChars, ShowEnd: Boolean;
   Index: Integer;
   TailKey: string;
 begin
@@ -400,15 +403,18 @@ begin
     Names := FStore.OnLine(Context.FileName, Line);
     Types := FStore.TypesOnLine(Context.FileName, Line);
     Defines := FStore.DefinesOnLine(Context.FileName, Line);
+    Chars := FStore.CharsOnLine(Context.FileName, Line);
     ShowEnd := FStore.EndLabelOn(Context.FileName, Line, EndText, EndLabel, EndHint);
-    if (Length(Names) = 0) and (Length(Types) = 0) and (Length(Defines) = 0) and not ShowEnd then
+    if (Length(Names) = 0) and (Length(Types) = 0) and (Length(Defines) = 0) and (Length(Chars) = 0) and
+      not ShowEnd then
       Exit;
     // Erst hier: die meisten Zeilen haben keine Hinweise (P-10).
     ShowNames := (Length(Names) > 0) and TAtlasIdeSettings.InlayHintsOn;
     ShowTypes := (Length(Types) > 0) and TAtlasIdeSettings.InlayTypeHintsOn;
     ShowDefines := (Length(Defines) > 0) and TAtlasIdeSettings.InlayDefineHintsOn;
+    ShowChars := (Length(Chars) > 0) and TAtlasIdeSettings.InlayCharHintsOn;
     ShowEnd := ShowEnd and TAtlasIdeSettings.BlockEndLabelsOn;
-    if not ShowNames and not ShowTypes and not ShowDefines and not ShowEnd then
+    if not ShowNames and not ShowTypes and not ShowDefines and not ShowChars and not ShowEnd then
       Exit;
     LineState := Context.LineState;
     if (LineState = nil) or (Context.EditView = nil) or (Context.EditView.Buffer = nil) or
@@ -426,9 +432,11 @@ begin
       ShowTypes := False;
     if ShowDefines and TAtlasIdeElements.Hidden(TAtlasDrawnElement.InlayDefineHints, Context.FileName, Stored) then
       ShowDefines := False;
+    if ShowChars and TAtlasIdeElements.Hidden(TAtlasDrawnElement.InlayCharHints, Context.FileName, Stored) then
+      ShowChars := False;
     if ShowEnd and TAtlasIdeElements.Hidden(TAtlasDrawnElement.BlockEndLabels, Context.FileName, EndText) then
       ShowEnd := False;
-    if not ShowNames and not ShowTypes and not ShowDefines and not ShowEnd then
+    if not ShowNames and not ShowTypes and not ShowDefines and not ShowChars and not ShowEnd then
       Exit;
     Canvas := Context.Canvas;
     DC := Canvas.Handle;
@@ -475,6 +483,13 @@ begin
           Defines[Index] := TAtlasStrings.Fmt(TAtlasTextId.InlayDefinesLabel, [Defines[Index]]);
         Hints := DrawPills(DC, Defines, Top, Height, X);
         TAtlasIdeElements.Painted(TAtlasDrawnElement.InlayDefineHints, Context.FileName, Line, Stored, Hints,
+          Context.EditView.TopRow, Rect.Height);
+      end;
+      // Steuerzeichen (#862): „#3“ hinter ^C.
+      if ShowChars then
+      begin
+        Hints := DrawPills(DC, Chars, Top, Height, X);
+        TAtlasIdeElements.Painted(TAtlasDrawnElement.InlayCharHints, Context.FileName, Line, Stored, Hints,
           Context.EditView.TopRow, Rect.Height);
       end;
       // Blockende-Beschriftung (#620): gedämpfter Text wie ein Kommentar, ohne Rahmen.

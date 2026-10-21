@@ -4,7 +4,7 @@
 // Je Punkt des Issues ein Test; die Quellen stammen aus den nachgestellten
 // Fällen in planung/parser-luecken-faelle (05, 07, 08, 09, 12) bzw. sind
 // Fixtures zu den Korpusfunden (Punkte 10 bis 15). Dazu die Sprungmarke @@End
-// im asm-Block (#861).
+// im asm-Block (#861), Steuerzeichen wie ^C und die Ersatzklammern (. .) (#862).
 
 interface
 
@@ -67,6 +67,15 @@ type
     /// <summary>#861: dasselbe klein geschrieben, mit @@Loop: und end in Kommentaren.</summary>
     [Test]
     procedure AsmLowerCaseLabelsAndComments;
+    /// <summary>#862: ^C, ^M, ^[ als Zeichenliterale in Konstanten, Ausdrücken, Mengen und case-Marken.</summary>
+    [Test]
+    procedure ControlCharLiterals;
+    /// <summary>#862: ^TFoo als Zeigertyp und P^.Feld als Dereferenzierung bleiben.</summary>
+    [Test]
+    procedure PointerSyntaxUnchanged;
+    /// <summary>#862: (. und .) wie [ und ].</summary>
+    [Test]
+    procedure AlternativeBrackets;
   end;
 
 implementation
@@ -144,6 +153,19 @@ const
     'unit P17;'#10'interface'#10'implementation'#10'function F: Integer;'#10'asm'#10'@@loop:'#10 +
     '  DEC ECX { end }'#10'  JNZ @@loop'#10'  JMP @@end // end'#10'  (* end *)'#10'@@end:'#10'end;'#10 +
     'function G: Integer;'#10'begin'#10'  Result := 0;'#10'end;'#10'end.';
+
+  ControlChars =
+    'unit P18;'#10'interface'#10'const'#10'  CtrlC = ^C;'#10'  Next = 1;'#10'  C = 2;'#10'  Esc = ^[;'#10 +
+    '  CrLf = ''a''^M^J''b'';'#10'implementation'#10'procedure P(Key: Char);'#10'begin'#10 +
+    '  if Key = ^M then'#10'    Exit;'#10'  if Key in [^H, #32..#255] then'#10'    Exit;'#10 +
+    '  case Key of'#10'    ^C: ;'#10'    ^@, ^?: ;'#10'  end;'#10'end;'#10'end.';
+  Pointers =
+    'unit P19;'#10'interface'#10'type'#10'  TFoo = record Feld: Integer; end;'#10'  P = ^TFoo;'#10 +
+    '  T = Integer;'#10'  PT = ^T;'#10 +
+    'implementation'#10'procedure Q(F: P);'#10'var'#10'  X: Integer;'#10'begin'#10'  X := F^.Feld;'#10'end;'#10'end.';
+  Brackets =
+    'unit P20;'#10'interface'#10'implementation'#10'procedure Q(C: Char; var A: array of Integer);'#10'begin'#10 +
+    '  if C in (. ''a''..''z'' .) then'#10'    A(.1.) := 2;'#10'end;'#10'end.';
 
 function Find(ANode: TSyntaxNode; AKind: TSyntaxKind; const AName: string): TSyntaxNode;
 var
@@ -629,6 +651,92 @@ end;
 procedure TLanguageGapsTests.AsmLowerCaseLabelsAndComments;
 begin
   AssertAsmUnit(AsmLower);
+end;
+
+/// <summary>Index des ANth-ten Tokens mit dem Text AText (ab 0) in Tree.Tokens; -1 ohne.</summary>
+function TokenIndexOf(ATree: TSyntaxTree; const AText: string; ANth: Integer): Integer;
+var
+  Index, Seen: Integer;
+begin
+  Seen := 0;
+  for Index := 0 to High(ATree.Tokens) do
+    if ATree.Tokens[Index].Text = AText then
+    begin
+      if Seen = ANth then
+        Exit(Index);
+      Inc(Seen);
+    end;
+  Result := -1;
+end;
+
+/// <summary>Namen aller Literale in Baumreihenfolge, durch | getrennt.</summary>
+function LiteralNames(ANode: TSyntaxNode): string;
+var
+  Index: Integer;
+begin
+  Result := '';
+  if ANode.Kind = TSyntaxKind.Literal then
+    Result := ANode.Name + '|';
+  for Index := 0 to ANode.ChildCount - 1 do
+    Result := Result + LiteralNames(ANode[Index]);
+end;
+
+procedure TLanguageGapsTests.ControlCharLiterals;
+var
+  Tree: TSyntaxTree;
+  Index: ISymbolIndex;
+  Resolver: TNameResolver;
+begin
+  Index := TSymbolIndex.Create;
+  Assert.AreEqual('', Diagnostics(ControlChars));
+  Tree := TPascalParser.Parse(ControlChars);
+  try
+    Assert.IsNotNull(Find(Tree.Root, TSyntaxKind.ConstDecl, 'CtrlC'));
+    Assert.IsNotNull(Find(Tree.Root, TSyntaxKind.ConstDecl, 'Next'), 'der Abschnitt bricht nicht ab');
+    Assert.IsNotNull(Find(Tree.Root, TSyntaxKind.ConstDecl, 'Esc'));
+    Assert.AreEqual('#3|1|2|#27|''a''#13#10''b''|#13|#8|#32|#255|#3|#0|#127|', LiteralNames(Tree.Root));
+    // C in ^C ist kein Verweis auf die Konstante C (Hover, Gehe zu, Hervorhebung).
+    Resolver := TNameResolver.Create(Index);
+    try
+      Assert.IsFalse(Resolver.Resolve(Tree, MainFile, PositionOf(ControlChars, 'C: ;')).Found, '^C');
+      Assert.IsTrue(Resolver.Resolve(Tree, MainFile, PositionOf(ControlChars, 'C = 2')).Found, 'Konstante C');
+    finally
+      Resolver.Free;
+    end;
+  finally
+    Tree.Free;
+  end;
+end;
+
+procedure TLanguageGapsTests.PointerSyntaxUnchanged;
+var
+  Tree: TSyntaxTree;
+begin
+  Assert.AreEqual('', Diagnostics(Pointers));
+  Tree := TPascalParser.Parse(Pointers);
+  try
+    Assert.IsNotNull(Find(Find(Tree.Root, TSyntaxKind.TypeDecl, 'P'), TSyntaxKind.PointerType, ''));
+    Assert.IsNotNull(Find(Tree.Root, TSyntaxKind.Dereference, ''));
+    Assert.AreEqual('', LiteralNames(Tree.Root));
+    // ^T ist ein Zeigertyp: T bleibt ein Name.
+    Assert.IsFalse(Tree.IsControlCharPart(TokenIndexOf(Tree, 'T', 1)));
+  finally
+    Tree.Free;
+  end;
+end;
+
+procedure TLanguageGapsTests.AlternativeBrackets;
+var
+  Tree: TSyntaxTree;
+begin
+  Assert.AreEqual('', Diagnostics(Brackets));
+  Tree := TPascalParser.Parse(Brackets);
+  try
+    Assert.IsNotNull(Find(Tree.Root, TSyntaxKind.SetConstructor, ''));
+    Assert.IsNotNull(Find(Tree.Root, TSyntaxKind.IndexAccess, ''));
+  finally
+    Tree.Free;
+  end;
 end;
 
 end.
