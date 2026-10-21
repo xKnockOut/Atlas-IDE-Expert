@@ -324,6 +324,8 @@ type
     VirtualOverload: Boolean;
     /// <summary>Aktionen, die Deklaration und Implementierung angleichen.</summary>
     SyncSignatures: Boolean;
+    /// <summary>Forward-Deklarationen prüfen und ergänzen (#685).</summary>
+    ForwardDeclaration: Boolean;
     /// <summary>Code-Aktion „try/finally ergänzen“ nach einer Create-Zuweisung (#42).</summary>
     TryFinally: Boolean;
     /// <summary>Klassen-Aktionen: Getter/Setter/Feld, Interface-Methoden, Überschreiben (#42).</summary>
@@ -763,6 +765,7 @@ begin
   Result.NewParameterOverload := True;
   Result.VirtualOverload := False;
   Result.SyncSignatures := True;
+  Result.ForwardDeclaration := True;
   Result.TryFinally := True;
   Result.ClassActions := True;
   Result.ExplicitType := True;

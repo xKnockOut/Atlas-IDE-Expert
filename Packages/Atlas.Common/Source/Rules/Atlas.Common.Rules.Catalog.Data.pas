@@ -856,6 +856,24 @@ begin
     '      "description": "In a package (.dpk) a unit from contains uses a unit that is neither in contains nor provided by a package in requires. The compiler pulls it in implicitly (W1033), which later c' + 'auses duplicate units when another package also contains it. The quick fix adds the unit to contains.",' + #10 +
     '      "bad": "package Werkzeuge;\nrequires rtl;\ncontains\n  uHaupt in ''uHaupt.pas'';  // uHaupt uses uMathe\nend.",' + #10 +
     '      "good": "package Werkzeuge;\nrequires rtl;\ncontains\n  uHaupt in ''uHaupt.pas'',\n  uMathe in ''uMathe.pas'';\nend."' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "type-used-before-declaration",' + #10 +
+    '      "name": "Type used before its declaration",' + #10 +
+    '      "category": "bug",' + #10 +
+    '      "severity": "error",' + #10 +
+    '      "description": "A class, interface, record or other type is used in a type declaration (field, parameter, result, property, generic argument, class of) but declared only further down in the same' + ' scope (like compiler error E2003). Ancestors, aliases and pointer types are not reported. Quick fixes: add a forward declaration at the start of the type block, merge type blocks (const, var and labe' + 'l sections in between move in front of the first block) or move a record up in front of its first user; without a safe fix the message gives the reason.",' + #10 +
+    '      "bad": "type\n  TTree = class\n    FRoot: TNode;\n  end;\n  TNode = class\n  end;",' + #10 +
+    '      "good": "type\n  TNode = class;\n  TTree = class\n    FRoot: TNode;\n  end;\n  TNode = class\n  end;"' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "unneeded-forward-declaration",' + #10 +
+    '      "name": "Unneeded forward declaration",' + #10 +
+    '      "category": "code-smell",' + #10 +
+    '      "severity": "hint",' + #10 +
+    '      "description": "A forward declaration whose type is not used before its full declaration in the same type block. Quick fix: remove it.",' + #10 +
+    '      "bad": "type\n  TNode = class;\n  TNode = class\n  end;",' + #10 +
+    '      "good": "type\n  TNode = class\n  end;"' + #10 +
     '    }' + #10 +
     '  ]' + #10 +
     '}' + #10 +
@@ -1332,6 +1350,16 @@ begin
     '      "id": "implicit-package-import",' + #10 +
     '      "name": "Implizit eingebundene Unit",' + #10 +
     '      "description": "In einem Package (.dpk) verwendet eine Unit aus contains eine Unit, die weder in contains steht noch von einem Package aus requires geliefert wird. Der Compiler zieht sie implizi' + 't hinein (W1033), was später zu doppelten Units führt, wenn ein anderes Package sie ebenfalls enthält. Die Schnellkorrektur nimmt die Unit in contains auf."' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "type-used-before-declaration",' + #10 +
+    '      "name": "Typ vor seiner Deklaration benutzt",' + #10 +
+    '      "description": "Eine Klasse, ein Interface, ein Record oder ein anderer Typ wird in einer Typdeklaration (Feld, Parameter, Ergebnis, Property, generisches Argument, class of) benutzt, ist aber e' + 'rst weiter unten im selben Gültigkeitsbereich deklariert (wie Compilerfehler E2003). Vorfahren, Aliase und Zeigertypen werden nicht gemeldet. Schnellkorrekturen: Forward-Deklaration am Anfang des type' + '-Blocks ergänzen, type-Blöcke zusammenlegen (const-, var- und label-Abschnitte dazwischen wandern vor den ersten Block) oder einen Record vor seinen ersten Verwender verschieben; ohne sichere Korrektu' + 'r nennt die Meldung den Grund."' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "unneeded-forward-declaration",' + #10 +
+    '      "name": "Überflüssige Forward-Deklaration",' + #10 +
+    '      "description": "Eine Forward-Deklaration, deren Typ im selben type-Block vor der vollständigen Deklaration nicht benutzt wird. Schnellkorrektur: entfernen."' + #10 +
     '    }' + #10 +
     '  ]' + #10 +
     '}' + #10 +
