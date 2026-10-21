@@ -37,6 +37,8 @@
 // - Nächster bzw. vorheriger Befund in der oberen Datei (#509): alle Atlas-
 //   Diagnosen der Datei aus OnProblemsOf (setzt die Composition aus dem
 //   Problemspeicher), am Ende wieder von vorn; ohne Server.
+//   Ist das Fenster „Atlas-Prüfung“ sichtbar, geht es durch dessen gefilterte
+//   Liste (OnStepList, #909), auch in andere Dateien.
 // Vor jeder Anfrage bekommt der Server den aktuellen Text der Datei.
 // Meldungen nur als Zeile in der Meldungsansicht, nie als Dialog.
 
@@ -78,6 +80,7 @@ type
     FOnRunTest: TProc;
     FOnDebugTest: TProc;
     FProblemsOf: TAtlasProblemsOfFunc;
+    FStepList: TFunc<Boolean, Boolean>;
     FOnPlaceholders: TAtlasPlaceholdersProc;
   private
     class function Session: TLspSession; static;
@@ -142,6 +145,9 @@ type
     class procedure StepProblem(AForward: Boolean); static;
     /// <summary>Befunde einer Datei für StepProblem; setzt die Composition, nil = keine.</summary>
     class property OnProblemsOf: TAtlasProblemsOfFunc read FProblemsOf write FProblemsOf;
+    /// <summary>Bei sichtbarem Fenster „Atlas-Prüfung“ (#909) geht StepProblem durch dessen gefilterte Liste;
+    /// True = erledigt. Setzt die Composition, nil = nur die Datei.</summary>
+    class property OnStepList: TFunc<Boolean, Boolean> read FStepList write FStepList;
     /// <summary>Platzhalter-Modus für ///-Gerüste (#88); setzt die Composition, nil = nur der Cursor in die
     /// Zusammenfassung.</summary>
     class property OnPlaceholders: TAtlasPlaceholdersProc read FOnPlaceholders write FOnPlaceholders;
@@ -854,6 +860,8 @@ begin
     Exit;
   View := Editors.TopView;
   if (View = nil) or (View.Buffer = nil) then
+    Exit;
+  if Assigned(FStepList) and FStepList(AForward) then
     Exit;
   Problems := nil;
   if Assigned(FProblemsOf) and TAtlasIdeSettings.ProblemMarksOn then

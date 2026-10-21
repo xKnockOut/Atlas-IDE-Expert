@@ -376,6 +376,7 @@ type
     /// <summary>Nächster/vorheriger Befund (#509).</summary>
     FNextProblemKey: TEdit;
     FPreviousProblemKey: TEdit;
+    FProblemsWindowKey: TEdit;
     FUndoKey: TEdit;
     FRedoKey: TEdit;
     FEditorKeysPriority: TCheckBox;
@@ -1021,6 +1022,7 @@ type
     property ProblemsStatusCounterCheck: TCheckBox read FProblemsStatusCounter;
     property NextProblemKey: TEdit read FNextProblemKey;
     property PreviousProblemKey: TEdit read FPreviousProblemKey;
+    property ProblemsWindowKey: TEdit read FProblemsWindowKey;
     /// <summary>Zum Testen: Erzeugen-Menü (#719).</summary>
     property GenerateMenuCheck: TCheckBox read FGenerateMenu;
     property GenerateMenuKey: TEdit read FGenerateMenuKey;
@@ -1666,6 +1668,8 @@ begin
   // Nächster/vorheriger Befund (#509).
   FNextProblemKey := AddKey(TAtlasStrings.Text(TAtlasTextId.ProblemNextCommand));
   FPreviousProblemKey := AddKey(TAtlasStrings.Text(TAtlasTextId.ProblemPreviousCommand));
+  // Fenster „Atlas-Prüfung“ (#909).
+  FProblemsWindowKey := AddKey(TAtlasStrings.Text(TAtlasTextId.ProblemsWindowCommand));
   FUndoKey := AddKey(TAtlasStrings.Text(TAtlasTextId.UndoMenu));
   FRedoKey := AddKey(TAtlasStrings.Text(TAtlasTextId.RedoMenu));
   FEditorKeysPriority := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsEditorKeysPriority));
@@ -2577,6 +2581,7 @@ begin
   FMarks.Bind(FHideElementKey, ['HideElementKey']);
   FMarks.Bind(FNextProblemKey, ['NextProblemKey']);
   FMarks.Bind(FPreviousProblemKey, ['PreviousProblemKey']);
+  FMarks.Bind(FProblemsWindowKey, ['ProblemsWindowKey']);
   FMarks.Bind(FUndoKey, ['UndoKey']);
   FMarks.Bind(FRedoKey, ['RedoKey']);
   FMarks.Bind(FUpdatesCheck, ['UpdatesCheck']);
@@ -4536,6 +4541,7 @@ begin
   FHideElementKey.Text := ShortCutToText(TShortCut(ASettings.HideElementKey));
   FNextProblemKey.Text := ShortCutToText(TShortCut(ASettings.NextProblemKey));
   FPreviousProblemKey.Text := ShortCutToText(TShortCut(ASettings.PreviousProblemKey));
+  FProblemsWindowKey.Text := ShortCutToText(TShortCut(ASettings.ProblemsWindowKey));
   FEditorKeysPriority.Checked := ASettings.EditorKeysPriority;
   FSlashCommands.Checked := ASettings.SlashCommands;
   FGenerateMenu.Checked := ASettings.GenerateMenu;
@@ -4946,6 +4952,7 @@ begin
   ASettings.HideElementKey := Integer(TextToShortCut(Trim(FHideElementKey.Text)));
   ASettings.NextProblemKey := Integer(TextToShortCut(Trim(FNextProblemKey.Text)));
   ASettings.PreviousProblemKey := Integer(TextToShortCut(Trim(FPreviousProblemKey.Text)));
+  ASettings.ProblemsWindowKey := Integer(TextToShortCut(Trim(FProblemsWindowKey.Text)));
   ASettings.UndoKey := Integer(TextToShortCut(Trim(FUndoKey.Text)));
   ASettings.RedoKey := Integer(TextToShortCut(Trim(FRedoKey.Text)));
   ASettings.UpdatesCheck := FUpdatesCheck.Checked;
