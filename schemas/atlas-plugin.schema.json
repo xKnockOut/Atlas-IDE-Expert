@@ -90,6 +90,10 @@
       "caption": "Änderungsmarken",
       "captionEn": "Change markers"
     },
+    "editor.gutterColumn": {
+      "caption": "Atlas-Spalte",
+      "captionEn": "Atlas column"
+    },
     "editor.overviewRuler": {
       "caption": "Übersichtsleiste",
       "captionEn": "Overview ruler"
@@ -2629,6 +2633,58 @@
       "x-caption": "Zeilenhistorie",
       "x-captionEn": "Line history",
       "x-issue": "#507"
+    },
+    "GutterColumn": {
+      "description": "Eigene Atlas-Spalte in der Zeilenleiste rechts neben den Zeilennummern, je Zeile höchstens ein Symbol: Fehler ✕, Warnung ▲, Hinweis ●, Code-Aktionen der Cursorzeile ◆, überschreibt ↑, wird überschrieben ↓. Klick zeigt Meldung und Korrekturen, öffnet die Code-Aktionen bzw. springt zur Methode oder listet die überschreibenden Methoden. Aus = keine Spalte.",
+      "type": "boolean",
+      "default": true,
+      "x-key": "editor.gutterColumn",
+      "x-area": "editor",
+      "x-feature": "EditorCommands",
+      "x-page": "Editor",
+      "x-node": "editor.gutterColumn",
+      "x-quickToggle": true,
+      "x-drawing": true,
+      "x-caption": "Atlas-Spalte in der Zeilenleiste",
+      "x-captionEn": "Atlas column in the gutter",
+      "x-control": "Kontrollkästchen",
+      "x-issue": "#768"
+    },
+    "GutterColumnProblems": {
+      "description": "Fehler, Warnungen und Hinweise, die in der Zeile beginnen; das schwerste zählt.",
+      "type": "boolean",
+      "default": true,
+      "x-key": "editor.gutterColumn.problems",
+      "x-area": "editor",
+      "x-page": "Editor",
+      "x-caption": "Probleme",
+      "x-captionEn": "Problems",
+      "x-control": "Kontrollkästchen",
+      "x-issue": "#768"
+    },
+    "GutterColumnCodeActions": {
+      "description": "Glühbirne ◆, wenn für die Cursorzeile Code-Aktionen verfügbar sind (nach einer Tipp-Pause beim Server erfragt).",
+      "type": "boolean",
+      "default": true,
+      "x-key": "editor.gutterColumn.codeActions",
+      "x-area": "editor",
+      "x-page": "Editor",
+      "x-caption": "Code-Aktionen",
+      "x-captionEn": "Code actions",
+      "x-control": "Kontrollkästchen",
+      "x-issue": "#768"
+    },
+    "GutterColumnOverrides": {
+      "description": "Pfeile an Methoden: ↑ überschreibt eine Methode des Vorfahren, ↓ wird in Nachfahren überschrieben.",
+      "type": "boolean",
+      "default": true,
+      "x-key": "editor.gutterColumn.overrides",
+      "x-area": "editor",
+      "x-page": "Editor",
+      "x-caption": "Überschreibungen",
+      "x-captionEn": "Overrides",
+      "x-control": "Kontrollkästchen",
+      "x-issue": "#768"
     },
     "NextChangeKey": {
       "description": "Tastenkürzel „Nächste Änderung“: springt reihum zum nächsten Block mit Änderungsmarke (0 = keins).",

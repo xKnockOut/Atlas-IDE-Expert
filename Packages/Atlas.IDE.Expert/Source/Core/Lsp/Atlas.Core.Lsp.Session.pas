@@ -235,7 +235,11 @@ type
     function HierarchyChildren(ADirection: TAtlasHierarchyDirection;
       const AItem: TAtlasHierarchyItem): TArray<TAtlasHierarchyItem>;
     /// <summary>Code-Aktionen für ARange (textDocument/codeAction, #399), Reihenfolge des Servers.</summary>
-    function CodeActions(const AFileName: string; const ARange: TLspRange): TArray<TLspCodeAction>;
+    function CodeActions(const AFileName: string; const ARange: TLspRange): TArray<TLspCodeAction>; overload;
+    /// <summary>Wie oben mit eigener Wartezeit, etwa für die Glühbirne der Zeilenleiste (#768), die den Editor
+    /// nicht bremsen darf.</summary>
+    function CodeActions(const AFileName: string; const ARange: TLspRange;
+      ATimeoutMs: Cardinal): TArray<TLspCodeAction>; overload;
     /// <summary>workspace/executeCommand mit Argumenten (JSON-Array, '' = keine, #399); ELspClientError bei
     /// Fehler oder Zeitlimit. Ergebnis gehört dem Aufrufer.</summary>
     function RunCommand(const ACommand, AArgumentsJson: string; ATimeoutMs: Cardinal): TJSONValue;
@@ -900,6 +904,12 @@ begin
 end;
 
 function TLspSession.CodeActions(const AFileName: string; const ARange: TLspRange): TArray<TLspCodeAction>;
+begin
+  Result := CodeActions(AFileName, ARange, FTimeoutMs * 2);
+end;
+
+function TLspSession.CodeActions(const AFileName: string; const ARange: TLspRange;
+  ATimeoutMs: Cardinal): TArray<TLspCodeAction>;
 var
   Params, Context: TJSONObject;
   Response, Item: TJSONValue;
@@ -914,7 +924,7 @@ begin
   Params.AddPair('textDocument', TJSONObject.Create(TJSONPair.Create('uri', PathToUri(AFileName))));
   Params.AddPair('range', RangeToJson(ARange));
   Params.AddPair('context', Context);
-  Response := FClient.Request('textDocument/codeAction', Params, FTimeoutMs * 2);
+  Response := FClient.Request('textDocument/codeAction', Params, ATimeoutMs);
   try
     if Response is TJSONArray then
       for Item in TJSONArray(Response) do

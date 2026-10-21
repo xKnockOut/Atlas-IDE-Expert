@@ -161,6 +161,7 @@ uses
   Atlas.IDE.Notes.Service,
   Atlas.IDE.Notes.Gutter,
   Atlas.IDE.Editor.RecursionGutter,
+  Atlas.IDE.Editor.GutterColumn,
   Atlas.IDE.Bookmarks.Service,
   Atlas.IDE.Bookmarks.Gutter,
   Atlas.IDE.Foundation.GutterMarks,
@@ -219,6 +220,8 @@ var
   Pairs: TAtlasEditorPairs;
   // Markierungen in der Rinne: persönliche Notizen (#545) und benannte Lesezeichen (#622).
   GutterMarks: TAtlasIdeGutterMarks;
+  // Atlas-Spalte in der Zeilenleiste (#768).
+  GutterColumn: TAtlasIdeGutterColumn;
   // Ungespeicherte Dateien für schreibende MCP-Werkzeuge (#61).
   DirtyExport: TAtlasDirtyExport;
   // Schreibende MCP-Werkzeuge ändern offene Dateien über das Plugin (#397).
@@ -2602,6 +2605,26 @@ begin
     end));
 end;
 
+procedure StartGutterColumn;
+begin
+  // Fragt den Server nur, wenn er ohnehin läuft.
+  GutterColumn := TAtlasIdeGutterColumn.Create(
+    function: TLspSession
+    begin
+      Result := nil;
+      if Manager <> nil then
+        Result := Manager.RunningSession;
+    end,
+    procedure
+    begin
+      TAtlasIdeEditorCommands.CodeActions;
+    end,
+    procedure(const AAction: TLspCodeAction)
+    begin
+      TAtlasIdeEditorCommands.ApplyAction(AAction);
+    end);
+end;
+
 procedure StartCompletionKey;
 begin
   CompletionKey := TAtlasIdeKeyBinding.Create('Atlas.Completion', 'Atlas-Vervollständigung',
@@ -3428,6 +3451,22 @@ begin
     procedure
     begin
       FreeAndNil(GutterMarks);
+    end);
+  // Atlas-Spalte in der Zeilenleiste (#768): eigene Spalte, nur im normalen Start oder mit Einstellung.
+  Features.AddWanted('GutterColumn',
+    function(ALevel: TAtlasSafeLevel): Boolean
+    begin
+      Result := (ALevel <> TAtlasSafeLevel.Minimal) and ((ALevel = TAtlasSafeLevel.Normal) or
+        TAtlasIdeSettings.Current.GutterColumn);
+    end,
+    function: Boolean
+    begin
+      Result := GutterColumn <> nil;
+    end,
+    StartGutterColumn,
+    procedure
+    begin
+      FreeAndNil(GutterColumn);
     end);
   Features.AddWanted('CompletionKey',
     function(ALevel: TAtlasSafeLevel): Boolean
