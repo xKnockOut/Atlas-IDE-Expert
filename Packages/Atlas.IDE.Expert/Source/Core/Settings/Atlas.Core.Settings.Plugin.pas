@@ -670,6 +670,11 @@ type
     NewLineAboveKey: Integer;
     /// <summary>Mehrzeilige Anweisungen als Ganzes: Bezug ist ihr Ende bzw. Anfang (#700).</summary>
     NewLineAroundStatementAware: Boolean;
+    /// <summary>Umschließung entfernen (#657, keys.unwrap): Kürzel und Liste; aus = Kürzel frei, kein
+    /// Menüeintrag.</summary>
+    Unwrap: Boolean;
+    /// <summary>Kürzel „Umschließung entfernen“ (#657); Vorgabe Strg+Umschalt+Entf.</summary>
+    UnwrapKey: Integer;
     /// <summary>Kürzel „Nächste Änderung“ (#507, keys.nextChange); Vorgabe Strg+Alt+Bild↓.</summary>
     NextChangeKey: Integer;
     /// <summary>Kürzel „Vorherige Änderung“ (#507, keys.previousChange); Vorgabe Strg+Alt+Bild↑.</summary>
@@ -1366,6 +1371,8 @@ begin
   Result.NewLineBelowKey := $200D; // Umschalt+Enter
   Result.NewLineAboveKey := $C00D; // Strg+Alt+Enter
   Result.NewLineAroundStatementAware := True;
+  Result.Unwrap := True;
+  Result.UnwrapKey := $602E; // Strg+Umschalt+Entf
   // Strg+Alt+↑/↓ springt in RAD Studio schon zwischen Methoden.
   Result.NextChangeKey := $C022; // Strg+Alt+Bild↓
   Result.PreviousChangeKey := $C021; // Strg+Alt+Bild↑
@@ -1595,6 +1602,7 @@ begin
   ToggleBlockCommentWithoutSelection := Choice(ToggleBlockCommentWithoutSelection, ['statement', 'line']);
   NewLineBelowKey := EnsureRange(NewLineBelowKey, 0, $FFFF);
   NewLineAboveKey := EnsureRange(NewLineAboveKey, 0, $FFFF);
+  UnwrapKey := EnsureRange(UnwrapKey, 0, $FFFF);
   MinimapRender := Choice(MinimapRender, ['blocks', 'characters']);
   MinimapWidth := EnsureRange(MinimapWidth, MinMinimapWidth, MaxMinimapWidth);
   MinimapScale := EnsureRange(MinimapScale, MinMinimapScale, MaxMinimapScale);
@@ -1930,6 +1938,8 @@ begin
   NewLineAboveKey := AStore.ReadInteger('NewLineAboveKey', Default.NewLineAboveKey);
   NewLineAroundStatementAware := AStore.ReadInteger('NewLineAroundStatementAware',
     BoolValue(Default.NewLineAroundStatementAware)) <> 0;
+  Unwrap := AStore.ReadInteger('Unwrap', BoolValue(Default.Unwrap)) <> 0;
+  UnwrapKey := AStore.ReadInteger('UnwrapKey', Default.UnwrapKey);
   NextChangeKey := AStore.ReadInteger('NextChangeKey', Default.NextChangeKey);
   PreviousChangeKey := AStore.ReadInteger('PreviousChangeKey', Default.PreviousChangeKey);
   OverviewRuler := AStore.ReadInteger('OverviewRuler', BoolValue(Default.OverviewRuler)) <> 0;
@@ -2296,6 +2306,8 @@ begin
   AStore.WriteInteger('NewLineBelowKey', NewLineBelowKey);
   AStore.WriteInteger('NewLineAboveKey', NewLineAboveKey);
   AStore.WriteInteger('NewLineAroundStatementAware', BoolValue(NewLineAroundStatementAware));
+  AStore.WriteInteger('Unwrap', BoolValue(Unwrap));
+  AStore.WriteInteger('UnwrapKey', UnwrapKey);
   AStore.WriteInteger('NextChangeKey', NextChangeKey);
   AStore.WriteInteger('PreviousChangeKey', PreviousChangeKey);
   AStore.WriteInteger('OverviewRuler', BoolValue(OverviewRuler));

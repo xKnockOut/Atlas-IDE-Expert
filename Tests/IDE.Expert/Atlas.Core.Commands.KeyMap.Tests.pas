@@ -403,6 +403,9 @@ begin
   Assert.AreEqual($C00D, Integer(EntryOf(Entries, TAtlasKeyFunction.NewLineAbove).Key));
   Assert.AreEqual('Atlas.NewLineBelow', TAtlasKeyMap.CommandIdOf(TAtlasKeyFunction.NewLineBelow));
   Assert.AreEqual('Atlas.NewLineAbove', TAtlasKeyMap.CommandIdOf(TAtlasKeyFunction.NewLineAbove));
+  // Umschließung entfernen (#657): Strg+Umschalt+Entf.
+  Assert.AreEqual($602E, Integer(EntryOf(Entries, TAtlasKeyFunction.Unwrap).Key));
+  Assert.AreEqual('Atlas.Unwrap', TAtlasKeyMap.CommandIdOf(TAtlasKeyFunction.Unwrap));
   Assert.AreEqual(Ord(TAtlasKeySource.Binding), Ord(TAtlasKeyMap.SourceOf(TAtlasKeyFunction.TestUnit)));
   Settings.EditorKeysPriority := True;
   Assert.IsTrue(EntryOf(TAtlasKeyEntry.AllFromSettings(Settings), TAtlasKeyFunction.UnitSearch).Priority);
@@ -481,6 +484,7 @@ begin
   Settings.FormatCode := False;
   Settings.ToggleBlockComment := False;
   Settings.NewLineAround := False;
+  Settings.Unwrap := False;
   Entries := TAtlasKeyEntry.AllFromSettings(Settings);
   for Entry in Entries do
     if Entry.Func in [TAtlasKeyFunction.MethodToggleUp, TAtlasKeyFunction.MethodToggleDown,
@@ -495,7 +499,7 @@ begin
       TAtlasKeyFunction.DuplicateLinesDown, TAtlasKeyFunction.CompleteStatement, TAtlasKeyFunction.MultiCursorNext,
       TAtlasKeyFunction.MultiCursorSkip, TAtlasKeyFunction.MultiCursorLineEnds, TAtlasKeyFunction.MultiCursorAbove,
       TAtlasKeyFunction.MultiCursorBelow, TAtlasKeyFunction.FormatCode, TAtlasKeyFunction.ToggleBlockComment,
-      TAtlasKeyFunction.NewLineBelow, TAtlasKeyFunction.NewLineAbove] then
+      TAtlasKeyFunction.NewLineBelow, TAtlasKeyFunction.NewLineAbove, TAtlasKeyFunction.Unwrap] then
     begin
       Assert.IsTrue(Entry.Disabled, 'abgeschaltet: ' + IntToStr(Ord(Entry.Func)));
       Assert.AreEqual(Ord(TAtlasKeyStatus.NoKey), Ord(Entry.Status('IDE: Klassennavigation')),

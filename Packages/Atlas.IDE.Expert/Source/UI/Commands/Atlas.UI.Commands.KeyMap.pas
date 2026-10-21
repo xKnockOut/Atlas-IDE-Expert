@@ -336,6 +336,8 @@ begin
       Id := TAtlasTextId.NewLineBelowCommand;
     TAtlasKeyFunction.NewLineAbove:
       Id := TAtlasTextId.NewLineAboveCommand;
+    TAtlasKeyFunction.Unwrap:
+      Id := TAtlasTextId.UnwrapCommand;
   else
     Id := TAtlasTextId.KeyMapUnitSearchIde;
   end;
