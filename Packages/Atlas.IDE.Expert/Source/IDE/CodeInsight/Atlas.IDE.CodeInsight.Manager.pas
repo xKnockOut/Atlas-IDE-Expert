@@ -52,6 +52,7 @@ uses
   System.SyncObjs,
   ToolsAPI,
   Atlas.Core.Status.Lines,
+  Atlas.Core.Diagnostics.ThreadList,
   Atlas.Core.Lsp.Client,
   Atlas.Core.Lsp.Session,
   Atlas.Core.Files.WatchedChanges,
@@ -118,6 +119,8 @@ type
     FStopping: Boolean;
     /// <summary>EnsureSession startet gerade (gegen Wiedereintritt über CheckSynchronize, Code-Review A-01).</summary>
     FStarting: Boolean;
+    /// <summary>Shutdown ist gelaufen: Sitzung, Threads und Editor-Anbindungen sind weg (#886).</summary>
+    FShutDown: Boolean;
     FOnServerChanged: TProc;
     FQueryRunning: Boolean;
     FQueryIdle: TEvent;
@@ -127,6 +130,8 @@ type
     /// <summary>Bedienbefehle im Hintergrund (ExecuteServerCommandAsync, #874): Anzahl laufender und Signal „keiner“.</summary>
     FServerCommands: Integer;
     FServerCommandsIdle: TEvent;
+    /// <summary>Threads von Statusabfrage, Befehlen und Bedienbefehlen; Destroy wartet auf ihr Ende (#886).</summary>
+    FThreads: TAtlasThreadList;
     procedure SetPhase(APhase: TAtlasServerPhase; const AError: string); overload;
     procedure SetPhase(APhase: TAtlasServerPhase; const AError: string; AEnded: Boolean); overload;
     /// <summary>Laufende Sitzung oder Start im Hauptthread; außerhalb des Hauptthreads nur, was schon läuft (A-01).</summary>
@@ -184,6 +189,12 @@ type
     class function DefaultServerPath: string; static;
     constructor Create(const AAdapters: TAtlasCodeInsightAdapters);
     destructor Destroy; override;
+    /// <summary>Alles abbauen, was im Code des Plugins weiterliefe: Editor-Anbindungen, Sitzung, Server und
+    /// Hintergrund-Threads (#886). Mehrfach aufrufbar, nur im Hauptthread. Danach meldet der Manager sich als
+    /// ausgeschaltet. Die Kompositionswurzel ruft es beim Abmelden, weil die IDE den Manager nach
+    /// RemoveCodeInsightManager noch halten kann (etwa mitten im Gruppen-Build); Destroy liefe dann
+    /// erst später.</summary>
+    procedure Shutdown;
     /// <summary>Benachrichtigung an den Server, falls eine Sitzung läuft (#527); übernimmt AParams.
     /// Startet den Server dafür nicht.</summary>
     procedure NotifyServer(const AMethod: string; AParams: TJSONObject);
@@ -349,6 +360,7 @@ begin
   FQueryIdle := TEvent.Create(nil, True, True, '');
   FCommandIdle := TEvent.Create(nil, True, True, '');
   FServerCommandsIdle := TEvent.Create(nil, True, True, '');
+  FThreads := TAtlasThreadList.Create;
   Diagnose('Plugin geladen: ' + GetModuleName(HInstance));
   FFileChanges := TAtlasWatchedChanges.Create;
   FFolderWatcher := FAdapters.NewFolderWatcher(FFileChanges);
@@ -420,6 +432,20 @@ end;
 
 destructor TAtlasCodeInsightManager.Destroy;
 begin
+  Shutdown;
+  FreeAndNil(FThreads);
+  FQueryIdle.Free;
+  FCommandIdle.Free;
+  FServerCommandsIdle.Free;
+  inherited;
+end;
+
+procedure TAtlasCodeInsightManager.Shutdown;
+begin
+  if FShutDown then
+    Exit;
+  FShutDown := True;
+  FEnabled := False;
   if LiveManager = Self then
     LiveManager := nil;
   // Hält die Beobachter-Threads an; erst danach darf der Sammler weg.
@@ -438,10 +464,10 @@ begin
   FreeAndNil(FProblems);
   // Nach beiden Verbrauchern.
   TAtlasEditorSnapshots.Uninstall;
-  FQueryIdle.Free;
-  FCommandIdle.Free;
-  FServerCommandsIdle.Free;
-  inherited;
+  // Die Threads geben sich nicht selbst frei: Erst wenn sie beendet sind, läuft nichts mehr im Code des Plugins,
+  // auch nicht das Freigeben ihrer anonymen Methode (#886). Sie nutzen bis zuletzt die Ereignisse aus Destroy.
+  if not FThreads.StopAll(TAtlasShutdown.StopMs) then
+    Diagnose('Manager abgebaut, während ein Hintergrund-Thread noch lief');
 end;
 
 class function TAtlasCodeInsightManager.DiagnoseEnabled: Boolean;
@@ -668,7 +694,7 @@ begin
   FQueryIdle.ResetEvent;
   Session := FSession;
   Idle := FQueryIdle;
-  TThread.CreateAnonymousThread(
+  FThreads.Start(
     procedure
     var
       Answer: TJSONValue;
@@ -696,7 +722,7 @@ begin
         FQueryRunning := False;
         Idle.SetEvent;
       end;
-    end).Start;
+    end);
   Result := True;
 end;
 
@@ -737,7 +763,7 @@ begin
   Arguments := Copy(AArgumentsJson);
   Timeout := ATimeoutMs;
   Done := ADone;
-  TThread.CreateAnonymousThread(
+  FThreads.Start(
     procedure
     var
       Answer: TJSONValue;
@@ -777,7 +803,7 @@ begin
         FCommandRunning := False;
         Idle.SetEvent;
       end;
-    end).Start;
+    end);
   Result := True;
 end;
 
@@ -787,6 +813,9 @@ begin
   // bekommen nur, was schon läuft.
   if not TAtlasMainThread.IsMain then
     Exit(RunningSession <> nil);
+  // Abgebaut, aber von der IDE noch gehalten (#886): keinen Server mehr starten.
+  if FShutDown then
+    Exit(False);
   // Verschachtelt aus StopSession oder StartSession (Warten auf Threads arbeitet eingereihte Aufrufe ab):
   // weder neu starten noch die gleich freigegebene Sitzung herausgeben.
   if FStopping or FStarting then
@@ -1184,7 +1213,7 @@ begin
   if AtomicIncrement(FServerCommands) = 1 then
     FServerCommandsIdle.ResetEvent;
   Idle := FServerCommandsIdle;
-  TThread.CreateAnonymousThread(
+  FThreads.Start(
     procedure
     var
       Answer: TJSONValue;
@@ -1224,7 +1253,7 @@ begin
         if AtomicDecrement(FServerCommands) = 0 then
           Idle.SetEvent;
       end;
-    end).Start;
+    end);
 end;
 
 function TAtlasCodeInsightManager.RunServerCommand(const ACommand, AArgumentsJson: string;
@@ -1519,6 +1548,9 @@ function TAtlasCodeInsightManager.Handles(const AFileName: string): Boolean;
 var
   Extension: string;
 begin
+  // Nach Shutdown (abgemeldet, die IDE hält den Manager noch): nichts mehr übernehmen (#886).
+  if FShutDown then
+    Exit(False);
   Extension := LowerCase(ExtractFileExt(AFileName));
   // Hauptschalter (#407): ausgeschaltet übernimmt die eingebaute Code Insight; ebenso ohne Server.
   Result := TAtlasIdeSettings.Current.Enabled and not TAtlasGuard.Disabled(TAtlasFeature.Completion) and

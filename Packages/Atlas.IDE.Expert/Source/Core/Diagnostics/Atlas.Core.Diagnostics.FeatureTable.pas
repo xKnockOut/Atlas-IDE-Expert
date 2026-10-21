@@ -6,15 +6,17 @@
 //   - StartWanted startet in Reihenfolge jedes gewünschte, nicht laufende
 //     Teil; mehrfach aufrufbar (Schnellschalter, „Normal weiterarbeiten“)
 //   - StopAll stoppt rückwärts jedes laufende Teil
-// Keine Ausnahmebehandlung: Ein Fehler in Start oder Stop geht an den
-// Aufrufer (wie zuvor in RegisterFeatures und Unregister).
+// Ein Fehler in Start geht an den Aufrufer (wie zuvor in RegisterFeatures).
+// Ein Fehler in Stop hält den Abbau nicht an (#886): Die übrigen Teile werden
+// trotzdem gestoppt, StopAll liefert die fehlgeschlagenen mit Ausnahmeklasse.
 
 interface
 
 uses
   System.SysUtils,
   System.Generics.Collections,
-  Atlas.Core.Diagnostics.SafeMode;
+  Atlas.Core.Diagnostics.SafeMode,
+  Atlas.Core.Diagnostics.Teardown;
 
 type
   /// <summary>Bedingung je Stufe des abgesicherten Starts (#722) und Einstellung.</summary>
@@ -43,8 +45,9 @@ type
       const AStart, AStop: TProc);
     /// <summary>In Reihenfolge jedes nicht aktive, gewünschte Feature starten; mehrfach aufrufbar.</summary>
     procedure StartWanted(ALevel: TAtlasSafeLevel);
-    /// <summary>Rückwärts jedes aktive Feature stoppen.</summary>
-    procedure StopAll;
+    /// <summary>Rückwärts jedes aktive Feature stoppen, auch wenn ein Stop eine Ausnahme wirft (#886);
+    /// Ergebnis: die fehlgeschlagenen Teile als „Name: Klasse“.</summary>
+    function StopAll: TArray<string>;
     /// <summary>Namen in Startreihenfolge.</summary>
     function Names: TArray<string>;
   end;
@@ -103,17 +106,25 @@ begin
   end;
 end;
 
-procedure TAtlasFeatureTable.StopAll;
+function TAtlasFeatureTable.StopAll: TArray<string>;
 var
   Index: Integer;
   Slot: TSlot;
+  Teardown: TAtlasTeardown;
 begin
+  Teardown := TAtlasTeardown.Create;
   for Index := FSlots.Count - 1 downto 0 do
   begin
     Slot := FSlots[Index];
-    if Slot.IsActive() then
-      Slot.Stop();
+    // Auch IsActive gehört zum Schritt: Es fragt oft das Teil selbst ab.
+    Teardown.Step(Slot.Name,
+      procedure
+      begin
+        if Slot.IsActive() then
+          Slot.Stop();
+      end);
   end;
+  Result := Teardown.Failures;
 end;
 
 function TAtlasFeatureTable.Names: TArray<string>;

@@ -191,6 +191,7 @@ uses
   Atlas.Core.Completion.Providers.Snippets,
   Atlas.Core.Completion.Providers.XmlDoc,
   Atlas.Core.Diagnostics.FeatureTable,
+  Atlas.Core.Diagnostics.Teardown,
   Atlas.Core.Build.Inbox,
   Atlas.Core.Build.ReleaseGuard,
   Atlas.Core.Problems.Contract,
@@ -208,6 +209,8 @@ var
   ManagerIndex: Integer = -1;
   // Gehört der IDE (Schnittstellenzähler); gültig, solange er angemeldet ist.
   Manager: TAtlasCodeInsightManager;
+  // Eigene Referenz (#886): StopManager baut den Manager selbst ab, auch wenn die IDE ihn noch hält.
+  ManagerRef: IInterface;
   Compile: TAtlasIdeCompileEvents;
   Watchdog: TAtlasWatchdog;
   Hangs: TAtlasHangMonitor;
@@ -1983,6 +1986,7 @@ begin
   if Supports(BorlandIDEServices, IOTACodeInsightServices, Services) then
   begin
     Manager := TAtlasCodeInsightManager.Create(CodeInsightAdapters);
+    ManagerRef := Manager;
     // „Protokoll öffnen“ an den Einträgen des Servers in der Benachrichtigungszentrale (#601).
     Manager.OnOpenLog := OpenLog;
     ManagerIndex := Services.AddCodeInsightManager(Manager);
@@ -1993,10 +1997,23 @@ procedure StopManager;
 var
   Services: IOTACodeInsightServices;
 begin
-  if (ManagerIndex >= 0) and Supports(BorlandIDEServices, IOTACodeInsightServices, Services) then
-    Services.RemoveCodeInsightManager(ManagerIndex);
-  ManagerIndex := -1;
-  Manager := nil;
+  try
+    if (ManagerIndex >= 0) and Supports(BorlandIDEServices, IOTACodeInsightServices, Services) then
+      Services.RemoveCodeInsightManager(ManagerIndex);
+    ManagerIndex := -1;
+    if Manager <> nil then
+    begin
+      // Nicht auf Destroy warten (#886): Hält die IDE den Manager noch (etwa wenn sie Atlas mitten im
+      // Gruppen-Build entlädt), liefen sonst Sitzung, Server, Threads und Editor-Anbindungen nach dem Entladen weiter.
+      Manager.Shutdown;
+      if Manager.RefCount > 1 then
+        TAtlasGuard.Log(Format('Code-Insight-Manager wird nach dem Abmelden noch %d-mal von der IDE gehalten',
+          [Manager.RefCount - 1]));
+    end;
+  finally
+    Manager := nil;
+    ManagerRef := nil;
+  end;
 end;
 
 procedure StartWatchdog;
@@ -3689,44 +3706,114 @@ procedure Unregister;
 var
   StartedAt: UInt64;
   Stopped: Boolean;
+  Teardown: TAtlasTeardown;
 begin
   // Zuerst das gemeinsame Abbruchsignal: Jeder Hintergrund-Thread hört auf zu warten (#493).
   StartedAt := TThread.GetTickCount64;
-  TAtlasShutdown.Signal;
-  // Vor allem anderen: Was jetzt noch wartet oder während des Abbaus eingereiht wird, liefe nach dem Entladen
-  // in nicht mehr geladenem Code (Code-Review A-02). Queue im Hauptthread läuft weiter sofort.
-  TAtlasMainThread.Stop;
-  TAtlasIdeVcs.Stop;
-  TAtlasIdeExperimental.Stop;
-  TAtlasGuard.OnWarning := nil;
-  TAtlasGuard.OnFailure := nil;
-  TAtlasIdeSettings.OnChanged := nil;
-  // Sauberes Ende: Startmarke löschen, Absturzzähler zurück (#722).
-  if SafeMode <> nil then
-    SafeMode.Stop;
-  FreeAndNil(SafeMode);
-  // Rückwärts zur Startreihenfolge (Code-Review S-03): Palette vor den Teilen, deren Befehle sie hält,
-  // Tastenkürzel-Tipps und Willkommensseite vor der Zählung, Rinne vor Notizen und Lesezeichen, Prüfung beim
-  // Speichern vor den Compiler-Ereignissen, der Manager zuletzt. Alles vor dem Statusfeld: Diagnosemodus,
-  // Einrichtung, Update-Prüfung und Willkommensseite haben Zeilen in dessen Registry (#479, #625, #754).
-  if Features <> nil then
-    Features.StopAll;
-  FreeAndNil(QuickToggles);
-  TAtlasIdeSettingsTransfer.Release;
-  // Nach den Quellen, vor dem Statusfeld: Die Einträge halten Aktionen mit Code des Plugins (#601).
-  FreeAndNil(Notifications);
-  TAtlasNotificationCenter.ReleaseDefault;
-  UnregisterStatusField;
-  TAtlasOptionsRegistration.Unregister;
-  TAtlasProjectSettings.Command := nil;
-  TAtlasIdeHistory.Release;
-  TAtlasIdeFavorites.Release;
-  TAtlasIdeSymbol.Unregister;
-  TAtlasIdeSettings.Release;
-  Stopped := TAtlasTimeLimit.StopAll(TAtlasShutdown.StopMs);
-  FreeAndNil(Features);
-  TAtlasGuard.Log(Format('Atlas entladen in %d ms; Hintergrund-Threads beendet: %s',
-    [TThread.GetTickCount64 - StartedAt, BoolToStr(Stopped, True)]));
+  Stopped := False;
+  // Jeder Schritt für sich (#886): Eine Ausnahme, etwa beim Entladen mitten im Gruppen-Build, ließ früher alle
+  // folgenden Schritte aus. Notifier, Fenster-Hooks und Threads der alten Instanz blieben dann angemeldet, und die
+  // IDE stürzte beim Beenden in nicht mehr geladenem Code ab. Die Zeile „Atlas entladen“ steht jetzt immer im
+  // Protokoll, mit den fehlgeschlagenen Schritten (nur Name und Ausnahmeklasse).
+  Teardown := TAtlasTeardown.Create;
+  try
+    TAtlasShutdown.Signal;
+    // Vor allem anderen: Was jetzt noch wartet oder während des Abbaus eingereiht wird, liefe nach dem Entladen
+    // in nicht mehr geladenem Code (Code-Review A-02). Queue im Hauptthread läuft weiter sofort.
+    Teardown.Step('MainThread',
+      procedure
+      begin
+        TAtlasMainThread.Stop;
+      end);
+    Teardown.Step('Vcs',
+      procedure
+      begin
+        TAtlasIdeVcs.Stop;
+      end);
+    Teardown.Step('Experimental',
+      procedure
+      begin
+        TAtlasIdeExperimental.Stop;
+      end);
+    TAtlasGuard.OnWarning := nil;
+    TAtlasGuard.OnFailure := nil;
+    TAtlasIdeSettings.OnChanged := nil;
+    // Sauberes Ende: Startmarke löschen, Absturzzähler zurück (#722).
+    Teardown.Step('SafeMode',
+      procedure
+      begin
+        if SafeMode <> nil then
+          SafeMode.Stop;
+        FreeAndNil(SafeMode);
+      end);
+    // Rückwärts zur Startreihenfolge (Code-Review S-03): Palette vor den Teilen, deren Befehle sie hält,
+    // Tastenkürzel-Tipps und Willkommensseite vor der Zählung, Rinne vor Notizen und Lesezeichen, Prüfung beim
+    // Speichern vor den Compiler-Ereignissen, der Manager zuletzt. Alles vor dem Statusfeld: Diagnosemodus,
+    // Einrichtung, Update-Prüfung und Willkommensseite haben Zeilen in dessen Registry (#479, #625, #754).
+    if Features <> nil then
+      Teardown.AddFailures(Features.StopAll);
+    Teardown.Step('QuickToggles',
+      procedure
+      begin
+        FreeAndNil(QuickToggles);
+      end);
+    Teardown.Step('SettingsTransfer',
+      procedure
+      begin
+        TAtlasIdeSettingsTransfer.Release;
+      end);
+    // Nach den Quellen, vor dem Statusfeld: Die Einträge halten Aktionen mit Code des Plugins (#601).
+    Teardown.Step('Notifications',
+      procedure
+      begin
+        FreeAndNil(Notifications);
+        TAtlasNotificationCenter.ReleaseDefault;
+      end);
+    Teardown.Step('StatusField',
+      procedure
+      begin
+        UnregisterStatusField;
+      end);
+    Teardown.Step('Options',
+      procedure
+      begin
+        TAtlasOptionsRegistration.Unregister;
+      end);
+    TAtlasProjectSettings.Command := nil;
+    Teardown.Step('History',
+      procedure
+      begin
+        TAtlasIdeHistory.Release;
+      end);
+    Teardown.Step('Favorites',
+      procedure
+      begin
+        TAtlasIdeFavorites.Release;
+      end);
+    Teardown.Step('Symbol',
+      procedure
+      begin
+        TAtlasIdeSymbol.Unregister;
+      end);
+    Teardown.Step('Settings',
+      procedure
+      begin
+        TAtlasIdeSettings.Release;
+      end);
+    Teardown.Step('Threads',
+      procedure
+      begin
+        Stopped := TAtlasTimeLimit.StopAll(TAtlasShutdown.StopMs);
+      end);
+    Teardown.Step('Features',
+      procedure
+      begin
+        FreeAndNil(Features);
+      end);
+  finally
+    TAtlasGuard.Log(Format('Atlas entladen in %d ms; Hintergrund-Threads beendet: %s; Fehler beim Abbau: %s',
+      [TThread.GetTickCount64 - StartedAt, BoolToStr(Stopped, True), Teardown.Summary]));
+  end;
 end;
 
 initialization
