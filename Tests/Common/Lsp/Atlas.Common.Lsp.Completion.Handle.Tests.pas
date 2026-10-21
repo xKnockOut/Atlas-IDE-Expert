@@ -93,6 +93,10 @@ type
     procedure ResourceStringInConfiguredUnit;
     [Test]
     procedure ResourceStringOnlyInvokedAndSwitchable;
+    /// <summary>#88: Strg+Leer in einem ///-Block, dessen Routine einen Parameter mehr hat, bietet nur
+    /// „Parameter abgleichen“; completeBlocks.docComment aus schaltet es ab.</summary>
+    [Test]
+    procedure DocBlockOffersParameterAdjust;
   end;
 
 implementation
@@ -1032,6 +1036,53 @@ begin
   Answer := Complete(FrageUnit);
   try
     Assert.IsFalse(Labels(Answer).Contains('resourcestring'), Answer.ToJSON);
+  finally
+    Answer.Free;
+  end;
+end;
+
+procedure TLspCompletionHandleTests.DocBlockOffersParameterAdjust;
+const
+  Source =
+    'unit Haupt;'#13#10'interface'#13#10'type'#13#10'  TRechner = class'#13#10 +
+    '    /// <summary>Rabatt|</summary>'#13#10'    /// <param name="Customer">Kunde</param>'#13#10 +
+    '    function CalcDiscount(Customer: TObject; Rate: Double): Currency;'#13#10 +
+    '  end;'#13#10'implementation'#13#10'end.';
+var
+  Answer: TJSONObject;
+  Edits: TJSONArray;
+  Enabled: Boolean;
+begin
+  Enabled := True;
+  FCompletion.DocCommentsFor :=
+    function(const AUri: string): Boolean
+    begin
+      Result := Enabled;
+    end;
+  Answer := Complete(Source);
+  try
+    Assert.AreEqual('Parameter abgleichen', Labels(Answer));
+    Edits := ((Answer.GetValue('items') as TJSONArray).Items[0] as TJSONObject).GetValue('additionalTextEdits')
+      as TJSONArray;
+    Assert.AreEqual(1, Edits.Count);
+    Assert.AreEqual('    /// <param name="Rate"></param>'#13#10,
+      (Edits.Items[0] as TJSONObject).GetValue<string>('newText'));
+    Assert.IsTrue(Answer.ToJSON.Contains('"action":"docParams"'), Answer.ToJSON);
+  finally
+    Answer.Free;
+  end;
+  // Passt der Block, kommt das Angebot nicht.
+  Answer := Complete(StringReplace(Source, 'Kunde</param>', 'Kunde</param>'#13#10 +
+    '    /// <param name="Rate">Satz</param>', []));
+  try
+    Assert.IsFalse(Labels(Answer).Contains('Parameter abgleichen'), Labels(Answer));
+  finally
+    Answer.Free;
+  end;
+  Enabled := False;
+  Answer := Complete(Source);
+  try
+    Assert.IsFalse(Labels(Answer).Contains('Parameter abgleichen'), Labels(Answer));
   finally
     Answer.Free;
   end;

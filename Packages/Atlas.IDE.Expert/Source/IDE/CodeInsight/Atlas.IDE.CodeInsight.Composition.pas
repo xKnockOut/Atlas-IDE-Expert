@@ -2120,6 +2120,14 @@ begin
       if TAtlasProblemsController.Current <> nil then
         Result := TAtlasProblemsController.Current.ForFile(AFileName);
     end;
+  // ///-Gerüst (#88): Tab springt durch die Beschreibungen, wie bei Code-Vorlagen.
+  TAtlasIdeEditorCommands.OnPlaceholders :=
+    procedure(const AView: IOTAEditView; const ABefore: string; AOffset: Integer;
+      const AExpansion: TAtlasSnippetExpansion)
+    begin
+      if (Manager <> nil) and (Manager.Completion <> nil) then
+        Manager.Completion.StartPlaceholders(AView, ABefore, AOffset, AExpansion);
+    end;
   // Erzeugen-Menü (#719): Vorlagen und ihr Einsetzen mit Platzhaltern kommen aus der Vervollständigung.
   TAtlasIdeGenerate.Install(
     function: TLspSession

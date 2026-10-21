@@ -97,6 +97,9 @@ type
 
   /// <summary>Zeitmessung je Anfrage (#616), z. B. für ILogger.Debug.</summary>
   TCompletionLogProc = reference to procedure(const AText: string);
+
+  /// <summary>Ist eine Funktion für das Dokument eingeschaltet (z. B. completeBlocks.docComment, #88)?</summary>
+  TCompletionEnabledFunc = reference to function(const AUri: string): Boolean;
   /// <summary>„with auflösen“ über Strg+Leer auf with (#50): Änderungen für die with-Anweisung am Cursor; False
   /// ohne Angebot.</summary>
   TCompletionWithFunc = reference to function(ARequest: TCompletionRequest; out AEdits: TArray<TTextEdit>): Boolean;
@@ -164,6 +167,7 @@ type
     FCreateFor: TCompletionCreateFunc;
     FNamingFor: TCompletionNamingFunc;
     FHintsFor: TDocHintsProvider;
+    FDocCommentsFor: TCompletionEnabledFunc;
     FNotify: TCompletionNotifyProc;
     FLog: TCompletionLogProc;
     FSnippetSupport: Boolean;
@@ -417,6 +421,8 @@ type
     property NamingFor: TCompletionNamingFunc read FNamingFor write FNamingFor;
     /// <summary>Anzeige von XMLDoc (#654) als data.atlas.xmlDoc; ohne Zuweisung fehlt das Feld.</summary>
     property HintsFor: TDocHintsProvider read FHintsFor write FHintsFor;
+    /// <summary>„Parameter abgleichen“ in ///-Blöcken (#88); ohne Zuweisung eingeschaltet.</summary>
+    property DocCommentsFor: TCompletionEnabledFunc read FDocCommentsFor write FDocCommentsFor;
     /// <summary>Für Teilergebnisse über $/progress (#616); ohne Zuweisung kommt alles in der Antwort.</summary>
     property Notify: TCompletionNotifyProc read FNotify write FNotify;
     /// <summary>Zeiten je Anfrage (#616); ohne Zuweisung keine Messung.</summary>
@@ -477,6 +483,8 @@ uses
   Atlas.Common.Editing.DataFieldNames,
   Atlas.Common.Editing.GuardFree,
   Atlas.Common.Editing.ContextSnippets,
+  Atlas.Common.Editing.CodeActions,
+  Atlas.Common.Editing.DocComments,
   Atlas.Text.Lines;
 
 const
@@ -1777,6 +1785,28 @@ begin
   Result := Found;
 end;
 
+/// <summary>„Parameter abgleichen“ (#88) als Eintrag, wenn der Cursor in einem ///-Block über einer Routine
+/// steht, deren Signatur nicht mehr zum Block passt: An der Cursorstelle ändert sich nichts, fehlende
+/// &lt;param&gt; und markierte überzählige kommen als Zusatzänderungen.</summary>
+function DocParamsItem(ARequest: TCompletionRequest; out AItem: TCompletionItem): Boolean;
+var
+  Action: TCodeAction;
+begin
+  AItem := Default(TCompletionItem);
+  Result := TDocComments.AdjustBlock(ARequest.Text, ARequest.Tree, ARequest.Position.Line, Action);
+  if not Result then
+    Exit;
+  AItem.Name := Action.Title;
+  AItem.Kind := KindSnippet;
+  AItem.Detail := 'Atlas';
+  AItem.Fits := True;
+  AItem.Pinned := True;
+  AItem.Action := 'docParams';
+  AItem.HasTextEdit := True;
+  AItem.TextEdit := TRuleEdit.Create(TTextRange.Create(ARequest.Position, ARequest.Position), '');
+  AItem.AdditionalEdits := Action.Edits;
+end;
+
 /// <summary>„Methode aus Aufruf anlegen“ (#472) als Eintrag: Nach dem Auslöser "(" bleibt der Text an der
 /// Aufrufstelle, mit Strg+Leer auf dem Namen ersetzt der Eintrag ihn durch sich selbst. Deklaration und Rumpf
 /// kommen als Zusatzänderungen; "$0" darin setzt den Cursor in den Rumpf.</summary>
@@ -1965,6 +1995,21 @@ begin
         Result := TCompletionOutcome.Answered;
     end);
   // Mit Baum und Resolver, in dieser Reihenfolge.
+  // „Parameter abgleichen“ (#88): Strg+Leer in einem ///-Block, dessen Routine andere Parameter hat; dann nur
+  // dieses Angebot (die Tags liefert das Plugin selbst).
+  AddCase(FTreeCases,
+    function(ARequest: TCompletionRequest; AAnswer: TCompletionAnswer): TCompletionOutcome
+    var
+      Item: TCompletionItem;
+    begin
+      Result := TCompletionOutcome.Next;
+      if (not Assigned(FDocCommentsFor) or FDocCommentsFor(ARequest.Uri)) and DocParamsItem(ARequest, Item) then
+      begin
+        AAnswer.Exclusive := Default(TCompletionItems);
+        AAnswer.Exclusive.Items := [Item];
+        Result := TCompletionOutcome.Answered;
+      end;
+    end);
   // String als resourcestring auslagern (#473): Strg+Leer im String-Literal; sonst bietet die Liste dort nichts.
   AddCase(FTreeCases,
     function(ARequest: TCompletionRequest; AAnswer: TCompletionAnswer): TCompletionOutcome

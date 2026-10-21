@@ -2147,7 +2147,13 @@ Voraussetzung: VCL-Quellen über die Bibliothekspfade im Index.
 | DC1 | Über `function CalcDiscount(Customer: TCustomer; Rate: Double): Currency;` eine leere Zeile, `///` tippen | `summary`, zwei `param` und `returns`; Tab springt in die Beschreibungen (**Abnahme**) |
 | DC2 | Kommentar vorhanden, Parameter `Discount: Double` ergänzen, Alt+Enter auf der Deklaration | „Fehlende <param> ergänzen“ fügt genau `<param name="Discount">` ein (**Abnahme**) |
 | DC3 | Parameter `Rate` in `Factor` umbenennen, Alt+Enter | „Dokumentation an die Signatur anpassen“: `<param name="Rate">…</param>` wird zu `<!-- entfernt: Rate: … -->`, die Beschreibung bleibt, `<param name="Factor">` kommt dazu |
-| DC4 | In `settings.json` `"completeBlocks": {"docComment": false}`, Server neu laden, `///` tippen | `///` bleibt stehen, kein Gerüst, keine Code-Aktionen zum Kommentar (**Abnahme**) |
+| DC4 | In `settings.json` `"completeBlocks": {"docComment": false}`, Server neu laden, `///` tippen | `///` bleibt stehen, kein Gerüst, keine Code-Aktionen zum Kommentar, kein „Parameter abgleichen“ (**Abnahme**) |
+| DC5 | Nach DC1 Tab, Tab, Tab, dann Esc | Cursor springt nacheinander in `summary`, die beiden `param` und `returns`, die aktuelle Beschreibung ist umrahmt, Fußzeile „Platzhalter n / m“; Esc beendet, ein Strg+Z nimmt das ganze Gerüst samt Text zurück |
+| DC6 | Im implementation-Teil über `procedure TFoo.Bar(A: Integer);` eine leere Zeile, `///` tippen | Das Gerüst entsteht über `procedure Bar(A: Integer);` in der Klasse (vor deren Attributen wie `[Test]`), die Zeile mit `///` verschwindet, der Cursor steht in der Zusammenfassung oben (**Abnahme**) |
+| DC7 | Wie DC6 bei zwei Überladungen `Bar(A: Integer)` und `Bar(const S: string)` über `TFoo.Bar(const S: string)` | Das Gerüst gehört zu `Bar(const S: string)` |
+| DC8 | Wie DC6, die Deklaration hat schon einen `///`-Kommentar | `///` bleibt stehen, nichts ändert sich |
+| DC9 | Kommentar wie in DC2 (Parameter fehlt), Cursor in eine `///`-Zeile des Blocks, Strg+Leer | Einziger Eintrag „Parameter abgleichen“; Enter ergänzt genau den fehlenden `<param>`, ein überzähliger wird zu `<!-- entfernt: … -->` (**Abnahme**) |
+| DC10 | Passt der Block zur Signatur, Strg+Leer in einer `///`-Zeile | Kein „Parameter abgleichen“; nach `<` weiter die XMLDoc-Tags |
 
 ## Kennzeichnung „Experimentell“ (#834)
 
