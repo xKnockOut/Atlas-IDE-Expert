@@ -332,6 +332,10 @@ begin
       Id := TAtlasTextId.FormatCodeCommand;
     TAtlasKeyFunction.ToggleBlockComment:
       Id := TAtlasTextId.ToggleBlockCommentCommand;
+    TAtlasKeyFunction.NewLineBelow:
+      Id := TAtlasTextId.NewLineBelowCommand;
+    TAtlasKeyFunction.NewLineAbove:
+      Id := TAtlasTextId.NewLineAboveCommand;
   else
     Id := TAtlasTextId.KeyMapUnitSearchIde;
   end;

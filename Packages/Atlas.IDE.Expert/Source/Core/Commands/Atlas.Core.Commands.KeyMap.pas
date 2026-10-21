@@ -354,6 +354,10 @@ begin
       Result := 'Atlas.FormatCode';
     TAtlasKeyFunction.ToggleBlockComment:
       Result := 'Atlas.ToggleBlockComment';
+    TAtlasKeyFunction.NewLineBelow:
+      Result := 'Atlas.NewLineBelow';
+    TAtlasKeyFunction.NewLineAbove:
+      Result := 'Atlas.NewLineAbove';
   else
     Result := '';
   end;
