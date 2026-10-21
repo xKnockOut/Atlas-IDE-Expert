@@ -42,6 +42,7 @@ uses
   Atlas.Common.Rules.Builtin.ForwardDeclarations,
   Atlas.Common.Rules.Builtin.FreeFields,
   Atlas.Common.Rules.Builtin.Packages,
+  Atlas.Common.Rules.Builtin.Expressions,
   Atlas.Common.Rules.Builtin.Unresolved;
 
 function BuiltinRules: TArray<IRule>;
@@ -79,6 +80,7 @@ begin
     RegisterForwardDeclarationRules(Registry);
     RegisterFreeFieldRules(Registry);
     RegisterPackageRules(Registry);
+    RegisterExpressionRules(Registry);
     Result := Registry.Rules;
   finally
     Registry.Free;

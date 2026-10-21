@@ -1151,6 +1151,16 @@ begin
     '      "description": "An object field created in the constructor and not freed is also returned (Result := FField, Exit(FField)), handed to a property of another object, assigned without Create or wri' + 'table through a property (write FField). Whether the class still owns the object is up to the developer, so there is no quick fix.",' + #10 +
     '      "bad": "function TCache.Take: TList;\nbegin\n  Result := FList;  // created in Create, never freed\nend;",' + #10 +
     '      "good": "function TCache.Take: TList;\nbegin\n  Result := FList;\n  FList := nil;  // ownership passes to the caller\nend;"' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "operator-precedence",' + #10 +
+    '      "name": "Precedence of not overlooked",' + #10 +
+    '      "category": "bug",' + #10 +
+    '      "severity": "warning",' + #10 +
+    '      "group": "find-bugs",' + #10 +
+    '      "description": "In Pascal not binds more tightly than in and comparisons: not X in Set means (not X) in Set, not A = B means (not A) = B, and on integers not works bitwise. The rule reports thes' + 'e forms when the declared type of the operand shows that this cannot be meant (not Boolean). Quick fix: add parentheses, not (X in Set).",' + #10 +
+    '      "bad": "if not Zustand in [zsOffen, zsGesperrt] then\n  Bearbeiten;",' + #10 +
+    '      "good": "if not (Zustand in [zsOffen, zsGesperrt]) then\n  Bearbeiten;"' + #10 +
     '    }' + #10 +
     '  ]' + #10 +
     '}' + #10 +
@@ -1755,6 +1765,11 @@ begin
     '      "id": "owned-field-free-unclear",' + #10 +
     '      "name": "Unklar, ob ein erzeugtes Feld freigegeben werden muss",' + #10 +
     '      "description": "Ein im Konstruktor erzeugtes, nicht freigegebenes Objektfeld wird auch zurückgegeben (Result := FFeld, Exit(FFeld)), an eine Property eines anderen Objekts übergeben, ohne Create' + ' zugewiesen oder ist über eine Property (write FFeld) schreibbar. Ob die Klasse das Objekt noch besitzt, entscheidet der Entwickler; deshalb gibt es keine Schnellkorrektur."' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "operator-precedence",' + #10 +
+    '      "name": "Vorrang von not übersehen",' + #10 +
+    '      "description": "In Pascal bindet not stärker als in und Vergleiche: not X in Menge heißt (not X) in Menge, not A = B heißt (not A) = B, bei Ganzzahlen wird not bitweise. Die Regel meldet diese F' + 'ormen, wenn der deklarierte Typ des Operanden zeigt, dass es nicht gemeint sein kann (kein Boolean). Schnellkorrektur: Klammern setzen, not (X in Menge)."' + #10 +
     '    }' + #10 +
     '  ]' + #10 +
     '}' + #10 +

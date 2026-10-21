@@ -6,7 +6,7 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 
 | Gruppe | Regeln |
 |---|---|
-| [Fehler finden](#gruppe-find-bugs) | 27 |
+| [Fehler finden](#gruppe-find-bugs) | 28 |
 | [Exceptions](#gruppe-exceptions) | 5 |
 | [Threads](#gruppe-threads) | 6 |
 | [Robustheit und Muster](#gruppe-robustness) | 2 |
@@ -51,6 +51,7 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 | [`type-used-before-declaration`](#type-used-before-declaration) | Typ vor seiner Deklaration benutzt | Bug | Fehler |
 | [`owned-field-not-freed`](#owned-field-not-freed) | Erzeugtes Feld wird nicht freigegeben | Bug | Warnung |
 | [`owned-field-free-unclear`](#owned-field-free-unclear) | Unklar, ob ein erzeugtes Feld freigegeben werden muss | Bug | Hinweis |
+| [`operator-precedence`](#operator-precedence) | Vorrang von not übersehen | Bug | Warnung |
 
 <a id="gruppe-exceptions"></a>
 ### Exceptions
@@ -2494,4 +2495,25 @@ begin
   Result := FList;
   FList := nil;  // ownership passes to the caller
 end;
+```
+
+<a id="operator-precedence"></a>
+### operator-precedence
+
+**Vorrang von not übersehen** · Bug · Warnung · Gruppe Fehler finden
+
+In Pascal bindet not stärker als in und Vergleiche: not X in Menge heißt (not X) in Menge, not A = B heißt (not A) = B, bei Ganzzahlen wird not bitweise. Die Regel meldet diese Formen, wenn der deklarierte Typ des Operanden zeigt, dass es nicht gemeint sein kann (kein Boolean). Schnellkorrektur: Klammern setzen, not (X in Menge).
+
+Mit Treffer:
+
+```pascal
+if not Zustand in [zsOffen, zsGesperrt] then
+  Bearbeiten;
+```
+
+Richtig:
+
+```pascal
+if not (Zustand in [zsOffen, zsGesperrt]) then
+  Bearbeiten;
 ```
