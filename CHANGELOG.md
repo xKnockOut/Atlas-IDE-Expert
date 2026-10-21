@@ -7,6 +7,7 @@ Server und Claude-Code-Plugin tragen immer dieselbe Version.
 ## [Unveröffentlicht]
 
 ### Neu
+- Neue Units aus `/component` und `/unit` folgen Zeilenende und Kodierung der Datei des Befehls und dem Formatstil (#299, #121, #43).
 - `/helper` für Aufzählungen (#875): Namenstabelle `cNames`, `ToString` und `FromString` samt Rümpfen; abschaltbar mit `slashCommands.enumHelper`.
 - `/singleton` nennt einen vorhandenen Konstruktor, der unverändert bleibt (#298).
 - Pflegebefehle vervollständigt (#297): `/sortuses` streicht ungenutzte Units laut Index (Units mit initialization und aus `usesKeep` bleiben; `slashCommands.sortUsesRemoveUnused`), `/cleanuses` streicht nur ungenutzte Units und lässt die Reihenfolge, `/ignore` bietet nur Regeln an, die in der Zeile darunter treffen, und meldet sonst einen Hinweis, `/todo` schreibt `-oName -cKategorie` (Name aus `slashCommands.todoOwner`, sonst `git config user.name`; Kategorie aus `slashCommands.todoCategory`; `-o`/`-c` in der Zeile gehen vor).

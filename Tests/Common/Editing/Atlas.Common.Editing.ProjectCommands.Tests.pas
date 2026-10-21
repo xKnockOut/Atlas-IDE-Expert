@@ -46,6 +46,8 @@ type
     [Test]
     procedure ComponentWrongPlaceFails;
     [Test]
+    procedure ComponentFollowsLineBreakAndStyle;
+    [Test]
     procedure EventForFormAndComponent;
     [Test]
     procedure EventWrongPlaceFails;
@@ -67,6 +69,7 @@ uses
   Atlas.Common.Documents.Contract,
   Atlas.Common.Documents.Uris,
   Atlas.Common.Projects.Contract,
+  Atlas.Common.Configuration.Contract,
   Atlas.Common.Rules.Contract,
   Atlas.Common.Pascal.Parser,
   Atlas.Common.Pascal.SyntaxTree,
@@ -602,6 +605,35 @@ begin
   Host.PaletteValue := '';
   Assert.IsTrue(Run('/component TZaehler2', Keep, Edits));
   Assert.IsTrue(Pos('RegisterComponents(''Eigene'', [TZaehler2]);', Host.WrittenFiles[0].Text) > 0);
+end;
+
+procedure TProjectCommandsTests.ComponentFollowsLineBreakAndStyle;
+var
+  Host: TFakeHost;
+  Keep: ISlashHost;
+  Edits: TArray<TRuleEdit>;
+  Style: TFormatStyle;
+  Text, Uri: string;
+begin
+  // #299 (#121, #43): Zeilenende der Datei des Befehls und Einrückung nach dem Formatstil.
+  Host := TFakeHost.Create;
+  Keep := Host;
+  Host.Info.FileName := '';
+  Host.Files.Remove('App.dproj');
+  Uri := TDocumentUris.FromPath(TPath.Combine(GetCurrentDir, 'Main.pas'));
+  Assert.IsTrue(TSlashCommandRegistry.Shared.AfterEnter(Format(FormUnit, ['/component TZaehler']),
+    TTextPosition.Create(10, 0), nil, nil, nil, '', Uri, Keep, TFormatStyle.Default, Edits));
+  Text := Host.WrittenFiles[0].Text;
+  Assert.IsTrue(Pos(#13, Text) = 0, 'LF wie die Datei des Befehls');
+  Assert.IsTrue(Pos(#10'  TZaehler = class(TComponent)'#10'  private'#10, Text) > 0, Text);
+  Style := TFormatStyle.Default;
+  Style.IndentSize := 4;
+  Assert.IsTrue(TSlashCommandRegistry.Shared.AfterEnter(StringReplace(Format(FormUnit, ['/component TZaehler2']),
+    #10, #13#10, [rfReplaceAll]), TTextPosition.Create(10, 0), nil, nil, nil, '', Uri, Keep, Style, Edits));
+  Text := Host.WrittenFiles[0].Text;
+  Assert.IsTrue(Pos(#13#10'    TZaehler2 = class(TComponent)'#13#10'    private'#13#10, Text) > 0, Text);
+  Assert.IsTrue(Pos(#13#10'    RegisterComponents(', Text) > 0, Text);
+  Assert.IsTrue(Parses(Text), Text);
 end;
 
 procedure TProjectCommandsTests.ComponentAncestorFromIndex;
