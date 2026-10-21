@@ -324,6 +324,8 @@ type
     FCompleteStatementBeginEnd: TAtlasChoiceBox;
     FCompleteStatementTryKind: TAtlasChoiceBox;
     FCompleteStatementMethodBody: TCheckBox;
+    FFormatCode: TCheckBox;
+    FFormatCodeKey: TEdit;
     FContinuePattern: TCheckBox;
     FContinuePatternMinLines: TEdit;
     // Mehrere Einfügemarken (#589).
@@ -794,6 +796,8 @@ type
     property CompleteStatementBeginEnd: TAtlasChoiceBox read FCompleteStatementBeginEnd;
     property CompleteStatementTryKind: TAtlasChoiceBox read FCompleteStatementTryKind;
     property CompleteStatementMethodBody: TCheckBox read FCompleteStatementMethodBody;
+    property FormatCode: TCheckBox read FFormatCode;
+    property FormatCodeKey: TEdit read FFormatCodeKey;
     property ContinuePattern: TCheckBox read FContinuePattern;
     property ContinuePatternMinLines: TEdit read FContinuePatternMinLines;
     property MultiCursor: TCheckBox read FMultiCursor;
@@ -1397,6 +1401,9 @@ begin
     [TAtlasStrings.Text(TAtlasTextId.CompleteStatementTryFinally),
     TAtlasStrings.Text(TAtlasTextId.CompleteStatementTryExcept), TAtlasStrings.Text(TAtlasTextId.SettingsTryKindAsk)]);
   FCompleteStatementMethodBody := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsCompleteStatementMethodBody));
+  // Formatieren (#43).
+  FFormatCode := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsFormatCode));
+  FFormatCodeKey := AddKey(TAtlasStrings.Text(TAtlasTextId.FormatCodeCommand));
   // Muster fortsetzen (#671).
   FContinuePattern := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsContinuePattern));
   FContinuePatternMinLines := AddNumber(TAtlasStrings.Text(TAtlasTextId.SettingsContinuePatternMinLines));
@@ -2412,6 +2419,8 @@ begin
   FMarks.Bind(FCompleteStatementBeginEnd, ['CompleteStatementBeginEnd']);
   FMarks.Bind(FCompleteStatementTryKind, ['CompleteStatementTryKind']);
   FMarks.Bind(FCompleteStatementMethodBody, ['CompleteStatementMethodBody']);
+  FMarks.Bind(FFormatCode, ['FormatCode']);
+  FMarks.Bind(FFormatCodeKey, ['FormatCodeKey']);
   FMarks.Bind(FContinuePattern, ['ContinuePattern']);
   FMarks.Bind(FContinuePatternMinLines, ['ContinuePatternMinLines']);
   FMarks.Bind(FMultiCursor, ['MultiCursor']);
@@ -4326,6 +4335,8 @@ begin
   else if ASettings.CompleteStatementTryKind = TAtlasPluginSettings.TryKindAsk then
     FCompleteStatementTryKind.Choice := 2;
   FCompleteStatementMethodBody.Checked := ASettings.CompleteStatementMethodBody;
+  FFormatCode.Checked := ASettings.FormatCode;
+  FFormatCodeKey.Text := ShortCutToText(TShortCut(ASettings.FormatCodeKey));
   FContinuePattern.Checked := ASettings.ContinuePattern;
   FContinuePatternMinLines.Text := IntToStr(ASettings.ContinuePatternMinLines);
   FMultiCursor.Checked := ASettings.MultiCursor;
@@ -4684,6 +4695,8 @@ begin
     ASettings.CompleteStatementTryKind := TAtlasPluginSettings.TryKindFinally;
   end;
   ASettings.CompleteStatementMethodBody := FCompleteStatementMethodBody.Checked;
+  ASettings.FormatCode := FFormatCode.Checked;
+  ASettings.FormatCodeKey := Integer(TextToShortCut(Trim(FFormatCodeKey.Text)));
   ASettings.ContinuePattern := FContinuePattern.Checked;
   ASettings.ContinuePatternMinLines := StrToIntDef(FContinuePatternMinLines.Text, ASettings.ContinuePatternMinLines);
   ASettings.MultiCursor := FMultiCursor.Checked;

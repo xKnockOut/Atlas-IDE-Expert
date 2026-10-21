@@ -987,6 +987,16 @@ begin
   Result := TAtlasIdeStatementCompletion.Enabled;
 end;
 
+function FormatCodeVisible: Boolean;
+begin
+  Result := TAtlasIdeSettings.Current.FormatCode;
+end;
+
+procedure FormatCode;
+begin
+  TAtlasIdeEditorCommands.FormatCode;
+end;
+
 procedure CompleteStatement;
 begin
   TAtlasIdeStatementCompletion.Run;
@@ -1188,6 +1198,9 @@ begin
   // Anweisung vervollständigen (#697).
   Add('Atlas.CompleteStatement', TAtlasTextId.CompleteStatementCommand,
     Guarded(TAtlasFeature.EditorCommands, CompleteStatement), CompleteStatementVisible);
+  // Formatieren (#43): ganze Datei bzw. Auswahl.
+  Add('Atlas.FormatCode', TAtlasTextId.FormatCodeCommand, Guarded(TAtlasFeature.EditorCommands, FormatCode),
+    FormatCodeVisible);
   // Mehrere Einfügemarken (#589).
   Add('Atlas.MultiCursorNext', TAtlasTextId.MultiCursorNextCommand,
     Guarded(TAtlasFeature.EditorCommands, MultiCursorNext), MultiCursorVisible);

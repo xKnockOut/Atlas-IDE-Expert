@@ -7,6 +7,7 @@ Server und Claude-Code-Plugin tragen immer dieselbe Version.
 ## [Unveröffentlicht]
 
 ### Neu
+- Formatieren (#43): Einrückung nach der Blockstruktur (`format.reindent`, an), `begin` und `else` wahlweise in eigener oder derselben Zeile (`format.beginPlacement`, `format.elsePlacement`), Umbruch langer Zeilen nach Komma oder vor Operatoren (`format.maxLineLength`, auch `max_line_length` aus `.editorconfig`) und Ausrichtung von `:=`, Deklarationen und Kommentaren am Zeilenende (`format.alignAssignments`, `alignDeclarations`, `alignComments`). Kommentare, Strings, asm-Blöcke und Zweige hinter `{$ELSE}` bleiben. Im Plugin der Befehl „Formatieren“ für Datei oder Auswahl (Strg+Umschalt+Alt+F, Menü Atlas, Kontextmenü, Befehlspalette; `editor.format`, `keys.format`), weil RAD Studio 13 keinen eigenen Formatierer mehr hat und Strg+D den Mehrfachmarken gehört.
 - Schnellbefehle `/extract Name` (Methode extrahieren mit Wert-, var- und out-Parametern), `/inline` (Aufruf oder Variable einbetten), `/fix` (nur sichere Korrekturen der Zeile darunter) und `/explain` (Erklärung der Treffer mit Beispiel und Link); `/fmt` folgt dem Formatstil der Datei (#300).
 - Neue Units aus `/component` und `/unit` folgen Zeilenende und Kodierung der Datei des Befehls und dem Formatstil (#299, #121, #43).
 - `/helper` für Aufzählungen (#875): Namenstabelle `cNames`, `ToString` und `FromString` samt Rümpfen; abschaltbar mit `slashCommands.enumHelper`. Für Mengen (`set of`) `Contains`, `ToText`, `Toggle` und `All`; abschaltbar mit `slashCommands.setHelper`.

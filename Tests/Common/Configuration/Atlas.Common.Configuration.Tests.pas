@@ -302,6 +302,24 @@ begin
   Settings := Parse('{"format": {"indentSize": 0, "keywordCase": "camel", "x": 1}}', Issues);
   Assert.AreEqual(3, Integer(Length(Issues)));
   Assert.IsTrue(Settings.Formatting.Given = []);
+  // Blockstruktur, Stellung, Umbruch und Ausrichtung (#43).
+  Settings := Parse('{}', Issues);
+  Assert.IsTrue(Settings.Formatting.Reindent);
+  Assert.IsTrue(Settings.Formatting.BeginPlacement = TBlockPlacement.Preserve);
+  Assert.AreEqual(0, Settings.Formatting.MaxLineLength);
+  Settings := Parse('{"format": {"reindent": false, "beginPlacement": "newLine", "elsePlacement": "sameLine", ' +
+    '"maxLineLength": 100, "alignAssignments": true, "alignDeclarations": true, "alignComments": true}}', Issues);
+  Assert.AreEqual(0, Integer(Length(Issues)));
+  Assert.IsFalse(Settings.Formatting.Reindent);
+  Assert.IsTrue(Settings.Formatting.BeginPlacement = TBlockPlacement.NewLine);
+  Assert.IsTrue(Settings.Formatting.ElsePlacement = TBlockPlacement.SameLine);
+  Assert.AreEqual(100, Settings.Formatting.MaxLineLength);
+  Assert.IsTrue(Settings.Formatting.AlignAssignments);
+  Assert.IsTrue(Settings.Formatting.AlignDeclarations);
+  Assert.IsTrue(Settings.Formatting.AlignComments);
+  Assert.IsTrue(Settings.Formatting.Given = [TFormatKey.MaxLineLength]);
+  Settings := Parse('{"format": {"beginPlacement": "below", "maxLineLength": -1}}', Issues);
+  Assert.AreEqual(2, Integer(Length(Issues)));
 end;
 
 procedure TConfigurationParserTests.ReadsVcsProvider;

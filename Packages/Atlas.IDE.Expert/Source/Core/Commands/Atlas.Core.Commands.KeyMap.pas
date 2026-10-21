@@ -342,6 +342,8 @@ begin
       Result := 'Atlas.MultiCursorAbove';
     TAtlasKeyFunction.MultiCursorBelow:
       Result := 'Atlas.MultiCursorBelow';
+    TAtlasKeyFunction.FormatCode:
+      Result := 'Atlas.FormatCode';
   else
     Result := '';
   end;

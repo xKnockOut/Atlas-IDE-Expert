@@ -1305,6 +1305,18 @@ var
       Include(Settings.Given, AKey);
   end;
 
+  procedure ReadPlacement(var ATarget: TBlockPlacement);
+  begin
+    if (Value.Kind = TJsonKind.String_) and (Value.Value = 'preserve') then
+      ATarget := TBlockPlacement.Preserve
+    else if (Value.Kind = TJsonKind.String_) and (Value.Value = 'newLine') then
+      ATarget := TBlockPlacement.NewLine
+    else if (Value.Kind = TJsonKind.String_) and (Value.Value = 'sameLine') then
+      ATarget := TBlockPlacement.SameLine
+    else
+      ReportNode(Value, 'Erlaubt sind "preserve", "newLine" und "sameLine"');
+  end;
+
 begin
   Settings := TFormatStyle.Default;
   for Index := 0 to ANode.Count - 1 do
@@ -1359,6 +1371,28 @@ begin
       end;
       Include(Settings.Given, TFormatKey.EndOfLine);
     end
+    else if Key = 'reindent' then
+      ExpectBoolean(Value, Key, Settings.Reindent)
+    else if Key = 'beginPlacement' then
+      ReadPlacement(Settings.BeginPlacement)
+    else if Key = 'elsePlacement' then
+      ReadPlacement(Settings.ElsePlacement)
+    else if Key = 'maxLineLength' then
+    begin
+      if (Value.Kind = TJsonKind.Number) and TryStrToInt(Value.Value, Size) and (Size >= 0) and (Size <= 1000) then
+      begin
+        Settings.MaxLineLength := Size;
+        Include(Settings.Given, TFormatKey.MaxLineLength);
+      end
+      else
+        ReportNode(Value, '"maxLineLength" muss eine ganze Zahl von 0 bis 1000 sein');
+    end
+    else if Key = 'alignAssignments' then
+      ExpectBoolean(Value, Key, Settings.AlignAssignments)
+    else if Key = 'alignDeclarations' then
+      ExpectBoolean(Value, Key, Settings.AlignDeclarations)
+    else if Key = 'alignComments' then
+      ExpectBoolean(Value, Key, Settings.AlignComments)
     else
       Report(ANode.KeyStarts[Index], ANode.KeyStarts[Index] + Length(Key) + 2,
         Format('Unbekannte Einstellung "format.%s"', [Key]), False);

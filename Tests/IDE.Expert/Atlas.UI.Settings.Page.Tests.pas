@@ -80,6 +80,8 @@ type
     [Test]
     procedure CompleteStatementRoundTrip;
     [Test]
+    procedure FormatCodeRoundTrip;
+    [Test]
     procedure ContinuePatternRoundTrip;
     [Test]
     procedure MultiCursorRoundTrip;
@@ -1882,6 +1884,29 @@ begin
     Assert.AreEqual('never', Saved.CompleteStatementBeginEnd);
     Assert.AreEqual('ask', Saved.CompleteStatementTryKind);
     Assert.IsFalse(Saved.CompleteStatementMethodBody);
+  finally
+    Page.Free;
+  end;
+end;
+
+procedure TAtlasSettingsPageTests.FormatCodeRoundTrip;
+var
+  Page: TAtlasSettingsPage;
+  Settings, Saved: TAtlasPluginSettings;
+begin
+  // #43: Schalter und Taste.
+  Settings := TAtlasPluginSettings.Defaults;
+  Page := TAtlasSettingsPage.Create(nil);
+  try
+    Page.LoadFrom(Settings);
+    Assert.IsTrue(Page.FormatCode.Checked);
+    Assert.AreEqual(ShortCutToText(TShortCut($E046)), Page.FormatCodeKey.Text);
+    Page.FormatCode.Checked := False;
+    Page.FormatCodeKey.Text := '';
+    Saved := TAtlasPluginSettings.Defaults;
+    Page.SaveTo(Saved);
+    Assert.IsFalse(Saved.FormatCode);
+    Assert.AreEqual(0, Saved.FormatCodeKey);
   finally
     Page.Free;
   end;
