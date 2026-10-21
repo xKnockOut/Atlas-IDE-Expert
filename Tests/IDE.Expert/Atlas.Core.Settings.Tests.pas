@@ -1024,6 +1024,7 @@ begin
   Assert.IsTrue(Settings.UnitSearchPreview);
   Assert.IsTrue(Settings.UnitSearchPreviewForm);
   Assert.IsTrue(Settings.UnitSearchPreviewUsedBy);
+  Assert.IsTrue(Settings.UnitSearchPreviewAutoCollapse);
   Assert.IsTrue(Settings.UnitSearchMultiSelect);
   Assert.IsTrue(Settings.UnitSearchActions);
   Assert.IsTrue(Settings.UnitSearchActionsAddUses);
@@ -1048,6 +1049,7 @@ begin
   Settings.UnitSearchPreview := False;
   Settings.UnitSearchPreviewForm := False;
   Settings.UnitSearchPreviewUsedBy := False;
+  Settings.UnitSearchPreviewAutoCollapse := False;
   Settings.UnitSearchMultiSelect := False;
   Settings.UnitSearchActions := False;
   Settings.UnitSearchActionsAddUses := False;
@@ -1066,6 +1068,7 @@ begin
   Assert.IsFalse(Loaded.UnitSearchPreview);
   Assert.IsFalse(Loaded.UnitSearchPreviewForm);
   Assert.IsFalse(Loaded.UnitSearchPreviewUsedBy);
+  Assert.IsFalse(Loaded.UnitSearchPreviewAutoCollapse);
   Assert.IsFalse(Loaded.UnitSearchMultiSelect);
   Assert.IsFalse(Loaded.UnitSearchActions);
   Assert.IsFalse(Loaded.UnitSearchActionsAddUses);

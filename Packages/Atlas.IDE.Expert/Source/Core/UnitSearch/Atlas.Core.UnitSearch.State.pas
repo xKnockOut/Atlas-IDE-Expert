@@ -3,7 +3,9 @@
 // Gemerkter Zustand des Fensters „Units suchen“ (#777), Teil ohne VCL:
 //   - je Projektgruppe: eingeklappte Gruppen (je Gruppierung), gewählte
 //     Herkunft und Art der Filterchips;
-//   - fürs Fenster: Lage und Größe, Breite und Sichtbarkeit der Vorschau.
+//   - fürs Fenster: Lage und Größe, Breite und Sichtbarkeit der Vorschau;
+//   - nur für die Sitzung, nicht gespeichert: von Hand auf- oder zugeklappte
+//     Abschnitte der Vorschau (#876).
 // Gespeichert als JSON (Datei unter %LOCALAPPDATA%\Atlas, setzt die IDE-Schicht).
 
 interface
@@ -12,7 +14,8 @@ uses
   System.SysUtils,
   System.JSON,
   System.Generics.Collections,
-  Atlas.Core.UnitSearch.Model;
+  Atlas.Core.UnitSearch.Model,
+  Atlas.Core.UnitSearch.Sections;
 
 type
   TAtlasUnitSearchState = class
@@ -33,6 +36,8 @@ type
     /// <summary>Breite der Vorschau in Pixeln bei 96 dpi; 0 = Vorgabe.</summary>
     PreviewWidth: Integer;
     PreviewVisible: Boolean;
+    /// <summary>Wahl von Hand je Abschnitt der Vorschau; nur in der Sitzung (#876).</summary>
+    Sections: TAtlasSectionChoices;
     constructor Create;
     destructor Destroy; override;
     /// <summary>Eingeklappte Gruppen (Schlüssel in Kleinschrift) der Projektgruppe für AGrouping.</summary>

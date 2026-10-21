@@ -1728,6 +1728,12 @@ Voraussetzung: Projektgruppe mit mehreren Projekten, darunter ein DUnitX-Testpro
 | US12 | „Pfade kopieren“ (Strg+C), „Im Explorer zeigen“, „Im Projektmanager zeigen“ | Pfade in der Zwischenablage; Explorer mit markierter Datei; Projektmanager offen, Meldung „Kunden gehört zu …“ |
 | US13 | Jede Einstellung der Seite einzeln aus | Vorschau, Formularskizze, „Verwendet von“, Chips, Tippsyntax, Häkchen, Aktionsleiste, „In uses aufnehmen“ fehlen jeweils; Pfadanzeige und Vorgewählte Herkunft wirken beim nächsten Öffnen |
 | US14 | Server beenden, Strg+F12 | Meldung „Der Atlas-Server läuft nicht“ und der IDE-Dialog |
+| US15 | Fenster groß ziehen, `System.Generics.Collections` wählen (#876) | Abschnitte ▾ PFAD, ▾ EXPORTIERTE TYPEN (n), ▾ USES (n) untereinander, alle offen |
+| US16 | Fenster niedrig ziehen, Unit mit vielen Typen, uses und „Verwendet von“ | EXPORTIERTE TYPEN bleibt offen und endet mit „+ n weitere“; ▸ VERWENDET VON, ▸ USES und ▸ PFAD sind zu, rechts „automatisch eingeklappt“ |
+| US17 | In US16 auf ▸ VERWENDET VON klicken, andere Unit wählen, Fenster schließen und wieder öffnen | VERWENDET VON offen, dafür klappen die Typen automatisch ein; der Zustand gilt für jede Unit und bleibt bis zum Neustart der IDE |
+| US18 | Auf ▾ EXPORTIERTE TYPEN klicken bei großem Fenster | Abschnitt bleibt zu, auch wenn Platz ist; erneuter Klick öffnet ihn |
+| US19 | Optionen › Units suchen: „Abschnitte der Vorschau einklappen, wenn sie nicht passen“ aus, Fenster niedrig | Nichts klappt von selbst ein, der Inhalt wird unten abgeschnitten; Klick auf Überschriften klappt weiter |
+| US20 | Mauszeiger über ▾ PFAD | Handzeiger, Tooltip mit vollem Dateinamen |
 ## Erzeugen-Menü (#719)
 
 Voraussetzung: Server läuft; Einstellungen auf Vorgabe; Unit mit `TKunde = class` (Felder `FName: string; FListe: TStrings;`), einer Klasse `TStaffelpreise = class(TStandardpreise)` mit virtueller Methode im Vorfahren und einer Klasse `TDienst = class(TInterfacedObject, IDienst)`, der Methoden von `IDienst` fehlen.

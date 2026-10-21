@@ -299,6 +299,9 @@ begin
     Assert.AreEqual('modified', Answer.GetValue<string>('git'));
     Assert.IsTrue(Answer.GetValue<string>('modified').StartsWith('2026-10-15'));
     Assert.AreEqual('THaupt', TJSONObject(Answer.GetValue<TJSONArray>('types').Items[0]).GetValue<string>('name'));
+    Assert.AreEqual(1, Answer.GetValue<Integer>('typeCount'));
+    Assert.AreEqual(1, Integer(Answer.GetValue<TJSONArray>('uses').Count));
+    Assert.AreEqual('Kunden', Answer.GetValue<TJSONArray>('uses').Items[0].Value);
     Assert.AreEqual(0, Answer.GetValue<Integer>('usedBy'));
     Form := Answer.GetValue<TJSONObject>('form');
     Assert.AreEqual(400, Form.GetValue<Integer>('width'));

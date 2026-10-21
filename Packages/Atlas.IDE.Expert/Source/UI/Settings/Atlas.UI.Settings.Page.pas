@@ -392,6 +392,7 @@ type
     FUnitSearchPreview: TCheckBox;
     FUnitSearchPreviewForm: TCheckBox;
     FUnitSearchPreviewUsedBy: TCheckBox;
+    FUnitSearchPreviewAutoCollapse: TCheckBox;
     FUnitSearchMultiSelect: TCheckBox;
     FUnitSearchActions: TCheckBox;
     FUnitSearchAddUses: TCheckBox;
@@ -2570,6 +2571,7 @@ begin
   FMarks.Bind(FUnitSearchPreview, ['UnitSearchPreview']);
   FMarks.Bind(FUnitSearchPreviewForm, ['UnitSearchPreviewForm']);
   FMarks.Bind(FUnitSearchPreviewUsedBy, ['UnitSearchPreviewUsedBy']);
+  FMarks.Bind(FUnitSearchPreviewAutoCollapse, ['UnitSearchPreviewAutoCollapse']);
   FMarks.Bind(FUnitSearchMultiSelect, ['UnitSearchMultiSelect']);
   FMarks.Bind(FUnitSearchActions, ['UnitSearchActions']);
   FMarks.Bind(FUnitSearchAddUses, ['UnitSearchActionsAddUses']);
@@ -3982,6 +3984,7 @@ begin
   FUnitSearchPreview := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsUnitSearchPreview));
   FUnitSearchPreviewForm := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsUnitSearchPreviewForm));
   FUnitSearchPreviewUsedBy := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsUnitSearchPreviewUsedBy));
+  FUnitSearchPreviewAutoCollapse := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsUnitSearchPreviewAutoCollapse));
   FUnitSearchMultiSelect := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsUnitSearchMultiSelect));
   FUnitSearchActions := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsUnitSearchActions));
   FUnitSearchAddUses := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsUnitSearchAddUses));
@@ -4521,6 +4524,7 @@ begin
   FUnitSearchPreview.Checked := ASettings.UnitSearchPreview;
   FUnitSearchPreviewForm.Checked := ASettings.UnitSearchPreviewForm;
   FUnitSearchPreviewUsedBy.Checked := ASettings.UnitSearchPreviewUsedBy;
+  FUnitSearchPreviewAutoCollapse.Checked := ASettings.UnitSearchPreviewAutoCollapse;
   FUnitSearchMultiSelect.Checked := ASettings.UnitSearchMultiSelect;
   FUnitSearchActions.Checked := ASettings.UnitSearchActions;
   FUnitSearchAddUses.Checked := ASettings.UnitSearchActionsAddUses;
@@ -4889,6 +4893,7 @@ begin
   ASettings.UnitSearchPreview := FUnitSearchPreview.Checked;
   ASettings.UnitSearchPreviewForm := FUnitSearchPreviewForm.Checked;
   ASettings.UnitSearchPreviewUsedBy := FUnitSearchPreviewUsedBy.Checked;
+  ASettings.UnitSearchPreviewAutoCollapse := FUnitSearchPreviewAutoCollapse.Checked;
   ASettings.UnitSearchMultiSelect := FUnitSearchMultiSelect.Checked;
   ASettings.UnitSearchActions := FUnitSearchActions.Checked;
   ASettings.UnitSearchActionsAddUses := FUnitSearchAddUses.Checked;

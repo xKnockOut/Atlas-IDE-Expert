@@ -470,6 +470,7 @@ begin
   Options.Preview := Plugin.UnitSearchPreview;
   Options.PreviewForm := Plugin.UnitSearchPreviewForm;
   Options.PreviewUsedBy := Plugin.UnitSearchPreviewUsedBy;
+  Options.PreviewAutoCollapse := Plugin.UnitSearchPreviewAutoCollapse;
   Options.MultiSelect := Plugin.UnitSearchMultiSelect;
   Options.Actions := Plugin.UnitSearchActions;
   Options.AddUses := Plugin.UnitSearchActionsAddUses;
