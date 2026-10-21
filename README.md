@@ -46,6 +46,7 @@ Details (German): [docs/Installation.md](docs/Installation.md).
 - **Variant records**: fields such as `TRect.Left` or `TMessage.WParam` appear in completion, hover, go to and the outline, tagged with their branch (#846)
 - **Class helpers with an ancestor**: `class helper (TBaseHelper) for TFoo` is read as a helper, and `Foo.` also offers the members of the ancestor helper (#848)
 - **Less common syntax**: several constraints per type parameter, named OLE arguments (`Open(FileName := 'a.docx')`), calling conventions without a semicolon, `cdecl varargs`, `assembler asm`, local routines in anonymous methods, `{$I file.inc}` as a constant value and long `else if` chains parse without errors; under `{$SCOPEDENUMS ON}` values need their type prefix, members from `{$I}` inside a class belong to the class (#849)
+- **Defines from include files**: a `{$DEFINE}` in a file pulled in with `{$I}` counts for greying out, the outline, checks and the linter; an inlay hint behind `{$I}` lists the symbols the file defines (#860)
 - **Find selection**: F3 or Shift+F3 searches a single-line selection forward or backward, otherwise the IDE's "Search Again" applies
 - **Unit search** (#777): its own window instead of the IDE dialog on Ctrl+F12; the IDE dialog stays available from the menu
 - **Notes** (#545) on code lines, only for you and not in the source, and **named bookmarks** (#622, Ctrl+Alt+K)

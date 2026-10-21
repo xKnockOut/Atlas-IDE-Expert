@@ -12,7 +12,7 @@ function AtlasPluginSchemaJson: string;
 implementation
 
 const
-  Lines: array[0..3587] of string = (
+  Lines: array[0..3600] of string = (
     '{',
     '  "$schema": "http://json-schema.org/draft-07/schema#",',
     '  "title": "Atlas-Plugin-Einstellungen",',
@@ -442,6 +442,19 @@ const
     '      "x-caption": "Typmarken",',
     '      "x-captionEn": "Type marks",',
     '      "x-issue": "#453"',
+    '    },',
+    '    "InlayDefineHints": {',
+    '      "type": "boolean",',
+    '      "default": true,',
+    '      "x-key": "inlayHints.includeDefines",',
+    '      "x-area": "editor",',
+    '      "x-feature": "InlayHints",',
+    '      "x-page": "Editor",',
+    '      "x-quickToggle": true,',
+    '      "x-drawing": true,',
+    '      "x-caption": "Include-Symbole",',
+    '      "x-captionEn": "Include symbols",',
+    '      "x-issue": "#860"',
     '    },',
     '    "BlockEndLabels": {',
     '      "type": "boolean",',

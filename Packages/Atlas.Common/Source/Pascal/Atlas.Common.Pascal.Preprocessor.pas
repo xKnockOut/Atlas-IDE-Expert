@@ -153,13 +153,20 @@ type
     class function CompilerVersionFromDefines(const ADefines: TArray<string>): Double; static;
     /// <summary>Optionen für Editor-Baum und Syntaxfehler (#845): ADefines des Projekts samt Compilerversion
     /// aus VERnnn; leer = Vordefinitionen von Delphi 13 für Win32.</summary>
-    class function EditorOptions(const ADefines: TArray<string>): TPreprocessorOptions; static;
+    class function EditorOptions(const ADefines: TArray<string>): TPreprocessorOptions; overload; static;
+    /// <summary>Wie oben, mit Dateiname und Include-Resolver (#860): $DEFINE aus {$I datei.inc} wirken dann
+    /// auf die Zweige der Datei.</summary>
+    class function EditorOptions(const ADefines: TArray<string>; const AFileName: string;
+      const AResolver: TIncludeResolver): TPreprocessorOptions; overload; static;
     /// <summary>Inaktive Bereiche der Hauptdatei (ohne Include-Dateien).</summary>
     class function MainInactive(const AResult: TPreprocessorResult): TArray<TTextRange>; static;
     /// <summary>Zweige der Hauptdatei (ohne Include-Dateien).</summary>
     class function MainConditionals(const AResult: TPreprocessorResult): TArray<TConditionalRange>; static;
     /// <summary>Kann AText bedingte Zweige enthalten ($IF, $IFDEF, $IFNDEF, $IFOPT)?</summary>
     class function HasConditionals(const AText: string): Boolean; static;
+    /// <summary>Kann AText {$I datei} oder {$INCLUDE datei} enthalten (#860)? Schalter wie {$I+} zählen nicht.
+    /// </summary>
+    class function HasIncludes(const AText: string): Boolean; static;
     /// <summary>Wertet einen $IF-Ausdruck aus; unbekannt gilt als True (aktiv), False und AError bei Fehlern.
     /// </summary>
     class function Evaluate(const AExpression: string; const AOptions: TPreprocessorOptions;
@@ -1745,6 +1752,14 @@ begin
   Result.RTLVersion := Result.CompilerVersion;
 end;
 
+class function TPascalPreprocessor.EditorOptions(const ADefines: TArray<string>; const AFileName: string;
+  const AResolver: TIncludeResolver): TPreprocessorOptions;
+begin
+  Result := EditorOptions(ADefines);
+  Result.FileName := AFileName;
+  Result.ResolveInclude := AResolver;
+end;
+
 class function TPascalPreprocessor.MainInactive(const AResult: TPreprocessorResult): TArray<TTextRange>;
 var
   Inactive: TInactiveRange;
@@ -1794,6 +1809,24 @@ var
 begin
   Upper := UpperCase(AText);
   Result := (Pos('{$IF', Upper) > 0) or (Pos('(*$IF', Upper) > 0);
+end;
+
+class function TPascalPreprocessor.HasIncludes(const AText: string): Boolean;
+var
+  Upper: string;
+  Start, Next: Integer;
+begin
+  Upper := UpperCase(AText);
+  Start := Pos('$I', Upper);
+  while Start > 0 do
+  begin
+    Next := Start + 2;
+    if (Start > 1) and CharInSet(Upper[Start - 1], ['{', '*']) and (Next <= Length(Upper)) and
+      (CharInSet(Upper[Next], [' ', #9, '''']) or (Copy(Upper, Next, 6) = 'NCLUDE')) then
+      Exit(True);
+    Start := Pos('$I', Upper, Next);
+  end;
+  Result := False;
 end;
 
 class function TPascalPreprocessor.PredefinedSymbols(const APlatform: string; ACompilerVersion: Double): TArray<string>;

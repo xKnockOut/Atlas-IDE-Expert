@@ -18,6 +18,8 @@
 // ihre Teilwerte mit Herkunft (SizeOf nach Zielplattform, RTLVersion111 nach
 // Delphi-Version, Declared aus dem Index, Schalter aus der .dproj oder einem
 // lokalen {$R-} davor); {$PUSHOPT}/{$POPOPT} nennen ihr Gegenstück (#847).
+// Stammt das Symbol aus einer Include-Datei (#860), nennt der Hover dazu
+// Zielplattform und Konfiguration des Projekts: „Projekt: Win64 · Debug“.
 
 interface
 
@@ -51,6 +53,8 @@ type
     /// <summary>Aktive Konfiguration (Debug, Release) für die Herkunft von Schaltern (#847); '' ohne Projekt.
     /// </summary>
     Config: string;
+    /// <summary>Zielplattform des Projekts (Win32, Win64 …, #860); '' ohne Projekt.</summary>
+    Platform: string;
     /// <summary>Beides eingeschaltet, ohne Projekt.</summary>
     class function Default: TConditionalContext; static;
   end;
@@ -304,6 +308,16 @@ begin
     ASite.Range.StartPos.Line + 1]);
 end;
 
+/// <summary>"Win64 · Debug"; ohne Plattform oder Konfiguration nur der bekannte Teil, '' ohne beides.</summary>
+function TargetText(const AContext: TConditionalContext): string;
+begin
+  Result := AContext.Platform;
+  if (Result <> '') and (AContext.Config <> '') then
+    Result := Result + ' · ' + AContext.Config
+  else if AContext.Config <> '' then
+    Result := AContext.Config;
+end;
+
 function InInactiveRange(const AProcessed: TPreprocessorResult; const APosition: TTextPosition): Boolean;
 var
   Inactive: TInactiveRange;
@@ -376,6 +390,9 @@ begin
     AMarkdown := AMarkdown + #10#10 + Format('Diese Direktive hebt **%s** ab hier auf.', [Name]);
   if InInactiveRange(Processed, Start) then
     AMarkdown := AMarkdown + #10#10 + 'Die Direktive liegt in einem inaktiven Zweig und wirkt nicht.';
+  // Aus einer Include-Datei (#860): unter welchem Projektstand die Datei gelesen wurde.
+  if HasSite and (Last.FileIndex <> 0) and AContext.HasDefines and (TargetText(AContext) <> '') then
+    AMarkdown := AMarkdown + #10#10 + 'Projekt: ' + TargetText(AContext);
   Result := True;
 end;
 
