@@ -525,7 +525,7 @@ type
     WelcomeArrangeDescNews, WelcomeArrangeDescDiscover, WelcomeArrangeDescSetup, WelcomeArrangeDescIssues,
     WelcomeArrangeDescHelp, CommandWelcomeCustomize, SettingsWelcomeCustomLayout, SettingsWelcomeColumns,
     SettingsWelcomeActiveLayout, SettingsWelcomeLayoutNew, SettingsWelcomeLayoutRename,
-    SettingsWelcomeLayoutDelete);
+    SettingsWelcomeLayoutDelete, SettingsDebugHoverValues, HoverDebugPending);
 
   TAtlasStrings = class
   private class var
@@ -1523,7 +1523,8 @@ const
      'Mir zugewiesene Issues aus dem Tracker', 'Doku, Tastenkürzel und „Problem melden“',
      'Willkommensseite anpassen',
      'Willkommensseite frei anordnen („Seite anpassen“, Befehl Atlas.WelcomeCustomize)', 'Spalten der Seite:',
-     'Aktives Layout:', 'Neu …', 'Umbenennen …', 'Löschen'),
+     'Aktives Layout:', 'Neu …', 'Umbenennen …', 'Löschen',
+     'Variablenwerte im Hover beim Debuggen', 'wird ausgewertet …'),
     ('Enter to accept · Esc to close', '%d of %d', 'No matches for “%s”', 'Backspace widens the search',
      'No suggestions here', 'Esc closes', 'No details for this entry', 'Overload', 'Deprecated: %s', 'Deprecated.',
      'Inherited from %s', 'Inherited', 'optional, default %s', 'No overload with %d parameters.', '… %d more',
@@ -2451,7 +2452,8 @@ const
      'Issues assigned to me in the tracker', 'Docs, keyboard shortcuts and “Report a problem”',
      'Customize welcome page',
      'Arrange the welcome page freely (“Customize page”, command Atlas.WelcomeCustomize)', 'Page columns:',
-     'Active layout:', 'New…', 'Rename…', 'Delete'));
+     'Active layout:', 'New…', 'Rename…', 'Delete',
+     'Variable values in the hover while debugging', 'evaluating …'));
 
 { TAtlasStrings }
 

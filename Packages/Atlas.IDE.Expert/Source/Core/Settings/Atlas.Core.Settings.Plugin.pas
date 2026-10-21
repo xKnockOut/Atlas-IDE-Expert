@@ -289,6 +289,10 @@ type
     /// <summary>Beim Test-Debuggen am Anfang der Methode anhalten (#585, debug.testBreakAtStart): einmaliger
     /// Haltepunkt an der ersten Anweisung, nach dem Halt entfernt.</summary>
     TestBreakAtStart: Boolean;
+    /// <summary>Variablenwerte im Hover beim Debuggen (#891, debug.hoverValues): Bei angehaltenem Prozess wertet
+    /// Atlas den Ausdruck unter der Maus über den Debugger der IDE aus und zeigt den Wert oben im Tooltip (bzw.
+    /// im Tooltip der IDE, wenn der eigene aus ist); aus = kein Wert.</summary>
+    DebugHoverValues: Boolean;
     /// <summary>Startprofile (#575, startProfiles.enabled): Befehl „Startprofil: …“ (Atlas.StartProfile) mit Tipp,
     /// Feld in der Statusleiste und Setzen der Startoptionen des Projekts; aus = Befehl, Tipp und Feld
     /// verschwinden, die Startoptionen der IDE bleiben, wie sie sind.</summary>
@@ -900,6 +904,7 @@ begin
   Result.ReleaseChecks := TAtlasReleaseChecks.Defaults.ToText;
   Result.TestDebug := True;
   Result.TestBreakAtStart := True;
+  Result.DebugHoverValues := True;
   Result.StartProfiles := True;
   Result.StartProfilesStatusField := True;
   Result.TodoList := True;
@@ -1262,6 +1267,7 @@ begin
   ReleaseChecks := AStore.ReadString('ReleaseChecks', Default.ReleaseChecks);
   TestDebug := AStore.ReadInteger('TestDebug', BoolValue(Default.TestDebug)) <> 0;
   TestBreakAtStart := AStore.ReadInteger('TestBreakAtStart', BoolValue(Default.TestBreakAtStart)) <> 0;
+  DebugHoverValues := AStore.ReadInteger('DebugHoverValues', BoolValue(Default.DebugHoverValues)) <> 0;
   StartProfiles := AStore.ReadInteger('StartProfiles', BoolValue(Default.StartProfiles)) <> 0;
   StartProfilesStatusField := AStore.ReadInteger('StartProfilesStatusField',
     BoolValue(Default.StartProfilesStatusField)) <> 0;
@@ -1515,6 +1521,7 @@ begin
   AStore.WriteString('ReleaseChecks', ReleaseChecks);
   AStore.WriteInteger('TestDebug', BoolValue(TestDebug));
   AStore.WriteInteger('TestBreakAtStart', BoolValue(TestBreakAtStart));
+  AStore.WriteInteger('DebugHoverValues', BoolValue(DebugHoverValues));
   AStore.WriteInteger('StartProfiles', BoolValue(StartProfiles));
   AStore.WriteInteger('StartProfilesStatusField', BoolValue(StartProfilesStatusField));
   AStore.WriteInteger('TodoList', BoolValue(TodoList));
