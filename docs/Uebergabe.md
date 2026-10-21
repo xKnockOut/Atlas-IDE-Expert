@@ -525,3 +525,9 @@ Jeder Branch baut auf dem vorigen auf. Nichts davon ist gebaut, getestet oder in
 - Werkzeug: `scratchpad\ide-dialogs.ps1` listet offene Fehlerdialoge der laufenden IDE samt Text.
 - Plugin beim Benutzer: Debug-Build aus `repo\Output\Win32\Debug\Bpl` in Known Packages. Das Nachstellskript `repro.ps1` trägt ihn am Ende aus; danach wieder eintragen.
 - Offen: Optionsseite, Prüfliste und Fehlerbericht rufen den Server noch synchron auf (#874), außerdem der Server-Umbau für executeCommand.
+
+## Absturz im Statusfeld unter Delphi 12 (21.10.2026, Branch `claude/project-thread-enkkmn` von main db0fffe, ungebaut)
+- Meldung: Zugriffsfehler in `TCollectionItem.GetIndex` aus `TAtlasStatusField.PanelRect` beim Bewegen der Maus über die Statusleiste.
+- Ursache: Das Feld merkte sich seine `TStatusPanel`-Zeiger. Die Panels gehören der Leiste; löscht die IDE sie selbst, zeigen `Hook.Panel` und `Hook.Extras` auf freigegebenen Speicher. Schon `APanel.Index` liest dann die Sammlung, `Refresh` hätte sogar hineingeschrieben.
+- Fix: eigene Klasse `TFieldPanel` (Unterklasse von `TStatusPanel`), die im Destruktor `OnGone` ruft. Der Haken setzt das Panel dann auf nil, `PanelRect` liefert ein leeres Rechteck, und das nächste `Refresh` legt das Panel neu an. Eigenes Entfernen (`DropPanel`) sucht nur per Zeigervergleich und löst OnGone nicht aus.
+- Zu prüfen beim Bauen: Win32-Plugin unter Delphi 12 und 13; Maus über die Leiste, Editorfenster öffnen/schließen, Plugin entladen.
