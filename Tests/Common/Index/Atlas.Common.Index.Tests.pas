@@ -185,6 +185,11 @@ type
     [Test]
     [IgnoreMemoryLeaks]
     procedure ServiceSurvivesFailingErrorHandler;
+    /// <summary>#874: Ein neuer Start wartet nicht auf den alten Aufbau; der neue beginnt erst nach dessen
+    /// Ende, Prepare läuft dann im Index-Thread.</summary>
+    [Test]
+    [IgnoreMemoryLeaks]
+    procedure RestartDoesNotWaitForRunningBuild;
   end;
 
   [TestFixture]
@@ -1709,6 +1714,67 @@ begin
     end;
   finally
     Service.Free;
+    Release.Free;
+    Entered.Free;
+  end;
+end;
+
+procedure TIndexBuilderTests.RestartDoesNotWaitForRunningBuild;
+var
+  Service: TIndexService;
+  First, Second: TIndexRequest;
+  Entered, Release: TEvent;
+  Order: TThreadList<string>;
+  Watch: TStopwatch;
+  Seen: TList<string>;
+  Steps: string;
+begin
+  Entered := TEvent.Create(nil, True, False, '');
+  Release := TEvent.Create(nil, True, False, '');
+  Order := TThreadList<string>.Create;
+  Service := TIndexService.Create(FIndex, FFileSystem);
+  try
+    First := Default(TIndexRequest);
+    First.Files := ['C:\P\P.dpr', 'C:\P\A.pas'];
+    First.ResolveUnit := Resolve;
+    First.Prepare :=
+      procedure
+      begin
+        Entered.SetEvent;
+        // Ein langer Aufbau, z. B. ein großes Projekt beim ersten Start.
+        Release.WaitFor(5000);
+        Order.Add('erster');
+      end;
+    Second := First;
+    Second.Prepare :=
+      procedure
+      begin
+        Order.Add('zweiter');
+      end;
+    Service.Start(First);
+    Assert.IsTrue(Entered.WaitFor(5000) = TWaitResult.wrSignaled, 'der erste Aufbau läuft');
+    Watch := TStopwatch.StartNew;
+    Service.Start(Second);
+    Assert.IsTrue(Watch.ElapsedMilliseconds < 2000, 'Start wartet nicht auf den laufenden Aufbau');
+    Seen := Order.LockList;
+    try
+      Assert.AreEqual(0, Integer(Seen.Count), 'der neue Aufbau beginnt nicht neben dem alten');
+    finally
+      Order.UnlockList;
+    end;
+    Release.SetEvent;
+    Service.WaitFor;
+    Seen := Order.LockList;
+    try
+      Steps := string.Join(',', Seen.ToArray);
+    finally
+      Order.UnlockList;
+    end;
+    Assert.AreEqual('erster,zweiter', Steps);
+    Assert.AreEqual(5, Service.Index.UnitCount, 'der zweite Aufbau läuft vollständig');
+  finally
+    Service.Free;
+    Order.Free;
     Release.Free;
     Entered.Free;
   end;

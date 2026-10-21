@@ -161,6 +161,10 @@ type
     function InDataNameString(ATypedQuote: Boolean): Boolean;
     function Signature: TAtlasEditorSignature;
     function SessionOrNil: TLspSession;
+    /// <summary>Führt AWork mit ASession in einem eigenen Thread aus und ruft ADone im Hauptthread (#874).
+    /// ASession nil: ADone(nil) sofort.</summary>
+    procedure RunInBackground(ASession: TLspSession; const AWork: TFunc<TLspSession, TJSONValue>;
+      const ADone: TProc<TJSONValue>);
     /// <summary>Gibt es den Server? Ohne ihn übernimmt die eingebaute Code Insight.</summary>
     function ServerAvailable: Boolean;
     /// <summary>Bedient Atlas diese Datei? Wie HandlesFile, aber ohne Diagnosezeile.</summary>
@@ -185,16 +189,18 @@ type
     procedure NotifyServer(const AMethod: string; AParams: TJSONObject);
     /// <summary>Fortschritt des Servers ("Index 45 %"); '' ohne Sitzung oder Vorgang. Startet keinen Server (#492).</summary>
     function ServerProgress: string;
-    /// <summary>Befehl an den Server (startet ihn bei Bedarf); Ergebnis gehört dem Aufrufer, nil bei Fehler.</summary>
-    function ExecuteServerCommand(const ACommand: string; ATimeoutMs: Cardinal = 30000): TJSONValue;
-    /// <summary>Wie ExecuteServerCommand, aber ohne den Hauptthread warten zu lassen (#874): Ein Server, der gerade
-    /// indexiert, antwortet erst danach. Startet den Server bei Bedarf (im Hauptthread), fragt im Hintergrund und
-    /// ruft ADone im Hauptthread auf, mit nil bei Fehler, Zeitlimit oder ohne Server. Den Wert gibt der Manager nach
+    /// <summary>Befehl an den Server, ohne den Hauptthread warten zu lassen (#874; eine synchrone Fassung gibt es
+    /// nicht mehr). Startet den Server bei Bedarf (im Hauptthread), fragt im Hintergrund und ruft ADone im
+    /// Hauptthread auf, mit nil bei Fehler, Zeitlimit oder ohne Server. Den Wert gibt der Manager nach
     /// ADone frei. Mehrere Befehle dürfen gleichzeitig laufen; StopSession wartet auf sie.</summary>
     procedure ExecuteServerCommandAsync(const ACommand: string; ATimeoutMs: Cardinal; const ADone: TProc<TJSONValue>);
     /// <summary>Befehl mit Argumenten (JSON-Array) an den laufenden Server (#108); startet keinen Server.
     /// nil ohne Sitzung, bei Fehler oder Zeitlimit; das Ergebnis gehört dem Aufrufer.</summary>
     function RunServerCommand(const ACommand, AArgumentsJson: string; ATimeoutMs: Cardinal): TJSONValue;
+    /// <summary>Wie RunServerCommand, aber im Hintergrund (#874): ADone im Hauptthread mit der Antwort oder nil;
+    /// den Wert gibt der Manager nach ADone frei. Startet keinen Server.</summary>
+    procedure RunServerCommandAsync(const ACommand, AArgumentsJson: string; ATimeoutMs: Cardinal;
+      const ADone: TProc<TJSONValue>);
     /// <summary>Laufende Sitzung, Server bei Bedarf gestartet; nil, wenn er nicht startet (Hauptthread).</summary>
     function ActiveSession: TLspSession;
     /// <summary>Laufende, initialisierte Sitzung oder nil; startet keinen Server (#402).</summary>
@@ -1126,39 +1132,58 @@ begin
     Result := '';
 end;
 
-function TAtlasCodeInsightManager.ExecuteServerCommand(const ACommand: string; ATimeoutMs: Cardinal): TJSONValue;
-var
-  Session: TLspSession;
-begin
-  Session := SessionOrNil;
-  if Session = nil then
-    Exit(nil);
-  Result := Session.ExecuteCommand(ACommand, ATimeoutMs);
-end;
-
 procedure TAtlasCodeInsightManager.ExecuteServerCommandAsync(const ACommand: string; ATimeoutMs: Cardinal;
   const ADone: TProc<TJSONValue>);
 var
-  Session: TLspSession;
-  Idle: TEvent;
   Command: string;
   Timeout: Cardinal;
+begin
+  Command := ACommand;
+  Timeout := ATimeoutMs;
+  // Start gehört dem Hauptthread (A-01); ohne Server gleich die Antwort „keine“.
+  RunInBackground(SessionOrNil,
+    function(ASession: TLspSession): TJSONValue
+    begin
+      Result := ASession.ExecuteCommand(Command, Timeout);
+    end, ADone);
+end;
+
+procedure TAtlasCodeInsightManager.RunServerCommandAsync(const ACommand, AArgumentsJson: string;
+  ATimeoutMs: Cardinal; const ADone: TProc<TJSONValue>);
+var
+  Command, Arguments: string;
+  Timeout: Cardinal;
+begin
+  Command := ACommand;
+  Arguments := AArgumentsJson;
+  Timeout := ATimeoutMs;
+  RunInBackground(RunningSession,
+    function(ASession: TLspSession): TJSONValue
+    begin
+      Result := ASession.RunCommand(Command, Arguments, Timeout);
+    end, ADone);
+end;
+
+procedure TAtlasCodeInsightManager.RunInBackground(ASession: TLspSession;
+  const AWork: TFunc<TLspSession, TJSONValue>; const ADone: TProc<TJSONValue>);
+var
+  Session: TLspSession;
+  Idle: TEvent;
+  Work: TFunc<TLspSession, TJSONValue>;
   Done: TProc<TJSONValue>;
 begin
   Done := ADone;
-  // Start gehört dem Hauptthread (A-01); ohne Server gleich die Antwort „keine“.
-  Session := SessionOrNil;
+  Session := ASession;
   if Session = nil then
   begin
     if Assigned(Done) then
       Done(nil);
     Exit;
   end;
+  Work := AWork;
   if AtomicIncrement(FServerCommands) = 1 then
     FServerCommandsIdle.ResetEvent;
   Idle := FServerCommandsIdle;
-  Command := ACommand;
-  Timeout := ATimeoutMs;
   TThread.CreateAnonymousThread(
     procedure
     var
@@ -1169,7 +1194,7 @@ begin
         Json := '';
         Answer := nil;
         try
-          Answer := Session.ExecuteCommand(Command, Timeout);
+          Answer := Work(Session);
           if Answer <> nil then
             Json := Answer.ToJSON;
         except

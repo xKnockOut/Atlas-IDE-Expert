@@ -111,6 +111,8 @@ type
     /// <summary>Sperrt ACacheFile, gibt eine alte Sperre frei; False = nur lesen. Beim Aufräumen bleiben
     /// ACacheFile und ALibraryCacheFile stehen (#616).</summary>
     function LockCache(const ACacheFile, ALibraryCacheFile: string): Boolean;
+    /// <summary>Löscht Projekt- und Bibliotheks-Cache; läuft als TIndexRequest.Prepare im Index-Thread.</summary>
+    function DiscardCacheFiles(const ACacheFile, ALibraryCacheFile: string): TProc;
     /// <summary>Weist auf gemischte Kodierungen der Projektdateien hin (Index-Thread).</summary>
     procedure ReportEncodings;
     procedure Touch;
@@ -566,6 +568,31 @@ begin
     on E: Exception do
       FLogger.Warning(Format('Aufräumen des Cache-Ordners fehlgeschlagen: %s', [E.Message]));
   end;
+end;
+
+function TShellWorkspace.DiscardCacheFiles(const ACacheFile, ALibraryCacheFile: string): TProc;
+var
+  Logger: ILogger;
+  CacheFile, LibraryCacheFile: string;
+begin
+  Logger := FLogger;
+  CacheFile := ACacheFile;
+  LibraryCacheFile := ALibraryCacheFile;
+  Result :=
+    procedure
+    begin
+      if not TFile.Exists(CacheFile) then
+        Exit;
+      try
+        TFile.Delete(CacheFile);
+        if TFile.Exists(LibraryCacheFile) then
+          TFile.Delete(LibraryCacheFile);
+        Logger.Info('Index-Cache verworfen: ' + ExtractFileName(CacheFile));
+      except
+        on E: Exception do
+          Logger.Warning(Format('Index-Cache %s nicht löschbar: %s', [ExtractFileName(CacheFile), E.ClassName]));
+      end;
+    end;
 end;
 
 function TShellWorkspace.SelectBuild(const AConfig, APlatform: string; out AError: string): Boolean;
@@ -1098,7 +1125,8 @@ begin
   if State = FSignature then
     Exit;
   FSignature := State;
-  FIndexService.Stop;
+  // Kein Stop hier (#874): Start bricht den laufenden Aufbau ab, ohne in der Nachrichtenschleife auf ihn zu
+  // warten; der neue Aufbau beginnt erst nach dessen Ende.
   Resolver := TUnitResolver.Create(Project, LibraryPaths, FileExistsFunc);
   // Ordner einmal auflisten, über alle Projekte geteilt (CPU beim Start).
   Resolver.ListUnits := TSharedUnitListings.List;
@@ -1151,16 +1179,9 @@ begin
   if FDiscardCache then
   begin
     FDiscardCache := False;
-    if not Request.ReadOnlyCache and TFile.Exists(CacheFile) then
-      try
-        TFile.Delete(CacheFile);
-        if TFile.Exists(Request.LibraryCacheFile) then
-          TFile.Delete(Request.LibraryCacheFile);
-        FLogger.Info('Index-Cache verworfen: ' + CacheFile);
-      except
-        on E: Exception do
-          FLogger.Warning(Format('Index-Cache %s nicht löschbar: %s', [CacheFile, E.Message]));
-      end;
+    // Im Index-Thread nach dem Ende des alten Aufbaus löschen: Sonst schriebe er den Cache danach wieder.
+    if not Request.ReadOnlyCache then
+      Request.Prepare := DiscardCacheFiles(CacheFile, Request.LibraryCacheFile);
   end;
   TMonitor.Enter(FLock);
   try

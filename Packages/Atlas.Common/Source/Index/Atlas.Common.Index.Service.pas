@@ -3,7 +3,10 @@
 // Hält den Symbolindex und baut ihn in einem Hintergrund-Thread auf:
 // Cache laden, Projektdateien und referenzierte Units indizieren, Cache
 // schreiben. Ein neuer Start (z. B. nach geänderter Konfiguration) bricht
-// den laufenden Aufbau ab und wartet auf ihn.
+// den laufenden Aufbau ab, wartet aber nicht auf ihn (#874): Das tut der neue
+// Index-Thread, bevor er beginnt. So hält Start die Nachrichtenschleife des
+// Servers nicht auf, und zwei Aufbauten laufen trotzdem nie gleichzeitig.
+// Stop bricht ab und wartet.
 //
 // Schreibt eine andere Instanz den Cache gerade (#62), wartet der Aufbau
 // begrenzt, bis sie fertig ist oder die Sperre freigibt, und lädt dann ihren
@@ -72,6 +75,9 @@ type
     CacheWaitMs: Integer;
     /// <summary>Verwendungen der Bezeichner in Projekt-Units erfassen (#492, index.usages).</summary>
     Usages: Boolean;
+    /// <summary>Optional: läuft im Index-Thread, wenn der vorige Aufbau geendet hat, vor dem Lesen der Caches,
+    /// z. B. um sie zu löschen (#874: Start wartet nicht mehr auf den alten Aufbau).</summary>
+    Prepare: TProc;
   end;
 
   /// <summary>Cache-Datei verworfen; AReason z. B. "Prüfsumme stimmt nicht" (#492).</summary>
@@ -84,8 +90,8 @@ type
   private
     FIndex: ISymbolIndex;
     FFileSystem: IIndexFileSystem;
+    /// <summary>Jüngster Index-Thread (TIndexThread); hält den abgebrochenen Vorgänger, bis der endet.</summary>
     FThread: TThread;
-    FCancelled: Boolean;
     FBuilder: TIndexBuilder;
     FLock: TObject;
     /// <summary>Anfragen, die FBuilder gerade nutzen; nur unter FLock ändern.</summary>
@@ -100,12 +106,12 @@ type
     FOnCacheRejected: TIndexCacheRejectedEvent;
     /// <summary>Cache-Datei des letzten Aufbaus; nur unter FLock.</summary>
     FCacheFile: string;
-    procedure Run(const ARequest: TIndexRequest);
+    procedure Run(const ARequest: TIndexRequest; const ACancelled: TFunc<Boolean>);
     function ReadCache(const AFileName: string): TArray<TIndexCacheEntry>;
     /// <summary>Schreibt Projekt- und Bibliotheks-Cache; AParsed = seit dem letzten Schreiben neu gelesene Units.</summary>
     procedure WriteCaches(const ARequest: TIndexRequest; const ACached, ALibraryCached: TArray<TIndexCacheEntry>;
       AParsed: Integer);
-    procedure WaitForOtherWriter(const ARequest: TIndexRequest);
+    procedure WaitForOtherWriter(const ARequest: TIndexRequest; const ACancelled: TFunc<Boolean>);
     function AcquireBuilder: TIndexBuilder;
     procedure ReleaseBuilder;
     procedure ReplaceBuilder(ABuilder: TIndexBuilder);
@@ -114,7 +120,8 @@ type
   public
     constructor Create(const AIndex: ISymbolIndex; const AFileSystem: IIndexFileSystem);
     destructor Destroy; override;
-    /// <summary>Startet den Aufbau im Hintergrund; ein laufender wird vorher abgebrochen.</summary>
+    /// <summary>Startet den Aufbau im Hintergrund; ein laufender wird abgebrochen. Kehrt sofort zurück: Der neue
+    /// Aufbau beginnt erst, wenn der alte geendet hat (#874).</summary>
     procedure Start(const ARequest: TIndexRequest);
     /// <summary>Bricht ab und wartet auf das Ende.</summary>
     procedure Stop;
@@ -253,25 +260,57 @@ type
   private
     FService: TIndexService;
     FRequest: TIndexRequest;
+    /// <summary>Abgebrochener Vorgänger; Execute wartet auf ihn und gibt ihn frei.</summary>
+    FPrevious: TThread;
+    FCancelled: Boolean;
+    function IsCancelled: Boolean;
   protected
     procedure Execute; override;
   public
-    constructor Create(AService: TIndexService; const ARequest: TIndexRequest);
+    constructor Create(AService: TIndexService; const ARequest: TIndexRequest; APrevious: TThread);
+    destructor Destroy; override;
+    /// <summary>Bricht den Aufbau ab; wartet nicht.</summary>
+    procedure Cancel;
   end;
 
 { TIndexThread }
 
-constructor TIndexThread.Create(AService: TIndexService; const ARequest: TIndexRequest);
+constructor TIndexThread.Create(AService: TIndexService; const ARequest: TIndexRequest; APrevious: TThread);
 begin
   FService := AService;
   FRequest := ARequest;
+  FPrevious := APrevious;
   inherited Create(False);
+end;
+
+destructor TIndexThread.Destroy;
+begin
+  // Wartet selbst, falls Execute nicht bis zum Vorgänger kam.
+  FreeAndNil(FPrevious);
+  inherited Destroy;
+end;
+
+procedure TIndexThread.Cancel;
+begin
+  FCancelled := True;
+end;
+
+function TIndexThread.IsCancelled: Boolean;
+begin
+  Result := FCancelled;
 end;
 
 procedure TIndexThread.Execute;
 begin
   NameThreadForDebugging('Atlas.Index');
-  FService.Run(FRequest);
+  // Erst den abgebrochenen Vorgänger beenden: Builder und Cache-Dateien gehören immer nur einem Aufbau.
+  if FPrevious <> nil then
+  begin
+    FPrevious.WaitFor;
+    FreeAndNil(FPrevious);
+  end;
+  if not FCancelled then
+    FService.Run(FRequest, IsCancelled);
 end;
 
 { TIndexService }
@@ -401,7 +440,7 @@ begin
     FOnCacheRejected(AFileName, Reason);
 end;
 
-procedure TIndexService.Run(const ARequest: TIndexRequest);
+procedure TIndexService.Run(const ARequest: TIndexRequest; const ACancelled: TFunc<Boolean>);
 var
   Builder: TIndexBuilder;
   Cached, LibraryCached: TArray<TIndexCacheEntry>;
@@ -425,7 +464,9 @@ begin
       Builder.LibraryRoots := ARequest.LibraryRoots;
       Builder.LibraryDefines := ARequest.LibraryDefines;
       Builder.Usages := ARequest.Usages;
-      WaitForOtherWriter(ARequest);
+      if Assigned(ARequest.Prepare) then
+        ARequest.Prepare();
+      WaitForOtherWriter(ARequest, ACancelled);
       TMonitor.Enter(FLock);
       try
         FCacheFile := ARequest.CacheFile;
@@ -463,7 +504,7 @@ begin
     BuildResult := Builder.Build(ARequest.Files, ARequest.SearchFiles, ARequest.LibraryFiles, FOnProgress,
       function: Boolean
       begin
-        Result := FCancelled;
+        Result := ACancelled();
       end, Turn,
       procedure(const APartial: TIndexBuildResult)
       begin
@@ -503,7 +544,7 @@ begin
   end;
 end;
 
-procedure TIndexService.WaitForOtherWriter(const ARequest: TIndexRequest);
+procedure TIndexService.WaitForOtherWriter(const ARequest: TIndexRequest; const ACancelled: TFunc<Boolean>);
 var
   Watch: TStopwatch;
   Before, Stamp: Int64;
@@ -515,7 +556,7 @@ begin
   Watch := TStopwatch.StartNew;
   // Bis die andere Instanz einen neuen Stand geschrieben oder die Sperre freigegeben hat,
   // nie länger als CacheWaitMs.
-  while not FCancelled and (Watch.ElapsedMilliseconds < ARequest.CacheWaitMs) and ARequest.CacheBusy() do
+  while not ACancelled() and (Watch.ElapsedMilliseconds < ARequest.CacheWaitMs) and ARequest.CacheBusy() do
   begin
     if FFileSystem.FileStamp(ARequest.CacheFile, Stamp) and (Stamp <> Before) then
       Exit;
@@ -524,17 +565,22 @@ begin
 end;
 
 procedure TIndexService.Start(const ARequest: TIndexRequest);
+var
+  Previous: TThread;
 begin
-  Stop;
-  FCancelled := False;
-  FThread := TIndexThread.Create(Self, ARequest);
+  // Nicht warten (#874): Der neue Thread wartet auf den abgebrochenen und gibt ihn frei.
+  Previous := FThread;
+  FThread := nil;
+  if Previous <> nil then
+    TIndexThread(Previous).Cancel;
+  FThread := TIndexThread.Create(Self, ARequest, Previous);
 end;
 
 procedure TIndexService.Stop;
 begin
   if FThread = nil then
     Exit;
-  FCancelled := True;
+  TIndexThread(FThread).Cancel;
   FThread.WaitFor;
   FreeAndNil(FThread);
 end;
