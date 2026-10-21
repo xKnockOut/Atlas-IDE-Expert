@@ -342,6 +342,14 @@ begin
       Result := 'Atlas.MultiCursorAbove';
     TAtlasKeyFunction.MultiCursorBelow:
       Result := 'Atlas.MultiCursorBelow';
+    TAtlasKeyFunction.Search:
+      Result := 'Atlas.Search';
+    TAtlasKeyFunction.SearchNext:
+      Result := 'Atlas.SearchNext';
+    TAtlasKeyFunction.SearchPrevious:
+      Result := 'Atlas.SearchPrevious';
+    TAtlasKeyFunction.SearchMethod:
+      Result := 'Atlas.SearchInMethod';
   else
     Result := '';
   end;

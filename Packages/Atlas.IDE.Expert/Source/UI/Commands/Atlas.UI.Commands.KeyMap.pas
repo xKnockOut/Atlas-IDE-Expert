@@ -320,6 +320,14 @@ begin
       Id := TAtlasTextId.MultiCursorAboveCommand;
     TAtlasKeyFunction.MultiCursorBelow:
       Id := TAtlasTextId.MultiCursorBelowCommand;
+    TAtlasKeyFunction.Search:
+      Id := TAtlasTextId.SearchCommand;
+    TAtlasKeyFunction.SearchNext:
+      Id := TAtlasTextId.SearchNextCommand;
+    TAtlasKeyFunction.SearchPrevious:
+      Id := TAtlasTextId.SearchPreviousCommand;
+    TAtlasKeyFunction.SearchMethod:
+      Id := TAtlasTextId.SearchInMethodCommand;
   else
     Id := TAtlasTextId.KeyMapUnitSearchIde;
   end;

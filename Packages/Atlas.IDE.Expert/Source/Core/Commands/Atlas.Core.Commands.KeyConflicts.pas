@@ -49,7 +49,8 @@ type
     NavBack, NavForward, LastEdit, PeekDefinition, PeekReferences, Breadcrumbs, JumpToMatch,
     JumpToMatchSelect, NextChange, PreviousChange, MoveLinesUp, MoveLinesDown, DuplicateLinesUp,
     DuplicateLinesDown, CompleteStatement, MultiCursorNext, MultiCursorSkip, MultiCursorLineEnds,
-    MultiCursorAbove, MultiCursorBelow);
+    MultiCursorAbove, MultiCursorBelow, Search, SearchNext, SearchPrevious,
+    SearchMethod);
   TAtlasKeyChoice = (UseAtlas, LeaveOther, OtherKey);
   /// <summary>NoKey: keine Taste; IdeKey: Taste der IDE über Code Insight, Atlas belegt nichts selbst;
   /// Free: Atlas belegt die freie Taste; AtlasWins: belegt, Atlas hat Vorrang; Left: belegt, Atlas
@@ -228,7 +229,13 @@ begin
     Create(TAtlasKeyFunction.MultiCursorLineEnds, Word(ASettings.MultiCursorLineEndsKey), True,
       ASettings.MultiCursor),
     Create(TAtlasKeyFunction.MultiCursorAbove, Word(ASettings.MultiCursorAboveKey), True, ASettings.MultiCursor),
-    Create(TAtlasKeyFunction.MultiCursorBelow, Word(ASettings.MultiCursorBelowKey), True, ASettings.MultiCursor)];
+    Create(TAtlasKeyFunction.MultiCursorBelow, Word(ASettings.MultiCursorBelowKey), True, ASettings.MultiCursor),
+    // Atlas-Suche (#878): Strg+F, F3 und Umschalt+F3 bewusst übernommen (Vorrang), nur mit search.replaceIdeSearch;
+    // aus = die IDE behält ihre Suche. „In Methode suchen“ (#877) ist ein eigener Editorbefehl.
+    Create(TAtlasKeyFunction.Search, Word(ASettings.SearchKey), True, ASettings.SearchReplaceIde),
+    Create(TAtlasKeyFunction.SearchNext, Word(ASettings.SearchNextKey), True, ASettings.SearchReplaceIde),
+    Create(TAtlasKeyFunction.SearchPrevious, Word(ASettings.SearchPreviousKey), True, ASettings.SearchReplaceIde),
+    Create(TAtlasKeyFunction.SearchMethod, Word(ASettings.SearchMethodKey), Shared)];
 end;
 
 class procedure TAtlasKeyEntry.ToSettings(const AEntries: TArray<TAtlasKeyEntry>;
@@ -354,6 +361,14 @@ begin
         ASettings.MultiCursorAboveKey := Entry.Key;
       TAtlasKeyFunction.MultiCursorBelow:
         ASettings.MultiCursorBelowKey := Entry.Key;
+      TAtlasKeyFunction.Search:
+        ASettings.SearchKey := Entry.Key;
+      TAtlasKeyFunction.SearchNext:
+        ASettings.SearchNextKey := Entry.Key;
+      TAtlasKeyFunction.SearchPrevious:
+        ASettings.SearchPreviousKey := Entry.Key;
+      TAtlasKeyFunction.SearchMethod:
+        ASettings.SearchMethodKey := Entry.Key;
       // Strg+F12 ist fest; ein- und ausgeschaltet wird über unitSearch.replaceIdeDialog.
       TAtlasKeyFunction.UnitSearchIde:
         ;

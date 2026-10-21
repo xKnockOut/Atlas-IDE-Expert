@@ -12,7 +12,8 @@ uses
   System.SysUtils,
   System.JSON,
   System.Generics.Collections,
-  Atlas.Core.UnitSearch.Model;
+  Atlas.Core.UnitSearch.Model,
+  Atlas.Core.UnitSearch.Sections;
 
 type
   TAtlasUnitSearchState = class
@@ -33,6 +34,8 @@ type
     /// <summary>Breite der Vorschau in Pixeln bei 96 dpi; 0 = Vorgabe.</summary>
     PreviewWidth: Integer;
     PreviewVisible: Boolean;
+    /// <summary>Wahl je Abschnitt des Detail-Panels (#876); nur für die Sitzung, nicht im JSON.</summary>
+    Sections: TAtlasUnitSectionChoices;
     constructor Create;
     destructor Destroy; override;
     /// <summary>Eingeklappte Gruppen (Schlüssel in Kleinschrift) der Projektgruppe für AGrouping.</summary>

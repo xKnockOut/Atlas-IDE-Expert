@@ -593,7 +593,12 @@ type
     SettingsMinimapCharacters, SettingsMinimapWidth, SettingsMinimapScale, SettingsMinimapMaxColumn,
     SettingsMinimapSide, SettingsMinimapRight, SettingsMinimapLeft, SettingsMinimapSlider, SettingsMinimapSliderAlways,
     SettingsMinimapSliderHover, SettingsMinimapHeaders, SettingsMinimapMethod, SettingsMinimapMarkers,
-    SettingsMinimapClickJumps, MinimapNoticeTitle, MinimapNoticeText, MinimapHideIde, MinimapTurnOff);
+    SettingsMinimapClickJumps, MinimapNoticeTitle, MinimapNoticeText, MinimapHideIde, MinimapTurnOff,
+    UnitSearchSectionHeader, UnitSearchSectionForm,
+    SearchCommand, SearchNextCommand, SearchPreviousCommand, SearchInMethodCommand, SearchClearCommand,
+    SearchDialogTitle, SearchTextLabel, SearchScopeLabel, SearchScopeMethod, SearchScopeUnit, SearchScopeSelection,
+    SearchLevelLabel, SearchCaseSensitive, SearchWholeWord, SearchIdentifier, SearchHitCount, SearchNoHits,
+    SearchNoMethod, SearchNoSelection, SearchWrapped, SearchFooter, SearchNothing);
 
   TAtlasStrings = class
   private class var
@@ -1713,7 +1718,15 @@ const
      'Überschriften für Klassen und Methoden', 'Aktuelle Methode hinterlegen',
      'Marken zeigen (Fehler, Suchtreffer, Git-Änderungen)', 'Klick springt an die Stelle (sonst nur scrollen)',
      'Zwei Minimaps sichtbar', 'Die IDE zeigt ihre eigene Minimap neben der von Atlas.', 'IDE-Minimap ausblenden',
-     'Atlas-Minimap aus'),
+     'Atlas-Minimap aus',
+     'Kopfkommentar', 'Formular',
+     'Suchen (Atlas) …', 'Weitersuchen (Atlas)', 'Rückwärts weitersuchen (Atlas)', 'In Methode suchen …',
+     'Suchmarkierungen entfernen', 'Atlas – Suchen', 'Suchen nach:', 'Bereich:', 'Methode', 'Unit', 'Auswahl',
+     'Methode:', 'Groß-/Kleinschreibung', 'Nur ganze Wörter',
+     'Bezeichner statt Text (ohne Kommentare und Strings)', '%d Treffer', 'Keine Treffer',
+     'Der Cursor steht in keiner Methode.', 'Keine Auswahl.',
+     'Atlas-Suche: Ende erreicht, weiter von der anderen Seite.', 'Enter springt · Esc schließt',
+     'Atlas-Suche: keine Treffer für „%s“.'),
     ('Enter to accept · Esc to close', '%d of %d', 'No matches for “%s”', 'Backspace widens the search',
      'No suggestions here', 'Esc closes', 'No details for this entry', 'Overload', 'Deprecated: %s', 'Deprecated.',
      'Inherited from %s', 'Inherited', 'optional, default %s', 'No overload with %d parameters.', '… %d more',
@@ -2750,7 +2763,15 @@ const
      'Show visible area:', 'Always', 'Only on mouse over', 'Headers for classes and methods',
      'Highlight the current method', 'Show markers (errors, search hits, Git changes)',
      'Click jumps to the spot (otherwise it only scrolls)', 'Two minimaps visible',
-     'The IDE shows its own minimap next to the Atlas one.', 'Hide IDE minimap', 'Turn Atlas minimap off'));
+     'The IDE shows its own minimap next to the Atlas one.', 'Hide IDE minimap', 'Turn Atlas minimap off',
+     'Header comment', 'Form',
+     'Find (Atlas) …', 'Find next (Atlas)', 'Find previous (Atlas)', 'Find in method …',
+     'Clear search highlights', 'Atlas – Find', 'Find what:', 'Scope:', 'Method', 'Unit', 'Selection',
+     'Method:', 'Match case', 'Whole words only',
+     'Identifier instead of text (no comments or strings)', '%d matches', 'No matches',
+     'The cursor is not inside a method.', 'No selection.',
+     'Atlas search: reached the end, continuing from the other side.', 'Enter jumps · Esc closes',
+     'Atlas search: no matches for “%s”.'));
 
 { TAtlasStrings }
 

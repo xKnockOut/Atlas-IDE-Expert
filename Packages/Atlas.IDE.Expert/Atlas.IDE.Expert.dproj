@@ -168,6 +168,7 @@
         <DCCReference Include="Source\Core\Projects\Atlas.Core.Projects.Setup.pas"/>
         <DCCReference Include="Source\Core\UnitSearch\Atlas.Core.UnitSearch.Model.pas"/>
         <DCCReference Include="Source\Core\UnitSearch\Atlas.Core.UnitSearch.State.pas"/>
+        <DCCReference Include="Source\Core\UnitSearch\Atlas.Core.UnitSearch.Sections.pas"/>
         <DCCReference Include="Source\UI\UnitSearch\Atlas.UI.UnitSearch.Window.pas"/>
         <DCCReference Include="Source\IDE\UnitSearch\Atlas.IDE.UnitSearch.Commands.pas"/>
         <DCCReference Include="Source\Core\Generate\Atlas.Core.Generate.Contract.pas"/>
@@ -312,6 +313,10 @@
         <DCCReference Include="Source\Core\Editor\Atlas.Core.Editor.Recursion.pas"/>
         <DCCReference Include="Source\Core\Problems\Atlas.Core.Problems.Store.pas"/>
         <DCCReference Include="Source\IDE\Editor\Atlas.IDE.Editor.Pairs.pas"/>
+        <DCCReference Include="Source\Core\Search\Atlas.Core.Search.Matching.pas"/>
+        <DCCReference Include="Source\Core\Search\Atlas.Core.Search.Scopes.pas"/>
+        <DCCReference Include="Source\UI\Search\Atlas.UI.Search.Dialog.pas"/>
+        <DCCReference Include="Source\IDE\Search\Atlas.IDE.Search.Commands.pas"/>
         <DCCReference Include="Source\IDE\Foundation\Atlas.IDE.Foundation.StructureSwitch.pas"/>
         <DCCReference Include="Source\Core\Status\Atlas.Core.Status.Contract.pas"/>
         <DCCReference Include="Source\Core\Status\Atlas.Core.Status.Registry.pas"/>
