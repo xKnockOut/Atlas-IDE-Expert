@@ -2317,7 +2317,7 @@ Voraussetzung für EX2 bis EX7: mindestens eine Einstellung trägt `x-experiment
 | RK6 | `function TFoo.GetName: string; begin Result := Name; end;` mit Feld `FName` | Warnung „Getter GetName liest die eigene Property Name …; das Feld FName verwenden“, Schnellkorrektur setzt `FName` ein; zusätzlich Pfeil in der Rinne |
 | RK7 | Setter `SetTitle` mit `Self.Title := AValue` ohne Feld `FTitle` | Warnung ohne Korrektur |
 | RK8 | Zeile mit dem Aufruf bearbeiten | Pfeil verschwindet und kommt nach der Tipp-Pause mit der neuen Antwort wieder |
-| RK9 | `editor.recursionMarkers` aus bzw. „Element ausblenden“ › Rekursionssymbole; Regel `recursive-property-accessor` auf `off` | Keine Pfeile, keine Anfrage an den Server; keine Warnung |
+| RK9 | `editor.recursionMarkers` aus bzw. „Element ausblenden“ › Rekursionssymbole; Regel `setter-recursion` auf `off` | Keine Pfeile, keine Anfrage an den Server; keine Warnung |
 
 ## Vervollständigung: Treffer und Rest (#497)
 
@@ -3095,3 +3095,16 @@ Voraussetzung: Server läuft; Einstellungen auf Vorgabe; Projekt mit einigen Bef
 | AP24 | Server beenden, Optionen öffnen | Seite zeigt „Ohne laufenden Server fehlt der Regelkatalog; hier stehen nur die eingestellten Regeln.“ und nur diese Regeln |
 | AP25 | Knoten „Profile und Baseline“ | Knopf „Projekt-Einstellungen…“, Baseline-Stand, „Aktualisieren“ und „Löschen“ arbeiten |
 | AP26 | Oberfläche auf Englisch | Fenster, Tooltip und Seite englisch, Katalogtexte englisch |
+
+## Setter oder Getter ruft sich selbst auf (#910)
+
+Voraussetzung: Server läuft; Einstellungen auf Vorgabe.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| SR1 | `TKunde` mit `FName`, `property Name: string read FName write SetName;`, im Setter `if Name <> Value then Name := Value;` | Rote Wellenlinie unter `Name` in der Zuweisung: „Zuweisung an die Property Name im eigenen Setter: Endlosrekursion.“ (Fehler); Hover mit „Atlas · setter-recursion“ (**Abnahme**) |
+| SR2 | Alt+Enter bzw. Glühbirne „Feld FName verwenden“ | `FName := Value;`; Strg+Z nimmt es in einem Schritt zurück |
+| SR3 | Getter `Result := Name;` in `GetName` | „Lesen der Property Name im eigenen Getter: Endlosrekursion.“ |
+| SR4 | `// lsp-ignore: recursive-property-accessor` über der Zeile | Keine Meldung, kein Hinweis „Unbekannte Regelkennung“ |
+| SR5 | `"rules": {"setter-recursion": "off"}` bzw. `{"exclude": ["Alt/*.pas"]}` | Keine Meldung bzw. keine in `Alt/` |
+| SR6 | Fenster „Atlas-Prüfung“ | Befund in Gruppe „Fehler finden“, Kategorie Bug |

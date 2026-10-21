@@ -14,7 +14,8 @@
 //   Routinen liegt, mit der kürzesten Kette von der aufrufenden Routine zurück
 //   zu ihr. Überladungen gelten als eine Routine.
 // - AccessorTraps: Getter liest bzw. Setter schreibt die eigene Property
-//   (Result := Name in GetName); mit dem Feld F<Name>, wenn die Klasse es hat.
+//   (Result := Name in GetName); mit dem Feld aus read/write der Property oder
+//   F<Name>, wenn die Klasse es hat.
 
 interface
 
@@ -328,9 +329,12 @@ begin
   finally
     Stack.Free;
   end;
-  // Feldvorschlag je Property: F<Name> derselben Klasse.
+  // Feldvorschlag je Property (#910): das Feld aus read bzw. write der Deklaration,
+  // sonst F<Name> derselben Klasse.
   for Name in FProperties.Keys do
-    if FFields.TryGetValue(OwnerPart(Name) + '.F' + LastPart(Name), Text) then
+    if FFields.TryGetValue(OwnerPart(Name) + '.' + UpperCase(FProperties[Name].Reader), Text) or
+      FFields.TryGetValue(OwnerPart(Name) + '.' + UpperCase(FProperties[Name].Writer), Text) or
+      FFields.TryGetValue(OwnerPart(Name) + '.F' + LastPart(Name), Text) then
       FProperties[Name].Field := Text;
 end;
 

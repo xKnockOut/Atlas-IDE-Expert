@@ -56,6 +56,9 @@ type
 
 implementation
 
+uses
+  Atlas.Common.Configuration.Contract;
+
 function CommentBody(const AText: string): string;
 begin
   Result := AText;
@@ -234,7 +237,7 @@ var
   Id: string;
 begin
   for Id in AIds do
-    if (Id = '*') or SameText(Id, ARuleId) then
+    if (Id = '*') or SameText(TRuleIdAliases.Current(Id), TRuleIdAliases.Current(ARuleId)) then
       Exit(True);
   Result := False;
 end;

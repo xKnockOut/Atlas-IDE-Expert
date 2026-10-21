@@ -351,14 +351,14 @@ begin
     '      "good": "type\n  TFoo = class\n    destructor Destroy; override;\n  end;"' + #10 +
     '    },' + #10 +
     '    {' + #10 +
-    '      "id": "recursive-property-accessor",' + #10 +
-    '      "name": "Property accessor calls itself",' + #10 +
+    '      "id": "setter-recursion",' + #10 +
+    '      "name": "Setter or getter calls itself",' + #10 +
     '      "category": "bug",' + #10 +
-    '      "severity": "warning",' + #10 +
+    '      "severity": "error",' + #10 +
     '      "group": "find-bugs",' + #10 +
-    '      "description": "A getter reads its own property or a setter writes its own property. The accessor calls itself endlessly and ends in a stack overflow. Use the field instead.",' + #10 +
-    '      "bad": "function TFoo.GetName: string;\nbegin\n  Result := Name;\nend;",' + #10 +
-    '      "good": "function TFoo.GetName: string;\nbegin\n  Result := FName;\nend;"' + #10 +
+    '      "description": "A setter assigns to its own property (Name := Value in SetName) or a getter reads it (Result := Name in GetName). The accessor calls itself endlessly and ends in a stack overflow' + ' at run time; the compiler stays silent. Quick fix: use the field instead (the field from the property declaration, otherwise F plus the name, if the class has it). Formerly recursive-property-accesso' + 'r; settings and suppressions with the old ID still apply.",' + #10 +
+    '      "bad": "procedure TKunde.SetName(const Value: string);\nbegin\n  if Name <> Value then\n    Name := Value;\nend;",' + #10 +
+    '      "good": "procedure TKunde.SetName(const Value: string);\nbegin\n  if FName <> Value then\n    FName := Value;\nend;"' + #10 +
     '    },' + #10 +
     '    {' + #10 +
     '      "id": "component-create-without-override",' + #10 +
@@ -1343,9 +1343,9 @@ begin
     '      "description": "Ein destructor Destroy ist ohne override deklariert. Free ruft TObject.Destroy auf, dieser Destruktor läuft also nie."' + #10 +
     '    },' + #10 +
     '    {' + #10 +
-    '      "id": "recursive-property-accessor",' + #10 +
-    '      "name": "Property-Accessor ruft sich selbst auf",' + #10 +
-    '      "description": "Ein Getter liest seine eigene Property oder ein Setter schreibt sie. Der Accessor ruft sich endlos selbst auf und endet im Stapelüberlauf. Stattdessen das Feld verwenden."' + #10 +
+    '      "id": "setter-recursion",' + #10 +
+    '      "name": "Setter oder Getter ruft sich selbst auf",' + #10 +
+    '      "description": "Ein Setter weist an die eigene Property zu (Name := Value in SetName) oder ein Getter liest sie (Result := Name in GetName). Das ergibt eine Endlosrekursion und einen Stapelüberl' + 'auf zur Laufzeit; der Compiler schweigt. Schnellkorrektur: das Feld verwenden (das Feld aus der Property-Deklaration, sonst F und der Name, wenn die Klasse es hat). Früher recursive-property-accessor;' + ' Einstellungen und Unterdrückungen mit der alten Kennung wirken weiter."' + #10 +
     '    },' + #10 +
     '    {' + #10 +
     '      "id": "component-create-without-override",' + #10 +

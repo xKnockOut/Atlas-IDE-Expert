@@ -29,3 +29,4 @@ exception-freed | Ref.Daten.Suche.pas | Result := FAnbieter(AName) | try Result 
 catch-all-without-raise | Ref.Formulare.Haupt.pas | Formular.ShowModal; | try Formular.ShowModal; except on E: Exception do Caption := E.Message; end;
 string-concat-in-loop | Ref.Formulare.Haupt.pas | KundenListe.Items.Clear;\n    for var Kunde in TKundenSuche.Suchen(Suche.SuchEdit.Text) do\n      KundenListe.Items.Add(Kunde); | KundenListe.Items.Clear;\n    var Alle: string := '';\n    for var Kunde in TKundenSuche.Suchen(Suche.SuchEdit.Text) do\n      Alle := Alle + Kunde;
 redundant-begin-end | Ref.Formulare.Haupt.pas | KundenListe.Items.Add(Kunde); | begin\n        KundenListe.Items.Add(Kunde);\n      end;
+setter-recursion | Ref.Komponenten.Anzeige.pas | FWert := AValue; | Wert := AValue;

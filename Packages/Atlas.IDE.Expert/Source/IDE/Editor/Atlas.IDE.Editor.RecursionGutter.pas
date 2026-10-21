@@ -14,7 +14,7 @@
 // Abschaltbar über die Einstellung „Rekursionssymbole“ (editor.recursionMarkers,
 // auch als Schnellschalter) und am Element (#628); Sicherung über
 // TAtlasFeature.EditorCommands (#493). Die Property-Falle meldet der Server als
-// Befund der Regel recursive-property-accessor.
+// Befund der Regel setter-recursion.
 
 interface
 

@@ -183,7 +183,8 @@ begin
     for Index := 0 to ANode.Count - 1 do
     begin
       Value := ANode[Index];
-      Rule.Id := ANode.Keys[Index];
+      // Frühere Kennungen gelten für die umbenannte Regel (#910).
+      Rule.Id := TRuleIdAliases.Current(ANode.Keys[Index]);
       Rule.Severity := TRuleSeverity.Default;
       Rule.Options := '';
       if Value.Kind = TJsonKind.String_ then

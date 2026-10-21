@@ -183,10 +183,10 @@ const
     'invisible-char,' +
     'lock-without-finally,metric-cognitive-complexity,metric-cyclomatic-complexity,metric-method-length,' +
     'metric-nesting-depth,metric-parameter-count,owned-field-free-unclear,owned-field-not-freed,' +
-    'possibly-uninitialized,raise-in-finally,recursive-property-accessor,redundant-assigned-free,' +
+    'possibly-uninitialized,raise-in-finally,redundant-assigned-free,' +
     'result-not-set,' +
     'security-command-injection,security-insecure-http,security-insecure-random,security-sql-injection,' +
-    'security-tls-verification-disabled,security-weak-crypto,self-assignment,sizeof-pointer,' +
+    'security-tls-verification-disabled,security-weak-crypto,self-assignment,setter-recursion,sizeof-pointer,' +
     'slash-command,synchronize-in-destructor,thread-free-with-free-on-terminate,thread-resume-suspend,' +
     'thread-use-after-free-on-terminate,thread-vcl-access,type-used-before-declaration,' +
     'unneeded-forward-declaration,unreachable-code,unresolved-identifier,' +
@@ -209,8 +209,8 @@ begin
     'form-field-type-mismatch,form-field-without-object,form-object-without-field,hides-virtual,' +
     'ifthen-side-effect,implemented-not-declared,int32-mul-overflow,interface-guid,lock-without-finally,' +
     'owned-field-free-unclear,owned-field-not-freed,' +
-    'possibly-uninitialized,raise-in-finally,recursive-property-accessor,result-not-set,security-command-injection,' +
-    'security-sql-injection,security-tls-verification-disabled,self-assignment,sizeof-pointer,' +
+    'possibly-uninitialized,raise-in-finally,result-not-set,security-command-injection,' +
+    'security-sql-injection,security-tls-verification-disabled,self-assignment,setter-recursion,sizeof-pointer,' +
     'synchronize-in-destructor,thread-free-with-free-on-terminate,thread-use-after-free-on-terminate,' +
     'thread-vcl-access,type-used-before-declaration,unreachable-code,unresolved-identifier,' +
     'virtual-instead-of-override',
