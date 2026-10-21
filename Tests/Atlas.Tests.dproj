@@ -320,6 +320,8 @@
         <DCCReference Include="IDE.Expert\Atlas.Core.Lsp.WorkspaceEdits.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Lsp\Atlas.Core.Lsp.Adapters.ServerProcess.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Diagnostics.FeatureTable.Tests.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.Core.Diagnostics.Teardown.Tests.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.Core.Diagnostics.ThreadList.Tests.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Lsp.Contract.Tests.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Lsp.Session.Tests.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Lsp.Tests.pas"/>
@@ -655,6 +657,8 @@
         <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\StartProfiles\Atlas.Core.StartProfiles.Store.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.StartProfiles.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Diagnostics\Atlas.Core.Diagnostics.FeatureTable.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Diagnostics\Atlas.Core.Diagnostics.Teardown.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Diagnostics\Atlas.Core.Diagnostics.ThreadList.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Diagnostics\Atlas.Core.Diagnostics.SafeMode.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Diagnostics.SafeMode.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\UI\Diagnostics\Atlas.UI.Diagnostics.SafeModeNotice.pas"/>

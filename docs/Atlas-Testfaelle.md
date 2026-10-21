@@ -2482,3 +2482,15 @@ Vorher: Eine große Projektgruppe öffnen (Index läuft, Fortschritt im Statusfe
 | HG6 | Projekt-Konfiguration in der IDE wechseln (Debug ↔ Release) während des Indexierens | Kein Hänger; im Serverprotokoll steht zu `workspace/executeCommand` die echte Wartezeit (nicht mehr immer 0 ms) |
 | HG7 | „Index löschen“ zweimal schnell hintereinander | Kein Hänger; der zweite Aufbau beginnt erst, wenn der erste abgebrochen ist; der Cache ist danach neu |
 
+
+## Beenden nach Neuladen im Gruppen-Build (#886)
+
+Vorher: `Atlas.groupproj` in der IDE mit installiertem Atlas, Diagnosemodus aus. Protokoll `Atlas.IDE.Expert370.log` neben dem Plugin.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| EN1 | Gruppe bauen (Win32 mit Plugin-Projekt), die IDE entlädt und lädt Atlas dabei neu; danach die IDE beenden | Keine Zugriffsverletzung, die IDE beendet sich |
+| EN2 | Protokoll nach EN1 | Zwei Zeilen „Atlas entladen …; Fehler beim Abbau: keine“ (Neuladen und Beenden); steht dort ein Schritt, heißt er mit Ausnahmeklasse |
+| EN3 | Protokoll nach EN1 | Keine Zeile „Code-Insight-Manager wird nach dem Abmelden noch … gehalten“; falls doch, Zahl notieren |
+| EN4 | EN1 zehnmal hintereinander (`repro.ps1`) | Zehnmal ohne Absturz und ohne Hänger, jedes Mal EN2 |
+| EN5 | Während des Gruppen-Builds Atlas › Fehlerbericht bzw. Optionen › Atlas offen haben, dann EN1 | Wie EN1; keine Antwort des Servers landet nach dem Neuladen in der alten Seite |
