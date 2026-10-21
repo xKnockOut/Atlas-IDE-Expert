@@ -5,6 +5,9 @@
 // "rules" der bearbeiteten Datei. Regeln, die nur in "rules" stehen, kommen
 // hinten dazu. Setzen eines Schweregrads behält Optionen einer Regel, die als
 // Objekt eingestellt ist: Dann ändert sich nur "severity".
+// Seite „Prüfregeln“ (#909): Gruppe, Beschreibung, Beispiele, Optionen mit
+// Typ und Vorgabe, Ausnahmen ("exclude") und der Hauptschalter je Gruppe
+// ("group:<gruppe>": "off", vom Server ausgewertet).
 
 interface
 
@@ -13,6 +16,18 @@ uses
   System.JSON;
 
 type
+  /// <summary>Option einer Regel aus dem Katalog; Werte als JSON-Text.</summary>
+  TAtlasRuleOption = record
+    Name: string;
+    /// <summary>"integer", "string", "string-list" oder "json".</summary>
+    Kind: string;
+    /// <summary>Vorgabe als JSON-Text; '' = keine.</summary>
+    DefaultJson: string;
+    Description: string;
+    /// <summary>Eingestellter Wert als JSON-Text; '' = Vorgabe.</summary>
+    ValueJson: string;
+  end;
+
   TAtlasRuleRow = record
     Id: string;
     Name: string;
@@ -27,6 +42,23 @@ type
     Known: Boolean;
     /// <summary>Im Projekt: Schweregrad aus den globalen Einstellungen; '' = dort nicht gesetzt.</summary>
     GlobalSeverity: string;
+    /// <summary>Gruppe des Katalogs, z. B. "exceptions"; '' = unbekannt.</summary>
+    Group: string;
+    Description: string;
+    /// <summary>Beispiel mit Befund und ohne.</summary>
+    Bad: string;
+    Good: string;
+    Experimental: Boolean;
+    Options: TArray<TAtlasRuleOption>;
+    /// <summary>Muster aus "exclude" (Glob oder Unit-Name).</summary>
+    Exclude: TArray<string>;
+    /// <summary>Wirksamer Schweregrad: eingestellt, sonst global, sonst Vorgabe.</summary>
+    function Effective: string;
+    /// <summary>Regel meldet etwas (wirksamer Schweregrad nicht "off").</summary>
+    function Enabled: Boolean;
+    /// <summary>AText kommt in Kennung, Name oder Beschreibung vor (ohne Groß-/Kleinschreibung); '' passt
+    /// immer.</summary>
+    function Matches(const AText: string): Boolean;
   end;
 
   TAtlasRuleTable = class
@@ -47,6 +79,24 @@ type
     /// <summary>Neuer Wert von "rules" mit ASeverity für AId; '' entfernt die Regel (bei Optionen nur
     /// "severity"). Ergebnis '' für ein leeres Objekt.</summary>
     class function WithSeverity(const ARulesJson, AId, ASeverity: string): string; static;
+    /// <summary>Neuer Wert von "rules" mit Option AOption = AValueJson (JSON-Text) für AId; '' entfernt die
+    /// Option. Eine Regel als Text wird zum Objekt mit "severity"; ein Objekt, das nur noch "severity"
+    /// hat, wird wieder Text.</summary>
+    class function WithOption(const ARulesJson, AId, AOption, AValueJson: string): string; static;
+    /// <summary>Neuer Wert von "rules" mit den Mustern AExclude in "exclude" von AId; leer entfernt sie.</summary>
+    class function WithExclude(const ARulesJson, AId: string; const AExclude: TArray<string>): string; static;
+    /// <summary>Gruppe AGroup ist in "rules" abgeschaltet ("group:<gruppe>": "off").</summary>
+    class function GroupOff(const ARulesJson, AGroup: string): Boolean; static;
+    /// <summary>Neuer Wert von "rules" mit Hauptschalter der Gruppe: AOn entfernt den Schlüssel, sonst
+    /// "group:<gruppe>": "off".</summary>
+    class function WithGroup(const ARulesJson, AGroup: string; AOn: Boolean): string; static;
+    /// <summary>Schlüssel des Hauptschalters, z. B. "group:style".</summary>
+    class function GroupKey(const AGroup: string): string; static;
+    /// <summary>Gruppen der Zeilen in Reihenfolge des ersten Vorkommens, ohne ''.</summary>
+    class function Groups(const ARows: TArray<TAtlasRuleRow>): TArray<string>; static;
+    /// <summary>Indizes der Zeilen, die zu AGroup gehören ('' = alle) und auf AText passen.</summary>
+    class function Filter(const ARows: TArray<TAtlasRuleRow>; const AGroup, AText: string): TArray<Integer>;
+      static;
   end;
 
 implementation
@@ -59,6 +109,165 @@ begin
     Result := TJSONString(AValue).Value
   else if AHasOptions then
     Result := TJSONObject(AValue).GetValue<string>('severity', '');
+end;
+
+function ParseRules(const ARulesJson: string): TJSONObject;
+var
+  Value: TJSONValue;
+begin
+  Value := nil;
+  if ARulesJson <> '' then
+    Value := TJSONObject.ParseJSONValue(ARulesJson);
+  if Value is TJSONObject then
+    Exit(TJSONObject(Value));
+  Value.Free;
+  Result := TJSONObject.Create;
+end;
+
+function RulesText(ARules: TJSONObject): string;
+begin
+  Result := '';
+  if ARules.Count > 0 then
+    Result := ARules.ToJSON;
+end;
+
+/// <summary>Einstellung von AId als Objekt; ein Text wird zu {"severity": …}.</summary>
+function RuleObject(ARules: TJSONObject; const AId: string): TJSONObject;
+var
+  Existing: TJSONValue;
+  Severity: string;
+  Pair: TJSONPair;
+begin
+  Existing := ARules.GetValue(AId);
+  if Existing is TJSONObject then
+    Exit(TJSONObject(Existing));
+  Severity := '';
+  if (Existing is TJSONString) and not (Existing is TJSONNumber) then
+    Severity := TJSONString(Existing).Value;
+  Pair := ARules.RemovePair(AId);
+  Pair.Free;
+  Result := TJSONObject.Create;
+  if Severity <> '' then
+    Result.AddPair('severity', Severity);
+  ARules.AddPair(AId, Result);
+end;
+
+/// <summary>Ein Objekt nur mit "severity" wird wieder Text, ein leeres fällt weg.</summary>
+procedure Compact(ARules: TJSONObject; const AId: string);
+var
+  Rule: TJSONValue;
+  Severity: string;
+  Pair: TJSONPair;
+begin
+  Rule := ARules.GetValue(AId);
+  if not (Rule is TJSONObject) then
+    Exit;
+  if TJSONObject(Rule).Count = 0 then
+  begin
+    Pair := ARules.RemovePair(AId);
+    Pair.Free;
+  end
+  else if (TJSONObject(Rule).Count = 1) and (TJSONObject(Rule).GetValue('severity') <> nil) then
+  begin
+    Severity := TJSONObject(Rule).GetValue<string>('severity', '');
+    Pair := ARules.RemovePair(AId);
+    Pair.Free;
+    ARules.AddPair(AId, Severity);
+  end;
+end;
+
+procedure ReadOptions(AOptions: TJSONValue; var ARow: TAtlasRuleRow);
+var
+  Item, DefaultValue: TJSONValue;
+  Option: TAtlasRuleOption;
+begin
+  ARow.Options := nil;
+  if not (AOptions is TJSONArray) then
+    Exit;
+  for Item in TJSONArray(AOptions) do
+    if Item is TJSONObject then
+    begin
+      Option := Default(TAtlasRuleOption);
+      Option.Name := TJSONObject(Item).GetValue<string>('name', '');
+      if Option.Name = '' then
+        Continue;
+      Option.Kind := TJSONObject(Item).GetValue<string>('type', 'json');
+      Option.Description := TJSONObject(Item).GetValue<string>('description', '');
+      DefaultValue := TJSONObject(Item).GetValue('default');
+      if DefaultValue <> nil then
+        Option.DefaultJson := DefaultValue.ToJSON;
+      ARow.Options := ARow.Options + [Option];
+    end;
+end;
+
+/// <summary>Werte der Optionen und "exclude" aus der Einstellung einer Regel; unbekannte Optionen kommen
+/// als "json" dazu.</summary>
+procedure ReadSettings(AValue: TJSONValue; var ARow: TAtlasRuleRow);
+var
+  Pair: TJSONPair;
+  Item: TJSONValue;
+  Index: Integer;
+  Found: Boolean;
+  Option: TAtlasRuleOption;
+begin
+  ARow.Exclude := nil;
+  if not (AValue is TJSONObject) then
+    Exit;
+  for Pair in TJSONObject(AValue) do
+  begin
+    if SameText(Pair.JsonString.Value, 'severity') then
+      Continue;
+    if SameText(Pair.JsonString.Value, 'exclude') then
+    begin
+      if Pair.JsonValue is TJSONArray then
+        for Item in TJSONArray(Pair.JsonValue) do
+          if Item is TJSONString then
+            ARow.Exclude := ARow.Exclude + [TJSONString(Item).Value];
+      Continue;
+    end;
+    Found := False;
+    for Index := 0 to High(ARow.Options) do
+      if SameText(ARow.Options[Index].Name, Pair.JsonString.Value) then
+      begin
+        ARow.Options[Index].ValueJson := Pair.JsonValue.ToJSON;
+        Found := True;
+      end;
+    if not Found then
+    begin
+      Option := Default(TAtlasRuleOption);
+      Option.Name := Pair.JsonString.Value;
+      Option.Kind := 'json';
+      Option.ValueJson := Pair.JsonValue.ToJSON;
+      ARow.Options := ARow.Options + [Option];
+    end;
+  end;
+end;
+
+{ TAtlasRuleRow }
+
+function TAtlasRuleRow.Effective: string;
+begin
+  Result := Severity;
+  if Result = '' then
+    Result := GlobalSeverity;
+  if Result = '' then
+    Result := DefaultSeverity;
+end;
+
+function TAtlasRuleRow.Enabled: Boolean;
+begin
+  Result := not SameText(Effective, 'off');
+end;
+
+function TAtlasRuleRow.Matches(const AText: string): Boolean;
+var
+  Needle: string;
+begin
+  if AText = '' then
+    Exit(True);
+  Needle := AText.ToLower;
+  Result := Id.ToLower.Contains(Needle) or Name.ToLower.Contains(Needle) or
+    Description.ToLower.Contains(Needle);
 end;
 
 { TAtlasRuleTable }
@@ -106,9 +315,18 @@ begin
           Row.Name := TJSONObject(Item).GetValue<string>('name', '');
           Row.Category := TJSONObject(Item).GetValue<string>('category', '');
           Row.DefaultSeverity := TJSONObject(Item).GetValue<string>('severity', '');
+          Row.Group := TJSONObject(Item).GetValue<string>('group', '');
+          Row.Description := TJSONObject(Item).GetValue<string>('description', '');
+          Row.Bad := TJSONObject(Item).GetValue<string>('bad', '');
+          Row.Good := TJSONObject(Item).GetValue<string>('good', '');
+          Row.Experimental := TJSONObject(Item).GetValue<Boolean>('experimental', False);
           Row.Known := True;
+          ReadOptions(TJSONObject(Item).GetValue('options'), Row);
           if Rules is TJSONObject then
+          begin
             Row.Severity := SeverityOf(TJSONObject(Rules).GetValue(Row.Id), Row.HasOptions);
+            ReadSettings(TJSONObject(Rules).GetValue(Row.Id), Row);
+          end;
           Result := Result + [Row];
         end;
     // Regeln, die der Katalog nicht kennt (oder ohne Server): trotzdem zeigen.
@@ -123,7 +341,10 @@ begin
           Continue;
         Row := Default(TAtlasRuleRow);
         Row.Id := Pair.JsonString.Value;
+        if Pair.JsonString.Value.StartsWith('group:') then
+          Continue;
         Row.Severity := SeverityOf(Pair.JsonValue, Row.HasOptions);
+        ReadSettings(Pair.JsonValue, Row);
         Result := Result + [Row];
       end;
   finally
@@ -194,6 +415,129 @@ begin
   finally
     Rules.Free;
   end;
+end;
+
+class function TAtlasRuleTable.WithOption(const ARulesJson, AId, AOption, AValueJson: string): string;
+var
+  Rules, Rule: TJSONObject;
+  Value: TJSONValue;
+  Pair: TJSONPair;
+begin
+  Rules := ParseRules(ARulesJson);
+  try
+    Value := nil;
+    if AValueJson <> '' then
+    begin
+      Value := TJSONObject.ParseJSONValue(AValueJson);
+      if Value = nil then
+        Exit(RulesText(Rules));
+    end;
+    Rule := RuleObject(Rules, AId);
+    Pair := Rule.RemovePair(AOption);
+    Pair.Free;
+    if Value <> nil then
+      Rule.AddPair(AOption, Value);
+    Compact(Rules, AId);
+    Result := RulesText(Rules);
+  finally
+    Rules.Free;
+  end;
+end;
+
+class function TAtlasRuleTable.WithExclude(const ARulesJson, AId: string; const AExclude: TArray<string>): string;
+var
+  Rules, Rule: TJSONObject;
+  Items: TJSONArray;
+  Pattern: string;
+  Pair: TJSONPair;
+begin
+  Rules := ParseRules(ARulesJson);
+  try
+    Rule := RuleObject(Rules, AId);
+    Pair := Rule.RemovePair('exclude');
+    Pair.Free;
+    Items := nil;
+    for Pattern in AExclude do
+      if Pattern.Trim <> '' then
+      begin
+        if Items = nil then
+          Items := TJSONArray.Create;
+        Items.Add(Pattern.Trim);
+      end;
+    if Items <> nil then
+      Rule.AddPair('exclude', Items);
+    Compact(Rules, AId);
+    Result := RulesText(Rules);
+  finally
+    Rules.Free;
+  end;
+end;
+
+class function TAtlasRuleTable.GroupKey(const AGroup: string): string;
+begin
+  Result := 'group:' + AGroup;
+end;
+
+class function TAtlasRuleTable.GroupOff(const ARulesJson, AGroup: string): Boolean;
+var
+  Rules: TJSONObject;
+  Value: TJSONValue;
+begin
+  Rules := ParseRules(ARulesJson);
+  try
+    Value := Rules.GetValue(GroupKey(AGroup));
+    Result := (Value is TJSONString) and not (Value is TJSONNumber) and SameText(TJSONString(Value).Value, 'off');
+  finally
+    Rules.Free;
+  end;
+end;
+
+class function TAtlasRuleTable.WithGroup(const ARulesJson, AGroup: string; AOn: Boolean): string;
+var
+  Rules: TJSONObject;
+  Pair: TJSONPair;
+begin
+  Rules := ParseRules(ARulesJson);
+  try
+    Pair := Rules.RemovePair(GroupKey(AGroup));
+    Pair.Free;
+    if not AOn then
+      Rules.AddPair(GroupKey(AGroup), 'off');
+    Result := RulesText(Rules);
+  finally
+    Rules.Free;
+  end;
+end;
+
+class function TAtlasRuleTable.Groups(const ARows: TArray<TAtlasRuleRow>): TArray<string>;
+var
+  Row: TAtlasRuleRow;
+  Group: string;
+  Found: Boolean;
+begin
+  Result := nil;
+  for Row in ARows do
+  begin
+    if Row.Group = '' then
+      Continue;
+    Found := False;
+    for Group in Result do
+      if SameText(Group, Row.Group) then
+        Found := True;
+    if not Found then
+      Result := Result + [Row.Group];
+  end;
+end;
+
+class function TAtlasRuleTable.Filter(const ARows: TArray<TAtlasRuleRow>; const AGroup,
+  AText: string): TArray<Integer>;
+var
+  Index: Integer;
+begin
+  Result := nil;
+  for Index := 0 to High(ARows) do
+    if ((AGroup = '') or SameText(ARows[Index].Group, AGroup)) and ARows[Index].Matches(AText.Trim) then
+      Result := Result + [Index];
 end;
 
 end.
