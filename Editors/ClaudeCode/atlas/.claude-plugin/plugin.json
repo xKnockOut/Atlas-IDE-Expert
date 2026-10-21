@@ -1,6 +1,6 @@
 {
   "name": "atlas",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Delphi/Object Pascal: Language Server und MCP-Werkzeuge von Atlas",
   "homepage": "https://github.com/xKnockOut/Atlas-IDE-Expert",
   "license": "MIT"
