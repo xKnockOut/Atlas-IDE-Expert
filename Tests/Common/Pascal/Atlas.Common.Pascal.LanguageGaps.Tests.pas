@@ -3,7 +3,8 @@
 // Tests für kleinere Sprachlücken in Parser, Index und Namensauflösung (#849).
 // Je Punkt des Issues ein Test; die Quellen stammen aus den nachgestellten
 // Fällen in planung/parser-luecken-faelle (05, 07, 08, 09, 12) bzw. sind
-// Fixtures zu den Korpusfunden (Punkte 10 bis 15).
+// Fixtures zu den Korpusfunden (Punkte 10 bis 15). Dazu die Sprungmarke @@End
+// im asm-Block (#861).
 
 interface
 
@@ -60,6 +61,12 @@ type
     /// <summary>Punkt 15: {$I datei.inc} als Wert; der Index setzt den Inhalt in die Signatur.</summary>
     [Test]
     procedure IncludeAsValue;
+    /// <summary>#861: JNZ @@End und @@End: beenden den asm-Block nicht; G liegt auf Unit-Ebene.</summary>
+    [Test]
+    procedure AsmLabelEndKeepsBlockOpen;
+    /// <summary>#861: dasselbe klein geschrieben, mit @@Loop: und end in Kommentaren.</summary>
+    [Test]
+    procedure AsmLowerCaseLabelsAndComments;
   end;
 
 implementation
@@ -129,6 +136,14 @@ const
   IncludeValue =
     'unit P15;'#10'interface'#10'const'#10'  SYNOPSE_FRAMEWORK_VERSION = {$I mormot.commit.inc};'#10 +
     'implementation'#10'end.';
+
+  AsmLabel =
+    'unit P16;'#10'interface'#10'implementation'#10'function F: Integer;'#10'asm'#10'  JNZ @@End;'#10 +
+    '  MOV EAX, 1;'#10'@@End:'#10'end;'#10'function G: Integer;'#10'begin'#10'  Result := 0;'#10'end;'#10'end.';
+  AsmLower =
+    'unit P17;'#10'interface'#10'implementation'#10'function F: Integer;'#10'asm'#10'@@loop:'#10 +
+    '  DEC ECX { end }'#10'  JNZ @@loop'#10'  JMP @@end // end'#10'  (* end *)'#10'@@end:'#10'end;'#10 +
+    'function G: Integer;'#10'begin'#10'  Result := 0;'#10'end;'#10'end.';
 
 function Find(ANode: TSyntaxNode; AKind: TSyntaxKind; const AName: string): TSyntaxNode;
 var
@@ -583,6 +598,37 @@ begin
   U := TIndexExtractor.ExtractText(IncludeValue, MainFile, nil, IncludeFiles);
   Assert.AreEqual('SYNOPSE_FRAMEWORK_VERSION = ''2.3.11221''', SymbolOf(U, '', 'SYNOPSE_FRAMEWORK_VERSION').Signature);
   Assert.AreEqual(1, Integer(Length(U.Includes)));
+end;
+
+/// <summary>F und G liegen nebeneinander im implementation-Teil, ohne Diagnosen (#861).</summary>
+procedure AssertAsmUnit(const AText: string);
+var
+  Tree: TSyntaxTree;
+  F, G: TSyntaxNode;
+begin
+  Assert.AreEqual('', Diagnostics(AText));
+  Tree := TPascalParser.Parse(AText);
+  try
+    F := Find(Tree.Root, TSyntaxKind.RoutineDecl, 'F');
+    G := Find(Tree.Root, TSyntaxKind.RoutineDecl, 'G');
+    Assert.IsNotNull(F);
+    Assert.IsNotNull(G);
+    Assert.IsNotNull(Find(F, TSyntaxKind.AsmBlock, ''));
+    Assert.IsTrue(F.Parent = G.Parent, 'G muss neben F liegen');
+    Assert.IsNull(Find(Tree.Root, TSyntaxKind.InitializationSection, ''));
+  finally
+    Tree.Free;
+  end;
+end;
+
+procedure TLanguageGapsTests.AsmLabelEndKeepsBlockOpen;
+begin
+  AssertAsmUnit(AsmLabel);
+end;
+
+procedure TLanguageGapsTests.AsmLowerCaseLabelsAndComments;
+begin
+  AssertAsmUnit(AsmLower);
 end;
 
 end.

@@ -39,6 +39,9 @@ type
     procedure NoCounterpartOutsideOrForAbstract;
     [Test]
     procedure ProgramWithoutInterfaceSection;
+    /// <summary>Sprungmarke @@End im asm-Rumpf beendet die Methode nicht (#861).</summary>
+    [Test]
+    procedure AsmLabelEndDoesNotCloseBody;
   end;
 
 implementation
@@ -519,6 +522,35 @@ begin
   Assert.AreEqual('5:15', Jump(Text, 3));
   Assert.AreEqual('3:14', Jump(Text, 6));
   Assert.AreEqual('-', Jump(Text, 9));
+end;
+
+procedure TAtlasMethodToggleTests.AsmLabelEndDoesNotCloseBody;
+var
+  Text: string;
+begin
+  Text := Source([
+    'unit Demo;',                       // 0
+    'interface',                        // 1
+    'type',                             // 2
+    '  TFoo = class',                   // 3
+    '    function F: Integer;',         // 4
+    '    function G: Integer;',         // 5
+    '  end;',                           // 6
+    'implementation',                   // 7
+    'function TFoo.F: Integer;',        // 8
+    'asm',                              // 9
+    '  JNZ @@End',                      // 10
+    '  MOV EAX, 1',                     // 11
+    '@@End:',                           // 12
+    'end;',                             // 13
+    'function TFoo.G: Integer;',        // 14
+    'begin',                            // 15
+    '  Result := 0;',                   // 16
+    'end;',                             // 17
+    'end.']);
+  Assert.AreEqual('4:13', Jump(Text, 11, 2));
+  Assert.AreEqual('4:13', Jump(Text, 13));
+  Assert.AreEqual('5:13', Jump(Text, 16, 2));
 end;
 
 initialization

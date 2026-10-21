@@ -11,7 +11,8 @@
 //   (variante Teile) teilt sich das end des records.
 // - Schließen: end (nicht repeat), until (nur repeat); finally/except
 //   bekommen die Tiefe ihres try. "end." ohne Öffner ist das Ende der Unit.
-// - Escapte Bezeichner (&begin) und Mitglieder hinter "." sind keine Schlüsselwörter.
+// - Escapte Bezeichner (&begin), Sprungmarken (@@End, #861) und Mitglieder hinter "."
+//   sind keine Schlüsselwörter.
 // Besitzer (#653): Schlüsselwörter der Anweisung, zu der ein Block gehört,
 // bekommen Tiefe und Paarstatus ihres Blocks (Owner = True):
 //   if … then begin          → if, then (davor ein else: auch else)
@@ -172,6 +173,8 @@ begin
             Start := Index;
             if Escaped then
               Inc(Index);
+            // @@End im asm-Block ist eine Sprungmarke, kein Blockende (#861).
+            Escaped := Escaped or (Start > 1) and (AText[Start - 1] = '@');
             while (Index <= Length(AText)) and CharInSet(AText[Index], ['A'..'Z', 'a'..'z', '0'..'9', '_']) do
               Inc(Index);
             Add(Start, Index - Start, True,
