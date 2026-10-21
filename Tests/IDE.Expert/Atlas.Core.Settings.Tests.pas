@@ -48,6 +48,9 @@ type
     /// <summary>Anweisung vervollständigen (#697): Vorgaben, Speichern, Laden, unbekannte Werte.</summary>
     [Test]
     procedure CompleteStatementOptions;
+    /// <summary>#43: Befehl „Formatieren“ mit eigenem Kürzel.</summary>
+    [Test]
+    procedure FormatCodeOptions;
     [Test]
     procedure ContinuePatternOptions;
     [Test]
@@ -1287,6 +1290,27 @@ begin
   Loaded.Normalize;
   Assert.AreEqual('multiLine', Loaded.CompleteStatementBeginEnd);
   Assert.AreEqual('finally', Loaded.CompleteStatementTryKind);
+end;
+
+procedure TAtlasPluginSettingsTests.FormatCodeOptions;
+var
+  Settings, Loaded: TAtlasPluginSettings;
+  Store: IAtlasSettingsStore;
+begin
+  Settings := TAtlasPluginSettings.Defaults;
+  Assert.IsTrue(Settings.FormatCode);
+  Assert.AreEqual($E046, Settings.FormatCodeKey, 'Strg+Umschalt+Alt+F');
+  Settings.FormatCode := False;
+  Settings.FormatCodeKey := $C046;
+  Store := TMemoryStore.Create;
+  Settings.Save(Store);
+  Loaded := TAtlasPluginSettings.Defaults;
+  Loaded.Load(Store);
+  Assert.IsFalse(Loaded.FormatCode);
+  Assert.AreEqual($C046, Loaded.FormatCodeKey);
+  Loaded.FormatCodeKey := -5;
+  Loaded.Normalize;
+  Assert.AreEqual(0, Loaded.FormatCodeKey);
 end;
 
 procedure TAtlasPluginSettingsTests.StickyScrollOptions;

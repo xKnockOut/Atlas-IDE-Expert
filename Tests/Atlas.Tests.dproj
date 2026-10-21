@@ -311,6 +311,8 @@
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.DfmPropertyRules.Tests.pas"/>
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.ChangeSignature.Tests.pas"/>
         <DCCReference Include="Common\Editing\Atlas.Common.Editing.Formatter.Tests.pas"/>
+        <DCCReference Include="Common\Editing\Atlas.Common.Editing.Formatter.Indent.Tests.pas"/>
+        <DCCReference Include="Common\Editing\Atlas.Common.Editing.Formatter.Layout.Tests.pas"/>
         <DCCReference Include="Common\Editing\Atlas.Common.Editing.DocumentLinks.Tests.pas"/>
         <DCCReference Include="Common\Editing\Atlas.Common.Editing.Colors.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Lsp\Atlas.Core.Lsp.Client.pas"/>

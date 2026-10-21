@@ -224,6 +224,15 @@ begin
     Result.SpaceAfterComma := AConfigured.SpaceAfterComma;
   if TFormatKey.EndOfLine in AConfigured.Given then
     Result.EndOfLine := AConfigured.EndOfLine;
+  if TFormatKey.MaxLineLength in AConfigured.Given then
+    Result.MaxLineLength := AConfigured.MaxLineLength;
+  // Diese Schalter kennt weder der Editor noch .editorconfig (#43).
+  Result.Reindent := AConfigured.Reindent;
+  Result.BeginPlacement := AConfigured.BeginPlacement;
+  Result.ElsePlacement := AConfigured.ElsePlacement;
+  Result.AlignAssignments := AConfigured.AlignAssignments;
+  Result.AlignDeclarations := AConfigured.AlignDeclarations;
+  Result.AlignComments := AConfigured.AlignComments;
   Result.Given := AConfigured.Given;
 end;
 

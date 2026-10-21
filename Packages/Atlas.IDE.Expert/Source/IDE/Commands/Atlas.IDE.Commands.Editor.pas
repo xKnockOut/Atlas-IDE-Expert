@@ -20,6 +20,8 @@
 // - Zwischen Unit und Testunit wechseln (atlas.server.testUnit, #189): öffnet
 //   das Gegenstück; fehlt die Testunit, legt das Edit des Servers sie an und
 //   trägt sie ins Testprojekt ein (#274), danach wird sie geöffnet.
+// - Formatieren (#43): ganze Datei (textDocument/formatting) bzw. die Zeilen
+//   der Auswahl (textDocument/rangeFormatting), ein Rückgängig-Schritt.
 // - Schnellbefehle mit „/“ nach Enter (#293) und ///-Gerüste (#88): Nach jeder
 //   Änderung im Editor prüft TAtlasSlashTrigger die Cursorzeile; passt sie,
 //   geht textDocument/onTypeFormatting an den Server, und zwar nach der
@@ -111,6 +113,9 @@ type
     class procedure CopyQualifiedName(AWithParameters: Boolean); static;
     /// <summary>Zur Testunit bzw. getesteten Unit der oberen Datei; legt eine fehlende Testunit an (#189).</summary>
     class procedure SwitchTestUnit; static;
+    /// <summary>Obere Datei formatieren (#43): mit Auswahl nur deren Zeilen. Ausgeschaltet oder ohne Änderung eine
+    /// Zeile in der Meldungsansicht.</summary>
+    class procedure FormatCode; static;
     /// <summary>Nach jeder Änderung im Editor (Notifier): Schnellbefehle und ///-Gerüste auslösen.</summary>
     class procedure EditorModified(const AView: IOTAEditView); static;
     /// <summary>Untermenü Atlas in die Kontextmenüs der Editorfenster hängen.</summary>
@@ -369,6 +374,18 @@ begin
     procedure
     begin
       ToggleMethod;
+    end);
+  // Formatieren (#43); aus = ohne Kürzel, der Aufruf meldet, dass es abgeschaltet ist.
+  FContextMenu.Add('Atlas.FormatCode', TAtlasStrings.Text(TAtlasTextId.FormatCodeCommand),
+    function: Integer
+    begin
+      Result := 0;
+      if TAtlasIdeSettings.Current.FormatCode then
+        Result := TAtlasIdeSettings.Current.FormatCodeKey;
+    end,
+    procedure
+    begin
+      FormatCode;
     end);
   FContextMenu.Add('Atlas.References', TAtlasStrings.Text(TAtlasTextId.MenuReferences), nil,
     procedure
@@ -926,6 +943,53 @@ begin
   finally
     Answer.Free;
   end;
+end;
+
+class procedure TAtlasIdeEditorCommands.FormatCode;
+var
+  View: IOTAEditView;
+  FileName: string;
+  Lines: TArray<string>;
+  Selection: TLspRange;
+  Indent: Integer;
+  Edits: TArray<TLspTextEdit>;
+  Edit: TLspWorkspaceEdit;
+  Outcome: TAtlasWorkspaceEditResult;
+begin
+  if not TAtlasIdeSettings.Current.FormatCode then
+  begin
+    Say(TAtlasStrings.Text(TAtlasTextId.FormatCodeOff));
+    Exit;
+  end;
+  if not Current(View, FileName, Lines, Selection) then
+    Exit;
+  // Breite einer Ebene aus dem Editor; .editorconfig und atlas.json gehen beim Server vor.
+  Indent := TAtlasEditorBuffer.BlockIndent(View.Buffer);
+  try
+    if Selection.IsEmpty then
+      Edits := Session.Formatting(FileName, Indent, True, CommandTimeoutMs)
+    else
+      Edits := Session.Formatting(FileName, Selection, Indent, True, CommandTimeoutMs);
+  except
+    on E: ELspClientError do
+    begin
+      Say(TAtlasStrings.Fmt(TAtlasTextId.EditorFailed, [E.Message]));
+      Exit;
+    end;
+  end;
+  if Length(Edits) = 0 then
+  begin
+    Say(TAtlasStrings.Text(TAtlasTextId.FormatCodeNothing));
+    Exit;
+  end;
+  Edit := Default(TLspWorkspaceEdit);
+  Edit.Files := [Default(TLspFileEdits)];
+  Edit.Files[0].FileName := FileName;
+  Edit.Files[0].Edits := Edits;
+  Outcome := TAtlasIdeWorkspaceEdit.Apply(Edit, TAtlasUnopenedPolicy.WriteToDisk,
+    TAtlasStrings.Text(TAtlasTextId.UndoActionFormat));
+  if Outcome.Error <> '' then
+    Say(TAtlasStrings.Fmt(TAtlasTextId.EditFailed, [Outcome.Error]));
 end;
 
 class procedure TAtlasIdeEditorCommands.SwitchTestUnit;

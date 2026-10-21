@@ -126,7 +126,9 @@ const
   BindOrder: array[TAtlasKeyFunction] of Integer = (1, 2, 4, 5, 6, 7, 3, 3, 3, 3, 3, 3, 3, 8, 3, 3, 3, 3, 0, 3, 3, 3,
     8, 8, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3,
     // Mehrfachmarken (#589): Editorbefehle.
-    3, 3, 3, 3, 3);
+    3, 3, 3, 3, 3,
+    // Formatieren (#43): Editorbefehl.
+    3);
 
 type
   /// <summary>Herkunft je Modul, einmal ermittelt.</summary>

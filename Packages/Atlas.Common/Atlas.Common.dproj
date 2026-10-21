@@ -223,6 +223,8 @@
         <DCCReference Include="Source\Mcp\Atlas.Common.Mcp.CodeTools.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.FormFiles.pas"/>
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.EditorConfig.pas"/>
+        <DCCReference Include="Source\Editing\Atlas.Common.Editing.Formatter.Indent.pas"/>
+        <DCCReference Include="Source\Editing\Atlas.Common.Editing.Formatter.Layout.pas"/>
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.Formatter.pas"/>
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.DocumentLinks.pas"/>
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.Colors.pas"/>
@@ -293,6 +295,8 @@
         <DCCReference Include="Source\Mcp\Atlas.Common.Mcp.CodeTools.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.FormFiles.pas"/>
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.EditorConfig.pas"/>
+        <DCCReference Include="Source\Editing\Atlas.Common.Editing.Formatter.Indent.pas"/>
+        <DCCReference Include="Source\Editing\Atlas.Common.Editing.Formatter.Layout.pas"/>
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.Formatter.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.QualifiedNames.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.WinApiDocs.pas"/>

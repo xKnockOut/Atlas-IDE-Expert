@@ -108,7 +108,9 @@ type
   TKeywordCase = (Preserve, Lower, Upper);
   /// <summary>Schlüssel im Block "format", die ausdrücklich gesetzt sind.</summary>
   TFormatKey = (IndentSize, UseTabs, KeywordCase, TrimTrailingWhitespace, InsertFinalNewline,
-    SpaceAroundAssignment, SpaceAfterComma, EndOfLine);
+    SpaceAroundAssignment, SpaceAfterComma, EndOfLine, MaxLineLength);
+  /// <summary>Stellung von begin bzw. else (#43): wie vorhanden, in eigener Zeile oder in der Zeile davor.</summary>
+  TBlockPlacement = (Preserve, NewLine, SameLine);
   /// <summary>"stringLiteral.style" (#312).</summary>
   TStringLiteralStyle = (Auto, Multiline, Concat);
   /// <summary>"stringLiteral.lineBreak": Trenner zwischen verketteten Zeilen (#312).</summary>
@@ -190,6 +192,20 @@ type
     SpaceAfterComma: Boolean;
     /// <summary>'' = beibehalten, sonst #10 oder #13#10.</summary>
     EndOfLine: string;
+    /// <summary>Einrückung aus der Blockstruktur statt aus der vorhandenen Zeile (#43).</summary>
+    Reindent: Boolean;
+    /// <summary>begin nach then, else und do (#43).</summary>
+    BeginPlacement: TBlockPlacement;
+    /// <summary>else nach end (#43).</summary>
+    ElsePlacement: TBlockPlacement;
+    /// <summary>Längere Zeilen umbrechen (#43); 0 = nie.</summary>
+    MaxLineLength: Integer;
+    /// <summary>:= untereinander stehender Zuweisungen ausrichten (#43).</summary>
+    AlignAssignments: Boolean;
+    /// <summary>Typen bzw. = untereinander stehender Deklarationen ausrichten (#43).</summary>
+    AlignDeclarations: Boolean;
+    /// <summary>Kommentare am Zeilenende untereinander stehender Zeilen ausrichten (#43).</summary>
+    AlignComments: Boolean;
     Given: TFormatKeys;
     class function Default: TFormatStyle; static;
   end;
@@ -677,6 +693,13 @@ begin
   Result.SpaceAroundAssignment := True;
   Result.SpaceAfterComma := True;
   Result.EndOfLine := '';
+  Result.Reindent := True;
+  Result.BeginPlacement := TBlockPlacement.Preserve;
+  Result.ElsePlacement := TBlockPlacement.Preserve;
+  Result.MaxLineLength := 0;
+  Result.AlignAssignments := False;
+  Result.AlignDeclarations := False;
+  Result.AlignComments := False;
   Result.Given := [];
 end;
 
