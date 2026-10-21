@@ -30,6 +30,16 @@ type
     /// <summary>Größe der Cache-Dateien in Byte (#492).</summary>
     CacheBytes: Int64;
     LibraryCacheBytes: Int64;
+    /// <summary>Projektwahl (#46): .dproj, geladene Konfiguration und Plattform ('' ohne Projekt), per
+    /// selectBuild gewählt (auch gemerkt), aktives Projekt der IDE, per selectProject ausgewählt.</summary>
+    Project: string;
+    Config: string;
+    Platform: string;
+    BuildChosen: Boolean;
+    Active: Boolean;
+    Selected: Boolean;
+    /// <summary>" · Debug/Win64 (gewählt) · aktiv in der IDE · ausgewählt"; '' ohne Projekt.</summary>
+    function ProjectText: string;
   end;
 
   TServerStatus = record
@@ -86,6 +96,23 @@ begin
   Result := FormatFloat('0.0', ABytes / (1024 * 1024), TFormatSettings.Invariant) + ' MB';
 end;
 
+{ TWorkspaceStatus }
+
+function TWorkspaceStatus.ProjectText: string;
+begin
+  Result := '';
+  if Project = '' then
+    Exit;
+  if (Config <> '') or (Platform <> '') then
+    Result := ' · ' + Config + '/' + Platform;
+  if BuildChosen then
+    Result := Result + ' (gewählt)';
+  if Active then
+    Result := Result + ' · aktiv in der IDE';
+  if Selected then
+    Result := Result + ' · ausgewählt';
+end;
+
 function TServerStatus.ToMarkdown: string;
 var
   Builder: TStringBuilder;
@@ -116,11 +143,12 @@ begin
     end;
     for Workspace in Workspaces do
       if Workspace.LastIndexMs < 0 then
-        Builder.Append(Format('- %s: Index wird aufgebaut', [Workspace.Name])).Append(#10)
+        Builder.Append(Format('- %s%s: Index wird aufgebaut', [Workspace.Name, Workspace.ProjectText])).Append(#10)
       else
       begin
-        Builder.Append(Format('- %s: letzter Indexlauf %d ms (%d neu eingelesen, %d aus dem Cache, %d fehlen)',
-          [Workspace.Name, Workspace.LastIndexMs, Workspace.Parsed, Workspace.FromCache, Workspace.Missing]));
+        Builder.Append(Format('- %s%s: letzter Indexlauf %d ms (%d neu eingelesen, %d aus dem Cache, %d fehlen)',
+          [Workspace.Name, Workspace.ProjectText, Workspace.LastIndexMs, Workspace.Parsed, Workspace.FromCache,
+          Workspace.Missing]));
         if Workspace.LastUpdate <> 0 then
           Builder.Append(', aktualisiert ').Append(FormatDateTime('dd.mm.yyyy hh:nn:ss', Workspace.LastUpdate));
         Builder.Append(', Cache ').Append(MegaBytes(Workspace.CacheBytes + Workspace.LibraryCacheBytes));
@@ -169,6 +197,15 @@ begin
     Item.AddPair('lastUpdate', DateText(Workspace.LastUpdate));
     Item.AddPair('cacheBytes', TJSONNumber.Create(Workspace.CacheBytes));
     Item.AddPair('libraryCacheBytes', TJSONNumber.Create(Workspace.LibraryCacheBytes));
+    if Workspace.Project <> '' then
+    begin
+      Item.AddPair('project', Workspace.Project);
+      Item.AddPair('config', Workspace.Config);
+      Item.AddPair('platform', Workspace.Platform);
+      Item.AddPair('buildChosen', TJSONBool.Create(Workspace.BuildChosen));
+      Item.AddPair('active', TJSONBool.Create(Workspace.Active));
+      Item.AddPair('selected', TJSONBool.Create(Workspace.Selected));
+    end;
     Items.AddElement(Item);
   end;
   Result.AddPair('workspaces', Items);

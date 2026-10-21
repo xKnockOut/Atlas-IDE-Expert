@@ -71,6 +71,9 @@ type
     FormFile: string;
     /// <summary>Dateien neben der Unit, z. B. .dcr (#114); nil = keine.</summary>
     ReadFile: TRuleFileReader;
+    /// <summary>Absoluter Pfad und Inhalt der requires-Packages für Package-Prüfungen (#46).</summary>
+    FileName: string;
+    PackageProvides: TRulePackageProvides;
     /// <summary>Abbruch zwischen den Prüfregeln; nil = nie. Setzt Compute.</summary>
     Cancelled: TRuleCancelled;
   end;
@@ -980,6 +983,8 @@ begin
   Context.FormText := ARules.FormText;
   Context.FormFile := ARules.FormFile;
   Context.ReadFile := ARules.ReadFile;
+  Context.FileName := ARules.FileName;
+  Context.PackageProvides := ARules.PackageProvides;
   Context.Cancelled := ARules.Cancelled;
   Result := TRuleEngine.Run(ARules.Rules, ARules.Settings, Context);
 end;

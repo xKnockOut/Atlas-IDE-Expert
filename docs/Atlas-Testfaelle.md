@@ -2654,3 +2654,21 @@ Vorher: Projekt mit Index geladen, eine Unit mit `uses System.SysUtils, System.C
 | FO10 | `format.reindent` = `false` | Einrückung bleibt, nur Tabs und Leerzeichen werden nach `indentSize`/`useTabs` umgerechnet |
 | FO11 | *Tools › Optionen › Atlas › Editor › Formatieren* aus | Menüeintrag, Palette und Taste fehlen; Kontextmenü meldet „ausgeschaltet“ |
 | FO12 | Mehrfachmarken an, Strg+D auf einem Wort | Mehrfachmarke wie bisher; Formatieren nur über die eigene Taste |
+
+## Projektgruppen und Packages (#46)
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| PG1 | Gruppe mit App.dproj und Kern.dproj, `uGemeinsam.pas` in beiden; App aktiv, `uGemeinsam` öffnen, *Atlas › Status* | Hover und Prüfungen mit den Symbolen von App; Status zeigt bei App „aktiv in der IDE“; Log „… gehört zu 2 Projekten; es gilt App (aktiv in der IDE)“ |
+| PG2 | In der Projektverwaltung Kern aktivieren, `uGemeinsam` erneut prüfen | Log meldet Kern (aktiv in der IDE); Status zeigt Kern als aktiv |
+| PG3 | `atlas.server.selectProject` mit `{"project": "Kern"}`, dann App aktivieren | Kern gilt weiter (ausgewählt); Antwort nennt `selected` und `active` |
+| PG4 | Server neu starten | Kern ist weiter ausgewählt; `{"project": ""}` hebt die Wahl auf, danach gilt wieder das aktive Projekt |
+| PG5 | `atlas.server.selectBuild` mit `{"config": "Release", "platform": "Win64"}` ohne IDE, Server neu starten | Status zeigt „Release/Win64 (gewählt)“ |
+| PG6 | Release aus der .dproj entfernen, Server neu starten | Warnung „gewählte Konfiguration oder Plattform gibt es nicht mehr“; es gelten die Vorgaben |
+| PG7 | `Kern.dproj` in derselben Gruppe öffnen | Gehört zu Kern, nicht zum ersten Projekt des Ordners |
+| PG8 | Package Werkzeuge.dpk: `contains uHaupt`, uHaupt verwendet uMathe (nicht in contains, kein requires liefert es) | Warnung `implicit-package-import` an `uHaupt` in der .dpk; Schnellkorrektur fügt `uMathe in 'uMathe.pas'` vor dem Semikolon ein |
+| PG9 | uMathe steht in Basis.dpk der Gruppe, `requires Basis` ergänzen | Warnung verschwindet; Units von Basis sind auflösbar (Hover, Gehe zu) |
+| PG10 | `requires rtl, vcl` und Units wie System.Classes oder Vcl.Forms | Keine Meldung (Bibliothek, rtl.dcp) |
+| PG11 | `requires Fremd` ohne Fremd.dpk und Fremd.dcp | Keine Meldung für Units, die Fremd liefern könnte |
+| PG12 | Unit nur in contains der .dpk, nicht als DCCReference in der .dproj | Unit ist im Index (Hover, Prüfungen wie andere Projekt-Units) |
+| PG13 | `"rules": {"implicit-package-import": "off"}` | Keine Meldung |

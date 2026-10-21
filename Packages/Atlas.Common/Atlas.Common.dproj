@@ -102,6 +102,9 @@
         <DCCReference Include="Source\Projects\Internals\Atlas.Common.Projects.Internals.MSBuild.pas"/>
         <DCCReference Include="Source\Projects\Atlas.Common.Projects.DprojReader.pas"/>
         <DCCReference Include="Source\Projects\Atlas.Common.Projects.GroupReader.pas"/>
+        <DCCReference Include="Source\Projects\Atlas.Common.Projects.PackageReader.pas"/>
+        <DCCReference Include="Source\Projects\Atlas.Common.Projects.PackageLocator.pas"/>
+        <DCCReference Include="Source\Projects\Atlas.Common.Projects.Selection.pas"/>
         <DCCReference Include="Source\Projects\Atlas.Common.Projects.DprojEditor.pas"/>
         <DCCReference Include="Source\Projects\Atlas.Common.Projects.UnitResolver.pas"/>
         <DCCReference Include="Source\Compiler\Atlas.Common.Compiler.Contract.pas"/>
@@ -361,6 +364,7 @@
         <DCCReference Include="Source\Rules\Atlas.Common.Rules.Prompt.pas"/>
         <DCCReference Include="Source\Rules\Builtin\Atlas.Common.Rules.Builtin.Unresolved.pas"/>
         <DCCReference Include="Source\Rules\Builtin\Atlas.Common.Rules.Builtin.Deprecated.pas"/>
+        <DCCReference Include="Source\Rules\Builtin\Atlas.Common.Rules.Builtin.Packages.pas"/>
         <DCCReference Include="Source\Rules\Atlas.Common.Rules.Conventions.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.InactiveRegions.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.WorkspaceFolders.pas"/>

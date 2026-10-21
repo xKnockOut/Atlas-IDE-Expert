@@ -847,6 +847,15 @@ begin
     '      "description": "A routine, type, constant or member marked deprecated, platform or experimental is used (like compiler warnings W1000, W1002 and W1003). The editor strikes the name through; the ' + 'message carries the reason from deprecated ''reason''. The declaration and the head of its implementation are not reported.",' + #10 +
     '      "bad": "procedure Old; deprecated ''Use New'';\n...\nOld;",' + #10 +
     '      "good": "procedure New;\n...\nNew;"' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "implicit-package-import",' + #10 +
+    '      "name": "Implicit package import",' + #10 +
+    '      "category": "code-smell",' + #10 +
+    '      "severity": "warning",' + #10 +
+    '      "description": "In a package (.dpk) a unit from contains uses a unit that is neither in contains nor provided by a package in requires. The compiler pulls it in implicitly (W1033), which later c' + 'auses duplicate units when another package also contains it. The quick fix adds the unit to contains.",' + #10 +
+    '      "bad": "package Werkzeuge;\nrequires rtl;\ncontains\n  uHaupt in ''uHaupt.pas'';  // uHaupt uses uMathe\nend.",' + #10 +
+    '      "good": "package Werkzeuge;\nrequires rtl;\ncontains\n  uHaupt in ''uHaupt.pas'',\n  uMathe in ''uMathe.pas'';\nend."' + #10 +
     '    }' + #10 +
     '  ]' + #10 +
     '}' + #10 +
@@ -1318,6 +1327,11 @@ begin
     '      "id": "deprecated-symbol",' + #10 +
     '      "name": "Veraltetes Symbol",' + #10 +
     '      "description": "Eine Routine, ein Typ, eine Konstante oder ein Mitglied mit deprecated, platform oder experimental wird verwendet (wie Compilerwarnungen W1000, W1002 und W1003). Der Editor strei' + 'cht den Namen durch; die Meldung nennt den Grund aus deprecated ''Grund''. Die Deklaration und der Kopf ihrer Implementierung werden nicht gemeldet."' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "implicit-package-import",' + #10 +
+    '      "name": "Implizit eingebundene Unit",' + #10 +
+    '      "description": "In einem Package (.dpk) verwendet eine Unit aus contains eine Unit, die weder in contains steht noch von einem Package aus requires geliefert wird. Der Compiler zieht sie implizi' + 't hinein (W1033), was später zu doppelten Units führt, wenn ein anderes Package sie ebenfalls enthält. Die Schnellkorrektur nimmt die Unit in contains auf."' + #10 +
     '    }' + #10 +
     '  ]' + #10 +
     '}' + #10 +
