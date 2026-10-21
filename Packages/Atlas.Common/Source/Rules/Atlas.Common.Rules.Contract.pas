@@ -123,6 +123,11 @@ type
     /// <summary>Forward-Deklarationen nicht prüfen (refactoring.forwardDeclaration aus, #685);
     /// setzt TRuleEngine.Run.</summary>
     NoForwardDeclaration: Boolean;
+    /// <summary>Nicht freigegebene Felder nicht melden (refactoring.freeFields aus, #666); setzt TRuleEngine.Run.
+    /// </summary>
+    NoFreeFields: Boolean;
+    /// <summary>Freigabe als FreeAndNil(FFeld) statt FFeld.Free (refactoring.freeFieldsStyle, #666).</summary>
+    FreeFieldsFreeAndNil: Boolean;
     /// <summary>Abbruch zwischen den Regeln (Diagnoselog 15.10.2026); nil = nie abbrechen.</summary>
     Cancelled: TRuleCancelled;
     /// <summary>Gemeinsame Ableitungen des Laufs (Review P-03); setzt TRuleEngine.Run. nil = jede Regel

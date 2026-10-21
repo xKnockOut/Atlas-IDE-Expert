@@ -11,7 +11,7 @@ function AtlasSchemaJson: string;
 implementation
 
 const
-  Lines: array[0..1455] of string = (
+  Lines: array[0..1469] of string = (
     '{',
     '  "$schema": "http://json-schema.org/draft-07/schema#",',
     '  "title": "Atlas-Konfiguration",',
@@ -636,6 +636,20 @@ const
     '          "x-control": "Auswahl",',
     '          "x-issue": "#682"',
     '        },',
+    '        "freeFields": {',
+    '          "type": "boolean",',
+    '          "default": true,',
+    '          "description": "Im Konstruktor (oder einer von ihm aufgerufenen privaten Methode) mit TKlasse.Create erzeugte Objektfelder, die die Klasse nirgends freigibt, melden (owned-field-not-freed) u' + 'nd die Code-Aktionen „Im Destruktor freigeben“ am Feld und „Alle eigenen Objekte freigeben (n)“ an der Klasse anbieten. Fehlt der Destruktor, legt Atlas ihn mit override und inherited an. Ausgenommen ' + 'sind Komponenten mit Owner sowie Interface- und Record-Felder; zurückgegebene oder weitergereichte Felder meldet Atlas als unklar (owned-field-free-unclear).",',
+    '          "x-issue": "#666"',
+    '        },',
+    '        "freeFieldsStyle": {',
+    '          "type": "string",',
+    '          "enum": ["free", "freeAndNil"],',
+    '          "default": "free",',
+    '          "description": "Form der Freigabe im Destruktor: free schreibt FFeld.Free, freeAndNil schreibt FreeAndNil(FFeld).",',
+    '          "x-control": "Auswahl",',
+    '          "x-issue": "#666"',
+    '        },',
     '        "tryFinally": {',
     '          "type": "boolean",',
     '          "default": true,',
@@ -725,7 +739,7 @@ const
     '      "x-scope": "project",',
     '      "x-page": "Vervollständigung",',
     '      "x-control": "Kontrollkästchen",',
-    '      "x-issue": "#42, #50, #100, #188, #453, #472, #682, #685"',
+    '      "x-issue": "#42, #50, #100, #188, #453, #472, #666, #682, #685"',
     '    },',
     '    "usesCommand": {',
     '      "type": "boolean",',

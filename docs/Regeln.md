@@ -99,6 +99,8 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 | [`implicit-package-import`](#implicit-package-import) | Implizit eingebundene Unit | Code Smell | Warnung |
 | [`type-used-before-declaration`](#type-used-before-declaration) | Typ vor seiner Deklaration benutzt | Bug | Fehler |
 | [`unneeded-forward-declaration`](#unneeded-forward-declaration) | Überflüssige Forward-Deklaration | Code Smell | Hinweis |
+| [`owned-field-not-freed`](#owned-field-not-freed) | Erzeugtes Feld wird nicht freigegeben | Bug | Warnung |
+| [`owned-field-free-unclear`](#owned-field-free-unclear) | Unklar, ob ein erzeugtes Feld freigegeben werden muss | Bug | Hinweis |
 
 <a id="syntax"></a>
 ## syntax
@@ -2282,4 +2284,57 @@ Richtig:
 type
   TNode = class
   end;
+```
+
+<a id="owned-field-not-freed"></a>
+## owned-field-not-freed
+
+**Erzeugtes Feld wird nicht freigegeben** · Bug · Warnung
+
+Ein Objektfeld, das der Konstruktor (oder eine von ihm aufgerufene private Methode) mit TKlasse.Create erzeugt, wird in der Klasse nirgends freigegeben (kein Free, FreeAndNil, Destroy oder DisposeOf). Ausgenommen sind Komponenten mit einem Owner ungleich nil sowie Interface- und Record-Felder; TObjectList- und TObjectDictionary-Felder sind normale Felder. Schnellkorrekturen: das Feld im Destruktor freigeben oder alle eigenen Objekte der Klasse freigeben; ein fehlender Destruktor wird mit override und inherited angelegt. Die Freigaben stehen vor inherited in umgekehrter Erzeugungsreihenfolge, als Free oder FreeAndNil (refactoring.freeFieldsStyle).
+
+Mit Treffer:
+
+```pascal
+constructor TOrderList.Create;
+begin
+  inherited Create;
+  FItems := TObjectList<TOrder>.Create(True);
+end;
+```
+
+Richtig:
+
+```pascal
+destructor TOrderList.Destroy;
+begin
+  FItems.Free;
+  inherited;
+end;
+```
+
+<a id="owned-field-free-unclear"></a>
+## owned-field-free-unclear
+
+**Unklar, ob ein erzeugtes Feld freigegeben werden muss** · Bug · Hinweis
+
+Ein im Konstruktor erzeugtes, nicht freigegebenes Objektfeld wird auch zurückgegeben (Result := FFeld, Exit(FFeld)), an eine Property eines anderen Objekts übergeben, ohne Create zugewiesen oder ist über eine Property (write FFeld) schreibbar. Ob die Klasse das Objekt noch besitzt, entscheidet der Entwickler; deshalb gibt es keine Schnellkorrektur.
+
+Mit Treffer:
+
+```pascal
+function TCache.Take: TList;
+begin
+  Result := FList;  // created in Create, never freed
+end;
+```
+
+Richtig:
+
+```pascal
+function TCache.Take: TList;
+begin
+  Result := FList;
+  FList := nil;  // ownership passes to the caller
+end;
 ```

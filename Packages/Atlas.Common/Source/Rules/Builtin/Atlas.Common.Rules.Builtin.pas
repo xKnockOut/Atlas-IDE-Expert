@@ -40,6 +40,7 @@ uses
   Atlas.Common.Rules.Builtin.Recursion,
   Atlas.Common.Rules.Builtin.Deprecated,
   Atlas.Common.Rules.Builtin.ForwardDeclarations,
+  Atlas.Common.Rules.Builtin.FreeFields,
   Atlas.Common.Rules.Builtin.Packages,
   Atlas.Common.Rules.Builtin.Unresolved;
 
@@ -76,6 +77,7 @@ begin
     RegisterRecursionRules(Registry);
     RegisterDeprecatedRules(Registry);
     RegisterForwardDeclarationRules(Registry);
+    RegisterFreeFieldRules(Registry);
     RegisterPackageRules(Registry);
     Result := Registry.Rules;
   finally

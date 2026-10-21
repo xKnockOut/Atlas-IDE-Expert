@@ -363,6 +363,10 @@ type
     PropertyFromAccessorsSection: string;
     /// <summary>Zugriffsmethoden verbergen: off, private oder protected (#682).</summary>
     PropertyFromAccessorsHideAccessors: string;
+    /// <summary>Im Konstruktor erzeugte, nicht freigegebene Felder melden und im Destruktor freigeben (#666).</summary>
+    FreeFields: Boolean;
+    /// <summary>Form der Freigabe: free (FFeld.Free) oder freeAndNil (#666).</summary>
+    FreeFieldsStyle: string;
     class function Default: TRefactoringSettings; static;
   end;
 
@@ -794,6 +798,8 @@ begin
   Result.PropertyFromAccessorsReplaceCalls := 'ask';
   Result.PropertyFromAccessorsSection := 'accessor';
   Result.PropertyFromAccessorsHideAccessors := 'off';
+  Result.FreeFields := True;
+  Result.FreeFieldsStyle := 'free';
 end;
 
 { TCompletionSettings }
