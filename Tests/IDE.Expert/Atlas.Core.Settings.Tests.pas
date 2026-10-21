@@ -64,6 +64,9 @@ type
     /// <summary>Änderungsmarken und Zeilenhistorie (#507): Vorgaben, Tasten, Speichern und Laden.</summary>
     [Test]
     procedure GitChangeOptions;
+    /// <summary>Atlas-Spalte in der Zeilenleiste (#768): Vorgaben, Unterschalter, Speichern und Laden.</summary>
+    [Test]
+    procedure GutterColumnOptions;
     /// <summary>Übersichtsleiste (#519): Vorgaben, Arten normalisiert, Speichern und Laden.</summary>
     [Test]
     procedure OverviewRulerOptions;
@@ -1519,6 +1522,34 @@ begin
   Loaded.ContinuePatternMinLines := 9;
   Loaded.Normalize;
   Assert.AreEqual(5, Loaded.ContinuePatternMinLines);
+end;
+
+procedure TAtlasPluginSettingsTests.GutterColumnOptions;
+var
+  Settings, Loaded: TAtlasPluginSettings;
+  Store: IAtlasSettingsStore;
+begin
+  // Atlas-Spalte in der Zeilenleiste (#768): Hauptschalter und Unterschalter standardmäßig an, je einzeln aus.
+  Settings := TAtlasPluginSettings.Defaults;
+  Assert.IsTrue(Settings.GutterColumn);
+  Assert.IsTrue(Settings.GutterColumnProblems);
+  Assert.IsTrue(Settings.GutterColumnCodeActions);
+  Assert.IsTrue(Settings.GutterColumnOverrides);
+  Settings.GutterColumn := False;
+  Settings.GutterColumnCodeActions := False;
+  Store := TMemoryStore.Create;
+  Settings.Save(Store);
+  Loaded := TAtlasPluginSettings.Defaults;
+  Loaded.Load(Store);
+  Assert.IsFalse(Loaded.GutterColumn);
+  Assert.IsTrue(Loaded.GutterColumnProblems);
+  Assert.IsFalse(Loaded.GutterColumnCodeActions);
+  Assert.IsTrue(Loaded.GutterColumnOverrides);
+  Loaded.GutterColumnOverrides := False;
+  Loaded.Save(Store);
+  Settings := TAtlasPluginSettings.Defaults;
+  Settings.Load(Store);
+  Assert.IsFalse(Settings.GutterColumnOverrides);
 end;
 
 procedure TAtlasPluginSettingsTests.GitChangeOptions;

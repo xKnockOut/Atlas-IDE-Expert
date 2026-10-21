@@ -2831,6 +2831,24 @@ Voraussetzung: Server läuft; Einstellungen auf Vorgabe; Unit mit `TPanelHost = 
 | IB10 | `"refactoring": {"invertBooleanAntonyms": {"Verbose": "Silent"}}`, Strg+. auf `FVerbose` | „Bedeutung umkehren (FVerbose → FSilent)“ (**Abnahme**) |
 | IB11 | `"refactoring": {"invertBoolean": false}` in atlas.json | Keine Aktion „Bedeutung umkehren“ mehr (**Abnahme**) |
 
+## Atlas-Spalte in der Zeilenleiste (#768)
+
+Voraussetzung: Server läuft; Einstellungen auf Vorgabe; Unit mit `TBasis = class procedure Zeichne; virtual; end;`, `TKnopf = class(TBasis) procedure Zeichne; override; end;` und einer zweiten Nachfahrklasse, die `Zeichne` ebenfalls überschreibt; ein Compilerfehler in einer Zeile.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| ZL1 | Unit öffnen | Rechts neben den Zeilennummern eine schmale Spalte; Haltepunkte, Lesezeichen, Faltung und Atlas-Notizen stehen wie vorher (**Abnahme**) |
+| ZL2 | Zeile mit Fehler | ✕ in Rot; Überfahren zeigt „E2003 · Fehler“ und die Meldung |
+| ZL3 | Klick auf ✕ | Tafel mit Meldung und den Korrekturen des Servers als Links, darunter „Alle Code-Aktionen …“; Klick auf eine Korrektur wendet sie an (**Abnahme**) |
+| ZL4 | Zeile mit Warnung bzw. Hinweis, ohne Fehler | ▲ bzw. ●; in einer Zeile mit Fehler und Warnung nur ✕ |
+| ZL5 | Cursor auf eine Zeile mit Code-Aktion (z. B. Methodenname), kurz warten | ◆ in der Cursorzeile; Klick öffnet die Code-Aktionen der Zeile |
+| ZL6 | `TKnopf.Zeichne` in Deklaration und Rumpf | ↑; Klick springt zu `TBasis.Zeichne` (**Abnahme**) |
+| ZL7 | `TBasis.Zeichne` | ↓; Klick listet beide Nachfahren mit Datei und Zeile, Klick auf einen springt hin |
+| ZL8 | Thema hell/dunkel wechseln, Editorschrift vergrößern | Symbole gut sichtbar in beiden Themen; Spalte wächst mit der Zeilenhöhe |
+| ZL9 | Optionen › Editor › Atlas-Spalte: „Code-Aktionen“ aus | Keine ◆ mehr, sonst unverändert; „Überschreibungen“ aus: keine Pfeile |
+| ZL10 | Schnellschalter „Atlas-Spalte in der Zeilenleiste“ aus | Spalte verschwindet ganz; wieder an: Spalte und Symbole kommen zurück (**Abnahme**) |
+| ZL11 | Strg+. auf einer Zeile mit Symbol › Ausblenden „In dieser Datei“ | Keine Symbole der Spalte in dieser Datei |
+
 ## Forward-Deklaration ergänzen (#685)
 
 Voraussetzung: Server läuft; Einstellungen auf Vorgabe; neue Unit `Tree.pas`.

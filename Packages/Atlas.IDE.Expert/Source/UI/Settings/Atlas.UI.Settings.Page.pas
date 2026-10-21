@@ -306,6 +306,10 @@ type
     FBreadcrumbsKey: TEdit;
     FGitGutter: TCheckBox;
     FGitBlame: TCheckBox;
+    FGutterColumn: TCheckBox;
+    FGutterColumnProblems: TCheckBox;
+    FGutterColumnCodeActions: TCheckBox;
+    FGutterColumnOverrides: TCheckBox;
     FNextChangeKey: TEdit;
     FPreviousChangeKey: TEdit;
     FOverviewRuler: TCheckBox;
@@ -955,6 +959,10 @@ type
     property BlockEndLabelsMinLinesEdit: TEdit read FBlockEndLabelsMinLines;
     property DimUnusedUsesCheck: TCheckBox read FDimUnusedUses;
     property RecursionMarkersCheck: TCheckBox read FRecursionMarkers;
+    property GutterColumnCheck: TCheckBox read FGutterColumn;
+    property GutterColumnProblemsCheck: TCheckBox read FGutterColumnProblems;
+    property GutterColumnCodeActionsCheck: TCheckBox read FGutterColumnCodeActions;
+    property GutterColumnOverridesCheck: TCheckBox read FGutterColumnOverrides;
     property RecursionMarkersDepthEdit: TEdit read FRecursionMarkersDepth;
     property HideElementKey: TEdit read FHideElementKey;
     /// <summary>Zum Testen: Fehlertext am Zeilenende, Zähler und Sprungtasten (#509).</summary>
@@ -1389,6 +1397,11 @@ begin
   FNextChangeKey := AddKey(TAtlasStrings.Text(TAtlasTextId.NextChangeCommand));
   FPreviousChangeKey := AddKey(TAtlasStrings.Text(TAtlasTextId.PreviousChangeCommand));
   FGitBlame := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsGitBlame));
+  // Atlas-Spalte in der Zeilenleiste (#768): Hauptschalter und je Symbolart ein Häkchen.
+  FGutterColumn := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsGutterColumn));
+  FGutterColumnProblems := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsGutterColumnProblems));
+  FGutterColumnCodeActions := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsGutterColumnActions));
+  FGutterColumnOverrides := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsGutterColumnOverrides));
   // Übersichtsleiste (#519): an/aus und je Art ein Häkchen.
   FOverviewRuler := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsOverviewRuler));
   FOverviewKinds[TAtlasOverviewKind.Diagnostics] :=
@@ -1626,6 +1639,7 @@ begin
   Bind('Breadcrumbs', FBreadcrumbs);
   Bind('GitGutter', FGitGutter);
   Bind('GitBlame', FGitBlame);
+  Bind('GutterColumn', FGutterColumn);
   Bind('OverviewRuler', FOverviewRuler);
   Bind('RecursionMarkers', FRecursionMarkers);
   Bind('InlineDiagnostics', FInlineDiagnostics);
@@ -2408,6 +2422,10 @@ begin
   FMarks.Bind(FMinimapClickJumps, ['MinimapClickJumps']);
   FMarks.Bind(FGitGutter, ['GitGutter']);
   FMarks.Bind(FGitBlame, ['GitBlame']);
+  FMarks.Bind(FGutterColumn, ['GutterColumn']);
+  FMarks.Bind(FGutterColumnProblems, ['GutterColumnProblems']);
+  FMarks.Bind(FGutterColumnCodeActions, ['GutterColumnCodeActions']);
+  FMarks.Bind(FGutterColumnOverrides, ['GutterColumnOverrides']);
   FMarks.Bind(FNextChangeKey, ['NextChangeKey']);
   FMarks.Bind(FPreviousChangeKey, ['PreviousChangeKey']);
   FMarks.Bind(FOverviewRuler, ['OverviewRuler']);
@@ -4318,6 +4336,10 @@ begin
   FMinimapClickJumps.Checked := ASettings.MinimapClickJumps;
   FGitGutter.Checked := ASettings.GitGutter;
   FGitBlame.Checked := ASettings.GitBlame;
+  FGutterColumn.Checked := ASettings.GutterColumn;
+  FGutterColumnProblems.Checked := ASettings.GutterColumnProblems;
+  FGutterColumnCodeActions.Checked := ASettings.GutterColumnCodeActions;
+  FGutterColumnOverrides.Checked := ASettings.GutterColumnOverrides;
   FNextChangeKey.Text := ShortCutToText(TShortCut(ASettings.NextChangeKey));
   FPreviousChangeKey.Text := ShortCutToText(TShortCut(ASettings.PreviousChangeKey));
   FOverviewRuler.Checked := ASettings.OverviewRuler;
@@ -4673,6 +4695,10 @@ begin
   ASettings.MinimapClickJumps := FMinimapClickJumps.Checked;
   ASettings.GitGutter := FGitGutter.Checked;
   ASettings.GitBlame := FGitBlame.Checked;
+  ASettings.GutterColumn := FGutterColumn.Checked;
+  ASettings.GutterColumnProblems := FGutterColumnProblems.Checked;
+  ASettings.GutterColumnCodeActions := FGutterColumnCodeActions.Checked;
+  ASettings.GutterColumnOverrides := FGutterColumnOverrides.Checked;
   ASettings.NextChangeKey := Integer(TextToShortCut(Trim(FNextChangeKey.Text)));
   ASettings.PreviousChangeKey := Integer(TextToShortCut(Trim(FPreviousChangeKey.Text)));
   ASettings.OverviewRuler := FOverviewRuler.Checked;

@@ -1133,6 +1133,13 @@ begin
     Assert.IsTrue(Page.DimUnusedUsesCheck.Checked, 'uses abblenden standardmäßig an (#621)');
     Assert.IsTrue(Page.RecursionMarkersCheck.Checked, 'Rekursionssymbole standardmäßig an (#623)');
     Assert.AreEqual('4', Page.RecursionMarkersDepthEdit.Text);
+    // Atlas-Spalte in der Zeilenleiste (#768).
+    Assert.IsTrue(Page.GutterColumnCheck.Checked, 'Atlas-Spalte standardmäßig an (#768)');
+    Assert.IsTrue(Page.GutterColumnProblemsCheck.Checked);
+    Assert.IsTrue(Page.GutterColumnCodeActionsCheck.Checked);
+    Assert.IsTrue(Page.GutterColumnOverridesCheck.Checked);
+    Page.GutterColumnCodeActionsCheck.Checked := False;
+    Page.GutterColumnOverridesCheck.Checked := False;
     // Fehlertext am Zeilenende, Zähler und Sprungtasten (#509).
     Assert.AreEqual(1, Page.InlineDiagnostics.Choice, 'nur Fehler');
     Assert.IsTrue(Page.ProblemsStatusCounterCheck.Checked);
@@ -1153,6 +1160,10 @@ begin
     Assert.IsFalse(Saved.DimUnusedUses);
     Assert.IsFalse(Saved.RecursionMarkers);
     Assert.AreEqual(2, Saved.RecursionMarkersDepth);
+    Assert.IsTrue(Saved.GutterColumn);
+    Assert.IsTrue(Saved.GutterColumnProblems);
+    Assert.IsFalse(Saved.GutterColumnCodeActions);
+    Assert.IsFalse(Saved.GutterColumnOverrides);
     Assert.AreEqual('errorsAndWarnings', Saved.InlineDiagnostics);
     Assert.IsFalse(Saved.ProblemsStatusCounter);
     Assert.AreEqual($C077, Saved.NextProblemKey);
@@ -1162,6 +1173,7 @@ begin
     Assert.IsFalse(Page.BlockEndLabelsCheck.Checked);
     Assert.IsFalse(Page.DimUnusedUsesCheck.Checked);
     Assert.IsFalse(Page.RecursionMarkersCheck.Checked);
+    Assert.IsFalse(Page.GutterColumnOverridesCheck.Checked);
     Assert.AreEqual(2, Page.InlineDiagnostics.Choice);
     Assert.AreEqual('', Page.HideElementKey.Text);
   finally

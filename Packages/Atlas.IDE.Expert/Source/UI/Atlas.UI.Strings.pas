@@ -625,7 +625,10 @@ type
     PropertyAccessorsTitle, PropertyAccessorsFailed, PropertyAccessorsNothing, PropertyAccessorsPreviewHint,
     PropertyAccessorsApply, PropertyAccessorsDone, PropertyAccessorsWarning,
     InvertBooleanTitle, InvertBooleanPrompt, InvertBooleanFailed, InvertBooleanNothing, InvertBooleanPreviewHint,
-    InvertBooleanApply, InvertBooleanDone, InvertBooleanWarning);
+    InvertBooleanApply, InvertBooleanDone, InvertBooleanWarning,
+    SettingsGutterColumn, SettingsGutterColumnProblems, SettingsGutterColumnActions, SettingsGutterColumnOverrides,
+    ElementGutterColumn, ElementGutterColumnPlural, GutterSeverityError, GutterSeverityWarning, GutterSeverityHint,
+    GutterAllActions, GutterNoFix, GutterOverridesTitle, GutterOverriddenTitle, GutterActionTitle, GutterActionText, GutterFixesFailed);
 
   TAtlasStrings = class
   private class var
@@ -1880,7 +1883,23 @@ const
      '%d Stellen in %d Dateien werden umbenannt und verneint',
      'Umkehren',
      'Boolean umgekehrt: %d Änderungen in %d Dateien',
-     'Warnung: %s'),
+     'Warnung: %s',
+     'Atlas-Spalte in der Zeilenleiste',
+     'Probleme',
+     'Code-Aktionen',
+     'Überschreibungen',
+     'Symbol der Atlas-Spalte',
+     'Symbole der Atlas-Spalte',
+     'Fehler',
+     'Warnung',
+     'Hinweis',
+     'Alle Code-Aktionen …',
+     'Keine Korrektur verfügbar.',
+     'Überschreibt',
+     'Überschrieben in',
+     'Code-Aktionen verfügbar',
+     'Ein Klick öffnet die Code-Aktionen dieser Zeile.',
+     'Korrekturen nicht abrufbar: %s'),
     ('Enter to accept · Esc to close', '%d of %d', 'No matches for “%s”', 'Backspace widens the search',
      'No suggestions here', 'Esc closes', 'No details for this entry', 'Overload', 'Deprecated: %s', 'Deprecated.',
      'Inherited from %s', 'Inherited', 'optional, default %s', 'No overload with %d parameters.', '… %d more',
@@ -3036,7 +3055,23 @@ const
      '%d places in %d files will be renamed and negated',
      'Invert',
      'Boolean inverted: %d changes in %d files',
-     'Warning: %s'));
+     'Warning: %s',
+     'Atlas column in the gutter',
+     'Problems',
+     'Code actions',
+     'Overrides',
+     'Atlas column symbol',
+     'Atlas column symbols',
+     'Error',
+     'Warning',
+     'Hint',
+     'All code actions …',
+     'No fix available.',
+     'Overrides',
+     'Overridden in',
+     'Code actions available',
+     'Click opens the code actions for this line.',
+     'Fixes not available: %s'));
 
 { TAtlasStrings }
 

@@ -43,6 +43,10 @@ type
     /// <summary>Sprungziele für das Symbol bzw. das inherited an APosition.</summary>
     class function Targets(AResolver: TNameResolver; const AIndex: ISymbolIndex; ATree: TSyntaxTree;
       const AFileName: string; const APosition: TTextPosition): TArray<TDefinitionTarget>; static;
+    /// <summary>Alle Nachfahren von ATypeName über alle Stufen, Kreise erkannt (auch für die Zeilenleiste #768).
+    /// </summary>
+    class function AllDescendantsOf(const AIndex: ISymbolIndex; const ATypeName: string): TArray<TSymbolLocation>;
+      static;
     property Namespaces: TArray<string> read GetNamespaces write SetNamespaces;
   end;
 
@@ -232,6 +236,12 @@ begin
   FStore := AStore;
   FIndex := AIndex;
   FEnsureUnit := AEnsureUnit;
+end;
+
+class function TLspImplementations.AllDescendantsOf(const AIndex: ISymbolIndex;
+  const ATypeName: string): TArray<TSymbolLocation>;
+begin
+  Result := AllDescendants(AIndex, ATypeName);
 end;
 
 procedure TLspImplementations.Attach(ADispatcher: TJsonRpcDispatcher);
