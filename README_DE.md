@@ -44,6 +44,7 @@ Einzelheiten: [docs/Installation.md](docs/Installation.md).
 - **Schreibhilfen im Editor**: Gleichen Text wie die Markierung hervorheben (#709), Blockkommentar umschalten (#703, Umschalt+Alt+A), neue Zeile ober- oder unterhalb (#700, Umschalt+Enter, Strg+Alt+Enter), Markierung beim Tippen umschließen (#672), Umschließung entfernen (#657, Strg+Umschalt+Entf) mit Vorschau, Atlas-Spalte in der Zeilenleiste (#768)
 - **Bedingte Kompilierung**: Gliederung, Hover, Gehe zu und Prüfungen sehen nur die aktiven `{$IFDEF}`-Zweige des Projekts, die Gliederung zeigt die Bedingung des Zweigs (#845); `{$IF}` versteht `SizeOf`, `High`, `Low`, `RTLVersion111` und `Declared`, `{$IFOPT}` folgt den Schaltern der `.dproj` und lokalen `{$R-}`, unbekannte Werte lassen beide Zweige aktiv, und der Hover auf einer Bedingung erklärt ihren Wert (#847)
 - **Variante Records**: Felder wie `TRect.Left` oder `TMessage.WParam` stehen in Vervollständigung, Hover, Gehe zu und Gliederung, mit ihrem Zweig als Marke (#846)
+- **Helfer mit Vorfahr**: `class helper (TBaseHelper) for TFoo` wird als Helfer gelesen, und `Foo.` bietet auch die Mitglieder des Vorfahr-Helfers an (#848)
 - **Markierung suchen**: F3 bzw. Umschalt+F3 sucht eine einzeilige Markierung vorwärts bzw. rückwärts, sonst gilt „Erneut suchen“ der IDE
 - **Units suchen** (#777): eigenes Fenster statt des IDE-Dialogs auf Strg+F12; der IDE-Dialog bleibt über das Menü erreichbar
 - **Notizen** (#545) an Codezeilen, nur für dich und nicht im Quelltext, und **benannte Lesezeichen** (#622, Strg+Alt+K)
