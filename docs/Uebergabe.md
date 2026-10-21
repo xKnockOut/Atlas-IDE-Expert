@@ -656,3 +656,11 @@ Jeder Branch baut auf dem vorigen auf. Nichts davon ist gebaut, getestet oder in
 - **Behoben:** „Fehler beim Abbau: Welcome: EAccessViolation“. Die IDE gibt beim Beenden die Willkommensseiten-Plugins frei, bevor Atlas entladen wird; `Plugins` in `Atlas.IDE.Welcome.Page.pas` zeigte auf freigegebene `TPlugin`. Jetzt trägt sich ein freigegebenes Plugin selbst aus (`ServiceGone`), Rahmen/Inhalt überwacht `TViewWatch` (FreeNotification).
 - **Nicht Atlas:** Die AV in `rtl370.bpl` (Offset 133BE4, „Lesen von Adresse …863C“) danach. Mit cdb gefangen: `TEditWindow.Notification` ruft eine Komponente von `$(BDS)\Bin\Scooter.BeyondCompare.Expert.dll` (Experte von RAD Studio), deren DLL schon entladen ist. Ohne Atlas in 3 Läufen nicht aufgetreten; vermutlich löst eine späte Benachrichtigung des Editorfensters sie aus. Gegenprobe ohne Beyond-Compare-Experten steht aus.
 - Werkzeuge im Scratchpad: `crashhunt.ps1` (Wiederholläufe), `crashdbg.ps1` + `cdb-cmds.txt` (cdb anhängen, Stapel bei rtl370+133BE4), `ide-dismiss.ps1` (Fehlerdialoge wegklicken).
+
+## Zusammenführung 21.10.2026 abends (main 69bb4103)
+- Nach main: #666, #715, #768, #709, #703, #700, #672, #657, #845, README-Neufassung (`claude/project-thread-qykz50`); `claude/project-thread-ko9i0q` (EULA) nur als „ours“-Merge, Inhalt war schon über 870c6b6e in main. Damit enthält auch der Sammel-Branch nichts mehr, was main fehlt.
+- Konflikte: erzeugte Units/Doku neu mit `Tools/Update-ConfigDoc.ps1`; Tastenliste `TAtlasKeyFunction` in `Atlas.Core.Commands.KeyConflicts.pas` vereinigt; CHANGELOG beide Seiten; README/README_DE neue Fassung plus Punkte zu #657–#845.
+- Delphi-Fehler aus #715 behoben (E2555 Result im Methodenzeiger, H2077), H2443 in OverrideMarks-Tests, Erstgebrauchslecks in Unwrap- und Outline-Frame-Tests. Win64 0/0/0, 5334 Tests grün, Win32-Plugin sauber.
+- #874 geschlossen (Rest war schon in 51d305cd).
+- Offen: `feature/846-variante-records` (neu, in Arbeit).
+- Skripte im Scratchpad: `mergeall.sh` (Merge-Kette mit automatischer Auflösung der erzeugten Dateien, Tastenliste, CHANGELOG), `kc_resolve.py`, `union.py`.
