@@ -952,8 +952,22 @@ begin
 end;
 
 procedure TServerComposition.WireIndex;
+var
+  Index: ISymbolIndex;
 begin
   FIndex := TSymbolIndex.Create;
+  // Declared(X) in {$IF} fragt den Index (#847). Die Referenz hält den Index, bis Destroy den Anbieter abmeldet.
+  Index := FIndex;
+  TPascalPreprocessor.SetDeclaredProvider(
+    function(const AName: string): Boolean
+    var
+      Location: TSymbolLocation;
+    begin
+      for Location in Index.FindSymbols(AName) do
+        if Location.Symbol.Container = '' then
+          Exit(True);
+      Result := False;
+    end);
   FFormatting.Index := FIndex;
   // Standardsichtbarkeit published über die Vorfahren (#537).
   FDocumentSymbols.Index := FIndex;
@@ -1900,6 +1914,7 @@ destructor TServerComposition.Destroy;
 var
   Unfinished: Boolean;
 begin
+  TPascalPreprocessor.SetDeclaredProvider(nil);
   // Zuerst: Eine laufende Übernahme greift auf die Ordner zu.
   FreeAndNil(FIndexRefresh);
   // Vor der Verbindung: Beide Wächter rufen FConnection.
@@ -3831,9 +3846,10 @@ begin
     Project := Default(TProjectInfo);
   Predefined := TPascalPreprocessor.PredefinedSymbols(Project.Platform,
     TPascalPreprocessor.CompilerVersionFromDefines(Defines));
+  Result.Config := Project.Config;
   Own := nil;
   for Define in Defines do
-    if IndexText(Define, Predefined) < 0 then
+    if (IndexText(Define, Predefined) < 0) and not TPascalPreprocessor.IsSwitchEntry(Define) then
       Own := Own + [Define];
   Result.Sources := TConditionalSymbols.SourcesOf(Own, Project.DefineOrigins, Predefined, Project.Platform);
 end;

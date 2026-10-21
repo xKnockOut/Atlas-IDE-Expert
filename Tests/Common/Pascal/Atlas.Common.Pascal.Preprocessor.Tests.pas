@@ -48,6 +48,30 @@ type
     /// <summary>#102: wirksame $DEFINE/$UNDEF mit Stelle, aus Include-Dateien an der $I-Direktive.</summary>
     [Test]
     procedure RecordsDefineSites;
+    /// <summary>#847: SizeOf, High, Low und Ord nach Zielplattform, mit Teilwerten für den Hover.</summary>
+    [Test]
+    procedure EvaluatesSizeOfHighLowOrd;
+    /// <summary>#847: RTLVersion111 usw. aus der Compilerversion, auch in Declared.</summary>
+    [Test]
+    procedure EvaluatesRtlVersionConstants;
+    /// <summary>#847: Unbekannte Werte gelten als aktiv, das $ELSE dazu ebenfalls; kein Befund.</summary>
+    [Test]
+    procedure UnknownValuesKeepBothBranchesActive;
+    /// <summary>#847: Declared fragt Options.Declared bzw. den Index über SetDeclaredProvider.</summary>
+    [Test]
+    procedure DeclaredAsksIndex;
+    /// <summary>#847: $IFOPT folgt den Schaltern der .dproj und lokalen Schaltern davor.</summary>
+    [Test]
+    procedure IfoptFollowsProjectAndLocalSwitches;
+    /// <summary>#847: $PUSHOPT/$POPOPT sichern und stellen den Schalterstand wieder her.</summary>
+    [Test]
+    procedure PushOptRestoresSwitches;
+    /// <summary>#847: Schalter aus den Eigenschaften der .dproj.</summary>
+    [Test]
+    procedure MapsProjectPropertiesToSwitches;
+    /// <summary>#847: Jede ausgewertete Bedingung steht mit Wert und Teilwerten in Checks.</summary>
+    [Test]
+    procedure RecordsConditionChecks;
   end;
 
 implementation
@@ -82,6 +106,21 @@ begin
       Result := Result + ' ';
     Result := Result + Token.Text;
   end;
+end;
+
+/// <summary>Wie Words, ohne die übrigen Direktiven (Schalter bleiben als Token erhalten).</summary>
+function Code(const AResult: TPreprocessorResult): string;
+var
+  Token: TPascalToken;
+begin
+  Result := '';
+  for Token in AResult.Tokens do
+    if Token.Kind <> TPascalTokenKind.Directive then
+    begin
+      if Result <> '' then
+        Result := Result + ' ';
+      Result := Result + Token.Text;
+    end;
 end;
 
 function Run(const AText: string; const ADefines: array of string): TPreprocessorResult;
@@ -150,7 +189,8 @@ begin
   Assert.IsTrue(TPascalPreprocessor.Evaluate('Defined(MSWINDOWS) and not Defined(LINUX)', Opts, ['MSWINDOWS'], Error));
   Assert.IsTrue(TPascalPreprocessor.Evaluate('Defined(A) or (RTLVersion > 30)', Opts, [], Error));
   Assert.IsTrue(TPascalPreprocessor.Evaluate('MeineKonstante * 2 = 6', Opts, [], Error));
-  Assert.IsFalse(TPascalPreprocessor.Evaluate('Declared(TFoo)', Opts, [], Error));
+  // Unbekannt gilt als aktiv (#847).
+  Assert.IsTrue(TPascalPreprocessor.Evaluate('Declared(TFoo)', Opts, [], Error));
   Assert.AreEqual('', Error);
   Assert.AreEqual('ok', Words(TPascalPreprocessor.Process('{$IF CompilerVersion > 30} ok {$IFEND}', Opts)));
 end;
@@ -169,7 +209,7 @@ procedure TPascalPreprocessorTests.ReportsInvalidExpression;
 var
   R: TPreprocessorResult;
 begin
-  R := Run('{$IF Unbekannt > 1} x {$ELSE} y {$ENDIF}', []);
+  R := Run('{$IF Unbekannt(1) > 1} x {$ELSE} y {$ENDIF}', []);
   Assert.AreEqual('y', Words(R));
   Assert.AreEqual<NativeInt>(1, Length(R.Issues));
   Assert.Contains(R.Issues[0].Message, 'Unbekannt');
@@ -346,6 +386,207 @@ begin
   Assert.AreEqual('neu', Branch('VER360'));
   Assert.AreEqual('neu', Branch('VER360', 'RTLVersion'));
   Assert.AreEqual('alt', Branch('VER350'));
+end;
+
+function Part(const AParts: TArray<TConditionPart>; const AText: string): TConditionPart;
+var
+  Item: TConditionPart;
+begin
+  for Item in AParts do
+    if Item.Text = AText then
+      Exit(Item);
+  Result.Text := '';
+  Result.Value := '';
+  Result.Origin := '';
+end;
+
+procedure TPascalPreprocessorTests.EvaluatesSizeOfHighLowOrd;
+var
+  Opts: TPreprocessorOptions;
+  Parts: TArray<TConditionPart>;
+  Error: string;
+  Win64, Win32: TArray<string>;
+begin
+  Opts := Options([]);
+  Win64 := ['MSWINDOWS', 'WIN64', 'CPU64BITS', 'CPUX64'];
+  Win32 := ['MSWINDOWS', 'WIN32', 'CPU32BITS', 'CPUX86'];
+  Assert.IsTrue(TConditionValue.Yes = TPascalPreprocessor.Explain('SizeOf(Pointer) = 8', Opts, Win64, Parts, Error));
+  Assert.AreEqual('8', Part(Parts, 'SizeOf(Pointer)').Value);
+  Assert.AreEqual('Zielplattform Win64', Part(Parts, 'SizeOf(Pointer)').Origin);
+  Assert.IsTrue(TConditionValue.No = TPascalPreprocessor.Explain('SizeOf(Pointer) = 8', Opts, Win32, Parts, Error));
+  Assert.IsTrue(TConditionValue.Yes = TPascalPreprocessor.Explain('SizeOf(Integer) = 4', Opts, Win32, Parts, Error));
+  Assert.IsTrue(TConditionValue.Yes =
+    TPascalPreprocessor.Explain('High(NativeInt) > High(Integer)', Opts, Win64, Parts, Error));
+  Assert.IsTrue(TConditionValue.No =
+    TPascalPreprocessor.Explain('High(NativeInt) > High(Integer)', Opts, Win32, Parts, Error));
+  Assert.IsTrue(TConditionValue.Yes = TPascalPreprocessor.Explain('Low(Integer) < 0', Opts, Win32, Parts, Error));
+  Assert.IsTrue(TConditionValue.Yes = TPascalPreprocessor.Explain('High(Byte) = 255', Opts, [], Parts, Error));
+  Assert.IsTrue(TConditionValue.Yes = TPascalPreprocessor.Explain('Ord(''A'') = 65', Opts, [], Parts, Error));
+  // Ohne Plattform ist die Zeigergröße unbekannt.
+  Assert.IsTrue(TConditionValue.Unknown = TPascalPreprocessor.Explain('SizeOf(Pointer) = 8', Opts, [], Parts, Error));
+  Assert.AreEqual('', Error);
+  Assert.AreEqual('a', Words(Run('{$IF SizeOf(Pointer) = 8} a {$ELSE} b {$ENDIF}', ['WIN64', 'CPU64BITS'])));
+end;
+
+procedure TPascalPreprocessorTests.EvaluatesRtlVersionConstants;
+var
+  Opts: TPreprocessorOptions;
+  Parts: TArray<TConditionPart>;
+  Error: string;
+begin
+  Opts := Options([]);
+  Assert.IsTrue(TConditionValue.Yes = TPascalPreprocessor.Explain('RTLVersion111', Opts, [], Parts, Error));
+  Assert.AreEqual('wahr', Part(Parts, 'RTLVersion111').Value);
+  Assert.AreEqual('Delphi 13', Part(Parts, 'RTLVersion111').Origin);
+  Assert.IsTrue(TConditionValue.Yes = TPascalPreprocessor.Explain('Declared(RTLVersion111)', Opts, [], Parts, Error));
+  Assert.AreEqual('wahr', Part(Parts, 'Declared(RTLVersion111)').Value);
+  Opts.CompilerVersion := 34;
+  Assert.IsTrue(TConditionValue.No = TPascalPreprocessor.Explain('RTLVersion111', Opts, [], Parts, Error));
+  Opts.CompilerVersion := 36;
+  Assert.IsTrue(TConditionValue.Yes = TPascalPreprocessor.Explain('RTLVersion122', Opts, [], Parts, Error));
+  Assert.IsTrue(TConditionValue.No = TPascalPreprocessor.Explain('RTLVersion131', Opts, [], Parts, Error));
+  Assert.AreEqual('Delphi 12', TPascalPreprocessor.ProductName(36));
+  Assert.AreEqual('', Error);
+end;
+
+procedure TPascalPreprocessorTests.UnknownValuesKeepBothBranchesActive;
+var
+  R: TPreprocessorResult;
+  Opts: TPreprocessorOptions;
+  Parts: TArray<TConditionPart>;
+  Error: string;
+begin
+  R := Run('{$IF Declared(Unbekannt)} a {$ELSE} b {$ENDIF}', []);
+  Assert.AreEqual('a b', Words(R));
+  Assert.AreEqual<NativeInt>(0, Length(R.Issues));
+  Assert.AreEqual<NativeInt>(0, Length(R.InactiveRanges));
+  R := Run('{$IF MeineKonstante > 2} a {$ELSE} b {$ENDIF}', []);
+  Assert.AreEqual('a b', Words(R));
+  Assert.AreEqual<NativeInt>(0, Length(R.Issues));
+  // Ein bekannter Teil entscheidet trotzdem: falsch und unbekannt = falsch.
+  Assert.AreEqual('b', Words(Run('{$IF Defined(NIE) and (MeineKonstante > 2)} a {$ELSE} b {$ENDIF}', [])));
+  Assert.AreEqual('a', Words(Run('{$IF Defined(X) or (MeineKonstante > 2)} a {$ELSE} b {$ENDIF}', ['X'])));
+  // $ELSEIF nach einem unbekannten Zweig bleibt ebenfalls aktiv.
+  Assert.AreEqual('a b', Words(Run('{$IF MeineKonstante > 2} a {$ELSEIF Defined(X)} b {$ELSE} c {$ENDIF}', ['X'])));
+  Assert.AreEqual('a c', Words(Run('{$IF MeineKonstante > 2} a {$ELSEIF Defined(X)} b {$ELSE} c {$ENDIF}', [])));
+  Opts := Options([]);
+  Assert.IsTrue(TConditionValue.Unknown =
+    TPascalPreprocessor.Explain('Declared(Unbekannt)', Opts, [], Parts, Error));
+  Assert.AreEqual('unbekannt', Part(Parts, 'Declared(Unbekannt)').Value);
+  Assert.IsTrue(TConditionValue.Unknown = TPascalPreprocessor.Explain('MeineKonstante > 2', Opts, [], Parts, Error));
+  Assert.AreEqual('Konstante aus dem Code', Part(Parts, 'MeineKonstante').Origin);
+end;
+
+procedure TPascalPreprocessorTests.DeclaredAsksIndex;
+var
+  Opts: TPreprocessorOptions;
+  Parts: TArray<TConditionPart>;
+  Error: string;
+  Provider: TDeclaredFunc;
+begin
+  Opts := Options([]);
+  Provider :=
+    function(const AName: string): Boolean
+    begin
+      Result := SameText(AName, 'TFoo');
+    end;
+  TPascalPreprocessor.SetDeclaredProvider(Provider);
+  try
+    Assert.IsTrue(TConditionValue.Yes = TPascalPreprocessor.Explain('Declared(TFoo)', Opts, [], Parts, Error));
+    Assert.AreEqual('Index', Part(Parts, 'Declared(TFoo)').Origin);
+    Assert.IsTrue(TConditionValue.Unknown = TPascalPreprocessor.Explain('Declared(TBar)', Opts, [], Parts, Error));
+    Assert.AreEqual('b', Words(TPascalPreprocessor.Process('{$IF not Declared(TFoo)} a {$ELSE} b {$ENDIF}', Opts)));
+  finally
+    TPascalPreprocessor.SetDeclaredProvider(nil);
+  end;
+  Assert.IsTrue(TConditionValue.Unknown = TPascalPreprocessor.Explain('Declared(TFoo)', Opts, [], Parts, Error));
+  Opts.Declared := Provider;
+  Assert.IsTrue(TConditionValue.Yes = TPascalPreprocessor.Explain('Declared(TFoo)', Opts, [], Parts, Error));
+end;
+
+procedure TPascalPreprocessorTests.IfoptFollowsProjectAndLocalSwitches;
+const
+  Source = '{$IFOPT R+} a {$ELSE} b {$ENDIF}';
+var
+  R: TPreprocessorResult;
+begin
+  R := Run(Source, ['$R+']);
+  Assert.AreEqual('a', Code(R));
+  Assert.AreEqual<NativeInt>(1, Length(R.Checks));
+  Assert.AreEqual('IFOPT', R.Checks[0].Directive);
+  Assert.AreEqual('R+', R.Checks[0].Parts[0].Value);
+  Assert.AreEqual('DCC_RangeChecking', R.Checks[0].Parts[0].Origin);
+  Assert.AreEqual('b', Code(Run(Source, ['$R-'])));
+  // Unbekannt: beide Zweige aktiv.
+  Assert.AreEqual('a b', Code(Run(Source, [])));
+  // Schaltereinträge sind keine Symbole.
+  Assert.AreEqual<NativeInt>(0, Length(Run(Source, ['$R+']).Defines));
+  R := Run('x'#10'{$R-}'#10 + Source, ['$R+']);
+  Assert.AreEqual('x b', Code(R));
+  Assert.AreEqual('{$R-} in Zeile 2', R.Checks[0].Parts[0].Origin);
+  Assert.AreEqual('a', Code(Run('{$R-,Q+} {$IFOPT Q+} a {$ENDIF} {$IFOPT R+} b {$ENDIF}', ['$R+'])));
+  Assert.AreEqual('b', Code(Run('{$RANGECHECKS OFF} ' + Source, ['$R+'])));
+  // {$R Datei.res} ist kein Schalter.
+  Assert.AreEqual('a', Code(Run('{$R *.res} ' + Source, ['$R+'])));
+  R := Run('{$IFOPT ?} a {$ENDIF}', []);
+  Assert.AreEqual<NativeInt>(1, Length(R.Issues));
+end;
+
+procedure TPascalPreprocessorTests.PushOptRestoresSwitches;
+var
+  R: TPreprocessorResult;
+begin
+  R := Run('{$PUSHOPT} {$R-} {$IFOPT R+} a {$ENDIF} {$POPOPT} {$IFOPT R+} b {$ENDIF}', ['$R+']);
+  Assert.AreEqual('b', Code(R));
+  Assert.AreEqual<NativeInt>(0, Length(R.Issues));
+  // Verschachtelt, auch für {$M+}.
+  Assert.AreEqual('a c', Code(Run('{$M-} {$PUSHOPT} {$M+} {$PUSHOPT} {$M-} {$POPOPT} {$IFOPT M+} a {$ENDIF} ' +
+    '{$POPOPT} {$IFOPT M+} b {$ELSE} c {$ENDIF}', [])));
+  R := Run('{$POPOPT} a', []);
+  Assert.AreEqual('a', Code(R));
+  Assert.AreEqual<NativeInt>(1, Length(R.Issues));
+end;
+
+procedure TPascalPreprocessorTests.MapsProjectPropertiesToSwitches;
+var
+  Switches: TArray<string>;
+  R: TPreprocessorResult;
+begin
+  Switches := TPascalPreprocessor.ProjectSwitches([
+    TPair<string, string>.Create('DCC_RangeChecking', 'true'),
+    TPair<string, string>.Create('DCC_Optimize', 'false'),
+    TPair<string, string>.Create('DCC_DebugInformation', '2'),
+    TPair<string, string>.Create('DCC_IntegerOverflowCheck', 'True'),
+    TPair<string, string>.Create('DCC_AssertionsAtRuntime', 'false'),
+    TPair<string, string>.Create('DCC_Define', 'DEBUG')]);
+  Assert.AreEqual('$C-,$D+,$I+*,$J-*,$L+*,$O-,$Q+,$R+,$W-*', string.Join(',', Switches));
+  // Die Vorgabe des Compilers gilt mit eigener Herkunft.
+  R := Run('{$IFOPT W+} a {$ELSE} b {$ENDIF}', Switches);
+  Assert.AreEqual('b', Code(R));
+  Assert.AreEqual('DCC_GenerateStackFrames (Vorgabe des Compilers)', R.Checks[0].Parts[0].Origin);
+  Assert.IsTrue(TPascalPreprocessor.IsSwitchEntry('$R+'));
+  Assert.IsFalse(TPascalPreprocessor.IsSwitchEntry('DEBUG'));
+  Assert.AreEqual('DCC_RangeChecking', TPascalPreprocessor.SwitchProperty('r'));
+  Assert.AreEqual('', TPascalPreprocessor.SwitchProperty('M'));
+end;
+
+procedure TPascalPreprocessorTests.RecordsConditionChecks;
+var
+  R: TPreprocessorResult;
+begin
+  R := Run('{$IFDEF X} {$IF SizeOf(Pointer) = 8} a {$ENDIF} {$ENDIF}'#10 +
+    '{$IF Defined(A)} b {$ELSEIF RTLVersion111} c {$ENDIF}',
+    ['WIN64', 'CPU64BITS']);
+  // Der $IF im inaktiven $IFDEF wird nicht ausgewertet.
+  Assert.AreEqual('c', Words(R));
+  Assert.AreEqual<NativeInt>(2, Length(R.Checks));
+  Assert.AreEqual('IF', R.Checks[0].Directive);
+  Assert.AreEqual('Defined(A)', R.Checks[0].Expression);
+  Assert.IsTrue(TConditionValue.No = R.Checks[0].Value);
+  Assert.AreEqual(1, R.Checks[0].Range.StartPos.Line);
+  Assert.AreEqual('ELSEIF', R.Checks[1].Directive);
+  Assert.IsTrue(TConditionValue.Yes = R.Checks[1].Value);
+  Assert.AreEqual('Delphi 13', Part(R.Checks[1].Parts, 'RTLVersion111').Origin);
 end;
 
 initialization

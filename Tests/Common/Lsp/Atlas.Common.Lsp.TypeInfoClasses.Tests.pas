@@ -25,6 +25,9 @@ type
     procedure ReadsSwitchDirectives;
     [Test]
     procedure SwitchFollowsPositionAndConditionals;
+    /// <summary>#847: {$PUSHOPT}/{$POPOPT} sichern und stellen {$M+} wieder her.</summary>
+    [Test]
+    procedure SwitchFollowsPushAndPopOpt;
     [Test]
     procedure FollowsAncestorsThroughIndex;
     [Test]
@@ -125,6 +128,26 @@ begin
   Assert.IsFalse(TTypeInfoClasses.SwitchAt(Code, TTextPosition.Create(4, 5)));
   Assert.IsFalse(TTypeInfoClasses.SwitchAt(Code, TTextPosition.Create(6, 5)), 'inaktiver Zweig');
   Assert.IsTrue(TTypeInfoClasses.SwitchAt(Code, TTextPosition.Create(8, 5)), 'aktiver Zweig');
+end;
+
+procedure TTypeInfoClassesTests.SwitchFollowsPushAndPopOpt;
+const
+  Code =
+    'unit U;'#10 +           // 0
+    '{$M+}'#10 +             // 1
+    '{$PUSHOPT}'#10 +        // 2
+    '{$M-}'#10 +             // 3
+    'type TA = class end;'#10 + // 4
+    '{$POPOPT}'#10 +         // 5
+    'type TB = class end;'#10 + // 6
+    '{$POPOPT}'#10 +         // 7
+    'type TC = class end;'#10 + // 8
+    'end.';
+begin
+  Assert.IsFalse(TTypeInfoClasses.SwitchAt(Code, TTextPosition.Create(4, 5)));
+  Assert.IsTrue(TTypeInfoClasses.SwitchAt(Code, TTextPosition.Create(6, 5)));
+  // {$POPOPT} ohne {$PUSHOPT} ändert nichts.
+  Assert.IsTrue(TTypeInfoClasses.SwitchAt(Code, TTextPosition.Create(8, 5)));
 end;
 
 procedure TTypeInfoClassesTests.FollowsAncestorsThroughIndex;

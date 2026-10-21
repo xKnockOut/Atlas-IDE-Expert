@@ -136,8 +136,9 @@ var
 begin
   if not TryStrToFloat(ABdsVersion, Version, TFormatSettings.Invariant) then
     Version := 0;
+  // Dazu die Schalterstände für $IFOPT ("$R+", #847).
   Result := AProject.Defines + TPascalPreprocessor.PredefinedSymbols(AProject.Platform,
-    TPascalPreprocessor.CompilerVersionOfBds(Version));
+    TPascalPreprocessor.CompilerVersionOfBds(Version)) + TPascalPreprocessor.ProjectSwitches(AProject.Properties);
 end;
 
 class function TIndexProjectFiles.LibraryDefines(const AProject: TProjectInfo;
@@ -161,7 +162,8 @@ class function TIndexProjectFiles.Signature(const AProject: TProjectInfo; const 
 begin
   Result := AnsiUpperCase(AProject.FileName) + '|' + UpperCase(AProject.Config) + '|' +
     UpperCase(AProject.Platform) + '|' + ACompilerVersion + '|' + SortedKey(AProject.Defines) + '|' +
-    AnsiUpperCase(String.Join(';', AProject.SearchPaths)) + '|' + UpperCase(String.Join(';', AProject.Namespaces));
+    AnsiUpperCase(String.Join(';', AProject.SearchPaths)) + '|' + UpperCase(String.Join(';', AProject.Namespaces)) +
+    '|' + String.Join(';', TPascalPreprocessor.ProjectSwitches(AProject.Properties));
 end;
 
 end.
