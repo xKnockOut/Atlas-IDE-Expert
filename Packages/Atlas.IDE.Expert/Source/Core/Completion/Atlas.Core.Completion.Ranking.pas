@@ -213,6 +213,48 @@ begin
     Result := 0;
 end;
 
+/// <summary>Gleichnamige Varianten aus anderen Units (#475) direkt hinter die aktive, in ihrer Reihenfolge; ohne
+/// aktive in der Liste bleiben sie, wo sie sind.</summary>
+procedure MoveVariants(const AItems: TAtlasCompletionItems; AFound: TList<Integer>);
+var
+  Actives: TDictionary<string, Boolean>;
+  Moved: TList<Integer>;
+  Index, Variant: Integer;
+  Key: string;
+begin
+  Actives := TDictionary<string, Boolean>.Create;
+  Moved := TList<Integer>.Create;
+  try
+    for Index in AFound do
+      if AItems[Index].SameNameActive then
+        Actives.AddOrSetValue(UpperCase(AItems[Index].Name + #0 + AItems[Index].DeclaringUnit), True);
+    if Actives.Count = 0 then
+      Exit;
+    for Index in AFound do
+    begin
+      if AItems[Index].SameNameOf <> '' then
+      begin
+        if not Actives.ContainsKey(UpperCase(AItems[Index].Name + #0 + AItems[Index].SameNameOf)) then
+          Moved.Add(Index);
+        Continue;
+      end;
+      Moved.Add(Index);
+      if not AItems[Index].SameNameActive then
+        Continue;
+      Key := UpperCase(AItems[Index].Name + #0 + AItems[Index].DeclaringUnit);
+      for Variant in AFound do
+        if (AItems[Variant].SameNameOf <> '') and
+          (UpperCase(AItems[Variant].Name + #0 + AItems[Variant].SameNameOf) = Key) then
+          Moved.Add(Variant);
+    end;
+    AFound.Clear;
+    AFound.AddRange(Moved);
+  finally
+    Moved.Free;
+    Actives.Free;
+  end;
+end;
+
 /// <summary>Nach "inherited " (#482): 0 = gleiche Parameter, 1 = andere Überladung, 2 = weiterer Konstruktor
 /// bzw. Destruktor, 3 = übrige Einträge.</summary>
 function InheritedRank(const AItem: TAtlasCompletionItem): Integer;
@@ -432,6 +474,7 @@ begin
         if Result = 0 then
           Result := A - B;
       end));
+    MoveVariants(Items, Found);
     // In einer Liste sammeln: Anhängen an das Array kopierte es bei jedem Eintrag (#616).
     Depth := 0;
     Container := '';

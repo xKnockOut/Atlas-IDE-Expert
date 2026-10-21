@@ -127,6 +127,7 @@ contains
   Atlas.Common.Lsp.CompletionGenerics in 'Source\Lsp\Atlas.Common.Lsp.CompletionGenerics.pas',
   Atlas.Common.Lsp.CompletionUses in 'Source\Lsp\Atlas.Common.Lsp.CompletionUses.pas',
   Atlas.Common.Lsp.CompletionInherited in 'Source\Lsp\Atlas.Common.Lsp.CompletionInherited.pas',
+  Atlas.Common.Lsp.CompletionSameNames in 'Source\Lsp\Atlas.Common.Lsp.CompletionSameNames.pas',
   Atlas.Common.Lsp.CompletionRequest in 'Source\Lsp\Atlas.Common.Lsp.CompletionRequest.pas',
   Atlas.Common.Lsp.CompletionCollector in 'Source\Lsp\Atlas.Common.Lsp.CompletionCollector.pas',
   Atlas.Common.Lsp.CompletionJson in 'Source\Lsp\Atlas.Common.Lsp.CompletionJson.pas',

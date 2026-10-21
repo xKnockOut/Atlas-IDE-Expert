@@ -11,7 +11,7 @@ function AtlasSchemaJson: string;
 implementation
 
 const
-  Lines: array[0..1390] of string = (
+  Lines: array[0..1409] of string = (
     '{',
     '  "$schema": "http://json-schema.org/draft-07/schema#",',
     '  "title": "Atlas-Konfiguration",',
@@ -524,6 +524,25 @@ const
     '          "description": "Nach „inherited “ zuerst den vollständigen Aufruf der gleichnamigen Vorfahrmethode mit den Parametern der eigenen Methode anbieten (Marke „gleiche Parameter“), dann ihre übri' + 'gen Überladungen, in Konstruktoren und Destruktoren auch die übrigen Konstruktoren bzw. Destruktoren der Vorfahren. Abstrakte Vorfahrmethoden fehlen, die Fußzeile nennt sie. In Funktionen ergänzt die ' + 'Übernahme „Result := “, wenn vor inherited nichts in der Zeile steht. Aus: nur die Namen der Vorfahrmethoden.",',
     '          "x-issue": "#482"',
     '        },',
+    '        "sameNameVariants": {',
+    '          "type": "boolean",',
+    '          "default": true,',
+    '          "description": "Kommt ein Name in mehreren Units vor, jede Variante mit ihrer Unit zeigen; die Variante, die der Compiler nach den uses wählt (letzte Unit gewinnt), steht zuerst mit „aktiv“,' + ' das Detailpanel nennt alle Units, die den Namen deklarieren. Aus: nur die aktive Variante.",',
+    '          "x-issue": "#475"',
+    '        },',
+    '        "sameNameInsert": {',
+    '          "type": "string",',
+    '          "enum": ["prefix", "uses"],',
+    '          "default": "prefix",',
+    '          "description": "Übernahme einer nicht aktiven Variante: prefix fügt den Unit-Präfix ein (Vcl.Graphics.TBitmap), uses verschiebt die Unit in ihrer uses-Liste nach hinten bzw. ergänzt sie; das' + ' Detailpanel warnt dann, dass andere Stellen ihre Bedeutung ändern können.",',
+    '          "x-issue": "#475"',
+    '        },',
+    '        "showFmxUnits": {',
+    '          "type": "boolean",',
+    '          "default": false,',
+    '          "description": "Varianten aus FireMonkey-Units (FMX.*) zeigen. Aus: Die Fußzeile nennt sie als ausgeblendet.",',
+    '          "x-issue": "#475"',
+    '        },',
     '        "nameSuggestions": {',
     '          "type": "boolean",',
     '          "default": true,',
@@ -534,7 +553,7 @@ const
     '      "x-area": "completion",',
     '      "x-page": "Vervollständigung",',
     '      "x-control": "Auswahl",',
-    '      "x-issue": "#31, #188, #229, #450, #452, #466, #467, #473, #480, #489, #490"',
+    '      "x-issue": "#31, #188, #229, #450, #452, #466, #467, #469, #473, #475, #480, #482, #489, #490"',
     '    },',
     '    "refactoring": {',
     '      "type": "object",',

@@ -2766,3 +2766,19 @@ Voraussetzung: VCL-Quellen über die Bibliothekspfade im Index, Atlas-Tooltip an
 | IP9 | Parameter mit anderem Namen, aber gleichem Typ (`Besitzer: TComponent`) | `Create(Besitzer)` |
 | IP10 | `completion.inheritedCall` aus | Nur die Namen der Vorfahrmethoden wie bisher, kein Aufruf mit Argumenten |
 | IP11 | Oberfläche auf Englisch | Marken „same parameters“, „overload“; Fußzeile „… is abstract and not listed“ |
+
+## Gleiche Namen aus verschiedenen Units (#475)
+
+Voraussetzung: `uses Winapi.Windows, Vcl.Graphics;`, VCL- und RTL-Quellen im Index.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| GN1 | Im Rumpf `Bild := TBitm` tippen | `TBitmap` mit Marke „aktiv“ und rechts Vcl.Graphics, direkt darunter `TBitmap` aus Winapi.Windows, danach TBitmapImage (**Abnahme**) |
+| GN2 | Die Variante aus Winapi.Windows wählen, Enter | Eingefügt wird `Winapi.Windows.TBitmap`, die uses bleiben (**Abnahme**) |
+| GN3 | Fußzeile ansehen | „FMX.Graphics.TBitmap ausgeblendet“; die FMX-Variante steht nicht in der Liste (**Abnahme**) |
+| GN4 | Detailpanel der Variante aus Winapi.Windows | DEKLARIERT IN: „Vcl.Graphics · aktiv · letzte Unit in den uses“, „Winapi.Windows · diese Variante“ (fett), „FMX.Graphics.TBitmap · ausgeblendet“; darunter „nicht aktiv · Enter fügt den Unit-Präfix ein“ |
+| GN5 | `completion.sameNameInsert` = `uses`; GN2 wiederholen | Eingefügt wird `TBitmap`, Winapi.Windows wandert in der uses-Liste hinter Vcl.Graphics; das Detailpanel warnte vorher in Warnfarbe, dass andere Stellen ihre Bedeutung ändern können |
+| GN6 | Wie GN5, aber Winapi.Windows im interface-, Vcl.Graphics im implementation-uses | Kein Verschieben, Enter fügt den Präfix ein |
+| GN7 | `completion.showFmxUnits` an | `TBitmap` aus FMX.Graphics erscheint; Enter fügt `FMX.Graphics.TBitmap` ein und ergänzt FMX.Graphics in den uses (Warnung im Panel) |
+| GN8 | `completion.sameNameVariants` aus | Nur `TBitmap` aus Vcl.Graphics, ohne „aktiv“, keine Fußzeile zu FMX (**Abnahme**) |
+| GN9 | Oberfläche auf Englisch | Marke „active“, „Declared in“, „… hidden“ |

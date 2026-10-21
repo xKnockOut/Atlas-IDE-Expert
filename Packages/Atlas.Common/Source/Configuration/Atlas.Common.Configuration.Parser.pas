@@ -1243,6 +1243,20 @@ begin
       ExpectBoolean(ANode[Index], Key, FSettings.Completion.UsesDetails)
     else if Key = 'inheritedCall' then
       ExpectBoolean(ANode[Index], Key, FSettings.Completion.InheritedCall)
+    else if Key = 'sameNameVariants' then
+      ExpectBoolean(ANode[Index], Key, FSettings.Completion.SameNameVariants)
+    else if Key = 'showFmxUnits' then
+      ExpectBoolean(ANode[Index], Key, FSettings.Completion.ShowFmxUnits)
+    else if Key = 'sameNameInsert' then
+    begin
+      if ExpectString(ANode[Index], Key, Text) then
+        if Text = 'prefix' then
+          FSettings.Completion.SameNameInsert := TCompletionSameNameInsert.Prefix
+        else if Text = 'uses' then
+          FSettings.Completion.SameNameInsert := TCompletionSameNameInsert.Uses_
+        else
+          ReportNode(ANode[Index], 'Erlaubt sind "prefix" und "uses"');
+    end
     else if Key = 'typeConversion' then
     begin
       if ExpectString(ANode[Index], Key, Text) then

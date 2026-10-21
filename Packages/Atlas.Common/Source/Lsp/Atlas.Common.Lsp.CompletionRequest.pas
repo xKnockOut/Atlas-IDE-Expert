@@ -197,6 +197,16 @@ type
     InheritedMatch: string;
     /// <summary>Ausgelassene abstrakte Vorfahrmethoden ("TBasis.Zeichnen") für die Fußzeile.</summary>
     InheritedAbstract: TArray<string>;
+    /// <summary>Gleichnamige Bezeichner (#475): Variante, die der Compiler wählt; bei den übrigen Varianten
+    /// SameNameOf = Unit der aktiven und SameNameInsert, was Enter tut ('prefix', 'prefixAdd' = Präfix und
+    /// uses ergänzen, 'move' = in den uses nach hinten, 'add' = uses ergänzen). SameNameUnits: alle Units, die
+    /// den Namen deklarieren, die aktive zuerst; SameNameHidden: ausgeblendete FMX-Varianten als "Unit.Name".
+    /// </summary>
+    SameNameActive: Boolean;
+    SameNameOf: string;
+    SameNameInsert: string;
+    SameNameUnits: TArray<string>;
+    SameNameHidden: TArray<string>;
   end;
 
   TCompletionItems = record

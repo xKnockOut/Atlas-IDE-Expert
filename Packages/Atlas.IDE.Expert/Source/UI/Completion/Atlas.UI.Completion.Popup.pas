@@ -317,6 +317,7 @@ begin
     TAtlasTagId.Cycle: Result := TAtlasStrings.Text(TAtlasTextId.UsesCycleTag);
     TAtlasTagId.SameParams: Result := TAtlasStrings.Text(TAtlasTextId.InheritedSameTag);
     TAtlasTagId.Overload: Result := TAtlasStrings.Text(TAtlasTextId.InheritedOverloadTag);
+    TAtlasTagId.Active: Result := TAtlasStrings.Text(TAtlasTextId.SameNameActiveTag);
   else
     Result := ATag.Text;
   end;
@@ -585,6 +586,10 @@ begin
   // Nach "inherited " (#482): welche abstrakten Vorfahrmethoden fehlen.
   if Length(TAtlasItemPresentation.InheritedAbstract(FItems)) > 0 then
     Exit(TAtlasStrings.InheritedAbstract(TAtlasItemPresentation.InheritedAbstract(FItems)));
+  // Gleichnamige Bezeichner (#475): ausgeblendete FireMonkey-Varianten.
+  if Length(TAtlasItemPresentation.SameNameHidden(FItems)) > 0 then
+    Exit(TAtlasStrings.Fmt(TAtlasTextId.SameNameHiddenFooter,
+      [string.Join(', ', TAtlasItemPresentation.SameNameHidden(FItems))]));
   Result := TAtlasStrings.Text(TAtlasTextId.FooterKeys);
   if FTarget = '' then
     Exit;

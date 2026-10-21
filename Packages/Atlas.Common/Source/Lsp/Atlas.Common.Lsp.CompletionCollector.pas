@@ -145,6 +145,10 @@ type
     /// <summary>Symbole aus nicht eingebundenen Units (#180) mit uses-Eintrag; Projekt-Units vor Bibliotheken.
     /// </summary>
     procedure AddFromOtherUnits;
+    /// <summary>Gleichnamige Bezeichner aus anderen Units (#475): je Eintrag aus einer eingebundenen Unit, dessen
+    /// Name weitere Units deklarieren, diese Varianten direkt dahinter; der Eintrag selbst trägt „aktiv“.
+    /// Nach den Units aus uses aufrufen, vor dem Senden ihrer Stufe.</summary>
+    procedure AddSameNameVariants;
     /// <summary>Mitglieder von Helpern für ATypes (Typ und Vorfahren, nächster zuerst) aus nicht eingebundenen
     /// Units (#456) mit uses-Eintrag, hinter den übrigen Mitgliedern.</summary>
     procedure AddHelpersFromOtherUnits(const ATypes: TArray<TResolvedSymbol>);
@@ -195,6 +199,7 @@ uses
   Atlas.Common.Editing.UsesClause,
   Atlas.Common.Editing.InterfaceStubs,
   Atlas.Common.Lsp.FuzzyMatch,
+  Atlas.Common.Lsp.CompletionSameNames,
   Atlas.Text.Fuzzy;
 
 const
@@ -872,6 +877,154 @@ begin
     end;
   finally
     Known.Free;
+  end;
+end;
+
+procedure TCompletionCollector.AddSameNameVariants;
+type
+  TVariant = record
+    Active: Integer;
+    UnitInfo: TUnitIndex;
+    Symbol: TIndexSymbol;
+  end;
+const
+  /// <summary>Platz für Varianten in der Reihenfolge hinter jedem Eintrag.</summary>
+  VariantSlots = 1000;
+var
+  Count: Integer;
+  Active: TDictionary<string, Integer>;
+  Variants: TList<TVariant>;
+  Variant: TVariant;
+  Units, Hidden: TArray<TArray<string>>;
+  Names: TImportNameIndex;
+  Entry: TImportNameEntry;
+  Used: TArray<string>;
+  Own, Key, Mode, Text: string;
+  QueryMask: UInt64;
+  Index, Position: Integer;
+  Scored: TScoredItem;
+  Member: TResolvedSymbol;
+  Edits, Moved: TArray<TRuleEdit>;
+  Edit: TRuleEdit;
+  IsUsed_, Movable: Boolean;
+  Range: TTextRange;
+begin
+  Count := 0;
+  if not FRequest.Settings.SameNameVariants or (FContext.Kind <> TCompletionContextKind.Scope) or
+    (FRequest.Tree = nil) or (FRequest.Index = nil) then
+    Exit;
+  Active := TDictionary<string, Integer>.Create;
+  Variants := TList<TVariant>.Create;
+  try
+    // Aktiv ist, was die Namensauflösung aus den uses brachte (letzte Unit gewinnt).
+    for Index := 0 to FList.Count - 1 do
+      if (FList[Index].Item.Scope = 5) and (FList[Index].Item.UnitName <> '') and (FList[Index].Item.Action = '') and
+        not FList[Index].Item.Unavailable and (FList[Index].Item.Conversion = '') then
+        Active.AddOrSetValue(UpperCase(FList[Index].Item.Name), Index);
+    if Active.Count = 0 then
+      Exit;
+    Own := TUsesClauses.OwnName(FRequest.Tree.Tokens);
+    Names := TImportNames.Current(FRequest.Index);
+    QueryMask := TImportNameIndex.MaskOf(FContext.Prefix);
+    SetLength(Units, FList.Count);
+    SetLength(Hidden, FList.Count);
+    for Entry in Names.Entries do
+    begin
+      if not TImportNameIndex.MayMatch(Entry.Mask, QueryMask) then
+        Continue;
+      Variant.Symbol := Names.Units[Entry.UnitPos].Symbols[Entry.SymbolPos];
+      if not Active.TryGetValue(UpperCase(Variant.Symbol.Name), Variant.Active) then
+        Continue;
+      Variant.UnitInfo := Names.Units[Entry.UnitPos];
+      if Variant.Symbol.Unavailable or SameText(Variant.UnitInfo.UnitName, Own) or
+        SameText(Variant.UnitInfo.UnitName, FList[Variant.Active].Item.UnitName) or
+        MatchText(Variant.UnitInfo.UnitName, Units[Variant.Active]) or
+        ((FContext.Filter = TCompletionFilter.Types) and not (Variant.Symbol.Kind in IndexTypeKinds)) then
+        Continue;
+      if TCompletionSameNames.IsFmx(Variant.UnitInfo.UnitName) and not FRequest.Settings.ShowFmxUnits then
+      begin
+        Text := Variant.UnitInfo.UnitName + '.' + Variant.Symbol.Name;
+        if not MatchText(Text, Hidden[Variant.Active]) then
+          Hidden[Variant.Active] := Hidden[Variant.Active] + [Text];
+        Continue;
+      end;
+      Units[Variant.Active] := Units[Variant.Active] + [Variant.UnitInfo.UnitName];
+      Variants.Add(Variant);
+    end;
+    // Die aktive Variante nennt alle Units, die den Namen deklarieren.
+    for Index := 0 to FList.Count - 1 do
+      if (Length(Units[Index]) > 0) or (Length(Hidden[Index]) > 0) then
+      begin
+        Scored := FList[Index];
+        Scored.Item.SameNameActive := True;
+        Scored.Item.SameNameUnits := [Scored.Item.UnitName] + Units[Index];
+        Scored.Item.SameNameHidden := Hidden[Index];
+        FList[Index] := Scored;
+      end;
+    Used := TUsesClauses.UsedUnits(FRequest.Tree.Tokens);
+    Range := TTextRange.Create(FRequest.Position.Line, FRequest.Position.Character - Length(FContext.Prefix),
+      FRequest.Position.Line, FRequest.Position.Character);
+    for Variant in Variants do
+    begin
+      Key := FList[Variant.Active].Item.UnitName;
+      IsUsed_ := TUsesClauses.IsUsed(Used, Variant.UnitInfo.UnitName, FRequest.Resolver.Namespaces);
+      Movable := IsUsed_ and TCompletionSameNames.MoveToEnd(FRequest.Tree.Tokens, Variant.UnitInfo.UnitName, Key,
+        FRequest.Resolver.Namespaces, Moved);
+      Mode := TCompletionSameNames.InsertMode(FRequest.Settings.SameNameInsert, IsUsed_, Movable);
+      Edits := nil;
+      if Mode = TCompletionSameNames.InsertMove then
+        Edits := Moved
+      else if (Mode = TCompletionSameNames.InsertAdd) or (Mode = TCompletionSameNames.InsertPrefixAdd) then
+      begin
+        if not TUsesClauses.AddUnit(FRequest.Tree.Tokens, FContext.Offset, Variant.UnitInfo.UnitName,
+          FRequest.LineBreak, Edit) then
+          Continue;
+        Edits := [Edit];
+      end;
+      Member := Default(TResolvedSymbol);
+      Member.Kind := TResolvedKind.Symbol;
+      Member.Name := Variant.Symbol.Name;
+      Member.UnitName := Variant.UnitInfo.UnitName;
+      Member.MinArgs := Variant.Symbol.MinArgs;
+      Member.MaxArgs := Variant.Symbol.MaxArgs;
+      Member.FileName := Variant.UnitInfo.FileName;
+      Member.SelectionRange.StartPos := Variant.Symbol.SelectionRange.StartPos;
+      if not Add(Variant.Symbol.Name, Variant.UnitInfo.UnitName, CompletionKindOf(Variant.Symbol.Kind), 0, Member,
+        Edits) then
+        Continue;
+      // Direkt hinter der aktiven Variante: gleiche Punktzahl, Reihenfolge gleich dahinter (siehe unten).
+      Position := FList.Count - 1;
+      Scored := FList[Position];
+      Scored.Score := FList[Variant.Active].Score;
+      Inc(Count);
+      Scored.Order := FList[Variant.Active].Order * VariantSlots + Count;
+      Scored.Item.SameNameOf := Key;
+      Scored.Item.SameNameInsert := Mode;
+      Scored.Item.SameNameUnits := FList[Variant.Active].Item.SameNameUnits;
+      Scored.Item.SameNameHidden := FList[Variant.Active].Item.SameNameHidden;
+      if Scored.Item.FilterText = '' then
+        Scored.Item.FilterText := Variant.Symbol.Name;
+      if (Mode = TCompletionSameNames.InsertPrefix) or (Mode = TCompletionSameNames.InsertPrefixAdd) then
+      begin
+        Scored.Item.HasTextEdit := True;
+        Scored.Item.TextEdit := TRuleEdit.Create(Range, Variant.UnitInfo.UnitName + '.' + Variant.Symbol.Name);
+      end;
+      // Kein uses-Eintrag im Sinne von #180: Atlas soll die Edits nicht als „+ Unit“ zeigen.
+      Scored.Item.Action := 'sameName';
+      FList[Position] := Scored;
+    end;
+  finally
+    // Die übrigen behalten ihre Reihenfolge, mit Platz für die Varianten dahinter.
+    if Count > 0 then
+      for Index := 0 to FList.Count - 1 do
+        if FList[Index].Item.SameNameOf = '' then
+        begin
+          Scored := FList[Index];
+          Scored.Order := Scored.Order * VariantSlots;
+          FList[Index] := Scored;
+        end;
+    Variants.Free;
+    Active.Free;
   end;
 end;
 

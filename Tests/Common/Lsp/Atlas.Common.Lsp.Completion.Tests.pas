@@ -693,8 +693,8 @@ var
   Postfix: TPostfixOptions;
   Partial: TCompletionPartialProc;
 begin
-  // Gleichnamiges aus nicht eingebundenen Units kommt nicht doppelt, auch wenn der eingebundene Name schon
-  // in einem Teilergebnis stand.
+  // Gleichnamiges aus nicht eingebundenen Units kommt nicht doppelt als Import, auch wenn der eingebundene Name
+  // schon in einem Teilergebnis stand; es steht einmal als Variante direkt hinter dem eingebundenen (#475).
   FIndex.AddUnit(TIndexExtractor.ExtractText('unit Extra;'#10'interface'#10'procedure Rechne;'#10 +
     'procedure Rechenweg;'#10'implementation'#10'procedure Rechne; begin end;'#10 +
     'procedure Rechenweg; begin end;'#10'end.', 'C:\P\Extra.pas', nil));
@@ -714,7 +714,7 @@ begin
       end;
     Items := TLspCompletion.Collect(FResolver, FIndex, Tree, HauptFile, Text, PositionOf(Text, '  Rech'),
       TCompletionMatching.Fuzzy, Postfix, Partial);
-    Assert.AreEqual('Rechne|', Sent);
+    Assert.AreEqual('Rechne Rechne|', Sent);
     Assert.AreEqual('Rechenweg', Names(Items));
     Assert.AreEqual('Extra (uses ergänzen)', Items.Items[0].Detail);
   finally

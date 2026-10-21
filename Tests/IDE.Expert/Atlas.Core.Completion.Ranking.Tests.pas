@@ -40,6 +40,8 @@ type
     [Test]
     procedure InheritedCallsFirstWithTags;
     [Test]
+    procedure SameNameVariantsFollowTheActive;
+    [Test]
     procedure ListModeFilterShowsOnlyMatches;
     [Test]
     procedure ListModeAllAppendsRestWithoutHeader;
@@ -578,6 +580,58 @@ begin
   Assert.AreEqual('qryOrders', Items[1].DataSet);
   Assert.AreEqual('select CUSTOMER_ID from ORDERS', TAtlasItemPresentation.DataSource(Items));
   Assert.AreEqual('', TAtlasItemPresentation.DataSource(Copy(Items, 0, 1)));
+end;
+
+procedure TAtlasRankingTests.SameNameVariantsFollowTheActive;
+const
+  Lines: array[0..2] of string = (
+    '{"label":"TBitmap","kind":7,"data":{"scope":5,"unit":"Winapi.Windows","action":"sameName",' +
+      '"sameNameOf":"Vcl.Graphics","sameNameInsert":"prefix","sameNameUnits":["Vcl.Graphics","Winapi.Windows"],' +
+      '"sameNameHidden":["FMX.Graphics.TBitmap"]},"textEdit":{"range":{"start":{"line":8,"character":10},' +
+      '"end":{"line":8,"character":15}},"newText":"Winapi.Windows.TBitmap"}}',
+    '{"label":"TBitmap","kind":7,"data":{"scope":5,"unit":"Vcl.Graphics","sameNameActive":true,' +
+      '"sameNameUnits":["Vcl.Graphics","Winapi.Windows"],"sameNameHidden":["FMX.Graphics.TBitmap"]}}',
+    '{"label":"TBitmapImage","kind":7,"data":{"scope":5,"unit":"Vcl.Graphics"}}');
+var
+  Json: TJSONObject;
+  Items: TAtlasCompletionItems;
+  Index: Integer;
+  Order: TArray<Integer>;
+  Found: Boolean;
+  Tag: TAtlasTag;
+  Details: TAtlasItemDetails;
+begin
+  // Gleiche Namen aus verschiedenen Units (#475): die Variante direkt unter der aktiven.
+  Items := nil;
+  for Index := 0 to High(Lines) do
+  begin
+    Json := TJSONObject.ParseJSONValue(Lines[Index]) as TJSONObject;
+    try
+      Items := Items + [TAtlasServerCompletionProvider.ItemFromLsp(Json, Index)];
+    finally
+      Json.Free;
+    end;
+  end;
+  Order := TAtlasRanking.Order(Items, 'TBitm', TAtlasRankOptions.Defaults);
+  Assert.AreEqual(3, Integer(Length(Order)));
+  // Der Server schickt die Variante hier vor der aktiven; sie rückt dahinter.
+  Assert.AreEqual(1, Order[0]);
+  Assert.AreEqual(0, Order[1]);
+  Assert.AreEqual(2, Order[2]);
+  Found := False;
+  for Tag in TAtlasItemPresentation.Tags(Items[1]) do
+    if Tag.Id = TAtlasTagId.Active then
+      Found := True;
+  Assert.IsTrue(Found);
+  for Tag in TAtlasItemPresentation.Tags(Items[0]) do
+    Assert.IsFalse(Tag.Id = TAtlasTagId.Active);
+  Assert.AreEqual('FMX.Graphics.TBitmap', string.Join(',', TAtlasItemPresentation.SameNameHidden(Items)));
+  Details := Default(TAtlasItemDetails);
+  TAtlasItemPresentation.AddSameName(Items[0], Details);
+  Assert.AreEqual('Winapi.Windows', Details.SameNameThis);
+  Assert.AreEqual('prefix', Details.SameNameInsert);
+  Assert.AreEqual(2, Integer(Length(Details.SameNameUnits)));
+  Assert.IsFalse(Details.IsEmpty);
 end;
 
 procedure TAtlasRankingTests.InheritedCallsFirstWithTags;
