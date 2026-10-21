@@ -67,6 +67,9 @@ type
     /// <summary>Atlas-Spalte in der Zeilenleiste (#768): Vorgaben, Unterschalter, Speichern und Laden.</summary>
     [Test]
     procedure GutterColumnOptions;
+    /// <summary>Gleichen Text hervorheben (#709): Vorgaben, Grenzen, Speichern und Laden.</summary>
+    [Test]
+    procedure SelectionMatchesOptions;
     /// <summary>Übersichtsleiste (#519): Vorgaben, Arten normalisiert, Speichern und Laden.</summary>
     [Test]
     procedure OverviewRulerOptions;
@@ -1562,6 +1565,47 @@ begin
   Settings := TAtlasPluginSettings.Defaults;
   Settings.Load(Store);
   Assert.IsFalse(Settings.GutterColumnOverrides);
+end;
+
+procedure TAtlasPluginSettingsTests.SelectionMatchesOptions;
+var
+  Settings, Loaded: TAtlasPluginSettings;
+  Store: IAtlasSettingsStore;
+begin
+  Settings := TAtlasPluginSettings.Defaults;
+  Assert.IsTrue(Settings.SelectionMatches);
+  Assert.AreEqual(3, Settings.SelectionMatchesMinLength);
+  Assert.IsFalse(Settings.SelectionMatchesCaseSensitive);
+  Assert.IsFalse(Settings.SelectionMatchesWholeWord);
+  Assert.IsTrue(Settings.SelectionMatchesNavigateF3);
+  Assert.AreEqual(1000, Settings.SelectionMatchesMaxMatches);
+  Settings.SelectionMatches := False;
+  Settings.SelectionMatchesMinLength := 5;
+  Settings.SelectionMatchesCaseSensitive := True;
+  Settings.SelectionMatchesWholeWord := True;
+  Settings.SelectionMatchesNavigateF3 := False;
+  Settings.SelectionMatchesMaxMatches := 250;
+  Store := TMemoryStore.Create;
+  Settings.Save(Store);
+  Loaded := TAtlasPluginSettings.Defaults;
+  Loaded.Load(Store);
+  Assert.IsFalse(Loaded.SelectionMatches);
+  Assert.AreEqual(5, Loaded.SelectionMatchesMinLength);
+  Assert.IsTrue(Loaded.SelectionMatchesCaseSensitive);
+  Assert.IsTrue(Loaded.SelectionMatchesWholeWord);
+  Assert.IsFalse(Loaded.SelectionMatchesNavigateF3);
+  Assert.AreEqual(250, Loaded.SelectionMatchesMaxMatches);
+  // Grenzen: Mindestlänge 1 bis 100, Treffer 1 bis 100000.
+  Loaded.SelectionMatchesMinLength := 0;
+  Loaded.SelectionMatchesMaxMatches := 0;
+  Loaded.Normalize;
+  Assert.AreEqual(TAtlasPluginSettings.MinSelectionMatchLength, Loaded.SelectionMatchesMinLength);
+  Assert.AreEqual(TAtlasPluginSettings.MinSelectionMatches, Loaded.SelectionMatchesMaxMatches);
+  Loaded.SelectionMatchesMinLength := 500;
+  Loaded.SelectionMatchesMaxMatches := 5000000;
+  Loaded.Normalize;
+  Assert.AreEqual(TAtlasPluginSettings.MaxSelectionMatchLength, Loaded.SelectionMatchesMinLength);
+  Assert.AreEqual(TAtlasPluginSettings.MaxSelectionMatches, Loaded.SelectionMatchesMaxMatches);
 end;
 
 procedure TAtlasPluginSettingsTests.GitChangeOptions;
