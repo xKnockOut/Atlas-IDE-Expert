@@ -6,8 +6,6 @@ Server und Claude-Code-Plugin tragen immer dieselbe Version.
 
 ## [Unveröffentlicht]
 
-## [1.0.1] - 2026-10-21
-
 ### Geändert
 - Abgesicherter Start (#722): Die Vorgabe für `safeMode.startupTimeoutMs` (Registry `SafeStartupTimeoutMs`) ist jetzt 30000 statt 10000 ms. Gemessen wird bis zur freien Nachrichtenschleife der IDE, also mit Desktop, den übrigen Packages und dem Projekt; langsame Starts lösen damit nicht mehr fälschlich die Rückfrage aus.
 
