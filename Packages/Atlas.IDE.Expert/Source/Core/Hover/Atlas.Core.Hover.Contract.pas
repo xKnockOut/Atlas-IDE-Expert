@@ -6,6 +6,8 @@
 // die Kopfzeile, Fundort, Typnamen in der Deklaration als Links und die
 // Vererbungskette. Ohne "atlas" (fremder Server, Direktiven, Schlüsselwörter)
 // wird der Klartext wie bisher in Deklaration und Doku geteilt.
+// Bei Komponentenklassen (#110) kommen die published-Properties und Ereignisse
+// samt geerbter aus "atlas.published", dazu die Standard-Property.
 
 interface
 
@@ -25,6 +27,29 @@ type
     /// <summary>Schlüssel für "derselbe Typ" (Datei und Position bzw. Name).</summary>
     function Key: string;
     class function FromJson(const AObject: TJSONObject): TAtlasHoverTypeRef; static;
+  end;
+
+  /// <summary>Vorgabe eines published-Mitglieds (#110): keine Angabe, default Wert, implizit (False, 0, erster
+  /// Aufzählungswert) bzw. nodefault.</summary>
+  TAtlasHoverDefaultKind = (hdNone, hdExplicit, hdImplicit, hdNoDefault);
+
+  /// <summary>published-Property oder Ereignis einer Komponentenklasse (#110).</summary>
+  TAtlasHoverMember = record
+    Name: string;
+    TypeName: string;
+    /// <summary>Wert nach default bzw. der implizite Wert; '' ohne.</summary>
+    DefaultValue: string;
+    DefaultKind: TAtlasHoverDefaultKind;
+    /// <summary>Text nach stored (False, IsCaptionStored); '' ohne.</summary>
+    Stored: string;
+    /// <summary>Klasse, die das Mitglied mit Typ deklariert.</summary>
+    DeclaringClass: string;
+    IsEvent: Boolean;
+    /// <summary>Hat eine Vorgabe (ausdrücklich oder implizit).</summary>
+    function HasDefault: Boolean;
+    /// <summary>Spalte „Vorgabe“ als Klartext: "crDefault", "False (implizit)", "nodefault", dazu "stored …".
+    /// </summary>
+    function DefaultText(const AImplicit: string): string;
   end;
 
   /// <summary>Typname in der Deklaration: Start (0-basiert) und Länge im Text.</summary>
@@ -61,7 +86,21 @@ type
     /// <summary>Typ, dessen Kette Ancestors zeigt (bei "class of T" T).</summary>
     ChainOf: string;
     Ancestors: TArray<TAtlasHoverTypeRef>;
+    /// <summary>published-Properties und Ereignisse samt geerbter (#110), abgeleitete Klassen zuerst.</summary>
+    Members: TArray<TAtlasHoverMember>;
+    /// <summary>Standard-Property (Array-Property mit default), z. B. "Strings[Index: Integer]: string"; '' ohne.
+    /// </summary>
+    DefaultProperty: string;
     function Found: Boolean;
+    /// <summary>Zahl der published-Properties bzw. -Ereignisse (#110).</summary>
+    function MemberCount(AEvents: Boolean): Integer;
+    /// <summary>Indizes in Members: Properties oder Ereignisse; ohne AInherited nur die der Klasse selbst
+    /// (DeclaringClass = Title), mit AOnlyDefaults nur Properties mit Vorgabe.</summary>
+    function VisibleMembers(AEvents, AInherited, AOnlyDefaults: Boolean): TArray<Integer>;
+    /// <summary>Liste für die Zwischenablage (#110): Titel, dann je Zeile Name, Typ, Vorgabe und deklarierende
+    /// Klasse durch Tabulatoren getrennt; erst Properties, dann Ereignisse, gefiltert wie VisibleMembers.
+    /// AImplicit ist das Wort für „implizit“.</summary>
+    function MembersText(AInherited, AOnlyDefaults: Boolean; const AImplicit: string): string;
     /// <summary>Name des angezeigten Typs: erstes Kettenglied bzw. Name am Fundort bzw. Deklarationsanfang.</summary>
     function Title: string;
     /// <summary>Kürzel für das Badge wie in der Vervollständigung (ty, fn, pp, fd, va, co, un, kw).</summary>
@@ -108,11 +147,72 @@ begin
   Result.Character := AObject.GetValue<Integer>('character', 0);
 end;
 
+{ TAtlasHoverMember }
+
+function TAtlasHoverMember.HasDefault: Boolean;
+begin
+  Result := (DefaultKind = hdExplicit) or (DefaultKind = hdImplicit);
+end;
+
+function TAtlasHoverMember.DefaultText(const AImplicit: string): string;
+begin
+  case DefaultKind of
+    hdExplicit: Result := DefaultValue;
+    hdImplicit: Result := DefaultValue + ' (' + AImplicit + ')';
+    hdNoDefault: Result := 'nodefault';
+  else
+    Result := '';
+  end;
+  if Stored <> '' then
+    Result := Trim(Result + ' stored ' + Stored);
+end;
+
 { TAtlasHoverData }
 
 function TAtlasHoverData.Found: Boolean;
 begin
   Result := Declaration <> '';
+end;
+
+function TAtlasHoverData.MemberCount(AEvents: Boolean): Integer;
+var
+  Member: TAtlasHoverMember;
+begin
+  Result := 0;
+  for Member in Members do
+    if Member.IsEvent = AEvents then
+      Inc(Result);
+end;
+
+function TAtlasHoverData.VisibleMembers(AEvents, AInherited, AOnlyDefaults: Boolean): TArray<Integer>;
+var
+  Index: Integer;
+  Own: string;
+begin
+  Result := nil;
+  Own := Title;
+  for Index := 0 to High(Members) do
+    if (Members[Index].IsEvent = AEvents) and (AInherited or SameText(Members[Index].DeclaringClass, Own)) and
+      (AEvents or not AOnlyDefaults or Members[Index].HasDefault) then
+      Result := Result + [Index];
+end;
+
+function TAtlasHoverData.MembersText(AInherited, AOnlyDefaults: Boolean; const AImplicit: string): string;
+var
+  Index, Pass: Integer;
+  Member: TAtlasHoverMember;
+begin
+  Result := Title;
+  // Erst Properties, dann Ereignisse.
+  for Pass := 0 to 1 do
+    for Index in VisibleMembers(Pass = 1, AInherited, AOnlyDefaults) do
+    begin
+      Member := Members[Index];
+      Result := Result + sLineBreak + Member.Name + #9 + Member.TypeName + #9 + Member.DefaultText(AImplicit) + #9 +
+        Member.DeclaringClass;
+    end;
+  if DefaultProperty <> '' then
+    Result := Result + sLineBreak + DefaultProperty + #9 + 'default';
 end;
 
 function TAtlasHoverData.Title: string;
@@ -213,6 +313,26 @@ begin
     Result := TJSONObject(Contents).GetValue<string>('value', '');
 end;
 
+function MemberFromJson(AObject: TJSONObject): TAtlasHoverMember;
+var
+  Kind: string;
+begin
+  Result := Default(TAtlasHoverMember);
+  Result.Name := AObject.GetValue<string>('name', '');
+  Result.TypeName := AObject.GetValue<string>('type', '');
+  Result.DefaultValue := AObject.GetValue<string>('default', '');
+  Kind := AObject.GetValue<string>('defaultKind', '');
+  if Kind = 'explicit' then
+    Result.DefaultKind := hdExplicit
+  else if Kind = 'implicit' then
+    Result.DefaultKind := hdImplicit
+  else if Kind = 'nodefault' then
+    Result.DefaultKind := hdNoDefault;
+  Result.Stored := AObject.GetValue<string>('stored', '');
+  Result.DeclaringClass := AObject.GetValue<string>('declaringClass', '');
+  Result.IsEvent := AObject.GetValue<Boolean>('event', False);
+end;
+
 class function TAtlasHoverData.FromHover(const AHover: TJSONValue): TAtlasHoverData;
 var
   Atlas, Item: TJSONObject;
@@ -274,6 +394,15 @@ begin
     for Value in List do
       if Value is TJSONObject then
         Result.Ancestors := Result.Ancestors + [TAtlasHoverTypeRef.FromJson(TJSONObject(Value))];
+  // published-Properties und Ereignisse (#110).
+  if Atlas.TryGetValue<TJSONObject>('published', Item) then
+  begin
+    Result.DefaultProperty := Item.GetValue<string>('defaultProperty', '');
+    if Item.TryGetValue<TJSONArray>('members', List) then
+      for Value in List do
+        if Value is TJSONObject then
+          Result.Members := Result.Members + [MemberFromJson(TJSONObject(Value))];
+  end;
   // Der angezeigte Typ selbst: erstes Kettenglied mit demselben Fundort.
   if (Length(Result.Ancestors) > 0) and (Result.Ancestors[0].Key = Result.Location.Key) then
     Result.Location.Name := Result.Ancestors[0].Name;

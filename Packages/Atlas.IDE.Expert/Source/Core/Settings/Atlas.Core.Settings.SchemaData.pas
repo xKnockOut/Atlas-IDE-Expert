@@ -11,7 +11,7 @@ function AtlasSchemaJson: string;
 implementation
 
 const
-  Lines: array[0..1378] of string = (
+  Lines: array[0..1384] of string = (
     '{',
     '  "$schema": "http://json-schema.org/draft-07/schema#",',
     '  "title": "Atlas-Konfiguration",',
@@ -1046,6 +1046,12 @@ const
     '          "maximum": 50,',
     '          "default": 0,',
     '          "description": "Höchstzahl der Doku-Zeilen, bevor der Inhalt mit dem Mausrad scrollt (0 = unbegrenzt, nur durch Bildschirm bzw. Popup begrenzt)."',
+    '        },',
+    '        "publishedMembers": {',
+    '          "type": "boolean",',
+    '          "default": true,',
+    '          "description": "Hover über einer Komponentenklasse (#110): published-Properties und Ereignisse samt geerbter in Tabellen mit Typ, Vorgabe (default, implizit, nodefault, stored) und deklarier' + 'ender Klasse, Filter für geerbte und nur mit Vorgabe, die Standard-Property einer Array-Property und „Liste kopieren“ mit Strg+C. Aus: nur Deklaration, Doku und Vererbung.",',
+    '          "x-issue": "#110"',
     '        }',
     '      },',
     '      "x-scope": "global",',

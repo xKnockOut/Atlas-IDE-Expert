@@ -803,9 +803,13 @@ begin
       TAtlasHoverAction.Usages:
         ShowUsages;
       TAtlasHoverAction.Copy:
-        // Markierter Doku-Text (#654) hat Vorrang vor der Deklaration.
+        // Markierter Doku-Text (#654) hat Vorrang, bei Komponentenklassen die gezeigte Liste (#110), sonst die
+        // Deklaration.
         if FTip.HasSelection then
           Clipboard.AsText := FTip.SelectedText
+        else if Length(Data.Members) > 0 then
+          Clipboard.AsText := Data.MembersText(not FTip.View.HideInherited, FTip.View.OnlyDefaults,
+            TAtlasStrings.Text(TAtlasTextId.PublishedImplicit))
         else
           Clipboard.AsText := Data.Declaration;
       TAtlasHoverAction.Help:
