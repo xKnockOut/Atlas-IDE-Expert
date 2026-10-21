@@ -370,6 +370,9 @@
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.WorkspaceFolders.pas"/>
         <DCCReference Include="Source\Index\Adapters\Atlas.Common.Index.Adapters.DiskFileSystem.pas"/>
         <DCCReference Include="Source\Index\Adapters\Atlas.Common.Index.Adapters.CacheDirectory.pas"/>
+        <DCCReference Include="Source\Index\Atlas.Common.Index.Processes.pas"/>
+        <DCCReference Include="Source\Index\Adapters\Atlas.Common.Index.Adapters.Processes.pas"/>
+        <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.Processes.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.WorkDoneProgress.pas"/>
         <DCCReference Include="Source\Configuration\Atlas.Common.Configuration.Contract.pas"/>
         <DCCReference Include="Source\Configuration\Internals\Atlas.Common.Configuration.Internals.JsonTree.pas"/>

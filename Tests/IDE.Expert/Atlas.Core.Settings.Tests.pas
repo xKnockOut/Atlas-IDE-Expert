@@ -233,6 +233,8 @@ begin
   Assert.IsFalse(Settings.DiagnosticMode);
   Assert.AreEqual($E044, Settings.DiagnosticModeKey);
   Assert.IsFalse(Settings.DiagnosticModeKeyPriority);
+  // Prozesse am Projekt (#62).
+  Assert.IsTrue(Settings.DiagnosticsProcesses);
   // Einrichtung mit Prüfliste (#625): beim Start zeigen, solange nicht alles grün ist; noch nie gesehen.
   Assert.IsTrue(Settings.SetupChecklist);
   Assert.IsFalse(Settings.SetupChecklistSeen);
@@ -328,6 +330,7 @@ begin
   Settings.DiagnosticMode := True;
   Settings.DiagnosticModeKey := $6044;
   Settings.DiagnosticModeKeyPriority := True;
+  Settings.DiagnosticsProcesses := False;
   Settings.SetupChecklist := False;
   Settings.SetupChecklistSeen := True;
   Settings.KeyOverview := False;
@@ -416,6 +419,7 @@ begin
   Assert.IsTrue(Loaded.DiagnosticMode);
   Assert.AreEqual($6044, Loaded.DiagnosticModeKey);
   Assert.IsTrue(Loaded.DiagnosticModeKeyPriority);
+  Assert.IsFalse(Loaded.DiagnosticsProcesses);
   Assert.IsFalse(Loaded.SetupChecklist);
   Assert.IsTrue(Loaded.SetupChecklistSeen);
   Assert.IsFalse(Loaded.KeyOverview);

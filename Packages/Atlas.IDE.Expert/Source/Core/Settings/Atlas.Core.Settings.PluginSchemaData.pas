@@ -12,7 +12,7 @@ function AtlasPluginSchemaJson: string;
 implementation
 
 const
-  Lines: array[0..3217] of string = (
+  Lines: array[0..3225] of string = (
     '{',
     '  "$schema": "http://json-schema.org/draft-07/schema#",',
     '  "title": "Atlas-Plugin-Einstellungen",',
@@ -266,6 +266,14 @@ const
     '      "x-caption": "Diagnosemodus",',
     '      "x-captionEn": "Diagnostic mode",',
     '      "x-issue": "#479"',
+    '    },',
+    '    "DiagnosticsProcesses": {',
+    '      "type": "boolean",',
+    '      "default": true,',
+    '      "x-key": "diagnostics.processes",',
+    '      "x-area": "general",',
+    '      "x-page": "Allgemein",',
+    '      "x-issue": "#62"',
     '    },',
     '    "ExperimentalEnabled": {',
     '      "type": "boolean",',
