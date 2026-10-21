@@ -624,3 +624,21 @@ Jeder Branch baut auf dem vorigen auf. Nichts davon ist gebaut, getestet oder in
 - **Tests:** vier neue Tests in `Setup.Core.Installer.Tests` (Normalisierung, Zustimmung, erneute Frage nach Änderung bzw. Deinstallation, Kopie). In der Cloud weder pwsh noch FPC: nicht übersetzt, Prüfskripte nicht gelaufen.
 - **Offen bei Marco:** Delphi-Build von `AtlasSetup` und `Atlas.Tests` (0/0/0), Prüfskripte, AtlasSetup aus einem Ordner mit `EULA.txt` starten (Seite erscheint, Knopf erst mit Häkchen frei, zweiter Lauf fragt nicht mehr).
 - #874 Rest: siehe Abschnitt „Hänger …“ (21.10.2026, ungebaut).
+
+## Alles in main zusammengeführt (21.10.2026, 8f7225e3)
+- Enthalten:
+  - main;
+  - claude/merge-all-branches-a7glyv (mit 33 neuen Commits einer anderen Sitzung: #874-Teil, #890 Optionsbaum, #110, #770, #62, #43, Schnellbefehle, #876);
+  - claude/restpunkte-70m93a;
+  - feature/v1.1.0-suche-unitsuche (#877/#878);
+  - claude/project-thread-0fsiu8 und -blplxd (Suchleiste, #891 Debug-Werte im Hover, Statusfeld-Fix);
+  - -fltcw6 (#905 Index-Caches aufräumen);
+  - -a0qjpe (1.0.1 verworfen);
+  - EULA aus -ko9i0q als Cherry-Pick (alter Stand).
+- #876 gab es doppelt: Übernommen ist die Fassung aus dem Sammel-Branch (8455e09a); meine Fassung (Atlas.UI.UnitSearch.Window.Tests) ist entfallen. Dort fehlten 7 englische Texte, ergänzt.
+- Ergebnis: Win64-Gruppe 0/0/0, 5184 Tests grün, Win32-Plugin gebaut, alle Check-Skripte sauber.
+- Werkzeuge im scratchpad: `strings_diff.py` (Aufzählung gegen Textlisten zählen), `dup_uses2.py` (Unit in interface- und implementation-uses), `fix2532*.py`, `warmup*.py`, `ide-dialogs.ps1`.
+- Offen:
+  - Tastenkonflikt in den Vorgaben: „In Methode suchen“ (#877) und „Code formatieren“ (#43) haben beide Strg+Umschalt+Alt+F.
+  - #874 Rest (Optionsseite/Prüfliste/Fehlerbericht synchron, Server executeCommand seriell).
+  - AV in rtl370 beim Beenden nach Neuladen.
