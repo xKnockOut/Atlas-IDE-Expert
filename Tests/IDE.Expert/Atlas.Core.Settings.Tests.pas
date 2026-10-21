@@ -73,6 +73,9 @@ type
     /// <summary>Blockkommentar umschalten (#703): Vorgaben, Auswahlwerte normalisiert, Speichern und Laden.</summary>
     [Test]
     procedure ToggleBlockCommentOptions;
+    /// <summary>Neue Zeile ober- oder unterhalb (#700): Vorgaben, Speichern und Laden.</summary>
+    [Test]
+    procedure NewLineAroundOptions;
     /// <summary>Übersichtsleiste (#519): Vorgaben, Arten normalisiert, Speichern und Laden.</summary>
     [Test]
     procedure OverviewRulerOptions;
@@ -1635,6 +1638,33 @@ begin
   Assert.AreEqual('braces', Loaded.ToggleBlockCommentStyle);
   Assert.AreEqual('lineComments', Loaded.ToggleBlockCommentFallback);
   Assert.AreEqual('statement', Loaded.ToggleBlockCommentWithoutSelection);
+end;
+
+procedure TAtlasPluginSettingsTests.NewLineAroundOptions;
+var
+  Settings, Loaded: TAtlasPluginSettings;
+  Store: IAtlasSettingsStore;
+begin
+  Settings := TAtlasPluginSettings.Defaults;
+  Assert.IsTrue(Settings.NewLineAround);
+  Assert.AreEqual($200D, Settings.NewLineBelowKey, 'Umschalt+Enter');
+  Assert.AreEqual($C00D, Settings.NewLineAboveKey, 'Strg+Alt+Enter');
+  Assert.IsTrue(Settings.NewLineAroundStatementAware);
+  Settings.NewLineAround := False;
+  Settings.NewLineBelowKey := 0;
+  Settings.NewLineAboveKey := $600D;
+  Settings.NewLineAroundStatementAware := False;
+  Store := TMemoryStore.Create;
+  Settings.Save(Store);
+  Loaded := TAtlasPluginSettings.Defaults;
+  Loaded.Load(Store);
+  Assert.IsFalse(Loaded.NewLineAround);
+  Assert.AreEqual(0, Loaded.NewLineBelowKey);
+  Assert.AreEqual($600D, Loaded.NewLineAboveKey);
+  Assert.IsFalse(Loaded.NewLineAroundStatementAware);
+  Loaded.NewLineBelowKey := -5;
+  Loaded.Normalize;
+  Assert.AreEqual(0, Loaded.NewLineBelowKey);
 end;
 
 procedure TAtlasPluginSettingsTests.GitChangeOptions;

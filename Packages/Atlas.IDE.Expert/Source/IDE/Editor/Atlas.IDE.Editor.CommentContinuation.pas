@@ -11,7 +11,8 @@
 interface
 
 uses
-  ToolsAPI;
+  ToolsAPI,
+  Atlas.Core.Editor.CommentContinuation;
 
 type
   TAtlasIdeCommentContinuation = class
@@ -23,6 +24,8 @@ type
     class procedure Uninstall; static;
     /// <summary>editor.continueComments an (und Atlas an)?</summary>
     class function Enabled: Boolean; static;
+    /// <summary>Optionen aus den Einstellungen (auch für „Neue Zeile ober-/unterhalb“, #700).</summary>
+    class function Options: TAtlasCommentOptions; static;
   end;
 
 implementation
@@ -31,7 +34,6 @@ uses
   System.SysUtils,
   Atlas.Core.Lsp.Session,
   Atlas.Core.Editor.LineMove,
-  Atlas.Core.Editor.CommentContinuation,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Foundation.EditorBuffer,
   Atlas.IDE.Foundation.EditorSnapshot,
@@ -56,7 +58,7 @@ begin
   TAtlasEditorSnapshots.Invalidate(ABuffer.FileName);
 end;
 
-function Options: TAtlasCommentOptions;
+class function TAtlasIdeCommentContinuation.Options: TAtlasCommentOptions;
 begin
   Result := TAtlasCommentOptions.Defaults;
   Result.LineComments := TAtlasIdeSettings.Current.ContinueCommentsLineComments;

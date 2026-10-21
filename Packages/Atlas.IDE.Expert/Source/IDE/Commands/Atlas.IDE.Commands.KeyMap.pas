@@ -130,7 +130,9 @@ const
     // Formatieren (#43): Editorbefehl.
     3,
     // Blockkommentar umschalten (#703): Editorbefehl.
-    3);
+    3,
+    // Neue Zeile ober- oder unterhalb (#700): Editorbefehle.
+    3, 3);
 
 type
   /// <summary>Herkunft je Modul, einmal ermittelt.</summary>

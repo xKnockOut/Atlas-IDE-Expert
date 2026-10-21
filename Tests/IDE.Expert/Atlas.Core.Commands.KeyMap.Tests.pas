@@ -397,6 +397,11 @@ begin
   // Blockkommentar umschalten (#703): Umschalt+Alt+A.
   Assert.AreEqual($A041, Integer(EntryOf(Entries, TAtlasKeyFunction.ToggleBlockComment).Key));
   Assert.AreEqual('Atlas.ToggleBlockComment', TAtlasKeyMap.CommandIdOf(TAtlasKeyFunction.ToggleBlockComment));
+  // Neue Zeile ober- oder unterhalb (#700): Umschalt+Enter, Strg+Alt+Enter.
+  Assert.AreEqual($200D, Integer(EntryOf(Entries, TAtlasKeyFunction.NewLineBelow).Key));
+  Assert.AreEqual($C00D, Integer(EntryOf(Entries, TAtlasKeyFunction.NewLineAbove).Key));
+  Assert.AreEqual('Atlas.NewLineBelow', TAtlasKeyMap.CommandIdOf(TAtlasKeyFunction.NewLineBelow));
+  Assert.AreEqual('Atlas.NewLineAbove', TAtlasKeyMap.CommandIdOf(TAtlasKeyFunction.NewLineAbove));
   Assert.AreEqual(Ord(TAtlasKeySource.Binding), Ord(TAtlasKeyMap.SourceOf(TAtlasKeyFunction.TestUnit)));
   Settings.EditorKeysPriority := True;
   Assert.IsTrue(EntryOf(TAtlasKeyEntry.AllFromSettings(Settings), TAtlasKeyFunction.UnitSearch).Priority);
@@ -471,6 +476,7 @@ begin
   Settings.MultiCursor := False;
   Settings.FormatCode := False;
   Settings.ToggleBlockComment := False;
+  Settings.NewLineAround := False;
   Entries := TAtlasKeyEntry.AllFromSettings(Settings);
   for Entry in Entries do
     if Entry.Func in [TAtlasKeyFunction.MethodToggleUp, TAtlasKeyFunction.MethodToggleDown,
@@ -484,7 +490,8 @@ begin
       TAtlasKeyFunction.MoveLinesUp, TAtlasKeyFunction.MoveLinesDown, TAtlasKeyFunction.DuplicateLinesUp,
       TAtlasKeyFunction.DuplicateLinesDown, TAtlasKeyFunction.CompleteStatement, TAtlasKeyFunction.MultiCursorNext,
       TAtlasKeyFunction.MultiCursorSkip, TAtlasKeyFunction.MultiCursorLineEnds, TAtlasKeyFunction.MultiCursorAbove,
-      TAtlasKeyFunction.MultiCursorBelow, TAtlasKeyFunction.FormatCode, TAtlasKeyFunction.ToggleBlockComment] then
+      TAtlasKeyFunction.MultiCursorBelow, TAtlasKeyFunction.FormatCode, TAtlasKeyFunction.ToggleBlockComment,
+      TAtlasKeyFunction.NewLineBelow, TAtlasKeyFunction.NewLineAbove] then
     begin
       Assert.IsTrue(Entry.Disabled, 'abgeschaltet: ' + IntToStr(Ord(Entry.Func)));
       Assert.AreEqual(Ord(TAtlasKeyStatus.NoKey), Ord(Entry.Status('IDE: Klassennavigation')),

@@ -636,7 +636,8 @@ type
     SettingsToggleBlockCommentStyle, ToggleBlockCommentBraces, ToggleBlockCommentParens,
     SettingsToggleBlockCommentFallback, ToggleBlockCommentLineComments, ToggleBlockCommentRefuse,
     SettingsToggleBlockCommentOwnLines, SettingsToggleBlockCommentScope, ToggleBlockCommentStatement,
-    ToggleBlockCommentLine, ToggleBlockCommentRefused);
+    ToggleBlockCommentLine, ToggleBlockCommentRefused, NewLineBelowCommand, NewLineAboveCommand,
+    SettingsNewLineAround, SettingsNewLineAroundStatementAware);
 
   TAtlasStrings = class
   private class var
@@ -1932,7 +1933,11 @@ const
      'Ohne Markierung:',
      'Anweisung kommentieren',
      'Zeile kommentieren',
-     'Blockkommentar: Die Markierung enthält } und *), nichts geändert.'),
+     'Blockkommentar: Die Markierung enthält } und *), nichts geändert.',
+     'Neue Zeile darunter',
+     'Neue Zeile darüber',
+     'Neue Zeile ober- oder unterhalb (Umschalt+Enter, Strg+Alt+Enter)',
+     'Mehrzeilige Anweisungen als Ganzes (Bezug: Ende bzw. Anfang der Anweisung)'),
     ('Enter to accept · Esc to close', '%d of %d', 'No matches for “%s”', 'Backspace widens the search',
      'No suggestions here', 'Esc closes', 'No details for this entry', 'Overload', 'Deprecated: %s', 'Deprecated.',
      'Inherited from %s', 'Inherited', 'optional, default %s', 'No overload with %d parameters.', '… %d more',
@@ -3129,7 +3134,11 @@ const
      'Without selection:',
      'Comment the statement',
      'Comment the line',
-     'Block comment: the selection contains } and *), nothing changed.'));
+     'Block comment: the selection contains } and *), nothing changed.',
+     'New line below',
+     'New line above',
+     'New line above or below (Shift+Enter, Ctrl+Alt+Enter)',
+     'Treat multi-line statements as a whole (relative to their end or start)'));
 
 { TAtlasStrings }
 

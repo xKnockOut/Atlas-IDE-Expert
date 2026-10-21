@@ -1162,6 +1162,12 @@ begin
     Page.ToggleBlockCommentFallback.Choice := 1;
     Page.ToggleBlockCommentOwnLines.Checked := True;
     Page.ToggleBlockCommentScope.Choice := 1;
+    // Neue Zeile ober- oder unterhalb (#700).
+    Assert.IsTrue(Page.NewLineAround.Checked, 'Neue Zeile ober-/unterhalb standardmäßig an (#700)');
+    Assert.AreEqual(ShortCutToText($200D), Page.NewLineBelowKey.Text);
+    Assert.AreEqual(ShortCutToText($C00D), Page.NewLineAboveKey.Text);
+    Assert.IsTrue(Page.NewLineAroundStatementAware.Checked);
+    Page.NewLineAroundStatementAware.Checked := False;
     // Fehlertext am Zeilenende, Zähler und Sprungtasten (#509).
     Assert.AreEqual(1, Page.InlineDiagnostics.Choice, 'nur Fehler');
     Assert.IsTrue(Page.ProblemsStatusCounterCheck.Checked);
@@ -1198,6 +1204,10 @@ begin
     Assert.AreEqual('refuse', Saved.ToggleBlockCommentFallback);
     Assert.IsTrue(Saved.ToggleBlockCommentOwnLines);
     Assert.AreEqual('line', Saved.ToggleBlockCommentWithoutSelection);
+    Assert.IsTrue(Saved.NewLineAround);
+    Assert.AreEqual($200D, Saved.NewLineBelowKey);
+    Assert.AreEqual($C00D, Saved.NewLineAboveKey);
+    Assert.IsFalse(Saved.NewLineAroundStatementAware);
     Assert.AreEqual('errorsAndWarnings', Saved.InlineDiagnostics);
     Assert.IsFalse(Saved.ProblemsStatusCounter);
     Assert.AreEqual($C077, Saved.NextProblemKey);
