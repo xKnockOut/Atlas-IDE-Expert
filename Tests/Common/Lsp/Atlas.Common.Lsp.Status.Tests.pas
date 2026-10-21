@@ -23,6 +23,9 @@ type
     procedure UnknownCommandFails;
     [Test]
     procedure CapabilityListsCommands;
+    /// <summary>#874: Lesebefehle laufen nebenläufig, alle anderen in der Reihenfolge der Nachrichten.</summary>
+    [Test]
+    procedure ReadOnlyCommandsRunConcurrently;
     [Test]
     procedure StatusAsMarkdownAndJson;
     [Test]
@@ -185,6 +188,85 @@ begin
       Capability.Free;
     end;
   finally
+    Commands.Free;
+  end;
+end;
+
+procedure TLspStatusTests.ReadOnlyCommandsRunConcurrently;
+var
+  Commands: TLspCommands;
+  Dispatcher: TJsonRpcDispatcher;
+  Work: TList<TProc>;
+  Responses: TObjectList<TJSONObject>;
+  Item: TProc;
+  Params: TJSONValue;
+
+  function Dispatch(const AJson: string): TJSONObject;
+  var
+    Message: TJSONObject;
+  begin
+    Message := TJSONObject.ParseJSONValue(AJson) as TJSONObject;
+    try
+      Result := Dispatcher.DispatchMessage(Message);
+    finally
+      Message.Free;
+    end;
+  end;
+
+begin
+  Commands := TLspCommands.Create;
+  Dispatcher := TJsonRpcDispatcher.Create;
+  Work := TList<TProc>.Create;
+  Responses := TObjectList<TJSONObject>.Create(True);
+  try
+    Commands.Register('x.write',
+      function(const AArguments: TJSONArray): TJSONValue
+      begin
+        Result := TJSONString.Create('write');
+      end);
+    Commands.RegisterConcurrent('x.status',
+      function(const AArguments: TJSONArray): TJSONValue
+      begin
+        Result := TJSONString.Create('status');
+      end);
+    Params := TJSONObject.ParseJSONValue('{"command":"x.status"}');
+    try
+      Assert.IsTrue(Commands.IsConcurrent(Params));
+    finally
+      Params.Free;
+    end;
+    Params := TJSONObject.ParseJSONValue('{"command":"x.write"}');
+    try
+      Assert.IsFalse(Commands.IsConcurrent(Params));
+    finally
+      Params.Free;
+    end;
+    Assert.IsFalse(Commands.IsConcurrent(nil), 'ohne Parameter');
+    Dispatcher.Scheduler :=
+      procedure(const AWork: TProc)
+      begin
+        Work.Add(AWork);
+      end;
+    Dispatcher.Responder :=
+      procedure(const AResponse: TJSONObject)
+      begin
+        Responses.Add(AResponse);
+      end;
+    Commands.Attach(Dispatcher);
+    Assert.IsNull(Dispatch('{"jsonrpc":"2.0","id":1,"method":"workspace/executeCommand",' +
+      '"params":{"command":"x.status"}}'), 'Lesebefehl geht an den Scheduler');
+    Responses.Add(Dispatch('{"jsonrpc":"2.0","id":2,"method":"workspace/executeCommand",' +
+      '"params":{"command":"x.write"}}'));
+    Assert.AreEqual('write', Responses[0].GetValue<string>('result'), 'seriell sofort');
+    Assert.AreEqual(1, Integer(Work.Count));
+    for Item in Work.ToArray do
+      Item();
+    Assert.AreEqual(2, Integer(Responses.Count));
+    Assert.AreEqual('status', Responses[1].GetValue<string>('result'));
+  finally
+    Responses.Free;
+    Work.Free;
+    Dispatcher.Free;
     Commands.Free;
   end;
 end;

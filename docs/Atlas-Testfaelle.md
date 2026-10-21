@@ -2467,3 +2467,18 @@ Voraussetzung für EX2 bis EX7: mindestens eine Einstellung trägt `x-experiment
 | RS9 | Cursor in `const C = 'Text';`, in `[Attr('x y')]`, in `case S of 'ab': …` und in `procedure P(const S: string = 'xy')`, Strg+Leertaste | Kein Eintrag „Als resourcestring auslagern“ |
 | RS10 | Literal `'x'` bzw. `''` | Kein Eintrag (könnte ein Char sein) |
 | RS11 | `completion.resourceStrings` aus, RS1 | Kein Eintrag |
+
+## Kein Hängen, während der Server indexiert (#874)
+
+Vorher: Eine große Projektgruppe öffnen (Index läuft, Fortschritt im Statusfeld), „Diagnosemodus“ an.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| HG1 | Während des Indexierens Tools › Optionen › Atlas öffnen | Dialog öffnet sofort; im Abschnitt Symbolindex steht kurz „Frage den Server …“, dann die Kennzahlen; die drei Knöpfe sind bis dahin gesperrt |
+| HG2 | Im Dialog „Index neu aufbauen“, sofort danach den Dialog mit OK schließen | Kein Hänger, kein Fehler; der Index baut neu auf |
+| HG3 | Einrichtungsprüfliste, Knopf „Index neu aufbauen“, während schon indexiert wird | Die Liste reagiert sofort; der Punkt zeigt den Fortschritt |
+| HG4 | Atlas › Fehlerbericht erstellen … während des Indexierens | Meldungsansicht „Fehlerbericht wird zusammengestellt …“, die IDE bleibt bedienbar, die Vorschau erscheint mit dem Teil des Servers; ein zweiter Aufruf in der Zeit tut nichts |
+| HG5 | Atlas › Projekt-Einstellungen während des Indexierens | Dialog öffnet ohne merkliche Pause mit Regelkatalog; die Prüfung beim Tippen antwortet sofort |
+| HG6 | Projekt-Konfiguration in der IDE wechseln (Debug ↔ Release) während des Indexierens | Kein Hänger; im Serverprotokoll steht zu `workspace/executeCommand` die echte Wartezeit (nicht mehr immer 0 ms) |
+| HG7 | „Index löschen“ zweimal schnell hintereinander | Kein Hänger; der zweite Aufbau beginnt erst, wenn der erste abgebrochen ist; der Cache ist danach neu |
+
