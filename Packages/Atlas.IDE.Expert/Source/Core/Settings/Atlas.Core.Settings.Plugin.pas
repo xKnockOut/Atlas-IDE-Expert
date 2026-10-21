@@ -636,6 +636,14 @@ type
     ToggleBlockCommentOwnLines: Boolean;
     /// <summary>Ohne Markierung: "statement" (Anweisung) oder "line" (Zeile) (#703).</summary>
     ToggleBlockCommentWithoutSelection: string;
+    /// <summary>Neue Zeile ober- oder unterhalb (#700, keys.newLineAround); aus = Tasten frei.</summary>
+    NewLineAround: Boolean;
+    /// <summary>Kürzel „Neue Zeile darunter“ (#700); Vorgabe Umschalt+Enter.</summary>
+    NewLineBelowKey: Integer;
+    /// <summary>Kürzel „Neue Zeile darüber“ (#700); Vorgabe Strg+Alt+Enter.</summary>
+    NewLineAboveKey: Integer;
+    /// <summary>Mehrzeilige Anweisungen als Ganzes: Bezug ist ihr Ende bzw. Anfang (#700).</summary>
+    NewLineAroundStatementAware: Boolean;
     /// <summary>Kürzel „Nächste Änderung“ (#507, keys.nextChange); Vorgabe Strg+Alt+Bild↓.</summary>
     NextChangeKey: Integer;
     /// <summary>Kürzel „Vorherige Änderung“ (#507, keys.previousChange); Vorgabe Strg+Alt+Bild↑.</summary>
@@ -1315,6 +1323,10 @@ begin
   Result.ToggleBlockCommentFallback := 'lineComments';
   Result.ToggleBlockCommentOwnLines := False;
   Result.ToggleBlockCommentWithoutSelection := 'statement';
+  Result.NewLineAround := True;
+  Result.NewLineBelowKey := $200D; // Umschalt+Enter
+  Result.NewLineAboveKey := $C00D; // Strg+Alt+Enter
+  Result.NewLineAroundStatementAware := True;
   // Strg+Alt+↑/↓ springt in RAD Studio schon zwischen Methoden.
   Result.NextChangeKey := $C022; // Strg+Alt+Bild↓
   Result.PreviousChangeKey := $C021; // Strg+Alt+Bild↑
@@ -1539,6 +1551,8 @@ begin
   ToggleBlockCommentStyle := Choice(ToggleBlockCommentStyle, ['braces', 'parens']);
   ToggleBlockCommentFallback := Choice(ToggleBlockCommentFallback, ['lineComments', 'refuse']);
   ToggleBlockCommentWithoutSelection := Choice(ToggleBlockCommentWithoutSelection, ['statement', 'line']);
+  NewLineBelowKey := EnsureRange(NewLineBelowKey, 0, $FFFF);
+  NewLineAboveKey := EnsureRange(NewLineAboveKey, 0, $FFFF);
   MinimapRender := Choice(MinimapRender, ['blocks', 'characters']);
   MinimapWidth := EnsureRange(MinimapWidth, MinMinimapWidth, MaxMinimapWidth);
   MinimapScale := EnsureRange(MinimapScale, MinMinimapScale, MaxMinimapScale);
@@ -1854,6 +1868,11 @@ begin
     BoolValue(Default.ToggleBlockCommentOwnLines)) <> 0;
   ToggleBlockCommentWithoutSelection := AStore.ReadString('ToggleBlockCommentWithoutSelection',
     Default.ToggleBlockCommentWithoutSelection);
+  NewLineAround := AStore.ReadInteger('NewLineAround', BoolValue(Default.NewLineAround)) <> 0;
+  NewLineBelowKey := AStore.ReadInteger('NewLineBelowKey', Default.NewLineBelowKey);
+  NewLineAboveKey := AStore.ReadInteger('NewLineAboveKey', Default.NewLineAboveKey);
+  NewLineAroundStatementAware := AStore.ReadInteger('NewLineAroundStatementAware',
+    BoolValue(Default.NewLineAroundStatementAware)) <> 0;
   NextChangeKey := AStore.ReadInteger('NextChangeKey', Default.NextChangeKey);
   PreviousChangeKey := AStore.ReadInteger('PreviousChangeKey', Default.PreviousChangeKey);
   OverviewRuler := AStore.ReadInteger('OverviewRuler', BoolValue(Default.OverviewRuler)) <> 0;
@@ -2205,6 +2224,10 @@ begin
   AStore.WriteString('ToggleBlockCommentFallback', ToggleBlockCommentFallback);
   AStore.WriteInteger('ToggleBlockCommentOwnLines', BoolValue(ToggleBlockCommentOwnLines));
   AStore.WriteString('ToggleBlockCommentWithoutSelection', ToggleBlockCommentWithoutSelection);
+  AStore.WriteInteger('NewLineAround', BoolValue(NewLineAround));
+  AStore.WriteInteger('NewLineBelowKey', NewLineBelowKey);
+  AStore.WriteInteger('NewLineAboveKey', NewLineAboveKey);
+  AStore.WriteInteger('NewLineAroundStatementAware', BoolValue(NewLineAroundStatementAware));
   AStore.WriteInteger('NextChangeKey', NextChangeKey);
   AStore.WriteInteger('PreviousChangeKey', PreviousChangeKey);
   AStore.WriteInteger('OverviewRuler', BoolValue(OverviewRuler));

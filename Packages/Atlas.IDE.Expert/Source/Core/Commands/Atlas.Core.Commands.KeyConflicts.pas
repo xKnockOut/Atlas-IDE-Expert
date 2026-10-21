@@ -49,7 +49,7 @@ type
     NavBack, NavForward, LastEdit, PeekDefinition, PeekReferences, Breadcrumbs, JumpToMatch,
     JumpToMatchSelect, NextChange, PreviousChange, MoveLinesUp, MoveLinesDown, DuplicateLinesUp,
     DuplicateLinesDown, CompleteStatement, MultiCursorNext, MultiCursorSkip, MultiCursorLineEnds,
-    MultiCursorAbove, MultiCursorBelow, FormatCode, ToggleBlockComment);
+    MultiCursorAbove, MultiCursorBelow, FormatCode, ToggleBlockComment, NewLineBelow, NewLineAbove);
   TAtlasKeyChoice = (UseAtlas, LeaveOther, OtherKey);
   /// <summary>NoKey: keine Taste; IdeKey: Taste der IDE über Code Insight, Atlas belegt nichts selbst;
   /// Free: Atlas belegt die freie Taste; AtlasWins: belegt, Atlas hat Vorrang; Left: belegt, Atlas
@@ -233,7 +233,10 @@ begin
     Create(TAtlasKeyFunction.FormatCode, Word(ASettings.FormatCodeKey), Shared, ASettings.FormatCode),
     // Blockkommentar umschalten (#703): aus = Kürzel frei.
     Create(TAtlasKeyFunction.ToggleBlockComment, Word(ASettings.ToggleBlockCommentKey), Shared,
-      ASettings.ToggleBlockComment)];
+      ASettings.ToggleBlockComment),
+    // Neue Zeile ober- oder unterhalb (#700): aus = Tasten frei.
+    Create(TAtlasKeyFunction.NewLineBelow, Word(ASettings.NewLineBelowKey), Shared, ASettings.NewLineAround),
+    Create(TAtlasKeyFunction.NewLineAbove, Word(ASettings.NewLineAboveKey), Shared, ASettings.NewLineAround)];
 end;
 
 class procedure TAtlasKeyEntry.ToSettings(const AEntries: TArray<TAtlasKeyEntry>;
@@ -363,6 +366,10 @@ begin
         ASettings.FormatCodeKey := Entry.Key;
       TAtlasKeyFunction.ToggleBlockComment:
         ASettings.ToggleBlockCommentKey := Entry.Key;
+      TAtlasKeyFunction.NewLineBelow:
+        ASettings.NewLineBelowKey := Entry.Key;
+      TAtlasKeyFunction.NewLineAbove:
+        ASettings.NewLineAboveKey := Entry.Key;
       // Strg+F12 ist fest; ein- und ausgeschaltet wird über unitSearch.replaceIdeDialog.
       TAtlasKeyFunction.UnitSearchIde:
         ;
