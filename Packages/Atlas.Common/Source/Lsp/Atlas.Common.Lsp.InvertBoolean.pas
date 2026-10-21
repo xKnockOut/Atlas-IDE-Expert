@@ -471,6 +471,7 @@ end;
 function TInvertPlan.Source(const AFileName: string): TSourceFile;
 var
   Text: string;
+  Created: TSourceFile;
 begin
   if FSources.TryGetValue(UpperCase(AFileName), Result) then
     Exit;
@@ -493,7 +494,9 @@ begin
   Result.FileName := AFileName;
   Result.Lines := TLineTable.Build(Result.Text);
   Result.Resolver := FResolver;
-  Result.Targets.VarArgument := Result.IsVarArgument;
+  // Methodenzeiger über eine lokale Variable: Result lässt sich nicht erfassen (E2555).
+  Created := Result;
+  Result.Targets.VarArgument := Created.IsVarArgument;
   FSources.Add(UpperCase(AFileName), Result);
   Order.Add(AFileName);
 end;
@@ -1116,7 +1119,6 @@ begin
     raise Fail('Der neue Name ist der alte.');
   Places := 0;
   FileCount := 0;
-  Changes := nil;
   Plan := TInvertPlan.Create(AResolver, ATree, AFileName, AText, AContext);
   try
     if Symbol.IsParameter then
