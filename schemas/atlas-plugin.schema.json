@@ -943,6 +943,14 @@
       "x-area": "completion",
       "x-page": "Vervollständigung"
     },
+    "SelectionMarker": {
+      "type": "boolean",
+      "default": true,
+      "x-key": "completion.selectionMarker",
+      "x-area": "completion",
+      "x-page": "Vervollständigung",
+      "x-issue": "#447"
+    },
     "AutoParentheses": {
       "type": "boolean",
       "default": true,

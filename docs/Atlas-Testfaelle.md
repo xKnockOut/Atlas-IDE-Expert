@@ -2167,6 +2167,18 @@ Voraussetzung: VCL-Quellen über die Bibliothekspfade im Index.
 | HV6 | Deklaration von `Alt` und `procedure Alt;` im implementation-Teil | Keine Meldung, nicht durchgestrichen |
 | HV7 | `"rules": {"deprecated-symbol": "off"}` in atlas.json | Keine Meldung und kein Durchstreichen mehr (**Abnahme**) |
 
+## Barrierefreiheit (#447)
+
+| Nr. | Schritt | Erwartet |
+|---|---|---|
+| BF1 | Windows-Sprachausgabe an (Strg+Win+Enter), `List.Ad` tippen, mit ↑↓ wählen | Bei jedem Wechsel „Add, Funktion, 1 von 5. …“ (**Abnahme**) |
+| BF2 | Wie BF1, Inspect.exe (Windows SDK) auf das Popup | Baum: Fenster „Atlas-Vervollständigung“ (Liste) mit Listeneinträgen; der gewählte hat „ausgewählt“, Position und Anzahl stimmen; Überschriften wie „Weitere Einträge“ sind Text (**Abnahme**) |
+| BF3 | Eintrag mit `deprecated` bzw. Helper in Inspect | ItemStatus „deprecated“ bzw. „Helper“, HelpText ist die Signatur |
+| BF4 | Weitertippen, während Inspect den Baum zeigt | Der Baum wird neu eingelesen; herausgefilterte Einträge melden „nicht verfügbar“, kein Absturz |
+| BF5 | Popup ansehen, dunkles und helles Thema | Gewählte Zeile hat Akzentrahmen und Marke ▸, nicht nur Farbe (**Abnahme**) |
+| BF6 | „Gewählten Eintrag mit Rahmen und Marke ▸ zeigen“ aus (Optionen › Vervollständigung) | Nur die Auswahlfläche, kein Rahmen, keine Marke |
+| BF7 | Popup schließen, während Inspect ein Element hält; Inspect aktualisieren | Kein Absturz der IDE, Element nicht verfügbar |
+
 ## Helper-Methoden in der Vervollständigung (#456)
 
 | Nr. | Schritt | Erwartet |

@@ -71,6 +71,8 @@ type
     [Test]
     procedure AnnouncementNamesKindPositionAndDetail;
     [Test]
+    procedure TagTextNamesStatesInWords;
+    [Test]
     procedure TyposAppearUnderDidYouMean;
     [Test]
     procedure CommitTextKeepsTypedCaseWhenOff;
@@ -802,6 +804,19 @@ begin
     TAtlasItemPresentation.Announcement(Item, 'Methode', '%d von %d', 3, 12));
   Item.Signature := '';
   Assert.AreEqual('ShowMessage, 1 von 1.', TAtlasItemPresentation.Announcement(Item, '', '%d von %d', 1, 1));
+end;
+
+procedure TAtlasMatchingBudgetTests.TagTextNamesStatesInWords;
+var
+  Item: TAtlasCompletionItem;
+begin
+  Item := Default(TAtlasCompletionItem);
+  Item.Name := 'AddPair';
+  Assert.AreEqual('', TAtlasItemPresentation.TagText(Item));
+  Item.Directives := ['deprecated'];
+  Item.IsHelper := True;
+  Assert.AreEqual('deprecated, Helper', TAtlasItemPresentation.TagText(Item));
+  Item.Directives := nil;
 end;
 
 procedure TAtlasMatchingBudgetTests.CommitTextFixesCase;
