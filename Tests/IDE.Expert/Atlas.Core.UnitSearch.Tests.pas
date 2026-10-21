@@ -9,6 +9,7 @@ uses
   DUnitX.TestFramework,
   System.SysUtils,
   Atlas.Core.UnitSearch.Model,
+  Atlas.Core.UnitSearch.Sections,
   Atlas.Core.UnitSearch.State;
 
 type
@@ -329,7 +330,7 @@ var
 begin
   Value := TJSONObject.ParseJSONValue('{"uri":"C:\\P\\Haupt.pas","header":"Kopf","lines":120,' +
     '"modified":"2026-10-15T08:30:00.000Z","git":"modified","types":[{"name":"THaupt","kind":"class"}],' +
-    '"usedBy":3,"usedByUnits":["A","B","C"],"form":{"class":"THaupt","caption":"Kunden","width":400,"height":300,' +
+    '"typeCount":24,"uses":["Kunden","Basis"],"usedBy":3,"usedByUnits":["A","B","C"],"form":{"class":"THaupt","caption":"Kunden","width":400,"height":300,' +
     '"items":[["Kopf","TPanel","",0,0,400,40,1]]}}');
   try
     Preview := TAtlasUnitPreview.FromJson(Value, Path);
@@ -342,6 +343,8 @@ begin
   Assert.IsTrue(Preview.Modified > 0);
   Assert.AreEqual('modified', Preview.Git);
   Assert.AreEqual('THaupt', Preview.Types[0].Name);
+  Assert.AreEqual(24, Preview.TypeCount);
+  Assert.AreEqual('Kunden,Basis', string.Join(',', Preview.Uses_));
   Assert.AreEqual(3, Preview.UsedBy);
   Assert.AreEqual(3, Integer(Length(Preview.UsedByUnits)));
   Assert.IsTrue(Preview.HasForm);
@@ -371,7 +374,10 @@ begin
     State.Width := 900;
     State.PreviewWidth := 320;
     State.PreviewVisible := False;
+    State.Sections[TAtlasPreviewSection.Types] := TAtlasSectionChoice.HandClosed;
     Loaded.LoadJson(State.ToJson);
+    Assert.IsTrue(Loaded.Sections[TAtlasPreviewSection.Types] = TAtlasSectionChoice.Auto,
+      'Abschnitte gelten nur für die Sitzung (#876)');
     Assert.AreEqual(2, Integer(Length(Loaded.Collapsed('c:\p\gruppe.groupproj', TAtlasUnitGrouping.Project))));
     Assert.AreEqual('atlas.common', Loaded.Collapsed('C:\P\Gruppe.groupproj', TAtlasUnitGrouping.Project)[0]);
     Assert.AreEqual('tests', Loaded.Collapsed('C:\P\Gruppe.groupproj', TAtlasUnitGrouping.Folder)[0]);

@@ -558,6 +558,8 @@
         <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\UnitSearch\Atlas.Core.UnitSearch.Model.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\UnitSearch\Atlas.Core.UnitSearch.State.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.UnitSearch.Tests.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\UnitSearch\Atlas.Core.UnitSearch.Sections.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.Core.UnitSearch.Sections.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Forms\Atlas.Core.Forms.Text.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Forms\Atlas.Core.Forms.Changes.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Forms.Tests.pas"/>

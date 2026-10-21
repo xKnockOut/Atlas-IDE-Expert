@@ -127,6 +127,7 @@ contains
   Atlas.Core.Projects.PathCheck in 'Source\Core\Projects\Atlas.Core.Projects.PathCheck.pas',
   Atlas.Core.Projects.Setup in 'Source\Core\Projects\Atlas.Core.Projects.Setup.pas',
   Atlas.Core.UnitSearch.Model in 'Source\Core\UnitSearch\Atlas.Core.UnitSearch.Model.pas',
+  Atlas.Core.UnitSearch.Sections in 'Source\Core\UnitSearch\Atlas.Core.UnitSearch.Sections.pas',
   Atlas.Core.UnitSearch.State in 'Source\Core\UnitSearch\Atlas.Core.UnitSearch.State.pas',
   Atlas.UI.UnitSearch.Window in 'Source\UI\UnitSearch\Atlas.UI.UnitSearch.Window.pas',
   Atlas.IDE.UnitSearch.Commands in 'Source\IDE\UnitSearch\Atlas.IDE.UnitSearch.Commands.pas',

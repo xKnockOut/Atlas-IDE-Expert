@@ -273,6 +273,7 @@ foreach ($Name in $Schema['properties'].Keys) {
 [void]$Table.AppendLine('| Units suchen | Vorschau rechts, F4 schaltet um (`unitSearch.preview`) | an | Plugin (Registry `UnitSearchPreview`) | nein | Kontrollkästchen | #777 |')
 [void]$Table.AppendLine('| Units suchen | Formularskizze in der Vorschau (`unitSearch.preview.form`) | an | Plugin (Registry `UnitSearchPreviewForm`) | nein | Kontrollkästchen | #777 |')
 [void]$Table.AppendLine('| Units suchen | „Verwendet von“ in der Vorschau (`unitSearch.preview.usedBy`) | an | Plugin (Registry `UnitSearchPreviewUsedBy`) | nein | Kontrollkästchen | #777 |')
+[void]$Table.AppendLine('| Units suchen | Abschnitte der Vorschau einklappen, wenn sie nicht passen (`unitSearch.preview.autoCollapse`) | an | Plugin (Registry `UnitSearchPreviewAutoCollapse`) | nein | Kontrollkästchen | #876 |')
 [void]$Table.AppendLine('| Units suchen | Häkchen und Mehrfachauswahl (`unitSearch.multiSelect`) | an | Plugin (Registry `UnitSearchMultiSelect`) | nein | Kontrollkästchen | #777 |')
 [void]$Table.AppendLine('| Units suchen | Aktionsleiste (`unitSearch.actions`) | an | Plugin (Registry `UnitSearchActions`) | nein | Kontrollkästchen | #777 |')
 [void]$Table.AppendLine('| Units suchen | Aktion „In uses aufnehmen“ (`unitSearch.actions.addUses`) | an | Plugin (Registry `UnitSearchActionsAddUses`) | nein | Kontrollkästchen | #777 |')
