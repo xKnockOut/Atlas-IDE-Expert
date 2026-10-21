@@ -2567,3 +2567,15 @@ Vorher: Projekt mit Index geladen, eine Unit mit `uses System.SysUtils, System.C
 | RF7 | `/explain` über einer Zeile mit Treffer | Befehlszeile weg, Hinweis mit Meldung, Beschreibung, Falsch/Richtig-Beispiel und Link |
 | RF8 | `/explain` über einer Zeile ohne Treffer | Zeile bleibt, Hinweis „In der Zeile darunter meldet keine Prüfregel etwas“ |
 | RF9 | `/fmt` in einer Datei mit `indentSize` 4 | Routine wird mit vier Leerzeichen formatiert |
+
+## Absicherung per Schnellbefehl (#304)
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| AB1 | In `procedure P(const S: string; AObj: TObject; var X: Integer)` `/guard` | Nur `if not Assigned(AObj) then raise EArgumentNilException.Create('AObj');` am Anfang |
+| AB2 | `/guard` mit `Data: Pointer` und `AOnDone: TNotifyEvent` | Prüfung für `Data`, keine für das Ereignis; vorhandene Prüfungen werden nicht verdoppelt |
+| AB3 | `/raise EImport Datei fehlt` in einer Unit ohne `System.SysUtils` | `EImport = class(Exception)` vor der Routine, `System.SysUtils` im uses, `raise EImport.Create('Datei fehlt');` |
+| AB4 | `/raise EConvertError Wert %d ungültig` | `raise EConvertError.CreateFmt('Wert %d ungültig', []);` |
+| AB5 | `/exception EImportFehler : EBasis` im type-Abschnitt | `EImportFehler = class(EBasis);` |
+| AB6 | `slashCommands.logCall` = `Log.Error`, `/except` über zwei Anweisungen | `try … except on E: Exception do begin Log.Error(E.ClassName + ': ' + E.Message); raise; end; end;` |
+| AB7 | `/except` im interface-Teil oder ohne Anweisungen darunter | Zeile bleibt mit Hinweis |

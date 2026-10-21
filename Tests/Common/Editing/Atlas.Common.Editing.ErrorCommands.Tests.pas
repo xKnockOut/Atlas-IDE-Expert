@@ -17,6 +17,9 @@ type
     procedure GuardChecksOnlyObjects;
     [Test]
     procedure GuardSingleParameter;
+    /// <summary>#304: Zeiger (Pointer und P-Typen) bekommen eine Prüfung, Ereignisse nicht.</summary>
+    [Test]
+    procedure GuardChecksPointers;
     [Test]
     procedure GuardDoesNotDuplicate;
     [Test]
@@ -162,6 +165,21 @@ begin
   Assert.IsTrue(Pos('Assigned(AListe)', Text) > 0, Text);
   Assert.AreEqual('X ist kein ungeprüfter Objekt-, Interface- oder Zeigerparameter',
     ProblemOf(WithCommand('/guard X')));
+end;
+
+procedure TErrorCommandsTests.GuardChecksPointers;
+const
+  Text = 'unit U;'#10'interface'#10'implementation'#10'uses'#10'  System.SysUtils;'#10#10 +
+    'procedure Lauf(Data: Pointer; AKnoten: PKnoten; AOnDone: TNotifyEvent; N: Integer);'#10'begin'#10 +
+    '  /guard'#10'  N := 1;'#10'end;'#10#10'end.';
+var
+  Result_: string;
+begin
+  Result_ := Expand(Text, 8);
+  Assert.IsTrue(Pos('Assigned(Data)', Result_) > 0, Result_);
+  Assert.IsTrue(Pos('Assigned(AKnoten)', Result_) > 0, Result_);
+  Assert.AreEqual(0, Pos('Assigned(AOnDone)', Result_), Result_);
+  Assert.AreEqual(0, Pos('Assigned(N)', Result_), Result_);
 end;
 
 procedure TErrorCommandsTests.GuardDoesNotDuplicate;

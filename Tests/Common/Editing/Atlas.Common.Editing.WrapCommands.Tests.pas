@@ -32,6 +32,9 @@ type
     procedure IfdefAndRegion;
     [Test]
     procedure ExceptLogsAndReraises;
+    /// <summary>#304: /except außerhalb einer Routine und ohne Anweisungen darunter bleibt stehen.</summary>
+    [Test]
+    procedure ExceptWrongPlaceFails;
     [Test]
     procedure NothingToWrapFails;
     [Test]
@@ -297,6 +300,21 @@ begin
     '    begin'#10'      OutputDebugString(PChar(E.ClassName + '': '' + E.Message));'#10'      raise;'#10'    end;'#10 +
     '  end;'#10'end;', Text) > 0, Text);
   Assert.IsTrue(Parses(Text), Text);
+end;
+
+procedure TWrapCommandsTests.ExceptWrongPlaceFails;
+const
+  OutsideText = 'unit U;'#10'interface'#10'/except'#10#10'implementation'#10'end.';
+  EmptyText = 'unit U;'#10'interface'#10'implementation'#10'procedure P;'#10'begin'#10'  /except'#10'end;'#10'end.';
+var
+  Problems: TArray<TSlashProblem>;
+begin
+  Problems := TSlashCommandRegistry.Shared.Problems(OutsideText, nil);
+  Assert.AreEqual(1, Integer(Length(Problems)));
+  Assert.AreEqual('/except gilt nur im Rumpf einer Routine', Problems[0].Message);
+  Problems := TSlashCommandRegistry.Shared.Problems(EmptyText, nil);
+  Assert.AreEqual(1, Integer(Length(Problems)));
+  Assert.AreEqual('Nach /except stehen keine Anweisungen im Block', Problems[0].Message);
 end;
 
 procedure TWrapCommandsTests.NothingToWrapFails;
