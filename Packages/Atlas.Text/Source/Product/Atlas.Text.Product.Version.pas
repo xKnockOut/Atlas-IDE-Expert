@@ -11,7 +11,7 @@ type
   /// <summary>Version von Atlas (SemVer).</summary>
   TAtlasVersion = record
   public const
-    Version = '1.0.1';
+    Version = '1.0.0';
   end;
 
 implementation
