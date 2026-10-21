@@ -14,6 +14,11 @@
 // Unter einem Hinweis zu einem uses-Eintrag (#621) stehen seine Aktionen als
 // Links: Entfernen, Alle ungenutzten entfernen (ab zwei), In implementation-uses
 // verschieben; ihre Klickfläche trägt Problem und Aktion (ProblemActionCode).
+// Befund-Hover (#909): Fehler zuerst, je Befund eine Schweregrad-Pille (Error,
+// Warnung, Info) vor der Meldung, darunter klein „Atlas · Regel-ID“ bzw.
+// „dcc · W1036“, die Konfidenz, wenn sie nicht hoch ist, und mit
+// Input.ProblemActions die Aktionszeile „Alt+Enter: <Korrektur>“ (nur mit
+// Korrektur), „Für diese Zeile unterdrücken“, „Regel einstellen…“.
 // Bei Komponentenklassen (#110) folgt unter der Beschreibung „published: n
 // Properties · m Ereignisse“ mit den Schaltern „geerbte“ und „nur mit
 // default“, dann die Tabellen PROPERTIES (Name, Typ, Vorgabe, deklariert in)
@@ -44,7 +49,7 @@ type
   /// aufklappen, alle Zeilen zeigen.</summary>
   TAtlasHoverPublishedToggle = (ShowInherited, OnlyDefaults, Properties, Events, MoreProperties, MoreEvents);
   /// <summary>Aktion unter einem Problem im Tooltip (#621).</summary>
-  TAtlasHoverProblemAction = (RemoveUses, RemoveAllUses, MoveUses);
+  TAtlasHoverProblemAction = (RemoveUses, RemoveAllUses, MoveUses, Fix, SuppressLine, Configure);
   /// <summary>Fill: Fläche; Line: waagrechte Linie; Text: Text ab Rect.TopLeft; CenterText: zentriert in
   /// Rect; Frame: umrandetes Rechteck mit Fläche Back; RoundFill: gefülltes Rechteck mit Radius; Block:
   /// umbrechender Text in Rect (UI-Schrift, Ellipse); Styled: eingefärbte Deklaration From..Till; Doc: XMLDoc
@@ -125,6 +130,12 @@ type
     UsesRemove: string;
     UsesRemoveAll: string;
     UsesMove: string;
+    /// <summary>Befund-Hover (#909): Pillen je Art und die Aktionen unterdrücken und einstellen.</summary>
+    KindError: string;
+    KindWarning: string;
+    KindInfo: string;
+    Suppress: string;
+    Configure: string;
     Stale: string;
     /// <summary>Statt des Werts, solange der Debugger noch auswertet (#891).</summary>
     DebugPending: string;
@@ -148,7 +159,8 @@ type
     PublishedDefaultPropertyNote: string;
     PublishedCopyList: string;
     PublishedVclNote: string;
-    /// <summary>Zeile „Konfidenz: …“ je Problem in der Reihenfolge von View.Problems; '' ohne.</summary>
+    /// <summary>Zeile „Konfidenz: …“ je Problem in der Reihenfolge von View.Problems; '' ohne (auch bei hoher
+    /// Konfidenz, #909).</summary>
     Confidences: TArray<string>;
   end;
 
@@ -191,6 +203,8 @@ type
     DocHeight: Integer;
     /// <summary>Markierung in der Doku: Aktion „Auswahl kopieren“ statt „Deklaration kopieren“.</summary>
     HasSelection: Boolean;
+    /// <summary>Aktionszeile unter Regelbefunden (hover.problemActions, #909).</summary>
+    ProblemActions: Boolean;
   end;
 
   TAtlasHoverLayout = record
@@ -205,12 +219,19 @@ type
     AnchorTop: Integer;
     AnchorHeight: Integer;
     AnchorShift: Integer;
+    /// <summary>Erstes Problem (Index in View.Problems) mit „Alt+Enter: …“ im Hover, -1 ohne (#909).</summary>
+    FixProblem: Integer;
     class function Build(const AInput: TAtlasHoverInput; const AMeasure: IAtlasHoverMeasure): TAtlasHoverLayout;
       static;
     /// <summary>Index der Klickfläche ProblemAction: Problem in View.Problems und Aktion (#621).</summary>
     class function ProblemActionCode(AProblem: Integer; AAction: TAtlasHoverProblemAction): Integer; static;
     class procedure DecodeProblemAction(ACode: Integer; out AProblem: Integer;
       out AAction: TAtlasHoverProblemAction); static;
+    /// <summary>Reihenfolge der Probleme im Hover: Fehler zuerst, sonst wie geliefert (#909).</summary>
+    class function ProblemOrder(const AProblems: TArray<TAtlasProblem>): TArray<Integer>; static;
+    /// <summary>Nächste (AForward) bzw. vorige Klickfläche ProblemAction nach AHot (Index in Hits, -1 vor der
+    /// ersten), reihum; -1 ohne solche Klickfläche. Für Tab im Hover (#909).</summary>
+    function NextProblemHit(AHot: Integer; AForward: Boolean): Integer;
     /// <summary>Index der Klickfläche unter APoint; -1 ohne.</summary>
     function HitAt(const APoint: TPoint): Integer;
     /// <summary>Ist die Klickfläche AHot (Index in Hits) von Art AKind und Index AIndex?</summary>
@@ -274,6 +295,9 @@ type
     procedure Chip(const AText: string; ACurrent: Boolean; AIndex: Integer);
     procedure ActionItem(const AKey, ACaption: string; AAction: TAtlasHoverAction; AEnabled: Boolean);
     procedure ProblemLink(const ACaption: string; AProblem: Integer; AAction: TAtlasHoverProblemAction);
+    /// <summary>Pille mit der Art des Befunds (#909); setzt FLeft hinter die Pille für die Meldung.</summary>
+    procedure SeverityPill(const AProblem: TAtlasProblem);
+    procedure RuleActions(const AProblem: TAtlasProblem; AIndex: Integer);
     procedure BandContent(AKind: Integer);
     procedure Band(AKind: Integer; ALast: Boolean);
     procedure DrawPart(AFrom, ATill: Integer);
@@ -352,6 +376,7 @@ begin
   FLayout := Default(TAtlasHoverLayout);
   FLayout.AnchorItem := -1;
   FLayout.AnchorHit := -1;
+  FLayout.FixProblem := -1;
 end;
 
 function TBuilder.Scale(AValue: Integer): Integer;
@@ -775,6 +800,75 @@ begin
   Add(Bar);
 end;
 
+procedure TBuilder.SeverityPill(const AProblem: TAtlasProblem);
+var
+  PillFace: TAtlasHoverFace;
+  Caption: string;
+  Color: TAtlasColor;
+  Box: TRect;
+  Item: TAtlasHoverItem;
+begin
+  // Farbe und Text wie die Spalten Icon und Art im Fenster „Atlas-Prüfung“: information und hint sind Info.
+  case AProblem.Severity of
+    TAtlasProblemSeverity.Error:
+      begin
+        Caption := FInput.Texts.KindError;
+        Color := FColors.Error;
+      end;
+    TAtlasProblemSeverity.Warning:
+      begin
+        Caption := FInput.Texts.KindWarning;
+        Color := FColors.Warn;
+      end;
+  else
+    Caption := FInput.Texts.KindInfo;
+    Color := FColors.Accent;
+  end;
+  if Caption = '' then
+    Exit;
+  if AProblem.Stale then
+    Color := TAtlasColorMath.Mix(Color, FColors.Surface, AtlasMixFaded);
+  PillFace := Face(TAtlasHoverFont.Badge, True);
+  Box := Rect(FLeft, FY + Scale(1), FLeft + Width(PillFace, Caption) + Scale(12), FY + Scale(1) +
+    Max(Height(PillFace) + Scale(2), Scale(15)));
+  Item := NewItem(TAtlasHoverItemKind.RoundFill, Box, TAtlasColorMath.Mix(Color, FColors.Surface, 0.16));
+  Item.Radius := 7;
+  Add(Item);
+  Item := NewItem(TAtlasHoverItemKind.CenterText, Box, Color);
+  Item.Text := Caption;
+  Item.Face := PillFace;
+  Add(Item);
+  FLeft := Box.Right + Scale(6);
+end;
+
+procedure TBuilder.RuleActions(const AProblem: TAtlasProblem; AIndex: Integer);
+var
+  OldFont: TAtlasHoverFont;
+  Start: Integer;
+  Code: Integer;
+begin
+  // Aktionszeile eines Regelbefunds (#909): Korrektur (nur, wenn die Regel eine hat), unterdrücken, einstellen.
+  OldFont := FFlowFont;
+  FFlowFont := TAtlasHoverFont.SmallUi;
+  FX := FLeft;
+  FRowHeight := 0;
+  if AProblem.FixTitle <> '' then
+  begin
+    Start := FX;
+    Code := TAtlasHoverLayout.ProblemActionCode(AIndex, TAtlasHoverProblemAction.Fix);
+    Flow('Alt+Enter: ', FColors.Accent, True, TAtlasHoverHitKind.ProblemAction, -1, Code, FColors.Accent);
+    Flow(AProblem.FixTitle, FColors.Accent, True, TAtlasHoverHitKind.ProblemAction, -1, Code, FColors.Accent);
+    AddHit(TAtlasHoverHitKind.ProblemAction, Code, Rect(Start, FY, FX, FY + FRowHeight));
+    if FLayout.FixProblem < 0 then
+      FLayout.FixProblem := AIndex;
+  end;
+  ProblemLink(FInput.Texts.Suppress, AIndex, TAtlasHoverProblemAction.SuppressLine);
+  ProblemLink(FInput.Texts.Configure, AIndex, TAtlasHoverProblemAction.Configure);
+  EndFlow;
+  Inc(FY, Scale(6));
+  FFlowFont := OldFont;
+end;
+
 procedure TBuilder.Problems;
 var
   Index, Start: Integer;
@@ -783,26 +877,41 @@ var
   SmallFace: TAtlasHoverFace;
   Bar: TAtlasHoverItem;
   OldFont: TAtlasHoverFont;
+  IsRule: Boolean;
 begin
-  // Probleme an der Mausposition: Farbbalken, Meldung, darunter Code und Herkunft
-  // und bei Regeltreffern die Konfidenz.
+  // Probleme an der Mausposition, Fehler zuerst (#909): Farbbalken, Pille mit der Art und Meldung, darunter
+  // Herkunft und Regel, bei Regeltreffern die Konfidenz und die Aktionszeile. Klickflächen tragen den Index
+  // in View.Problems, nicht die Position im Hover.
   SmallFace := Face(TAtlasHoverFont.SmallUi, False);
-  for Index := 0 to High(FInput.View.Problems) do
+  for Index in TAtlasHoverLayout.ProblemOrder(FInput.View.Problems) do
   begin
     Problem := FInput.View.Problems[Index];
     Start := FY;
     FLeft := Scale(20);
-    Block(Problem.Caption, FColors.Text, 3);
+    // uses-Hinweise (#621) und inaktive Zweige (#615) sind keine Befunde: ohne Pille, Meldung mit Code.
+    IsRule := not Problem.IsUses and not Problem.Unnecessary;
+    if IsRule then
+    begin
+      SeverityPill(Problem);
+      Block(Problem.Message, FColors.Text, 3);
+      FLeft := Scale(20);
+    end
+    else
+      Block(Problem.Caption, FColors.Text, 3);
     Dec(FY, Scale(4));
-    if Problem.IsCompiler then
-      Caption := FInput.Texts.SourceCompiler
-    else if Problem.IsUses then
+    if Problem.IsUses then
       Caption := FInput.Texts.SourceUses
     else if Problem.Unnecessary then
-      // Inaktiver {$IFDEF}-Zweig (#615).
       Caption := FInput.Texts.SourceInactive
     else
-      Caption := FInput.Texts.SourceAtlas;
+    begin
+      // „Atlas · loop-off-by-one“, „dcc · W1036“; Syntaxfehler ohne Code nur mit der Herkunft.
+      Caption := Problem.Source;
+      if Caption = '' then
+        Caption := FInput.Texts.SourceAtlas;
+      if Problem.Code <> '' then
+        Caption := Caption + ' · ' + Problem.Code;
+    end;
     if Problem.Stale then
       Caption := Caption + ' · ' + FInput.Texts.Stale;
     AddText(FLeft, FY, Caption, SmallFace, FColors.Muted);
@@ -834,7 +943,10 @@ begin
       EndFlow;
       Inc(FY, Scale(6));
       FFlowFont := OldFont;
-    end;
+    end
+    // Aktionszeile nur an Regelbefunden: Compilermeldungen und Syntaxfehler haben keine Regel.
+    else if FInput.ProblemActions and IsRule and not Problem.IsCompiler and (Problem.Code <> '') then
+      RuleActions(Problem, Index);
     FLeft := Scale(11);
     Bar := NewItem(TAtlasHoverItemKind.RoundFill, Rect(FLeft, Start + Scale(1), FLeft + Scale(3), FY - Scale(7)),
       ProblemColor(FColors, Problem));
@@ -1329,6 +1441,49 @@ class procedure TAtlasHoverLayout.DecodeProblemAction(ACode: Integer; out AProbl
 begin
   AProblem := ACode div (Ord(High(TAtlasHoverProblemAction)) + 1);
   AAction := TAtlasHoverProblemAction(ACode mod (Ord(High(TAtlasHoverProblemAction)) + 1));
+end;
+
+class function TAtlasHoverLayout.ProblemOrder(const AProblems: TArray<TAtlasProblem>): TArray<Integer>;
+var
+  Index, Count: Integer;
+begin
+  // Fehler zuerst, die übrigen in ihrer Reihenfolge (stabil).
+  Result := nil;
+  SetLength(Result, Length(AProblems));
+  Count := 0;
+  for Index := 0 to High(AProblems) do
+    if AProblems[Index].Severity = TAtlasProblemSeverity.Error then
+    begin
+      Result[Count] := Index;
+      Inc(Count);
+    end;
+  for Index := 0 to High(AProblems) do
+    if AProblems[Index].Severity <> TAtlasProblemSeverity.Error then
+    begin
+      Result[Count] := Index;
+      Inc(Count);
+    end;
+end;
+
+function TAtlasHoverLayout.NextProblemHit(AHot: Integer; AForward: Boolean): Integer;
+var
+  Step, Index, Tries: Integer;
+begin
+  Result := -1;
+  if Length(Hits) = 0 then
+    Exit;
+  Step := 1;
+  if not AForward then
+    Step := -1;
+  Index := AHot;
+  if (Index < 0) and not AForward then
+    Index := 0;
+  for Tries := 1 to Length(Hits) do
+  begin
+    Index := (Index + Step + Length(Hits)) mod Length(Hits);
+    if Hits[Index].Kind = TAtlasHoverHitKind.ProblemAction then
+      Exit(Index);
+  end;
 end;
 
 function TAtlasHoverLayout.IsHot(AHot: Integer; AKind: TAtlasHoverHitKind; AIndex: Integer): Boolean;
