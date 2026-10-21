@@ -160,3 +160,450 @@ Riskante oder unreife Funktionen kommen als **experimentell** (#834): Sie haben 
 | `refactoring.inline` | Projekt (atlas.json) | Vervollständigung | #103 |
 | `refactoring.moveClass` | Projekt (atlas.json) | Vervollständigung | #103 |
 | `refactoring.unitRenameFollowUp` | Projekt (atlas.json) | Vervollständigung | #512 |
+
+## Optionsseite: Unterpunkte und Hauptschalter
+
+*Tools › Optionen › Atlas* zeigt links einen Baum (#890): oben die Bereiche, darunter die Unterpunkte je Funktion. Der Hauptknoten eines Bereichs trägt dessen allgemeine Optionen und eine Übersicht aller Hauptschalter seiner Unterpunkte (mit „Details“). Jede Funktion mit Hauptschalter steht in einem eigenen Rahmen, der Schalter oben, die Unteroptionen eingerückt darunter. Ist ein Hauptschalter aus, sind alle Bedienelemente seiner Gruppe gesperrt (auch verschachtelte Gruppen); die Werte bleiben erhalten und werden mit gespeichert. Experimentelle Funktionen samt Hauptschalter sind gesperrt, solange `experimental.enabled` aus ist. Den Hauptschalter bestimmt `x-parent` im Plugin-Katalog, sonst die Präfixregel (längstes Präfix `P` mit boolescher Einstellung `P` oder `P.enabled`); den Unterpunkt `x-node` (Kennungen in `x-nodes`), sonst der Unterpunkt des Hauptschalters. Gliederung nach Seite (`x-page`) und Unterpunkt; eingerückt = Unteroption des Schalters darüber.
+
+### Allgemein
+
+- **Hauptknoten**
+  - `completion.enabled`
+    - `teamFile.enabled`
+  - `diagnosticMode.enabled`
+  - `experimental.enabled`
+  - `editor.reloadExternal`
+  - `editor.openForEdits`
+  - `server.path`
+  - `ui.setupChecklist`
+  - `settings.markModified`
+
+- **Statusfeld** (`general.statusField`)
+  - `statusField.enabled`
+    - `statusField.showSummary`
+    - `statusField.hidden`
+    - `statusField.openToggles`
+    - `statusField.indexProgress`
+
+- **Tastenkürzel-Tipps** (`general.shortcutTips`)
+  - `shortcutTips.enabled`
+    - `shortcutTips.scope`
+
+- **Benachrichtigungen** (`general.notifications`)
+  - `notifications.enabled`
+    - `notifications.sources`
+    - `notifications.maxEntries`
+
+- **Einstellungen übertragen** (`general.transfer`)
+  - `settings.exportImport`
+    - `settings.backupBeforeImport`
+    - `settings.exportSecrets`
+
+### Editor
+
+- **Hauptknoten**
+  - `highlight.inactiveDim` – hängt an `completion.enabled`
+  - `editor.dimUnusedUses` – hängt an `completion.enabled`
+  - `editor.recursionMarkers`
+    - `editor.recursionMarkers.depth`
+  - `inlayHints.parameterNames`
+  - `inlayHints.inferredTypes`
+  - `editor.blockEndLabels`
+    - `editor.blockEndLabels.minLines`
+  - `editor.inlineDiagnostics`
+  - `editor.continuePattern` – hängt an `completion.enabled`
+    - `editor.continuePattern.minLines`
+  - `editor.linkedEditing` (experimentell) – hängt an `completion.enabled`
+  - `editor.smartPaste` (experimentell) – hängt an `completion.enabled`
+  - `hints.xmlDocFull`
+    - `hints.xmlDocMaxLines`
+
+- **Paarfärbung** (`editor.pairs`)
+  - `highlight.pairColors` – hängt an `completion.enabled`
+    - `highlight.pairGuides`
+    - `highlight.pairOwners`
+    - `highlight.pairGuideWidth`
+    - `highlight.pairGuideOpacity`
+
+- **Brotkrumenleiste** (`editor.breadcrumbs`)
+  - `editor.breadcrumbs`
+    - `editor.breadcrumbsShowUnit`
+    - `keys.breadcrumbs`
+
+- **Mitlaufender Kopf** (`editor.stickyScroll`)
+  - `editor.stickyScroll` (experimentell) – hängt an `completion.enabled`
+    - `editor.stickyScrollMaxLines`
+
+- **Minimap** (`editor.minimap`)
+  - `editor.minimap` (experimentell)
+    - `editor.minimap.render`
+    - `editor.minimap.width`
+    - `editor.minimap.scale`
+    - `editor.minimap.maxColumn`
+    - `editor.minimap.side`
+    - `editor.minimap.showSlider`
+    - `editor.minimap.sectionHeaders`
+    - `editor.minimap.highlightMethod`
+    - `editor.minimap.markers`
+    - `editor.minimap.clickJumps`
+
+- **Änderungsmarken** (`editor.gitGutter`)
+  - `editor.gitGutter`
+    - `keys.nextChange`
+    - `keys.previousChange`
+  - `editor.gitBlame`
+
+- **Übersichtsleiste** (`editor.overviewRuler`)
+  - `editor.overviewRuler`
+    - `editor.overviewRulerKinds`
+
+- **Kommentare fortsetzen** (`editor.continueComments`)
+  - `editor.continueComments` – hängt an `completion.enabled`
+    - `editor.continueComments.lineComments`
+    - `editor.continueComments.lists`
+    - `editor.continueComments.blockPrefix`
+
+- **Anweisung vervollständigen** (`editor.completeStatement`)
+  - `editor.completeStatement`
+    - `keys.completeStatement`
+    - `editor.completeStatement.beginEnd`
+    - `editor.completeStatement.tryKind`
+    - `editor.completeStatement.methodBody`
+
+- **Mehrere Einfügemarken** (`editor.multiCursor`)
+  - `editor.multiCursor` (experimentell) – hängt an `completion.enabled`
+    - `editor.multiCursorModifier`
+    - `keys.multiCursor.next`
+    - `keys.multiCursor.skip`
+    - `keys.multiCursor.lineEnds`
+    - `keys.multiCursor.above`
+    - `keys.multiCursor.below`
+
+- **Notizen und Lesezeichen** (`editor.notes`)
+  - `notes.enabled`
+  - `bookmarks.named`
+    - `bookmarks.shared`
+
+- **Code Lens und Kennzahlen** (`editor.codeLens`)
+  - `metrics` – hängt an `completion.enabled`
+    - `codeLens.metrics`
+  - `codeLens.tests` – hängt an `tests.run`
+  - `todos.list`
+  - `baseline.update`
+  - `metrics.report`
+  - `dfmRules.apply`
+  - `codeLens.testUnit` – hängt an `completion.enabled`
+
+### Compiler
+
+- **Hauptknoten**
+  - `compiler.mcpBuild`
+  - `build.zeroHints`
+
+- **Probleme** (`compiler.problems`)
+  - `problems.enabled` – hängt an `completion.enabled`
+    - `problems.list`
+    - `problems.statusCounter`
+
+- **Nach dem Speichern** (`compiler.afterSave`)
+  - `build.checkOnSave`
+    - `build.checkOnSaveDelayMs`
+    - `build.checkOnSaveMaxMs`
+  - `compiler.onSave`
+
+- **Tests** (`compiler.tests`)
+  - `tests.run` – hängt an `completion.enabled`
+    - `tests.afterBuild`
+    - `tests.buildFirst`
+
+- **Startprofile** (`compiler.startProfiles`)
+  - `startProfiles.enabled`
+    - `startProfiles.statusField`
+
+- **Beim Öffnen bauen** (`compiler.openBuild`)
+  - `build.onOpen`
+    - `build.onOpenKind`
+    - `build.onOpenScope`
+    - `build.onOpenDelayMs`
+    - `build.onOpenExclude`
+
+### Befehle
+
+- **Hauptknoten**
+  - `bookmarks.key` – hängt an `bookmarks.named`
+  - `keys.hideElement`
+  - `keys.nextProblem`
+  - `keys.previousProblem`
+  - `keys.codeActions`
+  - `keys.expandSelection`
+  - `keys.shrinkSelection`
+  - `keys.implementations`
+  - `keys.typeDefinition`
+  - `keys.testUnit`
+  - `keys.editorPriority`
+  - `slashCommands.enabled` – hängt an `completion.enabled`
+  - `keys.undoChange`
+  - `keys.redoChange`
+  - `notifications.key` – hängt an `notifications.enabled`
+
+- **Deklaration ⇄ Implementierung** (`commands.methodToggle`)
+  - `codeActions.methodToggle`
+    - `keys.methodToggleUp`
+    - `keys.methodToggleDown`
+
+- **Sprung zum Gegenstück** (`commands.jumpToMatch`)
+  - `keys.jumpToMatch`
+    - `keys.jumpToMatchShortcut`
+    - `keys.jumpToMatchSelect`
+
+- **Zeilen verschieben** (`commands.moveLines`)
+  - `keys.moveLines`
+    - `keys.moveLinesUp`
+    - `keys.moveLinesDown`
+    - `keys.duplicateLinesUp`
+    - `keys.duplicateLinesDown`
+
+- **Navigationsverlauf** (`commands.navHistory`)
+  - `navHistory.enabled`
+    - `keys.navBack`
+    - `keys.navForward`
+    - `keys.lastEdit`
+
+- **Einblenden** (`commands.peek`)
+  - `peek.enabled`
+    - `peek.heightLines`
+    - `peek.showImplementation`
+    - `keys.peekDefinition`
+    - `keys.peekReferences`
+
+- **Gliederung** (`commands.outline`)
+  - `outline.enabled`
+    - `outline.alphabetical`
+    - `outline.followCursor`
+
+- **Erzeugen-Menü** (`commands.generateMenu`)
+  - `keys.generateMenu`
+    - `keys.generateMenu.key`
+    - `keys.generateMenu.groups`
+    - `keys.generateMenu.hidden`
+    - `keys.generateMenu.recentFirst`
+    - `keys.generateMenu.showCommandNames`
+
+### Hints
+
+- **Hauptknoten**
+  - `editor.hoverTooltip` – hängt an `completion.enabled`
+
+### Vervollständigung
+
+- **Hauptknoten**
+  - `completion.filterChips` – hängt an `completion.enabled`
+  - `completion.preview` – hängt an `completion.enabled`
+  - `completion.groupInherited` – hängt an `completion.enabled`
+  - `completion.listMode` – hängt an `completion.enabled`
+  - `completion.listMode.scope` – hängt an `completion.enabled`
+  - `completion.learning` – hängt an `completion.enabled`
+  - `completion.favorites` – hängt an `completion.enabled`
+  - `completion.visibleRows` – hängt an `completion.enabled`
+  - `completion.panelCollapsed` – hängt an `completion.enabled`
+  - `completion.openDelayMs` – hängt an `completion.enabled`
+
+### Debuggen
+
+- **Hauptknoten**
+  - `tests.debug`
+    - `debug.testBreakAtStart`
+
+### Release-Build
+
+- **Hauptknoten**
+  - `build.releaseGuard` – hängt an `completion.enabled`
+    - `build.gate`
+    - `build.releaseConfigs`
+    - `build.releaseChecks`
+
+### Willkommensseite
+
+- **Hauptknoten**
+  - `welcomePage.enabled`
+    - `welcomePage.host`
+    - `welcomePage.layout`
+    - `welcomePage.whatsNew`
+
+- **Kopf** (`welcome.header`)
+  - `welcomePage.header` – hängt an `welcomePage.enabled`
+  - `welcomePage.greeting` – hängt an `welcomePage.enabled`
+
+- **Suche** (`welcome.search`)
+  - `welcomePage.search` – hängt an `welcomePage.enabled`
+    - `welcomePage.search.symbols`
+    - `welcomePage.search.key`
+
+- **Weiterarbeiten** (`welcome.continue`)
+  - `welcomePage.continue` – hängt an `welcomePage.enabled`
+    - `welcomePage.continue.count`
+    - `welcomePage.continue.incoming`
+    - `welcomePage.continue.fetch`
+  - `welcomePage.saved` – hängt an `welcomePage.enabled`
+
+- **Projekte** (`welcome.projects`)
+  - `welcomePage.projectStatus` – hängt an `welcomePage.enabled`
+    - `welcomePage.maxProjects`
+    - `welcomePage.refreshVcs`
+
+- **Projektverlauf** (`welcome.trends`)
+  - `welcomePage.trends` – hängt an `welcomePage.enabled`
+    - `welcomePage.trends.points`
+    - `welcomePage.trends.series`
+
+- **Testergebnisse** (`welcome.tests`)
+  - `welcomePage.tests` – hängt an `welcomePage.enabled`
+    - `welcomePage.tests.maxFailures`
+    - `welcomePage.tests.ci`
+      - `welcomePage.tests.ci.login`
+      - `welcomePage.tests.ci.provider`
+      - `welcomePage.tests.ci.intervalMinutes`
+      - `welcomePage.tests.ci.notify`
+
+- **Meine Issues** (`welcome.issues`)
+  - `welcomePage.issues` – hängt an `welcomePage.enabled`
+    - `welcomePage.issues.tracker`
+    - `welcomePage.issues.query`
+    - `welcomePage.issues.start`
+    - `welcomePage.issues.branchPattern`
+    - `welcomePage.issues.branchBase`
+    - `welcomePage.issues.commitPattern`
+    - `welcomePage.issues.login`
+
+- **Schnellaktionen** (`welcome.quickActions`)
+  - `welcomePage.quickActions` – hängt an `welcomePage.enabled`
+    - `welcomePage.quickActions.items`
+    - `welcomePage.quickActions.console`
+    - `welcomePage.quickActions.buildKey`
+    - `welcomePage.quickActions.testKey`
+
+- **Nicht gesichert** (`welcome.unsaved`)
+  - `welcomePage.unsaved` – hängt an `welcomePage.enabled`
+    - `welcomePage.unsaved.minAgeHours`
+    - `welcomePage.unsaved.warnHours`
+    - `welcomePage.unsaved.alertHours`
+    - `welcomePage.unsaved.hideWhenClean`
+
+- **Zustandskachel** (`welcome.statusTile`)
+  - `welcomePage.statusTile` – hängt an `welcomePage.enabled`
+    - `welcomePage.statusTile.onlyProblems`
+
+- **Atlas entdecken** (`welcome.discover`)
+  - `welcomePage.discover` – hängt an `welcomePage.enabled`
+    - `tips.usageTracking`
+
+- **Hilfe und Rückmeldung** (`welcome.help`)
+  - `welcomePage.help` – hängt an `welcomePage.enabled`
+    - `welcomePage.help.reportUrl`
+    - `welcomePage.help.reportFolder`
+
+- **Projekt einrichten** (`welcome.projectSetup`)
+  - `welcomePage.projectSetup` – hängt an `welcomePage.enabled`
+  - `welcomePage.newFromTemplate` – hängt an `welcomePage.enabled`
+
+- **Freies Layout** (`welcome.customLayout`)
+  - `welcomePage.customLayout` – hängt an `welcomePage.enabled`
+    - `welcomePage.columns`
+    - `welcomePage.layouts`
+    - `welcomePage.activeLayout`
+
+### Einfügen
+
+- **Hauptknoten**
+  - `completion.autoParentheses` – hängt an `completion.enabled`
+  - `completion.fixCase` – hängt an `completion.enabled`
+  - `completion.commitCharacters` – hängt an `completion.enabled`
+  - `completion.autoUses` – hängt an `completion.enabled`
+  - `completion.parameterHints` – hängt an `completion.enabled`
+  - `snippets.enabled`
+    - `snippets.importIdeTemplates`
+
+### Tastenkonflikte
+
+- **Hauptknoten**
+  - `keys.palette`
+  - `keys.check`
+  - `keys.palettePriority`
+  - `keys.checkPriority`
+  - `keys.completion`
+  - `keys.signature`
+  - `keys.completionPriority`
+  - `keys.signaturePriority`
+  - `keys.quickToggles`
+  - `keys.quickTogglesPriority`
+  - `keys.diagnosticMode`
+  - `keys.diagnosticModePriority`
+  - `keys.overview`
+  - `keys.startupCheck`
+
+### Robustheit
+
+- **Hauptknoten**
+  - `robustness.hangThresholdMs`
+  - `robustness.providerTimeLimitMs`
+  - `robustness.hangHint`
+
+### Farben
+
+- **Hauptknoten**
+  - `highlight.pairColorsLight` – hängt an `highlight.pairColors`
+  - `highlight.pairColorsDark` – hängt an `highlight.pairColors`
+
+### Index
+
+- **Hauptknoten**
+  - `index.projectGroup`
+  - `index.searchPaths`
+  - `index.libraryPaths`
+  - `index.usages`
+  - `memoryBudgetMb`
+
+### Start und Updates
+
+- **Hauptknoten**
+  - `safeMode.askAfterCrash`
+  - `safeMode.autoAfterRepeatedCrash`
+  - `safeMode.startupKey`
+  - `safeMode.startupTimeoutMs`
+  - `safeMode.keepSettingsHistory`
+  - `updates.check`
+  - `diagnostics.bugReport.anonymize`
+
+### Rückgängig
+
+- **Hauptknoten**
+  - `undo.multiFile`
+    - `undo.multiFile.depth`
+    - `undo.multiFile.persist`
+    - `undo.multiFile.maxSizeMb`
+    - `undo.multiFile.onConflict`
+    - `undo.multiFile.newFiles`
+
+### Units suchen
+
+- **Hauptknoten**
+  - `unitSearch.enabled`
+    - `unitSearch.replaceIdeDialog`
+    - `unitSearch.rememberCollapsed`
+    - `unitSearch.filters`
+    - `unitSearch.filterSyntax`
+    - `unitSearch.preview`
+      - `unitSearch.preview.form`
+      - `unitSearch.preview.usedBy`
+    - `unitSearch.multiSelect`
+    - `unitSearch.actions`
+      - `unitSearch.actions.addUses`
+    - `unitSearch.pathStyle`
+    - `unitSearch.groupBy`
+    - `unitSearch.defaultScope`
+    - `unitSearch.key`
+
+- **Schnell öffnen** (`unitSearch.quickOpen`)
+  - `quickOpen.enabled`
+    - `quickOpen.librarySources`
+    - `keys.quickOpen`
