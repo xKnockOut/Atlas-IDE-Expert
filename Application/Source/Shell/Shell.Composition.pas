@@ -55,6 +55,7 @@ uses
   Atlas.Common.Lsp.Metrics,
   Atlas.Common.Lsp.Todos,
   Atlas.Common.Lsp.Recursion,
+  Atlas.Common.Lsp.OverrideMarks,
   Atlas.Common.Lsp.SlashMenu,
   Atlas.Common.Editing.SlashCommands,
   Atlas.Common.Lsp.Baseline,
@@ -1438,6 +1439,12 @@ begin
     function(const AArguments: TJSONArray): TJSONValue
     begin
       Result := FRecursion.Execute(AArguments);
+    end);
+  // Überschreibungen für die Atlas-Spalte der Zeilenleiste (#768).
+  FCommands.Register(TLspOverrideMarks.Command,
+    function(const AArguments: TJSONArray): TJSONValue
+    begin
+      Result := TLspOverrideMarks.Execute(FDocuments, FIndex, EnsureUnit, FDefinition.Namespaces, AArguments);
     end);
   FCommands.Register(TLspBaseline.Command,
     function(const AArguments: TJSONArray): TJSONValue

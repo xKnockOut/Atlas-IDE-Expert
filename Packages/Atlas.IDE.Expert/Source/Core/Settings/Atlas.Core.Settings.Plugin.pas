@@ -624,6 +624,14 @@ type
     GitGutter: Boolean;
     /// <summary>Zeilenhistorie am Ende der Cursorzeile (#507, editor.gitBlame).</summary>
     GitBlame: Boolean;
+    /// <summary>Atlas-Spalte in der Zeilenleiste (#768, editor.gutterColumn).</summary>
+    GutterColumn: Boolean;
+    /// <summary>Problemsymbole in der Spalte (#768, editor.gutterColumn.problems).</summary>
+    GutterColumnProblems: Boolean;
+    /// <summary>Glühbirne für Code-Aktionen der Cursorzeile (#768, editor.gutterColumn.codeActions).</summary>
+    GutterColumnCodeActions: Boolean;
+    /// <summary>„überschreibt“/„wird überschrieben“ an Methoden (#768, editor.gutterColumn.overrides).</summary>
+    GutterColumnOverrides: Boolean;
     /// <summary>Kürzel „Nächste Änderung“ (#507, keys.nextChange); Vorgabe Strg+Alt+Bild↓.</summary>
     NextChangeKey: Integer;
     /// <summary>Kürzel „Vorherige Änderung“ (#507, keys.previousChange); Vorgabe Strg+Alt+Bild↑.</summary>
@@ -1296,6 +1304,10 @@ begin
   Result.BreadcrumbsKey := $60BE; // Strg+Umschalt+.
   Result.GitGutter := True;
   Result.GitBlame := False;
+  Result.GutterColumn := True;
+  Result.GutterColumnProblems := True;
+  Result.GutterColumnCodeActions := True;
+  Result.GutterColumnOverrides := True;
   // Strg+Alt+↑/↓ springt in RAD Studio schon zwischen Methoden.
   Result.NextChangeKey := $C022; // Strg+Alt+Bild↓
   Result.PreviousChangeKey := $C021; // Strg+Alt+Bild↑
@@ -1822,6 +1834,11 @@ begin
   BreadcrumbsKey := AStore.ReadInteger('BreadcrumbsKey', Default.BreadcrumbsKey);
   GitGutter := AStore.ReadInteger('GitGutter', BoolValue(Default.GitGutter)) <> 0;
   GitBlame := AStore.ReadInteger('GitBlame', BoolValue(Default.GitBlame)) <> 0;
+  GutterColumn := AStore.ReadInteger('GutterColumn', BoolValue(Default.GutterColumn)) <> 0;
+  GutterColumnProblems := AStore.ReadInteger('GutterColumnProblems', BoolValue(Default.GutterColumnProblems)) <> 0;
+  GutterColumnCodeActions := AStore.ReadInteger('GutterColumnCodeActions',
+    BoolValue(Default.GutterColumnCodeActions)) <> 0;
+  GutterColumnOverrides := AStore.ReadInteger('GutterColumnOverrides', BoolValue(Default.GutterColumnOverrides)) <> 0;
   NextChangeKey := AStore.ReadInteger('NextChangeKey', Default.NextChangeKey);
   PreviousChangeKey := AStore.ReadInteger('PreviousChangeKey', Default.PreviousChangeKey);
   OverviewRuler := AStore.ReadInteger('OverviewRuler', BoolValue(Default.OverviewRuler)) <> 0;
@@ -2166,6 +2183,10 @@ begin
   AStore.WriteInteger('BreadcrumbsKey', BreadcrumbsKey);
   AStore.WriteInteger('GitGutter', BoolValue(GitGutter));
   AStore.WriteInteger('GitBlame', BoolValue(GitBlame));
+  AStore.WriteInteger('GutterColumn', BoolValue(GutterColumn));
+  AStore.WriteInteger('GutterColumnProblems', BoolValue(GutterColumnProblems));
+  AStore.WriteInteger('GutterColumnCodeActions', BoolValue(GutterColumnCodeActions));
+  AStore.WriteInteger('GutterColumnOverrides', BoolValue(GutterColumnOverrides));
   AStore.WriteInteger('NextChangeKey', NextChangeKey);
   AStore.WriteInteger('PreviousChangeKey', PreviousChangeKey);
   AStore.WriteInteger('OverviewRuler', BoolValue(OverviewRuler));
