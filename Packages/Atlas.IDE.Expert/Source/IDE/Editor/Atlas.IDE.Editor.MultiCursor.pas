@@ -16,6 +16,9 @@
 //   an allen Marken aus: ein Schreiber je Tastendruck, also ein
 //   Rückgängig-Schritt. Derselbe Weg in Delphi 12 und 13, denn EditorKeyDown
 //   (nur Delphi 13) liefert keine Zeichen.
+// - Ein öffnendes Zeichen bei Markierungen umschließt sie an allen Marken
+//   (#672, Atlas.Core.Editor.WrapSelection), solange editor.wrapSelection an
+//   ist; Marken ohne Markierung bekommen das Zeichen.
 // - Andere Änderungen an der Hauptmarke (Übernahme eines Vorschlags, Tab,
 //   Vorlagen der IDE) laufen in der IDE; danach führt Mirror sie an den
 //   Zusatzmarken aus (eigener Rückgängig-Schritt). Änderungen anderswo
@@ -122,6 +125,9 @@ type
     procedure Refresh;
     procedure Finish;
     procedure DoEdit(AKind: TAtlasCaretEditKind; const AInsert: string);
+    /// <summary>Markierungen an allen Marken umschließen (#672); False, wenn das Zeichen normal getippt wird.
+    /// </summary>
+    function DoWrap(AOpen: Char): Boolean;
     procedure DoMove(AMove: TAtlasCaretMove; AExtend: Boolean);
     function DoCopy: Boolean;
     procedure DoCut;
@@ -173,13 +179,16 @@ uses
   Atlas.Core.Diagnostics.Guard,
   Atlas.Core.Diagnostics.MainThread,
   Atlas.Core.Lsp.Session,
+  Atlas.Core.Lsp.TextChanges,
   Atlas.Core.Editor.LineMove,
+  Atlas.Core.Editor.WrapSelection,
   Atlas.Core.Settings.Plugin,
   Atlas.UI.Strings,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Foundation.EditorBuffer,
   Atlas.IDE.Foundation.EditorSnapshot,
-  Atlas.IDE.Foundation.EditorStyle;
+  Atlas.IDE.Foundation.EditorStyle,
+  Atlas.IDE.Editor.WrapSelection;
 
 const
   // Fehlt in älteren Fassungen von Winapi.Windows.
@@ -639,6 +648,38 @@ begin
     Apply(View, Text, NewText, Carets);
 end;
 
+function TAtlasIdeMultiCursor.DoWrap(AOpen: Char): Boolean;
+var
+  View: IOTAEditView;
+  Text, NewText: string;
+  Ranges: TArray<TLspRange>;
+  Wrapped: TAtlasWrapResult;
+  Carets: TAtlasCarets;
+  Index, StartLine, StartCharacter, EndLine, EndCharacter: Integer;
+begin
+  Result := False;
+  if not TAtlasIdeWrapSelection.Enabled or not TAtlasWrapSelection.Accepts(AOpen, TAtlasIdeWrapSelection.Chars) or
+    not Prepare(View, Text) then
+    Exit;
+  SetLength(Ranges, Length(FCarets));
+  for Index := 0 to High(FCarets) do
+  begin
+    FCarets[Index].Bounds(StartLine, StartCharacter, EndLine, EndCharacter);
+    Ranges[Index] := TLspRange.Create(StartLine, StartCharacter, EndLine, EndCharacter);
+  end;
+  if not TAtlasWrapSelection.Wrap(TAtlasMultiCursor.Lines(Text), Ranges, AOpen, TAtlasIdeWrapSelection.Chars,
+    Wrapped) then
+    Exit;
+  NewText := string.Join(TAtlasMultiCursor.LineBreakOf(Text), Wrapped.Lines);
+  SetLength(Carets, Length(Wrapped.Selections));
+  for Index := 0 to High(Carets) do
+    Carets[Index] := TAtlasCaret.Range(Wrapped.Selections[Index].StartPos.Line,
+      Wrapped.Selections[Index].StartPos.Character, Wrapped.Selections[Index].EndPos.Line,
+      Wrapped.Selections[Index].EndPos.Character);
+  Apply(View, Text, NewText, Carets);
+  Result := True;
+end;
+
 procedure TAtlasIdeMultiCursor.DoMove(AMove: TAtlasCaretMove; AExtend: Boolean);
 var
   View: IOTAEditView;
@@ -991,6 +1032,9 @@ begin
     Exit;
   end;
   FHighSurrogate := #0;
+  // Öffnendes Zeichen bei Markierungen: umschließen (#672) statt überschreiben.
+  if DoWrap(Typed) then
+    Exit;
   DoEdit(TAtlasCaretEditKind.Insert, Typed);
 end;
 

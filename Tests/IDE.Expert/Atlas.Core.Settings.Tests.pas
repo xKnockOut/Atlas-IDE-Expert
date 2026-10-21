@@ -76,6 +76,9 @@ type
     /// <summary>Neue Zeile ober- oder unterhalb (#700): Vorgaben, Speichern und Laden.</summary>
     [Test]
     procedure NewLineAroundOptions;
+    /// <summary>Markierung beim Tippen umschließen (#672): Vorgaben, Speichern und Laden.</summary>
+    [Test]
+    procedure WrapSelectionOptions;
     /// <summary>Übersichtsleiste (#519): Vorgaben, Arten normalisiert, Speichern und Laden.</summary>
     [Test]
     procedure OverviewRulerOptions;
@@ -1650,6 +1653,24 @@ begin
   Assert.AreEqual('braces', Loaded.ToggleBlockCommentStyle);
   Assert.AreEqual('lineComments', Loaded.ToggleBlockCommentFallback);
   Assert.AreEqual('statement', Loaded.ToggleBlockCommentWithoutSelection);
+end;
+
+procedure TAtlasPluginSettingsTests.WrapSelectionOptions;
+var
+  Settings, Loaded: TAtlasPluginSettings;
+  Store: IAtlasSettingsStore;
+begin
+  Settings := TAtlasPluginSettings.Defaults;
+  Assert.IsTrue(Settings.WrapSelection);
+  Assert.AreEqual('([{''', Settings.WrapSelectionChars);
+  Settings.WrapSelection := False;
+  Settings.WrapSelectionChars := '(<';
+  Store := TMemoryStore.Create;
+  Settings.Save(Store);
+  Loaded := TAtlasPluginSettings.Defaults;
+  Loaded.Load(Store);
+  Assert.IsFalse(Loaded.WrapSelection);
+  Assert.AreEqual('(<', Loaded.WrapSelectionChars);
 end;
 
 procedure TAtlasPluginSettingsTests.NewLineAroundOptions;
