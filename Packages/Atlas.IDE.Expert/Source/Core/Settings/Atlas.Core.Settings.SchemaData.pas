@@ -11,7 +11,7 @@ function AtlasSchemaJson: string;
 implementation
 
 const
-  Lines: array[0..1409] of string = (
+  Lines: array[0..1415] of string = (
     '{',
     '  "$schema": "http://json-schema.org/draft-07/schema#",',
     '  "title": "Atlas-Konfiguration",',
@@ -590,6 +590,12 @@ const
     '          "description": "Weichen Deklaration und Implementierung voneinander ab, die Aktionen „Implementierung an Deklaration angleichen“ und umgekehrt anbieten.",',
     '          "x-issue": "#100"',
     '        },',
+    '        "forwardDeclaration": {',
+    '          "type": "boolean",',
+    '          "default": true,',
+    '          "description": "Typen, die im type-Abschnitt vor ihrer Deklaration benutzt werden, melden und „Forward-Deklaration ergänzen“, „type-Blöcke zusammenlegen“ bzw. „Deklaration nach oben verschie' + 'ben“ anbieten; überflüssige Forward-Deklarationen melden.",',
+    '          "x-issue": "#685"',
+    '        },',
     '        "tryFinally": {',
     '          "type": "boolean",',
     '          "default": true,',
@@ -679,7 +685,7 @@ const
     '      "x-scope": "project",',
     '      "x-page": "Vervollständigung",',
     '      "x-control": "Kontrollkästchen",',
-    '      "x-issue": "#42, #50, #100, #188, #453, #472"',
+    '      "x-issue": "#42, #50, #100, #188, #453, #472, #685"',
     '    },',
     '    "usesCommand": {',
     '      "type": "boolean",',

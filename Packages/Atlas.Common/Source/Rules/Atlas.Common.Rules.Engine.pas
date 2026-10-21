@@ -323,6 +323,7 @@ begin
       Context.Options := RuleOptions(Descriptor.Id, Settings);
       Context.DfmPropertyRules := Settings.DfmPropertyRules;
       Context.NoSignatureSync := not Settings.Refactoring.SyncSignatures;
+      Context.NoForwardDeclaration := not Settings.Refactoring.ForwardDeclaration;
       if IsExceptedByOptions(Context.Options, Context.RelativePath, Context.UnitName) then
         Continue;
       // Erst in einer Interface-Variablen halten: Check nimmt den Report als

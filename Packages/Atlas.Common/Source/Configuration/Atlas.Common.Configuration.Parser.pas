@@ -1054,6 +1054,8 @@ begin
       ExpectBoolean(ANode[Index], Key, FSettings.Refactoring.VirtualOverload)
     else if Key = 'syncSignatures' then
       ExpectBoolean(ANode[Index], Key, FSettings.Refactoring.SyncSignatures)
+    else if Key = 'forwardDeclaration' then
+      ExpectBoolean(ANode[Index], Key, FSettings.Refactoring.ForwardDeclaration)
     else if Key = 'tryFinally' then
       ExpectBoolean(ANode[Index], Key, FSettings.Refactoring.TryFinally)
     else if Key = 'classActions' then

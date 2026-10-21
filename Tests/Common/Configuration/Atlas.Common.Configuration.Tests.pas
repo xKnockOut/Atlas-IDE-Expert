@@ -559,6 +559,8 @@ begin
   Assert.IsFalse(Parse('{"refactoring": {"newParameter": "updateCallers"}}', Issues).Refactoring.NewParameterOverload);
   Assert.IsTrue(Parse('{"refactoring": {"virtualOverload": true}}', Issues).Refactoring.VirtualOverload);
   Assert.IsFalse(Parse('{"refactoring": {"syncSignatures": false}}', Issues).Refactoring.SyncSignatures);
+  Assert.IsTrue(Parse('{}', Issues).Refactoring.ForwardDeclaration);
+  Assert.IsFalse(Parse('{"refactoring": {"forwardDeclaration": false}}', Issues).Refactoring.ForwardDeclaration);
   // try/finally und Klassen-Aktionen (#42)
   Assert.IsTrue(Parse('{}', Issues).Refactoring.TryFinally);
   Assert.IsTrue(Parse('{}', Issues).Refactoring.ClassActions);

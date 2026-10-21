@@ -2773,6 +2773,24 @@ Voraussetzung: VCL-Quellen über die Bibliothekspfade im Index, Atlas-Tooltip an
 | IP10 | `completion.inheritedCall` aus | Nur die Namen der Vorfahrmethoden wie bisher, kein Aufruf mit Argumenten |
 | IP11 | Oberfläche auf Englisch | Marken „same parameters“, „overload“; Fußzeile „… is abstract and not listed“ |
 
+## Forward-Deklaration ergänzen (#685)
+
+Voraussetzung: Server läuft; Einstellungen auf Vorgabe; neue Unit `Tree.pas`.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| FD1 | `type` mit `TTree = class FRoot: TNode; end;` und darunter `TNode = class FTree: TTree; end;` | `TNode` in `TTree` rot unterstrichen: „"TNode" wird in TTree benutzt, bevor es deklariert ist (type-used-before-declaration)“, ohne Compilerlauf |
+| FD2 | Glühbirne an `TNode`, „Forward-Deklaration ergänzen“ | `  TNode = class;` als erste Zeile des type-Blocks; Meldung weg; Strg+Z nimmt es in einem Schritt zurück; Kompilieren ohne E2003 (**Abnahme**) |
+| FD3 | Dasselbe mit `IBaum`/`IKnoten = interface` und mit `TKnoten<T> = class` | `IKnoten = interface;` bzw. `TKnoten<T> = class;` |
+| FD4 | `TTree`, dann `const Max = 3;`, dann ein zweites `type` mit `TNode` | Glühbirne „type-Blöcke zusammenlegen“: der const-Abschnitt steht vor `type`, das zweite `type` fehlt, `TNode = class;` am Blockanfang; parst und kompiliert |
+| FD5 | Wie FD4, aber dazwischen `var Baum: TTree;` | Meldung endet mit „(keine Korrektur: der var-Abschnitt zwischen den type-Blöcken braucht TTree)“, keine Glühbirne |
+| FD6 | `TLinie = class FStart: TPunkt; end;` und danach `TPunkt = record X, Y: Integer; end;` | „Deklaration nach oben verschieben“: der Record steht vor `TLinie` |
+| FD7 | Wie FD6, dazwischen `TWert = Integer;` und im Record `X: TWert;` | Begründung „TPunkt braucht TWert, das davor deklariert ist“, keine Korrektur |
+| FD8 | `TNode = class;` ohne Verwendung vor `TNode = class … end;` | Hinweis „Die Forward-Deklaration von "TNode" wird nicht gebraucht …“ (unneeded-forward-declaration); „Forward-Deklaration entfernen“ löscht die Zeile; „Alle sicheren Korrekturen“ ebenso |
+| FD9 | Forward-Deklaration unterhalb des ersten Verwenders | „Forward-Deklaration nach oben verschieben“; kein Hinweis „überflüssig“ |
+| FD10 | `PNode = ^TNode;` vor `TNode = record`, Vorfahr `class(TBar)` mit `TBar` weiter unten | Keine Meldung dieser Regeln (der Vorfahr meldet der Compiler) |
+| FD11 | `"refactoring": {"forwardDeclaration": false}` in atlas.json | Keine Meldungen und Glühbirnen beider Regeln mehr (**Abnahme**) |
+
 ## Gleiche Namen aus verschiedenen Units (#475)
 
 Voraussetzung: `uses Winapi.Windows, Vcl.Graphics;`, VCL- und RTL-Quellen im Index.

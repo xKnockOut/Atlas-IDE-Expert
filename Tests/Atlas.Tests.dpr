@@ -109,6 +109,7 @@ uses
   Atlas.Common.Lsp.Todos.Tests in 'Common\Lsp\Atlas.Common.Lsp.Todos.Tests.pas',
   Atlas.Common.Rules.Builtin.Recursion.Tests in 'Common\Rules\Builtin\Atlas.Common.Rules.Builtin.Recursion.Tests.pas',
   Atlas.Common.Rules.Builtin.Deprecated.Tests in 'Common\Rules\Builtin\Atlas.Common.Rules.Builtin.Deprecated.Tests.pas',
+  Atlas.Common.Rules.Builtin.ForwardDeclarations.Tests in 'Common\Rules\Builtin\Atlas.Common.Rules.Builtin.ForwardDeclarations.Tests.pas',
   Atlas.Common.Rules.Builtin.Packages.Tests in 'Common\Rules\Builtin\Atlas.Common.Rules.Builtin.Packages.Tests.pas',
   Atlas.Common.Lsp.Baseline.Tests in 'Common\Lsp\Atlas.Common.Lsp.Baseline.Tests.pas',
   Atlas.Common.Lsp.SemanticTokens.Tests in 'Common\Lsp\Atlas.Common.Lsp.SemanticTokens.Tests.pas',
@@ -786,6 +787,7 @@ uses
   Atlas.Common.Lsp.UnitRename.Tests in 'Common\Lsp\Atlas.Common.Lsp.UnitRename.Tests.pas',
   Atlas.Common.Lsp.SmartPaste.Tests in 'Common\Lsp\Atlas.Common.Lsp.SmartPaste.Tests.pas',
   Atlas.Common.Editing.DeclareUnknown.Tests in 'Common\Editing\Atlas.Common.Editing.DeclareUnknown.Tests.pas',
+  Atlas.Common.Editing.ForwardDeclarations.Tests in 'Common\Editing\Atlas.Common.Editing.ForwardDeclarations.Tests.pas',
   Atlas.Common.Editing.InterfaceStubs.Tests in 'Common\Editing\Atlas.Common.Editing.InterfaceStubs.Tests.pas',
   Atlas.Common.Lsp.Completion.Postfix.Tests in 'Common\Lsp\Atlas.Common.Lsp.Completion.Postfix.Tests.pas',
   Atlas.Common.Editing.ContextSnippets.Tests in 'Common\Editing\Atlas.Common.Editing.ContextSnippets.Tests.pas';
