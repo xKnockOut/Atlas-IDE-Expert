@@ -1141,6 +1141,24 @@
       "description": "In Pascal not binds more tightly than in and comparisons: not X in Set means (not X) in Set, not A = B means (not A) = B, and on integers not works bitwise. The rule reports these forms when the declared type of the operand shows that this cannot be meant (not Boolean). Quick fix: add parentheses, not (X in Set).",
       "bad": "if not Zustand in [zsOffen, zsGesperrt] then\n  Bearbeiten;",
       "good": "if not (Zustand in [zsOffen, zsGesperrt]) then\n  Bearbeiten;"
+    },
+    {
+      "id": "empty-statement",
+      "name": "Empty statement after then, do or else",
+      "category": "bug",
+      "severity": "warning",
+      "group": "find-bugs",
+      "description": "A semicolon right after then, do or else ends the statement: the following line always runs, or the loop spins empty. An empty begin … end after then, do or else is reported too, unless it contains an explanatory comment (option allowCommented). A semicolon right before end, until, except or finally changes nothing and is not reported. Quick fix: remove the semicolon.",
+      "bad": "if Liste.Count = 0 then;\n  raise EKeineDaten.Create('Keine Daten');",
+      "good": "if Liste.Count = 0 then\n  raise EKeineDaten.Create('Keine Daten');",
+      "options": [
+        {
+          "name": "allowCommented",
+          "type": "boolean",
+          "default": true,
+          "description": "Do not report begin { intentionally empty } end."
+        }
+      ]
     }
   ]
 }

@@ -11,7 +11,7 @@ function AtlasSchemaJson: string;
 implementation
 
 const
-  Lines: array[0..1555] of string = (
+  Lines: array[0..1560] of string = (
     '{',
     '  "$schema": "http://json-schema.org/draft-07/schema#",',
     '  "title": "Atlas-Konfiguration",',
@@ -230,6 +230,11 @@ const
     '              "template": {',
     '                "type": "string",',
     '                "description": "Nur file-header: erwarteter Dateikopf mit Platzhaltern (siehe Regeln.md)."',
+    '              },',
+    '              "allowCommented": {',
+    '                "type": "boolean",',
+    '                "default": true,',
+    '                "description": "Nur empty-statement: leere Blöcke begin … end mit Kommentar darin nicht melden (#912)."',
     '              },',
     '              "mutatingMethods": {',
     '                "type": "array",',

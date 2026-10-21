@@ -3120,3 +3120,18 @@ Voraussetzung: Server läuft; Einstellungen auf Vorgabe; Unit mit `TZustand = (z
 | OP3 | `if not Anzahl = 0 then` mit `Anzahl: Integer` | „„not“ kehrt die Ganzzahl Anzahl bitweise um, nicht den Vergleich. …“ |
 | OP4 | `if not Fertig = True then` mit `Fertig: Boolean` | Keine Meldung |
 | OP5 | `"rules": {"operator-precedence": "off"}` bzw. mit `exclude` | Keine Meldung bzw. keine in den ausgenommenen Dateien |
+
+## Leere Anweisung nach then, do oder else (#912)
+
+Voraussetzung: Server läuft; Einstellungen auf Vorgabe.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| ES1 | `if Liste.Count = 0 then;` und darunter `raise EKeineDaten.Create('Keine Daten');` | Gelbe Wellenlinie über `then;`: „Leere Anweisung nach then: die nächste Zeile läuft immer.“ (**Abnahme**) |
+| ES2 | Alt+Enter „Semikolon entfernen“ | `if Liste.Count = 0 then`; ein Strg+Z stellt das Semikolon wieder her |
+| ES3 | `for I := 0 to 9 do;` mit Anweisung darunter | „Leere Anweisung nach do: die Schleife dreht leer.“ |
+| ES4 | `if Fertig then begin end;` | „Leerer Block nach then: hier passiert nichts.“ |
+| ES5 | `if Fertig then begin { absichtlich leer } end;` | Keine Meldung; mit `"empty-statement": {"allowCommented": false}` wie ES4 |
+| ES6 | `while not Bereit do;` direkt vor `end` und `case … else; end` | Keine Meldung |
+| ES7 | `"allowCommented": "ja"` in atlas.json | Diagnose in atlas.json: „"allowCommented" muss true oder false sein“ |
+| ES8 | Seite *Prüfregeln › Fehler finden*, Regel `empty-statement` | Option `allowCommented` als Kontrollkästchen |

@@ -43,6 +43,10 @@ uses
   Atlas.Common.Documents.FileEncoding,
   Atlas.Common.Configuration.Internals.JsonTree;
 
+const
+  /// <summary>Optionen von Prüfregeln, die true oder false sein müssen (#909).</summary>
+  BooleanRuleOptions: array[0..0] of string = ('allowCommented');
+
 type
   TValidator = class
   private
@@ -213,7 +217,10 @@ begin
             ReportNode(Value[Inner], '"max" muss eine ganze Zahl ab 1 sein')
           // Marken der Regel todo-comment (#68); die Regel und get_todos lesen sie aus den Optionen.
           else if Value.Keys[Inner] = 'keywords' then
-            CheckTodoKeywords(Value[Inner]);
+            CheckTodoKeywords(Value[Inner])
+          // Schalter der Regeln (#909), z. B. allowCommented von empty-statement.
+          else if (IndexStr(Value.Keys[Inner], BooleanRuleOptions) >= 0) and (Value[Inner].Kind <> TJsonKind.Boolean_) then
+            ReportNode(Value[Inner], Format('"%s" muss true oder false sein', [Value.Keys[Inner]]));
         Rule.Options := Copy(FText, Value.Start + 1, Value.Stop - Value.Start);
       end
       else
