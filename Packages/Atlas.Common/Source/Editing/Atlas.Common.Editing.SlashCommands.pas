@@ -30,7 +30,8 @@ uses
   Atlas.Common.Pascal.Contract,
   Atlas.Common.Index.Contract,
   Atlas.Common.Configuration.Contract,
-  Atlas.Common.Projects.Contract;
+  Atlas.Common.Projects.Contract,
+  Atlas.Common.Editing.UsesActions;
 
 type
   /// <summary>Datei, die ein Befehl neu anlegt oder ganz ersetzt (/unit, #297).</summary>
@@ -85,6 +86,11 @@ type
     /// <summary>Setzt den Cursor in AUri auf APosition (im Text nach den Änderungen des Befehls), nachdem sie
     /// angekommen sind (/future, #322).</summary>
     procedure MoveCursor(const AUri: string; const APosition: TTextPosition);
+    /// <summary>Kennungen der Prüfregeln, die in Zeile ALine (ab 0) von AText treffen (/ignore, #297); False,
+    /// wenn für die Datei keine Prüfregeln laufen (dann gilt jede Kennung).</summary>
+    function RuleIdsAt(const AUri, AText: string; ALine: Integer; out AIds: TArray<string>): Boolean;
+    /// <summary>Index und usesKeep für ungenutzte uses (/sortuses, #297); False ohne Index.</summary>
+    function UsesContext(const AUri: string; out AContext: TUsesContext): Boolean;
   end;
 
   /// <summary>Namen der Einstellungen, die Befehle über ISlashHost.Setting lesen.</summary>
@@ -97,6 +103,12 @@ type
     DefaultPalette = 'Eigene';
     /// <summary>completion.interfaceSection (#466) für /intf: private, protected oder public.</summary>
     InterfaceSection = 'interfaceSection';
+    /// <summary>Name hinter -o für /todo (#297); '' = git config user.name.</summary>
+    TodoOwner = 'todoOwner';
+    /// <summary>Kategorie hinter -c für /todo (#297); '' = keine.</summary>
+    TodoCategory = 'todoCategory';
+    /// <summary>/sortuses streicht ungenutzte Units (#297, #284); 'false' = nur sortieren.</summary>
+    SortUsesRemoveUnused = 'sortUsesRemoveUnused';
   end;
 
   /// <summary>Aktionen, die erst nach erfolgreichem Befehl laufen; bei Hinweisen werden sie verworfen.</summary>
@@ -154,6 +166,11 @@ type
 
   /// <summary>Schnellbefehle für AUri: False = alle aus; ADisabled = abgeschaltete Namen ohne "/".</summary>
   TSlashCommandsProvider = reference to function(const AUri: string; out ADisabled: TArray<string>): Boolean;
+  /// <summary>Wie ISlashHost.RuleIdsAt, für die Vervollständigung nach /ignore (#297).</summary>
+  TSlashRuleIdsFunc = reference to function(const AUri, AText: string; ALine: Integer;
+    out AIds: TArray<string>): Boolean;
+  /// <summary>Wie ISlashHost.UsesContext (/sortuses, #297).</summary>
+  TSlashUsesContextFunc = reference to function(const AUri: string; out AContext: TUsesContext): Boolean;
 
   /// <summary>Hinweis zu einer Befehlszeile, die stehen bleibt.</summary>
   TSlashProblem = record

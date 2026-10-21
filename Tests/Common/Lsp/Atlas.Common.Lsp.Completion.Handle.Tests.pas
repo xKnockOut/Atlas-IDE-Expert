@@ -46,6 +46,9 @@ type
     procedure SlashCommandComesFirst;
     [Test]
     procedure SlashSortOffersCollectionsThenMembers;
+    /// <summary>#297: nach /ignore nur die Regeln, die in der Zeile darunter treffen.</summary>
+    [Test]
+    procedure SlashIgnoreOffersRulesThatHit;
     /// <summary>#293/#294: Typ im Argument von /var mit uses-Eintrag der Typ-Unit (#180).</summary>
     [Test]
     procedure SlashTypeArgumentAddsUses;
@@ -338,6 +341,51 @@ begin
     Item := ItemAt(Answer, 0);
     Assert.IsTrue(Item.GetValue('additionalTextEdits') is TJSONArray, Item.ToJSON);
     Assert.IsTrue(Pos('Typen', Item.GetValue('additionalTextEdits').ToJSON) > 0, Item.ToJSON);
+  finally
+    Answer.Free;
+  end;
+end;
+
+procedure TLspCompletionHandleTests.SlashIgnoreOffersRulesThatHit;
+const
+  Source =
+    'unit Haupt;'#13#10 +
+    'interface'#13#10 +
+    'implementation'#13#10 +
+    'procedure Laden;'#13#10 +
+    'begin'#13#10 +
+    '  /ignore |'#13#10 +
+    '  X := 42;'#13#10 +
+    'end;'#13#10 +
+    'end.';
+var
+  Answer: TJSONObject;
+  Line: Integer;
+  Blanked: Boolean;
+begin
+  Line := -1;
+  Blanked := False;
+  FCompletion.RuleIdsFor :=
+    function(const AUri, AText: string; ALine: Integer; out AIds: TArray<string>): Boolean
+    begin
+      Line := ALine;
+      Blanked := Pos('/ignore', AText) = 0;
+      AIds := ['magic-number', 'unused-local'];
+      Result := True;
+    end;
+  Answer := Complete(Source);
+  try
+    Assert.AreEqual('magic-number unused-local', Labels(Answer));
+    Assert.AreEqual(6, Line);
+    Assert.IsTrue(Blanked, 'Befehlszeile nicht ausgeblendet');
+  finally
+    Answer.Free;
+  end;
+  // Ohne Auskunft der ganze Katalog.
+  FCompletion.RuleIdsFor := nil;
+  Answer := Complete(Source);
+  try
+    Assert.IsTrue(ItemCount(Answer) > 2, Labels(Answer));
   finally
     Answer.Free;
   end;

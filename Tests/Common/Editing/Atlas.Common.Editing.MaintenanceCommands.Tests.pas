@@ -14,13 +14,23 @@ type
     [Test]
     procedure SortUsesSortsAndRemovesLine;
     [Test]
+    procedure SortUsesDropsUnusedKeepsInitialization;
+    [Test]
+    procedure SortUsesKeepsUnusedWhenSwitchedOff;
+    [Test]
     procedure IgnoreWritesSuppression;
     [Test]
     procedure IgnoreWithoutLineBelowFails;
     [Test]
+    procedure IgnoreOnlyRulesThatHit;
+    [Test]
     procedure TodoUsesIdeFormat;
     [Test]
     procedure TodoWithoutTextFails;
+    [Test]
+    procedure TodoOwnerAndCategoryFromSettings;
+    [Test]
+    procedure TodoOptionsInLineWin;
     [Test]
     procedure DocForFunction;
     [Test]
@@ -43,7 +53,10 @@ uses
   Atlas.Common.Rules.Contract,
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.Parser,
-  Atlas.Common.Editing.SlashCommands;
+  Atlas.Common.Editing.UsesActions,
+  Atlas.Common.Editing.SlashCommands,
+  Atlas.Common.Editing.MaintenanceCommands,
+  Atlas.Tests.SlashHost;
 
 function Run(const AText: string; ALine: Integer; out AEdits: TArray<TRuleEdit>): Boolean;
 begin
@@ -86,6 +99,50 @@ begin
   Result := Apply(AText, Edits);
 end;
 
+/// <summary>Führt die Befehlszeile ALine mit AHost aus; False mit AReason.</summary>
+function RunWith(const AText: string; ALine: Integer; const AHost: ISlashHost; out AResult, AReason: string): Boolean;
+var
+  Edits: TArray<TTextEdit>;
+begin
+  AResult := '';
+  Result := TSlashCommandRegistry.Shared.Run(AText, ALine, 0, nil, nil, nil, '', '', AHost, Edits, AReason);
+  if Result then
+    AResult := Apply(AText, Edits);
+end;
+
+function ExpandWith(const AText: string; ALine: Integer; const AHost: ISlashHost): string;
+var
+  Reason: string;
+begin
+  Assert.IsTrue(RunWith(AText, ALine, AHost, Result, Reason), Reason);
+end;
+
+/// <summary>Index-Auskunft: SysUtils liefert Format, Classes TStringList, Vcl.Forms hat initialization.</summary>
+function UnitInfo(const AUnitName: string): TUsesUnitInfo;
+begin
+  Result := Default(TUsesUnitInfo);
+  Result.Known := True;
+  if SameText(AUnitName, 'System.SysUtils') then
+    Result.Names := ['Format']
+  else if SameText(AUnitName, 'System.Classes') then
+    Result.Names := ['TStringList']
+  else if SameText(AUnitName, 'Vcl.Forms') then
+    Result.HasInitialization := True
+  else
+    Result.Known := False;
+end;
+
+function UsesHost: TRecordingSlashHost;
+begin
+  Result := TRecordingSlashHost.Create;
+  Result.HasUses := True;
+  Result.Uses_.Info :=
+    function(const AUnitName: string): TUsesUnitInfo
+    begin
+      Result := UnitInfo(AUnitName);
+    end;
+end;
+
 function ProblemOf(const AText: string): string;
 var
   Problems: TArray<TSlashProblem>;
@@ -109,6 +166,39 @@ begin
     'implementation'#10#10'end.', Expand(Text, 5));
 end;
 
+const
+  UnusedText = 'unit U;'#10'interface'#10'uses'#10'  Vcl.Forms, System.SysUtils, System.Classes;'#10 +
+    'implementation'#10'/sortuses'#10'procedure P;'#10'begin'#10'  Format('''', []);'#10'end;'#10'end.';
+
+procedure TMaintenanceCommandsTests.SortUsesDropsUnusedKeepsInitialization;
+var
+  Keep: ISlashHost;
+begin
+  // #284: Classes wird nicht benutzt und fällt weg; Vcl.Forms bleibt wegen initialization.
+  Keep := UsesHost;
+  Assert.AreEqual('unit U;'#10'interface'#10'uses'#10'  System.SysUtils,'#10'  Vcl.Forms;'#10 +
+    'implementation'#10'procedure P;'#10'begin'#10'  Format('''', []);'#10'end;'#10'end.',
+    ExpandWith(UnusedText, 5, Keep));
+end;
+
+procedure TMaintenanceCommandsTests.SortUsesKeepsUnusedWhenSwitchedOff;
+var
+  Host: TRecordingSlashHost;
+  Keep: ISlashHost;
+  Expected: string;
+begin
+  Expected := 'unit U;'#10'interface'#10'uses'#10'  System.Classes,'#10'  System.SysUtils,'#10'  Vcl.Forms;'#10 +
+    'implementation'#10'procedure P;'#10'begin'#10'  Format('''', []);'#10'end;'#10'end.';
+  Host := UsesHost;
+  Keep := Host;
+  Host.Settings := [TSlashSettings.SortUsesRemoveUnused + '=false'];
+  Assert.AreEqual(Expected, ExpandWith(UnusedText, 5, Keep));
+  // usesKeep hält die Unit ebenfalls.
+  Host.Settings := nil;
+  Host.Uses_.Keep := ['System.Classes'];
+  Assert.AreEqual(Expected, ExpandWith(UnusedText, 5, Keep));
+end;
+
 procedure TMaintenanceCommandsTests.IgnoreWritesSuppression;
 begin
   Assert.AreEqual(Format(Routine, ['// lsp-ignore: magic-number -- Absicht']),
@@ -125,6 +215,29 @@ begin
   Assert.AreEqual('Erwartet wird /ignore regel [Begründung]', ProblemOf(Format(Routine, ['/ignore ä'])));
 end;
 
+procedure TMaintenanceCommandsTests.IgnoreOnlyRulesThatHit;
+var
+  Host: TRecordingSlashHost;
+  Keep: ISlashHost;
+  Result_, Reason: string;
+begin
+  Host := TRecordingSlashHost.Create;
+  Keep := Host;
+  Host.HasRuleIds := True;
+  Host.RuleIds := ['magic-number'];
+  Assert.IsFalse(RunWith(Format(Routine, ['/ignore unused-local']), 5, Keep, Result_, Reason));
+  Assert.AreEqual(Format(IgnoreNoHitHint, ['unused-local']), Reason);
+  Assert.AreEqual(6, Host.RuleLine);
+  Assert.AreEqual(Format(Routine, ['// lsp-ignore: magic-number']),
+    ExpandWith(Format(Routine, ['/ignore magic-number']), 5, Keep));
+  // Muster und Hosts ohne Prüfregeln (False) lassen jede Kennung zu.
+  Assert.AreEqual(Format(Routine, ['// lsp-ignore: magic-*']),
+    ExpandWith(Format(Routine, ['/ignore magic-*']), 5, Keep));
+  Host.HasRuleIds := False;
+  Assert.AreEqual(Format(Routine, ['// lsp-ignore: unused-local']),
+    ExpandWith(Format(Routine, ['/ignore unused-local']), 5, Keep));
+end;
+
 procedure TMaintenanceCommandsTests.TodoUsesIdeFormat;
 begin
   Assert.AreEqual(Format(Routine, ['// TODO : Fehlerfall prüfen']),
@@ -134,6 +247,34 @@ end;
 procedure TMaintenanceCommandsTests.TodoWithoutTextFails;
 begin
   Assert.AreEqual('Erwartet wird /todo Text', ProblemOf(Format(Routine, ['/todo'])));
+end;
+
+procedure TMaintenanceCommandsTests.TodoOwnerAndCategoryFromSettings;
+var
+  Host: TRecordingSlashHost;
+  Keep: ISlashHost;
+begin
+  Host := TRecordingSlashHost.Create;
+  Keep := Host;
+  Host.Settings := [TSlashSettings.TodoOwner + '=Marco', TSlashSettings.TodoCategory + '=Review'];
+  Assert.AreEqual(Format(Routine, ['// TODO -oMarco -cReview : Fehlerfall prüfen']),
+    ExpandWith(Format(Routine, ['/todo Fehlerfall prüfen']), 5, Keep));
+end;
+
+procedure TMaintenanceCommandsTests.TodoOptionsInLineWin;
+var
+  Host: TRecordingSlashHost;
+  Keep: ISlashHost;
+begin
+  Host := TRecordingSlashHost.Create;
+  Keep := Host;
+  Host.Settings := [TSlashSettings.TodoOwner + '=Marco', TSlashSettings.TodoCategory + '=Review'];
+  Assert.AreEqual(Format(Routine, ['// TODO -oEva -cTest : Fehlerfall prüfen']),
+    ExpandWith(Format(Routine, ['/todo -oEva -cTest Fehlerfall prüfen']), 5, Keep));
+  // -c ohne Kategorie lässt sie weg, -o ohne Namen nimmt den Standardnamen.
+  Assert.AreEqual(Format(Routine, ['// TODO -oMarco : Fehlerfall prüfen']),
+    ExpandWith(Format(Routine, ['/todo -o -c Fehlerfall prüfen']), 5, Keep));
+  Assert.AreEqual('Erwartet wird /todo Text', ProblemOf(Format(Routine, ['/todo -oEva'])));
 end;
 
 procedure TMaintenanceCommandsTests.DocForFunction;

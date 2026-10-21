@@ -254,6 +254,7 @@ uses
   Atlas.Common.Editing.WrapCommands.Tests in 'Common\Editing\Atlas.Common.Editing.WrapCommands.Tests.pas',
   Atlas.Common.Editing.SlashMenu.Tests in 'Common\Editing\Atlas.Common.Editing.SlashMenu.Tests.pas',
   Atlas.Common.Editing.MaintenanceCommands.Tests in 'Common\Editing\Atlas.Common.Editing.MaintenanceCommands.Tests.pas',
+  Atlas.Common.Editing.GitUser.Tests in 'Common\Editing\Atlas.Common.Editing.GitUser.Tests.pas',
   Atlas.Common.Editing.TypeCommands.Tests in 'Common\Editing\Atlas.Common.Editing.TypeCommands.Tests.pas',
   Atlas.Common.Editing.TypeCommands.JsonGolden in 'Common\Editing\Atlas.Common.Editing.TypeCommands.JsonGolden.pas',
   Atlas.Common.Editing.CodeActions.TryFinallyGolden in 'Common\Editing\Atlas.Common.Editing.CodeActions.TryFinallyGolden.pas',

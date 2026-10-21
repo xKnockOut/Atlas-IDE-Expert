@@ -26,6 +26,7 @@ uses
   Atlas.Common.Documents.Contract,
   Atlas.Common.Projects.Contract,
   Atlas.Common.JsonRpc.Dispatcher,
+  Atlas.Common.Editing.UsesActions,
   Atlas.Common.Editing.SlashCommands,
   Shell.Workspace;
 
@@ -52,6 +53,8 @@ type
     FRunInLoop: TJsonRpcScheduler;
     FSettingOf: TSlashSettingFunc;
     FTestUnitOf: TSlashTestUnitFunc;
+    FRuleIdsOf: TSlashRuleIdsFunc;
+    FUsesContextOf: TSlashUsesContextFunc;
     function ClientWrites: Boolean;
     /// <summary>Schickt AEdit (wird übernommen) an den Client; nach Erfolg Reload und AAfter.</summary>
     procedure SendEdit(const AUri, ADescription: string; AEdit: TJSONObject; const AAfter: TProc); overload;
@@ -78,6 +81,8 @@ type
     function TestUnit(const AUri, AText: string; out ATarget: TSlashTestUnit): Boolean;
     procedure Notify(const AUri, AMessage: string);
     procedure MoveCursor(const AUri: string; const APosition: TTextPosition);
+    function RuleIdsAt(const AUri, AText: string; ALine: Integer; out AIds: TArray<string>): Boolean;
+    function UsesContext(const AUri: string; out AContext: TUsesContext): Boolean;
     /// <summary>Eine Änderung an einer Quelldatei (resourcestring in eine andere Unit, #473): im Editor über
     /// workspace/applyEdit in deren Puffer, ohne neu zu laden; ohne Editor ANewText auf die Platte in der
     /// Kodierung der Datei.</summary>
@@ -86,6 +91,10 @@ type
     property SettingOf: TSlashSettingFunc read FSettingOf write FSettingOf;
     /// <summary>Testunit zur Unit (/test, #295); ohne Zuweisung keine.</summary>
     property TestUnitOf: TSlashTestUnitFunc read FTestUnitOf write FTestUnitOf;
+    /// <summary>Treffer der Prüfregeln in einer Zeile (/ignore, #297); ohne Zuweisung gilt jede Regel.</summary>
+    property RuleIdsOf: TSlashRuleIdsFunc read FRuleIdsOf write FRuleIdsOf;
+    /// <summary>Index und usesKeep (/sortuses, #297); ohne Zuweisung wird nur sortiert.</summary>
+    property UsesContextOf: TSlashUsesContextFunc read FUsesContextOf write FUsesContextOf;
     /// <summary>Stellt Arbeit in die Nachrichtenschleife (TJsonRpcConnection.Queue). Reload und SelectBuild
     /// laufen nur dort (Code-Review A-03); ohne Zuweisung (Tests) sofort.</summary>
     property RunInLoop: TJsonRpcScheduler read FRunInLoop write FRunInLoop;
@@ -345,6 +354,18 @@ begin
   Result := '';
   if Assigned(FSettingOf) then
     Result := FSettingOf(AUri, AName);
+end;
+
+function TShellSlashHost.RuleIdsAt(const AUri, AText: string; ALine: Integer; out AIds: TArray<string>): Boolean;
+begin
+  AIds := nil;
+  Result := Assigned(FRuleIdsOf) and FRuleIdsOf(AUri, AText, ALine, AIds);
+end;
+
+function TShellSlashHost.UsesContext(const AUri: string; out AContext: TUsesContext): Boolean;
+begin
+  AContext := Default(TUsesContext);
+  Result := Assigned(FUsesContextOf) and FUsesContextOf(AUri, AContext);
 end;
 
 function TShellSlashHost.TestUnit(const AUri, AText: string; out ATarget: TSlashTestUnit): Boolean;

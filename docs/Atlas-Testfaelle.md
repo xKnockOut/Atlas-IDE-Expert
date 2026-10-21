@@ -2518,3 +2518,19 @@ Vorher: Tools › Optionen › Atlas, Vorgaben geladen, „Experimentelle Funkti
 | OG15 | Tastatur im Baum: ↑ ↓ ← → + − Pos1 Ende | Wie im Baum der IDE-Optionen; die rechte Seite wechselt mit |
 | OG16 | Schnellschalter im Statusfeld (#604) für die Minikarte | Wirkt wie bisher; die Optionsseite zeigt danach den neuen Stand samt Sperren |
 | OG17 | „Favoriten“ (Vervollständigung) aus | Liste und Knöpfe der Favoriten gesperrt, die Einträge bleiben |
+
+## Pflegebefehle /sortuses, /ignore, /todo (#297)
+
+Vorher: Projekt mit Index geladen, eine Unit mit `uses System.SysUtils, System.Classes, Vcl.Forms;`, aus der nur `Format` benutzt wird.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| PF1 | Über `implementation` `/sortuses` tippen, Enter | uses sortiert; `System.Classes` gestrichen, `Vcl.Forms` bleibt (initialization); die Befehlszeile ist weg |
+| PF2 | `System.Classes` in `usesKeep` eintragen, PF1 wiederholen | `System.Classes` bleibt stehen |
+| PF3 | `slashCommands.sortUsesRemoveUnused` auf `false`, PF1 wiederholen | Nur sortiert, nichts gestrichen |
+| PF4 | Über `X := 42;` `/ignore ` tippen | Die Vervollständigung bietet nur Regeln an, die in der Zeile darunter treffen (z. B. `magic-number`) |
+| PF5 | `/ignore unused-local`, Enter, über einer Zeile ohne diesen Treffer | Zeile bleibt stehen; Hinweis `slash-command`: „Regel unused-local meldet in der Zeile darunter nichts“ |
+| PF6 | `/ignore magic-number Absicht`, Enter | `// lsp-ignore: magic-number -- Absicht`, der Treffer verschwindet |
+| PF7 | `/todo Fehlerfall prüfen` ohne Einstellung, im git-Repository mit `user.name` | `// TODO -o<user.name> : Fehlerfall prüfen`, in der IDE-TODO-Liste mit Besitzer |
+| PF8 | `slashCommands.todoOwner` = `Marco`, `todoCategory` = `Review`, PF7 wiederholen | `// TODO -oMarco -cReview : Fehlerfall prüfen` |
+| PF9 | `/todo -oEva -cTest Text` | `// TODO -oEva -cTest : Text` (Angaben in der Zeile gehen vor) |

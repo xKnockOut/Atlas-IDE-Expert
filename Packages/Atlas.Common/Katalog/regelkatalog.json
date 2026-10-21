@@ -482,7 +482,7 @@
       "name": "Quick command not executed",
       "category": "code-smell",
       "severity": "hint",
-      "description": "A line starting with /name was not executed and stays in the code: the command is unknown, switched off (slashCommands.disabled) or does not fit at this place. The message names the reason.",
+      "description": "A line starting with /name was not executed and stays in the code: the command is unknown, switched off (slashCommands.disabled) or does not fit at this place. The message names the reason. \"/ignore rule\" is also reported when that rule finds nothing in the line below.",
       "bad": "/gibtsnicht X",
       "good": "/uses System.Classes"
     },

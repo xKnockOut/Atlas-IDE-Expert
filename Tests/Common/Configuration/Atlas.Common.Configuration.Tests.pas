@@ -403,6 +403,15 @@ begin
   // Palettenseite für /component (#299)
   Assert.AreEqual('Eigene', Parse('{}', Issues).SlashComponentPalette);
   Assert.AreEqual('Firma', Parse('{"slashCommands": {"componentPalette": "Firma"}}', Issues).SlashComponentPalette);
+  // #297: Name und Kategorie für /todo, ungenutzte uses bei /sortuses.
+  Settings := Parse('{"slashCommands": {"todoOwner": "Marco", "todoCategory": "Review", ' +
+    '"sortUsesRemoveUnused": false}}', Issues);
+  Assert.AreEqual('Marco', Settings.SlashTodoOwner);
+  Assert.AreEqual('Review', Settings.SlashTodoCategory);
+  Assert.IsFalse(Settings.SlashSortUsesRemoveUnused);
+  Assert.AreEqual(0, Integer(Length(Issues)));
+  Assert.IsTrue(Parse('{}', Issues).SlashSortUsesRemoveUnused);
+  Assert.AreEqual('', Parse('{}', Issues).SlashTodoOwner);
   Assert.AreEqual(0, Integer(Length(Issues)));
   // Vervollständigung (#229)
   Assert.IsTrue(Parse('{}', Issues).Completion.Matching = TCompletionMatching.Fuzzy);
