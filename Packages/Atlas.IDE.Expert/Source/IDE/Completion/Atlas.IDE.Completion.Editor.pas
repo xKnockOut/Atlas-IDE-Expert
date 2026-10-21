@@ -1176,13 +1176,16 @@ begin
         Shown := WithDisplay(ADetails);
         Shown.Availability := Availability;
         Shown.AddsUnit := AddsUnit;
+        // Gleichnamige Bezeichner (#475): alles Nötige liefert die Liste.
+        TAtlasItemPresentation.AddSameName(Item, Shown);
         FPopup.ShowDetails(Shown);
       end;
     end) then
-    if Availability <> '' then
+    if (Availability <> '') or (Length(Item.SameNameUnits) > 0) then
     begin
       Details := Default(TAtlasItemDetails);
       Details.Availability := Availability;
+      TAtlasItemPresentation.AddSameName(Item, Details);
       FPopup.ShowDetails(Details);
     end
     else

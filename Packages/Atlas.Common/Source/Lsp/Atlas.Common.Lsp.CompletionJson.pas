@@ -333,14 +333,41 @@ begin
   end;
 end;
 
+procedure WriteSameName(const AItem: TCompletionItem; AData: TJSONObject);
+var
+  List: TJSONArray;
+  Text: string;
+begin
+  if Length(AItem.SameNameUnits) = 0 then
+    Exit;
+  if AItem.SameNameActive then
+    AData.AddPair('sameNameActive', TJSONBool.Create(True));
+  if AItem.SameNameOf <> '' then
+  begin
+    AData.AddPair('sameNameOf', AItem.SameNameOf);
+    AData.AddPair('sameNameInsert', AItem.SameNameInsert);
+  end;
+  List := TJSONArray.Create;
+  AData.AddPair('sameNameUnits', List);
+  for Text in AItem.SameNameUnits do
+    List.Add(Text);
+  if Length(AItem.SameNameHidden) > 0 then
+  begin
+    List := TJSONArray.Create;
+    AData.AddPair('sameNameHidden', List);
+    for Text in AItem.SameNameHidden do
+      List.Add(Text);
+  end;
+end;
+
 const
   /// <summary>Reihenfolge der Felder unter data; das Plugin liest nach Namen, die Golden-Tests nach Text.
   /// </summary>
-  DataWriters: array[0..31] of TItemDataWriter = (WriteSource, WriteExpected, WriteAction, WriteContainer,
+  DataWriters: array[0..32] of TItemDataWriter = (WriteSource, WriteExpected, WriteAction, WriteContainer,
     WriteDepth, WriteHelper, WriteParameters, WriteCondition, WriteUnavailable, WriteScope, WriteOrdinal,
     WriteSetOf, WriteLinked, WritePinned, WriteCount, WriteUnknown, WriteBatch, WriteHint, WriteForm, WriteByType, WriteSender,
     WriteConversion, WriteAssignments, WriteDataSet, WriteGuard, WriteUnit, WriteHides, WriteOverloads, WriteTypeArg,
-    WriteBindings, WriteUses, WriteInherited);
+    WriteBindings, WriteUses, WriteInherited, WriteSameName);
 
 function NeedsData(const AItem: TCompletionItem): Boolean;
 begin
@@ -349,7 +376,7 @@ begin
     (AItem.Sender <> '') or (AItem.DataSet <> '') or (AItem.Guard <> '') or (AItem.TypeParam <> '') or
     (Length(AItem.Bindings) > 0) or (AItem.Conversion <> '') or (AItem.Lossy <> '') or
     (Length(AItem.Assignments) > 0) or (AItem.UsesGroup <> '') or (AItem.InheritedMatch <> '') or
-    (Length(AItem.InheritedAbstract) > 0);
+    (Length(AItem.InheritedAbstract) > 0) or (Length(AItem.SameNameUnits) > 0);
 end;
 
 function EditToJson(const AEdit: TRuleEdit): TJSONObject;

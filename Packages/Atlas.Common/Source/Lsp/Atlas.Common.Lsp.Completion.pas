@@ -1777,6 +1777,8 @@ begin
               Collector.SetNameFilter(False);
             end;
             Collector.AddCandidates(Candidates);
+            // Gleichnamige Bezeichner aus anderen Units direkt hinter der aktiven Variante (#475).
+            Collector.AddSameNameVariants;
           end;
           if (Context.Kind = TCompletionContextKind.Scope) and
             (Context.Filter <> TCompletionFilter.InheritedCall) then
