@@ -10,6 +10,13 @@
 // ausblenden. Der Client folgt dem IDE-Thema (IOTAIDEThemingServices).
 // Register ersetzt ein Plugin mit derselben Kennung; RemoveAll meldet beim
 // Entladen alle ab.
+// Beim Beenden baut die IDE ihre Willkommensseite vor dem Entladen von Atlas
+// ab und gibt dabei die Plugins frei, obwohl sie noch angemeldet sind. Ein
+// freigegebenes Plugin trägt sich deshalb selbst aus Plugins aus, und danach
+// ruft Atlas den Dienst nicht mehr auf (#1091: „Welcome: EAccessViolation“
+// beim Entladen). Den Rahmen gibt die IDE mit ihrer
+// Seite frei; ein Wächter (FreeNotification) vergisst ihn dann, damit
+// DestroyView ihn nicht ein zweites Mal freigibt.
 
 interface
 
@@ -51,8 +58,19 @@ uses
   Atlas.Core.Diagnostics.Guard;
 
 type
+  TPlugin = class;
+
+  /// <summary>Meldet, wenn die IDE Rahmen oder Inhalt freigibt (#1091).</summary>
+  TViewWatch = class(TComponent)
+  private
+    FPlugin: TPlugin;
+  protected
+    procedure Notification(AComponent: TComponent; Operation: TOperation); override;
+  end;
+
   TPlugin = class(TInterfacedObject, INTAWelcomePagePlugin, INTAWelcomePageContentPluginCreator)
   private
+    FWatch: TViewWatch;
     FId: string;
     FCaption: string;
     FFactory: TAtlasWelcomeClientFactory;
@@ -79,6 +97,9 @@ type
 var
   // Kennung → Plugin; die IDE hält eigene Referenzen, wir nur zum Abmelden und für Client.
   Plugins: TDictionary<string, TPlugin>;
+  // Die IDE hat ein noch angemeldetes Plugin freigegeben: Sie baut ihre
+  // Willkommensseite ab (Beenden), der Dienst ist nicht mehr aufrufbar (#1091).
+  ServiceGone: Boolean;
 
 procedure Theme(AFrame: TFrame);
 var
@@ -89,11 +110,30 @@ begin
     Theming.ApplyTheme(AFrame);
 end;
 
+{ TViewWatch }
+
+procedure TViewWatch.Notification(AComponent: TComponent; Operation: TOperation);
+begin
+  inherited;
+  if (Operation <> opRemove) or (FPlugin = nil) then
+    Exit;
+  if AComponent = FPlugin.FClient then
+    FPlugin.FClient := nil;
+  if AComponent = FPlugin.FView then
+  begin
+    // Der Rahmen besitzt den Inhalt: mit ihm ist auch der Inhalt weg.
+    FPlugin.FView := nil;
+    FPlugin.FClient := nil;
+  end;
+end;
+
 { TPlugin }
 
 constructor TPlugin.Create(const AId, ACaption: string; const AFactory: TAtlasWelcomeClientFactory);
 begin
   inherited Create;
+  FWatch := TViewWatch.Create(nil);
+  FWatch.FPlugin := Self;
   FId := AId;
   FCaption := ACaption;
   FFactory := AFactory;
@@ -102,7 +142,15 @@ end;
 
 destructor TPlugin.Destroy;
 begin
+  // Gibt die IDE uns frei, ohne dass wir abgemeldet haben, darf das Wörterbuch nicht weiter auf uns zeigen.
+  if (Plugins <> nil) and Plugins.ContainsKey(LowerCase(FId)) and (Plugins[LowerCase(FId)] = Self) then
+  begin
+    Plugins.Remove(LowerCase(FId));
+    ServiceGone := True;
+  end;
   DestroyView;
+  FWatch.FPlugin := nil;
+  FreeAndNil(FWatch);
   inherited;
 end;
 
@@ -128,6 +176,8 @@ begin
   if FView = nil then
   begin
     FView := WelcomePagePluginService.CreateCaptionFrame(FId, FCaption, nil);
+    if FView <> nil then
+      FView.FreeNotification(FWatch);
     if Supports(FView, INTAWelcomePageCaptionFrame, Caption) then
       TAtlasGuard.Run(TAtlasFeature.WelcomePage,
         procedure
@@ -136,6 +186,7 @@ begin
           FClient := FFactory(FView);
           if FClient <> nil then
           begin
+            FClient.FreeNotification(FWatch);
             Caption.SetClientFrame(FClient);
             Theme(FClient);
             FClient.UpdateContent;
@@ -146,9 +197,20 @@ begin
 end;
 
 procedure TPlugin.DestroyView;
+var
+  View: TFrame;
 begin
+  if FClient <> nil then
+    FClient.RemoveFreeNotification(FWatch);
   FClient := nil;
-  FreeAndNil(FView);
+  // Nur einen Rahmen freigeben, der noch lebt; hat die IDE ihn schon freigegeben, ist FView nil (TViewWatch).
+  View := FView;
+  FView := nil;
+  if View <> nil then
+  begin
+    View.RemoveFreeNotification(FWatch);
+    View.Free;
+  end;
 end;
 
 function TPlugin.GetIcon: TGraphicArray;
@@ -190,6 +252,7 @@ begin
     Plugins := TDictionary<string, TPlugin>.Create;
   Plugin := TPlugin.Create(APluginId, ACaption, AFactory);
   Plugins.Add(LowerCase(APluginId), Plugin);
+  ServiceGone := False;
   WelcomePagePluginService.RegisterPluginCreator(Plugin);
 end;
 
@@ -198,7 +261,7 @@ begin
   if (Plugins = nil) or not Plugins.ContainsKey(LowerCase(APluginId)) then
     Exit;
   Plugins.Remove(LowerCase(APluginId));
-  if Available then
+  if Available and not ServiceGone then
     WelcomePagePluginService.UnRegisterPlugin(APluginId);
 end;
 
