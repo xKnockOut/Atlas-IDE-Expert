@@ -85,7 +85,9 @@ begin
     // Inaktive Zweige der bedingten Kompilierung erzeugen keine Syntaxfehler.
     if not TPascalParser.ActiveDiagnostics(AText, nil, Active) then
       Active := Tree.Diagnostics;
-    if ASettings.RuleSeverity(SyntaxRuleId, TRuleSeverity.Error) <> TRuleSeverity.Off then
+    // Auch Syntaxfehler gehören zu einer Gruppe („Fehler finden“, #909).
+    if (ASettings.RuleSeverity(SyntaxRuleId, TRuleSeverity.Error) <> TRuleSeverity.Off) and
+      not TRuleEngine.GroupOff(SyntaxRuleId, ASettings) then
       for Diagnostic in Active do
       begin
         Finding := Default(TRuleFinding);

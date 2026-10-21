@@ -22,6 +22,10 @@
 // "unknown-rule-id" mit Tippfehler-Vorschlag und Korrektur (#41). Ein solcher
 // Kommentar zählt nicht zusätzlich als "unused-suppression".
 //
+// Hauptschalter je Gruppe (#909): "rules": { "group:threads": "off" } schaltet
+// alle Regeln der Gruppe ab, auch einzeln eingestellte; die Gruppe steht im
+// Regelkatalog.
+//
 // Regelprofile, Pfadregeln und das Ausnehmen von Test-Units (#146) wertet
 // TRuleProfiles aus; maßgeblich ist das Profil in ASettings.Profile, für
 // Test-Units und Testprojekte ASettings.TestProfile, falls gesetzt.
@@ -54,6 +58,8 @@ type
       const ASettings: TServerSettings; const ARelativePath: string = ''): TRuleSeverity; overload; static;
     class function EffectiveSeverity(const ARule: TRuleDescriptor; const ASettings: TServerSettings;
       const ARelativePath: string; out AEnabled: Boolean): TRuleSeverity; overload; static;
+    /// <summary>Ist die Gruppe der Regel über "group:&lt;gruppe&gt;": "off" abgeschaltet (#909)?</summary>
+    class function GroupOff(const ARuleId: string; const ASettings: TServerSettings): Boolean; static;
     /// <summary>Optionen der Regel als JSON-Text, sonst ''.</summary>
     class function RuleOptions(const ARuleId: string; const ASettings: TServerSettings): string; static;
     /// <summary>ASeverity begrenzt nach Konfidenz.</summary>
@@ -74,6 +80,7 @@ uses
   System.Generics.Defaults,
   Atlas.Common.Diagnostics.RequestScope,
   Atlas.Common.Documents.Contract,
+  Atlas.Common.Rules.Catalog,
   Atlas.Common.Rules.Derived,
   Atlas.Common.Rules.Profiles,
   Atlas.Common.Rules.Suppressions;
@@ -175,6 +182,11 @@ end;
 class function TRuleEngine.EffectiveSeverity(const ARule: TRuleDescriptor; const ASettings: TServerSettings;
   const ARelativePath: string; out AEnabled: Boolean): TRuleSeverity;
 begin
+  if GroupOff(ARule.Id, ASettings) then
+  begin
+    AEnabled := False;
+    Exit(TRuleSeverity.Off);
+  end;
   // Kennzahlen global aus ("metrics": false): metric-* schweigen, außer das Projekt setzt die Regel selbst.
   if not ASettings.Metrics and SameText(Copy(ARule.Id, 1, 7), 'metric-') and
     (ASettings.RuleSeverity(ARule.Id, TRuleSeverity.Default) = TRuleSeverity.Default) then
@@ -186,6 +198,14 @@ begin
     ARelativePath, AEnabled);
   if Result = TRuleSeverity.Default then
     Result := TRuleSeverity.Warning;
+end;
+
+class function TRuleEngine.GroupOff(const ARuleId: string; const ASettings: TServerSettings): Boolean;
+var
+  Entry: TRuleCatalogEntry;
+begin
+  Result := (Length(ASettings.Rules) > 0) and TRuleCatalog.Shared.TryFind(ARuleId, Entry) and
+    (ASettings.RuleSeverity(TRuleCatalog.GroupKey(Entry.Group), TRuleSeverity.Default) = TRuleSeverity.Off);
 end;
 
 class function TRuleEngine.CapSeverity(ASeverity: TRuleSeverity; AConfidence: TRuleConfidence): TRuleSeverity;
