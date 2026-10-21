@@ -137,6 +137,7 @@ Jeder Schlüssel hat genau einen Ort (Spalte „Ort“): Projekt-Schlüssel steh
 | `slashCommands.todoCategory` | global (settings.json) | string | `""` |  | Kategorie hinter -c, die /todo einträgt. Leer: keine. /todo -cKategorie in der Zeile geht vor. |
 | `slashCommands.sortUsesRemoveUnused` | global (settings.json) | boolean | `true` |  | /sortuses streicht auch ungenutzte Units laut Index. Units mit initialization oder finalization und die aus usesKeep bleiben. |
 | `slashCommands.enumHelper` | global (settings.json) | boolean | `true` |  | /helper für eine Aufzählung legt die Namenstabelle cNames sowie ToString und FromString an. Aus: ein leerer record helper wie bei anderen Typen. |
+| `slashCommands.setHelper` | global (settings.json) | boolean | `true` |  | /helper für eine Menge (set of) legt Contains, ToText, Toggle und All an. Aus: ein leerer record helper wie bei anderen Typen. |
 
 ## index
 

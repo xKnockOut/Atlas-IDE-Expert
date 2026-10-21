@@ -413,6 +413,8 @@ begin
       ExpectBoolean(ANode[Index], Key, FSettings.SlashSortUsesRemoveUnused)
     else if Key = 'enumHelper' then
       ExpectBoolean(ANode[Index], Key, FSettings.SlashEnumHelper)
+    else if Key = 'setHelper' then
+      ExpectBoolean(ANode[Index], Key, FSettings.SlashSetHelper)
     else
       Report(ANode.KeyStarts[Index], ANode.KeyStarts[Index] + Length(Key) + 2,
         Format('Unbekannte Einstellung "slashCommands.%s"', [Key]), False);
@@ -1884,6 +1886,7 @@ begin
       Result.SlashTodoCategory := FileSettings.SlashTodoCategory;
       Result.SlashSortUsesRemoveUnused := FileSettings.SlashSortUsesRemoveUnused;
       Result.SlashEnumHelper := FileSettings.SlashEnumHelper;
+      Result.SlashSetHelper := FileSettings.SlashSetHelper;
     end
     else if Key = 'sortUses' then
     begin

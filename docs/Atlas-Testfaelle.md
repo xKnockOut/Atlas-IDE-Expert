@@ -2545,6 +2545,9 @@ Vorher: Projekt mit Index geladen, eine Unit mit `uses System.SysUtils, System.C
 | TY3 | Unter `TFarbe = (Rot, Gruen, Blau);` `/helper TFarbe`, Enter (#875) | `TFarbeHelper = record helper for TFarbe` mit `private const cNames: array[TFarbe] of string = ('Rot', 'Gruen', 'Blau');`, `ToString` und `class function FromString(const AValue: string): TFarbe; static;`; Rümpfe in der implementation, `System.SysUtils` im uses; übersetzt |
 | TY4 | `TFarbe.Blau.ToString` und `TFarbe.FromString('gruen')` aufrufen | `'Blau'` bzw. `Gruen`; ein unbekannter Name löst `EArgumentException` aus |
 | TY5 | `slashCommands.enumHelper` auf `false`, TY3 wiederholen | Nur der leere record helper |
+| TY6 | Unter `TFarben = set of TFarbe;` `/helper TFarben` | `TFarbenHelper` mit `Contains`, `ToText` (über `cNames`), `Toggle` und `class function All: TFarben; static;` samt Rümpfen; übersetzt |
+| TY7 | `TStile = set of TFontStyle;`, `/helper TStile` | `ToText` über `GetEnumName`, `System.TypInfo` im uses |
+| TY8 | `slashCommands.setHelper` auf `false`, TY6 wiederholen | Nur der leere record helper |
 
 ## Neue Units im Stil des Projekts (#299)
 

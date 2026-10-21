@@ -793,6 +793,8 @@ begin
         Result := LowerCase(BoolToStr(Settings.SlashSortUsesRemoveUnused, True))
       else if AName = TSlashSettings.EnumHelper then
         Result := LowerCase(BoolToStr(Settings.SlashEnumHelper, True))
+      else if AName = TSlashSettings.SetHelper then
+        Result := LowerCase(BoolToStr(Settings.SlashSetHelper, True))
       else if AName = TSlashSettings.ComponentPalette then
         Result := Settings.SlashComponentPalette
       else if AName = TSlashSettings.InterfaceSection then

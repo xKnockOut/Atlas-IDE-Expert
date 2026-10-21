@@ -11,7 +11,7 @@ function AtlasSchemaJson: string;
 implementation
 
 const
-  Lines: array[0..1289] of string = (
+  Lines: array[0..1295] of string = (
     '{',
     '  "$schema": "http://json-schema.org/draft-07/schema#",',
     '  "title": "Atlas-Konfiguration",',
@@ -763,6 +763,12 @@ const
     '          "type": "boolean",',
     '          "default": true,',
     '          "description": "/helper für eine Aufzählung legt die Namenstabelle cNames sowie ToString und FromString an. Aus: ein leerer record helper wie bei anderen Typen.",',
+    '          "x-issue": "#875"',
+    '        },',
+    '        "setHelper": {',
+    '          "type": "boolean",',
+    '          "default": true,',
+    '          "description": "/helper für eine Menge (set of) legt Contains, ToText, Toggle und All an. Aus: ein leerer record helper wie bei anderen Typen.",',
     '          "x-issue": "#875"',
     '        }',
     '      },',
