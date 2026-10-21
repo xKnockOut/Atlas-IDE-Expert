@@ -314,9 +314,21 @@ begin
   case ATag.Id of
     TAtlasTagId.Recent: Result := TAtlasStrings.Text(TAtlasTextId.TagRecent);
     TAtlasTagId.Frequent: Result := TAtlasStrings.Text(TAtlasTextId.TagFrequent);
+    TAtlasTagId.Cycle: Result := TAtlasStrings.Text(TAtlasTextId.UsesCycleTag);
   else
     Result := ATag.Text;
   end;
+end;
+
+/// <summary>Detail rechts in der Sprache der IDE: im uses-Abschnitt (#469) „bereits im interface-Teil“.</summary>
+function DetailText(const AItem: TAtlasCompletionItem): string;
+begin
+  if AItem.UsesElsewhere = 'interface' then
+    Result := TAtlasStrings.Text(TAtlasTextId.UsesInInterface)
+  else if AItem.UsesElsewhere = 'implementation' then
+    Result := TAtlasStrings.Text(TAtlasTextId.UsesInImplementation)
+  else
+    Result := TAtlasItemPresentation.Detail(AItem);
 end;
 
 { TAtlasCompletionPopup }
@@ -565,6 +577,9 @@ begin
   // Hinweis zu den Favoriten (#458) hat Vorrang.
   if FNotice <> '' then
     Exit(FNotice);
+  // uses-Abschnitt (#469): welche Units schon eingebunden sind und deshalb fehlen.
+  if Length(TAtlasItemPresentation.UsesHidden(FItems)) > 0 then
+    Exit(TAtlasStrings.UsesHidden(TAtlasItemPresentation.UsesHidden(FItems)));
   Result := TAtlasStrings.Text(TAtlasTextId.FooterKeys);
   if FTarget = '' then
     Exit;
@@ -627,6 +642,13 @@ begin
     else if FItems[FOrder[APosition + 1]].TypeParam <> '' then
       Text := TAtlasStrings.TypeArgHeading(FItems[FOrder[APosition + 1]].TypeParam,
         FItems[FOrder[APosition + 1]].Constraint, FItems[FOrder[APosition + 1]].ConstraintHint)
+    // uses-Abschnitt (#469): Projekt, RTL/VCL, Drittanbieter.
+    else if FItems[FOrder[APosition + 1]].UsesGroup = 'project' then
+      Text := TAtlasStrings.Text(TAtlasTextId.UsesGroupProject)
+    else if FItems[FOrder[APosition + 1]].UsesGroup = 'rtl' then
+      Text := TAtlasStrings.Text(TAtlasTextId.UsesGroupRtl)
+    else if FItems[FOrder[APosition + 1]].UsesGroup = 'library' then
+      Text := TAtlasStrings.Text(TAtlasTextId.UsesGroupLibrary)
     // Komponenten aus dem Formular (#455): „Formular frmMain“.
     else if FItems[FOrder[APosition + 1]].Form <> '' then
       Text := TAtlasStrings.Fmt(TAtlasTextId.FormHeader, [FItems[FOrder[APosition + 1]].Form])
@@ -795,7 +817,7 @@ begin
       Continue;
     Item := FItems[FOrder[Position]];
     Width := Canvas.TextWidth(Item.Name);
-    Detail := TAtlasItemPresentation.Detail(Item);
+    Detail := DetailText(Item);
     if Detail <> '' then
       Inc(Width, Scale(12) + Canvas.TextWidth(Detail));
     for Tag in TAtlasItemPresentation.Tags(Item) do
@@ -1126,6 +1148,7 @@ begin
     TAtlasTagKind.Accent: begin Line := Colors.Accent; TextColor := Colors.Accent; end;
     TAtlasTagKind.Add: begin Line := Colors.Add; TextColor := Colors.Add; end;
     TAtlasTagKind.Warn: begin Line := Colors.Warn; TextColor := Colors.Warn; end;
+    TAtlasTagKind.Error: begin Line := Colors.Error; TextColor := Colors.Error; end;
   else
     Line := Colors.Line;
     TextColor := Colors.Muted;
@@ -1274,7 +1297,7 @@ begin
   TagsWidth := 0;
   for Tag in Tags do
     Inc(TagsWidth, TagWidth(Tag) + Gap);
-  Detail := TAtlasItemPresentation.Detail(Item);
+  Detail := DetailText(Item);
   Canvas.Font := Font;
   DetailWidth := 0;
   Space := Right - NameLeft;
@@ -1392,7 +1415,7 @@ function TAtlasCompletionPopup.AccessibleHelp(APosition: Integer): string;
 begin
   Result := '';
   if not TAtlasRanking.IsHeader(FOrder[APosition]) then
-    Result := TAtlasItemPresentation.Detail(FItems[FOrder[APosition]]);
+    Result := DetailText(FItems[FOrder[APosition]]);
 end;
 
 function TAtlasCompletionPopup.AccessibleIsHeader(APosition: Integer): Boolean;
@@ -1820,7 +1843,7 @@ begin
     Exit;
   Item := FItems[FOrder[FHoverPosition]];
   Text := Item.Name;
-  Detail := TAtlasItemPresentation.Detail(Item);
+  Detail := DetailText(Item);
   if Detail <> '' then
     Text := Text + '   ' + Detail;
   for Tag in TAtlasItemPresentation.Tags(Item) do

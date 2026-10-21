@@ -2712,3 +2712,21 @@ Vorher: Projekt mit Index geladen, eine Unit mit `uses System.SysUtils, System.C
 | XD16 | Alte Einstellungen mit `"hints": {"xmlDocFull": false}` in settings.json, IDE starten | Optionen zeigen „immer zugeklappt“; nach dem Speichern steht `xmlDocExpand` in settings.json, `xmlDocFull` bleibt unverändert |
 | XD17 | `atlas.json` des Projekts mit `"hints": {"xmlDocExpand": "expanded"}` | Gilt für dieses Projekt vor der Einstellung des Plugins; mit `"xmlDocFull": true` meldet der Server eine Warnung „veraltet“ |
 | XD18 | Einstellungen exportieren und in einer älteren Datei mit `"hints.xmlDocFull": true` importieren | Vorschau zeigt `hints.xmlDocExpand` = „expanded“ als übernommen |
+
+## uses-Vervollständigung mit Gruppen und Hinweisen (#469)
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| UC1 | Projekt mit uGeneratorBeleg; im interface-Teil `uses System.SysUtils, Gener` tippen | Liste mit den Überschriften Projekt (uGeneratorBeleg), RTL/VCL (System.Generics.Collections, System.Generics.Defaults), Drittanbieter (z. B. Spring.Collections.Generic); System.SysUtils fehlt |
+| UC2 | Wie UC1, Fußzeile ansehen | Links „System.SysUtils ist schon eingebunden und fehlt hier“, rechts „n von m“ |
+| UC3 | `uses System.SysUtils, Sys` | System.SysUtils fehlt, Fußzeile nennt nur System.SysUtils; bei mehr als drei eingebundenen Units ohne Treffer „X, Y und n weitere …“ |
+| UC4 | Projekt mit Unit-Namespaces System und Vcl; `Classes` tippen und Enter | Eintrag System.Classes; eingefügt wird `System.Classes`, „Classes“ ist ersetzt |
+| UC5 | `System.Gen` tippen und System.Generics.Collections wählen | Ersetzt wird ab „System.“, kein doppelter Namespace |
+| UC6 | System.Generics.Defaults steht im implementation-Teil; im interface-Teil `Gener` tippen | System.Generics.Defaults trägt rechts gedämpft „bereits im implementation-Teil“, das Detailpanel denselben Hinweis kursiv |
+| UC7 | uGeneratorBeleg bindet die aktuelle Unit im interface-Teil ein; im interface-Teil `uGen` tippen | Marke „Zirkelbezug“ in Fehlerfarbe; Detailpanel „uGeneratorBeleg bindet diese Unit im interface-Teil ein“ in Fehlerfarbe |
+| UC8 | Kette uMitte → uZwei → aktuelle Unit (je im interface-Teil); im interface-Teil `uMit` | „Zirkelbezug“; Detailpanel „uMitte bindet diese Unit über uZwei im interface-Teil ein“ |
+| UC9 | Wie UC7, aber im implementation-Teil tippen | Keine Marke „Zirkelbezug“ |
+| UC10 | System.Generics.Collections markieren | Detailpanel: „unit System.Generics.Collections“, gedämpft `$(BDS)\source\rtl\common\System.Generics.Collections.pas`, darunter EXPORTIERTE TYPEN mit `TList<T> · TObjectList<T> · …` (höchstens sechs, „· …“ bei mehr) |
+| UC11 | Die eigene Unit im uses tippen | Sie erscheint nicht |
+| UC12 | Einstellung `completion.usesDetails` aus; UC1 wiederholen | Schlichte Liste aller Units ohne Überschriften, Marken und Fußzeilenhinweis; System.SysUtils erscheint wieder |
+| UC13 | Oberfläche auf Englisch | Überschriften Project, RTL/VCL, Third party; Fußzeile „… is already used and not listed“; Marke „Circular reference“ |

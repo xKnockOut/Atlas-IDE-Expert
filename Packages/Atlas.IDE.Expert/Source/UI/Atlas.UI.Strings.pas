@@ -606,7 +606,9 @@ type
     ProcessesColumnState, ProcessesOwn, ProcessesBuiltOnce, ProcessesUnits, ProcessesCount, ProcessesDirtyCaption,
     ProcessesDirtyFile, ProcessesDirtyIde, ProcessesDirtyMcp, ProcessesDirtyIdeText, ProcessesDirtyMcpText,
     ProcessesDirtyNone, ProcessesDirtyNote, ProcessesLog, ProcessesRefresh, ProcessesCopy, ProcessesClose,
-    ProcessesEmpty, ProcessesAsking, SettingsDiagnosticsProcesses);
+    ProcessesEmpty, ProcessesAsking, SettingsDiagnosticsProcesses,
+    UsesGroupProject, UsesGroupRtl, UsesGroupLibrary, UsesHiddenOne, UsesHiddenFew, UsesHiddenMore, UsesInInterface,
+    UsesInImplementation, UsesCycleTag, UsesTypesHeading, UsesCycleDirect, UsesCycleChain);
 
   TAtlasStrings = class
   private class var
@@ -622,6 +624,12 @@ type
     class function TypeArgHeading(const AParam, AConstraint, AHint: string): string; static;
     /// <summary>Fußzeile „Ausgeblendet: Records, Aufzählungen“ zu den Codes "records,enums"; '' ohne.</summary>
     class function TypeArgHidden(const AKinds: string): string; static;
+    /// <summary>Fußzeile im uses-Abschnitt (#469) zu den schon eingebundenen Units: „X ist schon eingebunden und
+    /// fehlt hier“, bis drei Namen aufgezählt, sonst „X, Y und n weitere …“; '' ohne.</summary>
+    class function UsesHidden(const AUnits: TArray<string>): string; static;
+    /// <summary>Zirkelbezug (#469) zur Kette "uA → uB → Haupt": „uA bindet diese Unit über uB im interface-Teil
+    /// ein“; '' ohne.</summary>
+    class function UsesCycle(const AChain: string): string; static;
     /// <summary>Überschriften der XMLDoc-Abschnitte in der Sprache der Oberfläche; eine Stelle für Hover und
     /// Detailpanel (D-07).</summary>
     class function DocLabels: TAtlasDocLabels; static;
@@ -1785,7 +1793,19 @@ const
      'Schließen',
      'Noch kein Projekt geladen: kein Index-Cache.',
      'Frage den Atlas-Server …',
-     'Menüeintrag „Prozesse am Projekt…“ (Index-Cache, Sperre, LSP- und MCP-Prozesse)'),
+     'Menüeintrag „Prozesse am Projekt…“ (Index-Cache, Sperre, LSP- und MCP-Prozesse)',
+     'Projekt',
+     'RTL/VCL',
+     'Drittanbieter',
+     '%s ist schon eingebunden und fehlt hier',
+     '%s sind schon eingebunden und fehlen hier',
+     '%s und %d weitere sind schon eingebunden und fehlen hier',
+     'bereits im interface-Teil',
+     'bereits im implementation-Teil',
+     'Zirkelbezug',
+     'Exportierte Typen',
+     '%s bindet diese Unit im interface-Teil ein',
+     '%s bindet diese Unit über %s im interface-Teil ein'),
     ('Enter to accept · Esc to close', '%d of %d', 'No matches for “%s”', 'Backspace widens the search',
      'No suggestions here', 'Esc closes', 'No details for this entry', 'Overload', 'Deprecated: %s', 'Deprecated.',
      'Inherited from %s', 'Inherited', 'optional, default %s', 'No overload with %d parameters.', '… %d more',
@@ -2881,7 +2901,19 @@ const
      'Close',
      'No project loaded yet: no index cache.',
      'Asking the Atlas server …',
-     'Menu entry "Processes on the project…" (index cache, lock, LSP and MCP processes)'));
+     'Menu entry "Processes on the project…" (index cache, lock, LSP and MCP processes)',
+     'Project',
+     'RTL/VCL',
+     'Third party',
+     '%s is already used and not listed',
+     '%s are already used and not listed',
+     '%s and %d more are already used and not listed',
+     'already in the interface section',
+     'already in the implementation section',
+     'Circular reference',
+     'Exported types',
+     '%s uses this unit in its interface section',
+     '%s uses this unit via %s in its interface section'));
 
 { TAtlasStrings }
 
@@ -2962,6 +2994,29 @@ begin
   if Length(Names) = 0 then
     Exit('');
   Result := Fmt(TAtlasTextId.TypeArgHiddenFooter, [string.Join(', ', Names)]);
+end;
+
+class function TAtlasStrings.UsesHidden(const AUnits: TArray<string>): string;
+begin
+  case Length(AUnits) of
+    0: Result := '';
+    1: Result := Fmt(TAtlasTextId.UsesHiddenOne, [AUnits[0]]);
+    2, 3: Result := Fmt(TAtlasTextId.UsesHiddenFew, [string.Join(', ', AUnits)]);
+  else
+    Result := Fmt(TAtlasTextId.UsesHiddenMore, [string.Join(', ', Copy(AUnits, 0, 2)), Length(AUnits) - 2]);
+  end;
+end;
+
+class function TAtlasStrings.UsesCycle(const AChain: string): string;
+var
+  Parts: TArray<string>;
+begin
+  Parts := AChain.Split([' → ']);
+  if Length(Parts) < 2 then
+    Exit('');
+  if Length(Parts) = 2 then
+    Exit(Fmt(TAtlasTextId.UsesCycleDirect, [Parts[0]]));
+  Result := Fmt(TAtlasTextId.UsesCycleChain, [Parts[0], string.Join(', ', Copy(Parts, 1, Length(Parts) - 2))]);
 end;
 
 class function TAtlasStrings.Confidence(const AName: string): string;

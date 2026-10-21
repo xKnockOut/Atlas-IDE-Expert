@@ -289,6 +289,9 @@ type
     /// <summary>Hinter "Ausdruck." am Anweisungsanfang „Alle Felder zuweisen (n)“ für Records und Klassen
     /// (#491).</summary>
     AssignAllFields: Boolean;
+    /// <summary>Im uses-Abschnitt Gruppen, Hinweise auf den anderen Abschnitt, Zirkelbezüge und Details;
+    /// eingebundene Units fehlen (#469). Aus: alle Units des Index als schlichte Liste.</summary>
+    UsesDetails: Boolean;
     class function Default: TCompletionSettings; static;
   end;
 
@@ -777,6 +780,7 @@ begin
   Result.ResourceStringUnit := '';
   Result.TypeConversion := TCompletionTypeConversion.Off;
   Result.AssignAllFields := False;
+  Result.UsesDetails := True;
 end;
 
 { TServerSettings }

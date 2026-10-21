@@ -144,6 +144,7 @@
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.Completion.Contexts.Tests.pas"/>
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.CompletionEnums.Tests.pas"/>
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.CompletionGenerics.Tests.pas"/>
+        <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.CompletionUses.Tests.pas"/>
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.CompletionRequest.Tests.pas"/>
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.CompletionCollector.Tests.pas"/>
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.Internals.CompletionSource.Tests.pas"/>

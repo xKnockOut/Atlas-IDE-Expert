@@ -480,6 +480,12 @@ begin
   Assert.AreEqual(0, Integer(Length(Issues)));
   Parse('{"completion": {"assignAllFields": 1}}', Issues);
   Assert.AreEqual(1, Integer(Length(Issues)));
+  // uses-Vervollständigung mit Gruppen und Hinweisen (#469)
+  Assert.IsTrue(Parse('{}', Issues).Completion.UsesDetails);
+  Assert.IsFalse(Parse('{"completion": {"usesDetails": false}}', Issues).Completion.UsesDetails);
+  Assert.AreEqual(0, Integer(Length(Issues)));
+  Parse('{"completion": {"usesDetails": "ja"}}', Issues);
+  Assert.AreEqual(1, Integer(Length(Issues)));
   // Freigabe absichern (#489)
   Assert.IsTrue(Parse('{}', Issues).Completion.OfferTryFinally);
   Assert.IsTrue(Parse('{}', Issues).Completion.FreeStyle = TCompletionFreeStyle.Free);
