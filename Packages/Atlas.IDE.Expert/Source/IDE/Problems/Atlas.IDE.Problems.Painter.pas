@@ -322,7 +322,13 @@ begin
         Pen := CreatePen(PS_SOLID, 1, ColorToRGB(TColor(ProblemColor(Colors, Problem))));
         Old := SelectObject(DC, Pen);
         try
-          if Problem.Severity = TAtlasProblemSeverity.Hint then
+          if Problem.Deprecated then
+          begin
+            // Veraltetes Symbol (#38): durchgestrichen.
+            MoveToEx(DC, Left, Rect.Top + Rect.Height div 2, nil);
+            LineTo(DC, Right, Rect.Top + Rect.Height div 2);
+          end
+          else if Problem.Severity = TAtlasProblemSeverity.Hint then
           begin
             // Hinweis: gepunktet.
             X := Left;
