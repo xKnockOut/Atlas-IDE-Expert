@@ -2542,3 +2542,6 @@ Vorher: Projekt mit Index geladen, eine Unit mit `uses System.SysUtils, System.C
 |---|---|---|
 | TY1 | In einer Klasse mit `constructor Create(AName: string);` `/singleton`, Enter | `class var FInstance`, `class function Instance`, `class destructor Destroy`; der Konstruktor bleibt; Meldung „Konstruktor Create bleibt unverändert und öffentlich; Instance ruft Create ohne Parameter“ |
 | TY2 | Dasselbe in einer Klasse ohne Konstruktor | Gleicher Code, keine Meldung |
+| TY3 | Unter `TFarbe = (Rot, Gruen, Blau);` `/helper TFarbe`, Enter (#875) | `TFarbeHelper = record helper for TFarbe` mit `private const cNames: array[TFarbe] of string = ('Rot', 'Gruen', 'Blau');`, `ToString` und `class function FromString(const AValue: string): TFarbe; static;`; Rümpfe in der implementation, `System.SysUtils` im uses; übersetzt |
+| TY4 | `TFarbe.Blau.ToString` und `TFarbe.FromString('gruen')` aufrufen | `'Blau'` bzw. `Gruen`; ein unbekannter Name löst `EArgumentException` aus |
+| TY5 | `slashCommands.enumHelper` auf `false`, TY3 wiederholen | Nur der leere record helper |
