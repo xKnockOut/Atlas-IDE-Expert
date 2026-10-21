@@ -681,3 +681,12 @@ Jeder Branch baut auf dem vorigen auf. Nichts davon ist gebaut, getestet oder in
 - Stapel noch nicht erfasst: cdb (x64) mit `sxe sov` am Server angehängt, vor dem Treffer auf Marcos Wunsch abgebrochen (dabei Server beendet, das Plugin startet ihn neu). Skript: Scratchpad `cdb-sov.txt` (`cdb -p <pid> -logo cdb-sov.log -cf cdb-sov.txt`).
 - Verdacht: eine Regel oder die Namensauflösung über alle Units rekursiert endlos (neu seit den heutigen Merges: #845 aktive Zweige, #846 variante Records, #715 Boolean umkehren u. a.).
 - Server-Speicher ~0,9–1,25 GB.
+
+## Atlas-Prüfung und Seite Prüfregeln (#909, 21.10.2026, Branch `feature/909-atlas-pruefung` von main, ungebaut)
+- Regelkatalog mit Gruppe und Optionen je Regel (`Update-RuleCatalog.ps1` prüft beides), `atlas.server.settingsCatalog` liefert Gruppe, Beschreibung, Beispiele, Optionen; `"group:<gruppe>": "off"` in `rules` schaltet eine Gruppe ab (Rules.Engine).
+- Fenster „Atlas-Prüfung“ (`Atlas.Core.Problems.Findings`, `Atlas.UI.Problems.Frame/Explain`, `Atlas.IDE.Problems.Window/Service`), Strg+Alt+P.
+- Befund-Hover mit Pille, Regelzeile, Aktionszeile (`hover.problemActions`).
+- Seite Prüfregeln: `Atlas.UI.Settings.Rules` (`TAtlasRulesEditor`), Bereich im Optionsbaum mit Knoten `rules.profiles` und `rules.group.<id>`; Projektdialog nutzt denselben Editor.
+- Unter FPC getestet: RuleTable, Hover.Layout, Findings. VCL-Tests (`Atlas.UI.Settings.Rules.Tests`, Page.Tests) nur mit Delphi.
+- Risiken beim ersten Delphi-Build: `TListView.OnItemChecked`, AutoSize des Editors, `HandleNeeded` der Editoren auf verborgenen Seiten.
+- Handtest AP1–AP26 in `docs/Atlas-Testfaelle.md`. Danach folgen die Unter-Issues (#910 ff.) als Kette auf diesem Branch.

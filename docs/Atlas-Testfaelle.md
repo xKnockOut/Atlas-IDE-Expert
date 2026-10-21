@@ -3062,3 +3062,36 @@ Voraussetzung: `uses Winapi.Windows, Vcl.Graphics;`, VCL- und RTL-Quellen im Ind
 | GN7 | `completion.showFmxUnits` an | `TBitmap` aus FMX.Graphics erscheint; Enter fügt `FMX.Graphics.TBitmap` ein und ergänzt FMX.Graphics in den uses (Warnung im Panel) |
 | GN8 | `completion.sameNameVariants` aus | Nur `TBitmap` aus Vcl.Graphics, ohne „aktiv“, keine Fußzeile zu FMX (**Abnahme**) |
 | GN9 | Oberfläche auf Englisch | Marke „active“, „Declared in“, „… hidden“ |
+
+## Fenster „Atlas-Prüfung“ und Seite „Prüfregeln“ (#909)
+
+Voraussetzung: Server läuft; Einstellungen auf Vorgabe; Projekt mit einigen Befunden (z. B. leerer `except`-Block, magische Zahl, W1036 nach dem Übersetzen).
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| AP1 | Strg+Alt+P bzw. *Ansicht › Atlas › Prüfung* | Andockbares Fenster „Atlas-Prüfung“ mit Atlas-Symbol im Titel, Befunde der aktuellen Datei, rechts „Live“ (**Abnahme**) |
+| AP2 | Bereich auf „Projekt“, dann „Projektgruppe“ | Befunde aller Dateien, auch nicht geöffneter; Statuszeile nennt die Anzahl |
+| AP3 | Umschalter „Fehler“ aus, Kategorie „Code-Smell“, Text „except“ | Nur passende Zeilen; die Zahlen an den Umschaltern bleiben |
+| AP4 | Gruppierung „Datei“, Gruppe per Klick, Leertaste und ←/→ auf- und zuklappen | Gruppenzeilen ▾/▸ mit Anzahl; der Zustand bleibt beim nächsten Tippen erhalten |
+| AP5 | Spaltenkopf „Regel“ klicken, nochmals klicken; Spalte „Zeile“ an eine andere Stelle ziehen; IDE neu starten | Sortierung auf- und absteigend; Reihenfolge und Breite bleiben nach dem Neustart (`problems.window.columns`) |
+| AP6 | In der Datei einen neuen Befund eintippen | Die Zeile erscheint ohne Flackern und wird kurz hervorgehoben, Auswahl und Bildlauf bleiben |
+| AP7 | Enter bzw. Doppelklick auf eine Zeile | Editor springt an die Stelle |
+| AP8 | Alt+Enter auf einem Befund mit Korrektur | Korrektur angewendet, Befund verschwindet |
+| AP9 | Kontextmenü › „Für diese Zeile unterdrücken“ | `// lsp-ignore: <regel>` an der Zeile, Befund weg |
+| AP10 | Kontextmenü › „Regel erklären“ | Dialog mit Name, Beschreibung, Beispielen falsch/richtig; Esc schließt |
+| AP11 | Kontextmenü › „Regel abschalten“ | Regel in den globalen Einstellungen auf off, alle Befunde dieser Regel weg |
+| AP12 | `problems.window.compiler` an, übersetzen | dcc-Meldungen mit Kategorie „Compiler“ im Fenster |
+| AP13 | `problems.window.followCursor` an, im Editor durch die Datei gehen | Die Auswahl folgt dem Befund an der Cursorzeile |
+| AP14 | `problems.live` aus | Anzeige „Angehalten“, Liste ändert sich erst beim Speichern |
+| AP15 | Maus über einen Befund im Editor | Tooltip: Pille „Fehler“/„Warnung“/„Info“, Fehler zuerst, darunter „Atlas · regel-id“ bzw. „dcc · W1036“ und die Aktionszeile „Alt+Enter: …“, „Für diese Zeile unterdrücken“, „Regel einstellen…“ (**Abnahme**) |
+| AP16 | Tooltip festhalten, Tab/Umschalt+Tab, Enter | Aktionen werden der Reihe nach markiert, Enter führt die markierte aus |
+| AP17 | „Regel einstellen…“ im Tooltip | Optionen öffnen sich auf der Seite der Gruppe, die Regel ist markiert |
+| AP18 | `hover.problemActions` aus | Kein Aktionsblock im Tooltip, Pille und Regelzeile bleiben |
+| AP19 | *Tools › Optionen › Atlas › Prüfregeln › Threads*, Hauptschalter aus, OK | settings.json enthält `"group:threads": "off"`; Tabelle und Detailfelder gesperrt, Knoten grau; keine Thread-Befunde mehr (**Abnahme**) |
+| AP20 | Seite „Stil und Metriken“, Regel `magic-number`: Schweregrad Fehler, Ausnahme `Tests\*.pas`, Option `maxDigits` 5, OK | settings.json `"magic-number": {"severity": "error", "exclude": ["Tests\\*.pas"], "options": {"maxDigits": 5}}`; Befunde als Fehler, in Tests keine |
+| AP21 | Option mit ungültigem Wert (Buchstaben in einer Zahl) | Hinweis in Rot, der Wert wird nicht übernommen |
+| AP22 | Haken einer Regel in der Tabelle entfernen | Schweregrad „Aus“, Befunde weg |
+| AP23 | *Atlas › Projekt-Einstellungen*, Reiter Regeln | Derselbe Editor; Werte aus settings.json als „(global: …)“; Änderung landet in atlas.json |
+| AP24 | Server beenden, Optionen öffnen | Seite zeigt „Ohne laufenden Server fehlt der Regelkatalog; hier stehen nur die eingestellten Regeln.“ und nur diese Regeln |
+| AP25 | Knoten „Profile und Baseline“ | Knopf „Projekt-Einstellungen…“, Baseline-Stand, „Aktualisieren“ und „Löschen“ arbeiten |
+| AP26 | Oberfläche auf Englisch | Fenster, Tooltip und Seite englisch, Katalogtexte englisch |

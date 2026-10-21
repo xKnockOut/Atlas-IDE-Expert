@@ -91,7 +91,11 @@ Everything below is implemented in `main`. Features marked *(experimental)* are 
 
 ### Code analysis
 
-The server checks every unit while you type. Findings appear as squiggles, in the tooltip, shortened at the end of the line and project-wide in the list "Atlas-Probleme" in the message view; marks move along while typing.
+The server checks every unit while you type. Findings appear as squiggles, in the tooltip, shortened at the end of the line and project-wide in the dockable window **"Atlas-Prüfung"** (Ctrl+Alt+P); marks move along while typing.
+
+- **Window "Atlas-Prüfung":** live findings of the file, project or project group, filters per kind, category and text, grouping by file, rule or category, sortable columns; Enter jumps, Alt+Enter fixes, context menu to suppress, configure, disable and explain the rule
+- **Finding hover** with severity, rule and action line "Alt+Enter: fix", "Suppress for this line", "Configure rule…"
+- **Page "Prüfregeln"** in the options: per rule group a master switch and a table with severity, exclusions and options of every rule, search and catalog text with examples
 
 - **95 check rules** in four categories: 45 bugs, 40 code smells, 5 vulnerabilities, 5 security hotspots. Among them:
   - **Correctness:** `Result` not set, possibly uninitialized variables, unreachable code, unused variables, parameters and assignments, declared but not implemented methods, missing `override`, hidden virtual methods, overflows, float comparison, `raise` in `finally`
@@ -169,7 +173,7 @@ The server offers Claude Code 19 MCP tools: find symbols, read declarations and 
 
 Not yet in `main`, tracked as issues:
 
-- Tool window "Atlas-Prüfung" with finding hover and a rules settings page, and more than 100 further check rules (#909, #1086)
+- More than 100 further check rules (sub-issues of #909, #1086)
 - Compiler messages as Atlas rules of their own, reported while typing instead of only when compiling (#1024)
 
 ## Installation
