@@ -4,6 +4,7 @@
 //   /sortuses             uses-Listen der Unit sortieren (doppelte entfernen); mit Index
 //                         auch ungenutzte Units streichen, solche mit initialization
 //                         und die aus usesKeep bleiben (#284, sortUsesRemoveUnused)
+//   /cleanuses            nur ungenutzte Units streichen, Reihenfolge bleibt (#297)
 //   /ignore regel [Grund] // lsp-ignore: regel -- Grund für die Zeile darunter; nur
 //                         Regeln, die dort treffen, sonst ein Hinweis
 //   /todo [-oName] [-cKat] Text
@@ -19,6 +20,8 @@ uses
   Atlas.Common.Editing.SlashCommands;
 
 const
+  /// <summary>Hinweis, wenn /cleanuses keinen Index hat.</summary>
+  CleanUsesNoIndexHint = '/cleanuses braucht den Index des Projekts';
   /// <summary>Hinweis, wenn /ignore eine Regel nennt, die in der Zeile darunter nichts meldet.</summary>
   IgnoreNoHitHint = 'Regel %s meldet in der Zeile darunter nichts';
 
@@ -75,6 +78,34 @@ begin
     Options.Sort := True;
     Options.Drop := UnusedUnitsOf(AContext, Tokens);
     if not TUsesClauses.Rewrite(Tokens, Text, Options, Source.LineBreak, Edits) then
+      Edits := nil;
+    AEdits := Edits + [Source.RemoveCommand];
+    Result := True;
+  finally
+    Source.Free;
+  end;
+end;
+
+{ /cleanuses }
+
+function ExecuteCleanUses(const AContext: TSlashContext; out AEdits: TArray<TTextEdit>; out AReason: string): Boolean;
+var
+  Source: TCommandSource;
+  Text: string;
+  Tokens: TArray<TPascalToken>;
+  Uses_: TUsesContext;
+  Edits: TArray<TTextEdit>;
+begin
+  AEdits := nil;
+  if (AContext.Host = nil) or not AContext.Host.UsesContext(AContext.Uri, Uses_) or not Assigned(Uses_.Info) then
+    Exit(Fail(CleanUsesNoIndexHint, AReason));
+  Source := TCommandSource.Create(AContext);
+  try
+    Text := Source.Text;
+    Tokens := TPascalLexer.Tokenize(Text);
+    // Nur streichen, nicht sortieren: Die gewählte Reihenfolge bleibt.
+    if not TUsesActions.RemoveUnits(Tokens, Text, TUsesActions.UnusedUnits(Tokens, Uses_.Info, Uses_.Keep),
+      Source.LineBreak, Edits) then
       Edits := nil;
     AEdits := Edits + [Source.RemoveCommand];
     Result := True;
@@ -307,6 +338,8 @@ end;
 procedure RegisterMaintenanceCommands(ARegistry: TSlashCommandRegistry);
 begin
   ARegistry.Register(Command('sortuses', 'uses-Listen sortieren', '/sortuses', ExecuteSortUses));
+  ARegistry.Register(Command('cleanuses', 'Ungenutzte uses streichen, Reihenfolge bleibt', '/cleanuses',
+    ExecuteCleanUses));
   ARegistry.Register(Command('ignore', 'Prüfregel für die Zeile darunter unterdrücken',
     '/ignore unused-local Absicht', ExecuteIgnore));
   ARegistry.Register(Command('todo', 'TODO-Kommentar für die IDE-TODO-Liste', '/todo Fehlerfall prüfen',
