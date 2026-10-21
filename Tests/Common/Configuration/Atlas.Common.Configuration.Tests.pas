@@ -693,6 +693,23 @@ begin
   Assert.AreEqual(2, Integer(Length(Issues)));
   Settings := TConfigurationParser.ParseLayered('{"index": {"searchPaths": false}}', '{"index": {"exclude": []}}', Issues);
   Assert.IsTrue(Settings.IndexSearchPaths, 'atlas.json ersetzt den ganzen Abschnitt');
+  // Aufräumen des Cache-Ordners (#905)
+  Settings := Parse('{}', Issues);
+  Assert.IsTrue(Settings.IndexRemoveOrphans, 'verwaiste Caches standardmäßig löschen');
+  Assert.AreEqual(14, Settings.IndexCacheMaxAgeDays);
+  Assert.AreEqual(256, Settings.IndexCacheMaxMb);
+  Settings := Parse('{"index": {"removeOrphans": false, "cacheMaxAgeDays": 0, "cacheMaxMb": 1024}}', Issues);
+  Assert.AreEqual(0, Integer(Length(Issues)));
+  Assert.IsFalse(Settings.IndexRemoveOrphans);
+  Assert.AreEqual(0, Settings.IndexCacheMaxAgeDays);
+  Assert.AreEqual(1024, Settings.IndexCacheMaxMb);
+  Settings := Parse('{"index": {"removeOrphans": 1, "cacheMaxAgeDays": -1, "cacheMaxMb": "viel"}}', Issues);
+  Assert.AreEqual(3, Integer(Length(Issues)));
+  Assert.IsTrue(Settings.IndexRemoveOrphans);
+  Assert.AreEqual(14, Settings.IndexCacheMaxAgeDays);
+  Assert.AreEqual(256, Settings.IndexCacheMaxMb);
+  Settings := TConfigurationParser.ParseLayered('{"index": {"cacheMaxAgeDays": 30}}', '{}', Issues);
+  Assert.AreEqual(30, Settings.IndexCacheMaxAgeDays);
   // Schlüsselworthervorhebung (#307)
   Settings := Parse('{}', Issues);
   Assert.IsTrue(Settings.Highlight.BlockPairs and Settings.Highlight.Directives and Settings.Highlight.ExitPoints);

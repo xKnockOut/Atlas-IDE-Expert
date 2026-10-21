@@ -58,6 +58,7 @@ uses
   Atlas.Common.Lsp.Recursion,
   Atlas.Common.Lsp.OverrideMarks,
   Atlas.Common.Lsp.SlashMenu,
+  Atlas.Common.Editing.SlashCommands,
   Atlas.Common.Lsp.Baseline,
   Atlas.Common.Lsp.SemanticTokens,
   Atlas.Common.Lsp.Status,

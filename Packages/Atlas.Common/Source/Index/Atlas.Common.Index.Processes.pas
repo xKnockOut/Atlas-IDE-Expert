@@ -107,7 +107,6 @@ var
   Pid: Integer;
 begin
   AInfo := Default(TIndexProcessInfo);
-  Root := nil;
   try
     Root := TJSONObject.ParseJSONValue(AText);
   except

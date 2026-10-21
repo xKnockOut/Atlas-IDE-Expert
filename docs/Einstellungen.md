@@ -31,7 +31,7 @@ Alle Einstellungen mit Seite und Bedienelement im Einstellungs-Plugin (#227). Ei
 | Eingabehilfen | `usesKeep` | `` | atlas.json (Atlas › Projekt-Einstellungen) | nein | Liste | #284 |
 | Prüfregeln | `dfmPropertyRules` | `` | atlas.json (Atlas › Projekt-Einstellungen) | nein | Eigener Editor (Klasse und Property aus dem Index) | #309 |
 | Speicher | `memoryBudgetMb` | `768` | settings.json (Tools › Optionen › Atlas) | nein | Zahlenfeld (MB) | #185, #492 |
-| Speicher | `index`: `projectGroup`, `searchPaths`, `libraryPaths`, `usages`, `exclude` | – | settings.json (Tools › Optionen › Atlas); `exclude` in atlas.json | nein | Kontrollkästchen, Liste mit Hinzufügen/Entfernen | #648, #492 |
+| Speicher | `index`: `projectGroup`, `searchPaths`, `libraryPaths`, `usages`, `removeOrphans`, `cacheMaxAgeDays`, `cacheMaxMb`, `exclude` | – | settings.json (Tools › Optionen › Atlas); `exclude` in atlas.json | nein | Kontrollkästchen, Liste mit Hinzufügen/Entfernen | #648, #492, #905 |
 | Robustheit | `requestTimeoutMs` | `10000` | settings.json (Tools › Optionen › Atlas) | nein | Zahlenfeld (ms) | #283 |
 | Robustheit | `diagnostics`: `log`, `logDays`, `logMapFile` | – | settings.json (Tools › Optionen › Atlas) | nein | Kontrollkästchen, Zahlenfeld (Tage) | #647 |
 | Editor | `highlight`: `blockPairs`, `directives`, `exitPoints`, `exitKeywords` | – | settings.json (Tools › Optionen › Atlas) | nein | Kontrollkästchen, Liste | #307 |
@@ -66,6 +66,7 @@ Alle Einstellungen mit Seite und Bedienelement im Einstellungs-Plugin (#227). Ei
 | Release-Build | Prüfungen des Wächters (`build.releaseChecks`, durch Komma getrennt; `-name` schaltet eine ab): `debugDefine` (Symbol DEBUG), `debugInfo` (Debug-Informationen; mit Sollwert aus auch „Mit Debug-Informationen linken“), `stackFrames`, `assertions`, `rangeChecks`, `overflowChecks` (je mit Sollwert `=off` oder `=on`; fehlt die Option, gilt die Vorgabe des Compilers), `memoryLeaks` (`ReportMemoryLeaksOnShutdown := True` im Projektquelltext außerhalb von `{$IFDEF DEBUG}`), `versionInfo` (keine Versionsinformationen oder dieselbe Version wie beim letzten erfolgreichen Release-Build derselben Konfiguration und Plattform; nicht mit automatisch erhöhter Build-Nummer), `outputFolder` (Ausgabeordner gleich dem der Konfiguration Debug). Packages ohne `memoryLeaks` und `outputFolder`. Regel-IDs `release-debug-define` bis `release-output-folder` | alle an, Sollwerte aus | Plugin (Registry `ReleaseChecks`) | nein | Kontrollkästchen bzw. Auswahl je Prüfung | #533 |
 | Debuggen | Einzelnen Test debuggen (#585, `tests.debug`, Schnellschalter): Befehle „Test am Cursor debuggen“ (*Atlas.DebugTest*) und „Test am Cursor ausführen“ (*Atlas.RunTest*, mit `tests.run`) in der Befehlspalette, Einträge „Test debuggen“/„Test ausführen“ im Kontextmenü des Editors und Marke „Debuggen“ der Code Lens an `[TestFixture]`, `[Test]` und je `[TestCase]`; Atlas baut das Testprojekt (wie „Tests ausführen“), setzt über die Startprofile (#575) vorübergehend die Startparameter `--run:<Unit.Fixture.Methode[.Fall]>` (vorhandene Parameter bleiben, `--run`, `--include`, `--exclude`, `--xmlfile` und `--exitbehavior` weichen) und startet es im Debugger; danach gelten aktives Projekt und Startparameter wie vorher (auch nach einem Absturz beim nächsten Start), das Ergebnis erscheint wie bei „Tests ausführen“. Braucht „Tests ausführen“ und `codeLens.tests`; aus = Befehl, Eintrag, Marke und Tipp verschwinden | an | Plugin (Registry `TestDebug`) | nein | Kontrollkästchen | #585 |
 | Debuggen | Beim Test-Debuggen am Anfang der Methode anhalten (`debug.testBreakAtStart`): einmaliger Haltepunkt auf der ersten Anweisung der Testmethode, den Atlas nach dem ersten Halt wieder entfernt (ein eigener Haltepunkt dort bleibt unberührt); nicht beim Debuggen einer ganzen Fixture | an | Plugin (Registry `TestBreakAtStart`) | nein | Kontrollkästchen | #585 |
+| Debuggen | Variablenwerte im Hover (`debug.hoverValues`, Schnellschalter): Ist der Prozess angehalten, wertet Atlas den Ausdruck unter der Maus (Bezeichner samt Qualifizierern links davon, z. B. `FList.Count`; nichts in Strings, Kommentaren und mit Aufrufen) über den Debugger der IDE ohne Nebenwirkungen aus und zeigt den Wert oben im Atlas-Tooltip; antwortet der Debugger verzögert (Win64), steht dort „wird ausgewertet …“; mit eigenem Tooltip aus liefert Atlas den Wert an den Tooltip der IDE | an | Plugin (Registry `DebugHoverValues`) | nein | Kontrollkästchen | #891 |
 | Baseline | `atlas-baseline.json` | – | Datei, `--baseline`, `--update-baseline` | nein | Anzahl Einträge, „Baseline neu erzeugen“, „Baseline löschen“ | #97 |
 | Projektdatei | Projektdatei `.atlas` (#486) lesen (`teamFile.enabled`, Schnellschalter): Einstellungen des Plugins für alle im Team, im Ordner der .dproj, sonst in der Wurzel des Repositorys (nächster Ordner mit `.git`); JSON mit Kommentaren und `version` (1) mit `naming` (Präfixe `field`, `parameter`, `local`, #452), `snippets` (Ordner mit Projekt-Vorlagen, #51), `formatFunctions` (`name`, `formatIndex`, #451), `sqlTargets` (#462), `fileMethods` (#478), `mainThreadExceptions` (#484), `startProfiles` (`name`, `parameters`, `workingDir`, `host`, `environment`, #575), `ci` (`provider` jenkins, `url`, `job`, `multibranch`, #763) `tracker` (`provider` github oder youtrack, `url`, `project`, #765) und `hidden` (am Element ausgeblendete Stellen: `setting` = Schlüssel der Einstellung des Elements, `file` relativ zur `.atlas`, `anchor` = Methode, Zeilentext o. Ä., ohne `anchor` gilt es für die ganze Datei; schreibt „Nur hier/In dieser Datei ausblenden“, #628). Werte aus `.atlas` haben Vorrang vor den persönlichen (Listen ergänzen sich), der Reiter *Projektdatei* zeigt jeden mit „aus .atlas“. Zugangsdaten, absolute Pfade und Pfade außerhalb des Repositorys werden ignoriert (ein Startprofil damit ganz), fehlerhafte Dateien und ignorierte Einträge in der Meldungsansicht gemeldet; dann gelten die persönlichen Einstellungen. Befehl *Projektdatei .atlas öffnen* (*Atlas.TeamFile*, Befehlspalette, Knopf auf dem Reiter) legt die Datei mit Gerüst an und öffnet sie | an | Plugin (Registry `TeamFile`); Datei `.atlas` im Repository | nein | Kontrollkästchen, Werte „aus .atlas“, Knopf „Projektdatei öffnen“ | #486 |
 | Baseline | Unterdrückungen `lsp-ignore` | – | `--suppression-stats` | nein | Übersicht je Regel (nur Anzeige) | #147 |
@@ -132,18 +133,18 @@ Alle Einstellungen mit Seite und Bedienelement im Einstellungs-Plugin (#227). Ei
 
 | Bereich | Schlüssel |
 |---|---|
-| Editor (`editor`) | `editor.dimUnusedUses`, `editor.recursionMarkers`, `editor.recursionMarkers.depth`, `problems.enabled`, `inlayHints.parameterNames`, `inlayHints.inferredTypes`, `inlayHints.includeDefines`, `inlayHints.controlChars`, `editor.blockEndLabels`, `editor.blockEndLabels.minLines`, `notes.enabled`, `codeLens.metrics`, `metrics`, `codeLens.tests`, `todos.list`, `baseline.update`, `metrics.report`, `dfmRules.apply`, `editor.hoverTooltip`, `editor.reloadExternal`, `editor.openForEdits`, `problems.list`, `problems.statusCounter`, `editor.inlineDiagnostics`, `editor.continueComments`, `editor.continueComments.lineComments`, `editor.continueComments.lists`, `editor.completeStatement`, `editor.completeStatement.beginEnd`, `editor.completeStatement.tryKind`, `editor.completeStatement.methodBody`, `editor.format`, `editor.continuePattern`, `editor.continuePattern.minLines`, `editor.multiCursor`, `editor.linkedEditing`, `editor.smartPaste`, `editor.multiCursorModifier`, `editor.continueComments.blockPrefix`, `editor.wrapSelection`, `editor.wrapSelection.chars`, `codeLens.testUnit`, `hints.xmlDocExpand`, `hints.xmlDocMaxLines`, `undo.multiFile`, `undo.multiFile.depth`, `undo.multiFile.persist`, `undo.multiFile.maxSizeMb`, `undo.multiFile.onConflict`, `undo.multiFile.newFiles`, `unitSearch.enabled`, `unitSearch.replaceIdeDialog`, `unitSearch.rememberCollapsed`, `unitSearch.filters`, `unitSearch.filterSyntax`, `unitSearch.preview`, `unitSearch.preview.form`, `unitSearch.preview.usedBy`, `unitSearch.preview.autoCollapse`, `unitSearch.multiSelect`, `unitSearch.actions`, `unitSearch.actions.addUses`, `unitSearch.pathStyle`, `unitSearch.groupBy`, `unitSearch.defaultScope`, `quickOpen.enabled`, `quickOpen.librarySources`, `navHistory.enabled`, `peek.enabled`, `peek.heightLines`, `peek.showImplementation`, `outline.enabled`, `outline.alphabetical`, `outline.followCursor`, `outline.conditions`, `editor.breadcrumbs`, `editor.breadcrumbsShowUnit`, `editor.stickyScroll`, `editor.stickyScrollMaxLines`, `editor.minimap`, `editor.minimap.render`, `editor.minimap.width`, `editor.minimap.scale`, `editor.minimap.maxColumn`, `editor.minimap.side`, `editor.minimap.showSlider`, `editor.minimap.sectionHeaders`, `editor.minimap.highlightMethod`, `editor.minimap.markers`, `editor.minimap.clickJumps`, `editor.gitGutter`, `editor.gitBlame`, `editor.gutterColumn`, `editor.gutterColumn.problems`, `editor.gutterColumn.codeActions`, `editor.gutterColumn.overrides`, `editor.overviewRuler`, `editor.overviewRulerKinds`, `inlayHints.endMarkers`, `inlayHints.endMarkerMinLines`, `hints.xmlDocFull`, `hints.publishedMembers`, `directives.completion`, `directives.hover` |
+| Editor (`editor`) | `editor.dimUnusedUses`, `editor.recursionMarkers`, `editor.recursionMarkers.depth`, `problems.enabled`, `inlayHints.parameterNames`, `inlayHints.inferredTypes`, `inlayHints.includeDefines`, `inlayHints.controlChars`, `editor.blockEndLabels`, `editor.blockEndLabels.minLines`, `notes.enabled`, `codeLens.metrics`, `metrics`, `codeLens.tests`, `todos.list`, `baseline.update`, `metrics.report`, `dfmRules.apply`, `editor.hoverTooltip`, `editor.reloadExternal`, `editor.openForEdits`, `search.replaceIdeSearch`, `search.resultsInMessages`, `problems.list`, `problems.statusCounter`, `editor.inlineDiagnostics`, `editor.continueComments`, `editor.continueComments.lineComments`, `editor.continueComments.lists`, `editor.completeStatement`, `editor.completeStatement.beginEnd`, `editor.completeStatement.tryKind`, `editor.completeStatement.methodBody`, `editor.format`, `editor.continuePattern`, `editor.continuePattern.minLines`, `editor.multiCursor`, `editor.linkedEditing`, `editor.smartPaste`, `editor.multiCursorModifier`, `editor.continueComments.blockPrefix`, `editor.wrapSelection`, `editor.wrapSelection.chars`, `codeLens.testUnit`, `hints.xmlDocExpand`, `hints.xmlDocMaxLines`, `undo.multiFile`, `undo.multiFile.depth`, `undo.multiFile.persist`, `undo.multiFile.maxSizeMb`, `undo.multiFile.onConflict`, `undo.multiFile.newFiles`, `unitSearch.enabled`, `unitSearch.replaceIdeDialog`, `unitSearch.rememberCollapsed`, `unitSearch.filters`, `unitSearch.filterSyntax`, `unitSearch.preview`, `unitSearch.preview.form`, `unitSearch.preview.usedBy`, `unitSearch.preview.autoCollapse`, `unitSearch.multiSelect`, `unitSearch.actions`, `unitSearch.actions.addUses`, `unitSearch.pathStyle`, `unitSearch.groupBy`, `unitSearch.defaultScope`, `quickOpen.enabled`, `quickOpen.librarySources`, `navHistory.enabled`, `peek.enabled`, `peek.heightLines`, `peek.showImplementation`, `outline.enabled`, `outline.alphabetical`, `outline.followCursor`, `outline.conditions`, `editor.breadcrumbs`, `editor.breadcrumbsShowUnit`, `editor.breadcrumbsIdeColors`, `editor.breadcrumbsHideIdeToolbar`, `editor.stickyScroll`, `editor.stickyScrollMaxLines`, `editor.minimap`, `editor.minimap.render`, `editor.minimap.width`, `editor.minimap.scale`, `editor.minimap.maxColumn`, `editor.minimap.side`, `editor.minimap.showSlider`, `editor.minimap.sectionHeaders`, `editor.minimap.highlightMethod`, `editor.minimap.markers`, `editor.minimap.clickJumps`, `editor.gitGutter`, `editor.gitBlame`, `editor.gutterColumn`, `editor.gutterColumn.problems`, `editor.gutterColumn.codeActions`, `editor.gutterColumn.overrides`, `editor.overviewRuler`, `editor.overviewRulerKinds`, `inlayHints.endMarkers`, `inlayHints.endMarkerMinLines`, `hints.xmlDocFull`, `hints.publishedMembers`, `directives.completion`, `directives.hover` |
 | Vervollständigung (`completion`) | `completion.enabled`, `completion.filterChips`, `completion.preview`, `completion.groupInherited`, `completion.variantBranch`, `completion.listMode`, `completion.listMode.scope`, `completion.learning`, `completion.favorites`, `completion.visibleRows`, `completion.panelCollapsed`, `completion.selectionMarker`, `completion.autoParentheses`, `completion.fixCase`, `completion.commitCharacters`, `completion.autoUses`, `completion.parameterHints`, `completion.openDelayMs`, `completion.matching`, `completion.offerTryFinally`, `completion.keywords`, `completion.genericConstraints`, `completion.resourceStrings`, `completion.typeConversion`, `completion.assignAllFields`, `completion.usesDetails`, `completion.inheritedCall`, `completion.sameNameVariants`, `completion.sameNameInsert`, `completion.showFmxUnits`, `completion.nameSuggestions` |
 | Hervorhebung (`highlighting`) | `highlight.pairColors`, `highlight.pairGuides`, `highlight.pairOwners`, `highlight.inactiveDim`, `highlight.pairGuideWidth`, `highlight.pairGuideOpacity`, `highlight.pairColorsLight`, `highlight.pairColorsDark`, `highlight.selectionMatches`, `highlight.selectionMatches.minLength`, `highlight.selectionMatches.caseSensitive`, `highlight.selectionMatches.wholeWord`, `highlight.selectionMatches.navigateF3`, `highlight.selectionMatches.maxMatches`, `highlight.blockPairs`, `highlight.directives`, `highlight.exitPoints`, `highlight.exitKeywords` |
-| Tastenkürzel (`keys`) | `keys.palette`, `keys.check`, `keys.palettePriority`, `keys.checkPriority`, `keys.completion`, `keys.signature`, `keys.completionPriority`, `keys.signaturePriority`, `bookmarks.key`, `keys.hideElement`, `keys.nextProblem`, `keys.previousProblem`, `keys.codeActions`, `keys.expandSelection`, `keys.shrinkSelection`, `keys.implementations`, `keys.typeDefinition`, `keys.methodToggleUp`, `keys.methodToggleDown`, `keys.jumpToMatch`, `keys.jumpToMatchShortcut`, `keys.jumpToMatchSelect`, `keys.moveLines`, `keys.moveLinesUp`, `keys.moveLinesDown`, `keys.duplicateLinesUp`, `keys.duplicateLinesDown`, `keys.toggleBlockComment`, `keys.toggleBlockComment.key`, `keys.toggleBlockComment.style`, `keys.toggleBlockComment.fallback`, `keys.toggleBlockComment.ownLines`, `keys.toggleBlockComment.withoutSelection`, `keys.newLineAround`, `keys.newLineAround.belowKey`, `keys.newLineAround.aboveKey`, `keys.newLineAround.statementAware`, `keys.unwrap`, `keys.unwrap.key`, `keys.completeStatement`, `keys.format`, `keys.multiCursor.next`, `keys.multiCursor.skip`, `keys.multiCursor.lineEnds`, `keys.multiCursor.above`, `keys.multiCursor.below`, `keys.testUnit`, `keys.editorPriority`, `keys.generateMenu.key`, `keys.quickToggles`, `keys.quickTogglesPriority`, `keys.diagnosticMode`, `keys.diagnosticModePriority`, `keys.overview`, `keys.startupCheck`, `keys.undoChange`, `keys.redoChange`, `unitSearch.key`, `keys.quickOpen`, `keys.navBack`, `keys.navForward`, `keys.lastEdit`, `keys.peekDefinition`, `keys.peekReferences`, `keys.breadcrumbs`, `keys.nextChange`, `keys.previousChange`, `welcomePage.search.key`, `welcomePage.quickActions.buildKey`, `welcomePage.quickActions.testKey`, `notifications.key` |
+| Tastenkürzel (`keys`) | `keys.palette`, `keys.check`, `keys.palettePriority`, `keys.checkPriority`, `keys.completion`, `keys.signature`, `keys.completionPriority`, `keys.signaturePriority`, `bookmarks.key`, `keys.hideElement`, `keys.nextProblem`, `keys.previousProblem`, `keys.search`, `keys.searchNext`, `keys.searchPrevious`, `keys.searchInMethod`, `keys.codeActions`, `keys.expandSelection`, `keys.shrinkSelection`, `keys.implementations`, `keys.typeDefinition`, `keys.methodToggleUp`, `keys.methodToggleDown`, `keys.jumpToMatch`, `keys.jumpToMatchShortcut`, `keys.jumpToMatchSelect`, `keys.moveLines`, `keys.moveLinesUp`, `keys.moveLinesDown`, `keys.duplicateLinesUp`, `keys.duplicateLinesDown`, `keys.toggleBlockComment`, `keys.toggleBlockComment.key`, `keys.toggleBlockComment.style`, `keys.toggleBlockComment.fallback`, `keys.toggleBlockComment.ownLines`, `keys.toggleBlockComment.withoutSelection`, `keys.newLineAround`, `keys.newLineAround.belowKey`, `keys.newLineAround.aboveKey`, `keys.newLineAround.statementAware`, `keys.unwrap`, `keys.unwrap.key`, `keys.completeStatement`, `keys.format`, `keys.multiCursor.next`, `keys.multiCursor.skip`, `keys.multiCursor.lineEnds`, `keys.multiCursor.above`, `keys.multiCursor.below`, `keys.testUnit`, `keys.editorPriority`, `keys.generateMenu.key`, `keys.quickToggles`, `keys.quickTogglesPriority`, `keys.diagnosticMode`, `keys.diagnosticModePriority`, `keys.overview`, `keys.startupCheck`, `keys.undoChange`, `keys.redoChange`, `unitSearch.key`, `keys.quickOpen`, `keys.navBack`, `keys.navForward`, `keys.lastEdit`, `keys.peekDefinition`, `keys.peekReferences`, `keys.breadcrumbs`, `keys.nextChange`, `keys.previousChange`, `welcomePage.search.key`, `welcomePage.quickActions.buildKey`, `welcomePage.quickActions.testKey`, `notifications.key` |
 | Code-Aktionen (`codeActions`) | `keys.generateMenu`, `codeActions.methodToggle`, `slashCommands.enabled`, `keys.generateMenu.groups`, `keys.generateMenu.hidden`, `keys.generateMenu.recentFirst`, `keys.generateMenu.showCommandNames`, `usesCommand`, `completeBlocks.docComment`, `slashCommands.disabled`, `slashCommands.headerTemplate`, `slashCommands.logCall`, `slashCommands.componentPalette`, `slashCommands.todoOwner`, `slashCommands.todoCategory`, `slashCommands.sortUsesRemoveUnused`, `slashCommands.enumHelper`, `slashCommands.setHelper` |
 | Prüfregeln (`rules`) | `rules` |
 | Build (`build`) | `build.checkOnSave`, `compiler.mcpBuild`, `build.onOpen`, `tests.run`, `tests.afterBuild`, `tests.buildFirst`, `build.releaseGuard`, `build.zeroHints`, `build.checkOnSaveDelayMs`, `build.checkOnSaveMaxMs`, `build.onOpenKind`, `build.onOpenScope`, `build.onOpenDelayMs`, `build.onOpenExclude`, `compiler.onSave`, `build.gate`, `build.releaseConfigs`, `build.releaseChecks`, `compiler.backend`, `compiler.ideCommand`, `mcp.disabledTools` |
-| Debug (`debug`) | `startProfiles.enabled`, `startProfiles.statusField`, `tests.debug`, `debug.testBreakAtStart` |
+| Debug (`debug`) | `startProfiles.enabled`, `startProfiles.statusField`, `tests.debug`, `debug.testBreakAtStart`, `debug.hoverValues` |
 | Vorlagen/Snippets (`snippets`) | `snippets.enabled`, `snippets.importIdeTemplates`, `completion.postfixTemplates` |
 | Lesezeichen (`bookmarks`) | `bookmarks.named`, `bookmarks.shared` |
 | Willkommensseite (`welcome`) | `welcomePage.enabled`, `welcomePage.projectSetup`, `welcomePage.tests.ci.login`, `welcomePage.quickActions`, `welcomePage.host`, `welcomePage.layout`, `welcomePage.header`, `welcomePage.greeting`, `welcomePage.search`, `welcomePage.search.symbols`, `welcomePage.whatsNew`, `welcomePage.projectStatus`, `welcomePage.maxProjects`, `welcomePage.refreshVcs`, `welcomePage.unsaved`, `welcomePage.unsaved.minAgeHours`, `welcomePage.unsaved.warnHours`, `welcomePage.unsaved.alertHours`, `welcomePage.unsaved.hideWhenClean`, `welcomePage.statusTile`, `welcomePage.statusTile.onlyProblems`, `welcomePage.discover`, `tips.usageTracking`, `welcomePage.help`, `welcomePage.help.reportUrl`, `welcomePage.help.reportFolder`, `welcomePage.newFromTemplate`, `welcomePage.continue`, `welcomePage.continue.count`, `welcomePage.continue.incoming`, `welcomePage.continue.fetch`, `welcomePage.saved`, `welcomePage.trends`, `welcomePage.trends.points`, `welcomePage.trends.series`, `welcomePage.tests`, `welcomePage.tests.maxFailures`, `welcomePage.tests.ci`, `welcomePage.tests.ci.provider`, `welcomePage.tests.ci.intervalMinutes`, `welcomePage.tests.ci.notify`, `welcomePage.quickActions.items`, `welcomePage.quickActions.console`, `welcomePage.issues`, `welcomePage.issues.tracker`, `welcomePage.issues.query`, `welcomePage.issues.start`, `welcomePage.issues.branchPattern`, `welcomePage.issues.branchBase`, `welcomePage.issues.commitPattern`, `welcomePage.issues.login`, `welcomePage.customLayout`, `welcomePage.columns`, `welcomePage.layouts`, `welcomePage.activeLayout` |
-| Allgemein (`general`) | `diagnosticMode.enabled`, `diagnostics.processes`, `experimental.enabled`, `teamFile.enabled`, `settings.exportImport`, `shortcutTips.enabled`, `notifications.enabled`, `statusField.showSummary`, `robustness.hangThresholdMs`, `robustness.providerTimeLimitMs`, `robustness.hangHint`, `index.projectGroup`, `index.searchPaths`, `index.libraryPaths`, `index.usages`, `memoryBudgetMb`, `statusField.enabled`, `statusField.hidden`, `statusField.openToggles`, `statusField.indexProgress`, `ui.setupChecklist`, `shortcutTips.scope`, `safeMode.askAfterCrash`, `safeMode.autoAfterRepeatedCrash`, `safeMode.startupKey`, `safeMode.startupTimeoutMs`, `safeMode.keepSettingsHistory`, `updates.check`, `diagnostics.bugReport.anonymize`, `notifications.sources`, `notifications.maxEntries`, `settings.markModified`, `settings.backupBeforeImport`, `settings.exportSecrets`, `language`, `vcs.provider`, `requestTimeoutMs`, `diagnostics.log`, `diagnostics.logDays`, `diagnostics.logMapFile`, `logLevel`, `logFile`, `traceFile` |
+| Allgemein (`general`) | `diagnosticMode.enabled`, `diagnostics.processes`, `experimental.enabled`, `teamFile.enabled`, `settings.exportImport`, `shortcutTips.enabled`, `notifications.enabled`, `statusField.showSummary`, `robustness.hangThresholdMs`, `robustness.providerTimeLimitMs`, `robustness.hangHint`, `index.projectGroup`, `index.searchPaths`, `index.libraryPaths`, `index.usages`, `memoryBudgetMb`, `statusField.enabled`, `statusField.hidden`, `statusField.openToggles`, `statusField.indexProgress`, `ui.setupChecklist`, `shortcutTips.scope`, `safeMode.askAfterCrash`, `safeMode.autoAfterRepeatedCrash`, `safeMode.startupKey`, `safeMode.startupTimeoutMs`, `safeMode.keepSettingsHistory`, `updates.check`, `diagnostics.bugReport.anonymize`, `notifications.sources`, `notifications.maxEntries`, `settings.markModified`, `settings.backupBeforeImport`, `settings.exportSecrets`, `language`, `vcs.provider`, `index.removeOrphans`, `index.cacheMaxAgeDays`, `index.cacheMaxMb`, `requestTimeoutMs`, `diagnostics.log`, `diagnostics.logDays`, `diagnostics.logMapFile`, `logLevel`, `logFile`, `traceFile` |
 | nicht exportiert (Zustand, nur dieser Rechner) | `completion.listWidth`, `completion.panelWidth`, `server.path`, `ui.setupChecklistSeen`, `editor.minimap.noticeShown`, `welcomePage.whatsNewSeen`, `delphiVersion` |
 
 ## Experimentelle Funktionen
@@ -222,6 +223,8 @@ Riskante oder unreife Funktionen kommen als **experimentell** (#834): Sie haben 
   - `editor.smartPaste` (experimentell) – hängt an `completion.enabled`
   - `hints.xmlDocExpand`
   - `hints.xmlDocMaxLines`
+  - `editor.breadcrumbsIdeColors`
+  - `editor.breadcrumbsHideIdeToolbar`
 
 - **Paarfärbung** (`editor.pairs`)
   - `highlight.pairColors` – hängt an `completion.enabled`
@@ -361,6 +364,10 @@ Riskante oder unreife Funktionen kommen als **experimentell** (#834): Sie haben 
   - `keys.hideElement`
   - `keys.nextProblem`
   - `keys.previousProblem`
+  - `keys.search`
+  - `keys.searchNext`
+  - `keys.searchPrevious`
+  - `keys.searchInMethod`
   - `keys.codeActions`
   - `keys.expandSelection`
   - `keys.shrinkSelection`
@@ -461,6 +468,7 @@ Riskante oder unreife Funktionen kommen als **experimentell** (#834): Sie haben 
 - **Hauptknoten**
   - `tests.debug`
     - `debug.testBreakAtStart`
+  - `debug.hoverValues`
 
 ### Release-Build
 
@@ -596,6 +604,33 @@ Riskante oder unreife Funktionen kommen als **experimentell** (#834): Sie haben 
   - `robustness.providerTimeLimitMs`
   - `robustness.hangHint`
 
+### Units suchen
+
+- **Hauptknoten**
+  - `search.replaceIdeSearch`
+  - `search.resultsInMessages`
+  - `unitSearch.enabled`
+    - `unitSearch.replaceIdeDialog`
+    - `unitSearch.rememberCollapsed`
+    - `unitSearch.filters`
+    - `unitSearch.filterSyntax`
+    - `unitSearch.preview`
+      - `unitSearch.preview.form`
+      - `unitSearch.preview.usedBy`
+      - `unitSearch.preview.autoCollapse`
+    - `unitSearch.multiSelect`
+    - `unitSearch.actions`
+      - `unitSearch.actions.addUses`
+    - `unitSearch.pathStyle`
+    - `unitSearch.groupBy`
+    - `unitSearch.defaultScope`
+    - `unitSearch.key`
+
+- **Schnell öffnen** (`unitSearch.quickOpen`)
+  - `quickOpen.enabled`
+    - `quickOpen.librarySources`
+    - `keys.quickOpen`
+
 ### Farben
 
 - **Hauptknoten**
@@ -631,28 +666,3 @@ Riskante oder unreife Funktionen kommen als **experimentell** (#834): Sie haben 
     - `undo.multiFile.maxSizeMb`
     - `undo.multiFile.onConflict`
     - `undo.multiFile.newFiles`
-
-### Units suchen
-
-- **Hauptknoten**
-  - `unitSearch.enabled`
-    - `unitSearch.replaceIdeDialog`
-    - `unitSearch.rememberCollapsed`
-    - `unitSearch.filters`
-    - `unitSearch.filterSyntax`
-    - `unitSearch.preview`
-      - `unitSearch.preview.form`
-      - `unitSearch.preview.usedBy`
-      - `unitSearch.preview.autoCollapse`
-    - `unitSearch.multiSelect`
-    - `unitSearch.actions`
-      - `unitSearch.actions.addUses`
-    - `unitSearch.pathStyle`
-    - `unitSearch.groupBy`
-    - `unitSearch.defaultScope`
-    - `unitSearch.key`
-
-- **Schnell öffnen** (`unitSearch.quickOpen`)
-  - `quickOpen.enabled`
-    - `quickOpen.librarySources`
-    - `keys.quickOpen`

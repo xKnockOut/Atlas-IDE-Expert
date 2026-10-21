@@ -42,6 +42,8 @@ type
 
   TAtlasWelcomeIndexFiles = class
   public const
+    // 22: wie TIndexCache.FormatVersion (Steuerzeichen-Literale, #862); beim Zusammenführen
+    // der Zweige nachgezogen, weil Plugin und Server dasselbe Cache-Format lesen (K-05).
     FormatVersion = 22;
     CacheFileName = 'index.atlasidx';
     IndexFolder = 'Index';

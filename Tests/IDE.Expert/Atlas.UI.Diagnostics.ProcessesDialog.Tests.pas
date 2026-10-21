@@ -12,6 +12,9 @@ type
   [TestFixture]
   TAtlasProcessesDialogTests = class
   public
+    /// <summary>Erstgebrauch der VCL (Fenster, Listenansicht, Memo) vor der Leckmessung.</summary>
+    [SetupFixture]
+    procedure WarmUpFirstUse;
     [Test]
     procedure ShowsWorkspaceProcessesAndLog;
     [Test]
@@ -29,6 +32,7 @@ implementation
 uses
   System.SysUtils,
   System.JSON,
+  System.Generics.Collections,
   Atlas.UI.Strings,
   Atlas.UI.Diagnostics.ProcessesDialog;
 
@@ -49,6 +53,13 @@ begin
   Result := TJSONObject.ParseJSONValue(AText);
 end;
 
+procedure TAtlasProcessesDialogTests.WarmUpFirstUse;
+begin
+  ShowsWorkspaceProcessesAndLog;
+  RefreshAsksAndCopyGivesMarkdown;
+  LateAnswerAfterCloseIsIgnored;
+end;
+
 procedure TAtlasProcessesDialogTests.ShowsWorkspaceProcessesAndLog;
 var
   Dialog: TAtlasProcessesDialog;
@@ -66,14 +77,14 @@ begin
     Assert.IsTrue(Dialog.WriterTag.Visible, 'Marke schreibt');
     Assert.IsTrue(Dialog.WriterTag.Left > Dialog.LockValue.Left, 'Marke hinter dem Halter');
     Assert.AreEqual(TAtlasStrings.Fmt(TAtlasTextId.ProcessesSaved, ['vor 12 s', 17]), Dialog.StateValue.Caption);
-    Assert.AreEqual(2, Dialog.List.Items.Count);
+    Assert.AreEqual(2, Integer(Dialog.List.Items.Count));
     Assert.AreEqual('LSP', Dialog.List.Items[0].Caption);
     Assert.AreEqual('Atlas IDE Expert (pid 4711)' + TAtlasStrings.Text(TAtlasTextId.ProcessesOwn),
       Dialog.List.Items[0].SubItems[0]);
     Assert.AreEqual('liest Cache', Dialog.List.Items[1].SubItems[1]);
     Assert.AreEqual(TAtlasStrings.Fmt(TAtlasTextId.ProcessesBuiltOnce, [412]), Dialog.BuiltOnceLabel.Caption);
     Assert.AreEqual(TAtlasStrings.Fmt(TAtlasTextId.ProcessesCount, [2]), Dialog.CountLabel.Caption);
-    Assert.AreEqual(1, Dialog.Log.Lines.Count);
+    Assert.AreEqual(1, Integer(Dialog.Log.Lines.Count));
     Assert.AreEqual('10:00:01  LSP 4711: Cache-Sperre erhalten', Dialog.Log.Lines[0]);
     Assert.AreEqual('', Dialog.StatusLabel.Caption);
   finally
@@ -96,7 +107,7 @@ begin
     Assert.IsFalse(Dialog.CopyButton.Enabled);
     Dialog.ShowAnswer(Value);
     Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.ProcessesEmpty), Dialog.StatusLabel.Caption);
-    Assert.AreEqual(0, Dialog.List.Items.Count);
+    Assert.AreEqual(0, Integer(Dialog.List.Items.Count));
     Assert.AreEqual('', Dialog.CacheValue.Caption);
   finally
     Value.Free;
@@ -119,7 +130,7 @@ begin
   Dialog := TAtlasProcessesDialog.CreateDialog(nil, Actions);
   Value := Parse(LspOnly);
   try
-    Assert.AreEqual(1, Dialog.Dirty.Items.Count, 'schon vor der Antwort');
+    Assert.AreEqual(1, Integer(Dialog.Dirty.Items.Count), 'schon vor der Antwort');
     Dialog.ShowAnswer(Value);
     Assert.AreEqual('Main.pas', Dialog.Dirty.Items[0].Caption);
     Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.ProcessesDirtyIdeText), Dialog.Dirty.Items[0].SubItems[0]);
@@ -171,7 +182,7 @@ begin
   try
     Dialog.Refresh;
     Assert.AreEqual(1, Asked);
-    Assert.AreEqual(2, Dialog.List.Items.Count);
+    Assert.AreEqual(2, Integer(Dialog.List.Items.Count));
     Assert.IsTrue(Dialog.CopyButton.Enabled);
     Dialog.CopyButton.Click;
     Assert.AreEqual('## Prozesse', Copied);
@@ -201,13 +212,14 @@ begin
   Assert.IsTrue(Assigned(Pending));
   Value := Parse(Answer);
   try
-    // Darf das freigegebene Fenster nicht anfassen.
+    // Darf das freigegebene Fenster nicht anfassen (sonst Zugriffsverletzung).
     Pending(Value);
   finally
     Value.Free;
     Pending := nil;
   end;
-  Assert.Pass;
+  // Kein Assert.Pass: dessen Ausnahme zählte bei der Leckmessung mit.
+  Assert.IsFalse(Assigned(Pending), 'Antwort freigegeben');
 end;
 
 end.

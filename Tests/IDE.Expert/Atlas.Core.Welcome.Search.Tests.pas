@@ -240,7 +240,7 @@ var
   Files: TArray<TAtlasIndexFile>;
   Reason: string;
 begin
-  Files := TAtlasWelcomeIndexFiles.Read(CacheBytes(SampleUnits, 16), Reason);
+  Files := TAtlasWelcomeIndexFiles.Read(CacheBytes(SampleUnits, TAtlasWelcomeIndexFiles.FormatVersion), Reason);
   Assert.AreEqual('', Reason);
   Assert.AreEqual(3, Integer(Length(Files)));
   Assert.AreEqual('Atlas', Files[0].UnitName);
@@ -270,7 +270,7 @@ var
   Data: TBytes;
   Reason: string;
 begin
-  Data := CacheBytes(SampleUnits, 16);
+  Data := CacheBytes(SampleUnits, TAtlasWelcomeIndexFiles.FormatVersion);
   Data[High(Data) - 10] := Data[High(Data) - 10] xor $55;
   Assert.AreEqual(0, Integer(Length(TAtlasWelcomeIndexFiles.Read(Data, Reason))));
   Assert.AreEqual('Prüfsumme stimmt nicht', Reason);
@@ -284,7 +284,7 @@ var
   Reason: string;
 begin
   // Abgeschnitten, Prüfsumme passend neu berechnet: der Inhalt selbst muss auffallen.
-  Data := CacheBytes(SampleUnits, 16);
+  Data := CacheBytes(SampleUnits, TAtlasWelcomeIndexFiles.FormatVersion);
   Cut := Copy(Data, 0, Length(Data) - 50);
   Sum := Checksum(Cut, 13);
   for Index := 0 to 3 do
@@ -297,7 +297,7 @@ procedure TAtlasWelcomeIndexFilesTests.MainFileAndSameProject;
 var
   Files: TArray<TAtlasIndexFile>;
 begin
-  Files := TAtlasWelcomeIndexFiles.Read(CacheBytes(SampleUnits, 16));
+  Files := TAtlasWelcomeIndexFiles.Read(CacheBytes(SampleUnits, TAtlasWelcomeIndexFiles.FormatVersion));
   Assert.AreEqual('C:\Projekte\Atlas\Atlas.dpr', TAtlasWelcomeIndexFiles.MainFileOf(Files));
   Assert.IsTrue(TAtlasWelcomeIndexFiles.SameProject('c:\projekte\atlas\Atlas.dproj', 'C:\Projekte\Atlas\Atlas.dpr'));
   Assert.IsFalse(TAtlasWelcomeIndexFiles.SameProject('C:\Projekte\Atlas\AtlasTests.dproj',

@@ -22,6 +22,9 @@ type
   public
     /// <summary>Farben passend zum IDE-Thema bzw. zu Windows.</summary>
     class function Colors: TAtlasColors; static;
+    /// <summary>Farben für Leisten im Rahmen der IDE (Brotkrumenleiste): Fläche und Schrift wie die
+    /// Werkzeugleisten des IDE-Themas (clBtnFace/clBtnText), ohne Thema die von Windows.</summary>
+    class function ChromeColors: TAtlasColors; static;
     /// <summary>Farben, Editorschrift und Skalierung auf AWindow übertragen. ACaret: Caret-Rechteck in
     /// Bildschirmkoordinaten (Monitor und Zoom). Liefert eine Zeile für das Diagnoseprotokoll.</summary>
     class function Apply(AWindow: TAtlasPopupWindow; const ACaret: TRect): string; static;
@@ -122,6 +125,16 @@ begin
     Result := TAtlasColors.Light
   else
     Result := TAtlasColors.Dark;
+end;
+
+class function TAtlasIdeStyle.ChromeColors: TAtlasColors;
+var
+  Theming: IOTAIDEThemingServices;
+begin
+  if Supports(BorlandIDEServices, IOTAIDEThemingServices, Theming) and Theming.IDEThemingEnabled then
+    Exit(TAtlasColors.ForChrome(TAtlasColor(ColorToRGB(Theming.StyleServices.GetSystemColor(clBtnFace))),
+      TAtlasColor(ColorToRGB(Theming.StyleServices.GetSystemColor(clBtnText)))));
+  Result := TAtlasColors.ForChrome(TAtlasColor(ColorToRGB(clBtnFace)), TAtlasColor(ColorToRGB(clBtnText)));
 end;
 
 class function TAtlasIdeStyle.BaseTextHeight: Integer;

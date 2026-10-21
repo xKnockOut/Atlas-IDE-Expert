@@ -373,7 +373,6 @@ begin
   Calls := 0;
   EditCount := 0;
   FileCount := 0;
-  Changes := nil;
   NeedReferences := AReplaceCalls or (AContext.Options.Hiding <> TAccessorHiding.Off);
   Sources := TObjectDictionary<string, TSourceFile>.Create([doOwnsValues]);
   Order := TList<string>.Create;
