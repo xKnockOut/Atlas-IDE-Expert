@@ -14,7 +14,8 @@
 //
 // WriteFiles (/unit, #297) legt mehrere Dateien in einem WorkspaceEdit an
 // bzw. ersetzt sie und öffnet danach die neue Unit; ohne Editor auf der Platte
-// (neue Dateien UTF-8 mit BOM und CRLF, vorhandene in ihrer Kodierung).
+// (neue Dateien in der Kodierung der Datei des Befehls, sonst UTF-8 mit BOM,
+// Zeilenende wie im Text, #299/#121; vorhandene in ihrer Kodierung).
 
 interface
 
@@ -421,6 +422,30 @@ begin
     end);
 end;
 
+/// <summary>Format einer neuen Datei (#299, #121): Kodierung der Datei AUri, sonst UTF-8 mit BOM; Zeilenende
+/// wie in AText.</summary>
+function NewFileFormat(const AUri, AText: string): TFileFormat;
+var
+  Sibling: string;
+begin
+  Result := TFileFormat.Create(TFileEncodingKind.Utf8Bom, TLineBreakStyle.CRLF);
+  Sibling := '';
+  if AUri <> '' then
+    Sibling := TDocumentUris.ToPath(AUri);
+  if (Sibling <> '') and FileExists(Sibling) then
+    try
+      TFileEncoding.LoadFromFile(Sibling, Result);
+    except
+      on EFileEncodingError do
+        Result := TFileFormat.Create(TFileEncodingKind.Utf8Bom, TLineBreakStyle.CRLF);
+    end;
+  Result.MixedLineBreaks := False;
+  if Pos(#13#10, AText) > 0 then
+    Result.LineBreak := TLineBreakStyle.CRLF
+  else if Pos(#10, AText) > 0 then
+    Result.LineBreak := TLineBreakStyle.LF;
+end;
+
 procedure TShellSlashHost.WriteFiles(const AUri: string; const AFiles: TArray<TSlashFile>; const AShow: string);
 var
   Changes: TArray<TLspFileChange>;
@@ -463,7 +488,7 @@ begin
       if Item.New then
       begin
         ForceDirectories(ExtractFileDir(Item.FileName));
-        FileFormat := TFileFormat.Create(TFileEncodingKind.Utf8Bom, TLineBreakStyle.CRLF);
+        FileFormat := NewFileFormat(AUri, Item.Text);
       end
       else
         TFileEncoding.LoadFromFile(Item.FileName, FileFormat);

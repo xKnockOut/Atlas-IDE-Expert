@@ -2545,3 +2545,11 @@ Vorher: Projekt mit Index geladen, eine Unit mit `uses System.SysUtils, System.C
 | TY3 | Unter `TFarbe = (Rot, Gruen, Blau);` `/helper TFarbe`, Enter (#875) | `TFarbeHelper = record helper for TFarbe` mit `private const cNames: array[TFarbe] of string = ('Rot', 'Gruen', 'Blau');`, `ToString` und `class function FromString(const AValue: string): TFarbe; static;`; Rümpfe in der implementation, `System.SysUtils` im uses; übersetzt |
 | TY4 | `TFarbe.Blau.ToString` und `TFarbe.FromString('gruen')` aufrufen | `'Blau'` bzw. `Gruen`; ein unbekannter Name löst `EArgumentException` aus |
 | TY5 | `slashCommands.enumHelper` auf `false`, TY3 wiederholen | Nur der leere record helper |
+
+## Neue Units im Stil des Projekts (#299)
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| NU1 | In einer Unit mit LF-Zeilenenden, UTF-8 ohne BOM, `/component TZaehler` | `Zaehler.pas` mit LF und UTF-8 ohne BOM (ohne Editor auf der Platte; in der IDE legt das Plugin die Datei an) |
+| NU2 | Format mit `indentSize` 4, `/component TZaehler2 : TButton` | Neue Unit rückt je Ebene um 4 Leerzeichen ein; mit `useTabs` um einen Tabulator |
+| NU3 | `/unit Kunden.Daten` in einem Projekt mit CRLF | Neue Unit mit CRLF, Einrückung nach dem Formatstil |
