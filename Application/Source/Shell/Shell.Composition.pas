@@ -322,6 +322,10 @@ type
     function PasteUses(const AArguments: TJSONArray): TJSONValue;
     /// <summary>Code-Aktion „Klasse … in eigene Unit verschieben …“ an APosition (#103).</summary>
     function MoveClassActions(const AUri: string; const APosition: TTextPosition): TArray<TJSONObject>;
+    /// <summary>„Property X anlegen“ bzw. „Fehlende Properties anlegen“ an APosition (#682).</summary>
+    function PropertyFromAccessorsActions(const AUri: string; const APosition: TTextPosition): TArray<TJSONObject>;
+    /// <summary>„Property aus Getter und Setter“ (#682): das WorkspaceEdit für Stelle und Aufrufe.</summary>
+    function PropertyFromAccessors(const AArguments: TJSONArray): TJSONValue;
     /// <summary>„Typ ausschreiben“ (#453) für die Inline-Variable an APosition.</summary>
     function ExplicitTypeActions(const AUri: string; const APosition: TTextPosition): TArray<TJSONObject>;
     /// <summary>Extrahieren, „case vervollständigen“ und „with auflösen“ (#50).</summary>
@@ -472,6 +476,8 @@ uses
   Atlas.Common.Lsp.DfmPropertyRules,
   Atlas.Common.Lsp.ChangeSignature,
   Atlas.Common.Lsp.MoveClass,
+  Atlas.Common.Editing.PropertyFromAccessors,
+  Atlas.Common.Lsp.PropertyFromAccessors,
   Atlas.Common.Lsp.UnitRename,
   Atlas.Common.Lsp.SmartPaste,
   Atlas.Common.Editing.SmartPaste,
@@ -1329,6 +1335,7 @@ begin
       Result := FTestUnits.Actions(AUri, ARange.StartPos.Line);
       Result := Result + ChangeSignatureActions(AUri, ARange.StartPos);
       Result := Result + MoveClassActions(AUri, ARange.StartPos);
+      Result := Result + PropertyFromAccessorsActions(AUri, ARange.StartPos);
       Result := Result + ExplicitTypeActions(AUri, ARange.StartPos);
       Result := Result + RefactoringActions(AUri, ARange);
     end;
@@ -1390,6 +1397,11 @@ begin
     function(const AArguments: TJSONArray): TJSONValue
     begin
       Result := MoveClass(AArguments);
+    end);
+  FCommands.Register(TLspPropertyFromAccessors.ApplyCommand,
+    function(const AArguments: TJSONArray): TJSONValue
+    begin
+      Result := PropertyFromAccessors(AArguments);
     end);
   FCommands.Register(TLspUnitRename.Command,
     function(const AArguments: TJSONArray): TJSONValue
@@ -2895,6 +2907,82 @@ begin
   finally
     Resolver.Free;
   end;
+end;
+
+function PropertyOptionsOf(const ASettings: TRefactoringSettings): TPropertyFromAccessorsOptions;
+begin
+  Result := TPropertyFromAccessorsOptions.FromNames(ASettings.PropertyFromAccessorsPrefixes,
+    ASettings.PropertyFromAccessorsSection, ASettings.PropertyFromAccessorsHideAccessors);
+end;
+
+function TServerComposition.PropertyFromAccessorsActions(const AUri: string;
+  const APosition: TTextPosition): TArray<TJSONObject>;
+var
+  Settings: TRefactoringSettings;
+  Document: ITextDocument;
+  Shared: ISharedSyntaxTree;
+  Mode: TReplaceCalls;
+begin
+  Result := nil;
+  Settings := RefactoringSettingsFor(AUri);
+  if not Settings.PropertyFromAccessors or not FDocuments.TryGet(AUri, Document) or
+    not SameText(ExtractFileExt(TDocumentUris.ToPath(AUri)), '.pas') then
+    Exit;
+  Mode := TReplaceCalls.Ask;
+  if Settings.PropertyFromAccessorsReplaceCalls = 'always' then
+    Mode := TReplaceCalls.Always
+  else if Settings.PropertyFromAccessorsReplaceCalls = 'never' then
+    Mode := TReplaceCalls.Never;
+  Shared := TSyntaxTreeCache.Get(Document, nil);
+  Result := TLspPropertyFromAccessors.Actions(True, Shared.Tree, Document.Text, AUri, APosition,
+    PropertyOptionsOf(Settings), Mode);
+end;
+
+function TServerComposition.PropertyFromAccessors(const AArguments: TJSONArray): TJSONValue;
+var
+  Uri: string;
+  Position: TTextPosition;
+  Settings: TRefactoringSettings;
+  Document: ITextDocument;
+  Shared: ISharedSyntaxTree;
+  Resolver: TNameResolver;
+  Context: TPropertyFromAccessorsContext;
+  Answer: TJSONObject;
+  ReplaceCalls: Boolean;
+begin
+  // Argumente: URI, Position, Aufrufe umstellen (true/false).
+  if (AArguments = nil) or (AArguments.Count < 3) then
+    raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams, 'Argumente "uri", "position" und "calls" fehlen');
+  Uri := AArguments.Items[0].Value;
+  Position := TLspPositions.ReadPosition(AArguments.Items[1]);
+  ReplaceCalls := (AArguments.Items[2] is TJSONBool) and TJSONBool(AArguments.Items[2]).AsBoolean;
+  Settings := RefactoringSettingsFor(Uri);
+  if not Settings.PropertyFromAccessors then
+    raise EJsonRpcError.Create(TLspErrorCode.RequestFailed,
+      '"Property aus Getter und Setter" ist abgeschaltet (refactoring.propertyFromAccessors).');
+  if not FDocuments.TryGet(Uri, Document) then
+    raise EJsonRpcError.Create(TLspErrorCode.RequestFailed, 'Die Datei ist nicht geöffnet.');
+  Context := Default(TPropertyFromAccessorsContext);
+  Context.Index := FIndex;
+  Context.Options := PropertyOptionsOf(Settings);
+  if ReplaceCalls or (Context.Options.Hiding <> TAccessorHiding.Off) then
+  begin
+    Context.Files := ProjectSourceFiles;
+    Context.ReadText := ReadSourceText;
+  end;
+  Shared := TSyntaxTreeCache.Get(Document, nil);
+  Resolver := TNameResolver.Create(FIndex, EnsureUnit);
+  try
+    Resolver.Namespaces := FRename.Namespaces;
+    Answer := TLspPropertyFromAccessors.Execute(Resolver, Shared.Tree, TDocumentUris.ToPath(Uri), Document.Text,
+      Position, ReplaceCalls, Context);
+  finally
+    Resolver.Free;
+  end;
+  // Nur Zahlen ins Log, keine Namen und Pfade (#647).
+  FLogger.Info(Format('Property aus Getter und Setter: %d Properties, %d Aufrufe',
+    [(Answer.GetValue('properties') as TJSONNumber).AsInt, (Answer.GetValue('calls') as TJSONNumber).AsInt]));
+  Result := Answer;
 end;
 
 function TServerComposition.MoveClass(const AArguments: TJSONArray): TJSONValue;

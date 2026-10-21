@@ -187,6 +187,8 @@ contains
   Atlas.Common.Lsp.Refactorings in 'Source\Lsp\Atlas.Common.Lsp.Refactorings.pas',
   Atlas.Common.Editing.DeclareUnknown in 'Source\Editing\Atlas.Common.Editing.DeclareUnknown.pas',
   Atlas.Common.Editing.ForwardDeclarations in 'Source\Editing\Atlas.Common.Editing.ForwardDeclarations.pas',
+  Atlas.Common.Editing.PropertyFromAccessors in 'Source\Editing\Atlas.Common.Editing.PropertyFromAccessors.pas',
+  Atlas.Common.Lsp.PropertyFromAccessors in 'Source\Lsp\Atlas.Common.Lsp.PropertyFromAccessors.pas',
   Atlas.Common.Editing.InterfaceStubs in 'Source\Editing\Atlas.Common.Editing.InterfaceStubs.pas',
   Atlas.Common.Lsp.StringLiteralCommands in 'Source\Lsp\Atlas.Common.Lsp.StringLiteralCommands.pas',
   Atlas.Common.Lsp.SlashMenu in 'Source\Lsp\Atlas.Common.Lsp.SlashMenu.pas',

@@ -353,6 +353,16 @@ type
     CreateMethodCaretInBody: Boolean;
     /// <summary>Erzeugte Parameter für Strings, Records und Interfaces mit const (#472).</summary>
     ConstParameters: Boolean;
+    /// <summary>Code-Aktionen „Property X anlegen“ und „Fehlende Properties anlegen“ (#682).</summary>
+    PropertyFromAccessors: Boolean;
+    /// <summary>Präfixe der Zugriffsmethoden (#682).</summary>
+    PropertyFromAccessorsPrefixes: TArray<string>;
+    /// <summary>Aufrufe umstellen: ask, always oder never (#682).</summary>
+    PropertyFromAccessorsReplaceCalls: string;
+    /// <summary>Abschnitt der Property: accessor, public oder published (#682).</summary>
+    PropertyFromAccessorsSection: string;
+    /// <summary>Zugriffsmethoden verbergen: off, private oder protected (#682).</summary>
+    PropertyFromAccessorsHideAccessors: string;
     class function Default: TRefactoringSettings; static;
   end;
 
@@ -779,6 +789,11 @@ begin
   Result.CreateMethodSection := 'private';
   Result.CreateMethodCaretInBody := False;
   Result.ConstParameters := True;
+  Result.PropertyFromAccessors := True;
+  Result.PropertyFromAccessorsPrefixes := ['Get', 'Set', 'Is', 'Has'];
+  Result.PropertyFromAccessorsReplaceCalls := 'ask';
+  Result.PropertyFromAccessorsSection := 'accessor';
+  Result.PropertyFromAccessorsHideAccessors := 'off';
 end;
 
 { TCompletionSettings }

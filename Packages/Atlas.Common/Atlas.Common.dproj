@@ -331,6 +331,8 @@
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.Refactorings.pas"/>
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.DeclareUnknown.pas"/>
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.ForwardDeclarations.pas"/>
+        <DCCReference Include="Source\Editing\Atlas.Common.Editing.PropertyFromAccessors.pas"/>
+        <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.PropertyFromAccessors.pas"/>
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.InterfaceStubs.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.StringLiteralCommands.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.SlashMenu.pas"/>

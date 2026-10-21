@@ -178,6 +178,7 @@ uses
   Atlas.Core.Problems.InlineHints,
   Atlas.IDE.Editor.ChangeSignature,
   Atlas.IDE.Editor.MoveClass,
+  Atlas.IDE.Editor.PropertyFromAccessors,
   Atlas.IDE.Editor.EnterWatch,
   Atlas.IDE.Editor.PatternContinuation,
   Atlas.IDE.Editor.MultiCursor,
@@ -1260,6 +1261,17 @@ begin
   begin
     // Client-Befehl: Dialog „Signatur ändern“ (#100); er fragt den Server selbst.
     TAtlasIdeChangeSignature.Execute(Session, AArgumentsJson,
+      TAtlasUnopenedPolicies.FromSetting(TAtlasIdeSettings.Current.OpenForEdits),
+      procedure(AText: string)
+      begin
+        Say(AText);
+      end);
+    Exit;
+  end;
+  if ACommand = TAtlasIdePropertyFromAccessors.ClientCommand then
+  begin
+    // Client-Befehl: Vorschau „Property aus Getter und Setter“ (#682); er fragt den Server selbst.
+    TAtlasIdePropertyFromAccessors.Execute(Session, AArgumentsJson,
       TAtlasUnopenedPolicies.FromSetting(TAtlasIdeSettings.Current.OpenForEdits),
       procedure(AText: string)
       begin
