@@ -74,6 +74,9 @@ type
     class function RecursionMarkersOn: Boolean; static;
     /// <summary>editor.recursionMarkers.depth (#623).</summary>
     class function RecursionMarkersDepth: Integer; static;
+    /// <summary>Plugin eingeschaltet und Atlas-Spalte in der Zeilenleiste an (#768); ohne Kopie des
+    /// Einstellungsrecords.</summary>
+    class function GutterColumnOn: Boolean; static;
     /// <summary>Plugin eingeschaltet und Problem-Markierungen an; ohne Kopie des Einstellungsrecords (P-10).</summary>
     class function ProblemMarksOn: Boolean; static;
     /// <summary>Fehlertext am Zeilenende (#509); Off, wenn das Plugin oder die Problem-Markierungen aus sind.
@@ -350,6 +353,12 @@ class function TAtlasIdeSettings.RecursionMarkersOn: Boolean;
 begin
   EnsureLoaded;
   Result := FEffective.Enabled and FEffective.RecursionMarkers;
+end;
+
+class function TAtlasIdeSettings.GutterColumnOn: Boolean;
+begin
+  EnsureLoaded;
+  Result := FEffective.Enabled and FEffective.GutterColumn;
 end;
 
 class function TAtlasIdeSettings.RecursionMarkersDepth: Integer;

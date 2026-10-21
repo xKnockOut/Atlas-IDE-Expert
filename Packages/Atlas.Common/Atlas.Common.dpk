@@ -151,6 +151,7 @@ contains
   Atlas.Common.Rules.Builtin.Recursion in 'Source\Rules\Builtin\Atlas.Common.Rules.Builtin.Recursion.pas',
   Atlas.Common.Lsp.Todos in 'Source\Lsp\Atlas.Common.Lsp.Todos.pas',
   Atlas.Common.Lsp.Recursion in 'Source\Lsp\Atlas.Common.Lsp.Recursion.pas',
+  Atlas.Common.Lsp.OverrideMarks in 'Source\Lsp\Atlas.Common.Lsp.OverrideMarks.pas',
   Atlas.Common.Lsp.Baseline in 'Source\Lsp\Atlas.Common.Lsp.Baseline.pas',
   Atlas.Common.Lsp.SemanticTokens in 'Source\Lsp\Atlas.Common.Lsp.SemanticTokens.pas',
   Atlas.Common.Lsp.Commands in 'Source\Lsp\Atlas.Common.Lsp.Commands.pas',
