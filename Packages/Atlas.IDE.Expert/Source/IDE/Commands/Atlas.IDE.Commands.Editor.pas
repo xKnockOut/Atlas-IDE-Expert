@@ -179,6 +179,7 @@ uses
   Atlas.IDE.Editor.ChangeSignature,
   Atlas.IDE.Editor.MoveClass,
   Atlas.IDE.Editor.PropertyFromAccessors,
+  Atlas.IDE.Editor.InvertBoolean,
   Atlas.IDE.Editor.EnterWatch,
   Atlas.IDE.Editor.PatternContinuation,
   Atlas.IDE.Editor.MultiCursor,
@@ -1272,6 +1273,17 @@ begin
   begin
     // Client-Befehl: Vorschau „Property aus Getter und Setter“ (#682); er fragt den Server selbst.
     TAtlasIdePropertyFromAccessors.Execute(Session, AArgumentsJson,
+      TAtlasUnopenedPolicies.FromSetting(TAtlasIdeSettings.Current.OpenForEdits),
+      procedure(AText: string)
+      begin
+        Say(AText);
+      end);
+    Exit;
+  end;
+  if ACommand = TAtlasIdeInvertBoolean.ClientCommand then
+  begin
+    // Client-Befehl: Namen abfragen und „Boolean umkehren“ (#715); er fragt den Server selbst.
+    TAtlasIdeInvertBoolean.Execute(Session, AArgumentsJson,
       TAtlasUnopenedPolicies.FromSetting(TAtlasIdeSettings.Current.OpenForEdits),
       procedure(AText: string)
       begin
