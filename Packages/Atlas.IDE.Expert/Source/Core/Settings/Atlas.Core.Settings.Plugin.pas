@@ -624,6 +624,18 @@ type
     SelectionMatchesNavigateF3: Boolean;
     /// <summary>Höchstzahl der Treffer (#709).</summary>
     SelectionMatchesMaxMatches: Integer;
+    /// <summary>Blockkommentar umschalten (#703, keys.toggleBlockComment); aus = Kürzel frei.</summary>
+    ToggleBlockComment: Boolean;
+    /// <summary>Kürzel „Blockkommentar umschalten“ (#703); Vorgabe Umschalt+Alt+A.</summary>
+    ToggleBlockCommentKey: Integer;
+    /// <summary>Bevorzugte Form: "braces" ({ }) oder "parens" ((* *)) (#703).</summary>
+    ToggleBlockCommentStyle: string;
+    /// <summary>Wenn } und *) vorkommen: "lineComments" (// je Zeile) oder "refuse" (#703).</summary>
+    ToggleBlockCommentFallback: string;
+    /// <summary>Mehrzeilig: Kommentarzeichen in eigene Zeilen (#703).</summary>
+    ToggleBlockCommentOwnLines: Boolean;
+    /// <summary>Ohne Markierung: "statement" (Anweisung) oder "line" (Zeile) (#703).</summary>
+    ToggleBlockCommentWithoutSelection: string;
     /// <summary>Kürzel „Nächste Änderung“ (#507, keys.nextChange); Vorgabe Strg+Alt+Bild↓.</summary>
     NextChangeKey: Integer;
     /// <summary>Kürzel „Vorherige Änderung“ (#507, keys.previousChange); Vorgabe Strg+Alt+Bild↑.</summary>
@@ -1297,6 +1309,12 @@ begin
   Result.SelectionMatchesWholeWord := False;
   Result.SelectionMatchesNavigateF3 := True;
   Result.SelectionMatchesMaxMatches := 1000;
+  Result.ToggleBlockComment := True;
+  Result.ToggleBlockCommentKey := $A041; // Umschalt+Alt+A
+  Result.ToggleBlockCommentStyle := 'braces';
+  Result.ToggleBlockCommentFallback := 'lineComments';
+  Result.ToggleBlockCommentOwnLines := False;
+  Result.ToggleBlockCommentWithoutSelection := 'statement';
   // Strg+Alt+↑/↓ springt in RAD Studio schon zwischen Methoden.
   Result.NextChangeKey := $C022; // Strg+Alt+Bild↓
   Result.PreviousChangeKey := $C021; // Strg+Alt+Bild↑
@@ -1517,6 +1535,10 @@ begin
   SelectionMatchesMinLength := EnsureRange(SelectionMatchesMinLength, MinSelectionMatchLength,
     MaxSelectionMatchLength);
   SelectionMatchesMaxMatches := EnsureRange(SelectionMatchesMaxMatches, MinSelectionMatches, MaxSelectionMatches);
+  ToggleBlockCommentKey := EnsureRange(ToggleBlockCommentKey, 0, $FFFF);
+  ToggleBlockCommentStyle := Choice(ToggleBlockCommentStyle, ['braces', 'parens']);
+  ToggleBlockCommentFallback := Choice(ToggleBlockCommentFallback, ['lineComments', 'refuse']);
+  ToggleBlockCommentWithoutSelection := Choice(ToggleBlockCommentWithoutSelection, ['statement', 'line']);
   MinimapRender := Choice(MinimapRender, ['blocks', 'characters']);
   MinimapWidth := EnsureRange(MinimapWidth, MinMinimapWidth, MaxMinimapWidth);
   MinimapScale := EnsureRange(MinimapScale, MinMinimapScale, MaxMinimapScale);
@@ -1824,6 +1846,14 @@ begin
   SelectionMatchesNavigateF3 := AStore.ReadInteger('SelectionMatchesNavigateF3',
     BoolValue(Default.SelectionMatchesNavigateF3)) <> 0;
   SelectionMatchesMaxMatches := AStore.ReadInteger('SelectionMatchesMaxMatches', Default.SelectionMatchesMaxMatches);
+  ToggleBlockComment := AStore.ReadInteger('ToggleBlockComment', BoolValue(Default.ToggleBlockComment)) <> 0;
+  ToggleBlockCommentKey := AStore.ReadInteger('ToggleBlockCommentKey', Default.ToggleBlockCommentKey);
+  ToggleBlockCommentStyle := AStore.ReadString('ToggleBlockCommentStyle', Default.ToggleBlockCommentStyle);
+  ToggleBlockCommentFallback := AStore.ReadString('ToggleBlockCommentFallback', Default.ToggleBlockCommentFallback);
+  ToggleBlockCommentOwnLines := AStore.ReadInteger('ToggleBlockCommentOwnLines',
+    BoolValue(Default.ToggleBlockCommentOwnLines)) <> 0;
+  ToggleBlockCommentWithoutSelection := AStore.ReadString('ToggleBlockCommentWithoutSelection',
+    Default.ToggleBlockCommentWithoutSelection);
   NextChangeKey := AStore.ReadInteger('NextChangeKey', Default.NextChangeKey);
   PreviousChangeKey := AStore.ReadInteger('PreviousChangeKey', Default.PreviousChangeKey);
   OverviewRuler := AStore.ReadInteger('OverviewRuler', BoolValue(Default.OverviewRuler)) <> 0;
@@ -2169,6 +2199,12 @@ begin
   AStore.WriteInteger('SelectionMatchesWholeWord', BoolValue(SelectionMatchesWholeWord));
   AStore.WriteInteger('SelectionMatchesNavigateF3', BoolValue(SelectionMatchesNavigateF3));
   AStore.WriteInteger('SelectionMatchesMaxMatches', SelectionMatchesMaxMatches);
+  AStore.WriteInteger('ToggleBlockComment', BoolValue(ToggleBlockComment));
+  AStore.WriteInteger('ToggleBlockCommentKey', ToggleBlockCommentKey);
+  AStore.WriteString('ToggleBlockCommentStyle', ToggleBlockCommentStyle);
+  AStore.WriteString('ToggleBlockCommentFallback', ToggleBlockCommentFallback);
+  AStore.WriteInteger('ToggleBlockCommentOwnLines', BoolValue(ToggleBlockCommentOwnLines));
+  AStore.WriteString('ToggleBlockCommentWithoutSelection', ToggleBlockCommentWithoutSelection);
   AStore.WriteInteger('NextChangeKey', NextChangeKey);
   AStore.WriteInteger('PreviousChangeKey', PreviousChangeKey);
   AStore.WriteInteger('OverviewRuler', BoolValue(OverviewRuler));

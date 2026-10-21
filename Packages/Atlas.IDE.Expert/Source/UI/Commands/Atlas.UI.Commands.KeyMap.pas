@@ -322,6 +322,8 @@ begin
       Id := TAtlasTextId.MultiCursorBelowCommand;
     TAtlasKeyFunction.FormatCode:
       Id := TAtlasTextId.FormatCodeCommand;
+    TAtlasKeyFunction.ToggleBlockComment:
+      Id := TAtlasTextId.ToggleBlockCommentCommand;
   else
     Id := TAtlasTextId.KeyMapUnitSearchIde;
   end;

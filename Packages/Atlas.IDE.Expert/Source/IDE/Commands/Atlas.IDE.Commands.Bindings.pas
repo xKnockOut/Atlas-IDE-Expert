@@ -17,7 +17,8 @@
 // (#634, Alt+↑/↓ und Umschalt+Alt+↑/↓ mit Vorrang, nur solange keys.moveLines
 // an ist) sowie die Mehrfachmarken (#589, Strg+D, Alt+Umschalt+I,
 // Strg+Alt+↑/↓ mit Rückfall an die IDE, nur solange editor.multiCursor an
-// ist). Jede Taste wird wie
+// ist) und Blockkommentar umschalten (#703, Umschalt+Alt+A, nur solange
+// keys.toggleBlockComment an ist). Jede Taste wird wie
 // die der Befehlspalette vorher auf Konflikte geprüft (#494); ohne Vorrang
 // bleibt eine fremde Belegung aktiv. Nach geänderten Einstellungen meldet
 // Rebind die Bindung neu an. Der Befehl läuft nach der Tastenverarbeitung
@@ -105,7 +106,8 @@ uses
   Atlas.Core.Editor.LineMove,
   Atlas.IDE.Editor.LineMove,
   Atlas.IDE.Editor.StatementCompletion,
-  Atlas.IDE.Editor.MultiCursor;
+  Atlas.IDE.Editor.MultiCursor,
+  Atlas.IDE.Editor.BlockComment;
 
 /// <summary>Zeilen verschieben bzw. duplizieren (#634), gesichert.</summary>
 procedure RunLineMove(AKind: TAtlasLineMoveKind);
@@ -349,6 +351,17 @@ begin
       procedure
       begin
         TAtlasIdeEditorCommands.FormatCode;
+      end);
+  // Blockkommentar umschalten (#703): aus = Kürzel frei.
+  if Settings.ToggleBlockComment then
+    AddKey(Settings.ToggleBlockCommentKey, TAtlasStrings.Text(TAtlasTextId.ToggleBlockCommentCommand),
+      procedure
+      begin
+        TAtlasGuard.Run(TAtlasFeature.EditorCommands,
+          procedure
+          begin
+            TAtlasIdeBlockComment.Run;
+          end);
       end);
   // Units suchen (#777): aus = keine eigene Taste (die IDE behält Strg+F12 für ihren Dialog).
   if Settings.UnitSearchEnabled then

@@ -70,6 +70,9 @@ type
     /// <summary>Gleichen Text hervorheben (#709): Vorgaben, Grenzen, Speichern und Laden.</summary>
     [Test]
     procedure SelectionMatchesOptions;
+    /// <summary>Blockkommentar umschalten (#703): Vorgaben, Auswahlwerte normalisiert, Speichern und Laden.</summary>
+    [Test]
+    procedure ToggleBlockCommentOptions;
     /// <summary>Übersichtsleiste (#519): Vorgaben, Arten normalisiert, Speichern und Laden.</summary>
     [Test]
     procedure OverviewRulerOptions;
@@ -1594,6 +1597,44 @@ begin
   Loaded.Normalize;
   Assert.AreEqual(TAtlasPluginSettings.MaxSelectionMatchLength, Loaded.SelectionMatchesMinLength);
   Assert.AreEqual(TAtlasPluginSettings.MaxSelectionMatches, Loaded.SelectionMatchesMaxMatches);
+end;
+
+procedure TAtlasPluginSettingsTests.ToggleBlockCommentOptions;
+var
+  Settings, Loaded: TAtlasPluginSettings;
+  Store: IAtlasSettingsStore;
+begin
+  Settings := TAtlasPluginSettings.Defaults;
+  Assert.IsTrue(Settings.ToggleBlockComment);
+  Assert.AreEqual($A041, Settings.ToggleBlockCommentKey, 'Umschalt+Alt+A');
+  Assert.AreEqual('braces', Settings.ToggleBlockCommentStyle);
+  Assert.AreEqual('lineComments', Settings.ToggleBlockCommentFallback);
+  Assert.IsFalse(Settings.ToggleBlockCommentOwnLines);
+  Assert.AreEqual('statement', Settings.ToggleBlockCommentWithoutSelection);
+  Settings.ToggleBlockComment := False;
+  Settings.ToggleBlockCommentKey := 0;
+  Settings.ToggleBlockCommentStyle := 'parens';
+  Settings.ToggleBlockCommentFallback := 'refuse';
+  Settings.ToggleBlockCommentOwnLines := True;
+  Settings.ToggleBlockCommentWithoutSelection := 'line';
+  Store := TMemoryStore.Create;
+  Settings.Save(Store);
+  Loaded := TAtlasPluginSettings.Defaults;
+  Loaded.Load(Store);
+  Assert.IsFalse(Loaded.ToggleBlockComment);
+  Assert.AreEqual(0, Loaded.ToggleBlockCommentKey);
+  Assert.AreEqual('parens', Loaded.ToggleBlockCommentStyle);
+  Assert.AreEqual('refuse', Loaded.ToggleBlockCommentFallback);
+  Assert.IsTrue(Loaded.ToggleBlockCommentOwnLines);
+  Assert.AreEqual('line', Loaded.ToggleBlockCommentWithoutSelection);
+  // Unbekannte Werte fallen auf die Vorgabe zurück.
+  Loaded.ToggleBlockCommentStyle := 'eckig';
+  Loaded.ToggleBlockCommentFallback := '';
+  Loaded.ToggleBlockCommentWithoutSelection := 'block';
+  Loaded.Normalize;
+  Assert.AreEqual('braces', Loaded.ToggleBlockCommentStyle);
+  Assert.AreEqual('lineComments', Loaded.ToggleBlockCommentFallback);
+  Assert.AreEqual('statement', Loaded.ToggleBlockCommentWithoutSelection);
 end;
 
 procedure TAtlasPluginSettingsTests.GitChangeOptions;
