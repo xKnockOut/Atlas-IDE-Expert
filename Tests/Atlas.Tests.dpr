@@ -366,6 +366,7 @@ uses
   Atlas.Core.Completion.Preview in '..\Packages\Atlas.IDE.Expert\Source\Core\Completion\Atlas.Core.Completion.Preview.pas',
   Atlas.UI.Settings.Page in '..\Packages\Atlas.IDE.Expert\Source\UI\Settings\Atlas.UI.Settings.Page.pas',
   Atlas.UI.Settings.Marks in '..\Packages\Atlas.IDE.Expert\Source\UI\Settings\Atlas.UI.Settings.Marks.pas',
+  Atlas.UI.Settings.Group in '..\Packages\Atlas.IDE.Expert\Source\UI\Settings\Atlas.UI.Settings.Group.pas',
   Atlas.UI.Settings.Transfer in '..\Packages\Atlas.IDE.Expert\Source\UI\Settings\Atlas.UI.Settings.Transfer.pas',
   Atlas.UI.Settings.Transfer.Tests in 'IDE.Expert\Atlas.UI.Settings.Transfer.Tests.pas',
   Atlas.UI.Settings.SnippetsPage in '..\Packages\Atlas.IDE.Expert\Source\UI\Settings\Atlas.UI.Settings.SnippetsPage.pas',

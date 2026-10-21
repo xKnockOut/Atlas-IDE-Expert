@@ -2494,3 +2494,27 @@ Vorher: `Atlas.groupproj` in der IDE mit installiertem Atlas, Diagnosemodus aus.
 | EN3 | Protokoll nach EN1 | Keine Zeile „Code-Insight-Manager wird nach dem Abmelden noch … gehalten“; falls doch, Zahl notieren |
 | EN4 | EN1 zehnmal hintereinander (`repro.ps1`) | Zehnmal ohne Absturz und ohne Hänger, jedes Mal EN2 |
 | EN5 | Während des Gruppen-Builds Atlas › Fehlerbericht bzw. Optionen › Atlas offen haben, dann EN1 | Wie EN1; keine Antwort des Servers landet nach dem Neuladen in der alten Seite |
+
+## Optionsseite als Baum mit Gruppen (#890)
+
+Vorher: Tools › Optionen › Atlas, Vorgaben geladen, „Experimentelle Funktionen erlauben“ aus. Hell und dunkel sowie 100 % und 150 % prüfen.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| OG1 | Optionsseite öffnen | Links ein Baum: Bereiche oben (Allgemein, Vervollständigung, Editor …), Funktionen als Unterpunkte; „Allgemein“ gewählt, sein Bereich aufgeklappt |
+| OG2 | „Editor“ wählen | Rechts die allgemeinen Optionen des Bereichs, darunter der Rahmen „Funktionen in diesem Bereich“ mit je einem Hauptschalter und „Details“ |
+| OG3 | In der Übersicht bei „Minikarte“ auf „Details“ | Der Unterpunkt „Minikarte“ ist im Baum gewählt, rechts nur deren Rahmen |
+| OG4 | Rahmen der Minikarte ansehen | Oben der Hauptschalter, darunter „gesperrt: Experimentelle Funktionen sind aus“, die Unteroptionen eingerückt und grau; der Knoten im Baum ist grau |
+| OG5 | Unter Allgemein „Experimentelle Funktionen erlauben“ an, zurück zur Minikarte | Hauptschalter bedienbar, Grund verschwindet; Unteroptionen noch gesperrt, solange die Minikarte aus ist |
+| OG6 | Minikarte an, Breite ändern, Minikarte aus, OK, Seite neu öffnen | Breite bleibt gespeichert, die Felder sind gesperrt, nicht leer |
+| OG7 | Bei „Klammerfarben“ den Hauptschalter aus | Blocklinien, Besitzer, Breite und Deckkraft gesperrt (Kontrollkästchen, Auswahl, Textfelder); auf der Seite „Farben“ steht oben „gesperrt: „Klammerfarben“ (Editor › Klammerfarben) ist aus“, die Farbflächen und „Standardfarben“ sind gesperrt |
+| OG8 | Unter Allgemein „Atlas-Code-Insight“ aus | Rahmen wie „Mitlaufender Kopf“, „Code Lens“ und „Klammerfarben“ zeigen den Grund mit dem Ort des Schalters; ihre Hauptschalter sind gesperrt |
+| OG9 | Hauptschalter in der Übersicht von „Editor“ umschalten | Der Schalter im Unterpunkt folgt und umgekehrt; gesperrte Schalter sind auch in der Übersicht gesperrt |
+| OG10 | Filter „Geändert“ nach OG7 | Nur Knoten mit geänderten Werten bleiben im Baum; Rahmen und Hauptschalter bleiben sichtbar; Punkt ● vor geänderten Knoten |
+| OG11 | Filter „Nur experimentelle“ | Nur Bereiche und Unterpunkte mit experimentellen Einstellungen; „Alle“ stellt den ganzen Baum wieder her |
+| OG12 | Unterpunkt „Minikarte“, Rechtsklick › „Seite zurücksetzen“ | Nur die Minikarte steht auf der Vorgabe; auf „Editor“ (Hauptknoten) setzt es den ganzen Bereich zurück |
+| OG13 | Statusfeld › Einstellung zeigen (#628) für „Blocklinien“ bei ausgeschalteten Klammerfarben | Knoten „Klammerfarben“ gewählt, der Hauptschalter fett und im Fokus |
+| OG14 | Einen Unterpunkt wählen, „Editor“ zuklappen, Dialog schließen, wieder öffnen | Derselbe Unterpunkt gewählt, sein Bereich aufgeklappt; zugeklappte Bereiche bleiben zu |
+| OG15 | Tastatur im Baum: ↑ ↓ ← → + − Pos1 Ende | Wie im Baum der IDE-Optionen; die rechte Seite wechselt mit |
+| OG16 | Schnellschalter im Statusfeld (#604) für die Minikarte | Wirkt wie bisher; die Optionsseite zeigt danach den neuen Stand samt Sperren |
+| OG17 | „Favoriten“ (Vervollständigung) aus | Liste und Knöpfe der Favoriten gesperrt, die Einträge bleiben |

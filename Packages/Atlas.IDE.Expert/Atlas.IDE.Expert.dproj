@@ -190,6 +190,7 @@
         <DCCReference Include="Source\Core\Settings\Atlas.Core.Settings.Plugin.pas"/>
         <DCCReference Include="Source\UI\Settings\Atlas.UI.Settings.Page.pas">
         <DCCReference Include="Source\UI\Settings\Atlas.UI.Settings.Marks.pas"/>
+        <DCCReference Include="Source\UI\Settings\Atlas.UI.Settings.Group.pas"/>
         <DCCReference Include="Source\UI\Settings\Atlas.UI.Settings.Transfer.pas"/>
             <Form>AtlasSettingsPage</Form>
             <FormType>dfm</FormType>
