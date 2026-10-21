@@ -41,6 +41,8 @@ type
     [Test]
     procedure RoutineNameFromHeader;
     [Test]
+    procedure FollowSelectionTakesOtherMarkedText;
+    [Test]
     procedure KeysComeFromSettingsAndFollowTheSwitch;
     [Test]
     procedure SettingsDefaultsAndRoundTrip;
@@ -307,6 +309,47 @@ begin
   Assert.AreEqual('TFoo.Create', TAtlasSearchResults.RoutineName('constructor TFoo.Create(AOwner: TComponent);'));
   Assert.AreEqual('Inner', TAtlasSearchResults.RoutineName('  procedure Inner'));
   Assert.AreEqual('begin', TAtlasSearchResults.RoutineName('begin'), 'ohne Namen bleibt die Zeile');
+end;
+
+procedure TAtlasSearchTests.FollowSelectionTakesOtherMarkedText;
+var
+  Last, Query: TAtlasSearchQuery;
+  Changed: Boolean;
+begin
+  Last := Default(TAtlasSearchQuery);
+  Last.Text := 'Open';
+  Last.Options := TAtlasSearchOptions.Create(False, True, True);
+  Last.Scope := TAtlasSearchScope.Method;
+  Last.Area := TAtlasSearchArea.Create(1, 0, 4, 0);
+  // Markierung auf einem Treffer der letzten Suche: weitersuchen.
+  Query := TAtlasSearchResults.FollowSelection(Last, 'open', Changed);
+  Assert.IsFalse(Changed, 'Bezeichner-Modus ohne Groß-/Kleinschreibung');
+  Assert.AreEqual('Open', Query.Text);
+  Assert.AreEqual(1, Query.Area.Start.Line, 'Bereich bleibt');
+  // Anderer Bezeichner, etwa außerhalb jeder Methode markiert.
+  Query := TAtlasSearchResults.FollowSelection(Last, 'TFormMain', Changed);
+  Assert.IsTrue(Changed);
+  Assert.AreEqual('TFormMain', Query.Text);
+  Assert.AreEqual(Ord(TAtlasSearchScope.Method), Ord(Query.Scope), 'Bereich wählt TryNext');
+  Assert.IsTrue(Query.Area.IsEmpty, 'kein gemerkter Bereich');
+  Assert.IsTrue(Query.Options.Identifier);
+  Assert.IsTrue(Query.Options.WholeWord);
+  // Kein Bezeichner: Textsuche; Bereich Auswahl wird Unit.
+  Last.Scope := TAtlasSearchScope.Selection;
+  Query := TAtlasSearchResults.FollowSelection(Last, 'Self.Close', Changed);
+  Assert.IsTrue(Changed);
+  Assert.IsFalse(Query.Options.Identifier);
+  Assert.AreEqual(Ord(TAtlasSearchScope.UnitFile), Ord(Query.Scope));
+  // Groß-/Kleinschreibung zählt nur in der Textsuche mit Groß/klein.
+  Last.Options := TAtlasSearchOptions.Create(True, False, False);
+  TAtlasSearchResults.FollowSelection(Last, 'open', Changed);
+  Assert.IsTrue(Changed);
+  // Leer oder mehrzeilig: nichts.
+  Query := TAtlasSearchResults.FollowSelection(Last, '', Changed);
+  Assert.IsFalse(Changed);
+  Query := TAtlasSearchResults.FollowSelection(Last, 'a'#13#10'b', Changed);
+  Assert.IsFalse(Changed);
+  Assert.AreEqual('Open', Query.Text);
 end;
 
 procedure TAtlasSearchTests.KeysComeFromSettingsAndFollowTheSwitch;

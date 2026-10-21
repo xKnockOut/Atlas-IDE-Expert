@@ -19,7 +19,9 @@
 //   nächster bzw. voriger Treffer der letzten Suche mit Umlauf (Meldung in
 //   der Meldungsansicht), auch bei geschlossener Leiste. Ohne letzte Suche
 //   False: die Taste geht weiter (Markierung suchen bzw. „Erneut suchen“ der
-//   IDE).
+//   IDE). Ist ein anderer Text einzeilig markiert als zuletzt gesucht, sucht
+//   F3 nach der Markierung. Bei Bereich Methode und Cursor außerhalb jeder
+//   Routine sucht F3 in der ganzen Unit (Meldung).
 // - Esc bzw. × schließt die Leiste, gibt den Fokus an den Editor zurück und
 //   beendet die Hervorhebung; F3 sucht weiter mit der letzten Suche.
 // Tasten: Strg+F/F3/Umschalt+F3 nur mit search.replaceIdeSearch
@@ -797,7 +799,7 @@ var
   Hits: TArray<TAtlasSearchHit>;
   From: TAtlasSearchPos;
   Index: Integer;
-  Wrapped: Boolean;
+  Wrapped, HasSelection, Changed: Boolean;
 begin
   Result := False;
   if FLast.IsEmpty or not TopView(View) then
@@ -808,13 +810,31 @@ begin
   Text := TAtlasEditorBuffer.Text(View.Buffer);
   Lines := TTextLines.SplitLines(Text);
   From := CursorOf(View, Lines);
+  HasSelection := SelectionOf(View, Lines, Selection);
+  // Anderer Text markiert als zuletzt gesucht: nach der Markierung suchen.
+  if HasSelection and (Selection.Start.Line = Selection.Stop.Line) and (Selection.Start.Line <= High(Lines)) then
+  begin
+    FLast := TAtlasSearchResults.FollowSelection(FLast, Copy(Lines[Selection.Start.Line],
+      Selection.Start.Character + 1, Selection.Stop.Character - Selection.Start.Character), Changed);
+    if Changed then
+    begin
+      FLast.FileName := View.Buffer.FileName;
+      Repaint;
+    end;
+  end;
   // Vorwärts ab dem Ende der Markierung (dem Cursor), rückwärts ab ihrem Anfang.
-  if ABackward and SelectionOf(View, Lines, Selection) then
+  if ABackward and HasSelection then
     From := Selection.Start;
   if not AreaOf(Text, FLast, From, Area) then
   begin
-    Say(TAtlasStrings.Text(TAtlasTextId.SearchNoMethod));
-    Exit(True);
+    if FLast.Scope <> TAtlasSearchScope.Method then
+    begin
+      Say(TAtlasStrings.Text(TAtlasTextId.SearchNoSelection));
+      Exit(True);
+    end;
+    // Außerhalb jeder Routine: die ganze Unit statt gar nichts.
+    Say(TAtlasStrings.Text(TAtlasTextId.SearchOutsideMethod));
+    Area := TAtlasSearchArea.Whole(Lines);
   end;
   Hits := TAtlasTextSearch.FindAll(Lines, FLast.Text, FLast.Options, Area);
   Result := True;
