@@ -326,6 +326,10 @@ type
     function PropertyFromAccessorsActions(const AUri: string; const APosition: TTextPosition): TArray<TJSONObject>;
     /// <summary>„Property aus Getter und Setter“ (#682): das WorkspaceEdit für Stelle und Aufrufe.</summary>
     function PropertyFromAccessors(const AArguments: TJSONArray): TJSONValue;
+    /// <summary>„Bedeutung umkehren“ an APosition (#715).</summary>
+    function InvertBooleanActions(const AUri: string; const APosition: TTextPosition): TArray<TJSONObject>;
+    /// <summary>„Boolean umkehren“ (#715): das WorkspaceEdit für alle Stellen.</summary>
+    function InvertBoolean(const AArguments: TJSONArray): TJSONValue;
     /// <summary>„Typ ausschreiben“ (#453) für die Inline-Variable an APosition.</summary>
     function ExplicitTypeActions(const AUri: string; const APosition: TTextPosition): TArray<TJSONObject>;
     /// <summary>Extrahieren, „case vervollständigen“ und „with auflösen“ (#50).</summary>
@@ -478,6 +482,7 @@ uses
   Atlas.Common.Lsp.MoveClass,
   Atlas.Common.Editing.PropertyFromAccessors,
   Atlas.Common.Lsp.PropertyFromAccessors,
+  Atlas.Common.Lsp.InvertBoolean,
   Atlas.Common.Lsp.UnitRename,
   Atlas.Common.Lsp.SmartPaste,
   Atlas.Common.Editing.SmartPaste,
@@ -1336,6 +1341,7 @@ begin
       Result := Result + ChangeSignatureActions(AUri, ARange.StartPos);
       Result := Result + MoveClassActions(AUri, ARange.StartPos);
       Result := Result + PropertyFromAccessorsActions(AUri, ARange.StartPos);
+      Result := Result + InvertBooleanActions(AUri, ARange.StartPos);
       Result := Result + ExplicitTypeActions(AUri, ARange.StartPos);
       Result := Result + RefactoringActions(AUri, ARange);
     end;
@@ -1402,6 +1408,11 @@ begin
     function(const AArguments: TJSONArray): TJSONValue
     begin
       Result := PropertyFromAccessors(AArguments);
+    end);
+  FCommands.Register(TLspInvertBoolean.ApplyCommand,
+    function(const AArguments: TJSONArray): TJSONValue
+    begin
+      Result := InvertBoolean(AArguments);
     end);
   FCommands.Register(TLspUnitRename.Command,
     function(const AArguments: TJSONArray): TJSONValue
@@ -2982,6 +2993,84 @@ begin
   // Nur Zahlen ins Log, keine Namen und Pfade (#647).
   FLogger.Info(Format('Property aus Getter und Setter: %d Properties, %d Aufrufe',
     [(Answer.GetValue('properties') as TJSONNumber).AsInt, (Answer.GetValue('calls') as TJSONNumber).AsInt]));
+  Result := Answer;
+end;
+
+function InvertBooleanContextOf(const ASettings: TRefactoringSettings): TInvertBooleanContext;
+begin
+  Result := Default(TInvertBooleanContext);
+  Result.Antonyms := ASettings.InvertBooleanAntonyms;
+  Result.Prefix := ASettings.InvertBooleanFallbackPrefix;
+  Result.IncludeDfm := ASettings.InvertBooleanIncludeDfm;
+end;
+
+function TServerComposition.InvertBooleanActions(const AUri: string;
+  const APosition: TTextPosition): TArray<TJSONObject>;
+var
+  Settings: TRefactoringSettings;
+  Document: ITextDocument;
+  Shared: ISharedSyntaxTree;
+  Resolver: TNameResolver;
+  Context: TInvertBooleanContext;
+begin
+  Result := nil;
+  Settings := RefactoringSettingsFor(AUri);
+  if not Settings.InvertBoolean or not FDocuments.TryGet(AUri, Document) or
+    not SameText(ExtractFileExt(TDocumentUris.ToPath(AUri)), '.pas') then
+    Exit;
+  Context := InvertBooleanContextOf(Settings);
+  Context.Index := FIndex;
+  Context.Files := ProjectSourceFiles;
+  Shared := TSyntaxTreeCache.Get(Document, nil);
+  Resolver := TNameResolver.Create(FIndex, EnsureUnit);
+  try
+    Resolver.Namespaces := FRename.Namespaces;
+    Result := TLspInvertBoolean.Actions(True, Resolver, Shared.Tree, TDocumentUris.ToPath(AUri), AUri, APosition,
+      Context);
+  finally
+    Resolver.Free;
+  end;
+end;
+
+function TServerComposition.InvertBoolean(const AArguments: TJSONArray): TJSONValue;
+var
+  Uri: string;
+  Position: TTextPosition;
+  Settings: TRefactoringSettings;
+  Document: ITextDocument;
+  Shared: ISharedSyntaxTree;
+  Resolver: TNameResolver;
+  Context: TInvertBooleanContext;
+  Answer: TJSONObject;
+begin
+  // Argumente: URI, Position, neuer Name.
+  if (AArguments = nil) or (AArguments.Count < 3) then
+    raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams, 'Argumente "uri", "position" und "name" fehlen');
+  Uri := AArguments.Items[0].Value;
+  Position := TLspPositions.ReadPosition(AArguments.Items[1]);
+  Settings := RefactoringSettingsFor(Uri);
+  if not Settings.InvertBoolean then
+    raise EJsonRpcError.Create(TLspErrorCode.RequestFailed,
+      '"Boolean umkehren" ist abgeschaltet (refactoring.invertBoolean).');
+  if not FDocuments.TryGet(Uri, Document) then
+    raise EJsonRpcError.Create(TLspErrorCode.RequestFailed, 'Die Datei ist nicht geöffnet.');
+  Context := InvertBooleanContextOf(Settings);
+  Context.Index := FIndex;
+  Context.Files := ProjectSourceFiles;
+  Context.ReadText := ReadSourceText;
+  Shared := TSyntaxTreeCache.Get(Document, nil);
+  Resolver := TNameResolver.Create(FIndex, EnsureUnit);
+  try
+    Resolver.Namespaces := FRename.Namespaces;
+    Answer := TLspInvertBoolean.Execute(Resolver, Shared.Tree, TDocumentUris.ToPath(Uri), Document.Text, Position,
+      Trim(AArguments.Items[2].Value), Context);
+  finally
+    Resolver.Free;
+  end;
+  // Nur Zahlen ins Log, keine Namen und Pfade (#647).
+  FLogger.Info(Format('Boolean umkehren: %d Stellen in %d Dateien, %d Warnungen',
+    [(Answer.GetValue('places') as TJSONNumber).AsInt, (Answer.GetValue('files') as TJSONNumber).AsInt,
+    (Answer.GetValue('warnings') as TJSONArray).Count]));
   Result := Answer;
 end;
 

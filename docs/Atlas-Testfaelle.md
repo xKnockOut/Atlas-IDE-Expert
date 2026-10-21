@@ -2813,6 +2813,24 @@ Voraussetzung: Server läuft; Einstellungen auf Vorgabe; Unit mit `TOrderList = 
 | FF12 | Generische Klasse `TCache<T>` | Rumpf heißt `destructor TCache<T>.Destroy;` und kompiliert |
 | FF13 | `"refactoring": {"freeFields": false}` in atlas.json | Keine Meldungen und keine der Aktionen mehr (**Abnahme**) |
 
+## Boolean umkehren (#715)
+
+Voraussetzung: Server läuft; Einstellungen auf Vorgabe; Unit mit `TPanelHost = class private FHidden: Boolean; … end;`, im Code `FHidden := False;`, `if not FHidden then` und `Panel.Visible := not FHidden;`.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| IB1 | Strg+. auf `FHidden` | „Bedeutung umkehren (FHidden → FVisible)“ |
+| IB2 | Aktion wählen, Namen `FVisible` bestätigen | Vorschau wie beim Umbenennen: `FVisible := True;`, `if FVisible then`, `Panel.Visible := FVisible;`; Übernehmen ändert alles, Strg+Z nimmt es je Datei in einem Schritt zurück; kompiliert (**Abnahme**) |
+| IB3 | Bedingungen `if X = False`, `if not (X and Z)`, `X := A and B` | `if Y`, `if Y or not Z`, `Y := not (A and B)` |
+| IB4 | Boolean-Funktion `function IsEmpty: Boolean; virtual;` mit Überschreibung in einer Nachfahrklasse, Strg+. auf `IsEmpty` | Name `HasItems` in beiden Klassen; `Result := True` wird `Result := False`, `Exit(X)` wird `Exit(not X)`, `if Obj.IsEmpty` wird `if not Obj.HasItems` (**Abnahme**) |
+| IB5 | Published Property `property Hidden: Boolean read FHidden write SetHidden default False;`, im Formular `Hidden = True` | Property `Visible … default True`, Feld `FVisible`, Setter `SetVisible` mit umgekehrtem Wert; Aufrufer `SetHidden(A)` → `SetVisible(not A)`; im Konstruktor `FVisible := True;`; im .dfm `Visible = False`; Warnung „published“ (**Abnahme**) |
+| IB6 | Wie IB5 mit `"refactoring": {"invertBooleanIncludeDfm": false}` | .dfm bleibt, Vorschau warnt |
+| IB7 | Parameter `procedure Show(AQuick: Boolean = False)`, Strg+. auf `AQuick`, Name `ASlow` | Kopf `Show(ASlow: Boolean = True)`, im Rumpf verneint, Aufruf `Show(True)` → `Show(False)`, `Show;` bleibt |
+| IB8 | `Toggle(FHidden)` mit `procedure Toggle(var B: Boolean)` | Nur umbenannt, Warnung „var- oder out-Parameter“ |
+| IB9 | Strg+. auf einem Feld, das `property … read FHidden` liest | Meldung „… ist Zugriff der Property …. Bitte die Property umkehren.“ |
+| IB10 | `"refactoring": {"invertBooleanAntonyms": {"Verbose": "Silent"}}`, Strg+. auf `FVerbose` | „Bedeutung umkehren (FVerbose → FSilent)“ (**Abnahme**) |
+| IB11 | `"refactoring": {"invertBoolean": false}` in atlas.json | Keine Aktion „Bedeutung umkehren“ mehr (**Abnahme**) |
+
 ## Forward-Deklaration ergänzen (#685)
 
 Voraussetzung: Server läuft; Einstellungen auf Vorgabe; neue Unit `Tree.pas`.

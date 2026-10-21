@@ -1154,6 +1154,36 @@ begin
         else
           ReportNode(ANode[Index], '"refactoring.freeFieldsStyle" muss "free" oder "freeAndNil" sein');
     end
+    else if Key = 'invertBoolean' then
+      ExpectBoolean(ANode[Index], Key, FSettings.Refactoring.InvertBoolean)
+    else if Key = 'invertBooleanAntonyms' then
+    begin
+      // {"Hidden": "Visible"}: Name → Gegenteil, beide Richtungen.
+      if ANode[Index].Kind <> TJsonKind.Object_ then
+        ReportNode(ANode[Index], '"refactoring.invertBooleanAntonyms" muss ein Objekt wie {"Hidden": "Visible"} sein')
+      else
+      begin
+        FSettings.Refactoring.InvertBooleanAntonyms := nil;
+        for Item := 0 to ANode[Index].Count - 1 do
+          if ExpectString(ANode[Index][Item], Key, Value) then
+            if IsValidIdent(ANode[Index].Keys[Item]) and IsValidIdent(Trim(Value)) then
+              FSettings.Refactoring.InvertBooleanAntonyms := FSettings.Refactoring.InvertBooleanAntonyms +
+                [ANode[Index].Keys[Item] + '=' + Trim(Value)]
+            else
+              ReportNode(ANode[Index][Item], Format('"refactoring.invertBooleanAntonyms": "%s" und "%s" müssen ' +
+                'Bezeichner sein', [ANode[Index].Keys[Item], Value]));
+      end;
+    end
+    else if Key = 'invertBooleanFallbackPrefix' then
+    begin
+      if ExpectString(ANode[Index], Key, Value) then
+        if IsValidIdent(Trim(Value)) then
+          FSettings.Refactoring.InvertBooleanFallbackPrefix := Trim(Value)
+        else
+          ReportNode(ANode[Index], '"refactoring.invertBooleanFallbackPrefix" muss ein Bezeichner wie "Not" sein');
+    end
+    else if Key = 'invertBooleanIncludeDfm' then
+      ExpectBoolean(ANode[Index], Key, FSettings.Refactoring.InvertBooleanIncludeDfm)
     else
       Report(ANode.KeyStarts[Index], ANode.KeyStarts[Index] + Length(Key) + 2,
         Format('Unbekannte Einstellung "refactoring.%s"', [Key]), False);
