@@ -785,6 +785,8 @@ begin
         Result := Settings.SlashTodoCategory
       else if AName = TSlashSettings.SortUsesRemoveUnused then
         Result := LowerCase(BoolToStr(Settings.SlashSortUsesRemoveUnused, True))
+      else if AName = TSlashSettings.EnumHelper then
+        Result := LowerCase(BoolToStr(Settings.SlashEnumHelper, True))
       else if AName = TSlashSettings.ComponentPalette then
         Result := Settings.SlashComponentPalette
       else if AName = TSlashSettings.InterfaceSection then
