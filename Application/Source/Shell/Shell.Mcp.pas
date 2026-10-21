@@ -627,7 +627,7 @@ begin
       if Length(Files) = 0 then
         raise EMcpToolError.Create('Kein Projekt geladen; Datei angeben');
       Result := TMcpCodeTools.Diagnostics(BuiltinRules, AWorkspace.Configuration.Settings, ARoot, Files,
-        ReadSourceText);
+        ReadSourceText, AWorkspace.CheckSource);
     end);
   AServer.AddTool('get_metrics',
     'Code-Metriken (#66) je Methode: Länge in Codezeilen, Verschachtelungstiefe, zyklomatische und kognitive ' +
@@ -765,7 +765,8 @@ begin
       Result := '';
       Catalog := TFindingPrompt.GermanCatalog;
       try
-        for Finding in TFileChecker.CheckText(BuiltinRules, AWorkspace.Configuration.Settings, RelativePath, Text) do
+        for Finding in TFileChecker.CheckText(BuiltinRules, AWorkspace.Configuration.Settings, RelativePath, Text,
+          AWorkspace.CheckSource(FileName)) do
           if (Finding.Range.StartPos.Line = Line - 1) and ((RuleId = '') or SameText(RuleId, Finding.RuleId)) then
           begin
             if Result <> '' then
@@ -970,6 +971,9 @@ begin
       Result := EnsureAny(AUnitName);
     end);
   Edit.DirtyFiles := EditorDirtyFiles;
+  // Regelprüfung mit den Symbolen und Include-Dateien des Projekts (#860).
+  Edit.CheckSource := Workspace.CheckSource;
+  Code.CheckSource := Workspace.CheckSource;
   Edit.Audit :=
     procedure(const AText: string)
     begin

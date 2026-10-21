@@ -2905,6 +2905,21 @@ Voraussetzung: Einstellungen auf Vorgabe (Blockeinzug 2); Methode mit `if … th
 | NZ11 | Tasten unter Optionen › Befehle › Neue Zeile ober-/unterhalb ändern | Die neuen Tasten wirken, die Tastenübersicht prüft Konflikte |
 | NZ12 | „Neue Zeile ober-/unterhalb“ aus | Umschalt+Enter und Strg+Alt+Enter verhalten sich wie ohne Atlas, die Befehle fehlen in der Palette (**Abnahme**) |
 
+## Defines aus Include-Dateien (#860)
+
+Voraussetzung: Einstellungen auf Vorgabe; Projekt mit `defs.inc` (`{$DEFINE FOO}{$DEFINE BAR}`) im Ordner der Unit und einer Unit mit `{$I defs.inc}` und danach `{$IFDEF FOO} … {$ENDIF}`, `{$IFNDEF FOO} … {$ENDIF}`, `{$IFDEF BAR} … {$ENDIF}`.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| ID1 | Unit öffnen | Der FOO-Zweig ist aktiv, der IFNDEF-Zweig abgeblendet mit „Inaktiv: Bedingung not FOO nicht erfüllt“ (**Abnahme**) |
+| ID2 | Im FOO-Zweig eine Methode deklarieren, Gliederung und Strg+Klick | Die Methode steht in der Gliederung, Gehe zu findet sie (**Abnahme**) |
+| ID3 | `{$DEFINE FOO}` in `defs.inc` löschen und speichern | Abblenden und Gliederung drehen sich ohne Neuöffnen der Unit um |
+| ID4 | `{$I fehlt.inc}` einfügen | Hinweis „Include-Datei "fehlt.inc" nicht gefunden“ |
+| ID5 | Inlay Hints einschalten | Hinter `{$I defs.inc}` steht „definiert FOO, BAR“ |
+| ID6 | Optionen › Editor › Inlay-Hints › Include-Symbole aus | Die Marke verschwindet, die anderen Inlay Hints bleiben |
+| ID7 | Hover auf `FOO` in `{$IFDEF FOO}` | Nennt `defs.inc`, Zeile, und am Ende „Projekt: Win64 · Debug“ (bzw. die aktive Plattform und Konfiguration) |
+| ID8 | `check_code` und Linter auf die Unit mit einer Regelverletzung nur im FOO-Zweig | Die Meldung erscheint; im IFNDEF-Zweig nicht (**Abnahme**) |
+
 ## Kleinere Sprachlücken (#849)
 
 Voraussetzung: Einstellungen auf Vorgabe; Quellen aus `planung/parser-luecken-faelle/` (Fälle 05, 07, 08, 09 mit `members.inc`, 12) bzw. kleine Units mit den genannten Zeilen.

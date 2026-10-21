@@ -217,6 +217,9 @@ type
     /// <summary>Abgeleiteter Typ von var X := …, const X = … und for var X in … als Marke (#453,
     /// inlayHints.inferredTypes); unabhängig von InlayHints.</summary>
     InlayTypeHints: Boolean;
+    /// <summary>Symbole aus Include-Dateien hinter {$I} („definiert COMPLIB_VCL“, #860,
+    /// inlayHints.includeDefines); unabhängig von InlayHints.</summary>
+    InlayDefineHints: Boolean;
     /// <summary>Beschriftung hinter dem end langer Blöcke (#620, editor.blockEndLabels): „// TKunde.Speichern“ in
     /// grauer Pille; Quelle sind die Endmarken des Servers (inlayHints.endMarkers, Mindestlänge
     /// inlayHints.endMarkerMinLines in atlas.json); unabhängig von InlayHints.</summary>
@@ -1155,6 +1158,7 @@ begin
   Result.OpenForEdits := True;
   Result.InlayHints := False;
   Result.InlayTypeHints := True;
+  Result.InlayDefineHints := True;
   Result.BlockEndLabels := True;
   Result.BlockEndLabelsMinLines := 25;
   Result.DimUnusedUses := True;
@@ -1685,6 +1689,7 @@ begin
   OpenForEdits := AStore.ReadInteger('OpenForEdits', BoolValue(Default.OpenForEdits)) <> 0;
   InlayHints := AStore.ReadInteger('InlayHints', BoolValue(Default.InlayHints)) <> 0;
   InlayTypeHints := AStore.ReadInteger('InlayTypeHints', BoolValue(Default.InlayTypeHints)) <> 0;
+  InlayDefineHints := AStore.ReadInteger('InlayDefineHints', BoolValue(Default.InlayDefineHints)) <> 0;
   BlockEndLabels := AStore.ReadInteger('BlockEndLabels', BoolValue(Default.BlockEndLabels)) <> 0;
   BlockEndLabelsMinLines := AStore.ReadInteger('BlockEndLabelsMinLines', Default.BlockEndLabelsMinLines);
   DimUnusedUses := AStore.ReadInteger('DimUnusedUses', BoolValue(Default.DimUnusedUses)) <> 0;
@@ -2073,6 +2078,7 @@ begin
   AStore.WriteInteger('OpenForEdits', BoolValue(OpenForEdits));
   AStore.WriteInteger('InlayHints', BoolValue(InlayHints));
   AStore.WriteInteger('InlayTypeHints', BoolValue(InlayTypeHints));
+  AStore.WriteInteger('InlayDefineHints', BoolValue(InlayDefineHints));
   AStore.WriteInteger('BlockEndLabels', BoolValue(BlockEndLabels));
   AStore.WriteInteger('BlockEndLabelsMinLines', BlockEndLabelsMinLines);
   AStore.WriteInteger('DimUnusedUses', BoolValue(DimUnusedUses));

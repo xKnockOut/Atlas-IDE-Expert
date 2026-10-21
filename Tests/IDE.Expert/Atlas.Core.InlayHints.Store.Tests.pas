@@ -30,6 +30,9 @@ type
     /// </summary>
     [Test]
     procedure KeepsTypeHintsApart;
+    /// <summary>Include-Symbole (#860): getrennt von Typmarken und Parameternamen, je Stelle einmal.</summary>
+    [Test]
+    procedure KeepsDefineHintsApart;
   end;
 
 implementation
@@ -196,6 +199,32 @@ begin
     // Neuer Text verwirft auch die Typmarken.
     Store.SetText('A.pas', Text + ' ');
     Assert.AreEqual(0, Integer(Length(Store.TypesOnLine('A.pas', 1))));
+  finally
+    Store.Free;
+  end;
+end;
+
+procedure TAtlasInlayHintStoreTests.KeepsDefineHintsApart;
+var
+  Store: TAtlasInlayHintStore;
+  Text: string;
+  Defines: TArray<TAtlasInlayHint>;
+  Index: Integer;
+begin
+  Text := 'unit U;' + sLineBreak + '{$I JVCL.INC}' + sLineBreak + '{$IFDEF COMPLIB_VCL}' + sLineBreak + '{$ENDIF}';
+  Defines := [H(1, 13, 'COMPLIB_VCL'), H(1, 13, 'COMPLIB_VCL'), H(2, 0, '')];
+  for Index := 0 to High(Defines) do
+    Defines[Index].DefineHint := True;
+  Store := TAtlasInlayHintStore.Create;
+  try
+    Store.SetText('A.pas', Text);
+    Store.Put('A.pas', Text, 0, 3, Defines);
+    Assert.AreEqual('COMPLIB_VCL', string.Join('|', Store.DefinesOnLine('A.pas', 1)), 'einmal');
+    Assert.AreEqual(0, Integer(Length(Store.TypesOnLine('A.pas', 1))), 'keine Typmarke');
+    Assert.AreEqual(0, Integer(Length(Store.OnLine('A.pas', 1))), 'keine Parameternamen');
+    Assert.AreEqual(0, Integer(Length(Store.DefinesOnLine('A.pas', 2))), 'ohne Symbol');
+    Store.SetText('A.pas', Text + ' ');
+    Assert.AreEqual(0, Integer(Length(Store.DefinesOnLine('A.pas', 1))), 'neuer Text');
   finally
     Store.Free;
   end;

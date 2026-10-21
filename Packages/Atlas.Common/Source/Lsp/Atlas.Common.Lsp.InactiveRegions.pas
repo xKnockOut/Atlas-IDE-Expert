@@ -8,6 +8,8 @@
 // Symbole wirken; fehlende Includes und Zyklen kommen als Befunde zurück.
 // Regions nennt je Bereich die Bedingung des Zweigs (#476), für den Hinweis
 // „Inaktiv: Bedingung WIN64 nicht erfüllt“ im Editor (#615).
+// Aus einem fertigen Präprozessor-Lauf (#860, etwa dem des gemeinsamen
+// Editor-Baums) entstehen die Bereiche ohne zweiten Lauf.
 
 interface
 
@@ -39,6 +41,10 @@ type
     class function Regions(const AText: string; const ADefines: TArray<string>; const AFileName: string;
       const AResolver: TIncludeResolver; out AIssues: TArray<TPreprocessorIssue>): TArray<TLspInactiveRegion>;
       overload; static;
+    /// <summary>Wie oben aus dem Lauf AProcessed (#860); Include-Befunde nur mit AReportIncludes (der Lauf hatte
+    /// einen Resolver; ohne wäre jedes $I "nicht gefunden").</summary>
+    class function Regions(const AProcessed: TPreprocessorResult; AReportIncludes: Boolean;
+      out AIssues: TArray<TPreprocessorIssue>): TArray<TLspInactiveRegion>; overload; static;
     /// <summary>Nur die Bereiche, etwa für die Prüfung der Sprachmerkmale.</summary>
     class function RangesOf(const ARegions: TArray<TLspInactiveRegion>): TArray<TTextRange>; static;
     /// <summary>Bereiche ohne Bedingung.</summary>
@@ -101,7 +107,17 @@ class function TLspInactiveRegions.Regions(const AText: string; const ADefines: 
   out AIssues: TArray<TPreprocessorIssue>): TArray<TLspInactiveRegion>;
 var
   Options: TPreprocessorOptions;
-  Processed: TPreprocessorResult;
+begin
+  Options := TPreprocessorOptions.Default;
+  Options.Defines := ADefines;
+  Options.FileName := AFileName;
+  Options.ResolveInclude := AResolver;
+  Result := Regions(TPascalPreprocessor.Process(AText, Options), Assigned(AResolver), AIssues);
+end;
+
+class function TLspInactiveRegions.Regions(const AProcessed: TPreprocessorResult; AReportIncludes: Boolean;
+  out AIssues: TArray<TPreprocessorIssue>): TArray<TLspInactiveRegion>;
+var
   Inactive: TInactiveRange;
   Conditional: TConditionalRange;
   Range: TTextRange;
@@ -111,14 +127,9 @@ var
 begin
   Result := nil;
   AIssues := nil;
-  Options := TPreprocessorOptions.Default;
-  Options.Defines := ADefines;
-  Options.FileName := AFileName;
-  Options.ResolveInclude := AResolver;
-  Processed := TPascalPreprocessor.Process(AText, Options);
   // Ohne Resolver wäre jedes $I "nicht gefunden"; dann nichts melden.
-  if Assigned(AResolver) then
-    for Issue in Processed.Issues do
+  if AReportIncludes then
+    for Issue in AProcessed.Issues do
       if Issue.Kind <> TPreprocessorIssueKind.General then
       begin
         Duplicate := False;
@@ -131,10 +142,10 @@ begin
         // Befund aus einer eingebundenen Datei: Ort in der .inc nennen.
         if Issue.FileIndex <> 0 then
           AIssues[High(AIssues)].Message := Format('%s (in %s, Zeile %d)',
-            [Issue.Message, ExtractFileName(Processed.Files[Issue.FileIndex]), Issue.Range.StartPos.Line + 1]);
+            [Issue.Message, ExtractFileName(AProcessed.Files[Issue.FileIndex]), Issue.Range.StartPos.Line + 1]);
         AIssues[High(AIssues)].FileIndex := 0;
       end;
-  for Inactive in Processed.InactiveRanges do
+  for Inactive in AProcessed.InactiveRanges do
   begin
     if Inactive.FileIndex <> 0 then
       Continue;
@@ -144,7 +155,7 @@ begin
       Continue;
     // Der Bereich beginnt hinter der Direktive, die den Zweig abschaltet, wie der Zweig selbst.
     Condition := '';
-    for Conditional in Processed.Conditionals do
+    for Conditional in AProcessed.Conditionals do
       if (Conditional.FileIndex = 0) and not Conditional.Active and (Conditional.Range.StartPos = Range.StartPos) then
       begin
         Condition := Conditional.Condition;

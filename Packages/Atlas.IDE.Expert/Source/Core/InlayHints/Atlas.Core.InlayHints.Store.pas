@@ -17,6 +17,9 @@
 // wenn hinter dem end schon ein Kommentar steht; lange Texte enden mit „…“.
 // Typmarken (#453): der abgeleitete Typ von var X := …, const X = … und for var X in … (kind 1) liegt
 // ebenfalls getrennt, mit eigener Einstellung (InlayTypeHints), und erscheint als „: TStringList“.
+// Include-Symbole (#860): hinter {$I datei.inc} die dort gesetzten Symbole, die die Unit prüft
+// (data.includeDefines), mit eigener Einstellung (InlayDefineHints); die Beschriftung baut die
+// Oberfläche in der Sprache der IDE („definiert COMPLIB_VCL“).
 
 interface
 
@@ -36,6 +39,8 @@ type
     EndLabel: Boolean;
     /// <summary>Typmarke (#453): Name ist der abgeleitete Typ ohne ":".</summary>
     TypeHint: Boolean;
+    /// <summary>Include-Symbole (#860): Name sind die Symbole durch ", " getrennt.</summary>
+    DefineHint: Boolean;
     /// <summary>Endmarke: Anfang des Blocks (0-basiert), zu dem ein Klick springt; nur mit HasBlock.</summary>
     BlockLine: Integer;
     BlockCharacter: Integer;
@@ -60,6 +65,7 @@ type
       Hints: TArray<TAtlasInlayHint>;
       Ends: TArray<TAtlasInlayHint>;
       Types: TArray<TAtlasInlayHint>;
+      Defines: TArray<TAtlasInlayHint>;
     end;
   private
     FEntries: TObjectDictionary<string, TEntry>;
@@ -96,6 +102,9 @@ type
     function OnLine(const AFileName: string; ALine: Integer): TArray<string>;
     /// <summary>Typmarken („: TStringList“, #453) der Zeile in Reihenfolge.</summary>
     function TypesOnLine(const AFileName: string; ALine: Integer): TArray<string>;
+    /// <summary>Include-Symbole hinter {$I} in der Zeile (#860), je Direktive die Symbole durch ", " getrennt.
+    /// </summary>
+    function DefinesOnLine(const AFileName: string; ALine: Integer): TArray<string>;
     /// <summary>„: Typ“, lange Typen gekürzt.</summary>
     class function TypeLabelOf(const ATypeName: string): string; static;
     /// <summary>Blockende-Beschriftung der Zeile: AText ist der Text der Marke ohne "//" (Anker), ALabel die
@@ -199,6 +208,7 @@ begin
   Entry.Hints := nil;
   Entry.Ends := nil;
   Entry.Types := nil;
+  Entry.Defines := nil;
 end;
 
 function TAtlasInlayHintStore.Missing(const AFileName: string; AFirst, ALast: Integer; out AFrom, ATo: Integer): Boolean;
@@ -225,6 +235,17 @@ begin
       ATo := Line;
     end;
   Result := AFrom >= 0;
+end;
+
+/// <summary>Fügt AHint an, wenn an seiner Stelle noch keiner steht (überlappende Abrufe).</summary>
+procedure AddOnce(var AList: TArray<TAtlasInlayHint>; const AHint: TAtlasInlayHint);
+var
+  Known: TAtlasInlayHint;
+begin
+  for Known in AList do
+    if (Known.Line = AHint.Line) and (Known.Character = AHint.Character) then
+      Exit;
+  AList := AList + [AHint];
 end;
 
 procedure TAtlasInlayHintStore.Put(const AFileName, AText: string; AFrom, ATo: Integer;
@@ -257,16 +278,15 @@ begin
         Entry.Ends := Entry.Ends + [Hint];
       Continue;
     end;
-    // Typmarke (#453): jede Stelle einmal.
-    if Hint.TypeHint then
+    // Typmarke (#453) und Include-Symbole (#860): jede Stelle einmal.
+    if Hint.TypeHint or Hint.DefineHint then
     begin
       if (Hint.Line < AFrom) or (Hint.Line > ATo) or (Hint.Line > High(Entry.Lines)) or (Hint.Name = '') then
         Continue;
-      Duplicate := False;
-      for Known in Entry.Types do
-        Duplicate := Duplicate or ((Known.Line = Hint.Line) and (Known.Character = Hint.Character));
-      if not Duplicate then
-        Entry.Types := Entry.Types + [Hint];
+      if Hint.TypeHint then
+        AddOnce(Entry.Types, Hint)
+      else
+        AddOnce(Entry.Defines, Hint);
       Continue;
     end;
     if (Hint.Line < AFrom) or (Hint.Line > ATo) or (Hint.Line > High(Entry.Lines)) or (Hint.Name = '') or
@@ -292,6 +312,21 @@ begin
     end);
   TArray.Sort<TAtlasInlayHint>(Entry.Hints, Order);
   TArray.Sort<TAtlasInlayHint>(Entry.Types, Order);
+  TArray.Sort<TAtlasInlayHint>(Entry.Defines, Order);
+end;
+
+function TAtlasInlayHintStore.DefinesOnLine(const AFileName: string; ALine: Integer): TArray<string>;
+var
+  Entry: TEntry;
+  Hint: TAtlasInlayHint;
+begin
+  Result := nil;
+  Entry := Find(AFileName);
+  if Entry = nil then
+    Exit;
+  for Hint in Entry.Defines do
+    if Hint.Line = ALine then
+      Result := Result + [Hint.Name];
 end;
 
 function TAtlasInlayHintStore.OnLine(const AFileName: string; ALine: Integer): TArray<string>;

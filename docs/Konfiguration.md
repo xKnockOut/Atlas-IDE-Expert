@@ -192,6 +192,7 @@ Jeder Schlüssel hat genau einen Ort (Spalte „Ort“): Projekt-Schlüssel steh
 | `inlayHints.inferredTypes` | global (settings.json) | boolean | `true` |  | Abgeleiteter Typ hinter var X := …, const X = … und for var X in … (im Plugin als Typmarke am Zeilenende). |
 | `inlayHints.endMarkers` | global (settings.json) | boolean | `true` |  | Hinter dem end langer Blöcke anzeigen, was dort endet. |
 | `inlayHints.endMarkerMinLines` | global (settings.json) | integer | `20` | 1… | Mindestlänge eines Blocks in Zeilen für eine Endmarkierung. |
+| `inlayHints.includeDefines` | global (settings.json) | boolean | `true` |  | Hinter {$I datei.inc} die Symbole, die die Include-Datei setzt und die eine Bedingung der Unit prüft ("definiert COMPLIB_VCL"). |
 
 ## codeLens
 
