@@ -187,7 +187,8 @@ const
     'security-command-injection,security-insecure-http,security-insecure-random,security-sql-injection,' +
     'security-tls-verification-disabled,security-weak-crypto,self-assignment,sizeof-pointer,' +
     'slash-command,synchronize-in-destructor,thread-free-with-free-on-terminate,thread-resume-suspend,' +
-    'thread-use-after-free-on-terminate,thread-vcl-access,unreachable-code,unresolved-identifier,' +
+    'thread-use-after-free-on-terminate,thread-vcl-access,type-used-before-declaration,' +
+    'unneeded-forward-declaration,unreachable-code,unresolved-identifier,' +
     'unused-assignment,unused-local,unused-parameter,virtual-instead-of-override,with-statement';
 begin
   Assert.AreEqual(All, ActiveRules('standard'));
@@ -209,7 +210,8 @@ begin
     'possibly-uninitialized,raise-in-finally,recursive-property-accessor,result-not-set,security-command-injection,' +
     'security-sql-injection,security-tls-verification-disabled,self-assignment,sizeof-pointer,' +
     'synchronize-in-destructor,thread-free-with-free-on-terminate,thread-use-after-free-on-terminate,' +
-    'thread-vcl-access,unreachable-code,unresolved-identifier,virtual-instead-of-override',
+    'thread-vcl-access,type-used-before-declaration,unreachable-code,unresolved-identifier,' +
+    'virtual-instead-of-override',
     ActiveRules('fast'));
   Assert.AreEqual('bidi-control,confusable-identifier,invisible-char,security-command-injection,security-insecure-http,' +
     'security-insecure-random,security-sql-injection,security-tls-verification-disabled,' +
@@ -220,7 +222,8 @@ begin
     'foreign-form-control-access,format-without-settings,generic-exception-raised,implicit-package-import,' +
     'metric-cognitive-complexity,metric-cyclomatic-complexity,metric-method-length,metric-nesting-depth,' +
     'metric-parameter-count,' +
-    'redundant-assigned-free,slash-command,thread-resume-suspend,unused-assignment,unused-local,' +
+    'redundant-assigned-free,slash-command,thread-resume-suspend,unneeded-forward-declaration,' +
+    'unused-assignment,unused-local,' +
     'unused-parameter,with-statement',
     ActiveRules('style'));
 end;

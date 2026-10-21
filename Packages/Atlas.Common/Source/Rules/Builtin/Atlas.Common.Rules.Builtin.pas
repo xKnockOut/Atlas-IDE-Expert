@@ -39,6 +39,7 @@ uses
   Atlas.Common.Rules.Builtin.Todos,
   Atlas.Common.Rules.Builtin.Recursion,
   Atlas.Common.Rules.Builtin.Deprecated,
+  Atlas.Common.Rules.Builtin.ForwardDeclarations,
   Atlas.Common.Rules.Builtin.Packages,
   Atlas.Common.Rules.Builtin.Unresolved;
 
@@ -74,6 +75,7 @@ begin
     RegisterTodoRules(Registry);
     RegisterRecursionRules(Registry);
     RegisterDeprecatedRules(Registry);
+    RegisterForwardDeclarationRules(Registry);
     RegisterPackageRules(Registry);
     Result := Registry.Rules;
   finally
