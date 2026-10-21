@@ -309,10 +309,19 @@ end;
 
 /// <summary>Methodendeklarationen aller Klassen der Datei.</summary>
 function ClassMethods(const AContext: TRuleContext; AAncestry: TAncestry): TArray<TMethodDecl>;
+const
+  // Nur hier stehen Klassendeklarationen. Anweisungen und Ausdrücke bleiben außen vor: Ihre Bäume
+  // können sehr tief sein (lange Verkettungen in erzeugten Units), und jede Ebene kostete Stapel.
+  Containers = [TSyntaxKind.UnitFile, TSyntaxKind.ProgramFile, TSyntaxKind.LibraryFile, TSyntaxKind.PackageFile,
+    TSyntaxKind.InterfaceSection, TSyntaxKind.ImplementationSection, TSyntaxKind.TypeSection, TSyntaxKind.TypeDecl,
+    TSyntaxKind.ClassType, TSyntaxKind.ObjectType, TSyntaxKind.RecordType, TSyntaxKind.HelperType,
+    TSyntaxKind.RoutineDecl];
 var
   Methods: TList<TMethodDecl>;
 
-  procedure Visit(ANode: TSyntaxNode);
+  // Eigene Routine für die großen Records (TIndexSymbol, TMethodDecl, TPascalToken): Sie liegen nur
+  // einmal auf dem Stapel, nicht in jeder Ebene von Visit.
+  procedure AddMethods(ATypeDecl: TSyntaxNode);
   var
     Index, Inner: Integer;
     Body, Header: TSyntaxNode;
@@ -320,38 +329,45 @@ var
     Token: TPascalToken;
     Symbol: TIndexSymbol;
   begin
-    if ANode.Kind = TSyntaxKind.TypeDecl then
+    Body := ATypeDecl.FindChild(TSyntaxKind.ClassType);
+    if Body = nil then
+      Exit;
+    for Index := 0 to Body.ChildCount - 1 do
     begin
-      Body := ANode.FindChild(TSyntaxKind.ClassType);
-      if Body <> nil then
-        for Index := 0 to Body.ChildCount - 1 do
+      Header := Body[Index];
+      if Header.Kind <> TSyntaxKind.RoutineHeader then
+        Continue;
+      Method := Default(TMethodDecl);
+      Method.ClassName := ATypeDecl.Name;
+      Method.Header := Header;
+      if TokenAt(AContext, Header.StartOffset, Token) then
+        Method.Keyword := LowerCase(Token.Text);
+      for Inner := 0 to Header.ChildCount - 1 do
+        if Header[Inner].Kind = TSyntaxKind.Directive then
+          Method.Directives := Method.Directives + [LowerCase(Header[Inner].Name)];
+      // class procedure/static: keine virtuellen Instanzmethoden.
+      if (Method.Keyword = 'class') or Method.Has('static') or Method.Has('message') then
+        Continue;
+      for Symbol in AAncestry.Local.Symbols do
+        if (Symbol.Kind in [TIndexSymbolKind.Method, TIndexSymbolKind.Constructor_]) and
+          SameText(Symbol.Container, ATypeDecl.Name) and (Symbol.Range.StartPos = Header.StartPos) then
         begin
-          Header := Body[Index];
-          if Header.Kind <> TSyntaxKind.RoutineHeader then
-            Continue;
-          Method := Default(TMethodDecl);
-          Method.ClassName := ANode.Name;
-          Method.Header := Header;
-          if TokenAt(AContext, Header.StartOffset, Token) then
-            Method.Keyword := LowerCase(Token.Text);
-          for Inner := 0 to Header.ChildCount - 1 do
-            if Header[Inner].Kind = TSyntaxKind.Directive then
-              Method.Directives := Method.Directives + [LowerCase(Header[Inner].Name)];
-          // class procedure/static: keine virtuellen Instanzmethoden.
-          if (Method.Keyword = 'class') or Method.Has('static') or Method.Has('message') then
-            Continue;
-          for Symbol in AAncestry.Local.Symbols do
-            if (Symbol.Kind in [TIndexSymbolKind.Method, TIndexSymbolKind.Constructor_]) and
-              SameText(Symbol.Container, ANode.Name) and (Symbol.Range.StartPos = Header.StartPos) then
-            begin
-              Method.Symbol := Symbol;
-              Methods.Add(Method);
-              Break;
-            end;
+          Method.Symbol := Symbol;
+          Methods.Add(Method);
+          Break;
         end;
     end;
+  end;
+
+  procedure Visit(ANode: TSyntaxNode);
+  var
+    Index: Integer;
+  begin
+    if ANode.Kind = TSyntaxKind.TypeDecl then
+      AddMethods(ANode);
     for Index := 0 to ANode.ChildCount - 1 do
-      Visit(ANode[Index]);
+      if ANode[Index].Kind in Containers then
+        Visit(ANode[Index]);
   end;
 
 begin

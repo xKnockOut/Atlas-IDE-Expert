@@ -113,7 +113,10 @@ begin
       if Section <> '' then
         ASections := ASections + [Scope(Section, Child)];
     end;
-    Collect(Child, Name, ARoutines, ASections);
+    // Routinen stehen nie in Anweisungen und Ausdrücken; dort nicht absteigen, sonst läuft der Stapel
+    // bei sehr tiefen Ausdrücken über (#1094).
+    if not (Child.Kind in [TSyntaxKind.Block .. TSyntaxKind.IfExpr]) then
+      Collect(Child, Name, ARoutines, ASections);
   end;
 end;
 
