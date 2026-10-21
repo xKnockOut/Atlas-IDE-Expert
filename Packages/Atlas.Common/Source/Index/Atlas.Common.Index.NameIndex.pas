@@ -40,6 +40,8 @@ type
     Units: TArray<TUnitIndex>;
     /// <summary>Projekt-Units zuerst, dann die Bibliothek.</summary>
     Entries: TArray<TImportNameEntry>;
+    /// <summary>Class- und Record-Helper mit Zieltyp (#456), Reihenfolge wie Entries; Mask = 0.</summary>
+    Helpers: TArray<TImportNameEntry>;
     /// <summary>Baut den Index aus dem aktuellen Stand von AIndex.</summary>
     class function Build(const AIndex: ISymbolIndex): TImportNameIndex; static;
     /// <summary>Zeichenmaske ohne Groß-/Kleinschreibung; alle übrigen Zeichen teilen sich ein Bit.</summary>
@@ -102,20 +104,28 @@ end;
 
 class function TImportNameIndex.Build(const AIndex: ISymbolIndex): TImportNameIndex;
 var
-  Pass, UnitPos, SymbolPos, Used: Integer;
+  Pass, UnitPos, SymbolPos, Used, Helpers: Integer;
   Symbol: TIndexSymbol;
 begin
   // Generation vor Units lesen: Ändert sich der Index dazwischen, baut der nächste Aufruf neu.
   Result.Generation := AIndex.Generation;
   Result.Units := AIndex.Units;
   Used := 0;
+  Helpers := 0;
   for UnitPos := 0 to High(Result.Units) do
     for SymbolPos := 0 to High(Result.Units[UnitPos].Symbols) do
       if Result.Units[UnitPos].Symbols[SymbolPos].InInterface and
         (Result.Units[UnitPos].Symbols[SymbolPos].Container = '') then
+      begin
         Inc(Used);
+        if (Result.Units[UnitPos].Symbols[SymbolPos].Kind = TIndexSymbolKind.HelperType) and
+          (Length(Result.Units[UnitPos].Symbols[SymbolPos].Ancestors) > 0) then
+          Inc(Helpers);
+      end;
   SetLength(Result.Entries, Used);
+  SetLength(Result.Helpers, Helpers);
   Used := 0;
+  Helpers := 0;
   for Pass := 0 to 1 do
     for UnitPos := 0 to High(Result.Units) do
     begin
@@ -130,6 +140,13 @@ begin
         Result.Entries[Used].SymbolPos := SymbolPos;
         Result.Entries[Used].Mask := MaskOf(Symbol.Name);
         Inc(Used);
+        if (Symbol.Kind = TIndexSymbolKind.HelperType) and (Length(Symbol.Ancestors) > 0) then
+        begin
+          Result.Helpers[Helpers].UnitPos := UnitPos;
+          Result.Helpers[Helpers].SymbolPos := SymbolPos;
+          Result.Helpers[Helpers].Mask := 0;
+          Inc(Helpers);
+        end;
       end;
     end;
 end;

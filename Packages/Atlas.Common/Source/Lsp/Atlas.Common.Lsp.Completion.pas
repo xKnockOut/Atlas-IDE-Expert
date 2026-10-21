@@ -1643,6 +1643,9 @@ begin
             end;
             Collector.AddCandidates(Candidates);
             Collector.AddUnavailableMembers(Candidates);
+            // Helper aus nicht eingebundenen Units mit uses-Eintrag (#456), wie Symbole bei #180.
+            Collector.AddHelpersFromOtherUnits(ARequest.Resolver.ReceiverTypes(ARequest.Tree, ARequest.FileName,
+              Context.Names, Context.Offset));
           end
           else if Context.Filter = TCompletionFilter.InheritedCall then
           begin
@@ -2555,6 +2558,13 @@ begin
   begin
     Result.AddPair('container', Symbol.Container);
     Result.AddPair('visibility', VisibilityText(Symbol.Visibility));
+    // Mitglied eines Helpers (#456): Das Panel zeigt dann „Helper · Unit“.
+    for Candidate in UnitInfo.Symbols do
+      if (Candidate.Kind = TIndexSymbolKind.HelperType) and SameText(Candidate.QualifiedName, Symbol.Container) then
+      begin
+        Result.AddPair('helper', TJSONBool.Create(True));
+        Break;
+      end;
   end;
   Directives := DirectivesOf(Declaration, Deprecated, IsDeprecated);
   if Length(Directives) > 0 then

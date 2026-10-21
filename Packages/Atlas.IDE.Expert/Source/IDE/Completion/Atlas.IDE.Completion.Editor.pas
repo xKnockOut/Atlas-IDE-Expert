@@ -250,6 +250,7 @@ uses
   Atlas.IDE.Completion.Favorites,
   Atlas.IDE.Signature.Editor,
   Atlas.Core.Completion.Ranking,
+  Atlas.Core.Completion.Presentation,
   Atlas.IDE.Foundation.EditorBuffer,
   Atlas.IDE.Foundation.EditorStyle,
   Atlas.UI.Strings,
@@ -1128,7 +1129,7 @@ end;
 procedure TAtlasEditorCompletion.UpdateDetails;
 var
   Item: TAtlasCompletionItem;
-  Key, Availability: string;
+  Key, Availability, AddsUnit: string;
   Resolver: IAtlasCompletionResolver;
   Details: TAtlasItemDetails;
 begin
@@ -1154,6 +1155,10 @@ begin
   // Überladung (#425): deren Position statt der ersten nachfragen.
   if (FOverloadIndex > 0) and (FOverloadIndex <= Length(Item.OverloadData)) then
     Item.ResolveData := Item.OverloadData[FOverloadIndex - 1];
+  // Helper aus nicht eingebundener Unit (#456): Hinweis, dass Enter die uses ergänzt.
+  AddsUnit := '';
+  if Item.IsHelper and TAtlasIdeSettings.Current.AutoUses then
+    AddsUnit := TAtlasItemPresentation.MissingUnit(Item);
   // Im aktiven Ziel nicht deklariert (#476): Hinweis im Panel, auch ohne Details vom Server.
   Availability := '';
   if Item.Unavailable and (Item.Condition <> '') and not SameText(Item.Condition, 'platform') then
@@ -1168,6 +1173,7 @@ begin
       begin
         Shown := WithDisplay(ADetails);
         Shown.Availability := Availability;
+        Shown.AddsUnit := AddsUnit;
         FPopup.ShowDetails(Shown);
       end;
     end) then
