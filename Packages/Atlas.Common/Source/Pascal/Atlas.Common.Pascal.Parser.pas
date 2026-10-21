@@ -1802,6 +1802,7 @@ var
   Node: TSyntaxNode;
 begin
   // Assembler wird nicht ausgewertet: bis zum nächsten end überspringen.
+  // Sprungmarken wie @@End liefert der Lexer als Bezeichner (#861).
   Start := NodeStart;
   Node := StartNode(TSyntaxKind.AsmBlock);
   AParent.Add(Node);

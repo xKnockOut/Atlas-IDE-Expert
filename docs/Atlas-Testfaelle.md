@@ -2905,6 +2905,18 @@ Voraussetzung: Einstellungen auf Vorgabe (Blockeinzug 2); Methode mit `if … th
 | NZ11 | Tasten unter Optionen › Befehle › Neue Zeile ober-/unterhalb ändern | Die neuen Tasten wirken, die Tastenübersicht prüft Konflikte |
 | NZ12 | „Neue Zeile ober-/unterhalb“ aus | Umschalt+Enter und Strg+Alt+Enter verhalten sich wie ohne Atlas, die Befehle fehlen in der Palette (**Abnahme**) |
 
+## asm-Block mit Sprungmarke @@End (#861)
+
+Voraussetzung: Einstellungen auf Vorgabe; JCL `JclLogic.pas` oder eine Unit mit `function BitsLowest(X: Cardinal): Integer; asm BSF EAX, EAX; JNZ @@End; MOV EAX, -1; @@End: end;` und danach `function BitsHighest(X: Cardinal): Integer;` mit Rumpf.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| SM1 | Unit öffnen, Gliederung ansehen | BitsLowest, BitsHighest und alle weiteren Routinen stehen auf Unit-Ebene, kein `initialization`, keine Syntaxfehler (**Abnahme**) |
+| SM2 | Dasselbe mit `@@end` klein geschrieben und `@@Loop:` davor | Wie SM1 (**Abnahme**) |
+| SM3 | Strg+Klick auf einen Aufruf von BitsHighest aus einer anderen Unit | Sprung zur Deklaration |
+| SM4 | Cursor auf `asm` in BitsLowest | Das Blockpaar ist `asm` … `end;`, nicht `@@End` |
+| SM5 | IDE mit altem Index-Cache starten | Cache wird einmal neu aufgebaut (Formatversion 21) |
+
 ## Defines aus Include-Dateien (#860)
 
 Voraussetzung: Einstellungen auf Vorgabe; Projekt mit `defs.inc` (`{$DEFINE FOO}{$DEFINE BAR}`) im Ordner der Unit und einer Unit mit `{$I defs.inc}` und danach `{$IFDEF FOO} … {$ENDIF}`, `{$IFNDEF FOO} … {$ENDIF}`, `{$IFDEF BAR} … {$ENDIF}`.

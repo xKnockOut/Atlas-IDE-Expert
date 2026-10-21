@@ -75,7 +75,8 @@ type
     // 18: Zweig varianter Record-Felder je Symbol (#846).
     // 19: Helfer mit Vorfahr (class helper (TBase) for T) neu lesen (#848).
     // 20: {$SCOPEDENUMS ON} je Aufzählung und Wert, Mitglieder aus {$I} im Klassenrumpf (#849).
-    const FormatVersion = 20;
+    // 21: Routinen hinter asm-Blöcken mit Sprungmarke @@End neu lesen (#861).
+    const FormatVersion = 21;
     class function Serialize(const AUnits: TArray<TUnitIndex>): TBytes; static;
     /// <summary>Liest nur die Köpfe; bei falscher Version, falscher Prüfsumme oder fremdem Inhalt leer.</summary>
     class function ReadEntries(const AData: TBytes): TArray<TIndexCacheEntry>; overload; static;

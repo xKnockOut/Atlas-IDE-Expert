@@ -257,8 +257,9 @@ begin
     end
     else if TTextChars.IsIdentStart(C) or ((C = '&') and (I < Len) and TTextChars.IsIdentStart(AText[I + 1])) then
     begin
-      Escaped := C = '&';
-      if Escaped then
+      // &begin und Sprungmarken wie @@End (#861) sind keine Schlüsselwörter.
+      Escaped := (C = '&') or (I > 1) and (AText[I - 1] = '@');
+      if C = '&' then
         Inc(I);
       Start := I;
       while (I <= Len) and TTextChars.IsIdentChar(AText[I]) do
