@@ -2032,6 +2032,15 @@ begin
       else
         ADone(nil);
     end;
+  // Regelkatalog der Seite Prüfregeln in der Sprache der Oberfläche (#909), im Hintergrund.
+  Hooks.CommandWithArguments :=
+    procedure(ACommand, AArgumentsJson: string; ADone: TProc<TJSONValue>)
+    begin
+      if Manager <> nil then
+        Manager.RunServerCommandAsync(ACommand, AArgumentsJson, 30000, ADone)
+      else
+        ADone(nil);
+    end;
   Hooks.ResetUsage :=
     procedure
     begin

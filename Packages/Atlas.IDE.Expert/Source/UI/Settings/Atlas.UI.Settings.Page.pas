@@ -20,6 +20,11 @@
 // löst die Schlüssel sofort (nicht erst mit OK).
 // Reveal (#628, „Einstellungen dazu …“ am gezeichneten Element): wählt den Reiter einer Einstellung über ihren
 // Schlüssel (Name der Plugin-Einstellung), rollt sie ins Bild, setzt den Fokus und hebt die Zeile fett hervor.
+// Bereich Prüfregeln (#909): im Hauptknoten alle Regeln mit Suche (TAtlasRulesEditor), Unterknoten „Prüffenster“
+// (problems.window*, problems.live), „Profile und Baseline“ und je Gruppe des Regelkatalogs ein Knoten mit
+// Hauptschalter und Tabelle. Bearbeitet wird "rules" der globalen settings.json: Den Katalog und den Wert liefert
+// die IDE-Schicht über OnRulesCatalog und RulesLoaded (im Hintergrund, #874); RulesChanges sind die Änderungen
+// je Regel für das Speichern mit OK. Reveal('rule:<id>') öffnet den Knoten der Gruppe und markiert die Regel.
 
 interface
 
@@ -28,6 +33,7 @@ uses
   System.Classes,
   System.UITypes,
   System.Generics.Collections,
+  System.JSON,
   Vcl.Controls,
   Vcl.Graphics,
   Vcl.StdCtrls,
@@ -53,6 +59,7 @@ uses
   Atlas.Core.Editor.Overview,
   Atlas.UI.Settings.Marks,
   Atlas.UI.Settings.Group,
+  Atlas.UI.Settings.Rules,
   Atlas.UI.Strings,
   Atlas.Core.Style.Symbol,
   Atlas.UI.Style.Symbol;
@@ -111,6 +118,10 @@ type
   end;
 
   TAtlasSettingsPage = class(TFrame)
+  public const
+    /// <summary>Reveal mit diesem Präfix und einer Regel-ID zeigt die Regel auf der Seite Prüfregeln (#909).
+    /// </summary>
+    RuleRevealPrefix = 'rule:';
   private
     FPages: TPageControl;
     /// <summary>Bereiche und ihre Unterpunkte als Baum links (#890; vorher eine Liste).</summary>
@@ -377,6 +388,33 @@ type
     FNextProblemKey: TEdit;
     FPreviousProblemKey: TEdit;
     FProblemsWindowKey: TEdit;
+    /// <summary>Fenster „Atlas-Prüfung“, laufende Prüfung und Aktionszeile im Hover (#909).</summary>
+    FProblemsWindow: TCheckBox;
+    FProblemsWindowScope: TAtlasChoiceBox;
+    FProblemsWindowGroupBy: TAtlasChoiceBox;
+    FProblemsWindowCompiler: TCheckBox;
+    FProblemsWindowFollowCursor: TCheckBox;
+    FProblemsLive: TCheckBox;
+    FHoverProblemActions: TCheckBox;
+    /// <summary>Bereich Prüfregeln (#909): Index in FSheets, Regel-Editoren (Hauptknoten zuerst), Katalog
+    /// (Kopie), "rules" beim Laden und jetzt, gewünschte Regel bis zum Laden.</summary>
+    FRulesArea: Integer;
+    FRulesEditors: TArray<TAtlasRulesEditor>;
+    FRulesCatalog: TJSONValue;
+    FRulesOriginal: string;
+    FRulesJson: string;
+    FRulesLoaded: Boolean;
+    FRulesRequested: Boolean;
+    FPendingRule: string;
+    FOnRulesCatalog: TProc;
+    FOnRulesProject: TProc;
+    FOnBaselineInfo: TFunc<string>;
+    FOnBaselineUpdate: TFunc<string>;
+    FOnBaselineDelete: TFunc<string>;
+    FBaselineInfo: TLabel;
+    FRulesProject: TButton;
+    FBaselineUpdate: TButton;
+    FBaselineDelete: TButton;
     FUndoKey: TEdit;
     FRedoKey: TEdit;
     FEditorKeysPriority: TCheckBox;
@@ -599,6 +637,17 @@ type
     function PageGray(AIndex: Integer): Boolean;
     procedure Bind(const AKey: string; AControl: TControl);
     procedure ApplyReveal(const AKey: string);
+    function AddNodePageCaption(AArea: Integer; const ANode, ACaption: string): Integer;
+    procedure AddRulePages;
+    function AddRulesEditor(ABox: TWinControl; const AGroup: string): TAtlasRulesEditor;
+    procedure RulesEditorChange(Sender: TObject);
+    procedure RequestRules;
+    procedure SetOnRulesCatalog(const AValue: TProc);
+    procedure SetOnBaselineInfo(const AValue: TFunc<string>);
+    procedure RevealRule(const AId: string);
+    procedure RulesProjectClick(Sender: TObject);
+    procedure BaselineUpdateClick(Sender: TObject);
+    procedure BaselineDeleteClick(Sender: TObject);
   protected
     procedure CreateWnd; override;
   private
@@ -1023,6 +1072,31 @@ type
     property NextProblemKey: TEdit read FNextProblemKey;
     property PreviousProblemKey: TEdit read FPreviousProblemKey;
     property ProblemsWindowKey: TEdit read FProblemsWindowKey;
+    /// <summary>Zum Testen: Prüffenster und Seite Prüfregeln (#909).</summary>
+    property ProblemsWindowCheck: TCheckBox read FProblemsWindow;
+    property ProblemsWindowScopeChoice: TAtlasChoiceBox read FProblemsWindowScope;
+    property ProblemsWindowGroupByChoice: TAtlasChoiceBox read FProblemsWindowGroupBy;
+    property ProblemsWindowCompilerCheck: TCheckBox read FProblemsWindowCompiler;
+    property ProblemsWindowFollowCursorCheck: TCheckBox read FProblemsWindowFollowCursor;
+    property ProblemsLiveCheck: TCheckBox read FProblemsLive;
+    property HoverProblemActionsCheck: TCheckBox read FHoverProblemActions;
+    /// <summary>Regel-Editor der Gruppe AGroup ('' = Hauptknoten mit allen Regeln); nil ohne.</summary>
+    function RulesEditor(const AGroup: string): TAtlasRulesEditor;
+    /// <summary>Katalog (atlas.server.settingsCatalog, nil ohne Server; die Seite kopiert ihn) und "rules" der
+    /// globalen settings.json ('' ohne).</summary>
+    procedure RulesLoaded(ACatalog: TJSONValue; const ARulesJson: string);
+    /// <summary>Geänderte Regeln seit RulesLoaded: Pfad ("rules.&lt;id&gt;") und JSON-Text, '' = entfernen.</summary>
+    function RulesChanges: TArray<TPair<string, string>>;
+    property RulesJson: string read FRulesJson;
+    /// <summary>Katalog und "rules" holen; die IDE-Schicht ruft danach RulesLoaded. Einmal je Seite.</summary>
+    property OnRulesCatalog: TProc read FOnRulesCatalog write SetOnRulesCatalog;
+    /// <summary>„Projekt-Prüfregeln bearbeiten …“: Projektdialog öffnen.</summary>
+    property OnRulesProject: TProc read FOnRulesProject write FOnRulesProject;
+    /// <summary>Baseline des aktiven Projekts: Text, neu erzeugen, löschen (Ergebnis als Text).</summary>
+    property OnBaselineInfo: TFunc<string> read FOnBaselineInfo write SetOnBaselineInfo;
+    property OnBaselineUpdate: TFunc<string> read FOnBaselineUpdate write FOnBaselineUpdate;
+    property OnBaselineDelete: TFunc<string> read FOnBaselineDelete write FOnBaselineDelete;
+    property BaselineInfoLabel: TLabel read FBaselineInfo;
     /// <summary>Zum Testen: Erzeugen-Menü (#719).</summary>
     property GenerateMenuCheck: TCheckBox read FGenerateMenu;
     property GenerateMenuKey: TEdit read FGenerateMenuKey;
@@ -1086,6 +1160,7 @@ uses
   Atlas.Core.Completion.Ranking,
   Atlas.Core.Settings.Transfer,
   Atlas.Core.Settings.Experimental,
+  Atlas.Core.Settings.RuleTable,
   Atlas.UI.Notifications.Window;
 
 /// <summary>Bezeichnung einer Reihe des Projektverlaufs (#758) wie auf ihrer Kachel.</summary>
@@ -1188,6 +1263,10 @@ end;
 const
   // Linke Kante der Eingabefelder; Platz für die längste Beschriftung („Breite der Blocklinien …“).
   FieldLeft = 280;
+  /// <summary>Werte von problems.window.scope und problems.window.groupBy in der Reihenfolge der Auswahl (#909).
+  /// </summary>
+  ScopeValues: array[0..2] of string = ('file', 'project', 'group');
+  GroupByValues: array[0..3] of string = ('none', 'file', 'rule', 'category');
 
 const
   // Reihenfolge der Auswahllisten von „Units suchen“ (#777) wie die Werte der Einstellungen.
@@ -1403,6 +1482,8 @@ begin
 
   AddSheet(TAtlasTextId.SettingsTabEditor);
   FHoverTooltip := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsHover));
+  // Aktionszeile unter Befunden im Hover (#909).
+  FHoverProblemActions := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsHoverProblemActions));
   // XMLDoc in Tooltip und Detailpanel (#654, #770): zu- oder aufgeklappt beim Öffnen; gespeichert in
   // settings.json (hints.*, #227).
   FXmlDocExpand := AddChoice(TAtlasStrings.Text(TAtlasTextId.SettingsXmlDocExpand),
@@ -1592,6 +1673,25 @@ begin
   // Beim Öffnen eines Projekts oder einer Projektgruppe einmal bauen (build.onOpen).
   AddOpenBuildSection;
 
+  // Prüfregeln (#909): oben alle Regeln mit Suche (Hauptknoten), darunter das Fenster „Atlas-Prüfung“ und die
+  // laufende Prüfung (Unterpunkt „Prüffenster“). Knoten je Gruppe und „Profile und Baseline“ entstehen in
+  // AddRulePages.
+  AddSheet(TAtlasTextId.SettingsTabRules);
+  FRulesArea := High(FSheets);
+  AddWrappedLabel(34, TAtlasStrings.Text(TAtlasTextId.RulesGlobalNote));
+  AddRulesEditor(FContent, '').Top := FNextTop;
+  Inc(FNextTop, 100);
+  FProblemsWindow := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsProblemsWindow));
+  FProblemsWindowScope := AddChoice(TAtlasStrings.Text(TAtlasTextId.SettingsProblemsWindowScope),
+    [TAtlasStrings.Text(TAtlasTextId.ProblemsScopeFile), TAtlasStrings.Text(TAtlasTextId.ProblemsScopeProject),
+    TAtlasStrings.Text(TAtlasTextId.ProblemsScopeGroup)]);
+  FProblemsWindowGroupBy := AddChoice(TAtlasStrings.Text(TAtlasTextId.SettingsProblemsWindowGroupBy),
+    [TAtlasStrings.Text(TAtlasTextId.ProblemsGroupNone), TAtlasStrings.Text(TAtlasTextId.ProblemsGroupFile),
+    TAtlasStrings.Text(TAtlasTextId.ProblemsGroupRule), TAtlasStrings.Text(TAtlasTextId.ProblemsGroupCategory)]);
+  FProblemsWindowCompiler := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsProblemsWindowCompiler));
+  FProblemsWindowFollowCursor := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsProblemsWindowFollowCursor));
+  FProblemsLive := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsProblemsLive));
+
   // Release-Build-Wächter (#533).
   AddSheet(TAtlasTextId.SettingsTabRelease);
   AddReleaseSection;
@@ -1740,6 +1840,9 @@ begin
   Bind('InlayHints', FInlayHints);
   Bind('InlayTypeHints', FInlayTypeHints);
   Bind('Problems', FProblems);
+  Bind('ProblemsWindow', FProblemsWindow);
+  Bind('ProblemsLive', FProblemsLive);
+  Bind('HoverProblemActions', FHoverProblemActions);
   Bind('Notes', FNotes);
   Bind('BookmarksNamed', FBookmarksNamed);
   Bind('PairColors', FPairColors);
@@ -1862,6 +1965,18 @@ end;
 
 function TAtlasSettingsPage.Reveal(const AKey: string): Boolean;
 begin
+  // Regel (#909): Der Katalog kommt erst vom Server; bis dahin vormerken.
+  if StartsText(RuleRevealPrefix, AKey) then
+  begin
+    Result := Length(AKey) > Length(RuleRevealPrefix);
+    if not Result then
+      Exit;
+    if HandleAllocated then
+      ApplyReveal(AKey)
+    else
+      FPendingReveal := AKey;
+    Exit;
+  end;
   Result := ControlOf(AKey) <> nil;
   if not Result then
     Exit;
@@ -1880,6 +1995,11 @@ var
   Lock: TAtlasSettingsLock;
 begin
   FPendingReveal := '';
+  if StartsText(RuleRevealPrefix, AKey) then
+  begin
+    RevealRule(Copy(AKey, Length(RuleRevealPrefix) + 1, MaxInt));
+    Exit;
+  end;
   Control := ControlOf(AKey);
   if Control = nil then
     Exit;
@@ -2652,6 +2772,13 @@ begin
   FMarks.Bind(FDarkSwatches[0], ['PairColorsDark']);
   FMarks.Bind(FProblems, ['Problems']);
   FMarks.Bind(FProblemsList, ['ProblemsList']);
+  FMarks.Bind(FProblemsWindow, ['ProblemsWindow']);
+  FMarks.Bind(FProblemsWindowScope, ['ProblemsWindowScope']);
+  FMarks.Bind(FProblemsWindowGroupBy, ['ProblemsWindowGroupBy']);
+  FMarks.Bind(FProblemsWindowCompiler, ['ProblemsWindowCompiler']);
+  FMarks.Bind(FProblemsWindowFollowCursor, ['ProblemsWindowFollowCursor']);
+  FMarks.Bind(FProblemsLive, ['ProblemsLive']);
+  FMarks.Bind(FHoverProblemActions, ['HoverProblemActions']);
   FMarks.Bind(FProblemsStatusCounter, ['ProblemsStatusCounter']);
   FMarks.Bind(FStatusField, ['StatusField']);
   FMarks.Bind(FDiagnosticMode, ['DiagnosticMode']);
@@ -2797,6 +2924,7 @@ destructor TAtlasSettingsPage.Destroy;
 begin
   FreeAndNil(FGroups);
   FreeAndNil(FCatalog);
+  FreeAndNil(FRulesCatalog);
   FreeAndNil(FAttached);
   FreeAndNil(FOwnOff);
   FreeAndNil(FLockedControls);
@@ -3010,6 +3138,14 @@ begin
 end;
 
 function TAtlasSettingsPage.AddNodePage(AArea: Integer; const ANode: string): Integer;
+begin
+  if ANode = '' then
+    Result := AddNodePageCaption(AArea, ANode, '')
+  else
+    Result := AddNodePageCaption(AArea, ANode, FGroups.NodeCaption(ANode, TAtlasStrings.Language = TAtlasLanguage.English));
+end;
+
+function TAtlasSettingsPage.AddNodePageCaption(AArea: Integer; const ANode, ACaption: string): Integer;
 var
   Page: TAtlasSettingsNodePage;
   Index: Integer;
@@ -3028,7 +3164,7 @@ begin
   end
   else
   begin
-    Page.Caption := FGroups.NodeCaption(ANode, TAtlasStrings.Language = TAtlasLanguage.English);
+    Page.Caption := ACaption;
     Page.Sheet := TTabSheet.Create(Self);
     Page.Sheet.Caption := Page.Caption;
     Page.Box := TScrollBox.Create(Self);
@@ -3054,6 +3190,209 @@ begin
   Result := High(FNodePages);
 end;
 
+// Prüfregeln (#909).
+
+function TAtlasSettingsPage.AddRulesEditor(ABox: TWinControl; const AGroup: string): TAtlasRulesEditor;
+begin
+  Result := TAtlasRulesEditor.Create(Self);
+  Result.Parent := ABox;
+  Result.Align := alTop;
+  Result.AlignWithMargins := True;
+  Result.FixedGroup := AGroup;
+  Result.OnChange := RulesEditorChange;
+  if FRulesLoaded then
+    Result.SetRules(FRulesCatalog, FRulesJson, '')
+  else
+    Result.ShowLoading;
+  FRulesEditors := FRulesEditors + [Result];
+end;
+
+procedure TAtlasSettingsPage.AddRulePages;
+var
+  Page, Index: Integer;
+  Box: TScrollBox;
+  Row: TWinControl;
+  Text: TLabel;
+  Group: string;
+
+  function AddRow(ATop: Integer): TWinControl;
+  begin
+    Result := TAtlasSettingsRow.Create(Self);
+    Result.Parent := Box;
+    Result.Align := alTop;
+    Result.AlignWithMargins := True;
+    Result.Height := 28;
+    Result.Top := ATop;
+  end;
+
+  function AddButton(AParent: TWinControl; const ACaption: string; ALeft: Integer;
+    AClick: TNotifyEvent): TButton;
+  begin
+    Result := TButton.Create(Self);
+    Result.Parent := AParent;
+    Result.Caption := ACaption;
+    Result.SetBounds(ALeft, 1, 210, 25);
+    Result.OnClick := AClick;
+  end;
+
+begin
+  // „Profile und Baseline“: Profile gelten je Projekt (atlas.json), die Baseline je Projekt.
+  Page := AddNodePageCaption(FRulesArea, 'rules.profiles', TAtlasStrings.Text(TAtlasTextId.RulesProfilesNode));
+  Box := FNodePages[Page].Box;
+  Text := TLabel.Create(Self);
+  Text.Parent := Box;
+  Text.Align := alTop;
+  Text.AlignWithMargins := True;
+  Text.WordWrap := True;
+  Text.ShowAccelChar := False;
+  Text.Caption := TAtlasStrings.Text(TAtlasTextId.RulesProfilesText);
+  Text.Top := 1000;
+  Row := AddRow(2000);
+  FRulesProject := AddButton(Row, TAtlasStrings.Text(TAtlasTextId.RulesProjectButton), 0, RulesProjectClick);
+  Text := TLabel.Create(Self);
+  Text.Parent := Box;
+  Text.Align := alTop;
+  Text.AlignWithMargins := True;
+  Text.ShowAccelChar := False;
+  Text.Font.Style := [fsBold];
+  Text.Caption := TAtlasStrings.Text(TAtlasTextId.ServerPageBaselineTitle);
+  Text.Top := 3000;
+  FBaselineInfo := TLabel.Create(Self);
+  FBaselineInfo.Parent := Box;
+  FBaselineInfo.Align := alTop;
+  FBaselineInfo.AlignWithMargins := True;
+  FBaselineInfo.WordWrap := True;
+  FBaselineInfo.ShowAccelChar := False;
+  FBaselineInfo.Caption := TAtlasStrings.Text(TAtlasTextId.ServerPageBaselineNone);
+  FBaselineInfo.Top := 4000;
+  Row := AddRow(5000);
+  FBaselineUpdate := AddButton(Row, TAtlasStrings.Text(TAtlasTextId.ServerPageBaselineUpdate), 0,
+    BaselineUpdateClick);
+  FBaselineDelete := AddButton(Row, TAtlasStrings.Text(TAtlasTextId.ServerPageBaselineDelete), 216,
+    BaselineDeleteClick);
+  // Je Gruppe des Katalogs ein Knoten mit Hauptschalter und Tabelle.
+  for Index := 0 to High(TAtlasRuleTable.GroupIds) do
+  begin
+    Group := TAtlasRuleTable.GroupIds[Index];
+    Page := AddNodePageCaption(FRulesArea, 'rules.group.' + Group, AtlasRuleGroupCaption(Group));
+    AddRulesEditor(FNodePages[Page].Box, Group).Top := 1000;
+  end;
+end;
+
+function TAtlasSettingsPage.RulesEditor(const AGroup: string): TAtlasRulesEditor;
+var
+  Editor: TAtlasRulesEditor;
+begin
+  for Editor in FRulesEditors do
+    if SameText(Editor.FixedGroup, AGroup) then
+      Exit(Editor);
+  Result := nil;
+end;
+
+procedure TAtlasSettingsPage.SetOnRulesCatalog(const AValue: TProc);
+begin
+  FOnRulesCatalog := AValue;
+  RequestRules;
+end;
+
+procedure TAtlasSettingsPage.RequestRules;
+begin
+  if FRulesRequested or FRulesLoaded or not Assigned(FOnRulesCatalog) then
+    Exit;
+  FRulesRequested := True;
+  FOnRulesCatalog();
+end;
+
+procedure TAtlasSettingsPage.RulesLoaded(ACatalog: TJSONValue; const ARulesJson: string);
+var
+  Editor: TAtlasRulesEditor;
+begin
+  // Kopie: Den Wert gibt der Absender frei.
+  FreeAndNil(FRulesCatalog);
+  if ACatalog <> nil then
+    FRulesCatalog := ACatalog.Clone as TJSONValue;
+  FRulesOriginal := ARulesJson;
+  FRulesJson := ARulesJson;
+  FRulesLoaded := True;
+  for Editor in FRulesEditors do
+    Editor.SetRules(FRulesCatalog, FRulesJson, '');
+  UpdateLocks;
+  if FPendingRule <> '' then
+    RevealRule(FPendingRule);
+end;
+
+function TAtlasSettingsPage.RulesChanges: TArray<TPair<string, string>>;
+begin
+  Result := nil;
+  if FRulesLoaded then
+    Result := TAtlasRuleTable.Changes(FRulesOriginal, FRulesJson);
+end;
+
+procedure TAtlasSettingsPage.RulesEditorChange(Sender: TObject);
+var
+  Editor: TAtlasRulesEditor;
+begin
+  // Alle Knoten bearbeiten denselben Wert: die übrigen nachziehen.
+  FRulesJson := (Sender as TAtlasRulesEditor).RulesJson;
+  for Editor in FRulesEditors do
+    if Editor <> Sender then
+      Editor.SetRules(FRulesCatalog, FRulesJson, '');
+  UpdateLocks;
+end;
+
+procedure TAtlasSettingsPage.RevealRule(const AId: string);
+var
+  Editor, Target: TAtlasRulesEditor;
+  Row: TAtlasRuleRow;
+begin
+  // Ohne Katalog noch nicht: RulesLoaded holt es nach.
+  FPendingRule := AId;
+  if not FRulesLoaded or (Length(FRulesEditors) = 0) then
+    Exit;
+  FPendingRule := '';
+  // Knoten der Gruppe der Regel, sonst der Hauptknoten mit allen Regeln.
+  Target := FRulesEditors[0];
+  for Row in Target.Rows do
+    if SameText(Row.Id, AId) and (Row.Group <> '') then
+    begin
+      Editor := RulesEditor(Row.Group);
+      if Editor <> nil then
+        Target := Editor;
+    end;
+  SelectPage(PageOf(Target));
+  // Die Tabelle des Knotens entsteht mit seinem Fenster.
+  Target.HandleNeeded;
+  if Target.SelectRule(AId) and Target.List.CanFocus and (GetParentForm(Target) <> nil) and
+    GetParentForm(Target).Visible then
+    Target.List.SetFocus;
+end;
+
+procedure TAtlasSettingsPage.SetOnBaselineInfo(const AValue: TFunc<string>);
+begin
+  FOnBaselineInfo := AValue;
+  if Assigned(FOnBaselineInfo) and (FBaselineInfo <> nil) then
+    FBaselineInfo.Caption := FOnBaselineInfo();
+end;
+
+procedure TAtlasSettingsPage.RulesProjectClick(Sender: TObject);
+begin
+  if Assigned(FOnRulesProject) then
+    FOnRulesProject();
+end;
+
+procedure TAtlasSettingsPage.BaselineUpdateClick(Sender: TObject);
+begin
+  if Assigned(FOnBaselineUpdate) then
+    FBaselineInfo.Caption := FOnBaselineUpdate();
+end;
+
+procedure TAtlasSettingsPage.BaselineDeleteClick(Sender: TObject);
+begin
+  if Assigned(FOnBaselineDelete) and ConfirmLayout(TAtlasStrings.Text(TAtlasTextId.ServerPageBaselineDeleteConfirm),
+    True) then
+    FBaselineInfo.Caption := FOnBaselineDelete();
+end;
+
 procedure TAtlasSettingsPage.Place(AControl: TControl; AHolder: TWinControl);
 begin
   if AHolder is TAtlasSettingsGroup then
@@ -3077,6 +3416,7 @@ begin
   FGroups := TAtlasSettingsGroups.Create(Catalog);
   for Area := 0 to High(FSheets) do
     BuildArea(Area);
+  AddRulePages;
   for Frame in FFrames do
     if not (Frame.Parent is TAtlasSettingsGroup) then
       Frame.AdjustHeight;
@@ -3672,6 +4012,10 @@ var
 begin
   // Grau, wenn nichts auf der Seite wirkt: jeder Rahmen aus oder gesperrt, jede übrige Einstellung gesperrt.
   Box := FNodePages[AIndex].Box;
+  // Knoten einer Regelgruppe (#909): grau mit abgeschaltetem Hauptschalter.
+  for Index := 0 to Box.ControlCount - 1 do
+    if (Box.Controls[Index] is TAtlasRulesEditor) and (TAtlasRulesEditor(Box.Controls[Index]).FixedGroup <> '') then
+      Exit(TAtlasRulesEditor(Box.Controls[Index]).GroupOff);
   Any := False;
   for Index := 0 to Box.ControlCount - 1 do
   begin
@@ -4577,6 +4921,7 @@ begin
   FTeamFile.Checked := ASettings.TeamFile;
   RefreshTeamFile;
   FHoverTooltip.Checked := ASettings.HoverTooltip;
+  FHoverProblemActions.Checked := ASettings.HoverProblemActions;
   FXmlDocExpand.Choice := Ord(TAtlasDocDisplay.ExpandOf(ASettings.XmlDocExpand));
   FXmlDocMaxLines.Text := IntToStr(ASettings.XmlDocMaxLines);
   FHangThreshold.Text := IntToStr(ASettings.HangThresholdMs);
@@ -4613,6 +4958,12 @@ begin
   ShowPairs(FDarkSwatches, TAtlasColors.Dark.WithPairs(ASettings.PairColorsDark).Pairs);
   FProblems.Checked := ASettings.Problems;
   FProblemsList.Checked := ASettings.ProblemsList;
+  FProblemsWindow.Checked := ASettings.ProblemsWindow;
+  FProblemsWindowScope.Choice := Max(0, IndexText(ASettings.ProblemsWindowScope, ScopeValues));
+  FProblemsWindowGroupBy.Choice := Max(0, IndexText(ASettings.ProblemsWindowGroupBy, GroupByValues));
+  FProblemsWindowCompiler.Checked := ASettings.ProblemsWindowCompiler;
+  FProblemsWindowFollowCursor.Checked := ASettings.ProblemsWindowFollowCursor;
+  FProblemsLive.Checked := ASettings.ProblemsLive;
   FProblemsStatusCounter.Checked := ASettings.ProblemsStatusCounter;
   FStatusField.Checked := ASettings.StatusField;
   FDiagnosticMode.Checked := ASettings.DiagnosticMode;
@@ -4989,6 +5340,7 @@ begin
   ASettings.ImportIdeTemplates := FImportIdeTemplates.Checked;
   ASettings.TeamFile := FTeamFile.Checked;
   ASettings.HoverTooltip := FHoverTooltip.Checked;
+  ASettings.HoverProblemActions := FHoverProblemActions.Checked;
   ASettings.XmlDocExpand := TAtlasDocDisplay.ExpandName(TAtlasDocExpand(EnsureRange(FXmlDocExpand.Choice, 0, 2)));
   ASettings.XmlDocMaxLines := StrToIntDef(FXmlDocMaxLines.Text, ASettings.XmlDocMaxLines);
   ASettings.HangThresholdMs := StrToIntDef(FHangThreshold.Text, ASettings.HangThresholdMs);
@@ -5026,6 +5378,14 @@ begin
   ASettings.PairColorsDark := PairsSetting(FDarkSwatches, TAtlasColors.Dark.Pairs);
   ASettings.Problems := FProblems.Checked;
   ASettings.ProblemsList := FProblemsList.Checked;
+  ASettings.ProblemsWindow := FProblemsWindow.Checked;
+  if (FProblemsWindowScope.Choice >= 0) and (FProblemsWindowScope.Choice <= High(ScopeValues)) then
+    ASettings.ProblemsWindowScope := ScopeValues[FProblemsWindowScope.Choice];
+  if (FProblemsWindowGroupBy.Choice >= 0) and (FProblemsWindowGroupBy.Choice <= High(GroupByValues)) then
+    ASettings.ProblemsWindowGroupBy := GroupByValues[FProblemsWindowGroupBy.Choice];
+  ASettings.ProblemsWindowCompiler := FProblemsWindowCompiler.Checked;
+  ASettings.ProblemsWindowFollowCursor := FProblemsWindowFollowCursor.Checked;
+  ASettings.ProblemsLive := FProblemsLive.Checked;
   ASettings.ProblemsStatusCounter := FProblemsStatusCounter.Checked;
   ASettings.StatusField := FStatusField.Checked;
   ASettings.DiagnosticMode := FDiagnosticMode.Checked;
