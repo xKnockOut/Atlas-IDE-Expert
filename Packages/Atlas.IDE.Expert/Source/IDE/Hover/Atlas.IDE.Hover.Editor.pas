@@ -21,6 +21,11 @@
 // an, auch ohne Bezeichner (dann nur das Problem). Aktionen unter einem
 // uses-Hinweis (#621) gehen über OnProblemAction mit der Kennung der
 // Code-Aktion (uses.remove, uses.removeAll, uses.move) an die Befehle.
+// Debuggen (#891): Ist der Prozess angehalten, wertet Atlas den Ausdruck unter
+// der Maus über den Debugger der IDE aus (TAtlasIdeDebugValues) und zeigt den
+// Wert ganz oben; ohne Antwort des Servers nur den Wert. Antwortet der Debugger
+// verzögert, steht dort „wird ausgewertet …“, bis der Wert kommt. Schalter
+// debug.hoverValues (DebugHoverValues).
 // Die IDE zeigt dann keinen eigenen Tooltip: GetHintText und GetHelpInsightHtml
 // liefern '' (Manager). Bedient Atlas die Datei nicht (Hauptschalter, Server
 // fehlt, Sicherung), übernimmt die IDE und der Atlas-Tooltip bleibt zu.
@@ -45,7 +50,9 @@ uses
   Atlas.Core.Hover.Layout,
   Atlas.Core.Editor.CloseRules,
   Atlas.Core.Problems.Contract,
+  Atlas.Core.Hover.DebugValue,
   Atlas.IDE.Foundation.KeyHook,
+  Atlas.IDE.Hover.DebugValue,
   Atlas.UI.Hover.Tip;
 
 type
@@ -111,6 +118,10 @@ type
     FWorkers: TList<TThread>;
     FMouseCharacter: Integer;
     FProblemsOnly: Boolean;
+    // Wert im Debugger (#891): Ausdruck unter der Maus ('' ohne angehaltenen Prozess) und sein Wert.
+    FDebug: TAtlasIdeDebugValues;
+    FDebugExpression: string;
+    FDebugValue: TAtlasDebugValue;
     // Bezeichner unter der Maus bzw. im offenen Tooltip.
     FEditor: TWinControl;
     FView: IOTAEditView;
@@ -130,6 +141,9 @@ type
     procedure EditorScrolled(const Editor: TWinControl; const Direction: TCodeEditorScrollDirection);
     procedure EditorResized(const Editor: TWinControl);
     procedure ShowData(const AData: TAtlasHoverData);
+    /// <summary>Wert des Ausdrucks unter der Maus anfordern (#891); verzögerte Werte ergänzt DebugValueDone.</summary>
+    procedure EvaluateDebugValue;
+    procedure DebugValueDone(const AKey: string; const AValue: TAtlasDebugValue);
     procedure ReapWorkers(AWait: Boolean);
     procedure ShowTimerTick(Sender: TObject);
     procedure HideTimerTick(Sender: TObject);
@@ -258,6 +272,7 @@ begin
   FAlive.Alive := True;
   FAliveRef := FAlive;
   FWorkers := TList<TThread>.Create;
+  FDebug := TAtlasIdeDebugValues.Create;
   FShowTimer := TTimer.Create(nil);
   FShowTimer.Enabled := False;
   FShowTimer.Interval := 500;
@@ -303,6 +318,7 @@ begin
   FAlive.Alive := False;
   ReapWorkers(True);
   FWorkers.Free;
+  FDebug.Free;
   FShowTimer.Free;
   FHideTimer.Free;
   FWatchTimer.Free;
@@ -363,9 +379,12 @@ begin
   // Schnellschalter nur für diese Sitzung (#604) gilt auch über dem Wert des Servers.
   if TAtlasIdeSettings.SessionFlag('XmlDocFull', Full) then
     Result.Display.Full := Full;
-  // Probleme gehören zur Stelle im Editor, nicht zu angeklickten Typen.
+  // Probleme und der Wert im Debugger gehören zur Stelle im Editor, nicht zu angeklickten Typen.
   if FHistory.Count <= 1 then
+  begin
     Result.Problems := FProblems;
+    Result.DebugValue := FDebugValue;
+  end;
 end;
 
 procedure TAtlasEditorHover.Refresh;
@@ -382,6 +401,8 @@ begin
   FTip.HidePopup;
   FHistory.Clear;
   FProblems := nil;
+  FDebug.Cancel;
+  FDebugValue := Default(TAtlasDebugValue);
   FUsagesCount := -1;
   FShownKey := '';
   FKey := '';
@@ -464,6 +485,9 @@ begin
             FStart := Start;
             FMouseCharacter := Index;
             FProblemsOnly := False;
+            FDebugExpression := '';
+            if TAtlasIdeSettings.Current.DebugHoverValues and TAtlasIdeDebugValues.Stopped then
+              FDebugExpression := TAtlasDebugExpression.At(Text, Start, Stop);
             // Wortrechteck aus der ersten und letzten Spalte des Worts (Bildschirmkoordinaten).
             First := State.GetCharacterPosPx(Column - (Index - Start), VisibleLine);
             Last := State.GetCharacterPosPx(Column + (Stop - Index - 1), VisibleLine);
@@ -483,6 +507,7 @@ begin
             FStart := Index;
             FMouseCharacter := Index;
             FProblemsOnly := True;
+            FDebugExpression := '';
             First := State.GetCharacterPosPx(Column, VisibleLine);
             FWordRect := TRect.Create(Editor.ClientToScreen(First.TopLeft), Editor.ClientToScreen(First.BottomRight));
           end;
@@ -553,6 +578,7 @@ begin
     FProblems := nil;
     if Assigned(FProblemsAt) then
       FProblems := FProblemsAt(FView.Buffer.FileName, FLine - 1, FMouseCharacter);
+    EvaluateDebugValue;
     Session := nil;
     if not FProblemsOnly then
       Session := CurrentSession;
@@ -618,7 +644,7 @@ procedure TAtlasEditorHover.ShowData(const AData: TAtlasHoverData);
 begin
   if (FView = nil) or not Application.Active or not MouseOverEditor then
     Exit;
-  if not AData.Found and (Length(FProblems) = 0) then
+  if not AData.Found and (Length(FProblems) = 0) and not FDebugValue.Visible then
   begin
     Hide;
     Exit;
@@ -632,6 +658,40 @@ begin
   FShown := WindowState;
   FHideTimer.Enabled := False;
   FWatchTimer.Enabled := True;
+end;
+
+procedure TAtlasEditorHover.EvaluateDebugValue;
+var
+  Owner: TAtlasEditorHover;
+  Key: string;
+begin
+  FDebug.Cancel;
+  FDebugValue := Default(TAtlasDebugValue);
+  if (FDebugExpression = '') or FProblemsOnly or not TAtlasIdeSettings.Current.DebugHoverValues then
+    Exit;
+  Owner := Self;
+  Key := FKey;
+  // Im Hauptthread: Der Debugger der IDE ist nicht threadsicher. Sofortige Werte stehen gleich im Tooltip.
+  FDebugValue := FDebug.Evaluate(FDebugExpression, FView.Buffer.FileName, FLine,
+    procedure(const AValue: TAtlasDebugValue)
+    begin
+      Owner.DebugValueDone(Key, AValue);
+    end);
+end;
+
+procedure TAtlasEditorHover.DebugValueDone(const AKey: string; const AValue: TAtlasDebugValue);
+begin
+  // Nur für das Wort, auf dem die Maus noch steht; FDebug verwirft ältere Auswertungen ohnehin.
+  if AKey <> FKey then
+    Exit;
+  FDebugValue := AValue;
+  if not FTip.IsShown or (FShownKey <> AKey) then
+    Exit;
+  // Kein Wert (Fehler, weitergelaufen) und sonst nichts zu zeigen: schließen.
+  if not FDebugValue.Visible and not FHistory.Current.Found and (Length(FProblems) = 0) then
+    Hide
+  else
+    Refresh;
 end;
 
 function TAtlasEditorHover.WindowState: TAtlasEditorWindowState;

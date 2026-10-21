@@ -211,6 +211,7 @@ begin
   Assert.IsTrue(Settings.StartProfilesStatusField, 'Startprofil in der Statusleiste standardmäßig an (#575)');
   Assert.IsTrue(Settings.TestDebug, 'Test debuggen standardmäßig da (#585)');
   Assert.IsTrue(Settings.TestBreakAtStart, 'debug.testBreakAtStart standardmäßig an (#585)');
+  Assert.IsTrue(Settings.DebugHoverValues, 'debug.hoverValues standardmäßig an (#891)');
   Assert.IsTrue(Settings.TodoList, 'Befehl standardmäßig da (#68)');
   Assert.IsTrue(Settings.MetricsReport, 'Befehl standardmäßig da (#66)');
   Assert.IsTrue(Settings.TeamFile, 'Projektdatei standardmäßig an (#486)');
@@ -306,6 +307,7 @@ begin
   Settings.StartProfilesStatusField := False;
   Settings.TestDebug := False;
   Settings.TestBreakAtStart := False;
+  Settings.DebugHoverValues := False;
   Settings.TodoList := False;
   Settings.MetricsReport := False;
   Settings.TeamFile := False;
@@ -387,6 +389,7 @@ begin
   Assert.IsFalse(Loaded.StartProfilesStatusField);
   Assert.IsFalse(Loaded.TestDebug, 'Test debuggen (#585)');
   Assert.IsFalse(Loaded.TestBreakAtStart, 'debug.testBreakAtStart (#585)');
+  Assert.IsFalse(Loaded.DebugHoverValues, 'debug.hoverValues (#891)');
   Assert.IsFalse(Loaded.TodoList);
   Assert.IsFalse(Loaded.MetricsReport);
   Assert.IsFalse(Loaded.TeamFile);

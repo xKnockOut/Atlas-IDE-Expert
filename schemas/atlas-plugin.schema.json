@@ -587,6 +587,18 @@
       "x-captionEn": "Stop at the start of the method when debugging a test",
       "x-issue": "#585"
     },
+    "DebugHoverValues": {
+      "type": "boolean",
+      "default": true,
+      "x-key": "debug.hoverValues",
+      "x-area": "debug",
+      "x-feature": "Hover",
+      "x-page": "Debuggen",
+      "x-quickToggle": true,
+      "x-caption": "Werte im Hover beim Debuggen",
+      "x-captionEn": "Values in the hover while debugging",
+      "x-issue": "#891"
+    },
     "TestsBuildFirst": {
       "type": "boolean",
       "default": true,
