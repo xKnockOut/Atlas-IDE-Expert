@@ -12,7 +12,7 @@ function AtlasPluginSchemaJson: string;
 implementation
 
 const
-  Lines: array[0..2924] of string = (
+  Lines: array[0..2942] of string = (
     '{',
     '  "$schema": "http://json-schema.org/draft-07/schema#",',
     '  "title": "Atlas-Plugin-Einstellungen",',
@@ -2145,6 +2145,24 @@ const
     '      "type": "boolean",',
     '      "default": false,',
     '      "x-key": "editor.breadcrumbsShowUnit",',
+    '      "x-area": "editor",',
+    '      "x-page": "Editor",',
+    '      "x-issue": "#590"',
+    '    },',
+    '    "BreadcrumbsIdeColors": {',
+    '      "description": "Brotkrumenleiste in den Farben der IDE-Werkzeugleisten (Fläche und Schrift aus dem IDE-Thema) statt der Atlas-Palette; im dunklen Thema also wie die Navigationsleiste darüber sta' + 'tt fast schwarz.",',
+    '      "type": "boolean",',
+    '      "default": true,',
+    '      "x-key": "editor.breadcrumbsIdeColors",',
+    '      "x-area": "editor",',
+    '      "x-page": "Editor",',
+    '      "x-issue": "#590"',
+    '    },',
+    '    "BreadcrumbsHideIdeToolbar": {',
+    '      "description": "Navigationsleiste der IDE („Typ suchen“, „Methode suchen“) ausblenden, solange die Brotkrumenleiste an ist. Die Brotkrumenleiste ersetzt sie: Das Unit-Glied listet alle Typen und' + ' Routinen der Unit, „›“ hinter einem Typ seine Mitglieder.",',
+    '      "type": "boolean",',
+    '      "default": true,',
+    '      "x-key": "editor.breadcrumbsHideIdeToolbar",',
     '      "x-area": "editor",',
     '      "x-page": "Editor",',
     '      "x-issue": "#590"',

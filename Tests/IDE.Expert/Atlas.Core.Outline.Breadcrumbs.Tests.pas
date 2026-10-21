@@ -31,6 +31,10 @@ type
     procedure TargetPrefersImplementation;
     [Test]
     procedure BadgesFollowTheHeader;
+    [Test]
+    procedure UnitCrumbListsUnitMembers;
+    [Test]
+    procedure ChildrenOfTypesAndRoutines;
   end;
 
 implementation
@@ -155,7 +159,9 @@ begin
   Crumbs := TAtlasBreadcrumbs.Path(List, Lines, 24, 4, 'uKundeForm', True);
   Assert.AreEqual('uKundeForm › TfrmKunde › btnSpeichernClick › Pruefe', Joined(Crumbs));
   Assert.IsTrue(Crumbs[0].Badge.Kind = TAtlasBadgeKind.Unit_);
-  Assert.AreEqual(0, Integer(Length(Crumbs[0].Siblings)), 'Unit ohne Menü');
+  // Unit-Glied: alle Elemente der Unit-Ebene als Menü und als Kinder.
+  Assert.AreEqual('TfrmKunde,TAndere,Limit,Hilfe', NamesOf(List, Crumbs[0].Siblings));
+  Assert.AreEqual('TfrmKunde,TAndere,Limit,Hilfe', NamesOf(List, Crumbs[0].Children));
   // Das Glied der Methode ist die Deklaration im Typ.
   Assert.AreEqual(8, List[Crumbs[2].Node].StartLine);
   // Ohne Unit-Namen (Vorgabe).
@@ -268,6 +274,45 @@ begin
   Assert.AreEqual('ty', TAtlasBreadcrumbs.BadgeOf(List, Text, Find(List, 'TfrmKunde')).Code);
   Assert.AreEqual('fd', TAtlasBreadcrumbs.BadgeOf(List, Text, Find(List, 'btnSpeichern')).Code);
   Assert.AreEqual('co', TAtlasBreadcrumbs.BadgeOf(List, Text, Find(List, 'Limit')).Code);
+end;
+
+procedure TAtlasBreadcrumbsTests.UnitCrumbListsUnitMembers;
+var
+  List: TAtlasOutlineNodes;
+  Crumbs: TAtlasCrumbs;
+begin
+  List := Nodes;
+  // Rümpfe der Methoden zählen nicht doppelt, Routinen ohne Deklaration (Hilfe) schon.
+  Assert.AreEqual('TfrmKunde,TAndere,Limit,Hilfe', NamesOf(List, TAtlasBreadcrumbs.UnitMembers(List)));
+  // Auch in uses und initialization hat das Unit-Glied sein Menü.
+  Crumbs := TAtlasBreadcrumbs.Path(List, Lines, 3, 4, 'U', True);
+  Assert.AreEqual('U › uses', Joined(Crumbs));
+  Assert.AreEqual(4, Integer(Length(Crumbs[0].Siblings)));
+  Assert.AreEqual(0, Integer(Length(Crumbs[1].Children)), 'uses ohne Kinder');
+  Assert.AreEqual(0, Integer(Length(TAtlasBreadcrumbs.UnitMembers(nil))));
+end;
+
+procedure TAtlasBreadcrumbsTests.ChildrenOfTypesAndRoutines;
+var
+  List: TAtlasOutlineNodes;
+  Crumbs: TAtlasCrumbs;
+begin
+  List := Nodes;
+  Crumbs := TAtlasBreadcrumbs.Path(List, Lines, 24, 4, '', False);
+  Assert.AreEqual('TfrmKunde › btnSpeichernClick › Pruefe', Joined(Crumbs));
+  // Typ: alle Mitglieder in Quelltextreihenfolge.
+  Assert.AreEqual('btnSpeichern,btnSpeichernClick,SpeichereAdresse,SpaltenBreite,Display,TInner',
+    NamesOf(List, Crumbs[0].Children));
+  // Methode (Deklaration im Typ): die lokalen Routinen ihres Rumpfs.
+  Assert.AreEqual('Pruefe,Melde', NamesOf(List, Crumbs[1].Children));
+  // Lokale Routine ohne eigene lokale Routinen.
+  Assert.AreEqual(0, Integer(Length(Crumbs[2].Children)));
+  // Verschachtelter Typ.
+  Assert.AreEqual('Tief', NamesOf(List, TAtlasBreadcrumbs.Children(List, Find(List, 'TInner'))));
+  // Methode ohne lokale Routinen, ungültiger Knoten.
+  Assert.AreEqual(0, Integer(Length(TAtlasBreadcrumbs.Children(List, Find(List, 'SpaltenBreite')))));
+  Assert.AreEqual(0, Integer(Length(TAtlasBreadcrumbs.Children(List, -1))));
+  Assert.AreEqual(0, Integer(Length(TAtlasBreadcrumbs.Children(List, Length(List)))));
 end;
 
 initialization

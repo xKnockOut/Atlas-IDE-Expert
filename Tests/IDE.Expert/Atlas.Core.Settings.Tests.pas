@@ -1159,9 +1159,13 @@ begin
   Settings := TAtlasPluginSettings.Defaults;
   Assert.IsTrue(Settings.Breadcrumbs);
   Assert.IsFalse(Settings.BreadcrumbsShowUnit);
+  Assert.IsTrue(Settings.BreadcrumbsIdeColors, 'Farben der IDE');
+  Assert.IsTrue(Settings.BreadcrumbsHideIdeToolbar, 'Navigationsleiste der IDE aus');
   Assert.AreEqual($60BE, Settings.BreadcrumbsKey, 'Strg+Umschalt+.');
   Settings.Breadcrumbs := False;
   Settings.BreadcrumbsShowUnit := True;
+  Settings.BreadcrumbsIdeColors := False;
+  Settings.BreadcrumbsHideIdeToolbar := False;
   Settings.BreadcrumbsKey := 0;
   Store := TMemoryStore.Create;
   Settings.Save(Store);
@@ -1169,6 +1173,8 @@ begin
   Loaded.Load(Store);
   Assert.IsFalse(Loaded.Breadcrumbs);
   Assert.IsTrue(Loaded.BreadcrumbsShowUnit);
+  Assert.IsFalse(Loaded.BreadcrumbsIdeColors);
+  Assert.IsFalse(Loaded.BreadcrumbsHideIdeToolbar);
   Assert.AreEqual(0, Loaded.BreadcrumbsKey);
   Loaded.BreadcrumbsKey := -5;
   Loaded.Normalize;

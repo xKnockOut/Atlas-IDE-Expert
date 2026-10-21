@@ -7,6 +7,7 @@ Server und Claude-Code-Plugin tragen immer dieselbe Version.
 ## [Unveröffentlicht]
 
 ### Neu
+- Brotkrumenleiste (#590): im dunklen Thema in den Farben der IDE-Werkzeugleisten statt fast schwarz (`editor.breadcrumbsIdeColors`); Menü am Unit-Glied mit allen Elementen der Unit, „›“ hinter einem Glied öffnet seine Kinder (Mitglieder, lokale Routinen), Strg+Klick springt (Umschalt: Deklaration); die leere Navigationsleiste der IDE („Typ suchen“/„Methode suchen“) wird ausgeblendet, solange die Leiste an ist (`editor.breadcrumbsHideIdeToolbar`).
 - Schnellbefehle: `/case` ergänzt fehlende Aufzählungswerte (#296), `/unit` und `/open` (#297), `/component` mit Eintrag in die `.dpk` (#299), `/intf` und `/event` (#295), `/test` legt einen DUnitX-Test für die aktuelle Methode an (#295), `/json` mit Golden-Datei und Rundweg (#298), Vorschläge für `/sort` und `/filter` (#319).
 - Einstellung `slashCommands.logCall` für `/log`, `/except` und `/measure` (#304).
 - Eigenschaftsregeln (#309): Schnellkorrektur direkt in der Formulardatei, „Alle korrigieren“, Befehl „Eigenschaftsregeln anwenden“ (`atlas.server.applyDfmPropertyRules`, Einstellung `dfmRules.apply`), eigene Meldungen in der `atlas.json`.

@@ -568,6 +568,12 @@ type
     Breadcrumbs: Boolean;
     /// <summary>Unit-Namen als erstes Glied (#590, editor.breadcrumbsShowUnit).</summary>
     BreadcrumbsShowUnit: Boolean;
+    /// <summary>Brotkrumenleiste in den Farben der IDE-Werkzeugleisten statt der Atlas-Palette
+    /// (editor.breadcrumbsIdeColors).</summary>
+    BreadcrumbsIdeColors: Boolean;
+    /// <summary>Navigationsleiste der IDE („Typ suchen“/„Methode suchen“) ausblenden, solange die
+    /// Brotkrumenleiste an ist (editor.breadcrumbsHideIdeToolbar).</summary>
+    BreadcrumbsHideIdeToolbar: Boolean;
     /// <summary>Mitlaufender Kopf (#506, editor.stickyScroll, experimentell).</summary>
     StickyScroll: Boolean;
     /// <summary>Höchstzahl seiner Zeilen, MinStickyLines bis MaxStickyLines (#506,
@@ -1246,6 +1252,8 @@ begin
   Result.OutlineFollowCursor := True;
   Result.Breadcrumbs := True;
   Result.BreadcrumbsShowUnit := False;
+  Result.BreadcrumbsIdeColors := True;
+  Result.BreadcrumbsHideIdeToolbar := True;
   Result.StickyScroll := False;
   Result.StickyScrollMaxLines := 3;
   Result.Minimap := False;
@@ -1745,6 +1753,9 @@ begin
   OutlineFollowCursor := AStore.ReadInteger('OutlineFollowCursor', BoolValue(Default.OutlineFollowCursor)) <> 0;
   Breadcrumbs := AStore.ReadInteger('Breadcrumbs', BoolValue(Default.Breadcrumbs)) <> 0;
   BreadcrumbsShowUnit := AStore.ReadInteger('BreadcrumbsShowUnit', BoolValue(Default.BreadcrumbsShowUnit)) <> 0;
+  BreadcrumbsIdeColors := AStore.ReadInteger('BreadcrumbsIdeColors', BoolValue(Default.BreadcrumbsIdeColors)) <> 0;
+  BreadcrumbsHideIdeToolbar := AStore.ReadInteger('BreadcrumbsHideIdeToolbar',
+    BoolValue(Default.BreadcrumbsHideIdeToolbar)) <> 0;
   StickyScroll := AStore.ReadInteger('StickyScroll', BoolValue(Default.StickyScroll)) <> 0;
   StickyScrollMaxLines := AStore.ReadInteger('StickyScrollMaxLines', Default.StickyScrollMaxLines);
   Minimap := AStore.ReadInteger('Minimap', BoolValue(Default.Minimap)) <> 0;
@@ -2081,6 +2092,8 @@ begin
   AStore.WriteInteger('OutlineFollowCursor', BoolValue(OutlineFollowCursor));
   AStore.WriteInteger('Breadcrumbs', BoolValue(Breadcrumbs));
   AStore.WriteInteger('BreadcrumbsShowUnit', BoolValue(BreadcrumbsShowUnit));
+  AStore.WriteInteger('BreadcrumbsIdeColors', BoolValue(BreadcrumbsIdeColors));
+  AStore.WriteInteger('BreadcrumbsHideIdeToolbar', BoolValue(BreadcrumbsHideIdeToolbar));
   AStore.WriteInteger('StickyScroll', BoolValue(StickyScroll));
   AStore.WriteInteger('StickyScrollMaxLines', StickyScrollMaxLines);
   AStore.WriteInteger('Minimap', BoolValue(Minimap));

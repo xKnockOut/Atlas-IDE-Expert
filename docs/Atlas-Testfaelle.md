@@ -2389,6 +2389,15 @@ Voraussetzung für EX2 bis EX7: mindestens eine Einstellung trägt `x-experiment
 | BK12 | Zweites Editorfenster öffnen (Ansicht › Neues Editorfenster) | Auch dort eine Leiste |
 | BK13 | .txt-Datei aktivieren; Server beenden | Hinweis „Keine Gliederung an dieser Stelle“ bzw. „Der Atlas-Server läuft nicht“, Höhe unverändert |
 | BK14 | `editor.breadcrumbs` aus | Leisten verschwinden, Strg+Umschalt+. ist frei, Palettenbefehl fehlt |
+| BK15 | Dunkles IDE-Thema, `editor.breadcrumbsIdeColors` an (Vorgabe) | Leiste hat die Farbe der Werkzeugleisten darüber (nicht fast schwarz), Schrift wie dort; Badges unverändert |
+| BK16 | `editor.breadcrumbsIdeColors` aus; danach Thema hell ↔ dunkel wechseln | Atlas-Palette wie bisher; nach dem Wechsel passen die Farben ohne Neustart |
+| BK17 | `editor.breadcrumbsShowUnit` an, Klick auf das Unit-Glied | Menü mit allen Typen, Routinen, Konstanten und Variablen der Unit in Quelltextreihenfolge; Enter springt |
+| BK18 | Klick auf das „›“ hinter einem Typ | Menü mit den Mitgliedern des Typs, vorgewählt das Glied rechts daneben; Hover über „›“ hebt es hervor, Tooltip „Klick: Inhalt …“ |
+| BK19 | Caret in einer Methode mit lokalen Prozeduren | Hinter dem Methodenglied steht ein „›“ auch am Ende; Klick listet die lokalen Routinen |
+| BK20 | Strg+Klick auf ein Glied; Strg+Umschalt+Klick auf ein Methodenglied | Sprung zur Implementierung bzw. zur Deklaration; Strg+Klick aufs Unit-Glied springt an den Dateianfang |
+| BK21 | Strg+Umschalt+., ←, Strg+↓ bzw. Strg+Enter | Kindermenü des gewählten Glieds bzw. Sprung dorthin |
+| BK22 | `editor.breadcrumbsHideIdeToolbar` an (Vorgabe), mehrere Reiter öffnen und wechseln, zweites Editorfenster | Navigationsleiste der IDE („Typ suchen“/„Methode suchen“) bleibt überall weg, kein Flackern beim Reiterwechsel |
+| BK23 | `editor.breadcrumbsHideIdeToolbar` aus bzw. `editor.breadcrumbs` aus bzw. Atlas entladen | Navigationsleiste der IDE ist wieder an alter Stelle (unter den Reitern, über dem Editor) |
 
 ## Extrahieren, case und with (#50)
 
