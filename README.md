@@ -41,6 +41,8 @@ Details (German): [docs/Installation.md](docs/Installation.md).
 - **Code actions** (Alt+Enter), expand and shrink selection (Ctrl+W, Ctrl+Shift+W), go to implementation and type definition, switch between declaration and implementation (Ctrl+Shift+↑/↓), copy qualified name; all also in the editor context menu under *Atlas*. Alt+Ins opens the **generate menu** at the cursor (constructor, properties, overridden methods, interface methods, surround, templates). Slash commands such as `/uses Unit` run after Enter, `///` above a declaration creates the documentation comment
 - **Form designer**: open forms are sent to the server as the designer has them, so references, renames and checks see unsaved changes; renaming an event handler also updates its assignment in the designer
 - **Command palette** (Ctrl+Shift+P), silent reload of files changed outside the IDE, hang watchdog with log
+- **Editing helpers**: highlight text matching the selection (#709), toggle block comment (#703, Shift+Alt+A), new line above or below (#700, Shift+Enter, Ctrl+Alt+Enter), surround the selection while typing (#672), remove the surrounding construct (#657, Ctrl+Shift+Del) with preview, Atlas column in the gutter (#768)
+- **Conditional compilation**: outline, hover, go to and checks see only the active `{$IFDEF}` branches of the project, the outline shows the branch condition (#845)
 - **Find selection**: F3 or Shift+F3 searches a single-line selection forward or backward, otherwise the IDE's "Search Again" applies
 - **Unit search** (#777): its own window instead of the IDE dialog on Ctrl+F12; the IDE dialog stays available from the menu
 - **Notes** (#545) on code lines, only for you and not in the source, and **named bookmarks** (#622, Ctrl+Alt+K)

@@ -13,6 +13,9 @@
 //     (Formulare, Komponenten), sonst "public".
 //   - classMember, override, virtual, abstract: nur wenn wahr.
 //   - unimplemented: deklarierte Methode ohne Rumpf (#124, TClassCompletion).
+//   - condition: Bedingung des aktiven {$IFDEF}-Zweigs, in dem das Symbol steht
+//     (nur das äußerste Symbol im Zweig) oder in dem der Rumpf einer Routine
+//     steht (#845), z. B. "CPUX64".
 
 interface
 
@@ -24,6 +27,7 @@ uses
   Atlas.Common.Documents.Contract,
   Atlas.Common.Index.Contract,
   Atlas.Common.Pascal.SyntaxTree,
+  Atlas.Common.Pascal.Preprocessor,
   Atlas.Common.Lsp.TypeInfoClasses;
 
 type
@@ -69,6 +73,10 @@ type
     /// AIndex und liest deren Dateien mit AReadText (beide dürfen nil sein).</summary>
     class function BuildSymbols(ATree: TSyntaxTree; const AText: string; const AIndex: ISymbolIndex;
       const AReadText: TTypeInfoReadText): TJSONArray; overload; static;
+    /// <summary>Wie oben; AConditionals sind die Zweige der Datei für atlas.condition (#845).</summary>
+    class function BuildSymbols(ATree: TSyntaxTree; const AText: string; const AIndex: ISymbolIndex;
+      const AReadText: TTypeInfoReadText; const AConditionals: TArray<TConditionalRange>): TJSONArray;
+      overload; static;
     /// <summary>Symbolindex für die Vorfahren (#537); ohne gelten nur die bekannten Klassen der RTL/VCL/FMX.</summary>
     property Index: ISymbolIndex read FIndex write FIndex;
     /// <summary>Liest die Datei eines Vorfahren aus dem Index.</summary>
@@ -102,7 +110,11 @@ type
     FTypeInfo: TTypeInfoClasses;
     /// <summary>Klassen dieser Datei: mit RTTI für published übersetzt?</summary>
     FLocalTypeInfo: TDictionary<string, Boolean>;
+    /// <summary>Nur die aktiven Zweige (#845).</summary>
+    FConditionals: TArray<TConditionalRange>;
     function IsClassMember(ANode: TSyntaxNode): Boolean;
+    function InnermostBranch(const APosition: TTextPosition): Integer;
+    function ConditionOf(ANode: TSyntaxNode): string;
     procedure AddExtras(ASymbol: TJSONObject; ANode: TSyntaxNode; ARoutine: Boolean);
     function DefaultVisibility(ADecl, ABody: TSyntaxNode): string;
     function TokenIndexAt(AOffset: Integer): Integer;
@@ -123,6 +135,8 @@ type
     constructor Create(const ATokens: TArray<TPascalToken>; const AUnimplemented: TArray<TTextPosition>;
       const AActive: TArray<TPascalToken>; ATypeInfo: TTypeInfoClasses); overload;
     destructor Destroy; override;
+    /// <summary>Zweige der Datei; inaktive werden übergangen.</summary>
+    procedure SetConditionals(const AConditionals: TArray<TConditionalRange>);
     function Build(ARoot: TSyntaxNode): TJSONArray;
   end;
 
@@ -154,6 +168,66 @@ destructor TSymbolBuilder.Destroy;
 begin
   FLocalTypeInfo.Free;
   inherited Destroy;
+end;
+
+procedure TSymbolBuilder.SetConditionals(const AConditionals: TArray<TConditionalRange>);
+var
+  Conditional: TConditionalRange;
+begin
+  FConditionals := nil;
+  for Conditional in AConditionals do
+    if Conditional.Active and (Conditional.Condition <> '') then
+      FConditionals := FConditionals + [Conditional];
+end;
+
+/// <summary>A vor B?</summary>
+function PositionBefore(const A, B: TTextPosition): Boolean;
+begin
+  Result := (A.Line < B.Line) or ((A.Line = B.Line) and (A.Character < B.Character));
+end;
+
+/// <summary>Liegt APosition in ARange (Ende ausgeschlossen)?</summary>
+function PositionIn(const APosition: TTextPosition; const ARange: TTextRange): Boolean;
+begin
+  Result := not PositionBefore(APosition, ARange.StartPos) and PositionBefore(APosition, ARange.EndPos);
+end;
+
+function TSymbolBuilder.InnermostBranch(const APosition: TTextPosition): Integer;
+var
+  Index: Integer;
+begin
+  // Verschachtelte Zweige beginnen später als die äußeren.
+  Result := -1;
+  for Index := 0 to High(FConditionals) do
+    if PositionIn(APosition, FConditionals[Index].Range) and ((Result < 0) or
+      PositionBefore(FConditionals[Result].Range.StartPos, FConditionals[Index].Range.StartPos)) then
+      Result := Index;
+end;
+
+function TSymbolBuilder.ConditionOf(ANode: TSyntaxNode): string;
+var
+  Branch: Integer;
+  Body: TSyntaxNode;
+begin
+  Result := '';
+  if FConditionals = nil then
+    Exit;
+  // Das Symbol steht im Zweig; liegt der Elternknoten im selben Zweig, trägt ihn schon jener.
+  Branch := InnermostBranch(ANode.StartPos);
+  if (Branch >= 0) and ((ANode.Parent = nil) or not PositionIn(ANode.Parent.StartPos,
+    FConditionals[Branch].Range)) then
+    Exit(FConditionals[Branch].Condition);
+  // Nur der Rumpf steht im Zweig: begin … end bzw. asm … end je Plattform (Fälle 01 und 10).
+  if ANode.Kind <> TSyntaxKind.RoutineDecl then
+    Exit;
+  Body := ANode.FindChild(TSyntaxKind.Block);
+  if Body = nil then
+    Body := ANode.FindChild(TSyntaxKind.AsmBlock);
+  if Body = nil then
+    Exit;
+  Branch := InnermostBranch(Body.StartPos);
+  if (Branch >= 0) and not PositionIn(ANode.StartPos, FConditionals[Branch].Range) then
+    Result := FConditionals[Branch].Condition;
 end;
 
 function TSymbolBuilder.IsClassMember(ANode: TSyntaxNode): Boolean;
@@ -208,13 +282,19 @@ end;
 
 procedure TSymbolBuilder.AddExtras(ASymbol: TJSONObject; ANode: TSyntaxNode; ARoutine: Boolean);
 var
+  Existing: TJSONValue;
   Extras: TJSONObject;
   Index: Integer;
   Start: TTextPosition;
   Position: TTextPosition;
   Directive: string;
 begin
-  Extras := TJSONObject.Create;
+  // NewSymbol legt "atlas" schon an, wenn das Symbol eine Bedingung hat.
+  Existing := ASymbol.GetValue('atlas');
+  if Existing is TJSONObject then
+    Extras := TJSONObject(Existing)
+  else
+    Extras := TJSONObject.Create;
   if FVisibility <> '' then
     Extras.AddPair('visibility', FVisibility);
   if IsClassMember(ANode) then
@@ -240,6 +320,8 @@ begin
         Break;
       end;
   end;
+  if Extras = Existing then
+    Exit;
   if Extras.Count > 0 then
     ASymbol.AddPair('atlas', Extras)
   else
@@ -288,6 +370,8 @@ end;
 
 function TSymbolBuilder.NewSymbol(ANode: TSyntaxNode; const AName: string; AKind: Integer;
   const ADetail: string): TJSONObject;
+var
+  Condition: string;
 begin
   Result := TJSONObject.Create;
   // VS Code lehnt Symbole mit leerem Namen ab.
@@ -300,6 +384,9 @@ begin
   Result.AddPair('kind', TJSONNumber.Create(AKind));
   Result.AddPair('range', TLspPositions.RangeToJson(NodeRange(ANode)));
   Result.AddPair('selectionRange', TLspPositions.RangeToJson(NameRange(ANode, AName)));
+  Condition := ConditionOf(ANode);
+  if Condition <> '' then
+    Result.AddPair('atlas', TJSONObject.Create(TJSONPair.Create('condition', Condition)));
 end;
 
 procedure TSymbolBuilder.AddChild(ASymbol, AChild: TJSONObject);
@@ -573,6 +660,13 @@ end;
 
 class function TLspDocumentSymbols.BuildSymbols(ATree: TSyntaxTree; const AText: string;
   const AIndex: ISymbolIndex; const AReadText: TTypeInfoReadText): TJSONArray;
+begin
+  Result := BuildSymbols(ATree, AText, AIndex, AReadText, nil);
+end;
+
+class function TLspDocumentSymbols.BuildSymbols(ATree: TSyntaxTree; const AText: string;
+  const AIndex: ISymbolIndex; const AReadText: TTypeInfoReadText;
+  const AConditionals: TArray<TConditionalRange>): TJSONArray;
 var
   Builder: TSymbolBuilder;
   Missing: TArray<TTextPosition>;
@@ -587,6 +681,7 @@ begin
   try
     Builder := TSymbolBuilder.Create(ATree.Tokens, Missing, TTypeInfoClasses.ActiveTokens(AText), TypeInfo);
     try
+      Builder.SetConditionals(AConditionals);
       Result := Builder.Build(ATree.Root);
     finally
       Builder.Free;
@@ -626,7 +721,7 @@ begin
   Shared := TSyntaxTreeCache.Get(Document, Cancellation);
   Tree := Shared.Tree;
   ACancellation.ThrowIfCancellationRequested;
-  Result := BuildSymbols(Tree, Document.Text, FIndex, FReadText);
+  Result := BuildSymbols(Tree, Document.Text, FIndex, FReadText, Shared.Conditionals);
 end;
 
 end.
