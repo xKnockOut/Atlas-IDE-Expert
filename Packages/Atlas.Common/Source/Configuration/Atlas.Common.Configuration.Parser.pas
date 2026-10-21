@@ -411,6 +411,8 @@ begin
       ExpectString(ANode[Index], 'todoCategory', FSettings.SlashTodoCategory)
     else if Key = 'sortUsesRemoveUnused' then
       ExpectBoolean(ANode[Index], Key, FSettings.SlashSortUsesRemoveUnused)
+    else if Key = 'enumHelper' then
+      ExpectBoolean(ANode[Index], Key, FSettings.SlashEnumHelper)
     else
       Report(ANode.KeyStarts[Index], ANode.KeyStarts[Index] + Length(Key) + 2,
         Format('Unbekannte Einstellung "slashCommands.%s"', [Key]), False);
@@ -1881,6 +1883,7 @@ begin
       Result.SlashTodoOwner := FileSettings.SlashTodoOwner;
       Result.SlashTodoCategory := FileSettings.SlashTodoCategory;
       Result.SlashSortUsesRemoveUnused := FileSettings.SlashSortUsesRemoveUnused;
+      Result.SlashEnumHelper := FileSettings.SlashEnumHelper;
     end
     else if Key = 'sortUses' then
     begin

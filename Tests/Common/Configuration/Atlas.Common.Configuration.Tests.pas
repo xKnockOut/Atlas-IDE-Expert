@@ -412,6 +412,11 @@ begin
   Assert.AreEqual(0, Integer(Length(Issues)));
   Assert.IsTrue(Parse('{}', Issues).SlashSortUsesRemoveUnused);
   Assert.AreEqual('', Parse('{}', Issues).SlashTodoOwner);
+  // #875: /helper für Aufzählungen
+  Assert.IsTrue(Parse('{}', Issues).SlashEnumHelper);
+  Assert.IsFalse(Parse('{"slashCommands": {"enumHelper": false}}', Issues).SlashEnumHelper);
+  Assert.IsFalse(TConfigurationParser.ParseLayered('{"slashCommands": {"enumHelper": false}}', '{}',
+    Issues).SlashEnumHelper);
   Assert.AreEqual(0, Integer(Length(Issues)));
   // Vervollständigung (#229)
   Assert.IsTrue(Parse('{}', Issues).Completion.Matching = TCompletionMatching.Fuzzy);

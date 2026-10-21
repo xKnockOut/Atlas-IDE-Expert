@@ -11,7 +11,7 @@ function AtlasSchemaJson: string;
 implementation
 
 const
-  Lines: array[0..1283] of string = (
+  Lines: array[0..1289] of string = (
     '{',
     '  "$schema": "http://json-schema.org/draft-07/schema#",',
     '  "title": "Atlas-Konfiguration",',
@@ -758,6 +758,12 @@ const
     '          "default": true,',
     '          "description": "/sortuses streicht auch ungenutzte Units laut Index. Units mit initialization oder finalization und die aus usesKeep bleiben.",',
     '          "x-issue": "#297"',
+    '        },',
+    '        "enumHelper": {',
+    '          "type": "boolean",',
+    '          "default": true,',
+    '          "description": "/helper für eine Aufzählung legt die Namenstabelle cNames sowie ToString und FromString an. Aus: ein leerer record helper wie bei anderen Typen.",',
+    '          "x-issue": "#875"',
     '        }',
     '      },',
     '      "x-scope": "global",',
