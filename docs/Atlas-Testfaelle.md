@@ -2905,6 +2905,25 @@ Voraussetzung: Einstellungen auf Vorgabe (Blockeinzug 2); Methode mit `if … th
 | NZ11 | Tasten unter Optionen › Befehle › Neue Zeile ober-/unterhalb ändern | Die neuen Tasten wirken, die Tastenübersicht prüft Konflikte |
 | NZ12 | „Neue Zeile ober-/unterhalb“ aus | Umschalt+Enter und Strg+Alt+Enter verhalten sich wie ohne Atlas, die Befehle fehlen in der Palette (**Abnahme**) |
 
+## Bedingungen mit SizeOf, Declared und {$IFOPT} (#847)
+
+Voraussetzung: Einstellungen auf Vorgabe; Projekt mit Win32 und Win64, Konfiguration Debug mit Bereichsprüfung (DCC_RangeChecking an), Release ohne; Unit mit `{$IF SizeOf(Pointer) = 8} type TPtrInt = Int64; {$ELSE} type TPtrInt = Integer; {$IFEND}`, `{$IF RTLVersion111}`, `{$IF Declared(Unbekannt)} a {$ELSE} b {$IFEND}`, `{$IF MeineKonstante > 2}` (Konstante in einer anderen Unit), `{$IFOPT R+} CheckBounds(I); {$ENDIF}`, danach `{$R-}` und dasselbe `{$IFOPT R+}` noch einmal.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| BD1 | Plattform Win64, Hover auf `{$IF SizeOf(Pointer) = 8}` | „wahr“, darunter `SizeOf(Pointer)` 8 · Zielplattform Win64; der else-Zweig ist abgeblendet (**Abnahme**) |
+| BD2 | Plattform Win32, BD1 wiederholen | „falsch“, `SizeOf(Pointer)` 4 · Zielplattform Win32; der erste Zweig ist abgeblendet |
+| BD3 | Hover auf `{$IF RTLVersion111}` und auf `{$IF Declared(RTLVersion111)}` | „wahr“ mit `RTLVersion111` wahr · Delphi 13 (bzw. der eigenen Version) |
+| BD4 | Hover auf `{$IF Declared(Unbekannt)}` | „unbekannt = aktiv“ mit dem Hinweis, dass der Zweig und das `{$ELSE}` aktiv sind; keiner der beiden Zweige ist abgeblendet (**Abnahme**) |
+| BD5 | `{$IF MeineKonstante > 2}` ansehen | Zweig nicht abgeblendet, kein Fehler; Hover „unbekannt = aktiv“, `MeineKonstante` unbekannt · Konstante aus dem Code (**Abnahme**) |
+| BD6 | `{$IF Declared(TForm)}` in einer VCL-Unit, Index fertig | „wahr“, `Declared(TForm)` wahr · Index |
+| BD7 | Konfiguration Debug, Hover auf das erste `{$IFOPT R+}` | „aktiv: R+ aus DCC_RangeChecking (Debug)“, `CheckBounds(I)` nicht abgeblendet (**Abnahme**) |
+| BD8 | Hover auf das zweite `{$IFOPT R+}` hinter `{$R-}` | „inaktiv: R- seit {$R-} in Zeile …“, der Zweig ist abgeblendet (**Abnahme**) |
+| BD9 | Konfiguration Release, BD7 wiederholen | „inaktiv“, R- aus DCC_RangeChecking (Release) bzw. Vorgabe des Compilers; Zweig abgeblendet |
+| BD10 | `{$PUSHOPT} {$R-} … {$POPOPT}` um das zweite `{$IFOPT R+}` legen, ein drittes dahinter | Im Block inaktiv, dahinter wieder wie BD7; Hover auf `{$PUSHOPT}` nennt die Zeile des `{$POPOPT}` (**Abnahme**) |
+| BD11 | `{$M+} {$PUSHOPT} {$M-} type TA = class procedure P; end; {$POPOPT} type TB = class procedure Q; end;` in der Gliederung | P ist public, Q published |
+| BD12 | Optionen › Editor › Hover über Direktiven aus | Kein Hover auf den Bedingungen; Abblenden bleibt wie oben |
+
 ## Felder varianter Records (#846)
 
 Voraussetzung: Einstellungen auf Vorgabe; Unit mit `uses System.Types, Winapi.Messages;`, `var R: TRect; M: TMessage;` und einem eigenen Record `TMsg = record case Kind: TKind of mkA, mkB: (Value: Integer); mkC: (Inner: Integer; case Byte of 0: (Lo: Byte); 1: (Hi: Byte)); end;`.
