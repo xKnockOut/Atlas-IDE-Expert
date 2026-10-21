@@ -1618,7 +1618,7 @@ const
     '    "FormatCodeKey": {',
     '      "description": "Tastenkürzel „Formatieren“ (0 = keins).",',
     '      "type": "integer",',
-    '      "default": 57414,',
+    '      "default": 57420,',
     '      "x-key": "keys.format",',
     '      "x-area": "keys",',
     '      "x-format": "shortcut",',

@@ -2699,9 +2699,9 @@ Vorher: Projekt mit Index geladen, eine Unit mit `uses System.SysUtils, System.C
 
 | Nr. | Schritt | Erwartet |
 |---|---|---|
-| FO1 | Unit mit falsch eingerückten Zeilen (begin/end, if/else ohne begin, try/finally, case, repeat, Klassenrumpf), Strg+Umschalt+Alt+F | Jede Ebene um `indentSize` eingerückt; Folgezeilen einer Anweisung behalten ihren Abstand; ein Rückgängig stellt alles wieder her |
+| FO1 | Unit mit falsch eingerückten Zeilen (begin/end, if/else ohne begin, try/finally, case, repeat, Klassenrumpf), Strg+Umschalt+Alt+L | Jede Ebene um `indentSize` eingerückt; Folgezeilen einer Anweisung behalten ihren Abstand; ein Rückgängig stellt alles wieder her |
 | FO2 | FO1 ein zweites Mal | Meldung „Atlas: Nichts zu formatieren.“, keine Änderung |
-| FO3 | Drei Zeilen markieren, Strg+Umschalt+Alt+F | Nur die markierten Zeilen ändern sich |
+| FO3 | Drei Zeilen markieren, Strg+Umschalt+Alt+L | Nur die markierten Zeilen ändern sich |
 | FO4 | Mehrzeiliger Kommentar, String mit Leerzeichen, asm-Block, `{$IFDEF} … {$ELSE} … {$ENDIF}` mit schiefer Einrückung im Zweig hinter `{$ELSE}` | Alles davon bleibt unverändert |
 | FO5 | `format.beginPlacement` = `newLine`, `if A then begin` | `begin` in eigener Zeile unter `if`; was hinter `begin` stand, eine Ebene tiefer in eigener Zeile |
 | FO6 | `format.beginPlacement` = `sameLine`, `begin` allein unter `if A then` | `if A then begin` in einer Zeile |

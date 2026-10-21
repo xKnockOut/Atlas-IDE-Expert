@@ -1907,7 +1907,7 @@ begin
   try
     Page.LoadFrom(Settings);
     Assert.IsTrue(Page.FormatCode.Checked);
-    Assert.AreEqual(ShortCutToText(TShortCut($E046)), Page.FormatCodeKey.Text);
+    Assert.AreEqual(ShortCutToText(TShortCut($E04C)), Page.FormatCodeKey.Text);
     Page.FormatCode.Checked := False;
     Page.FormatCodeKey.Text := '';
     Saved := TAtlasPluginSettings.Defaults;

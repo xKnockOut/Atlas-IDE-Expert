@@ -1319,7 +1319,8 @@ begin
   Result.CompleteStatementTryKind := TryKindFinally;
   Result.CompleteStatementMethodBody := True;
   Result.FormatCode := True;
-  Result.FormatCodeKey := $E046; // Strg+Umschalt+Alt+F
+  // Strg+Umschalt+Alt+F hat die Suche in der Methode (#877).
+  Result.FormatCodeKey := $E04C; // Strg+Umschalt+Alt+L
   Result.ContinuePattern := True;
   Result.ContinuePatternMinLines := 2;
   Result.MultiCursor := False;

@@ -639,6 +639,6 @@ Jeder Branch baut auf dem vorigen auf. Nichts davon ist gebaut, getestet oder in
 - Ergebnis: Win64-Gruppe 0/0/0, 5184 Tests grün, Win32-Plugin gebaut, alle Check-Skripte sauber.
 - Werkzeuge im scratchpad: `strings_diff.py` (Aufzählung gegen Textlisten zählen), `dup_uses2.py` (Unit in interface- und implementation-uses), `fix2532*.py`, `warmup*.py`, `ide-dialogs.ps1`.
 - Offen:
-  - Tastenkonflikt in den Vorgaben: „In Methode suchen“ (#877) und „Code formatieren“ (#43) haben beide Strg+Umschalt+Alt+F.
+  - Tastenkonflikt gelöst (Entscheidung Marco): „In Methode suchen“ (#877) behält Strg+Umschalt+Alt+F, „Code formatieren“ (#43) hat jetzt Strg+Umschalt+Alt+L ($E04C).
   - #874 Rest (Optionsseite/Prüfliste/Fehlerbericht synchron, Server executeCommand seriell).
   - AV in rtl370 beim Beenden nach Neuladen.

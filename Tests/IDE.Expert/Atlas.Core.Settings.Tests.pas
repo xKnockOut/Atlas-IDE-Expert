@@ -1342,7 +1342,7 @@ var
 begin
   Settings := TAtlasPluginSettings.Defaults;
   Assert.IsTrue(Settings.FormatCode);
-  Assert.AreEqual($E046, Settings.FormatCodeKey, 'Strg+Umschalt+Alt+F');
+  Assert.AreEqual($E04C, Settings.FormatCodeKey, 'Strg+Umschalt+Alt+L');
   Settings.FormatCode := False;
   Settings.FormatCodeKey := $C046;
   Store := TMemoryStore.Create;
