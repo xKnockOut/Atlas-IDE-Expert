@@ -502,7 +502,7 @@ begin
     '      "name": "Quick command not executed",' + #10 +
     '      "category": "code-smell",' + #10 +
     '      "severity": "hint",' + #10 +
-    '      "description": "A line starting with /name was not executed and stays in the code: the command is unknown, switched off (slashCommands.disabled) or does not fit at this place. The message names ' + 'the reason.",' + #10 +
+    '      "description": "A line starting with /name was not executed and stays in the code: the command is unknown, switched off (slashCommands.disabled) or does not fit at this place. The message names ' + 'the reason. \"/ignore rule\" is also reported when that rule finds nothing in the line below.",' + #10 +
     '      "bad": "/gibtsnicht X",' + #10 +
     '      "good": "/uses System.Classes"' + #10 +
     '    },' + #10 +
@@ -1118,7 +1118,7 @@ begin
     '    {' + #10 +
     '      "id": "slash-command",' + #10 +
     '      "name": "Schnellbefehl nicht ausgeführt",' + #10 +
-    '      "description": "Eine Zeile, die mit /name beginnt, wurde nicht ausgeführt und steht noch im Code: Der Befehl ist unbekannt, abgeschaltet (slashCommands.disabled) oder passt an dieser Stelle nich' + 't. Die Meldung nennt den Grund."' + #10 +
+    '      "description": "Eine Zeile, die mit /name beginnt, wurde nicht ausgeführt und steht noch im Code: Der Befehl ist unbekannt, abgeschaltet (slashCommands.disabled) oder passt an dieser Stelle nich' + 't. Die Meldung nennt den Grund. \"/ignore regel\" meldet sie auch, wenn diese Regel in der Zeile darunter nichts findet."' + #10 +
     '    },' + #10 +
     '    {' + #10 +
     '      "id": "empty-except",' + #10 +

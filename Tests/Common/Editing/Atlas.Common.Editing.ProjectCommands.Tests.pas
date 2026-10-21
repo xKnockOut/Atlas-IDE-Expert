@@ -73,6 +73,7 @@ uses
   Atlas.Common.Index.Contract,
   Atlas.Common.Index.SymbolIndex,
   Atlas.Common.Index.Extractor,
+  Atlas.Common.Editing.UsesActions,
   Atlas.Common.Editing.SlashCommands,
   Atlas.Text.Lines;
 
@@ -107,6 +108,8 @@ type
     function TestUnit(const AUri, AText: string; out ATarget: TSlashTestUnit): Boolean;
     procedure Notify(const AUri, AMessage: string);
     procedure MoveCursor(const AUri: string; const APosition: TTextPosition);
+    function RuleIdsAt(const AUri, AText: string; ALine: Integer; out AIds: TArray<string>): Boolean;
+    function UsesContext(const AUri: string; out AContext: TUsesContext): Boolean;
   end;
 
 const
@@ -256,6 +259,18 @@ end;
 
 procedure TFakeHost.MoveCursor(const AUri: string; const APosition: TTextPosition);
 begin
+end;
+
+function TFakeHost.RuleIdsAt(const AUri, AText: string; ALine: Integer; out AIds: TArray<string>): Boolean;
+begin
+  AIds := nil;
+  Result := False;
+end;
+
+function TFakeHost.UsesContext(const AUri: string; out AContext: TUsesContext): Boolean;
+begin
+  AContext := Default(TUsesContext);
+  Result := False;
 end;
 
 function Run(const ACommand: string; const AHost: ISlashHost; out AEdits: TArray<TRuleEdit>): Boolean;

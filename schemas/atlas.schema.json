@@ -726,6 +726,24 @@
           "default": "Eigene",
           "description": "Palettenseite, auf der /component die neue Komponente mit RegisterComponents einträgt.",
           "x-issue": "#299"
+        },
+        "todoOwner": {
+          "type": "string",
+          "default": "",
+          "description": "Name hinter -o, den /todo einträgt. Leer: user.name aus der git-Konfiguration (Repository, dann Benutzerordner), sonst der Anmeldename. /todo -oName in der Zeile geht vor.",
+          "x-issue": "#297"
+        },
+        "todoCategory": {
+          "type": "string",
+          "default": "",
+          "description": "Kategorie hinter -c, die /todo einträgt. Leer: keine. /todo -cKategorie in der Zeile geht vor.",
+          "x-issue": "#297"
+        },
+        "sortUsesRemoveUnused": {
+          "type": "boolean",
+          "default": true,
+          "description": "/sortuses streicht auch ungenutzte Units laut Index. Units mit initialization oder finalization und die aus usesKeep bleiben.",
+          "x-issue": "#297"
         }
       },
       "x-scope": "global",

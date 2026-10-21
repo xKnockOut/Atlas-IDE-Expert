@@ -405,6 +405,12 @@ begin
       ExpectString(ANode[Index], 'logCall', FSettings.SlashLogCall)
     else if Key = 'componentPalette' then
       ExpectString(ANode[Index], 'componentPalette', FSettings.SlashComponentPalette)
+    else if Key = 'todoOwner' then
+      ExpectString(ANode[Index], 'todoOwner', FSettings.SlashTodoOwner)
+    else if Key = 'todoCategory' then
+      ExpectString(ANode[Index], 'todoCategory', FSettings.SlashTodoCategory)
+    else if Key = 'sortUsesRemoveUnused' then
+      ExpectBoolean(ANode[Index], Key, FSettings.SlashSortUsesRemoveUnused)
     else
       Report(ANode.KeyStarts[Index], ANode.KeyStarts[Index] + Length(Key) + 2,
         Format('Unbekannte Einstellung "slashCommands.%s"', [Key]), False);
@@ -1872,6 +1878,9 @@ begin
       Result.SlashHeaderTemplate := FileSettings.SlashHeaderTemplate;
       Result.SlashLogCall := FileSettings.SlashLogCall;
       Result.SlashComponentPalette := FileSettings.SlashComponentPalette;
+      Result.SlashTodoOwner := FileSettings.SlashTodoOwner;
+      Result.SlashTodoCategory := FileSettings.SlashTodoCategory;
+      Result.SlashSortUsesRemoveUnused := FileSettings.SlashSortUsesRemoveUnused;
     end
     else if Key = 'sortUses' then
     begin
