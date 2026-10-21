@@ -369,7 +369,7 @@ end;
 procedure TLspHoverTests.AtlasPartsForTooltip;
 var
   Info: THoverInfo;
-  Json: TJSONObject;
+  Json, Member: TJSONObject;
 begin
   Info := Default(THoverInfo);
   Info.Declaration := 'procedure BeginUpdate;';
@@ -382,6 +382,22 @@ begin
     Assert.AreEqual('Unterdrückt das Neuzeichnen.', Json.GetValue<string>('documentationText'));
     Assert.IsNull(Json.GetValue('documentation'), 'ohne XMLDoc keine Struktur');
     Assert.IsNull(Json.GetValue('value'), 'leere Teile entfallen');
+    Assert.IsNull(Json.GetValue('published'), 'ohne Mitglieder kein published');
+  finally
+    Json.Free;
+  end;
+  // published-Mitglieder strukturiert (#110).
+  SetLength(Info.PublishedItems, 1);
+  Info.PublishedItems[0].Name := 'Caption';
+  Info.PublishedItems[0].TypeName := 'TCaption';
+  Info.PublishedItems[0].DeclaringClass := 'TControl';
+  Info.DefaultProperty := 'Controls[Index: Integer]: TControl';
+  Json := TLspHover.AtlasJson(Info);
+  try
+    Member := Json.GetValue<TJSONArray>('published.members').Items[0] as TJSONObject;
+    Assert.AreEqual('Caption', Member.GetValue<string>('name'));
+    Assert.AreEqual('TControl', Member.GetValue<string>('declaringClass'));
+    Assert.AreEqual('Controls[Index: Integer]: TControl', Json.GetValue<string>('published.defaultProperty'));
   finally
     Json.Free;
   end;
