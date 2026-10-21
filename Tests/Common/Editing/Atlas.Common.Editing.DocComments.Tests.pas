@@ -31,6 +31,21 @@ type
     procedure ActionMarksMultilineStaleParam;
     [Test]
     procedure ActionMarksRenamedParamAndAddsNew;
+    /// <summary>"///" über TFoo.Bar im implementation-Teil: Gerüst an der Deklaration, "///" weg.</summary>
+    [Test]
+    procedure SlashAboveImplementationGoesToDeclaration;
+    /// <summary>Überladungen nach Parameternamen; geschachtelte Klassen über den ganzen Pfad.</summary>
+    [Test]
+    procedure SlashAboveImplementationFindsOverloadAndNested;
+    /// <summary>Deklaration schon dokumentiert oder unbekannt: nichts bzw. Gerüst an Ort und Stelle.</summary>
+    [Test]
+    procedure SlashAboveImplementationKeepsDocumentedAndFallsBack;
+    /// <summary>Gerüst und Aktionen stehen über den Attributen der Deklaration.</summary>
+    [Test]
+    procedure CommentGoesAboveAttributes;
+    /// <summary>„Parameter abgleichen“ auf jeder Zeile des Blocks; ohne Abweichung nichts.</summary>
+    [Test]
+    procedure AdjustBlockFromInsideComment;
   end;
 
 implementation
@@ -245,6 +260,144 @@ begin
   Assert.AreEqual('<!-- entfernt: Alt: a -->', Found[0].Edits[0].NewText);
   Assert.AreEqual(8, Found[0].Edits[1].Range.StartPos.Line);
   Assert.AreEqual('    /// <param name="A"></param>'#10, Found[0].Edits[1].NewText);
+end;
+
+const
+  MethodSource =
+    'unit U;'#10 +                                                               // 0
+    'interface'#10 +                                                             // 1
+    'type'#10 +                                                                  // 2
+    '  TFoo = class'#10 +                                                        // 3
+    '  public type'#10 +                                                         // 4
+    '    TInner = class'#10 +                                                    // 5
+    '      function Calc(ARate: Double): Currency;'#10 +                         // 6
+    '    end;'#10 +                                                              // 7
+    '  public'#10 +                                                              // 8
+    '%s' +                                                                       // 9 ...
+    '    procedure Bar(A, B: Integer); overload;'#10 +                           // 9
+    '    procedure Bar(const S: string); overload;'#10 +                         // 10
+    '  end;'#10 +                                                                // 11
+    'implementation'#10 +                                                        // 12
+    '%s'#10 +                                                                    // 13
+    '%s'#10 +                                                                    // 14
+    'begin'#10 +
+    'end;'#10 +
+    'end.';
+
+function SlashEdits(const AText: string; ALine: Integer; out AEdits: TArray<TRuleEdit>): Boolean;
+var
+  Tree: TSyntaxTree;
+begin
+  Tree := TPascalParser.Parse(AText);
+  try
+    Result := TDocComments.AfterSlash(AText, Tree, TTextPosition.Create(ALine, 3), AEdits);
+  finally
+    Tree.Free;
+  end;
+end;
+
+procedure TDocCommentsTests.SlashAboveImplementationGoesToDeclaration;
+var
+  Edits: TArray<TRuleEdit>;
+begin
+  Assert.IsTrue(SlashEdits(Format(MethodSource, ['', '///', 'procedure TFoo.Bar(A, B: Integer);']), 13, Edits));
+  Assert.AreEqual(2, Integer(Length(Edits)));
+  // Gerüst vor der Deklaration in der Klasse, mit deren Einrückung.
+  Assert.AreEqual(9, Edits[0].Range.StartPos.Line);
+  Assert.AreEqual(9, Edits[0].Range.EndPos.Line);
+  Assert.AreEqual(0, Edits[0].Range.EndPos.Character);
+  Assert.AreEqual('    /// <summary></summary>'#10'    /// <param name="A"></param>'#10 +
+    '    /// <param name="B"></param>'#10, Edits[0].NewText);
+  // Die Zeile mit "///" fällt weg.
+  Assert.AreEqual(13, Edits[1].Range.StartPos.Line);
+  Assert.AreEqual(14, Edits[1].Range.EndPos.Line);
+  Assert.AreEqual(0, Edits[1].Range.EndPos.Character);
+  Assert.AreEqual('', Edits[1].NewText);
+end;
+
+procedure TDocCommentsTests.SlashAboveImplementationFindsOverloadAndNested;
+var
+  Edits: TArray<TRuleEdit>;
+begin
+  Assert.IsTrue(SlashEdits(Format(MethodSource, ['', '///', 'procedure TFoo.Bar(const S: string);']), 13, Edits));
+  Assert.AreEqual(10, Edits[0].Range.StartPos.Line);
+  Assert.AreEqual('    /// <summary></summary>'#10'    /// <param name="S"></param>'#10, Edits[0].NewText);
+  Assert.IsTrue(SlashEdits(Format(MethodSource, ['', '///', 'function TFoo.TInner.Calc(ARate: Double): Currency;']),
+    13, Edits));
+  Assert.AreEqual(6, Edits[0].Range.StartPos.Line);
+  Assert.AreEqual('      /// <summary></summary>'#10'      /// <param name="ARate"></param>'#10 +
+    '      /// <returns></returns>'#10, Edits[0].NewText);
+end;
+
+procedure TDocCommentsTests.SlashAboveImplementationKeepsDocumentedAndFallsBack;
+var
+  Edits: TArray<TRuleEdit>;
+begin
+  // Die Deklaration hat schon einen Kommentar: "///" bleibt, wie getippt.
+  Assert.IsFalse(SlashEdits(Format(MethodSource, ['    /// <summary>B</summary>'#10, '///',
+    'procedure TFoo.Bar(A, B: Integer);']), 14, Edits));
+  Assert.AreEqual(0, Integer(Length(Edits)));
+  // Ohne Deklaration (freie Routine, unbekannte Klasse): Gerüst an Ort und Stelle.
+  Assert.IsTrue(SlashEdits(Format(MethodSource, ['', '///', 'procedure Frei(X: Integer);']), 13, Edits));
+  Assert.AreEqual(1, Integer(Length(Edits)));
+  Assert.AreEqual(13, Edits[0].Range.StartPos.Line);
+  Assert.AreEqual('/// <summary></summary>'#10'/// <param name="X"></param>', Edits[0].NewText);
+  Assert.IsTrue(SlashEdits(Format(MethodSource, ['', '///', 'procedure TAnders.Bar(X: Integer);']), 13, Edits));
+  Assert.AreEqual(1, Integer(Length(Edits)));
+end;
+
+procedure TDocCommentsTests.CommentGoesAboveAttributes;
+var
+  Text: string;
+  Edits: TArray<TRuleEdit>;
+  Found: TArray<TCodeAction>;
+begin
+  Text := Format(MethodSource, ['    [Test]'#10, '///', 'procedure TFoo.Bar(A, B: Integer);']);
+  // Zeile 9 [Test], 10 Bar, 14 "///".
+  Assert.IsTrue(SlashEdits(Text, 14, Edits));
+  Assert.AreEqual(9, Edits[0].Range.StartPos.Line);
+  Found := ActionsAt(Text, 10);
+  Assert.AreEqual('Dokumentationskommentar erzeugen', Found[0].Title);
+  Assert.AreEqual(9, Found[0].Edits[0].Range.StartPos.Line);
+  // Kommentar über dem Attribut zählt als Kommentar der Deklaration.
+  Text := Format(MethodSource, ['    /// <summary>B</summary>'#10'    [Test]'#10, '///',
+    'procedure TFoo.Bar(A, B: Integer);']);
+  Assert.IsFalse(SlashEdits(Text, 15, Edits));
+  Found := ActionsAt(Text, 11);
+  Assert.AreEqual('Fehlende <param> ergänzen', Found[0].Title);
+end;
+
+procedure TDocCommentsTests.AdjustBlockFromInsideComment;
+var
+  Text: string;
+  Tree: TSyntaxTree;
+  Action: TCodeAction;
+begin
+  Text := Format(MethodSource, ['    /// <summary>B</summary>'#10'    /// <param name="Alt">a</param>'#10, '', '']);
+  // Zeilen 9 und 10 Kommentar, 11 Bar(A, B).
+  Tree := TPascalParser.Parse(Text);
+  try
+    Assert.IsTrue(TDocComments.AdjustBlock(Text, Tree, 9, Action));
+    Assert.AreEqual('Parameter abgleichen', Action.Title);
+    Assert.AreEqual(2, Integer(Length(Action.Edits)));
+    Assert.AreEqual('<!-- entfernt: Alt: a -->', Action.Edits[0].NewText);
+    Assert.AreEqual('    /// <param name="A"></param>'#10'    /// <param name="B"></param>'#10, Action.Edits[1].NewText);
+    Assert.IsTrue(TDocComments.AdjustBlock(Text, Tree, 10, Action));
+    // Außerhalb des Blocks nichts.
+    Assert.IsFalse(TDocComments.AdjustBlock(Text, Tree, 11, Action));
+    Assert.IsFalse(TDocComments.AdjustBlock(Text, Tree, 8, Action));
+  finally
+    Tree.Free;
+  end;
+  // Passt der Block schon, gibt es nichts abzugleichen.
+  Text := Format(MethodSource, ['    /// <summary>B</summary>'#10'    /// <param name="A">a</param>'#10 +
+    '    /// <param name="B">b</param>'#10, '', '']);
+  Tree := TPascalParser.Parse(Text);
+  try
+    Assert.IsFalse(TDocComments.AdjustBlock(Text, Tree, 9, Action));
+  finally
+    Tree.Free;
+  end;
 end;
 
 initialization

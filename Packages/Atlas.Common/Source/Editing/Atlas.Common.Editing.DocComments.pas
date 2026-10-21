@@ -10,6 +10,11 @@
 // Code-Aktionen: Kommentar erzeugen und <param> an die Signatur anpassen.
 // Beim Anpassen fehlen keine Beschreibungen: Ein <param> ohne Parameter in der
 // Signatur wird zu <!-- entfernt: Name: Beschreibung --> und nicht gelöscht.
+// Steht "///" über einer Methodenimplementierung TFoo.Bar, entsteht das Gerüst
+// an der Deklaration in der Klasse (vor ihren Attributen), und die Zeile mit
+// "///" entfällt. Überladungen unterscheidet Atlas an den Parameternamen.
+// "Parameter abgleichen" (Strg+Leer in einem bestehenden Block) liefert
+// dieselbe Anpassung wie die Code-Aktion.
 // Abschaltbar mit "completeBlocks.docComment" (Aufrufer prüft die Einstellung).
 
 interface
@@ -35,7 +40,16 @@ type
     class function Skeleton(const ASignature: TDocSignature; const AIndent: string): TArray<string>; static;
     /// <summary>Gerüst nach dem dritten "/" an APosition; False, wenn die Zeile nicht passt.</summary>
     class function AfterSlash(const AText: string; ATree: TSyntaxTree; const APosition: TTextPosition;
-      out AEdit: TTextEdit): Boolean; static;
+      out AEdit: TTextEdit): Boolean; overload; static;
+    /// <summary>Wie oben; über einer Methodenimplementierung TFoo.Bar das Gerüst an der Deklaration in der
+    /// Klasse: AEdits = Gerüst einfügen, Zeile mit "///" löschen. False, wenn die Deklaration schon dokumentiert
+    /// ist oder die Zeile nicht passt.</summary>
+    class function AfterSlash(const AText: string; ATree: TSyntaxTree; const APosition: TTextPosition;
+      out AEdits: TArray<TTextEdit>): Boolean; overload; static;
+    /// <summary>"Parameter abgleichen" für den ///-Block, in dem Zeile ALine liegt: fehlende &lt;param&gt;
+    /// ergänzen, überzählige markieren. False, wenn der Block zu keiner Routine gehört oder schon passt.</summary>
+    class function AdjustBlock(const AText: string; ATree: TSyntaxTree; ALine: Integer;
+      out AAction: TCodeAction): Boolean; static;
     /// <summary>Code-Aktionen zur Deklaration in Zeile ALine: Kommentar erzeugen, &lt;param&gt; anpassen.</summary>
     class function Actions(const AText: string; ATree: TSyntaxTree; ALine: Integer): TArray<TCodeAction>; static;
   end;
@@ -222,6 +236,127 @@ begin
   Result := StartsStr('///', TrimLeft(ALine));
 end;
 
+function IsAttributeLine(const ALine: string): Boolean;
+begin
+  Result := StartsStr('[', Trim(ALine)) and EndsStr(']', Trim(ALine));
+end;
+
+/// <summary>Knoten der Art AKind, der in Zeile ALine beginnt; nil sonst.</summary>
+function NodeAt(ANode: TSyntaxNode; ALine: Integer; AKind: TSyntaxKind): TSyntaxNode;
+var
+  Index: Integer;
+begin
+  if (ANode.Kind = AKind) and (ANode.StartPos.Line = ALine) then
+    Exit(ANode);
+  for Index := 0 to ANode.ChildCount - 1 do
+    if (ANode[Index].StartPos.Line <= ALine) and (ANode[Index].EndPos.Line >= ALine) then
+    begin
+      Result := NodeAt(ANode[Index], ALine, AKind);
+      if Result <> nil then
+        Exit;
+    end;
+  Result := nil;
+end;
+
+/// <summary>Typdeklaration AName unter ANode, durch Abschnitte und Typrümpfe, nicht in andere Typen hinein.
+/// </summary>
+function FindType(ANode: TSyntaxNode; const AName: string): TSyntaxNode;
+const
+  Containers = [TSyntaxKind.InterfaceSection, TSyntaxKind.ImplementationSection, TSyntaxKind.TypeSection,
+    TSyntaxKind.ClassType, TSyntaxKind.ObjectType, TSyntaxKind.RecordType, TSyntaxKind.HelperType];
+var
+  Index: Integer;
+begin
+  for Index := 0 to ANode.ChildCount - 1 do
+  begin
+    Result := ANode[Index];
+    if (Result.Kind = TSyntaxKind.TypeDecl) and SameText(Result.Name, AName) then
+      Exit;
+    if Result.Kind in Containers then
+    begin
+      Result := FindType(Result, AName);
+      if Result <> nil then
+        Exit;
+    end;
+  end;
+  Result := nil;
+end;
+
+/// <summary>Parameternamen eines RoutineHeader-Knotens in Reihenfolge.</summary>
+function HeaderParams(AHeader: TSyntaxNode): TArray<string>;
+var
+  Parameters: TSyntaxNode;
+  Index: Integer;
+  Name: string;
+begin
+  Result := nil;
+  Parameters := AHeader.FindChild(TSyntaxKind.Parameters);
+  if Parameters = nil then
+    Exit;
+  for Index := 0 to Parameters.ChildCount - 1 do
+    if Parameters[Index].Kind = TSyntaxKind.Parameter then
+      for Name in Parameters[Index].Name.Split([',']) do
+        Result := Result + [Trim(Name)];
+end;
+
+function SameNames(const A, B: TArray<string>): Boolean;
+var
+  Index: Integer;
+begin
+  Result := Length(A) = Length(B);
+  if Result then
+    for Index := 0 to High(A) do
+      if not SameText(A[Index], B[Index]) then
+        Exit(False);
+end;
+
+/// <summary>Deklaration (RoutineHeader in der Klasse) zur Methodenimplementierung in Zeile ALine; nil, wenn die
+/// Zeile keine Methode TFoo.Bar beginnt oder die Deklaration fehlt bzw. nicht eindeutig ist.</summary>
+function MethodDeclaration(ATree: TSyntaxTree; const ALines: TArray<string>; ALine: Integer): TSyntaxNode;
+var
+  Routine, Body, Member, Found: TSyntaxNode;
+  Parts: TArray<string>;
+  Params: TArray<string>;
+  Index, Count: Integer;
+begin
+  Result := nil;
+  if (ATree = nil) or (ATree.Root = nil) then
+    Exit;
+  Routine := NodeAt(ATree.Root, ALine, TSyntaxKind.RoutineDecl);
+  if (Routine = nil) or (Pos('.', Routine.Name) = 0) then
+    Exit;
+  Parts := Routine.Name.Split(['.']);
+  Found := ATree.Root;
+  for Index := 0 to High(Parts) - 1 do
+  begin
+    Found := FindType(Found, Parts[Index]);
+    if Found = nil then
+      Exit;
+  end;
+  Body := nil;
+  for Index := 0 to Found.ChildCount - 1 do
+    if Found[Index].Kind in [TSyntaxKind.ClassType, TSyntaxKind.ObjectType, TSyntaxKind.RecordType,
+      TSyntaxKind.HelperType] then
+      Body := Found[Index];
+  if Body = nil then
+    Exit;
+  Params := TDocComments.Signature(ALines, ALine).Params;
+  Count := 0;
+  for Index := 0 to Body.ChildCount - 1 do
+  begin
+    Member := Body[Index];
+    if (Member.Kind <> TSyntaxKind.RoutineHeader) or not SameText(Member.Name, Parts[High(Parts)]) then
+      Continue;
+    // Überladung: an den Parameternamen erkennen.
+    if SameNames(HeaderParams(Member), Params) then
+      Exit(Member);
+    Inc(Count);
+    Result := Member;
+  end;
+  if Count <> 1 then
+    Result := nil;
+end;
+
 class function TDocComments.AfterSlash(const AText: string; ATree: TSyntaxTree; const APosition: TTextPosition;
   out AEdit: TTextEdit): Boolean;
 var
@@ -241,6 +376,73 @@ begin
   AEdit := TTextEdit.Create(TTextRange.Create(Line, 0, Line, Length(Lines[Line])),
     TTextLines.JoinLines(Skeleton, TTextLines.LineBreakOf(AText)));
   Result := True;
+end;
+
+class function TDocComments.AfterSlash(const AText: string; ATree: TSyntaxTree; const APosition: TTextPosition;
+  out AEdits: TArray<TTextEdit>): Boolean;
+var
+  Lines: TArray<string>;
+  Line, Target: Integer;
+  Declaration: TSyntaxNode;
+  Edit: TTextEdit;
+  LB: string;
+begin
+  AEdits := nil;
+  Lines := TTextLines.SplitLines(AText);
+  Line := APosition.Line;
+  Declaration := nil;
+  if (Line >= 0) and (Line < High(Lines)) and (Trim(Lines[Line]) = '///') and
+    not ((Line > 0) and IsDocLine(Lines[Line - 1])) then
+    Declaration := MethodDeclaration(ATree, Lines, Line + 1);
+  if Declaration = nil then
+  begin
+    Result := TDocComments.AfterSlash(AText, ATree, APosition, Edit);
+    if Result then
+      AEdits := [Edit];
+    Exit;
+  end;
+  // Über den Attributen der Deklaration einfügen.
+  Target := Declaration.StartPos.Line;
+  while (Target > 0) and IsAttributeLine(Lines[Target - 1]) do
+    Dec(Target);
+  // Schon dokumentiert: "///" bleibt, wie getippt.
+  Result := not ((Target > 0) and IsDocLine(Lines[Target - 1]));
+  if not Result then
+    Exit;
+  LB := TTextLines.LineBreakOf(AText);
+  AEdits := [TTextEdit.Create(TTextRange.Create(Target, 0, Target, 0),
+    TTextLines.JoinLines(TDocComments.Skeleton(TDocComments.Signature(Lines, Declaration.StartPos.Line),
+    TTextLines.IndentOf(Lines[Declaration.StartPos.Line])), LB) + LB),
+    TTextEdit.Create(TTextRange.Create(Line, 0, Line + 1, 0), '')];
+end;
+
+class function TDocComments.AdjustBlock(const AText: string; ATree: TSyntaxTree; ALine: Integer;
+  out AAction: TCodeAction): Boolean;
+var
+  Lines: TArray<string>;
+  Line: Integer;
+  Actions: TArray<TCodeAction>;
+begin
+  Result := False;
+  AAction := Default(TCodeAction);
+  Lines := TTextLines.SplitLines(AText);
+  if (ALine < 0) or (ALine > High(Lines)) or not IsDocLine(Lines[ALine]) then
+    Exit;
+  Line := ALine;
+  while (Line <= High(Lines)) and IsDocLine(Lines[Line]) do
+    Inc(Line);
+  while (Line <= High(Lines)) and IsAttributeLine(Lines[Line]) do
+    Inc(Line);
+  if Line > High(Lines) then
+    Exit;
+  Actions := TDocComments.Actions(AText, ATree, Line);
+  // Ohne Block liefert Actions "erzeugen"; hier steht ein Block, also nur der Abgleich.
+  Result := Actions <> nil;
+  if Result then
+  begin
+    AAction := Actions[0];
+    AAction.Title := 'Parameter abgleichen';
+  end;
 end;
 
 /// <summary>Name aus einer Zeile "/// &lt;param name="X"&gt;"; '' sonst.</summary>
@@ -304,7 +506,7 @@ var
   Lines, Existing, Missing: TArray<string>;
   Signature: TDocSignature;
   Action: TCodeAction;
-  First, Line, Anchor: Integer;
+  Top, First, Line, Anchor: Integer;
   Name, LB, Indent, Inserted: string;
   Stale: Boolean;
 begin
@@ -317,13 +519,17 @@ begin
   Signature := TDocComments.Signature(Lines, ALine);
   Action := Default(TCodeAction);
   Action.Kind := RewriteKind;
-  First := ALine;
+  // Der Kommentar steht über den Attributen der Deklaration.
+  Top := ALine;
+  while (Top > 0) and IsAttributeLine(Lines[Top - 1]) do
+    Dec(Top);
+  First := Top;
   while (First > 0) and IsDocLine(Lines[First - 1]) do
     Dec(First);
-  if First = ALine then
+  if First = Top then
   begin
     Action.Title := 'Dokumentationskommentar erzeugen';
-    Action.Edits := [TTextEdit.Create(TTextRange.Create(ALine, 0, ALine, 0),
+    Action.Edits := [TTextEdit.Create(TTextRange.Create(Top, 0, Top, 0),
       TTextLines.JoinLines(TDocComments.Skeleton(Signature, Indent), LB) + LB)];
     Result := [Action];
     Exit;
@@ -334,7 +540,7 @@ begin
   Existing := nil;
   Stale := False;
   Anchor := First;
-  for Line := First to ALine - 1 do
+  for Line := First to Top - 1 do
   begin
     Name := ParamName(Lines[Line]);
     if (Name <> '') or ContainsText(Lines[Line], '</summary>') or ContainsText(Lines[Line], '<typeparam') or
@@ -346,7 +552,7 @@ begin
     if IndexText(Name, Signature.Params) < 0 then
     begin
       Stale := True;
-      Action.Edits := Action.Edits + MarkRemoved(Lines, Line, ALine - 1, Name);
+      Action.Edits := Action.Edits + MarkRemoved(Lines, Line, Top - 1, Name);
     end;
   end;
   Missing := nil;

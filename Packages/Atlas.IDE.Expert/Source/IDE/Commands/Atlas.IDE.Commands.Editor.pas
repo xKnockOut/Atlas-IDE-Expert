@@ -25,7 +25,10 @@
 // - Schnellbefehle mit „/“ nach Enter (#293) und ///-Gerüste (#88): Nach jeder
 //   Änderung im Editor prüft TAtlasSlashTrigger die Cursorzeile; passt sie,
 //   geht textDocument/onTypeFormatting an den Server, und zwar nach der
-//   Nachrichtenverarbeitung (ForceQueue), nie im Notifier selbst.
+//   Nachrichtenverarbeitung (ForceQueue), nie im Notifier selbst. Das
+//   eingesetzte Gerüst füllt der Platzhalter-Modus der Vervollständigung
+//   (OnPlaceholders, setzt die Composition); über einer Methodenimplementierung
+//   steht es an der Deklaration in der Klasse.
 // - Test am Cursor ausführen bzw. debuggen (#585): nur Einträge im
 //   Kontextmenü; was sie tun, setzt die Composition über OnRunTest und
 //   OnDebugTest (A-09: die Befehle importieren die Tests nicht).
@@ -46,10 +49,16 @@ uses
   Atlas.Core.Lsp.TextChanges,
   Atlas.Core.Lsp.Session,
   Atlas.Core.Editor.SlashTrigger,
+  Atlas.Core.Completion.Snippets,
   Atlas.Core.Problems.Contract,
   Atlas.IDE.Commands.ContextMenu;
 
 type
+  /// <summary>Platzhalter-Modus für eingesetzten Text (#88): ABefore = Puffertext vorher, AOffset = Anfang im
+  /// Puffer.</summary>
+  TAtlasPlaceholdersProc = reference to procedure(const AView: IOTAEditView; const ABefore: string;
+    AOffset: Integer; const AExpansion: TAtlasSnippetExpansion);
+
   /// <summary>Befunde einer Datei (#509).</summary>
   TAtlasProblemsOfFunc = reference to function(const AFileName: string): TArray<TAtlasProblem>;
 
@@ -69,6 +78,7 @@ type
     FOnRunTest: TProc;
     FOnDebugTest: TProc;
     FProblemsOf: TAtlasProblemsOfFunc;
+    FOnPlaceholders: TAtlasPlaceholdersProc;
   private
     class function Session: TLspSession; static;
     class procedure Say(const AText: string); static;
@@ -130,6 +140,9 @@ type
     class procedure StepProblem(AForward: Boolean); static;
     /// <summary>Befunde einer Datei für StepProblem; setzt die Composition, nil = keine.</summary>
     class property OnProblemsOf: TAtlasProblemsOfFunc read FProblemsOf write FProblemsOf;
+    /// <summary>Platzhalter-Modus für ///-Gerüste (#88); setzt die Composition, nil = nur der Cursor in die
+    /// Zusammenfassung.</summary>
+    class property OnPlaceholders: TAtlasPlaceholdersProc read FOnPlaceholders write FOnPlaceholders;
   end;
 
 implementation
@@ -560,6 +573,7 @@ begin
   FSessionOf := nil;
   FMessage := nil;
   FProblemsOf := nil;
+  FOnPlaceholders := nil;
 end;
 
 class procedure TAtlasIdeEditorCommands.EnsureContextMenus;
@@ -1338,6 +1352,8 @@ var
   Edit: TLspWorkspaceEdit;
   Outcome: TAtlasWorkspaceEditResult;
   Target: TOTAEditPos;
+  Expansion: TAtlasSnippetExpansion;
+  Document: string;
 begin
   Running := Session;
   if (Running = nil) or (AView.Buffer = nil) then
@@ -1375,14 +1391,26 @@ begin
     Say(TAtlasStrings.Fmt(TAtlasTextId.EditFailed, [Outcome.Error]));
     Exit;
   end;
-  // ///-Gerüst: Cursor ans Ende der zweiten Zeile, in den Text der Zusammenfassung.
-  if (AKind = TAtlasSlashKind.DocComment) and (Edits[0].NewText.Contains(#10)) then
+  if AKind <> TAtlasSlashKind.DocComment then
+    Exit;
+  // ///-Gerüst: Platzhalter-Modus über die Beschreibungen. Das Gerüst ist die erste Änderung; über einer
+  // Methodenimplementierung steht es weiter oben, das Löschen der "///"-Zeile darunter verschiebt es nicht.
+  Expansion := TAtlasSlashTrigger.DocCommentExpansion(Edits[0].NewText);
+  if not Expansion.HasPlaceholders then
+    Exit;
+  Document := TAtlasEditorBuffer.Text(AView.Buffer);
+  if Assigned(FOnPlaceholders) then
   begin
-    Target.Line := Edits[0].StartPos.Line + 2;
-    Target.Col := Length(TAtlasEditorBuffer.LineText(AView, Target.Line)) + 1;
-    AView.CursorPos := Target;
-    AView.Paint;
+    FOnPlaceholders(AView, Text, TAtlasEditorBuffer.CharOffset(Document, Edits[0].StartPos.Line,
+      Edits[0].StartPos.Character), Expansion);
+    Exit;
   end;
+  // Ohne Platzhalter-Modus: Cursor in die Zusammenfassung.
+  Lines := Document.Split([#13#10, #10]);
+  Target := EditPos(Lines, TLspTextPosition.Create(Edits[0].StartPos.Line, Edits[0].StartPos.Character +
+    Expansion.Stops[0].Start), TAtlasEditorBuffer.TabWidth(AView.Buffer));
+  AView.CursorPos := Target;
+  AView.Paint;
 end;
 
 end.

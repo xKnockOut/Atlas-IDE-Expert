@@ -1045,6 +1045,8 @@ begin
     end;
   // Für completionItem/resolve (Detailpanel von Atlas, #405); Anzeige von XMLDoc (#654).
   FCompletion.HintsFor := HintSettingsFor;
+  // „Parameter abgleichen“ in ///-Blöcken (#88) hängt an completeBlocks.docComment.
+  FCompletion.DocCommentsFor := DocCommentsFor;
   FCompletion.ReadText := ReadSourceText;
   // Teilergebnisse (#616) als $/progress; Zeiten je Anfrage im Debug-Protokoll.
   FCompletion.Notify :=

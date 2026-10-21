@@ -212,6 +212,10 @@ type
     function FileSnippets: TAtlasSnippetList;
     /// <summary>Setzt ASnippet am Cursor von AView ein, mit Einrückung der Zeile und Platzhaltern (#719).</summary>
     procedure InsertSnippet(const AView: IOTAEditView; const ASnippet: TAtlasSnippet);
+    /// <summary>Platzhalter-Modus für schon eingesetzten Text, etwa ein ///-Gerüst (#88). ABefore: Puffertext vor
+    /// dem Einsetzen (gemeinsamer Undo-Schritt), AOffset: Anfang des Texts im Puffer (Zeichen).</summary>
+    procedure StartPlaceholders(const AView: IOTAEditView; const ABefore: string; AOffset: Integer;
+      const AExpansion: TAtlasSnippetExpansion);
   end;
 
 implementation
@@ -1653,6 +1657,15 @@ begin
   // Nichts ersetzen: Das Wort beginnt am Cursor.
   FWordStart := Character;
   CommitSnippet(AView, Item, Text, LineText + Pad, Cursor.Line, Character);
+end;
+
+procedure TAtlasEditorCompletion.StartPlaceholders(const AView: IOTAEditView; const ABefore: string;
+  AOffset: Integer; const AExpansion: TAtlasSnippetExpansion);
+begin
+  if (AView = nil) or (AView.Buffer = nil) or (FPlaceholders = nil) then
+    Exit;
+  Close;
+  FPlaceholders.Start(AView, ABefore, TAtlasEditorBuffer.Text(AView.Buffer), AOffset, AExpansion);
 end;
 
 function TAtlasEditorCompletion.GuardNewLine(const AView: IOTAEditView): Boolean;
