@@ -2689,3 +2689,26 @@ Vorher: Projekt mit Index geladen, eine Unit mit `uses System.SysUtils, System.C
 | PP10 | Server beenden, dann öffnen | Meldung, dass der Server nicht antwortet; kein Absturz |
 | PP11 | Optionen › Allgemein: „Menüeintrag „Prozesse am Projekt…““ aus | Eintrag fehlt im Menü |
 | PP12 | Fenster schließen, bevor die Antwort kommt (Server indexiert gerade) | Kein Fehler, die späte Antwort wird verworfen |
+
+## XMLDoc mit Abschnitten, auf- und zuklappbar (#770)
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| XD1 | Optionen › Editor: „XMLDoc beim Öffnen“ = immer aufgeklappt; Hover über eine Methode mit `<summary>`, zwei `<param>`, `<returns>`, `<exception>`, `<remarks>`, `<example>`, `<seealso>` | Beschreibung, dann PARAMETER, RÜCKGABE, AUSNAHMEN, HINWEISE, BEISPIEL je in Kapitälchen mit Linie bis zum Rand; SIEHE AUCH in einer Zeile mit den Verweisen; unten „Weniger anzeigen ▴“ |
+| XD2 | Methode `procedure P(const A: string; var B: Integer; out C)` mit `<param>` nur für A | Drei Zeilen in Signaturreihenfolge: „A · const string · Text“, „B · var Integer · nicht dokumentiert“ (kursiv, gedämpft), „C · out · nicht dokumentiert“ |
+| XD3 | `<param name="X">` für einen Parameter, den es nicht gibt | X steht als letzte Zeile in Warnfarbe |
+| XD4 | Funktion ohne `<returns>` | RÜCKGABE zeigt nur den Ergebnistyp in Schlüsselwortfarbe |
+| XD5 | Property mit `<value>` | WERT zeigt Typ und Text; bei Index-Properties stehen die Indizes unter PARAMETER |
+| XD6 | `<exception cref="EFoo">` mit bekanntem Fundort; Klick auf EFoo | Klasse in Fehlerfarbe; Klick zeigt EFoo, Strg+Klick springt hin |
+| XD7 | `<paramref name="A"/>` in der Beschreibung | A als Pille in Akzentfarbe auf zartem Akzentgrund; Markieren und Kopieren ergibt „A“ ohne Leerraum |
+| XD8 | `<example>` mit `<code>` | Code auf schattierter, gerahmter Fläche, eingefärbt; lange Zeilen brechen eingerückt um |
+| XD9 | Einstellung „immer zugeklappt“, Hover wie XD1 | Nur Beschreibung und „Mehr anzeigen ▾   2 Parameter · Rückgabe · 1 Ausnahme · Hinweis · Beispiel · Siehe auch“, „1 Ausnahme“ in Fehlerfarbe |
+| XD10 | In XD9 auf „Mehr anzeigen ▾“ klicken | Alle Abschnitte erscheinen, der Tooltip wächst nach unten; am unteren Bildschirmrand bzw. über dem Wort wächst er nach oben |
+| XD11 | „Weniger anzeigen ▴“ | Wieder zugeklappt, der Tooltip schrumpft |
+| XD12 | Einstellung „wie zuletzt“: im Tooltip aufklappen, nächsten Hover öffnen; danach das Detailpanel der Vervollständigung öffnen | Nächster Tooltip aufgeklappt; das Detailpanel startet zugeklappt (eigener Zustand); nach dem IDE-Neustart beide zugeklappt |
+| XD13 | Detailpanel: „Mehr anzeigen ▾“ klicken, dann „Weniger anzeigen ▴“ | Panel wächst, beim Zuklappen schrumpft das Popup wieder |
+| XD14 | Doku nur mit `<summary>` | Kein Schalter, auch bei Parametern in der Signatur |
+| XD15 | Parameter-Hint in einem Aufruf mit dokumentiertem und undokumentiertem Parameter | Unten PARAMETER mit Linie, darunter Name und Beschreibung bzw. „nicht dokumentiert“ (kursiv), darunter gedämpft die Beschreibung der Methode |
+| XD16 | Alte Einstellungen mit `"hints": {"xmlDocFull": false}` in settings.json, IDE starten | Optionen zeigen „immer zugeklappt“; nach dem Speichern steht `xmlDocExpand` in settings.json, `xmlDocFull` bleibt unverändert |
+| XD17 | `atlas.json` des Projekts mit `"hints": {"xmlDocExpand": "expanded"}` | Gilt für dieses Projekt vor der Einstellung des Plugins; mit `"xmlDocFull": true` meldet der Server eine Warnung „veraltet“ |
+| XD18 | Einstellungen exportieren und in einer älteren Datei mit `"hints.xmlDocFull": true` importieren | Vorschau zeigt `hints.xmlDocExpand` = „expanded“ als übernommen |

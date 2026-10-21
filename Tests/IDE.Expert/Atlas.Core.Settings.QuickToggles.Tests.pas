@@ -52,7 +52,7 @@ const
   Project =
     '{"properties":{' +
     '"hints":{"type":"object","x-page":"Hints","properties":{' +
-      '"xmlDocFull":{"type":"boolean","x-quickToggle":true,"x-plugin":"XmlDocFull","x-caption":"XMLDoc"},' +
+      '"slash":{"type":"boolean","x-quickToggle":true,"x-plugin":"SlashCommands","x-caption":"Schnellbefehle"},' +
       '"xmlDocMaxLines":{"type":"integer"}}},' +
     '"highlight":{"type":"object","x-page":"Editor","properties":{' +
       '"blockPairs":{"type":"boolean","x-quickToggle":true}}},' +
@@ -72,13 +72,13 @@ begin
   Assert.AreEqual('PairColors', Toggles[0].Key);
   Assert.AreEqual('PairGuides', Toggles[1].Key);
   Assert.AreEqual('HoverTooltip', Toggles[2].Key);
-  Assert.AreEqual('XmlDocFull', Toggles[3].Key);
+  Assert.AreEqual('SlashCommands', Toggles[3].Key);
   Assert.AreEqual('Klammerfarben', Toggles[0].Caption);
   Assert.AreEqual('Blocklinien', Toggles[1].Caption, 'ohne x-caption die Beschreibung');
   Assert.IsTrue(Toggles[0].Drawing);
   Assert.IsFalse(Toggles[2].Drawing);
   // Eintrag aus atlas.schema.json: Pfad im Projekt; schon im Plugin-Katalog: nur der Pfad kommt dazu.
-  Assert.AreEqual('hints.xmlDocFull', Toggles[3].ProjectPath);
+  Assert.AreEqual('hints.slash', Toggles[3].ProjectPath);
   Assert.AreEqual('Hints', Toggles[3].Page);
   Assert.AreEqual('colors.pairs', Toggles[0].ProjectPath);
   Assert.AreEqual('', Toggles[2].ProjectPath);
@@ -106,9 +106,10 @@ begin
   Assert.IsTrue(Toggle.Drawing);
   Assert.IsTrue(TAtlasQuickToggles.Find(Toggles, 'PairGuides', Toggle));
   Assert.IsTrue(Toggle.Drawing);
-  // hints ist global (x-scope, #227): Der Schalter schreibt nur die Plugin-Einstellung, nie atlas.json.
-  Assert.IsTrue(TAtlasQuickToggles.Find(Toggles, 'XmlDocFull', Toggle));
-  Assert.AreEqual('', Toggle.ProjectPath);
+  // hints ist global (x-scope, #227): Ein Schalter schreibt nur die Plugin-Einstellung, nie atlas.json.
+  // hints.xmlDocExpand (#770) ist eine Auswahl und hat keinen Schalter.
+  Assert.IsFalse(TAtlasQuickToggles.Find(Toggles, 'XmlDocExpand', Toggle));
+  Assert.IsFalse(TAtlasQuickToggles.Find(Toggles, 'XmlDocFull', Toggle));
   for Toggle in Toggles do
     Assert.IsFalse(Toggle.ProjectPath.StartsWith('hints.') or Toggle.ProjectPath.StartsWith('index.'), Toggle.Key);
   Assert.IsFalse(TAtlasQuickToggles.Find(Toggles, 'StatusFieldSummary', Toggle), 'ohne x-quickToggle');
@@ -137,7 +138,7 @@ begin
   Assert.AreEqual('Bookmarks', Toggle.Feature);
   // Erzeugen-Menü (#719): Befehl, keine Zeichnung; „Alles aus“ lässt ihn stehen.
   Assert.IsTrue(TAtlasQuickToggles.Find(Toggles, 'GenerateMenu', Toggle));
-  Assert.AreEqual('Editor', Toggle.Page);
+  Assert.AreEqual('Befehle', Toggle.Page);
   Assert.IsFalse(Toggle.Drawing);
   Assert.AreEqual('EditorCommands', Toggle.Feature);
   // Code Lens mit Code-Metriken (#66): Zeichnung im Editor, „Alles aus“ schaltet sie ab.
@@ -314,7 +315,7 @@ begin
   Stored := TAtlasPluginSettings.Defaults;
   Stored.HoverTooltip := False;
   Session := Default(TAtlasToggleSession);
-  Root := TJSONObject.ParseJSONValue('{"hints":{"xmlDocFull":false},"colors":{"pairs":"kein Wahrheitswert"}}')
+  Root := TJSONObject.ParseJSONValue('{"hints":{"slash":false},"colors":{"pairs":"kein Wahrheitswert"}}')
     as TJSONObject;
   try
     Items := TAtlasQuickToggles.Items(Toggles, Stored, Session, Root);
@@ -324,10 +325,10 @@ begin
     Assert.IsTrue(Items[0].Checked);
     Assert.IsFalse(Items[2].Checked, 'gespeicherter Wert');
     Assert.IsFalse(Items[2].Project);
-    // XmlDocFull: atlas.json setzt false, gespeichert ist true.
+    // SlashCommands: atlas.json setzt false, gespeichert ist true.
     Assert.IsTrue(Items[3].Project, 'Projekt-Markierung');
     Assert.IsFalse(Items[3].Checked);
-    Session.Put('XmlDocFull', True);
+    Session.Put('SlashCommands', True);
     Items := TAtlasQuickToggles.Items(Toggles, Stored, Session, Root);
     Assert.IsTrue(Items[3].Session);
     Assert.IsTrue(Items[3].Checked, 'Sitzungswert über dem Projekt');
@@ -364,8 +365,8 @@ begin
   Assert.IsFalse(Value);
   // Projekt: neuer Wert für atlas.json, sonst nichts.
   Assert.AreEqual('false', TAtlasQuickToggles.Toggle(Items[3], TAtlasToggleTarget.Project, Stored, Session));
-  Assert.IsTrue(Stored.XmlDocFull);
-  Assert.IsFalse(Session.TryGet('XmlDocFull', Value));
+  Assert.IsTrue(Stored.SlashCommands);
+  Assert.IsFalse(Session.TryGet('SlashCommands', Value));
 end;
 
 initialization

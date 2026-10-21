@@ -1849,12 +1849,22 @@
       "x-area": "general",
       "x-page": "Index"
     },
-    "XmlDocFull": {
-      "type": "boolean",
-      "default": true,
-      "x-key": "hints.xmlDocFull",
+    "XmlDocExpand": {
+      "type": "string",
+      "enum": [
+        "collapsed",
+        "last",
+        "expanded"
+      ],
+      "default": "last",
+      "x-key": "hints.xmlDocExpand",
       "x-area": "editor",
-      "x-page": "Editor"
+      "x-page": "Editor",
+      "x-formerKeys": [
+        "hints.xmlDocFull",
+        "XmlDocFull"
+      ],
+      "x-issue": "#770"
     },
     "XmlDocMaxLines": {
       "type": "integer",
@@ -1862,7 +1872,7 @@
       "x-key": "hints.xmlDocMaxLines",
       "x-area": "editor",
       "x-page": "Editor",
-      "x-parent": "hints.xmlDocFull"
+      "x-parent": ""
     },
     "StatusField": {
       "type": "boolean",

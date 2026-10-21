@@ -204,10 +204,7 @@ end;
 class function TLspDocumentation.HintsJson(const AHints: THintSettings): TJSONObject;
 begin
   Result := TJSONObject.Create;
-  if AHints.XmlDocFull then
-    Result.AddPair('full', TJSONTrue.Create)
-  else
-    Result.AddPair('full', TJSONFalse.Create);
+  Result.AddPair('expand', AHints.XmlDocExpand);
   Result.AddPair('maxLines', TJSONNumber.Create(AHints.XmlDocMaxLines));
 end;
 

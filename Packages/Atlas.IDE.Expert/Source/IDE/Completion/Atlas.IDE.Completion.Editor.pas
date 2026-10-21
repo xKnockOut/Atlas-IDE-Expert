@@ -276,16 +276,11 @@ end;
 
 /// <summary>Anzeige der XMLDoc im Panel (#654): hints aus settings.json meldet der Server, sonst die Optionen.</summary>
 function WithDisplay(const ADetails: TAtlasItemDetails): TAtlasItemDetails;
-var
-  Full: Boolean;
 begin
   Result := ADetails;
   if not Result.Display.Known then
-    Result.Display := TAtlasDocDisplay.Create(TAtlasIdeSettings.Current.XmlDocFull,
+    Result.Display := TAtlasDocDisplay.Create(TAtlasDocDisplay.ExpandOf(TAtlasIdeSettings.Current.XmlDocExpand),
       TAtlasIdeSettings.Current.XmlDocMaxLines);
-  // Schnellschalter nur für diese Sitzung (#604) gilt auch über dem Wert des Servers.
-  if TAtlasIdeSettings.SessionFlag('XmlDocFull', Full) then
-    Result.Display.Full := Full;
 end;
 
 /// <summary>Größe des Editorfensters (Client-Bereich); (0, 0) ohne Fenster.</summary>

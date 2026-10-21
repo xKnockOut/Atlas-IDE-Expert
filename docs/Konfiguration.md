@@ -186,7 +186,8 @@ Jeder Schlüssel hat genau einen Ort (Spalte „Ort“): Projekt-Schlüssel steh
 
 | Schlüssel | Ort | Typ | Standard | Werte | Bedeutung |
 |---|---|---|---|---|---|
-| `hints.xmlDocFull` | global (settings.json) | boolean | `true` |  | XMLDoc vollständig und formatiert zeigen (alle Abschnitte, Verweise, Listen, Code). false: Kurzform wie bisher (Beschreibung auf 4 Zeilen, Bemerkungen auf 3 Zeilen gekürzt). |
+| `hints.xmlDocExpand` | global (settings.json) | string | `"last"` | `"collapsed"`, `"last"`, `"expanded"` | XMLDoc beim Öffnen (#770): "collapsed" zeigt nur Deklaration, Summary und „Mehr anzeigen“, "last" wie zuletzt in dieser Sitzung (getrennt für Tooltip und Detailpanel, nach dem Neustart zugeklappt), "expanded" alle Abschnitte mit Überschrift (Parameter, Rückgabe, Ausnahmen, Hinweise, Beispiel …). |
+| `hints.xmlDocFull` | global (settings.json) | boolean | – |  | Veraltet (#770), ersetzt durch xmlDocExpand: true wirkt wie "expanded", false wie "collapsed", solange xmlDocExpand fehlt. |
 | `hints.xmlDocMaxLines` | global (settings.json) | integer | `0` | 0…50 | Höchstzahl der Doku-Zeilen, bevor der Inhalt mit dem Mausrad scrollt (0 = unbegrenzt, nur durch Bildschirm bzw. Popup begrenzt). |
 
 ## directives

@@ -248,7 +248,8 @@ begin
     (Atlas.GetValue('documentation') is TJSONString) then
     Result.Documentation := Atlas.GetValue('documentation').Value;
   Result.Doc := TAtlasDoc.FromJson(Atlas.GetValue('documentation'));
-  Result.Display := TAtlasDocDisplay.FromJson(Atlas.GetValue('xmlDoc'), TAtlasDocDisplay.Create(True, 0));
+  Result.Display := TAtlasDocDisplay.FromJson(Atlas.GetValue('xmlDoc'),
+    TAtlasDocDisplay.Create(TAtlasDocExpand.Last, 0));
   Result.Value := Atlas.GetValue<string>('value', '');
   Result.Deprecation := Atlas.GetValue<string>('deprecation', '');
   Result.Kind := Atlas.GetValue<string>('kind', '');

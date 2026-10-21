@@ -7,14 +7,16 @@
 //   - Kopfzeile: Badge, Art und Herkunft, rechts der Fundort.
 //   - Eingefärbte Deklaration; Typnamen darin in Akzentfarbe unterstrichen
 //     und anklickbar.
-//   - Unter einer Linie: Wert, Veraltung und die XMLDoc (#654) vollständig und
-//     formatiert: Parameter zweispaltig, Rückgabe, Ausnahmen, Bemerkungen,
-//     Beispiel mit Code, Listen, Tabellen. Ist sie höher als der Platz auf dem
+//   - Unter einer Linie: Wert, Veraltung und die XMLDoc (#654, #770) formatiert:
+//     Abschnitte unter Überschriften, Parameter dreispaltig in der Reihenfolge der
+//     Signatur, Rückgabe, Ausnahmen, Hinweise, Beispiel mit Code, Listen,
+//     Tabellen. Zugeklappt nur die Beschreibung mit „Mehr anzeigen ▾“ (Einstellung
+//     hints.xmlDocExpand); der Klick klappt auf, das Fenster wächst nach unten
+//     (ohne Platz dort nach oben), „Weniger anzeigen ▴“ klappt wieder zu. Ist sie höher als der Platz auf dem
 //     Bildschirm bzw. als hints.xmlDocMaxLines, scrollt nur sie mit dem
 //     Mausrad; Deklaration und Aktionsleiste bleiben stehen. Verweise (cref)
 //     zeigen den Typ im Tooltip, mit Strg zur Deklaration; Links öffnen den
 //     Browser. Text lässt sich markieren, Strg+C kopiert dann die Markierung.
-//     Kurzform (hints.xmlDocFull aus): Beschreibung vier, Bemerkungen drei Zeilen.
 //   - Vererbung bzw. Zieltyp auf Randfläche: Glieder als Kästchen, das
 //     angezeigte in Akzentfarbe; mehr als fünf als erste vier, „…“, letztes.
 //   - Aktionsleiste auf Randfläche am unteren Rand: Gehe zu, Verwendungen,
@@ -78,6 +80,8 @@ type
     /// <summary>Linke obere Ecke der Doku beim letzten Zeichnen bzw. Messen.</summary>
     FDocLeft: Integer;
     FDocTop: Integer;
+    /// <summary>Über dem Wort gezeigt: Beim Auf- und Zuklappen bleibt der untere Rand.</summary>
+    FAbove: Boolean;
     /// <summary>Setzt die Doku für die Fensterbreite AWidth (volle Höhe).</summary>
     procedure PrepareDoc(AWidth: Integer);
     /// <summary>Höhe für AWidth mit höchstens AAvailable Pixeln: begrenzt die Doku (scrollt dann).</summary>
@@ -86,6 +90,8 @@ type
     function DocLinkAt(AX, AY: Integer): Integer;
     /// <summary>Klick in die Doku: Verweis, Link oder Beginn einer Markierung.</summary>
     procedure DocMouseDown(Shift: TShiftState; X, Y: Integer);
+    /// <summary>„Mehr/Weniger anzeigen“ (#770): klappt um, merkt den Zustand und passt die Höhe an.</summary>
+    procedure ToggleDoc;
     function LayoutKey(AWidth: Integer): string;
     function Texts: TAtlasHoverTexts;
     /// <summary>Setzt FLayout für die Fensterbreite AWidth mit der jetzigen Doku-Höhe.</summary>
@@ -225,7 +231,27 @@ begin
     Exit;
   end;
   HandleNeeded;
-  FDoc.Build(Canvas, Doc, AWidth - Scale(22), Font, UIFont, PPI, FView.Display.Full, TAtlasStrings.DocLabels);
+  FDoc.Build(Canvas, Doc, AWidth - Scale(22), Font, UIFont, PPI, TAtlasStrings.DocLabels,
+    TAtlasDocSignature.Parse(FView.Data.Declaration),
+    TAtlasDocExpandState.Initial(FView.Display.Expand, TAtlasDocSurface.Tooltip));
+end;
+
+procedure TAtlasHoverTip.ToggleDoc;
+var
+  Area, Bounds: TRect;
+  NewHeight: Integer;
+begin
+  TAtlasDocExpandState.Remember(TAtlasDocSurface.Tooltip, FDoc.Toggle(Canvas));
+  FDoc.ClearSelection;
+  FDoc.HotLink := -1;
+  Area := WorkAreaAt(BoundsRect.TopLeft);
+  NewHeight := FitHeight(Width, Area.Height - Scale(8));
+  Bounds := TRect.Create(BoundsRect.TopLeft, Width, NewHeight);
+  // Wächst nach unten; über dem Wort bzw. ohne Platz darunter nach oben.
+  if FAbove or (Bounds.Bottom > Area.Bottom) then
+    Bounds.SetLocation(Bounds.Left, Max(Area.Top, BoundsRect.Bottom - NewHeight));
+  ShowAt(Bounds);
+  Invalidate;
 end;
 
 function TAtlasHoverTip.FitHeight(AWidth, AAvailable: Integer): Integer;
@@ -267,7 +293,9 @@ begin
   if Index >= 0 then
   begin
     Link := FDoc.Link(Index);
-    if Link.Kind = TAtlasDocLinkKind.Url then
+    if Link.Kind = TAtlasDocLinkKind.Toggle then
+      ToggleDoc
+    else if Link.Kind = TAtlasDocLinkKind.Url then
     begin
       if Assigned(FOnUrl) then
         FOnUrl(Self, Link.Url);
@@ -522,7 +550,8 @@ begin
   // Höchstens so hoch wie der größere Platz unter bzw. über dem Wort; darüber scrollt die Doku.
   Height := FitHeight(Width, Max(Area.Bottom - AWord.Bottom, AWord.Top - Area.Top) - Scale(12));
   Bounds := TRect.Create(Point(AWord.Left, AWord.Bottom + Scale(4)), Width, Height);
-  if Bounds.Bottom > Area.Bottom then
+  FAbove := Bounds.Bottom > Area.Bottom;
+  if FAbove then
     Bounds.SetLocation(Bounds.Left, AWord.Top - Height - Scale(4));
   if Bounds.Right > Area.Right then
     Bounds.SetLocation(Max(Area.Left, Area.Right - Width), Bounds.Top);
