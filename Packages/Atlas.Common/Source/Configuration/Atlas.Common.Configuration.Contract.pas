@@ -367,6 +367,14 @@ type
     FreeFields: Boolean;
     /// <summary>Form der Freigabe: free (FFeld.Free) oder freeAndNil (#666).</summary>
     FreeFieldsStyle: string;
+    /// <summary>Code-Aktion „Bedeutung umkehren“ für Boolean-Symbole (#715).</summary>
+    InvertBoolean: Boolean;
+    /// <summary>Eigene Gegensatzpaare als "A=B", vor den eingebauten (#715).</summary>
+    InvertBooleanAntonyms: TArray<string>;
+    /// <summary>Präfix, wenn kein Gegensatzpaar passt (#715).</summary>
+    InvertBooleanFallbackPrefix: string;
+    /// <summary>Published Properties auch in den Formularen umkehren (#715).</summary>
+    InvertBooleanIncludeDfm: Boolean;
     class function Default: TRefactoringSettings; static;
   end;
 
@@ -800,6 +808,10 @@ begin
   Result.PropertyFromAccessorsHideAccessors := 'off';
   Result.FreeFields := True;
   Result.FreeFieldsStyle := 'free';
+  Result.InvertBoolean := True;
+  Result.InvertBooleanAntonyms := nil;
+  Result.InvertBooleanFallbackPrefix := 'Not';
+  Result.InvertBooleanIncludeDfm := True;
 end;
 
 { TCompletionSettings }
