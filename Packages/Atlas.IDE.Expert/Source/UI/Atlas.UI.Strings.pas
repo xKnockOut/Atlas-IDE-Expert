@@ -621,7 +621,9 @@ type
     PublishedEventsNote, PublishedArrayProperty, PublishedDefaultProperty, PublishedDefaultPropertyNote, PublishedCopyList, PublishedVclNote,
     InheritedSameTag, InheritedOverloadTag, InheritedAbstractOne, InheritedAbstractMore,
     SameNameActiveTag, SameNameDeclaredIn, SameNameRoleActive, SameNameRoleThis, SameNameRoleHidden, SameNameNotActive,
-    SameNameInsertPrefix, SameNameInsertPrefixAdd, SameNameInsertMove, SameNameInsertAdd, SameNameHiddenFooter);
+    SameNameInsertPrefix, SameNameInsertPrefixAdd, SameNameInsertMove, SameNameInsertAdd, SameNameHiddenFooter,
+    PropertyAccessorsTitle, PropertyAccessorsFailed, PropertyAccessorsNothing, PropertyAccessorsPreviewHint,
+    PropertyAccessorsApply, PropertyAccessorsDone, PropertyAccessorsWarning);
 
   TAtlasStrings = class
   private class var
@@ -1861,7 +1863,14 @@ const
      'Enter fügt den Unit-Präfix ein und ergänzt %s in den uses; andere Stellen können ihre Bedeutung ändern',
      'Enter verschiebt %s in den uses nach hinten; andere Stellen können ihre Bedeutung ändern',
      'Enter ergänzt %s in den uses; andere Stellen können ihre Bedeutung ändern',
-     '%s ausgeblendet'),
+     '%s ausgeblendet',
+     'Property aus Getter und Setter',
+     'Property anlegen fehlgeschlagen: %s',
+     'Property anlegen: nichts zu ändern.',
+     '%d Properties, %d Aufrufe umgestellt: %d Änderungen in %d Dateien',
+     'Anlegen',
+     '%d Properties angelegt, %d Aufrufe umgestellt: %d Änderungen in %d Dateien',
+     'Hinweis: %s'),
     ('Enter to accept · Esc to close', '%d of %d', 'No matches for “%s”', 'Backspace widens the search',
      'No suggestions here', 'Esc closes', 'No details for this entry', 'Overload', 'Deprecated: %s', 'Deprecated.',
      'Inherited from %s', 'Inherited', 'optional, default %s', 'No overload with %d parameters.', '… %d more',
@@ -3002,7 +3011,14 @@ const
      'Enter inserts the unit prefix and adds %s to uses; other places may change their meaning',
      'Enter moves %s to the end of uses; other places may change their meaning',
      'Enter adds %s to uses; other places may change their meaning',
-     '%s hidden'));
+     '%s hidden',
+     'Property from getter and setter',
+     'Creating the property failed: %s',
+     'Create property: nothing to change.',
+     '%d properties, %d calls switched: %d changes in %d files',
+     'Create',
+     '%d properties created, %d calls switched: %d changes in %d files',
+     'Note: %s'));
 
 { TAtlasStrings }
 

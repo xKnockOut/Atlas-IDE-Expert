@@ -304,6 +304,8 @@
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.SmartPaste.Tests.pas"/>
         <DCCReference Include="Common\Editing\Atlas.Common.Editing.DeclareUnknown.Tests.pas"/>
         <DCCReference Include="Common\Editing\Atlas.Common.Editing.ForwardDeclarations.Tests.pas"/>
+        <DCCReference Include="Common\Editing\Atlas.Common.Editing.PropertyFromAccessors.Tests.pas"/>
+        <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.PropertyFromAccessors.Tests.pas"/>
         <DCCReference Include="Common\Editing\Atlas.Common.Editing.InterfaceStubs.Tests.pas"/>
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.Completion.Postfix.Tests.pas"/>
         <DCCReference Include="Common\Editing\Atlas.Common.Editing.ContextSnippets.Tests.pas"/>
