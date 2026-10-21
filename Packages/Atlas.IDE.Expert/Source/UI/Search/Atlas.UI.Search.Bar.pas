@@ -9,7 +9,9 @@
 // Tasten in allen Feldern der Leiste: Enter nächster Treffer und Liste in den
 // Meldungen (OnNext, dann OnList), Umschalt+Enter voriger Treffer, F3 bzw.
 // Umschalt+F3 wie im Editor, Esc schließt (OnClose). Jede Änderung an Text,
-// Optionen oder Bereich meldet OnQueryChanged. Reine VCL; gesucht, markiert
+// Optionen oder Bereich meldet OnQueryChanged. Bekommt ein Feld der Leiste den
+// Fokus, meldet OnControlEnter es (der Aufrufer prüft, ob die IDE ihn gleich
+// wieder in den Editor holt). Reine VCL; gesucht, markiert
 // und gesprungen wird vom Aufrufer (Atlas.IDE.Search.Commands). Die Listen
 // brauchen ein Fenster: gefüllt wird in CreateWnd bzw. sofort, wenn es schon
 // eins gibt.
@@ -53,6 +55,7 @@ type
     FOnStep: TAtlasSearchBarStep;
     FOnList: TProc;
     FOnClose: TProc;
+    FOnControlEnter: TProc<TWinControl>;
     procedure Place(AControl: TControl; AWidth: Integer);
     function AddLabel(const ACaption: string): TLabel;
     function AddCheck(const ACaption, AHint: string): TCheckBox;
@@ -61,6 +64,7 @@ type
     procedure UpdateStates;
     procedure FitWidths;
     procedure Changed(Sender: TObject);
+    procedure ControlEnter(Sender: TObject);
     procedure ControlKeyDown(Sender: TObject; var Key: Word; Shift: TShiftState);
     procedure PreviousClick(Sender: TObject);
     procedure NextClick(Sender: TObject);
@@ -90,6 +94,8 @@ type
     property OnStep: TAtlasSearchBarStep read FOnStep write FOnStep;
     property OnList: TProc read FOnList write FOnList;
     property OnClose: TProc read FOnClose write FOnClose;
+    /// <summary>Ein Feld der Leiste hat den Fokus bekommen.</summary>
+    property OnControlEnter: TProc<TWinControl> read FOnControlEnter write FOnControlEnter;
     // Für Tests.
     property TextEdit: TEdit read FText;
     property ScopeBox: TComboBox read FScope;
@@ -135,6 +141,7 @@ begin
   FClose.Hint := TAtlasStrings.Text(TAtlasTextId.SearchCloseHint);
   FClose.OnClick := CloseClick;
   FClose.OnKeyDown := ControlKeyDown;
+  FClose.OnEnter := ControlEnter;
 
   FTextLabel := AddLabel(TAtlasStrings.Text(TAtlasTextId.SearchTextLabel));
   FText := TEdit.Create(Self);
@@ -142,6 +149,7 @@ begin
   Place(FText, TextBoxWidth);
   FText.OnChange := Changed;
   FText.OnKeyDown := ControlKeyDown;
+  FText.OnEnter := ControlEnter;
   FTextLabel.FocusControl := FText;
 
   FCase := AddCheck(TAtlasStrings.Text(TAtlasTextId.SearchCaseSensitive),
@@ -158,6 +166,7 @@ begin
   Place(FScope, ScopeWidth);
   FScope.OnChange := Changed;
   FScope.OnKeyDown := ControlKeyDown;
+  FScope.OnEnter := ControlEnter;
   FScopeLabel.FocusControl := FScope;
   FLevel := TComboBox.Create(Self);
   FLevel.Parent := Self;
@@ -165,6 +174,7 @@ begin
   Place(FLevel, LevelWidth);
   FLevel.OnChange := Changed;
   FLevel.OnKeyDown := ControlKeyDown;
+  FLevel.OnEnter := ControlEnter;
 
   FCounter := AddLabel('');
   FPrevious := AddButton('↑', TAtlasStrings.Text(TAtlasTextId.SearchPreviousHint), ButtonWidth);
@@ -211,6 +221,7 @@ begin
   Place(Result, 24 + 7 * Length(ACaption));
   Result.OnClick := Changed;
   Result.OnKeyDown := ControlKeyDown;
+  Result.OnEnter := ControlEnter;
 end;
 
 function TAtlasSearchBar.AddButton(const ACaption, AHint: string; AWidth: Integer): TButton;
@@ -221,6 +232,7 @@ begin
   Result.Hint := AHint;
   Place(Result, AWidth);
   Result.OnKeyDown := ControlKeyDown;
+  Result.OnEnter := ControlEnter;
 end;
 
 procedure TAtlasSearchBar.CreateWnd;
@@ -364,6 +376,12 @@ begin
   UpdateStates;
   if Assigned(FOnQueryChanged) then
     FOnQueryChanged();
+end;
+
+procedure TAtlasSearchBar.ControlEnter(Sender: TObject);
+begin
+  if Assigned(FOnControlEnter) and (Sender is TWinControl) then
+    FOnControlEnter(TWinControl(Sender));
 end;
 
 procedure TAtlasSearchBar.Step(ABackward: Boolean);
