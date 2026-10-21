@@ -214,6 +214,36 @@ begin
     end;
 end;
 
+/// <summary>Bei Mengentypen "set of TBar · 4 mögliche Elemente" (#38); Aufzählungen über den Index gezählt.
+/// '' bei anderen Typen.</summary>
+function SetTypeValue(AResolver: TNameResolver; const AIndex: ISymbolIndex; const AUnit: TUnitIndex;
+  const ADeclaration: string): string;
+var
+  BaseType: string;
+  Count: Integer;
+  Resolved: TResolvedSymbol;
+  EnumUnit: TUnitIndex;
+  Symbol: TIndexSymbol;
+begin
+  Result := '';
+  if not THoverValues.SetBaseType(ADeclaration, BaseType) then
+    Exit;
+  Count := THoverValues.BaseTypeCount(BaseType);
+  if (Count < 0) and AResolver.ResolveTypeFrom(AUnit, BaseType, Resolved) and
+    (Resolved.SymbolKind = TIndexSymbolKind.EnumType) and AResolver.DeclaringUnit(Resolved, EnumUnit) then
+  begin
+    Count := 0;
+    for Symbol in EnumUnit.Symbols do
+      if (Symbol.Kind = TIndexSymbolKind.EnumMember) and SameText(Symbol.Container, Resolved.Name) then
+        Inc(Count);
+  end;
+  Result := 'set of ' + BaseType;
+  if Count = 1 then
+    Result := Result + ' · 1 mögliches Element'
+  else if Count >= 0 then
+    Result := Result + ' · ' + IntToStr(Count) + ' mögliche Elemente';
+end;
+
 // Entfernt nur die Auszeichnung, die der Hover selbst erzeugt: **fett** (Veraltet,
 // Überschriften), *Name*: am Absatzanfang (Parameter) und `Code`. Andere Zeichen aus
 // dem Kommentar bleiben stehen, z. B. das * in "(Gallery.Page.*)" (in der IDE gesehen).
@@ -569,7 +599,10 @@ begin
       if (Symbol.Container = '') and TWinApiDocs.IsWinApiUnit(OwnerUnit.UnitName) then
         Result.WinApi := TWinApiDocs.HoverText(Symbol.Name);
       if Symbol.Kind = TIndexSymbolKind.Constant then
-        Result.Value := THoverValues.ConstantValue(Result.Declaration)
+        // Ganze Deklaration: Mengen und Texte über mehrere Zeilen (Resourcestrings, #38).
+        Result.Value := THoverValues.ConstantValue(DeclarationText(Lines, Targets[0].Range))
+      else if Symbol.Kind = TIndexSymbolKind.TypeAlias then
+        Result.Value := SetTypeValue(AResolver, AIndex, OwnerUnit, DeclarationText(Lines, Targets[0].Range))
       else if Symbol.Kind = TIndexSymbolKind.EnumMember then
         Result.Value := 'Ord = ' + IntToStr(EnumOrdinal(OwnerUnit, Symbol))
       else if (Symbol.Kind = TIndexSymbolKind.Field) and (Symbol.Container <> '') then

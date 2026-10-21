@@ -838,6 +838,15 @@ begin
     '      "description": "An identifier in a statement is declared neither in the unit nor in the units it uses (like compiler error E2003). Checked while typing, without the compiler; with blocks, asm an' + 'd anonymous methods are skipped.",' + #10 +
     '      "bad": "procedure Foo;\nbegin\n  Lst.Add(''x'');\nend;",' + #10 +
     '      "good": "procedure Foo;\nvar\n  Lst: TStringList;\nbegin\n  Lst := TStringList.Create;\n  Lst.Add(''x'');\nend;"' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "deprecated-symbol",' + #10 +
+    '      "name": "Deprecated symbol",' + #10 +
+    '      "category": "code-smell",' + #10 +
+    '      "severity": "hint",' + #10 +
+    '      "description": "A routine, type, constant or member marked deprecated, platform or experimental is used (like compiler warnings W1000, W1002 and W1003). The editor strikes the name through; the ' + 'message carries the reason from deprecated ''reason''. The declaration and the head of its implementation are not reported.",' + #10 +
+    '      "bad": "procedure Old; deprecated ''Use New'';\n...\nOld;",' + #10 +
+    '      "good": "procedure New;\n...\nNew;"' + #10 +
     '    }' + #10 +
     '  ]' + #10 +
     '}' + #10 +
@@ -1304,6 +1313,11 @@ begin
     '      "id": "unresolved-identifier",' + #10 +
     '      "name": "Nicht deklarierter Bezeichner",' + #10 +
     '      "description": "Ein Bezeichner in einer Anweisung ist weder in der Unit noch in den eingebundenen Units deklariert (wie Compilerfehler E2003). Geprüft beim Tippen, ohne Compiler; with-Blöcke, as' + 'm und anonyme Methoden werden übersprungen."' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "deprecated-symbol",' + #10 +
+    '      "name": "Veraltetes Symbol",' + #10 +
+    '      "description": "Eine Routine, ein Typ, eine Konstante oder ein Mitglied mit deprecated, platform oder experimental wird verwendet (wie Compilerwarnungen W1000, W1002 und W1003). Der Editor strei' + 'cht den Namen durch; die Meldung nennt den Grund aus deprecated ''Grund''. Die Deklaration und der Kopf ihrer Implementierung werden nicht gemeldet."' + #10 +
     '    }' + #10 +
     '  ]' + #10 +
     '}' + #10 +

@@ -818,6 +818,15 @@
       "description": "An identifier in a statement is declared neither in the unit nor in the units it uses (like compiler error E2003). Checked while typing, without the compiler; with blocks, asm and anonymous methods are skipped.",
       "bad": "procedure Foo;\nbegin\n  Lst.Add('x');\nend;",
       "good": "procedure Foo;\nvar\n  Lst: TStringList;\nbegin\n  Lst := TStringList.Create;\n  Lst.Add('x');\nend;"
+    },
+    {
+      "id": "deprecated-symbol",
+      "name": "Deprecated symbol",
+      "category": "code-smell",
+      "severity": "hint",
+      "description": "A routine, type, constant or member marked deprecated, platform or experimental is used (like compiler warnings W1000, W1002 and W1003). The editor strikes the name through; the message carries the reason from deprecated 'reason'. The declaration and the head of its implementation are not reported.",
+      "bad": "procedure Old; deprecated 'Use New';\n...\nOld;",
+      "good": "procedure New;\n...\nNew;"
     }
   ]
 }

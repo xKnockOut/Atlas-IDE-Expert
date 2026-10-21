@@ -69,6 +69,8 @@ type
     /// <summary>Direktiven in Kleinschreibung und Reihenfolge der Deklaration: virtual, override,
     /// overload, static, inline, deprecated, platform … (#492).</summary>
     Directives: TArray<string>;
+    /// <summary>Grund hinter deprecated 'Grund' (#38); '' ohne Grund oder ohne deprecated.</summary>
+    DeprecatedText: string;
     /// <summary>XMLDoc-Kurztext: Klartext von &lt;summary&gt; aus den ///-Zeilen darüber, eine Zeile,
     /// höchstens TIndexSymbol.MaxSummary Zeichen; '' ohne Doku (#492).</summary>
     Summary: string;
