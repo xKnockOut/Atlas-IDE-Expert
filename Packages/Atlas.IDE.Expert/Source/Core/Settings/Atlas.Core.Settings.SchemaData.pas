@@ -11,7 +11,7 @@ function AtlasSchemaJson: string;
 implementation
 
 const
-  Lines: array[0..1503] of string = (
+  Lines: array[0..1508] of string = (
     '{',
     '  "$schema": "http://json-schema.org/draft-07/schema#",',
     '  "title": "Atlas-Konfiguration",',
@@ -1114,13 +1114,18 @@ const
     '          "type": "boolean",',
     '          "default": true,',
     '          "description": "Hinter {$I datei.inc} die Symbole, die die Include-Datei setzt und die eine Bedingung der Unit prüft (\"definiert COMPLIB_VCL\")."',
+    '        },',
+    '        "controlChars": {',
+    '          "type": "boolean",',
+    '          "default": true,',
+    '          "description": "Hinter Steuerzeichen wie ^C oder ^[ im Wert einer Konstanten ihr Code (#3, #27)."',
     '        }',
     '      },',
     '      "x-scope": "global",',
     '      "x-area": "editor",',
     '      "x-page": "Editor",',
     '      "x-control": "Kontrollkästchen, Zahlenfeld",',
-    '      "x-issue": "#35, #453, #860"',
+    '      "x-issue": "#35, #453, #860, #862"',
     '    },',
     '    "codeLens": {',
     '      "type": "object",',

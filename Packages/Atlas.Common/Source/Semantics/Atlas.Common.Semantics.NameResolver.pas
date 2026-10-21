@@ -3285,9 +3285,13 @@ begin
     Token := FTree.Tokens[Index];
     if ComparePositions(Token.StartPos, APosition) > 0 then
       Break;
-    // Cursor auf oder direkt hinter dem Bezeichner.
+    // Cursor auf oder direkt hinter dem Bezeichner; C in ^C ist ein Zeichen (#862).
     if (Token.Kind = TPascalTokenKind.Identifier) and (ComparePositions(APosition, Token.EndPos) <= 0) then
+    begin
+      if FTree.IsControlCharPart(Index) then
+        Exit(-1);
       Exit(Index);
+    end;
   end;
   Result := -1;
 end;

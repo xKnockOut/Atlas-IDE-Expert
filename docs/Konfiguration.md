@@ -193,6 +193,7 @@ Jeder Schlüssel hat genau einen Ort (Spalte „Ort“): Projekt-Schlüssel steh
 | `inlayHints.endMarkers` | global (settings.json) | boolean | `true` |  | Hinter dem end langer Blöcke anzeigen, was dort endet. |
 | `inlayHints.endMarkerMinLines` | global (settings.json) | integer | `20` | 1… | Mindestlänge eines Blocks in Zeilen für eine Endmarkierung. |
 | `inlayHints.includeDefines` | global (settings.json) | boolean | `true` |  | Hinter {$I datei.inc} die Symbole, die die Include-Datei setzt und die eine Bedingung der Unit prüft ("definiert COMPLIB_VCL"). |
+| `inlayHints.controlChars` | global (settings.json) | boolean | `true` |  | Hinter Steuerzeichen wie ^C oder ^[ im Wert einer Konstanten ihr Code (#3, #27). |
 
 ## codeLens
 

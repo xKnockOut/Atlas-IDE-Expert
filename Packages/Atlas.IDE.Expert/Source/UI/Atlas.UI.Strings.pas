@@ -643,7 +643,8 @@ type
     UnwrapWhile, UnwrapRepeat, UnwrapIfDef, UnwrapRegion, UnwrapKeepFinally, UnwrapDropFinally, UnwrapKeepThen,
     UnwrapKeepElse, UnwrapKeepFirst, UnwrapKeepIfDefElse, UnwrapKeepBranch, UnwrapRaiseNote, UnwrapLoopNote,
     UnwrapWithNote, SettingsOutlineConditions, SettingsCompletionVariantBranch, TagVariantBranch,
-    SettingsInlayDefineHints, ElementInlayDefineHints, ElementInlayDefineHintsPlural, InlayDefinesLabel);
+    SettingsInlayDefineHints, ElementInlayDefineHints, ElementInlayDefineHintsPlural, InlayDefinesLabel,
+    SettingsInlayCharHints, ElementInlayCharHints, ElementInlayCharHintsPlural);
 
   TAtlasStrings = class
   private class var
@@ -1982,7 +1983,10 @@ const
      'Symbole aus Include-Dateien hinter {$I} zeigen (definiert X)',
      'Include-Symbol',
      'Include-Symbole',
-     'definiert %s'),
+     'definiert %s',
+     'Code von Steuerzeichen wie ^C in Konstanten zeigen (#3)',
+     'Steuerzeichen-Code',
+     'Steuerzeichen-Codes'),
     ('Enter to accept · Esc to close', '%d of %d', 'No matches for “%s”', 'Backspace widens the search',
      'No suggestions here', 'Esc closes', 'No details for this entry', 'Overload', 'Deprecated: %s', 'Deprecated.',
      'Inherited from %s', 'Inherited', 'optional, default %s', 'No overload with %d parameters.', '… %d more',
@@ -3222,7 +3226,10 @@ const
      'Show symbols from include files after {$I} (defines X)',
      'include symbol',
      'include symbols',
-     'defines %s'));
+     'defines %s',
+     'Show the code of control characters such as ^C in constants (#3)',
+     'control character code',
+     'control character codes'));
 
 { TAtlasStrings }
 

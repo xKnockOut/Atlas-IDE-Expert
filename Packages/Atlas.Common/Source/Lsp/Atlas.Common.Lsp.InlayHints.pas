@@ -8,7 +8,8 @@
 //     (ExplicitTypeAction) mit uses-Eintrag für die Unit des Typs,
 //   - Endmarkierungen hinter dem end langer Blöcke: Routine, Typ, if/while/for/with/case/try,
 //   - hinter {$I datei.inc} die Symbole, die die Datei dort setzt und die eine Bedingung dieser Unit
-//     prüft: „definiert COMPLIB_VCL“ (#860), aus dem Präprozessor-Lauf des gemeinsamen Baums.
+//     prüft: „definiert COMPLIB_VCL“ (#860), aus dem Präprozessor-Lauf des gemeinsamen Baums,
+//   - hinter Steuerzeichen wie ^C im Wert einer Konstanten ihr Code „#3“ (#862).
 // Was erscheint, steuert "inlayHints" in atlas.json.
 
 interface
@@ -41,6 +42,9 @@ type
     /// <summary>Hinweis hinter {$I} (#860): gesetzte Symbole und Name der Include-Datei; leer sonst.</summary>
     Defines: TArray<string>;
     IncludeFile: string;
+    /// <summary>Code eines Steuerzeichens wie ^C (#862); nur mit ControlChar.</summary>
+    CharCode: Integer;
+    ControlChar: Boolean;
   end;
 
   /// <summary>Abgeleiteter Typ einer Inline-Variablen ohne Typangabe (#453).</summary>
@@ -106,6 +110,10 @@ type
     /// <summary>Hinter jedem {$I datei} in ARange die Symbole, die die Include-Datei setzt und die eine
     /// $IFDEF/$IF-Bedingung von ATree prüft (#860); AProcessed ist der Präprozessor-Lauf zum Baum.</summary>
     class function IncludeDefines(ATree: TSyntaxTree; const AProcessed: TPreprocessorResult;
+      const ARange: TTextRange): TArray<TInlayHint>; static;
+    /// <summary>Hinter jedem Steuerzeichen wie ^C im Wert einer Konstanten in ARange sein Code „#3“ (#862);
+    /// ATreeText ist der Text, aus dem ATree gelesen wurde.</summary>
+    class function ControlChars(ATree: TSyntaxTree; const ATreeText: string;
       const ARange: TTextRange): TArray<TInlayHint>; static;
     /// <summary>Alle eingeschalteten Hinweise in ARange, nach Position sortiert.</summary>
     class function Collect(AResolver: TNameResolver; const AIndex: ISymbolIndex; ATree: TSyntaxTree;
@@ -916,6 +924,48 @@ begin
   end;
 end;
 
+/// <summary>Liegt ANode im Wert einer Konstanten (const-Abschnitt oder Inline-Konstante)?</summary>
+function InConstant(ANode: TSyntaxNode): Boolean;
+var
+  Node: TSyntaxNode;
+begin
+  Node := ANode.Parent;
+  while (Node <> nil) and not (Node.Kind in [TSyntaxKind.ConstDecl, TSyntaxKind.InlineConst]) do
+    Node := Node.Parent;
+  Result := Node <> nil;
+end;
+
+class function TLspInlayHints.ControlChars(ATree: TSyntaxTree; const ATreeText: string;
+  const ARange: TTextRange): TArray<TInlayHint>;
+var
+  Literals: TList<TSyntaxNode>;
+  Node: TSyntaxNode;
+  Hint: TInlayHint;
+begin
+  Result := nil;
+  Literals := TList<TSyntaxNode>.Create;
+  try
+    CollectNodes(ATree.Root, [TSyntaxKind.Literal], Literals);
+    for Node in Literals do
+    begin
+      // Ein Literal aus genau einem ^X: der Parser schreibt es als #Code (#862).
+      if (Node.EndOffset - Node.StartOffset <> 2) or (Node.StartOffset >= Length(ATreeText)) or
+        (ATreeText[Node.StartOffset + 1] <> '^') or not Node.Name.StartsWith('#') or
+        not InRange(ARange, Node.StartPos) or not InConstant(Node) then
+        Continue;
+      Hint := Default(TInlayHint);
+      Hint.Position := Node.EndPos;
+      Hint.Text := Node.Name;
+      Hint.PaddingLeft := True;
+      Hint.ControlChar := True;
+      Hint.CharCode := StrToIntDef(Copy(Node.Name, 2, MaxInt), 0);
+      Result := Result + [Hint];
+    end;
+  finally
+    Literals.Free;
+  end;
+end;
+
 function CompareHints(const A, B: TInlayHint): Integer;
 begin
   Result := ComparePositions(A.Position, B.Position);
@@ -945,6 +995,8 @@ begin
       List.AddRange(EndMarkers(ATree, ARange, ASettings.EndMarkerMinLines));
     if ASettings.IncludeDefines then
       List.AddRange(IncludeDefines(ATree, AProcessed, ARange));
+    if ASettings.ControlChars then
+      List.AddRange(ControlChars(ATree, ATreeText, ARange));
     List.Sort;
     Result := List.ToArray;
   finally
@@ -985,6 +1037,10 @@ begin
       Entry.AddPair('data', TJSONObject.Create(TJSONPair.Create('includeDefines',
         TJSONObject.Create.AddPair('file', Hint.IncludeFile).AddPair('names', Defines))));
     end;
+    // Code eines Steuerzeichens (#862), für das Plugin getrennt von Endmarken.
+    if Hint.ControlChar then
+      Entry.AddPair('data', TJSONObject.Create(TJSONPair.Create('controlChar',
+        TJSONObject.Create(TJSONPair.Create('code', TJSONNumber.Create(Hint.CharCode))))));
   end;
 end;
 

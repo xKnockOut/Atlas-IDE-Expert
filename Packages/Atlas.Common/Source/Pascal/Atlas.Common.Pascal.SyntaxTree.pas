@@ -119,6 +119,9 @@ type
     constructor Create(ARoot: TSyntaxNode; const ATokens: TArray<TPascalToken>;
       const ADiagnostics: TArray<TSyntaxDiagnostic>);
     destructor Destroy; override;
+    /// <summary>Steht das Token ATokenIndex in einem Steuerzeichen wie ^C (#862)? Dann ist der Bezeichner C
+    /// kein Name, sondern Teil eines Literals.</summary>
+    function IsControlCharPart(ATokenIndex: Integer): Boolean;
     property Root: TSyntaxNode read FRoot;
     /// <summary>Alle Token einschließlich Kommentaren und Direktiven.</summary>
     property Tokens: TArray<TPascalToken> read FTokens;
@@ -265,6 +268,33 @@ begin
 end;
 
 { TSyntaxTree }
+
+function TSyntaxTree.IsControlCharPart(ATokenIndex: Integer): Boolean;
+var
+  Node: TSyntaxNode;
+  Offset, Index: Integer;
+  Found: Boolean;
+begin
+  Result := False;
+  if (ATokenIndex < 1) or (ATokenIndex > High(FTokens)) or not FTokens[ATokenIndex - 1].IsSymbol('^') or
+    (FTokens[ATokenIndex].Offset <> FTokens[ATokenIndex - 1].Offset + 1) then
+    Exit;
+  // Innerster Knoten über dem Token: ein Literal nur bei ^C, ein Zeigertyp ^T bleibt TypeReference.
+  Offset := FTokens[ATokenIndex].Offset;
+  Node := FRoot;
+  repeat
+    if Node.Kind = TSyntaxKind.Literal then
+      Exit(True);
+    Found := False;
+    for Index := 0 to Node.ChildCount - 1 do
+      if (Node[Index].StartOffset <= Offset) and (Offset < Node[Index].EndOffset) then
+      begin
+        Node := Node[Index];
+        Found := True;
+        Break;
+      end;
+  until not Found;
+end;
 
 constructor TSyntaxTree.Create(ARoot: TSyntaxNode; const ATokens: TArray<TPascalToken>;
   const ADiagnostics: TArray<TSyntaxDiagnostic>);
