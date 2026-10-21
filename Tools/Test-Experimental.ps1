@@ -1,12 +1,14 @@
 ﻿<#
 .SYNOPSIS
-    Prüft den Wächter für experimentelle Funktionen in Update-ConfigDoc.ps1 (#834).
+    Prüft die Wächter in Update-ConfigDoc.ps1: experimentelle Funktionen (#834)
+    und veraltete erzeugte Dateien unabhängig von den Zeilenenden (#888).
 
 .DESCRIPTION
     Legt eine Kopie von Schemas, Doku, Paketen und Profilen in einem temporären
     Ordner an, baut darin je Fall einen Fehler ein und erwartet, dass
     Update-ConfigDoc.ps1 -Check scheitert und den Fehler nennt. Der
-    unveränderte Stand muss die Prüfung bestehen.
+    unveränderte Stand muss die Prüfung bestehen, auch wenn der Checkout andere
+    Zeilenenden hat (Linux-Runner: LF, Windows: CRLF).
 
 .EXAMPLE
     pwsh Tools/Test-Experimental.ps1
@@ -57,15 +59,39 @@ function Test-Case([string] $Name, [string] $Expected, [scriptblock] $Break) {
     }
 }
 
-# Ausgangsstand besteht.
-$CopyRoot = New-Copy
-try {
-    $Result = Invoke-Check $CopyRoot
-    if ($Result.Code -ne 0) { $Failures.Add("Ausgangsstand: Prüfung scheitert:`n$($Result.Output)") }
-    else { Write-Host 'ok: Ausgangsstand' }
+function Test-Pass([string] $Name, [scriptblock] $Change) {
+    $CopyRoot = New-Copy
+    try {
+        & $Change $CopyRoot
+        $Result = Invoke-Check $CopyRoot
+        if ($Result.Code -ne 0) { $Failures.Add("${Name}: Prüfung scheitert:`n$($Result.Output)") }
+        else { Write-Host "ok: $Name" }
+    }
+    finally {
+        Remove-Item -Recurse -Force $CopyRoot
+    }
 }
-finally {
-    Remove-Item -Recurse -Force $CopyRoot
+
+# Schreibt alle Textdateien der Kopie mit dem angegebenen Zeilenende neu.
+function Set-LineEndings([string] $CopyRoot, [string] $Ending) {
+    Get-ChildItem -Recurse -File $CopyRoot -Include '*.md', '*.json', '*.pas' | ForEach-Object {
+        $Bytes = [IO.File]::ReadAllBytes($_.FullName)
+        $Text = [Text.Encoding]::UTF8.GetString($Bytes)
+        $Normal = $Text.Replace("`r`n", "`n")
+        if ($Ending -ne "`n") { $Normal = $Normal.Replace("`n", $Ending) }
+        [IO.File]::WriteAllBytes($_.FullName, [Text.Encoding]::UTF8.GetBytes($Normal))
+    }
+}
+
+# Ausgangsstand besteht, mit LF wie auf dem Linux-Runner und mit CRLF wie unter Windows.
+Test-Pass 'Ausgangsstand' { param($CopyRoot) }
+Test-Pass 'Zeilenenden LF' { param($CopyRoot) Set-LineEndings $CopyRoot "`n" }
+Test-Pass 'Zeilenenden CRLF' { param($CopyRoot) Set-LineEndings $CopyRoot "`r`n" }
+
+Test-Case 'Konfiguration.md veraltet' 'Konfiguration.md ist veraltet' {
+    param($CopyRoot)
+    $Path = Join-Path $CopyRoot 'docs/Konfiguration.md'
+    [IO.File]::AppendAllText($Path, "`nveraltete Zeile`n", [Text.UTF8Encoding]::new($false))
 }
 
 Test-Case 'Vorgabe an' 'statt aus' {
@@ -110,4 +136,7 @@ if ($Failures.Count -gt 0) {
     $Failures | ForEach-Object { Write-Error $_ -ErrorAction Continue }
     exit 1
 }
-Write-Host 'Wächter für experimentelle Funktionen: alle Fälle erkannt.'
+Write-Host 'Wächter für experimentelle Funktionen und veraltete Doku: alle Fälle erkannt.'
+# Der letzte Fall endet absichtlich mit Exit-Code 1 des Kindprozesses; ohne
+# ausdrückliches exit 0 übernimmt die pwsh-Shell von GitHub Actions $LASTEXITCODE (#888).
+exit 0
