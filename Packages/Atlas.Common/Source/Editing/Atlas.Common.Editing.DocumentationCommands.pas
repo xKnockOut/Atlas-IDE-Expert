@@ -7,7 +7,8 @@
 //                     an die in der Klasse) und <remarks>Veraltet: Grund</remarks>
 //   /region-all       Methoden der Klasse in der implementation nach Gruppen in
 //                     {$REGION}-Blöcke ordnen
-//   /bookmark Name    Kommentar "// @bookmark Name"; die Symbolsuche findet ihn (Editing.Bookmarks)
+// /bookmark entfällt laut Ergänzung vom 09.10.: Die IDE und Atlas haben eigene Lesezeichen. Vorhandene
+// Kommentare "// @bookmark Name" findet die Symbolsuche weiter (Editing.Bookmarks).
 
 interface
 
@@ -18,7 +19,7 @@ const
   /// <summary>Vorlage, wenn weder slashCommands.headerTemplate noch die Regel file-header eine vorgibt.</summary>
   DefaultHeaderTemplate = '{ {unit}' + #13#10 + '  Copyright (c) {jahr} {autor} }';
 
-/// <summary>Trägt /header, /deprecated, /region-all und /bookmark in ARegistry ein.</summary>
+/// <summary>Trägt /header, /deprecated und /region-all in ARegistry ein.</summary>
 procedure RegisterDocumentationCommands(ARegistry: TSlashCommandRegistry);
 
 implementation
@@ -487,26 +488,6 @@ begin
   end;
 end;
 
-{ /bookmark }
-
-function ExecuteBookmark(const AContext: TSlashContext; out AEdits: TArray<TTextEdit>;
-  out AReason: string): Boolean;
-var
-  Source: TCommandSource;
-begin
-  AEdits := nil;
-  if AContext.Arguments = '' then
-    Exit(Fail('Erwartet wird ein Name, z. B. /bookmark Abrechnung', AReason));
-  Source := TCommandSource.Create(AContext);
-  try
-    AEdits := [TTextEdit.Create(TTextRange.Create(Source.Line, 0, Source.Line + 1, 0),
-      Source.Indent(Source.Line) + '// @bookmark ' + AContext.Arguments + Source.LineBreak)];
-    Result := True;
-  finally
-    Source.Free;
-  end;
-end;
-
 function Command(const AName, ASummary, AExample: string; const AExecute: TSlashExecute): TSlashCommand;
 begin
   Result.Name := AName;
@@ -522,8 +503,6 @@ begin
     ExecuteDeprecated));
   ARegistry.Register(Command('region-all', 'Methoden der Klasse in Regionen ordnen', '/region-all',
     ExecuteRegionAll));
-  ARegistry.Register(Command('bookmark', 'Lesezeichen für die Symbolsuche setzen', '/bookmark Abrechnung',
-    ExecuteBookmark));
 end;
 
 end.
