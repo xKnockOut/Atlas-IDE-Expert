@@ -1023,12 +1023,15 @@ begin
   Settings.UnitSearchPathStyle := 'compact';
   Settings.UnitSearchDefaultScope := 'library';
   Settings.UnitSearchKey := $6055;
+  // Suchleiste (#878): Liste in den Meldungen abschaltbar.
+  Settings.SearchResultsInMessages := False;
   Store := TMemoryStore.Create;
   Settings.Save(Store);
   Loaded := Default(TAtlasPluginSettings);
   Loaded.Load(Store);
   Assert.IsFalse(Loaded.UnitSearchEnabled);
   Assert.IsFalse(Loaded.UnitSearchReplaceIdeDialog);
+  Assert.IsFalse(Loaded.SearchResultsInMessages);
   Assert.IsFalse(Loaded.UnitSearchRememberCollapsed);
   Assert.IsFalse(Loaded.UnitSearchFilters);
   Assert.IsFalse(Loaded.UnitSearchFilterSyntax);
