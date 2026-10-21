@@ -113,6 +113,7 @@ type
     procedure MoveCursor(const AUri: string; const APosition: TTextPosition);
     function RuleIdsAt(const AUri, AText: string; ALine: Integer; out AIds: TArray<string>): Boolean;
     function UsesContext(const AUri: string; out AContext: TUsesContext): Boolean;
+    function FindingsAt(const AUri, AText: string; ALine: Integer; out AFindings: TArray<TSlashFinding>): Boolean;
   end;
 
 const
@@ -273,6 +274,13 @@ end;
 function TFakeHost.UsesContext(const AUri: string; out AContext: TUsesContext): Boolean;
 begin
   AContext := Default(TUsesContext);
+  Result := False;
+end;
+
+function TFakeHost.FindingsAt(const AUri, AText: string; ALine: Integer;
+  out AFindings: TArray<TSlashFinding>): Boolean;
+begin
+  AFindings := nil;
   Result := False;
 end;
 

@@ -284,8 +284,6 @@ begin
   Result := 'unit ' + AUnitName + ';' + LB + LB + 'interface' + LB + LB + 'implementation' + LB + LB + 'end.' + LB;
 end;
 
-/// <summary>Legt AFileName neben der Datei des Befehls mit AText an, trägt sie in .dpr/.dpk und .dproj ein,
-/// wenn ein Projekt geladen ist, und öffnet sie danach. ANeedsProject: ohne Projekt nicht anlegen.</summary>
 /// <summary>Neue Unit im Stil des Projekts (#299, #121, #43): Zeilenende aus format.endOfLine bzw. der Datei
 /// des Befehls, Einrückung je Ebene (Vorlagen rücken mit zwei Leerzeichen ein) und Schreibweise nach dem
 /// Formatstil.</summary>
@@ -325,6 +323,8 @@ begin
   Result := TFormatter.FormatText(Result, TPascalLexer.Tokenize(Result), Style);
 end;
 
+/// <summary>Legt AFileName neben der Datei des Befehls mit AText an, trägt sie in .dpr/.dpk und .dproj ein,
+/// wenn ein Projekt geladen ist, und öffnet sie danach. ANeedsProject: ohne Projekt nicht anlegen.</summary>
 function AddNewUnit(const AContext: TSlashContext; const AName, AText: string; ANeedsProject: Boolean;
   out AEdits: TArray<TTextEdit>; out AReason: string): Boolean;
 var

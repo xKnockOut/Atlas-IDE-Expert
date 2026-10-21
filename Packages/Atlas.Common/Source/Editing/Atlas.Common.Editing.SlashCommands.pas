@@ -57,6 +57,16 @@ type
     Reason: string;
   end;
 
+  /// <summary>Ein Regeltreffer für /fix und /explain (#300).</summary>
+  TSlashFinding = record
+    RuleId: string;
+    Message: string;
+    /// <summary>Name, Beschreibung und Beispiel falsch/richtig aus dem Regelkatalog; '' ohne Eintrag.</summary>
+    Explanation: string;
+    /// <summary>Edits der sicheren Korrektur im Dokument (#145, #182); nil ohne.</summary>
+    SafeFix: TArray<TTextEdit>;
+  end;
+
   /// <summary>Zugriff auf Projekt und Editor für Befehle, die mehr als die Datei ändern (#301).</summary>
   ISlashHost = interface
     ['{8E4A2C61-3B7D-4F95-A0C8-5D1E9F27B364}']
@@ -91,6 +101,9 @@ type
     function RuleIdsAt(const AUri, AText: string; ALine: Integer; out AIds: TArray<string>): Boolean;
     /// <summary>Index und usesKeep für ungenutzte uses (/sortuses, #297); False ohne Index.</summary>
     function UsesContext(const AUri: string; out AContext: TUsesContext): Boolean;
+    /// <summary>Treffer der Prüfregeln in Zeile ALine (ab 0) von AText (/fix, /explain, #300), ohne
+    /// slash-command; False, wenn für die Datei keine Prüfregeln laufen.</summary>
+    function FindingsAt(const AUri, AText: string; ALine: Integer; out AFindings: TArray<TSlashFinding>): Boolean;
   end;
 
   /// <summary>Namen der Einstellungen, die Befehle über ISlashHost.Setting lesen.</summary>
@@ -174,6 +187,9 @@ type
     out AIds: TArray<string>): Boolean;
   /// <summary>Wie ISlashHost.UsesContext (/sortuses, #297).</summary>
   TSlashUsesContextFunc = reference to function(const AUri: string; out AContext: TUsesContext): Boolean;
+  /// <summary>Wie ISlashHost.FindingsAt (/fix, /explain, #300).</summary>
+  TSlashFindingsFunc = reference to function(const AUri, AText: string; ALine: Integer;
+    out AFindings: TArray<TSlashFinding>): Boolean;
 
   /// <summary>Hinweis zu einer Befehlszeile, die stehen bleibt.</summary>
   TSlashProblem = record
