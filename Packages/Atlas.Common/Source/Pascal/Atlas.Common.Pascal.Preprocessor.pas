@@ -180,6 +180,9 @@ type
     class procedure SetDeclaredProvider(const AProvider: TDeclaredFunc); static;
     /// <summary>"Delphi 13" zu CompilerVersion 37 usw.; sonst "CompilerVersion n".</summary>
     class function ProductName(ACompilerVersion: Double): string; static;
+    /// <summary>Name aus "{$I Name}", "{$INCLUDE 'Name'}" bzw. "(*$I Name*)"; False bei Schaltern wie {$I+}.
+    /// </summary>
+    class function IncludeFileOf(const ADirective: string; out AName: string): Boolean; static;
   end;
 
 implementation
@@ -1760,6 +1763,29 @@ begin
   for Conditional in AResult.Conditionals do
     if Conditional.FileIndex = 0 then
       Result := Result + [Conditional];
+end;
+
+class function TPascalPreprocessor.IncludeFileOf(const ADirective: string; out AName: string): Boolean;
+var
+  Text, Word: string;
+  Index: Integer;
+begin
+  Result := False;
+  Text := ADirective;
+  if Text.StartsWith('{$') and Text.EndsWith('}') then
+    Text := Copy(Text, 3, Length(Text) - 3)
+  else if Text.StartsWith('(*$') and Text.EndsWith('*)') then
+    Text := Copy(Text, 4, Length(Text) - 5)
+  else
+    Exit;
+  Index := 1;
+  while (Index <= Length(Text)) and CharInSet(Text[Index], ['A'..'Z', 'a'..'z']) do
+    Inc(Index);
+  Word := UpperCase(Copy(Text, 1, Index - 1));
+  if (Word <> 'I') and (Word <> 'INCLUDE') then
+    Exit;
+  AName := Trim(Copy(Text, Index, MaxInt));
+  Result := (AName <> '') and not CharInSet(AName[1], ['+', '-']);
 end;
 
 class function TPascalPreprocessor.HasConditionals(const AText: string): Boolean;

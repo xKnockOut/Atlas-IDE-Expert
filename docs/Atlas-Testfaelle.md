@@ -2905,6 +2905,28 @@ Voraussetzung: Einstellungen auf Vorgabe (Blockeinzug 2); Methode mit `if … th
 | NZ11 | Tasten unter Optionen › Befehle › Neue Zeile ober-/unterhalb ändern | Die neuen Tasten wirken, die Tastenübersicht prüft Konflikte |
 | NZ12 | „Neue Zeile ober-/unterhalb“ aus | Umschalt+Enter und Strg+Alt+Enter verhalten sich wie ohne Atlas, die Befehle fehlen in der Palette (**Abnahme**) |
 
+## Kleinere Sprachlücken (#849)
+
+Voraussetzung: Einstellungen auf Vorgabe; Quellen aus `planung/parser-luecken-faelle/` (Fälle 05, 07, 08, 09 mit `members.inc`, 12) bzw. kleine Units mit den genannten Zeilen.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| LG1 | Unit mit `{$SCOPEDENUMS ON} TState = (None, Busy, Error);` und `if S = Error then` öffnen | Hover und Strg+Klick auf `Error` finden nichts; die Prüfung meldet „"Error" ist nicht deklariert; gemeint ist TState.Error?“; `TState.Error` wird gefunden (**Abnahme**) |
+| LG2 | Fall 05 öffnen, `var F: TFoo<TObject, TObject>;` ergänzen, Strg+Klick auf `TFoo` | Keine Syntaxfehler; Sprung zu `TFoo<T: IFoo, IBar; V: class, constructor>` (**Abnahme**) |
+| LG3 | Fall 09 mit `members.inc` im Ordner öffnen, `Foo.` an einer Variablen vom Typ TFoo | A, B und After erscheinen als Methoden von TFoo; Strg+Klick auf `A` öffnet `members.inc` |
+| LG4 | `W.Documents.Open(FileName := 'a.docx', ReadOnly := True);` | Kein Syntaxfehler (**Abnahme**) |
+| LG5 | Fall 12 öffnen (`Operator: string;` im Record) | Kein Syntaxfehler; Gliederung zeigt Field, Value, Operator, Negate (**Abnahme**) |
+| LG6 | Fall 08: `const C = 1;` und darunter `[Test] procedure T1;` | Kein Syntaxfehler; das Attribut gehört zu T1 (Gliederung, Hover) |
+| LG7 | `Z := NameOf(T1);` mit `check_code` prüfen | Keine Meldung zu NameOf |
+| LG8 | Fall 08: Gliederung von TFoo und `Foo.` | Nur MyBar, kein „IFoo.Bar“; Strg+Klick auf `MyBar` in `procedure IFoo.Bar = MyBar;` springt zur Methode MyBar (**Abnahme**) |
+| LG9 | `function F(A: Integer): Integer stdcall;`, `TCb = function(A: PAnsiChar): Integer cdecl varargs;`, `procedure X; assembler` + `asm … end;` | Keine Syntaxfehler; der asm-Block bleibt der Rumpf von X (**Abnahme**) |
+| LG10 | `TFColor = record B, G, R: Byte end;` | Kein Syntaxfehler (**Abnahme**) |
+| LG11 | Anonyme Methode mit lokaler `procedure Inner;` und `function Calc: Integer;` vor dem `begin` | Kein Syntaxfehler; die Routine danach steht in der Gliederung (**Abnahme**) |
+| LG12 | Routine ReadFrame mit 312 `else if`, danach Routine WriteFrame | Kein „Zu tief verschachtelt“; WriteFrame in der Gliederung (**Abnahme**) |
+| LG13 | `D2D: array [0..9] of 1..3 = (1, 2, 3, 1, 2, 3, 1, 2, 3, 1);` | Kein Syntaxfehler (**Abnahme**) |
+| LG14 | `SYNOPSE_FRAMEWORK_VERSION = {$I mormot.commit.inc};` mit der .inc im Ordner, Hover auf der Konstanten aus einer anderen Unit | Kein „Ausdruck erwartet“; der Hover zeigt den Inhalt der .inc als Wert (**Abnahme**) |
+| LG15 | IDE mit altem Index-Cache starten | Cache wird einmal neu aufgebaut (Formatversion 20) |
+
 ## class helper mit Vorfahr (#848)
 
 Voraussetzung: Einstellungen auf Vorgabe; Unit mit `TFoo = class Name: string; end;`, `TBaseHelper = class helper for TFoo function AsText: string; procedure Reset; end;` und `TFooHelper = class helper (TBaseHelper) for TFoo procedure Reset; end;`, danach `TOther = class procedure B; end;`; zweite Unit mit `uses` darauf und `var Foo: TFoo;`.

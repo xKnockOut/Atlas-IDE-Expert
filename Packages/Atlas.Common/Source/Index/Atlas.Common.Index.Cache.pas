@@ -74,7 +74,8 @@ type
     // 17: Grund hinter deprecated je Symbol (#38).
     // 18: Zweig varianter Record-Felder je Symbol (#846).
     // 19: Helfer mit Vorfahr (class helper (TBase) for T) neu lesen (#848).
-    const FormatVersion = 19;
+    // 20: {$SCOPEDENUMS ON} je Aufzählung und Wert, Mitglieder aus {$I} im Klassenrumpf (#849).
+    const FormatVersion = 20;
     class function Serialize(const AUnits: TArray<TUnitIndex>): TBytes; static;
     /// <summary>Liest nur die Köpfe; bei falscher Version, falscher Prüfsumme oder fremdem Inhalt leer.</summary>
     class function ReadEntries(const AData: TBytes): TArray<TIndexCacheEntry>; overload; static;
@@ -113,6 +114,7 @@ const
   SymbolDefault = 2;
   SymbolVirtual = 4;
   SymbolUnavailable = 8;
+  SymbolScopedEnum = 16;
 
 type
   ECacheFormat = class(Exception);
@@ -399,6 +401,8 @@ begin
     Flags := Flags or SymbolVirtual;
   if ASymbol.Unavailable then
     Flags := Flags or SymbolUnavailable;
+  if ASymbol.ScopedEnum then
+    Flags := Flags or SymbolScopedEnum;
   AWriter.WriteVar(Flags);
   WriteList(AWriter, ATable, ASymbol.Ancestors);
   AWriter.WriteVar(ATable.IndexOf(ASymbol.TypeName));
@@ -557,6 +561,7 @@ begin
   Result.IsDefault := (Flags and SymbolDefault) <> 0;
   Result.IsVirtual := (Flags and SymbolVirtual) <> 0;
   Result.Unavailable := (Flags and SymbolUnavailable) <> 0;
+  Result.ScopedEnum := (Flags and SymbolScopedEnum) <> 0;
   Result.Ancestors := AReader.ReadList(AStrings);
   Result.TypeName := AReader.ReadString(AStrings);
   Result.TypeArgs := AReader.ReadString(AStrings);

@@ -24,6 +24,9 @@ type
   TUnresolvedName = record
     Name: string;
     Range: TTextRange;
+    /// <summary>Gemeinter Name, z. B. TState.Error für einen Wert unter {$SCOPEDENUMS ON} (#849); sonst ''.
+    /// </summary>
+    Suggestion: string;
   end;
 
   TUnresolvedNames = class
@@ -41,12 +44,13 @@ type
 implementation
 
 const
-  Intrinsics: array[0..62] of string = (
+  Intrinsics: array[0..63] of string = (
     'Abs', 'Addr', 'Assert', 'Assigned', 'AtomicCmpExchange', 'AtomicDecrement', 'AtomicExchange',
     'AtomicIncrement', 'Break', 'Chr', 'Concat', 'Continue', 'Copy', 'Dec', 'Default',
     'Delete', 'Dispose', 'Exclude', 'Exit', 'False', 'FillChar', 'Finalize', 'GetTypeKind', 'Halt', 'HasWeakRef',
     'Hi', 'High', 'Inc', 'Include', 'Initialize', 'Insert', 'IsConstValue', 'IsManagedType', 'Length', 'Lo', 'Low',
-    'Move', 'New', 'nil', 'Odd', 'Ord', 'Pred', 'Ptr', 'Read', 'ReadLn', 'Result', 'Round', 'Self', 'SetLength',
+    'Move', 'NameOf', 'New', 'nil', 'Odd', 'Ord', 'Pred', 'Ptr', 'Read', 'ReadLn', 'Result', 'Round', 'Self',
+    'SetLength',
     'SetString', 'SizeOf', 'Slice', 'Str', 'Succ', 'Swap', 'True', 'Trunc', 'TypeInfo', 'Write', 'WriteLn',
     // Konstanten aus System.pas, die im Index fehlen können (Ursache nicht geprüft, #647).
     'MaxInt', 'MaxLongint',
@@ -122,6 +126,7 @@ var
       begin
         Item.Name := ANode.Name;
         Item.Range := TTextRange.Create(ANode.StartPos, ANode.EndPos);
+        AResolver.ScopedEnumValue(ATree, AFileName, ANode.Name, ANode.StartOffset, Item.Suggestion);
         Result := Result + [Item];
       end;
     end;
