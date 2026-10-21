@@ -461,6 +461,7 @@ uses
   Atlas.Common.Pascal.Lexer,
   Atlas.Common.Lsp.FuzzyMatch,
   Atlas.Common.Editing.UsesClause,
+  Atlas.Common.Lsp.CompletionUses,
   Atlas.Common.Editing.CaseCompletion,
   Atlas.Common.Editing.AssignFields,
   Atlas.Common.Editing.DeclareUnknown,
@@ -1625,8 +1626,12 @@ begin
   try
     case Context.Kind of
       TCompletionContextKind.UsesClause:
-        for UnitInfo in ARequest.Index.Units do
-          Collector.Add(UnitInfo.UnitName, UnitInfo.FileName, KindModule, Default(TResolvedSymbol));
+        // Gruppen, Hinweise und Zirkelbezüge (#469); aus: alle Units als schlichte Liste.
+        if ARequest.Settings.UsesDetails then
+          TCompletionUses.Collect(ARequest, Context, Collector)
+        else
+          for UnitInfo in ARequest.Index.Units do
+            Collector.Add(UnitInfo.UnitName, UnitInfo.FileName, KindModule, Default(TResolvedSymbol));
       TCompletionContextKind.Member, TCompletionContextKind.Scope:
         begin
           // Nur passende Namen aufbauen (#616); ohne Eingabe passt ohnehin alles. Der Filter gilt nur beim

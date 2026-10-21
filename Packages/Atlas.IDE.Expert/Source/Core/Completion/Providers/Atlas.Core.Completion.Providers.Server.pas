@@ -145,6 +145,18 @@ begin
     ARange.TryGetValue<Integer>('end.character', AResult.EndCharacter);
 end;
 
+/// <summary>Die Strings eines JSON-Arrays; leer, wenn AValue kein Array ist.</summary>
+function StringsOf(AValue: TJSONValue): TArray<string>;
+var
+  Value: TJSONValue;
+begin
+  Result := nil;
+  if AValue is TJSONArray then
+    for Value in TJSONArray(AValue) do
+      if Value is TJSONString then
+        Result := Result + [TJSONString(Value).Value];
+end;
+
 class function TAtlasServerCompletionProvider.ItemFromLsp(AItem: TJSONObject; ARank: Integer): TAtlasCompletionItem;
 var
   Documentation, Edits, Value, Overloads: TJSONValue;
@@ -249,6 +261,15 @@ begin
     Result.Constraint := Data.GetValue<string>('constraint', '');
     Result.ConstraintHint := Data.GetValue<string>('constraintHint', '');
     Result.HiddenKinds := Data.GetValue<string>('hiddenKinds', '');
+    // uses-Abschnitt (#469): gefiltert wird nach dem Namensteil ab dem Getippten ("Classes" für System.Classes).
+    Result.UsesGroup := Data.GetValue<string>('usesGroup', '');
+    if Data.GetValue<string>('usesFilter', '') <> '' then
+      Result.FilterText := Data.GetValue<string>('usesFilter', '');
+    Result.UsesElsewhere := Data.GetValue<string>('usesElsewhere', '');
+    Result.UsesCycle := Data.GetValue<string>('usesCycle', '');
+    Result.UsesTypes := StringsOf(Data.GetValue('usesTypes'));
+    Result.UsesTypeCount := Data.GetValue<Integer>('usesTypeCount', 0);
+    Result.UsesHidden := StringsOf(Data.GetValue('usesHidden'));
     // resourcestring auslagern (#473): Platzhalter auch in den weiteren Änderungen.
     Result.LinkedEdits := Data.GetValue<Boolean>('linkedEdits', False);
     Overloads := Data.GetValue('overloads');

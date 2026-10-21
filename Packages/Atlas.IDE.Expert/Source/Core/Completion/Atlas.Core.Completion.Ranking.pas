@@ -25,6 +25,8 @@
 //     übrigen Bezeichnern. Passt eine nur über ihren Typ ("button" → btnSave: TButton), hat der Server sie schon
 //     gefiltert; sie bleibt sichtbar und steht hinter den Namenstreffern.
 //   - Sender mit Typumwandlung (#480): eine Überschrift „Sender ist TButton · btnSave, btnLoad“ über der Liste.
+//   - uses-Abschnitt (#469, Item.UsesGroup): Projekt-Units vor RTL/VCL vor Drittanbietern, je Gruppe eine
+//     Überschrift.
 //   - Favoriten (#458, Item.Favorite): vor allen anderen Gruppen, auch vor Hinweisen und Formularkomponenten,
 //     unabhängig von Lernen und Rang, aber nur, wenn sie zum getippten Präfix passen. Ohne Überschrift; die
 //     Gruppen danach beginnen wie am Anfang der Liste.
@@ -200,6 +202,17 @@ begin
     Result := 9;
 end;
 
+/// <summary>Gruppe im uses-Abschnitt (#469): 0 = Projekt (oder keine), 1 = RTL/VCL, 2 = Drittanbieter.</summary>
+function UsesRank(const AItem: TAtlasCompletionItem): Integer;
+begin
+  if AItem.UsesGroup = 'rtl' then
+    Result := 1
+  else if AItem.UsesGroup = 'library' then
+    Result := 2
+  else
+    Result := 0;
+end;
+
 /// <summary>0 = passt zum erwarteten Typ, 1 = übrige, 2 = ohne erwarteten Typ.</summary>
 function GroupOf(const AItem: TAtlasCompletionItem; AAnyFits: Boolean): Integer;
 begin
@@ -362,6 +375,9 @@ begin
           Result := Ord(Items[A].Unavailable) - Ord(Items[B].Unavailable);
         if Result = 0 then
           Result := GroupOf(Items[A], AnyFits) - GroupOf(Items[B], AnyFits);
+        // uses-Abschnitt (#469): Projekt vor RTL/VCL vor Drittanbietern.
+        if Result = 0 then
+          Result := UsesRank(Items[A]) - UsesRank(Items[B]);
         // Aufzählungswerte vor den übrigen passenden Einträgen, ohne Präfix in Deklarationsreihenfolge (#448).
         if Result = 0 then
           Result := Ord(Items[B].Ordinal > 0) - Ord(Items[A].Ordinal > 0);
@@ -431,6 +447,12 @@ begin
       // Typargumente (#450): eine Überschrift mit dem Constraint über der Liste.
       else if (Items[Index].TypeParam <> '') and (Position = First) then
         Ordered.Add(Header)
+      // uses-Abschnitt (#469): eine Überschrift je Gruppe (Projekt, RTL/VCL, Drittanbieter).
+      else if Items[Index].UsesGroup <> '' then
+      begin
+        if (Position = First) or (Items[Found[Position - 1]].UsesGroup <> Items[Index].UsesGroup) then
+          Ordered.Add(Header);
+      end
       // Nach der Formulargruppe eine Überschrift über dem Rest („Weitere“ bzw. die Gruppe zum erwarteten Typ).
       else if (Position > First) and (Items[Found[Position - 1]].Form <> '') then
         Ordered.Add(Header)

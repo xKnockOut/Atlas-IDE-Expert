@@ -5,7 +5,8 @@
 // Rahmen mit Trennlinie. Inhalt von oben nach unten:
 //   1. Tags: Sichtbarkeit und Direktiven als umrandete Marken, deprecated in Warnfarbe
 //   2. Deklaration in der Editorschrift, eingefärbt, umbrechend
-//   3. Unit · Klasse, gedämpft
+//   3. Unit · Klasse, gedämpft; bei Units im uses-Abschnitt (#469) Pfad, exportierte Typen, Zirkelbezug in
+//      Fehlerfarbe und der Abschnitt, in dem die Unit schon steht
 //   4. Trennlinie
 //   5. bei deprecated "Veraltet: …" in Warnfarbe
 //   6. XMLDoc formatiert (#654, #770) wie im Hover-Tooltip: Beschreibung, dann
@@ -219,6 +220,22 @@ var
     ACanvas.Font.Style := [];
   end;
 
+  /// <summary>Text in der Editorschrift umbrechend ab Y (Pfad und Typen einer Unit, #469).</summary>
+  procedure Mono(const AText: string; AColor: TAtlasColor);
+  var
+    Area: TRect;
+  begin
+    ACanvas.Font := AFont;
+    ACanvas.Font.Color := ToColor(AColor);
+    ACanvas.Brush.Style := bsClear;
+    Area := Rect(Left, Y, Right, Y);
+    DrawText(ACanvas.Handle, PChar(AText), -1, Area, DT_WORDBREAK or DT_NOPREFIX or DT_CALCRECT);
+    Area.Right := Right;
+    if ADraw then
+      DrawText(ACanvas.Handle, PChar(AText), -1, Area, DT_WORDBREAK or DT_NOPREFIX);
+    Y := Area.Bottom + Scale(6);
+  end;
+
   procedure Separator;
   begin
     if ADraw then
@@ -333,6 +350,24 @@ begin
     else
       Text := FDetails.Container;
   Block(Text, AColors.Muted, []);
+  // Unit im uses-Abschnitt (#469): Pfad, die ersten exportierten Typen, Zirkelbezug und anderer Abschnitt.
+  if FDetails.UnitPath <> '' then
+    Mono(FDetails.UnitPath, AColors.Muted);
+  if Length(FDetails.UnitTypes) > 0 then
+  begin
+    Separator;
+    Block(UpperCase(TAtlasStrings.Text(TAtlasTextId.UsesTypesHeading)), AColors.Muted, [fsBold]);
+    Text := string.Join(' · ', FDetails.UnitTypes);
+    if FDetails.UnitTypeCount > Length(FDetails.UnitTypes) then
+      Text := Text + ' · …';
+    Mono(Text, AColors.Text);
+  end;
+  if FDetails.UsesCycle <> '' then
+    Block(TAtlasStrings.UsesCycle(FDetails.UsesCycle), AColors.Error, []);
+  if FDetails.UsesElsewhere = 'interface' then
+    Block(TAtlasStrings.Text(TAtlasTextId.UsesInInterface), AColors.Muted, [fsItalic])
+  else if FDetails.UsesElsewhere = 'implementation' then
+    Block(TAtlasStrings.Text(TAtlasTextId.UsesInImplementation), AColors.Muted, [fsItalic]);
   // Helper aus nicht eingebundener Unit (#456): Enter ergänzt die uses.
   if FDetails.AddsUnit <> '' then
     Block(TAtlasStrings.Fmt(TAtlasTextId.HelperAddsUnit, [FDetails.AddsUnit]), AColors.Accent, []);

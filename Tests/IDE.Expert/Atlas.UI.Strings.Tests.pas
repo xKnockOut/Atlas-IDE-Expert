@@ -21,6 +21,8 @@ type
     procedure DocLabelsGerman;
     [Test]
     procedure TypeArgHeadingAndFooter;
+    [Test]
+    procedure UsesFooterAndCycle;
   end;
 
 implementation
@@ -120,6 +122,34 @@ begin
     TAtlasStrings.Language := TAtlasLanguage.English;
     Assert.AreEqual('T: class · classes only', TAtlasStrings.TypeArgHeading('T', 'class', 'classes'));
     Assert.AreEqual('Hidden: interfaces', TAtlasStrings.TypeArgHidden('interfaces'));
+  finally
+    TAtlasStrings.Language := Saved;
+  end;
+end;
+
+procedure TAtlasStringsTests.UsesFooterAndCycle;
+var
+  Saved: TAtlasLanguage;
+begin
+  // uses-Abschnitt (#469): Fußzeile zu schon eingebundenen Units, Zirkelbezug im Detailpanel.
+  Saved := TAtlasStrings.Language;
+  try
+    TAtlasStrings.Language := TAtlasLanguage.German;
+    Assert.AreEqual('', TAtlasStrings.UsesHidden(nil));
+    Assert.AreEqual('System.SysUtils ist schon eingebunden und fehlt hier',
+      TAtlasStrings.UsesHidden(['System.SysUtils']));
+    Assert.AreEqual('System.SysUtils, System.Classes sind schon eingebunden und fehlen hier',
+      TAtlasStrings.UsesHidden(['System.SysUtils', 'System.Classes']));
+    Assert.AreEqual('A, B und 2 weitere sind schon eingebunden und fehlen hier',
+      TAtlasStrings.UsesHidden(['A', 'B', 'C', 'D']));
+    Assert.AreEqual('uGeneratorBeleg bindet diese Unit im interface-Teil ein',
+      TAtlasStrings.UsesCycle('uGeneratorBeleg → Haupt'));
+    Assert.AreEqual('uMitte bindet diese Unit über uZwei, uDrei im interface-Teil ein',
+      TAtlasStrings.UsesCycle('uMitte → uZwei → uDrei → Haupt'));
+    Assert.AreEqual('', TAtlasStrings.UsesCycle(''));
+    TAtlasStrings.Language := TAtlasLanguage.English;
+    Assert.AreEqual('A is already used and not listed', TAtlasStrings.UsesHidden(['A']));
+    Assert.AreEqual('uA uses this unit in its interface section', TAtlasStrings.UsesCycle('uA → Haupt'));
   finally
     TAtlasStrings.Language := Saved;
   end;
