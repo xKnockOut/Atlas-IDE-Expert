@@ -27,6 +27,8 @@ type
     procedure NodeAtMapsBodiesToDeclarations;
     [Test]
     procedure EmptyResponseGivesNoNodes;
+    [Test]
+    procedure ConditionOfBodyGoesToDeclaration;
   end;
 
 implementation
@@ -245,6 +247,36 @@ begin
   Assert.AreEqual(Find(List, 'Add', 1), TAtlasOutline.NodeAt(List, 27, 40));
   Assert.AreEqual(Find(List, 'Helper'), TAtlasOutline.NodeAt(List, 31, 20));
   Assert.AreEqual(-1, TAtlasOutline.NodeAt(List, 2, 4), 'uses');
+end;
+
+procedure TAtlasOutlineModelTests.ConditionOfBodyGoesToDeclaration;
+const
+  Response =
+    '[{"name":"U","kind":2,"range":{"start":{"line":0,"character":0},"end":{"line":20,"character":0}},' +
+    '"children":[' +
+    '{"name":"interface","kind":3,"range":{"start":{"line":1,"character":0},"end":{"line":3,"character":0}},' +
+    '"children":[{"name":"Foo","kind":12,"range":{"start":{"line":2,"character":0},"end":{"line":2,"character":14}}},' +
+    '{"name":"Log","kind":12,"range":{"start":{"line":3,"character":0},"end":{"line":3,"character":14}},' +
+    '"atlas":{"condition":"DEBUG"}}]},' +
+    '{"name":"implementation","kind":3,"range":{"start":{"line":4,"character":0},"end":{"line":19,"character":0}},' +
+    '"children":[{"name":"Foo","kind":12,"range":{"start":{"line":5,"character":0},"end":{"line":10,"character":4}},' +
+    '"atlas":{"condition":"CPUX64"}},' +
+    '{"name":"Log","kind":12,"range":{"start":{"line":11,"character":0},"end":{"line":13,"character":4}}}]}]}]';
+var
+  Value: TJSONValue;
+  List: TAtlasOutlineNodes;
+begin
+  // #845: Steht nur der Rumpf im {$IFDEF}-Zweig, trägt die sichtbare Deklaration dessen Bedingung.
+  Value := TJSONObject.ParseJSONValue(Response);
+  try
+    List := TAtlasOutline.FromJson(Value);
+  finally
+    Value.Free;
+  end;
+  Assert.AreEqual('CPUX64', List[Find(List, 'Foo', 0)].Condition);
+  Assert.IsTrue(List[Find(List, 'Foo', 1)].Hidden);
+  // Eine eigene Bedingung der Deklaration bleibt.
+  Assert.AreEqual('DEBUG', List[Find(List, 'Log', 0)].Condition);
 end;
 
 procedure TAtlasOutlineModelTests.EmptyResponseGivesNoNodes;

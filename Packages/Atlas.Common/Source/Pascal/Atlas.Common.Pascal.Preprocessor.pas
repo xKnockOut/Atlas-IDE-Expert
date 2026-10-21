@@ -110,6 +110,15 @@ type
     class function CompilerVersionOfBds(ABdsVersion: Double): Double; static;
     /// <summary>Compilerversion aus einem Symbol VERnnn in ADefines (VER360 -> 36.0); 0 ohne.</summary>
     class function CompilerVersionFromDefines(const ADefines: TArray<string>): Double; static;
+    /// <summary>Optionen für Editor-Baum und Syntaxfehler (#845): ADefines des Projekts samt Compilerversion
+    /// aus VERnnn; leer = Vordefinitionen von Delphi 13 für Win32.</summary>
+    class function EditorOptions(const ADefines: TArray<string>): TPreprocessorOptions; static;
+    /// <summary>Inaktive Bereiche der Hauptdatei (ohne Include-Dateien).</summary>
+    class function MainInactive(const AResult: TPreprocessorResult): TArray<TTextRange>; static;
+    /// <summary>Zweige der Hauptdatei (ohne Include-Dateien).</summary>
+    class function MainConditionals(const AResult: TPreprocessorResult): TArray<TConditionalRange>; static;
+    /// <summary>Kann AText bedingte Zweige enthalten ($IF, $IFDEF, $IFNDEF, $IFOPT)?</summary>
+    class function HasConditionals(const AText: string): Boolean; static;
     /// <summary>Wertet einen $IF-Ausdruck aus; False und AError bei Fehlern.</summary>
     class function Evaluate(const AExpression: string; const AOptions: TPreprocessorOptions;
       const ADefines: TArray<string>; out AError: string): Boolean; static;
@@ -938,6 +947,53 @@ begin
       Exit(Number / 10);
   end;
   Result := 0;
+end;
+
+class function TPascalPreprocessor.EditorOptions(const ADefines: TArray<string>): TPreprocessorOptions;
+const
+  DefaultPlatform = 'Win32';
+  DefaultCompilerVersion = 37.0;
+begin
+  Result := TPreprocessorOptions.Default;
+  if Length(ADefines) > 0 then
+  begin
+    Result.Defines := ADefines;
+    Result.CompilerVersion := CompilerVersionFromDefines(ADefines);
+  end
+  else
+  begin
+    Result.Defines := PredefinedSymbols(DefaultPlatform, DefaultCompilerVersion);
+    Result.CompilerVersion := DefaultCompilerVersion;
+  end;
+  Result.RTLVersion := Result.CompilerVersion;
+end;
+
+class function TPascalPreprocessor.MainInactive(const AResult: TPreprocessorResult): TArray<TTextRange>;
+var
+  Inactive: TInactiveRange;
+begin
+  Result := nil;
+  for Inactive in AResult.InactiveRanges do
+    if Inactive.FileIndex = 0 then
+      Result := Result + [Inactive.Range];
+end;
+
+class function TPascalPreprocessor.MainConditionals(const AResult: TPreprocessorResult): TArray<TConditionalRange>;
+var
+  Conditional: TConditionalRange;
+begin
+  Result := nil;
+  for Conditional in AResult.Conditionals do
+    if Conditional.FileIndex = 0 then
+      Result := Result + [Conditional];
+end;
+
+class function TPascalPreprocessor.HasConditionals(const AText: string): Boolean;
+var
+  Upper: string;
+begin
+  Upper := UpperCase(AText);
+  Result := (Pos('{$IF', Upper) > 0) or (Pos('(*$IF', Upper) > 0);
 end;
 
 class function TPascalPreprocessor.PredefinedSymbols(const APlatform: string; ACompilerVersion: Double): TArray<string>;
