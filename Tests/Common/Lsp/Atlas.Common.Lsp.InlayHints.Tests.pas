@@ -29,6 +29,9 @@ type
     procedure InferredTypesOfInlineVariables;
     [Test]
     procedure EndMarkersBehindLongBlocks;
+    /// <summary>#862: hinter ^C in Konstanten der Code, nicht in Ausdrücken; abschaltbar; data.controlChar.</summary>
+    [Test]
+    procedure ControlCharCodesBehindConstants;
     [Test]
     procedure SettingsSwitchHintsOffAndSort;
     /// <summary>#620: jede Blockart mit Beschriftung und Blockanfang, mit Mindestlänge 1.</summary>
@@ -341,6 +344,38 @@ begin
       Action));
     Assert.IsFalse(TLspInlayHints.ExplicitTypeAction(FResolver, Tree, NutzerFile, TTextPosition.Create(9, 12), #10,
       Action));
+  finally
+    Tree.Free;
+  end;
+end;
+
+procedure TLspInlayHintsTests.ControlCharCodesBehindConstants;
+const
+  Source = 'unit C;'#10'interface'#10'const'#10'  CtrlC = ^C;'#10'  Esc = ^[;'#10'  Text = ''a''^M;'#10 +
+    'implementation'#10'procedure P(Key: Char);'#10'begin'#10'  if Key = ^M then'#10'    Exit;'#10'end;'#10'end.';
+var
+  Tree: TSyntaxTree;
+  Settings: TInlayHintSettings;
+  Json: TJSONArray;
+begin
+  Tree := TPascalParser.Parse(Source);
+  try
+    Assert.AreEqual('3:12 #3|4:10 #27|', Describe(TLspInlayHints.ControlChars(Tree, Source, WholeFile)));
+    Settings := TInlayHintSettings.Default;
+    Settings.ParameterNames := False;
+    Settings.InferredTypes := False;
+    Settings.EndMarkers := False;
+    Assert.AreEqual('3:12 #3|4:10 #27|', Describe(TLspInlayHints.Collect(FResolver, FIndex, Tree, Source, 'C.pas',
+      WholeFile, Settings, nil)));
+    Settings.ControlChars := False;
+    Assert.AreEqual('', Describe(TLspInlayHints.Collect(FResolver, FIndex, Tree, Source, 'C.pas', WholeFile,
+      Settings, nil)));
+    Json := TLspInlayHints.ToJson(TLspInlayHints.ControlChars(Tree, Source, WholeFile));
+    try
+      Assert.AreEqual(27, Json.Items[1].GetValue<Integer>('data.controlChar.code'));
+    finally
+      Json.Free;
+    end;
   finally
     Tree.Free;
   end;

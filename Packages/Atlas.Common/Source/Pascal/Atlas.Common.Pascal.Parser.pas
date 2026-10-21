@@ -214,6 +214,11 @@ type
     function ParsePrimary: TSyntaxNode;
     function ParseAnonymousMethod: TSyntaxNode;
     function LooksLikeGenericArgs: Boolean;
+    /// <summary>^ mit direkt folgendem einzelnem Zeichen am Anfang eines Ausdrucks: Steuerzeichen wie ^C (#862).
+    /// </summary>
+    function IsControlChar: Boolean;
+    /// <summary>'a'#13'b'^M als ein Literal; Steuerzeichen ^M stehen im Namen als #13 (#862).</summary>
+    function ParseStringLiteral: TSyntaxNode;
     procedure ParseGenericArgs(AParent: TSyntaxNode);
     procedure ParseArguments(AParent: TSyntaxNode; const ACloser: string);
     function Binary(const AOperator: string; ALeft, ARight: TSyntaxNode; AStartIndex: Integer): TSyntaxNode;
@@ -2357,6 +2362,45 @@ begin
     Result := ParsePrimary;
 end;
 
+function TParser.IsControlChar: Boolean;
+var
+  Next: TPascalToken;
+begin
+  Result := IsSym('^');
+  if not Result then
+    Exit;
+  Next := PeekToken(1);
+  // Ohne Leerraum dahinter; als Typ (^TFoo) kommt der Parser nicht hierher, P^ ist nachgestellt.
+  Result := (Next.Offset = Current.Offset + 1) and (Length(Next.Text) = 1) and
+    (Next.Kind in [TPascalTokenKind.Identifier, TPascalTokenKind.Symbol, TPascalTokenKind.Unknown]);
+end;
+
+function TParser.ParseStringLiteral: TSyntaxNode;
+var
+  Start: Integer;
+  Text: string;
+begin
+  Start := NodeStart;
+  Text := '';
+  while not AtEnd do
+    if Current.Kind in [TPascalTokenKind.StringLiteral, TPascalTokenKind.CharLiteral] then
+    begin
+      Text := Text + Current.Text;
+      Advance;
+    end
+    else if IsControlChar then
+    begin
+      Text := Text + '#' + IntToStr(Ord(UpCase(PeekToken(1).Text[1])) xor $40);
+      Advance;
+      Advance;
+    end
+    else
+      Break;
+  Result := StartNode(TSyntaxKind.Literal);
+  Result.Name := Text;
+  FinishNode(Result, Start);
+end;
+
 function TParser.LooksLikeGenericArgs: Boolean;
 var
   Delta: Integer;
@@ -2453,7 +2497,6 @@ var
   Start: Integer;
   Node: TSyntaxNode;
   ElementStart: Integer;
-  Text: string;
 begin
   Start := NodeStart;
   if AtEnd then
@@ -2473,18 +2516,7 @@ begin
     TPascalTokenKind.Directive:
       Result := Leaf(TSyntaxKind.Literal, Current.Text);
     TPascalTokenKind.StringLiteral, TPascalTokenKind.CharLiteral:
-      begin
-        // 'a'#13'b' ist ein einziges Literal.
-        Text := '';
-        while not AtEnd and (Current.Kind in [TPascalTokenKind.StringLiteral, TPascalTokenKind.CharLiteral]) do
-        begin
-          Text := Text + Current.Text;
-          Advance;
-        end;
-        Result := StartNode(TSyntaxKind.Literal);
-        Result.Name := Text;
-        FinishNode(Result, Start);
-      end;
+      Result := ParseStringLiteral;
   else
     if IsKw('nil') then
       Result := Leaf(TSyntaxKind.Literal, 'nil')
@@ -2514,6 +2546,8 @@ begin
       ExpectSym(')');
       FinishNode(Result, Start);
     end
+    else if IsControlChar then
+      Result := ParseStringLiteral
     else if IsSym('[') then
     begin
       Result := StartNode(TSyntaxKind.SetConstructor);

@@ -33,6 +33,9 @@ type
     /// <summary>Include-Symbole (#860): getrennt von Typmarken und Parameternamen, je Stelle einmal.</summary>
     [Test]
     procedure KeepsDefineHintsApart;
+    /// <summary>Steuerzeichen-Codes (#862): eigene Liste, je Stelle einmal.</summary>
+    [Test]
+    procedure KeepsCharHintsApart;
   end;
 
 implementation
@@ -225,6 +228,29 @@ begin
     Assert.AreEqual(0, Integer(Length(Store.DefinesOnLine('A.pas', 2))), 'ohne Symbol');
     Store.SetText('A.pas', Text + ' ');
     Assert.AreEqual(0, Integer(Length(Store.DefinesOnLine('A.pas', 1))), 'neuer Text');
+  finally
+    Store.Free;
+  end;
+end;
+
+procedure TAtlasInlayHintStoreTests.KeepsCharHintsApart;
+var
+  Store: TAtlasInlayHintStore;
+  Text: string;
+  Chars: TArray<TAtlasInlayHint>;
+  Index: Integer;
+begin
+  Text := 'const' + sLineBreak + '  CtrlC = ^C; Esc = ^[;';
+  Chars := [H(1, 12, '#3'), H(1, 12, '#3'), H(1, 22, '#27')];
+  for Index := 0 to High(Chars) do
+    Chars[Index].CharHint := True;
+  Store := TAtlasInlayHintStore.Create;
+  try
+    Store.SetText('A.pas', Text);
+    Store.Put('A.pas', Text, 0, 1, Chars);
+    Assert.AreEqual('#3|#27', string.Join('|', Store.CharsOnLine('A.pas', 1)));
+    Assert.AreEqual(0, Integer(Length(Store.DefinesOnLine('A.pas', 1))), 'keine Include-Symbole');
+    Assert.AreEqual(0, Integer(Length(Store.OnLine('A.pas', 1))), 'keine Parameternamen');
   finally
     Store.Free;
   end;

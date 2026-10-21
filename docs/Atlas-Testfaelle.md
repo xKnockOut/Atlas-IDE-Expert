@@ -2905,6 +2905,21 @@ Voraussetzung: Einstellungen auf Vorgabe (Blockeinzug 2); Methode mit `if … th
 | NZ11 | Tasten unter Optionen › Befehle › Neue Zeile ober-/unterhalb ändern | Die neuen Tasten wirken, die Tastenübersicht prüft Konflikte |
 | NZ12 | „Neue Zeile ober-/unterhalb“ aus | Umschalt+Enter und Strg+Alt+Enter verhalten sich wie ohne Atlas, die Befehle fehlen in der Palette (**Abnahme**) |
 
+## Steuerzeichen-Literale ^C, ^M (#862)
+
+Voraussetzung: Einstellungen auf Vorgabe; JVCL `JvConsts.pas` oder eine Unit mit `const CtrlC = ^C; CtrlV = ^V; Esc = ^[;` und einer Routine mit `if Key = ^M then`, `if C in [^H, #32..#255] then`, `if C in (. 'a'..'z' .) then`, `case Key of ^C: ; end;` sowie `type P = ^TFoo;` und `X := P^.Feld;`.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| SZ1 | Unit öffnen | Keine Syntaxfehler; CtrlC, CtrlV und Esc stehen in der Gliederung (**Abnahme**) |
+| SZ2 | Strg+Klick auf `CtrlV` aus einer anderen Unit | Sprung zur Konstanten (Index vollständig) |
+| SZ3 | Inlay Hints einschalten | Hinter `^C` steht „#3“, hinter `^V` „#22“, hinter `^[` „#27“; hinter `^M` im if nichts |
+| SZ4 | Optionen › Editor › Inlay-Hints › Steuerzeichen-Codes aus | Die Codes verschwinden, die anderen Inlay Hints bleiben |
+| SZ5 | Hover und Strg+Klick auf das `C` in `^C`, wenn es eine Variable `C` gibt | Kein Hover der Variablen, kein Sprung |
+| SZ6 | Cursor auf `[` in `Esc = ^[;` | Keine unpaarige Klammer markiert |
+| SZ7 | `P = ^TFoo` und `P^.Feld` | Zeigertyp und Dereferenzierung wie bisher: Hover auf TFoo, Vervollständigung nach `P^.` |
+| SZ8 | IDE mit altem Index-Cache starten | Cache wird einmal neu aufgebaut (Formatversion 22) |
+
 ## asm-Block mit Sprungmarke @@End (#861)
 
 Voraussetzung: Einstellungen auf Vorgabe; JCL `JclLogic.pas` oder eine Unit mit `function BitsLowest(X: Cardinal): Integer; asm BSF EAX, EAX; JNZ @@End; MOV EAX, -1; @@End: end;` und danach `function BitsHighest(X: Cardinal): Integer;` mit Rumpf.
