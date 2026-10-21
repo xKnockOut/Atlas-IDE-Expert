@@ -352,6 +352,8 @@ begin
       Result := 'Atlas.SearchInMethod';
     TAtlasKeyFunction.FormatCode:
       Result := 'Atlas.FormatCode';
+    TAtlasKeyFunction.ToggleBlockComment:
+      Result := 'Atlas.ToggleBlockComment';
   else
     Result := '';
   end;

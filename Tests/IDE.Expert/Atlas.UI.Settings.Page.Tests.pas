@@ -1158,6 +1158,17 @@ begin
     Page.SelectionMatchesWholeWordCheck.Checked := True;
     Page.SelectionMatchesNavigateF3Check.Checked := False;
     Page.SelectionMatchesMaxMatches.Text := '50';
+    // Blockkommentar umschalten (#703).
+    Assert.IsTrue(Page.ToggleBlockComment.Checked, 'Blockkommentar umschalten standardmäßig an (#703)');
+    Assert.AreEqual(ShortCutToText($A041), Page.ToggleBlockCommentKey.Text);
+    Assert.AreEqual(0, Page.ToggleBlockCommentStyle.Choice);
+    Assert.AreEqual(0, Page.ToggleBlockCommentFallback.Choice);
+    Assert.IsFalse(Page.ToggleBlockCommentOwnLines.Checked);
+    Assert.AreEqual(0, Page.ToggleBlockCommentScope.Choice);
+    Page.ToggleBlockCommentStyle.Choice := 1;
+    Page.ToggleBlockCommentFallback.Choice := 1;
+    Page.ToggleBlockCommentOwnLines.Checked := True;
+    Page.ToggleBlockCommentScope.Choice := 1;
     // Fehlertext am Zeilenende, Zähler und Sprungtasten (#509).
     Assert.AreEqual(1, Page.InlineDiagnostics.Choice, 'nur Fehler');
     Assert.IsTrue(Page.ProblemsStatusCounterCheck.Checked);
@@ -1188,6 +1199,12 @@ begin
     Assert.IsTrue(Saved.SelectionMatchesWholeWord);
     Assert.IsFalse(Saved.SelectionMatchesNavigateF3);
     Assert.AreEqual(50, Saved.SelectionMatchesMaxMatches);
+    Assert.IsTrue(Saved.ToggleBlockComment);
+    Assert.AreEqual($A041, Saved.ToggleBlockCommentKey);
+    Assert.AreEqual('parens', Saved.ToggleBlockCommentStyle);
+    Assert.AreEqual('refuse', Saved.ToggleBlockCommentFallback);
+    Assert.IsTrue(Saved.ToggleBlockCommentOwnLines);
+    Assert.AreEqual('line', Saved.ToggleBlockCommentWithoutSelection);
     Assert.AreEqual('errorsAndWarnings', Saved.InlineDiagnostics);
     Assert.IsFalse(Saved.ProblemsStatusCounter);
     Assert.AreEqual($C077, Saved.NextProblemKey);
@@ -1199,6 +1216,7 @@ begin
     Assert.IsFalse(Page.RecursionMarkersCheck.Checked);
     Assert.IsFalse(Page.GutterColumnOverridesCheck.Checked);
     Assert.IsTrue(Page.SelectionMatchesWholeWordCheck.Checked);
+    Assert.AreEqual(1, Page.ToggleBlockCommentScope.Choice);
     Assert.AreEqual(2, Page.InlineDiagnostics.Choice);
     Assert.AreEqual('', Page.HideElementKey.Text);
   finally

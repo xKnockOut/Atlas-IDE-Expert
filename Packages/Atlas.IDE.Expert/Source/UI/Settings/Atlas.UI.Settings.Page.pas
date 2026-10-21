@@ -331,6 +331,12 @@ type
     FMoveLinesDownKey: TEdit;
     FDuplicateLinesUpKey: TEdit;
     FDuplicateLinesDownKey: TEdit;
+    FToggleBlockComment: TCheckBox;
+    FToggleBlockCommentKey: TEdit;
+    FToggleBlockCommentStyle: TAtlasChoiceBox;
+    FToggleBlockCommentFallback: TAtlasChoiceBox;
+    FToggleBlockCommentOwnLines: TCheckBox;
+    FToggleBlockCommentScope: TAtlasChoiceBox;
     FContinueComments: TCheckBox;
     FContinueCommentsLineComments: TCheckBox;
     FContinueCommentsLists: TCheckBox;
@@ -805,6 +811,12 @@ type
     property MoveLines: TCheckBox read FMoveLines;
     property MoveLinesUpKey: TEdit read FMoveLinesUpKey;
     property DuplicateLinesDownKey: TEdit read FDuplicateLinesDownKey;
+    property ToggleBlockComment: TCheckBox read FToggleBlockComment;
+    property ToggleBlockCommentKey: TEdit read FToggleBlockCommentKey;
+    property ToggleBlockCommentStyle: TAtlasChoiceBox read FToggleBlockCommentStyle;
+    property ToggleBlockCommentFallback: TAtlasChoiceBox read FToggleBlockCommentFallback;
+    property ToggleBlockCommentOwnLines: TCheckBox read FToggleBlockCommentOwnLines;
+    property ToggleBlockCommentScope: TAtlasChoiceBox read FToggleBlockCommentScope;
     /// <summary>Zum Testen: Kommentar beim Enter fortsetzen (#696).</summary>
     property ContinueComments: TCheckBox read FContinueComments;
     property ContinueCommentsLists: TCheckBox read FContinueCommentsLists;
@@ -1585,6 +1597,19 @@ begin
   FMoveLinesDownKey := AddKey(TAtlasStrings.Text(TAtlasTextId.MoveLinesDownCommand));
   FDuplicateLinesUpKey := AddKey(TAtlasStrings.Text(TAtlasTextId.DuplicateLinesUpCommand));
   FDuplicateLinesDownKey := AddKey(TAtlasStrings.Text(TAtlasTextId.DuplicateLinesDownCommand));
+  // Blockkommentar umschalten (#703).
+  FToggleBlockComment := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsToggleBlockComment));
+  FToggleBlockCommentKey := AddKey(TAtlasStrings.Text(TAtlasTextId.ToggleBlockCommentCommand));
+  FToggleBlockCommentStyle := AddChoice(TAtlasStrings.Text(TAtlasTextId.SettingsToggleBlockCommentStyle),
+    [TAtlasStrings.Text(TAtlasTextId.ToggleBlockCommentBraces),
+    TAtlasStrings.Text(TAtlasTextId.ToggleBlockCommentParens)]);
+  FToggleBlockCommentFallback := AddChoice(TAtlasStrings.Text(TAtlasTextId.SettingsToggleBlockCommentFallback),
+    [TAtlasStrings.Text(TAtlasTextId.ToggleBlockCommentLineComments),
+    TAtlasStrings.Text(TAtlasTextId.ToggleBlockCommentRefuse)]);
+  FToggleBlockCommentOwnLines := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsToggleBlockCommentOwnLines));
+  FToggleBlockCommentScope := AddChoice(TAtlasStrings.Text(TAtlasTextId.SettingsToggleBlockCommentScope),
+    [TAtlasStrings.Text(TAtlasTextId.ToggleBlockCommentStatement),
+    TAtlasStrings.Text(TAtlasTextId.ToggleBlockCommentLine)]);
   FTestUnitKey := AddKey(TAtlasStrings.Text(TAtlasTextId.EditorTestUnit));
   // Navigationsverlauf über Dateien (#504).
   FNavHistory := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsNavHistory));
@@ -2477,6 +2502,12 @@ begin
   FMarks.Bind(FMoveLinesDownKey, ['MoveLinesDownKey']);
   FMarks.Bind(FDuplicateLinesUpKey, ['DuplicateLinesUpKey']);
   FMarks.Bind(FDuplicateLinesDownKey, ['DuplicateLinesDownKey']);
+  FMarks.Bind(FToggleBlockComment, ['ToggleBlockComment']);
+  FMarks.Bind(FToggleBlockCommentKey, ['ToggleBlockCommentKey']);
+  FMarks.Bind(FToggleBlockCommentStyle, ['ToggleBlockCommentStyle']);
+  FMarks.Bind(FToggleBlockCommentFallback, ['ToggleBlockCommentFallback']);
+  FMarks.Bind(FToggleBlockCommentOwnLines, ['ToggleBlockCommentOwnLines']);
+  FMarks.Bind(FToggleBlockCommentScope, ['ToggleBlockCommentWithoutSelection']);
   FMarks.Bind(FContinueComments, ['ContinueComments']);
   FMarks.Bind(FContinueCommentsLineComments, ['ContinueCommentsLineComments']);
   FMarks.Bind(FContinueCommentsLists, ['ContinueCommentsLists']);
@@ -4407,6 +4438,14 @@ begin
   FMoveLinesDownKey.Text := ShortCutToText(TShortCut(ASettings.MoveLinesDownKey));
   FDuplicateLinesUpKey.Text := ShortCutToText(TShortCut(ASettings.DuplicateLinesUpKey));
   FDuplicateLinesDownKey.Text := ShortCutToText(TShortCut(ASettings.DuplicateLinesDownKey));
+  FToggleBlockComment.Checked := ASettings.ToggleBlockComment;
+  FToggleBlockCommentKey.Text := ShortCutToText(TShortCut(ASettings.ToggleBlockCommentKey));
+  FToggleBlockCommentStyle.Choice := Max(0, IndexText(ASettings.ToggleBlockCommentStyle, ['braces', 'parens']));
+  FToggleBlockCommentFallback.Choice := Max(0, IndexText(ASettings.ToggleBlockCommentFallback,
+    ['lineComments', 'refuse']));
+  FToggleBlockCommentOwnLines.Checked := ASettings.ToggleBlockCommentOwnLines;
+  FToggleBlockCommentScope.Choice := Max(0, IndexText(ASettings.ToggleBlockCommentWithoutSelection,
+    ['statement', 'line']));
   FContinueComments.Checked := ASettings.ContinueComments;
   FContinueCommentsLineComments.Checked := ASettings.ContinueCommentsLineComments;
   FContinueCommentsLists.Checked := ASettings.ContinueCommentsLists;
@@ -4781,6 +4820,18 @@ begin
   ASettings.MoveLinesDownKey := Integer(TextToShortCut(Trim(FMoveLinesDownKey.Text)));
   ASettings.DuplicateLinesUpKey := Integer(TextToShortCut(Trim(FDuplicateLinesUpKey.Text)));
   ASettings.DuplicateLinesDownKey := Integer(TextToShortCut(Trim(FDuplicateLinesDownKey.Text)));
+  ASettings.ToggleBlockComment := FToggleBlockComment.Checked;
+  ASettings.ToggleBlockCommentKey := Integer(TextToShortCut(Trim(FToggleBlockCommentKey.Text)));
+  ASettings.ToggleBlockCommentStyle := 'braces';
+  if FToggleBlockCommentStyle.Choice = 1 then
+    ASettings.ToggleBlockCommentStyle := 'parens';
+  ASettings.ToggleBlockCommentFallback := 'lineComments';
+  if FToggleBlockCommentFallback.Choice = 1 then
+    ASettings.ToggleBlockCommentFallback := 'refuse';
+  ASettings.ToggleBlockCommentOwnLines := FToggleBlockCommentOwnLines.Checked;
+  ASettings.ToggleBlockCommentWithoutSelection := 'statement';
+  if FToggleBlockCommentScope.Choice = 1 then
+    ASettings.ToggleBlockCommentWithoutSelection := 'line';
   ASettings.ContinueComments := FContinueComments.Checked;
   ASettings.ContinueCommentsLineComments := FContinueCommentsLineComments.Checked;
   ASettings.ContinueCommentsLists := FContinueCommentsLists.Checked;
