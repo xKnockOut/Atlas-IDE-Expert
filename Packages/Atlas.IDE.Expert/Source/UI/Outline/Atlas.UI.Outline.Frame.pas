@@ -55,6 +55,7 @@ type
     FFilter: TAtlasOutlineFilter;
     FAlphabetical: Boolean;
     FFollowCursor: Boolean;
+    FShowConditions: Boolean;
     /// <summary>Pfade zugeklappter Knoten ("interface/TForm1"); bleiben über SetNodes erhalten.</summary>
     FCollapsed: TStringList;
     FMessageText: string;
@@ -95,6 +96,7 @@ type
     procedure FollowClick(Sender: TObject);
     procedure SetAlphabetical(AValue: Boolean);
     procedure SetFollowCursor(AValue: Boolean);
+    procedure SetShowConditions(AValue: Boolean);
     /// <summary>Die Liste hat ein Fenster oder kann eins bekommen (Formular darüber).</summary>
     function ListCanHaveHandle: Boolean;
   protected
@@ -134,6 +136,8 @@ type
     property ListMenu: TPopupMenu read FListMenu;
     property Alphabetical: Boolean read FAlphabetical write SetAlphabetical;
     property FollowCursor: Boolean read FFollowCursor write SetFollowCursor;
+    /// <summary>Bedingung des aktiven {$IFDEF}-Zweigs hinter dem Eintrag zeigen (#845).</summary>
+    property ShowConditions: Boolean read FShowConditions write SetShowConditions;
     /// <summary>Knoten und ob zur Implementierung.</summary>
     property OnOpen: TProc<Integer, Boolean> read FOnOpen write FOnOpen;
     /// <summary>Sortierknopf gedrückt: neuer Wert von Alphabetical.</summary>
@@ -192,6 +196,7 @@ begin
   Name := '';
   FFilter := TAtlasOutlineFilter.All;
   FFollowCursor := True;
+  FShowConditions := True;
   FCollapsed := TStringList.Create;
   FCollapsed.Sorted := True;
   FCollapsed.Duplicates := dupIgnore;
@@ -462,6 +467,15 @@ begin
   Refill;
 end;
 
+procedure TAtlasOutlineFrame.SetShowConditions(AValue: Boolean);
+begin
+  if FShowConditions = AValue then
+    Exit;
+  FShowConditions := AValue;
+  if FList.HandleAllocated then
+    FList.Invalidate;
+end;
+
 procedure TAtlasOutlineFrame.SetFollowCursor(AValue: Boolean);
 begin
   FFollowCursor := AValue;
@@ -584,6 +598,8 @@ begin
     Result := Result + ' · abstract';
   if Node.Unimplemented then
     Result := Result + ' · ' + TAtlasStrings.Text(TAtlasTextId.OutlineUnimplemented);
+  if FShowConditions and (Node.Condition <> '') then
+    Result := Result + ' · ' + Node.Condition;
 end;
 
 function TAtlasOutlineFrame.ExpanderRect(AIndex: Integer; const ARect: TRect): TRect;
@@ -659,6 +675,9 @@ begin
   Put(Extra, Colors.Muted, []);
   if Node.Unimplemented then
     Put('  ' + TAtlasStrings.Text(TAtlasTextId.OutlineUnimplemented), Colors.Warn, [fsItalic]);
+  // Aktiver Zweig der bedingten Kompilierung (#845), wie die Marke im Mockup.
+  if FShowConditions and (Node.Condition <> '') then
+    Put('  ' + Node.Condition, Colors.Accent, []);
   if odFocused in State then
     Canvas.DrawFocusRect(Rect);
 end;

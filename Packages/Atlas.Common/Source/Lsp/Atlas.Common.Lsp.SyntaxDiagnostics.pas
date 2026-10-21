@@ -232,7 +232,6 @@ uses
   Atlas.Common.Rules.Scopes,
   Atlas.Common.Pascal.LanguageFeatures,
   Atlas.Common.Pascal.Preprocessor,
-  Atlas.Common.Pascal.Parser,
   Atlas.Common.Pascal.IncludeFiles,
   Atlas.Common.Rules.Engine,
   Atlas.Common.Rules.Catalog,
@@ -901,11 +900,11 @@ var
   Item: TJSONObject;
 begin
   Items := TJSONArray.Create;
-  Shared := TSyntaxTreeCache.Get(ADocument);
+  // Baum nur aus den aktiven Zweigen (#845): Inaktive Zweige erzeugen keine Syntaxfehler, und Regeln
+  // sehen den Code, den der Compiler übersetzt. Mit den Symbolen des Projekts ist es der Baum aus Get.
+  Shared := TSyntaxTreeCache.GetFor(ADocument, ADefines);
   Tree := Shared.Tree;
-  // Inaktive Zweige der bedingten Kompilierung erzeugen keine Syntaxfehler.
-  if not TPascalParser.ActiveDiagnostics(ADocument.Text, ADefines, Syntax) then
-    Syntax := Tree.Diagnostics;
+  Syntax := Tree.Diagnostics;
   for Diagnostic in Syntax do
   begin
     Item := TJSONObject.Create;

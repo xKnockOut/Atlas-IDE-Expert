@@ -63,6 +63,9 @@ type
     Body: Integer;
     /// <summary>Position im Rumpf einer Routine (Kinder verborgen).</summary>
     InBody: Boolean;
+    /// <summary>Bedingung des aktiven {$IFDEF}-Zweigs (#845), bei Deklarationen auch die ihres Rumpfs;
+    /// sonst leer.</summary>
+    Condition: string;
   end;
 
   TAtlasOutlineNodes = TArray<TAtlasOutlineNode>;
@@ -301,6 +304,7 @@ begin
       Node.IsVirtual := Extras.GetValue<Boolean>('virtual', False);
       Node.IsAbstract := Extras.GetValue<Boolean>('abstract', False);
       Node.Unimplemented := Extras.GetValue<Boolean>('unimplemented', False);
+      Node.Condition := Extras.GetValue<string>('condition', '');
     end;
     // Rümpfe mit Deklaration verbirgt Link; was in Rümpfen steht, ist immer verborgen.
     Node.InBody := (AParent >= 0) and (FNodes[AParent].InBody or (IsRoutineKind(FNodes[AParent].Kind) and
@@ -391,6 +395,9 @@ begin
         FNodes[Index] := Node;
         Node := FNodes[Other];
         Node.Body := Index;
+        // Steht nur der Rumpf in einem Zweig (#845), zeigt die Deklaration dessen Bedingung.
+        if Node.Condition = '' then
+          Node.Condition := FNodes[Index].Condition;
         FNodes[Other] := Node;
         Break;
       end;

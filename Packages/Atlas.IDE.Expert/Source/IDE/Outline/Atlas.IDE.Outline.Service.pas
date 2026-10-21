@@ -126,6 +126,7 @@ procedure TOutlineState.Wire(AFrame: TAtlasOutlineFrame);
 begin
   AFrame.Alphabetical := TAtlasIdeSettings.Current.OutlineAlphabetical;
   AFrame.FollowCursor := TAtlasIdeSettings.Current.OutlineFollowCursor;
+  AFrame.ShowConditions := TAtlasIdeSettings.Current.OutlineConditions;
   AFrame.OnOpen :=
     procedure(ANode: Integer; AImplementation: Boolean)
     begin
@@ -281,6 +282,7 @@ begin
     Exit;
   Frame.Alphabetical := TAtlasIdeSettings.Current.OutlineAlphabetical;
   Frame.FollowCursor := TAtlasIdeSettings.Current.OutlineFollowCursor;
+  Frame.ShowConditions := TAtlasIdeSettings.Current.OutlineConditions;
 end;
 
 class procedure TAtlasIdeOutline.ThemeChanged;
