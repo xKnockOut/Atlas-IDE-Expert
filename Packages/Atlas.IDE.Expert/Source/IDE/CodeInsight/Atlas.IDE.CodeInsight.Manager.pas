@@ -306,6 +306,7 @@ uses
   Atlas.Core.Completion.Word,
   Atlas.Core.Projects.Contract,
   Atlas.IDE.Projects.Context,
+  Atlas.IDE.Outline.Cache,
   Atlas.Core.Lsp.WorkspaceEdits,
   Atlas.UI.Strings,
   Atlas.IDE.Editor.WorkspaceEdit,
@@ -1062,6 +1063,7 @@ end;
 procedure TAtlasCodeInsightManager.RefreshContexts;
 var
   Context: TAtlasProjectContext;
+  Changed: TArray<TAtlasProjectContext>;
 begin
   // Open Tools API nur im Hauptthread.
   if (GetCurrentThreadId <> MainThreadID) or
@@ -1070,8 +1072,12 @@ begin
   FContextsChecked := GetTickCount;
   try
     // Mit Diagnose=1 prüfbar, ob die geerbten Optionen ankommen (#396).
-    for Context in FSession.SetProjectContexts(TAtlasIdeProjectContext.Group) do
+    Changed := FSession.SetProjectContexts(TAtlasIdeProjectContext.Group);
+    for Context in Changed do
       Diagnose('Projektkontext: ' + Context.Describe);
+    // Andere Plattform oder Konfiguration: andere aktive {$IFDEF}-Zweige, Gliederung neu holen (#845).
+    if Length(Changed) > 0 then
+      TAtlasIdeOutlineCache.InvalidateAll;
   except
     on E: Exception do
       Diagnose('Projektkontext nicht gemeldet: ' + E.Message);

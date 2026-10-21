@@ -2657,6 +2657,15 @@
       "x-page": "Befehle",
       "x-issue": "#537"
     },
+    "OutlineConditions": {
+      "description": "In der Gliederung hinter dem Eintrag die Bedingung des aktiven {$IFDEF}-Zweigs zeigen, in dem das Symbol oder der Rumpf der Routine steht (z. B. CPUX64).",
+      "type": "boolean",
+      "default": true,
+      "x-key": "outline.conditions",
+      "x-area": "editor",
+      "x-page": "Befehle",
+      "x-issue": "#845"
+    },
     "Breadcrumbs": {
       "description": "Brotkrumenleiste über dem Editor: Pfad des Carets (Typ › Methode › lokale Prozedur), jedes Glied öffnet ein Sprungmenü mit seinen Geschwistern.",
       "type": "boolean",

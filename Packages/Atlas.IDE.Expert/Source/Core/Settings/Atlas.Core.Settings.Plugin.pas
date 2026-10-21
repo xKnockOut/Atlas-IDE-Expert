@@ -584,6 +584,8 @@ type
     OutlineAlphabetical: Boolean;
     /// <summary>Eintrag am Cursor hervorheben (#537, outline.followCursor).</summary>
     OutlineFollowCursor: Boolean;
+    /// <summary>Bedingung des aktiven {$IFDEF}-Zweigs hinter dem Eintrag (#845, outline.conditions).</summary>
+    OutlineConditions: Boolean;
     /// <summary>Brotkrumenleiste über dem Editor (#590, editor.breadcrumbs).</summary>
     Breadcrumbs: Boolean;
     /// <summary>Unit-Namen als erstes Glied (#590, editor.breadcrumbsShowUnit).</summary>
@@ -1330,6 +1332,7 @@ begin
   Result.Outline := True;
   Result.OutlineAlphabetical := False;
   Result.OutlineFollowCursor := True;
+  Result.OutlineConditions := True;
   Result.Breadcrumbs := True;
   Result.BreadcrumbsShowUnit := False;
   Result.BreadcrumbsIdeColors := True;
@@ -1888,6 +1891,7 @@ begin
   Outline := AStore.ReadInteger('Outline', BoolValue(Default.Outline)) <> 0;
   OutlineAlphabetical := AStore.ReadInteger('OutlineAlphabetical', BoolValue(Default.OutlineAlphabetical)) <> 0;
   OutlineFollowCursor := AStore.ReadInteger('OutlineFollowCursor', BoolValue(Default.OutlineFollowCursor)) <> 0;
+  OutlineConditions := AStore.ReadInteger('OutlineConditions', BoolValue(Default.OutlineConditions)) <> 0;
   Breadcrumbs := AStore.ReadInteger('Breadcrumbs', BoolValue(Default.Breadcrumbs)) <> 0;
   BreadcrumbsShowUnit := AStore.ReadInteger('BreadcrumbsShowUnit', BoolValue(Default.BreadcrumbsShowUnit)) <> 0;
   BreadcrumbsIdeColors := AStore.ReadInteger('BreadcrumbsIdeColors', BoolValue(Default.BreadcrumbsIdeColors)) <> 0;
@@ -2265,6 +2269,7 @@ begin
   AStore.WriteInteger('Outline', BoolValue(Outline));
   AStore.WriteInteger('OutlineAlphabetical', BoolValue(OutlineAlphabetical));
   AStore.WriteInteger('OutlineFollowCursor', BoolValue(OutlineFollowCursor));
+  AStore.WriteInteger('OutlineConditions', BoolValue(OutlineConditions));
   AStore.WriteInteger('Breadcrumbs', BoolValue(Breadcrumbs));
   AStore.WriteInteger('BreadcrumbsShowUnit', BoolValue(BreadcrumbsShowUnit));
   AStore.WriteInteger('BreadcrumbsIdeColors', BoolValue(BreadcrumbsIdeColors));

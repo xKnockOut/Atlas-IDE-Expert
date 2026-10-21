@@ -58,6 +58,8 @@ Everything below is implemented in `main`. Features marked *(experimental)* are 
 - **Slash commands** run after Enter, such as `/uses Unit`, `/extract`, `/inline`, `/fix`, `/explain`, `/case`, `/helper`, `/test`, `/component`, `/unit`, `/sortuses`, `/cleanuses`
 - **Generate menu** (Alt+Ins): constructor, properties, overridden methods, interface methods, surround, templates
 - **Guard the free:** after `X := TFoo.Create;` an offer for `try … finally X.Free; end;`
+- **Editing helpers**: highlight text matching the selection (#709), toggle block comment (#703, Shift+Alt+A), new line above or below (#700, Shift+Enter, Ctrl+Alt+Enter), surround the selection while typing (#672), remove the surrounding construct (#657, Ctrl+Shift+Del) with preview, Atlas column in the gutter (#768)
+- **Conditional compilation**: outline, hover, go to and checks see only the active `{$IFDEF}` branches of the project, the outline shows the branch condition (#845)
 - **Documentation comments:** `///` creates the XMLDoc skeleton with placeholders
 - **Complete statement** (Ctrl+Shift+Enter), **continue patterns** as ghost text, **continue comments** on Enter
 - **Formatting** by its own rules (Ctrl+Shift+Alt+L), since RAD Studio 13 no longer has a formatter
