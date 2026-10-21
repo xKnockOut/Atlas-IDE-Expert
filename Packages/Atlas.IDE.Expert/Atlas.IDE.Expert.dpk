@@ -150,6 +150,7 @@ contains
   Atlas.Core.Settings.Plugin in 'Source\Core\Settings\Atlas.Core.Settings.Plugin.pas',
   Atlas.UI.Settings.Page in 'Source\UI\Settings\Atlas.UI.Settings.Page.pas' {AtlasSettingsPage: TFrame},
   Atlas.UI.Settings.Marks in 'Source\UI\Settings\Atlas.UI.Settings.Marks.pas',
+  Atlas.UI.Settings.Group in 'Source\UI\Settings\Atlas.UI.Settings.Group.pas',
   Atlas.UI.Settings.Transfer in 'Source\UI\Settings\Atlas.UI.Settings.Transfer.pas',
   Atlas.UI.Settings.SnippetsPage in 'Source\UI\Settings\Atlas.UI.Settings.SnippetsPage.pas' {AtlasSnippetsPage: TFrame},
   Atlas.UI.Settings.Keys in 'Source\UI\Settings\Atlas.UI.Settings.Keys.pas' {AtlasKeysPage: TFrame},

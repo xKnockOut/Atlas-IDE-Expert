@@ -32,6 +32,12 @@
       Atlas.Core.Settings.PluginSchemaData, der Abschnitt „Bereiche für Export,
       Import und Zurücksetzen“ in Einstellungen.md und aus Setup/Profile/*.json
       die Unit Atlas.Core.Settings.ProfileData (eingebaute Profile).
+    - Gruppen der Optionsseite (#890): x-parent (x-key des Hauptschalters, ""
+      = keiner, sonst Präfixregel) und x-node (Kennung aus x-nodes, "" =
+      Hauptknoten, sonst vom Hauptschalter geerbt). Wächter: x-parent bekannt
+      und boolesch, keine Zyklen, x-node bekannt, ein Knoten nur auf einer
+      x-page, kein Knoten ohne Einstellungen. Einstellungen.md bekommt den
+      Abschnitt „Optionsseite: Unterpunkte und Hauptschalter“.
 
     Mit -Check wird nichts geschrieben; Exit-Code 1, wenn eine Datei veraltet ist
     oder der Parser abweicht.
