@@ -33,7 +33,7 @@ type
 
   /// <summary>Übersetzbare Marken (#446); Plain = Text unverändert zeigen; Cycle = Zirkelbezug im uses-Abschnitt
   /// (#469).</summary>
-  TAtlasTagId = (Plain, Recent, Frequent, Cycle, SameParams, Overload);
+  TAtlasTagId = (Plain, Recent, Frequent, Cycle, SameParams, Overload, Active);
 
   TAtlasTag = record
     Text: string;
@@ -72,6 +72,11 @@ type
     /// <summary>Ausgelassene abstrakte Vorfahrmethoden für die Fußzeile nach "inherited " (#482); leer sonst.
     /// </summary>
     class function InheritedAbstract(const AItems: TAtlasCompletionItems): TArray<string>; static;
+    /// <summary>Ausgeblendete FMX-Varianten aller Einträge für die Fußzeile (#475), ohne Doppelte; leer sonst.
+    /// </summary>
+    class function SameNameHidden(const AItems: TAtlasCompletionItems): TArray<string>; static;
+    /// <summary>AItem mit den Angaben zu gleichnamigen Bezeichnern für das Detailpanel (#475).</summary>
+    class procedure AddSameName(const AItem: TAtlasCompletionItem; var ADetails: TAtlasItemDetails); static;
     /// <summary>Nur das Angebot „Mit try…finally absichern“ (#489) in der Liste?</summary>
     class function Guarding(const AItems: TAtlasCompletionItems): Boolean; static;
   end;
@@ -312,6 +317,12 @@ begin
     Result := Result + [MakeTag('Zirkelbezug', TAtlasTagKind.Error)];
     Result[High(Result)].Id := TAtlasTagId.Cycle;
   end;
+  // Gleichnamige Bezeichner (#475): die Variante, die der Compiler wählt.
+  if AItem.SameNameActive then
+  begin
+    Result := Result + [MakeTag('aktiv', TAtlasTagKind.Accent)];
+    Result[High(Result)].Id := TAtlasTagId.Active;
+  end;
   // Vollständiger inherited-Aufruf (#482): gleiche Parameter, andere Überladung, sonst die Klasse.
   if AItem.InheritedMatch = 'same' then
   begin
@@ -458,6 +469,30 @@ begin
     if Length(Item.InheritedAbstract) > 0 then
       Exit(Item.InheritedAbstract);
   Result := nil;
+end;
+
+class function TAtlasItemPresentation.SameNameHidden(const AItems: TAtlasCompletionItems): TArray<string>;
+var
+  Item: TAtlasCompletionItem;
+  Name: string;
+begin
+  Result := nil;
+  for Item in AItems do
+    for Name in Item.SameNameHidden do
+      if not MatchText(Name, Result) then
+        Result := Result + [Name];
+end;
+
+class procedure TAtlasItemPresentation.AddSameName(const AItem: TAtlasCompletionItem;
+  var ADetails: TAtlasItemDetails);
+begin
+  ADetails.SameNameUnits := AItem.SameNameUnits;
+  ADetails.SameNameHidden := AItem.SameNameHidden;
+  if Length(AItem.SameNameUnits) = 0 then
+    ADetails.SameNameThis := ''
+  else
+    ADetails.SameNameThis := AItem.DeclaringUnit;
+  ADetails.SameNameInsert := AItem.SameNameInsert;
 end;
 
 class function TAtlasItemPresentation.Guarding(const AItems: TAtlasCompletionItems): Boolean;

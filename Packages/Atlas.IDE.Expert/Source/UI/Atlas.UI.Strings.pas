@@ -612,7 +612,9 @@ type
     PublishedSummary, PublishedInherited, PublishedOnlyDefaults, PublishedProperties, PublishedEvents, PublishedName,
     PublishedType, PublishedDefault, PublishedDeclared, PublishedImplicit, PublishedMoreProperties, PublishedMoreEvents,
     PublishedEventsNote, PublishedArrayProperty, PublishedDefaultProperty, PublishedDefaultPropertyNote, PublishedCopyList, PublishedVclNote,
-    InheritedSameTag, InheritedOverloadTag, InheritedAbstractOne, InheritedAbstractMore);
+    InheritedSameTag, InheritedOverloadTag, InheritedAbstractOne, InheritedAbstractMore,
+    SameNameActiveTag, SameNameDeclaredIn, SameNameRoleActive, SameNameRoleThis, SameNameRoleHidden, SameNameNotActive,
+    SameNameInsertPrefix, SameNameInsertPrefixAdd, SameNameInsertMove, SameNameInsertAdd, SameNameHiddenFooter);
 
   TAtlasStrings = class
   private class var
@@ -1834,7 +1836,18 @@ const
      'gleiche Parameter',
      'Überladung',
      '%s ist abstrakt und fehlt',
-     'Abstrakte Vorfahrmethoden fehlen: %s'),
+     'Abstrakte Vorfahrmethoden fehlen: %s',
+     'aktiv',
+     'Deklariert in',
+     'aktiv · letzte Unit in den uses',
+     'diese Variante',
+     'ausgeblendet',
+     'nicht aktiv',
+     'Enter fügt den Unit-Präfix ein',
+     'Enter fügt den Unit-Präfix ein und ergänzt %s in den uses; andere Stellen können ihre Bedeutung ändern',
+     'Enter verschiebt %s in den uses nach hinten; andere Stellen können ihre Bedeutung ändern',
+     'Enter ergänzt %s in den uses; andere Stellen können ihre Bedeutung ändern',
+     '%s ausgeblendet'),
     ('Enter to accept · Esc to close', '%d of %d', 'No matches for “%s”', 'Backspace widens the search',
      'No suggestions here', 'Esc closes', 'No details for this entry', 'Overload', 'Deprecated: %s', 'Deprecated.',
      'Inherited from %s', 'Inherited', 'optional, default %s', 'No overload with %d parameters.', '… %d more',
@@ -2964,7 +2977,18 @@ const
      'same parameters',
      'overload',
      '%s is abstract and not listed',
-     'Abstract ancestor methods not listed: %s'));
+     'Abstract ancestor methods not listed: %s',
+     'active',
+     'Declared in',
+     'active · last unit in uses',
+     'this variant',
+     'hidden',
+     'not active',
+     'Enter inserts the unit prefix',
+     'Enter inserts the unit prefix and adds %s to uses; other places may change their meaning',
+     'Enter moves %s to the end of uses; other places may change their meaning',
+     'Enter adds %s to uses; other places may change their meaning',
+     '%s hidden'));
 
 { TAtlasStrings }
 

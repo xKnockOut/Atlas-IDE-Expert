@@ -87,6 +87,7 @@ uses
   Atlas.Common.Lsp.CompletionGenerics.Tests in 'Common\Lsp\Atlas.Common.Lsp.CompletionGenerics.Tests.pas',
   Atlas.Common.Lsp.CompletionUses.Tests in 'Common\Lsp\Atlas.Common.Lsp.CompletionUses.Tests.pas',
   Atlas.Common.Lsp.CompletionInherited.Tests in 'Common\Lsp\Atlas.Common.Lsp.CompletionInherited.Tests.pas',
+  Atlas.Common.Lsp.CompletionSameNames.Tests in 'Common\Lsp\Atlas.Common.Lsp.CompletionSameNames.Tests.pas',
   Atlas.Common.Lsp.CompletionRequest.Tests in 'Common\Lsp\Atlas.Common.Lsp.CompletionRequest.Tests.pas',
   Atlas.Common.Lsp.CompletionCollector.Tests in 'Common\Lsp\Atlas.Common.Lsp.CompletionCollector.Tests.pas',
   Atlas.Common.Lsp.Internals.CompletionSource.Tests in 'Common\Lsp\Atlas.Common.Lsp.Internals.CompletionSource.Tests.pas',

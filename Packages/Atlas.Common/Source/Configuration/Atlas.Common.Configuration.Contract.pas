@@ -259,6 +259,10 @@ type
   /// <summary>Typkonvertierung vorschlagen (#490): aus, Helper-Stil (Count.ToString) oder Funktionsstil
   /// (IntToStr(Count)).</summary>
   TCompletionTypeConversion = (Off, Helper, Function_);
+
+  /// <summary>Übernahme einer nicht aktiven gleichnamigen Variante (#475): Unit-Präfix davor oder uses ergänzen
+  /// bzw. umstellen.</summary>
+  TCompletionSameNameInsert = (Prefix, Uses_);
   {$SCOPEDENUMS OFF}
 
   TCompletionSettings = record
@@ -297,6 +301,13 @@ type
     /// <summary>Nach "inherited " zuerst der vollständige Aufruf der Vorfahrmethode mit den eigenen Parametern,
     /// in Konstruktoren und Destruktoren auch die übrigen; abstrakte fehlen (#482). Aus: nur die Namen.</summary>
     InheritedCall: Boolean;
+    /// <summary>Gleichnamige Bezeichner aus verschiedenen Units als Varianten mit ihrer Unit; die vom Compiler
+    /// gewählte zuerst mit „aktiv“ (#475). Aus: nur die aktive.</summary>
+    SameNameVariants: Boolean;
+    SameNameInsert: TCompletionSameNameInsert;
+    /// <summary>Varianten aus FireMonkey-Units (FMX.*) zeigen; aus: die Fußzeile nennt sie als ausgeblendet.
+    /// </summary>
+    ShowFmxUnits: Boolean;
     class function Default: TCompletionSettings; static;
   end;
 
@@ -788,6 +799,9 @@ begin
   Result.AssignAllFields := False;
   Result.UsesDetails := True;
   Result.InheritedCall := True;
+  Result.SameNameVariants := True;
+  Result.SameNameInsert := TCompletionSameNameInsert.Prefix;
+  Result.ShowFmxUnits := False;
 end;
 
 { TServerSettings }

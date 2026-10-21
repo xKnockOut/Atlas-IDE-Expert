@@ -215,6 +215,15 @@ type
     /// ausgelassenen abstrakten Vorfahrmethoden ("TBasis.Zeichnen") für die Fußzeile.</summary>
     InheritedMatch: string;
     InheritedAbstract: TArray<string>;
+    /// <summary>Gleichnamige Bezeichner aus verschiedenen Units (#475): Variante, die der Compiler wählt
+    /// (Marke „aktiv“); bei den übrigen die Unit der aktiven und was Enter tut ("prefix", "prefixAdd", "move",
+    /// "add"); alle deklarierenden Units (aktive zuerst) und die ausgeblendeten FMX-Varianten ("Unit.Name").
+    /// </summary>
+    SameNameActive: Boolean;
+    SameNameOf: string;
+    SameNameInsert: string;
+    SameNameUnits: TArray<string>;
+    SameNameHidden: TArray<string>;
     /// <summary>Zahl der Überladungen samt dieser (mindestens 1).</summary>
     function OverloadCount: Integer;
   end;
@@ -268,6 +277,13 @@ type
     UnitTypeCount: Integer;
     UsesCycle: string;
     UsesElsewhere: string;
+    /// <summary>Gleichnamige Bezeichner (#475) für „DEKLARIERT IN“: alle Units (die aktive zuerst), die
+    /// ausgeblendeten FMX-Varianten ("Unit.Name"), die Unit des gewählten Eintrags und bei einer nicht aktiven
+    /// Variante, was Enter tut ("prefix", "prefixAdd", "move", "add"); leer sonst.</summary>
+    SameNameUnits: TArray<string>;
+    SameNameHidden: TArray<string>;
+    SameNameThis: string;
+    SameNameInsert: string;
     function IsEmpty: Boolean;
   end;
 
@@ -319,7 +335,7 @@ end;
 function TAtlasItemDetails.IsEmpty: Boolean;
 begin
   Result := (Declaration = '') and (Summary = '') and (UnitName = '') and (Availability = '') and (LossyFrom = '') and
-    (AddsUnit = '') and (UnitPath = '');
+    (AddsUnit = '') and (UnitPath = '') and (Length(SameNameUnits) = 0);
 end;
 
 end.

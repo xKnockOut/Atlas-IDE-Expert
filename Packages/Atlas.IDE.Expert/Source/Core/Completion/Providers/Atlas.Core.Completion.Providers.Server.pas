@@ -273,6 +273,12 @@ begin
     // Vollständiger inherited-Aufruf (#482).
     Result.InheritedMatch := Data.GetValue<string>('inheritedMatch', '');
     Result.InheritedAbstract := StringsOf(Data.GetValue('inheritedAbstract'));
+    // Gleichnamige Bezeichner aus verschiedenen Units (#475).
+    Result.SameNameActive := Data.GetValue<Boolean>('sameNameActive', False);
+    Result.SameNameOf := Data.GetValue<string>('sameNameOf', '');
+    Result.SameNameInsert := Data.GetValue<string>('sameNameInsert', '');
+    Result.SameNameUnits := StringsOf(Data.GetValue('sameNameUnits'));
+    Result.SameNameHidden := StringsOf(Data.GetValue('sameNameHidden'));
     // resourcestring auslagern (#473): Platzhalter auch in den weiteren Änderungen.
     Result.LinkedEdits := Data.GetValue<Boolean>('linkedEdits', False);
     Overloads := Data.GetValue('overloads');
