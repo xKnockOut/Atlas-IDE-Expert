@@ -26,12 +26,23 @@ type
     procedure FilterByGroupAndText;
     [Test]
     procedure EffectiveSeverityFallsBackToGlobalAndDefault;
+    [Test]
+    procedure OptionTextShowsValueOrDefault;
+    [Test]
+    procedure OptionJsonChecksKind;
+    [Test]
+    procedure ListTextRoundTrips;
+    [Test]
+    procedure SearchFindsCategory;
+    [Test]
+    procedure ChangesListOnlyChangedRules;
   end;
 
 implementation
 
 uses
   System.SysUtils,
+  System.Generics.Collections,
   System.JSON,
   Atlas.Core.Settings.RuleTable;
 
@@ -177,6 +188,97 @@ begin
   Row.Severity := 'error';
   Assert.AreEqual('error', Row.Effective);
   Assert.IsTrue(Row.Enabled);
+end;
+
+function Option(const AKind, ADefault, AValue: string): TAtlasRuleOption;
+begin
+  Result := Default(TAtlasRuleOption);
+  Result.Name := 'x';
+  Result.Kind := AKind;
+  Result.DefaultJson := ADefault;
+  Result.ValueJson := AValue;
+end;
+
+procedure TAtlasRuleTableTests.OptionTextShowsValueOrDefault;
+begin
+  Assert.AreEqual('0; 1', TAtlasRuleTable.OptionText(Option('string-list', '["0","1"]', '')));
+  Assert.AreEqual('7', TAtlasRuleTable.OptionText(Option('string-list', '["0"]', '["7"]')));
+  Assert.AreEqual('120', TAtlasRuleTable.OptionText(Option('integer', '120', '')));
+  Assert.AreEqual('Prefix', TAtlasRuleTable.OptionText(Option('string', '"Prefix"', '')));
+  Assert.AreEqual('true', TAtlasRuleTable.OptionText(Option('boolean', 'false', 'true')));
+  Assert.AreEqual('{"a":1}', TAtlasRuleTable.OptionText(Option('json', '', '{"a":1}')));
+  Assert.AreEqual('', TAtlasRuleTable.OptionText(Option('json', '', '')));
+end;
+
+procedure TAtlasRuleTableTests.OptionJsonChecksKind;
+var
+  Json: string;
+begin
+  Assert.IsTrue(TAtlasRuleTable.OptionJson('integer', ' 80 ', Json));
+  Assert.AreEqual('80', Json);
+  Assert.IsFalse(TAtlasRuleTable.OptionJson('integer', 'acht', Json));
+  Assert.IsTrue(TAtlasRuleTable.OptionJson('boolean', 'True', Json));
+  Assert.AreEqual('true', Json);
+  Assert.IsFalse(TAtlasRuleTable.OptionJson('boolean', 'ja', Json));
+  Assert.IsTrue(TAtlasRuleTable.OptionJson('string', 'a"b', Json));
+  Assert.AreEqual('"a\"b"', Json);
+  Assert.IsTrue(TAtlasRuleTable.OptionJson('string-list', '0; 1;; 2 ', Json));
+  Assert.AreEqual('["0","1","2"]', Json);
+  Assert.IsTrue(TAtlasRuleTable.OptionJson('json', '{"a": 1}', Json));
+  Assert.AreEqual('{"a":1}', Json);
+  Assert.IsFalse(TAtlasRuleTable.OptionJson('json', '{a', Json));
+  // Leeres Feld: Vorgabe.
+  Assert.IsTrue(TAtlasRuleTable.OptionJson('integer', '  ', Json));
+  Assert.AreEqual('', Json);
+end;
+
+procedure TAtlasRuleTableTests.ListTextRoundTrips;
+var
+  Items: TArray<string>;
+begin
+  Items := TAtlasRuleTable.ParseList(' Tests\*.pas ;; Vendor.* ');
+  Assert.AreEqual(2, Integer(Length(Items)));
+  Assert.AreEqual('Tests\*.pas', Items[0]);
+  Assert.AreEqual('Vendor.*', Items[1]);
+  Assert.AreEqual('Tests\*.pas; Vendor.*', TAtlasRuleTable.ListText(Items));
+  Assert.AreEqual(0, Integer(Length(TAtlasRuleTable.ParseList(''))));
+  Items := nil;
+end;
+
+procedure TAtlasRuleTableTests.SearchFindsCategory;
+var
+  Value: TJSONValue;
+  Rows: TArray<TAtlasRuleRow>;
+  Found: TArray<Integer>;
+begin
+  Value := Catalog;
+  try
+    Rows := TAtlasRuleTable.Rows(Value, '');
+    Found := TAtlasRuleTable.Filter(Rows, '', 'CODE-SMELL');
+    Assert.AreEqual(1, Integer(Length(Found)));
+    Assert.AreEqual('magic-number', Rows[Found[0]].Id);
+    Assert.AreEqual(14, Integer(Length(TAtlasRuleTable.GroupIds)));
+    Assert.AreEqual('find-bugs', TAtlasRuleTable.GroupIds[0]);
+  finally
+    Value.Free;
+  end;
+end;
+
+procedure TAtlasRuleTableTests.ChangesListOnlyChangedRules;
+var
+  Changes: TArray<TPair<string, string>>;
+begin
+  Changes := TAtlasRuleTable.Changes('{"a": "off", "b": {"severity": "error"}, "c": "hint"}',
+    '{"a": "off", "b": {"severity": "warning"}, "group:style": "off"}');
+  Assert.AreEqual(3, Integer(Length(Changes)));
+  Assert.AreEqual('rules.b', Changes[0].Key);
+  Assert.AreEqual('{"severity":"warning"}', Changes[0].Value);
+  Assert.AreEqual('rules.group:style', Changes[1].Key);
+  Assert.AreEqual('"off"', Changes[1].Value);
+  Assert.AreEqual('rules.c', Changes[2].Key);
+  Assert.AreEqual('', Changes[2].Value);
+  Assert.AreEqual(0, Integer(Length(TAtlasRuleTable.Changes('', ''))));
+  Changes := nil;
 end;
 
 initialization

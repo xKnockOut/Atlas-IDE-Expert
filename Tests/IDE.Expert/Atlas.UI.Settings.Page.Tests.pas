@@ -138,6 +138,10 @@ type
     /// <summary>„Wächter testen“ nur im Diagnosemodus (Code-Review S-07).</summary>
     [Test]
     procedure HangTestOnlyInDiagnosticMode;
+    /// <summary>#909: Bereich Prüfregeln mit Prüffenster, Knoten je Gruppe, Hauptschalter, Reveal einer Regel
+    /// und den Änderungen für settings.json.</summary>
+    [Test]
+    procedure RulesAreaEditsGlobalRules;
     /// <summary>Reiter „Projektdatei“ (#486): jeder Wert mit „aus .atlas“, Hinweise, Öffnen.</summary>
     [Test]
     procedure TeamFileTabShowsValuesFromAtlas;
@@ -188,6 +192,7 @@ uses
   Vcl.StdCtrls,
   Atlas.UI.Settings.Marks,
   Atlas.UI.Settings.Group,
+  Atlas.UI.Settings.Rules,
   Atlas.UI.Strings;
 
 procedure TAtlasSettingsPageTests.WarmUp;
@@ -275,15 +280,16 @@ begin
     Page.Parent := Host;
     Page.HandleNeeded;
     Areas := TopLevelNodes(Page);
-    Assert.AreEqual(16, Integer(Length(Areas)));
+    Assert.AreEqual(17, Integer(Length(Areas)));
     Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.SettingsTabGeneral), Areas[0].Text);
     Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.SettingsTabCompiler), Areas[6].Text);
-    Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.SettingsTabRelease), Areas[7].Text);
-    Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.SettingsTabDebug), Areas[8].Text);
-    Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.SettingsTabUndo), Areas[12].Text);
-    Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.SettingsTabUnitSearch), Areas[13].Text);
-    Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.SettingsTabWelcome), Areas[14].Text);
-    Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.SettingsTabTeamFile), Areas[15].Text);
+    Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.SettingsTabRules), Areas[7].Text);
+    Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.SettingsTabRelease), Areas[8].Text);
+    Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.SettingsTabDebug), Areas[9].Text);
+    Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.SettingsTabUndo), Areas[13].Text);
+    Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.SettingsTabUnitSearch), Areas[14].Text);
+    Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.SettingsTabWelcome), Areas[15].Text);
+    Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.SettingsTabTeamFile), Areas[16].Text);
     Assert.IsTrue(Page.Pages.PageCount > 16, 'Unterpunkte haben eigene Seiten');
     for Index := 0 to Page.Pages.PageCount - 1 do
     begin
@@ -2421,6 +2427,106 @@ begin
     Assert.IsTrue(Page.HangTestRow.Visible, 'mit Diagnosemodus geladen');
   finally
     Page.Free;
+  end;
+end;
+
+procedure TAtlasSettingsPageTests.RulesAreaEditsGlobalRules;
+const
+  CatalogText = '{"rules": [{"id": "magic-number", "name": "Magische Zahl", "category": "code-smell",' +
+    ' "severity": "hint", "group": "style"}, {"id": "lock-without-finally", "name": "Sperre ohne finally",' +
+    ' "category": "bug", "severity": "warning", "group": "threads"}]}';
+var
+  Host: TForm;
+  Page: TAtlasSettingsPage;
+  Catalog: TJSONValue;
+  Threads, Style: TAtlasRulesEditor;
+  Changes: TArray<TPair<string, string>>;
+  Change: TPair<string, string>;
+  Found: Boolean;
+  Settings: TAtlasPluginSettings;
+  Requested: Integer;
+begin
+  TAtlasSettingsPage.ForgetTreeState;
+  Catalog := TJSONObject.ParseJSONValue(CatalogText);
+  Host := TForm.CreateNew(nil);
+  try
+    Page := TAtlasSettingsPage.Create(Host);
+    Page.Parent := Host;
+    Page.HandleNeeded;
+    // Knoten: Prüffenster mit den Einstellungen des Fensters, „Profile und Baseline“, je Gruppe einer.
+    Assert.IsTrue(SheetOf(Page.ProblemsWindowCheck) = Page.NodeSheet('rules.window'));
+    Assert.IsTrue(SheetOf(Page.ProblemsLiveCheck) = Page.NodeSheet('rules.window'));
+    Assert.IsNotNull(Page.NodeSheet('rules.profiles'));
+    Assert.IsTrue(SheetOf(Page.BaselineInfoLabel) = Page.NodeSheet('rules.profiles'));
+    Threads := Page.RulesEditor('threads');
+    Style := Page.RulesEditor('style');
+    Assert.IsNotNull(Threads);
+    Assert.IsNotNull(Style);
+    // Tabelle und Auswahllisten entstehen mit dem Fenster (wie beim Öffnen des Knotens).
+    Threads.HandleNeeded;
+    Assert.IsTrue(SheetOf(Threads) = Page.NodeSheet('rules.group.threads'));
+    Assert.IsNotNull(Page.RulesEditor(''), 'Hauptknoten mit allen Regeln');
+    Assert.AreEqual('', Page.NodeOfSheet(SheetOf(Page.RulesEditor(''))));
+    // Katalog einmal anfordern; bis dahin „wird geladen“.
+    Requested := 0;
+    Page.OnRulesCatalog :=
+      procedure
+      begin
+        Inc(Requested);
+      end;
+    Assert.AreEqual(1, Requested);
+    Assert.IsTrue(Threads.Status.Visible);
+    Page.RulesLoaded(Catalog, '{"magic-number": "off" }');
+    Assert.AreEqual(1, Threads.List.Items.Count);
+    Assert.AreEqual(0, Integer(Length(Page.RulesChanges)), 'ohne Änderung nichts zu schreiben');
+    // Hauptschalter der Gruppe: alle Knoten sehen denselben Wert; nur der Schalter ist zu schreiben.
+    Threads.Master.Checked := False;
+    Assert.IsFalse(Threads.List.Enabled);
+    Assert.IsTrue(Page.RulesEditor('').RulesJson.Contains('"group:threads":"off"'));
+    Changes := Page.RulesChanges;
+    Assert.AreEqual(1, Integer(Length(Changes)));
+    Assert.AreEqual('rules.group:threads', Changes[0].Key);
+    Assert.AreEqual('"off"', Changes[0].Value);
+    // „Regel einstellen…“ öffnet den Knoten der Gruppe und markiert die Regel.
+    Assert.IsTrue(Page.Reveal(TAtlasSettingsPage.RuleRevealPrefix + 'magic-number'));
+    Assert.IsTrue(Page.Pages.ActivePage = Page.NodeSheet('rules.group.style'));
+    Assert.IsNotNull(Style.List.Selected);
+    Assert.AreEqual('magic-number', Style.List.Selected.Caption);
+    Style.SetSeverity('error');
+    Changes := Page.RulesChanges;
+    Assert.AreEqual(2, Integer(Length(Changes)));
+    Found := False;
+    for Change in Changes do
+      if Change.Key = 'rules.magic-number' then
+      begin
+        Assert.AreEqual('"error"', Change.Value);
+        Found := True;
+      end;
+    Assert.IsTrue(Found);
+    // Einstellungen des Prüffensters im Rundweg.
+    Settings := TAtlasPluginSettings.Defaults;
+    Settings.ProblemsWindowScope := 'project';
+    Settings.ProblemsWindowGroupBy := 'rule';
+    Settings.ProblemsLive := False;
+    Settings.HoverProblemActions := False;
+    Page.LoadFrom(Settings);
+    Assert.AreEqual(1, Page.ProblemsWindowScopeChoice.Choice);
+    Assert.AreEqual(2, Page.ProblemsWindowGroupByChoice.Choice);
+    Assert.IsFalse(Page.ProblemsLiveCheck.Checked);
+    Assert.IsFalse(Page.HoverProblemActionsCheck.Checked);
+    Page.ProblemsWindowScopeChoice.Choice := 0;
+    Page.ProblemsWindowCompilerCheck.Checked := True;
+    Settings := TAtlasPluginSettings.Defaults;
+    Page.SaveTo(Settings);
+    Assert.AreEqual('file', Settings.ProblemsWindowScope);
+    Assert.AreEqual('rule', Settings.ProblemsWindowGroupBy);
+    Assert.IsTrue(Settings.ProblemsWindowCompiler);
+    Assert.IsFalse(Settings.ProblemsLive);
+    Assert.IsFalse(Settings.HoverProblemActions);
+  finally
+    Host.Free;
+    Catalog.Free;
+    TAtlasSettingsPage.ForgetTreeState;
   end;
 end;
 

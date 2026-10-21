@@ -7,12 +7,15 @@
 // Objekt eingestellt ist: Dann ändert sich nur "severity".
 // Seite „Prüfregeln“ (#909): Gruppe, Beschreibung, Beispiele, Optionen mit
 // Typ und Vorgabe, Ausnahmen ("exclude") und der Hauptschalter je Gruppe
-// ("group:<gruppe>": "off", vom Server ausgewertet).
+// ("group:<gruppe>": "off", vom Server ausgewertet). Optionen und Ausnahmen
+// als Text für die Felder der Seite (OptionText, OptionJson, ListText,
+// ParseList); GroupIds sind die Gruppen des Servers in Reihenfolge der Seite.
 
 interface
 
 uses
   System.SysUtils,
+  System.Generics.Collections,
   System.JSON;
 
 type
@@ -56,14 +59,19 @@ type
     function Effective: string;
     /// <summary>Regel meldet etwas (wirksamer Schweregrad nicht "off").</summary>
     function Enabled: Boolean;
-    /// <summary>AText kommt in Kennung, Name oder Beschreibung vor (ohne Groß-/Kleinschreibung); '' passt
-    /// immer.</summary>
+    /// <summary>AText kommt in Kennung, Name, Kategorie oder Beschreibung vor (ohne Groß-/Kleinschreibung); ''
+    /// passt immer.</summary>
     function Matches(const AText: string): Boolean;
   end;
 
   TAtlasRuleTable = class
   public const
     Severities: array[0..4] of string = ('off', 'hint', 'info', 'warning', 'error');
+    /// <summary>Gruppen des Regelkatalogs (TRuleGroup des Servers) in der Reihenfolge der Seite Prüfregeln.
+    /// </summary>
+    GroupIds: array[0..13] of string = ('find-bugs', 'exceptions', 'threads', 'database', 'compiler',
+      'robustness', 'performance', 'security', 'components', 'forms', 'architecture', 'style', 'packages',
+      'internal');
   public
     /// <summary>ACatalog: Antwort von atlas.server.settingsCatalog (darf nil sein). ARulesJson: Wert von
     /// "rules" ('' ohne).</summary>
@@ -97,6 +105,20 @@ type
     /// <summary>Indizes der Zeilen, die zu AGroup gehören ('' = alle) und auf AText passen.</summary>
     class function Filter(const ARows: TArray<TAtlasRuleRow>; const AGroup, AText: string): TArray<Integer>;
       static;
+    /// <summary>Wert der Option als Feldtext: eingestellt, sonst Vorgabe; Text ohne Anführungszeichen, Liste
+    /// mit "; " getrennt, sonst JSON.</summary>
+    class function OptionText(const AOption: TAtlasRuleOption): string; static;
+    /// <summary>Feldtext AText einer Option der Art AKind als JSON-Text; '' = Vorgabe (leeres Feld). False
+    /// bei ungültiger Eingabe (keine Zahl, kein true/false, kein JSON).</summary>
+    class function OptionJson(const AKind, AText: string; out AJson: string): Boolean; static;
+    /// <summary>Muster als Feldtext, mit "; " getrennt.</summary>
+    class function ListText(const AItems: TArray<string>): string; static;
+    /// <summary>Feldtext an ";" geteilt, ohne Leerraum und leere Einträge.</summary>
+    class function ParseList(const AText: string): TArray<string>; static;
+    /// <summary>Änderungen von "rules" zwischen AOldJson und ANewJson je Regel bzw. Hauptschalter als Pfad
+    /// ("rules.&lt;id&gt;") und JSON-Text ('' = entfernen), für TAtlasJsonText.ApplyChanges und
+    /// TAtlasSettingsModel.SetPath: Kommentare und Schreibweise unveränderter Regeln bleiben in der Datei.</summary>
+    class function Changes(const AOldJson, ANewJson: string): TArray<TPair<string, string>>; static;
   end;
 
 implementation
@@ -267,7 +289,7 @@ begin
     Exit(True);
   Needle := AText.ToLower;
   Result := Id.ToLower.Contains(Needle) or Name.ToLower.Contains(Needle) or
-    Description.ToLower.Contains(Needle);
+    Category.ToLower.Contains(Needle) or Description.ToLower.Contains(Needle);
 end;
 
 { TAtlasRuleTable }
@@ -538,6 +560,132 @@ begin
   for Index := 0 to High(ARows) do
     if ((AGroup = '') or SameText(ARows[Index].Group, AGroup)) and ARows[Index].Matches(AText.Trim) then
       Result := Result + [Index];
+end;
+
+class function TAtlasRuleTable.ListText(const AItems: TArray<string>): string;
+begin
+  Result := string.Join('; ', AItems);
+end;
+
+class function TAtlasRuleTable.ParseList(const AText: string): TArray<string>;
+var
+  Part: string;
+begin
+  Result := nil;
+  for Part in AText.Split([';']) do
+    if Part.Trim <> '' then
+      Result := Result + [Part.Trim];
+end;
+
+class function TAtlasRuleTable.OptionText(const AOption: TAtlasRuleOption): string;
+var
+  Json: string;
+  Value, Item: TJSONValue;
+  Items: TArray<string>;
+begin
+  Json := AOption.ValueJson;
+  if Json = '' then
+    Json := AOption.DefaultJson;
+  Result := Json;
+  if Json = '' then
+    Exit;
+  Value := TJSONObject.ParseJSONValue(Json);
+  try
+    if (Value is TJSONString) and not (Value is TJSONNumber) then
+      Result := TJSONString(Value).Value
+    else if (Value is TJSONArray) and SameText(AOption.Kind, 'string-list') then
+    begin
+      Items := nil;
+      for Item in TJSONArray(Value) do
+        if (Item is TJSONString) and not (Item is TJSONNumber) then
+          Items := Items + [TJSONString(Item).Value]
+        else
+          Items := Items + [Item.ToJSON];
+      Result := ListText(Items);
+    end;
+  finally
+    Value.Free;
+  end;
+end;
+
+class function TAtlasRuleTable.OptionJson(const AKind, AText: string; out AJson: string): Boolean;
+var
+  Text, Item: string;
+  Number: Int64;
+  Value: TJSONValue;
+  Items: TJSONArray;
+begin
+  AJson := '';
+  Text := AText.Trim;
+  if Text = '' then
+    Exit(True);
+  Result := True;
+  if SameText(AKind, 'integer') then
+  begin
+    Result := TryStrToInt64(Text, Number);
+    if Result then
+      AJson := IntToStr(Number);
+  end
+  else if SameText(AKind, 'boolean') then
+  begin
+    Result := SameText(Text, 'true') or SameText(Text, 'false');
+    if Result then
+      AJson := Text.ToLower;
+  end
+  else if SameText(AKind, 'string') then
+  begin
+    Value := TJSONString.Create(Text);
+    try
+      AJson := Value.ToJSON;
+    finally
+      Value.Free;
+    end;
+  end
+  else if SameText(AKind, 'string-list') then
+  begin
+    Items := TJSONArray.Create;
+    try
+      for Item in ParseList(Text) do
+        Items.Add(Item);
+      AJson := Items.ToJSON;
+    finally
+      Items.Free;
+    end;
+  end
+  else
+  begin
+    // json und unbekannte Arten: der Text muss gültiges JSON sein.
+    Value := TJSONObject.ParseJSONValue(Text);
+    Result := Value <> nil;
+    if Result then
+      AJson := Value.ToJSON;
+    Value.Free;
+  end;
+end;
+
+class function TAtlasRuleTable.Changes(const AOldJson, ANewJson: string): TArray<TPair<string, string>>;
+var
+  Old, Updated: TJSONObject;
+  Pair: TJSONPair;
+  Value: TJSONValue;
+begin
+  Result := nil;
+  Old := ParseRules(AOldJson);
+  Updated := ParseRules(ANewJson);
+  try
+    for Pair in Updated do
+    begin
+      Value := Old.GetValue(Pair.JsonString.Value);
+      if (Value = nil) or (Value.ToJSON <> Pair.JsonValue.ToJSON) then
+        Result := Result + [TPair<string, string>.Create('rules.' + Pair.JsonString.Value, Pair.JsonValue.ToJSON)];
+    end;
+    for Pair in Old do
+      if Updated.GetValue(Pair.JsonString.Value) = nil then
+        Result := Result + [TPair<string, string>.Create('rules.' + Pair.JsonString.Value, '')];
+  finally
+    Updated.Free;
+    Old.Free;
+  end;
 end;
 
 end.
