@@ -11,7 +11,7 @@ function AtlasSchemaJson: string;
 implementation
 
 const
-  Lines: array[0..1054] of string = (
+  Lines: array[0..1073] of string = (
     '{',
     '  "$schema": "http://json-schema.org/draft-07/schema#",',
     '  "title": "Atlas-Konfiguration",',
@@ -628,6 +628,25 @@ const
     '          "default": true,',
     '          "description": "Verwendungen der Bezeichner in Projekt-Units mit indizieren (Verwendungsbeispiele); aus = nur Deklarationen, kleinerer Index."',
     '        },',
+    '        "removeOrphans": {',
+    '          "type": "boolean",',
+    '          "default": true,',
+    '          "description": "Index-Caches gelöschter Projekte (z. B. entfernter Branch-Ordner) und Caches im alten Format beim Laden eines Projekts löschen. Liegt das Projekt auf einem gerade nicht verbu' + 'ndenen Laufwerk, bleibt der Cache."',
+    '        },',
+    '        "cacheMaxAgeDays": {',
+    '          "type": "integer",',
+    '          "minimum": 0,',
+    '          "maximum": 3650,',
+    '          "default": 14,',
+    '          "description": "Index-Caches löschen, die so viele Tage nicht benutzt wurden (Laden des Projekts zählt als Benutzung); 0 = aus. Das betrifft auch die Bibliotheks-Caches deinstallierter Delph' + 'i-Versionen."',
+    '        },',
+    '        "cacheMaxMb": {',
+    '          "type": "integer",',
+    '          "minimum": 0,',
+    '          "maximum": 1048576,',
+    '          "default": 256,',
+    '          "description": "Höchstgröße des Cache-Ordners in MB; darüber gehen die am längsten nicht benutzten Caches zuerst. 0 = ohne Grenze."',
+    '        },',
     '        "exclude": {',
     '          "x-scope": "project",',
     '          "type": "array",',
@@ -641,7 +660,7 @@ const
     '      "x-area": "general",',
     '      "x-page": "Speicher",',
     '      "x-control": "Kontrollkästchen, Liste mit Hinzufügen/Entfernen",',
-    '      "x-issue": "#648, #492"',
+    '      "x-issue": "#648, #492, #905"',
     '    },',
     '    "requestTimeoutMs": {',
     '      "type": "integer",',

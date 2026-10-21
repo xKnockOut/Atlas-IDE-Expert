@@ -4,6 +4,11 @@
 // Höchstgröße begrenzt, die ältesten Caches gehen zuerst. Die eigenen Caches
 // (Projekt und gemeinsame Bibliothek, #616) und gesperrte Caches anderer
 // Instanzen bleiben stehen.
+// Verwaiste Caches (index.removeOrphans): Caches, von deren Herkunft (Projektdatei,
+// ersatzweise die Projekt-Units im Cache) nichts mehr existiert, etwa nach dem
+// Löschen eines Branch-Ordners. Ohne bekannte Herkunft bleibt ein Cache stehen.
+// Ungenutzte Caches (index.cacheMaxAgeDays): zuletzt vor mehr als n Tagen benutzt.
+// LastWrite ist dafür die letzte Benutzung, nicht nur der letzte Schreibvorgang.
 // Reine Logik; die Plattenzugriffe liegen in Index.Adapters.CacheDirectory.
 
 interface
@@ -15,9 +20,13 @@ type
   TCacheFileInfo = record
     FileName: string;
     Size: Int64;
+    /// <summary>Letzte Benutzung (Schreiben des Caches oder Laden des Projekts).</summary>
     LastWrite: TDateTime;
     /// <summary>Eine andere Serverinstanz arbeitet mit diesem Cache.</summary>
     Locked: Boolean;
+    /// <summary>Dateien, deren Existenz zeigt, dass das Projekt noch da ist (Projektdatei oder Projekt-Units);
+    /// leer = Herkunft unbekannt.</summary>
+    Origins: TArray<string>;
   end;
 
   TIndexCacheHousekeeping = class
@@ -35,6 +44,16 @@ type
     /// und wurde sonst bei jedem Start gelöscht, sobald der Ordner über der Höchstgröße lag.</summary>
     class function SelectForRemoval(const AFiles: TArray<TCacheFileInfo>; AMaxBytes: Int64;
       const AKeep: TArray<string>): TArray<string>; overload; static;
+    /// <summary>Caches, von deren Herkunft keine Datei mehr existiert (AExists). AKeep, gesperrte Caches und
+    /// Caches ohne Herkunft werden nie gewählt.</summary>
+    class function SelectOrphans(const AFiles: TArray<TCacheFileInfo>; const AKeep: TArray<string>;
+      const AExists: TFunc<string, Boolean>): TArray<string>; static;
+    /// <summary>Caches, die vor mehr als AMaxAgeDays Tagen (gezählt ab ANow) zuletzt benutzt wurden;
+    /// AMaxAgeDays <= 0 = keine. AKeep und gesperrte Caches werden nie gewählt.</summary>
+    class function SelectUnused(const AFiles: TArray<TCacheFileInfo>; const AKeep: TArray<string>;
+      ANow: TDateTime; AMaxAgeDays: Integer): TArray<string>; static;
+    /// <summary>Höchstgröße aus der Einstellung index.cacheMaxMb; 0 = ohne Grenze.</summary>
+    class function MaxBytesOf(AMaxMb: Integer): Int64; static;
   end;
 
 implementation
@@ -98,6 +117,56 @@ begin
   finally
     Sorted.Free;
   end;
+end;
+
+class function TIndexCacheHousekeeping.SelectOrphans(const AFiles: TArray<TCacheFileInfo>;
+  const AKeep: TArray<string>; const AExists: TFunc<string, Boolean>): TArray<string>;
+var
+  Info: TCacheFileInfo;
+  Origin: string;
+  Known, Alive: Boolean;
+begin
+  Result := nil;
+  for Info in AFiles do
+  begin
+    if Info.Locked or IsKept(Info.FileName, AKeep) then
+      Continue;
+    Known := False;
+    Alive := False;
+    for Origin in Info.Origins do
+      if Origin <> '' then
+      begin
+        Known := True;
+        if AExists(Origin) then
+        begin
+          Alive := True;
+          Break;
+        end;
+      end;
+    if Known and not Alive then
+      Result := Result + [Info.FileName];
+  end;
+end;
+
+class function TIndexCacheHousekeeping.SelectUnused(const AFiles: TArray<TCacheFileInfo>;
+  const AKeep: TArray<string>; ANow: TDateTime; AMaxAgeDays: Integer): TArray<string>;
+var
+  Info: TCacheFileInfo;
+begin
+  Result := nil;
+  if AMaxAgeDays <= 0 then
+    Exit;
+  for Info in AFiles do
+    if not Info.Locked and not IsKept(Info.FileName, AKeep) and (Info.LastWrite < ANow - AMaxAgeDays) then
+      Result := Result + [Info.FileName];
+end;
+
+class function TIndexCacheHousekeeping.MaxBytesOf(AMaxMb: Integer): Int64;
+begin
+  if AMaxMb <= 0 then
+    Result := High(Int64)
+  else
+    Result := Int64(AMaxMb) * 1024 * 1024;
 end;
 
 end.
