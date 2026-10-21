@@ -1241,6 +1241,8 @@ begin
       ExpectBoolean(ANode[Index], Key, FSettings.Completion.AssignAllFields)
     else if Key = 'usesDetails' then
       ExpectBoolean(ANode[Index], Key, FSettings.Completion.UsesDetails)
+    else if Key = 'inheritedCall' then
+      ExpectBoolean(ANode[Index], Key, FSettings.Completion.InheritedCall)
     else if Key = 'typeConversion' then
     begin
       if ExpectString(ANode[Index], Key, Text) then

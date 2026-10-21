@@ -337,6 +337,12 @@ type
     /// Methode.</summary>
     function InheritedCandidates(ATree: TSyntaxTree; const AFileName: string;
       AOffset: Integer): TArray<TResolvedSymbol>;
+    /// <summary>Für den vollständigen inherited-Aufruf (#482): Methoden und Konstruktoren der Vorfahren der
+    /// Klasse, in deren Methode AOffset liegt, je Überladung ein Eintrag aus dem Index, nächster Vorfahr zuerst;
+    /// ADepths die Vererbungstiefe je Eintrag (1 = direkter Vorfahr). AStart: Anfang der umgebenden Methode im
+    /// Text (0-basiert), -1 außerhalb einer Methode.</summary>
+    function InheritedOverloads(ATree: TSyntaxTree; const AFileName: string; AOffset: Integer;
+      out AStart: Integer; out ADepths: TArray<Integer>): TArray<TIndexSymbol>;
     /// <summary>Felder und Methoden für read/write einer Property (#31): die des Typs ATypeName aus AFromUnit
     /// in jeder Sichtbarkeit (Depth 0), dann die der Vorfahren ohne strict private und ohne private aus anderen
     /// Units; gleichnamige weiter oben verdecken die der Vorfahren.</summary>
@@ -2899,6 +2905,43 @@ begin
   finally
     Seen.Free;
     List.Free;
+  end;
+end;
+
+function TNameResolver.InheritedOverloads(ATree: TSyntaxTree; const AFileName: string; AOffset: Integer;
+  out AStart: Integer; out ADepths: TArray<Integer>): TArray<TIndexSymbol>;
+var
+  Routines: TArray<TSyntaxNode>;
+  Current, Ancestor: TResolvedSymbol;
+  OwnerUnit: TUnitIndex;
+  Symbol: TIndexSymbol;
+  Depth: Integer;
+begin
+  Result := nil;
+  ADepths := nil;
+  AStart := -1;
+  if ATree = nil then
+    Exit;
+  Prepare(ATree, AFileName, AOffset);
+  if not MethodClass(Current) then
+    Exit;
+  Routines := EnclosingRoutines;
+  AStart := Routines[High(Routines)].StartOffset;
+  for Depth := 1 to MaxDepth do
+  begin
+    if not AncestorOf(Current, Ancestor) or not UnitOf(Ancestor, OwnerUnit) then
+      Break;
+    // Sichtbar wie aus der eigenen Methode: protected ja, private nur aus derselben Datei.
+    for Symbol in OwnerUnit.Symbols do
+      if SameText(Symbol.Container, Ancestor.QualifiedName) and
+        (Symbol.Kind in [TIndexSymbolKind.Method, TIndexSymbolKind.Constructor_]) and not Symbol.Unavailable and
+        (Symbol.Visibility <> TIndexVisibility.StrictPrivate) and
+        ((Symbol.Visibility <> TIndexVisibility.Private) or SameText(OwnerUnit.FileName, AFileName)) then
+      begin
+        Result := Result + [Symbol];
+        ADepths := ADepths + [Depth];
+      end;
+    Current := Ancestor;
   end;
 end;
 

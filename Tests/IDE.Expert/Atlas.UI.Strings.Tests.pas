@@ -150,6 +150,13 @@ begin
     TAtlasStrings.Language := TAtlasLanguage.English;
     Assert.AreEqual('A is already used and not listed', TAtlasStrings.UsesHidden(['A']));
     Assert.AreEqual('uA uses this unit in its interface section', TAtlasStrings.UsesCycle('uA → Haupt'));
+    // Nach "inherited " (#482): ausgelassene abstrakte Vorfahrmethoden.
+    Assert.AreEqual('TBasis.Zeichnen is abstract and not listed', TAtlasStrings.InheritedAbstract(['TBasis.Zeichnen']));
+    TAtlasStrings.Language := TAtlasLanguage.German;
+    Assert.AreEqual('', TAtlasStrings.InheritedAbstract(nil));
+    Assert.AreEqual('TBasis.Zeichnen ist abstrakt und fehlt', TAtlasStrings.InheritedAbstract(['TBasis.Zeichnen']));
+    Assert.AreEqual('Abstrakte Vorfahrmethoden fehlen: A.X, A.Y, B.Z, …',
+      TAtlasStrings.InheritedAbstract(['A.X', 'A.Y', 'B.Z', 'B.W']));
   finally
     TAtlasStrings.Language := Saved;
   end;

@@ -315,6 +315,8 @@ begin
     TAtlasTagId.Recent: Result := TAtlasStrings.Text(TAtlasTextId.TagRecent);
     TAtlasTagId.Frequent: Result := TAtlasStrings.Text(TAtlasTextId.TagFrequent);
     TAtlasTagId.Cycle: Result := TAtlasStrings.Text(TAtlasTextId.UsesCycleTag);
+    TAtlasTagId.SameParams: Result := TAtlasStrings.Text(TAtlasTextId.InheritedSameTag);
+    TAtlasTagId.Overload: Result := TAtlasStrings.Text(TAtlasTextId.InheritedOverloadTag);
   else
     Result := ATag.Text;
   end;
@@ -580,6 +582,9 @@ begin
   // uses-Abschnitt (#469): welche Units schon eingebunden sind und deshalb fehlen.
   if Length(TAtlasItemPresentation.UsesHidden(FItems)) > 0 then
     Exit(TAtlasStrings.UsesHidden(TAtlasItemPresentation.UsesHidden(FItems)));
+  // Nach "inherited " (#482): welche abstrakten Vorfahrmethoden fehlen.
+  if Length(TAtlasItemPresentation.InheritedAbstract(FItems)) > 0 then
+    Exit(TAtlasStrings.InheritedAbstract(TAtlasItemPresentation.InheritedAbstract(FItems)));
   Result := TAtlasStrings.Text(TAtlasTextId.FooterKeys);
   if FTarget = '' then
     Exit;

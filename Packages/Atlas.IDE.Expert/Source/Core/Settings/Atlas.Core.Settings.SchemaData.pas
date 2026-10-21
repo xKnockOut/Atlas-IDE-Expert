@@ -11,7 +11,7 @@ function AtlasSchemaJson: string;
 implementation
 
 const
-  Lines: array[0..1384] of string = (
+  Lines: array[0..1390] of string = (
     '{',
     '  "$schema": "http://json-schema.org/draft-07/schema#",',
     '  "title": "Atlas-Konfiguration",',
@@ -517,6 +517,12 @@ const
     '          "default": true,',
     '          "description": "Im uses-Abschnitt: schon eingebundene Units ausblenden (die Fußzeile nennt sie), Units nach Projekt, RTL/VCL und Drittanbietern gruppieren, Kurzformen auf den Namespace ergän' + 'zen (Classes → System.Classes), Units aus dem anderen Abschnitt mit „bereits im interface-Teil“ bzw. „… implementation-Teil“ und im interface-Teil Units mit Zirkelbezug markieren; im Detailpanel Pfad ' + 'und die ersten exportierten Typen. Aus: alle Units des Index als schlichte Liste.",',
     '          "x-issue": "#469"',
+    '        },',
+    '        "inheritedCall": {',
+    '          "type": "boolean",',
+    '          "default": true,',
+    '          "description": "Nach „inherited “ zuerst den vollständigen Aufruf der gleichnamigen Vorfahrmethode mit den Parametern der eigenen Methode anbieten (Marke „gleiche Parameter“), dann ihre übri' + 'gen Überladungen, in Konstruktoren und Destruktoren auch die übrigen Konstruktoren bzw. Destruktoren der Vorfahren. Abstrakte Vorfahrmethoden fehlen, die Fußzeile nennt sie. In Funktionen ergänzt die ' + 'Übernahme „Result := “, wenn vor inherited nichts in der Zeile steht. Aus: nur die Namen der Vorfahrmethoden.",',
+    '          "x-issue": "#482"',
     '        },',
     '        "nameSuggestions": {',
     '          "type": "boolean",',
