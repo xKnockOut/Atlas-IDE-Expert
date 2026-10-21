@@ -665,3 +665,12 @@ Jeder Branch baut auf dem vorigen auf. Nichts davon ist gebaut, getestet oder in
 - #874 geschlossen (Rest war schon in 51d305cd).
 - Nachtrag (main 0bc86552): #846 Variante Records gemergt; Index-Cache `FormatVersion` 18 in Server und Plugin (`TAtlasWelcomeIndexFiles`), H2443 in VariantRecords-Tests. 5342 Tests grün. Kein Branch mehr mit Commits, die main fehlen.
 - Skripte im Scratchpad: `mergeall.sh` (Merge-Kette mit automatischer Auflösung der erzeugten Dateien, Tastenliste, CHANGELOG), `kc_resolve.py`, `union.py`.
+
+## IDE friert beim Klick in den Editor/aufs Statusfeld ein (#1093, 21.10.2026)
+- Ursache (cdb): `TToolbarHolder` aus `Atlas.UI.Outline.NavigationToolbar` (#590, `editor.breadcrumbsHideIdeToolbar`) war unsichtbar und ohne Fenster; der Parser-Thread der IDE legte es beim Zugriff auf die Leiste an. `SetWindowPos`/`ShowWindow` von Fenstern mit dem IDE-Hauptfenster als Owner warteten dann auf diesen Thread.
+- Behoben: Halter sichtbar mit Höhe 0, Fenster sofort im Hauptthread (`OwnHandles`); `SWP_NOOWNERZORDER` in `TAtlasPopupWindow.ShowAt` und der Willkommensseiten-Suche. Von Marco bestätigt.
+- Diagnosewerkzeuge im Scratchpad: `cdb -pv -p <pid> -c "~0 kv 40; q"` (Hauptthread), `winthreads.ps1` (Top-Level-Fenster je Thread), `childthreads.ps1` (Kindfenster, die einem anderen Thread gehören).
+- Hinweise:
+  - Delphi für Marco nur über `explorer.exe bds.exe` starten; aus Werkzeug-Shells gestartete IDEs laufen teils in einer anderen Dateisicht oder werden mit der Shell beendet.
+  - Andere Sitzungen starten über Claude-Compile eigene IDEs ohne Parameter; hängende davon beim Beenden = Beyond-Compare-Absturz (#1091).
+- Offen: Atlas schreibt seit 21.10. 21:29 nicht mehr in `%LOCALAPPDATA%\Atlas\Logstlas.log` und aktualisiert `Session\safemode.json` nicht (Sitzungsdatei wird geschrieben). Ursache unbekannt; Datei nicht gesperrt.
