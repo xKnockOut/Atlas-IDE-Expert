@@ -92,6 +92,10 @@ type
     procedure DocMouseDown(Shift: TShiftState; X, Y: Integer);
     /// <summary>„Mehr/Weniger anzeigen“ (#770): klappt um, merkt den Zustand und passt die Höhe an.</summary>
     procedure ToggleDoc;
+    /// <summary>Schalter der published-Mitglieder (#110): schaltet um und passt die Höhe an.</summary>
+    procedure TogglePublished(AToggle: TAtlasHoverPublishedToggle);
+    /// <summary>Höhe neu nach dem Inhalt, Breite bleibt; wächst nach unten, über dem Wort nach oben.</summary>
+    procedure Refit;
     function LayoutKey(AWidth: Integer): string;
     function Texts: TAtlasHoverTexts;
     /// <summary>Setzt FLayout für die Fensterbreite AWidth mit der jetzigen Doku-Höhe.</summary>
@@ -237,13 +241,26 @@ begin
 end;
 
 procedure TAtlasHoverTip.ToggleDoc;
-var
-  Area, Bounds: TRect;
-  NewHeight: Integer;
 begin
   TAtlasDocExpandState.Remember(TAtlasDocSurface.Tooltip, FDoc.Toggle(Canvas));
   FDoc.ClearSelection;
   FDoc.HotLink := -1;
+  Refit;
+end;
+
+procedure TAtlasHoverTip.TogglePublished(AToggle: TAtlasHoverPublishedToggle);
+begin
+  FView.Toggle(AToggle);
+  FHot := -1;
+  FLayoutKey := '';
+  Refit;
+end;
+
+procedure TAtlasHoverTip.Refit;
+var
+  Area, Bounds: TRect;
+  NewHeight: Integer;
+begin
   Area := WorkAreaAt(BoundsRect.TopLeft);
   NewHeight := FitHeight(Width, Area.Height - Scale(8));
   Bounds := TRect.Create(BoundsRect.TopLeft, Width, NewHeight);
@@ -381,6 +398,24 @@ begin
   Result.UsesRemoveAll := TAtlasStrings.Text(TAtlasTextId.UsesRemoveAll);
   Result.UsesMove := TAtlasStrings.Text(TAtlasTextId.UsesMove);
   Result.Stale := TAtlasStrings.Text(TAtlasTextId.ProblemsStale);
+  Result.PublishedSummary := TAtlasStrings.Text(TAtlasTextId.PublishedSummary);
+  Result.PublishedInherited := TAtlasStrings.Text(TAtlasTextId.PublishedInherited);
+  Result.PublishedOnlyDefaults := TAtlasStrings.Text(TAtlasTextId.PublishedOnlyDefaults);
+  Result.PublishedProperties := TAtlasStrings.Text(TAtlasTextId.PublishedProperties);
+  Result.PublishedEvents := TAtlasStrings.Text(TAtlasTextId.PublishedEvents);
+  Result.PublishedName := TAtlasStrings.Text(TAtlasTextId.PublishedName);
+  Result.PublishedType := TAtlasStrings.Text(TAtlasTextId.PublishedType);
+  Result.PublishedDefault := TAtlasStrings.Text(TAtlasTextId.PublishedDefault);
+  Result.PublishedDeclared := TAtlasStrings.Text(TAtlasTextId.PublishedDeclared);
+  Result.PublishedImplicit := TAtlasStrings.Text(TAtlasTextId.PublishedImplicit);
+  Result.PublishedMoreProperties := TAtlasStrings.Text(TAtlasTextId.PublishedMoreProperties);
+  Result.PublishedMoreEvents := TAtlasStrings.Text(TAtlasTextId.PublishedMoreEvents);
+  Result.PublishedEventsNote := TAtlasStrings.Text(TAtlasTextId.PublishedEventsNote);
+  Result.PublishedArrayProperty := TAtlasStrings.Text(TAtlasTextId.PublishedArrayProperty);
+  Result.PublishedDefaultProperty := TAtlasStrings.Text(TAtlasTextId.PublishedDefaultProperty);
+  Result.PublishedDefaultPropertyNote := TAtlasStrings.Text(TAtlasTextId.PublishedDefaultPropertyNote);
+  Result.PublishedCopyList := TAtlasStrings.Text(TAtlasTextId.PublishedCopyList);
+  Result.PublishedVclNote := TAtlasStrings.Text(TAtlasTextId.PublishedVclNote);
   Result.Confidences := nil;
   SetLength(Result.Confidences, Length(FView.Problems));
   for Index := 0 to High(FView.Problems) do
@@ -531,7 +566,7 @@ begin
   for Problem in FView.Problems do
     Widest := Max(Widest, Canvas.TextWidth(Problem.Caption) + Scale(9));
   if (FView.Data.Documentation <> '') or not FView.Data.Doc.IsEmpty or (Length(FView.Data.Ancestors) > 0) or
-    FView.Data.Location.HasLocation or FView.Pinned then
+    FView.Data.Location.HasLocation or FView.Pinned or (Length(FView.Data.Members) > 0) then
     Widest := Scale(MaxWidth);
   Result := EnsureRange(Widest + Scale(26), Scale(200), Scale(MaxWidth));
 end;
@@ -683,6 +718,9 @@ begin
         TAtlasHoverLayout.DecodeProblemAction(Hit.Index, ProblemIndex, ProblemAction);
         FOnProblemAction(Self, ProblemIndex, ProblemAction);
       end;
+    // Schalter und Abschnitte der published-Mitglieder (#110).
+    TAtlasHoverHitKind.Published:
+      TogglePublished(TAtlasHoverPublishedToggle(Hit.Index));
   end;
 end;
 

@@ -92,6 +92,8 @@ type
     XmlDocExpand: string;
     /// <summary>Doku-Zeilen, ab denen der Inhalt scrollt; 0 = unbegrenzt.</summary>
     XmlDocMaxLines: Integer;
+    /// <summary>Hover über Komponentenklassen (#110): published-Properties und Ereignisse samt geerbter.</summary>
+    PublishedMembers: Boolean;
     class function Default: THintSettings; static;
   end;
 
@@ -694,6 +696,7 @@ class function THintSettings.Default: THintSettings;
 begin
   Result.XmlDocExpand := ExpandLast;
   Result.XmlDocMaxLines := 0;
+  Result.PublishedMembers := True;
 end;
 
 { THighlightSettings }

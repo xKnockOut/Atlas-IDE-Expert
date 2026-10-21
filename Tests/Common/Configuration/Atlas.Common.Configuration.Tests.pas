@@ -922,6 +922,12 @@ begin
   Settings := Parse('{}', Issues);
   Assert.AreEqual(THintSettings.ExpandLast, Settings.Hints.XmlDocExpand);
   Assert.AreEqual(0, Settings.Hints.XmlDocMaxLines);
+  // published-Mitglieder im Hover (#110).
+  Assert.IsTrue(Settings.Hints.PublishedMembers);
+  Assert.IsFalse(Parse('{"hints": {"publishedMembers": false}}', Issues).Hints.PublishedMembers);
+  Assert.AreEqual(0, Integer(Length(Issues)));
+  Parse('{"hints": {"publishedMembers": 0}}', Issues);
+  Assert.AreEqual(1, Integer(Length(Issues)));
   Settings := Parse('{"hints": {"xmlDocExpand": "collapsed", "xmlDocMaxLines": 10}}', Issues);
   Assert.AreEqual(THintSettings.ExpandCollapsed, Settings.Hints.XmlDocExpand);
   Assert.AreEqual(10, Settings.Hints.XmlDocMaxLines);

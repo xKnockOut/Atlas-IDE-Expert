@@ -704,6 +704,8 @@ begin
         ReportNode(Value, Format('"xmlDocMaxLines" muss eine ganze Zahl von 0 bis %d sein',
           [THintSettings.MaxXmlDocLines]));
     end
+    else if Key = 'publishedMembers' then
+      ExpectBoolean(Value, Key, FSettings.Hints.PublishedMembers)
     else
       Report(ANode.KeyStarts[Index], ANode.KeyStarts[Index] + Length(Key) + 2,
         Format('Unbekannte Einstellung "hints.%s"', [Key]), False);
