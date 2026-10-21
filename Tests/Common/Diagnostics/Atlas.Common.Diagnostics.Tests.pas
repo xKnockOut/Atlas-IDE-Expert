@@ -461,7 +461,7 @@ begin
       TRequestDiagnostics.Close;
       Log.LogRequest(SampleRequest);
     end;
-    Assert.AreEqual(Rounds, Lines.Count);
+    Assert.AreEqual(Rounds, Integer(Lines.Count));
     Assert.IsTrue(Watch.Elapsed.TotalMilliseconds / Rounds < 1,
       Format('%.3f ms je Anfrage', [Watch.Elapsed.TotalMilliseconds / Rounds]));
     Ref := nil;

@@ -214,6 +214,7 @@ begin
   Assert.IsTrue(Settings.StartProfilesStatusField, 'Startprofil in der Statusleiste standardmäßig an (#575)');
   Assert.IsTrue(Settings.TestDebug, 'Test debuggen standardmäßig da (#585)');
   Assert.IsTrue(Settings.TestBreakAtStart, 'debug.testBreakAtStart standardmäßig an (#585)');
+  Assert.IsTrue(Settings.DebugHoverValues, 'debug.hoverValues standardmäßig an (#891)');
   Assert.IsTrue(Settings.TodoList, 'Befehl standardmäßig da (#68)');
   Assert.IsTrue(Settings.MetricsReport, 'Befehl standardmäßig da (#66)');
   Assert.IsTrue(Settings.TeamFile, 'Projektdatei standardmäßig an (#486)');
@@ -311,6 +312,7 @@ begin
   Settings.StartProfilesStatusField := False;
   Settings.TestDebug := False;
   Settings.TestBreakAtStart := False;
+  Settings.DebugHoverValues := False;
   Settings.TodoList := False;
   Settings.MetricsReport := False;
   Settings.TeamFile := False;
@@ -393,6 +395,7 @@ begin
   Assert.IsFalse(Loaded.StartProfilesStatusField);
   Assert.IsFalse(Loaded.TestDebug, 'Test debuggen (#585)');
   Assert.IsFalse(Loaded.TestBreakAtStart, 'debug.testBreakAtStart (#585)');
+  Assert.IsFalse(Loaded.DebugHoverValues, 'debug.hoverValues (#891)');
   Assert.IsFalse(Loaded.TodoList);
   Assert.IsFalse(Loaded.MetricsReport);
   Assert.IsFalse(Loaded.TeamFile);
@@ -1056,12 +1059,15 @@ begin
   Settings.UnitSearchPathStyle := 'compact';
   Settings.UnitSearchDefaultScope := 'library';
   Settings.UnitSearchKey := $6055;
+  // Suchleiste (#878): Liste in den Meldungen abschaltbar.
+  Settings.SearchResultsInMessages := False;
   Store := TMemoryStore.Create;
   Settings.Save(Store);
   Loaded := Default(TAtlasPluginSettings);
   Loaded.Load(Store);
   Assert.IsFalse(Loaded.UnitSearchEnabled);
   Assert.IsFalse(Loaded.UnitSearchReplaceIdeDialog);
+  Assert.IsFalse(Loaded.SearchResultsInMessages);
   Assert.IsFalse(Loaded.UnitSearchRememberCollapsed);
   Assert.IsFalse(Loaded.UnitSearchFilters);
   Assert.IsFalse(Loaded.UnitSearchFilterSyntax);
@@ -1193,9 +1199,13 @@ begin
   Settings := TAtlasPluginSettings.Defaults;
   Assert.IsTrue(Settings.Breadcrumbs);
   Assert.IsFalse(Settings.BreadcrumbsShowUnit);
+  Assert.IsTrue(Settings.BreadcrumbsIdeColors, 'Farben der IDE');
+  Assert.IsTrue(Settings.BreadcrumbsHideIdeToolbar, 'Navigationsleiste der IDE aus');
   Assert.AreEqual($60BE, Settings.BreadcrumbsKey, 'Strg+Umschalt+.');
   Settings.Breadcrumbs := False;
   Settings.BreadcrumbsShowUnit := True;
+  Settings.BreadcrumbsIdeColors := False;
+  Settings.BreadcrumbsHideIdeToolbar := False;
   Settings.BreadcrumbsKey := 0;
   Store := TMemoryStore.Create;
   Settings.Save(Store);
@@ -1203,6 +1213,8 @@ begin
   Loaded.Load(Store);
   Assert.IsFalse(Loaded.Breadcrumbs);
   Assert.IsTrue(Loaded.BreadcrumbsShowUnit);
+  Assert.IsFalse(Loaded.BreadcrumbsIdeColors);
+  Assert.IsFalse(Loaded.BreadcrumbsHideIdeToolbar);
   Assert.AreEqual(0, Loaded.BreadcrumbsKey);
   Loaded.BreadcrumbsKey := -5;
   Loaded.Normalize;
@@ -1330,7 +1342,7 @@ var
 begin
   Settings := TAtlasPluginSettings.Defaults;
   Assert.IsTrue(Settings.FormatCode);
-  Assert.AreEqual($E046, Settings.FormatCodeKey, 'Strg+Umschalt+Alt+F');
+  Assert.AreEqual($E04C, Settings.FormatCodeKey, 'Strg+Umschalt+Alt+L');
   Settings.FormatCode := False;
   Settings.FormatCodeKey := $C046;
   Store := TMemoryStore.Create;

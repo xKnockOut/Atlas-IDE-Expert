@@ -298,8 +298,7 @@ uses
   Atlas.UI.Popup.Draw,
   Atlas.Core.Style.Palette,
   Atlas.Core.Completion.Sets,
-  Atlas.Core.Diagnostics.Timing,
-  Atlas.UI.Popup.Accessibility;
+  Atlas.Core.Diagnostics.Timing;
 
 const
   TextFlags = DT_LEFT or DT_VCENTER or DT_SINGLELINE or DT_NOPREFIX;

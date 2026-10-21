@@ -79,6 +79,7 @@
         <DCCReference Include="Source\Core\Setup.Core.Ides.pas"/>
         <DCCReference Include="Source\Core\Setup.Core.Installer.pas"/>
         <DCCReference Include="Source\Core\Setup.Core.SettingsCommand.pas"/>
+        <DCCReference Include="Source\Core\Setup.Core.License.pas"/>
         <DCCReference Include="Source\Adapters\Setup.Adapters.WindowsSystem.pas"/>
         <DCCReference Include="Source\Shell\Setup.Shell.Texts.pas"/>
         <DCCReference Include="Source\Shell\Setup.Shell.MainForm.pas"/>

@@ -52,6 +52,8 @@ type
     procedure DarkPairsStandOut;
     [Test]
     procedure InlayHintColorsMixFromBackground;
+    [Test]
+    procedure ChromeColorsFollowTheIdeToolbar;
   end;
 
   [TestFixture]
@@ -655,6 +657,34 @@ begin
   Hint := TAtlasColors.InlayHint(Back);
   Assert.AreEqual(TAtlasColorMath.Mix(Colors.Text, Back, 0.8), Hint.Text);
   Assert.AreEqual(TAtlasColorMath.Mix(Colors.Accent, Back, 0.2), Hint.Fill);
+end;
+
+procedure TAtlasPaletteTests.ChromeColorsFollowTheIdeToolbar;
+var
+  Face, Text: TAtlasColor;
+  Colors: TAtlasColors;
+begin
+  // Dunkles IDE-Thema: Fläche der Werkzeugleiste statt des fast schwarzen Gutter der Palette.
+  Face := TAtlasColorMath.FromHex('#2D2D30');
+  Text := TAtlasColorMath.FromHex('#F1F1F1');
+  Colors := TAtlasColors.ForChrome(Face, Text);
+  Assert.IsTrue(Colors.IsDark);
+  Assert.AreEqual(Face, Colors.Gutter);
+  Assert.AreEqual(Face, Colors.Surface);
+  Assert.AreEqual(Text, Colors.Text);
+  Assert.AreEqual(TAtlasColorMath.Mix(Text, Face, 0.7), Colors.Muted);
+  Assert.AreEqual(TAtlasColorMath.Mix(Text, Face, 0.18), Colors.Line);
+  Assert.AreEqual(TAtlasColors.Dark.Badges[TAtlasBadgeKind.Type_].Background,
+    Colors.Badges[TAtlasBadgeKind.Type_].Background, 'Badges aus der dunklen Palette');
+  Assert.IsTrue(TAtlasColorMath.Contrast(Colors.Muted, Face) >= 4.5, 'gedämpfter Text lesbar');
+  // Helles Thema.
+  Face := TAtlasColorMath.FromHex('#F0F0F0');
+  Text := TAtlasColorMath.FromHex('#000000');
+  Colors := TAtlasColors.ForChrome(Face, Text);
+  Assert.IsFalse(Colors.IsDark);
+  Assert.AreEqual(Face, Colors.Gutter);
+  Assert.IsTrue(TAtlasColorMath.Contrast(Colors.Muted, Face) >= 4.5, 'gedämpfter Text lesbar (hell)');
+  Assert.AreNotEqual(Face, Colors.Selection, 'Auswahl abgesetzt');
 end;
 
 { TAtlasWrapTests }

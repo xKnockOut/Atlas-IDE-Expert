@@ -10,7 +10,12 @@
 // - Jedes Glied kennt seine Geschwister für das Sprungmenü in
 //   Quelltextreihenfolge: Mitglieder des Typs (bei Methoden nur Methoden),
 //   lokale Routinen desselben Rumpfs bzw. auf Unit-Ebene alle Typen, alle
-//   Routinen oder alle Konstanten und Variablen.
+//   Routinen oder alle Konstanten und Variablen. Das Unit-Glied bietet alle
+//   Elemente der Unit-Ebene an (Ersatz für „Typ suchen“/„Methode suchen“ der
+//   IDE-Navigationsleiste).
+// - Jedes Glied kennt außerdem seine Kinder für das Menü hinter „›“ (wie die
+//   Adressleiste im Explorer): Mitglieder eines Typs, lokale Routinen einer
+//   Methode, beim Unit-Glied die Elemente der Unit-Ebene.
 // - Target wählt das Sprungziel (Implementierung oder Deklaration), Filter
 //   die Wortgrenzen-Suche des Menüs.
 
@@ -37,6 +42,8 @@ type
     Siblings: TArray<Integer>;
     /// <summary>Index von Node in Siblings; -1, wenn nicht enthalten.</summary>
     Current: Integer;
+    /// <summary>Kinder für das Menü hinter dem Glied in Quelltextreihenfolge; leer = kein Menü.</summary>
+    Children: TArray<Integer>;
   end;
 
   TAtlasCrumbs = TArray<TAtlasCrumb>;
@@ -52,6 +59,11 @@ type
     /// <summary>Badge eines Knotens; Routinen nach dem ersten Wort ihrer Kopfzeile (procedure/function).</summary>
     class function BadgeOf(const ANodes: TAtlasOutlineNodes; const ALines: TArray<string>;
       ANode: Integer): TAtlasBadge; static;
+    /// <summary>Elemente der Unit-Ebene (Typen, Routinen, Konstanten, Variablen) in Quelltextreihenfolge; Rümpfe
+    /// mit Deklaration nur einmal.</summary>
+    class function UnitMembers(const ANodes: TAtlasOutlineNodes): TArray<Integer>; static;
+    /// <summary>Kinder von ANode: Mitglieder eines Typs bzw. lokale Routinen im Rumpf einer Routine.</summary>
+    class function Children(const ANodes: TAtlasOutlineNodes; ANode: Integer): TArray<Integer>; static;
     /// <summary>Name ohne Besitzer: "TFoo.Bar" → "Bar".</summary>
     class function ShortName(const AName: string): string; static;
     /// <summary>Sprungziel: mit AImplementation der Rumpf (ohne Rumpf die Deklaration), sonst die
@@ -290,6 +302,7 @@ begin
   Result.Badge := TAtlasBreadcrumbs.BadgeOf(ANodes, ALines, ANode);
   Result.Node := ANode;
   Result.Siblings := SiblingsOf(ANodes, ANode);
+  Result.Children := TAtlasBreadcrumbs.Children(ANodes, ANode);
   Result.Current := -1;
   for Index := 0 to High(Result.Siblings) do
     if Result.Siblings[Index] = ANode then
@@ -303,6 +316,7 @@ begin
   Result.Node := -1;
   Result.Siblings := nil;
   Result.Current := -1;
+  Result.Children := nil;
 end;
 
 /// <summary>Pfad von der Unit-Ebene bis ANode (einschließlich), ohne Abschnitte.</summary>
@@ -327,7 +341,11 @@ var
 begin
   Result := nil;
   if AShowUnit and (AUnitName <> '') then
+  begin
     Result := [TextCrumb(AUnitName, MakeBadge(TAtlasBadgeKind.Unit_, 'un'))];
+    Result[0].Siblings := UnitMembers(ANodes);
+    Result[0].Children := Result[0].Siblings;
+  end;
   Section := SectionAt(ALines, ALine);
   Name := '';
   case Section of
@@ -370,6 +388,47 @@ begin
     end
     else
       Result := Result + [NewCrumb(ANodes, ALines, Item)];
+  end;
+end;
+
+class function TAtlasBreadcrumbs.UnitMembers(const ANodes: TAtlasOutlineNodes): TArray<Integer>;
+var
+  Index, Parent: Integer;
+begin
+  Result := nil;
+  for Index := 0 to High(ANodes) do
+  begin
+    Parent := ANodes[Index].Parent;
+    if ANodes[Index].Hidden or IsSection(ANodes[Index]) or ((Parent >= 0) and not IsSection(ANodes[Parent])) then
+      Continue;
+    Result := Result + [Index];
+  end;
+end;
+
+class function TAtlasBreadcrumbs.Children(const ANodes: TAtlasOutlineNodes; ANode: Integer): TArray<Integer>;
+var
+  Owner, Index: Integer;
+  Routine: Boolean;
+begin
+  Result := nil;
+  if (ANode < 0) or (ANode > High(ANodes)) then
+    Exit;
+  // Bei Routinen liegen die lokalen Routinen im Rumpf, nicht an der Deklaration.
+  Owner := Target(ANodes, ANode, True);
+  Routine := IsRoutine(ANodes[Owner]);
+  for Index := 0 to High(ANodes) do
+  begin
+    if ANodes[Index].Parent <> Owner then
+      Continue;
+    if Routine then
+    begin
+      // Nur lokale Routinen, keine lokalen Variablen und Konstanten.
+      if not IsRoutine(ANodes[Index]) then
+        Continue;
+    end
+    else if ANodes[Index].Hidden then
+      Continue;
+    Result := Result + [Index];
   end;
 end;
 

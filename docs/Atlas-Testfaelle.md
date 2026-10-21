@@ -2450,6 +2450,15 @@ Voraussetzung für EX2 bis EX7: mindestens eine Einstellung trägt `x-experiment
 | BK12 | Zweites Editorfenster öffnen (Ansicht › Neues Editorfenster) | Auch dort eine Leiste |
 | BK13 | .txt-Datei aktivieren; Server beenden | Hinweis „Keine Gliederung an dieser Stelle“ bzw. „Der Atlas-Server läuft nicht“, Höhe unverändert |
 | BK14 | `editor.breadcrumbs` aus | Leisten verschwinden, Strg+Umschalt+. ist frei, Palettenbefehl fehlt |
+| BK15 | Dunkles IDE-Thema, `editor.breadcrumbsIdeColors` an (Vorgabe) | Leiste hat die Farbe der Werkzeugleisten darüber (nicht fast schwarz), Schrift wie dort; Badges unverändert |
+| BK16 | `editor.breadcrumbsIdeColors` aus; danach Thema hell ↔ dunkel wechseln | Atlas-Palette wie bisher; nach dem Wechsel passen die Farben ohne Neustart |
+| BK17 | `editor.breadcrumbsShowUnit` an, Klick auf das Unit-Glied | Menü mit allen Typen, Routinen, Konstanten und Variablen der Unit in Quelltextreihenfolge; Enter springt |
+| BK18 | Klick auf das „›“ hinter einem Typ | Menü mit den Mitgliedern des Typs, vorgewählt das Glied rechts daneben; Hover über „›“ hebt es hervor, Tooltip „Klick: Inhalt …“ |
+| BK19 | Caret in einer Methode mit lokalen Prozeduren | Hinter dem Methodenglied steht ein „›“ auch am Ende; Klick listet die lokalen Routinen |
+| BK20 | Strg+Klick auf ein Glied; Strg+Umschalt+Klick auf ein Methodenglied | Sprung zur Implementierung bzw. zur Deklaration; Strg+Klick aufs Unit-Glied springt an den Dateianfang |
+| BK21 | Strg+Umschalt+., ←, Strg+↓ bzw. Strg+Enter | Kindermenü des gewählten Glieds bzw. Sprung dorthin |
+| BK22 | `editor.breadcrumbsHideIdeToolbar` an (Vorgabe), mehrere Reiter öffnen und wechseln, zweites Editorfenster | Navigationsleiste der IDE („Typ suchen“/„Methode suchen“) bleibt überall weg, kein Flackern beim Reiterwechsel |
+| BK23 | `editor.breadcrumbsHideIdeToolbar` aus bzw. `editor.breadcrumbs` aus bzw. Atlas entladen | Navigationsleiste der IDE ist wieder an alter Stelle (unter den Reitern, über dem Editor) |
 
 ## Extrahieren, case und with (#50)
 
@@ -2529,6 +2538,48 @@ Voraussetzung für EX2 bis EX7: mindestens eine Einstellung trägt `x-experiment
 | RS10 | Literal `'x'` bzw. `''` | Kein Eintrag (könnte ein Char sein) |
 | RS11 | `completion.resourceStrings` aus, RS1 | Kein Eintrag |
 
+## Suchleiste unter dem Editor und Reiter „Atlas-Suche“ (#878, #877)
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| SU1 | Cursor auf `Open` in einer Methode, Strg+F | Unter dem Editor erscheint die Suchleiste, „Open“ steht markiert im Suchfeld, der Fokus liegt dort; alle Treffer im Bereich sind gerahmt, der Zähler zeigt „n von m“ |
+| SU2 | Im Suchfeld tippen | Rahmen und Zähler folgen jedem Tastendruck; der Editor springt zum nächsten Treffer ab der Stelle, an der die Leiste geöffnet wurde |
+| SU3 | Enter, Enter, Umschalt+Enter | Nächster, nächster, voriger Treffer; Zähler passt; am Ende geht es mit Meldung von vorn weiter |
+| SU4 | Nach SU3 das Fenster Meldungen ansehen | Neuer Reiter „Atlas-Suche“ mit Kopfzeile „Suche nach „Open“ … in Datei.pas, Methode X: m Treffer“ und je Treffer Datei(Zeile) und Zeilentext; der Fokus ist zurück in der Leiste; Enter baut die Liste nicht neu auf |
+| SU5 | Doppelklick auf eine Zeile im Reiter | Editor springt auf die Zeile und Spalte des Treffers (auch bei Tabs) |
+| SU6 | „Bezeichner“ anhaken | Treffer in Kommentaren und Strings verschwinden; „Groß/klein“ und „Ganzes Wort“ sind gesperrt; Kopfzeile der Liste nennt „(Bezeichner)“ |
+| SU7 | Bereich „Unit“, dann zurück auf „Methode“ und in der zweiten Liste die äußere Routine wählen (verschachtelte Routine) | Treffer der ganzen Unit bzw. der äußeren Routine; die Stufenliste gibt es nur bei „Methode“ |
+| SU8 | Mehrere Zeilen markieren, Strg+F | Bereich „Auswahl“ vorgewählt; nur Treffer in der Markierung; ohne Markierung fehlt „Auswahl“ in der Liste |
+| SU9 | Esc in der Leiste (auch nach Klick in eine Auswahlliste oder ein Kästchen) | Leiste verschwindet, Fokus im Editor, Rahmen weg; F3 springt weiter zum nächsten Treffer der letzten Suche |
+| SU10 | Strg+Umschalt+Alt+F im Editor | Leiste mit Bereich „Methode“, innerste Routine |
+| SU11 | Zweites Editorfenster (Ansicht › Neues Editorfenster), dort Strg+F | Eigene Leiste in diesem Fenster; die Leiste im ersten Fenster ist zu |
+| SU12 | Anderen Reiter (andere Unit) aktivieren, im Suchfeld weitertippen | Suche gilt für die neue Unit ab deren Cursor |
+| SU13 | Optionen › Atlas › Units suchen › „Treffer im Reiter „Atlas-Suche“ … auflisten“ aus | Reiter „Atlas-Suche“ verschwindet, Schaltfläche „In Meldungen“ fehlt, Enter springt nur |
+| SU14 | „Atlas-Suche statt IDE-Suche“ aus | Strg+F und F3 gehören wieder der IDE; Strg+Umschalt+Alt+F öffnet weiter die Atlas-Leiste |
+| SU15 | Helles und dunkles IDE-Thema wechseln, Leiste offen | Leiste folgt dem Thema (Felder, Kästchen, Knöpfe lesbar) |
+| SU16 | Leiste offen, Tastatur in der Leiste: Strg+A, Strg+C, Strg+V, Pfeile im Suchfeld | Wirken im Suchfeld, nicht im Editor |
+| SU17 | Zuletzt mit Bereich Methode gesucht; außerhalb jeder Methode (etwa im interface-Teil) einen Bezeichner markieren, F3 und Umschalt+F3 | Springt zum nächsten bzw. vorigen Vorkommen des markierten Bezeichners in der ganzen Unit; Meldung „außerhalb einer Methode, gesucht wird in der ganzen Unit“; weiteres F3 geht mit dem neuen Suchtext weiter |
+| SU18 | Leiste öffnen, ins Fenster Meldungen oder Struktur klicken, dann nacheinander ins Suchfeld, auf ein Kästchen, in die Bereichsliste und auf ↓ klicken | Jeder Klick wirkt beim ersten Mal (Fokus bleibt in der Leiste, Kästchen schaltet um); holt die IDE den Fokus zurück, steht „Suchleiste: Fokus nach dem Klick …“ mit Fensterklasse im Diagnoseprotokoll |
+
+## Werte im Hover beim Debuggen (#891)
+
+Vorbereitung: Ein kleines VCL-Projekt mit `FList: TStringList` (drei Einträge), einem Record-Array `Kunden` und einer lokalen Variablen `I`, Haltepunkt in einer Methode, die alle drei verwendet. Atlas-Tooltip an (`editor.hoverTooltip`), `debug.hoverValues` an.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| DH1 | Win32, F9 bis zum Haltepunkt; Maus auf `I` | Oben im Atlas-Tooltip ein Akzentbalken, `I` in der Editorschrift, darunter der Wert; darunter wie gewohnt Deklaration und Doku (**Abnahme**) |
+| DH2 | Maus auf `Count` in `FList.Count` | Ausdruck `FList.Count`, Wert `3` |
+| DH3 | Maus auf `FList` in derselben Zeile | Ausdruck `FList`, Wert der Objektdarstellung der IDE |
+| DH4 | Maus auf `Name` in `Kunden[I].Name` | Ausdruck `Kunden[I].Name` und der Name |
+| DH5 | Maus auf `Name` in `Get(I).Name` bzw. `TKunde(Obj).Name` | Kein Wert, nur der normale Hover (keine Auswertung mit Aufruf) |
+| DH6 | Maus auf ein Wort in einem String und in einem `//`-Kommentar, auf `begin`, auf eine Zahl | Kein Wert |
+| DH7 | Win64-Debugger (LLDB): Maus auf `I` | Zuerst „wird ausgewertet …“, kurz danach der Wert im offenen Tooltip; die IDE bleibt bedienbar (**Abnahme**) |
+| DH8 | F8 drücken, während der Tooltip offen ist | Tooltip schließt; nach dem Schritt zeigt der Hover den neuen Wert |
+| DH9 | F9, Programm läuft; Maus auf `I` | Kein Wert, nur der normale Hover |
+| DH10 | Lokale Variable, die der Server nicht kennt (z. B. in einer Include-Datei) | Tooltip zeigt nur den Wert |
+| DH11 | Schnellschalter bzw. *Tools › Optionen › Atlas › Debuggen*: „Variablenwerte im Hover beim Debuggen“ aus | Hover zeigt keinen Wert mehr; wieder an: Wert wieder da |
+| DH12 | Atlas-Tooltip aus (`editor.hoverTooltip`), Maus auf `I` am Haltepunkt | Tooltip der IDE zeigt `I = <Wert>` vor dem Hover-Text |
+| DH13 | Sprachausgabe (Narrator) an, Maus auf `I` | Ansage beginnt mit `I = <Wert>` |
 ## Kein Hängen, während der Server indexiert (#874)
 
 Vorher: Eine große Projektgruppe öffnen (Index läuft, Fortschritt im Statusfeld), „Diagnosemodus“ an.
@@ -2648,9 +2699,9 @@ Vorher: Projekt mit Index geladen, eine Unit mit `uses System.SysUtils, System.C
 
 | Nr. | Schritt | Erwartet |
 |---|---|---|
-| FO1 | Unit mit falsch eingerückten Zeilen (begin/end, if/else ohne begin, try/finally, case, repeat, Klassenrumpf), Strg+Umschalt+Alt+F | Jede Ebene um `indentSize` eingerückt; Folgezeilen einer Anweisung behalten ihren Abstand; ein Rückgängig stellt alles wieder her |
+| FO1 | Unit mit falsch eingerückten Zeilen (begin/end, if/else ohne begin, try/finally, case, repeat, Klassenrumpf), Strg+Umschalt+Alt+L | Jede Ebene um `indentSize` eingerückt; Folgezeilen einer Anweisung behalten ihren Abstand; ein Rückgängig stellt alles wieder her |
 | FO2 | FO1 ein zweites Mal | Meldung „Atlas: Nichts zu formatieren.“, keine Änderung |
-| FO3 | Drei Zeilen markieren, Strg+Umschalt+Alt+F | Nur die markierten Zeilen ändern sich |
+| FO3 | Drei Zeilen markieren, Strg+Umschalt+Alt+L | Nur die markierten Zeilen ändern sich |
 | FO4 | Mehrzeiliger Kommentar, String mit Leerzeichen, asm-Block, `{$IFDEF} … {$ELSE} … {$ENDIF}` mit schiefer Einrückung im Zweig hinter `{$ELSE}` | Alles davon bleibt unverändert |
 | FO5 | `format.beginPlacement` = `newLine`, `if A then begin` | `begin` in eigener Zeile unter `if`; was hinter `begin` stand, eine Ebene tiefer in eigener Zeile |
 | FO6 | `format.beginPlacement` = `sameLine`, `begin` allein unter `if A then` | `if A then begin` in einer Zeile |

@@ -1,6 +1,6 @@
 ﻿unit Atlas.Common.Index.CacheHousekeeping.Tests;
 
-// Tests für das Aufräumen des Cache-Ordners (#184).
+// Tests für das Aufräumen des Cache-Ordners (#184), verwaiste und ungenutzte Caches (#905).
 
 interface
 
@@ -21,6 +21,18 @@ type
     procedure NeverRemovesLockedCache;
     [Test]
     procedure KeepsProjectAndLibraryCache;
+    [Test]
+    procedure OrphanWhenNoOriginExists;
+    [Test]
+    procedure OrphanNeedsKnownOrigin;
+    [Test]
+    procedure OrphanNeverLockedOrKept;
+    [Test]
+    procedure UnusedOlderThanMaxAge;
+    [Test]
+    procedure UnusedOffWithZeroDays;
+    [Test]
+    procedure MaxBytesOfZeroIsUnlimited;
   end;
 
   [TestFixture]
@@ -63,6 +75,20 @@ type
     procedure ConcurrentWritersLeaveReadableCache;
     [Test]
     procedure FailedReplaceLeavesNoRemains;
+    [Test]
+    procedure RemoveOrphansDeletesCacheOfDeletedProject;
+    [Test]
+    procedure RemoveOrphansKeepsOwnLockedAndLibrary;
+    [Test]
+    procedure RemoveOrphansReadsUnitsOfOldCaches;
+    [Test]
+    procedure RemoveOrphansDeletesLegacyAndBuildFiles;
+    [Test]
+    procedure OriginExistsWithMissingDrive;
+    [Test]
+    procedure TouchUseRenewsLastUse;
+    [Test]
+    procedure RemoveUnusedDeletesOldCaches;
   end;
 
 implementation
@@ -72,6 +98,7 @@ uses
   System.Classes,
   System.IOUtils,
   Atlas.Common.Index.Contract,
+  Atlas.Common.Index.Cache,
   Atlas.Common.Index.CacheHousekeeping,
   Atlas.Common.Index.Adapters.CacheDirectory,
   Atlas.Common.Index.Adapters.DiskFileSystem;
@@ -82,6 +109,29 @@ begin
   Result.Size := ASize;
   Result.LastWrite := EncodeDate(2026, 1, 1) - AAgeDays;
   Result.Locked := ALocked;
+  Result.Origins := nil;
+end;
+
+function WithOrigins(const AInfo: TCacheFileInfo; const AOrigins: TArray<string>): TCacheFileInfo;
+begin
+  Result := AInfo;
+  Result.Origins := AOrigins;
+end;
+
+/// <summary>Inhalt einer Build-Datei (#556) mit AProject.</summary>
+function BuildFileText(const AProject: string): string;
+begin
+  Result := '{"project":"' + AProject.Replace('\', '\\') + '"}';
+end;
+
+/// <summary>Nur Dateien, die mit "da" beginnen, existieren.</summary>
+function ExistsWhenNamedDa: TFunc<string, Boolean>;
+begin
+  Result :=
+    function(APath: string): Boolean
+    begin
+      Result := APath.StartsWith('da');
+    end;
 end;
 
 function StartWriter(const AFile, AContent: string; ARounds: Integer): TThread;
@@ -161,6 +211,58 @@ begin
     Info('fremd', 10, 5)], 100, TArray<string>.Create('Projekt', 'Bibliothek'));
   Assert.AreEqual<NativeInt>(1, Length(Removed));
   Assert.AreEqual('fremd', Removed[0]);
+end;
+
+procedure TIndexCacheHousekeepingTests.OrphanWhenNoOriginExists;
+var
+  Removed: TArray<string>;
+begin
+  // Ein Cache lebt, solange irgendeine seiner Herkunftsdateien existiert.
+  Removed := TIndexCacheHousekeeping.SelectOrphans([WithOrigins(Info('weg', 10, 1), ['fehlt.dproj']),
+    WithOrigins(Info('teils', 10, 1), ['fehlt.pas', 'da.pas']), WithOrigins(Info('ganz', 10, 1), ['da.dproj'])],
+    nil, ExistsWhenNamedDa());
+  Assert.AreEqual<NativeInt>(1, Length(Removed));
+  Assert.AreEqual('weg', Removed[0]);
+end;
+
+procedure TIndexCacheHousekeepingTests.OrphanNeedsKnownOrigin;
+begin
+  // Ohne Herkunft (Bibliothek, unlesbarer Cache) wird nichts entschieden.
+  Assert.AreEqual<NativeInt>(0, Length(TIndexCacheHousekeeping.SelectOrphans([Info('unbekannt', 10, 1),
+    WithOrigins(Info('leer', 10, 1), [''])], nil, ExistsWhenNamedDa())));
+end;
+
+procedure TIndexCacheHousekeepingTests.OrphanNeverLockedOrKept;
+begin
+  Assert.AreEqual<NativeInt>(0, Length(TIndexCacheHousekeeping.SelectOrphans([
+    WithOrigins(Info('gesperrt', 10, 1, True), ['fehlt']), WithOrigins(Info('Eigen', 10, 1), ['fehlt'])],
+    TArray<string>.Create('eigen'), ExistsWhenNamedDa())));
+end;
+
+procedure TIndexCacheHousekeepingTests.UnusedOlderThanMaxAge;
+var
+  Removed: TArray<string>;
+begin
+  // Info: LastWrite = 1.1.2026 minus Alter in Tagen.
+  Removed := TIndexCacheHousekeeping.SelectUnused([Info('alt', 10, 20), Info('neu', 10, 3),
+    Info('alt-gesperrt', 10, 30, True), Info('alt-eigen', 10, 30)], TArray<string>.Create('alt-eigen'),
+    EncodeDate(2026, 1, 1), 14);
+  Assert.AreEqual<NativeInt>(1, Length(Removed));
+  Assert.AreEqual('alt', Removed[0]);
+end;
+
+procedure TIndexCacheHousekeepingTests.UnusedOffWithZeroDays;
+begin
+  Assert.AreEqual<NativeInt>(0, Length(TIndexCacheHousekeeping.SelectUnused([Info('uralt', 10, 3000)], nil,
+    EncodeDate(2026, 1, 1), 0)));
+end;
+
+procedure TIndexCacheHousekeepingTests.MaxBytesOfZeroIsUnlimited;
+begin
+  Assert.AreEqual<Int64>(Int64(256) * 1024 * 1024, TIndexCacheHousekeeping.MaxBytesOf(256));
+  Assert.AreEqual<Int64>(High(Int64), TIndexCacheHousekeeping.MaxBytesOf(0));
+  Assert.AreEqual<NativeInt>(0, Length(TIndexCacheHousekeeping.SelectForRemoval([Info('a', 1000, 1)],
+    TIndexCacheHousekeeping.MaxBytesOf(0), '')));
 end;
 
 { TIndexCacheDirectoryTests }
@@ -470,6 +572,143 @@ begin
   Assert.IsTrue(FileSystem.ReadText(Cache, Text));
   Assert.AreEqual('{}', Text, 'alter Stand vollständig erhalten');
   Assert.AreEqual<NativeInt>(1, Length(TDirectory.GetFiles(FRoot)), 'keine .tmp- oder .bak-Reste');
+end;
+
+procedure TIndexCacheDirectoryTests.RemoveOrphansDeletesCacheOfDeletedProject;
+var
+  Alive, Gone, AliveProject, GoneProject: string;
+begin
+  AliveProject := CreateFile(TPath.Combine(TPath.Combine(FRoot, 'main'), 'App.dproj'), 1);
+  GoneProject := CreateFile(TPath.Combine(TPath.Combine(FRoot, 'feature'), 'App.dproj'), 1);
+  Alive := CreateFile(TIndexCacheDirectory.FileFor(FRoot, '37.0', AliveProject), 10);
+  Gone := CreateFile(TIndexCacheDirectory.FileFor(FRoot, '37.0', GoneProject), 10);
+  TIndexCacheDirectory.WriteOrigin(Alive, AliveProject);
+  TIndexCacheDirectory.WriteOrigin(Gone, GoneProject);
+  Assert.AreEqual(GoneProject, TIndexCacheDirectory.ReadOrigin(Gone));
+  // Der Branch-Ordner wird gelöscht.
+  TDirectory.Delete(ExtractFileDir(GoneProject), True);
+  Assert.AreEqual(1, TIndexCacheDirectory.RemoveOrphans(FRoot, nil));
+  Assert.IsTrue(FileExists(Alive));
+  Assert.IsFalse(FileExists(Gone));
+  // Samt projekt.txt und leerem Ordner.
+  Assert.IsFalse(TDirectory.Exists(ExtractFileDir(Gone)));
+  Assert.AreEqual(0, TIndexCacheDirectory.RemoveOrphans(FRoot, nil));
+end;
+
+procedure TIndexCacheDirectoryTests.RemoveOrphansKeepsOwnLockedAndLibrary;
+var
+  Own, Locked, Library_, Missing: string;
+  Lock: TStream;
+begin
+  Missing := TPath.Combine(FRoot, 'fehlt.dproj');
+  Own := CreateFile(TIndexCacheDirectory.FileFor(FRoot, '37.0', 'Eigen'), 10);
+  Locked := CreateFile(TIndexCacheDirectory.FileFor(FRoot, '37.0', 'Gesperrt'), 10);
+  Library_ := CreateFile(TIndexCacheDirectory.LibraryFileFor(FRoot, '37.0', 'Win64'), 10);
+  TIndexCacheDirectory.WriteOrigin(Own, Missing);
+  TIndexCacheDirectory.WriteOrigin(Locked, Missing);
+  Lock := TIndexCacheDirectory.TryLock(Locked);
+  try
+    Assert.AreEqual(0, TIndexCacheDirectory.RemoveOrphans(FRoot, TArray<string>.Create(Own)));
+  finally
+    Lock.Free;
+  end;
+  Assert.IsTrue(FileExists(Own) and FileExists(Locked) and FileExists(Library_));
+end;
+
+procedure TIndexCacheDirectoryTests.RemoveOrphansReadsUnitsOfOldCaches;
+var
+  Alive, Gone, AliveUnit: string;
+  UnitIndex: TUnitIndex;
+begin
+  // Caches von vor #905 haben keine projekt.txt: Die Projekt-Units im Cache entscheiden.
+  AliveUnit := CreateFile(TPath.Combine(TPath.Combine(FRoot, 'Quelle'), 'Haupt.pas'), 1);
+  UnitIndex := Default(TUnitIndex);
+  UnitIndex.UnitName := 'Haupt';
+  UnitIndex.FileName := AliveUnit;
+  Alive := TIndexCacheDirectory.FileFor(FRoot, '37.0', 'Lebt');
+  ForceDirectories(ExtractFileDir(Alive));
+  TFile.WriteAllBytes(Alive, TIndexCache.Serialize([UnitIndex]));
+  UnitIndex.FileName := TPath.Combine(TPath.Combine(FRoot, 'Geloescht'), 'Haupt.pas');
+  Gone := TIndexCacheDirectory.FileFor(FRoot, '37.0', 'Weg');
+  ForceDirectories(ExtractFileDir(Gone));
+  TFile.WriteAllBytes(Gone, TIndexCache.Serialize([UnitIndex]));
+  Assert.AreEqual(1, TIndexCacheDirectory.RemoveOrphans(FRoot, nil));
+  Assert.IsTrue(FileExists(Alive));
+  Assert.IsFalse(FileExists(Gone));
+  // Die gefundene Unit steht jetzt als Herkunft da; der Cache wird nicht wieder gelesen.
+  Assert.AreEqual(AliveUnit, TIndexCacheDirectory.ReadOrigin(Alive));
+  UnitIndex := Default(TUnitIndex);
+end;
+
+procedure TIndexCacheDirectoryTests.RemoveOrphansDeletesLegacyAndBuildFiles;
+var
+  Legacy, BuildGone, BuildAlive, Project, Other: string;
+begin
+  Legacy := CreateCache('index-00000001.json');
+  Other := CreateCache('anderes.json');
+  Project := CreateFile(TPath.Combine(TPath.Combine(FRoot, 'main'), 'App.dproj'), 1);
+  BuildAlive := TPath.Combine(FRoot, 'build-00000001.json');
+  TFile.WriteAllText(BuildAlive, BuildFileText(Project), TEncoding.UTF8);
+  BuildGone := TPath.Combine(FRoot, 'build-00000002.json');
+  TFile.WriteAllText(BuildGone, BuildFileText(TPath.Combine(FRoot, 'fehlt.dproj')), TEncoding.UTF8);
+  Assert.AreEqual(2, TIndexCacheDirectory.RemoveOrphans(FRoot, nil));
+  Assert.IsFalse(FileExists(Legacy));
+  Assert.IsFalse(FileExists(BuildGone));
+  Assert.IsTrue(FileExists(BuildAlive));
+  Assert.IsTrue(FileExists(Other));
+end;
+
+procedure TIndexCacheDirectoryTests.OriginExistsWithMissingDrive;
+var
+  Drive: Char;
+begin
+  Assert.IsTrue(TIndexCacheDirectory.OriginExists(FRoot));
+  Assert.IsFalse(TIndexCacheDirectory.OriginExists(TPath.Combine(FRoot, 'fehlt.dproj')));
+  {$IFDEF MSWINDOWS}
+  // Laufwerk nicht verbunden (USB, Netz): nicht als gelöscht werten.
+  for Drive := 'Z' downto 'D' do
+    if not DirectoryExists(Drive + ':\') then
+    begin
+      Assert.IsTrue(TIndexCacheDirectory.OriginExists(Drive + ':\Projekte\App.dproj'));
+      Break;
+    end;
+  {$ENDIF}
+end;
+
+procedure TIndexCacheDirectoryTests.TouchUseRenewsLastUse;
+var
+  Cache: string;
+begin
+  Cache := CreateFile(TIndexCacheDirectory.FileFor(FRoot, '37.0', 'Projekt'), 10);
+  TFile.SetLastWriteTime(Cache, Now - 100);
+  Assert.IsTrue(TIndexCacheDirectory.LastUse(Cache) < Now - 99);
+  // Laden ohne Änderung schreibt den Cache nicht, zählt aber als Benutzung.
+  TIndexCacheDirectory.TouchUse(Cache);
+  Assert.IsTrue(TIndexCacheDirectory.LastUse(Cache) > Now - 1);
+  Assert.IsTrue(TFile.GetLastWriteTime(Cache) < Now - 99, 'der Cache selbst bleibt unverändert');
+end;
+
+procedure TIndexCacheDirectoryTests.RemoveUnusedDeletesOldCaches;
+var
+  Old, Used, Own, Library_: string;
+begin
+  Old := CreateFile(TIndexCacheDirectory.FileFor(FRoot, '37.0', 'Alt'), 10);
+  Used := CreateFile(TIndexCacheDirectory.FileFor(FRoot, '37.0', 'Benutzt'), 10);
+  Own := CreateFile(TIndexCacheDirectory.FileFor(FRoot, '37.0', 'Eigen'), 10);
+  Library_ := CreateFile(TIndexCacheDirectory.LibraryFileFor(FRoot, '23.0', 'Win32'), 10);
+  TFile.SetLastWriteTime(Old, Now - 30);
+  TFile.SetLastWriteTime(Used, Now - 30);
+  TFile.SetLastWriteTime(Own, Now - 30);
+  TFile.SetLastWriteTime(Library_, Now - 30);
+  TIndexCacheDirectory.TouchUse(Used);
+  Assert.AreEqual(0, TIndexCacheDirectory.RemoveUnused(FRoot, 0, nil), '0 = aus');
+  // Auch der Bibliotheks-Cache einer nicht mehr benutzten Delphi-Version geht.
+  Assert.AreEqual(2, TIndexCacheDirectory.RemoveUnused(FRoot, 14, TArray<string>.Create(Own)));
+  Assert.IsFalse(FileExists(Old));
+  Assert.IsFalse(FileExists(Library_));
+  Assert.IsTrue(FileExists(Used) and FileExists(Own));
+  // Samt Marke und leerem Ordner.
+  Assert.IsFalse(TDirectory.Exists(ExtractFileDir(Old)));
 end;
 
 initialization

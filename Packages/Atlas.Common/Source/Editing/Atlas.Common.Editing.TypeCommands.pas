@@ -54,7 +54,7 @@ uses
   Atlas.Common.Pascal.Contract,
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.Lexer,
-  Atlas.Common.Pascal.Parser,
+  Atlas.Common.Pascal.TreeCache,
   Atlas.Common.Editing.UsesClause,
   Atlas.Common.Editing.ClassMembers;
 
@@ -348,7 +348,7 @@ begin
       if (Location.Symbol.Kind = TIndexSymbolKind.TypeAlias) and (Location.Symbol.Container = '') and
         AContext.Host.ReadFile(Location.FileName, Text) then
       begin
-        Tree := TPascalParser.Parse(Text);
+        Tree := TSyntaxTreeCache.Parse(Text);
         try
           if SetElementIn(Tree, Name, AElement) then
             Exit(True);

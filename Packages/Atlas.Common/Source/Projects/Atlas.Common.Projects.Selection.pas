@@ -99,7 +99,6 @@ var
   Pair: TJSONPair;
   Choice: TProjectBuildChoice;
 begin
-  Root := nil;
   try
     Root := TJSONObject.ParseJSONValue(AText);
   except

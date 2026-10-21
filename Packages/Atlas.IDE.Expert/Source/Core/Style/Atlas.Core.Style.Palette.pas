@@ -68,6 +68,9 @@ type
     class function Dark: TAtlasColors; static;
     /// <summary>Light oder Dark, je nachdem ob ABackground (Fensterfarbe der IDE) dunkel ist.</summary>
     class function ForBackground(ABackground: TAtlasColor): TAtlasColors; static;
+    /// <summary>Farben für Leisten im Rahmen der IDE (Brotkrumenleiste): Fläche AFace und Text AText aus dem
+    /// IDE-Thema, Gedämpftes, Linien und Auswahl daraus gemischt; Badges und Akzent wie ForBackground(AFace).</summary>
+    class function ForChrome(AFace, AText: TAtlasColor): TAtlasColors; static;
     /// <summary>Farben der Inlay-Hint-Marken auf dem Editorhintergrund ABack (P-10): Text deutlich
     /// lesbar, Fläche leicht im Akzent abgesetzt.</summary>
     class function InlayHint(ABack: TAtlasColor): TAtlasHintColors; static;
@@ -83,6 +86,9 @@ const
   AtlasMixInlayText = 0.8;
   AtlasMixInlayPen = 0.45;
   AtlasMixInlayFill = 0.2;
+  /// <summary>Leisten im Rahmen der IDE: Anteile des Textes über der Fläche für gedämpften Text und Linien.</summary>
+  AtlasMixChromeMuted = 0.7;
+  AtlasMixChromeLine = 0.18;
   /// <summary>Chips und Tags (D-07): Innenabstand links und rechts zusammen und Eckenradius, logische Pixel.</summary>
   AtlasChipPad = 12;
   AtlasChipRadius = 4;
@@ -240,6 +246,20 @@ begin
     Result := Dark
   else
     Result := Light;
+end;
+
+class function TAtlasColors.ForChrome(AFace, AText: TAtlasColor): TAtlasColors;
+begin
+  Result := ForBackground(AFace);
+  Result.Surface := AFace;
+  Result.Gutter := AFace;
+  Result.Text := AText;
+  Result.Muted := TAtlasColorMath.Mix(AText, AFace, AtlasMixChromeMuted);
+  Result.Line := TAtlasColorMath.Mix(AText, AFace, AtlasMixChromeLine);
+  if Result.IsDark then
+    Result.Selection := TAtlasColorMath.Mix(Result.Accent, AFace, 0.25)
+  else
+    Result.Selection := TAtlasColorMath.Mix(Result.Accent, AFace, 0.15);
 end;
 
 class function TAtlasColors.InlayHint(ABack: TAtlasColor): TAtlasHintColors;

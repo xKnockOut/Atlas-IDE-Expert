@@ -266,6 +266,7 @@ type
     /// <summary>Einzelnen Test debuggen (#585): Befehle und Marke, Haltepunkt am Anfang der Methode.</summary>
     FTestDebug: TCheckBox;
     FTestBreakAtStart: TCheckBox;
+    FDebugHoverValues: TCheckBox;
     FActionsKey: TEdit;
     FExpandKey: TEdit;
     FShrinkKey: TEdit;
@@ -289,6 +290,8 @@ type
     FOutlineFollowCursor: TCheckBox;
     FBreadcrumbs: TCheckBox;
     FBreadcrumbsShowUnit: TCheckBox;
+    FBreadcrumbsIdeColors: TCheckBox;
+    FBreadcrumbsHideIdeToolbar: TCheckBox;
     // Mitlaufender Kopf (#506).
     FStickyScroll: TCheckBox;
     FStickyScrollMaxLines: TEdit;
@@ -400,6 +403,8 @@ type
     FQuickOpen: TCheckBox;
     FQuickOpenLibrary: TCheckBox;
     FQuickOpenKey: TEdit;
+    FSearchReplace: TCheckBox;
+    FSearchMessages: TCheckBox;
     FWelcomeEnabled: TCheckBox;
     FWelcomeHost: TAtlasChoiceBox;
     FWelcomeLayout: TCheckBox;
@@ -944,6 +949,7 @@ type
     /// <summary>Zum Testen: Test debuggen (#585).</summary>
     property TestDebugCheck: TCheckBox read FTestDebug;
     property TestBreakAtStartCheck: TCheckBox read FTestBreakAtStart;
+    property DebugHoverValuesCheck: TCheckBox read FDebugHoverValues;
     /// <summary>Zum Testen: benannte Lesezeichen (#622).</summary>
     property BookmarksNamedCheck: TCheckBox read FBookmarksNamed;
     property BookmarksSharedCheck: TCheckBox read FBookmarksShared;
@@ -1364,6 +1370,8 @@ begin
   // Brotkrumenleiste (#590).
   FBreadcrumbs := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsBreadcrumbs));
   FBreadcrumbsShowUnit := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsBreadcrumbsShowUnit));
+  FBreadcrumbsIdeColors := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsBreadcrumbsIdeColors));
+  FBreadcrumbsHideIdeToolbar := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsBreadcrumbsHideIdeToolbar));
   FBreadcrumbsKey := AddKey(TAtlasStrings.Text(TAtlasTextId.BreadcrumbsCommand));
   // Mitlaufender Kopf (#506, experimentell).
   FStickyScroll := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsStickyScroll));
@@ -1521,6 +1529,8 @@ begin
   AddSheet(TAtlasTextId.SettingsTabDebug);
   FTestDebug := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsTestDebug));
   FTestBreakAtStart := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsTestBreakAtStart));
+  // Variablenwerte im Hover beim Debuggen (#891).
+  FDebugHoverValues := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsDebugHoverValues));
 
   // Editorbefehle (#399): ein Vorrang für alle.
   AddSheet(TAtlasTextId.SettingsTabCommands);
@@ -2392,6 +2402,8 @@ begin
   FMarks.Bind(FOutlineFollowCursor, ['OutlineFollowCursor']);
   FMarks.Bind(FBreadcrumbs, ['Breadcrumbs']);
   FMarks.Bind(FBreadcrumbsShowUnit, ['BreadcrumbsShowUnit']);
+  FMarks.Bind(FBreadcrumbsIdeColors, ['BreadcrumbsIdeColors']);
+  FMarks.Bind(FBreadcrumbsHideIdeToolbar, ['BreadcrumbsHideIdeToolbar']);
   FMarks.Bind(FBreadcrumbsKey, ['BreadcrumbsKey']);
   FMarks.Bind(FStickyScroll, ['StickyScroll']);
   FMarks.Bind(FStickyScrollMaxLines, ['StickyScrollMaxLines']);
@@ -2548,6 +2560,7 @@ begin
   FMarks.Bind(FStartProfilesStatusField, ['StartProfilesStatusField']);
   FMarks.Bind(FTestDebug, ['TestDebug']);
   FMarks.Bind(FTestBreakAtStart, ['TestBreakAtStart']);
+  FMarks.Bind(FDebugHoverValues, ['DebugHoverValues']);
   FMarks.Bind(FSafeAsk, ['SafeAskAfterCrash']);
   FMarks.Bind(FSafeAuto, ['SafeAutoAfterRepeatedCrash']);
   FMarks.Bind(FSafeKey, ['SafeStartupKey']);
@@ -2578,6 +2591,8 @@ begin
   FMarks.Bind(FQuickOpen, ['QuickOpen']);
   FMarks.Bind(FQuickOpenLibrary, ['QuickOpenLibrary']);
   FMarks.Bind(FQuickOpenKey, ['QuickOpenKey']);
+  FMarks.Bind(FSearchReplace, ['SearchReplaceIde']);
+  FMarks.Bind(FSearchMessages, ['SearchResultsInMessages']);
   FMarks.Bind(FWelcomeEnabled, ['WelcomePage']);
   FMarks.Bind(FWelcomeHost, ['WelcomePageHost']);
   FMarks.Bind(FWelcomeLayout, ['WelcomePageLayout']);
@@ -3993,6 +4008,10 @@ begin
   FQuickOpen := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsQuickOpen));
   FQuickOpenLibrary := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsQuickOpenLibrary));
   FQuickOpenKey := AddKey(TAtlasStrings.Text(TAtlasTextId.SettingsQuickOpenKey));
+  // Suchleiste im Editor (#878).
+  AddTitle(TAtlasTextId.SettingsSearchTitle);
+  FSearchReplace := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsSearchReplace));
+  FSearchMessages := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsSearchMessages));
 end;
 
 procedure TAtlasSettingsPage.AddUndoSection;
@@ -4302,6 +4321,8 @@ begin
   FOutlineFollowCursor.Checked := ASettings.OutlineFollowCursor;
   FBreadcrumbs.Checked := ASettings.Breadcrumbs;
   FBreadcrumbsShowUnit.Checked := ASettings.BreadcrumbsShowUnit;
+  FBreadcrumbsIdeColors.Checked := ASettings.BreadcrumbsIdeColors;
+  FBreadcrumbsHideIdeToolbar.Checked := ASettings.BreadcrumbsHideIdeToolbar;
   FBreadcrumbsKey.Text := ShortCutToText(TShortCut(ASettings.BreadcrumbsKey));
   FStickyScroll.Checked := ASettings.StickyScroll;
   FStickyScrollMaxLines.Text := IntToStr(ASettings.StickyScrollMaxLines);
@@ -4490,6 +4511,7 @@ begin
   FStartProfilesStatusField.Checked := ASettings.StartProfilesStatusField;
   FTestDebug.Checked := ASettings.TestDebug;
   FTestBreakAtStart.Checked := ASettings.TestBreakAtStart;
+  FDebugHoverValues.Checked := ASettings.DebugHoverValues;
   FSafeAsk.Checked := ASettings.SafeAskAfterCrash;
   FSafeAuto.Checked := ASettings.SafeAutoAfterRepeatedCrash;
   case TAtlasSafeMode.KeyOf(ASettings.SafeStartupKey) of
@@ -4531,6 +4553,8 @@ begin
   FQuickOpen.Checked := ASettings.QuickOpen;
   FQuickOpenLibrary.Checked := ASettings.QuickOpenLibrary;
   FQuickOpenKey.Text := ShortCutToText(TShortCut(ASettings.QuickOpenKey));
+  FSearchReplace.Checked := ASettings.SearchReplaceIde;
+  FSearchMessages.Checked := ASettings.SearchResultsInMessages;
   FWelcomeEnabled.Checked := ASettings.WelcomePage;
   FWelcomeHost.Choice := 0;
   if ASettings.WelcomePageHost = 'dockWindow' then
@@ -4651,6 +4675,8 @@ begin
   ASettings.OutlineFollowCursor := FOutlineFollowCursor.Checked;
   ASettings.Breadcrumbs := FBreadcrumbs.Checked;
   ASettings.BreadcrumbsShowUnit := FBreadcrumbsShowUnit.Checked;
+  ASettings.BreadcrumbsIdeColors := FBreadcrumbsIdeColors.Checked;
+  ASettings.BreadcrumbsHideIdeToolbar := FBreadcrumbsHideIdeToolbar.Checked;
   ASettings.BreadcrumbsKey := Integer(TextToShortCut(Trim(FBreadcrumbsKey.Text)));
   ASettings.StickyScroll := FStickyScroll.Checked;
   ASettings.StickyScrollMaxLines := StrToIntDef(FStickyScrollMaxLines.Text, ASettings.StickyScrollMaxLines);
@@ -4862,6 +4888,7 @@ begin
   ASettings.StartProfilesStatusField := FStartProfilesStatusField.Checked;
   ASettings.TestDebug := FTestDebug.Checked;
   ASettings.TestBreakAtStart := FTestBreakAtStart.Checked;
+  ASettings.DebugHoverValues := FDebugHoverValues.Checked;
   ASettings.SafeAskAfterCrash := FSafeAsk.Checked;
   ASettings.SafeAutoAfterRepeatedCrash := FSafeAuto.Checked;
   case FSafeKey.Choice of
@@ -4900,6 +4927,8 @@ begin
   ASettings.QuickOpen := FQuickOpen.Checked;
   ASettings.QuickOpenLibrary := FQuickOpenLibrary.Checked;
   ASettings.QuickOpenKey := Integer(TextToShortCut(Trim(FQuickOpenKey.Text)));
+  ASettings.SearchReplaceIde := FSearchReplace.Checked;
+  ASettings.SearchResultsInMessages := FSearchMessages.Checked;
   ASettings.WelcomePage := FWelcomeEnabled.Checked;
   ASettings.WelcomePageHost := 'welcomePage';
   if FWelcomeHost.Choice = 1 then

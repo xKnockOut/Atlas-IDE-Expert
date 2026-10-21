@@ -189,9 +189,9 @@ begin
     Count := Reads.Count;
     Locator.Provides('BASIS', 'uHilfe', Contains);
     Locator.Provides('Fehlt', 'uHilfe', Contains);
-    Assert.AreEqual(Count + 2, Reads.Count);
+    Assert.AreEqual(Count + 2, Integer(Reads.Count));
     Locator.Provides('Fehlt', 'uBasis', Contains);
-    Assert.AreEqual(Count + 2, Reads.Count);
+    Assert.AreEqual(Count + 2, Integer(Reads.Count));
   finally
     Locator.Free;
     Reads.Free;
