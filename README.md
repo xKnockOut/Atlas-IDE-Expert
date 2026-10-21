@@ -4,7 +4,24 @@
 
 *Deutsche Fassung: [README_DE.md](README_DE.md). The detailed documentation in `docs/` is in German.*
 
-An expert for RAD Studio (Delphi/Object Pascal): an IDE plugin with its own user interface and its own language server (LSP), plus an MCP interface for Claude Code. Features and roadmap are tracked in the [issues](https://github.com/xKnockOut/Atlas-IDE-Expert/issues); epics #130 to #139 describe the stages.
+Atlas is an expert for RAD Studio (Delphi/Object Pascal). It replaces the built-in Code Insight with its own windows and adds code analysis with 95 check rules, refactorings, navigation, form support, testing and debugging aids and its own welcome page to the IDE. The data comes from the **Atlas server**, a language server (LSP) of its own that indexes the project and also runs without the IDE as a linter or as an MCP server for Claude Code.
+
+Features and roadmap are tracked in the [issues](https://github.com/xKnockOut/Atlas-IDE-Expert/issues).
+
+## At a glance
+
+| Area | What Atlas brings |
+|---|---|
+| [Writing](#writing) | Completion with detail panel, parameter hint, code and postfix templates, slash commands (`/uses`, `/extract`, …), generate menu, formatter |
+| [Understanding](#understanding) | Hover with docs, values, inheritance and debugger values, type hints, code metrics, inactive `{$IFDEF}` branches |
+| [Navigating](#navigating) | Breadcrumb bar, outline, peek definition, quick open, unit search, results window, bookmarks and notes |
+| [Code analysis](#code-analysis) | 95 check rules (bugs, code smells, security), profiles, confidence, baseline, compiler check on save, CI linter with SARIF |
+| [Refactorings and code actions](#refactorings-and-code-actions) | Rename including forms, change signature, extract method, implement interface, generate properties and many quick fixes (Alt+Enter) |
+| [Forms](#forms) | Sync with the designer, form components in completion, checks between form and code |
+| [Build, test, debug](#build-test-debug) | Release build guard, DUnitX tests from the editor, launch profiles, values in the hover while debugging |
+| [IDE comfort](#ide-comfort) | Welcome page, command palette, notifications, Git/SVN change marks, safe start |
+| [Settings](#settings) | Every feature can be switched off, options page as a tree, team-wide project file `.atlas` |
+| [Claude Code](#claude-code-and-mcp) | 19 MCP tools to read, check, build, test and rename |
 
 ## Quick start
 
@@ -27,35 +44,130 @@ Details (German): [docs/Installation.md](docs/Installation.md).
 
 `AtlasSetup.exe` from your own build (`Output\Win64\Debug\Bin`) does not help here: it looks for the BPLs in `Win32` and `Win64` subfolders next to itself (the layout of the release package), while the build puts them in `Output\<platform>\Debug\Bpl`. Without a BPL it offers no IDE. More: [Installation](#installation).
 
-## The IDE plugin
+## Features
 
-`Atlas.IDE.Expert` replaces the built-in Code Insight of RAD Studio 13 (and 12) with its own windows, filled with data by the Atlas server:
+Everything below is implemented in `main`. Features marked *(experimental)* are off by default and can be switched on under *Tools › Options › Third Party › Atlas* once the master switch "Experimentell" is on. The full description of each feature is in [docs/RAD-Studio.md](docs/RAD-Studio.md) and the [CHANGELOG](CHANGELOG.md) (German).
 
-- **Code completion** with detail panel, filter chips, fuzzy matching, learning order, postfix templates, an in-editor preview, enum values first and set elements with checkboxes
-- **Parameter hint** with all overloads and the active parameter
-- **Hover tooltip** with declaration, documentation, clickable types, inheritance chain, history and actions (go to, usages, copy declaration, help)
-- **Problems in the editor**: syntax errors, rule findings and compiler messages as squiggles, in the tooltip and as the list "Atlas-Probleme" in the message view, project-wide; marks move along while typing
-- **Compiler check after saving** and the compiler messages of the "Build" tab
+### Writing
+
+- **Code completion** in its own popup: detail panel with coloured declaration and docs, filter chips, fuzzy matching, learning order, favourites (Ctrl+D), typo suggestions ("did you mean"), in-editor preview, `+ Unit` hint for units not yet in `uses`
+- **Context-aware:** enum values first, set elements with checkboxes, `case` with all or the missing values, only types after `:`, type arguments matching constraints, full `inherited` call, field and parameter names in `FieldByName('`, the form's components, `Sender` with the matching typecast, same names from different units, helper methods, `uses` list with groups
+- **Unknown names:** create a local variable, inline variable, field or method right from the list; name suggestions from the type
+- **Parameter hint** with all overloads, the active parameter and overload choice by argument types
+- **Templates:** code templates (`tryf`, `forin`, `prop`, …), your own `*.atlas-snippet` files, the IDE's Live Templates, class-aware templates (`prop`, `create`, `free`) and postfix templates (`List.forin`, `Obj.notnil`, `Obj.free`)
+- **Slash commands** run after Enter, such as `/uses Unit`, `/extract`, `/inline`, `/fix`, `/explain`, `/case`, `/helper`, `/test`, `/component`, `/unit`, `/sortuses`, `/cleanuses`
+- **Generate menu** (Alt+Ins): constructor, properties, overridden methods, interface methods, surround, templates
+- **Guard the free:** after `X := TFoo.Create;` an offer for `try … finally X.Free; end;`
+- **Documentation comments:** `///` creates the XMLDoc skeleton with placeholders
+- **Complete statement** (Ctrl+Shift+Enter), **continue patterns** as ghost text, **continue comments** on Enter
+- **Formatting** by its own rules (Ctrl+Shift+Alt+L), since RAD Studio 13 no longer has a formatter
+- **Move and duplicate lines** (Alt+↑/↓, Shift+Alt+↑/↓), **multiple cursors** *(experimental)*, **linked editing of identifiers** *(experimental)*, **paste with uses completion** *(experimental)*
+
+### Understanding
+
+- **Hover tooltip** in Atlas style instead of Help Insight: declaration, XMLDoc in collapsible sections, clickable types, inheritance chain, values of constants, sets and resource strings, published members of components as a table, symbols in `{$IFDEF}` with their origin, actions (go to, usages, copy declaration, help)
+- **Values while debugging:** when the process is paused, the tooltip shows the value of the expression under the mouse, evaluated by the IDE's debugger without side effects
+- **Type hints** after `var X := …` without a type
+- **Code metrics** as a lens after each method header (length, depth, cyclomatic and cognitive complexity, parameters)
+- **Recursion marks** in the gutter, **inactive `{$IFDEF}` branches** dimmed with the reason in the tooltip, **unused uses** dimmed
 - **Bracket and block pairs** coloured by depth, with matching block lines
-- **Results window** "Atlas Results" for references (including forms), implementations, callers, calls and inheritance; workspace symbol search; preview before renaming
-- **Code actions** (Alt+Enter), expand and shrink selection (Ctrl+W, Ctrl+Shift+W), go to implementation and type definition, switch between declaration and implementation (Ctrl+Shift+↑/↓), copy qualified name; all also in the editor context menu under *Atlas*. Alt+Ins opens the **generate menu** at the cursor (constructor, properties, overridden methods, interface methods, surround, templates). Slash commands such as `/uses Unit` run after Enter, `///` above a declaration creates the documentation comment
-- **Form designer**: open forms are sent to the server as the designer has them, so references, renames and checks see unsaved changes; renaming an event handler also updates its assignment in the designer
-- **Command palette** (Ctrl+Shift+P), silent reload of files changed outside the IDE, hang watchdog with log
-- **Find selection**: F3 or Shift+F3 searches a single-line selection forward or backward, otherwise the IDE's "Search Again" applies
-- **Unit search** (#777): its own window instead of the IDE dialog on Ctrl+F12; the IDE dialog stays available from the menu
-- **Notes** (#545) on code lines, only for you and not in the source, and **named bookmarks** (#622, Ctrl+Alt+K)
-- **Favourites** in code completion (#458): Ctrl+D pins an entry to the top
-- **Code metrics** as a code lens after each method header (#66) and a **TODO overview** of the project (#68)
-- **Tests**: run DUnitX tests from the editor (#69) and start a single test in the debugger (#585)
-- **Compiling through the IDE** (#261): Claude Code builds open projects with the IDE's compiler via the MCP tool `build_project`
-- **Launch profiles** (#575) for parameters, working folder, environment and host application
-- **Baseline** (#97): hide known findings, report only new ones
-- **Project file `.atlas`** (#486) with team-wide settings to check in
-- **Notification centre** (#601, Ctrl+Shift+Alt+N) collects messages, counter in the Atlas status field
-- **Release build guard** (#533) checks the project options before a release build
-- **Welcome page** with sections: continue working, projects, project history, unsaved, project setup (including "Suchpfade und Defines prüfen", check search paths and defines), test results (#763), discover Atlas, help and feedback
 
-All settings are under *Tools › Options › Third Party › Atlas*, including the path to the server; the sections of that page are listed on the left. Next to it are the pages *Snippets*, *Tastenkonflikte* (key conflicts) and *Server*. Team-wide values live in the project file `.atlas`.
+### Navigating
+
+- **Go to** definition (Ctrl+click), implementation and type definition; switch between declaration and implementation (Ctrl+Shift+↑/↓); **jump to the counterpart** (begin ⇄ end, try → finally → end, `{$IFDEF}` → `{$ENDIF}`)
+- **Breadcrumb bar** above the editor with jump menus for unit, class, method and their children
+- **Outline** as a dockable window with filter
+- **Peek definition** (Alt+F12) below the line without switching files
+- **Quick open** of files and symbols (Ctrl+P) across project, project group and search path; project-wide **symbol search**
+- **Unit search** (Ctrl+F12) in its own window with preview, groups, filters and "add to uses"
+- **Results window** "Atlas Results" for references (including forms), implementations, callers, calls and inheritance
+- **Navigation history** across files
+- **Named bookmarks** (Ctrl+Alt+K) and personal **notes** on code lines that never go into the source
+- **Overview ruler** at the scroll bar with errors, matches and changes; **minimap** *(experimental)*; **sticky scroll** of the enclosing class and routine *(experimental)*
+- **TODO overview** of the project from `// TODO`, `// FIXME` and the IDE's to-do format
+
+### Code analysis
+
+The server checks every unit while you type. Findings appear as squiggles, in the tooltip, shortened at the end of the line and project-wide in the list "Atlas-Probleme" in the message view; marks move along while typing.
+
+- **95 check rules** in four categories: 45 bugs, 40 code smells, 5 vulnerabilities, 5 security hotspots. Among them:
+  - **Correctness:** `Result` not set, possibly uninitialized variables, unreachable code, unused variables, parameters and assignments, declared but not implemented methods, missing `override`, hidden virtual methods, overflows, float comparison, `raise` in `finally`
+  - **Threads:** VCL access from threads, locks without `finally`, `FreeOnTerminate` traps, `Synchronize` in the destructor
+  - **Exceptions:** empty `except` blocks, catch-all without re-raise, exceptions created but not raised
+  - **Components and forms:** missing `inherited`, `Notification`, wrong `default` values, fields without a form object and vice versa, data bindings and data sources in DFM files
+  - **Security:** SQL and command injection, path traversal, weak cryptography, disabled TLS verification, insecure HTTP and random, Trojan Source (bidi control, invisible and confusable characters)
+  - **Architecture and style:** forbidden uses, role-based import rules, `with`, redundant parentheses and `begin … end`, file header, hard-coded strings, metric limits
+- **Confidence** (high, medium, low) per finding caps the severity; **profiles** `standard`, `fast`, `strict`, `security`, `style` or your own in `atlas.json`
+- **Suppress** with `// lsp-ignore: rule`, with reports of unused or misspelled suppressions
+- **Baseline** for legacy projects: hide known findings, report only new ones
+- **Compiler check after saving** and the messages of the "Build" tab
+- **Check search paths and defines** of the active project (card on the welcome page)
+- **Linter without the IDE:** `AtlasServer.exe --check` for pre-commit hooks and CI, as text, JSON or SARIF for GitHub code scanning, optionally only changed files or lines (see [Linter mode](#linter-mode))
+
+Every rule with description and before/after example: [docs/Regeln.md](docs/Regeln.md).
+
+### Refactorings and code actions
+
+Alt+Enter opens the code actions; everything is also in the *Atlas* menu and the editor context menu.
+
+- **Rename** project-wide with preview, including `.dfm`/`.fmx` and automatically named event handlers
+- **Change signature** in a dialog: add, remove, move and rename parameters, with preview
+- **Extract method**, **introduce variable**, **resolve `with`**, **complete `case`**
+- **Inline variable and method** *(experimental)*, **move class to its own unit** *(experimental)*, **update uses after renaming a unit** *(experimental)*
+- **Class actions:** implement interface, override methods, generate getter, setter and field, property from existing accessors, create method from a call, add forward declaration
+- **Strings:** move a string literal to a `resourcestring`
+- **uses:** add the missing unit, sort, remove unused ones
+- **Quick fixes** for many check rules, also "fix all"
+- **Undo Atlas changes** (Ctrl+Alt+Z): changes across several files as one step
+
+### Forms
+
+- Open forms are sent to the server as the designer has them: references, renames and checks also see unsaved components
+- Renaming an event handler also updates its assignment in the designer
+- The form's components in completion, `Sender` with the matching typecast
+- Checks between form and code and **property rules** for form files with quick fix
+- Convert binary forms to text forms
+
+### Build, test, debug
+
+- **Release build guard:** checks the project options before a release build (DEBUG symbol, debug information, …)
+- **DUnitX tests** run from the editor, and a single test starts in the debugger (code lens on `[Test]` and `[TestFixture]`)
+- **Launch profiles** for parameters, working folder, environment and host application
+- **Values in the hover while debugging** (see [Understanding](#understanding))
+- **Build tool for Claude Code:** `build_project` builds open projects with the IDE's compiler, even in the Starter edition
+
+### IDE comfort
+
+- **Welcome page** with sections: continue working, projects with quick actions, project history, unsaved, project setup, test results, my issues, new in Atlas, discover Atlas, help and feedback; search box and free layout
+- **Command palette** (Ctrl+Shift+P) for all Atlas commands
+- **Atlas status field** with index progress and quick toggles (Ctrl+Shift+Alt+A)
+- **Notification centre** (Ctrl+Shift+Alt+N) collects messages from builds, checks and the server
+- **Change marks** in the gutter against Git HEAD or SVN BASE
+- **Find selection** with F3 or Shift+F3
+- **Silent reload** of files changed outside the IDE
+- **Robustness:** no error in Atlas reaches the IDE, hang watchdog with log, safe start after a crash, bug report to attach, key conflicts with other extensions (GExperts, CnPack, MMX) are detected
+- **Update check** only after consent
+- **Accessibility:** lists and tooltips readable by UI Automation
+
+### Settings
+
+- *Tools › Options › Third Party › Atlas* as a tree: areas at the top, every feature with its own master switch that also disables its sub-options; next to it the pages *Snippets*, *Tastenkonflikte* (key conflicts) and *Server*
+- Every visible feature can be switched off on its own; experimental features are marked
+- Export, import, load profiles and reset settings
+- Team-wide values in the project file `.atlas`, server and rule settings in `atlas.json` (*Atlas › Projekt-Einstellungen*), global values in `%APPDATA%\Atlas\settings.json`
+
+All keys (German): [docs/Einstellungen.md](docs/Einstellungen.md) and [docs/Konfiguration.md](docs/Konfiguration.md).
+
+### Claude Code and MCP
+
+The server offers Claude Code 19 MCP tools: find symbols, read declarations and type and call hierarchies, component and form info, query diagnostics, metrics and TODOs, check planned code with `check_code` before writing it, explain findings, build through the IDE (`build_project`, `get_last_build`), run DUnitX tests, and rename or apply code actions (with preview). Plus the resource `delphi://conventions` with the project's conventions. Setup: [Editors/ClaudeCode](Editors/ClaudeCode/README.md), tools: [docs/MCP.md](docs/MCP.md).
+
+### Planned
+
+Not yet in `main`, tracked as issues:
+
+- Tool window "Atlas-Prüfung" with finding hover and a rules settings page, and more than 100 further check rules (#909, #1086)
+- Compiler messages as Atlas rules of their own, reported while typing instead of only when compiling (#1024)
 
 ## Installation
 
@@ -88,6 +200,8 @@ More: [docs/Installation.md](docs/Installation.md).
 ## Documentation (German)
 
 - [Installation](docs/Installation.md) for RAD Studio, Claude Code and the command line
+- [IDE plugin](docs/RAD-Studio.md): every feature in detail
+- [Settings](docs/Einstellungen.md) of the plugin
 - [Configuration](docs/Konfiguration.md) of `atlas.json` (generated from the JSON schema with `pwsh Tools/Update-ConfigDoc.ps1`)
 - [Rules](docs/Regeln.md)
 - [MCP tools](docs/MCP.md)
