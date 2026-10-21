@@ -2527,6 +2527,7 @@ Vorher: Projekt mit Index geladen, eine Unit mit `uses System.SysUtils, System.C
 |---|---|---|
 | PF1 | Über `implementation` `/sortuses` tippen, Enter | uses sortiert; `System.Classes` gestrichen, `Vcl.Forms` bleibt (initialization); die Befehlszeile ist weg |
 | PF2 | `System.Classes` in `usesKeep` eintragen, PF1 wiederholen | `System.Classes` bleibt stehen |
+| PF3a | `/cleanuses` statt `/sortuses` | Nur `System.Classes` gestrichen, die übrige Reihenfolge bleibt; ohne geladenen Index bleibt die Zeile mit Hinweis „/cleanuses braucht den Index des Projekts“ |
 | PF3 | `slashCommands.sortUsesRemoveUnused` auf `false`, PF1 wiederholen | Nur sortiert, nichts gestrichen |
 | PF4 | Über `X := 42;` `/ignore ` tippen | Die Vervollständigung bietet nur Regeln an, die in der Zeile darunter treffen (z. B. `magic-number`) |
 | PF5 | `/ignore unused-local`, Enter, über einer Zeile ohne diesen Treffer | Zeile bleibt stehen; Hinweis `slash-command`: „Regel unused-local meldet in der Zeile darunter nichts“ |
