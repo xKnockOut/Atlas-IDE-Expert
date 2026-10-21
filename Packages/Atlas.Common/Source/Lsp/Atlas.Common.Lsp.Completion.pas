@@ -462,6 +462,7 @@ uses
   Atlas.Common.Lsp.FuzzyMatch,
   Atlas.Common.Editing.UsesClause,
   Atlas.Common.Lsp.CompletionUses,
+  Atlas.Common.Lsp.CompletionInherited,
   Atlas.Common.Editing.CaseCompletion,
   Atlas.Common.Editing.AssignFields,
   Atlas.Common.Editing.DeclareUnknown,
@@ -1535,6 +1536,95 @@ begin
   end;
 end;
 
+/// <summary>Vollständige inherited-Aufrufe (#482) vor die Namen der Vorfahrmethoden; aus ACandidates fallen
+/// die abstrakten und die, deren Aufruf schon oben steht.</summary>
+procedure AddInheritedCalls(ARequest: TCompletionRequest; const AContext: TCompletionContext;
+  ACollector: TCompletionCollector; var ACandidates: TArray<TResolvedSymbol>);
+const
+  /// <summary>Vor allen übrigen Einträgen, in der Reihenfolge der Aufrufe.</summary>
+  CallBonus = 100000;
+var
+  Symbols: TArray<TIndexSymbol>;
+  Depths: TArray<Integer>;
+  Methods: TArray<TInheritedMethod>;
+  Method: TInheritedMethod;
+  Current, Header: TInheritedHeader;
+  Calls: TArray<TInheritedCall>;
+  Abstract_, Names: TArray<string>;
+  Kept: TArray<TResolvedSymbol>;
+  Candidate: TResolvedSymbol;
+  Item: TCompletionItem;
+  Start, Index, Score, Column: Integer;
+  LineBefore, After, Text: string;
+  WithResult: Boolean;
+begin
+  Symbols := ARequest.Resolver.InheritedOverloads(ARequest.Tree, ARequest.FileName, AContext.Offset, Start, Depths);
+  if (Start < 0) or not TInheritedHeader.Parse(TCompletionInherited.HeaderText(ARequest.Text, Start + 1),
+    Current) then
+    Exit;
+  Methods := nil;
+  for Index := 0 to High(Symbols) do
+    if TInheritedHeader.Parse(Symbols[Index].Signature, Header) then
+    begin
+      Method.Header := Header;
+      Method.Container := Symbols[Index].Container;
+      Method.Depth := Depths[Index];
+      Methods := Methods + [Method];
+    end;
+  Calls := TCompletionInherited.Calls(Current, Methods, Abstract_);
+  LineBefore := ARequest.LineBefore;
+  WithResult := TCompletionInherited.NeedsResult(Current, LineBefore);
+  // Semikolon nur, wenn hinter dem Cursor nichts mehr steht.
+  After := Copy(ARequest.LineText(ARequest.Position.Line), ARequest.Position.Character + 1, MaxInt);
+  Names := nil;
+  for Index := 0 to High(Calls) do
+    Names := Names + [Calls[Index].Name];
+  // Unter den Namen fallen die abstrakten weg (auch für die Fußzeile) und die, deren Aufruf oben steht.
+  Kept := nil;
+  for Candidate in ACandidates do
+    if TInheritedHeader.Parse(Candidate.Signature, Header) and Header.IsAbstract then
+    begin
+      if not MatchText(Candidate.Container + '.' + Candidate.Name, Abstract_) then
+        Abstract_ := Abstract_ + [Candidate.Container + '.' + Candidate.Name];
+    end
+    else if not MatchText(Candidate.Name, Names) then
+      Kept := Kept + [Candidate];
+  ACandidates := Kept;
+  for Index := 0 to High(Calls) do
+  begin
+    Score := MatchScore(Calls[Index].Name, AContext.Prefix, ARequest.Matching);
+    if Score = TFuzzyMatch.NoMatch then
+      Continue;
+    Item := Default(TCompletionItem);
+    Item.Name := Calls[Index].Text;
+    Item.FilterText := Calls[Index].Name;
+    Item.Detail := Calls[Index].Container;
+    if Current.Kind = 'constructor' then
+      Item.Kind := KindConstructor
+    else
+      Item.Kind := KindMethod;
+    Item.Container := Calls[Index].Container;
+    Item.Depth := Calls[Index].Depth;
+    Item.InheritedMatch := TCompletionInherited.MatchNames[Calls[Index].Match];
+    Item.InheritedAbstract := Abstract_;
+    Text := Calls[Index].Text;
+    if Trim(After) = '' then
+      Text := Text + ';';
+    Item.HasTextEdit := True;
+    if WithResult then
+    begin
+      Column := Pos('inherited', LowerCase(LineBefore)) - 1;
+      Item.TextEdit := TRuleEdit.Create(TTextRange.Create(ARequest.Position.Line, Column, ARequest.Position.Line,
+        ARequest.Position.Character), 'Result := inherited ' + Text);
+    end
+    else
+      Item.TextEdit := TRuleEdit.Create(TTextRange.Create(ARequest.Position.Line,
+        ARequest.Position.Character - Length(AContext.Prefix), ARequest.Position.Line,
+        ARequest.Position.Character), Text);
+    ACollector.AddItem(Item, Score + CallBonus - Index);
+  end;
+end;
+
 /// <summary>Schlüsselwörter passend zur Stelle (#31), erst ab einem getippten Zeichen; ohne Eingabe gingen die
 /// Namen darin unter.</summary>
 function KeywordsAt(const AContext: TCompletionContext): TArray<string>;
@@ -1661,6 +1751,9 @@ begin
             finally
               Collector.SetNameFilter(False);
             end;
+            // Vollständiger Aufruf mit den eigenen Parametern zuerst (#482).
+            if ARequest.Settings.InheritedCall then
+              AddInheritedCalls(ARequest, Context, Collector, Candidates);
             Collector.AddCandidates(Candidates);
           end
           else

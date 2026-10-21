@@ -317,14 +317,30 @@ begin
   end;
 end;
 
+procedure WriteInherited(const AItem: TCompletionItem; AData: TJSONObject);
+var
+  List: TJSONArray;
+  Text: string;
+begin
+  if AItem.InheritedMatch <> '' then
+    AData.AddPair('inheritedMatch', AItem.InheritedMatch);
+  if Length(AItem.InheritedAbstract) > 0 then
+  begin
+    List := TJSONArray.Create;
+    AData.AddPair('inheritedAbstract', List);
+    for Text in AItem.InheritedAbstract do
+      List.Add(Text);
+  end;
+end;
+
 const
   /// <summary>Reihenfolge der Felder unter data; das Plugin liest nach Namen, die Golden-Tests nach Text.
   /// </summary>
-  DataWriters: array[0..30] of TItemDataWriter = (WriteSource, WriteExpected, WriteAction, WriteContainer,
+  DataWriters: array[0..31] of TItemDataWriter = (WriteSource, WriteExpected, WriteAction, WriteContainer,
     WriteDepth, WriteHelper, WriteParameters, WriteCondition, WriteUnavailable, WriteScope, WriteOrdinal,
     WriteSetOf, WriteLinked, WritePinned, WriteCount, WriteUnknown, WriteBatch, WriteHint, WriteForm, WriteByType, WriteSender,
     WriteConversion, WriteAssignments, WriteDataSet, WriteGuard, WriteUnit, WriteHides, WriteOverloads, WriteTypeArg,
-    WriteBindings, WriteUses);
+    WriteBindings, WriteUses, WriteInherited);
 
 function NeedsData(const AItem: TCompletionItem): Boolean;
 begin
@@ -332,7 +348,8 @@ begin
     (AItem.Scope > 0) or (AItem.Ordinal > 0) or AItem.Pinned or AItem.LinkedEdits or AItem.Hint or (AItem.Form <> '') or
     (AItem.Sender <> '') or (AItem.DataSet <> '') or (AItem.Guard <> '') or (AItem.TypeParam <> '') or
     (Length(AItem.Bindings) > 0) or (AItem.Conversion <> '') or (AItem.Lossy <> '') or
-    (Length(AItem.Assignments) > 0) or (AItem.UsesGroup <> '');
+    (Length(AItem.Assignments) > 0) or (AItem.UsesGroup <> '') or (AItem.InheritedMatch <> '') or
+    (Length(AItem.InheritedAbstract) > 0);
 end;
 
 function EditToJson(const AEdit: TRuleEdit): TJSONObject;
