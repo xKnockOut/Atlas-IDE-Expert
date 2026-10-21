@@ -60,6 +60,8 @@ uses
   Atlas.Common.Lsp.SemanticTokens,
   Atlas.Common.Lsp.Status,
   Atlas.Common.Projects.Selection,
+  Atlas.Common.Lsp.Processes,
+  Atlas.Common.Index.Processes,
   Atlas.Common.Lsp.QualifiedNames,
   Atlas.Common.Lsp.EnumValueCommands,
   Atlas.Common.Lsp.StringLiteralCommands,
@@ -128,6 +130,8 @@ type
     FRestricted: Boolean;
     /// <summary>Prozessnummer des Editors aus der Befehlszeile (#283); 0 = keine.</summary>
     FClientProcessId: Cardinal;
+    /// <summary>clientInfo.name aus initialize, für „Prozesse am Projekt“ (#62).</summary>
+    FClientName: string;
     FParentWatcher: TParentWatcher;
     /// <summary>Anonymisiertes Diagnoselog (#647); FDiagnosticsRef hält die Instanz am Leben.</summary>
     FDiagnostics: TShellDiagnostics;
@@ -274,6 +278,8 @@ type
     function ChooseProject(const AFileName: string; const ACandidates: TArray<TShellWorkspace>): TShellWorkspace;
     /// <summary>Ist AWorkspace per selectProject gewählt (#46)?</summary>
     function IsSelectedProject(AWorkspace: TShellWorkspace): Boolean;
+    /// <summary>Index-Cache je Arbeitsbereich mit den angemeldeten Prozessen (#62).</summary>
+    function CollectProcesses: TArray<TLspProcessWorkspace>;
     /// <summary>Arbeitsbereich zur Datei; ohne Treffer bei genau einem Arbeitsbereich dieser, sonst nil
     /// (TShellWorkspace.Choose, S-02). Aufrufer hält FWorkspacesLock.</summary>
     function PickWorkspace(const AFileName: string): TShellWorkspace;
@@ -501,6 +507,7 @@ uses
   Atlas.Common.Projects.Contract,
   Atlas.Common.Projects.GroupReader,
   Atlas.Common.Projects.PackageLocator,
+  Atlas.Common.Index.Cache,
   Atlas.Common.JsonRpc.Messages;
 
 // Antworten für implicit-package-import (#46): nicht gefundene Packages sind unbekannt, damit die Regel
@@ -1505,6 +1512,16 @@ begin
       FLogger.Info('Status:' + sLineBreak + Status.ToMarkdown);
       Result := Status.ToJson;
     end);
+  // Prozesse am selben Index-Cache (#62): Sperre, Stand, Prozesse und Ereignisse.
+  FCommands.RegisterConcurrent(ProcessesCommand,
+    function(const AArguments: TJSONArray): TJSONValue
+    var
+      Workspaces: TArray<TLspProcessWorkspace>;
+    begin
+      Workspaces := CollectProcesses;
+      Result := TLspProcesses.ToJson(Workspaces, GetCurrentProcessId, Now);
+      FLogger.Info(TLspProcesses.ToMarkdown(Workspaces, GetCurrentProcessId, Now));
+    end);
   // Einstellungsdialog des Plugins (#227): Prüfung mit dem Parser des Servers und Regelkatalog.
   FCommands.RegisterConcurrent(TLspSettingsCommands.CheckCommand,
     function(const AArguments: TJSONArray): TJSONValue
@@ -1797,6 +1814,9 @@ begin
       Folder: TWorkspaceFolder;
     begin
       WatchParent(FLifecycle.InitializeParams);
+      // Name des Clients für die Anmeldung am Index-Cache (#62); vor dem Anlegen der Arbeitsbereiche.
+      if FLifecycle.InitializeParams <> nil then
+        FClientName := FLifecycle.InitializeParams.GetValue<string>('clientInfo.name', '');
       // Editor-Ebene: initializationOptions.settings.atlas wie bei didChangeConfiguration, schon vor dem
       // ersten Indexaufbau; sie zählt wie global (TConfigurationScopes). Das IDE-Plugin schickt keine
       // Einstellungen mehr: Es schreibt settings.json, die der Server selbst liest und beobachtet.
@@ -2032,6 +2052,7 @@ procedure TServerComposition.AddProjectWorkspace(const ARoot, AName, AProjectFil
 var
   Workspace: TShellWorkspace;
   Existing: TShellWorkspace;
+  Identity: TIndexProcessInfo;
 begin
   if AProjectFile <> '' then
   begin
@@ -2058,6 +2079,12 @@ begin
   Workspace.IdeProjects := FIdeProject;
   Workspace.Origin := AOrigin;
   Workspace.Selection := FProjectSelection;
+  // Anmeldung am Index-Cache für „Prozesse am Projekt“ (#62).
+  Identity := Default(TIndexProcessInfo);
+  Identity.Pid := GetCurrentProcessId;
+  Identity.Kind := TIndexProcessInfo.KindLsp;
+  Identity.Client := FClientName;
+  Workspace.ProcessIdentity := Identity;
   // requires-Packages als Quelle zuerst bei den Projekten der Gruppe suchen (#46).
   Workspace.OnPackageFolders :=
     function: TArray<string>
@@ -3257,6 +3284,36 @@ begin
   Result := Answer;
 end;
 
+function TServerComposition.CollectProcesses: TArray<TLspProcessWorkspace>;
+var
+  Targets: TArray<TShellWorkspace>;
+  Workspace: TShellWorkspace;
+  Item: TLspProcessWorkspace;
+  Status: TWorkspaceStatus;
+begin
+  TMonitor.Enter(FWorkspacesLock);
+  try
+    Targets := FWorkspaces.ToArray;
+  finally
+    TMonitor.Exit(FWorkspacesLock);
+  end;
+  Result := nil;
+  for Workspace in Targets do
+  begin
+    Item := Default(TLspProcessWorkspace);
+    if not Workspace.Processes(Item.CacheFile, Item.Processes) then
+      Continue;
+    Status := Workspace.IndexStatus;
+    Item.Name := Workspace.Name;
+    Item.Project := Status.Project;
+    Item.FormatVersion := TIndexCache.FormatVersion;
+    Item.Units := Status.Parsed + Status.FromCache;
+    if TFile.Exists(Item.CacheFile) then
+      Item.Saved := TFile.GetLastWriteTime(Item.CacheFile);
+    Result := Result + [Item];
+  end;
+end;
+
 function TServerComposition.CollectStatus: TServerStatus;
 var
   Workspace: TShellWorkspace;
@@ -4349,6 +4406,7 @@ begin
   Result.AddPair('colorProvider', TJSONBool.Create(True));
   Commands := TJSONArray.Create;
   Commands.Add(StatusCommand);
+  Commands.Add(ProcessesCommand);
   Commands.Add(CompileCommand);
   Commands.Add(SelectBuildCommand);
   Commands.Add(SelectProjectCommand);

@@ -2672,3 +2672,20 @@ Vorher: Projekt mit Index geladen, eine Unit mit `uses System.SysUtils, System.C
 | PG11 | `requires Fremd` ohne Fremd.dpk und Fremd.dcp | Keine Meldung für Units, die Fremd liefern könnte |
 | PG12 | Unit nur in contains der .dpk, nicht als DCCReference in der .dproj | Unit ist im Index (Hover, Prüfungen wie andere Projekt-Units) |
 | PG13 | `"rules": {"implicit-package-import": "off"}` | Keine Meldung |
+
+## Prozesse am Projekt (#62)
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| PP1 | Gruppe in der IDE öffnen, *Atlas › Hilfe und Diagnose › Prozesse am Projekt…* | Titel „Atlas-Server für <Gruppe>“; Index-Cache als Hash-Ordner\Datei; ein LSP-Prozess mit „(dieser Prozess)“ |
+| PP2 | Während des ersten Aufbaus öffnen | Sperre nennt den eigenen Prozess mit Marke „schreibt“, Zustand „baut Index“; Protokoll „LSP: Cache-Sperre erhalten, Index wird aufgebaut“ |
+| PP3 | Claude Code mit `atlas-mcp` auf demselben Projekt starten, *Aktualisieren* | Zweiter Prozess MCP · Claude Code mit „liest Cache“; Fuß „Index nur einmal aufgebaut · N Units“ und „2 Prozesse“; Protokoll „MCP: Sperre belegt, lade Cache nur lesend“ |
+| PP4 | Nach dem Speichern des Index *Aktualisieren* | Stand „vor N s gespeichert · Format 17“; Protokoll „LSP: Index gespeichert (N Units)“, danach „MCP: Stand übernommen …“ |
+| PP5 | Unit in der IDE ändern, nicht speichern, *Aktualisieren* | Unter „Ungespeicherte Stände …“ die Datei mit „ungespeichert“ und beim MCP-Prozess „gespeicherter Stand“; Hinweis „Claude Code sieht den gespeicherten Stand, bis die IDE speichert.“ |
+| PP6 | Datei speichern, *Aktualisieren* | „Keine ungespeicherten Dateien.“ |
+| PP7 | Claude Code beenden (auch per Task-Manager), *Aktualisieren* | MCP-Prozess verschwindet; seine Datei in `<cache>.prozesse` ist gelöscht |
+| PP8 | Zwei IDEs auf derselben Gruppe | Zwei LSP-Zeilen; Protokoll mit Prozessnummer („LSP 4711: …“) |
+| PP9 | *Kopieren* | Zwischenablage enthält „## Prozesse am Projekt“ mit denselben Angaben |
+| PP10 | Server beenden, dann öffnen | Meldung, dass der Server nicht antwortet; kein Absturz |
+| PP11 | Optionen › Allgemein: „Menüeintrag „Prozesse am Projekt…““ aus | Eintrag fehlt im Menü |
+| PP12 | Fenster schließen, bevor die Antwort kommt (Server indexiert gerade) | Kein Fehler, die späte Antwort wird verworfen |

@@ -30,6 +30,8 @@ uses
   Atlas.Common.Index.Service,
   Atlas.Common.Index.Builder,
   Atlas.Common.Index.Scheduler,
+  Atlas.Common.Index.Processes,
+  Atlas.Common.Index.Adapters.Processes,
   Atlas.Common.Rules.Baseline,
   Atlas.Common.Lsp.Status,
   Shell.Compiler;
@@ -60,6 +62,9 @@ type
     FSelection: TProjectSelection;
     /// <summary>Gemerkte Konfiguration und Plattform schon übernommen; danach gilt nur noch selectBuild.</summary>
     FBuildRestored: Boolean;
+    /// <summary>Anmeldung am eigenen Index-Cache für „Prozesse am Projekt“ (#62); unter FLock.</summary>
+    FProcessEntry: TIndexProcessEntry;
+    FProcessIdentity: TIndexProcessInfo;
     FSignature: string;
     // Schützt Defines und Namespaces, die Anfrage-Threads lesen.
     FLock: TObject;
@@ -134,6 +139,12 @@ type
     function GetIncludePaths: TArray<string>;
     function GetProjectFiles: TArray<string>;
     function GetPackageLocator: TPackageLocator;
+    /// <summary>Meldet den eigenen Prozess am Cache an bzw. um (#62) und hält Zustand und Ereignis fest.</summary>
+    procedure ReportProcess(const ACacheFile, AState: string; AWriter: Boolean; const AEvent: string); overload;
+    /// <summary>Nur ein Ereignis am angemeldeten Cache; ohne Anmeldung nichts.</summary>
+    procedure ReportProcess(const AState: string; AWriter: Boolean; const AEvent: string); overload;
+    /// <summary>Hält dieser Arbeitsbereich die Sperre seines Caches (laut Anmeldung, #62)?</summary>
+    function WritesCache: Boolean;
     /// <summary>Übernimmt einmal die gemerkte Konfiguration und Plattform von AProjectFile (#46).</summary>
     procedure RestoreBuild(const AProjectFile: string);
     /// <summary>True, wenn eine Wahl verworfen wurde, die AProject nicht kennt.</summary>
@@ -246,6 +257,12 @@ type
     property Selection: TProjectSelection read FSelection write FSelection;
     /// <summary>Feste Projektdatei oder die des geladenen Projekts; '' ohne Projekt. Threadsicher.</summary>
     function ProjectFileName: string;
+    /// <summary>Vor Load setzen (#62): Prozessnummer, Art (LSP/MCP) und Client für die Anmeldung am Cache.
+    /// </summary>
+    property ProcessIdentity: TIndexProcessInfo read FProcessIdentity write FProcessIdentity;
+    /// <summary>Eigener Index-Cache und die daran angemeldeten Prozesse (#62); False ohne Cache. Threadsicher.
+    /// </summary>
+    function Processes(out ACacheFile: string; out AProcesses: TArray<TIndexProcessInfo>): Boolean;
   end;
 
 implementation
@@ -410,6 +427,13 @@ begin
          IfThen(AResult.Cancelled, ', abgebrochen', '')]));
       if not AResult.Cancelled then
       begin
+        // Prozesse am Projekt (#62): Der Schreiber hat gespeichert, ein Leser den Stand übernommen.
+        if WritesCache then
+          ReportProcess(TIndexProcessInfo.StateReady, True, Format('Index gespeichert (%d Units)',
+            [AResult.Parsed + AResult.FromCache]))
+        else
+          ReportProcess(TIndexProcessInfo.StateReady, False, Format('Stand übernommen (%d Units aus dem Cache)',
+            [AResult.FromCache]));
         ReportEncodings;
         if Assigned(FOnIndexFinished) then
           FOnIndexFinished();
@@ -422,6 +446,7 @@ begin
       // anonym (der Cache liegt im Benutzerprofil).
       FLogger.Info(Format('Index-Cache verworfen (%s); wird neu aufgebaut', [AReason]));
       IndexEvent('index cache rejected');
+      ReportProcess(TIndexProcessInfo.StateBuilding, WritesCache, Format('Cache verworfen (%s)', [AReason]));
     end;
   FIndexService.OnError :=
     procedure(const AError: Exception)
@@ -454,6 +479,7 @@ begin
   FRetiredResolvers.Free;
   FPackageLocator.Free;
   FRetiredLocators.Free;
+  FProcessEntry.Free;
   FConfiguration.Free;
   FOwnFiles.Free;
   FLock.Free;
@@ -511,6 +537,63 @@ begin
   FIndexService.Stop;
   FreeAndNil(FCacheLock);
   FCacheLockFile := '';
+  ReportProcess(TIndexProcessInfo.StateReady, False, 'Sperre freigegeben (Index löschen)');
+end;
+
+procedure TShellWorkspace.ReportProcess(const ACacheFile, AState: string; AWriter: Boolean; const AEvent: string);
+var
+  Identity: TIndexProcessInfo;
+begin
+  TMonitor.Enter(FLock);
+  try
+    if (FProcessEntry = nil) or not SameText(FProcessEntry.CacheFile, ACacheFile) then
+    begin
+      FreeAndNil(FProcessEntry);
+      Identity := FProcessIdentity;
+      Identity.Workspace := FName;
+      if Identity.Kind = '' then
+        Identity.Kind := TIndexProcessInfo.KindLsp;
+      FProcessEntry := TIndexProcessEntry.Create(ACacheFile, Identity);
+    end;
+    FProcessEntry.Update(AState, AWriter, AEvent);
+  finally
+    TMonitor.Exit(FLock);
+  end;
+end;
+
+procedure TShellWorkspace.ReportProcess(const AState: string; AWriter: Boolean; const AEvent: string);
+begin
+  TMonitor.Enter(FLock);
+  try
+    if FProcessEntry <> nil then
+      FProcessEntry.Update(AState, AWriter, AEvent);
+  finally
+    TMonitor.Exit(FLock);
+  end;
+end;
+
+function TShellWorkspace.WritesCache: Boolean;
+begin
+  TMonitor.Enter(FLock);
+  try
+    Result := (FProcessEntry <> nil) and FProcessEntry.Info.Writer;
+  finally
+    TMonitor.Exit(FLock);
+  end;
+end;
+
+function TShellWorkspace.Processes(out ACacheFile: string; out AProcesses: TArray<TIndexProcessInfo>): Boolean;
+begin
+  TMonitor.Enter(FLock);
+  try
+    ACacheFile := FCacheFile;
+  finally
+    TMonitor.Exit(FLock);
+  end;
+  AProcesses := nil;
+  Result := ACacheFile <> '';
+  if Result then
+    AProcesses := TIndexProcesses.List(ACacheFile);
 end;
 
 procedure TShellWorkspace.Touch;
@@ -585,11 +668,19 @@ var
   Removed: Integer;
 begin
   if SameText(ACacheFile, FCacheLockFile) and (FCacheLock <> nil) then
+  begin
+    ReportProcess(ACacheFile, TIndexProcessInfo.StateBuilding, True, 'Index wird aktualisiert');
     Exit(True);
+  end;
   FreeAndNil(FCacheLock);
   FCacheLockFile := ACacheFile;
   FCacheLock := TIndexCacheDirectory.TryLock(ACacheFile);
   Result := FCacheLock <> nil;
+  // Für „Prozesse am Projekt“ (#62): wer schreibt, wer nur liest.
+  if Result then
+    ReportProcess(ACacheFile, TIndexProcessInfo.StateBuilding, True, 'Cache-Sperre erhalten, Index wird aufgebaut')
+  else
+    ReportProcess(ACacheFile, TIndexProcessInfo.StateReading, False, 'Sperre belegt, lade Cache nur lesend');
   try
     // Der gemeinsame Bibliotheks-Cache ist nicht gesperrt; ohne ihn hier zu nennen, löschte das Aufräumen
     // ihn bei jedem Start, sobald der Ordner über der Höchstgröße lag (#616: "0 aus dem Cache").
