@@ -279,6 +279,10 @@ type
     /// der Typ eines Elements unbekannt ist und der Name dazugehören könnte.</summary>
     function WithMember(ATree: TSyntaxTree; const AFileName, AName: string; AOffset: Integer; out AWith: TSyntaxNode;
       out AElement: Integer; out AUnknown: Boolean): Boolean;
+    /// <summary>Wert einer Aufzählung unter {$SCOPEDENUMS ON} namens AName, sichtbar an AOffset (#849): AQualified
+    /// erhält ihn mit Typpräfix (TState.Error). Für den Hinweis bei unqualifizierter Verwendung.</summary>
+    function ScopedEnumValue(ATree: TSyntaxTree; const AFileName, AName: string; AOffset: Integer;
+      out AQualified: string): Boolean;
     /// <summary>Löst die Kette ANames (A.B.C) so auf, wie sie an AOffset stünde.</summary>
     function ResolveChain(ATree: TSyntaxTree; const AFileName: string; const ANames: TArray<string>;
       AOffset: Integer; AInherited: Boolean = False): TResolvedSymbol;
@@ -997,8 +1001,8 @@ begin
         Continue;
       if AOnlyTypes and not (Symbol.Kind in TypeKinds) then
         Continue;
-      // Unit-Ebene; Enum-Werte sind ohne SCOPEDENUMS auch dort sichtbar.
-      if (Symbol.Container <> '') and (Symbol.Kind <> TIndexSymbolKind.EnumMember) then
+      // Unit-Ebene; Enum-Werte sind ohne SCOPEDENUMS auch dort sichtbar (#849).
+      if (Symbol.Container <> '') and ((Symbol.Kind <> TIndexSymbolKind.EnumMember) or Symbol.ScopedEnum) then
         Continue;
       if AOnlyTypes and (AArity > 0) and (Length(SplitArgs(Symbol.TypeParams)) <> AArity) then
         Continue;
@@ -2277,6 +2281,37 @@ begin
     Result := NoResult;
 end;
 
+function TNameResolver.ScopedEnumValue(ATree: TSyntaxTree; const AFileName, AName: string; AOffset: Integer;
+  out AQualified: string): Boolean;
+
+  function Find(const AUnit: TUnitIndex; AOnlyInterface: Boolean): Boolean;
+  var
+    Position: Integer;
+  begin
+    for Position in AUnit.SymbolsNamed(AName) do
+      if (AUnit.Symbols[Position].Kind = TIndexSymbolKind.EnumMember) and AUnit.Symbols[Position].ScopedEnum and
+        (not AOnlyInterface or AUnit.Symbols[Position].InInterface) then
+      begin
+        AQualified := AUnit.Symbols[Position].Container + '.' + AUnit.Symbols[Position].Name;
+        Exit(True);
+      end;
+    Result := False;
+  end;
+
+var
+  UnitName: string;
+  Used: TUnitIndex;
+begin
+  AQualified := '';
+  Prepare(ATree, AFileName, AOffset);
+  if Find(FCurrent, False) then
+    Exit(True);
+  for UnitName in ScopeUnits(FCurrent, FInImplementation) do
+    if FindUnit(UnitName, Used) and Find(Used, True) then
+      Exit(True);
+  Result := False;
+end;
+
 procedure TNameResolver.Prepare(ATree: TSyntaxTree; const AFileName: string; AOffset: Integer);
 var
   Section: TSyntaxNode;
@@ -2466,7 +2501,8 @@ begin
   begin
     if AOnlyInterface and not AUnit.Symbols[Position].InInterface then
       Continue;
-    if (AUnit.Symbols[Position].Container <> '') and (AUnit.Symbols[Position].Kind <> TIndexSymbolKind.EnumMember) then
+    if (AUnit.Symbols[Position].Container <> '') and ((AUnit.Symbols[Position].Kind <> TIndexSymbolKind.EnumMember) or
+      AUnit.Symbols[Position].ScopedEnum) then
       Continue;
     if not NameWanted(AUnit.Symbols[Position].Name) then
       Continue;
@@ -3256,6 +3292,23 @@ begin
   Result := -1;
 end;
 
+/// <summary>Typ, dessen Methodenzuordnung (procedure IFoo.Bar = MyBar) an AOffset ihr Ziel nennt (#849);
+/// '' an anderen Stellen.</summary>
+function ResolutionOwner(ANode: TSyntaxNode; AOffset: Integer): string;
+var
+  Index: Integer;
+begin
+  Result := '';
+  for Index := 0 to ANode.ChildCount - 1 do
+    if (ANode[Index].StartOffset <= AOffset) and (AOffset < ANode[Index].EndOffset) then
+    begin
+      if (ANode[Index].Kind = TSyntaxKind.Identifier) and (ANode.Kind = TSyntaxKind.Directive) and
+        (ANode.Name = 'resolution') then
+        Exit(ANode.EnclosingTypeName);
+      Exit(ResolutionOwner(ANode[Index], AOffset));
+    end;
+end;
+
 function TNameResolver.ResolveAt(ATree: TSyntaxTree; const AFileName: string;
   const APosition: TTextPosition): TArray<TResolvedSymbol>;
 var
@@ -3270,6 +3323,7 @@ var
   Before: TPascalToken;
   Use: TAttributeUse;
   AttributeNames: TArray<string>;
+  Owner: string;
 
   function Clean(const AText: string): string;
   begin
@@ -3342,6 +3396,17 @@ begin
     if (Index < High(Tokens)) and Tokens[Index + 1].IsSymbol('(') then
       Call := FindCall(Tokens[Index].Offset + Length(Tokens[Index].Text));
     IsInherited := (Receiver = nil) and (First >= 1) and Tokens[First - 1].IsKeyword('inherited');
+    // Ziel einer Methodenzuordnung procedure IFoo.Bar = MyBar (#849): Methode des umgebenden Typs.
+    if (Receiver = nil) and (First >= 1) and Tokens[First - 1].IsSymbol('=') then
+    begin
+      Owner := ResolutionOwner(ATree.Root, Tokens[Index].Offset);
+      if Owner <> '' then
+      begin
+        Result := ResolveNames(ATree, AFileName, Owner.Split(['.']) + Names.ToArray, Tokens[Index].Offset, False,
+          nil, nil);
+        Exit;
+      end;
+    end;
     // Attribut (#119): [Foo] meint zuerst die Klasse FooAttribute, dann Foo; Argumente gehen an den Konstruktor.
     if (Receiver = nil) and (First >= 1) and (Tokens[First - 1].IsSymbol('[') or Tokens[First - 1].IsSymbol(',')) and
       not ((Index < High(Tokens)) and Tokens[Index + 1].IsSymbol('.')) and TAttributes.At(ATree, APosition, Use) then

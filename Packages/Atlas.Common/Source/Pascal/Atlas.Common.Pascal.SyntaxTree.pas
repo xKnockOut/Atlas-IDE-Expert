@@ -78,6 +78,12 @@ type
     procedure Extract(ANode: TSyntaxNode);
     /// <summary>Erstes Kind der Art, sonst nil.</summary>
     function FindChild(AKind: TSyntaxKind): TSyntaxNode;
+    /// <summary>Routinenkopf einer Methodenzuordnung "procedure IFoo.Bar = MyBar;" (#849): kein eigenes
+    /// Mitglied; das Ziel steht als Identifier unter der Direktive "resolution".</summary>
+    function IsMethodResolution: Boolean;
+    /// <summary>Qualifizierter Name der Typdeklarationen über diesem Knoten (TAussen.TInnen), Self
+    /// eingeschlossen; '' außerhalb eines Typs.</summary>
+    function EnclosingTypeName: string;
     /// <summary>Setzt den Bereich im Quelltext.</summary>
     procedure SetRange(const AStartPos, AEndPos: TTextPosition; AStartOffset, AEndOffset: Integer);
     /// <summary>Besucht diesen Knoten und, wenn AVisit True liefert, rekursiv alle Kinder in
@@ -198,6 +204,33 @@ begin
     if Children[Index].Kind = AKind then
       Exit(Children[Index]);
   Result := nil;
+end;
+
+function TSyntaxNode.IsMethodResolution: Boolean;
+var
+  Index: Integer;
+begin
+  for Index := 0 to ChildCount - 1 do
+    if (Children[Index].Kind = TSyntaxKind.Directive) and (Children[Index].Name = 'resolution') then
+      Exit(True);
+  Result := False;
+end;
+
+function TSyntaxNode.EnclosingTypeName: string;
+var
+  Node: TSyntaxNode;
+begin
+  Result := '';
+  Node := Self;
+  while Node <> nil do
+  begin
+    if Node.Kind = TSyntaxKind.TypeDecl then
+      if Result = '' then
+        Result := Node.Name
+      else
+        Result := Node.Name + '.' + Result;
+    Node := Node.Parent;
+  end;
 end;
 
 function TSyntaxNode.GetChild(AIndex: Integer): TSyntaxNode;

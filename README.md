@@ -62,6 +62,7 @@ Everything below is implemented in `main`. Features marked *(experimental)* are 
 - **Conditional compilation**: outline, hover, go to and checks see only the active `{$IFDEF}` branches of the project, the outline shows the branch condition (#845); `{$IF}` understands `SizeOf`, `High`, `Low`, `RTLVersion111` and `Declared`, `{$IFOPT}` follows the switches of the `.dproj` and local `{$R-}`, unknown values keep both branches active, and the hover on a condition explains its value (#847)
 - **Variant records**: fields such as `TRect.Left` or `TMessage.WParam` appear in completion, hover, go to and the outline, tagged with their branch (#846)
 - **Class helpers with an ancestor**: `class helper (TBaseHelper) for TFoo` is read as a helper, and `Foo.` also offers the members of the ancestor helper (#848)
+- **Less common syntax**: several constraints per type parameter, named OLE arguments (`Open(FileName := 'a.docx')`), calling conventions without a semicolon, `cdecl varargs`, `assembler asm`, local routines in anonymous methods, `{$I file.inc}` as a constant value and long `else if` chains parse without errors; under `{$SCOPEDENUMS ON}` values need their type prefix, members from `{$I}` inside a class belong to the class (#849)
 - **Documentation comments:** `///` creates the XMLDoc skeleton with placeholders
 - **Complete statement** (Ctrl+Shift+Enter), **continue patterns** as ghost text, **continue comments** on Enter
 - **Formatting** by its own rules (Ctrl+Shift+Alt+L), since RAD Studio 13 no longer has a formatter
