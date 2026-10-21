@@ -540,7 +540,10 @@
         <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\UI\Bookmarks\Atlas.UI.Bookmarks.Dialog.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\UI\Todos\Atlas.UI.Todos.Dialog.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\UI\Bookmarks\Atlas.UI.Bookmarks.Frame.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\UI\Problems\Atlas.UI.Problems.Frame.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\UI\Problems\Atlas.UI.Problems.Explain.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.UI.Bookmarks.Tests.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.UI.Problems.Tests.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.UI.Todos.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\InlayHints\Atlas.Core.InlayHints.Store.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.InlayHints.Store.Tests.pas"/>

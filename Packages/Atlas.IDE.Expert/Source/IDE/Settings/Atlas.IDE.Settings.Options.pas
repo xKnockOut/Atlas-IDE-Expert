@@ -20,6 +20,9 @@
 // ShowSetting (#628, „Einstellungen dazu …“): öffnet Tools › Optionen, wählt
 // die Seite „Atlas“ in der Baumansicht des Dialogs (soweit sie sich finden
 // lässt) und zeigt dort die Einstellung mit markierter Zeile (Reveal).
+// ShowRule (#909, „Regel einstellen…“ im Fenster „Atlas-Prüfung“ und im
+// Befund-Hover) tut dasselbe mit "rule:<id>": Die Seite öffnet den Knoten der
+// Gruppe auf der Seite Prüfregeln und markiert die Regel.
 
 interface
 
@@ -61,6 +64,9 @@ type
     /// <summary>Tools › Optionen öffnen und auf der Seite „Atlas“ die Einstellung AKey (Name der
     /// Plugin-Einstellung) zeigen und markieren (#628).</summary>
     class procedure ShowSetting(const AKey: string); static;
+    /// <summary>„Regel einstellen…“ (#909): Tools › Optionen auf der Seite Prüfregeln bei der Regel ARuleId
+    /// öffnen.</summary>
+    class procedure ShowRule(const ARuleId: string); static;
   end;
 
 implementation
@@ -910,6 +916,11 @@ begin
       Exit(True);
     end;
   end;
+end;
+
+class procedure TAtlasOptionsRegistration.ShowRule(const ARuleId: string);
+begin
+  ShowSetting(TAtlasSettingsPage.RuleRevealPrefix + ARuleId);
 end;
 
 class procedure TAtlasOptionsRegistration.ShowSetting(const AKey: string);

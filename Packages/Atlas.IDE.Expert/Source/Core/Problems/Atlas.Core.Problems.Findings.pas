@@ -146,6 +146,9 @@ type
     class function IsMandatory(AColumn: TAtlasFindingColumn): Boolean; static;
     class function TryParseScope(const AText: string; out AScope: TAtlasFindingScope): Boolean; static;
     class function TryParseGrouping(const AText: string; out AGrouping: TAtlasFindingGrouping): Boolean; static;
+    /// <summary>„Kopieren“: je Befund eine Zeile im Format des Compilers, "Unit.pas:12:5: warning [regel]
+    /// Meldung", dahinter eingerückt der Zeilentext; Zeilenende CRLF.</summary>
+    class function AsText(const AFindings: TArray<TAtlasFinding>): string; static;
   end;
 
   TAtlasFindingsView = class
@@ -532,6 +535,30 @@ begin
     end;
   AGrouping := TAtlasFindingGrouping.ByFile;
   Result := False;
+end;
+
+class function TAtlasFindings.AsText(const AFindings: TArray<TAtlasFinding>): string;
+const
+  KindWords: array[TAtlasFindingKind] of string = ('error', 'warning', 'info');
+var
+  Item: TAtlasFinding;
+  Builder: TStringBuilder;
+begin
+  Builder := TStringBuilder.Create;
+  try
+    for Item in AFindings do
+    begin
+      Builder.Append(Item.Location).Append(': ').Append(KindWords[Item.Kind]);
+      if Item.Rule <> '' then
+        Builder.Append(' [').Append(Item.Rule).Append(']');
+      Builder.Append(' ').Append(Item.Problem.Message).Append(#13#10);
+      if Item.LineText <> '' then
+        Builder.Append('    ').Append(Item.LineText).Append(#13#10);
+    end;
+    Result := Builder.ToString;
+  finally
+    Builder.Free;
+  end;
 end;
 
 { TAtlasFindingsView }

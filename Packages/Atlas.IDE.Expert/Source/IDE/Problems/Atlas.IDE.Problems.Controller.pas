@@ -23,6 +23,10 @@
 // Fehler, Warnungen und Hinweise wie in der Liste „Atlas-Probleme“ (ohne
 // Compilermeldungen) an OnCounts; mit problems.statusCounter aus einmal
 // AShow = False.
+// Laufende Prüfung (#909, problems.live): an = 400 ms nach der letzten
+// Änderung holen; aus = erst, wenn der Puffer wieder ungeändert ist (nach
+// dem Speichern). Die letzte Prüfung einer Datei (Datei, Dauer, Zeitpunkt)
+// steht in LastCheck für die Statuszeile des Fensters „Atlas-Prüfung“.
 // Ergebnisse kommen über TThread.Queue in den Hauptthread; der Speicher wird
 // nur dort benutzt. Shutdown hält die Threads an, bevor die Sitzung endet: Der
 // Manager schließt dazwischen die Verbindung, damit laufende Anfragen sofort
@@ -51,6 +55,13 @@ type
   /// <summary>Zähler für die Statusleiste (#509); AShow False = Feld entfernen.</summary>
   TAtlasProblemCountsProc = reference to procedure(AShow: Boolean; const ACounts: TAtlasProblemCounts);
 
+  /// <summary>Letzte Prüfung einer Datei für die Statuszeile (#909); FileName '' = noch keine.</summary>
+  TAtlasProblemsCheck = record
+    FileName: string;
+    DurationMs: Cardinal;
+    At: TDateTime;
+  end;
+
   TAtlasProblemsController = class
   private type
     TPull = record
@@ -58,6 +69,8 @@ type
       Text: string;
       PreviousId: string;
       ReplaceCompiler: Boolean;
+      /// <summary>Dauer der Anfrage; setzt der Thread.</summary>
+      DurationMs: Cardinal;
     end;
     TDocumentProc = reference to procedure(const APull: TPull; const AReport: TLspDiagnosticReport);
     TWorkspaceProc = reference to procedure(const AReports: TArray<TLspDiagnosticReport>);
@@ -139,6 +152,7 @@ type
     FCountsShown: Boolean;
     FCountsVersion: Integer;
     class var FOnCounts: TAtlasProblemCountsProc;
+    class var FLastCheck: TAtlasProblemsCheck;
     procedure PublishCounts;
     procedure Tick(Sender: TObject);
     procedure EnsureWorkers(ASession: TLspSession);
@@ -174,6 +188,8 @@ type
     class function CountsOf(AStore: TAtlasProblemStore): TAtlasProblemCounts; static;
     /// <summary>Empfänger der Zähler (#509); setzt die Composition, nil = keiner. Im Hauptthread.</summary>
     class property OnCounts: TAtlasProblemCountsProc read FOnCounts write FOnCounts;
+    /// <summary>Letzte Prüfung einer Datei (#909); im Hauptthread.</summary>
+    class property LastCheck: TAtlasProblemsCheck read FLastCheck;
   end;
 
 implementation
@@ -264,7 +280,9 @@ end;
 procedure TAtlasProblemsController.TDocumentWorker.Execute;
 var
   Jobs: TArray<TPull>;
-  Job: TPull;
+  Job, Done: TPull;
+  Report: TLspDiagnosticReport;
+  Started: Cardinal;
 begin
   while not Terminated do
   begin
@@ -283,7 +301,12 @@ begin
       if Terminated then
         Break;
       try
-        Deliver(Job, FSession.DocumentDiagnostics(Job.FileName, Job.PreviousId, DocumentTimeoutMs));
+        Started := TThread.GetTickCount;
+        Report := FSession.DocumentDiagnostics(Job.FileName, Job.PreviousId, DocumentTimeoutMs);
+        // Kopie: Die Schleifenvariable ist nicht zuweisbar.
+        Done := Job;
+        Done.DurationMs := TThread.GetTickCount - Started;
+        Deliver(Done, Report);
       except
         on E: Exception do
           LogLater('Probleme: ' + ExtractFileName(Job.FileName) + ': ' + E.Message);
@@ -625,6 +648,9 @@ begin
           FLastFile := FileName;
         Refresh := Session.RefreshCount <> FRefreshSeen;
         Changed := not FPulled.TryGetValue(Key, Known) or (Known <> Text);
+        // Ohne laufende Prüfung erst nach dem Speichern (Puffer wieder ungeändert).
+        if Changed and not TAtlasIdeSettings.Current.ProblemsLive and View.Buffer.IsModified then
+          Changed := False;
         if (Refresh or (Changed and (GetTickCount - FChangedAt >= QuietMs))) and FDocuments.Idle then
         begin
           Session.Sync(FileName, Text);
@@ -740,7 +766,12 @@ procedure TAtlasProblemsController.DeliverDocument(const APull: TPull; const ARe
 var
   Current: string;
 begin
-  if not Active or AReport.Unchanged then
+  if not Active then
+    Exit;
+  FLastCheck.FileName := APull.FileName;
+  FLastCheck.DurationMs := APull.DurationMs;
+  FLastCheck.At := Now;
+  if AReport.Unchanged then
     Exit;
   FStore.Update(APull.FileName, APull.Text, True, AReport.Problems, AReport.ResultId, APull.ReplaceCompiler);
   // Inzwischen weitergetippt: Positionen auf den aktuellen Text bringen.

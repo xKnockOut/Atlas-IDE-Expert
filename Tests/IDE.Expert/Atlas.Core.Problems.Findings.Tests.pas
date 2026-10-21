@@ -57,6 +57,8 @@ type
     procedure ScopeAndGroupingNames;
     [Test]
     procedure CheckedCountCountsDeliveredFiles;
+    [Test]
+    procedure CopyTextUsesCompilerFormat;
   end;
 
 implementation
@@ -568,6 +570,17 @@ begin
   finally
     Store.Free;
   end;
+end;
+
+procedure TAtlasFindingsTests.CopyTextUsesCompilerFormat;
+var
+  Items: TArray<TAtlasFinding>;
+begin
+  Items := TAtlasFindings.FromProblems('C:\P\B.pas', [Problem(9, 'empty-except', 'Leer', TAtlasProblemSeverity.Warning),
+    Problem(3, 'syntax', 'Fehlt', TAtlasProblemSeverity.Error)], ['', '', '', '  X := 1;']);
+  Assert.AreEqual('B.pas:10:3: warning [empty-except] Leer'#13#10 +
+    'B.pas:4:3: error [syntax] Fehlt'#13#10'    X := 1;'#13#10, TAtlasFindings.AsText(Items));
+  Assert.AreEqual('', TAtlasFindings.AsText(nil));
 end;
 
 initialization

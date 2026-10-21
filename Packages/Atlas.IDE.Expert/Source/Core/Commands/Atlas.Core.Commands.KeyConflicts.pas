@@ -40,7 +40,7 @@ type
   /// setzen…“ (#622), das Erzeugen-Menü (#719), die Benachrichtigungen (#601) und die Schnellaktionen der
   /// Willkommensseite „Öffnen und bauen“ und „Tests“ (#764), „Element ausblenden …“ (#628), nächster und voriger
   /// Befund (#509), „Schnell öffnen“ (#503), Zurück, Vor und letzte Bearbeitungsstelle (#504) sowie Definition und
-  /// Referenzen einblenden (#505). Neue Funktionen
+  /// Referenzen einblenden (#505) und das Fenster „Atlas-Prüfung“ (#909). Neue Funktionen
   /// nur hinten anhängen: Die Ordnungszahl steckt in Kennungen der Übersicht.</summary>
   TAtlasKeyFunction = (Palette, Check, Completion, Signature, QuickToggle, DiagnosticMode, CodeActions,
     ExpandSelection, ShrinkSelection, GoToImplementation, TypeDefinition, UndoChange, RedoChange, WelcomeSearch,
@@ -50,7 +50,7 @@ type
     JumpToMatchSelect, NextChange, PreviousChange, MoveLinesUp, MoveLinesDown, DuplicateLinesUp,
     DuplicateLinesDown, CompleteStatement, MultiCursorNext, MultiCursorSkip, MultiCursorLineEnds,
     MultiCursorAbove, MultiCursorBelow, Search, SearchNext, SearchPrevious,
-    SearchMethod, FormatCode, ToggleBlockComment, NewLineBelow, NewLineAbove, Unwrap);
+    SearchMethod, FormatCode, ToggleBlockComment, NewLineBelow, NewLineAbove, Unwrap, ProblemsWindow);
   TAtlasKeyChoice = (UseAtlas, LeaveOther, OtherKey);
   /// <summary>NoKey: keine Taste; IdeKey: Taste der IDE über Code Insight, Atlas belegt nichts selbst;
   /// Free: Atlas belegt die freie Taste; AtlasWins: belegt, Atlas hat Vorrang; Left: belegt, Atlas
@@ -245,7 +245,10 @@ begin
     Create(TAtlasKeyFunction.NewLineBelow, Word(ASettings.NewLineBelowKey), Shared, ASettings.NewLineAround),
     Create(TAtlasKeyFunction.NewLineAbove, Word(ASettings.NewLineAboveKey), Shared, ASettings.NewLineAround),
     // Umschließung entfernen (#657): aus = Kürzel frei.
-    Create(TAtlasKeyFunction.Unwrap, Word(ASettings.UnwrapKey), Shared, ASettings.Unwrap)];
+    Create(TAtlasKeyFunction.Unwrap, Word(ASettings.UnwrapKey), Shared, ASettings.Unwrap),
+    // Fenster „Atlas-Prüfung“ (#909): aus = Kürzel frei.
+    Create(TAtlasKeyFunction.ProblemsWindow, Word(ASettings.ProblemsWindowKey), Shared,
+      ASettings.Problems and ASettings.ProblemsWindow)];
 end;
 
 class procedure TAtlasKeyEntry.ToSettings(const AEntries: TArray<TAtlasKeyEntry>;
@@ -389,6 +392,8 @@ begin
         ASettings.NewLineAboveKey := Entry.Key;
       TAtlasKeyFunction.Unwrap:
         ASettings.UnwrapKey := Entry.Key;
+      TAtlasKeyFunction.ProblemsWindow:
+        ASettings.ProblemsWindowKey := Entry.Key;
       // Strg+F12 ist fest; ein- und ausgeschaltet wird über unitSearch.replaceIdeDialog.
       TAtlasKeyFunction.UnitSearchIde:
         ;

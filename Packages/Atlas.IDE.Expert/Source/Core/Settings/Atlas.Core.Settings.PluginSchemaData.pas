@@ -12,7 +12,7 @@ function AtlasPluginSchemaJson: string;
 implementation
 
 const
-  Lines: array[0..3783] of string = (
+  Lines: array[0..3781] of string = (
     '{',
     '  "$schema": "http://json-schema.org/draft-07/schema#",',
     '  "title": "Atlas-Plugin-Einstellungen",',
@@ -1403,8 +1403,6 @@ const
     '      "x-area": "keys",',
     '      "x-format": "shortcut",',
     '      "x-page": "Befehle",',
-    '      "x-parent": "problems.window",',
-    '      "x-node": "",',
     '      "x-issue": "#909"',
     '    },',
     '    "ProblemsLive": {',

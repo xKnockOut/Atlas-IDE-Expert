@@ -366,7 +366,7 @@ Riskante oder unreife Funktionen kommen als **experimentell** (#834): Sie haben 
   - `keys.searchNext`
   - `keys.searchPrevious`
   - `keys.searchInMethod`
-  - `keys.problemsWindow` – hängt an `problems.window`
+  - `keys.problemsWindow`
   - `keys.codeActions`
   - `keys.expandSelection`
   - `keys.shrinkSelection`

@@ -170,6 +170,7 @@ uses
   Atlas.IDE.Editor.GutterColumn,
   Atlas.IDE.Editor.SelectionMatches,
   Atlas.IDE.Bookmarks.Service,
+  Atlas.IDE.Problems.Service,
   Atlas.IDE.Bookmarks.Gutter,
   Atlas.IDE.Foundation.GutterMarks,
   Atlas.IDE.Foundation.TeamFile,
@@ -293,6 +294,8 @@ var
   // Dienste für Notizen (#545) und Lesezeichen (#622) gestartet.
   NotesStarted: Boolean;
   BookmarksStarted: Boolean;
+  // Fenster „Atlas-Prüfung“ (#909) gestartet.
+  ProblemsWindowStarted: Boolean;
   HideStarted: Boolean;
   // Teile des Plugins in Startreihenfolge (Code-Review S-03); gefüllt beim ersten RegisterFeatures.
   Features: TAtlasFeatureTable;
@@ -919,6 +922,11 @@ begin
   Result := TAtlasIdeSettings.Current.BookmarksNamed;
 end;
 
+function ProblemsWindowVisible: Boolean;
+begin
+  Result := TAtlasIdeProblems.Enabled;
+end;
+
 function QuickOpenVisible: Boolean;
 begin
   Result := TAtlasIdeSettings.Current.QuickOpen;
@@ -1290,6 +1298,9 @@ begin
     Guarded(TAtlasFeature.Bookmarks, TAtlasIdeBookmarks.GoToBookmark), BookmarksNamedVisible);
   Add('Atlas.BookmarkWindow', TAtlasTextId.BookmarksMenuWindow,
     Guarded(TAtlasFeature.Bookmarks, TAtlasIdeBookmarks.ShowWindow), BookmarksNamedVisible);
+  // Fenster „Atlas-Prüfung“ (#909); nur sichtbar, solange problems.window an ist.
+  Add('Atlas.ProblemsWindow', TAtlasTextId.ProblemsWindowCommand,
+    Guarded(TAtlasFeature.Problems, TAtlasIdeProblems.ShowWindow), ProblemsWindowVisible);
   // Erzeugen-Menü (#719); nur sichtbar, solange keys.generateMenu an ist.
   Add('Atlas.GenerateMenu', TAtlasTextId.GenerateMenuCommand,
     procedure
@@ -1658,7 +1669,11 @@ begin
         [ACounts.Errors, ACounts.Warnings, ACounts.Hints]),
         procedure(APoint: TPoint)
         begin
-          TAtlasProblemsList.ShowList;
+          // Mit dem Fenster „Atlas-Prüfung“ (#909) dorthin, sonst in die Meldungsliste.
+          if TAtlasIdeProblems.Enabled then
+            TAtlasIdeProblems.ShowWindow
+          else
+            TAtlasProblemsList.ShowList;
         end);
     end;
 end;
@@ -2660,6 +2675,57 @@ begin
   BookmarksStarted := False;
 end;
 
+/// <summary>Fenster „Atlas-Prüfung“ (#909): Code-Aktionen, Optionsseite, Serverbefehle und Meldungen über
+/// Haken; F8/Umschalt+F8 gehen bei sichtbarem Fenster durch dessen Liste.</summary>
+procedure StartProblemsWindow;
+var
+  Hooks: TAtlasIdeProblemsHooks;
+begin
+  Hooks.ApplyTagged :=
+    procedure(AProblem: TAtlasProblem; ATag: string)
+    begin
+      TAtlasIdeEditorCommands.ApplyTagged(TLspRange.Create(AProblem.StartLine, AProblem.StartCharacter,
+        AProblem.EndLine, AProblem.EndCharacter), ATag);
+    end;
+  Hooks.ConfigureRule :=
+    procedure(ARule: string)
+    begin
+      TAtlasGuard.Run(TAtlasFeature.Settings,
+        procedure
+        begin
+          TAtlasOptionsRegistration.ShowRule(ARule);
+        end);
+    end;
+  Hooks.Command :=
+    procedure(const ACommand, AArgumentsJson: string; const ADone: TProc<TJSONValue>)
+    begin
+      // Im Hintergrund (#874).
+      if Manager <> nil then
+        Manager.RunServerCommandAsync(ACommand, AArgumentsJson, 10000, ADone)
+      else
+        ADone(nil);
+    end;
+  Hooks.Message :=
+    procedure(AText: string)
+    begin
+      MessageLine(AText);
+    end;
+  TAtlasIdeProblems.Start(Hooks);
+  TAtlasIdeEditorCommands.OnStepList :=
+    function(AForward: Boolean): Boolean
+    begin
+      Result := TAtlasIdeProblems.StepWindow(AForward);
+    end;
+  ProblemsWindowStarted := True;
+end;
+
+procedure StopProblemsWindow;
+begin
+  TAtlasIdeEditorCommands.OnStepList := nil;
+  TAtlasIdeProblems.Release;
+  ProblemsWindowStarted := False;
+end;
+
 /// <summary>Gezeichnete Elemente und Ausblenden am Element (#628); „Einstellungen dazu …“ öffnet die
 /// Optionsseite.</summary>
 procedure StartHide;
@@ -3535,6 +3601,13 @@ begin
       Result := BookmarksStarted;
     end,
     StartBookmarks, StopBookmarks);
+  // Fenster „Atlas-Prüfung“ (#909): liest den Problemspeicher des Managers.
+  Features.Add('ProblemsWindow', TAtlasSafeLevel.Normal,
+    function: Boolean
+    begin
+      Result := ProblemsWindowStarted;
+    end,
+    StartProblemsWindow, StopProblemsWindow);
   // Nach Notizen und Lesezeichen, Abbau davor: Die Rinne liest deren Listen (#545, #622); dazu die
   // Rekursionssymbole (#623).
   Features.AddWanted('GutterMarks',
@@ -3768,6 +3841,7 @@ begin
       if ShortcutTips <> nil then
         ShortcutTips.ThemeChanged;
       TAtlasIdeBookmarks.ThemeChanged;
+      TAtlasIdeProblems.ThemeChanged;
       TAtlasIdeOutline.ThemeChanged;
       TAtlasIdeBreadcrumbs.ThemeChanged;
       TAtlasIdeSearch.ThemeChanged;
@@ -3813,6 +3887,8 @@ begin
         DiagnosticMode.ApplySettings;
       // bookmarks.named und bookmarks.shared (#622).
       TAtlasIdeBookmarks.ApplySettings;
+      // problems.window* (#909).
+      TAtlasIdeProblems.ApplySettings;
       // outline.* (#537).
       TAtlasIdeOutline.ApplySettings;
       // editor.breadcrumbs* (#590).

@@ -435,6 +435,14 @@
         <DCCReference Include="Source\IDE\Problems\Atlas.IDE.Problems.Painter.pas"/>
         <DCCReference Include="Source\IDE\Problems\Atlas.IDE.Problems.MessageList.pas"/>
         <DCCReference Include="Source\IDE\Problems\Atlas.IDE.Problems.Controller.pas"/>
+        <DCCReference Include="Source\UI\Problems\Atlas.UI.Problems.Frame.pas">
+            <Form>AtlasProblemsFrame</Form>
+            <FormType>dfm</FormType>
+            <DesignClass>TFrame</DesignClass>
+        </DCCReference>
+        <DCCReference Include="Source\UI\Problems\Atlas.UI.Problems.Explain.pas"/>
+        <DCCReference Include="Source\IDE\Problems\Atlas.IDE.Problems.Window.pas"/>
+        <DCCReference Include="Source\IDE\Problems\Atlas.IDE.Problems.Service.pas"/>
         <DCCReference Include="Source\IDE\Build\Atlas.IDE.Build.MessageView.pas"/>
         <DCCReference Include="Source\Core\Build\Atlas.Core.Build.Messages.pas"/>
         <DCCReference Include="Source\Core\Build\Atlas.Core.Build.CheckOnSave.pas"/>
