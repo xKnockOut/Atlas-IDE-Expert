@@ -361,6 +361,8 @@
         <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Hover\Atlas.Core.Hover.History.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Hover\Atlas.Core.Hover.Layout.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Hover.Layout.Tests.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Hover\Atlas.Core.Hover.DebugValue.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.Core.Hover.DebugValue.Tests.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Hover.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Documentation\Atlas.Core.Documentation.Contract.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Documentation\Atlas.Core.Documentation.Layout.pas"/>
@@ -683,6 +685,8 @@
         <DCCReference Include="IDE.Expert\Atlas.Core.Outline.StickyScroll.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\UI\Outline\Atlas.UI.Outline.Breadcrumbs.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.UI.Outline.Breadcrumbs.Tests.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\UI\Outline\Atlas.UI.Outline.NavigationToolbar.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.UI.Outline.NavigationToolbar.Tests.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.UI.Editor.Hide.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\StartProfiles\Atlas.Core.StartProfiles.Store.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.StartProfiles.Tests.pas"/>
@@ -738,6 +742,7 @@
         <DCCReference Include="..\Setup\Source\Core\Setup.Core.Ides.pas"/>
         <DCCReference Include="..\Setup\Source\Core\Setup.Core.Installer.pas"/>
         <DCCReference Include="..\Setup\Source\Core\Setup.Core.SettingsCommand.pas"/>,
+        <DCCReference Include="..\Setup\Source\Core\Setup.Core.License.pas"/>
         <DCCReference Include="..\Setup\Source\Shell\Setup.Shell.Texts.pas"/>
         <DCCReference Include="Setup\Setup.Core.Installer.Tests.pas"/>
         <DCCReference Include="Setup\Setup.Core.SettingsCommand.Tests.pas"/>,
@@ -786,6 +791,12 @@
         <DCCReference Include="IDE.Expert\Atlas.Core.Editor.Minimap.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\UI\Editor\Atlas.UI.Editor.Minimap.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.UI.Editor.Minimap.Tests.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Search\Atlas.Core.Search.Matching.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Search\Atlas.Core.Search.Scopes.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.Core.Search.Tests.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Search\Atlas.Core.Search.Results.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\UI\Search\Atlas.UI.Search.Bar.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.UI.Search.Bar.Tests.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Editor.SnapshotPolicy.Tests.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Editor.CloseRules.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Build\Atlas.Core.Build.Messages.pas"/>

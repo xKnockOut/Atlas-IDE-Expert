@@ -290,6 +290,8 @@ type
 implementation
 
 uses
+  Atlas.Core.Hover.DebugValue,
+  Atlas.IDE.Hover.DebugValue,
   Atlas.Core.Diagnostics.Guard,
   System.IOUtils,
   System.StrUtils,
@@ -1322,8 +1324,9 @@ end;
 function TAtlasCodeInsightManager.GetHintText(HintLine, HintCol: Integer): string;
 var
   View: IOTAEditView;
-  Text: string;
+  Text, DebugText: string;
   Lines: TArray<string>;
+  Character: Integer;
   Activity: IInterface;
 begin
   Activity := TAtlasActivity.Scope('Symbolhinweis');
@@ -1343,8 +1346,18 @@ begin
     Lines := Text.Split([#13#10, #10]);
     if (HintLine < 1) or (HintLine > Length(Lines)) then
       Exit;
-    Result := FSession.Hover(View.Buffer.FileName, Text, HintLine - 1,
-      TLspSession.ColumnToIndex(Lines[HintLine - 1], HintCol, TAtlasEditorBuffer.TabWidth(View.Buffer)));
+    Character := TLspSession.ColumnToIndex(Lines[HintLine - 1], HintCol, TAtlasEditorBuffer.TabWidth(View.Buffer));
+    Result := FSession.Hover(View.Buffer.FileName, Text, HintLine - 1, Character);
+    // Wert im angehaltenen Debugger (#891) vor dem Hover-Text; nur sofort verfügbare Werte, die IDE wartet nicht.
+    if TAtlasIdeSettings.Current.DebugHoverValues and TAtlasIdeDebugValues.Stopped then
+    begin
+      DebugText := TAtlasIdeDebugValues.EvaluateNow(TAtlasDebugExpression.AtCharacter(Lines[HintLine - 1],
+        Character), View.Buffer.FileName, HintLine).PlainText;
+      if (DebugText <> '') and (Result <> '') then
+        Result := DebugText + #13#10#13#10 + Result
+      else if DebugText <> '' then
+        Result := DebugText;
+    end;
     Diagnose(Format('Hover (%s), Zeile %d, Spalte %d (Cursor %d/%d): %d Zeichen', [ExtractFileExt(View.Buffer.FileName),
       HintLine, HintCol, View.CursorPos.Line, View.CursorPos.Col, Length(Result)]));
   except

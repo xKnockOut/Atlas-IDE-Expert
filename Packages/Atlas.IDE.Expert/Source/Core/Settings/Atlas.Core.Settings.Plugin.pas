@@ -239,6 +239,22 @@ type
     /// <summary>„Element ausblenden …“ (#628, TShortCut, 0 = keins; Vorgabe Strg+.): Menü „Ausblenden“ für das von
     /// Atlas gezeichnete Element in der Cursorzeile; ohne Element geht die Taste an die IDE (IDE Insight).</summary>
     HideElementKey: Integer;
+    /// <summary>Atlas-Suche ersetzt die IDE-Suche (#878, search.replaceIdeSearch): Strg+F öffnet die Suchleiste
+    /// unter dem Editor, F3/Umschalt+F3 springen in der zuletzt benutzten Atlas-Suche; aus = Suchen der IDE wie
+    /// bisher. Vorgabe an.</summary>
+    SearchReplaceIde: Boolean;
+    /// <summary>Treffer der Atlas-Suche im Reiter „Atlas-Suche“ des Fensters Meldungen auflisten (#878,
+    /// search.resultsInMessages; Enter bzw. „In Meldungen“ in der Suchleiste). Vorgabe an.</summary>
+    SearchResultsInMessages: Boolean;
+    /// <summary>Taste für die Atlas-Suchleiste (#878, TShortCut, 0 = keine; Vorgabe Strg+F).</summary>
+    SearchKey: Integer;
+    /// <summary>Nächster Treffer der letzten Atlas-Suche (#878; Vorgabe F3).</summary>
+    SearchNextKey: Integer;
+    /// <summary>Voriger Treffer der letzten Atlas-Suche (#878; Vorgabe Umschalt+F3).</summary>
+    SearchPreviousKey: Integer;
+    /// <summary>„In Methode suchen“ (#877): Suchleiste mit Bereich Methode und dem Bezeichner am Cursor; gilt
+    /// auch mit search.replaceIdeSearch aus (Vorgabe Strg+Umschalt+Alt+F).</summary>
+    SearchMethodKey: Integer;
     /// <summary>Pfad zu AtlasServer.exe; leer: neben dem Plugin bzw. Output\Win64\Debug\Bin.</summary>
     ServerPath: string;
     /// <summary>Blocklinien in den Paarfarben statt der Strukturhervorhebung der IDE (#514).</summary>
@@ -351,6 +367,10 @@ type
     /// <summary>Beim Test-Debuggen am Anfang der Methode anhalten (#585, debug.testBreakAtStart): einmaliger
     /// Haltepunkt an der ersten Anweisung, nach dem Halt entfernt.</summary>
     TestBreakAtStart: Boolean;
+    /// <summary>Variablenwerte im Hover beim Debuggen (#891, debug.hoverValues): Bei angehaltenem Prozess wertet
+    /// Atlas den Ausdruck unter der Maus über den Debugger der IDE aus und zeigt den Wert oben im Tooltip (bzw.
+    /// im Tooltip der IDE, wenn der eigene aus ist); aus = kein Wert.</summary>
+    DebugHoverValues: Boolean;
     /// <summary>Startprofile (#575, startProfiles.enabled): Befehl „Startprofil: …“ (Atlas.StartProfile) mit Tipp,
     /// Feld in der Statusleiste und Setzen der Startoptionen des Projekts; aus = Befehl, Tipp und Feld
     /// verschwinden, die Startoptionen der IDE bleiben, wie sie sind.</summary>
@@ -563,6 +583,12 @@ type
     Breadcrumbs: Boolean;
     /// <summary>Unit-Namen als erstes Glied (#590, editor.breadcrumbsShowUnit).</summary>
     BreadcrumbsShowUnit: Boolean;
+    /// <summary>Brotkrumenleiste in den Farben der IDE-Werkzeugleisten statt der Atlas-Palette
+    /// (editor.breadcrumbsIdeColors).</summary>
+    BreadcrumbsIdeColors: Boolean;
+    /// <summary>Navigationsleiste der IDE („Typ suchen“/„Methode suchen“) ausblenden, solange die
+    /// Brotkrumenleiste an ist (editor.breadcrumbsHideIdeToolbar).</summary>
+    BreadcrumbsHideIdeToolbar: Boolean;
     /// <summary>Mitlaufender Kopf (#506, editor.stickyScroll, experimentell).</summary>
     StickyScroll: Boolean;
     /// <summary>Höchstzahl seiner Zeilen, MinStickyLines bis MaxStickyLines (#506,
@@ -1105,6 +1131,12 @@ begin
   Result.BookmarksShared := False;
   Result.BookmarkKey := $C04B; // Strg+Alt+K
   Result.HideElementKey := $40BE; // Strg+.
+  Result.SearchReplaceIde := True;
+  Result.SearchResultsInMessages := True;
+  Result.SearchKey := $4046; // Strg+F
+  Result.SearchNextKey := $72; // F3
+  Result.SearchPreviousKey := $2072; // Umschalt+F3
+  Result.SearchMethodKey := $E046; // Strg+Umschalt+Alt+F
   Result.ServerPath := '';
   Result.PairGuides := True;
   Result.PairOwners := True;
@@ -1152,6 +1184,7 @@ begin
   Result.ReleaseChecks := TAtlasReleaseChecks.Defaults.ToText;
   Result.TestDebug := True;
   Result.TestBreakAtStart := True;
+  Result.DebugHoverValues := True;
   Result.StartProfiles := True;
   Result.StartProfilesStatusField := True;
   Result.TodoList := True;
@@ -1244,6 +1277,8 @@ begin
   Result.OutlineFollowCursor := True;
   Result.Breadcrumbs := True;
   Result.BreadcrumbsShowUnit := False;
+  Result.BreadcrumbsIdeColors := True;
+  Result.BreadcrumbsHideIdeToolbar := True;
   Result.StickyScroll := False;
   Result.StickyScrollMaxLines := 3;
   Result.Minimap := False;
@@ -1284,7 +1319,8 @@ begin
   Result.CompleteStatementTryKind := TryKindFinally;
   Result.CompleteStatementMethodBody := True;
   Result.FormatCode := True;
-  Result.FormatCodeKey := $E046; // Strg+Umschalt+Alt+F
+  // Strg+Umschalt+Alt+F hat die Suche in der Methode (#877).
+  Result.FormatCodeKey := $E04C; // Strg+Umschalt+Alt+L
   Result.ContinuePattern := True;
   Result.ContinuePatternMinLines := 2;
   Result.MultiCursor := False;
@@ -1513,6 +1549,10 @@ begin
   InlineDiagnostics := Choice(InlineDiagnostics, ['errors', 'off', 'errorsAndWarnings', 'all']);
   NextProblemKey := EnsureRange(NextProblemKey, 0, $FFFF);
   PreviousProblemKey := EnsureRange(PreviousProblemKey, 0, $FFFF);
+  SearchKey := EnsureRange(SearchKey, 0, $FFFF);
+  SearchNextKey := EnsureRange(SearchNextKey, 0, $FFFF);
+  SearchPreviousKey := EnsureRange(SearchPreviousKey, 0, $FFFF);
+  SearchMethodKey := EnsureRange(SearchMethodKey, 0, $FFFF);
   GenerateMenuKey := EnsureRange(GenerateMenuKey, 0, $FFFF);
   GenerateMenuGroups := TAtlasGenerateLists.NormalizeGroups(GenerateMenuGroups);
   GenerateMenuHidden := TAtlasGenerateLists.NormalizeHidden(GenerateMenuHidden);
@@ -1598,6 +1638,13 @@ begin
   BookmarksShared := AStore.ReadInteger('BookmarksShared', BoolValue(Default.BookmarksShared)) <> 0;
   BookmarkKey := AStore.ReadInteger('BookmarkKey', Default.BookmarkKey);
   HideElementKey := AStore.ReadInteger('HideElementKey', Default.HideElementKey);
+  SearchReplaceIde := AStore.ReadInteger('SearchReplaceIde', BoolValue(Default.SearchReplaceIde)) <> 0;
+  SearchResultsInMessages := AStore.ReadInteger('SearchResultsInMessages',
+    BoolValue(Default.SearchResultsInMessages)) <> 0;
+  SearchKey := AStore.ReadInteger('SearchKey', Default.SearchKey);
+  SearchNextKey := AStore.ReadInteger('SearchNextKey', Default.SearchNextKey);
+  SearchPreviousKey := AStore.ReadInteger('SearchPreviousKey', Default.SearchPreviousKey);
+  SearchMethodKey := AStore.ReadInteger('SearchMethodKey', Default.SearchMethodKey);
   ServerPath := Trim(AStore.ReadString('ServerPath', Default.ServerPath));
   PairGuides := AStore.ReadInteger('PairGuides', BoolValue(Default.PairGuides)) <> 0;
   PairOwners := AStore.ReadInteger('PairOwners', BoolValue(Default.PairOwners)) <> 0;
@@ -1644,6 +1691,7 @@ begin
   ReleaseChecks := AStore.ReadString('ReleaseChecks', Default.ReleaseChecks);
   TestDebug := AStore.ReadInteger('TestDebug', BoolValue(Default.TestDebug)) <> 0;
   TestBreakAtStart := AStore.ReadInteger('TestBreakAtStart', BoolValue(Default.TestBreakAtStart)) <> 0;
+  DebugHoverValues := AStore.ReadInteger('DebugHoverValues', BoolValue(Default.DebugHoverValues)) <> 0;
   StartProfiles := AStore.ReadInteger('StartProfiles', BoolValue(Default.StartProfiles)) <> 0;
   StartProfilesStatusField := AStore.ReadInteger('StartProfilesStatusField',
     BoolValue(Default.StartProfilesStatusField)) <> 0;
@@ -1753,6 +1801,9 @@ begin
   OutlineFollowCursor := AStore.ReadInteger('OutlineFollowCursor', BoolValue(Default.OutlineFollowCursor)) <> 0;
   Breadcrumbs := AStore.ReadInteger('Breadcrumbs', BoolValue(Default.Breadcrumbs)) <> 0;
   BreadcrumbsShowUnit := AStore.ReadInteger('BreadcrumbsShowUnit', BoolValue(Default.BreadcrumbsShowUnit)) <> 0;
+  BreadcrumbsIdeColors := AStore.ReadInteger('BreadcrumbsIdeColors', BoolValue(Default.BreadcrumbsIdeColors)) <> 0;
+  BreadcrumbsHideIdeToolbar := AStore.ReadInteger('BreadcrumbsHideIdeToolbar',
+    BoolValue(Default.BreadcrumbsHideIdeToolbar)) <> 0;
   StickyScroll := AStore.ReadInteger('StickyScroll', BoolValue(Default.StickyScroll)) <> 0;
   StickyScrollMaxLines := AStore.ReadInteger('StickyScrollMaxLines', Default.StickyScrollMaxLines);
   Minimap := AStore.ReadInteger('Minimap', BoolValue(Default.Minimap)) <> 0;
@@ -1953,6 +2004,12 @@ begin
   AStore.WriteInteger('BookmarksShared', BoolValue(BookmarksShared));
   AStore.WriteInteger('BookmarkKey', BookmarkKey);
   AStore.WriteInteger('HideElementKey', HideElementKey);
+  AStore.WriteInteger('SearchReplaceIde', BoolValue(SearchReplaceIde));
+  AStore.WriteInteger('SearchResultsInMessages', BoolValue(SearchResultsInMessages));
+  AStore.WriteInteger('SearchKey', SearchKey);
+  AStore.WriteInteger('SearchNextKey', SearchNextKey);
+  AStore.WriteInteger('SearchPreviousKey', SearchPreviousKey);
+  AStore.WriteInteger('SearchMethodKey', SearchMethodKey);
   AStore.WriteString('ServerPath', Trim(ServerPath));
   AStore.WriteInteger('PairGuides', BoolValue(PairGuides));
   AStore.WriteInteger('PairOwners', BoolValue(PairOwners));
@@ -1999,6 +2056,7 @@ begin
   AStore.WriteString('ReleaseChecks', ReleaseChecks);
   AStore.WriteInteger('TestDebug', BoolValue(TestDebug));
   AStore.WriteInteger('TestBreakAtStart', BoolValue(TestBreakAtStart));
+  AStore.WriteInteger('DebugHoverValues', BoolValue(DebugHoverValues));
   AStore.WriteInteger('StartProfiles', BoolValue(StartProfiles));
   AStore.WriteInteger('StartProfilesStatusField', BoolValue(StartProfilesStatusField));
   AStore.WriteInteger('TodoList', BoolValue(TodoList));
@@ -2089,6 +2147,8 @@ begin
   AStore.WriteInteger('OutlineFollowCursor', BoolValue(OutlineFollowCursor));
   AStore.WriteInteger('Breadcrumbs', BoolValue(Breadcrumbs));
   AStore.WriteInteger('BreadcrumbsShowUnit', BoolValue(BreadcrumbsShowUnit));
+  AStore.WriteInteger('BreadcrumbsIdeColors', BoolValue(BreadcrumbsIdeColors));
+  AStore.WriteInteger('BreadcrumbsHideIdeToolbar', BoolValue(BreadcrumbsHideIdeToolbar));
   AStore.WriteInteger('StickyScroll', BoolValue(StickyScroll));
   AStore.WriteInteger('StickyScrollMaxLines', StickyScrollMaxLines);
   AStore.WriteInteger('Minimap', BoolValue(Minimap));

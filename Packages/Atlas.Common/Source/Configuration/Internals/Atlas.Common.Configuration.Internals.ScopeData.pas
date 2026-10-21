@@ -9,7 +9,7 @@ interface
 
 const
   /// <summary>Schlüssel für alle Projekte (settings.json).</summary>
-  GlobalSettingPaths: array[0..39] of string = (
+  GlobalSettingPaths: array[0..42] of string = (
     'delphiVersion',
     'language',
     'rules',
@@ -39,6 +39,9 @@ const
     'index.searchPaths',
     'index.libraryPaths',
     'index.usages',
+    'index.removeOrphans',
+    'index.cacheMaxAgeDays',
+    'index.cacheMaxMb',
     'requestTimeoutMs',
     'diagnostics',
     'highlight',

@@ -127,6 +127,8 @@ const
     8, 8, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3,
     // Mehrfachmarken (#589): Editorbefehle.
     3, 3, 3, 3, 3,
+    // Atlas-Suche (#877, #878): Editorbefehle.
+    3, 3, 3, 3,
     // Formatieren (#43): Editorbefehl.
     3);
 

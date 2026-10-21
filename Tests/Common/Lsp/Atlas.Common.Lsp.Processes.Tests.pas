@@ -27,6 +27,7 @@ implementation
 uses
   System.SysUtils,
   System.JSON,
+  System.Generics.Collections,
   System.DateUtils,
   Atlas.Common.Index.Processes,
   Atlas.Common.Lsp.Processes;
@@ -107,7 +108,7 @@ begin
     Assert.AreEqual('vor 12 s', Item.GetValue<string>('saved'));
     Assert.IsTrue(Item.GetValue<Boolean>('builtOnce'));
     Processes := Item.GetValue<TJSONArray>('processes');
-    Assert.AreEqual(2, Processes.Count);
+    Assert.AreEqual(2, Integer(Processes.Count));
     Assert.IsTrue((Processes.Items[0] as TJSONObject).GetValue<Boolean>('own'));
     Assert.AreEqual(2, Item.GetValue<TJSONArray>('events').Count);
     Assert.IsTrue(Json.GetValue<string>('markdown').StartsWith('## Prozesse am Projekt'));

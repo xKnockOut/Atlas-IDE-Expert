@@ -154,6 +154,7 @@ implementation
 uses
   System.SysUtils,
   System.Classes,
+  System.UITypes,
   Atlas.Core.Settings.Plugin,
   Atlas.Core.Build.ReleaseGuard,
   Atlas.Core.Projects.Summary,
@@ -349,7 +350,8 @@ begin
       Assert.IsNotNull(Sheet, Known);
       Assert.AreEqual(Page.Groups.NodeOf(Known), Page.NodeOfSheet(Sheet), Known);
       Frame := FrameAround(Binding.Control);
-      if (Frame = nil) or Inside(Binding.Control, Frame.Master) then
+      // Ohne Rahmen (Einstellung ohne Hauptschalter, z. B. debug.hoverValues) ist nichts weiter zu prüfen.
+      if (Frame <> nil) and Inside(Binding.Control, Frame.Master) then
         Frame := FrameAround(Frame);
       if Frame = nil then
         Continue;
@@ -1014,16 +1016,21 @@ begin
     Page.LoadFrom(TAtlasPluginSettings.Defaults);
     Assert.IsTrue(Page.TestDebugCheck.Checked, 'Test debuggen standardmäßig an');
     Assert.IsTrue(Page.TestBreakAtStartCheck.Checked, 'Haltepunkt am Anfang standardmäßig an');
+    Assert.IsTrue(Page.DebugHoverValuesCheck.Checked, 'Werte im Hover standardmäßig an (#891)');
     Page.TestDebugCheck.Checked := False;
     Page.TestBreakAtStartCheck.Checked := False;
+    Page.DebugHoverValuesCheck.Checked := False;
     Saved := TAtlasPluginSettings.Defaults;
     Page.SaveTo(Saved);
     Assert.IsFalse(Saved.TestDebug);
     Assert.IsFalse(Saved.TestBreakAtStart);
+    Assert.IsFalse(Saved.DebugHoverValues);
     Saved.TestBreakAtStart := True;
+    Saved.DebugHoverValues := True;
     Page.LoadFrom(Saved);
     Assert.IsFalse(Page.TestDebugCheck.Checked);
     Assert.IsTrue(Page.TestBreakAtStartCheck.Checked);
+    Assert.IsTrue(Page.DebugHoverValuesCheck.Checked);
   finally
     Page.Free;
   end;
@@ -1900,7 +1907,7 @@ begin
   try
     Page.LoadFrom(Settings);
     Assert.IsTrue(Page.FormatCode.Checked);
-    Assert.AreEqual(ShortCutToText(TShortCut($E046)), Page.FormatCodeKey.Text);
+    Assert.AreEqual(ShortCutToText(TShortCut($E04C)), Page.FormatCodeKey.Text);
     Page.FormatCode.Checked := False;
     Page.FormatCodeKey.Text := '';
     Saved := TAtlasPluginSettings.Defaults;

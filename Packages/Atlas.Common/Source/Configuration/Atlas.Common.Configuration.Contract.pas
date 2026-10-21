@@ -488,6 +488,11 @@ type
     IndexUsages: Boolean;
     /// <summary>Glob-Muster gegen den vollen Pfad ("/" oder ""), die nicht indiziert werden, z. B. **/Demos/**.</summary>
     IndexExclude: TArray<string>;
+    /// <summary>Aufräumen des Cache-Ordners (#905): Caches gelöschter Projekte löschen, Caches nach so vielen
+    /// Tagen ohne Benutzung löschen (0 = aus) und Höchstgröße in MB (0 = ohne Grenze).</summary>
+    IndexRemoveOrphans: Boolean;
+    IndexCacheMaxAgeDays: Integer;
+    IndexCacheMaxMb: Integer;
     /// <summary>Protokoll (#265): Stufe (debug/info/warning/error), Logdatei und Mitschnitt.
     /// Der Server übernimmt sie nicht zur Laufzeit; der Client übergibt sie beim Start als
     /// --log-level, --log und --trace.</summary>
@@ -892,6 +897,9 @@ begin
   Result.IndexLibraryPaths := False;
   Result.IndexUsages := True;
   Result.IndexExclude := nil;
+  Result.IndexRemoveOrphans := True;
+  Result.IndexCacheMaxAgeDays := 14;
+  Result.IndexCacheMaxMb := 256;
   Result.LogLevel := 'info';
   Result.LogFile := '';
   Result.TraceFile := '';

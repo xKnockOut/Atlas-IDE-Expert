@@ -117,7 +117,7 @@ jobs:
           $dist = Join-Path $env:RUNNER_TEMP 'atlas-ide-expert'
           Remove-Item $dist -Recurse -Force -ErrorAction SilentlyContinue
           New-Item -ItemType Directory -Force "$dist\Win32", "$dist\Win64" | Out-Null
-          Copy-Item 'Output\Win64\Release\Bin\AtlasServer.exe', 'Output\Win32\Release\Bin\AtlasSetup.exe', 'LICENSE', 'THIRD-PARTY-NOTICES.md' $dist
+          Copy-Item 'Output\Win64\Release\Bin\AtlasServer.exe', 'Output\Win32\Release\Bin\AtlasSetup.exe', 'LICENSE', 'EULA.txt', 'THIRD-PARTY-NOTICES.md' $dist
           # Karte „Neu in Atlas“ (#756): whatsnew.json aus den markierten Einträgen des Changelogs, dazu die Beispiele.
           ./Tools/Update-WhatsNew.ps1 -OutFile "$dist\whatsnew.json"
           Copy-Item 'Setup\Beispiele' "$dist\Beispiele" -Recurse
