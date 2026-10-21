@@ -108,9 +108,11 @@ type
     FCacheLock: TStream;
     FCacheLockFile: string;
     FBaselineTime: TDateTime;
-    /// <summary>Sperrt ACacheFile, gibt eine alte Sperre frei; False = nur lesen. Beim Aufräumen bleiben
-    /// ACacheFile und ALibraryCacheFile stehen (#616).</summary>
-    function LockCache(const ACacheFile, ALibraryCacheFile: string): Boolean;
+    /// <summary>Sperrt ACacheFile, gibt eine alte Sperre frei; False = nur lesen. Vermerkt Herkunft (AOrigin)
+    /// und Benutzung und räumt den Cache-Ordner nach ASettings auf (#905); dabei bleiben ACacheFile und
+    /// ALibraryCacheFile stehen (#616).</summary>
+    function LockCache(const ACacheFile, ALibraryCacheFile, AOrigin: string;
+      const ASettings: TServerSettings): Boolean;
     /// <summary>Weist auf gemischte Kodierungen der Projektdateien hin (Index-Thread).</summary>
     procedure ReportEncodings;
     procedure Touch;
@@ -544,9 +546,11 @@ begin
   end;
 end;
 
-function TShellWorkspace.LockCache(const ACacheFile, ALibraryCacheFile: string): Boolean;
+function TShellWorkspace.LockCache(const ACacheFile, ALibraryCacheFile, AOrigin: string;
+  const ASettings: TServerSettings): Boolean;
 var
   Removed: Integer;
+  Keep: TArray<string>;
 begin
   if SameText(ACacheFile, FCacheLockFile) and (FCacheLock <> nil) then
     Exit(True);
@@ -554,14 +558,31 @@ begin
   FCacheLockFile := ACacheFile;
   FCacheLock := TIndexCacheDirectory.TryLock(ACacheFile);
   Result := FCacheLock <> nil;
+  // Der gemeinsame Bibliotheks-Cache ist nicht gesperrt; ohne ihn hier zu nennen, löschte das Aufräumen
+  // ihn bei jedem Start, sobald der Ordner über der Höchstgröße lag (#616: "0 aus dem Cache").
+  Keep := TArray<string>.Create(ACacheFile, ALibraryCacheFile);
   try
-    // Der gemeinsame Bibliotheks-Cache ist nicht gesperrt; ohne ihn hier zu nennen, löschte das Aufräumen
-    // ihn bei jedem Start, sobald der Ordner über der Höchstgröße lag (#616: "0 aus dem Cache").
-    Removed := TIndexCacheDirectory.Cleanup(TIndexCacheDirectory.DefaultRoot,
-      TIndexCacheHousekeeping.DefaultMaxBytes, TArray<string>.Create(ACacheFile, ALibraryCacheFile));
+    // Herkunft und Benutzung vermerken (#905): Danach erkennt jede Instanz verwaiste und ungenutzte Caches.
+    if Result then
+      TIndexCacheDirectory.WriteOrigin(ACacheFile, AOrigin);
+    TIndexCacheDirectory.TouchUse(ACacheFile);
+    TIndexCacheDirectory.TouchUse(ALibraryCacheFile);
+    // Im Log nur Anzahlen, keine Pfade (anonymes Server-Log).
+    if ASettings.IndexRemoveOrphans then
+    begin
+      Removed := TIndexCacheDirectory.RemoveOrphans(TIndexCacheDirectory.DefaultRoot, Keep);
+      if Removed > 0 then
+        FLogger.Info(Format('%d verwaiste Index-Caches gelöscht (Projekt nicht mehr vorhanden)', [Removed]));
+    end;
+    Removed := TIndexCacheDirectory.RemoveUnused(TIndexCacheDirectory.DefaultRoot, ASettings.IndexCacheMaxAgeDays,
+      Keep);
     if Removed > 0 then
-      FLogger.Info(Format('%d alte Index-Caches gelöscht (Höchstgröße %d MB)',
-        [Removed, TIndexCacheHousekeeping.DefaultMaxBytes div (1024 * 1024)]));
+      FLogger.Info(Format('%d Index-Caches gelöscht (länger als %d Tage nicht benutzt)',
+        [Removed, ASettings.IndexCacheMaxAgeDays]));
+    Removed := TIndexCacheDirectory.Cleanup(TIndexCacheDirectory.DefaultRoot,
+      TIndexCacheHousekeeping.MaxBytesOf(ASettings.IndexCacheMaxMb), Keep);
+    if Removed > 0 then
+      FLogger.Info(Format('%d alte Index-Caches gelöscht (Höchstgröße %d MB)', [Removed, ASettings.IndexCacheMaxMb]));
   except
     on E: Exception do
       FLogger.Warning(Format('Aufräumen des Cache-Ordners fehlgeschlagen: %s', [E.Message]));
@@ -899,7 +920,7 @@ end;
 
 procedure TShellWorkspace.StartIndex(const ASettings: TServerSettings);
 var
-  ProjectFile, Signature, State, CacheFile: string;
+  ProjectFile, Signature, State, CacheFile, CacheOrigin: string;
   Installation: ILibraryPathProvider;
   Options: TDprojOptions;
   Project: TProjectInfo;
@@ -1136,7 +1157,11 @@ begin
   Request.LibraryCacheFile := TIndexCacheDirectory.LibraryFileFor(TIndexCacheDirectory.DefaultRoot, Version,
     TIndexProjectFiles.LibrarySignature(Project, Version));
   Request.Usages := ASettings.IndexUsages;
-  Request.ReadOnlyCache := not LockCache(CacheFile, Request.LibraryCacheFile);
+  // Herkunft für das Aufräumen (#905): die Projektdatei, ohne sie der Arbeitsordner.
+  CacheOrigin := Project.FileName;
+  if CacheOrigin = '' then
+    CacheOrigin := FRoot;
+  Request.ReadOnlyCache := not LockCache(CacheFile, Request.LibraryCacheFile, CacheOrigin, ASettings);
   if Request.ReadOnlyCache then
   begin
     FLogger.Info(Format('Cache %s wird von einer anderen Instanz geschrieben und hier nur gelesen', [CacheFile]));
