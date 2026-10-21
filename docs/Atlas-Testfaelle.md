@@ -2535,3 +2535,10 @@ Vorher: Projekt mit Index geladen, eine Unit mit `uses System.SysUtils, System.C
 | PF7 | `/todo Fehlerfall prüfen` ohne Einstellung, im git-Repository mit `user.name` | `// TODO -o<user.name> : Fehlerfall prüfen`, in der IDE-TODO-Liste mit Besitzer |
 | PF8 | `slashCommands.todoOwner` = `Marco`, `todoCategory` = `Review`, PF7 wiederholen | `// TODO -oMarco -cReview : Fehlerfall prüfen` |
 | PF9 | `/todo -oEva -cTest Text` | `// TODO -oEva -cTest : Text` (Angaben in der Zeile gehen vor) |
+
+## Typen erzeugen: /singleton (#298)
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| TY1 | In einer Klasse mit `constructor Create(AName: string);` `/singleton`, Enter | `class var FInstance`, `class function Instance`, `class destructor Destroy`; der Konstruktor bleibt; Meldung „Konstruktor Create bleibt unverändert und öffentlich; Instance ruft Create ohne Parameter“ |
+| TY2 | Dasselbe in einer Klasse ohne Konstruktor | Gleicher Code, keine Meldung |
