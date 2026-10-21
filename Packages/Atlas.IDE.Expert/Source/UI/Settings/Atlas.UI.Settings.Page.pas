@@ -372,6 +372,8 @@ type
     FQuickOpen: TCheckBox;
     FQuickOpenLibrary: TCheckBox;
     FQuickOpenKey: TEdit;
+    FSearchReplace: TCheckBox;
+    FSearchMessages: TCheckBox;
     FWelcomeEnabled: TCheckBox;
     FWelcomeHost: TAtlasChoiceBox;
     FWelcomeLayout: TCheckBox;
@@ -2447,6 +2449,8 @@ begin
   FMarks.Bind(FQuickOpen, ['QuickOpen']);
   FMarks.Bind(FQuickOpenLibrary, ['QuickOpenLibrary']);
   FMarks.Bind(FQuickOpenKey, ['QuickOpenKey']);
+  FMarks.Bind(FSearchReplace, ['SearchReplaceIde']);
+  FMarks.Bind(FSearchMessages, ['SearchResultsInMessages']);
   FMarks.Bind(FWelcomeEnabled, ['WelcomePage']);
   FMarks.Bind(FWelcomeHost, ['WelcomePageHost']);
   FMarks.Bind(FWelcomeLayout, ['WelcomePageLayout']);
@@ -2977,6 +2981,10 @@ begin
   FQuickOpen := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsQuickOpen));
   FQuickOpenLibrary := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsQuickOpenLibrary));
   FQuickOpenKey := AddKey(TAtlasStrings.Text(TAtlasTextId.SettingsQuickOpenKey));
+  // Suchleiste im Editor (#878).
+  AddTitle(TAtlasTextId.SettingsSearchTitle);
+  FSearchReplace := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsSearchReplace));
+  FSearchMessages := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsSearchMessages));
 end;
 
 procedure TAtlasSettingsPage.AddUndoSection;
@@ -3521,6 +3529,8 @@ begin
   FQuickOpen.Checked := ASettings.QuickOpen;
   FQuickOpenLibrary.Checked := ASettings.QuickOpenLibrary;
   FQuickOpenKey.Text := ShortCutToText(TShortCut(ASettings.QuickOpenKey));
+  FSearchReplace.Checked := ASettings.SearchReplaceIde;
+  FSearchMessages.Checked := ASettings.SearchResultsInMessages;
   FWelcomeEnabled.Checked := ASettings.WelcomePage;
   FWelcomeHost.Choice := 0;
   if ASettings.WelcomePageHost = 'dockWindow' then
@@ -3887,6 +3897,8 @@ begin
   ASettings.QuickOpen := FQuickOpen.Checked;
   ASettings.QuickOpenLibrary := FQuickOpenLibrary.Checked;
   ASettings.QuickOpenKey := Integer(TextToShortCut(Trim(FQuickOpenKey.Text)));
+  ASettings.SearchReplaceIde := FSearchReplace.Checked;
+  ASettings.SearchResultsInMessages := FSearchMessages.Checked;
   ASettings.WelcomePage := FWelcomeEnabled.Checked;
   ASettings.WelcomePageHost := 'welcomePage';
   if FWelcomeHost.Choice = 1 then

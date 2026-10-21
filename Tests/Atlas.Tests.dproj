@@ -760,6 +760,9 @@
         <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Search\Atlas.Core.Search.Matching.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Search\Atlas.Core.Search.Scopes.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Search.Tests.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Search\Atlas.Core.Search.Results.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\UI\Search\Atlas.UI.Search.Bar.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.UI.Search.Bar.Tests.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Editor.SnapshotPolicy.Tests.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Editor.CloseRules.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Build\Atlas.Core.Build.Messages.pas"/>

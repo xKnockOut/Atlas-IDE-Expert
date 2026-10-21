@@ -598,9 +598,12 @@ type
     SettingsMinimapClickJumps, MinimapNoticeTitle, MinimapNoticeText, MinimapHideIde, MinimapTurnOff,
     UnitSearchSectionHeader, UnitSearchSectionForm,
     SearchCommand, SearchNextCommand, SearchPreviousCommand, SearchInMethodCommand, SearchClearCommand,
-    SearchDialogTitle, SearchTextLabel, SearchScopeLabel, SearchScopeMethod, SearchScopeUnit, SearchScopeSelection,
-    SearchLevelLabel, SearchCaseSensitive, SearchWholeWord, SearchIdentifier, SearchHitCount, SearchNoHits,
-    SearchNoMethod, SearchNoSelection, SearchWrapped, SearchFooter, SearchNothing);
+    SearchTextLabel, SearchScopeLabel, SearchScopeMethod, SearchScopeUnit, SearchScopeSelection,
+    SearchCaseSensitive, SearchWholeWord, SearchIdentifier, SearchHitCount, SearchNoHits,
+    SearchNoMethod, SearchNoSelection, SearchWrapped, SearchNothing,
+    SearchHitPosition, SearchPreviousHint, SearchNextHint, SearchListButton, SearchListHint, SearchCloseHint,
+    SearchCaseHint, SearchWholeHint, SearchIdentifierHint, SearchGroup, SearchListTitle, SearchListIdentifier,
+    SearchListScopeMethod, SearchListMore, SettingsSearchTitle, SettingsSearchReplace, SettingsSearchMessages);
 
   TAtlasStrings = class
   private class var
@@ -1726,12 +1729,17 @@ const
      'Atlas-Minimap aus',
      'Kopfkommentar', 'Formular',
      'Suchen (Atlas) …', 'Weitersuchen (Atlas)', 'Rückwärts weitersuchen (Atlas)', 'In Methode suchen …',
-     'Suchmarkierungen entfernen', 'Atlas – Suchen', 'Suchen nach:', 'Bereich:', 'Methode', 'Unit', 'Auswahl',
-     'Methode:', 'Groß-/Kleinschreibung', 'Nur ganze Wörter',
-     'Bezeichner statt Text (ohne Kommentare und Strings)', '%d Treffer', 'Keine Treffer',
+     'Suchmarkierungen entfernen', 'Suchen:', 'Bereich:', 'Methode', 'Unit', 'Auswahl',
+     'Groß/klein', 'Ganzes Wort', 'Bezeichner', '%d Treffer', 'Keine Treffer',
      'Der Cursor steht in keiner Methode.', 'Keine Auswahl.',
-     'Atlas-Suche: Ende erreicht, weiter von der anderen Seite.', 'Enter springt · Esc schließt',
-     'Atlas-Suche: keine Treffer für „%s“.'),
+     'Atlas-Suche: Ende erreicht, weiter von der anderen Seite.', 'Atlas-Suche: keine Treffer für „%s“.',
+     '%d von %d', 'Voriger Treffer (Umschalt+Enter)', 'Nächster Treffer (Enter)', 'In Meldungen',
+     'Alle Treffer im Reiter „Atlas-Suche“ der Meldungen auflisten', 'Schließen (Esc)',
+     'Groß-/Kleinschreibung beachten', 'Nur ganze Wörter', 'Nur Bezeichner, ohne Kommentare und Strings',
+     'Atlas-Suche', 'Suche nach „%s“%s in %s%s: %d Treffer', ' (Bezeichner)', ', Methode %s',
+     '… %d weitere Treffer nicht aufgeführt', 'Suche im Editor',
+     'Atlas-Suche statt IDE-Suche (Strg+F öffnet die Suchleiste unter dem Editor, F3 und Umschalt+F3 springen)',
+     'Treffer im Reiter „Atlas-Suche“ der Meldungen auflisten'),
     ('Enter to accept · Esc to close', '%d of %d', 'No matches for “%s”', 'Backspace widens the search',
      'No suggestions here', 'Esc closes', 'No details for this entry', 'Overload', 'Deprecated: %s', 'Deprecated.',
      'Inherited from %s', 'Inherited', 'optional, default %s', 'No overload with %d parameters.', '… %d more',
@@ -2774,12 +2782,17 @@ const
      'The IDE shows its own minimap next to the Atlas one.', 'Hide IDE minimap', 'Turn Atlas minimap off',
      'Header comment', 'Form',
      'Find (Atlas) …', 'Find next (Atlas)', 'Find previous (Atlas)', 'Find in method …',
-     'Clear search highlights', 'Atlas – Find', 'Find what:', 'Scope:', 'Method', 'Unit', 'Selection',
-     'Method:', 'Match case', 'Whole words only',
-     'Identifier instead of text (no comments or strings)', '%d matches', 'No matches',
+     'Clear search highlights', 'Find:', 'Scope:', 'Method', 'Unit', 'Selection',
+     'Match case', 'Whole word', 'Identifier', '%d matches', 'No matches',
      'The cursor is not inside a method.', 'No selection.',
-     'Atlas search: reached the end, continuing from the other side.', 'Enter jumps · Esc closes',
-     'Atlas search: no matches for “%s”.'));
+     'Atlas search: reached the end, continuing from the other side.', 'Atlas search: no matches for “%s”.',
+     '%d of %d', 'Previous match (Shift+Enter)', 'Next match (Enter)', 'In Messages',
+     'List all matches in the “Atlas Search” tab of the Messages window', 'Close (Esc)',
+     'Match upper and lower case', 'Whole words only', 'Identifiers only, no comments or strings',
+     'Atlas Search', 'Search for “%s”%s in %s%s: %d matches', ' (identifier)', ', method %s',
+     '… %d more matches not listed', 'Search in the editor',
+     'Atlas search instead of the IDE search (Ctrl+F opens the search bar below the editor, F3 and Shift+F3 jump)',
+     'List matches in the “Atlas Search” tab of the Messages window'));
 
 { TAtlasStrings }
 
