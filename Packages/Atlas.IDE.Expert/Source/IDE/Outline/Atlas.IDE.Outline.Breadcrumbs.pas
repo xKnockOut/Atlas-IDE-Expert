@@ -573,7 +573,7 @@ begin
   Bar := FActiveBar;
   if (Bar = nil) or not Bar.HandleAllocated or not Bar.Showing or not GetCursorPos(Cursor) then
     Exit;
-  if not PtInRect(Rect(Bar.ClientToScreen(Point(0, 0)), Bar.ClientToScreen(Point(Bar.Width, Bar.Height))), Cursor) then
+  if not PtInRect(Bar.ClientRect, Bar.ScreenToClient(Cursor)) then
     Exit;
   Window := WindowFromPoint(Cursor);
   if Window = FProbed then
