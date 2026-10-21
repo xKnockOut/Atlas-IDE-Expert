@@ -674,3 +674,10 @@ Jeder Branch baut auf dem vorigen auf. Nichts davon ist gebaut, getestet oder in
   - Delphi für Marco nur über `explorer.exe bds.exe` starten; aus Werkzeug-Shells gestartete IDEs laufen teils in einer anderen Dateisicht oder werden mit der Shell beendet.
   - Andere Sitzungen starten über Claude-Compile eigene IDEs ohne Parameter; hängende davon beim Beenden = Beyond-Compare-Absturz (#1091).
 - Offen: Atlas schreibt seit 21.10. 21:29 nicht mehr in `%LOCALAPPDATA%\Atlas\Logs\atlas.log` und aktualisiert `Session\safemode.json` nicht (Sitzungsdatei wird geschrieben). Ursache unbekannt; Datei nicht gesperrt.
+
+## Server startet alle 1–2 Minuten neu (21.10.2026 abends, morgen weiter)
+- Benachrichtigung „Server neu gestartet“ etwa alle 90 s (Projektgruppe Atlas.groupproj, aktives Projekt Atlas.Tests).
+- Diagnoselogs `%LOCALAPPDATA%\Atlas\Logs\Diagnose\diag-*.log`: `workspace/diagnostic ... error:EStackOverflow` alle ~15 s, nach einigen davon endet der Prozess ohne Endzeile; das Plugin startet ihn neu. Erster Fehler je Lauf mit `missingUnits=1 ... resolve unitNotFound`. Einzeldokumente (`textDocument/diagnostic`) laufen.
+- Stapel noch nicht erfasst: cdb (x64) mit `sxe sov` am Server angehängt, vor dem Treffer auf Marcos Wunsch abgebrochen (dabei Server beendet, das Plugin startet ihn neu). Skript: Scratchpad `cdb-sov.txt` (`cdb -p <pid> -logo cdb-sov.log -cf cdb-sov.txt`).
+- Verdacht: eine Regel oder die Namensauflösung über alle Units rekursiert endlos (neu seit den heutigen Merges: #845 aktive Zweige, #846 variante Records, #715 Boolean umkehren u. a.).
+- Server-Speicher ~0,9–1,25 GB.
