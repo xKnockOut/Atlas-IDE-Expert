@@ -90,7 +90,8 @@ begin
     '"code":"E2003","source":"dcc","message":"Undeklarierter Bezeichner"},' +
     '{"range":{"start":{"line":7,"character":0},"end":{"line":9,"character":0}},"severity":4,' +
     '"tags":[1],"source":"Atlas","message":"Inaktiver Bereich"},' +
-    '{"range":{"start":{"line":1,"character":0},"end":{"line":1,"character":0}},"code":42,"message":"x"},' +
+    '{"range":{"start":{"line":1,"character":0},"end":{"line":1,"character":0}},"code":42,"message":"x",' +
+    '"tags":[2]},' +
     '17]') as TJSONArray;
   try
     Problems := TAtlasProblem.ListFromJson(Items);
@@ -108,6 +109,10 @@ begin
   Assert.IsTrue(Problems[1].IsCompiler);
   Assert.IsTrue(Problems[1].Severity = TAtlasProblemSeverity.Error);
   Assert.IsTrue(Problems[2].Unnecessary);
+  Assert.IsFalse(Problems[2].Deprecated);
+  // Veraltetes Symbol (#38).
+  Assert.IsTrue(Problems[3].Deprecated);
+  Assert.IsFalse(Problems[3].Unnecessary);
   Assert.IsTrue(Problems[2].Severity = TAtlasProblemSeverity.Hint);
   Assert.AreEqual('42', Problems[3].Code);
   Assert.IsTrue(Problems[3].Severity = TAtlasProblemSeverity.Error, 'ohne severity: Fehler');

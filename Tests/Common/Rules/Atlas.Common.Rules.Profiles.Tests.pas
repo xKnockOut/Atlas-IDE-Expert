@@ -173,7 +173,7 @@ const
     'component-create-without-override,component-default-mismatch,component-fixed-pixels,' +
     'component-hardcoded-color,component-missing-free-notification,component-missing-inherited,' +
     'component-palette-icon,component-setter-without-invalidate,confusable-identifier,' +
-    'constructor-on-instance,control-char,declared-not-implemented,destroy-without-override,' +
+    'constructor-on-instance,control-char,declared-not-implemented,deprecated-symbol,destroy-without-override,' +
     'dfm-circular-datasource,dfm-control-field-type-mismatch,dfm-duplicate-binding,' +
     'dfm-master-without-fields,dfm-property,dfm-required-field-without-control,duplicate-interface-guid,' +
     'empty-except,exception-freed,exception-not-raised,float-equality,for-high-to-low,forbidden-uses,' +
@@ -215,7 +215,7 @@ begin
     'security-weak-crypto',
     ActiveRules('security'));
   Assert.AreEqual('bool-compare,component-fixed-pixels,component-hardcoded-color,component-palette-icon,' +
-    'component-setter-without-invalidate,dfm-property,empty-except,forbidden-uses,' +
+    'component-setter-without-invalidate,deprecated-symbol,dfm-property,empty-except,forbidden-uses,' +
     'foreign-form-control-access,format-without-settings,generic-exception-raised,' +
     'metric-cognitive-complexity,metric-cyclomatic-complexity,metric-method-length,metric-nesting-depth,' +
     'metric-parameter-count,' +

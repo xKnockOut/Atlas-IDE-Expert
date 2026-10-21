@@ -99,6 +99,7 @@ uses
   Atlas.Common.Rules.Builtin.Todos.Tests in 'Common\Rules\Builtin\Atlas.Common.Rules.Builtin.Todos.Tests.pas',
   Atlas.Common.Lsp.Todos.Tests in 'Common\Lsp\Atlas.Common.Lsp.Todos.Tests.pas',
   Atlas.Common.Rules.Builtin.Recursion.Tests in 'Common\Rules\Builtin\Atlas.Common.Rules.Builtin.Recursion.Tests.pas',
+  Atlas.Common.Rules.Builtin.Deprecated.Tests in 'Common\Rules\Builtin\Atlas.Common.Rules.Builtin.Deprecated.Tests.pas',
   Atlas.Common.Lsp.Baseline.Tests in 'Common\Lsp\Atlas.Common.Lsp.Baseline.Tests.pas',
   Atlas.Common.Lsp.SemanticTokens.Tests in 'Common\Lsp\Atlas.Common.Lsp.SemanticTokens.Tests.pas',
   Atlas.Common.Lsp.Status.Tests in 'Common\Lsp\Atlas.Common.Lsp.Status.Tests.pas',
