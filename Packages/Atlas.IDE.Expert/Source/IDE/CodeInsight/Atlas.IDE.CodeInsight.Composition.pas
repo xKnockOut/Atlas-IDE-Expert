@@ -83,6 +83,7 @@ uses
   Atlas.IDE.Editor.BlockComment,
   Atlas.Core.Editor.NewLine,
   Atlas.IDE.Editor.NewLine,
+  Atlas.IDE.Editor.WrapSelection,
   Atlas.IDE.Editor.CommentContinuation,
   Atlas.IDE.Editor.PatternContinuation,
   Atlas.IDE.Editor.MultiCursor,
@@ -2289,6 +2290,14 @@ begin
       if StatusField <> nil then
         StatusField.SetExtra('linkedEditing', AText, AHint, nil);
     end);
+  // Markierung beim Tippen umschließen (#672): nie neben Vervollständigung, Platzhaltern, mehreren
+  // Einfügemarken (die umschließen selbst) und dem Mitziehen von Bezeichnern.
+  TAtlasIdeWrapSelection.Install(
+    function: Boolean
+    begin
+      Result := ((Manager <> nil) and (Manager.CompletionVisible or Manager.PlaceholdersActive)) or
+        TAtlasIdeMultiCursor.Active or TAtlasIdeLinkedEditing.Active;
+    end);
   // Einfügen mit uses-Ergänzung (#515, experimentell): nie neben Vervollständigung, Platzhaltern, mehreren
   // Einfügemarken und dem Mitziehen von Bezeichnern; Ergebnis nur in der Meldungsansicht.
   TAtlasIdeSmartPaste.Install(
@@ -2345,6 +2354,7 @@ begin
   TAtlasIdeLineMove.Uninstall;
   TAtlasIdeBlockComment.Uninstall;
   TAtlasIdeSmartPaste.Uninstall;
+  TAtlasIdeWrapSelection.Uninstall;
   TAtlasIdeLinkedEditing.Uninstall;
   TAtlasIdeMultiCursor.Uninstall;
   TAtlasIdePatternContinuation.Uninstall;

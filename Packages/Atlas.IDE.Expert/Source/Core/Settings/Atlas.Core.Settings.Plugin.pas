@@ -679,6 +679,10 @@ type
     /// <summary>Präfix in Blockkommentaren, etwa ' * '; leer = nur einrücken (#696,
     /// editor.continueComments.blockPrefix).</summary>
     ContinueCommentsBlockPrefix: string;
+    /// <summary>Markierung beim Tippen eines öffnenden Zeichens umschließen (#672, editor.wrapSelection).</summary>
+    WrapSelection: Boolean;
+    /// <summary>Zeichen, die umschließen, aus ([{'< (#672, editor.wrapSelection.chars).</summary>
+    WrapSelectionChars: string;
     /// <summary>Anweisung vervollständigen (#697, editor.completeStatement).</summary>
     CompleteStatement: Boolean;
     /// <summary>Kürzel „Anweisung vervollständigen“ (#697, keys.completeStatement); Vorgabe Strg+Umschalt+Enter.
@@ -1344,6 +1348,8 @@ begin
   Result.ContinueCommentsLineComments := True;
   Result.ContinueCommentsLists := True;
   Result.ContinueCommentsBlockPrefix := '';
+  Result.WrapSelection := True;
+  Result.WrapSelectionChars := '([{''';
   Result.CompleteStatement := True;
   Result.CompleteStatementKey := $600D; // Strg+Umschalt+Enter
   Result.CompleteStatementBeginEnd := BeginEndMultiLine;
@@ -1892,6 +1898,8 @@ begin
     BoolValue(Default.ContinueCommentsLists)) <> 0;
   ContinueCommentsBlockPrefix := AStore.ReadString('ContinueCommentsBlockPrefix',
     Default.ContinueCommentsBlockPrefix);
+  WrapSelection := AStore.ReadInteger('WrapSelection', BoolValue(Default.WrapSelection)) <> 0;
+  WrapSelectionChars := AStore.ReadString('WrapSelectionChars', Default.WrapSelectionChars);
   CompleteStatement := AStore.ReadInteger('CompleteStatement', BoolValue(Default.CompleteStatement)) <> 0;
   CompleteStatementKey := AStore.ReadInteger('CompleteStatementKey', Default.CompleteStatementKey);
   CompleteStatementBeginEnd := AStore.ReadString('CompleteStatementBeginEnd', Default.CompleteStatementBeginEnd);
@@ -2244,6 +2252,8 @@ begin
   AStore.WriteInteger('ContinueCommentsLineComments', BoolValue(ContinueCommentsLineComments));
   AStore.WriteInteger('ContinueCommentsLists', BoolValue(ContinueCommentsLists));
   AStore.WriteString('ContinueCommentsBlockPrefix', ContinueCommentsBlockPrefix);
+  AStore.WriteInteger('WrapSelection', BoolValue(WrapSelection));
+  AStore.WriteString('WrapSelectionChars', WrapSelectionChars);
   AStore.WriteInteger('CompleteStatement', BoolValue(CompleteStatement));
   AStore.WriteInteger('CompleteStatementKey', CompleteStatementKey);
   AStore.WriteString('CompleteStatementBeginEnd', CompleteStatementBeginEnd);
