@@ -26,6 +26,10 @@ type
     [Test]
     procedure HelperInRoutineFails;
     [Test]
+    procedure HelperForEnumAddsNamesAndConversion;
+    [Test]
+    procedure HelperForEnumSwitchedOff;
+    [Test]
     procedure SingletonAddsInstance;
     [Test]
     procedure SingletonOutsideClassFails;
@@ -211,6 +215,47 @@ begin
   Assert.IsTrue(Pos('  TAHelper = record helper for TA'#10'  public'#10'  end;'#10, Text) > 0, Text);
   Text := Expand(Format(TypeUnit, ['/helper TStrings']), 4);
   Assert.IsTrue(Pos('  TStringsHelper = class helper for TStrings'#10, Text) > 0, Text);
+end;
+
+const
+  EnumUnit =
+    'unit U;'#10'interface'#10'type'#10'  TFarbe = (Rot, Gruen, Blau);'#10'  %s'#10'implementation'#10'end.';
+
+procedure TTypeCommandsTests.HelperForEnumAddsNamesAndConversion;
+var
+  Text: string;
+begin
+  // #875: Namenstabelle, ToString und FromString; System.SysUtils kommt ins uses.
+  Text := Expand(Format(EnumUnit, ['/helper TFarbe']), 4);
+  Assert.IsTrue(Pos('  TFarbeHelper = record helper for TFarbe'#10'  private const'#10 +
+    '    cNames: array[TFarbe] of string = (''Rot'', ''Gruen'', ''Blau'');'#10'  public'#10 +
+    '    function ToString: string;'#10'    class function FromString(const AValue: string): TFarbe; static;'#10 +
+    '  end;', Text) > 0, Text);
+  Assert.IsTrue(Pos('function TFarbeHelper.ToString: string;'#10'begin'#10'  Result := cNames[Self];'#10'end;',
+    Text) > 0, Text);
+  Assert.IsTrue(Pos('class function TFarbeHelper.FromString(const AValue: string): TFarbe;'#10'var'#10 +
+    '  Value: TFarbe;'#10'begin'#10'  for Value := Low(TFarbe) to High(TFarbe) do'#10 +
+    '    if SameText(cNames[Value], AValue) then'#10'      Exit(Value);'#10, Text) > 0, Text);
+  Assert.IsTrue(Pos('uses'#10'  System.SysUtils;', Text) > 0, Text);
+  Assert.IsTrue(Parses(Text), Text);
+end;
+
+procedure TTypeCommandsTests.HelperForEnumSwitchedOff;
+var
+  Host: TRecordingSlashHost;
+  Keep: ISlashHost;
+  Edits: TArray<TRuleEdit>;
+  Text: string;
+begin
+  Host := TRecordingSlashHost.Create;
+  Keep := Host;
+  Host.Settings := [TSlashSettings.EnumHelper + '=false'];
+  Text := Format(EnumUnit, ['/helper TFarbe']);
+  Assert.IsTrue(TSlashCommandRegistry.Shared.AfterEnter(Text, TTextPosition.Create(5, 0), nil, nil, Edits, nil, '',
+    'file:///U.pas', Keep));
+  Text := Apply(Text, Edits);
+  Assert.IsTrue(Pos('  TFarbeHelper = record helper for TFarbe'#10'  public'#10'  end;', Text) > 0, Text);
+  Assert.IsTrue(Pos('cNames', Text) = 0, Text);
 end;
 
 procedure TTypeCommandsTests.SingletonAddsInstance;

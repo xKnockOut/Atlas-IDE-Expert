@@ -553,6 +553,7 @@ Jeder Branch baut auf dem vorigen auf. Nichts davon ist gebaut, getestet oder in
 - **/sortuses:** ein Durchgang `TUsesClauses.Rewrite` mit Dedupe, Sort und Drop; Drop = `TUsesActions.UnusedUnits` über `ISlashHost.UsesContext` (Shell: `FCodeActions.UsesContextFor`, erst später gesetzt, darum Methode `SlashUsesContext`). Schalter `slashCommands.sortUsesRemoveUnused` (Vorgabe an). `/cleanuses` streicht nur (`TUsesActions.RemoveUnits`), ohne Sortieren; ohne Index scheitert er mit Hinweis.
 - **/ignore:** `ISlashHost.RuleIdsAt` (Shell: `SlashRuleIdsAt`, Regeltreffer der Zeile über `RuleFindings`, ohne `slash-command`). Ohne Treffer der Regel scheitert der Befehl mit `IgnoreNoHitHint`. Den Hinweis im Editor meldet `TSlashCommandRule` über das neue `IRuleAfterFindings` (Engine ruft es nach allen Regeln mit den rohen Treffern auf). Vervollständigung: `TLspCompletion.RuleIdsFor`.
 - **/todo:** `-oName -cKat`; Name aus `slashCommands.todoOwner`, sonst `Atlas.Common.Editing.GitUser` (.git/config aufwärts, dann ~/.gitconfig über `ISlashHost.ReadFile`), sonst USERNAME/USER; Kategorie aus `slashCommands.todoCategory`.
+- **#875 /helper bei Aufzählungen:** `EnumMembers` (Datei, sonst Index) in `TypeCommands`; Schalter `slashCommands.enumHelper`. Testfälle TY3–TY5.
 - **Ungeprüft:** `Shell.Composition` ist unter FPC nicht übersetzbar; die beiden neuen Methoden dort im Delphi-Build prüfen. Testfälle PF1–PF9.
 
 ## Bugs #879–#882 (21.10.2026, 1863db03, geschlossen)
