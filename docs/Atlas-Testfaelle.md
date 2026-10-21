@@ -2499,3 +2499,23 @@ Voraussetzung für EX2 bis EX7: mindestens eine Einstellung trägt `x-experiment
 | SU16 | Leiste offen, Tastatur in der Leiste: Strg+A, Strg+C, Strg+V, Pfeile im Suchfeld | Wirken im Suchfeld, nicht im Editor |
 | SU17 | Zuletzt mit Bereich Methode gesucht; außerhalb jeder Methode (etwa im interface-Teil) einen Bezeichner markieren, F3 und Umschalt+F3 | Springt zum nächsten bzw. vorigen Vorkommen des markierten Bezeichners in der ganzen Unit; Meldung „außerhalb einer Methode, gesucht wird in der ganzen Unit“; weiteres F3 geht mit dem neuen Suchtext weiter |
 | SU18 | Leiste öffnen, ins Fenster Meldungen oder Struktur klicken, dann nacheinander ins Suchfeld, auf ein Kästchen, in die Bereichsliste und auf ↓ klicken | Jeder Klick wirkt beim ersten Mal (Fokus bleibt in der Leiste, Kästchen schaltet um); holt die IDE den Fokus zurück, steht „Suchleiste: Fokus nach dem Klick …“ mit Fensterklasse im Diagnoseprotokoll |
+
+## Werte im Hover beim Debuggen (#891)
+
+Vorbereitung: Ein kleines VCL-Projekt mit `FList: TStringList` (drei Einträge), einem Record-Array `Kunden` und einer lokalen Variablen `I`, Haltepunkt in einer Methode, die alle drei verwendet. Atlas-Tooltip an (`editor.hoverTooltip`), `debug.hoverValues` an.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| DH1 | Win32, F9 bis zum Haltepunkt; Maus auf `I` | Oben im Atlas-Tooltip ein Akzentbalken, `I` in der Editorschrift, darunter der Wert; darunter wie gewohnt Deklaration und Doku (**Abnahme**) |
+| DH2 | Maus auf `Count` in `FList.Count` | Ausdruck `FList.Count`, Wert `3` |
+| DH3 | Maus auf `FList` in derselben Zeile | Ausdruck `FList`, Wert der Objektdarstellung der IDE |
+| DH4 | Maus auf `Name` in `Kunden[I].Name` | Ausdruck `Kunden[I].Name` und der Name |
+| DH5 | Maus auf `Name` in `Get(I).Name` bzw. `TKunde(Obj).Name` | Kein Wert, nur der normale Hover (keine Auswertung mit Aufruf) |
+| DH6 | Maus auf ein Wort in einem String und in einem `//`-Kommentar, auf `begin`, auf eine Zahl | Kein Wert |
+| DH7 | Win64-Debugger (LLDB): Maus auf `I` | Zuerst „wird ausgewertet …“, kurz danach der Wert im offenen Tooltip; die IDE bleibt bedienbar (**Abnahme**) |
+| DH8 | F8 drücken, während der Tooltip offen ist | Tooltip schließt; nach dem Schritt zeigt der Hover den neuen Wert |
+| DH9 | F9, Programm läuft; Maus auf `I` | Kein Wert, nur der normale Hover |
+| DH10 | Lokale Variable, die der Server nicht kennt (z. B. in einer Include-Datei) | Tooltip zeigt nur den Wert |
+| DH11 | Schnellschalter bzw. *Tools › Optionen › Atlas › Debuggen*: „Variablenwerte im Hover beim Debuggen“ aus | Hover zeigt keinen Wert mehr; wieder an: Wert wieder da |
+| DH12 | Atlas-Tooltip aus (`editor.hoverTooltip`), Maus auf `I` am Haltepunkt | Tooltip der IDE zeigt `I = <Wert>` vor dem Hover-Text |
+| DH13 | Sprachausgabe (Narrator) an, Maus auf `I` | Ansage beginnt mit `I = <Wert>` |

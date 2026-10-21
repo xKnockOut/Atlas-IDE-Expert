@@ -22,6 +22,8 @@
 // Probleme an der Mausposition (#398) stehen ganz oben, je mit Farbbalken nach
 // Schweregrad, Meldung, Regel-ID bzw. Meldungsnummer und Herkunft; ohne
 // Bezeichner zeigt der Tooltip nur sie.
+// Im angehaltenen Debugger steht darüber der Wert des Ausdrucks unter der Maus
+// (#891): Akzentbalken, Ausdruck, Wert bzw. „wird ausgewertet …“.
 // Ohne Fokus wie alle Atlas-Fenster; Klicks kommen trotzdem an (MA_NOACTIVATE).
 // Beim Wechsel des Inhalts bleibt die Position, das Fenster wächst höchstens.
 // Satz (P-09): Positionen, Klickflächen und Bausteine rechnet
@@ -353,6 +355,7 @@ begin
   Result.UsesRemoveAll := TAtlasStrings.Text(TAtlasTextId.UsesRemoveAll);
   Result.UsesMove := TAtlasStrings.Text(TAtlasTextId.UsesMove);
   Result.Stale := TAtlasStrings.Text(TAtlasTextId.ProblemsStale);
+  Result.DebugPending := TAtlasStrings.Text(TAtlasTextId.HoverDebugPending);
   Result.Confidences := nil;
   SetLength(Result.Confidences, Length(FView.Problems));
   for Index := 0 to High(FView.Problems) do
@@ -498,7 +501,11 @@ begin
   Canvas.Font := Font;
   Canvas.Font.Style := [fsBold];
   Widest := Canvas.TextWidth(FView.Data.Declaration);
+  if FView.DebugValue.Visible then
+    Widest := Max(Widest, Canvas.TextWidth(FView.DebugValue.Expression) + Scale(9));
   Canvas.Font := UIFont;
+  if FView.DebugValue.Visible then
+    Widest := Max(Widest, Canvas.TextWidth(FView.DebugValue.Text) + Scale(9));
   Widest := Max(Widest, Canvas.TextWidth(FView.Data.UnitName));
   for Problem in FView.Problems do
     Widest := Max(Widest, Canvas.TextWidth(Problem.Caption) + Scale(9));
@@ -511,6 +518,7 @@ end;
 procedure TAtlasHoverTip.ShowContent(const AView: TAtlasHoverView; const AWord: TRect);
 var
   Width, Height: Integer;
+  Spoken: string;
   Area, Bounds: TRect;
 begin
   FView := AView;
@@ -529,7 +537,11 @@ begin
   ShowAt(Bounds);
   // Sprachausgabe (#447): Deklaration und Anfang der Doku.
   SetAccessible(UiaToolTipControlType, TAtlasStrings.Text(TAtlasTextId.AccessHover));
-  Announce(Trim(AView.Data.Declaration + '. ' + Copy(AView.Data.Documentation, 1, 300)));
+  Spoken := Trim(AView.Data.Declaration + '. ' + Copy(AView.Data.Documentation, 1, 300));
+  // Wert im Debugger (#891) zuerst.
+  if AView.DebugValue.PlainText <> '' then
+    Spoken := AView.DebugValue.PlainText + '. ' + Spoken;
+  Announce(Spoken);
 end;
 
 procedure TAtlasHoverTip.UpdateContent(const AView: TAtlasHoverView);

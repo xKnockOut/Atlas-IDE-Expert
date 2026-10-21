@@ -603,7 +603,8 @@ type
     SearchNoMethod, SearchNoSelection, SearchWrapped, SearchNothing, SearchOutsideMethod,
     SearchHitPosition, SearchPreviousHint, SearchNextHint, SearchListButton, SearchListHint, SearchCloseHint,
     SearchCaseHint, SearchWholeHint, SearchIdentifierHint, SearchGroup, SearchListTitle, SearchListIdentifier,
-    SearchListScopeMethod, SearchListMore, SettingsSearchTitle, SettingsSearchReplace, SettingsSearchMessages);
+    SearchListScopeMethod, SearchListMore, SettingsSearchTitle, SettingsSearchReplace, SettingsSearchMessages, SettingsDebugHoverValues,
+    HoverDebugPending);
 
   TAtlasStrings = class
   private class var
@@ -1740,7 +1741,8 @@ const
      'Atlas-Suche', 'Suche nach „%s“%s in %s%s: %d Treffer', ' (Bezeichner)', ', Methode %s',
      '… %d weitere Treffer nicht aufgeführt', 'Suche im Editor',
      'Atlas-Suche statt IDE-Suche (Strg+F öffnet die Suchleiste unter dem Editor, F3 und Umschalt+F3 springen)',
-     'Treffer im Reiter „Atlas-Suche“ der Meldungen auflisten'),
+     'Treffer im Reiter „Atlas-Suche“ der Meldungen auflisten',
+     'Variablenwerte im Hover beim Debuggen', 'wird ausgewertet …'),
     ('Enter to accept · Esc to close', '%d of %d', 'No matches for “%s”', 'Backspace widens the search',
      'No suggestions here', 'Esc closes', 'No details for this entry', 'Overload', 'Deprecated: %s', 'Deprecated.',
      'Inherited from %s', 'Inherited', 'optional, default %s', 'No overload with %d parameters.', '… %d more',
@@ -2794,7 +2796,8 @@ const
      'Atlas Search', 'Search for “%s”%s in %s%s: %d matches', ' (identifier)', ', method %s',
      '… %d more matches not listed', 'Search in the editor',
      'Atlas search instead of the IDE search (Ctrl+F opens the search bar below the editor, F3 and Shift+F3 jump)',
-     'List matches in the “Atlas Search” tab of the Messages window'));
+     'List matches in the “Atlas Search” tab of the Messages window',
+     'Variable values in the hover while debugging', 'evaluating …'));
 
 { TAtlasStrings }
 

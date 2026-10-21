@@ -12,7 +12,7 @@ function AtlasPluginSchemaJson: string;
 implementation
 
 const
-  Lines: array[0..2952] of string = (
+  Lines: array[0..2964] of string = (
     '{',
     '  "$schema": "http://json-schema.org/draft-07/schema#",',
     '  "title": "Atlas-Plugin-Einstellungen",',
@@ -601,6 +601,18 @@ const
     '      "x-caption": "Beim Test-Debuggen am Anfang der Methode anhalten",',
     '      "x-captionEn": "Stop at the start of the method when debugging a test",',
     '      "x-issue": "#585"',
+    '    },',
+    '    "DebugHoverValues": {',
+    '      "type": "boolean",',
+    '      "default": true,',
+    '      "x-key": "debug.hoverValues",',
+    '      "x-area": "debug",',
+    '      "x-feature": "Hover",',
+    '      "x-page": "Debuggen",',
+    '      "x-quickToggle": true,',
+    '      "x-caption": "Werte im Hover beim Debuggen",',
+    '      "x-captionEn": "Values in the hover while debugging",',
+    '      "x-issue": "#891"',
     '    },',
     '    "TestsBuildFirst": {',
     '      "type": "boolean",',

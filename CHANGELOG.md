@@ -7,6 +7,7 @@ Server und Claude-Code-Plugin tragen immer dieselbe Version.
 ## [Unveröffentlicht]
 
 ### Neu
+- Werte im Hover beim Debuggen (#891): Ist der Prozess angehalten, zeigt der Atlas-Tooltip oben den Wert des Ausdrucks unter der Maus (z. B. `FList.Count`), ausgewertet über den Debugger der IDE ohne Nebenwirkungen; verzögerte Antworten (Win64) ergänzt er im offenen Tooltip. Bisher fehlte der Wert, weil Atlas die Code Insight übernimmt. Abschaltbar mit `debug.hoverValues` (Seite „Debuggen“, Schnellschalter).
 - Brotkrumenleiste (#590): im dunklen Thema in den Farben der IDE-Werkzeugleisten statt fast schwarz (`editor.breadcrumbsIdeColors`); Menü am Unit-Glied mit allen Elementen der Unit, „›“ hinter einem Glied öffnet seine Kinder (Mitglieder, lokale Routinen), Strg+Klick springt (Umschalt: Deklaration); die leere Navigationsleiste der IDE („Typ suchen“/„Methode suchen“) wird ausgeblendet, solange die Leiste an ist (`editor.breadcrumbsHideIdeToolbar`).
 - Schnellbefehle: `/case` ergänzt fehlende Aufzählungswerte (#296), `/unit` und `/open` (#297), `/component` mit Eintrag in die `.dpk` (#299), `/intf` und `/event` (#295), `/test` legt einen DUnitX-Test für die aktuelle Methode an (#295), `/json` mit Golden-Datei und Rundweg (#298), Vorschläge für `/sort` und `/filter` (#319).
 - Einstellung `slashCommands.logCall` für `/log`, `/except` und `/measure` (#304).
@@ -69,6 +70,19 @@ Server und Claude-Code-Plugin tragen immer dieselbe Version.
 
 ### Tests
 - Alias `usesCommand` (#293), Formulardateien abgeleiteter Klassen (#44), `/header` am falschen Ort (#306), FireMonkey-Plattformansichten bei Sprung und Umbenennen (#87).
+
+## [1.0.1] - 2026-10-21
+
+### Geändert
+- Abgesicherter Start (#722): Die Vorgabe für `safeMode.startupTimeoutMs` (Registry `SafeStartupTimeoutMs`) ist jetzt 30000 statt 10000 ms. Gemessen wird bis zur freien Nachrichtenschleife der IDE, also mit Desktop, den übrigen Packages und dem Projekt; langsame Starts lösen damit nicht mehr fälschlich die Rückfrage aus.
+
+### Behoben
+- IDE hing („Die IDE hat … ms nicht reagiert“, #874): Atlas wartet nicht mehr im Hauptthread auf den Server, während er ein Projekt indexiert. Inlay-Hinweise, Testunit- und Metrik-Linse fragen in dieser Zeit nicht und holen das später nach; die Menübefehle „Index-Status“ und „Index neu aufbauen“ laufen im Hintergrund, das Ergebnis erscheint danach.
+- IDE-Absturz beim Win64-Gruppen-Build einer Projektgruppe mit dem Plugin-Projekt (Zugriffsverletzung in `coreide370.bpl`): Lädt die IDE Atlas mitten im Build neu, öffnet das Fenster „Atlas-Diagnose“ erst, wenn nichts mehr übersetzt wird und drei Sekunden Ruhe sind.
+- Toolfenster (#879): Ergebnisse, Lesezeichen, Atlas-Start und Atlas-Diagnose lassen sich nach dem Schließen über das X wieder öffnen; versteckte Andockplätze werden sichtbar und der Reiter kommt nach vorn. Ergebnisse, Lesezeichen und Atlas-Start sind beim Desktop der IDE angemeldet und kommen mit dem gespeicherten Layout wieder.
+- System-Bezeichner (#880): Eingebaute Routinen und Typen aus `System` (z. B. `Length`, `SetLength`, `Inc`, `High`, `SizeOf`, `Assigned`, `Integer`) erscheinen in der Vervollständigung ab dem ersten Zeichen, mit Parameter-Hinweis und Hover, auch ohne indexierte `System.pas` (eine indexierte hat Vorrang). Inlay-Hinweise zeigen für sie keine Parameternamen.
+- Verschachtelte Routinen (#881): Der Parameter-Hinweis zeigt alle Überladungen lokaler (verschachtelter) Routinen und wählt die passende nach den Argumenten.
+- Unscharfe Vervollständigung (#882): Kürzeltreffer (Anfangsbuchstaben der Wortteile) stehen auch auf dem Server vor Teilworttreffern und fallen beim Kürzen der Liste nicht mehr heraus; unscharf gefundene Komponenten eines Formulars bleiben beim Weitertippen in der Liste.
 
 ## [1.0.0] - 2026-10-16
 

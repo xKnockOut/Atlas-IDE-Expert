@@ -7,7 +7,7 @@
 // Breite und Doku-Höhe, nicht je Paint oder Mausbewegung. Der Hot-Zustand
 // (Maus über Link, Kette, Pfad, Aktion) ändert nur Farben, Unterstreichung und
 // Linienstärke; dafür trägt ein Baustein Art und Index der Klickfläche.
-// Aufbau wie bisher: Pfadzeile (angeheftet), Probleme, Kopfzeile, Deklaration
+// Aufbau wie bisher: Pfadzeile (angeheftet), Wert im Debugger (#891), Probleme, Kopfzeile, Deklaration
 // mit Verweisen, Beschreibung mit Platz für die XMLDoc, Vererbung bzw.
 // Zieltyp und Aktionsleiste auf Randflächen; die letzte Randfläche sitzt beim
 // Zeichnen am unteren Fensterrand (Anchor).
@@ -24,7 +24,8 @@ uses
   Atlas.Core.Hover.Contract,
   Atlas.Core.Hover.History,
   Atlas.Core.Problems.Contract,
-  Atlas.Core.Documentation.Contract;
+  Atlas.Core.Documentation.Contract,
+  Atlas.Core.Hover.DebugValue;
 
 type
   {$SCOPEDENUMS ON}
@@ -51,6 +52,8 @@ type
     UsagesCount: Integer;
     /// <summary>Probleme an der Mausposition (#398).</summary>
     Problems: TArray<TAtlasProblem>;
+    /// <summary>Wert des Ausdrucks unter der Maus im angehaltenen Debugger (#891).</summary>
+    DebugValue: TAtlasDebugValue;
     /// <summary>Anzeige der XMLDoc (#654): Angabe des Servers bzw. Einstellungen des Plugins.</summary>
     Display: TAtlasDocDisplay;
     class function Create(const AData: TAtlasHoverData): TAtlasHoverView; static;
@@ -103,6 +106,8 @@ type
     UsesRemoveAll: string;
     UsesMove: string;
     Stale: string;
+    /// <summary>Statt des Werts, solange der Debugger noch auswertet (#891).</summary>
+    DebugPending: string;
     /// <summary>Zeile „Konfidenz: …“ je Problem in der Reihenfolge von View.Problems; '' ohne.</summary>
     Confidences: TArray<string>;
   end;
@@ -229,6 +234,7 @@ type
     procedure Band(AKind: Integer; ALast: Boolean);
     procedure DrawPart(AFrom, ATill: Integer);
     procedure Navigation;
+    procedure DebugValue;
     procedure Problems;
     procedure Header;
     procedure Declaration;
@@ -674,6 +680,32 @@ begin
   FX := FLeft;
 end;
 
+procedure TBuilder.DebugValue;
+var
+  Value: TAtlasDebugValue;
+  Start: Integer;
+  MonoFace: TAtlasHoverFace;
+  Bar: TAtlasHoverItem;
+begin
+  // Wert im angehaltenen Debugger (#891): Akzentbalken, Ausdruck in der Editorschrift, darunter der Wert
+  // (höchstens sechs Zeilen) bzw. „wird ausgewertet …“.
+  Value := FInput.View.DebugValue;
+  Start := FY;
+  FLeft := Scale(20);
+  MonoFace := Face(TAtlasHoverFont.Mono, True);
+  AddText(FLeft, FY, Value.Expression, MonoFace, FColors.Accent);
+  Inc(FY, Height(MonoFace) + Scale(3));
+  if Value.State = TAtlasDebugValueState.Pending then
+    Block(FInput.Texts.DebugPending, FColors.Muted, 1)
+  else
+    Block(Value.Text, FColors.Text, 6);
+  FLeft := Scale(11);
+  Bar := NewItem(TAtlasHoverItemKind.RoundFill, Rect(FLeft, Start + Scale(1), FLeft + Scale(3), FY - Scale(7)),
+    FColors.Accent);
+  Bar.Radius := 1;
+  Add(Bar);
+end;
+
 procedure TBuilder.Problems;
 var
   Index, Start: Integer;
@@ -880,6 +912,18 @@ begin
   FX := FLeft;
   if FInput.View.Pinned then
     Navigation;
+  if FInput.View.DebugValue.Visible then
+  begin
+    DebugValue;
+    // Kennt der Server den Bezeichner nicht, zeigt der Tooltip nur den Wert (und Probleme).
+    if (FData.Declaration = '') and (Length(FInput.View.Problems) = 0) then
+    begin
+      FY := FY + Scale(2);
+      Exit;
+    end;
+    HorizontalLine(FY);
+    Inc(FY, Scale(8));
+  end;
   if Length(FInput.View.Problems) > 0 then
   begin
     Problems;

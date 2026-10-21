@@ -1,4 +1,4 @@
-﻿# Übergabe: Atlas IDE Expert – Stand 16.10.2026
+﻿# Übergabe: Atlas IDE Expert – Stand 21.10.2026
 
 ## Kontext
 - Repo: https://github.com/xKnockOut/Atlas-IDE-Expert.git, lokal unter `C:\Projekte\BetterDelphiLSP\repo`. Gearbeitet wird auf `main`.
@@ -569,3 +569,12 @@ Jeder Branch baut auf dem vorigen auf. Nichts davon ist gebaut, getestet oder in
 - Ursache: Das Feld merkte sich seine `TStatusPanel`-Zeiger. Die Panels gehören der Leiste; löscht die IDE sie selbst, zeigen `Hook.Panel` und `Hook.Extras` auf freigegebenen Speicher. Schon `APanel.Index` liest dann die Sammlung, `Refresh` hätte sogar hineingeschrieben.
 - Fix: eigene Klasse `TFieldPanel` (Unterklasse von `TStatusPanel`), die im Destruktor `OnGone` ruft. Der Haken setzt das Panel dann auf nil, `PanelRect` liefert ein leeres Rechteck, und das nächste `Refresh` legt das Panel neu an. Eigenes Entfernen (`DropPanel`) sucht nur per Zeigervergleich und löst OnGone nicht aus.
 - Zu prüfen beim Bauen: Win32-Plugin unter Delphi 12 und 13; Maus über die Leiste, Editorfenster öffnen/schließen, Plugin entladen.
+
+## Stand 21.10.2026: Werte im Hover beim Debuggen (#891)
+- **Anlass (Marco):** Am Haltepunkt zeigte Delphi beim Überfahren den Variablenwert; mit dem Atlas-Hover fehlte er, weil Atlas die Code Insight übernimmt. Kein Issue deckte das; #891 unter #614 angelegt (Grundlage für #526, #835, #839, #840, #854, #868).
+- **Branch:** `claude/project-thread-1gvqox` von `main` (Entwurfs-PR), ungebaut, nicht in `main`. Marcos Arbeitsstand `claude/project-thread-blplxd` bekommt ihn per Merge des Branches.
+- **Umsetzung:** `Atlas.Core.Hover.DebugValue` (Ausdruck unter der Maus mit Qualifizierern links, nichts mit Aufrufen/in Strings/Kommentaren/auf reservierten Wörtern; Zustände ausstehend/Wert/Fehler; Kürzen auf 2000 Zeichen), `Atlas.IDE.Hover.DebugValue` (`IOTAThread.Evaluate` mit `eseNone` und Datei/Zeile; `erDeferred` über `IOTAThreadNotifier`/`IOTAThreadNotifier160.EvaluateComplete`, Ergebnis über `TAtlasMainThread.ForceQueue`, Abmelden erst danach), Abschnitt oben im Tooltip (`TBuilder.DebugValue`: Akzentbalken, Ausdruck halbfett in der Editorschrift, Wert bis sechs Zeilen bzw. „wird ausgewertet …“). Fehler werden nicht gezeigt (#840). Mit eigenem Tooltip aus hängt `GetHintText` „Ausdruck = Wert“ vor den Hover-Text (nur sofortige Werte).
+- **Einstellung:** `DebugHoverValues` / `debug.hoverValues` (Seite „Debuggen“, Schnellschalter, Standard an); `Update-ConfigDoc.ps1` gelaufen.
+- **ToolsAPI-Signaturen** nach DocWiki und CnWizards (CnWizDebuggerNotifier.pas): `Evaluate(…, CanModify, eseNone, '', ResultAddr, ResultSize, ResultVal: LongWord, FileName, LineNumber)`; `TOTANotifyReason` hat kein `nrTerminated`. Beim ersten Delphi-Build darauf achten; `TDeferred.Destroyed` ist `reintroduce` (TNotifierObject.Destroyed ist geschützt und nicht virtuell).
+- **Getestet:** `Atlas.Core.Hover.DebugValue.Tests` unter FPC 3.2.2 grün (13 Tests); Layout-, Einstellungs- und Optionsseiten-Tests nur geschrieben. Prüfskripte grün (Pakete, Delphi 12, Konsole, Hauptthread, ConfigDoc).
+- **Offen:** Delphi-Build 0/0/0 (Win64-Gruppe, Win32-Plugin), Testlauf, Abnahme DH1–DH13 in `docs/Atlas-Testfaelle.md`, besonders Win64/LLDB (verzögerte Auswertung) und ob die IDE neben dem Atlas-Tooltip noch einen eigenen Auswertungs-Tooltip öffnet.
