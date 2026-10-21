@@ -619,6 +619,17 @@
           "description": "Namen, die eine Anzahl liefern (Property wie Count oder Funktion wie Length)."
         }
       ]
+    },
+    {
+      "id": "collection-modified-in-loop",
+      "name": "Liste in der eigenen Schleife verändert",
+      "description": "Delete, Remove, Add oder eine andere Methode aus der Option mutatingMethods wird auf der Liste aufgerufen, über die die Schleife gerade vorwärts per Index oder mit for … in läuft. Vorwärts überspringt Delete das nächste Element und läuft über das Ende, Add wird nicht mehr durchlaufen und Insert liefert dasselbe Element zweimal; mit for … in wirft die RTL eine Exception. Ein Break oder Exit direkt nach dem Aufruf beendet die Schleife und bleibt still, downto-Schleifen ebenso. Schnellkorrektur bei Indexschleifen: rückwärts mit downto; bei for … in die Elemente sammeln und die Liste nach der Schleife ändern.",
+      "options": [
+        {
+          "name": "mutatingMethods",
+          "description": "Methoden, die die Liste verändern."
+        }
+      ]
     }
   ]
 }

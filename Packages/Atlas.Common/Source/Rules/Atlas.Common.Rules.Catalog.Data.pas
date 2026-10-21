@@ -1200,6 +1200,31 @@ begin
     '          "description": "Names that return a count (property like Count or function like Length)."' + #10 +
     '        }' + #10 +
     '      ]' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "collection-modified-in-loop",' + #10 +
+    '      "name": "List modified inside its own loop",' + #10 +
+    '      "category": "bug",' + #10 +
+    '      "severity": "warning",' + #10 +
+    '      "group": "find-bugs",' + #10 +
+    '      "description": "Delete, Remove, Add or another method from the option mutatingMethods is called on the list that the loop is walking forwards by index or with for … in. Forwards, Delete skips th' + 'e next element and runs past the end, Add is not visited and Insert visits the same element twice; with for … in the RTL raises an exception. A Break or Exit directly after the call ends the loop and ' + 'stays silent, downto loops too. Quick fix for index loops: rewrite as downto; for for … in collect the elements and change the list after the loop.",' + #10 +
+    '      "bad": "for I := 0 to Liste.Count - 1 do\n  if Liste[I].Erledigt then\n    Liste.Delete(I);",' + #10 +
+    '      "good": "for I := Liste.Count - 1 downto 0 do\n  if Liste[I].Erledigt then\n    Liste.Delete(I);",' + #10 +
+    '      "options": [' + #10 +
+    '        {' + #10 +
+    '          "name": "mutatingMethods",' + #10 +
+    '          "type": "string-list",' + #10 +
+    '          "default": [' + #10 +
+    '            "Add",' + #10 +
+    '            "Insert",' + #10 +
+    '            "Delete",' + #10 +
+    '            "Remove",' + #10 +
+    '            "Extract",' + #10 +
+    '            "Clear"' + #10 +
+    '          ],' + #10 +
+    '          "description": "Methods that change the list."' + #10 +
+    '        }' + #10 +
+    '      ]' + #10 +
     '    }' + #10 +
     '  ]' + #10 +
     '}' + #10 +
@@ -1829,6 +1854,17 @@ begin
     '        {' + #10 +
     '          "name": "countNames",' + #10 +
     '          "description": "Namen, die eine Anzahl liefern (Property wie Count oder Funktion wie Length)."' + #10 +
+    '        }' + #10 +
+    '      ]' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "collection-modified-in-loop",' + #10 +
+    '      "name": "Liste in der eigenen Schleife verändert",' + #10 +
+    '      "description": "Delete, Remove, Add oder eine andere Methode aus der Option mutatingMethods wird auf der Liste aufgerufen, über die die Schleife gerade vorwärts per Index oder mit for … in läuft' + '. Vorwärts überspringt Delete das nächste Element und läuft über das Ende, Add wird nicht mehr durchlaufen und Insert liefert dasselbe Element zweimal; mit for … in wirft die RTL eine Exception. Ein B' + 'reak oder Exit direkt nach dem Aufruf beendet die Schleife und bleibt still, downto-Schleifen ebenso. Schnellkorrektur bei Indexschleifen: rückwärts mit downto; bei for … in die Elemente sammeln und d' + 'ie Liste nach der Schleife ändern.",' + #10 +
+    '      "options": [' + #10 +
+    '        {' + #10 +
+    '          "name": "mutatingMethods",' + #10 +
+    '          "description": "Methoden, die die Liste verändern."' + #10 +
     '        }' + #10 +
     '      ]' + #10 +
     '    }' + #10 +
