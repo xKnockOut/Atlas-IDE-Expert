@@ -24,6 +24,11 @@
 //   Routine sucht F3 in der ganzen Unit (Meldung).
 // - Esc bzw. × schließt die Leiste, gibt den Fokus an den Editor zurück und
 //   beendet die Hervorhebung; F3 sucht weiter mit der letzten Suche.
+// - Solange die Leiste offen ist, prüft ein Takt (Probe): Holt die IDE den
+//   Fokus kurz nach dem Klick in die Leiste wieder in den Editor, kommt er
+//   einmal zurück; liegt über der Leiste ein anderes Fenster, wird sie nach
+//   vorn geholt. Beides steht mit Fensterklasse im Diagnoseprotokoll, ebenso
+//   beim ersten Öffnen je Fenster die Lage von Editor und Leiste.
 // Tasten: Strg+F/F3/Umschalt+F3 nur mit search.replaceIdeSearch
 // (Atlas.IDE.Commands.Bindings), „In Methode suchen“ immer. Nur im
 // Hauptthread.
@@ -35,7 +40,9 @@ uses
   System.Classes,
   System.Types,
   System.Generics.Collections,
+  Winapi.Windows,
   Vcl.Controls,
+  Vcl.ExtCtrls,
   ToolsAPI,
   ToolsAPI.Editor,
   Atlas.Core.Search.Matching,
@@ -74,6 +81,8 @@ type
     TBarWatcher = class(TComponent)
     protected
       procedure Notification(AComponent: TComponent; Operation: TOperation); override;
+    public
+      procedure Tick(Sender: TObject);
     end;
   private class var
     FLast: TAtlasSearchQuery;
@@ -89,6 +98,11 @@ type
     FFileName: string;
     FHighlight: Boolean;
     FListedKey: string;
+    // Takt bei offener Leiste: Fokus und Fenster unter der Maus (Probe).
+    FProbe: TTimer;
+    FProbed: HWND;
+    FEntered: TWinControl;
+    FEnteredAt: UInt64;
   private
     class procedure Say(const AText: string); static;
     class function TopView(out AView: IOTAEditView): Boolean; static;
@@ -114,6 +128,9 @@ type
     class procedure BarStep(ABackward: Boolean); static;
     class procedure BarList; static;
     class procedure CloseBar; static;
+    class procedure Probe; static;
+    class procedure LogLayout(ABar: TAtlasSearchBar); static;
+    class procedure StopProbe; static;
   public
     /// <summary>Zeichner anmelden; AMessage schreibt eine Zeile in die Meldungsansicht.</summary>
     class procedure Install(const AMessage: TProc<string>); static;
@@ -136,7 +153,6 @@ type
 implementation
 
 uses
-  Winapi.Windows,
   Vcl.Graphics,
   Vcl.Forms,
   Atlas.Core.Diagnostics.Guard,
@@ -151,6 +167,11 @@ uses
   Atlas.IDE.Foundation.EditorStyle,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Search.MessageList;
+
+const
+  // Takt bei offener Leiste und Frist, in der ein Fokusverlust nach dem Klick als zurückgeholt gilt.
+  ProbeMs = 100;
+  FocusGraceMs = 400;
 
 { TAtlasIdeSearch.TPainter.TEvents }
 
@@ -300,6 +321,11 @@ begin
     TAtlasIdeSearch.Removed(TAtlasSearchBar(AComponent));
 end;
 
+procedure TAtlasIdeSearch.TBarWatcher.Tick(Sender: TObject);
+begin
+  TAtlasGuard.Run(TAtlasFeature.EditorCommands, TAtlasIdeSearch.Probe);
+end;
+
 { TAtlasIdeSearch }
 
 class procedure TAtlasIdeSearch.Install(const AMessage: TProc<string>);
@@ -311,6 +337,13 @@ begin
     FBars := TList<TAtlasSearchBar>.Create;
   if FWatcher = nil then
     FWatcher := TBarWatcher.Create(nil);
+  if FProbe = nil then
+  begin
+    FProbe := TTimer.Create(FWatcher);
+    FProbe.Enabled := False;
+    FProbe.Interval := ProbeMs;
+    FProbe.OnTimer := FWatcher.Tick;
+  end;
 end;
 
 class procedure TAtlasIdeSearch.Uninstall;
@@ -328,6 +361,9 @@ begin
     end;
     FreeAndNil(FBars);
   end;
+  // Der Takt gehört dem Wächter.
+  FProbe := nil;
+  FEntered := nil;
   FreeAndNil(FWatcher);
   FBar := nil;
   FMessage := nil;
@@ -540,6 +576,15 @@ begin
       if Bar = FBar then
         TAtlasGuard.Run(TAtlasFeature.EditorCommands, CloseBar);
     end;
+  Bar.OnControlEnter :=
+    procedure(AControl: TWinControl)
+    begin
+      if Bar = FBar then
+      begin
+        FEntered := AControl;
+        FEnteredAt := TThread.GetTickCount64;
+      end;
+    end;
   // Unter dem Editor: zuerst ganz unten einhängen, dann unten ausrichten.
   Bar.Top := AParent.ClientHeight;
   Bar.Align := alBottom;
@@ -553,7 +598,10 @@ begin
   if FBars <> nil then
     FBars.Remove(ABar);
   if FBar = ABar then
+  begin
     FBar := nil;
+    StopProbe;
+  end;
 end;
 
 class procedure TAtlasIdeSearch.Open(AInMethod: Boolean);
@@ -615,7 +663,14 @@ begin
   Bar.ListVisible := TAtlasIdeSettings.Current.SearchResultsInMessages;
   Bar.Prepare(Query, Levels, HasSelection);
   Bar.Visible := True;
+  // Vor alle Geschwister: Kein Fenster der IDE soll über der Leiste liegen.
+  Bar.BringToFront;
+  LogLayout(Bar);
   Bar.FocusText;
+  FProbed := 0;
+  FEntered := nil;
+  if FProbe <> nil then
+    FProbe.Enabled := True;
   // Hervorheben und zählen, ohne zu springen: Der Vorschlag steht meist schon am Cursor.
   Sync(False);
 end;
@@ -770,6 +825,7 @@ begin
   if FBar = nil then
     Exit;
   Form := GetParentForm(FBar);
+  StopProbe;
   FBar.Visible := False;
   FHighlight := False;
   Repaint;
@@ -778,6 +834,89 @@ begin
   Editor := Form.FindComponent('Editor');
   if (Editor is TWinControl) and TWinControl(Editor).CanFocus then
     TWinControl(Editor).SetFocus;
+end;
+
+class procedure TAtlasIdeSearch.StopProbe;
+begin
+  if FProbe <> nil then
+    FProbe.Enabled := False;
+  FEntered := nil;
+  FProbed := 0;
+end;
+
+function WindowName(AWindow: HWND): string;
+var
+  WindowClass: array[0..255] of Char;
+  Control: TWinControl;
+begin
+  if AWindow = 0 then
+    Exit('kein Fenster');
+  WindowClass[0] := #0;
+  GetClassName(AWindow, WindowClass, Length(WindowClass));
+  Result := string(WindowClass);
+  Control := FindControl(AWindow);
+  if Control <> nil then
+    Result := Result + ', ' + Control.ClassName + ' ' + Control.Name;
+end;
+
+/// <summary>Einmal je Leiste: Lage von Editor und Leiste im gemeinsamen Eltern-Steuerelement (Diagnose).</summary>
+class procedure TAtlasIdeSearch.LogLayout(ABar: TAtlasSearchBar);
+var
+  Parent: TWinControl;
+  Index: Integer;
+  Child: TControl;
+  Parts: string;
+begin
+  if ABar.Tag <> 0 then
+    Exit;
+  ABar.Tag := 1;
+  Parent := ABar.Parent;
+  if Parent = nil then
+    Exit;
+  Parts := '';
+  for Index := 0 to Parent.ControlCount - 1 do
+  begin
+    Child := Parent.Controls[Index];
+    Parts := Parts + Format(' [%s %s Align %d, %d,%d %dx%d, sichtbar %s]', [Child.ClassName, Child.Name,
+      Ord(Child.Align), Child.Left, Child.Top, Child.Width, Child.Height, BoolToStr(Child.Visible, True)]);
+  end;
+  TAtlasGuard.Log(Format('Suchleiste: in %s %s (%dx%d):%s', [Parent.ClassName, Parent.Name, Parent.ClientWidth,
+    Parent.ClientHeight, Parts]));
+end;
+
+class procedure TAtlasIdeSearch.Probe;
+var
+  Bar: TAtlasSearchBar;
+  Cursor: TPoint;
+  Window: HWND;
+begin
+  Bar := FBar;
+  if (Bar = nil) or not Bar.HandleAllocated or not Bar.Showing then
+    Exit;
+  // Kurz nach dem Klick in die Leiste wieder im Editor: Die IDE hat den Fokus zurückgeholt; einmal zurück.
+  if (FEntered <> nil) and not Bar.HasFocus then
+  begin
+    if TThread.GetTickCount64 - FEnteredAt <= FocusGraceMs then
+    begin
+      TAtlasGuard.Log(Format('Suchleiste: Fokus nach dem Klick an %s %s verloren (an %s); hole ihn zurück',
+        [FEntered.ClassName, FEntered.Name, WindowName(Winapi.Windows.GetFocus)]));
+      if FEntered.CanFocus then
+        FEntered.SetFocus;
+    end;
+    FEntered := nil;
+  end;
+  // Liegt über der Leiste ein anderes Fenster, bekommt sie keine Klicks: protokollieren, nach vorn holen.
+  if not GetCursorPos(Cursor) or not PtInRect(Bar.ClientRect, Bar.ScreenToClient(Cursor)) then
+    Exit;
+  Window := WindowFromPoint(Cursor);
+  if Window = FProbed then
+    Exit;
+  FProbed := Window;
+  if (Window = Bar.Handle) or IsChild(Bar.Handle, Window) then
+    Exit;
+  TAtlasGuard.Log(Format('Suchleiste: Über der Leiste liegt ein anderes Fenster (%s); hole die Leiste nach vorn',
+    [WindowName(Window)]));
+  Bar.BringToFront;
 end;
 
 class procedure TAtlasIdeSearch.Show;
