@@ -416,6 +416,8 @@
         <DCCReference Include="Source\IDE\Build\Atlas.IDE.Build.ReleaseGuard.pas"/>
         <DCCReference Include="Source\Core\Build\Atlas.Core.Build.OpenBuild.pas"/>
         <DCCReference Include="Source\IDE\Build\Atlas.IDE.Build.OpenBuild.pas"/>
+        <DCCReference Include="Source\Core\Build\Atlas.Core.Build.IdleGate.pas"/>
+        <DCCReference Include="Source\IDE\Build\Atlas.IDE.Build.IdleGate.pas"/>
         <DCCReference Include="Source\Core\Welcome\Atlas.Core.Welcome.Sections.pas"/>
         <DCCReference Include="Source\Core\Welcome\Atlas.Core.Welcome.Layout.pas"/>
         <DCCReference Include="Source\Core\Welcome\Atlas.Core.Welcome.Layouts.pas"/>
@@ -560,6 +562,8 @@
         <DCCReference Include="Source\UI\Notifications\Atlas.UI.Notifications.Notice.pas"/>
         <DCCReference Include="Source\UI\Editor\Atlas.UI.Editor.SmartPaste.pas"/>
         <DCCReference Include="Source\IDE\Notifications\Atlas.IDE.Notifications.Service.pas"/>
+        <DCCReference Include="Source\Core\Dock\Atlas.Core.Dock.Plan.pas"/>
+        <DCCReference Include="Source\IDE\Foundation\Atlas.IDE.Foundation.DockWindow.pas"/>
         <BuildConfiguration Include="Base">
             <Key>Base</Key>
         </BuildConfiguration>

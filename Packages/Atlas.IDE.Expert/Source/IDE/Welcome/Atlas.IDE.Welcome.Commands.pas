@@ -335,6 +335,8 @@ begin
     begin
       FillBoard(ABoard, True);
     end;
+  // Früh anmelden: Die IDE speichert das Fenster im Desktop und legt es beim Laden selbst an (#879).
+  TAtlasIdeWelcomeWindow.Prepare;
   CheckPending;
 end;
 

@@ -522,7 +522,9 @@ Jeder Branch baut auf dem vorigen auf. Nichts davon ist gebaut, getestet oder in
 - **Ursache eingegrenzt (Bisektion über einen Umgebungsschalter, wieder entfernt):** Es reicht, dass in der Sitzung ein Atlas-Dockfenster über `INTAServices.CreateDockableForm` angelegt wurde, z. B. „Atlas-Diagnose“ (öffnet sich beim Start, wenn `DiagnosticMode` = 1) oder das Ergebnisfenster. Ausblenden oder Freigeben vor dem Compile hilft nicht. Compile-Notifier, Poller, Release-Wächter, Komponentenname des Frames und Fokus sind es nicht.
 - **Beobachtung:** Die IDE übersetzt AtlasSetup trotz deaktivierter Plattform mit `CurrentPlatform` = Win64, und `ProjectCompileFinished` meldet Erfolg. Die Zugriffsverletzung kommt danach in der IDE. `Cancel` in BeforeCompile verhindert sie, bricht aber den ganzen Gruppen-Build ab, deshalb verworfen.
 - **Umgehung:** Win64-Gruppen-Builds Projekt für Projekt (wie `release.yml`), oder AtlasSetup aus der Win64-Gruppe nehmen. `ketteuild-safe.ps1` schaltet jetzt auch das installierte Release-Plugin ab.
-- **Offen:** Ein Minimal-Plugin mit leerem Dockfenster löst den Absturz nicht aus; Ursache liegt an dem, was die Atlas-Fenster zusätzlich tun (Kandidaten: IDE-Thema auf dem Frame, Fenstersymbol, FreeNotification). Eingrenzung läuft.
+- **Ursache (18.10.2026):** Baut die IDE eine Gruppe mit dem Plugin-Projekt, entlädt sie Atlas und lädt es mitten im Gruppen-Build neu. Der Diagnosemodus (DiagnosticMode = 1) legte dann sofort sein Dockfenster an; das Anlegen eines Dockfensters während des Builds lässt die IDE am nächsten Projekt abstürzen. Thema, Symbol, Frame, Bezeichner, Notifier und Statusfeld waren es nicht (Bisektion).
+- **Behoben (d7c6e381):** TAtlasIdeBuildIdleGate (Core: Atlas.Core.Build.IdleGate mit Tests) öffnet das Fenster erst ohne laufenden Compile und nach 3 s Ruhe. Nachstellung 5× ohne Absturz.
+- **Offen, getrennt davon:** Nach einem Neuladen mitten im Build hängt die Test-IDE beim Beenden gelegentlich mit einer Zugriffsverletzung in rtl370.bpl (Lesen von 006F003E), auch ohne Diagnosemodus (1 von 3). Atlas meldet in diesen Fällen kein „Atlas entladen“.
 - **README:** Spenden-Badge (PayPal) in README.md und README_DE.md, Hinweis „kein Release“ ersetzt.
 
 ## Sammel-Branch claude/merge-all-branches-a7glyv repariert (18.10.2026)
@@ -531,3 +533,18 @@ Jeder Branch baut auf dem vorigen auf. Nichts davon ist gebaut, getestet oder in
 - Wichtigste Korrekturen: Units mit reserviertem Wort umbenannt (Editing.Inline -> Editing.Inlining, Problems.Inline -> Problems.InlineHints), fehlende uses und Testunits, Methodenreferenz-Funktionen mit (), Integer() bei AreEqual, UTF-8-Dekodierung ohne Ausnahme, Parser nur über den Cache, Gliederungsfenster ohne Fenster im Konstruktor, Lecks (KnownRuleIds, Konstruktor am const-Interface-Parameter).
 - Profile: refactoring.* sind Projektwerte und stehen in keinem Profil; Update-ConfigDoc verlangt im Profil „alles-an-experimentell“ nur globale experimentelle Schlüssel.
 - Offen: Merge nach main (Entscheidung Marco). Win64-Absturz an AtlasSetup weiter offen (Bisektion im Stash „Bisektion Win64-Absturz“; nötig sind Atlas-Kern und ein Atlas-Dockfenster, das Minimal-Plugin MiniDock allein löst ihn nicht aus).
+## Hänger „Die IDE hat … ms nicht reagiert“ (#874, 18.10.2026)
+- Analyse: Stapel aus `Atlas.IDE.Expert370.log` (neben dem Plugin) mit einer Map des installierten Release-Builds aufgelöst. Dazu den Worktree `C:\Projekte\BetterDelphiLSP\wt-map` auf 970f805a mit `DCC_MapFile=3` gebaut; er ist byte-gleich groß. Skript: `scratchpad\mapaddr.py`.
+- Ursache: synchrones Warten im Hauptthread auf den Server (`TLspClient.Request`), während er ein Projekt indexiert. Betroffen sind Inlay-Hinweise, Testunit-Linse und Serverbefehle mit 30 s Zeitlimit (Menü).
+- Umgesetzt (3f9d70b7): Linsen und Inlay-Hinweise fragen während des Indexierens nicht; Menübefehle laufen über `ExecuteServerCommandAsync`; `safeMode.startupTimeoutMs` hat die Vorgabe 30000 ms.
+- Offen: Optionsseite, Prüfliste und Fehlerbericht rufen den Server weiter synchron auf. Server: `workspace/executeCommand` läuft seriell in der Nachrichtenschleife und wartet hinter Reload/`StartIndex`→`Stop`→`WaitFor`; Vorschlag im Issue-Kommentar.
+- Hinweis: Am 18.10.2026 war Atlas beim Benutzer deinstalliert (nur `AtlasSetup.exe` übrig; `%LOCALAPPDATA%\Atlas` und `HKCU\Software\Atlas` fehlten). Das war keine Aktion dieser Sitzung.
+
+## Bugs #879–#882 (21.10.2026, 1863db03, geschlossen)
+- #879 Toolfenster: gemeinsame Klasse `TAtlasIdeDockWindow` (IDE/Foundation) mit getestetem Plan `Atlas.Core.Dock.Plan`. Nach dem X wieder öffnen; versteckte Gastgeber werden sichtbar, der Reiter kommt nach vorn. Ergebnisse, Lesezeichen und Atlas-Start sind beim Desktop angemeldet (`RegisterDockableForm`, Aufruf `Prepare` früh); Atlas-Diagnose bewusst nicht (Absturz-Fix d7c6e381).
+- #880 System: `Atlas.Common.Semantics.SystemIntrinsics` (98 Intrinsics und eingebaute Typen) für Completion (ab dem ersten Zeichen), Parameter-Hinweis und Hover. Eine indexierte System.pas hat Vorrang. Inlay-Hinweise zeigen keine Parameternamen für Intrinsics (`TSignatureHelp.Intrinsic`).
+- #881: `TNameResolver.LocalOverloads`; der Parameter-Hinweis zeigt alle Überladungen verschachtelter Routinen und wählt nach den Argumenten.
+- #882: Server bewertet Kürzeltreffer mit 2600, also vor Teilwort; filterText für unscharfe Form-Komponenten. Grenze: „Btn“ → SaveButton bleibt aus (Wortgrenzen-Regel D-05).
+- Werkzeug: `scratchpad\ide-dialogs.ps1` listet offene Fehlerdialoge der laufenden IDE samt Text.
+- Plugin beim Benutzer: Debug-Build aus `repo\Output\Win32\Debug\Bpl` in Known Packages. Das Nachstellskript `repro.ps1` trägt ihn am Ende aus; danach wieder eintragen.
+- Offen: Optionsseite, Prüfliste und Fehlerbericht rufen den Server noch synchron auf (#874), außerdem der Server-Umbau für executeCommand.

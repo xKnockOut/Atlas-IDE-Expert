@@ -243,7 +243,7 @@ begin
   Assert.IsTrue(Settings.SafeAskAfterCrash);
   Assert.IsTrue(Settings.SafeAutoAfterRepeatedCrash);
   Assert.AreEqual('shift', Settings.SafeStartupKey);
-  Assert.AreEqual(10000, Settings.SafeStartupTimeoutMs);
+  Assert.AreEqual(30000, Settings.SafeStartupTimeoutMs);
   Assert.AreEqual(5, Settings.SafeKeepSettingsHistory);
   // Dateiübergreifendes Zurücknehmen (#721).
   Assert.IsTrue(Settings.UndoMultiFile);

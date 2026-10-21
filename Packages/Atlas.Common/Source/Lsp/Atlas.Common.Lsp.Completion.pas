@@ -1605,7 +1605,9 @@ begin
             Collector.SendStage;
             Collector.SetNameFilter(True);
             try
-              Candidates := ARequest.Resolver.UsedScopeCandidates;
+              // Mit Eingabe auch die Bezeichner von System ohne Quelltext (#880): Assigned, SetLength,
+              // Integer ... Ohne Eingabe nicht, die Liste ist dann ohnehin unvollständig (Incomplete).
+              Candidates := ARequest.Resolver.UsedScopeCandidates(Context.Prefix <> '');
             finally
               Collector.SetNameFilter(False);
             end;
@@ -3401,6 +3403,11 @@ begin
       Item.Scope := 3;
       Item.Form := Form.RootName;
       Item.ByType := ByType;
+      // Wie im Sammler (#882): Unscharfe Treffer und Treffer über den Typ bekommen das getippte Wort als
+      // filterText, sonst verwirft ein Editor mit eigenem Präfixfilter (VS Code) alles ohne passenden Anfang.
+      if (ARequest.Matching = TCompletionMatching.Fuzzy) and (Context.Prefix <> '') and
+        not Component.Name.StartsWith(Context.Prefix, True) then
+        Item.FilterText := Context.Prefix;
       // Liste statt AItems := AItems + [...] (Code-Review P-08).
       Items.Add(Item);
     end;

@@ -28,6 +28,8 @@ type
     class procedure Hide; static;
     class procedure UpdateIcon; static;
     class procedure ApplyTheme; static;
+    /// <summary>Früh (Register): bei der IDE anmelden, damit der Desktop das Fenster speichert und wiederherstellt (#879).</summary>
+    class procedure Prepare; static;
     class procedure Release; static;
   end;
 
@@ -44,7 +46,8 @@ uses
   ToolsAPI,
   Atlas.UI.Strings,
   Atlas.UI.Style.Symbol,
-  Atlas.IDE.Foundation.Symbol;
+  Atlas.IDE.Foundation.Symbol,
+  Atlas.IDE.Foundation.DockWindow;
 
 type
   TBookmarksDock = class(TInterfacedObject, INTACustomDockableForm)
@@ -65,16 +68,9 @@ type
     function EditAction(Action: TEditAction): Boolean;
   end;
 
-  TWatch = class(TComponent)
-  protected
-    procedure Notification(AComponent: TComponent; Operation: TOperation); override;
-  end;
-
 var
-  Dock: INTACustomDockableForm;
-  Form: TCustomForm;
-  Frame: TAtlasBookmarksFrame;
-  Watch: TWatch;
+  // Verwaltet Form, Frame und Anmeldung bei der IDE (#879).
+  Host: TAtlasIdeDockWindow;
 
 procedure Theme(AFrame: TCustomFrame);
 var
@@ -103,11 +99,15 @@ begin
 end;
 
 procedure TBookmarksDock.FrameCreated(AFrame: TCustomFrame);
+var
+  Frame: TAtlasBookmarksFrame;
 begin
   if not (AFrame is TAtlasBookmarksFrame) then
     Exit;
+  if Host <> nil then
+    Host.FrameCreated(AFrame);
   Frame := TAtlasBookmarksFrame(AFrame);
-  Frame.FreeNotification(Watch);
+  TAtlasIdeBookmarksWindow.UpdateIcon;
   Theme(Frame);
   if Assigned(TAtlasIdeBookmarksWindow.OnFrame) then
     TAtlasIdeBookmarksWindow.OnFrame(Frame);
@@ -159,97 +159,80 @@ begin
   Result := False;
 end;
 
-{ TWatch }
-
-procedure TWatch.Notification(AComponent: TComponent; Operation: TOperation);
+procedure EnsureHost;
 begin
-  inherited;
-  if Operation <> opRemove then
-    Exit;
-  if AComponent = Frame then
-    Frame := nil;
-  if AComponent = Form then
-  begin
-    Form := nil;
-    Frame := nil;
-  end;
+  if Host = nil then
+    Host := TAtlasIdeDockWindow.Create(TBookmarksDock.Create, True);
 end;
 
 { TAtlasIdeBookmarksWindow }
 
 class function TAtlasIdeBookmarksWindow.Show: TAtlasBookmarksFrame;
 var
-  Services: INTAServices;
+  Created: Boolean;
 begin
-  if Form = nil then
-  begin
-    if not Supports(BorlandIDEServices, INTAServices, Services) then
-      Exit(nil);
-    if Watch = nil then
-      Watch := TWatch.Create(nil);
-    Dock := TBookmarksDock.Create;
-    Form := Services.CreateDockableForm(Dock);
-    if Form <> nil then
-    begin
-      Form.FreeNotification(Watch);
-      UpdateIcon;
-    end;
-  end;
-  if Form <> nil then
-  begin
-    Form.Show;
-    Form.BringToFront;
-  end;
-  Result := Frame;
+  // Lebt die Form noch (X versteckt nur), wird sie samt Gastgebern gezeigt; sonst neu angelegt.
+  EnsureHost;
+  Host.Show(Created);
+  if Created then
+    UpdateIcon;
+  Result := ExistingFrame;
 end;
 
 class function TAtlasIdeBookmarksWindow.ExistingFrame: TAtlasBookmarksFrame;
 begin
   Result := nil;
-  if Form <> nil then
-    Result := Frame;
+  if (Host <> nil) and (Host.Frame is TAtlasBookmarksFrame) then
+    Result := TAtlasBookmarksFrame(Host.Frame);
 end;
 
 class function TAtlasIdeBookmarksWindow.Visible: Boolean;
 begin
-  Result := (Form <> nil) and Form.Visible;
+  // Angedockt in verstecktem Gastgeber zählt nicht als sichtbar.
+  Result := (Host <> nil) and Host.Shown;
 end;
 
 class procedure TAtlasIdeBookmarksWindow.Hide;
 begin
-  if Form <> nil then
-    Form.Hide;
+  if Host <> nil then
+    Host.Hide;
 end;
 
 class procedure TAtlasIdeBookmarksWindow.UpdateIcon;
 var
   Icon: TIcon;
 begin
-  if Form = nil then
+  if (Host = nil) or (Host.Form = nil) then
     Exit;
   Icon := TAtlasSymbolImages.Icon(TAtlasIdeSymbol.Current);
   try
     // Icon ist erst in TForm öffentlich.
-    TForm(Form).Icon.Assign(Icon);
+    TForm(Host.Form).Icon.Assign(Icon);
   finally
     Icon.Free;
   end;
 end;
 
 class procedure TAtlasIdeBookmarksWindow.ApplyTheme;
+var
+  Frame: TAtlasBookmarksFrame;
 begin
+  Frame := ExistingFrame;
   if Frame <> nil then
     Theme(Frame);
   UpdateIcon;
 end;
 
+class procedure TAtlasIdeBookmarksWindow.Prepare;
+begin
+  EnsureHost;
+end;
+
 class procedure TAtlasIdeBookmarksWindow.Release;
 begin
   OnFrame := nil;
-  Frame := nil;
-  FreeAndNil(Form);
-  Dock := nil;
-  FreeAndNil(Watch);
+  // Meldet ab und gibt die Form nur frei, wenn die IDE sie nicht schon zerstört hat.
+  FreeAndNil(Host);
 end;
 
 end.

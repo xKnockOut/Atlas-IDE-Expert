@@ -285,8 +285,13 @@ type
     /// eigene Unit. Danach liefert UsedScopeCandidates den Rest.</summary>
     function OwnScopeCandidates(ATree: TSyntaxTree; const AFileName: string; AOffset: Integer): TArray<TResolvedSymbol>;
     /// <summary>Zweiter Teil (#616): Units aus uses und System, ohne Namen, die der erste Teil schon brachte.
-    /// Leer ohne vorheriges OwnScopeCandidates.</summary>
-    function UsedScopeCandidates: TArray<TResolvedSymbol>;
+    /// Leer ohne vorheriges OwnScopeCandidates. Mit AWithIntrinsics zuletzt die Bezeichner von System ohne
+    /// Quelltext (#880: Assigned, SetLength, Integer ...), soweit kein indexierter Name sie schon brachte.</summary>
+    function UsedScopeCandidates(AWithIntrinsics: Boolean = False): TArray<TResolvedSymbol>;
+    /// <summary>Alle gleichnamigen verschachtelten Routinen neben der lokalen Routine ASymbol (#881), also
+    /// ihre Überladungen in derselben umgebenden Routine, ASymbol eingeschlossen. Nach Resolve auf dem Baum,
+    /// aus dem ASymbol stammt; sonst nur ASymbol.</summary>
+    function LocalOverloads(const ASymbol: TResolvedSymbol): TArray<TResolvedSymbol>;
     /// <summary>Deklarationen aus den Units in uses und System, die NameFilter durchlässt, auch wenn der erste
     /// Teil sie schon verdeckt (#488); ändert den Stand für UsedScopeCandidates nicht. Leer ohne vorheriges
     /// OwnScopeCandidates.</summary>
@@ -376,7 +381,8 @@ uses
   System.Diagnostics,
   Atlas.Common.Index.Extractor,
   Atlas.Common.Diagnostics.RequestScope,
-  Atlas.Common.Semantics.Attributes;
+  Atlas.Common.Semantics.Attributes,
+  Atlas.Common.Semantics.SystemIntrinsics;
 
 const
   TypeKinds = [TIndexSymbolKind.ClassType, TIndexSymbolKind.ObjectType, TIndexSymbolKind.RecordType,
@@ -1408,7 +1414,9 @@ var
   Position: Integer;
   SameUnit: Boolean;
 begin
-  // Überladene freie Routinen derselben Unit.
+  // Überladene freie Routinen derselben Unit; bei verschachtelten Routinen die der umgebenden Routine (#881).
+  if (ASymbol.Kind = TResolvedKind.Local) and (ASymbol.SymbolKind = TIndexSymbolKind.Routine) then
+    Exit(LocalOverloads(ASymbol));
   Result := [ASymbol];
   if (ASymbol.Kind <> TResolvedKind.Symbol) or (ASymbol.SymbolKind <> TIndexSymbolKind.Routine) or
     (ASymbol.Container <> '') or not UnitOf(ASymbol, Owner) then
@@ -1419,6 +1427,48 @@ begin
     Symbol := Owner.Symbols[Position];
     if (Symbol.Kind = TIndexSymbolKind.Routine) and (Symbol.Container = '') and (SameUnit or Symbol.InInterface) then
       AddDistinct(Result, FromSymbol(Owner, Symbol));
+  end;
+end;
+
+function TNameResolver.LocalOverloads(const ASymbol: TResolvedSymbol): TArray<TResolvedSymbol>;
+
+  function Search(ANode: TSyntaxNode): TSyntaxNode;
+  var
+    Index: Integer;
+  begin
+    if (ANode.Kind = TSyntaxKind.RoutineDecl) and (ANode.StartPos = ASymbol.Range.StartPos) and
+      SameText(ANode.Name, ASymbol.Name) then
+      Exit(ANode);
+    for Index := 0 to ANode.ChildCount - 1 do
+    begin
+      Result := Search(ANode[Index]);
+      if Result <> nil then
+        Exit;
+    end;
+    Result := nil;
+  end;
+
+var
+  Node, Parent, Sibling: TSyntaxNode;
+  Index: Integer;
+begin
+  Result := [ASymbol];
+  if (ASymbol.Kind <> TResolvedKind.Local) or (ASymbol.SymbolKind <> TIndexSymbolKind.Routine) or (FTree = nil) then
+    Exit;
+  Node := Search(FTree.Root);
+  if (Node = nil) or (Node.Parent = nil) then
+    Exit;
+  Parent := Node.Parent;
+  // Überladungen stehen in derselben umgebenden Routine, vor oder hinter ASymbol; in der Reihenfolge der
+  // Deklaration, unabhängig davon, welche die Auflösung gewählt hat.
+  Result := nil;
+  for Index := 0 to Parent.ChildCount - 1 do
+  begin
+    Sibling := Parent[Index];
+    if Sibling = Node then
+      AddDistinct(Result, ASymbol)
+    else if (Sibling.Kind = TSyntaxKind.RoutineDecl) and SameText(Sibling.Name, ASymbol.Name) then
+      AddDistinct(Result, FromNode(Sibling, Sibling.Name, TIndexSymbolKind.Routine, False));
   end;
 end;
 
@@ -2095,7 +2145,10 @@ begin
     Exit(False);
   Result := True;
   // Überladungen: Mitglieder der eigenen Klasse oder freie Routinen derselben Unit.
-  if (AConsumed = 1) and (First.Kind = TResolvedKind.Symbol) and (First.SymbolKind in RoutineKinds) then
+  // Verschachtelte Routinen (#881): ihre Überladungen in der umgebenden Routine.
+  if (AConsumed = 1) and (First.Kind = TResolvedKind.Local) and (First.SymbolKind = TIndexSymbolKind.Routine) then
+    AResults := LocalOverloads(First)
+  else if (AConsumed = 1) and (First.Kind = TResolvedKind.Symbol) and (First.SymbolKind in RoutineKinds) then
   begin
     if (First.Container <> '') and CurrentClass(ClassType) then
       AResults := FindMembers(ClassType, ANames[0]);
@@ -2499,11 +2552,27 @@ begin
   end;
 end;
 
-function TNameResolver.UsedScopeCandidates: TArray<TResolvedSymbol>;
+/// <summary>Bezeichner von System ohne Quelltext als Kandidat (#880); Überladungen erscheinen einmal.</summary>
+function IntrinsicSymbol(const AIntrinsic: TSystemIntrinsic): TResolvedSymbol;
+begin
+  Result := NoResult;
+  Result.Kind := TResolvedKind.Symbol;
+  Result.Name := AIntrinsic.Name;
+  Result.UnitName := 'System';
+  Result.SymbolKind := AIntrinsic.Kind;
+  Result.MinArgs := AIntrinsic.MinArgs;
+  Result.MaxArgs := AIntrinsic.MaxArgs;
+  Result.InInterface := True;
+  Result.Builtin := True;
+end;
+
+function TNameResolver.UsedScopeCandidates(AWithIntrinsics: Boolean): TArray<TResolvedSymbol>;
 var
   List: TList<TResolvedSymbol>;
   UnitName: string;
   Used: TUnitIndex;
+  Intrinsic: TSystemIntrinsic;
+  Symbol: TResolvedSymbol;
 begin
   Result := nil;
   if not FScopeOpen then
@@ -2514,6 +2583,23 @@ begin
     for UnitName in ScopeUnits(FScopeUnit, FScopeInImplementation) do
       if FindUnit(UnitName, Used) then
         CollectUnit(Used, True, List, FScopeSeen);
+    // Zuletzt, was System ohne Quelltext mitbringt: Indexiertes und Eigenes verdeckt gleichnamige Einträge.
+    if AWithIntrinsics then
+      for Intrinsic in TSystemIntrinsics.All do
+        if not FScopeSeen.ContainsKey(UpperCase(Intrinsic.Name)) and NameWanted(Intrinsic.Name) then
+        begin
+          Symbol := IntrinsicSymbol(Intrinsic);
+          FScopeSeen.Add(UpperCase(Intrinsic.Name), True);
+          List.Add(Symbol);
+        end
+        else if (List.Count > 0) and SameText(List[List.Count - 1].Name, Intrinsic.Name) and
+          List[List.Count - 1].Builtin and (Intrinsic.MaxArgs > List[List.Count - 1].MaxArgs) then
+        begin
+          // Weitere Überladung: Parameter zeigt der Eintrag schon an, wenn eine Variante welche hat.
+          Symbol := List[List.Count - 1];
+          Symbol.MaxArgs := Intrinsic.MaxArgs;
+          List[List.Count - 1] := Symbol;
+        end;
     Result := List.ToArray;
   finally
     List.Free;
@@ -3189,4 +3275,4 @@ begin
   Result := Actual.Found and Target.Found and Actual.IsType and Target.IsType and DescendsFrom(Actual, Target);
 end;
 
-end.
+end.

@@ -124,6 +124,9 @@ type
     /// <summary>Befehl im Hintergrund (RunCommandAsync, #66).</summary>
     FCommandRunning: Boolean;
     FCommandIdle: TEvent;
+    /// <summary>Bedienbefehle im Hintergrund (ExecuteServerCommandAsync, #874): Anzahl laufender und Signal „keiner“.</summary>
+    FServerCommands: Integer;
+    FServerCommandsIdle: TEvent;
     procedure SetPhase(APhase: TAtlasServerPhase; const AError: string); overload;
     procedure SetPhase(APhase: TAtlasServerPhase; const AError: string; AEnded: Boolean); overload;
     /// <summary>Laufende Sitzung oder Start im Hauptthread; außerhalb des Hauptthreads nur, was schon läuft (A-01).</summary>
@@ -184,6 +187,11 @@ type
     function ServerProgress: string;
     /// <summary>Befehl an den Server (startet ihn bei Bedarf); Ergebnis gehört dem Aufrufer, nil bei Fehler.</summary>
     function ExecuteServerCommand(const ACommand: string; ATimeoutMs: Cardinal = 30000): TJSONValue;
+    /// <summary>Wie ExecuteServerCommand, aber ohne den Hauptthread warten zu lassen (#874): Ein Server, der gerade
+    /// indexiert, antwortet erst danach. Startet den Server bei Bedarf (im Hauptthread), fragt im Hintergrund und
+    /// ruft ADone im Hauptthread auf, mit nil bei Fehler, Zeitlimit oder ohne Server. Den Wert gibt der Manager nach
+    /// ADone frei. Mehrere Befehle dürfen gleichzeitig laufen; StopSession wartet auf sie.</summary>
+    procedure ExecuteServerCommandAsync(const ACommand: string; ATimeoutMs: Cardinal; const ADone: TProc<TJSONValue>);
     /// <summary>Befehl mit Argumenten (JSON-Array) an den laufenden Server (#108); startet keinen Server.
     /// nil ohne Sitzung, bei Fehler oder Zeitlimit; das Ergebnis gehört dem Aufrufer.</summary>
     function RunServerCommand(const ACommand, AArgumentsJson: string; ATimeoutMs: Cardinal): TJSONValue;
@@ -334,6 +342,7 @@ begin
   FPhase := TAtlasServerPhase.NotStarted;
   FQueryIdle := TEvent.Create(nil, True, True, '');
   FCommandIdle := TEvent.Create(nil, True, True, '');
+  FServerCommandsIdle := TEvent.Create(nil, True, True, '');
   Diagnose('Plugin geladen: ' + GetModuleName(HInstance));
   FFileChanges := TAtlasWatchedChanges.Create;
   FFolderWatcher := FAdapters.NewFolderWatcher(FFileChanges);
@@ -425,6 +434,7 @@ begin
   TAtlasEditorSnapshots.Uninstall;
   FQueryIdle.Free;
   FCommandIdle.Free;
+  FServerCommandsIdle.Free;
   inherited;
 end;
 
@@ -585,6 +595,7 @@ begin
   if not TAtlasTimeLimit.WaitIdle(TAtlasShutdown.StopMs) then
     Diagnose('Sitzung beendet, während ein Zeitlimit-Arbeiter noch lief');
   FCommandIdle.WaitFor(5000);
+  FServerCommandsIdle.WaitFor(5000);
   FreeAndNil(FSession);
   FServer := nil;
 end;
@@ -1123,6 +1134,72 @@ begin
   if Session = nil then
     Exit(nil);
   Result := Session.ExecuteCommand(ACommand, ATimeoutMs);
+end;
+
+procedure TAtlasCodeInsightManager.ExecuteServerCommandAsync(const ACommand: string; ATimeoutMs: Cardinal;
+  const ADone: TProc<TJSONValue>);
+var
+  Session: TLspSession;
+  Idle: TEvent;
+  Command: string;
+  Timeout: Cardinal;
+  Done: TProc<TJSONValue>;
+begin
+  Done := ADone;
+  // Start gehört dem Hauptthread (A-01); ohne Server gleich die Antwort „keine“.
+  Session := SessionOrNil;
+  if Session = nil then
+  begin
+    if Assigned(Done) then
+      Done(nil);
+    Exit;
+  end;
+  if AtomicIncrement(FServerCommands) = 1 then
+    FServerCommandsIdle.ResetEvent;
+  Idle := FServerCommandsIdle;
+  Command := ACommand;
+  Timeout := ATimeoutMs;
+  TThread.CreateAnonymousThread(
+    procedure
+    var
+      Answer: TJSONValue;
+      Json: string;
+    begin
+      try
+        Json := '';
+        Answer := nil;
+        try
+          Answer := Session.ExecuteCommand(Command, Timeout);
+          if Answer <> nil then
+            Json := Answer.ToJSON;
+        except
+          // Fehler, Zeitlimit oder geschlossene Verbindung: Antwort „keine“.
+          on Exception do
+            Json := '';
+        end;
+        Answer.Free;
+        // Als Text in den Hauptthread: Verwirft TAtlasMainThread den Eintrag (Entladen), bleibt nichts liegen.
+        TAtlasMainThread.Queue(TAtlasFeature.Server,
+          procedure
+          var
+            Value: TJSONValue;
+          begin
+            Value := nil;
+            if Json <> '' then
+              Value := TJSONObject.ParseJSONValue(Json);
+            try
+              if Assigned(Done) then
+                Done(Value);
+            finally
+              Value.Free;
+            end;
+          end);
+      finally
+        // Danach nichts mehr am Manager: StopSession wartet genau auf dieses Signal.
+        if AtomicDecrement(FServerCommands) = 0 then
+          Idle.SetEvent;
+      end;
+    end).Start;
 end;
 
 function TAtlasCodeInsightManager.RunServerCommand(const ACommand, AArgumentsJson: string;
