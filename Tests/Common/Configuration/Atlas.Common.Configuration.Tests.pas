@@ -417,6 +417,10 @@ begin
   Assert.IsFalse(Parse('{"slashCommands": {"enumHelper": false}}', Issues).SlashEnumHelper);
   Assert.IsFalse(TConfigurationParser.ParseLayered('{"slashCommands": {"enumHelper": false}}', '{}',
     Issues).SlashEnumHelper);
+  Assert.IsTrue(Parse('{}', Issues).SlashSetHelper);
+  Assert.IsFalse(Parse('{"slashCommands": {"setHelper": false}}', Issues).SlashSetHelper);
+  Assert.IsFalse(TConfigurationParser.ParseLayered('{"slashCommands": {"setHelper": false}}', '{}',
+    Issues).SlashSetHelper);
   Assert.AreEqual(0, Integer(Length(Issues)));
   // Vervollständigung (#229)
   Assert.IsTrue(Parse('{}', Issues).Completion.Matching = TCompletionMatching.Fuzzy);
