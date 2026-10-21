@@ -12,6 +12,8 @@
 //   TAtlasIdeLineChanges (#507), Haltepunkte des Debuggers, die
 //   Lesezeichen 0–9 der IDE und den Cursor. Die Treffer sucht er erst nach
 //   einer Tipp-Pause neu; der Streifen zeichnet nur bei geänderten Marken.
+//   Mit „Gleichen Text hervorheben“ (#709, highlight.selectionMatches) gelten
+//   dessen Mindestlänge, Groß-/Kleinschreibung, ganze Wörter und Obergrenze.
 // - Klick springt zur Marke bzw. zur Zeile; Überfahren zeigt nach kurzer
 //   Zeit die Zeile und die Beschreibung der Marke (TAtlasNoteTip).
 // - editor.overviewRuler aus entfernt alle Streifen, editor.overviewRulerKinds
@@ -57,6 +59,7 @@ uses
   Atlas.Core.Problems.Contract,
   Atlas.Core.Problems.Store,
   Atlas.Core.Editor.LineChanges,
+  Atlas.Core.Editor.SelectionMatches,
   Atlas.UI.Strings,
   Atlas.UI.Notes.Tip,
   Atlas.UI.Editor.OverviewRuler,
@@ -101,6 +104,8 @@ type
     FLines: TArray<string>;
     FSearchText: string;
     FSearchTerm: string;
+    /// <summary>Optionen von #709, mit denen die Treffer gesucht sind ('' = ohne #709).</summary>
+    FSearchOptions: string;
     FSearchLines: TArray<Integer>;
     // Vorschau beim Überfahren.
     FHoverRuler: TAtlasOverviewRuler;
@@ -385,8 +390,10 @@ var
   Ruler: TAtlasOverviewRuler;
   View: IOTAEditView;
   Block: IOTAEditBlock;
-  Text, Term: string;
+  Text, Term, Key: string;
   LineCount: Integer;
+  Matching, NavigateF3: Boolean;
+  Options: TAtlasSelectionMatchOptions;
 begin
   EnsureRulers;
   Ruler := ActiveRuler;
@@ -396,11 +403,21 @@ begin
   LineCount := View.Buffer.GetLinesInBuffer;
   // Suchtext aus der Markierung (einzeilig); nur dann kostet der Text des Puffers etwas.
   Term := '';
+  Matching := TAtlasIdeSettings.SelectionMatchesOn(Options, NavigateF3);
+  Key := '';
+  if Matching then
+    Key := Format('%d|%d|%d|%d', [Options.MinLength, Ord(Options.CaseSensitive), Ord(Options.WholeWord),
+      Options.MaxMatches]);
   if TAtlasOverviewKind.Search in FKinds then
   begin
     Block := View.Block;
     if (Block <> nil) and Block.IsValid and (Block.Size > 0) and (Block.StartingRow = Block.EndingRow) then
-      TAtlasOverview.SearchTerm(Block.Text, Term);
+    begin
+      if Matching then
+        TAtlasSelectionMatches.Term(Block.Text, Options, Term)
+      else
+        TAtlasOverview.SearchTerm(Block.Text, Term);
+    end;
   end;
   if not SameText(FFileName, View.Buffer.FileName) then
   begin
@@ -424,10 +441,15 @@ begin
       FChangedAt := TThread.GetTickCount64;
     end;
     // Neuer Suchtext sofort, geänderter Text erst nach der Tipp-Pause.
-    if (Term <> FSearchTerm) or ((FText <> FSearchText) and (TThread.GetTickCount64 - FChangedAt >= QuietMs)) then
+    if (Term <> FSearchTerm) or (Key <> FSearchOptions) or
+      ((FText <> FSearchText) and (TThread.GetTickCount64 - FChangedAt >= QuietMs)) then
     begin
       FLines := TTextLines.SplitLines(FText);
-      FSearchLines := TAtlasOverview.Occurrences(FLines, Term);
+      if Matching then
+        FSearchLines := TAtlasSelectionMatches.Lines(TAtlasSelectionMatches.Find(FLines, Term, Options))
+      else
+        FSearchLines := TAtlasOverview.Occurrences(FLines, Term);
+      FSearchOptions := Key;
       FSearchTerm := Term;
       FSearchText := FText;
     end;

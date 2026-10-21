@@ -163,6 +163,7 @@ uses
   Atlas.IDE.Notes.Gutter,
   Atlas.IDE.Editor.RecursionGutter,
   Atlas.IDE.Editor.GutterColumn,
+  Atlas.IDE.Editor.SelectionMatches,
   Atlas.IDE.Bookmarks.Service,
   Atlas.IDE.Bookmarks.Gutter,
   Atlas.IDE.Foundation.GutterMarks,
@@ -223,6 +224,8 @@ var
   GutterMarks: TAtlasIdeGutterMarks;
   // Atlas-Spalte in der Zeilenleiste (#768).
   GutterColumn: TAtlasIdeGutterColumn;
+  // Gleichen Text wie die Markierung hervorheben (#709).
+  SelectionMatches: TAtlasIdeSelectionMatches;
   // Ungespeicherte Dateien für schreibende MCP-Werkzeuge (#61).
   DirtyExport: TAtlasDirtyExport;
   // Schreibende MCP-Werkzeuge ändern offene Dateien über das Plugin (#397).
@@ -2639,6 +2642,11 @@ begin
     end);
 end;
 
+procedure StartSelectionMatches;
+begin
+  SelectionMatches := TAtlasIdeSelectionMatches.Create;
+end;
+
 procedure StartCompletionKey;
 begin
   CompletionKey := TAtlasIdeKeyBinding.Create('Atlas.Completion', 'Atlas-Vervollständigung',
@@ -3481,6 +3489,22 @@ begin
     procedure
     begin
       FreeAndNil(GutterColumn);
+    end);
+  // Gleichen Text wie die Markierung hervorheben (#709): nur im normalen Start oder mit Einstellung.
+  Features.AddWanted('SelectionMatches',
+    function(ALevel: TAtlasSafeLevel): Boolean
+    begin
+      Result := (ALevel <> TAtlasSafeLevel.Minimal) and ((ALevel = TAtlasSafeLevel.Normal) or
+        TAtlasIdeSettings.Current.SelectionMatches);
+    end,
+    function: Boolean
+    begin
+      Result := SelectionMatches <> nil;
+    end,
+    StartSelectionMatches,
+    procedure
+    begin
+      FreeAndNil(SelectionMatches);
     end);
   Features.AddWanted('CompletionKey',
     function(ALevel: TAtlasSafeLevel): Boolean
