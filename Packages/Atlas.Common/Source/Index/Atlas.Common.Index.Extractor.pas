@@ -46,6 +46,15 @@ type
     /// <summary>Zweig des varianten Record-Teils, in dem AddMembers gerade steht (#846).</summary>
     FVariant: string;
     FForwards: TList<Integer>;
+    /// <summary>Der nächste Add gehört zu einer Aufzählung unter {$SCOPEDENUMS ON} (#849).</summary>
+    FScoped: Boolean;
+    /// <summary>Stellen der {$SCOPEDENUMS}-Schalter in FTokens (Offset, ON?); FScopedKnown nach dem ersten Lesen.
+    /// </summary>
+    FScopedOffsets: TArray<Integer>;
+    FScopedOn: TArray<Boolean>;
+    FScopedKnown: Boolean;
+    /// <summary>Gilt {$SCOPEDENUMS ON} an AOffset?</summary>
+    function ScopedAt(AOffset: Integer): Boolean;
     function IsDefaultProperty(ANode: TSyntaxNode): Boolean;
     /// <summary>Methodenkopf mit virtual, dynamic, abstract oder override?</summary>
     class function IsVirtualHeader(ANode: TSyntaxNode): Boolean; static;
@@ -129,6 +138,7 @@ uses
   System.RegularExpressions,
   System.Generics.Defaults,
   Atlas.Common.Pascal.XmlDoc,
+  Atlas.Common.Pascal.Parser,
   Atlas.Common.Pascal.TreeCache,
   Atlas.Text.Lines;
 
@@ -211,6 +221,35 @@ begin
   Result := Left;
 end;
 
+function TIndexExtractor.ScopedAt(AOffset: Integer): Boolean;
+var
+  Token: TPascalToken;
+  Text: string;
+  Index: Integer;
+begin
+  if not FScopedKnown then
+  begin
+    FScopedKnown := True;
+    for Token in FTokens do
+      if Token.Kind = TPascalTokenKind.Directive then
+      begin
+        Text := UpperCase(Token.Text);
+        if Text.StartsWith('{$SCOPEDENUMS') or Text.StartsWith('(*$SCOPEDENUMS') then
+        begin
+          Text := Trim(Copy(Text, Pos('SCOPEDENUMS', Text) + Length('SCOPEDENUMS'), MaxInt));
+          FScopedOffsets := FScopedOffsets + [Token.Offset];
+          FScopedOn := FScopedOn + [Text.StartsWith('ON')];
+        end;
+      end;
+  end;
+  Result := False;
+  for Index := 0 to High(FScopedOffsets) do
+    if FScopedOffsets[Index] < AOffset then
+      Result := FScopedOn[Index]
+    else
+      Break;
+end;
+
 function TIndexExtractor.NameRange(ANode: TSyntaxNode; const AName: string): TTextRange;
 var
   Index: Integer;
@@ -287,6 +326,7 @@ begin
   Symbol.Condition := '';
   Symbol.Unavailable := False;
   Symbol.VariantBranch := FVariant;
+  Symbol.ScopedEnum := FScoped;
   // Inhalt für Hover, Detailpanel und Verwendungen ohne erneutes Lesen der Datei (#492).
   TypeText_ := '';
   if Symbol.TypeName <> '' then
@@ -307,7 +347,7 @@ var
   Builder: TStringBuilder;
   Index, Depth, FirstLine: Integer;
   Token: TPascalToken;
-  Previous: string;
+  Previous, IncludeName: string;
 begin
   Builder := TStringBuilder.Create;
   try
@@ -319,7 +359,10 @@ begin
       if (Index < 0) or (Index >= Length(FTokens)) then
         Continue;
       Token := FTokens[Index];
-      if Token.Kind in [TPascalTokenKind.Comment, TPascalTokenKind.Directive] then
+      // {$I datei.inc} als Wert (#849) bleibt stehen; AddIncluded setzt den Inhalt ein.
+      if (Token.Kind = TPascalTokenKind.Comment) or
+        ((Token.Kind = TPascalTokenKind.Directive) and
+        not TPascalPreprocessor.IncludeFileOf(Token.Text, IncludeName)) then
         Continue;
       if FirstLine < 0 then
         FirstLine := Token.StartPos.Line;
@@ -726,6 +769,8 @@ begin
       TSyntaxKind.PropertyDecl:
         Add(Child, Child.Name, AContainer, TIndexSymbolKind.Property_);
       TSyntaxKind.RoutineHeader:
+        // Methodenzuordnung procedure IFoo.Bar = MyBar ist kein Mitglied (#849).
+        if not Child.IsMethodResolution then
         begin
           if IsConstructor(Child) then
             Kind := TIndexSymbolKind.Constructor_
@@ -786,6 +831,7 @@ begin
     end;
     FAncestorArgs := AncestorArgs;
     FForward := (Body <> nil) and (Body.Kind = TSyntaxKind.ForwardType);
+    FScoped := (Kind = TIndexSymbolKind.EnumType) and ScopedAt(ADecl.StartOffset);
     try
       Add(ADecl, ADecl.Name, AContainer, Kind, Ancestors.ToArray);
     finally
@@ -804,10 +850,14 @@ begin
   if Body.Kind = TSyntaxKind.EnumType then
   begin
     // Enum-Werte sind ohne SCOPEDENUMS auch auf Unit-Ebene sichtbar; der
-    // Container hält den Typ fest, die Namensauflösung entscheidet.
-    for Index := 0 to Body.ChildCount - 1 do
-      if Body[Index].Kind = TSyntaxKind.Identifier then
-        Add(Body[Index], Body[Index].Name, Qualified, TIndexSymbolKind.EnumMember);
+    // Container hält den Typ fest, ScopedEnum den Schalter (#849), die Namensauflösung entscheidet.
+    try
+      for Index := 0 to Body.ChildCount - 1 do
+        if Body[Index].Kind = TSyntaxKind.Identifier then
+          Add(Body[Index], Body[Index].Name, Qualified, TIndexSymbolKind.EnumMember);
+    finally
+      FScoped := False;
+    end;
   end
   else if Body.Kind in [TSyntaxKind.ClassType, TSyntaxKind.ObjectType, TSyntaxKind.HelperType,
     TSyntaxKind.RecordType, TSyntaxKind.InterfaceType] then
@@ -1528,30 +1578,6 @@ begin
   end;
 end;
 
-/// <summary>Name aus "{$I Name}", "{$INCLUDE 'Name'}" bzw. "(*$I Name*)"; False bei Schaltern wie {$I+}.</summary>
-function IncludeNameOf(const ADirective: string; out AName: string): Boolean;
-var
-  Text, Word: string;
-  Index: Integer;
-begin
-  Result := False;
-  Text := ADirective;
-  if Text.StartsWith('{$') and Text.EndsWith('}') then
-    Text := Copy(Text, 3, Length(Text) - 3)
-  else if Text.StartsWith('(*$') and Text.EndsWith('*)') then
-    Text := Copy(Text, 4, Length(Text) - 5)
-  else
-    Exit;
-  Index := 1;
-  while (Index <= Length(Text)) and CharInSet(Text[Index], ['A'..'Z', 'a'..'z']) do
-    Inc(Index);
-  Word := UpperCase(Copy(Text, 1, Index - 1));
-  if (Word <> 'I') and (Word <> 'INCLUDE') then
-    Exit;
-  AName := Trim(Copy(Text, Index, MaxInt));
-  Result := (AName <> '') and not CharInSet(AName[1], ['+', '-']);
-end;
-
 /// <summary>Erstes Wort von AText hinter Leerraum und Kommentaren, klein.</summary>
 function FirstWord(const AText: string): string;
 var
@@ -1597,6 +1623,71 @@ begin
   Result := TTextPosition.Create(APosition.Line - ALines, APosition.Character);
 end;
 
+const
+  /// <summary>Name des Hilfstyps, in den AddIncluded eine .inc aus einem Klassenrumpf einbettet (#849).</summary>
+  IncludeHost = 'TAtlasIncludeHost__';
+
+/// <summary>Innerster Rumpf (class, object, record, interface, helper) unter ANode, der AOffset enthält; sonst nil.
+/// </summary>
+function BodyAt(ANode: TSyntaxNode; AOffset: Integer): TSyntaxNode;
+var
+  Index: Integer;
+  Inner: TSyntaxNode;
+begin
+  Result := nil;
+  for Index := 0 to ANode.ChildCount - 1 do
+    if (ANode[Index].StartOffset < AOffset) and (AOffset < ANode[Index].EndOffset) then
+    begin
+      if ANode[Index].Kind in [TSyntaxKind.ClassType, TSyntaxKind.ObjectType, TSyntaxKind.RecordType,
+        TSyntaxKind.InterfaceType, TSyntaxKind.HelperType] then
+        Result := ANode[Index];
+      Inner := BodyAt(ANode[Index], AOffset);
+      if Inner <> nil then
+        Result := Inner;
+      Exit;
+    end;
+end;
+
+/// <summary>Kopf des Hilfstyps für eine .inc an AOffset in ABody: Art des Rumpfs und die dort geltende
+/// Sichtbarkeit, z. B. "type TAtlasIncludeHost__ = class public" und ein Zeilenumbruch.</summary>
+function HostHead(ABody: TSyntaxNode; AOffset: Integer): string;
+var
+  Index: Integer;
+  Visibility: string;
+begin
+  Visibility := '';
+  for Index := 0 to ABody.ChildCount - 1 do
+    if (ABody[Index].Kind = TSyntaxKind.Visibility) and (ABody[Index].StartOffset < AOffset) then
+      Visibility := ABody[Index].Name;
+  case ABody.Kind of
+    TSyntaxKind.RecordType:
+      Result := 'record';
+    TSyntaxKind.InterfaceType:
+      Result := 'interface';
+    TSyntaxKind.ObjectType:
+      Result := 'object';
+  else
+    Result := 'class';
+  end;
+  Result := 'type' + #10 + IncludeHost + ' = ' + Result + ' ' + Visibility + #10;
+end;
+
+/// <summary>Inhalt einer .inc als eine Zeile für die Signatur einer Konstanten (#849).</summary>
+function OneLine(const AText: string): string;
+var
+  Index: Integer;
+begin
+  Result := AText;
+  for Index := 1 to Length(Result) do
+    if CharInSet(Result[Index], [#9, #10, #13]) then
+      Result[Index] := ' ';
+  Result := Trim(Result);
+  while Pos('  ', Result) > 0 do
+    Result := StringReplace(Result, '  ', ' ', [rfReplaceAll]);
+  while Result.EndsWith(';') do
+    Result := Copy(Result, 1, Length(Result) - 1).TrimRight;
+end;
+
 class procedure TIndexExtractor.AddIncluded(ATree: TSyntaxTree; const AFileName: string;
   const ADefines: TArray<string>; const AResolver: TIncludeResolver; const AStack: TArray<string>;
   var AUnit: TUnitIndex);
@@ -1606,13 +1697,14 @@ const
   StartWords: array[0..13] of string = ('type', 'const', 'var', 'resourcestring', 'threadvar', 'procedure',
     'function', 'constructor', 'destructor', 'class', 'operator', 'uses', 'begin', 'exports');
 var
-  Token: TPascalToken;
-  ImplementationOffset, Shift: Integer;
+  Token, Previous: TPascalToken;
+  ImplementationOffset, Shift, Position: Integer;
   IsUnit, InInterface: Boolean;
-  Section, Name, IncFile, IncText: string;
+  Section, Name, IncFile, IncText, HostType: string;
   Included: TUnitIndex;
   Symbol, Copied: TIndexSymbol;
   Symbols: TList<TIndexSymbol>;
+  Body: TSyntaxNode;
 begin
   if not Assigned(AResolver) or (Length(AStack) > MaxDepth) then
     Exit;
@@ -1625,6 +1717,8 @@ begin
       Break;
     end;
   Section := '';
+  Previous := Default(TPascalToken);
+  Previous.Kind := TPascalTokenKind.Unknown;
   Symbols := TList<TIndexSymbol>.Create;
   try
     Symbols.AddRange(AUnit.Symbols);
@@ -1635,14 +1729,47 @@ begin
         Section := LowerCase(Token.Text)
       else if Token.IsKeyword('begin') or Token.IsKeyword('implementation') or Token.IsKeyword('interface') then
         Section := '';
-      if (Token.Kind <> TPascalTokenKind.Directive) or not IncludeNameOf(Token.Text, Name) then
+      if Token.Kind <> TPascalTokenKind.Directive then
+      begin
+        if Token.Kind <> TPascalTokenKind.Comment then
+          Previous := Token;
+        Continue;
+      end;
+      if not TPascalPreprocessor.IncludeFileOf(Token.Text, Name) then
         Continue;
       // Nicht gefunden oder Zyklus: überspringen, die Diagnose kommt aus dem Präprozessor.
       if not AResolver(Name, AFileName, IncFile, IncText) or (IndexText(IncFile, AStack) >= 0) then
         Continue;
+      if IndexText(IncFile, AUnit.Includes) < 0 then
+        AUnit.Includes := AUnit.Includes + [IncFile];
+      // Wert einer Konstanten (V = {$I commit.inc};, #849): Inhalt in die Signatur, keine Deklarationen.
+      if TPascalParser.IncludeAsValue(Previous) then
+      begin
+        for Position := 0 to Symbols.Count - 1 do
+          if (Symbols[Position].Kind = TIndexSymbolKind.Constant) and (Symbols[Position].FileName = '') and
+            InRange(Token.StartPos, Symbols[Position].Range) then
+          begin
+            Copied := Symbols[Position];
+            Copied.Signature := StringReplace(Copied.Signature, Token.Text, OneLine(IncText), []);
+            if Length(Copied.Signature) > TIndexSymbol.MaxSignature then
+              Copied.Signature := Copy(Copied.Signature, 1, TIndexSymbol.MaxSignature - 1) + '…';
+            Symbols[Position] := Copied;
+          end;
+        Continue;
+      end;
       InInterface := IsUnit and (Token.Offset < ImplementationOffset);
       Shift := 0;
-      if (Section <> '') and (IndexText(FirstWord(IncText), StartWords) < 0) then
+      HostType := '';
+      Body := BodyAt(ATree.Root, Token.Offset);
+      if Body <> nil then
+      begin
+        // Mitten im Klassenrumpf (#849): die .inc in einen Hilfstyp derselben Art einbetten; ihre
+        // Mitglieder gehören danach zum umgebenden Typ.
+        HostType := Body.EnclosingTypeName;
+        IncText := HostHead(Body, Token.Offset) + IncText + #10 + 'end;';
+        Shift := 2;
+      end
+      else if (Section <> '') and (IndexText(FirstWord(IncText), StartWords) < 0) then
       begin
         IncText := Section + #10 + IncText;
         Shift := 1;
@@ -1651,6 +1778,15 @@ begin
       for Symbol in Included.Symbols do
       begin
         Copied := Symbol;
+        if HostType <> '' then
+        begin
+          if SameText(Copied.Container, '') and SameText(Copied.Name, IncludeHost) then
+            Continue;
+          if SameText(Copied.Container, IncludeHost) then
+            Copied.Container := HostType
+          else if StartsText(IncludeHost + '.', Copied.Container) then
+            Copied.Container := HostType + Copy(Copied.Container, Length(IncludeHost) + 1, MaxInt);
+        end;
         if Copied.FileName = '' then
         begin
           Copied.FileName := IncFile;
@@ -1661,8 +1797,6 @@ begin
         Copied.InInterface := InInterface;
         Symbols.Add(Copied);
       end;
-      if IndexText(IncFile, AUnit.Includes) < 0 then
-        AUnit.Includes := AUnit.Includes + [IncFile];
       for Name in Included.Includes do
         if IndexText(Name, AUnit.Includes) < 0 then
           AUnit.Includes := AUnit.Includes + [Name];

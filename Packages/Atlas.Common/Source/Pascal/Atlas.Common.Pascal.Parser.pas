@@ -53,6 +53,10 @@ type
     /// </summary>
     class function ActiveDiagnostics(const AText: string; const ADefines: TArray<string>;
       out ADiagnostics: TArray<TSyntaxDiagnostic>): Boolean; static;
+    /// <summary>Steht ein {$I datei.inc} hinter APrevious (letztes Token ohne Kommentare und Direktiven) an
+    /// der Stelle eines Werts, z. B. "V = {$I commit.inc};" (#849)? Dann gehört es als Ausdruck in den Baum.
+    /// </summary>
+    class function IncludeAsValue(const APrevious: TPascalToken): Boolean; static;
   end;
 
 implementation
@@ -136,6 +140,10 @@ type
     procedure ParseConstSection(AParent: TSyntaxNode);
     procedure ParseConstDecl(AParent: TSyntaxNode);
     function IsDeclStart: Boolean;
+    /// <summary>Steht auf "["; folgt den Attributen ein Deklarationsname (#849)? Sonst gehören sie zur
+    /// nächsten Methode oder Property und beenden den Abschnitt.</summary>
+    function AttributesBeforeName: Boolean;
+    function IsDirectiveStart: Boolean;
     procedure ParseVarSection(AParent: TSyntaxNode);
     procedure ParseVarDecl(AParent: TSyntaxNode);
     procedure ParseLabelSection(AParent: TSyntaxNode);
@@ -215,7 +223,8 @@ const
     'virtual', 'winapi', 'delayed');
   /// <summary>Höchste Verschachtelungstiefe; schützt vor Stapelüberlauf bei kaputtem Code.</summary>
   MaxNesting = 256;
-  CallingConventions: array[0..5] of string = ('stdcall', 'cdecl', 'pascal', 'register', 'safecall', 'winapi');
+  CallingConventions: array[0..6] of string = ('stdcall', 'cdecl', 'pascal', 'register', 'safecall', 'winapi',
+    'varargs');
   VisibilityWords: array[0..5] of string = ('private', 'protected', 'public', 'published', 'automated', 'strict');
   HintWords: array[0..3] of string = ('deprecated', 'platform', 'library', 'experimental');
 
@@ -256,6 +265,7 @@ constructor TParser.Create(const AText: string; const ACancellation: IPascalCanc
 var
   Token: TPascalToken;
   Significant: TList<TPascalToken>;
+  IncludeName: string;
 begin
   inherited Create;
   FCancellation := ACancellation;
@@ -264,8 +274,11 @@ begin
   Significant := TList<TPascalToken>.Create;
   try
     for Token in FAllTokens do
-      if not (Token.Kind in [TPascalTokenKind.Comment, TPascalTokenKind.Directive]) and
-        ((ASkip = nil) or not InRanges(Token.StartPos, ASkip)) then
+      if ((ASkip = nil) or not InRanges(Token.StartPos, ASkip)) and
+        (not (Token.Kind in [TPascalTokenKind.Comment, TPascalTokenKind.Directive]) or
+        ((Token.Kind = TPascalTokenKind.Directive) and (Significant.Count > 0) and
+        TPascalPreprocessor.IncludeFileOf(Token.Text, IncludeName) and
+        TPascalParser.IncludeAsValue(Significant[Significant.Count - 1]))) then
         Significant.Add(Token);
     FTokens := Significant.ToArray;
   finally
@@ -799,10 +812,13 @@ var
   Start: Integer;
   Node: TSyntaxNode;
   Depth: Integer;
+  InConstraint: Boolean;
 begin
-  // <T>, <K, V>, <T: class, constructor>, <T: IFoo; U>. Liefert True, wenn
+  // <T>, <K, V>, <T: class, constructor>, <T: IFoo, IBar; U>. Liefert True, wenn
   // der Lexer ">=" gelesen hat (TFoo<T>=class), das "=" also schon verbraucht ist.
+  // Nach ":" gehören Kommas zur Liste der Einschränkungen, bis ";" kommt (#849).
   Result := False;
+  InConstraint := False;
   Start := NodeStart;
   Node := StartNode(TSyntaxKind.GenericParams);
   AParent.Add(Node);
@@ -828,7 +844,13 @@ begin
     end
     else if IsSym('=') or IsSym('(') or IsSym(')') or IsKw(['begin', 'end']) then
       Break
-    else if IsIdent and (Depth = 1) and (PeekIsSym(-1, '<') or PeekIsSym(-1, ',') or PeekIsSym(-1, ';')) then
+    else if (Depth = 1) and (IsSym(':') or IsSym(';')) then
+    begin
+      InConstraint := IsSym(':');
+      Advance;
+    end
+    else if IsIdent and (Depth = 1) and not InConstraint and
+      (PeekIsSym(-1, '<') or PeekIsSym(-1, ',') or PeekIsSym(-1, ';')) then
       Node.Add(Leaf(TSyntaxKind.Identifier, Current.Text))
     else
       Advance;
@@ -838,10 +860,34 @@ begin
   FinishNode(Node, Start);
 end;
 
+function TParser.AttributesBeforeName: Boolean;
+var
+  Delta, Depth: Integer;
+  Token: TPascalToken;
+begin
+  Delta := 0;
+  while PeekIsSym(Delta, '[') do
+  begin
+    Depth := 0;
+    repeat
+      if FIndex + Delta >= Length(FTokens) then
+        Exit(False);
+      Token := PeekToken(Delta);
+      if Token.IsSymbol('[') then
+        Inc(Depth)
+      else if Token.IsSymbol(']') then
+        Dec(Depth);
+      Inc(Delta);
+    until Depth = 0;
+  end;
+  Token := PeekToken(Delta);
+  Result := (Token.Kind = TPascalTokenKind.Identifier) and not InWords(Token.Text, VisibilityWords);
+end;
+
 function TParser.IsDeclStart: Boolean;
 begin
-  // Sichtbarkeit beendet einen var- oder const-Abschnitt in Klassen.
-  Result := IsSym('[') or (IsIdent and not (InWords(Current.Text, VisibilityWords) and
+  // Sichtbarkeit beendet einen var- oder const-Abschnitt in Klassen, ebenso ein Attribut vor einer Methode.
+  Result := (IsSym('[') and AttributesBeforeName) or (IsIdent and not (InWords(Current.Text, VisibilityWords) and
     not PeekIsSym(1, ':') and not PeekIsSym(1, ',') and not PeekIsSym(1, '=')));
 end;
 
@@ -960,7 +1006,9 @@ end;
 
 function TParser.IsRoutineStart: Boolean;
 begin
-  Result := IsKw(['procedure', 'function', 'constructor', 'destructor']) or IsIdentText('operator') or
+  // Ein Feld namens Operator (Operator: string;) ist kein Routinenkopf (#849).
+  Result := IsKw(['procedure', 'function', 'constructor', 'destructor']) or
+    (IsIdentText('operator') and not PeekIsSym(1, ':') and not PeekIsSym(1, ',')) or
     (IsKw('class') and (PeekIsKw(1, 'procedure') or PeekIsKw(1, 'function') or PeekIsKw(1, 'constructor') or
       PeekIsKw(1, 'destructor') or PeekToken(1).IsKeyword('operator') or
       ((PeekToken(1).Kind = TPascalTokenKind.Identifier) and SameWord(PeekToken(1).Text, 'operator'))));
@@ -968,8 +1016,9 @@ end;
 
 function TParser.ParseRoutineHeader(AParent: TSyntaxNode; AKind: TSyntaxKind): TSyntaxNode;
 var
-  Start: Integer;
+  Start, ClauseStart: Integer;
   Name: string;
+  Clause: TSyntaxNode;
 begin
   // [class] procedure|function|constructor|destructor|operator Name[<T>][.Name[<T>]] [(Params)] [: Typ];
   Start := NodeStart;
@@ -1000,15 +1049,29 @@ begin
   end;
   if IsSym('=') then
   begin
-    // Methodenzuordnung in Interfaces: procedure IFoo.Bar = Baz;
+    // Methodenzuordnung: procedure IFoo.Bar = MyBar; als Direktive "resolution" mit dem Ziel (#849).
+    ClauseStart := NodeStart;
+    Clause := StartNode(TSyntaxKind.Directive);
+    Clause.Name := 'resolution';
+    Result.Add(Clause);
     Advance;
-    ExpectIdent;
+    if IsIdent then
+      Clause.Add(Leaf(TSyntaxKind.Identifier, Current.Text))
+    else
+      ExpectIdent;
+    FinishNode(Clause, ClauseStart);
   end;
-  if not IsSym(';') and not IsSym(')') and not IsSym(']') then
-    DiagnoseMissingSemicolon
+  // Aufrufkonvention oder Direktive ohne Semikolon davor: function F: Integer stdcall; (#849)
+  if IsDirectiveStart then
+    ParseDirectives(Result)
   else
-    AcceptSym(';');
-  ParseDirectives(Result);
+  begin
+    if not IsSym(';') and not IsSym(')') and not IsSym(']') then
+      DiagnoseMissingSemicolon
+    else
+      AcceptSym(';');
+    ParseDirectives(Result);
+  end;
   FinishNode(Result, Start);
 end;
 
@@ -1071,6 +1134,11 @@ begin
   FinishNode(Node, Start);
 end;
 
+function TParser.IsDirectiveStart: Boolean;
+begin
+  Result := IsIdent and InWords(Current.Text, RoutineDirectives) or IsKw(['inline', 'library']);
+end;
+
 procedure TParser.ParseDirectives(AParent: TSyntaxNode);
 var
   Start: Integer;
@@ -1078,7 +1146,7 @@ var
   Word: string;
 begin
   // overload; virtual; abstract; external 'dll' name 'x'; message WM_X; ...
-  while IsIdent and InWords(Current.Text, RoutineDirectives) or IsKw(['inline', 'library']) do
+  while IsDirectiveStart do
   begin
     Start := NodeStart;
     Word := LowerCase(Current.Text);
@@ -1086,9 +1154,9 @@ begin
     Node.Name := Word;
     AParent.Add(Node);
     Advance;
-    // Argumente der Direktive bis zum Semikolon.
-    while not AtEnd and not IsSym(';') and not IsKw(['begin', 'var', 'const', 'type', 'end']) and
-      not IsRoutineStart do
+    // Argumente der Direktive bis zum Semikolon; "assembler asm" ohne Semikolon (#849).
+    while not AtEnd and not IsSym(';') and not IsKw(['begin', 'asm', 'var', 'const', 'type', 'end', 'label']) and
+      not IsRoutineStart and not IsDirectiveStart do
       Advance;
     FinishNode(Node, Start);
     AcceptSym(';');
@@ -1392,7 +1460,8 @@ begin
       Holder := StartNode(TSyntaxKind.SubrangeType);
       Holder.Add(Result);
       Advance;
-      ParseExpression(Holder);
+      // Ohne Vergleich: in "X: 1..3 = 2" gehört "= 2" nicht zur Obergrenze (#849).
+      Holder.Add(ParseSimpleExpression);
       FinishNode(Holder, Start);
       AParent.Add(Holder);
       Exit(Holder);
@@ -1405,7 +1474,7 @@ begin
     Result := StartNode(TSyntaxKind.SubrangeType);
     Expr := ParseExpression(Result);
     if AcceptSym('..') then
-      ParseExpression(Result)
+      Result.Add(ParseSimpleExpression)
     else if Expr.Kind = TSyntaxKind.Identifier then
       Result.Kind := TSyntaxKind.TypeReference
     else
@@ -1561,7 +1630,8 @@ begin
   ExpectSym(':');
   ParseType(Node);
   ParseHints;
-  if not AInVariant or not IsSym(')') then
+  // Das letzte Feld darf vor end bzw. vor der ")" eines varianten Zweigs ohne Semikolon stehen (#849).
+  if not IsKw('end') and (not AInVariant or not IsSym(')')) then
     ExpectSym(';');
   FinishNode(Node, Start);
 end;
@@ -1860,19 +1930,40 @@ end;
 
 procedure TParser.ParseIf(AParent: TSyntaxNode);
 var
-  Start: Integer;
-  Node: TSyntaxNode;
+  Parent: TSyntaxNode;
+  Nodes: TList<TSyntaxNode>;
+  Starts: TList<Integer>;
+  Index: Integer;
 begin
-  Start := NodeStart;
-  Node := StartNode(TSyntaxKind.IfStatement);
-  AParent.Add(Node);
-  Advance; // if
-  ParseExpression(Node);
-  ExpectKw('then');
-  ParseStatement(Node);
-  if AcceptKw('else') then
-    ParseStatement(Node);
-  FinishNode(Node, Start);
+  // else if-Ketten in einer Schleife statt rekursiv (#849): Jedes "else if" wird wie bisher ein
+  // IfStatement im else-Zweig des vorigen, zählt aber nicht als weitere Ebene für MaxNesting.
+  Nodes := TList<TSyntaxNode>.Create;
+  Starts := TList<Integer>.Create;
+  try
+    Parent := AParent;
+    repeat
+      Starts.Add(NodeStart);
+      Nodes.Add(StartNode(TSyntaxKind.IfStatement));
+      Parent.Add(Nodes.Last);
+      Advance; // if
+      ParseExpression(Nodes.Last);
+      ExpectKw('then');
+      ParseStatement(Nodes.Last);
+      if not AcceptKw('else') then
+        Break;
+      if not IsKw('if') then
+      begin
+        ParseStatement(Nodes.Last);
+        Break;
+      end;
+      Parent := Nodes.Last;
+    until False;
+    for Index := Nodes.Count - 1 downto 0 do
+      FinishNode(Nodes[Index], Starts[Index]);
+  finally
+    Starts.Free;
+    Nodes.Free;
+  end;
 end;
 
 procedure TParser.ParseCase(AParent: TSyntaxNode);
@@ -2303,6 +2394,13 @@ begin
   // Steht hinter ( oder [. Write(X:10:2) erlaubt Formatangaben.
   while not AtEnd and not IsSym(ACloser) do
   begin
+    // Benanntes Argument der OLE-Automation: Open(FileName := 'a.docx') (#849); der Name gehört zur
+    // Schnittstelle des Servers und wird nicht aufgelöst.
+    if IsIdent and PeekIsSym(1, ':=') then
+    begin
+      Advance;
+      Advance;
+    end;
     ParseExpression(AParent);
     while AcceptSym(':') do
       ParseExpression(AParent);
@@ -2325,8 +2423,12 @@ begin
     ParseParameters(Result);
   if AcceptSym(':') then
     ParseTypeReference(Result);
-  while IsKw(['var', 'const', 'type']) do
-    ParseDeclaration(Result);
+  // Lokale Abschnitte und Routinen vor dem begin (#849).
+  while IsKw(['var', 'const', 'type', 'label']) or IsRoutineStart do
+    if IsRoutineStart then
+      ParseRoutine(Result, True)
+    else
+      ParseDeclaration(Result);
   ParseBlock(Result);
   FinishNode(Result, Start);
 end;
@@ -2351,6 +2453,9 @@ begin
     TPascalTokenKind.Identifier:
       Result := Leaf(TSyntaxKind.Identifier, Current.Text);
     TPascalTokenKind.Number:
+      Result := Leaf(TSyntaxKind.Literal, Current.Text);
+    // {$I datei.inc} als Wert (#849): Literal mit dem Text der Direktive.
+    TPascalTokenKind.Directive:
       Result := Leaf(TSyntaxKind.Literal, Current.Text);
     TPascalTokenKind.StringLiteral, TPascalTokenKind.CharLiteral:
       begin
@@ -2474,6 +2579,13 @@ begin
 end;
 
 { TPascalParser }
+
+class function TPascalParser.IncludeAsValue(const APrevious: TPascalToken): Boolean;
+const
+  ValueStarts: array[0..8] of string = ('=', ':=', '(', ',', '[', '+', '-', '*', '/');
+begin
+  Result := (APrevious.Kind = TPascalTokenKind.Symbol) and InWords(APrevious.Text, ValueStarts);
+end;
 
 class function TPascalParser.Parse(const AText: string; const ACancellation: IPascalCancellation): TSyntaxTree;
 var
