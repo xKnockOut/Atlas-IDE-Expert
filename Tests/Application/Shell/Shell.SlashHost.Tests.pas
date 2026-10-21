@@ -21,6 +21,8 @@ type
     procedure WithoutLoopRunnerRunsImmediately;
     [Test]
     procedure WriteFilesOnDisk;
+    [Test]
+    procedure NewFileFollowsCommandFile;
   end;
 
 implementation
@@ -31,6 +33,7 @@ uses
   System.Generics.Collections,
   System.IOUtils,
   Atlas.Common.Documents.FileEncoding,
+  Atlas.Common.Documents.Uris,
   Atlas.Common.Logging.Contract,
   Atlas.Common.Logging.Providers.Logger,
   Atlas.Common.JsonRpc.Contract,
@@ -141,6 +144,37 @@ begin
     Assert.IsTrue(FileFormat.Encoding = TFileEncodingKind.Utf8);
     // Danach neu geladen (ohne Schleife sofort).
     Assert.AreEqual(1, Calls);
+  finally
+    Ref := nil;
+    TDirectory.Delete(Folder, True);
+  end;
+end;
+
+procedure TShellSlashHostTests.NewFileFollowsCommandFile;
+var
+  Host: TShellSlashHost;
+  Ref: ISlashHost;
+  Calls: Integer;
+  Folder, NewFile, MainFile, Text: string;
+  FileFormat: TFileFormat;
+begin
+  // #299 (#121): Die neue Unit übernimmt die Kodierung der Datei, in der der Befehl stand.
+  Folder := TPath.Combine(TPath.GetTempPath, 'AtlasSlashHost' + IntToStr(Random(1000000)));
+  NewFile := TPath.Combine(Folder, 'Zaehler.pas');
+  MainFile := TPath.Combine(Folder, 'Main.pas');
+  ForceDirectories(Folder);
+  try
+    TFileEncoding.SaveToFile(MainFile, 'unit Main;'#10'end.'#10, TFileFormat.Create(TFileEncodingKind.Utf8,
+      TLineBreakStyle.LF));
+    Calls := 0;
+    Host := CreateHost(@Calls);
+    Ref := Host;
+    Host.WriteFiles(TDocumentUris.FromPath(MainFile), [TSlashFile.Create(NewFile, 'unit Zaehler;'#10'end.'#10,
+      True)], '');
+    Text := TFileEncoding.LoadFromFile(NewFile, FileFormat);
+    Assert.AreEqual('unit Zaehler;'#10'end.'#10, Text);
+    Assert.IsTrue(FileFormat.Encoding = TFileEncodingKind.Utf8);
+    Assert.IsTrue(FileFormat.LineBreak = TLineBreakStyle.LF);
   finally
     Ref := nil;
     TDirectory.Delete(Folder, True);
