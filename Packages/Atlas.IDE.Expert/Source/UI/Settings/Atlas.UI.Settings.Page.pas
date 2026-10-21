@@ -338,6 +338,8 @@ type
     FNewLineBelowKey: TEdit;
     FNewLineAboveKey: TEdit;
     FNewLineAroundStatementAware: TCheckBox;
+    FUnwrap: TCheckBox;
+    FUnwrapKey: TEdit;
     FContinueComments: TCheckBox;
     FContinueCommentsLineComments: TCheckBox;
     FContinueCommentsLists: TCheckBox;
@@ -823,6 +825,9 @@ type
     property NewLineBelowKey: TEdit read FNewLineBelowKey;
     property NewLineAboveKey: TEdit read FNewLineAboveKey;
     property NewLineAroundStatementAware: TCheckBox read FNewLineAroundStatementAware;
+    /// <summary>Zum Testen: Umschließung entfernen (#657).</summary>
+    property Unwrap: TCheckBox read FUnwrap;
+    property UnwrapKey: TEdit read FUnwrapKey;
     /// <summary>Zum Testen: Kommentar beim Enter fortsetzen (#696).</summary>
     property ContinueComments: TCheckBox read FContinueComments;
     property ContinueCommentsLists: TCheckBox read FContinueCommentsLists;
@@ -1622,6 +1627,9 @@ begin
   FNewLineBelowKey := AddKey(TAtlasStrings.Text(TAtlasTextId.NewLineBelowCommand));
   FNewLineAboveKey := AddKey(TAtlasStrings.Text(TAtlasTextId.NewLineAboveCommand));
   FNewLineAroundStatementAware := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsNewLineAroundStatementAware));
+  // Umschließung entfernen (#657).
+  FUnwrap := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsUnwrap));
+  FUnwrapKey := AddKey(TAtlasStrings.Text(TAtlasTextId.UnwrapCommand));
   FTestUnitKey := AddKey(TAtlasStrings.Text(TAtlasTextId.EditorTestUnit));
   // Navigationsverlauf über Dateien (#504).
   FNavHistory := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsNavHistory));
@@ -2522,6 +2530,8 @@ begin
   FMarks.Bind(FNewLineBelowKey, ['NewLineBelowKey']);
   FMarks.Bind(FNewLineAboveKey, ['NewLineAboveKey']);
   FMarks.Bind(FNewLineAroundStatementAware, ['NewLineAroundStatementAware']);
+  FMarks.Bind(FUnwrap, ['Unwrap']);
+  FMarks.Bind(FUnwrapKey, ['UnwrapKey']);
   FMarks.Bind(FContinueComments, ['ContinueComments']);
   FMarks.Bind(FContinueCommentsLineComments, ['ContinueCommentsLineComments']);
   FMarks.Bind(FContinueCommentsLists, ['ContinueCommentsLists']);
@@ -4457,6 +4467,8 @@ begin
   FNewLineBelowKey.Text := ShortCutToText(TShortCut(ASettings.NewLineBelowKey));
   FNewLineAboveKey.Text := ShortCutToText(TShortCut(ASettings.NewLineAboveKey));
   FNewLineAroundStatementAware.Checked := ASettings.NewLineAroundStatementAware;
+  FUnwrap.Checked := ASettings.Unwrap;
+  FUnwrapKey.Text := ShortCutToText(TShortCut(ASettings.UnwrapKey));
   FContinueComments.Checked := ASettings.ContinueComments;
   FContinueCommentsLineComments.Checked := ASettings.ContinueCommentsLineComments;
   FContinueCommentsLists.Checked := ASettings.ContinueCommentsLists;
@@ -4844,6 +4856,8 @@ begin
   ASettings.NewLineBelowKey := Integer(TextToShortCut(Trim(FNewLineBelowKey.Text)));
   ASettings.NewLineAboveKey := Integer(TextToShortCut(Trim(FNewLineAboveKey.Text)));
   ASettings.NewLineAroundStatementAware := FNewLineAroundStatementAware.Checked;
+  ASettings.Unwrap := FUnwrap.Checked;
+  ASettings.UnwrapKey := Integer(TextToShortCut(Trim(FUnwrapKey.Text)));
   ASettings.ContinueComments := FContinueComments.Checked;
   ASettings.ContinueCommentsLineComments := FContinueCommentsLineComments.Checked;
   ASettings.ContinueCommentsLists := FContinueCommentsLists.Checked;

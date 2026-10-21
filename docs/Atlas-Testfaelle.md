@@ -2905,6 +2905,28 @@ Voraussetzung: Einstellungen auf Vorgabe (Blockeinzug 2); Methode mit `if … th
 | NZ11 | Tasten unter Optionen › Befehle › Neue Zeile ober-/unterhalb ändern | Die neuen Tasten wirken, die Tastenübersicht prüft Konflikte |
 | NZ12 | „Neue Zeile ober-/unterhalb“ aus | Umschalt+Enter und Strg+Alt+Enter verhalten sich wie ohne Atlas, die Befehle fehlen in der Palette (**Abnahme**) |
 
+## Umschließung entfernen (#657)
+
+Voraussetzung: Einstellungen auf Vorgabe; Methode mit `try … finally … end` in einem `if … then begin … end`, darin eine `for`-Schleife; zweite Methode mit `with Edit1, Font do Caption := 'x';`; Abschnitt mit `{$IFDEF DEBUG} … {$ELSE} … {$ENDIF}` und `{$REGION}`.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| UE1 | Cursor in die `for`-Schleife, Strg+Umschalt+Entf | Liste am Cursor, innerstes Konstrukt zuerst: `for … do`, `try … finally … end` (zwei Einträge: finally behalten/verwerfen), `begin … end`, `if … then`; höchstens fünf (**Abnahme**) |
+| UE2 | Mit Pfeil runter durch die Liste | Je Eintrag grün hinterlegt, was bleibt, rot durchgestrichen, was wegfällt; der Editor scrollt zum Konstrukt |
+| UE3 | `try … finally … end – finally-Teil behalten`, Enter | `try`, `finally` und `end` weg, Inhalt um eine Stufe ausgerückt, Semikolons stimmen, Unit übersetzt (**Abnahme**) |
+| UE4 | Strg+Z | Ursprünglicher Text in einem Schritt zurück |
+| UE5 | Liste öffnen, Esc | Liste weg, Vorschau weg, Text unverändert |
+| UE6 | `begin … end` nach `if … then` mit zwei Anweisungen ist nicht in der Liste; `if … then` entfernen mit `else` | Varianten „then-Zweig behalten“ und „else-Zweig behalten“; Ergebnis ohne doppeltes `;` vor `else` |
+| UE7 | `for`-Schleife entfernen | Hinweis zur Schleifenvariablen in der Zeile; nach Enter steht der Rumpf einmal da |
+| UE8 | Cursor in `with Edit1, Font do`, entfernen | Zugriffe qualifiziert: `Edit1.Caption := 'x';`; lässt sich `with` nicht auflösen, ist der Eintrag grau mit Hinweis und nicht wählbar |
+| UE9 | `try … except` mit zwei `raise` | Hinweis „mehrere raise“ in der Liste |
+| UE10 | Cursor im `{$IFDEF DEBUG}`-Zweig | Einträge je Zweig; Enter behält nur den Zweig, Direktivzeilen weg; `{$REGION}` entfernt nur die beiden Zeilen |
+| UE11 | Nur ein Konstrukt am Cursor | Kompakte Liste mit einem Eintrag, sofort in der Vorschau |
+| UE12 | Text in der Vorschau per Maus ändern (anderes Fenster) und dann Enter | Meldung „Text hat sich geändert“, nichts wird angewendet |
+| UE13 | Optionen › Befehle › Umschließung entfernen aus | Taste frei für die IDE, kein Eintrag in der Befehlspalette (**Abnahme**) |
+| UE14 | Taste auf Strg+Alt+U ändern | Neue Taste öffnet die Liste, Konfliktanzeige meldet Überschneidungen |
+| UE15 | Oberfläche auf Englisch | Einträge „Remove …“, Hinweise englisch |
+
 ## Gleichen Text wie die Markierung hervorheben (#709)
 
 Voraussetzung: Einstellungen auf Vorgabe; Unit, in der `Kunde` mehrfach vorkommt, auch als Teil von `TKunde` und `Kunden`, in einem String und in einem Kommentar.

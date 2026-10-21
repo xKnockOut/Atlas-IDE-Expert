@@ -10,7 +10,10 @@
 interface
 
 uses
+  Winapi.Windows,
   System.Types,
+  Vcl.Graphics,
+  Atlas.Core.Style.Color,
   Atlas.Core.Style.Palette,
   Atlas.UI.Popup.Window;
 
@@ -24,17 +27,18 @@ type
     class function Apply(AWindow: TAtlasPopupWindow; const ACaret: TRect): string; static;
     /// <summary>Texthöhe der Editorschrift bei 96 dpi ohne Zoom (Bezug für Linienbreiten, #653).</summary>
     class function BaseTextHeight: Integer; static;
+    /// <summary>ARect halb durchsichtig mit AColor überziehen; der Text darunter bleibt lesbar.</summary>
+    class procedure Blend(ADC: HDC; const ARect: TRect; AColor: COLORREF; AAlpha: Byte); static;
+    /// <summary>Hintergrund des Editors an X, Y; ersatzweise die Pinselfarbe der Zeichenfläche.</summary>
+    class function SampleBack(ACanvas: TCanvas; X, Y: Integer): TAtlasColor; static;
   end;
 
 implementation
 
 uses
-  Winapi.Windows,
   System.SysUtils,
   System.Win.Registry,
-  Vcl.Graphics,
   ToolsAPI,
-  Atlas.Core.Style.Color,
   Atlas.Core.Style.Scaling;
 
 function WindowsUsesLightApps: Boolean;
@@ -70,6 +74,43 @@ begin
 end;
 
 { TAtlasIdeStyle }
+
+class procedure TAtlasIdeStyle.Blend(ADC: HDC; const ARect: TRect; AColor: COLORREF; AAlpha: Byte);
+var
+  Memory: HDC;
+  Bitmap, Old: HBITMAP;
+  Func: TBlendFunction;
+begin
+  if (ARect.Right <= ARect.Left) or (ARect.Bottom <= ARect.Top) then
+    Exit;
+  Memory := CreateCompatibleDC(ADC);
+  Bitmap := CreateCompatibleBitmap(ADC, 1, 1);
+  Old := SelectObject(Memory, Bitmap);
+  try
+    SetPixel(Memory, 0, 0, AColor);
+    Func.BlendOp := AC_SRC_OVER;
+    Func.BlendFlags := 0;
+    Func.SourceConstantAlpha := AAlpha;
+    Func.AlphaFormat := 0;
+    AlphaBlend(ADC, ARect.Left, ARect.Top, ARect.Right - ARect.Left, ARect.Bottom - ARect.Top, Memory, 0, 0, 1, 1,
+      Func);
+  finally
+    SelectObject(Memory, Old);
+    DeleteObject(Bitmap);
+    DeleteDC(Memory);
+  end;
+end;
+
+class function TAtlasIdeStyle.SampleBack(ACanvas: TCanvas; X, Y: Integer): TAtlasColor;
+var
+  Sample: COLORREF;
+begin
+  Sample := GetPixel(ACanvas.Handle, X, Y);
+  if Sample = CLR_INVALID then
+    Result := TAtlasColor(ColorToRGB(ACanvas.Brush.Color))
+  else
+    Result := TAtlasColor(Sample);
+end;
 
 class function TAtlasIdeStyle.Colors: TAtlasColors;
 var

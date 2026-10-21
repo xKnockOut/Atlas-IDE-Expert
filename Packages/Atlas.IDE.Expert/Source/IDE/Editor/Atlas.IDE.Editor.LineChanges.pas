@@ -240,17 +240,6 @@ begin
   Result := Length(TAtlasPairs.DisplayLine(TrimRight(ALine), ATabWidth)) + 1;
 end;
 
-function SampleBack(ACanvas: TCanvas; X, Y: Integer): TAtlasColor;
-var
-  Sample: COLORREF;
-begin
-  Sample := GetPixel(ACanvas.Handle, X, Y);
-  if Sample = CLR_INVALID then
-    Result := TAtlasColor(ColorToRGB(ACanvas.Brush.Color))
-  else
-    Result := TAtlasColor(Sample);
-end;
-
 function AgeText(const AAge: TAtlasAge): string;
 begin
   case AAge.Unit_ of
@@ -702,7 +691,7 @@ begin
     // In .atlas für diese Datei ausgeblendet (#628).
     if TAtlasIdeElements.FileHidden(TAtlasDrawnElement.GitGutter, Context.FileName) then
       Exit;
-    Colors := TAtlasColors.ForBackground(SampleBack(Context.Canvas, Rect.Left + 1, Rect.Top + 1));
+    Colors := TAtlasColors.ForBackground(TAtlasIdeStyle.SampleBack(Context.Canvas, Rect.Left + 1, Rect.Top + 1));
     Width := Max(3, MulDiv(3, Rect.Height, 16));
     // Rechts in der Rinne, mit einem Pixel Abstand zum Code.
     Left := Rect.Right - Width - 2;
@@ -812,7 +801,7 @@ begin
     X := TAtlasLineTail.Start(Self, Key, Cell.Left);
     DC := Context.Canvas.Handle;
     // Hintergrund des Editor-Farbschemas am rechten Rand (dort steht nichts).
-    Back := SampleBack(Context.Canvas, Rect.Right - 2, Rect.Top + 1);
+    Back := TAtlasIdeStyle.SampleBack(Context.Canvas, Rect.Right - 2, Rect.Top + 1);
     Front := TAtlasColorMath.Mix(TAtlasColors.ForBackground(Back).Muted, Back, BlameStrength);
     EnsureFont(Context.Canvas.Font);
     Saved := SaveDC(DC);

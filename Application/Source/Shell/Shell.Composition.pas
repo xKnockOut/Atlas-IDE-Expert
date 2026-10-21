@@ -331,6 +331,8 @@ type
     function InvertBooleanActions(const AUri: string; const APosition: TTextPosition): TArray<TJSONObject>;
     /// <summary>„Boolean umkehren“ (#715): das WorkspaceEdit für alle Stellen.</summary>
     function InvertBoolean(const AArguments: TJSONArray): TJSONValue;
+    /// <summary>„Umschließung entfernen“ (#657): Konstrukte am Cursor mit Varianten und Vorschau.</summary>
+    function Unwrap(const AArguments: TJSONArray): TJSONValue;
     /// <summary>„Typ ausschreiben“ (#453) für die Inline-Variable an APosition.</summary>
     function ExplicitTypeActions(const AUri: string; const APosition: TTextPosition): TArray<TJSONObject>;
     /// <summary>Extrahieren, „case vervollständigen“ und „with auflösen“ (#50).</summary>
@@ -484,6 +486,7 @@ uses
   Atlas.Common.Editing.PropertyFromAccessors,
   Atlas.Common.Lsp.PropertyFromAccessors,
   Atlas.Common.Lsp.InvertBoolean,
+  Atlas.Common.Lsp.Unwrap,
   Atlas.Common.Lsp.UnitRename,
   Atlas.Common.Lsp.SmartPaste,
   Atlas.Common.Editing.SmartPaste,
@@ -1414,6 +1417,11 @@ begin
     function(const AArguments: TJSONArray): TJSONValue
     begin
       Result := InvertBoolean(AArguments);
+    end);
+  FCommands.Register(TLspUnwrap.Command,
+    function(const AArguments: TJSONArray): TJSONValue
+    begin
+      Result := Unwrap(AArguments);
     end);
   FCommands.Register(TLspUnitRename.Command,
     function(const AArguments: TJSONArray): TJSONValue
@@ -3078,6 +3086,40 @@ begin
   FLogger.Info(Format('Boolean umkehren: %d Stellen in %d Dateien, %d Warnungen',
     [(Answer.GetValue('places') as TJSONNumber).AsInt, (Answer.GetValue('files') as TJSONNumber).AsInt,
     (Answer.GetValue('warnings') as TJSONArray).Count]));
+  Result := Answer;
+end;
+
+function TServerComposition.Unwrap(const AArguments: TJSONArray): TJSONValue;
+var
+  Uri: string;
+  Position: TTextPosition;
+  Document: ITextDocument;
+  Shared: ISharedSyntaxTree;
+  Resolver: TNameResolver;
+  IndentWidth: Integer;
+  Answer: TJSONObject;
+begin
+  // Argumente: URI, Position, optional die Einrückungsbreite des Editors.
+  if (AArguments = nil) or (AArguments.Count < 2) then
+    raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams, 'Argumente "uri" und "position" fehlen');
+  Uri := AArguments.Items[0].Value;
+  Position := TLspPositions.ReadPosition(AArguments.Items[1]);
+  IndentWidth := 0;
+  if (AArguments.Count > 2) and (AArguments.Items[2] is TJSONNumber) then
+    IndentWidth := TJSONNumber(AArguments.Items[2]).AsInt;
+  if not FDocuments.TryGet(Uri, Document) then
+    raise EJsonRpcError.Create(TLspErrorCode.RequestFailed, 'Die Datei ist nicht geöffnet.');
+  Shared := TSyntaxTreeCache.Get(Document, nil);
+  Resolver := TNameResolver.Create(FIndex, EnsureUnit);
+  try
+    Resolver.Namespaces := FRename.Namespaces;
+    Answer := TLspUnwrap.Execute(Resolver, Shared.Tree, Document.Text, Position, RefactoringContextFor(Uri),
+      IndentWidth);
+  finally
+    Resolver.Free;
+  end;
+  // Nur Zahlen ins Log, keine Namen und Pfade (#647).
+  FLogger.Info(Format('Umschließung entfernen: %d Konstrukte', [(Answer.GetValue('candidates') as TJSONArray).Count]));
   Result := Answer;
 end;
 
