@@ -492,6 +492,17 @@ begin
   Assert.AreEqual(0, Integer(Length(Issues)));
   Parse('{"completion": {"inheritedCall": 1}}', Issues);
   Assert.AreEqual(1, Integer(Length(Issues)));
+  // Gleiche Namen aus verschiedenen Units (#475)
+  Assert.IsTrue(Parse('{}', Issues).Completion.SameNameVariants);
+  Assert.IsTrue(Parse('{}', Issues).Completion.SameNameInsert = TCompletionSameNameInsert.Prefix);
+  Assert.IsFalse(Parse('{}', Issues).Completion.ShowFmxUnits);
+  Assert.IsFalse(Parse('{"completion": {"sameNameVariants": false}}', Issues).Completion.SameNameVariants);
+  Assert.IsTrue(Parse('{"completion": {"sameNameInsert": "uses"}}', Issues).Completion.SameNameInsert =
+    TCompletionSameNameInsert.Uses_);
+  Assert.IsTrue(Parse('{"completion": {"showFmxUnits": true}}', Issues).Completion.ShowFmxUnits);
+  Assert.AreEqual(0, Integer(Length(Issues)));
+  Parse('{"completion": {"sameNameInsert": "move"}}', Issues);
+  Assert.AreEqual(1, Integer(Length(Issues)));
   // Freigabe absichern (#489)
   Assert.IsTrue(Parse('{}', Issues).Completion.OfferTryFinally);
   Assert.IsTrue(Parse('{}', Issues).Completion.FreeStyle = TCompletionFreeStyle.Free);

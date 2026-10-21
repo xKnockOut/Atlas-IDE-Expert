@@ -180,7 +180,7 @@ function TAtlasDetailView.Render(ACanvas: TCanvas; const AColors: TAtlasColors; 
 var
   Left, Y, Right, TagX, TagHeight, LineHeight, Fixed: Integer;
   Text, Tag, Key: string;
-  Line, X: Integer;
+  Line, X, Index: Integer;
   Box, Rect_: TRect;
   Expanded: Boolean;
 
@@ -371,6 +371,38 @@ begin
   // Helper aus nicht eingebundener Unit (#456): Enter ergänzt die uses.
   if FDetails.AddsUnit <> '' then
     Block(TAtlasStrings.Fmt(TAtlasTextId.HelperAddsUnit, [FDetails.AddsUnit]), AColors.Accent, []);
+  // Gleichnamige Bezeichner (#475): alle Units, die den Namen deklarieren, und was Enter tut.
+  if Length(FDetails.SameNameUnits) > 0 then
+  begin
+    Separator;
+    Block(UpperCase(TAtlasStrings.Text(TAtlasTextId.SameNameDeclaredIn)), AColors.Muted, [fsBold]);
+    for Index := 0 to High(FDetails.SameNameUnits) do
+    begin
+      Text := FDetails.SameNameUnits[Index];
+      if Index = 0 then
+        Text := Text + ' · ' + TAtlasStrings.Text(TAtlasTextId.SameNameRoleActive)
+      else if SameText(Text, FDetails.SameNameThis) then
+        Text := Text + ' · ' + TAtlasStrings.Text(TAtlasTextId.SameNameRoleThis);
+      if SameText(FDetails.SameNameUnits[Index], FDetails.SameNameThis) then
+        Block(Text, AColors.Text, [fsBold])
+      else
+        Block(Text, AColors.Text, []);
+    end;
+    for Text in FDetails.SameNameHidden do
+      Block(Text + ' · ' + TAtlasStrings.Text(TAtlasTextId.SameNameRoleHidden), AColors.Muted, [fsItalic]);
+    if FDetails.SameNameInsert = 'prefix' then
+      Block(TAtlasStrings.Text(TAtlasTextId.SameNameNotActive) + ' · ' +
+        TAtlasStrings.Text(TAtlasTextId.SameNameInsertPrefix), AColors.Muted, [])
+    else if FDetails.SameNameInsert = 'prefixAdd' then
+      Block(TAtlasStrings.Text(TAtlasTextId.SameNameNotActive) + ' · ' +
+        TAtlasStrings.Fmt(TAtlasTextId.SameNameInsertPrefixAdd, [FDetails.SameNameThis]), AColors.Warn, [])
+    else if FDetails.SameNameInsert = 'move' then
+      Block(TAtlasStrings.Text(TAtlasTextId.SameNameNotActive) + ' · ' +
+        TAtlasStrings.Fmt(TAtlasTextId.SameNameInsertMove, [FDetails.SameNameThis]), AColors.Warn, [])
+    else if FDetails.SameNameInsert = 'add' then
+      Block(TAtlasStrings.Text(TAtlasTextId.SameNameNotActive) + ' · ' +
+        TAtlasStrings.Fmt(TAtlasTextId.SameNameInsertAdd, [FDetails.SameNameThis]), AColors.Warn, []);
+  end;
   // Verdeckte Deklarationen weiter außen (#488).
   for Text in FDetails.Hides do
     Block(TAtlasStrings.Fmt(TAtlasTextId.HidesDeclaration, [Text]), AColors.Muted, [fsItalic]);
