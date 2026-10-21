@@ -333,12 +333,30 @@ end;
 
 { /singleton }
 
+/// <summary>Hinweis nach /singleton, wenn die Klasse schon Konstruktoren hat (#298); '' ohne.</summary>
+function SingletonConstructorNote(ASource: TCommandSource; const AClassName: string): string;
+var
+  Symbol: TIndexSymbol;
+  Names: TArray<string>;
+begin
+  Names := nil;
+  for Symbol in ASource.UnitIndex.Symbols do
+    if (Symbol.Kind = TIndexSymbolKind.Constructor_) and SameText(Symbol.Container, AClassName) and
+      not MatchText(Symbol.Name, Names) then
+      Names := Names + [Symbol.Name];
+  Result := '';
+  if Names <> nil then
+    Result := Format('/singleton: Konstruktor %s bleibt unverändert und öffentlich; Instance ruft Create ohne ' +
+      'Parameter', [string.Join(', ', Names)]);
+end;
+
 function ExecuteSingleton(const AContext: TSlashContext; out AEdits: TArray<TTextEdit>;
   out AReason: string): Boolean;
 var
   Source: TCommandSource;
   ClassSymbol: TIndexSymbol;
-  Name: string;
+  Name, Note, Uri: string;
+  Host: ISlashHost;
 begin
   AEdits := nil;
   Source := TCommandSource.Create(AContext);
@@ -351,6 +369,16 @@ begin
       Join(Source, [Format('class destructor %s.Destroy;', [Name]), 'begin', '  FreeAndNil(FInstance);', 'end;',
       '', Format('class function %s.Instance: %s;', [Name, Name]), 'begin', '  if FInstance = nil then',
       Format('    FInstance := %s.Create;', [Name]), '  Result := FInstance;', 'end;'])) + [Source.RemoveCommand];
+    // Ein vorhandener Konstruktor bleibt, wie er ist; der Hinweis nennt ihn.
+    Note := SingletonConstructorNote(Source, Name);
+    Host := AContext.Host;
+    Uri := AContext.Uri;
+    if (Host <> nil) and (Note <> '') then
+      AContext.Defer(
+        procedure
+        begin
+          Host.Notify(Uri, Note);
+        end);
     Result := True;
   finally
     Source.Free;
