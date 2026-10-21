@@ -73,7 +73,8 @@ type
     // 16: Zählung der Präfixe je Unit (#452).
     // 17: Grund hinter deprecated je Symbol (#38).
     // 18: Zweig varianter Record-Felder je Symbol (#846).
-    const FormatVersion = 18;
+    // 19: Helfer mit Vorfahr (class helper (TBase) for T) neu lesen (#848).
+    const FormatVersion = 19;
     class function Serialize(const AUnits: TArray<TUnitIndex>): TBytes; static;
     /// <summary>Liest nur die Köpfe; bei falscher Version, falscher Prüfsumme oder fremdem Inhalt leer.</summary>
     class function ReadEntries(const AData: TBytes): TArray<TIndexCacheEntry>; overload; static;

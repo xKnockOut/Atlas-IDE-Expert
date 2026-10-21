@@ -27,7 +27,9 @@
 //   ist TKunde, class(TObjectList<TKunde>), Foo<Integer>(...)).
 // - Class/Record Helper: Mitglieder des zuletzt sichtbaren Helpers für
 //   einen Typ gelten für den Typ und verdecken dessen gleichnamige; auch
-//   für eingebaute Typen (string, Integer).
+//   für eingebaute Typen (string, Integer). Ein Helfer mit Vorfahr
+//   (class helper (TBaseHelper) for T, #848) erbt dessen Mitglieder;
+//   Ancestors des Helfers: Vorfahr-Helfer, zuletzt der Zieltyp.
 // - with: Bezeichner werden zuerst in den with-Ausdrücken gesucht (innen
 //   nach außen); ist ein Typ dort unbekannt, gibt es kein Ergebnis.
 // - Inline-Variablen ohne Typ (var X := ..., for var I := ...) erhalten
@@ -261,6 +263,8 @@ type
     destructor Destroy; override;
     /// <summary>Direkter Vorfahr eines Typs (ohne Angabe TObject bzw. IInterface); False ohne oder bei Helfern.</summary>
     function AncestorOf(const AType: TResolvedSymbol; out AAncestor: TResolvedSymbol): Boolean;
+    /// <summary>Vorfahr-Helfer eines Helfers (class helper (TBaseHelper) for T, #848); False ohne.</summary>
+    function HelperParent(const AHelper: TResolvedSymbol; out AParent: TResolvedSymbol): Boolean;
     /// <summary>Deklaration der Property AName mit Typ in AType oder seinen Vorfahren (#491): "property Caption;"
     /// hebt nur die Sichtbarkeit an, Typ und Zugriff stehen weiter oben. ADepth wie bei MemberCandidates.
     /// </summary>
@@ -1327,12 +1331,27 @@ begin
   Result := AHelper.Found;
 end;
 
+function TNameResolver.HelperParent(const AHelper: TResolvedSymbol; out AParent: TResolvedSymbol): Boolean;
+var
+  FromUnit: TUnitIndex;
+begin
+  AParent := NoResult;
+  if (AHelper.SymbolKind <> TIndexSymbolKind.HelperType) or (Length(AHelper.Ancestors) < 2) or
+    not UnitOf(AHelper, FromUnit) then
+    Exit(False);
+  Result := ResolveTypeText(AHelper.Ancestors[0], FromUnit, SameText(FromUnit.FileName, FCurrent.FileName),
+    AParent) and (AParent.SymbolKind = TIndexSymbolKind.HelperType) and
+    not SameText(AParent.QualifiedName, AHelper.QualifiedName);
+  if not Result then
+    AParent := NoResult;
+end;
+
 function TNameResolver.FindMembers(const AType: TResolvedSymbol; const AName: string): TArray<TResolvedSymbol>;
 var
-  Current, Ancestor, Helper, Found: TResolvedSymbol;
+  Current, Ancestor, Helper, Parent, Found: TResolvedSymbol;
   OwnerUnit, HelperUnit: TUnitIndex;
   Symbol: TIndexSymbol;
-  Depth, Position: Integer;
+  Depth, Position, HelperDepth: Integer;
   TypeName: string;
   Hidden: Boolean;
 begin
@@ -1340,22 +1359,27 @@ begin
   Current := AType;
   for Depth := 0 to MaxDepth do
   begin
-    // Helfer zuerst: ihre Mitglieder verdecken gleichnamige des Typs.
-    if HelperFor(Current, Helper) and UnitOf(Helper, HelperUnit) then
-    begin
-      for Position in HelperUnit.SymbolsNamed(AName) do
+    // Helfer zuerst: ihre Mitglieder verdecken gleichnamige des Typs; danach die Vorfahr-Helfer (#848).
+    if HelperFor(Current, Helper) then
+      for HelperDepth := 0 to MaxDepth do
       begin
-        Symbol := HelperUnit.Symbols[Position];
-        if SameText(Symbol.Container, Helper.QualifiedName) and IsVisible(Symbol, HelperUnit, Helper) then
-        begin
-          Found := FromSymbol(HelperUnit, Symbol);
-          Found.Bindings := Current.Bindings;
-          AddDistinct(Result, Found);
-        end;
+        if UnitOf(Helper, HelperUnit) then
+          for Position in HelperUnit.SymbolsNamed(AName) do
+          begin
+            Symbol := HelperUnit.Symbols[Position];
+            if SameText(Symbol.Container, Helper.QualifiedName) and IsVisible(Symbol, HelperUnit, Helper) then
+            begin
+              Found := FromSymbol(HelperUnit, Symbol);
+              Found.Bindings := Current.Bindings;
+              AddDistinct(Result, Found);
+            end;
+          end;
+        if Result <> nil then
+          Exit;
+        if not HelperParent(Helper, Parent) then
+          Break;
+        Helper := Parent;
       end;
-      if Result <> nil then
-        Exit;
-    end;
     if Current.Builtin or not UnitOf(Current, OwnerUnit) then
       Exit;
     TypeName := Current.QualifiedName;
@@ -2384,9 +2408,9 @@ end;
 procedure TNameResolver.CollectMembers(const AType: TResolvedSymbol; AList: TList<TResolvedSymbol>;
   ASeen: TDictionary<string, Boolean>);
 var
-  Current, Ancestor, Helper, Member: TResolvedSymbol;
+  Current, Ancestor, Helper, Parent, Member: TResolvedSymbol;
   OwnerUnit, HelperUnit: TUnitIndex;
-  Position, Depth: Integer;
+  Position, Depth, HelperDepth: Integer;
   TypeName: string;
 begin
   Current := AType;
@@ -2394,11 +2418,20 @@ begin
   begin
     // Mitglieder des Helfers zuerst (#263), auch für eingebaute Typen. Über den Index statt for-in:
     // keine Kopie des Symbol-Records je geprüftem Symbol (Code-Review P-05).
-    if HelperFor(Current, Helper) and UnitOf(Helper, HelperUnit) then
-      for Position := 0 to High(HelperUnit.Symbols) do
-        if SameText(HelperUnit.Symbols[Position].Container, Helper.QualifiedName) and
-          IsVisible(HelperUnit.Symbols[Position], HelperUnit, Helper) and NameWanted(HelperUnit.Symbols[Position].Name) then
-          AddCandidate(AList, ASeen, MemberOf(FromSymbol(HelperUnit, HelperUnit.Symbols[Position]), Depth, True));
+    // Vorfahr-Helfer danach (#848); gleichnamige verdeckt der abgeleitete.
+    if HelperFor(Current, Helper) then
+      for HelperDepth := 0 to MaxDepth do
+      begin
+        if UnitOf(Helper, HelperUnit) then
+          for Position := 0 to High(HelperUnit.Symbols) do
+            if SameText(HelperUnit.Symbols[Position].Container, Helper.QualifiedName) and
+              IsVisible(HelperUnit.Symbols[Position], HelperUnit, Helper) and
+              NameWanted(HelperUnit.Symbols[Position].Name) then
+              AddCandidate(AList, ASeen, MemberOf(FromSymbol(HelperUnit, HelperUnit.Symbols[Position]), Depth, True));
+        if not HelperParent(Helper, Parent) then
+          Break;
+        Helper := Parent;
+      end;
     if Current.Builtin or not UnitOf(Current, OwnerUnit) then
       Exit;
     TypeName := Current.QualifiedName;
