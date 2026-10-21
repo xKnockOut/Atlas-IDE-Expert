@@ -185,6 +185,8 @@ type
     /// <summary>Reihenfolge der Indexaufbauten aller Projekte (#648); kleiner = früher.</summary>
     FIndexScheduler: TIndexScheduler;
     FWorkspacePriority: Integer;
+    /// <summary>Schreibt nur die Nachrichtenschleife, unter FWorkspacesLock; der nebenläufige Fehlerbericht
+    /// (#874) liest es unter derselben Sperre.</summary>
     FEditorSettings: string;
     // Globale Benutzerdatei (#227) als unterste Ebene; Pfad, Inhalt und der Beobachter für sie und die
     // atlas.json aller Ordner. FGlobalSettings nur im Thread der Nachrichtenschleife.
@@ -267,6 +269,8 @@ type
     function SettingsFor(const AUri: string): TServerSettings;
     /// <summary>FLooseSettings aus globaler Datei und Editor-Einstellungen neu berechnen; Nachrichtenschleife.</summary>
     procedure UpdateLooseSettings;
+    /// <summary>Setzt FEditorSettings unter FWorkspacesLock (#874).</summary>
+    procedure SetEditorSettings(const AText: string);
     function EnsureUnit(const AUnitName: string): Boolean;
     /// <summary>Fortschritt des Indexaufbaus in Prozent über alle Projekte; -1, wenn keiner läuft.</summary>
     function IndexLoading: Integer;
@@ -1421,7 +1425,9 @@ begin
         Settings := StringLiteralFor(AArguments.Items[0].Value, Multiline);
       Result := TStringLiteralCommands.ExecuteToLiteral(FDocuments, Settings, Multiline, AArguments);
     end);
-  FCommands.Register(StatusCommand,
+  // Reine Lesebefehle laufen nebenläufig (#874): Status, Prüfung und Katalog der Einstellungen, Fehlerbericht.
+  // Sie warten so nicht hinter einem Neuladen, während das Plugin auf die Antwort wartet.
+  FCommands.RegisterConcurrent(StatusCommand,
     function(const AArguments: TJSONArray): TJSONValue
     var
       Status: TServerStatus;
@@ -1431,17 +1437,17 @@ begin
       Result := Status.ToJson;
     end);
   // Einstellungsdialog des Plugins (#227): Prüfung mit dem Parser des Servers und Regelkatalog.
-  FCommands.Register(TLspSettingsCommands.CheckCommand,
+  FCommands.RegisterConcurrent(TLspSettingsCommands.CheckCommand,
     function(const AArguments: TJSONArray): TJSONValue
     begin
       Result := TLspSettingsCommands.Check(AArguments);
     end);
-  FCommands.Register(TLspSettingsCommands.CatalogCommand,
+  FCommands.RegisterConcurrent(TLspSettingsCommands.CatalogCommand,
     function(const AArguments: TJSONArray): TJSONValue
     begin
       Result := TLspSettingsCommands.Catalog(TLspSettingsCommands.CatalogEntries(AArguments), FGlobalSettingsFile);
     end);
-  FCommands.Register(TBugReport.Command,
+  FCommands.RegisterConcurrent(TBugReport.Command,
     function(const AArguments: TJSONArray): TJSONValue
     begin
       Result := BugReport(AArguments);
@@ -1675,8 +1681,8 @@ begin
       // ersten Indexaufbau; sie zählt wie global (TConfigurationScopes). Das IDE-Plugin schickt keine
       // Einstellungen mehr: Es schreibt settings.json, die der Server selbst liest und beobachtet.
       if FLifecycle.InitializeParams <> nil then
-        FEditorSettings := TLspConfiguration.EditorSettingsFromParams(
-          FLifecycle.InitializeParams.GetValue('initializationOptions'));
+        SetEditorSettings(TLspConfiguration.EditorSettingsFromParams(
+          FLifecycle.InitializeParams.GetValue('initializationOptions')));
       UpdateLooseSettings;
       FHover.Markdown := TLspHover.ClientSupportsMarkdown(FLifecycle.InitializeParams);
       // Code-Vorlagen mit Platzhaltern nur an Clients mit snippetSupport (#51).
@@ -2134,6 +2140,16 @@ begin
       Result := FLooseSettings
     else
       Result := Workspace.Configuration.Settings;
+  finally
+    TMonitor.Exit(FWorkspacesLock);
+  end;
+end;
+
+procedure TServerComposition.SetEditorSettings(const AText: string);
+begin
+  TMonitor.Enter(FWorkspacesLock);
+  try
+    FEditorSettings := AText;
   finally
     TMonitor.Exit(FWorkspacesLock);
   end;
@@ -2927,6 +2943,7 @@ var
   Workspace: TShellWorkspace;
   Targets: TArray<TShellWorkspace>;
   Settings: TServerSettings;
+  EditorSettings: string;
 
   function JsonOrText(const AText: string): TJSONValue;
   begin
@@ -2943,13 +2960,14 @@ begin
   TMonitor.Enter(FWorkspacesLock);
   try
     Targets := FWorkspaces.ToArray;
+    EditorSettings := FEditorSettings;
   finally
     TMonitor.Exit(FWorkspacesLock);
   end;
   Root := TJSONObject.Create;
   try
     // Eingaben der Schichtung (Editor, dann atlas.json mit Vorrang) und die wichtigsten Ergebnisse.
-    Root.AddPair('editor', JsonOrText(FEditorSettings));
+    Root.AddPair('editor', JsonOrText(EditorSettings));
     Items := TJSONArray.Create;
     Root.AddPair('workspaces', Items);
     for Workspace in Targets do
@@ -3749,7 +3767,7 @@ procedure TServerComposition.HandleDidChangeConfiguration(const AParams: TJSONVa
 var
   Workspace: TShellWorkspace;
 begin
-  FEditorSettings := TLspConfiguration.EditorSettingsFromParams(AParams);
+  SetEditorSettings(TLspConfiguration.EditorSettingsFromParams(AParams));
   UpdateLooseSettings;
   for Workspace in FWorkspaces.ToArray do
     Workspace.Configuration.SetEditorSettings(FEditorSettings);

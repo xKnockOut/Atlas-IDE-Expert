@@ -65,10 +65,12 @@ Server und Claude-Code-Plugin tragen immer dieselbe Version.
 - Test debuggen und „Test am Cursor ausführen“ gibt es nur mit `codeLens.tests` (#585).
 - Blockende-Beschriftungen (#620): Köpfe für `if`, Schleifen, `case`, `with` und `try` („try (finally)“), auf 40 Zeichen gekürzt, keine Beschriftung vor einem vorhandenen Kommentar; Mindestlänge `editor.blockEndLabels.minLines` (Vorgabe 25) auf der Optionsseite; ein Klick auf die Beschriftung springt zum Blockanfang.
 - Code-Aktion „try/finally ergänzen“ (#42) entscheidet über den Syntaxbaum: keine Aktion für Felder (auch `Self.F`), Owner, Übergabe an Listen oder ohne folgende Anweisung; Inline-Variablen und mehrzeilige `Create(`-Aufrufe werden erkannt. Der `try`-Block schließt die folgenden Anweisungen bis zum Blockende bzw. bis zum Ende der Auswahl ein, eine vorhandene Freigabe am Ende wandert ins `finally`, die Einrückung folgt dem Formatstil. Golden-Datei im Test.
+- Kein Hängen, während der Server indexiert (#874): Optionsseite (Index-Kennzahlen, Neu aufbauen, Leeren), Einrichtungs-Checkliste und Fehlerbericht warten nicht mehr im Hauptthread auf den Server, sondern zeigen „Frage den Server …“ bzw. „Fehlerbericht wird zusammengestellt …“ und übernehmen die Antwort später. Lesende Serverbefehle (Status, Einstellungsprüfung, Katalog, Fehlerbericht, Projekteinstellungen) laufen am Server neben dem Indexlauf statt dahinter. Ein Neustart des Index wartet nicht mehr auf den laufenden Aufbau, der alte wird abgebrochen und der neue hängt sich an. Das Diagnoseprotokoll nennt die echte Wartezeit in der Warteschlange.
 
 ### Tests
 - Alias `usesCommand` (#293), Formulardateien abgeleiteter Klassen (#44), `/header` am falschen Ort (#306), FireMonkey-Plattformansichten bei Sprung und Umbenennen (#87).
 - CI „Package-Abhängigkeiten“ wieder grün (#888): `Test-Experimental.ps1` endet ausdrücklich mit Exit-Code 0 (die pwsh-Shell von GitHub Actions übernahm sonst den absichtlich roten letzten Fall), `Update-ConfigDoc.ps1 -Check` vergleicht die erzeugten Units unabhängig vom Zeilenende und Groß-/Kleinschreibung genau; neue Fälle für LF, CRLF und eine veraltete `Konfiguration.md`.
+- Nebenläufige bedingte Anfragen und Wartezeit im Dispatcher, lesende Befehle neben dem Indexlauf, Index-Neustart ohne Warten, Optionsseite asynchron (#874).
 
 ## [1.0.0] - 2026-10-16
 

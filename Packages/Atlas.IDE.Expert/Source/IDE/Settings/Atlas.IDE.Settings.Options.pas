@@ -11,7 +11,9 @@
 // fragt sie über TAtlasIdeKeys.Owner ab; nach dem Speichern belegt die
 // Komposition die Tasten über Settings.OnChanged neu.
 // Abschnitt Symbolindex (#492): Kennzahlen aus atlas.server.status, „Index neu
-// aufbauen“ und „Index löschen“ über die Befehle des Servers.
+// aufbauen“ und „Index löschen“ über die Befehle des Servers, im Hintergrund
+// (#874): Die Antwort kommt im Hauptthread und geht nur an die Seite, für die
+// sie bestellt wurde (FGeneration), solange der Dialog offen ist.
 // Seite „Atlas.Server“ (#227): globale und Projekt-Einstellungen des Servers im
 // Dialog, Baseline neu erzeugen oder löschen, Unterdrückungen je Regel und
 // Index-Cache löschen über AtlasServer.exe als Prozess (TAtlasServerTool).
@@ -26,8 +28,9 @@ uses
   System.JSON;
 
 type
-  /// <summary>Befehl an den Server; Ergebnis gehört dem Aufrufer, nil ohne Server.</summary>
-  TAtlasServerCommand = reference to function(ACommand: string): TJSONValue;
+  /// <summary>Befehl an den Server im Hintergrund (#874); ADone im Hauptthread mit der Antwort, nil ohne Server
+  /// oder bei Fehler. Den Wert gibt der Aufrufer von ADone frei.</summary>
+  TAtlasServerCommand = reference to procedure(ACommand: string; ADone: TProc<TJSONValue>);
 
   /// <summary>Was die Optionsseiten von anderen Features brauchen; setzt die Composition (A-09: die Seiten
   /// importieren Befehlszählung, Tipps, Code Insight-Manager und Vervollständigung nicht). Nicht gesetzte Haken
@@ -101,7 +104,11 @@ type
   TAtlasAddInOptions = class(TInterfacedObject, INTAAddInOptions)
   private
     FPage: TAtlasSettingsPage;
-    function Run(const ACommand: string; out AAnswer: TJSONValue): Boolean;
+    /// <summary>Zählt die angelegten Seiten; eine späte Antwort für eine geschlossene Seite verfällt (#874).</summary>
+    FGeneration: Integer;
+    /// <summary>Führt ACommand im Hintergrund aus; AText macht aus der Antwort (nil ohne Server) den Text für
+    /// die Seite.</summary>
+    procedure Run(const ACommand: string; const AText: TFunc<TJSONValue, string>);
   public
     function GetArea: string;
     function GetCaption: string;
@@ -282,12 +289,34 @@ end;
 
 { TAtlasAddInOptions }
 
-function TAtlasAddInOptions.Run(const ACommand: string; out AAnswer: TJSONValue): Boolean;
+procedure TAtlasAddInOptions.Run(const ACommand: string; const AText: TFunc<TJSONValue, string>);
+var
+  Keep: INTAAddInOptions;
+  Owner: TAtlasAddInOptions;
+  Generation: Integer;
+  Text: TFunc<TJSONValue, string>;
 begin
-  AAnswer := nil;
-  if Assigned(Hooks.Command) then
-    AAnswer := Hooks.Command(ACommand);
-  Result := AAnswer <> nil;
+  // Keep hält das Objekt, bis die Antwort da ist; ob die Seite noch dieselbe ist, sagt FGeneration.
+  Keep := Self;
+  Owner := Self;
+  Generation := FGeneration;
+  Text := AText;
+  if not Assigned(Hooks.Command) then
+  begin
+    if FPage <> nil then
+      FPage.IndexAnswered(Text(nil));
+    Exit;
+  end;
+  Hooks.Command(ACommand,
+    procedure(AAnswer: TJSONValue)
+    begin
+      if (Keep <> nil) and (Owner.FPage <> nil) and (Owner.FGeneration = Generation) then
+        TAtlasGuard.Run(TAtlasFeature.Settings,
+          procedure
+          begin
+            Owner.FPage.IndexAnswered(Text(AAnswer));
+          end);
+    end);
 end;
 
 function TAtlasAddInOptions.GetArea: string;
@@ -308,6 +337,7 @@ end;
 
 procedure TAtlasAddInOptions.FrameCreated(AFrame: TCustomFrame);
 begin
+  Inc(FGeneration);
   FPage := AFrame as TAtlasSettingsPage;
   FPage.DefaultServerPath := HookText(Hooks.DefaultServerPath);
   // Version der gewählten AtlasServer.exe (#227).
@@ -358,38 +388,37 @@ begin
     end;
   // Symbolindex (#492): vor LoadFrom, das die Kennzahlen gleich anzeigt.
   FPage.OnIndexMetrics :=
-    function: string
-    var
-      Answer: TJSONValue;
+    procedure
     begin
-      Run('atlas.server.status', Answer);
-      try
-        Result := TLspIndexStatus.Metrics(Answer).Text;
-      finally
-        Answer.Free;
-      end;
+      Run('atlas.server.status',
+        function(AAnswer: TJSONValue): string
+        begin
+          Result := TLspIndexStatus.Metrics(AAnswer).Text;
+        end);
     end;
   FPage.OnIndexRebuild :=
-    function: string
-    var
-      Answer: TJSONValue;
+    procedure
     begin
-      if Run('atlas.server.rebuildIndex', Answer) then
-        Result := TAtlasStrings.Text(TAtlasTextId.MenuIndexRebuilding)
-      else
-        Result := TAtlasStrings.Text(TAtlasTextId.MenuIndexNoServer);
-      Answer.Free;
+      Run('atlas.server.rebuildIndex',
+        function(AAnswer: TJSONValue): string
+        begin
+          if AAnswer <> nil then
+            Result := TAtlasStrings.Text(TAtlasTextId.MenuIndexRebuilding)
+          else
+            Result := TAtlasStrings.Text(TAtlasTextId.MenuIndexNoServer);
+        end);
     end;
   FPage.OnIndexClear :=
-    function: string
-    var
-      Answer: TJSONValue;
+    procedure
     begin
-      if Run('atlas.server.clearIndex', Answer) then
-        Result := TLspIndexStatus.ClearedText(Answer)
-      else
-        Result := TAtlasStrings.Text(TAtlasTextId.MenuIndexNoServer);
-      Answer.Free;
+      Run('atlas.server.clearIndex',
+        function(AAnswer: TJSONValue): string
+        begin
+          if AAnswer <> nil then
+            Result := TLspIndexStatus.ClearedText(AAnswer)
+          else
+            Result := TAtlasStrings.Text(TAtlasTextId.MenuIndexNoServer);
+        end);
     end;
   // Projektdatei .atlas (#486): Werte „aus .atlas“ auch bei noch ausgeschaltetem Schalter; Öffnen legt sie an.
   FPage.OnTeamFile :=

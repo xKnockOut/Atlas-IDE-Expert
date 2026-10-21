@@ -385,31 +385,36 @@ var
   Settings, Saved: TAtlasPluginSettings;
   Confirm: Boolean;
   Cleared: Integer;
+  Rebuilds: Integer;
 begin
   // #492: Verwendungen und Speicherbudget, Kennzahlen, Neuaufbau und Löschen mit Rückfrage.
+  // #874: Die Befehle laufen im Hintergrund; die Antwort kommt über IndexAnswered.
   Settings := TAtlasPluginSettings.Defaults;
   Settings.IndexUsages := False;
   Settings.MemoryBudgetMb := 512;
   Confirm := False;
   Cleared := 0;
+  Rebuilds := 0;
   Page := TAtlasSettingsPage.Create(nil);
   try
     Assert.IsFalse(Page.IndexRebuild.Enabled or Page.IndexClear.Enabled, 'ohne Server keine Befehle');
+    // Antwort noch während des Ereignisses, wie ohne Server.
     Page.OnIndexMetrics :=
-      function: string
+      procedure
       begin
-        Result := 'Units: 3';
+        Page.IndexAnswered('Units: 3');
       end;
+    // Antwort erst später, wie bei einem Server, der gerade indexiert.
     Page.OnIndexRebuild :=
-      function: string
+      procedure
       begin
-        Result := 'wird neu aufgebaut';
+        Inc(Rebuilds);
       end;
     Page.OnIndexClear :=
-      function: string
+      procedure
       begin
         Inc(Cleared);
-        Result := 'gelöscht';
+        Page.IndexAnswered('gelöscht');
       end;
     Page.ConfirmClear :=
       function: Boolean
@@ -420,7 +425,16 @@ begin
     Assert.AreEqual('Units: 3', Page.IndexInfo.Caption);
     Assert.IsTrue(Page.IndexRebuild.Enabled and Page.IndexClear.Enabled);
     Page.IndexRebuild.Click;
+    Assert.AreEqual(1, Rebuilds);
+    Assert.IsTrue(Page.IndexBusy);
+    Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.SettingsIndexAsking), Page.IndexInfo.Caption);
+    Assert.IsFalse(Page.IndexRebuild.Enabled or Page.IndexClear.Enabled, 'gesperrt bis zur Antwort');
+    Page.IndexRebuild.Click;
+    Assert.AreEqual(1, Rebuilds, 'kein zweiter Befehl, solange einer läuft');
+    Page.IndexAnswered('wird neu aufgebaut');
+    Assert.IsFalse(Page.IndexBusy);
     Assert.AreEqual('wird neu aufgebaut', Page.IndexInfo.Caption);
+    Assert.IsTrue(Page.IndexRebuild.Enabled and Page.IndexClear.Enabled);
     Page.IndexClear.Click;
     Assert.AreEqual(0, Cleared, 'abgelehnt: nichts löschen');
     Confirm := True;

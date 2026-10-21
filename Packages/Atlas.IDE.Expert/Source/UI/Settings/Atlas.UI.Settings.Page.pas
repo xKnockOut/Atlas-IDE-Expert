@@ -9,8 +9,10 @@
 // Fehlern abgeschaltet hat, und schaltet es wieder ein (#493).
 // Abschnitt Symbolindex (#492): Verwendungen an/aus, Speichergrenze, Kennzahlen (Units, Deklarationen,
 // Größe, letzte Aktualisierung), „Index neu aufbauen“ und „Index löschen“. Die Seite kennt den Server
-// nicht; die IDE-Schicht liefert Texte und führt die Befehle über OnIndexMetrics, OnIndexRebuild,
-// OnIndexClear aus. Im Seitenkopf steht das Atlas-Symbol (#751) passend zu Thema und Skalierung.
+// nicht; die IDE-Schicht führt die Befehle über OnIndexMetrics, OnIndexRebuild, OnIndexClear im
+// Hintergrund aus und meldet den Text mit IndexAnswered (#874). Bis dahin steht „Frage den Server …“ da,
+// und die drei Knöpfe sind gesperrt; der Dialog bleibt bedienbar, auch wenn der Server gerade indexiert.
+// Im Seitenkopf steht das Atlas-Symbol (#751) passend zu Thema und Skalierung.
 // Jeder Reiter bleibt niedriger als die Seite: Sonst scrollt die IDE ihren Bereich beim Reiterwechsel
 // zum Fokus, und die Seite „springt“.
 // Reiter Vervollständigung: angeheftete Favoriten (#458) an/aus, Liste („TDataSet.Open“) mit „Entfernen“
@@ -206,9 +208,11 @@ type
     FIndexRefresh: TButton;
     FIndexRebuild: TButton;
     FIndexClear: TButton;
-    FOnIndexMetrics: TFunc<string>;
-    FOnIndexRebuild: TFunc<string>;
-    FOnIndexClear: TFunc<string>;
+    FOnIndexMetrics: TProc;
+    FOnIndexRebuild: TProc;
+    FOnIndexClear: TProc;
+    /// <summary>Ein Befehl des Index läuft; Antwort über IndexAnswered (#874).</summary>
+    FIndexBusy: Boolean;
     FConfirmClear: TFunc<Boolean>;
     FAfterSave: TAtlasChoiceBox;
     FCheckDelay: TEdit;
@@ -566,6 +570,9 @@ type
     procedure IndexRefreshClick(Sender: TObject);
     procedure IndexRebuildClick(Sender: TObject);
     procedure IndexClearClick(Sender: TObject);
+    procedure UpdateIndexButtons;
+    /// <summary>Startet ACommand und zeigt bis zur Antwort „Frage den Server …“ (#874).</summary>
+    procedure StartIndexCommand(const ACommand: TProc);
     /// <summary>Zeile mit Beschriftung und fünf Farbflächen.</summary>
     procedure AddSwatches(const ACaption: string; var ASwatches: array of TShape);
     procedure SwatchMouseDown(Sender: TObject; Button: TMouseButton; Shift: TShiftState; X, Y: Integer);
@@ -624,6 +631,11 @@ type
     procedure RefreshFuse;
     /// <summary>Kennzahlen des Index neu holen und anzeigen (#492).</summary>
     procedure RefreshIndex;
+    /// <summary>Antwort auf OnIndexMetrics, OnIndexRebuild oder OnIndexClear (#874): Text anzeigen, Knöpfe
+    /// wieder frei. Darf auch noch während des Ereignisses kommen.</summary>
+    procedure IndexAnswered(const AText: string);
+    /// <summary>Wartet die Seite auf eine Antwort des Index (#874)?</summary>
+    function IndexBusy: Boolean;
     /// <summary>Liste der angehefteten Favoriten neu lesen (#458).</summary>
     procedure RefreshFavorites;
     /// <summary>Zeigt die Einstellung AKey (Name der Plugin-Einstellung, #628): Reiter, ins Bild rollen, Fokus,
@@ -794,11 +806,11 @@ type
     property WelcomeProjectSetup: TCheckBox read FWelcomeProjectSetup;
     property WelcomeNewFromTemplate: TCheckBox read FWelcomeNewFromTemplate;
     property VersionLabel: TLabel read FVersion;
-    /// <summary>Kennzahlen als Text; nil = nicht verfügbar.</summary>
-    property OnIndexMetrics: TFunc<string> read FOnIndexMetrics write FOnIndexMetrics;
-    /// <summary>„Index neu aufbauen“ bzw. „Index löschen“ ausführen; Ergebnis als Meldung.</summary>
-    property OnIndexRebuild: TFunc<string> read FOnIndexRebuild write FOnIndexRebuild;
-    property OnIndexClear: TFunc<string> read FOnIndexClear write FOnIndexClear;
+    /// <summary>Kennzahlen im Hintergrund holen; den Text liefert IndexAnswered. nil = nicht verfügbar.</summary>
+    property OnIndexMetrics: TProc read FOnIndexMetrics write FOnIndexMetrics;
+    /// <summary>„Index neu aufbauen“ bzw. „Index löschen“ im Hintergrund; das Ergebnis liefert IndexAnswered.</summary>
+    property OnIndexRebuild: TProc read FOnIndexRebuild write FOnIndexRebuild;
+    property OnIndexClear: TProc read FOnIndexClear write FOnIndexClear;
     /// <summary>Rückfrage vor dem Löschen; Standard: Dialog mit Ja/Nein.</summary>
     property ConfirmClear: TFunc<Boolean> read FConfirmClear write FConfirmClear;
     /// <summary>„Verlauf zurücksetzen“ der lernenden Gewichtung (#418).</summary>
@@ -2800,14 +2812,42 @@ begin
   RefreshIndex;
 end;
 
+procedure TAtlasSettingsPage.UpdateIndexButtons;
+begin
+  FIndexRefresh.Enabled := Assigned(FOnIndexMetrics) and not FIndexBusy;
+  FIndexRebuild.Enabled := Assigned(FOnIndexRebuild) and not FIndexBusy;
+  FIndexClear.Enabled := Assigned(FOnIndexClear) and not FIndexBusy;
+end;
+
+procedure TAtlasSettingsPage.StartIndexCommand(const ACommand: TProc);
+begin
+  if not Assigned(ACommand) or FIndexBusy then
+    Exit;
+  FIndexBusy := True;
+  FIndexInfo.Caption := TAtlasStrings.Text(TAtlasTextId.SettingsIndexAsking);
+  UpdateIndexButtons;
+  ACommand();
+end;
+
+procedure TAtlasSettingsPage.IndexAnswered(const AText: string);
+begin
+  FIndexBusy := False;
+  FIndexInfo.Caption := AText;
+  UpdateIndexButtons;
+end;
+
+function TAtlasSettingsPage.IndexBusy: Boolean;
+begin
+  Result := FIndexBusy;
+end;
+
 procedure TAtlasSettingsPage.RefreshIndex;
 begin
   if Assigned(FOnIndexMetrics) then
-    FIndexInfo.Caption := FOnIndexMetrics()
-  else
+    StartIndexCommand(FOnIndexMetrics)
+  else if not FIndexBusy then
     FIndexInfo.Caption := '';
-  FIndexRebuild.Enabled := Assigned(FOnIndexRebuild);
-  FIndexClear.Enabled := Assigned(FOnIndexClear);
+  UpdateIndexButtons;
 end;
 
 procedure TAtlasSettingsPage.IndexRefreshClick(Sender: TObject);
@@ -2817,8 +2857,7 @@ end;
 
 procedure TAtlasSettingsPage.IndexRebuildClick(Sender: TObject);
 begin
-  if Assigned(FOnIndexRebuild) then
-    FIndexInfo.Caption := FOnIndexRebuild();
+  StartIndexCommand(FOnIndexRebuild);
 end;
 
 procedure TAtlasSettingsPage.IndexClearClick(Sender: TObject);
@@ -2833,7 +2872,7 @@ begin
     Confirmed := MessageDlg(TAtlasStrings.Text(TAtlasTextId.SettingsIndexClearConfirm), mtConfirmation,
       [mbYes, mbNo], 0) = mrYes;
   if Confirmed then
-    FIndexInfo.Caption := FOnIndexClear();
+    StartIndexCommand(FOnIndexClear);
 end;
 
 procedure TAtlasSettingsPage.AddFuseSection;
