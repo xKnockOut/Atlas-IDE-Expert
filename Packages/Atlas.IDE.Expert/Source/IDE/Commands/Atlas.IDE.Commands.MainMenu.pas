@@ -12,6 +12,8 @@
 // ("Atlas – Index 45 %"), wenn IndexProgressPlace sie nicht ins Statusfeld legt; „Index-Status“ schreibt die Kennzahlen in die
 // Meldungsansicht, „Index neu aufbauen“ liest alles ohne Cache neu ein.
 // „Diagnoselog exportieren…“ (#647) packt das anonymisierte Log in eine ZIP.
+// „Prozesse am Projekt…“ (#62) zeigt Index-Cache, Sperre und die LSP- und
+// MCP-Prozesse am Projekt; sichtbar nach diagnostics.processes.
 // „Symbol umbenennen…“ (#397) ruft OnRename auf.
 // „Einrichtung prüfen…“ (#625) ruft OnSetup auf.
 // „Tastenkürzel-Übersicht…“ (#520) ruft OnKeyMap auf; sichtbar nach
@@ -70,6 +72,8 @@ type
     FOnSetup: TProc;
     FOnKeyMap: TProc;
     FKeyMapItem: TMenuItem;
+    /// <summary>„Prozesse am Projekt…“ (#62), sichtbar nach diagnostics.processes.</summary>
+    FProcessesItem: TMenuItem;
     FOnWelcome: TProc<TAtlasWelcomeCommand>;
     FWelcome: array[TAtlasWelcomeCommand] of TMenuItem;
     FWelcomeLine: TMenuItem;
@@ -101,6 +105,7 @@ type
     procedure IndexStatusClick(Sender: TObject);
     procedure IndexRebuildClick(Sender: TObject);
     procedure DiagnosticExportClick(Sender: TObject);
+    procedure ProcessesClick(Sender: TObject);
     procedure BugReportClick(Sender: TObject);
     procedure SetupClick(Sender: TObject);
     procedure KeyMapClick(Sender: TObject);
@@ -141,7 +146,11 @@ uses
   ToolsAPI,
   Atlas.IDE.Settings.Project,
   Atlas.IDE.Settings.QuickToggles,
+  Vcl.Clipbrd,
   Atlas.IDE.Diagnostics.Export,
+  Atlas.IDE.Files.DirtyExport,
+  Atlas.Core.Diagnostics.Processes,
+  Atlas.UI.Diagnostics.ProcessesDialog,
   Atlas.IDE.Results.Commands,
   Atlas.IDE.Undo.Changes,
   Atlas.IDE.Notes.Service,
@@ -287,6 +296,7 @@ begin
   FKeyMapItem := AddItem(TAtlasTextId.KeyMapMenu, 0, KeyMapClick);
   AddItem(TAtlasTextId.SetupMenu, 0, SetupClick);
   AddItem(TAtlasTextId.DiagExportMenu, 0, DiagnosticExportClick);
+  FProcessesItem := AddItem(TAtlasTextId.ProcessesMenu, 0, ProcessesClick);
   AddItem(TAtlasTextId.BugReportMenu, 0, BugReportClick);
   FRoot.Add(NewLine);
   Item := TMenuItem.Create(FRoot);
@@ -523,6 +533,37 @@ begin
     end);
 end;
 
+procedure TAtlasMainMenu.ProcessesClick(Sender: TObject);
+begin
+  TAtlasGuard.Run(TAtlasFeature.Menu,
+    procedure
+    var
+      Actions: TAtlasProcessesActions;
+    begin
+      Actions := Default(TAtlasProcessesActions);
+      // Im Hintergrund wie der Index-Status (#874); die Antwort kommt im Hauptthread.
+      Actions.Fetch :=
+        procedure(ADone: TProc<TJSONValue>)
+        begin
+          if Assigned(FCommand) then
+            FCommand(TAtlasProcessesView.Command, ADone)
+          else
+            ADone(nil);
+        end;
+      Actions.ModifiedFiles :=
+        function: TArray<string>
+        begin
+          Result := TAtlasDirtyExport.ModifiedFiles;
+        end;
+      Actions.CopyText :=
+        procedure(AText: string)
+        begin
+          Clipboard.AsText := AText;
+        end;
+      TAtlasProcessesDialog.Execute(Actions);
+    end);
+end;
+
 procedure TAtlasMainMenu.BugReportClick(Sender: TObject);
 begin
   TAtlasIdeShortcutTips.Invoked('Atlas.BugReport');
@@ -562,6 +603,9 @@ var
 begin
   if FKeyMapItem <> nil then
     FKeyMapItem.Visible := TAtlasIdeSettings.Current.KeyOverview;
+  // Prozesse am Projekt (#62) nach diagnostics.processes.
+  if FProcessesItem <> nil then
+    FProcessesItem.Visible := TAtlasIdeSettings.Current.DiagnosticsProcesses;
   // Notizen (#545) nach ihrer Einstellung.
   for Item in FNoteItems do
     Item.Visible := TAtlasIdeSettings.Current.Notes;
