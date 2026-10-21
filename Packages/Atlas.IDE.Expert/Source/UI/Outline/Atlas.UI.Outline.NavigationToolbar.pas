@@ -8,10 +8,16 @@
 // - Gefunden wird das Steuerelement am Namen TEditorNavigationToolbar bzw.
 //   am Klassennamen (…NavigationToolbar…).
 // - Die IDE setzt Visible der Leiste bei jedem neuen Reiter wieder auf True.
-//   Deshalb kommt die Leiste in ein eigenes, unsichtbares Panel an ihrer
-//   Stelle; dessen Sichtbarkeit kennt die IDE nicht.
+//   Deshalb kommt die Leiste in ein eigenes, 0 Pixel hohes Panel an ihrer
+//   Stelle; dieses Panel kennt die IDE nicht.
 // - Restore bzw. Apply mit AHide = False hängt die Leiste an ihren alten
 //   Platz zurück und gibt das Panel frei (Einstellung aus, Entladen).
+// - Nach jedem Umhängen legt Atlas die Fenster von Halter und Leiste sofort
+//   neu an. Sonst entstehen sie erst beim nächsten Zugriff, und den macht der
+//   Parser-Thread der IDE (er aktualisiert die Leiste): Die Fenster gehörten
+//   dann ihm, und jedes Popup unter dem IDE-Hauptfenster wartete auf diesen
+//   Thread, solange er selbst wartet. Die IDE hing beim Klick in den Editor
+//   oder aufs Statusfeld ohne Meldung.
 // Nur VCL, keine Open Tools API; nur im Hauptthread.
 
 interface
@@ -117,6 +123,19 @@ begin
   Result := FPanels.Count;
 end;
 
+/// <summary>Fenster von AControl und allen Kindern jetzt im aufrufenden (Haupt-)Thread anlegen.</summary>
+procedure OwnHandles(AControl: TWinControl);
+var
+  Index: Integer;
+begin
+  if (AControl = nil) or (AControl.Parent = nil) or not AControl.Parent.HandleAllocated then
+    Exit;
+  AControl.HandleNeeded;
+  for Index := 0 to AControl.ControlCount - 1 do
+    if AControl.Controls[Index] is TWinControl then
+      OwnHandles(TWinControl(AControl.Controls[Index]));
+end;
+
 procedure TAtlasNavigationToolbar.Apply(AParent: TWinControl; AHide: Boolean);
 var
   Toolbar: TWinControl;
@@ -134,20 +153,23 @@ begin
     Toolbar.Top := Holder.Top;
     FPanels.Remove(Holder);
     Holder.Free;
+    OwnHandles(Toolbar);
     Exit;
   end;
   // Halter an der Stelle der Leiste, damit die Reihenfolge der oben ausgerichteten Steuerelemente bleibt.
   Holder := TToolbarHolder.Create(nil);
   Holder.FreeNotification(Self);
   FPanels.Add(Holder);
-  Holder.Visible := False;
+  // Sichtbar, aber 0 Pixel hoch: Ein unsichtbarer Halter hätte kein Fenster, und das legte sonst der
+  // Parser-Thread der IDE an (siehe oben); mit Fenster rutschte ein unsichtbarer Halter zudem nach oben.
   Holder.BevelOuter := bvNone;
   Holder.ShowCaption := False;
-  Holder.Height := Toolbar.Height;
+  Holder.Height := 0;
   Holder.Top := Toolbar.Top;
   Holder.Align := Toolbar.Align;
   Holder.Parent := Toolbar.Parent;
   Toolbar.Parent := Holder;
+  OwnHandles(Holder);
 end;
 
 procedure TAtlasNavigationToolbar.RestoreAll;
@@ -165,6 +187,8 @@ begin
       Toolbar := Holder.Controls[0];
       Toolbar.Parent := Holder.Parent;
       Toolbar.Top := Holder.Top;
+      if Toolbar is TWinControl then
+        OwnHandles(TWinControl(Toolbar));
     end;
     Holder.Free;
   end;

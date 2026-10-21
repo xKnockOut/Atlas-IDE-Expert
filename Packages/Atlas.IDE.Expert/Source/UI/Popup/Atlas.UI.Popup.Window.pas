@@ -359,8 +359,11 @@ begin
   HandleNeeded;
   // Erst Größe, dann ohne Aktivierung zeigen; Visible bleibt False wie bei THintWindow.
   SetBounds(ABounds.Left, ABounds.Top, ABounds.Width, ABounds.Height);
+  // SWP_NOOWNERZORDER: Ohne das sortiert Windows die ganze Gruppe der Fenster mit demselben Owner (IDE-
+  // Hauptfenster) um und schickt dabei jedem ihrer Threads eine Nachricht. Das IME-Fenster des Parser-Threads
+  // der IDE gehört dazu; wartet der Thread gerade, hängt die IDE ohne Meldung (Klick in den Editor).
   SetWindowPos(Handle, HWND_TOP, ABounds.Left, ABounds.Top, ABounds.Width, ABounds.Height,
-    SWP_NOACTIVATE or SWP_SHOWWINDOW);
+    SWP_NOACTIVATE or SWP_SHOWWINDOW or SWP_NOOWNERZORDER);
   Invalidate;
 end;
 
