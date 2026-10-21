@@ -525,3 +525,9 @@ Jeder Branch baut auf dem vorigen auf. Nichts davon ist gebaut, getestet oder in
 - Werkzeug: `scratchpad\ide-dialogs.ps1` listet offene Fehlerdialoge der laufenden IDE samt Text.
 - Plugin beim Benutzer: Debug-Build aus `repo\Output\Win32\Debug\Bpl` in Known Packages. Das Nachstellskript `repro.ps1` trägt ihn am Ende aus; danach wieder eintragen.
 - Offen: Optionsseite, Prüfliste und Fehlerbericht rufen den Server noch synchron auf (#874), außerdem der Server-Umbau für executeCommand.
+
+## Index-Caches aufräumen (#905, 21.10.2026, Branch `claude/project-thread-fltcw6` von main db0fffe, ungebaut)
+- Anlass: Marco arbeitet in mehreren Branch-Ordnern und löscht sie später; bisher räumte der Server nur nach Größe (256 MB fest) auf.
+- Umsetzung: `TIndexCacheHousekeeping.SelectOrphans`/`SelectUnused`/`MaxBytesOf`, `TIndexCacheDirectory.RemoveOrphans`/`RemoveUnused`/`WriteOrigin`/`ReadOrigin`/`TouchUse`/`LastUse`/`OriginExists`; Aufruf in `TShellWorkspace.LockCache`. Neben jedem Cache `projekt.txt` (Herkunft) und `benutzt.stamp` (letzte Benutzung). Caches ohne `projekt.txt` lesen einmal ihre Projekt-Units und tragen die Herkunft nach. Fehlendes Laufwerk = Cache bleibt.
+- Einstellungen `index.removeOrphans` (an), `index.cacheMaxAgeDays` (14, 0 = aus), `index.cacheMaxMb` (256, 0 = ohne Grenze); nur im Dialog „Weitere globale Einstellungen“, nicht auf dem Reiter Speicher (Optionsseite wird mit #890 umgebaut).
+- Geprüft: neue Tests unter FPC-Trunk grün bis auf die Prüfung „leerer Ordner gelöscht“, die dort auch im bestehenden Test `ClearRemovesNewLayoutAndEmptyFolders` scheitert (FPC-`TDirectory.IsEmpty`). Update-ConfigDoc, Check-Delphi12, Check-PackageDependencies, Check-ConsoleOutput grün. Offen: Delphi-Build und Testlauf unter Windows.
