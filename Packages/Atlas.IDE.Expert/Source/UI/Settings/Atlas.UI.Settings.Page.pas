@@ -27,6 +27,7 @@ uses
   System.SysUtils,
   System.Classes,
   System.UITypes,
+  System.Generics.Collections,
   Vcl.Controls,
   Vcl.Graphics,
   Vcl.StdCtrls,
@@ -48,8 +49,10 @@ uses
   Atlas.Core.Diagnostics.Guard,
   Atlas.Core.Diagnostics.SafeMode,
   Atlas.Core.Settings.Catalog,
+  Atlas.Core.Settings.Groups,
   Atlas.Core.Editor.Overview,
   Atlas.UI.Settings.Marks,
+  Atlas.UI.Settings.Group,
   Atlas.UI.Strings,
   Atlas.Core.Style.Symbol,
   Atlas.UI.Style.Symbol;
@@ -92,17 +95,34 @@ type
   /// <summary>Meldung (AQuestion False) oder Rückfrage mit Ja/Nein; True = Ja bzw. gelesen.</summary>
   TAtlasSettingsConfirm = reference to function(const AText: string; AQuestion: Boolean): Boolean;
 
+  /// <summary>Seite eines Knotens im Baum (#890): der Bereich selbst (Node leer) oder ein Unterpunkt.</summary>
+  TAtlasSettingsNodePage = record
+    Sheet: TTabSheet;
+    Box: TScrollBox;
+    /// <summary>Index des Bereichs in FSheets.</summary>
+    Area: Integer;
+    /// <summary>Id aus x-nodes; leer = Hauptknoten des Bereichs.</summary>
+    Node: string;
+    Caption: string;
+    /// <summary>Grund einer Sperre durch einen Hauptschalter auf einer anderen Seite.</summary>
+    Banner: TLabel;
+    /// <summary>Im Baum grau: nichts auf der Seite wirkt (aus oder gesperrt).</summary>
+    Gray: Boolean;
+  end;
+
   TAtlasSettingsPage = class(TFrame)
   private
     FPages: TPageControl;
-    /// <summary>Bereiche als Liste links (statt Reiterzeilen, die bei vielen Bereichen überlappten).</summary>
-    FNav: TListBox;
+    /// <summary>Bereiche und ihre Unterpunkte als Baum links (#890; vorher eine Liste).</summary>
+    FTree: TTreeView;
     FSheet: TTabSheet;
     /// <summary>Rollbarer Inhalt des aktuellen Reiters; nimmt die Elemente auf.</summary>
     FContent: TScrollBox;
     // Reiter hängen erst mit dem Fensterhandle am PageControl (CreateWnd): Die IDE und die Tests
     // erzeugen die Seite, bevor sie ein übergeordnetes Fenster hat.
     FSheets: TArray<TTabSheet>;
+    /// <summary>Rollbarer Inhalt je Bereich, gleicher Index wie FSheets.</summary>
+    FBoxes: TArray<TScrollBox>;
     FEnabled: TCheckBox;
     FServerPath: TEdit;
     FServerBrowse: TButton;
@@ -486,7 +506,59 @@ type
     FOnExportSettings: TProc<TAtlasPluginSettings>;
     FOnImportSettings: TAtlasSettingsImportEvent;
     FOnResetAllSettings: TAtlasSettingsResetEvent;
-    procedure NavClick(Sender: TObject);
+    FGroups: TAtlasSettingsGroups;
+    FNodePages: TArray<TAtlasSettingsNodePage>;
+    FFrames: TArray<TAtlasSettingsGroup>;
+    /// <summary>Rahmen „Funktionen in diesem Bereich“ auf den Hauptknoten.</summary>
+    FOverviews: TArray<TAtlasSettingsGroup>;
+    /// <summary>Zeile ohne eigene Einstellung → Element, zu dem sie gehört (Liste und Knöpfe einer Funktion).</summary>
+    FAttached: TDictionary<TControl, TControl>;
+    /// <summary>Von der Seite selbst abgeschaltet (Liste leer, kein Server); bleibt aus, auch ohne Sperre.</summary>
+    FOwnOff: TList<TControl>;
+    /// <summary>Durch einen Hauptschalter gesperrt.</summary>
+    FLockedControls: TList<TControl>;
+    /// <summary>Spiegel der Hauptschalter in der Übersicht und ihr Original, gleicher Index.</summary>
+    FMirrors: TArray<TCheckBox>;
+    FMirrored: TArray<TCheckBox>;
+    FPlaceTop: Integer;
+    FSyncing: Boolean;
+    FFillingTree: Boolean;
+    // Gewählte Seite und aufgeklappte Bereiche bis zum nächsten Öffnen (ohne verwaltete Typen: Leckmonitor).
+    class var FLastPage: Integer;
+    class var FExpandedAreas: set of Byte;
+    class var FStateKnown: Boolean;
+  private
+    procedure TreeChange(Sender: TObject; Node: TTreeNode);
+    procedure TreeExpanded(Sender: TObject; Node: TTreeNode);
+    procedure TreeCustomDrawItem(Sender: TCustomTreeView; Node: TTreeNode; State: TCustomDrawState;
+      var DefaultDraw: Boolean);
+    /// <summary>ARow (ohne eigene Einstellung) gehört zur Funktion von AAnchor: gleicher Rahmen, gleiche Sperre.
+    /// </summary>
+    procedure Attach(ARow, AAnchor: TControl);
+    /// <summary>Seite des Knotens ANode im Bereich AArea; legt sie bei Bedarf an.</summary>
+    function AddNodePage(AArea: Integer; const ANode: string): Integer;
+    procedure Place(AControl: TControl; AHolder: TWinControl);
+    /// <summary>Verteilt die Zeilen aller Bereiche auf Knoten und Rahmen (aus dem Schema).</summary>
+    procedure BuildNodes;
+    procedure BuildArea(AArea: Integer);
+    procedure AddOverview(AArea: Integer);
+    procedure MirrorClick(Sender: TObject);
+    procedure DetailsClick(Sender: TObject);
+    function IsOverview(AFrame: TAtlasSettingsGroup): Boolean;
+    function PageOf(AControl: TControl): Integer;
+    function ActiveNode: Integer;
+    procedure SelectPage(AIndex: Integer);
+    function PageShown(AIndex: Integer): Boolean;
+    procedure FillTree;
+    procedure RefreshTree;
+    function IsOn(const AName: string): Boolean;
+    function LockOfName(const AName: string): TAtlasSettingsLock;
+    function LockText(const ALock: TAtlasSettingsLock): string;
+    procedure SetLocked(AControl: TControl; ALocked: Boolean);
+    /// <summary>Statt Enabled := AValue: Eine Sperre durch den Hauptschalter bleibt bestehen.</summary>
+    procedure Allow(AControl: TControl; AValue: Boolean);
+    procedure ApplyLocks(AContainer: TWinControl; ALocked: Boolean; var AOutside: TArray<string>);
+    function PageGray(AIndex: Integer): Boolean;
     procedure Bind(const AKey: string; AControl: TControl);
     procedure ApplyReveal(const AKey: string);
   protected
@@ -546,7 +618,6 @@ type
     procedure AddExperimentalBanner;
     /// <summary>Zeile unten mit dem Filter Alle / Geändert / Nur experimentelle (#834).</summary>
     procedure AddFilterRow;
-    procedure PairColorsClick(Sender: TObject);
     procedure FuseEnableSelectedClick(Sender: TObject);
     procedure FuseEnableAllClick(Sender: TObject);
     procedure AddFuseSection;
@@ -645,8 +716,22 @@ type
     function ControlOf(const AKey: string): TControl;
     /// <summary>Reiter der Seite, einer je Bereich (#227).</summary>
     property Pages: TPageControl read FPages;
-    /// <summary>Liste der Bereiche links; schaltet Pages um.</summary>
-    property Navigation: TListBox read FNav;
+    /// <summary>Baum der Bereiche und Unterpunkte links; schaltet Pages um (#890).</summary>
+    property Navigation: TTreeView read FTree;
+    /// <summary>Sperren, Grund, Spiegel und graue Knoten nach den aktuellen Werten (#890).</summary>
+    procedure UpdateLocks;
+    property Groups: TAtlasSettingsGroups read FGroups;
+    /// <summary>Zum Testen: Rahmen des Hauptschalters AName (Registry-Name); nil ohne Rahmen.</summary>
+    function FrameOf(const AName: string): TAtlasSettingsGroup;
+    /// <summary>Zum Testen: Reiter des Unterpunkts ANode (Id aus x-nodes).</summary>
+    function NodeSheet(const ANode: string): TTabSheet;
+    /// <summary>Zum Testen: Spiegel des Hauptschalters AName in der Übersicht seines Bereichs.</summary>
+    function OverviewMirror(const AName: string): TCheckBox;
+    function SheetGray(ASheet: TTabSheet): Boolean;
+    /// <summary>Id des Unterpunkts zu ASheet; leer beim Hauptknoten.</summary>
+    function NodeOfSheet(ASheet: TTabSheet): string;
+    /// <summary>Gemerkte Auswahl und aufgeklappte Bereiche vergessen (Tests).</summary>
+    class procedure ForgetTreeState; static;
     /// <summary>Zum Testen: Liste und Schaltflächen der Sicherung.</summary>
     property FuseList: TListBox read FFuseList;
     property FuseEnableSelected: TButton read FFuseEnableSelected;
@@ -1059,6 +1144,9 @@ var
   Button: TButton;
 begin
   inherited Create(AOwner);
+  FAttached := TDictionary<TControl, TControl>.Create;
+  FOwnOff := TList<TControl>.Create;
+  FLockedControls := TList<TControl>.Create;
   Name := 'AtlasSettingsPage';
   Width := 480;
   // Die Reiter tragen den Inhalt; scrollt die Seite selbst, springt sie beim Reiterwechsel zum Fokus.
@@ -1084,14 +1172,18 @@ begin
   Title.Font.Style := [fsBold];
   AddExperimentalBanner;
   // Reiter je Bereich (#227); jeder stapelt seine Elemente neu von oben. Viele Reiter: in Zeilen.
-  // Bereiche als Liste links; die Reiter selbst bleiben unsichtbar und werden von der Liste umgeschaltet.
-  FNav := TListBox.Create(Self);
-  FNav.Parent := Self;
-  FNav.Align := alLeft;
-  FNav.AlignWithMargins := True;
-  FNav.Width := 150;
-  FNav.IntegralHeight := False;
-  FNav.OnClick := NavClick;
+  // Bereiche und Unterpunkte als Baum links (#890); die Reiter selbst bleiben unsichtbar, der Baum schaltet sie um.
+  FTree := TTreeView.Create(Self);
+  FTree.Parent := Self;
+  FTree.Align := alLeft;
+  FTree.AlignWithMargins := True;
+  FTree.Width := 170;
+  FTree.ReadOnly := True;
+  FTree.HideSelection := False;
+  FTree.OnChange := TreeChange;
+  FTree.OnExpanded := TreeExpanded;
+  FTree.OnCollapsed := TreeExpanded;
+  FTree.OnCustomDrawItem := TreeCustomDrawItem;
   FPages := TPageControl.Create(Self);
   FPages.Parent := Self;
   FPages.Align := alClient;
@@ -1246,7 +1338,6 @@ begin
   FPairOwners := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsPairOwners));
   FPairGuideWidth := AddNumber(TAtlasStrings.Text(TAtlasTextId.SettingsPairGuideWidth));
   FPairGuideOpacity := AddNumber(TAtlasStrings.Text(TAtlasTextId.SettingsPairGuideOpacity));
-  FPairColors.OnClick := PairColorsClick;
   FInactiveDim := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsInactiveDim));
   FInlayHints := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsInlayHints));
   // Typmarken von Inline-Variablen (#453), unabhängig von den Parameternamen.
@@ -1370,6 +1461,7 @@ begin
   Button.Top := 3;
   Button.Width := 150;
   Button.OnClick := ResetColorsClick;
+  Attach(Panel, FLightSwatches[0]);
 
   // Umfang des Index für alle Projekte, gespeichert in settings.json (index.*, #652, #227).
   AddSheet(TAtlasTextId.SettingsTabIndex);
@@ -1553,6 +1645,7 @@ begin
   Bind('ExperimentalEnabled', FExperimentalEnabled);
   BindControls;
   AddFilterRow;
+  BuildNodes;
 end;
 
 procedure TAtlasSettingsPage.AddExperimentalBanner;
@@ -1619,6 +1712,9 @@ procedure TAtlasSettingsPage.FilterChange(Sender: TObject);
 begin
   if (FFilter.Choice >= Ord(Low(TAtlasSettingsFilter))) and (FFilter.Choice <= Ord(High(TAtlasSettingsFilter))) then
     FMarks.ApplyFilter(TAtlasSettingsFilter(FFilter.Choice));
+  // Knoten ohne Treffer fallen aus dem Baum (#890).
+  if FTree.HandleAllocated then
+    FillTree;
 end;
 
 procedure TAtlasSettingsPage.Bind(const AKey: string; AControl: TControl);
@@ -1652,25 +1748,30 @@ end;
 
 procedure TAtlasSettingsPage.ApplyReveal(const AKey: string);
 var
-  Control: TControl;
+  Control, Master: TControl;
   Parent: TWinControl;
-  Index, Child: Integer;
+  Child: Integer;
+  Names: TArray<string>;
+  Lock: TAtlasSettingsLock;
 begin
   FPendingReveal := '';
   Control := ControlOf(AKey);
   if Control = nil then
     Exit;
-  // Reiter des Elements wählen, wie ein Klick in der Liste links.
-  Parent := Control.Parent;
-  while (Parent <> nil) and not (Parent is TTabSheet) do
-    Parent := Parent.Parent;
-  if Parent is TTabSheet then
-    for Index := 0 to High(FSheets) do
-      if FSheets[Index] = Parent then
-      begin
-        FPages.ActivePage := FSheets[Index];
-        FNav.ItemIndex := Index;
-      end;
+  // Gesperrt (#890): den Hauptschalter zeigen, der sie freigibt.
+  Names := FMarks.NamesOf(Control);
+  if (Length(Names) > 0) and (FGroups <> nil) then
+  begin
+    Lock := LockOfName(Names[0]);
+    if Lock.Locked then
+    begin
+      Master := FMarks.ControlOfName(Lock.Master);
+      if Master <> nil then
+        Control := Master;
+    end;
+  end;
+  // Knoten des Elements wählen, wie ein Klick im Baum links.
+  SelectPage(PageOf(Control));
   // Ins Bild rollen.
   Parent := Control.Parent;
   while (Parent <> nil) and not (Parent is TScrollBox) do
@@ -1794,6 +1895,7 @@ begin
   FUnblockTips.Top := 3;
   FUnblockTips.Width := 200;
   FUnblockTips.OnClick := UnblockTipsClick;
+  Attach(Panel, FWelcomeDiscover);
   // Bereich „Hilfe und Rückmeldung“ (#766): Schalter, Ziel der Issue-Seite, Ordner der ZIP.
   FWelcomeHelp := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsWelcomeHelp));
   FWelcomeHelpReportUrl := AddTextLine(TAtlasStrings.Text(TAtlasTextId.SettingsWelcomeHelpReportUrl));
@@ -1933,7 +2035,7 @@ begin
   FWelcomeActiveLayout.SetChoices(FPageLayouts.Names);
   FWelcomeActiveLayout.Choice := FPageLayouts.Active;
   FWelcomeColumns.Text := IntToStr(Layout.Columns);
-  FWelcomeLayoutDelete.Enabled := Length(FPageLayouts.Items) > 1;
+  Allow(FWelcomeLayoutDelete, Length(FPageLayouts.Items) > 1);
   if AVisibility then
     for Slot in Layout.Slots do
       ShowWelcomeSection(Slot.Id, Slot.Visible);
@@ -2531,7 +2633,11 @@ end;
 
 destructor TAtlasSettingsPage.Destroy;
 begin
+  FreeAndNil(FGroups);
   FreeAndNil(FCatalog);
+  FreeAndNil(FAttached);
+  FreeAndNil(FOwnOff);
+  FreeAndNil(FLockedControls);
   inherited;
 end;
 
@@ -2558,9 +2664,14 @@ begin
     Modified := TAtlasSettingsTransfer.ModifiedNames(Catalog, CurrentSettings);
   FMarks.Show(Modified, FSettingsMarkModified.Checked);
   FExperimentalBanner.Visible := FMarks.HasExperimental and not FExperimentalEnabled.Checked;
-  // Geänderte Werte ändern sich mit jeder Eingabe; der Filter folgt.
+  UpdateLocks;
+  // Geänderte Werte ändern sich mit jeder Eingabe; der Filter folgt, auch im Baum.
   if FMarks.Filter = sfModified then
+  begin
     FMarks.ApplyFilter(sfModified);
+    if FTree.HandleAllocated then
+      FillTree;
+  end;
 end;
 
 procedure TAtlasSettingsPage.MarksChanged(Sender: TObject);
@@ -2576,11 +2687,25 @@ begin
 end;
 
 procedure TAtlasSettingsPage.ResetPage;
+var
+  Current, Index: Integer;
+  Names: TArray<string>;
 begin
   // Ohne Fenster hängen die Reiter noch nicht am PageControl.
-  if FPages.ActivePage = nil then
+  Current := ActiveNode;
+  if Current < 0 then
     Exit;
-  ResetNames(FMarks.NamesIn(FPages.ActivePage));
+  // Unterpunkt: nur seine Einstellungen; Hauptknoten: der ganze Bereich mit allen Unterpunkten (#890).
+  if FNodePages[Current].Node <> '' then
+    Names := FMarks.NamesIn(FNodePages[Current].Box)
+  else
+  begin
+    Names := nil;
+    for Index := 0 to High(FNodePages) do
+      if FNodePages[Index].Area = FNodePages[Current].Area then
+        Names := Names + FMarks.NamesIn(FNodePages[Index].Box);
+  end;
+  ResetNames(Names);
 end;
 
 procedure TAtlasSettingsPage.ResetPageClick(Sender: TObject);
@@ -2625,6 +2750,7 @@ begin
   FSheets := FSheets + [FSheet];
   // Rollbar: Lange Reiter passten sonst nicht in die Optionsseite und wurden abgeschnitten.
   FContent := TScrollBox.Create(Self);
+  FBoxes := FBoxes + [FContent];
   FContent.Parent := FSheet;
   FContent.Align := alClient;
   FContent.BorderStyle := bsNone;
@@ -2636,24 +2762,18 @@ end;
 
 procedure TAtlasSettingsPage.CreateWnd;
 var
-  Sheet: TTabSheet;
+  Page: TAtlasSettingsNodePage;
 begin
   inherited CreateWnd;
-  for Sheet in FSheets do
-    if Sheet.PageControl = nil then
+  // Je Knoten ein Reiter, in der Reihenfolge des Baums.
+  for Page in FNodePages do
+    if Page.Sheet.PageControl = nil then
     begin
-      Sheet.PageControl := FPages;
-      Sheet.TabVisible := False;
+      Page.Sheet.PageControl := FPages;
+      Page.Sheet.TabVisible := False;
     end;
-  // Die Liste braucht ein Fenster für ihre Einträge (wie die Reiter).
-  FNav.Items.Clear;
-  for Sheet in FSheets do
-    FNav.Items.Add(Sheet.Caption);
-  if FPages.PageCount > 0 then
-  begin
-    FPages.ActivePageIndex := 0;
-    FNav.ItemIndex := 0;
-  end;
+  // Der Baum braucht ein Fenster für seine Knoten (wie die Reiter); zeigt die zuletzt gewählte Seite.
+  FillTree;
   // Die Liste der Sicherung braucht ein Fenster; vorher bleibt sie leer.
   RefreshFuse;
   RefreshFavorites;
@@ -2662,11 +2782,848 @@ begin
     ApplyReveal(FPendingReveal);
 end;
 
-procedure TAtlasSettingsPage.NavClick(Sender: TObject);
+// Baum, Rahmen und Sperren (#890).
+
+type
+  /// <summary>Art einer Zeile beim Aufteilen eines Bereichs: mit Einstellung, angehängt, Beschriftung, sonst.
+  /// </summary>
+  TAtlasRowKind = (rkBound, rkAttached, rkLabel, rkOther);
+
+/// <summary>Liegt AControl in AParent (oder ist es selbst)?</summary>
+function Inside(AControl, AParent: TControl): Boolean;
+var
+  Parent: TControl;
 begin
-  if (FNav.ItemIndex >= 0) and (FNav.ItemIndex < FPages.PageCount) then
-    FPages.ActivePageIndex := FNav.ItemIndex;
+  Parent := AControl;
+  while (Parent <> nil) and (Parent <> AParent) do
+    Parent := Parent.Parent;
+  Result := Parent <> nil;
 end;
+
+/// <summary>Zeilen von ABox in der Reihenfolge von oben nach unten.</summary>
+function SortedRows(ABox: TWinControl): TArray<TControl>;
+var
+  Index, Position: Integer;
+  Control: TControl;
+begin
+  Result := nil;
+  for Index := 0 to ABox.ControlCount - 1 do
+  begin
+    Control := ABox.Controls[Index];
+    Position := Length(Result);
+    while (Position > 0) and (Result[Position - 1].Top > Control.Top) do
+      Dec(Position);
+    Insert(Control, Result, Position);
+  end;
+end;
+
+/// <summary>Zeile nur mit einer Beschriftung (Überschrift, Hinweis, Beschriftung über einem Textfeld).</summary>
+function IsLabelRow(AControl: TControl): Boolean;
+begin
+  Result := (AControl is TAtlasSettingsRow) and (TWinControl(AControl).ControlCount = 1) and
+    (TWinControl(AControl).Controls[0] is TLabel);
+end;
+
+procedure AddUnique(var AList: TArray<string>; const AText: string);
+var
+  Item: string;
+begin
+  for Item in AList do
+    if Item = AText then
+      Exit;
+  AList := AList + [AText];
+end;
+
+function PageIndexOf(ANode: TTreeNode): Integer;
+begin
+  Result := -1;
+  if ANode <> nil then
+    Result := Integer(NativeInt(ANode.Data));
+end;
+
+procedure TAtlasSettingsPage.Attach(ARow, AAnchor: TControl);
+begin
+  if (ARow <> nil) and (AAnchor <> nil) then
+    FAttached.AddOrSetValue(ARow, AAnchor);
+end;
+
+function TAtlasSettingsPage.AddNodePage(AArea: Integer; const ANode: string): Integer;
+var
+  Page: TAtlasSettingsNodePage;
+  Index: Integer;
+begin
+  for Index := 0 to High(FNodePages) do
+    if (FNodePages[Index].Area = AArea) and SameText(FNodePages[Index].Node, ANode) then
+      Exit(Index);
+  Page := Default(TAtlasSettingsNodePage);
+  Page.Area := AArea;
+  Page.Node := ANode;
+  if ANode = '' then
+  begin
+    Page.Sheet := FSheets[AArea];
+    Page.Box := FBoxes[AArea];
+    Page.Caption := FSheets[AArea].Caption;
+  end
+  else
+  begin
+    Page.Caption := FGroups.NodeCaption(ANode, TAtlasStrings.Language = TAtlasLanguage.English);
+    Page.Sheet := TTabSheet.Create(Self);
+    Page.Sheet.Caption := Page.Caption;
+    Page.Box := TScrollBox.Create(Self);
+    Page.Box.Parent := Page.Sheet;
+    Page.Box.Align := alClient;
+    Page.Box.BorderStyle := bsNone;
+    Page.Box.ParentBackground := True;
+    Page.Box.VertScrollBar.Tracking := True;
+    Page.Box.HorzScrollBar.Visible := False;
+  end;
+  // Hinweis auf eine Sperre durch einen Hauptschalter auf einer anderen Seite, immer ganz oben.
+  Page.Banner := TLabel.Create(Self);
+  Page.Banner.Parent := Page.Box;
+  Page.Banner.Align := alTop;
+  Page.Banner.AlignWithMargins := True;
+  Page.Banner.Top := 0;
+  Page.Banner.WordWrap := True;
+  Page.Banner.ShowAccelChar := False;
+  Page.Banner.Font.Style := [fsItalic];
+  Page.Banner.Visible := False;
+  FMarks.Pin(Page.Banner);
+  FNodePages := FNodePages + [Page];
+  Result := High(FNodePages);
+end;
+
+procedure TAtlasSettingsPage.Place(AControl: TControl; AHolder: TWinControl);
+begin
+  if AHolder is TAtlasSettingsGroup then
+    TAtlasSettingsGroup(AHolder).AddRow(AControl)
+  else
+  begin
+    AControl.Parent := AHolder;
+    AControl.Align := alTop;
+    AControl.AlignWithMargins := True;
+    // alTop ordnet nach Top: jede Zeile unter die vorige.
+    AControl.Top := FPlaceTop;
+    Inc(FPlaceTop, 100);
+  end;
+end;
+
+procedure TAtlasSettingsPage.BuildNodes;
+var
+  Area: Integer;
+  Frame: TAtlasSettingsGroup;
+begin
+  FGroups := TAtlasSettingsGroups.Create(Catalog);
+  for Area := 0 to High(FSheets) do
+    BuildArea(Area);
+  for Frame in FFrames do
+    if not (Frame.Parent is TAtlasSettingsGroup) then
+      Frame.AdjustHeight;
+  for Area := 0 to High(FSheets) do
+    AddOverview(Area);
+  UpdateLocks;
+end;
+
+procedure TAtlasSettingsPage.BuildArea(AArea: Integer);
+var
+  Rows: TArray<TControl>;
+  Kinds: TArray<TAtlasRowKind>;
+  Names: TArray<string>;
+  RowPages: TArray<Integer>;
+  Holders: TArray<TWinControl>;
+  Frames: TArray<TAtlasSettingsGroup>;
+  Resolved: TArray<Boolean>;
+  Main, Index, Other, Page: Integer;
+  Frame: TAtlasSettingsGroup;
+
+  // Erster Name der Zeile, den der Katalog kennt; '' ohne Einstellung.
+  function KnownName(AControl: TControl): string;
+  var
+    Candidate: string;
+  begin
+    Result := '';
+    for Candidate in FMarks.NamesWithin(AControl) do
+      if FGroups.Contains(Candidate) then
+        Exit(Candidate);
+  end;
+
+  // Hängt eine Zeile an einem Element in AControl (Liste und Knöpfe einer Funktion)?
+  function HasAttached(AControl: TControl): Boolean;
+  var
+    Item: TPair<TControl, TControl>;
+  begin
+    for Item in FAttached do
+      if Inside(Item.Value, AControl) then
+        Exit(True);
+    Result := False;
+  end;
+
+  function RowOfAnchor(AAnchor: TControl): Integer;
+  var
+    Candidate: Integer;
+  begin
+    for Candidate := 0 to High(Rows) do
+      if Inside(AAnchor, Rows[Candidate]) then
+        Exit(Candidate);
+    Result := -1;
+  end;
+
+  // Rahmen des Hauptschalters AName, wenn er auf der Seite APage steht; sonst nil.
+  function FrameFor(const AName: string; APage: Integer): TAtlasSettingsGroup;
+  var
+    Candidate: Integer;
+  begin
+    Result := nil;
+    if AName = '' then
+      Exit;
+    for Candidate := 0 to High(Rows) do
+      if (Frames[Candidate] <> nil) and (RowPages[Candidate] = APage) and SameText(Names[Candidate], AName) then
+        Exit(Frames[Candidate]);
+  end;
+
+begin
+  FPlaceTop := 1000;
+  Rows := SortedRows(FBoxes[AArea]);
+  Main := AddNodePage(AArea, '');
+  SetLength(Kinds, Length(Rows));
+  SetLength(Names, Length(Rows));
+  SetLength(RowPages, Length(Rows));
+  SetLength(Holders, Length(Rows));
+  SetLength(Frames, Length(Rows));
+  SetLength(Resolved, Length(Rows));
+  for Index := 0 to High(Rows) do
+  begin
+    Names[Index] := KnownName(Rows[Index]);
+    RowPages[Index] := Main;
+    Holders[Index] := FNodePages[Main].Box;
+    Frames[Index] := nil;
+    Resolved[Index] := False;
+    if Names[Index] <> '' then
+      Kinds[Index] := rkBound
+    else if FAttached.ContainsKey(Rows[Index]) then
+      Kinds[Index] := rkAttached
+    else if IsLabelRow(Rows[Index]) then
+      Kinds[Index] := rkLabel
+    else
+      Kinds[Index] := rkOther;
+  end;
+  // Unterpunkt jeder Einstellung; Hauptschalter (auch Kontrollkästchen mit angehängter Liste) bekommen einen Rahmen.
+  for Index := 0 to High(Rows) do
+    if Kinds[Index] = rkBound then
+    begin
+      RowPages[Index] := AddNodePage(AArea, FGroups.NodeOf(Names[Index]));
+      if FGroups.IsMaster(Names[Index]) or ((Rows[Index] is TCheckBox) and HasAttached(Rows[Index])) then
+      begin
+        Frames[Index] := TAtlasSettingsGroup.Create(Self);
+        FFrames := FFrames + [Frames[Index]];
+      end;
+    end;
+  // Behälter: der Rahmen des Hauptschalters auf derselben Seite, sonst die Seite selbst.
+  for Index := 0 to High(Rows) do
+    if Kinds[Index] = rkBound then
+    begin
+      Holders[Index] := FNodePages[RowPages[Index]].Box;
+      Frame := FrameFor(FGroups.ParentOf(Names[Index]), RowPages[Index]);
+      if Frame <> nil then
+        Holders[Index] := Frame;
+      Resolved[Index] := True;
+    end;
+  // Zeilen ohne eigene Einstellung, die zu einer gehören (Liste, Knöpfe): in deren Rahmen.
+  for Index := 0 to High(Rows) do
+    if Kinds[Index] = rkAttached then
+    begin
+      Other := RowOfAnchor(FAttached[Rows[Index]]);
+      if (Other < 0) or not Resolved[Other] then
+        Continue;
+      RowPages[Index] := RowPages[Other];
+      Holders[Index] := Holders[Other];
+      if Frames[Other] <> nil then
+        Holders[Index] := Frames[Other];
+      Resolved[Index] := True;
+    end;
+  // Übrige Zeilen (Serverpfad, Knöpfe des Bereichs): oben auf der Seite der Zeile davor.
+  Page := Main;
+  for Index := 0 to High(Rows) do
+    if Resolved[Index] then
+      Page := RowPages[Index]
+    else if Kinds[Index] <> rkLabel then
+    begin
+      RowPages[Index] := Page;
+      Holders[Index] := FNodePages[Page].Box;
+      Resolved[Index] := True;
+    end;
+  // Überschriften und Beschriftungen gehören zur Zeile darunter, am Ende des Bereichs zur Zeile darüber.
+  for Index := High(Rows) downto 0 do
+    if not Resolved[Index] and (Index < High(Rows)) and Resolved[Index + 1] then
+    begin
+      RowPages[Index] := RowPages[Index + 1];
+      Holders[Index] := Holders[Index + 1];
+      Resolved[Index] := True;
+    end;
+  for Index := 1 to High(Rows) do
+    if not Resolved[Index] then
+    begin
+      RowPages[Index] := RowPages[Index - 1];
+      Holders[Index] := Holders[Index - 1];
+      Resolved[Index] := True;
+    end;
+  for Index := 0 to High(Rows) do
+    if Frames[Index] <> nil then
+    begin
+      Place(Frames[Index], Holders[Index]);
+      Frames[Index].SetMaster(Rows[Index], Names[Index]);
+      // Rahmen, Hauptschalter und Grund der Sperre bleiben beim Filtern stehen.
+      FMarks.Pin(Frames[Index]);
+      FMarks.Pin(Rows[Index]);
+      FMarks.Pin(Frames[Index].Reason);
+    end
+    else
+      Place(Rows[Index], Holders[Index]);
+end;
+
+procedure TAtlasSettingsPage.AddOverview(AArea: Integer);
+var
+  Overview, Frame: TAtlasSettingsGroup;
+  Caption, Details: TLabel;
+  Row: TWinControl;
+  Mirror: TCheckBox;
+  Main, Index, Child: Integer;
+  Box: TScrollBox;
+begin
+  // Hauptknoten: je Hauptschalter der Unterpunkte eine Zeile mit Spiegel und „Details“.
+  Main := AddNodePage(AArea, '');
+  Overview := nil;
+  for Index := 0 to High(FNodePages) do
+  begin
+    if (FNodePages[Index].Area <> AArea) or (FNodePages[Index].Node = '') then
+      Continue;
+    Box := FNodePages[Index].Box;
+    for Child := 0 to Box.ControlCount - 1 do
+    begin
+      if not (Box.Controls[Child] is TAtlasSettingsGroup) then
+        Continue;
+      Frame := TAtlasSettingsGroup(Box.Controls[Child]);
+      if Frame.Master = nil then
+        Continue;
+      if Overview = nil then
+      begin
+        Overview := TAtlasSettingsGroup.Create(Self);
+        FPlaceTop := 100000;
+        Place(Overview, FNodePages[Main].Box);
+        Caption := TLabel.Create(Self);
+        Caption.Caption := TAtlasStrings.Text(TAtlasTextId.SettingsOverviewTitle);
+        Caption.Font.Style := [fsBold];
+        Overview.SetMaster(Caption, '');
+        FOverviews := FOverviews + [Overview];
+        FMarks.Pin(Overview);
+      end;
+      Row := TAtlasSettingsRow.Create(Self);
+      Row.Height := 24;
+      Overview.AddRow(Row);
+      Details := TLabel.Create(Self);
+      Details.Parent := Row;
+      Details.Align := alRight;
+      Details.AlignWithMargins := True;
+      Details.Layout := tlCenter;
+      Details.Caption := TAtlasStrings.Text(TAtlasTextId.SettingsOverviewDetails);
+      Details.Font.Style := [fsUnderline];
+      Details.Font.Color := clHotLight;
+      Details.Cursor := crHandPoint;
+      Details.Tag := Index;
+      Details.OnClick := DetailsClick;
+      if Frame.Master is TCheckBox then
+      begin
+        Mirror := TCheckBox.Create(Self);
+        Mirror.Parent := Row;
+        Mirror.Align := alClient;
+        Mirror.Caption := FMarks.TextOfName(Frame.MasterName);
+        Mirror.Tag := Length(FMirrors);
+        Mirror.OnClick := MirrorClick;
+        FMirrors := FMirrors + [Mirror];
+        FMirrored := FMirrored + [TCheckBox(Frame.Master)];
+      end
+      else
+      begin
+        Caption := TLabel.Create(Self);
+        Caption.Parent := Row;
+        Caption.Align := alClient;
+        Caption.Layout := tlCenter;
+        Caption.Caption := FMarks.TextOfName(Frame.MasterName);
+      end;
+    end;
+  end;
+  if Overview <> nil then
+    Overview.AdjustHeight;
+end;
+
+procedure TAtlasSettingsPage.MirrorClick(Sender: TObject);
+var
+  Index: Integer;
+begin
+  if FSyncing or not (Sender is TCheckBox) then
+    Exit;
+  Index := TCheckBox(Sender).Tag;
+  if (Index >= 0) and (Index <= High(FMirrored)) then
+    FMirrored[Index].Checked := TCheckBox(Sender).Checked;
+end;
+
+procedure TAtlasSettingsPage.DetailsClick(Sender: TObject);
+begin
+  if Sender is TControl then
+    SelectPage(TControl(Sender).Tag);
+end;
+
+function TAtlasSettingsPage.IsOverview(AFrame: TAtlasSettingsGroup): Boolean;
+var
+  Overview: TAtlasSettingsGroup;
+begin
+  for Overview in FOverviews do
+    if Overview = AFrame then
+      Exit(True);
+  Result := False;
+end;
+
+function TAtlasSettingsPage.PageOf(AControl: TControl): Integer;
+var
+  Parent: TControl;
+  Index: Integer;
+begin
+  Result := -1;
+  Parent := AControl;
+  while (Parent <> nil) and not (Parent is TTabSheet) do
+    Parent := Parent.Parent;
+  if Parent = nil then
+    Exit;
+  for Index := 0 to High(FNodePages) do
+    if FNodePages[Index].Sheet = Parent then
+      Exit(Index);
+end;
+
+function TAtlasSettingsPage.ActiveNode: Integer;
+var
+  Index: Integer;
+begin
+  Result := -1;
+  if FPages.ActivePage = nil then
+    Exit;
+  for Index := 0 to High(FNodePages) do
+    if FNodePages[Index].Sheet = FPages.ActivePage then
+      Exit(Index);
+end;
+
+procedure TAtlasSettingsPage.SelectPage(AIndex: Integer);
+var
+  Index: Integer;
+begin
+  if (AIndex < 0) or (AIndex > High(FNodePages)) then
+    Exit;
+  FPages.ActivePage := FNodePages[AIndex].Sheet;
+  if not FTree.HandleAllocated then
+    Exit;
+  for Index := 0 to FTree.Items.Count - 1 do
+    if PageIndexOf(FTree.Items[Index]) = AIndex then
+    begin
+      FTree.Selected := FTree.Items[Index];
+      Break;
+    end;
+end;
+
+function TAtlasSettingsPage.PageShown(AIndex: Integer): Boolean;
+var
+  Index: Integer;
+begin
+  // Der Filter blendet Unterpunkte ohne Treffer aus; ein Bereich bleibt, solange einer seiner Punkte trifft.
+  if (FMarks.Filter = sfAll) or FMarks.HasMatch(FNodePages[AIndex].Box) then
+    Exit(True);
+  if FNodePages[AIndex].Node = '' then
+    for Index := 0 to High(FNodePages) do
+      if (Index <> AIndex) and (FNodePages[Index].Area = FNodePages[AIndex].Area) and
+        FMarks.HasMatch(FNodePages[Index].Box) then
+        Exit(True);
+  Result := False;
+end;
+
+procedure TAtlasSettingsPage.FillTree;
+var
+  Index, Area, Selected: Integer;
+  AreaNodes: TArray<TTreeNode>;
+  Node, Wanted: TTreeNode;
+begin
+  SetLength(AreaNodes, Length(FSheets));
+  Wanted := nil;
+  Selected := ActiveNode;
+  if (Selected < 0) and FStateKnown then
+    Selected := FLastPage;
+  FFillingTree := True;
+  FTree.Items.BeginUpdate;
+  try
+    FTree.Items.Clear;
+    for Index := 0 to High(FNodePages) do
+    begin
+      if not PageShown(Index) then
+        Continue;
+      Area := FNodePages[Index].Area;
+      if FNodePages[Index].Node = '' then
+      begin
+        Node := FTree.Items.AddObject(nil, FNodePages[Index].Caption, Pointer(NativeInt(Index)));
+        AreaNodes[Area] := Node;
+      end
+      else
+        Node := FTree.Items.AddChildObject(AreaNodes[Area], FNodePages[Index].Caption, Pointer(NativeInt(Index)));
+      if Index = Selected then
+        Wanted := Node;
+    end;
+    if (Wanted = nil) and (FTree.Items.Count > 0) then
+      Wanted := FTree.Items[0];
+    // Aufgeklappt wie beim letzten Mal; beim ersten Öffnen der Bereich der gewählten Seite.
+    for Index := 0 to FTree.Items.Count - 1 do
+    begin
+      Node := FTree.Items[Index];
+      if (Node.Level = 0) and Node.HasChildren then
+      begin
+        Area := FNodePages[PageIndexOf(Node)].Area;
+        Node.Expanded := FStateKnown and (Area <= High(Byte)) and (Byte(Area) in FExpandedAreas);
+      end;
+    end;
+    if Wanted <> nil then
+    begin
+      if Wanted.Parent <> nil then
+        Wanted.Parent.Expanded := True
+      else if not FStateKnown and Wanted.HasChildren then
+        Wanted.Expanded := True;
+      FTree.Selected := Wanted;
+      FPages.ActivePage := FNodePages[PageIndexOf(Wanted)].Sheet;
+    end;
+  finally
+    FTree.Items.EndUpdate;
+    FFillingTree := False;
+  end;
+  RefreshTree;
+end;
+
+procedure TAtlasSettingsPage.RefreshTree;
+var
+  Index, Page: Integer;
+  Node: TTreeNode;
+  Text: string;
+begin
+  if not FTree.HandleAllocated then
+    Exit;
+  for Index := 0 to FTree.Items.Count - 1 do
+  begin
+    Node := FTree.Items[Index];
+    Page := PageIndexOf(Node);
+    if (Page < 0) or (Page > High(FNodePages)) then
+      Continue;
+    // Punkt wie an den Einstellungen: Auf dieser Seite ist etwas geändert.
+    Text := FNodePages[Page].Caption;
+    if FMarks.HasMarked(FNodePages[Page].Box) then
+      Text := TAtlasSettingsMarks.Dot + Text;
+    if Node.Text <> Text then
+      Node.Text := Text;
+  end;
+  FTree.Invalidate;
+end;
+
+procedure TAtlasSettingsPage.TreeChange(Sender: TObject; Node: TTreeNode);
+var
+  Index: Integer;
+begin
+  Index := PageIndexOf(Node);
+  if (Index < 0) or (Index > High(FNodePages)) or (csDestroying in ComponentState) then
+    Exit;
+  FPages.ActivePage := FNodePages[Index].Sheet;
+  // Beim Neuaufbau des Baums wählt er selbst; gemerkt wird nur die Wahl des Nutzers.
+  if FFillingTree then
+    Exit;
+  FLastPage := Index;
+  FStateKnown := True;
+end;
+
+procedure TAtlasSettingsPage.TreeExpanded(Sender: TObject; Node: TTreeNode);
+var
+  Index, Area: Integer;
+begin
+  Index := PageIndexOf(Node);
+  if FFillingTree or (csDestroying in ComponentState) or (Index < 0) or (Index > High(FNodePages)) then
+    Exit;
+  Area := FNodePages[Index].Area;
+  if (Area < 0) or (Area > High(Byte)) then
+    Exit;
+  if Node.Expanded then
+    Include(FExpandedAreas, Byte(Area))
+  else
+    Exclude(FExpandedAreas, Byte(Area));
+  FStateKnown := True;
+end;
+
+procedure TAtlasSettingsPage.TreeCustomDrawItem(Sender: TCustomTreeView; Node: TTreeNode; State: TCustomDrawState;
+  var DefaultDraw: Boolean);
+var
+  Index: Integer;
+begin
+  DefaultDraw := True;
+  // Abgeschaltete oder gesperrte Unterpunkte grau.
+  Index := PageIndexOf(Node);
+  if (Index >= 0) and (Index <= High(FNodePages)) and FNodePages[Index].Gray and not (cdsSelected in State) then
+    Sender.Canvas.Font.Color := clGrayText;
+end;
+
+function TAtlasSettingsPage.IsOn(const AName: string): Boolean;
+var
+  Control: TControl;
+begin
+  // Kontrollkästchen: angehakt; Auswahl (etwa „Beim Öffnen bauen“): ein Eintrag außer dem ersten („nicht …“).
+  Control := FMarks.ControlOfName(AName);
+  if Control is TCheckBox then
+    Result := TCheckBox(Control).Checked
+  else if Control is TAtlasChoiceBox then
+    Result := TAtlasChoiceBox(Control).Choice > 0
+  else
+    Result := True;
+end;
+
+function TAtlasSettingsPage.LockOfName(const AName: string): TAtlasSettingsLock;
+begin
+  Result := FGroups.LockOf(AName, IsOn, FExperimentalEnabled.Checked);
+end;
+
+function TAtlasSettingsPage.LockText(const ALock: TAtlasSettingsLock): string;
+var
+  Page, Entry: Integer;
+  Where, Caption: string;
+begin
+  Result := '';
+  case ALock.Reason of
+    lrExperimental:
+      Result := TAtlasStrings.Text(TAtlasTextId.SettingsLockedExperimental);
+    lrMasterOff:
+      begin
+        Caption := FMarks.TextOfName(ALock.Master);
+        if Caption = '' then
+          Caption := FGroups.KeyOf(ALock.Master);
+        Where := '';
+        Page := PageOf(FMarks.ControlOfName(ALock.Master));
+        if Page >= 0 then
+        begin
+          Where := FSheets[FNodePages[Page].Area].Caption;
+          if FNodePages[Page].Node <> '' then
+            Where := Where + ' › ' + FNodePages[Page].Caption;
+        end
+        else
+        begin
+          Entry := Catalog.IndexOfName(ALock.Master);
+          if Entry >= 0 then
+            Where := Catalog.Entries[Entry].Page;
+        end;
+        Result := TAtlasStrings.Fmt(TAtlasTextId.SettingsLockedMaster, [Caption, Where]);
+      end;
+  end;
+end;
+
+procedure TAtlasSettingsPage.SetLocked(AControl: TControl; ALocked: Boolean);
+var
+  Index: Integer;
+begin
+  if AControl = nil then
+    Exit;
+  if not ALocked then
+    FLockedControls.Remove(AControl)
+  else if not FLockedControls.Contains(AControl) then
+    FLockedControls.Add(AControl);
+  AControl.Enabled := not ALocked and not FOwnOff.Contains(AControl);
+  if (AControl is TWinControl) and not (AControl is TAtlasSettingsGroup) then
+    for Index := 0 to TWinControl(AControl).ControlCount - 1 do
+      SetLocked(TWinControl(AControl).Controls[Index], ALocked);
+end;
+
+procedure TAtlasSettingsPage.Allow(AControl: TControl; AValue: Boolean);
+begin
+  // Eigene Logik der Seite (Liste leer, Server fehlt); eine Sperre durch den Hauptschalter bleibt bestehen.
+  if AValue then
+    FOwnOff.Remove(AControl)
+  else if not FOwnOff.Contains(AControl) then
+    FOwnOff.Add(AControl);
+  AControl.Enabled := AValue and not FLockedControls.Contains(AControl);
+end;
+
+procedure TAtlasSettingsPage.ApplyLocks(AContainer: TWinControl; ALocked: Boolean; var AOutside: TArray<string>);
+var
+  Index: Integer;
+  Control, Anchor: TControl;
+  Frame: TAtlasSettingsGroup;
+  Lock: TAtlasSettingsLock;
+  Locked, MasterLocked: Boolean;
+  Setting: string;
+  Names: TArray<string>;
+begin
+  for Index := 0 to AContainer.ControlCount - 1 do
+  begin
+    Control := AContainer.Controls[Index];
+    if (AContainer is TAtlasSettingsGroup) and ((Control = TAtlasSettingsGroup(AContainer).Master) or
+      (Control = TAtlasSettingsGroup(AContainer).Reason)) then
+      Continue;
+    if Control is TAtlasSettingsGroup then
+    begin
+      Frame := TAtlasSettingsGroup(Control);
+      if IsOverview(Frame) or (Frame.Master = nil) then
+        Continue;
+      // Der Hauptschalter selbst: gesperrt durch einen Rahmen darüber, einen Schalter woanders oder experimentell.
+      Lock := LockOfName(Frame.MasterName);
+      MasterLocked := ALocked or Lock.Locked;
+      SetLocked(Frame.Master, MasterLocked);
+      if Lock.Locked and not ALocked then
+        Frame.ShowReason(LockText(Lock))
+      else
+        Frame.ShowReason('');
+      ApplyLocks(Frame, MasterLocked or not IsOn(Frame.MasterName), AOutside);
+      Continue;
+    end;
+    Locked := ALocked;
+    if not Locked then
+    begin
+      // Zeile ohne Rahmen: ihr Hauptschalter steht auf einer anderen Seite (Grund oben auf der Seite).
+      Names := FMarks.NamesWithin(Control);
+      if (Length(Names) = 0) and FAttached.TryGetValue(Control, Anchor) then
+        Names := FMarks.NamesWithin(Anchor);
+      for Setting in Names do
+      begin
+        Lock := LockOfName(Setting);
+        if Lock.Locked then
+        begin
+          Locked := True;
+          if Lock.Reason = lrMasterOff then
+            AddUnique(AOutside, LockText(Lock));
+        end;
+      end;
+    end;
+    SetLocked(Control, Locked);
+  end;
+end;
+
+function TAtlasSettingsPage.PageGray(AIndex: Integer): Boolean;
+var
+  Box: TScrollBox;
+  Index: Integer;
+  Control: TControl;
+  Frame: TAtlasSettingsGroup;
+  Any: Boolean;
+begin
+  // Grau, wenn nichts auf der Seite wirkt: jeder Rahmen aus oder gesperrt, jede übrige Einstellung gesperrt.
+  Box := FNodePages[AIndex].Box;
+  Any := False;
+  for Index := 0 to Box.ControlCount - 1 do
+  begin
+    Control := Box.Controls[Index];
+    if Control is TAtlasSettingsGroup then
+    begin
+      Frame := TAtlasSettingsGroup(Control);
+      if IsOverview(Frame) or (Frame.Master = nil) then
+        Continue;
+      Any := True;
+      if Frame.Master.Enabled and IsOn(Frame.MasterName) then
+        Exit(False);
+    end
+    else if Length(FMarks.NamesWithin(Control)) > 0 then
+    begin
+      Any := True;
+      if Control.Enabled then
+        Exit(False);
+    end;
+  end;
+  Result := Any;
+end;
+
+procedure TAtlasSettingsPage.UpdateLocks;
+var
+  Index: Integer;
+  Outside: TArray<string>;
+begin
+  if FGroups = nil then
+    Exit;
+  for Index := 0 to High(FNodePages) do
+  begin
+    Outside := nil;
+    ApplyLocks(FNodePages[Index].Box, False, Outside);
+    FNodePages[Index].Banner.Caption := string.Join(sLineBreak, Outside);
+    FNodePages[Index].Banner.Visible := Length(Outside) > 0;
+  end;
+  // Spiegel in der Übersicht folgen ihrem Hauptschalter.
+  FSyncing := True;
+  try
+    for Index := 0 to High(FMirrors) do
+    begin
+      FMirrors[Index].Checked := FMirrored[Index].Checked;
+      FMirrors[Index].Enabled := FMirrored[Index].Enabled;
+    end;
+  finally
+    FSyncing := False;
+  end;
+  for Index := 0 to High(FNodePages) do
+    FNodePages[Index].Gray := PageGray(Index);
+  RefreshTree;
+end;
+
+function TAtlasSettingsPage.FrameOf(const AName: string): TAtlasSettingsGroup;
+var
+  Frame: TAtlasSettingsGroup;
+begin
+  for Frame in FFrames do
+    if SameText(Frame.MasterName, AName) then
+      Exit(Frame);
+  Result := nil;
+end;
+
+function TAtlasSettingsPage.NodeSheet(const ANode: string): TTabSheet;
+var
+  Page: TAtlasSettingsNodePage;
+begin
+  for Page in FNodePages do
+    if (ANode <> '') and SameText(Page.Node, ANode) then
+      Exit(Page.Sheet);
+  Result := nil;
+end;
+
+function TAtlasSettingsPage.OverviewMirror(const AName: string): TCheckBox;
+var
+  Frame: TAtlasSettingsGroup;
+  Index: Integer;
+begin
+  Result := nil;
+  Frame := FrameOf(AName);
+  if Frame = nil then
+    Exit;
+  for Index := 0 to High(FMirrored) do
+    if FMirrored[Index] = Frame.Master then
+      Exit(FMirrors[Index]);
+end;
+
+function TAtlasSettingsPage.SheetGray(ASheet: TTabSheet): Boolean;
+var
+  Index: Integer;
+begin
+  for Index := 0 to High(FNodePages) do
+    if FNodePages[Index].Sheet = ASheet then
+      Exit(FNodePages[Index].Gray);
+  Result := False;
+end;
+
+function TAtlasSettingsPage.NodeOfSheet(ASheet: TTabSheet): string;
+var
+  Page: TAtlasSettingsNodePage;
+begin
+  for Page in FNodePages do
+    if Page.Sheet = ASheet then
+      Exit(Page.Node);
+  Result := '';
+end;
+
+class procedure TAtlasSettingsPage.ForgetTreeState;
+begin
+  FStateKnown := False;
+  FLastPage := 0;
+  FExpandedAreas := [];
+end;
+
 
 procedure TAtlasSettingsPage.AddFavoritesSection;
 var
@@ -2693,6 +3650,8 @@ begin
   FFavoritesRemoveAll.Top := 3;
   FFavoritesRemoveAll.Width := 150;
   FFavoritesRemoveAll.OnClick := FavoritesRemoveAllClick;
+  Attach(FFavoritesList.Parent, FFavorites);
+  Attach(Panel, FFavorites);
 end;
 
 procedure TAtlasSettingsPage.SetOnFavorites(const AValue: TFunc<TArray<TAtlasFavorite>>);
@@ -2728,9 +3687,9 @@ begin
   finally
     FFavoritesList.Items.EndUpdate;
   end;
-  FFavoritesList.Enabled := Any;
-  FFavoritesRemove.Enabled := Any and Assigned(FOnRemoveFavorites);
-  FFavoritesRemoveAll.Enabled := Any and Assigned(FOnRemoveFavorites);
+  Allow(FFavoritesList, Any);
+  Allow(FFavoritesRemove, Any and Assigned(FOnRemoveFavorites));
+  Allow(FFavoritesRemoveAll, Any and Assigned(FOnRemoveFavorites));
 end;
 
 procedure TAtlasSettingsPage.FavoritesRemoveClick(Sender: TObject);
@@ -2814,9 +3773,9 @@ end;
 
 procedure TAtlasSettingsPage.UpdateIndexButtons;
 begin
-  FIndexRefresh.Enabled := Assigned(FOnIndexMetrics) and not FIndexBusy;
-  FIndexRebuild.Enabled := Assigned(FOnIndexRebuild) and not FIndexBusy;
-  FIndexClear.Enabled := Assigned(FOnIndexClear) and not FIndexBusy;
+  Allow(FIndexRefresh, Assigned(FOnIndexMetrics) and not FIndexBusy);
+  Allow(FIndexRebuild, Assigned(FOnIndexRebuild) and not FIndexBusy);
+  Allow(FIndexClear, Assigned(FOnIndexClear) and not FIndexBusy);
 end;
 
 procedure TAtlasSettingsPage.StartIndexCommand(const ACommand: TProc);
@@ -2925,9 +3884,9 @@ begin
   finally
     FFuseList.Items.EndUpdate;
   end;
-  FFuseList.Enabled := Any;
-  FFuseEnableSelected.Enabled := Any;
-  FFuseEnableAll.Enabled := Any;
+  Allow(FFuseList, Any);
+  Allow(FFuseEnableSelected, Any);
+  Allow(FFuseEnableAll, Any);
 end;
 
 procedure TAtlasSettingsPage.FuseEnableSelectedClick(Sender: TObject);
@@ -3171,14 +4130,6 @@ begin
   Result.Left := FieldLeft;
   Result.Top := 1;
   Result.Width := 140;
-end;
-
-procedure TAtlasSettingsPage.PairColorsClick(Sender: TObject);
-begin
-  FPairOwners.Enabled := FPairColors.Checked;
-  FPairGuides.Enabled := FPairColors.Checked;
-  FPairGuideWidth.Enabled := FPairColors.Checked;
-  FPairGuideOpacity.Enabled := FPairColors.Checked;
 end;
 
 procedure TAtlasSettingsPage.AddSwatches(const ACaption: string; var ASwatches: array of TShape);
@@ -3457,7 +4408,6 @@ begin
   FPairOwners.Checked := ASettings.PairOwners;
   FPairGuideWidth.Text := IntToStr(ASettings.PairGuideWidth);
   FPairGuideOpacity.Text := IntToStr(ASettings.PairGuideOpacity);
-  PairColorsClick(nil);
   ShowPairs(FLightSwatches, TAtlasColors.Light.WithPairs(ASettings.PairColorsLight).Pairs);
   ShowPairs(FDarkSwatches, TAtlasColors.Dark.WithPairs(ASettings.PairColorsDark).Pairs);
   FProblems.Checked := ASettings.Problems;
@@ -4087,21 +5037,21 @@ procedure TAtlasSettingsPage.ResetHistoryClick(Sender: TObject);
 begin
   if Assigned(FOnResetHistory) then
     FOnResetHistory();
-  FResetHistory.Enabled := False;
+  Allow(FResetHistory, False);
 end;
 
 procedure TAtlasSettingsPage.ResetUsageClick(Sender: TObject);
 begin
   if Assigned(FOnResetUsage) then
     FOnResetUsage();
-  FResetUsage.Enabled := False;
+  Allow(FResetUsage, False);
 end;
 
 procedure TAtlasSettingsPage.UnblockTipsClick(Sender: TObject);
 begin
   if Assigned(FOnUnblockTips) then
     FOnUnblockTips();
-  FUnblockTips.Enabled := False;
+  Allow(FUnblockTips, False);
 end;
 
 function TAtlasSettingsPage.AddWrappedLabel(AHeight: Integer; const ACaption: string): TLabel;
@@ -4125,7 +5075,7 @@ begin
   // Projektdatei .atlas (#486): Schalter, Erklärung, „Projektdatei öffnen“ und jeder Wert mit „aus .atlas“.
   FTeamFile := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsTeamFile));
   FTeamFile.OnClick := TeamFileClick;
-  AddWrappedLabel(36, TAtlasStrings.Text(TAtlasTextId.SettingsTeamFileHint));
+  Attach(AddWrappedLabel(36, TAtlasStrings.Text(TAtlasTextId.SettingsTeamFileHint)).Parent, FTeamFile);
   Panel := AddPanel(32);
   FTeamFileOpen := TButton.Create(Self);
   FTeamFileOpen.Parent := Panel;
@@ -4134,7 +5084,9 @@ begin
   FTeamFileOpen.Top := 3;
   FTeamFileOpen.Width := 180;
   FTeamFileOpen.OnClick := TeamFileOpenClick;
+  Attach(Panel, FTeamFile);
   FTeamFileInfo := AddWrappedLabel(180, '');
+  Attach(FTeamFileInfo.Parent, FTeamFile);
   RefreshTeamFile;
 end;
 
@@ -4191,7 +5143,7 @@ begin
     end;
   end;
   FTeamFileInfo.Caption := string.Join(sLineBreak, Lines);
-  FTeamFileOpen.Enabled := FTeamFile.Checked and (Team.Project <> '');
+  Allow(FTeamFileOpen, FTeamFile.Checked and (Team.Project <> ''));
 end;
 
 procedure TAtlasSettingsPage.HangTestClick(Sender: TObject);
@@ -4215,7 +5167,7 @@ begin
   FAutoWidth.OnClick := nil;
   FAutoWidth.Checked := FWidths.ListWidth = 0;
   FAutoWidth.OnClick := AutoWidthClick;
-  FResetWidths.Enabled := False;
+  Allow(FResetWidths, False);
 end;
 
 end.
