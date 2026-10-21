@@ -129,6 +129,9 @@ type
     /// <summary>Wie oben, mit weiteren Änderungen beim Annehmen (uses-Eintrag).</summary>
     function Add(const AName, ADetail: string; AKind, APenalty: Integer; const ASymbol: TResolvedSymbol;
       const AEdits: TArray<TRuleEdit>): Boolean; overload;
+    /// <summary>Fertiger Eintrag mit eigener Punktzahl (uses-Abschnitt, #469); kein Abgleich mit dem Getippten.
+    /// </summary>
+    procedure AddItem(const AItem: TCompletionItem; AScore: Integer);
     /// <summary>Letzten Eintrag als nicht verfügbar markieren (#476).</summary>
     procedure MarkLastUnavailable;
     /// <summary>Kandidaten des Resolvers; an Typpositionen (#31) nur Typen.</summary>
@@ -654,6 +657,17 @@ begin
   Scored.Order := FList.Count;
   FList.Add(Scored);
   Result := True;
+end;
+
+procedure TCompletionCollector.AddItem(const AItem: TCompletionItem; AScore: Integer);
+var
+  Scored: TScoredItem;
+begin
+  Scored := Default(TScoredItem);
+  Scored.Item := AItem;
+  Scored.Score := AScore;
+  Scored.Order := FList.Count;
+  FList.Add(Scored);
 end;
 
 procedure TCompletionCollector.MarkLastUnavailable;
