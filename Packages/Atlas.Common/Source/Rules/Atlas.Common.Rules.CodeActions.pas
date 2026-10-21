@@ -102,6 +102,12 @@ begin
       Action.Title := Fix.Title;
       Action.Kind := QuickFixKind;
       AddFixEdits(Action, Fix);
+      // Sprung zu einer anderen Stelle der Datei (#915), z. B. zur Freigabe.
+      if Fix.HasJump then
+      begin
+        Action.Command := GoToPositionCommand;
+        Action.CommandArguments := [IntToStr(Fix.JumpTo.Line), IntToStr(Fix.JumpTo.Character)];
+      end;
       Action.IsPreferred := First and not Fix.Alternative;
       Action.RuleId := Finding.RuleId;
       Action.DiagnosticRange := Finding.Range;

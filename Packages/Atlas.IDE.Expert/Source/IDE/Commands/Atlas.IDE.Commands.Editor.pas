@@ -8,7 +8,9 @@
 //   Puffer über TAtlasIdeWorkspaceEdit (je Datei ein Rückgängig-Schritt, #397)
 //   und führt danach ihren Befehl aus: atlas.copyText legt das erste Argument
 //   in die Zwischenablage, atlas.openFile öffnet die Datei der URI im ersten
-//   Argument (Testunit, #274/#189), atlas.changeSignature (#100) und
+//   Argument (Testunit, #274/#189), atlas.goToPosition setzt den Cursor im
+//   oberen Editor auf Zeile und Zeichen aus den Argumenten (Sprung zur
+//   Freigabe, #915), atlas.changeSignature (#100) und
 //   atlas.moveClass (#103) öffnen ihren Dialog, alle anderen gehen als
 //   workspace/executeCommand an den Server.
 // - Auswahl erweitern und verkleinern (textDocument/selectionRange).
@@ -205,6 +207,7 @@ const
   SlashTimeoutMs = 3000;
   CopyTextCommand = 'atlas.copyText';
   OpenFileCommand = 'atlas.openFile';
+  GoToPositionCommand = 'atlas.goToPosition';
   QualifiedNameCommand = 'atlas.server.qualifiedName';
   TestUnitCommand = 'atlas.server.testUnit';
 
@@ -1286,6 +1289,19 @@ begin
     try
       if (Arguments is TJSONArray) and (TJSONArray(Arguments).Count > 0) then
         TAtlasIdeNavigation.GoToLocation(TLspSession.UriToPath(TJSONArray(Arguments).Items[0].Value), 0, 0);
+    finally
+      Arguments.Free;
+    end;
+    Exit;
+  end;
+  if ACommand = GoToPositionCommand then
+  begin
+    // Client-Befehl: Zeile und Zeichen (0-basiert, als Text) im oberen Editor (#915).
+    Arguments := TJSONObject.ParseJSONValue(AArgumentsJson);
+    try
+      if (Arguments is TJSONArray) and (TJSONArray(Arguments).Count > 1) then
+        TAtlasIdeNavigation.GoToPosition(StrToIntDef(TJSONArray(Arguments).Items[0].Value, 0),
+          StrToIntDef(TJSONArray(Arguments).Items[1].Value, 0));
     finally
       Arguments.Free;
     end;

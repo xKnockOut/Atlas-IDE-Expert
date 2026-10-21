@@ -3165,3 +3165,18 @@ Voraussetzung: Server läuft; Einstellungen auf Vorgabe; `Liste: TList<TAufgabe>
 | CM6 | Befund im Fenster „Atlas-Prüfung“ und im Befund-Hover | Regel `collection-modified-in-loop`, Gruppe „Fehler finden“, Aktionszeile mit der Korrektur aus CM2 |
 | CM7 | `"collection-modified-in-loop": {"mutatingMethods": ["Loeschen"]}`, CM1 mit `Liste.Loeschen(I)` | Meldung für `Loeschen`; `Liste.Delete` bleibt still |
 | CM8 | `"collection-modified-in-loop": "off"` bzw. `exclude` mit dem Pfad der Datei | Keine Meldung |
+
+## Objekt nach Free weiter benutzt (#915)
+
+Voraussetzung: Server läuft; Einstellungen auf Vorgabe; `Bericht: TBericht`, `Protokoll: TStrings`.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| UF1 | `Bericht.Free;` und in der nächsten Zeile `Protokoll.Add('Seiten: ' + IntToStr(Bericht.Seiten));` | Rote Wellenlinie unter `Bericht` in der zweiten Zeile: „Bericht wurde in Zeile N freigegeben und wird hier wieder gelesen.“ (**Abnahme**) |
+| UF2 | Alt+Enter auf dem Befund | Erste Aktion „Zur Freigabe in Zeile N springen“; sie setzt den Cursor auf `Bericht.Free`, ändert nichts am Text |
+| UF3 | Befund-Hover und Fenster „Atlas-Prüfung“ | Aktionszeile bzw. „Korrektur anwenden“ zeigt „Zur Freigabe in Zeile N springen“ und springt dorthin; Gruppe „Fehler finden“ |
+| UF4 | `FreeAndNil(Bericht); Bericht.Drucken;` | „Bericht wurde in Zeile N mit FreeAndNil freigegeben und ist hier nil.“ |
+| UF5 | `FreeAndNil(Bericht); if Assigned(Bericht) then Bericht.Drucken;` | Keine Meldung |
+| UF6 | `Bericht.Free; Bericht := TBericht.Create; Bericht.Drucken;` bzw. `Bericht.Free; Liste.Remove(Bericht);` | Keine Meldung |
+| UF7 | `if A then Bericht.Free; Bericht.Drucken;` mit `"minConfidence": "low"` | Meldung mit Konfidenz mittel; mit Vorgabe `medium` ebenfalls sichtbar |
+| UF8 | `"use-after-free": "off"` bzw. `exclude` mit dem Pfad der Datei | Keine Meldung |

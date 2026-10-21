@@ -11,6 +11,9 @@ type
   public
     /// <summary>Öffnet AFileName und setzt den Cursor auf ALine/ACharacter (0-basiert).</summary>
     class procedure GoToLocation(const AFileName: string; ALine, ACharacter: Integer); static;
+    /// <summary>Setzt den Cursor im oberen Editor auf ALine/ACharacter (0-basiert), z. B. für den Sprung
+    /// einer Code-Aktion zur Freigabe (#915).</summary>
+    class procedure GoToPosition(ALine, ACharacter: Integer); static;
   end;
 
 implementation
@@ -49,6 +52,24 @@ begin
       View.Paint;
       Exit;
     end;
+end;
+
+class procedure TAtlasIdeNavigation.GoToPosition(ALine, ACharacter: Integer);
+var
+  Editors: IOTAEditorServices;
+  View: IOTAEditView;
+  Cursor: TOTAEditPos;
+begin
+  if not Supports(BorlandIDEServices, IOTAEditorServices, Editors) then
+    Exit;
+  View := Editors.TopView;
+  if View = nil then
+    Exit;
+  Cursor.Line := ALine + 1;
+  Cursor.Col := ACharacter + 1;
+  View.CursorPos := Cursor;
+  View.MoveViewToCursor;
+  View.Paint;
 end;
 
 end.

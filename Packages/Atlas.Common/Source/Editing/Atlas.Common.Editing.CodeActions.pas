@@ -38,6 +38,9 @@ const
   RemoveUnusedKind = 'source.removeUnusedImports';
   /// <summary>Client-Befehl, der das erste Argument in die Zwischenablage legt (#312).</summary>
   CopyTextCommand = 'atlas.copyText';
+  /// <summary>Client-Befehl, der den Cursor im Dokument der Aktion auf Zeile (erstes Argument) und Zeichen
+  /// (zweites Argument, beide 0-basiert) setzt (#915).</summary>
+  GoToPositionCommand = 'atlas.goToPosition';
   /// <summary>Kennungen der uses-Aktionen für den Hover des Plugins (#621), in data.tag.</summary>
   UsesRemoveTag = 'uses.remove';
   UsesRemoveAllTag = 'uses.removeAll';

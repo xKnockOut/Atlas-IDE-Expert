@@ -7,6 +7,17 @@
 //   unreachable-code          Anweisung nach Exit, raise, Abort, goto … wird nie
 //                             ausgeführt (#94); gemeldet wird nur die erste
 //                             Anweisung eines unerreichbaren Abschnitts
+//   use-after-free            nach X.Free, X.Destroy, X.DisposeOf, FreeAndNil(X)
+//                             oder Dispose(X) wird X ohne neue Zuweisung wieder
+//                             benutzt (#915): X.Methode, X.Feld, X[…], X^, with X,
+//                             nach Free auch Assigned(X) und ein zweites Free.
+//                             Vom Freigabeknoten aus folgt die Regel dem Graphen;
+//                             eine Zuweisung an X, die Übergabe von X an eine
+//                             Routine, @X und nach FreeAndNil eine Abfrage auf nil
+//                             (Assigned(X), X <> nil) beenden den Weg. Konfidenz
+//                             hoch, wenn Freigabe und Zugriff im selben Block
+//                             nacheinander stehen, sonst mittel. Die Aktion
+//                             springt zur Freigabe.
 //
 // Was der Graph nicht sieht, macht die Variable "unbekannt" und erzeugt keinen
 // Treffer: Übergabe als Argument (var/out-Parameter, SetLength, FillChar,
@@ -46,6 +57,15 @@ type
     function Descriptor: TRuleDescriptor;
     procedure Check(const AContext: TRuleContext; const AReport: IRuleReport);
   end;
+
+  TUseAfterFreeRule = class(TInterfacedObject, IRule)
+  public
+    function Descriptor: TRuleDescriptor;
+    procedure Check(const AContext: TRuleContext; const AReport: IRuleReport);
+  end;
+
+const
+  UseAfterFreeRuleId = 'use-after-free';
 
 /// <summary>Wird AName in ABlock so benutzt, dass der Kontrollfluss die Zuweisung nicht sieht?</summary>
 function HasOpaqueUse(ABlock: TSyntaxNode; const AName: string): Boolean;
@@ -420,11 +440,252 @@ begin
   end;
 end;
 
+{ TUseAfterFreeRule }
+
+function TUseAfterFreeRule.Descriptor: TRuleDescriptor;
+begin
+  Result := TRuleDescriptor.Create(UseAfterFreeRuleId, TRuleSeverity.Error, 'Objekt nach Free weiter benutzt');
+end;
+
+/// <summary>Name einer Variablen oder eines Feldes (X oder Self.X); sonst ''.</summary>
+function FreedPath(ANode: TSyntaxNode): string;
+begin
+  Result := '';
+  if ANode = nil then
+    Exit;
+  if ANode.Kind = TSyntaxKind.Identifier then
+    Result := ANode.Name
+  else if (ANode.Kind = TSyntaxKind.MemberAccess) and (ANode.ChildCount = 1) and IsName(ANode[0], 'Self') then
+    Result := ANode.Name;
+  if SameText(Result, 'Self') or SameText(Result, 'inherited') then
+    Result := '';
+end;
+
+/// <summary>Gibt die Anweisung AStatement X frei? AToNil bei FreeAndNil.</summary>
+function FreedBy(AStatement: TSyntaxNode; out APath: string; out AToNil: Boolean): Boolean;
+var
+  Callee, Target: TSyntaxNode;
+begin
+  Result := False;
+  APath := '';
+  AToNil := False;
+  if (AStatement = nil) or (AStatement.Kind <> TSyntaxKind.CallStatement) or (AStatement.ChildCount = 0) then
+    Exit;
+  Callee := AStatement[0];
+  Target := nil;
+  // X.Free; bzw. X.Free();
+  if (Callee.Kind = TSyntaxKind.Call) and (Callee.ChildCount = 1) then
+    Callee := Callee[0];
+  if (Callee.Kind = TSyntaxKind.MemberAccess) and (Callee.ChildCount = 1) and
+    MatchText(Callee.Name, ['Free', 'Destroy', 'DisposeOf']) then
+    Target := Callee[0]
+  else if (Callee.Kind = TSyntaxKind.Call) and (Callee.ChildCount = 2) and (Callee[0].Kind = TSyntaxKind.Identifier) and
+    MatchText(Callee[0].Name, ['FreeAndNil', 'Dispose']) then
+  begin
+    Target := Callee[1];
+    AToNil := SameText(Callee[0].Name, 'FreeAndNil');
+  end;
+  APath := FreedPath(Target);
+  Result := APath <> '';
+end;
+
+procedure TUseAfterFreeRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
+const
+  StatementKinds = [TSyntaxKind.Block, TSyntaxKind.AsmBlock, TSyntaxKind.AssignStatement,
+    TSyntaxKind.CallStatement, TSyntaxKind.IfStatement, TSyntaxKind.CaseStatement, TSyntaxKind.CaseItem,
+    TSyntaxKind.CaseElse, TSyntaxKind.ForStatement, TSyntaxKind.ForInStatement, TSyntaxKind.WhileStatement,
+    TSyntaxKind.RepeatStatement, TSyntaxKind.WithStatement, TSyntaxKind.TryStatement, TSyntaxKind.ExceptBlock,
+    TSyntaxKind.ExceptionHandler, TSyntaxKind.FinallyBlock, TSyntaxKind.RaiseStatement, TSyntaxKind.GotoStatement,
+    TSyntaxKind.LabeledStatement, TSyntaxKind.InlineVar, TSyntaxKind.InlineConst, TSyntaxKind.EmptyStatement];
+var
+  Cache: IRuleDerivedCache;
+  Routine: TSyntaxNode;
+  Graph: TControlFlowGraph;
+  Node: TFlowNode;
+  Reported: TArray<Integer>;
+  Path: string;
+  ToNil: Boolean;
+
+  function AlreadyReported(AOffset: Integer): Boolean;
+  var
+    Offset: Integer;
+  begin
+    for Offset in Reported do
+      if Offset = AOffset then
+        Exit(True);
+    Result := False;
+  end;
+
+  // Zugriffe auf APath im eigenen Teil der Anweisung bzw. Bedingung ASyntax; AStops: der Weg endet hier.
+  procedure Inspect(ASyntax: TSyntaxNode; const APath: string; AToNil: Boolean; var AUses: TArray<TSyntaxNode>;
+    var AStops, AGuarded: Boolean);
+
+    procedure Visit(E: TSyntaxNode);
+    var
+      Index: Integer;
+      Callee: TSyntaxNode;
+    begin
+      if E.Kind in [TSyntaxKind.AnonymousMethod, TSyntaxKind.RoutineDecl] then
+        Exit;
+      case E.Kind of
+        TSyntaxKind.MemberAccess, TSyntaxKind.IndexAccess, TSyntaxKind.Dereference:
+          if (E.ChildCount > 0) and SameText(FreedPath(E[0]), APath) then
+          begin
+            // Nach FreeAndNil ist ein weiteres Free harmlos.
+            if not (AToNil and (E.Kind = TSyntaxKind.MemberAccess) and SameText(E.Name, 'Free')) then
+              AUses := AUses + [E[0]];
+            for Index := 1 to E.ChildCount - 1 do
+              Visit(E[Index]);
+            Exit;
+          end;
+        TSyntaxKind.Call:
+          begin
+            Callee := nil;
+            if E.ChildCount > 0 then
+              Callee := E[0];
+            for Index := 1 to E.ChildCount - 1 do
+              if SameText(FreedPath(E[Index]), APath) then
+              begin
+                if (Callee <> nil) and (Callee.Kind = TSyntaxKind.Identifier) and
+                  MatchText(Callee.Name, ['Assigned', 'FreeAndNil']) and not AToNil then
+                  // Nach Free: Assigned(X) ist immer True, FreeAndNil(X) gibt doppelt frei.
+                  AUses := AUses + [E[Index]]
+                else if (Callee <> nil) and (Callee.Kind = TSyntaxKind.Identifier) and
+                  SameText(Callee.Name, 'Assigned') then
+                  AGuarded := True
+                else
+                  // Übergabe: die Routine kann X neu setzen oder nur vergleichen (List.Remove(X)).
+                  AStops := True;
+              end;
+          end;
+        TSyntaxKind.AddressOf:
+          if (E.ChildCount > 0) and SameText(FreedPath(E[0]), APath) then
+          begin
+            AStops := True;
+            Exit;
+          end;
+        TSyntaxKind.BinaryExpr:
+          // X = nil, X <> nil: eine Abfrage, die den Weg trennt.
+          for Index := 0 to E.ChildCount - 1 do
+            if SameText(FreedPath(E[Index]), APath) then
+              AGuarded := True;
+      end;
+      for Index := 0 to E.ChildCount - 1 do
+        Visit(E[Index]);
+    end;
+
+  var
+    Index: Integer;
+    Child: TSyntaxNode;
+    AllChildren: Boolean;
+  begin
+    AllChildren := ASyntax.Kind in [TSyntaxKind.AssignStatement, TSyntaxKind.CallStatement,
+      TSyntaxKind.RaiseStatement, TSyntaxKind.InlineVar, TSyntaxKind.InlineConst];
+    for Index := 0 to ASyntax.ChildCount - 1 do
+    begin
+      Child := ASyntax[Index];
+      if not AllChildren and (Child.Kind in StatementKinds) then
+        Continue;
+      if (Index = 0) and (ASyntax.Kind = TSyntaxKind.AssignStatement) and SameText(FreedPath(Child), APath) then
+      begin
+        AStops := True;
+        Continue;
+      end;
+      if (ASyntax.Kind = TSyntaxKind.WithStatement) and SameText(FreedPath(Child), APath) then
+      begin
+        AUses := AUses + [Child];
+        Continue;
+      end;
+      Visit(Child);
+    end;
+  end;
+
+  procedure Follow(AFree: TFlowNode; const APath: string; AToNil: Boolean);
+  var
+    Visited: TArray<Boolean>;
+    Queue: TArray<TFlowNode>;
+    Head: Integer;
+    Current, Next: TFlowNode;
+    Accesses: TArray<TSyntaxNode>;
+    Access: TSyntaxNode;
+    Stops, Guarded: Boolean;
+    Confidence: TRuleConfidence;
+    FreeLine: Integer;
+    Message: string;
+  begin
+    SetLength(Visited, Graph.Nodes.Count);
+    // Wege nur über eine mögliche Ausnahme (die Anweisung wirkt dann nicht) bleiben aus: lieber zu wenig.
+    Queue := nil;
+    for Next in AFree.Successors do
+      if not AFree.IsImplicitRaiseEdge(Next) then
+        Queue := Queue + [Next];
+    FreeLine := AFree.Syntax.StartPos.Line;
+    Head := 0;
+    while Head < Length(Queue) do
+    begin
+      Current := Queue[Head];
+      Inc(Head);
+      if Visited[Current.Index] then
+        Continue;
+      Visited[Current.Index] := True;
+      // for und for … in weisen der Schleifenvariablen in jedem Durchlauf neu zu.
+      Stops := SameText(Current.Defines, APath) or ((Current.Kind = TFlowNodeKind.Condition) and
+        (Current.Syntax.Kind in [TSyntaxKind.ForStatement, TSyntaxKind.ForInStatement]) and
+        SameText(Current.Syntax.Name, APath));
+      Guarded := False;
+      Accesses := nil;
+      if (Current.Syntax <> nil) and not Stops then
+        Inspect(Current.Syntax, APath, AToNil, Accesses, Stops, Guarded);
+      if Guarded and AToNil then
+        Continue;
+      for Access in Accesses do
+      begin
+        if AlreadyReported(Access.StartOffset) then
+          Continue;
+        Reported := Reported + [Access.StartOffset];
+        // Im selben Block nacheinander: der Zugriff folgt sicher auf die Freigabe.
+        Confidence := TRuleConfidence.Medium;
+        if (Current.Syntax.Parent = AFree.Syntax.Parent) and (Current.Syntax.StartOffset > AFree.Syntax.StartOffset)
+          then
+          Confidence := TRuleConfidence.High;
+        if AToNil then
+          Message := Format('%s wurde in Zeile %d mit FreeAndNil freigegeben und ist hier nil.',
+            [APath, FreeLine + 1])
+        else
+          Message := Format('%s wurde in Zeile %d freigegeben und wird hier wieder gelesen.', [APath, FreeLine + 1]);
+        AReport.Add(NodeRange(Access), Message, Confidence,
+          [TRuleFix.Jump(Format('Zur Freigabe in Zeile %d springen', [FreeLine + 1]), AFree.Syntax.StartPos)]);
+      end;
+      if Stops or Guarded then
+        Continue;
+      for Next in Current.Successors do
+        if not Visited[Next.Index] and not Current.IsImplicitRaiseEdge(Next) then
+          Queue := Queue + [Next];
+    end;
+  end;
+
+begin
+  if AContext.Tree = nil then
+    Exit;
+  Cache := TRuleDerived.Open(AContext);
+  Reported := nil;
+  for Routine in TRuleDerived.Routines(Cache, AContext) do
+  begin
+    Graph := TRuleDerived.Graph(Cache, AContext, Routine);
+    if not Graph.Complete then
+      Continue;
+    for Node in Graph.Nodes do
+      if (Node.Kind = TFlowNodeKind.Statement) and FreedBy(Node.Syntax, Path, ToNil) then
+        Follow(Node, Path, ToNil);
+  end;
+end;
+
 procedure RegisterFlowRules(const ARegistry: TRuleRegistry);
 begin
   ARegistry.Register(TResultNotSetRule.Create);
   ARegistry.Register(TPossiblyUninitializedRule.Create);
   ARegistry.Register(TUnreachableCodeRule.Create);
+  ARegistry.Register(TUseAfterFreeRule.Create);
 end;
 
 end.

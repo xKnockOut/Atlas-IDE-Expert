@@ -6,7 +6,7 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 
 | Gruppe | Regeln |
 |---|---|
-| [Fehler finden](#gruppe-find-bugs) | 31 |
+| [Fehler finden](#gruppe-find-bugs) | 32 |
 | [Exceptions](#gruppe-exceptions) | 5 |
 | [Threads](#gruppe-threads) | 6 |
 | [Robustheit und Muster](#gruppe-robustness) | 2 |
@@ -55,6 +55,7 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 | [`empty-statement`](#empty-statement) | Leere Anweisung nach then, do oder else | Bug | Warnung |
 | [`loop-off-by-one`](#loop-off-by-one) | Schleife läuft einen Schritt zu weit | Bug | Warnung |
 | [`collection-modified-in-loop`](#collection-modified-in-loop) | Liste in der eigenen Schleife verändert | Bug | Warnung |
+| [`use-after-free`](#use-after-free) | Objekt nach Free weiter benutzt | Bug | Fehler |
 
 <a id="gruppe-exceptions"></a>
 ### Exceptions
@@ -2596,4 +2597,25 @@ Richtig:
 for I := Liste.Count - 1 downto 0 do
   if Liste[I].Erledigt then
     Liste.Delete(I);
+```
+
+<a id="use-after-free"></a>
+### use-after-free
+
+**Objekt nach Free weiter benutzt** · Bug · Fehler · Gruppe Fehler finden
+
+Nach X.Free, X.Destroy, X.DisposeOf, FreeAndNil(X) oder Dispose(X) wird X ohne neue Zuweisung wieder benutzt: Methode, Feld, Index oder X^, with X, nach Free auch Assigned(X) (immer True) oder ein zweites Free. Die Regel folgt dem Datenfluss der Routine; eine Zuweisung an X, die Übergabe von X an eine Routine, @X und nach FreeAndNil eine Abfrage auf nil beenden den Weg, Wege nur über eine mögliche Ausnahme bleiben aus. Konfidenz hoch, wenn Freigabe und Zugriff im selben Block nacheinander stehen, sonst mittel. Keine automatische Korrektur; die Aktion springt zur Freigabe.
+
+Mit Treffer:
+
+```pascal
+Bericht.Free;
+Protokoll.Add('Seiten: ' + IntToStr(Bericht.Seiten));
+```
+
+Richtig:
+
+```pascal
+Protokoll.Add('Seiten: ' + IntToStr(Bericht.Seiten));
+Bericht.Free;
 ```

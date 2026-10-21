@@ -49,7 +49,13 @@ type
     /// <summary>Datei, die die Edits ändern, z. B. die Formulardatei neben der Unit (#309);
     /// '' = die geprüfte Datei.</summary>
     FileName: string;
+    /// <summary>Sprung statt Änderung (#915): der Client setzt den Cursor auf JumpTo in der geprüften Datei,
+    /// z. B. zur Freigabe bei use-after-free. Edits bleiben leer.</summary>
+    HasJump: Boolean;
+    JumpTo: TTextPosition;
     constructor Create(const ATitle: string; const AEdits: TArray<TRuleEdit>; ASafe: Boolean = False);
+    /// <summary>Aktion, die nur zu ATarget springt (#915).</summary>
+    class function Jump(const ATitle: string; const ATarget: TTextPosition): TRuleFix; static;
   end;
 
   /// <summary>Ein Treffer einer Regel. Severity setzt die Engine.</summary>
@@ -225,6 +231,15 @@ begin
   Safe := ASafe;
   Alternative := False;
   FileName := '';
+  HasJump := False;
+  JumpTo := Default(TTextPosition);
+end;
+
+class function TRuleFix.Jump(const ATitle: string; const ATarget: TTextPosition): TRuleFix;
+begin
+  Result := TRuleFix.Create(ATitle, nil);
+  Result.HasJump := True;
+  Result.JumpTo := ATarget;
 end;
 
 end.

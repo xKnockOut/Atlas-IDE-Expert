@@ -1,6 +1,10 @@
 ﻿unit Atlas.Common.Rules.Builtin.Flow.Tests;
 
-// Tests für die Flussregeln result-not-set und possibly-uninitialized (#269).
+// Tests für die Flussregeln result-not-set und possibly-uninitialized (#269),
+// unreachable-code (#94) und use-after-free (#915): Beispiel mit Sprung zur
+// Freigabe, FreeAndNil, Konfidenz nach Block, doppelte Freigabe, Dispose,
+// stille Muster (neue Zuweisung, Abfrage auf nil, Übergabe, try/finally,
+// Schleife), Abschalten und Ausnahmen.
 
 interface
 
@@ -43,6 +47,16 @@ type
     /// Kontrollflussgraphen (Review P-03).</summary>
     [Test]
     procedure FlowRulesFindSameWithSharedGraphs;
+    [Test]
+    procedure UseAfterFreeReportsWithJump;
+    [Test]
+    procedure UseAfterFreeAndNilAndConfidence;
+    [Test]
+    procedure DoubleFreeAndDispose;
+    [Test]
+    procedure SafeUsesAfterFreeAreSilent;
+    [Test]
+    procedure UseAfterFreeOffAndExclude;
   end;
 
 implementation
@@ -56,6 +70,10 @@ uses
   Atlas.Common.Rules.Builtin.Flow,
   Atlas.Common.Rules.Builtin.Capture,
   Atlas.Common.Rules.Builtin.Unused,
+  Atlas.Common.Rules.Builtin,
+  Atlas.Common.Rules.CodeActions,
+  Atlas.Common.Editing.CodeActions,
+  Atlas.Common.Documents.Contract,
   Atlas.Tests.RuleAssert;
 
 function Routine(const ABody: string; const AHeader: string = 'function F: Integer;';
@@ -215,6 +233,131 @@ begin
     TUnreachableCodeRule.Create, TCapturedLoopVariableRule.Create, TUnusedLocalRule.Create,
     TUnusedParameterRule.Create, TUnusedAssignmentRule.Create], Source, '{"minConfidence": "low"}');
   Assert.IsTrue(Count >= 5, 'Treffer mehrerer Regeln: ' + IntToStr(Count));
+end;
+
+const
+  FreeHeader = 'procedure P(A: Boolean; Bericht: TBericht; Protokoll: TStrings; Zeiger: PDaten);';
+
+procedure TFlowRulesTests.UseAfterFreeReportsWithJump;
+var
+  Findings: TArray<TRuleFinding>;
+  Actions: TArray<TCodeAction>;
+  Source: string;
+  Rule: IRule;
+  Found: Boolean;
+begin
+  Source := Routine('  Bericht.Free;'#10'  Protokoll.Add(''Seiten: '' + IntToStr(Bericht.Seiten));', FreeHeader);
+  Findings := TRuleAssert.Findings(TUseAfterFreeRule.Create, Source);
+  Assert.AreEqual(1, Integer(Length(Findings)));
+  Assert.AreEqual(UseAfterFreeRuleId, Findings[0].RuleId);
+  Assert.AreEqual(Ord(TRuleSeverity.Error), Ord(Findings[0].Severity));
+  Assert.AreEqual(Ord(TRuleConfidence.High), Ord(Findings[0].Confidence));
+  Assert.AreEqual('Bericht wurde in Zeile 6 freigegeben und wird hier wieder gelesen.', Findings[0].Message);
+  Assert.AreEqual(6, Findings[0].Range.StartPos.Line);
+  Assert.AreEqual(38, Findings[0].Range.StartPos.Character);
+  Assert.AreEqual(45, Findings[0].Range.EndPos.Character);
+  // Keine automatische Korrektur, nur der Sprung zur Freigabe.
+  Assert.AreEqual(1, Integer(Length(Findings[0].Fixes)));
+  Assert.AreEqual('Zur Freigabe in Zeile 6 springen', Findings[0].Fixes[0].Title);
+  Assert.IsTrue(Findings[0].Fixes[0].HasJump);
+  Assert.AreEqual(0, Integer(Length(Findings[0].Fixes[0].Edits)));
+  Assert.AreEqual(5, Findings[0].Fixes[0].JumpTo.Line);
+  Assert.AreEqual(2, Findings[0].Fixes[0].JumpTo.Character);
+  Actions := TRuleCodeActions.ForFindings(Findings, Source, Findings[0].Range);
+  Assert.AreEqual('Zur Freigabe in Zeile 6 springen', Actions[0].Title);
+  Assert.AreEqual(GoToPositionCommand, Actions[0].Command);
+  Assert.AreEqual(2, Integer(Length(Actions[0].CommandArguments)));
+  Assert.AreEqual('5', Actions[0].CommandArguments[0]);
+  Assert.AreEqual('2', Actions[0].CommandArguments[1]);
+  Assert.AreEqual(RuleFixTag, Actions[0].Tag);
+  Assert.AreEqual(0, Integer(Length(Actions[0].Edits)));
+  // Gewöhnliche Korrekturen behalten keinen Befehl.
+  Assert.AreEqual('', Actions[1].Command);
+  Found := False;
+  for Rule in BuiltinRules do
+    if Rule.Descriptor.Id = UseAfterFreeRuleId then
+      Found := True;
+  Assert.IsTrue(Found, UseAfterFreeRuleId);
+end;
+
+procedure TFlowRulesTests.UseAfterFreeAndNilAndConfidence;
+var
+  Findings: TArray<TRuleFinding>;
+begin
+  Findings := TRuleAssert.Findings(TUseAfterFreeRule.Create,
+    Routine('  FreeAndNil(Bericht);'#10'  Bericht.Drucken;'#10'  Bericht.Free;', FreeHeader));
+  Assert.AreEqual(1, Integer(Length(Findings)), 'Free nach FreeAndNil ist harmlos');
+  Assert.AreEqual('Bericht wurde in Zeile 6 mit FreeAndNil freigegeben und ist hier nil.', Findings[0].Message);
+  Assert.AreEqual(6, Findings[0].Range.StartPos.Line);
+  // Freigabe nur in einem Zweig: mittlere Konfidenz.
+  Findings := TRuleAssert.Findings(TUseAfterFreeRule.Create,
+    Routine('  if A then'#10'    Bericht.Free;'#10'  Bericht.Drucken;', FreeHeader), '{"minConfidence": "low"}',
+    'U.pas');
+  Assert.AreEqual(1, Integer(Length(Findings)));
+  Assert.AreEqual(Ord(TRuleConfidence.Medium), Ord(Findings[0].Confidence));
+  Assert.AreEqual(7, Findings[0].Range.StartPos.Line);
+  // Self.FFeld zählt wie FFeld.
+  Assert.AreEqual(1, Integer(Length(TRuleAssert.Findings(TUseAfterFreeRule.Create,
+    Routine('  Self.Bericht.Free;'#10'  Bericht.Drucken;', FreeHeader)))));
+end;
+
+procedure TFlowRulesTests.DoubleFreeAndDispose;
+var
+  Findings: TArray<TRuleFinding>;
+begin
+  Findings := TRuleAssert.Findings(TUseAfterFreeRule.Create,
+    Routine('  Bericht.Free;'#10'  if Assigned(Bericht) then'#10'    Bericht.Free;', FreeHeader));
+  Assert.AreEqual(2, Integer(Length(Findings)), 'Assigned nach Free ist immer True, das zweite Free gibt doppelt frei');
+  Assert.AreEqual(6, Findings[0].Range.StartPos.Line);
+  Assert.AreEqual(7, Findings[1].Range.StartPos.Line);
+  Findings := TRuleAssert.Findings(TUseAfterFreeRule.Create,
+    Routine('  Dispose(Zeiger);'#10'  Zeiger^.Wert := 1;', FreeHeader));
+  Assert.AreEqual(1, Integer(Length(Findings)));
+  Assert.AreEqual('Zeiger wurde in Zeile 6 freigegeben und wird hier wieder gelesen.', Findings[0].Message);
+  // Freigabe in der Schleife ohne neue Zuweisung: der zweite Durchlauf gibt doppelt frei.
+  Assert.AreEqual(1, Integer(Length(TRuleAssert.Findings(TUseAfterFreeRule.Create,
+    Routine('  while A do'#10'    Bericht.Free;', FreeHeader), '{"minConfidence": "low"}', 'U.pas'))));
+end;
+
+procedure TFlowRulesTests.SafeUsesAfterFreeAreSilent;
+begin
+  TRuleAssert.Silent(TUseAfterFreeRule.Create, Routine(
+    // Neue Zuweisung.
+    '  Bericht.Free;'#10'  Bericht := TBericht.Create;'#10'  Bericht.Drucken;'#10 +
+    '  Bericht.Free;'#10'  Bericht := nil;'#10'  if Bericht = nil then'#10'    Exit;'#10, FreeHeader));
+  TRuleAssert.Silent(TUseAfterFreeRule.Create, Routine(
+    // Nach FreeAndNil abgefragt.
+    '  FreeAndNil(Bericht);'#10'  if Assigned(Bericht) then'#10'    Bericht.Drucken;'#10 +
+    '  if Bericht <> nil then'#10'    Bericht.Drucken;', FreeHeader));
+  TRuleAssert.Silent(TUseAfterFreeRule.Create, Routine(
+    // Übergabe: nur der Zeigerwert (Liste.Remove) oder neu gesetzt (var-Parameter).
+    '  Bericht.Free;'#10'  Liste.Remove(Bericht);'#10'  Bericht.Drucken;', FreeHeader));
+  TRuleAssert.Silent(TUseAfterFreeRule.Create, Routine(
+    // try/finally und Schleife mit neuer Zuweisung je Durchlauf.
+    '  while A do'#10'  begin'#10'    Bericht := TBericht.Create;'#10'    try'#10'      Bericht.Drucken;'#10 +
+    '    finally'#10'      Bericht.Free;'#10'    end;'#10'  end;'#10 +
+    '  Protokoll.Free;'#10'  Bericht := nil;'#10'  Protokoll := TStringList.Create;'#10'  Protokoll.Clear;',
+    FreeHeader));
+  TRuleAssert.Silent(TUseAfterFreeRule.Create, Routine(
+    // Im try neu gesetzt; der Weg über eine Ausnahme dazwischen bleibt aus.
+    '  Bericht := TBericht.Create;'#10'  try'#10'    Bericht.Free;'#10'    Bericht := TBericht.Create;'#10 +
+    '    Bericht.Drucken;'#10'  finally'#10'    Bericht.Free;'#10'  end;', FreeHeader));
+  TRuleAssert.Silent(TUseAfterFreeRule.Create, Routine(
+    // Freigabe nur auf einem Weg, der nicht zum Zugriff führt.
+    '  if A then'#10'  begin'#10'    Bericht.Free;'#10'    Exit;'#10'  end;'#10'  Bericht.Drucken;', FreeHeader));
+end;
+
+procedure TFlowRulesTests.UseAfterFreeOffAndExclude;
+var
+  Source: string;
+begin
+  Source := Routine('  Bericht.Free;'#10'  Bericht.Drucken;', FreeHeader);
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TUseAfterFreeRule.Create, Source,
+    '{"rules": {"use-after-free": "off"}}', 'U.pas'))));
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TUseAfterFreeRule.Create, Source,
+    '{"rules": {"use-after-free": {"exclude": ["Alt/*.pas"]}}}', 'Alt/U.pas'))));
+  Assert.AreEqual(1, Integer(Length(TRuleAssert.Findings(TUseAfterFreeRule.Create, Source,
+    '{"rules": {"use-after-free": {"exclude": ["Alt/*.pas"]}}}', 'Neu/U.pas'))));
 end;
 
 initialization
