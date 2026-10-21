@@ -38,17 +38,47 @@
     {
       "id": "forbidden-uses",
       "name": "Verbotene uses-Beziehung",
-      "description": "Ein uses-Eintrag verletzt eine Schichtregel unter \"layers\" in atlas.json, z. B. darf *.Common.* nicht Vcl.* verwenden."
+      "description": "Ein uses-Eintrag verletzt eine Schichtregel unter \"layers\" in atlas.json, z. B. darf *.Common.* nicht Vcl.* verwenden.",
+      "options": [
+        {
+          "name": "layers",
+          "description": "Schichtregeln: [{\"from\": Glob, \"deny\": [Globs], \"allow\": [Globs]}]."
+        }
+      ]
     },
     {
       "id": "architecture-role-import",
       "name": "Import verletzt die Rollenmatrix",
-      "description": "Ein uses-Eintrag verletzt die Importmatrix des Rollenkonzepts (Ausgabeartefakt, Feature, Rolle: Contract, Internals, Providers, Adapters, Composition, Hosting). Standardmäßig aus; in atlas.json mit der Option \"prefixes\" einschalten. Genehmigte Ausnahmen stehen unter \"allow\" als \"Quelle -> Ziel\"-Globs."
+      "description": "Ein uses-Eintrag verletzt die Importmatrix des Rollenkonzepts (Ausgabeartefakt, Feature, Rolle: Contract, Internals, Providers, Adapters, Composition, Hosting). Standardmäßig aus; in atlas.json mit der Option \"prefixes\" einschalten. Genehmigte Ausnahmen stehen unter \"allow\" als \"Quelle -> Ziel\"-Globs.",
+      "options": [
+        {
+          "name": "prefixes",
+          "description": "Präfixe der Ausgabeartefakte, z. B. \"Atlas.Common\"; ohne Angabe meldet die Regel nichts."
+        },
+        {
+          "name": "hostRoles",
+          "description": "Erste Namenssegmente der Host-Units ohne Präfix."
+        },
+        {
+          "name": "allow",
+          "description": "Genehmigte Ausnahmen \"Quelle -> Ziel\" (beide Globs)."
+        }
+      ]
     },
     {
       "id": "architecture-contract-content",
       "name": "Klasse in einer Contract-Unit",
-      "description": "Eine Contract-Unit deklariert im interface eine Klasse. Contracts enthalten nur Records, Interfaces, Aufzählungen und Ausnahmen. Standardmäßig aus; in atlas.json mit der Option \"prefixes\" einschalten. Genehmigte Ausnahmen stehen unter \"allow\" als \"Unit.Typ\"-Globs."
+      "description": "Eine Contract-Unit deklariert im interface eine Klasse. Contracts enthalten nur Records, Interfaces, Aufzählungen und Ausnahmen. Standardmäßig aus; in atlas.json mit der Option \"prefixes\" einschalten. Genehmigte Ausnahmen stehen unter \"allow\" als \"Unit.Typ\"-Globs.",
+      "options": [
+        {
+          "name": "prefixes",
+          "description": "Präfixe der Ausgabeartefakte, z. B. \"Atlas.Common\"."
+        },
+        {
+          "name": "allow",
+          "description": "Genehmigte Ausnahmen \"Unit.Typ\" als Glob."
+        }
+      ]
     },
     {
       "id": "thread-vcl-access",
@@ -58,7 +88,13 @@
     {
       "id": "lock-without-finally",
       "name": "Sperre ohne try/finally",
-      "description": "Auf eine Sperre (TCriticalSection.Enter/Acquire, TMonitor.Enter, BeginRead/BeginWrite, TSpinLock.Enter, TMutex.Acquire, EnterCriticalSection oder ein Paar aus der Option lockPairs) folgt kein try/finally mit der Freigabe. Eine Ausnahme lässt die Sperre gesetzt."
+      "description": "Auf eine Sperre (TCriticalSection.Enter/Acquire, TMonitor.Enter, BeginRead/BeginWrite, TSpinLock.Enter, TMutex.Acquire, EnterCriticalSection oder ein Paar aus der Option lockPairs) folgt kein try/finally mit der Freigabe. Eine Ausnahme lässt die Sperre gesetzt.",
+      "options": [
+        {
+          "name": "lockPairs",
+          "description": "Weitere Sperrpaare als [[\"Sperren\", \"Freigeben\"]]."
+        }
+      ]
     },
     {
       "id": "thread-use-after-free-on-terminate",
@@ -98,17 +134,35 @@
     {
       "id": "unused-local",
       "name": "Ungenutzte lokale Variable",
-      "description": "Eine lokale Variable ist deklariert, wird aber nie verwendet. Wie Compilerhinweis H2164, aber schon beim Tippen."
+      "description": "Eine lokale Variable ist deklariert, wird aber nie verwendet. Wie Compilerhinweis H2164, aber schon beim Tippen.",
+      "options": [
+        {
+          "name": "ignore",
+          "description": "Namensmuster, die nie gemeldet werden (* und ?)."
+        }
+      ]
     },
     {
       "id": "unused-parameter",
       "name": "Ungenutzter Parameter",
-      "description": "Ein Parameter wird im Rumpf der Routine nicht verwendet. Ausgenommen sind überschriebene und virtuelle Methoden, Ereignis-Handler, published-Methoden, Interface-Implementierungen und Callbacks."
+      "description": "Ein Parameter wird im Rumpf der Routine nicht verwendet. Ausgenommen sind überschriebene und virtuelle Methoden, Ereignis-Handler, published-Methoden, Interface-Implementierungen und Callbacks.",
+      "options": [
+        {
+          "name": "ignore",
+          "description": "Namensmuster, die nie gemeldet werden (* und ?)."
+        }
+      ]
     },
     {
       "id": "unused-assignment",
       "name": "Zugewiesener Wert ungenutzt",
-      "description": "Ein einer lokalen Variable zugewiesener Wert wird überschrieben oder die Routine endet, bevor er gelesen wird. Wie Compilerhinweis H2077."
+      "description": "Ein einer lokalen Variable zugewiesener Wert wird überschrieben oder die Routine endet, bevor er gelesen wird. Wie Compilerhinweis H2077.",
+      "options": [
+        {
+          "name": "ignore",
+          "description": "Namensmuster, die nie gemeldet werden (* und ?)."
+        }
+      ]
     },
     {
       "id": "declared-not-implemented",
@@ -148,7 +202,13 @@
     {
       "id": "captured-loop-variable",
       "name": "Erfasste Schleifenvariable",
-      "description": "Eine anonyme Methode, die an eine verzögert ausführende API (TThread.Queue, TTask.Run …) geht, erfasst eine Variable, die sich vor dem Aufruf noch ändert, etwa die Variable einer for-in-Schleife. Delphi erfasst die Variable, nicht ihren Wert."
+      "description": "Eine anonyme Methode, die an eine verzögert ausführende API (TThread.Queue, TTask.Run …) geht, erfasst eine Variable, die sich vor dem Aufruf noch ändert, etwa die Variable einer for-in-Schleife. Delphi erfasst die Variable, nicht ihren Wert.",
+      "options": [
+        {
+          "name": "deferredApis",
+          "description": "Weitere verzögerte APIs (zusätzlich zu TThread.Queue, TTask.Run u. a.)."
+        }
+      ]
     },
     {
       "id": "component-missing-inherited",
@@ -288,7 +348,13 @@
     {
       "id": "file-header",
       "name": "Dateikopf fehlt oder weicht ab",
-      "description": "Die Datei beginnt nicht mit dem Kopf aus der Regeloption \"template\". Standardmäßig aus; in atlas.json mit einer Vorlage einschalten. Die Schnellkorrektur fügt den Kopf ein."
+      "description": "Die Datei beginnt nicht mit dem Kopf aus der Regeloption \"template\". Standardmäßig aus; in atlas.json mit einer Vorlage einschalten. Die Schnellkorrektur fügt den Kopf ein.",
+      "options": [
+        {
+          "name": "template",
+          "description": "Erwarteter Dateikopf; Platzhalter wie dokumentiert."
+        }
+      ]
     },
     {
       "id": "hardcoded-string",
@@ -313,7 +379,13 @@
     {
       "id": "assert-side-effect",
       "name": "Assert mit Seiteneffekt",
-      "description": "Das Argument von Assert verändert Daten (Inc, Dec, eine Try…-Funktion mit out-Parameter oder eine Methode aus der Option mutatingMethods). Mit {$C-} entfernt der Compiler den ganzen Aufruf samt Seiteneffekt."
+      "description": "Das Argument von Assert verändert Daten (Inc, Dec, eine Try…-Funktion mit out-Parameter oder eine Methode aus der Option mutatingMethods). Mit {$C-} entfernt der Compiler den ganzen Aufruf samt Seiteneffekt.",
+      "options": [
+        {
+          "name": "mutatingMethods",
+          "description": "Methoden, die ihr Objekt verändern."
+        }
+      ]
     },
     {
       "id": "ifthen-side-effect",
@@ -418,32 +490,68 @@
     {
       "id": "metric-method-length",
       "name": "Methode zu lang",
-      "description": "Die Methode hat mehr Codezeilen als der Grenzwert (Vorgabe 60). Leerzeilen, Kommentare, Compiler-Direktiven und lokale Routinen zählen nicht mit. Die Methode in kleinere aufteilen. Den Grenzwert setzt die Option max, z. B. \"rules\": {\"metric-method-length\": {\"max\": 80}}."
+      "description": "Die Methode hat mehr Codezeilen als der Grenzwert (Vorgabe 60). Leerzeilen, Kommentare, Compiler-Direktiven und lokale Routinen zählen nicht mit. Die Methode in kleinere aufteilen. Den Grenzwert setzt die Option max, z. B. \"rules\": {\"metric-method-length\": {\"max\": 80}}.",
+      "options": [
+        {
+          "name": "max",
+          "description": "Höchstens so viele Anweisungszeilen."
+        }
+      ]
     },
     {
       "id": "metric-nesting-depth",
       "name": "Zu tief verschachtelt",
-      "description": "Die Methode verschachtelt if, case, Schleifen und try tiefer als der Grenzwert (Vorgabe 4). else if bleibt auf der Ebene seines if. Mit Exit oder Continue früh verlassen oder innere Teile in eigene Methoden auslagern. Den Grenzwert setzt die Option max."
+      "description": "Die Methode verschachtelt if, case, Schleifen und try tiefer als der Grenzwert (Vorgabe 4). else if bleibt auf der Ebene seines if. Mit Exit oder Continue früh verlassen oder innere Teile in eigene Methoden auslagern. Den Grenzwert setzt die Option max.",
+      "options": [
+        {
+          "name": "max",
+          "description": "Höchste erlaubte Schachtelungstiefe."
+        }
+      ]
     },
     {
       "id": "metric-cyclomatic-complexity",
       "name": "Zyklomatische Komplexität zu hoch",
-      "description": "Die zyklomatische Komplexität der Methode liegt über dem Grenzwert (Vorgabe 15). Sie beginnt bei 1 und steigt um 1 je if, while, repeat und for, je case-Zweig ohne else, je and/or in einer Bedingung und je except on; ein except ohne on zählt einmal. Viele Pfade brauchen viele Tests. Den Grenzwert setzt die Option max."
+      "description": "Die zyklomatische Komplexität der Methode liegt über dem Grenzwert (Vorgabe 15). Sie beginnt bei 1 und steigt um 1 je if, while, repeat und for, je case-Zweig ohne else, je and/or in einer Bedingung und je except on; ein except ohne on zählt einmal. Viele Pfade brauchen viele Tests. Den Grenzwert setzt die Option max.",
+      "options": [
+        {
+          "name": "max",
+          "description": "Höchste erlaubte zyklomatische Komplexität."
+        }
+      ]
     },
     {
       "id": "metric-cognitive-complexity",
       "name": "Kognitive Komplexität zu hoch",
-      "description": "Die kognitive Komplexität der Methode liegt über dem Grenzwert (Vorgabe 15). Nach SonarSource zählen if, case, Schleifen und except-Behandler 1 plus ihre Schachtelungsebene; else, else if, goto und jede Folge gleicher logischer Operatoren zählen 1. Verschachtelter Code ist schwerer zu lesen als Code hintereinander. Den Grenzwert setzt die Option max."
+      "description": "Die kognitive Komplexität der Methode liegt über dem Grenzwert (Vorgabe 15). Nach SonarSource zählen if, case, Schleifen und except-Behandler 1 plus ihre Schachtelungsebene; else, else if, goto und jede Folge gleicher logischer Operatoren zählen 1. Verschachtelter Code ist schwerer zu lesen als Code hintereinander. Den Grenzwert setzt die Option max.",
+      "options": [
+        {
+          "name": "max",
+          "description": "Höchste erlaubte kognitive Komplexität."
+        }
+      ]
     },
     {
       "id": "metric-parameter-count",
       "name": "Zu viele Parameter",
-      "description": "Die Methode hat mehr Parameter als der Grenzwert (Vorgabe 6). Zusammengehörige Werte in einem Record oder einer Klasse bündeln. Den Grenzwert setzt die Option max."
+      "description": "Die Methode hat mehr Parameter als der Grenzwert (Vorgabe 6). Zusammengehörige Werte in einem Record oder einer Klasse bündeln. Den Grenzwert setzt die Option max.",
+      "options": [
+        {
+          "name": "max",
+          "description": "Höchstens so viele Parameter."
+        }
+      ]
     },
     {
       "id": "todo-comment",
       "name": "Offener TODO-Kommentar",
-      "description": "Ein Kommentar beginnt mit einer Marke für offene Arbeit: // TODO, // FIXME oder das Format der IDE-To-Do-Liste { TODO 1 -oPerson -cKategorie : Text }. Der Hinweis zeigt Marke, Priorität, Kategorie, Person und Text, damit offene Arbeit in der Problemliste erscheint. In der Vorgabe aus; in atlas.json einschalten, z. B. \"rules\": {\"todo-comment\": {\"severity\": \"hint\"}}. Erledigte Einträge ({ DONE … }) meldet die Regel nie. Die Option keywords legt die Marken fest (Vorgabe [\"TODO\", \"FIXME\"]); sie gilt auch für get_todos und --todos."
+      "description": "Ein Kommentar beginnt mit einer Marke für offene Arbeit: // TODO, // FIXME oder das Format der IDE-To-Do-Liste { TODO 1 -oPerson -cKategorie : Text }. Der Hinweis zeigt Marke, Priorität, Kategorie, Person und Text, damit offene Arbeit in der Problemliste erscheint. In der Vorgabe aus; in atlas.json einschalten, z. B. \"rules\": {\"todo-comment\": {\"severity\": \"hint\"}}. Erledigte Einträge ({ DONE … }) meldet die Regel nie. Die Option keywords legt die Marken fest (Vorgabe [\"TODO\", \"FIXME\"]); sie gilt auch für get_todos und --todos.",
+      "options": [
+        {
+          "name": "keywords",
+          "description": "Marken offener TODO-Einträge (nur Buchstaben)."
+        }
+      ]
     },
     {
       "id": "component-palette-icon",

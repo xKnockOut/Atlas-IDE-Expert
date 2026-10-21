@@ -1,6 +1,7 @@
 ﻿unit Atlas.Common.Lsp.SettingsCommands.Tests;
 
-// Tests für die Befehle des Einstellungsdialogs (#227).
+// Tests für die Befehle des Einstellungsdialogs (#227); Gruppen, Optionen
+// und experimentelle Regeln im Katalog (#909).
 
 interface
 
@@ -17,6 +18,8 @@ type
     procedure ReportsKeysAtTheWrongPlace;
     [Test]
     procedure ListsRuleCatalogInLanguage;
+    [Test]
+    procedure CatalogCarriesGroupOptionsAndExperimental;
   end;
 
 implementation
@@ -135,6 +138,62 @@ begin
     Assert.IsTrue(Found);
     Assert.AreEqual('C:\Users\x\AppData\Roaming\Atlas\settings.json', Answer.GetValue<string>('globalFile'));
     Assert.IsTrue(Answer.GetValue<string>('version') <> '');
+  finally
+    Answer.Free;
+  end;
+end;
+
+procedure TLspSettingsCommandsTests.CatalogCarriesGroupOptionsAndExperimental;
+var
+  Args: TJSONArray;
+  Entries: TArray<TRuleCatalogEntry>;
+  Answer: TJSONObject;
+  Rules: TJSONArray;
+  Rule: TJSONValue;
+  Options: TJSONArray;
+  Option: TJSONValue;
+  Index: Integer;
+  SeenMetric: Boolean;
+  SeenSyntax: Boolean;
+begin
+  Args := Arguments('de');
+  try
+    Entries := TLspSettingsCommands.CatalogEntries(Args);
+  finally
+    Args.Free;
+  end;
+  Answer := TLspSettingsCommands.Catalog(Entries, '', ['metric-method-length']);
+  try
+    Rules := Answer.GetValue('rules') as TJSONArray;
+    SeenMetric := False;
+    SeenSyntax := False;
+    for Index := 0 to Rules.Count - 1 do
+    begin
+      Rule := Rules.Items[Index];
+      Assert.IsTrue(Rule.GetValue<string>('group') <> '', Rule.GetValue<string>('id'));
+      if Rule.GetValue<string>('id') = 'metric-method-length' then
+      begin
+        SeenMetric := True;
+        Assert.AreEqual('style', Rule.GetValue<string>('group'));
+        Assert.IsTrue(Rule.GetValue<Boolean>('experimental'));
+        Options := Rule.GetValue<TJSONArray>('options');
+        Assert.AreEqual(1, Options.Count);
+        Option := Options.Items[0];
+        Assert.AreEqual('max', Option.GetValue<string>('name'));
+        Assert.AreEqual('integer', Option.GetValue<string>('type'));
+        Assert.AreEqual(60, Option.GetValue<Integer>('default'));
+        Assert.IsTrue(Option.GetValue<string>('description') <> '');
+        Assert.IsTrue(Rule.GetValue<string>('bad') <> '');
+      end;
+      if Rule.GetValue<string>('id') = 'syntax' then
+      begin
+        SeenSyntax := True;
+        Assert.IsNull(Rule.FindValue('experimental'));
+        Assert.AreEqual(0, Rule.GetValue<TJSONArray>('options').Count);
+      end;
+    end;
+    Assert.IsTrue(SeenMetric);
+    Assert.IsTrue(SeenSyntax);
   finally
     Answer.Free;
   end;

@@ -819,6 +819,9 @@ class function TLspSyntaxDiagnostics.FindingToJson(const AFinding: TRuleFinding)
 var
   Severity: Integer;
   Tags: TJSONArray;
+  Data: TJSONObject;
+  Entry: TRuleCatalogEntry;
+  Fix: TRuleFix;
 begin
   case AFinding.Severity of
     TRuleSeverity.Error:
@@ -839,7 +842,22 @@ begin
   Result.AddPair('source', Source);
   // Konfidenz als eigenes Feld, der Meldungstext bleibt unverändert (#144).
   Result.AddPair('message', AFinding.Message);
-  Result.AddPair('data', TJSONObject.Create(TJSONPair.Create('confidence', ConfidenceName(AFinding.Confidence))));
+  Data := TJSONObject.Create(TJSONPair.Create('confidence', ConfidenceName(AFinding.Confidence)));
+  // Fenster „Atlas-Prüfung“ und Befund-Hover (#909): Kategorie und Gruppe aus dem Katalog, Titel der
+  // bevorzugten Schnellkorrektur.
+  if TRuleCatalog.Shared.TryFind(AFinding.RuleId, Entry) then
+  begin
+    Data.AddPair('category', TRuleCatalog.CategoryName(Entry.Category));
+    Data.AddPair('group', TRuleCatalog.GroupName(Entry.Group));
+  end;
+  // Wie Rules.CodeActions: bevorzugt ist nur die erste Korrektur, wenn sie keine Alternative ist.
+  if Length(AFinding.Fixes) > 0 then
+  begin
+    Fix := AFinding.Fixes[0];
+    if not Fix.Alternative then
+      Data.AddPair('fix', Fix.Title);
+  end;
+  Result.AddPair('data', Data);
   // Veraltete Symbole durchgestrichen (#38).
   if AFinding.RuleId = DeprecatedSymbolRuleId then
   begin

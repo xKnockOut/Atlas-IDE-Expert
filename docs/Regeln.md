@@ -2,53 +2,135 @@
 
 Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand ändern.
 
+## Gruppen
+
+| Gruppe | Regeln |
+|---|---|
+| [Fehler finden](#gruppe-find-bugs) | 27 |
+| [Exceptions](#gruppe-exceptions) | 5 |
+| [Threads](#gruppe-threads) | 6 |
+| [Robustheit und Muster](#gruppe-robustness) | 2 |
+| [Performance](#gruppe-performance) | 3 |
+| [Sicherheit](#gruppe-security) | 11 |
+| [Komponenten](#gruppe-components) | 8 |
+| [Formulare und Daten](#gruppe-forms) | 10 |
+| [Architektur](#gruppe-architecture) | 3 |
+| [Stil und Metriken](#gruppe-style) | 18 |
+| [Packages und Tests](#gruppe-packages) | 1 |
+| [Atlas intern](#gruppe-internal) | 3 |
+
+<a id="gruppe-find-bugs"></a>
+### Fehler finden
+
 | Regel | Name | Kategorie | Schweregrad |
 |---|---|---|---|
 | [`syntax`](#syntax) | Syntaxfehler | Bug | Fehler |
-| [`unused-suppression`](#unused-suppression) | Ungenutzte Unterdrückung | Code Smell | Hinweis |
-| [`unknown-rule-id`](#unknown-rule-id) | Unbekannte Regelkennung | Code Smell | Hinweis |
-| [`bidi-control`](#bidi-control) | Bidirektionales Steuerzeichen | Schwachstelle | Fehler |
-| [`invisible-char`](#invisible-char) | Unsichtbares Zeichen | Sicherheits-Hotspot | Warnung |
-| [`control-char`](#control-char) | Steuerzeichen | Bug | Fehler |
-| [`confusable-identifier`](#confusable-identifier) | Verwechselbarer Bezeichner | Sicherheits-Hotspot | Warnung |
-| [`forbidden-uses`](#forbidden-uses) | Verbotene uses-Beziehung | Code Smell | Fehler |
-| [`architecture-role-import`](#architecture-role-import) | Import verletzt die Rollenmatrix | Code Smell | Warnung |
-| [`architecture-contract-content`](#architecture-contract-content) | Klasse in einer Contract-Unit | Code Smell | Warnung |
+| [`result-not-set`](#result-not-set) | Funktionsergebnis eventuell nicht gesetzt | Bug | Warnung |
+| [`possibly-uninitialized`](#possibly-uninitialized) | Variable eventuell nicht initialisiert | Bug | Warnung |
+| [`unreachable-code`](#unreachable-code) | Unerreichbarer Code | Bug | Warnung |
+| [`declared-not-implemented`](#declared-not-implemented) | Deklariert, aber nicht implementiert | Bug | Fehler |
+| [`implemented-not-declared`](#implemented-not-declared) | Implementiert, aber nicht deklariert | Bug | Fehler |
+| [`destroy-without-override`](#destroy-without-override) | Destroy ohne override | Bug | Warnung |
+| [`recursive-property-accessor`](#recursive-property-accessor) | Property-Accessor ruft sich selbst auf | Bug | Warnung |
+| [`hides-virtual`](#hides-virtual) | Methode verdeckt virtuelle Methode | Bug | Warnung |
+| [`virtual-instead-of-override`](#virtual-instead-of-override) | virtual statt override | Bug | Warnung |
+| [`captured-loop-variable`](#captured-loop-variable) | Erfasste Schleifenvariable | Bug | Warnung |
+| [`interface-guid`](#interface-guid) | Interface ohne GUID | Bug | Warnung |
+| [`duplicate-interface-guid`](#duplicate-interface-guid) | Zwei Interfaces mit derselben GUID | Bug | Fehler |
+| [`self-assignment`](#self-assignment) | Zuweisung an sich selbst | Bug | Warnung |
+| [`for-high-to-low`](#for-high-to-low) | for-Schleife zählt mit to abwärts | Bug | Warnung |
+| [`exception-not-raised`](#exception-not-raised) | Exception erzeugt, aber nicht ausgelöst | Bug | Warnung |
+| [`assert-side-effect`](#assert-side-effect) | Assert mit Seiteneffekt | Bug | Warnung |
+| [`ifthen-side-effect`](#ifthen-side-effect) | IfThen wertet beide Zweige aus | Bug | Warnung |
+| [`int32-mul-overflow`](#int32-mul-overflow) | Int32-Multiplikation an Int64 zugewiesen | Bug | Warnung |
+| [`sizeof-pointer`](#sizeof-pointer) | SizeOf eines Zeigers in Move oder FillChar | Bug | Fehler |
+| [`char-to-pchar`](#char-to-pchar) | Char nach PChar umgewandelt | Bug | Fehler |
+| [`float-equality`](#float-equality) | Gleitkommavergleich mit = oder <> | Bug | Hinweis |
+| [`constructor-on-instance`](#constructor-on-instance) | Konstruktor auf einer Instanz aufgerufen | Bug | Warnung |
+| [`unresolved-identifier`](#unresolved-identifier) | Nicht deklarierter Bezeichner | Bug | Warnung |
+| [`type-used-before-declaration`](#type-used-before-declaration) | Typ vor seiner Deklaration benutzt | Bug | Fehler |
+| [`owned-field-not-freed`](#owned-field-not-freed) | Erzeugtes Feld wird nicht freigegeben | Bug | Warnung |
+| [`owned-field-free-unclear`](#owned-field-free-unclear) | Unklar, ob ein erzeugtes Feld freigegeben werden muss | Bug | Hinweis |
+
+<a id="gruppe-exceptions"></a>
+### Exceptions
+
+| Regel | Name | Kategorie | Schweregrad |
+|---|---|---|---|
+| [`empty-except`](#empty-except) | Leerer except-Block | Code Smell | Warnung |
+| [`generic-exception-raised`](#generic-exception-raised) | Allgemeine Exception ausgelöst | Code Smell | Hinweis |
+| [`catch-all-without-raise`](#catch-all-without-raise) | Exception-Handler ohne erneutes raise | Code Smell | Warnung |
+| [`exception-freed`](#exception-freed) | Exception-Objekt manuell freigegeben | Bug | Fehler |
+| [`raise-in-finally`](#raise-in-finally) | raise in einem finally-Block | Bug | Warnung |
+
+<a id="gruppe-threads"></a>
+### Threads
+
+| Regel | Name | Kategorie | Schweregrad |
+|---|---|---|---|
 | [`thread-vcl-access`](#thread-vcl-access) | VCL-Zugriff aus einem Thread | Bug | Warnung |
 | [`lock-without-finally`](#lock-without-finally) | Sperre ohne try/finally | Bug | Warnung |
 | [`thread-use-after-free-on-terminate`](#thread-use-after-free-on-terminate) | Thread nach dem Start mit FreeOnTerminate benutzt | Bug | Warnung |
 | [`thread-free-with-free-on-terminate`](#thread-free-with-free-on-terminate) | Free auf einem Thread mit FreeOnTerminate | Bug | Fehler |
 | [`synchronize-in-destructor`](#synchronize-in-destructor) | Synchronize im Destruktor eines Threads | Bug | Warnung |
 | [`thread-resume-suspend`](#thread-resume-suspend) | Veraltetes TThread.Resume/Suspend | Code Smell | Warnung |
-| [`result-not-set`](#result-not-set) | Funktionsergebnis eventuell nicht gesetzt | Bug | Warnung |
-| [`possibly-uninitialized`](#possibly-uninitialized) | Variable eventuell nicht initialisiert | Bug | Warnung |
-| [`unreachable-code`](#unreachable-code) | Unerreichbarer Code | Bug | Warnung |
-| [`unused-local`](#unused-local) | Ungenutzte lokale Variable | Code Smell | Hinweis |
-| [`unused-parameter`](#unused-parameter) | Ungenutzter Parameter | Code Smell | Hinweis |
-| [`unused-assignment`](#unused-assignment) | Zugewiesener Wert ungenutzt | Code Smell | Hinweis |
-| [`declared-not-implemented`](#declared-not-implemented) | Deklariert, aber nicht implementiert | Bug | Fehler |
-| [`implemented-not-declared`](#implemented-not-declared) | Implementiert, aber nicht deklariert | Bug | Fehler |
-| [`destroy-without-override`](#destroy-without-override) | Destroy ohne override | Bug | Warnung |
-| [`recursive-property-accessor`](#recursive-property-accessor) | Property-Accessor ruft sich selbst auf | Bug | Warnung |
-| [`component-create-without-override`](#component-create-without-override) | Komponentenkonstruktor ohne override | Bug | Warnung |
-| [`hides-virtual`](#hides-virtual) | Methode verdeckt virtuelle Methode | Bug | Warnung |
-| [`virtual-instead-of-override`](#virtual-instead-of-override) | virtual statt override | Bug | Warnung |
-| [`captured-loop-variable`](#captured-loop-variable) | Erfasste Schleifenvariable | Bug | Warnung |
-| [`component-missing-inherited`](#component-missing-inherited) | Komponentenmethode ohne inherited | Bug | Warnung |
-| [`component-default-mismatch`](#component-default-mismatch) | default passt nicht zum Konstruktor | Bug | Warnung |
-| [`component-missing-free-notification`](#component-missing-free-notification) | Komponentenreferenz ohne FreeNotification | Bug | Warnung |
-| [`component-setter-without-invalidate`](#component-setter-without-invalidate) | Setter ohne Invalidate | Code Smell | Hinweis |
-| [`component-fixed-pixels`](#component-fixed-pixels) | Feste Pixelwerte | Code Smell | Warnung |
-| [`component-hardcoded-color`](#component-hardcoded-color) | Feste Farbe in Paint | Code Smell | Hinweis |
-| [`form-field-without-object`](#form-field-without-object) | Formularfeld ohne Objekt | Bug | Warnung |
-| [`form-object-without-field`](#form-object-without-field) | Formularobjekt ohne Feld | Bug | Warnung |
-| [`form-field-type-mismatch`](#form-field-type-mismatch) | Feldtyp weicht vom Formularobjekt ab | Bug | Warnung |
+
+<a id="gruppe-robustness"></a>
+### Robustheit und Muster
+
+| Regel | Name | Kategorie | Schweregrad |
+|---|---|---|---|
+| [`random-without-randomize`](#random-without-randomize) | Random ohne Randomize | Code Smell | Hinweis |
+| [`format-without-settings`](#format-without-settings) | Formatierung abhängig vom Gebietsschema | Code Smell | Hinweis |
+
+<a id="gruppe-performance"></a>
+### Performance
+
+| Regel | Name | Kategorie | Schweregrad |
+|---|---|---|---|
+| [`string-concat-in-loop`](#string-concat-in-loop) | String-Verkettung in einer Schleife | Code Smell | Hinweis |
+| [`loop-invariant-call`](#loop-invariant-call) | Teurer Aufruf in der Schleifenbedingung | Code Smell | Hinweis |
+| [`missing-begin-update`](#missing-begin-update) | Hinzufügen in einer Schleife ohne BeginUpdate | Code Smell | Hinweis |
+
+<a id="gruppe-security"></a>
+### Sicherheit
+
+| Regel | Name | Kategorie | Schweregrad |
+|---|---|---|---|
+| [`bidi-control`](#bidi-control) | Bidirektionales Steuerzeichen | Schwachstelle | Fehler |
+| [`invisible-char`](#invisible-char) | Unsichtbares Zeichen | Sicherheits-Hotspot | Warnung |
+| [`control-char`](#control-char) | Steuerzeichen | Bug | Fehler |
+| [`confusable-identifier`](#confusable-identifier) | Verwechselbarer Bezeichner | Sicherheits-Hotspot | Warnung |
 | [`security-command-injection`](#security-command-injection) | Befehlsinjektion | Schwachstelle | Warnung |
 | [`security-path-traversal`](#security-path-traversal) | Pfad-Traversal | Schwachstelle | Warnung |
 | [`security-weak-crypto`](#security-weak-crypto) | Schwache Kryptografie | Sicherheits-Hotspot | Hinweis |
 | [`security-tls-verification-disabled`](#security-tls-verification-disabled) | TLS-Zertifikatsprüfung abgeschaltet | Schwachstelle | Warnung |
 | [`security-insecure-http`](#security-insecure-http) | Unverschlüsselte http://-URL | Sicherheits-Hotspot | Hinweis |
 | [`security-insecure-random`](#security-insecure-random) | Random für sicherheitsrelevante Werte | Sicherheits-Hotspot | Warnung |
+| [`security-sql-injection`](#security-sql-injection) | SQL-Text aus zusammengesetzten Werten (SQL-Injection) | Schwachstelle | Warnung |
+
+<a id="gruppe-components"></a>
+### Komponenten
+
+| Regel | Name | Kategorie | Schweregrad |
+|---|---|---|---|
+| [`component-create-without-override`](#component-create-without-override) | Komponentenkonstruktor ohne override | Bug | Warnung |
+| [`component-missing-inherited`](#component-missing-inherited) | Komponentenmethode ohne inherited | Bug | Warnung |
+| [`component-default-mismatch`](#component-default-mismatch) | default passt nicht zum Konstruktor | Bug | Warnung |
+| [`component-missing-free-notification`](#component-missing-free-notification) | Komponentenreferenz ohne FreeNotification | Bug | Warnung |
+| [`component-setter-without-invalidate`](#component-setter-without-invalidate) | Setter ohne Invalidate | Code Smell | Hinweis |
+| [`component-fixed-pixels`](#component-fixed-pixels) | Feste Pixelwerte | Code Smell | Warnung |
+| [`component-hardcoded-color`](#component-hardcoded-color) | Feste Farbe in Paint | Code Smell | Hinweis |
+| [`component-palette-icon`](#component-palette-icon) | Registrierte Komponente ohne Palettensymbol | Code Smell | Hinweis |
+
+<a id="gruppe-forms"></a>
+### Formulare und Daten
+
+| Regel | Name | Kategorie | Schweregrad |
+|---|---|---|---|
+| [`form-field-without-object`](#form-field-without-object) | Formularfeld ohne Objekt | Bug | Warnung |
+| [`form-object-without-field`](#form-object-without-field) | Formularobjekt ohne Feld | Bug | Warnung |
+| [`form-field-type-mismatch`](#form-field-type-mismatch) | Feldtyp weicht vom Formularobjekt ab | Bug | Warnung |
 | [`dfm-circular-datasource`](#dfm-circular-datasource) | Zirkuläre Master-Detail- bzw. DataSource-Verknüpfung | Bug | Warnung |
 | [`dfm-master-without-fields`](#dfm-master-without-fields) | Master-Detail ohne MasterFields | Bug | Warnung |
 | [`dfm-required-field-without-control`](#dfm-required-field-without-control) | Pflichtfeld ohne sichtbares Eingabe-Control | Bug | Warnung |
@@ -56,34 +138,28 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 | [`dfm-duplicate-binding`](#dfm-duplicate-binding) | Zwei Controls an demselben Feld | Bug | Warnung |
 | [`dfm-property`](#dfm-property) | Komponenten-Property verletzt eine Eigenschaftsregel | Code Smell | Warnung |
 | [`foreign-form-control-access`](#foreign-form-control-access) | Zugriff auf Controls eines anderen Formulars | Code Smell | Warnung |
-| [`security-sql-injection`](#security-sql-injection) | SQL-Text aus zusammengesetzten Werten (SQL-Injection) | Schwachstelle | Warnung |
-| [`slash-command`](#slash-command) | Schnellbefehl nicht ausgeführt | Code Smell | Hinweis |
-| [`empty-except`](#empty-except) | Leerer except-Block | Code Smell | Warnung |
-| [`interface-guid`](#interface-guid) | Interface ohne GUID | Bug | Warnung |
-| [`duplicate-interface-guid`](#duplicate-interface-guid) | Zwei Interfaces mit derselben GUID | Bug | Fehler |
+
+<a id="gruppe-architecture"></a>
+### Architektur
+
+| Regel | Name | Kategorie | Schweregrad |
+|---|---|---|---|
+| [`forbidden-uses`](#forbidden-uses) | Verbotene uses-Beziehung | Code Smell | Fehler |
+| [`architecture-role-import`](#architecture-role-import) | Import verletzt die Rollenmatrix | Code Smell | Warnung |
+| [`architecture-contract-content`](#architecture-contract-content) | Klasse in einer Contract-Unit | Code Smell | Warnung |
+
+<a id="gruppe-style"></a>
+### Stil und Metriken
+
+| Regel | Name | Kategorie | Schweregrad |
+|---|---|---|---|
+| [`unused-local`](#unused-local) | Ungenutzte lokale Variable | Code Smell | Hinweis |
+| [`unused-parameter`](#unused-parameter) | Ungenutzter Parameter | Code Smell | Hinweis |
+| [`unused-assignment`](#unused-assignment) | Zugewiesener Wert ungenutzt | Code Smell | Hinweis |
 | [`file-header`](#file-header) | Dateikopf fehlt oder weicht ab | Code Smell | Hinweis |
 | [`hardcoded-string`](#hardcoded-string) | Text im Code statt resourcestring | Code Smell | Hinweis |
-| [`self-assignment`](#self-assignment) | Zuweisung an sich selbst | Bug | Warnung |
-| [`for-high-to-low`](#for-high-to-low) | for-Schleife zählt mit to abwärts | Bug | Warnung |
-| [`exception-not-raised`](#exception-not-raised) | Exception erzeugt, aber nicht ausgelöst | Bug | Warnung |
-| [`assert-side-effect`](#assert-side-effect) | Assert mit Seiteneffekt | Bug | Warnung |
-| [`ifthen-side-effect`](#ifthen-side-effect) | IfThen wertet beide Zweige aus | Bug | Warnung |
-| [`random-without-randomize`](#random-without-randomize) | Random ohne Randomize | Code Smell | Hinweis |
-| [`int32-mul-overflow`](#int32-mul-overflow) | Int32-Multiplikation an Int64 zugewiesen | Bug | Warnung |
-| [`sizeof-pointer`](#sizeof-pointer) | SizeOf eines Zeigers in Move oder FillChar | Bug | Fehler |
-| [`char-to-pchar`](#char-to-pchar) | Char nach PChar umgewandelt | Bug | Fehler |
-| [`float-equality`](#float-equality) | Gleitkommavergleich mit = oder <> | Bug | Hinweis |
-| [`constructor-on-instance`](#constructor-on-instance) | Konstruktor auf einer Instanz aufgerufen | Bug | Warnung |
-| [`format-without-settings`](#format-without-settings) | Formatierung abhängig vom Gebietsschema | Code Smell | Hinweis |
-| [`generic-exception-raised`](#generic-exception-raised) | Allgemeine Exception ausgelöst | Code Smell | Hinweis |
-| [`catch-all-without-raise`](#catch-all-without-raise) | Exception-Handler ohne erneutes raise | Code Smell | Warnung |
-| [`exception-freed`](#exception-freed) | Exception-Objekt manuell freigegeben | Bug | Fehler |
-| [`string-concat-in-loop`](#string-concat-in-loop) | String-Verkettung in einer Schleife | Code Smell | Hinweis |
-| [`loop-invariant-call`](#loop-invariant-call) | Teurer Aufruf in der Schleifenbedingung | Code Smell | Hinweis |
-| [`missing-begin-update`](#missing-begin-update) | Hinzufügen in einer Schleife ohne BeginUpdate | Code Smell | Hinweis |
 | [`bool-compare`](#bool-compare) | Vergleich mit True oder False | Code Smell | Hinweis |
 | [`redundant-assigned-free`](#redundant-assigned-free) | Assigned-Prüfung vor Free | Code Smell | Hinweis |
-| [`raise-in-finally`](#raise-in-finally) | raise in einem finally-Block | Bug | Warnung |
 | [`redundant-parens`](#redundant-parens) | Überflüssige Klammern | Code Smell | Hinweis |
 | [`redundant-begin-end`](#redundant-begin-end) | begin … end um eine einzelne Anweisung | Code Smell | Hinweis |
 | [`with-statement`](#with-statement) | with-Anweisung | Code Smell | Hinweis |
@@ -93,19 +169,31 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 | [`metric-cognitive-complexity`](#metric-cognitive-complexity) | Kognitive Komplexität zu hoch | Code Smell | Hinweis |
 | [`metric-parameter-count`](#metric-parameter-count) | Zu viele Parameter | Code Smell | Hinweis |
 | [`todo-comment`](#todo-comment) | Offener TODO-Kommentar | Code Smell | Hinweis |
-| [`component-palette-icon`](#component-palette-icon) | Registrierte Komponente ohne Palettensymbol | Code Smell | Hinweis |
-| [`unresolved-identifier`](#unresolved-identifier) | Nicht deklarierter Bezeichner | Bug | Warnung |
 | [`deprecated-symbol`](#deprecated-symbol) | Veraltetes Symbol | Code Smell | Hinweis |
-| [`implicit-package-import`](#implicit-package-import) | Implizit eingebundene Unit | Code Smell | Warnung |
-| [`type-used-before-declaration`](#type-used-before-declaration) | Typ vor seiner Deklaration benutzt | Bug | Fehler |
 | [`unneeded-forward-declaration`](#unneeded-forward-declaration) | Überflüssige Forward-Deklaration | Code Smell | Hinweis |
-| [`owned-field-not-freed`](#owned-field-not-freed) | Erzeugtes Feld wird nicht freigegeben | Bug | Warnung |
-| [`owned-field-free-unclear`](#owned-field-free-unclear) | Unklar, ob ein erzeugtes Feld freigegeben werden muss | Bug | Hinweis |
+
+<a id="gruppe-packages"></a>
+### Packages und Tests
+
+| Regel | Name | Kategorie | Schweregrad |
+|---|---|---|---|
+| [`implicit-package-import`](#implicit-package-import) | Implizit eingebundene Unit | Code Smell | Warnung |
+
+<a id="gruppe-internal"></a>
+### Atlas intern
+
+| Regel | Name | Kategorie | Schweregrad |
+|---|---|---|---|
+| [`unused-suppression`](#unused-suppression) | Ungenutzte Unterdrückung | Code Smell | Hinweis |
+| [`unknown-rule-id`](#unknown-rule-id) | Unbekannte Regelkennung | Code Smell | Hinweis |
+| [`slash-command`](#slash-command) | Schnellbefehl nicht ausgeführt | Code Smell | Hinweis |
+
+## Regeln
 
 <a id="syntax"></a>
-## syntax
+### syntax
 
-**Syntaxfehler** · Bug · Fehler
+**Syntaxfehler** · Bug · Fehler · Gruppe Fehler finden
 
 Der Parser konnte den Quelltext nicht lesen.
 
@@ -129,9 +217,9 @@ end;
 ```
 
 <a id="unused-suppression"></a>
-## unused-suppression
+### unused-suppression
 
-**Ungenutzte Unterdrückung** · Code Smell · Hinweis
+**Ungenutzte Unterdrückung** · Code Smell · Hinweis · Gruppe Atlas intern
 
 Ein lsp-ignore-Kommentar unterdrückt keinen Treffer und kann entfernt werden.
 
@@ -149,9 +237,9 @@ X := 1;
 ```
 
 <a id="unknown-rule-id"></a>
-## unknown-rule-id
+### unknown-rule-id
 
-**Unbekannte Regelkennung** · Code Smell · Hinweis
+**Unbekannte Regelkennung** · Code Smell · Hinweis · Gruppe Atlas intern
 
 Ein lsp-ignore-Kommentar nennt eine Regelkennung, die es nicht gibt, und unterdrückt deshalb nichts. Die Meldung schlägt die ähnlichste bekannte Kennung vor (Tippfehler); ein solcher Kommentar zählt nicht zusätzlich als unused-suppression.
 
@@ -170,9 +258,9 @@ try X; except end;
 ```
 
 <a id="bidi-control"></a>
-## bidi-control
+### bidi-control
 
-**Bidirektionales Steuerzeichen** · Schwachstelle · Fehler
+**Bidirektionales Steuerzeichen** · Schwachstelle · Fehler · Gruppe Sicherheit
 
 Bidirektionale Steuerzeichen können Code anders anzeigen, als er kompiliert wird (Trojan Source); auch in Formulardateien. Richtungsmarken in RTL-Text nur mit niedriger Konfidenz.
 
@@ -189,9 +277,9 @@ if IsAdmin then begin
 ```
 
 <a id="invisible-char"></a>
-## invisible-char
+### invisible-char
 
-**Unsichtbares Zeichen** · Sicherheits-Hotspot · Warnung
+**Unsichtbares Zeichen** · Sicherheits-Hotspot · Warnung · Gruppe Sicherheit
 
 Unsichtbare oder Nullbreiten-Zeichen im Quelltext und in Formulardateien; in Strings und Kommentaren mittlere Konfidenz.
 
@@ -208,9 +296,9 @@ Count := 0;
 ```
 
 <a id="control-char"></a>
-## control-char
+### control-char
 
-**Steuerzeichen** · Bug · Fehler
+**Steuerzeichen** · Bug · Fehler · Gruppe Sicherheit
 
 NUL- und Steuerzeichen oder ungültige UTF-8-Bytes im Quelltext und in der Formulardatei; ungültige Bytes mit genauer Zeile und Spalte.
 
@@ -227,9 +315,9 @@ S := 'abc' + #0;
 ```
 
 <a id="confusable-identifier"></a>
-## confusable-identifier
+### confusable-identifier
 
-**Verwechselbarer Bezeichner** · Sicherheits-Hotspot · Warnung
+**Verwechselbarer Bezeichner** · Sicherheits-Hotspot · Warnung · Gruppe Sicherheit
 
 Bezeichner mit Zeichen aus mehreren Schriften oder Nicht-ASCII-Zeichen sind mit anderen verwechselbar.
 
@@ -246,11 +334,15 @@ var Password: string;
 ```
 
 <a id="forbidden-uses"></a>
-## forbidden-uses
+### forbidden-uses
 
-**Verbotene uses-Beziehung** · Code Smell · Fehler
+**Verbotene uses-Beziehung** · Code Smell · Fehler · Gruppe Architektur
 
 Ein uses-Eintrag verletzt eine Schichtregel unter "layers" in atlas.json, z. B. darf *.Common.* nicht Vcl.* verwenden.
+
+| Option | Typ | Vorgabe | Bedeutung |
+|---|---|---|---|
+| `layers` | json | `[]` | Schichtregeln: [{"from": Glob, "deny": [Globs], "allow": [Globs]}]. |
 
 Mit Treffer:
 
@@ -269,11 +361,17 @@ uses System.Classes;
 ```
 
 <a id="architecture-role-import"></a>
-## architecture-role-import
+### architecture-role-import
 
-**Import verletzt die Rollenmatrix** · Code Smell · Warnung
+**Import verletzt die Rollenmatrix** · Code Smell · Warnung · Gruppe Architektur
 
 Ein uses-Eintrag verletzt die Importmatrix des Rollenkonzepts (Ausgabeartefakt, Feature, Rolle: Contract, Internals, Providers, Adapters, Composition, Hosting). Standardmäßig aus; in atlas.json mit der Option "prefixes" einschalten. Genehmigte Ausnahmen stehen unter "allow" als "Quelle -> Ziel"-Globs.
+
+| Option | Typ | Vorgabe | Bedeutung |
+|---|---|---|---|
+| `prefixes` | string-list | `[]` | Präfixe der Ausgabeartefakte, z. B. "Atlas.Common"; ohne Angabe meldet die Regel nichts. |
+| `hostRoles` | string-list | `["Foundation","Core","Shell","Adapters","Platform"]` | Erste Namenssegmente der Host-Units ohne Präfix. |
+| `allow` | string-list | `[]` | Genehmigte Ausnahmen "Quelle -> Ziel" (beide Globs). |
 
 Mit Treffer:
 
@@ -292,11 +390,16 @@ uses System.SysUtils;
 ```
 
 <a id="architecture-contract-content"></a>
-## architecture-contract-content
+### architecture-contract-content
 
-**Klasse in einer Contract-Unit** · Code Smell · Warnung
+**Klasse in einer Contract-Unit** · Code Smell · Warnung · Gruppe Architektur
 
 Eine Contract-Unit deklariert im interface eine Klasse. Contracts enthalten nur Records, Interfaces, Aufzählungen und Ausnahmen. Standardmäßig aus; in atlas.json mit der Option "prefixes" einschalten. Genehmigte Ausnahmen stehen unter "allow" als "Unit.Typ"-Globs.
+
+| Option | Typ | Vorgabe | Bedeutung |
+|---|---|---|---|
+| `prefixes` | string-list | `[]` | Präfixe der Ausgabeartefakte, z. B. "Atlas.Common". |
+| `allow` | string-list | `[]` | Genehmigte Ausnahmen "Unit.Typ" als Glob. |
 
 Mit Treffer:
 
@@ -319,9 +422,9 @@ type
 ```
 
 <a id="thread-vcl-access"></a>
-## thread-vcl-access
+### thread-vcl-access
 
-**VCL-Zugriff aus einem Thread** · Bug · Warnung
+**VCL-Zugriff aus einem Thread** · Bug · Warnung · Gruppe Threads
 
 TThread.Execute, TThread.CreateAnonymousThread oder TTask greift außerhalb von Synchronize oder Queue auf die VCL zu (Application, Screen, ShowMessage, MessageDlg …). Die VCL ist nicht threadsicher.
 
@@ -344,11 +447,15 @@ end;
 ```
 
 <a id="lock-without-finally"></a>
-## lock-without-finally
+### lock-without-finally
 
-**Sperre ohne try/finally** · Bug · Warnung
+**Sperre ohne try/finally** · Bug · Warnung · Gruppe Threads
 
 Auf eine Sperre (TCriticalSection.Enter/Acquire, TMonitor.Enter, BeginRead/BeginWrite, TSpinLock.Enter, TMutex.Acquire, EnterCriticalSection oder ein Paar aus der Option lockPairs) folgt kein try/finally mit der Freigabe. Eine Ausnahme lässt die Sperre gesetzt.
+
+| Option | Typ | Vorgabe | Bedeutung |
+|---|---|---|---|
+| `lockPairs` | json | `[]` | Weitere Sperrpaare als [["Sperren", "Freigeben"]]. |
 
 Mit Treffer:
 
@@ -370,9 +477,9 @@ end;
 ```
 
 <a id="thread-use-after-free-on-terminate"></a>
-## thread-use-after-free-on-terminate
+### thread-use-after-free-on-terminate
 
-**Thread nach dem Start mit FreeOnTerminate benutzt** · Bug · Warnung
+**Thread nach dem Start mit FreeOnTerminate benutzt** · Bug · Warnung · Gruppe Threads
 
 Ein Thread mit FreeOnTerminate := True kann sich gleich nach dem Start selbst freigeben; danach greift die Variable womöglich auf ein freigegebenes Objekt zu.
 
@@ -393,9 +500,9 @@ T.Start;
 ```
 
 <a id="thread-free-with-free-on-terminate"></a>
-## thread-free-with-free-on-terminate
+### thread-free-with-free-on-terminate
 
-**Free auf einem Thread mit FreeOnTerminate** · Bug · Fehler
+**Free auf einem Thread mit FreeOnTerminate** · Bug · Fehler · Gruppe Threads
 
 Free auf einem Thread mit FreeOnTerminate := True gibt ihn doppelt frei.
 
@@ -415,9 +522,9 @@ T.Start;
 ```
 
 <a id="synchronize-in-destructor"></a>
-## synchronize-in-destructor
+### synchronize-in-destructor
 
-**Synchronize im Destruktor eines Threads** · Bug · Warnung
+**Synchronize im Destruktor eines Threads** · Bug · Warnung · Gruppe Threads
 
 Synchronize im Destruktor eines TThread-Nachfahren (oder in einer Methode, die er aufruft) verklemmt sich: Der Hauptthread wartet in WaitFor, der Thread auf Synchronize.
 
@@ -441,9 +548,9 @@ end;
 ```
 
 <a id="thread-resume-suspend"></a>
-## thread-resume-suspend
+### thread-resume-suspend
 
-**Veraltetes TThread.Resume/Suspend** · Code Smell · Warnung
+**Veraltetes TThread.Resume/Suspend** · Code Smell · Warnung · Gruppe Threads
 
 TThread.Resume und Suspend sind veraltet. Einen erzeugten Thread mit Start starten; Suspend hat keinen sicheren Ersatz, stattdessen mit einem Ereignis warten.
 
@@ -460,9 +567,9 @@ FWorker.Start;
 ```
 
 <a id="result-not-set"></a>
-## result-not-set
+### result-not-set
 
-**Funktionsergebnis eventuell nicht gesetzt** · Bug · Warnung
+**Funktionsergebnis eventuell nicht gesetzt** · Bug · Warnung · Gruppe Fehler finden
 
 Ein Pfad durch die Funktion endet, ohne Result zuzuweisen. Der Aufrufer liest dann einen undefinierten Wert.
 
@@ -488,9 +595,9 @@ end;
 ```
 
 <a id="possibly-uninitialized"></a>
-## possibly-uninitialized
+### possibly-uninitialized
 
-**Variable eventuell nicht initialisiert** · Bug · Warnung
+**Variable eventuell nicht initialisiert** · Bug · Warnung · Gruppe Fehler finden
 
 Eine lokale Variable wird auf einem Pfad gelesen, auf dem ihr nie ein Wert zugewiesen wurde.
 
@@ -518,9 +625,9 @@ end;
 ```
 
 <a id="unreachable-code"></a>
-## unreachable-code
+### unreachable-code
 
-**Unerreichbarer Code** · Bug · Warnung
+**Unerreichbarer Code** · Bug · Warnung · Gruppe Fehler finden
 
 Eine Anweisung nach Exit, raise, Abort, Halt, Break, Continue oder goto wird nie ausgeführt. Meist ein Rest oder ein falsch gesetzter Sprung. Gemeldet wird nur die erste Anweisung eines unerreichbaren Abschnitts.
 
@@ -546,11 +653,15 @@ end;
 ```
 
 <a id="unused-local"></a>
-## unused-local
+### unused-local
 
-**Ungenutzte lokale Variable** · Code Smell · Hinweis
+**Ungenutzte lokale Variable** · Code Smell · Hinweis · Gruppe Stil und Metriken
 
 Eine lokale Variable ist deklariert, wird aber nie verwendet. Wie Compilerhinweis H2164, aber schon beim Tippen.
+
+| Option | Typ | Vorgabe | Bedeutung |
+|---|---|---|---|
+| `ignore` | string-list | `[]` | Namensmuster, die nie gemeldet werden (* und ?). |
 
 Mit Treffer:
 
@@ -577,11 +688,15 @@ end;
 ```
 
 <a id="unused-parameter"></a>
-## unused-parameter
+### unused-parameter
 
-**Ungenutzter Parameter** · Code Smell · Hinweis
+**Ungenutzter Parameter** · Code Smell · Hinweis · Gruppe Stil und Metriken
 
 Ein Parameter wird im Rumpf der Routine nicht verwendet. Ausgenommen sind überschriebene und virtuelle Methoden, Ereignis-Handler, published-Methoden, Interface-Implementierungen und Callbacks.
+
+| Option | Typ | Vorgabe | Bedeutung |
+|---|---|---|---|
+| `ignore` | string-list | `[]` | Namensmuster, die nie gemeldet werden (* und ?). |
 
 Mit Treffer:
 
@@ -602,11 +717,15 @@ end;
 ```
 
 <a id="unused-assignment"></a>
-## unused-assignment
+### unused-assignment
 
-**Zugewiesener Wert ungenutzt** · Code Smell · Hinweis
+**Zugewiesener Wert ungenutzt** · Code Smell · Hinweis · Gruppe Stil und Metriken
 
 Ein einer lokalen Variable zugewiesener Wert wird überschrieben oder die Routine endet, bevor er gelesen wird. Wie Compilerhinweis H2077.
+
+| Option | Typ | Vorgabe | Bedeutung |
+|---|---|---|---|
+| `ignore` | string-list | `[]` | Namensmuster, die nie gemeldet werden (* und ?). |
 
 Mit Treffer:
 
@@ -634,9 +753,9 @@ end;
 ```
 
 <a id="declared-not-implemented"></a>
-## declared-not-implemented
+### declared-not-implemented
 
-**Deklariert, aber nicht implementiert** · Bug · Fehler
+**Deklariert, aber nicht implementiert** · Bug · Fehler · Gruppe Fehler finden
 
 Eine Methode ist in einer Klasse, einem Record oder Objekt deklariert, hat aber keinen Rumpf im implementation-Abschnitt. Der Compiler meldet das erst beim Kompilieren (E2065).
 
@@ -671,9 +790,9 @@ end.
 ```
 
 <a id="implemented-not-declared"></a>
-## implemented-not-declared
+### implemented-not-declared
 
-**Implementiert, aber nicht deklariert** · Bug · Fehler
+**Implementiert, aber nicht deklariert** · Bug · Fehler · Gruppe Fehler finden
 
 Ein Methodenrumpf TFoo.Bar hat keine passende Deklaration im Typ.
 
@@ -708,9 +827,9 @@ end;
 ```
 
 <a id="destroy-without-override"></a>
-## destroy-without-override
+### destroy-without-override
 
-**Destroy ohne override** · Bug · Warnung
+**Destroy ohne override** · Bug · Warnung · Gruppe Fehler finden
 
 Ein destructor Destroy ist ohne override deklariert. Free ruft TObject.Destroy auf, dieser Destruktor läuft also nie.
 
@@ -733,9 +852,9 @@ type
 ```
 
 <a id="recursive-property-accessor"></a>
-## recursive-property-accessor
+### recursive-property-accessor
 
-**Property-Accessor ruft sich selbst auf** · Bug · Warnung
+**Property-Accessor ruft sich selbst auf** · Bug · Warnung · Gruppe Fehler finden
 
 Ein Getter liest seine eigene Property oder ein Setter schreibt sie. Der Accessor ruft sich endlos selbst auf und endet im Stapelüberlauf. Stattdessen das Feld verwenden.
 
@@ -758,9 +877,9 @@ end;
 ```
 
 <a id="component-create-without-override"></a>
-## component-create-without-override
+### component-create-without-override
 
-**Komponentenkonstruktor ohne override** · Bug · Warnung
+**Komponentenkonstruktor ohne override** · Bug · Warnung · Gruppe Komponenten
 
 Ein TComponent-Nachfahre deklariert constructor Create(AOwner: TComponent) ohne override. Beim Laden aus der Formulardatei wird der virtuelle Konstruktor benutzt und dieser übergangen.
 
@@ -783,9 +902,9 @@ type
 ```
 
 <a id="hides-virtual"></a>
-## hides-virtual
+### hides-virtual
 
-**Methode verdeckt virtuelle Methode** · Bug · Warnung
+**Methode verdeckt virtuelle Methode** · Bug · Warnung · Gruppe Fehler finden
 
 Eine Methode heißt wie eine virtuelle Methode eines Vorfahren, überschreibt sie aber weder noch führt sie sie neu ein (Compilerwarnung W1010).
 
@@ -814,9 +933,9 @@ type
 ```
 
 <a id="virtual-instead-of-override"></a>
-## virtual-instead-of-override
+### virtual-instead-of-override
 
-**virtual statt override** · Bug · Warnung
+**virtual statt override** · Bug · Warnung · Gruppe Fehler finden
 
 Ein Nachfahre deklariert eine Methode als virtual, obwohl der Vorfahr schon eine virtuelle Methode mit derselben Signatur hat; das beginnt eine neue Kette statt zu überschreiben.
 
@@ -839,11 +958,15 @@ type
 ```
 
 <a id="captured-loop-variable"></a>
-## captured-loop-variable
+### captured-loop-variable
 
-**Erfasste Schleifenvariable** · Bug · Warnung
+**Erfasste Schleifenvariable** · Bug · Warnung · Gruppe Fehler finden
 
 Eine anonyme Methode, die an eine verzögert ausführende API (TThread.Queue, TTask.Run …) geht, erfasst eine Variable, die sich vor dem Aufruf noch ändert, etwa die Variable einer for-in-Schleife. Delphi erfasst die Variable, nicht ihren Wert.
+
+| Option | Typ | Vorgabe | Bedeutung |
+|---|---|---|---|
+| `deferredApis` | string-list | `[]` | Weitere verzögerte APIs (zusätzlich zu TThread.Queue, TTask.Run u. a.). |
 
 Mit Treffer:
 
@@ -865,9 +988,9 @@ for S in List do
 ```
 
 <a id="component-missing-inherited"></a>
-## component-missing-inherited
+### component-missing-inherited
 
-**Komponentenmethode ohne inherited** · Bug · Warnung
+**Komponentenmethode ohne inherited** · Bug · Warnung · Gruppe Komponenten
 
 Ein überschriebenes Loaded, CreateParams, CreateWnd, Notification, SetParent, Destroy oder Paint einer Komponente ruft inherited nicht auf; die VCL überspringt dann ihre eigene Arbeit. Bei Paint ist die Konfidenz niedrig, weil TCustomControl.Paint nur den Rahmen im Designer zeichnet.
 
@@ -891,9 +1014,9 @@ end;
 ```
 
 <a id="component-default-mismatch"></a>
-## component-default-mismatch
+### component-default-mismatch
 
-**default passt nicht zum Konstruktor** · Bug · Warnung
+**default passt nicht zum Konstruktor** · Bug · Warnung · Gruppe Komponenten
 
 Eine Eigenschaft gibt einen default-Wert an, der Konstruktor setzt das Feld aber auf ein anderes Literal. Werte gleich default speichert die DFM nicht, deshalb wird die Eigenschaft falsch geladen.
 
@@ -914,9 +1037,9 @@ FSize := 10;
 ```
 
 <a id="component-missing-free-notification"></a>
-## component-missing-free-notification
+### component-missing-free-notification
 
-**Komponentenreferenz ohne FreeNotification** · Bug · Warnung
+**Komponentenreferenz ohne FreeNotification** · Bug · Warnung · Gruppe Komponenten
 
 Eine Eigenschaft verweist auf eine andere Komponente, ihr Setter ruft aber FreeNotification nicht auf. Wird die andere Komponente freigegeben, bleibt ein ungültiger Zeiger zurück. Im Konstruktor erzeugte Unterkomponenten sind ausgenommen.
 
@@ -940,9 +1063,9 @@ end;
 ```
 
 <a id="component-setter-without-invalidate"></a>
-## component-setter-without-invalidate
+### component-setter-without-invalidate
 
-**Setter ohne Invalidate** · Code Smell · Hinweis
+**Setter ohne Invalidate** · Code Smell · Hinweis · Gruppe Komponenten
 
 Ein Setter ändert ein Feld, das Paint liest, ruft aber weder Invalidate noch Repaint, Refresh oder Changed auf. Das Steuerelement zeigt weiter den alten Zustand.
 
@@ -966,9 +1089,9 @@ end;
 ```
 
 <a id="component-fixed-pixels"></a>
-## component-fixed-pixels
+### component-fixed-pixels
 
-**Feste Pixelwerte** · Code Smell · Warnung
+**Feste Pixelwerte** · Code Smell · Warnung · Gruppe Komponenten
 
 Paint oder Resize verwenden feste Pixelwerte, die über 96 dpi zu klein sind. Werte über ScaleValue oder MulDiv, 0, 1 und -1 sowie Faktoren von Multiplikationen und Divisionen werden nicht gemeldet.
 
@@ -985,9 +1108,9 @@ Canvas.FillRect(Rect(0, 0, ScaleValue(16), ScaleValue(16)));
 ```
 
 <a id="component-hardcoded-color"></a>
-## component-hardcoded-color
+### component-hardcoded-color
 
-**Feste Farbe in Paint** · Code Smell · Hinweis
+**Feste Farbe in Paint** · Code Smell · Hinweis · Gruppe Komponenten
 
 Paint verwendet ein RGB-Literal, eine $00BBGGRR-Konstante oder einen TColor-Cast. Solche Farben ignorieren VCL-Styles; Systemfarben wie clBtnFace sind in Ordnung.
 
@@ -1004,9 +1127,9 @@ Canvas.Brush.Color := StyleServices.GetSystemColor(clHighlight);
 ```
 
 <a id="form-field-without-object"></a>
-## form-field-without-object
+### form-field-without-object
 
-**Formularfeld ohne Objekt** · Bug · Warnung
+**Formularfeld ohne Objekt** · Bug · Warnung · Gruppe Formulare und Daten
 
 Ein published-Komponentenfeld der Formularklasse hat kein Objekt in der .dfm/.fmx neben der Unit. Nach dem Laden bleibt das Feld nil. Felder außerhalb von published werden nicht geprüft.
 
@@ -1023,9 +1146,9 @@ Richtig:
 ```
 
 <a id="form-object-without-field"></a>
-## form-object-without-field
+### form-object-without-field
 
-**Formularobjekt ohne Feld** · Bug · Warnung
+**Formularobjekt ohne Feld** · Bug · Warnung · Gruppe Formulare und Daten
 
 Ein Objekt der Formulardatei hat kein Feld in der Formularklasse. Geerbte Objekte, Objekte in inline-Frames, namenlose Komponenten und Collection-Einträge werden übergangen. Die Korrektur ergänzt das Feld.
 
@@ -1042,9 +1165,9 @@ Button2: TButton;
 ```
 
 <a id="form-field-type-mismatch"></a>
-## form-field-type-mismatch
+### form-field-type-mismatch
 
-**Feldtyp weicht vom Formularobjekt ab** · Bug · Warnung
+**Feldtyp weicht vom Formularobjekt ab** · Bug · Warnung · Gruppe Formulare und Daten
 
 Der Typ des Felds weicht von der Klasse des Objekts in der Formulardatei ab. Ohne Quelltext der Klasse aus der Formulardatei wird nicht verglichen. Die Korrektur ändert den Feldtyp.
 
@@ -1061,9 +1184,9 @@ Edit1: TMaskEdit;
 ```
 
 <a id="security-command-injection"></a>
-## security-command-injection
+### security-command-injection
 
-**Befehlsinjektion** · Schwachstelle · Warnung
+**Befehlsinjektion** · Schwachstelle · Warnung · Gruppe Sicherheit
 
 ShellExecute, ShellExecuteEx, CreateProcess oder WinExec erhält ein Argument, das mit +, Format oder Concat aus nicht konstanten Werten zusammengesetzt ist. Eingaben könnten weitere Befehle einschleusen. Ohne Datenflussanalyse wird nur dieses einfache Muster erkannt (mittlere Konfidenz).
 
@@ -1080,9 +1203,9 @@ ShellExecute(0, 'open', 'tool.exe', PChar(QuotedArgument), nil, SW_SHOW);  // va
 ```
 
 <a id="security-path-traversal"></a>
-## security-path-traversal
+### security-path-traversal
 
-**Pfad-Traversal** · Schwachstelle · Warnung
+**Pfad-Traversal** · Schwachstelle · Warnung · Gruppe Sicherheit
 
 Ein Dateizugriff (TFileStream.Create, LoadFromFile, AssignFile, TFile.*) verwendet einen Pfad aus Eingabedaten (Text, ParamStr, Request) ohne Prüfung über TPath.GetFullPath. Experimentell, bis die Datenflussanalyse verfügbar ist.
 
@@ -1099,9 +1222,9 @@ Path := TPath.GetFullPath(TPath.Combine(Root, Edit1.Text));  // then check it st
 ```
 
 <a id="security-weak-crypto"></a>
-## security-weak-crypto
+### security-weak-crypto
 
-**Schwache Kryptografie** · Sicherheits-Hotspot · Hinweis
+**Schwache Kryptografie** · Sicherheits-Hotspot · Hinweis · Gruppe Sicherheit
 
 MD5, SHA-1, DES oder RC4 wird verwendet. Für Prüfsummen ist das in Ordnung, für Kennwörter und Signaturen nicht. Niedrige Konfidenz, mittlere, wenn die Anweisung ein Kennwort, Geheimnis oder eine Signatur nennt.
 
@@ -1118,9 +1241,9 @@ Stored := THashSHA2.GetHashString(Salt + PasswordText);
 ```
 
 <a id="security-tls-verification-disabled"></a>
-## security-tls-verification-disabled
+### security-tls-verification-disabled
 
-**TLS-Zertifikatsprüfung abgeschaltet** · Schwachstelle · Warnung
+**TLS-Zertifikatsprüfung abgeschaltet** · Schwachstelle · Warnung · Gruppe Sicherheit
 
 Indy SSLOptions.VerifyMode := [], ein OnVerifyPeer-Handler, der immer True liefert, oder ein ValidateServerCertificate-Handler, der Accepted := True ohne Prüfung setzt.
 
@@ -1137,9 +1260,9 @@ IdSSL.SSLOptions.VerifyMode := [sslvrfPeer];
 ```
 
 <a id="security-insecure-http"></a>
-## security-insecure-http
+### security-insecure-http
 
-**Unverschlüsselte http://-URL** · Sicherheits-Hotspot · Hinweis
+**Unverschlüsselte http://-URL** · Sicherheits-Hotspot · Hinweis · Gruppe Sicherheit
 
 Ein String enthält eine http://-URL. XML-Namensräume und Schema-URIs, Kommentare sowie localhost, 127.0.0.1 und [::1] sind ausgenommen. Die Korrektur ersetzt http:// durch https://.
 
@@ -1156,9 +1279,9 @@ Client.Get('https://api.example.com/data');
 ```
 
 <a id="security-insecure-random"></a>
-## security-insecure-random
+### security-insecure-random
 
-**Random für sicherheitsrelevante Werte** · Sicherheits-Hotspot · Warnung
+**Random für sicherheitsrelevante Werte** · Sicherheits-Hotspot · Warnung · Gruppe Sicherheit
 
 Random wird einem Token, Kennwort, Salt, Nonce oder Schlüssel zugewiesen. Random ist vorhersagbar; einen kryptografischen Zufallsgenerator verwenden. Fehlendes Randomize behandelt #153.
 
@@ -1175,9 +1298,9 @@ Token := TNetEncoding.Base64URL.EncodeBytesToString(CryptoRandomBytes(32));
 ```
 
 <a id="dfm-circular-datasource"></a>
-## dfm-circular-datasource
+### dfm-circular-datasource
 
-**Zirkuläre Master-Detail- bzw. DataSource-Verknüpfung** · Bug · Warnung
+**Zirkuläre Master-Detail- bzw. DataSource-Verknüpfung** · Bug · Warnung · Gruppe Formulare und Daten
 
 MasterSource/DataSource-Verknüpfungen der Formulardatei bilden einen Kreis (tblA → dsB → tblB → dsA → tblA). Das Öffnen der Datasets läuft in eine Rekursion oder zeigt keine stimmigen Daten.
 
@@ -1194,9 +1317,9 @@ tblB.MasterSource = dsA  // tblA has no master
 ```
 
 <a id="dfm-master-without-fields"></a>
-## dfm-master-without-fields
+### dfm-master-without-fields
 
-**Master-Detail ohne MasterFields** · Bug · Warnung
+**Master-Detail ohne MasterFields** · Bug · Warnung · Gruppe Formulare und Daten
 
 Ein Dataset hat MasterSource, aber keine MasterFields. Das Detail wird nicht gefiltert und zeigt alle Datensätze.
 
@@ -1213,9 +1336,9 @@ MasterSource = dsKunden; MasterFields = 'KundenID'
 ```
 
 <a id="dfm-required-field-without-control"></a>
-## dfm-required-field-without-control
+### dfm-required-field-without-control
 
-**Pflichtfeld ohne sichtbares Eingabe-Control** · Bug · Warnung
+**Pflichtfeld ohne sichtbares Eingabe-Control** · Bug · Warnung · Gruppe Formulare und Daten
 
 Ein persistentes Feld mit Required = True ist an kein sichtbares datensensitives Control gebunden (ein Gitter ohne DataField zählt für alle Felder). Der Anwender kann es nicht füllen, Post schlägt fehl.
 
@@ -1232,9 +1355,9 @@ edName: TDBEdit; DataSource = dsKunden; DataField = 'Name'
 ```
 
 <a id="dfm-control-field-type-mismatch"></a>
-## dfm-control-field-type-mismatch
+### dfm-control-field-type-mismatch
 
-**Datensensitives Control passt nicht zum Feldtyp** · Bug · Warnung
+**Datensensitives Control passt nicht zum Feldtyp** · Bug · Warnung · Gruppe Formulare und Daten
 
 Das Control passt nicht zum persistenten Feld, z. B. TDBEdit an einem TBooleanField oder Blob-Feld, TDBImage an einem Feld ohne Grafik.
 
@@ -1251,9 +1374,9 @@ cbAktiv: TDBCheckBox; DataField = 'Aktiv'
 ```
 
 <a id="dfm-duplicate-binding"></a>
-## dfm-duplicate-binding
+### dfm-duplicate-binding
 
-**Zwei Controls an demselben Feld** · Bug · Warnung
+**Zwei Controls an demselben Feld** · Bug · Warnung · Gruppe Formulare und Daten
 
 Zwei Eingabe-Controls nutzen dieselbe DataSource und dasselbe DataField. Meist ein Kopierfehler. Anzeige-Controls (TDBText, TDBImage) zählen nicht.
 
@@ -1270,9 +1393,9 @@ ed1: DataField = 'Name'; ed2: DataField = 'Vorname'
 ```
 
 <a id="dfm-property"></a>
-## dfm-property
+### dfm-property
 
-**Komponenten-Property verletzt eine Eigenschaftsregel** · Code Smell · Warnung
+**Komponenten-Property verletzt eine Eigenschaftsregel** · Code Smell · Warnung · Gruppe Formulare und Daten
 
 Eine Komponenten-Property in der Formulardatei erfüllt eine Regel aus dfmPropertyRules in atlas.json nicht (Klasse, Property, Bedingung, Wert). Nicht gespeicherte Properties zählen mit ihrem default-Wert; Objekte aus dem Vorfahrenformular werden nur gemeldet, wenn dieses Formular den Wert selbst setzt. Die Schnellkorrektur setzt den Wert in der Formulardatei (fix: auto auch mit source.fixAll); der Befehl "Eigenschaftsregeln anwenden" korrigiert ein Formular, das Projekt oder die Gruppe mit Vorschau.
 
@@ -1295,9 +1418,9 @@ end
 ```
 
 <a id="foreign-form-control-access"></a>
-## foreign-form-control-access
+### foreign-form-control-access
 
-**Zugriff auf Controls eines anderen Formulars** · Code Smell · Warnung
+**Zugriff auf Controls eines anderen Formulars** · Code Smell · Warnung · Gruppe Formulare und Daten
 
 Code greift über die globale Variable auf ein Feld eines Formulars oder Frames aus einer anderen Unit zu (Form2.Edit1.Text). Das koppelt die Units eng; besser eine Methode oder Property des Formulars nutzen.
 
@@ -1314,9 +1437,9 @@ Form2.Kundenname := 'x';
 ```
 
 <a id="security-sql-injection"></a>
-## security-sql-injection
+### security-sql-injection
 
-**SQL-Text aus zusammengesetzten Werten (SQL-Injection)** · Schwachstelle · Warnung
+**SQL-Text aus zusammengesetzten Werten (SQL-Injection)** · Schwachstelle · Warnung · Gruppe Sicherheit
 
 SQL.Text, SQL.Add, CommandText, ExecSQL oder Open erhalten Text, der per + oder Format aus Nicht-Konstanten zusammengesetzt ist. Benutzereingaben könnten SQL einschleusen. Parameter verwenden (:Name, ParamByName). Konstanten, resourcestrings, IntToStr und QuotedStr zählen nicht; Benutzereingaben (TEdit.Text, TMemo.Lines) heben die Konfidenz auf hoch.
 
@@ -1334,9 +1457,9 @@ Q.ParamByName('N').AsString := Edit1.Text;
 ```
 
 <a id="slash-command"></a>
-## slash-command
+### slash-command
 
-**Schnellbefehl nicht ausgeführt** · Code Smell · Hinweis
+**Schnellbefehl nicht ausgeführt** · Code Smell · Hinweis · Gruppe Atlas intern
 
 Eine Zeile, die mit /name beginnt, wurde nicht ausgeführt und steht noch im Code: Der Befehl ist unbekannt, abgeschaltet (slashCommands.disabled) oder passt an dieser Stelle nicht. Die Meldung nennt den Grund. "/ignore regel" meldet sie auch, wenn diese Regel in der Zeile darunter nichts findet.
 
@@ -1353,9 +1476,9 @@ Richtig:
 ```
 
 <a id="empty-except"></a>
-## empty-except
+### empty-except
 
-**Leerer except-Block** · Code Smell · Warnung
+**Leerer except-Block** · Code Smell · Warnung · Gruppe Exceptions
 
 Ein except-Block ohne Anweisung verschluckt jede Ausnahme. Ein Block, der nur einen Kommentar enthält, gilt als begründet und wird nicht gemeldet.
 
@@ -1380,9 +1503,9 @@ end;
 ```
 
 <a id="interface-guid"></a>
-## interface-guid
+### interface-guid
 
-**Interface ohne GUID** · Bug · Warnung
+**Interface ohne GUID** · Bug · Warnung · Gruppe Fehler finden
 
 Ein Interface deklariert keine GUID. Supports, as und QueryInterface brauchen eine. Die Konfidenz ist hoch, wenn das Interface in derselben Datei damit verwendet wird, sonst niedrig. Die Schnellkorrektur fügt eine neue GUID ein.
 
@@ -1406,9 +1529,9 @@ type
 ```
 
 <a id="duplicate-interface-guid"></a>
-## duplicate-interface-guid
+### duplicate-interface-guid
 
-**Zwei Interfaces mit derselben GUID** · Bug · Fehler
+**Zwei Interfaces mit derselben GUID** · Bug · Fehler · Gruppe Fehler finden
 
 Zwei Interfaces der Datei deklarieren dieselbe GUID, meist nach dem Kopieren einer Deklaration. Supports und as verwechseln sie dann. Die Schnellkorrektur erzeugt eine neue GUID.
 
@@ -1435,11 +1558,15 @@ end;
 ```
 
 <a id="file-header"></a>
-## file-header
+### file-header
 
-**Dateikopf fehlt oder weicht ab** · Code Smell · Hinweis
+**Dateikopf fehlt oder weicht ab** · Code Smell · Hinweis · Gruppe Stil und Metriken
 
 Die Datei beginnt nicht mit dem Kopf aus der Regeloption "template". Standardmäßig aus; in atlas.json mit einer Vorlage einschalten. Die Schnellkorrektur fügt den Kopf ein.
+
+| Option | Typ | Vorgabe | Bedeutung |
+|---|---|---|---|
+| `template` | string | `""` | Erwarteter Dateikopf; Platzhalter wie dokumentiert. |
 
 Mit Treffer:
 
@@ -1455,9 +1582,9 @@ unit Tools;
 ```
 
 <a id="hardcoded-string"></a>
-## hardcoded-string
+### hardcoded-string
 
-**Text im Code statt resourcestring** · Code Smell · Hinweis
+**Text im Code statt resourcestring** · Code Smell · Hinweis · Gruppe Stil und Metriken
 
 In einer Anweisung steht ein String mit Wörtern für Menschen. In einen resourcestring auslagern, damit er übersetzt werden kann. Standardmäßig aus, niedrige Konfidenz.
 
@@ -1477,9 +1604,9 @@ ShowMessage(SFileNotFound);
 ```
 
 <a id="self-assignment"></a>
-## self-assignment
+### self-assignment
 
-**Zuweisung an sich selbst** · Bug · Warnung
+**Zuweisung an sich selbst** · Bug · Warnung · Gruppe Fehler finden
 
 Einer Variablen, einem Feld oder einer Property wird der eigene Wert zugewiesen. Gemeint ist meist ein anderer Wert, etwa ein Parameter oder ein anderes Feld. Verdeckt ein Parameter oder eine lokale Variable ein gleichnamiges Feld (Name := Name), bietet Atlas Self.Name := Name als Korrektur an.
 
@@ -1496,9 +1623,9 @@ FName := AName;
 ```
 
 <a id="for-high-to-low"></a>
-## for-high-to-low
+### for-high-to-low
 
-**for-Schleife zählt mit to abwärts** · Bug · Warnung
+**for-Schleife zählt mit to abwärts** · Bug · Warnung · Gruppe Fehler finden
 
 Die Schleife beginnt beim oberen Wert (High, Count - 1) und endet beim unteren, verwendet aber to. Sie läuft nie; gemeint war downto.
 
@@ -1517,9 +1644,9 @@ for I := High(A) downto Low(A) do
 ```
 
 <a id="exception-not-raised"></a>
-## exception-not-raised
+### exception-not-raised
 
-**Exception erzeugt, aber nicht ausgelöst** · Bug · Warnung
+**Exception erzeugt, aber nicht ausgelöst** · Bug · Warnung · Gruppe Fehler finden
 
 Ein Exception-Objekt wird als eigene Anweisung erzeugt. Ohne raise passiert nichts, und das Objekt bleibt als Speicherleck zurück.
 
@@ -1538,11 +1665,15 @@ if X = nil then
 ```
 
 <a id="assert-side-effect"></a>
-## assert-side-effect
+### assert-side-effect
 
-**Assert mit Seiteneffekt** · Bug · Warnung
+**Assert mit Seiteneffekt** · Bug · Warnung · Gruppe Fehler finden
 
 Das Argument von Assert verändert Daten (Inc, Dec, eine Try…-Funktion mit out-Parameter oder eine Methode aus der Option mutatingMethods). Mit {$C-} entfernt der Compiler den ganzen Aufruf samt Seiteneffekt.
+
+| Option | Typ | Vorgabe | Bedeutung |
+|---|---|---|---|
+| `mutatingMethods` | string-list | `["Add","Delete","Remove","Extract","Clear","Insert"]` | Methoden, die ihr Objekt verändern. |
 
 Mit Treffer:
 
@@ -1558,9 +1689,9 @@ Assert(Index >= 0);
 ```
 
 <a id="ifthen-side-effect"></a>
-## ifthen-side-effect
+### ifthen-side-effect
 
-**IfThen wertet beide Zweige aus** · Bug · Warnung
+**IfThen wertet beide Zweige aus** · Bug · Warnung · Gruppe Fehler finden
 
 IfThen ist eine Funktion: Beide Zweige werden vor dem Aufruf ausgewertet. Ein Nil-Zugriff oder Funktionsaufruf im nicht gewählten Zweig passiert trotzdem. Hohe Konfidenz, wenn ein Zweig einen in der Bedingung geprüften Namen dereferenziert, mittlere bei einem Funktionsaufruf.
 
@@ -1577,9 +1708,9 @@ if Assigned(X) then S := X.Name else S := '';
 ```
 
 <a id="random-without-randomize"></a>
-## random-without-randomize
+### random-without-randomize
 
-**Random ohne Randomize** · Code Smell · Hinweis
+**Random ohne Randomize** · Code Smell · Hinweis · Gruppe Robustheit und Muster
 
 Random wird verwendet, aber die Unit ruft nie Randomize auf; jeder Start liefert dieselbe Folge. Randomize steht oft in der .dpr, deshalb ist die Regel standardmäßig aus und hat niedrige Konfidenz.
 
@@ -1598,9 +1729,9 @@ Dice := Random(6) + 1;
 ```
 
 <a id="int32-mul-overflow"></a>
-## int32-mul-overflow
+### int32-mul-overflow
 
-**Int32-Multiplikation an Int64 zugewiesen** · Bug · Warnung
+**Int32-Multiplikation an Int64 zugewiesen** · Bug · Warnung · Gruppe Fehler finden
 
 Beide Operanden haben höchstens 32 Bit; das Produkt wird in 32 Bit gerechnet und läuft über, bevor es der Int64-Variablen zugewiesen wird. Einen Operanden nach Int64 umwandeln.
 
@@ -1617,9 +1748,9 @@ Total := Int64(Width) * Height;
 ```
 
 <a id="sizeof-pointer"></a>
-## sizeof-pointer
+### sizeof-pointer
 
-**SizeOf eines Zeigers in Move oder FillChar** · Bug · Fehler
+**SizeOf eines Zeigers in Move oder FillChar** · Bug · Fehler · Gruppe Fehler finden
 
 SizeOf eines Zeigers, Strings oder dynamischen Arrays ist die Größe des Verweises (4 oder 8 Byte), nicht die der Daten. Move und FillChar kopieren bzw. löschen dann zu wenig.
 
@@ -1636,9 +1767,9 @@ FillChar(Buffer[0], Length(Buffer) * SizeOf(Buffer[0]), 0);
 ```
 
 <a id="char-to-pchar"></a>
-## char-to-pchar
+### char-to-pchar
 
-**Char nach PChar umgewandelt** · Bug · Fehler
+**Char nach PChar umgewandelt** · Bug · Fehler · Gruppe Fehler finden
 
 PChar(C) mit einer Char-Variablen macht aus dem Zeichencode eine Adresse. Gemeint war ein String.
 
@@ -1655,9 +1786,9 @@ ShowMessage(PChar(string(C)));
 ```
 
 <a id="float-equality"></a>
-## float-equality
+### float-equality
 
-**Gleitkommavergleich mit = oder <>** · Bug · Hinweis
+**Gleitkommavergleich mit = oder <>** · Bug · Hinweis · Gruppe Fehler finden
 
 Gleitkommawerte sind nach Berechnungen selten exakt gleich. Mit SameValue aus System.Math und einer Toleranz vergleichen. Vergleiche mit 0 werden nicht gemeldet.
 
@@ -1674,9 +1805,9 @@ if SameValue(Total, Expected) then
 ```
 
 <a id="constructor-on-instance"></a>
-## constructor-on-instance
+### constructor-on-instance
 
-**Konstruktor auf einer Instanz aufgerufen** · Bug · Warnung
+**Konstruktor auf einer Instanz aufgerufen** · Bug · Warnung · Gruppe Fehler finden
 
 Create wird auf einer Variablen statt auf der Klasse aufgerufen. Das legt kein neues Objekt an; mit nicht zugewiesener Variable stürzt es ab. Klassenreferenzen (class of …) werden nicht gemeldet.
 
@@ -1693,9 +1824,9 @@ List := TStringList.Create;
 ```
 
 <a id="format-without-settings"></a>
-## format-without-settings
+### format-without-settings
 
-**Formatierung abhängig vom Gebietsschema** · Code Smell · Hinweis
+**Formatierung abhängig vom Gebietsschema** · Code Smell · Hinweis · Gruppe Robustheit und Muster
 
 Format mit %f, %n, %m, %g oder %e und Funktionen wie FloatToStr, StrToFloat oder DateToStr ohne TFormatSettings-Parameter verwenden das Gebietsschema des Benutzers (Dezimaltrenner, Datumsformat). Für Dateien, Protokolle und Logs feste TFormatSettings übergeben. Format('%d', …) wird nicht gemeldet.
 
@@ -1712,9 +1843,9 @@ Line := Format('%.2f', [Amount], TFormatSettings.Invariant);
 ```
 
 <a id="generic-exception-raised"></a>
-## generic-exception-raised
+### generic-exception-raised
 
-**Allgemeine Exception ausgelöst** · Code Smell · Hinweis
+**Allgemeine Exception ausgelöst** · Code Smell · Hinweis · Gruppe Exceptions
 
 Wer die Basisklasse Exception auslöst, nimmt Aufrufern die Möglichkeit, den Fehler gezielt zu behandeln. Besser eine eigene Exception-Klasse deklarieren.
 
@@ -1731,9 +1862,9 @@ raise ECustomerMissing.Create('Customer missing');
 ```
 
 <a id="catch-all-without-raise"></a>
-## catch-all-without-raise
+### catch-all-without-raise
 
-**Exception-Handler ohne erneutes raise** · Code Smell · Warnung
+**Exception-Handler ohne erneutes raise** · Code Smell · Warnung · Gruppe Exceptions
 
 Ein Handler für Exception, der weder erneut auslöst noch das Programm beendet, verschluckt jeden Fehler, auch Programmierfehler. Standardmäßig aus; gedacht für Bibliothekscode.
 
@@ -1759,9 +1890,9 @@ end;
 ```
 
 <a id="exception-freed"></a>
-## exception-freed
+### exception-freed
 
-**Exception-Objekt manuell freigegeben** · Bug · Fehler
+**Exception-Objekt manuell freigegeben** · Bug · Fehler · Gruppe Exceptions
 
 Die RTL gibt ein Exception-Objekt nach seinem Handler bzw. nach raise selbst frei. Manuelles Freigeben führt zur doppelten Freigabe.
 
@@ -1780,9 +1911,9 @@ on E: Exception do
 ```
 
 <a id="string-concat-in-loop"></a>
-## string-concat-in-loop
+### string-concat-in-loop
 
-**String-Verkettung in einer Schleife** · Code Smell · Hinweis
+**String-Verkettung in einer Schleife** · Code Smell · Hinweis · Gruppe Performance
 
 Eine String-Variable wird in einer Schleife schrittweise verlängert. Delphi vergrößert Strings meist an Ort und Stelle, deshalb nur mit niedriger Konfidenz und standardmäßig aus; bei vielen Durchläufen ist TStringBuilder schneller.
 
@@ -1807,9 +1938,9 @@ end;
 ```
 
 <a id="loop-invariant-call"></a>
-## loop-invariant-call
+### loop-invariant-call
 
-**Teurer Aufruf in der Schleifenbedingung** · Code Smell · Hinweis
+**Teurer Aufruf in der Schleifenbedingung** · Code Smell · Hinweis · Gruppe Performance
 
 Die Bedingung von while und until wird bei jedem Durchlauf ausgewertet. Aufrufe wie Trim, Format oder FileExists und Eigenschaften wie Lines.Text werden dort jedes Mal neu berechnet; besser einmal vor der Schleife. Die Grenzen von for werden nur einmal ausgewertet und nicht gemeldet. Standardmäßig aus.
 
@@ -1829,9 +1960,9 @@ while I < Length(Text) do
 ```
 
 <a id="missing-begin-update"></a>
-## missing-begin-update
+### missing-begin-update
 
-**Hinzufügen in einer Schleife ohne BeginUpdate** · Code Smell · Hinweis
+**Hinzufügen in einer Schleife ohne BeginUpdate** · Code Smell · Hinweis · Gruppe Performance
 
 Items.Add, Lines.Add und ähnliche Aufrufe in einer Schleife zeichnen das Steuerelement bei jedem Aufruf neu. Die Schleife mit BeginUpdate und try … finally EndUpdate umschließen. Standardmäßig aus.
 
@@ -1855,9 +1986,9 @@ end;
 ```
 
 <a id="bool-compare"></a>
-## bool-compare
+### bool-compare
 
-**Vergleich mit True oder False** · Code Smell · Hinweis
+**Vergleich mit True oder False** · Code Smell · Hinweis · Gruppe Stil und Metriken
 
 Ein Vergleich eines Boolean mit True oder False ist überflüssig; den Ausdruck oder not direkt verwenden.
 
@@ -1876,9 +2007,9 @@ if Visible then
 ```
 
 <a id="redundant-assigned-free"></a>
-## redundant-assigned-free
+### redundant-assigned-free
 
-**Assigned-Prüfung vor Free** · Code Smell · Hinweis
+**Assigned-Prüfung vor Free** · Code Smell · Hinweis · Gruppe Stil und Metriken
 
 Free prüft selbst auf nil, eine Assigned-Prüfung vor Free oder FreeAndNil ist überflüssig.
 
@@ -1896,9 +2027,9 @@ List.Free;
 ```
 
 <a id="raise-in-finally"></a>
-## raise-in-finally
+### raise-in-finally
 
-**raise in einem finally-Block** · Bug · Warnung
+**raise in einem finally-Block** · Bug · Warnung · Gruppe Exceptions
 
 Eine im finally-Block ausgelöste Exception ersetzt die gerade laufende Exception, die dadurch verloren geht.
 
@@ -1923,9 +2054,9 @@ end;
 ```
 
 <a id="redundant-parens"></a>
-## redundant-parens
+### redundant-parens
 
-**Überflüssige Klammern** · Code Smell · Hinweis
+**Überflüssige Klammern** · Code Smell · Hinweis · Gruppe Stil und Metriken
 
 Klammern um eine ganze Bedingung oder einen einzelnen Bezeichner bringen nichts. Standardmäßig aus.
 
@@ -1944,9 +2075,9 @@ if Done then
 ```
 
 <a id="redundant-begin-end"></a>
-## redundant-begin-end
+### redundant-begin-end
 
-**begin … end um eine einzelne Anweisung** · Code Smell · Hinweis
+**begin … end um eine einzelne Anweisung** · Code Smell · Hinweis · Gruppe Stil und Metriken
 
 Ein begin … end-Block mit genau einer Anweisung kann entfallen. Standardmäßig aus.
 
@@ -1967,9 +2098,9 @@ if Done then
 ```
 
 <a id="with-statement"></a>
-## with-statement
+### with-statement
 
-**with-Anweisung** · Code Smell · Hinweis
+**with-Anweisung** · Code Smell · Hinweis · Gruppe Stil und Metriken
 
 In einem with-Block ist unklar, zu welchem Objekt ein Bezeichner gehört, und ein neues Mitglied des with-Objekts ändert still die Bedeutung. Den Ausdruck ausschreiben oder eine lokale Variable verwenden.
 
@@ -1987,11 +2118,15 @@ Customer.Name := Edit.Text;
 ```
 
 <a id="metric-method-length"></a>
-## metric-method-length
+### metric-method-length
 
-**Methode zu lang** · Code Smell · Hinweis
+**Methode zu lang** · Code Smell · Hinweis · Gruppe Stil und Metriken
 
 Die Methode hat mehr Codezeilen als der Grenzwert (Vorgabe 60). Leerzeilen, Kommentare, Compiler-Direktiven und lokale Routinen zählen nicht mit. Die Methode in kleinere aufteilen. Den Grenzwert setzt die Option max, z. B. "rules": {"metric-method-length": {"max": 80}}.
+
+| Option | Typ | Vorgabe | Bedeutung |
+|---|---|---|---|
+| `max` | integer | `60` | Höchstens so viele Anweisungszeilen. |
 
 Mit Treffer:
 
@@ -2015,11 +2150,15 @@ end;
 ```
 
 <a id="metric-nesting-depth"></a>
-## metric-nesting-depth
+### metric-nesting-depth
 
-**Zu tief verschachtelt** · Code Smell · Hinweis
+**Zu tief verschachtelt** · Code Smell · Hinweis · Gruppe Stil und Metriken
 
 Die Methode verschachtelt if, case, Schleifen und try tiefer als der Grenzwert (Vorgabe 4). else if bleibt auf der Ebene seines if. Mit Exit oder Continue früh verlassen oder innere Teile in eigene Methoden auslagern. Den Grenzwert setzt die Option max.
+
+| Option | Typ | Vorgabe | Bedeutung |
+|---|---|---|---|
+| `max` | integer | `4` | Höchste erlaubte Schachtelungstiefe. |
 
 Mit Treffer:
 
@@ -2044,11 +2183,15 @@ for Item in Items do
 ```
 
 <a id="metric-cyclomatic-complexity"></a>
-## metric-cyclomatic-complexity
+### metric-cyclomatic-complexity
 
-**Zyklomatische Komplexität zu hoch** · Code Smell · Hinweis
+**Zyklomatische Komplexität zu hoch** · Code Smell · Hinweis · Gruppe Stil und Metriken
 
 Die zyklomatische Komplexität der Methode liegt über dem Grenzwert (Vorgabe 15). Sie beginnt bei 1 und steigt um 1 je if, while, repeat und for, je case-Zweig ohne else, je and/or in einer Bedingung und je except on; ein except ohne on zählt einmal. Viele Pfade brauchen viele Tests. Den Grenzwert setzt die Option max.
+
+| Option | Typ | Vorgabe | Bedeutung |
+|---|---|---|---|
+| `max` | integer | `15` | Höchste erlaubte zyklomatische Komplexität. |
 
 Mit Treffer:
 
@@ -2067,11 +2210,15 @@ Handlers[Kind]();
 ```
 
 <a id="metric-cognitive-complexity"></a>
-## metric-cognitive-complexity
+### metric-cognitive-complexity
 
-**Kognitive Komplexität zu hoch** · Code Smell · Hinweis
+**Kognitive Komplexität zu hoch** · Code Smell · Hinweis · Gruppe Stil und Metriken
 
 Die kognitive Komplexität der Methode liegt über dem Grenzwert (Vorgabe 15). Nach SonarSource zählen if, case, Schleifen und except-Behandler 1 plus ihre Schachtelungsebene; else, else if, goto und jede Folge gleicher logischer Operatoren zählen 1. Verschachtelter Code ist schwerer zu lesen als Code hintereinander. Den Grenzwert setzt die Option max.
+
+| Option | Typ | Vorgabe | Bedeutung |
+|---|---|---|---|
+| `max` | integer | `15` | Höchste erlaubte kognitive Komplexität. |
 
 Mit Treffer:
 
@@ -2093,11 +2240,15 @@ for I := 0 to N do
 ```
 
 <a id="metric-parameter-count"></a>
-## metric-parameter-count
+### metric-parameter-count
 
-**Zu viele Parameter** · Code Smell · Hinweis
+**Zu viele Parameter** · Code Smell · Hinweis · Gruppe Stil und Metriken
 
 Die Methode hat mehr Parameter als der Grenzwert (Vorgabe 6). Zusammengehörige Werte in einem Record oder einer Klasse bündeln. Den Grenzwert setzt die Option max.
+
+| Option | Typ | Vorgabe | Bedeutung |
+|---|---|---|---|
+| `max` | integer | `6` | Höchstens so viele Parameter. |
 
 Mit Treffer:
 
@@ -2112,11 +2263,15 @@ procedure Book(const AAddress: TAddress; const AOrder: TOrder);
 ```
 
 <a id="todo-comment"></a>
-## todo-comment
+### todo-comment
 
-**Offener TODO-Kommentar** · Code Smell · Hinweis
+**Offener TODO-Kommentar** · Code Smell · Hinweis · Gruppe Stil und Metriken
 
 Ein Kommentar beginnt mit einer Marke für offene Arbeit: // TODO, // FIXME oder das Format der IDE-To-Do-Liste { TODO 1 -oPerson -cKategorie : Text }. Der Hinweis zeigt Marke, Priorität, Kategorie, Person und Text, damit offene Arbeit in der Problemliste erscheint. In der Vorgabe aus; in atlas.json einschalten, z. B. "rules": {"todo-comment": {"severity": "hint"}}. Erledigte Einträge ({ DONE … }) meldet die Regel nie. Die Option keywords legt die Marken fest (Vorgabe ["TODO", "FIXME"]); sie gilt auch für get_todos und --todos.
+
+| Option | Typ | Vorgabe | Bedeutung |
+|---|---|---|---|
+| `keywords` | string-list | `["TODO","FIXME"]` | Marken offener TODO-Einträge (nur Buchstaben). |
 
 Mit Treffer:
 
@@ -2133,9 +2288,9 @@ Edit.SetFocus;
 ```
 
 <a id="component-palette-icon"></a>
-## component-palette-icon
+### component-palette-icon
 
-**Registrierte Komponente ohne Palettensymbol** · Code Smell · Hinweis
+**Registrierte Komponente ohne Palettensymbol** · Code Smell · Hinweis · Gruppe Komponenten
 
 Jede an RegisterComponents übergebene Klasse braucht in einer per {$R} eingebundenen .dcr oder .res eine Bitmap mit dem Klassennamen in Großbuchstaben. Ab Delphi 11 werden zusätzlich die Größen 16, 24 und 32 px (NAME16, NAME24, NAME32) erwartet. Ohne lesbare eingebundene Ressourcendatei schweigt die Regel.
 
@@ -2154,9 +2309,9 @@ RegisterComponents('Samples', [TMyButton]);
 ```
 
 <a id="unresolved-identifier"></a>
-## unresolved-identifier
+### unresolved-identifier
 
-**Nicht deklarierter Bezeichner** · Bug · Warnung
+**Nicht deklarierter Bezeichner** · Bug · Warnung · Gruppe Fehler finden
 
 Ein Bezeichner in einer Anweisung ist weder in der Unit noch in den eingebundenen Units deklariert (wie Compilerfehler E2003). Geprüft beim Tippen, ohne Compiler; with-Blöcke, asm und anonyme Methoden werden übersprungen.
 
@@ -2182,9 +2337,9 @@ end;
 ```
 
 <a id="deprecated-symbol"></a>
-## deprecated-symbol
+### deprecated-symbol
 
-**Veraltetes Symbol** · Code Smell · Hinweis
+**Veraltetes Symbol** · Code Smell · Hinweis · Gruppe Stil und Metriken
 
 Eine Routine, ein Typ, eine Konstante oder ein Mitglied mit deprecated, platform oder experimental wird verwendet (wie Compilerwarnungen W1000, W1002 und W1003). Der Editor streicht den Namen durch; die Meldung nennt den Grund aus deprecated 'Grund'. Die Deklaration und der Kopf ihrer Implementierung werden nicht gemeldet.
 
@@ -2205,9 +2360,9 @@ New;
 ```
 
 <a id="implicit-package-import"></a>
-## implicit-package-import
+### implicit-package-import
 
-**Implizit eingebundene Unit** · Code Smell · Warnung
+**Implizit eingebundene Unit** · Code Smell · Warnung · Gruppe Packages und Tests
 
 In einem Package (.dpk) verwendet eine Unit aus contains eine Unit, die weder in contains steht noch von einem Package aus requires geliefert wird. Der Compiler zieht sie implizit hinein (W1033), was später zu doppelten Units führt, wenn ein anderes Package sie ebenfalls enthält. Die Schnellkorrektur nimmt die Unit in contains auf.
 
@@ -2233,9 +2388,9 @@ end.
 ```
 
 <a id="type-used-before-declaration"></a>
-## type-used-before-declaration
+### type-used-before-declaration
 
-**Typ vor seiner Deklaration benutzt** · Bug · Fehler
+**Typ vor seiner Deklaration benutzt** · Bug · Fehler · Gruppe Fehler finden
 
 Eine Klasse, ein Interface, ein Record oder ein anderer Typ wird in einer Typdeklaration (Feld, Parameter, Ergebnis, Property, generisches Argument, class of) benutzt, ist aber erst weiter unten im selben Gültigkeitsbereich deklariert (wie Compilerfehler E2003). Vorfahren, Aliase und Zeigertypen werden nicht gemeldet. Schnellkorrekturen: Forward-Deklaration am Anfang des type-Blocks ergänzen, type-Blöcke zusammenlegen (const-, var- und label-Abschnitte dazwischen wandern vor den ersten Block) oder einen Record vor seinen ersten Verwender verschieben; ohne sichere Korrektur nennt die Meldung den Grund.
 
@@ -2263,9 +2418,9 @@ type
 ```
 
 <a id="unneeded-forward-declaration"></a>
-## unneeded-forward-declaration
+### unneeded-forward-declaration
 
-**Überflüssige Forward-Deklaration** · Code Smell · Hinweis
+**Überflüssige Forward-Deklaration** · Code Smell · Hinweis · Gruppe Stil und Metriken
 
 Eine Forward-Deklaration, deren Typ im selben type-Block vor der vollständigen Deklaration nicht benutzt wird. Schnellkorrektur: entfernen.
 
@@ -2287,9 +2442,9 @@ type
 ```
 
 <a id="owned-field-not-freed"></a>
-## owned-field-not-freed
+### owned-field-not-freed
 
-**Erzeugtes Feld wird nicht freigegeben** · Bug · Warnung
+**Erzeugtes Feld wird nicht freigegeben** · Bug · Warnung · Gruppe Fehler finden
 
 Ein Objektfeld, das der Konstruktor (oder eine von ihm aufgerufene private Methode) mit TKlasse.Create erzeugt, wird in der Klasse nirgends freigegeben (kein Free, FreeAndNil, Destroy oder DisposeOf). Ausgenommen sind Komponenten mit einem Owner ungleich nil sowie Interface- und Record-Felder; TObjectList- und TObjectDictionary-Felder sind normale Felder. Schnellkorrekturen: das Feld im Destruktor freigeben oder alle eigenen Objekte der Klasse freigeben; ein fehlender Destruktor wird mit override und inherited angelegt. Die Freigaben stehen vor inherited in umgekehrter Erzeugungsreihenfolge, als Free oder FreeAndNil (refactoring.freeFieldsStyle).
 
@@ -2314,9 +2469,9 @@ end;
 ```
 
 <a id="owned-field-free-unclear"></a>
-## owned-field-free-unclear
+### owned-field-free-unclear
 
-**Unklar, ob ein erzeugtes Feld freigegeben werden muss** · Bug · Hinweis
+**Unklar, ob ein erzeugtes Feld freigegeben werden muss** · Bug · Hinweis · Gruppe Fehler finden
 
 Ein im Konstruktor erzeugtes, nicht freigegebenes Objektfeld wird auch zurückgegeben (Result := FFeld, Exit(FFeld)), an eine Property eines anderen Objekts übergeben, ohne Create zugewiesen oder ist über eine Property (write FFeld) schreibbar. Ob die Klasse das Objekt noch besitzt, entscheidet der Entwickler; deshalb gibt es keine Schnellkorrektur.
 

@@ -46,6 +46,12 @@ const
   /// Plugins sucht sie (#697).</summary>
   ClassBodiesTag = 'class.bodies';
   CaseCompleteTag = 'case.complete';
+  /// <summary>Schnellkorrektur eines Regeltreffers und „für diese Zeile/Datei unterdrücken“ (#909); das Fenster
+  /// „Atlas-Prüfung“ und der Befund-Hover wählen damit die Aktion zum Treffer (Regel in diagnostics[0].code).
+  /// </summary>
+  RuleFixTag = 'rule.fix';
+  RuleSuppressLineTag = 'rule.suppressLine';
+  RuleSuppressFileTag = 'rule.suppressFile';
 
 type
   /// <summary>Edits in einer anderen Datei als dem Dokument der Aktion, z. B. der Formulardatei (#309).</summary>
