@@ -6,7 +6,7 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 
 | Gruppe | Regeln |
 |---|---|
-| [Fehler finden](#gruppe-find-bugs) | 29 |
+| [Fehler finden](#gruppe-find-bugs) | 30 |
 | [Exceptions](#gruppe-exceptions) | 5 |
 | [Threads](#gruppe-threads) | 6 |
 | [Robustheit und Muster](#gruppe-robustness) | 2 |
@@ -53,6 +53,7 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 | [`owned-field-free-unclear`](#owned-field-free-unclear) | Unklar, ob ein erzeugtes Feld freigegeben werden muss | Bug | Hinweis |
 | [`operator-precedence`](#operator-precedence) | Vorrang von not übersehen | Bug | Warnung |
 | [`empty-statement`](#empty-statement) | Leere Anweisung nach then, do oder else | Bug | Warnung |
+| [`loop-off-by-one`](#loop-off-by-one) | Schleife läuft einen Schritt zu weit | Bug | Warnung |
 
 <a id="gruppe-exceptions"></a>
 ### Exceptions
@@ -2542,4 +2543,29 @@ Richtig:
 ```pascal
 if Liste.Count = 0 then
   raise EKeineDaten.Create('Keine Daten');
+```
+
+<a id="loop-off-by-one"></a>
+### loop-off-by-one
+
+**Schleife läuft einen Schritt zu weit** · Bug · Warnung · Gruppe Fehler finden
+
+for I := 0 to Liste.Count oder to Length(A) über nullbasierte Listen und Arrays greift im letzten Durchlauf hinter das Ende, wenn der Rumpf Liste[I] bzw. A[I] liest. Bei einsbasierten Strings umgekehrt: S[0] und for I := 0 to Length(S) greifen vor das erste Zeichen; {$ZEROBASEDSTRINGS ON} wird beachtet. Schnellkorrektur: - 1 ergänzen bzw. High(A) verwenden, bei Strings Low(S) und High(S). Die Option countNames nennt die Namen, die eine Anzahl liefern.
+
+| Option | Typ | Vorgabe | Bedeutung |
+|---|---|---|---|
+| `countNames` | string-list | `["Count","Length"]` | Namen, die eine Anzahl liefern (Property wie Count oder Funktion wie Length). |
+
+Mit Treffer:
+
+```pascal
+for I := 0 to Kunden.Count do
+  Ausgabe(Kunden[I].Name);
+```
+
+Richtig:
+
+```pascal
+for I := 0 to Kunden.Count - 1 do
+  Ausgabe(Kunden[I].Name);
 ```

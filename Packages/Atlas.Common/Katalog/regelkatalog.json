@@ -1159,6 +1159,27 @@
           "description": "Do not report begin { intentionally empty } end."
         }
       ]
+    },
+    {
+      "id": "loop-off-by-one",
+      "name": "Loop runs one step too far",
+      "category": "bug",
+      "severity": "warning",
+      "group": "find-bugs",
+      "description": "for I := 0 to List.Count or to Length(A) over zero-based lists and arrays reads one element past the end when the body indexes List[I] or A[I]. With one-based strings it is the other way round: S[0] and for I := 0 to Length(S) read before the first character; {$ZEROBASEDSTRINGS ON} is taken into account. Quick fix: add - 1 or use High(A); for strings Low(S) and High(S). The option countNames lists the names that return a count.",
+      "bad": "for I := 0 to Kunden.Count do\n  Ausgabe(Kunden[I].Name);",
+      "good": "for I := 0 to Kunden.Count - 1 do\n  Ausgabe(Kunden[I].Name);",
+      "options": [
+        {
+          "name": "countNames",
+          "type": "string-list",
+          "default": [
+            "Count",
+            "Length"
+          ],
+          "description": "Names that return a count (property like Count or function like Length)."
+        }
+      ]
     }
   ]
 }

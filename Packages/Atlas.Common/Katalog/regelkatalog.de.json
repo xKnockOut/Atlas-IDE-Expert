@@ -608,6 +608,17 @@
           "description": "begin { absichtlich leer } end nicht melden."
         }
       ]
+    },
+    {
+      "id": "loop-off-by-one",
+      "name": "Schleife läuft einen Schritt zu weit",
+      "description": "for I := 0 to Liste.Count oder to Length(A) über nullbasierte Listen und Arrays greift im letzten Durchlauf hinter das Ende, wenn der Rumpf Liste[I] bzw. A[I] liest. Bei einsbasierten Strings umgekehrt: S[0] und for I := 0 to Length(S) greifen vor das erste Zeichen; {$ZEROBASEDSTRINGS ON} wird beachtet. Schnellkorrektur: - 1 ergänzen bzw. High(A) verwenden, bei Strings Low(S) und High(S). Die Option countNames nennt die Namen, die eine Anzahl liefern.",
+      "options": [
+        {
+          "name": "countNames",
+          "description": "Namen, die eine Anzahl liefern (Property wie Count oder Funktion wie Length)."
+        }
+      ]
     }
   ]
 }

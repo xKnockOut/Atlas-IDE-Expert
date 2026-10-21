@@ -5,23 +5,39 @@
 //                     folgende Zeile läuft immer bzw. die Schleife dreht leer.
 //                     Leere Blöcke begin … end nach then, do oder else ebenso,
 //                     außer mit Kommentar darin (Option allowCommented).
+//   loop-off-by-one   for I := 0 to X.Count bzw. to Length(A) über nullbasierte
+//                     Listen und Arrays, 0 to Length(S) und S[0] bei einsbasierten
+//                     Strings (#913); {$ZEROBASEDSTRINGS ON} macht Strings
+//                     nullbasiert. Gemeldet wird eine Schleife nur, wenn ihr
+//                     Rumpf X[I] bzw. A[I] liest; die Anzahl erkennt die Option
+//                     countNames (Vorgabe Count und Length).
 // Grundlage ist der Syntaxbaum: if, while, for, for-in und with ohne Rumpf
 // bzw. mit leerem Block; das Schlüsselwort davor sucht die Regel in den Token.
 
 interface
 
 uses
+  Atlas.Common.Pascal.Contract,
   Atlas.Common.Rules.Contract,
   Atlas.Common.Rules.Registry;
 
 const
   EmptyStatementRuleId = 'empty-statement';
+  LoopOffByOneRuleId = 'loop-off-by-one';
 
 type
   TEmptyStatementRule = class(TInterfacedObject, IRule)
   public
     function Descriptor: TRuleDescriptor;
     procedure Check(const AContext: TRuleContext; const AReport: IRuleReport);
+  end;
+
+  TLoopOffByOneRule = class(TInterfacedObject, IRule)
+  public
+    function Descriptor: TRuleDescriptor;
+    procedure Check(const AContext: TRuleContext; const AReport: IRuleReport);
+    /// <summary>Stehen Strings in AText nullbasiert ({$ZEROBASEDSTRINGS ON} bzw. {$ZEROBASEDSTRINGS+})?</summary>
+    class function ZeroBasedStrings(const ATokens: TArray<TPascalToken>): Boolean; static;
   end;
 
 procedure RegisterStatementRules(const ARegistry: TRuleRegistry);
@@ -33,8 +49,8 @@ uses
   System.StrUtils,
   Atlas.Common.Documents.Contract,
   Atlas.Common.Configuration.Contract,
-  Atlas.Common.Pascal.Contract,
   Atlas.Common.Pascal.SyntaxTree,
+  Atlas.Common.Pascal.DeclaredTypes,
   Atlas.Common.Rules.Options;
 
 type
@@ -89,6 +105,56 @@ begin
     if (ANode[Index].Kind in StatementKinds) and (ANode[Index].StartOffset >= AOffset) then
       Exit(ANode[Index]);
   Result := nil;
+end;
+
+/// <summary>Quelltext der Token AFirst..ALast wie geschrieben.</summary>
+function SourceText(const AText: string; const ATokens: TTokens; AFirst, ALast: Integer): string;
+begin
+  Result := Copy(AText, ATokens[AFirst].Offset + 1,
+    ATokens[ALast].Offset + Length(ATokens[ALast].Text) - ATokens[AFirst].Offset);
+end;
+
+/// <summary>Code-Token AFirst..ALast ohne Leerraum und Kommentare, kleingeschrieben (zum Vergleichen).</summary>
+function CodeKey(const ATokens: TTokens; AFirst, ALast: Integer): string;
+var
+  Index: Integer;
+begin
+  Result := '';
+  for Index := AFirst to ALast do
+    if not IsTrivia(ATokens[Index]) then
+      Result := Result + LowerCase(ATokens[Index].Text);
+end;
+
+/// <summary>Letztes Code-Token vor AIndex (AIndex selbst ausgeschlossen).</summary>
+function PreviousCode(const ATokens: TTokens; AIndex: Integer): Integer;
+begin
+  Result := AIndex - 1;
+  while (Result >= 0) and IsTrivia(ATokens[Result]) do
+    Dec(Result);
+end;
+
+/// <summary>Index der schließenden Klammer zu AOpen, -1 ohne.</summary>
+function Closing(const ATokens: TTokens; AOpen, AStop: Integer): Integer;
+var
+  Depth: Integer;
+begin
+  Depth := 0;
+  for Result := AOpen to AStop - 1 do
+    if ATokens[Result].IsSymbol('(') or ATokens[Result].IsSymbol('[') then
+      Inc(Depth)
+    else if ATokens[Result].IsSymbol(')') or ATokens[Result].IsSymbol(']') then
+    begin
+      Dec(Depth);
+      if Depth = 0 then
+        Exit;
+    end;
+  Result := -1;
+end;
+
+function IsStringType(const AType: string): Boolean;
+begin
+  Result := MatchText(AType, ['string', 'UnicodeString', 'AnsiString', 'WideString', 'RawByteString',
+    'UTF8String']);
 end;
 
 { TEmptyStatementRule }
@@ -222,9 +288,329 @@ begin
   Visit(AContext.Tree.Root);
 end;
 
+{ TLoopOffByOneRule }
+
+function TLoopOffByOneRule.Descriptor: TRuleDescriptor;
+begin
+  Result := TRuleDescriptor.Create(LoopOffByOneRuleId, TRuleSeverity.Warning,
+    'Schleife läuft einen Schritt zu weit');
+end;
+
+class function TLoopOffByOneRule.ZeroBasedStrings(const ATokens: TArray<TPascalToken>): Boolean;
+var
+  Token: TPascalToken;
+  Text: string;
+begin
+  Result := False;
+  for Token in ATokens do
+    if Token.Kind = TPascalTokenKind.Directive then
+    begin
+      Text := UpperCase(StringReplace(Token.Text, ' ', '', [rfReplaceAll]));
+      if Pos('$ZEROBASEDSTRINGS', Text) = 0 then
+        Continue;
+      Result := (Pos('$ZEROBASEDSTRINGSON', Text) > 0) or (Pos('$ZEROBASEDSTRINGS+', Text) > 0);
+    end;
+end;
+
+procedure TLoopOffByOneRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
+var
+  Tokens: TTokens;
+  Types: TDeclaredTypes;
+  CountNames: TArray<string>;
+  ZeroBased: Boolean;
+  Blocks: TArray<TSyntaxNode>;
+
+  function InBlock(AOffset: Integer): Boolean;
+  var
+    Block: TSyntaxNode;
+  begin
+    for Block in Blocks do
+      if (AOffset >= Block.StartOffset) and (AOffset < Block.EndOffset) then
+        Exit(True);
+    Result := False;
+  end;
+
+  procedure CollectBlocks(ANode: TSyntaxNode);
+  var
+    Index: Integer;
+  begin
+    if (ANode.Kind = TSyntaxKind.Block) and (ANode.Parent <> nil) and
+      (ANode.Parent.Kind in [TSyntaxKind.RoutineDecl, TSyntaxKind.InitializationSection,
+      TSyntaxKind.FinalizationSection, TSyntaxKind.ProgramFile, TSyntaxKind.LibraryFile]) then
+    begin
+      Blocks := Blocks + [ANode];
+      Exit;
+    end;
+    for Index := 0 to ANode.ChildCount - 1 do
+      CollectBlocks(ANode[Index]);
+  end;
+
+  /// Erstes Code-Token AWord bzw. ASymbol auf Klammerebene 0 in AFrom..AStop-1; -1 ohne.
+  function AtDepthZero(AFrom, AStop: Integer; const AText: string; AKeyword: Boolean): Integer;
+  var
+    Index, Depth: Integer;
+  begin
+    Depth := 0;
+    for Index := AFrom to AStop - 1 do
+      if Tokens[Index].IsSymbol('(') or Tokens[Index].IsSymbol('[') then
+        Inc(Depth)
+      else if Tokens[Index].IsSymbol(')') or Tokens[Index].IsSymbol(']') then
+        Dec(Depth)
+      else if (Depth = 0) and ((AKeyword and Tokens[Index].IsKeyword(AText)) or
+        (not AKeyword and Tokens[Index].IsSymbol(AText))) then
+        Exit(Index);
+    Result := -1;
+  end;
+
+  // Liest der Rumpf ABase[AVar]? ABaseKey '' = Items[AVar] bzw. Self[AVar].
+  function BodyIndexes(AFrom, AStop: Integer; const ABaseKey: string; ABaseCount: Integer;
+    const AVar: string): Boolean;
+  var
+    Index, Inner, Close, Before, Count, Prev: Integer;
+    Key: string;
+  begin
+    for Index := AFrom to AStop - 1 do
+    begin
+      if not Tokens[Index].IsSymbol('[') then
+        Continue;
+      Inner := NextCode(Tokens, Index + 1);
+      Close := NextCode(Tokens, Inner + 1);
+      if (Close >= AStop) or not SameText(Tokens[Inner].Text, AVar) or not Tokens[Close].IsSymbol(']') then
+        Continue;
+      if ABaseKey = '' then
+      begin
+        Before := PreviousCode(Tokens, Index);
+        if (Before >= 0) and MatchText(Tokens[Before].Text, ['Items', 'Self']) then
+          Exit(True);
+        Continue;
+      end;
+      // Die ABaseCount Code-Token vor [ müssen die Basis ergeben; Basis.Items[I] zählt mit.
+      Key := '';
+      Before := Index;
+      Prev := PreviousCode(Tokens, Index);
+      if (Prev > 0) and SameText(Tokens[Prev].Text, 'Items') and Tokens[PreviousCode(Tokens, Prev)].IsSymbol('.') then
+        Before := PreviousCode(Tokens, Prev);
+      Count := 0;
+      while (Count < ABaseCount) and (Before > 0) do
+      begin
+        Before := PreviousCode(Tokens, Before);
+        if Before < 0 then
+          Break;
+        Key := LowerCase(Tokens[Before].Text) + Key;
+        Inc(Count);
+      end;
+      if Key <> ABaseKey then
+        Continue;
+      // Andere.Kunden[I] gehört nicht zu Kunden.
+      Prev := PreviousCode(Tokens, Before);
+      if (Prev < 0) or not Tokens[Prev].IsSymbol('.') then
+        Exit(True);
+    end;
+    Result := False;
+  end;
+
+  function CodeCount(AFirst, ALast: Integer): Integer;
+  var
+    Index: Integer;
+  begin
+    Result := 0;
+    for Index := AFirst to ALast do
+      if not IsTrivia(Tokens[Index]) then
+        Inc(Result);
+  end;
+
+  procedure Inspect(ANode: TSyntaxNode);
+  var
+    First, Stop, Assign, ToIndex, DoIndex, LowFirst, LowLast, HighFirst, HighLast, Open, Close, Dot,
+      BaseFirst, BaseLast: Integer;
+    LowKey, BaseKey, BaseText, HighText, TypeName, Message, Replacement, FixTitle: string;
+    IsCall, IsString: Boolean;
+    Edit: TRuleEdit;
+  begin
+    Close := -1;
+    FixTitle := '';
+    Edit := Default(TRuleEdit);
+    First := TokenFrom(Tokens, ANode.StartOffset);
+    Stop := TokenFrom(Tokens, ANode.EndOffset);
+    Assign := AtDepthZero(First, Stop, ':=', False);
+    if Assign < 0 then
+      Exit;
+    ToIndex := AtDepthZero(Assign + 1, Stop, 'to', True);
+    if ToIndex < 0 then
+      Exit; // downto: das prüft for-high-to-low
+    DoIndex := AtDepthZero(ToIndex + 1, Stop, 'do', True);
+    if DoIndex < 0 then
+      Exit;
+    LowFirst := NextCode(Tokens, Assign + 1);
+    LowLast := PreviousCode(Tokens, ToIndex);
+    HighFirst := NextCode(Tokens, ToIndex + 1);
+    HighLast := PreviousCode(Tokens, DoIndex);
+    if (LowLast < LowFirst) or (HighLast < HighFirst) then
+      Exit;
+    LowKey := CodeKey(Tokens, LowFirst, LowLast);
+    HighText := Trim(SourceText(AContext.Text, Tokens, HighFirst, HighLast));
+    BaseFirst := -1;
+    BaseLast := -1;
+    IsCall := False;
+    // Length(A): Name aus countNames mit Klammer um die ganze Obergrenze (oder mit - 1 bei Strings).
+    Open := NextCode(Tokens, HighFirst + 1);
+    if (Tokens[HighFirst].Kind = TPascalTokenKind.Identifier) and (IndexText(Tokens[HighFirst].Text, CountNames) >= 0) and
+      (Open <= HighLast) and Tokens[Open].IsSymbol('(') then
+    begin
+      Close := Closing(Tokens, Open, HighLast + 1);
+      if Close > Open + 1 then
+      begin
+        IsCall := True;
+        BaseFirst := NextCode(Tokens, Open + 1);
+        BaseLast := PreviousCode(Tokens, Close);
+        if Close <> HighLast then
+        begin
+          // Nur "Length(S) - 1" bei Strings; sonst ist es kein einfacher Fall.
+          if CodeKey(Tokens, Close + 1, HighLast) <> '-1' then
+            Exit;
+        end;
+      end;
+    end
+    // X.Count bzw. Count: letzter Name aus countNames.
+    else if (Tokens[HighLast].Kind = TPascalTokenKind.Identifier) and
+      (IndexText(Tokens[HighLast].Text, CountNames) >= 0) then
+    begin
+      Dot := PreviousCode(Tokens, HighLast);
+      if HighLast = HighFirst then
+      begin
+        BaseFirst := HighLast + 1;
+        BaseLast := HighLast; // leer: Items[I]
+      end
+      else if (Dot >= HighFirst) and Tokens[Dot].IsSymbol('.') and (Dot > HighFirst) then
+      begin
+        BaseFirst := HighFirst;
+        BaseLast := PreviousCode(Tokens, Dot);
+      end
+      else
+        Exit;
+    end
+    else
+      Exit;
+    if BaseFirst < 0 then
+      Exit;
+    if BaseLast >= BaseFirst then
+    begin
+      BaseKey := CodeKey(Tokens, BaseFirst, BaseLast);
+      BaseText := Trim(SourceText(AContext.Text, Tokens, BaseFirst, BaseLast));
+    end
+    else
+    begin
+      BaseKey := '';
+      BaseText := '';
+    end;
+    TypeName := '';
+    if (BaseFirst = BaseLast) and (Tokens[BaseFirst].Kind = TPascalTokenKind.Identifier) then
+      TypeName := Types.DeclaredType(Tokens[BaseFirst].Text, Tokens[BaseFirst].StartPos);
+    IsString := IsCall and IsStringType(TypeName);
+    if not BodyIndexes(DoIndex + 1, Stop, BaseKey, CodeCount(BaseFirst, BaseLast), ANode.Name) then
+      Exit;
+    Message := '';
+    if IsString then
+    begin
+      Replacement := Format('Low(%s) to High(%s)', [BaseText, BaseText]);
+      FixTitle := Format('Low(%s)/High(%s) verwenden', [BaseText, BaseText]);
+      Edit := TRuleEdit.Create(TTextRange.Create(Tokens[LowFirst].StartPos, Tokens[HighLast].EndPos), Replacement);
+      if not ZeroBased and (LowKey = '0') then
+        Message := Format('Strings beginnen bei 1: der erste Durchlauf greift auf %s[0].', [BaseText])
+      else if ZeroBased and (LowKey = '0') and (Close = HighLast) then
+        Message := Format('Obergrenze %s: der letzte Durchlauf greift hinter das String-Ende ' +
+          '(mit {$ZEROBASEDSTRINGS ON} sind Strings nullbasiert).', [HighText])
+      else if ZeroBased and (LowKey = '1') and (Close = HighLast) then
+        Message := Format('Mit {$ZEROBASEDSTRINGS ON} sind Strings nullbasiert: die Schleife überspringt %s[0] ' +
+          'und greift hinter das Ende.', [BaseText]);
+    end
+    else if (LowKey = '0') and (not IsCall or (Close = HighLast)) then
+    begin
+      if IsCall then
+      begin
+        Message := Format('Obergrenze %s: der letzte Durchlauf greift hinter das Array-Ende (Index %s).',
+          [HighText, Tokens[HighFirst].Text]);
+        FixTitle := Format('High(%s) verwenden', [BaseText]);
+        Edit := TRuleEdit.Create(TTextRange.Create(Tokens[HighFirst].StartPos, Tokens[HighLast].EndPos),
+          Format('High(%s)', [BaseText]));
+      end
+      else
+      begin
+        Message := Format('Obergrenze %s: der letzte Durchlauf greift hinter das Listenende (Index %s).',
+          [HighText, Tokens[HighLast].Text]);
+        FixTitle := '„- 1“ ergänzen';
+        Edit := TRuleEdit.Create(TTextRange.Create(Tokens[HighLast].EndPos, Tokens[HighLast].EndPos), ' - 1');
+      end;
+    end;
+    if Message = '' then
+      Exit;
+    AReport.Add(TTextRange.Create(Tokens[LowFirst].StartPos, Tokens[HighLast].EndPos), Message, TRuleConfidence.High,
+      [TRuleFix.Create(FixTitle, [Edit])]);
+  end;
+
+  procedure Visit(ANode: TSyntaxNode);
+  var
+    Index: Integer;
+  begin
+    if ANode.Kind = TSyntaxKind.ForStatement then
+      Inspect(ANode);
+    for Index := 0 to ANode.ChildCount - 1 do
+      Visit(ANode[Index]);
+  end;
+
+  // S[0] bei einsbasierten Strings.
+  procedure FindZeroIndex;
+  var
+    Index, Open, Zero, Close, Prev: Integer;
+    Name: string;
+  begin
+    for Index := 0 to High(Tokens) do
+    begin
+      if Tokens[Index].Kind <> TPascalTokenKind.Identifier then
+        Continue;
+      Open := NextCode(Tokens, Index + 1);
+      if (Open > High(Tokens)) or not Tokens[Open].IsSymbol('[') then
+        Continue;
+      Zero := NextCode(Tokens, Open + 1);
+      Close := NextCode(Tokens, Zero + 1);
+      if (Close > High(Tokens)) or not ((Tokens[Zero].Kind = TPascalTokenKind.Number) and (Tokens[Zero].Text = '0')) or
+        not Tokens[Close].IsSymbol(']') or not InBlock(Tokens[Index].Offset) then
+        Continue;
+      Prev := PreviousCode(Tokens, Index);
+      if (Prev >= 0) and (Tokens[Prev].IsSymbol('.') or Tokens[Prev].IsSymbol('@')) then
+        Continue;
+      Name := Tokens[Index].Text;
+      if not IsStringType(Types.DeclaredType(Name, Tokens[Index].StartPos)) then
+        Continue;
+      AReport.Add(TTextRange.Create(Tokens[Index].StartPos, Tokens[Close].EndPos),
+        Format('Strings beginnen bei 1: %s[0] liegt vor dem ersten Zeichen.', [Name]), TRuleConfidence.High,
+        [TRuleFix.Create(Format('Low(%s) verwenden', [Name]),
+        [TRuleEdit.Create(TTextRange.Create(Tokens[Zero].StartPos, Tokens[Zero].EndPos), Format('Low(%s)', [Name]))])]);
+    end;
+  end;
+
+begin
+  if (AContext.Tree = nil) or (AContext.Tree.Root = nil) then
+    Exit;
+  Tokens := AContext.Tree.Tokens;
+  CountNames := TRuleOptions.Strings(AContext.Options, 'countNames', ['Count', 'Length']);
+  ZeroBased := ZeroBasedStrings(Tokens);
+  Types := TDeclaredTypes.Create(AContext.Tree, AContext.Text);
+  try
+    Blocks := nil;
+    CollectBlocks(AContext.Tree.Root);
+    Visit(AContext.Tree.Root);
+    if not ZeroBased then
+      FindZeroIndex;
+  finally
+    Types.Free;
+  end;
+end;
+
 procedure RegisterStatementRules(const ARegistry: TRuleRegistry);
 begin
   ARegistry.Register(TEmptyStatementRule.Create);
+  ARegistry.Register(TLoopOffByOneRule.Create);
 end;
 
 end.
