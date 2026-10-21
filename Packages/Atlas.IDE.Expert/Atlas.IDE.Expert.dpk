@@ -164,6 +164,7 @@ contains
   Atlas.Core.Settings.Catalog in 'Source\Core\Settings\Atlas.Core.Settings.Catalog.pas',
   Atlas.Core.Settings.Transfer in 'Source\Core\Settings\Atlas.Core.Settings.Transfer.pas',
   Atlas.Core.Settings.Experimental in 'Source\Core\Settings\Atlas.Core.Settings.Experimental.pas',
+  Atlas.Core.Settings.Groups in 'Source\Core\Settings\Atlas.Core.Settings.Groups.pas',
   Atlas.UI.Settings.ProjectDialog in 'Source\UI\Settings\Atlas.UI.Settings.ProjectDialog.pas',
   Atlas.IDE.Settings.Project in 'Source\IDE\Settings\Atlas.IDE.Settings.Project.pas',
   Atlas.Core.Settings.Layers in 'Source\Core\Settings\Atlas.Core.Settings.Layers.pas',

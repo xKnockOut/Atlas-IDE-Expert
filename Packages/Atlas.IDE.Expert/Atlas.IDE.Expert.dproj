@@ -216,6 +216,7 @@
         <DCCReference Include="Source\Core\Settings\Atlas.Core.Settings.Catalog.pas"/>
         <DCCReference Include="Source\Core\Settings\Atlas.Core.Settings.Transfer.pas"/>
         <DCCReference Include="Source\Core\Settings\Atlas.Core.Settings.Experimental.pas"/>
+        <DCCReference Include="Source\Core\Settings\Atlas.Core.Settings.Groups.pas"/>
         <DCCReference Include="Source\UI\Settings\Atlas.UI.Settings.ProjectDialog.pas"/>
         <DCCReference Include="Source\IDE\Settings\Atlas.IDE.Settings.Project.pas"/>
         <DCCReference Include="Source\Core\Settings\Atlas.Core.Settings.Layers.pas"/>
