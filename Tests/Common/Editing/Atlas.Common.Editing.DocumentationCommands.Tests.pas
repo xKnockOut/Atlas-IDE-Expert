@@ -1,6 +1,6 @@
 ﻿unit Atlas.Common.Editing.DocumentationCommands.Tests;
 
-// Tests für die Schnellbefehle /header, /deprecated, /region-all und /bookmark (#306).
+// Tests für die Schnellbefehle /header, /deprecated, /region-all (#306); /bookmark ist gestrichen.
 
 interface
 
@@ -28,7 +28,7 @@ type
     [Test]
     procedure RegionAllOutsideClassFails;
     [Test]
-    procedure BookmarkComment;
+    procedure BookmarkIsGone;
   end;
 
 implementation
@@ -241,12 +241,10 @@ begin
     '  /region-all'#10'end;'#10'end.', 5));
 end;
 
-procedure TDocumentationCommandsTests.BookmarkComment;
+procedure TDocumentationCommandsTests.BookmarkIsGone;
 begin
-  Assert.AreEqual('unit U;'#10'implementation'#10'procedure P;'#10'begin'#10'  // @bookmark Abrechnung'#10 +
-    'end;'#10'end.', Expand('unit U;'#10'implementation'#10'procedure P;'#10'begin'#10'  /bookmark Abrechnung'#10 +
-    'end;'#10'end.', 4));
-  Assert.AreEqual('', Expand('unit U;'#10'implementation'#10'procedure P;'#10'begin'#10'  /bookmark'#10 +
+  // #306: /bookmark ist laut Ergänzung gestrichen; die Zeile bleibt als unbekannter Befehl.
+  Assert.AreEqual('', Expand('unit U;'#10'implementation'#10'procedure P;'#10'begin'#10'  /bookmark Abrechnung'#10 +
     'end;'#10'end.', 4));
 end;
 
