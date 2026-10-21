@@ -208,6 +208,8 @@ uses
   Atlas.Core.Hover.History in '..\Packages\Atlas.IDE.Expert\Source\Core\Hover\Atlas.Core.Hover.History.pas',
   Atlas.Core.Hover.Layout in '..\Packages\Atlas.IDE.Expert\Source\Core\Hover\Atlas.Core.Hover.Layout.pas',
   Atlas.Core.Hover.Layout.Tests in 'IDE.Expert\Atlas.Core.Hover.Layout.Tests.pas',
+  Atlas.Core.Hover.DebugValue in '..\Packages\Atlas.IDE.Expert\Source\Core\Hover\Atlas.Core.Hover.DebugValue.pas',
+  Atlas.Core.Hover.DebugValue.Tests in 'IDE.Expert\Atlas.Core.Hover.DebugValue.Tests.pas',
   Atlas.Core.Hover.Tests in 'IDE.Expert\Atlas.Core.Hover.Tests.pas',
   Atlas.Core.Documentation.Contract in '..\Packages\Atlas.IDE.Expert\Source\Core\Documentation\Atlas.Core.Documentation.Contract.pas',
   Atlas.Core.Documentation.Layout in '..\Packages\Atlas.IDE.Expert\Source\Core\Documentation\Atlas.Core.Documentation.Layout.pas',

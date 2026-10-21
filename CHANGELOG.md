@@ -6,6 +6,9 @@ Server und Claude-Code-Plugin tragen immer dieselbe Version.
 
 ## [Unveröffentlicht]
 
+### Hinzugefügt
+- Werte im Hover beim Debuggen (#891): Ist der Prozess angehalten, zeigt der Atlas-Tooltip oben den Wert des Ausdrucks unter der Maus (z. B. `FList.Count`), ausgewertet über den Debugger der IDE ohne Nebenwirkungen; verzögerte Antworten (Win64) ergänzt er im offenen Tooltip. Bisher fehlte der Wert, weil Atlas die Code Insight übernimmt. Abschaltbar mit `debug.hoverValues` (Seite „Debuggen“, Schnellschalter).
+
 ## [1.0.1] - 2026-10-21
 
 ### Geändert
