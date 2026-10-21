@@ -381,7 +381,8 @@ begin
     Assert.AreEqual('Parameter abgleichen', Action.Title);
     Assert.AreEqual(2, Integer(Length(Action.Edits)));
     Assert.AreEqual('<!-- entfernt: Alt: a -->', Action.Edits[0].NewText);
-    Assert.AreEqual('    /// <param name="A"></param>'#10'    /// <param name="B"></param>'#10, Action.Edits[1].NewText);
+    Assert.AreEqual('    /// <param name="A"></param>'#10'    /// <param name="B"></param>'#10,
+      Action.Edits[1].NewText);
     Assert.IsTrue(TDocComments.AdjustBlock(Text, Tree, 10, Action));
     // Außerhalb des Blocks nichts.
     Assert.IsFalse(TDocComments.AdjustBlock(Text, Tree, 11, Action));
