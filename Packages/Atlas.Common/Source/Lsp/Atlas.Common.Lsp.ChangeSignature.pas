@@ -76,6 +76,35 @@ type
     Mode: TNewParameterMode;
   end;
 
+  /// <summary>Kopf einer Routine aus TLspChangeSignature.Family: Name und Parameternamen mit Position.</summary>
+  TRoutineFamilyHeader = record
+    FileName: string;
+    NamePos: TTextPosition;
+    /// <summary>Kopf eines Rumpfs (auch eine Routine nur im implementation-Teil).</summary>
+    IsBody: Boolean;
+    Parameters: TArray<TSignatureParameter>;
+    /// <summary>Position des Namens je Parameter, parallel zu Parameters; Line -1, wenn nicht gefunden.</summary>
+    ParameterPos: TArray<TTextPosition>;
+  end;
+
+  TRoutineFamilyCall = record
+    FileName: string;
+    NamePos: TTextPosition;
+  end;
+
+  /// <summary>Eine Routine mit Vorfahren, Nachfahren und Interface-Deklarationen und ihren Aufrufen.</summary>
+  TRoutineFamily = record
+    Name: string;
+    Headers: TArray<TRoutineFamilyHeader>;
+    Calls: TArray<TRoutineFamilyCall>;
+    /// <summary>Verwendungen als Zugriffsmethode einer Property ("Datei, Zeile n").</summary>
+    Accessors: TArray<string>;
+    /// <summary>Verwendungen als Methodenzeiger.</summary>
+    Warnings: TArray<string>;
+    /// <summary>Ereignistyp, an den eine Formulardatei die Methode bindet; '' ohne.</summary>
+    BoundEvent: string;
+  end;
+
   TLspChangeSignature = class
   public const
     ClientCommand = 'atlas.changeSignature';
@@ -102,6 +131,11 @@ type
       const AFileName: string; const APosition: TTextPosition; const ARequest: TChangeSignatureRequest;
       const AFiles: TArray<string>; const AReadText: TReferenceReadText; const AIsReadOnly: TChangeSignatureReadOnly;
       const ACancellation: IJsonRpcCancellationToken): TChangeSignatureOutcome; static;
+    /// <summary>Köpfe und Aufrufe der Routine an APosition samt Überschreibungen und Interfaces (für „Boolean
+    /// umkehren“, #715); EJsonRpcError, wenn dort keine Routine des Projekts steht.</summary>
+    class function Family(AResolver: TNameResolver; const AIndex: ISymbolIndex; ATree: TSyntaxTree;
+      const AFileName: string; const APosition: TTextPosition; const AFiles: TArray<string>;
+      const AReadText: TReferenceReadText; const ACancellation: IJsonRpcCancellationToken): TRoutineFamily; static;
     /// <summary>Antwort auf PrepareCommand. Der Aufrufer übernimmt das Objekt.</summary>
     class function InfoToJson(const AInfo: TChangeSignatureInfo; AMode: TNewParameterMode;
       AVirtualOverload: Boolean): TJSONObject; static;
@@ -1103,6 +1137,81 @@ begin
     if Length(Collector.Accessors) > 0 then
       Result.Warnings := Result.Warnings + [Format('Zugriffsmethode einer Property (%s): Parameter lassen sich nur ' +
         'umbenennen.', [Collector.Accessors[0]])];
+  finally
+    Collector.Free;
+  end;
+end;
+
+class function TLspChangeSignature.Family(AResolver: TNameResolver; const AIndex: ISymbolIndex; ATree: TSyntaxTree;
+  const AFileName: string; const APosition: TTextPosition; const AFiles: TArray<string>;
+  const AReadText: TReferenceReadText; const ACancellation: IJsonRpcCancellationToken): TRoutineFamily;
+var
+  Collector: TSignatureCollector;
+  Member: TMember;
+  Site: TCallSite;
+  Call: TRoutineFamilyCall;
+
+  procedure AddHeader(const AFile: string; const AHeader: TSignatureHeader; AIsBody: Boolean);
+  var
+    Unit_: TSourceFile;
+    Header: TRoutineFamilyHeader;
+    Tokens: TArray<TPascalToken>;
+    Index, Token: Integer;
+    Position: TTextPosition;
+  begin
+    Unit_ := Collector.Source(AFile);
+    if (Unit_ = nil) or (AHeader.NameToken < 0) then
+      Exit;
+    Tokens := Unit_.Tokens;
+    Header.FileName := AFile;
+    Header.NamePos := Tokens[AHeader.NameToken].StartPos;
+    Header.IsBody := AIsBody;
+    Header.Parameters := AHeader.Parameters;
+    Header.ParameterPos := nil;
+    // Die Namen stehen in der Reihenfolge der Parameter zwischen den Klammern.
+    Token := AHeader.OpenToken;
+    for Index := 0 to High(AHeader.Parameters) do
+    begin
+      Position := TTextPosition.Create(-1, 0);
+      if Token >= 0 then
+        while (Token < AHeader.CloseToken) and (Token <= High(Tokens)) do
+        begin
+          Inc(Token);
+          if (Tokens[Token].Kind = TPascalTokenKind.Identifier) and
+            SameText(Tokens[Token].Text, AHeader.Parameters[Index].Name) then
+          begin
+            Position := Tokens[Token].StartPos;
+            Break;
+          end;
+        end;
+      Header.ParameterPos := Header.ParameterPos + [Position];
+    end;
+    Result.Headers := Result.Headers + [Header];
+  end;
+
+begin
+  Result := Default(TRoutineFamily);
+  Collector := TSignatureCollector.Create(AResolver, AIndex, AFiles, AReadText, ACancellation, AFileName);
+  try
+    Collector.Collect(ATree, AFileName, APosition);
+    Result.Name := Collector.Root.Name;
+    for Member in Collector.Members do
+    begin
+      if Member.Kind = TMemberKind.EventType then
+        Continue;
+      AddHeader(Member.FileName, Member.Decl, Member.DeclIsBody);
+      if Member.HasBody and not Member.DeclIsBody then
+        AddHeader(Member.FileName, Member.Body, True);
+    end;
+    for Site in Collector.Calls do
+    begin
+      Call.FileName := Site.FileName;
+      Call.NamePos := Site.NamePos;
+      Result.Calls := Result.Calls + [Call];
+    end;
+    Result.Accessors := Collector.Accessors;
+    Result.Warnings := Collector.Warnings;
+    Result.BoundEvent := Collector.BoundEvent;
   finally
     Collector.Free;
   end;

@@ -634,7 +634,9 @@ type
     SameNameActiveTag, SameNameDeclaredIn, SameNameRoleActive, SameNameRoleThis, SameNameRoleHidden, SameNameNotActive,
     SameNameInsertPrefix, SameNameInsertPrefixAdd, SameNameInsertMove, SameNameInsertAdd, SameNameHiddenFooter,
     PropertyAccessorsTitle, PropertyAccessorsFailed, PropertyAccessorsNothing, PropertyAccessorsPreviewHint,
-    PropertyAccessorsApply, PropertyAccessorsDone, PropertyAccessorsWarning);
+    PropertyAccessorsApply, PropertyAccessorsDone, PropertyAccessorsWarning,
+    InvertBooleanTitle, InvertBooleanPrompt, InvertBooleanFailed, InvertBooleanNothing, InvertBooleanPreviewHint,
+    InvertBooleanApply, InvertBooleanDone, InvertBooleanWarning);
 
   TAtlasStrings = class
   private class var
@@ -1899,7 +1901,15 @@ const
      '%d Properties, %d Aufrufe umgestellt: %d Änderungen in %d Dateien',
      'Anlegen',
      '%d Properties angelegt, %d Aufrufe umgestellt: %d Änderungen in %d Dateien',
-     'Hinweis: %s'),
+     'Hinweis: %s',
+     'Boolean umkehren',
+     'Neuer Name mit der Gegenbedeutung:',
+     'Boolean umkehren fehlgeschlagen: %s',
+     'Boolean umkehren: nichts zu ändern.',
+     '%d Stellen in %d Dateien werden umbenannt und verneint',
+     'Umkehren',
+     'Boolean umgekehrt: %d Änderungen in %d Dateien',
+     'Warnung: %s'),
     ('Enter to accept · Esc to close', '%d of %d', 'No matches for “%s”', 'Backspace widens the search',
      'No suggestions here', 'Esc closes', 'No details for this entry', 'Overload', 'Deprecated: %s', 'Deprecated.',
      'Inherited from %s', 'Inherited', 'optional, default %s', 'No overload with %d parameters.', '… %d more',
@@ -3072,7 +3082,15 @@ const
      '%d properties, %d calls switched: %d changes in %d files',
      'Create',
      '%d properties created, %d calls switched: %d changes in %d files',
-     'Note: %s'));
+     'Note: %s',
+     'Invert Boolean',
+     'New name with the opposite meaning:',
+     'Inverting the Boolean failed: %s',
+     'Invert Boolean: nothing to change.',
+     '%d places in %d files will be renamed and negated',
+     'Invert',
+     'Boolean inverted: %d changes in %d files',
+     'Warning: %s'));
 
 { TAtlasStrings }
 
