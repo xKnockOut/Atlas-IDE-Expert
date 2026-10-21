@@ -30,6 +30,8 @@ type
     [Test]
     procedure SingletonOutsideClassFails;
     [Test]
+    procedure SingletonNamesExistingConstructor;
+    [Test]
     procedure EncapsulateMakesProperty;
     [Test]
     procedure EncapsulatePrivateFieldFails;
@@ -73,7 +75,8 @@ uses
   Atlas.Common.Pascal.Parser,
   Atlas.Common.Editing.SlashCommands,
   Atlas.Common.Editing.TypeCommands,
-  Atlas.Common.Editing.TypeCommands.JsonGolden;
+  Atlas.Common.Editing.TypeCommands.JsonGolden,
+  Atlas.Tests.SlashHost;
 
 function Run(const AText: string; ALine: Integer; out AEdits: TArray<TRuleEdit>): Boolean;
 begin
@@ -220,6 +223,27 @@ begin
   Assert.IsTrue(Pos('class function TKunde.Instance: TKunde;'#10'begin'#10'  if FInstance = nil then'#10 +
     '    FInstance := TKunde.Create;'#10'  Result := FInstance;'#10'end;', Text) > 0, Text);
   Assert.IsTrue(Pos('  FreeAndNil(FInstance);', Text) > 0, Text);
+end;
+
+procedure TTypeCommandsTests.SingletonNamesExistingConstructor;
+var
+  Host: TRecordingSlashHost;
+  Keep: ISlashHost;
+  Edits: TArray<TRuleEdit>;
+begin
+  // #298: Der vorhandene Konstruktor bleibt; ein Hinweis nennt ihn.
+  Host := TRecordingSlashHost.Create;
+  Keep := Host;
+  Assert.IsTrue(TSlashCommandRegistry.Shared.AfterEnter(Format(ClassUnit,
+    ['constructor Create(AName: string);'#10'    /singleton']), TTextPosition.Create(14, 0), nil, nil, Edits, nil,
+    '', 'file:///U.pas', Keep));
+  Assert.AreEqual(1, Integer(Length(Host.Notes)));
+  Assert.Contains(Host.Notes[0], 'Konstruktor Create bleibt unverändert');
+  // Ohne Konstruktor kein Hinweis.
+  Host.Notes := nil;
+  Assert.IsTrue(TSlashCommandRegistry.Shared.AfterEnter(Format(ClassUnit, ['/singleton']), TTextPosition.Create(13, 0),
+    nil, nil, Edits, nil, '', 'file:///U.pas', Keep));
+  Assert.AreEqual(0, Integer(Length(Host.Notes)));
 end;
 
 procedure TTypeCommandsTests.SingletonOutsideClassFails;
