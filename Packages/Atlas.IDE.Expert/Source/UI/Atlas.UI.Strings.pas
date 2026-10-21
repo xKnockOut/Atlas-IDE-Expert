@@ -628,7 +628,11 @@ type
     InvertBooleanApply, InvertBooleanDone, InvertBooleanWarning,
     SettingsGutterColumn, SettingsGutterColumnProblems, SettingsGutterColumnActions, SettingsGutterColumnOverrides,
     ElementGutterColumn, ElementGutterColumnPlural, GutterSeverityError, GutterSeverityWarning, GutterSeverityHint,
-    GutterAllActions, GutterNoFix, GutterOverridesTitle, GutterOverriddenTitle, GutterActionTitle, GutterActionText, GutterFixesFailed);
+    GutterAllActions, GutterNoFix, GutterOverridesTitle, GutterOverriddenTitle, GutterActionTitle, GutterActionText, GutterFixesFailed,
+    SettingsSelectionMatches, SettingsSelectionMatchesMinLength, SettingsSelectionMatchesCase,
+    SettingsSelectionMatchesWholeWord, SettingsSelectionMatchesF3, SettingsSelectionMatchesMax, SelectionMatchesOne,
+    SelectionMatchesCount, SelectionMatchesMore, SelectionMatchesVisible, ElementSelectionMatches,
+    ElementSelectionMatchesPlural);
 
   TAtlasStrings = class
   private class var
@@ -1899,7 +1903,19 @@ const
      'Überschrieben in',
      'Code-Aktionen verfügbar',
      'Ein Klick öffnet die Code-Aktionen dieser Zeile.',
-     'Korrekturen nicht abrufbar: %s'),
+     'Korrekturen nicht abrufbar: %s',
+     'Gleichen Text wie die Markierung hervorheben',
+     'Mindestlänge der Markierung (Zeichen):',
+     'Groß-/Kleinschreibung beachten',
+     'Nur ganze Wörter',
+     'F3/Umschalt+F3 springt zwischen den Treffern',
+     'Höchstzahl der Treffer:',
+     '1 Treffer',
+     '%d Treffer',
+     'mehr als %d Treffer',
+     '%d Treffer im sichtbaren Bereich',
+     'Hervorhebung gleichen Texts',
+     'Hervorhebungen gleichen Texts'),
     ('Enter to accept · Esc to close', '%d of %d', 'No matches for “%s”', 'Backspace widens the search',
      'No suggestions here', 'Esc closes', 'No details for this entry', 'Overload', 'Deprecated: %s', 'Deprecated.',
      'Inherited from %s', 'Inherited', 'optional, default %s', 'No overload with %d parameters.', '… %d more',
@@ -3071,7 +3087,19 @@ const
      'Overridden in',
      'Code actions available',
      'Click opens the code actions for this line.',
-     'Fixes not available: %s'));
+     'Fixes not available: %s',
+     'Highlight text matching the selection',
+     'Minimum selection length (characters):',
+     'Match case',
+     'Whole words only',
+     'F3/Shift+F3 jumps between matches',
+     'Maximum number of matches:',
+     '1 match',
+     '%d matches',
+     'more than %d matches',
+     '%d matches in the visible area',
+     'Selection match highlight',
+     'Selection match highlights'));
 
 { TAtlasStrings }
 

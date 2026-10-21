@@ -310,6 +310,12 @@ type
     FGutterColumnProblems: TCheckBox;
     FGutterColumnCodeActions: TCheckBox;
     FGutterColumnOverrides: TCheckBox;
+    FSelectionMatches: TCheckBox;
+    FSelectionMatchesMinLength: TEdit;
+    FSelectionMatchesCaseSensitive: TCheckBox;
+    FSelectionMatchesWholeWord: TCheckBox;
+    FSelectionMatchesNavigateF3: TCheckBox;
+    FSelectionMatchesMaxMatches: TEdit;
     FNextChangeKey: TEdit;
     FPreviousChangeKey: TEdit;
     FOverviewRuler: TCheckBox;
@@ -963,6 +969,12 @@ type
     property GutterColumnProblemsCheck: TCheckBox read FGutterColumnProblems;
     property GutterColumnCodeActionsCheck: TCheckBox read FGutterColumnCodeActions;
     property GutterColumnOverridesCheck: TCheckBox read FGutterColumnOverrides;
+    property SelectionMatchesCheck: TCheckBox read FSelectionMatches;
+    property SelectionMatchesMinLength: TEdit read FSelectionMatchesMinLength;
+    property SelectionMatchesCaseSensitiveCheck: TCheckBox read FSelectionMatchesCaseSensitive;
+    property SelectionMatchesWholeWordCheck: TCheckBox read FSelectionMatchesWholeWord;
+    property SelectionMatchesNavigateF3Check: TCheckBox read FSelectionMatchesNavigateF3;
+    property SelectionMatchesMaxMatches: TEdit read FSelectionMatchesMaxMatches;
     property RecursionMarkersDepthEdit: TEdit read FRecursionMarkersDepth;
     property HideElementKey: TEdit read FHideElementKey;
     /// <summary>Zum Testen: Fehlertext am Zeilenende, Zähler und Sprungtasten (#509).</summary>
@@ -1402,6 +1414,13 @@ begin
   FGutterColumnProblems := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsGutterColumnProblems));
   FGutterColumnCodeActions := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsGutterColumnActions));
   FGutterColumnOverrides := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsGutterColumnOverrides));
+  // Gleichen Text wie die Markierung hervorheben (#709).
+  FSelectionMatches := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsSelectionMatches));
+  FSelectionMatchesMinLength := AddNumber(TAtlasStrings.Text(TAtlasTextId.SettingsSelectionMatchesMinLength));
+  FSelectionMatchesCaseSensitive := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsSelectionMatchesCase));
+  FSelectionMatchesWholeWord := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsSelectionMatchesWholeWord));
+  FSelectionMatchesNavigateF3 := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsSelectionMatchesF3));
+  FSelectionMatchesMaxMatches := AddNumber(TAtlasStrings.Text(TAtlasTextId.SettingsSelectionMatchesMax));
   // Übersichtsleiste (#519): an/aus und je Art ein Häkchen.
   FOverviewRuler := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsOverviewRuler));
   FOverviewKinds[TAtlasOverviewKind.Diagnostics] :=
@@ -1640,6 +1659,7 @@ begin
   Bind('GitGutter', FGitGutter);
   Bind('GitBlame', FGitBlame);
   Bind('GutterColumn', FGutterColumn);
+  Bind('SelectionMatches', FSelectionMatches);
   Bind('OverviewRuler', FOverviewRuler);
   Bind('RecursionMarkers', FRecursionMarkers);
   Bind('InlineDiagnostics', FInlineDiagnostics);
@@ -2426,6 +2446,12 @@ begin
   FMarks.Bind(FGutterColumnProblems, ['GutterColumnProblems']);
   FMarks.Bind(FGutterColumnCodeActions, ['GutterColumnCodeActions']);
   FMarks.Bind(FGutterColumnOverrides, ['GutterColumnOverrides']);
+  FMarks.Bind(FSelectionMatches, ['SelectionMatches']);
+  FMarks.Bind(FSelectionMatchesMinLength, ['SelectionMatchesMinLength']);
+  FMarks.Bind(FSelectionMatchesCaseSensitive, ['SelectionMatchesCaseSensitive']);
+  FMarks.Bind(FSelectionMatchesWholeWord, ['SelectionMatchesWholeWord']);
+  FMarks.Bind(FSelectionMatchesNavigateF3, ['SelectionMatchesNavigateF3']);
+  FMarks.Bind(FSelectionMatchesMaxMatches, ['SelectionMatchesMaxMatches']);
   FMarks.Bind(FNextChangeKey, ['NextChangeKey']);
   FMarks.Bind(FPreviousChangeKey, ['PreviousChangeKey']);
   FMarks.Bind(FOverviewRuler, ['OverviewRuler']);
@@ -4340,6 +4366,12 @@ begin
   FGutterColumnProblems.Checked := ASettings.GutterColumnProblems;
   FGutterColumnCodeActions.Checked := ASettings.GutterColumnCodeActions;
   FGutterColumnOverrides.Checked := ASettings.GutterColumnOverrides;
+  FSelectionMatches.Checked := ASettings.SelectionMatches;
+  FSelectionMatchesMinLength.Text := IntToStr(ASettings.SelectionMatchesMinLength);
+  FSelectionMatchesCaseSensitive.Checked := ASettings.SelectionMatchesCaseSensitive;
+  FSelectionMatchesWholeWord.Checked := ASettings.SelectionMatchesWholeWord;
+  FSelectionMatchesNavigateF3.Checked := ASettings.SelectionMatchesNavigateF3;
+  FSelectionMatchesMaxMatches.Text := IntToStr(ASettings.SelectionMatchesMaxMatches);
   FNextChangeKey.Text := ShortCutToText(TShortCut(ASettings.NextChangeKey));
   FPreviousChangeKey.Text := ShortCutToText(TShortCut(ASettings.PreviousChangeKey));
   FOverviewRuler.Checked := ASettings.OverviewRuler;
@@ -4699,6 +4731,14 @@ begin
   ASettings.GutterColumnProblems := FGutterColumnProblems.Checked;
   ASettings.GutterColumnCodeActions := FGutterColumnCodeActions.Checked;
   ASettings.GutterColumnOverrides := FGutterColumnOverrides.Checked;
+  ASettings.SelectionMatches := FSelectionMatches.Checked;
+  ASettings.SelectionMatchesMinLength := StrToIntDef(FSelectionMatchesMinLength.Text,
+    ASettings.SelectionMatchesMinLength);
+  ASettings.SelectionMatchesCaseSensitive := FSelectionMatchesCaseSensitive.Checked;
+  ASettings.SelectionMatchesWholeWord := FSelectionMatchesWholeWord.Checked;
+  ASettings.SelectionMatchesNavigateF3 := FSelectionMatchesNavigateF3.Checked;
+  ASettings.SelectionMatchesMaxMatches := StrToIntDef(FSelectionMatchesMaxMatches.Text,
+    ASettings.SelectionMatchesMaxMatches);
   ASettings.NextChangeKey := Integer(TextToShortCut(Trim(FNextChangeKey.Text)));
   ASettings.PreviousChangeKey := Integer(TextToShortCut(Trim(FPreviousChangeKey.Text)));
   ASettings.OverviewRuler := FOverviewRuler.Checked;

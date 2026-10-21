@@ -48,6 +48,11 @@ type
     /// <summary>Grenzen für editor.stickyScrollMaxLines (#506).</summary>
     MinStickyLines = 1;
     MaxStickyLines = 10;
+    /// <summary>Grenzen für highlight.selectionMatches.minLength und .maxMatches (#709).</summary>
+    MinSelectionMatchLength = 1;
+    MaxSelectionMatchLength = 100;
+    MinSelectionMatches = 1;
+    MaxSelectionMatches = 100000;
     /// <summary>Grenzen für editor.minimap.width, .scale und .maxColumn (#873).</summary>
     MinMinimapWidth = 40;
     MaxMinimapWidth = 400;
@@ -606,6 +611,19 @@ type
     GutterColumnCodeActions: Boolean;
     /// <summary>„überschreibt“/„wird überschrieben“ an Methoden (#768, editor.gutterColumn.overrides).</summary>
     GutterColumnOverrides: Boolean;
+    /// <summary>Gleichen Text wie die Markierung hervorheben (#709, highlight.selectionMatches).</summary>
+    SelectionMatches: Boolean;
+    /// <summary>Mindestlänge der Markierung, MinMinLength bis MaxMinLength von TAtlasSelectionMatches (#709).
+    /// </summary>
+    SelectionMatchesMinLength: Integer;
+    /// <summary>Groß-/Kleinschreibung beachten (#709).</summary>
+    SelectionMatchesCaseSensitive: Boolean;
+    /// <summary>Nur ganze Wörter (#709).</summary>
+    SelectionMatchesWholeWord: Boolean;
+    /// <summary>F3/Umschalt+F3 springt zwischen den Treffern, solange die Markierung steht (#709).</summary>
+    SelectionMatchesNavigateF3: Boolean;
+    /// <summary>Höchstzahl der Treffer (#709).</summary>
+    SelectionMatchesMaxMatches: Integer;
     /// <summary>Kürzel „Nächste Änderung“ (#507, keys.nextChange); Vorgabe Strg+Alt+Bild↓.</summary>
     NextChangeKey: Integer;
     /// <summary>Kürzel „Vorherige Änderung“ (#507, keys.previousChange); Vorgabe Strg+Alt+Bild↑.</summary>
@@ -1273,6 +1291,12 @@ begin
   Result.GutterColumnProblems := True;
   Result.GutterColumnCodeActions := True;
   Result.GutterColumnOverrides := True;
+  Result.SelectionMatches := True;
+  Result.SelectionMatchesMinLength := 3;
+  Result.SelectionMatchesCaseSensitive := False;
+  Result.SelectionMatchesWholeWord := False;
+  Result.SelectionMatchesNavigateF3 := True;
+  Result.SelectionMatchesMaxMatches := 1000;
   // Strg+Alt+↑/↓ springt in RAD Studio schon zwischen Methoden.
   Result.NextChangeKey := $C022; // Strg+Alt+Bild↓
   Result.PreviousChangeKey := $C021; // Strg+Alt+Bild↑
@@ -1490,6 +1514,9 @@ begin
   LastEditKey := EnsureRange(LastEditKey, 0, $FFFF);
   PeekHeightLines := EnsureRange(PeekHeightLines, MinPeekLines, MaxPeekLines);
   StickyScrollMaxLines := EnsureRange(StickyScrollMaxLines, MinStickyLines, MaxStickyLines);
+  SelectionMatchesMinLength := EnsureRange(SelectionMatchesMinLength, MinSelectionMatchLength,
+    MaxSelectionMatchLength);
+  SelectionMatchesMaxMatches := EnsureRange(SelectionMatchesMaxMatches, MinSelectionMatches, MaxSelectionMatches);
   MinimapRender := Choice(MinimapRender, ['blocks', 'characters']);
   MinimapWidth := EnsureRange(MinimapWidth, MinMinimapWidth, MaxMinimapWidth);
   MinimapScale := EnsureRange(MinimapScale, MinMinimapScale, MaxMinimapScale);
@@ -1788,6 +1815,15 @@ begin
   GutterColumnCodeActions := AStore.ReadInteger('GutterColumnCodeActions',
     BoolValue(Default.GutterColumnCodeActions)) <> 0;
   GutterColumnOverrides := AStore.ReadInteger('GutterColumnOverrides', BoolValue(Default.GutterColumnOverrides)) <> 0;
+  SelectionMatches := AStore.ReadInteger('SelectionMatches', BoolValue(Default.SelectionMatches)) <> 0;
+  SelectionMatchesMinLength := AStore.ReadInteger('SelectionMatchesMinLength', Default.SelectionMatchesMinLength);
+  SelectionMatchesCaseSensitive := AStore.ReadInteger('SelectionMatchesCaseSensitive',
+    BoolValue(Default.SelectionMatchesCaseSensitive)) <> 0;
+  SelectionMatchesWholeWord := AStore.ReadInteger('SelectionMatchesWholeWord',
+    BoolValue(Default.SelectionMatchesWholeWord)) <> 0;
+  SelectionMatchesNavigateF3 := AStore.ReadInteger('SelectionMatchesNavigateF3',
+    BoolValue(Default.SelectionMatchesNavigateF3)) <> 0;
+  SelectionMatchesMaxMatches := AStore.ReadInteger('SelectionMatchesMaxMatches', Default.SelectionMatchesMaxMatches);
   NextChangeKey := AStore.ReadInteger('NextChangeKey', Default.NextChangeKey);
   PreviousChangeKey := AStore.ReadInteger('PreviousChangeKey', Default.PreviousChangeKey);
   OverviewRuler := AStore.ReadInteger('OverviewRuler', BoolValue(Default.OverviewRuler)) <> 0;
@@ -2127,6 +2163,12 @@ begin
   AStore.WriteInteger('GutterColumnProblems', BoolValue(GutterColumnProblems));
   AStore.WriteInteger('GutterColumnCodeActions', BoolValue(GutterColumnCodeActions));
   AStore.WriteInteger('GutterColumnOverrides', BoolValue(GutterColumnOverrides));
+  AStore.WriteInteger('SelectionMatches', BoolValue(SelectionMatches));
+  AStore.WriteInteger('SelectionMatchesMinLength', SelectionMatchesMinLength);
+  AStore.WriteInteger('SelectionMatchesCaseSensitive', BoolValue(SelectionMatchesCaseSensitive));
+  AStore.WriteInteger('SelectionMatchesWholeWord', BoolValue(SelectionMatchesWholeWord));
+  AStore.WriteInteger('SelectionMatchesNavigateF3', BoolValue(SelectionMatchesNavigateF3));
+  AStore.WriteInteger('SelectionMatchesMaxMatches', SelectionMatchesMaxMatches);
   AStore.WriteInteger('NextChangeKey', NextChangeKey);
   AStore.WriteInteger('PreviousChangeKey', PreviousChangeKey);
   AStore.WriteInteger('OverviewRuler', BoolValue(OverviewRuler));

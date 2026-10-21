@@ -27,6 +27,7 @@ uses
   Atlas.Core.Files.TextFile,
   Atlas.Core.Settings.Plugin,
   Atlas.Core.Problems.InlineHints,
+  Atlas.Core.Editor.SelectionMatches,
   Atlas.Core.Settings.History,
   Atlas.Core.Settings.Catalog,
   Atlas.Core.Settings.QuickToggles;
@@ -77,6 +78,10 @@ type
     /// <summary>Plugin eingeschaltet und Atlas-Spalte in der Zeilenleiste an (#768); ohne Kopie des
     /// Einstellungsrecords.</summary>
     class function GutterColumnOn: Boolean; static;
+    /// <summary>Plugin eingeschaltet und gleichen Text hervorheben an (#709); AOptions und ANavigateF3 aus
+    /// highlight.selectionMatches.*, ohne Kopie des Einstellungsrecords.</summary>
+    class function SelectionMatchesOn(out AOptions: TAtlasSelectionMatchOptions; out ANavigateF3: Boolean): Boolean;
+      static;
     /// <summary>Plugin eingeschaltet und Problem-Markierungen an; ohne Kopie des Einstellungsrecords (P-10).</summary>
     class function ProblemMarksOn: Boolean; static;
     /// <summary>Fehlertext am Zeilenende (#509); Off, wenn das Plugin oder die Problem-Markierungen aus sind.
@@ -359,6 +364,18 @@ class function TAtlasIdeSettings.GutterColumnOn: Boolean;
 begin
   EnsureLoaded;
   Result := FEffective.Enabled and FEffective.GutterColumn;
+end;
+
+class function TAtlasIdeSettings.SelectionMatchesOn(out AOptions: TAtlasSelectionMatchOptions;
+  out ANavigateF3: Boolean): Boolean;
+begin
+  EnsureLoaded;
+  AOptions.MinLength := FEffective.SelectionMatchesMinLength;
+  AOptions.CaseSensitive := FEffective.SelectionMatchesCaseSensitive;
+  AOptions.WholeWord := FEffective.SelectionMatchesWholeWord;
+  AOptions.MaxMatches := FEffective.SelectionMatchesMaxMatches;
+  ANavigateF3 := FEffective.SelectionMatchesNavigateF3;
+  Result := FEffective.Enabled and FEffective.SelectionMatches;
 end;
 
 class function TAtlasIdeSettings.RecursionMarkersDepth: Integer;
