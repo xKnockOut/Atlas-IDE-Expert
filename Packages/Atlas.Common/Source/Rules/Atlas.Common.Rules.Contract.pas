@@ -142,6 +142,16 @@ type
     procedure Check(const AContext: TRuleContext; const AReport: IRuleReport);
   end;
 
+  /// <summary>Regel, die nach allen anderen die rohen Treffer sieht (vor Unterdrückung und Konfidenzfilter),
+  /// z. B. /ignore ohne Treffer in der Zeile darunter (#297).</summary>
+  IRuleAfterFindings = interface
+    ['{6B1E9D3A-47C2-4F8B-9E05-A3D27C81F4B6}']
+    /// <summary>AFindings: Treffer aller Regeln dieses Laufs; ARanIds: Kennungen der gelaufenen Regeln (klein).
+    /// </summary>
+    procedure CheckFindings(const AContext: TRuleContext; const AFindings: TArray<TRuleFinding>;
+      const ARanIds: TArray<string>; const AReport: IRuleReport);
+  end;
+
 /// <summary>Kennwort der Konfidenz: "hoch", "mittel", "niedrig".</summary>
 function ConfidenceText(AConfidence: TRuleConfidence): string;
 /// <summary>

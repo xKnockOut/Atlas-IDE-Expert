@@ -222,6 +222,7 @@
         <DCCReference Include="Common\Editing\Atlas.Common.Editing.WrapCommands.Tests.pas"/>
         <DCCReference Include="Common\Editing\Atlas.Common.Editing.SlashMenu.Tests.pas"/>
         <DCCReference Include="Common\Editing\Atlas.Common.Editing.MaintenanceCommands.Tests.pas"/>
+        <DCCReference Include="Common\Editing\Atlas.Common.Editing.GitUser.Tests.pas"/>
         <DCCReference Include="Common\Editing\Atlas.Common.Editing.TypeCommands.Tests.pas"/>
         <DCCReference Include="Common\Editing\Atlas.Common.Editing.TypeCommands.JsonGolden.pas"/>
         <DCCReference Include="Common\Editing\Atlas.Common.Editing.CodeActions.TryFinallyGolden.pas"/>

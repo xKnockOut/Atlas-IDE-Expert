@@ -274,6 +274,11 @@ var
   Known: TArray<string>;
   Index: Integer;
   Suggestion: string;
+  After: IRuleAfterFindings;
+  Afters: TList<IRuleAfterFindings>;
+  AfterIds: TList<string>;
+  AfterSeverities: TList<TRuleSeverity>;
+  AfterContexts: TList<TRuleContext>;
 begin
   if (AContext.RelativePath <> '') and ASettings.IsExcluded(AContext.RelativePath) then
     Exit(nil);
@@ -299,6 +304,10 @@ begin
   Kept := TList<TRuleFinding>.Create;
   Suppressions := nil;
   RanIds := TList<string>.Create;
+  Afters := TList<IRuleAfterFindings>.Create;
+  AfterIds := TList<string>.Create;
+  AfterSeverities := TList<TRuleSeverity>.Create;
+  AfterContexts := TList<TRuleContext>.Create;
   try
     for Rule in ARules do
     begin
@@ -328,6 +337,21 @@ begin
       if Elapsed >= SlowRuleMs then
         TRequestDiagnostics.Slowest('slowRule', Descriptor.Id, Integer(Elapsed));
       RanIds.Add(LowerCase(Descriptor.Id));
+      if Supports(Rule, IRuleAfterFindings, After) then
+      begin
+        Afters.Add(After);
+        AfterIds.Add(Descriptor.Id);
+        AfterSeverities.Add(Severity);
+        AfterContexts.Add(Context);
+      end;
+      After := nil;
+    end;
+    // Nach allen Regeln, mit den rohen Treffern (#297).
+    for Index := 0 to Afters.Count - 1 do
+    begin
+      Report := TRuleReport.Create(AfterIds[Index], AfterSeverities[Index], Findings);
+      Afters[Index].CheckFindings(AfterContexts[Index], Findings.ToArray, RanIds.ToArray, Report);
+      Report := nil;
     end;
 
     if AContext.Tree <> nil then
@@ -401,6 +425,10 @@ begin
     // Referenzzyklen über Kontextkopien in abgelegten Objekten.
     if OwnCache <> nil then
       OwnCache.Clear;
+    AfterContexts.Free;
+    AfterSeverities.Free;
+    AfterIds.Free;
+    Afters.Free;
     RanIds.Free;
     Suppressions.Free;
     Kept.Free;

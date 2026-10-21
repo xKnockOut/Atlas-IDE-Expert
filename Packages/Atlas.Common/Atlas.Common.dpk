@@ -218,6 +218,7 @@ contains
   Atlas.Common.Editing.TaskCommands in 'Source\Editing\Atlas.Common.Editing.TaskCommands.pas',
   Atlas.Common.Editing.RecordCommands in 'Source\Editing\Atlas.Common.Editing.RecordCommands.pas',
   Atlas.Common.Editing.MaintenanceCommands in 'Source\Editing\Atlas.Common.Editing.MaintenanceCommands.pas',
+  Atlas.Common.Editing.GitUser in 'Source\Editing\Atlas.Common.Editing.GitUser.pas',
   Atlas.Common.Editing.TypeCommands in 'Source\Editing\Atlas.Common.Editing.TypeCommands.pas',
   Atlas.Common.Editing.CollectionCommands in 'Source\Editing\Atlas.Common.Editing.CollectionCommands.pas',
   Atlas.Common.Editing.UnitTemplates in 'Source\Editing\Atlas.Common.Editing.UnitTemplates.pas',

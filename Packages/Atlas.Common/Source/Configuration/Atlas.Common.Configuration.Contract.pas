@@ -380,6 +380,12 @@ type
     SlashLogCall: string;
     /// <summary>Palettenseite für /component (#299).</summary>
     SlashComponentPalette: string;
+    /// <summary>Name hinter -o für /todo (#297); '' = git config user.name.</summary>
+    SlashTodoOwner: string;
+    /// <summary>Kategorie hinter -c für /todo (#297); '' = keine.</summary>
+    SlashTodoCategory: string;
+    /// <summary>/sortuses streicht ungenutzte Units (#297, #284).</summary>
+    SlashSortUsesRemoveUnused: Boolean;
     /// <summary>"uses aufräumen" (source.organizeImports) sortiert alphabetisch; Vorgabe aus,
     /// weil die Reihenfolge die Initialisierung bestimmt (#182).</summary>
     SortUses: Boolean;
@@ -762,6 +768,9 @@ begin
   Result.SlashHeaderTemplate := '';
   Result.SlashLogCall := '';
   Result.SlashComponentPalette := 'Eigene';
+  Result.SlashTodoOwner := '';
+  Result.SlashTodoCategory := '';
+  Result.SlashSortUsesRemoveUnused := True;
   Result.SortUses := False;
   Result.SortUsesByNamespace := False;
   Result.UsesKeep := nil;
