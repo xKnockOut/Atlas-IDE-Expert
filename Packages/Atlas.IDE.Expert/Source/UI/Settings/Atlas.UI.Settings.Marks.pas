@@ -13,6 +13,9 @@
 // Experimentelle Einstellungen (#834) tragen hinter ihrer Beschriftung das
 // Kennzeichen „[Experimentell]“ als Text (nicht nur Farbe, #447). Filter blendet
 // in den Reitern alles aus, was nicht geändert bzw. nicht experimentell ist.
+// Rahmen einer Funktion (#890, TAtlasSettingsGroup) zählen wie ein Reiter: Ihre
+// Zeilen werden einzeln gefiltert; angeheftete Elemente (Pin: Rahmen, Hauptschalter,
+// Grund der Sperre) bleiben immer sichtbar.
 
 interface
 
@@ -23,7 +26,8 @@ uses
   Vcl.Controls,
   Vcl.Forms,
   Vcl.StdCtrls,
-  Vcl.Menus;
+  Vcl.Menus,
+  Atlas.UI.Settings.Group;
 
 type
   /// <summary>Filter der Optionsseite (#834): alle, nur geänderte, nur experimentelle Einstellungen.</summary>
@@ -63,6 +67,8 @@ type
     FHidden: TList<TControl>;
     /// <summary>Ursprüngliche Lage der Elemente der gefilterten Reiter; der Filter rückt die sichtbaren zusammen.</summary>
     FTops: TDictionary<TControl, Integer>;
+    /// <summary>Elemente, die der Filter nie ausblendet (#890).</summary>
+    FPinned: TList<TControl>;
     procedure Restore;
     procedure Compact(AContainer: TWinControl);
     function IndexOfControl(AControl: TObject): Integer;
@@ -86,6 +92,18 @@ type
     procedure Show(const AModified: TArray<string>; AEnabled: Boolean);
     /// <summary>Namen aller Bindungen, deren Element in AParent liegt (Reiter der Seite).</summary>
     function NamesIn(AParent: TWinControl): TArray<string>;
+    /// <summary>Namen aller Bindungen, deren Element AControl selbst ist oder darin liegt (#890).</summary>
+    function NamesWithin(AControl: TControl): TArray<string>;
+    /// <summary>Erstes gebundenes Element mit dem Namen AName; nil ohne.</summary>
+    function ControlOfName(const AName: string): TControl;
+    /// <summary>Beschriftung der Bindung mit dem Namen AName ohne Punkt und Kennzeichen; '' ohne.</summary>
+    function TextOfName(const AName: string): string;
+    /// <summary>Liegt in AParent eine Bindung, die der aktuelle Filter zeigt (sfAll: irgendeine)?</summary>
+    function HasMatch(AParent: TWinControl): Boolean;
+    /// <summary>Trägt eine Bindung in AParent einen Punkt?</summary>
+    function HasMarked(AParent: TWinControl): Boolean;
+    /// <summary>AControl bleibt beim Filtern immer sichtbar (Rahmen, Hauptschalter, Grund der Sperre).</summary>
+    procedure Pin(AControl: TControl);
     /// <summary>Namen der Bindung zu AControl (Element, Beschriftung oder Zeile); leer ohne.</summary>
     function NamesOf(AControl: TObject): TArray<string>;
     /// <summary>Trägt AControl (oder seine Beschriftung) einen Punkt?</summary>
@@ -129,6 +147,7 @@ begin
   FBindings := TList<TAtlasSettingsBinding>.Create;
   FHidden := TList<TControl>.Create;
   FTops := TDictionary<TControl, Integer>.Create;
+  FPinned := TList<TControl>.Create;
   FMenu := TPopupMenu.Create(Self);
   FMenu.OnPopup := MenuPopup;
   FResetItem := TMenuItem.Create(FMenu);
@@ -144,6 +163,7 @@ end;
 
 destructor TAtlasSettingsMarks.Destroy;
 begin
+  FPinned.Free;
   FTops.Free;
   FHidden.Free;
   FBindings.Free;
@@ -355,6 +375,77 @@ begin
   end;
 end;
 
+/// <summary>Liegt AControl in AParent (oder ist es selbst)?</summary>
+function Inside(AControl, AParent: TControl): Boolean;
+var
+  Parent: TControl;
+begin
+  Parent := AControl;
+  while (Parent <> nil) and (Parent <> AParent) do
+    Parent := Parent.Parent;
+  Result := Parent <> nil;
+end;
+
+function TAtlasSettingsMarks.NamesWithin(AControl: TControl): TArray<string>;
+var
+  Binding: TAtlasSettingsBinding;
+begin
+  Result := nil;
+  for Binding in FBindings do
+    if Inside(Binding.Control, AControl) then
+      Result := Result + Binding.Names;
+end;
+
+function TAtlasSettingsMarks.ControlOfName(const AName: string): TControl;
+var
+  Binding: TAtlasSettingsBinding;
+  Name: string;
+begin
+  Result := nil;
+  for Binding in FBindings do
+    for Name in Binding.Names do
+      if SameText(Name, AName) then
+        Exit(Binding.Control);
+end;
+
+function TAtlasSettingsMarks.TextOfName(const AName: string): string;
+var
+  Binding: TAtlasSettingsBinding;
+  Name: string;
+begin
+  Result := '';
+  for Binding in FBindings do
+    for Name in Binding.Names do
+      if SameText(Name, AName) then
+        Exit(StringReplace(Binding.Text, '&', '', [rfReplaceAll]));
+end;
+
+function TAtlasSettingsMarks.HasMatch(AParent: TWinControl): Boolean;
+var
+  Binding: TAtlasSettingsBinding;
+begin
+  for Binding in FBindings do
+    if Inside(Binding.Control, AParent) and Matches(Binding, FFilter) then
+      Exit(True);
+  Result := False;
+end;
+
+function TAtlasSettingsMarks.HasMarked(AParent: TWinControl): Boolean;
+var
+  Binding: TAtlasSettingsBinding;
+begin
+  for Binding in FBindings do
+    if Binding.Marked and Inside(Binding.Control, AParent) then
+      Exit(True);
+  Result := False;
+end;
+
+procedure TAtlasSettingsMarks.Pin(AControl: TControl);
+begin
+  if (AControl <> nil) and not FPinned.Contains(AControl) then
+    FPinned.Add(AControl);
+end;
+
 function TAtlasSettingsMarks.NamesOf(AControl: TObject): TArray<string>;
 var
   Index: Integer;
@@ -428,11 +519,13 @@ end;
 
 procedure TAtlasSettingsMarks.ApplyFilter(AFilter: TAtlasSettingsFilter);
 
-  // Element direkt im Reiter (rollbarer Inhalt), das AControl trägt: die Zeile oder das Element selbst.
+  // Element direkt im Reiter (rollbarer Inhalt) oder im Rahmen einer Funktion, das AControl trägt: die Zeile oder
+  // das Element selbst.
   function RowOf(AControl: TControl): TControl;
   begin
     Result := AControl;
-    while (Result <> nil) and (Result.Parent <> nil) and not (Result.Parent is TScrollingWinControl) do
+    while (Result <> nil) and (Result.Parent <> nil) and not (Result.Parent is TScrollingWinControl) and
+      not (Result.Parent is TAtlasSettingsGroup) do
       Result := Result.Parent;
   end;
 
@@ -450,6 +543,7 @@ begin
   Shown := TList<TControl>.Create;
   Containers := TList<TControl>.Create;
   try
+    Shown.AddRange(FPinned);
     for Binding in FBindings do
     begin
       Row := RowOf(Binding.Control);
