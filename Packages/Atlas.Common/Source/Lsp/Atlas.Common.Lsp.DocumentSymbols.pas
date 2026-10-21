@@ -16,6 +16,11 @@
 //   - condition: Bedingung des aktiven {$IFDEF}-Zweigs, in dem das Symbol steht
 //     (nur das äußerste Symbol im Zweig) oder in dem der Rumpf einer Routine
 //     steht (#845), z. B. "CPUX64".
+//
+// Variante Teile eines Records (#846): ein benanntes Selektorfeld steht wie die
+// übrigen Felder im Record, die Zweige bilden eine Gruppe "case Integer of"
+// (SymbolKind Namespace) mit allen ihren Feldern; ein verschachtelter Teil ist
+// eine eigene Gruppe darin.
 
 interface
 
@@ -128,6 +133,7 @@ type
     procedure AddDeclaration(ANode: TSyntaxNode; ATarget: TJSONArray; AInType: Boolean);
     procedure MoveChildren(ASource: TJSONArray; ATarget: TJSONObject);
     procedure AddNames(ANode: TSyntaxNode; ATarget: TJSONArray; AKind: Integer);
+    procedure AddVariantPart(ANode: TSyntaxNode; ATarget: TJSONArray; AInType: Boolean);
   public
     constructor Create(const ATokens: TArray<TPascalToken>; const AUnimplemented: TArray<TTextPosition>);
       overload;
@@ -509,6 +515,52 @@ begin
   end;
 end;
 
+/// <summary>Typ des Selektors eines varianten Teils: "Integer" bei case Integer of und case Tag: Integer of.</summary>
+function SelectorType(AVariant: TSyntaxNode): string;
+var
+  Index, Inner: Integer;
+begin
+  Result := '';
+  for Index := 0 to AVariant.ChildCount - 1 do
+    if AVariant[Index].Kind = TSyntaxKind.TypeReference then
+      Exit(AVariant[Index].Name)
+    else if AVariant[Index].Kind = TSyntaxKind.Field then
+    begin
+      for Inner := 0 to AVariant[Index].ChildCount - 1 do
+        if AVariant[Index][Inner].Kind = TSyntaxKind.TypeReference then
+          Exit(AVariant[Index][Inner].Name);
+    end;
+end;
+
+procedure TSymbolBuilder.AddVariantPart(ANode: TSyntaxNode; ATarget: TJSONArray; AInType: Boolean);
+var
+  Group: TJSONObject;
+  Fields: TJSONArray;
+  Title: string;
+  Index: Integer;
+begin
+  // case Tag: Typ of (#846): das Selektorfeld neben die Felder des Records, die Zweige in eine Gruppe.
+  Title := 'case ';
+  if ANode.Name <> '' then
+    Title := Title + ANode.Name + ': ';
+  Title := Title + SelectorType(ANode) + ' of';
+  Fields := TJSONArray.Create;
+  try
+    for Index := 0 to ANode.ChildCount - 1 do
+      if ANode[Index].Kind = TSyntaxKind.Field then
+        AddNames(ANode[Index], ATarget, TLspSymbolKind.Field)
+      else if ANode[Index].Kind = TSyntaxKind.CaseItem then
+        AddDeclarations(ANode[Index], Fields, AInType);
+    if Fields.Count = 0 then
+      Exit;
+    Group := NewSymbol(ANode, Title, TLspSymbolKind.Namespace);
+    ATarget.AddElement(Group);
+    MoveChildren(Fields, Group);
+  finally
+    Fields.Free;
+  end;
+end;
+
 procedure TSymbolBuilder.AddDeclarations(ANode: TSyntaxNode; ATarget: TJSONArray; AInType: Boolean);
 var
   Index: Integer;
@@ -528,8 +580,10 @@ begin
     TSyntaxKind.Visibility:
       if AInType then
         FVisibility := ANode.Name;
-    TSyntaxKind.TypeSection, TSyntaxKind.ConstSection, TSyntaxKind.VarSection, TSyntaxKind.VariantPart:
+    TSyntaxKind.TypeSection, TSyntaxKind.ConstSection, TSyntaxKind.VarSection:
       AddDeclarations(ANode, ATarget, AInType);
+    TSyntaxKind.VariantPart:
+      AddVariantPart(ANode, ATarget, AInType);
     TSyntaxKind.TypeDecl:
       ATarget.AddElement(TypeSymbol(ANode));
     TSyntaxKind.ConstDecl:

@@ -7,7 +7,8 @@
 //   - Tags: "+ Unit" für Einträge aus nicht eingebundenen Units (#180),
 //     "deprecated", "constructor"/"destructor", "+2" bei drei Überladungen
 //     (#425), "Helper" (#456), "zuletzt"/"häufig" (#418), Anzahl fehlender
-//     Werte bei „Alle Werte einfügen“ (#449), "Snippet" bei Code-Vorlagen (#51).
+//     Werte bei „Alle Werte einfügen“ (#449), "Snippet" bei Code-Vorlagen (#51),
+//     "Zweig 0" bei Feldern varianter Records (#846, Id VariantBranch, abschaltbar im Popup).
 //   - Geerbte Member (#419): Detail beginnt mit der deklarierenden Klasse.
 //   - uses-Abschnitt (#469): kein Dateiname; „bereits im interface-Teil“ bzw. „… implementation-Teil“ für Units
 //     aus dem anderen Abschnitt, Marke „Zirkelbezug“ (Fehlerfarbe) für Units, die diese Unit im interface-Teil
@@ -33,12 +34,14 @@ type
 
   /// <summary>Übersetzbare Marken (#446); Plain = Text unverändert zeigen; Cycle = Zirkelbezug im uses-Abschnitt
   /// (#469).</summary>
-  TAtlasTagId = (Plain, Recent, Frequent, Cycle, SameParams, Overload, Active);
+  TAtlasTagId = (Plain, Recent, Frequent, Cycle, SameParams, Overload, Active, VariantBranch);
 
   TAtlasTag = record
     Text: string;
     Kind: TAtlasTagKind;
     Id: TAtlasTagId;
+    /// <summary>Einzusetzender Wert übersetzbarer Marken, bei VariantBranch die Zweigmarken ("0").</summary>
+    Arg: string;
   end;
 
   TAtlasTags = TArray<TAtlasTag>;
@@ -103,6 +106,7 @@ begin
   Result.Text := AText;
   Result.Kind := AKind;
   Result.Id := TAtlasTagId.Plain;
+  Result.Arg := '';
 end;
 
 function IsWordStart(const AName: string; AIndex: Integer): Boolean;
@@ -371,6 +375,13 @@ begin
       Result := Result + [MakeTag('nur ' + AItem.Condition, TAtlasTagKind.Warn)]
     else
       Result := Result + [MakeTag('nur ' + AItem.Condition, TAtlasTagKind.Neutral)];
+  // Felder varianter Records (#846): „Zweig 0“.
+  if AItem.VariantBranch <> '' then
+  begin
+    Result := Result + [MakeTag('Zweig ' + AItem.VariantBranch, TAtlasTagKind.Neutral)];
+    Result[High(Result)].Id := TAtlasTagId.VariantBranch;
+    Result[High(Result)].Arg := AItem.VariantBranch;
+  end;
   if AItem.OverloadCount > 1 then
     Result := Result + [MakeTag('+' + IntToStr(AItem.OverloadCount - 1), TAtlasTagKind.Neutral)];
   if AItem.IsHelper then

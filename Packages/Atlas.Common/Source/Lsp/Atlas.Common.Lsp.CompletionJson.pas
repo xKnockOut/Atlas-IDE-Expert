@@ -89,6 +89,13 @@ begin
     AData.AddPair('condition', AItem.Condition);
 end;
 
+// Zweig varianter Record-Felder (#846).
+procedure WriteVariant(const AItem: TCompletionItem; AData: TJSONObject);
+begin
+  if AItem.VariantBranch <> '' then
+    AData.AddPair('variant', AItem.VariantBranch);
+end;
+
 procedure WriteUnavailable(const AItem: TCompletionItem; AData: TJSONObject);
 begin
   if AItem.Unavailable then
@@ -363,8 +370,8 @@ end;
 const
   /// <summary>Reihenfolge der Felder unter data; das Plugin liest nach Namen, die Golden-Tests nach Text.
   /// </summary>
-  DataWriters: array[0..32] of TItemDataWriter = (WriteSource, WriteExpected, WriteAction, WriteContainer,
-    WriteDepth, WriteHelper, WriteParameters, WriteCondition, WriteUnavailable, WriteScope, WriteOrdinal,
+  DataWriters: array[0..33] of TItemDataWriter = (WriteSource, WriteExpected, WriteAction, WriteContainer,
+    WriteDepth, WriteHelper, WriteParameters, WriteCondition, WriteVariant, WriteUnavailable, WriteScope, WriteOrdinal,
     WriteSetOf, WriteLinked, WritePinned, WriteCount, WriteUnknown, WriteBatch, WriteHint, WriteForm, WriteByType, WriteSender,
     WriteConversion, WriteAssignments, WriteDataSet, WriteGuard, WriteUnit, WriteHides, WriteOverloads, WriteTypeArg,
     WriteBindings, WriteUses, WriteInherited, WriteSameName);
@@ -372,7 +379,8 @@ const
 function NeedsData(const AItem: TCompletionItem): Boolean;
 begin
   Result := (AItem.SourceFile <> '') or (AItem.Expected <> '') or (AItem.Action <> '') or (AItem.Condition <> '') or
-    (AItem.Scope > 0) or (AItem.Ordinal > 0) or AItem.Pinned or AItem.LinkedEdits or AItem.Hint or (AItem.Form <> '') or
+    (AItem.VariantBranch <> '') or (AItem.Scope > 0) or (AItem.Ordinal > 0) or AItem.Pinned or AItem.LinkedEdits or
+    AItem.Hint or (AItem.Form <> '') or
     (AItem.Sender <> '') or (AItem.DataSet <> '') or (AItem.Guard <> '') or (AItem.TypeParam <> '') or
     (Length(AItem.Bindings) > 0) or (AItem.Conversion <> '') or (AItem.Lossy <> '') or
     (Length(AItem.Assignments) > 0) or (AItem.UsesGroup <> '') or (AItem.InheritedMatch <> '') or
