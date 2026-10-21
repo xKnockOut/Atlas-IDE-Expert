@@ -14,6 +14,9 @@ type
   private
     FCacheFile: string;
   public
+    /// <summary>Erstgebrauch (TMonitor, Sortierung, JSON, Dateien) vor der Leckmessung.</summary>
+    [SetupFixture]
+    procedure WarmUpFirstUse;
     [Setup]
     procedure Setup;
     [TearDown]
@@ -46,6 +49,16 @@ begin
 end;
 
 { TIndexProcessesTests }
+
+procedure TIndexProcessesTests.WarmUpFirstUse;
+begin
+  Setup;
+  try
+    TwoProcessesAreListed;
+  finally
+    TearDown;
+  end;
+end;
 
 procedure TIndexProcessesTests.Setup;
 begin

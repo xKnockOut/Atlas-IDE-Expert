@@ -356,6 +356,7 @@ procedure TAtlasSearchTests.KeysComeFromSettingsAndFollowTheSwitch;
 var
   Settings: TAtlasPluginSettings;
   Entries: TArray<TAtlasKeyEntry>;
+  I: Integer;
 begin
   Settings := TAtlasPluginSettings.Defaults;
   Entries := TAtlasKeyEntry.AllFromSettings(Settings);
@@ -377,7 +378,10 @@ begin
   Assert.IsTrue(EntryOf(Entries, TAtlasKeyFunction.SearchPrevious).Disabled);
   Assert.IsFalse(EntryOf(Entries, TAtlasKeyFunction.SearchMethod).Disabled);
   // Zurück in die Einstellungen.
-  Entries[High(Entries)].Key := $C046;
+  // Eintrag gezielt suchen: seit FormatCode (#43) ist SearchMethod nicht mehr der letzte.
+  for I := 0 to High(Entries) do
+    if Entries[I].Func = TAtlasKeyFunction.SearchMethod then
+      Entries[I].Key := $C046;
   TAtlasKeyEntry.ToSettings(Entries, Settings);
   Assert.AreEqual($C046, Settings.SearchMethodKey);
 end;

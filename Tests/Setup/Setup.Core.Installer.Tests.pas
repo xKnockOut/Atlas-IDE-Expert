@@ -793,7 +793,7 @@ begin
   // Gleicher Text mit anderen Zeilenumbrüchen gibt denselben Fingerabdruck.
   Assert.AreEqual(TSetupLicense.Fingerprint('A'#13#10'B'), TSetupLicense.Fingerprint('A'#10'B'#10));
   Assert.AreNotEqual(TSetupLicense.Fingerprint('A'#13#10'B'), TSetupLicense.Fingerprint('A'#13#10'C'));
-  Assert.AreEqual(64, Length(TSetupLicense.Fingerprint('A')));
+  Assert.AreEqual(64, Integer(Length(TSetupLicense.Fingerprint('A'))));
 end;
 
 procedure TSetupInstallerTests.LicenseAskedUntilAccepted;
