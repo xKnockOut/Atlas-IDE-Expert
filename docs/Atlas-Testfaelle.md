@@ -2773,6 +2773,26 @@ Voraussetzung: VCL-Quellen über die Bibliothekspfade im Index, Atlas-Tooltip an
 | IP10 | `completion.inheritedCall` aus | Nur die Namen der Vorfahrmethoden wie bisher, kein Aufruf mit Argumenten |
 | IP11 | Oberfläche auf Englisch | Marken „same parameters“, „overload“; Fußzeile „… is abstract and not listed“ |
 
+## Property aus Getter und Setter (#682)
+
+Voraussetzung: Server läuft; Einstellungen auf Vorgabe; Unit `Panels.pas` mit `TPanel = class private FCaption: string; public function GetCaption: string; procedure SetCaption(const AValue: string); end;`, Getter `Result := FCaption;`, und zwei Units, die `Panel.SetCaption('Bereit')` und `S := Panel.GetCaption` aufrufen.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| PA1 | Glühbirne auf `GetCaption` | „Property Caption anlegen“ und „Property Caption anlegen und Aufrufe umstellen“ |
+| PA2 | „Property Caption anlegen“ | Vorschau mit einer Änderung in Panels.pas; nach „Anlegen“ steht `property Caption: string read FCaption write SetCaption;` am Ende des public-Abschnitts; kompiliert (**Abnahme**) |
+| PA3 | Wie PA2, Getter liefert `FCaption + '!'` | `read GetCaption` statt `read FCaption` |
+| PA4 | „… und Aufrufe umstellen“ | Vorschau über drei Dateien; `Panel.Caption := 'Bereit'` und `S := Panel.Caption`; Strg+Z in jeder Datei nimmt deren Änderungen in einem Schritt zurück (**Abnahme**) |
+| PA5 | Zusätzlich `Hook(Panel.GetCaption)` mit Parameter vom Typ `function: string of object` und `@Panel.GetCaption` | Beide Stellen bleiben, die Vorschau nennt sie als Methodenzeiger |
+| PA6 | `function GetItem(AIndex: Integer): TObject;` und `procedure SetItem(AIndex: Integer; const AValue: TObject);` | `property Items[AIndex: Integer]: TObject read GetItem write SetItem;`; Aufrufe `L.GetItem(1)` → `L.Items[1]`, `L.SetItem(1, X)` → `L.Items[1] := X` |
+| PA7 | `function IsEmpty: Boolean;` | „Property Empty anlegen“ mit `read IsEmpty`; `function IsName: string` bietet nichts an |
+| PA8 | Glühbirne auf der Kopfzeile `TPanel = class` mit zwei fehlenden Properties | „Fehlende Properties anlegen (2)“ legt beide an |
+| PA9 | `"propertyFromAccessorsPrefixes": ["Read", "Write"]`, Methoden `ReadSize`/`WriteSize` | „Property Size anlegen“; `GetCaption` bietet nichts mehr an |
+| PA10 | `"propertyFromAccessorsSection": "published"` | Die Property steht in einem neuen published-Abschnitt vor `end` |
+| PA11 | `"propertyFromAccessorsHideAccessors": "private"`, PA4 wiederholen | `SetCaption` wandert in den private-Abschnitt (nur noch über die Property benutzt); `GetCaption` bleibt public, wenn es noch als Methodenzeiger benutzt wird, mit Hinweis in der Vorschau |
+| PA12 | `"propertyFromAccessorsReplaceCalls": "never"` bzw. `"always"` | Nur „Property Caption anlegen“ bzw. nur „… und Aufrufe umstellen“ |
+| PA13 | `"refactoring": {"propertyFromAccessors": false}` in atlas.json | Keine der Aktionen mehr (**Abnahme**) |
+
 ## Forward-Deklaration ergänzen (#685)
 
 Voraussetzung: Server läuft; Einstellungen auf Vorgabe; neue Unit `Tree.pas`.

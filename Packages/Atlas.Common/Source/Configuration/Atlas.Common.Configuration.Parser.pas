@@ -1027,7 +1027,7 @@ end;
 
 procedure TValidator.ReadRefactoring(ANode: TJsonNode);
 var
-  Index: Integer;
+  Index, Item: Integer;
   Key, Value: string;
 begin
   if ANode.Kind <> TJsonKind.Object_ then
@@ -1100,6 +1100,48 @@ begin
     end
     else if Key = 'constParameters' then
       ExpectBoolean(ANode[Index], Key, FSettings.Refactoring.ConstParameters)
+    else if Key = 'propertyFromAccessors' then
+      ExpectBoolean(ANode[Index], Key, FSettings.Refactoring.PropertyFromAccessors)
+    else if Key = 'propertyFromAccessorsPrefixes' then
+    begin
+      if ANode[Index].Kind <> TJsonKind.Array_ then
+        ReportNode(ANode[Index], '"refactoring.propertyFromAccessorsPrefixes" muss eine Liste von Präfixen sein')
+      else
+      begin
+        FSettings.Refactoring.PropertyFromAccessorsPrefixes := nil;
+        for Item := 0 to ANode[Index].Count - 1 do
+          if ExpectString(ANode[Index][Item], Key, Value) and (Trim(Value) <> '') then
+            FSettings.Refactoring.PropertyFromAccessorsPrefixes :=
+              FSettings.Refactoring.PropertyFromAccessorsPrefixes + [Trim(Value)];
+      end;
+    end
+    else if Key = 'propertyFromAccessorsReplaceCalls' then
+    begin
+      if ExpectString(ANode[Index], Key, Value) then
+        if MatchText(Value, ['ask', 'always', 'never']) then
+          FSettings.Refactoring.PropertyFromAccessorsReplaceCalls := LowerCase(Value)
+        else
+          ReportNode(ANode[Index], '"refactoring.propertyFromAccessorsReplaceCalls" muss "ask", "always" oder ' +
+            '"never" sein');
+    end
+    else if Key = 'propertyFromAccessorsSection' then
+    begin
+      if ExpectString(ANode[Index], Key, Value) then
+        if MatchText(Value, ['accessor', 'public', 'published']) then
+          FSettings.Refactoring.PropertyFromAccessorsSection := LowerCase(Value)
+        else
+          ReportNode(ANode[Index], '"refactoring.propertyFromAccessorsSection" muss "accessor", "public" oder ' +
+            '"published" sein');
+    end
+    else if Key = 'propertyFromAccessorsHideAccessors' then
+    begin
+      if ExpectString(ANode[Index], Key, Value) then
+        if MatchText(Value, ['off', 'private', 'protected']) then
+          FSettings.Refactoring.PropertyFromAccessorsHideAccessors := LowerCase(Value)
+        else
+          ReportNode(ANode[Index], '"refactoring.propertyFromAccessorsHideAccessors" muss "off", "private" oder ' +
+            '"protected" sein');
+    end
     else
       Report(ANode.KeyStarts[Index], ANode.KeyStarts[Index] + Length(Key) + 2,
         Format('Unbekannte Einstellung "refactoring.%s"', [Key]), False);
