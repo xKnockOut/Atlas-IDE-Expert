@@ -471,7 +471,6 @@ uses
   Atlas.Common.Documents.FileEncoding,
   Atlas.Common.Documents.Uris,
   Atlas.Common.Pascal.IncludeFiles,
-  Atlas.Common.Editing.SlashCommands,
   Shell.SlashHost,
   Shell.VcsChanges,
   Shell.Bootstrap,
