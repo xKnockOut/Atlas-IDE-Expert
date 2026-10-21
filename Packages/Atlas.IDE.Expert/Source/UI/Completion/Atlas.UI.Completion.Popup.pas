@@ -134,6 +134,7 @@ type
     FOnOverload: TAtlasOverloadEvent;
     FOnDocLink: TAtlasDocLinkEvent;
     FDimInherited: Boolean;
+    FShowVariantBranch: Boolean;
     // Position der Überschrift „Weitere Einträge“ (#497); -1 ohne.
     FRestFrom: Integer;
     FLimited: Boolean;
@@ -201,6 +202,8 @@ type
     procedure PlaceAndShow;
     function MeasureWidth: Integer;
     function TagWidth(const ATag: TAtlasTag): Integer;
+    /// <summary>Tags der Zeile; ohne ShowVariantBranch fehlt „Zweig 0“ (#846).</summary>
+    function ItemTags(const AItem: TAtlasCompletionItem): TAtlasTags;
     procedure DrawBadge(const ARow: TRect; const AItem: TAtlasCompletionItem; out ARight: Integer);
     procedure DrawCheck(const ARow: TRect; AChecked: Boolean);
     /// <summary>Stern der Favoriten (#458) links in ARow: gefüllt = angeheftet, sonst nur der Umriss.</summary>
@@ -276,6 +279,9 @@ type
     property OnDocLink: TAtlasDocLinkEvent read FOnDocLink write FOnDocLink;
     /// <summary>Geerbte Member abgeschwächt zeichnen (#419).</summary>
     property DimInherited: Boolean read FDimInherited write FDimInherited;
+    /// <summary>Marke „Zweig 0“ an Feldern varianter Records (#846, completion.variantBranch); Vorgabe an.
+    /// </summary>
+    property ShowVariantBranch: Boolean read FShowVariantBranch write FShowVariantBranch;
     /// <summary>Der Server indiziert noch (#492, #457): Die Fußzeile meldet „eingeschränkt“; die Liste
     /// zeigt den vorhandenen Stand.</summary>
     property Limited: Boolean read FLimited write FLimited;
@@ -318,6 +324,7 @@ begin
     TAtlasTagId.SameParams: Result := TAtlasStrings.Text(TAtlasTextId.InheritedSameTag);
     TAtlasTagId.Overload: Result := TAtlasStrings.Text(TAtlasTextId.InheritedOverloadTag);
     TAtlasTagId.Active: Result := TAtlasStrings.Text(TAtlasTextId.SameNameActiveTag);
+    TAtlasTagId.VariantBranch: Result := TAtlasStrings.Fmt(TAtlasTextId.TagVariantBranch, [ATag.Arg]);
   else
     Result := ATag.Text;
   end;
@@ -352,6 +359,7 @@ begin
   FTipTimer.OnTimer := TipTimer;
   FPanelWidthSetting := DefaultPanelWidth;
   FSelectionMarker := True;
+  FShowVariantBranch := True;
 end;
 
 destructor TAtlasCompletionPopup.Destroy;
@@ -810,6 +818,16 @@ begin
   Canvas.Font := Font;
 end;
 
+function TAtlasCompletionPopup.ItemTags(const AItem: TAtlasCompletionItem): TAtlasTags;
+var
+  Tag: TAtlasTag;
+begin
+  Result := nil;
+  for Tag in TAtlasItemPresentation.Tags(AItem) do
+    if FShowVariantBranch or (Tag.Id <> TAtlasTagId.VariantBranch) then
+      Result := Result + [Tag];
+end;
+
 function TAtlasCompletionPopup.MeasureWidth: Integer;
 var
   Position, Count, Widest, Width: Integer;
@@ -830,7 +848,7 @@ begin
     Detail := DetailText(Item);
     if Detail <> '' then
       Inc(Width, Scale(12) + Canvas.TextWidth(Detail));
-    for Tag in TAtlasItemPresentation.Tags(Item) do
+    for Tag in ItemTags(Item) do
       Inc(Width, Scale(6) + TagWidth(Tag));
     Widest := Max(Widest, Width);
   end;
@@ -1303,7 +1321,7 @@ begin
   // Breiten: Name, Tags, Detail; zu lang: erst das Detail kürzen bzw. weglassen, dann den Namen.
   Canvas.Font := Font;
   NameWidth := Canvas.TextWidth(Item.Name);
-  Tags := TAtlasItemPresentation.Tags(Item);
+  Tags := ItemTags(Item);
   TagsWidth := 0;
   for Tag in Tags do
     Inc(TagsWidth, TagWidth(Tag) + Gap);
@@ -1405,12 +1423,17 @@ end;
 function TAtlasCompletionPopup.AccessibleStatus(APosition: Integer): string;
 var
   Status: string;
+  Tag: TAtlasTag;
 begin
   Result := '';
   if TAtlasRanking.IsHeader(FOrder[APosition]) then
     Exit;
   // Dieselben Angaben wie die Tags der Zeile; nicht nur Farbe (#447).
-  Result := TAtlasItemPresentation.TagText(FItems[FOrder[APosition]]);
+  for Tag in ItemTags(FItems[FOrder[APosition]]) do
+    if Result = '' then
+      Result := Tag.Text
+    else
+      Result := Result + ', ' + Tag.Text;
   if FItems[FOrder[APosition]].Favorite then
   begin
     Status := TAtlasStrings.Text(TAtlasTextId.AccessFavorite);
@@ -1856,7 +1879,7 @@ begin
   Detail := DetailText(Item);
   if Detail <> '' then
     Text := Text + '   ' + Detail;
-  for Tag in TAtlasItemPresentation.Tags(Item) do
+  for Tag in ItemTags(Item) do
     Text := Text + '   [' + TagText(Tag) + ']';
   FTip.Colors := Colors;
   FTip.SetScaling(PPI, 1, Font.Name, Font.Size);

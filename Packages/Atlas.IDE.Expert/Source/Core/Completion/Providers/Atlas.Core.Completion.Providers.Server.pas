@@ -191,6 +191,7 @@ begin
     Result.Depth := Data.GetValue<Integer>('depth', 0);
     Result.IsHelper := Data.GetValue('helper') is TJSONTrue;
     Result.Condition := Data.GetValue<string>('condition', '');
+    Result.VariantBranch := Data.GetValue<string>('variant', '');
     Result.Unavailable := Data.GetValue('unavailable') is TJSONTrue;
     Result.Scope := Data.GetValue<Integer>('scope', 0);
     // Herkunft aus einer anderen Unit und verdeckte Deklarationen (#488).

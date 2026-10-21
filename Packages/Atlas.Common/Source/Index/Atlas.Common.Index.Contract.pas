@@ -63,6 +63,9 @@ type
     Condition: string;
     /// <summary>Steht in einem Zweig, der unter der aktiven Konfiguration nicht gilt (#476).</summary>
     Unavailable: Boolean;
+    /// <summary>Feld im varianten Teil eines Records (#846): Marken seines Zweigs ("0", "mkA, mkB"),
+    /// verschachtelt mit " › " verbunden ("1 › 0"); '' = kein varianter Zweig.</summary>
+    VariantBranch: string;
     /// <summary>Kopf der Deklaration als eine Zeile, z. B. "function Foo(A: Integer): string; overload;"
     /// oder "TFoo = class(TBase)" (#492); höchstens TIndexSymbol.MaxSignature Zeichen.</summary>
     Signature: string;

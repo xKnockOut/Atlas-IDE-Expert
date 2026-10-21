@@ -642,7 +642,7 @@ type
     UnwrapLine, UnwrapBeginEnd, UnwrapTryFinally, UnwrapTryExcept, UnwrapIfThen, UnwrapIfElse, UnwrapWith, UnwrapFor,
     UnwrapWhile, UnwrapRepeat, UnwrapIfDef, UnwrapRegion, UnwrapKeepFinally, UnwrapDropFinally, UnwrapKeepThen,
     UnwrapKeepElse, UnwrapKeepFirst, UnwrapKeepIfDefElse, UnwrapKeepBranch, UnwrapRaiseNote, UnwrapLoopNote,
-    UnwrapWithNote, SettingsOutlineConditions);
+    UnwrapWithNote, SettingsOutlineConditions, SettingsCompletionVariantBranch, TagVariantBranch);
 
   TAtlasStrings = class
   private class var
@@ -1975,7 +1975,9 @@ const
      'Achtung: Der except-Teil enthält %s raise.',
      'Bezüge auf die Schleifenvariable %s bleiben stehen.',
      'with lässt sich nicht auflösen: %s',
-     'Bedingung des aktiven {$IFDEF}-Zweigs hinter dem Eintrag zeigen'),
+     'Bedingung des aktiven {$IFDEF}-Zweigs hinter dem Eintrag zeigen',
+     'Zweig varianter Record-Felder zeigen',
+     'Zweig %s'),
     ('Enter to accept · Esc to close', '%d of %d', 'No matches for “%s”', 'Backspace widens the search',
      'No suggestions here', 'Esc closes', 'No details for this entry', 'Overload', 'Deprecated: %s', 'Deprecated.',
      'Inherited from %s', 'Inherited', 'optional, default %s', 'No overload with %d parameters.', '… %d more',
@@ -3209,7 +3211,9 @@ const
      'Caution: the except part contains %s raise statements.',
      'References to the loop variable %s stay.',
      'with cannot be resolved: %s',
-     'Show the condition of the active {$IFDEF} branch after the entry'));
+     'Show the condition of the active {$IFDEF} branch after the entry',
+     'Show the branch of variant record fields',
+     'branch %s'));
 
 { TAtlasStrings }
 

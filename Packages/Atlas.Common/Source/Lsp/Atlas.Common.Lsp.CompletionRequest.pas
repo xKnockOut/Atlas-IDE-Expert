@@ -96,6 +96,9 @@ type
     Fits: Boolean;
     /// <summary>Bedingung der Deklaration ("WIN64", "platform"); '' = immer (#476).</summary>
     Condition: string;
+    /// <summary>Feld im varianten Teil eines Records: Marken seines Zweigs ("0", "1 › 0", #846); '' = keiner.
+    /// </summary>
+    VariantBranch: string;
     /// <summary>Unter der aktiven Konfiguration nicht deklariert; Atlas zeigt es abgeschwächt am Ende (#476).</summary>
     Unavailable: Boolean;
     /// <summary>Gültigkeitsbereich ohne Punkt davor (#488): 1 lokal, 2 Parameter, 3 Mitglied von Self,

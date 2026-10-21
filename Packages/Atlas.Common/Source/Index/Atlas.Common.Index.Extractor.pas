@@ -43,6 +43,8 @@ type
     FAncestorArgs: string;
     // Der nächste Add aus AddType ist eine Vorwärtsdeklaration; FForwards hält deren Nummern in FSymbols.
     FForward: Boolean;
+    /// <summary>Zweig des varianten Record-Teils, in dem AddMembers gerade steht (#846).</summary>
+    FVariant: string;
     FForwards: TList<Integer>;
     function IsDefaultProperty(ANode: TSyntaxNode): Boolean;
     /// <summary>Methodenkopf mit virtual, dynamic, abstract oder override?</summary>
@@ -284,6 +286,7 @@ begin
     FForwards.Add(FSymbols.Count);
   Symbol.Condition := '';
   Symbol.Unavailable := False;
+  Symbol.VariantBranch := FVariant;
   // Inhalt für Hover, Detailpanel und Verwendungen ohne erneutes Lesen der Datei (#492).
   TypeText_ := '';
   if Symbol.TypeName <> '' then
@@ -686,6 +689,7 @@ var
   Index: Integer;
   Child: TSyntaxNode;
   Kind: TIndexSymbolKind;
+  Outer: string;
 begin
   for Index := 0 to ABody.ChildCount - 1 do
   begin
@@ -699,6 +703,20 @@ begin
       TSyntaxKind.TypeSection, TSyntaxKind.ConstSection, TSyntaxKind.VarSection,
       TSyntaxKind.VariantPart:
         AddMembers(Child, AContainer);
+      TSyntaxKind.CaseItem:
+        begin
+          // Zweig eines varianten Teils (#846); das Selektorfeld davor steht im äußeren Zweig.
+          Outer := FVariant;
+          if FVariant = '' then
+            FVariant := Child.Name
+          else
+            FVariant := FVariant + ' › ' + Child.Name;
+          try
+            AddMembers(Child, AContainer);
+          finally
+            FVariant := Outer;
+          end;
+        end;
       TSyntaxKind.TypeDecl:
         AddType(Child, AContainer);
       TSyntaxKind.ConstDecl:

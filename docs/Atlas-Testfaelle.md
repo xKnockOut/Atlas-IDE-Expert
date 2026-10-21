@@ -2905,6 +2905,22 @@ Voraussetzung: Einstellungen auf Vorgabe (Blockeinzug 2); Methode mit `if … th
 | NZ11 | Tasten unter Optionen › Befehle › Neue Zeile ober-/unterhalb ändern | Die neuen Tasten wirken, die Tastenübersicht prüft Konflikte |
 | NZ12 | „Neue Zeile ober-/unterhalb“ aus | Umschalt+Enter und Strg+Alt+Enter verhalten sich wie ohne Atlas, die Befehle fehlen in der Palette (**Abnahme**) |
 
+## Felder varianter Records (#846)
+
+Voraussetzung: Einstellungen auf Vorgabe; Unit mit `uses System.Types, Winapi.Messages;`, `var R: TRect; M: TMessage;` und einem eigenen Record `TMsg = record case Kind: TKind of mkA, mkB: (Value: Integer); mkC: (Inner: Integer; case Byte of 0: (Lo: Byte); 1: (Hi: Byte)); end;`.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| VR1 | `R.` tippen | Left, Top, Right, Bottom mit Marke „Zweig 0“, TopLeft und BottomRight mit „Zweig 1“, dazu Width und die übrigen Methoden (**Abnahme**) |
+| VR2 | `M.` tippen | Msg ohne Marke, WParam, LParam, Result mit „Zweig 0“, WParamLo/WParamHi usw. mit „Zweig 1“ |
+| VR3 | Eigenen Record: `X.` bei `X: TMsg` | Kind ohne Marke, Value mit „Zweig mkA, mkB“, Inner mit „Zweig mkC“, Lo mit „Zweig mkC › 0“ |
+| VR4 | Hover über `Left` in `R.Left` | Feld `Left: Integer` aus TRect |
+| VR5 | Strg+Klick auf `WParam` in `M.WParam` | Springt in Winapi.Messages auf das Feld |
+| VR6 | Inlay Hints an einem Aufruf `Foo(R.Left)` | Parametername erscheint wie bei gewöhnlichen Feldern |
+| VR7 | Gliederung von `TMsg` | Kind, darunter Gruppe `case Kind: TKind of` mit Value, Inner und der Untergruppe `case Byte of` (Lo, Hi) |
+| VR8 | Optionen › Vervollständigung › „Zweig varianter Record-Felder zeigen“ aus, `R.` tippen | Felder ohne Marke „Zweig …“, sonst unverändert |
+| VR9 | IDE mit altem Index-Cache starten | Cache wird einmal neu aufgebaut (andere Formatversion), danach sind die Felder da |
+
 ## Editor-Baum nur aus aktiven Zweigen (#845)
 
 Voraussetzung: Einstellungen auf Vorgabe; Projekt mit Win32 und Win64; Unit mit `procedure Foo;` im interface, deren Rumpf im implementation-Teil in `{$IFDEF CPUX64} begin … end; {$ELSE} asm … end; {$ENDIF}` steht, danach `procedure Bar;`; Klasse `TLog = class({$IFDEF MSWINDOWS}TFileLog{$ELSE}TStreamLog{$ENDIF})`; uses mit `{$IFDEF MSWINDOWS}Winapi.Windows,{$ENDIF} {$IFDEF POSIX}Posix.Unistd,{$ENDIF}`.
