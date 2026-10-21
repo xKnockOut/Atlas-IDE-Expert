@@ -306,6 +306,13 @@ type
     /// <summary>Mitglieder hinter A.B. (samt geerbter) bzw. interface-Symbole, wenn die Kette eine Unit ist.</summary>
     function MemberCandidates(ATree: TSyntaxTree; const AFileName: string; const ANames: TArray<string>;
       AOffset: Integer): TArray<TResolvedSymbol>;
+    /// <summary>Typ der Kette A.B samt Vorfahren, nächster zuerst (#456): Ziele für Helper aus nicht
+    /// eingebundenen Units. Leer, wenn die Kette eine Unit oder ihr Typ unbekannt ist.</summary>
+    function ReceiverTypes(ATree: TSyntaxTree; const AFileName: string; const ANames: TArray<string>;
+      AOffset: Integer): TArray<TResolvedSymbol>;
+    /// <summary>Passt der Zieltyp ATarget eines Helpers (ggf. mit Unit-Präfix) zu AType? string und
+    /// UnicodeString gelten als gleich.</summary>
+    class function HelperTargets(const ATarget: string; const AType: TResolvedSymbol): Boolean; static;
     /// <summary>Kette A.B als Wert und ihr Typ (Aliase verfolgt), z. B. für Postfix-Vorlagen (#188).
     /// False, wenn die Kette nicht auflösbar ist; ATypeFound sagt, ob der Typ bekannt ist.</summary>
     function ChainType(ATree: TSyntaxTree; const AFileName: string; const ANames: TArray<string>;
@@ -330,6 +337,12 @@ type
     /// Methode.</summary>
     function InheritedCandidates(ATree: TSyntaxTree; const AFileName: string;
       AOffset: Integer): TArray<TResolvedSymbol>;
+    /// <summary>Für den vollständigen inherited-Aufruf (#482): Methoden und Konstruktoren der Vorfahren der
+    /// Klasse, in deren Methode AOffset liegt, je Überladung ein Eintrag aus dem Index, nächster Vorfahr zuerst;
+    /// ADepths die Vererbungstiefe je Eintrag (1 = direkter Vorfahr). AStart: Anfang der umgebenden Methode im
+    /// Text (0-basiert), -1 außerhalb einer Methode.</summary>
+    function InheritedOverloads(ATree: TSyntaxTree; const AFileName: string; AOffset: Integer;
+      out AStart: Integer; out ADepths: TArray<Integer>): TArray<TIndexSymbol>;
     /// <summary>Felder und Methoden für read/write einer Property (#31): die des Typs ATypeName aus AFromUnit
     /// in jeder Sichtbarkeit (Depth 0), dann die der Vorfahren ohne strict private und ohne private aus anderen
     /// Units; gleichnamige weiter oben verdecken die der Vorfahren.</summary>
@@ -2712,6 +2725,34 @@ begin
     Result := TIndexExtractor.Extract(ATree, AFileName);
 end;
 
+function TNameResolver.ReceiverTypes(ATree: TSyntaxTree; const AFileName: string; const ANames: TArray<string>;
+  AOffset: Integer): TArray<TResolvedSymbol>;
+var
+  Owner, Current, Ancestor: TResolvedSymbol;
+  Found: Boolean;
+  Depth: Integer;
+begin
+  Result := nil;
+  if not ChainType(ATree, AFileName, ANames, AOffset, Owner, Current, Found) or not Found then
+    Exit;
+  for Depth := 0 to MaxDepth do
+  begin
+    Result := Result + [Current];
+    if Current.Builtin or not AncestorOf(Current, Ancestor) then
+      Break;
+    Current := Ancestor;
+  end;
+end;
+
+class function TNameResolver.HelperTargets(const ATarget: string; const AType: TResolvedSymbol): Boolean;
+var
+  Name: string;
+begin
+  Name := Copy(ATarget, LastDelimiter('.', ATarget) + 1, MaxInt);
+  Result := SameText(Name, AType.Name) or
+    (MatchText(Name, ['string', 'UnicodeString']) and MatchText(AType.Name, ['string', 'UnicodeString']));
+end;
+
 function TNameResolver.ChainType(ATree: TSyntaxTree; const AFileName: string; const ANames: TArray<string>;
   AOffset: Integer; out AOwner, AType: TResolvedSymbol; out ATypeFound: Boolean): Boolean;
 begin
@@ -2864,6 +2905,43 @@ begin
   finally
     Seen.Free;
     List.Free;
+  end;
+end;
+
+function TNameResolver.InheritedOverloads(ATree: TSyntaxTree; const AFileName: string; AOffset: Integer;
+  out AStart: Integer; out ADepths: TArray<Integer>): TArray<TIndexSymbol>;
+var
+  Routines: TArray<TSyntaxNode>;
+  Current, Ancestor: TResolvedSymbol;
+  OwnerUnit: TUnitIndex;
+  Symbol: TIndexSymbol;
+  Depth: Integer;
+begin
+  Result := nil;
+  ADepths := nil;
+  AStart := -1;
+  if ATree = nil then
+    Exit;
+  Prepare(ATree, AFileName, AOffset);
+  if not MethodClass(Current) then
+    Exit;
+  Routines := EnclosingRoutines;
+  AStart := Routines[High(Routines)].StartOffset;
+  for Depth := 1 to MaxDepth do
+  begin
+    if not AncestorOf(Current, Ancestor) or not UnitOf(Ancestor, OwnerUnit) then
+      Break;
+    // Sichtbar wie aus der eigenen Methode: protected ja, private nur aus derselben Datei.
+    for Symbol in OwnerUnit.Symbols do
+      if SameText(Symbol.Container, Ancestor.QualifiedName) and
+        (Symbol.Kind in [TIndexSymbolKind.Method, TIndexSymbolKind.Constructor_]) and not Symbol.Unavailable and
+        (Symbol.Visibility <> TIndexVisibility.StrictPrivate) and
+        ((Symbol.Visibility <> TIndexVisibility.Private) or SameText(OwnerUnit.FileName, AFileName)) then
+      begin
+        Result := Result + [Symbol];
+        ADepths := ADepths + [Depth];
+      end;
+    Current := Ancestor;
   end;
 end;
 

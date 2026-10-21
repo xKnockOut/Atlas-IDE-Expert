@@ -5,15 +5,17 @@
 // Rahmen mit Trennlinie. Inhalt von oben nach unten:
 //   1. Tags: Sichtbarkeit und Direktiven als umrandete Marken, deprecated in Warnfarbe
 //   2. Deklaration in der Editorschrift, eingefärbt, umbrechend
-//   3. Unit · Klasse, gedämpft
+//   3. Unit · Klasse, gedämpft; bei Units im uses-Abschnitt (#469) Pfad, exportierte Typen, Zirkelbezug in
+//      Fehlerfarbe und der Abschnitt, in dem die Unit schon steht
 //   4. Trennlinie
 //   5. bei deprecated "Veraltet: …" in Warnfarbe
-//   6. XMLDoc vollständig und formatiert (#654) wie im Hover-Tooltip:
-//      Beschreibung, Parameter (Name in Akzentfarbe), Typparameter, Rückgabe
-//      (→), Wert, Exceptions (!), Bemerkungen, Beispiel, Siehe auch. Ist das
+//   6. XMLDoc formatiert (#654, #770) wie im Hover-Tooltip: Beschreibung, dann
+//      unter Überschriften Parameter in der Reihenfolge der Signatur,
+//      Typparameter, Rückgabe, Wert, Ausnahmen, Hinweise, Beispiel, Siehe auch.
+//      Zugeklappt (hints.xmlDocExpand) nur die Beschreibung mit „Mehr anzeigen ▾“;
+//      der Klick klappt auf, „wie zuletzt“ gilt getrennt vom Tooltip. Ist das
 //      Panel höher als das Popup, scrollt nur die Doku mit dem Mausrad. Text
 //      lässt sich markieren; Verweise mit Strg+Klick und Links sind anklickbar.
-//      Kurzform (hints.xmlDocFull aus): Beschreibung vier, Bemerkungen drei Zeilen.
 // Bei Überladungen (#425) steht oben "Überladung ‹ 2 / 3 ›"; die Pfeile sind
 // klickbar. Leere Abschnitte entfallen. Ohne Details (z. B. Schlüsselwort) steht
 // ein gedämpfter Hinweis, damit das Popup beim Blättern nicht schmaler wird.
@@ -64,6 +66,8 @@ type
     /// <summary>Link der Doku unter (AX, AY) in Fensterkoordinaten; -1 ohne.</summary>
     function DocLinkAt(AX, AY: Integer): Integer;
     function ScrollDoc(ASteps: Integer): Boolean;
+    /// <summary>„Mehr/Weniger anzeigen“ (#770): klappt um und merkt den Zustand; True = aufgeklappt.</summary>
+    function ToggleDoc(ACanvas: TCanvas): Boolean;
     property Doc: TAtlasDocView read FDoc;
     property DocLeft: Integer read FDocLeft;
     property DocTop: Integer read FDocTop;
@@ -163,13 +167,22 @@ begin
   Result := FDoc.ScrollBy(ASteps * FDoc.WheelStep);
 end;
 
+function TAtlasDetailView.ToggleDoc(ACanvas: TCanvas): Boolean;
+begin
+  Result := FDoc.Toggle(ACanvas);
+  FDoc.ClearSelection;
+  FDoc.HotLink := -1;
+  TAtlasDocExpandState.Remember(TAtlasDocSurface.Details, Result);
+end;
+
 function TAtlasDetailView.Render(ACanvas: TCanvas; const AColors: TAtlasColors; AFont, AUIFont: TFont;
   const ABounds: TRect; APPI: Integer; ADraw: Boolean): Integer;
 var
   Left, Y, Right, TagX, TagHeight, LineHeight, Fixed: Integer;
   Text, Tag, Key: string;
-  Line, X: Integer;
+  Line, X, Index: Integer;
   Box, Rect_: TRect;
+  Expanded: Boolean;
 
   function Scale(AValue: Integer): Integer;
   begin
@@ -205,6 +218,22 @@ var
       DrawText(ACanvas.Handle, PChar(AText), -1, Area, DT_WORDBREAK or DT_NOPREFIX or DT_END_ELLIPSIS);
     Y := Area.Bottom + Scale(6);
     ACanvas.Font.Style := [];
+  end;
+
+  /// <summary>Text in der Editorschrift umbrechend ab Y (Pfad und Typen einer Unit, #469).</summary>
+  procedure Mono(const AText: string; AColor: TAtlasColor);
+  var
+    Area: TRect;
+  begin
+    ACanvas.Font := AFont;
+    ACanvas.Font.Color := ToColor(AColor);
+    ACanvas.Brush.Style := bsClear;
+    Area := Rect(Left, Y, Right, Y);
+    DrawText(ACanvas.Handle, PChar(AText), -1, Area, DT_WORDBREAK or DT_NOPREFIX or DT_CALCRECT);
+    Area.Right := Right;
+    if ADraw then
+      DrawText(ACanvas.Handle, PChar(AText), -1, Area, DT_WORDBREAK or DT_NOPREFIX);
+    Y := Area.Bottom + Scale(6);
   end;
 
   procedure Separator;
@@ -306,14 +335,74 @@ begin
     end;
     Inc(Y, Scale(3));
   end;
-  // 3. Unit · Klasse.
+  // 3. Unit · Klasse; bei Helpern „Helper · Unit“ (#456).
   Text := FDetails.UnitName;
-  if FDetails.Container <> '' then
+  if FDetails.IsHelper and (FDetails.Container <> '') then
+  begin
+    if Text <> '' then
+      Text := FDetails.Container + ' · ' + Text
+    else
+      Text := FDetails.Container;
+  end
+  else if FDetails.Container <> '' then
     if Text <> '' then
       Text := Text + ' · ' + FDetails.Container
     else
       Text := FDetails.Container;
   Block(Text, AColors.Muted, []);
+  // Unit im uses-Abschnitt (#469): Pfad, die ersten exportierten Typen, Zirkelbezug und anderer Abschnitt.
+  if FDetails.UnitPath <> '' then
+    Mono(FDetails.UnitPath, AColors.Muted);
+  if Length(FDetails.UnitTypes) > 0 then
+  begin
+    Separator;
+    Block(UpperCase(TAtlasStrings.Text(TAtlasTextId.UsesTypesHeading)), AColors.Muted, [fsBold]);
+    Text := string.Join(' · ', FDetails.UnitTypes);
+    if FDetails.UnitTypeCount > Length(FDetails.UnitTypes) then
+      Text := Text + ' · …';
+    Mono(Text, AColors.Text);
+  end;
+  if FDetails.UsesCycle <> '' then
+    Block(TAtlasStrings.UsesCycle(FDetails.UsesCycle), AColors.Error, []);
+  if FDetails.UsesElsewhere = 'interface' then
+    Block(TAtlasStrings.Text(TAtlasTextId.UsesInInterface), AColors.Muted, [fsItalic])
+  else if FDetails.UsesElsewhere = 'implementation' then
+    Block(TAtlasStrings.Text(TAtlasTextId.UsesInImplementation), AColors.Muted, [fsItalic]);
+  // Helper aus nicht eingebundener Unit (#456): Enter ergänzt die uses.
+  if FDetails.AddsUnit <> '' then
+    Block(TAtlasStrings.Fmt(TAtlasTextId.HelperAddsUnit, [FDetails.AddsUnit]), AColors.Accent, []);
+  // Gleichnamige Bezeichner (#475): alle Units, die den Namen deklarieren, und was Enter tut.
+  if Length(FDetails.SameNameUnits) > 0 then
+  begin
+    Separator;
+    Block(UpperCase(TAtlasStrings.Text(TAtlasTextId.SameNameDeclaredIn)), AColors.Muted, [fsBold]);
+    for Index := 0 to High(FDetails.SameNameUnits) do
+    begin
+      Text := FDetails.SameNameUnits[Index];
+      if Index = 0 then
+        Text := Text + ' · ' + TAtlasStrings.Text(TAtlasTextId.SameNameRoleActive)
+      else if SameText(Text, FDetails.SameNameThis) then
+        Text := Text + ' · ' + TAtlasStrings.Text(TAtlasTextId.SameNameRoleThis);
+      if SameText(FDetails.SameNameUnits[Index], FDetails.SameNameThis) then
+        Block(Text, AColors.Text, [fsBold])
+      else
+        Block(Text, AColors.Text, []);
+    end;
+    for Text in FDetails.SameNameHidden do
+      Block(Text + ' · ' + TAtlasStrings.Text(TAtlasTextId.SameNameRoleHidden), AColors.Muted, [fsItalic]);
+    if FDetails.SameNameInsert = 'prefix' then
+      Block(TAtlasStrings.Text(TAtlasTextId.SameNameNotActive) + ' · ' +
+        TAtlasStrings.Text(TAtlasTextId.SameNameInsertPrefix), AColors.Muted, [])
+    else if FDetails.SameNameInsert = 'prefixAdd' then
+      Block(TAtlasStrings.Text(TAtlasTextId.SameNameNotActive) + ' · ' +
+        TAtlasStrings.Fmt(TAtlasTextId.SameNameInsertPrefixAdd, [FDetails.SameNameThis]), AColors.Warn, [])
+    else if FDetails.SameNameInsert = 'move' then
+      Block(TAtlasStrings.Text(TAtlasTextId.SameNameNotActive) + ' · ' +
+        TAtlasStrings.Fmt(TAtlasTextId.SameNameInsertMove, [FDetails.SameNameThis]), AColors.Warn, [])
+    else if FDetails.SameNameInsert = 'add' then
+      Block(TAtlasStrings.Text(TAtlasTextId.SameNameNotActive) + ' · ' +
+        TAtlasStrings.Fmt(TAtlasTextId.SameNameInsertAdd, [FDetails.SameNameThis]), AColors.Warn, []);
+  end;
   // Verdeckte Deklarationen weiter außen (#488).
   for Text in FDetails.Hides do
     Block(TAtlasStrings.Fmt(TAtlasTextId.HidesDeclaration, [Text]), AColors.Muted, [fsItalic]);
@@ -339,7 +428,13 @@ begin
     begin
       if FDocWidth <> Right - Left then
       begin
-        FDoc.Build(ACanvas, FDocData, Right - Left, AFont, AUIFont, APPI, FDetails.Display.Full, TAtlasStrings.DocLabels);
+        // Neue Details: Zustand nach Einstellung; nur andere Breite: Zustand bleibt.
+        if FDocWidth = 0 then
+          Expanded := TAtlasDocExpandState.Initial(FDetails.Display.Expand, TAtlasDocSurface.Details)
+        else
+          Expanded := FDoc.Expanded;
+        FDoc.Build(ACanvas, FDocData, Right - Left, AFont, AUIFont, APPI, TAtlasStrings.DocLabels,
+          TAtlasDocSignature.Parse(FDetails.Declaration), Expanded);
         FDocWidth := Right - Left;
       end;
       // Höher als erlaubt: nur die Doku scrollt, Kopf und Deklaration bleiben.

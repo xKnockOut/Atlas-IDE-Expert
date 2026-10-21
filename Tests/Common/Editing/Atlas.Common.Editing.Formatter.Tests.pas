@@ -75,7 +75,8 @@ var
   Settings: TFormatStyle;
 begin
   Settings := TFormatStyle.Default;
-  // Tab = eine Ebene mit indentSize Leerzeichen.
+  // Ohne Neueinrückung nach der Blockstruktur: Tab = eine Ebene mit indentSize Leerzeichen.
+  Settings.Reindent := False;
   Assert.AreEqual('begin'#10'  A := 1;'#10'    B := 2;'#10'end.',
     Formatted('begin'#10#9'A := 1;'#10#9#9'B := 2;'#10'end.', Settings));
   Settings.UseTabs := True;
@@ -197,13 +198,17 @@ begin
     'indent_style = space'#10 +
     '[*.pas]'#10 +
     'trim_trailing_whitespace = false'#10 +
-    'insert_final_newline = true'#10, 'C:\P\Unit1.pas', Settings, Root);
+    'insert_final_newline = true'#10 +
+    'max_line_length = 100'#10, 'C:\P\Unit1.pas', Settings, Root);
   Assert.IsTrue(Root);
   Assert.IsTrue(Settings.UseTabs);
   Assert.AreEqual(4, Settings.IndentSize);
   Assert.AreEqual(#13#10, Settings.EndOfLine);
   Assert.IsFalse(Settings.TrimTrailingWhitespace);
   Assert.IsTrue(Settings.InsertFinalNewline);
+  Assert.AreEqual(100, Settings.MaxLineLength);
+  TEditorConfig.Apply('[*]'#10'max_line_length = off'#10, 'C:\P\Unit1.pas', Settings, Root);
+  Assert.AreEqual(0, Settings.MaxLineLength);
 end;
 
 procedure TEditorConfigTests.NearerFilesWinUntilRoot;

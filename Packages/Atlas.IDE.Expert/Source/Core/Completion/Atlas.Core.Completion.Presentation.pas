@@ -9,6 +9,9 @@
 //     (#425), "Helper" (#456), "zuletzt"/"häufig" (#418), Anzahl fehlender
 //     Werte bei „Alle Werte einfügen“ (#449), "Snippet" bei Code-Vorlagen (#51).
 //   - Geerbte Member (#419): Detail beginnt mit der deklarierenden Klasse.
+//   - uses-Abschnitt (#469): kein Dateiname; „bereits im interface-Teil“ bzw. „… implementation-Teil“ für Units
+//     aus dem anderen Abschnitt, Marke „Zirkelbezug“ (Fehlerfarbe) für Units, die diese Unit im interface-Teil
+//     einbinden. UsesHidden liefert die schon eingebundenen Units für die Fußzeile.
 //   - Treffer: Positionen der getippten Zeichen im Namen zum Hervorheben,
 //     nach denselben Regeln wie TAtlasCompletionMatcher.
 
@@ -26,10 +29,11 @@ type
     Code: string;
   end;
 
-  TAtlasTagKind = (Neutral, Accent, Add, Warn);
+  TAtlasTagKind = (Neutral, Accent, Add, Warn, Error);
 
-  /// <summary>Übersetzbare Marken (#446); Plain = Text unverändert zeigen.</summary>
-  TAtlasTagId = (Plain, Recent, Frequent);
+  /// <summary>Übersetzbare Marken (#446); Plain = Text unverändert zeigen; Cycle = Zirkelbezug im uses-Abschnitt
+  /// (#469).</summary>
+  TAtlasTagId = (Plain, Recent, Frequent, Cycle, SameParams, Overload, Active);
 
   TAtlasTag = record
     Text: string;
@@ -48,6 +52,9 @@ type
     class function Announcement(const AItem: TAtlasCompletionItem; const AKind, AOf: string;
       APosition, ACount: Integer): string; static;
     class function Tags(const AItem: TAtlasCompletionItem): TAtlasTags; static;
+    /// <summary>Texte der Tags durch Komma getrennt („deprecated, Helper“): Zustand für UI Automation (#447).
+    /// </summary>
+    class function TagText(const AItem: TAtlasCompletionItem): string; static;
     /// <summary>Unit, die beim Übernehmen in uses ergänzt wird; '' wenn eingebunden.</summary>
     class function MissingUnit(const AItem: TAtlasCompletionItem): string; static;
     /// <summary>1-basierte Positionen in AName, die APattern trifft; leer ohne Treffer.</summary>
@@ -57,6 +64,19 @@ type
     class function DataSource(const AItems: TAtlasCompletionItems): string; static;
     /// <summary>Ausgeblendete Arten der Typargumente (#450), "records,enums"; '' ohne.</summary>
     class function HiddenKinds(const AItems: TAtlasCompletionItems): string; static;
+    /// <summary>Detailpanel einer Unit im uses-Abschnitt (#469): "unit Name", Pfad, exportierte Typen,
+    /// Zirkelbezug und anderer Abschnitt, ohne Anfrage beim Server.</summary>
+    class function UsesDetails(const AItem: TAtlasCompletionItem): TAtlasItemDetails; static;
+    /// <summary>Schon eingebundene Units für die Fußzeile im uses-Abschnitt (#469); leer sonst.</summary>
+    class function UsesHidden(const AItems: TAtlasCompletionItems): TArray<string>; static;
+    /// <summary>Ausgelassene abstrakte Vorfahrmethoden für die Fußzeile nach "inherited " (#482); leer sonst.
+    /// </summary>
+    class function InheritedAbstract(const AItems: TAtlasCompletionItems): TArray<string>; static;
+    /// <summary>Ausgeblendete FMX-Varianten aller Einträge für die Fußzeile (#475), ohne Doppelte; leer sonst.
+    /// </summary>
+    class function SameNameHidden(const AItems: TAtlasCompletionItems): TArray<string>; static;
+    /// <summary>AItem mit den Angaben zu gleichnamigen Bezeichnern für das Detailpanel (#475).</summary>
+    class procedure AddSameName(const AItem: TAtlasCompletionItem; var ADetails: TAtlasItemDetails); static;
     /// <summary>Nur das Angebot „Mit try…finally absichern“ (#489) in der Liste?</summary>
     class function Guarding(const AItems: TAtlasCompletionItems): Boolean; static;
   end;
@@ -65,6 +85,7 @@ implementation
 
 uses
   System.Character,
+  System.Math,
   System.StrUtils,
   Atlas.Core.Completion.Matching;
 
@@ -252,6 +273,13 @@ class function TAtlasItemPresentation.Detail(const AItem: TAtlasCompletionItem):
 begin
   if MissingUnit(AItem) <> '' then
     Exit('');
+  // uses-Abschnitt (#469): der Pfad steht im Detailpanel, rechts nur der Hinweis auf den anderen Abschnitt.
+  if AItem.UsesGroup <> '' then
+  begin
+    if AItem.UsesElsewhere <> '' then
+      Exit('bereits im ' + AItem.UsesElsewhere + '-Teil');
+    Exit('');
+  end;
   Result := AItem.Signature;
   // Units: nur der Dateiname statt des ganzen Pfads.
   if AItem.Kind = TAtlasItemKind.Unit_ then
@@ -264,6 +292,18 @@ begin
       Result := AItem.DeclaringClass;
 end;
 
+class function TAtlasItemPresentation.TagText(const AItem: TAtlasCompletionItem): string;
+var
+  Tag: TAtlasTag;
+begin
+  Result := '';
+  for Tag in Tags(AItem) do
+    if Result = '' then
+      Result := Tag.Text
+    else
+      Result := Result + ', ' + Tag.Text;
+end;
+
 class function TAtlasItemPresentation.Tags(const AItem: TAtlasCompletionItem): TAtlasTags;
 var
   Directive, MissingName: string;
@@ -271,6 +311,31 @@ begin
   Result := nil;
   if AItem.Count > 0 then
     Result := Result + [MakeTag(IntToStr(AItem.Count), TAtlasTagKind.Accent)];
+  // Zirkelbezug im uses-Abschnitt (#469).
+  if AItem.UsesCycle <> '' then
+  begin
+    Result := Result + [MakeTag('Zirkelbezug', TAtlasTagKind.Error)];
+    Result[High(Result)].Id := TAtlasTagId.Cycle;
+  end;
+  // Gleichnamige Bezeichner (#475): die Variante, die der Compiler wählt.
+  if AItem.SameNameActive then
+  begin
+    Result := Result + [MakeTag('aktiv', TAtlasTagKind.Accent)];
+    Result[High(Result)].Id := TAtlasTagId.Active;
+  end;
+  // Vollständiger inherited-Aufruf (#482): gleiche Parameter, andere Überladung, sonst die Klasse.
+  if AItem.InheritedMatch = 'same' then
+  begin
+    Result := Result + [MakeTag('gleiche Parameter', TAtlasTagKind.Accent)];
+    Result[High(Result)].Id := TAtlasTagId.SameParams;
+  end
+  else if AItem.InheritedMatch = 'overload' then
+  begin
+    Result := Result + [MakeTag('Überladung', TAtlasTagKind.Neutral)];
+    Result[High(Result)].Id := TAtlasTagId.Overload;
+  end
+  else if (AItem.InheritedMatch = 'other') and (AItem.DeclaringClass <> '') then
+    Result := Result + [MakeTag(AItem.DeclaringClass, TAtlasTagKind.Neutral)];
   MissingName := MissingUnit(AItem);
   if MissingName <> '' then
     Result := Result + [MakeTag('+ ' + MissingName, TAtlasTagKind.Add)];
@@ -373,6 +438,61 @@ begin
     if Item.DataSource <> '' then
       Exit(Item.DataSource);
   Result := '';
+end;
+
+class function TAtlasItemPresentation.UsesDetails(const AItem: TAtlasCompletionItem): TAtlasItemDetails;
+begin
+  Result := Default(TAtlasItemDetails);
+  Result.Declaration := 'unit ' + AItem.Name;
+  Result.UnitPath := AItem.Signature;
+  Result.UnitTypes := AItem.UsesTypes;
+  Result.UnitTypeCount := Max(AItem.UsesTypeCount, Length(AItem.UsesTypes));
+  Result.UsesCycle := AItem.UsesCycle;
+  Result.UsesElsewhere := AItem.UsesElsewhere;
+end;
+
+class function TAtlasItemPresentation.UsesHidden(const AItems: TAtlasCompletionItems): TArray<string>;
+var
+  Item: TAtlasCompletionItem;
+begin
+  for Item in AItems do
+    if Length(Item.UsesHidden) > 0 then
+      Exit(Item.UsesHidden);
+  Result := nil;
+end;
+
+class function TAtlasItemPresentation.InheritedAbstract(const AItems: TAtlasCompletionItems): TArray<string>;
+var
+  Item: TAtlasCompletionItem;
+begin
+  for Item in AItems do
+    if Length(Item.InheritedAbstract) > 0 then
+      Exit(Item.InheritedAbstract);
+  Result := nil;
+end;
+
+class function TAtlasItemPresentation.SameNameHidden(const AItems: TAtlasCompletionItems): TArray<string>;
+var
+  Item: TAtlasCompletionItem;
+  Name: string;
+begin
+  Result := nil;
+  for Item in AItems do
+    for Name in Item.SameNameHidden do
+      if not MatchText(Name, Result) then
+        Result := Result + [Name];
+end;
+
+class procedure TAtlasItemPresentation.AddSameName(const AItem: TAtlasCompletionItem;
+  var ADetails: TAtlasItemDetails);
+begin
+  ADetails.SameNameUnits := AItem.SameNameUnits;
+  ADetails.SameNameHidden := AItem.SameNameHidden;
+  if Length(AItem.SameNameUnits) = 0 then
+    ADetails.SameNameThis := ''
+  else
+    ADetails.SameNameThis := AItem.DeclaringUnit;
+  ADetails.SameNameInsert := AItem.SameNameInsert;
 end;
 
 class function TAtlasItemPresentation.Guarding(const AItems: TAtlasCompletionItems): Boolean;

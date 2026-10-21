@@ -12,6 +12,8 @@
 // ("Atlas – Index 45 %"), wenn IndexProgressPlace sie nicht ins Statusfeld legt; „Index-Status“ schreibt die Kennzahlen in die
 // Meldungsansicht, „Index neu aufbauen“ liest alles ohne Cache neu ein.
 // „Diagnoselog exportieren…“ (#647) packt das anonymisierte Log in eine ZIP.
+// „Prozesse am Projekt…“ (#62) zeigt Index-Cache, Sperre und die LSP- und
+// MCP-Prozesse am Projekt; sichtbar nach diagnostics.processes.
 // „Symbol umbenennen…“ (#397) ruft OnRename auf.
 // „Einrichtung prüfen…“ (#625) ruft OnSetup auf.
 // „Tastenkürzel-Übersicht…“ (#520) ruft OnKeyMap auf; sichtbar nach
@@ -70,6 +72,8 @@ type
     FOnSetup: TProc;
     FOnKeyMap: TProc;
     FKeyMapItem: TMenuItem;
+    /// <summary>„Prozesse am Projekt…“ (#62), sichtbar nach diagnostics.processes.</summary>
+    FProcessesItem: TMenuItem;
     FOnWelcome: TProc<TAtlasWelcomeCommand>;
     FWelcome: array[TAtlasWelcomeCommand] of TMenuItem;
     FWelcomeLine: TMenuItem;
@@ -78,6 +82,8 @@ type
     FBookmarkItems: TArray<TMenuItem>;
     /// <summary>„Erzeugen…“ (#719), sichtbar nach keys.generateMenu.</summary>
     FGenerateItem: TMenuItem;
+    /// <summary>„Formatieren“ (#43), nur mit editor.format.</summary>
+    FFormatItem: TMenuItem;
     /// <summary>„Gliederung …“ (#537), sichtbar nach outline.enabled.</summary>
     FOutlineItem: TMenuItem;
     /// <summary>Untermenü „Notizen und Lesezeichen“ (#545, #622).</summary>
@@ -99,6 +105,7 @@ type
     procedure IndexStatusClick(Sender: TObject);
     procedure IndexRebuildClick(Sender: TObject);
     procedure DiagnosticExportClick(Sender: TObject);
+    procedure ProcessesClick(Sender: TObject);
     procedure BugReportClick(Sender: TObject);
     procedure SetupClick(Sender: TObject);
     procedure KeyMapClick(Sender: TObject);
@@ -139,7 +146,11 @@ uses
   ToolsAPI,
   Atlas.IDE.Settings.Project,
   Atlas.IDE.Settings.QuickToggles,
+  Vcl.Clipbrd,
   Atlas.IDE.Diagnostics.Export,
+  Atlas.IDE.Files.DirtyExport,
+  Atlas.Core.Diagnostics.Processes,
+  Atlas.UI.Diagnostics.ProcessesDialog,
   Atlas.IDE.Results.Commands,
   Atlas.IDE.Undo.Changes,
   Atlas.IDE.Notes.Service,
@@ -159,9 +170,9 @@ uses
 
 const
   // Kennungen der Befehlspalette für die Tastenkürzel-Tipps (#600), je Tag der Einträge.
-  EditorIds: array[0..10] of string = ('Atlas.CodeActions', 'Atlas.ExpandSelection', 'Atlas.ShrinkSelection',
+  EditorIds: array[0..11] of string = ('Atlas.CodeActions', 'Atlas.ExpandSelection', 'Atlas.ShrinkSelection',
     'Atlas.TypeDefinition', 'Atlas.CopyQualifiedName', 'Atlas.CopyQualifiedNameParams', 'Atlas.ToggleMethod',
-    'Atlas.SwitchTestUnit', 'Atlas.UnitSearch', 'Atlas.UnitSearchIde', 'Atlas.GenerateMenu');
+    'Atlas.SwitchTestUnit', 'Atlas.UnitSearch', 'Atlas.UnitSearchIde', 'Atlas.GenerateMenu', 'Atlas.FormatCode');
   ResultsIds: array[0..7] of string = ('Atlas.References', 'Atlas.Implementations', 'Atlas.SymbolSearch',
     'Atlas.Callers', 'Atlas.Calls', 'Atlas.Supertypes', 'Atlas.Subtypes', 'Atlas.ResultsWindow');
   UndoIds: array[0..2] of string = ('Atlas.UndoChange', 'Atlas.RedoChange', 'Atlas.ChangeList');
@@ -223,6 +234,8 @@ begin
   AddItem(TAtlasTextId.EditorActions, 0, EditorClick);
   // Erzeugen-Menü (#719).
   FGenerateItem := AddItem(TAtlasTextId.GenerateMenuCommand, 10, EditorClick);
+  // Formatieren (#43).
+  FFormatItem := AddItem(TAtlasTextId.FormatCodeCommand, 11, EditorClick);
   // Units suchen (#777).
   AddItem(TAtlasTextId.UnitSearchMenu, 8, EditorClick);
   AddItem(TAtlasTextId.MenuSymbolSearch, 2, ResultsClick);
@@ -283,6 +296,7 @@ begin
   FKeyMapItem := AddItem(TAtlasTextId.KeyMapMenu, 0, KeyMapClick);
   AddItem(TAtlasTextId.SetupMenu, 0, SetupClick);
   AddItem(TAtlasTextId.DiagExportMenu, 0, DiagnosticExportClick);
+  FProcessesItem := AddItem(TAtlasTextId.ProcessesMenu, 0, ProcessesClick);
   AddItem(TAtlasTextId.BugReportMenu, 0, BugReportClick);
   FRoot.Add(NewLine);
   Item := TMenuItem.Create(FRoot);
@@ -519,6 +533,37 @@ begin
     end);
 end;
 
+procedure TAtlasMainMenu.ProcessesClick(Sender: TObject);
+begin
+  TAtlasGuard.Run(TAtlasFeature.Menu,
+    procedure
+    var
+      Actions: TAtlasProcessesActions;
+    begin
+      Actions := Default(TAtlasProcessesActions);
+      // Im Hintergrund wie der Index-Status (#874); die Antwort kommt im Hauptthread.
+      Actions.Fetch :=
+        procedure(ADone: TProc<TJSONValue>)
+        begin
+          if Assigned(FCommand) then
+            FCommand(TAtlasProcessesView.Command, ADone)
+          else
+            ADone(nil);
+        end;
+      Actions.ModifiedFiles :=
+        function: TArray<string>
+        begin
+          Result := TAtlasDirtyExport.ModifiedFiles;
+        end;
+      Actions.CopyText :=
+        procedure(AText: string)
+        begin
+          Clipboard.AsText := AText;
+        end;
+      TAtlasProcessesDialog.Execute(Actions);
+    end);
+end;
+
 procedure TAtlasMainMenu.BugReportClick(Sender: TObject);
 begin
   TAtlasIdeShortcutTips.Invoked('Atlas.BugReport');
@@ -558,12 +603,18 @@ var
 begin
   if FKeyMapItem <> nil then
     FKeyMapItem.Visible := TAtlasIdeSettings.Current.KeyOverview;
+  // Prozesse am Projekt (#62) nach diagnostics.processes.
+  if FProcessesItem <> nil then
+    FProcessesItem.Visible := TAtlasIdeSettings.Current.DiagnosticsProcesses;
   // Notizen (#545) nach ihrer Einstellung.
   for Item in FNoteItems do
     Item.Visible := TAtlasIdeSettings.Current.Notes;
   // Erzeugen-Menü (#719) nach keys.generateMenu.
   if FGenerateItem <> nil then
     FGenerateItem.Visible := TAtlasIdeSettings.Current.GenerateMenu;
+  // Formatieren (#43) nach editor.format.
+  if FFormatItem <> nil then
+    FFormatItem.Visible := TAtlasIdeSettings.Current.FormatCode;
   // Gliederung (#537) nach outline.enabled.
   if FOutlineItem <> nil then
     FOutlineItem.Visible := TAtlasIdeSettings.Current.Outline;
@@ -655,6 +706,7 @@ begin
         8: TAtlasIdeUnitSearch.Show;
         9: TAtlasIdeUnitSearch.ShowIdeDialog;
         10: TAtlasIdeGenerate.Show;
+        11: TAtlasIdeEditorCommands.FormatCode;
       else
         TAtlasIdeEditorCommands.CopyQualifiedName(True);
       end;

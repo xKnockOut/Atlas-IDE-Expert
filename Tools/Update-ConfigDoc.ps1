@@ -32,6 +32,12 @@
       Atlas.Core.Settings.PluginSchemaData, der Abschnitt „Bereiche für Export,
       Import und Zurücksetzen“ in Einstellungen.md und aus Setup/Profile/*.json
       die Unit Atlas.Core.Settings.ProfileData (eingebaute Profile).
+    - Gruppen der Optionsseite (#890): x-parent (x-key des Hauptschalters, ""
+      = keiner, sonst Präfixregel) und x-node (Kennung aus x-nodes, "" =
+      Hauptknoten, sonst vom Hauptschalter geerbt). Wächter: x-parent bekannt
+      und boolesch, keine Zyklen, x-node bekannt, ein Knoten nur auf einer
+      x-page, kein Knoten ohne Einstellungen. Einstellungen.md bekommt den
+      Abschnitt „Optionsseite: Unterpunkte und Hauptschalter“.
 
     Mit -Check wird nichts geschrieben; Exit-Code 1, wenn eine Datei veraltet ist
     oder der Parser abweicht.
@@ -268,6 +274,7 @@ foreach ($Name in $Schema['properties'].Keys) {
 [void]$Table.AppendLine('| Units suchen | Vorschau rechts, F4 schaltet um (`unitSearch.preview`) | an | Plugin (Registry `UnitSearchPreview`) | nein | Kontrollkästchen | #777 |')
 [void]$Table.AppendLine('| Units suchen | Formularskizze in der Vorschau (`unitSearch.preview.form`) | an | Plugin (Registry `UnitSearchPreviewForm`) | nein | Kontrollkästchen | #777 |')
 [void]$Table.AppendLine('| Units suchen | „Verwendet von“ in der Vorschau (`unitSearch.preview.usedBy`) | an | Plugin (Registry `UnitSearchPreviewUsedBy`) | nein | Kontrollkästchen | #777 |')
+[void]$Table.AppendLine('| Units suchen | Abschnitte der Vorschau einklappen, wenn sie nicht passen (`unitSearch.preview.autoCollapse`) | an | Plugin (Registry `UnitSearchPreviewAutoCollapse`) | nein | Kontrollkästchen | #876 |')
 [void]$Table.AppendLine('| Units suchen | Häkchen und Mehrfachauswahl (`unitSearch.multiSelect`) | an | Plugin (Registry `UnitSearchMultiSelect`) | nein | Kontrollkästchen | #777 |')
 [void]$Table.AppendLine('| Units suchen | Aktionsleiste (`unitSearch.actions`) | an | Plugin (Registry `UnitSearchActions`) | nein | Kontrollkästchen | #777 |')
 [void]$Table.AppendLine('| Units suchen | Aktion „In uses aufnehmen“ (`unitSearch.actions.addUses`) | an | Plugin (Registry `UnitSearchActionsAddUses`) | nein | Kontrollkästchen | #777 |')
@@ -342,10 +349,116 @@ else {
         [void]$Table.AppendLine("| ``$Path`` | $(Scope-Text $Place) | $($P['x-page']) | $Issue |")
     }
 }
+# --- Optionsseite: Unterpunkte und Hauptschalter (#890) ---
+# Wie Atlas.Core.Settings.Groups: Hauptschalter aus x-parent (x-key eines booleschen Schalters, "" = keiner),
+# sonst Präfixregel (längstes Präfix P mit boolescher Einstellung P oder P.enabled, nie die Einstellung selbst);
+# Unterpunkt aus x-node (Kennung aus x-nodes, "" = Hauptknoten), sonst vom nächsten Hauptschalter geerbt.
+$GroupIssues = New-Object System.Collections.Generic.List[string]
+$PluginProps = $PluginSchema['properties']
+$NodeTable = if (Has $PluginSchema 'x-nodes') { $PluginSchema['x-nodes'] } else { @{} }
+$KeyNames = @{}
+foreach ($Name in $PluginProps.Keys) { $KeyNames[$PluginProps[$Name]['x-key']] = $Name }
+function Is-Switch([string] $Key) { $KeyNames.ContainsKey($Key) -and ($PluginProps[$KeyNames[$Key]]['type'] -ceq 'boolean') }
+$Parents = @{}
+foreach ($Name in $PluginProps.Keys) {
+    $P = $PluginProps[$Name]
+    $Key = [string]$P['x-key']
+    $Parent = ''
+    if ($P.ContainsKey('x-parent')) {
+        $Wanted = [string]$P['x-parent']
+        if ($Wanted -ne '') {
+            if (-not $KeyNames.ContainsKey($Wanted)) { $GroupIssues.Add("Plugin-Katalog: ""$Name"" mit unbekanntem Hauptschalter x-parent ""$Wanted""") }
+            elseif (-not (Is-Switch $Wanted)) { $GroupIssues.Add("Plugin-Katalog: ""$Name"": Hauptschalter x-parent ""$Wanted"" ist nicht boolesch") }
+            else { $Parent = $KeyNames[$Wanted] }
+        }
+    }
+    else {
+        $Prefix = $Key
+        while ($Prefix.Contains('.') -and ($Parent -eq '')) {
+            $Prefix = $Prefix.Substring(0, $Prefix.LastIndexOf('.'))
+            foreach ($Candidate in $Prefix, "$Prefix.enabled") {
+                if (($Parent -eq '') -and ($Candidate -cne $Key) -and (Is-Switch $Candidate)) { $Parent = $KeyNames[$Candidate] }
+            }
+        }
+    }
+    $Parents[$Name] = $Parent
+}
+foreach ($Name in $PluginProps.Keys) {
+    $Seen = New-Object System.Collections.Generic.List[string]
+    $Seen.Add($Name)
+    $Current = $Parents[$Name]
+    while (($Current -ne '') -and -not $Seen.Contains($Current)) { $Seen.Add($Current); $Current = $Parents[$Current] }
+    if ($Current -ceq $Name) {
+        $Chain = (@($Seen | ForEach-Object { $PluginProps[$_]['x-key'] }) + @($PluginProps[$Name]['x-key'])) -join ' → '
+        $GroupIssues.Add("Plugin-Katalog: Zyklus über x-parent: $Chain")
+        $Parents[$Name] = ''
+    }
+}
+function Node-Of([string] $Name) {
+    $Current = $Name
+    while ($Current -ne '') {
+        if ($PluginProps[$Current].ContainsKey('x-node')) { return [string]$PluginProps[$Current]['x-node'] }
+        $Current = $Parents[$Current]
+    }
+    return ''
+}
+$NodePages = @{}
+$UsedNodes = @{}
+foreach ($Name in $PluginProps.Keys) {
+    $P = $PluginProps[$Name]
+    if ((Has $P 'x-node') -and ([string]$P['x-node'] -ne '') -and -not $NodeTable.Contains([string]$P['x-node'])) {
+        $GroupIssues.Add("Plugin-Katalog: ""$Name"" mit unbekanntem Unterpunkt x-node ""$($P['x-node'])""")
+    }
+    $Node = Node-Of $Name
+    if ($Node -eq '') { continue }
+    $UsedNodes[$Node] = $true
+    if ($NodePages.ContainsKey($Node) -and ($NodePages[$Node] -cne $P['x-page'])) {
+        $GroupIssues.Add("Plugin-Katalog: Unterpunkt ""$Node"" auf zwei Seiten ($($NodePages[$Node]), $($P['x-page'])); ""$Name"" braucht x-node """" oder dieselbe Seite")
+    }
+    elseif (-not $NodePages.ContainsKey($Node)) { $NodePages[$Node] = $P['x-page'] }
+}
+foreach ($Node in $NodeTable.Keys) { if (-not $UsedNodes.ContainsKey($Node)) { $GroupIssues.Add("Plugin-Katalog: Unterpunkt ""$Node"" in x-nodes ohne Einstellung") } }
+
+function Write-Group([string] $Name, [string] $Node, [int] $Depth) {
+    $P = $PluginProps[$Name]
+    $Line = ('  ' * $Depth) + '- `' + $P['x-key'] + '`'
+    if (Is-Experimental $P) { $Line += ' (experimentell)' }
+    $Parent = $Parents[$Name]
+    if (($Depth -eq 1) -and ($Parent -ne '')) { $Line += ' – hängt an `' + $PluginProps[$Parent]['x-key'] + '`' }
+    [void]$Table.AppendLine($Line)
+    foreach ($Child in $PluginProps.Keys) {
+        if (($Parents[$Child] -ceq $Name) -and ((Node-Of $Child) -ceq $Node) -and ($PluginProps[$Child]['x-page'] -ceq $P['x-page']) -and -not ((Has $PluginProps[$Child] 'x-state') -and $PluginProps[$Child]['x-state'])) {
+            Write-Group $Child $Node ($Depth + 1)
+        }
+    }
+}
+[void]$Table.AppendLine()
+[void]$Table.AppendLine('## Optionsseite: Unterpunkte und Hauptschalter')
+[void]$Table.AppendLine()
+[void]$Table.AppendLine('*Tools › Optionen › Atlas* zeigt links einen Baum (#890): oben die Bereiche, darunter die Unterpunkte je Funktion. Der Hauptknoten eines Bereichs trägt dessen allgemeine Optionen und eine Übersicht aller Hauptschalter seiner Unterpunkte (mit „Details“). Jede Funktion mit Hauptschalter steht in einem eigenen Rahmen, der Schalter oben, die Unteroptionen eingerückt darunter. Ist ein Hauptschalter aus, sind alle Bedienelemente seiner Gruppe gesperrt (auch verschachtelte Gruppen); die Werte bleiben erhalten und werden mit gespeichert. Experimentelle Funktionen samt Hauptschalter sind gesperrt, solange `experimental.enabled` aus ist. Den Hauptschalter bestimmt `x-parent` im Plugin-Katalog, sonst die Präfixregel (längstes Präfix `P` mit boolescher Einstellung `P` oder `P.enabled`); den Unterpunkt `x-node` (Kennungen in `x-nodes`), sonst der Unterpunkt des Hauptschalters. Gliederung nach Seite (`x-page`) und Unterpunkt; eingerückt = Unteroption des Schalters darüber.')
+$PageOrder = New-Object System.Collections.Generic.List[string]
+foreach ($Name in $PluginProps.Keys) { if (-not $PageOrder.Contains([string]$PluginProps[$Name]['x-page'])) { $PageOrder.Add([string]$PluginProps[$Name]['x-page']) } }
+foreach ($Page in $PageOrder) {
+    [void]$Table.AppendLine()
+    [void]$Table.AppendLine("### $Page")
+    $Nodes = @('') + @($NodeTable.Keys | Where-Object { $NodePages[$_] -ceq $Page })
+    foreach ($Node in $Nodes) {
+        $GroupRoots = @($PluginProps.Keys | Where-Object {
+            ($PluginProps[$_]['x-page'] -ceq $Page) -and ((Node-Of $_) -ceq $Node) -and
+            -not ((Has $PluginProps[$_] 'x-state') -and $PluginProps[$_]['x-state']) -and
+            (($Parents[$_] -eq '') -or ((Node-Of $Parents[$_]) -cne $Node) -or ($PluginProps[$Parents[$_]]['x-page'] -cne $Page)) })
+        if ($GroupRoots.Count -eq 0) { continue }
+        [void]$Table.AppendLine()
+        if ($Node -eq '') { [void]$Table.AppendLine('- **Hauptknoten**') }
+        else { [void]$Table.AppendLine("- **$($NodeTable[$Node]['caption'])** (``$Node``)") }
+        foreach ($GroupRoot in $GroupRoots) { Write-Group $GroupRoot $Node 1 }
+    }
+}
 $TableText = $Table.ToString().Replace("`r`n", "`n")
 
 # --- Wächter: Schlüssel im Parser ---
 $Problems = New-Object System.Collections.Generic.List[string]
+foreach ($Issue in $GroupIssues) { $Problems.Add($Issue) }
 $SchemaKeys = @($Schema['properties'].Keys | Where-Object { $_ -ne '$schema' } | Sort-Object)
 $ParserText = [IO.File]::ReadAllText($ParserPath, $Utf8).Replace("`r`n", "`n")
 $Starts = [regex]::Matches($ParserText, "Key = 'delphiVersion'")
@@ -486,7 +599,7 @@ $Targets = @(
 )
 foreach ($Target in $Targets) {
     $Current = if (Test-Path $Target.Path) { [IO.File]::ReadAllText($Target.Path, $Utf8).Replace("`r`n", "`n") } else { '' }
-    if ($Current -eq $Target.Text) { continue }
+    if ($Current -ceq $Target.Text) { continue }
     if ($Check) { $Problems.Add("$($Target.Name) ist veraltet: pwsh Tools/Update-ConfigDoc.ps1 ausführen") }
     else {
         [IO.File]::WriteAllText($Target.Path, $Target.Text, $Utf8)
@@ -494,6 +607,12 @@ foreach ($Target in $Targets) {
     }
 }
 # --- Pascal-Units mit eingebettetem JSON: UTF-8 mit BOM, CRLF ---
+# Mit -Check zählt nur der Inhalt, nicht das Zeilenende des Checkouts (#888);
+# beim Schreiben wird eine Unit mit LF auf CRLF gebracht.
+function Same-Unit([string] $Current, [string] $Text) {
+    if ($Check) { return $Current.Replace("`r`n", "`n") -ceq $Text.Replace("`r`n", "`n") }
+    return $Current -ceq $Text
+}
 function Pascal-Lines([string] $Name, [string] $Source) {
     $Lines = $Source.TrimStart([char]0xFEFF).Replace("`r`n", "`n").TrimEnd("`n").Split("`n")
     $Result = @("  $Name`: array[0..$($Lines.Count - 1)] of string = (")
@@ -510,7 +629,7 @@ function Pascal-Lines([string] $Name, [string] $Source) {
 function Sync-Unit([string] $Path, [string[]] $Lines) {
     $Text = ($Lines -join "`r`n") + "`r`n"
     $Current = if (Test-Path $Path) { [IO.File]::ReadAllText($Path, $Utf8).TrimStart([char]0xFEFF) } else { '' }
-    if ($Current -eq $Text) { return }
+    if (Same-Unit $Current $Text) { return }
     if ($Check) { $Problems.Add("$(Split-Path -Leaf $Path) ist veraltet: pwsh Tools/Update-ConfigDoc.ps1 ausführen") }
     else {
         [IO.File]::WriteAllText($Path, $Text, (New-Object System.Text.UTF8Encoding($true)))
@@ -612,7 +731,7 @@ else { $ScopeLines += '  Result := [' + (($ServerExperimental | ForEach-Object {
 $ScopeLines += @('end;', '', 'end.')
 $ScopeText = ($ScopeLines -join "`r`n") + "`r`n"
 $CurrentScope = if (Test-Path $ScopeUnitPath) { [IO.File]::ReadAllText($ScopeUnitPath, $Utf8).TrimStart([char]0xFEFF) } else { '' }
-if ($CurrentScope -ne $ScopeText) {
+if (-not (Same-Unit $CurrentScope $ScopeText)) {
     if ($Check) { $Problems.Add('Atlas.Common.Configuration.Internals.ScopeData.pas ist veraltet: pwsh Tools/Update-ConfigDoc.ps1 ausführen') }
     else {
         [IO.File]::WriteAllText($ScopeUnitPath, $ScopeText, (New-Object System.Text.UTF8Encoding($true)))

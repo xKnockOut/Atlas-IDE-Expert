@@ -20,10 +20,15 @@
 // - Zwischen Unit und Testunit wechseln (atlas.server.testUnit, #189): öffnet
 //   das Gegenstück; fehlt die Testunit, legt das Edit des Servers sie an und
 //   trägt sie ins Testprojekt ein (#274), danach wird sie geöffnet.
+// - Formatieren (#43): ganze Datei (textDocument/formatting) bzw. die Zeilen
+//   der Auswahl (textDocument/rangeFormatting), ein Rückgängig-Schritt.
 // - Schnellbefehle mit „/“ nach Enter (#293) und ///-Gerüste (#88): Nach jeder
 //   Änderung im Editor prüft TAtlasSlashTrigger die Cursorzeile; passt sie,
 //   geht textDocument/onTypeFormatting an den Server, und zwar nach der
-//   Nachrichtenverarbeitung (ForceQueue), nie im Notifier selbst.
+//   Nachrichtenverarbeitung (ForceQueue), nie im Notifier selbst. Das
+//   eingesetzte Gerüst füllt der Platzhalter-Modus der Vervollständigung
+//   (OnPlaceholders, setzt die Composition); über einer Methodenimplementierung
+//   steht es an der Deklaration in der Klasse.
 // - Test am Cursor ausführen bzw. debuggen (#585): nur Einträge im
 //   Kontextmenü; was sie tun, setzt die Composition über OnRunTest und
 //   OnDebugTest (A-09: die Befehle importieren die Tests nicht).
@@ -44,10 +49,16 @@ uses
   Atlas.Core.Lsp.TextChanges,
   Atlas.Core.Lsp.Session,
   Atlas.Core.Editor.SlashTrigger,
+  Atlas.Core.Completion.Snippets,
   Atlas.Core.Problems.Contract,
   Atlas.IDE.Commands.ContextMenu;
 
 type
+  /// <summary>Platzhalter-Modus für eingesetzten Text (#88): ABefore = Puffertext vorher, AOffset = Anfang im
+  /// Puffer.</summary>
+  TAtlasPlaceholdersProc = reference to procedure(const AView: IOTAEditView; const ABefore: string;
+    AOffset: Integer; const AExpansion: TAtlasSnippetExpansion);
+
   /// <summary>Befunde einer Datei (#509).</summary>
   TAtlasProblemsOfFunc = reference to function(const AFileName: string): TArray<TAtlasProblem>;
 
@@ -67,6 +78,7 @@ type
     FOnRunTest: TProc;
     FOnDebugTest: TProc;
     FProblemsOf: TAtlasProblemsOfFunc;
+    FOnPlaceholders: TAtlasPlaceholdersProc;
   private
     class function Session: TLspSession; static;
     class procedure Say(const AText: string); static;
@@ -111,6 +123,9 @@ type
     class procedure CopyQualifiedName(AWithParameters: Boolean); static;
     /// <summary>Zur Testunit bzw. getesteten Unit der oberen Datei; legt eine fehlende Testunit an (#189).</summary>
     class procedure SwitchTestUnit; static;
+    /// <summary>Obere Datei formatieren (#43): mit Auswahl nur deren Zeilen. Ausgeschaltet oder ohne Änderung eine
+    /// Zeile in der Meldungsansicht.</summary>
+    class procedure FormatCode; static;
     /// <summary>Nach jeder Änderung im Editor (Notifier): Schnellbefehle und ///-Gerüste auslösen.</summary>
     class procedure EditorModified(const AView: IOTAEditView); static;
     /// <summary>Untermenü Atlas in die Kontextmenüs der Editorfenster hängen.</summary>
@@ -125,6 +140,9 @@ type
     class procedure StepProblem(AForward: Boolean); static;
     /// <summary>Befunde einer Datei für StepProblem; setzt die Composition, nil = keine.</summary>
     class property OnProblemsOf: TAtlasProblemsOfFunc read FProblemsOf write FProblemsOf;
+    /// <summary>Platzhalter-Modus für ///-Gerüste (#88); setzt die Composition, nil = nur der Cursor in die
+    /// Zusammenfassung.</summary>
+    class property OnPlaceholders: TAtlasPlaceholdersProc read FOnPlaceholders write FOnPlaceholders;
   end;
 
 implementation
@@ -160,6 +178,7 @@ uses
   Atlas.Core.Problems.InlineHints,
   Atlas.IDE.Editor.ChangeSignature,
   Atlas.IDE.Editor.MoveClass,
+  Atlas.IDE.Editor.PropertyFromAccessors,
   Atlas.IDE.Editor.EnterWatch,
   Atlas.IDE.Editor.PatternContinuation,
   Atlas.IDE.Editor.MultiCursor,
@@ -370,6 +389,18 @@ begin
     begin
       ToggleMethod;
     end);
+  // Formatieren (#43); aus = ohne Kürzel, der Aufruf meldet, dass es abgeschaltet ist.
+  FContextMenu.Add('Atlas.FormatCode', TAtlasStrings.Text(TAtlasTextId.FormatCodeCommand),
+    function: Integer
+    begin
+      Result := 0;
+      if TAtlasIdeSettings.Current.FormatCode then
+        Result := TAtlasIdeSettings.Current.FormatCodeKey;
+    end,
+    procedure
+    begin
+      FormatCode;
+    end);
   FContextMenu.Add('Atlas.References', TAtlasStrings.Text(TAtlasTextId.MenuReferences), nil,
     procedure
     begin
@@ -543,6 +574,7 @@ begin
   FSessionOf := nil;
   FMessage := nil;
   FProblemsOf := nil;
+  FOnPlaceholders := nil;
 end;
 
 class procedure TAtlasIdeEditorCommands.EnsureContextMenus;
@@ -928,6 +960,53 @@ begin
   end;
 end;
 
+class procedure TAtlasIdeEditorCommands.FormatCode;
+var
+  View: IOTAEditView;
+  FileName: string;
+  Lines: TArray<string>;
+  Selection: TLspRange;
+  Indent: Integer;
+  Edits: TArray<TLspTextEdit>;
+  Edit: TLspWorkspaceEdit;
+  Outcome: TAtlasWorkspaceEditResult;
+begin
+  if not TAtlasIdeSettings.Current.FormatCode then
+  begin
+    Say(TAtlasStrings.Text(TAtlasTextId.FormatCodeOff));
+    Exit;
+  end;
+  if not Current(View, FileName, Lines, Selection) then
+    Exit;
+  // Breite einer Ebene aus dem Editor; .editorconfig und atlas.json gehen beim Server vor.
+  Indent := TAtlasEditorBuffer.BlockIndent(View.Buffer);
+  try
+    if Selection.IsEmpty then
+      Edits := Session.Formatting(FileName, Indent, True, CommandTimeoutMs)
+    else
+      Edits := Session.Formatting(FileName, Selection, Indent, True, CommandTimeoutMs);
+  except
+    on E: ELspClientError do
+    begin
+      Say(TAtlasStrings.Fmt(TAtlasTextId.EditorFailed, [E.Message]));
+      Exit;
+    end;
+  end;
+  if Length(Edits) = 0 then
+  begin
+    Say(TAtlasStrings.Text(TAtlasTextId.FormatCodeNothing));
+    Exit;
+  end;
+  Edit := Default(TLspWorkspaceEdit);
+  Edit.Files := [Default(TLspFileEdits)];
+  Edit.Files[0].FileName := FileName;
+  Edit.Files[0].Edits := Edits;
+  Outcome := TAtlasIdeWorkspaceEdit.Apply(Edit, TAtlasUnopenedPolicy.WriteToDisk,
+    TAtlasStrings.Text(TAtlasTextId.UndoActionFormat));
+  if Outcome.Error <> '' then
+    Say(TAtlasStrings.Fmt(TAtlasTextId.EditFailed, [Outcome.Error]));
+end;
+
 class procedure TAtlasIdeEditorCommands.SwitchTestUnit;
 var
   View: IOTAEditView;
@@ -1189,6 +1268,17 @@ begin
       end);
     Exit;
   end;
+  if ACommand = TAtlasIdePropertyFromAccessors.ClientCommand then
+  begin
+    // Client-Befehl: Vorschau „Property aus Getter und Setter“ (#682); er fragt den Server selbst.
+    TAtlasIdePropertyFromAccessors.Execute(Session, AArgumentsJson,
+      TAtlasUnopenedPolicies.FromSetting(TAtlasIdeSettings.Current.OpenForEdits),
+      procedure(AText: string)
+      begin
+        Say(AText);
+      end);
+    Exit;
+  end;
   if ACommand = TAtlasIdeMoveClass.ClientCommand then
   begin
     // Client-Befehl: Name abfragen und „Klasse verschieben“ (#103); er fragt den Server selbst.
@@ -1274,6 +1364,8 @@ var
   Edit: TLspWorkspaceEdit;
   Outcome: TAtlasWorkspaceEditResult;
   Target: TOTAEditPos;
+  Expansion: TAtlasSnippetExpansion;
+  Document: string;
 begin
   Running := Session;
   if (Running = nil) or (AView.Buffer = nil) then
@@ -1311,14 +1403,26 @@ begin
     Say(TAtlasStrings.Fmt(TAtlasTextId.EditFailed, [Outcome.Error]));
     Exit;
   end;
-  // ///-Gerüst: Cursor ans Ende der zweiten Zeile, in den Text der Zusammenfassung.
-  if (AKind = TAtlasSlashKind.DocComment) and (Edits[0].NewText.Contains(#10)) then
+  if AKind <> TAtlasSlashKind.DocComment then
+    Exit;
+  // ///-Gerüst: Platzhalter-Modus über die Beschreibungen. Das Gerüst ist die erste Änderung; über einer
+  // Methodenimplementierung steht es weiter oben, das Löschen der "///"-Zeile darunter verschiebt es nicht.
+  Expansion := TAtlasSlashTrigger.DocCommentExpansion(Edits[0].NewText);
+  if not Expansion.HasPlaceholders then
+    Exit;
+  Document := TAtlasEditorBuffer.Text(AView.Buffer);
+  if Assigned(FOnPlaceholders) then
   begin
-    Target.Line := Edits[0].StartPos.Line + 2;
-    Target.Col := Length(TAtlasEditorBuffer.LineText(AView, Target.Line)) + 1;
-    AView.CursorPos := Target;
-    AView.Paint;
+    FOnPlaceholders(AView, Text, TAtlasEditorBuffer.CharOffset(Document, Edits[0].StartPos.Line,
+      Edits[0].StartPos.Character), Expansion);
+    Exit;
   end;
+  // Ohne Platzhalter-Modus: Cursor in die Zusammenfassung.
+  Lines := Document.Split([#13#10, #10]);
+  Target := EditPos(Lines, TLspTextPosition.Create(Edits[0].StartPos.Line, Edits[0].StartPos.Character +
+    Expansion.Stops[0].Start), TAtlasEditorBuffer.TabWidth(AView.Buffer));
+  AView.CursorPos := Target;
+  AView.Paint;
 end;
 
 end.

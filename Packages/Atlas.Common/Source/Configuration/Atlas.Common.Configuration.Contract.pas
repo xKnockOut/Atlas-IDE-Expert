@@ -78,17 +78,32 @@ type
     class function Default: TCodeLensSettings; static;
   end;
 
-  /// <summary>Anzeige von XMLDoc in Hover und Detailpanel des Plugins (#654). Der Server bereitet die Doku
+  /// <summary>Anzeige von XMLDoc in Hover und Detailpanel des Plugins (#654, #770). Der Server bereitet die Doku
   /// immer vollständig auf und gibt die Werte nur weiter.</summary>
   THintSettings = record
   public const
     MaxXmlDocLines = 50;
+    ExpandCollapsed = 'collapsed';
+    ExpandLast = 'last';
+    ExpandExpanded = 'expanded';
   public
-    /// <summary>XMLDoc vollständig und formatiert; aus = Kurzform (summary 4, remarks 3 Zeilen).</summary>
-    XmlDocFull: Boolean;
+    /// <summary>XMLDoc beim Öffnen (#770): ExpandCollapsed nur Summary mit „Mehr anzeigen“, ExpandLast wie
+    /// zuletzt in der Sitzung, ExpandExpanded alle Abschnitte. Ersetzt xmlDocFull aus #654.</summary>
+    XmlDocExpand: string;
     /// <summary>Doku-Zeilen, ab denen der Inhalt scrollt; 0 = unbegrenzt.</summary>
     XmlDocMaxLines: Integer;
+    /// <summary>Hover über Komponentenklassen (#110): published-Properties und Ereignisse samt geerbter.</summary>
+    PublishedMembers: Boolean;
     class function Default: THintSettings; static;
+  end;
+
+  /// <summary>Hilfen in Compiler-Direktiven (#102).</summary>
+  TDirectiveSettings = record
+    /// <summary>Vervollständigung: Direktivennamen, {$WARN}-Bezeichner und bedingte Symbole mit Herkunft.</summary>
+    Completion: Boolean;
+    /// <summary>Hover über Schaltern ({$R+}) und Symbolen ({$IFDEF DEBUG}: Zustand und Herkunft).</summary>
+    Hover: Boolean;
+    class function Default: TDirectiveSettings; static;
   end;
 
   /// <summary>Hervorheben zusammengehöriger Schlüsselwörter (#307).</summary>
@@ -108,7 +123,9 @@ type
   TKeywordCase = (Preserve, Lower, Upper);
   /// <summary>Schlüssel im Block "format", die ausdrücklich gesetzt sind.</summary>
   TFormatKey = (IndentSize, UseTabs, KeywordCase, TrimTrailingWhitespace, InsertFinalNewline,
-    SpaceAroundAssignment, SpaceAfterComma, EndOfLine);
+    SpaceAroundAssignment, SpaceAfterComma, EndOfLine, MaxLineLength);
+  /// <summary>Stellung von begin bzw. else (#43): wie vorhanden, in eigener Zeile oder in der Zeile davor.</summary>
+  TBlockPlacement = (Preserve, NewLine, SameLine);
   /// <summary>"stringLiteral.style" (#312).</summary>
   TStringLiteralStyle = (Auto, Multiline, Concat);
   /// <summary>"stringLiteral.lineBreak": Trenner zwischen verketteten Zeilen (#312).</summary>
@@ -190,6 +207,20 @@ type
     SpaceAfterComma: Boolean;
     /// <summary>'' = beibehalten, sonst #10 oder #13#10.</summary>
     EndOfLine: string;
+    /// <summary>Einrückung aus der Blockstruktur statt aus der vorhandenen Zeile (#43).</summary>
+    Reindent: Boolean;
+    /// <summary>begin nach then, else und do (#43).</summary>
+    BeginPlacement: TBlockPlacement;
+    /// <summary>else nach end (#43).</summary>
+    ElsePlacement: TBlockPlacement;
+    /// <summary>Längere Zeilen umbrechen (#43); 0 = nie.</summary>
+    MaxLineLength: Integer;
+    /// <summary>:= untereinander stehender Zuweisungen ausrichten (#43).</summary>
+    AlignAssignments: Boolean;
+    /// <summary>Typen bzw. = untereinander stehender Deklarationen ausrichten (#43).</summary>
+    AlignDeclarations: Boolean;
+    /// <summary>Kommentare am Zeilenende untereinander stehender Zeilen ausrichten (#43).</summary>
+    AlignComments: Boolean;
     Given: TFormatKeys;
     class function Default: TFormatStyle; static;
   end;
@@ -228,6 +259,10 @@ type
   /// <summary>Typkonvertierung vorschlagen (#490): aus, Helper-Stil (Count.ToString) oder Funktionsstil
   /// (IntToStr(Count)).</summary>
   TCompletionTypeConversion = (Off, Helper, Function_);
+
+  /// <summary>Übernahme einer nicht aktiven gleichnamigen Variante (#475): Unit-Präfix davor oder uses ergänzen
+  /// bzw. umstellen.</summary>
+  TCompletionSameNameInsert = (Prefix, Uses_);
   {$SCOPEDENUMS OFF}
 
   TCompletionSettings = record
@@ -260,6 +295,19 @@ type
     /// <summary>Hinter "Ausdruck." am Anweisungsanfang „Alle Felder zuweisen (n)“ für Records und Klassen
     /// (#491).</summary>
     AssignAllFields: Boolean;
+    /// <summary>Im uses-Abschnitt Gruppen, Hinweise auf den anderen Abschnitt, Zirkelbezüge und Details;
+    /// eingebundene Units fehlen (#469). Aus: alle Units des Index als schlichte Liste.</summary>
+    UsesDetails: Boolean;
+    /// <summary>Nach "inherited " zuerst der vollständige Aufruf der Vorfahrmethode mit den eigenen Parametern,
+    /// in Konstruktoren und Destruktoren auch die übrigen; abstrakte fehlen (#482). Aus: nur die Namen.</summary>
+    InheritedCall: Boolean;
+    /// <summary>Gleichnamige Bezeichner aus verschiedenen Units als Varianten mit ihrer Unit; die vom Compiler
+    /// gewählte zuerst mit „aktiv“ (#475). Aus: nur die aktive.</summary>
+    SameNameVariants: Boolean;
+    SameNameInsert: TCompletionSameNameInsert;
+    /// <summary>Varianten aus FireMonkey-Units (FMX.*) zeigen; aus: die Fußzeile nennt sie als ausgeblendet.
+    /// </summary>
+    ShowFmxUnits: Boolean;
     class function Default: TCompletionSettings; static;
   end;
 
@@ -276,6 +324,8 @@ type
     VirtualOverload: Boolean;
     /// <summary>Aktionen, die Deklaration und Implementierung angleichen.</summary>
     SyncSignatures: Boolean;
+    /// <summary>Forward-Deklarationen prüfen und ergänzen (#685).</summary>
+    ForwardDeclaration: Boolean;
     /// <summary>Code-Aktion „try/finally ergänzen“ nach einer Create-Zuweisung (#42).</summary>
     TryFinally: Boolean;
     /// <summary>Klassen-Aktionen: Getter/Setter/Feld, Interface-Methoden, Überschreiben (#42).</summary>
@@ -303,6 +353,16 @@ type
     CreateMethodCaretInBody: Boolean;
     /// <summary>Erzeugte Parameter für Strings, Records und Interfaces mit const (#472).</summary>
     ConstParameters: Boolean;
+    /// <summary>Code-Aktionen „Property X anlegen“ und „Fehlende Properties anlegen“ (#682).</summary>
+    PropertyFromAccessors: Boolean;
+    /// <summary>Präfixe der Zugriffsmethoden (#682).</summary>
+    PropertyFromAccessorsPrefixes: TArray<string>;
+    /// <summary>Aufrufe umstellen: ask, always oder never (#682).</summary>
+    PropertyFromAccessorsReplaceCalls: string;
+    /// <summary>Abschnitt der Property: accessor, public oder published (#682).</summary>
+    PropertyFromAccessorsSection: string;
+    /// <summary>Zugriffsmethoden verbergen: off, private oder protected (#682).</summary>
+    PropertyFromAccessorsHideAccessors: string;
     class function Default: TRefactoringSettings; static;
   end;
 
@@ -352,6 +412,7 @@ type
     InlayHints: TInlayHintSettings;
     CodeLens: TCodeLensSettings;
     Hints: THintSettings;
+    Directives: TDirectiveSettings;
     Highlight: THighlightSettings;
     Compiler: TCompilerSettings;
     Completion: TCompletionSettings;
@@ -380,6 +441,16 @@ type
     SlashLogCall: string;
     /// <summary>Palettenseite für /component (#299).</summary>
     SlashComponentPalette: string;
+    /// <summary>Name hinter -o für /todo (#297); '' = git config user.name.</summary>
+    SlashTodoOwner: string;
+    /// <summary>Kategorie hinter -c für /todo (#297); '' = keine.</summary>
+    SlashTodoCategory: string;
+    /// <summary>/sortuses streicht ungenutzte Units (#297, #284).</summary>
+    SlashSortUsesRemoveUnused: Boolean;
+    /// <summary>/helper für Aufzählungen mit cNames, ToString und FromString (#875).</summary>
+    SlashEnumHelper: Boolean;
+    /// <summary>/helper für Mengen mit Contains, ToText, Toggle und All (#875).</summary>
+    SlashSetHelper: Boolean;
     /// <summary>"uses aufräumen" (source.organizeImports) sortiert alphabetisch; Vorgabe aus,
     /// weil die Reihenfolge die Initialisierung bestimmt (#182).</summary>
     SortUses: Boolean;
@@ -642,12 +713,21 @@ begin
   Result.Project := '';
 end;
 
+{ TDirectiveSettings }
+
+class function TDirectiveSettings.Default: TDirectiveSettings;
+begin
+  Result.Completion := True;
+  Result.Hover := True;
+end;
+
 { THintSettings }
 
 class function THintSettings.Default: THintSettings;
 begin
-  Result.XmlDocFull := True;
+  Result.XmlDocExpand := ExpandLast;
   Result.XmlDocMaxLines := 0;
+  Result.PublishedMembers := True;
 end;
 
 { THighlightSettings }
@@ -672,6 +752,13 @@ begin
   Result.SpaceAroundAssignment := True;
   Result.SpaceAfterComma := True;
   Result.EndOfLine := '';
+  Result.Reindent := True;
+  Result.BeginPlacement := TBlockPlacement.Preserve;
+  Result.ElsePlacement := TBlockPlacement.Preserve;
+  Result.MaxLineLength := 0;
+  Result.AlignAssignments := False;
+  Result.AlignDeclarations := False;
+  Result.AlignComments := False;
   Result.Given := [];
 end;
 
@@ -693,6 +780,7 @@ begin
   Result.NewParameterOverload := True;
   Result.VirtualOverload := False;
   Result.SyncSignatures := True;
+  Result.ForwardDeclaration := True;
   Result.TryFinally := True;
   Result.ClassActions := True;
   Result.ExplicitType := True;
@@ -706,6 +794,11 @@ begin
   Result.CreateMethodSection := 'private';
   Result.CreateMethodCaretInBody := False;
   Result.ConstParameters := True;
+  Result.PropertyFromAccessors := True;
+  Result.PropertyFromAccessorsPrefixes := ['Get', 'Set', 'Is', 'Has'];
+  Result.PropertyFromAccessorsReplaceCalls := 'ask';
+  Result.PropertyFromAccessorsSection := 'accessor';
+  Result.PropertyFromAccessorsHideAccessors := 'off';
 end;
 
 { TCompletionSettings }
@@ -727,6 +820,11 @@ begin
   Result.ResourceStringUnit := '';
   Result.TypeConversion := TCompletionTypeConversion.Off;
   Result.AssignAllFields := False;
+  Result.UsesDetails := True;
+  Result.InheritedCall := True;
+  Result.SameNameVariants := True;
+  Result.SameNameInsert := TCompletionSameNameInsert.Prefix;
+  Result.ShowFmxUnits := False;
 end;
 
 { TServerSettings }
@@ -754,6 +852,7 @@ begin
   Result.InlayHints := TInlayHintSettings.Default;
   Result.CodeLens := TCodeLensSettings.Default;
   Result.Hints := THintSettings.Default;
+  Result.Directives := TDirectiveSettings.Default;
   Result.Highlight := THighlightSettings.Default;
   Result.Compiler := TCompilerSettings.Default;
   Result.Completion := TCompletionSettings.Default;
@@ -767,6 +866,11 @@ begin
   Result.SlashHeaderTemplate := '';
   Result.SlashLogCall := '';
   Result.SlashComponentPalette := 'Eigene';
+  Result.SlashTodoOwner := '';
+  Result.SlashTodoCategory := '';
+  Result.SlashSortUsesRemoveUnused := True;
+  Result.SlashEnumHelper := True;
+  Result.SlashSetHelper := True;
   Result.SortUses := False;
   Result.SortUsesByNamespace := False;
   Result.UsesKeep := nil;

@@ -6,18 +6,31 @@
 // gestartet), ergänzt Plugin- und IDE-Version, Einstellungen und atlas.log,
 // zeigt die Vorschau und schreibt nach Bestätigung eine Markdown-Datei.
 // Die Meldungsansicht nennt Datei und Adresse für ein neues Issue.
+// Der Bericht des Servers kommt im Hintergrund (#874); bis dahin bleibt die IDE
+// bedienbar, die Meldungsansicht sagt „wird zusammengestellt“, und ein zweiter
+// Aufruf in der Zeit wird verworfen.
 
 interface
 
 uses
   System.SysUtils,
-  System.JSON;
+  System.JSON,
+  Atlas.Core.Diagnostics.BugReport;
 
 type
-  /// <summary>Befehl an den laufenden Server mit Argumenten (JSON-Array); nil ohne Server oder bei Fehler.</summary>
-  TAtlasServerCommandWithArguments = reference to function(const ACommand, AArgumentsJson: string): TJSONValue;
+  /// <summary>Befehl mit Argumenten (JSON-Array) an den laufenden Server im Hintergrund (#874); ADone im
+  /// Hauptthread mit der Antwort, nil ohne Server oder bei Fehler. Den Wert gibt der Aufrufer von ADone frei.</summary>
+  TAtlasServerCommandWithArguments = reference to procedure(const ACommand, AArgumentsJson: string;
+    const ADone: TProc<TJSONValue>);
 
   TAtlasIdeBugReport = record
+  private class var
+    /// <summary>Ein Bericht wartet auf den Server.</summary>
+    FBusy: Boolean;
+  private
+    /// <summary>Bericht bauen, Vorschau zeigen, nach Bestätigung schreiben (Hauptthread).</summary>
+    class procedure Finish(const AInput: TAtlasBugReportInput; const AAnswer: TJSONValue;
+      const AMessage: TProc<string>); static;
   public
     class procedure Execute(const AServer: TAtlasServerCommandWithArguments; const AMessage: TProc<string>); static;
     /// <summary>Ordner der Projekte der geöffneten Projektgruppe (für &lt;ws&gt;); auch für „Problem melden“
@@ -39,7 +52,6 @@ uses
   Atlas.Core.Settings.Plugin,
   Atlas.Core.Settings.History,
   Atlas.Core.Diagnostics.Guard,
-  Atlas.Core.Diagnostics.BugReport,
   Atlas.UI.Diagnostics.ExportDialog,
   Atlas.UI.Strings,
   Atlas.IDE.Foundation.Settings;
@@ -90,9 +102,11 @@ class procedure TAtlasIdeBugReport.Execute(const AServer: TAtlasServerCommandWit
   const AMessage: TProc<string>);
 var
   Input: TAtlasBugReportInput;
-  Answer: TJSONValue;
-  Report, Target, Note: string;
+  Message: TProc<string>;
 begin
+  if FBusy then
+    Exit;
+  Message := AMessage;
   Input := Default(TAtlasBugReportInput);
   Input.PluginVersion := TAtlasPluginVersion.Version;
   Input.IdeVersion := TAtlasUpdates.IdeVersion;
@@ -109,17 +123,41 @@ begin
   Input.Experimental := TAtlasIdeSettings.ActiveExperimental;
   Input.PluginLog := TAtlasBugReport.Tail(TPath.Combine(TAtlasRotatingLog.DefaultFolder, 'atlas.log'),
     TAtlasBugReport.LogLines);
-  Answer := nil;
-  if Assigned(AServer) then
-    Answer := AServer(TAtlasBugReport.ServerCommand, TAtlasBugReport.ServerArguments(Input));
-  try
-    if (Answer is TJSONObject) and (TJSONObject(Answer).GetValue('text') is TJSONString) then
-      Input.ServerReport := TJSONObject(Answer).GetValue('text').Value
-    else
-      Input.ServerMissing := TAtlasStrings.Text(TAtlasTextId.BugReportNoServer);
-  finally
-    Answer.Free;
+  if not Assigned(AServer) then
+  begin
+    Finish(Input, nil, Message);
+    Exit;
   end;
+  FBusy := True;
+  Message(TAtlasStrings.Text(TAtlasTextId.BugReportCollecting));
+  try
+    AServer(TAtlasBugReport.ServerCommand, TAtlasBugReport.ServerArguments(Input),
+      procedure(AAnswer: TJSONValue)
+      begin
+        FBusy := False;
+        TAtlasGuard.Run(TAtlasFeature.Menu,
+          procedure
+          begin
+            Finish(Input, AAnswer, Message);
+          end);
+      end);
+  except
+    FBusy := False;
+    raise;
+  end;
+end;
+
+class procedure TAtlasIdeBugReport.Finish(const AInput: TAtlasBugReportInput; const AAnswer: TJSONValue;
+  const AMessage: TProc<string>);
+var
+  Report, Target, Note: string;
+  Input: TAtlasBugReportInput;
+begin
+  Input := AInput;
+  if (AAnswer is TJSONObject) and (TJSONObject(AAnswer).GetValue('text') is TJSONString) then
+    Input.ServerReport := TJSONObject(AAnswer).GetValue('text').Value
+  else
+    Input.ServerMissing := TAtlasStrings.Text(TAtlasTextId.BugReportNoServer);
   Report := TAtlasBugReport.Build(Input);
   if Input.Anonymize then
     Note := TAtlasStrings.Text(TAtlasTextId.BugReportAnonymized)

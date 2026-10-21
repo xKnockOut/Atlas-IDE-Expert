@@ -1728,6 +1728,12 @@ Voraussetzung: Projektgruppe mit mehreren Projekten, darunter ein DUnitX-Testpro
 | US12 | „Pfade kopieren“ (Strg+C), „Im Explorer zeigen“, „Im Projektmanager zeigen“ | Pfade in der Zwischenablage; Explorer mit markierter Datei; Projektmanager offen, Meldung „Kunden gehört zu …“ |
 | US13 | Jede Einstellung der Seite einzeln aus | Vorschau, Formularskizze, „Verwendet von“, Chips, Tippsyntax, Häkchen, Aktionsleiste, „In uses aufnehmen“ fehlen jeweils; Pfadanzeige und Vorgewählte Herkunft wirken beim nächsten Öffnen |
 | US14 | Server beenden, Strg+F12 | Meldung „Der Atlas-Server läuft nicht“ und der IDE-Dialog |
+| US15 | Fenster groß ziehen, `System.Generics.Collections` wählen (#876) | Abschnitte ▾ PFAD, ▾ EXPORTIERTE TYPEN (n), ▾ USES (n) untereinander, alle offen |
+| US16 | Fenster niedrig ziehen, Unit mit vielen Typen, uses und „Verwendet von“ | EXPORTIERTE TYPEN bleibt offen und endet mit „+ n weitere“; ▸ VERWENDET VON, ▸ USES und ▸ PFAD sind zu, rechts „automatisch eingeklappt“ |
+| US17 | In US16 auf ▸ VERWENDET VON klicken, andere Unit wählen, Fenster schließen und wieder öffnen | VERWENDET VON offen, dafür klappen die Typen automatisch ein; der Zustand gilt für jede Unit und bleibt bis zum Neustart der IDE |
+| US18 | Auf ▾ EXPORTIERTE TYPEN klicken bei großem Fenster | Abschnitt bleibt zu, auch wenn Platz ist; erneuter Klick öffnet ihn |
+| US19 | Optionen › Units suchen: „Abschnitte der Vorschau einklappen, wenn sie nicht passen“ aus, Fenster niedrig | Nichts klappt von selbst ein, der Inhalt wird unten abgeschnitten; Klick auf Überschriften klappt weiter |
+| US20 | Mauszeiger über ▾ PFAD | Handzeiger, Tooltip mit vollem Dateinamen |
 ## Erzeugen-Menü (#719)
 
 Voraussetzung: Server läuft; Einstellungen auf Vorgabe; Unit mit `TKunde = class` (Felder `FName: string; FListe: TStrings;`), einer Klasse `TStaffelpreise = class(TStandardpreise)` mit virtueller Methode im Vorfahren und einer Klasse `TDienst = class(TInterfacedObject, IDienst)`, der Methoden von `IDienst` fehlen.
@@ -2147,7 +2153,62 @@ Voraussetzung: VCL-Quellen über die Bibliothekspfade im Index.
 | DC1 | Über `function CalcDiscount(Customer: TCustomer; Rate: Double): Currency;` eine leere Zeile, `///` tippen | `summary`, zwei `param` und `returns`; Tab springt in die Beschreibungen (**Abnahme**) |
 | DC2 | Kommentar vorhanden, Parameter `Discount: Double` ergänzen, Alt+Enter auf der Deklaration | „Fehlende <param> ergänzen“ fügt genau `<param name="Discount">` ein (**Abnahme**) |
 | DC3 | Parameter `Rate` in `Factor` umbenennen, Alt+Enter | „Dokumentation an die Signatur anpassen“: `<param name="Rate">…</param>` wird zu `<!-- entfernt: Rate: … -->`, die Beschreibung bleibt, `<param name="Factor">` kommt dazu |
-| DC4 | In `settings.json` `"completeBlocks": {"docComment": false}`, Server neu laden, `///` tippen | `///` bleibt stehen, kein Gerüst, keine Code-Aktionen zum Kommentar (**Abnahme**) |
+| DC4 | In `settings.json` `"completeBlocks": {"docComment": false}`, Server neu laden, `///` tippen | `///` bleibt stehen, kein Gerüst, keine Code-Aktionen zum Kommentar, kein „Parameter abgleichen“ (**Abnahme**) |
+| DC5 | Nach DC1 Tab, Tab, Tab, dann Esc | Cursor springt nacheinander in `summary`, die beiden `param` und `returns`, die aktuelle Beschreibung ist umrahmt, Fußzeile „Platzhalter n / m“; Esc beendet, ein Strg+Z nimmt das ganze Gerüst samt Text zurück |
+| DC6 | Im implementation-Teil über `procedure TFoo.Bar(A: Integer);` eine leere Zeile, `///` tippen | Das Gerüst entsteht über `procedure Bar(A: Integer);` in der Klasse (vor deren Attributen wie `[Test]`), die Zeile mit `///` verschwindet, der Cursor steht in der Zusammenfassung oben (**Abnahme**) |
+| DC7 | Wie DC6 bei zwei Überladungen `Bar(A: Integer)` und `Bar(const S: string)` über `TFoo.Bar(const S: string)` | Das Gerüst gehört zu `Bar(const S: string)` |
+| DC8 | Wie DC6, die Deklaration hat schon einen `///`-Kommentar | `///` bleibt stehen, nichts ändert sich |
+| DC9 | Kommentar wie in DC2 (Parameter fehlt), Cursor in eine `///`-Zeile des Blocks, Strg+Leer | Einziger Eintrag „Parameter abgleichen“; Enter ergänzt genau den fehlenden `<param>`, ein überzähliger wird zu `<!-- entfernt: … -->` (**Abnahme**) |
+| DC10 | Passt der Block zur Signatur, Strg+Leer in einer `///`-Zeile | Kein „Parameter abgleichen“; nach `<` weiter die XMLDoc-Tags |
+
+## Hover: Mengen, Resourcestrings, veraltete Symbole (#38)
+
+| Nr. | Schritt | Erwartet |
+|---|---|---|
+| HV1 | `const Stile: TFontStyles = [fsBold, fsItalic];`, Maus über `Stile` an einer Verwendung | „Wert: [fsBold, fsItalic] · 2 Elemente“ (**Abnahme**) |
+| HV2 | Maus über `TFontStyles` | „Wert: set of TFontStyle · 4 mögliche Elemente“ |
+| HV3 | `resourcestring SGruss = 'Hallo' + #13#10 + 'Welt';` über zwei Zeilen, Maus über `SGruss` an der Verwendung | „Wert: 'Hallo⏎Welt'“ (**Abnahme**) |
+| HV4 | `procedure Alt; deprecated 'Nutze Neu';` in einer anderen Unit, `Alt;` aufrufen | `Alt` durchgestrichen, Hinweis „"Alt" ist veraltet: Nutze Neu (deprecated-symbol)“; Hover nennt „Veraltet: Nutze Neu“ (**Abnahme**) |
+| HV5 | Konstante mit `platform`, Klasse mit `experimental` verwenden | „ist plattformspezifisch“ bzw. „ist experimentell“, durchgestrichen |
+| HV6 | Deklaration von `Alt` und `procedure Alt;` im implementation-Teil | Keine Meldung, nicht durchgestrichen |
+| HV7 | `"rules": {"deprecated-symbol": "off"}` in atlas.json | Keine Meldung und kein Durchstreichen mehr (**Abnahme**) |
+
+## Barrierefreiheit (#447)
+
+| Nr. | Schritt | Erwartet |
+|---|---|---|
+| BF1 | Windows-Sprachausgabe an (Strg+Win+Enter), `List.Ad` tippen, mit ↑↓ wählen | Bei jedem Wechsel „Add, Funktion, 1 von 5. …“ (**Abnahme**) |
+| BF2 | Wie BF1, Inspect.exe (Windows SDK) auf das Popup | Baum: Fenster „Atlas-Vervollständigung“ (Liste) mit Listeneinträgen; der gewählte hat „ausgewählt“, Position und Anzahl stimmen; Überschriften wie „Weitere Einträge“ sind Text (**Abnahme**) |
+| BF3 | Eintrag mit `deprecated` bzw. Helper in Inspect | ItemStatus „deprecated“ bzw. „Helper“, HelpText ist die Signatur |
+| BF4 | Weitertippen, während Inspect den Baum zeigt | Der Baum wird neu eingelesen; herausgefilterte Einträge melden „nicht verfügbar“, kein Absturz |
+| BF5 | Popup ansehen, dunkles und helles Thema | Gewählte Zeile hat Akzentrahmen und Marke ▸, nicht nur Farbe (**Abnahme**) |
+| BF6 | „Gewählten Eintrag mit Rahmen und Marke ▸ zeigen“ aus (Optionen › Vervollständigung) | Nur die Auswahlfläche, kein Rahmen, keine Marke |
+| BF7 | Popup schließen, während Inspect ein Element hält; Inspect aktualisieren | Kein Absturz der IDE, Element nicht verfügbar |
+
+## Helper-Methoden in der Vervollständigung (#456)
+
+| Nr. | Schritt | Erwartet |
+|---|---|---|
+| HM1 | `uses System.SysUtils;`, `var S: string;`, `S.` tippen | `Length`, `ToUpper` usw. mit Tag „Helper“ in Akzentfarbe; Detail-Panel rechts „Helper · System.SysUtils“ (**Abnahme**) |
+| HM2 | `Button1.` auf einem Formular, Unit mit `TButtonHelper = class helper for TButton` eingebunden | Eigene Methoden des Helpers mit Tag „Helper“ zwischen den Membern von `TButton`, geerbte ohne Tag |
+| HM3 | Unit `Hilfen` mit `TTextHelper = record helper for string` im Projekt, aber nicht in uses; `S.` tippen | Methoden aus `TTextHelper` mit Tag „+ Hilfen“, im Panel „Enter trägt Hilfen in die uses-Klausel ein; danach gilt dieser Helper.“; Enter fügt `Hilfen` in die uses ein (**Abnahme**) |
+| HM4 | Wie HM3, private Methoden des Helpers | Erscheinen nicht |
+| HM5 | Wie HM3 mit „uses automatisch ergänzen“ aus | Einträge erscheinen ohne Panel-Hinweis, Enter ändert die uses nicht |
+| HM6 | `Hilfen` steht schon in uses | Methoden ohne „+ Hilfen“, kein uses-Eintrag beim Übernehmen |
+
+## Symbole in Direktiven (#102)
+
+| Nr. | Schritt | Erwartet |
+|---|---|---|
+| CD1 | Projekt mit `DEBUG` in der Debug-Konfiguration, Konfiguration Debug, Maus über `DEBUG` in `{$IFDEF DEBUG}` | „**DEBUG**: aktiv, definiert in Konfiguration Debug (.dproj)“, darunter die Erklärung der Direktive (**Abnahme**) |
+| CD2 | Konfiguration Release, Maus über `{$IFDEF DEBUG}` | „**DEBUG**: nicht definiert, weder im Projekt noch vom Compiler noch mit {$DEFINE} davor gesetzt“ |
+| CD3 | `{$I Defs.inc}` mit `{$DEFINE FOO}`, danach `{$IFDEF FOO}`, Maus über `FOO` | „aktiv, definiert mit {$DEFINE FOO} in [Defs.inc](…), Zeile n“; ein Klick öffnet die Include-Datei (**Abnahme**) |
+| CD4 | `{$UNDEF FOO}` vor dem `{$IFDEF FOO}` | „nicht definiert, aufgehoben mit {$UNDEF FOO} in Zeile n“ |
+| CD5 | Maus über `MSWINDOWS` bzw. `WIN64` (Plattform Win64) | „aktiv, Compiler-Vorgabe (Plattform Win64)“ |
+| CD6 | `{$IF Defined(A) and Defined(B)}`, Maus über `B` | Hover nennt `B`, nicht `A` |
+| CD7 | `{$IFDEF ` tippen, Strg+Leer | Projekt- und Compiler-Symbole mit Herkunft vorne, dann `{$DEFINE}` der Datei und ihrer Includes, dann in der Datei benutzte Namen; Symbole anderer Plattformen (`LINUX` …) abgeschwächt am Ende (**Abnahme**) |
+| CD8 | `{$WARN ` und `{$R+` | Weiter Warnungsbezeichner bzw. Erklärung des Schalters (Teil 1) |
+| CD9 | Optionsseite, Reiter Editor: `directives.completion` bzw. `directives.hover` aus | Keine Liste in `{$IFDEF ` bzw. kein Hover über Direktiven (**Abnahme**) |
 
 ## Kennzeichnung „Experimentell“ (#834)
 
@@ -2519,3 +2580,300 @@ Vorbereitung: Ein kleines VCL-Projekt mit `FList: TStringList` (drei Einträge),
 | DH11 | Schnellschalter bzw. *Tools › Optionen › Atlas › Debuggen*: „Variablenwerte im Hover beim Debuggen“ aus | Hover zeigt keinen Wert mehr; wieder an: Wert wieder da |
 | DH12 | Atlas-Tooltip aus (`editor.hoverTooltip`), Maus auf `I` am Haltepunkt | Tooltip der IDE zeigt `I = <Wert>` vor dem Hover-Text |
 | DH13 | Sprachausgabe (Narrator) an, Maus auf `I` | Ansage beginnt mit `I = <Wert>` |
+## Kein Hängen, während der Server indexiert (#874)
+
+Vorher: Eine große Projektgruppe öffnen (Index läuft, Fortschritt im Statusfeld), „Diagnosemodus“ an.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| HG1 | Während des Indexierens Tools › Optionen › Atlas öffnen | Dialog öffnet sofort; im Abschnitt Symbolindex steht kurz „Frage den Server …“, dann die Kennzahlen; die drei Knöpfe sind bis dahin gesperrt |
+| HG2 | Im Dialog „Index neu aufbauen“, sofort danach den Dialog mit OK schließen | Kein Hänger, kein Fehler; der Index baut neu auf |
+| HG3 | Einrichtungsprüfliste, Knopf „Index neu aufbauen“, während schon indexiert wird | Die Liste reagiert sofort; der Punkt zeigt den Fortschritt |
+| HG4 | Atlas › Fehlerbericht erstellen … während des Indexierens | Meldungsansicht „Fehlerbericht wird zusammengestellt …“, die IDE bleibt bedienbar, die Vorschau erscheint mit dem Teil des Servers; ein zweiter Aufruf in der Zeit tut nichts |
+| HG5 | Atlas › Projekt-Einstellungen während des Indexierens | Dialog öffnet ohne merkliche Pause mit Regelkatalog; die Prüfung beim Tippen antwortet sofort |
+| HG6 | Projekt-Konfiguration in der IDE wechseln (Debug ↔ Release) während des Indexierens | Kein Hänger; im Serverprotokoll steht zu `workspace/executeCommand` die echte Wartezeit (nicht mehr immer 0 ms) |
+| HG7 | „Index löschen“ zweimal schnell hintereinander | Kein Hänger; der zweite Aufbau beginnt erst, wenn der erste abgebrochen ist; der Cache ist danach neu |
+
+
+## Beenden nach Neuladen im Gruppen-Build (#886)
+
+Vorher: `Atlas.groupproj` in der IDE mit installiertem Atlas, Diagnosemodus aus. Protokoll `Atlas.IDE.Expert370.log` neben dem Plugin.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| EN1 | Gruppe bauen (Win32 mit Plugin-Projekt), die IDE entlädt und lädt Atlas dabei neu; danach die IDE beenden | Keine Zugriffsverletzung, die IDE beendet sich |
+| EN2 | Protokoll nach EN1 | Zwei Zeilen „Atlas entladen …; Fehler beim Abbau: keine“ (Neuladen und Beenden); steht dort ein Schritt, heißt er mit Ausnahmeklasse |
+| EN3 | Protokoll nach EN1 | Keine Zeile „Code-Insight-Manager wird nach dem Abmelden noch … gehalten“; falls doch, Zahl notieren |
+| EN4 | EN1 zehnmal hintereinander (`repro.ps1`) | Zehnmal ohne Absturz und ohne Hänger, jedes Mal EN2 |
+| EN5 | Während des Gruppen-Builds Atlas › Fehlerbericht bzw. Optionen › Atlas offen haben, dann EN1 | Wie EN1; keine Antwort des Servers landet nach dem Neuladen in der alten Seite |
+
+## Optionsseite als Baum mit Gruppen (#890)
+
+Vorher: Tools › Optionen › Atlas, Vorgaben geladen, „Experimentelle Funktionen erlauben“ aus. Hell und dunkel sowie 100 % und 150 % prüfen.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| OG1 | Optionsseite öffnen | Links ein Baum: Bereiche oben (Allgemein, Vervollständigung, Editor …), Funktionen als Unterpunkte; „Allgemein“ gewählt, sein Bereich aufgeklappt |
+| OG2 | „Editor“ wählen | Rechts die allgemeinen Optionen des Bereichs, darunter der Rahmen „Funktionen in diesem Bereich“ mit je einem Hauptschalter und „Details“ |
+| OG3 | In der Übersicht bei „Minikarte“ auf „Details“ | Der Unterpunkt „Minikarte“ ist im Baum gewählt, rechts nur deren Rahmen |
+| OG4 | Rahmen der Minikarte ansehen | Oben der Hauptschalter, darunter „gesperrt: Experimentelle Funktionen sind aus“, die Unteroptionen eingerückt und grau; der Knoten im Baum ist grau |
+| OG5 | Unter Allgemein „Experimentelle Funktionen erlauben“ an, zurück zur Minikarte | Hauptschalter bedienbar, Grund verschwindet; Unteroptionen noch gesperrt, solange die Minikarte aus ist |
+| OG6 | Minikarte an, Breite ändern, Minikarte aus, OK, Seite neu öffnen | Breite bleibt gespeichert, die Felder sind gesperrt, nicht leer |
+| OG7 | Bei „Klammerfarben“ den Hauptschalter aus | Blocklinien, Besitzer, Breite und Deckkraft gesperrt (Kontrollkästchen, Auswahl, Textfelder); auf der Seite „Farben“ steht oben „gesperrt: „Klammerfarben“ (Editor › Klammerfarben) ist aus“, die Farbflächen und „Standardfarben“ sind gesperrt |
+| OG8 | Unter Allgemein „Atlas-Code-Insight“ aus | Rahmen wie „Mitlaufender Kopf“, „Code Lens“ und „Klammerfarben“ zeigen den Grund mit dem Ort des Schalters; ihre Hauptschalter sind gesperrt |
+| OG9 | Hauptschalter in der Übersicht von „Editor“ umschalten | Der Schalter im Unterpunkt folgt und umgekehrt; gesperrte Schalter sind auch in der Übersicht gesperrt |
+| OG10 | Filter „Geändert“ nach OG7 | Nur Knoten mit geänderten Werten bleiben im Baum; Rahmen und Hauptschalter bleiben sichtbar; Punkt ● vor geänderten Knoten |
+| OG11 | Filter „Nur experimentelle“ | Nur Bereiche und Unterpunkte mit experimentellen Einstellungen; „Alle“ stellt den ganzen Baum wieder her |
+| OG12 | Unterpunkt „Minikarte“, Rechtsklick › „Seite zurücksetzen“ | Nur die Minikarte steht auf der Vorgabe; auf „Editor“ (Hauptknoten) setzt es den ganzen Bereich zurück |
+| OG13 | Statusfeld › Einstellung zeigen (#628) für „Blocklinien“ bei ausgeschalteten Klammerfarben | Knoten „Klammerfarben“ gewählt, der Hauptschalter fett und im Fokus |
+| OG14 | Einen Unterpunkt wählen, „Editor“ zuklappen, Dialog schließen, wieder öffnen | Derselbe Unterpunkt gewählt, sein Bereich aufgeklappt; zugeklappte Bereiche bleiben zu |
+| OG15 | Tastatur im Baum: ↑ ↓ ← → + − Pos1 Ende | Wie im Baum der IDE-Optionen; die rechte Seite wechselt mit |
+| OG16 | Schnellschalter im Statusfeld (#604) für die Minikarte | Wirkt wie bisher; die Optionsseite zeigt danach den neuen Stand samt Sperren |
+| OG17 | „Favoriten“ (Vervollständigung) aus | Liste und Knöpfe der Favoriten gesperrt, die Einträge bleiben |
+
+## Pflegebefehle /sortuses, /ignore, /todo (#297)
+
+Vorher: Projekt mit Index geladen, eine Unit mit `uses System.SysUtils, System.Classes, Vcl.Forms;`, aus der nur `Format` benutzt wird.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| PF1 | Über `implementation` `/sortuses` tippen, Enter | uses sortiert; `System.Classes` gestrichen, `Vcl.Forms` bleibt (initialization); die Befehlszeile ist weg |
+| PF2 | `System.Classes` in `usesKeep` eintragen, PF1 wiederholen | `System.Classes` bleibt stehen |
+| PF3a | `/cleanuses` statt `/sortuses` | Nur `System.Classes` gestrichen, die übrige Reihenfolge bleibt; ohne geladenen Index bleibt die Zeile mit Hinweis „/cleanuses braucht den Index des Projekts“ |
+| PF3 | `slashCommands.sortUsesRemoveUnused` auf `false`, PF1 wiederholen | Nur sortiert, nichts gestrichen |
+| PF4 | Über `X := 42;` `/ignore ` tippen | Die Vervollständigung bietet nur Regeln an, die in der Zeile darunter treffen (z. B. `magic-number`) |
+| PF5 | `/ignore unused-local`, Enter, über einer Zeile ohne diesen Treffer | Zeile bleibt stehen; Hinweis `slash-command`: „Regel unused-local meldet in der Zeile darunter nichts“ |
+| PF6 | `/ignore magic-number Absicht`, Enter | `// lsp-ignore: magic-number -- Absicht`, der Treffer verschwindet |
+| PF7 | `/todo Fehlerfall prüfen` ohne Einstellung, im git-Repository mit `user.name` | `// TODO -o<user.name> : Fehlerfall prüfen`, in der IDE-TODO-Liste mit Besitzer |
+| PF8 | `slashCommands.todoOwner` = `Marco`, `todoCategory` = `Review`, PF7 wiederholen | `// TODO -oMarco -cReview : Fehlerfall prüfen` |
+| PF9 | `/todo -oEva -cTest Text` | `// TODO -oEva -cTest : Text` (Angaben in der Zeile gehen vor) |
+
+## Typen erzeugen: /singleton (#298)
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| TY1 | In einer Klasse mit `constructor Create(AName: string);` `/singleton`, Enter | `class var FInstance`, `class function Instance`, `class destructor Destroy`; der Konstruktor bleibt; Meldung „Konstruktor Create bleibt unverändert und öffentlich; Instance ruft Create ohne Parameter“ |
+| TY2 | Dasselbe in einer Klasse ohne Konstruktor | Gleicher Code, keine Meldung |
+| TY3 | Unter `TFarbe = (Rot, Gruen, Blau);` `/helper TFarbe`, Enter (#875) | `TFarbeHelper = record helper for TFarbe` mit `private const cNames: array[TFarbe] of string = ('Rot', 'Gruen', 'Blau');`, `ToString` und `class function FromString(const AValue: string): TFarbe; static;`; Rümpfe in der implementation, `System.SysUtils` im uses; übersetzt |
+| TY4 | `TFarbe.Blau.ToString` und `TFarbe.FromString('gruen')` aufrufen | `'Blau'` bzw. `Gruen`; ein unbekannter Name löst `EArgumentException` aus |
+| TY5 | `slashCommands.enumHelper` auf `false`, TY3 wiederholen | Nur der leere record helper |
+| TY6 | Unter `TFarben = set of TFarbe;` `/helper TFarben` | `TFarbenHelper` mit `Contains`, `ToText` (über `cNames`), `Toggle` und `class function All: TFarben; static;` samt Rümpfen; übersetzt |
+| TY7 | `TStile = set of TFontStyle;`, `/helper TStile` | `ToText` über `GetEnumName`, `System.TypInfo` im uses |
+| TY8 | `slashCommands.setHelper` auf `false`, TY6 wiederholen | Nur der leere record helper |
+
+## Neue Units im Stil des Projekts (#299)
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| NU1 | In einer Unit mit LF-Zeilenenden, UTF-8 ohne BOM, `/component TZaehler` | `Zaehler.pas` mit LF und UTF-8 ohne BOM (ohne Editor auf der Platte; in der IDE legt das Plugin die Datei an) |
+| NU2 | Format mit `indentSize` 4, `/component TZaehler2 : TButton` | Neue Unit rückt je Ebene um 4 Leerzeichen ein; mit `useTabs` um einen Tabulator |
+| NU3 | `/unit Kunden.Daten` in einem Projekt mit CRLF | Neue Unit mit CRLF, Einrückung nach dem Formatstil |
+
+## Refactoring per Schnellbefehl (#300)
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| RF1 | Im Rumpf über zwei Anweisungen, die einen Parameter lesen und eine lokale Variable schreiben, `/extract Rechne` + Enter | Neue Methode `Rechne(const AWert: …; var Summe: …)`, an der Stelle der Aufruf; Auswahl endet an der nächsten Leerzeile |
+| RF2 | `/extract` ohne Namen oder außerhalb einer Routine | Zeile bleibt, Hinweis „Erwartet wird /extract Name“ bzw. „nur im Rumpf einer Routine“ |
+| RF3 | Über `Y := Twice(X) + 1;` (Twice in derselben Unit) `/inline` | Aufruf durch den Rumpf ersetzt: `Y := (X * 2) + 1;` |
+| RF4 | Über `Y := X + 1;` mit `X := 5;` davor `/inline` | Variable eingebettet: `Y := 5 + 1;`, `X` aus dem var-Abschnitt entfernt |
+| RF5 | Über einer Zeile mit einem Treffer, der eine sichere Korrektur hat, `/fix` | Korrektur angewandt, Befehlszeile weg |
+| RF6 | `/fix` über einer Zeile, deren Treffer keine sichere Korrektur hat | Nichts geändert, Hinweis „keine sichere Korrektur“ |
+| RF7 | `/explain` über einer Zeile mit Treffer | Befehlszeile weg, Hinweis mit Meldung, Beschreibung, Falsch/Richtig-Beispiel und Link |
+| RF8 | `/explain` über einer Zeile ohne Treffer | Zeile bleibt, Hinweis „In der Zeile darunter meldet keine Prüfregel etwas“ |
+| RF9 | `/fmt` in einer Datei mit `indentSize` 4 | Routine wird mit vier Leerzeichen formatiert |
+
+## Absicherung per Schnellbefehl (#304)
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| AB1 | In `procedure P(const S: string; AObj: TObject; var X: Integer)` `/guard` | Nur `if not Assigned(AObj) then raise EArgumentNilException.Create('AObj');` am Anfang |
+| AB2 | `/guard` mit `Data: Pointer` und `AOnDone: TNotifyEvent` | Prüfung für `Data`, keine für das Ereignis; vorhandene Prüfungen werden nicht verdoppelt |
+| AB3 | `/raise EImport Datei fehlt` in einer Unit ohne `System.SysUtils` | `EImport = class(Exception)` vor der Routine, `System.SysUtils` im uses, `raise EImport.Create('Datei fehlt');` |
+| AB4 | `/raise EConvertError Wert %d ungültig` | `raise EConvertError.CreateFmt('Wert %d ungültig', []);` |
+| AB5 | `/exception EImportFehler : EBasis` im type-Abschnitt | `EImportFehler = class(EBasis);` |
+| AB6 | `slashCommands.logCall` = `Log.Error`, `/except` über zwei Anweisungen | `try … except on E: Exception do begin Log.Error(E.ClassName + ': ' + E.Message); raise; end; end;` |
+| AB7 | `/except` im interface-Teil oder ohne Anweisungen darunter | Zeile bleibt mit Hinweis |
+
+## Formatieren (#43)
+
+| Nr. | Schritt | Erwartet |
+|---|---|---|
+| FO1 | Unit mit falsch eingerückten Zeilen (begin/end, if/else ohne begin, try/finally, case, repeat, Klassenrumpf), Strg+Umschalt+Alt+F | Jede Ebene um `indentSize` eingerückt; Folgezeilen einer Anweisung behalten ihren Abstand; ein Rückgängig stellt alles wieder her |
+| FO2 | FO1 ein zweites Mal | Meldung „Atlas: Nichts zu formatieren.“, keine Änderung |
+| FO3 | Drei Zeilen markieren, Strg+Umschalt+Alt+F | Nur die markierten Zeilen ändern sich |
+| FO4 | Mehrzeiliger Kommentar, String mit Leerzeichen, asm-Block, `{$IFDEF} … {$ELSE} … {$ENDIF}` mit schiefer Einrückung im Zweig hinter `{$ELSE}` | Alles davon bleibt unverändert |
+| FO5 | `format.beginPlacement` = `newLine`, `if A then begin` | `begin` in eigener Zeile unter `if`; was hinter `begin` stand, eine Ebene tiefer in eigener Zeile |
+| FO6 | `format.beginPlacement` = `sameLine`, `begin` allein unter `if A then` | `if A then begin` in einer Zeile |
+| FO7 | `format.elsePlacement` = `newLine` bzw. `sameLine` | `end else` getrennt bzw. `end` und `else` zusammengezogen |
+| FO8 | `format.maxLineLength` = 80 (oder `max_line_length = 80` in `.editorconfig`), Aufruf mit vielen Argumenten über 100 Zeichen | Umbruch nach dem letzten passenden Komma, Folgezeile eine Ebene tiefer; Strings werden nie geteilt |
+| FO9 | `format.alignAssignments`, `alignDeclarations`, `alignComments` an | `:=`, Doppelpunkte bzw. `=` und Kommentare am Zeilenende untereinander stehender Zeilen stehen in einer Spalte; eine Leerzeile beendet die Gruppe |
+| FO10 | `format.reindent` = `false` | Einrückung bleibt, nur Tabs und Leerzeichen werden nach `indentSize`/`useTabs` umgerechnet |
+| FO11 | *Tools › Optionen › Atlas › Editor › Formatieren* aus | Menüeintrag, Palette und Taste fehlen; Kontextmenü meldet „ausgeschaltet“ |
+| FO12 | Mehrfachmarken an, Strg+D auf einem Wort | Mehrfachmarke wie bisher; Formatieren nur über die eigene Taste |
+
+## Projektgruppen und Packages (#46)
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| PG1 | Gruppe mit App.dproj und Kern.dproj, `uGemeinsam.pas` in beiden; App aktiv, `uGemeinsam` öffnen, *Atlas › Status* | Hover und Prüfungen mit den Symbolen von App; Status zeigt bei App „aktiv in der IDE“; Log „… gehört zu 2 Projekten; es gilt App (aktiv in der IDE)“ |
+| PG2 | In der Projektverwaltung Kern aktivieren, `uGemeinsam` erneut prüfen | Log meldet Kern (aktiv in der IDE); Status zeigt Kern als aktiv |
+| PG3 | `atlas.server.selectProject` mit `{"project": "Kern"}`, dann App aktivieren | Kern gilt weiter (ausgewählt); Antwort nennt `selected` und `active` |
+| PG4 | Server neu starten | Kern ist weiter ausgewählt; `{"project": ""}` hebt die Wahl auf, danach gilt wieder das aktive Projekt |
+| PG5 | `atlas.server.selectBuild` mit `{"config": "Release", "platform": "Win64"}` ohne IDE, Server neu starten | Status zeigt „Release/Win64 (gewählt)“ |
+| PG6 | Release aus der .dproj entfernen, Server neu starten | Warnung „gewählte Konfiguration oder Plattform gibt es nicht mehr“; es gelten die Vorgaben |
+| PG7 | `Kern.dproj` in derselben Gruppe öffnen | Gehört zu Kern, nicht zum ersten Projekt des Ordners |
+| PG8 | Package Werkzeuge.dpk: `contains uHaupt`, uHaupt verwendet uMathe (nicht in contains, kein requires liefert es) | Warnung `implicit-package-import` an `uHaupt` in der .dpk; Schnellkorrektur fügt `uMathe in 'uMathe.pas'` vor dem Semikolon ein |
+| PG9 | uMathe steht in Basis.dpk der Gruppe, `requires Basis` ergänzen | Warnung verschwindet; Units von Basis sind auflösbar (Hover, Gehe zu) |
+| PG10 | `requires rtl, vcl` und Units wie System.Classes oder Vcl.Forms | Keine Meldung (Bibliothek, rtl.dcp) |
+| PG11 | `requires Fremd` ohne Fremd.dpk und Fremd.dcp | Keine Meldung für Units, die Fremd liefern könnte |
+| PG12 | Unit nur in contains der .dpk, nicht als DCCReference in der .dproj | Unit ist im Index (Hover, Prüfungen wie andere Projekt-Units) |
+| PG13 | `"rules": {"implicit-package-import": "off"}` | Keine Meldung |
+
+## Prozesse am Projekt (#62)
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| PP1 | Gruppe in der IDE öffnen, *Atlas › Hilfe und Diagnose › Prozesse am Projekt…* | Titel „Atlas-Server für <Gruppe>“; Index-Cache als Hash-Ordner\Datei; ein LSP-Prozess mit „(dieser Prozess)“ |
+| PP2 | Während des ersten Aufbaus öffnen | Sperre nennt den eigenen Prozess mit Marke „schreibt“, Zustand „baut Index“; Protokoll „LSP: Cache-Sperre erhalten, Index wird aufgebaut“ |
+| PP3 | Claude Code mit `atlas-mcp` auf demselben Projekt starten, *Aktualisieren* | Zweiter Prozess MCP · Claude Code mit „liest Cache“; Fuß „Index nur einmal aufgebaut · N Units“ und „2 Prozesse“; Protokoll „MCP: Sperre belegt, lade Cache nur lesend“ |
+| PP4 | Nach dem Speichern des Index *Aktualisieren* | Stand „vor N s gespeichert · Format 17“; Protokoll „LSP: Index gespeichert (N Units)“, danach „MCP: Stand übernommen …“ |
+| PP5 | Unit in der IDE ändern, nicht speichern, *Aktualisieren* | Unter „Ungespeicherte Stände …“ die Datei mit „ungespeichert“ und beim MCP-Prozess „gespeicherter Stand“; Hinweis „Claude Code sieht den gespeicherten Stand, bis die IDE speichert.“ |
+| PP6 | Datei speichern, *Aktualisieren* | „Keine ungespeicherten Dateien.“ |
+| PP7 | Claude Code beenden (auch per Task-Manager), *Aktualisieren* | MCP-Prozess verschwindet; seine Datei in `<cache>.prozesse` ist gelöscht |
+| PP8 | Zwei IDEs auf derselben Gruppe | Zwei LSP-Zeilen; Protokoll mit Prozessnummer („LSP 4711: …“) |
+| PP9 | *Kopieren* | Zwischenablage enthält „## Prozesse am Projekt“ mit denselben Angaben |
+| PP10 | Server beenden, dann öffnen | Meldung, dass der Server nicht antwortet; kein Absturz |
+| PP11 | Optionen › Allgemein: „Menüeintrag „Prozesse am Projekt…““ aus | Eintrag fehlt im Menü |
+| PP12 | Fenster schließen, bevor die Antwort kommt (Server indexiert gerade) | Kein Fehler, die späte Antwort wird verworfen |
+
+## XMLDoc mit Abschnitten, auf- und zuklappbar (#770)
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| XD1 | Optionen › Editor: „XMLDoc beim Öffnen“ = immer aufgeklappt; Hover über eine Methode mit `<summary>`, zwei `<param>`, `<returns>`, `<exception>`, `<remarks>`, `<example>`, `<seealso>` | Beschreibung, dann PARAMETER, RÜCKGABE, AUSNAHMEN, HINWEISE, BEISPIEL je in Kapitälchen mit Linie bis zum Rand; SIEHE AUCH in einer Zeile mit den Verweisen; unten „Weniger anzeigen ▴“ |
+| XD2 | Methode `procedure P(const A: string; var B: Integer; out C)` mit `<param>` nur für A | Drei Zeilen in Signaturreihenfolge: „A · const string · Text“, „B · var Integer · nicht dokumentiert“ (kursiv, gedämpft), „C · out · nicht dokumentiert“ |
+| XD3 | `<param name="X">` für einen Parameter, den es nicht gibt | X steht als letzte Zeile in Warnfarbe |
+| XD4 | Funktion ohne `<returns>` | RÜCKGABE zeigt nur den Ergebnistyp in Schlüsselwortfarbe |
+| XD5 | Property mit `<value>` | WERT zeigt Typ und Text; bei Index-Properties stehen die Indizes unter PARAMETER |
+| XD6 | `<exception cref="EFoo">` mit bekanntem Fundort; Klick auf EFoo | Klasse in Fehlerfarbe; Klick zeigt EFoo, Strg+Klick springt hin |
+| XD7 | `<paramref name="A"/>` in der Beschreibung | A als Pille in Akzentfarbe auf zartem Akzentgrund; Markieren und Kopieren ergibt „A“ ohne Leerraum |
+| XD8 | `<example>` mit `<code>` | Code auf schattierter, gerahmter Fläche, eingefärbt; lange Zeilen brechen eingerückt um |
+| XD9 | Einstellung „immer zugeklappt“, Hover wie XD1 | Nur Beschreibung und „Mehr anzeigen ▾   2 Parameter · Rückgabe · 1 Ausnahme · Hinweis · Beispiel · Siehe auch“, „1 Ausnahme“ in Fehlerfarbe |
+| XD10 | In XD9 auf „Mehr anzeigen ▾“ klicken | Alle Abschnitte erscheinen, der Tooltip wächst nach unten; am unteren Bildschirmrand bzw. über dem Wort wächst er nach oben |
+| XD11 | „Weniger anzeigen ▴“ | Wieder zugeklappt, der Tooltip schrumpft |
+| XD12 | Einstellung „wie zuletzt“: im Tooltip aufklappen, nächsten Hover öffnen; danach das Detailpanel der Vervollständigung öffnen | Nächster Tooltip aufgeklappt; das Detailpanel startet zugeklappt (eigener Zustand); nach dem IDE-Neustart beide zugeklappt |
+| XD13 | Detailpanel: „Mehr anzeigen ▾“ klicken, dann „Weniger anzeigen ▴“ | Panel wächst, beim Zuklappen schrumpft das Popup wieder |
+| XD14 | Doku nur mit `<summary>` | Kein Schalter, auch bei Parametern in der Signatur |
+| XD15 | Parameter-Hint in einem Aufruf mit dokumentiertem und undokumentiertem Parameter | Unten PARAMETER mit Linie, darunter Name und Beschreibung bzw. „nicht dokumentiert“ (kursiv), darunter gedämpft die Beschreibung der Methode |
+| XD16 | Alte Einstellungen mit `"hints": {"xmlDocFull": false}` in settings.json, IDE starten | Optionen zeigen „immer zugeklappt“; nach dem Speichern steht `xmlDocExpand` in settings.json, `xmlDocFull` bleibt unverändert |
+| XD17 | `atlas.json` des Projekts mit `"hints": {"xmlDocExpand": "expanded"}` | Gilt für dieses Projekt vor der Einstellung des Plugins; mit `"xmlDocFull": true` meldet der Server eine Warnung „veraltet“ |
+| XD18 | Einstellungen exportieren und in einer älteren Datei mit `"hints.xmlDocFull": true` importieren | Vorschau zeigt `hints.xmlDocExpand` = „expanded“ als übernommen |
+
+## uses-Vervollständigung mit Gruppen und Hinweisen (#469)
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| UC1 | Projekt mit uGeneratorBeleg; im interface-Teil `uses System.SysUtils, Gener` tippen | Liste mit den Überschriften Projekt (uGeneratorBeleg), RTL/VCL (System.Generics.Collections, System.Generics.Defaults), Drittanbieter (z. B. Spring.Collections.Generic); System.SysUtils fehlt |
+| UC2 | Wie UC1, Fußzeile ansehen | Links „System.SysUtils ist schon eingebunden und fehlt hier“, rechts „n von m“ |
+| UC3 | `uses System.SysUtils, Sys` | System.SysUtils fehlt, Fußzeile nennt nur System.SysUtils; bei mehr als drei eingebundenen Units ohne Treffer „X, Y und n weitere …“ |
+| UC4 | Projekt mit Unit-Namespaces System und Vcl; `Classes` tippen und Enter | Eintrag System.Classes; eingefügt wird `System.Classes`, „Classes“ ist ersetzt |
+| UC5 | `System.Gen` tippen und System.Generics.Collections wählen | Ersetzt wird ab „System.“, kein doppelter Namespace |
+| UC6 | System.Generics.Defaults steht im implementation-Teil; im interface-Teil `Gener` tippen | System.Generics.Defaults trägt rechts gedämpft „bereits im implementation-Teil“, das Detailpanel denselben Hinweis kursiv |
+| UC7 | uGeneratorBeleg bindet die aktuelle Unit im interface-Teil ein; im interface-Teil `uGen` tippen | Marke „Zirkelbezug“ in Fehlerfarbe; Detailpanel „uGeneratorBeleg bindet diese Unit im interface-Teil ein“ in Fehlerfarbe |
+| UC8 | Kette uMitte → uZwei → aktuelle Unit (je im interface-Teil); im interface-Teil `uMit` | „Zirkelbezug“; Detailpanel „uMitte bindet diese Unit über uZwei im interface-Teil ein“ |
+| UC9 | Wie UC7, aber im implementation-Teil tippen | Keine Marke „Zirkelbezug“ |
+| UC10 | System.Generics.Collections markieren | Detailpanel: „unit System.Generics.Collections“, gedämpft `$(BDS)\source\rtl\common\System.Generics.Collections.pas`, darunter EXPORTIERTE TYPEN mit `TList<T> · TObjectList<T> · …` (höchstens sechs, „· …“ bei mehr) |
+| UC11 | Die eigene Unit im uses tippen | Sie erscheint nicht |
+| UC12 | Einstellung `completion.usesDetails` aus; UC1 wiederholen | Schlichte Liste aller Units ohne Überschriften, Marken und Fußzeilenhinweis; System.SysUtils erscheint wieder |
+| UC13 | Oberfläche auf Englisch | Überschriften Project, RTL/VCL, Third party; Fußzeile „… is already used and not listed“; Marke „Circular reference“ |
+
+## Komponenten-Hover als Tabelle (#110)
+
+Voraussetzung: VCL-Quellen über die Bibliothekspfade im Index, Atlas-Tooltip an.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| PM1 | Maus über `TButton` | Zusammenfassung „published: n Properties · m Ereignisse“, Umschalter „geerbte“ (an) und „nur mit default“ (aus), darunter PROPERTIES ▾ als Tabelle Name, Typ, Vorgabe, deklariert in (rechtsbündig) |
+| PM2 | Wie PM1, „geerbte“ anklicken | Nur Mitglieder, die TButton selbst deklariert; Zähler bleiben; erneuter Klick zeigt wieder alle |
+| PM3 | „nur mit default“ anklicken | Nur Properties mit Vorgabe (explizit, implizit oder nodefault); Ereignisse bleiben |
+| PM4 | Property ohne Angabe vom Typ Boolean | Vorgabe `False` mit gerahmter Marke „implizit“ |
+| PM5 | Property mit `nodefault` bzw. `stored False` | Spalte Vorgabe „nodefault“ bzw. „… stored False“ |
+| PM6 | Mehr als sieben Properties | „+ n weitere Properties“; Klick zeigt alle, der Tooltip wächst |
+| PM7 | Eigene Klasse mit `TMeinRueckruf = procedure(Sender: TObject) of object` published | Unter EREIGNISSE mit „(of object)“, Notiz „erkannt am Methodenzeiger-Typ, nicht am Namen“ |
+| PM8 | Klick auf PROPERTIES ▾ bzw. EREIGNISSE ▾ | Abschnitt klappt zu (▸), zweiter Klick auf |
+| PM9 | Maus über `TWinControl` | Block ARRAY-PROPERTY „Controls[Index: Integer]“ mit Marke „Standard-Property“ und Notiz „„default“ heißt hier nicht Vorgabewert“ |
+| PM10 | Im Tooltip Strg+C (ohne Auswahl) | Zwischenablage: Klassenname, dann je Zeile Name, Typ, Vorgabe, deklariert in (Tabulatoren), Properties vor Ereignissen, mit den gesetzten Filtern |
+| PM11 | Fußzeile ansehen | „Liste kopieren“ statt „Deklaration kopieren“, Hinweis „geerbte aus der VCL nur mit VCL-Quellen im Index“ |
+| PM12 | `hints.publishedMembers` aus | Keine Mitgliederliste, weder im Tooltip noch im Markdown-Hover |
+| PM13 | Oberfläche auf Englisch | „published: n properties · m events“, Umschalter „inherited“, „only with default“ |
+
+## inherited mit Parametern (#482)
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| IP1 | In `constructor TLogView.Create(AOwner: TComponent)` (Vorfahr TForm) `inherited ` tippen | Erster Eintrag `Create(AOwner)` mit Marke „gleiche Parameter“; Enter ergibt `inherited Create(AOwner);` (**Abnahme**) |
+| IP2 | Wie IP1, Liste ansehen | Danach `CreateNew(AOwner, Dummy)` mit Marke TCustomForm und weitere Konstruktoren der Vorfahren mit ihrer Klasse |
+| IP3 | In `destructor TLogView.Destroy` `inherited ` | `Destroy` zuerst, danach andere Destruktoren der Vorfahren, keine Konstruktoren |
+| IP4 | In `function TLogView.FormatZeile(const AText: string; ALevel: Integer): string` auf leerer Zeile `inherited ` und Enter | `Result := inherited FormatZeile(AText, ALevel);`; die Überladung `FormatZeile(AText)` steht darunter mit Marke „Überladung“ |
+| IP5 | Wie IP4, aber `S := inherited ` | Kein `Result := `, nur der Aufruf |
+| IP6 | Text hinter dem Cursor in der Zeile, etwa `inherited | + 'x';` | Kein Semikolon am Aufruf |
+| IP7 | Vorfahrmethode `procedure Zeichnen; virtual; abstract;`, in `TLogView.Zeichnen` `inherited ` | Kein Eintrag für Zeichnen (**Abnahme**) |
+| IP8 | Wie IP1, wenn ein Vorfahr eine abstrakte Methode hat | Die abstrakte fehlt auch unter den Namen; Fußzeile „TBaseView.Zeichnen ist abstrakt und fehlt“ |
+| IP9 | Parameter mit anderem Namen, aber gleichem Typ (`Besitzer: TComponent`) | `Create(Besitzer)` |
+| IP10 | `completion.inheritedCall` aus | Nur die Namen der Vorfahrmethoden wie bisher, kein Aufruf mit Argumenten |
+| IP11 | Oberfläche auf Englisch | Marken „same parameters“, „overload“; Fußzeile „… is abstract and not listed“ |
+
+## Property aus Getter und Setter (#682)
+
+Voraussetzung: Server läuft; Einstellungen auf Vorgabe; Unit `Panels.pas` mit `TPanel = class private FCaption: string; public function GetCaption: string; procedure SetCaption(const AValue: string); end;`, Getter `Result := FCaption;`, und zwei Units, die `Panel.SetCaption('Bereit')` und `S := Panel.GetCaption` aufrufen.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| PA1 | Glühbirne auf `GetCaption` | „Property Caption anlegen“ und „Property Caption anlegen und Aufrufe umstellen“ |
+| PA2 | „Property Caption anlegen“ | Vorschau mit einer Änderung in Panels.pas; nach „Anlegen“ steht `property Caption: string read FCaption write SetCaption;` am Ende des public-Abschnitts; kompiliert (**Abnahme**) |
+| PA3 | Wie PA2, Getter liefert `FCaption + '!'` | `read GetCaption` statt `read FCaption` |
+| PA4 | „… und Aufrufe umstellen“ | Vorschau über drei Dateien; `Panel.Caption := 'Bereit'` und `S := Panel.Caption`; Strg+Z in jeder Datei nimmt deren Änderungen in einem Schritt zurück (**Abnahme**) |
+| PA5 | Zusätzlich `Hook(Panel.GetCaption)` mit Parameter vom Typ `function: string of object` und `@Panel.GetCaption` | Beide Stellen bleiben, die Vorschau nennt sie als Methodenzeiger |
+| PA6 | `function GetItem(AIndex: Integer): TObject;` und `procedure SetItem(AIndex: Integer; const AValue: TObject);` | `property Items[AIndex: Integer]: TObject read GetItem write SetItem;`; Aufrufe `L.GetItem(1)` → `L.Items[1]`, `L.SetItem(1, X)` → `L.Items[1] := X` |
+| PA7 | `function IsEmpty: Boolean;` | „Property Empty anlegen“ mit `read IsEmpty`; `function IsName: string` bietet nichts an |
+| PA8 | Glühbirne auf der Kopfzeile `TPanel = class` mit zwei fehlenden Properties | „Fehlende Properties anlegen (2)“ legt beide an |
+| PA9 | `"propertyFromAccessorsPrefixes": ["Read", "Write"]`, Methoden `ReadSize`/`WriteSize` | „Property Size anlegen“; `GetCaption` bietet nichts mehr an |
+| PA10 | `"propertyFromAccessorsSection": "published"` | Die Property steht in einem neuen published-Abschnitt vor `end` |
+| PA11 | `"propertyFromAccessorsHideAccessors": "private"`, PA4 wiederholen | `SetCaption` wandert in den private-Abschnitt (nur noch über die Property benutzt); `GetCaption` bleibt public, wenn es noch als Methodenzeiger benutzt wird, mit Hinweis in der Vorschau |
+| PA12 | `"propertyFromAccessorsReplaceCalls": "never"` bzw. `"always"` | Nur „Property Caption anlegen“ bzw. nur „… und Aufrufe umstellen“ |
+| PA13 | `"refactoring": {"propertyFromAccessors": false}` in atlas.json | Keine der Aktionen mehr (**Abnahme**) |
+
+## Forward-Deklaration ergänzen (#685)
+
+Voraussetzung: Server läuft; Einstellungen auf Vorgabe; neue Unit `Tree.pas`.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| FD1 | `type` mit `TTree = class FRoot: TNode; end;` und darunter `TNode = class FTree: TTree; end;` | `TNode` in `TTree` rot unterstrichen: „"TNode" wird in TTree benutzt, bevor es deklariert ist (type-used-before-declaration)“, ohne Compilerlauf |
+| FD2 | Glühbirne an `TNode`, „Forward-Deklaration ergänzen“ | `  TNode = class;` als erste Zeile des type-Blocks; Meldung weg; Strg+Z nimmt es in einem Schritt zurück; Kompilieren ohne E2003 (**Abnahme**) |
+| FD3 | Dasselbe mit `IBaum`/`IKnoten = interface` und mit `TKnoten<T> = class` | `IKnoten = interface;` bzw. `TKnoten<T> = class;` |
+| FD4 | `TTree`, dann `const Max = 3;`, dann ein zweites `type` mit `TNode` | Glühbirne „type-Blöcke zusammenlegen“: der const-Abschnitt steht vor `type`, das zweite `type` fehlt, `TNode = class;` am Blockanfang; parst und kompiliert |
+| FD5 | Wie FD4, aber dazwischen `var Baum: TTree;` | Meldung endet mit „(keine Korrektur: der var-Abschnitt zwischen den type-Blöcken braucht TTree)“, keine Glühbirne |
+| FD6 | `TLinie = class FStart: TPunkt; end;` und danach `TPunkt = record X, Y: Integer; end;` | „Deklaration nach oben verschieben“: der Record steht vor `TLinie` |
+| FD7 | Wie FD6, dazwischen `TWert = Integer;` und im Record `X: TWert;` | Begründung „TPunkt braucht TWert, das davor deklariert ist“, keine Korrektur |
+| FD8 | `TNode = class;` ohne Verwendung vor `TNode = class … end;` | Hinweis „Die Forward-Deklaration von "TNode" wird nicht gebraucht …“ (unneeded-forward-declaration); „Forward-Deklaration entfernen“ löscht die Zeile; „Alle sicheren Korrekturen“ ebenso |
+| FD9 | Forward-Deklaration unterhalb des ersten Verwenders | „Forward-Deklaration nach oben verschieben“; kein Hinweis „überflüssig“ |
+| FD10 | `PNode = ^TNode;` vor `TNode = record`, Vorfahr `class(TBar)` mit `TBar` weiter unten | Keine Meldung dieser Regeln (der Vorfahr meldet der Compiler) |
+| FD11 | `"refactoring": {"forwardDeclaration": false}` in atlas.json | Keine Meldungen und Glühbirnen beider Regeln mehr (**Abnahme**) |
+
+## Gleiche Namen aus verschiedenen Units (#475)
+
+Voraussetzung: `uses Winapi.Windows, Vcl.Graphics;`, VCL- und RTL-Quellen im Index.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| GN1 | Im Rumpf `Bild := TBitm` tippen | `TBitmap` mit Marke „aktiv“ und rechts Vcl.Graphics, direkt darunter `TBitmap` aus Winapi.Windows, danach TBitmapImage (**Abnahme**) |
+| GN2 | Die Variante aus Winapi.Windows wählen, Enter | Eingefügt wird `Winapi.Windows.TBitmap`, die uses bleiben (**Abnahme**) |
+| GN3 | Fußzeile ansehen | „FMX.Graphics.TBitmap ausgeblendet“; die FMX-Variante steht nicht in der Liste (**Abnahme**) |
+| GN4 | Detailpanel der Variante aus Winapi.Windows | DEKLARIERT IN: „Vcl.Graphics · aktiv · letzte Unit in den uses“, „Winapi.Windows · diese Variante“ (fett), „FMX.Graphics.TBitmap · ausgeblendet“; darunter „nicht aktiv · Enter fügt den Unit-Präfix ein“ |
+| GN5 | `completion.sameNameInsert` = `uses`; GN2 wiederholen | Eingefügt wird `TBitmap`, Winapi.Windows wandert in der uses-Liste hinter Vcl.Graphics; das Detailpanel warnte vorher in Warnfarbe, dass andere Stellen ihre Bedeutung ändern können |
+| GN6 | Wie GN5, aber Winapi.Windows im interface-, Vcl.Graphics im implementation-uses | Kein Verschieben, Enter fügt den Präfix ein |
+| GN7 | `completion.showFmxUnits` an | `TBitmap` aus FMX.Graphics erscheint; Enter fügt `FMX.Graphics.TBitmap` ein und ergänzt FMX.Graphics in den uses (Warnung im Panel) |
+| GN8 | `completion.sameNameVariants` aus | Nur `TBitmap` aus Vcl.Graphics, ohne „aktiv“, keine Fußzeile zu FMX (**Abnahme**) |
+| GN9 | Oberfläche auf Englisch | Marke „active“, „Declared in“, „… hidden“ |

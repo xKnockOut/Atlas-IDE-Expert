@@ -28,7 +28,6 @@ interface
 uses
   System.SysUtils,
   System.Classes,
-  System.JSON,
   Vcl.ExtCtrls,
   Atlas.Core.Status.Contract,
   Atlas.Core.Status.Registry,
@@ -48,8 +47,8 @@ type
     StatusJson: TFunc<string>;
     /// <summary>Server starten (False) bzw. neu starten (True); True, wenn er läuft.</summary>
     StartServer: TFunc<Boolean, Boolean>;
-    /// <summary>Befehl an den laufenden Server; Ergebnis gehört dem Aufrufer, nil ohne Server.</summary>
-    ServerCommand: TFunc<string, TJSONValue>;
+    /// <summary>Befehl an den Server im Hintergrund abschicken (#874); False ohne Server.</summary>
+    ServerCommand: TFunc<string, Boolean>;
     /// <summary>Pfad der AtlasServer.exe nach den Einstellungen ('' ohne Haken; A-09: statt Import des
     /// Code Insight-Managers).</summary>
     ServerPath: TFunc<string>;
@@ -262,17 +261,9 @@ begin
 end;
 
 function TIdeEnvironment.RebuildIndex: Boolean;
-var
-  Answer: TJSONValue;
 begin
-  Answer := nil;
-  if Assigned(FHooks.ServerCommand) then
-    Answer := FHooks.ServerCommand(TAtlasSetupChecklist.RebuildCommand);
-  try
-    Result := Answer <> nil;
-  finally
-    Answer.Free;
-  end;
+  // Abschicken genügt (#874): Auf die Antwort zu warten hielte die IDE an, solange der Server indexiert.
+  Result := Assigned(FHooks.ServerCommand) and FHooks.ServerCommand(TAtlasSetupChecklist.RebuildCommand);
 end;
 
 function TIdeEnvironment.SetErrorInsight(AEnabled: Boolean): Boolean;

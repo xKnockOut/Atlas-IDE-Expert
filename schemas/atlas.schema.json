@@ -498,6 +498,37 @@
           "x-experimental": true,
           "x-issue": "#491"
         },
+        "usesDetails": {
+          "type": "boolean",
+          "default": true,
+          "description": "Im uses-Abschnitt: schon eingebundene Units ausblenden (die Fußzeile nennt sie), Units nach Projekt, RTL/VCL und Drittanbietern gruppieren, Kurzformen auf den Namespace ergänzen (Classes → System.Classes), Units aus dem anderen Abschnitt mit „bereits im interface-Teil“ bzw. „… implementation-Teil“ und im interface-Teil Units mit Zirkelbezug markieren; im Detailpanel Pfad und die ersten exportierten Typen. Aus: alle Units des Index als schlichte Liste.",
+          "x-issue": "#469"
+        },
+        "inheritedCall": {
+          "type": "boolean",
+          "default": true,
+          "description": "Nach „inherited “ zuerst den vollständigen Aufruf der gleichnamigen Vorfahrmethode mit den Parametern der eigenen Methode anbieten (Marke „gleiche Parameter“), dann ihre übrigen Überladungen, in Konstruktoren und Destruktoren auch die übrigen Konstruktoren bzw. Destruktoren der Vorfahren. Abstrakte Vorfahrmethoden fehlen, die Fußzeile nennt sie. In Funktionen ergänzt die Übernahme „Result := “, wenn vor inherited nichts in der Zeile steht. Aus: nur die Namen der Vorfahrmethoden.",
+          "x-issue": "#482"
+        },
+        "sameNameVariants": {
+          "type": "boolean",
+          "default": true,
+          "description": "Kommt ein Name in mehreren Units vor, jede Variante mit ihrer Unit zeigen; die Variante, die der Compiler nach den uses wählt (letzte Unit gewinnt), steht zuerst mit „aktiv“, das Detailpanel nennt alle Units, die den Namen deklarieren. Aus: nur die aktive Variante.",
+          "x-issue": "#475"
+        },
+        "sameNameInsert": {
+          "type": "string",
+          "enum": ["prefix", "uses"],
+          "default": "prefix",
+          "description": "Übernahme einer nicht aktiven Variante: prefix fügt den Unit-Präfix ein (Vcl.Graphics.TBitmap), uses verschiebt die Unit in ihrer uses-Liste nach hinten bzw. ergänzt sie; das Detailpanel warnt dann, dass andere Stellen ihre Bedeutung ändern können.",
+          "x-issue": "#475"
+        },
+        "showFmxUnits": {
+          "type": "boolean",
+          "default": false,
+          "description": "Varianten aus FireMonkey-Units (FMX.*) zeigen. Aus: Die Fußzeile nennt sie als ausgeblendet.",
+          "x-issue": "#475"
+        },
         "nameSuggestions": {
           "type": "boolean",
           "default": true,
@@ -508,7 +539,7 @@
       "x-area": "completion",
       "x-page": "Vervollständigung",
       "x-control": "Auswahl",
-      "x-issue": "#31, #188, #229, #450, #452, #466, #467, #473, #480, #489, #490"
+      "x-issue": "#31, #188, #229, #450, #452, #466, #467, #469, #473, #475, #480, #482, #489, #490"
     },
     "refactoring": {
       "type": "object",
@@ -544,6 +575,52 @@
           "default": true,
           "description": "Weichen Deklaration und Implementierung voneinander ab, die Aktionen „Implementierung an Deklaration angleichen“ und umgekehrt anbieten.",
           "x-issue": "#100"
+        },
+        "forwardDeclaration": {
+          "type": "boolean",
+          "default": true,
+          "description": "Typen, die im type-Abschnitt vor ihrer Deklaration benutzt werden, melden und „Forward-Deklaration ergänzen“, „type-Blöcke zusammenlegen“ bzw. „Deklaration nach oben verschieben“ anbieten; überflüssige Forward-Deklarationen melden.",
+          "x-issue": "#685"
+        },
+        "propertyFromAccessors": {
+          "type": "boolean",
+          "default": true,
+          "description": "Code-Aktionen „Property X anlegen“ auf einer Zugriffsmethode und „Fehlende Properties anlegen (n)“ auf der Kopfzeile einer Klasse: Zu Methoden wie GetX/SetX (auch indiziert, IsX/HasX für Boolean) ohne Property X legt Atlas die Property an, mit read FX, wenn der Getter nur das Feld liefert. Vorschau vor dem Übernehmen.",
+          "x-issue": "#682"
+        },
+        "propertyFromAccessorsPrefixes": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": ["Get", "Set", "Is", "Has"],
+          "description": "Präfixe der Zugriffsmethoden. Is und Has gelten nur für Getter mit Ergebnis Boolean, Get nur für Getter, Set nur für Setter, eigene Präfixe für beide.",
+          "x-control": "Liste",
+          "x-issue": "#682"
+        },
+        "propertyFromAccessorsReplaceCalls": {
+          "type": "string",
+          "enum": ["ask", "always", "never"],
+          "default": "ask",
+          "description": "Aufrufe im ganzen Projekt auf die Property umstellen (X.GetCaption → X.Caption, X.SetCaption(V) → X.Caption := V); Übergaben als Methodenzeiger bleiben. ask: beide Aktionen anbieten, mit und ohne Umstellen; always: immer umstellen; never: nie.",
+          "x-control": "Auswahl",
+          "x-issue": "#682"
+        },
+        "propertyFromAccessorsSection": {
+          "type": "string",
+          "enum": ["accessor", "public", "published"],
+          "default": "accessor",
+          "description": "Abschnitt der neuen Property: accessor wie die sichtbarste Zugriffsmethode, public bzw. published mindestens dort.",
+          "x-control": "Auswahl",
+          "x-issue": "#682"
+        },
+        "propertyFromAccessorsHideAccessors": {
+          "type": "string",
+          "enum": ["off", "private", "protected"],
+          "default": "off",
+          "description": "Zugriffsmethoden nach dem Anlegen nach private bzw. protected verschieben, wenn sie danach außerhalb ihrer Klasse nicht mehr benutzt werden (virtuelle und überschriebene bleiben). off: nie.",
+          "x-control": "Auswahl",
+          "x-issue": "#682"
         },
         "tryFinally": {
           "type": "boolean",
@@ -634,7 +711,7 @@
       "x-scope": "project",
       "x-page": "Vervollständigung",
       "x-control": "Kontrollkästchen",
-      "x-issue": "#42, #50, #100, #188, #453, #472"
+      "x-issue": "#42, #50, #100, #188, #453, #472, #682, #685"
     },
     "usesCommand": {
       "type": "boolean",
@@ -726,6 +803,36 @@
           "default": "Eigene",
           "description": "Palettenseite, auf der /component die neue Komponente mit RegisterComponents einträgt.",
           "x-issue": "#299"
+        },
+        "todoOwner": {
+          "type": "string",
+          "default": "",
+          "description": "Name hinter -o, den /todo einträgt. Leer: user.name aus der git-Konfiguration (Repository, dann Benutzerordner), sonst der Anmeldename. /todo -oName in der Zeile geht vor.",
+          "x-issue": "#297"
+        },
+        "todoCategory": {
+          "type": "string",
+          "default": "",
+          "description": "Kategorie hinter -c, die /todo einträgt. Leer: keine. /todo -cKategorie in der Zeile geht vor.",
+          "x-issue": "#297"
+        },
+        "sortUsesRemoveUnused": {
+          "type": "boolean",
+          "default": true,
+          "description": "/sortuses streicht auch ungenutzte Units laut Index. Units mit initialization oder finalization und die aus usesKeep bleiben.",
+          "x-issue": "#297"
+        },
+        "enumHelper": {
+          "type": "boolean",
+          "default": true,
+          "description": "/helper für eine Aufzählung legt die Namenstabelle cNames sowie ToString und FromString an. Aus: ein leerer record helper wie bei anderen Typen.",
+          "x-issue": "#875"
+        },
+        "setHelper": {
+          "type": "boolean",
+          "default": true,
+          "description": "/helper für eine Menge (set of) legt Contains, ToText, Toggle und All an. Aus: ein leerer record helper wie bei anderen Typen.",
+          "x-issue": "#875"
         }
       },
       "x-scope": "global",
@@ -994,14 +1101,20 @@
       "description": "Anzeige von XMLDoc-Kommentaren (///) im Hover-Tooltip und im Detailpanel der Vervollständigung des IDE-Plugins. Der Server bereitet die Doku immer vollständig auf; die Werte steuern nur die Anzeige. Ohne Angabe gelten die Werte aus Tools › Optionen › Drittanbieter › Atlas.",
       "additionalProperties": false,
       "properties": {
+        "xmlDocExpand": {
+          "type": "string",
+          "enum": [
+            "collapsed",
+            "last",
+            "expanded"
+          ],
+          "default": "last",
+          "description": "XMLDoc beim Öffnen (#770): \"collapsed\" zeigt nur Deklaration, Summary und „Mehr anzeigen“, \"last\" wie zuletzt in dieser Sitzung (getrennt für Tooltip und Detailpanel, nach dem Neustart zugeklappt), \"expanded\" alle Abschnitte mit Überschrift (Parameter, Rückgabe, Ausnahmen, Hinweise, Beispiel …).",
+          "x-plugin": "XmlDocExpand"
+        },
         "xmlDocFull": {
           "type": "boolean",
-          "default": true,
-          "description": "XMLDoc vollständig und formatiert zeigen (alle Abschnitte, Verweise, Listen, Code). false: Kurzform wie bisher (Beschreibung auf 4 Zeilen, Bemerkungen auf 3 Zeilen gekürzt).",
-          "x-quickToggle": true,
-          "x-plugin": "XmlDocFull",
-          "x-caption": "XMLDoc vollständig",
-          "x-captionEn": "Full XMLDoc"
+          "description": "Veraltet (#770), ersetzt durch xmlDocExpand: true wirkt wie \"expanded\", false wie \"collapsed\", solange xmlDocExpand fehlt."
         },
         "xmlDocMaxLines": {
           "type": "integer",
@@ -1009,6 +1122,12 @@
           "maximum": 50,
           "default": 0,
           "description": "Höchstzahl der Doku-Zeilen, bevor der Inhalt mit dem Mausrad scrollt (0 = unbegrenzt, nur durch Bildschirm bzw. Popup begrenzt)."
+        },
+        "publishedMembers": {
+          "type": "boolean",
+          "default": true,
+          "description": "Hover über einer Komponentenklasse (#110): published-Properties und Ereignisse samt geerbter in Tabellen mit Typ, Vorgabe (default, implizit, nodefault, stored) und deklarierender Klasse, Filter für geerbte und nur mit Vorgabe, die Standard-Property einer Array-Property und „Liste kopieren“ mit Strg+C. Aus: nur Deklaration, Doku und Vererbung.",
+          "x-issue": "#110"
         }
       },
       "x-scope": "global",
@@ -1016,6 +1135,30 @@
       "x-page": "Hints",
       "x-control": "Kontrollkästchen, Zahlenfeld",
       "x-issue": "#654"
+    },
+    "directives": {
+      "type": "object",
+      "description": "Hilfen in Compiler-Direktiven: Vervollständigung und Hover für Direktiven wie {$R+} oder {$WARN …} und für bedingte Symbole in {$IFDEF}, {$IFNDEF}, {$IF Defined(…)}, {$DEFINE} und {$UNDEF}.",
+      "additionalProperties": false,
+      "properties": {
+        "completion": {
+          "type": "boolean",
+          "default": true,
+          "description": "In {$ die Direktivennamen, nach {$WARN die Warnungsbezeichner und nach {$IFDEF, {$IFNDEF, {$DEFINE, {$UNDEF und in Defined( die bedingten Symbole vorschlagen, jeweils mit Herkunft (Konfiguration, Plattform, Compiler-Vorgabe, {$DEFINE} mit Zeile).",
+          "x-issue": "#102"
+        },
+        "hover": {
+          "type": "boolean",
+          "default": true,
+          "description": "Hover über Schaltern wie {$R+} erklärt die Direktive mit DocWiki-Link; über {$IFDEF X} und Co. nennt er, ob X an dieser Stelle aktiv ist und wo es definiert wird (Projekt, Konfiguration und Plattform aus der .dproj, Compiler-Vorgabe, {$DEFINE} mit Datei und Zeile, auch aus Include-Dateien).",
+          "x-issue": "#102"
+        }
+      },
+      "x-scope": "global",
+      "x-area": "editor",
+      "x-page": "Editor",
+      "x-control": "Kontrollkästchen",
+      "x-issue": "#102"
     },
     "stringLiteral": {
       "type": "object",
@@ -1229,6 +1372,53 @@
             "crlf"
           ],
           "description": "Zeilenenden vereinheitlichen; ohne Angabe bleiben sie."
+        },
+        "reindent": {
+          "type": "boolean",
+          "default": true,
+          "description": "Zeilen nach der Blockstruktur einrücken (begin/end, try, case, repeat, Abschnitte). Ausgeschaltet bleibt die vorhandene Einrückung und nur Tabs und Leerzeichen werden umgerechnet."
+        },
+        "beginPlacement": {
+          "type": "string",
+          "enum": [
+            "preserve",
+            "newLine",
+            "sameLine"
+          ],
+          "default": "preserve",
+          "description": "begin nach then, else und do: wie vorhanden, in einer eigenen Zeile oder in derselben Zeile."
+        },
+        "elsePlacement": {
+          "type": "string",
+          "enum": [
+            "preserve",
+            "newLine",
+            "sameLine"
+          ],
+          "default": "preserve",
+          "description": "else nach end: wie vorhanden, in einer eigenen Zeile oder in derselben Zeile (end else)."
+        },
+        "maxLineLength": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 1000,
+          "default": 0,
+          "description": "Längere Zeilen nach einem Komma oder vor einem Operator umbrechen; 0 = nie. Gesetzt hat es Vorrang vor max_line_length aus .editorconfig."
+        },
+        "alignAssignments": {
+          "type": "boolean",
+          "default": false,
+          "description": ":= untereinander stehender Zuweisungen ausrichten."
+        },
+        "alignDeclarations": {
+          "type": "boolean",
+          "default": false,
+          "description": "Doppelpunkte bzw. = untereinander stehender Deklarationen (var, const, Felder, Parameter) ausrichten."
+        },
+        "alignComments": {
+          "type": "boolean",
+          "default": false,
+          "description": "Kommentare am Zeilenende untereinander stehender Zeilen ausrichten."
         }
       },
       "x-scope": "project",

@@ -71,6 +71,8 @@ type
     [Test]
     procedure AnnouncementNamesKindPositionAndDetail;
     [Test]
+    procedure TagTextNamesStatesInWords;
+    [Test]
     procedure TyposAppearUnderDidYouMean;
     [Test]
     procedure CommitTextKeepsTypedCaseWhenOff;
@@ -419,6 +421,17 @@ begin
   Assert.AreEqual('Hängt S an.', Details.Doc.Sections[0].Text);
   Assert.IsTrue(Details.Display.Known);
   Assert.AreEqual(20, Details.Display.MaxLines);
+  Assert.IsFalse(Details.IsHelper);
+  // Mitglied eines Helpers (#456).
+  Response := TJSONObject.ParseJSONValue('{"label":"Trim","data":{"atlas":{"declaration":"function Trim: string;",' +
+    '"unit":"System.SysUtils","container":"TStringHelper","helper":true}}}');
+  try
+    Details := TAtlasServerCompletionProvider.DetailsFromLsp(Response);
+  finally
+    Response.Free;
+  end;
+  Assert.IsTrue(Details.IsHelper);
+  Assert.AreEqual('TStringHelper', Details.Container);
   // Andere Server: detail und documentation.
   Response := TJSONObject.ParseJSONValue('{"label":"X","detail":"X: Integer","documentation":{"value":"Doku"}}');
   try
@@ -791,6 +804,19 @@ begin
     TAtlasItemPresentation.Announcement(Item, 'Methode', '%d von %d', 3, 12));
   Item.Signature := '';
   Assert.AreEqual('ShowMessage, 1 von 1.', TAtlasItemPresentation.Announcement(Item, '', '%d von %d', 1, 1));
+end;
+
+procedure TAtlasMatchingBudgetTests.TagTextNamesStatesInWords;
+var
+  Item: TAtlasCompletionItem;
+begin
+  Item := Default(TAtlasCompletionItem);
+  Item.Name := 'AddPair';
+  Assert.AreEqual('', TAtlasItemPresentation.TagText(Item));
+  Item.Directives := ['deprecated'];
+  Item.IsHelper := True;
+  Assert.AreEqual('deprecated, Helper', TAtlasItemPresentation.TagText(Item));
+  Item.Directives := nil;
 end;
 
 procedure TAtlasMatchingBudgetTests.CommitTextFixesCase;

@@ -168,6 +168,7 @@
         <DCCReference Include="Source\Core\Projects\Atlas.Core.Projects.PathCheck.pas"/>
         <DCCReference Include="Source\Core\Projects\Atlas.Core.Projects.Setup.pas"/>
         <DCCReference Include="Source\Core\UnitSearch\Atlas.Core.UnitSearch.Model.pas"/>
+        <DCCReference Include="Source\Core\UnitSearch\Atlas.Core.UnitSearch.Sections.pas"/>
         <DCCReference Include="Source\Core\UnitSearch\Atlas.Core.UnitSearch.State.pas"/>
         <DCCReference Include="Source\Core\UnitSearch\Atlas.Core.UnitSearch.Sections.pas"/>
         <DCCReference Include="Source\UI\UnitSearch\Atlas.UI.UnitSearch.Window.pas"/>
@@ -183,6 +184,7 @@
         <DCCReference Include="Source\IDE\Editor\Atlas.IDE.Editor.DfmPropertyRules.pas"/>
         <DCCReference Include="Source\IDE\Editor\Atlas.IDE.Editor.ChangeSignature.pas"/>
         <DCCReference Include="Source\IDE\Editor\Atlas.IDE.Editor.MoveClass.pas"/>
+        <DCCReference Include="Source\IDE\Editor\Atlas.IDE.Editor.PropertyFromAccessors.pas"/>
         <DCCReference Include="Source\IDE\Foundation\Atlas.IDE.Foundation.KeyHook.pas"/>
         <DCCReference Include="Source\IDE\Signature\Atlas.IDE.Signature.Editor.pas"/>
         <DCCReference Include="Source\IDE\Completion\Atlas.IDE.Completion.Editor.pas"/>
@@ -192,6 +194,7 @@
         <DCCReference Include="Source\Core\Settings\Atlas.Core.Settings.Plugin.pas"/>
         <DCCReference Include="Source\UI\Settings\Atlas.UI.Settings.Page.pas">
         <DCCReference Include="Source\UI\Settings\Atlas.UI.Settings.Marks.pas"/>
+        <DCCReference Include="Source\UI\Settings\Atlas.UI.Settings.Group.pas"/>
         <DCCReference Include="Source\UI\Settings\Atlas.UI.Settings.Transfer.pas"/>
             <Form>AtlasSettingsPage</Form>
             <FormType>dfm</FormType>
@@ -218,6 +221,7 @@
         <DCCReference Include="Source\Core\Settings\Atlas.Core.Settings.Catalog.pas"/>
         <DCCReference Include="Source\Core\Settings\Atlas.Core.Settings.Transfer.pas"/>
         <DCCReference Include="Source\Core\Settings\Atlas.Core.Settings.Experimental.pas"/>
+        <DCCReference Include="Source\Core\Settings\Atlas.Core.Settings.Groups.pas"/>
         <DCCReference Include="Source\UI\Settings\Atlas.UI.Settings.ProjectDialog.pas"/>
         <DCCReference Include="Source\IDE\Settings\Atlas.IDE.Settings.Project.pas"/>
         <DCCReference Include="Source\Core\Settings\Atlas.Core.Settings.Layers.pas"/>
@@ -279,6 +283,7 @@
         <DCCReference Include="Source\UI\Diagnostics\Atlas.UI.Diagnostics.ExportDialog.pas"/>
         <DCCReference Include="Source\Core\Diagnostics\Atlas.Core.Diagnostics.Package.pas"/>
         <DCCReference Include="Source\UI\Diagnostics\Atlas.UI.Diagnostics.ReportDialog.pas"/>
+        <DCCReference Include="Source\UI\Diagnostics\Atlas.UI.Diagnostics.ProcessesDialog.pas"/>
         <DCCReference Include="Source\IDE\Diagnostics\Atlas.IDE.Diagnostics.Export.pas"/>
         <DCCReference Include="Source\Core\Diagnostics\Atlas.Core.Diagnostics.BugReport.pas"/>
         <DCCReference Include="Source\IDE\Diagnostics\Atlas.IDE.Diagnostics.BugReport.pas"/>
@@ -347,6 +352,9 @@
         <DCCReference Include="Source\Core\Tracker\Atlas.Core.Tracker.CommitHook.pas"/>
         <DCCReference Include="Source\IDE\Foundation\Atlas.IDE.Foundation.TeamFile.pas"/>
         <DCCReference Include="Source\Core\Diagnostics\Atlas.Core.Diagnostics.FeatureTable.pas"/>
+        <DCCReference Include="Source\Core\Diagnostics\Atlas.Core.Diagnostics.Teardown.pas"/>
+        <DCCReference Include="Source\Core\Diagnostics\Atlas.Core.Diagnostics.ThreadList.pas"/>
+        <DCCReference Include="Source\Core\Diagnostics\Atlas.Core.Diagnostics.Processes.pas"/>
         <DCCReference Include="Source\Core\Diagnostics\Atlas.Core.Diagnostics.SafeMode.pas"/>
         <DCCReference Include="Source\UI\Diagnostics\Atlas.UI.Diagnostics.SafeModeNotice.pas"/>
         <DCCReference Include="Source\IDE\Diagnostics\Atlas.IDE.Diagnostics.SafeMode.pas"/>

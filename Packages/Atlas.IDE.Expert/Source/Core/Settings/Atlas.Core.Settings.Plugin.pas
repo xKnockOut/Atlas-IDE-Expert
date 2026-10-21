@@ -145,6 +145,8 @@ type
     PanelWidth: Integer;
     /// <summary>Detailpanel eingeklappt (#428).</summary>
     PanelCollapsed: Boolean;
+    /// <summary>Gewählter Eintrag mit Rahmen und Marke statt nur farbig (#447).</summary>
+    SelectionMarker: Boolean;
     /// <summary>Klammern beim Übernehmen von Methoden (#430).</summary>
     AutoParentheses: Boolean;
     /// <summary>Schreibweise des getippten Worts beim Übernehmen korrigieren (#433).</summary>
@@ -424,9 +426,9 @@ type
     /// <summary>Speichergrenze des Symbolindex in MB (#492, memoryBudgetMb); darüber lagert der Server
     /// zuerst die Verwendungen aus. 0 = unbegrenzt.</summary>
     MemoryBudgetMb: Integer;
-    /// <summary>XMLDoc in Tooltip und Detailpanel vollständig (#654, hints.xmlDocFull in settings.json); aus =
-    /// Kurzform.</summary>
-    XmlDocFull: Boolean;
+    /// <summary>XMLDoc in Tooltip und Detailpanel beim Öffnen (#770, hints.xmlDocExpand in settings.json):
+    /// collapsed, last (wie zuletzt), expanded. Ersetzt XmlDocFull (1 = expanded, 0 = collapsed).</summary>
+    XmlDocExpand: string;
     /// <summary>Höchstens so viele Zeilen Doku ohne Scrollen, 0 = bis zur Bildschirmhöhe (#654).</summary>
     XmlDocMaxLines: Integer;
     /// <summary>Atlas-Feld in der Statusleiste (#591, statusField.enabled).</summary>
@@ -455,6 +457,9 @@ type
     /// anderen Atlas-Tasten (#494).</summary>
     DiagnosticModeKey: Integer;
     DiagnosticModeKeyPriority: Boolean;
+    /// <summary>Menüeintrag „Prozesse am Projekt…“ (#62, diagnostics.processes): Index-Cache, Sperre und
+    /// angemeldete LSP- und MCP-Prozesse; Vorgabe an.</summary>
+    DiagnosticsProcesses: Boolean;
     /// <summary>Hauptschalter der experimentellen Funktionen (#834, experimental.enabled, liegt in settings.json):
     /// aus = keine Einstellung mit x-experimental wirkt, auch wenn sie an ist; Vorgabe aus.</summary>
     ExperimentalEnabled: Boolean;
@@ -526,6 +531,9 @@ type
     UnitSearchPreviewForm: Boolean;
     /// <summary>„Verwendet von“ in der Vorschau (#777, unitSearch.preview.usedBy); Vorgabe an.</summary>
     UnitSearchPreviewUsedBy: Boolean;
+    /// <summary>Abschnitte der Vorschau einklappen, wenn sie nicht passen (#876,
+    /// unitSearch.preview.autoCollapse); Vorgabe an.</summary>
+    UnitSearchPreviewAutoCollapse: Boolean;
     /// <summary>Häkchen und Mehrfachauswahl (#777, unitSearch.multiSelect); Vorgabe an.</summary>
     UnitSearchMultiSelect: Boolean;
     /// <summary>Aktionsleiste (#777, unitSearch.actions); Vorgabe an.</summary>
@@ -664,6 +672,11 @@ type
     CompleteStatementTryKind: string;
     /// <summary>Methodenrumpf anlegen (#697, editor.completeStatement.methodBody).</summary>
     CompleteStatementMethodBody: Boolean;
+    /// <summary>Befehl „Formatieren“ für Datei oder Auswahl (#43, editor.format).</summary>
+    FormatCode: Boolean;
+    /// <summary>Kürzel „Formatieren“ (#43, keys.format); Vorgabe Strg+Umschalt+Alt+F, weil Strg+D die
+    /// Mehrfachmarken haben und RAD Studio 13 keinen eigenen Formatierer mehr hat.</summary>
+    FormatCodeKey: Integer;
     /// <summary>Nächste Zeile eines erkannten Musters als Schattentext vorschlagen (#671, editor.continuePattern).
     /// </summary>
     ContinuePattern: Boolean;
@@ -1076,6 +1089,7 @@ begin
   Result.ListWidth := 0;
   Result.PanelWidth := 320;
   Result.PanelCollapsed := False;
+  Result.SelectionMarker := True;
   Result.AutoParentheses := True;
   Result.FixCase := True;
   Result.CommitCharacters := True;
@@ -1194,7 +1208,7 @@ begin
   Result.IndexLibraryPaths := False;
   Result.IndexUsages := True;
   Result.MemoryBudgetMb := 768;
-  Result.XmlDocFull := True;
+  Result.XmlDocExpand := 'last';
   Result.XmlDocMaxLines := 0;
   Result.StatusField := True;
   Result.StatusFieldHidden := '';
@@ -1206,6 +1220,7 @@ begin
   Result.DiagnosticMode := False;
   Result.DiagnosticModeKey := $E044; // Strg+Umschalt+Alt+D
   Result.DiagnosticModeKeyPriority := False;
+  Result.DiagnosticsProcesses := True;
   Result.ExperimentalEnabled := False;
   Result.SetupChecklist := True;
   Result.SetupChecklistSeen := False;
@@ -1237,6 +1252,7 @@ begin
   Result.UnitSearchPreview := True;
   Result.UnitSearchPreviewForm := True;
   Result.UnitSearchPreviewUsedBy := True;
+  Result.UnitSearchPreviewAutoCollapse := True;
   Result.UnitSearchMultiSelect := True;
   Result.UnitSearchActions := True;
   Result.UnitSearchActionsAddUses := True;
@@ -1302,6 +1318,8 @@ begin
   Result.CompleteStatementBeginEnd := BeginEndMultiLine;
   Result.CompleteStatementTryKind := TryKindFinally;
   Result.CompleteStatementMethodBody := True;
+  Result.FormatCode := True;
+  Result.FormatCodeKey := $E046; // Strg+Umschalt+Alt+F
   Result.ContinuePattern := True;
   Result.ContinuePatternMinLines := 2;
   Result.MultiCursor := False;
@@ -1402,6 +1420,7 @@ begin
   if CheckOnSave then
     CompileOnSave := False;
   XmlDocMaxLines := EnsureRange(XmlDocMaxLines, 0, MaxXmlDocLines);
+  XmlDocExpand := Choice(XmlDocExpand, ['last', 'collapsed', 'expanded']);
   BlockEndLabelsMinLines := EnsureRange(BlockEndLabelsMinLines, MinBlockEndLines, MaxBlockEndLines);
   RecursionMarkersDepth := EnsureRange(RecursionMarkersDepth, MinRecursionDepth, MaxRecursionDepth);
   ContinuePatternMinLines := EnsureRange(ContinuePatternMinLines, MinPatternLines, MaxPatternLines);
@@ -1514,6 +1533,7 @@ begin
   DuplicateLinesDownKey := EnsureRange(DuplicateLinesDownKey, 0, $FFFF);
   ContinueCommentsBlockPrefix := NormalizedBlockPrefix(ContinueCommentsBlockPrefix);
   CompleteStatementKey := EnsureRange(CompleteStatementKey, 0, $FFFF);
+  FormatCodeKey := EnsureRange(FormatCodeKey, 0, $FFFF);
   CompleteStatementBeginEnd := Choice(CompleteStatementBeginEnd, [BeginEndMultiLine, BeginEndAlways, BeginEndNever]);
   CompleteStatementTryKind := Choice(CompleteStatementTryKind, [TryKindFinally, TryKindExcept, TryKindAsk]);
   MultiCursorModifier := Choice(MultiCursorModifier, [MultiCursorModifierAlt, MultiCursorModifierCtrl]);
@@ -1575,6 +1595,7 @@ begin
   ListWidth := AStore.ReadInteger('ListWidth', Default.ListWidth);
   PanelWidth := AStore.ReadInteger('PanelWidth', Default.PanelWidth);
   PanelCollapsed := AStore.ReadInteger('PanelCollapsed', BoolValue(Default.PanelCollapsed)) <> 0;
+  SelectionMarker := AStore.ReadInteger('SelectionMarker', BoolValue(Default.SelectionMarker)) <> 0;
   AutoParentheses := AStore.ReadInteger('AutoParentheses', BoolValue(Default.AutoParentheses)) <> 0;
   FixCase := AStore.ReadInteger('FixCase', BoolValue(Default.FixCase)) <> 0;
   CommitCharacters := AStore.ReadInteger('CommitCharacters', BoolValue(Default.CommitCharacters)) <> 0;
@@ -1695,7 +1716,17 @@ begin
   IndexLibraryPaths := AStore.ReadInteger('IndexLibraryPaths', BoolValue(Default.IndexLibraryPaths)) <> 0;
   IndexUsages := AStore.ReadInteger('IndexUsages', BoolValue(Default.IndexUsages)) <> 0;
   MemoryBudgetMb := AStore.ReadInteger('MemoryBudgetMb', Default.MemoryBudgetMb);
-  XmlDocFull := AStore.ReadInteger('XmlDocFull', BoolValue(Default.XmlDocFull)) <> 0;
+  XmlDocExpand := AStore.ReadString('XmlDocExpand', '');
+  // Vor #770: XmlDocFull übernehmen.
+  if XmlDocExpand = '' then
+    case AStore.ReadInteger('XmlDocFull', -1) of
+      0:
+        XmlDocExpand := 'collapsed';
+      1:
+        XmlDocExpand := 'expanded';
+    else
+      XmlDocExpand := Default.XmlDocExpand;
+    end;
   XmlDocMaxLines := AStore.ReadInteger('XmlDocMaxLines', Default.XmlDocMaxLines);
   StatusField := AStore.ReadInteger('StatusField', BoolValue(Default.StatusField)) <> 0;
   StatusFieldHidden := Trim(AStore.ReadString('StatusFieldHidden', Default.StatusFieldHidden));
@@ -1709,6 +1740,8 @@ begin
   DiagnosticModeKey := AStore.ReadInteger('DiagnosticModeKey', Default.DiagnosticModeKey);
   DiagnosticModeKeyPriority :=
     AStore.ReadInteger('DiagnosticModeKeyPriority', BoolValue(Default.DiagnosticModeKeyPriority)) <> 0;
+  DiagnosticsProcesses :=
+    AStore.ReadInteger('DiagnosticsProcesses', BoolValue(Default.DiagnosticsProcesses)) <> 0;
   ExperimentalEnabled := AStore.ReadInteger('ExperimentalEnabled', BoolValue(Default.ExperimentalEnabled)) <> 0;
   SetupChecklist := AStore.ReadInteger('SetupChecklist', BoolValue(Default.SetupChecklist)) <> 0;
   SetupChecklistSeen := AStore.ReadInteger('SetupChecklistSeen', BoolValue(Default.SetupChecklistSeen)) <> 0;
@@ -1740,6 +1773,8 @@ begin
   UnitSearchPreview := AStore.ReadInteger('UnitSearchPreview', BoolValue(Default.UnitSearchPreview)) <> 0;
   UnitSearchPreviewForm := AStore.ReadInteger('UnitSearchPreviewForm', BoolValue(Default.UnitSearchPreviewForm)) <> 0;
   UnitSearchPreviewUsedBy := AStore.ReadInteger('UnitSearchPreviewUsedBy', BoolValue(Default.UnitSearchPreviewUsedBy)) <> 0;
+  UnitSearchPreviewAutoCollapse := AStore.ReadInteger('UnitSearchPreviewAutoCollapse',
+    BoolValue(Default.UnitSearchPreviewAutoCollapse)) <> 0;
   UnitSearchMultiSelect := AStore.ReadInteger('UnitSearchMultiSelect', BoolValue(Default.UnitSearchMultiSelect)) <> 0;
   UnitSearchActions := AStore.ReadInteger('UnitSearchActions', BoolValue(Default.UnitSearchActions)) <> 0;
   UnitSearchActionsAddUses := AStore.ReadInteger('UnitSearchActionsAddUses', BoolValue(Default.UnitSearchActionsAddUses)) <> 0;
@@ -1811,6 +1846,8 @@ begin
   CompleteStatementTryKind := AStore.ReadString('CompleteStatementTryKind', Default.CompleteStatementTryKind);
   CompleteStatementMethodBody := AStore.ReadInteger('CompleteStatementMethodBody',
     BoolValue(Default.CompleteStatementMethodBody)) <> 0;
+  FormatCode := AStore.ReadInteger('FormatCode', BoolValue(Default.FormatCode)) <> 0;
+  FormatCodeKey := AStore.ReadInteger('FormatCodeKey', Default.FormatCodeKey);
   ContinuePattern := AStore.ReadInteger('ContinuePattern', BoolValue(Default.ContinuePattern)) <> 0;
   ContinuePatternMinLines := AStore.ReadInteger('ContinuePatternMinLines', Default.ContinuePatternMinLines);
   MultiCursor := AStore.ReadInteger('MultiCursor', BoolValue(Default.MultiCursor)) <> 0;
@@ -1924,6 +1961,7 @@ begin
   AStore.WriteInteger('ListWidth', ListWidth);
   AStore.WriteInteger('PanelWidth', PanelWidth);
   AStore.WriteInteger('PanelCollapsed', BoolValue(PanelCollapsed));
+  AStore.WriteInteger('SelectionMarker', BoolValue(SelectionMarker));
   AStore.WriteInteger('AutoParentheses', BoolValue(AutoParentheses));
   AStore.WriteInteger('FixCase', BoolValue(FixCase));
   AStore.WriteInteger('CommitCharacters', BoolValue(CommitCharacters));
@@ -2040,7 +2078,7 @@ begin
   AStore.WriteInteger('IndexLibraryPaths', BoolValue(IndexLibraryPaths));
   AStore.WriteInteger('IndexUsages', BoolValue(IndexUsages));
   AStore.WriteInteger('MemoryBudgetMb', MemoryBudgetMb);
-  AStore.WriteInteger('XmlDocFull', BoolValue(XmlDocFull));
+  AStore.WriteString('XmlDocExpand', XmlDocExpand);
   AStore.WriteInteger('XmlDocMaxLines', XmlDocMaxLines);
   AStore.WriteInteger('StatusField', BoolValue(StatusField));
   AStore.WriteString('StatusFieldHidden', Trim(StatusFieldHidden));
@@ -2052,6 +2090,7 @@ begin
   AStore.WriteInteger('DiagnosticMode', BoolValue(DiagnosticMode));
   AStore.WriteInteger('DiagnosticModeKey', DiagnosticModeKey);
   AStore.WriteInteger('DiagnosticModeKeyPriority', BoolValue(DiagnosticModeKeyPriority));
+  AStore.WriteInteger('DiagnosticsProcesses', BoolValue(DiagnosticsProcesses));
   AStore.WriteInteger('ExperimentalEnabled', BoolValue(ExperimentalEnabled));
   AStore.WriteInteger('SetupChecklist', BoolValue(SetupChecklist));
   AStore.WriteInteger('SetupChecklistSeen', BoolValue(SetupChecklistSeen));
@@ -2082,6 +2121,7 @@ begin
   AStore.WriteInteger('UnitSearchPreview', BoolValue(UnitSearchPreview));
   AStore.WriteInteger('UnitSearchPreviewForm', BoolValue(UnitSearchPreviewForm));
   AStore.WriteInteger('UnitSearchPreviewUsedBy', BoolValue(UnitSearchPreviewUsedBy));
+  AStore.WriteInteger('UnitSearchPreviewAutoCollapse', BoolValue(UnitSearchPreviewAutoCollapse));
   AStore.WriteInteger('UnitSearchMultiSelect', BoolValue(UnitSearchMultiSelect));
   AStore.WriteInteger('UnitSearchActions', BoolValue(UnitSearchActions));
   AStore.WriteInteger('UnitSearchActionsAddUses', BoolValue(UnitSearchActionsAddUses));
@@ -2146,6 +2186,8 @@ begin
   AStore.WriteString('CompleteStatementBeginEnd', CompleteStatementBeginEnd);
   AStore.WriteString('CompleteStatementTryKind', CompleteStatementTryKind);
   AStore.WriteInteger('CompleteStatementMethodBody', BoolValue(CompleteStatementMethodBody));
+  AStore.WriteInteger('FormatCode', BoolValue(FormatCode));
+  AStore.WriteInteger('FormatCodeKey', FormatCodeKey);
   AStore.WriteInteger('ContinuePattern', BoolValue(ContinuePattern));
   AStore.WriteInteger('ContinuePatternMinLines', ContinuePatternMinLines);
   AStore.WriteInteger('MultiCursor', BoolValue(MultiCursor));

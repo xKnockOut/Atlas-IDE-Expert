@@ -31,8 +31,8 @@ uses
   Atlas.Core.Style.Color,
   Atlas.Core.Style.Palette,
   Atlas.Core.UnitSearch.Model,
-  Atlas.Core.UnitSearch.State,
-  Atlas.Core.UnitSearch.Sections;
+  Atlas.Core.UnitSearch.Sections,
+  Atlas.Core.UnitSearch.State;
 
 type
   TAtlasUnitSearchAction = (Open, OpenForm, AddUses, OpenTests, CopyPaths, ShowProject, ShowExplorer);
@@ -43,6 +43,8 @@ type
     Preview: Boolean;
     PreviewForm: Boolean;
     PreviewUsedBy: Boolean;
+    /// <summary>Abschnitte einklappen, wenn sie nicht passen (#876).</summary>
+    PreviewAutoCollapse: Boolean;
     MultiSelect: Boolean;
     Actions: Boolean;
     AddUses: Boolean;
@@ -64,7 +66,7 @@ type
 
   TAtlasUnitSearchWindow = class(TForm)
   private type
-    THit = (None, Chip, Grouping, Row, Action, Splitter, Check);
+    THit = (None, Chip, Grouping, Row, Action, Splitter, Check, Section);
     THitArea = record
       Kind: THit;
       Rect: TRect;
@@ -107,6 +109,8 @@ type
     FPreviewWidth: Integer;
     FPreview: TAtlasUnitPreview;
     FPreviewFile: string;
+    /// <summary>Zustand der Abschnitte beim letzten Zeichnen (#876).</summary>
+    FSections: TAtlasSectionStates;
     FPreviewTimer: TTimer;
     FDragSplitter: Boolean;
     FActionMenu: TPopupMenu;
@@ -118,11 +122,6 @@ type
     FMonoFont: TFont;
     FLastHint: string;
     FClosing: Boolean;
-    /// <summary>Abschnitte des Detail-Panels (#876): Größen, offene, Überschriften und Inhalte.</summary>
-    FSectionSizes: TAtlasUnitSectionSizes;
-    FSectionOpen: TAtlasUnitSections;
-    FSectionHeads: array[TAtlasUnitSection] of TRect;
-    FSectionBodies: array[TAtlasUnitSection] of TRect;
     function S(AValue: Integer): Integer;
     function HeaderHeight: Integer;
     function ChipHeight: Integer;
@@ -172,15 +171,15 @@ type
     procedure DrawHighlighted(const AText: string; ARect: TRect);
     procedure DrawPreview;
     procedure DrawSketch(var ATop: Integer; const AArea: TRect);
-    function PreviewArea: TRect;
-    function UsedByText: string;
-    function SectionCaption(ASection: TAtlasUnitSection): string;
-    /// <summary>Misst die Abschnitte und legt fest, welche bei der Höhe der Vorschau offen sind.</summary>
-    procedure ArrangeSections;
-    procedure DrawSectionBody(ASection: TAtlasUnitSection; const ARect: TRect);
-    procedure DrawSections;
-    function SectionAt(X, Y: Integer; out ASection: TAtlasUnitSection): Boolean;
-    procedure ToggleSection(ASection: TAtlasUnitSection);
+    function SketchHeight(AWidth: Integer): Integer;
+    function SectionHeadHeight: Integer;
+    function SectionGap: Integer;
+    function SectionPresent(ASection: TAtlasPreviewSection): Boolean;
+    function SectionCaption(ASection: TAtlasPreviewSection): string;
+    procedure DrawSectionHead(ASection: TAtlasPreviewSection; const ARect: TRect);
+    /// <summary>Zeichnet (ADraw) oder misst den Inhalt des Abschnitts; Ergebnis ist die Höhe.</summary>
+    function SectionBody(ASection: TAtlasPreviewSection; const AArea: TRect; ADraw: Boolean): Integer;
+    procedure ToggleSection(ASection: TAtlasPreviewSection);
     procedure DrawActions;
     procedure DrawFooter;
     procedure WMNCHitTest(var Message: TWMNCHitTest); message WM_NCHITTEST;
@@ -207,14 +206,6 @@ type
     procedure SetEntries(const AEntries: TAtlasUnitEntries);
     /// <summary>Zeigen: gemerkte Lage oder mittig über AArea.</summary>
     procedure ShowOver(const AArea: TRect);
-    /// <summary>Vorschau der aktuellen Unit sofort holen (sonst nach kurzer Pause per Timer).</summary>
-    procedure RefreshPreview;
-    /// <summary>Abschnitt hat Inhalt in der aktuellen Vorschau.</summary>
-    function SectionPresent(ASection: TAtlasUnitSection): Boolean;
-    /// <summary>Abschnitt ist bei der aktuellen Größe aufgeklappt.</summary>
-    function SectionOpen(ASection: TAtlasUnitSection): Boolean;
-    /// <summary>Fläche der Überschrift (Klick klappt); leer, wenn nicht sichtbar.</summary>
-    function SectionHeadRect(ASection: TAtlasUnitSection): TRect;
     property OnAction: TAtlasUnitSearchActionEvent read FOnAction write FOnAction;
     property OnPreview: TAtlasUnitSearchPreviewFunc read FOnPreview write FOnPreview;
     /// <summary>Nach dem Schließen (Zustand ist dann gespeichert); das Fenster gibt sich selbst frei.</summary>
@@ -1282,7 +1273,7 @@ begin
   if (FPreview.FormWidth <= 0) or (FPreview.FormHeight <= 0) then
     Exit;
   Scale_ := Min(AArea.Width / FPreview.FormWidth, S(180) / FPreview.FormHeight);
-  Height_ := Round(FPreview.FormHeight * Scale_);
+  Height_ := SketchHeight(AArea.Width) - S(14);
   Frame := Rect(AArea.Left, ATop, AArea.Left + Round(FPreview.FormWidth * Scale_), ATop + Height_ + S(14));
   // Titelleiste der Skizze.
   Canvas.Brush.Color := C(FColors.AccentSoft);
@@ -1318,6 +1309,14 @@ begin
   ATop := Frame.Bottom + S(10);
 end;
 
+function TAtlasUnitSearchWindow.SketchHeight(AWidth: Integer): Integer;
+begin
+  Result := 0;
+  if (FPreview.FormWidth <= 0) or (FPreview.FormHeight <= 0) then
+    Exit;
+  Result := Round(FPreview.FormHeight * Min(AWidth / FPreview.FormWidth, S(180) / FPreview.FormHeight)) + S(14);
+end;
+
 procedure TAtlasUnitSearchWindow.DrawPreview;
 var
   Area, Line: TRect;
@@ -1325,6 +1324,8 @@ var
   Text: string;
   Index_: Integer;
   Facts: TArray<string>;
+  Section: TAtlasPreviewSection;
+  Inputs: TAtlasSectionInputs;
 begin
   if not FPreviewVisible then
     Exit;
@@ -1378,138 +1379,178 @@ begin
   Line := Rect(Area.Left, Top, Area.Right, Top + S(16));
   Text := string.Join(' · ', Facts);
   DrawText(Canvas.Handle, PChar(Text), -1, Line, DT_SINGLELINE or DT_NOPREFIX or DT_END_ELLIPSIS);
-  // Abschnitte (#876) beginnen unter den Kenndaten, siehe ArrangeSections.
-  DrawSections;
+  Inc(Top, S(22));
+  // Abschnitte (#876): erst messen, dann einklappen, was nicht passt.
+  for Section := Low(TAtlasPreviewSection) to High(TAtlasPreviewSection) do
+  begin
+    Inputs[Section].Present := SectionPresent(Section);
+    Inputs[Section].ClosedHeight := SectionHeadHeight;
+    Inputs[Section].OpenHeight := 0;
+    if Inputs[Section].Present then
+      Inputs[Section].OpenHeight := SectionHeadHeight + SectionBody(Section, Rect(Area.Left, 0, Area.Right, MaxInt div 2),
+        False) + SectionGap;
+  end;
+  FSections := TAtlasPreviewSections.Arrange(Inputs, FState.Sections, Area.Bottom - Top, FOptions.PreviewAutoCollapse);
+  for Section := Low(TAtlasPreviewSection) to High(TAtlasPreviewSection) do
+  begin
+    if FSections[Section] = TAtlasSectionState.Hidden then
+      Continue;
+    if Top + SectionHeadHeight > Area.Bottom then
+      Break;
+    DrawSectionHead(Section, Rect(Area.Left, Top, Area.Right, Top + SectionHeadHeight));
+    Inc(Top, SectionHeadHeight);
+    if TAtlasPreviewSections.IsOpen(FSections[Section]) then
+      Inc(Top, SectionBody(Section, Rect(Area.Left, Top, Area.Right, Area.Bottom), True) + SectionGap);
+  end;
   Canvas.Brush.Style := bsSolid;
 end;
 
-{ Abschnitte des Detail-Panels (#876) }
-
-function TAtlasUnitSearchWindow.PreviewArea: TRect;
+function TAtlasUnitSearchWindow.SectionHeadHeight: Integer;
 begin
-  Result := FPreviewRect;
-  InflateRect(Result, -S(12), -S(10));
+  Result := S(20);
 end;
 
-function TAtlasUnitSearchWindow.UsedByText: string;
+function TAtlasUnitSearchWindow.SectionGap: Integer;
 begin
-  Result := string.Join(', ', FPreview.UsedByUnits);
-  if FPreview.UsedBy > Length(FPreview.UsedByUnits) then
-    Result := Result + ' …';
+  Result := S(6);
 end;
 
-function TAtlasUnitSearchWindow.SectionCaption(ASection: TAtlasUnitSection): string;
+function TAtlasUnitSearchWindow.SectionPresent(ASection: TAtlasPreviewSection): Boolean;
 begin
   case ASection of
-    TAtlasUnitSection.Header: Result := TAtlasStrings.Text(TAtlasTextId.UnitSearchSectionHeader);
-    TAtlasUnitSection.Form: Result := TAtlasStrings.Text(TAtlasTextId.UnitSearchSectionForm);
-    TAtlasUnitSection.Types: Result := TAtlasStrings.Text(TAtlasTextId.UnitSearchPreviewTypes);
+    TAtlasPreviewSection.Path:
+      Result := FPreview.FileName <> '';
+    TAtlasPreviewSection.Header:
+      Result := FPreview.Header <> '';
+    TAtlasPreviewSection.Form:
+      Result := FPreview.HasForm and (FPreview.FormWidth > 0) and (FPreview.FormHeight > 0);
+    TAtlasPreviewSection.Types:
+      Result := FPreview.TypeCount > 0;
+    TAtlasPreviewSection.Uses_:
+      Result := Length(FPreview.Uses_) > 0;
+    TAtlasPreviewSection.UsedBy:
+      Result := FPreview.UsedBy >= 0;
   else
-    Result := TAtlasStrings.Fmt(TAtlasTextId.UnitSearchPreviewUsedBy, [FPreview.UsedBy]);
+    Result := False;
   end;
 end;
 
-procedure TAtlasUnitSearchWindow.ArrangeSections;
-var
-  Area, Measure: TRect;
-  Section: TAtlasUnitSection;
-  Top, Bottom: Integer;
-  Scale_: Double;
-  Text: string;
-  Index_: Integer;
+function TAtlasUnitSearchWindow.SectionCaption(ASection: TAtlasPreviewSection): string;
 begin
-  FSectionSizes := Default(TAtlasUnitSectionSizes);
-  FSectionOpen := [];
-  for Section := Low(TAtlasUnitSection) to High(TAtlasUnitSection) do
-  begin
-    FSectionHeads[Section] := Rect(0, 0, 0, 0);
-    FSectionBodies[Section] := Rect(0, 0, 0, 0);
+  case ASection of
+    TAtlasPreviewSection.Path:
+      Result := TAtlasStrings.Text(TAtlasTextId.UnitSearchPreviewPath);
+    TAtlasPreviewSection.Header:
+      Result := TAtlasStrings.Text(TAtlasTextId.UnitSearchPreviewHeader);
+    TAtlasPreviewSection.Form:
+      Result := TAtlasStrings.Text(TAtlasTextId.UnitSearchPreviewForm);
+    TAtlasPreviewSection.Types:
+      Result := TAtlasStrings.Fmt(TAtlasTextId.UnitSearchPreviewTypes, [FPreview.TypeCount]);
+    TAtlasPreviewSection.Uses_:
+      Result := TAtlasStrings.Fmt(TAtlasTextId.UnitSearchPreviewUses, [Length(FPreview.Uses_)]);
+    TAtlasPreviewSection.UsedBy:
+      Result := TAtlasStrings.Fmt(TAtlasTextId.UnitSearchPreviewUsedBy, [FPreview.UsedBy]);
+  else
+    Result := '';
   end;
-  if not FPreviewVisible or not CurrentEntry(Index_) or (FPreview.FileName = '') then
-    Exit;
-  Area := PreviewArea;
-  // Unter Name und Kenndaten.
-  Top := Area.Top + S(44);
-  for Section := Low(TAtlasUnitSection) to High(TAtlasUnitSection) do
-    FSectionSizes[Section].Head := S(20);
-  if FPreview.Header <> '' then
-  begin
-    Canvas.Font.Assign(FMonoFont);
-    Measure := Rect(0, 0, Max(1, Area.Width), 0);
-    Text := FPreview.Header.Replace(#10, sLineBreak);
-    DrawText(Canvas.Handle, PChar(Text), -1, Measure, DT_CALCRECT or DT_WORDBREAK or DT_NOPREFIX or DT_EDITCONTROL);
-    FSectionSizes[TAtlasUnitSection.Header].Present := True;
-    FSectionSizes[TAtlasUnitSection.Header].Body := Min(Measure.Height, S(140)) + S(8);
-  end;
-  if FPreview.HasForm and (FPreview.FormWidth > 0) and (FPreview.FormHeight > 0) then
-  begin
-    Scale_ := Min(Area.Width / FPreview.FormWidth, S(180) / FPreview.FormHeight);
-    FSectionSizes[TAtlasUnitSection.Form].Present := True;
-    FSectionSizes[TAtlasUnitSection.Form].Body := Round(FPreview.FormHeight * Scale_) + S(14) + S(8);
-  end;
-  if Length(FPreview.Types) > 0 then
-  begin
-    FSectionSizes[TAtlasUnitSection.Types].Present := True;
-    FSectionSizes[TAtlasUnitSection.Types].Body := Length(FPreview.Types) * S(17) + S(6);
-  end;
-  if FPreview.UsedBy >= 0 then
-  begin
-    Canvas.Font.Assign(FSmallFont);
-    Measure := Rect(0, 0, Max(1, Area.Width), 0);
-    Text := UsedByText;
-    DrawText(Canvas.Handle, PChar(Text), -1, Measure, DT_CALCRECT or DT_WORDBREAK or DT_NOPREFIX);
-    FSectionSizes[TAtlasUnitSection.UsedBy].Present := True;
-    FSectionSizes[TAtlasUnitSection.UsedBy].Body := Measure.Height + S(6);
-  end;
-  FSectionOpen := TAtlasUnitSectionLayout.Resolve(FSectionSizes, Area.Bottom - Top, FState.Sections);
-  for Section := Low(TAtlasUnitSection) to High(TAtlasUnitSection) do
-  begin
-    if not FSectionSizes[Section].Present or (Top >= Area.Bottom) then
-      Continue;
-    Bottom := Min(Top + FSectionSizes[Section].Head, Area.Bottom);
-    FSectionHeads[Section] := Rect(Area.Left, Top, Area.Right, Bottom);
-    Top := Bottom;
-    if (Section in FSectionOpen) and (Top < Area.Bottom) then
-    begin
-      Bottom := Min(Top + FSectionSizes[Section].Body, Area.Bottom);
-      FSectionBodies[Section] := Rect(Area.Left, Top, Area.Right, Bottom);
-      Top := Bottom;
-    end;
-  end;
+  Result := AnsiUpperCase(Result);
 end;
 
-procedure TAtlasUnitSearchWindow.DrawSectionBody(ASection: TAtlasUnitSection; const ARect: TRect);
+procedure TAtlasUnitSearchWindow.DrawSectionHead(ASection: TAtlasPreviewSection; const ARect: TRect);
+var
+  Line, Tag: TRect;
+  Text: string;
+begin
+  Canvas.Brush.Style := bsClear;
+  Canvas.Font.Assign(FSmallFont);
+  Canvas.Font.Style := [fsBold];
+  Canvas.Font.Color := C(FColors.Muted);
+  if TAtlasPreviewSections.IsOpen(FSections[ASection]) then
+    Text := #$25BE' ' + SectionCaption(ASection)
+  else
+    Text := #$25B8' ' + SectionCaption(ASection);
+  Line := ARect;
+  Line.Bottom := Line.Bottom - S(4);
+  // Marke rechts, wenn Atlas den Abschnitt eingeklappt hat.
+  if FSections[ASection] = TAtlasSectionState.AutoCollapsed then
+  begin
+    Canvas.Font.Style := [];
+    Tag := Line;
+    Tag.Left := Max(Line.Left, Line.Right - Canvas.TextWidth(TAtlasStrings.Text(TAtlasTextId.UnitSearchPreviewAutoCollapsed)));
+    DrawText(Canvas.Handle, PChar(TAtlasStrings.Text(TAtlasTextId.UnitSearchPreviewAutoCollapsed)), -1, Tag,
+      DT_SINGLELINE or DT_VCENTER or DT_RIGHT or DT_NOPREFIX or DT_END_ELLIPSIS);
+    Line.Right := Tag.Left - S(8);
+    Canvas.Font.Style := [fsBold];
+  end;
+  DrawText(Canvas.Handle, PChar(Text), -1, Line, DT_SINGLELINE or DT_VCENTER or DT_NOPREFIX or DT_END_ELLIPSIS);
+  AddArea(THit.Section, ARect, Ord(ASection));
+end;
+
+function TAtlasUnitSearchWindow.SectionBody(ASection: TAtlasPreviewSection; const AArea: TRect;
+  ADraw: Boolean): Integer;
 var
   Line: TRect;
-  Top: Integer;
   Text: string;
   Item: TAtlasUnitType;
+  Top, Count, Rest: Integer;
 begin
+  Result := 0;
   case ASection of
-    TAtlasUnitSection.Header:
+    TAtlasPreviewSection.Path:
+      begin
+        Canvas.Font.Assign(FMonoFont);
+        Canvas.Font.Color := C(FColors.Text);
+        Result := S(16);
+        if ADraw then
+        begin
+          Text := ExtractFilePath(FPreview.FileName);
+          Line := Rect(AArea.Left, AArea.Top, AArea.Right, Min(AArea.Bottom, AArea.Top + Result));
+          DrawText(Canvas.Handle, PChar(Text), -1, Line, DT_SINGLELINE or DT_NOPREFIX or DT_PATH_ELLIPSIS);
+        end;
+      end;
+    TAtlasPreviewSection.Header:
       begin
         Canvas.Font.Assign(FMonoFont);
         Canvas.Font.Color := C(FColors.Comment);
-        Line := Rect(ARect.Left, ARect.Top, ARect.Right, ARect.Bottom - S(8));
         Text := FPreview.Header.Replace(#10, sLineBreak);
-        DrawText(Canvas.Handle, PChar(Text), -1, Line, DT_WORDBREAK or DT_NOPREFIX or DT_EDITCONTROL or
-          DT_END_ELLIPSIS);
+        Line := Rect(AArea.Left, AArea.Top, AArea.Right, AArea.Top);
+        DrawText(Canvas.Handle, PChar(Text), -1, Line, DT_CALCRECT or DT_WORDBREAK or DT_NOPREFIX or DT_EDITCONTROL);
+        Result := Min(Line.Height, S(140));
+        if ADraw then
+        begin
+          Line := Rect(AArea.Left, AArea.Top, AArea.Right, Min(AArea.Bottom, AArea.Top + Result));
+          DrawText(Canvas.Handle, PChar(Text), -1, Line, DT_WORDBREAK or DT_NOPREFIX or DT_EDITCONTROL or
+            DT_END_ELLIPSIS);
+        end;
       end;
-    TAtlasUnitSection.Form:
+    TAtlasPreviewSection.Form:
       begin
-        Top := ARect.Top;
-        DrawSketch(Top, ARect);
+        Result := SketchHeight(AArea.Width);
+        if ADraw then
+        begin
+          Top := AArea.Top;
+          DrawSketch(Top, AArea);
+        end;
       end;
-    TAtlasUnitSection.Types:
+    TAtlasPreviewSection.Types:
       begin
         Canvas.Font.Assign(FSmallFont);
-        Top := ARect.Top;
+        Rest := FPreview.TypeCount - Length(FPreview.Types);
+        Result := Length(FPreview.Types) * S(17);
+        if Rest > 0 then
+          Inc(Result, S(17));
+        if not ADraw then
+          Exit;
+        Top := AArea.Top;
+        Count := 0;
         for Item in FPreview.Types do
         begin
-          if Top + S(17) > ARect.Bottom then
+          // Platz für die Zeile „+ n weitere“ lassen, wenn danach noch Typen kommen.
+          if (Top + S(17) > AArea.Bottom) or
+            ((Count < Length(FPreview.Types) - 1) and (Top + 2 * S(17) > AArea.Bottom)) then
             Break;
           // Symbol: Anfangsbuchstabe der Art im Kästchen.
-          Line := Rect(ARect.Left, Top + S(1), ARect.Left + S(16), Top + S(15));
+          Line := Rect(AArea.Left, Top + S(1), AArea.Left + S(16), Top + S(15));
           Canvas.Brush.Style := bsSolid;
           Canvas.Brush.Color := C(FColors.Badges[TAtlasBadgeKind.Type_].Background);
           Canvas.Pen.Color := C(FColors.Badges[TAtlasBadgeKind.Type_].Background);
@@ -1519,109 +1560,52 @@ begin
           Text := UpperCase(Copy(Item.Kind, 1, 1));
           DrawText(Canvas.Handle, PChar(Text), -1, Line, DT_SINGLELINE or DT_VCENTER or DT_CENTER or DT_NOPREFIX);
           Canvas.Font.Color := C(FColors.Text);
-          Line := Rect(ARect.Left + S(22), Top, ARect.Right, Top + S(16));
+          Line := Rect(AArea.Left + S(22), Top, AArea.Right, Top + S(16));
           Text := Item.Name + '   ' + Item.Kind;
           DrawText(Canvas.Handle, PChar(Text), -1, Line, DT_SINGLELINE or DT_VCENTER or DT_NOPREFIX or
             DT_END_ELLIPSIS);
           Inc(Top, S(17));
+          Inc(Count);
+        end;
+        Rest := FPreview.TypeCount - Count;
+        if (Rest > 0) and (Top + S(16) <= AArea.Bottom) then
+        begin
+          Canvas.Font.Color := C(FColors.Muted);
+          Line := Rect(AArea.Left + S(22), Top, AArea.Right, Top + S(16));
+          Text := TAtlasStrings.Fmt(TAtlasTextId.UnitSearchPreviewMore, [Rest]);
+          DrawText(Canvas.Handle, PChar(Text), -1, Line, DT_SINGLELINE or DT_VCENTER or DT_NOPREFIX);
+          Inc(Top, S(17));
+        end;
+        Result := Top - AArea.Top;
+      end;
+    TAtlasPreviewSection.Uses_, TAtlasPreviewSection.UsedBy:
+      begin
+        Canvas.Font.Assign(FSmallFont);
+        Canvas.Font.Color := C(FColors.Text);
+        if ASection = TAtlasPreviewSection.Uses_ then
+          Text := string.Join(', ', FPreview.Uses_)
+        else
+        begin
+          Text := string.Join(', ', FPreview.UsedByUnits);
+          if FPreview.UsedBy > Length(FPreview.UsedByUnits) then
+            Text := Text + ' …';
+        end;
+        Line := Rect(AArea.Left, AArea.Top, AArea.Right, AArea.Top);
+        DrawText(Canvas.Handle, PChar(Text), -1, Line, DT_CALCRECT or DT_WORDBREAK or DT_NOPREFIX);
+        Result := Line.Height;
+        if ADraw then
+        begin
+          Line := Rect(AArea.Left, AArea.Top, AArea.Right, Min(AArea.Bottom, AArea.Top + Result));
+          DrawText(Canvas.Handle, PChar(Text), -1, Line, DT_WORDBREAK or DT_NOPREFIX or DT_END_ELLIPSIS);
         end;
       end;
-  else
-    begin
-      Canvas.Font.Assign(FSmallFont);
-      Canvas.Font.Color := C(FColors.Text);
-      Text := UsedByText;
-      Line := ARect;
-      DrawText(Canvas.Handle, PChar(Text), -1, Line, DT_WORDBREAK or DT_NOPREFIX or DT_END_ELLIPSIS);
-    end;
   end;
 end;
 
-procedure TAtlasUnitSearchWindow.DrawSections;
-var
-  Section: TAtlasUnitSection;
-  Head: TRect;
-  Text: string;
-  Clip: HRGN;
+procedure TAtlasUnitSearchWindow.ToggleSection(ASection: TAtlasPreviewSection);
 begin
-  ArrangeSections;
-  for Section := Low(TAtlasUnitSection) to High(TAtlasUnitSection) do
-  begin
-    Head := FSectionHeads[Section];
-    if Head.IsEmpty then
-      Continue;
-    // Überschrift mit Pfeil; Klick klappt (MouseDown).
-    Canvas.Font.Assign(FSmallFont);
-    Canvas.Font.Style := [fsBold];
-    Canvas.Font.Color := C(FColors.Muted);
-    Canvas.Brush.Style := bsClear;
-    if Section in FSectionOpen then
-      Text := '▾  '
-    else
-      Text := '▸  ';
-    Text := Text + SectionCaption(Section);
-    DrawText(Canvas.Handle, PChar(Text), -1, Head, DT_SINGLELINE or DT_VCENTER or DT_NOPREFIX or DT_END_ELLIPSIS);
-    Canvas.Font.Style := [];
-    if FSectionBodies[Section].IsEmpty then
-      Continue;
-    Clip := CreateRectRgn(FSectionBodies[Section].Left, FSectionBodies[Section].Top, FSectionBodies[Section].Right,
-      FSectionBodies[Section].Bottom);
-    try
-      SelectClipRgn(Canvas.Handle, Clip);
-      DrawSectionBody(Section, FSectionBodies[Section]);
-    finally
-      SelectClipRgn(Canvas.Handle, 0);
-      DeleteObject(Clip);
-    end;
-    Canvas.Brush.Style := bsClear;
-  end;
-end;
-
-function TAtlasUnitSearchWindow.SectionAt(X, Y: Integer; out ASection: TAtlasUnitSection): Boolean;
-var
-  Section: TAtlasUnitSection;
-begin
-  for Section := Low(TAtlasUnitSection) to High(TAtlasUnitSection) do
-    if not FSectionHeads[Section].IsEmpty and PtInRect(FSectionHeads[Section], Point(X, Y)) then
-    begin
-      ASection := Section;
-      Exit(True);
-    end;
-  ASection := Low(TAtlasUnitSection);
-  Result := False;
-end;
-
-procedure TAtlasUnitSearchWindow.ToggleSection(ASection: TAtlasUnitSection);
-begin
-  // Die Wahl liegt im Zustand des Aufrufers und bleibt so für die Sitzung erhalten.
-  TAtlasUnitSectionLayout.Toggle(FState.Sections, ASection, ASection in FSectionOpen);
+  FState.Sections[ASection] := TAtlasPreviewSections.Toggled(FSections[ASection]);
   Invalidate;
-end;
-
-procedure TAtlasUnitSearchWindow.RefreshPreview;
-begin
-  PreviewTick(nil);
-end;
-
-function TAtlasUnitSearchWindow.SectionPresent(ASection: TAtlasUnitSection): Boolean;
-begin
-  Layout;
-  ArrangeSections;
-  Result := FSectionSizes[ASection].Present;
-end;
-
-function TAtlasUnitSearchWindow.SectionOpen(ASection: TAtlasUnitSection): Boolean;
-begin
-  Layout;
-  ArrangeSections;
-  Result := ASection in FSectionOpen;
-end;
-
-function TAtlasUnitSearchWindow.SectionHeadRect(ASection: TAtlasUnitSection): TRect;
-begin
-  Layout;
-  ArrangeSections;
-  Result := FSectionHeads[ASection];
 end;
 
 procedure TAtlasUnitSearchWindow.DrawActions;
@@ -1912,15 +1896,8 @@ var
   Area: THitArea;
   Row: Integer;
   Point_: TPoint;
-  Section: TAtlasUnitSection;
 begin
   inherited;
-  // Überschrift eines Abschnitts im Detail-Panel klappt ihn (#876).
-  if (Button = mbLeft) and SectionAt(X, Y, Section) then
-  begin
-    ToggleSection(Section);
-    Exit;
-  end;
   if not HitAt(X, Y, Area) then
     Exit;
   case Area.Kind of
@@ -1945,6 +1922,9 @@ begin
         Select(Area.Value);
         ToggleMark(Area.Value);
       end;
+    THit.Section:
+      if Button = mbLeft then
+        ToggleSection(TAtlasPreviewSection(Area.Value));
     THit.Row:
       begin
         Row := Area.Value;
@@ -1969,7 +1949,6 @@ procedure TAtlasUnitSearchWindow.MouseMove(Shift: TShiftState; X, Y: Integer);
 var
   Area: THitArea;
   Text: string;
-  Section: TAtlasUnitSection;
 begin
   inherited;
   if FDragSplitter then
@@ -1984,14 +1963,16 @@ begin
   begin
     if Area.Kind = THit.Splitter then
       Cursor := crHSplit
+    else if Area.Kind = THit.Section then
+      Cursor := crHandPoint
     else
       Cursor := crDefault;
     // Voller Pfad als Tooltip.
     if (Area.Kind = THit.Row) and not FRows[Area.Value].IsGroup then
-      Text := FEntries[FRows[Area.Value].Entry].FileName;
+      Text := FEntries[FRows[Area.Value].Entry].FileName
+    else if (Area.Kind = THit.Section) and (TAtlasPreviewSection(Area.Value) = TAtlasPreviewSection.Path) then
+      Text := FPreview.FileName;
   end
-  else if SectionAt(X, Y, Section) then
-    Cursor := crHandPoint
   else
     Cursor := crDefault;
   if Text <> FLastHint then

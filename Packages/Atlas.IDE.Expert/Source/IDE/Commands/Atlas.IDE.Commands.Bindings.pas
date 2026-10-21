@@ -384,6 +384,13 @@ begin
     begin
       TAtlasIdeEditorCommands.SwitchTestUnit;
     end);
+  // Formatieren (#43): aus = keine Taste.
+  if Settings.FormatCode then
+    AddKey(Settings.FormatCodeKey, TAtlasStrings.Text(TAtlasTextId.FormatCodeCommand),
+      procedure
+      begin
+        TAtlasIdeEditorCommands.FormatCode;
+      end);
   // Units suchen (#777): aus = keine eigene Taste (die IDE behält Strg+F12 für ihren Dialog).
   if Settings.UnitSearchEnabled then
     AddKey(Settings.UnitSearchKey, TAtlasStrings.Text(TAtlasTextId.UnitSearchTitle),

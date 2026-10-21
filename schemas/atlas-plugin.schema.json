@@ -1,7 +1,7 @@
 ﻿{
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "Atlas-Plugin-Einstellungen",
-  "description": "Katalog der Einstellungen des IDE-Plugins (#227, #604, #723). Schlüssel = Name in TAtlasPluginSettings.Load/Save (Registry HKCU\\Software\\Atlas\\IdePlugin; ein Teil liegt in %APPDATA%\\Atlas\\settings.json). x-key: Schlüssel in Doku und Exportdatei atlas-settings.json; x-area: Bereich für Export, Import und Zurücksetzen (x-areas); x-page: Seite; x-state: interner Zustand (nicht exportiert, nicht zurückgesetzt, nicht markiert); x-machine: gilt nur für diesen Rechner (nicht exportiert); x-path: Pfad (Benutzerordner als Pfadmakro, sonst ausgelassen); x-secret: Zugangsdaten; x-formerKeys: frühere Schlüssel, die der Import umrechnet; x-format \"shortcut\": Tastenkürzel (TShortCut) für die Anzeige; x-team: Pfad in der Projektdatei .atlas, deren Wert die Einstellung überdeckt; x-project: Pfad in atlas.json, dessen Wert sie überdeckt; x-quickToggle, x-caption, x-captionEn, x-drawing, x-feature: Schnellschalter (#604); x-experimental: experimentelle Funktion (#834), Vorgabe aus, wirkt nur mit experimental.enabled. Neue Plugin-Einstellung: Eintrag hier (mit x-key, x-area, x-page), Feld in TAtlasPluginSettings, Test; dann pwsh Tools/Update-ConfigDoc.ps1.",
+  "description": "Katalog der Einstellungen des IDE-Plugins (#227, #604, #723). Schlüssel = Name in TAtlasPluginSettings.Load/Save (Registry HKCU\\Software\\Atlas\\IdePlugin; ein Teil liegt in %APPDATA%\\Atlas\\settings.json). x-key: Schlüssel in Doku und Exportdatei atlas-settings.json; x-area: Bereich für Export, Import und Zurücksetzen (x-areas); x-page: Seite; x-state: interner Zustand (nicht exportiert, nicht zurückgesetzt, nicht markiert); x-machine: gilt nur für diesen Rechner (nicht exportiert); x-path: Pfad (Benutzerordner als Pfadmakro, sonst ausgelassen); x-secret: Zugangsdaten; x-formerKeys: frühere Schlüssel, die der Import umrechnet; x-format \"shortcut\": Tastenkürzel (TShortCut) für die Anzeige; x-team: Pfad in der Projektdatei .atlas, deren Wert die Einstellung überdeckt; x-project: Pfad in atlas.json, dessen Wert sie überdeckt; x-quickToggle, x-caption, x-captionEn, x-drawing, x-feature: Schnellschalter (#604); x-experimental: experimentelle Funktion (#834), Vorgabe aus, wirkt nur mit experimental.enabled. x-parent (#890): x-key des Hauptschalters (boolesch), der die Einstellung auf der Optionsseite sperrt, \"\" = keiner; ohne x-parent gilt die Präfixregel (längstes Präfix P mit boolescher Einstellung P oder P.enabled); x-node (#890): Unterpunkt im Baum der Optionsseite (Kennung aus x-nodes), \"\" = Hauptknoten des Reiters; ohne x-node erbt die Einstellung den Unterpunkt ihres Hauptschalters. Neue Plugin-Einstellung: Eintrag hier (mit x-key, x-area, x-page), Feld in TAtlasPluginSettings, Test; dann pwsh Tools/Update-ConfigDoc.ps1.",
   "x-version": 1,
   "x-areas": {
     "editor": {
@@ -53,6 +53,180 @@
       "captionEn": "General"
     }
   },
+  "x-nodes": {
+    "general.statusField": {
+      "caption": "Statusfeld",
+      "captionEn": "Status field"
+    },
+    "general.shortcutTips": {
+      "caption": "Tastenkürzel-Tipps",
+      "captionEn": "Shortcut tips"
+    },
+    "general.notifications": {
+      "caption": "Benachrichtigungen",
+      "captionEn": "Notifications"
+    },
+    "general.transfer": {
+      "caption": "Einstellungen übertragen",
+      "captionEn": "Transfer settings"
+    },
+    "editor.pairs": {
+      "caption": "Paarfärbung",
+      "captionEn": "Pair colouring"
+    },
+    "editor.breadcrumbs": {
+      "caption": "Brotkrumenleiste",
+      "captionEn": "Breadcrumb bar"
+    },
+    "editor.stickyScroll": {
+      "caption": "Mitlaufender Kopf",
+      "captionEn": "Sticky scroll"
+    },
+    "editor.minimap": {
+      "caption": "Minimap",
+      "captionEn": "Minimap"
+    },
+    "editor.gitGutter": {
+      "caption": "Änderungsmarken",
+      "captionEn": "Change markers"
+    },
+    "editor.overviewRuler": {
+      "caption": "Übersichtsleiste",
+      "captionEn": "Overview ruler"
+    },
+    "editor.continueComments": {
+      "caption": "Kommentare fortsetzen",
+      "captionEn": "Continue comments"
+    },
+    "editor.completeStatement": {
+      "caption": "Anweisung vervollständigen",
+      "captionEn": "Complete statement"
+    },
+    "editor.format": {
+      "caption": "Formatieren",
+      "captionEn": "Format"
+    },
+    "editor.multiCursor": {
+      "caption": "Mehrere Einfügemarken",
+      "captionEn": "Multiple carets"
+    },
+    "editor.notes": {
+      "caption": "Notizen und Lesezeichen",
+      "captionEn": "Notes and bookmarks"
+    },
+    "editor.codeLens": {
+      "caption": "Code Lens und Kennzahlen",
+      "captionEn": "Code lens and metrics"
+    },
+    "compiler.problems": {
+      "caption": "Probleme",
+      "captionEn": "Problems"
+    },
+    "compiler.afterSave": {
+      "caption": "Nach dem Speichern",
+      "captionEn": "After saving"
+    },
+    "compiler.tests": {
+      "caption": "Tests",
+      "captionEn": "Tests"
+    },
+    "compiler.startProfiles": {
+      "caption": "Startprofile",
+      "captionEn": "Start profiles"
+    },
+    "compiler.openBuild": {
+      "caption": "Beim Öffnen bauen",
+      "captionEn": "Build on open"
+    },
+    "commands.methodToggle": {
+      "caption": "Deklaration ⇄ Implementierung",
+      "captionEn": "Declaration ⇄ implementation"
+    },
+    "commands.jumpToMatch": {
+      "caption": "Sprung zum Gegenstück",
+      "captionEn": "Jump to match"
+    },
+    "commands.moveLines": {
+      "caption": "Zeilen verschieben",
+      "captionEn": "Move lines"
+    },
+    "commands.navHistory": {
+      "caption": "Navigationsverlauf",
+      "captionEn": "Navigation history"
+    },
+    "commands.peek": {
+      "caption": "Einblenden",
+      "captionEn": "Peek"
+    },
+    "commands.outline": {
+      "caption": "Gliederung",
+      "captionEn": "Outline"
+    },
+    "commands.generateMenu": {
+      "caption": "Erzeugen-Menü",
+      "captionEn": "Generate menu"
+    },
+    "unitSearch.quickOpen": {
+      "caption": "Schnell öffnen",
+      "captionEn": "Quick open"
+    },
+    "welcome.header": {
+      "caption": "Kopf",
+      "captionEn": "Header"
+    },
+    "welcome.search": {
+      "caption": "Suche",
+      "captionEn": "Search"
+    },
+    "welcome.continue": {
+      "caption": "Weiterarbeiten",
+      "captionEn": "Continue"
+    },
+    "welcome.projects": {
+      "caption": "Projekte",
+      "captionEn": "Projects"
+    },
+    "welcome.trends": {
+      "caption": "Projektverlauf",
+      "captionEn": "Project trends"
+    },
+    "welcome.tests": {
+      "caption": "Testergebnisse",
+      "captionEn": "Test results"
+    },
+    "welcome.issues": {
+      "caption": "Meine Issues",
+      "captionEn": "My issues"
+    },
+    "welcome.quickActions": {
+      "caption": "Schnellaktionen",
+      "captionEn": "Quick actions"
+    },
+    "welcome.unsaved": {
+      "caption": "Nicht gesichert",
+      "captionEn": "Unsaved"
+    },
+    "welcome.statusTile": {
+      "caption": "Zustandskachel",
+      "captionEn": "Status tile"
+    },
+    "welcome.discover": {
+      "caption": "Atlas entdecken",
+      "captionEn": "Discover Atlas"
+    },
+    "welcome.help": {
+      "caption": "Hilfe und Rückmeldung",
+      "captionEn": "Help and feedback"
+    },
+    "welcome.projectSetup": {
+      "caption": "Projekt einrichten",
+      "captionEn": "Project setup"
+    },
+    "welcome.customLayout": {
+      "caption": "Freies Layout",
+      "captionEn": "Custom layout"
+    }
+  },
   "type": "object",
   "properties": {
     "Enabled": {
@@ -78,6 +252,14 @@
       "x-captionEn": "Diagnostic mode",
       "x-issue": "#479"
     },
+    "DiagnosticsProcesses": {
+      "type": "boolean",
+      "default": true,
+      "x-key": "diagnostics.processes",
+      "x-area": "general",
+      "x-page": "Allgemein",
+      "x-issue": "#62"
+    },
     "ExperimentalEnabled": {
       "type": "boolean",
       "default": false,
@@ -96,6 +278,8 @@
       "x-area": "highlighting",
       "x-feature": "Pairs",
       "x-page": "Editor",
+      "x-parent": "completion.enabled",
+      "x-node": "editor.pairs",
       "x-quickToggle": true,
       "x-drawing": true,
       "x-caption": "Klammerfarben",
@@ -109,6 +293,7 @@
       "x-area": "highlighting",
       "x-feature": "Pairs",
       "x-page": "Editor",
+      "x-parent": "highlight.pairColors",
       "x-quickToggle": true,
       "x-drawing": true,
       "x-caption": "Blocklinien",
@@ -122,6 +307,7 @@
       "x-area": "highlighting",
       "x-feature": "Pairs",
       "x-page": "Editor",
+      "x-parent": "highlight.pairColors",
       "x-quickToggle": true,
       "x-drawing": true,
       "x-caption": "Anweisungen mitfärben",
@@ -135,6 +321,7 @@
       "x-area": "highlighting",
       "x-feature": "Pairs",
       "x-page": "Editor",
+      "x-parent": "completion.enabled",
       "x-quickToggle": true,
       "x-drawing": true,
       "x-caption": "Inaktive {$IFDEF}-Zweige ausgrauen",
@@ -148,6 +335,7 @@
       "x-area": "editor",
       "x-feature": "Pairs",
       "x-page": "Editor",
+      "x-parent": "completion.enabled",
       "x-drawing": true,
       "x-caption": "Ungenutzte uses-Einträge abblenden",
       "x-captionEn": "Dim unused uses entries",
@@ -181,7 +369,9 @@
       "x-key": "problems.enabled",
       "x-area": "editor",
       "x-feature": "Problems",
-      "x-page": "Editor",
+      "x-page": "Compiler",
+      "x-parent": "completion.enabled",
+      "x-node": "compiler.problems",
       "x-quickToggle": true,
       "x-drawing": true,
       "x-caption": "Probleme unterstreichen",
@@ -243,6 +433,7 @@
       "x-area": "editor",
       "x-feature": "Notes",
       "x-page": "Editor",
+      "x-node": "editor.notes",
       "x-quickToggle": true,
       "x-drawing": true,
       "x-caption": "Notizen",
@@ -256,6 +447,7 @@
       "x-area": "bookmarks",
       "x-feature": "Bookmarks",
       "x-page": "Editor",
+      "x-node": "editor.notes",
       "x-quickToggle": true,
       "x-drawing": true,
       "x-caption": "Benannte Lesezeichen",
@@ -269,6 +461,8 @@
       "x-area": "editor",
       "x-feature": "EditorCommands",
       "x-page": "Editor",
+      "x-parent": "metrics",
+      "x-node": "editor.codeLens",
       "x-quickToggle": true,
       "x-drawing": true,
       "x-caption": "Code-Metriken",
@@ -281,6 +475,8 @@
       "x-key": "metrics",
       "x-area": "editor",
       "x-page": "Editor",
+      "x-parent": "completion.enabled",
+      "x-node": "editor.codeLens",
       "x-issue": "#66"
     },
     "CodeLensTests": {
@@ -290,6 +486,8 @@
       "x-area": "editor",
       "x-feature": "Build",
       "x-page": "Editor",
+      "x-parent": "tests.run",
+      "x-node": "editor.codeLens",
       "x-quickToggle": true,
       "x-drawing": true,
       "x-caption": "Code Lens „Test ausführen“",
@@ -302,7 +500,8 @@
       "x-key": "keys.generateMenu",
       "x-area": "codeActions",
       "x-feature": "EditorCommands",
-      "x-page": "Editor",
+      "x-page": "Befehle",
+      "x-node": "commands.generateMenu",
       "x-quickToggle": true,
       "x-caption": "Erzeugen-Menü",
       "x-captionEn": "Generate menu",
@@ -315,6 +514,7 @@
       "x-area": "editor",
       "x-feature": "Palette",
       "x-page": "Editor",
+      "x-node": "editor.codeLens",
       "x-quickToggle": true,
       "x-caption": "TODO-Liste",
       "x-captionEn": "TODO list",
@@ -327,6 +527,7 @@
       "x-area": "editor",
       "x-feature": "Palette",
       "x-page": "Editor",
+      "x-node": "editor.codeLens",
       "x-quickToggle": true,
       "x-caption": "Baseline aktualisieren",
       "x-captionEn": "Update baseline",
@@ -339,6 +540,8 @@
       "x-area": "editor",
       "x-feature": "Palette",
       "x-page": "Editor",
+      "x-parent": "",
+      "x-node": "editor.codeLens",
       "x-quickToggle": true,
       "x-caption": "Metrikbericht",
       "x-captionEn": "Metrics report",
@@ -351,6 +554,7 @@
       "x-area": "editor",
       "x-feature": "Palette",
       "x-page": "Editor",
+      "x-node": "editor.codeLens",
       "x-quickToggle": true,
       "x-caption": "Eigenschaftsregeln anwenden",
       "x-captionEn": "Apply property rules",
@@ -363,6 +567,7 @@
       "x-area": "general",
       "x-feature": "Settings",
       "x-page": "Allgemein",
+      "x-parent": "completion.enabled",
       "x-quickToggle": true,
       "x-caption": "Projektdatei .atlas",
       "x-captionEn": "Project file .atlas",
@@ -374,6 +579,7 @@
       "x-key": "settings.exportImport",
       "x-area": "general",
       "x-page": "Allgemein",
+      "x-node": "general.transfer",
       "description": "Befehle und Knöpfe für Export, Import und Zurücksetzen der Einstellungen (Befehlspalette, Optionsseite, Kontextmenü)",
       "x-control": "Kontrollkästchen",
       "x-issue": "#723",
@@ -389,6 +595,7 @@
       "x-area": "editor",
       "x-feature": "Hover",
       "x-page": "Hints",
+      "x-parent": "completion.enabled",
       "x-quickToggle": true,
       "x-caption": "Hover-Tooltip",
       "x-captionEn": "Hover tooltip",
@@ -489,6 +696,7 @@
       "x-area": "build",
       "x-feature": "CheckOnSave",
       "x-page": "Compiler",
+      "x-node": "compiler.afterSave",
       "x-quickToggle": true,
       "x-caption": "Syntaxprüfung nach dem Speichern",
       "x-captionEn": "Syntax check after saving",
@@ -513,6 +721,7 @@
       "x-area": "build",
       "x-feature": "Build",
       "x-page": "Compiler",
+      "x-node": "compiler.openBuild",
       "x-quickToggle": true,
       "x-caption": "Beim Öffnen einmal bauen",
       "x-captionEn": "Build once on opening"
@@ -524,6 +733,7 @@
       "x-area": "debug",
       "x-feature": "Build",
       "x-page": "Compiler",
+      "x-node": "compiler.startProfiles",
       "x-quickToggle": true,
       "x-caption": "Startprofile",
       "x-captionEn": "Start profiles",
@@ -548,6 +758,8 @@
       "x-area": "build",
       "x-feature": "Build",
       "x-page": "Compiler",
+      "x-parent": "completion.enabled",
+      "x-node": "compiler.tests",
       "x-quickToggle": true,
       "x-caption": "Tests ausführen",
       "x-captionEn": "Run tests",
@@ -560,6 +772,7 @@
       "x-area": "build",
       "x-feature": "Build",
       "x-page": "Compiler",
+      "x-parent": "tests.run",
       "x-quickToggle": true,
       "x-caption": "Tests nach dem Build",
       "x-captionEn": "Tests after the build",
@@ -583,6 +796,7 @@
       "x-key": "debug.testBreakAtStart",
       "x-area": "debug",
       "x-page": "Debuggen",
+      "x-parent": "tests.debug",
       "x-caption": "Beim Test-Debuggen am Anfang der Methode anhalten",
       "x-captionEn": "Stop at the start of the method when debugging a test",
       "x-issue": "#585"
@@ -605,6 +819,7 @@
       "x-key": "tests.buildFirst",
       "x-area": "build",
       "x-page": "Compiler",
+      "x-parent": "tests.run",
       "x-caption": "Vor den Tests bauen",
       "x-captionEn": "Build before the tests",
       "x-issue": "#69"
@@ -616,6 +831,7 @@
       "x-area": "build",
       "x-feature": "Build",
       "x-page": "Release-Build",
+      "x-parent": "completion.enabled",
       "x-quickToggle": true,
       "x-caption": "Release-Build-Wächter",
       "x-captionEn": "Release build guard",
@@ -650,6 +866,7 @@
       "x-area": "welcome",
       "x-feature": "WelcomePage",
       "x-page": "Willkommensseite",
+      "x-node": "welcome.projectSetup",
       "x-quickToggle": true,
       "x-caption": "Projekt für Atlas einrichten",
       "x-captionEn": "Set up project for Atlas",
@@ -674,6 +891,7 @@
       "x-area": "welcome",
       "x-feature": "WelcomePage",
       "x-page": "Willkommensseite",
+      "x-node": "welcome.quickActions",
       "x-quickToggle": true,
       "x-caption": "Schnellaktionen je Projekt",
       "x-captionEn": "Quick actions per project",
@@ -686,6 +904,7 @@
       "x-area": "general",
       "x-feature": "ShortcutTips",
       "x-page": "Allgemein",
+      "x-node": "general.shortcutTips",
       "x-quickToggle": true,
       "x-caption": "Tastenkürzel-Tipps",
       "x-captionEn": "Keyboard shortcut tips",
@@ -698,6 +917,7 @@
       "x-area": "general",
       "x-feature": "Notifications",
       "x-page": "Allgemein",
+      "x-node": "general.notifications",
       "x-quickToggle": true,
       "x-caption": "Benachrichtigungszentrale",
       "x-captionEn": "Notification center",
@@ -742,6 +962,14 @@
       "x-key": "completion.panelCollapsed",
       "x-area": "completion",
       "x-page": "Vervollständigung"
+    },
+    "SelectionMarker": {
+      "type": "boolean",
+      "default": true,
+      "x-key": "completion.selectionMarker",
+      "x-area": "completion",
+      "x-page": "Vervollständigung",
+      "x-issue": "#447"
     },
     "AutoParentheses": {
       "type": "boolean",
@@ -885,7 +1113,8 @@
       "default": false,
       "x-key": "bookmarks.shared",
       "x-area": "bookmarks",
-      "x-page": "Editor"
+      "x-page": "Editor",
+      "x-parent": "bookmarks.named"
     },
     "BookmarkKey": {
       "type": "integer",
@@ -893,7 +1122,9 @@
       "x-key": "bookmarks.key",
       "x-area": "keys",
       "x-format": "shortcut",
-      "x-page": "Befehle"
+      "x-page": "Befehle",
+      "x-parent": "bookmarks.named",
+      "x-node": ""
     },
     "HideElementKey": {
       "type": "integer",
@@ -992,28 +1223,34 @@
       "default": 1,
       "x-key": "highlight.pairGuideWidth",
       "x-area": "highlighting",
-      "x-page": "Editor"
+      "x-page": "Editor",
+      "x-parent": "highlight.pairColors"
     },
     "PairGuideOpacity": {
       "type": "integer",
       "default": 75,
       "x-key": "highlight.pairGuideOpacity",
       "x-area": "highlighting",
-      "x-page": "Editor"
+      "x-page": "Editor",
+      "x-parent": "highlight.pairColors"
     },
     "PairColorsLight": {
       "type": "string",
       "default": "",
       "x-key": "highlight.pairColorsLight",
       "x-area": "highlighting",
-      "x-page": "Farben"
+      "x-page": "Farben",
+      "x-parent": "highlight.pairColors",
+      "x-node": ""
     },
     "PairColorsDark": {
       "type": "string",
       "default": "",
       "x-key": "highlight.pairColorsDark",
       "x-area": "highlighting",
-      "x-page": "Farben"
+      "x-page": "Farben",
+      "x-parent": "highlight.pairColors",
+      "x-node": ""
     },
     "ProblemsList": {
       "type": "boolean",
@@ -1049,14 +1286,16 @@
       "default": 2000,
       "x-key": "build.checkOnSaveDelayMs",
       "x-area": "build",
-      "x-page": "Compiler"
+      "x-page": "Compiler",
+      "x-parent": "build.checkOnSave"
     },
     "CheckOnSaveMaxMs": {
       "type": "integer",
       "default": 1500,
       "x-key": "build.checkOnSaveMaxMs",
       "x-area": "build",
-      "x-page": "Compiler"
+      "x-page": "Compiler",
+      "x-parent": "build.checkOnSave"
     },
     "BuildOnOpenKind": {
       "type": "string",
@@ -1068,7 +1307,8 @@
       "default": "make",
       "x-key": "build.onOpenKind",
       "x-area": "build",
-      "x-page": "Compiler"
+      "x-page": "Compiler",
+      "x-parent": "build.onOpen"
     },
     "BuildOnOpenScope": {
       "type": "string",
@@ -1079,28 +1319,32 @@
       "default": "all",
       "x-key": "build.onOpenScope",
       "x-area": "build",
-      "x-page": "Compiler"
+      "x-page": "Compiler",
+      "x-parent": "build.onOpen"
     },
     "BuildOnOpenDelayMs": {
       "type": "integer",
       "default": 3000,
       "x-key": "build.onOpenDelayMs",
       "x-area": "build",
-      "x-page": "Compiler"
+      "x-page": "Compiler",
+      "x-parent": "build.onOpen"
     },
     "BuildOnOpenExclude": {
       "type": "string",
       "default": "",
       "x-key": "build.onOpenExclude",
       "x-area": "build",
-      "x-page": "Compiler"
+      "x-page": "Compiler",
+      "x-parent": "build.onOpen"
     },
     "CompileOnSave": {
       "type": "boolean",
       "default": false,
       "x-key": "compiler.onSave",
       "x-area": "build",
-      "x-page": "Compiler"
+      "x-page": "Compiler",
+      "x-node": "compiler.afterSave"
     },
     "ActionsKey": {
       "type": "integer",
@@ -1147,7 +1391,8 @@
       "default": true,
       "x-key": "codeActions.methodToggle",
       "x-area": "codeActions",
-      "x-page": "Befehle"
+      "x-page": "Befehle",
+      "x-node": "commands.methodToggle"
     },
     "MethodToggleUpKey": {
       "type": "integer",
@@ -1155,7 +1400,8 @@
       "x-key": "keys.methodToggleUp",
       "x-area": "keys",
       "x-format": "shortcut",
-      "x-page": "Befehle"
+      "x-page": "Befehle",
+      "x-parent": "codeActions.methodToggle"
     },
     "MethodToggleDownKey": {
       "type": "integer",
@@ -1163,7 +1409,8 @@
       "x-key": "keys.methodToggleDown",
       "x-area": "keys",
       "x-format": "shortcut",
-      "x-page": "Befehle"
+      "x-page": "Befehle",
+      "x-parent": "codeActions.methodToggle"
     },
     "JumpToMatch": {
       "description": "Sprung zum Gegenstück: begin ⇄ end, try → finally/except → end, repeat ⇄ until, Klammern, {$IFDEF} → {$ELSE} → {$ENDIF} und Methodenname Deklaration ⇄ Implementierung; aus = beide Tasten bleiben frei.",
@@ -1173,6 +1420,7 @@
       "x-area": "keys",
       "x-feature": "EditorCommands",
       "x-page": "Befehle",
+      "x-node": "commands.jumpToMatch",
       "x-issue": "#635"
     },
     "JumpToMatchKey": {
@@ -1183,6 +1431,7 @@
       "x-area": "keys",
       "x-format": "shortcut",
       "x-page": "Befehle",
+      "x-parent": "keys.jumpToMatch",
       "x-issue": "#635"
     },
     "JumpToMatchSelectKey": {
@@ -1193,6 +1442,7 @@
       "x-area": "keys",
       "x-format": "shortcut",
       "x-page": "Befehle",
+      "x-parent": "keys.jumpToMatch",
       "x-issue": "#635"
     },
     "MoveLines": {
@@ -1203,6 +1453,7 @@
       "x-area": "keys",
       "x-feature": "EditorCommands",
       "x-page": "Befehle",
+      "x-node": "commands.moveLines",
       "x-issue": "#634"
     },
     "MoveLinesUpKey": {
@@ -1213,6 +1464,7 @@
       "x-area": "keys",
       "x-format": "shortcut",
       "x-page": "Befehle",
+      "x-parent": "keys.moveLines",
       "x-issue": "#634"
     },
     "MoveLinesDownKey": {
@@ -1223,6 +1475,7 @@
       "x-area": "keys",
       "x-format": "shortcut",
       "x-page": "Befehle",
+      "x-parent": "keys.moveLines",
       "x-issue": "#634"
     },
     "DuplicateLinesUpKey": {
@@ -1233,6 +1486,7 @@
       "x-area": "keys",
       "x-format": "shortcut",
       "x-page": "Befehle",
+      "x-parent": "keys.moveLines",
       "x-issue": "#634"
     },
     "DuplicateLinesDownKey": {
@@ -1243,6 +1497,7 @@
       "x-area": "keys",
       "x-format": "shortcut",
       "x-page": "Befehle",
+      "x-parent": "keys.moveLines",
       "x-issue": "#634"
     },
     "ContinueComments": {
@@ -1253,6 +1508,8 @@
       "x-area": "editor",
       "x-feature": "EditorCommands",
       "x-page": "Editor",
+      "x-parent": "completion.enabled",
+      "x-node": "editor.continueComments",
       "x-issue": "#696"
     },
     "ContinueCommentsLineComments": {
@@ -1281,6 +1538,7 @@
       "x-area": "editor",
       "x-feature": "EditorCommands",
       "x-page": "Editor",
+      "x-node": "editor.completeStatement",
       "x-issue": "#697"
     },
     "CompleteStatementKey": {
@@ -1291,6 +1549,7 @@
       "x-area": "keys",
       "x-format": "shortcut",
       "x-page": "Editor",
+      "x-parent": "editor.completeStatement",
       "x-issue": "#697"
     },
     "CompleteStatementBeginEnd": {
@@ -1330,6 +1589,28 @@
       "x-page": "Editor",
       "x-issue": "#697"
     },
+    "FormatCode": {
+      "description": "Befehl „Formatieren“ (Strg+Umschalt+Alt+F, Menü Atlas, Kontextmenü, Befehlspalette): formatiert die ganze Datei bzw. die Zeilen der Auswahl nach den Regeln unter format in atlas.json und .editorconfig. RAD Studio 13 hat keinen eigenen Formatierer mehr; Strg+D gehört den Mehrfachmarken. Aus = Befehl und Taste fehlen.",
+      "type": "boolean",
+      "default": true,
+      "x-key": "editor.format",
+      "x-area": "editor",
+      "x-feature": "EditorCommands",
+      "x-page": "Editor",
+      "x-node": "editor.format",
+      "x-issue": "#43"
+    },
+    "FormatCodeKey": {
+      "description": "Tastenkürzel „Formatieren“ (0 = keins).",
+      "type": "integer",
+      "default": 57414,
+      "x-key": "keys.format",
+      "x-area": "keys",
+      "x-format": "shortcut",
+      "x-page": "Editor",
+      "x-parent": "editor.format",
+      "x-issue": "#43"
+    },
     "ContinuePattern": {
       "description": "Nach Enter die nächste Zeile eines erkannten Musters als Schattentext vorschlagen (Zahlen-, Zeichen- und Aufzählungsfolgen, nummerierte Bezeichner); Tab übernimmt, Weitertippen verwirft.",
       "type": "boolean",
@@ -1338,6 +1619,7 @@
       "x-area": "editor",
       "x-feature": "EditorCommands",
       "x-page": "Editor",
+      "x-parent": "completion.enabled",
       "x-quickToggle": true,
       "x-drawing": true,
       "x-caption": "Muster fortsetzen",
@@ -1361,6 +1643,8 @@
       "x-area": "editor",
       "x-feature": "EditorCommands",
       "x-page": "Editor",
+      "x-parent": "completion.enabled",
+      "x-node": "editor.multiCursor",
       "x-experimental": true,
       "x-quickToggle": true,
       "x-caption": "Mehrere Einfügemarken",
@@ -1375,6 +1659,7 @@
       "x-area": "editor",
       "x-feature": "EditorCommands",
       "x-page": "Editor",
+      "x-parent": "completion.enabled",
       "x-experimental": true,
       "x-quickToggle": true,
       "x-caption": "Bezeichner live mitziehen",
@@ -1395,6 +1680,7 @@
       "x-area": "editor",
       "x-feature": "EditorCommands",
       "x-page": "Editor",
+      "x-parent": "completion.enabled",
       "x-experimental": true,
       "x-offValue": "off",
       "x-caption": "Einfügen mit uses-Ergänzung",
@@ -1412,6 +1698,7 @@
       "x-key": "editor.multiCursorModifier",
       "x-area": "editor",
       "x-page": "Editor",
+      "x-parent": "editor.multiCursor",
       "x-issue": "#589"
     },
     "MultiCursorNextKey": {
@@ -1422,6 +1709,7 @@
       "x-area": "keys",
       "x-format": "shortcut",
       "x-page": "Editor",
+      "x-parent": "editor.multiCursor",
       "x-issue": "#589"
     },
     "MultiCursorSkipKey": {
@@ -1432,6 +1720,7 @@
       "x-area": "keys",
       "x-format": "shortcut",
       "x-page": "Editor",
+      "x-parent": "editor.multiCursor",
       "x-issue": "#589"
     },
     "MultiCursorLineEndsKey": {
@@ -1442,6 +1731,7 @@
       "x-area": "keys",
       "x-format": "shortcut",
       "x-page": "Editor",
+      "x-parent": "editor.multiCursor",
       "x-issue": "#589"
     },
     "MultiCursorAboveKey": {
@@ -1452,6 +1742,7 @@
       "x-area": "keys",
       "x-format": "shortcut",
       "x-page": "Editor",
+      "x-parent": "editor.multiCursor",
       "x-issue": "#589"
     },
     "MultiCursorBelowKey": {
@@ -1462,6 +1753,7 @@
       "x-area": "keys",
       "x-format": "shortcut",
       "x-page": "Editor",
+      "x-parent": "editor.multiCursor",
       "x-issue": "#589"
     },
     "ContinueCommentsBlockPrefix": {
@@ -1488,6 +1780,8 @@
       "x-area": "editor",
       "x-feature": "EditorCommands",
       "x-page": "Editor",
+      "x-parent": "completion.enabled",
+      "x-node": "editor.codeLens",
       "x-quickToggle": true,
       "x-drawing": true,
       "x-caption": "Code Lens „Testunit“",
@@ -1504,21 +1798,24 @@
       "default": "off",
       "x-key": "build.gate",
       "x-area": "build",
-      "x-page": "Release-Build"
+      "x-page": "Release-Build",
+      "x-parent": "build.releaseGuard"
     },
     "ReleaseConfigs": {
       "type": "string",
       "default": "Release",
       "x-key": "build.releaseConfigs",
       "x-area": "build",
-      "x-page": "Release-Build"
+      "x-page": "Release-Build",
+      "x-parent": "build.releaseGuard"
     },
     "ReleaseChecks": {
       "type": "string",
       "default": "debugDefine,debugInfo=off,stackFrames=off,assertions=off,rangeChecks=off,overflowChecks=off,memoryLeaks,versionInfo,outputFolder",
       "x-key": "build.releaseChecks",
       "x-area": "build",
-      "x-page": "Release-Build"
+      "x-page": "Release-Build",
+      "x-parent": "build.releaseGuard"
     },
     "EditorKeysPriority": {
       "type": "boolean",
@@ -1532,7 +1829,8 @@
       "default": true,
       "x-key": "slashCommands.enabled",
       "x-area": "codeActions",
-      "x-page": "Befehle"
+      "x-page": "Befehle",
+      "x-parent": "completion.enabled"
     },
     "GenerateMenuKey": {
       "type": "integer",
@@ -1619,26 +1917,38 @@
       "x-area": "general",
       "x-page": "Index"
     },
-    "XmlDocFull": {
-      "type": "boolean",
-      "default": true,
-      "x-key": "hints.xmlDocFull",
+    "XmlDocExpand": {
+      "type": "string",
+      "enum": [
+        "collapsed",
+        "last",
+        "expanded"
+      ],
+      "default": "last",
+      "x-key": "hints.xmlDocExpand",
       "x-area": "editor",
-      "x-page": "Editor"
+      "x-page": "Editor",
+      "x-formerKeys": [
+        "hints.xmlDocFull",
+        "XmlDocFull"
+      ],
+      "x-issue": "#770"
     },
     "XmlDocMaxLines": {
       "type": "integer",
       "default": 0,
       "x-key": "hints.xmlDocMaxLines",
       "x-area": "editor",
-      "x-page": "Editor"
+      "x-page": "Editor",
+      "x-parent": ""
     },
     "StatusField": {
       "type": "boolean",
       "default": true,
       "x-key": "statusField.enabled",
       "x-area": "general",
-      "x-page": "Allgemein"
+      "x-page": "Allgemein",
+      "x-node": "general.statusField"
     },
     "StatusFieldHidden": {
       "type": "string",
@@ -1909,6 +2219,14 @@
       "x-area": "editor",
       "x-page": "Units suchen"
     },
+    "UnitSearchPreviewAutoCollapse": {
+      "type": "boolean",
+      "default": true,
+      "x-key": "unitSearch.preview.autoCollapse",
+      "x-area": "editor",
+      "x-page": "Units suchen",
+      "x-issue": "#876"
+    },
     "UnitSearchMultiSelect": {
       "type": "boolean",
       "default": true,
@@ -1983,6 +2301,7 @@
       "x-area": "editor",
       "x-feature": "Palette",
       "x-page": "Units suchen",
+      "x-node": "unitSearch.quickOpen",
       "x-quickToggle": true,
       "x-caption": "Schnell öffnen",
       "x-captionEn": "Quick open",
@@ -2005,6 +2324,7 @@
       "x-area": "keys",
       "x-format": "shortcut",
       "x-page": "Units suchen",
+      "x-parent": "quickOpen.enabled",
       "x-issue": "#503"
     },
     "NavHistory": {
@@ -2015,6 +2335,7 @@
       "x-area": "editor",
       "x-feature": "EditorCommands",
       "x-page": "Befehle",
+      "x-node": "commands.navHistory",
       "x-quickToggle": true,
       "x-caption": "Navigationsverlauf",
       "x-captionEn": "Navigation history",
@@ -2028,6 +2349,7 @@
       "x-area": "keys",
       "x-format": "shortcut",
       "x-page": "Befehle",
+      "x-parent": "navHistory.enabled",
       "x-issue": "#504"
     },
     "NavForwardKey": {
@@ -2038,6 +2360,7 @@
       "x-area": "keys",
       "x-format": "shortcut",
       "x-page": "Befehle",
+      "x-parent": "navHistory.enabled",
       "x-issue": "#504"
     },
     "LastEditKey": {
@@ -2048,6 +2371,7 @@
       "x-area": "keys",
       "x-format": "shortcut",
       "x-page": "Befehle",
+      "x-parent": "navHistory.enabled",
       "x-issue": "#504"
     },
     "Peek": {
@@ -2058,6 +2382,7 @@
       "x-area": "editor",
       "x-feature": "EditorCommands",
       "x-page": "Befehle",
+      "x-node": "commands.peek",
       "x-quickToggle": true,
       "x-caption": "Definition einblenden",
       "x-captionEn": "Peek definition",
@@ -2091,6 +2416,7 @@
       "x-area": "keys",
       "x-format": "shortcut",
       "x-page": "Befehle",
+      "x-parent": "peek.enabled",
       "x-issue": "#505"
     },
     "PeekReferencesKey": {
@@ -2101,6 +2427,7 @@
       "x-area": "keys",
       "x-format": "shortcut",
       "x-page": "Befehle",
+      "x-parent": "peek.enabled",
       "x-issue": "#505"
     },
     "Outline": {
@@ -2111,6 +2438,7 @@
       "x-area": "editor",
       "x-feature": "EditorCommands",
       "x-page": "Befehle",
+      "x-node": "commands.outline",
       "x-quickToggle": true,
       "x-caption": "Gliederung",
       "x-captionEn": "Outline",
@@ -2142,6 +2470,7 @@
       "x-area": "editor",
       "x-feature": "EditorCommands",
       "x-page": "Editor",
+      "x-node": "editor.breadcrumbs",
       "x-quickToggle": true,
       "x-caption": "Brotkrumenleiste",
       "x-captionEn": "Breadcrumbs",
@@ -2154,6 +2483,7 @@
       "x-key": "editor.breadcrumbsShowUnit",
       "x-area": "editor",
       "x-page": "Editor",
+      "x-parent": "editor.breadcrumbs",
       "x-issue": "#590"
     },
     "BreadcrumbsIdeColors": {
@@ -2182,6 +2512,8 @@
       "x-area": "editor",
       "x-feature": "EditorCommands",
       "x-page": "Editor",
+      "x-parent": "completion.enabled",
+      "x-node": "editor.stickyScroll",
       "x-experimental": true,
       "x-quickToggle": true,
       "x-caption": "Mitlaufender Kopf",
@@ -2197,6 +2529,7 @@
       "x-key": "editor.stickyScrollMaxLines",
       "x-area": "editor",
       "x-page": "Editor",
+      "x-parent": "editor.stickyScroll",
       "x-issue": "#506"
     },
     "Minimap": {
@@ -2207,6 +2540,7 @@
       "x-area": "editor",
       "x-feature": "EditorCommands",
       "x-page": "Editor",
+      "x-node": "editor.minimap",
       "x-experimental": true,
       "x-quickToggle": true,
       "x-caption": "Minimap",
@@ -2349,6 +2683,7 @@
       "x-area": "keys",
       "x-format": "shortcut",
       "x-page": "Editor",
+      "x-parent": "editor.breadcrumbs",
       "x-issue": "#590"
     },
     "GitGutter": {
@@ -2359,6 +2694,7 @@
       "x-area": "editor",
       "x-feature": "EditorCommands",
       "x-page": "Editor",
+      "x-node": "editor.gitGutter",
       "x-quickToggle": true,
       "x-drawing": true,
       "x-caption": "Änderungsmarken",
@@ -2373,6 +2709,7 @@
       "x-area": "editor",
       "x-feature": "EditorCommands",
       "x-page": "Editor",
+      "x-node": "editor.gitGutter",
       "x-quickToggle": true,
       "x-drawing": true,
       "x-caption": "Zeilenhistorie",
@@ -2387,6 +2724,7 @@
       "x-area": "keys",
       "x-format": "shortcut",
       "x-page": "Editor",
+      "x-parent": "editor.gitGutter",
       "x-issue": "#507"
     },
     "PreviousChangeKey": {
@@ -2397,6 +2735,7 @@
       "x-area": "keys",
       "x-format": "shortcut",
       "x-page": "Editor",
+      "x-parent": "editor.gitGutter",
       "x-issue": "#507"
     },
     "OverviewRuler": {
@@ -2407,6 +2746,7 @@
       "x-area": "editor",
       "x-feature": "EditorCommands",
       "x-page": "Editor",
+      "x-node": "editor.overviewRuler",
       "x-quickToggle": true,
       "x-caption": "Übersichtsleiste",
       "x-captionEn": "Overview ruler",
@@ -2419,6 +2759,7 @@
       "x-key": "editor.overviewRulerKinds",
       "x-area": "editor",
       "x-page": "Editor",
+      "x-parent": "editor.overviewRuler",
       "x-control": "Kontrollkästchen je Art",
       "x-issue": "#519"
     },
@@ -2449,21 +2790,24 @@
       "default": true,
       "x-key": "welcomePage.header",
       "x-area": "welcome",
-      "x-page": "Willkommensseite"
+      "x-page": "Willkommensseite",
+      "x-node": "welcome.header"
     },
     "WelcomePageGreeting": {
       "type": "boolean",
       "default": true,
       "x-key": "welcomePage.greeting",
       "x-area": "welcome",
-      "x-page": "Willkommensseite"
+      "x-page": "Willkommensseite",
+      "x-node": "welcome.header"
     },
     "WelcomePageSearch": {
       "type": "boolean",
       "default": true,
       "x-key": "welcomePage.search",
       "x-area": "welcome",
-      "x-page": "Willkommensseite"
+      "x-page": "Willkommensseite",
+      "x-node": "welcome.search"
     },
     "WelcomePageSearchSymbols": {
       "type": "boolean",
@@ -2507,6 +2851,7 @@
       "x-area": "welcome",
       "x-feature": "WelcomePage",
       "x-page": "Willkommensseite",
+      "x-node": "welcome.projects",
       "x-quickToggle": true,
       "x-caption": "Bereich „Projekte“",
       "x-captionEn": "Section “Projects”",
@@ -2517,14 +2862,16 @@
       "default": 8,
       "x-key": "welcomePage.maxProjects",
       "x-area": "welcome",
-      "x-page": "Willkommensseite"
+      "x-page": "Willkommensseite",
+      "x-parent": "welcomePage.projectStatus"
     },
     "WelcomePageRefreshVcs": {
       "type": "boolean",
       "default": true,
       "x-key": "welcomePage.refreshVcs",
       "x-area": "welcome",
-      "x-page": "Willkommensseite"
+      "x-page": "Willkommensseite",
+      "x-parent": "welcomePage.projectStatus"
     },
     "WelcomePageUnsaved": {
       "type": "boolean",
@@ -2533,6 +2880,7 @@
       "x-area": "welcome",
       "x-feature": "WelcomePage",
       "x-page": "Willkommensseite",
+      "x-node": "welcome.unsaved",
       "x-quickToggle": true,
       "x-caption": "Bereich „Nicht gesichert“",
       "x-captionEn": "Section “Not saved”",
@@ -2573,6 +2921,7 @@
       "x-area": "welcome",
       "x-feature": "WelcomePage",
       "x-page": "Willkommensseite",
+      "x-node": "welcome.statusTile",
       "x-quickToggle": true,
       "x-caption": "Zustandskachel „Atlas“",
       "x-captionEn": "Status tile “Atlas”",
@@ -2592,6 +2941,7 @@
       "x-area": "welcome",
       "x-feature": "WelcomePage",
       "x-page": "Willkommensseite",
+      "x-node": "welcome.discover",
       "x-quickToggle": true,
       "x-caption": "Karte „Atlas entdecken“",
       "x-captionEn": "Card “Discover Atlas”",
@@ -2602,7 +2952,8 @@
       "default": true,
       "x-key": "tips.usageTracking",
       "x-area": "welcome",
-      "x-page": "Willkommensseite"
+      "x-page": "Willkommensseite",
+      "x-parent": "welcomePage.discover"
     },
     "WelcomePageHelp": {
       "type": "boolean",
@@ -2611,6 +2962,7 @@
       "x-area": "welcome",
       "x-feature": "WelcomePage",
       "x-page": "Willkommensseite",
+      "x-node": "welcome.help",
       "x-quickToggle": true,
       "x-caption": "Bereich „Hilfe“",
       "x-captionEn": "Section “Help”",
@@ -2636,7 +2988,8 @@
       "default": true,
       "x-key": "welcomePage.newFromTemplate",
       "x-area": "welcome",
-      "x-page": "Willkommensseite"
+      "x-page": "Willkommensseite",
+      "x-node": "welcome.projectSetup"
     },
     "WelcomePageContinue": {
       "type": "boolean",
@@ -2645,6 +2998,7 @@
       "x-area": "welcome",
       "x-feature": "WelcomePage",
       "x-page": "Willkommensseite",
+      "x-node": "welcome.continue",
       "x-quickToggle": true,
       "x-caption": "Bereich „Weiterarbeiten“",
       "x-captionEn": "Section “Continue”",
@@ -2676,7 +3030,8 @@
       "default": true,
       "x-key": "welcomePage.saved",
       "x-area": "welcome",
-      "x-page": "Willkommensseite"
+      "x-page": "Willkommensseite",
+      "x-node": "welcome.continue"
     },
     "WelcomePageTrends": {
       "type": "boolean",
@@ -2685,6 +3040,7 @@
       "x-area": "welcome",
       "x-feature": "WelcomePage",
       "x-page": "Willkommensseite",
+      "x-node": "welcome.trends",
       "x-quickToggle": true,
       "x-caption": "Bereich „Projektverlauf“",
       "x-captionEn": "Section “Project history”",
@@ -2711,6 +3067,7 @@
       "x-area": "welcome",
       "x-feature": "WelcomePage",
       "x-page": "Willkommensseite",
+      "x-node": "welcome.tests",
       "x-quickToggle": true,
       "x-caption": "Bereich „Testergebnisse“",
       "x-captionEn": "Section “Test results”",
@@ -2793,6 +3150,7 @@
       "x-area": "welcome",
       "x-feature": "WelcomePage",
       "x-page": "Willkommensseite",
+      "x-node": "welcome.issues",
       "x-quickToggle": true,
       "x-caption": "Meine Issues aus dem Tracker",
       "x-captionEn": "My issues from the tracker",
@@ -2875,6 +3233,7 @@
       "x-area": "welcome",
       "x-feature": "WelcomePage",
       "x-page": "Willkommensseite",
+      "x-node": "welcome.customLayout",
       "x-quickToggle": true,
       "x-caption": "Willkommensseite anpassen",
       "x-captionEn": "Customize the welcome page",
@@ -2886,6 +3245,7 @@
       "x-key": "welcomePage.columns",
       "x-area": "welcome",
       "x-page": "Willkommensseite",
+      "x-parent": "welcomePage.customLayout",
       "x-issue": "#767"
     },
     "WelcomePageLayouts": {
@@ -2894,6 +3254,7 @@
       "x-key": "welcomePage.layouts",
       "x-area": "welcome",
       "x-page": "Willkommensseite",
+      "x-parent": "welcomePage.customLayout",
       "x-issue": "#767"
     },
     "WelcomePageActiveLayout": {
@@ -2902,6 +3263,7 @@
       "x-key": "welcomePage.activeLayout",
       "x-area": "welcome",
       "x-page": "Willkommensseite",
+      "x-parent": "welcomePage.customLayout",
       "x-issue": "#767"
     },
     "NotificationsSources": {
@@ -2924,7 +3286,8 @@
       "x-key": "notifications.key",
       "x-area": "keys",
       "x-format": "shortcut",
-      "x-page": "Befehle"
+      "x-page": "Befehle",
+      "x-node": ""
     },
     "SettingsMarkModified": {
       "type": "boolean",
@@ -2942,6 +3305,7 @@
       "x-key": "settings.backupBeforeImport",
       "x-area": "general",
       "x-page": "Allgemein",
+      "x-parent": "settings.exportImport",
       "description": "Vor jedem Import und vor „Alles zurücksetzen“ den aktuellen Stand als Datei sichern",
       "x-control": "Kontrollkästchen",
       "x-issue": "#723"
@@ -2956,6 +3320,7 @@
       "x-key": "settings.exportSecrets",
       "x-area": "general",
       "x-page": "Allgemein",
+      "x-parent": "settings.exportImport",
       "description": "Zugangsdaten beim Export: omit lässt sie aus, placeholder schreibt den Platzhalter \"<secret>\"",
       "x-control": "Auswahl",
       "x-issue": "#723"

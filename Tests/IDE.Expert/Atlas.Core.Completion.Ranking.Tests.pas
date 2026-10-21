@@ -36,6 +36,12 @@ type
     [Test]
     procedure DataNamesCarrySource;
     [Test]
+    procedure UsesUnitsGroupedWithHeaders;
+    [Test]
+    procedure InheritedCallsFirstWithTags;
+    [Test]
+    procedure SameNameVariantsFollowTheActive;
+    [Test]
     procedure ListModeFilterShowsOnlyMatches;
     [Test]
     procedure ListModeAllAppendsRestWithoutHeader;
@@ -574,6 +580,164 @@ begin
   Assert.AreEqual('qryOrders', Items[1].DataSet);
   Assert.AreEqual('select CUSTOMER_ID from ORDERS', TAtlasItemPresentation.DataSource(Items));
   Assert.AreEqual('', TAtlasItemPresentation.DataSource(Copy(Items, 0, 1)));
+end;
+
+procedure TAtlasRankingTests.SameNameVariantsFollowTheActive;
+const
+  Lines: array[0..2] of string = (
+    '{"label":"TBitmap","kind":7,"data":{"scope":5,"unit":"Winapi.Windows","action":"sameName",' +
+      '"sameNameOf":"Vcl.Graphics","sameNameInsert":"prefix","sameNameUnits":["Vcl.Graphics","Winapi.Windows"],' +
+      '"sameNameHidden":["FMX.Graphics.TBitmap"]},"textEdit":{"range":{"start":{"line":8,"character":10},' +
+      '"end":{"line":8,"character":15}},"newText":"Winapi.Windows.TBitmap"}}',
+    '{"label":"TBitmap","kind":7,"data":{"scope":5,"unit":"Vcl.Graphics","sameNameActive":true,' +
+      '"sameNameUnits":["Vcl.Graphics","Winapi.Windows"],"sameNameHidden":["FMX.Graphics.TBitmap"]}}',
+    '{"label":"TBitmapImage","kind":7,"data":{"scope":5,"unit":"Vcl.Graphics"}}');
+var
+  Json: TJSONObject;
+  Items: TAtlasCompletionItems;
+  Index: Integer;
+  Order: TArray<Integer>;
+  Found: Boolean;
+  Tag: TAtlasTag;
+  Details: TAtlasItemDetails;
+begin
+  // Gleiche Namen aus verschiedenen Units (#475): die Variante direkt unter der aktiven.
+  Items := nil;
+  for Index := 0 to High(Lines) do
+  begin
+    Json := TJSONObject.ParseJSONValue(Lines[Index]) as TJSONObject;
+    try
+      Items := Items + [TAtlasServerCompletionProvider.ItemFromLsp(Json, Index)];
+    finally
+      Json.Free;
+    end;
+  end;
+  Order := TAtlasRanking.Order(Items, 'TBitm', TAtlasRankOptions.Defaults);
+  Assert.AreEqual(3, Integer(Length(Order)));
+  // Der Server schickt die Variante hier vor der aktiven; sie rückt dahinter.
+  Assert.AreEqual(1, Order[0]);
+  Assert.AreEqual(0, Order[1]);
+  Assert.AreEqual(2, Order[2]);
+  Found := False;
+  for Tag in TAtlasItemPresentation.Tags(Items[1]) do
+    if Tag.Id = TAtlasTagId.Active then
+      Found := True;
+  Assert.IsTrue(Found);
+  for Tag in TAtlasItemPresentation.Tags(Items[0]) do
+    Assert.IsFalse(Tag.Id = TAtlasTagId.Active);
+  Assert.AreEqual('FMX.Graphics.TBitmap', string.Join(',', TAtlasItemPresentation.SameNameHidden(Items)));
+  Details := Default(TAtlasItemDetails);
+  TAtlasItemPresentation.AddSameName(Items[0], Details);
+  Assert.AreEqual('Winapi.Windows', Details.SameNameThis);
+  Assert.AreEqual('prefix', Details.SameNameInsert);
+  Assert.AreEqual(2, Integer(Length(Details.SameNameUnits)));
+  Assert.IsFalse(Details.IsEmpty);
+end;
+
+procedure TAtlasRankingTests.InheritedCallsFirstWithTags;
+const
+  Lines: array[0..3] of string = (
+    '{"label":"Free","kind":2,"data":{"container":"TObject","depth":3}}',
+    '{"label":"CreateNew(AOwner, Dummy)","filterText":"CreateNew","kind":4,"detail":"TBaseView",' +
+      '"data":{"container":"TBaseView","depth":1,"inheritedMatch":"other","inheritedAbstract":["TBaseView.Zeichnen"]}}',
+    '{"label":"Create(AOwner)","filterText":"Create","kind":4,"detail":"TBaseView",' +
+      '"data":{"container":"TBaseView","depth":1,"inheritedMatch":"same","inheritedAbstract":["TBaseView.Zeichnen"]}}',
+    '{"label":"CreateParented(ParentWindow)","filterText":"CreateParented","kind":4,"detail":"TWinControl",' +
+      '"data":{"container":"TWinControl","depth":2,"inheritedMatch":"other"}}');
+var
+  Json: TJSONObject;
+  Items: TAtlasCompletionItems;
+  Index: Integer;
+  Tags: TAtlasTags;
+  Found: Boolean;
+  Tag: TAtlasTag;
+begin
+  // Nach "inherited " (#482): der Aufruf mit gleichen Parametern zuerst, dann die übrigen Konstruktoren.
+  Items := nil;
+  for Index := 0 to High(Lines) do
+  begin
+    Json := TJSONObject.ParseJSONValue(Lines[Index]) as TJSONObject;
+    try
+      Items := Items + [TAtlasServerCompletionProvider.ItemFromLsp(Json, Index)];
+    finally
+      Json.Free;
+    end;
+  end;
+  Assert.AreEqual('Create(AOwner),CreateNew(AOwner, Dummy),CreateParented(ParentWindow)',
+    Names(Items, TAtlasRanking.Order(Items, 'Cre', TAtlasRankOptions.Defaults)));
+  Tags := TAtlasItemPresentation.Tags(Items[2]);
+  Found := False;
+  for Tag in Tags do
+    if Tag.Id = TAtlasTagId.SameParams then
+      Found := True;
+  Assert.IsTrue(Found);
+  // Weitere Konstruktoren tragen die deklarierende Klasse.
+  Found := False;
+  for Tag in TAtlasItemPresentation.Tags(Items[3]) do
+    if Tag.Text = 'TWinControl' then
+      Found := True;
+  Assert.IsTrue(Found);
+  Assert.AreEqual('TBaseView.Zeichnen', string.Join(',', TAtlasItemPresentation.InheritedAbstract(Items)));
+end;
+
+procedure TAtlasRankingTests.UsesUnitsGroupedWithHeaders;
+const
+  Lines: array[0..3] of string = (
+    '{"label":"Spring.Collections.Generic","kind":9,"data":{"usesGroup":"library","usesFilter":"Generic"}}',
+    '{"label":"System.Generics.Collections","kind":9,' +
+      '"detail":"$(BDS)\\source\\rtl\\common\\System.Generics.Collections.pas","data":{"usesGroup":"rtl",' +
+      '"usesFilter":"Generics.Collections","usesTypes":["TList<T>","TObjectList<T>"],"usesTypeCount":7,' +
+      '"usesHidden":["System.SysUtils"]}}',
+    '{"label":"System.Generics.Defaults","kind":9,"data":{"usesGroup":"rtl","usesFilter":"Generics.Defaults",' +
+      '"usesElsewhere":"implementation"}}',
+    '{"label":"uGeneratorBeleg","kind":9,"detail":"C:\\P\\uGeneratorBeleg.pas","data":{"usesGroup":"project",' +
+      '"usesCycle":"uGeneratorBeleg → Haupt"}}');
+var
+  Json: TJSONObject;
+  Items: TAtlasCompletionItems;
+  Index: Integer;
+  Tags: TAtlasTags;
+  Details: TAtlasItemDetails;
+begin
+  // uses-Abschnitt (#469): Projekt vor RTL/VCL vor Drittanbietern, je Gruppe eine Überschrift; gefiltert wird nach
+  // dem Namensteil ab dem Getippten.
+  Items := nil;
+  for Index := 0 to High(Lines) do
+  begin
+    Json := TJSONObject.ParseJSONValue(Lines[Index]) as TJSONObject;
+    try
+      Items := Items + [TAtlasServerCompletionProvider.ItemFromLsp(Json, Index)];
+    finally
+      Json.Free;
+    end;
+  end;
+  Assert.AreEqual('Generics.Collections', Items[1].FilterText);
+  Assert.AreEqual('#,uGeneratorBeleg,#,System.Generics.Collections,System.Generics.Defaults,#,' +
+    'Spring.Collections.Generic', Names(Items, TAtlasRanking.Order(Items, 'Gener', TAtlasRankOptions.Defaults)));
+  Assert.AreEqual('#,System.Generics.Defaults',
+    Names(Items, TAtlasRanking.Order(Items, 'Defau', TAtlasRankOptions.Defaults)));
+  // Zirkelbezug als Marke in Fehlerfarbe, anderer Abschnitt rechts, kein Dateiname.
+  Tags := TAtlasItemPresentation.Tags(Items[3]);
+  Assert.AreEqual(1, Integer(Length(Tags)));
+  Assert.IsTrue(Tags[0].Kind = TAtlasTagKind.Error);
+  Assert.IsTrue(Tags[0].Id = TAtlasTagId.Cycle);
+  Assert.AreEqual('', TAtlasItemPresentation.Detail(Items[3]));
+  Assert.AreEqual('bereits im implementation-Teil', TAtlasItemPresentation.Detail(Items[2]));
+  Assert.AreEqual(1, Integer(Length(TAtlasItemPresentation.UsesHidden(Items))));
+  Assert.AreEqual('System.SysUtils', TAtlasItemPresentation.UsesHidden(Items)[0]);
+  // Detailpanel ohne Server: Deklaration, Pfad, Typen samt Gesamtzahl.
+  Details := TAtlasItemPresentation.UsesDetails(Items[1]);
+  Assert.AreEqual('unit System.Generics.Collections', Details.Declaration);
+  Assert.AreEqual('$(BDS)\source\rtl\common\System.Generics.Collections.pas', Details.UnitPath);
+  Assert.AreEqual(2, Integer(Length(Details.UnitTypes)));
+  Assert.AreEqual(7, Details.UnitTypeCount);
+  Assert.IsFalse(Details.IsEmpty);
+  Assert.AreEqual('uGeneratorBeleg → Haupt', TAtlasItemPresentation.UsesDetails(Items[3]).UsesCycle);
+  Assert.AreEqual('implementation', TAtlasItemPresentation.UsesDetails(Items[2]).UsesElsewhere);
+  // Ohne Gruppe (Schalter aus): keine Überschriften.
+  for Index := 0 to High(Items) do
+    Items[Index].UsesGroup := '';
+  Assert.IsFalse(Names(Items, TAtlasRanking.Order(Items, 'Gener', TAtlasRankOptions.Defaults)).Contains('#'));
 end;
 
 { TAtlasUsageTests }

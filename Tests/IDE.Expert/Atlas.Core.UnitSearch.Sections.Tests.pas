@@ -1,9 +1,5 @@
 ﻿unit Atlas.Core.UnitSearch.Sections.Tests;
 
-// Einklappbare Abschnitte im Detail-Panel der Unitsuche (#876): bei genug Platz
-// alles offen, sonst die unwichtigsten zu, der wichtigste bleibt offen; die Wahl
-// des Benutzers gewinnt und bleibt nur für die Sitzung (nicht im JSON).
-
 interface
 
 uses
@@ -12,172 +8,130 @@ uses
 
 type
   [TestFixture]
-  TAtlasUnitSectionLayoutTests = class
+  TAtlasPreviewSectionsTests = class
   private
-    function Sizes(AHead, ABody: Integer): TAtlasUnitSectionSizes;
-    function NoChoices: TAtlasUnitSectionChoices;
+    function Inputs: TAtlasSectionInputs;
   public
     [Test]
-    procedure AllOpenWhenEverythingFits;
+    procedure EverythingOpenWithEnoughRoom;
     [Test]
-    procedure ClosesLeastImportantFirst;
+    procedure LessImportantCollapseFirst;
     [Test]
-    procedure MostImportantStaysOpenWithoutRoom;
+    procedure MostImportantStaysOpen;
     [Test]
-    procedure HeaderIsMostImportantWithoutTypes;
+    procedure HandOpenedStaysOpen;
     [Test]
-    procedure AbsentSectionsAreNeverOpen;
+    procedure HandClosedStaysClosed;
     [Test]
-    procedure UserChoiceWinsOverRoom;
+    procedure SwitchedOffNothingCollapses;
     [Test]
-    procedure ToggleRemembersChoice;
-    [Test]
-    procedure HeightCountsHeadsAndOpenBodies;
-    [Test]
-    procedure StateKeepsChoicesOnlyForSession;
+    procedure ToggleFlipsTheState;
   end;
 
 implementation
 
-uses
-  Atlas.Core.UnitSearch.State;
+const
+  None_: TAtlasSectionChoices = (TAtlasSectionChoice.Auto, TAtlasSectionChoice.Auto, TAtlasSectionChoice.Auto,
+    TAtlasSectionChoice.Auto, TAtlasSectionChoice.Auto, TAtlasSectionChoice.Auto);
 
-function TAtlasUnitSectionLayoutTests.Sizes(AHead, ABody: Integer): TAtlasUnitSectionSizes;
-var
-  Section: TAtlasUnitSection;
+function Input(AOpen: Integer): TAtlasSectionInput;
 begin
-  for Section := Low(TAtlasUnitSection) to High(TAtlasUnitSection) do
-  begin
-    Result[Section].Present := True;
-    Result[Section].Head := AHead;
-    Result[Section].Body := ABody;
-  end;
+  Result.Present := AOpen > 0;
+  Result.OpenHeight := AOpen;
+  Result.ClosedHeight := 20;
 end;
 
-function TAtlasUnitSectionLayoutTests.NoChoices: TAtlasUnitSectionChoices;
-var
-  Section: TAtlasUnitSection;
+function TAtlasPreviewSectionsTests.Inputs: TAtlasSectionInputs;
 begin
-  for Section := Low(TAtlasUnitSection) to High(TAtlasUnitSection) do
-    Result[Section] := TAtlasUnitSectionChoice.Auto;
+  // Pfad 40, ohne Kopfkommentar und Formular, Typen 200, uses 60, verwendet von 80: zusammen 380.
+  Result[TAtlasPreviewSection.Path] := Input(40);
+  Result[TAtlasPreviewSection.Header] := Input(0);
+  Result[TAtlasPreviewSection.Form] := Input(0);
+  Result[TAtlasPreviewSection.Types] := Input(200);
+  Result[TAtlasPreviewSection.Uses_] := Input(60);
+  Result[TAtlasPreviewSection.UsedBy] := Input(80);
 end;
 
-procedure TAtlasUnitSectionLayoutTests.AllOpenWhenEverythingFits;
+procedure TAtlasPreviewSectionsTests.EverythingOpenWithEnoughRoom;
 var
-  Open: TAtlasUnitSections;
+  States: TAtlasSectionStates;
 begin
-  // 4 × 20 Überschrift + 4 × 50 Inhalt = 280.
-  Open := TAtlasUnitSectionLayout.Resolve(Sizes(20, 50), 280, NoChoices);
-  Assert.IsTrue(Open = [TAtlasUnitSection.Header, TAtlasUnitSection.Form, TAtlasUnitSection.Types,
-    TAtlasUnitSection.UsedBy]);
+  States := TAtlasPreviewSections.Arrange(Inputs, None_, 380, True);
+  Assert.IsTrue(States[TAtlasPreviewSection.Path] = TAtlasSectionState.Open);
+  Assert.IsTrue(States[TAtlasPreviewSection.Types] = TAtlasSectionState.Open);
+  Assert.IsTrue(States[TAtlasPreviewSection.Uses_] = TAtlasSectionState.Open);
+  Assert.IsTrue(States[TAtlasPreviewSection.UsedBy] = TAtlasSectionState.Open);
+  Assert.IsTrue(States[TAtlasPreviewSection.Header] = TAtlasSectionState.Hidden);
+  Assert.AreEqual(380, TAtlasPreviewSections.Height(Inputs, States));
 end;
 
-procedure TAtlasUnitSectionLayoutTests.ClosesLeastImportantFirst;
+procedure TAtlasPreviewSectionsTests.LessImportantCollapseFirst;
 var
-  Open: TAtlasUnitSections;
+  States: TAtlasSectionStates;
 begin
-  Open := TAtlasUnitSectionLayout.Resolve(Sizes(20, 50), 279, NoChoices);
-  Assert.IsTrue(Open = [TAtlasUnitSection.Header, TAtlasUnitSection.Form, TAtlasUnitSection.Types],
-    'zuerst „Verwendet von“');
-  Open := TAtlasUnitSectionLayout.Resolve(Sizes(20, 50), 229, NoChoices);
-  Assert.IsTrue(Open = [TAtlasUnitSection.Header, TAtlasUnitSection.Types], 'dann die Formularskizze');
-  Open := TAtlasUnitSectionLayout.Resolve(Sizes(20, 50), 179, NoChoices);
-  Assert.IsTrue(Open = [TAtlasUnitSection.Types], 'dann der Kopfkommentar');
+  // 340 Platz: der Pfad (380 - 20 = 360) reicht nicht, uses dazu (320) reicht.
+  States := TAtlasPreviewSections.Arrange(Inputs, None_, 340, True);
+  Assert.IsTrue(States[TAtlasPreviewSection.Path] = TAtlasSectionState.AutoCollapsed);
+  Assert.IsTrue(States[TAtlasPreviewSection.Uses_] = TAtlasSectionState.AutoCollapsed);
+  Assert.IsTrue(States[TAtlasPreviewSection.UsedBy] = TAtlasSectionState.Open);
+  Assert.IsTrue(States[TAtlasPreviewSection.Types] = TAtlasSectionState.Open);
 end;
 
-procedure TAtlasUnitSectionLayoutTests.MostImportantStaysOpenWithoutRoom;
+procedure TAtlasPreviewSectionsTests.MostImportantStaysOpen;
 var
-  Open: TAtlasUnitSections;
+  States: TAtlasSectionStates;
 begin
-  Open := TAtlasUnitSectionLayout.Resolve(Sizes(20, 50), 0, NoChoices);
-  Assert.IsTrue(Open = [TAtlasUnitSection.Types]);
+  States := TAtlasPreviewSections.Arrange(Inputs, None_, 50, True);
+  Assert.IsTrue(States[TAtlasPreviewSection.Types] = TAtlasSectionState.Open);
+  Assert.IsTrue(States[TAtlasPreviewSection.UsedBy] = TAtlasSectionState.AutoCollapsed);
+  Assert.IsTrue(States[TAtlasPreviewSection.Uses_] = TAtlasSectionState.AutoCollapsed);
+  Assert.IsTrue(States[TAtlasPreviewSection.Path] = TAtlasSectionState.AutoCollapsed);
 end;
 
-procedure TAtlasUnitSectionLayoutTests.HeaderIsMostImportantWithoutTypes;
+procedure TAtlasPreviewSectionsTests.HandOpenedStaysOpen;
 var
-  Values: TAtlasUnitSectionSizes;
-  Open: TAtlasUnitSections;
-  Section: TAtlasUnitSection;
+  Choices: TAtlasSectionChoices;
+  States: TAtlasSectionStates;
 begin
-  Values := Sizes(20, 50);
-  Values[TAtlasUnitSection.Types].Present := False;
-  Assert.IsTrue(TAtlasUnitSectionLayout.MostImportant(Values, Section));
-  Assert.IsTrue(Section = TAtlasUnitSection.Header);
-  Open := TAtlasUnitSectionLayout.Resolve(Values, 0, NoChoices);
-  Assert.IsTrue(Open = [TAtlasUnitSection.Header]);
+  Choices := None_;
+  Choices[TAtlasPreviewSection.UsedBy] := TAtlasSectionChoice.HandOpen;
+  States := TAtlasPreviewSections.Arrange(Inputs, Choices, 160, True);
+  Assert.IsTrue(States[TAtlasPreviewSection.UsedBy] = TAtlasSectionState.Open);
+  Assert.IsTrue(States[TAtlasPreviewSection.Types] = TAtlasSectionState.AutoCollapsed,
+    'ein von Hand geöffneter Abschnitt bleibt offen, dafür klappen die übrigen ein');
+  Assert.IsTrue(States[TAtlasPreviewSection.Uses_] = TAtlasSectionState.AutoCollapsed);
 end;
 
-procedure TAtlasUnitSectionLayoutTests.AbsentSectionsAreNeverOpen;
+procedure TAtlasPreviewSectionsTests.HandClosedStaysClosed;
 var
-  Values: TAtlasUnitSectionSizes;
-  Open: TAtlasUnitSections;
-  Choices: TAtlasUnitSectionChoices;
-  Section: TAtlasUnitSection;
+  Choices: TAtlasSectionChoices;
+  States: TAtlasSectionStates;
 begin
-  Values := Default(TAtlasUnitSectionSizes);
-  Assert.IsFalse(TAtlasUnitSectionLayout.MostImportant(Values, Section));
-  Choices := NoChoices;
-  Choices[TAtlasUnitSection.Form] := TAtlasUnitSectionChoice.Open;
-  Open := TAtlasUnitSectionLayout.Resolve(Values, 1000, Choices);
-  Assert.IsTrue(Open = []);
-  Assert.AreEqual(0, TAtlasUnitSectionLayout.Height(Values, Open));
+  Choices := None_;
+  Choices[TAtlasPreviewSection.Types] := TAtlasSectionChoice.HandClosed;
+  States := TAtlasPreviewSections.Arrange(Inputs, Choices, 1000, True);
+  Assert.IsTrue(States[TAtlasPreviewSection.Types] = TAtlasSectionState.Collapsed);
+  Assert.IsTrue(States[TAtlasPreviewSection.Path] = TAtlasSectionState.Open);
 end;
 
-procedure TAtlasUnitSectionLayoutTests.UserChoiceWinsOverRoom;
+procedure TAtlasPreviewSectionsTests.SwitchedOffNothingCollapses;
 var
-  Choices: TAtlasUnitSectionChoices;
-  Open: TAtlasUnitSections;
+  States: TAtlasSectionStates;
 begin
-  Choices := NoChoices;
-  Choices[TAtlasUnitSection.UsedBy] := TAtlasUnitSectionChoice.Open;
-  Choices[TAtlasUnitSection.Types] := TAtlasUnitSectionChoice.Closed;
-  // Kein Platz: geöffnetes „Verwendet von“ bleibt, geschlossene Typen bleiben zu, Rest automatisch zu.
-  Open := TAtlasUnitSectionLayout.Resolve(Sizes(20, 50), 0, Choices);
-  Assert.IsTrue(Open = [TAtlasUnitSection.UsedBy]);
-  // Genug Platz: geschlossene Typen bleiben zu, alle anderen offen.
-  Open := TAtlasUnitSectionLayout.Resolve(Sizes(20, 50), 1000, Choices);
-  Assert.IsTrue(Open = [TAtlasUnitSection.Header, TAtlasUnitSection.Form, TAtlasUnitSection.UsedBy]);
+  States := TAtlasPreviewSections.Arrange(Inputs, None_, 50, False);
+  Assert.IsTrue(States[TAtlasPreviewSection.Path] = TAtlasSectionState.Open);
+  Assert.IsTrue(States[TAtlasPreviewSection.UsedBy] = TAtlasSectionState.Open);
 end;
 
-procedure TAtlasUnitSectionLayoutTests.ToggleRemembersChoice;
-var
-  Choices: TAtlasUnitSectionChoices;
+procedure TAtlasPreviewSectionsTests.ToggleFlipsTheState;
 begin
-  Choices := NoChoices;
-  TAtlasUnitSectionLayout.Toggle(Choices, TAtlasUnitSection.Form, True);
-  Assert.IsTrue(Choices[TAtlasUnitSection.Form] = TAtlasUnitSectionChoice.Closed);
-  TAtlasUnitSectionLayout.Toggle(Choices, TAtlasUnitSection.Form, False);
-  Assert.IsTrue(Choices[TAtlasUnitSection.Form] = TAtlasUnitSectionChoice.Open);
-  Assert.IsTrue(Choices[TAtlasUnitSection.Header] = TAtlasUnitSectionChoice.Auto, 'andere unberührt');
-end;
-
-procedure TAtlasUnitSectionLayoutTests.HeightCountsHeadsAndOpenBodies;
-begin
-  Assert.AreEqual(80, TAtlasUnitSectionLayout.Height(Sizes(20, 50), []));
-  Assert.AreEqual(180, TAtlasUnitSectionLayout.Height(Sizes(20, 50), [TAtlasUnitSection.Header,
-    TAtlasUnitSection.UsedBy]));
-  Assert.IsTrue(TAtlasUnitSectionLayout.Rank(TAtlasUnitSection.Types) <
-    TAtlasUnitSectionLayout.Rank(TAtlasUnitSection.UsedBy));
-end;
-
-procedure TAtlasUnitSectionLayoutTests.StateKeepsChoicesOnlyForSession;
-var
-  State, Loaded: TAtlasUnitSearchState;
-begin
-  State := TAtlasUnitSearchState.Create;
-  Loaded := TAtlasUnitSearchState.Create;
-  try
-    Assert.IsTrue(State.Sections[TAtlasUnitSection.Form] = TAtlasUnitSectionChoice.Auto, 'Vorgabe automatisch');
-    State.Sections[TAtlasUnitSection.Form] := TAtlasUnitSectionChoice.Closed;
-    Loaded.LoadJson(State.ToJson);
-    Assert.IsTrue(Loaded.Sections[TAtlasUnitSection.Form] = TAtlasUnitSectionChoice.Auto, 'nicht gespeichert');
-  finally
-    Loaded.Free;
-    State.Free;
-  end;
+  Assert.IsTrue(TAtlasPreviewSections.Toggled(TAtlasSectionState.Open) = TAtlasSectionChoice.HandClosed);
+  Assert.IsTrue(TAtlasPreviewSections.Toggled(TAtlasSectionState.AutoCollapsed) = TAtlasSectionChoice.HandOpen);
+  Assert.IsTrue(TAtlasPreviewSections.Toggled(TAtlasSectionState.Collapsed) = TAtlasSectionChoice.HandOpen);
+  Assert.IsFalse(TAtlasPreviewSections.IsOpen(TAtlasSectionState.AutoCollapsed));
 end;
 
 initialization
-  TDUnitX.RegisterTestFixture(TAtlasUnitSectionLayoutTests);
+  TDUnitX.RegisterTestFixture(TAtlasPreviewSectionsTests);
 
 end.

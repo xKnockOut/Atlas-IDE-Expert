@@ -1,136 +1,120 @@
 ﻿unit Atlas.Core.UnitSearch.Sections;
 
 // Einklappbare Abschnitte im Detail-Panel der Unitsuche (#876), Teil ohne VCL:
-//   - welche Abschnitte bei gegebener Höhe offen bleiben;
-//   - Rangfolge: Typen vor Kopfkommentar vor Formularskizze vor „Verwendet von“;
-//   - Wahl des Benutzers je Abschnitt (offen, zu oder automatisch), die in der
-//     Sitzung erhalten bleibt (liegt in TAtlasUnitSearchState, nicht im JSON).
-// Passt alles, bleibt alles offen. Sonst klappt Atlas automatische Abschnitte
-// vom unwichtigsten an ein, bis es passt; der wichtigste vorhandene bleibt offen.
-// Vom Benutzer geöffnete oder geschlossene Abschnitte behalten ihre Wahl.
+//   - Abschnitte in fester Reihenfolge: Pfad, Kopfkommentar, Formular,
+//     exportierte Typen, uses, „Verwendet von“;
+//   - von Hand auf- oder zugeklappte Abschnitte behalten ihren Zustand;
+//   - passt nicht alles, klappen die übrigen von unten nach Wichtigkeit
+//     automatisch ein (Typen am wichtigsten, Pfad am wenigsten), bis es passt
+//     oder nur noch ein Abschnitt offen ist;
+//   - mit genug Platz bleibt alles offen.
 
 interface
 
 type
-  /// <summary>Abschnitte des Detail-Panels in der Reihenfolge der Anzeige.</summary>
-  TAtlasUnitSection = (Header, Form, Types, UsedBy);
-  TAtlasUnitSections = set of TAtlasUnitSection;
+  TAtlasPreviewSection = (Path, Header, Form, Types, Uses_, UsedBy);
 
-  /// <summary>Wahl des Benutzers: Auto = Atlas entscheidet nach Platz.</summary>
-  TAtlasUnitSectionChoice = (Auto, Open, Closed);
-  TAtlasUnitSectionChoices = array[TAtlasUnitSection] of TAtlasUnitSectionChoice;
+  /// <summary>Wahl von Hand; Auto = Atlas entscheidet.</summary>
+  TAtlasSectionChoice = (Auto, HandOpen, HandClosed);
 
-  TAtlasUnitSectionSize = record
-    /// <summary>Abschnitt hat Inhalt (sonst weder Überschrift noch Inhalt).</summary>
+  TAtlasSectionState = (Hidden, Open, Collapsed, AutoCollapsed);
+
+  TAtlasSectionChoices = array[TAtlasPreviewSection] of TAtlasSectionChoice;
+  TAtlasSectionStates = array[TAtlasPreviewSection] of TAtlasSectionState;
+
+  TAtlasSectionInput = record
+    /// <summary>False: Abschnitt hat keinen Inhalt und wird nicht gezeigt.</summary>
     Present: Boolean;
-    /// <summary>Höhe der Überschrift; immer sichtbar.</summary>
-    Head: Integer;
-    /// <summary>Höhe des Inhalts, wenn aufgeklappt.</summary>
-    Body: Integer;
+    /// <summary>Höhe mit Überschrift und Inhalt.</summary>
+    OpenHeight: Integer;
+    /// <summary>Höhe nur der Überschrift.</summary>
+    ClosedHeight: Integer;
   end;
-  TAtlasUnitSectionSizes = array[TAtlasUnitSection] of TAtlasUnitSectionSize;
 
-  TAtlasUnitSectionLayout = record
+  TAtlasSectionInputs = array[TAtlasPreviewSection] of TAtlasSectionInput;
+
+  TAtlasPreviewSections = class
+  public const
+    /// <summary>Wichtigster Abschnitt zuerst.</summary>
+    Priority: array[0..5] of TAtlasPreviewSection = (TAtlasPreviewSection.Types, TAtlasPreviewSection.Form,
+      TAtlasPreviewSection.UsedBy, TAtlasPreviewSection.Uses_, TAtlasPreviewSection.Header,
+      TAtlasPreviewSection.Path);
   public
-    /// <summary>Rang: 0 = wichtigster.</summary>
-    class function Rank(ASection: TAtlasUnitSection): Integer; static;
-    /// <summary>Wichtigster vorhandener Abschnitt; False, wenn keiner vorhanden ist.</summary>
-    class function MostImportant(const ASizes: TAtlasUnitSectionSizes; out ASection: TAtlasUnitSection): Boolean;
-      static;
-    /// <summary>Gesamthöhe aller vorhandenen Überschriften plus der Inhalte in AOpen.</summary>
-    class function Height(const ASizes: TAtlasUnitSectionSizes; AOpen: TAtlasUnitSections): Integer; static;
-    /// <summary>Offene Abschnitte für die verfügbare Höhe AAvailable.</summary>
-    class function Resolve(const ASizes: TAtlasUnitSectionSizes; AAvailable: Integer;
-      const AChoices: TAtlasUnitSectionChoices): TAtlasUnitSections; static;
-    /// <summary>Klick auf die Überschrift: war der Abschnitt offen, wird er zu, sonst offen. Die Wahl bleibt.</summary>
-    class procedure Toggle(var AChoices: TAtlasUnitSectionChoices; ASection: TAtlasUnitSection;
-      AWasOpen: Boolean); static;
+    /// <summary>Zustand je Abschnitt für AAvailable Pixel Höhe; AAutoCollapse = False klappt nichts selbst ein.</summary>
+    class function Arrange(const AInputs: TAtlasSectionInputs; const AChoices: TAtlasSectionChoices;
+      AAvailable: Integer; AAutoCollapse: Boolean): TAtlasSectionStates; static;
+    /// <summary>Gesamthöhe der Abschnitte in diesen Zuständen.</summary>
+    class function Height(const AInputs: TAtlasSectionInputs; const AStates: TAtlasSectionStates): Integer; static;
+    /// <summary>Wahl nach einem Klick auf die Überschrift: offen wird zu, zu wird offen.</summary>
+    class function Toggled(AState: TAtlasSectionState): TAtlasSectionChoice; static;
+    /// <summary>True, wenn der Abschnitt offen gezeichnet wird.</summary>
+    class function IsOpen(AState: TAtlasSectionState): Boolean; static;
   end;
 
 implementation
 
-const
-  // Vom wichtigsten zum unwichtigsten.
-  Ranking: array[0..3] of TAtlasUnitSection = (TAtlasUnitSection.Types, TAtlasUnitSection.Header,
-    TAtlasUnitSection.Form, TAtlasUnitSection.UsedBy);
+{ TAtlasPreviewSections }
 
-{ TAtlasUnitSectionLayout }
-
-class function TAtlasUnitSectionLayout.Rank(ASection: TAtlasUnitSection): Integer;
-var
-  Index: Integer;
+class function TAtlasPreviewSections.IsOpen(AState: TAtlasSectionState): Boolean;
 begin
-  for Index := Low(Ranking) to High(Ranking) do
-    if Ranking[Index] = ASection then
-      Exit(Index);
-  Result := High(Ranking) + 1;
+  Result := AState = TAtlasSectionState.Open;
 end;
 
-class function TAtlasUnitSectionLayout.MostImportant(const ASizes: TAtlasUnitSectionSizes;
-  out ASection: TAtlasUnitSection): Boolean;
+class function TAtlasPreviewSections.Height(const AInputs: TAtlasSectionInputs;
+  const AStates: TAtlasSectionStates): Integer;
 var
-  Index: Integer;
-begin
-  for Index := Low(Ranking) to High(Ranking) do
-    if ASizes[Ranking[Index]].Present then
-    begin
-      ASection := Ranking[Index];
-      Exit(True);
-    end;
-  ASection := Low(TAtlasUnitSection);
-  Result := False;
-end;
-
-class function TAtlasUnitSectionLayout.Height(const ASizes: TAtlasUnitSectionSizes;
-  AOpen: TAtlasUnitSections): Integer;
-var
-  Section: TAtlasUnitSection;
+  Section: TAtlasPreviewSection;
 begin
   Result := 0;
-  for Section := Low(TAtlasUnitSection) to High(TAtlasUnitSection) do
-    if ASizes[Section].Present then
-    begin
-      Inc(Result, ASizes[Section].Head);
-      if Section in AOpen then
-        Inc(Result, ASizes[Section].Body);
+  for Section := Low(TAtlasPreviewSection) to High(TAtlasPreviewSection) do
+    case AStates[Section] of
+      TAtlasSectionState.Open:
+        Inc(Result, AInputs[Section].OpenHeight);
+      TAtlasSectionState.Collapsed, TAtlasSectionState.AutoCollapsed:
+        Inc(Result, AInputs[Section].ClosedHeight);
     end;
 end;
 
-class function TAtlasUnitSectionLayout.Resolve(const ASizes: TAtlasUnitSectionSizes; AAvailable: Integer;
-  const AChoices: TAtlasUnitSectionChoices): TAtlasUnitSections;
+class function TAtlasPreviewSections.Arrange(const AInputs: TAtlasSectionInputs;
+  const AChoices: TAtlasSectionChoices; AAvailable: Integer; AAutoCollapse: Boolean): TAtlasSectionStates;
 var
-  Section, Keep: TAtlasUnitSection;
-  HasKeep: Boolean;
-  Index, Total: Integer;
+  Section: TAtlasPreviewSection;
+  Total, OpenCount, Index: Integer;
 begin
-  Result := [];
-  for Section := Low(TAtlasUnitSection) to High(TAtlasUnitSection) do
-    if ASizes[Section].Present and (AChoices[Section] <> TAtlasUnitSectionChoice.Closed) then
-      Include(Result, Section);
-  Total := Height(ASizes, Result);
-  HasKeep := MostImportant(ASizes, Keep);
-  // Vom unwichtigsten an einklappen, bis es passt.
-  for Index := High(Ranking) downto Low(Ranking) do
+  OpenCount := 0;
+  for Section := Low(TAtlasPreviewSection) to High(TAtlasPreviewSection) do
+    if not AInputs[Section].Present then
+      Result[Section] := TAtlasSectionState.Hidden
+    else if AChoices[Section] = TAtlasSectionChoice.HandClosed then
+      Result[Section] := TAtlasSectionState.Collapsed
+    else
+    begin
+      Result[Section] := TAtlasSectionState.Open;
+      Inc(OpenCount);
+    end;
+  if not AAutoCollapse then
+    Exit;
+  Total := Height(AInputs, Result);
+  // Vom unwichtigsten her einklappen; von Hand geöffnete bleiben offen.
+  for Index := High(Priority) downto Low(Priority) do
   begin
-    if Total <= AAvailable then
+    if (Total <= AAvailable) or (OpenCount <= 1) then
       Break;
-    Section := Ranking[Index];
-    if not (Section in Result) or (AChoices[Section] <> TAtlasUnitSectionChoice.Auto) then
+    Section := Priority[Index];
+    if (Result[Section] <> TAtlasSectionState.Open) or (AChoices[Section] = TAtlasSectionChoice.HandOpen) then
       Continue;
-    if HasKeep and (Section = Keep) then
-      Continue;
-    Exclude(Result, Section);
-    Dec(Total, ASizes[Section].Body);
+    Result[Section] := TAtlasSectionState.AutoCollapsed;
+    Dec(OpenCount);
+    Dec(Total, AInputs[Section].OpenHeight - AInputs[Section].ClosedHeight);
   end;
 end;
 
-class procedure TAtlasUnitSectionLayout.Toggle(var AChoices: TAtlasUnitSectionChoices; ASection: TAtlasUnitSection;
-  AWasOpen: Boolean);
+class function TAtlasPreviewSections.Toggled(AState: TAtlasSectionState): TAtlasSectionChoice;
 begin
-  if AWasOpen then
-    AChoices[ASection] := TAtlasUnitSectionChoice.Closed
+  if AState = TAtlasSectionState.Open then
+    Result := TAtlasSectionChoice.HandClosed
   else
-    AChoices[ASection] := TAtlasUnitSectionChoice.Open;
+    Result := TAtlasSectionChoice.HandOpen;
 end;
 
 end.

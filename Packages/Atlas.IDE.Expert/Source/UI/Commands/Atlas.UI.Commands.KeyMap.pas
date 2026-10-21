@@ -328,6 +328,8 @@ begin
       Id := TAtlasTextId.SearchPreviousCommand;
     TAtlasKeyFunction.SearchMethod:
       Id := TAtlasTextId.SearchInMethodCommand;
+    TAtlasKeyFunction.FormatCode:
+      Id := TAtlasTextId.FormatCodeCommand;
   else
     Id := TAtlasTextId.KeyMapUnitSearchIde;
   end;

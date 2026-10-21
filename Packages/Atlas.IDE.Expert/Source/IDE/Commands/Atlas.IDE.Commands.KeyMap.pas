@@ -128,7 +128,9 @@ const
     // Mehrfachmarken (#589): Editorbefehle.
     3, 3, 3, 3, 3,
     // Atlas-Suche (#877, #878): Editorbefehle.
-    3, 3, 3, 3);
+    3, 3, 3, 3,
+    // Formatieren (#43): Editorbefehl.
+    3);
 
 type
   /// <summary>Herkunft je Modul, einmal ermittelt.</summary>

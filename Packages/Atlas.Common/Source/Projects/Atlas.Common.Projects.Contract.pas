@@ -32,6 +32,9 @@ type
     Platform: string;
     /// <summary>Bedingte Symbole (DCC_Define), ohne Duplikate, in Großschreibung.</summary>
     Defines: TArray<string>;
+    /// <summary>Herkunft je Symbol aus Defines (#102): "Projekt", "Projekt, Plattform Win64",
+    /// "Konfiguration Debug" oder "Konfiguration Debug, Plattform Win64".</summary>
+    DefineOrigins: TArray<TPair<string, string>>;
     /// <summary>Suchpfade des Projekts (DCC_UnitSearchPath), absolut, vorhandene Reihenfolge.</summary>
     SearchPaths: TArray<string>;
     /// <summary>Unit-Namespaces (DCC_Namespace), z. B. System, Vcl, Winapi.</summary>

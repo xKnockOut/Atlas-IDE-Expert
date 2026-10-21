@@ -1,16 +1,19 @@
 ﻿unit Atlas.Common.Editing.Formatter;
 
-// Formatierung (#43), bewusst vorsichtig: Die Struktur des Codes bleibt, wie
-// sie ist; geändert werden nur Leerraum und die Schreibweise reservierter
-// Wörter.
-//   - Einrückung: führende Tabs bzw. Leerzeichen in die eingestellte Art
-//     umrechnen (Breite einer Ebene: indentSize)
+// Formatierung (#43). Die Tokenfolge bleibt immer gleich; geändert werden
+// Leerraum, Zeilenumbrüche und die Schreibweise reservierter Wörter:
+//   - Stellung von begin und else (Formatter.Layout, format.beginPlacement,
+//     format.elsePlacement)
+//   - Einrückung aus der Blockstruktur (Formatter.Indent, format.reindent),
+//     sonst führende Tabs bzw. Leerzeichen in die eingestellte Art umrechnen
 //   - Leerzeichen am Zeilenende entfernen
 //   - genau ein Leerzeichen um := und nach Kommas
 //   - reservierte Wörter klein oder groß schreiben
+//   - Zuweisungen, Deklarationen und Kommentare ausrichten (format.align*)
+//   - lange Zeilen umbrechen (format.maxLineLength)
 //   - Zeilenende vereinheitlichen, abschließende Leerzeile
 // Zeilen in mehrzeiligen Kommentaren und Strings sowie asm-Blöcke bleiben
-// unverändert. Ergebnis sind Textänderungen je Zeile.
+// unverändert. Ergebnis sind Textänderungen je Zeile bzw. Zeilenbereich.
 
 interface
 
@@ -38,7 +41,10 @@ uses
   System.Math,
   System.Generics.Collections,
   System.Generics.Defaults,
-  Atlas.Text.Lines;
+  Atlas.Text.Lines,
+  Atlas.Common.Pascal.Lexer,
+  Atlas.Common.Editing.Formatter.Indent,
+  Atlas.Common.Editing.Formatter.Layout;
 
 type
   TLineInfo = record
@@ -54,24 +60,36 @@ type
     Text: string;
   end;
 
-/// <summary>Führenden Leerraum nach Spalten umrechnen, Rest unverändert.</summary>
-function Reindent(const ALine: string; const ASettings: TFormatStyle): string;
+/// <summary>Breite des führenden Leerraums in Spalten (Tab bis zur nächsten Ebene).</summary>
+function LeadingColumns(const ALine: string; AIndentSize: Integer; out ALength: Integer): Integer;
 var
-  Index, Columns: Integer;
+  Index: Integer;
 begin
   Index := 1;
-  Columns := 0;
+  Result := 0;
   while (Index <= Length(ALine)) and CharInSet(ALine[Index], [' ', #9]) do
   begin
     if ALine[Index] = #9 then
-      Columns := (Columns div ASettings.IndentSize + 1) * ASettings.IndentSize
+      Result := (Result div AIndentSize + 1) * AIndentSize
     else
-      Inc(Columns);
+      Inc(Result);
     Inc(Index);
   end;
+  ALength := Index - 1;
+end;
+
+/// <summary>Führenden Leerraum nach Spalten umrechnen (AColumn &lt; 0: vorhandene Breite), Rest unverändert.</summary>
+function Reindent(const ALine: string; const ASettings: TFormatStyle; AColumn: Integer): string;
+var
+  Index, Columns: Integer;
+begin
+  Columns := LeadingColumns(ALine, ASettings.IndentSize, Index);
+  Inc(Index);
   if Index > Length(ALine) then
     // Nur Leerraum: Zeile wird leer (falls getrimmt) oder bleibt.
     Exit(ALine);
+  if AColumn >= 0 then
+    Columns := AColumn;
   if ASettings.UseTabs then
     Result := StringOfChar(#9, Columns div ASettings.IndentSize) + StringOfChar(' ', Columns mod ASettings.IndentSize)
   else
@@ -91,40 +109,34 @@ end;
 
 { TFormatter }
 
-class function TFormatter.Edits(const AText: string; const ATokens: TArray<TPascalToken>;
-  const ASettings: TFormatStyle; AFirstLine, ALastLine: Integer): TArray<TTextEdit>;
+/// <summary>Leerraum, Einrückung und Schreibweise je Zeile (Zeilen mit Ursprung in AFirst..ALast).</summary>
+procedure FormatLines(var ALines: TArray<TFormatLine>; const ATokens: TArray<TPascalToken>;
+  const ASettings: TFormatStyle; AFirst, ALast: Integer);
 var
-  Lines, Formatted: TArray<string>;
   Info: TArray<TLineInfo>;
   Gaps: TArray<TList<TGapEdit>>;
-  Index, Line, AsmDepth: Integer;
+  Columns, Leading: TArray<Integer>;
+  Index, Line, AsmDepth, Width: Integer;
   Token, Previous, Next: TPascalToken;
-  Settings: TFormatStyle;
-  Text, LB, Wanted: string;
+  Text, Wanted: string;
   Gap: TGapEdit;
-  Found: TList<TTextEdit>;
-  WholeFile, Changed: Boolean;
-  LastLine: Integer;
 begin
-  Settings := ASettings;
-  if Settings.IndentSize < 1 then
-    Settings.IndentSize := 2;
-  Lines := TTextLines.SplitLines(AText);
-  SetLength(Info, Length(Lines));
-  SetLength(Gaps, Length(Lines));
-  for Line := 0 to High(Lines) do
+  SetLength(Info, Length(ALines));
+  SetLength(Gaps, Length(ALines));
+  for Line := 0 to High(ALines) do
     Gaps[Line] := TList<TGapEdit>.Create;
-  Found := TList<TTextEdit>.Create;
   try
     // Mehrzeilige Tokens und asm-Blöcke einfrieren.
     AsmDepth := 0;
     for Index := 0 to High(ATokens) do
     begin
       Token := ATokens[Index];
+      if Token.StartPos.Line > High(ALines) then
+        Break;
       if Token.EndPos.Line > Token.StartPos.Line then
       begin
         Info[Token.StartPos.Line].KeepEnd := True;
-        for Line := Token.StartPos.Line + 1 to Min(Token.EndPos.Line, High(Lines)) do
+        for Line := Token.StartPos.Line + 1 to Min(Token.EndPos.Line, High(ALines)) do
           Info[Line].Frozen := True;
       end;
       if (Token.Kind = TPascalTokenKind.Keyword) and Token.IsKeyword('asm') then
@@ -138,16 +150,16 @@ begin
       begin
         // Zeilen nach "asm" bis zum end bleiben, wie sie sind.
         if not Token.IsKeyword('asm') then
-          for Line := Token.StartPos.Line to Min(Token.EndPos.Line, High(Lines)) do
+          for Line := Token.StartPos.Line to Min(Token.EndPos.Line, High(ALines)) do
             Info[Line].Frozen := True;
         Continue;
       end;
-      if (Token.StartPos.Line >= Length(Lines)) or Info[Token.StartPos.Line].Frozen then
+      if Info[Token.StartPos.Line].Frozen then
         Continue;
       // Schreibweise reservierter Wörter.
-      if (Token.Kind = TPascalTokenKind.Keyword) and (Settings.KeywordCase <> TKeywordCase.Preserve) then
+      if (Token.Kind = TPascalTokenKind.Keyword) and (ASettings.KeywordCase <> TKeywordCase.Preserve) then
       begin
-        if Settings.KeywordCase = TKeywordCase.Lower then
+        if ASettings.KeywordCase = TKeywordCase.Lower then
           Wanted := LowerCase(Token.Text)
         else
           Wanted := UpperCase(Token.Text);
@@ -156,7 +168,7 @@ begin
       end;
       if Token.Kind <> TPascalTokenKind.Symbol then
         Continue;
-      if (Token.Text = ':=') and Settings.SpaceAroundAssignment then
+      if (Token.Text = ':=') and ASettings.SpaceAroundAssignment then
       begin
         if Index > 0 then
         begin
@@ -172,23 +184,27 @@ begin
             AddGap(Gaps[Token.StartPos.Line], Token.EndPos.Character, Next.StartPos.Character, ' ');
         end;
       end
-      else if (Token.Text = ',') and Settings.SpaceAfterComma and (Index < High(ATokens)) then
+      else if (Token.Text = ',') and ASettings.SpaceAfterComma and (Index < High(ATokens)) then
       begin
         Next := ATokens[Index + 1];
         if (Next.StartPos.Line = Token.EndPos.Line) and (Next.StartPos.Character - Token.EndPos.Character <> 1) then
           AddGap(Gaps[Token.StartPos.Line], Token.EndPos.Character, Next.StartPos.Character, ' ');
       end;
     end;
-    if ALastLine < 0 then
-      LastLine := High(Lines)
-    else
-      LastLine := Min(ALastLine, High(Lines));
-    Formatted := Copy(Lines);
-    for Line := Max(AFirstLine, 0) to LastLine do
+    // Einrückung aus der Blockstruktur (#43).
+    Columns := nil;
+    if ASettings.Reindent then
     begin
-      if Info[Line].Frozen then
+      SetLength(Leading, Length(ALines));
+      for Line := 0 to High(ALines) do
+        Leading[Line] := LeadingColumns(ALines[Line].Text, ASettings.IndentSize, Width);
+      Columns := TBlockIndenter.Columns(ATokens, Leading, ASettings.IndentSize);
+    end;
+    for Line := 0 to High(ALines) do
+    begin
+      if Info[Line].Frozen or (ALines[Line].Origin < AFirst) or (ALines[Line].Origin > ALast) then
         Continue;
-      Text := Lines[Line];
+      Text := ALines[Line].Text;
       // Von rechts nach links, damit die Spalten gültig bleiben.
       Gaps[Line].Sort(TComparer<TGapEdit>.Construct(
         function(const A, B: TGapEdit): Integer
@@ -197,62 +213,148 @@ begin
         end));
       for Gap in Gaps[Line] do
         Text := Copy(Text, 1, Gap.StartColumn) + Gap.Text + Copy(Text, Gap.EndColumn + 1, MaxInt);
-      Text := Reindent(Text, Settings);
-      if Settings.TrimTrailingWhitespace and not Info[Line].KeepEnd then
+      if Columns <> nil then
+        Text := Reindent(Text, ASettings, Columns[Line])
+      else
+        Text := Reindent(Text, ASettings, -1);
+      if ASettings.TrimTrailingWhitespace and not Info[Line].KeepEnd then
         Text := TrimRight(Text);
-      Formatted[Line] := Text;
-      if Formatted[Line] <> Lines[Line] then
-        Found.Add(TTextEdit.Create(TTextRange.Create(Line, 0, Line, Length(Lines[Line])), Formatted[Line]));
+      ALines[Line].Text := Text;
     end;
-    WholeFile := (AFirstLine <= 0) and (ALastLine < 0);
-    if WholeFile then
+  finally
+    for Line := 0 to High(Gaps) do
+      Gaps[Line].Free;
+  end;
+end;
+
+function JoinTexts(const ALines: TArray<TFormatLine>; const ALineBreak: string): string;
+var
+  Builder: TStringBuilder;
+  Index: Integer;
+begin
+  Builder := TStringBuilder.Create;
+  try
+    for Index := 0 to High(ALines) do
     begin
-      LB := TTextLines.LineBreakOf(AText);
-      Changed := (Settings.EndOfLine <> '') and (Settings.EndOfLine <> LB) and (Length(Lines) > 1);
-      if Changed then
-      begin
-        // Neue Zeilenenden: die ganze Datei auf einmal ersetzen.
-        Found.Clear;
-        Text := string.Join(Settings.EndOfLine, Formatted);
-        if Settings.InsertFinalNewline and (Text <> '') and not Text.EndsWith(Settings.EndOfLine) then
-          Text := Text + Settings.EndOfLine;
-        Found.Add(TTextEdit.Create(TTextRange.Create(0, 0, High(Lines), Length(Lines[High(Lines)])), Text));
-      end
-      else if Settings.InsertFinalNewline and (Formatted[High(Formatted)] <> '') then
-        Found.Add(TTextEdit.Create(TTextRange.Create(High(Lines), Length(Lines[High(Lines)]), High(Lines),
-          Length(Lines[High(Lines)])), LB));
+      if Index > 0 then
+        Builder.Append(ALineBreak);
+      Builder.Append(ALines[Index].Text);
     end;
+    Result := Builder.ToString;
+  finally
+    Builder.Free;
+  end;
+end;
+
+/// <summary>Alle Schritte; Zeilen mit Ursprung und die an die vorige Zeile gehängten Ursprungszeilen.</summary>
+function Pipeline(const AText: string; const ATokens: TArray<TPascalToken>; const ASettings: TFormatStyle;
+  AFirstLine, ALastLine: Integer; out AOriginal: TArray<string>; out AJoined: TArray<Boolean>): TArray<TFormatLine>;
+var
+  Settings: TFormatStyle;
+  Tokens: TArray<TPascalToken>;
+  LB: string;
+  First, Last, Round: Integer;
+  Kind: TFormatAlignment;
+begin
+  Settings := ASettings;
+  if Settings.IndentSize < 1 then
+    Settings.IndentSize := 2;
+  LB := TTextLines.LineBreakOf(AText);
+  AOriginal := TTextLines.SplitLines(AText);
+  First := Max(AFirstLine, 0);
+  if ALastLine < 0 then
+    Last := High(AOriginal)
+  else
+    Last := Min(ALastLine, High(AOriginal));
+  Result := TFormatLayout.Place(AOriginal, ATokens, Settings, First, Last, AJoined);
+  if Length(Result) = Length(AOriginal) then
+    Tokens := ATokens
+  else
+    Tokens := TPascalLexer.Tokenize(JoinTexts(Result, LB));
+  FormatLines(Result, Tokens, Settings, First, Last);
+  for Kind := Low(TFormatAlignment) to High(TFormatAlignment) do
+    if ((Kind = TFormatAlignment.Assignments) and Settings.AlignAssignments) or
+      ((Kind in [TFormatAlignment.Declarations, TFormatAlignment.Constants]) and Settings.AlignDeclarations) or
+      ((Kind = TFormatAlignment.Comments) and Settings.AlignComments) then
+      TFormatLayout.Align(Result, TPascalLexer.Tokenize(JoinTexts(Result, LB)), Kind, First, Last);
+  if Settings.MaxLineLength > 0 then
+    for Round := 1 to 64 do
+      if not TFormatLayout.Wrap(Result, TPascalLexer.Tokenize(JoinTexts(Result, LB)), Settings, First, Last) then
+        Break;
+end;
+
+class function TFormatter.Edits(const AText: string; const ATokens: TArray<TPascalToken>;
+  const ASettings: TFormatStyle; AFirstLine, ALastLine: Integer): TArray<TTextEdit>;
+var
+  Original: TArray<string>;
+  Joined: TArray<Boolean>;
+  Lines: TArray<TFormatLine>;
+  Found: TList<TTextEdit>;
+  LB, Text, OldText: string;
+  Line, Index, Stop: Integer;
+  WholeFile, FirstPart: Boolean;
+begin
+  Lines := Pipeline(AText, ATokens, ASettings, AFirstLine, ALastLine, Original, Joined);
+  LB := TTextLines.LineBreakOf(AText);
+  Found := TList<TTextEdit>.Create;
+  try
+    WholeFile := (AFirstLine <= 0) and (ALastLine < 0);
+    if WholeFile and (ASettings.EndOfLine <> '') and (ASettings.EndOfLine <> LB) and (Length(Original) > 1) then
+    begin
+      // Neue Zeilenenden: die ganze Datei auf einmal ersetzen.
+      Text := JoinTexts(Lines, ASettings.EndOfLine);
+      if ASettings.InsertFinalNewline and (Text <> '') and not Text.EndsWith(ASettings.EndOfLine) then
+        Text := Text + ASettings.EndOfLine;
+      Found.Add(TTextEdit.Create(TTextRange.Create(0, 0, High(Original), Length(Original[High(Original)])), Text));
+      Exit(Found.ToArray);
+    end;
+    // Je Ursprungszeile (samt angehängter Folgezeilen) eine Änderung.
+    Index := 0;
+    for Line := 0 to High(Original) do
+    begin
+      if Joined[Line] then
+        Continue;
+      Stop := Line;
+      while (Stop < High(Original)) and Joined[Stop + 1] do
+        Inc(Stop);
+      Text := '';
+      OldText := Original[Line];
+      FirstPart := True;
+      while (Index <= High(Lines)) and (Lines[Index].Origin <= Stop) do
+      begin
+        if not FirstPart then
+          Text := Text + LB;
+        FirstPart := False;
+        Text := Text + Lines[Index].Text;
+        Inc(Index);
+      end;
+      if (Stop > Line) or (Text <> OldText) then
+        Found.Add(TTextEdit.Create(TTextRange.Create(Line, 0, Stop, Length(Original[Stop])), Text));
+    end;
+    if WholeFile and ASettings.InsertFinalNewline and (Lines <> nil) and (Lines[High(Lines)].Text <> '') then
+      Found.Add(TTextEdit.Create(TTextRange.Create(High(Original), Length(Original[High(Original)]),
+        High(Original), Length(Original[High(Original)])), LB));
     Result := Found.ToArray;
   finally
     Found.Free;
-    for Line := 0 to High(Gaps) do
-      Gaps[Line].Free;
   end;
 end;
 
 class function TFormatter.FormatText(const AText: string; const ATokens: TArray<TPascalToken>;
   const ASettings: TFormatStyle): string;
 var
-  Lines: TArray<string>;
-  Edit: TTextEdit;
-  Edits: TArray<TTextEdit>;
-  Index: Integer;
+  Original: TArray<string>;
+  Joined: TArray<Boolean>;
+  Lines: TArray<TFormatLine>;
   LB: string;
 begin
-  Edits := TFormatter.Edits(AText, ATokens, ASettings);
-  // Ganze Datei ersetzt (neue Zeilenenden).
-  if (Length(Edits) = 1) and (Edits[0].Range.StartPos.Line = 0) and (Edits[0].Range.StartPos.Character = 0) and
-    (Edits[0].Range.EndPos.Line > 0) then
-    Exit(Edits[0].NewText);
+  Lines := Pipeline(AText, ATokens, ASettings, 0, -1, Original, Joined);
   LB := TTextLines.LineBreakOf(AText);
-  Lines := TTextLines.SplitLines(AText);
-  for Index := High(Edits) downto 0 do
-  begin
-    Edit := Edits[Index];
-    Lines[Edit.Range.StartPos.Line] := Copy(Lines[Edit.Range.StartPos.Line], 1, Edit.Range.StartPos.Character) +
-      Edit.NewText + Copy(Lines[Edit.Range.StartPos.Line], Edit.Range.EndPos.Character + 1, MaxInt);
-  end;
-  Result := string.Join(LB, Lines);
+  if (ASettings.EndOfLine <> '') and (Length(Original) > 1) then
+    LB := ASettings.EndOfLine;
+  Result := JoinTexts(Lines, LB);
+  if ASettings.InsertFinalNewline and (Lines <> nil) and (Lines[High(Lines)].Text <> '') then
+    Result := Result + LB;
 end;
 
 end.

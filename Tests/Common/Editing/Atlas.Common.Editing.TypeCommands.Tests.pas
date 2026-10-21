@@ -26,9 +26,22 @@ type
     [Test]
     procedure HelperInRoutineFails;
     [Test]
+    procedure HelperForEnumAddsNamesAndConversion;
+    [Test]
+    procedure HelperForEnumSwitchedOff;
+    /// <summary>#875: Mengen bekommen Contains, ToText, Toggle und All.</summary>
+    [Test]
+    procedure HelperForSetAddsMethods;
+    [Test]
+    procedure HelperForSetWithoutKnownValuesUsesRtti;
+    [Test]
+    procedure HelperForSetSwitchedOff;
+    [Test]
     procedure SingletonAddsInstance;
     [Test]
     procedure SingletonOutsideClassFails;
+    [Test]
+    procedure SingletonNamesExistingConstructor;
     [Test]
     procedure EncapsulateMakesProperty;
     [Test]
@@ -73,7 +86,8 @@ uses
   Atlas.Common.Pascal.Parser,
   Atlas.Common.Editing.SlashCommands,
   Atlas.Common.Editing.TypeCommands,
-  Atlas.Common.Editing.TypeCommands.JsonGolden;
+  Atlas.Common.Editing.TypeCommands.JsonGolden,
+  Atlas.Tests.SlashHost;
 
 function Run(const AText: string; ALine: Integer; out AEdits: TArray<TRuleEdit>): Boolean;
 begin
@@ -210,6 +224,106 @@ begin
   Assert.IsTrue(Pos('  TStringsHelper = class helper for TStrings'#10, Text) > 0, Text);
 end;
 
+const
+  EnumUnit =
+    'unit U;'#10'interface'#10'type'#10'  TFarbe = (Rot, Gruen, Blau);'#10'  %s'#10'implementation'#10'end.';
+
+procedure TTypeCommandsTests.HelperForEnumAddsNamesAndConversion;
+var
+  Text: string;
+begin
+  // #875: Namenstabelle, ToString und FromString; System.SysUtils kommt ins uses.
+  Text := Expand(Format(EnumUnit, ['/helper TFarbe']), 4);
+  Assert.IsTrue(Pos('  TFarbeHelper = record helper for TFarbe'#10'  private const'#10 +
+    '    cNames: array[TFarbe] of string = (''Rot'', ''Gruen'', ''Blau'');'#10'  public'#10 +
+    '    function ToString: string;'#10'    class function FromString(const AValue: string): TFarbe; static;'#10 +
+    '  end;', Text) > 0, Text);
+  Assert.IsTrue(Pos('function TFarbeHelper.ToString: string;'#10'begin'#10'  Result := cNames[Self];'#10'end;',
+    Text) > 0, Text);
+  Assert.IsTrue(Pos('class function TFarbeHelper.FromString(const AValue: string): TFarbe;'#10'var'#10 +
+    '  Value: TFarbe;'#10'begin'#10'  for Value := Low(TFarbe) to High(TFarbe) do'#10 +
+    '    if SameText(cNames[Value], AValue) then'#10'      Exit(Value);'#10, Text) > 0, Text);
+  Assert.IsTrue(Pos('uses'#10'  System.SysUtils;', Text) > 0, Text);
+  Assert.IsTrue(Parses(Text), Text);
+end;
+
+procedure TTypeCommandsTests.HelperForEnumSwitchedOff;
+var
+  Host: TRecordingSlashHost;
+  Keep: ISlashHost;
+  Edits: TArray<TRuleEdit>;
+  Text: string;
+begin
+  Host := TRecordingSlashHost.Create;
+  Keep := Host;
+  Host.Settings := [TSlashSettings.EnumHelper + '=false'];
+  Text := Format(EnumUnit, ['/helper TFarbe']);
+  Assert.IsTrue(TSlashCommandRegistry.Shared.AfterEnter(Text, TTextPosition.Create(5, 0), nil, nil, Edits, nil, '',
+    'file:///U.pas', Keep));
+  Text := Apply(Text, Edits);
+  Assert.IsTrue(Pos('  TFarbeHelper = record helper for TFarbe'#10'  public'#10'  end;', Text) > 0, Text);
+  Assert.IsTrue(Pos('cNames', Text) = 0, Text);
+end;
+
+const
+  SetUnit =
+    'unit U;'#10'interface'#10'type'#10'  TFarbe = (Rot, Gruen, Blau);'#10'  TFarben = set of TFarbe;'#10 +
+    '  %s'#10'implementation'#10'end.';
+
+procedure TTypeCommandsTests.HelperForSetAddsMethods;
+var
+  Text: string;
+begin
+  Text := Expand(Format(SetUnit, ['/helper TFarben']), 5);
+  Assert.IsTrue(Pos('  TFarbenHelper = record helper for TFarben'#10'  private const'#10 +
+    '    cNames: array[TFarbe] of string = (''Rot'', ''Gruen'', ''Blau'');'#10'  public'#10 +
+    '    function Contains(AValue: TFarbe): Boolean;'#10'    function ToText: string;'#10 +
+    '    procedure Toggle(AValue: TFarbe);'#10'    class function All: TFarben; static;'#10'  end;', Text) > 0, Text);
+  Assert.IsTrue(Pos('function TFarbenHelper.Contains(AValue: TFarbe): Boolean;'#10'begin'#10 +
+    '  Result := AValue in Self;'#10'end;', Text) > 0, Text);
+  Assert.IsTrue(Pos('  for Value in Self do'#10'  begin'#10'    if Result <> '''' then'#10 +
+    '      Result := Result + '', '';'#10'    Result := Result + cNames[Value];'#10'  end;'#10 +
+    '  Result := ''['' + Result + '']'';', Text) > 0, Text);
+  Assert.IsTrue(Pos('procedure TFarbenHelper.Toggle(AValue: TFarbe);'#10'begin'#10'  if AValue in Self then'#10 +
+    '    Exclude(Self, AValue)'#10'  else'#10'    Include(Self, AValue);'#10'end;', Text) > 0, Text);
+  Assert.IsTrue(Pos('class function TFarbenHelper.All: TFarben;'#10'begin'#10 +
+    '  Result := [Low(TFarbe)..High(TFarbe)];'#10'end;', Text) > 0, Text);
+  Assert.IsTrue(Pos('System.TypInfo', Text) = 0, Text);
+  Assert.IsTrue(Parses(Text), Text);
+end;
+
+procedure TTypeCommandsTests.HelperForSetWithoutKnownValuesUsesRtti;
+var
+  Text: string;
+begin
+  // Aufzählung aus einer anderen Unit ohne Index: Namen über die RTTI.
+  Text := Expand('unit U;'#10'interface'#10'type'#10'  TStile = set of TFontStyle;'#10'  /helper TStile'#10 +
+    'implementation'#10'end.', 4);
+  Assert.IsTrue(Pos('    Result := Result + GetEnumName(TypeInfo(TFontStyle), Ord(Value));', Text) > 0, Text);
+  Assert.IsTrue(Pos('System.TypInfo', Text) > 0, Text);
+  Assert.IsTrue(Pos('cNames', Text) = 0, Text);
+  Assert.IsTrue(Parses(Text), Text);
+end;
+
+procedure TTypeCommandsTests.HelperForSetSwitchedOff;
+var
+  Host: TRecordingSlashHost;
+  Keep: ISlashHost;
+  Edits: TArray<TRuleEdit>;
+  Text: string;
+begin
+  Host := TRecordingSlashHost.Create;
+  Keep := Host;
+  Host.Settings := [TSlashSettings.SetHelper + '=false'];
+  Text := Format(SetUnit, ['/helper TFarben']);
+  Assert.IsTrue(TSlashCommandRegistry.Shared.AfterEnter(Text, TTextPosition.Create(6, 0), nil, nil, Edits, nil, '',
+    'file:///U.pas', Keep));
+  Text := Apply(Text, Edits);
+  Assert.IsTrue(Pos('  TFarbenHelper = record helper for TFarben'#10'  public'#10'  end;', Text) > 0, Text);
+  Assert.IsTrue(Pos('Contains', Text) = 0, Text);
+  Host.Settings := nil;
+end;
+
 procedure TTypeCommandsTests.SingletonAddsInstance;
 var
   Text: string;
@@ -220,6 +334,27 @@ begin
   Assert.IsTrue(Pos('class function TKunde.Instance: TKunde;'#10'begin'#10'  if FInstance = nil then'#10 +
     '    FInstance := TKunde.Create;'#10'  Result := FInstance;'#10'end;', Text) > 0, Text);
   Assert.IsTrue(Pos('  FreeAndNil(FInstance);', Text) > 0, Text);
+end;
+
+procedure TTypeCommandsTests.SingletonNamesExistingConstructor;
+var
+  Host: TRecordingSlashHost;
+  Keep: ISlashHost;
+  Edits: TArray<TRuleEdit>;
+begin
+  // #298: Der vorhandene Konstruktor bleibt; ein Hinweis nennt ihn.
+  Host := TRecordingSlashHost.Create;
+  Keep := Host;
+  Assert.IsTrue(TSlashCommandRegistry.Shared.AfterEnter(Format(ClassUnit,
+    ['constructor Create(AName: string);'#10'    /singleton']), TTextPosition.Create(14, 0), nil, nil, Edits, nil,
+    '', 'file:///U.pas', Keep));
+  Assert.AreEqual(1, Integer(Length(Host.Notes)));
+  Assert.Contains(Host.Notes[0], 'Konstruktor Create bleibt unverändert');
+  // Ohne Konstruktor kein Hinweis.
+  Host.Notes := nil;
+  Assert.IsTrue(TSlashCommandRegistry.Shared.AfterEnter(Format(ClassUnit, ['/singleton']), TTextPosition.Create(13, 0),
+    nil, nil, Edits, nil, '', 'file:///U.pas', Keep));
+  Assert.AreEqual(0, Integer(Length(Host.Notes)));
 end;
 
 procedure TTypeCommandsTests.SingletonOutsideClassFails;

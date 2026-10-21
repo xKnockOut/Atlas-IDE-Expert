@@ -74,6 +74,7 @@ uses
   Atlas.Common.Index.Adapters.DiskFileSystem,
   Atlas.Common.Lsp.IdeBuild,
   Atlas.Common.Index.Adapters.CacheDirectory,
+  Atlas.Common.Index.Processes,
   Atlas.Common.Rules.Builtin,
   Atlas.Common.Projects.Contract,
   System.Generics.Collections,
@@ -857,6 +858,7 @@ var
   Index: ISymbolIndex;
   Store: IDocumentStore;
   Workspace: TShellWorkspace;
+  Identity: TIndexProcessInfo;
   Guard: TMcpPathGuard;
   Edit: TMcpEditTools;
   Root, Warning: string;
@@ -895,6 +897,12 @@ begin
   Silent := TSilentTransport.Create;
   Workspace := TShellWorkspace.Create(Root, ExtractFileName(Root), Store, Silent, Logger, Index,
     'atlas-mcp-index');
+  // Anmeldung am Index-Cache für „Prozesse am Projekt“ (#62); der MCP-Modus läuft für Claude Code.
+  Identity := Default(TIndexProcessInfo);
+  Identity.Pid := GetCurrentProcessId;
+  Identity.Kind := TIndexProcessInfo.KindMcp;
+  Identity.Client := 'Claude Code';
+  Workspace.ProcessIdentity := Identity;
   // Globale Einstellungen wie im LSP-Server und im Linter (D-08), abschaltbar mit mcp.globalSettings in
   // atlas.json. Load übernimmt sie, damit der Index nur einmal mit den wirksamen Einstellungen startet.
   GlobalSettings := '';
@@ -1029,6 +1037,7 @@ begin
         Other := TShellWorkspace.Create(ExtractFileDir(ProjectFile), ChangeFileExt(ExtractFileName(ProjectFile), ''),
           Store, Silent, Logger, Index, Format('atlas-mcp-index-%d', [Others.Count + 1]));
         Other.ProjectFile := ProjectFile;
+        Other.ProcessIdentity := Identity;
         Others.Add(Other);
         Other.Load(GlobalSettings);
       end;

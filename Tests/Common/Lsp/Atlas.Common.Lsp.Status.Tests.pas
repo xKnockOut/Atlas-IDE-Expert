@@ -23,10 +23,16 @@ type
     procedure UnknownCommandFails;
     [Test]
     procedure CapabilityListsCommands;
+    /// <summary>#874: Lesebefehle laufen nebenläufig, alle anderen in der Reihenfolge der Nachrichten.</summary>
+    [Test]
+    procedure ReadOnlyCommandsRunConcurrently;
     [Test]
     procedure StatusAsMarkdownAndJson;
     [Test]
     procedure StatusShowsCacheAndOffloadMetrics;
+    /// <summary>#46: Konfiguration, Plattform, aktives und ausgewähltes Projekt je Arbeitsbereich.</summary>
+    [Test]
+    procedure StatusShowsProjectChoice;
     /// <summary>#261: Weg zum Compiler mit Grund und Ausweg im Status.</summary>
     [Test]
     procedure StatusShowsCompiler;
@@ -189,6 +195,85 @@ begin
   end;
 end;
 
+procedure TLspStatusTests.ReadOnlyCommandsRunConcurrently;
+var
+  Commands: TLspCommands;
+  Dispatcher: TJsonRpcDispatcher;
+  Work: TList<TProc>;
+  Responses: TObjectList<TJSONObject>;
+  Item: TProc;
+  Params: TJSONValue;
+
+  function Dispatch(const AJson: string): TJSONObject;
+  var
+    Message: TJSONObject;
+  begin
+    Message := TJSONObject.ParseJSONValue(AJson) as TJSONObject;
+    try
+      Result := Dispatcher.DispatchMessage(Message);
+    finally
+      Message.Free;
+    end;
+  end;
+
+begin
+  Commands := TLspCommands.Create;
+  Dispatcher := TJsonRpcDispatcher.Create;
+  Work := TList<TProc>.Create;
+  Responses := TObjectList<TJSONObject>.Create(True);
+  try
+    Commands.Register('x.write',
+      function(const AArguments: TJSONArray): TJSONValue
+      begin
+        Result := TJSONString.Create('write');
+      end);
+    Commands.RegisterConcurrent('x.status',
+      function(const AArguments: TJSONArray): TJSONValue
+      begin
+        Result := TJSONString.Create('status');
+      end);
+    Params := TJSONObject.ParseJSONValue('{"command":"x.status"}');
+    try
+      Assert.IsTrue(Commands.IsConcurrent(Params));
+    finally
+      Params.Free;
+    end;
+    Params := TJSONObject.ParseJSONValue('{"command":"x.write"}');
+    try
+      Assert.IsFalse(Commands.IsConcurrent(Params));
+    finally
+      Params.Free;
+    end;
+    Assert.IsFalse(Commands.IsConcurrent(nil), 'ohne Parameter');
+    Dispatcher.Scheduler :=
+      procedure(const AWork: TProc)
+      begin
+        Work.Add(AWork);
+      end;
+    Dispatcher.Responder :=
+      procedure(const AResponse: TJSONObject)
+      begin
+        Responses.Add(AResponse);
+      end;
+    Commands.Attach(Dispatcher);
+    Assert.IsNull(Dispatch('{"jsonrpc":"2.0","id":1,"method":"workspace/executeCommand",' +
+      '"params":{"command":"x.status"}}'), 'Lesebefehl geht an den Scheduler');
+    Responses.Add(Dispatch('{"jsonrpc":"2.0","id":2,"method":"workspace/executeCommand",' +
+      '"params":{"command":"x.write"}}'));
+    Assert.AreEqual('write', Responses[0].GetValue<string>('result'), 'seriell sofort');
+    Assert.AreEqual(1, Integer(Work.Count));
+    for Item in Work.ToArray do
+      Item();
+    Assert.AreEqual(2, Integer(Responses.Count));
+    Assert.AreEqual('status', Responses[1].GetValue<string>('result'));
+  finally
+    Responses.Free;
+    Work.Free;
+    Dispatcher.Free;
+    Commands.Free;
+  end;
+end;
+
 procedure TLspStatusTests.StatusAsMarkdownAndJson;
 var
   Status: TServerStatus;
@@ -262,6 +347,37 @@ begin
     Assert.AreEqual<Int64>(1024 * 1024, Json.GetValue<Int64>('workspaces[0].libraryCacheBytes'));
     Assert.IsTrue(Json.GetValue<string>('workspaces[0].lastUpdate').StartsWith('2026-10-14T12:30:00'),
       Json.GetValue<string>('workspaces[0].lastUpdate'));
+  finally
+    Json.Free;
+  end;
+end;
+
+procedure TLspStatusTests.StatusShowsProjectChoice;
+var
+  Status: TServerStatus;
+  Workspace: TWorkspaceStatus;
+  Json: TJSONObject;
+begin
+  Workspace := Default(TWorkspaceStatus);
+  Workspace.Name := 'Kern';
+  Workspace.LastIndexMs := -1;
+  Assert.AreEqual('', Workspace.ProjectText);
+  Workspace.Project := 'C:\P\Kern.dproj';
+  Workspace.Config := 'Release';
+  Workspace.Platform := 'Win64';
+  Assert.AreEqual(' · Release/Win64', Workspace.ProjectText);
+  Workspace.BuildChosen := True;
+  Workspace.Active := True;
+  Workspace.Selected := True;
+  Status := Default(TServerStatus);
+  Status.Workspaces := [Workspace];
+  Assert.IsTrue(Pos('- Kern · Release/Win64 (gewählt) · aktiv in der IDE · ausgewählt: Index wird aufgebaut',
+    Status.ToMarkdown) > 0, Status.ToMarkdown);
+  Json := Status.ToJson;
+  try
+    Assert.AreEqual('Release', Json.GetValue<string>('workspaces[0].config'));
+    Assert.IsTrue(Json.GetValue<Boolean>('workspaces[0].buildChosen'));
+    Assert.IsTrue(Json.GetValue<Boolean>('workspaces[0].selected'));
   finally
     Json.Free;
   end;

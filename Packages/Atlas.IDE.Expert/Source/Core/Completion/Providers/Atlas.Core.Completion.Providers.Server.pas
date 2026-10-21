@@ -145,6 +145,18 @@ begin
     ARange.TryGetValue<Integer>('end.character', AResult.EndCharacter);
 end;
 
+/// <summary>Die Strings eines JSON-Arrays; leer, wenn AValue kein Array ist.</summary>
+function StringsOf(AValue: TJSONValue): TArray<string>;
+var
+  Value: TJSONValue;
+begin
+  Result := nil;
+  if AValue is TJSONArray then
+    for Value in TJSONArray(AValue) do
+      if Value is TJSONString then
+        Result := Result + [TJSONString(Value).Value];
+end;
+
 class function TAtlasServerCompletionProvider.ItemFromLsp(AItem: TJSONObject; ARank: Integer): TAtlasCompletionItem;
 var
   Documentation, Edits, Value, Overloads: TJSONValue;
@@ -191,8 +203,9 @@ begin
     Result.HasParameters := Data.GetValue('parameters') is TJSONTrue;
     Result.ExpectedType := Data.GetValue<string>('expected', '');
     Result.Fits := Data.GetValue('fits') is TJSONTrue;
-    // Neue Methode (#444) und Deklarationen unbekannter Namen (#471) erzeugen Code und stehen am Ende.
-    Result.IsAction := MatchText(Data.GetValue<string>('action', ''), ['create', 'declare']);
+    // Neue Methode (#444), Deklarationen unbekannter Namen (#471) und „Parameter abgleichen“ (#88) erzeugen
+    // Code und stehen am Ende; ihre Zusatzänderungen gelten auch ohne automatische uses-Einträge.
+    Result.IsAction := MatchText(Data.GetValue<string>('action', ''), ['create', 'declare', 'docParams']);
     // Postfix-Vorlagen (#188): Der Server filtert über "Ausdruck.Kürzel"; getippt ist hier nur das Wort hinter
     // dem Punkt, also gilt der Teil nach dem letzten Punkt.
     Result.Postfix := Data.GetValue<string>('action', '') = 'postfix';
@@ -248,6 +261,24 @@ begin
     Result.Constraint := Data.GetValue<string>('constraint', '');
     Result.ConstraintHint := Data.GetValue<string>('constraintHint', '');
     Result.HiddenKinds := Data.GetValue<string>('hiddenKinds', '');
+    // uses-Abschnitt (#469): gefiltert wird nach dem Namensteil ab dem Getippten ("Classes" für System.Classes).
+    Result.UsesGroup := Data.GetValue<string>('usesGroup', '');
+    if Data.GetValue<string>('usesFilter', '') <> '' then
+      Result.FilterText := Data.GetValue<string>('usesFilter', '');
+    Result.UsesElsewhere := Data.GetValue<string>('usesElsewhere', '');
+    Result.UsesCycle := Data.GetValue<string>('usesCycle', '');
+    Result.UsesTypes := StringsOf(Data.GetValue('usesTypes'));
+    Result.UsesTypeCount := Data.GetValue<Integer>('usesTypeCount', 0);
+    Result.UsesHidden := StringsOf(Data.GetValue('usesHidden'));
+    // Vollständiger inherited-Aufruf (#482).
+    Result.InheritedMatch := Data.GetValue<string>('inheritedMatch', '');
+    Result.InheritedAbstract := StringsOf(Data.GetValue('inheritedAbstract'));
+    // Gleichnamige Bezeichner aus verschiedenen Units (#475).
+    Result.SameNameActive := Data.GetValue<Boolean>('sameNameActive', False);
+    Result.SameNameOf := Data.GetValue<string>('sameNameOf', '');
+    Result.SameNameInsert := Data.GetValue<string>('sameNameInsert', '');
+    Result.SameNameUnits := StringsOf(Data.GetValue('sameNameUnits'));
+    Result.SameNameHidden := StringsOf(Data.GetValue('sameNameHidden'));
     // resourcestring auslagern (#473): Platzhalter auch in den weiteren Änderungen.
     Result.LinkedEdits := Data.GetValue<Boolean>('linkedEdits', False);
     Overloads := Data.GetValue('overloads');
@@ -503,6 +534,7 @@ begin
     Result.Declaration := StringOf(TJSONObject(Atlas), 'declaration');
     Result.UnitName := StringOf(TJSONObject(Atlas), 'unit');
     Result.Container := StringOf(TJSONObject(Atlas), 'container');
+    Result.IsHelper := TJSONObject(Atlas).GetValue('helper') is TJSONTrue;
     Result.Visibility := StringOf(TJSONObject(Atlas), 'visibility');
     Result.IsDeprecated := TJSONObject(Atlas).GetValue('deprecated') <> nil;
     Result.DeprecatedText := StringOf(TJSONObject(Atlas), 'deprecated');
@@ -513,7 +545,7 @@ begin
     Result.Exceptions := EntriesOf(TJSONObject(Atlas), 'exceptions');
     Result.Doc := TAtlasDoc.FromJson(TJSONObject(Atlas).GetValue('documentation'));
     Result.Display := TAtlasDocDisplay.FromJson(TJSONObject(Atlas).GetValue('xmlDoc'),
-      TAtlasDocDisplay.Create(True, 0));
+      TAtlasDocDisplay.Create(TAtlasDocExpand.Last, 0));
     Directives := TJSONObject(Atlas).GetValue('directives');
     if Directives is TJSONArray then
       for Item in TJSONArray(Directives) do

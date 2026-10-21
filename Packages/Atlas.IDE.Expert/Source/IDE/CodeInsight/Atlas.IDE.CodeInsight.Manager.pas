@@ -52,6 +52,7 @@ uses
   System.SyncObjs,
   ToolsAPI,
   Atlas.Core.Status.Lines,
+  Atlas.Core.Diagnostics.ThreadList,
   Atlas.Core.Lsp.Client,
   Atlas.Core.Lsp.Session,
   Atlas.Core.Files.WatchedChanges,
@@ -118,6 +119,8 @@ type
     FStopping: Boolean;
     /// <summary>EnsureSession startet gerade (gegen Wiedereintritt über CheckSynchronize, Code-Review A-01).</summary>
     FStarting: Boolean;
+    /// <summary>Shutdown ist gelaufen: Sitzung, Threads und Editor-Anbindungen sind weg (#886).</summary>
+    FShutDown: Boolean;
     FOnServerChanged: TProc;
     FQueryRunning: Boolean;
     FQueryIdle: TEvent;
@@ -127,6 +130,8 @@ type
     /// <summary>Bedienbefehle im Hintergrund (ExecuteServerCommandAsync, #874): Anzahl laufender und Signal „keiner“.</summary>
     FServerCommands: Integer;
     FServerCommandsIdle: TEvent;
+    /// <summary>Threads von Statusabfrage, Befehlen und Bedienbefehlen; Destroy wartet auf ihr Ende (#886).</summary>
+    FThreads: TAtlasThreadList;
     procedure SetPhase(APhase: TAtlasServerPhase; const AError: string); overload;
     procedure SetPhase(APhase: TAtlasServerPhase; const AError: string; AEnded: Boolean); overload;
     /// <summary>Laufende Sitzung oder Start im Hauptthread; außerhalb des Hauptthreads nur, was schon läuft (A-01).</summary>
@@ -161,6 +166,10 @@ type
     function InDataNameString(ATypedQuote: Boolean): Boolean;
     function Signature: TAtlasEditorSignature;
     function SessionOrNil: TLspSession;
+    /// <summary>Führt AWork mit ASession in einem eigenen Thread aus und ruft ADone im Hauptthread (#874).
+    /// ASession nil: ADone(nil) sofort.</summary>
+    procedure RunInBackground(ASession: TLspSession; const AWork: TFunc<TLspSession, TJSONValue>;
+      const ADone: TProc<TJSONValue>);
     /// <summary>Gibt es den Server? Ohne ihn übernimmt die eingebaute Code Insight.</summary>
     function ServerAvailable: Boolean;
     /// <summary>Bedient Atlas diese Datei? Wie HandlesFile, aber ohne Diagnosezeile.</summary>
@@ -180,21 +189,29 @@ type
     class function DefaultServerPath: string; static;
     constructor Create(const AAdapters: TAtlasCodeInsightAdapters);
     destructor Destroy; override;
+    /// <summary>Alles abbauen, was im Code des Plugins weiterliefe: Editor-Anbindungen, Sitzung, Server und
+    /// Hintergrund-Threads (#886). Mehrfach aufrufbar, nur im Hauptthread. Danach meldet der Manager sich als
+    /// ausgeschaltet. Die Kompositionswurzel ruft es beim Abmelden, weil die IDE den Manager nach
+    /// RemoveCodeInsightManager noch halten kann (etwa mitten im Gruppen-Build); Destroy liefe dann
+    /// erst später.</summary>
+    procedure Shutdown;
     /// <summary>Benachrichtigung an den Server, falls eine Sitzung läuft (#527); übernimmt AParams.
     /// Startet den Server dafür nicht.</summary>
     procedure NotifyServer(const AMethod: string; AParams: TJSONObject);
     /// <summary>Fortschritt des Servers ("Index 45 %"); '' ohne Sitzung oder Vorgang. Startet keinen Server (#492).</summary>
     function ServerProgress: string;
-    /// <summary>Befehl an den Server (startet ihn bei Bedarf); Ergebnis gehört dem Aufrufer, nil bei Fehler.</summary>
-    function ExecuteServerCommand(const ACommand: string; ATimeoutMs: Cardinal = 30000): TJSONValue;
-    /// <summary>Wie ExecuteServerCommand, aber ohne den Hauptthread warten zu lassen (#874): Ein Server, der gerade
-    /// indexiert, antwortet erst danach. Startet den Server bei Bedarf (im Hauptthread), fragt im Hintergrund und
-    /// ruft ADone im Hauptthread auf, mit nil bei Fehler, Zeitlimit oder ohne Server. Den Wert gibt der Manager nach
+    /// <summary>Befehl an den Server, ohne den Hauptthread warten zu lassen (#874; eine synchrone Fassung gibt es
+    /// nicht mehr). Startet den Server bei Bedarf (im Hauptthread), fragt im Hintergrund und ruft ADone im
+    /// Hauptthread auf, mit nil bei Fehler, Zeitlimit oder ohne Server. Den Wert gibt der Manager nach
     /// ADone frei. Mehrere Befehle dürfen gleichzeitig laufen; StopSession wartet auf sie.</summary>
     procedure ExecuteServerCommandAsync(const ACommand: string; ATimeoutMs: Cardinal; const ADone: TProc<TJSONValue>);
     /// <summary>Befehl mit Argumenten (JSON-Array) an den laufenden Server (#108); startet keinen Server.
     /// nil ohne Sitzung, bei Fehler oder Zeitlimit; das Ergebnis gehört dem Aufrufer.</summary>
     function RunServerCommand(const ACommand, AArgumentsJson: string; ATimeoutMs: Cardinal): TJSONValue;
+    /// <summary>Wie RunServerCommand, aber im Hintergrund (#874): ADone im Hauptthread mit der Antwort oder nil;
+    /// den Wert gibt der Manager nach ADone frei. Startet keinen Server.</summary>
+    procedure RunServerCommandAsync(const ACommand, AArgumentsJson: string; ATimeoutMs: Cardinal;
+      const ADone: TProc<TJSONValue>);
     /// <summary>Laufende Sitzung, Server bei Bedarf gestartet; nil, wenn er nicht startet (Hauptthread).</summary>
     function ActiveSession: TLspSession;
     /// <summary>Laufende, initialisierte Sitzung oder nil; startet keinen Server (#402).</summary>
@@ -345,6 +362,7 @@ begin
   FQueryIdle := TEvent.Create(nil, True, True, '');
   FCommandIdle := TEvent.Create(nil, True, True, '');
   FServerCommandsIdle := TEvent.Create(nil, True, True, '');
+  FThreads := TAtlasThreadList.Create;
   Diagnose('Plugin geladen: ' + GetModuleName(HInstance));
   FFileChanges := TAtlasWatchedChanges.Create;
   FFolderWatcher := FAdapters.NewFolderWatcher(FFileChanges);
@@ -416,6 +434,20 @@ end;
 
 destructor TAtlasCodeInsightManager.Destroy;
 begin
+  Shutdown;
+  FreeAndNil(FThreads);
+  FQueryIdle.Free;
+  FCommandIdle.Free;
+  FServerCommandsIdle.Free;
+  inherited;
+end;
+
+procedure TAtlasCodeInsightManager.Shutdown;
+begin
+  if FShutDown then
+    Exit;
+  FShutDown := True;
+  FEnabled := False;
   if LiveManager = Self then
     LiveManager := nil;
   // Hält die Beobachter-Threads an; erst danach darf der Sammler weg.
@@ -434,10 +466,10 @@ begin
   FreeAndNil(FProblems);
   // Nach beiden Verbrauchern.
   TAtlasEditorSnapshots.Uninstall;
-  FQueryIdle.Free;
-  FCommandIdle.Free;
-  FServerCommandsIdle.Free;
-  inherited;
+  // Die Threads geben sich nicht selbst frei: Erst wenn sie beendet sind, läuft nichts mehr im Code des Plugins,
+  // auch nicht das Freigeben ihrer anonymen Methode (#886). Sie nutzen bis zuletzt die Ereignisse aus Destroy.
+  if not FThreads.StopAll(TAtlasShutdown.StopMs) then
+    Diagnose('Manager abgebaut, während ein Hintergrund-Thread noch lief');
 end;
 
 class function TAtlasCodeInsightManager.DiagnoseEnabled: Boolean;
@@ -664,7 +696,7 @@ begin
   FQueryIdle.ResetEvent;
   Session := FSession;
   Idle := FQueryIdle;
-  TThread.CreateAnonymousThread(
+  FThreads.Start(
     procedure
     var
       Answer: TJSONValue;
@@ -692,7 +724,7 @@ begin
         FQueryRunning := False;
         Idle.SetEvent;
       end;
-    end).Start;
+    end);
   Result := True;
 end;
 
@@ -733,7 +765,7 @@ begin
   Arguments := Copy(AArgumentsJson);
   Timeout := ATimeoutMs;
   Done := ADone;
-  TThread.CreateAnonymousThread(
+  FThreads.Start(
     procedure
     var
       Answer: TJSONValue;
@@ -773,7 +805,7 @@ begin
         FCommandRunning := False;
         Idle.SetEvent;
       end;
-    end).Start;
+    end);
   Result := True;
 end;
 
@@ -783,6 +815,9 @@ begin
   // bekommen nur, was schon läuft.
   if not TAtlasMainThread.IsMain then
     Exit(RunningSession <> nil);
+  // Abgebaut, aber von der IDE noch gehalten (#886): keinen Server mehr starten.
+  if FShutDown then
+    Exit(False);
   // Verschachtelt aus StopSession oder StartSession (Warten auf Threads arbeitet eingereihte Aufrufe ab):
   // weder neu starten noch die gleich freigegebene Sitzung herausgeben.
   if FStopping or FStarting then
@@ -1128,40 +1163,59 @@ begin
     Result := '';
 end;
 
-function TAtlasCodeInsightManager.ExecuteServerCommand(const ACommand: string; ATimeoutMs: Cardinal): TJSONValue;
-var
-  Session: TLspSession;
-begin
-  Session := SessionOrNil;
-  if Session = nil then
-    Exit(nil);
-  Result := Session.ExecuteCommand(ACommand, ATimeoutMs);
-end;
-
 procedure TAtlasCodeInsightManager.ExecuteServerCommandAsync(const ACommand: string; ATimeoutMs: Cardinal;
   const ADone: TProc<TJSONValue>);
 var
-  Session: TLspSession;
-  Idle: TEvent;
   Command: string;
   Timeout: Cardinal;
+begin
+  Command := ACommand;
+  Timeout := ATimeoutMs;
+  // Start gehört dem Hauptthread (A-01); ohne Server gleich die Antwort „keine“.
+  RunInBackground(SessionOrNil,
+    function(ASession: TLspSession): TJSONValue
+    begin
+      Result := ASession.ExecuteCommand(Command, Timeout);
+    end, ADone);
+end;
+
+procedure TAtlasCodeInsightManager.RunServerCommandAsync(const ACommand, AArgumentsJson: string;
+  ATimeoutMs: Cardinal; const ADone: TProc<TJSONValue>);
+var
+  Command, Arguments: string;
+  Timeout: Cardinal;
+begin
+  Command := ACommand;
+  Arguments := AArgumentsJson;
+  Timeout := ATimeoutMs;
+  RunInBackground(RunningSession,
+    function(ASession: TLspSession): TJSONValue
+    begin
+      Result := ASession.RunCommand(Command, Arguments, Timeout);
+    end, ADone);
+end;
+
+procedure TAtlasCodeInsightManager.RunInBackground(ASession: TLspSession;
+  const AWork: TFunc<TLspSession, TJSONValue>; const ADone: TProc<TJSONValue>);
+var
+  Session: TLspSession;
+  Idle: TEvent;
+  Work: TFunc<TLspSession, TJSONValue>;
   Done: TProc<TJSONValue>;
 begin
   Done := ADone;
-  // Start gehört dem Hauptthread (A-01); ohne Server gleich die Antwort „keine“.
-  Session := SessionOrNil;
+  Session := ASession;
   if Session = nil then
   begin
     if Assigned(Done) then
       Done(nil);
     Exit;
   end;
+  Work := AWork;
   if AtomicIncrement(FServerCommands) = 1 then
     FServerCommandsIdle.ResetEvent;
   Idle := FServerCommandsIdle;
-  Command := ACommand;
-  Timeout := ATimeoutMs;
-  TThread.CreateAnonymousThread(
+  FThreads.Start(
     procedure
     var
       Answer: TJSONValue;
@@ -1171,7 +1225,7 @@ begin
         Json := '';
         Answer := nil;
         try
-          Answer := Session.ExecuteCommand(Command, Timeout);
+          Answer := Work(Session);
           if Answer <> nil then
             Json := Answer.ToJSON;
         except
@@ -1201,7 +1255,7 @@ begin
         if AtomicDecrement(FServerCommands) = 0 then
           Idle.SetEvent;
       end;
-    end).Start;
+    end);
 end;
 
 function TAtlasCodeInsightManager.RunServerCommand(const ACommand, AArgumentsJson: string;
@@ -1507,6 +1561,9 @@ function TAtlasCodeInsightManager.Handles(const AFileName: string): Boolean;
 var
   Extension: string;
 begin
+  // Nach Shutdown (abgemeldet, die IDE hält den Manager noch): nichts mehr übernehmen (#886).
+  if FShutDown then
+    Exit(False);
   Extension := LowerCase(ExtractFileExt(AFileName));
   // Hauptschalter (#407): ausgeschaltet übernimmt die eingebaute Code Insight; ebenso ohne Server.
   Result := TAtlasIdeSettings.Current.Enabled and not TAtlasGuard.Disabled(TAtlasFeature.Completion) and

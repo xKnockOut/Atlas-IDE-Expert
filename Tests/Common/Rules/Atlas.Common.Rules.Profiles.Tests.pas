@@ -173,20 +173,22 @@ const
     'component-create-without-override,component-default-mismatch,component-fixed-pixels,' +
     'component-hardcoded-color,component-missing-free-notification,component-missing-inherited,' +
     'component-palette-icon,component-setter-without-invalidate,confusable-identifier,' +
-    'constructor-on-instance,control-char,declared-not-implemented,destroy-without-override,' +
+    'constructor-on-instance,control-char,declared-not-implemented,deprecated-symbol,destroy-without-override,' +
     'dfm-circular-datasource,dfm-control-field-type-mismatch,dfm-duplicate-binding,' +
     'dfm-master-without-fields,dfm-property,dfm-required-field-without-control,duplicate-interface-guid,' +
     'empty-except,exception-freed,exception-not-raised,float-equality,for-high-to-low,forbidden-uses,' +
     'foreign-form-control-access,form-field-type-mismatch,form-field-without-object,' +
     'form-object-without-field,format-without-settings,generic-exception-raised,hides-virtual,' +
-    'ifthen-side-effect,implemented-not-declared,int32-mul-overflow,interface-guid,invisible-char,' +
+    'ifthen-side-effect,implemented-not-declared,implicit-package-import,int32-mul-overflow,interface-guid,' +
+    'invisible-char,' +
     'lock-without-finally,metric-cognitive-complexity,metric-cyclomatic-complexity,metric-method-length,' +
     'metric-nesting-depth,metric-parameter-count,possibly-uninitialized,raise-in-finally,recursive-property-accessor,redundant-assigned-free,' +
     'result-not-set,' +
     'security-command-injection,security-insecure-http,security-insecure-random,security-sql-injection,' +
     'security-tls-verification-disabled,security-weak-crypto,self-assignment,sizeof-pointer,' +
     'slash-command,synchronize-in-destructor,thread-free-with-free-on-terminate,thread-resume-suspend,' +
-    'thread-use-after-free-on-terminate,thread-vcl-access,unreachable-code,unresolved-identifier,' +
+    'thread-use-after-free-on-terminate,thread-vcl-access,type-used-before-declaration,' +
+    'unneeded-forward-declaration,unreachable-code,unresolved-identifier,' +
     'unused-assignment,unused-local,unused-parameter,virtual-instead-of-override,with-statement';
 begin
   Assert.AreEqual(All, ActiveRules('standard'));
@@ -208,18 +210,20 @@ begin
     'possibly-uninitialized,raise-in-finally,recursive-property-accessor,result-not-set,security-command-injection,' +
     'security-sql-injection,security-tls-verification-disabled,self-assignment,sizeof-pointer,' +
     'synchronize-in-destructor,thread-free-with-free-on-terminate,thread-use-after-free-on-terminate,' +
-    'thread-vcl-access,unreachable-code,unresolved-identifier,virtual-instead-of-override',
+    'thread-vcl-access,type-used-before-declaration,unreachable-code,unresolved-identifier,' +
+    'virtual-instead-of-override',
     ActiveRules('fast'));
   Assert.AreEqual('bidi-control,confusable-identifier,invisible-char,security-command-injection,security-insecure-http,' +
     'security-insecure-random,security-sql-injection,security-tls-verification-disabled,' +
     'security-weak-crypto',
     ActiveRules('security'));
   Assert.AreEqual('bool-compare,component-fixed-pixels,component-hardcoded-color,component-palette-icon,' +
-    'component-setter-without-invalidate,dfm-property,empty-except,forbidden-uses,' +
-    'foreign-form-control-access,format-without-settings,generic-exception-raised,' +
+    'component-setter-without-invalidate,deprecated-symbol,dfm-property,empty-except,forbidden-uses,' +
+    'foreign-form-control-access,format-without-settings,generic-exception-raised,implicit-package-import,' +
     'metric-cognitive-complexity,metric-cyclomatic-complexity,metric-method-length,metric-nesting-depth,' +
     'metric-parameter-count,' +
-    'redundant-assigned-free,slash-command,thread-resume-suspend,unused-assignment,unused-local,' +
+    'redundant-assigned-free,slash-command,thread-resume-suspend,unneeded-forward-declaration,' +
+    'unused-assignment,unused-local,' +
     'unused-parameter,with-statement',
     ActiveRules('style'));
 end;

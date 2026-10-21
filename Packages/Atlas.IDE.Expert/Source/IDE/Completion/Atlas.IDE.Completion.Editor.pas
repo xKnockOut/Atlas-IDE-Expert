@@ -212,6 +212,10 @@ type
     function FileSnippets: TAtlasSnippetList;
     /// <summary>Setzt ASnippet am Cursor von AView ein, mit Einrückung der Zeile und Platzhaltern (#719).</summary>
     procedure InsertSnippet(const AView: IOTAEditView; const ASnippet: TAtlasSnippet);
+    /// <summary>Platzhalter-Modus für schon eingesetzten Text, etwa ein ///-Gerüst (#88). ABefore: Puffertext vor
+    /// dem Einsetzen (gemeinsamer Undo-Schritt), AOffset: Anfang des Texts im Puffer (Zeichen).</summary>
+    procedure StartPlaceholders(const AView: IOTAEditView; const ABefore: string; AOffset: Integer;
+      const AExpansion: TAtlasSnippetExpansion);
   end;
 
 implementation
@@ -246,6 +250,7 @@ uses
   Atlas.IDE.Completion.Favorites,
   Atlas.IDE.Signature.Editor,
   Atlas.Core.Completion.Ranking,
+  Atlas.Core.Completion.Presentation,
   Atlas.IDE.Foundation.EditorBuffer,
   Atlas.IDE.Foundation.EditorStyle,
   Atlas.UI.Strings,
@@ -271,16 +276,11 @@ end;
 
 /// <summary>Anzeige der XMLDoc im Panel (#654): hints aus settings.json meldet der Server, sonst die Optionen.</summary>
 function WithDisplay(const ADetails: TAtlasItemDetails): TAtlasItemDetails;
-var
-  Full: Boolean;
 begin
   Result := ADetails;
   if not Result.Display.Known then
-    Result.Display := TAtlasDocDisplay.Create(TAtlasIdeSettings.Current.XmlDocFull,
+    Result.Display := TAtlasDocDisplay.Create(TAtlasDocDisplay.ExpandOf(TAtlasIdeSettings.Current.XmlDocExpand),
       TAtlasIdeSettings.Current.XmlDocMaxLines);
-  // Schnellschalter nur für diese Sitzung (#604) gilt auch über dem Wert des Servers.
-  if TAtlasIdeSettings.SessionFlag('XmlDocFull', Full) then
-    Result.Display.Full := Full;
 end;
 
 /// <summary>Größe des Editorfensters (Client-Bereich); (0, 0) ohne Fenster.</summary>
@@ -757,6 +757,7 @@ begin
     FController.Usage := nil;
   // Favoriten (#458): abgeschaltet weder Stern noch Sonderstellung.
   FPopup.FavoritesEnabled := TAtlasIdeSettings.Current.Favorites;
+  FPopup.SelectionMarker := TAtlasIdeSettings.Current.SelectionMarker;
   if TAtlasIdeSettings.Current.Favorites then
     FController.Favorites := TAtlasIdeFavorites.Instance
   else
@@ -1124,7 +1125,7 @@ end;
 procedure TAtlasEditorCompletion.UpdateDetails;
 var
   Item: TAtlasCompletionItem;
-  Key, Availability: string;
+  Key, Availability, AddsUnit: string;
   Resolver: IAtlasCompletionResolver;
   Details: TAtlasItemDetails;
 begin
@@ -1150,6 +1151,16 @@ begin
   // Überladung (#425): deren Position statt der ersten nachfragen.
   if (FOverloadIndex > 0) and (FOverloadIndex <= Length(Item.OverloadData)) then
     Item.ResolveData := Item.OverloadData[FOverloadIndex - 1];
+  // Unit im uses-Abschnitt (#469): alles Nötige liefert schon die Liste.
+  if Item.UsesGroup <> '' then
+  begin
+    FPopup.ShowDetails(TAtlasItemPresentation.UsesDetails(Item));
+    Exit;
+  end;
+  // Helper aus nicht eingebundener Unit (#456): Hinweis, dass Enter die uses ergänzt.
+  AddsUnit := '';
+  if Item.IsHelper and TAtlasIdeSettings.Current.AutoUses then
+    AddsUnit := TAtlasItemPresentation.MissingUnit(Item);
   // Im aktiven Ziel nicht deklariert (#476): Hinweis im Panel, auch ohne Details vom Server.
   Availability := '';
   if Item.Unavailable and (Item.Condition <> '') and not SameText(Item.Condition, 'platform') then
@@ -1164,13 +1175,17 @@ begin
       begin
         Shown := WithDisplay(ADetails);
         Shown.Availability := Availability;
+        Shown.AddsUnit := AddsUnit;
+        // Gleichnamige Bezeichner (#475): alles Nötige liefert die Liste.
+        TAtlasItemPresentation.AddSameName(Item, Shown);
         FPopup.ShowDetails(Shown);
       end;
     end) then
-    if Availability <> '' then
+    if (Availability <> '') or (Length(Item.SameNameUnits) > 0) then
     begin
       Details := Default(TAtlasItemDetails);
       Details.Availability := Availability;
+      TAtlasItemPresentation.AddSameName(Item, Details);
       FPopup.ShowDetails(Details);
     end
     else
@@ -1653,6 +1668,15 @@ begin
   // Nichts ersetzen: Das Wort beginnt am Cursor.
   FWordStart := Character;
   CommitSnippet(AView, Item, Text, LineText + Pad, Cursor.Line, Character);
+end;
+
+procedure TAtlasEditorCompletion.StartPlaceholders(const AView: IOTAEditView; const ABefore: string;
+  AOffset: Integer; const AExpansion: TAtlasSnippetExpansion);
+begin
+  if (AView = nil) or (AView.Buffer = nil) or (FPlaceholders = nil) then
+    Exit;
+  Close;
+  FPlaceholders.Start(AView, ABefore, TAtlasEditorBuffer.Text(AView.Buffer), AOffset, AExpansion);
 end;
 
 function TAtlasEditorCompletion.GuardNewLine(const AView: IOTAEditView): Boolean;

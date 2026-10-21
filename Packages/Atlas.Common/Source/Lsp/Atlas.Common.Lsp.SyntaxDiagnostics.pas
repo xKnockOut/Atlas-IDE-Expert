@@ -71,6 +71,9 @@ type
     FormFile: string;
     /// <summary>Dateien neben der Unit, z. B. .dcr (#114); nil = keine.</summary>
     ReadFile: TRuleFileReader;
+    /// <summary>Absoluter Pfad und Inhalt der requires-Packages für Package-Prüfungen (#46).</summary>
+    FileName: string;
+    PackageProvides: TRulePackageProvides;
     /// <summary>Abbruch zwischen den Prüfregeln; nil = nie. Setzt Compute.</summary>
     Cancelled: TRuleCancelled;
   end;
@@ -233,6 +236,7 @@ uses
   Atlas.Common.Pascal.IncludeFiles,
   Atlas.Common.Rules.Engine,
   Atlas.Common.Rules.Catalog,
+  Atlas.Common.Rules.Builtin.Deprecated,
   Atlas.Common.Dfm.Contract,
   Atlas.Common.Dfm.Parser,
   Atlas.Common.Dfm.FormModel,
@@ -815,6 +819,7 @@ end;
 class function TLspSyntaxDiagnostics.FindingToJson(const AFinding: TRuleFinding): TJSONObject;
 var
   Severity: Integer;
+  Tags: TJSONArray;
 begin
   case AFinding.Severity of
     TRuleSeverity.Error:
@@ -836,6 +841,14 @@ begin
   // Konfidenz als eigenes Feld, der Meldungstext bleibt unverändert (#144).
   Result.AddPair('message', AFinding.Message);
   Result.AddPair('data', TJSONObject.Create(TJSONPair.Create('confidence', ConfidenceName(AFinding.Confidence))));
+  // Veraltete Symbole durchgestrichen (#38).
+  if AFinding.RuleId = DeprecatedSymbolRuleId then
+  begin
+    Tags := TJSONArray.Create;
+    // DiagnosticTag.Deprecated
+    Tags.Add(2);
+    Result.AddPair('tags', Tags);
+  end;
 end;
 
 class function TLspSyntaxDiagnostics.BuildParams(const ADocument: ITextDocument;
@@ -970,6 +983,8 @@ begin
   Context.FormText := ARules.FormText;
   Context.FormFile := ARules.FormFile;
   Context.ReadFile := ARules.ReadFile;
+  Context.FileName := ARules.FileName;
+  Context.PackageProvides := ARules.PackageProvides;
   Context.Cancelled := ARules.Cancelled;
   Result := TRuleEngine.Run(ARules.Rules, ARules.Settings, Context);
 end;

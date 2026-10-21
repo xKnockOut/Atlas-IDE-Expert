@@ -39,7 +39,9 @@ uses
   Atlas.Common.Semantics.NameResolver,
   Atlas.Common.Pascal.XmlDoc,
   Atlas.Common.Lsp.Documentation,
-  Atlas.Common.Lsp.HoverTypes;
+  Atlas.Common.Lsp.HoverTypes,
+  Atlas.Common.Lsp.PublishedMembers,
+  Atlas.Common.Lsp.ConditionalSymbols;
 
 type
   /// <summary>Liefert den Text einer Datei; False, wenn sie nicht lesbar ist.</summary>
@@ -59,6 +61,9 @@ type
     UnitName: string;
     /// <summary>Markdown mit published-Properties und Ereignissen bei Klassen; sonst ''.</summary>
     Members: string;
+    /// <summary>Dieselben Mitglieder und die Standard-Property strukturiert für den Atlas-Tooltip (#110).</summary>
+    PublishedItems: TArray<TPublishedMember>;
+    DefaultProperty: string;
     /// <summary>Link zur DocWiki bei RTL- und VCL-Symbolen (#27); sonst ''.</summary>
     DocWikiUrl: string;
     /// <summary>Microsoft-Link und 64-Bit-Hinweis bei Windows-API-Funktionen (#120); sonst ''.</summary>
@@ -104,6 +109,7 @@ type
     FNamespaces: TArray<string>;
     FVersionProvider: THoverVersionProvider;
     FHintsFor: TDocHintsProvider;
+    FSymbolsFor: TConditionalContextFunc;
     FMarkdown: Boolean;
     function HandleHover(const AParams: TJSONValue; const ACancellation: IJsonRpcCancellationToken): TJSONValue;
   private
@@ -136,6 +142,9 @@ type
     property VersionProvider: THoverVersionProvider read FVersionProvider write FVersionProvider;
     /// <summary>Anzeige von XMLDoc (#654) als atlas.xmlDoc; ohne Provider fehlt das Feld.</summary>
     property HintsFor: TDocHintsProvider read FHintsFor write FHintsFor;
+    /// <summary>Symbole des Dokuments und Schalter directives.hover (#102); ohne Provider an, ohne Projekt.
+    /// </summary>
+    property SymbolsFor: TConditionalContextFunc read FSymbolsFor write FSymbolsFor;
   end;
 
 implementation
@@ -148,7 +157,6 @@ uses
   Atlas.Common.Documents.Uris,
   Atlas.Common.Lsp.Positions,
   Atlas.Common.Lsp.Definition,
-  Atlas.Common.Lsp.PublishedMembers,
   Atlas.Common.Dfm.Contract,
   Atlas.Common.Dfm.FormInfo,
   Atlas.Common.Dfm.Parser,
@@ -209,6 +217,36 @@ begin
     end;
 end;
 
+/// <summary>Bei Mengentypen "set of TBar · 4 mögliche Elemente" (#38); Aufzählungen über den Index gezählt.
+/// '' bei anderen Typen.</summary>
+function SetTypeValue(AResolver: TNameResolver; const AIndex: ISymbolIndex; const AUnit: TUnitIndex;
+  const ADeclaration: string): string;
+var
+  BaseType: string;
+  Count: Integer;
+  Resolved: TResolvedSymbol;
+  EnumUnit: TUnitIndex;
+  Symbol: TIndexSymbol;
+begin
+  Result := '';
+  if not THoverValues.SetBaseType(ADeclaration, BaseType) then
+    Exit;
+  Count := THoverValues.BaseTypeCount(BaseType);
+  if (Count < 0) and AResolver.ResolveTypeFrom(AUnit, BaseType, Resolved) and
+    (Resolved.SymbolKind = TIndexSymbolKind.EnumType) and AResolver.DeclaringUnit(Resolved, EnumUnit) then
+  begin
+    Count := 0;
+    for Symbol in EnumUnit.Symbols do
+      if (Symbol.Kind = TIndexSymbolKind.EnumMember) and SameText(Symbol.Container, Resolved.Name) then
+        Inc(Count);
+  end;
+  Result := 'set of ' + BaseType;
+  if Count = 1 then
+    Result := Result + ' · 1 mögliches Element'
+  else if Count >= 0 then
+    Result := Result + ' · ' + IntToStr(Count) + ' mögliche Elemente';
+end;
+
 // Entfernt nur die Auszeichnung, die der Hover selbst erzeugt: **fett** (Veraltet,
 // Überschriften), *Name*: am Absatzanfang (Parameter) und `Code`. Andere Zeichen aus
 // dem Kommentar bleiben stehen, z. B. das * in "(Gallery.Page.*)" (in der IDE gesehen).
@@ -237,7 +275,7 @@ var
   Links, Ancestors: TJSONArray;
   Link: THoverLink;
   Ancestor: THoverTypeRef;
-  Item: TJSONObject;
+  Item, Members: TJSONObject;
 begin
   Result := TJSONObject.Create;
   Result.AddPair('declaration', AInfo.Declaration);
@@ -279,6 +317,10 @@ begin
     end;
     Result.AddPair('links', Links);
   end;
+  // published-Properties und Ereignisse (#110).
+  Members := TPublishedMembers.ToJson(AInfo.PublishedItems, AInfo.DefaultProperty);
+  if Members <> nil then
+    Result.AddPair('published', Members);
   if Length(AInfo.Ancestors) > 0 then
   begin
     Result.AddPair('chainOf', AInfo.ChainOf);
@@ -564,7 +606,10 @@ begin
       if (Symbol.Container = '') and TWinApiDocs.IsWinApiUnit(OwnerUnit.UnitName) then
         Result.WinApi := TWinApiDocs.HoverText(Symbol.Name);
       if Symbol.Kind = TIndexSymbolKind.Constant then
-        Result.Value := THoverValues.ConstantValue(Result.Declaration)
+        // Ganze Deklaration: Mengen und Texte über mehrere Zeilen (Resourcestrings, #38).
+        Result.Value := THoverValues.ConstantValue(DeclarationText(Lines, Targets[0].Range))
+      else if Symbol.Kind = TIndexSymbolKind.TypeAlias then
+        Result.Value := SetTypeValue(AResolver, AIndex, OwnerUnit, DeclarationText(Lines, Targets[0].Range))
       else if Symbol.Kind = TIndexSymbolKind.EnumMember then
         Result.Value := 'Ord = ' + IntToStr(EnumOrdinal(OwnerUnit, Symbol))
       else if (Symbol.Kind = TIndexSymbolKind.Field) and (Symbol.Container <> '') then
@@ -612,8 +657,9 @@ begin
           end;
           Result := Assigned(AReadText) and AReadText(AName, AText);
         end;
-      Result.Members := TPublishedMembers.ToMarkdown(TPublishedMembers.Collect(AIndex, Symbol.Name, ReadText),
-        TPublishedMembers.DefaultProperty(AIndex, Symbol.Name, ReadText));
+      Result.PublishedItems := TPublishedMembers.Collect(AIndex, Symbol.Name, ReadText);
+      Result.DefaultProperty := TPublishedMembers.DefaultProperty(AIndex, Symbol.Name, ReadText);
+      Result.Members := TPublishedMembers.ToMarkdown(Result.PublishedItems, Result.DefaultProperty);
       if SameText(Targets[0].FileName, AFileName) then
         Result.Messages := TMessageHandlers.Overview(AResolver, AIndex, ATree, AFileName, Symbol.Name,
           function(const AName: string; out AText: string): Boolean
@@ -682,8 +728,10 @@ var
   Resolver: TNameResolver;
   Info: THoverInfo;
   Contents, Atlas: TJSONObject;
-  DelphiVersion, Markdown: string;
+  DelphiVersion, Markdown, SymbolMarkdown: string;
   Watch: TStopwatch;
+  Symbols: TConditionalContext;
+  HasSymbol, HasDirective: Boolean;
 begin
   if not ((AParams is TJSONObject) and TJSONObject(AParams).TryGetValue<string>('textDocument.uri', Uri) and
     TJSONObject(AParams).TryGetValue<TJSONValue>('position', PositionValue)) then
@@ -719,8 +767,24 @@ begin
     else
       DelphiVersion := '';
     ACancellation.ThrowIfCancellationRequested;
-    // Compiler-Direktiven wie {$R+} oder {$WARN …} (#102).
-    if TCompilerDirectives.HoverAt(Tree, TLspPositions.ReadPosition(PositionValue), DelphiVersion, Markdown) then
+    // Compiler-Direktiven wie {$R+} oder {$WARN …} und bedingte Symbole mit Zustand und Herkunft (#102).
+    Symbols := TConditionalContext.Default;
+    if Assigned(FSymbolsFor) then
+      Symbols := FSymbolsFor(Uri);
+    HasSymbol := False;
+    HasDirective := False;
+    if Symbols.HoverEnabled then
+    begin
+      HasSymbol := TConditionalSymbols.Hover(Text, TLspPositions.ReadPosition(PositionValue), Symbols,
+        SymbolMarkdown);
+      HasDirective := TCompilerDirectives.HoverAt(Tree, TLspPositions.ReadPosition(PositionValue), DelphiVersion,
+        Markdown);
+    end;
+    if HasSymbol and HasDirective then
+      Markdown := SymbolMarkdown + #10#10'---'#10#10 + Markdown
+    else if HasSymbol then
+      Markdown := SymbolMarkdown;
+    if HasSymbol or HasDirective then
     begin
       Contents := TJSONObject.Create;
       Contents.AddPair('kind', 'markdown');
@@ -747,6 +811,13 @@ begin
         TLspPositions.ReadPosition(PositionValue), FReadText, DelphiVersion);
     finally
       Resolver.Free;
+    end;
+    // published-Mitglieder abschaltbar (hints.publishedMembers, #110).
+    if Assigned(FHintsFor) and not FHintsFor(Uri).PublishedMembers then
+    begin
+      Info.Members := '';
+      Info.PublishedItems := nil;
+      Info.DefaultProperty := '';
     end;
     if not Info.Found then
     begin

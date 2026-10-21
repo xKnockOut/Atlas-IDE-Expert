@@ -64,6 +64,12 @@ type
 
   /// <summary>Liest eine Datei neben der Unit, z. B. die .dcr aus {$R *.dcr} (#114).</summary>
   TRuleFileReader = reference to function(const AFileName: string; out AData: TBytes): Boolean;
+  /// <summary>Gehört eine Unit zu einem Package (#46)? Unknown, wenn das Package nicht gefunden wird.</summary>
+{$SCOPEDENUMS ON}
+  TRulePackageAnswer = (No, Yes, Unknown);
+{$SCOPEDENUMS OFF}
+  /// <summary>Gehört AUnitName zu Package APackage (aus requires)? Über dessen .dpk bzw. .dcp (#46).</summary>
+  TRulePackageProvides = reference to function(const APackage, AUnitName: string): TRulePackageAnswer;
   /// <summary>True, wenn die Prüfung abgebrochen werden soll (Zeitlimit, Dokument geändert).</summary>
   TRuleCancelled = reference to function: Boolean;
 
@@ -114,12 +120,19 @@ type
     /// <summary>Keine Aktionen, die Deklaration und Rumpf angleichen (refactoring.syncSignatures aus, #100);
     /// setzt TRuleEngine.Run.</summary>
     NoSignatureSync: Boolean;
+    /// <summary>Forward-Deklarationen nicht prüfen (refactoring.forwardDeclaration aus, #685);
+    /// setzt TRuleEngine.Run.</summary>
+    NoForwardDeclaration: Boolean;
     /// <summary>Abbruch zwischen den Regeln (Diagnoselog 15.10.2026); nil = nie abbrechen.</summary>
     Cancelled: TRuleCancelled;
     /// <summary>Gemeinsame Ableitungen des Laufs (Review P-03); setzt TRuleEngine.Run. nil = jede Regel
     /// rechnet selbst (direkter Aufruf von Check). Zugriff nur über TRuleDerived. Die Werte zeigen in
     /// Tree: Wer einen eigenen Cache setzt, muss ihn vor dem Baum freigeben oder leeren.</summary>
     Derived: IRuleDerivedCache;
+    /// <summary>Absoluter Pfad der geprüften Datei; '' wenn unbekannt (#46).</summary>
+    FileName: string;
+    /// <summary>Inhalt der Packages aus requires (#46); nil = unbekannt, Package-Prüfungen schweigen.</summary>
+    PackageProvides: TRulePackageProvides;
   end;
 
   /// <summary>Sammelt die Treffer einer Regel. Ohne Angabe gilt Konfidenz High.</summary>
@@ -140,6 +153,16 @@ type
     ['{2C4A1F3E-8D5B-4E7A-A1C2-7F9E0B3D4C55}']
     function Descriptor: TRuleDescriptor;
     procedure Check(const AContext: TRuleContext; const AReport: IRuleReport);
+  end;
+
+  /// <summary>Regel, die nach allen anderen die rohen Treffer sieht (vor Unterdrückung und Konfidenzfilter),
+  /// z. B. /ignore ohne Treffer in der Zeile darunter (#297).</summary>
+  IRuleAfterFindings = interface
+    ['{6B1E9D3A-47C2-4F8B-9E05-A3D27C81F4B6}']
+    /// <summary>AFindings: Treffer aller Regeln dieses Laufs; ARanIds: Kennungen der gelaufenen Regeln (klein).
+    /// </summary>
+    procedure CheckFindings(const AContext: TRuleContext; const AFindings: TArray<TRuleFinding>;
+      const ARanIds: TArray<string>; const AReport: IRuleReport);
   end;
 
 /// <summary>Kennwort der Konfidenz: "hoch", "mittel", "niedrig".</summary>
