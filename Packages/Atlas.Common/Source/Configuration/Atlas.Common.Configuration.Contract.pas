@@ -32,6 +32,17 @@ type
   /// <summary>Beweislage eines Regeltreffers; begrenzt den Schweregrad.</summary>
   TRuleConfidence = (Low, Medium, High);
 
+  /// <summary>Umbenannte Regelkennungen (#910): Konfiguration und Unterdrückungen mit der
+  /// früheren Kennung wirken weiter auf die Regel unter ihrer neuen.</summary>
+  TRuleIdAliases = record
+  public const
+    FormerIds: array[0..0] of string = ('recursive-property-accessor');
+    CurrentIds: array[0..0] of string = ('setter-recursion');
+  public
+    /// <summary>Heutige Kennung zu AId; AId selbst, wenn sie nicht umbenannt wurde.</summary>
+    class function Current(const AId: string): string; static;
+  end;
+
   TRuleSetting = record
     Id: string;
     Severity: TRuleSeverity;
@@ -556,6 +567,18 @@ function MatchesGlob(const APattern, APath: string): Boolean;
 function BdsVersionOf(const AText: string): string;
 
 implementation
+
+{ TRuleIdAliases }
+
+class function TRuleIdAliases.Current(const AId: string): string;
+var
+  Index: Integer;
+begin
+  for Index := Low(FormerIds) to High(FormerIds) do
+    if SameText(AId, FormerIds[Index]) then
+      Exit(CurrentIds[Index]);
+  Result := AId;
+end;
 
 function IsConfigurationFileName(const AFileName: string): Boolean;
 begin

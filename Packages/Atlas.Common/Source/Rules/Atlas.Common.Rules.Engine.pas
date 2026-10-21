@@ -419,7 +419,7 @@ begin
         for Index := 0 to High(Entry.Ids) do
         begin
           Id := Entry.Ids[Index];
-          if (Id = '*') or (IndexText(Id, Known) >= 0) then
+          if (Id = '*') or (IndexText(TRuleIdAliases.Current(Id), Known) >= 0) then
             Continue;
           Suggestion := TSuppressions.Suggest(Id, Known);
           Finding := Default(TRuleFinding);

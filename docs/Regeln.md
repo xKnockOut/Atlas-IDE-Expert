@@ -31,7 +31,7 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 | [`declared-not-implemented`](#declared-not-implemented) | Deklariert, aber nicht implementiert | Bug | Fehler |
 | [`implemented-not-declared`](#implemented-not-declared) | Implementiert, aber nicht deklariert | Bug | Fehler |
 | [`destroy-without-override`](#destroy-without-override) | Destroy ohne override | Bug | Warnung |
-| [`recursive-property-accessor`](#recursive-property-accessor) | Property-Accessor ruft sich selbst auf | Bug | Warnung |
+| [`setter-recursion`](#setter-recursion) | Setter oder Getter ruft sich selbst auf | Bug | Fehler |
 | [`hides-virtual`](#hides-virtual) | Methode verdeckt virtuelle Methode | Bug | Warnung |
 | [`virtual-instead-of-override`](#virtual-instead-of-override) | virtual statt override | Bug | Warnung |
 | [`captured-loop-variable`](#captured-loop-variable) | Erfasste Schleifenvariable | Bug | Warnung |
@@ -851,28 +851,30 @@ type
   end;
 ```
 
-<a id="recursive-property-accessor"></a>
-### recursive-property-accessor
+<a id="setter-recursion"></a>
+### setter-recursion
 
-**Property-Accessor ruft sich selbst auf** · Bug · Warnung · Gruppe Fehler finden
+**Setter oder Getter ruft sich selbst auf** · Bug · Fehler · Gruppe Fehler finden
 
-Ein Getter liest seine eigene Property oder ein Setter schreibt sie. Der Accessor ruft sich endlos selbst auf und endet im Stapelüberlauf. Stattdessen das Feld verwenden.
+Ein Setter weist an die eigene Property zu (Name := Value in SetName) oder ein Getter liest sie (Result := Name in GetName). Das ergibt eine Endlosrekursion und einen Stapelüberlauf zur Laufzeit; der Compiler schweigt. Schnellkorrektur: das Feld verwenden (das Feld aus der Property-Deklaration, sonst F und der Name, wenn die Klasse es hat). Früher recursive-property-accessor; Einstellungen und Unterdrückungen mit der alten Kennung wirken weiter.
 
 Mit Treffer:
 
 ```pascal
-function TFoo.GetName: string;
+procedure TKunde.SetName(const Value: string);
 begin
-  Result := Name;
+  if Name <> Value then
+    Name := Value;
 end;
 ```
 
 Richtig:
 
 ```pascal
-function TFoo.GetName: string;
+procedure TKunde.SetName(const Value: string);
 begin
-  Result := FName;
+  if FName <> Value then
+    FName := Value;
 end;
 ```
 
