@@ -29,8 +29,28 @@ type
     function Changes: Boolean;
   end;
 
+  /// <summary>Argument von atlas.server.selectProject (#46): {"project"} wählt ein Projekt (Pfad der .dproj,
+  /// URI oder Name); "" hebt die Wahl auf; ohne "project" nur Abfrage.</summary>
+  TSelectProjectArgs = record
+    Project: string;
+    HasProject: Boolean;
+    class function Parse(const AArguments: TJSONArray): TSelectProjectArgs; static;
+  end;
+
+  /// <summary>Ein Projekt in der Antwort von atlas.server.selectProject.</summary>
+  TProjectChoiceItem = record
+    Name: string;
+    Project: string;
+    Active: Boolean;
+    Selected: Boolean;
+  end;
+
   TBuildCommands = class
   public
+    /// <summary>Antwort von atlas.server.selectProject: {"selected", "active", "projects": [...]}.</summary>
+    class function ProjectChoices(const AItems: TArray<TProjectChoiceItem>): TJSONObject; static;
+    /// <summary>Index von ATarget in AItems: gleicher Pfad oder Name (ohne Groß-/Kleinschreibung); -1 ohne.</summary>
+    class function FindProject(const AItems: TArray<TProjectChoiceItem>; const ATarget: string): Integer; static;
     /// <summary>Werte als JSON-Liste von Strings.</summary>
     class function StringsToJson(const AValues: TArray<string>): TJSONArray; static;
     /// <summary>Eintrag der Antwort von atlas.selectBuild zu einem Projekt; gewählte Werte vor denen des
@@ -83,7 +103,66 @@ begin
   Result := (Config <> '') or (Platform <> '') or HasDefines;
 end;
 
+{ TSelectProjectArgs }
+
+class function TSelectProjectArgs.Parse(const AArguments: TJSONArray): TSelectProjectArgs;
+var
+  Value: TJSONValue;
+begin
+  Result := Default(TSelectProjectArgs);
+  if (AArguments = nil) or (AArguments.Count = 0) or not (AArguments.Items[0] is TJSONObject) then
+    Exit;
+  Value := TJSONObject(AArguments.Items[0]).GetValue('project');
+  // TJSONNumber erbt von TJSONString.
+  Result.HasProject := (Value is TJSONString) and not (Value is TJSONNumber);
+  if not Result.HasProject then
+    Exit;
+  Result.Project := Trim(Value.Value);
+  if Result.Project.StartsWith('file:', True) then
+    Result.Project := TDocumentUris.ToPath(Result.Project);
+end;
+
 { TBuildCommands }
+
+class function TBuildCommands.FindProject(const AItems: TArray<TProjectChoiceItem>; const ATarget: string): Integer;
+var
+  Index: Integer;
+begin
+  for Index := 0 to High(AItems) do
+    if SameText(AItems[Index].Project, ATarget) or SameText(AItems[Index].Name, ATarget) then
+      Exit(Index);
+  Result := -1;
+end;
+
+class function TBuildCommands.ProjectChoices(const AItems: TArray<TProjectChoiceItem>): TJSONObject;
+var
+  Item: TProjectChoiceItem;
+  Entry: TJSONObject;
+  Items: TJSONArray;
+  Selected, Active: string;
+begin
+  Selected := '';
+  Active := '';
+  Items := TJSONArray.Create;
+  for Item in AItems do
+  begin
+    Entry := TJSONObject.Create;
+    Entry.AddPair('name', Item.Name);
+    Entry.AddPair('project', Item.Project);
+    Entry.AddPair('active', TJSONBool.Create(Item.Active));
+    Entry.AddPair('selected', TJSONBool.Create(Item.Selected));
+    Items.AddElement(Entry);
+    if Item.Selected and (Selected = '') then
+      Selected := Item.Project;
+    if Item.Active and (Active = '') then
+      Active := Item.Project;
+  end;
+  Result := TJSONObject.Create;
+  Result.AddPair('selected', Selected);
+  Result.AddPair('active', Active);
+  Result.AddPair('projects', Items);
+end;
+
 
 class function TBuildCommands.StringsToJson(const AValues: TArray<string>): TJSONArray;
 var

@@ -338,6 +338,8 @@ begin
   for Index := 0 to Projects.ProjectCount - 1 do
   begin
     Context := Read(Projects.Projects[Index]);
+    // Aktives Projekt für Dateien, die zu mehreren Projekten gehören (#46).
+    Context.Active := Projects.Projects[Index] = Projects.ActiveProject;
     if Context.Project <> '' then
       Result := Result + [Context];
   end;

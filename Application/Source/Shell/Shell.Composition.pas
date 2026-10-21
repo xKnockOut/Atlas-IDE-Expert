@@ -59,6 +59,7 @@ uses
   Atlas.Common.Lsp.Baseline,
   Atlas.Common.Lsp.SemanticTokens,
   Atlas.Common.Lsp.Status,
+  Atlas.Common.Projects.Selection,
   Atlas.Common.Lsp.QualifiedNames,
   Atlas.Common.Lsp.EnumValueCommands,
   Atlas.Common.Lsp.StringLiteralCommands,
@@ -171,6 +172,11 @@ type
     FIdeBuild: TLspIdeBuild;
     /// <summary>Projektkontext aus der IDE (#396).</summary>
     FIdeProject: TLspIdeProject;
+    /// <summary>Gemerkte Projektwahl über Neustarts (#46): selectBuild je Projekt, selectProject je Ordner.</summary>
+    FProjectSelection: TProjectSelection;
+    /// <summary>Zuletzt gewähltes Projekt je Datei, die zu mehreren Projekten gehört (#46), fürs Log; unter
+    /// FWorkspacesLock.</summary>
+    FProjectChoices: TDictionary<string, string>;
     FWorkspaceFolders: TLspWorkspaceFolders;
     /// <summary>Für atlas.json außerhalb aller Ordner: nur Fehlermeldungen.</summary>
     FLooseConfiguration: TLspConfiguration;
@@ -263,6 +269,11 @@ type
     procedure WireWorkspaceFolders;
     /// <summary>Innerster Ordner zur Datei oder nil. Aufrufer hält FWorkspacesLock.</summary>
     function WorkspaceOf(const AFileName: string): TShellWorkspace;
+    /// <summary>Unter mehreren Projekten mit der Datei (#46): ausgewählt (selectProject), dann aktiv in der IDE,
+    /// dann das erste der Gruppe. Ein Wechsel steht im Log. Aufrufer hält FWorkspacesLock.</summary>
+    function ChooseProject(const AFileName: string; const ACandidates: TArray<TShellWorkspace>): TShellWorkspace;
+    /// <summary>Ist AWorkspace per selectProject gewählt (#46)?</summary>
+    function IsSelectedProject(AWorkspace: TShellWorkspace): Boolean;
     /// <summary>Arbeitsbereich zur Datei; ohne Treffer bei genau einem Arbeitsbereich dieser, sonst nil
     /// (TShellWorkspace.Choose, S-02). Aufrufer hält FWorkspacesLock.</summary>
     function PickWorkspace(const AFileName: string): TShellWorkspace;
@@ -398,6 +409,7 @@ type
   public const
     CompileCommand = 'atlas.server.compile';
     SelectBuildCommand = 'atlas.server.selectBuild';
+    SelectProjectCommand = 'atlas.server.selectProject';
     RebuildIndexCommand = 'atlas.server.rebuildIndex';
     /// <summary>Anfragen, die länger laufen, werden abgebrochen und gemeldet.</summary>
     RequestTimeoutMs = 10000;
@@ -488,7 +500,26 @@ uses
   Atlas.Windows.Editing.SystemColors,
   Atlas.Common.Projects.Contract,
   Atlas.Common.Projects.GroupReader,
+  Atlas.Common.Projects.PackageLocator,
   Atlas.Common.JsonRpc.Messages;
+
+// Antworten für implicit-package-import (#46): nicht gefundene Packages sind unbekannt, damit die Regel
+// still bleibt statt falsch zu melden.
+function PackageAnswers(ALocator: TPackageLocator): TRulePackageProvides;
+begin
+  Result :=
+    function(const APackage, AUnitName: string): TRulePackageAnswer
+    var
+      Contains: Boolean;
+    begin
+      if not ALocator.Provides(APackage, AUnitName, Contains) then
+        Result := TRulePackageAnswer.Unknown
+      else if Contains then
+        Result := TRulePackageAnswer.Yes
+      else
+        Result := TRulePackageAnswer.No;
+    end;
+end;
 
 // PowerShell für cc.ps1 (#261): pwsh aus PATH, sonst Windows PowerShell. Der Prozessläufer
 // durchsucht PATH nicht selbst.
@@ -1593,6 +1624,53 @@ begin
           Items.AddElement(TBuildCommands.ProjectItem(Workspace.Name, Project, Args));
       Result := TJSONObject.Create(TJSONPair.Create('projects', Items));
     end);
+  FCommands.Register(SelectProjectCommand,
+    function(const AArguments: TJSONArray): TJSONValue
+    var
+      Args: TSelectProjectArgs;
+      Targets: TArray<TShellWorkspace>;
+      Items: TArray<TProjectChoiceItem>;
+      Index: Integer;
+      Active: string;
+    begin
+      // Projekt für Dateien, die zu mehreren Projekten gehören (#46); gemerkt über Neustarts.
+      Args := TSelectProjectArgs.Parse(AArguments);
+      TMonitor.Enter(FWorkspacesLock);
+      try
+        Targets := nil;
+        for Index := 0 to FWorkspaces.Count - 1 do
+          if FWorkspaces[Index].ProjectFileName <> '' then
+            Targets := Targets + [FWorkspaces[Index]];
+      finally
+        TMonitor.Exit(FWorkspacesLock);
+      end;
+      Active := FIdeProject.ActiveProject;
+      SetLength(Items, Length(Targets));
+      for Index := 0 to High(Targets) do
+      begin
+        Items[Index].Name := Targets[Index].Name;
+        Items[Index].Project := Targets[Index].ProjectFileName;
+        Items[Index].Active := SameText(Items[Index].Project, Active);
+      end;
+      if Args.HasProject and (Args.Project = '') then
+      begin
+        for Index := 0 to High(Targets) do
+          FProjectSelection.SetProject(Targets[Index].Origin, '');
+        FLogger.Info('Projektwahl aufgehoben');
+      end
+      else if Args.HasProject then
+      begin
+        Index := TBuildCommands.FindProject(Items, Args.Project);
+        if Index < 0 then
+          raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams,
+            Format('Projekt %s ist nicht geladen.', [Args.Project]));
+        FProjectSelection.SetProject(Targets[Index].Origin, Items[Index].Project);
+        FLogger.Info(Format('Projekt %s ausgewählt', [Items[Index].Name]));
+      end;
+      for Index := 0 to High(Targets) do
+        Items[Index].Selected := IsSelectedProject(Targets[Index]);
+      Result := TBuildCommands.ProjectChoices(Items);
+    end);
   FCommands.Attach(FDispatcher);
 end;
 
@@ -1667,6 +1745,10 @@ begin
       end;
     end;
   FIdeBuild.Attach(FDispatcher);
+  // Projektwahl je Benutzer über Neustarts (#46).
+  FProjectSelection := TProjectSelection.Create(TPath.Combine(TIndexCacheDirectory.DefaultRoot,
+    'projektauswahl.json'));
+  FProjectChoices := TDictionary<string, string>.Create;
   // Konfiguration, Plattform und Optionen aus der IDE (#396): betroffene Projekte neu laden.
   FIdeProject := TLspIdeProject.Create;
   FIdeProject.OnChanged :=
@@ -1880,6 +1962,8 @@ begin
   FWatchedFiles.Free;
   FIdeBuild.Free;
   FIdeProject.Free;
+  FProjectChoices.Free;
+  FProjectSelection.Free;
   FTextDocumentSync.Free;
   FDocuments := nil;
   FLifecycle.Free;
@@ -1973,6 +2057,23 @@ begin
   Workspace.Deferred := ADeferred;
   Workspace.IdeProjects := FIdeProject;
   Workspace.Origin := AOrigin;
+  Workspace.Selection := FProjectSelection;
+  // requires-Packages als Quelle zuerst bei den Projekten der Gruppe suchen (#46).
+  Workspace.OnPackageFolders :=
+    function: TArray<string>
+    var
+      Other: TShellWorkspace;
+    begin
+      Result := nil;
+      TMonitor.Enter(FWorkspacesLock);
+      try
+        for Other in FWorkspaces do
+          if Other.ProjectFile <> '' then
+            Result := Result + [ExtractFileDir(Other.ProjectFile)];
+      finally
+        TMonitor.Exit(FWorkspacesLock);
+      end;
+    end;
   // Ordner entstehen in der Nachrichtenschleife (initialized, didChangeWorkspaceFolders, didOpen):
   // Reload ist nur dort erlaubt (Code-Review A-03).
   Workspace.LoopThreadId := TThread.Current.ThreadID;
@@ -2146,12 +2247,24 @@ function TServerComposition.WorkspaceOf(const AFileName: string): TShellWorkspac
 var
   Folders: TArray<TWorkspaceFolder>;
   Workspace: TShellWorkspace;
+  Candidates: TArray<TShellWorkspace>;
   Index: Integer;
 begin
-  // Zuerst das Projekt, das die Datei enthält (#648); mehrere Projekte können im selben Ordner liegen.
+  // Die .dproj gehört zu ihrem eigenen Projekt (#46), auch wenn mehrere im selben Ordner liegen.
+  if SameText(ExtractFileExt(AFileName), '.dproj') then
+    for Workspace in FWorkspaces do
+      if SameText(Workspace.ProjectFileName, AFileName) then
+        Exit(Workspace);
+  // Zuerst das Projekt, das die Datei enthält (#648); mehrere Projekte können im selben Ordner liegen,
+  // und eine Unit kann in mehreren Projekten der Gruppe stehen (#46).
+  Candidates := nil;
   for Workspace in FWorkspaces do
     if Workspace.ContainsFile(AFileName) then
-      Exit(Workspace);
+      Candidates := Candidates + [Workspace];
+  if Length(Candidates) = 1 then
+    Exit(Candidates[0]);
+  if Length(Candidates) > 1 then
+    Exit(ChooseProject(AFileName, Candidates));
   Folders := nil;
   for Workspace in FWorkspaces do
     Folders := Folders + [TWorkspaceFolder.Create(Workspace.Root, Workspace.Name)];
@@ -2160,6 +2273,52 @@ begin
     Result := nil
   else
     Result := FWorkspaces[Index];
+end;
+
+function TServerComposition.IsSelectedProject(AWorkspace: TShellWorkspace): Boolean;
+var
+  Selected: string;
+begin
+  Selected := FProjectSelection.Project(AWorkspace.Origin);
+  Result := (Selected <> '') and SameText(Selected, AWorkspace.ProjectFileName);
+end;
+
+function TServerComposition.ChooseProject(const AFileName: string;
+  const ACandidates: TArray<TShellWorkspace>): TShellWorkspace;
+var
+  Workspace: TShellWorkspace;
+  Active, Reason, Known: string;
+begin
+  Result := nil;
+  Reason := '';
+  for Workspace in ACandidates do
+    if IsSelectedProject(Workspace) then
+    begin
+      Result := Workspace;
+      Reason := 'ausgewählt';
+      Break;
+    end;
+  Active := FIdeProject.ActiveProject;
+  if (Result = nil) and (Active <> '') then
+    for Workspace in ACandidates do
+      if SameText(Workspace.ProjectFileName, Active) then
+      begin
+        Result := Workspace;
+        Reason := 'aktiv in der IDE';
+        Break;
+      end;
+  if Result = nil then
+  begin
+    Result := ACandidates[0];
+    Reason := 'erstes der Gruppe';
+  end;
+  // Nur Wechsel ins Log, nicht jede Anfrage.
+  if not FProjectChoices.TryGetValue(AnsiUpperCase(AFileName), Known) or not SameText(Known, Result.Name) then
+  begin
+    FProjectChoices.AddOrSetValue(AnsiUpperCase(AFileName), Result.Name);
+    FLogger.Info(Format('%s gehört zu %d Projekten; es gilt %s (%s)',
+      [ExtractFileName(AFileName), Length(ACandidates), Result.Name, Reason]));
+  end;
 end;
 
 function TServerComposition.PickWorkspace(const AFileName: string): TShellWorkspace;
@@ -2976,12 +3135,13 @@ end;
 
 function TServerComposition.ConfigurationReport: string;
 var
-  Root, Item, Effective: TJSONObject;
+  Root, Item, Effective, Choice: TJSONObject;
   Items: TJSONArray;
   Workspace: TShellWorkspace;
   Targets: TArray<TShellWorkspace>;
   Settings: TServerSettings;
   EditorSettings: string;
+  Status: TWorkspaceStatus;
 
   function JsonOrText(const AText: string): TJSONValue;
   begin
@@ -3028,6 +3188,17 @@ begin
       Effective.AddPair('rules', TJSONNumber.Create(Length(Settings.Rules)));
       Effective.AddPair('excludeTests', TJSONBool.Create(Settings.ExcludeTests));
       Effective.AddPair('exclude', TJSONNumber.Create(Length(Settings.Exclude)));
+      // Projektwahl (#46): geladen, gewählt, aktiv, ausgewählt; Vorrang atlas.json < selectBuild < IDE.
+      Status := Workspace.IndexStatus;
+      Choice := TJSONObject.Create;
+      Item.AddPair('projectChoice', Choice);
+      Choice.AddPair('project', Status.Project);
+      Choice.AddPair('config', Status.Config);
+      Choice.AddPair('platform', Status.Platform);
+      Choice.AddPair('buildChosen', TJSONBool.Create(Status.BuildChosen));
+      Choice.AddPair('active', TJSONBool.Create((Status.Project <> '') and
+        SameText(Status.Project, FIdeProject.ActiveProject)));
+      Choice.AddPair('selected', TJSONBool.Create(IsSelectedProject(Workspace)));
     end;
     Result := Root.Format(2);
   finally
@@ -3105,7 +3276,13 @@ begin
   TMonitor.Enter(FWorkspacesLock);
   try
     for Workspace in FWorkspaces do
+    begin
       Result.Workspaces := Result.Workspaces + [Workspace.IndexStatus];
+      // Projektwahl (#46): aktiv in der IDE und per selectProject ausgewählt.
+      Result.Workspaces[High(Result.Workspaces)].Active := (Workspace.ProjectFileName <> '') and
+        SameText(Workspace.ProjectFileName, FIdeProject.ActiveProject);
+      Result.Workspaces[High(Result.Workspaces)].Selected := IsSelectedProject(Workspace);
+    end;
   finally
     TMonitor.Exit(FWorkspacesLock);
   end;
@@ -3394,9 +3571,12 @@ function TServerComposition.RuleContextFor(const AUri: string; out AContext: TRu
 var
   Workspace: TShellWorkspace;
   FileName, Folder: string;
+  Locator: TPackageLocator;
 begin
   AContext := Default(TRuleCheckContext);
   FileName := TDocumentUris.ToPath(AUri);
+  AContext.FileName := FileName;
+  Locator := nil;
   TMonitor.Enter(FWorkspacesLock);
   try
     Workspace := PickWorkspace(FileName);
@@ -3408,10 +3588,14 @@ begin
       AContext.RelativePath := ExtractRelativePath(IncludeTrailingPathDelimiter(Workspace.Root), FileName);
       AContext.Baseline := Workspace.Baseline;
       AContext.Namespaces := Workspace.Namespaces;
+      Locator := Workspace.PackageLocator;
     end;
   finally
     TMonitor.Exit(FWorkspacesLock);
   end;
+  // requires-Packages für implicit-package-import (#46); der Locator lebt so lange wie der Arbeitsbereich.
+  if Locator <> nil then
+    AContext.PackageProvides := PackageAnswers(Locator);
   // Neue Instanzen je Prüfung: Regeln dürfen so Zustand halten, ohne Threads zu teilen.
   AContext.Rules := BuiltinRules;
   AContext.Index := FIndex;
@@ -4167,6 +4351,7 @@ begin
   Commands.Add(StatusCommand);
   Commands.Add(CompileCommand);
   Commands.Add(SelectBuildCommand);
+  Commands.Add(SelectProjectCommand);
   Commands.Add(RebuildIndexCommand);
   Commands.Add(ClearIndexCommand);
   Commands.Add(TBugReport.Command);
