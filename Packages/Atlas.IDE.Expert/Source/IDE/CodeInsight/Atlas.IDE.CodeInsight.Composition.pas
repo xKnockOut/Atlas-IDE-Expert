@@ -80,6 +80,7 @@ uses
   Atlas.IDE.Editor.LineChanges,
   Atlas.Core.Editor.LineMove,
   Atlas.IDE.Editor.LineMove,
+  Atlas.IDE.Editor.BlockComment,
   Atlas.IDE.Editor.CommentContinuation,
   Atlas.IDE.Editor.PatternContinuation,
   Atlas.IDE.Editor.MultiCursor,
@@ -1003,6 +1004,16 @@ begin
   TAtlasIdeEditorCommands.FormatCode;
 end;
 
+function ToggleBlockCommentVisible: Boolean;
+begin
+  Result := TAtlasIdeBlockComment.Enabled;
+end;
+
+procedure ToggleBlockComment;
+begin
+  TAtlasIdeBlockComment.Run;
+end;
+
 procedure CompleteStatement;
 begin
   TAtlasIdeStatementCompletion.Run;
@@ -1207,6 +1218,9 @@ begin
   // Formatieren (#43): ganze Datei bzw. Auswahl.
   Add('Atlas.FormatCode', TAtlasTextId.FormatCodeCommand, Guarded(TAtlasFeature.EditorCommands, FormatCode),
     FormatCodeVisible);
+  // Blockkommentar umschalten (#703); nur sichtbar, solange keys.toggleBlockComment an ist.
+  Add('Atlas.ToggleBlockComment', TAtlasTextId.ToggleBlockCommentCommand,
+    Guarded(TAtlasFeature.EditorCommands, ToggleBlockComment), ToggleBlockCommentVisible);
   // Mehrere Einfügemarken (#589).
   Add('Atlas.MultiCursorNext', TAtlasTextId.MultiCursorNextCommand,
     Guarded(TAtlasFeature.EditorCommands, MultiCursorNext), MultiCursorVisible);
@@ -2189,6 +2203,12 @@ begin
     begin
       GuardWarning(AText);
     end);
+  // Blockkommentar umschalten (#703): Meldung beim Ablehnen.
+  TAtlasIdeBlockComment.Install(
+    procedure(AText: string)
+    begin
+      GuardWarning(AText);
+    end);
   // Anweisung vervollständigen (#697): Rumpf und case-Zweige vom Server.
   TAtlasIdeStatementCompletion.Install(
     function: TLspSession
@@ -2301,6 +2321,7 @@ begin
   TAtlasIdeOverviewRuler.Uninstall;
   TAtlasIdeLineChanges.Uninstall;
   TAtlasIdeLineMove.Uninstall;
+  TAtlasIdeBlockComment.Uninstall;
   TAtlasIdeSmartPaste.Uninstall;
   TAtlasIdeLinkedEditing.Uninstall;
   TAtlasIdeMultiCursor.Uninstall;

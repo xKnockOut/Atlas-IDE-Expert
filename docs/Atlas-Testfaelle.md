@@ -2849,6 +2849,25 @@ Voraussetzung: Server läuft; Einstellungen auf Vorgabe; Unit mit `TBasis = clas
 | ZL10 | Schnellschalter „Atlas-Spalte in der Zeilenleiste“ aus | Spalte verschwindet ganz; wieder an: Spalte und Symbole kommen zurück (**Abnahme**) |
 | ZL11 | Strg+. auf einer Zeile mit Symbol › Ausblenden „In dieser Datei“ | Keine Symbole der Spalte in dieser Datei |
 
+## Blockkommentar umschalten (#703)
+
+Voraussetzung: Einstellungen auf Vorgabe; Unit mit einer Methode mit mehreren Anweisungen, einem `{$IFDEF}` und einem `(* … *)`-Kommentar.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| BK1 | In `Foo(A, B, C);` „B, “ markieren, Umschalt+Alt+A | `Foo(A, { B, } C);`, Markierung bleibt auf „B, “ (**Abnahme**) |
+| BK2 | Gleich noch einmal Umschalt+Alt+A | Wieder `Foo(A, B, C);` |
+| BK3 | Strg+Z nach BK1 | Ein Schritt nimmt den Kommentar zurück (**Abnahme**) |
+| BK4 | Zwei ganze Zeilen markieren, Umschalt+Alt+A | `{ ` vor der ersten, ` }` hinter der letzten; Markierung bleibt auf den Zeilen |
+| BK5 | Zeilen markieren, die schon `{ x }` enthalten | Form `(* … *)` |
+| BK6 | Zeilen markieren, die `{ x }` und `(* y *)` enthalten | `//` je Zeile; mit „Ablehnen“ unter Optionen › Befehle: nichts geändert, Zeile in der Meldungsansicht |
+| BK7 | Nur `{$IFDEF DEBUG}` markieren | `// {$IFDEF DEBUG}`; die Direktive wird kein Kommentar |
+| BK8 | Ohne Markierung, Cursor in `(* alt *)` | Der Kommentar verschwindet, der Text bleibt |
+| BK9 | Ohne Markierung, Cursor in einer zweizeiligen Anweisung | Die ganze Anweisung bis zum Semikolon kommentiert; „Zeile kommentieren“ eingestellt: nur die Zeile |
+| BK10 | „Kommentarzeichen bei mehrzeiligen Blöcken in eigene Zeilen“ an, zwei Zeilen markieren | `{` und `}` in eigenen Zeilen mit dem Einzug der ersten Zeile; noch einmal: beide Zeilen verschwinden |
+| BK11 | „Bevorzugte Form“ auf `(* … *)` | Einfache Markierung bekommt `(* … *)` |
+| BK12 | „Blockkommentar umschalten“ aus | Umschalt+Alt+A tut nichts mehr (Kürzel frei), Befehl fehlt in der Palette (**Abnahme**) |
+
 ## Gleichen Text wie die Markierung hervorheben (#709)
 
 Voraussetzung: Einstellungen auf Vorgabe; Unit, in der `Kunde` mehrfach vorkommt, auch als Teil von `TKunde` und `Kunden`, in einem String und in einem Kommentar.

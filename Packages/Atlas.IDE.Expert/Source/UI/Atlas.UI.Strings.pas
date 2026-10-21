@@ -632,7 +632,11 @@ type
     SettingsSelectionMatches, SettingsSelectionMatchesMinLength, SettingsSelectionMatchesCase,
     SettingsSelectionMatchesWholeWord, SettingsSelectionMatchesF3, SettingsSelectionMatchesMax, SelectionMatchesOne,
     SelectionMatchesCount, SelectionMatchesMore, SelectionMatchesVisible, ElementSelectionMatches,
-    ElementSelectionMatchesPlural);
+    ElementSelectionMatchesPlural, ToggleBlockCommentCommand, SettingsToggleBlockComment,
+    SettingsToggleBlockCommentStyle, ToggleBlockCommentBraces, ToggleBlockCommentParens,
+    SettingsToggleBlockCommentFallback, ToggleBlockCommentLineComments, ToggleBlockCommentRefuse,
+    SettingsToggleBlockCommentOwnLines, SettingsToggleBlockCommentScope, ToggleBlockCommentStatement,
+    ToggleBlockCommentLine, ToggleBlockCommentRefused);
 
   TAtlasStrings = class
   private class var
@@ -1915,7 +1919,20 @@ const
      'mehr als %d Treffer',
      '%d Treffer im sichtbaren Bereich',
      'Hervorhebung gleichen Texts',
-     'Hervorhebungen gleichen Texts'),
+     'Hervorhebungen gleichen Texts',
+     'Blockkommentar umschalten',
+     'Blockkommentar umschalten (Umschalt+Alt+A)',
+     'Bevorzugte Form:',
+     '{ … }',
+     '(* … *)',
+     'Wenn } und *) vorkommen:',
+     '// je Zeile',
+     'Ablehnen',
+     'Kommentarzeichen bei mehrzeiligen Blöcken in eigene Zeilen',
+     'Ohne Markierung:',
+     'Anweisung kommentieren',
+     'Zeile kommentieren',
+     'Blockkommentar: Die Markierung enthält } und *), nichts geändert.'),
     ('Enter to accept · Esc to close', '%d of %d', 'No matches for “%s”', 'Backspace widens the search',
      'No suggestions here', 'Esc closes', 'No details for this entry', 'Overload', 'Deprecated: %s', 'Deprecated.',
      'Inherited from %s', 'Inherited', 'optional, default %s', 'No overload with %d parameters.', '… %d more',
@@ -3099,7 +3116,20 @@ const
      'more than %d matches',
      '%d matches in the visible area',
      'Selection match highlight',
-     'Selection match highlights'));
+     'Selection match highlights',
+     'Toggle block comment',
+     'Toggle block comment (Shift+Alt+A)',
+     'Preferred form:',
+     '{ … }',
+     '(* … *)',
+     'If } and *) occur:',
+     '// per line',
+     'Refuse',
+     'Comment markers of multi-line blocks on their own lines',
+     'Without selection:',
+     'Comment the statement',
+     'Comment the line',
+     'Block comment: the selection contains } and *), nothing changed.'));
 
 { TAtlasStrings }
 
