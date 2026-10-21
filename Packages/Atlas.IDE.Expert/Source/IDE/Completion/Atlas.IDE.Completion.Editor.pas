@@ -738,6 +738,8 @@ begin
   // Gruppen geerbter Member (#419), Chips (#422), lernende Gewichtung (#418).
   FController.GroupInherited := TAtlasIdeSettings.Current.GroupInherited;
   FPopup.DimInherited := TAtlasIdeSettings.Current.GroupInherited;
+  // Marke „Zweig 0“ an Feldern varianter Records (#846).
+  FPopup.ShowVariantBranch := TAtlasIdeSettings.Current.CompletionVariantBranch;
   // Einträge ohne Treffer zeigen (#497).
   FController.ListMode := TAtlasListModes.ModeOf(TAtlasIdeSettings.Current.CompletionListMode);
   FController.ListScope := TAtlasListModes.ScopeOf(TAtlasIdeSettings.Current.CompletionListScope);

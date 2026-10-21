@@ -185,6 +185,8 @@ type
     Favorites: Boolean;
     /// <summary>Geerbte Member nachrangig und gruppiert (#419).</summary>
     GroupInherited: Boolean;
+    /// <summary>Marke „Zweig 0“ an Feldern varianter Records (#846, completion.variantBranch).</summary>
+    CompletionVariantBranch: Boolean;
     /// <summary>Beim Tippen nur Treffer (filter), alle Einträge mit Treffern oben (all) oder Treffer und darunter
     /// gedämpft der Rest (rest) (completion.listMode, #497).</summary>
     CompletionListMode: string;
@@ -1165,6 +1167,7 @@ begin
   Result.Learning := True;
   Result.Favorites := True;
   Result.GroupInherited := True;
+  Result.CompletionVariantBranch := True;
   Result.CompletionListMode := CompletionListModeNames[0];
   Result.CompletionListScope := CompletionListScopeNames[0];
   Result.Preview := False;
@@ -1707,6 +1710,8 @@ begin
   Learning := AStore.ReadInteger('Learning', BoolValue(Default.Learning)) <> 0;
   Favorites := AStore.ReadInteger('Favorites', BoolValue(Default.Favorites)) <> 0;
   GroupInherited := AStore.ReadInteger('GroupInherited', BoolValue(Default.GroupInherited)) <> 0;
+  CompletionVariantBranch := AStore.ReadInteger('CompletionVariantBranch',
+    BoolValue(Default.CompletionVariantBranch)) <> 0;
   CompletionListMode := AStore.ReadString('CompletionListMode', Default.CompletionListMode);
   CompletionListScope := AStore.ReadString('CompletionListScope', Default.CompletionListScope);
   Preview := AStore.ReadInteger('Preview', BoolValue(Default.Preview)) <> 0;
@@ -2105,6 +2110,7 @@ begin
   AStore.WriteInteger('Learning', BoolValue(Learning));
   AStore.WriteInteger('Favorites', BoolValue(Favorites));
   AStore.WriteInteger('GroupInherited', BoolValue(GroupInherited));
+  AStore.WriteInteger('CompletionVariantBranch', BoolValue(CompletionVariantBranch));
   AStore.WriteString('CompletionListMode', CompletionListMode);
   AStore.WriteString('CompletionListScope', CompletionListScope);
   AStore.WriteInteger('Preview', BoolValue(Preview));

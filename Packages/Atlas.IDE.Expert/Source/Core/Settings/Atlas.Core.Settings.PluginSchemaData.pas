@@ -12,7 +12,7 @@ function AtlasPluginSchemaJson: string;
 implementation
 
 const
-  Lines: array[0..3661] of string = (
+  Lines: array[0..3673] of string = (
     '{',
     '  "$schema": "http://json-schema.org/draft-07/schema#",',
     '  "title": "Atlas-Plugin-Einstellungen",',
@@ -676,6 +676,18 @@ const
     '      "x-caption": "Geerbte Member gruppieren",',
     '      "x-captionEn": "Group inherited members",',
     '      "x-issue": "#419"',
+    '    },',
+    '    "CompletionVariantBranch": {',
+    '      "description": "Bei Feldern im varianten Teil eines Records (case … of) die Marke \"Zweig 0\" bzw. \"Zweig 1\" in der Liste zeigen.",',
+    '      "type": "boolean",',
+    '      "default": true,',
+    '      "x-key": "completion.variantBranch",',
+    '      "x-area": "completion",',
+    '      "x-feature": "Completion",',
+    '      "x-page": "Vervollständigung",',
+    '      "x-caption": "Zweig varianter Record-Felder zeigen",',
+    '      "x-captionEn": "Show the branch of variant record fields",',
+    '      "x-issue": "#846"',
     '    },',
     '    "CompletionListMode": {',
     '      "type": "string",',

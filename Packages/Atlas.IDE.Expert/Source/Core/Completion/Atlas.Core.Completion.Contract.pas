@@ -113,6 +113,9 @@ type
     IsHelper: Boolean;
     /// <summary>Bedingung der Deklaration ("WIN64", "platform"); '' = immer (#476).</summary>
     Condition: string;
+    /// <summary>Feld im varianten Teil eines Records: Marken seines Zweigs ("0", "1 › 0", #846); '' = keiner.
+    /// </summary>
+    VariantBranch: string;
     /// <summary>Unter der aktiven Konfiguration nicht deklariert: abgeschwächt und am Ende (#476).</summary>
     Unavailable: Boolean;
     /// <summary>Gültigkeitsbereich (#488): 1 lokal, 2 Parameter, 3 Mitglied von Self, 4 eigene Unit,

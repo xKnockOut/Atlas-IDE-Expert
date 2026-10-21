@@ -72,7 +72,8 @@ type
     // 15: Zusammenführung mit der Kette (Signatur, Direktiven, Kurztext je Symbol, #492).
     // 16: Zählung der Präfixe je Unit (#452).
     // 17: Grund hinter deprecated je Symbol (#38).
-    const FormatVersion = 17;
+    // 18: Zweig varianter Record-Felder je Symbol (#846).
+    const FormatVersion = 18;
     class function Serialize(const AUnits: TArray<TUnitIndex>): TBytes; static;
     /// <summary>Liest nur die Köpfe; bei falscher Version, falscher Prüfsumme oder fremdem Inhalt leer.</summary>
     class function ReadEntries(const AData: TBytes): TArray<TIndexCacheEntry>; overload; static;
@@ -413,6 +414,7 @@ begin
   WriteList(AWriter, ATable, ASymbol.Directives);
   AWriter.WriteVar(ATable.IndexOf(ASymbol.Summary));
   AWriter.WriteVar(ATable.IndexOf(ASymbol.DeprecatedText));
+  AWriter.WriteVar(ATable.IndexOf(ASymbol.VariantBranch));
 end;
 
 procedure WriteUsage(AWriter: TCacheWriter; ATable: TStringTable; const AUsage: TIndexUsage);
@@ -572,6 +574,7 @@ begin
   Result.Directives := AReader.ReadList(AStrings);
   Result.Summary := AReader.ReadString(AStrings);
   Result.DeprecatedText := AReader.ReadString(AStrings);
+  Result.VariantBranch := AReader.ReadString(AStrings);
 end;
 
 function ReadUsage(var AReader: TCacheReader; const AStrings: TArray<string>): TIndexUsage;
