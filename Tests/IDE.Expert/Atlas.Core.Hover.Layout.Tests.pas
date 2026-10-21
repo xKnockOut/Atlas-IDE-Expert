@@ -34,6 +34,14 @@ type
     [Test]
     procedure ProblemsProduceBlockAndBar;
     [Test]
+    procedure DebugValueProducesExpressionValueAndBar;
+    [Test]
+    procedure DebugValuePendingShowsPlaceholder;
+    [Test]
+    procedure DebugValueAboveDeclaration;
+    [Test]
+    procedure FailedDebugValueIsHidden;
+    [Test]
     procedure PathChipsProduceHits;
     [Test]
     procedure PinnedShowsActions;
@@ -61,7 +69,8 @@ uses
   System.SysUtils,
   Atlas.Core.Style.Palette,
   Atlas.Core.Style.Wrap,
-  Atlas.Core.Problems.Contract;
+  Atlas.Core.Problems.Contract,
+  Atlas.Core.Hover.DebugValue;
 
 type
   TFakeMeasure = class(TInterfacedObject, IAtlasHoverMeasure)
@@ -170,6 +179,7 @@ begin
   Result.Texts.SourceCompiler := 'dcc';
   Result.Texts.SourceInactive := 'inaktiv';
   Result.Texts.Stale := 'alt';
+  Result.Texts.DebugPending := 'eval';
 end;
 
 function THoverLayoutTests.Build(const AInput: TAtlasHoverInput): TAtlasHoverLayout;
@@ -265,6 +275,86 @@ begin
   Assert.AreEqual(Colors.Error, Layout.Items[Bar].Color);
   // Ohne Deklaration endet der Tooltip nach den Problemen.
   Assert.AreEqual(46, Layout.Height);
+end;
+
+procedure THoverLayoutTests.DebugValueProducesExpressionValueAndBar;
+var
+  HoverView: TAtlasHoverView;
+  Layout: TAtlasHoverLayout;
+  Bar: Integer;
+  Colors: TAtlasColors;
+begin
+  // #891: Ausdruck in der Editorschrift (halbfett, Akzent), darunter der Wert, links ein Akzentbalken.
+  HoverView := View('');
+  HoverView.DebugValue := TAtlasDebugValue.Evaluated('Count', '3');
+  Layout := Build(HoverView, 300);
+  Colors := TAtlasColors.Light;
+  Assert.IsTrue(Layout.Items[0].Kind = TAtlasHoverItemKind.Text);
+  Assert.AreEqual('Count', Layout.Items[0].Text);
+  Assert.IsTrue(Layout.Items[0].Face.Font = TAtlasHoverFont.Mono);
+  Assert.IsTrue(Layout.Items[0].Face.Bold);
+  Assert.AreEqual(Colors.Accent, Layout.Items[0].Color);
+  Assert.AreEqual(20, Layout.Items[0].Rect.Left);
+  Assert.AreEqual(8, Layout.Items[0].Rect.Top);
+  Assert.IsTrue(Layout.Items[1].Kind = TAtlasHoverItemKind.Block);
+  Assert.AreEqual('3', Layout.Items[1].Text);
+  Assert.AreEqual(Colors.Text, Layout.Items[1].Color);
+  CheckRect(Rect(20, 27, 289, 42), Layout.Items[1].Rect, 'Wert');
+  Bar := FirstKind(Layout, TAtlasHoverItemKind.RoundFill);
+  Assert.IsTrue(Bar >= 0);
+  CheckRect(Rect(11, 9, 14, 41), Layout.Items[Bar].Rect, 'Akzentbalken');
+  Assert.AreEqual(Colors.Accent, Layout.Items[Bar].Color);
+  // Ohne Deklaration und Probleme endet der Tooltip nach dem Wert.
+  Assert.AreEqual(50, Layout.Height);
+end;
+
+procedure THoverLayoutTests.DebugValuePendingShowsPlaceholder;
+var
+  HoverView: TAtlasHoverView;
+  Layout: TAtlasHoverLayout;
+  Colors: TAtlasColors;
+begin
+  HoverView := View('');
+  HoverView.DebugValue := TAtlasDebugValue.Pending('FList.Count');
+  Layout := Build(HoverView, 300);
+  Colors := TAtlasColors.Light;
+  Assert.AreEqual('FList.Count', Layout.Items[0].Text);
+  Assert.IsTrue(Layout.Items[1].Kind = TAtlasHoverItemKind.Block);
+  Assert.AreEqual('eval', Layout.Items[1].Text);
+  Assert.AreEqual(Colors.Muted, Layout.Items[1].Color);
+end;
+
+procedure THoverLayoutTests.DebugValueAboveDeclaration;
+var
+  HoverView: TAtlasHoverView;
+  Layout: TAtlasHoverLayout;
+  Line, Styled: Integer;
+begin
+  HoverView := View('var Count: Integer');
+  HoverView.DebugValue := TAtlasDebugValue.Evaluated('Count', '3');
+  Layout := Build(HoverView, 300);
+  // Trennlinie unter dem Wert, danach die Deklaration.
+  Line := FirstKind(Layout, TAtlasHoverItemKind.Line);
+  Assert.IsTrue(Line >= 0);
+  Assert.AreEqual(48, Layout.Items[Line].Rect.Top);
+  Styled := FirstKind(Layout, TAtlasHoverItemKind.Styled);
+  Assert.IsTrue(Styled > Line);
+  Assert.IsTrue(Layout.Items[Styled].Rect.Top >= 56);
+end;
+
+procedure THoverLayoutTests.FailedDebugValueIsHidden;
+var
+  HoverView: TAtlasHoverView;
+  Layout: TAtlasHoverLayout;
+  Item: TAtlasHoverItem;
+begin
+  // Fehler der Auswertung zeigt der Tooltip nicht (#840 erklärt sie später).
+  HoverView := View('var Count: Integer');
+  HoverView.DebugValue := TAtlasDebugValue.Failed('Count', 'E2003 Undeclared identifier');
+  Layout := Build(HoverView, 300);
+  for Item in Layout.Items do
+    Assert.IsFalse(Item.Text = 'Count', 'kein Abschnitt für den Wert');
+  Assert.AreEqual(Integer(0), CountKind(Layout, TAtlasHoverItemKind.RoundFill));
 end;
 
 procedure THoverLayoutTests.PathChipsProduceHits;

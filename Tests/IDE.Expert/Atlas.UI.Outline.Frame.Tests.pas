@@ -19,6 +19,9 @@ type
     FForm: TForm;
     FFrame: TAtlasOutlineFrame;
   public
+    /// <summary>Erste Benutzung ungemessen vorwegnehmen.</summary>
+    [SetupFixture]
+    procedure WarmUpFirstUse;
     [Setup]
     procedure SetUp;
     [TearDown]
@@ -123,6 +126,16 @@ begin
     if Item.Caption = ACaption then
       Exit(Item);
   Result := nil;
+end;
+
+procedure TAtlasOutlineFrameTests.WarmUpFirstUse;
+begin
+  SetUp;
+  try
+    ShowsRowsWithMarks;
+  finally
+    TearDown;
+  end;
 end;
 
 procedure TAtlasOutlineFrameTests.SetUp;

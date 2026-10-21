@@ -467,6 +467,7 @@ var
   Transport: IJsonRpcTransport;
   WorkspaceOf: TWorkspaceOfFunc;
   Names: TArray<string>;
+  AfterEdit: TProc;
 begin
   // const-Parameter lassen sich nicht einfangen.
   Transport := FTransport;
@@ -487,12 +488,13 @@ begin
           OldText := TFileEncoding.LoadFromFile(Item.FileName, FileFormat);
         Changes := Changes + [TLspFileChange.Create(Item.FileName, OldText, Item.Text, Item.New)];
       end;
-      SendEdit(AUri, Description, TLspApplyEdit.Files(Changes),
+      AfterEdit :=
         procedure
         begin
           if Show <> '' then
             SendShowDocument(Transport, Show, TTextRange.Create(0, 0, 0, 0));
-        end);
+        end;
+      SendEdit(AUri, Description, TLspApplyEdit.Files(Changes), AfterEdit);
       Exit;
     end;
     for Item in AFiles do

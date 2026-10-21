@@ -53,6 +53,7 @@ implementation
 uses
   System.SysUtils,
   System.JSON,
+  System.Generics.Collections,
   Atlas.Common.Index.SymbolIndex,
   Atlas.Common.Index.Extractor,
   Atlas.Common.Lsp.PublishedMembers;

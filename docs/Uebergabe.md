@@ -1,4 +1,4 @@
-﻿# Übergabe: Atlas IDE Expert – Stand 16.10.2026
+﻿# Übergabe: Atlas IDE Expert – Stand 21.10.2026
 
 ## Kontext
 - Repo: https://github.com/xKnockOut/Atlas-IDE-Expert.git, lokal unter `C:\Projekte\BetterDelphiLSP\repo`. Gearbeitet wird auf `main`.
@@ -598,4 +598,76 @@ Jeder Branch baut auf dem vorigen auf. Nichts davon ist gebaut, getestet oder in
 - #882: Server bewertet Kürzeltreffer mit 2600, also vor Teilwort; filterText für unscharfe Form-Komponenten. Grenze: „Btn“ → SaveButton bleibt aus (Wortgrenzen-Regel D-05).
 - Werkzeug: `scratchpad\ide-dialogs.ps1` listet offene Fehlerdialoge der laufenden IDE samt Text.
 - Plugin beim Benutzer: Debug-Build aus `repo\Output\Win32\Debug\Bpl` in Known Packages. Das Nachstellskript `repro.ps1` trägt ihn am Ende aus; danach wieder eintragen.
+- Offen: Optionsseite, Prüfliste und Fehlerbericht rufen den Server noch synchron auf (#874), außerdem der Server-Umbau für executeCommand.
+
+## Suchleiste statt Suchdialog (#878, #877; 21.10.2026, Branch `claude/project-thread-0fsiu8` auf `feature/v1.1.0-suche-unitsuche`)
+- **Wunsch von Marco:** keine Dialogbox, sondern eine Leiste am unteren Rand des Editors mit den Einstellungen; die Ergebnisse in einem neuen Reiter im Fenster Meldungen. Issue #878 entsprechend neu gefasst, Entwurf: https://claude.ai/artifact/YKWNqK3iTpsN3YcgpYgiYV
+- **Neu:** `Atlas.Core.Search.Results` (Zähler-Index, Zeilen fürs Meldungsfenster mit Editorspalte, Kürzung auf 1000, Routinenname), `Atlas.UI.Search.Bar` (Leiste: Feld, Groß/klein, Ganzes Wort, Bezeichner, Bereich, Stufe, „n von m“, ↑/↓, „In Meldungen“, ×; Enter/Umschalt+Enter/F3/Esc), `Atlas.IDE.Search.MessageList` (Gruppe „Atlas-Suche“, Kopfzeile plus Werkzeugmeldungen, Doppelklick springt). `Atlas.UI.Search.Dialog` ist gelöscht.
+- **`Atlas.IDE.Search.Commands`:** Leiste je Editorfenster (alBottom im Eltern-Steuerelement von „Editor“, wie die Brotkrumen oben), Thema über `IOTAIDEThemingServices.ApplyTheme`. Tippen hebt hervor und springt ab dem Ursprung (Cursor bzw. Markierungsanfang beim Öffnen); Enter füllt den Reiter nur, wenn sich Suche oder Text geändert haben, danach Fokus zurück in die Leiste; Esc schließt, Fokus in den Editor, Rahmen weg; F3 geht weiter. „Suchmarkierungen entfernen“ schließt die Leiste bzw. blendet die Rahmen aus.
+- **Einstellung:** `search.resultsInMessages` (Registry `SearchResultsInMessages`, Vorgabe an); beide Suchschalter jetzt auf der Optionsseite, Reiter „Units suchen“, Abschnitt „Suche im Editor“ (`x-page` dorthin verschoben).
+- **Geprüft in der Cloud:** FPC-trunk: 14 Kern-Tests der Suche grün (4 neu). Prüfskripte grün (PackageDependencies, Delphi12, ConsoleOutput, MainThreadQueue, DocComments, TestCoverage, Update-ConfigDoc -Check). **Nicht gebaut:** VCL- und IDE-Teile (`Atlas.UI.Search.Bar.Tests` mit 5 Tests nur unter Delphi).
+- **In der IDE prüfen (SU1–SU16 in `docs/Atlas-Testfaelle.md`):** ob die IDE Tasten im Suchfeld abfängt (Strg+C/V, Pfeile, Esc), ob `ShowMessageView` den Fokus nimmt und das Zurücksetzen auf die Leiste greift, Lage der Leiste unter dem Editor (über der Statuszeile) und mit Minimap/Übersichtsleiste, Thema der Kästchen.
+
+## Brotkrumenleiste überarbeiten (21.10.2026, Branch `claude/project-thread-blplxd` von `feature/v1.1.0-suche-unitsuche` d983ebf1)
+- **Wunsch von Marco:** Leiste im dunklen Thema in IDE-Farben statt schwarz; über die Leiste navigieren; die immer leeren Comboboxen der IDE („Typ suchen“/„Methode suchen“) füllen oder abschalten.
+- **Farben:** `TAtlasColors.ForChrome` (Kern, getestet) und `TAtlasIdeStyle.ChromeColors`: Fläche clBtnFace, Schrift clBtnText aus `IOTAIDEThemingServices.StyleServices`. Einstellung `editor.breadcrumbsIdeColors` (Vorgabe an).
+- **Navigation:** Unit-Glied hat ein Menü mit allen Elementen der Unit (`TAtlasBreadcrumbs.UnitMembers`); jedes Glied kennt `Children`, Klick auf das „›“ dahinter öffnet sie (auch hinter dem letzten Glied, wenn es Kinder hat); Strg+Klick springt (Umschalt: Deklaration), Glieder ohne Geschwister springen schon beim Klick; Tastatur Strg+↓ und Strg+Enter.
+- **IDE-Navigationsleiste:** Kein Zugang über die Open Tools API, also nicht befüllbar. `TAtlasNavigationToolbar` (UI, nur VCL, getestet) findet sie am Namen `TEditorNavigationToolbar` bzw. Klassennamen und hängt sie in ein unsichtbares Panel (Vorgehen wie GExperts, weil die IDE Visible bei jedem Reiter neu setzt). Einstellung `editor.breadcrumbsHideIdeToolbar` (Vorgabe an); aus, Leiste aus oder Entladen hängt sie zurück. Alternativ die IDE-Option „Navigationssymbolleiste anzeigen“ (Editor-Optionen › Anzeige).
+- **Geprüft in der Cloud:** alle Prüfskripte grün, `Update-ConfigDoc.ps1` ausgeführt; FPC-Harness `Atlas.Core.Style.Tests` und `Atlas.Core.Outline.Breadcrumbs.Tests` 49/49 grün. UI-Tests (Leiste, Navigationsleiste) und Settings-Test nur unter Delphi. **Nicht gebaut.**
+- **Offen bei Marco:** Delphi-Build Win32/Win64 0/0/0, `Atlas.Tests`, Testfälle BK15–BK23. Risiko: Name der IDE-Leiste in RAD Studio 13 (sonst greift die Suche am Klassennamen), Neuanordnung beim Zurückhängen.
+## Absturz im Statusfeld unter Delphi 12 (21.10.2026, Branch `claude/project-thread-enkkmn` von main db0fffe, ungebaut)
+- Meldung: Zugriffsfehler in `TCollectionItem.GetIndex` aus `TAtlasStatusField.PanelRect` beim Bewegen der Maus über die Statusleiste.
+- Ursache: Das Feld merkte sich seine `TStatusPanel`-Zeiger. Die Panels gehören der Leiste; löscht die IDE sie selbst, zeigen `Hook.Panel` und `Hook.Extras` auf freigegebenen Speicher. Schon `APanel.Index` liest dann die Sammlung, `Refresh` hätte sogar hineingeschrieben.
+- Fix: eigene Klasse `TFieldPanel` (Unterklasse von `TStatusPanel`), die im Destruktor `OnGone` ruft. Der Haken setzt das Panel dann auf nil, `PanelRect` liefert ein leeres Rechteck, und das nächste `Refresh` legt das Panel neu an. Eigenes Entfernen (`DropPanel`) sucht nur per Zeigervergleich und löst OnGone nicht aus.
+- Zu prüfen beim Bauen: Win32-Plugin unter Delphi 12 und 13; Maus über die Leiste, Editorfenster öffnen/schließen, Plugin entladen.
+
+## Stand 21.10.2026: Werte im Hover beim Debuggen (#891)
+- **Anlass (Marco):** Am Haltepunkt zeigte Delphi beim Überfahren den Variablenwert; mit dem Atlas-Hover fehlte er, weil Atlas die Code Insight übernimmt. Kein Issue deckte das; #891 unter #614 angelegt (Grundlage für #526, #835, #839, #840, #854, #868).
+- **Branch:** `claude/project-thread-1gvqox` von `main` (Entwurfs-PR), ungebaut, nicht in `main`. Marcos Arbeitsstand `claude/project-thread-blplxd` bekommt ihn per Merge des Branches.
+- **Umsetzung:** `Atlas.Core.Hover.DebugValue` (Ausdruck unter der Maus mit Qualifizierern links, nichts mit Aufrufen/in Strings/Kommentaren/auf reservierten Wörtern; Zustände ausstehend/Wert/Fehler; Kürzen auf 2000 Zeichen), `Atlas.IDE.Hover.DebugValue` (`IOTAThread.Evaluate` mit `eseNone` und Datei/Zeile; `erDeferred` über `IOTAThreadNotifier`/`IOTAThreadNotifier160.EvaluateComplete`, Ergebnis über `TAtlasMainThread.ForceQueue`, Abmelden erst danach), Abschnitt oben im Tooltip (`TBuilder.DebugValue`: Akzentbalken, Ausdruck halbfett in der Editorschrift, Wert bis sechs Zeilen bzw. „wird ausgewertet …“). Fehler werden nicht gezeigt (#840). Mit eigenem Tooltip aus hängt `GetHintText` „Ausdruck = Wert“ vor den Hover-Text (nur sofortige Werte).
+- **Einstellung:** `DebugHoverValues` / `debug.hoverValues` (Seite „Debuggen“, Schnellschalter, Standard an); `Update-ConfigDoc.ps1` gelaufen.
+- **ToolsAPI-Signaturen** nach DocWiki und CnWizards (CnWizDebuggerNotifier.pas): `Evaluate(…, CanModify, eseNone, '', ResultAddr, ResultSize, ResultVal: LongWord, FileName, LineNumber)`; `TOTANotifyReason` hat kein `nrTerminated`. Beim ersten Delphi-Build darauf achten; `TDeferred.Destroyed` ist `reintroduce` (TNotifierObject.Destroyed ist geschützt und nicht virtuell).
+- **Getestet:** `Atlas.Core.Hover.DebugValue.Tests` unter FPC 3.2.2 grün (13 Tests); Layout-, Einstellungs- und Optionsseiten-Tests nur geschrieben. Prüfskripte grün (Pakete, Delphi 12, Konsole, Hauptthread, ConfigDoc).
+- **Offen:** Delphi-Build 0/0/0 (Win64-Gruppe, Win32-Plugin), Testlauf, Abnahme DH1–DH13 in `docs/Atlas-Testfaelle.md`, besonders Win64/LLDB (verzögerte Auswertung) und ob die IDE neben dem Atlas-Tooltip noch einen eigenen Auswertungs-Tooltip öffnet.
+## Index-Caches aufräumen (#905, 21.10.2026, Branch `claude/project-thread-fltcw6` von main db0fffe, ungebaut)
+- Anlass: Marco arbeitet in mehreren Branch-Ordnern und löscht sie später; bisher räumte der Server nur nach Größe (256 MB fest) auf.
+- Umsetzung: `TIndexCacheHousekeeping.SelectOrphans`/`SelectUnused`/`MaxBytesOf`, `TIndexCacheDirectory.RemoveOrphans`/`RemoveUnused`/`WriteOrigin`/`ReadOrigin`/`TouchUse`/`LastUse`/`OriginExists`; Aufruf in `TShellWorkspace.LockCache`. Neben jedem Cache `projekt.txt` (Herkunft) und `benutzt.stamp` (letzte Benutzung). Caches ohne `projekt.txt` lesen einmal ihre Projekt-Units und tragen die Herkunft nach. Fehlendes Laufwerk = Cache bleibt.
+- Einstellungen `index.removeOrphans` (an), `index.cacheMaxAgeDays` (14, 0 = aus), `index.cacheMaxMb` (256, 0 = ohne Grenze); nur im Dialog „Weitere globale Einstellungen“, nicht auf dem Reiter Speicher (Optionsseite wird mit #890 umgebaut).
+- Geprüft: neue Tests unter FPC-Trunk grün bis auf die Prüfung „leerer Ordner gelöscht“, die dort auch im bestehenden Test `ClearRemovesNewLayoutAndEmptyFolders` scheitert (FPC-`TDirectory.IsEmpty`). Update-ConfigDoc, Check-Delphi12, Check-PackageDependencies, Check-ConsoleOutput grün. Offen: Delphi-Build und Testlauf unter Windows.
+## Lizenzvereinbarung im Installer (21.10.2026, Branch `claude/project-thread-ko9i0q` von main 8172e044)
+- **Anlass:** GetIt zeigt bei der Installation eine EULA; Recherche dazu in `/mnt/project-files/planung/getit-einreichung.md`. Marco hat den Text am 21.10.2026 freigegeben.
+- **Umfang:** `EULA.txt` im Wurzelordner (UTF-8 mit BOM, CRLF, Deutsch und Englisch, verbindlich ist der MIT-Text). Der Installer kopiert sie mit (`CommonFiles`), das Release legt sie ins ZIP. `Setup.Core.License` (`TSetupLicense`) entscheidet, ob zuzustimmen ist, und merkt die Zustimmung als SHA-256 unter `HKCU\Software\Atlas\Setup\LicenseAccepted`. AtlasSetup zeigt den Text unter der IDE-Auswahl; „Installieren“ ist erst mit Häkchen frei, gemerkt wird erst nach erfolgreicher Installation. Ohne `EULA.txt` neben dem Installer (Entwicklerbuild) entfällt die Seite.
+- **Tests:** vier neue Tests in `Setup.Core.Installer.Tests` (Normalisierung, Zustimmung, erneute Frage nach Änderung bzw. Deinstallation, Kopie). In der Cloud weder pwsh noch FPC: nicht übersetzt, Prüfskripte nicht gelaufen.
+- **Offen bei Marco:** Delphi-Build von `AtlasSetup` und `Atlas.Tests` (0/0/0), Prüfskripte, AtlasSetup aus einem Ordner mit `EULA.txt` starten (Seite erscheint, Knopf erst mit Häkchen frei, zweiter Lauf fragt nicht mehr).
 - #874 Rest: siehe Abschnitt „Hänger …“ (21.10.2026, ungebaut).
+
+## Alles in main zusammengeführt (21.10.2026, 8f7225e3)
+- Enthalten:
+  - main;
+  - claude/merge-all-branches-a7glyv (mit 33 neuen Commits einer anderen Sitzung: #874-Teil, #890 Optionsbaum, #110, #770, #62, #43, Schnellbefehle, #876);
+  - claude/restpunkte-70m93a;
+  - feature/v1.1.0-suche-unitsuche (#877/#878);
+  - claude/project-thread-0fsiu8 und -blplxd (Suchleiste, #891 Debug-Werte im Hover, Statusfeld-Fix);
+  - -fltcw6 (#905 Index-Caches aufräumen);
+  - -a0qjpe (1.0.1 verworfen);
+  - EULA aus -ko9i0q als Cherry-Pick (alter Stand).
+- #876 gab es doppelt: Übernommen ist die Fassung aus dem Sammel-Branch (8455e09a); meine Fassung (Atlas.UI.UnitSearch.Window.Tests) ist entfallen. Dort fehlten 7 englische Texte, ergänzt.
+- Ergebnis: Win64-Gruppe 0/0/0, 5184 Tests grün, Win32-Plugin gebaut, alle Check-Skripte sauber.
+- Werkzeuge im scratchpad: `strings_diff.py` (Aufzählung gegen Textlisten zählen), `dup_uses2.py` (Unit in interface- und implementation-uses), `fix2532*.py`, `warmup*.py`, `ide-dialogs.ps1`.
+- Offen:
+  - Tastenkonflikt gelöst (Entscheidung Marco): „In Methode suchen“ (#877) behält Strg+Umschalt+Alt+F, „Code formatieren“ (#43) hat jetzt Strg+Umschalt+Alt+L ($E04C).
+  - #874 Rest (Optionsseite/Prüfliste/Fehlerbericht synchron, Server executeCommand seriell).
+  - AV in rtl370 beim Beenden nach Neuladen.
+
+## Absturz beim Beenden der IDE (#1091, 21.10.2026, main fba389cf)
+- **Behoben:** „Fehler beim Abbau: Welcome: EAccessViolation“. Die IDE gibt beim Beenden die Willkommensseiten-Plugins frei, bevor Atlas entladen wird; `Plugins` in `Atlas.IDE.Welcome.Page.pas` zeigte auf freigegebene `TPlugin`. Jetzt trägt sich ein freigegebenes Plugin selbst aus (`ServiceGone`), Rahmen/Inhalt überwacht `TViewWatch` (FreeNotification).
+- **Nicht Atlas:** Die AV in `rtl370.bpl` (Offset 133BE4, „Lesen von Adresse …863C“) danach. Mit cdb gefangen: `TEditWindow.Notification` ruft eine Komponente von `$(BDS)\Bin\Scooter.BeyondCompare.Expert.dll` (Experte von RAD Studio), deren DLL schon entladen ist. Ohne Atlas in 3 Läufen nicht aufgetreten; vermutlich löst eine späte Benachrichtigung des Editorfensters sie aus. Gegenprobe ohne Beyond-Compare-Experten steht aus.
+- Werkzeuge im Scratchpad: `crashhunt.ps1` (Wiederholläufe), `crashdbg.ps1` + `cdb-cmds.txt` (cdb anhängen, Stapel bei rtl370+133BE4), `ide-dismiss.ps1` (Fehlerdialoge wegklicken).
+
+## Zusammenführung 21.10.2026 abends (main 69bb4103)
+- Nach main: #666, #715, #768, #709, #703, #700, #672, #657, #845, README-Neufassung (`claude/project-thread-qykz50`); `claude/project-thread-ko9i0q` (EULA) nur als „ours“-Merge, Inhalt war schon über 870c6b6e in main. Damit enthält auch der Sammel-Branch nichts mehr, was main fehlt.
+- Konflikte: erzeugte Units/Doku neu mit `Tools/Update-ConfigDoc.ps1`; Tastenliste `TAtlasKeyFunction` in `Atlas.Core.Commands.KeyConflicts.pas` vereinigt; CHANGELOG beide Seiten; README/README_DE neue Fassung plus Punkte zu #657–#845.
+- Delphi-Fehler aus #715 behoben (E2555 Result im Methodenzeiger, H2077), H2443 in OverrideMarks-Tests, Erstgebrauchslecks in Unwrap- und Outline-Frame-Tests. Win64 0/0/0, 5334 Tests grün, Win32-Plugin sauber.
+- #874 geschlossen (Rest war schon in 51d305cd).
+- Nachtrag (main 0bc86552): #846 Variante Records gemergt; Index-Cache `FormatVersion` 18 in Server und Plugin (`TAtlasWelcomeIndexFiles`), H2443 in VariantRecords-Tests. 5342 Tests grün. Kein Branch mehr mit Commits, die main fehlen.
+- Skripte im Scratchpad: `mergeall.sh` (Merge-Kette mit automatischer Auflösung der erzeugten Dateien, Tastenliste, CHANGELOG), `kc_resolve.py`, `union.py`.

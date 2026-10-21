@@ -534,6 +534,9 @@ begin
         Names := Group;
         TypeName := '';
       end;
+      // [Ref] und andere Attribute stehen vor oder nach der Art (const/var/out).
+      while Names.StartsWith('[') and (Pos(']', Names) > 0) do
+        Names := Trim(Copy(Names, Pos(']', Names) + 1, MaxInt));
       Modifier := '';
       for Word in Modifiers do
         if LowerCase(Names).StartsWith(Word + ' ') then
@@ -542,7 +545,7 @@ begin
           Names := Trim(Copy(Names, Length(Word) + 1, MaxInt));
           Break;
         end;
-      // [Ref] und andere Attribute vor dem Namen weglassen.
+      // Attribute zwischen Art und Name ebenfalls weglassen.
       while Names.StartsWith('[') and (Pos(']', Names) > 0) do
         Names := Trim(Copy(Names, Pos(']', Names) + 1, MaxInt));
       for Name in SplitTop(Names, ',') do

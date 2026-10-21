@@ -1069,7 +1069,7 @@ begin
     Assert.AreEqual('Parameter abgleichen', Labels(Answer));
     Edits := ((Answer.GetValue('items') as TJSONArray).Items[0] as TJSONObject).GetValue('additionalTextEdits')
       as TJSONArray;
-    Assert.AreEqual(1, Edits.Count);
+    Assert.AreEqual(1, Integer(Edits.Count));
     Assert.AreEqual('    /// <param name="Rate"></param>'#13#10,
       (Edits.Items[0] as TJSONObject).GetValue<string>('newText'));
     Assert.IsTrue(Answer.ToJSON.Contains('"action":"docParams"'), Answer.ToJSON);

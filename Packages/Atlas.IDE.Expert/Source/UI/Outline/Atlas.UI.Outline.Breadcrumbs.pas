@@ -5,9 +5,17 @@
 // (#421) und Name, dazwischen „›“. Die Höhe hängt nur von der DPI ab, nie
 // vom Inhalt. Passt der Pfad nicht in die Breite, entfallen vorn Glieder
 // („…“), das letzte bleibt immer sichtbar.
-// - Klick auf ein Glied mit Geschwistern meldet OnOpenMenu (Sprungmenü).
+// - Klick (beim Loslassen) auf ein Glied mit Geschwistern meldet OnOpenMenu
+//   (Sprungmenü).
+// - Klick auf das „›“ hinter einem Glied mit Kindern meldet OnOpenChildren
+//   (wie die Adressleiste im Explorer); hat das letzte Glied Kinder, steht
+//   auch hinter ihm ein „›“.
+// - Strg+Klick auf ein Glied meldet OnJump (Umschalt dazu: Deklaration);
+//   Glieder ohne Geschwister springen schon beim einfachen Klick.
 // - Mit Fokus (Tastenkürzel) wechseln ←/→ das gewählte Glied, ↓ und Enter
-//   öffnen sein Menü, Esc gibt den Fokus über OnLeave an den Editor zurück.
+//   öffnen sein Menü, Strg+↓ das Menü der Kinder, Strg+Enter springt, Esc
+//   gibt den Fokus über OnLeave an den Editor zurück.
+// - Farben über SetColors: Gutter ist die Fläche, Text/Muted die Schrift.
 // Ohne Glieder steht EmptyText gedämpft in der Leiste.
 
 interface
@@ -28,18 +36,27 @@ uses
 type
   /// <summary>Menü zum Glied AIndex öffnen; APoint ist die linke untere Ecke des Glieds am Bildschirm.</summary>
   TAtlasCrumbMenuEvent = reference to procedure(AIndex: Integer; const APoint: TPoint);
+  /// <summary>Zum Glied AIndex springen; ADeclaration = zur Deklaration statt zur Implementierung.</summary>
+  TAtlasCrumbJumpEvent = reference to procedure(AIndex: Integer; ADeclaration: Boolean);
 
   TAtlasBreadcrumbBar = class(TCustomControl)
   private
     FCrumbs: TAtlasCrumbs;
     FColors: TAtlasColors;
     FRects: TArray<TRect>;
+    /// <summary>„›“ hinter dem Glied; leer, wenn keins steht.</summary>
+    FSeparators: TArray<TRect>;
     FFirstShown: Integer;
     FLaidOut: Boolean;
     FHot: Integer;
+    FHotSeparator: Integer;
     FSelected: Integer;
     FEmptyText: string;
+    FCrumbHint: string;
+    FSeparatorHint: string;
     FOnOpenMenu: TAtlasCrumbMenuEvent;
+    FOnOpenChildren: TAtlasCrumbMenuEvent;
+    FOnJump: TAtlasCrumbJumpEvent;
     FOnLeave: TProc;
     function Scale(AValue: Integer): Integer;
     function BadgeWidth: Integer;
@@ -50,14 +67,16 @@ type
     function GetFirstShown: Integer;
     procedure SetEmptyText(const AValue: string);
     procedure DrawCrumb(AIndex: Integer);
-    procedure DrawSeparator(ALeft: Integer; const AText: string);
+    procedure DrawSeparator(ALeft: Integer; const AText: string); overload;
+    procedure DrawSeparator(AIndex: Integer); overload;
+    function TrailingSeparator: Boolean;
     procedure WMGetDlgCode(var Message: TWMGetDlgCode); message WM_GETDLGCODE;
     procedure CMMouseLeave(var Message: TMessage); message CM_MOUSELEAVE;
     procedure CMFontChanged(var Message: TMessage); message CM_FONTCHANGED;
   protected
     procedure Paint; override;
     procedure Resize; override;
-    procedure MouseDown(Button: TMouseButton; Shift: TShiftState; X, Y: Integer); override;
+    procedure MouseUp(Button: TMouseButton; Shift: TShiftState; X, Y: Integer); override;
     procedure MouseMove(Shift: TShiftState; X, Y: Integer); override;
     procedure KeyDown(var Key: Word; Shift: TShiftState); override;
     procedure DoEnter; override;
@@ -72,10 +91,18 @@ type
     function CrumbAt(X, Y: Integer): Integer;
     /// <summary>Fläche des Glieds (Client); leer, wenn es wegen der Breite entfällt.</summary>
     function CrumbRect(AIndex: Integer): TRect;
+    /// <summary>„›“ hinter dem Glied unter dem Punkt (Client), nur wenn das Glied Kinder hat; -1 = keins.</summary>
+    function SeparatorAt(X, Y: Integer): Integer;
+    /// <summary>Fläche des „›“ hinter dem Glied; leer, wenn keins steht.</summary>
+    function SeparatorRect(AIndex: Integer): TRect;
     /// <summary>Fokus und Auswahl aufs letzte Glied (Tastenkürzel).</summary>
     procedure FocusLast;
     /// <summary>Menü des Glieds öffnen, wenn es Geschwister hat.</summary>
     procedure OpenMenu(AIndex: Integer);
+    /// <summary>Menü der Kinder des Glieds unter dessen „›“ öffnen, wenn es Kinder hat.</summary>
+    procedure OpenChildren(AIndex: Integer);
+    /// <summary>Zum Glied springen (OnJump), wenn es einen Knoten hat oder die Unit ist.</summary>
+    procedure Jump(AIndex: Integer; ADeclaration: Boolean);
     /// <summary>Höhe der Leiste bei APPI (eine Zeile).</summary>
     class function BarHeight(APPI: Integer): Integer; static;
     property Crumbs: TAtlasCrumbs read FCrumbs;
@@ -83,14 +110,20 @@ type
     /// <summary>Erstes sichtbares Glied (davor „…“).</summary>
     property FirstShown: Integer read GetFirstShown;
     property EmptyText: string read FEmptyText write SetEmptyText;
+    /// <summary>Hinweis über einem Glied bzw. über einem „›“ mit Kindern.</summary>
+    property CrumbHint: string read FCrumbHint write FCrumbHint;
+    property SeparatorHint: string read FSeparatorHint write FSeparatorHint;
     property OnOpenMenu: TAtlasCrumbMenuEvent read FOnOpenMenu write FOnOpenMenu;
+    property OnOpenChildren: TAtlasCrumbMenuEvent read FOnOpenChildren write FOnOpenChildren;
+    property OnJump: TAtlasCrumbJumpEvent read FOnJump write FOnJump;
     property OnLeave: TProc read FOnLeave write FOnLeave;
   end;
 
 implementation
 
 uses
-  System.Math;
+  System.Math,
+  Vcl.Forms;
 
 const
   Separator = '›';
@@ -113,11 +146,18 @@ begin
   begin
     Result := (A[Index].Text = B[Index].Text) and (A[Index].Node = B[Index].Node) and
       (A[Index].Badge.Kind = B[Index].Badge.Kind) and (A[Index].Badge.Code = B[Index].Badge.Code) and
-      (A[Index].Current = B[Index].Current) and (Length(A[Index].Siblings) = Length(B[Index].Siblings));
+      (A[Index].Current = B[Index].Current) and (Length(A[Index].Siblings) = Length(B[Index].Siblings)) and
+      (Length(A[Index].Children) = Length(B[Index].Children));
     Sibling := 0;
     while Result and (Sibling <= High(A[Index].Siblings)) do
     begin
       Result := A[Index].Siblings[Sibling] = B[Index].Siblings[Sibling];
+      Inc(Sibling);
+    end;
+    Sibling := 0;
+    while Result and (Sibling <= High(A[Index].Children)) do
+    begin
+      Result := A[Index].Children[Sibling] = B[Index].Children[Sibling];
       Inc(Sibling);
     end;
     Inc(Index);
@@ -134,7 +174,9 @@ begin
   TabStop := False;
   FColors := TAtlasColors.Light;
   FHot := -1;
+  FHotSeparator := -1;
   FSelected := -1;
+  ShowHint := True;
   Height := BarHeight(96);
   Constraints.MinHeight := Height;
   Constraints.MaxHeight := Height;
@@ -168,6 +210,7 @@ begin
   FCrumbs := ACrumbs;
   FSelected := High(FCrumbs);
   FHot := -1;
+  FHotSeparator := -1;
   FLaidOut := False;
   Invalidate;
 end;
@@ -245,6 +288,7 @@ begin
     Exit;
   FLaidOut := True;
   SetLength(FRects, Length(FCrumbs));
+  SetLength(FSeparators, Length(FCrumbs));
   SetLength(Widths, Length(FCrumbs));
   FFirstShown := 0;
   if Length(FCrumbs) = 0 then
@@ -256,6 +300,8 @@ begin
     Inc(Total, Widths[Index]);
   end;
   Inc(Total, High(FCrumbs) * SeparatorWidth);
+  if TrailingSeparator then
+    Inc(Total, SeparatorWidth);
   Available := ClientWidth - 2 * Scale(4);
   // Vorn Glieder weglassen, bis der Rest samt „…“ passt; das letzte bleibt.
   while (Total > Available) and (FFirstShown < High(FCrumbs)) do
@@ -269,13 +315,19 @@ begin
   if FFirstShown > 0 then
     Inc(Left_, EllipsisWidth + SeparatorWidth);
   for Index := 0 to High(FCrumbs) do
+  begin
+    FSeparators[Index] := TRect.Empty;
     if Index < FFirstShown then
       FRects[Index] := TRect.Empty
     else
     begin
       FRects[Index] := Rect(Left_, 0, Min(Left_ + Widths[Index], ClientWidth), ClientHeight);
-      Left_ := Left_ + Widths[Index] + SeparatorWidth;
+      Left_ := Left_ + Widths[Index];
+      if (Index < High(FCrumbs)) or TrailingSeparator then
+        FSeparators[Index] := Rect(Left_, 0, Min(Left_ + SeparatorWidth, ClientWidth), ClientHeight);
+      Left_ := Left_ + SeparatorWidth;
     end;
+  end;
   if FSelected < FFirstShown then
     FSelected := High(FCrumbs);
 end;
@@ -286,6 +338,32 @@ begin
   if (AIndex < 0) or (AIndex > High(FRects)) then
     Exit(TRect.Empty);
   Result := FRects[AIndex];
+end;
+
+function TAtlasBreadcrumbBar.TrailingSeparator: Boolean;
+begin
+  Result := (Length(FCrumbs) > 0) and (Length(FCrumbs[High(FCrumbs)].Children) > 0);
+end;
+
+function TAtlasBreadcrumbBar.SeparatorRect(AIndex: Integer): TRect;
+begin
+  Layout;
+  if (AIndex < 0) or (AIndex > High(FSeparators)) then
+    Exit(TRect.Empty);
+  Result := FSeparators[AIndex];
+end;
+
+function TAtlasBreadcrumbBar.SeparatorAt(X, Y: Integer): Integer;
+var
+  Index: Integer;
+begin
+  Layout;
+  if (Y >= 0) and (Y < ClientHeight) then
+    for Index := FFirstShown to High(FSeparators) do
+      if not FSeparators[Index].IsEmpty and (X >= FSeparators[Index].Left) and (X < FSeparators[Index].Right) and
+        (Length(FCrumbs[Index].Children) > 0) then
+        Exit(Index);
+  Result := -1;
 end;
 
 function TAtlasBreadcrumbBar.CrumbAt(X, Y: Integer): Integer;
@@ -309,6 +387,24 @@ begin
   Canvas.Brush.Style := bsClear;
   Part := Rect(ALeft, 0, ALeft + Canvas.TextWidth(AText) + Scale(10), ClientHeight);
   DrawText(Canvas.Handle, PChar(AText), -1, Part, DT_CENTER or DT_VCENTER or DT_SINGLELINE or DT_NOPREFIX);
+end;
+
+procedure TAtlasBreadcrumbBar.DrawSeparator(AIndex: Integer);
+var
+  Area: TRect;
+  Radius: Integer;
+begin
+  Area := FSeparators[AIndex];
+  if AIndex = FHotSeparator then
+  begin
+    Canvas.Brush.Style := bsSolid;
+    Canvas.Brush.Color := ToColor(FColors.Selection);
+    Canvas.Pen.Color := ToColor(FColors.Selection);
+    Radius := Scale(4);
+    Canvas.RoundRect(Area.Left + Scale(1), Area.Top + Scale(2), Area.Right - Scale(1), Area.Bottom - Scale(2), Radius,
+      Radius);
+  end;
+  DrawSeparator(Area.Left, Separator);
 end;
 
 procedure TAtlasBreadcrumbBar.DrawCrumb(AIndex: Integer);
@@ -394,51 +490,74 @@ begin
   for Index := FFirstShown to High(FCrumbs) do
   begin
     DrawCrumb(Index);
-    if Index < High(FCrumbs) then
-      DrawSeparator(FRects[Index].Right, Separator);
+    if not FSeparators[Index].IsEmpty then
+      DrawSeparator(Index);
   end;
 end;
 
 procedure TAtlasBreadcrumbBar.MouseMove(Shift: TShiftState; X, Y: Integer);
 var
-  Hot: Integer;
+  Hot, HotSeparator: Integer;
 begin
   inherited MouseMove(Shift, X, Y);
   Hot := CrumbAt(X, Y);
-  if (Hot >= 0) and (Length(FCrumbs[Hot].Siblings) = 0) then
+  if (Hot >= 0) and (Length(FCrumbs[Hot].Siblings) = 0) and (FCrumbs[Hot].Node < 0) then
     Hot := -1;
-  if Hot = FHot then
+  HotSeparator := SeparatorAt(X, Y);
+  if (Hot = FHot) and (HotSeparator = FHotSeparator) then
     Exit;
   FHot := Hot;
-  if Hot >= 0 then
+  FHotSeparator := HotSeparator;
+  if (Hot >= 0) or (HotSeparator >= 0) then
     Cursor := crHandPoint
   else
     Cursor := crDefault;
+  // Hinweis je Teil: Glied (Menü, Strg+Klick) oder „›“ (Kinder).
+  Application.CancelHint;
+  if HotSeparator >= 0 then
+    Hint := FSeparatorHint
+  else if Hot >= 0 then
+    Hint := FCrumbHint
+  else
+    Hint := '';
   Invalidate;
 end;
 
 procedure TAtlasBreadcrumbBar.CMMouseLeave(var Message: TMessage);
 begin
   inherited;
-  if FHot < 0 then
+  if (FHot < 0) and (FHotSeparator < 0) then
     Exit;
   FHot := -1;
+  FHotSeparator := -1;
   Invalidate;
 end;
 
-procedure TAtlasBreadcrumbBar.MouseDown(Button: TMouseButton; Shift: TShiftState; X, Y: Integer);
+procedure TAtlasBreadcrumbBar.MouseUp(Button: TMouseButton; Shift: TShiftState; X, Y: Integer);
 var
   Index: Integer;
 begin
-  inherited MouseDown(Button, Shift, X, Y);
+  inherited MouseUp(Button, Shift, X, Y);
+  // Erst beim Loslassen: Beim Drücken holt die IDE den Fokus zurück in den Editor, das Menü ginge sofort
+  // wieder zu.
   if Button <> mbLeft then
     Exit;
+  Index := SeparatorAt(X, Y);
+  if Index >= 0 then
+  begin
+    OpenChildren(Index);
+    Exit;
+  end;
   Index := CrumbAt(X, Y);
   if Index < 0 then
     Exit;
   FSelected := Index;
   Invalidate;
-  OpenMenu(Index);
+  // Ohne Geschwister gibt es kein Menü; dann springt auch der einfache Klick.
+  if (ssCtrl in Shift) or (Length(FCrumbs[Index].Siblings) = 0) then
+    Jump(Index, ssShift in Shift)
+  else
+    OpenMenu(Index);
 end;
 
 procedure TAtlasBreadcrumbBar.OpenMenu(AIndex: Integer);
@@ -450,6 +569,29 @@ begin
     Exit;
   Area := CrumbRect(AIndex);
   FOnOpenMenu(AIndex, ClientToScreen(Point(Area.Left, ClientHeight)));
+end;
+
+procedure TAtlasBreadcrumbBar.OpenChildren(AIndex: Integer);
+var
+  Area: TRect;
+begin
+  if (AIndex < 0) or (AIndex > High(FCrumbs)) or (Length(FCrumbs[AIndex].Children) = 0) or
+    not Assigned(FOnOpenChildren) then
+    Exit;
+  Area := SeparatorRect(AIndex);
+  // Ohne „›“ (letztes Glied ohne Platz) unter dem Glied selbst.
+  if Area.IsEmpty then
+    Area := CrumbRect(AIndex);
+  FOnOpenChildren(AIndex, ClientToScreen(Point(Area.Left, ClientHeight)));
+end;
+
+procedure TAtlasBreadcrumbBar.Jump(AIndex: Integer; ADeclaration: Boolean);
+begin
+  if (AIndex < 0) or (AIndex > High(FCrumbs)) or not Assigned(FOnJump) then
+    Exit;
+  if (FCrumbs[AIndex].Node < 0) and (FCrumbs[AIndex].Badge.Kind <> TAtlasBadgeKind.Unit_) then
+    Exit;
+  FOnJump(AIndex, ADeclaration);
 end;
 
 procedure TAtlasBreadcrumbBar.FocusLast;
@@ -487,7 +629,15 @@ begin
         Invalidate;
       end;
     VK_DOWN, VK_RETURN:
-      OpenMenu(FSelected);
+      if ssCtrl in Shift then
+      begin
+        if Key = VK_DOWN then
+          OpenChildren(FSelected)
+        else
+          Jump(FSelected, ssShift in Shift);
+      end
+      else
+        OpenMenu(FSelected);
     VK_ESCAPE:
       if Assigned(FOnLeave) then
         FOnLeave();

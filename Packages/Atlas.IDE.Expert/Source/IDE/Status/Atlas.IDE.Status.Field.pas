@@ -38,6 +38,10 @@
 //   Atlas-Feld die Zahl der ungelesenen Einträge in der Farbe des schwersten;
 //   ein Linksklick darauf ruft ihr OnClick (Liste) statt des Statusfensters.
 //   Der Tooltip des Felds nennt die Zahl. Nur mit eingeschaltetem Atlas-Feld.
+// - Die Panels gehören der Leiste, und die IDE löscht sie unter Umständen
+//   selbst (Delphi 12: Absturz in PanelRect über ein freigegebenes Panel).
+//   Deshalb sind sie vom eigenen Typ TFieldPanel und melden ihre Freigabe dem
+//   Haken; der vergisst sie, und das nächste Refresh legt sie neu an.
 
 interface
 
@@ -60,6 +64,13 @@ type
   public const
     RedrawMs = 250;
   private type
+    /// <summary>Eigenes Panel: meldet seine Freigabe über OnGone, auch wenn die IDE es löscht.</summary>
+    TFieldPanel = class(TStatusPanel)
+    public
+      OnGone: TNotifyEvent;
+      destructor Destroy; override;
+    end;
+
     TExtra = record
       Id: string;
       Text: string;
@@ -71,9 +82,11 @@ type
     public
       Field: TAtlasStatusField;
       Bar: TStatusBar;
-      Panel: TStatusPanel;
-      /// <summary>Panels der Zusatzfelder in der Reihenfolge von FExtras; gehören der Leiste.</summary>
-      Extras: TList<TStatusPanel>;
+      /// <summary>Panel des Atlas-Felds; nil, wenn die IDE es gelöscht hat (bis zum nächsten Refresh).</summary>
+      Panel: TFieldPanel;
+      /// <summary>Panels der Zusatzfelder in der Reihenfolge von FExtras; gehören der Leiste. Ein von der IDE
+      /// gelöschtes steht als nil darin, damit die Zuordnung zu FExtras stimmt.</summary>
+      Extras: TList<TFieldPanel>;
       OldDraw: TDrawPanelEvent;
       OldMouseUp: TMouseEvent;
       OldMouseMove: TMouseMoveEvent;
@@ -87,6 +100,12 @@ type
       constructor Create;
       destructor Destroy; override;
       procedure WndProc(var Message: TMessage);
+      /// <summary>Neues eigenes Panel am Ende der Leiste.</summary>
+      function NewPanel(AStyle: TStatusPanelStyle): TFieldPanel;
+      /// <summary>APanel aus der Leiste entfernen, ohne PanelGone auszulösen.</summary>
+      procedure DropPanel(APanel: TFieldPanel);
+      /// <summary>OnGone der Panels: Ein freigegebenes Panel vergessen.</summary>
+      procedure PanelGone(Sender: TObject);
     end;
   private
     FRegistry: IAtlasStatusRegistry;
@@ -385,9 +404,7 @@ begin
   Hook.OldMouseMove := ABar.OnMouseMove;
   Hook.OldHint := ABar.Hint;
   Hook.OldShowHint := ABar.ShowHint;
-  Hook.Panel := ABar.Panels.Add;
-  Hook.Panel.Style := psOwnerDraw;
-  Hook.Panel.Bevel := pbNone;
+  Hook.Panel := Hook.NewPanel(psOwnerDraw);
   ABar.OnDrawPanel := DrawPanel;
   ABar.OnMouseUp := BarMouseUp;
   ABar.OnMouseMove := BarMouseMove;
@@ -400,13 +417,6 @@ end;
 function SameMethod(const ALeft, ARight: TMethod): Boolean;
 begin
   Result := (ALeft.Code = ARight.Code) and (ALeft.Data = ARight.Data);
-end;
-
-/// <summary>APanel aus ABar entfernen, wenn es noch dort steht.</summary>
-procedure RemovePanel(ABar: TStatusBar; APanel: TStatusPanel);
-begin
-  if (APanel <> nil) and (APanel.Index < ABar.Panels.Count) and (ABar.Panels[APanel.Index] = APanel) then
-    ABar.Panels.Delete(APanel.Index);
 end;
 
 procedure TAtlasStatusField.Unhook(AHook: THook; ARestore: Boolean);
@@ -448,9 +458,10 @@ begin
     Bar.ShowHint := AHook.OldShowHint;
   end;
   for Index := AHook.Extras.Count - 1 downto 0 do
-    RemovePanel(Bar, AHook.Extras[Index]);
+    AHook.DropPanel(AHook.Extras[Index]);
   AHook.Extras.Clear;
-  RemovePanel(Bar, AHook.Panel);
+  AHook.DropPanel(AHook.Panel);
+  AHook.Panel := nil;
 end;
 
 procedure TAtlasStatusField.UnhookAll;
@@ -472,13 +483,68 @@ end;
 constructor TAtlasStatusField.THook.Create;
 begin
   inherited Create;
-  Extras := TList<TStatusPanel>.Create;
+  Extras := TList<TFieldPanel>.Create;
   Zone := -1;
 end;
 
 destructor TAtlasStatusField.THook.Destroy;
+var
+  Item: TFieldPanel;
 begin
+  // Noch lebende Panels dürfen den freigegebenen Haken nicht mehr rufen.
+  if Panel <> nil then
+    Panel.OnGone := nil;
+  for Item in Extras do
+    if Item <> nil then
+      Item.OnGone := nil;
   Extras.Free;
+  inherited Destroy;
+end;
+
+function TAtlasStatusField.THook.NewPanel(AStyle: TStatusPanelStyle): TFieldPanel;
+begin
+  Result := TFieldPanel.Create(Bar.Panels);
+  Result.Style := AStyle;
+  Result.Bevel := pbNone;
+  Result.OnGone := PanelGone;
+end;
+
+procedure TAtlasStatusField.THook.DropPanel(APanel: TFieldPanel);
+var
+  Index: Integer;
+begin
+  if APanel = nil then
+    Exit;
+  APanel.OnGone := nil;
+  // Nur über Zeigervergleich suchen: APanel.Index liest schon die Sammlung.
+  for Index := Bar.Panels.Count - 1 downto 0 do
+    if Bar.Panels[Index] = APanel then
+    begin
+      Bar.Panels.Delete(Index);
+      Exit;
+    end;
+end;
+
+procedure TAtlasStatusField.THook.PanelGone(Sender: TObject);
+var
+  Index: Integer;
+begin
+  if Sender = Panel then
+    Panel := nil;
+  for Index := 0 to Extras.Count - 1 do
+    if Extras[Index] = Sender then
+      Extras[Index] := nil;
+  // Das nächste Refresh legt das Panel neu an.
+  if Field <> nil then
+    Field.RequestRefresh;
+end;
+
+{ TAtlasStatusField.TFieldPanel }
+
+destructor TAtlasStatusField.TFieldPanel.Destroy;
+begin
+  if Assigned(OnGone) then
+    OnGone(Self);
   inherited Destroy;
 end;
 
@@ -527,22 +593,20 @@ end;
 procedure TAtlasStatusField.SyncExtras(AHook: THook);
 var
   Index: Integer;
-  Panel: TStatusPanel;
+  Panel: TFieldPanel;
 begin
   while AHook.Extras.Count > Length(FExtras) do
   begin
-    RemovePanel(AHook.Bar, AHook.Extras.Last);
+    AHook.DropPanel(AHook.Extras.Last);
     AHook.Extras.Delete(AHook.Extras.Count - 1);
   end;
   while AHook.Extras.Count < Length(FExtras) do
-  begin
-    Panel := AHook.Bar.Panels.Add;
-    Panel.Style := psText;
-    Panel.Bevel := pbNone;
-    AHook.Extras.Add(Panel);
-  end;
+    AHook.Extras.Add(nil);
   for Index := 0 to AHook.Extras.Count - 1 do
   begin
+    // Neu oder von der IDE gelöscht.
+    if AHook.Extras[Index] = nil then
+      AHook.Extras[Index] := AHook.NewPanel(psText);
     Panel := AHook.Extras[Index];
     Panel.Text := FExtras[Index].Text;
     Panel.Width := AHook.Bar.Canvas.TextWidth(FExtras[Index].Text) + MulDiv(16, AHook.Bar.CurrentPPI, 96);
@@ -668,6 +732,9 @@ begin
       Hook := HookOf(Bars[Index]);
       if Hook = nil then
         Continue;
+      // Von der IDE gelöscht (PanelGone): neu anlegen.
+      if Hook.Panel = nil then
+        Hook.Panel := Hook.NewPanel(psOwnerDraw);
       Hook.Bar.Canvas.Font := Hook.Bar.Font;
       Width_ := 0;
       if Settings.StatusField then

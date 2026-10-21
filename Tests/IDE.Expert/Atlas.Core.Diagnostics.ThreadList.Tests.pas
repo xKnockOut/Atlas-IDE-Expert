@@ -44,7 +44,7 @@ begin
       end);
     Assert.IsFalse(Thread.FreeOnTerminate);
     Assert.IsTrue(List.StopAll(5000));
-    Assert.AreEqual(0, List.Count);
+    Assert.AreEqual(0, Integer(List.Count));
   finally
     List.Free;
   end;
@@ -101,7 +101,7 @@ begin
       begin
       end);
     // Der erste ist beendet und beim zweiten Start freigegeben worden.
-    Assert.AreEqual(1, List.Count);
+    Assert.AreEqual(1, Integer(List.Count));
     Assert.IsTrue(List.StopAll(5000));
   finally
     List.Free;
@@ -123,7 +123,7 @@ begin
       end);
     // Hängt der Thread, meldet StopAll das; er gibt sich nach seiner Rückkehr selbst frei.
     Assert.IsFalse(List.StopAll(50));
-    Assert.AreEqual(0, List.Count);
+    Assert.AreEqual(0, Integer(List.Count));
     Release.SetEvent;
     Sleep(200);
   finally
