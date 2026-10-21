@@ -511,6 +511,9 @@ type
     UnitSearchPreviewForm: Boolean;
     /// <summary>„Verwendet von“ in der Vorschau (#777, unitSearch.preview.usedBy); Vorgabe an.</summary>
     UnitSearchPreviewUsedBy: Boolean;
+    /// <summary>Abschnitte der Vorschau einklappen, wenn sie nicht passen (#876,
+    /// unitSearch.preview.autoCollapse); Vorgabe an.</summary>
+    UnitSearchPreviewAutoCollapse: Boolean;
     /// <summary>Häkchen und Mehrfachauswahl (#777, unitSearch.multiSelect); Vorgabe an.</summary>
     UnitSearchMultiSelect: Boolean;
     /// <summary>Aktionsleiste (#777, unitSearch.actions); Vorgabe an.</summary>
@@ -1216,6 +1219,7 @@ begin
   Result.UnitSearchPreview := True;
   Result.UnitSearchPreviewForm := True;
   Result.UnitSearchPreviewUsedBy := True;
+  Result.UnitSearchPreviewAutoCollapse := True;
   Result.UnitSearchMultiSelect := True;
   Result.UnitSearchActions := True;
   Result.UnitSearchActionsAddUses := True;
@@ -1722,6 +1726,8 @@ begin
   UnitSearchPreview := AStore.ReadInteger('UnitSearchPreview', BoolValue(Default.UnitSearchPreview)) <> 0;
   UnitSearchPreviewForm := AStore.ReadInteger('UnitSearchPreviewForm', BoolValue(Default.UnitSearchPreviewForm)) <> 0;
   UnitSearchPreviewUsedBy := AStore.ReadInteger('UnitSearchPreviewUsedBy', BoolValue(Default.UnitSearchPreviewUsedBy)) <> 0;
+  UnitSearchPreviewAutoCollapse := AStore.ReadInteger('UnitSearchPreviewAutoCollapse',
+    BoolValue(Default.UnitSearchPreviewAutoCollapse)) <> 0;
   UnitSearchMultiSelect := AStore.ReadInteger('UnitSearchMultiSelect', BoolValue(Default.UnitSearchMultiSelect)) <> 0;
   UnitSearchActions := AStore.ReadInteger('UnitSearchActions', BoolValue(Default.UnitSearchActions)) <> 0;
   UnitSearchActionsAddUses := AStore.ReadInteger('UnitSearchActionsAddUses', BoolValue(Default.UnitSearchActionsAddUses)) <> 0;
@@ -2058,6 +2064,7 @@ begin
   AStore.WriteInteger('UnitSearchPreview', BoolValue(UnitSearchPreview));
   AStore.WriteInteger('UnitSearchPreviewForm', BoolValue(UnitSearchPreviewForm));
   AStore.WriteInteger('UnitSearchPreviewUsedBy', BoolValue(UnitSearchPreviewUsedBy));
+  AStore.WriteInteger('UnitSearchPreviewAutoCollapse', BoolValue(UnitSearchPreviewAutoCollapse));
   AStore.WriteInteger('UnitSearchMultiSelect', BoolValue(UnitSearchMultiSelect));
   AStore.WriteInteger('UnitSearchActions', BoolValue(UnitSearchActions));
   AStore.WriteInteger('UnitSearchActionsAddUses', BoolValue(UnitSearchActionsAddUses));

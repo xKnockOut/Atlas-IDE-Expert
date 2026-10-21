@@ -167,6 +167,7 @@
         <DCCReference Include="Source\Core\Projects\Atlas.Core.Projects.PathCheck.pas"/>
         <DCCReference Include="Source\Core\Projects\Atlas.Core.Projects.Setup.pas"/>
         <DCCReference Include="Source\Core\UnitSearch\Atlas.Core.UnitSearch.Model.pas"/>
+        <DCCReference Include="Source\Core\UnitSearch\Atlas.Core.UnitSearch.Sections.pas"/>
         <DCCReference Include="Source\Core\UnitSearch\Atlas.Core.UnitSearch.State.pas"/>
         <DCCReference Include="Source\UI\UnitSearch\Atlas.UI.UnitSearch.Window.pas"/>
         <DCCReference Include="Source\IDE\UnitSearch\Atlas.IDE.UnitSearch.Commands.pas"/>

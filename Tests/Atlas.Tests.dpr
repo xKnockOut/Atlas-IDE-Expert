@@ -473,6 +473,8 @@ uses
   Atlas.Core.UnitSearch.Model in '..\Packages\Atlas.IDE.Expert\Source\Core\UnitSearch\Atlas.Core.UnitSearch.Model.pas',
   Atlas.Core.UnitSearch.State in '..\Packages\Atlas.IDE.Expert\Source\Core\UnitSearch\Atlas.Core.UnitSearch.State.pas',
   Atlas.Core.UnitSearch.Tests in 'IDE.Expert\Atlas.Core.UnitSearch.Tests.pas',
+  Atlas.Core.UnitSearch.Sections in '..\Packages\Atlas.IDE.Expert\Source\Core\UnitSearch\Atlas.Core.UnitSearch.Sections.pas',
+  Atlas.Core.UnitSearch.Sections.Tests in 'IDE.Expert\Atlas.Core.UnitSearch.Sections.Tests.pas',
   Atlas.Core.Forms.Text in '..\Packages\Atlas.IDE.Expert\Source\Core\Forms\Atlas.Core.Forms.Text.pas',
   Atlas.Core.Forms.Changes in '..\Packages\Atlas.IDE.Expert\Source\Core\Forms\Atlas.Core.Forms.Changes.pas',
   Atlas.Core.Forms.Tests in 'IDE.Expert\Atlas.Core.Forms.Tests.pas',
