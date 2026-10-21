@@ -2956,6 +2956,19 @@ Voraussetzung: Einstellungen auf Vorgabe (Blockeinzug 2); Methode mit `if … th
 | NZ11 | Tasten unter Optionen › Befehle › Neue Zeile ober-/unterhalb ändern | Die neuen Tasten wirken, die Tastenübersicht prüft Konflikte |
 | NZ12 | „Neue Zeile ober-/unterhalb“ aus | Umschalt+Enter und Strg+Alt+Enter verhalten sich wie ohne Atlas, die Befehle fehlen in der Palette (**Abnahme**) |
 
+## class helper mit Vorfahr (#848)
+
+Voraussetzung: Einstellungen auf Vorgabe; Unit mit `TFoo = class Name: string; end;`, `TBaseHelper = class helper for TFoo function AsText: string; procedure Reset; end;` und `TFooHelper = class helper (TBaseHelper) for TFoo procedure Reset; end;`, danach `TOther = class procedure B; end;`; zweite Unit mit `uses` darauf und `var Foo: TFoo;`.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| HX1 | Unit öffnen | Keine Syntaxfehler in der Zeile `class helper (TBaseHelper) for TFoo`; die Gliederung zeigt TFooHelper mit Reset und TOther mit B (**Abnahme**) |
+| HX2 | `Foo.` tippen | Reset (aus TFooHelper), AsText (aus TBaseHelper) und Name; Reset nur einmal (**Abnahme**) |
+| HX3 | Strg+Klick auf `AsText` in `Foo.AsText` | Springt zu `TBaseHelper.AsText` |
+| HX4 | Strg+Klick auf `Reset` in `Foo.Reset` | Springt zu `TFooHelper.Reset`, nicht zum Vorfahren |
+| HX5 | Hover auf `TFooHelper` | Deklaration `class helper (TBaseHelper) for TFoo`, Vererbung `TFooHelper › TBaseHelper`; ein Helfer ohne Vorfahr zeigt keine Vererbung |
+| HX6 | IDE mit altem Index-Cache starten | Cache wird einmal neu aufgebaut (Formatversion 19) |
+
 ## Bedingungen mit SizeOf, Declared und {$IFOPT} (#847)
 
 Voraussetzung: Einstellungen auf Vorgabe; Projekt mit Win32 und Win64, Konfiguration Debug mit Bereichsprüfung (DCC_RangeChecking an), Release ohne; Unit mit `{$IF SizeOf(Pointer) = 8} type TPtrInt = Int64; {$ELSE} type TPtrInt = Integer; {$IFEND}`, `{$IF RTLVersion111}`, `{$IF Declared(Unbekannt)} a {$ELSE} b {$IFEND}`, `{$IF MeineKonstante > 2}` (Konstante in einer anderen Unit), `{$IFOPT R+} CheckBounds(I); {$ENDIF}`, danach `{$R-}` und dasselbe `{$IFOPT R+}` noch einmal.

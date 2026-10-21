@@ -153,9 +153,15 @@ begin
     Exit;
   // Vorfahr zuerst, dann die implementierten Interfaces.
   Bases := nil;
-  if FResolver.AncestorOf(Owner, Base) then
+  // Helfer: nur der Vorfahr-Helfer (#848); der Zieltyp am Ende von Ancestors ist kein Vorfahr.
+  if Owner.SymbolKind = TIndexSymbolKind.HelperType then
+  begin
+    if FResolver.HelperParent(Owner, Base) then
+      Bases := [Base];
+  end
+  else if FResolver.AncestorOf(Owner, Base) then
     Bases := Bases + [Base];
-  if FResolver.DeclaringUnit(Owner, TypeUnit) then
+  if (Owner.SymbolKind <> TIndexSymbolKind.HelperType) and FResolver.DeclaringUnit(Owner, TypeUnit) then
     for Index := 1 to High(Owner.Ancestors) do
       if FResolver.ResolveTypeFrom(TypeUnit, Owner.Ancestors[Index], Base) then
         Bases := Bases + [Base];
