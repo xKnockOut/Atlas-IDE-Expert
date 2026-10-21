@@ -78,14 +78,18 @@ type
     class function Default: TCodeLensSettings; static;
   end;
 
-  /// <summary>Anzeige von XMLDoc in Hover und Detailpanel des Plugins (#654). Der Server bereitet die Doku
+  /// <summary>Anzeige von XMLDoc in Hover und Detailpanel des Plugins (#654, #770). Der Server bereitet die Doku
   /// immer vollständig auf und gibt die Werte nur weiter.</summary>
   THintSettings = record
   public const
     MaxXmlDocLines = 50;
+    ExpandCollapsed = 'collapsed';
+    ExpandLast = 'last';
+    ExpandExpanded = 'expanded';
   public
-    /// <summary>XMLDoc vollständig und formatiert; aus = Kurzform (summary 4, remarks 3 Zeilen).</summary>
-    XmlDocFull: Boolean;
+    /// <summary>XMLDoc beim Öffnen (#770): ExpandCollapsed nur Summary mit „Mehr anzeigen“, ExpandLast wie
+    /// zuletzt in der Sitzung, ExpandExpanded alle Abschnitte. Ersetzt xmlDocFull aus #654.</summary>
+    XmlDocExpand: string;
     /// <summary>Doku-Zeilen, ab denen der Inhalt scrollt; 0 = unbegrenzt.</summary>
     XmlDocMaxLines: Integer;
     class function Default: THintSettings; static;
@@ -685,7 +689,7 @@ end;
 
 class function THintSettings.Default: THintSettings;
 begin
-  Result.XmlDocFull := True;
+  Result.XmlDocExpand := ExpandLast;
   Result.XmlDocMaxLines := 0;
 end;
 

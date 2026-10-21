@@ -7,8 +7,10 @@
 //     steht halbfett in Akzentfarbe auf einer Akzentfläche.
 //   - In den übrigen passenden Überladungen ist der aktive Parameter halbfett;
 //     Überladungen mit zu wenigen Parametern sind gedämpft.
-//   - Darunter auf abgesetzter Fläche Name und Beschreibung des aktiven Parameters;
-//     Standardwerte (#441) gedämpft, die Pille endet davor, unten "optional, Standard 1".
+//   - Darunter auf abgesetzter Fläche (#770) unter der Überschrift PARAMETER Name
+//     und Beschreibung des aktiven Parameters, ohne <param> „nicht dokumentiert“
+//     (kursiv, gedämpft), dann gedämpft die Beschreibung der Methode; Standardwerte
+//     (#441) gedämpft, die Pille endet davor, dahinter "optional, Standard 1".
 //   - Erlaubt keine Überladung so viele Argumente: Rahmen und untere Zeile in
 //     Fehlerfarbe, "Keine Überladung mit n Parametern." (#439).
 //   - Verschachtelte Aufrufe (#438): Pfadzeile oben mit den äußeren Aufrufen,
@@ -68,8 +70,12 @@ type
     function Fits(AIndex: Integer): Boolean;
     /// <summary>Keine Überladung hat so viele Parameter (#439).</summary>
     function TooMany: Boolean;
-    /// <summary>Name und Beschreibung des aktiven Parameters der gewählten Überladung.</summary>
-    function ParameterDoc(out AName, AText: string): Boolean;
+    /// <summary>Name und Beschreibung des aktiven Parameters der gewählten Überladung; ADocumented = False
+    /// ohne <param> (AText ist dann „nicht dokumentiert“). False ohne aktiven Parameter.</summary>
+    function ParameterDoc(out AName, AText: string; out ADocumented: Boolean): Boolean;
+    /// <summary>Beschreibung der gewählten Überladung in einer Zeile; '' ohne.</summary>
+    function SummaryText: string;
+    function DocRowHeight: Integer;
     function HasDocLine: Boolean;
     function DocHeight: Integer;
     function Layout(AIndex, AAvailable: Integer): TArray<TPoint>;
@@ -153,7 +159,7 @@ begin
   Result := TAtlasSignatureController.TooManyArguments(FHelp, FParameter);
 end;
 
-function TAtlasSignatureHint.ParameterDoc(out AName, AText: string): Boolean;
+function TAtlasSignatureHint.ParameterDoc(out AName, AText: string; out ADocumented: Boolean): Boolean;
 var
   Signature: TAtlasSignature;
   Parameter: TAtlasSignatureParameter;
@@ -161,6 +167,7 @@ var
 begin
   AName := '';
   AText := '';
+  ADocumented := False;
   Result := False;
   if (FSignature < 0) or (FSignature > High(FHelp.Signatures)) then
     Exit;
@@ -173,8 +180,6 @@ begin
     Default := Trim(Copy(Default, Pos('=', Default) + 1, MaxInt))
   else
     Default := '';
-  if (Parameter.Documentation = '') and (Default = '') then
-    Exit;
   AName := Trim(Parameter.Text(Signature.Label_));
   if Pos('=', AName) > 0 then
     AName := Trim(Copy(AName, 1, Pos('=', AName) - 1));
@@ -183,7 +188,11 @@ begin
   // "const S" → "S"
   if LastDelimiter(' ', AName) > 0 then
     AName := Copy(AName, LastDelimiter(' ', AName) + 1, MaxInt);
-  AText := StringReplace(Parameter.Documentation, sLineBreak, ' ', [rfReplaceAll]);
+  AText := Trim(StringReplace(StringReplace(Parameter.Documentation, #13, '', [rfReplaceAll]), #10, ' ',
+    [rfReplaceAll]));
+  ADocumented := AText <> '';
+  if not ADocumented then
+    AText := TAtlasStrings.Text(TAtlasTextId.DocUndocumented);
   if Default <> '' then
     if AText <> '' then
       AText := AText + ' · ' + TAtlasStrings.Fmt(TAtlasTextId.OptionalDefault, [Default])
@@ -192,18 +201,48 @@ begin
   Result := True;
 end;
 
+function TAtlasSignatureHint.SummaryText: string;
+var
+  Text: string;
+begin
+  Result := '';
+  if (FSignature < 0) or (FSignature > High(FHelp.Signatures)) then
+    Exit;
+  Text := StringReplace(FHelp.Signatures[FSignature].Documentation, #13, '', [rfReplaceAll]);
+  // Nur der erste Absatz: Die Zeile soll die Methode kurz nennen.
+  if Pos(#10#10, Text) > 0 then
+    Text := Copy(Text, 1, Pos(#10#10, Text) - 1);
+  Result := Trim(StringReplace(Text, #10, ' ', [rfReplaceAll]));
+end;
+
 function TAtlasSignatureHint.HasDocLine: Boolean;
 var
   Name, Text: string;
+  Documented: Boolean;
 begin
-  Result := TooMany or ParameterDoc(Name, Text);
+  Result := TooMany or ParameterDoc(Name, Text, Documented);
+end;
+
+function TAtlasSignatureHint.DocRowHeight: Integer;
+begin
+  Canvas.Font := UIFont;
+  Result := Canvas.TextHeight('Wg') + Scale(4);
+  Canvas.Font := Font;
 end;
 
 function TAtlasSignatureHint.DocHeight: Integer;
+var
+  Rows: Integer;
 begin
-  Canvas.Font := UIFont;
-  Result := Canvas.TextHeight('Wg') + Scale(12);
-  Canvas.Font := Font;
+  // Fehlerzeile allein; sonst Überschrift, Parameter und ggf. die Beschreibung der Methode.
+  Rows := 1;
+  if not TooMany then
+  begin
+    Rows := 2;
+    if SummaryText <> '' then
+      Inc(Rows);
+  end;
+  Result := Rows * DocRowHeight + Scale(8);
 end;
 
 function TAtlasSignatureHint.Layout(AIndex, AAvailable: Integer): TArray<TPoint>;
@@ -289,6 +328,7 @@ var
   Width, Height, Widest, Available, Index, Line, Row: Integer;
   Bounds, Area: TRect;
   Name, Text: string;
+  Documented: Boolean;
 begin
   Prepare;
   Canvas.Font := Font;
@@ -307,13 +347,14 @@ begin
     Inc(Row, Length(FLayouts[Index]));
   end;
   // Die Doku-Zeile verbreitert den Hint höchstens bis zur Maximalbreite.
-  if ParameterDoc(Name, Text) then
+  if ParameterDoc(Name, Text, Documented) then
   begin
     Canvas.Font := Font;
     Canvas.Font.Style := [fsBold];
     Width := Canvas.TextWidth(Name) + Scale(8);
     Canvas.Font := UIFont;
     Widest := Max(Widest, Min(Width + Canvas.TextWidth(Text), Available));
+    Widest := Max(Widest, Min(Canvas.TextWidth(SummaryText), Available));
   end;
   if CrumbHeight > 0 then
   begin
@@ -450,9 +491,10 @@ end;
 procedure TAtlasSignatureHint.PaintDocLine(ATop: Integer);
 var
   Band, Part: TRect;
-  Name, Text: string;
-  X: Integer;
+  Name, Text, Summary, Heading: string;
+  X, Row, RuleY: Integer;
   Back, Fore: TAtlasColor;
+  Documented: Boolean;
 begin
   if TooMany then
   begin
@@ -473,7 +515,8 @@ begin
   Canvas.LineTo(ClientWidth, ATop);
   Canvas.Brush.Style := bsClear;
   X := Gap + Bar;
-  Part := Rect(X, ATop + 1, ClientWidth - Gap, ClientHeight);
+  Row := DocRowHeight;
+  Part := Rect(X, ATop + Scale(4), ClientWidth - Gap, ATop + Scale(4) + Row);
   if TooMany then
   begin
     Canvas.Font := UIFont;
@@ -481,16 +524,43 @@ begin
     DrawText(Canvas.Handle, PChar(TAtlasStrings.Fmt(TAtlasTextId.NoOverloadWith, [FParameter + 1])), -1, Part,
       TextFlags or DT_END_ELLIPSIS);
   end
-  else if ParameterDoc(Name, Text) then
+  else if ParameterDoc(Name, Text, Documented) then
   begin
+    // Überschrift in Kapitälchen mit Linie bis zum Rand, wie in Tooltip und Detailpanel.
+    Heading := TAtlasStrings.Text(TAtlasTextId.DocParams);
+    Canvas.Font := UIFont;
+    Canvas.Font.Height := MulDiv(UIFont.Height, 85, 100);
+    Canvas.Font.Style := [fsBold];
+    Canvas.Font.Color := ToColor(Colors.Muted);
+    DrawText(Canvas.Handle, PChar(Heading), -1, Part, TextFlags or DT_END_ELLIPSIS);
+    RuleY := (Part.Top + Part.Bottom) div 2;
+    Canvas.Pen.Color := ToColor(Colors.Line);
+    Canvas.MoveTo(Part.Left + Canvas.TextWidth(Heading) + Scale(8), RuleY);
+    Canvas.LineTo(Part.Right, RuleY);
+    OffsetRect(Part, 0, Row);
     Canvas.Font := Font;
     Canvas.Font.Style := [fsBold];
     Canvas.Font.Color := ToColor(Colors.Accent);
     DrawText(Canvas.Handle, PChar(Name), -1, Part, TextFlags or DT_END_ELLIPSIS);
     Part.Left := Part.Left + Canvas.TextWidth(Name) + Scale(8);
     Canvas.Font := UIFont;
-    Canvas.Font.Color := ToColor(Fore);
+    if Documented then
+      Canvas.Font.Color := ToColor(Colors.Text)
+    else
+    begin
+      Canvas.Font.Style := [fsItalic];
+      Canvas.Font.Color := ToColor(Colors.Muted);
+    end;
     DrawText(Canvas.Handle, PChar(Text), -1, Part, TextFlags or DT_END_ELLIPSIS);
+    Summary := SummaryText;
+    if Summary <> '' then
+    begin
+      Part.Left := X;
+      OffsetRect(Part, 0, Row);
+      Canvas.Font := UIFont;
+      Canvas.Font.Color := ToColor(Fore);
+      DrawText(Canvas.Handle, PChar(Summary), -1, Part, TextFlags or DT_END_ELLIPSIS);
+    end;
   end;
   Canvas.Brush.Style := bsSolid;
   Canvas.Font := Font;

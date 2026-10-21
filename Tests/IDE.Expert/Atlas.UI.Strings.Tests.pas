@@ -135,10 +135,28 @@ begin
     TAtlasStrings.Language := TAtlasLanguage.German;
     Labels := TAtlasStrings.DocLabels;
     Expected := TAtlasDocLabels.German;
+    Assert.AreEqual(Expected.Params, Labels.Params);
     Assert.AreEqual(Expected.TypeParams, Labels.TypeParams);
+    Assert.AreEqual(Expected.Returns, Labels.Returns);
     Assert.AreEqual(Expected.Value, Labels.Value);
+    Assert.AreEqual(Expected.Exceptions, Labels.Exceptions);
+    Assert.AreEqual(Expected.Remarks, Labels.Remarks);
     Assert.AreEqual(Expected.Example, Labels.Example);
     Assert.AreEqual(Expected.SeeAlso, Labels.SeeAlso);
+    Assert.AreEqual(Expected.Undocumented, Labels.Undocumented);
+    Assert.AreEqual(Expected.More, Labels.More);
+    Assert.AreEqual(Expected.Less, Labels.Less);
+    Assert.AreEqual(Expected.CountParam, Labels.CountParam);
+    Assert.AreEqual(Expected.CountParams, Labels.CountParams);
+    Assert.AreEqual(Expected.CountTypeParam, Labels.CountTypeParam);
+    Assert.AreEqual(Expected.CountTypeParams, Labels.CountTypeParams);
+    Assert.AreEqual(Expected.CountException, Labels.CountException);
+    Assert.AreEqual(Expected.CountExceptions, Labels.CountExceptions);
+    Assert.AreEqual(Expected.ItemReturns, Labels.ItemReturns);
+    Assert.AreEqual(Expected.ItemValue, Labels.ItemValue);
+    Assert.AreEqual(Expected.ItemRemarks, Labels.ItemRemarks);
+    Assert.AreEqual(Expected.ItemExample, Labels.ItemExample);
+    Assert.AreEqual(Expected.ItemSeeAlso, Labels.ItemSeeAlso);
   finally
     TAtlasStrings.Language := Saved;
   end;

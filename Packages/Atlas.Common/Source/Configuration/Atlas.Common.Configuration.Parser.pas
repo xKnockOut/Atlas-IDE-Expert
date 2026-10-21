@@ -654,9 +654,11 @@ end;
 procedure TValidator.ReadHints(ANode: TJsonNode);
 var
   Index, Lines: Integer;
-  Key: string;
+  Key, Text: string;
   Value: TJsonNode;
+  Full, ExpandSet: Boolean;
 begin
+  ExpandSet := False;
   if ANode.Kind <> TJsonKind.Object_ then
   begin
     ReportNode(ANode, '"hints" muss ein Objekt sein');
@@ -666,8 +668,33 @@ begin
   begin
     Key := ANode.Keys[Index];
     Value := ANode[Index];
-    if Key = 'xmlDocFull' then
-      ExpectBoolean(Value, Key, FSettings.Hints.XmlDocFull)
+    if Key = 'xmlDocExpand' then
+    begin
+      if ExpectString(Value, Key, Text) then
+        if (Text = THintSettings.ExpandCollapsed) or (Text = THintSettings.ExpandLast) or
+          (Text = THintSettings.ExpandExpanded) then
+        begin
+          FSettings.Hints.XmlDocExpand := Text;
+          ExpandSet := True;
+        end
+        else
+          ReportNode(Value, '"xmlDocExpand" muss "collapsed", "last" oder "expanded" sein');
+    end
+    else if Key = 'xmlDocFull' then
+    begin
+      // Veraltet seit #770: true = expanded, false = collapsed, solange xmlDocExpand fehlt.
+      Full := True;
+      if ExpectBoolean(Value, Key, Full) then
+      begin
+        Report(ANode.KeyStarts[Index], ANode.KeyStarts[Index] + Length(Key) + 2,
+          '"hints.xmlDocFull" ist veraltet, stattdessen "hints.xmlDocExpand" verwenden', False);
+        if not ExpandSet then
+          if Full then
+            FSettings.Hints.XmlDocExpand := THintSettings.ExpandExpanded
+          else
+            FSettings.Hints.XmlDocExpand := THintSettings.ExpandCollapsed;
+      end;
+    end
     else if Key = 'xmlDocMaxLines' then
     begin
       if (Value.Kind = TJsonKind.Number) and TryStrToInt(Value.Value, Lines) and (Lines >= 0) and

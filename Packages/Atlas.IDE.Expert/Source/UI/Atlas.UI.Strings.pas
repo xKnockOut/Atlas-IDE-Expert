@@ -64,7 +64,11 @@ type
     SettingsIndexGroup, SettingsIndexSearch, SettingsIndexLibrary,
     SettingsImportIdeTemplates, SnippetsOriginBuiltIn, SnippetsOriginIde, SnippetsOriginUser, SnippetsPrefix, SnippetsName, SnippetsDescription, SnippetsBody, SnippetsNew, SnippetsCopy, SnippetsDelete, SnippetsReadOnly, SnippetsInvalid, SnippetsPrefixMissing, SnippetsPrefixTwice, SnippetsBodyMissing,
     SnippetsPrefixInvalid, SnippetsReplaced,
-    SettingsXmlDocFull, SettingsXmlDocMaxLines, DocTypeParams, DocValue, DocExample, DocSeeAlso, HoverCopySelection,
+    SettingsXmlDocExpand, SettingsXmlDocCollapsed, SettingsXmlDocLast, SettingsXmlDocExpanded,
+    SettingsXmlDocMaxLines, DocTypeParams, DocValue, DocExample, DocSeeAlso,
+    DocParams, DocReturns, DocExceptions, DocRemarks, DocUndocumented, DocMore, DocLess, DocCountParam,
+    DocCountParams, DocCountTypeParam, DocCountTypeParams, DocCountException, DocCountExceptions, DocItemReturns,
+    DocItemValue, DocItemRemarks, DocItemExample, DocItemSeeAlso, HoverCopySelection,
     InactiveCondition, InactiveTarget, InactiveRegion, ProblemsSourceInactive,
     SettingsCompletionKey, SettingsSignatureKey, KeysTitle, KeysIntro, KeysHeaderFunction, KeysHeaderKey,
     KeysHeaderOwner, KeysHeaderChoice, KeysChoiceAtlas, KeysChoiceOther, KeysChoiceNewKey, KeysStatusFree,
@@ -767,12 +771,33 @@ const
      'Text fehlt',
      'Kürzel: nur Buchstaben, Ziffern und _',
      'ersetzt',
-     'XMLDoc im Tooltip vollständig zeigen (aus: Kurzform)',
+     'XMLDoc beim Öffnen',
+     'immer zugeklappt',
+     'wie zuletzt',
+     'immer aufgeklappt',
      'XMLDoc: höchstens Zeilen ohne Scrollen (0 = Bildschirm)',
-     'Typparameter',
+     'TYPPARAMETER',
+     'WERT',
+     'BEISPIEL',
+     'SIEHE AUCH',
+     'PARAMETER',
+     'RÜCKGABE',
+     'AUSNAHMEN',
+     'HINWEISE',
+     'nicht dokumentiert',
+     'Mehr anzeigen ▾',
+     'Weniger anzeigen ▴',
+     '%d Parameter',
+     '%d Parameter',
+     '%d Typparameter',
+     '%d Typparameter',
+     '%d Ausnahme',
+     '%d Ausnahmen',
+     'Rückgabe',
      'Wert',
+     'Hinweis',
      'Beispiel',
-     'Siehe auch:',
+     'Siehe auch',
      'Markierung kopieren',
      'Inaktiv: Bedingung %s nicht erfüllt',
      ' (Zielplattform %s · %s)',
@@ -1896,12 +1921,33 @@ const
      'text missing',
      'prefix: letters, digits and _ only',
      'replaced',
-     'Show full XMLDoc in tooltips (off: short form)',
+     'XMLDoc when opened',
+     'always collapsed',
+     'as last time',
+     'always expanded',
      'XMLDoc: max. lines before scrolling (0 = screen)',
-     'Type parameters',
+     'TYPE PARAMETERS',
+     'VALUE',
+     'EXAMPLE',
+     'SEE ALSO',
+     'PARAMETERS',
+     'RETURNS',
+     'EXCEPTIONS',
+     'REMARKS',
+     'not documented',
+     'Show more ▾',
+     'Show less ▴',
+     '%d parameter',
+     '%d parameters',
+     '%d type parameter',
+     '%d type parameters',
+     '%d exception',
+     '%d exceptions',
+     'Returns',
      'Value',
+     'Remarks',
      'Example',
-     'See also:',
+     'See also',
      'Copy selection',
      'Inactive: condition %s not met',
      ' (target platform %s · %s)',
@@ -2851,10 +2897,28 @@ end;
 
 class function TAtlasStrings.DocLabels: TAtlasDocLabels;
 begin
+  Result.Params := Text(TAtlasTextId.DocParams);
   Result.TypeParams := Text(TAtlasTextId.DocTypeParams);
+  Result.Returns := Text(TAtlasTextId.DocReturns);
   Result.Value := Text(TAtlasTextId.DocValue);
+  Result.Exceptions := Text(TAtlasTextId.DocExceptions);
+  Result.Remarks := Text(TAtlasTextId.DocRemarks);
   Result.Example := Text(TAtlasTextId.DocExample);
   Result.SeeAlso := Text(TAtlasTextId.DocSeeAlso);
+  Result.Undocumented := Text(TAtlasTextId.DocUndocumented);
+  Result.More := Text(TAtlasTextId.DocMore);
+  Result.Less := Text(TAtlasTextId.DocLess);
+  Result.CountParam := Text(TAtlasTextId.DocCountParam);
+  Result.CountParams := Text(TAtlasTextId.DocCountParams);
+  Result.CountTypeParam := Text(TAtlasTextId.DocCountTypeParam);
+  Result.CountTypeParams := Text(TAtlasTextId.DocCountTypeParams);
+  Result.CountException := Text(TAtlasTextId.DocCountException);
+  Result.CountExceptions := Text(TAtlasTextId.DocCountExceptions);
+  Result.ItemReturns := Text(TAtlasTextId.DocItemReturns);
+  Result.ItemValue := Text(TAtlasTextId.DocItemValue);
+  Result.ItemRemarks := Text(TAtlasTextId.DocItemRemarks);
+  Result.ItemExample := Text(TAtlasTextId.DocItemExample);
+  Result.ItemSeeAlso := Text(TAtlasTextId.DocItemSeeAlso);
 end;
 
 class function TAtlasStrings.TypeArgHeading(const AParam, AConstraint, AHint: string): string;

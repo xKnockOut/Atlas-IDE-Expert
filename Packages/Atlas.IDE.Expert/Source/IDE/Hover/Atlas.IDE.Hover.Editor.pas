@@ -345,8 +345,6 @@ begin
 end;
 
 function TAtlasEditorHover.CurrentView: TAtlasHoverView;
-var
-  Full: Boolean;
 begin
   Result := TAtlasHoverView.Create(FHistory.Current);
   Result.Path := FHistory.Path;
@@ -358,11 +356,8 @@ begin
   if Result.Data.Display.Known then
     Result.Display := Result.Data.Display
   else
-    Result.Display := TAtlasDocDisplay.Create(TAtlasIdeSettings.Current.XmlDocFull,
+    Result.Display := TAtlasDocDisplay.Create(TAtlasDocDisplay.ExpandOf(TAtlasIdeSettings.Current.XmlDocExpand),
       TAtlasIdeSettings.Current.XmlDocMaxLines);
-  // Schnellschalter nur für diese Sitzung (#604) gilt auch über dem Wert des Servers.
-  if TAtlasIdeSettings.SessionFlag('XmlDocFull', Full) then
-    Result.Display.Full := Full;
   // Probleme gehören zur Stelle im Editor, nicht zu angeklickten Typen.
   if FHistory.Count <= 1 then
     Result.Problems := FProblems;

@@ -406,9 +406,9 @@ type
     /// <summary>Speichergrenze des Symbolindex in MB (#492, memoryBudgetMb); darüber lagert der Server
     /// zuerst die Verwendungen aus. 0 = unbegrenzt.</summary>
     MemoryBudgetMb: Integer;
-    /// <summary>XMLDoc in Tooltip und Detailpanel vollständig (#654, hints.xmlDocFull in settings.json); aus =
-    /// Kurzform.</summary>
-    XmlDocFull: Boolean;
+    /// <summary>XMLDoc in Tooltip und Detailpanel beim Öffnen (#770, hints.xmlDocExpand in settings.json):
+    /// collapsed, last (wie zuletzt), expanded. Ersetzt XmlDocFull (1 = expanded, 0 = collapsed).</summary>
+    XmlDocExpand: string;
     /// <summary>Höchstens so viele Zeilen Doku ohne Scrollen, 0 = bis zur Bildschirmhöhe (#654).</summary>
     XmlDocMaxLines: Integer;
     /// <summary>Atlas-Feld in der Statusleiste (#591, statusField.enabled).</summary>
@@ -1172,7 +1172,7 @@ begin
   Result.IndexLibraryPaths := False;
   Result.IndexUsages := True;
   Result.MemoryBudgetMb := 768;
-  Result.XmlDocFull := True;
+  Result.XmlDocExpand := 'last';
   Result.XmlDocMaxLines := 0;
   Result.StatusField := True;
   Result.StatusFieldHidden := '';
@@ -1381,6 +1381,7 @@ begin
   if CheckOnSave then
     CompileOnSave := False;
   XmlDocMaxLines := EnsureRange(XmlDocMaxLines, 0, MaxXmlDocLines);
+  XmlDocExpand := Choice(XmlDocExpand, ['last', 'collapsed', 'expanded']);
   BlockEndLabelsMinLines := EnsureRange(BlockEndLabelsMinLines, MinBlockEndLines, MaxBlockEndLines);
   RecursionMarkersDepth := EnsureRange(RecursionMarkersDepth, MinRecursionDepth, MaxRecursionDepth);
   ContinuePatternMinLines := EnsureRange(ContinuePatternMinLines, MinPatternLines, MaxPatternLines);
@@ -1664,7 +1665,17 @@ begin
   IndexLibraryPaths := AStore.ReadInteger('IndexLibraryPaths', BoolValue(Default.IndexLibraryPaths)) <> 0;
   IndexUsages := AStore.ReadInteger('IndexUsages', BoolValue(Default.IndexUsages)) <> 0;
   MemoryBudgetMb := AStore.ReadInteger('MemoryBudgetMb', Default.MemoryBudgetMb);
-  XmlDocFull := AStore.ReadInteger('XmlDocFull', BoolValue(Default.XmlDocFull)) <> 0;
+  XmlDocExpand := AStore.ReadString('XmlDocExpand', '');
+  // Vor #770: XmlDocFull übernehmen.
+  if XmlDocExpand = '' then
+    case AStore.ReadInteger('XmlDocFull', -1) of
+      0:
+        XmlDocExpand := 'collapsed';
+      1:
+        XmlDocExpand := 'expanded';
+    else
+      XmlDocExpand := Default.XmlDocExpand;
+    end;
   XmlDocMaxLines := AStore.ReadInteger('XmlDocMaxLines', Default.XmlDocMaxLines);
   StatusField := AStore.ReadInteger('StatusField', BoolValue(Default.StatusField)) <> 0;
   StatusFieldHidden := Trim(AStore.ReadString('StatusFieldHidden', Default.StatusFieldHidden));
@@ -2004,7 +2015,7 @@ begin
   AStore.WriteInteger('IndexLibraryPaths', BoolValue(IndexLibraryPaths));
   AStore.WriteInteger('IndexUsages', BoolValue(IndexUsages));
   AStore.WriteInteger('MemoryBudgetMb', MemoryBudgetMb);
-  AStore.WriteInteger('XmlDocFull', BoolValue(XmlDocFull));
+  AStore.WriteString('XmlDocExpand', XmlDocExpand);
   AStore.WriteInteger('XmlDocMaxLines', XmlDocMaxLines);
   AStore.WriteInteger('StatusField', BoolValue(StatusField));
   AStore.WriteString('StatusFieldHidden', Trim(StatusFieldHidden));
