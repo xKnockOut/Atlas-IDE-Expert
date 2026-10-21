@@ -65,7 +65,9 @@ type
     /// <summary>Zeilenhistorie (blame) am Ende der Cursorzeile (#507).</summary>
     GitBlame,
     /// <summary>Vorgeschlagene nächste Zeile eines Musters (#671).</summary>
-    PatternPreview);
+    PatternPreview,
+    /// <summary>Symbol der Atlas-Spalte in der Zeilenleiste (#768).</summary>
+    GutterColumn);
   TAtlasHideScope = (Here, InFile, Everywhere);
 {$SCOPEDENUMS OFF}
   TAtlasHideScopes = set of TAtlasHideScope;
@@ -183,6 +185,8 @@ begin
     // Wie die Vorschau der Vervollständigung nur bis zum nächsten Tastendruck sichtbar.
     TAtlasDrawnElement.PatternPreview:
       Result := Make(AElement, 'ContinuePattern', [TAtlasHideScope.Everywhere], False, False);
+    TAtlasDrawnElement.GutterColumn:
+      Result := Make(AElement, 'GutterColumn', AllScopes, False, True);
   else
     Result := Make(AElement, '', [], False, False);
   end;

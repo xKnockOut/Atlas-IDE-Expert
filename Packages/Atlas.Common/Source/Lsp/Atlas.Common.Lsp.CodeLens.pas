@@ -76,6 +76,11 @@ type
       const AFileName: string; const AReadText: TReferenceReadText): TArray<TCodeLensEntry>; static;
     /// <summary>Metrik-Linse über dem Namen jeder implementierten Methode (#66).</summary>
     class function MetricLenses(ATree: TSyntaxTree; const ALimits: TMetricLimits): TArray<TCodeLensEntry>; static;
+    /// <summary>Nächster Vorfahr von AType, der die Routine AName deklariert (auch für die Zeilenleiste #768);
+    /// AOwner ist sein Name, ATarget die Deklaration. False, wenn keiner im Index steht.</summary>
+    class function OverriddenAncestor(AResolver: TNameResolver; const AIndex: ISymbolIndex;
+      const ACurrent: TUnitIndex; const AType: TIndexSymbol; const AName: string; out AOwner: string;
+      out ATarget: TCodeLensLocation): Boolean; static;
     /// <summary>Zählt die Referenzen auf das Symbol der Linse.</summary>
     class function ResolveReferences(AResolver: TNameResolver; const AIndex: ISymbolIndex; ATree: TSyntaxTree;
       const AFileName: string; const AEntry: TCodeLensEntry; const AFiles: TArray<string>;
@@ -324,6 +329,13 @@ begin
     Types.Free;
     List.Free;
   end;
+end;
+
+class function TLspCodeLens.OverriddenAncestor(AResolver: TNameResolver; const AIndex: ISymbolIndex;
+  const ACurrent: TUnitIndex; const AType: TIndexSymbol; const AName: string; out AOwner: string;
+  out ATarget: TCodeLensLocation): Boolean;
+begin
+  Result := FindOverridden(AResolver, AIndex, ACurrent, AType, AName, AOwner, ATarget);
 end;
 
 class function TLspCodeLens.MetricLenses(ATree: TSyntaxTree; const ALimits: TMetricLimits): TArray<TCodeLensEntry>;
