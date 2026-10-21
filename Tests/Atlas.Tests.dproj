@@ -711,6 +711,7 @@
         <DCCReference Include="..\Setup\Source\Core\Setup.Core.Ides.pas"/>
         <DCCReference Include="..\Setup\Source\Core\Setup.Core.Installer.pas"/>
         <DCCReference Include="..\Setup\Source\Core\Setup.Core.SettingsCommand.pas"/>,
+        <DCCReference Include="..\Setup\Source\Core\Setup.Core.License.pas"/>
         <DCCReference Include="..\Setup\Source\Shell\Setup.Shell.Texts.pas"/>
         <DCCReference Include="Setup\Setup.Core.Installer.Tests.pas"/>
         <DCCReference Include="Setup\Setup.Core.SettingsCommand.Tests.pas"/>,

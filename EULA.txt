@@ -1,0 +1,117 @@
+﻿Atlas IDE Expert – Endbenutzer-Lizenzvereinbarung (EULA)
+=========================================================
+
+Copyright (c) 2026 xKnockOut
+
+1. Lizenz
+   Atlas IDE Expert („Atlas“) ist freie Software unter der MIT-Lizenz.
+   Der vollständige Lizenztext steht unten in Abschnitt 7 und in der
+   Datei LICENSE. Bei Widersprüchen gilt der Text der MIT-Lizenz.
+   Atlas ist kostenlos. Sie dürfen es privat und kommerziell nutzen,
+   kopieren, ändern und weitergeben, solange der Copyright-Hinweis und
+   der Lizenztext erhalten bleiben.
+
+2. Bestandteile
+   Atlas besteht aus einem Design-Time-Package für die RAD-Studio-IDE
+   (Atlas.IDE.Expert*.bpl), dem Hintergrundprogramm AtlasServer.exe und
+   dem Installationsprogramm AtlasSetup.exe. Die IDE startet AtlasServer
+   als eigenen Prozess auf Ihrem Rechner; er kommuniziert nur lokal mit
+   der IDE.
+
+3. Daten und Netzwerk
+   - Atlas liest Ihre Quelltexte sowie die RTL- und VCL-Quellen Ihrer
+     Delphi-Installation nur lokal. Es lädt keine Quelltexte hoch und
+     gibt keine Embarcadero-Quellen weiter.
+   - Die Protokolle (Diagnose- und Serverprotokoll) werden lokal und
+     anonymisiert gespeichert.
+   - Die Update-Prüfung ruft eine Versionsdatei von GitHub ab
+     (github.com/xKnockOut/Atlas-IDE-Expert). Dabei werden keine
+     persönlichen Daten gesendet. Sie ist zunächst aus: Atlas fragt
+     beim ersten Start und richtet sich nach Ihrer Antwort; in den
+     Einstellungen (updates.check) lässt sie sich jederzeit ändern.
+   - Fehlerberichte werden nie automatisch gesendet. Atlas öffnet dafür
+     nur die Issue-Seite auf GitHub; was Sie dort eintragen, entscheiden Sie.
+
+4. Keine Gewährleistung
+   Atlas wird ohne Gewährleistung bereitgestellt (siehe Abschnitt 7).
+   Sichern Sie Ihre Projekte, bevor Sie automatische Änderungen wie
+   Refactorings oder Codekorrekturen anwenden.
+
+5. Marken
+   Delphi, RAD Studio und C++Builder sind Marken von Embarcadero
+   Technologies, Inc. Atlas ist ein unabhängiges Projekt und wird von
+   Embarcadero weder unterstützt noch geprüft.
+
+6. Drittanbieter
+   Hinweise zu Komponenten Dritter stehen in THIRD-PARTY-NOTICES.md.
+
+7. MIT-Lizenz (verbindlicher Text)
+
+MIT License
+
+Copyright (c) 2026 xKnockOut
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+
+---------------------------------------------------------------------------
+
+Atlas IDE Expert – End User License Agreement (EULA)
+====================================================
+
+Copyright (c) 2026 xKnockOut
+
+1. License
+   Atlas IDE Expert ("Atlas") is free software released under the MIT
+   License. The full license text is in section 7 above and in the file
+   LICENSE; where this summary and the MIT License differ, the MIT License
+   prevails. Atlas is free of charge. You may use it privately and
+   commercially, copy, modify and redistribute it, as long as the
+   copyright notice and license text are kept.
+
+2. Components
+   Atlas consists of a design-time package for the RAD Studio IDE
+   (Atlas.IDE.Expert*.bpl), the background program AtlasServer.exe and the
+   installer AtlasSetup.exe. The IDE starts AtlasServer as a separate
+   process on your computer; it communicates with the IDE locally only.
+
+3. Data and network
+   - Atlas reads your source code and the RTL/VCL sources of your Delphi
+     installation locally only. It uploads no source code and never
+     redistributes Embarcadero sources.
+   - Log files (diagnostic and server log) are stored locally and
+     anonymised.
+   - The update check downloads a version file from GitHub
+     (github.com/xKnockOut/Atlas-IDE-Expert). No personal data is sent.
+     It is off by default: Atlas asks on first start and follows your
+     answer; you can change it at any time in the settings (updates.check).
+   - Bug reports are never sent automatically. Atlas only opens the GitHub
+     issue page; you decide what to submit there.
+
+4. No warranty
+   Atlas is provided without warranty (see section 7). Back up your
+   projects before applying automatic changes such as refactorings or
+   code fixes.
+
+5. Trademarks
+   Delphi, RAD Studio and C++Builder are trademarks of Embarcadero
+   Technologies, Inc. Atlas is an independent project and is not endorsed
+   or reviewed by Embarcadero.
+
+6. Third parties
+   Notices for third-party components are in THIRD-PARTY-NOTICES.md.

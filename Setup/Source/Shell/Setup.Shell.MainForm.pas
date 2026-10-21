@@ -6,6 +6,9 @@
 //   Kopieren werden laufende IDEs gemeldet, mit „Wiederholen“ und „Abbrechen“.
 // - Deinstallieren (/uninstall, aus „Apps und Features“): Kontrollkästchen für
 //   Einstellungen, Index und Protokolle sowie Snippets, alle aus.
+// - Lizenzvereinbarung: Liegt EULA.txt neben dem Installer und wurde diesem
+//   Text noch nicht zugestimmt, steht sie unter der Auswahl; „Installieren“
+//   ist erst nach dem Häkchen frei (Setup.Core.License).
 // Jeder Schritt erscheint im Protokollfeld.
 
 interface
@@ -29,16 +32,25 @@ type
     FConfigVersion: string;
     FConfigUninstall: Boolean;
   private
+    FSystem: ISetupSystem;
     FInstaller: TSetupInstaller;
     FIdes: TArray<TSetupIde>;
     FUninstallMode: Boolean;
     FIdeList: TCheckListBox;
     FDataBoxes: array[TSetupData] of TCheckBox;
+    /// <summary>Text der Lizenzvereinbarung, wenn ihm noch zuzustimmen ist, sonst ''.</summary>
+    FLicenseText: string;
+    FLicenseBox: TCheckBox;
     FLog: TMemo;
     FActionButton: TButton;
     FCloseButton: TButton;
     procedure BuildInstall(var ATop: Integer);
     procedure BuildUninstall(var ATop: Integer);
+    procedure BuildLicense(var ATop: Integer);
+    /// <summary>EULA.txt aus dem Ordner des Installers, '' wenn sie fehlt.</summary>
+    function ReadLicense: string;
+    procedure UpdateActionButton;
+    procedure LicenseClick(Sender: TObject);
     function AddLabel(const ACaption: string; var ATop: Integer): TLabel;
     /// <summary>Ohne const: passt so zu TProc&lt;TSetupStep&gt;.</summary>
     procedure Step(AStep: TSetupStep);
@@ -63,7 +75,9 @@ implementation
 
 uses
   System.UITypes,
+  System.IOUtils,
   Vcl.Dialogs,
+  Setup.Core.License,
   Setup.Shell.Texts;
 
 const
@@ -94,6 +108,7 @@ var
 begin
   CreateNew(AOwner);
   FUninstallMode := AUninstall;
+  FSystem := ASystem;
   FInstaller := TSetupInstaller.Create(ASystem, APaths, AVersion);
   FInstaller.OnStep := Step;
   BorderStyle := bsDialog;
@@ -170,6 +185,11 @@ begin
     FIdeList.Checked[Index] := Ide.Available;
   end;
   Inc(ATop, FIdeList.Height + Margin);
+  FLicenseText := ReadLicense;
+  if TSetupLicense.NeedsAcceptance(FSystem, FLicenseText) then
+    BuildLicense(ATop)
+  else
+    FLicenseText := '';
   FActionButton := TButton.Create(Self);
   FActionButton.Parent := Self;
   if Installed <> '' then
@@ -177,8 +197,51 @@ begin
   else
     FActionButton.Caption := TSetupTexts.Get(TSetupTextId.InstallButton);
   FActionButton.Default := True;
-  FActionButton.Enabled := FIdes <> nil;
   FActionButton.OnClick := ActionClick;
+  UpdateActionButton;
+end;
+
+procedure TSetupMainForm.BuildLicense(var ATop: Integer);
+var
+  Memo: TMemo;
+begin
+  AddLabel(TSetupTexts.Get(TSetupTextId.LicenseLabel), ATop);
+  Memo := TMemo.Create(Self);
+  Memo.Parent := Self;
+  Memo.SetBounds(Margin, ATop, FormWidth - 2 * Margin, 180);
+  Memo.ReadOnly := True;
+  Memo.ScrollBars := ssVertical;
+  // Der Text ist von Hand umbrochen; eine feste Schrift hält die Einrückungen.
+  Memo.Font.Name := 'Consolas';
+  Memo.Lines.Text := FLicenseText;
+  Inc(ATop, Memo.Height + 6);
+  FLicenseBox := TCheckBox.Create(Self);
+  FLicenseBox.Parent := Self;
+  FLicenseBox.Caption := TSetupTexts.Get(TSetupTextId.LicenseAccept);
+  FLicenseBox.SetBounds(Margin, ATop, FormWidth - 2 * Margin, 20);
+  FLicenseBox.Checked := False;
+  FLicenseBox.OnClick := LicenseClick;
+  Inc(ATop, 20 + Margin);
+end;
+
+function TSetupMainForm.ReadLicense: string;
+var
+  FileName: string;
+begin
+  Result := '';
+  FileName := TPath.Combine(FInstaller.Paths.SourceDir, TSetupLicense.FileName);
+  if TFile.Exists(FileName) then
+    Result := TSetupLicense.Normalize(TFile.ReadAllText(FileName, TEncoding.UTF8));
+end;
+
+procedure TSetupMainForm.UpdateActionButton;
+begin
+  FActionButton.Enabled := (FIdes <> nil) and ((FLicenseBox = nil) or FLicenseBox.Checked);
+end;
+
+procedure TSetupMainForm.LicenseClick(Sender: TObject);
+begin
+  UpdateActionButton;
 end;
 
 procedure TSetupMainForm.BuildUninstall(var ATop: Integer);
@@ -245,6 +308,8 @@ procedure TSetupMainForm.RunInstall;
 var
   Selected: TArray<TSetupIde>;
 begin
+  if (FLicenseBox <> nil) and not FLicenseBox.Checked then
+    Exit;
   Selected := SelectedIdes;
   if Selected = nil then
   begin
@@ -257,11 +322,16 @@ begin
   Screen.Cursor := crHourGlass;
   try
     if FInstaller.Install(Selected) then
-      FLog.Lines.Add(TSetupTexts.Get(TSetupTextId.InstallDone))
+    begin
+      // Erst nach dem Erfolg merken: Bricht die Installation ab, fragt der nächste Versuch wieder.
+      if FLicenseText <> '' then
+        TSetupLicense.Accept(FSystem, FLicenseText);
+      FLog.Lines.Add(TSetupTexts.Get(TSetupTextId.InstallDone));
+    end
     else
     begin
       FLog.Lines.Add(TSetupTexts.Get(TSetupTextId.Aborted));
-      FActionButton.Enabled := True;
+      UpdateActionButton;
     end;
   finally
     Screen.Cursor := crDefault;

@@ -622,6 +622,7 @@ uses
   Setup.Core.Ides in '..\Setup\Source\Core\Setup.Core.Ides.pas',
   Setup.Core.Installer in '..\Setup\Source\Core\Setup.Core.Installer.pas',
   Setup.Core.SettingsCommand in '..\Setup\Source\Core\Setup.Core.SettingsCommand.pas',
+  Setup.Core.License in '..\Setup\Source\Core\Setup.Core.License.pas',
   Setup.Shell.Texts in '..\Setup\Source\Shell\Setup.Shell.Texts.pas',
   Setup.Core.Installer.Tests in 'Setup\Setup.Core.Installer.Tests.pas',
   Setup.Core.SettingsCommand.Tests in 'Setup\Setup.Core.SettingsCommand.Tests.pas',
