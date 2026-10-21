@@ -217,9 +217,19 @@ procedure TAtlasSettingsCatalogTests.RoutedKeysArePathsInSettingsJson;
 var
   Routed: TAtlasRoutedSetting;
   Index: Integer;
+  Migrated: Boolean;
 begin
   for Routed in TAtlasSettingsScopes.Routed do
   begin
+    // Frühere Schlüssel (#770): nur über den neuen Eintrag, nicht als eigener.
+    if Routed.Legacy then
+    begin
+      Index := FCatalog.Resolve(Routed.Path, Migrated);
+      Assert.IsTrue(Migrated, Routed.Name);
+      Assert.AreEqual('hints.xmlDocExpand', FCatalog[Index].Key, Routed.Name);
+      Assert.AreEqual(-1, FCatalog.IndexOfKey(Routed.Path), Routed.Name);
+      Continue;
+    end;
     Index := FCatalog.IndexOfName(Routed.Name);
     Assert.IsTrue(Index >= 0, Routed.Name);
     Assert.AreEqual(Routed.Path, FCatalog[Index].Key, Routed.Name);
@@ -578,6 +588,15 @@ begin
   Assert.IsFalse(After.Plugin.PairColors);
   Assert.AreEqual(12, After.Plugin.VisibleRows);
   Assert.AreEqual('placeholder', After.Plugin.SettingsExportSecrets);
+  // #770: xmlDocFull (Wahrheitswert bzw. 0/1) wird zur Auswahl xmlDocExpand.
+  Preview := TAtlasSettingsTransfer.Preview(FCatalog, State(TAtlasPluginSettings.Defaults, ''),
+    FileOf('"hints.xmlDocFull": true'), imMerge, nil, Macros(), '', '');
+  Assert.IsTrue(ItemOf(Preview, 'hints.xmlDocExpand').Migrated);
+  Assert.AreEqual('"expanded"', ItemOf(Preview, 'hints.xmlDocExpand').NewJson);
+  Source := TAtlasSettingsTransfer.ParseFile('{"XmlDocFull": 0}');
+  Preview := TAtlasSettingsTransfer.Preview(FCatalog, State(TAtlasPluginSettings.Defaults, ''), Source, imMerge, nil,
+    Macros(), '', '');
+  Assert.AreEqual('"collapsed"', ItemOf(Preview, 'hints.xmlDocExpand').NewJson);
   // Frühere Schlüssel (x-formerKeys).
   Catalog := TAtlasSettingsCatalog.Create(TestPlugin, TestServer);
   try

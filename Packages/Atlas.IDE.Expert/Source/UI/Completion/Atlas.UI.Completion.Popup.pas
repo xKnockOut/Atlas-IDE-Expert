@@ -1604,7 +1604,15 @@ begin
     Index := FDetailView.DocLinkAt(X, Y);
     if Index >= 0 then
     begin
-      if Assigned(FOnDocLink) then
+      // „Mehr/Weniger anzeigen“ (#770): Zugeklappt darf das Popup wieder schrumpfen.
+      if FDetailView.Doc.Link(Index).Kind = TAtlasDocLinkKind.Toggle then
+      begin
+        if not FDetailView.ToggleDoc(Canvas) then
+          FSessionHeight := 0;
+        Relayout;
+        Invalidate;
+      end
+      else if Assigned(FOnDocLink) then
         FOnDocLink(FDetailView.Doc.Link(Index), ssCtrl in Shift);
       Exit;
     end;

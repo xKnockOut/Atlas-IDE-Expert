@@ -11,7 +11,7 @@ function AtlasSchemaJson: string;
 implementation
 
 const
-  Lines: array[0..1366] of string = (
+  Lines: array[0..1372] of string = (
     '{',
     '  "$schema": "http://json-schema.org/draft-07/schema#",',
     '  "title": "Atlas-Konfiguration",',
@@ -1019,14 +1019,20 @@ const
     '      "description": "Anzeige von XMLDoc-Kommentaren (///) im Hover-Tooltip und im Detailpanel der Vervollständigung des IDE-Plugins. Der Server bereitet die Doku immer vollständig auf; die Werte steu' + 'ern nur die Anzeige. Ohne Angabe gelten die Werte aus Tools › Optionen › Drittanbieter › Atlas.",',
     '      "additionalProperties": false,',
     '      "properties": {',
+    '        "xmlDocExpand": {',
+    '          "type": "string",',
+    '          "enum": [',
+    '            "collapsed",',
+    '            "last",',
+    '            "expanded"',
+    '          ],',
+    '          "default": "last",',
+    '          "description": "XMLDoc beim Öffnen (#770): \"collapsed\" zeigt nur Deklaration, Summary und „Mehr anzeigen“, \"last\" wie zuletzt in dieser Sitzung (getrennt für Tooltip und Detailpanel, nac' + 'h dem Neustart zugeklappt), \"expanded\" alle Abschnitte mit Überschrift (Parameter, Rückgabe, Ausnahmen, Hinweise, Beispiel …).",',
+    '          "x-plugin": "XmlDocExpand"',
+    '        },',
     '        "xmlDocFull": {',
     '          "type": "boolean",',
-    '          "default": true,',
-    '          "description": "XMLDoc vollständig und formatiert zeigen (alle Abschnitte, Verweise, Listen, Code). false: Kurzform wie bisher (Beschreibung auf 4 Zeilen, Bemerkungen auf 3 Zeilen gekürzt)."' + ',',
-    '          "x-quickToggle": true,',
-    '          "x-plugin": "XmlDocFull",',
-    '          "x-caption": "XMLDoc vollständig",',
-    '          "x-captionEn": "Full XMLDoc"',
+    '          "description": "Veraltet (#770), ersetzt durch xmlDocExpand: true wirkt wie \"expanded\", false wie \"collapsed\", solange xmlDocExpand fehlt."',
     '        },',
     '        "xmlDocMaxLines": {',
     '          "type": "integer",',

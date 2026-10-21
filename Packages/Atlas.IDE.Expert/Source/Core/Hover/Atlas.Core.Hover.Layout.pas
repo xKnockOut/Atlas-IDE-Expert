@@ -261,7 +261,7 @@ begin
   Result := Default(TAtlasHoverView);
   Result.Data := AData;
   Result.UsagesCount := -1;
-  Result.Display := TAtlasDocDisplay.Create(True, 0);
+  Result.Display := TAtlasDocDisplay.Create(TAtlasDocExpand.Last, 0);
 end;
 
 { TAtlasHoverFace }

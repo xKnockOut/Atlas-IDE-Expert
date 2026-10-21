@@ -4,8 +4,12 @@
 // "data.atlas.documentation" der Resolve-Antwort: Abschnitte (summary, param,
 // typeparam, returns, value, exception, remarks, example, seealso) mit Läufen
 // (Text, Code, Verweis mit Fundort, Link, Absatz, Codeblock, Listenpunkt,
-// Tabellenzelle). Dazu die Anzeige-Einstellungen "xmlDoc" (voll bzw. Kurzform,
-// Zeilengrenze), die der Server je Projekt meldet.
+// Tabellenzelle). Dazu die Anzeige-Einstellungen "xmlDoc" (zu- oder aufgeklappt
+// beim Öffnen, Zeilengrenze), die der Server je Projekt meldet, und die
+// Parameter der Signatur (#770) aus der Deklaration (Name, Art, Typ;
+// Ergebnistyp), damit die Doku jeden Parameter in der Reihenfolge der Signatur
+// zeigen kann. Den Zustand „wie zuletzt“ hält TAtlasDocExpandState in
+// Atlas.Core.Documentation.Layout.
 
 interface
 
@@ -20,6 +24,13 @@ type
   TAtlasDocRunKind = (Text, Code, Ref, Link, ParamRef, Keyword, LineBreak, Paragraph, CodeBlock, Bullet, Cell);
 
   TAtlasDocSectionKind = (Summary, Param, TypeParam, Returns, Value, Exception, Remarks, Example, SeeAlso);
+
+  /// <summary>XMLDoc beim Öffnen (#770, hints.xmlDocExpand): immer zugeklappt, wie zuletzt, immer aufgeklappt.
+  /// </summary>
+  TAtlasDocExpand = (Collapsed, Last, Expanded);
+
+  /// <summary>Wo die Doku steht; „wie zuletzt“ gilt je Fläche.</summary>
+  TAtlasDocSurface = (Tooltip, Details);
 
   /// <summary>Ziel eines Verweises; FileName '' ohne Fundort (Name, Unit bleiben).</summary>
   TAtlasDocTarget = record
@@ -74,21 +85,47 @@ type
     class function TryParseSectionKind(const AName: string; out AKind: TAtlasDocSectionKind): Boolean; static;
   end;
 
-  /// <summary>Anzeige der XMLDoc (#654): volle Doku bzw. Kurzform (Beschreibung vier, Bemerkungen drei
-  /// Zeilen) und höchstens MaxLines Zeilen ohne Scrollen (0 = bis zur Bildschirmhöhe).</summary>
+  /// <summary>Anzeige der XMLDoc (#654, #770): zu- oder aufgeklappt beim Öffnen und höchstens MaxLines Zeilen
+  /// ohne Scrollen (0 = bis zur Bildschirmhöhe).</summary>
   TAtlasDocDisplay = record
   public const
     MaxMaxLines = 50;
-    ShortSummaryLines = 4;
-    ShortRemarksLines = 3;
   public
     /// <summary>Vom Server gemeldet (atlas.json bzw. Einstellungen des Plugins).</summary>
     Known: Boolean;
-    Full: Boolean;
+    Expand: TAtlasDocExpand;
     MaxLines: Integer;
-    class function Create(AFull: Boolean; AMaxLines: Integer): TAtlasDocDisplay; static;
-    /// <summary>"xmlDoc" der Antwort; ohne Angabe AFallback (Einstellungen des Plugins).</summary>
+    class function Create(AExpand: TAtlasDocExpand; AMaxLines: Integer): TAtlasDocDisplay; static;
+    /// <summary>"xmlDoc" der Antwort; ohne Angabe AFallback (Einstellungen des Plugins). Liest "expand" und
+    /// das frühere "full" (true = aufgeklappt).</summary>
     class function FromJson(const AValue: TJSONValue; const AFallback: TAtlasDocDisplay): TAtlasDocDisplay; static;
+    /// <summary>"collapsed", "last", "expanded"; Unbekanntes ergibt Last.</summary>
+    class function ExpandOf(const AName: string): TAtlasDocExpand; static;
+    class function ExpandName(AExpand: TAtlasDocExpand): string; static;
+  end;
+
+  /// <summary>Parameter der Signatur: Name, Art (const, var, out, constref; '' ohne) und Typ ('' ohne).</summary>
+  TAtlasDocParam = record
+    Name: string;
+    Modifier: string;
+    TypeName: string;
+    /// <summary>"const string", "out TCompilerMessage", "var" (untypisiert); '' ohne Art und Typ.</summary>
+    function TypeText: string;
+  end;
+
+  /// <summary>Signatur aus der Deklaration (#770); Known = Parameterliste erkannt (auch leer).</summary>
+  TAtlasDocSignature = record
+    Known: Boolean;
+    /// <summary>Property: ResultType ist ihr Typ (Abschnitt WERT statt RÜCKGABE).</summary>
+    IsProperty: Boolean;
+    Params: TArray<TAtlasDocParam>;
+    /// <summary>Ergebnistyp einer Funktion bzw. Typ einer Property; '' ohne.</summary>
+    ResultType: string;
+    function IndexOf(const AName: string): Integer;
+    function HasTypes: Boolean;
+    /// <summary>Liest "function TX.Name(const A, B: string; out C: TFoo = nil): Boolean; overload;",
+    /// Properties mit [..]-Parametern und Generics; Unbekanntes ergibt Known = False.</summary>
+    class function Parse(const ADeclaration: string): TAtlasDocSignature; static;
   end;
 
 implementation
@@ -302,23 +339,242 @@ end;
 
 { TAtlasDocDisplay }
 
-class function TAtlasDocDisplay.Create(AFull: Boolean; AMaxLines: Integer): TAtlasDocDisplay;
+const
+  ExpandNames: array[TAtlasDocExpand] of string = ('collapsed', 'last', 'expanded');
+
+class function TAtlasDocDisplay.Create(AExpand: TAtlasDocExpand; AMaxLines: Integer): TAtlasDocDisplay;
 begin
   Result.Known := False;
-  Result.Full := AFull;
+  Result.Expand := AExpand;
   Result.MaxLines := EnsureRange(AMaxLines, 0, MaxMaxLines);
+end;
+
+class function TAtlasDocDisplay.ExpandOf(const AName: string): TAtlasDocExpand;
+var
+  Expand: TAtlasDocExpand;
+begin
+  for Expand := Low(TAtlasDocExpand) to High(TAtlasDocExpand) do
+    if SameText(ExpandNames[Expand], Trim(AName)) then
+      Exit(Expand);
+  Result := TAtlasDocExpand.Last;
+end;
+
+class function TAtlasDocDisplay.ExpandName(AExpand: TAtlasDocExpand): string;
+begin
+  Result := ExpandNames[AExpand];
 end;
 
 class function TAtlasDocDisplay.FromJson(const AValue: TJSONValue;
   const AFallback: TAtlasDocDisplay): TAtlasDocDisplay;
+var
+  Full: TJSONValue;
 begin
   Result := AFallback;
   if not (AValue is TJSONObject) then
     Exit;
   Result.Known := True;
-  Result.Full := TJSONObject(AValue).GetValue<Boolean>('full', AFallback.Full);
+  if TJSONObject(AValue).GetValue('expand') is TJSONString then
+    Result.Expand := ExpandOf(TJSONObject(AValue).GetValue<string>('expand', ''))
+  else
+  begin
+    // Server vor #770: "full".
+    Full := TJSONObject(AValue).GetValue('full');
+    if Full is TJSONBool then
+      if TJSONBool(Full).AsBoolean then
+        Result.Expand := TAtlasDocExpand.Expanded
+      else
+        Result.Expand := TAtlasDocExpand.Collapsed;
+  end;
   Result.MaxLines := EnsureRange(TJSONObject(AValue).GetValue<Integer>('maxLines', AFallback.MaxLines), 0,
     MaxMaxLines);
+end;
+
+{ TAtlasDocParam }
+
+function TAtlasDocParam.TypeText: string;
+begin
+  Result := Trim(Modifier + ' ' + TypeName);
+end;
+
+{ TAtlasDocSignature }
+
+function TAtlasDocSignature.IndexOf(const AName: string): Integer;
+var
+  Index: Integer;
+begin
+  for Index := 0 to High(Params) do
+    if SameText(Params[Index].Name, AName) then
+      Exit(Index);
+  Result := -1;
+end;
+
+function TAtlasDocSignature.HasTypes: Boolean;
+var
+  Param: TAtlasDocParam;
+begin
+  for Param in Params do
+    if Param.TypeText <> '' then
+      Exit(True);
+  Result := False;
+end;
+
+/// <summary>Stelle von AChar ab AFrom außerhalb von Klammern, spitzen Klammern und Strings; 0 ohne.</summary>
+function FindTop(const AText: string; AChar: Char; AFrom: Integer): Integer;
+var
+  Index, Depth: Integer;
+  InString: Boolean;
+begin
+  Depth := 0;
+  InString := False;
+  for Index := AFrom to Length(AText) do
+  begin
+    if AText[Index] = '''' then
+      InString := not InString;
+    if InString then
+      Continue;
+    if (Depth = 0) and (AText[Index] = AChar) then
+      Exit(Index);
+    if CharInSet(AText[Index], ['(', '[', '<']) then
+      Inc(Depth)
+    else if CharInSet(AText[Index], [')', ']', '>']) and (Depth > 0) then
+      Dec(Depth);
+  end;
+  Result := 0;
+end;
+
+/// <summary>Teile von AText an ASeparator außerhalb von Klammern.</summary>
+function SplitTop(const AText: string; ASeparator: Char): TArray<string>;
+var
+  Start, Stop: Integer;
+begin
+  Result := nil;
+  Start := 1;
+  repeat
+    Stop := FindTop(AText, ASeparator, Start);
+    if Stop = 0 then
+    begin
+      Result := Result + [Trim(Copy(AText, Start, MaxInt))];
+      Break;
+    end;
+    Result := Result + [Trim(Copy(AText, Start, Stop - Start))];
+    Start := Stop + 1;
+  until False;
+end;
+
+class function TAtlasDocSignature.Parse(const ADeclaration: string): TAtlasDocSignature;
+const
+  Modifiers: array[0..3] of string = ('const', 'var', 'out', 'constref');
+  Directives: array[0..6] of string = ('read', 'write', 'index', 'default', 'stored', 'nodefault', 'implements');
+var
+  Text, Head, Group, Names, TypeName, Modifier, Name, Word, Rest: string;
+  Open, Close, Colon, Equal, Index: Integer;
+  CloseChar: Char;
+  Param: TAtlasDocParam;
+begin
+  Result := Default(TAtlasDocSignature);
+  Text := Trim(StringReplace(StringReplace(ADeclaration, #13, ' ', [rfReplaceAll]), #10, ' ', [rfReplaceAll]));
+  if Text = '' then
+    Exit;
+  // Erstes Wort nach "class": function, procedure, constructor, destructor, operator, property.
+  Head := LowerCase(Text);
+  if Head.StartsWith('class ') then
+    Head := Trim(Copy(Head, 7, MaxInt));
+  Word := Copy(Head, 1, Pos(' ', Head + ' ') - 1);
+  if (Word <> 'function') and (Word <> 'procedure') and (Word <> 'constructor') and (Word <> 'destructor') and
+    (Word <> 'operator') and (Word <> 'property') then
+    Exit;
+  // Parameterliste: erste runde (bzw. bei Properties eckige) Klammer nach dem Namen, außerhalb von Generics.
+  Result.IsProperty := Word = 'property';
+  if Result.IsProperty then
+    CloseChar := ']'
+  else
+    CloseChar := ')';
+  Open := 0;
+  Index := 1;
+  while Index <= Length(Text) do
+  begin
+    if Text[Index] = '<' then
+    begin
+      Close := FindTop(Text, '>', Index + 1);
+      if Close = 0 then
+        Break;
+      Index := Close + 1;
+      Continue;
+    end;
+    if CharInSet(Text[Index], [':', ';', '=']) then
+      Break;
+    if ((CloseChar = ')') and (Text[Index] = '(')) or ((CloseChar = ']') and (Text[Index] = '[')) then
+    begin
+      Open := Index;
+      Break;
+    end;
+    Inc(Index);
+  end;
+  Rest := Text;
+  if Open > 0 then
+  begin
+    Close := FindTop(Text, CloseChar, Open + 1);
+    if Close = 0 then
+      Exit;
+    for Group in SplitTop(Copy(Text, Open + 1, Close - Open - 1), ';') do
+    begin
+      if Group = '' then
+        Continue;
+      Colon := FindTop(Group, ':', 1);
+      if Colon > 0 then
+      begin
+        Names := Trim(Copy(Group, 1, Colon - 1));
+        TypeName := Trim(Copy(Group, Colon + 1, MaxInt));
+        Equal := FindTop(TypeName, '=', 1);
+        if Equal > 0 then
+          TypeName := Trim(Copy(TypeName, 1, Equal - 1));
+      end
+      else
+      begin
+        Names := Group;
+        TypeName := '';
+      end;
+      Modifier := '';
+      for Word in Modifiers do
+        if LowerCase(Names).StartsWith(Word + ' ') then
+        begin
+          Modifier := Word;
+          Names := Trim(Copy(Names, Length(Word) + 1, MaxInt));
+          Break;
+        end;
+      // [Ref] und andere Attribute vor dem Namen weglassen.
+      while Names.StartsWith('[') and (Pos(']', Names) > 0) do
+        Names := Trim(Copy(Names, Pos(']', Names) + 1, MaxInt));
+      for Name in SplitTop(Names, ',') do
+        if Name <> '' then
+        begin
+          Param.Name := Name;
+          Param.Modifier := Modifier;
+          Param.TypeName := TypeName;
+          Result.Params := Result.Params + [Param];
+        end;
+    end;
+    Rest := Copy(Text, Close + 1, MaxInt);
+  end
+  else
+    Rest := Copy(Text, Index, MaxInt);
+  Result.Known := True;
+  // Ergebnis- bzw. Property-Typ: nach ":" bis ";" oder bis zum ersten Wort von read/write/index/default.
+  Rest := Trim(Rest);
+  if Rest.StartsWith(':') then
+  begin
+    Rest := Trim(Copy(Rest, 2, MaxInt));
+    Close := FindTop(Rest, ';', 1);
+    if Close > 0 then
+      Rest := Copy(Rest, 1, Close - 1);
+    for Word in Directives do
+    begin
+      Index := Pos(' ' + Word + ' ', LowerCase(Rest) + ' ');
+      if Index > 0 then
+        Rest := Copy(Rest, 1, Index - 1);
+    end;
+    Result.ResultType := Trim(Rest);
+  end;
 end;
 
 end.

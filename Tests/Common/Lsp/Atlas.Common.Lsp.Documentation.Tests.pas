@@ -351,19 +351,19 @@ var
   Json: TJSONObject;
 begin
   Hints := THintSettings.Default;
-  Hints.XmlDocFull := True;
+  Hints.XmlDocExpand := THintSettings.ExpandExpanded;
   Hints.XmlDocMaxLines := 12;
   Json := TLspDocumentation.HintsJson(Hints);
   try
-    Assert.AreEqual('{"full":true,"maxLines":12}', Json.ToJSON);
+    Assert.AreEqual('{"expand":"expanded","maxLines":12}', Json.ToJSON);
   finally
     Json.Free;
   end;
-  Hints.XmlDocFull := False;
+  Hints.XmlDocExpand := THintSettings.ExpandCollapsed;
   Hints.XmlDocMaxLines := 0;
   Json := TLspDocumentation.HintsJson(Hints);
   try
-    Assert.AreEqual('{"full":false,"maxLines":0}', Json.ToJSON);
+    Assert.AreEqual('{"expand":"collapsed","maxLines":0}', Json.ToJSON);
   finally
     Json.Free;
   end;

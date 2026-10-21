@@ -1022,6 +1022,16 @@ begin
       AMigrated := True;
       Exit(BoolJson(TJSONNumber(Value).AsInt <> 0));
     end;
+    // hints.xmlDocFull (#654) war ein Wahrheitswert (in alten Dateien 0/1); hints.xmlDocExpand (#770) ist
+    // eine Auswahl.
+    if (AEntry.Name = 'XmlDocExpand') and ((Value is TJSONBool) or (Value is TJSONNumber)) then
+    begin
+      AMigrated := True;
+      if ((Value is TJSONBool) and TJSONBool(Value).AsBoolean) or
+        ((Value is TJSONNumber) and (TJSONNumber(Value).AsInt <> 0)) then
+        Exit('"expanded"');
+      Exit('"collapsed"');
+    end;
     Dummy := False;
     Mapped := MapStrings(Value, AFolders, True, Dummy);
     try

@@ -112,12 +112,12 @@ begin
     '"documentationText": "Legt an.\nAOwner: Besitzer", "documentation": {"sections": [' +
     '{"kind": "summary", "runs": [{"kind": "text", "text": "Legt an."}]},' +
     '{"kind": "param", "name": "AOwner", "runs": [{"kind": "text", "text": "Besitzer"}]}]},' +
-    '"xmlDoc": {"full": false, "maxLines": 8}}}');
+    '"xmlDoc": {"expand": "collapsed", "maxLines": 8}}}');
   Assert.AreEqual('Legt an.'#10'AOwner: Besitzer', Data.Documentation);
   Assert.AreEqual(2, Integer(Length(Data.Doc.Sections)));
   Assert.AreEqual('AOwner', Data.Doc.Sections[1].Name);
   Assert.IsTrue(Data.Display.Known);
-  Assert.IsFalse(Data.Display.Full);
+  Assert.AreEqual(Ord(TAtlasDocExpand.Collapsed), Ord(Data.Display.Expand));
   Assert.AreEqual(8, Data.Display.MaxLines);
   // Ältere Server: documentation als Text, keine Anzeige-Angabe.
   Data := Parse(HoverJson);
