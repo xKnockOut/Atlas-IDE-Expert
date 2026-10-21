@@ -405,6 +405,7 @@ procedure TAtlasKeyMapTests.MultiCursorKeys;
 var
   Settings, Saved: TAtlasPluginSettings;
   Entries: TArray<TAtlasKeyEntry>;
+  Index: Integer;
 begin
   // #589: Vorgabe aus (experimentell), dann kein Konflikt; eingeschaltet mit Vorrang vor „Quelltext formatieren“.
   Settings := TAtlasPluginSettings.Defaults;
@@ -431,8 +432,10 @@ begin
   Assert.AreEqual('', TAtlasKeyMap.CommandIdOf(TAtlasKeyFunction.MultiCursorSkip));
   Assert.AreEqual(Ord(TAtlasKeySource.Window), Ord(TAtlasKeyMap.SourceOf(TAtlasKeyFunction.MultiCursorSkip)));
   Assert.AreEqual(Ord(TAtlasKeyContext.Editor), Ord(TAtlasKeyMap.ContextOf(TAtlasKeyFunction.MultiCursorSkip)));
-  // Zurück in die Einstellungen.
-  Entries[High(Entries)].Key := $A028;
+  // Zurück in die Einstellungen (Eintrag gezielt suchen: weitere Funktionen stehen dahinter).
+  for Index := 0 to High(Entries) do
+    if Entries[Index].Func = TAtlasKeyFunction.MultiCursorBelow then
+      Entries[Index].Key := $A028;
   Saved := Settings;
   TAtlasKeyEntry.ToSettings(Entries, Saved);
   Assert.AreEqual($A028, Saved.MultiCursorBelowKey);
