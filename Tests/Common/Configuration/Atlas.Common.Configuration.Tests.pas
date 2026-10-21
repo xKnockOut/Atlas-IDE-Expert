@@ -602,6 +602,25 @@ begin
   Assert.AreEqual(1, Integer(Length(Issues)));
   Parse('{"refactoring": {"createMethodSection": "published", "createMethodCaret": "ende"}}', Issues);
   Assert.AreEqual(2, Integer(Length(Issues)));
+  // #682: Property aus Getter und Setter.
+  Assert.IsTrue(Parse('{}', Issues).Refactoring.PropertyFromAccessors);
+  Assert.AreEqual('Get|Set|Is|Has', string.Join('|', Parse('{}', Issues).Refactoring.PropertyFromAccessorsPrefixes));
+  Assert.AreEqual('ask', Parse('{}', Issues).Refactoring.PropertyFromAccessorsReplaceCalls);
+  Assert.AreEqual('accessor', Parse('{}', Issues).Refactoring.PropertyFromAccessorsSection);
+  Assert.AreEqual('off', Parse('{}', Issues).Refactoring.PropertyFromAccessorsHideAccessors);
+  Assert.IsFalse(Parse('{"refactoring": {"propertyFromAccessors": false}}', Issues).Refactoring.PropertyFromAccessors);
+  Assert.AreEqual('Read|Write', string.Join('|', Parse('{"refactoring": {"propertyFromAccessorsPrefixes": ' +
+    '["Read", " Write ", ""]}}', Issues).Refactoring.PropertyFromAccessorsPrefixes));
+  Assert.AreEqual('always', Parse('{"refactoring": {"propertyFromAccessorsReplaceCalls": "Always"}}',
+    Issues).Refactoring.PropertyFromAccessorsReplaceCalls);
+  Assert.AreEqual('published', Parse('{"refactoring": {"propertyFromAccessorsSection": "published"}}',
+    Issues).Refactoring.PropertyFromAccessorsSection);
+  Assert.AreEqual('protected', Parse('{"refactoring": {"propertyFromAccessorsHideAccessors": "protected"}}',
+    Issues).Refactoring.PropertyFromAccessorsHideAccessors);
+  Assert.AreEqual(0, Integer(Length(Issues)));
+  Parse('{"refactoring": {"propertyFromAccessorsPrefixes": "Get", "propertyFromAccessorsReplaceCalls": "ja", ' +
+    '"propertyFromAccessorsSection": "private", "propertyFromAccessorsHideAccessors": "public"}}', Issues);
+  Assert.AreEqual(4, Integer(Length(Issues)));
   // Speicherbudget (#185)
   Assert.AreEqual(768, Parse('{}', Issues).MemoryBudgetMb, 'Vorgabe 768 MB (Rückmeldung 15.10.2026)');
   Assert.AreEqual(0, Parse('{"memoryBudgetMb": 0}', Issues).MemoryBudgetMb, '0 = unbegrenzt');
