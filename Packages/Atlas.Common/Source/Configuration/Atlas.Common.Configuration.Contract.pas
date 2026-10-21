@@ -294,6 +294,9 @@ type
     /// <summary>Im uses-Abschnitt Gruppen, Hinweise auf den anderen Abschnitt, Zirkelbezüge und Details;
     /// eingebundene Units fehlen (#469). Aus: alle Units des Index als schlichte Liste.</summary>
     UsesDetails: Boolean;
+    /// <summary>Nach "inherited " zuerst der vollständige Aufruf der Vorfahrmethode mit den eigenen Parametern,
+    /// in Konstruktoren und Destruktoren auch die übrigen; abstrakte fehlen (#482). Aus: nur die Namen.</summary>
+    InheritedCall: Boolean;
     class function Default: TCompletionSettings; static;
   end;
 
@@ -784,6 +787,7 @@ begin
   Result.TypeConversion := TCompletionTypeConversion.Off;
   Result.AssignAllFields := False;
   Result.UsesDetails := True;
+  Result.InheritedCall := True;
 end;
 
 { TServerSettings }

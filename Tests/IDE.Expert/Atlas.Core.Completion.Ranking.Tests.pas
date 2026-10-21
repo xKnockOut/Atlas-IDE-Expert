@@ -38,6 +38,8 @@ type
     [Test]
     procedure UsesUnitsGroupedWithHeaders;
     [Test]
+    procedure InheritedCallsFirstWithTags;
+    [Test]
     procedure ListModeFilterShowsOnlyMatches;
     [Test]
     procedure ListModeAllAppendsRestWithoutHeader;
@@ -576,6 +578,52 @@ begin
   Assert.AreEqual('qryOrders', Items[1].DataSet);
   Assert.AreEqual('select CUSTOMER_ID from ORDERS', TAtlasItemPresentation.DataSource(Items));
   Assert.AreEqual('', TAtlasItemPresentation.DataSource(Copy(Items, 0, 1)));
+end;
+
+procedure TAtlasRankingTests.InheritedCallsFirstWithTags;
+const
+  Lines: array[0..3] of string = (
+    '{"label":"Free","kind":2,"data":{"container":"TObject","depth":3}}',
+    '{"label":"CreateNew(AOwner, Dummy)","filterText":"CreateNew","kind":4,"detail":"TBaseView",' +
+      '"data":{"container":"TBaseView","depth":1,"inheritedMatch":"other","inheritedAbstract":["TBaseView.Zeichnen"]}}',
+    '{"label":"Create(AOwner)","filterText":"Create","kind":4,"detail":"TBaseView",' +
+      '"data":{"container":"TBaseView","depth":1,"inheritedMatch":"same","inheritedAbstract":["TBaseView.Zeichnen"]}}',
+    '{"label":"CreateParented(ParentWindow)","filterText":"CreateParented","kind":4,"detail":"TWinControl",' +
+      '"data":{"container":"TWinControl","depth":2,"inheritedMatch":"other"}}');
+var
+  Json: TJSONObject;
+  Items: TAtlasCompletionItems;
+  Index: Integer;
+  Tags: TAtlasTags;
+  Found: Boolean;
+  Tag: TAtlasTag;
+begin
+  // Nach "inherited " (#482): der Aufruf mit gleichen Parametern zuerst, dann die übrigen Konstruktoren.
+  Items := nil;
+  for Index := 0 to High(Lines) do
+  begin
+    Json := TJSONObject.ParseJSONValue(Lines[Index]) as TJSONObject;
+    try
+      Items := Items + [TAtlasServerCompletionProvider.ItemFromLsp(Json, Index)];
+    finally
+      Json.Free;
+    end;
+  end;
+  Assert.AreEqual('Create(AOwner),CreateNew(AOwner, Dummy),CreateParented(ParentWindow)',
+    Names(Items, TAtlasRanking.Order(Items, 'Cre', TAtlasRankOptions.Defaults)));
+  Tags := TAtlasItemPresentation.Tags(Items[2]);
+  Found := False;
+  for Tag in Tags do
+    if Tag.Id = TAtlasTagId.SameParams then
+      Found := True;
+  Assert.IsTrue(Found);
+  // Weitere Konstruktoren tragen die deklarierende Klasse.
+  Found := False;
+  for Tag in TAtlasItemPresentation.Tags(Items[3]) do
+    if Tag.Text = 'TWinControl' then
+      Found := True;
+  Assert.IsTrue(Found);
+  Assert.AreEqual('TBaseView.Zeichnen', string.Join(',', TAtlasItemPresentation.InheritedAbstract(Items)));
 end;
 
 procedure TAtlasRankingTests.UsesUnitsGroupedWithHeaders;

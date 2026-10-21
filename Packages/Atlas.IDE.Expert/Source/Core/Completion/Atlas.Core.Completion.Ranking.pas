@@ -213,6 +213,20 @@ begin
     Result := 0;
 end;
 
+/// <summary>Nach "inherited " (#482): 0 = gleiche Parameter, 1 = andere Überladung, 2 = weiterer Konstruktor
+/// bzw. Destruktor, 3 = übrige Einträge.</summary>
+function InheritedRank(const AItem: TAtlasCompletionItem): Integer;
+begin
+  if AItem.InheritedMatch = 'same' then
+    Result := 0
+  else if AItem.InheritedMatch = 'overload' then
+    Result := 1
+  else if AItem.InheritedMatch = 'other' then
+    Result := 2
+  else
+    Result := 3;
+end;
+
 /// <summary>0 = passt zum erwarteten Typ, 1 = übrige, 2 = ohne erwarteten Typ.</summary>
 function GroupOf(const AItem: TAtlasCompletionItem; AAnyFits: Boolean): Integer;
 begin
@@ -375,6 +389,9 @@ begin
           Result := Ord(Items[A].Unavailable) - Ord(Items[B].Unavailable);
         if Result = 0 then
           Result := GroupOf(Items[A], AnyFits) - GroupOf(Items[B], AnyFits);
+        // Vollständige inherited-Aufrufe vor den Namen der Vorfahrmethoden (#482).
+        if Result = 0 then
+          Result := InheritedRank(Items[A]) - InheritedRank(Items[B]);
         // uses-Abschnitt (#469): Projekt vor RTL/VCL vor Drittanbietern.
         if Result = 0 then
           Result := UsesRank(Items[A]) - UsesRank(Items[B]);

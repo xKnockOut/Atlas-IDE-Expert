@@ -211,6 +211,10 @@ type
     UsesTypes: TArray<string>;
     UsesTypeCount: Integer;
     UsesHidden: TArray<string>;
+    /// <summary>Vollständiger inherited-Aufruf (#482): "same", "overload" bzw. "other"; '' sonst. Dazu die
+    /// ausgelassenen abstrakten Vorfahrmethoden ("TBasis.Zeichnen") für die Fußzeile.</summary>
+    InheritedMatch: string;
+    InheritedAbstract: TArray<string>;
     /// <summary>Zahl der Überladungen samt dieser (mindestens 1).</summary>
     function OverloadCount: Integer;
   end;

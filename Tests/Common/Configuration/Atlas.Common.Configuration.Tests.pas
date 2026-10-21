@@ -486,6 +486,12 @@ begin
   Assert.AreEqual(0, Integer(Length(Issues)));
   Parse('{"completion": {"usesDetails": "ja"}}', Issues);
   Assert.AreEqual(1, Integer(Length(Issues)));
+  // Vollständiger inherited-Aufruf (#482)
+  Assert.IsTrue(Parse('{}', Issues).Completion.InheritedCall);
+  Assert.IsFalse(Parse('{"completion": {"inheritedCall": false}}', Issues).Completion.InheritedCall);
+  Assert.AreEqual(0, Integer(Length(Issues)));
+  Parse('{"completion": {"inheritedCall": 1}}', Issues);
+  Assert.AreEqual(1, Integer(Length(Issues)));
   // Freigabe absichern (#489)
   Assert.IsTrue(Parse('{}', Issues).Completion.OfferTryFinally);
   Assert.IsTrue(Parse('{}', Issues).Completion.FreeStyle = TCompletionFreeStyle.Free);
