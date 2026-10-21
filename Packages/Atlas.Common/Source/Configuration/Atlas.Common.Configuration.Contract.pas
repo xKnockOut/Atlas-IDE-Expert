@@ -388,6 +388,8 @@ type
     SlashSortUsesRemoveUnused: Boolean;
     /// <summary>/helper für Aufzählungen mit cNames, ToString und FromString (#875).</summary>
     SlashEnumHelper: Boolean;
+    /// <summary>/helper für Mengen mit Contains, ToText, Toggle und All (#875).</summary>
+    SlashSetHelper: Boolean;
     /// <summary>"uses aufräumen" (source.organizeImports) sortiert alphabetisch; Vorgabe aus,
     /// weil die Reihenfolge die Initialisierung bestimmt (#182).</summary>
     SortUses: Boolean;
@@ -774,6 +776,7 @@ begin
   Result.SlashTodoCategory := '';
   Result.SlashSortUsesRemoveUnused := True;
   Result.SlashEnumHelper := True;
+  Result.SlashSetHelper := True;
   Result.SortUses := False;
   Result.SortUsesByNamespace := False;
   Result.UsesKeep := nil;

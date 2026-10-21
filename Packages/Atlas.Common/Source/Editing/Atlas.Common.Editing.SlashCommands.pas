@@ -125,6 +125,8 @@ type
     /// <summary>/helper für Aufzählungen mit cNames, ToString und FromString (#875); 'false' = leerer
     /// Helper.</summary>
     EnumHelper = 'enumHelper';
+    /// <summary>/helper für Mengen mit Contains, ToText, Toggle und All (#875); 'false' = leerer Helper.</summary>
+    SetHelper = 'setHelper';
   end;
 
   /// <summary>Aktionen, die erst nach erfolgreichem Befehl laufen; bei Hinweisen werden sie verworfen.</summary>
