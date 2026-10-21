@@ -585,6 +585,7 @@
         <DCCReference Include="..\Setup\Source\Core\Setup.Core.Contract.pas"/>
         <DCCReference Include="..\Setup\Source\Core\Setup.Core.Ides.pas"/>
         <DCCReference Include="..\Setup\Source\Core\Setup.Core.Installer.pas"/>
+        <DCCReference Include="..\Setup\Source\Core\Setup.Core.License.pas"/>
         <DCCReference Include="..\Setup\Source\Shell\Setup.Shell.Texts.pas"/>
         <DCCReference Include="Setup\Setup.Core.Installer.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Commands\Atlas.Core.Commands.Palette.pas"/>

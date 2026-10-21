@@ -18,7 +18,8 @@ type
     UpdateButton, UninstallButton, CloseButton, NothingSelected, Running, InstallDone, UninstallDone, Aborted,
     DataLabel, DataSettings, DataIndex, DataSnippets, ConfirmUninstall, StateInstalled, StateUnsupported,
     StatePackageMissing, StepFileCopied, StepRegistered, StepRegistrationRemoved, StepUninstallEntryWritten,
-    StepUninstallEntryRemoved, StepFilesRemoved, StepFilesRemovedLater, StepDataRemoved, StepFailed);
+    StepUninstallEntryRemoved, StepFilesRemoved, StepFilesRemovedLater, StepDataRemoved, StepFailed, LicenseLabel,
+    LicenseAccept);
 {$SCOPEDENUMS OFF}
 
   TSetupTexts = class
@@ -70,7 +71,9 @@ const
     'Programmdateien entfernt: %s',
     'Programmordner wird nach dem Beenden entfernt: %s',
     'Entfernt: %s',
-    'Fehler: %s');
+    'Fehler: %s',
+    'Lizenzvereinbarung (EULA):',
+    'Ich akzeptiere die Lizenzvereinbarung');
   English: array[TSetupTextId] of string = (
     'Atlas IDE Expert %s Setup',
     'Atlas IDE Expert Uninstall',
@@ -103,7 +106,9 @@ const
     'Program files removed: %s',
     'Program folder is removed after exit: %s',
     'Removed: %s',
-    'Error: %s');
+    'Error: %s',
+    'License agreement (EULA):',
+    'I accept the license agreement');
 
 { TSetupTexts }
 
