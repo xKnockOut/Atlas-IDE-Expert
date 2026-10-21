@@ -636,6 +636,7 @@ begin
   Scored.Item.IsHelper := ASymbol.IsHelper;
   Scored.Item.HasParameters := ASymbol.MaxArgs > 0;
   Scored.Item.Condition := ASymbol.Condition;
+  Scored.Item.VariantBranch := ASymbol.VariantBranch;
   Scored.Item.Scope := ScopeOf(ASymbol, UnitName);
   Scored.Item.UnitName := UnitName;
   Scored.Item.Hides := ASymbol.Hides;

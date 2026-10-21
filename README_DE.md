@@ -60,6 +60,7 @@ Alles Folgende ist in `main` umgesetzt. Funktionen mit *(experimentell)* sind ab
 - **Freigabe absichern:** nach `X := TFoo.Create;` ein Angebot für `try … finally X.Free; end;`
 - **Schreibhilfen im Editor**: Gleichen Text wie die Markierung hervorheben (#709), Blockkommentar umschalten (#703, Umschalt+Alt+A), neue Zeile ober- oder unterhalb (#700, Umschalt+Enter, Strg+Alt+Enter), Markierung beim Tippen umschließen (#672), Umschließung entfernen (#657, Strg+Umschalt+Entf) mit Vorschau, Atlas-Spalte in der Zeilenleiste (#768)
 - **Bedingte Kompilierung**: Gliederung, Hover, Gehe zu und Prüfungen sehen nur die aktiven `{$IFDEF}`-Zweige des Projekts, die Gliederung zeigt die Bedingung des Zweigs (#845)
+- **Variante Records**: Felder wie `TRect.Left` oder `TMessage.WParam` stehen in Vervollständigung, Hover, Gehe zu und Gliederung, mit ihrem Zweig als Marke (#846)
 - **Dokumentationskommentare:** `///` erzeugt das XMLDoc-Gerüst mit Platzhaltern
 - **Anweisung vervollständigen** (Strg+Umschalt+Enter), **Muster fortsetzen** als Schattentext, **Kommentare fortsetzen** beim Enter
 - **Formatieren** nach eigenen Regeln (Strg+Umschalt+Alt+L), weil RAD Studio 13 keinen Formatierer mehr hat

@@ -37,6 +37,8 @@ type
     [Test]
     procedure OutlineOptions;
     [Test]
+    procedure CompletionVariantBranchOption;
+    [Test]
     procedure BreadcrumbsOptions;
     [Test]
     procedure JumpToMatchOptions;
@@ -1210,6 +1212,22 @@ begin
   Assert.IsTrue(Loaded.OutlineAlphabetical);
   Assert.IsFalse(Loaded.OutlineFollowCursor);
   Assert.IsFalse(Loaded.OutlineConditions);
+end;
+
+procedure TAtlasPluginSettingsTests.CompletionVariantBranchOption;
+var
+  Settings, Loaded: TAtlasPluginSettings;
+  Store: IAtlasSettingsStore;
+begin
+  // Marke „Zweig 0“ an Feldern varianter Records (#846): Vorgabe an, abschaltbar.
+  Settings := TAtlasPluginSettings.Defaults;
+  Assert.IsTrue(Settings.CompletionVariantBranch);
+  Settings.CompletionVariantBranch := False;
+  Store := TMemoryStore.Create;
+  Settings.Save(Store);
+  Loaded := TAtlasPluginSettings.Defaults;
+  Loaded.Load(Store);
+  Assert.IsFalse(Loaded.CompletionVariantBranch);
 end;
 
 procedure TAtlasPluginSettingsTests.BreadcrumbsOptions;
