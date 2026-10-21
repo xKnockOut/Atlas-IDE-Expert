@@ -7,6 +7,7 @@ Server und Claude-Code-Plugin tragen immer dieselbe Version.
 ## [Unveröffentlicht]
 
 ### Neu
+- Schnellbefehle `/extract Name` (Methode extrahieren mit Wert-, var- und out-Parametern), `/inline` (Aufruf oder Variable einbetten), `/fix` (nur sichere Korrekturen der Zeile darunter) und `/explain` (Erklärung der Treffer mit Beispiel und Link); `/fmt` folgt dem Formatstil der Datei (#300).
 - Neue Units aus `/component` und `/unit` folgen Zeilenende und Kodierung der Datei des Befehls und dem Formatstil (#299, #121, #43).
 - `/helper` für Aufzählungen (#875): Namenstabelle `cNames`, `ToString` und `FromString` samt Rümpfen; abschaltbar mit `slashCommands.enumHelper`.
 - `/singleton` nennt einen vorhandenen Konstruktor, der unverändert bleibt (#298).

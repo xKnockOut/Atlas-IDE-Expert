@@ -2553,3 +2553,17 @@ Vorher: Projekt mit Index geladen, eine Unit mit `uses System.SysUtils, System.C
 | NU1 | In einer Unit mit LF-Zeilenenden, UTF-8 ohne BOM, `/component TZaehler` | `Zaehler.pas` mit LF und UTF-8 ohne BOM (ohne Editor auf der Platte; in der IDE legt das Plugin die Datei an) |
 | NU2 | Format mit `indentSize` 4, `/component TZaehler2 : TButton` | Neue Unit rückt je Ebene um 4 Leerzeichen ein; mit `useTabs` um einen Tabulator |
 | NU3 | `/unit Kunden.Daten` in einem Projekt mit CRLF | Neue Unit mit CRLF, Einrückung nach dem Formatstil |
+
+## Refactoring per Schnellbefehl (#300)
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| RF1 | Im Rumpf über zwei Anweisungen, die einen Parameter lesen und eine lokale Variable schreiben, `/extract Rechne` + Enter | Neue Methode `Rechne(const AWert: …; var Summe: …)`, an der Stelle der Aufruf; Auswahl endet an der nächsten Leerzeile |
+| RF2 | `/extract` ohne Namen oder außerhalb einer Routine | Zeile bleibt, Hinweis „Erwartet wird /extract Name“ bzw. „nur im Rumpf einer Routine“ |
+| RF3 | Über `Y := Twice(X) + 1;` (Twice in derselben Unit) `/inline` | Aufruf durch den Rumpf ersetzt: `Y := (X * 2) + 1;` |
+| RF4 | Über `Y := X + 1;` mit `X := 5;` davor `/inline` | Variable eingebettet: `Y := 5 + 1;`, `X` aus dem var-Abschnitt entfernt |
+| RF5 | Über einer Zeile mit einem Treffer, der eine sichere Korrektur hat, `/fix` | Korrektur angewandt, Befehlszeile weg |
+| RF6 | `/fix` über einer Zeile, deren Treffer keine sichere Korrektur hat | Nichts geändert, Hinweis „keine sichere Korrektur“ |
+| RF7 | `/explain` über einer Zeile mit Treffer | Befehlszeile weg, Hinweis mit Meldung, Beschreibung, Falsch/Richtig-Beispiel und Link |
+| RF8 | `/explain` über einer Zeile ohne Treffer | Zeile bleibt, Hinweis „In der Zeile darunter meldet keine Prüfregel etwas“ |
+| RF9 | `/fmt` in einer Datei mit `indentSize` 4 | Routine wird mit vier Leerzeichen formatiert |

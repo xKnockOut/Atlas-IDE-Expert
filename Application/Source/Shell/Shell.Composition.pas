@@ -328,6 +328,9 @@ type
     function SlashRuleIdsAt(const AUri, AText: string; ALine: Integer; out AIds: TArray<string>): Boolean;
     /// <summary>Index und usesKeep für /sortuses (#297); False, solange die Code-Aktionen fehlen.</summary>
     function SlashUsesContext(const AUri: string; out AContext: TUsesContext): Boolean;
+    /// <summary>Regeltreffer der Zeile ALine mit Erklärung aus dem Katalog und sicherer Korrektur (/fix,
+    /// /explain, #300); False ohne Prüfregeln für die Datei.</summary>
+    function SlashFindingsAt(const AUri, AText: string; ALine: Integer; out AFindings: TArray<TSlashFinding>): Boolean;
     /// <summary>"completeBlocks.docComment" (#88).</summary>
     function DocCommentsFor(const AUri: string): Boolean;
     function InlayHintSettingsFor(const AUri: string): TInlayHintSettings;
@@ -455,6 +458,9 @@ uses
   Atlas.Common.Dfm.FormModel,
   Atlas.Common.Dfm.BinaryForm,
   Atlas.Common.Editing.CodeActions,
+  Atlas.Common.Rules.CodeActions,
+  Atlas.Common.Rules.Catalog,
+  Atlas.Common.Rules.Catalog.Data,
   Atlas.Common.Lsp.CompletionRequest,
   Atlas.Common.Editing.ClassActions,
   Atlas.Common.Index.SymbolIndex,
@@ -804,6 +810,7 @@ begin
   // /ignore und /sortuses (#297): Regeltreffer der Zeile und ungenutzte uses.
   SlashHost.RuleIdsOf := SlashRuleIdsAt;
   SlashHost.UsesContextOf := SlashUsesContext;
+  SlashHost.FindingsOf := SlashFindingsAt;
   FFormatting.SlashHost := SlashHost;
   // resourcestring in eine andere Unit (#473): Die Schnittstelle hält den Host am Leben.
   KeepHost := SlashHost;
@@ -3151,6 +3158,44 @@ begin
         not MatchText(Finding.RuleId, AIds) then
         AIds := AIds + [Finding.RuleId];
   finally
+    Tree.Free;
+  end;
+end;
+
+function TServerComposition.SlashFindingsAt(const AUri, AText: string; ALine: Integer;
+  out AFindings: TArray<TSlashFinding>): Boolean;
+var
+  Context: TRuleCheckContext;
+  Tree: TSyntaxTree;
+  Catalog: TRuleCatalog;
+  Finding: TRuleFinding;
+  Entry: TRuleCatalogEntry;
+  Item: TSlashFinding;
+  Action: TCodeAction;
+begin
+  AFindings := nil;
+  Result := RuleContextFor(AUri, Context);
+  if not Result then
+    Exit;
+  Tree := TSyntaxTreeCache.Parse(AText);
+  Catalog := TRuleCatalog.Create(RuleCatalogBaseJson, RuleCatalogOverlayJson('de'));
+  try
+    for Finding in TLspSyntaxDiagnostics.RuleFindings(AText, Tree, Context) do
+    begin
+      if (Finding.Range.StartPos.Line <> ALine) or SameText(Finding.RuleId, 'slash-command') then
+        Continue;
+      Item := Default(TSlashFinding);
+      Item.RuleId := Finding.RuleId;
+      Item.Message := Finding.Message;
+      if Catalog.TryFind(Finding.RuleId, Entry) then
+        Item.Explanation := TRuleCatalog.Explanation(Entry, #10);
+      // Nur als sicher markierte Korrekturen, wie beim Speichern (#182).
+      if TRuleCodeActions.FixAll([Finding], Action) then
+        Item.SafeFix := Action.Edits;
+      AFindings := AFindings + [Item];
+    end;
+  finally
+    Catalog.Free;
     Tree.Free;
   end;
 end;
