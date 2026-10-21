@@ -96,6 +96,7 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 | [`component-palette-icon`](#component-palette-icon) | Registrierte Komponente ohne Palettensymbol | Code Smell | Hinweis |
 | [`unresolved-identifier`](#unresolved-identifier) | Nicht deklarierter Bezeichner | Bug | Warnung |
 | [`deprecated-symbol`](#deprecated-symbol) | Veraltetes Symbol | Code Smell | Hinweis |
+| [`implicit-package-import`](#implicit-package-import) | Implizit eingebundene Unit | Code Smell | Warnung |
 
 <a id="syntax"></a>
 ## syntax
@@ -2197,4 +2198,32 @@ Richtig:
 procedure New;
 ...
 New;
+```
+
+<a id="implicit-package-import"></a>
+## implicit-package-import
+
+**Implizit eingebundene Unit** · Code Smell · Warnung
+
+In einem Package (.dpk) verwendet eine Unit aus contains eine Unit, die weder in contains steht noch von einem Package aus requires geliefert wird. Der Compiler zieht sie implizit hinein (W1033), was später zu doppelten Units führt, wenn ein anderes Package sie ebenfalls enthält. Die Schnellkorrektur nimmt die Unit in contains auf.
+
+Mit Treffer:
+
+```pascal
+package Werkzeuge;
+requires rtl;
+contains
+  uHaupt in 'uHaupt.pas';  // uHaupt uses uMathe
+end.
+```
+
+Richtig:
+
+```pascal
+package Werkzeuge;
+requires rtl;
+contains
+  uHaupt in 'uHaupt.pas',
+  uMathe in 'uMathe.pas';
+end.
 ```

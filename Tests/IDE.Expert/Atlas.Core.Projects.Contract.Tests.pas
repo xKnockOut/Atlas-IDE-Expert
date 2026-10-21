@@ -91,6 +91,10 @@ begin
   Base := Changed;
   Changed.Naming[TAtlasProjectNamingKind.Field] := 'F';
   Assert.AreNotEqual(Base.Key, Changed.Key);
+  // Wechsel des aktiven Projekts (#46).
+  Changed := Sample;
+  Changed.Active := True;
+  Assert.AreNotEqual(Sample.Key, Changed.Key);
 end;
 
 procedure TAtlasProjectContextTests.WritesJson;
@@ -108,6 +112,7 @@ begin
     // Ohne Bibliothekspfade nimmt der Server die der Installation.
     Assert.IsNull(Json.FindValue('libraryPaths'));
     Assert.IsNull(Json.FindValue('naming'));
+    Assert.AreEqual('false', Json.GetValue('active').ToJSON);
   finally
     Json.Free;
   end;
@@ -119,6 +124,14 @@ begin
   Json := Context.ToJson;
   try
     Assert.AreEqual('{"field":"F","local":""}', Json.GetValue<TJSONObject>('naming').ToJSON);
+  finally
+    Json.Free;
+  end;
+  Context := Sample;
+  Context.Active := True;
+  Json := Context.ToJson;
+  try
+    Assert.AreEqual('true', Json.GetValue('active').ToJSON);
   finally
     Json.Free;
   end;
@@ -146,6 +159,8 @@ begin
     '0 Bibliothekspfade', Context.Describe);
   // Die Herkunft gehört nur ins Protokoll: Der Server bekommt deshalb nichts Neues.
   Assert.AreEqual(Sample.Key, Context.Key);
+  Context.Active := True;
+  Assert.IsTrue(Context.Describe.EndsWith(', aktiv'), Context.Describe);
 end;
 
 initialization

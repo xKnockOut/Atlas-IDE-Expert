@@ -28,6 +28,10 @@ type
     procedure IndexAnswer_HasCounts;
     [Test]
     procedure ClearCaches_RemovesCacheFiles;
+    [Test]
+    procedure SelectProjectArgs_QueryClearAndChoose;
+    [Test]
+    procedure ProjectChoices_NamesSelectedAndActive;
   end;
 
 implementation
@@ -53,6 +57,61 @@ begin
   Parsed := TSelectBuildArgs.Parse(nil);
   Assert.IsFalse(Parsed.Changes);
   Assert.AreEqual('', Parsed.Uri);
+end;
+
+procedure TShellCommandsTests.SelectProjectArgs_QueryClearAndChoose;
+var
+  List: TJSONArray;
+  Parsed: TSelectProjectArgs;
+begin
+  Parsed := TSelectProjectArgs.Parse(nil);
+  Assert.IsFalse(Parsed.HasProject);
+  List := Args('[{"project": 3}]');
+  try
+    Assert.IsFalse(TSelectProjectArgs.Parse(List).HasProject, 'Keine Zahl');
+  finally
+    List.Free;
+  end;
+  List := Args('[{"project": ""}]');
+  try
+    Parsed := TSelectProjectArgs.Parse(List);
+  finally
+    List.Free;
+  end;
+  Assert.IsTrue(Parsed.HasProject);
+  Assert.AreEqual('', Parsed.Project);
+  List := Args('[{"project": " Kern "}]');
+  try
+    Parsed := TSelectProjectArgs.Parse(List);
+  finally
+    List.Free;
+  end;
+  Assert.AreEqual('Kern', Parsed.Project);
+end;
+
+procedure TShellCommandsTests.ProjectChoices_NamesSelectedAndActive;
+var
+  Items: TArray<TProjectChoiceItem>;
+  Answer: TJSONObject;
+begin
+  SetLength(Items, 2);
+  Items[0].Name := 'App';
+  Items[0].Project := 'C:\P\App.dproj';
+  Items[0].Active := True;
+  Items[1].Name := 'Kern';
+  Items[1].Project := 'C:\P\Kern.dproj';
+  Items[1].Selected := True;
+  Assert.AreEqual(1, TBuildCommands.FindProject(Items, 'kern'));
+  Assert.AreEqual(0, TBuildCommands.FindProject(Items, 'c:\p\app.dproj'));
+  Assert.AreEqual(-1, TBuildCommands.FindProject(Items, 'Fehlt'));
+  Answer := TBuildCommands.ProjectChoices(Items);
+  try
+    Assert.AreEqual('C:\P\Kern.dproj', Answer.GetValue<string>('selected'));
+    Assert.AreEqual('C:\P\App.dproj', Answer.GetValue<string>('active'));
+    Assert.AreEqual(2, Answer.GetValue<TJSONArray>('projects').Count);
+  finally
+    Answer.Free;
+  end;
 end;
 
 procedure TShellCommandsTests.SelectBuildArgs_ReadsAllFields;

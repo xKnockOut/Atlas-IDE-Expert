@@ -17,6 +17,9 @@
 // meldet das Plugin die Vorgaben der Projektdatei .atlas (#486). Sie ändern nur
 // die Namensvorschläge der Vervollständigung, nie den Index; eine Änderung
 // allein löst deshalb kein OnChanged aus.
+// Aktives Projekt (#46): "active": true markiert das aktive Projekt der Gruppe. Gehört
+// eine Datei zu mehreren Projekten, gilt es vor der Reihenfolge der Gruppe; ein
+// Wechsel lädt nichts neu und löst kein OnChanged aus.
 
 interface
 
@@ -46,6 +49,9 @@ type
     /// <summary>Präfix-Vorgaben der Projektdatei (#452); nur mit HasNaming, '' = ohne Präfix.</summary>
     Naming: array[TNamingKind] of string;
     HasNaming: array[TNamingKind] of Boolean;
+    /// <summary>Aktives Projekt der Gruppe (#46); nur mit HasActive gemeldet.</summary>
+    Active: Boolean;
+    HasActive: Boolean;
     /// <summary>Kontext aus einem JSON-Objekt; Project = '' bei ungültigen Parametern.</summary>
     class function FromJson(const AValue: TJSONValue): TIdeProjectContext; static;
     /// <summary>Vergleichsschlüssel: gleich, wenn sich für Index und Projekt nichts ändert (ohne Naming).</summary>
@@ -69,6 +75,7 @@ type
     FLock: TObject;
     FContexts: TDictionary<string, TIdeProjectContext>;
     FOnChanged: TIdeProjectChangedEvent;
+    FActive: string;
     procedure HandleNotification(const AParams: TJSONValue);
   public
     constructor Create;
@@ -81,6 +88,8 @@ type
     function Update(const AContext: TIdeProjectContext): Boolean;
     /// <summary>Gemeldeter Kontext des Projekts AProjectFile; False ohne. Threadsicher.</summary>
     function Find(const AProjectFile: string; out AContext: TIdeProjectContext): Boolean;
+    /// <summary>.dproj des aktiven Projekts der IDE (#46); '' ohne Meldung. Threadsicher.</summary>
+    function ActiveProject: string;
     /// <summary>Nach atlas/projectContext mit geändertem Kontext (Thread des Dispatchers).</summary>
     property OnChanged: TIdeProjectChangedEvent read FOnChanged write FOnChanged;
   end;
@@ -165,6 +174,9 @@ begin
   Result.Namespaces := StringsOf(Item, 'namespaces', HasNamespaces);
   Result.HasOptions := HasDefines or HasPaths or HasNamespaces;
   Result.LibraryPaths := StringsOf(Item, 'libraryPaths', Ignored);
+  Result.HasActive := Item.GetValue('active') is TJSONBool;
+  if Result.HasActive then
+    Result.Active := TJSONBool(Item.GetValue('active')).AsBoolean;
   if Item.TryGetValue<TJSONObject>('naming', Prefixes) then
     for Kind := Low(TNamingKind) to High(TNamingKind) do
     begin
@@ -275,8 +287,12 @@ begin
   TMonitor.Enter(FLock);
   try
     Result := not FContexts.TryGetValue(Key, Known) or (Known.Key <> AContext.Key);
-    if Result or (Known.NamingKey <> AContext.NamingKey) then
+    if Result or (Known.NamingKey <> AContext.NamingKey) or (Known.Active <> AContext.Active) then
       FContexts.AddOrSetValue(Key, AContext);
+    if AContext.HasActive and AContext.Active then
+      FActive := AContext.Project
+    else if AContext.HasActive and SameText(FActive, AContext.Project) then
+      FActive := '';
   finally
     TMonitor.Exit(FLock);
   end;
@@ -287,6 +303,16 @@ begin
   TMonitor.Enter(FLock);
   try
     Result := FContexts.TryGetValue(AnsiUpperCase(AProjectFile), AContext);
+  finally
+    TMonitor.Exit(FLock);
+  end;
+end;
+
+function TLspIdeProject.ActiveProject: string;
+begin
+  TMonitor.Enter(FLock);
+  try
+    Result := FActive;
   finally
     TMonitor.Exit(FLock);
   end;

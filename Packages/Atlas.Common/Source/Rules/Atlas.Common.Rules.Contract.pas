@@ -64,6 +64,12 @@ type
 
   /// <summary>Liest eine Datei neben der Unit, z. B. die .dcr aus {$R *.dcr} (#114).</summary>
   TRuleFileReader = reference to function(const AFileName: string; out AData: TBytes): Boolean;
+  /// <summary>Gehört eine Unit zu einem Package (#46)? Unknown, wenn das Package nicht gefunden wird.</summary>
+{$SCOPEDENUMS ON}
+  TRulePackageAnswer = (No, Yes, Unknown);
+{$SCOPEDENUMS OFF}
+  /// <summary>Gehört AUnitName zu Package APackage (aus requires)? Über dessen .dpk bzw. .dcp (#46).</summary>
+  TRulePackageProvides = reference to function(const APackage, AUnitName: string): TRulePackageAnswer;
   /// <summary>True, wenn die Prüfung abgebrochen werden soll (Zeitlimit, Dokument geändert).</summary>
   TRuleCancelled = reference to function: Boolean;
 
@@ -120,6 +126,10 @@ type
     /// rechnet selbst (direkter Aufruf von Check). Zugriff nur über TRuleDerived. Die Werte zeigen in
     /// Tree: Wer einen eigenen Cache setzt, muss ihn vor dem Baum freigeben oder leeren.</summary>
     Derived: IRuleDerivedCache;
+    /// <summary>Absoluter Pfad der geprüften Datei; '' wenn unbekannt (#46).</summary>
+    FileName: string;
+    /// <summary>Inhalt der Packages aus requires (#46); nil = unbekannt, Package-Prüfungen schweigen.</summary>
+    PackageProvides: TRulePackageProvides;
   end;
 
   /// <summary>Sammelt die Treffer einer Regel. Ohne Angabe gilt Konfidenz High.</summary>

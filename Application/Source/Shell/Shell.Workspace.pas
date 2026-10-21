@@ -23,6 +23,8 @@ uses
   Atlas.Common.Lsp.WorkDoneProgress,
   Atlas.Common.Projects.Contract,
   Atlas.Common.Projects.UnitResolver,
+  Atlas.Common.Projects.PackageLocator,
+  Atlas.Common.Projects.Selection,
   Atlas.Common.Compiler.Contract,
   Atlas.Common.Index.Contract,
   Atlas.Common.Index.Service,
@@ -49,6 +51,15 @@ type
     /// <summary>Frühere Resolver: Der alte Builder bedient EnsureUnit, bis der neue veröffentlicht ist,
     /// und ruft sie dabei noch auf. Freigabe erst mit dem Arbeitsbereich.</summary>
     FRetiredResolvers: TObjectList<TUnitResolver>;
+    /// <summary>Packages aus requires (#46), je Indexaufbau neu; unter FLock. Frühere bleiben bis zur Freigabe des
+    /// Arbeitsbereichs, weil Prüfungen in Anfrage-Threads sie noch halten können.</summary>
+    FPackageLocator: TPackageLocator;
+    FRetiredLocators: TObjectList<TPackageLocator>;
+    FOnPackageFolders: TFunc<TArray<string>>;
+    /// <summary>Gemerkte Wahl über Neustarts (#46); gehört der Komposition, nil = nichts merken.</summary>
+    FSelection: TProjectSelection;
+    /// <summary>Gemerkte Konfiguration und Plattform schon übernommen; danach gilt nur noch selectBuild.</summary>
+    FBuildRestored: Boolean;
     FSignature: string;
     // Schützt Defines und Namespaces, die Anfrage-Threads lesen.
     FLock: TObject;
@@ -122,6 +133,15 @@ type
     function GetNamespaces: TArray<string>;
     function GetIncludePaths: TArray<string>;
     function GetProjectFiles: TArray<string>;
+    function GetPackageLocator: TPackageLocator;
+    /// <summary>Übernimmt einmal die gemerkte Konfiguration und Plattform von AProjectFile (#46).</summary>
+    procedure RestoreBuild(const AProjectFile: string);
+    /// <summary>True, wenn eine Wahl verworfen wurde, die AProject nicht kennt.</summary>
+    function DropUnknownBuild(const AProject: TProjectInfo): Boolean;
+    /// <summary>Packages (#46): contains der .dpk gehört zum Projekt, auch ohne DCCReference; die Units der
+    /// requires-Packages mit Quelltext kommen zu den Suchpfad-Units.</summary>
+    procedure AddPackageFiles(const AProject: TProjectInfo; ALocator: TPackageLocator; var AFiles,
+      ASearchFiles: TArray<string>);
   public
     constructor Create(const ARoot, AName: string; const AStore: IDocumentStore; const ATransport: IJsonRpcTransport;
       const ALogger: ILogger; const AIndex: ISymbolIndex; const AProgressToken: string);
@@ -216,6 +236,16 @@ type
     property IdeProjects: TLspIdeProject read FIdeProjects write FIdeProjects;
     /// <summary>Eintrag des Clients, aus dem der Arbeitsbereich stammt (TWorkspaceFolder.Key); zum Entfernen.</summary>
     property Origin: string read FOrigin write FOrigin;
+    /// <summary>Ordner, in denen requires-Packages als .dpk gesucht werden (#46), z. B. die Projekte der Gruppe;
+    /// vor Load setzen. Danach folgen Projektordner, Such- und Bibliothekspfade.</summary>
+    property OnPackageFolders: TFunc<TArray<string>> read FOnPackageFolders write FOnPackageFolders;
+    /// <summary>Packages des zuletzt geladenen Projekts (#46); nil vor dem ersten Laden. Bleibt bis zur Freigabe
+    /// des Arbeitsbereichs gültig. Threadsicher.</summary>
+    property PackageLocator: TPackageLocator read GetPackageLocator;
+    /// <summary>Vor Load setzen (#46): selectBuild merkt die Wahl dort, der erste Indexaufbau übernimmt sie.</summary>
+    property Selection: TProjectSelection read FSelection write FSelection;
+    /// <summary>Feste Projektdatei oder die des geladenen Projekts; '' ohne Projekt. Threadsicher.</summary>
+    function ProjectFileName: string;
   end;
 
 implementation
@@ -229,6 +259,7 @@ uses
   Atlas.Common.Compiler.CommandLine,
   Atlas.Common.Projects.Paths,
   Atlas.Common.Projects.DprojReader,
+  Atlas.Common.Projects.PackageReader,
   Atlas.Common.Projects.DelphiVersions,
   Atlas.Common.Index.ProjectFiles,
   Atlas.Common.Index.Adapters.DiskFileSystem,
@@ -321,6 +352,7 @@ begin
   FLock := TObject.Create;
   FOwnFiles := TDictionary<string, Boolean>.Create;
   FRetiredResolvers := TObjectList<TUnitResolver>.Create(True);
+  FRetiredLocators := TObjectList<TPackageLocator>.Create(True);
   FLastIndexMs := -1;
   FConfiguration := TLspConfiguration.Create(AStore, ATransport,
     function(const AFileName: string; out AText: string): Boolean
@@ -420,6 +452,8 @@ begin
   FProgress.Free;
   FUnitResolver.Free;
   FRetiredResolvers.Free;
+  FPackageLocator.Free;
+  FRetiredLocators.Free;
   FConfiguration.Free;
   FOwnFiles.Free;
   FLock.Free;
@@ -635,6 +669,9 @@ begin
   if Result then
   begin
     FLogger.Info(Format('%s: Konfiguration %s, Plattform %s gewählt', [FName, AConfig, APlatform]));
+    // Über Neustarts merken (#46); die Symbole der IDE kommen nach dem Start neu.
+    if (FSelection <> nil) and ((AConfig <> '') or (APlatform <> '')) then
+      FSelection.SetBuild(ProjectFileName, AConfig, APlatform);
     if AHasDefines then
       FLogger.Info(Format('%s: %d Symbole aus den Projektoptionen der IDE', [FName, Length(Defines)]));
     Reload;
@@ -695,6 +732,15 @@ begin
     Result.LastUpdate := FLastUpdate;
     Result.CacheFile := FCacheFile;
     Result.LibraryCacheFile := FLibraryCacheFile;
+    // Projektwahl (#46); aktiv und ausgewählt ergänzt die Komposition.
+    Result.Project := FFixedProject;
+    if FHasProject then
+    begin
+      Result.Project := FProject.FileName;
+      Result.Config := FProject.Config;
+      Result.Platform := FProject.Platform;
+    end;
+    Result.BuildChosen := (FBuildConfig <> '') or (FBuildPlatform <> '');
   finally
     TMonitor.Exit(FLock);
   end;
@@ -798,6 +844,123 @@ begin
   finally
     TMonitor.Exit(FLock);
   end;
+end;
+
+function TShellWorkspace.ProjectFileName: string;
+begin
+  TMonitor.Enter(FLock);
+  try
+    Result := FFixedProject;
+    if (Result = '') and FHasProject then
+      Result := FProject.FileName;
+  finally
+    TMonitor.Exit(FLock);
+  end;
+end;
+
+procedure TShellWorkspace.RestoreBuild(const AProjectFile: string);
+var
+  Choice: TProjectBuildChoice;
+begin
+  if (FSelection = nil) or not FSelection.Build(AProjectFile, Choice) then
+  begin
+    FBuildRestored := True;
+    Exit;
+  end;
+  TMonitor.Enter(FLock);
+  try
+    if FBuildRestored then
+      Exit;
+    FBuildRestored := True;
+    if FBuildConfig = '' then
+      FBuildConfig := Choice.Config;
+    if FBuildPlatform = '' then
+      FBuildPlatform := Choice.Platform;
+  finally
+    TMonitor.Exit(FLock);
+  end;
+  FLogger.Info(Format('%s: gemerkte Wahl übernommen (Konfiguration %s, Plattform %s)',
+    [FName, Choice.Config, Choice.Platform]));
+end;
+
+function TShellWorkspace.DropUnknownBuild(const AProject: TProjectInfo): Boolean;
+var
+  Error: string;
+begin
+  Error := '';
+  TMonitor.Enter(FLock);
+  try
+    Result := (FBuildConfig <> '') or (FBuildPlatform <> '');
+    if Result then
+      Error := TDprojReader.CheckTarget(AProject, FBuildConfig, FBuildPlatform);
+    Result := Result and (Error <> '');
+    if Result then
+    begin
+      FBuildConfig := '';
+      FBuildPlatform := '';
+    end;
+  finally
+    TMonitor.Exit(FLock);
+  end;
+  if Result then
+  begin
+    FLogger.Warning(Format('%s: gewählte Konfiguration oder Plattform gibt es nicht mehr (%s); es gelten die Vorgaben',
+      [FName, Error]));
+    if FSelection <> nil then
+      FSelection.SetBuild(AProject.FileName, '', '');
+  end;
+end;
+
+function TShellWorkspace.GetPackageLocator: TPackageLocator;
+begin
+  TMonitor.Enter(FLock);
+  try
+    Result := FPackageLocator;
+  finally
+    TMonitor.Exit(FLock);
+  end;
+end;
+
+procedure TShellWorkspace.AddPackageFiles(const AProject: TProjectInfo; ALocator: TPackageLocator; var AFiles,
+  ASearchFiles: TArray<string>);
+var
+  Text, FileName: string;
+  Source: TPackageSource;
+  Known: TDictionary<string, Boolean>;
+  Added, Required: Integer;
+begin
+  if not SameText(ExtractFileExt(AProject.MainSource), '.dpk') or
+    not TShellBootstrap.ReadSourceText(AProject.MainSource, Text) then
+    Exit;
+  Source := TPackageReader.Read(Text);
+  if not Source.IsPackage then
+    Exit;
+  Known := TDictionary<string, Boolean>.Create;
+  try
+    for FileName in AFiles + ASearchFiles do
+      Known.AddOrSetValue(AnsiUpperCase(FileName), True);
+    Added := 0;
+    for FileName in TPackageLocator.ContainedFiles(AProject.MainSource, Source) do
+      if not Known.ContainsKey(AnsiUpperCase(FileName)) and FileExists(FileName) then
+      begin
+        Known.Add(AnsiUpperCase(FileName), True);
+        AFiles := AFiles + [FileName];
+        Inc(Added);
+      end;
+    Required := 0;
+    for FileName in ALocator.RequiredFiles(Source) do
+      if not Known.ContainsKey(AnsiUpperCase(FileName)) and FileExists(FileName) then
+      begin
+        Known.Add(AnsiUpperCase(FileName), True);
+        ASearchFiles := ASearchFiles + [FileName];
+        Inc(Required);
+      end;
+  finally
+    Known.Free;
+  end;
+  if (Added > 0) or (Required > 0) then
+    FLogger.Info(Format('%s: Package mit %d Units aus contains ohne DCCReference und %d aus requires-Packages',
+      [FName, Added, Required]));
 end;
 
 function TShellWorkspace.GetIncludePaths: TArray<string>;
@@ -945,6 +1108,8 @@ var
   CompilerLibraryPaths: TArray<string>;
   Names: TArray<string>;
   ProjectUnit: TProjectUnit;
+  PackageFolders: TArray<string>;
+  Locator: TPackageLocator;
 begin
   // Mit index.projectGroup = false nur das Projekt der geöffneten Datei (#648).
   if FDeferred and not FActivated and not ASettings.IndexProjectGroup then
@@ -999,6 +1164,7 @@ begin
     begin
       Result := FileExists(AFileName);
     end;
+  RestoreBuild(ProjectFile);
   Options := Default(TDprojOptions);
   Options.Config := ASettings.Config;
   Options.Platform := ASettings.Platform;
@@ -1020,6 +1186,17 @@ begin
     Options.Variables := Installation.Variables;
   try
     Project := TDprojReader.Load(ProjectFile, Options);
+    // Gemerkte Wahl (#46), die es im Projekt nicht mehr gibt: mit den Vorgaben weiter.
+    if DropUnknownBuild(Project) then
+    begin
+      Options.Config := ASettings.Config;
+      Options.Platform := ASettings.Platform;
+      if HasContext and (Context.Configuration <> '') then
+        Options.Config := Context.Configuration;
+      if HasContext and (Context.Platform <> '') then
+        Options.Platform := Context.Platform;
+      Project := TDprojReader.Load(ProjectFile, Options);
+    end;
   except
     on E: EProjectError do
     begin
@@ -1119,6 +1296,22 @@ begin
   LibraryFiles := nil;
   if ASettings.IndexLibraryPaths then
     LibraryFiles := TIndexProjectFiles.PathFiles(LibraryPaths, ListUnits, Excluded, Files + SearchFiles);
+  // requires-Packages (#46): Quelle .dpk in den Ordnern der Gruppe, im Projektordner und in den Suchpfaden,
+  // übersetzt .dcp in den Bibliothekspfaden.
+  PackageFolders := nil;
+  if Assigned(FOnPackageFolders) then
+    PackageFolders := FOnPackageFolders();
+  Locator := TPackageLocator.Create(PackageFolders + [ExtractFileDir(ProjectFile)] + Project.SearchPaths +
+    CompilerLibraryPaths);
+  TMonitor.Enter(FLock);
+  try
+    if FPackageLocator <> nil then
+      FRetiredLocators.Add(FPackageLocator);
+    FPackageLocator := Locator;
+  finally
+    TMonitor.Exit(FLock);
+  end;
+  AddPackageFiles(Project, Locator, Files, SearchFiles);
   // Neu indexieren, wenn sich Schlüssel oder Unit-Listen ändern; der Cache hängt nur am Schlüssel.
   State := Signature + '#' + AnsiUpperCase(String.Join(';', Files)) + '#' +
     AnsiUpperCase(String.Join(';', SearchFiles)) + '#' + AnsiUpperCase(String.Join(';', LibraryFiles));

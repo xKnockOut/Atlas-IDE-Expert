@@ -22,6 +22,9 @@ type
     /// <summary>#452: Präfix-Vorgaben werden gemerkt, laden das Projekt aber nicht neu.</summary>
     [Test]
     procedure KeepsNamingWithoutReload;
+    /// <summary>#46: Das aktive Projekt wird gemerkt und wechselt, ohne neu zu laden.</summary>
+    [Test]
+    procedure TracksActiveProjectWithoutReload;
   end;
 
 implementation
@@ -190,6 +193,41 @@ begin
     Assert.IsTrue(Store.Find('C:\P\A.dproj', Context));
     Assert.AreEqual('F', Context.Naming[TNamingKind.Field]);
     Assert.IsFalse(Context.HasNaming[TNamingKind.Local]);
+  finally
+    Dispatcher.Free;
+    Store.Free;
+  end;
+end;
+
+procedure TLspIdeProjectTests.TracksActiveProjectWithoutReload;
+var
+  Store: TLspIdeProject;
+  Dispatcher: TJsonRpcDispatcher;
+  Changed: Integer;
+begin
+  Assert.IsFalse(Parse('{"project":"C:\\P\\A.dproj"}').HasActive);
+  Assert.IsTrue(Parse('{"project":"C:\\P\\A.dproj","active":true}').Active);
+  Store := TLspIdeProject.Create;
+  Dispatcher := TJsonRpcDispatcher.Create;
+  try
+    Changed := 0;
+    Store.OnChanged :=
+      procedure(const AContext: TIdeProjectContext)
+      begin
+        Inc(Changed);
+      end;
+    Store.Attach(Dispatcher);
+    Assert.AreEqual('', Store.ActiveProject);
+    Notify(Dispatcher, '{"project":"C:\\P\\A.dproj","configuration":"Debug","active":true}');
+    Notify(Dispatcher, '{"project":"C:\\P\\B.dproj","configuration":"Debug","active":false}');
+    Assert.AreEqual(2, Changed);
+    Assert.AreEqual('C:\P\A.dproj', Store.ActiveProject);
+    // Wechsel des aktiven Projekts: gemerkt, aber kein neues Laden.
+    Notify(Dispatcher, '{"project":"C:\\P\\A.dproj","configuration":"Debug","active":false}');
+    Assert.AreEqual('', Store.ActiveProject);
+    Notify(Dispatcher, '{"project":"C:\\P\\B.dproj","configuration":"Debug","active":true}');
+    Assert.AreEqual('C:\P\B.dproj', Store.ActiveProject);
+    Assert.AreEqual(2, Changed);
   finally
     Dispatcher.Free;
     Store.Free;
