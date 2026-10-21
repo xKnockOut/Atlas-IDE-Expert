@@ -252,6 +252,14 @@
       "x-captionEn": "Diagnostic mode",
       "x-issue": "#479"
     },
+    "DiagnosticsProcesses": {
+      "type": "boolean",
+      "default": true,
+      "x-key": "diagnostics.processes",
+      "x-area": "general",
+      "x-page": "Allgemein",
+      "x-issue": "#62"
+    },
     "ExperimentalEnabled": {
       "type": "boolean",
       "default": false,

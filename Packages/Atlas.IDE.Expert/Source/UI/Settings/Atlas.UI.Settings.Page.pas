@@ -205,6 +205,8 @@ type
     FProblemsStatusCounter: TCheckBox;
     FStatusField: TCheckBox;
     FDiagnosticMode: TCheckBox;
+    /// <summary>„Prozesse am Projekt…“ (#62).</summary>
+    FDiagnosticsProcesses: TCheckBox;
     FSetupChecklist: TCheckBox;
     FShortcutTips: TCheckBox;
     FShortcutTipsScope: TAtlasChoiceBox;
@@ -1252,6 +1254,8 @@ begin
   FStatusHidden.Width := 180;
   // Diagnosemodus (#479); Taste auf der Seite „Tastenkonflikte“.
   FDiagnosticMode := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsDiagnosticMode));
+  // Menüeintrag „Prozesse am Projekt…“ (#62).
+  FDiagnosticsProcesses := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsDiagnosticsProcesses));
   // Prüfliste der Einrichtung beim Start (#625); aus: nur auf Abruf.
   FSetupChecklist := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsSetupChecklist));
   // Hauptschalter der experimentellen Funktionen (#834).
@@ -2510,6 +2514,7 @@ begin
   FMarks.Bind(FProblemsStatusCounter, ['ProblemsStatusCounter']);
   FMarks.Bind(FStatusField, ['StatusField']);
   FMarks.Bind(FDiagnosticMode, ['DiagnosticMode']);
+  FMarks.Bind(FDiagnosticsProcesses, ['DiagnosticsProcesses']);
   FMarks.Bind(FExperimentalEnabled, ['ExperimentalEnabled']);
   FMarks.Bind(FSetupChecklist, ['SetupChecklist']);
   FMarks.Bind(FShortcutTips, ['ShortcutTips']);
@@ -4430,6 +4435,7 @@ begin
   FProblemsStatusCounter.Checked := ASettings.ProblemsStatusCounter;
   FStatusField.Checked := ASettings.StatusField;
   FDiagnosticMode.Checked := ASettings.DiagnosticMode;
+  FDiagnosticsProcesses.Checked := ASettings.DiagnosticsProcesses;
   FExperimentalEnabled.Checked := ASettings.ExperimentalEnabled;
   // Checked löst OnClick nur bei einer Änderung aus.
   FHangTestRow.Visible := ASettings.DiagnosticMode;
@@ -4801,6 +4807,7 @@ begin
   ASettings.ProblemsStatusCounter := FProblemsStatusCounter.Checked;
   ASettings.StatusField := FStatusField.Checked;
   ASettings.DiagnosticMode := FDiagnosticMode.Checked;
+  ASettings.DiagnosticsProcesses := FDiagnosticsProcesses.Checked;
   ASettings.ExperimentalEnabled := FExperimentalEnabled.Checked;
   ASettings.SetupChecklist := FSetupChecklist.Checked;
   ASettings.ShortcutTips := FShortcutTips.Checked;
