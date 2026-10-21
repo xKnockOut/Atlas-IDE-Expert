@@ -237,6 +237,19 @@ type
     /// <summary>„Element ausblenden …“ (#628, TShortCut, 0 = keins; Vorgabe Strg+.): Menü „Ausblenden“ für das von
     /// Atlas gezeichnete Element in der Cursorzeile; ohne Element geht die Taste an die IDE (IDE Insight).</summary>
     HideElementKey: Integer;
+    /// <summary>Atlas-Suche ersetzt die IDE-Suche (#878, search.replaceIdeSearch): Strg+F öffnet im Editor den
+    /// Atlas-Suchdialog, F3/Umschalt+F3 springen in der zuletzt benutzten Atlas-Suche; aus = Suchen der IDE wie
+    /// bisher. Vorgabe an.</summary>
+    SearchReplaceIde: Boolean;
+    /// <summary>Taste für den Atlas-Suchdialog (#878, TShortCut, 0 = keine; Vorgabe Strg+F).</summary>
+    SearchKey: Integer;
+    /// <summary>Nächster Treffer der letzten Atlas-Suche (#878; Vorgabe F3).</summary>
+    SearchNextKey: Integer;
+    /// <summary>Voriger Treffer der letzten Atlas-Suche (#878; Vorgabe Umschalt+F3).</summary>
+    SearchPreviousKey: Integer;
+    /// <summary>„In Methode suchen“ (#877): Suchdialog mit Bereich Methode und dem Bezeichner am Cursor; gilt
+    /// auch mit search.replaceIdeSearch aus (Vorgabe Strg+Umschalt+Alt+F).</summary>
+    SearchMethodKey: Integer;
     /// <summary>Pfad zu AtlasServer.exe; leer: neben dem Plugin bzw. Output\Win64\Debug\Bin.</summary>
     ServerPath: string;
     /// <summary>Blocklinien in den Paarfarben statt der Strukturhervorhebung der IDE (#514).</summary>
@@ -1091,6 +1104,11 @@ begin
   Result.BookmarksShared := False;
   Result.BookmarkKey := $C04B; // Strg+Alt+K
   Result.HideElementKey := $40BE; // Strg+.
+  Result.SearchReplaceIde := True;
+  Result.SearchKey := $4046; // Strg+F
+  Result.SearchNextKey := $72; // F3
+  Result.SearchPreviousKey := $2072; // Umschalt+F3
+  Result.SearchMethodKey := $E046; // Strg+Umschalt+Alt+F
   Result.ServerPath := '';
   Result.PairGuides := True;
   Result.PairOwners := True;
@@ -1493,6 +1511,10 @@ begin
   InlineDiagnostics := Choice(InlineDiagnostics, ['errors', 'off', 'errorsAndWarnings', 'all']);
   NextProblemKey := EnsureRange(NextProblemKey, 0, $FFFF);
   PreviousProblemKey := EnsureRange(PreviousProblemKey, 0, $FFFF);
+  SearchKey := EnsureRange(SearchKey, 0, $FFFF);
+  SearchNextKey := EnsureRange(SearchNextKey, 0, $FFFF);
+  SearchPreviousKey := EnsureRange(SearchPreviousKey, 0, $FFFF);
+  SearchMethodKey := EnsureRange(SearchMethodKey, 0, $FFFF);
   GenerateMenuKey := EnsureRange(GenerateMenuKey, 0, $FFFF);
   GenerateMenuGroups := TAtlasGenerateLists.NormalizeGroups(GenerateMenuGroups);
   GenerateMenuHidden := TAtlasGenerateLists.NormalizeHidden(GenerateMenuHidden);
@@ -1577,6 +1599,11 @@ begin
   BookmarksShared := AStore.ReadInteger('BookmarksShared', BoolValue(Default.BookmarksShared)) <> 0;
   BookmarkKey := AStore.ReadInteger('BookmarkKey', Default.BookmarkKey);
   HideElementKey := AStore.ReadInteger('HideElementKey', Default.HideElementKey);
+  SearchReplaceIde := AStore.ReadInteger('SearchReplaceIde', BoolValue(Default.SearchReplaceIde)) <> 0;
+  SearchKey := AStore.ReadInteger('SearchKey', Default.SearchKey);
+  SearchNextKey := AStore.ReadInteger('SearchNextKey', Default.SearchNextKey);
+  SearchPreviousKey := AStore.ReadInteger('SearchPreviousKey', Default.SearchPreviousKey);
+  SearchMethodKey := AStore.ReadInteger('SearchMethodKey', Default.SearchMethodKey);
   ServerPath := Trim(AStore.ReadString('ServerPath', Default.ServerPath));
   PairGuides := AStore.ReadInteger('PairGuides', BoolValue(Default.PairGuides)) <> 0;
   PairOwners := AStore.ReadInteger('PairOwners', BoolValue(Default.PairOwners)) <> 0;
@@ -1915,6 +1942,11 @@ begin
   AStore.WriteInteger('BookmarksShared', BoolValue(BookmarksShared));
   AStore.WriteInteger('BookmarkKey', BookmarkKey);
   AStore.WriteInteger('HideElementKey', HideElementKey);
+  AStore.WriteInteger('SearchReplaceIde', BoolValue(SearchReplaceIde));
+  AStore.WriteInteger('SearchKey', SearchKey);
+  AStore.WriteInteger('SearchNextKey', SearchNextKey);
+  AStore.WriteInteger('SearchPreviousKey', SearchPreviousKey);
+  AStore.WriteInteger('SearchMethodKey', SearchMethodKey);
   AStore.WriteString('ServerPath', Trim(ServerPath));
   AStore.WriteInteger('PairGuides', BoolValue(PairGuides));
   AStore.WriteInteger('PairOwners', BoolValue(PairOwners));

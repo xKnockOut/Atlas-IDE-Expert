@@ -535,6 +535,10 @@
         <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\UnitSearch\Atlas.Core.UnitSearch.Model.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\UnitSearch\Atlas.Core.UnitSearch.State.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.UnitSearch.Tests.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\UnitSearch\Atlas.Core.UnitSearch.Sections.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.Core.UnitSearch.Sections.Tests.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\UI\UnitSearch\Atlas.UI.UnitSearch.Window.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.UI.UnitSearch.Window.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Forms\Atlas.Core.Forms.Text.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Forms\Atlas.Core.Forms.Changes.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Forms.Tests.pas"/>
@@ -751,6 +755,9 @@
         <DCCReference Include="IDE.Expert\Atlas.Core.Editor.Minimap.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\UI\Editor\Atlas.UI.Editor.Minimap.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.UI.Editor.Minimap.Tests.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Search\Atlas.Core.Search.Matching.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Search\Atlas.Core.Search.Scopes.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.Core.Search.Tests.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Editor.SnapshotPolicy.Tests.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Editor.CloseRules.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Build\Atlas.Core.Build.Messages.pas"/>

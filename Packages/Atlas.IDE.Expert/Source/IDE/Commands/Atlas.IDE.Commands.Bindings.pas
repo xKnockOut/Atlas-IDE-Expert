@@ -29,6 +29,12 @@
 // bleibt es bei „Erneut suchen“ der IDE. Strg+. (HideElementKey, #628) öffnet
 // das Menü „Ausblenden“ zu den Elementen der Zeile; ohne Element geht die Taste
 // an die IDE (IDE Insight).
+// Atlas-Suche (#878, search.replaceIdeSearch): Strg+F öffnet den
+// Atlas-Suchdialog, F3/Umschalt+F3 springen in der letzten Atlas-Suche; ohne
+// letzte Atlas-Suche bleibt es bei Markierung suchen bzw. der IDE. Die Tasten
+// sind bewusst übernommen (ohne Konfliktprüfung, wie Strg+F12 bei „Units
+// suchen“); mit dem Schalter aus belegt Atlas sie nicht. „In Methode suchen“
+// (#877, SearchMethodKey) ist ein gewöhnlicher Editorbefehl.
 
 interface
 
@@ -95,6 +101,7 @@ uses
   Atlas.IDE.Editor.NavHistory,
   Atlas.IDE.Results.Peek,
   Atlas.IDE.UnitSearch.Commands,
+  Atlas.IDE.Search.Commands,
   Atlas.IDE.Undo.Changes,
   Atlas.IDE.Bookmarks.Service,
   Atlas.IDE.Generate.Commands,
@@ -300,6 +307,40 @@ begin
         Result := TAtlasIdeEditorCommands.TryToggleMethod;
       end);
   end;
+  // Atlas-Suche (#878): vor F3 der Markierungssuche angemeldet, damit sie bei gleicher Taste gewinnt (AddAttemptKey
+  // bindet jede Taste nur einmal); ohne letzte Atlas-Suche weiter wie bisher.
+  if Settings.SearchReplaceIde then
+  begin
+    if Settings.SearchKey <> 0 then
+      AddAttemptKey(Settings.SearchKey, TAtlasStrings.Text(TAtlasTextId.SearchCommand),
+        function: Boolean
+        begin
+          // Der Dialog erst nach der Tastenverarbeitung.
+          TAtlasMainThread.ForceQueue(TAtlasFeature.EditorCommands,
+            procedure
+            begin
+              TAtlasGuard.Run(TAtlasFeature.EditorCommands, TAtlasIdeSearch.Show);
+            end);
+          Result := True;
+        end, False);
+    if Settings.SearchNextKey <> 0 then
+      AddAttemptKey(Settings.SearchNextKey, TAtlasStrings.Text(TAtlasTextId.SearchNextCommand),
+        function: Boolean
+        begin
+          Result := TAtlasIdeSearch.TryNext(False) or TAtlasIdeEditorCommands.TryFindSelection(False);
+        end, False);
+    if Settings.SearchPreviousKey <> 0 then
+      AddAttemptKey(Settings.SearchPreviousKey, TAtlasStrings.Text(TAtlasTextId.SearchPreviousCommand),
+        function: Boolean
+        begin
+          Result := TAtlasIdeSearch.TryNext(True) or TAtlasIdeEditorCommands.TryFindSelection(True);
+        end, False);
+  end;
+  AddKey(Settings.SearchMethodKey, TAtlasStrings.Text(TAtlasTextId.SearchInMethodCommand),
+    procedure
+    begin
+      TAtlasIdeSearch.ShowInMethod;
+    end);
   // Markierung suchen: F3 bzw. Umschalt+F3 mit einzeiliger Markierung; sonst „Erneut suchen“ der IDE.
   AddAttemptKey(ShortCut(VK_F3, []), 'F3',
     function: Boolean

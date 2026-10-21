@@ -910,6 +910,52 @@
       "x-page": "Befehle",
       "x-issue": "#509"
     },
+    "SearchReplaceIde": {
+      "type": "boolean",
+      "default": true,
+      "x-key": "search.replaceIdeSearch",
+      "x-area": "editor",
+      "x-page": "Befehle",
+      "x-control": "Kontrollkästchen",
+      "description": "Atlas-Suche ersetzt die IDE-Suche: Strg+F öffnet im Editor den Atlas-Suchdialog (Bereich Methode, Unit, Auswahl; Groß-/Kleinschreibung, ganzes Wort, Bezeichner statt Text), F3/Umschalt+F3 springen zum nächsten/vorigen Treffer der letzten Atlas-Suche; aus = Suchen der IDE wie bisher",
+      "x-issue": "#878"
+    },
+    "SearchKey": {
+      "type": "integer",
+      "default": 16454,
+      "x-key": "keys.search",
+      "x-area": "keys",
+      "x-format": "shortcut",
+      "x-page": "Befehle",
+      "x-issue": "#878"
+    },
+    "SearchNextKey": {
+      "type": "integer",
+      "default": 114,
+      "x-key": "keys.searchNext",
+      "x-area": "keys",
+      "x-format": "shortcut",
+      "x-page": "Befehle",
+      "x-issue": "#878"
+    },
+    "SearchPreviousKey": {
+      "type": "integer",
+      "default": 8306,
+      "x-key": "keys.searchPrevious",
+      "x-area": "keys",
+      "x-format": "shortcut",
+      "x-page": "Befehle",
+      "x-issue": "#878"
+    },
+    "SearchMethodKey": {
+      "type": "integer",
+      "default": 57414,
+      "x-key": "keys.searchInMethod",
+      "x-area": "keys",
+      "x-format": "shortcut",
+      "x-page": "Befehle",
+      "x-issue": "#877"
+    },
     "ServerPath": {
       "type": "string",
       "default": "",

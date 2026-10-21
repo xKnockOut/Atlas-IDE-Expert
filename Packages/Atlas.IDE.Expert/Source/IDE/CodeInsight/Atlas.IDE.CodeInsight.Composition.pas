@@ -89,6 +89,7 @@ uses
   Atlas.IDE.Editor.OverviewRuler,
   Atlas.IDE.Editor.Minimap,
   Atlas.IDE.UnitSearch.Commands,
+  Atlas.IDE.Search.Commands,
   Atlas.IDE.Generate.Commands,
   Atlas.IDE.Generate.NewFile,
   Atlas.Core.Generate.FileTemplates,
@@ -1272,6 +1273,12 @@ begin
       TAtlasIdeUnitSearch.Show;
     end);
   Add('Atlas.UnitSearchIde', TAtlasTextId.UnitSearchIdeDialog, TAtlasIdeUnitSearch.ShowIdeDialog);
+  // Atlas-Suche (#877, #878).
+  Add('Atlas.Search', TAtlasTextId.SearchCommand, TAtlasIdeSearch.Show);
+  Add('Atlas.SearchInMethod', TAtlasTextId.SearchInMethodCommand, TAtlasIdeSearch.ShowInMethod);
+  Add('Atlas.SearchNext', TAtlasTextId.SearchNextCommand, TAtlasIdeSearch.FindNext);
+  Add('Atlas.SearchPrevious', TAtlasTextId.SearchPreviousCommand, TAtlasIdeSearch.FindPrevious);
+  Add('Atlas.SearchClear', TAtlasTextId.SearchClearCommand, TAtlasIdeSearch.ClearHighlights);
   Add('Atlas.ResetHistory', TAtlasTextId.PaletteResetHistory, TAtlasIdeHistory.Reset);
   // Metrikbericht des Projekts (#66); nur sichtbar, solange die Einstellung MetricsReport an ist.
   Add('Atlas.MetricsReport', TAtlasTextId.MetricsReportCommand, MetricsReport, MetricsReportVisible);
@@ -2244,6 +2251,12 @@ begin
     begin
       GuardWarning(AText);
     end);
+  // Atlas-Suche (#877, #878): Hervorhebung der Treffer und Meldungen.
+  TAtlasIdeSearch.Install(
+    procedure(AText: string)
+    begin
+      GuardWarning(AText);
+    end);
 end;
 
 procedure StopCommands;
@@ -2265,6 +2278,7 @@ begin
   TAtlasIdeOutline.Uninstall;
   TAtlasIdeOutlineCache.Uninstall;
   TAtlasIdeNavHistory.Uninstall;
+  TAtlasIdeSearch.Uninstall;
   TAtlasIdeUnitSearch.Uninstall;
   TAtlasIdeGenerate.Uninstall;
   TAtlasEditorTestUnitLens.OnSwitchTestUnit := nil;
