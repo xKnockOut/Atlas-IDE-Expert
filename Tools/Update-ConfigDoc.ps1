@@ -485,7 +485,7 @@ $Targets = @(
 )
 foreach ($Target in $Targets) {
     $Current = if (Test-Path $Target.Path) { [IO.File]::ReadAllText($Target.Path, $Utf8).Replace("`r`n", "`n") } else { '' }
-    if ($Current -eq $Target.Text) { continue }
+    if ($Current -ceq $Target.Text) { continue }
     if ($Check) { $Problems.Add("$($Target.Name) ist veraltet: pwsh Tools/Update-ConfigDoc.ps1 ausführen") }
     else {
         [IO.File]::WriteAllText($Target.Path, $Target.Text, $Utf8)
@@ -493,6 +493,12 @@ foreach ($Target in $Targets) {
     }
 }
 # --- Pascal-Units mit eingebettetem JSON: UTF-8 mit BOM, CRLF ---
+# Mit -Check zählt nur der Inhalt, nicht das Zeilenende des Checkouts (#888);
+# beim Schreiben wird eine Unit mit LF auf CRLF gebracht.
+function Same-Unit([string] $Current, [string] $Text) {
+    if ($Check) { return $Current.Replace("`r`n", "`n") -ceq $Text.Replace("`r`n", "`n") }
+    return $Current -ceq $Text
+}
 function Pascal-Lines([string] $Name, [string] $Source) {
     $Lines = $Source.TrimStart([char]0xFEFF).Replace("`r`n", "`n").TrimEnd("`n").Split("`n")
     $Result = @("  $Name`: array[0..$($Lines.Count - 1)] of string = (")
@@ -509,7 +515,7 @@ function Pascal-Lines([string] $Name, [string] $Source) {
 function Sync-Unit([string] $Path, [string[]] $Lines) {
     $Text = ($Lines -join "`r`n") + "`r`n"
     $Current = if (Test-Path $Path) { [IO.File]::ReadAllText($Path, $Utf8).TrimStart([char]0xFEFF) } else { '' }
-    if ($Current -eq $Text) { return }
+    if (Same-Unit $Current $Text) { return }
     if ($Check) { $Problems.Add("$(Split-Path -Leaf $Path) ist veraltet: pwsh Tools/Update-ConfigDoc.ps1 ausführen") }
     else {
         [IO.File]::WriteAllText($Path, $Text, (New-Object System.Text.UTF8Encoding($true)))
@@ -611,7 +617,7 @@ else { $ScopeLines += '  Result := [' + (($ServerExperimental | ForEach-Object {
 $ScopeLines += @('end;', '', 'end.')
 $ScopeText = ($ScopeLines -join "`r`n") + "`r`n"
 $CurrentScope = if (Test-Path $ScopeUnitPath) { [IO.File]::ReadAllText($ScopeUnitPath, $Utf8).TrimStart([char]0xFEFF) } else { '' }
-if ($CurrentScope -ne $ScopeText) {
+if (-not (Same-Unit $CurrentScope $ScopeText)) {
     if ($Check) { $Problems.Add('Atlas.Common.Configuration.Internals.ScopeData.pas ist veraltet: pwsh Tools/Update-ConfigDoc.ps1 ausführen') }
     else {
         [IO.File]::WriteAllText($ScopeUnitPath, $ScopeText, (New-Object System.Text.UTF8Encoding($true)))
