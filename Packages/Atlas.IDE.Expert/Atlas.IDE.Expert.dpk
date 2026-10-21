@@ -144,6 +144,7 @@ contains
   Atlas.IDE.Editor.ChangeSignature in 'Source\IDE\Editor\Atlas.IDE.Editor.ChangeSignature.pas',
   Atlas.IDE.Editor.MoveClass in 'Source\IDE\Editor\Atlas.IDE.Editor.MoveClass.pas',
   Atlas.IDE.Editor.PropertyFromAccessors in 'Source\IDE\Editor\Atlas.IDE.Editor.PropertyFromAccessors.pas',
+  Atlas.IDE.Editor.InvertBoolean in 'Source\IDE\Editor\Atlas.IDE.Editor.InvertBoolean.pas',
   Atlas.IDE.Foundation.KeyHook in 'Source\IDE\Foundation\Atlas.IDE.Foundation.KeyHook.pas',
   Atlas.IDE.Signature.Editor in 'Source\IDE\Signature\Atlas.IDE.Signature.Editor.pas',
   Atlas.IDE.Completion.Editor in 'Source\IDE\Completion\Atlas.IDE.Completion.Editor.pas',
