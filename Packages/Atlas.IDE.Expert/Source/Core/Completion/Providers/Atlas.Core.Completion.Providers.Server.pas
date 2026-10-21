@@ -191,8 +191,9 @@ begin
     Result.HasParameters := Data.GetValue('parameters') is TJSONTrue;
     Result.ExpectedType := Data.GetValue<string>('expected', '');
     Result.Fits := Data.GetValue('fits') is TJSONTrue;
-    // Neue Methode (#444) und Deklarationen unbekannter Namen (#471) erzeugen Code und stehen am Ende.
-    Result.IsAction := MatchText(Data.GetValue<string>('action', ''), ['create', 'declare']);
+    // Neue Methode (#444), Deklarationen unbekannter Namen (#471) und „Parameter abgleichen“ (#88) erzeugen
+    // Code und stehen am Ende; ihre Zusatzänderungen gelten auch ohne automatische uses-Einträge.
+    Result.IsAction := MatchText(Data.GetValue<string>('action', ''), ['create', 'declare', 'docParams']);
     // Postfix-Vorlagen (#188): Der Server filtert über "Ausdruck.Kürzel"; getippt ist hier nur das Wort hinter
     // dem Punkt, also gilt der Teil nach dem letzten Punkt.
     Result.Postfix := Data.GetValue<string>('action', '') = 'postfix';
