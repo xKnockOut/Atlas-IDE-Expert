@@ -1240,6 +1240,53 @@
             "crlf"
           ],
           "description": "Zeilenenden vereinheitlichen; ohne Angabe bleiben sie."
+        },
+        "reindent": {
+          "type": "boolean",
+          "default": true,
+          "description": "Zeilen nach der Blockstruktur einrücken (begin/end, try, case, repeat, Abschnitte). Ausgeschaltet bleibt die vorhandene Einrückung und nur Tabs und Leerzeichen werden umgerechnet."
+        },
+        "beginPlacement": {
+          "type": "string",
+          "enum": [
+            "preserve",
+            "newLine",
+            "sameLine"
+          ],
+          "default": "preserve",
+          "description": "begin nach then, else und do: wie vorhanden, in einer eigenen Zeile oder in derselben Zeile."
+        },
+        "elsePlacement": {
+          "type": "string",
+          "enum": [
+            "preserve",
+            "newLine",
+            "sameLine"
+          ],
+          "default": "preserve",
+          "description": "else nach end: wie vorhanden, in einer eigenen Zeile oder in derselben Zeile (end else)."
+        },
+        "maxLineLength": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 1000,
+          "default": 0,
+          "description": "Längere Zeilen nach einem Komma oder vor einem Operator umbrechen; 0 = nie. Gesetzt hat es Vorrang vor max_line_length aus .editorconfig."
+        },
+        "alignAssignments": {
+          "type": "boolean",
+          "default": false,
+          "description": ":= untereinander stehender Zuweisungen ausrichten."
+        },
+        "alignDeclarations": {
+          "type": "boolean",
+          "default": false,
+          "description": "Doppelpunkte bzw. = untereinander stehender Deklarationen (var, const, Felder, Parameter) ausrichten."
+        },
+        "alignComments": {
+          "type": "boolean",
+          "default": false,
+          "description": "Kommentare am Zeilenende untereinander stehender Zeilen ausrichten."
         }
       },
       "x-scope": "project",

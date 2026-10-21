@@ -595,7 +595,8 @@ type
     SettingsMinimapSliderHover, SettingsMinimapHeaders, SettingsMinimapMethod, SettingsMinimapMarkers,
     SettingsMinimapClickJumps, MinimapNoticeTitle, MinimapNoticeText, MinimapHideIde, MinimapTurnOff,
     SettingsIndexAsking, BugReportCollecting, SettingsLockedExperimental, SettingsLockedMaster,
-    SettingsOverviewTitle, SettingsOverviewDetails);
+    SettingsOverviewTitle, SettingsOverviewDetails, FormatCodeCommand, SettingsFormatCode, FormatCodeNothing,
+    FormatCodeOff, UndoActionFormat);
 
   TAtlasStrings = class
   private class var
@@ -1718,7 +1719,8 @@ const
      'Atlas-Minimap aus',
      'Frage den Server …', 'Atlas: Fehlerbericht wird zusammengestellt …',
      'gesperrt: Experimentelle Funktionen sind aus', 'gesperrt: „%s“ (%s) ist aus', 'Funktionen in diesem Bereich',
-     'Details'),
+     'Details', 'Formatieren', 'Formatieren mit Atlas (ganze Datei bzw. Auswahl)', 'Atlas: Nichts zu formatieren.',
+     'Atlas: „Formatieren“ ist ausgeschaltet (Tools › Optionen › Atlas › Editor).', 'Formatieren'),
     ('Enter to accept · Esc to close', '%d of %d', 'No matches for “%s”', 'Backspace widens the search',
      'No suggestions here', 'Esc closes', 'No details for this entry', 'Overload', 'Deprecated: %s', 'Deprecated.',
      'Inherited from %s', 'Inherited', 'optional, default %s', 'No overload with %d parameters.', '… %d more',
@@ -2758,7 +2760,8 @@ const
      'The IDE shows its own minimap next to the Atlas one.', 'Hide IDE minimap', 'Turn Atlas minimap off',
      'Asking the server …', 'Atlas: collecting the bug report …',
      'locked: experimental features are off', 'locked: “%s” (%s) is off', 'Features in this area',
-     'Details'));
+     'Details', 'Format', 'Format with Atlas (whole file or selection)', 'Atlas: Nothing to format.',
+     'Atlas: “Format” is switched off (Tools › Options › Atlas › Editor).', 'Format'));
 
 { TAtlasStrings }
 

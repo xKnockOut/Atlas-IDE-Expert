@@ -197,6 +197,8 @@ uses
   Atlas.Common.Lsp.DfmPropertyRules.Tests in 'Common\Lsp\Atlas.Common.Lsp.DfmPropertyRules.Tests.pas',
   Atlas.Common.Lsp.ChangeSignature.Tests in 'Common\Lsp\Atlas.Common.Lsp.ChangeSignature.Tests.pas',
   Atlas.Common.Editing.Formatter.Tests in 'Common\Editing\Atlas.Common.Editing.Formatter.Tests.pas',
+  Atlas.Common.Editing.Formatter.Indent.Tests in 'Common\Editing\Atlas.Common.Editing.Formatter.Indent.Tests.pas',
+  Atlas.Common.Editing.Formatter.Layout.Tests in 'Common\Editing\Atlas.Common.Editing.Formatter.Layout.Tests.pas',
   Atlas.Common.Editing.CodeActions.Tests in 'Common\Editing\Atlas.Common.Editing.CodeActions.Tests.pas',
   Atlas.Core.Lsp.Client in '..\Packages\Atlas.IDE.Expert\Source\Core\Lsp\Atlas.Core.Lsp.Client.pas',
   Atlas.Core.Lsp.Contract in '..\Packages\Atlas.IDE.Expert\Source\Core\Lsp\Atlas.Core.Lsp.Contract.pas',

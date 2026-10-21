@@ -262,6 +262,8 @@ contains
   Atlas.Common.Mcp.CodeTools in 'Source\Mcp\Atlas.Common.Mcp.CodeTools.pas',
   Atlas.Common.Lsp.FormFiles in 'Source\Lsp\Atlas.Common.Lsp.FormFiles.pas',
   Atlas.Common.Editing.EditorConfig in 'Source\Editing\Atlas.Common.Editing.EditorConfig.pas',
+  Atlas.Common.Editing.Formatter.Indent in 'Source\Editing\Atlas.Common.Editing.Formatter.Indent.pas',
+  Atlas.Common.Editing.Formatter.Layout in 'Source\Editing\Atlas.Common.Editing.Formatter.Layout.pas',
   Atlas.Common.Editing.Formatter in 'Source\Editing\Atlas.Common.Editing.Formatter.pas',
   Atlas.Common.Lsp.CodeActions in 'Source\Lsp\Atlas.Common.Lsp.CodeActions.pas',
   Atlas.Common.Lsp.TestUnits in 'Source\Lsp\Atlas.Common.Lsp.TestUnits.pas',

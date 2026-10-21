@@ -320,6 +320,8 @@ begin
       Id := TAtlasTextId.MultiCursorAboveCommand;
     TAtlasKeyFunction.MultiCursorBelow:
       Id := TAtlasTextId.MultiCursorBelowCommand;
+    TAtlasKeyFunction.FormatCode:
+      Id := TAtlasTextId.FormatCodeCommand;
   else
     Id := TAtlasTextId.KeyMapUnitSearchIde;
   end;

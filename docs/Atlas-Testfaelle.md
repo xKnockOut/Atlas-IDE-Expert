@@ -2582,3 +2582,20 @@ Vorher: Projekt mit Index geladen, eine Unit mit `uses System.SysUtils, System.C
 | AB5 | `/exception EImportFehler : EBasis` im type-Abschnitt | `EImportFehler = class(EBasis);` |
 | AB6 | `slashCommands.logCall` = `Log.Error`, `/except` über zwei Anweisungen | `try … except on E: Exception do begin Log.Error(E.ClassName + ': ' + E.Message); raise; end; end;` |
 | AB7 | `/except` im interface-Teil oder ohne Anweisungen darunter | Zeile bleibt mit Hinweis |
+
+## Formatieren (#43)
+
+| Nr. | Schritt | Erwartet |
+|---|---|---|
+| FO1 | Unit mit falsch eingerückten Zeilen (begin/end, if/else ohne begin, try/finally, case, repeat, Klassenrumpf), Strg+Umschalt+Alt+F | Jede Ebene um `indentSize` eingerückt; Folgezeilen einer Anweisung behalten ihren Abstand; ein Rückgängig stellt alles wieder her |
+| FO2 | FO1 ein zweites Mal | Meldung „Atlas: Nichts zu formatieren.“, keine Änderung |
+| FO3 | Drei Zeilen markieren, Strg+Umschalt+Alt+F | Nur die markierten Zeilen ändern sich |
+| FO4 | Mehrzeiliger Kommentar, String mit Leerzeichen, asm-Block, `{$IFDEF} … {$ELSE} … {$ENDIF}` mit schiefer Einrückung im Zweig hinter `{$ELSE}` | Alles davon bleibt unverändert |
+| FO5 | `format.beginPlacement` = `newLine`, `if A then begin` | `begin` in eigener Zeile unter `if`; was hinter `begin` stand, eine Ebene tiefer in eigener Zeile |
+| FO6 | `format.beginPlacement` = `sameLine`, `begin` allein unter `if A then` | `if A then begin` in einer Zeile |
+| FO7 | `format.elsePlacement` = `newLine` bzw. `sameLine` | `end else` getrennt bzw. `end` und `else` zusammengezogen |
+| FO8 | `format.maxLineLength` = 80 (oder `max_line_length = 80` in `.editorconfig`), Aufruf mit vielen Argumenten über 100 Zeichen | Umbruch nach dem letzten passenden Komma, Folgezeile eine Ebene tiefer; Strings werden nie geteilt |
+| FO9 | `format.alignAssignments`, `alignDeclarations`, `alignComments` an | `:=`, Doppelpunkte bzw. `=` und Kommentare am Zeilenende untereinander stehender Zeilen stehen in einer Spalte; eine Leerzeile beendet die Gruppe |
+| FO10 | `format.reindent` = `false` | Einrückung bleibt, nur Tabs und Leerzeichen werden nach `indentSize`/`useTabs` umgerechnet |
+| FO11 | *Tools › Optionen › Atlas › Editor › Formatieren* aus | Menüeintrag, Palette und Taste fehlen; Kontextmenü meldet „ausgeschaltet“ |
+| FO12 | Mehrfachmarken an, Strg+D auf einem Wort | Mehrfachmarke wie bisher; Formatieren nur über die eigene Taste |

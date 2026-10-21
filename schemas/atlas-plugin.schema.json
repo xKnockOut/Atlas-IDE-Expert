@@ -102,6 +102,10 @@
       "caption": "Anweisung vervollständigen",
       "captionEn": "Complete statement"
     },
+    "editor.format": {
+      "caption": "Formatieren",
+      "captionEn": "Format"
+    },
     "editor.multiCursor": {
       "caption": "Mehrere Einfügemarken",
       "captionEn": "Multiple carets"
@@ -1500,6 +1504,28 @@
       "x-area": "editor",
       "x-page": "Editor",
       "x-issue": "#697"
+    },
+    "FormatCode": {
+      "description": "Befehl „Formatieren“ (Strg+Umschalt+Alt+F, Menü Atlas, Kontextmenü, Befehlspalette): formatiert die ganze Datei bzw. die Zeilen der Auswahl nach den Regeln unter format in atlas.json und .editorconfig. RAD Studio 13 hat keinen eigenen Formatierer mehr; Strg+D gehört den Mehrfachmarken. Aus = Befehl und Taste fehlen.",
+      "type": "boolean",
+      "default": true,
+      "x-key": "editor.format",
+      "x-area": "editor",
+      "x-feature": "EditorCommands",
+      "x-page": "Editor",
+      "x-node": "editor.format",
+      "x-issue": "#43"
+    },
+    "FormatCodeKey": {
+      "description": "Tastenkürzel „Formatieren“ (0 = keins).",
+      "type": "integer",
+      "default": 57414,
+      "x-key": "keys.format",
+      "x-area": "keys",
+      "x-format": "shortcut",
+      "x-page": "Editor",
+      "x-parent": "editor.format",
+      "x-issue": "#43"
     },
     "ContinuePattern": {
       "description": "Nach Enter die nächste Zeile eines erkannten Musters als Schattentext vorschlagen (Zahlen-, Zeichen- und Aufzählungsfolgen, nummerierte Bezeichner); Tab übernimmt, Weitertippen verwirft.",
