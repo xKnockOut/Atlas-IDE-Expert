@@ -450,6 +450,7 @@
         <DCCReference Include="IDE.Expert\Atlas.Core.Settings.SchemaCheck.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Settings\Atlas.Core.Settings.Baseline.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Settings.Layers.Tests.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.Core.Settings.RuleTable.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\UI\Settings\Atlas.UI.Settings.ServerPage.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\UI\Settings\Atlas.UI.Settings.ProjectDialog.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Completion\Atlas.Core.Completion.Ranking.pas"/>

@@ -357,6 +357,7 @@ uses
   Atlas.Core.Settings.SchemaCheck.Tests in 'IDE.Expert\Atlas.Core.Settings.SchemaCheck.Tests.pas',
   Atlas.Core.Settings.Baseline in '..\Packages\Atlas.IDE.Expert\Source\Core\Settings\Atlas.Core.Settings.Baseline.pas',
   Atlas.Core.Settings.Layers.Tests in 'IDE.Expert\Atlas.Core.Settings.Layers.Tests.pas',
+  Atlas.Core.Settings.RuleTable.Tests in 'IDE.Expert\Atlas.Core.Settings.RuleTable.Tests.pas',
   Atlas.UI.Settings.ServerPage in '..\Packages\Atlas.IDE.Expert\Source\UI\Settings\Atlas.UI.Settings.ServerPage.pas',
   Atlas.UI.Settings.ProjectDialog in '..\Packages\Atlas.IDE.Expert\Source\UI\Settings\Atlas.UI.Settings.ProjectDialog.pas',
   Atlas.Core.Completion.Ranking in '..\Packages\Atlas.IDE.Expert\Source\Core\Completion\Atlas.Core.Completion.Ranking.pas',
