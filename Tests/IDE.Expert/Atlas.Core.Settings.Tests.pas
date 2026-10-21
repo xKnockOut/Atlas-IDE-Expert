@@ -76,6 +76,9 @@ type
     /// <summary>Neue Zeile ober- oder unterhalb (#700): Vorgaben, Speichern und Laden.</summary>
     [Test]
     procedure NewLineAroundOptions;
+    /// <summary>Umschließung entfernen (#657): Vorgaben, Speichern und Laden, Kürzel normalisiert.</summary>
+    [Test]
+    procedure UnwrapOptions;
     /// <summary>Markierung beim Tippen umschließen (#672): Vorgaben, Speichern und Laden.</summary>
     [Test]
     procedure WrapSelectionOptions;
@@ -1698,6 +1701,27 @@ begin
   Loaded.NewLineBelowKey := -5;
   Loaded.Normalize;
   Assert.AreEqual(0, Loaded.NewLineBelowKey);
+end;
+
+procedure TAtlasPluginSettingsTests.UnwrapOptions;
+var
+  Settings, Loaded: TAtlasPluginSettings;
+  Store: IAtlasSettingsStore;
+begin
+  Settings := TAtlasPluginSettings.Defaults;
+  Assert.IsTrue(Settings.Unwrap);
+  Assert.AreEqual($602E, Settings.UnwrapKey, 'Strg+Umschalt+Entf');
+  Settings.Unwrap := False;
+  Settings.UnwrapKey := $402E;
+  Store := TMemoryStore.Create;
+  Settings.Save(Store);
+  Loaded := TAtlasPluginSettings.Defaults;
+  Loaded.Load(Store);
+  Assert.IsFalse(Loaded.Unwrap);
+  Assert.AreEqual($402E, Loaded.UnwrapKey);
+  Loaded.UnwrapKey := $1FFFF;
+  Loaded.Normalize;
+  Assert.AreEqual($FFFF, Loaded.UnwrapKey);
 end;
 
 procedure TAtlasPluginSettingsTests.GitChangeOptions;

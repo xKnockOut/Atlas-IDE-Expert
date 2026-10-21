@@ -106,45 +106,8 @@ uses
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Foundation.EditorBuffer,
   Atlas.IDE.Foundation.EditorSnapshot,
+  Atlas.IDE.Foundation.EditorStyle,
   Atlas.IDE.Foundation.Elements;
-
-/// <summary>ARect halb durchsichtig mit AColor überziehen; der Text bleibt lesbar.</summary>
-procedure Blend(ADC: HDC; const ARect: TRect; AColor: COLORREF; AAlpha: Byte);
-var
-  Memory: HDC;
-  Bitmap, Old: HBITMAP;
-  Func: TBlendFunction;
-begin
-  if (ARect.Right <= ARect.Left) or (ARect.Bottom <= ARect.Top) then
-    Exit;
-  Memory := CreateCompatibleDC(ADC);
-  Bitmap := CreateCompatibleBitmap(ADC, 1, 1);
-  Old := SelectObject(Memory, Bitmap);
-  try
-    SetPixel(Memory, 0, 0, AColor);
-    Func.BlendOp := AC_SRC_OVER;
-    Func.BlendFlags := 0;
-    Func.SourceConstantAlpha := AAlpha;
-    Func.AlphaFormat := 0;
-    AlphaBlend(ADC, ARect.Left, ARect.Top, ARect.Right - ARect.Left, ARect.Bottom - ARect.Top, Memory, 0, 0, 1, 1,
-      Func);
-  finally
-    SelectObject(Memory, Old);
-    DeleteObject(Bitmap);
-    DeleteDC(Memory);
-  end;
-end;
-
-function SampleBack(ACanvas: TCanvas; X, Y: Integer): TAtlasColor;
-var
-  Sample: COLORREF;
-begin
-  Sample := GetPixel(ACanvas.Handle, X, Y);
-  if Sample = CLR_INVALID then
-    Result := TAtlasColor(ColorToRGB(ACanvas.Brush.Color))
-  else
-    Result := TAtlasColor(Sample);
-end;
 
 function OptionsKey(const AOptions: TAtlasSelectionMatchOptions): string;
 begin
@@ -372,7 +335,8 @@ begin
         Context.EditorLineNum);
       Last := Context.EditorState.GetCharacterPosPx(
         TLspSession.IndexToColumn(AText, Match.Character + Match.Length, FTabWidth), Context.EditorLineNum);
-      Blend(DC, TRect.Create(First.Left, Rect.Top, Max(Last.Left, First.Left + 1), Rect.Bottom), Color, MatchAlpha);
+      TAtlasIdeStyle.Blend(DC, TRect.Create(First.Left, Rect.Top, Max(Last.Left, First.Left + 1), Rect.Bottom), Color,
+        MatchAlpha);
     end;
   finally
     RestoreDC(DC, Saved);
@@ -446,7 +410,7 @@ begin
       Exit;
     if not FByLine.TryGetValue(Line, Matches) and (Line <> FSelectionLine) then
       Exit;
-    Back := SampleBack(Context.Canvas, Rect.Right - 2, Rect.Top + 1);
+    Back := TAtlasIdeStyle.SampleBack(Context.Canvas, Rect.Right - 2, Rect.Top + 1);
     if Length(Matches) > 0 then
       PaintMatches(Rect, Context, Text, Matches, Back);
     if Line = FSelectionLine then

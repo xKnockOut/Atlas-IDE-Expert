@@ -358,6 +358,8 @@ begin
       Result := 'Atlas.NewLineBelow';
     TAtlasKeyFunction.NewLineAbove:
       Result := 'Atlas.NewLineAbove';
+    TAtlasKeyFunction.Unwrap:
+      Result := 'Atlas.Unwrap';
   else
     Result := '';
   end;

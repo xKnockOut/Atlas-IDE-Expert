@@ -1175,6 +1175,10 @@ begin
     Assert.AreEqual(ShortCutToText($C00D), Page.NewLineAboveKey.Text);
     Assert.IsTrue(Page.NewLineAroundStatementAware.Checked);
     Page.NewLineAroundStatementAware.Checked := False;
+    // Umschließung entfernen (#657).
+    Assert.IsTrue(Page.Unwrap.Checked, 'Umschließung entfernen standardmäßig an (#657)');
+    Assert.AreEqual(ShortCutToText($602E), Page.UnwrapKey.Text);
+    Page.Unwrap.Checked := False;
     // Markierung beim Tippen umschließen (#672).
     Assert.IsTrue(Page.WrapSelection.Checked, 'Umschließen standardmäßig an (#672)');
     Assert.AreEqual('([{''', Page.WrapSelectionChars.Text);
@@ -1219,6 +1223,8 @@ begin
     Assert.AreEqual($200D, Saved.NewLineBelowKey);
     Assert.AreEqual($C00D, Saved.NewLineAboveKey);
     Assert.IsFalse(Saved.NewLineAroundStatementAware);
+    Assert.IsFalse(Saved.Unwrap);
+    Assert.AreEqual($602E, Saved.UnwrapKey);
     Assert.IsTrue(Saved.WrapSelection);
     Assert.AreEqual('([<', Saved.WrapSelectionChars);
     Assert.AreEqual('errorsAndWarnings', Saved.InlineDiagnostics);

@@ -67,6 +67,8 @@ type
     /// <summary>Herkunft der Bezeichner im with-Rumpf über AResolver; ATree muss die Datei sein.</summary>
     class function WithLookup(AResolver: TNameResolver; ATree: TSyntaxTree; const AFileName: string): TWithOwnerLookup;
       static;
+    /// <summary>Optionen für Extrahieren und „with auflösen“ zur Datei AContext.FileName (#657).</summary>
+    class function ExtractOptions(const AContext: TRefactoringContext): TExtractOptions; static;
     /// <summary>„case vervollständigen“ bzw. „Fehlende Werte vor else ergänzen“ für die case-Anweisung an
     /// APosition.</summary>
     class function CaseAction(AResolver: TNameResolver; ATree: TSyntaxTree; const AText: string;
@@ -117,6 +119,11 @@ function NewResolver(const AContext: TRefactoringContext): TNameResolver;
 begin
   Result := TNameResolver.Create(AContext.Index, AContext.EnsureUnit);
   Result.Namespaces := AContext.Namespaces;
+end;
+
+class function TLspRefactorings.ExtractOptions(const AContext: TRefactoringContext): TExtractOptions;
+begin
+  Result := OptionsOf(AContext);
 end;
 
 class function TLspRefactorings.Probe(const AContext: TRefactoringContext): TTypeProbe;
