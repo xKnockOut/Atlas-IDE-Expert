@@ -59,7 +59,7 @@ Everything below is implemented in `main`. Features marked *(experimental)* are 
 - **Generate menu** (Alt+Ins): constructor, properties, overridden methods, interface methods, surround, templates
 - **Guard the free:** after `X := TFoo.Create;` an offer for `try … finally X.Free; end;`
 - **Editing helpers**: highlight text matching the selection (#709), toggle block comment (#703, Shift+Alt+A), new line above or below (#700, Shift+Enter, Ctrl+Alt+Enter), surround the selection while typing (#672), remove the surrounding construct (#657, Ctrl+Shift+Del) with preview, Atlas column in the gutter (#768)
-- **Conditional compilation**: outline, hover, go to and checks see only the active `{$IFDEF}` branches of the project, the outline shows the branch condition (#845)
+- **Conditional compilation**: outline, hover, go to and checks see only the active `{$IFDEF}` branches of the project, the outline shows the branch condition (#845); `{$IF}` understands `SizeOf`, `High`, `Low`, `RTLVersion111` and `Declared`, `{$IFOPT}` follows the switches of the `.dproj` and local `{$R-}`, unknown values keep both branches active, and the hover on a condition explains its value (#847)
 - **Variant records**: fields such as `TRect.Left` or `TMessage.WParam` appear in completion, hover, go to and the outline, tagged with their branch (#846)
 - **Documentation comments:** `///` creates the XMLDoc skeleton with placeholders
 - **Complete statement** (Ctrl+Shift+Enter), **continue patterns** as ghost text, **continue comments** on Enter

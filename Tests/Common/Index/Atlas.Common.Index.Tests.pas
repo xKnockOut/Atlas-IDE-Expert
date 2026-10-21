@@ -2196,6 +2196,14 @@ begin
   Project.Namespaces := ['Vcl'];
   Assert.AreNotEqual(Signature, TIndexProjectFiles.Signature(Project, '37.0'));
   Project.Namespaces := nil;
+  // Schalter der .dproj für $IFOPT (#847) stehen in den Defines und im Schlüssel.
+  Project.Properties := [TPair<string, string>.Create('DCC_RangeChecking', 'true')];
+  Assert.AreNotEqual(Signature, TIndexProjectFiles.Signature(Project, '37.0'));
+  HasDebug := False;
+  for Define in TIndexProjectFiles.Defines(Project, '37.0') do
+    HasDebug := HasDebug or (Define = '$R+');
+  Assert.IsTrue(HasDebug);
+  Project.Properties := nil;
   // Delphi 12: BDS 23.0 ergibt VER360, nicht VER230.
   HasVer := False;
   for Define in TIndexProjectFiles.Defines(Project, '23.0') do
