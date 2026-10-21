@@ -6,7 +6,7 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 
 | Gruppe | Regeln |
 |---|---|
-| [Fehler finden](#gruppe-find-bugs) | 30 |
+| [Fehler finden](#gruppe-find-bugs) | 31 |
 | [Exceptions](#gruppe-exceptions) | 5 |
 | [Threads](#gruppe-threads) | 6 |
 | [Robustheit und Muster](#gruppe-robustness) | 2 |
@@ -54,6 +54,7 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 | [`operator-precedence`](#operator-precedence) | Vorrang von not übersehen | Bug | Warnung |
 | [`empty-statement`](#empty-statement) | Leere Anweisung nach then, do oder else | Bug | Warnung |
 | [`loop-off-by-one`](#loop-off-by-one) | Schleife läuft einen Schritt zu weit | Bug | Warnung |
+| [`collection-modified-in-loop`](#collection-modified-in-loop) | Liste in der eigenen Schleife verändert | Bug | Warnung |
 
 <a id="gruppe-exceptions"></a>
 ### Exceptions
@@ -2568,4 +2569,31 @@ Richtig:
 ```pascal
 for I := 0 to Kunden.Count - 1 do
   Ausgabe(Kunden[I].Name);
+```
+
+<a id="collection-modified-in-loop"></a>
+### collection-modified-in-loop
+
+**Liste in der eigenen Schleife verändert** · Bug · Warnung · Gruppe Fehler finden
+
+Delete, Remove, Add oder eine andere Methode aus der Option mutatingMethods wird auf der Liste aufgerufen, über die die Schleife gerade vorwärts per Index oder mit for … in läuft. Vorwärts überspringt Delete das nächste Element und läuft über das Ende, Add wird nicht mehr durchlaufen und Insert liefert dasselbe Element zweimal; mit for … in wirft die RTL eine Exception. Ein Break oder Exit direkt nach dem Aufruf beendet die Schleife und bleibt still, downto-Schleifen ebenso. Schnellkorrektur bei Indexschleifen: rückwärts mit downto; bei for … in die Elemente sammeln und die Liste nach der Schleife ändern.
+
+| Option | Typ | Vorgabe | Bedeutung |
+|---|---|---|---|
+| `mutatingMethods` | string-list | `["Add","Insert","Delete","Remove","Extract","Clear"]` | Methoden, die die Liste verändern. |
+
+Mit Treffer:
+
+```pascal
+for I := 0 to Liste.Count - 1 do
+  if Liste[I].Erledigt then
+    Liste.Delete(I);
+```
+
+Richtig:
+
+```pascal
+for I := Liste.Count - 1 downto 0 do
+  if Liste[I].Erledigt then
+    Liste.Delete(I);
 ```

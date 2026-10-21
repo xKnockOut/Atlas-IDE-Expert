@@ -33,3 +33,4 @@ setter-recursion | Ref.Komponenten.Anzeige.pas | FWert := AValue; | Wert := AVal
 operator-precedence | Ref.Komponenten.Anzeige.pas | if FWert <> AValue then | if not FWert = AValue then
 empty-statement | Ref.Komponenten.Anzeige.pas | if FStil <> AValue then | if FStil <> AValue then;
 loop-off-by-one | Ref.Pruefung.Verstoesse.pas | for I := High(AWerte) to Low(AWerte) do | for I := 0 to Length(AWerte) do
+collection-modified-in-loop | Ref.Sprache.Merkmale.pas | FElemente.Free; | for var Element in FElemente do FElemente.Remove(Element);\n  FElemente.Free;

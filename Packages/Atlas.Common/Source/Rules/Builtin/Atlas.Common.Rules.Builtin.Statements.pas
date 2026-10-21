@@ -11,6 +11,12 @@
 //                     nullbasiert. Gemeldet wird eine Schleife nur, wenn ihr
 //                     Rumpf X[I] bzw. A[I] liest; die Anzahl erkennt die Option
 //                     countNames (Vorgabe Count und Length).
+//   collection-modified-in-loop
+//                     Delete, Remove, Add … auf der Liste, über die die Schleife
+//                     gerade vorwärts per Index oder mit for … in läuft (#914).
+//                     Ein Break oder Exit direkt nach dem Aufruf beendet die
+//                     Schleife und bleibt still; die Methoden nennt die Option
+//                     mutatingMethods.
 // Grundlage ist der Syntaxbaum: if, while, for, for-in und with ohne Rumpf
 // bzw. mit leerem Block; das Schlüsselwort davor sucht die Regel in den Token.
 
@@ -24,6 +30,7 @@ uses
 const
   EmptyStatementRuleId = 'empty-statement';
   LoopOffByOneRuleId = 'loop-off-by-one';
+  CollectionModifiedInLoopRuleId = 'collection-modified-in-loop';
 
 type
   TEmptyStatementRule = class(TInterfacedObject, IRule)
@@ -38,6 +45,14 @@ type
     procedure Check(const AContext: TRuleContext; const AReport: IRuleReport);
     /// <summary>Stehen Strings in AText nullbasiert ({$ZEROBASEDSTRINGS ON} bzw. {$ZEROBASEDSTRINGS+})?</summary>
     class function ZeroBasedStrings(const ATokens: TArray<TPascalToken>): Boolean; static;
+  end;
+
+  TCollectionModifiedInLoopRule = class(TInterfacedObject, IRule)
+  public
+    function Descriptor: TRuleDescriptor;
+    procedure Check(const AContext: TRuleContext; const AReport: IRuleReport);
+    /// <summary>Vorgabe der Option mutatingMethods.</summary>
+    class function DefaultMutatingMethods: TArray<string>; static;
   end;
 
 procedure RegisterStatementRules(const ARegistry: TRuleRegistry);
@@ -149,6 +164,44 @@ begin
         Exit;
     end;
   Result := -1;
+end;
+
+/// <summary>Erstes Token AText (Schlüsselwort bzw. Symbol) in AFrom..AStop-1 auf Klammerebene 0; -1 ohne.</summary>
+function DepthZero(const ATokens: TTokens; AFrom, AStop: Integer; const AText: string; AKeyword: Boolean): Integer;
+var
+  Index, Depth: Integer;
+begin
+  Depth := 0;
+  for Index := AFrom to AStop - 1 do
+    if ATokens[Index].IsSymbol('(') or ATokens[Index].IsSymbol('[') then
+      Inc(Depth)
+    else if ATokens[Index].IsSymbol(')') or ATokens[Index].IsSymbol(']') then
+      Dec(Depth)
+    else if (Depth = 0) and ((AKeyword and ATokens[Index].IsKeyword(AText)) or
+      (not AKeyword and ATokens[Index].IsSymbol(AText))) then
+      Exit(Index);
+  Result := -1;
+end;
+
+/// <summary>Bilden die ABaseCount Code-Token vor AIndex die Basis ABaseKey (CodeKey), ohne Punkt davor?</summary>
+function BaseBefore(const ATokens: TTokens; AIndex: Integer; const ABaseKey: string; ABaseCount: Integer): Boolean;
+var
+  Before, Count, Prev: Integer;
+  Key: string;
+begin
+  Key := '';
+  Before := AIndex;
+  Count := 0;
+  while Count < ABaseCount do
+  begin
+    Before := PreviousCode(ATokens, Before);
+    if Before < 0 then
+      Exit(False);
+    Key := LowerCase(ATokens[Before].Text) + Key;
+    Inc(Count);
+  end;
+  Prev := PreviousCode(ATokens, Before);
+  Result := (Key = ABaseKey) and ((Prev < 0) or not ATokens[Prev].IsSymbol('.'));
 end;
 
 function IsStringType(const AType: string): Boolean;
@@ -607,10 +660,200 @@ begin
   end;
 end;
 
+{ TCollectionModifiedInLoopRule }
+
+class function TCollectionModifiedInLoopRule.DefaultMutatingMethods: TArray<string>;
+begin
+  Result := ['Add', 'Insert', 'Delete', 'Remove', 'Extract', 'Clear'];
+end;
+
+function TCollectionModifiedInLoopRule.Descriptor: TRuleDescriptor;
+begin
+  Result := TRuleDescriptor.Create(CollectionModifiedInLoopRuleId, TRuleSeverity.Warning,
+    'Liste in der eigenen Schleife verändert');
+end;
+
+procedure TCollectionModifiedInLoopRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
+var
+  Tokens: TTokens;
+  Methods: TArray<string>;
+
+  function CodeCount(AFirst, ALast: Integer): Integer;
+  var
+    Index: Integer;
+  begin
+    Result := 0;
+    for Index := AFirst to ALast do
+      if not IsTrivia(Tokens[Index]) then
+        Inc(Result);
+  end;
+
+  // Folgt auf die Anweisung mit dem Aufruf (ab ACall) direkt Break oder Exit?
+  function LeavesLoop(ACall, AStop: Integer): Boolean;
+  var
+    Semicolon, Next: Integer;
+  begin
+    Semicolon := DepthZero(Tokens, ACall, AStop, ';', False);
+    if Semicolon < 0 then
+      Exit(False);
+    Next := NextCode(Tokens, Semicolon + 1);
+    Result := (Next < AStop) and MatchText(Tokens[Next].Text, ['Break', 'Exit']);
+  end;
+
+  // Basis der Obergrenze: X in X.Count - 1, X.Count, High(X), Pred(X.Count), Length(X) - 1; sonst False.
+  function BaseOfBound(AFirst, ALast: Integer; out ABaseFirst, ABaseLast: Integer): Boolean;
+  var
+    Last, Open, Close, Dot: Integer;
+  begin
+    Result := False;
+    ABaseFirst := -1;
+    ABaseLast := -1;
+    Last := ALast;
+    // "- 1" am Ende abtrennen.
+    if (CodeCount(AFirst, ALast) > 2) and (Tokens[ALast].Kind = TPascalTokenKind.Number) and (Tokens[ALast].Text = '1') and
+      Tokens[PreviousCode(Tokens, ALast)].IsSymbol('-') then
+      Last := PreviousCode(Tokens, PreviousCode(Tokens, ALast));
+    if (Tokens[AFirst].Kind = TPascalTokenKind.Identifier) and MatchText(Tokens[AFirst].Text, ['High', 'Length', 'Pred']) then
+    begin
+      Open := NextCode(Tokens, AFirst + 1);
+      if not Tokens[Open].IsSymbol('(') then
+        Exit;
+      Close := Closing(Tokens, Open, Last + 1);
+      if (Close <> Last) or (Close <= Open + 1) then
+        Exit;
+      if SameText(Tokens[AFirst].Text, 'Pred') then
+        Exit(BaseOfBound(NextCode(Tokens, Open + 1), PreviousCode(Tokens, Close), ABaseFirst, ABaseLast));
+      ABaseFirst := NextCode(Tokens, Open + 1);
+      ABaseLast := PreviousCode(Tokens, Close);
+      Exit(True);
+    end;
+    if (Tokens[Last].Kind = TPascalTokenKind.Identifier) and SameText(Tokens[Last].Text, 'Count') then
+    begin
+      Dot := PreviousCode(Tokens, Last);
+      if (Dot > AFirst) and Tokens[Dot].IsSymbol('.') then
+      begin
+        ABaseFirst := AFirst;
+        ABaseLast := PreviousCode(Tokens, Dot);
+        Result := True;
+      end;
+    end;
+  end;
+
+  // Meldet BaseKey.M( im Rumpf AFrom..AStop-1.
+  procedure FindCalls(AFrom, AStop: Integer; const ABaseKey, ABaseText: string; ABaseCount: Integer;
+    AForIn: Boolean; const AFix: TArray<TRuleFix>);
+  var
+    Index, Dot, Open: Integer;
+    Method, Message: string;
+    Fixes: TArray<TRuleFix>;
+  begin
+    for Index := AFrom to AStop - 1 do
+    begin
+      if (Tokens[Index].Kind <> TPascalTokenKind.Identifier) or (IndexText(Tokens[Index].Text, Methods) < 0) then
+        Continue;
+      Dot := PreviousCode(Tokens, Index);
+      Open := NextCode(Tokens, Index + 1);
+      if (Dot < 0) or not Tokens[Dot].IsSymbol('.') or not BaseBefore(Tokens, Dot, ABaseKey, ABaseCount) then
+        Continue;
+      // Clear ohne Klammern ist auch ein Aufruf; sonst muss "(" folgen.
+      if not SameText(Tokens[Index].Text, 'Clear') and ((Open >= AStop) or not Tokens[Open].IsSymbol('(')) then
+        Continue;
+      if LeavesLoop(Index, AStop) then
+        Continue;
+      Method := Tokens[Index].Text;
+      Fixes := nil;
+      if AForIn then
+        Message := Format('%s.%s in for … in über %s: die RTL wirft eine Exception, weil sich die Liste ändert. ' +
+          'Elemente sammeln und nach der Schleife ändern.', [ABaseText, Method, ABaseText])
+      else if MatchText(Method, ['Add']) then
+        Message := Format('%s.%s in einer Vorwärtsschleife über %s: die neuen Elemente durchläuft die Schleife ' +
+          'nicht, die Obergrenze steht beim Start fest.', [ABaseText, Method, ABaseText])
+      else if MatchText(Method, ['Insert']) then
+        Message := Format('%s.%s in einer Vorwärtsschleife über %s: die Elemente rücken nach, dasselbe Element ' +
+          'kommt noch einmal, am Ende fehlen Elemente.', [ABaseText, Method, ABaseText])
+      else
+      begin
+        Message := Format('%s.%s in einer Vorwärtsschleife über %s: das nächste Element wird übersprungen, ' +
+          'am Ende folgt ein Indexfehler.', [ABaseText, Method, ABaseText]);
+        Fixes := AFix;
+      end;
+      AReport.Add(TTextRange.Create(Tokens[PreviousCode(Tokens, Dot)].StartPos, Tokens[Index].EndPos), Message,
+        TRuleConfidence.High, Fixes);
+    end;
+  end;
+
+  procedure Inspect(ANode: TSyntaxNode);
+  var
+    First, Stop, Assign, ToIndex, InIndex, DoIndex, LowFirst, LowLast, HighFirst, HighLast, BaseFirst,
+      BaseLast: Integer;
+    BaseKey, BaseText, LowText, HighText: string;
+    Fix: TArray<TRuleFix>;
+  begin
+    First := TokenFrom(Tokens, ANode.StartOffset);
+    Stop := TokenFrom(Tokens, ANode.EndOffset);
+    if ANode.Kind = TSyntaxKind.ForInStatement then
+    begin
+      InIndex := DepthZero(Tokens, First, Stop, 'in', True);
+      DoIndex := DepthZero(Tokens, First, Stop, 'do', True);
+      if (InIndex < 0) or (DoIndex < InIndex) then
+        Exit;
+      BaseFirst := NextCode(Tokens, InIndex + 1);
+      BaseLast := PreviousCode(Tokens, DoIndex);
+      if BaseLast < BaseFirst then
+        Exit;
+      BaseText := Trim(SourceText(AContext.Text, Tokens, BaseFirst, BaseLast));
+      FindCalls(DoIndex + 1, Stop, CodeKey(Tokens, BaseFirst, BaseLast), BaseText, CodeCount(BaseFirst, BaseLast),
+        True, nil);
+      Exit;
+    end;
+    Assign := DepthZero(Tokens, First, Stop, ':=', False);
+    if Assign < 0 then
+      Exit;
+    ToIndex := DepthZero(Tokens, Assign + 1, Stop, 'to', True);
+    if ToIndex < 0 then
+      Exit; // downto: rückwärts ist Löschen unbedenklich
+    DoIndex := DepthZero(Tokens, ToIndex + 1, Stop, 'do', True);
+    if DoIndex < 0 then
+      Exit;
+    LowFirst := NextCode(Tokens, Assign + 1);
+    LowLast := PreviousCode(Tokens, ToIndex);
+    HighFirst := NextCode(Tokens, ToIndex + 1);
+    HighLast := PreviousCode(Tokens, DoIndex);
+    if (LowLast < LowFirst) or (HighLast < HighFirst) or not BaseOfBound(HighFirst, HighLast, BaseFirst, BaseLast) then
+      Exit;
+    BaseKey := CodeKey(Tokens, BaseFirst, BaseLast);
+    BaseText := Trim(SourceText(AContext.Text, Tokens, BaseFirst, BaseLast));
+    LowText := Trim(SourceText(AContext.Text, Tokens, LowFirst, LowLast));
+    HighText := Trim(SourceText(AContext.Text, Tokens, HighFirst, HighLast));
+    Fix := [TRuleFix.Create('Schleife rückwärts (downto) umschreiben',
+      [TRuleEdit.Create(TTextRange.Create(Tokens[LowFirst].StartPos, Tokens[HighLast].EndPos),
+      HighText + ' downto ' + LowText)])];
+    FindCalls(DoIndex + 1, Stop, BaseKey, BaseText, CodeCount(BaseFirst, BaseLast), False, Fix);
+  end;
+
+  procedure Visit(ANode: TSyntaxNode);
+  var
+    Index: Integer;
+  begin
+    if ANode.Kind in [TSyntaxKind.ForStatement, TSyntaxKind.ForInStatement] then
+      Inspect(ANode);
+    for Index := 0 to ANode.ChildCount - 1 do
+      Visit(ANode[Index]);
+  end;
+
+begin
+  if (AContext.Tree = nil) or (AContext.Tree.Root = nil) then
+    Exit;
+  Tokens := AContext.Tree.Tokens;
+  Methods := TRuleOptions.Strings(AContext.Options, 'mutatingMethods', DefaultMutatingMethods);
+  Visit(AContext.Tree.Root);
+end;
+
 procedure RegisterStatementRules(const ARegistry: TRuleRegistry);
 begin
   ARegistry.Register(TEmptyStatementRule.Create);
   ARegistry.Register(TLoopOffByOneRule.Create);
+  ARegistry.Register(TCollectionModifiedInLoopRule.Create);
 end;
 
 end.

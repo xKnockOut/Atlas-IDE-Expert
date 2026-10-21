@@ -250,7 +250,7 @@ const
     '                  "type": "string"',
     '                },',
     '                "default": ["Add", "Delete", "Remove", "Extract", "Clear", "Insert"],',
-    '                "description": "Nur assert-side-effect: Methoden, die ihr Objekt verändern. Vorgabe: Add, Delete, Remove, Extract, Clear, Insert."',
+    '                "description": "Nur assert-side-effect und collection-modified-in-loop (#914): Methoden, die ihr Objekt bzw. die Liste verändern. Vorgabe: Add, Delete, Remove, Extract, Clear, Insert."',
     '              }',
     '            }',
     '          }',

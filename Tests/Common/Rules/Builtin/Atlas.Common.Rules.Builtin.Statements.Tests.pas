@@ -3,7 +3,10 @@
 // Tests der Regel empty-statement (#912): Semikolon nach then, do und else mit
 // Korrektur, leerer Block mit und ohne Kommentar (allowCommented), keine
 // Meldung am Blockende, in case-else und bei richtigen Formen, Abschalten,
-// Ausnahmen und falscher Optionstyp in atlas.json.
+// Ausnahmen und falscher Optionstyp in atlas.json. Danach loop-off-by-one
+// (#913) und collection-modified-in-loop (#914): Beispiel mit Korrektur nach
+// downto, for … in, Add und Insert, Break/Exit und downto still, Option
+// mutatingMethods, Abschalten und Ausnahmen.
 
 interface
 
@@ -44,6 +47,16 @@ type
     procedure CountNamesOption;
     [Test]
     procedure LoopOffByOneOffAndExclude;
+    [Test]
+    procedure DeleteInForwardLoopIsReportedWithFix;
+    [Test]
+    procedure ForInAddAndInsertMessages;
+    [Test]
+    procedure SafeModificationsAreSilent;
+    [Test]
+    procedure MutatingMethodsOption;
+    [Test]
+    procedure CollectionModifiedOffAndExclude;
   end;
 
 implementation
@@ -58,6 +71,7 @@ uses
   Atlas.Common.Rules.Contract,
   Atlas.Common.Rules.Builtin,
   Atlas.Common.Rules.Builtin.Statements,
+  Atlas.Common.Editing.ChangeSignature,
   Atlas.Tests.RuleAssert;
 
 function Body(const AStatements: string): string;
@@ -306,6 +320,115 @@ begin
     '{"rules": {"loop-off-by-one": {"exclude": ["Alt/*.pas"]}}}', 'Neu/Kunden.pas'))));
 end;
 
+procedure TStatementRulesTests.DeleteInForwardLoopIsReportedWithFix;
+const
+  Loop = '  for I := 0 to Kunden.Count - 1 do'#10'    if Kunden[I].Name = '''' then'#10'      Kunden.Delete(I);'#10;
+  Fixed = '  for I := Kunden.Count - 1 downto 0 do'#10'    if Kunden[I].Name = '''' then'#10'      Kunden.Delete(I);'#10;
+var
+  Findings: TArray<TRuleFinding>;
+  Tree: TSyntaxTree;
+  Text: string;
+begin
+  Findings := TRuleAssert.Findings(TCollectionModifiedInLoopRule.Create, ListBody(Loop));
+  Assert.AreEqual(1, Integer(Length(Findings)));
+  Assert.AreEqual(CollectionModifiedInLoopRuleId, Findings[0].RuleId);
+  Assert.AreEqual(Ord(TRuleSeverity.Warning), Ord(Findings[0].Severity));
+  Assert.AreEqual(Ord(TRuleConfidence.High), Ord(Findings[0].Confidence));
+  Assert.AreEqual('Kunden.Delete in einer Vorwärtsschleife über Kunden: das nächste Element wird übersprungen, ' +
+    'am Ende folgt ein Indexfehler.', Findings[0].Message);
+  Assert.AreEqual(20, Findings[0].Range.StartPos.Line);
+  Assert.AreEqual(6, Findings[0].Range.StartPos.Character);
+  Assert.AreEqual(1, Integer(Length(Findings[0].Fixes)));
+  Assert.AreEqual('Schleife rückwärts (downto) umschreiben', Findings[0].Fixes[0].Title);
+  Assert.AreEqual(1, Integer(Length(Findings[0].Fixes[0].Edits)), 'ein Undo-Schritt');
+  Text := TChangeSignature.ApplyEdits(ListBody(Loop), Findings[0].Fixes[0].Edits);
+  Assert.AreEqual(ListBody(Fixed), Text);
+  Tree := TPascalParser.Parse(Text);
+  try
+    Assert.AreEqual(0, Integer(Length(Tree.Diagnostics)), 'Ergebnis parst fehlerfrei');
+  finally
+    Tree.Free;
+  end;
+  TRuleAssert.Silent(TCollectionModifiedInLoopRule.Create, ListBody(Fixed));
+  // High, Pred und Length(A) - 1 als Obergrenze ebenso.
+  Assert.AreEqual(2, Integer(Length(TRuleAssert.Findings(TCollectionModifiedInLoopRule.Create,
+    ListBody('  for I := 0 to Pred(FKunden.Count) do'#10'    FKunden.Remove(nil);'#10 +
+    '  for I := 0 to High(FZahlen) do'#10'    FZahlen.Delete(I);'#10)))));
+end;
+
+procedure TStatementRulesTests.ForInAddAndInsertMessages;
+var
+  Findings: TArray<TRuleFinding>;
+begin
+  Findings := TRuleAssert.Findings(TCollectionModifiedInLoopRule.Create,
+    ListBody('  for var Kunde in Kunden do'#10'    if Kunde.Name = '''' then'#10'      Kunden.Remove(Kunde);'#10 +
+    '  for var Kunde in FKunden do'#10'    FKunden.Clear;'#10 +
+    '  for I := 0 to Kunden.Count - 1 do'#10'    Kunden.Add(Kunden[I]);'#10 +
+    '  for I := 0 to Kunden.Count - 1 do'#10'    Kunden.Insert(0, Kunden[I]);'#10));
+  Assert.AreEqual(4, Integer(Length(Findings)));
+  Assert.AreEqual('Kunden.Remove in for … in über Kunden: die RTL wirft eine Exception, weil sich die Liste ' +
+    'ändert. Elemente sammeln und nach der Schleife ändern.', Findings[0].Message);
+  Assert.AreEqual(0, Integer(Length(Findings[0].Fixes)), 'for … in: nur Hinweis');
+  Assert.AreEqual('FKunden.Clear in for … in über FKunden: die RTL wirft eine Exception, weil sich die Liste ' +
+    'ändert. Elemente sammeln und nach der Schleife ändern.', Findings[1].Message);
+  Assert.AreEqual('Kunden.Add in einer Vorwärtsschleife über Kunden: die neuen Elemente durchläuft die Schleife ' +
+    'nicht, die Obergrenze steht beim Start fest.', Findings[2].Message);
+  Assert.AreEqual(0, Integer(Length(Findings[2].Fixes)), 'downto hilft bei Add nicht');
+  Assert.AreEqual('Kunden.Insert in einer Vorwärtsschleife über Kunden: die Elemente rücken nach, dasselbe ' +
+    'Element kommt noch einmal, am Ende fehlen Elemente.', Findings[3].Message);
+end;
+
+procedure TStatementRulesTests.SafeModificationsAreSilent;
+begin
+  TRuleAssert.Silent(TCollectionModifiedInLoopRule.Create,
+    // Rückwärts ist Löschen unbedenklich.
+    ListBody('  for I := Kunden.Count - 1 downto 0 do'#10'    Kunden.Delete(I);'#10 +
+    // Break oder Exit direkt danach beenden die Schleife.
+    '  for I := 0 to Kunden.Count - 1 do'#10'    if Kunden[I].Name = '''' then'#10'    begin'#10 +
+    '      Kunden.Delete(I);'#10'      Break;'#10'    end;'#10 +
+    '  for var Kunde in Kunden do'#10'    if Kunde.Name = '''' then'#10'    begin'#10 +
+    '      Kunden.Remove(Kunde);'#10'      Exit;'#10'    end;'#10 +
+    // Andere Liste, Methode einer anderen Liste, Lesen.
+    '  for I := 0 to Kunden.Count - 1 do'#10'    FKunden.Delete(0);'#10 +
+    '  for I := 0 to Kunden.Count - 1 do'#10'    Kunden[I].Liste.Delete(0);'#10 +
+    '  for var Kunde in Kunden do'#10'    Ausgabe(Kunden.IndexOf(Kunde));'#10 +
+    // Feste Obergrenze: keine Schleife über die Liste.
+    '  for I := 0 to 9 do'#10'    Kunden.Delete(0);'#10));
+end;
+
+procedure TStatementRulesTests.MutatingMethodsOption;
+const
+  Source = '  for I := 0 to Kunden.Count - 1 do'#10'    Kunden.Loeschen(I);'#10 +
+    '  for I := 0 to Kunden.Count - 1 do'#10'    Kunden.Delete(I);'#10;
+var
+  Findings: TArray<TRuleFinding>;
+  Issues: TArray<TConfigurationIssue>;
+begin
+  Findings := TRuleAssert.Findings(TCollectionModifiedInLoopRule.Create, ListBody(Source));
+  Assert.AreEqual(1, Integer(Length(Findings)), 'Vorgabe: nur Delete');
+  Assert.AreEqual(21, Findings[0].Range.StartPos.Line);
+  Findings := TRuleAssert.Findings(TCollectionModifiedInLoopRule.Create, ListBody(Source),
+    '{"rules": {"collection-modified-in-loop": {"mutatingMethods": ["Loeschen"]}}}', 'Kunden.pas');
+  Assert.AreEqual(1, Integer(Length(Findings)), 'Option: nur Loeschen');
+  Assert.AreEqual(19, Findings[0].Range.StartPos.Line);
+  Assert.AreEqual(6, Integer(Length(TCollectionModifiedInLoopRule.DefaultMutatingMethods)));
+  TConfigurationParser.Parse('{"rules": {"collection-modified-in-loop": {"mutatingMethods": "Delete"}}}', Issues);
+  Assert.AreEqual(1, Integer(Length(Issues)));
+  Assert.AreEqual('"mutatingMethods" muss eine Liste von Texten sein', Issues[0].Message);
+end;
+
+procedure TStatementRulesTests.CollectionModifiedOffAndExclude;
+const
+  Source = '  for I := 0 to Kunden.Count - 1 do'#10'    Kunden.Delete(I);'#10;
+begin
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TCollectionModifiedInLoopRule.Create, ListBody(Source),
+    '{"rules": {"collection-modified-in-loop": "off"}}', 'Kunden.pas'))));
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TCollectionModifiedInLoopRule.Create, ListBody(Source),
+    '{"rules": {"collection-modified-in-loop": {"exclude": ["Alt/*.pas"]}}}', 'Alt/Kunden.pas'))));
+  Assert.AreEqual(1, Integer(Length(TRuleAssert.Findings(TCollectionModifiedInLoopRule.Create, ListBody(Source),
+    '{"rules": {"collection-modified-in-loop": {"exclude": ["Alt/*.pas"]}}}', 'Neu/Kunden.pas'))));
+end;
+
 procedure TStatementRulesTests.RuleIsRegistered;
 var
   Rule: IRule;
@@ -321,6 +444,11 @@ begin
     if Rule.Descriptor.Id = LoopOffByOneRuleId then
       Found := True;
   Assert.IsTrue(Found, LoopOffByOneRuleId);
+  Found := False;
+  for Rule in BuiltinRules do
+    if Rule.Descriptor.Id = CollectionModifiedInLoopRuleId then
+      Found := True;
+  Assert.IsTrue(Found, CollectionModifiedInLoopRuleId);
 end;
 
 initialization

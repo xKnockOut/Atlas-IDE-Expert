@@ -3150,3 +3150,18 @@ Voraussetzung: Server läuft; Einstellungen auf Vorgabe; `Kunden: TList<TKunde>`
 | LO6 | `{$ZEROBASEDSTRINGS ON}` am Unit-Anfang, LO5 und `for I := 1 to Length(Text)` | LO5 ohne Meldung; die Schleife meldet „Mit {$ZEROBASEDSTRINGS ON} sind Strings nullbasiert …“ |
 | LO7 | `for I := 0 to Kunden.Count do Ausgabe(IntToStr(I));` (kein `Kunden[I]`) | Keine Meldung |
 | LO8 | `"loop-off-by-one": {"countNames": ["Anzahl"]}`, `for I := 0 to Kunden.Anzahl do … Kunden[I]` | Meldung mit „Index Anzahl“; `Kunden.Count` wird nicht mehr geprüft |
+
+## Liste in der eigenen Schleife verändert (#914)
+
+Voraussetzung: Server läuft; Einstellungen auf Vorgabe; `Liste: TList<TAufgabe>` mit Feld `Erledigt`.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| CM1 | `for I := 0 to Liste.Count - 1 do if Liste[I].Erledigt then Liste.Delete(I);` | Gelbe Wellenlinie über `Liste.Delete`: „Liste.Delete in einer Vorwärtsschleife über Liste: das nächste Element wird übersprungen, am Ende folgt ein Indexfehler.“ (**Abnahme**) |
+| CM2 | Alt+Enter „Schleife rückwärts (downto) umschreiben“ | `for I := Liste.Count - 1 downto 0 do`; keine Meldung mehr; ein Strg+Z nimmt es zurück |
+| CM3 | `for var A in Liste do if A.Erledigt then Liste.Remove(A);` | „Liste.Remove in for … in über Liste: die RTL wirft eine Exception, weil sich die Liste ändert. Elemente sammeln und nach der Schleife ändern.“; keine Schnellkorrektur |
+| CM4 | `for I := 0 to Liste.Count - 1 do Liste.Add(…);` bzw. `Liste.Insert(0, …)` | Meldung zu Add („die neuen Elemente durchläuft die Schleife nicht …“) bzw. Insert („die Elemente rücken nach …“) |
+| CM5 | Wie CM1, aber `begin Liste.Delete(I); Break; end` | Keine Meldung |
+| CM6 | Befund im Fenster „Atlas-Prüfung“ und im Befund-Hover | Regel `collection-modified-in-loop`, Gruppe „Fehler finden“, Aktionszeile mit der Korrektur aus CM2 |
+| CM7 | `"collection-modified-in-loop": {"mutatingMethods": ["Loeschen"]}`, CM1 mit `Liste.Loeschen(I)` | Meldung für `Loeschen`; `Liste.Delete` bleibt still |
+| CM8 | `"collection-modified-in-loop": "off"` bzw. `exclude` mit dem Pfad der Datei | Keine Meldung |
