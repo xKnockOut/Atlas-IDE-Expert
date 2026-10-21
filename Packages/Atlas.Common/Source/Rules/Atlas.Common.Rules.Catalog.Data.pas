@@ -502,7 +502,7 @@ begin
     '      "name": "Quick command not executed",' + #10 +
     '      "category": "code-smell",' + #10 +
     '      "severity": "hint",' + #10 +
-    '      "description": "A line starting with /name was not executed and stays in the code: the command is unknown, switched off (slashCommands.disabled) or does not fit at this place. The message names ' + 'the reason.",' + #10 +
+    '      "description": "A line starting with /name was not executed and stays in the code: the command is unknown, switched off (slashCommands.disabled) or does not fit at this place. The message names ' + 'the reason. \"/ignore rule\" is also reported when that rule finds nothing in the line below.",' + #10 +
     '      "bad": "/gibtsnicht X",' + #10 +
     '      "good": "/uses System.Classes"' + #10 +
     '    },' + #10 +
@@ -838,6 +838,42 @@ begin
     '      "description": "An identifier in a statement is declared neither in the unit nor in the units it uses (like compiler error E2003). Checked while typing, without the compiler; with blocks, asm an' + 'd anonymous methods are skipped.",' + #10 +
     '      "bad": "procedure Foo;\nbegin\n  Lst.Add(''x'');\nend;",' + #10 +
     '      "good": "procedure Foo;\nvar\n  Lst: TStringList;\nbegin\n  Lst := TStringList.Create;\n  Lst.Add(''x'');\nend;"' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "deprecated-symbol",' + #10 +
+    '      "name": "Deprecated symbol",' + #10 +
+    '      "category": "code-smell",' + #10 +
+    '      "severity": "hint",' + #10 +
+    '      "description": "A routine, type, constant or member marked deprecated, platform or experimental is used (like compiler warnings W1000, W1002 and W1003). The editor strikes the name through; the ' + 'message carries the reason from deprecated ''reason''. The declaration and the head of its implementation are not reported.",' + #10 +
+    '      "bad": "procedure Old; deprecated ''Use New'';\n...\nOld;",' + #10 +
+    '      "good": "procedure New;\n...\nNew;"' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "implicit-package-import",' + #10 +
+    '      "name": "Implicit package import",' + #10 +
+    '      "category": "code-smell",' + #10 +
+    '      "severity": "warning",' + #10 +
+    '      "description": "In a package (.dpk) a unit from contains uses a unit that is neither in contains nor provided by a package in requires. The compiler pulls it in implicitly (W1033), which later c' + 'auses duplicate units when another package also contains it. The quick fix adds the unit to contains.",' + #10 +
+    '      "bad": "package Werkzeuge;\nrequires rtl;\ncontains\n  uHaupt in ''uHaupt.pas'';  // uHaupt uses uMathe\nend.",' + #10 +
+    '      "good": "package Werkzeuge;\nrequires rtl;\ncontains\n  uHaupt in ''uHaupt.pas'',\n  uMathe in ''uMathe.pas'';\nend."' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "type-used-before-declaration",' + #10 +
+    '      "name": "Type used before its declaration",' + #10 +
+    '      "category": "bug",' + #10 +
+    '      "severity": "error",' + #10 +
+    '      "description": "A class, interface, record or other type is used in a type declaration (field, parameter, result, property, generic argument, class of) but declared only further down in the same' + ' scope (like compiler error E2003). Ancestors, aliases and pointer types are not reported. Quick fixes: add a forward declaration at the start of the type block, merge type blocks (const, var and labe' + 'l sections in between move in front of the first block) or move a record up in front of its first user; without a safe fix the message gives the reason.",' + #10 +
+    '      "bad": "type\n  TTree = class\n    FRoot: TNode;\n  end;\n  TNode = class\n  end;",' + #10 +
+    '      "good": "type\n  TNode = class;\n  TTree = class\n    FRoot: TNode;\n  end;\n  TNode = class\n  end;"' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "unneeded-forward-declaration",' + #10 +
+    '      "name": "Unneeded forward declaration",' + #10 +
+    '      "category": "code-smell",' + #10 +
+    '      "severity": "hint",' + #10 +
+    '      "description": "A forward declaration whose type is not used before its full declaration in the same type block. Quick fix: remove it.",' + #10 +
+    '      "bad": "type\n  TNode = class;\n  TNode = class\n  end;",' + #10 +
+    '      "good": "type\n  TNode = class\n  end;"' + #10 +
     '    }' + #10 +
     '  ]' + #10 +
     '}' + #10 +
@@ -1118,7 +1154,7 @@ begin
     '    {' + #10 +
     '      "id": "slash-command",' + #10 +
     '      "name": "Schnellbefehl nicht ausgeführt",' + #10 +
-    '      "description": "Eine Zeile, die mit /name beginnt, wurde nicht ausgeführt und steht noch im Code: Der Befehl ist unbekannt, abgeschaltet (slashCommands.disabled) oder passt an dieser Stelle nich' + 't. Die Meldung nennt den Grund."' + #10 +
+    '      "description": "Eine Zeile, die mit /name beginnt, wurde nicht ausgeführt und steht noch im Code: Der Befehl ist unbekannt, abgeschaltet (slashCommands.disabled) oder passt an dieser Stelle nich' + 't. Die Meldung nennt den Grund. \"/ignore regel\" meldet sie auch, wenn diese Regel in der Zeile darunter nichts findet."' + #10 +
     '    },' + #10 +
     '    {' + #10 +
     '      "id": "empty-except",' + #10 +
@@ -1304,6 +1340,26 @@ begin
     '      "id": "unresolved-identifier",' + #10 +
     '      "name": "Nicht deklarierter Bezeichner",' + #10 +
     '      "description": "Ein Bezeichner in einer Anweisung ist weder in der Unit noch in den eingebundenen Units deklariert (wie Compilerfehler E2003). Geprüft beim Tippen, ohne Compiler; with-Blöcke, as' + 'm und anonyme Methoden werden übersprungen."' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "deprecated-symbol",' + #10 +
+    '      "name": "Veraltetes Symbol",' + #10 +
+    '      "description": "Eine Routine, ein Typ, eine Konstante oder ein Mitglied mit deprecated, platform oder experimental wird verwendet (wie Compilerwarnungen W1000, W1002 und W1003). Der Editor strei' + 'cht den Namen durch; die Meldung nennt den Grund aus deprecated ''Grund''. Die Deklaration und der Kopf ihrer Implementierung werden nicht gemeldet."' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "implicit-package-import",' + #10 +
+    '      "name": "Implizit eingebundene Unit",' + #10 +
+    '      "description": "In einem Package (.dpk) verwendet eine Unit aus contains eine Unit, die weder in contains steht noch von einem Package aus requires geliefert wird. Der Compiler zieht sie implizi' + 't hinein (W1033), was später zu doppelten Units führt, wenn ein anderes Package sie ebenfalls enthält. Die Schnellkorrektur nimmt die Unit in contains auf."' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "type-used-before-declaration",' + #10 +
+    '      "name": "Typ vor seiner Deklaration benutzt",' + #10 +
+    '      "description": "Eine Klasse, ein Interface, ein Record oder ein anderer Typ wird in einer Typdeklaration (Feld, Parameter, Ergebnis, Property, generisches Argument, class of) benutzt, ist aber e' + 'rst weiter unten im selben Gültigkeitsbereich deklariert (wie Compilerfehler E2003). Vorfahren, Aliase und Zeigertypen werden nicht gemeldet. Schnellkorrekturen: Forward-Deklaration am Anfang des type' + '-Blocks ergänzen, type-Blöcke zusammenlegen (const-, var- und label-Abschnitte dazwischen wandern vor den ersten Block) oder einen Record vor seinen ersten Verwender verschieben; ohne sichere Korrektu' + 'r nennt die Meldung den Grund."' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "unneeded-forward-declaration",' + #10 +
+    '      "name": "Überflüssige Forward-Deklaration",' + #10 +
+    '      "description": "Eine Forward-Deklaration, deren Typ im selben type-Block vor der vollständigen Deklaration nicht benutzt wird. Schnellkorrektur: entfernen."' + #10 +
     '    }' + #10 +
     '  ]' + #10 +
     '}' + #10 +

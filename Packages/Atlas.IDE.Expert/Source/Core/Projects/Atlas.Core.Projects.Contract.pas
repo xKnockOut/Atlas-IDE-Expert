@@ -12,6 +12,8 @@
 // Präfixe (#452): Gibt die Projektdatei .atlas (#486) unter "naming" Präfixe für
 // Felder, Parameter oder lokale Variablen vor, gehen sie unter "naming" mit; sie
 // gelten für die Namensvorschläge vor der Zählung im Projekt.
+// Aktives Projekt (#46): "active" markiert das aktive Projekt der Gruppe; der
+// Server wählt es für Dateien, die zu mehreren Projekten gehören.
 
 interface
 
@@ -47,6 +49,8 @@ type
     /// <summary>Präfix-Vorgaben der Projektdatei (#452); nur mit HasNaming gesetzt, '' = ohne Präfix.</summary>
     Naming: array[TAtlasProjectNamingKind] of string;
     HasNaming: array[TAtlasProjectNamingKind] of Boolean;
+    /// <summary>Aktives Projekt der Projektgruppe (#46).</summary>
+    Active: Boolean;
     /// <summary>Woher Defines, Suchpfade und Namespaces kommen (nur fürs Protokoll, nicht für den
     /// Server): SourceConfiguration, SourceResolved, SourceOptions oder ''.</summary>
     Source: string;
@@ -128,6 +132,8 @@ begin
   Result := Format('%s %s/%s (%s, BDS %s): Defines %s; %d Suchpfade, %d Namespaces, %d Bibliothekspfade',
     [ExtractFileName(Project), Configuration, Platform, Origin, BdsVersion, string.Join(';', Defines),
     Length(SearchPaths), Length(Namespaces), Length(LibraryPaths)]);
+  if Active then
+    Result := Result + ', aktiv';
 end;
 
 function TAtlasProjectContext.Key: string;
@@ -136,7 +142,7 @@ var
 begin
   Result := AnsiUpperCase(Project) + '|' + Configuration + '|' + Platform + '|' + BdsVersion + '|' +
     string.Join(';', Defines) + '|' + string.Join(';', SearchPaths) + '|' + string.Join(';', Namespaces) + '|' +
-    string.Join(';', LibraryPaths);
+    string.Join(';', LibraryPaths) + '|' + BoolToStr(Active, True);
   for Kind := Low(TAtlasProjectNamingKind) to High(TAtlasProjectNamingKind) do
     if HasNaming[Kind] then
       Result := Result + '|' + NamingKeys[Kind] + '=' + Naming[Kind];
@@ -158,6 +164,7 @@ begin
   Result.AddPair('namespaces', JsonList(Namespaces));
   if Length(LibraryPaths) > 0 then
     Result.AddPair('libraryPaths', JsonList(LibraryPaths));
+  Result.AddPair('active', TJSONBool.Create(Active));
   Prefixes := nil;
   for Kind := Low(TAtlasProjectNamingKind) to High(TAtlasProjectNamingKind) do
     if HasNaming[Kind] then

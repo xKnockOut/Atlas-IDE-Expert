@@ -36,6 +36,9 @@
 // bis zum nächsten getippten Zeichen bzw. Schließen.
 // Rest der Liste (#497): Einträge unter der Überschrift „Weitere Einträge“ (TAtlasRanking.RestHeader) sind
 // gedämpft; die Fußzeile nennt „n Treffer · m weitere“ bzw. „Keine Treffer“, wenn nur der Rest steht.
+// Barrierefreiheit (#447): Die Einträge sind für UI Automation Listeneinträge (IAtlasAccessibleItems) mit
+// Zustand aus den Tags; die gewählte Zeile trägt mit SelectionMarker zusätzlich Rahmen und Marke ▸, damit sie
+// nicht nur an der Farbe erkennbar ist.
 
 interface
 
@@ -56,6 +59,7 @@ uses
   Atlas.Core.Completion.Ranking,
   Atlas.Core.Completion.Favorites,
   Atlas.UI.Popup.Window,
+  Atlas.UI.Popup.Accessibility,
   Atlas.UI.Popup.Tip,
   Atlas.UI.Strings,
   Atlas.Core.Documentation.Layout,
@@ -76,7 +80,7 @@ type
   TAtlasHitArea = (None, Splitter, Edge, Grip, PanelBar);
 {$SCOPEDENUMS OFF}
 
-  TAtlasCompletionPopup = class(TAtlasPopupWindow, IAtlasCompletionView)
+  TAtlasCompletionPopup = class(TAtlasPopupWindow, IAtlasCompletionView, IAtlasAccessibleItems)
   public const
     DefaultVisibleRows = 9;
     MinWidth = TAtlasPopupWidth.MinListWidth;
@@ -147,6 +151,8 @@ type
     FFooterHeight: Integer;
     FMetricsPPI: Integer;
     FMetricsValid: Boolean;
+    // Rahmen und Marke an der gewählten Zeile (#447).
+    FSelectionMarker: Boolean;
     procedure CMFontChanged(var Message: TMessage); message CM_FONTCHANGED;
     procedure InvalidateMetrics;
     procedure EnsureMetrics;
@@ -154,7 +160,11 @@ type
     function ChipsHeight: Integer;
     function ListTop: Integer;
     procedure DrawChips;
+    /// <summary>Text der Überschrift an APosition (geerbt von, Weitere Einträge, …).</summary>
+    function HeaderText(APosition: Integer): string;
     procedure DrawHeader(ARow, APosition: Integer);
+    /// <summary>Marke ▸ links in der gewählten Zeile (#447).</summary>
+    procedure DrawMarker(const ARow: TRect);
     /// <summary>Rechts in der Fußzeile: „3 von 84“ bzw. mit erwartetem Typ „3 passend · 84 gesamt“ (#417).</summary>
     function CountText: string;
     /// <summary>Links in der Fußzeile: die Tasten, oder das Ziel, sobald Einträge an Bedingungen hängen (#476).</summary>
@@ -205,7 +215,20 @@ type
     procedure PaintEmpty;
     procedure PaintPanel;
     procedure PlaceAt(AListWidth, AHeight: Integer);
+    { IAtlasAccessibleItems }
+    function AccessibleCount: Integer;
+    function AccessibleSelected: Integer;
+    function AccessibleId(APosition: Integer): Integer;
+    function AccessibleName(APosition: Integer): string;
+    function AccessibleStatus(APosition: Integer): string;
+    function AccessibleHelp(APosition: Integer): string;
+    function AccessibleIsHeader(APosition: Integer): Boolean;
+    function AccessibleBounds(APosition: Integer; out ARect: TRect): Boolean;
+    procedure AccessibleSelect(APosition: Integer);
+    /// <summary>Liste für UI Automation, sofern schon angefragt.</summary>
+    function AccessibleList: TAtlasAccessibleList;
   protected
+    function CreateAccessible(ARole: Integer; const AName: string): TAtlasAccessibleElement; override;
     procedure Paint; override;
     procedure MouseDown(Button: TMouseButton; Shift: TShiftState; X, Y: Integer); override;
     procedure MouseMove(Shift: TShiftState; X, Y: Integer); override;
@@ -264,6 +287,8 @@ type
     property OnFavorite: TAtlasPositionEvent read FOnFavorite write FOnFavorite;
     /// <summary>Gezeigter Hinweis der Fußzeile; '' ohne.</summary>
     property Notice: string read FNotice;
+    /// <summary>Gewählte Zeile mit Rahmen und Marke ▸ statt nur farbig (#447, completion.selectionMarker).</summary>
+    property SelectionMarker: Boolean read FSelectionMarker write FSelectionMarker;
   end;
 
 implementation
@@ -289,9 +314,24 @@ begin
   case ATag.Id of
     TAtlasTagId.Recent: Result := TAtlasStrings.Text(TAtlasTextId.TagRecent);
     TAtlasTagId.Frequent: Result := TAtlasStrings.Text(TAtlasTextId.TagFrequent);
+    TAtlasTagId.Cycle: Result := TAtlasStrings.Text(TAtlasTextId.UsesCycleTag);
+    TAtlasTagId.SameParams: Result := TAtlasStrings.Text(TAtlasTextId.InheritedSameTag);
+    TAtlasTagId.Overload: Result := TAtlasStrings.Text(TAtlasTextId.InheritedOverloadTag);
+    TAtlasTagId.Active: Result := TAtlasStrings.Text(TAtlasTextId.SameNameActiveTag);
   else
     Result := ATag.Text;
   end;
+end;
+
+/// <summary>Detail rechts in der Sprache der IDE: im uses-Abschnitt (#469) „bereits im interface-Teil“.</summary>
+function DetailText(const AItem: TAtlasCompletionItem): string;
+begin
+  if AItem.UsesElsewhere = 'interface' then
+    Result := TAtlasStrings.Text(TAtlasTextId.UsesInInterface)
+  else if AItem.UsesElsewhere = 'implementation' then
+    Result := TAtlasStrings.Text(TAtlasTextId.UsesInImplementation)
+  else
+    Result := TAtlasItemPresentation.Detail(AItem);
 end;
 
 { TAtlasCompletionPopup }
@@ -311,6 +351,7 @@ begin
   FTipTimer.Interval := 600;
   FTipTimer.OnTimer := TipTimer;
   FPanelWidthSetting := DefaultPanelWidth;
+  FSelectionMarker := True;
 end;
 
 destructor TAtlasCompletionPopup.Destroy;
@@ -539,6 +580,16 @@ begin
   // Hinweis zu den Favoriten (#458) hat Vorrang.
   if FNotice <> '' then
     Exit(FNotice);
+  // uses-Abschnitt (#469): welche Units schon eingebunden sind und deshalb fehlen.
+  if Length(TAtlasItemPresentation.UsesHidden(FItems)) > 0 then
+    Exit(TAtlasStrings.UsesHidden(TAtlasItemPresentation.UsesHidden(FItems)));
+  // Nach "inherited " (#482): welche abstrakten Vorfahrmethoden fehlen.
+  if Length(TAtlasItemPresentation.InheritedAbstract(FItems)) > 0 then
+    Exit(TAtlasStrings.InheritedAbstract(TAtlasItemPresentation.InheritedAbstract(FItems)));
+  // Gleichnamige Bezeichner (#475): ausgeblendete FireMonkey-Varianten.
+  if Length(TAtlasItemPresentation.SameNameHidden(FItems)) > 0 then
+    Exit(TAtlasStrings.Fmt(TAtlasTextId.SameNameHiddenFooter,
+      [string.Join(', ', TAtlasItemPresentation.SameNameHidden(FItems))]));
   Result := TAtlasStrings.Text(TAtlasTextId.FooterKeys);
   if FTarget = '' then
     Exit;
@@ -573,9 +624,8 @@ begin
     Result := TAtlasStrings.Text(TAtlasTextId.CompletionLimited) + ' · ' + Result;
 end;
 
-procedure TAtlasCompletionPopup.DrawHeader(ARow, APosition: Integer);
+function TAtlasCompletionPopup.HeaderText(APosition: Integer): string;
 var
-  Row: TRect;
   Text: string;
 begin
   // Überschrift einer Gruppe geerbter Member (#419): Klasse des nächsten Eintrags;
@@ -602,6 +652,13 @@ begin
     else if FItems[FOrder[APosition + 1]].TypeParam <> '' then
       Text := TAtlasStrings.TypeArgHeading(FItems[FOrder[APosition + 1]].TypeParam,
         FItems[FOrder[APosition + 1]].Constraint, FItems[FOrder[APosition + 1]].ConstraintHint)
+    // uses-Abschnitt (#469): Projekt, RTL/VCL, Drittanbieter.
+    else if FItems[FOrder[APosition + 1]].UsesGroup = 'project' then
+      Text := TAtlasStrings.Text(TAtlasTextId.UsesGroupProject)
+    else if FItems[FOrder[APosition + 1]].UsesGroup = 'rtl' then
+      Text := TAtlasStrings.Text(TAtlasTextId.UsesGroupRtl)
+    else if FItems[FOrder[APosition + 1]].UsesGroup = 'library' then
+      Text := TAtlasStrings.Text(TAtlasTextId.UsesGroupLibrary)
     // Komponenten aus dem Formular (#455): „Formular frmMain“.
     else if FItems[FOrder[APosition + 1]].Form <> '' then
       Text := TAtlasStrings.Fmt(TAtlasTextId.FormHeader, [FItems[FOrder[APosition + 1]].Form])
@@ -633,6 +690,15 @@ begin
     else if FItems[FOrder[APosition + 1]].DeclaringClass <> '' then
       Text := TAtlasStrings.Fmt(TAtlasTextId.InheritedFrom, [FItems[FOrder[APosition + 1]].DeclaringClass]);
   end;
+  Result := Text;
+end;
+
+procedure TAtlasCompletionPopup.DrawHeader(ARow, APosition: Integer);
+var
+  Row: TRect;
+  Text: string;
+begin
+  Text := HeaderText(APosition);
   Row := RowRect(ARow);
   Inc(Row.Left, Scale(7));
   Canvas.Font := UIFont;
@@ -761,7 +827,7 @@ begin
       Continue;
     Item := FItems[FOrder[Position]];
     Width := Canvas.TextWidth(Item.Name);
-    Detail := TAtlasItemPresentation.Detail(Item);
+    Detail := DetailText(Item);
     if Detail <> '' then
       Inc(Width, Scale(12) + Canvas.TextWidth(Detail));
     for Tag in TAtlasItemPresentation.Tags(Item) do
@@ -852,6 +918,13 @@ begin
   else
     PlaceAndShow;
   AnnounceSelected;
+  // UI Automation (#447): neue Einträge melden, dann den gewählten.
+  if AccessibleList <> nil then
+  begin
+    if not SameList then
+      AccessibleList.ItemsChanged;
+    AccessibleList.SelectionChanged;
+  end;
 end;
 
 /// <summary>Art eines Eintrags in Worten für die Sprachausgabe.</summary>
@@ -943,6 +1016,8 @@ begin
   FEmptyPrefix := APrefix;
   FEmptyTotal := ATotal;
   FShowingEmpty := True;
+  if AccessibleList <> nil then
+    AccessibleList.ItemsChanged;
   Canvas.Font := UIFont;
   FSessionWidth := Max(FSessionWidth, Max(Scale(MinWidth),
     Canvas.TextWidth(TAtlasStrings.Fmt(TAtlasTextId.NoMatchesFor, [APrefix])) + Scale(32)));
@@ -1083,6 +1158,7 @@ begin
     TAtlasTagKind.Accent: begin Line := Colors.Accent; TextColor := Colors.Accent; end;
     TAtlasTagKind.Add: begin Line := Colors.Add; TextColor := Colors.Add; end;
     TAtlasTagKind.Warn: begin Line := Colors.Warn; TextColor := Colors.Warn; end;
+    TAtlasTagKind.Error: begin Line := Colors.Error; TextColor := Colors.Error; end;
   else
     Line := Colors.Line;
     TextColor := Colors.Muted;
@@ -1196,7 +1272,15 @@ begin
   FDimRow := ((FDimInherited and (Item.Depth > 0)) or Item.Unavailable or ((FRestFrom >= 0) and
     (APosition > FRestFrom))) and (APosition <> FSelected);
   if APosition = FSelected then
+  begin
     FillRounded(Row, Colors.Selection, 4);
+    // Nicht nur Farbe (#447): Rahmen in Akzentfarbe und Marke im Rand vor dem Badge.
+    if FSelectionMarker then
+    begin
+      FrameRounded(Row, Colors.Accent, 4);
+      DrawMarker(Row);
+    end;
+  end;
   // Favoriten (#458): gefüllter Stern bei angehefteten Einträgen, leerer beim Überfahren.
   if FFavoritesEnabled then
   begin
@@ -1223,7 +1307,7 @@ begin
   TagsWidth := 0;
   for Tag in Tags do
     Inc(TagsWidth, TagWidth(Tag) + Gap);
-  Detail := TAtlasItemPresentation.Detail(Item);
+  Detail := DetailText(Item);
   Canvas.Font := Font;
   DetailWidth := 0;
   Space := Right - NameLeft;
@@ -1264,6 +1348,109 @@ begin
     SetLength(FTruncated, ARow + 1);
   FTruncated[ARow] := Truncated or (NameLeft + NameWidth > X - Gap);
   FDimRow := False;
+end;
+
+procedure TAtlasCompletionPopup.DrawMarker(const ARow: TRect);
+var
+  Left, Middle, Half: Integer;
+begin
+  // Schmales Dreieck im Rand vor dem Badge bzw. Stern; passt auch neben die Sternspalte.
+  Left := ARow.Left + Scale(1);
+  Middle := (ARow.Top + ARow.Bottom) div 2;
+  Half := Scale(4);
+  Canvas.Brush.Style := bsSolid;
+  Canvas.Brush.Color := ToColor(Colors.Accent);
+  Canvas.Pen.Color := ToColor(Colors.Accent);
+  Canvas.Polygon([Point(Left, Middle - Half), Point(Left + Scale(3), Middle), Point(Left, Middle + Half)]);
+end;
+
+function TAtlasCompletionPopup.CreateAccessible(ARole: Integer; const AName: string): TAtlasAccessibleElement;
+begin
+  Result := TAtlasAccessibleList.Create(Handle, AName, Self);
+end;
+
+function TAtlasCompletionPopup.AccessibleList: TAtlasAccessibleList;
+begin
+  Result := nil;
+  if AccessibleObject is TAtlasAccessibleList then
+    Result := TAtlasAccessibleList(AccessibleObject);
+end;
+
+function TAtlasCompletionPopup.AccessibleCount: Integer;
+begin
+  Result := 0;
+  if not FShowingEmpty and IsShown then
+    Result := Length(FOrder);
+end;
+
+function TAtlasCompletionPopup.AccessibleSelected: Integer;
+begin
+  Result := FSelected;
+end;
+
+function TAtlasCompletionPopup.AccessibleId(APosition: Integer): Integer;
+begin
+  // Index in FItems bleibt beim Filtern gleich; Überschriften sind negativ und kommen je Liste einmal vor.
+  Result := FOrder[APosition];
+end;
+
+function TAtlasCompletionPopup.AccessibleName(APosition: Integer): string;
+begin
+  if TAtlasRanking.IsHeader(FOrder[APosition]) then
+    Result := HeaderText(APosition)
+  else
+    Result := FItems[FOrder[APosition]].Name;
+end;
+
+function TAtlasCompletionPopup.AccessibleStatus(APosition: Integer): string;
+var
+  Status: string;
+begin
+  Result := '';
+  if TAtlasRanking.IsHeader(FOrder[APosition]) then
+    Exit;
+  // Dieselben Angaben wie die Tags der Zeile; nicht nur Farbe (#447).
+  Result := TAtlasItemPresentation.TagText(FItems[FOrder[APosition]]);
+  if FItems[FOrder[APosition]].Favorite then
+  begin
+    Status := TAtlasStrings.Text(TAtlasTextId.AccessFavorite);
+    if Result <> '' then
+      Result := Status + ', ' + Result
+    else
+      Result := Status;
+  end;
+end;
+
+function TAtlasCompletionPopup.AccessibleHelp(APosition: Integer): string;
+begin
+  Result := '';
+  if not TAtlasRanking.IsHeader(FOrder[APosition]) then
+    Result := DetailText(FItems[FOrder[APosition]]);
+end;
+
+function TAtlasCompletionPopup.AccessibleIsHeader(APosition: Integer): Boolean;
+begin
+  Result := TAtlasRanking.IsHeader(FOrder[APosition]);
+end;
+
+function TAtlasCompletionPopup.AccessibleBounds(APosition: Integer; out ARect: TRect): Boolean;
+begin
+  Result := IsShown and (APosition >= FTop) and (APosition < FTop + RowCount) and (APosition <= High(FOrder));
+  if not Result then
+  begin
+    ARect := TRect.Empty;
+    Exit;
+  end;
+  ARect := RowRect(APosition - FTop);
+  ARect.TopLeft := ClientToScreen(ARect.TopLeft);
+  ARect.BottomRight := ClientToScreen(ARect.BottomRight);
+end;
+
+procedure TAtlasCompletionPopup.AccessibleSelect(APosition: Integer);
+begin
+  // Wie ein Klick auf die Zeile: Der Controller wählt und zeigt die Liste neu.
+  if Assigned(FOnSelect) then
+    FOnSelect(APosition);
 end;
 
 procedure TAtlasCompletionPopup.DrawScrollBar;
@@ -1450,7 +1637,15 @@ begin
     Index := FDetailView.DocLinkAt(X, Y);
     if Index >= 0 then
     begin
-      if Assigned(FOnDocLink) then
+      // „Mehr/Weniger anzeigen“ (#770): Zugeklappt darf das Popup wieder schrumpfen.
+      if FDetailView.Doc.Link(Index).Kind = TAtlasDocLinkKind.Toggle then
+      begin
+        if not FDetailView.ToggleDoc(Canvas) then
+          FSessionHeight := 0;
+        Relayout;
+        Invalidate;
+      end
+      else if Assigned(FOnDocLink) then
         FOnDocLink(FDetailView.Doc.Link(Index), ssCtrl in Shift);
       Exit;
     end;
@@ -1658,7 +1853,7 @@ begin
     Exit;
   Item := FItems[FOrder[FHoverPosition]];
   Text := Item.Name;
-  Detail := TAtlasItemPresentation.Detail(Item);
+  Detail := DetailText(Item);
   if Detail <> '' then
     Text := Text + '   ' + Detail;
   for Tag in TAtlasItemPresentation.Tags(Item) do

@@ -144,6 +144,10 @@ type
     /// <summary>Code-Review P-12: Eingebaute Typen werden nicht im Index gesucht (kein gleichnamiger Fremdtyp).</summary>
     [Test]
     procedure BuiltinTypeNotShadowedByIndexEnum;
+    /// <summary>#456: Helper aus nicht eingebundenen Units nach den eigenen Mitgliedern, mit Kennzeichen und
+    /// uses-Eintrag; eingebunden ohne uses-Eintrag.</summary>
+    [Test]
+    procedure HelpersFromOtherUnitsBringTheirUses;
   end;
 
 implementation
@@ -327,6 +331,59 @@ begin
   Assert.AreEqual('Name Bar Zaehler Melde', Names(ItemsAt(Text, 'Wert.')));
   Text := WithCode('  Self.Za');
   Assert.AreEqual('Zaehler', Names(ItemsAt(Text, 'Self.Za')));
+end;
+
+procedure TLspCompletionTests.HelpersFromOtherUnitsBringTheirUses;
+const
+  UnitHilfen = 'unit Hilfen;'#10'interface'#10'uses Werkzeug;'#10'type'#10 +
+    '  TBasisHelper = class helper for TBasis'#10'  public'#10'    procedure Hilfe;'#10'  end;'#10 +
+    '  TTextHelper = record helper for string'#10'  public'#10'    function Laenge: Integer;'#10 +
+    '  private'#10'    procedure Intern;'#10'  end;'#10'implementation'#10'end.';
+var
+  Text: string;
+  Items: TCompletionItems;
+  Item: TCompletionItem;
+  Found: Boolean;
+  Details: TJSONObject;
+begin
+  FIndex.AddUnit(TIndexExtractor.ExtractText(UnitHilfen, 'C:\P\Hilfen.pas', nil));
+  // Detailpanel: „TTextHelper · Hilfen“ (Zeile 10: function Laenge).
+  Details := TLspCompletion.Details(FIndex, 'C:\P\Hilfen.pas', UnitHilfen, TTextPosition.Create(10, 13));
+  try
+    Assert.AreEqual('TTextHelper', Details.GetValue<string>('container'));
+    // TJSONBool.Create(True) ist kein TJSONTrue; erst der Parser erzeugt diese Klasse.
+    Assert.IsTrue((Details.GetValue('helper') is TJSONBool) and TJSONBool(Details.GetValue('helper')).AsBoolean,
+      Details.ToJSON);
+  finally
+    Details.Free;
+  end;
+  Text := WithCode('  Wert.');
+  Items := ItemsAt(Text, 'Wert.');
+  // Eigene und geerbte Mitglieder zuerst, der Helper des Vorfahren dahinter.
+  Assert.AreEqual('Name Bar Zaehler Melde Hilfe', Names(Items));
+  Found := False;
+  for Item in Items.Items do
+    if Item.Name = 'Hilfe' then
+    begin
+      Found := True;
+      Assert.IsTrue(Item.IsHelper);
+      Assert.AreEqual(1, Item.Depth);
+      Assert.AreEqual('Hilfen (uses ergänzen)', Item.Detail);
+      Assert.AreEqual(1, Integer(Length(Item.AdditionalEdits)));
+      // Verwendung im implementation-Teil: dort ein neuer uses-Abschnitt.
+      Assert.IsTrue(Item.AdditionalEdits[0].NewText.Contains('Hilfen'), Item.AdditionalEdits[0].NewText);
+    end;
+  Assert.IsTrue(Found);
+  // Eingebauter Typ: nur die öffentlichen Helper-Mitglieder.
+  Assert.AreEqual('Laenge', Names(ItemsAt(WithCode('  Wert.Name.'), 'Wert.Name.')));
+  // Eingebunden: aktiver Helper ohne uses-Eintrag.
+  Text := StringReplace(WithCode('  Wert.'), 'uses Werkzeug;', 'uses Werkzeug, Hilfen;', []);
+  for Item in ItemsAt(Text, 'Wert.').Items do
+    if Item.Name = 'Hilfe' then
+    begin
+      Assert.IsTrue(Item.IsHelper);
+      Assert.AreEqual(0, Integer(Length(Item.AdditionalEdits)));
+    end;
 end;
 
 procedure TLspCompletionTests.MembersOfUnitAreInterfaceSymbols;
@@ -636,8 +693,8 @@ var
   Postfix: TPostfixOptions;
   Partial: TCompletionPartialProc;
 begin
-  // Gleichnamiges aus nicht eingebundenen Units kommt nicht doppelt, auch wenn der eingebundene Name schon
-  // in einem Teilergebnis stand.
+  // Gleichnamiges aus nicht eingebundenen Units kommt nicht doppelt als Import, auch wenn der eingebundene Name
+  // schon in einem Teilergebnis stand; es steht einmal als Variante direkt hinter dem eingebundenen (#475).
   FIndex.AddUnit(TIndexExtractor.ExtractText('unit Extra;'#10'interface'#10'procedure Rechne;'#10 +
     'procedure Rechenweg;'#10'implementation'#10'procedure Rechne; begin end;'#10 +
     'procedure Rechenweg; begin end;'#10'end.', 'C:\P\Extra.pas', nil));
@@ -657,7 +714,7 @@ begin
       end;
     Items := TLspCompletion.Collect(FResolver, FIndex, Tree, HauptFile, Text, PositionOf(Text, '  Rech'),
       TCompletionMatching.Fuzzy, Postfix, Partial);
-    Assert.AreEqual('Rechne|', Sent);
+    Assert.AreEqual('Rechne Rechne|', Sent);
     Assert.AreEqual('Rechenweg', Names(Items));
     Assert.AreEqual('Extra (uses ergänzen)', Items.Items[0].Detail);
   finally

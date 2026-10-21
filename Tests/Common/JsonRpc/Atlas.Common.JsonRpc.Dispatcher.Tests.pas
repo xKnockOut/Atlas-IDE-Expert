@@ -65,6 +65,12 @@ type
     procedure RemembersLastMessage;
     [Test]
     procedure WatchdogCancelsLongRunningRequest;
+    /// <summary>#874: Ein normaler Handler mit Bedingung läuft nebenläufig, wenn sie für die Parameter gilt.</summary>
+    [Test]
+    procedure RunsConditionalRequestConcurrentlyWhenConditionHolds;
+    /// <summary>#874: Die Wartezeit im Posteingang erreicht den Beobachter, auch bei seriellen Anfragen.</summary>
+    [Test]
+    procedure ReportsQueueTimeToObserver;
   end;
 
 implementation
@@ -92,6 +98,26 @@ begin
   finally
     Message.Free;
   end;
+end;
+
+type
+  /// <summary>Merkt sich die Wartezeit der letzten Anfrage.</summary>
+  TQueueObserver = class(TInterfacedObject, IJsonRpcRequestObserver)
+  public
+    QueueMs: Int64;
+    procedure Started(const AMethod: string);
+    procedure Finished(const AMethod: string; const AParams, AResult: TJSONValue; const AError: Exception;
+      AQueueMs, AElapsedMs: Int64);
+  end;
+
+procedure TQueueObserver.Started(const AMethod: string);
+begin
+end;
+
+procedure TQueueObserver.Finished(const AMethod: string; const AParams, AResult: TJSONValue;
+  const AError: Exception; AQueueMs, AElapsedMs: Int64);
+begin
+  QueueMs := AQueueMs;
 end;
 
 type
@@ -608,6 +634,96 @@ begin
   Assert.IsTrue(SyncSeen, 'synchroner Handler');
   Assert.IsTrue(ConcurrentSeen, 'nebenläufiger Handler');
   Assert.IsTrue(TJsonRpcCurrentRequest.Token = nil, 'nach dem Handler');
+end;
+
+procedure TJsonRpcDispatcherTests.RunsConditionalRequestConcurrentlyWhenConditionHolds;
+var
+  Scheduling: TManualScheduling;
+  Response: TJSONObject;
+  Handler: TJsonRpcRequestHandler;
+  When: TJsonRpcConcurrentWhen;
+begin
+  Handler :=
+    function(const AParams: TJSONValue): TJSONValue
+    begin
+      Result := TJSONValue(AParams.Clone);
+    end;
+  When :=
+    function(const AParams: TJSONValue): Boolean
+    begin
+      Result := (AParams is TJSONObject) and (TJSONObject(AParams).GetValue('fast') is TJSONBool) and
+        TJSONBool(TJSONObject(AParams).GetValue('fast')).AsBoolean;
+    end;
+  FDispatcher.RegisterConditionalRequest('command', Handler, When);
+  Scheduling := TManualScheduling.Create;
+  try
+    Scheduling.AttachTo(FDispatcher);
+    // Bedingung erfüllt: über den Scheduler, Antwort über den Responder.
+    Assert.IsNull(DispatchJson(FDispatcher, '{"jsonrpc":"2.0","id":1,"method":"command","params":{"fast":true}}'));
+    Assert.AreEqual(1, Integer(Scheduling.Work.Count));
+    Scheduling.RunAll;
+    Assert.AreEqual(1, Integer(Scheduling.Responses.Count));
+    Assert.IsTrue(Scheduling.Responses[0].GetValue<Boolean>('result.fast'));
+    // Nicht erfüllt: in der Reihenfolge, Antwort direkt.
+    Response := DispatchJson(FDispatcher, '{"jsonrpc":"2.0","id":2,"method":"command","params":{"fast":false}}');
+    try
+      Assert.IsNotNull(Response);
+      Assert.AreEqual(2, Response.GetValue<Integer>('id'));
+      Assert.AreEqual(0, Integer(Scheduling.Work.Count));
+    finally
+      Response.Free;
+    end;
+    // RegisterRequest ohne Bedingung nimmt sie wieder weg.
+    FDispatcher.RegisterRequest('command',
+      function(const AParams: TJSONValue): TJSONValue
+      begin
+        Result := nil;
+      end);
+    Response := DispatchJson(FDispatcher, '{"jsonrpc":"2.0","id":3,"method":"command","params":{"fast":true}}');
+    try
+      Assert.IsNotNull(Response, 'ohne Bedingung seriell');
+    finally
+      Response.Free;
+    end;
+  finally
+    Scheduling.Free;
+  end;
+end;
+
+procedure TJsonRpcDispatcherTests.ReportsQueueTimeToObserver;
+var
+  Observer: TQueueObserver;
+  Keep: IJsonRpcRequestObserver;
+  Message, Response: TJSONObject;
+  Scheduling: TManualScheduling;
+begin
+  Observer := TQueueObserver.Create;
+  Keep := Observer;
+  FDispatcher.Observer := Keep;
+  Message := TJsonRpcTestSupport.Parse('{"jsonrpc":"2.0","id":1,"method":"echo","params":1}');
+  try
+    Response := FDispatcher.DispatchMessage(Message, 250);
+    Response.Free;
+  finally
+    Message.Free;
+  end;
+  Assert.AreEqual<Int64>(250, Observer.QueueMs, 'seriell: Wartezeit im Posteingang');
+  RegisterConcurrentEcho(FDispatcher);
+  Scheduling := TManualScheduling.Create;
+  try
+    Scheduling.AttachTo(FDispatcher);
+    Message := TJsonRpcTestSupport.Parse('{"jsonrpc":"2.0","id":2,"method":"parallel","params":2}');
+    try
+      Assert.IsNull(FDispatcher.DispatchMessage(Message, 400));
+    finally
+      Message.Free;
+    end;
+    Scheduling.RunAll;
+    Assert.IsTrue(Observer.QueueMs >= 400, 'nebenläufig: Posteingang und Warteschlange');
+  finally
+    Scheduling.Free;
+  end;
+  FDispatcher.Observer := nil;
 end;
 
 initialization

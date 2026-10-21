@@ -80,6 +80,8 @@ type
     [Test]
     procedure CompleteStatementRoundTrip;
     [Test]
+    procedure FormatCodeRoundTrip;
+    [Test]
     procedure ContinuePatternRoundTrip;
     [Test]
     procedure MultiCursorRoundTrip;
@@ -112,9 +114,27 @@ type
     procedure SymbolResourcesInAllSizes;
     [Test]
     procedure PageHeaderShowsSymbol;
-    /// <summary>Die Einstellungen stehen auf Reitern je Bereich statt auf einer langen Seite (#227).</summary>
+    /// <summary>Baum links (#890): Bereiche, Unterpunkte, Seitenwechsel, Auswahl bis zum nächsten Öffnen.</summary>
     [Test]
-    procedure GroupsSettingsOnTabs;
+    procedure TreeShowsAreasAndNodes;
+    /// <summary>Wächter (#890): jede Einstellung auf ihrem Knoten, höchstens im Rahmen ihres Hauptschalters.</summary>
+    [Test]
+    procedure EveryBindingOnOneNode;
+    /// <summary>Hauptschalter sperrt seine Gruppe; experimentell aus sperrt auch ihn (#890).</summary>
+    [Test]
+    procedure MasterLocksItsGroup;
+    /// <summary>Hauptschalter auf einer anderen Seite sperrt mit Grund im Rahmen (#890).</summary>
+    [Test]
+    procedure MasterOnOtherPageLocks;
+    /// <summary>Übersicht auf dem Hauptknoten spiegelt die Hauptschalter (#890).</summary>
+    [Test]
+    procedure OverviewMirrorsMasters;
+    /// <summary>Reveal einer gesperrten Einstellung hebt den Hauptschalter hervor (#890, #628).</summary>
+    [Test]
+    procedure RevealLockedShowsMaster;
+    /// <summary>Filter im Baum und „Seite zurücksetzen“ je Knoten (#890).</summary>
+    [Test]
+    procedure FilterAndResetPerNode;
     /// <summary>„Wächter testen“ nur im Diagnosemodus (Code-Review S-07).</summary>
     [Test]
     procedure HangTestOnlyInDiagnosticMode;
@@ -159,11 +179,14 @@ uses
   Vcl.ImageCollection,
   System.JSON,
   System.Generics.Collections,
+  System.StrUtils,
+  Vcl.Controls,
   Vcl.Menus,
   Vcl.Forms,
   Vcl.ComCtrls,
   Vcl.StdCtrls,
   Atlas.UI.Settings.Marks,
+  Atlas.UI.Settings.Group,
   Atlas.UI.Strings;
 
 procedure TAtlasSettingsPageTests.WarmUp;
@@ -184,42 +207,338 @@ begin
   SnippetsPageShowsCatalogAndValidates;
 end;
 
-procedure TAtlasSettingsPageTests.GroupsSettingsOnTabs;
+/// <summary>Liegt AControl in AParent (oder ist es selbst)?</summary>
+function Inside(AControl, AParent: TControl): Boolean;
+begin
+  while (AControl <> nil) and (AControl <> AParent) do
+    AControl := AControl.Parent;
+  Result := AControl <> nil;
+end;
+
+/// <summary>Reiter, auf dem AControl liegt; nil ohne.</summary>
+function SheetOf(AControl: TControl): TTabSheet;
+begin
+  while (AControl <> nil) and not (AControl is TTabSheet) do
+    AControl := AControl.Parent;
+  Result := TTabSheet(AControl);
+end;
+
+/// <summary>Nächster Rahmen über AControl; nil ohne.</summary>
+function FrameAround(AControl: TControl): TAtlasSettingsGroup;
+begin
+  AControl := AControl.Parent;
+  while (AControl <> nil) and not (AControl is TAtlasSettingsGroup) do
+    AControl := AControl.Parent;
+  Result := TAtlasSettingsGroup(AControl);
+end;
+
+/// <summary>Knoten des Baums, der ASheet zeigt; nil ohne.</summary>
+function TreeNodeOf(APage: TAtlasSettingsPage; ASheet: TTabSheet): TTreeNode;
+var
+  Index: Integer;
+begin
+  for Index := 0 to APage.Navigation.Items.Count - 1 do
+  begin
+    Result := APage.Navigation.Items[Index];
+    APage.Navigation.OnChange(APage.Navigation, Result);
+    if APage.Pages.ActivePage = ASheet then
+      Exit;
+  end;
+  Result := nil;
+end;
+
+function TopLevelNodes(APage: TAtlasSettingsPage): TArray<TTreeNode>;
+var
+  Index: Integer;
+begin
+  Result := nil;
+  for Index := 0 to APage.Navigation.Items.Count - 1 do
+    if APage.Navigation.Items[Index].Level = 0 then
+      Result := Result + [APage.Navigation.Items[Index]];
+end;
+
+procedure TAtlasSettingsPageTests.TreeShowsAreasAndNodes;
 var
   Host: TForm;
   Page: TAtlasSettingsPage;
-  Sheet: TTabSheet;
+  Areas: TArray<TTreeNode>;
+  Node: TTreeNode;
+  Minimap: TTabSheet;
   Index: Integer;
 begin
-  // Wie in der IDE: Die Reiter hängen erst am PageControl, wenn die Seite ein Fenster hat.
+  // #890: Bereiche oben im Baum, Funktionen als Unterpunkte; jeder Knoten zeigt nur seine Seite.
+  TAtlasSettingsPage.ForgetTreeState;
   Host := TForm.CreateNew(nil);
   try
     Page := TAtlasSettingsPage.Create(Host);
     Page.Parent := Host;
     Page.HandleNeeded;
-    Assert.AreEqual(16, Page.Pages.PageCount);
-    Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.SettingsTabGeneral), Page.Pages.Pages[0].Caption);
-    Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.SettingsTabCompiler), Page.Pages.Pages[6].Caption);
-    Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.SettingsTabRelease), Page.Pages.Pages[7].Caption);
-    Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.SettingsTabDebug), Page.Pages.Pages[8].Caption);
-    Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.SettingsTabUndo), Page.Pages.Pages[12].Caption);
-    Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.SettingsTabUnitSearch), Page.Pages.Pages[13].Caption);
-    Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.SettingsTabWelcome), Page.Pages.Pages[14].Caption);
-    Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.SettingsTabTeamFile), Page.Pages.Pages[15].Caption);
+    Areas := TopLevelNodes(Page);
+    Assert.AreEqual(16, Integer(Length(Areas)));
+    Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.SettingsTabGeneral), Areas[0].Text);
+    Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.SettingsTabCompiler), Areas[6].Text);
+    Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.SettingsTabRelease), Areas[7].Text);
+    Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.SettingsTabDebug), Areas[8].Text);
+    Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.SettingsTabUndo), Areas[12].Text);
+    Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.SettingsTabUnitSearch), Areas[13].Text);
+    Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.SettingsTabWelcome), Areas[14].Text);
+    Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.SettingsTabTeamFile), Areas[15].Text);
+    Assert.IsTrue(Page.Pages.PageCount > 16, 'Unterpunkte haben eigene Seiten');
     for Index := 0 to Page.Pages.PageCount - 1 do
     begin
-      Sheet := Page.Pages.Pages[Index];
-      Assert.IsTrue(Sheet.ControlCount > 0, Sheet.Caption);
-      // Bereiche als Liste links: keine Reiterzeilen, jeder Bereich ein Eintrag.
-      Assert.IsFalse(Sheet.TabVisible, Sheet.Caption);
-      Assert.AreEqual(Sheet.Caption, Page.Navigation.Items[Index]);
+      Assert.IsTrue(Page.Pages.Pages[Index].ControlCount > 0, Page.Pages.Pages[Index].Caption);
+      Assert.IsFalse(Page.Pages.Pages[Index].TabVisible, Page.Pages.Pages[Index].Caption);
     end;
-    Assert.AreEqual(0, Page.Pages.ActivePageIndex);
-    Page.Navigation.ItemIndex := 13;
-    Page.Navigation.OnClick(Page.Navigation);
-    Assert.AreEqual(13, Page.Pages.ActivePageIndex, 'Klick in der Liste schaltet den Bereich');
+    Assert.IsTrue(Page.Pages.ActivePage = Page.Pages.Pages[0], 'erstes Öffnen: Allgemein');
+    // Unterpunkt „Minikarte“ unter „Editor“ mit ihren Einstellungen und nichts sonst.
+    Minimap := Page.NodeSheet('editor.minimap');
+    Assert.IsNotNull(Minimap);
+    Assert.AreEqual('editor.minimap', Page.NodeOfSheet(Minimap));
+    Assert.IsTrue(SheetOf(Page.MinimapWidth) = Minimap);
+    Assert.IsFalse(SheetOf(Page.StickyScroll) = Minimap);
+    Node := TreeNodeOf(Page, Minimap);
+    Assert.IsNotNull(Node, 'Knoten im Baum');
+    Assert.AreEqual(1, Node.Level);
+    Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.SettingsTabEditor), Node.Parent.Text);
+    Page.Navigation.OnChange(Page.Navigation, Areas[13]);
+    Assert.AreEqual('', Page.NodeOfSheet(Page.Pages.ActivePage), 'Hauptknoten zeigt den Bereich');
+    Page.Navigation.OnChange(Page.Navigation, Node);
+    Assert.IsTrue(Page.Pages.ActivePage = Minimap, 'Klick im Baum schaltet die Seite');
   finally
     Host.Free;
+  end;
+  // Beim nächsten Öffnen dieselbe Seite, ihr Bereich aufgeklappt.
+  Host := TForm.CreateNew(nil);
+  try
+    Page := TAtlasSettingsPage.Create(Host);
+    Page.Parent := Host;
+    Page.HandleNeeded;
+    Assert.IsTrue(Page.Pages.ActivePage = Page.NodeSheet('editor.minimap'), 'Auswahl gemerkt');
+    Assert.IsNotNull(Page.Navigation.Selected);
+    Assert.IsTrue(Page.Navigation.Selected.Parent.Expanded, 'Bereich aufgeklappt');
+  finally
+    Host.Free;
+    TAtlasSettingsPage.ForgetTreeState;
+  end;
+end;
+
+procedure TAtlasSettingsPageTests.EveryBindingOnOneNode;
+var
+  Page: TAtlasSettingsPage;
+  Index: Integer;
+  Binding: TAtlasSettingsBinding;
+  Name, Known: string;
+  Sheet: TTabSheet;
+  Frame: TAtlasSettingsGroup;
+  Ancestors: TArray<string>;
+begin
+  // #890 Wächter: Jede Einstellung steht auf genau dem Knoten aus dem Schema und höchstens in einem Rahmen,
+  // dem ihres Hauptschalters (oder eines seiner Vorfahren).
+  Page := TAtlasSettingsPage.Create(nil);
+  try
+    for Index := 0 to Page.Marks.Count - 1 do
+    begin
+      Binding := Page.Marks.Bindings[Index];
+      Known := '';
+      for Name in Binding.Names do
+        if (Known = '') and Page.Groups.Contains(Name) then
+          Known := Name;
+      if Known = '' then
+        Continue;
+      Sheet := SheetOf(Binding.Control);
+      Assert.IsNotNull(Sheet, Known);
+      Assert.AreEqual(Page.Groups.NodeOf(Known), Page.NodeOfSheet(Sheet), Known);
+      Frame := FrameAround(Binding.Control);
+      if (Frame = nil) or Inside(Binding.Control, Frame.Master) then
+        Frame := FrameAround(Frame);
+      if Frame = nil then
+        Continue;
+      Ancestors := Page.Groups.AncestorsOf(Known);
+      Assert.IsTrue(Frame.MasterName <> '', Known);
+      Assert.IsTrue(MatchText(Frame.MasterName, Ancestors), Known + ' in ' + Frame.MasterName);
+    end;
+  finally
+    Page.Free;
+  end;
+end;
+
+procedure TAtlasSettingsPageTests.MasterLocksItsGroup;
+var
+  Page: TAtlasSettingsPage;
+  Settings, Saved: TAtlasPluginSettings;
+  Frame: TAtlasSettingsGroup;
+begin
+  // #890: Hauptschalter aus ⇒ jede Unteroption gesperrt; die Werte bleiben und werden gespeichert.
+  Page := TAtlasSettingsPage.Create(nil);
+  try
+    Settings := TAtlasPluginSettings.Defaults;
+    Settings.ExperimentalEnabled := True;
+    Settings.Minimap := True;
+    Settings.MinimapWidth := 90;
+    Page.LoadFrom(Settings);
+    Frame := Page.FrameOf('Minimap');
+    Assert.IsNotNull(Frame, 'Minikarte hat einen Rahmen');
+    Assert.IsTrue(Frame.Master = Page.Minimap, 'Hauptschalter oben im Rahmen');
+    Assert.IsTrue(Page.MinimapRender.Enabled and Page.MinimapWidth.Enabled);
+    Assert.IsFalse(Page.SheetGray(Page.NodeSheet('editor.minimap')));
+    Page.Minimap.Checked := False;
+    Assert.IsTrue(Page.Minimap.Enabled, 'der Hauptschalter bleibt bedienbar');
+    Assert.IsFalse(Page.MinimapRender.Enabled, 'Auswahl gesperrt');
+    Assert.IsFalse(Page.MinimapWidth.Enabled, 'Textfeld gesperrt');
+    Assert.IsFalse(Frame.Reason.Visible, 'kein Grund: Der Schalter steht im Rahmen');
+    Assert.IsTrue(Page.SheetGray(Page.NodeSheet('editor.minimap')), 'Knoten grau');
+    Saved := TAtlasPluginSettings.Defaults;
+    Page.SaveTo(Saved);
+    Assert.AreEqual(90, Saved.MinimapWidth, 'Wert bleibt erhalten');
+    Page.Minimap.Checked := True;
+    Assert.IsTrue(Page.MinimapRender.Enabled and Page.MinimapWidth.Enabled, 'wieder frei');
+    // Experimentelle Funktionen aus: auch der Hauptschalter gesperrt, mit Grund im Rahmen.
+    Page.ExperimentalEnabled.Checked := False;
+    Assert.IsFalse(Page.Minimap.Enabled);
+    Assert.IsFalse(Page.MinimapWidth.Enabled);
+    Assert.IsTrue(Frame.Reason.Visible);
+    Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.SettingsLockedExperimental), Frame.Reason.Caption);
+    Assert.IsTrue(Page.Minimap.Checked, 'Wert bleibt');
+    Page.ExperimentalEnabled.Checked := True;
+    Assert.IsTrue(Page.Minimap.Enabled);
+    Assert.IsFalse(Frame.Reason.Visible);
+  finally
+    Page.Free;
+  end;
+end;
+
+procedure TAtlasSettingsPageTests.MasterOnOtherPageLocks;
+var
+  Page: TAtlasSettingsPage;
+  Settings: TAtlasPluginSettings;
+  Frame: TAtlasSettingsGroup;
+  Master: TCheckBox;
+begin
+  // #890: Abhängigkeit über Seiten hinweg: Atlas-Code-Insight (Allgemein) aus sperrt den mitlaufenden Kopf.
+  Page := TAtlasSettingsPage.Create(nil);
+  try
+    Settings := TAtlasPluginSettings.Defaults;
+    Settings.ExperimentalEnabled := True;
+    Settings.StickyScroll := True;
+    Page.LoadFrom(Settings);
+    Frame := Page.FrameOf('StickyScroll');
+    Assert.IsNotNull(Frame);
+    Assert.IsTrue(Page.StickyScroll.Enabled and Page.StickyScrollMaxLines.Enabled);
+    Master := Page.FrameOf('Enabled').Master as TCheckBox;
+    Master.Checked := False;
+    Assert.IsFalse(Page.StickyScroll.Enabled, 'Hauptschalter gesperrt');
+    Assert.IsFalse(Page.StickyScrollMaxLines.Enabled, 'Unteroption gesperrt');
+    Assert.IsTrue(Frame.Reason.Visible, 'Grund im Rahmen');
+    Assert.IsTrue(Pos(TAtlasStrings.Text(TAtlasTextId.SettingsEnabled).Replace('&', ''), Frame.Reason.Caption) > 0,
+      Frame.Reason.Caption);
+    Assert.IsFalse(Page.ControlOf('PairGuides').Enabled, 'auch Klammerfarben');
+    Master.Checked := True;
+    Assert.IsTrue(Page.StickyScroll.Enabled and Page.StickyScrollMaxLines.Enabled);
+    Assert.IsFalse(Frame.Reason.Visible);
+  finally
+    Page.Free;
+  end;
+end;
+
+procedure TAtlasSettingsPageTests.OverviewMirrorsMasters;
+var
+  Page: TAtlasSettingsPage;
+  Settings: TAtlasPluginSettings;
+  Mirror: TCheckBox;
+begin
+  // #890: Der Hauptknoten „Editor“ zeigt je Funktion ihren Hauptschalter; beide folgen einander.
+  Page := TAtlasSettingsPage.Create(nil);
+  try
+    Settings := TAtlasPluginSettings.Defaults;
+    Settings.ExperimentalEnabled := True;
+    Settings.Minimap := True;
+    Page.LoadFrom(Settings);
+    Mirror := Page.OverviewMirror('Minimap');
+    Assert.IsNotNull(Mirror);
+    Assert.AreEqual('', Page.NodeOfSheet(SheetOf(Mirror)), 'auf dem Hauptknoten');
+    Assert.IsTrue(SheetOf(Mirror) <> nil);
+    Assert.IsTrue(Mirror.Checked);
+    Mirror.Checked := False;
+    Assert.IsFalse(Page.Minimap.Checked, 'Spiegel schaltet');
+    Assert.IsFalse(Page.MinimapWidth.Enabled);
+    Page.Minimap.Checked := True;
+    Assert.IsTrue(Mirror.Checked, 'Spiegel folgt');
+    Page.ExperimentalEnabled.Checked := False;
+    Assert.IsFalse(Mirror.Enabled, 'gesperrt wie das Original');
+  finally
+    Page.Free;
+  end;
+end;
+
+procedure TAtlasSettingsPageTests.RevealLockedShowsMaster;
+var
+  Host: TForm;
+  Page: TAtlasSettingsPage;
+  Settings: TAtlasPluginSettings;
+  Master: TCheckBox;
+begin
+  // #890: Eine gesperrte Einstellung zeigen: Ihr Hauptschalter ist hervorgehoben.
+  TAtlasSettingsPage.ForgetTreeState;
+  Host := TForm.CreateNew(nil);
+  try
+    Page := TAtlasSettingsPage.Create(Host);
+    Page.Parent := Host;
+    Page.HandleNeeded;
+    Settings := TAtlasPluginSettings.Defaults;
+    Settings.PairColors := False;
+    Page.LoadFrom(Settings);
+    Master := Page.ControlOf('PairColors') as TCheckBox;
+    Assert.IsTrue(Page.Reveal('PairGuides'));
+    Assert.IsTrue(fsBold in Master.Font.Style, 'Hauptschalter hervorgehoben');
+    Assert.IsTrue(Page.Pages.ActivePage = SheetOf(Master), 'dessen Seite gewählt');
+    Assert.IsTrue(Page.Navigation.Selected <> nil);
+  finally
+    Host.Free;
+    TAtlasSettingsPage.ForgetTreeState;
+  end;
+end;
+
+procedure TAtlasSettingsPageTests.FilterAndResetPerNode;
+var
+  Host: TForm;
+  Page: TAtlasSettingsPage;
+  Settings, Saved: TAtlasPluginSettings;
+  Minimap: TTabSheet;
+begin
+  // #890: Der Filter blendet Knoten ohne Treffer aus; „Seite zurücksetzen“ wirkt auf den gewählten Knoten.
+  TAtlasSettingsPage.ForgetTreeState;
+  Host := TForm.CreateNew(nil);
+  try
+    Page := TAtlasSettingsPage.Create(Host);
+    Page.Parent := Host;
+    Page.HandleNeeded;
+    Settings := TAtlasPluginSettings.Defaults;
+    Settings.ExperimentalEnabled := True;
+    Settings.Minimap := True;
+    Page.LoadFrom(Settings);
+    Minimap := Page.NodeSheet('editor.minimap');
+    Page.Filter.Choice := 2;
+    Page.Filter.OnChange(Page.Filter);
+    Assert.IsTrue(Length(TopLevelNodes(Page)) < 16, 'Bereiche ohne experimentelle Einstellung fehlen');
+    Assert.IsNotNull(TreeNodeOf(Page, Minimap), 'Minikarte ist experimentell');
+    Assert.IsNotNull(Page.NodeSheet('welcome.header'));
+    Assert.IsNull(TreeNodeOf(Page, Page.NodeSheet('welcome.header')), 'Kopf der Willkommensseite ohne Treffer');
+    Page.Filter.Choice := 0;
+    Page.Filter.OnChange(Page.Filter);
+    Assert.AreEqual(16, Integer(Length(TopLevelNodes(Page))));
+    // Zurücksetzen auf dem Unterpunkt: nur die Minikarte.
+    Page.MinimapWidth.Text := '90';
+    Page.StickyScrollMaxLines.Text := '7';
+    Page.Navigation.OnChange(Page.Navigation, TreeNodeOf(Page, Minimap));
+    Page.ResetPage;
+    Saved := TAtlasPluginSettings.Defaults;
+    Page.SaveTo(Saved);
+    Assert.AreEqual(TAtlasPluginSettings.Defaults.MinimapWidth, Saved.MinimapWidth, 'zurückgesetzt');
+    Assert.AreEqual(7, Saved.StickyScrollMaxLines, 'anderer Unterpunkt bleibt');
+    Assert.IsTrue(Saved.ExperimentalEnabled);
+  finally
+    Host.Free;
+    TAtlasSettingsPage.ForgetTreeState;
   end;
 end;
 
@@ -284,7 +603,7 @@ begin
   Settings.VisibleRows := 12;
   Settings.Preview := True;
   Settings.HoverTooltip := False;
-  Settings.XmlDocFull := False;
+  Settings.XmlDocExpand := 'collapsed';
   Settings.XmlDocMaxLines := 7;
   Settings.ListWidth := 333;
   Settings.ActionsKey := 0;
@@ -315,7 +634,7 @@ begin
   Assert.AreEqual(12, Saved.VisibleRows);
   Assert.IsTrue(Saved.Preview);
   Assert.IsFalse(Saved.HoverTooltip);
-  Assert.IsFalse(Saved.XmlDocFull);
+  Assert.AreEqual('collapsed', Saved.XmlDocExpand);
   Assert.AreEqual(7, Saved.XmlDocMaxLines);
   Assert.AreEqual(333, Saved.ListWidth);
   Assert.AreEqual(0, Saved.ActionsKey);
@@ -385,31 +704,36 @@ var
   Settings, Saved: TAtlasPluginSettings;
   Confirm: Boolean;
   Cleared: Integer;
+  Rebuilds: Integer;
 begin
   // #492: Verwendungen und Speicherbudget, Kennzahlen, Neuaufbau und Löschen mit Rückfrage.
+  // #874: Die Befehle laufen im Hintergrund; die Antwort kommt über IndexAnswered.
   Settings := TAtlasPluginSettings.Defaults;
   Settings.IndexUsages := False;
   Settings.MemoryBudgetMb := 512;
   Confirm := False;
   Cleared := 0;
+  Rebuilds := 0;
   Page := TAtlasSettingsPage.Create(nil);
   try
     Assert.IsFalse(Page.IndexRebuild.Enabled or Page.IndexClear.Enabled, 'ohne Server keine Befehle');
+    // Antwort noch während des Ereignisses, wie ohne Server.
     Page.OnIndexMetrics :=
-      function: string
+      procedure
       begin
-        Result := 'Units: 3';
+        Page.IndexAnswered('Units: 3');
       end;
+    // Antwort erst später, wie bei einem Server, der gerade indexiert.
     Page.OnIndexRebuild :=
-      function: string
+      procedure
       begin
-        Result := 'wird neu aufgebaut';
+        Inc(Rebuilds);
       end;
     Page.OnIndexClear :=
-      function: string
+      procedure
       begin
         Inc(Cleared);
-        Result := 'gelöscht';
+        Page.IndexAnswered('gelöscht');
       end;
     Page.ConfirmClear :=
       function: Boolean
@@ -420,7 +744,16 @@ begin
     Assert.AreEqual('Units: 3', Page.IndexInfo.Caption);
     Assert.IsTrue(Page.IndexRebuild.Enabled and Page.IndexClear.Enabled);
     Page.IndexRebuild.Click;
+    Assert.AreEqual(1, Rebuilds);
+    Assert.IsTrue(Page.IndexBusy);
+    Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.SettingsIndexAsking), Page.IndexInfo.Caption);
+    Assert.IsFalse(Page.IndexRebuild.Enabled or Page.IndexClear.Enabled, 'gesperrt bis zur Antwort');
+    Page.IndexRebuild.Click;
+    Assert.AreEqual(1, Rebuilds, 'kein zweiter Befehl, solange einer läuft');
+    Page.IndexAnswered('wird neu aufgebaut');
+    Assert.IsFalse(Page.IndexBusy);
     Assert.AreEqual('wird neu aufgebaut', Page.IndexInfo.Caption);
+    Assert.IsTrue(Page.IndexRebuild.Enabled and Page.IndexClear.Enabled);
     Page.IndexClear.Click;
     Assert.AreEqual(0, Cleared, 'abgelehnt: nichts löschen');
     Confirm := True;
@@ -1347,6 +1680,8 @@ begin
   Calls := '';
   Page := TAtlasSettingsPage.Create(nil);
   try
+    // Die Knöpfe gehören zu „Atlas entdecken“ und sind nur mit dessen Schalter frei (#890).
+    Page.LoadFrom(TAtlasPluginSettings.Defaults);
     Page.OnResetUsage :=
       procedure
       begin
@@ -1413,6 +1748,8 @@ begin
     Saved := TAtlasPluginSettings.Defaults;
     Page.SaveTo(Saved);
     Assert.IsFalse(Saved.Favorites, 'abschaltbar');
+    Assert.IsFalse(Page.FavoritesRemove.Enabled, 'Liste gehört zum Schalter (#890)');
+    Page.FavoritesCheck.Checked := True;
     Assert.AreEqual(3, Integer(Page.FavoritesList.Items.Count));
     Assert.AreEqual('TDataSet.Open', Page.FavoritesList.Items[0]);
     Page.FavoritesList.Selected[1] := True;
@@ -1552,6 +1889,29 @@ begin
     Assert.AreEqual('never', Saved.CompleteStatementBeginEnd);
     Assert.AreEqual('ask', Saved.CompleteStatementTryKind);
     Assert.IsFalse(Saved.CompleteStatementMethodBody);
+  finally
+    Page.Free;
+  end;
+end;
+
+procedure TAtlasSettingsPageTests.FormatCodeRoundTrip;
+var
+  Page: TAtlasSettingsPage;
+  Settings, Saved: TAtlasPluginSettings;
+begin
+  // #43: Schalter und Taste.
+  Settings := TAtlasPluginSettings.Defaults;
+  Page := TAtlasSettingsPage.Create(nil);
+  try
+    Page.LoadFrom(Settings);
+    Assert.IsTrue(Page.FormatCode.Checked);
+    Assert.AreEqual(ShortCutToText(TShortCut($E046)), Page.FormatCodeKey.Text);
+    Page.FormatCode.Checked := False;
+    Page.FormatCodeKey.Text := '';
+    Saved := TAtlasPluginSettings.Defaults;
+    Page.SaveTo(Saved);
+    Assert.IsFalse(Saved.FormatCode);
+    Assert.AreEqual(0, Saved.FormatCodeKey);
   finally
     Page.Free;
   end;

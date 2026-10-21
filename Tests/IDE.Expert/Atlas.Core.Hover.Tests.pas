@@ -26,6 +26,9 @@ type
     procedure ClassReferenceTitleIsOwnName;
     [Test]
     procedure ReadsStructuredDocumentation;
+    /// <summary>#110: atlas.published, Filter und Liste für die Zwischenablage.</summary>
+    [Test]
+    procedure ReadsPublishedMembers;
   end;
 
   [TestFixture]
@@ -112,17 +115,48 @@ begin
     '"documentationText": "Legt an.\nAOwner: Besitzer", "documentation": {"sections": [' +
     '{"kind": "summary", "runs": [{"kind": "text", "text": "Legt an."}]},' +
     '{"kind": "param", "name": "AOwner", "runs": [{"kind": "text", "text": "Besitzer"}]}]},' +
-    '"xmlDoc": {"full": false, "maxLines": 8}}}');
+    '"xmlDoc": {"expand": "collapsed", "maxLines": 8}}}');
   Assert.AreEqual('Legt an.'#10'AOwner: Besitzer', Data.Documentation);
   Assert.AreEqual(2, Integer(Length(Data.Doc.Sections)));
   Assert.AreEqual('AOwner', Data.Doc.Sections[1].Name);
   Assert.IsTrue(Data.Display.Known);
-  Assert.IsFalse(Data.Display.Full);
+  Assert.AreEqual(Ord(TAtlasDocExpand.Collapsed), Ord(Data.Display.Expand));
   Assert.AreEqual(8, Data.Display.MaxLines);
   // Ältere Server: documentation als Text, keine Anzeige-Angabe.
   Data := Parse(HoverJson);
   Assert.IsTrue(Data.Doc.IsEmpty);
   Assert.IsFalse(Data.Display.Known);
+end;
+
+procedure TAtlasHoverTests.ReadsPublishedMembers;
+var
+  Data: TAtlasHoverData;
+begin
+  Data := Parse('{"contents": "x", "atlas": {"declaration": "TKnopf = class(TBasis)", "file": "C:\\P\\K.pas",' +
+    '"line": 3, "character": 2, "ancestors": [{"name": "TKnopf", "file": "C:\\P\\K.pas", "line": 3,' +
+    '"character": 2}], "published": {"defaultProperty": "Items[I: Integer]: string", "members": [' +
+    '{"name": "Aktiv", "type": "Boolean", "default": "False", "defaultKind": "implicit", "declaringClass": "TKnopf"},' +
+    '{"name": "Titel", "type": "string", "stored": "False", "declaringClass": "TBasis"},' +
+    '{"name": "Zahl", "type": "Integer", "defaultKind": "nodefault", "declaringClass": "TBasis"},' +
+    '{"name": "OnKlick", "type": "TKlickEvent", "declaringClass": "TBasis", "event": true}]}}}');
+  Assert.AreEqual(4, Integer(Length(Data.Members)));
+  Assert.AreEqual('Items[I: Integer]: string', Data.DefaultProperty);
+  Assert.IsTrue(Data.Members[0].DefaultKind = hdImplicit);
+  Assert.IsTrue(Data.Members[2].DefaultKind = hdNoDefault);
+  Assert.IsTrue(Data.Members[3].IsEvent);
+  Assert.AreEqual(3, Data.MemberCount(False));
+  Assert.AreEqual(1, Data.MemberCount(True));
+  Assert.AreEqual('False (implizit)', Data.Members[0].DefaultText('implizit'));
+  Assert.AreEqual('stored False', Data.Members[1].DefaultText('implizit'));
+  // Eigene (TKnopf) bzw. nur mit Vorgabe.
+  Assert.AreEqual(1, Integer(Length(Data.VisibleMembers(False, False, False))));
+  Assert.AreEqual(1, Integer(Length(Data.VisibleMembers(False, True, True))));
+  Assert.AreEqual(0, Integer(Length(Data.VisibleMembers(True, False, False))));
+  Assert.AreEqual('TKnopf' + sLineBreak + 'Aktiv'#9'Boolean'#9'False (implizit)'#9'TKnopf' + sLineBreak +
+    'Titel'#9'string'#9'stored False'#9'TBasis' + sLineBreak + 'Zahl'#9'Integer'#9'nodefault'#9'TBasis' + sLineBreak +
+    'OnKlick'#9'TKlickEvent'#9#9'TBasis' + sLineBreak + 'Items[I: Integer]: string'#9'default',
+    Data.MembersText(True, False, 'implizit'));
+  Assert.IsTrue(Parse(HoverJson).Members = nil);
 end;
 
 procedure TAtlasHoverTests.ReadsAtlasParts;

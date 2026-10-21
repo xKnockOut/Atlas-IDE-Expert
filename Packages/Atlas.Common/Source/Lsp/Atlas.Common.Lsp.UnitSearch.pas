@@ -6,8 +6,9 @@
 //     frame, dm, unit, test, inc). Kein Dateizugriff außer der Frage, ob eine
 //     Formulardatei neben der Unit liegt.
 //   - Befehl atlas.server.unitPreview [uri, {form, usedBy}]: Vorschau ohne die
-//     Unit im Editor zu öffnen: Kopfkommentar, Typen im interface, Zeilenzahl,
-//     letzte Änderung, Git-Zustand, Formularskizze und „Verwendet von“.
+//     Unit im Editor zu öffnen: Kopfkommentar, Typen im interface (mit
+//     Gesamtzahl typeCount), uses beider Abschnitte, Zeilenzahl, letzte
+//     Änderung, Git-Zustand, Formularskizze und „Verwendet von“.
 // Art: Vorfahrenkette der Klassen im interface bis TForm/TCustomForm, TFrame/
 // TCustomFrame oder TDataModule; ohne bekannte Kette, aber mit .dfm/.fmx ein
 // Formular. Test: uses DUnitX.TestFramework bzw. TestFramework, oder die Unit
@@ -663,7 +664,7 @@ var
   Item, Found: TUnitIndex;
   HasUnit: Boolean;
   Text, FormFile, State: string;
-  Types, Used, Components: TJSONArray;
+  Types, Used, Components, UsesList: TJSONArray;
   Symbol: TIndexSymbol;
   Entry: TJSONObject;
   Names: TArray<string>;
@@ -671,6 +672,7 @@ var
   Sketch_: TUnitSketch;
   SketchItem: TUnitSketchItem;
   Modified: TDateTime;
+  TypeCount: Integer;
 begin
   Result := TJSONObject.Create;
   Result.AddPair('uri', TDocumentUris.FromPath(AFileName));
@@ -700,13 +702,16 @@ begin
   Result.AddPair('git', State);
   Types := TJSONArray.Create;
   Result.AddPair('types', Types);
+  TypeCount := 0;
   if HasUnit then
   begin
     Result.AddPair('unit', Found.UnitName);
     for Symbol in Found.Symbols do
-      if Symbol.InInterface and (Symbol.Container = '') and (Symbol.Kind in TypeKinds) and
-        (Types.Count < MaxTypes) then
+      if Symbol.InInterface and (Symbol.Container = '') and (Symbol.Kind in TypeKinds) then
       begin
+        Inc(TypeCount);
+        if Types.Count >= MaxTypes then
+          Continue;
         Entry := TJSONObject.Create;
         Entry.AddPair('name', Symbol.Name);
         Entry.AddPair('kind', KindName(Symbol.Kind));
@@ -714,7 +719,18 @@ begin
           Entry.AddPair('ancestor', Symbol.Ancestors[0]);
         Types.Add(Entry);
       end;
+    // uses beider Abschnitte (#876), doppelte nur einmal.
+    UsesList := TJSONArray.Create;
+    Names := nil;
+    for Name in Found.InterfaceUses + Found.ImplementationUses do
+      if not MatchText(Name, Names) then
+      begin
+        Names := Names + [Name];
+        UsesList.Add(Name);
+      end;
+    Result.AddPair('uses', UsesList);
   end;
+  Result.AddPair('typeCount', TJSONNumber.Create(TypeCount));
   if AWithUsedBy and HasUnit then
   begin
     Names := UsedBy(AContext.Units, Found.UnitName);

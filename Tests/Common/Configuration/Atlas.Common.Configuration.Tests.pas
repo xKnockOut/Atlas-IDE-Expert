@@ -44,6 +44,8 @@ type
     [Test]
     procedure ReadsStringLiteral;
     [Test]
+    procedure ReadsDirectives;
+    [Test]
     procedure ReadsMemberOrder;
     [Test]
     procedure ReadsTestUnits;
@@ -302,6 +304,24 @@ begin
   Settings := Parse('{"format": {"indentSize": 0, "keywordCase": "camel", "x": 1}}', Issues);
   Assert.AreEqual(3, Integer(Length(Issues)));
   Assert.IsTrue(Settings.Formatting.Given = []);
+  // Blockstruktur, Stellung, Umbruch und Ausrichtung (#43).
+  Settings := Parse('{}', Issues);
+  Assert.IsTrue(Settings.Formatting.Reindent);
+  Assert.IsTrue(Settings.Formatting.BeginPlacement = TBlockPlacement.Preserve);
+  Assert.AreEqual(0, Settings.Formatting.MaxLineLength);
+  Settings := Parse('{"format": {"reindent": false, "beginPlacement": "newLine", "elsePlacement": "sameLine", ' +
+    '"maxLineLength": 100, "alignAssignments": true, "alignDeclarations": true, "alignComments": true}}', Issues);
+  Assert.AreEqual(0, Integer(Length(Issues)));
+  Assert.IsFalse(Settings.Formatting.Reindent);
+  Assert.IsTrue(Settings.Formatting.BeginPlacement = TBlockPlacement.NewLine);
+  Assert.IsTrue(Settings.Formatting.ElsePlacement = TBlockPlacement.SameLine);
+  Assert.AreEqual(100, Settings.Formatting.MaxLineLength);
+  Assert.IsTrue(Settings.Formatting.AlignAssignments);
+  Assert.IsTrue(Settings.Formatting.AlignDeclarations);
+  Assert.IsTrue(Settings.Formatting.AlignComments);
+  Assert.IsTrue(Settings.Formatting.Given = [TFormatKey.MaxLineLength]);
+  Settings := Parse('{"format": {"beginPlacement": "below", "maxLineLength": -1}}', Issues);
+  Assert.AreEqual(2, Integer(Length(Issues)));
 end;
 
 procedure TConfigurationParserTests.ReadsVcsProvider;
@@ -403,6 +423,24 @@ begin
   // Palettenseite für /component (#299)
   Assert.AreEqual('Eigene', Parse('{}', Issues).SlashComponentPalette);
   Assert.AreEqual('Firma', Parse('{"slashCommands": {"componentPalette": "Firma"}}', Issues).SlashComponentPalette);
+  // #297: Name und Kategorie für /todo, ungenutzte uses bei /sortuses.
+  Settings := Parse('{"slashCommands": {"todoOwner": "Marco", "todoCategory": "Review", ' +
+    '"sortUsesRemoveUnused": false}}', Issues);
+  Assert.AreEqual('Marco', Settings.SlashTodoOwner);
+  Assert.AreEqual('Review', Settings.SlashTodoCategory);
+  Assert.IsFalse(Settings.SlashSortUsesRemoveUnused);
+  Assert.AreEqual(0, Integer(Length(Issues)));
+  Assert.IsTrue(Parse('{}', Issues).SlashSortUsesRemoveUnused);
+  Assert.AreEqual('', Parse('{}', Issues).SlashTodoOwner);
+  // #875: /helper für Aufzählungen
+  Assert.IsTrue(Parse('{}', Issues).SlashEnumHelper);
+  Assert.IsFalse(Parse('{"slashCommands": {"enumHelper": false}}', Issues).SlashEnumHelper);
+  Assert.IsFalse(TConfigurationParser.ParseLayered('{"slashCommands": {"enumHelper": false}}', '{}',
+    Issues).SlashEnumHelper);
+  Assert.IsTrue(Parse('{}', Issues).SlashSetHelper);
+  Assert.IsFalse(Parse('{"slashCommands": {"setHelper": false}}', Issues).SlashSetHelper);
+  Assert.IsFalse(TConfigurationParser.ParseLayered('{"slashCommands": {"setHelper": false}}', '{}',
+    Issues).SlashSetHelper);
   Assert.AreEqual(0, Integer(Length(Issues)));
   // Vervollständigung (#229)
   Assert.IsTrue(Parse('{}', Issues).Completion.Matching = TCompletionMatching.Fuzzy);
@@ -441,6 +479,29 @@ begin
   Assert.IsTrue(Parse('{"completion": {"assignAllFields": true}}', Issues).Completion.AssignAllFields);
   Assert.AreEqual(0, Integer(Length(Issues)));
   Parse('{"completion": {"assignAllFields": 1}}', Issues);
+  Assert.AreEqual(1, Integer(Length(Issues)));
+  // uses-Vervollständigung mit Gruppen und Hinweisen (#469)
+  Assert.IsTrue(Parse('{}', Issues).Completion.UsesDetails);
+  Assert.IsFalse(Parse('{"completion": {"usesDetails": false}}', Issues).Completion.UsesDetails);
+  Assert.AreEqual(0, Integer(Length(Issues)));
+  Parse('{"completion": {"usesDetails": "ja"}}', Issues);
+  Assert.AreEqual(1, Integer(Length(Issues)));
+  // Vollständiger inherited-Aufruf (#482)
+  Assert.IsTrue(Parse('{}', Issues).Completion.InheritedCall);
+  Assert.IsFalse(Parse('{"completion": {"inheritedCall": false}}', Issues).Completion.InheritedCall);
+  Assert.AreEqual(0, Integer(Length(Issues)));
+  Parse('{"completion": {"inheritedCall": 1}}', Issues);
+  Assert.AreEqual(1, Integer(Length(Issues)));
+  // Gleiche Namen aus verschiedenen Units (#475)
+  Assert.IsTrue(Parse('{}', Issues).Completion.SameNameVariants);
+  Assert.IsTrue(Parse('{}', Issues).Completion.SameNameInsert = TCompletionSameNameInsert.Prefix);
+  Assert.IsFalse(Parse('{}', Issues).Completion.ShowFmxUnits);
+  Assert.IsFalse(Parse('{"completion": {"sameNameVariants": false}}', Issues).Completion.SameNameVariants);
+  Assert.IsTrue(Parse('{"completion": {"sameNameInsert": "uses"}}', Issues).Completion.SameNameInsert =
+    TCompletionSameNameInsert.Uses_);
+  Assert.IsTrue(Parse('{"completion": {"showFmxUnits": true}}', Issues).Completion.ShowFmxUnits);
+  Assert.AreEqual(0, Integer(Length(Issues)));
+  Parse('{"completion": {"sameNameInsert": "move"}}', Issues);
   Assert.AreEqual(1, Integer(Length(Issues)));
   // Freigabe absichern (#489)
   Assert.IsTrue(Parse('{}', Issues).Completion.OfferTryFinally);
@@ -498,6 +559,8 @@ begin
   Assert.IsFalse(Parse('{"refactoring": {"newParameter": "updateCallers"}}', Issues).Refactoring.NewParameterOverload);
   Assert.IsTrue(Parse('{"refactoring": {"virtualOverload": true}}', Issues).Refactoring.VirtualOverload);
   Assert.IsFalse(Parse('{"refactoring": {"syncSignatures": false}}', Issues).Refactoring.SyncSignatures);
+  Assert.IsTrue(Parse('{}', Issues).Refactoring.ForwardDeclaration);
+  Assert.IsFalse(Parse('{"refactoring": {"forwardDeclaration": false}}', Issues).Refactoring.ForwardDeclaration);
   // try/finally und Klassen-Aktionen (#42)
   Assert.IsTrue(Parse('{}', Issues).Refactoring.TryFinally);
   Assert.IsTrue(Parse('{}', Issues).Refactoring.ClassActions);
@@ -539,6 +602,25 @@ begin
   Assert.AreEqual(1, Integer(Length(Issues)));
   Parse('{"refactoring": {"createMethodSection": "published", "createMethodCaret": "ende"}}', Issues);
   Assert.AreEqual(2, Integer(Length(Issues)));
+  // #682: Property aus Getter und Setter.
+  Assert.IsTrue(Parse('{}', Issues).Refactoring.PropertyFromAccessors);
+  Assert.AreEqual('Get|Set|Is|Has', string.Join('|', Parse('{}', Issues).Refactoring.PropertyFromAccessorsPrefixes));
+  Assert.AreEqual('ask', Parse('{}', Issues).Refactoring.PropertyFromAccessorsReplaceCalls);
+  Assert.AreEqual('accessor', Parse('{}', Issues).Refactoring.PropertyFromAccessorsSection);
+  Assert.AreEqual('off', Parse('{}', Issues).Refactoring.PropertyFromAccessorsHideAccessors);
+  Assert.IsFalse(Parse('{"refactoring": {"propertyFromAccessors": false}}', Issues).Refactoring.PropertyFromAccessors);
+  Assert.AreEqual('Read|Write', string.Join('|', Parse('{"refactoring": {"propertyFromAccessorsPrefixes": ' +
+    '["Read", " Write ", ""]}}', Issues).Refactoring.PropertyFromAccessorsPrefixes));
+  Assert.AreEqual('always', Parse('{"refactoring": {"propertyFromAccessorsReplaceCalls": "Always"}}',
+    Issues).Refactoring.PropertyFromAccessorsReplaceCalls);
+  Assert.AreEqual('published', Parse('{"refactoring": {"propertyFromAccessorsSection": "published"}}',
+    Issues).Refactoring.PropertyFromAccessorsSection);
+  Assert.AreEqual('protected', Parse('{"refactoring": {"propertyFromAccessorsHideAccessors": "protected"}}',
+    Issues).Refactoring.PropertyFromAccessorsHideAccessors);
+  Assert.AreEqual(0, Integer(Length(Issues)));
+  Parse('{"refactoring": {"propertyFromAccessorsPrefixes": "Get", "propertyFromAccessorsReplaceCalls": "ja", ' +
+    '"propertyFromAccessorsSection": "private", "propertyFromAccessorsHideAccessors": "public"}}', Issues);
+  Assert.AreEqual(4, Integer(Length(Issues)));
   // Speicherbudget (#185)
   Assert.AreEqual(768, Parse('{}', Issues).MemoryBudgetMb, 'Vorgabe 768 MB (Rückmeldung 15.10.2026)');
   Assert.AreEqual(0, Parse('{"memoryBudgetMb": 0}', Issues).MemoryBudgetMb, '0 = unbegrenzt');
@@ -648,6 +730,24 @@ begin
   Assert.AreEqual(3, Integer(Length(Issues)));
   Assert.AreEqual(Ord(TStringLiteralBreak.Space), Ord(Settings.StringLiteral.LineBreak));
   Assert.AreEqual(Ord(TStringLiteralStyle.Auto), Ord(Settings.StringLiteral.Style));
+end;
+
+procedure TConfigurationParserTests.ReadsDirectives;
+var
+  Settings: TServerSettings;
+  Issues: TArray<TConfigurationIssue>;
+begin
+  Settings := Parse('{}', Issues);
+  Assert.IsTrue(Settings.Directives.Completion);
+  Assert.IsTrue(Settings.Directives.Hover);
+  Settings := Parse('{"directives": {"completion": false, "hover": false}}', Issues);
+  Assert.AreEqual(0, Integer(Length(Issues)));
+  Assert.IsFalse(Settings.Directives.Completion);
+  Assert.IsFalse(Settings.Directives.Hover);
+  Settings := Parse('{"directives": {"x": 1}}', Issues);
+  Assert.AreEqual(1, Integer(Length(Issues)));
+  Parse('{"directives": 1}', Issues);
+  Assert.AreEqual(1, Integer(Length(Issues)));
 end;
 
 procedure TConfigurationParserTests.ReadsDfmPropertyRules;
@@ -875,26 +975,41 @@ var
   Issues: TArray<TConfigurationIssue>;
 begin
   Settings := Parse('{}', Issues);
-  Assert.IsTrue(Settings.Hints.XmlDocFull);
+  Assert.AreEqual(THintSettings.ExpandLast, Settings.Hints.XmlDocExpand);
   Assert.AreEqual(0, Settings.Hints.XmlDocMaxLines);
-  Settings := Parse('{"hints": {"xmlDocFull": false, "xmlDocMaxLines": 10}}', Issues);
-  Assert.IsFalse(Settings.Hints.XmlDocFull);
+  // published-Mitglieder im Hover (#110).
+  Assert.IsTrue(Settings.Hints.PublishedMembers);
+  Assert.IsFalse(Parse('{"hints": {"publishedMembers": false}}', Issues).Hints.PublishedMembers);
+  Assert.AreEqual(0, Integer(Length(Issues)));
+  Parse('{"hints": {"publishedMembers": 0}}', Issues);
+  Assert.AreEqual(1, Integer(Length(Issues)));
+  Settings := Parse('{"hints": {"xmlDocExpand": "collapsed", "xmlDocMaxLines": 10}}', Issues);
+  Assert.AreEqual(THintSettings.ExpandCollapsed, Settings.Hints.XmlDocExpand);
   Assert.AreEqual(10, Settings.Hints.XmlDocMaxLines);
   Assert.AreEqual(0, Integer(Length(Issues)));
   // Außerhalb 0–50 bzw. falsch getypt (Fehler), unbekannter Schlüssel (Warnung); Vorgaben bleiben.
-  Settings := Parse('{"hints": {"xmlDocMaxLines": 51, "xmlDocFull": "nein", "x": 1}}', Issues);
+  Settings := Parse('{"hints": {"xmlDocMaxLines": 51, "xmlDocExpand": "auf", "x": 1}}', Issues);
   Assert.AreEqual(0, Settings.Hints.XmlDocMaxLines);
-  Assert.IsTrue(Settings.Hints.XmlDocFull);
+  Assert.AreEqual(THintSettings.ExpandLast, Settings.Hints.XmlDocExpand);
   Assert.AreEqual(3, Integer(Length(Issues)));
   Assert.IsTrue(Issues[0].IsError);
   Assert.IsTrue(Issues[1].IsError);
   Assert.IsFalse(Issues[2].IsError);
   Settings := Parse('{"hints": {"xmlDocMaxLines": -1}}', Issues);
   Assert.AreEqual(1, Integer(Length(Issues)));
+  // Veraltetes xmlDocFull (#770): true = expanded, false = collapsed, mit Warnung; xmlDocExpand gewinnt.
+  Settings := Parse('{"hints": {"xmlDocFull": false}}', Issues);
+  Assert.AreEqual(THintSettings.ExpandCollapsed, Settings.Hints.XmlDocExpand);
+  Assert.AreEqual(1, Integer(Length(Issues)));
+  Assert.IsFalse(Issues[0].IsError);
+  Settings := Parse('{"hints": {"xmlDocFull": true}}', Issues);
+  Assert.AreEqual(THintSettings.ExpandExpanded, Settings.Hints.XmlDocExpand);
+  Settings := Parse('{"hints": {"xmlDocExpand": "last", "xmlDocFull": false}}', Issues);
+  Assert.AreEqual(THintSettings.ExpandLast, Settings.Hints.XmlDocExpand);
   // Die Datei ersetzt den Block aus dem Editor (IDE-Plugin).
-  Settings := TConfigurationParser.ParseLayered('{"hints": {"xmlDocFull": false}}',
+  Settings := TConfigurationParser.ParseLayered('{"hints": {"xmlDocExpand": "collapsed"}}',
     '{"hints": {"xmlDocMaxLines": 5}}', Issues);
-  Assert.IsTrue(Settings.Hints.XmlDocFull);
+  Assert.AreEqual(THintSettings.ExpandLast, Settings.Hints.XmlDocExpand);
   Assert.AreEqual(5, Settings.Hints.XmlDocMaxLines);
 end;
 

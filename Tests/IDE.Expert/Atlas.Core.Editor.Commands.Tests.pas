@@ -25,6 +25,9 @@ type
     procedure DetectsSlashCommandAfterEnter;
     [Test]
     procedure DetectsDocCommentScaffold;
+    /// <summary>#88: je Beschreibung ein leerer Platzhalter, Endposition hinter dem letzten Tag.</summary>
+    [Test]
+    procedure DocCommentPlaceholdersInDescriptions;
   end;
 
 implementation
@@ -33,6 +36,7 @@ uses
   System.SysUtils,
   Atlas.Core.Lsp.TextChanges,
   Atlas.Core.Editor.Selection,
+  Atlas.Core.Completion.Snippets,
   Atlas.Core.Editor.SlashTrigger;
 
 function Chain: TArray<TLspRange>;
@@ -92,6 +96,29 @@ begin
   Assert.AreEqual(Ord(TAtlasSlashKind.None), Ord(TAtlasSlashTrigger.Detect('  A := B / C;', '')), 'Division');
   Assert.AreEqual(Ord(TAtlasSlashKind.None), Ord(TAtlasSlashTrigger.Detect('/', '')));
   Assert.AreEqual(#10, TAtlasSlashTrigger.TriggerChar(TAtlasSlashKind.Command));
+end;
+
+procedure TAtlasEditorCommandsTests.DocCommentPlaceholdersInDescriptions;
+const
+  Text = '  /// <summary></summary>'#13#10'  /// <param name="A"></param>'#13#10'  /// <returns></returns>'#13#10;
+var
+  Expansion: TAtlasSnippetExpansion;
+begin
+  Expansion := TAtlasSlashTrigger.DocCommentExpansion(Text);
+  Assert.AreEqual(Text, Expansion.Text);
+  Assert.IsTrue(Expansion.HasPlaceholders);
+  Assert.AreEqual(4, Integer(Length(Expansion.Stops)));
+  Assert.AreEqual(1, Expansion.Stops[0].Number);
+  Assert.AreEqual(Length('  /// <summary>'), Expansion.Stops[0].Start);
+  Assert.AreEqual(0, Expansion.Stops[0].Length);
+  Assert.AreEqual(2, Expansion.Stops[1].Number);
+  Assert.AreEqual(Pos('"></param>', Text) + 1, Expansion.Stops[1].Start);
+  Assert.AreEqual(3, Expansion.Stops[2].Number);
+  // Ende ohne den abschließenden Zeilenumbruch.
+  Assert.AreEqual(0, Expansion.Stops[3].Number);
+  Assert.AreEqual(Length(Text) - 2, Expansion.Stops[3].Start);
+  // Ohne leere Beschreibung keine Platzhalter.
+  Assert.IsFalse(TAtlasSlashTrigger.DocCommentExpansion('/// <summary>X</summary>').HasPlaceholders);
 end;
 
 procedure TAtlasEditorCommandsTests.DetectsDocCommentScaffold;

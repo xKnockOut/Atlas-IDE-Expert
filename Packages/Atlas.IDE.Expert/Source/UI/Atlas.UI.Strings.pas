@@ -64,7 +64,11 @@ type
     SettingsIndexGroup, SettingsIndexSearch, SettingsIndexLibrary,
     SettingsImportIdeTemplates, SnippetsOriginBuiltIn, SnippetsOriginIde, SnippetsOriginUser, SnippetsPrefix, SnippetsName, SnippetsDescription, SnippetsBody, SnippetsNew, SnippetsCopy, SnippetsDelete, SnippetsReadOnly, SnippetsInvalid, SnippetsPrefixMissing, SnippetsPrefixTwice, SnippetsBodyMissing,
     SnippetsPrefixInvalid, SnippetsReplaced,
-    SettingsXmlDocFull, SettingsXmlDocMaxLines, DocTypeParams, DocValue, DocExample, DocSeeAlso, HoverCopySelection,
+    SettingsXmlDocExpand, SettingsXmlDocCollapsed, SettingsXmlDocLast, SettingsXmlDocExpanded,
+    SettingsXmlDocMaxLines, DocTypeParams, DocValue, DocExample, DocSeeAlso,
+    DocParams, DocReturns, DocExceptions, DocRemarks, DocUndocumented, DocMore, DocLess, DocCountParam,
+    DocCountParams, DocCountTypeParam, DocCountTypeParams, DocCountException, DocCountExceptions, DocItemReturns,
+    DocItemValue, DocItemRemarks, DocItemExample, DocItemSeeAlso, HoverCopySelection,
     InactiveCondition, InactiveTarget, InactiveRegion, ProblemsSourceInactive,
     SettingsCompletionKey, SettingsSignatureKey, KeysTitle, KeysIntro, KeysHeaderFunction, KeysHeaderKey,
     KeysHeaderOwner, KeysHeaderChoice, KeysChoiceAtlas, KeysChoiceOther, KeysChoiceNewKey, KeysStatusFree,
@@ -193,6 +197,12 @@ type
     UnitSearchPreviewTypes,
     UnitSearchPreviewUsedBy,
     UnitSearchPreviewNone,
+    UnitSearchPreviewPath,
+    UnitSearchPreviewHeader,
+    UnitSearchPreviewForm,
+    UnitSearchPreviewUses,
+    UnitSearchPreviewMore,
+    UnitSearchPreviewAutoCollapsed,
     UnitSearchLoading,
     UnitSearchNoServer,
     UnitSearchGitClean,
@@ -221,6 +231,7 @@ type
     SettingsUnitSearchPreview,
     SettingsUnitSearchPreviewForm,
     SettingsUnitSearchPreviewUsedBy,
+    SettingsUnitSearchPreviewAutoCollapse,
     SettingsUnitSearchMultiSelect,
     SettingsUnitSearchActions,
     SettingsUnitSearchAddUses,
@@ -604,7 +615,26 @@ type
     SearchHitPosition, SearchPreviousHint, SearchNextHint, SearchListButton, SearchListHint, SearchCloseHint,
     SearchCaseHint, SearchWholeHint, SearchIdentifierHint, SearchGroup, SearchListTitle, SearchListIdentifier,
     SearchListScopeMethod, SearchListMore, SettingsSearchTitle, SettingsSearchReplace, SettingsSearchMessages, SettingsDebugHoverValues,
-    HoverDebugPending);
+    HoverDebugPending,
+    SettingsIndexAsking, BugReportCollecting, SettingsLockedExperimental, SettingsLockedMaster,
+    SettingsOverviewTitle, SettingsOverviewDetails, FormatCodeCommand, SettingsFormatCode, FormatCodeNothing,
+    FormatCodeOff, UndoActionFormat, HelperAddsUnit, SettingsSelectionMarker,
+    ProcessesMenu, ProcessesTitle, ProcessesTitleNone, ProcessesWorkspace, ProcessesCache, ProcessesLock,
+    ProcessesState, ProcessesWrites, ProcessesFree, ProcessesSaved, ProcessesColumnKind, ProcessesColumnClient,
+    ProcessesColumnState, ProcessesOwn, ProcessesBuiltOnce, ProcessesUnits, ProcessesCount, ProcessesDirtyCaption,
+    ProcessesDirtyFile, ProcessesDirtyIde, ProcessesDirtyMcp, ProcessesDirtyIdeText, ProcessesDirtyMcpText,
+    ProcessesDirtyNone, ProcessesDirtyNote, ProcessesLog, ProcessesRefresh, ProcessesCopy, ProcessesClose,
+    ProcessesEmpty, ProcessesAsking, SettingsDiagnosticsProcesses,
+    UsesGroupProject, UsesGroupRtl, UsesGroupLibrary, UsesHiddenOne, UsesHiddenFew, UsesHiddenMore, UsesInInterface,
+    UsesInImplementation, UsesCycleTag, UsesTypesHeading, UsesCycleDirect, UsesCycleChain,
+    PublishedSummary, PublishedInherited, PublishedOnlyDefaults, PublishedProperties, PublishedEvents, PublishedName,
+    PublishedType, PublishedDefault, PublishedDeclared, PublishedImplicit, PublishedMoreProperties, PublishedMoreEvents,
+    PublishedEventsNote, PublishedArrayProperty, PublishedDefaultProperty, PublishedDefaultPropertyNote, PublishedCopyList, PublishedVclNote,
+    InheritedSameTag, InheritedOverloadTag, InheritedAbstractOne, InheritedAbstractMore,
+    SameNameActiveTag, SameNameDeclaredIn, SameNameRoleActive, SameNameRoleThis, SameNameRoleHidden, SameNameNotActive,
+    SameNameInsertPrefix, SameNameInsertPrefixAdd, SameNameInsertMove, SameNameInsertAdd, SameNameHiddenFooter,
+    PropertyAccessorsTitle, PropertyAccessorsFailed, PropertyAccessorsNothing, PropertyAccessorsPreviewHint,
+    PropertyAccessorsApply, PropertyAccessorsDone, PropertyAccessorsWarning);
 
   TAtlasStrings = class
   private class var
@@ -620,6 +650,15 @@ type
     class function TypeArgHeading(const AParam, AConstraint, AHint: string): string; static;
     /// <summary>Fußzeile „Ausgeblendet: Records, Aufzählungen“ zu den Codes "records,enums"; '' ohne.</summary>
     class function TypeArgHidden(const AKinds: string): string; static;
+    /// <summary>Fußzeile im uses-Abschnitt (#469) zu den schon eingebundenen Units: „X ist schon eingebunden und
+    /// fehlt hier“, bis drei Namen aufgezählt, sonst „X, Y und n weitere …“; '' ohne.</summary>
+    class function UsesHidden(const AUnits: TArray<string>): string; static;
+    /// <summary>Zirkelbezug (#469) zur Kette "uA → uB → Haupt": „uA bindet diese Unit über uB im interface-Teil
+    /// ein“; '' ohne.</summary>
+    class function UsesCycle(const AChain: string): string; static;
+    /// <summary>Fußzeile nach "inherited " (#482) zu den ausgelassenen abstrakten Vorfahrmethoden
+    /// ("TBasis.Zeichnen"): eine mit Namen, mehrere aufgezählt (höchstens drei, dann „…“); '' ohne.</summary>
+    class function InheritedAbstract(const AMethods: TArray<string>): string; static;
     /// <summary>Überschriften der XMLDoc-Abschnitte in der Sprache der Oberfläche; eine Stelle für Hover und
     /// Detailpanel (D-07).</summary>
     class function DocLabels: TAtlasDocLabels; static;
@@ -769,12 +808,33 @@ const
      'Text fehlt',
      'Kürzel: nur Buchstaben, Ziffern und _',
      'ersetzt',
-     'XMLDoc im Tooltip vollständig zeigen (aus: Kurzform)',
+     'XMLDoc beim Öffnen',
+     'immer zugeklappt',
+     'wie zuletzt',
+     'immer aufgeklappt',
      'XMLDoc: höchstens Zeilen ohne Scrollen (0 = Bildschirm)',
-     'Typparameter',
+     'TYPPARAMETER',
+     'WERT',
+     'BEISPIEL',
+     'SIEHE AUCH',
+     'PARAMETER',
+     'RÜCKGABE',
+     'AUSNAHMEN',
+     'HINWEISE',
+     'nicht dokumentiert',
+     'Mehr anzeigen ▾',
+     'Weniger anzeigen ▴',
+     '%d Parameter',
+     '%d Parameter',
+     '%d Typparameter',
+     '%d Typparameter',
+     '%d Ausnahme',
+     '%d Ausnahmen',
+     'Rückgabe',
      'Wert',
+     'Hinweis',
      'Beispiel',
-     'Siehe auch:',
+     'Siehe auch',
      'Markierung kopieren',
      'Inaktiv: Bedingung %s nicht erfüllt',
      ' (Zielplattform %s · %s)',
@@ -1042,9 +1102,15 @@ const
      'Im Explorer zeigen',
      '%d Zeilen',
      'geändert %s',
-     'Typen im interface',
+     'Exportierte Typen (%d)',
      'Verwendet von (%d)',
      'Keine Vorschau',
+     'Pfad',
+     'Kopfkommentar',
+     'Formular',
+     'Uses (%d)',
+     '+ %d weitere',
+     'automatisch eingeklappt',
      'Units werden geladen …',
      'Units suchen: Der Atlas-Server läuft nicht.',
      'Git: unverändert',
@@ -1073,6 +1139,7 @@ const
      'Vorschau',
      'Formularskizze in der Vorschau',
      '„Verwendet von“ in der Vorschau',
+     'Abschnitte der Vorschau einklappen, wenn sie nicht passen',
      'Häkchen und Mehrfachauswahl',
      'Aktionsleiste',
      'Aktion „In uses aufnehmen“',
@@ -1742,7 +1809,97 @@ const
      '… %d weitere Treffer nicht aufgeführt', 'Suche im Editor',
      'Atlas-Suche statt IDE-Suche (Strg+F öffnet die Suchleiste unter dem Editor, F3 und Umschalt+F3 springen)',
      'Treffer im Reiter „Atlas-Suche“ der Meldungen auflisten',
-     'Variablenwerte im Hover beim Debuggen', 'wird ausgewertet …'),
+     'Variablenwerte im Hover beim Debuggen', 'wird ausgewertet …',
+     'Frage den Server …', 'Atlas: Fehlerbericht wird zusammengestellt …',
+     'gesperrt: Experimentelle Funktionen sind aus', 'gesperrt: „%s“ (%s) ist aus', 'Funktionen in diesem Bereich',
+     'Details', 'Formatieren', 'Formatieren mit Atlas (ganze Datei bzw. Auswahl)', 'Atlas: Nichts zu formatieren.',
+     'Atlas: „Formatieren“ ist ausgeschaltet (Tools › Optionen › Atlas › Editor).', 'Formatieren',
+     'Enter trägt %s in die uses-Klausel ein; danach gilt dieser Helper.',
+     'Gewählten Eintrag mit Rahmen und Marke ▸ zeigen (nicht nur farbig)',
+     'Prozesse am Projekt…',
+     'Atlas-Server für %s',
+     'Atlas-Server',
+     'Arbeitsbereich:',
+     'Index-Cache',
+     'Sperre',
+     'Stand',
+     'schreibt',
+     'frei',
+     '%s gespeichert · Format %d',
+     'Art',
+     'Client',
+     'Zustand',
+     ' (dieser Prozess)',
+     'Index nur einmal aufgebaut · %d Units',
+     '%d Units',
+     '%d Prozesse',
+     'Ungespeicherte Stände bleiben je Prozess getrennt',
+     'Datei',
+     'IDE (dieser Prozess)',
+     'MCP-Prozess',
+     'ungespeichert',
+     'gespeicherter Stand',
+     'Keine ungespeicherten Dateien.',
+     'Claude Code sieht den gespeicherten Stand, bis die IDE speichert.',
+     'Protokoll',
+     'Aktualisieren',
+     'Kopieren',
+     'Schließen',
+     'Noch kein Projekt geladen: kein Index-Cache.',
+     'Frage den Atlas-Server …',
+     'Menüeintrag „Prozesse am Projekt…“ (Index-Cache, Sperre, LSP- und MCP-Prozesse)',
+     'Projekt',
+     'RTL/VCL',
+     'Drittanbieter',
+     '%s ist schon eingebunden und fehlt hier',
+     '%s sind schon eingebunden und fehlen hier',
+     '%s und %d weitere sind schon eingebunden und fehlen hier',
+     'bereits im interface-Teil',
+     'bereits im implementation-Teil',
+     'Zirkelbezug',
+     'Exportierte Typen',
+     '%s bindet diese Unit im interface-Teil ein',
+     '%s bindet diese Unit über %s im interface-Teil ein',
+     'published: %d Properties · %d Ereignisse',
+     'geerbte',
+     'nur mit default',
+     'Properties',
+     'Ereignisse',
+     'Name',
+     'Typ',
+     'Vorgabe',
+     'deklariert in',
+     'implizit',
+     '+ %d weitere Properties',
+     '+ %d weitere Ereignisse',
+     'erkannt am Methodenzeiger-Typ, nicht am Namen',
+     'Array-Property',
+     'Standard-Property',
+     '„default“ heißt hier nicht Vorgabewert',
+     'Liste kopieren',
+     'geerbte aus der VCL nur mit VCL-Quellen im Index',
+     'gleiche Parameter',
+     'Überladung',
+     '%s ist abstrakt und fehlt',
+     'Abstrakte Vorfahrmethoden fehlen: %s',
+     'aktiv',
+     'Deklariert in',
+     'aktiv · letzte Unit in den uses',
+     'diese Variante',
+     'ausgeblendet',
+     'nicht aktiv',
+     'Enter fügt den Unit-Präfix ein',
+     'Enter fügt den Unit-Präfix ein und ergänzt %s in den uses; andere Stellen können ihre Bedeutung ändern',
+     'Enter verschiebt %s in den uses nach hinten; andere Stellen können ihre Bedeutung ändern',
+     'Enter ergänzt %s in den uses; andere Stellen können ihre Bedeutung ändern',
+     '%s ausgeblendet',
+     'Property aus Getter und Setter',
+     'Property anlegen fehlgeschlagen: %s',
+     'Property anlegen: nichts zu ändern.',
+     '%d Properties, %d Aufrufe umgestellt: %d Änderungen in %d Dateien',
+     'Anlegen',
+     '%d Properties angelegt, %d Aufrufe umgestellt: %d Änderungen in %d Dateien',
+     'Hinweis: %s'),
     ('Enter to accept · Esc to close', '%d of %d', 'No matches for “%s”', 'Backspace widens the search',
      'No suggestions here', 'Esc closes', 'No details for this entry', 'Overload', 'Deprecated: %s', 'Deprecated.',
      'Inherited from %s', 'Inherited', 'optional, default %s', 'No overload with %d parameters.', '… %d more',
@@ -1878,12 +2035,33 @@ const
      'text missing',
      'prefix: letters, digits and _ only',
      'replaced',
-     'Show full XMLDoc in tooltips (off: short form)',
+     'XMLDoc when opened',
+     'always collapsed',
+     'as last time',
+     'always expanded',
      'XMLDoc: max. lines before scrolling (0 = screen)',
-     'Type parameters',
+     'TYPE PARAMETERS',
+     'VALUE',
+     'EXAMPLE',
+     'SEE ALSO',
+     'PARAMETERS',
+     'RETURNS',
+     'EXCEPTIONS',
+     'REMARKS',
+     'not documented',
+     'Show more ▾',
+     'Show less ▴',
+     '%d parameter',
+     '%d parameters',
+     '%d type parameter',
+     '%d type parameters',
+     '%d exception',
+     '%d exceptions',
+     'Returns',
      'Value',
+     'Remarks',
      'Example',
-     'See also:',
+     'See also',
      'Copy selection',
      'Inactive: condition %s not met',
      ' (target platform %s · %s)',
@@ -2797,7 +2975,97 @@ const
      '… %d more matches not listed', 'Search in the editor',
      'Atlas search instead of the IDE search (Ctrl+F opens the search bar below the editor, F3 and Shift+F3 jump)',
      'List matches in the “Atlas Search” tab of the Messages window',
-     'Variable values in the hover while debugging', 'evaluating …'));
+     'Variable values in the hover while debugging', 'evaluating …',
+     'Asking the server …', 'Atlas: collecting the bug report …',
+     'locked: experimental features are off', 'locked: “%s” (%s) is off', 'Features in this area',
+     'Details', 'Format', 'Format with Atlas (whole file or selection)', 'Atlas: Nothing to format.',
+     'Atlas: “Format” is switched off (Tools › Options › Atlas › Editor).', 'Format',
+     'Enter adds %s to the uses clause; this helper applies from then on.',
+     'Show the selected entry with a frame and ▸ marker (not only by colour)',
+     'Processes on the project…',
+     'Atlas server for %s',
+     'Atlas server',
+     'Workspace:',
+     'Index cache',
+     'Lock',
+     'State',
+     'writing',
+     'free',
+     'saved %s · format %d',
+     'Kind',
+     'Client',
+     'State',
+     ' (this process)',
+     'Index built only once · %d units',
+     '%d units',
+     '%d processes',
+     'Unsaved states stay separate per process',
+     'File',
+     'IDE (this process)',
+     'MCP process',
+     'unsaved',
+     'saved state',
+     'No unsaved files.',
+     'Claude Code sees the saved state until the IDE saves.',
+     'Log',
+     'Refresh',
+     'Copy',
+     'Close',
+     'No project loaded yet: no index cache.',
+     'Asking the Atlas server …',
+     'Menu entry "Processes on the project…" (index cache, lock, LSP and MCP processes)',
+     'Project',
+     'RTL/VCL',
+     'Third party',
+     '%s is already used and not listed',
+     '%s are already used and not listed',
+     '%s and %d more are already used and not listed',
+     'already in the interface section',
+     'already in the implementation section',
+     'Circular reference',
+     'Exported types',
+     '%s uses this unit in its interface section',
+     '%s uses this unit via %s in its interface section',
+     'published: %d properties · %d events',
+     'inherited',
+     'only with default',
+     'Properties',
+     'Events',
+     'Name',
+     'Type',
+     'Default',
+     'declared in',
+     'implicit',
+     '+ %d more properties',
+     '+ %d more events',
+     'detected by method pointer type, not by name',
+     'Array property',
+     'Default property',
+     '"default" does not mean a default value here',
+     'Copy list',
+     'inherited VCL members only with VCL sources in the index',
+     'same parameters',
+     'overload',
+     '%s is abstract and not listed',
+     'Abstract ancestor methods not listed: %s',
+     'active',
+     'Declared in',
+     'active · last unit in uses',
+     'this variant',
+     'hidden',
+     'not active',
+     'Enter inserts the unit prefix',
+     'Enter inserts the unit prefix and adds %s to uses; other places may change their meaning',
+     'Enter moves %s to the end of uses; other places may change their meaning',
+     'Enter adds %s to uses; other places may change their meaning',
+     '%s hidden',
+     'Property from getter and setter',
+     'Creating the property failed: %s',
+     'Create property: nothing to change.',
+     '%d properties, %d calls switched: %d changes in %d files',
+     'Create',
+     '%d properties created, %d calls switched: %d changes in %d files',
+     'Note: %s'));
 
 { TAtlasStrings }
 
@@ -2813,10 +3081,28 @@ end;
 
 class function TAtlasStrings.DocLabels: TAtlasDocLabels;
 begin
+  Result.Params := Text(TAtlasTextId.DocParams);
   Result.TypeParams := Text(TAtlasTextId.DocTypeParams);
+  Result.Returns := Text(TAtlasTextId.DocReturns);
   Result.Value := Text(TAtlasTextId.DocValue);
+  Result.Exceptions := Text(TAtlasTextId.DocExceptions);
+  Result.Remarks := Text(TAtlasTextId.DocRemarks);
   Result.Example := Text(TAtlasTextId.DocExample);
   Result.SeeAlso := Text(TAtlasTextId.DocSeeAlso);
+  Result.Undocumented := Text(TAtlasTextId.DocUndocumented);
+  Result.More := Text(TAtlasTextId.DocMore);
+  Result.Less := Text(TAtlasTextId.DocLess);
+  Result.CountParam := Text(TAtlasTextId.DocCountParam);
+  Result.CountParams := Text(TAtlasTextId.DocCountParams);
+  Result.CountTypeParam := Text(TAtlasTextId.DocCountTypeParam);
+  Result.CountTypeParams := Text(TAtlasTextId.DocCountTypeParams);
+  Result.CountException := Text(TAtlasTextId.DocCountException);
+  Result.CountExceptions := Text(TAtlasTextId.DocCountExceptions);
+  Result.ItemReturns := Text(TAtlasTextId.DocItemReturns);
+  Result.ItemValue := Text(TAtlasTextId.DocItemValue);
+  Result.ItemRemarks := Text(TAtlasTextId.DocItemRemarks);
+  Result.ItemExample := Text(TAtlasTextId.DocItemExample);
+  Result.ItemSeeAlso := Text(TAtlasTextId.DocItemSeeAlso);
 end;
 
 class function TAtlasStrings.TypeArgHeading(const AParam, AConstraint, AHint: string): string;
@@ -2860,6 +3146,40 @@ begin
   if Length(Names) = 0 then
     Exit('');
   Result := Fmt(TAtlasTextId.TypeArgHiddenFooter, [string.Join(', ', Names)]);
+end;
+
+class function TAtlasStrings.UsesHidden(const AUnits: TArray<string>): string;
+begin
+  case Length(AUnits) of
+    0: Result := '';
+    1: Result := Fmt(TAtlasTextId.UsesHiddenOne, [AUnits[0]]);
+    2, 3: Result := Fmt(TAtlasTextId.UsesHiddenFew, [string.Join(', ', AUnits)]);
+  else
+    Result := Fmt(TAtlasTextId.UsesHiddenMore, [string.Join(', ', Copy(AUnits, 0, 2)), Length(AUnits) - 2]);
+  end;
+end;
+
+class function TAtlasStrings.InheritedAbstract(const AMethods: TArray<string>): string;
+begin
+  case Length(AMethods) of
+    0: Result := '';
+    1: Result := Fmt(TAtlasTextId.InheritedAbstractOne, [AMethods[0]]);
+    2, 3: Result := Fmt(TAtlasTextId.InheritedAbstractMore, [string.Join(', ', AMethods)]);
+  else
+    Result := Fmt(TAtlasTextId.InheritedAbstractMore, [string.Join(', ', Copy(AMethods, 0, 3)) + ', …']);
+  end;
+end;
+
+class function TAtlasStrings.UsesCycle(const AChain: string): string;
+var
+  Parts: TArray<string>;
+begin
+  Parts := AChain.Split([' → ']);
+  if Length(Parts) < 2 then
+    Exit('');
+  if Length(Parts) = 2 then
+    Exit(Fmt(TAtlasTextId.UsesCycleDirect, [Parts[0]]));
+  Result := Fmt(TAtlasTextId.UsesCycleChain, [Parts[0], string.Join(', ', Copy(Parts, 1, Length(Parts) - 2))]);
 end;
 
 class function TAtlasStrings.Confidence(const AName: string): string;

@@ -202,6 +202,28 @@ type
     Constraint: string;
     ConstraintHint: string;
     HiddenKinds: string;
+    /// <summary>uses-Abschnitt (#469): Gruppe ("project", "rtl", "library"), Abschnitt, in dem die Unit schon steht
+    /// ("interface", "implementation"; '' sonst), Kette eines Zirkelbezugs ("uA → uB → Haupt"; '' ohne), die ersten
+    /// exportierten Typen samt ihrer Gesamtzahl und die schon eingebundenen Units für die Fußzeile.</summary>
+    UsesGroup: string;
+    UsesElsewhere: string;
+    UsesCycle: string;
+    UsesTypes: TArray<string>;
+    UsesTypeCount: Integer;
+    UsesHidden: TArray<string>;
+    /// <summary>Vollständiger inherited-Aufruf (#482): "same", "overload" bzw. "other"; '' sonst. Dazu die
+    /// ausgelassenen abstrakten Vorfahrmethoden ("TBasis.Zeichnen") für die Fußzeile.</summary>
+    InheritedMatch: string;
+    InheritedAbstract: TArray<string>;
+    /// <summary>Gleichnamige Bezeichner aus verschiedenen Units (#475): Variante, die der Compiler wählt
+    /// (Marke „aktiv“); bei den übrigen die Unit der aktiven und was Enter tut ("prefix", "prefixAdd", "move",
+    /// "add"); alle deklarierenden Units (aktive zuerst) und die ausgeblendeten FMX-Varianten ("Unit.Name").
+    /// </summary>
+    SameNameActive: Boolean;
+    SameNameOf: string;
+    SameNameInsert: string;
+    SameNameUnits: TArray<string>;
+    SameNameHidden: TArray<string>;
     /// <summary>Zahl der Überladungen samt dieser (mindestens 1).</summary>
     function OverloadCount: Integer;
   end;
@@ -219,6 +241,12 @@ type
     Declaration: string;
     UnitName: string;
     Container: string;
+    /// <summary>Mitglied eines Class- bzw. Record-Helpers (#456): Container ist der Helper, das Panel zeigt
+    /// „Helper · Unit“.</summary>
+    IsHelper: Boolean;
+    /// <summary>Unit, die Enter in die uses einträgt (Helper aus nicht eingebundener Unit, #456); '' sonst.
+    /// </summary>
+    AddsUnit: string;
     /// <summary>public, protected, ... bzw. '' bei Symbolen außerhalb von Klassen.</summary>
     Visibility: string;
     Directives: TArray<string>;
@@ -241,6 +269,21 @@ type
     /// <summary>Gleitkomma für eine Ganzzahl (#490): Typ des Werts und erwarteter Typ; '' sonst.</summary>
     LossyFrom: string;
     LossyTo: string;
+    /// <summary>Unit im uses-Abschnitt (#469): Pfad (gekürzt, "$(BDS)\source\…"), die ersten exportierten Typen
+    /// und ihre Gesamtzahl, Kette eines Zirkelbezugs ("uA → Haupt") und der Abschnitt, in dem sie schon steht
+    /// ("interface", "implementation"); leer sonst.</summary>
+    UnitPath: string;
+    UnitTypes: TArray<string>;
+    UnitTypeCount: Integer;
+    UsesCycle: string;
+    UsesElsewhere: string;
+    /// <summary>Gleichnamige Bezeichner (#475) für „DEKLARIERT IN“: alle Units (die aktive zuerst), die
+    /// ausgeblendeten FMX-Varianten ("Unit.Name"), die Unit des gewählten Eintrags und bei einer nicht aktiven
+    /// Variante, was Enter tut ("prefix", "prefixAdd", "move", "add"); leer sonst.</summary>
+    SameNameUnits: TArray<string>;
+    SameNameHidden: TArray<string>;
+    SameNameThis: string;
+    SameNameInsert: string;
     function IsEmpty: Boolean;
   end;
 
@@ -291,7 +334,8 @@ end;
 
 function TAtlasItemDetails.IsEmpty: Boolean;
 begin
-  Result := (Declaration = '') and (Summary = '') and (UnitName = '') and (Availability = '') and (LossyFrom = '');
+  Result := (Declaration = '') and (Summary = '') and (UnitName = '') and (Availability = '') and (LossyFrom = '') and
+    (AddsUnit = '') and (UnitPath = '') and (Length(SameNameUnits) = 0);
 end;
 
 end.

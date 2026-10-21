@@ -45,6 +45,8 @@ uses
   Atlas.Common.Editing.CommandSource,
   Atlas.Common.Editing.UsesClause,
   Atlas.Common.Pascal.Contract,
+  Atlas.Common.Configuration.Contract,
+  Atlas.Common.Editing.Formatter,
   Atlas.Common.Pascal.Lexer,
   Atlas.Common.Pascal.TreeCache,
   Atlas.Common.Index.Extractor,
@@ -282,6 +284,45 @@ begin
   Result := 'unit ' + AUnitName + ';' + LB + LB + 'interface' + LB + LB + 'implementation' + LB + LB + 'end.' + LB;
 end;
 
+/// <summary>Neue Unit im Stil des Projekts (#299, #121, #43): Zeilenende aus format.endOfLine bzw. der Datei
+/// des Befehls, Einrückung je Ebene (Vorlagen rücken mit zwei Leerzeichen ein) und Schreibweise nach dem
+/// Formatstil.</summary>
+function StyledUnitText(const AContext: TSlashContext; const AText: string): string;
+var
+  Style: TFormatStyle;
+  Lines: TArray<string>;
+  LevelUnit: string;
+  Index, Spaces: Integer;
+begin
+  Style := AContext.Style;
+  if Style.EndOfLine = '' then
+  begin
+    if (Pos(#10, AContext.Text) > 0) and (Pos(#13#10, AContext.Text) = 0) then
+      Style.EndOfLine := #10
+    else
+      Style.EndOfLine := #13#10;
+  end;
+  if Style.UseTabs then
+    LevelUnit := #9
+  else if Style.IndentSize >= 1 then
+    LevelUnit := StringOfChar(' ', Style.IndentSize)
+  else
+    LevelUnit := '  ';
+  Lines := TTextLines.SplitLines(AText);
+  if LevelUnit <> '  ' then
+    for Index := 0 to High(Lines) do
+    begin
+      Spaces := 0;
+      while (Spaces < Length(Lines[Index])) and (Lines[Index][Spaces + 1] = ' ') do
+        Inc(Spaces);
+      if Spaces < Length(Lines[Index]) then
+        Lines[Index] := DupeString(LevelUnit, Spaces div 2) + StringOfChar(' ', Spaces mod 2) +
+          Copy(Lines[Index], Spaces + 1, MaxInt);
+    end;
+  Result := TTextLines.JoinLines(Lines, Style.EndOfLine);
+  Result := TFormatter.FormatText(Result, TPascalLexer.Tokenize(Result), Style);
+end;
+
 /// <summary>Legt AFileName neben der Datei des Befehls mit AText an, trägt sie in .dpr/.dpk und .dproj ein,
 /// wenn ein Projekt geladen ist, und öffnet sie danach. ANeedsProject: ohne Projekt nicht anlegen.</summary>
 function AddNewUnit(const AContext: TSlashContext; const AName, AText: string; ANeedsProject: Boolean;
@@ -324,7 +365,7 @@ begin
   FileName := TProjectPaths.Combine(Folder, AName + '.pas');
   if AContext.Host.ReadFile(FileName, Existing) then
     Exit(Fail(Format('%s gibt es schon', [ExtractFileName(FileName)]), AReason));
-  Files := [TSlashFile.Create(FileName, AText, True)];
+  Files := [TSlashFile.Create(FileName, StyledUnitText(AContext, AText), True)];
   if HasProject then
   begin
     // Hauptdatei: uses der .dpr bzw. contains der .dpk.

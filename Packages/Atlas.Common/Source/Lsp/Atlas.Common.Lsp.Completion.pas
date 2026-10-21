@@ -51,6 +51,7 @@ uses
   Atlas.Common.Semantics.NameResolver,
   Atlas.Common.Lsp.Documentation,
   Atlas.Common.Lsp.Internals.FormCache,
+  Atlas.Common.Lsp.ConditionalSymbols,
   Atlas.Common.Lsp.CompletionRequest,
   Atlas.Common.Lsp.CompletionCollector;
 
@@ -97,6 +98,9 @@ type
 
   /// <summary>Zeitmessung je Anfrage (#616), z. B. für ILogger.Debug.</summary>
   TCompletionLogProc = reference to procedure(const AText: string);
+
+  /// <summary>Ist eine Funktion für das Dokument eingeschaltet (z. B. completeBlocks.docComment, #88)?</summary>
+  TCompletionEnabledFunc = reference to function(const AUri: string): Boolean;
   /// <summary>„with auflösen“ über Strg+Leer auf with (#50): Änderungen für die with-Anweisung am Cursor; False
   /// ohne Angebot.</summary>
   TCompletionWithFunc = reference to function(ARequest: TCompletionRequest; out AEdits: TArray<TTextEdit>): Boolean;
@@ -158,11 +162,14 @@ type
     FSettingsFor: TCompletionSettingsFunc;
     FReadText: TCompletionReadText;
     FSlashCommandsFor: TSlashCommandsProvider;
+    FRuleIdsFor: TSlashRuleIdsFunc;
     FPostfixFor: TPostfixOptionsFunc;
     FWithFor: TCompletionWithFunc;
     FCreateFor: TCompletionCreateFunc;
     FNamingFor: TCompletionNamingFunc;
     FHintsFor: TDocHintsProvider;
+    FDocCommentsFor: TCompletionEnabledFunc;
+    FSymbolsFor: TConditionalContextFunc;
     FNotify: TCompletionNotifyProc;
     FLog: TCompletionLogProc;
     FSnippetSupport: Boolean;
@@ -404,6 +411,8 @@ type
     property SettingsFor: TCompletionSettingsFunc read FSettingsFor write FSettingsFor;
     /// <summary>Schnellbefehle nach "/" am Zeilenanfang (#293); ohne Zuweisung alle eingeschaltet.</summary>
     property SlashCommandsFor: TSlashCommandsProvider read FSlashCommandsFor write FSlashCommandsFor;
+    /// <summary>Regeln, die in einer Zeile treffen, für /ignore (#297); ohne Zuweisung der ganze Katalog.</summary>
+    property RuleIdsFor: TSlashRuleIdsFunc read FRuleIdsFor write FRuleIdsFor;
     /// <summary>Postfix-Vorlagen je Dokument (#188); ohne Zuweisung an und mit Inline-Variable.</summary>
     property PostfixFor: TPostfixOptionsFunc read FPostfixFor write FPostfixFor;
     /// <summary>„with auflösen“ auf dem Wort with (#50); ohne Zuweisung kein Eintrag.</summary>
@@ -414,6 +423,11 @@ type
     property NamingFor: TCompletionNamingFunc read FNamingFor write FNamingFor;
     /// <summary>Anzeige von XMLDoc (#654) als data.atlas.xmlDoc; ohne Zuweisung fehlt das Feld.</summary>
     property HintsFor: TDocHintsProvider read FHintsFor write FHintsFor;
+    /// <summary>„Parameter abgleichen“ in ///-Blöcken (#88); ohne Zuweisung eingeschaltet.</summary>
+    property DocCommentsFor: TCompletionEnabledFunc read FDocCommentsFor write FDocCommentsFor;
+    /// <summary>Bedingte Symbole in Direktiven und Schalter directives.completion (#102); ohne Zuweisung an,
+    /// nur mit den Symbolen der Datei.</summary>
+    property SymbolsFor: TConditionalContextFunc read FSymbolsFor write FSymbolsFor;
     /// <summary>Für Teilergebnisse über $/progress (#616); ohne Zuweisung kommt alles in der Antwort.</summary>
     property Notify: TCompletionNotifyProc read FNotify write FNotify;
     /// <summary>Zeiten je Anfrage (#616); ohne Zuweisung keine Messung.</summary>
@@ -447,6 +461,8 @@ uses
   Atlas.Common.Pascal.Lexer,
   Atlas.Common.Lsp.FuzzyMatch,
   Atlas.Common.Editing.UsesClause,
+  Atlas.Common.Lsp.CompletionUses,
+  Atlas.Common.Lsp.CompletionInherited,
   Atlas.Common.Editing.CaseCompletion,
   Atlas.Common.Editing.AssignFields,
   Atlas.Common.Editing.DeclareUnknown,
@@ -473,7 +489,10 @@ uses
   Atlas.Common.Lsp.CompletionGenerics,
   Atlas.Common.Editing.DataFieldNames,
   Atlas.Common.Editing.GuardFree,
-  Atlas.Common.Editing.ContextSnippets;
+  Atlas.Common.Editing.ContextSnippets,
+  Atlas.Common.Editing.CodeActions,
+  Atlas.Common.Editing.DocComments,
+  Atlas.Text.Lines;
 
 const
   /// <summary>Art der Stelle im Diagnoselog (#647).</summary>
@@ -490,6 +509,30 @@ const
     'virtual', 'override', 'overload', 'abstract', 'reintroduce', 'dynamic', 'static', 'message');
   TypeKeywords: array[0..7] of string = ('string', 'array', 'set', 'record', 'packed', 'procedure', 'function',
     'reference');
+
+/// <summary>Bedingte Symbole nach {$IFDEF , {$IFNDEF , {$DEFINE , {$UNDEF und in Defined( (#102): Herkunft als
+/// Detail, Symbole, die hier nicht gelten, abgeschwächt am Ende.</summary>
+function SymbolItems(ARequest: TCompletionRequest; const AContext: TConditionalContext;
+  out AItems: TCompletionItems): Boolean;
+var
+  Prefix: string;
+  Symbol: TConditionalSymbol;
+  Item: TCompletionItem;
+begin
+  AItems := Default(TCompletionItems);
+  Result := TConditionalSymbols.IsSymbolContext(ARequest.LineBefore, Prefix);
+  if not Result or not AContext.CompletionEnabled then
+    Exit;
+  for Symbol in TConditionalSymbols.Candidates(ARequest.Text, AContext) do
+  begin
+    Item := Default(TCompletionItem);
+    Item.Name := Symbol.Name;
+    Item.Kind := KindConstant;
+    Item.Detail := Symbol.Detail;
+    Item.Unavailable := not Symbol.Active;
+    AItems.Items := AItems.Items + [Item];
+  end;
+end;
 
 /// <summary>Vorschläge in einer offenen Direktive (#102); False außerhalb.</summary>
 function DirectiveItems(ARequest: TCompletionRequest; out AItems: TCompletionItems): Boolean;
@@ -538,7 +581,30 @@ begin
   end;
 end;
 
-function SlashItems(ARequest: TCompletionRequest; const ADisabled: TArray<string>; out AItems: TCompletionItems): Boolean;
+/// <summary>Für /ignore nur die Regeln, die in der Zeile unter dem Befehl treffen (#297); ohne Auskunft der
+/// Katalog.</summary>
+function RuleIdsBelow(ARequest: TCompletionRequest; AKind: TSlashArgumentKind;
+  const ARuleIdsAt: TSlashRuleIdsFunc): TArray<string>;
+var
+  Lines: TArray<string>;
+  LineBreak: string;
+  Line: Integer;
+begin
+  if (AKind = TSlashArgumentKind.Rules) and Assigned(ARuleIdsAt) then
+  begin
+    // Ohne die Befehlszeile prüfen, wie nach dem Ausführen.
+    Lines := TTextLines.SplitLines(ARequest.Text, LineBreak);
+    Line := ARequest.Position.Line;
+    if (Line >= 0) and (Line <= High(Lines)) then
+      Lines[Line] := StringOfChar(' ', Length(Lines[Line]));
+    if ARuleIdsAt(ARequest.Uri, TTextLines.JoinLines(Lines, LineBreak), Line + 1, Result) then
+      Exit;
+  end;
+  Result := RuleIds(AKind);
+end;
+
+function SlashItems(ARequest: TCompletionRequest; const ADisabled: TArray<string>;
+  const ARuleIdsAt: TSlashRuleIdsFunc; out AItems: TCompletionItems): Boolean;
 var
   Before, Name, Arguments, Choice: string;
   Choices: TArray<string>;
@@ -563,7 +629,7 @@ begin
       Exit(False);
     Kind := TSlashMenu.ArgumentKind(Name, Arguments);
     Choices := TSlashMenu.ArgumentChoices(ARequest.Text, ARequest.Position.Line, Name, Arguments, ARequest.Index,
-      RuleIds(Kind));
+      RuleIdsBelow(ARequest, Kind, ARuleIdsAt));
     Tree := nil;
     Resolver := nil;
     try
@@ -1470,6 +1536,95 @@ begin
   end;
 end;
 
+/// <summary>Vollständige inherited-Aufrufe (#482) vor die Namen der Vorfahrmethoden; aus ACandidates fallen
+/// die abstrakten und die, deren Aufruf schon oben steht.</summary>
+procedure AddInheritedCalls(ARequest: TCompletionRequest; const AContext: TCompletionContext;
+  ACollector: TCompletionCollector; var ACandidates: TArray<TResolvedSymbol>);
+const
+  /// <summary>Vor allen übrigen Einträgen, in der Reihenfolge der Aufrufe.</summary>
+  CallBonus = 100000;
+var
+  Symbols: TArray<TIndexSymbol>;
+  Depths: TArray<Integer>;
+  Methods: TArray<TInheritedMethod>;
+  Method: TInheritedMethod;
+  Current, Header: TInheritedHeader;
+  Calls: TArray<TInheritedCall>;
+  Abstract_, Names: TArray<string>;
+  Kept: TArray<TResolvedSymbol>;
+  Candidate: TResolvedSymbol;
+  Item: TCompletionItem;
+  Start, Index, Score, Column: Integer;
+  LineBefore, After, Text: string;
+  WithResult: Boolean;
+begin
+  Symbols := ARequest.Resolver.InheritedOverloads(ARequest.Tree, ARequest.FileName, AContext.Offset, Start, Depths);
+  if (Start < 0) or not TInheritedHeader.Parse(TCompletionInherited.HeaderText(ARequest.Text, Start + 1),
+    Current) then
+    Exit;
+  Methods := nil;
+  for Index := 0 to High(Symbols) do
+    if TInheritedHeader.Parse(Symbols[Index].Signature, Header) then
+    begin
+      Method.Header := Header;
+      Method.Container := Symbols[Index].Container;
+      Method.Depth := Depths[Index];
+      Methods := Methods + [Method];
+    end;
+  Calls := TCompletionInherited.Calls(Current, Methods, Abstract_);
+  LineBefore := ARequest.LineBefore;
+  WithResult := TCompletionInherited.NeedsResult(Current, LineBefore);
+  // Semikolon nur, wenn hinter dem Cursor nichts mehr steht.
+  After := Copy(ARequest.LineText(ARequest.Position.Line), ARequest.Position.Character + 1, MaxInt);
+  Names := nil;
+  for Index := 0 to High(Calls) do
+    Names := Names + [Calls[Index].Name];
+  // Unter den Namen fallen die abstrakten weg (auch für die Fußzeile) und die, deren Aufruf oben steht.
+  Kept := nil;
+  for Candidate in ACandidates do
+    if TInheritedHeader.Parse(Candidate.Signature, Header) and Header.IsAbstract then
+    begin
+      if not MatchText(Candidate.Container + '.' + Candidate.Name, Abstract_) then
+        Abstract_ := Abstract_ + [Candidate.Container + '.' + Candidate.Name];
+    end
+    else if not MatchText(Candidate.Name, Names) then
+      Kept := Kept + [Candidate];
+  ACandidates := Kept;
+  for Index := 0 to High(Calls) do
+  begin
+    Score := MatchScore(Calls[Index].Name, AContext.Prefix, ARequest.Matching);
+    if Score = TFuzzyMatch.NoMatch then
+      Continue;
+    Item := Default(TCompletionItem);
+    Item.Name := Calls[Index].Text;
+    Item.FilterText := Calls[Index].Name;
+    Item.Detail := Calls[Index].Container;
+    if Current.Kind = 'constructor' then
+      Item.Kind := KindConstructor
+    else
+      Item.Kind := KindMethod;
+    Item.Container := Calls[Index].Container;
+    Item.Depth := Calls[Index].Depth;
+    Item.InheritedMatch := TCompletionInherited.MatchNames[Calls[Index].Match];
+    Item.InheritedAbstract := Abstract_;
+    Text := Calls[Index].Text;
+    if Trim(After) = '' then
+      Text := Text + ';';
+    Item.HasTextEdit := True;
+    if WithResult then
+    begin
+      Column := Pos('inherited', LowerCase(LineBefore)) - 1;
+      Item.TextEdit := TRuleEdit.Create(TTextRange.Create(ARequest.Position.Line, Column, ARequest.Position.Line,
+        ARequest.Position.Character), 'Result := inherited ' + Text);
+    end
+    else
+      Item.TextEdit := TRuleEdit.Create(TTextRange.Create(ARequest.Position.Line,
+        ARequest.Position.Character - Length(AContext.Prefix), ARequest.Position.Line,
+        ARequest.Position.Character), Text);
+    ACollector.AddItem(Item, Score + CallBonus - Index);
+  end;
+end;
+
 /// <summary>Schlüsselwörter passend zur Stelle (#31), erst ab einem getippten Zeichen; ohne Eingabe gingen die
 /// Namen darin unter.</summary>
 function KeywordsAt(const AContext: TCompletionContext): TArray<string>;
@@ -1561,8 +1716,12 @@ begin
   try
     case Context.Kind of
       TCompletionContextKind.UsesClause:
-        for UnitInfo in ARequest.Index.Units do
-          Collector.Add(UnitInfo.UnitName, UnitInfo.FileName, KindModule, Default(TResolvedSymbol));
+        // Gruppen, Hinweise und Zirkelbezüge (#469); aus: alle Units als schlichte Liste.
+        if ARequest.Settings.UsesDetails then
+          TCompletionUses.Collect(ARequest, Context, Collector)
+        else
+          for UnitInfo in ARequest.Index.Units do
+            Collector.Add(UnitInfo.UnitName, UnitInfo.FileName, KindModule, Default(TResolvedSymbol));
       TCompletionContextKind.Member, TCompletionContextKind.Scope:
         begin
           // Nur passende Namen aufbauen (#616); ohne Eingabe passt ohnehin alles. Der Filter gilt nur beim
@@ -1579,6 +1738,9 @@ begin
             end;
             Collector.AddCandidates(Candidates);
             Collector.AddUnavailableMembers(Candidates);
+            // Helper aus nicht eingebundenen Units mit uses-Eintrag (#456), wie Symbole bei #180.
+            Collector.AddHelpersFromOtherUnits(ARequest.Resolver.ReceiverTypes(ARequest.Tree, ARequest.FileName,
+              Context.Names, Context.Offset));
           end
           else if Context.Filter = TCompletionFilter.InheritedCall then
           begin
@@ -1589,6 +1751,9 @@ begin
             finally
               Collector.SetNameFilter(False);
             end;
+            // Vollständiger Aufruf mit den eigenen Parametern zuerst (#482).
+            if ARequest.Settings.InheritedCall then
+              AddInheritedCalls(ARequest, Context, Collector, Candidates);
             Collector.AddCandidates(Candidates);
           end
           else
@@ -1612,6 +1777,8 @@ begin
               Collector.SetNameFilter(False);
             end;
             Collector.AddCandidates(Candidates);
+            // Gleichnamige Bezeichner aus anderen Units direkt hinter der aktiven Variante (#475).
+            Collector.AddSameNameVariants;
           end;
           if (Context.Kind = TCompletionContextKind.Scope) and
             (Context.Filter <> TCompletionFilter.InheritedCall) then
@@ -1748,6 +1915,28 @@ begin
     else
       AItem.AdditionalEdits := AItem.AdditionalEdits + [Edit];
   Result := Found;
+end;
+
+/// <summary>„Parameter abgleichen“ (#88) als Eintrag, wenn der Cursor in einem ///-Block über einer Routine
+/// steht, deren Signatur nicht mehr zum Block passt: An der Cursorstelle ändert sich nichts, fehlende
+/// &lt;param&gt; und markierte überzählige kommen als Zusatzänderungen.</summary>
+function DocParamsItem(ARequest: TCompletionRequest; out AItem: TCompletionItem): Boolean;
+var
+  Action: TCodeAction;
+begin
+  AItem := Default(TCompletionItem);
+  Result := TDocComments.AdjustBlock(ARequest.Text, ARequest.Tree, ARequest.Position.Line, Action);
+  if not Result then
+    Exit;
+  AItem.Name := Action.Title;
+  AItem.Kind := KindSnippet;
+  AItem.Detail := 'Atlas';
+  AItem.Fits := True;
+  AItem.Pinned := True;
+  AItem.Action := 'docParams';
+  AItem.HasTextEdit := True;
+  AItem.TextEdit := TRuleEdit.Create(TTextRange.Create(ARequest.Position, ARequest.Position), '');
+  AItem.AdditionalEdits := Action.Edits;
 end;
 
 /// <summary>„Methode aus Aufruf anlegen“ (#472) als Eintrag: Nach dem Auslöser "(" bleibt der Text an der
@@ -1920,15 +2109,25 @@ begin
       Result := TCompletionOutcome.Next;
       Disabled := nil;
       if (not Assigned(FSlashCommandsFor) or FSlashCommandsFor(ARequest.Uri, Disabled)) and
-        SlashItems(ARequest, Disabled, AAnswer.Exclusive) then
+        SlashItems(ARequest, Disabled, FRuleIdsFor, AAnswer.Exclusive) then
         Result := TCompletionOutcome.Answered;
     end);
   AddCase(FTextCases,
     function(ARequest: TCompletionRequest; AAnswer: TCompletionAnswer): TCompletionOutcome
+    var
+      Context: TConditionalContext;
     begin
       Result := TCompletionOutcome.Next;
-      if DirectiveItems(ARequest, AAnswer.Exclusive) then
+      Context := TConditionalContext.Default;
+      if Assigned(FSymbolsFor) then
+        Context := FSymbolsFor(ARequest.Uri);
+      if SymbolItems(ARequest, Context, AAnswer.Exclusive) or DirectiveItems(ARequest, AAnswer.Exclusive) then
+      begin
         Result := TCompletionOutcome.Answered;
+        // Abgeschaltet (directives.completion): in der Direktive gar nichts, auch nicht die übrige Liste.
+        if not Context.CompletionEnabled then
+          AAnswer.Exclusive := Default(TCompletionItems);
+      end;
     end);
   AddCase(FTextCases,
     function(ARequest: TCompletionRequest; AAnswer: TCompletionAnswer): TCompletionOutcome
@@ -1938,6 +2137,21 @@ begin
         Result := TCompletionOutcome.Answered;
     end);
   // Mit Baum und Resolver, in dieser Reihenfolge.
+  // „Parameter abgleichen“ (#88): Strg+Leer in einem ///-Block, dessen Routine andere Parameter hat; dann nur
+  // dieses Angebot (die Tags liefert das Plugin selbst).
+  AddCase(FTreeCases,
+    function(ARequest: TCompletionRequest; AAnswer: TCompletionAnswer): TCompletionOutcome
+    var
+      Item: TCompletionItem;
+    begin
+      Result := TCompletionOutcome.Next;
+      if (not Assigned(FDocCommentsFor) or FDocCommentsFor(ARequest.Uri)) and DocParamsItem(ARequest, Item) then
+      begin
+        AAnswer.Exclusive := Default(TCompletionItems);
+        AAnswer.Exclusive.Items := [Item];
+        Result := TCompletionOutcome.Answered;
+      end;
+    end);
   // String als resourcestring auslagern (#473): Strg+Leer im String-Literal; sonst bietet die Liste dort nichts.
   AddCase(FTreeCases,
     function(ARequest: TCompletionRequest; AAnswer: TCompletionAnswer): TCompletionOutcome
@@ -2444,6 +2658,13 @@ begin
   begin
     Result.AddPair('container', Symbol.Container);
     Result.AddPair('visibility', VisibilityText(Symbol.Visibility));
+    // Mitglied eines Helpers (#456): Das Panel zeigt dann „Helper · Unit“.
+    for Candidate in UnitInfo.Symbols do
+      if (Candidate.Kind = TIndexSymbolKind.HelperType) and SameText(Candidate.QualifiedName, Symbol.Container) then
+      begin
+        Result.AddPair('helper', TJSONBool.Create(True));
+        Break;
+      end;
   end;
   Directives := DirectivesOf(Declaration, Deprecated, IsDeprecated);
   if Length(Directives) > 0 then

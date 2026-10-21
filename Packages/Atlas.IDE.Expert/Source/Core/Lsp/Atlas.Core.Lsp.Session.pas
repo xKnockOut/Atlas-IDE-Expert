@@ -30,6 +30,7 @@
 // Bedienung im Editor (#399): Code-Aktionen, Befehle mit Argumenten,
 // onTypeFormatting für Schnellbefehle und ///-Gerüste, selectionRange und
 // typeDefinition; auch hier gleicht der Aufrufer vorher ab.
+// Formatieren (#43): formatting bzw. rangeFormatting, Abgleich wie oben.
 
 interface
 
@@ -242,6 +243,13 @@ type
     /// ///-Gerüste (ACh = '/'). Leer, wenn der Server nichts ändert.</summary>
     function OnTypeFormatting(const AFileName: string; ALine, ACharacter: Integer; const ACh: string;
       ATabSize: Integer; AInsertSpaces: Boolean; ATimeoutMs: Cardinal): TArray<TLspTextEdit>;
+    /// <summary>textDocument/formatting (#43): Änderungen für die ganze Datei; leer, wenn nichts zu tun ist.
+    /// ELspClientError bei Fehler oder Zeitlimit.</summary>
+    function Formatting(const AFileName: string; ATabSize: Integer; AInsertSpaces: Boolean;
+      ATimeoutMs: Cardinal): TArray<TLspTextEdit>; overload;
+    /// <summary>textDocument/rangeFormatting (#43): nur die Zeilen von ARange.</summary>
+    function Formatting(const AFileName: string; const ARange: TLspRange; ATabSize: Integer; AInsertSpaces: Boolean;
+      ATimeoutMs: Cardinal): TArray<TLspTextEdit>; overload;
     /// <summary>Umgebende Bereiche am Fundort, innen zuerst (textDocument/selectionRange, #399).</summary>
     function SelectionRanges(const AFileName: string; ALine, ACharacter: Integer): TArray<TLspRange>;
     /// <summary>textDocument/linkedEditingRange nur für lokale Bezeichner ("atlasLocals", #658): Antwort des
@@ -954,6 +962,49 @@ begin
   finally
     Response.Free;
   end;
+end;
+
+/// <summary>Parameter von formatting und rangeFormatting ohne Bereich.</summary>
+function FormattingParams(const AUri: string; ATabSize: Integer; AInsertSpaces: Boolean): TJSONObject;
+begin
+  Result := TJSONObject.Create;
+  Result.AddPair('textDocument', TJSONObject.Create(TJSONPair.Create('uri', AUri)));
+  Result.AddPair('options', TJSONObject.Create.AddPair('tabSize', TJSONNumber.Create(ATabSize))
+    .AddPair('insertSpaces', TJSONBool.Create(AInsertSpaces)));
+end;
+
+/// <summary>TextEdit[] einer Antwort; gibt AResponse frei.</summary>
+function TextEditsOf(AResponse: TJSONValue): TArray<TLspTextEdit>;
+var
+  Item: TJSONValue;
+  Edit: TLspTextEdit;
+begin
+  Result := nil;
+  try
+    if AResponse is TJSONArray then
+      for Item in TJSONArray(AResponse) do
+        if TLspTextEdit.FromJson(Item, Edit) then
+          Result := Result + [Edit];
+  finally
+    AResponse.Free;
+  end;
+end;
+
+function TLspSession.Formatting(const AFileName: string; ATabSize: Integer; AInsertSpaces: Boolean;
+  ATimeoutMs: Cardinal): TArray<TLspTextEdit>;
+begin
+  Result := TextEditsOf(FClient.Request('textDocument/formatting',
+    FormattingParams(PathToUri(AFileName), ATabSize, AInsertSpaces), ATimeoutMs));
+end;
+
+function TLspSession.Formatting(const AFileName: string; const ARange: TLspRange; ATabSize: Integer;
+  AInsertSpaces: Boolean; ATimeoutMs: Cardinal): TArray<TLspTextEdit>;
+var
+  Params: TJSONObject;
+begin
+  Params := FormattingParams(PathToUri(AFileName), ATabSize, AInsertSpaces);
+  Params.AddPair('range', RangeToJson(ARange));
+  Result := TextEditsOf(FClient.Request('textDocument/rangeFormatting', Params, ATimeoutMs));
 end;
 
 function TLspSession.SelectionRanges(const AFileName: string; ALine, ACharacter: Integer): TArray<TLspRange>;

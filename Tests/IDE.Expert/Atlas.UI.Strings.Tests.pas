@@ -21,6 +21,8 @@ type
     procedure DocLabelsGerman;
     [Test]
     procedure TypeArgHeadingAndFooter;
+    [Test]
+    procedure UsesFooterAndCycle;
   end;
 
 implementation
@@ -125,6 +127,41 @@ begin
   end;
 end;
 
+procedure TAtlasStringsTests.UsesFooterAndCycle;
+var
+  Saved: TAtlasLanguage;
+begin
+  // uses-Abschnitt (#469): Fußzeile zu schon eingebundenen Units, Zirkelbezug im Detailpanel.
+  Saved := TAtlasStrings.Language;
+  try
+    TAtlasStrings.Language := TAtlasLanguage.German;
+    Assert.AreEqual('', TAtlasStrings.UsesHidden(nil));
+    Assert.AreEqual('System.SysUtils ist schon eingebunden und fehlt hier',
+      TAtlasStrings.UsesHidden(['System.SysUtils']));
+    Assert.AreEqual('System.SysUtils, System.Classes sind schon eingebunden und fehlen hier',
+      TAtlasStrings.UsesHidden(['System.SysUtils', 'System.Classes']));
+    Assert.AreEqual('A, B und 2 weitere sind schon eingebunden und fehlen hier',
+      TAtlasStrings.UsesHidden(['A', 'B', 'C', 'D']));
+    Assert.AreEqual('uGeneratorBeleg bindet diese Unit im interface-Teil ein',
+      TAtlasStrings.UsesCycle('uGeneratorBeleg → Haupt'));
+    Assert.AreEqual('uMitte bindet diese Unit über uZwei, uDrei im interface-Teil ein',
+      TAtlasStrings.UsesCycle('uMitte → uZwei → uDrei → Haupt'));
+    Assert.AreEqual('', TAtlasStrings.UsesCycle(''));
+    TAtlasStrings.Language := TAtlasLanguage.English;
+    Assert.AreEqual('A is already used and not listed', TAtlasStrings.UsesHidden(['A']));
+    Assert.AreEqual('uA uses this unit in its interface section', TAtlasStrings.UsesCycle('uA → Haupt'));
+    // Nach "inherited " (#482): ausgelassene abstrakte Vorfahrmethoden.
+    Assert.AreEqual('TBasis.Zeichnen is abstract and not listed', TAtlasStrings.InheritedAbstract(['TBasis.Zeichnen']));
+    TAtlasStrings.Language := TAtlasLanguage.German;
+    Assert.AreEqual('', TAtlasStrings.InheritedAbstract(nil));
+    Assert.AreEqual('TBasis.Zeichnen ist abstrakt und fehlt', TAtlasStrings.InheritedAbstract(['TBasis.Zeichnen']));
+    Assert.AreEqual('Abstrakte Vorfahrmethoden fehlen: A.X, A.Y, B.Z, …',
+      TAtlasStrings.InheritedAbstract(['A.X', 'A.Y', 'B.Z', 'B.W']));
+  finally
+    TAtlasStrings.Language := Saved;
+  end;
+end;
+
 procedure TAtlasStringsTests.DocLabelsGerman;
 var
   Saved: TAtlasLanguage;
@@ -135,10 +172,28 @@ begin
     TAtlasStrings.Language := TAtlasLanguage.German;
     Labels := TAtlasStrings.DocLabels;
     Expected := TAtlasDocLabels.German;
+    Assert.AreEqual(Expected.Params, Labels.Params);
     Assert.AreEqual(Expected.TypeParams, Labels.TypeParams);
+    Assert.AreEqual(Expected.Returns, Labels.Returns);
     Assert.AreEqual(Expected.Value, Labels.Value);
+    Assert.AreEqual(Expected.Exceptions, Labels.Exceptions);
+    Assert.AreEqual(Expected.Remarks, Labels.Remarks);
     Assert.AreEqual(Expected.Example, Labels.Example);
     Assert.AreEqual(Expected.SeeAlso, Labels.SeeAlso);
+    Assert.AreEqual(Expected.Undocumented, Labels.Undocumented);
+    Assert.AreEqual(Expected.More, Labels.More);
+    Assert.AreEqual(Expected.Less, Labels.Less);
+    Assert.AreEqual(Expected.CountParam, Labels.CountParam);
+    Assert.AreEqual(Expected.CountParams, Labels.CountParams);
+    Assert.AreEqual(Expected.CountTypeParam, Labels.CountTypeParam);
+    Assert.AreEqual(Expected.CountTypeParams, Labels.CountTypeParams);
+    Assert.AreEqual(Expected.CountException, Labels.CountException);
+    Assert.AreEqual(Expected.CountExceptions, Labels.CountExceptions);
+    Assert.AreEqual(Expected.ItemReturns, Labels.ItemReturns);
+    Assert.AreEqual(Expected.ItemValue, Labels.ItemValue);
+    Assert.AreEqual(Expected.ItemRemarks, Labels.ItemRemarks);
+    Assert.AreEqual(Expected.ItemExample, Labels.ItemExample);
+    Assert.AreEqual(Expected.ItemSeeAlso, Labels.ItemSeeAlso);
   finally
     TAtlasStrings.Language := Saved;
   end;

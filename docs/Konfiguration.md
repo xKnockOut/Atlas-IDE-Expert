@@ -44,6 +44,7 @@ Jeder Schlüssel hat genau einen Ort (Spalte „Ort“): Projekt-Schlüssel steh
 | `inlayHints` | global (settings.json) | object | – |  | Inlay Hints im Editor. |
 | `codeLens` | global (settings.json) | object | – |  | Code Lens im Editor. |
 | `hints` | global (settings.json) | object | – |  | Anzeige von XMLDoc-Kommentaren (///) im Hover-Tooltip und im Detailpanel der Vervollständigung des IDE-Plugins. Der Server bereitet die Doku immer vollständig auf; die Werte steuern nur die Anzeige. Ohne Angabe gelten die Werte aus Tools › Optionen › Drittanbieter › Atlas. |
+| `directives` | global (settings.json) | object | – |  | Hilfen in Compiler-Direktiven: Vervollständigung und Hover für Direktiven wie {$R+} oder {$WARN …} und für bedingte Symbole in {$IFDEF}, {$IFNDEF}, {$IF Defined(…)}, {$DEFINE} und {$UNDEF}. |
 | `stringLiteral` | Projekt (atlas.json) | object | – |  | Code-Aktionen „Als String-Literal“ und „Als Klartext kopieren“. |
 | `memberOrder` | Projekt (atlas.json) | object | – |  | Code-Aktion „Klassenmitglieder ordnen“: Reihenfolge der Sichtbarkeitsabschnitte und der Mitglieder darin. |
 | `testUnits` | Projekt (atlas.json) | object | – |  | Testunits anlegen und zwischen Unit und Testunit wechseln: Namensmuster, Ordner neuer Testunits und Testprojekt. |
@@ -87,6 +88,11 @@ Jeder Schlüssel hat genau einen Ort (Spalte „Ort“): Projekt-Schlüssel steh
 | `completion.resourceStringUnit` | Projekt (atlas.json) | string | `""` |  | Unit, in deren interface-Teil ausgelagerte resourcestrings kommen (etwa App.Texte); sie wird bei Bedarf in uses eingetragen. Leer: implementation-Teil der eigenen Unit. |
 | `completion.typeConversion` | global (settings.json) | string | `"off"` | `"off"`, `"helper"`, `"function"` | **Experimentell (Vorgabe aus; wirkt nur mit `experimental.enabled`).** Passt ein Eintrag nicht zum erwarteten Typ (Zuweisung, Argument), schlägt Atlas die übliche Umwandlung als weiteren Eintrag direkt über dem Original vor, etwa Count.ToString für eine String-Zuweisung: Zahl, Boolean, Datum und Aufzählung nach string, string nach Zahl. helper: Helper-Stil (X.ToString, X.ToInteger), wo es einen gibt, sonst Funktion; function: Funktionsstil (IntToStr(X), StrToInt(X)); off: aus. Benötigte Units kommen ins uses. Für Gleitkomma nach Ganzzahl nur ein Hinweis auf Round und Trunc im Detailpanel. |
 | `completion.assignAllFields` | global (settings.json) | boolean | `false` |  | **Experimentell (Vorgabe aus; wirkt nur mit `experimental.enabled`).** Hinter einem Record- oder Klassenausdruck mit Punkt am Anfang einer Anweisung (Opts.) steht „Alle Felder zuweisen (n)“ ganz oben: je öffentlich beschreibbarem Feld und jeder Property eine Zeile Opts.Feld := Platzhalter; in Deklarationsreihenfolge, mit 0, '', False, nil oder dem ersten Aufzählungswert als Vorgabe im Platzhalter-Modus. Felder, die die folgenden Zeilen schon zuweisen, fallen weg. Bei mehr als 15 Feldern zuerst eine Liste mit Kontrollkästchen. |
+| `completion.usesDetails` | global (settings.json) | boolean | `true` |  | Im uses-Abschnitt: schon eingebundene Units ausblenden (die Fußzeile nennt sie), Units nach Projekt, RTL/VCL und Drittanbietern gruppieren, Kurzformen auf den Namespace ergänzen (Classes → System.Classes), Units aus dem anderen Abschnitt mit „bereits im interface-Teil“ bzw. „… implementation-Teil“ und im interface-Teil Units mit Zirkelbezug markieren; im Detailpanel Pfad und die ersten exportierten Typen. Aus: alle Units des Index als schlichte Liste. |
+| `completion.inheritedCall` | global (settings.json) | boolean | `true` |  | Nach „inherited “ zuerst den vollständigen Aufruf der gleichnamigen Vorfahrmethode mit den Parametern der eigenen Methode anbieten (Marke „gleiche Parameter“), dann ihre übrigen Überladungen, in Konstruktoren und Destruktoren auch die übrigen Konstruktoren bzw. Destruktoren der Vorfahren. Abstrakte Vorfahrmethoden fehlen, die Fußzeile nennt sie. In Funktionen ergänzt die Übernahme „Result := “, wenn vor inherited nichts in der Zeile steht. Aus: nur die Namen der Vorfahrmethoden. |
+| `completion.sameNameVariants` | global (settings.json) | boolean | `true` |  | Kommt ein Name in mehreren Units vor, jede Variante mit ihrer Unit zeigen; die Variante, die der Compiler nach den uses wählt (letzte Unit gewinnt), steht zuerst mit „aktiv“, das Detailpanel nennt alle Units, die den Namen deklarieren. Aus: nur die aktive Variante. |
+| `completion.sameNameInsert` | global (settings.json) | string | `"prefix"` | `"prefix"`, `"uses"` | Übernahme einer nicht aktiven Variante: prefix fügt den Unit-Präfix ein (Vcl.Graphics.TBitmap), uses verschiebt die Unit in ihrer uses-Liste nach hinten bzw. ergänzt sie; das Detailpanel warnt dann, dass andere Stellen ihre Bedeutung ändern können. |
+| `completion.showFmxUnits` | global (settings.json) | boolean | `false` |  | Varianten aus FireMonkey-Units (FMX.*) zeigen. Aus: Die Fußzeile nennt sie als ausgeblendet. |
 | `completion.nameSuggestions` | global (settings.json) | boolean | `true` |  | An der Namensposition einer Deklaration mit bekanntem Typ (var-Abschnitt, Inline-var, Feld, Parameter) Namen aus dem Typ vorschlagen: TCustomerList ergibt Customers, CustomerList und List, mit F, A bzw. L, wenn mindestens 60 % der Deklarationen dieser Art im Projekt das Präfix tragen oder die Projektdatei .atlas es unter naming vorgibt. |
 
 ## refactoring
@@ -98,6 +104,12 @@ Jeder Schlüssel hat genau einen Ort (Spalte „Ort“): Projekt-Schlüssel steh
 | `refactoring.newParameter` | Projekt (atlas.json) | string | `"overload"` | `"overload"`, `"updateCallers"` | Neue Parameter: overload behält die alte Signatur als Überladung, die mit dem angegebenen Wert weiterreicht (Aufrufer bleiben); updateCallers ändert alle Aufrufer. Interface-Methoden und gebundene Handler gehen nur mit updateCallers. Standardwerte erzeugt Atlas nie. |
 | `refactoring.virtualOverload` | Projekt (atlas.json) | boolean | `false` |  | Die Überladung mit der alten Signatur bei virtuellen Methoden ebenfalls virtual machen. |
 | `refactoring.syncSignatures` | Projekt (atlas.json) | boolean | `true` |  | Weichen Deklaration und Implementierung voneinander ab, die Aktionen „Implementierung an Deklaration angleichen“ und umgekehrt anbieten. |
+| `refactoring.forwardDeclaration` | Projekt (atlas.json) | boolean | `true` |  | Typen, die im type-Abschnitt vor ihrer Deklaration benutzt werden, melden und „Forward-Deklaration ergänzen“, „type-Blöcke zusammenlegen“ bzw. „Deklaration nach oben verschieben“ anbieten; überflüssige Forward-Deklarationen melden. |
+| `refactoring.propertyFromAccessors` | Projekt (atlas.json) | boolean | `true` |  | Code-Aktionen „Property X anlegen“ auf einer Zugriffsmethode und „Fehlende Properties anlegen (n)“ auf der Kopfzeile einer Klasse: Zu Methoden wie GetX/SetX (auch indiziert, IsX/HasX für Boolean) ohne Property X legt Atlas die Property an, mit read FX, wenn der Getter nur das Feld liefert. Vorschau vor dem Übernehmen. |
+| `refactoring.propertyFromAccessorsPrefixes` | Projekt (atlas.json) | array<string> | `["Get","Set","Is","Has"]` |  | Präfixe der Zugriffsmethoden. Is und Has gelten nur für Getter mit Ergebnis Boolean, Get nur für Getter, Set nur für Setter, eigene Präfixe für beide. |
+| `refactoring.propertyFromAccessorsReplaceCalls` | Projekt (atlas.json) | string | `"ask"` | `"ask"`, `"always"`, `"never"` | Aufrufe im ganzen Projekt auf die Property umstellen (X.GetCaption → X.Caption, X.SetCaption(V) → X.Caption := V); Übergaben als Methodenzeiger bleiben. ask: beide Aktionen anbieten, mit und ohne Umstellen; always: immer umstellen; never: nie. |
+| `refactoring.propertyFromAccessorsSection` | Projekt (atlas.json) | string | `"accessor"` | `"accessor"`, `"public"`, `"published"` | Abschnitt der neuen Property: accessor wie die sichtbarste Zugriffsmethode, public bzw. published mindestens dort. |
+| `refactoring.propertyFromAccessorsHideAccessors` | Projekt (atlas.json) | string | `"off"` | `"off"`, `"private"`, `"protected"` | Zugriffsmethoden nach dem Anlegen nach private bzw. protected verschieben, wenn sie danach außerhalb ihrer Klasse nicht mehr benutzt werden (virtuelle und überschriebene bleiben). off: nie. |
 | `refactoring.tryFinally` | Projekt (atlas.json) | boolean | `true` |  | Code-Aktion „try/finally ergänzen“ nach X := TFoo.Create(…) für lokale Variablen (bei Result: try/except, das nur im Fehlerfall freigibt). Der try-Block schließt die folgenden Anweisungen bis zum Blockende bzw. bis zum Ende der Auswahl ein. |
 | `refactoring.classActions` | Projekt (atlas.json) | boolean | `true` |  | Code-Aktionen in einer Klassendeklaration: „Getter, Setter und Feld erzeugen“ auf einer Property ohne read/write, „Methoden von IFoo implementieren“ und „Name überschreiben“ für virtuelle Methoden der Vorfahren. |
 | `refactoring.explicitType` | Projekt (atlas.json) | boolean | `true` |  | Code-Aktion „Typ ausschreiben“ auf dem Namen von var X := …, const X = … und for var X in … ohne Typangabe: fügt den abgeleiteten Typ ein (var Count: Integer := Lines.Count) und trägt seine Unit bei Bedarf ins uses ein. |
@@ -133,6 +145,11 @@ Jeder Schlüssel hat genau einen Ort (Spalte „Ort“): Projekt-Schlüssel steh
 | `slashCommands.headerTemplate` | global (settings.json) | string | `""` |  | Vorlage für /header mit den Platzhaltern {unit}, {jahr} und {autor}. Leer: die Vorlage der Regel file-header, sonst ein einfacher Kopf. |
 | `slashCommands.logCall` | global (settings.json) | string | `""` |  | Protokollaufruf für /log, /except und /measure: ein Routinenname wie "Log.Debug" bekommt den Text als Argument, {text} setzt ihn an diese Stelle, z. B. "Logger.Send(TLogLevel.Debug, {text})". Leer: OutputDebugString(PChar(…)). |
 | `slashCommands.componentPalette` | global (settings.json) | string | `"Eigene"` |  | Palettenseite, auf der /component die neue Komponente mit RegisterComponents einträgt. |
+| `slashCommands.todoOwner` | global (settings.json) | string | `""` |  | Name hinter -o, den /todo einträgt. Leer: user.name aus der git-Konfiguration (Repository, dann Benutzerordner), sonst der Anmeldename. /todo -oName in der Zeile geht vor. |
+| `slashCommands.todoCategory` | global (settings.json) | string | `""` |  | Kategorie hinter -c, die /todo einträgt. Leer: keine. /todo -cKategorie in der Zeile geht vor. |
+| `slashCommands.sortUsesRemoveUnused` | global (settings.json) | boolean | `true` |  | /sortuses streicht auch ungenutzte Units laut Index. Units mit initialization oder finalization und die aus usesKeep bleiben. |
+| `slashCommands.enumHelper` | global (settings.json) | boolean | `true` |  | /helper für eine Aufzählung legt die Namenstabelle cNames sowie ToString und FromString an. Aus: ein leerer record helper wie bei anderen Typen. |
+| `slashCommands.setHelper` | global (settings.json) | boolean | `true` |  | /helper für eine Menge (set of) legt Contains, ToText, Toggle und All an. Aus: ein leerer record helper wie bei anderen Typen. |
 
 ## index
 
@@ -183,8 +200,17 @@ Jeder Schlüssel hat genau einen Ort (Spalte „Ort“): Projekt-Schlüssel steh
 
 | Schlüssel | Ort | Typ | Standard | Werte | Bedeutung |
 |---|---|---|---|---|---|
-| `hints.xmlDocFull` | global (settings.json) | boolean | `true` |  | XMLDoc vollständig und formatiert zeigen (alle Abschnitte, Verweise, Listen, Code). false: Kurzform wie bisher (Beschreibung auf 4 Zeilen, Bemerkungen auf 3 Zeilen gekürzt). |
+| `hints.xmlDocExpand` | global (settings.json) | string | `"last"` | `"collapsed"`, `"last"`, `"expanded"` | XMLDoc beim Öffnen (#770): "collapsed" zeigt nur Deklaration, Summary und „Mehr anzeigen“, "last" wie zuletzt in dieser Sitzung (getrennt für Tooltip und Detailpanel, nach dem Neustart zugeklappt), "expanded" alle Abschnitte mit Überschrift (Parameter, Rückgabe, Ausnahmen, Hinweise, Beispiel …). |
+| `hints.xmlDocFull` | global (settings.json) | boolean | – |  | Veraltet (#770), ersetzt durch xmlDocExpand: true wirkt wie "expanded", false wie "collapsed", solange xmlDocExpand fehlt. |
 | `hints.xmlDocMaxLines` | global (settings.json) | integer | `0` | 0…50 | Höchstzahl der Doku-Zeilen, bevor der Inhalt mit dem Mausrad scrollt (0 = unbegrenzt, nur durch Bildschirm bzw. Popup begrenzt). |
+| `hints.publishedMembers` | global (settings.json) | boolean | `true` |  | Hover über einer Komponentenklasse (#110): published-Properties und Ereignisse samt geerbter in Tabellen mit Typ, Vorgabe (default, implizit, nodefault, stored) und deklarierender Klasse, Filter für geerbte und nur mit Vorgabe, die Standard-Property einer Array-Property und „Liste kopieren“ mit Strg+C. Aus: nur Deklaration, Doku und Vererbung. |
+
+## directives
+
+| Schlüssel | Ort | Typ | Standard | Werte | Bedeutung |
+|---|---|---|---|---|---|
+| `directives.completion` | global (settings.json) | boolean | `true` |  | In {$ die Direktivennamen, nach {$WARN die Warnungsbezeichner und nach {$IFDEF, {$IFNDEF, {$DEFINE, {$UNDEF und in Defined( die bedingten Symbole vorschlagen, jeweils mit Herkunft (Konfiguration, Plattform, Compiler-Vorgabe, {$DEFINE} mit Zeile). |
+| `directives.hover` | global (settings.json) | boolean | `true` |  | Hover über Schaltern wie {$R+} erklärt die Direktive mit DocWiki-Link; über {$IFDEF X} und Co. nennt er, ob X an dieser Stelle aktiv ist und wo es definiert wird (Projekt, Konfiguration und Plattform aus der .dproj, Compiler-Vorgabe, {$DEFINE} mit Datei und Zeile, auch aus Include-Dateien). |
 
 ## stringLiteral
 
@@ -230,6 +256,13 @@ Jeder Schlüssel hat genau einen Ort (Spalte „Ort“): Projekt-Schlüssel steh
 | `format.spaceAroundAssignment` | Projekt (atlas.json) | boolean | `true` |  | Genau ein Leerzeichen vor und nach :=. |
 | `format.spaceAfterComma` | Projekt (atlas.json) | boolean | `true` |  | Genau ein Leerzeichen nach Kommas. |
 | `format.endOfLine` | Projekt (atlas.json) | string | – | `"lf"`, `"crlf"` | Zeilenenden vereinheitlichen; ohne Angabe bleiben sie. |
+| `format.reindent` | Projekt (atlas.json) | boolean | `true` |  | Zeilen nach der Blockstruktur einrücken (begin/end, try, case, repeat, Abschnitte). Ausgeschaltet bleibt die vorhandene Einrückung und nur Tabs und Leerzeichen werden umgerechnet. |
+| `format.beginPlacement` | Projekt (atlas.json) | string | `"preserve"` | `"preserve"`, `"newLine"`, `"sameLine"` | begin nach then, else und do: wie vorhanden, in einer eigenen Zeile oder in derselben Zeile. |
+| `format.elsePlacement` | Projekt (atlas.json) | string | `"preserve"` | `"preserve"`, `"newLine"`, `"sameLine"` | else nach end: wie vorhanden, in einer eigenen Zeile oder in derselben Zeile (end else). |
+| `format.maxLineLength` | Projekt (atlas.json) | integer | `0` | 0…1000 | Längere Zeilen nach einem Komma oder vor einem Operator umbrechen; 0 = nie. Gesetzt hat es Vorrang vor max_line_length aus .editorconfig. |
+| `format.alignAssignments` | Projekt (atlas.json) | boolean | `false` |  | := untereinander stehender Zuweisungen ausrichten. |
+| `format.alignDeclarations` | Projekt (atlas.json) | boolean | `false` |  | Doppelpunkte bzw. = untereinander stehender Deklarationen (var, const, Felder, Parameter) ausrichten. |
+| `format.alignComments` | Projekt (atlas.json) | boolean | `false` |  | Kommentare am Zeilenende untereinander stehender Zeilen ausrichten. |
 
 ## Beispiel
 

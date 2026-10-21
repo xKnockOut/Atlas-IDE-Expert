@@ -29,6 +29,8 @@ type
     [Test]
     procedure HelpUriPointsToAnchor;
     [Test]
+    procedure ExplanationHasExamplesAndLink;
+    [Test]
     procedure BuiltinRulesAreInCatalogWithSameSeverity;
     [Test]
     procedure EmbeddedCatalogIsCompleteInGerman;
@@ -187,6 +189,26 @@ end;
 procedure TRuleCatalogTests.UnknownLanguageHasNoOverlay;
 begin
   Assert.AreEqual('', RuleCatalogOverlayJson('xx'));
+end;
+
+procedure TRuleCatalogTests.ExplanationHasExamplesAndLink;
+var
+  Catalog: TRuleCatalog;
+  Entry: TRuleCatalogEntry;
+begin
+  // #300: /explain zeigt Beschreibung, falsch/richtig und den Link.
+  Catalog := TRuleCatalog.Create(Base);
+  try
+    Assert.IsTrue(Catalog.TryFind('a-rule', Entry));
+    Assert.AreEqual('a-rule: A rule'#10'Text'#10#10'Falsch:'#10'X;'#10#10'Richtig:'#10'Y;'#10#10'Mehr: ' +
+      TRuleCatalog.HelpUri('a-rule'), TRuleCatalog.Explanation(Entry, #10));
+    Entry.Bad := '';
+    Entry.Good := '';
+    Assert.AreEqual('a-rule: A rule'#10'Text'#10#10'Mehr: ' + TRuleCatalog.HelpUri('a-rule'),
+      TRuleCatalog.Explanation(Entry, #10));
+  finally
+    Catalog.Free;
+  end;
 end;
 
 initialization

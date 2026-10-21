@@ -4,7 +4,9 @@
 // (#723), ohne VCL und ohne Open Tools API. Quellen sind die beiden Schemata:
 // - schemas/atlas-plugin.schema.json (AtlasPluginSchemaJson): jede Einstellung
 //   aus TAtlasPluginSettings.Load/Save; Name = Registry-Name, x-key = Schlüssel
-//   in der Exportdatei, x-area = Bereich, x-page = Seite.
+//   in der Exportdatei, x-area = Bereich, x-page = Seite, x-parent = Hauptschalter
+//   und x-node = Unterpunkt im Baum der Optionsseite (#890, ausgewertet in
+//   Atlas.Core.Settings.Groups); die Unterpunkte selbst stehen in x-nodes.
 // - schemas/atlas.schema.json (AtlasSchemaJson): jeder globale Schlüssel der
 //   settings.json (x-scope "global" oder "both"); Objekte zerfallen eine Ebene
 //   tief in ihre globalen Glieder, der Bereich kommt aus x-area des Glieds oder
@@ -65,6 +67,13 @@ type
     /// <summary>Experimentelle Funktion (x-experimental, #834): Vorgabe aus, wirkt nur mit experimental.enabled.
     /// </summary>
     Experimental: Boolean;
+    /// <summary>x-parent (#890): x-key des Hauptschalters; nur mit HasParent gesetzt ('' = ausdrücklich keiner).
+    /// </summary>
+    Parent: string;
+    HasParent: Boolean;
+    /// <summary>x-node (#890): Unterpunkt der Optionsseite; nur mit HasNode gesetzt ('' = Hauptknoten).</summary>
+    Node: string;
+    HasNode: Boolean;
     /// <summary>Wird exportiert, importiert und zurückgesetzt (weder Zustand noch Rechnerwert).</summary>
     function Transferable: Boolean;
   end;
@@ -79,6 +88,7 @@ type
   private
     FEntries: TList<TAtlasCatalogEntry>;
     FAreas: TArray<TAtlasCatalogArea>;
+    FNodes: TArray<TAtlasCatalogArea>;
     FProjectPaths: TArray<string>;
     FVersion: Integer;
     procedure ReadPlugin(const AText: string);
@@ -114,6 +124,8 @@ type
     property Count: Integer read GetCount;
     property Entries[AIndex: Integer]: TAtlasCatalogEntry read GetEntry; default;
     property Areas: TArray<TAtlasCatalogArea> read FAreas;
+    /// <summary>Unterpunkte der Optionsseite aus x-nodes (#890) in Schemareihenfolge.</summary>
+    property Nodes: TArray<TAtlasCatalogArea> read FNodes;
     /// <summary>x-version des Plugin-Katalogs (schemaVersion der Exportdatei).</summary>
     property Version: Integer read FVersion;
   end;
@@ -189,6 +201,40 @@ begin
     for Item in TJSONArray(Value) do
       if Item is TJSONString then
         Result := Result + [TJSONString(Item).Value];
+end;
+
+/// <summary>Text des Schlüssels AName; AFound False, wenn er fehlt (oder kein String ist).</summary>
+function OptionalText(ASchema: TJSONObject; const AName: string; out AFound: Boolean): string;
+var
+  Value: TJSONValue;
+begin
+  Result := '';
+  Value := ASchema.GetValue(AName);
+  AFound := Value is TJSONString;
+  if AFound then
+    Result := TJSONString(Value).Value;
+end;
+
+function ReadAreas(ARoot: TJSONObject; const AName: string): TArray<TAtlasCatalogArea>;
+var
+  Table: TJSONObject;
+  Pair: TJSONPair;
+  Area: TAtlasCatalogArea;
+begin
+  Result := nil;
+  if not ARoot.TryGetValue<TJSONObject>(AName, Table) then
+    Exit;
+  for Pair in Table do
+  begin
+    Area := Default(TAtlasCatalogArea);
+    Area.Id := Pair.JsonString.Value;
+    if Pair.JsonValue is TJSONObject then
+    begin
+      Area.Caption := TextOf(TJSONObject(Pair.JsonValue), 'caption');
+      Area.CaptionEn := TextOf(TJSONObject(Pair.JsonValue), 'captionEn');
+    end;
+    Result := Result + [Area];
+  end;
 end;
 
 function DefaultOf(ASchema: TJSONObject): string;
@@ -288,31 +334,21 @@ end;
 procedure TAtlasSettingsCatalog.ReadPlugin(const AText: string);
 var
   Root: TJSONObject;
-  Areas, Properties: TJSONObject;
+  Properties: TJSONObject;
   Pair: TJSONPair;
   Schema: TJSONObject;
   Entry: TAtlasCatalogEntry;
-  Area: TAtlasCatalogArea;
 begin
   FVersion := 0;
   FAreas := nil;
+  FNodes := nil;
   Root := TAtlasJsonText.Parse(AText);
   if Root = nil then
     Exit;
   try
     FVersion := Root.GetValue<Integer>('x-version', 0);
-    if Root.TryGetValue<TJSONObject>('x-areas', Areas) then
-      for Pair in Areas do
-      begin
-        Area := Default(TAtlasCatalogArea);
-        Area.Id := Pair.JsonString.Value;
-        if Pair.JsonValue is TJSONObject then
-        begin
-          Area.Caption := TextOf(TJSONObject(Pair.JsonValue), 'caption');
-          Area.CaptionEn := TextOf(TJSONObject(Pair.JsonValue), 'captionEn');
-        end;
-        FAreas := FAreas + [Area];
-      end;
+    FAreas := ReadAreas(Root, 'x-areas');
+    FNodes := ReadAreas(Root, 'x-nodes');
     if not Root.TryGetValue<TJSONObject>('properties', Properties) then
       Exit;
     for Pair in Properties do
@@ -342,6 +378,8 @@ begin
       Entry.TeamPath := TextOf(Schema, 'x-team');
       Entry.SchemaJson := Schema.ToJSON;
       Entry.Experimental := Flag(Schema, 'x-experimental');
+      Entry.Parent := OptionalText(Schema, 'x-parent', Entry.HasParent);
+      Entry.Node := OptionalText(Schema, 'x-node', Entry.HasNode);
       FEntries.Add(Entry);
     end;
   finally
@@ -353,7 +391,14 @@ procedure TAtlasSettingsCatalog.AddServerEntry(const AKey: string; ASchema, APar
 var
   Entry: TAtlasCatalogEntry;
   Plugin, Index: Integer;
+  Former: string;
 begin
+  // Früherer Schlüssel einer Plugin-Einstellung (z. B. hints.xmlDocFull, #770): Ältere Dateien übernimmt der
+  // neue Eintrag.
+  for Index := 0 to FEntries.Count - 1 do
+    for Former in FEntries[Index].FormerKeys do
+      if SameText(Former, AKey) then
+        Exit;
   // Pfad mit Plugin-Einstellung (umgeleitet, x-plugin): nur einmal, als Plugin-Einstellung; x-experimental
   // gilt an beiden Stellen.
   Plugin := IndexOfKey(AKey);

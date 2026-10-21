@@ -48,6 +48,9 @@ type
     /// <summary>Anweisung vervollständigen (#697): Vorgaben, Speichern, Laden, unbekannte Werte.</summary>
     [Test]
     procedure CompleteStatementOptions;
+    /// <summary>#43: Befehl „Formatieren“ mit eigenem Kürzel.</summary>
+    [Test]
+    procedure FormatCodeOptions;
     [Test]
     procedure ContinuePatternOptions;
     [Test]
@@ -231,6 +234,8 @@ begin
   Assert.IsFalse(Settings.DiagnosticMode);
   Assert.AreEqual($E044, Settings.DiagnosticModeKey);
   Assert.IsFalse(Settings.DiagnosticModeKeyPriority);
+  // Prozesse am Projekt (#62).
+  Assert.IsTrue(Settings.DiagnosticsProcesses);
   // Einrichtung mit Prüfliste (#625): beim Start zeigen, solange nicht alles grün ist; noch nie gesehen.
   Assert.IsTrue(Settings.SetupChecklist);
   Assert.IsFalse(Settings.SetupChecklistSeen);
@@ -327,6 +332,7 @@ begin
   Settings.DiagnosticMode := True;
   Settings.DiagnosticModeKey := $6044;
   Settings.DiagnosticModeKeyPriority := True;
+  Settings.DiagnosticsProcesses := False;
   Settings.SetupChecklist := False;
   Settings.SetupChecklistSeen := True;
   Settings.KeyOverview := False;
@@ -416,6 +422,7 @@ begin
   Assert.IsTrue(Loaded.DiagnosticMode);
   Assert.AreEqual($6044, Loaded.DiagnosticModeKey);
   Assert.IsTrue(Loaded.DiagnosticModeKeyPriority);
+  Assert.IsFalse(Loaded.DiagnosticsProcesses);
   Assert.IsFalse(Loaded.SetupChecklist);
   Assert.IsTrue(Loaded.SetupChecklistSeen);
   Assert.IsFalse(Loaded.KeyOverview);
@@ -479,27 +486,47 @@ end;
 
 procedure TAtlasPluginSettingsTests.XmlDocOptionsGoToGlobalFile;
 var
-  Store: IAtlasSettingsStore;
+  Store, Inner: IAtlasSettingsStore;
   Routed: TAtlasRoutedSettingsStore;
   Settings, Loaded: TAtlasPluginSettings;
 begin
-  // #654: XmlDocFull/XmlDocMaxLines als hints in settings.json.
+  // #654, #770: XmlDocExpand/XmlDocMaxLines als hints in settings.json.
   Settings := TAtlasPluginSettings.Defaults;
-  Assert.IsTrue(Settings.XmlDocFull);
+  Assert.AreEqual('last', Settings.XmlDocExpand);
   Assert.AreEqual(0, Settings.XmlDocMaxLines);
   Routed := TAtlasRoutedSettingsStore.Create(TMemoryStore.Create, '');
   Store := Routed;
-  Settings.XmlDocFull := False;
+  Settings.XmlDocExpand := 'collapsed';
   Settings.XmlDocMaxLines := 12;
   Settings.Save(Store);
-  Assert.AreEqual(0, Store.ReadInteger('XmlDocFull', 1));
+  Assert.AreEqual('collapsed', Store.ReadString('XmlDocExpand', ''));
   Assert.AreEqual(12, Store.ReadInteger('XmlDocMaxLines', 0));
-  Assert.Contains(Routed.Text, '"xmlDocFull": false');
+  Assert.Contains(Routed.Text, '"xmlDocExpand": "collapsed"');
   Assert.Contains(Routed.Text, '"xmlDocMaxLines": 12');
+  Assert.IsFalse(Routed.Text.Contains('xmlDocFull'), Routed.Text);
   Loaded := Default(TAtlasPluginSettings);
   Loaded.Load(Store);
-  Assert.IsFalse(Loaded.XmlDocFull);
+  Assert.AreEqual('collapsed', Loaded.XmlDocExpand);
   Assert.AreEqual(12, Loaded.XmlDocMaxLines);
+  // Unbekannter Wert: Vorgabe.
+  Store.WriteString('XmlDocExpand', 'halb');
+  Loaded.Load(Store);
+  Assert.AreEqual('last', Loaded.XmlDocExpand);
+  // Vor #770: xmlDocFull aus settings.json bzw. der Registry wird übernommen, aber nie geschrieben.
+  Routed := TAtlasRoutedSettingsStore.Create(TMemoryStore.Create, '{"hints": {"xmlDocFull": true}}');
+  Store := Routed;
+  Loaded.Load(Store);
+  Assert.AreEqual('expanded', Loaded.XmlDocExpand);
+  Store.WriteInteger('XmlDocFull', 0);
+  Assert.Contains(Routed.Text, '"xmlDocFull": true');
+  Inner := TMemoryStore.Create;
+  Inner.WriteInteger('XmlDocFull', 0);
+  Routed := TAtlasRoutedSettingsStore.Create(Inner, '');
+  Store := Routed;
+  Routed.Migrate;
+  Loaded.Load(Store);
+  Assert.AreEqual('collapsed', Loaded.XmlDocExpand);
+  Assert.IsFalse(Routed.Text.Contains('xmlDocFull'), Routed.Text);
   // Grenzen 0..50.
   Store.WriteInteger('XmlDocMaxLines', 99);
   Loaded.Load(Store);
@@ -520,8 +547,11 @@ begin
   Assert.IsTrue(Settings.AutoUses);
   Assert.IsTrue(Settings.ParameterHints);
   Assert.AreEqual(150, Settings.OpenDelayMs);
+  // Auswahl mit Rahmen und Marke (#447).
+  Assert.IsTrue(Settings.SelectionMarker);
   Store := TMemoryStore.Create;
   Settings.CommitCharacters := False;
+  Settings.SelectionMarker := False;
   Settings.AutoUses := False;
   Settings.ParameterHints := False;
   Settings.OpenDelayMs := 400;
@@ -529,6 +559,7 @@ begin
   Loaded := Default(TAtlasPluginSettings);
   Loaded.Load(Store);
   Assert.IsFalse(Loaded.CommitCharacters);
+  Assert.IsFalse(Loaded.SelectionMarker);
   Assert.IsFalse(Loaded.AutoUses);
   Assert.IsFalse(Loaded.ParameterHints);
   Assert.AreEqual(400, Loaded.OpenDelayMs);
@@ -996,6 +1027,7 @@ begin
   Assert.IsTrue(Settings.UnitSearchPreview);
   Assert.IsTrue(Settings.UnitSearchPreviewForm);
   Assert.IsTrue(Settings.UnitSearchPreviewUsedBy);
+  Assert.IsTrue(Settings.UnitSearchPreviewAutoCollapse);
   Assert.IsTrue(Settings.UnitSearchMultiSelect);
   Assert.IsTrue(Settings.UnitSearchActions);
   Assert.IsTrue(Settings.UnitSearchActionsAddUses);
@@ -1020,6 +1052,7 @@ begin
   Settings.UnitSearchPreview := False;
   Settings.UnitSearchPreviewForm := False;
   Settings.UnitSearchPreviewUsedBy := False;
+  Settings.UnitSearchPreviewAutoCollapse := False;
   Settings.UnitSearchMultiSelect := False;
   Settings.UnitSearchActions := False;
   Settings.UnitSearchActionsAddUses := False;
@@ -1041,6 +1074,7 @@ begin
   Assert.IsFalse(Loaded.UnitSearchPreview);
   Assert.IsFalse(Loaded.UnitSearchPreviewForm);
   Assert.IsFalse(Loaded.UnitSearchPreviewUsedBy);
+  Assert.IsFalse(Loaded.UnitSearchPreviewAutoCollapse);
   Assert.IsFalse(Loaded.UnitSearchMultiSelect);
   Assert.IsFalse(Loaded.UnitSearchActions);
   Assert.IsFalse(Loaded.UnitSearchActionsAddUses);
@@ -1299,6 +1333,27 @@ begin
   Loaded.Normalize;
   Assert.AreEqual('multiLine', Loaded.CompleteStatementBeginEnd);
   Assert.AreEqual('finally', Loaded.CompleteStatementTryKind);
+end;
+
+procedure TAtlasPluginSettingsTests.FormatCodeOptions;
+var
+  Settings, Loaded: TAtlasPluginSettings;
+  Store: IAtlasSettingsStore;
+begin
+  Settings := TAtlasPluginSettings.Defaults;
+  Assert.IsTrue(Settings.FormatCode);
+  Assert.AreEqual($E046, Settings.FormatCodeKey, 'Strg+Umschalt+Alt+F');
+  Settings.FormatCode := False;
+  Settings.FormatCodeKey := $C046;
+  Store := TMemoryStore.Create;
+  Settings.Save(Store);
+  Loaded := TAtlasPluginSettings.Defaults;
+  Loaded.Load(Store);
+  Assert.IsFalse(Loaded.FormatCode);
+  Assert.AreEqual($C046, Loaded.FormatCodeKey);
+  Loaded.FormatCodeKey := -5;
+  Loaded.Normalize;
+  Assert.AreEqual(0, Loaded.FormatCodeKey);
 end;
 
 procedure TAtlasPluginSettingsTests.StickyScrollOptions;

@@ -19,11 +19,16 @@
 // Ganzzahlen 0, Aufzählungen ihr erster Wert), nodefault und stored
 // erscheinen unterschiedlich; default an einer Array-Property heißt
 // Standard-Property und steht als eigene Zeile.
+//
+// Für den Atlas-Tooltip liefert ToJson dieselben Mitglieder strukturiert
+// (atlas.published): je Mitglied Name, Typ, Vorgabe samt Art, stored,
+// deklarierende Klasse und Ereignis-Kennung, dazu die Standard-Property.
 
 interface
 
 uses
   System.SysUtils,
+  System.JSON,
   Atlas.Common.Index.Contract;
 
 type
@@ -84,6 +89,12 @@ type
     /// <summary>Wie oben, davor die Standard-Property (aus DefaultProperty), wenn nicht ''.</summary>
     class function ToMarkdown(const AMembers: TArray<TPublishedMember>;
       const ADefaultProperty: string): string; overload; static;
+    /// <summary>atlas.published für den Tooltip (#110): {"members": [{"name", "type", "default", "defaultKind"
+    /// (explicit, implicit, nodefault), "stored", "declaringClass", "publishedIn", "event"}], "defaultProperty"};
+    /// leere Angaben fehlen. nil ohne Mitglieder und Standard-Property; sonst gehört das Objekt dem Aufrufer.
+    /// </summary>
+    class function ToJson(const AMembers: TArray<TPublishedMember>; const ADefaultProperty: string): TJSONObject;
+      static;
   end;
 
 implementation
@@ -769,6 +780,44 @@ begin
         Result := Result + #10#10;
       Result := Result + Part;
     end;
+end;
+
+class function TPublishedMembers.ToJson(const AMembers: TArray<TPublishedMember>;
+  const ADefaultProperty: string): TJSONObject;
+const
+  KindNames: array[TPublishedDefaultKind] of string = ('', 'explicit', 'implicit', 'nodefault');
+var
+  Member: TPublishedMember;
+  Items: TJSONArray;
+  Item: TJSONObject;
+begin
+  if (Length(AMembers) = 0) and (ADefaultProperty = '') then
+    Exit(nil);
+  Result := TJSONObject.Create;
+  Items := TJSONArray.Create;
+  Result.AddPair('members', Items);
+  for Member in AMembers do
+  begin
+    Item := TJSONObject.Create;
+    Item.AddPair('name', Member.Name);
+    if Member.TypeName <> '' then
+      Item.AddPair('type', Member.TypeName);
+    if Member.DefaultValue <> '' then
+      Item.AddPair('default', Member.DefaultValue);
+    if KindNames[Member.DefaultKind] <> '' then
+      Item.AddPair('defaultKind', KindNames[Member.DefaultKind]);
+    if Member.Stored <> '' then
+      Item.AddPair('stored', Member.Stored);
+    if Member.DeclaringClass <> '' then
+      Item.AddPair('declaringClass', Member.DeclaringClass);
+    if Member.PublishedIn <> '' then
+      Item.AddPair('publishedIn', Member.PublishedIn);
+    if Member.IsEvent then
+      Item.AddPair('event', TJSONTrue.Create);
+    Items.AddElement(Item);
+  end;
+  if ADefaultProperty <> '' then
+    Result.AddPair('defaultProperty', ADefaultProperty);
 end;
 
 end.

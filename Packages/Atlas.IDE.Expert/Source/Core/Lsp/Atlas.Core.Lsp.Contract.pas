@@ -39,6 +39,9 @@ type
     Confidence: string;
     /// <summary>Inaktiver Bereich ({$IFDEF}); kein Problem im eigentlichen Sinn.</summary>
     Unnecessary: Boolean;
+    /// <summary>Verwendung eines veralteten Symbols (Tag Deprecated, #38): durchgestrichen statt unterstrichen.
+    /// </summary>
+    Deprecated: Boolean;
     /// <summary>Zu einem inaktiven Bereich aus data.inactive (#615): Bedingung des Zweigs ("WIN64"),
     /// Zielplattform und Konfiguration des Servers; '' wenn unbekannt.</summary>
     InactiveCondition: string;
@@ -198,8 +201,13 @@ begin
   Tags := AItem.GetValue('tags');
   if Tags is TJSONArray then
     for Tag in TJSONArray(Tags) do
-      if (Tag is TJSONNumber) and (TJSONNumber(Tag).AsInt = 1) then
-        Result.Unnecessary := True;
+      if Tag is TJSONNumber then
+        case TJSONNumber(Tag).AsInt of
+          1:
+            Result.Unnecessary := True;
+          2:
+            Result.Deprecated := True;
+        end;
 end;
 
 class function TAtlasProblem.ListFromJson(const AItems: TJSONArray): TArray<TAtlasProblem>;

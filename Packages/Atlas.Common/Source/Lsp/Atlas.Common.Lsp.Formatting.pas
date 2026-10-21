@@ -147,13 +147,15 @@ begin
       // Abbruchsignal an den Parser (Code-Review A-06).
       Cancellation := TRequestCancellation.Create(ACancellation);
       Shared := TSyntaxTreeCache.Get(Document, Cancellation);
-      if TDocComments.AfterSlash(Document.Text, Shared.Tree, TLspPositions.ReadPosition(PositionValue), Edit) then
-      begin
-        Item := TJSONObject.Create;
-        Item.AddPair('range', TLspPositions.RangeToJson(Edit.Range));
-        Item.AddPair('newText', Edit.NewText);
-        TJSONArray(Result).AddElement(Item);
-      end;
+      // Über einer Methodenimplementierung zwei Bearbeitungen: Gerüst an der Deklaration, "///" weg.
+      if TDocComments.AfterSlash(Document.Text, Shared.Tree, TLspPositions.ReadPosition(PositionValue), Edits) then
+        for Edit in Edits do
+        begin
+          Item := TJSONObject.Create;
+          Item.AddPair('range', TLspPositions.RangeToJson(Edit.Range));
+          Item.AddPair('newText', Edit.NewText);
+          TJSONArray(Result).AddElement(Item);
+        end;
       Exit;
     end;
     Disabled := nil;
@@ -224,6 +226,15 @@ begin
     Result.SpaceAfterComma := AConfigured.SpaceAfterComma;
   if TFormatKey.EndOfLine in AConfigured.Given then
     Result.EndOfLine := AConfigured.EndOfLine;
+  if TFormatKey.MaxLineLength in AConfigured.Given then
+    Result.MaxLineLength := AConfigured.MaxLineLength;
+  // Diese Schalter kennt weder der Editor noch .editorconfig (#43).
+  Result.Reindent := AConfigured.Reindent;
+  Result.BeginPlacement := AConfigured.BeginPlacement;
+  Result.ElsePlacement := AConfigured.ElsePlacement;
+  Result.AlignAssignments := AConfigured.AlignAssignments;
+  Result.AlignDeclarations := AConfigured.AlignDeclarations;
+  Result.AlignComments := AConfigured.AlignComments;
   Result.Given := AConfigured.Given;
 end;
 

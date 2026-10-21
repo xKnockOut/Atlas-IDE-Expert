@@ -2,7 +2,10 @@
 
 // Schnellbefehle, die Typen erzeugen oder umbauen (#298), im Rahmen aus #293:
 //   /enum TFarbe rot, gruen [names]  Aufzählung mit Präfix (/enum! ohne), mit names auch Namenstabelle
-//   /helper TTyp                     record helper bzw. class helper für TTyp
+//   /helper TTyp                     record helper bzw. class helper für TTyp; bei Aufzählungen mit
+//                                    Namenstabelle cNames, ToString und FromString (#875,
+//                                    slashCommands.enumHelper); bei Mengen Contains, ToText, Toggle
+//                                    und All (slashCommands.setHelper)
 //   /singleton                       class var FInstance, Instance und class destructor
 //   /encapsulate FName               Feld wird private, dazu Property Name mit Setter
 //   /assign                          Assign(Source: TPersistent) für alle Felder
@@ -51,6 +54,7 @@ uses
   Atlas.Common.Pascal.Contract,
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.Lexer,
+  Atlas.Common.Pascal.Parser,
   Atlas.Common.Editing.UsesClause,
   Atlas.Common.Editing.ClassMembers;
 
@@ -233,11 +237,168 @@ begin
     'TForm', 'TFrame', 'TList', 'TStream']);
 end;
 
+/// <summary>Werte der Aufzählung ATypeName in Deklarationsreihenfolge, aus der Datei oder dem Index; False, wenn
+/// ATypeName keine bekannte Aufzählung ist.</summary>
+function EnumMembers(ASource: TCommandSource; const AIndex: ISymbolIndex; const ATypeName: string;
+  out AValues: TArray<string>): Boolean;
+
+  function Collect(const AUnit: TUnitIndex; const AName: string): Boolean;
+  var
+    Symbol: TIndexSymbol;
+  begin
+    for Symbol in AUnit.Symbols do
+      if (Symbol.Kind = TIndexSymbolKind.EnumMember) and SameText(Symbol.Container, AName) then
+        AValues := AValues + [Symbol.Name];
+    Result := AValues <> nil;
+  end;
+
+var
+  Symbol: TIndexSymbol;
+  Location: TSymbolLocation;
+  Owner: TUnitIndex;
+  Name: string;
+begin
+  AValues := nil;
+  // Unit.TTyp: gesucht wird der einfache Name.
+  Name := ATypeName;
+  if Pos('.', Name) > 0 then
+    Name := Copy(Name, LastDelimiter('.', Name) + 1, MaxInt);
+  for Symbol in ASource.UnitIndex.Symbols do
+    if SameText(Symbol.Name, Name) and (Symbol.Container = '') then
+      Exit((Symbol.Kind = TIndexSymbolKind.EnumType) and Collect(ASource.UnitIndex, Symbol.Name));
+  if AIndex <> nil then
+    for Location in AIndex.FindSymbols(Name) do
+      if (Location.Symbol.Kind = TIndexSymbolKind.EnumType) and (Location.Symbol.Container = '') and
+        AIndex.FindFile(Location.FileName, Owner) and Collect(Owner, Location.Symbol.Name) then
+        Exit(True);
+  Result := False;
+end;
+
+/// <summary>Namenstabelle cNames; lange Listen umbrechen nach Kommas.</summary>
+function NamesConstant(const ATypeName: string; const AValues: TArray<string>): TArray<string>;
+const
+  MaxWidth = 100;
+var
+  Line: string;
+  Index: Integer;
+begin
+  Result := nil;
+  Line := Format('  cNames: array[%s] of string = (', [ATypeName]);
+  for Index := 0 to High(AValues) do
+  begin
+    if (Index > 0) and (Length(Line) + Length(AValues[Index]) + 4 > MaxWidth) then
+    begin
+      Result := Result + [Line];
+      Line := '   ';
+    end;
+    Line := Line + QuotedStr(AValues[Index]);
+    if Index < High(AValues) then
+      Line := Line + ', '
+    else
+      Line := Line + ');';
+  end;
+  Result := Result + [TrimRight(Line)];
+end;
+
+/// <summary>Elementtyp von "ATypeName = set of TElement" im Baum; False ohne oder bei namenloser Aufzählung.</summary>
+function SetElementIn(ATree: TSyntaxTree; const ATypeName: string; out AElement: string): Boolean;
+
+  function Walk(ANode: TSyntaxNode): Boolean;
+  var
+    Index: Integer;
+    Body: TSyntaxNode;
+  begin
+    if (ANode.Kind = TSyntaxKind.TypeDecl) and SameText(ANode.Name, ATypeName) then
+    begin
+      Body := ANode.FindChild(TSyntaxKind.SetType);
+      if (Body <> nil) and (Body.ChildCount > 0) and (Body[0].Kind = TSyntaxKind.TypeReference) and
+        (Body[0].Name <> '') then
+      begin
+        AElement := Body[0].Name;
+        Exit(True);
+      end;
+      Exit(False);
+    end;
+    for Index := 0 to ANode.ChildCount - 1 do
+      if Walk(ANode[Index]) then
+        Exit(True);
+    Result := False;
+  end;
+
+begin
+  AElement := '';
+  Result := (ATree <> nil) and (ATree.Root <> nil) and Walk(ATree.Root);
+end;
+
+/// <summary>Elementtyp der Menge ATypeName: aus der Datei, sonst aus der Unit, die der Index nennt (#875).</summary>
+function SetElement(ASource: TCommandSource; const AContext: TSlashContext; const ATypeName: string;
+  out AElement: string): Boolean;
+var
+  Name, Text: string;
+  Location: TSymbolLocation;
+  Tree: TSyntaxTree;
+begin
+  Name := ATypeName;
+  if Pos('.', Name) > 0 then
+    Name := Copy(Name, LastDelimiter('.', Name) + 1, MaxInt);
+  if SetElementIn(ASource.Tree, Name, AElement) then
+    Exit(True);
+  if (AContext.Index <> nil) and (AContext.Host <> nil) then
+    for Location in AContext.Index.FindSymbols(Name) do
+      if (Location.Symbol.Kind = TIndexSymbolKind.TypeAlias) and (Location.Symbol.Container = '') and
+        AContext.Host.ReadFile(Location.FileName, Text) then
+      begin
+        Tree := TPascalParser.Parse(Text);
+        try
+          if SetElementIn(Tree, Name, AElement) then
+            Exit(True);
+        finally
+          Tree.Free;
+        end;
+      end;
+  Result := False;
+end;
+
+/// <summary>Helper für eine Menge (#875): Contains, ToText, Toggle und All.</summary>
+function SetHelper(ASource: TCommandSource; const AContext: TSlashContext; AInTypeSection: Boolean;
+  const ATypeName, AHelperName, AElement: string): TArray<TTextEdit>;
+var
+  Values, Lines, ToText, Body: TArray<string>;
+begin
+  Lines := ['// Nur ein Helper je Typ ist wirksam: der zuletzt sichtbare.',
+    Format('%s = record helper for %s', [AHelperName, ATypeName])];
+  // Mit bekannten Werten eine Namenstabelle, sonst die Namen aus der RTTI.
+  if EnumMembers(ASource, AContext.Index, AElement, Values) then
+  begin
+    Lines := Lines + ['private const'] + NamesConstant(AElement, Values);
+    ToText := ['    Result := Result + cNames[Value];'];
+  end
+  else
+    ToText := ['    Result := Result + GetEnumName(TypeInfo(' + AElement + '), Ord(Value));'];
+  Lines := Lines + ['public', Format('  function Contains(AValue: %s): Boolean;', [AElement]),
+    '  function ToText: string;', Format('  procedure Toggle(AValue: %s);', [AElement]),
+    Format('  class function All: %s; static;', [ATypeName]), 'end;'];
+  Body := [Format('function %s.Contains(AValue: %s): Boolean;', [AHelperName, AElement]), 'begin',
+    '  Result := AValue in Self;', 'end;', '',
+    Format('function %s.ToText: string;', [AHelperName]), 'var', Format('  Value: %s;', [AElement]), 'begin',
+    '  Result := '''';', '  for Value in Self do', '  begin', '    if Result <> '''' then',
+    '      Result := Result + '', '';'];
+  Body := Body + ToText;
+  Body := Body + ['  end;', '  Result := ''['' + Result + '']'';', 'end;', '',
+    Format('procedure %s.Toggle(AValue: %s);', [AHelperName, AElement]), 'begin', '  if AValue in Self then',
+    '    Exclude(Self, AValue)', '  else', '    Include(Self, AValue);', 'end;', '',
+    Format('class function %s.All: %s;', [AHelperName, ATypeName]), 'begin',
+    Format('  Result := [Low(%s)..High(%s)];', [AElement, AElement]), 'end;'];
+  Result := [TypeDeclaration(ASource, AInTypeSection, Lines), ASource.AddBody(AHelperName, Join(ASource, Body))];
+end;
+
 function ExecuteHelper(const AContext: TSlashContext; out AEdits: TArray<TTextEdit>; out AReason: string): Boolean;
 var
   Source: TCommandSource;
-  TypeName, Kind: string;
+  TypeName, Kind, HelperName, Element: string;
   InTypeSection: Boolean;
+  Values, Lines: TArray<string>;
+  UsesEdit: TTextEdit;
 begin
   AEdits := nil;
   TypeName := Trim(AContext.Arguments);
@@ -251,9 +412,47 @@ begin
       Kind := 'class'
     else
       Kind := 'record';
+    HelperName := StringReplace(TypeName, '.', '', [rfReplaceAll]) + 'Helper';
+    // #875: Mengen bekommen Contains, ToText, Toggle und All (abschaltbar).
+    if (Kind = 'record') and
+      ((AContext.Host = nil) or not SameText(AContext.Host.Setting(AContext.Uri, TSlashSettings.SetHelper),
+      'false')) and SetElement(Source, AContext, TypeName, Element) then
+    begin
+      AEdits := SetHelper(Source, AContext, InTypeSection, TypeName, HelperName, Element);
+      if not EnumMembers(Source, AContext.Index, Element, Values) and
+        not TUsesClauses.IsUsed(TUsesClauses.UsedUnits(Source.Tree.Tokens), 'System.TypInfo',
+        AContext.Namespaces) and TUsesClauses.AddUnit(Source.Tree.Tokens, Source.Offset(Source.Line),
+        'System.TypInfo', Source.LineBreak, UsesEdit) then
+        AEdits := AEdits + [UsesEdit];
+      Exit(True);
+    end;
+    // #875: Aufzählungen bekommen Namen, ToString und FromString (abschaltbar).
+    if (Kind = 'record') and
+      ((AContext.Host = nil) or not SameText(AContext.Host.Setting(AContext.Uri, TSlashSettings.EnumHelper),
+      'false')) and EnumMembers(Source, AContext.Index, TypeName, Values) then
+    begin
+      Lines := ['// Nur ein Helper je Typ ist wirksam: der zuletzt sichtbare.',
+        Format('%s = record helper for %s', [HelperName, TypeName]), 'private const'];
+      Lines := Lines + NamesConstant(TypeName, Values);
+      Lines := Lines + ['public', '  function ToString: string;',
+        Format('  class function FromString(const AValue: string): %s; static;', [TypeName]), 'end;'];
+      AEdits := [TypeDeclaration(Source, InTypeSection, Lines),
+        Source.AddBody(HelperName, Join(Source, [
+        Format('function %s.ToString: string;', [HelperName]), 'begin', '  Result := cNames[Self];', 'end;', '',
+        Format('class function %s.FromString(const AValue: string): %s;', [HelperName, TypeName]), 'var',
+        Format('  Value: %s;', [TypeName]), 'begin', Format('  for Value := Low(%s) to High(%s) do', [TypeName,
+        TypeName]), '    if SameText(cNames[Value], AValue) then', '      Exit(Value);',
+        Format('  raise EArgumentException.CreateFmt(''Unbekannter Wert "%%s" für %s'', [AValue]);', [TypeName]),
+        'end;']))];
+      if not TUsesClauses.IsUsed(TUsesClauses.UsedUnits(Source.Tree.Tokens), 'System.SysUtils',
+        AContext.Namespaces) and TUsesClauses.AddUnit(Source.Tree.Tokens, Source.Offset(Source.Line),
+        'System.SysUtils', Source.LineBreak, UsesEdit) then
+        AEdits := AEdits + [UsesEdit];
+      Exit(True);
+    end;
     AEdits := [TypeDeclaration(Source, InTypeSection, [
       '// Nur ein Helper je Typ ist wirksam: der zuletzt sichtbare.',
-      Format('%sHelper = %s helper for %s', [StringReplace(TypeName, '.', '', [rfReplaceAll]), Kind, TypeName]),
+      Format('%s = %s helper for %s', [HelperName, Kind, TypeName]),
       'public', 'end;'])];
     Result := True;
   finally
@@ -333,12 +532,30 @@ end;
 
 { /singleton }
 
+/// <summary>Hinweis nach /singleton, wenn die Klasse schon Konstruktoren hat (#298); '' ohne.</summary>
+function SingletonConstructorNote(ASource: TCommandSource; const AClassName: string): string;
+var
+  Symbol: TIndexSymbol;
+  Names: TArray<string>;
+begin
+  Names := nil;
+  for Symbol in ASource.UnitIndex.Symbols do
+    if (Symbol.Kind = TIndexSymbolKind.Constructor_) and SameText(Symbol.Container, AClassName) and
+      not MatchText(Symbol.Name, Names) then
+      Names := Names + [Symbol.Name];
+  Result := '';
+  if Names <> nil then
+    Result := Format('/singleton: Konstruktor %s bleibt unverändert und öffentlich; Instance ruft Create ohne ' +
+      'Parameter', [string.Join(', ', Names)]);
+end;
+
 function ExecuteSingleton(const AContext: TSlashContext; out AEdits: TArray<TTextEdit>;
   out AReason: string): Boolean;
 var
   Source: TCommandSource;
   ClassSymbol: TIndexSymbol;
-  Name: string;
+  Name, Note, Uri: string;
+  Host: ISlashHost;
 begin
   AEdits := nil;
   Source := TCommandSource.Create(AContext);
@@ -351,6 +568,16 @@ begin
       Join(Source, [Format('class destructor %s.Destroy;', [Name]), 'begin', '  FreeAndNil(FInstance);', 'end;',
       '', Format('class function %s.Instance: %s;', [Name, Name]), 'begin', '  if FInstance = nil then',
       Format('    FInstance := %s.Create;', [Name]), '  Result := FInstance;', 'end;'])) + [Source.RemoveCommand];
+    // Ein vorhandener Konstruktor bleibt, wie er ist; der Hinweis nennt ihn.
+    Note := SingletonConstructorNote(Source, Name);
+    Host := AContext.Host;
+    Uri := AContext.Uri;
+    if (Host <> nil) and (Note <> '') then
+      AContext.Defer(
+        procedure
+        begin
+          Host.Notify(Uri, Note);
+        end);
     Result := True;
   finally
     Source.Free;

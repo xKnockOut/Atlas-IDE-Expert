@@ -350,6 +350,8 @@ begin
       Result := 'Atlas.SearchPrevious';
     TAtlasKeyFunction.SearchMethod:
       Result := 'Atlas.SearchInMethod';
+    TAtlasKeyFunction.FormatCode:
+      Result := 'Atlas.FormatCode';
   else
     Result := '';
   end;

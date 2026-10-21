@@ -33,17 +33,45 @@ type
     procedure RegisterRejectsDuplicates;
     [Test]
     procedure RuleReportsUnknownCommand;
+    [Test]
+    procedure RuleReportsIgnoreWithoutHit;
   end;
 
 implementation
 
 uses
   System.SysUtils,
+  Atlas.Common.Configuration.Contract,
   Atlas.Common.Documents.Contract,
   Atlas.Common.Rules.Contract,
   Atlas.Common.Editing.SlashCommands,
+  Atlas.Common.Editing.MaintenanceCommands,
   Atlas.Common.Rules.Builtin.SlashCommands,
   Atlas.Tests.RuleAssert;
+
+type
+  /// <summary>Meldet "probe-line" in jeder Zeile mit "X := 1".</summary>
+  TProbeLineRule = class(TInterfacedObject, IRule)
+  public
+    function Descriptor: TRuleDescriptor;
+    procedure Check(const AContext: TRuleContext; const AReport: IRuleReport);
+  end;
+
+function TProbeLineRule.Descriptor: TRuleDescriptor;
+begin
+  Result := TRuleDescriptor.Create('probe-line', TRuleSeverity.Warning, 'Probe');
+end;
+
+procedure TProbeLineRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
+var
+  Lines: TArray<string>;
+  Index: Integer;
+begin
+  Lines := AContext.Text.Split([#10]);
+  for Index := 0 to High(Lines) do
+    if Pos('X := 1', Lines[Index]) > 0 then
+      AReport.Add(TTextRange.Create(TTextPosition.Create(Index, 2), TTextPosition.Create(Index, 8)), 'Probe');
+end;
 
 function Source(const ACommandLine: string): string;
 begin
@@ -182,6 +210,32 @@ procedure TSlashCommandsTests.RuleReportsUnknownCommand;
 begin
   TRuleAssert.Reports(TSlashCommandRule.Create, Source('/gibtsnicht'));
   TRuleAssert.Silent(TSlashCommandRule.Create, Source('// /gibtsnicht'));
+end;
+
+procedure TSlashCommandsTests.RuleReportsIgnoreWithoutHit;
+const
+  Text = 'unit U;'#10'interface'#10'implementation'#10'procedure P;'#10'begin'#10'  %s'#10'  %s'#10'end;'#10'end.';
+
+  function HintsOf(const ACommand, ANext: string): TArray<string>;
+  var
+    Finding: TRuleFinding;
+  begin
+    Result := nil;
+    for Finding in TRuleAssert.FindingsOfAll([TSlashCommandRule.Create, TProbeLineRule.Create],
+      Format(Text, [ACommand, ANext]), '') do
+      if Finding.RuleId = 'slash-command' then
+        Result := Result + [Finding.Message];
+  end;
+
+begin
+  // #297: Die Regel trifft darunter, also kein Hinweis.
+  Assert.AreEqual(0, Integer(Length(HintsOf('/ignore probe-line', 'X := 1;'))));
+  Assert.AreEqual(1, Integer(Length(HintsOf('/ignore probe-line', 'Y := 2;'))));
+  Assert.AreEqual(Format(IgnoreNoHitHint, ['probe-line']), HintsOf('/ignore Probe-Line Grund', 'Y := 2;')[0]);
+  // Nicht gelaufene Regeln und Muster lassen sich nicht beurteilen.
+  Assert.AreEqual(0, Integer(Length(HintsOf('/ignore other-rule', 'Y := 2;'))));
+  Assert.AreEqual(0, Integer(Length(HintsOf('/ignore probe-*', 'Y := 2;'))));
+  Assert.AreEqual(0, Integer(Length(HintsOf('// /ignore probe-line', 'Y := 2;'))));
 end;
 
 initialization

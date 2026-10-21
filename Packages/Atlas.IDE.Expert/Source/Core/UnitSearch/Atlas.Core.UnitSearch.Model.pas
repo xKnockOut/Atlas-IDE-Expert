@@ -99,6 +99,10 @@ type
     /// <summary>clean, modified, added, deleted, renamed, untracked, conflict; '' ohne Git.</summary>
     Git: string;
     Types: TArray<TAtlasUnitType>;
+    /// <summary>Alle Typen im interface; Types kann gekürzt sein (#876).</summary>
+    TypeCount: Integer;
+    /// <summary>uses beider Abschnitte (#876).</summary>
+    Uses_: TArray<string>;
     /// <summary>-1 wenn nicht abgefragt.</summary>
     UsedBy: Integer;
     UsedByUnits: TArray<string>;
@@ -346,6 +350,12 @@ begin
         TJSONObject(Item).TryGetValue<string>('kind', TypeEntry.Kind);
         Result.Types := Result.Types + [TypeEntry];
       end;
+  Result.TypeCount := Length(Result.Types);
+  if Answer.TryGetValue<Integer>('typeCount', Number) and (Number > Result.TypeCount) then
+    Result.TypeCount := Number;
+  if Answer.TryGetValue<TJSONArray>('uses', Items) then
+    for Item in Items do
+      Result.Uses_ := Result.Uses_ + [Item.Value];
   if Answer.TryGetValue<Integer>('usedBy', Number) then
     Result.UsedBy := Number;
   if Answer.TryGetValue<TJSONArray>('usedByUnits', Items) then

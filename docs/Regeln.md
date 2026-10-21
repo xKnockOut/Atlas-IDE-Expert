@@ -95,6 +95,10 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 | [`todo-comment`](#todo-comment) | Offener TODO-Kommentar | Code Smell | Hinweis |
 | [`component-palette-icon`](#component-palette-icon) | Registrierte Komponente ohne Palettensymbol | Code Smell | Hinweis |
 | [`unresolved-identifier`](#unresolved-identifier) | Nicht deklarierter Bezeichner | Bug | Warnung |
+| [`deprecated-symbol`](#deprecated-symbol) | Veraltetes Symbol | Code Smell | Hinweis |
+| [`implicit-package-import`](#implicit-package-import) | Implizit eingebundene Unit | Code Smell | Warnung |
+| [`type-used-before-declaration`](#type-used-before-declaration) | Typ vor seiner Deklaration benutzt | Bug | Fehler |
+| [`unneeded-forward-declaration`](#unneeded-forward-declaration) | Überflüssige Forward-Deklaration | Code Smell | Hinweis |
 
 <a id="syntax"></a>
 ## syntax
@@ -1332,7 +1336,7 @@ Q.ParamByName('N').AsString := Edit1.Text;
 
 **Schnellbefehl nicht ausgeführt** · Code Smell · Hinweis
 
-Eine Zeile, die mit /name beginnt, wurde nicht ausgeführt und steht noch im Code: Der Befehl ist unbekannt, abgeschaltet (slashCommands.disabled) oder passt an dieser Stelle nicht. Die Meldung nennt den Grund.
+Eine Zeile, die mit /name beginnt, wurde nicht ausgeführt und steht noch im Code: Der Befehl ist unbekannt, abgeschaltet (slashCommands.disabled) oder passt an dieser Stelle nicht. Die Meldung nennt den Grund. "/ignore regel" meldet sie auch, wenn diese Regel in der Zeile darunter nichts findet.
 
 Mit Treffer:
 
@@ -2173,4 +2177,109 @@ begin
   Lst := TStringList.Create;
   Lst.Add('x');
 end;
+```
+
+<a id="deprecated-symbol"></a>
+## deprecated-symbol
+
+**Veraltetes Symbol** · Code Smell · Hinweis
+
+Eine Routine, ein Typ, eine Konstante oder ein Mitglied mit deprecated, platform oder experimental wird verwendet (wie Compilerwarnungen W1000, W1002 und W1003). Der Editor streicht den Namen durch; die Meldung nennt den Grund aus deprecated 'Grund'. Die Deklaration und der Kopf ihrer Implementierung werden nicht gemeldet.
+
+Mit Treffer:
+
+```pascal
+procedure Old; deprecated 'Use New';
+...
+Old;
+```
+
+Richtig:
+
+```pascal
+procedure New;
+...
+New;
+```
+
+<a id="implicit-package-import"></a>
+## implicit-package-import
+
+**Implizit eingebundene Unit** · Code Smell · Warnung
+
+In einem Package (.dpk) verwendet eine Unit aus contains eine Unit, die weder in contains steht noch von einem Package aus requires geliefert wird. Der Compiler zieht sie implizit hinein (W1033), was später zu doppelten Units führt, wenn ein anderes Package sie ebenfalls enthält. Die Schnellkorrektur nimmt die Unit in contains auf.
+
+Mit Treffer:
+
+```pascal
+package Werkzeuge;
+requires rtl;
+contains
+  uHaupt in 'uHaupt.pas';  // uHaupt uses uMathe
+end.
+```
+
+Richtig:
+
+```pascal
+package Werkzeuge;
+requires rtl;
+contains
+  uHaupt in 'uHaupt.pas',
+  uMathe in 'uMathe.pas';
+end.
+```
+
+<a id="type-used-before-declaration"></a>
+## type-used-before-declaration
+
+**Typ vor seiner Deklaration benutzt** · Bug · Fehler
+
+Eine Klasse, ein Interface, ein Record oder ein anderer Typ wird in einer Typdeklaration (Feld, Parameter, Ergebnis, Property, generisches Argument, class of) benutzt, ist aber erst weiter unten im selben Gültigkeitsbereich deklariert (wie Compilerfehler E2003). Vorfahren, Aliase und Zeigertypen werden nicht gemeldet. Schnellkorrekturen: Forward-Deklaration am Anfang des type-Blocks ergänzen, type-Blöcke zusammenlegen (const-, var- und label-Abschnitte dazwischen wandern vor den ersten Block) oder einen Record vor seinen ersten Verwender verschieben; ohne sichere Korrektur nennt die Meldung den Grund.
+
+Mit Treffer:
+
+```pascal
+type
+  TTree = class
+    FRoot: TNode;
+  end;
+  TNode = class
+  end;
+```
+
+Richtig:
+
+```pascal
+type
+  TNode = class;
+  TTree = class
+    FRoot: TNode;
+  end;
+  TNode = class
+  end;
+```
+
+<a id="unneeded-forward-declaration"></a>
+## unneeded-forward-declaration
+
+**Überflüssige Forward-Deklaration** · Code Smell · Hinweis
+
+Eine Forward-Deklaration, deren Typ im selben type-Block vor der vollständigen Deklaration nicht benutzt wird. Schnellkorrektur: entfernen.
+
+Mit Treffer:
+
+```pascal
+type
+  TNode = class;
+  TNode = class
+  end;
+```
+
+Richtig:
+
+```pascal
+type
+  TNode = class
+  end;
 ```

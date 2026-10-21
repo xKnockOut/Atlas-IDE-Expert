@@ -14,6 +14,7 @@ uses
   Atlas.Common.Documents.Contract,
   Atlas.Common.Index.Contract,
   Atlas.Common.JsonRpc.Dispatcher,
+  Atlas.Common.Lsp.ConditionalSymbols,
   Atlas.Common.Lsp.Completion;
 
 type
@@ -46,6 +47,9 @@ type
     procedure SlashCommandComesFirst;
     [Test]
     procedure SlashSortOffersCollectionsThenMembers;
+    /// <summary>#297: nach /ignore nur die Regeln, die in der Zeile darunter treffen.</summary>
+    [Test]
+    procedure SlashIgnoreOffersRulesThatHit;
     /// <summary>#293/#294: Typ im Argument von /var mit uses-Eintrag der Typ-Unit (#180).</summary>
     [Test]
     procedure SlashTypeArgumentAddsUses;
@@ -90,6 +94,14 @@ type
     procedure ResourceStringInConfiguredUnit;
     [Test]
     procedure ResourceStringOnlyInvokedAndSwitchable;
+    /// <summary>#88: Strg+Leer in einem ///-Block, dessen Routine einen Parameter mehr hat, bietet nur
+    /// „Parameter abgleichen“; completeBlocks.docComment aus schaltet es ab.</summary>
+    [Test]
+    procedure DocBlockOffersParameterAdjust;
+    /// <summary>#102: Nach {$IFDEF  kommen die Symbole mit Herkunft, nicht geltende abgeschwächt;
+    /// directives.completion aus lässt die Liste leer.</summary>
+    [Test]
+    procedure DirectiveSymbolsWithOrigin;
   end;
 
 implementation
@@ -338,6 +350,51 @@ begin
     Item := ItemAt(Answer, 0);
     Assert.IsTrue(Item.GetValue('additionalTextEdits') is TJSONArray, Item.ToJSON);
     Assert.IsTrue(Pos('Typen', Item.GetValue('additionalTextEdits').ToJSON) > 0, Item.ToJSON);
+  finally
+    Answer.Free;
+  end;
+end;
+
+procedure TLspCompletionHandleTests.SlashIgnoreOffersRulesThatHit;
+const
+  Source =
+    'unit Haupt;'#13#10 +
+    'interface'#13#10 +
+    'implementation'#13#10 +
+    'procedure Laden;'#13#10 +
+    'begin'#13#10 +
+    '  /ignore |'#13#10 +
+    '  X := 42;'#13#10 +
+    'end;'#13#10 +
+    'end.';
+var
+  Answer: TJSONObject;
+  Line: Integer;
+  Blanked: Boolean;
+begin
+  Line := -1;
+  Blanked := False;
+  FCompletion.RuleIdsFor :=
+    function(const AUri, AText: string; ALine: Integer; out AIds: TArray<string>): Boolean
+    begin
+      Line := ALine;
+      Blanked := Pos('/ignore', AText) = 0;
+      AIds := ['magic-number', 'unused-local'];
+      Result := True;
+    end;
+  Answer := Complete(Source);
+  try
+    Assert.AreEqual('magic-number unused-local', Labels(Answer));
+    Assert.AreEqual(6, Line);
+    Assert.IsTrue(Blanked, 'Befehlszeile nicht ausgeblendet');
+  finally
+    Answer.Free;
+  end;
+  // Ohne Auskunft der ganze Katalog.
+  FCompletion.RuleIdsFor := nil;
+  Answer := Complete(Source);
+  try
+    Assert.IsTrue(ItemCount(Answer) > 2, Labels(Answer));
   finally
     Answer.Free;
   end;
@@ -984,6 +1041,88 @@ begin
   Answer := Complete(FrageUnit);
   try
     Assert.IsFalse(Labels(Answer).Contains('resourcestring'), Answer.ToJSON);
+  finally
+    Answer.Free;
+  end;
+end;
+
+procedure TLspCompletionHandleTests.DocBlockOffersParameterAdjust;
+const
+  Source =
+    'unit Haupt;'#13#10'interface'#13#10'type'#13#10'  TRechner = class'#13#10 +
+    '    /// <summary>Rabatt|</summary>'#13#10'    /// <param name="Customer">Kunde</param>'#13#10 +
+    '    function CalcDiscount(Customer: TObject; Rate: Double): Currency;'#13#10 +
+    '  end;'#13#10'implementation'#13#10'end.';
+var
+  Answer: TJSONObject;
+  Edits: TJSONArray;
+  Enabled: Boolean;
+begin
+  Enabled := True;
+  FCompletion.DocCommentsFor :=
+    function(const AUri: string): Boolean
+    begin
+      Result := Enabled;
+    end;
+  Answer := Complete(Source);
+  try
+    Assert.AreEqual('Parameter abgleichen', Labels(Answer));
+    Edits := ((Answer.GetValue('items') as TJSONArray).Items[0] as TJSONObject).GetValue('additionalTextEdits')
+      as TJSONArray;
+    Assert.AreEqual(1, Edits.Count);
+    Assert.AreEqual('    /// <param name="Rate"></param>'#13#10,
+      (Edits.Items[0] as TJSONObject).GetValue<string>('newText'));
+    Assert.IsTrue(Answer.ToJSON.Contains('"action":"docParams"'), Answer.ToJSON);
+  finally
+    Answer.Free;
+  end;
+  // Passt der Block, kommt das Angebot nicht.
+  Answer := Complete(StringReplace(Source, 'Kunde</param>', 'Kunde</param>'#13#10 +
+    '    /// <param name="Rate">Satz</param>', []));
+  try
+    Assert.IsFalse(Labels(Answer).Contains('Parameter abgleichen'), Labels(Answer));
+  finally
+    Answer.Free;
+  end;
+  Enabled := False;
+  Answer := Complete(Source);
+  try
+    Assert.IsFalse(Labels(Answer).Contains('Parameter abgleichen'), Labels(Answer));
+  finally
+    Answer.Free;
+  end;
+end;
+
+procedure TLspCompletionHandleTests.DirectiveSymbolsWithOrigin;
+var
+  Answer: TJSONObject;
+  Enabled: Boolean;
+begin
+  Enabled := True;
+  FCompletion.SymbolsFor :=
+    function(const AUri: string): TConditionalContext
+    begin
+      Result := TConditionalContext.Default;
+      Result.CompletionEnabled := Enabled;
+      Result.HasDefines := True;
+      Result.Defines := ['DEBUG', 'MSWINDOWS'];
+      Result.Sources := TConditionalSymbols.SourcesOf(['DEBUG'],
+        [TPair<string, string>.Create('DEBUG', 'Konfiguration Debug')], ['MSWINDOWS'], 'Win64');
+    end;
+  Answer := Complete('unit Haupt;'#13#10'{$IFDEF |'#13#10'implementation'#13#10'end.');
+  try
+    Assert.AreEqual('DEBUG', ItemAt(Answer, 0).GetValue<string>('label'));
+    Assert.AreEqual('Konfiguration Debug (.dproj)', ItemAt(Answer, 0).GetValue<string>('detail'));
+    Assert.IsTrue(Labels(Answer).Contains('MSWINDOWS'), Labels(Answer));
+    Assert.IsTrue(Labels(Answer).Contains('LINUX'), Labels(Answer));
+    Assert.IsFalse(Labels(Answer).Contains('ALIGN'), Labels(Answer));
+  finally
+    Answer.Free;
+  end;
+  Enabled := False;
+  Answer := Complete('unit Haupt;'#13#10'{$IFDEF |'#13#10'implementation'#13#10'end.');
+  try
+    Assert.AreEqual(0, ItemCount(Answer), Labels(Answer));
   finally
     Answer.Free;
   end;

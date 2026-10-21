@@ -74,6 +74,7 @@ type
     procedure ReadCodeLens(ANode: TJsonNode);
     procedure CheckTodoKeywords(ANode: TJsonNode);
     procedure ReadHints(ANode: TJsonNode);
+    procedure ReadDirectives(ANode: TJsonNode);
     procedure ReadStringLiteral(ANode: TJsonNode);
     procedure ReadMemberOrder(ANode: TJsonNode);
     procedure ReadTestUnits(ANode: TJsonNode);
@@ -405,6 +406,16 @@ begin
       ExpectString(ANode[Index], 'logCall', FSettings.SlashLogCall)
     else if Key = 'componentPalette' then
       ExpectString(ANode[Index], 'componentPalette', FSettings.SlashComponentPalette)
+    else if Key = 'todoOwner' then
+      ExpectString(ANode[Index], 'todoOwner', FSettings.SlashTodoOwner)
+    else if Key = 'todoCategory' then
+      ExpectString(ANode[Index], 'todoCategory', FSettings.SlashTodoCategory)
+    else if Key = 'sortUsesRemoveUnused' then
+      ExpectBoolean(ANode[Index], Key, FSettings.SlashSortUsesRemoveUnused)
+    else if Key = 'enumHelper' then
+      ExpectBoolean(ANode[Index], Key, FSettings.SlashEnumHelper)
+    else if Key = 'setHelper' then
+      ExpectBoolean(ANode[Index], Key, FSettings.SlashSetHelper)
     else
       Report(ANode.KeyStarts[Index], ANode.KeyStarts[Index] + Length(Key) + 2,
         Format('Unbekannte Einstellung "slashCommands.%s"', [Key]), False);
@@ -617,12 +628,37 @@ begin
   end;
 end;
 
+procedure TValidator.ReadDirectives(ANode: TJsonNode);
+var
+  Index: Integer;
+  Key: string;
+begin
+  if ANode.Kind <> TJsonKind.Object_ then
+  begin
+    ReportNode(ANode, '"directives" muss ein Objekt sein');
+    Exit;
+  end;
+  for Index := 0 to ANode.Count - 1 do
+  begin
+    Key := ANode.Keys[Index];
+    if Key = 'completion' then
+      ExpectBoolean(ANode[Index], Key, FSettings.Directives.Completion)
+    else if Key = 'hover' then
+      ExpectBoolean(ANode[Index], Key, FSettings.Directives.Hover)
+    else
+      Report(ANode.KeyStarts[Index], ANode.KeyStarts[Index] + Length(Key) + 2,
+        Format('Unbekannte Einstellung "directives.%s"', [Key]), False);
+  end;
+end;
+
 procedure TValidator.ReadHints(ANode: TJsonNode);
 var
   Index, Lines: Integer;
-  Key: string;
+  Key, Text: string;
   Value: TJsonNode;
+  Full, ExpandSet: Boolean;
 begin
+  ExpandSet := False;
   if ANode.Kind <> TJsonKind.Object_ then
   begin
     ReportNode(ANode, '"hints" muss ein Objekt sein');
@@ -632,8 +668,33 @@ begin
   begin
     Key := ANode.Keys[Index];
     Value := ANode[Index];
-    if Key = 'xmlDocFull' then
-      ExpectBoolean(Value, Key, FSettings.Hints.XmlDocFull)
+    if Key = 'xmlDocExpand' then
+    begin
+      if ExpectString(Value, Key, Text) then
+        if (Text = THintSettings.ExpandCollapsed) or (Text = THintSettings.ExpandLast) or
+          (Text = THintSettings.ExpandExpanded) then
+        begin
+          FSettings.Hints.XmlDocExpand := Text;
+          ExpandSet := True;
+        end
+        else
+          ReportNode(Value, '"xmlDocExpand" muss "collapsed", "last" oder "expanded" sein');
+    end
+    else if Key = 'xmlDocFull' then
+    begin
+      // Veraltet seit #770: true = expanded, false = collapsed, solange xmlDocExpand fehlt.
+      Full := True;
+      if ExpectBoolean(Value, Key, Full) then
+      begin
+        Report(ANode.KeyStarts[Index], ANode.KeyStarts[Index] + Length(Key) + 2,
+          '"hints.xmlDocFull" ist veraltet, stattdessen "hints.xmlDocExpand" verwenden', False);
+        if not ExpandSet then
+          if Full then
+            FSettings.Hints.XmlDocExpand := THintSettings.ExpandExpanded
+          else
+            FSettings.Hints.XmlDocExpand := THintSettings.ExpandCollapsed;
+      end;
+    end
     else if Key = 'xmlDocMaxLines' then
     begin
       if (Value.Kind = TJsonKind.Number) and TryStrToInt(Value.Value, Lines) and (Lines >= 0) and
@@ -643,6 +704,8 @@ begin
         ReportNode(Value, Format('"xmlDocMaxLines" muss eine ganze Zahl von 0 bis %d sein',
           [THintSettings.MaxXmlDocLines]));
     end
+    else if Key = 'publishedMembers' then
+      ExpectBoolean(Value, Key, FSettings.Hints.PublishedMembers)
     else
       Report(ANode.KeyStarts[Index], ANode.KeyStarts[Index] + Length(Key) + 2,
         Format('Unbekannte Einstellung "hints.%s"', [Key]), False);
@@ -964,7 +1027,7 @@ end;
 
 procedure TValidator.ReadRefactoring(ANode: TJsonNode);
 var
-  Index: Integer;
+  Index, Item: Integer;
   Key, Value: string;
 begin
   if ANode.Kind <> TJsonKind.Object_ then
@@ -991,6 +1054,8 @@ begin
       ExpectBoolean(ANode[Index], Key, FSettings.Refactoring.VirtualOverload)
     else if Key = 'syncSignatures' then
       ExpectBoolean(ANode[Index], Key, FSettings.Refactoring.SyncSignatures)
+    else if Key = 'forwardDeclaration' then
+      ExpectBoolean(ANode[Index], Key, FSettings.Refactoring.ForwardDeclaration)
     else if Key = 'tryFinally' then
       ExpectBoolean(ANode[Index], Key, FSettings.Refactoring.TryFinally)
     else if Key = 'classActions' then
@@ -1035,6 +1100,48 @@ begin
     end
     else if Key = 'constParameters' then
       ExpectBoolean(ANode[Index], Key, FSettings.Refactoring.ConstParameters)
+    else if Key = 'propertyFromAccessors' then
+      ExpectBoolean(ANode[Index], Key, FSettings.Refactoring.PropertyFromAccessors)
+    else if Key = 'propertyFromAccessorsPrefixes' then
+    begin
+      if ANode[Index].Kind <> TJsonKind.Array_ then
+        ReportNode(ANode[Index], '"refactoring.propertyFromAccessorsPrefixes" muss eine Liste von Präfixen sein')
+      else
+      begin
+        FSettings.Refactoring.PropertyFromAccessorsPrefixes := nil;
+        for Item := 0 to ANode[Index].Count - 1 do
+          if ExpectString(ANode[Index][Item], Key, Value) and (Trim(Value) <> '') then
+            FSettings.Refactoring.PropertyFromAccessorsPrefixes :=
+              FSettings.Refactoring.PropertyFromAccessorsPrefixes + [Trim(Value)];
+      end;
+    end
+    else if Key = 'propertyFromAccessorsReplaceCalls' then
+    begin
+      if ExpectString(ANode[Index], Key, Value) then
+        if MatchText(Value, ['ask', 'always', 'never']) then
+          FSettings.Refactoring.PropertyFromAccessorsReplaceCalls := LowerCase(Value)
+        else
+          ReportNode(ANode[Index], '"refactoring.propertyFromAccessorsReplaceCalls" muss "ask", "always" oder ' +
+            '"never" sein');
+    end
+    else if Key = 'propertyFromAccessorsSection' then
+    begin
+      if ExpectString(ANode[Index], Key, Value) then
+        if MatchText(Value, ['accessor', 'public', 'published']) then
+          FSettings.Refactoring.PropertyFromAccessorsSection := LowerCase(Value)
+        else
+          ReportNode(ANode[Index], '"refactoring.propertyFromAccessorsSection" muss "accessor", "public" oder ' +
+            '"published" sein');
+    end
+    else if Key = 'propertyFromAccessorsHideAccessors' then
+    begin
+      if ExpectString(ANode[Index], Key, Value) then
+        if MatchText(Value, ['off', 'private', 'protected']) then
+          FSettings.Refactoring.PropertyFromAccessorsHideAccessors := LowerCase(Value)
+        else
+          ReportNode(ANode[Index], '"refactoring.propertyFromAccessorsHideAccessors" muss "off", "private" oder ' +
+            '"protected" sein');
+    end
     else
       Report(ANode.KeyStarts[Index], ANode.KeyStarts[Index] + Length(Key) + 2,
         Format('Unbekannte Einstellung "refactoring.%s"', [Key]), False);
@@ -1176,6 +1283,24 @@ begin
       ExpectBoolean(ANode[Index], Key, FSettings.Completion.ResourceStrings)
     else if Key = 'assignAllFields' then
       ExpectBoolean(ANode[Index], Key, FSettings.Completion.AssignAllFields)
+    else if Key = 'usesDetails' then
+      ExpectBoolean(ANode[Index], Key, FSettings.Completion.UsesDetails)
+    else if Key = 'inheritedCall' then
+      ExpectBoolean(ANode[Index], Key, FSettings.Completion.InheritedCall)
+    else if Key = 'sameNameVariants' then
+      ExpectBoolean(ANode[Index], Key, FSettings.Completion.SameNameVariants)
+    else if Key = 'showFmxUnits' then
+      ExpectBoolean(ANode[Index], Key, FSettings.Completion.ShowFmxUnits)
+    else if Key = 'sameNameInsert' then
+    begin
+      if ExpectString(ANode[Index], Key, Text) then
+        if Text = 'prefix' then
+          FSettings.Completion.SameNameInsert := TCompletionSameNameInsert.Prefix
+        else if Text = 'uses' then
+          FSettings.Completion.SameNameInsert := TCompletionSameNameInsert.Uses_
+        else
+          ReportNode(ANode[Index], 'Erlaubt sind "prefix" und "uses"');
+    end
     else if Key = 'typeConversion' then
     begin
       if ExpectString(ANode[Index], Key, Text) then
@@ -1313,6 +1438,18 @@ var
       Include(Settings.Given, AKey);
   end;
 
+  procedure ReadPlacement(var ATarget: TBlockPlacement);
+  begin
+    if (Value.Kind = TJsonKind.String_) and (Value.Value = 'preserve') then
+      ATarget := TBlockPlacement.Preserve
+    else if (Value.Kind = TJsonKind.String_) and (Value.Value = 'newLine') then
+      ATarget := TBlockPlacement.NewLine
+    else if (Value.Kind = TJsonKind.String_) and (Value.Value = 'sameLine') then
+      ATarget := TBlockPlacement.SameLine
+    else
+      ReportNode(Value, 'Erlaubt sind "preserve", "newLine" und "sameLine"');
+  end;
+
 begin
   Settings := TFormatStyle.Default;
   for Index := 0 to ANode.Count - 1 do
@@ -1367,6 +1504,28 @@ begin
       end;
       Include(Settings.Given, TFormatKey.EndOfLine);
     end
+    else if Key = 'reindent' then
+      ExpectBoolean(Value, Key, Settings.Reindent)
+    else if Key = 'beginPlacement' then
+      ReadPlacement(Settings.BeginPlacement)
+    else if Key = 'elsePlacement' then
+      ReadPlacement(Settings.ElsePlacement)
+    else if Key = 'maxLineLength' then
+    begin
+      if (Value.Kind = TJsonKind.Number) and TryStrToInt(Value.Value, Size) and (Size >= 0) and (Size <= 1000) then
+      begin
+        Settings.MaxLineLength := Size;
+        Include(Settings.Given, TFormatKey.MaxLineLength);
+      end
+      else
+        ReportNode(Value, '"maxLineLength" muss eine ganze Zahl von 0 bis 1000 sein');
+    end
+    else if Key = 'alignAssignments' then
+      ExpectBoolean(Value, Key, Settings.AlignAssignments)
+    else if Key = 'alignDeclarations' then
+      ExpectBoolean(Value, Key, Settings.AlignDeclarations)
+    else if Key = 'alignComments' then
+      ExpectBoolean(Value, Key, Settings.AlignComments)
     else
       Report(ANode.KeyStarts[Index], ANode.KeyStarts[Index] + Length(Key) + 2,
         Format('Unbekannte Einstellung "format.%s"', [Key]), False);
@@ -1497,6 +1656,8 @@ begin
         ReadCodeLens(Value)
       else if Key = 'hints' then
         ReadHints(Value)
+      else if Key = 'directives' then
+        ReadDirectives(Value)
       else if Key = 'stringLiteral' then
         ReadStringLiteral(Value)
       else if Key = 'memberOrder' then
@@ -1843,6 +2004,8 @@ begin
       Result.CodeLens := FileSettings.CodeLens
     else if Key = 'hints' then
       Result.Hints := FileSettings.Hints
+    else if Key = 'directives' then
+      Result.Directives := FileSettings.Directives
     else if Key = 'stringLiteral' then
       Result.StringLiteral := FileSettings.StringLiteral
     else if Key = 'memberOrder' then
@@ -1893,6 +2056,11 @@ begin
       Result.SlashHeaderTemplate := FileSettings.SlashHeaderTemplate;
       Result.SlashLogCall := FileSettings.SlashLogCall;
       Result.SlashComponentPalette := FileSettings.SlashComponentPalette;
+      Result.SlashTodoOwner := FileSettings.SlashTodoOwner;
+      Result.SlashTodoCategory := FileSettings.SlashTodoCategory;
+      Result.SlashSortUsesRemoveUnused := FileSettings.SlashSortUsesRemoveUnused;
+      Result.SlashEnumHelper := FileSettings.SlashEnumHelper;
+      Result.SlashSetHelper := FileSettings.SlashSetHelper;
     end
     else if Key = 'sortUses' then
     begin

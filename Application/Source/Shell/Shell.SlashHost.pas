@@ -14,7 +14,8 @@
 //
 // WriteFiles (/unit, #297) legt mehrere Dateien in einem WorkspaceEdit an
 // bzw. ersetzt sie und öffnet danach die neue Unit; ohne Editor auf der Platte
-// (neue Dateien UTF-8 mit BOM und CRLF, vorhandene in ihrer Kodierung).
+// (neue Dateien in der Kodierung der Datei des Befehls, sonst UTF-8 mit BOM,
+// Zeilenende wie im Text, #299/#121; vorhandene in ihrer Kodierung).
 
 interface
 
@@ -26,6 +27,7 @@ uses
   Atlas.Common.Documents.Contract,
   Atlas.Common.Projects.Contract,
   Atlas.Common.JsonRpc.Dispatcher,
+  Atlas.Common.Editing.UsesActions,
   Atlas.Common.Editing.SlashCommands,
   Shell.Workspace;
 
@@ -52,6 +54,9 @@ type
     FRunInLoop: TJsonRpcScheduler;
     FSettingOf: TSlashSettingFunc;
     FTestUnitOf: TSlashTestUnitFunc;
+    FRuleIdsOf: TSlashRuleIdsFunc;
+    FUsesContextOf: TSlashUsesContextFunc;
+    FFindingsOf: TSlashFindingsFunc;
     function ClientWrites: Boolean;
     /// <summary>Schickt AEdit (wird übernommen) an den Client; nach Erfolg Reload und AAfter.</summary>
     procedure SendEdit(const AUri, ADescription: string; AEdit: TJSONObject; const AAfter: TProc); overload;
@@ -78,6 +83,9 @@ type
     function TestUnit(const AUri, AText: string; out ATarget: TSlashTestUnit): Boolean;
     procedure Notify(const AUri, AMessage: string);
     procedure MoveCursor(const AUri: string; const APosition: TTextPosition);
+    function RuleIdsAt(const AUri, AText: string; ALine: Integer; out AIds: TArray<string>): Boolean;
+    function UsesContext(const AUri: string; out AContext: TUsesContext): Boolean;
+    function FindingsAt(const AUri, AText: string; ALine: Integer; out AFindings: TArray<TSlashFinding>): Boolean;
     /// <summary>Eine Änderung an einer Quelldatei (resourcestring in eine andere Unit, #473): im Editor über
     /// workspace/applyEdit in deren Puffer, ohne neu zu laden; ohne Editor ANewText auf die Platte in der
     /// Kodierung der Datei.</summary>
@@ -86,6 +94,13 @@ type
     property SettingOf: TSlashSettingFunc read FSettingOf write FSettingOf;
     /// <summary>Testunit zur Unit (/test, #295); ohne Zuweisung keine.</summary>
     property TestUnitOf: TSlashTestUnitFunc read FTestUnitOf write FTestUnitOf;
+    /// <summary>Treffer der Prüfregeln in einer Zeile (/ignore, #297); ohne Zuweisung gilt jede Regel.</summary>
+    property RuleIdsOf: TSlashRuleIdsFunc read FRuleIdsOf write FRuleIdsOf;
+    /// <summary>Index und usesKeep (/sortuses, #297); ohne Zuweisung wird nur sortiert.</summary>
+    property UsesContextOf: TSlashUsesContextFunc read FUsesContextOf write FUsesContextOf;
+    /// <summary>Regeltreffer einer Zeile mit Erklärung und sicherer Korrektur (/fix, /explain, #300); ohne
+    /// Zuweisung keine Prüfregeln.</summary>
+    property FindingsOf: TSlashFindingsFunc read FFindingsOf write FFindingsOf;
     /// <summary>Stellt Arbeit in die Nachrichtenschleife (TJsonRpcConnection.Queue). Reload und SelectBuild
     /// laufen nur dort (Code-Review A-03); ohne Zuweisung (Tests) sofort.</summary>
     property RunInLoop: TJsonRpcScheduler read FRunInLoop write FRunInLoop;
@@ -347,6 +362,25 @@ begin
     Result := FSettingOf(AUri, AName);
 end;
 
+function TShellSlashHost.RuleIdsAt(const AUri, AText: string; ALine: Integer; out AIds: TArray<string>): Boolean;
+begin
+  AIds := nil;
+  Result := Assigned(FRuleIdsOf) and FRuleIdsOf(AUri, AText, ALine, AIds);
+end;
+
+function TShellSlashHost.UsesContext(const AUri: string; out AContext: TUsesContext): Boolean;
+begin
+  AContext := Default(TUsesContext);
+  Result := Assigned(FUsesContextOf) and FUsesContextOf(AUri, AContext);
+end;
+
+function TShellSlashHost.FindingsAt(const AUri, AText: string; ALine: Integer;
+  out AFindings: TArray<TSlashFinding>): Boolean;
+begin
+  AFindings := nil;
+  Result := Assigned(FFindingsOf) and FFindingsOf(AUri, AText, ALine, AFindings);
+end;
+
 function TShellSlashHost.TestUnit(const AUri, AText: string; out ATarget: TSlashTestUnit): Boolean;
 begin
   ATarget := Default(TSlashTestUnit);
@@ -400,6 +434,30 @@ begin
     end);
 end;
 
+/// <summary>Format einer neuen Datei (#299, #121): Kodierung der Datei AUri, sonst UTF-8 mit BOM; Zeilenende
+/// wie in AText.</summary>
+function NewFileFormat(const AUri, AText: string): TFileFormat;
+var
+  Sibling: string;
+begin
+  Result := TFileFormat.Create(TFileEncodingKind.Utf8Bom, TLineBreakStyle.CRLF);
+  Sibling := '';
+  if AUri <> '' then
+    Sibling := TDocumentUris.ToPath(AUri);
+  if (Sibling <> '') and FileExists(Sibling) then
+    try
+      TFileEncoding.LoadFromFile(Sibling, Result);
+    except
+      on EFileEncodingError do
+        Result := TFileFormat.Create(TFileEncodingKind.Utf8Bom, TLineBreakStyle.CRLF);
+    end;
+  Result.MixedLineBreaks := False;
+  if Pos(#13#10, AText) > 0 then
+    Result.LineBreak := TLineBreakStyle.CRLF
+  else if Pos(#10, AText) > 0 then
+    Result.LineBreak := TLineBreakStyle.LF;
+end;
+
 procedure TShellSlashHost.WriteFiles(const AUri: string; const AFiles: TArray<TSlashFile>; const AShow: string);
 var
   Changes: TArray<TLspFileChange>;
@@ -442,7 +500,7 @@ begin
       if Item.New then
       begin
         ForceDirectories(ExtractFileDir(Item.FileName));
-        FileFormat := TFileFormat.Create(TFileEncodingKind.Utf8Bom, TLineBreakStyle.CRLF);
+        FileFormat := NewFileFormat(AUri, Item.Text);
       end
       else
         TFileEncoding.LoadFromFile(Item.FileName, FileFormat);

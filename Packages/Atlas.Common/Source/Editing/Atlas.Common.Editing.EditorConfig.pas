@@ -3,8 +3,8 @@
 // .editorconfig für die Formatierung (#43): Vom Ordner der Datei aufwärts
 // werden alle .editorconfig gelesen, bis eine "root = true" enthält. Nähere
 // Dateien und spätere Abschnitte gewinnen. Ausgewertet werden indent_style,
-// indent_size, tab_width, end_of_line, trim_trailing_whitespace und
-// insert_final_newline. Abschnittsmuster: *, *.ext, *.{a,b}, Dateiname.
+// indent_size, tab_width, end_of_line, trim_trailing_whitespace,
+// insert_final_newline und max_line_length (Zahl oder off). Abschnittsmuster: *, *.ext, *.{a,b}, Dateiname.
 
 interface
 
@@ -162,7 +162,11 @@ begin
     else if (Key = 'trim_trailing_whitespace') and ((Value = 'true') or (Value = 'false')) then
       ASettings.TrimTrailingWhitespace := Value = 'true'
     else if (Key = 'insert_final_newline') and ((Value = 'true') or (Value = 'false')) then
-      ASettings.InsertFinalNewline := Value = 'true';
+      ASettings.InsertFinalNewline := Value = 'true'
+    else if (Key = 'max_line_length') and TryStrToInt(Value, Size) and (Size >= 0) then
+      ASettings.MaxLineLength := Size
+    else if (Key = 'max_line_length') and (Value = 'off') then
+      ASettings.MaxLineLength := 0;
   end;
   // Mit Tabs bestimmt tab_width die Breite einer Ebene, wenn indent_size fehlt.
   if IndentIsTab and (TabWidth > 0) then

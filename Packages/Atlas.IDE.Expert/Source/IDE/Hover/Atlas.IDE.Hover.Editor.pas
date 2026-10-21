@@ -361,8 +361,6 @@ begin
 end;
 
 function TAtlasEditorHover.CurrentView: TAtlasHoverView;
-var
-  Full: Boolean;
 begin
   Result := TAtlasHoverView.Create(FHistory.Current);
   Result.Path := FHistory.Path;
@@ -374,7 +372,7 @@ begin
   if Result.Data.Display.Known then
     Result.Display := Result.Data.Display
   else
-    Result.Display := TAtlasDocDisplay.Create(TAtlasIdeSettings.Current.XmlDocFull,
+    Result.Display := TAtlasDocDisplay.Create(TAtlasDocDisplay.ExpandOf(TAtlasIdeSettings.Current.XmlDocExpand),
       TAtlasIdeSettings.Current.XmlDocMaxLines);
   // Schnellschalter nur für diese Sitzung (#604) gilt auch über dem Wert des Servers.
   if TAtlasIdeSettings.SessionFlag('XmlDocFull', Full) then
@@ -868,9 +866,13 @@ begin
       TAtlasHoverAction.Usages:
         ShowUsages;
       TAtlasHoverAction.Copy:
-        // Markierter Doku-Text (#654) hat Vorrang vor der Deklaration.
+        // Markierter Doku-Text (#654) hat Vorrang, bei Komponentenklassen die gezeigte Liste (#110), sonst die
+        // Deklaration.
         if FTip.HasSelection then
           Clipboard.AsText := FTip.SelectedText
+        else if Length(Data.Members) > 0 then
+          Clipboard.AsText := Data.MembersText(not FTip.View.HideInherited, FTip.View.OnlyDefaults,
+            TAtlasStrings.Text(TAtlasTextId.PublishedImplicit))
         else
           Clipboard.AsText := Data.Declaration;
       TAtlasHoverAction.Help:

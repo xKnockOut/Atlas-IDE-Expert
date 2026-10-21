@@ -184,6 +184,9 @@ begin
   Assert.IsTrue(Symbol.HasDirective('static'));
   Assert.IsTrue(Symbol.HasDirective('inline'));
   Assert.IsTrue(Find(U, 'TKunde.Alt').HasDirective('deprecated'));
+  // Grund für Hover und Regel deprecated-symbol (#38).
+  Assert.AreEqual('Neu nehmen', Find(U, 'TKunde.Alt').DeprecatedText);
+  Assert.AreEqual('', Find(U, 'Grenze').DeprecatedText);
   Assert.AreEqual('property Name: string read GetName', Find(U, 'TKunde.Name').Signature);
   Assert.IsTrue(Find(U, 'Grenze').HasDirective('platform'));
   Assert.AreEqual('Zaehler: Integer', Find(U, 'Zaehler').Signature);
@@ -230,6 +233,7 @@ begin
   Assert.IsTrue(Symbol.Signature.StartsWith('function GetName('), Symbol.Signature);
   Assert.IsTrue(Symbol.HasDirective('virtual'));
   Assert.AreEqual('Liefert den Namen.', Symbol.Summary);
+  Assert.AreEqual('Neu nehmen', Find(Units[0], 'TKunde.Alt').DeprecatedText);
   Assert.IsTrue(Units[0].UsagesIndexed);
   Assert.IsTrue(FindUsage(Units[0].Usages, 'Zaehler', Usage));
   Assert.AreEqual(19, Usage.Positions[0].Line);

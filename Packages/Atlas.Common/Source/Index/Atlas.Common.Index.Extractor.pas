@@ -56,7 +56,9 @@ type
     /// AFirstLine endet der Text am Ende der ersten Zeile außerhalb von Klammern.</summary>
     function TokenText(AFrom, ATo: Integer; AFirstLine: Boolean): string;
     function SignatureOf(ANode: TSyntaxNode; AKind: TIndexSymbolKind; const AName, ATypeText: string): string;
-    function DirectivesOf(ANode: TSyntaxNode; AKind: TIndexSymbolKind): TArray<string>;
+    /// <summary>Direktiven der Deklaration; ADeprecatedText: Grund hinter deprecated 'Grund' (#38), sonst ''.
+    /// </summary>
+    function DirectivesOf(ANode: TSyntaxNode; AKind: TIndexSymbolKind; out ADeprecatedText: string): TArray<string>;
     function SummaryOf(ANode: TSyntaxNode): string;
     procedure AddNames(ANode: TSyntaxNode; const AContainer: string; AKind: TIndexSymbolKind);
     procedure AddType(ADecl: TSyntaxNode; const AContainer: string);
@@ -287,7 +289,7 @@ begin
   if Symbol.TypeName <> '' then
     TypeText_ := TypeText(DeclaredTypeNode(ANode));
   Symbol.Signature := SignatureOf(ANode, AKind, AName, TypeText_);
-  Symbol.Directives := DirectivesOf(ANode, AKind);
+  Symbol.Directives := DirectivesOf(ANode, AKind, Symbol.DeprecatedText);
   if Symbol.IsDefault and (IndexText('default', Symbol.Directives) < 0) then
     Symbol.Directives := Symbol.Directives + ['default'];
   Symbol.Summary := SummaryOf(ANode);
@@ -373,7 +375,8 @@ begin
     Result := Copy(Result, 1, Length(Result) - 1).TrimRight;
 end;
 
-function TIndexExtractor.DirectivesOf(ANode: TSyntaxNode; AKind: TIndexSymbolKind): TArray<string>;
+function TIndexExtractor.DirectivesOf(ANode: TSyntaxNode; AKind: TIndexSymbolKind;
+  out ADeprecatedText: string): TArray<string>;
 var
   Node: TSyntaxNode;
   Index, Last: Integer;
@@ -400,6 +403,23 @@ var
       Inc(Result);
   end;
 
+  // Grund hinter deprecated am Token APos: deprecated 'Stattdessen Bar verwenden'.
+  procedure TakeReason(APos: Integer);
+  var
+    Next: Integer;
+    Text: string;
+  begin
+    if (APos < 0) or (APos >= Length(FTokens)) or not SameText(FTokens[APos].Text, 'deprecated') then
+      Exit;
+    Next := NextCode(APos);
+    if (Next >= Length(FTokens)) or (FTokens[Next].Kind <> TPascalTokenKind.StringLiteral) then
+      Exit;
+    Text := FTokens[Next].Text;
+    if (Length(Text) >= 2) and (Text[1] = '''') and (Text[Length(Text)] = '''') then
+      Text := StringReplace(Copy(Text, 2, Length(Text) - 2), '''''', '''', [rfReplaceAll]);
+    ADeprecatedText := Text;
+  end;
+
   function EndsHint(APos: Integer): Boolean;
   begin
     // Hinter einem Hinweis folgt ";", "," oder der Grund als String, sonst ist es ein Bezeichner
@@ -410,6 +430,7 @@ var
 
 begin
   Result := nil;
+  ADeprecatedText := '';
   Node := ANode;
   if (Node.Kind = TSyntaxKind.RoutineDecl) and (Node.FindChild(TSyntaxKind.RoutineHeader) <> nil) then
     Node := Node.FindChild(TSyntaxKind.RoutineHeader);
@@ -417,7 +438,10 @@ begin
   begin
     for Index := 0 to Node.ChildCount - 1 do
       if Node[Index].Kind = TSyntaxKind.Directive then
+      begin
         AddWord(Node[Index].Name);
+        TakeReason(TokenIndexAt(Node[Index].StartOffset));
+      end;
     Exit;
   end;
   if AKind = TIndexSymbolKind.EnumMember then
@@ -432,6 +456,7 @@ begin
   begin
     Word := FTokens[Index].Text;
     AddWord(Word);
+    TakeReason(Index);
     Dec(Index);
     while (Index > 0) and ((FTokens[Index].Kind in [TPascalTokenKind.Comment, TPascalTokenKind.StringLiteral]) or
       FTokens[Index].IsSymbol(',')) do
@@ -445,6 +470,7 @@ begin
   while IsHintAt(Index) and EndsHint(NextCode(Index)) do
   begin
     AddWord(FTokens[Index].Text);
+    TakeReason(Index);
     Index := NextCode(Index);
     while (Index < Length(FTokens)) and ((FTokens[Index].Kind = TPascalTokenKind.StringLiteral) or
       FTokens[Index].IsSymbol(',')) do
