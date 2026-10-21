@@ -91,7 +91,11 @@ Alles Folgende ist in `main` umgesetzt. Funktionen mit *(experimentell)* sind ab
 
 ### Code-Analyse
 
-Der Server prüft jede Unit beim Tippen. Treffer erscheinen als Wellenlinien, im Tooltip, gekürzt am Zeilenende und projektweit in der Liste „Atlas-Probleme“ im Meldungsfenster; die Markierungen wandern beim Tippen mit.
+Der Server prüft jede Unit beim Tippen. Treffer erscheinen als Wellenlinien, im Tooltip, gekürzt am Zeilenende und projektweit im andockbaren Fenster **„Atlas-Prüfung“** (Strg+Alt+P); die Markierungen wandern beim Tippen mit.
+
+- **Fenster „Atlas-Prüfung“:** Befunde der Datei, des Projekts oder der Projektgruppe live, Filter je Art, Kategorie und Text, Gruppierung nach Datei, Regel oder Kategorie, sortierbare Spalten; Enter springt, Alt+Enter korrigiert, Kontextmenü zum Unterdrücken, Einstellen, Abschalten und Erklären der Regel
+- **Befund-Hover** mit Schweregrad, Regel und Aktionszeile „Alt+Enter: Korrektur“, „Für diese Zeile unterdrücken“, „Regel einstellen…“
+- **Seite „Prüfregeln“** in den Optionen: je Regelgruppe ein Hauptschalter und eine Tabelle mit Schweregrad, Ausnahmen und Optionen jeder Regel, Suche und Katalogtext mit Beispielen
 
 - **95 Prüfregeln** in vier Kategorien: 45 Fehler, 40 Code-Smells, 5 Schwachstellen, 5 Sicherheits-Hotspots. Darunter:
   - **Korrektheit:** nicht gesetztes `Result`, möglicherweise uneingeleitete Variablen, unerreichbarer Code, ungenutzte Variablen, Parameter und Zuweisungen, deklarierte, aber nicht implementierte Methoden, fehlendes `override`, verdeckte virtuelle Methoden, Überläufe, Gleitkomma-Vergleiche, `raise` in `finally`
@@ -169,7 +173,7 @@ Der Server bietet Claude Code 19 MCP-Werkzeuge: Symbole suchen, Deklarationen un
 
 Noch nicht in `main`, als Issues angelegt:
 
-- Werkzeugfenster „Atlas-Prüfung“ mit Treffer-Hover und Regel-Einstellungsseite und über 100 weitere Prüfregeln (#909, #1086)
+- Über 100 weitere Prüfregeln (Unter-Issues von #909, #1086)
 - Compilermeldungen als eigene Atlas-Regeln, schon beim Tippen statt erst beim Übersetzen (#1024)
 
 ## Installation
