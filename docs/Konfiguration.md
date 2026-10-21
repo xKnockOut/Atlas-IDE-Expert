@@ -232,6 +232,13 @@ Jeder Schlüssel hat genau einen Ort (Spalte „Ort“): Projekt-Schlüssel steh
 | `format.spaceAroundAssignment` | Projekt (atlas.json) | boolean | `true` |  | Genau ein Leerzeichen vor und nach :=. |
 | `format.spaceAfterComma` | Projekt (atlas.json) | boolean | `true` |  | Genau ein Leerzeichen nach Kommas. |
 | `format.endOfLine` | Projekt (atlas.json) | string | – | `"lf"`, `"crlf"` | Zeilenenden vereinheitlichen; ohne Angabe bleiben sie. |
+| `format.reindent` | Projekt (atlas.json) | boolean | `true` |  | Zeilen nach der Blockstruktur einrücken (begin/end, try, case, repeat, Abschnitte). Ausgeschaltet bleibt die vorhandene Einrückung und nur Tabs und Leerzeichen werden umgerechnet. |
+| `format.beginPlacement` | Projekt (atlas.json) | string | `"preserve"` | `"preserve"`, `"newLine"`, `"sameLine"` | begin nach then, else und do: wie vorhanden, in einer eigenen Zeile oder in derselben Zeile. |
+| `format.elsePlacement` | Projekt (atlas.json) | string | `"preserve"` | `"preserve"`, `"newLine"`, `"sameLine"` | else nach end: wie vorhanden, in einer eigenen Zeile oder in derselben Zeile (end else). |
+| `format.maxLineLength` | Projekt (atlas.json) | integer | `0` | 0…1000 | Längere Zeilen nach einem Komma oder vor einem Operator umbrechen; 0 = nie. Gesetzt hat es Vorrang vor max_line_length aus .editorconfig. |
+| `format.alignAssignments` | Projekt (atlas.json) | boolean | `false` |  | := untereinander stehender Zuweisungen ausrichten. |
+| `format.alignDeclarations` | Projekt (atlas.json) | boolean | `false` |  | Doppelpunkte bzw. = untereinander stehender Deklarationen (var, const, Felder, Parameter) ausrichten. |
+| `format.alignComments` | Projekt (atlas.json) | boolean | `false` |  | Kommentare am Zeilenende untereinander stehender Zeilen ausrichten. |
 
 ## Beispiel
 

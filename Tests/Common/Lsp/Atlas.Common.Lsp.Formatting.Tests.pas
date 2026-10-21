@@ -222,6 +222,20 @@ begin
   finally
     Json.Free;
   end;
+  // Schalter ohne Gegenstück im Editor gelten immer; maxLineLength nur gesetzt vor .editorconfig (#43).
+  Configured := TFormatStyle.Default;
+  Configured.Reindent := False;
+  Configured.BeginPlacement := TBlockPlacement.NewLine;
+  Configured.AlignComments := True;
+  Configured.MaxLineLength := 90;
+  Style := TLspFormatting.Resolve(nil, 'C:\P\Unit1.pas', Configured, nil);
+  Assert.IsFalse(Style.Reindent);
+  Assert.IsTrue(Style.BeginPlacement = TBlockPlacement.NewLine);
+  Assert.IsTrue(Style.AlignComments);
+  Assert.AreEqual(0, Style.MaxLineLength);
+  Configured.Given := [TFormatKey.MaxLineLength];
+  Style := TLspFormatting.Resolve(nil, 'C:\P\Unit1.pas', Configured, nil);
+  Assert.AreEqual(90, Style.MaxLineLength);
 end;
 
 procedure TLspFormattingTests.OnTypeStopsBeforeSlashCommandsWhenCancelled;

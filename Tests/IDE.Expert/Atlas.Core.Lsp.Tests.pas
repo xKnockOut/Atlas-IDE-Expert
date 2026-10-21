@@ -79,6 +79,9 @@ type
     procedure ReadsCodeActionsAndRunsCommands;
     [Test]
     procedure RequestsTypingSelectionAndTypeDefinition;
+    /// <summary>#43: formatting für die Datei, rangeFormatting mit Bereich.</summary>
+    [Test]
+    procedure RequestsFormatting;
     /// <summary>#658: linkedEditingRange mit "atlasLocals", Antwort unverändert an den Aufrufer.</summary>
     [Test]
     procedure RequestsLinkedLocals;
@@ -1712,6 +1715,39 @@ begin
     Locations := Session.TypeDefinition('C:\P\A.pas', 3, 4);
     Assert.AreEqual(1, Integer(Length(Locations)));
     Assert.AreEqual(12, Locations[0].Line);
+  finally
+    Session.Free;
+    Client.Free;
+    Seen.Free;
+    Replies.Free;
+  end;
+end;
+
+procedure TLspSessionTests.RequestsFormatting;
+var
+  Replies: TDictionary<string, string>;
+  Seen: TStringList;
+  Client: TLspClient;
+  Session: TLspSession;
+  Edits: TArray<TLspTextEdit>;
+begin
+  Replies := TDictionary<string, string>.Create;
+  Seen := TStringList.Create;
+  Client := CannedClient(Replies, Seen);
+  Session := TLspSession.Create(Client);
+  try
+    Replies.Add('textDocument/formatting', '[{"range":{"start":{"line":2,"character":0},' +
+      '"end":{"line":2,"character":4}},"newText":"  A;"},{"range":{"start":{"line":3,"character":0},' +
+      '"end":{"line":3,"character":1}},"newText":""}]');
+    Replies.Add('textDocument/rangeFormatting', '[]');
+    Edits := Session.Formatting('C:\P\A.pas', 4, False, 1000);
+    Assert.AreEqual(2, Integer(Length(Edits)));
+    Assert.AreEqual('  A;', Edits[0].NewText);
+    Assert.AreEqual(3, Edits[1].StartPos.Line);
+    Assert.Contains(Seen.Text, '"options":{"tabSize":4,"insertSpaces":false}');
+    Edits := Session.Formatting('C:\P\A.pas', TLspRange.Create(1, 0, 3, 0), 2, True, 1000);
+    Assert.AreEqual(0, Integer(Length(Edits)));
+    Assert.Contains(Seen.Text, '"range":{"start":{"line":1,"character":0},"end":{"line":3,"character":0}}');
   finally
     Session.Free;
     Client.Free;

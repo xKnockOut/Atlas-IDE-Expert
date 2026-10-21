@@ -638,6 +638,11 @@ type
     CompleteStatementTryKind: string;
     /// <summary>Methodenrumpf anlegen (#697, editor.completeStatement.methodBody).</summary>
     CompleteStatementMethodBody: Boolean;
+    /// <summary>Befehl „Formatieren“ für Datei oder Auswahl (#43, editor.format).</summary>
+    FormatCode: Boolean;
+    /// <summary>Kürzel „Formatieren“ (#43, keys.format); Vorgabe Strg+Umschalt+Alt+F, weil Strg+D die
+    /// Mehrfachmarken haben und RAD Studio 13 keinen eigenen Formatierer mehr hat.</summary>
+    FormatCodeKey: Integer;
     /// <summary>Nächste Zeile eines erkannten Musters als Schattentext vorschlagen (#671, editor.continuePattern).
     /// </summary>
     ContinuePattern: Boolean;
@@ -1267,6 +1272,8 @@ begin
   Result.CompleteStatementBeginEnd := BeginEndMultiLine;
   Result.CompleteStatementTryKind := TryKindFinally;
   Result.CompleteStatementMethodBody := True;
+  Result.FormatCode := True;
+  Result.FormatCodeKey := $E046; // Strg+Umschalt+Alt+F
   Result.ContinuePattern := True;
   Result.ContinuePatternMinLines := 2;
   Result.MultiCursor := False;
@@ -1479,6 +1486,7 @@ begin
   DuplicateLinesDownKey := EnsureRange(DuplicateLinesDownKey, 0, $FFFF);
   ContinueCommentsBlockPrefix := NormalizedBlockPrefix(ContinueCommentsBlockPrefix);
   CompleteStatementKey := EnsureRange(CompleteStatementKey, 0, $FFFF);
+  FormatCodeKey := EnsureRange(FormatCodeKey, 0, $FFFF);
   CompleteStatementBeginEnd := Choice(CompleteStatementBeginEnd, [BeginEndMultiLine, BeginEndAlways, BeginEndNever]);
   CompleteStatementTryKind := Choice(CompleteStatementTryKind, [TryKindFinally, TryKindExcept, TryKindAsk]);
   MultiCursorModifier := Choice(MultiCursorModifier, [MultiCursorModifierAlt, MultiCursorModifierCtrl]);
@@ -1761,6 +1769,8 @@ begin
   CompleteStatementTryKind := AStore.ReadString('CompleteStatementTryKind', Default.CompleteStatementTryKind);
   CompleteStatementMethodBody := AStore.ReadInteger('CompleteStatementMethodBody',
     BoolValue(Default.CompleteStatementMethodBody)) <> 0;
+  FormatCode := AStore.ReadInteger('FormatCode', BoolValue(Default.FormatCode)) <> 0;
+  FormatCodeKey := AStore.ReadInteger('FormatCodeKey', Default.FormatCodeKey);
   ContinuePattern := AStore.ReadInteger('ContinuePattern', BoolValue(Default.ContinuePattern)) <> 0;
   ContinuePatternMinLines := AStore.ReadInteger('ContinuePatternMinLines', Default.ContinuePatternMinLines);
   MultiCursor := AStore.ReadInteger('MultiCursor', BoolValue(Default.MultiCursor)) <> 0;
@@ -2087,6 +2097,8 @@ begin
   AStore.WriteString('CompleteStatementBeginEnd', CompleteStatementBeginEnd);
   AStore.WriteString('CompleteStatementTryKind', CompleteStatementTryKind);
   AStore.WriteInteger('CompleteStatementMethodBody', BoolValue(CompleteStatementMethodBody));
+  AStore.WriteInteger('FormatCode', BoolValue(FormatCode));
+  AStore.WriteInteger('FormatCodeKey', FormatCodeKey);
   AStore.WriteInteger('ContinuePattern', BoolValue(ContinuePattern));
   AStore.WriteInteger('ContinuePatternMinLines', ContinuePatternMinLines);
   AStore.WriteInteger('MultiCursor', BoolValue(MultiCursor));
