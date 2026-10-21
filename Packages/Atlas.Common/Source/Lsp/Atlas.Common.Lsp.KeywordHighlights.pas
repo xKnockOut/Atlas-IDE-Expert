@@ -39,7 +39,8 @@ uses
   System.StrUtils,
   System.Generics.Collections,
   System.Generics.Defaults,
-  Atlas.Common.Pascal.Contract;
+  Atlas.Common.Pascal.Contract,
+  Atlas.Common.Pascal.Lexer;
 
 type
   TSyntaxKinds = set of TSyntaxKind;
@@ -286,23 +287,6 @@ begin
   end;
 end;
 
-/// <summary>Name einer Direktive in Großbuchstaben, z. B. IFDEF.</summary>
-function DirectiveName(const AText: string): string;
-var
-  Start, Stop: Integer;
-begin
-  if StartsStr('{$', AText) then
-    Start := 3
-  else if StartsStr('(*$', AText) then
-    Start := 4
-  else
-    Exit('');
-  Stop := Start;
-  while (Stop <= Length(AText)) and CharInSet(AText[Stop], ['A'..'Z', 'a'..'z']) do
-    Inc(Stop);
-  Result := UpperCase(Copy(AText, Start, Stop - Start));
-end;
-
 procedure TGroups.BuildDirectives;
 var
   Conditions, Regions: TStack<Integer>;
@@ -316,7 +300,7 @@ begin
     begin
       if FTokens[Index].Kind <> TPascalTokenKind.Directive then
         Continue;
-      Name := DirectiveName(FTokens[Index].Text);
+      Name := TPascalLexer.DirectiveName(FTokens[Index].Text);
       if MatchText(Name, ['IF', 'IFDEF', 'IFNDEF', 'IFOPT']) then
         Conditions.Push(NewGroup(Index))
       else if MatchText(Name, ['ELSEIF', 'ELSE']) then
@@ -623,7 +607,7 @@ begin
   end;
   if Token.Kind = TPascalTokenKind.Directive then
   begin
-    if DirectiveName(Token.Text) = '' then
+    if TPascalLexer.DirectiveName(Token.Text) = '' then
       Exit;
     Groups := TGroups.Create(Tokens, True);
     try

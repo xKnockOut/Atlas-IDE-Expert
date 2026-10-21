@@ -18,9 +18,10 @@
 // an ist) sowie die Mehrfachmarken (#589, Strg+D, Alt+Umschalt+I,
 // Strg+Alt+↑/↓ mit Rückfall an die IDE, nur solange editor.multiCursor an
 // ist), Blockkommentar umschalten (#703, Umschalt+Alt+A, nur solange
-// keys.toggleBlockComment an ist) und Neue Zeile ober- oder unterhalb (#700,
+// keys.toggleBlockComment an ist), Neue Zeile ober- oder unterhalb (#700,
 // Umschalt+Enter und Strg+Alt+Enter, nur solange keys.newLineAround an
-// ist). Jede Taste wird wie
+// ist) und Umschließung entfernen (#657, Strg+Umschalt+Entf, nur solange
+// keys.unwrap an ist). Jede Taste wird wie
 // die der Befehlspalette vorher auf Konflikte geprüft (#494); ohne Vorrang
 // bleibt eine fremde Belegung aktiv. Nach geänderten Einstellungen meldet
 // Rebind die Bindung neu an. Der Befehl läuft nach der Tastenverarbeitung
@@ -111,7 +112,8 @@ uses
   Atlas.IDE.Editor.MultiCursor,
   Atlas.IDE.Editor.BlockComment,
   Atlas.Core.Editor.NewLine,
-  Atlas.IDE.Editor.NewLine;
+  Atlas.IDE.Editor.NewLine,
+  Atlas.IDE.Editor.Unwrap;
 
 /// <summary>Zeilen verschieben bzw. duplizieren (#634), gesichert.</summary>
 procedure RunLineMove(AKind: TAtlasLineMoveKind);
@@ -389,6 +391,17 @@ begin
           end);
       end);
   end;
+  // Umschließung entfernen (#657): aus = das Kürzel gehört der IDE.
+  if Settings.Unwrap then
+    AddKey(Settings.UnwrapKey, TAtlasStrings.Text(TAtlasTextId.UnwrapCommand),
+      procedure
+      begin
+        TAtlasGuard.Run(TAtlasFeature.EditorCommands,
+          procedure
+          begin
+            TAtlasIdeUnwrap.Run;
+          end);
+      end);
   // Units suchen (#777): aus = keine eigene Taste (die IDE behält Strg+F12 für ihren Dialog).
   if Settings.UnitSearchEnabled then
     AddKey(Settings.UnitSearchKey, TAtlasStrings.Text(TAtlasTextId.UnitSearchTitle),

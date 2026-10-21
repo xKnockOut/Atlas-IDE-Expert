@@ -83,6 +83,7 @@ uses
   Atlas.IDE.Editor.BlockComment,
   Atlas.Core.Editor.NewLine,
   Atlas.IDE.Editor.NewLine,
+  Atlas.IDE.Editor.Unwrap,
   Atlas.IDE.Editor.WrapSelection,
   Atlas.IDE.Editor.CommentContinuation,
   Atlas.IDE.Editor.PatternContinuation,
@@ -1032,6 +1033,16 @@ begin
   TAtlasIdeNewLine.Run(TAtlasNewLineDirection.Above);
 end;
 
+function UnwrapVisible: Boolean;
+begin
+  Result := TAtlasIdeUnwrap.Enabled;
+end;
+
+procedure Unwrap;
+begin
+  TAtlasIdeUnwrap.Run;
+end;
+
 procedure CompleteStatement;
 begin
   TAtlasIdeStatementCompletion.Run;
@@ -1244,6 +1255,8 @@ begin
     NewLineAroundVisible);
   Add('Atlas.NewLineAbove', TAtlasTextId.NewLineAboveCommand, Guarded(TAtlasFeature.EditorCommands, NewLineAbove),
     NewLineAroundVisible);
+  // Umschließung entfernen (#657); nur sichtbar, solange keys.unwrap an ist.
+  Add('Atlas.Unwrap', TAtlasTextId.UnwrapCommand, Guarded(TAtlasFeature.EditorCommands, Unwrap), UnwrapVisible);
   // Mehrere Einfügemarken (#589).
   Add('Atlas.MultiCursorNext', TAtlasTextId.MultiCursorNextCommand,
     Guarded(TAtlasFeature.EditorCommands, MultiCursorNext), MultiCursorVisible);
@@ -2316,6 +2329,18 @@ begin
     begin
       MessageLine(AText);
     end);
+  // Umschließung entfernen (#657): Liste und Vorschau; Ergebnis in der Meldungsansicht.
+  TAtlasIdeUnwrap.Install(
+    function: TLspSession
+    begin
+      Result := nil;
+      if Manager <> nil then
+        Result := Manager.RunningSession;
+    end,
+    procedure(AText: string)
+    begin
+      MessageLine(AText);
+    end);
   // Übersichtsleiste an der Scrollleiste (#519).
   TAtlasIdeOverviewRuler.Install;
   // Minimap neben der Scrollleiste (#873, experimentell); fragt die Gliederung über TAtlasIdeOutlineCache.
@@ -2353,6 +2378,7 @@ begin
   TAtlasIdeLineChanges.Uninstall;
   TAtlasIdeLineMove.Uninstall;
   TAtlasIdeBlockComment.Uninstall;
+  TAtlasIdeUnwrap.Uninstall;
   TAtlasIdeSmartPaste.Uninstall;
   TAtlasIdeWrapSelection.Uninstall;
   TAtlasIdeLinkedEditing.Uninstall;

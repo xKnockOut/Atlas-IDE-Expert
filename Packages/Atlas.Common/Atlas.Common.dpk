@@ -193,6 +193,8 @@ contains
   Atlas.Common.Lsp.PropertyFromAccessors in 'Source\Lsp\Atlas.Common.Lsp.PropertyFromAccessors.pas',
   Atlas.Common.Editing.InvertBoolean in 'Source\Editing\Atlas.Common.Editing.InvertBoolean.pas',
   Atlas.Common.Lsp.InvertBoolean in 'Source\Lsp\Atlas.Common.Lsp.InvertBoolean.pas',
+  Atlas.Common.Editing.Unwrap in 'Source\Editing\Atlas.Common.Editing.Unwrap.pas',
+  Atlas.Common.Lsp.Unwrap in 'Source\Lsp\Atlas.Common.Lsp.Unwrap.pas',
   Atlas.Common.Editing.InterfaceStubs in 'Source\Editing\Atlas.Common.Editing.InterfaceStubs.pas',
   Atlas.Common.Lsp.StringLiteralCommands in 'Source\Lsp\Atlas.Common.Lsp.StringLiteralCommands.pas',
   Atlas.Common.Lsp.SlashMenu in 'Source\Lsp\Atlas.Common.Lsp.SlashMenu.pas',
