@@ -68,6 +68,7 @@ Server und Claude-Code-Plugin tragen immer dieselbe Version.
 
 ### Tests
 - Alias `usesCommand` (#293), Formulardateien abgeleiteter Klassen (#44), `/header` am falschen Ort (#306), FireMonkey-Plattformansichten bei Sprung und Umbenennen (#87).
+- CI „Package-Abhängigkeiten“ wieder grün (#888): `Test-Experimental.ps1` endet ausdrücklich mit Exit-Code 0 (die pwsh-Shell von GitHub Actions übernahm sonst den absichtlich roten letzten Fall), `Update-ConfigDoc.ps1 -Check` vergleicht die erzeugten Units unabhängig vom Zeilenende und Groß-/Kleinschreibung genau; neue Fälle für LF, CRLF und eine veraltete `Konfiguration.md`.
 
 ## [1.0.1] - 2026-10-21
 
