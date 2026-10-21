@@ -17,6 +17,9 @@ type
     procedure TreatsDirectivesAsIdentifiers;
     [Test]
     procedure EscapedReservedWordIsIdentifier;
+    /// <summary>Sprungmarken wie @@End im asm-Block: das reservierte Wort hinter @ ist ein Bezeichner (#861).</summary>
+    [Test]
+    procedure ReservedWordAfterAtIsIdentifier;
     [Test]
     procedure ReadsNumbers;
     [Test]
@@ -100,6 +103,14 @@ end;
 procedure TPascalLexerTests.EscapedReservedWordIsIdentifier;
 begin
   Assert.AreEqual('Identifier:&begin|Symbol:.|Identifier:Name', Describe('&begin.Name'));
+end;
+
+procedure TPascalLexerTests.ReservedWordAfterAtIsIdentifier;
+begin
+  Assert.AreEqual('Identifier:JNZ|Symbol:@|Symbol:@|Identifier:End|Symbol:;|Symbol:@|Symbol:@|Identifier:end|' +
+    'Symbol::|Keyword:end', Describe('JNZ @@End; @@end: end'));
+  // Mit Abstand hinter @ bleibt es ein Schlüsselwort.
+  Assert.AreEqual('Symbol:@|Keyword:end', Describe('@ end'));
 end;
 
 procedure TPascalLexerTests.ReadsNumbers;
