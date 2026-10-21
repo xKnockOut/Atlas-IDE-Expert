@@ -30,6 +30,8 @@ type
     procedure KeysCallTheEvents;
     [Test]
     procedure ChangesAreReportedButNotWhilePreparing;
+    [Test]
+    procedure EnteringAFieldIsReported;
   end;
 
 implementation
@@ -38,6 +40,7 @@ uses
   System.SysUtils,
   System.Classes,
   Winapi.Windows,
+  Vcl.Controls,
   Vcl.Forms,
   Atlas.Core.Search.Matching,
   Atlas.UI.Search.Bar;
@@ -242,6 +245,34 @@ begin
     Assert.AreEqual('3 von 9', Bar.Counter);
   finally
     Host.Free;
+  end;
+end;
+
+procedure TAtlasSearchBarTests.EnteringAFieldIsReported;
+var
+  Host: TForm;
+  Bar: TAtlasSearchBar;
+  Entered: TArray<TObject>;
+begin
+  Host := NewHost;
+  try
+    Bar := NewBar(Host);
+    Entered := nil;
+    Bar.OnControlEnter :=
+      procedure(AControl: TWinControl)
+      begin
+        Entered := Entered + [AControl];
+      end;
+    Bar.TextEdit.OnEnter(Bar.TextEdit);
+    Bar.ScopeBox.OnEnter(Bar.ScopeBox);
+    Bar.IdentifierBox.OnEnter(Bar.IdentifierBox);
+    Assert.AreEqual(3, Integer(Length(Entered)));
+    Assert.AreSame(Bar.TextEdit, Entered[0]);
+    Assert.AreSame(Bar.ScopeBox, Entered[1]);
+    Assert.AreSame(Bar.IdentifierBox, Entered[2]);
+  finally
+    Host.Free;
+    Entered := nil;
   end;
 end;
 
