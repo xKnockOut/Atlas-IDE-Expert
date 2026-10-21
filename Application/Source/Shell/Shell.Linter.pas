@@ -31,6 +31,9 @@
 // sich, deshalb ergibt die Teilmenge dieselben Treffer wie ein voller Lauf.
 // SARIF-Pfade sind relativ zur Quellwurzel (--source-root, sonst die
 // Git-Wurzel über dem Ziel, sonst der Ordner des Ziels).
+// Bei einer .dproj gelten deren Symbole für Plattform und Konfiguration aus
+// atlas.json, und {$I}-Dateien werden über ihre Suchpfade gelesen (#860);
+// sonst die Vordefinitionen von Delphi 13 für Win32 und $I aus dem Ordner der Datei.
 // Exit-Code: 1, wenn ein Treffer --fail-on erreicht (Standard error: mindestens
 // ein Fehler; Baseline-Treffer zählen nie), sonst 0; 3 Aufruf- oder Lesefehler.
 
@@ -60,6 +63,11 @@ uses
   Atlas.Common.Documents.FileEncoding,
   Atlas.Common.Projects.Contract,
   Atlas.Common.Projects.DprojReader,
+  Atlas.Common.Projects.DelphiVersions,
+  Atlas.Common.Index.ProjectFiles,
+  Atlas.Common.Pascal.Preprocessor,
+  Atlas.Common.Pascal.IncludeFiles,
+  Atlas.Windows.Projects.DelphiInstallation,
   Atlas.Common.Rules.Contract,
   Atlas.Common.Rules.Checker,
   Atlas.Common.Rules.Filter,
@@ -135,14 +143,29 @@ begin
       Issue.Range.StartPos.Character + 1, Issue.Message]));
 end;
 
-function CollectFiles(const ATarget: string; const ASettings: TServerSettings; out ARoot: string): TArray<string>;
+/// <summary>Symbole und Include-Dateien der Prüfung (#860): ADefines und die Suchpfade des Projekts.</summary>
+function CheckSourcesOf(const ADefines, AIncludePaths: TArray<string>): TCheckSourceFunc;
+var
+  Resolver: TIncludeResolver;
+begin
+  Resolver := TIncludeFiles.Resolver(AIncludePaths);
+  Result :=
+    function(const AFileName: string): TCheckSource
+    begin
+      Result := TCheckSource.Create(AFileName, ADefines, Resolver);
+    end;
+end;
+
+function CollectFiles(const ATarget: string; const ASettings: TServerSettings; out ARoot: string;
+  out ASources: TCheckSourceFunc): TArray<string>;
 var
   Options: TDprojOptions;
   Project: TProjectInfo;
   ProjectUnit: TProjectUnit;
   Files: TList<string>;
-  FileName: string;
+  FileName, Version: string;
 begin
+  ASources := CheckSourcesOf(nil, nil);
   Files := TList<string>.Create;
   try
     if TDirectory.Exists(ATarget) then
@@ -164,6 +187,10 @@ begin
           Result := TFile.Exists(APath) or TDirectory.Exists(APath);
         end;
       Project := TDprojReader.Load(TPath.GetFullPath(ATarget), Options);
+      // Symbole wie im Editor: .dproj, Plattform, Compilerversion und Schalter (#860).
+      Version := TDelphiVersions.Choose(ASettings.DelphiVersion,
+        TDelphiVersions.ProjectVersionOf(TFile.ReadAllText(TPath.GetFullPath(ATarget))), TDelphiInstallation.Versions);
+      ASources := CheckSourcesOf(TIndexProjectFiles.Defines(Project, Version), Project.SearchPaths);
       if (Project.MainSource <> '') and TFile.Exists(Project.MainSource) then
         Files.Add(Project.MainSource);
       for ProjectUnit in Project.Units do
@@ -354,6 +381,7 @@ var
   Metrics: TArray<TFileMetrics>;
   Todos: TArray<TFileTodos>;
   TodoEntries: TArray<TTodoEntry>;
+  CheckSources: TCheckSourceFunc;
 begin
   for Warning in AOptions.Warnings do
     WriteError(Warning);
@@ -441,7 +469,7 @@ begin
     Stats := TSuppressionStats.Create;
     CheckedPaths := TList<string>.Create;
     try
-      Candidates := CollectFiles(AOptions.CheckTarget, Settings, Root);
+      Candidates := CollectFiles(AOptions.CheckTarget, Settings, Root, CheckSources);
       if (AOptions.ChangedRef <> '') and AOptions.UpdateBaseline then
         WriteError('--update-baseline schreibt die Baseline immer für alle Dateien; --changed/--diff wird ignoriert')
       else if AOptions.ChangedRef <> '' then
@@ -480,7 +508,7 @@ begin
             [rfReplaceAll]), TodoEntries)], TTodoFilter.Default);
           Continue;
         end;
-        Findings := TFileChecker.CheckText(Rules, Settings, RelativePath, Text, Scopes);
+        Findings := TFileChecker.CheckText(Rules, Settings, RelativePath, Text, CheckSources(FileName), Scopes);
         if AOptions.SuppressionStats then
           Stats.Add(Text, Findings);
         if AOptions.UpdateBaseline then

@@ -87,10 +87,17 @@ end;
 procedure TConditionalSymbolsTests.HoverNamesIncludeFileAndLine;
 var
   Markdown: string;
+  Target: TConditionalContext;
 begin
   Markdown := HoverAt('unit U;'#10'{$I Defs.inc}'#10'{$IFDEF FOO}'#10'{$ENDIF}', 2, 9, Context);
   Assert.IsTrue(StartsStr('**FOO**: aktiv, definiert mit {$DEFINE FOO} in [Defs.inc](', Markdown), Markdown);
   Assert.IsTrue(EndsStr('), Zeile 2', Markdown), Markdown);
+  // Mit Zielplattform und Konfiguration nennt der Hover den Projektstand (#860).
+  Target := Context;
+  Target.Platform := 'Win64';
+  Target.Config := 'Debug';
+  Markdown := HoverAt('unit U;'#10'{$I Defs.inc}'#10'{$IFDEF FOO}'#10'{$ENDIF}', 2, 9, Target);
+  Assert.IsTrue(EndsStr('), Zeile 2'#10#10'Projekt: Win64 · Debug', Markdown), Markdown);
   // Vor der $I-Direktive gilt FOO noch nicht.
   Assert.IsTrue(StartsStr('**FOO**: nicht definiert',
     HoverAt('unit U;'#10'{$IFDEF FOO}'#10'{$ENDIF}'#10'{$I Defs.inc}', 1, 9, Context)));

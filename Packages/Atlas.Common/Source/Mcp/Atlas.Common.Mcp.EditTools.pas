@@ -10,6 +10,7 @@
 // ungespeichert geändert (Liste des IDE-Plugins), bricht der Aufruf ohne
 // Änderung ab; scheitert das Schreiben einer Datei, werden die schon
 // geschriebenen zurückgesetzt. Geänderte Dateien gehen ins Protokoll (Audit).
+// apply_code_action prüft mit den Symbolen des Projekts (CheckSource, #860).
 
 interface
 
@@ -20,6 +21,7 @@ uses
   Atlas.Common.Index.Contract,
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Rules.Contract,
+  Atlas.Common.Rules.Checker,
   Atlas.Common.Semantics.NameResolver,
   Atlas.Common.Lsp.References;
 
@@ -47,6 +49,7 @@ type
     FDirtyFiles: TMcpDirtyFiles;
     FAudit: TMcpAudit;
     FNamespaces: TArray<string>;
+    FCheckSource: TCheckSourceFunc;
   public
     constructor Create(const AIndex: ISymbolIndex; const AReadText: TReferenceReadText;
       const AWriteText: TMcpWriteText; const AProjectFiles: TFunc<TArray<string>>;
@@ -65,6 +68,8 @@ type
     property Namespaces: TArray<string> read FNamespaces write FNamespaces;
     property DirtyFiles: TMcpDirtyFiles read FDirtyFiles write FDirtyFiles;
     property Audit: TMcpAudit read FAudit write FAudit;
+    /// <summary>Symbole und Include-Dateien für die Regelprüfung (#860); nil = Vordefinitionen (Win32).</summary>
+    property CheckSource: TCheckSourceFunc read FCheckSource write FCheckSource;
   end;
 
 implementation
@@ -77,7 +82,6 @@ uses
   Atlas.Common.JsonRpc.Contract,
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.TreeCache,
-  Atlas.Common.Rules.Checker,
   Atlas.Common.Editing.CodeActions,
   Atlas.Common.Rules.CodeActions,
   Atlas.Common.Lsp.Rename,
@@ -298,7 +302,8 @@ begin
   if (ARoot <> '') and StartsText(IncludeTrailingPathDelimiter(ARoot), AFileName) then
     RelativePath := Copy(AFileName, Length(IncludeTrailingPathDelimiter(ARoot)) + 1, MaxInt);
   Actions := nil;
-  for Action in TRuleCodeActions.ForRange(TFileChecker.CheckText(ARules, ASettings, RelativePath, Text), Text,
+  for Action in TRuleCodeActions.ForRange(TFileChecker.CheckText(ARules, ASettings, RelativePath, Text,
+    TFileChecker.SourceOf(FCheckSource, AFileName)), Text,
     TTextRange.Create(ALine - 1, 0, ALine - 1, MaxInt div 2)) do
     if (Length(Action.Edits) > 0) and (Action.Command = '') then
       Actions := Actions + [Action];
