@@ -319,6 +319,7 @@ uses
   Atlas.Core.Commands.ShortcutTips in '..\Packages\Atlas.IDE.Expert\Source\Core\Commands\Atlas.Core.Commands.ShortcutTips.pas',
   Atlas.Core.Commands.ShortcutTips.Tests in 'IDE.Expert\Atlas.Core.Commands.ShortcutTips.Tests.pas',
   Atlas.UI.Popup.Accessibility in '..\Packages\Atlas.IDE.Expert\Source\UI\Popup\Atlas.UI.Popup.Accessibility.pas',
+  Atlas.UI.Popup.Accessibility.Tests in 'IDE.Expert\Atlas.UI.Popup.Accessibility.Tests.pas',
   Atlas.UI.Popup.Window in '..\Packages\Atlas.IDE.Expert\Source\UI\Popup\Atlas.UI.Popup.Window.pas',
   Atlas.UI.Popup.Draw in '..\Packages\Atlas.IDE.Expert\Source\UI\Popup\Atlas.UI.Popup.Draw.pas',
   Atlas.UI.Commands.ShortcutTip in '..\Packages\Atlas.IDE.Expert\Source\UI\Commands\Atlas.UI.Commands.ShortcutTip.pas',

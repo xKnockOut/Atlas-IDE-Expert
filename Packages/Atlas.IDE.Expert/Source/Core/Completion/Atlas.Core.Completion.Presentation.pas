@@ -48,6 +48,9 @@ type
     class function Announcement(const AItem: TAtlasCompletionItem; const AKind, AOf: string;
       APosition, ACount: Integer): string; static;
     class function Tags(const AItem: TAtlasCompletionItem): TAtlasTags; static;
+    /// <summary>Texte der Tags durch Komma getrennt („deprecated, Helper“): Zustand für UI Automation (#447).
+    /// </summary>
+    class function TagText(const AItem: TAtlasCompletionItem): string; static;
     /// <summary>Unit, die beim Übernehmen in uses ergänzt wird; '' wenn eingebunden.</summary>
     class function MissingUnit(const AItem: TAtlasCompletionItem): string; static;
     /// <summary>1-basierte Positionen in AName, die APattern trifft; leer ohne Treffer.</summary>
@@ -262,6 +265,18 @@ begin
       Result := AItem.DeclaringClass + ' · ' + Result
     else
       Result := AItem.DeclaringClass;
+end;
+
+class function TAtlasItemPresentation.TagText(const AItem: TAtlasCompletionItem): string;
+var
+  Tag: TAtlasTag;
+begin
+  Result := '';
+  for Tag in Tags(AItem) do
+    if Result = '' then
+      Result := Tag.Text
+    else
+      Result := Result + ', ' + Tag.Text;
 end;
 
 class function TAtlasItemPresentation.Tags(const AItem: TAtlasCompletionItem): TAtlasTags;

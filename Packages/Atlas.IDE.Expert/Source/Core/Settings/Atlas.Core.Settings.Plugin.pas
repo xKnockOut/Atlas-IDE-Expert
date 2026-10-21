@@ -145,6 +145,8 @@ type
     PanelWidth: Integer;
     /// <summary>Detailpanel eingeklappt (#428).</summary>
     PanelCollapsed: Boolean;
+    /// <summary>Gewählter Eintrag mit Rahmen und Marke statt nur farbig (#447).</summary>
+    SelectionMarker: Boolean;
     /// <summary>Klammern beim Übernehmen von Methoden (#430).</summary>
     AutoParentheses: Boolean;
     /// <summary>Schreibweise des getippten Worts beim Übernehmen korrigieren (#433).</summary>
@@ -1055,6 +1057,7 @@ begin
   Result.ListWidth := 0;
   Result.PanelWidth := 320;
   Result.PanelCollapsed := False;
+  Result.SelectionMarker := True;
   Result.AutoParentheses := True;
   Result.FixCase := True;
   Result.CommitCharacters := True;
@@ -1544,6 +1547,7 @@ begin
   ListWidth := AStore.ReadInteger('ListWidth', Default.ListWidth);
   PanelWidth := AStore.ReadInteger('PanelWidth', Default.PanelWidth);
   PanelCollapsed := AStore.ReadInteger('PanelCollapsed', BoolValue(Default.PanelCollapsed)) <> 0;
+  SelectionMarker := AStore.ReadInteger('SelectionMarker', BoolValue(Default.SelectionMarker)) <> 0;
   AutoParentheses := AStore.ReadInteger('AutoParentheses', BoolValue(Default.AutoParentheses)) <> 0;
   FixCase := AStore.ReadInteger('FixCase', BoolValue(Default.FixCase)) <> 0;
   CommitCharacters := AStore.ReadInteger('CommitCharacters', BoolValue(Default.CommitCharacters)) <> 0;
@@ -1884,6 +1888,7 @@ begin
   AStore.WriteInteger('ListWidth', ListWidth);
   AStore.WriteInteger('PanelWidth', PanelWidth);
   AStore.WriteInteger('PanelCollapsed', BoolValue(PanelCollapsed));
+  AStore.WriteInteger('SelectionMarker', BoolValue(SelectionMarker));
   AStore.WriteInteger('AutoParentheses', BoolValue(AutoParentheses));
   AStore.WriteInteger('FixCase', BoolValue(FixCase));
   AStore.WriteInteger('CommitCharacters', BoolValue(CommitCharacters));

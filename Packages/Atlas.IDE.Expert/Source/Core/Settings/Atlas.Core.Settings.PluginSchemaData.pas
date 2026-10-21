@@ -12,7 +12,7 @@ function AtlasPluginSchemaJson: string;
 implementation
 
 const
-  Lines: array[0..3209] of string = (
+  Lines: array[0..3217] of string = (
     '{',
     '  "$schema": "http://json-schema.org/draft-07/schema#",',
     '  "title": "Atlas-Plugin-Einstellungen",',
@@ -957,6 +957,14 @@ const
     '      "x-key": "completion.panelCollapsed",',
     '      "x-area": "completion",',
     '      "x-page": "Vervollständigung"',
+    '    },',
+    '    "SelectionMarker": {',
+    '      "type": "boolean",',
+    '      "default": true,',
+    '      "x-key": "completion.selectionMarker",',
+    '      "x-area": "completion",',
+    '      "x-page": "Vervollständigung",',
+    '      "x-issue": "#447"',
     '    },',
     '    "AutoParentheses": {',
     '      "type": "boolean",',
