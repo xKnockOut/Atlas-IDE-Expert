@@ -516,3 +516,12 @@ Jeder Branch baut auf dem vorigen auf. Nichts davon ist gebaut, getestet oder in
 - Umgesetzt (3f9d70b7): Linsen und Inlay-Hinweise fragen während des Indexierens nicht; Menübefehle laufen über `ExecuteServerCommandAsync`; `safeMode.startupTimeoutMs` hat die Vorgabe 30000 ms.
 - Offen: Optionsseite, Prüfliste und Fehlerbericht rufen den Server weiter synchron auf. Server: `workspace/executeCommand` läuft seriell in der Nachrichtenschleife und wartet hinter Reload/`StartIndex`→`Stop`→`WaitFor`; Vorschlag im Issue-Kommentar.
 - Hinweis: Am 18.10.2026 war Atlas beim Benutzer deinstalliert (nur `AtlasSetup.exe` übrig; `%LOCALAPPDATA%\Atlas` und `HKCU\Software\Atlas` fehlten). Das war keine Aktion dieser Sitzung.
+
+## Bugs #879–#882 (21.10.2026, 1863db03, geschlossen)
+- #879 Toolfenster: gemeinsame Klasse `TAtlasIdeDockWindow` (IDE/Foundation) mit getestetem Plan `Atlas.Core.Dock.Plan`. Nach dem X wieder öffnen; versteckte Gastgeber werden sichtbar, der Reiter kommt nach vorn. Ergebnisse, Lesezeichen und Atlas-Start sind beim Desktop angemeldet (`RegisterDockableForm`, Aufruf `Prepare` früh); Atlas-Diagnose bewusst nicht (Absturz-Fix d7c6e381).
+- #880 System: `Atlas.Common.Semantics.SystemIntrinsics` (98 Intrinsics und eingebaute Typen) für Completion (ab dem ersten Zeichen), Parameter-Hinweis und Hover. Eine indexierte System.pas hat Vorrang. Inlay-Hinweise zeigen keine Parameternamen für Intrinsics (`TSignatureHelp.Intrinsic`).
+- #881: `TNameResolver.LocalOverloads`; der Parameter-Hinweis zeigt alle Überladungen verschachtelter Routinen und wählt nach den Argumenten.
+- #882: Server bewertet Kürzeltreffer mit 2600, also vor Teilwort; filterText für unscharfe Form-Komponenten. Grenze: „Btn“ → SaveButton bleibt aus (Wortgrenzen-Regel D-05).
+- Werkzeug: `scratchpad\ide-dialogs.ps1` listet offene Fehlerdialoge der laufenden IDE samt Text.
+- Plugin beim Benutzer: Debug-Build aus `repo\Output\Win32\Debug\Bpl` in Known Packages. Das Nachstellskript `repro.ps1` trägt ihn am Ende aus; danach wieder eintragen.
+- Offen: Optionsseite, Prüfliste und Fehlerbericht rufen den Server noch synchron auf (#874), außerdem der Server-Umbau für executeCommand.
