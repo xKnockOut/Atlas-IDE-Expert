@@ -135,6 +135,9 @@ begin
   Assert.AreEqual('begin@0 end@0', Describe('begin'#10'  &end := 1;'#10'  A.Begin;'#10'end;'));
   // Sprungmarken im asm-Block sind keine Blockwörter (#861).
   Assert.AreEqual('asm@0 end@0', Describe('asm'#10'  JNZ @@End'#10'@@end:'#10'end;'));
+  // Steuerzeichen ^[ ist keine Klammer, P^[1] schon (#862).
+  Assert.AreEqual('', Describe('Esc = ^[;'));
+  Assert.AreEqual('[@0 ]@0', Describe('X := P^[1];'));
 end;
 
 procedure TAtlasPairsTests.DisplayLineExpandsTabsAndRunsMatchOnlyAtTheirColumn;

@@ -170,6 +170,8 @@ type
     FInlayTypeHints: TCheckBox;
     /// <summary>Include-Symbole hinter {$I} (#860).</summary>
     FInlayDefineHints: TCheckBox;
+    /// <summary>Codes von Steuerzeichen wie ^C (#862).</summary>
+    FInlayCharHints: TCheckBox;
     /// <summary>Blockende-Beschriftungen (#620).</summary>
     FBlockEndLabels: TCheckBox;
     FBlockEndLabelsMinLines: TEdit;
@@ -1005,6 +1007,8 @@ type
     property InlayTypeHintsCheck: TCheckBox read FInlayTypeHints;
     /// <summary>Zum Testen: Include-Symbole hinter {$I} (#860).</summary>
     property InlayDefineHintsCheck: TCheckBox read FInlayDefineHints;
+    /// <summary>Zum Testen: Codes von Steuerzeichen (#862).</summary>
+    property InlayCharHintsCheck: TCheckBox read FInlayCharHints;
     property BlockEndLabelsMinLinesEdit: TEdit read FBlockEndLabelsMinLines;
     property DimUnusedUsesCheck: TCheckBox read FDimUnusedUses;
     property RecursionMarkersCheck: TCheckBox read FRecursionMarkers;
@@ -1423,6 +1427,8 @@ begin
   FInlayTypeHints := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsInlayTypeHints));
   // Symbole aus Include-Dateien hinter {$I} (#860).
   FInlayDefineHints := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsInlayDefineHints));
+  // Code hinter Steuerzeichen wie ^C (#862).
+  FInlayCharHints := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsInlayCharHints));
   // Beschriftung hinter dem end langer Blöcke (#620).
   FBlockEndLabels := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsBlockEndLabels));
   FBlockEndLabelsMinLines := AddNumber(TAtlasStrings.Text(TAtlasTextId.SettingsBlockEndLabelsMinLines));
@@ -1742,6 +1748,7 @@ begin
   Bind('InlayHints', FInlayHints);
   Bind('InlayTypeHints', FInlayTypeHints);
   Bind('InlayDefineHints', FInlayDefineHints);
+  Bind('InlayCharHints', FInlayCharHints);
   Bind('Problems', FProblems);
   Bind('Notes', FNotes);
   Bind('BookmarksNamed', FBookmarksNamed);
@@ -2630,6 +2637,7 @@ begin
   FMarks.Bind(FInlayHints, ['InlayHints']);
   FMarks.Bind(FInlayTypeHints, ['InlayTypeHints']);
   FMarks.Bind(FInlayDefineHints, ['InlayDefineHints']);
+  FMarks.Bind(FInlayCharHints, ['InlayCharHints']);
   FMarks.Bind(FBlockEndLabels, ['BlockEndLabels']);
   FMarks.Bind(FBlockEndLabelsMinLines, ['BlockEndLabelsMinLines']);
   FMarks.Bind(FDimUnusedUses, ['DimUnusedUses']);
@@ -4591,6 +4599,7 @@ begin
   FInlayHints.Checked := ASettings.InlayHints;
   FInlayTypeHints.Checked := ASettings.InlayTypeHints;
   FInlayDefineHints.Checked := ASettings.InlayDefineHints;
+  FInlayCharHints.Checked := ASettings.InlayCharHints;
   FBlockEndLabels.Checked := ASettings.BlockEndLabels;
   FBlockEndLabelsMinLines.Text := IntToStr(ASettings.BlockEndLabelsMinLines);
   FDimUnusedUses.Checked := ASettings.DimUnusedUses;
@@ -5003,6 +5012,7 @@ begin
   ASettings.InlayHints := FInlayHints.Checked;
   ASettings.InlayTypeHints := FInlayTypeHints.Checked;
   ASettings.InlayDefineHints := FInlayDefineHints.Checked;
+  ASettings.InlayCharHints := FInlayCharHints.Checked;
   ASettings.BlockEndLabels := FBlockEndLabels.Checked;
   ASettings.BlockEndLabelsMinLines := StrToIntDef(FBlockEndLabelsMinLines.Text, ASettings.BlockEndLabelsMinLines);
   ASettings.DimUnusedUses := FDimUnusedUses.Checked;

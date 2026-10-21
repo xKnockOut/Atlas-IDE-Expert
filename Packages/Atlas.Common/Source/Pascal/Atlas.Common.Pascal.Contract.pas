@@ -44,7 +44,8 @@ type
     Terminated: Boolean;
     /// <summary>Für Keyword: Wort in Kleinbuchstaben vergleichen, z. B. IsKeyword('begin').</summary>
     function IsKeyword(const AWord: string): Boolean;
-    /// <summary>Für Symbol: z. B. IsSymbol(':=').</summary>
+    /// <summary>Für Symbol: z. B. IsSymbol(':='). Die Ersatzklammern (. und .) gelten als [ und ] (#862).
+    /// </summary>
     function IsSymbol(const ASymbol: string): Boolean;
   end;
 
@@ -68,7 +69,8 @@ end;
 
 function TPascalToken.IsSymbol(const ASymbol: string): Boolean;
 begin
-  Result := (Kind = TPascalTokenKind.Symbol) and (Text = ASymbol);
+  Result := (Kind = TPascalTokenKind.Symbol) and ((Text = ASymbol) or
+    (ASymbol = '[') and (Text = '(.') or (ASymbol = ']') and (Text = '.)'));
 end;
 
 end.
