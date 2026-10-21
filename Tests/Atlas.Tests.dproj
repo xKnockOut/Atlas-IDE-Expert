@@ -765,6 +765,7 @@
         <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Editor\Atlas.Core.Editor.SelectionMatches.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Editor\Atlas.Core.Editor.BlockComment.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Editor\Atlas.Core.Editor.NewLine.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Editor\Atlas.Core.Editor.WrapSelection.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Problems\Atlas.Core.Problems.InlineHints.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Editor\Atlas.Core.Editor.LineTail.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\UI\Popup\Atlas.UI.Popup.Styled.pas"/>
@@ -775,6 +776,7 @@
         <DCCReference Include="IDE.Expert\Atlas.Core.Editor.SelectionMatches.Tests.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Editor.BlockComment.Tests.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Editor.NewLine.Tests.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.Core.Editor.WrapSelection.Tests.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Editor.Pairs.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Editor\Atlas.Core.Editor.Match.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Editor.Match.Tests.pas"/>
