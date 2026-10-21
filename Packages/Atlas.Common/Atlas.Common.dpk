@@ -240,6 +240,7 @@ contains
   Atlas.Common.Lsp.TestUnits in 'Source\Lsp\Atlas.Common.Lsp.TestUnits.pas',
   Atlas.Common.Lsp.UnitSearch in 'Source\Lsp\Atlas.Common.Lsp.UnitSearch.pas',
   Atlas.Common.Semantics.ControlFlow in 'Source\Semantics\Atlas.Common.Semantics.ControlFlow.pas',
+  Atlas.Common.Semantics.SystemIntrinsics in 'Source\Semantics\Atlas.Common.Semantics.SystemIntrinsics.pas',
   Atlas.Common.Semantics.NameResolver in 'Source\Semantics\Atlas.Common.Semantics.NameResolver.pas',
   Atlas.Common.Semantics.Attributes in 'Source\Semantics\Atlas.Common.Semantics.Attributes.pas',
   Atlas.Common.Lsp.Definition in 'Source\Lsp\Atlas.Common.Lsp.Definition.pas',

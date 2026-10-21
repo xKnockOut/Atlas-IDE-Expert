@@ -500,6 +500,8 @@
         <DCCReference Include="Source\Core\Notifications\Atlas.Core.Notifications.Build.pas"/>
         <DCCReference Include="Source\UI\Notifications\Atlas.UI.Notifications.Window.pas"/>
         <DCCReference Include="Source\IDE\Notifications\Atlas.IDE.Notifications.Service.pas"/>
+        <DCCReference Include="Source\Core\Dock\Atlas.Core.Dock.Plan.pas"/>
+        <DCCReference Include="Source\IDE\Foundation\Atlas.IDE.Foundation.DockWindow.pas"/>
         <BuildConfiguration Include="Base">
             <Key>Base</Key>
         </BuildConfiguration>

@@ -688,6 +688,10 @@
         <DCCReference Include="..\Application\Source\Shell\Shell.Commands.Build.pas"/>
         <DCCReference Include="..\Application\Source\Shell\Shell.Commands.Index.pas"/>
         <DCCReference Include="Application\Shell\Shell.Commands.Tests.pas"/>
+        <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.NestedOverloads.Tests.pas"/>
+        <DCCReference Include="Common\Semantics\Atlas.Common.Semantics.SystemIntrinsics.Tests.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Dock\Atlas.Core.Dock.Plan.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.Core.Dock.Plan.Tests.pas"/>
         <BuildConfiguration Include="Base">
             <Key>Base</Key>
         </BuildConfiguration>

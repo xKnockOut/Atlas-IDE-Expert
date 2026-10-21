@@ -134,6 +134,8 @@ begin
       WireFrame(AFrame);
       RefreshWindow('');
     end;
+  // Früh anmelden: Die IDE speichert das Fenster im Desktop und legt es beim Laden selbst an (#879).
+  TAtlasIdeBookmarksWindow.Prepare;
 end;
 
 class procedure TAtlasIdeBookmarks.Release;

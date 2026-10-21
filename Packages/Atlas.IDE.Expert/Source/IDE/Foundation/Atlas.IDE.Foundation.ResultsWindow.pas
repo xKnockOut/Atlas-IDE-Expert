@@ -47,6 +47,8 @@ type
     class function ExistingFrame: TAtlasResultsFrame; static;
     /// <summary>Fenstersymbol (#751) zum aktiven IDE-Thema.</summary>
     class procedure UpdateIcon; static;
+    /// <summary>Früh (Register): bei der IDE anmelden, damit der Desktop das Fenster speichert und wiederherstellt (#879).</summary>
+    class procedure Prepare; static;
     /// <summary>Beim Entladen: Fenster schließen und freigeben.</summary>
     class procedure Release; static;
   end;
@@ -64,7 +66,8 @@ uses
   Vcl.Graphics,
   Atlas.UI.Strings,
   Atlas.UI.Style.Symbol,
-  Atlas.IDE.Foundation.Symbol;
+  Atlas.IDE.Foundation.Symbol,
+  Atlas.IDE.Foundation.DockWindow;
 
 type
   TResultsDock = class(TInterfacedObject, INTACustomDockableForm)
@@ -85,17 +88,9 @@ type
     function EditAction(Action: TEditAction): Boolean;
   end;
 
-  /// <summary>Meldet, wenn die IDE Fenster oder Frame selbst freigibt (z. B. beim Beenden).</summary>
-  TWatch = class(TComponent)
-  protected
-    procedure Notification(AComponent: TComponent; Operation: TOperation); override;
-  end;
-
 var
-  Dock: INTACustomDockableForm;
-  Form: TCustomForm;
-  ResultsFrame: TAtlasResultsFrame;
-  Watch: TWatch;
+  // Verwaltet Form, Frame und Anmeldung bei der IDE (#879).
+  Host: TAtlasIdeDockWindow;
 
 { TResultsDock }
 
@@ -116,12 +111,15 @@ end;
 
 procedure TResultsDock.FrameCreated(AFrame: TCustomFrame);
 var
+  ResultsFrame: TAtlasResultsFrame;
   Theming: IOTAIDEThemingServices;
 begin
   if not (AFrame is TAtlasResultsFrame) then
     Exit;
+  if Host <> nil then
+    Host.FrameCreated(AFrame);
   ResultsFrame := TAtlasResultsFrame(AFrame);
-  ResultsFrame.FreeNotification(Watch);
+  TAtlasIdeResultsWindow.UpdateIcon;
   ResultsFrame.OnOpen :=
     procedure(const AFileName: string; ALine, ACharacter: Integer)
     begin
@@ -215,48 +213,24 @@ begin
   Result := False;
 end;
 
-{ TWatch }
-
-procedure TWatch.Notification(AComponent: TComponent; Operation: TOperation);
+procedure EnsureHost;
 begin
-  inherited;
-  if Operation <> opRemove then
-    Exit;
-  if AComponent = ResultsFrame then
-    ResultsFrame := nil;
-  if AComponent = Form then
-  begin
-    Form := nil;
-    ResultsFrame := nil;
-  end;
+  if Host = nil then
+    Host := TAtlasIdeDockWindow.Create(TResultsDock.Create, True);
 end;
 
 { TAtlasIdeResultsWindow }
 
 class function TAtlasIdeResultsWindow.Frame: TAtlasResultsFrame;
 var
-  Services: INTAServices;
+  Created: Boolean;
 begin
-  if Form = nil then
-  begin
-    if not Supports(BorlandIDEServices, INTAServices, Services) then
-      Exit(nil);
-    if Watch = nil then
-      Watch := TWatch.Create(nil);
-    Dock := TResultsDock.Create;
-    Form := Services.CreateDockableForm(Dock);
-    if Form <> nil then
-    begin
-      Form.FreeNotification(Watch);
-      UpdateIcon;
-    end;
-  end;
-  if Form <> nil then
-  begin
-    Form.Show;
-    Form.BringToFront;
-  end;
-  Result := ResultsFrame;
+  // Lebt die Form noch (X versteckt nur), wird sie samt Gastgebern gezeigt; sonst neu angelegt.
+  EnsureHost;
+  Host.Show(Created);
+  if Created then
+    UpdateIcon;
+  Result := ExistingFrame;
 end;
 
 class procedure TAtlasIdeResultsWindow.ShowEntries(const ATitle: string; const AEntries: TArray<TAtlasResultEntry>);
@@ -300,23 +274,28 @@ end;
 class function TAtlasIdeResultsWindow.ExistingFrame: TAtlasResultsFrame;
 begin
   Result := nil;
-  if Form <> nil then
-    Result := ResultsFrame;
+  if (Host <> nil) and (Host.Frame is TAtlasResultsFrame) then
+    Result := TAtlasResultsFrame(Host.Frame);
 end;
 
 class procedure TAtlasIdeResultsWindow.UpdateIcon;
 var
   Icon: TIcon;
 begin
-  if Form = nil then
+  if (Host = nil) or (Host.Form = nil) then
     Exit;
   Icon := TAtlasSymbolImages.Icon(TAtlasIdeSymbol.Current);
   try
     // Icon ist erst in TForm öffentlich.
-    TForm(Form).Icon.Assign(Icon);
+    TForm(Host.Form).Icon.Assign(Icon);
   finally
     Icon.Free;
   end;
+end;
+
+class procedure TAtlasIdeResultsWindow.Prepare;
+begin
+  EnsureHost;
 end;
 
 class procedure TAtlasIdeResultsWindow.Release;
@@ -328,10 +307,8 @@ begin
   OnChangeDiff := nil;
   OnNoteEdit := nil;
   OnNoteDelete := nil;
-  ResultsFrame := nil;
-  FreeAndNil(Form);
-  Dock := nil;
-  FreeAndNil(Watch);
+  // Meldet ab und gibt die Form nur frei, wenn die IDE sie nicht schon zerstört hat.
+  FreeAndNil(Host);
 end;
 
 end.

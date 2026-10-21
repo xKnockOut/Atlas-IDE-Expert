@@ -325,6 +325,8 @@ contains
   Atlas.IDE.Build.OpenBuild in 'Source\IDE\Build\Atlas.IDE.Build.OpenBuild.pas',
   Atlas.Core.Build.IdleGate in 'Source\Core\Build\Atlas.Core.Build.IdleGate.pas',
   Atlas.IDE.Build.IdleGate in 'Source\IDE\Build\Atlas.IDE.Build.IdleGate.pas',
+  Atlas.Core.Dock.Plan in 'Source\Core\Dock\Atlas.Core.Dock.Plan.pas',
+  Atlas.IDE.Foundation.DockWindow in 'Source\IDE\Foundation\Atlas.IDE.Foundation.DockWindow.pas',
   Atlas.Core.Welcome.Sections in 'Source\Core\Welcome\Atlas.Core.Welcome.Sections.pas',
   Atlas.Core.Welcome.Layout in 'Source\Core\Welcome\Atlas.Core.Welcome.Layout.pas',
   Atlas.Core.Welcome.Layouts in 'Source\Core\Welcome\Atlas.Core.Welcome.Layouts.pas',

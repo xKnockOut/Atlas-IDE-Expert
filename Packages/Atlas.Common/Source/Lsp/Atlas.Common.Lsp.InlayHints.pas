@@ -293,6 +293,9 @@ begin
       if Starts.Count = 0 then
         Continue;
       Help := TLspSignatureHelp.HelpAt(AResolver, AIndex, ATree, ATreeText, AFileName, Tokens[Open].EndPos, AReadText);
+      // Parameternamen der Compiler-Routinen (Assigned(P), Inc(X) ...) sagen nichts: keine Hinweise (#880).
+      if Help.Intrinsic then
+        Help.Signatures := nil;
       Chosen := -1;
       for Scan := 0 to High(Help.Signatures) do
         if Length(Help.Signatures[Scan].Parameters) >= Starts.Count then

@@ -102,6 +102,12 @@ type
     procedure OffersMissingInterfaceMethods;
     [Test]
     procedure OffersFormComponentsByNameAndType;
+    /// <summary>#882: Formular-Komponenten auch über Kürzel und Teilwort, mit dem getippten Wort als filterText.</summary>
+    [Test]
+    procedure OffersFormComponentsFuzzyWithFilterText;
+    /// <summary>#882: Anfang vor Kürzel vor Teilwort auch in der Punktzahl des Servers (Kürzen auf MaxItems).</summary>
+    [Test]
+    procedure MatchScoreRanksAbbreviationBeforeSubstring;
     [Test]
     procedure CastsSenderToAssignedComponents;
     [Test]
@@ -150,7 +156,9 @@ uses
   Atlas.Common.Index.SymbolIndex,
   Atlas.Common.Index.Extractor,
   Atlas.Common.Rules.Contract,
-  Atlas.Common.Editing.InterfaceStubs;
+  Atlas.Common.Editing.InterfaceStubs,
+  Atlas.Common.Lsp.FuzzyMatch,
+  Atlas.Common.Lsp.CompletionCollector;
 
 const
   HauptFile = 'C:\P\Haupt.pas';
@@ -1421,6 +1429,121 @@ begin
   Assert.AreEqual('btnSave* btnLoad*', Joined(Items));
   // Außerhalb der Methoden des Formulars nichts.
   Assert.IsFalse(Components('', False, Items));
+end;
+
+procedure TLspCompletionTests.OffersFormComponentsFuzzyWithFilterText;
+const
+  UnitSteuer =
+    'unit Steuer;'#13#10 +
+    'interface'#13#10 +
+    'type'#13#10 +
+    '  TForm = class'#13#10 +
+    '  end;'#13#10 +
+    '  TButton = class'#13#10 +
+    '  end;'#13#10 +
+    'implementation'#13#10 +
+    'end.';
+  FormText =
+    'object frmMain: TfrmMain'#13#10 +
+    '  object btnSave: TButton'#13#10 +
+    '  end'#13#10 +
+    '  object SaveButton: TButton'#13#10 +
+    '  end'#13#10 +
+    'end';
+  Source =
+    'unit Haupt;'#13#10 +
+    'interface'#13#10 +
+    'uses Steuer;'#13#10 +
+    'type'#13#10 +
+    '  TfrmMain = class(TForm)'#13#10 +
+    '    btnSave: TButton;'#13#10 +
+    '    SaveButton: TButton;'#13#10 +
+    '    procedure FormCreate(Sender: TObject);'#13#10 +
+    '  end;'#13#10 +
+    'implementation'#13#10 +
+    '{$R *.dfm}'#13#10 +
+    'procedure TfrmMain.FormCreate(Sender: TObject);'#13#10 +
+    'begin'#13#10 +
+    '  %s'#13#10 +
+    'end;'#13#10 +
+    'end.';
+
+  function Components(const ATyped: string): TArray<TCompletionItem>;
+  var
+    Text: string;
+    Tree: TSyntaxTree;
+    Resolver: TNameResolver;
+  begin
+    Text := Format(Source, [ATyped]);
+    Tree := TPascalParser.Parse(Text);
+    Resolver := TNameResolver.Create(FIndex);
+    try
+      TLspCompletion.ComponentItems(Resolver, Tree, Text, HauptFile, TTextPosition.Create(13, 2 + Length(ATyped)),
+        function(const AFileName: string; out AText: string): Boolean
+        begin
+          AText := FormText;
+          Result := SameText(ExtractFileExt(AFileName), '.dfm');
+        end, TCompletionMatching.Fuzzy, Result);
+    finally
+      Resolver.Free;
+      Tree.Free;
+    end;
+  end;
+
+  function Find(const AItems: TArray<TCompletionItem>; const AName: string; out AItem: TCompletionItem): Boolean;
+  var
+    Item: TCompletionItem;
+  begin
+    for Item in AItems do
+      if Item.Name = AName then
+      begin
+        AItem := Item;
+        Exit(True);
+      end;
+    AItem := Default(TCompletionItem);
+    Result := False;
+  end;
+
+var
+  Items: TArray<TCompletionItem>;
+  Item: TCompletionItem;
+begin
+  FIndex.AddUnit(TIndexExtractor.ExtractText(UnitSteuer, 'C:\P\Steuer.pas', nil));
+  // Kürzel über Wortanfänge: "SB" → SaveButton, "bs" → btnSave.
+  Items := Components('SB');
+  Assert.IsTrue(Find(Items, 'SaveButton', Item), 'SB → SaveButton');
+  Assert.IsFalse(Item.ByType);
+  Assert.AreEqual('SB', Item.FilterText);
+  Items := Components('bs');
+  Assert.IsTrue(Find(Items, 'btnSave', Item), 'bs → btnSave');
+  Assert.AreEqual('bs', Item.FilterText);
+  // Teilwort: "Button" mitten im Namen.
+  Items := Components('Button');
+  Assert.IsTrue(Find(Items, 'SaveButton', Item), 'Button → SaveButton');
+  Assert.AreEqual('Button', Item.FilterText);
+  // Passender Anfang braucht keinen filterText.
+  Items := Components('btn');
+  Assert.IsTrue(Find(Items, 'btnSave', Item));
+  Assert.AreEqual('', Item.FilterText);
+  Items := nil;
+  Item := Default(TCompletionItem);
+end;
+
+procedure TLspCompletionTests.MatchScoreRanksAbbreviationBeforeSubstring;
+var
+  Prefix, Abbreviation, Substring, WordSubstring: Integer;
+begin
+  Prefix := MatchScore('SbList', 'sb', TCompletionMatching.Fuzzy);
+  Abbreviation := MatchScore('SaveButton', 'sb', TCompletionMatching.Fuzzy);
+  Substring := MatchScore('Ausbau', 'sb', TCompletionMatching.Fuzzy);
+  WordSubstring := MatchScore('lstSbox', 'sb', TCompletionMatching.Fuzzy);
+  Assert.AreNotEqual(Integer(TFuzzyMatch.NoMatch), Abbreviation);
+  Assert.IsTrue(Prefix > Abbreviation, Format('Anfang %d vor Kürzel %d', [Prefix, Abbreviation]));
+  Assert.IsTrue(Abbreviation > Substring, Format('Kürzel %d vor Teilwort %d', [Abbreviation, Substring]));
+  Assert.IsTrue(Abbreviation > WordSubstring,
+    Format('Kürzel %d vor Teilwort am Wortanfang %d', [Abbreviation, WordSubstring]));
+  // Mit completion.matching = prefix bleibt es beim Anfang.
+  Assert.AreEqual(Integer(TFuzzyMatch.NoMatch), MatchScore('SaveButton', 'sb', TCompletionMatching.Prefix));
 end;
 
 procedure TLspCompletionTests.CastsSenderToAssignedComponents;

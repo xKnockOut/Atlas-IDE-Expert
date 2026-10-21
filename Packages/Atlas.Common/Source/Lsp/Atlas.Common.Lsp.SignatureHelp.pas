@@ -49,6 +49,8 @@ type
     Signatures: TArray<TSignature>;
     ActiveSignature: Integer;
     ActiveParameter: Integer;
+    /// <summary>Signaturen aus der eingebauten Liste von System (#880), ohne Quelltext.</summary>
+    Intrinsic: Boolean;
     function Found: Boolean;
   end;
 
@@ -98,6 +100,7 @@ uses
   Atlas.Common.Pascal.TreeCache,
   Atlas.Common.Index.Extractor,
   Atlas.Common.Pascal.XmlDoc,
+  Atlas.Common.Semantics.SystemIntrinsics,
   Atlas.Common.Lsp.Documentation,
   Atlas.Common.Lsp.Internals.Cancellation,
   Atlas.Text.Lines;
@@ -405,6 +408,35 @@ begin
   end;
 end;
 
+/// <summary>Erste Überladung mit genug Parametern für AActiveParameter.</summary>
+function ActiveSignatureOf(const ASignatures: TArray<TSignature>; AActiveParameter: Integer): Integer;
+var
+  Index: Integer;
+begin
+  Result := 0;
+  for Index := 0 to High(ASignatures) do
+    if Length(ASignatures[Index].Parameters) > AActiveParameter then
+      Exit(Index);
+end;
+
+/// <summary>Routinen der Unit System ohne Quelltext (#880): Signaturen aus der eingebauten Liste.</summary>
+function IntrinsicSignatures(const AName: string): TArray<TSignature>;
+var
+  Intrinsic: TSystemIntrinsic;
+  Signature: TSignature;
+begin
+  Result := nil;
+  for Intrinsic in TSystemIntrinsics.Find(AName) do
+    if Intrinsic.Kind = TIndexSymbolKind.Routine then
+    begin
+      Signature := TLspSignatureHelp.ParseSignature([Intrinsic.Declaration], 0, 0);
+      if Signature.Text = '' then
+        Continue;
+      Signature.Documentation := Intrinsic.Documentation;
+      Result := Result + [Signature];
+    end;
+end;
+
 class function TLspSignatureHelp.HelpAt(AResolver: TNameResolver; const AIndex: ISymbolIndex; ATree: TSyntaxTree;
   const ATreeText, AFileName: string; const APosition: TTextPosition;
   const AReadText: THoverReadText): TSignatureHelp;
@@ -425,13 +457,27 @@ var
   Key: string;
   Index: Integer;
   Reader: TDocReadText;
+  Nested: TResolvedSymbol;
+  IntrinsicName: string;
 begin
   Result := Default(TSignatureHelp);
   Site := CallSiteAt(ATree, APosition);
   if not Site.Found then
     Exit;
   Resolved := AResolver.Resolve(ATree, AFileName, Site.NamePosition);
-  if not (Resolved.Kind in [TResolvedKind.Symbol, TResolvedKind.Local]) or not (Resolved.SymbolKind in RoutineKinds) then
+  if not (Resolved.Kind in [TResolvedKind.Symbol, TResolvedKind.Local]) then
+  begin
+    // Unbekannt: vielleicht eine Routine von System ohne Quelltext (SetLength, Inc ...; #880).
+    if TSystemIntrinsics.NameAt(ATree, Site.NamePosition, IntrinsicName) then
+    begin
+      Result.Signatures := IntrinsicSignatures(IntrinsicName);
+      Result.Intrinsic := True;
+      Result.ActiveParameter := Site.ActiveParameter;
+      Result.ActiveSignature := ActiveSignatureOf(Result.Signatures, Site.ActiveParameter);
+    end;
+    Exit;
+  end;
+  if not (Resolved.SymbolKind in RoutineKinds) then
     Exit;
   if SameText(Resolved.FileName, AFileName) then
     Text := ATreeText
@@ -447,8 +493,12 @@ begin
     // Überladungen: gleicher Name im selben Typ bzw. auf Unit-Ebene derselben Unit.
     if Resolved.Kind = TResolvedKind.Local then
     begin
-      Starts.Add(Resolved.Range.StartPos);
-      StartSymbols.Add(Resolved);
+      // Verschachtelte Routinen (#881): alle Überladungen in der umgebenden Routine, vor und hinter dem Aufruf.
+      for Nested in AResolver.LocalOverloads(Resolved) do
+      begin
+        Starts.Add(Nested.Range.StartPos);
+        StartSymbols.Add(Nested);
+      end;
     end
     else
     begin
@@ -495,13 +545,7 @@ begin
   end;
   Result.ActiveParameter := Site.ActiveParameter;
   // Erste Überladung mit genug Parametern.
-  Result.ActiveSignature := 0;
-  for Index := 0 to High(Result.Signatures) do
-    if Length(Result.Signatures[Index].Parameters) > Site.ActiveParameter then
-    begin
-      Result.ActiveSignature := Index;
-      Break;
-    end;
+  Result.ActiveSignature := ActiveSignatureOf(Result.Signatures, Site.ActiveParameter);
 end;
 
 class function TLspSignatureHelp.ToJson(const AHelp: TSignatureHelp): TJSONValue;
