@@ -26,6 +26,8 @@ type
     [Test]
     procedure OffDisablesRule;
     [Test]
+    procedure GroupSwitchDisablesAllRulesOfGroup;
+    [Test]
     procedure ExcludeByGlobInRuleOptions;
     [Test]
     procedure ExcludeByUnitNameInRuleOptions;
@@ -274,6 +276,23 @@ procedure TRuleEngineTests.OffDisablesRule;
 begin
   Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TMarkerRule.Create, Source,
     '{ "rules": { "marker": "off" } }'))));
+end;
+
+procedure TRuleEngineTests.GroupSwitchDisablesAllRulesOfGroup;
+begin
+  // Hauptschalter der Gruppe (#909): empty-except gehört zu „Exceptions“.
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TMarkerRule.Create('empty-except'), Source,
+    '{ "rules": { "group:exceptions": "off" } }'))));
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TMarkerRule.Create('empty-except'), Source,
+    '{ "rules": { "empty-except": "error", "group:exceptions": "off" } }'))), 'auch einzeln eingestellte');
+  Assert.AreEqual(1, Integer(Length(TRuleAssert.Findings(TMarkerRule.Create('empty-except'), Source,
+    '{ "rules": { "group:threads": "off" } }'))), 'andere Gruppe');
+  Assert.AreEqual(1, Integer(Length(TRuleAssert.Findings(TMarkerRule.Create('empty-except'), Source,
+    '{ "rules": { "group:exceptions": "warning" } }'))), 'nur off schaltet ab');
+  // Regeln außerhalb des Katalogs haben keine Gruppe.
+  Assert.AreEqual(1, Integer(Length(TRuleAssert.Findings(TMarkerRule.Create, Source,
+    '{ "rules": { "group:exceptions": "off" } }'))));
+  Assert.IsTrue(TRuleEngine.GroupOff('EMPTY-EXCEPT', TServerSettings.Default) = False);
 end;
 
 procedure TRuleEngineTests.ExcludeByGlobInRuleOptions;

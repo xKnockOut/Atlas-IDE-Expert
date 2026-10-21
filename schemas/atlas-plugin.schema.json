@@ -249,6 +249,10 @@
     "welcome.customLayout": {
       "caption": "Freies Layout",
       "captionEn": "Custom layout"
+    },
+    "rules.window": {
+      "caption": "Prüffenster",
+      "captionEn": "Findings window"
     }
   },
   "type": "object",
@@ -1290,10 +1294,11 @@
     },
     "ProblemsList": {
       "type": "boolean",
-      "default": true,
+      "default": false,
       "x-key": "problems.list",
       "x-area": "editor",
-      "x-page": "Compiler"
+      "x-page": "Compiler",
+      "description": "Probleme zusätzlich im Meldungsfenster (Gruppe „Atlas-Probleme“) auflisten; seit dem Fenster „Atlas-Prüfung“ Vorgabe aus."
     },
     "ProblemsStatusCounter": {
       "type": "boolean",
@@ -1302,6 +1307,111 @@
       "x-area": "editor",
       "x-page": "Compiler",
       "x-issue": "#509"
+    },
+    "ProblemsWindow": {
+      "type": "boolean",
+      "default": true,
+      "description": "Andockbares Fenster „Atlas-Prüfung“ mit allen Befunden, laufend aktualisiert; aus = kein Menüeintrag, kein Fenster.",
+      "x-key": "problems.window",
+      "x-area": "rules",
+      "x-feature": "Problems",
+      "x-page": "Prüfregeln",
+      "x-parent": "problems.enabled",
+      "x-node": "rules.window",
+      "x-quickToggle": true,
+      "x-caption": "Prüffenster",
+      "x-captionEn": "Findings window",
+      "x-issue": "#909"
+    },
+    "ProblemsWindowScope": {
+      "type": "string",
+      "enum": [
+        "file",
+        "project",
+        "group"
+      ],
+      "default": "group",
+      "description": "Bereich des Fensters: aktuelle Datei, Projekt oder Projektgruppe.",
+      "x-key": "problems.window.scope",
+      "x-area": "rules",
+      "x-page": "Prüfregeln",
+      "x-issue": "#909"
+    },
+    "ProblemsWindowGroupBy": {
+      "type": "string",
+      "enum": [
+        "none",
+        "file",
+        "rule",
+        "category"
+      ],
+      "default": "file",
+      "description": "Gruppierung der Liste: keine, nach Datei, nach Regel oder nach Kategorie.",
+      "x-key": "problems.window.groupBy",
+      "x-area": "rules",
+      "x-page": "Prüfregeln",
+      "x-issue": "#909"
+    },
+    "ProblemsWindowColumns": {
+      "type": "string",
+      "default": "",
+      "description": "Sichtbare Spalten, Reihenfolge und Breite, z. B. \"kind:70,category,message:300,-rule\" (\"-\" = ausgeblendet; Icon, Art, Kategorie, Zeile und Stelle bleiben sichtbar); leer = alle.",
+      "x-key": "problems.window.columns",
+      "x-area": "rules",
+      "x-page": "Prüfregeln",
+      "x-control": "Spaltenkopf im Fenster (Ziehen, Breite, Kontextmenü)",
+      "x-issue": "#909"
+    },
+    "ProblemsWindowCompiler": {
+      "type": "boolean",
+      "default": false,
+      "description": "Compilermeldungen (Kategorie „Compiler“) im Fenster mit anzeigen.",
+      "x-key": "problems.window.compiler",
+      "x-area": "rules",
+      "x-page": "Prüfregeln",
+      "x-issue": "#909"
+    },
+    "ProblemsWindowFollowCursor": {
+      "type": "boolean",
+      "default": true,
+      "description": "Steht der Cursor auf einer Befundzeile, wird der Eintrag im Fenster markiert.",
+      "x-key": "problems.window.followCursor",
+      "x-area": "rules",
+      "x-page": "Prüfregeln",
+      "x-issue": "#909"
+    },
+    "ProblemsWindowKey": {
+      "type": "integer",
+      "default": 49232,
+      "description": "Tastenkürzel für das Fenster „Atlas-Prüfung“ (Vorgabe Strg+Alt+P).",
+      "x-key": "keys.problemsWindow",
+      "x-area": "keys",
+      "x-format": "shortcut",
+      "x-page": "Befehle",
+      "x-parent": "problems.window",
+      "x-node": "",
+      "x-issue": "#909"
+    },
+    "ProblemsLive": {
+      "type": "boolean",
+      "default": true,
+      "description": "Laufende Prüfung beim Tippen ohne Speichern; aus = die offene Datei wird nur beim Speichern geprüft (Fenster zeigt „Angehalten“).",
+      "x-key": "problems.live",
+      "x-area": "rules",
+      "x-page": "Prüfregeln",
+      "x-parent": "problems.enabled",
+      "x-node": "rules.window",
+      "x-issue": "#909"
+    },
+    "HoverProblemActions": {
+      "type": "boolean",
+      "default": true,
+      "description": "Aktionszeile im Befund-Hover: Schnellkorrektur (Alt+Enter), für diese Zeile unterdrücken, Regel einstellen.",
+      "x-key": "hover.problemActions",
+      "x-area": "editor",
+      "x-page": "Hints",
+      "x-parent": "editor.hoverTooltip",
+      "x-issue": "#909"
     },
     "InlineDiagnostics": {
       "type": "string",

@@ -69,6 +69,9 @@ type
     class function TryParseCategory(const AText: string; out ACategory: TRuleCategory): Boolean; static;
     /// <summary>Kennung der Gruppe in JSON, z. B. "find-bugs".</summary>
     class function GroupName(AGroup: TRuleGroup): string; static;
+    /// <summary>Schlüssel des Hauptschalters einer Gruppe in "rules" (#909): "group:find-bugs"; "off" schaltet alle
+    /// Regeln der Gruppe ab.</summary>
+    class function GroupKey(AGroup: TRuleGroup): string; static;
     class function TryParseGroup(const AText: string; out AGroup: TRuleGroup): Boolean; static;
     /// <summary>Gruppe einer Regel ohne Angabe: nach der Kategorie.</summary>
     class function GroupOfCategory(ACategory: TRuleCategory): TRuleGroup; static;
@@ -346,6 +349,11 @@ end;
 class function TRuleCatalog.GroupName(AGroup: TRuleGroup): string;
 begin
   Result := GroupNames[AGroup];
+end;
+
+class function TRuleCatalog.GroupKey(AGroup: TRuleGroup): string;
+begin
+  Result := 'group:' + GroupNames[AGroup];
 end;
 
 class function TRuleCatalog.TryParseGroup(const AText: string; out AGroup: TRuleGroup): Boolean;
