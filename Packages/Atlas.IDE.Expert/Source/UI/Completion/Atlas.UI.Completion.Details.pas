@@ -8,12 +8,13 @@
 //   3. Unit · Klasse, gedämpft
 //   4. Trennlinie
 //   5. bei deprecated "Veraltet: …" in Warnfarbe
-//   6. XMLDoc vollständig und formatiert (#654) wie im Hover-Tooltip:
-//      Beschreibung, Parameter (Name in Akzentfarbe), Typparameter, Rückgabe
-//      (→), Wert, Exceptions (!), Bemerkungen, Beispiel, Siehe auch. Ist das
+//   6. XMLDoc formatiert (#654, #770) wie im Hover-Tooltip: Beschreibung, dann
+//      unter Überschriften Parameter in der Reihenfolge der Signatur,
+//      Typparameter, Rückgabe, Wert, Ausnahmen, Hinweise, Beispiel, Siehe auch.
+//      Zugeklappt (hints.xmlDocExpand) nur die Beschreibung mit „Mehr anzeigen ▾“;
+//      der Klick klappt auf, „wie zuletzt“ gilt getrennt vom Tooltip. Ist das
 //      Panel höher als das Popup, scrollt nur die Doku mit dem Mausrad. Text
 //      lässt sich markieren; Verweise mit Strg+Klick und Links sind anklickbar.
-//      Kurzform (hints.xmlDocFull aus): Beschreibung vier, Bemerkungen drei Zeilen.
 // Bei Überladungen (#425) steht oben "Überladung ‹ 2 / 3 ›"; die Pfeile sind
 // klickbar. Leere Abschnitte entfallen. Ohne Details (z. B. Schlüsselwort) steht
 // ein gedämpfter Hinweis, damit das Popup beim Blättern nicht schmaler wird.
@@ -64,6 +65,8 @@ type
     /// <summary>Link der Doku unter (AX, AY) in Fensterkoordinaten; -1 ohne.</summary>
     function DocLinkAt(AX, AY: Integer): Integer;
     function ScrollDoc(ASteps: Integer): Boolean;
+    /// <summary>„Mehr/Weniger anzeigen“ (#770): klappt um und merkt den Zustand; True = aufgeklappt.</summary>
+    function ToggleDoc(ACanvas: TCanvas): Boolean;
     property Doc: TAtlasDocView read FDoc;
     property DocLeft: Integer read FDocLeft;
     property DocTop: Integer read FDocTop;
@@ -163,6 +166,14 @@ begin
   Result := FDoc.ScrollBy(ASteps * FDoc.WheelStep);
 end;
 
+function TAtlasDetailView.ToggleDoc(ACanvas: TCanvas): Boolean;
+begin
+  Result := FDoc.Toggle(ACanvas);
+  FDoc.ClearSelection;
+  FDoc.HotLink := -1;
+  TAtlasDocExpandState.Remember(TAtlasDocSurface.Details, Result);
+end;
+
 function TAtlasDetailView.Render(ACanvas: TCanvas; const AColors: TAtlasColors; AFont, AUIFont: TFont;
   const ABounds: TRect; APPI: Integer; ADraw: Boolean): Integer;
 var
@@ -170,6 +181,7 @@ var
   Text, Tag, Key: string;
   Line, X: Integer;
   Box, Rect_: TRect;
+  Expanded: Boolean;
 
   function Scale(AValue: Integer): Integer;
   begin
@@ -349,7 +361,13 @@ begin
     begin
       if FDocWidth <> Right - Left then
       begin
-        FDoc.Build(ACanvas, FDocData, Right - Left, AFont, AUIFont, APPI, FDetails.Display.Full, TAtlasStrings.DocLabels);
+        // Neue Details: Zustand nach Einstellung; nur andere Breite: Zustand bleibt.
+        if FDocWidth = 0 then
+          Expanded := TAtlasDocExpandState.Initial(FDetails.Display.Expand, TAtlasDocSurface.Details)
+        else
+          Expanded := FDoc.Expanded;
+        FDoc.Build(ACanvas, FDocData, Right - Left, AFont, AUIFont, APPI, TAtlasStrings.DocLabels,
+          TAtlasDocSignature.Parse(FDetails.Declaration), Expanded);
         FDocWidth := Right - Left;
       end;
       // Höher als erlaubt: nur die Doku scrollt, Kopf und Deklaration bleiben.

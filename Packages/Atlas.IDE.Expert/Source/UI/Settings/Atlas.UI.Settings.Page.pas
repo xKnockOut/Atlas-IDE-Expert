@@ -152,7 +152,7 @@ type
     FListScope: TAtlasChoiceBox;
     FPreview: TCheckBox;
     FHoverTooltip: TCheckBox;
-    FXmlDocFull: TCheckBox;
+    FXmlDocExpand: TAtlasChoiceBox;
     FXmlDocMaxLines: TEdit;
     FHangThreshold: TEdit;
     FHangHint: TCheckBox;
@@ -1007,6 +1007,7 @@ implementation
 uses
   System.Math,
   System.StrUtils,
+  Atlas.Core.Documentation.Contract,
   Atlas.Core.Problems.InlineHints,
   Atlas.Core.Product.Version,
   Atlas.Core.Updates.Check,
@@ -1339,8 +1340,11 @@ begin
 
   AddSheet(TAtlasTextId.SettingsTabEditor);
   FHoverTooltip := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsHover));
-  // XMLDoc in Tooltip und Detailpanel (#654); gespeichert in settings.json (hints.*, #227).
-  FXmlDocFull := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsXmlDocFull));
+  // XMLDoc in Tooltip und Detailpanel (#654, #770): zu- oder aufgeklappt beim Öffnen; gespeichert in
+  // settings.json (hints.*, #227).
+  FXmlDocExpand := AddChoice(TAtlasStrings.Text(TAtlasTextId.SettingsXmlDocExpand),
+    [TAtlasStrings.Text(TAtlasTextId.SettingsXmlDocCollapsed), TAtlasStrings.Text(TAtlasTextId.SettingsXmlDocLast),
+    TAtlasStrings.Text(TAtlasTextId.SettingsXmlDocExpanded)]);
   FXmlDocMaxLines := AddNumber(TAtlasStrings.Text(TAtlasTextId.SettingsXmlDocMaxLines));
   FPairColors := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsPairs));
   FPairGuides := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsPairGuides));
@@ -2475,7 +2479,7 @@ begin
   FMarks.Bind(FImportIdeTemplates, ['ImportIdeTemplates']);
   FMarks.Bind(FTeamFile, ['TeamFile']);
   FMarks.Bind(FHoverTooltip, ['HoverTooltip']);
-  FMarks.Bind(FXmlDocFull, ['XmlDocFull']);
+  FMarks.Bind(FXmlDocExpand, ['XmlDocExpand']);
   FMarks.Bind(FXmlDocMaxLines, ['XmlDocMaxLines']);
   FMarks.Bind(FHangThreshold, ['HangThresholdMs']);
   FMarks.Bind(FProviderTimeLimit, ['ProviderTimeLimitMs']);
@@ -4396,7 +4400,7 @@ begin
   FTeamFile.Checked := ASettings.TeamFile;
   RefreshTeamFile;
   FHoverTooltip.Checked := ASettings.HoverTooltip;
-  FXmlDocFull.Checked := ASettings.XmlDocFull;
+  FXmlDocExpand.Choice := Ord(TAtlasDocDisplay.ExpandOf(ASettings.XmlDocExpand));
   FXmlDocMaxLines.Text := IntToStr(ASettings.XmlDocMaxLines);
   FHangThreshold.Text := IntToStr(ASettings.HangThresholdMs);
   FProviderTimeLimit.Text := IntToStr(ASettings.ProviderTimeLimitMs);
@@ -4767,7 +4771,7 @@ begin
   ASettings.ImportIdeTemplates := FImportIdeTemplates.Checked;
   ASettings.TeamFile := FTeamFile.Checked;
   ASettings.HoverTooltip := FHoverTooltip.Checked;
-  ASettings.XmlDocFull := FXmlDocFull.Checked;
+  ASettings.XmlDocExpand := TAtlasDocDisplay.ExpandName(TAtlasDocExpand(EnsureRange(FXmlDocExpand.Choice, 0, 2)));
   ASettings.XmlDocMaxLines := StrToIntDef(FXmlDocMaxLines.Text, ASettings.XmlDocMaxLines);
   ASettings.HangThresholdMs := StrToIntDef(FHangThreshold.Text, ASettings.HangThresholdMs);
   ASettings.ProviderTimeLimitMs := StrToIntDef(FProviderTimeLimit.Text, ASettings.ProviderTimeLimitMs);

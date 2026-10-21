@@ -483,27 +483,47 @@ end;
 
 procedure TAtlasPluginSettingsTests.XmlDocOptionsGoToGlobalFile;
 var
-  Store: IAtlasSettingsStore;
+  Store, Inner: IAtlasSettingsStore;
   Routed: TAtlasRoutedSettingsStore;
   Settings, Loaded: TAtlasPluginSettings;
 begin
-  // #654: XmlDocFull/XmlDocMaxLines als hints in settings.json.
+  // #654, #770: XmlDocExpand/XmlDocMaxLines als hints in settings.json.
   Settings := TAtlasPluginSettings.Defaults;
-  Assert.IsTrue(Settings.XmlDocFull);
+  Assert.AreEqual('last', Settings.XmlDocExpand);
   Assert.AreEqual(0, Settings.XmlDocMaxLines);
   Routed := TAtlasRoutedSettingsStore.Create(TMemoryStore.Create, '');
   Store := Routed;
-  Settings.XmlDocFull := False;
+  Settings.XmlDocExpand := 'collapsed';
   Settings.XmlDocMaxLines := 12;
   Settings.Save(Store);
-  Assert.AreEqual(0, Store.ReadInteger('XmlDocFull', 1));
+  Assert.AreEqual('collapsed', Store.ReadString('XmlDocExpand', ''));
   Assert.AreEqual(12, Store.ReadInteger('XmlDocMaxLines', 0));
-  Assert.Contains(Routed.Text, '"xmlDocFull": false');
+  Assert.Contains(Routed.Text, '"xmlDocExpand": "collapsed"');
   Assert.Contains(Routed.Text, '"xmlDocMaxLines": 12');
+  Assert.IsFalse(Routed.Text.Contains('xmlDocFull'), Routed.Text);
   Loaded := Default(TAtlasPluginSettings);
   Loaded.Load(Store);
-  Assert.IsFalse(Loaded.XmlDocFull);
+  Assert.AreEqual('collapsed', Loaded.XmlDocExpand);
   Assert.AreEqual(12, Loaded.XmlDocMaxLines);
+  // Unbekannter Wert: Vorgabe.
+  Store.WriteString('XmlDocExpand', 'halb');
+  Loaded.Load(Store);
+  Assert.AreEqual('last', Loaded.XmlDocExpand);
+  // Vor #770: xmlDocFull aus settings.json bzw. der Registry wird übernommen, aber nie geschrieben.
+  Routed := TAtlasRoutedSettingsStore.Create(TMemoryStore.Create, '{"hints": {"xmlDocFull": true}}');
+  Store := Routed;
+  Loaded.Load(Store);
+  Assert.AreEqual('expanded', Loaded.XmlDocExpand);
+  Store.WriteInteger('XmlDocFull', 0);
+  Assert.Contains(Routed.Text, '"xmlDocFull": true');
+  Inner := TMemoryStore.Create;
+  Inner.WriteInteger('XmlDocFull', 0);
+  Routed := TAtlasRoutedSettingsStore.Create(Inner, '');
+  Store := Routed;
+  Routed.Migrate;
+  Loaded.Load(Store);
+  Assert.AreEqual('collapsed', Loaded.XmlDocExpand);
+  Assert.IsFalse(Routed.Text.Contains('xmlDocFull'), Routed.Text);
   // Grenzen 0..50.
   Store.WriteInteger('XmlDocMaxLines', 99);
   Loaded.Load(Store);

@@ -28,6 +28,11 @@ type
     Path: string;
     /// <summary>Wahrheitswert (true/false); sonst ganze Zahl.</summary>
     Flag: Boolean;
+    /// <summary>Zeichenkette (ReadString/WriteString), z. B. "XmlDocExpand".</summary>
+    Text: Boolean;
+    /// <summary>Früherer Schlüssel: nur noch gelesen (Übernahme in den neuen), nie geschrieben oder migriert.
+    /// </summary>
+    Legacy: Boolean;
   end;
 
   TAtlasSettingsScopes = class
@@ -69,9 +74,22 @@ uses
 
 function Setting(const AName, APath: string; AFlag: Boolean): TAtlasRoutedSetting;
 begin
+  Result := Default(TAtlasRoutedSetting);
   Result.Name := AName;
   Result.Path := APath;
   Result.Flag := AFlag;
+end;
+
+function TextSetting(const AName, APath: string): TAtlasRoutedSetting;
+begin
+  Result := Setting(AName, APath, False);
+  Result.Text := True;
+end;
+
+function LegacySetting(const AName, APath: string; AFlag: Boolean): TAtlasRoutedSetting;
+begin
+  Result := Setting(AName, APath, AFlag);
+  Result.Legacy := True;
 end;
 
 { TAtlasSettingsScopes }
@@ -84,7 +102,9 @@ begin
     Setting('IndexLibraryPaths', 'index.libraryPaths', True),
     Setting('IndexUsages', 'index.usages', True),
     Setting('MemoryBudgetMb', 'memoryBudgetMb', False),
-    Setting('XmlDocFull', 'hints.xmlDocFull', True),
+    TextSetting('XmlDocExpand', 'hints.xmlDocExpand'),
+    // Vor #770: XmlDocFull liest TAtlasPluginSettings.Load nur noch, um XmlDocExpand zu übernehmen.
+    LegacySetting('XmlDocFull', 'hints.xmlDocFull', True),
     Setting('XmlDocMaxLines', 'hints.xmlDocMaxLines', False),
     Setting('SlashCommands', 'slashCommands.enabled', True),
     // Das Plugin zeigt nur Parameternamen; die übrigen Inlay-Hints betreffen es nicht.
@@ -182,6 +202,8 @@ begin
     FInner.WriteInteger(AName, AValue);
     Exit;
   end;
+  if Routed.Legacy then
+    Exit;
   if not Routed.Flag then
     Json := IntToStr(AValue)
   else if AValue <> 0 then
@@ -193,13 +215,42 @@ begin
 end;
 
 function TAtlasRoutedSettingsStore.ReadString(const AName, ADefault: string): string;
+var
+  Routed: TAtlasRoutedSetting;
+  Value: TJSONValue;
+  Json: string;
 begin
-  Result := FInner.ReadString(AName, ADefault);
+  if not TAtlasSettingsScopes.TryRouted(AName, Routed) or not Routed.Text then
+    Exit(FInner.ReadString(AName, ADefault));
+  Json := JsonValue(Routed.Path);
+  if Json = '' then
+    // Noch nicht in settings.json: alter Wert aus der Registry, sonst die Vorgabe.
+    Exit(FInner.ReadString(AName, ADefault));
+  Result := ADefault;
+  Value := TJSONObject.ParseJSONValue(Json);
+  try
+    if Value is TJSONString then
+      Result := TJSONString(Value).Value;
+  finally
+    Value.Free;
+  end;
 end;
 
 procedure TAtlasRoutedSettingsStore.WriteString(const AName, AValue: string);
+var
+  Routed: TAtlasRoutedSetting;
+  Json: string;
 begin
-  FInner.WriteString(AName, AValue);
+  if not TAtlasSettingsScopes.TryRouted(AName, Routed) or not Routed.Text or not Writable then
+  begin
+    FInner.WriteString(AName, AValue);
+    Exit;
+  end;
+  if Routed.Legacy then
+    Exit;
+  Json := TAtlasJsonText.Quote(AValue);
+  if JsonValue(Routed.Path) <> Json then
+    FText := TAtlasJsonText.SetValue(FText, Routed.Path, Json);
 end;
 
 function TAtlasRoutedSettingsStore.Migrate: Boolean;
@@ -208,17 +259,25 @@ const
 var
   Routed: TAtlasRoutedSetting;
   Value: Integer;
+  Text: string;
   Before: string;
 begin
   Before := FText;
   if Writable then
     for Routed in TAtlasSettingsScopes.Routed do
-      if JsonValue(Routed.Path) = '' then
-      begin
-        Value := FInner.ReadInteger(Routed.Name, Missing);
-        if Value <> Missing then
-          WriteInteger(Routed.Name, Value);
-      end;
+      if not Routed.Legacy and (JsonValue(Routed.Path) = '') then
+        if Routed.Text then
+        begin
+          Text := FInner.ReadString(Routed.Name, '');
+          if Text <> '' then
+            WriteString(Routed.Name, Text);
+        end
+        else
+        begin
+          Value := FInner.ReadInteger(Routed.Name, Missing);
+          if Value <> Missing then
+            WriteInteger(Routed.Name, Value);
+        end;
   Result := FText <> Before;
 end;
 

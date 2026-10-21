@@ -914,26 +914,35 @@ var
   Issues: TArray<TConfigurationIssue>;
 begin
   Settings := Parse('{}', Issues);
-  Assert.IsTrue(Settings.Hints.XmlDocFull);
+  Assert.AreEqual(THintSettings.ExpandLast, Settings.Hints.XmlDocExpand);
   Assert.AreEqual(0, Settings.Hints.XmlDocMaxLines);
-  Settings := Parse('{"hints": {"xmlDocFull": false, "xmlDocMaxLines": 10}}', Issues);
-  Assert.IsFalse(Settings.Hints.XmlDocFull);
+  Settings := Parse('{"hints": {"xmlDocExpand": "collapsed", "xmlDocMaxLines": 10}}', Issues);
+  Assert.AreEqual(THintSettings.ExpandCollapsed, Settings.Hints.XmlDocExpand);
   Assert.AreEqual(10, Settings.Hints.XmlDocMaxLines);
   Assert.AreEqual(0, Integer(Length(Issues)));
   // Außerhalb 0–50 bzw. falsch getypt (Fehler), unbekannter Schlüssel (Warnung); Vorgaben bleiben.
-  Settings := Parse('{"hints": {"xmlDocMaxLines": 51, "xmlDocFull": "nein", "x": 1}}', Issues);
+  Settings := Parse('{"hints": {"xmlDocMaxLines": 51, "xmlDocExpand": "auf", "x": 1}}', Issues);
   Assert.AreEqual(0, Settings.Hints.XmlDocMaxLines);
-  Assert.IsTrue(Settings.Hints.XmlDocFull);
+  Assert.AreEqual(THintSettings.ExpandLast, Settings.Hints.XmlDocExpand);
   Assert.AreEqual(3, Integer(Length(Issues)));
   Assert.IsTrue(Issues[0].IsError);
   Assert.IsTrue(Issues[1].IsError);
   Assert.IsFalse(Issues[2].IsError);
   Settings := Parse('{"hints": {"xmlDocMaxLines": -1}}', Issues);
   Assert.AreEqual(1, Integer(Length(Issues)));
+  // Veraltetes xmlDocFull (#770): true = expanded, false = collapsed, mit Warnung; xmlDocExpand gewinnt.
+  Settings := Parse('{"hints": {"xmlDocFull": false}}', Issues);
+  Assert.AreEqual(THintSettings.ExpandCollapsed, Settings.Hints.XmlDocExpand);
+  Assert.AreEqual(1, Integer(Length(Issues)));
+  Assert.IsFalse(Issues[0].IsError);
+  Settings := Parse('{"hints": {"xmlDocFull": true}}', Issues);
+  Assert.AreEqual(THintSettings.ExpandExpanded, Settings.Hints.XmlDocExpand);
+  Settings := Parse('{"hints": {"xmlDocExpand": "last", "xmlDocFull": false}}', Issues);
+  Assert.AreEqual(THintSettings.ExpandLast, Settings.Hints.XmlDocExpand);
   // Die Datei ersetzt den Block aus dem Editor (IDE-Plugin).
-  Settings := TConfigurationParser.ParseLayered('{"hints": {"xmlDocFull": false}}',
+  Settings := TConfigurationParser.ParseLayered('{"hints": {"xmlDocExpand": "collapsed"}}',
     '{"hints": {"xmlDocMaxLines": 5}}', Issues);
-  Assert.IsTrue(Settings.Hints.XmlDocFull);
+  Assert.AreEqual(THintSettings.ExpandLast, Settings.Hints.XmlDocExpand);
   Assert.AreEqual(5, Settings.Hints.XmlDocMaxLines);
 end;
 

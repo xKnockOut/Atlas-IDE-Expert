@@ -391,7 +391,14 @@ procedure TAtlasSettingsCatalog.AddServerEntry(const AKey: string; ASchema, APar
 var
   Entry: TAtlasCatalogEntry;
   Plugin, Index: Integer;
+  Former: string;
 begin
+  // Früherer Schlüssel einer Plugin-Einstellung (z. B. hints.xmlDocFull, #770): Ältere Dateien übernimmt der
+  // neue Eintrag.
+  for Index := 0 to FEntries.Count - 1 do
+    for Former in FEntries[Index].FormerKeys do
+      if SameText(Former, AKey) then
+        Exit;
   // Pfad mit Plugin-Einstellung (umgeleitet, x-plugin): nur einmal, als Plugin-Einstellung; x-experimental
   // gilt an beiden Stellen.
   Plugin := IndexOfKey(AKey);

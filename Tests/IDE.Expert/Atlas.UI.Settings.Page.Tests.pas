@@ -603,7 +603,7 @@ begin
   Settings.VisibleRows := 12;
   Settings.Preview := True;
   Settings.HoverTooltip := False;
-  Settings.XmlDocFull := False;
+  Settings.XmlDocExpand := 'collapsed';
   Settings.XmlDocMaxLines := 7;
   Settings.ListWidth := 333;
   Settings.ActionsKey := 0;
@@ -634,7 +634,7 @@ begin
   Assert.AreEqual(12, Saved.VisibleRows);
   Assert.IsTrue(Saved.Preview);
   Assert.IsFalse(Saved.HoverTooltip);
-  Assert.IsFalse(Saved.XmlDocFull);
+  Assert.AreEqual('collapsed', Saved.XmlDocExpand);
   Assert.AreEqual(7, Saved.XmlDocMaxLines);
   Assert.AreEqual(333, Saved.ListWidth);
   Assert.AreEqual(0, Saved.ActionsKey);
