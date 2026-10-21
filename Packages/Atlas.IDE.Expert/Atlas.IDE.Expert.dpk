@@ -282,6 +282,8 @@ contains
   Atlas.Core.Tracker.CommitHook in 'Source\Core\Tracker\Atlas.Core.Tracker.CommitHook.pas',
   Atlas.IDE.Foundation.TeamFile in 'Source\IDE\Foundation\Atlas.IDE.Foundation.TeamFile.pas',
   Atlas.Core.Diagnostics.FeatureTable in 'Source\Core\Diagnostics\Atlas.Core.Diagnostics.FeatureTable.pas',
+  Atlas.Core.Diagnostics.Teardown in 'Source\Core\Diagnostics\Atlas.Core.Diagnostics.Teardown.pas',
+  Atlas.Core.Diagnostics.ThreadList in 'Source\Core\Diagnostics\Atlas.Core.Diagnostics.ThreadList.pas',
   Atlas.Core.Diagnostics.SafeMode in 'Source\Core\Diagnostics\Atlas.Core.Diagnostics.SafeMode.pas',
   Atlas.UI.Diagnostics.SafeModeNotice in 'Source\UI\Diagnostics\Atlas.UI.Diagnostics.SafeModeNotice.pas',
   Atlas.IDE.Diagnostics.SafeMode in 'Source\IDE\Diagnostics\Atlas.IDE.Diagnostics.SafeMode.pas',

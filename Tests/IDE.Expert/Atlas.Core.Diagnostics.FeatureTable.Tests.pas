@@ -23,6 +23,8 @@ type
     procedure LaterWantedStartsOnSecondCall;
     [Test]
     procedure WantedSeesLevel;
+    [Test]
+    procedure StopAllContinuesAfterFailure;
   end;
 
 implementation
@@ -207,6 +209,42 @@ begin
     Table.StartWanted(TAtlasSafeLevel.Minimal);
     Assert.IsTrue(Seen = TAtlasSafeLevel.Minimal);
     Assert.AreEqual('', Probe.Log);
+  finally
+    Probe.Free;
+    Table.Free;
+  end;
+end;
+
+procedure TFeatureTableTests.StopAllContinuesAfterFailure;
+var
+  Table: TAtlasFeatureTable;
+  Probe: TProbe;
+  Failures: TArray<string>;
+begin
+  // #886: Ein Stop mit Ausnahme (Entladen mitten im Gruppen-Build) darf die übrigen Teile nicht stehen lassen.
+  Table := TAtlasFeatureTable.Create;
+  Probe := TProbe.Create;
+  try
+    Probe.AddTo(Table, 0, TAtlasSafeLevel.Minimal);
+    Table.Add('Kaputt', TAtlasSafeLevel.Minimal,
+      function: Boolean
+      begin
+        Result := True;
+      end,
+      procedure
+      begin
+      end,
+      procedure
+      begin
+        raise EArgumentException.Create('Stop misslungen');
+      end);
+    Probe.AddTo(Table, 2, TAtlasSafeLevel.Minimal);
+    Table.StartWanted(TAtlasSafeLevel.Normal);
+    Probe.Log := '';
+    Failures := Table.StopAll;
+    Assert.AreEqual('-C-A', Probe.Log);
+    Assert.AreEqual(1, Integer(Length(Failures)));
+    Assert.AreEqual('Kaputt: EArgumentException', Failures[0]);
   finally
     Probe.Free;
     Table.Free;
