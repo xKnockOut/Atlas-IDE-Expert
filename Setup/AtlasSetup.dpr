@@ -13,6 +13,7 @@ uses
   Setup.Core.Contract in 'Source\Core\Setup.Core.Contract.pas',
   Setup.Core.Ides in 'Source\Core\Setup.Core.Ides.pas',
   Setup.Core.Installer in 'Source\Core\Setup.Core.Installer.pas',
+  Setup.Core.License in 'Source\Core\Setup.Core.License.pas',
   Setup.Adapters.WindowsSystem in 'Source\Adapters\Setup.Adapters.WindowsSystem.pas',
   Setup.Shell.Texts in 'Source\Shell\Setup.Shell.Texts.pas',
   Setup.Shell.MainForm in 'Source\Shell\Setup.Shell.MainForm.pas';

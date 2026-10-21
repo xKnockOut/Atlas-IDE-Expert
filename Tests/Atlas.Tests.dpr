@@ -512,6 +512,7 @@ uses
   Setup.Core.Contract in '..\Setup\Source\Core\Setup.Core.Contract.pas',
   Setup.Core.Ides in '..\Setup\Source\Core\Setup.Core.Ides.pas',
   Setup.Core.Installer in '..\Setup\Source\Core\Setup.Core.Installer.pas',
+  Setup.Core.License in '..\Setup\Source\Core\Setup.Core.License.pas',
   Setup.Shell.Texts in '..\Setup\Source\Shell\Setup.Shell.Texts.pas',
   Setup.Core.Installer.Tests in 'Setup\Setup.Core.Installer.Tests.pas',
   Atlas.Core.Commands.Palette in '..\Packages\Atlas.IDE.Expert\Source\Core\Commands\Atlas.Core.Commands.Palette.pas',

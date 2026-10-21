@@ -3,7 +3,7 @@
 // Installer (#495): IDEs finden, Atlas installieren, aktualisieren und
 // entfernen. Nur über ISetupSystem, ohne Windows und VCL.
 // Ablage (je Benutzer, ohne Administratorrechte):
-//   <InstallDir>\AtlasServer.exe, AtlasSetup.exe, LICENSE, THIRD-PARTY-NOTICES.md,
+//   <InstallDir>\AtlasServer.exe, AtlasSetup.exe, LICENSE, EULA.txt, THIRD-PARTY-NOTICES.md,
 //     whatsnew.json (#756), tips.json (#757)
 //   <InstallDir>\Beispiele\… (#756, #757), <InstallDir>\Tipps\….png (#757),
 //   <InstallDir>\Doku\….html (#766, lokale Doku für „Atlas-Doku“)
@@ -64,9 +64,9 @@ type
     DisplayName = 'Atlas IDE Expert';
     Publisher = 'Atlas';
     /// <summary>Dateien neben den BPLs; whatsnew.json für die Karte „Neu in Atlas“ (#756), tips.json für die
-    /// Karte „Atlas entdecken“ und die Tastenkürzel-Tipps (#757).</summary>
-    CommonFiles: array[0..5] of string = (ServerExe, SetupExe, 'LICENSE', 'THIRD-PARTY-NOTICES.md', 'whatsnew.json',
-      'tips.json');
+    /// Karte „Atlas entdecken“ und die Tastenkürzel-Tipps (#757), EULA.txt für die Zustimmung im Installer.</summary>
+    CommonFiles: array[0..6] of string = (ServerExe, SetupExe, 'LICENSE', 'EULA.txt', 'THIRD-PARTY-NOTICES.md',
+      'whatsnew.json', 'tips.json');
     /// <summary>Beispieldateien für „Ausprobieren“ der Karten „Neu in Atlas“ (#756) und „Atlas entdecken“ (#757);
     /// ersetzt bei jeder Installation den ganzen Ordner.</summary>
     SamplesFolder = 'Beispiele';
