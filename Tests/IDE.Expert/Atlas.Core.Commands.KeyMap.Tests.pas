@@ -391,8 +391,9 @@ begin
   Assert.AreEqual(Ord(TAtlasKeyStatus.AtlasWins), Ord(EntryOf(Entries, TAtlasKeyFunction.CompleteStatement).Status(
     TAtlasKeyConflicts.OwnerOf($600D, TAtlasKeyConflicts.KnownIdeKeys))));
   Assert.AreEqual('Atlas.CompleteStatement', TAtlasKeyMap.CommandIdOf(TAtlasKeyFunction.CompleteStatement));
-  // Formatieren (#43): eigene Taste, weil Strg+D die Mehrfachmarken haben.
-  Assert.AreEqual($E046, Integer(EntryOf(Entries, TAtlasKeyFunction.FormatCode).Key));
+  // Formatieren (#43): eigene Taste, weil Strg+D die Mehrfachmarken und Strg+Umschalt+Alt+F die Suche in der
+  // Methode (#877) haben.
+  Assert.AreEqual($E04C, Integer(EntryOf(Entries, TAtlasKeyFunction.FormatCode).Key));
   Assert.AreEqual('Atlas.FormatCode', TAtlasKeyMap.CommandIdOf(TAtlasKeyFunction.FormatCode));
   Assert.AreEqual(Ord(TAtlasKeySource.Binding), Ord(TAtlasKeyMap.SourceOf(TAtlasKeyFunction.TestUnit)));
   Settings.EditorKeysPriority := True;
