@@ -673,4 +673,4 @@ Jeder Branch baut auf dem vorigen auf. Nichts davon ist gebaut, getestet oder in
 - Hinweise:
   - Delphi für Marco nur über `explorer.exe bds.exe` starten; aus Werkzeug-Shells gestartete IDEs laufen teils in einer anderen Dateisicht oder werden mit der Shell beendet.
   - Andere Sitzungen starten über Claude-Compile eigene IDEs ohne Parameter; hängende davon beim Beenden = Beyond-Compare-Absturz (#1091).
-- Offen: Atlas schreibt seit 21.10. 21:29 nicht mehr in `%LOCALAPPDATA%\Atlas\Logstlas.log` und aktualisiert `Session\safemode.json` nicht (Sitzungsdatei wird geschrieben). Ursache unbekannt; Datei nicht gesperrt.
+- Offen: Atlas schreibt seit 21.10. 21:29 nicht mehr in `%LOCALAPPDATA%\Atlas\Logs\atlas.log` und aktualisiert `Session\safemode.json` nicht (Sitzungsdatei wird geschrieben). Ursache unbekannt; Datei nicht gesperrt.
