@@ -40,6 +40,8 @@ type
     procedure RestoresAtTheOldPlace;
     [Test]
     procedure FormFreeWhileHidden;
+    [Test]
+    procedure HandlesExistAfterEachMove;
   end;
 
 implementation
@@ -129,12 +131,13 @@ begin
   EditorTop := FEditor.Top;
   FHider.Apply(FForm, True);
   Assert.IsTrue(TAtlasNavigationToolbar.IsHidden(FToolbar));
-  Assert.IsFalse(FToolbar.Showing);
+  Assert.AreEqual(0, FToolbar.Parent.Height, 'Halter ohne Höhe');
   Assert.AreEqual(1, FHider.HiddenCount);
   Assert.AreEqual(EditorTop - 26, FEditor.Top, 'Editor rückt nach oben');
   // Die IDE setzt Visible bei neuem Reiter wieder.
   FToolbar.Visible := True;
-  Assert.IsFalse(FToolbar.Showing, 'bleibt verborgen');
+  Assert.AreEqual(0, FToolbar.Parent.Height, 'bleibt verborgen');
+  Assert.AreEqual(EditorTop - 26, FEditor.Top, 'Editor bleibt oben');
   // Zweimal ausblenden ändert nichts.
   FHider.Apply(FForm, True);
   Assert.AreEqual(1, FHider.HiddenCount);
@@ -169,6 +172,26 @@ begin
   FEditor := nil;
   Assert.AreEqual(0, FHider.HiddenCount);
   FHider.RestoreAll;
+end;
+
+procedure TAtlasNavigationToolbarTests.HandlesExistAfterEachMove;
+var
+  Child: TPanel;
+begin
+  // Die Fenster entstehen beim Umhängen im aufrufenden Thread, nicht erst beim nächsten Zugriff
+  // (sonst gehörten sie dem Parser-Thread der IDE und die IDE hinge).
+  Child := TPanel.Create(FForm);
+  Child.Parent := FToolbar;
+  FHider.Apply(FForm, True);
+  Assert.IsTrue(FToolbar.Parent.HandleAllocated, 'Halter');
+  Assert.IsTrue(FToolbar.HandleAllocated, 'Leiste im Halter');
+  Assert.IsTrue(Child.HandleAllocated, 'Kind der Leiste');
+  FHider.Apply(FForm, False);
+  Assert.IsTrue(FToolbar.HandleAllocated, 'Leiste zurück');
+  Assert.IsTrue(Child.HandleAllocated, 'Kind zurück');
+  FHider.Apply(FForm, True);
+  FHider.RestoreAll;
+  Assert.IsTrue(FToolbar.HandleAllocated, 'nach RestoreAll');
 end;
 
 initialization

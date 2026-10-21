@@ -444,7 +444,9 @@ begin
   if Origin.Y + Height_ > Area.Bottom then
     Origin.Y := Max(Area.Top, Origin.Y - FEdit.Height - Height_);
   FList.SetBounds(Origin.X, Origin.Y, Width_, Height_);
-  SetWindowPos(FList.Handle, HWND_TOP, Origin.X, Origin.Y, Width_, Height_, SWP_SHOWWINDOW or SWP_NOACTIVATE);
+  // SWP_NOOWNERZORDER: nicht die ganze Owner-Gruppe umsortieren (Hänger wie in TAtlasPopupWindow.ShowAt).
+  SetWindowPos(FList.Handle, HWND_TOP, Origin.X, Origin.Y, Width_, Height_,
+    SWP_SHOWWINDOW or SWP_NOACTIVATE or SWP_NOOWNERZORDER);
   FList.Invalidate;
 end;
 
