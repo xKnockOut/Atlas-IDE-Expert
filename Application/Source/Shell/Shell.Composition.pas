@@ -44,6 +44,7 @@ uses
   Atlas.Common.Lsp.References,
   Atlas.Common.Lsp.Rename,
   Atlas.Common.Lsp.Completion,
+  Atlas.Common.Lsp.ConditionalSymbols,
   Atlas.Common.Lsp.Refactorings,
   Atlas.Common.Pascal.LanguageFeatures,
   Atlas.Common.Lsp.SignatureHelp,
@@ -338,6 +339,9 @@ type
     /// Ordner oder '' (einziger Arbeitsbereich).</summary>
     function MetricsSourceFor(const AFileName: string; AProject: Boolean; out ASource: TLspMetricsSource): Boolean;
     function HintSettingsFor(const AUri: string): THintSettings;
+    /// <summary>Bedingte Symbole für Hover und Vervollständigung in Direktiven (#102): Symbole des Projekts mit
+    /// Herkunft aus der .dproj, Compiler-Vorgaben, Include-Pfade und der Schalter "directives".</summary>
+    function ConditionalContextFor(const AUri: string): TConditionalContext;
     function RefactoringSettingsFor(const AUri: string): TRefactoringSettings;
     function CompletionSettingsFor(const AUri: string): TCompletionSettings;
     /// <summary>"stringLiteral" für AUri; AMultiline nach Stil und Delphi-Version (#312).</summary>
@@ -433,6 +437,8 @@ uses
   Atlas.Common.Documents.Providers.DocumentStore,
   Atlas.Common.Documents.FileEncoding,
   Atlas.Common.Documents.Uris,
+  Atlas.Common.Pascal.IncludeFiles,
+  Atlas.Common.Pascal.Preprocessor,
   Atlas.Common.Editing.SlashCommands,
   Shell.SlashHost,
   Shell.VcsChanges,
@@ -927,6 +933,8 @@ begin
     EnsureUnit);
   FHover.VersionProvider := DelphiVersionFor;
   FHover.HintsFor := HintSettingsFor;
+  // Zustand und Herkunft bedingter Symbole (#102).
+  FHover.SymbolsFor := ConditionalContextFor;
   FHover.Attach(FDispatcher);
   FWorkspaceSymbols := TLspWorkspaceSymbols.Create(FIndex);
   FBookmarks := TBookmarkStore.Create;
@@ -1047,6 +1055,8 @@ begin
   FCompletion.HintsFor := HintSettingsFor;
   // „Parameter abgleichen“ in ///-Blöcken (#88) hängt an completeBlocks.docComment.
   FCompletion.DocCommentsFor := DocCommentsFor;
+  // Bedingte Symbole in {$IFDEF } und Co. (#102).
+  FCompletion.SymbolsFor := ConditionalContextFor;
   FCompletion.ReadText := ReadSourceText;
   // Teilergebnisse (#616) als $/progress; Zeiten je Anfrage im Debug-Protokoll.
   FCompletion.Notify :=
@@ -3315,6 +3325,53 @@ end;
 function TServerComposition.HintSettingsFor(const AUri: string): THintSettings;
 begin
   Result := SettingsFor(AUri).Hints;
+end;
+
+function TServerComposition.ConditionalContextFor(const AUri: string): TConditionalContext;
+var
+  Settings: TDirectiveSettings;
+  Workspace: TShellWorkspace;
+  Project: TProjectInfo;
+  HasProject: Boolean;
+  Defines, Predefined, Own: TArray<string>;
+  IncludePaths: TArray<string>;
+  Define: string;
+begin
+  Settings := SettingsFor(AUri).Directives;
+  Result := TConditionalContext.Default;
+  Result.CompletionEnabled := Settings.Completion;
+  Result.HoverEnabled := Settings.Hover;
+  Result.FileName := TDocumentUris.ToPath(AUri);
+  if not (Settings.Completion or Settings.Hover) then
+    Exit;
+  IncludePaths := nil;
+  HasProject := False;
+  TMonitor.Enter(FWorkspacesLock);
+  try
+    Workspace := PickWorkspace(Result.FileName);
+    if Workspace <> nil then
+    begin
+      IncludePaths := Workspace.IncludePaths;
+      HasProject := Workspace.Project(Project);
+    end;
+  finally
+    TMonitor.Exit(FWorkspacesLock);
+  end;
+  Result.ResolveInclude := TIncludeFiles.Resolver(IncludePaths);
+  // Dieselben Symbole wie beim Abblenden inaktiver Zweige.
+  Result.HasDefines := DefinesFor(AUri, Defines);
+  if not Result.HasDefines then
+    Exit;
+  Result.Defines := Defines;
+  if not HasProject then
+    Project := Default(TProjectInfo);
+  Predefined := TPascalPreprocessor.PredefinedSymbols(Project.Platform,
+    TPascalPreprocessor.CompilerVersionFromDefines(Defines));
+  Own := nil;
+  for Define in Defines do
+    if IndexText(Define, Predefined) < 0 then
+      Own := Own + [Define];
+  Result.Sources := TConditionalSymbols.SourcesOf(Own, Project.DefineOrigins, Predefined, Project.Platform);
 end;
 
 function TServerComposition.FormatStyleFor(const AUri: string): TFormatStyle;

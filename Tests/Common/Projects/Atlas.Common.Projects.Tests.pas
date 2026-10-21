@@ -62,6 +62,9 @@ type
     procedure ListsConfigsAndPlatforms;
     [Test]
     procedure ChecksSelectedTarget;
+    /// <summary>#102: Herkunft je Symbol (Projekt, Plattform, Konfiguration).</summary>
+    [Test]
+    procedure RecordsDefineOrigins;
   end;
 
   [TestFixture]
@@ -355,6 +358,41 @@ begin
   Assert.AreEqual('Win64', Project.Platform);
   Assert.AreEqual('RELEASE;APP', Joined(Project.Defines));
   Assert.AreEqual('Vcl;System;Xml;Winapi', Joined(Project.Namespaces));
+end;
+
+procedure TDprojReaderTests.RecordsDefineOrigins;
+var
+  Project: TProjectInfo;
+  Options: TDprojOptions;
+  Text: string;
+
+  function OriginOf(const AName: string): string;
+  var
+    Origin: TPair<string, string>;
+  begin
+    Result := '-';
+    for Origin in Project.DefineOrigins do
+      if Origin.Key = AName then
+        Exit(Origin.Value);
+  end;
+
+begin
+  Project := ReadSample('Debug', 'Win32');
+  Assert.AreEqual('Projekt', OriginOf('APP'));
+  Assert.AreEqual('Konfiguration Debug', OriginOf('DEBUG'));
+  Assert.AreEqual('-', OriginOf('RELEASE'));
+  Options := Default(TDprojOptions);
+  Options.Config := 'Release';
+  Options.Platform := 'Win64';
+  // Symbol auf Ebene Base_Win64, RELEASE auf Ebene Cfg_2_Win64.
+  Text := StringReplace(SampleDproj, '    <DCC_Namespace>Vcl;$(DCC_Namespace)</DCC_Namespace>'#13#10,
+    '    <DCC_Namespace>Vcl;$(DCC_Namespace)</DCC_Namespace>'#13#10 +
+    '    <DCC_Define>W64;$(DCC_Define)</DCC_Define>'#13#10, []);
+  Text := StringReplace(Text, '<PropertyGroup Condition="''$(Cfg_2)''!=''''">',
+    '<PropertyGroup Condition="''$(Cfg_2_Win64)''!='''' or ''$(Cfg_2)''!=''''">', []);
+  Project := TDprojReader.Read(ProjectFile, Text, Options);
+  Assert.AreEqual('Projekt, Plattform Win64', OriginOf('W64'));
+  Assert.AreEqual('Konfiguration Release, Plattform Win64', OriginOf('RELEASE'));
 end;
 
 procedure TDprojReaderTests.ResolvesSearchPathsRelativeToProject;
