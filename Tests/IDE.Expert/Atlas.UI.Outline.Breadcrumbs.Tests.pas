@@ -2,7 +2,8 @@
 
 // Brotkrumenleiste (#590), Darstellung: feste Höhe, Hinweis ohne Glieder,
 // Trefferprüfung, Menü nur für Glieder mit Geschwistern, Tastatur (←/→/↓/
-// Esc) und Kürzen von vorn bei schmaler Leiste.
+// Esc) und Kürzen von vorn bei schmaler Leiste; „›“ mit Kindermenü,
+// Springen per Strg+Klick und Strg+Enter.
 
 interface
 
@@ -35,6 +36,10 @@ type
     procedure DropsLeadingCrumbsWhenNarrow;
     [Test]
     procedure SameCrumbsKeepSelection;
+    [Test]
+    procedure SeparatorOpensChildren;
+    [Test]
+    procedure CtrlClickAndCtrlEnterJump;
   end;
 
 implementation
@@ -69,6 +74,18 @@ begin
   Result := Result + [Crumb('TfrmKunde', 'C', 0, [0, 5])];
   Result := Result + [Crumb('btnSpeichernClick', 'P', 2, [2, 3, 4])];
   Result := Result + [Crumb('Pruefe', 'P', 7, [7])];
+end;
+
+/// <summary>Pfad mit Kindern: Unit (Typen), Typ (Mitglieder), Methode ohne lokale Routinen.</summary>
+function PathWithChildren: TAtlasCrumbs;
+begin
+  Result := nil;
+  Result := Result + [Crumb('uKundeForm', 'un', -1, [0, 5])];
+  Result[0].Badge.Kind := TAtlasBadgeKind.Unit_;
+  Result[0].Children := [0, 5];
+  Result := Result + [Crumb('TfrmKunde', 'ty', 0, [0, 5])];
+  Result[1].Children := [1, 2, 3];
+  Result := Result + [Crumb('btnSpeichernClick', 'fn', 2, [2, 3])];
 end;
 
 procedure TAtlasBreadcrumbBarTests.WarmUpFirstUse;
@@ -219,6 +236,112 @@ begin
   Changed[3].Text := 'Pruefe2';
   FBar.SetCrumbs(Changed);
   Assert.AreEqual(3, FBar.Selected, 'neuer Pfad wählt das letzte Glied');
+end;
+
+procedure TAtlasBreadcrumbBarTests.SeparatorOpensChildren;
+var
+  Opened, Menu: Integer;
+  Crumbs: TAtlasCrumbs;
+  Area: TRect;
+  Key: Word;
+begin
+  Opened := -1;
+  Menu := -1;
+  FBar.OnOpenChildren :=
+    procedure(AIndex: Integer; const APoint: TPoint)
+    begin
+      Opened := AIndex;
+    end;
+  FBar.OnOpenMenu :=
+    procedure(AIndex: Integer; const APoint: TPoint)
+    begin
+      Menu := AIndex;
+    end;
+  FBar.SetCrumbs(PathWithChildren);
+  // „›“ zwischen den Gliedern; das letzte Glied hat keine Kinder, also kein „›“ dahinter.
+  Area := FBar.SeparatorRect(0);
+  Assert.IsFalse(Area.IsEmpty);
+  Assert.IsTrue(Area.Left >= FBar.CrumbRect(0).Right - 1, 'hinter dem Glied');
+  Assert.IsTrue(Area.Right <= FBar.CrumbRect(1).Left + 1, 'vor dem nächsten Glied');
+  Assert.AreEqual(0, FBar.SeparatorAt(Area.CenterPoint.X, Area.CenterPoint.Y));
+  Assert.AreEqual(-1, FBar.CrumbAt(Area.CenterPoint.X, Area.CenterPoint.Y), 'kein Glied');
+  Assert.IsTrue(FBar.SeparatorRect(2).IsEmpty, 'letztes Glied ohne Kinder');
+  TBarAccess(FBar).MouseDown(mbLeft, [], Area.CenterPoint.X, Area.CenterPoint.Y);
+  Assert.AreEqual(0, Opened);
+  Assert.AreEqual(-1, Menu, 'kein Geschwistermenü');
+  // Klick aufs Unit-Glied: Menü mit allen Elementen der Unit.
+  Area := FBar.CrumbRect(0);
+  TBarAccess(FBar).MouseDown(mbLeft, [], Area.CenterPoint.X, Area.CenterPoint.Y);
+  Assert.AreEqual(0, Menu);
+  // Letztes Glied mit Kindern: „›“ auch dahinter.
+  Crumbs := PathWithChildren;
+  Crumbs[2].Children := [8, 9];
+  FBar.SetCrumbs(Crumbs);
+  Area := FBar.SeparatorRect(2);
+  Assert.IsFalse(Area.IsEmpty, '„›“ hinter dem letzten Glied');
+  Assert.AreEqual(2, FBar.SeparatorAt(Area.CenterPoint.X, Area.CenterPoint.Y));
+  // Tastatur: Strg+↓ öffnet die Kinder des gewählten Glieds.
+  Opened := -1;
+  Key := VK_DOWN;
+  TBarAccess(FBar).KeyDown(Key, [ssCtrl]);
+  Assert.AreEqual(2, Opened);
+  FBar.Repaint;
+end;
+
+procedure TAtlasBreadcrumbBarTests.CtrlClickAndCtrlEnterJump;
+var
+  Jumped, Menu: Integer;
+  Declaration: Boolean;
+  Crumbs: TAtlasCrumbs;
+  Area: TRect;
+  Key: Word;
+begin
+  Jumped := -1;
+  Menu := -1;
+  Declaration := False;
+  FBar.OnJump :=
+    procedure(AIndex: Integer; ADeclaration: Boolean)
+    begin
+      Jumped := AIndex;
+      Declaration := ADeclaration;
+    end;
+  FBar.OnOpenMenu :=
+    procedure(AIndex: Integer; const APoint: TPoint)
+    begin
+      Menu := AIndex;
+    end;
+  FBar.SetCrumbs(PathWithChildren);
+  Area := FBar.CrumbRect(1);
+  TBarAccess(FBar).MouseDown(mbLeft, [ssCtrl], Area.CenterPoint.X, Area.CenterPoint.Y);
+  Assert.AreEqual(1, Jumped, 'Strg+Klick springt');
+  Assert.IsFalse(Declaration);
+  Assert.AreEqual(-1, Menu, 'kein Menü bei Strg+Klick');
+  TBarAccess(FBar).MouseDown(mbLeft, [ssCtrl, ssShift], Area.CenterPoint.X, Area.CenterPoint.Y);
+  Assert.IsTrue(Declaration, 'Strg+Umschalt+Klick: Deklaration');
+  // Unit-Glied springt an den Anfang.
+  Jumped := -1;
+  FBar.Jump(0, False);
+  Assert.AreEqual(0, Jumped);
+  // Glied ohne Knoten (Besitzer aus einer anderen Unit) springt nicht.
+  Jumped := -1;
+  FBar.SetCrumbs(Path);
+  FBar.Jump(0, False);
+  Assert.AreEqual(-1, Jumped, 'Glied ohne Knoten');
+  // Ohne Geschwister springt schon der einfache Klick.
+  Crumbs := PathWithChildren;
+  Crumbs[2].Siblings := nil;
+  FBar.SetCrumbs(Crumbs);
+  Area := FBar.CrumbRect(2);
+  TBarAccess(FBar).MouseDown(mbLeft, [], Area.CenterPoint.X, Area.CenterPoint.Y);
+  Assert.AreEqual(2, Jumped);
+  // Strg+Enter mit Fokus.
+  Jumped := -1;
+  Key := VK_LEFT;
+  TBarAccess(FBar).KeyDown(Key, []);
+  Key := VK_RETURN;
+  TBarAccess(FBar).KeyDown(Key, [ssCtrl]);
+  Assert.AreEqual(1, Jumped);
+  Assert.AreEqual(0, Integer(Key), 'Taste verbraucht');
 end;
 
 initialization

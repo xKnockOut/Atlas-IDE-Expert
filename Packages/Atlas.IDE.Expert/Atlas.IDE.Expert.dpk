@@ -469,6 +469,7 @@ contains
   Atlas.Core.Outline.Breadcrumbs in 'Source\Core\Outline\Atlas.Core.Outline.Breadcrumbs.pas',
   Atlas.Core.Outline.StickyScroll in 'Source\Core\Outline\Atlas.Core.Outline.StickyScroll.pas',
   Atlas.UI.Outline.Breadcrumbs in 'Source\UI\Outline\Atlas.UI.Outline.Breadcrumbs.pas',
+  Atlas.UI.Outline.NavigationToolbar in 'Source\UI\Outline\Atlas.UI.Outline.NavigationToolbar.pas',
   Atlas.IDE.Outline.Breadcrumbs in 'Source\IDE\Outline\Atlas.IDE.Outline.Breadcrumbs.pas',
   Atlas.IDE.Outline.StickyScroll in 'Source\IDE\Outline\Atlas.IDE.Outline.StickyScroll.pas',
   Atlas.IDE.Notes.Service in 'Source\IDE\Notes\Atlas.IDE.Notes.Service.pas',

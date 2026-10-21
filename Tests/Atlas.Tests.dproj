@@ -655,6 +655,8 @@
         <DCCReference Include="IDE.Expert\Atlas.Core.Outline.StickyScroll.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\UI\Outline\Atlas.UI.Outline.Breadcrumbs.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.UI.Outline.Breadcrumbs.Tests.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\UI\Outline\Atlas.UI.Outline.NavigationToolbar.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.UI.Outline.NavigationToolbar.Tests.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.UI.Editor.Hide.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\StartProfiles\Atlas.Core.StartProfiles.Store.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.StartProfiles.Tests.pas"/>

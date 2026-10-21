@@ -262,6 +262,8 @@ type
     FOutlineFollowCursor: TCheckBox;
     FBreadcrumbs: TCheckBox;
     FBreadcrumbsShowUnit: TCheckBox;
+    FBreadcrumbsIdeColors: TCheckBox;
+    FBreadcrumbsHideIdeToolbar: TCheckBox;
     // Mitlaufender Kopf (#506).
     FStickyScroll: TCheckBox;
     FStickyScrollMaxLines: TEdit;
@@ -1246,6 +1248,8 @@ begin
   // Brotkrumenleiste (#590).
   FBreadcrumbs := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsBreadcrumbs));
   FBreadcrumbsShowUnit := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsBreadcrumbsShowUnit));
+  FBreadcrumbsIdeColors := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsBreadcrumbsIdeColors));
+  FBreadcrumbsHideIdeToolbar := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsBreadcrumbsHideIdeToolbar));
   FBreadcrumbsKey := AddKey(TAtlasStrings.Text(TAtlasTextId.BreadcrumbsCommand));
   // Mitlaufender Kopf (#506, experimentell).
   FStickyScroll := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsStickyScroll));
@@ -2260,6 +2264,8 @@ begin
   FMarks.Bind(FOutlineFollowCursor, ['OutlineFollowCursor']);
   FMarks.Bind(FBreadcrumbs, ['Breadcrumbs']);
   FMarks.Bind(FBreadcrumbsShowUnit, ['BreadcrumbsShowUnit']);
+  FMarks.Bind(FBreadcrumbsIdeColors, ['BreadcrumbsIdeColors']);
+  FMarks.Bind(FBreadcrumbsHideIdeToolbar, ['BreadcrumbsHideIdeToolbar']);
   FMarks.Bind(FBreadcrumbsKey, ['BreadcrumbsKey']);
   FMarks.Bind(FStickyScroll, ['StickyScroll']);
   FMarks.Bind(FStickyScrollMaxLines, ['StickyScrollMaxLines']);
@@ -3288,6 +3294,8 @@ begin
   FOutlineFollowCursor.Checked := ASettings.OutlineFollowCursor;
   FBreadcrumbs.Checked := ASettings.Breadcrumbs;
   FBreadcrumbsShowUnit.Checked := ASettings.BreadcrumbsShowUnit;
+  FBreadcrumbsIdeColors.Checked := ASettings.BreadcrumbsIdeColors;
+  FBreadcrumbsHideIdeToolbar.Checked := ASettings.BreadcrumbsHideIdeToolbar;
   FBreadcrumbsKey.Text := ShortCutToText(TShortCut(ASettings.BreadcrumbsKey));
   FStickyScroll.Checked := ASettings.StickyScroll;
   FStickyScrollMaxLines.Text := IntToStr(ASettings.StickyScrollMaxLines);
@@ -3633,6 +3641,8 @@ begin
   ASettings.OutlineFollowCursor := FOutlineFollowCursor.Checked;
   ASettings.Breadcrumbs := FBreadcrumbs.Checked;
   ASettings.BreadcrumbsShowUnit := FBreadcrumbsShowUnit.Checked;
+  ASettings.BreadcrumbsIdeColors := FBreadcrumbsIdeColors.Checked;
+  ASettings.BreadcrumbsHideIdeToolbar := FBreadcrumbsHideIdeToolbar.Checked;
   ASettings.BreadcrumbsKey := Integer(TextToShortCut(Trim(FBreadcrumbsKey.Text)));
   ASettings.StickyScroll := FStickyScroll.Checked;
   ASettings.StickyScrollMaxLines := StrToIntDef(FStickyScrollMaxLines.Text, ASettings.StickyScrollMaxLines);

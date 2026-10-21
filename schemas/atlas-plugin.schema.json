@@ -2134,6 +2134,24 @@
       "x-page": "Editor",
       "x-issue": "#590"
     },
+    "BreadcrumbsIdeColors": {
+      "description": "Brotkrumenleiste in den Farben der IDE-Werkzeugleisten (Fläche und Schrift aus dem IDE-Thema) statt der Atlas-Palette; im dunklen Thema also wie die Navigationsleiste darüber statt fast schwarz.",
+      "type": "boolean",
+      "default": true,
+      "x-key": "editor.breadcrumbsIdeColors",
+      "x-area": "editor",
+      "x-page": "Editor",
+      "x-issue": "#590"
+    },
+    "BreadcrumbsHideIdeToolbar": {
+      "description": "Navigationsleiste der IDE („Typ suchen“, „Methode suchen“) ausblenden, solange die Brotkrumenleiste an ist. Die Brotkrumenleiste ersetzt sie: Das Unit-Glied listet alle Typen und Routinen der Unit, „›“ hinter einem Typ seine Mitglieder.",
+      "type": "boolean",
+      "default": true,
+      "x-key": "editor.breadcrumbsHideIdeToolbar",
+      "x-area": "editor",
+      "x-page": "Editor",
+      "x-issue": "#590"
+    },
     "StickyScroll": {
       "description": "Mitlaufender Kopf: Die Kopfzeilen der umgebenden Klasse bzw. des Records und der Routinen bleiben oben im Editor stehen, bis der Block endet. Verschachtelte Routinen stapeln sich (die äußere oben); im Rumpf der äußeren Routine steht nur ihr Kopf. Bei mehr Ebenen als erlaubt bleibt die innerste sichtbar, die äußeren werden zu einer Zeile „A › B › C“ zusammengefasst. Mehrzeilige Köpfe werden mit „(…)“ auf eine Zeile gekürzt. Klick auf eine Kopfzeile springt dorthin.",
       "type": "boolean",

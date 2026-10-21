@@ -566,6 +566,8 @@ uses
   Atlas.Core.Outline.StickyScroll.Tests in 'IDE.Expert\Atlas.Core.Outline.StickyScroll.Tests.pas',
   Atlas.UI.Outline.Breadcrumbs in '..\Packages\Atlas.IDE.Expert\Source\UI\Outline\Atlas.UI.Outline.Breadcrumbs.pas',
   Atlas.UI.Outline.Breadcrumbs.Tests in 'IDE.Expert\Atlas.UI.Outline.Breadcrumbs.Tests.pas',
+  Atlas.UI.Outline.NavigationToolbar in '..\Packages\Atlas.IDE.Expert\Source\UI\Outline\Atlas.UI.Outline.NavigationToolbar.pas',
+  Atlas.UI.Outline.NavigationToolbar.Tests in 'IDE.Expert\Atlas.UI.Outline.NavigationToolbar.Tests.pas',
   Atlas.UI.Editor.Hide.Tests in 'IDE.Expert\Atlas.UI.Editor.Hide.Tests.pas',
   Atlas.Core.StartProfiles.Store in '..\Packages\Atlas.IDE.Expert\Source\Core\StartProfiles\Atlas.Core.StartProfiles.Store.pas',
   Atlas.Core.StartProfiles.Tests in 'IDE.Expert\Atlas.Core.StartProfiles.Tests.pas',
