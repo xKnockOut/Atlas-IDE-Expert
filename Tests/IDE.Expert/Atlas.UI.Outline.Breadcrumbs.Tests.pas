@@ -18,6 +18,9 @@ type
     FForm: TForm;
     FBar: TAtlasBreadcrumbBar;
   public
+    /// <summary>Erste Benutzung ungemessen vorwegnehmen.</summary>
+    [SetupFixture]
+    procedure WarmUpFirstUse;
     [Setup]
     procedure SetUp;
     [TearDown]
@@ -66,6 +69,23 @@ begin
   Result := Result + [Crumb('TfrmKunde', 'C', 0, [0, 5])];
   Result := Result + [Crumb('btnSpeichernClick', 'P', 2, [2, 3, 4])];
   Result := Result + [Crumb('Pruefe', 'P', 7, [7])];
+end;
+
+procedure TAtlasBreadcrumbBarTests.WarmUpFirstUse;
+begin
+  SetUp;
+  try
+    KeepsHeightAndShowsEmptyText;
+  finally
+    TearDown;
+  end;
+  // Erstes Kontextmenü (VCL) ebenfalls vorweg.
+  SetUp;
+  try
+    HitTestAndMenuOnlyWithSiblings;
+  finally
+    TearDown;
+  end;
 end;
 
 procedure TAtlasBreadcrumbBarTests.SetUp;

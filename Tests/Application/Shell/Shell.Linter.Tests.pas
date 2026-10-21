@@ -23,6 +23,9 @@ type
     function Run(const AArgs: TArray<string>): Integer;
     function OutputText: string;
   public
+    /// <summary>Erste Benutzung ungemessen vorwegnehmen.</summary>
+    [SetupFixture]
+    procedure WarmUpFirstUse;
     [Setup]
     procedure Setup;
     [TearDown]
@@ -73,6 +76,16 @@ const
   TodoUnit = 'unit Offen;'#13#10'interface'#13#10'implementation'#13#10'// TODO: Aufräumen'#13#10'end.'#13#10;
 
 { TShellLinterTests }
+
+procedure TShellLinterTests.WarmUpFirstUse;
+begin
+  Setup;
+  try
+    MissingTargetFails;
+  finally
+    TearDown;
+  end;
+end;
 
 procedure TShellLinterTests.Setup;
 begin
