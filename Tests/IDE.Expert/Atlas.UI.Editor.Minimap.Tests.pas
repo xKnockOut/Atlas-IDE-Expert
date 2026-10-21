@@ -19,6 +19,9 @@ type
     FView: TAtlasMinimapView;
     procedure Fill(ALineCount: Integer);
   public
+    /// <summary>Erste Benutzung ungemessen vorwegnehmen.</summary>
+    [SetupFixture]
+    procedure WarmUpFirstUse;
     [Setup]
     procedure SetUp;
     [TearDown]
@@ -51,6 +54,16 @@ uses
 
 type
   TViewAccess = class(TAtlasMinimapView);
+
+procedure TAtlasMinimapViewTests.WarmUpFirstUse;
+begin
+  SetUp;
+  try
+    WidthFollowsSetting;
+  finally
+    TearDown;
+  end;
+end;
 
 procedure TAtlasMinimapViewTests.SetUp;
 begin
