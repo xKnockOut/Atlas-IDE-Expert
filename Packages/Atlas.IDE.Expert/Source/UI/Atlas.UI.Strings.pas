@@ -596,7 +596,7 @@ type
     SettingsMinimapClickJumps, MinimapNoticeTitle, MinimapNoticeText, MinimapHideIde, MinimapTurnOff,
     SettingsIndexAsking, BugReportCollecting, SettingsLockedExperimental, SettingsLockedMaster,
     SettingsOverviewTitle, SettingsOverviewDetails, FormatCodeCommand, SettingsFormatCode, FormatCodeNothing,
-    FormatCodeOff, UndoActionFormat, HelperAddsUnit);
+    FormatCodeOff, UndoActionFormat, HelperAddsUnit, SettingsSelectionMarker);
 
   TAtlasStrings = class
   private class var
@@ -1721,7 +1721,8 @@ const
      'gesperrt: Experimentelle Funktionen sind aus', 'gesperrt: „%s“ (%s) ist aus', 'Funktionen in diesem Bereich',
      'Details', 'Formatieren', 'Formatieren mit Atlas (ganze Datei bzw. Auswahl)', 'Atlas: Nichts zu formatieren.',
      'Atlas: „Formatieren“ ist ausgeschaltet (Tools › Optionen › Atlas › Editor).', 'Formatieren',
-     'Enter trägt %s in die uses-Klausel ein; danach gilt dieser Helper.'),
+     'Enter trägt %s in die uses-Klausel ein; danach gilt dieser Helper.',
+     'Gewählten Eintrag mit Rahmen und Marke ▸ zeigen (nicht nur farbig)'),
     ('Enter to accept · Esc to close', '%d of %d', 'No matches for “%s”', 'Backspace widens the search',
      'No suggestions here', 'Esc closes', 'No details for this entry', 'Overload', 'Deprecated: %s', 'Deprecated.',
      'Inherited from %s', 'Inherited', 'optional, default %s', 'No overload with %d parameters.', '… %d more',
@@ -2763,7 +2764,8 @@ const
      'locked: experimental features are off', 'locked: “%s” (%s) is off', 'Features in this area',
      'Details', 'Format', 'Format with Atlas (whole file or selection)', 'Atlas: Nothing to format.',
      'Atlas: “Format” is switched off (Tools › Options › Atlas › Editor).', 'Format',
-     'Enter adds %s to the uses clause; this helper applies from then on.'));
+     'Enter adds %s to the uses clause; this helper applies from then on.',
+     'Show the selected entry with a frame and ▸ marker (not only by colour)'));
 
 { TAtlasStrings }
 

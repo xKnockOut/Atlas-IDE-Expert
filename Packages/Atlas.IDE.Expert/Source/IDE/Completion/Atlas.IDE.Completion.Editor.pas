@@ -762,6 +762,7 @@ begin
     FController.Usage := nil;
   // Favoriten (#458): abgeschaltet weder Stern noch Sonderstellung.
   FPopup.FavoritesEnabled := TAtlasIdeSettings.Current.Favorites;
+  FPopup.SelectionMarker := TAtlasIdeSettings.Current.SelectionMarker;
   if TAtlasIdeSettings.Current.Favorites then
     FController.Favorites := TAtlasIdeFavorites.Instance
   else

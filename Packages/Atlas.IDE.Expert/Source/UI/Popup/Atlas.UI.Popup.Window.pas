@@ -45,6 +45,8 @@ type
     /// <summary>CreateWnd hat entschieden, wer die Ecken rundet; vorher keine Region setzen.</summary>
     FCornersKnown: Boolean;
     FAccessible: IAtlasRawElementProvider;
+    /// <summary>Objekt hinter FAccessible, für Detach beim Schließen.</summary>
+    FAccessibleObject: TAtlasAccessibleElement;
     FAccessibleRole: Integer;
     FAccessibleName: string;
     FAnnounced: string;
@@ -74,6 +76,10 @@ type
     procedure FrameRounded(const ARect: TRect; ALine: TAtlasColor; ARadius: Integer; AFill: TColor = clNone);
     /// <summary>Rolle (UiaListControlType, UiaToolTipControlType) und Name für Screenreader.</summary>
     procedure SetAccessible(ARole: Integer; const AName: string);
+    /// <summary>Element für UI Automation; Listen liefern hier eine TAtlasAccessibleList mit Einträgen.</summary>
+    function CreateAccessible(ARole: Integer; const AName: string): TAtlasAccessibleElement; virtual;
+    /// <summary>Objekt des Elements; nil, solange UI Automation nicht gefragt hat.</summary>
+    property AccessibleObject: TAtlasAccessibleElement read FAccessibleObject;
   public
     /// <summary>Feature, dem Fehler des Fensters angerechnet werden (Sicherung, #493); die Randmarken setzen es
     /// je Ebene.</summary>
@@ -194,6 +200,9 @@ begin
   FCornersKnown := False;
   if FAccessible <> nil then
   begin
+    // Erst lösen: Elemente, die UI Automation noch hält, fragen das Fenster dann nicht mehr.
+    FAccessibleObject.Detach;
+    FAccessibleObject := nil;
     TAtlasAccessibility.Release(WindowHandle);
     FAccessible := nil;
   end;
@@ -216,10 +225,18 @@ begin
   FAccessibleName := AName;
 end;
 
+function TAtlasPopupWindow.CreateAccessible(ARole: Integer; const AName: string): TAtlasAccessibleElement;
+begin
+  Result := TAtlasAccessibleElement.Create(Handle, ARole, AName);
+end;
+
 function TAtlasPopupWindow.Accessible: IAtlasRawElementProvider;
 begin
   if (FAccessible = nil) and (FAccessibleRole <> 0) and HandleAllocated then
-    FAccessible := TAtlasAccessibleElement.Create(Handle, FAccessibleRole, FAccessibleName);
+  begin
+    FAccessibleObject := CreateAccessible(FAccessibleRole, FAccessibleName);
+    FAccessible := FAccessibleObject;
+  end;
   Result := FAccessible;
 end;
 

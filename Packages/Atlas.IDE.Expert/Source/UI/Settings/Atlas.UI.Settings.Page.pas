@@ -135,6 +135,7 @@ type
     FRows: TEdit;
     FRowsUpDown: TUpDown;
     FPanelCollapsed: TCheckBox;
+    FSelectionMarker: TCheckBox;
     FAutoParentheses: TCheckBox;
     FFixCase: TCheckBox;
     // ARG-046 (#227): Commit-Zeichen, uses, Parameter-Hint, Verzögerung, automatische Breite.
@@ -1289,6 +1290,7 @@ begin
   FAutoWidth.OnClick := AutoWidthClick;
   FOpenDelay := AddNumber(TAtlasStrings.Text(TAtlasTextId.SettingsOpenDelay));
   FPanelCollapsed := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsPanelCollapsed));
+  FSelectionMarker := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsSelectionMarker));
   FFilterChips := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsChips));
   FLearning := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsLearning));
   FFavorites := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsFavorites));
@@ -2451,6 +2453,7 @@ begin
   FMarks.Bind(FGenerateMenuShowCommandNames, ['GenerateMenuShowCommandNames']);
   FMarks.Bind(FRows, ['VisibleRows']);
   FMarks.Bind(FPanelCollapsed, ['PanelCollapsed']);
+  FMarks.Bind(FSelectionMarker, ['SelectionMarker']);
   FMarks.Bind(FAutoParentheses, ['AutoParentheses']);
   FMarks.Bind(FFixCase, ['FixCase']);
   FMarks.Bind(FCommitChars, ['CommitCharacters']);
@@ -4366,6 +4369,7 @@ begin
   ServerPathChange(nil);
   FRowsUpDown.Position := ASettings.VisibleRows;
   FPanelCollapsed.Checked := ASettings.PanelCollapsed;
+  FSelectionMarker.Checked := ASettings.SelectionMarker;
   FAutoParentheses.Checked := ASettings.AutoParentheses;
   FFixCase.Checked := ASettings.FixCase;
   FCommitChars.Checked := ASettings.CommitCharacters;
@@ -4737,6 +4741,7 @@ begin
   ASettings.GenerateMenuShowCommandNames := FGenerateMenuShowCommandNames.Checked;
   ASettings.VisibleRows := FRowsUpDown.Position;
   ASettings.PanelCollapsed := FPanelCollapsed.Checked;
+  ASettings.SelectionMarker := FSelectionMarker.Checked;
   ASettings.AutoParentheses := FAutoParentheses.Checked;
   ASettings.FixCase := FFixCase.Checked;
   ASettings.CommitCharacters := FCommitChars.Checked;
