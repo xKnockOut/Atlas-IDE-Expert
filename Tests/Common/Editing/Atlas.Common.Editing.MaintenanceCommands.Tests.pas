@@ -18,6 +18,10 @@ type
     [Test]
     procedure SortUsesKeepsUnusedWhenSwitchedOff;
     [Test]
+    procedure CleanUsesKeepsOrder;
+    [Test]
+    procedure CleanUsesWithoutIndexFails;
+    [Test]
     procedure IgnoreWritesSuppression;
     [Test]
     procedure IgnoreWithoutLineBelowFails;
@@ -197,6 +201,28 @@ begin
   Host.Settings := nil;
   Host.Uses_.Keep := ['System.Classes'];
   Assert.AreEqual(Expected, ExpandWith(UnusedText, 5, Keep));
+end;
+
+procedure TMaintenanceCommandsTests.CleanUsesKeepsOrder;
+var
+  Keep: ISlashHost;
+begin
+  // Nur System.Classes fällt weg; Vcl.Forms bleibt vor System.SysUtils.
+  Keep := UsesHost;
+  Assert.AreEqual('unit U;'#10'interface'#10'uses'#10'  Vcl.Forms,'#10'  System.SysUtils;'#10 +
+    'implementation'#10'procedure P;'#10'begin'#10'  Format('''', []);'#10'end;'#10'end.',
+    ExpandWith(StringReplace(UnusedText, '/sortuses', '/cleanuses', []), 5, Keep));
+end;
+
+procedure TMaintenanceCommandsTests.CleanUsesWithoutIndexFails;
+var
+  Keep: ISlashHost;
+  Result_, Reason: string;
+begin
+  Keep := TRecordingSlashHost.Create;
+  Assert.IsFalse(RunWith(StringReplace(UnusedText, '/sortuses', '/cleanuses', []), 5, Keep, Result_, Reason));
+  Assert.AreEqual(CleanUsesNoIndexHint, Reason);
+  Assert.AreEqual(CleanUsesNoIndexHint, ProblemOf(StringReplace(UnusedText, '/sortuses', '/cleanuses', [])));
 end;
 
 procedure TMaintenanceCommandsTests.IgnoreWritesSuppression;
