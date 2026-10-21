@@ -30,6 +30,8 @@ type
     [Test]
     procedure SenderItemsGetHeaderAndTag;
     [Test]
+    procedure VariantFieldsGetBranchTag;
+    [Test]
     procedure ConversionStandsBeforeOriginal;
     [Test]
     procedure TypeArgumentsGetHeaderAndFooter;
@@ -461,6 +463,40 @@ begin
   // Ohne Formulareinträge keine Überschrift.
   Items := Copy(Items, 0, 1);
   Assert.AreEqual('TButton', Names(Items, TAtlasRanking.Order(Items, 'button', Options)));
+end;
+
+procedure TAtlasRankingTests.VariantFieldsGetBranchTag;
+var
+  Json: TJSONObject;
+  Item: TAtlasCompletionItem;
+  Tags: TAtlasTags;
+  Tag: TAtlasTag;
+  Found: Boolean;
+begin
+  // Felder varianter Records (#846): data.variant wird zur Marke „Zweig 0“.
+  Json := TJSONObject.ParseJSONValue('{"label":"Left","kind":5,"detail":"Integer","data":{"variant":"0",' +
+    '"container":"TRect"}}') as TJSONObject;
+  try
+    Item := TAtlasServerCompletionProvider.ItemFromLsp(Json, 0);
+  finally
+    Json.Free;
+  end;
+  Assert.AreEqual('0', Item.VariantBranch);
+  Tags := TAtlasItemPresentation.Tags(Item);
+  Found := False;
+  for Tag in Tags do
+    if Tag.Id = TAtlasTagId.VariantBranch then
+    begin
+      Found := True;
+      Assert.AreEqual('Zweig 0', Tag.Text);
+      Assert.AreEqual('0', Tag.Arg);
+      Assert.IsTrue(Tag.Kind = TAtlasTagKind.Neutral);
+    end;
+  Assert.IsTrue(Found);
+  // Ohne Zweig keine Marke.
+  Item.VariantBranch := '';
+  for Tag in TAtlasItemPresentation.Tags(Item) do
+    Assert.IsFalse(Tag.Id = TAtlasTagId.VariantBranch);
 end;
 
 procedure TAtlasRankingTests.SenderItemsGetHeaderAndTag;

@@ -662,6 +662,18 @@
       "x-captionEn": "Group inherited members",
       "x-issue": "#419"
     },
+    "CompletionVariantBranch": {
+      "description": "Bei Feldern im varianten Teil eines Records (case … of) die Marke \"Zweig 0\" bzw. \"Zweig 1\" in der Liste zeigen.",
+      "type": "boolean",
+      "default": true,
+      "x-key": "completion.variantBranch",
+      "x-area": "completion",
+      "x-feature": "Completion",
+      "x-page": "Vervollständigung",
+      "x-caption": "Zweig varianter Record-Felder zeigen",
+      "x-captionEn": "Show the branch of variant record fields",
+      "x-issue": "#846"
+    },
     "CompletionListMode": {
       "type": "string",
       "enum": [

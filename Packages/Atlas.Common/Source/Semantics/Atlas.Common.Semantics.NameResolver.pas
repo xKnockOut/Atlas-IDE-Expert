@@ -78,6 +78,8 @@ type
     IsVirtual: Boolean;
     /// <summary>Bedingung der Deklaration wie im Index (#476); '' = immer.</summary>
     Condition: string;
+    /// <summary>Zweig eines varianten Record-Felds wie im Index (#846); '' = keiner.</summary>
+    VariantBranch: string;
     /// <summary>Deklarierter Typ (Variablen, Felder, Properties, Parameter, Funktionsergebnis).</summary>
     TypeName: string;
     Ancestors: TArray<string>;
@@ -926,6 +928,7 @@ begin
   Result.InInterface := ASymbol.InInterface;
   Result.IsVirtual := ASymbol.IsVirtual;
   Result.Condition := ASymbol.Condition;
+  Result.VariantBranch := ASymbol.VariantBranch;
   Result.VariantParams := [String.Join(';', ASymbol.ParamTypes)];
 end;
 
