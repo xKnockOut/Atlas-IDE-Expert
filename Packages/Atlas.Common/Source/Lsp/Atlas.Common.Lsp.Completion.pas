@@ -51,6 +51,7 @@ uses
   Atlas.Common.Semantics.NameResolver,
   Atlas.Common.Lsp.Documentation,
   Atlas.Common.Lsp.Internals.FormCache,
+  Atlas.Common.Lsp.ConditionalSymbols,
   Atlas.Common.Lsp.CompletionRequest,
   Atlas.Common.Lsp.CompletionCollector;
 
@@ -168,6 +169,7 @@ type
     FNamingFor: TCompletionNamingFunc;
     FHintsFor: TDocHintsProvider;
     FDocCommentsFor: TCompletionEnabledFunc;
+    FSymbolsFor: TConditionalContextFunc;
     FNotify: TCompletionNotifyProc;
     FLog: TCompletionLogProc;
     FSnippetSupport: Boolean;
@@ -423,6 +425,9 @@ type
     property HintsFor: TDocHintsProvider read FHintsFor write FHintsFor;
     /// <summary>„Parameter abgleichen“ in ///-Blöcken (#88); ohne Zuweisung eingeschaltet.</summary>
     property DocCommentsFor: TCompletionEnabledFunc read FDocCommentsFor write FDocCommentsFor;
+    /// <summary>Bedingte Symbole in Direktiven und Schalter directives.completion (#102); ohne Zuweisung an,
+    /// nur mit den Symbolen der Datei.</summary>
+    property SymbolsFor: TConditionalContextFunc read FSymbolsFor write FSymbolsFor;
     /// <summary>Für Teilergebnisse über $/progress (#616); ohne Zuweisung kommt alles in der Antwort.</summary>
     property Notify: TCompletionNotifyProc read FNotify write FNotify;
     /// <summary>Zeiten je Anfrage (#616); ohne Zuweisung keine Messung.</summary>
@@ -502,6 +507,30 @@ const
     'virtual', 'override', 'overload', 'abstract', 'reintroduce', 'dynamic', 'static', 'message');
   TypeKeywords: array[0..7] of string = ('string', 'array', 'set', 'record', 'packed', 'procedure', 'function',
     'reference');
+
+/// <summary>Bedingte Symbole nach {$IFDEF , {$IFNDEF , {$DEFINE , {$UNDEF und in Defined( (#102): Herkunft als
+/// Detail, Symbole, die hier nicht gelten, abgeschwächt am Ende.</summary>
+function SymbolItems(ARequest: TCompletionRequest; const AContext: TConditionalContext;
+  out AItems: TCompletionItems): Boolean;
+var
+  Prefix: string;
+  Symbol: TConditionalSymbol;
+  Item: TCompletionItem;
+begin
+  AItems := Default(TCompletionItems);
+  Result := TConditionalSymbols.IsSymbolContext(ARequest.LineBefore, Prefix);
+  if not Result or not AContext.CompletionEnabled then
+    Exit;
+  for Symbol in TConditionalSymbols.Candidates(ARequest.Text, AContext) do
+  begin
+    Item := Default(TCompletionItem);
+    Item.Name := Symbol.Name;
+    Item.Kind := KindConstant;
+    Item.Detail := Symbol.Detail;
+    Item.Unavailable := not Symbol.Active;
+    AItems.Items := AItems.Items + [Item];
+  end;
+end;
 
 /// <summary>Vorschläge in einer offenen Direktive (#102); False außerhalb.</summary>
 function DirectiveItems(ARequest: TCompletionRequest; out AItems: TCompletionItems): Boolean;
@@ -1982,10 +2011,20 @@ begin
     end);
   AddCase(FTextCases,
     function(ARequest: TCompletionRequest; AAnswer: TCompletionAnswer): TCompletionOutcome
+    var
+      Context: TConditionalContext;
     begin
       Result := TCompletionOutcome.Next;
-      if DirectiveItems(ARequest, AAnswer.Exclusive) then
+      Context := TConditionalContext.Default;
+      if Assigned(FSymbolsFor) then
+        Context := FSymbolsFor(ARequest.Uri);
+      if SymbolItems(ARequest, Context, AAnswer.Exclusive) or DirectiveItems(ARequest, AAnswer.Exclusive) then
+      begin
         Result := TCompletionOutcome.Answered;
+        // Abgeschaltet (directives.completion): in der Direktive gar nichts, auch nicht die übrige Liste.
+        if not Context.CompletionEnabled then
+          AAnswer.Exclusive := Default(TCompletionItems);
+      end;
     end);
   AddCase(FTextCases,
     function(ARequest: TCompletionRequest; AAnswer: TCompletionAnswer): TCompletionOutcome

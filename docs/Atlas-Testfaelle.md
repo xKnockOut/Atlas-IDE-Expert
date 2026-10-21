@@ -2155,6 +2155,20 @@ Voraussetzung: VCL-Quellen über die Bibliothekspfade im Index.
 | DC9 | Kommentar wie in DC2 (Parameter fehlt), Cursor in eine `///`-Zeile des Blocks, Strg+Leer | Einziger Eintrag „Parameter abgleichen“; Enter ergänzt genau den fehlenden `<param>`, ein überzähliger wird zu `<!-- entfernt: … -->` (**Abnahme**) |
 | DC10 | Passt der Block zur Signatur, Strg+Leer in einer `///`-Zeile | Kein „Parameter abgleichen“; nach `<` weiter die XMLDoc-Tags |
 
+## Symbole in Direktiven (#102)
+
+| Nr. | Schritt | Erwartet |
+|---|---|---|
+| CD1 | Projekt mit `DEBUG` in der Debug-Konfiguration, Konfiguration Debug, Maus über `DEBUG` in `{$IFDEF DEBUG}` | „**DEBUG**: aktiv, definiert in Konfiguration Debug (.dproj)“, darunter die Erklärung der Direktive (**Abnahme**) |
+| CD2 | Konfiguration Release, Maus über `{$IFDEF DEBUG}` | „**DEBUG**: nicht definiert, weder im Projekt noch vom Compiler noch mit {$DEFINE} davor gesetzt“ |
+| CD3 | `{$I Defs.inc}` mit `{$DEFINE FOO}`, danach `{$IFDEF FOO}`, Maus über `FOO` | „aktiv, definiert mit {$DEFINE FOO} in [Defs.inc](…), Zeile n“; ein Klick öffnet die Include-Datei (**Abnahme**) |
+| CD4 | `{$UNDEF FOO}` vor dem `{$IFDEF FOO}` | „nicht definiert, aufgehoben mit {$UNDEF FOO} in Zeile n“ |
+| CD5 | Maus über `MSWINDOWS` bzw. `WIN64` (Plattform Win64) | „aktiv, Compiler-Vorgabe (Plattform Win64)“ |
+| CD6 | `{$IF Defined(A) and Defined(B)}`, Maus über `B` | Hover nennt `B`, nicht `A` |
+| CD7 | `{$IFDEF ` tippen, Strg+Leer | Projekt- und Compiler-Symbole mit Herkunft vorne, dann `{$DEFINE}` der Datei und ihrer Includes, dann in der Datei benutzte Namen; Symbole anderer Plattformen (`LINUX` …) abgeschwächt am Ende (**Abnahme**) |
+| CD8 | `{$WARN ` und `{$R+` | Weiter Warnungsbezeichner bzw. Erklärung des Schalters (Teil 1) |
+| CD9 | Optionsseite, Reiter Editor: `directives.completion` bzw. `directives.hover` aus | Keine Liste in `{$IFDEF ` bzw. kein Hover über Direktiven (**Abnahme**) |
+
 ## Kennzeichnung „Experimentell“ (#834)
 
 Voraussetzung für EX2 bis EX7: mindestens eine Einstellung trägt `x-experimental` (die ersten kommen mit Block C; zum Testen vorübergehend an einer Einstellung im Plugin-Katalog setzen und `pwsh Tools/Update-ConfigDoc.ps1` ausführen).
