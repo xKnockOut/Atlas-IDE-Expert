@@ -2868,6 +2868,24 @@ Voraussetzung: Einstellungen auf Vorgabe; Unit mit einer Methode mit mehreren An
 | BK11 | „Bevorzugte Form“ auf `(* … *)` | Einfache Markierung bekommt `(* … *)` |
 | BK12 | „Blockkommentar umschalten“ aus | Umschalt+Alt+A tut nichts mehr (Kürzel frei), Befehl fehlt in der Palette (**Abnahme**) |
 
+## Markierung beim Tippen umschließen (#672)
+
+Voraussetzung: Einstellungen auf Vorgabe; Unit mit Ausdrücken, einem String, einer Methode mit mehreren Anweisungen und einer Variablen `L: TList`.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| UM1 | In `X := A + B;` „A + B“ markieren, `(` tippen | `X := (A + B);`, Markierung bleibt auf „A + B“ (**Abnahme**) |
+| UM2 | Gleich noch einmal `(` | `X := ((A + B));` |
+| UM3 | Strg+Z nach UM1 | Ein Schritt stellt den Zustand vor dem Tastendruck her (**Abnahme**) |
+| UM4 | „It's“ markieren, `'` tippen | `'It''s'`, Markierung auf `It''s` |
+| UM5 | Text in einem String markieren, `'` tippen | Kein Umschließen, die IDE ersetzt die Markierung wie immer |
+| UM6 | Zwei ganze Zeilen markieren, `{` tippen (AltGr+7) | `{` und `}` auf eigenen Zeilen in der Einrückung der ersten Zeile; enthalten die Zeilen schon `}`: `(*` und `*)` |
+| UM7 | `<` unter Optionen › Editor › Markierung umschließen ergänzen, in `TListInteger` „Integer“ markieren, `<` tippen | `TList<Integer>`; ohne Typnamen davor ersetzt die IDE wie immer |
+| UM8 | Spaltenblock (Alt+Umschalt+Pfeile) über drei Zeilen, `[` tippen | Jede Zeile einzeln umschlossen |
+| UM9 | Mehrere Einfügemarken (#589) mit Markierungen, `(` tippen | Jede Markierung einzeln umschlossen, ein Rückgängig-Schritt |
+| UM10 | Ohne Markierung `(` tippen | Wie ohne Atlas (**Abnahme**) |
+| UM11 | „Markierung beim Tippen umschließen“ aus, UM1 wiederholen | Die IDE ersetzt die Markierung durch `(` (**Abnahme**) |
+
 ## Neue Zeile ober- oder unterhalb (#700)
 
 Voraussetzung: Einstellungen auf Vorgabe (Blockeinzug 2); Methode mit `if … then`, `begin … end`, `try … except`, einem Aufruf über drei Zeilen und einem `//`-Kommentar; Klasse mit `private` und `public`.

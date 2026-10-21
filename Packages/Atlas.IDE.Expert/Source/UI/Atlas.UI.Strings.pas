@@ -637,7 +637,7 @@ type
     SettingsToggleBlockCommentFallback, ToggleBlockCommentLineComments, ToggleBlockCommentRefuse,
     SettingsToggleBlockCommentOwnLines, SettingsToggleBlockCommentScope, ToggleBlockCommentStatement,
     ToggleBlockCommentLine, ToggleBlockCommentRefused, NewLineBelowCommand, NewLineAboveCommand,
-    SettingsNewLineAround, SettingsNewLineAroundStatementAware);
+    SettingsNewLineAround, SettingsNewLineAroundStatementAware, SettingsWrapSelection, SettingsWrapSelectionChars);
 
   TAtlasStrings = class
   private class var
@@ -1937,7 +1937,9 @@ const
      'Neue Zeile darunter',
      'Neue Zeile darüber',
      'Neue Zeile ober- oder unterhalb (Umschalt+Enter, Strg+Alt+Enter)',
-     'Mehrzeilige Anweisungen als Ganzes (Bezug: Ende bzw. Anfang der Anweisung)'),
+     'Mehrzeilige Anweisungen als Ganzes (Bezug: Ende bzw. Anfang der Anweisung)',
+     'Markierung beim Tippen eines öffnenden Zeichens umschließen',
+     'Zeichen, die umschließen (aus ( [ { '' <):'),
     ('Enter to accept · Esc to close', '%d of %d', 'No matches for “%s”', 'Backspace widens the search',
      'No suggestions here', 'Esc closes', 'No details for this entry', 'Overload', 'Deprecated: %s', 'Deprecated.',
      'Inherited from %s', 'Inherited', 'optional, default %s', 'No overload with %d parameters.', '… %d more',
@@ -3138,7 +3140,9 @@ const
      'New line below',
      'New line above',
      'New line above or below (Shift+Enter, Ctrl+Alt+Enter)',
-     'Treat multi-line statements as a whole (relative to their end or start)'));
+     'Treat multi-line statements as a whole (relative to their end or start)',
+     'Wrap the selection when typing an opening character',
+     'Characters that wrap (from ( [ { '' <):'));
 
 { TAtlasStrings }
 

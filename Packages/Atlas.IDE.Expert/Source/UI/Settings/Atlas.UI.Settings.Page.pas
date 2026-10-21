@@ -342,6 +342,8 @@ type
     FContinueCommentsLineComments: TCheckBox;
     FContinueCommentsLists: TCheckBox;
     FContinueCommentsBlockPrefix: TEdit;
+    FWrapSelection: TCheckBox;
+    FWrapSelectionChars: TEdit;
     FCompleteStatement: TCheckBox;
     FCompleteStatementKey: TEdit;
     FCompleteStatementBeginEnd: TAtlasChoiceBox;
@@ -825,6 +827,9 @@ type
     property ContinueComments: TCheckBox read FContinueComments;
     property ContinueCommentsLists: TCheckBox read FContinueCommentsLists;
     property ContinueCommentsBlockPrefix: TEdit read FContinueCommentsBlockPrefix;
+    /// <summary>Zum Testen: Markierung beim Tippen umschließen (#672).</summary>
+    property WrapSelection: TCheckBox read FWrapSelection;
+    property WrapSelectionChars: TEdit read FWrapSelectionChars;
     /// <summary>Zum Testen: Anweisung vervollständigen (#697).</summary>
     property CompleteStatement: TCheckBox read FCompleteStatement;
     property CompleteStatementKey: TEdit read FCompleteStatementKey;
@@ -1455,6 +1460,9 @@ begin
   FContinueCommentsLineComments := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsContinueCommentsLineComments));
   FContinueCommentsLists := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsContinueCommentsLists));
   FContinueCommentsBlockPrefix := AddTextLine(TAtlasStrings.Text(TAtlasTextId.SettingsContinueCommentsBlockPrefix));
+  // Markierung beim Tippen umschließen (#672).
+  FWrapSelection := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsWrapSelection));
+  FWrapSelectionChars := AddTextLine(TAtlasStrings.Text(TAtlasTextId.SettingsWrapSelectionChars));
   // Anweisung vervollständigen (#697).
   FCompleteStatement := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsCompleteStatement));
   FCompleteStatementKey := AddKey(TAtlasStrings.Text(TAtlasTextId.CompleteStatementCommand));
@@ -2518,6 +2526,8 @@ begin
   FMarks.Bind(FContinueCommentsLineComments, ['ContinueCommentsLineComments']);
   FMarks.Bind(FContinueCommentsLists, ['ContinueCommentsLists']);
   FMarks.Bind(FContinueCommentsBlockPrefix, ['ContinueCommentsBlockPrefix']);
+  FMarks.Bind(FWrapSelection, ['WrapSelection']);
+  FMarks.Bind(FWrapSelectionChars, ['WrapSelectionChars']);
   FMarks.Bind(FCompleteStatement, ['CompleteStatement']);
   FMarks.Bind(FCompleteStatementKey, ['CompleteStatementKey']);
   FMarks.Bind(FCompleteStatementBeginEnd, ['CompleteStatementBeginEnd']);
@@ -4451,6 +4461,8 @@ begin
   FContinueCommentsLineComments.Checked := ASettings.ContinueCommentsLineComments;
   FContinueCommentsLists.Checked := ASettings.ContinueCommentsLists;
   FContinueCommentsBlockPrefix.Text := ASettings.ContinueCommentsBlockPrefix;
+  FWrapSelection.Checked := ASettings.WrapSelection;
+  FWrapSelectionChars.Text := ASettings.WrapSelectionChars;
   FCompleteStatement.Checked := ASettings.CompleteStatement;
   FCompleteStatementKey.Text := ShortCutToText(TShortCut(ASettings.CompleteStatementKey));
   // Reihenfolge der Auswahl: always, multiLine, never bzw. finally, except, ask.
@@ -4837,6 +4849,8 @@ begin
   ASettings.ContinueCommentsLists := FContinueCommentsLists.Checked;
   // Leerraum am Rand gehört zum Präfix (' * ').
   ASettings.ContinueCommentsBlockPrefix := FContinueCommentsBlockPrefix.Text;
+  ASettings.WrapSelection := FWrapSelection.Checked;
+  ASettings.WrapSelectionChars := Trim(FWrapSelectionChars.Text);
   ASettings.CompleteStatement := FCompleteStatement.Checked;
   ASettings.CompleteStatementKey := Integer(TextToShortCut(Trim(FCompleteStatementKey.Text)));
   case FCompleteStatementBeginEnd.Choice of
