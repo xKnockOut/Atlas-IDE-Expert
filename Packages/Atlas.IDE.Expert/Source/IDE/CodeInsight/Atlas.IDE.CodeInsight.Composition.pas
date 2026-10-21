@@ -81,6 +81,8 @@ uses
   Atlas.Core.Editor.LineMove,
   Atlas.IDE.Editor.LineMove,
   Atlas.IDE.Editor.BlockComment,
+  Atlas.Core.Editor.NewLine,
+  Atlas.IDE.Editor.NewLine,
   Atlas.IDE.Editor.CommentContinuation,
   Atlas.IDE.Editor.PatternContinuation,
   Atlas.IDE.Editor.MultiCursor,
@@ -1015,6 +1017,21 @@ begin
   TAtlasIdeBlockComment.Run;
 end;
 
+function NewLineAroundVisible: Boolean;
+begin
+  Result := TAtlasIdeNewLine.Enabled;
+end;
+
+procedure NewLineBelow;
+begin
+  TAtlasIdeNewLine.Run(TAtlasNewLineDirection.Below);
+end;
+
+procedure NewLineAbove;
+begin
+  TAtlasIdeNewLine.Run(TAtlasNewLineDirection.Above);
+end;
+
 procedure CompleteStatement;
 begin
   TAtlasIdeStatementCompletion.Run;
@@ -1222,6 +1239,11 @@ begin
   // Blockkommentar umschalten (#703); nur sichtbar, solange keys.toggleBlockComment an ist.
   Add('Atlas.ToggleBlockComment', TAtlasTextId.ToggleBlockCommentCommand,
     Guarded(TAtlasFeature.EditorCommands, ToggleBlockComment), ToggleBlockCommentVisible);
+  // Neue Zeile ober- oder unterhalb (#700); nur sichtbar, solange keys.newLineAround an ist.
+  Add('Atlas.NewLineBelow', TAtlasTextId.NewLineBelowCommand, Guarded(TAtlasFeature.EditorCommands, NewLineBelow),
+    NewLineAroundVisible);
+  Add('Atlas.NewLineAbove', TAtlasTextId.NewLineAboveCommand, Guarded(TAtlasFeature.EditorCommands, NewLineAbove),
+    NewLineAroundVisible);
   // Mehrere Einfügemarken (#589).
   Add('Atlas.MultiCursorNext', TAtlasTextId.MultiCursorNextCommand,
     Guarded(TAtlasFeature.EditorCommands, MultiCursorNext), MultiCursorVisible);
