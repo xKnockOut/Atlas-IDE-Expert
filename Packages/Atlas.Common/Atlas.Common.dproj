@@ -330,6 +330,7 @@
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.EnumValueCommands.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.Refactorings.pas"/>
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.DeclareUnknown.pas"/>
+        <DCCReference Include="Source\Editing\Atlas.Common.Editing.ForwardDeclarations.pas"/>
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.InterfaceStubs.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.StringLiteralCommands.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.SlashMenu.pas"/>
@@ -367,6 +368,7 @@
         <DCCReference Include="Source\Rules\Atlas.Common.Rules.Prompt.pas"/>
         <DCCReference Include="Source\Rules\Builtin\Atlas.Common.Rules.Builtin.Unresolved.pas"/>
         <DCCReference Include="Source\Rules\Builtin\Atlas.Common.Rules.Builtin.Deprecated.pas"/>
+        <DCCReference Include="Source\Rules\Builtin\Atlas.Common.Rules.Builtin.ForwardDeclarations.pas"/>
         <DCCReference Include="Source\Rules\Builtin\Atlas.Common.Rules.Builtin.Packages.pas"/>
         <DCCReference Include="Source\Rules\Atlas.Common.Rules.Conventions.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.InactiveRegions.pas"/>

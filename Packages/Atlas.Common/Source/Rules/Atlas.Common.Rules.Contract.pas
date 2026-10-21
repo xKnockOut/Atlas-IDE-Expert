@@ -120,6 +120,9 @@ type
     /// <summary>Keine Aktionen, die Deklaration und Rumpf angleichen (refactoring.syncSignatures aus, #100);
     /// setzt TRuleEngine.Run.</summary>
     NoSignatureSync: Boolean;
+    /// <summary>Forward-Deklarationen nicht prüfen (refactoring.forwardDeclaration aus, #685);
+    /// setzt TRuleEngine.Run.</summary>
+    NoForwardDeclaration: Boolean;
     /// <summary>Abbruch zwischen den Regeln (Diagnoselog 15.10.2026); nil = nie abbrechen.</summary>
     Cancelled: TRuleCancelled;
     /// <summary>Gemeinsame Ableitungen des Laufs (Review P-03); setzt TRuleEngine.Run. nil = jede Regel
