@@ -109,7 +109,7 @@ begin
     // F1 zuletzt benutzt: Beim nächsten Eintrag fällt F2 heraus, nicht F1.
     Assert.IsTrue(Cache.TryGet('C:\P\F1.dfm', 's', Found));
     Cache.Put('C:\P\Neu.dfm', 's', Snapshot('', 'Neu'));
-    Assert.AreEqual(TFormSnapshotCache.MaxEntries, Cache.Count);
+    Assert.AreEqual(TFormSnapshotCache.MaxEntries, Integer(Cache.Count));
     Assert.IsTrue(Cache.TryGet('C:\P\F1.dfm', 's', Found));
     Assert.IsFalse(Cache.TryGet('C:\P\F2.dfm', 's', Found));
     Assert.IsTrue(Cache.TryGet('C:\P\F3.dfm', 's', Found));

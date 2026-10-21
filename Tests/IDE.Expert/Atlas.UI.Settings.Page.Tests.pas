@@ -154,6 +154,7 @@ implementation
 uses
   System.SysUtils,
   System.Classes,
+  System.UITypes,
   Atlas.Core.Settings.Plugin,
   Atlas.Core.Build.ReleaseGuard,
   Atlas.Core.Projects.Summary,
@@ -349,7 +350,8 @@ begin
       Assert.IsNotNull(Sheet, Known);
       Assert.AreEqual(Page.Groups.NodeOf(Known), Page.NodeOfSheet(Sheet), Known);
       Frame := FrameAround(Binding.Control);
-      if (Frame = nil) or Inside(Binding.Control, Frame.Master) then
+      // Ohne Rahmen (Einstellung ohne Hauptschalter, z. B. debug.hoverValues) ist nichts weiter zu prüfen.
+      if (Frame <> nil) and Inside(Binding.Control, Frame.Master) then
         Frame := FrameAround(Frame);
       if Frame = nil then
         Continue;

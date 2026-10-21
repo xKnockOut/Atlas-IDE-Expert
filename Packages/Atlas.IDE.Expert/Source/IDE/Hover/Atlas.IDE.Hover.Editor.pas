@@ -374,9 +374,6 @@ begin
   else
     Result.Display := TAtlasDocDisplay.Create(TAtlasDocDisplay.ExpandOf(TAtlasIdeSettings.Current.XmlDocExpand),
       TAtlasIdeSettings.Current.XmlDocMaxLines);
-  // Schnellschalter nur für diese Sitzung (#604) gilt auch über dem Wert des Servers.
-  if TAtlasIdeSettings.SessionFlag('XmlDocFull', Full) then
-    Result.Display.Full := Full;
   // Probleme und der Wert im Debugger gehören zur Stelle im Editor, nicht zu angeklickten Typen.
   if FHistory.Count <= 1 then
   begin

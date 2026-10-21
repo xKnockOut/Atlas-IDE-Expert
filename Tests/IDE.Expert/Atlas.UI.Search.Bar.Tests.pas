@@ -100,7 +100,7 @@ begin
     Bar := NewBar(Host);
     Bar.Prepare(SampleQuery, ['procedure Inner;', 'function ReadLocation: Boolean;'], False);
     Assert.AreEqual('Open', Bar.TextEdit.Text);
-    Assert.AreEqual(2, Bar.ScopeBox.Items.Count, 'Methode und Unit, keine Auswahl');
+    Assert.AreEqual(2, Integer(Bar.ScopeBox.Items.Count), 'Methode und Unit, keine Auswahl');
     Assert.AreEqual(Ord(TAtlasSearchScope.Method), Bar.ScopeBox.ItemIndex);
     Assert.AreEqual(1, Bar.LevelBox.ItemIndex);
     Assert.IsTrue(Bar.LevelBox.Visible, 'Stufe nur bei Methode');
@@ -137,7 +137,7 @@ begin
     Assert.AreEqual(Ord(TAtlasSearchScope.UnitFile), Bar.ScopeBox.ItemIndex, 'ohne Auswahl die Unit');
     Assert.IsFalse(Bar.LevelBox.Visible);
     Bar.Prepare(Query, nil, True);
-    Assert.AreEqual(3, Bar.ScopeBox.Items.Count);
+    Assert.AreEqual(3, Integer(Bar.ScopeBox.Items.Count));
     Assert.AreEqual(Ord(TAtlasSearchScope.Selection), Bar.ScopeBox.ItemIndex);
     Assert.AreEqual(Ord(TAtlasSearchScope.Selection), Ord(Bar.Query.Scope));
   finally
@@ -158,7 +158,7 @@ begin
     Assert.IsFalse(Bar.HandleAllocated);
     Bar.Parent := Host;
     Bar.HandleNeeded;
-    Assert.AreEqual(2, Bar.ScopeBox.Items.Count);
+    Assert.AreEqual(2, Integer(Bar.ScopeBox.Items.Count));
     Assert.AreEqual('Open', Bar.TextEdit.Text);
     Assert.AreEqual(0, Bar.LevelBox.ItemIndex, 'zu hohe Stufe fällt auf die innerste');
   finally

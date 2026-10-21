@@ -25,6 +25,9 @@ type
     FEditor: TPanel;
     FHider: TAtlasNavigationToolbar;
   public
+    /// <summary>Erstgebrauch der VCL (Fenster, Klassen) vor der Leckmessung.</summary>
+    [SetupFixture]
+    procedure WarmUpFirstUse;
     [Setup]
     procedure SetUp;
     [TearDown]
@@ -45,9 +48,31 @@ type
   /// <summary>Wie die IDE-Klasse benannt: gefunden am Klassennamen.</summary>
   TEditorNavigationToolbarLike = class(TPanel);
 
+procedure TAtlasNavigationToolbarTests.WarmUpFirstUse;
+begin
+  SetUp;
+  try
+    FindsToolbarByName;
+  finally
+    TearDown;
+  end;
+  SetUp;
+  try
+    RestoresAtTheOldPlace;
+  finally
+    TearDown;
+  end;
+end;
+
 procedure TAtlasNavigationToolbarTests.SetUp;
 begin
   FForm := TForm.CreateNew(nil);
+  // Ausrichtung und Showing brauchen Fenster mit Handles: Formular außerhalb
+  // des Bildschirms zeigen.
+  FForm.BorderStyle := bsNone;
+  FForm.Position := poDesigned;
+  FForm.Left := -10000;
+  FForm.Top := -10000;
   FForm.Width := 800;
   FForm.Height := 400;
   FHost := TPanel.Create(FForm);
@@ -67,7 +92,7 @@ begin
   FEditor := TPanel.Create(FForm);
   FEditor.Parent := FHost;
   FEditor.Align := alClient;
-  FForm.HandleNeeded;
+  FForm.Show;
   FHider := TAtlasNavigationToolbar.Create(nil);
 end;
 

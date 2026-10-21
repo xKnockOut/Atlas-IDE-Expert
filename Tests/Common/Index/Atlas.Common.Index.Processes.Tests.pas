@@ -24,6 +24,7 @@ uses
   System.SysUtils,
   System.DateUtils,
   System.JSON,
+  System.Generics.Collections,
   Atlas.Common.Index.Processes;
 
 function Info(APid: Cardinal; const AKind: string): TIndexProcessInfo;
