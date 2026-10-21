@@ -42,7 +42,7 @@ type
 
   TAtlasWelcomeIndexFiles = class
   public const
-    FormatVersion = 19;
+    FormatVersion = 20;
     CacheFileName = 'index.atlasidx';
     IndexFolder = 'Index';
     LibraryFolder = 'Bibliothek';
