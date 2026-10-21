@@ -269,6 +269,7 @@
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.Status.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.DocWiki.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.CompilerDirectives.pas"/>
+        <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.ConditionalSymbols.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.Colors.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.DocumentLinks.pas"/>
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.CodeActions.pas"/>

@@ -185,6 +185,7 @@ contains
   Atlas.Common.Lsp.SlashMenu in 'Source\Lsp\Atlas.Common.Lsp.SlashMenu.pas',
   Atlas.Common.Lsp.DocWiki in 'Source\Lsp\Atlas.Common.Lsp.DocWiki.pas',
   Atlas.Common.Lsp.CompilerDirectives in 'Source\Lsp\Atlas.Common.Lsp.CompilerDirectives.pas',
+  Atlas.Common.Lsp.ConditionalSymbols in 'Source\Lsp\Atlas.Common.Lsp.ConditionalSymbols.pas',
   Atlas.Common.Lsp.Colors in 'Source\Lsp\Atlas.Common.Lsp.Colors.pas',
   Atlas.Common.Lsp.DocumentLinks in 'Source\Lsp\Atlas.Common.Lsp.DocumentLinks.pas',
   Atlas.Common.Editing.CodeActions in 'Source\Editing\Atlas.Common.Editing.CodeActions.pas',

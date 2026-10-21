@@ -39,7 +39,8 @@ uses
   Atlas.Common.Semantics.NameResolver,
   Atlas.Common.Pascal.XmlDoc,
   Atlas.Common.Lsp.Documentation,
-  Atlas.Common.Lsp.HoverTypes;
+  Atlas.Common.Lsp.HoverTypes,
+  Atlas.Common.Lsp.ConditionalSymbols;
 
 type
   /// <summary>Liefert den Text einer Datei; False, wenn sie nicht lesbar ist.</summary>
@@ -104,6 +105,7 @@ type
     FNamespaces: TArray<string>;
     FVersionProvider: THoverVersionProvider;
     FHintsFor: TDocHintsProvider;
+    FSymbolsFor: TConditionalContextFunc;
     FMarkdown: Boolean;
     function HandleHover(const AParams: TJSONValue; const ACancellation: IJsonRpcCancellationToken): TJSONValue;
   private
@@ -136,6 +138,9 @@ type
     property VersionProvider: THoverVersionProvider read FVersionProvider write FVersionProvider;
     /// <summary>Anzeige von XMLDoc (#654) als atlas.xmlDoc; ohne Provider fehlt das Feld.</summary>
     property HintsFor: TDocHintsProvider read FHintsFor write FHintsFor;
+    /// <summary>Symbole des Dokuments und Schalter directives.hover (#102); ohne Provider an, ohne Projekt.
+    /// </summary>
+    property SymbolsFor: TConditionalContextFunc read FSymbolsFor write FSymbolsFor;
   end;
 
 implementation
@@ -682,8 +687,10 @@ var
   Resolver: TNameResolver;
   Info: THoverInfo;
   Contents, Atlas: TJSONObject;
-  DelphiVersion, Markdown: string;
+  DelphiVersion, Markdown, SymbolMarkdown: string;
   Watch: TStopwatch;
+  Symbols: TConditionalContext;
+  HasSymbol, HasDirective: Boolean;
 begin
   if not ((AParams is TJSONObject) and TJSONObject(AParams).TryGetValue<string>('textDocument.uri', Uri) and
     TJSONObject(AParams).TryGetValue<TJSONValue>('position', PositionValue)) then
@@ -719,8 +726,24 @@ begin
     else
       DelphiVersion := '';
     ACancellation.ThrowIfCancellationRequested;
-    // Compiler-Direktiven wie {$R+} oder {$WARN …} (#102).
-    if TCompilerDirectives.HoverAt(Tree, TLspPositions.ReadPosition(PositionValue), DelphiVersion, Markdown) then
+    // Compiler-Direktiven wie {$R+} oder {$WARN …} und bedingte Symbole mit Zustand und Herkunft (#102).
+    Symbols := TConditionalContext.Default;
+    if Assigned(FSymbolsFor) then
+      Symbols := FSymbolsFor(Uri);
+    HasSymbol := False;
+    HasDirective := False;
+    if Symbols.HoverEnabled then
+    begin
+      HasSymbol := TConditionalSymbols.Hover(Text, TLspPositions.ReadPosition(PositionValue), Symbols,
+        SymbolMarkdown);
+      HasDirective := TCompilerDirectives.HoverAt(Tree, TLspPositions.ReadPosition(PositionValue), DelphiVersion,
+        Markdown);
+    end;
+    if HasSymbol and HasDirective then
+      Markdown := SymbolMarkdown + #10#10'---'#10#10 + Markdown
+    else if HasSymbol then
+      Markdown := SymbolMarkdown;
+    if HasSymbol or HasDirective then
     begin
       Contents := TJSONObject.Create;
       Contents.AddPair('kind', 'markdown');

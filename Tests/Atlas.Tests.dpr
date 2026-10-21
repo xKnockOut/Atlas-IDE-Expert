@@ -118,6 +118,7 @@ uses
   Atlas.Common.Editing.StringLiterals.Tests in 'Common\Editing\Atlas.Common.Editing.StringLiterals.Tests.pas',
   Atlas.Common.Lsp.DocWiki.Tests in 'Common\Lsp\Atlas.Common.Lsp.DocWiki.Tests.pas',
   Atlas.Common.Lsp.CompilerDirectives.Tests in 'Common\Lsp\Atlas.Common.Lsp.CompilerDirectives.Tests.pas',
+  Atlas.Common.Lsp.ConditionalSymbols.Tests in 'Common\Lsp\Atlas.Common.Lsp.ConditionalSymbols.Tests.pas',
   Atlas.Common.Lsp.Hover.Tests in 'Common\Lsp\Atlas.Common.Lsp.Hover.Tests.pas',
   Atlas.Common.Lsp.HoverTypes.Tests in 'Common\Lsp\Atlas.Common.Lsp.HoverTypes.Tests.pas',
   Atlas.Common.Lsp.HoverValues.Tests in 'Common\Lsp\Atlas.Common.Lsp.HoverValues.Tests.pas',
