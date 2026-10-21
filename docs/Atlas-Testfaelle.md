@@ -2849,6 +2849,25 @@ Voraussetzung: Server läuft; Einstellungen auf Vorgabe; Unit mit `TBasis = clas
 | ZL10 | Schnellschalter „Atlas-Spalte in der Zeilenleiste“ aus | Spalte verschwindet ganz; wieder an: Spalte und Symbole kommen zurück (**Abnahme**) |
 | ZL11 | Strg+. auf einer Zeile mit Symbol › Ausblenden „In dieser Datei“ | Keine Symbole der Spalte in dieser Datei |
 
+## Gleichen Text wie die Markierung hervorheben (#709)
+
+Voraussetzung: Einstellungen auf Vorgabe; Unit, in der `Kunde` mehrfach vorkommt, auch als Teil von `TKunde` und `Kunden`, in einem String und in einem Kommentar.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| GT1 | `Kunde` in einer Zeile markieren | Alle sichtbaren `Kunde` (auch in `TKunde`, `Kunden`, String und Kommentar) halb durchsichtig in der Akzentfarbe hinterlegt, die Markierung selbst wie gewohnt; hinter der Zeile die Anzahl aller Stellen der Datei, z. B. „7 Treffer“ (**Abnahme**) |
+| GT2 | Übersichtsleiste ansehen | Marken an allen Zeilen mit Treffern, auch außerhalb des sichtbaren Bereichs |
+| GT3 | Nur `Ku` markieren | Keine Hervorhebung (Mindestlänge 3); mehrzeilige Markierung oder nur Leerzeichen: ebenfalls keine |
+| GT4 | `Kunde` markiert, F3, mehrmals; dann Umschalt+F3 | Springt zum nächsten Treffer und markiert ihn, am Dateiende weiter oben; Umschalt+F3 rückwärts (**Abnahme**) |
+| GT5 | Optionen › Editor › Gleichen Text hervorheben: „Nur ganze Wörter“ an, `Kunde` markieren | `TKunde`, `Kunden` nicht mehr hervorgehoben, Anzahl kleiner; F3 überspringt sie |
+| GT6 | „Groß-/Kleinschreibung beachten“ an | `kunde` im Kommentar nicht mehr hervorgehoben |
+| GT7 | „F3/Umschalt+F3 springt zwischen den Treffern“ aus | F3 mit Markierung verhält sich wie in der IDE („Erneut suchen“) |
+| GT8 | Höchstzahl der Treffer auf 3 | Hinter der Markierung „mehr als 3 Treffer“ |
+| GT9 | Datei mit mehr als 20000 Zeilen, Wort markieren, scrollen | Nur Treffer im sichtbaren Bereich, Marke „… Treffer im sichtbaren Bereich“; Editor bleibt flüssig |
+| GT10 | Schnellschalter „Gleichen Text wie die Markierung hervorheben“ aus | Keine Hervorhebung, keine Anzahl; F3 wie vor #709 (**Abnahme**) |
+| GT11 | Strg+. auf der Anzahl › Ausblenden „In dieser Datei“ | Keine Hervorhebung in dieser Datei, in anderen weiter |
+| GT12 | Thema hell/dunkel wechseln | Hervorhebung und Anzahl in beiden Themen gut lesbar |
+
 ## Forward-Deklaration ergänzen (#685)
 
 Voraussetzung: Server läuft; Einstellungen auf Vorgabe; neue Unit `Tree.pas`.

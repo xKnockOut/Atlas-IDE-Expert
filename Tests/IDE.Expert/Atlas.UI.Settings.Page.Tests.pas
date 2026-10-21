@@ -1140,6 +1140,17 @@ begin
     Assert.IsTrue(Page.GutterColumnOverridesCheck.Checked);
     Page.GutterColumnCodeActionsCheck.Checked := False;
     Page.GutterColumnOverridesCheck.Checked := False;
+    // Gleichen Text hervorheben (#709).
+    Assert.IsTrue(Page.SelectionMatchesCheck.Checked, 'gleichen Text hervorheben standardmäßig an (#709)');
+    Assert.AreEqual('3', Page.SelectionMatchesMinLength.Text);
+    Assert.IsFalse(Page.SelectionMatchesCaseSensitiveCheck.Checked);
+    Assert.IsFalse(Page.SelectionMatchesWholeWordCheck.Checked);
+    Assert.IsTrue(Page.SelectionMatchesNavigateF3Check.Checked);
+    Assert.AreEqual('1000', Page.SelectionMatchesMaxMatches.Text);
+    Page.SelectionMatchesMinLength.Text := '4';
+    Page.SelectionMatchesWholeWordCheck.Checked := True;
+    Page.SelectionMatchesNavigateF3Check.Checked := False;
+    Page.SelectionMatchesMaxMatches.Text := '50';
     // Fehlertext am Zeilenende, Zähler und Sprungtasten (#509).
     Assert.AreEqual(1, Page.InlineDiagnostics.Choice, 'nur Fehler');
     Assert.IsTrue(Page.ProblemsStatusCounterCheck.Checked);
@@ -1164,6 +1175,12 @@ begin
     Assert.IsTrue(Saved.GutterColumnProblems);
     Assert.IsFalse(Saved.GutterColumnCodeActions);
     Assert.IsFalse(Saved.GutterColumnOverrides);
+    Assert.IsTrue(Saved.SelectionMatches);
+    Assert.AreEqual(4, Saved.SelectionMatchesMinLength);
+    Assert.IsFalse(Saved.SelectionMatchesCaseSensitive);
+    Assert.IsTrue(Saved.SelectionMatchesWholeWord);
+    Assert.IsFalse(Saved.SelectionMatchesNavigateF3);
+    Assert.AreEqual(50, Saved.SelectionMatchesMaxMatches);
     Assert.AreEqual('errorsAndWarnings', Saved.InlineDiagnostics);
     Assert.IsFalse(Saved.ProblemsStatusCounter);
     Assert.AreEqual($C077, Saved.NextProblemKey);
@@ -1174,6 +1191,7 @@ begin
     Assert.IsFalse(Page.DimUnusedUsesCheck.Checked);
     Assert.IsFalse(Page.RecursionMarkersCheck.Checked);
     Assert.IsFalse(Page.GutterColumnOverridesCheck.Checked);
+    Assert.IsTrue(Page.SelectionMatchesWholeWordCheck.Checked);
     Assert.AreEqual(2, Page.InlineDiagnostics.Choice);
     Assert.AreEqual('', Page.HideElementKey.Text);
   finally

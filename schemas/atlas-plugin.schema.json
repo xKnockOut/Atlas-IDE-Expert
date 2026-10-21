@@ -94,6 +94,10 @@
       "caption": "Atlas-Spalte",
       "captionEn": "Atlas column"
     },
+    "editor.selectionMatches": {
+      "caption": "Gleichen Text hervorheben",
+      "captionEn": "Selection matches"
+    },
     "editor.overviewRuler": {
       "caption": "Übersichtsleiste",
       "captionEn": "Overview ruler"
@@ -2685,6 +2689,82 @@
       "x-captionEn": "Overrides",
       "x-control": "Kontrollkästchen",
       "x-issue": "#768"
+    },
+    "SelectionMatches": {
+      "description": "Markiert man einen Text in einer Zeile, hinterlegt Atlas alle gleichen Stellen im sichtbaren Bereich, zeigt sie in der Übersichtsleiste und die Anzahl („3 Treffer“) hinter der Markierung. Rein textuell, auch in Strings und Kommentaren. Aus = keine Hervorhebung, F3 wie in der IDE.",
+      "type": "boolean",
+      "default": true,
+      "x-key": "highlight.selectionMatches",
+      "x-area": "highlighting",
+      "x-feature": "EditorCommands",
+      "x-page": "Editor",
+      "x-node": "editor.selectionMatches",
+      "x-quickToggle": true,
+      "x-drawing": true,
+      "x-caption": "Gleichen Text wie die Markierung hervorheben",
+      "x-captionEn": "Highlight text matching the selection",
+      "x-control": "Kontrollkästchen",
+      "x-issue": "#709"
+    },
+    "SelectionMatchesMinLength": {
+      "description": "Mindestlänge der Markierung in Zeichen (1 bis 100); kürzere Markierungen heben nichts hervor.",
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 100,
+      "default": 3,
+      "x-key": "highlight.selectionMatches.minLength",
+      "x-area": "highlighting",
+      "x-page": "Editor",
+      "x-control": "Zahl",
+      "x-issue": "#709"
+    },
+    "SelectionMatchesCaseSensitive": {
+      "description": "Nur Stellen mit gleicher Groß-/Kleinschreibung.",
+      "type": "boolean",
+      "default": false,
+      "x-key": "highlight.selectionMatches.caseSensitive",
+      "x-area": "highlighting",
+      "x-page": "Editor",
+      "x-caption": "Groß-/Kleinschreibung beachten",
+      "x-captionEn": "Match case",
+      "x-control": "Kontrollkästchen",
+      "x-issue": "#709"
+    },
+    "SelectionMatchesWholeWord": {
+      "description": "Nur ganze Wörter: kein Buchstabe, keine Ziffer und kein _ direkt davor oder danach.",
+      "type": "boolean",
+      "default": false,
+      "x-key": "highlight.selectionMatches.wholeWord",
+      "x-area": "highlighting",
+      "x-page": "Editor",
+      "x-caption": "Nur ganze Wörter",
+      "x-captionEn": "Whole words only",
+      "x-control": "Kontrollkästchen",
+      "x-issue": "#709"
+    },
+    "SelectionMatchesNavigateF3": {
+      "description": "F3 und Umschalt+F3 springen zum nächsten bzw. vorherigen Treffer, solange die Markierung steht, mit den Optionen oben. Aus = F3 wie in der IDE.",
+      "type": "boolean",
+      "default": true,
+      "x-key": "highlight.selectionMatches.navigateF3",
+      "x-area": "highlighting",
+      "x-page": "Editor",
+      "x-caption": "F3/Umschalt+F3 springt zwischen den Treffern",
+      "x-captionEn": "F3/Shift+F3 jumps between matches",
+      "x-control": "Kontrollkästchen",
+      "x-issue": "#709"
+    },
+    "SelectionMatchesMaxMatches": {
+      "description": "Höchstzahl der Treffer (1 bis 100000); darüber zeigt die Marke „mehr als …“. Dateien ab 20000 Zeilen durchsucht Atlas nur im sichtbaren Bereich.",
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 100000,
+      "default": 1000,
+      "x-key": "highlight.selectionMatches.maxMatches",
+      "x-area": "highlighting",
+      "x-page": "Editor",
+      "x-control": "Zahl",
+      "x-issue": "#709"
     },
     "NextChangeKey": {
       "description": "Tastenkürzel „Nächste Änderung“: springt reihum zum nächsten Block mit Änderungsmarke (0 = keins).",

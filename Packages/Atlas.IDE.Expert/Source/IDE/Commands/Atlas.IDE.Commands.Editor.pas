@@ -118,7 +118,9 @@ type
     /// eindeutiges Gegenstück passiert nichts.</summary>
     class procedure JumpToMatch(ASelect: Boolean); static;
     /// <summary>F3 bzw. Umschalt+F3 mit einzeiliger Markierung: nächstes bzw. vorheriges Vorkommen markieren
-    /// und als Suchtext der IDE übernehmen. False ohne solche Markierung (die Taste geht an die IDE).</summary>
+    /// und als Suchtext der IDE übernehmen. False ohne solche Markierung (die Taste geht an die IDE). Mit
+    /// „Gleichen Text hervorheben“ (#709) gelten dessen Optionen; ist dort F3 abgeschaltet, geht die Taste bei
+    /// passender Markierung an die IDE.</summary>
     class function TryFindSelection(ABackward: Boolean): Boolean; static;
     class procedure CopyQualifiedName(AWithParameters: Boolean); static;
     /// <summary>Zur Testunit bzw. getesteten Unit der oberen Datei; legt eine fehlende Testunit an (#189).</summary>
@@ -162,6 +164,7 @@ uses
   Atlas.Core.Editor.Selection,
   Atlas.Core.Editor.MethodToggle,
   Atlas.Core.Editor.Match,
+  Atlas.Core.Editor.SelectionMatches,
   Atlas.Core.Editor.TestUnit,
   Atlas.UI.Strings,
   Atlas.UI.Commands.Palette,
@@ -874,6 +877,9 @@ var
   TabWidth, Row, StartIndex, EndIndex: Integer;
   From: TLspTextPosition;
   Found: TLspRange;
+  Options: TAtlasSelectionMatchOptions;
+  Matching, NavigateF3: Boolean;
+  Term: string;
 begin
   Result := False;
   if not Supports(BorlandIDEServices, IOTAEditorServices, Editors) then
@@ -887,6 +893,11 @@ begin
   Needle := Block.Text;
   if (Needle = '') or (Pos(#10, Needle) > 0) or (Pos(#13, Needle) > 0) then
     Exit;
+  // Gleichen Text hervorheben (#709): F3 springt zwischen dessen Treffern, mit denselben Optionen.
+  Matching := TAtlasIdeSettings.SelectionMatchesOn(Options, NavigateF3) and
+    TAtlasSelectionMatches.Term(Needle, Options, Term);
+  if Matching and not NavigateF3 then
+    Exit;
   Lines := TAtlasEditorBuffer.Text(View.Buffer).Split([#13#10, #10]);
   Row := Block.StartingRow - 1;
   if (Row < 0) or (Row >= Length(Lines)) then
@@ -899,7 +910,12 @@ begin
     From := TLspTextPosition.Create(Row, StartIndex)
   else
     From := TLspTextPosition.Create(Row, EndIndex);
-  if not TAtlasSelectionSearch.Find(Lines, Needle, From, ABackward, Found) then
+  if Matching then
+  begin
+    if not TAtlasSelectionMatches.Next(Lines, Needle, Options, From, ABackward, Found) then
+      Exit;
+  end
+  else if not TAtlasSelectionSearch.Find(Lines, Needle, From, ABackward, Found) then
     Exit;
   // Suchtext der IDE: Strg+F und „Erneut suchen“ ohne Markierung machen damit weiter.
   try

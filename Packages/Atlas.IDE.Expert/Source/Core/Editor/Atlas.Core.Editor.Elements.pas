@@ -67,7 +67,9 @@ type
     /// <summary>Vorgeschlagene nächste Zeile eines Musters (#671).</summary>
     PatternPreview,
     /// <summary>Symbol der Atlas-Spalte in der Zeilenleiste (#768).</summary>
-    GutterColumn);
+    GutterColumn,
+    /// <summary>Hervorhebung gleichen Texts wie die Markierung samt Anzahl (#709).</summary>
+    SelectionMatches);
   TAtlasHideScope = (Here, InFile, Everywhere);
 {$SCOPEDENUMS OFF}
   TAtlasHideScopes = set of TAtlasHideScope;
@@ -187,6 +189,9 @@ begin
       Result := Make(AElement, 'ContinuePattern', [TAtlasHideScope.Everywhere], False, False);
     TAtlasDrawnElement.GutterColumn:
       Result := Make(AElement, 'GutterColumn', AllScopes, False, True);
+    // Nur solange die Markierung steht; Ausblenden je Datei oder überall.
+    TAtlasDrawnElement.SelectionMatches:
+      Result := Make(AElement, 'SelectionMatches', FileScopes, True, False);
   else
     Result := Make(AElement, '', [], False, False);
   end;
