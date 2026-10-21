@@ -623,10 +623,27 @@ begin
   Assert.IsFalse(Parse('{"refactoring": {"freeFields": false}}', Issues).Refactoring.FreeFields);
   Assert.AreEqual('freeAndNil', Parse('{"refactoring": {"freeFieldsStyle": "FreeAndNil"}}',
     Issues).Refactoring.FreeFieldsStyle);
+  // #715: Boolean umkehren.
+  Assert.IsTrue(Parse('{}', Issues).Refactoring.InvertBoolean);
+  Assert.IsTrue(Parse('{}', Issues).Refactoring.InvertBooleanIncludeDfm);
+  Assert.AreEqual('Not', Parse('{}', Issues).Refactoring.InvertBooleanFallbackPrefix);
+  Assert.AreEqual(0, Integer(Length(Parse('{}', Issues).Refactoring.InvertBooleanAntonyms)));
+  Assert.IsFalse(Parse('{"refactoring": {"invertBoolean": false}}', Issues).Refactoring.InvertBoolean);
+  Assert.IsFalse(Parse('{"refactoring": {"invertBooleanIncludeDfm": false}}',
+    Issues).Refactoring.InvertBooleanIncludeDfm);
+  Assert.AreEqual('No', Parse('{"refactoring": {"invertBooleanFallbackPrefix": "No"}}',
+    Issues).Refactoring.InvertBooleanFallbackPrefix);
+  Assert.AreEqual('Verbose=Silent', string.Join(',', Parse('{"refactoring": {"invertBooleanAntonyms": ' +
+    '{"Verbose": "Silent"}}}', Issues).Refactoring.InvertBooleanAntonyms));
   Assert.AreEqual(0, Integer(Length(Issues)));
   Parse('{"refactoring": {"propertyFromAccessorsPrefixes": "Get", "propertyFromAccessorsReplaceCalls": "ja", ' +
     '"propertyFromAccessorsSection": "private", "propertyFromAccessorsHideAccessors": "public"}}', Issues);
   Assert.AreEqual(4, Integer(Length(Issues)));
+  Parse('{"refactoring": {"invertBooleanAntonyms": ["Hidden"], "invertBooleanFallbackPrefix": "nicht gut"}}',
+    Issues);
+  Assert.AreEqual(2, Integer(Length(Issues)));
+  Parse('{"refactoring": {"invertBooleanAntonyms": {"Hidden": "1x"}}}', Issues);
+  Assert.AreEqual(1, Integer(Length(Issues)));
   // Speicherbudget (#185)
   Assert.AreEqual(768, Parse('{}', Issues).MemoryBudgetMb, 'Vorgabe 768 MB (Rückmeldung 15.10.2026)');
   Assert.AreEqual(0, Parse('{"memoryBudgetMb": 0}', Issues).MemoryBudgetMb, '0 = unbegrenzt');
