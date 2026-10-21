@@ -1142,6 +1142,18 @@ begin
           ReportNode(ANode[Index], '"refactoring.propertyFromAccessorsHideAccessors" muss "off", "private" oder ' +
             '"protected" sein');
     end
+    else if Key = 'freeFields' then
+      ExpectBoolean(ANode[Index], Key, FSettings.Refactoring.FreeFields)
+    else if Key = 'freeFieldsStyle' then
+    begin
+      if ExpectString(ANode[Index], Key, Value) then
+        if SameText(Value, 'free') then
+          FSettings.Refactoring.FreeFieldsStyle := 'free'
+        else if SameText(Value, 'freeAndNil') then
+          FSettings.Refactoring.FreeFieldsStyle := 'freeAndNil'
+        else
+          ReportNode(ANode[Index], '"refactoring.freeFieldsStyle" muss "free" oder "freeAndNil" sein');
+    end
     else
       Report(ANode.KeyStarts[Index], ANode.KeyStarts[Index] + Length(Key) + 2,
         Format('Unbekannte Einstellung "refactoring.%s"', [Key]), False);
