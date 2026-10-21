@@ -642,3 +642,8 @@ Jeder Branch baut auf dem vorigen auf. Nichts davon ist gebaut, getestet oder in
   - Tastenkonflikt gelöst (Entscheidung Marco): „In Methode suchen“ (#877) behält Strg+Umschalt+Alt+F, „Code formatieren“ (#43) hat jetzt Strg+Umschalt+Alt+L ($E04C).
   - #874 Rest (Optionsseite/Prüfliste/Fehlerbericht synchron, Server executeCommand seriell).
   - AV in rtl370 beim Beenden nach Neuladen.
+
+## Absturz beim Beenden der IDE (#1091, 21.10.2026, main fba389cf)
+- **Behoben:** „Fehler beim Abbau: Welcome: EAccessViolation“. Die IDE gibt beim Beenden die Willkommensseiten-Plugins frei, bevor Atlas entladen wird; `Plugins` in `Atlas.IDE.Welcome.Page.pas` zeigte auf freigegebene `TPlugin`. Jetzt trägt sich ein freigegebenes Plugin selbst aus (`ServiceGone`), Rahmen/Inhalt überwacht `TViewWatch` (FreeNotification).
+- **Nicht Atlas:** Die AV in `rtl370.bpl` (Offset 133BE4, „Lesen von Adresse …863C“) danach. Mit cdb gefangen: `TEditWindow.Notification` ruft eine Komponente von `$(BDS)\Bin\Scooter.BeyondCompare.Expert.dll` (Experte von RAD Studio), deren DLL schon entladen ist. Ohne Atlas in 3 Läufen nicht aufgetreten; vermutlich löst eine späte Benachrichtigung des Editorfensters sie aus. Gegenprobe ohne Beyond-Compare-Experten steht aus.
+- Werkzeuge im Scratchpad: `crashhunt.ps1` (Wiederholläufe), `crashdbg.ps1` + `cdb-cmds.txt` (cdb anhängen, Stapel bei rtl370+133BE4), `ide-dismiss.ps1` (Fehlerdialoge wegklicken).
