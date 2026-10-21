@@ -466,12 +466,13 @@ end;
 procedure CreateBugReport;
 begin
   TAtlasIdeBugReport.Execute(
-    function(const ACommand, AArgumentsJson: string): TJSONValue
+    procedure(const ACommand, AArgumentsJson: string; const ADone: TProc<TJSONValue>)
     begin
+      // Im Hintergrund (#874): Der Server antwortet auch während des Indexierens sofort, das Plugin wartet nicht.
       if Manager <> nil then
-        Result := Manager.RunServerCommand(ACommand, AArgumentsJson, 10000)
+        Manager.RunServerCommandAsync(ACommand, AArgumentsJson, 10000, ADone)
       else
-        Result := nil;
+        ADone(nil);
     end,
     procedure(AText: string)
     begin
@@ -1899,12 +1900,12 @@ begin
         Result := Manager.ActiveSession <> nil;
     end;
   Hooks.ServerCommand :=
-    function(ACommand: string): TJSONValue
+    function(ACommand: string): Boolean
     begin
-      if Manager <> nil then
-        Result := Manager.ExecuteServerCommand(ACommand)
-      else
-        Result := nil;
+      // Nur abschicken (#874): Den Fortschritt zeigt die Prüfliste über Indexing.
+      Result := (Manager <> nil) and (Manager.ActiveSession <> nil);
+      if Result then
+        Manager.ExecuteServerCommandAsync(ACommand, 30000, nil);
     end;
   Hooks.ServerPath :=
     function: string
@@ -1929,13 +1930,13 @@ begin
       TAtlasIdeHistory.Reset;
     end;
   Hooks.Command :=
-    function(ACommand: string): TJSONValue
+    procedure(ACommand: string; ADone: TProc<TJSONValue>)
     begin
-      // Kennzahlen, „Index neu aufbauen“ und „Index löschen“ der Einstellungsseite (#492).
+      // Kennzahlen, „Index neu aufbauen“ und „Index löschen“ der Einstellungsseite (#492), im Hintergrund (#874).
       if Manager <> nil then
-        Result := Manager.ExecuteServerCommand(ACommand)
+        Manager.ExecuteServerCommandAsync(ACommand, 30000, ADone)
       else
-        Result := nil;
+        ADone(nil);
     end;
   Hooks.ResetUsage :=
     procedure

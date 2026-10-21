@@ -7,7 +7,13 @@
 // Normale Handler laufen im aufrufenden Thread, in der Reihenfolge der
 // Nachrichten. Nebenläufige Handler (RegisterConcurrentRequest) übergibt der
 // Dispatcher dem Scheduler; ihre Antwort geht später über den Responder.
-// Ohne Scheduler laufen auch sie im aufrufenden Thread.
+// Ohne Scheduler laufen auch sie im aufrufenden Thread. Ein normaler Handler
+// mit Bedingung (RegisterConditionalRequest, #874) läuft nebenläufig,
+// wenn die Bedingung für die Parameter gilt, etwa reine Lesebefehle von
+// workspace/executeCommand, die sonst hinter einem Neuladen warten.
+//
+// Die Wartezeit einer Anfrage (AQueueMs im Beobachter) zählt ab dem Eingang
+// beim Lese-Thread, wenn der Aufrufer sie mitgibt, sonst ab der Verteilung.
 //
 // Antworten der Gegenseite auf eigene Anfragen (etwa workspace/applyEdit an
 // den Client, #397) gehen an den mit ExpectResponse gemeldeten Handler; ohne
@@ -29,6 +35,10 @@ type
   /// (DispatchMessage), AResponse gehört dem Dispatcher.</summary>
   TJsonRpcResponseHandler = reference to procedure(const AResponse: TJSONObject);
 
+  /// <summary>Gilt die Bedingung, läuft ein normaler Handler nebenläufig (#874). Läuft in der
+  /// Nachrichtenschleife; eine Ausnahme zählt als False.</summary>
+  TJsonRpcConcurrentWhen = reference to function(const AParams: TJSONValue): Boolean;
+
   /// <summary>Beobachter je Anfrage (#647, Diagnoselog). Beide Aufrufe laufen im Thread des Handlers;
   /// Ausnahmen darin werden verschluckt.</summary>
   IJsonRpcRequestObserver = interface
@@ -45,6 +55,7 @@ type
   private
     FRequestHandlers: TDictionary<string, TJsonRpcRequestHandler>;
     FConcurrentHandlers: TDictionary<string, TJsonRpcConcurrentRequestHandler>;
+    FConcurrentWhen: TDictionary<string, TJsonRpcConcurrentWhen>;
     FNotificationHandlers: TDictionary<string, TJsonRpcNotificationHandler>;
     FGuard: TJsonRpcGuard;
     FScheduler: TJsonRpcScheduler;
@@ -56,13 +67,21 @@ type
     FObserver: IJsonRpcRequestObserver;
     FLastMessage: string;
     FExpected: TDictionary<string, TJsonRpcResponseHandler>;
-    function DispatchRequest(const AId: TJSONValue; const AMethod: string; const AParams: TJSONValue): TJSONObject;
+    function DispatchRequest(const AId: TJSONValue; const AMethod: string; const AParams: TJSONValue;
+      AQueueMs: Int64): TJSONObject;
+    /// <summary>Nebenläufiger Handler für AMethod: eigener oder normaler mit erfüllter Bedingung.</summary>
+    function ConcurrentFor(const AMethod: string; const AParams: TJSONValue;
+      out AHandler: TJsonRpcConcurrentRequestHandler): Boolean;
     procedure DispatchNotification(const AMethod: string; const AParams: TJSONValue);
   public
     constructor Create;
     destructor Destroy; override;
     /// <summary>Registriert den Handler einer Anfrage; ein vorhandener wird ersetzt.</summary>
     procedure RegisterRequest(const AMethod: string; const AHandler: TJsonRpcRequestHandler);
+    /// <summary>Wie RegisterRequest; gilt AConcurrentWhen für die Parameter einer Anfrage, läuft sie
+    /// nebenläufig wie bei RegisterConcurrentRequest, sonst in der Reihenfolge der Nachrichten (#874).</summary>
+    procedure RegisterConditionalRequest(const AMethod: string; const AHandler: TJsonRpcRequestHandler;
+      const AConcurrentWhen: TJsonRpcConcurrentWhen);
     /// <summary>
     /// Registriert den Handler einer Anfrage, die nebenläufig in einem Worker-Thread
     /// laufen darf; ein vorhandener Handler (auch ein normaler) wird ersetzt.
@@ -77,7 +96,9 @@ type
     /// Fehler in Anfrage-Handlern werden zur Fehlerantwort; Fehler in
     /// Benachrichtigungs-Handlern gehen an den Aufrufer.
     /// </summary>
-    function DispatchMessage(const AMessage: TJSONObject): TJSONObject;
+    function DispatchMessage(const AMessage: TJSONObject): TJSONObject; overload;
+    /// <summary>Wie DispatchMessage; AQueueMs ist die Zeit seit dem Eingang der Nachricht (Diagnoselog).</summary>
+    function DispatchMessage(const AMessage: TJSONObject; AQueueMs: Int64): TJSONObject; overload;
     /// <summary>Namen aller registrierten Anfragen (für das Diagnoselog, #647).</summary>
     function Methods: TArray<string>;
     /// <summary>Meldet eine eigene Anfrage mit der id AId (als Text) an; ihre Antwort geht einmal an AHandler.
@@ -200,7 +221,7 @@ procedure ScheduleConcurrent(const AScheduler: TJsonRpcScheduler; const ARespond
   const APending: IJsonRpcPendingRequests; const AHandler: TJsonRpcConcurrentRequestHandler;
   const AId, AParams: TJSONValue; const AToken: IJsonRpcCancellationToken; const AMethod: string;
   const AWatchdog: IJsonRpcWatchdog; const AOnFailed: TJsonRpcRequestFailedEvent;
-  const AStatistics: IJsonRpcStatistics; const AObserver: IJsonRpcRequestObserver);
+  const AStatistics: IJsonRpcStatistics; const AObserver: IJsonRpcRequestObserver; AQueueMs: Int64);
 var
   Method: string;
   Statistics: IJsonRpcStatistics;
@@ -214,8 +235,10 @@ var
   Pending: IJsonRpcPendingRequests;
   Handler: TJsonRpcConcurrentRequestHandler;
   Token: IJsonRpcCancellationToken;
+  Waited: Int64;
 begin
   Responder := AResponder;
+  Waited := AQueueMs;
   Pending := APending;
   Handler := AHandler;
   Token := AToken;
@@ -245,7 +268,7 @@ begin
             Ticket := Watchdog.Watch(Id, Method, Token, Responder);
           try
             Response := RunConcurrent(Id, Params, Method, Handler, Token, OnFailed, Statistics, Observer,
-              Queued.ElapsedMilliseconds);
+              Waited + Queued.ElapsedMilliseconds);
           finally
             if Watchdog <> nil then
               Watchdog.Unwatch(Ticket);
@@ -278,6 +301,7 @@ begin
   inherited Create;
   FRequestHandlers := TDictionary<string, TJsonRpcRequestHandler>.Create;
   FConcurrentHandlers := TDictionary<string, TJsonRpcConcurrentRequestHandler>.Create;
+  FConcurrentWhen := TDictionary<string, TJsonRpcConcurrentWhen>.Create;
   FPending := TJsonRpcPendingRequests.Create;
   FNotificationHandlers := TDictionary<string, TJsonRpcNotificationHandler>.Create;
   FExpected := TDictionary<string, TJsonRpcResponseHandler>.Create;
@@ -287,6 +311,7 @@ destructor TJsonRpcDispatcher.Destroy;
 begin
   FExpected.Free;
   FNotificationHandlers.Free;
+  FConcurrentWhen.Free;
   FConcurrentHandlers.Free;
   FRequestHandlers.Free;
   inherited;
@@ -315,13 +340,23 @@ end;
 procedure TJsonRpcDispatcher.RegisterRequest(const AMethod: string; const AHandler: TJsonRpcRequestHandler);
 begin
   FConcurrentHandlers.Remove(AMethod);
+  FConcurrentWhen.Remove(AMethod);
   FRequestHandlers.AddOrSetValue(AMethod, AHandler);
+end;
+
+procedure TJsonRpcDispatcher.RegisterConditionalRequest(const AMethod: string;
+  const AHandler: TJsonRpcRequestHandler; const AConcurrentWhen: TJsonRpcConcurrentWhen);
+begin
+  RegisterRequest(AMethod, AHandler);
+  if Assigned(AConcurrentWhen) then
+    FConcurrentWhen.AddOrSetValue(AMethod, AConcurrentWhen);
 end;
 
 procedure TJsonRpcDispatcher.RegisterConcurrentRequest(const AMethod: string;
   const AHandler: TJsonRpcConcurrentRequestHandler);
 begin
   FRequestHandlers.Remove(AMethod);
+  FConcurrentWhen.Remove(AMethod);
   FConcurrentHandlers.AddOrSetValue(AMethod, AHandler);
 end;
 
@@ -331,6 +366,11 @@ begin
 end;
 
 function TJsonRpcDispatcher.DispatchMessage(const AMessage: TJSONObject): TJSONObject;
+begin
+  Result := DispatchMessage(AMessage, 0);
+end;
+
+function TJsonRpcDispatcher.DispatchMessage(const AMessage: TJSONObject; AQueueMs: Int64): TJSONObject;
 var
   Id: TJSONValue;
   MethodValue: TJSONValue;
@@ -391,7 +431,36 @@ begin
     Result := nil;
   end
   else
-    Result := DispatchRequest(Id, MethodValue.Value, Params);
+    Result := DispatchRequest(Id, MethodValue.Value, Params, AQueueMs);
+end;
+
+function TJsonRpcDispatcher.ConcurrentFor(const AMethod: string; const AParams: TJSONValue;
+  out AHandler: TJsonRpcConcurrentRequestHandler): Boolean;
+var
+  When: TJsonRpcConcurrentWhen;
+  Handler: TJsonRpcRequestHandler;
+  Concurrent: Boolean;
+begin
+  AHandler := nil;
+  if FConcurrentHandlers.TryGetValue(AMethod, AHandler) then
+    Exit(True);
+  if not (FConcurrentWhen.TryGetValue(AMethod, When) and FRequestHandlers.TryGetValue(AMethod, Handler)) then
+    Exit(False);
+  try
+    Concurrent := When(AParams);
+  except
+    // Unlesbare Parameter: in der Reihenfolge laufen; der Handler meldet den Fehler selbst.
+    on Exception do
+      Concurrent := False;
+  end;
+  if not Concurrent then
+    Exit(False);
+  AHandler :=
+    function(const ARequestParams: TJSONValue; const AToken: IJsonRpcCancellationToken): TJSONValue
+    begin
+      Result := Handler(ARequestParams);
+    end;
+  Result := True;
 end;
 
 function TJsonRpcDispatcher.Methods: TArray<string>;
@@ -400,7 +469,7 @@ begin
 end;
 
 function TJsonRpcDispatcher.DispatchRequest(const AId: TJSONValue; const AMethod: string;
-  const AParams: TJSONValue): TJSONObject;
+  const AParams: TJSONValue; AQueueMs: Int64): TJSONObject;
 var
   Handler: TJsonRpcRequestHandler;
   ConcurrentHandler: TJsonRpcConcurrentRequestHandler;
@@ -421,12 +490,12 @@ begin
     try
       if Assigned(FGuard) then
         FGuard(AMethod, True);
-      if FConcurrentHandlers.TryGetValue(AMethod, ConcurrentHandler) then
+      if ConcurrentFor(AMethod, AParams, ConcurrentHandler) then
       begin
         if Assigned(FScheduler) and Assigned(FResponder) then
         begin
           ScheduleConcurrent(FScheduler, FResponder, FPending, ConcurrentHandler, AId, AParams, Token, AMethod,
-            FWatchdog, FOnRequestFailed, FStatistics, FObserver);
+            FWatchdog, FOnRequestFailed, FStatistics, FObserver, AQueueMs);
           Scheduled := True;
           Exit(nil);
         end;
@@ -434,7 +503,7 @@ begin
         if FWatchdog <> nil then
           Ticket := FWatchdog.Watch(AId, AMethod);
         Exit(RunConcurrent(AId, AParams, AMethod, ConcurrentHandler, Token, FOnRequestFailed, FStatistics,
-          FObserver, 0));
+          FObserver, AQueueMs));
       end;
       if not FRequestHandlers.TryGetValue(AMethod, Handler) then
         raise EJsonRpcError.Create(TJsonRpcErrorCode.MethodNotFound, 'Methode nicht unterstützt: ' + AMethod);
@@ -451,14 +520,14 @@ begin
         TJsonRpcCurrentRequest.Leave(Previous);
       end;
       Result := TJsonRpcMessages.Response(AId, Value);
-      ObserveFinished(FObserver, AMethod, AParams, Value, nil, 0, Watch.ElapsedMilliseconds);
+      ObserveFinished(FObserver, AMethod, AParams, Value, nil, AQueueMs, Watch.ElapsedMilliseconds);
       if FStatistics <> nil then
         FStatistics.Add(AMethod, Watch.ElapsedMilliseconds, False);
     except
       on E: Exception do
       begin
         if Measured then
-          ObserveFinished(FObserver, AMethod, AParams, nil, E, 0, Watch.ElapsedMilliseconds);
+          ObserveFinished(FObserver, AMethod, AParams, nil, E, AQueueMs, Watch.ElapsedMilliseconds);
         if Measured and (FStatistics <> nil) then
           FStatistics.Add(AMethod, Watch.ElapsedMilliseconds, True);
         NotifyFailed(FOnRequestFailed, AMethod, AParams, E);

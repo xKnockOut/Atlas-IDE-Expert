@@ -50,7 +50,7 @@ type
     procedure ReportError(const AError: Exception);
     procedure ReportProblem(const AText: string);
     procedure Send(AMessage: TJSONObject);
-    procedure Process(const AMessage: TJSONObject);
+    procedure Process(const AMessage: TJSONObject; AQueueMs: Int64);
     function CreateResponder: TJsonRpcResponder;
   public
     /// <summary>Der Dispatcher bleibt im Besitz des Aufrufers.</summary>
@@ -115,7 +115,11 @@ type
     Error: Exception;
     /// <summary>ikWork: Arbeit für den Thread der Schleife (Queue).</summary>
     Work: TProc;
+    /// <summary>Eingang in ms (TThread.GetTickCount64) für die Wartezeit (#874); 0 = unbekannt.</summary>
+    Received: UInt64;
     procedure Release;
+    /// <summary>Millisekunden seit dem Eingang; 0 ohne Zeitstempel.</summary>
+    function WaitedMs: Int64;
   end;
 
   /// <summary>Posteingang zwischen Lese-Thread und Nachrichtenschleife.</summary>
@@ -160,6 +164,13 @@ begin
 end;
 
 { TJsonRpcInboxItem }
+
+function TJsonRpcInboxItem.WaitedMs: Int64;
+begin
+  Result := 0;
+  if Received <> 0 then
+    Result := Int64(TThread.GetTickCount64 - Received);
+end;
 
 procedure TJsonRpcInboxItem.Release;
 begin
@@ -340,6 +351,7 @@ begin
             end;
             Item := InboxItem(ikMessage);
             Item.Message := Incoming;
+            Item.Received := TThread.GetTickCount64;
             Inbox.Put(Item);
           end;
         except
@@ -473,12 +485,13 @@ begin
     end;
 end;
 
-procedure TJsonRpcConnection.Process(const AMessage: TJSONObject);
+procedure TJsonRpcConnection.Process(const AMessage: TJSONObject; AQueueMs: Int64);
 var
   Response: TJSONObject;
 begin
   try
-    Response := FDispatcher.DispatchMessage(AMessage);
+    // Wartezeit im Posteingang mitgeben: Sie steht sonst nicht im Diagnoselog (#874).
+    Response := FDispatcher.DispatchMessage(AMessage, AQueueMs);
   except
     // Fehler eines Benachrichtigungs-Handlers: melden und weiterarbeiten.
     on E: Exception do
@@ -521,7 +534,7 @@ begin
       case Item.Kind of
         ikMessage:
           try
-            Process(Item.Message);
+            Process(Item.Message, Item.WaitedMs);
           finally
             Item.Release;
           end;
