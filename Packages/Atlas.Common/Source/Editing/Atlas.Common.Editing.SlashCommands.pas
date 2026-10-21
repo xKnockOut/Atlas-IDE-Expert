@@ -109,7 +109,8 @@ type
     TodoCategory = 'todoCategory';
     /// <summary>/sortuses streicht ungenutzte Units (#297, #284); 'false' = nur sortieren.</summary>
     SortUsesRemoveUnused = 'sortUsesRemoveUnused';
-    /// <summary>/helper für Aufzählungen mit cNames, ToString und FromString (#875); 'false' = leerer Helper.</summary>
+    /// <summary>/helper für Aufzählungen mit cNames, ToString und FromString (#875); 'false' = leerer
+    /// Helper.</summary>
     EnumHelper = 'enumHelper';
   end;
 
