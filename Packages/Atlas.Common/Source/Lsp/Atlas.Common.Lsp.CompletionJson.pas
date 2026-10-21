@@ -19,7 +19,7 @@ function CompletionItemsToJson(const AItems: TArray<TCompletionItem>; AFirstSort
 function CompletionListToJson(const AItems: TArray<TCompletionItem>; AIncomplete: Boolean;
   AFirstSort: Integer): TJSONObject;
 /// <summary>Bekommt der Eintrag ein data-Objekt? Nur mit Quelle, erwartetem Typ, Aktion, Bedingung, Bereich,
-/// Ordinal, pinned, hint, Formular, Sender, Datenmenge oder Freigabe.</summary>
+/// Ordinal, pinned, hint, Formular, Sender, Datenmenge, Freigabe oder uses-Gruppe (#469).</summary>
 function NeedsData(const AItem: TCompletionItem): Boolean;
 
 implementation
@@ -290,14 +290,41 @@ begin
     Bindings.Add(Text);
 end;
 
+procedure WriteUses(const AItem: TCompletionItem; AData: TJSONObject);
+var
+  List: TJSONArray;
+  Text: string;
+begin
+  if AItem.UsesGroup = '' then
+    Exit;
+  AData.AddPair('usesGroup', AItem.UsesGroup);
+  AData.AddPair('usesFilter', AItem.UsesFilter);
+  if AItem.UsesElsewhere <> '' then
+    AData.AddPair('usesElsewhere', AItem.UsesElsewhere);
+  if AItem.UsesCycle <> '' then
+    AData.AddPair('usesCycle', AItem.UsesCycle);
+  List := TJSONArray.Create;
+  AData.AddPair('usesTypes', List);
+  for Text in AItem.UsesTypes do
+    List.Add(Text);
+  AData.AddPair('usesTypeCount', TJSONNumber.Create(AItem.UsesTypeCount));
+  if Length(AItem.UsesHidden) > 0 then
+  begin
+    List := TJSONArray.Create;
+    AData.AddPair('usesHidden', List);
+    for Text in AItem.UsesHidden do
+      List.Add(Text);
+  end;
+end;
+
 const
   /// <summary>Reihenfolge der Felder unter data; das Plugin liest nach Namen, die Golden-Tests nach Text.
   /// </summary>
-  DataWriters: array[0..29] of TItemDataWriter = (WriteSource, WriteExpected, WriteAction, WriteContainer,
+  DataWriters: array[0..30] of TItemDataWriter = (WriteSource, WriteExpected, WriteAction, WriteContainer,
     WriteDepth, WriteHelper, WriteParameters, WriteCondition, WriteUnavailable, WriteScope, WriteOrdinal,
     WriteSetOf, WriteLinked, WritePinned, WriteCount, WriteUnknown, WriteBatch, WriteHint, WriteForm, WriteByType, WriteSender,
     WriteConversion, WriteAssignments, WriteDataSet, WriteGuard, WriteUnit, WriteHides, WriteOverloads, WriteTypeArg,
-    WriteBindings);
+    WriteBindings, WriteUses);
 
 function NeedsData(const AItem: TCompletionItem): Boolean;
 begin
@@ -305,7 +332,7 @@ begin
     (AItem.Scope > 0) or (AItem.Ordinal > 0) or AItem.Pinned or AItem.LinkedEdits or AItem.Hint or (AItem.Form <> '') or
     (AItem.Sender <> '') or (AItem.DataSet <> '') or (AItem.Guard <> '') or (AItem.TypeParam <> '') or
     (Length(AItem.Bindings) > 0) or (AItem.Conversion <> '') or (AItem.Lossy <> '') or
-    (Length(AItem.Assignments) > 0);
+    (Length(AItem.Assignments) > 0) or (AItem.UsesGroup <> '');
 end;
 
 function EditToJson(const AEdit: TRuleEdit): TJSONObject;

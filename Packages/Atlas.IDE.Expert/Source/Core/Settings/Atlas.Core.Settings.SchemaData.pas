@@ -11,7 +11,7 @@ function AtlasSchemaJson: string;
 implementation
 
 const
-  Lines: array[0..1372] of string = (
+  Lines: array[0..1378] of string = (
     '{',
     '  "$schema": "http://json-schema.org/draft-07/schema#",',
     '  "title": "Atlas-Konfiguration",',
@@ -511,6 +511,12 @@ const
     '          "description": "Hinter einem Record- oder Klassenausdruck mit Punkt am Anfang einer Anweisung (Opts.) steht „Alle Felder zuweisen (n)“ ganz oben: je öffentlich beschreibbarem Feld und jeder ' + 'Property eine Zeile Opts.Feld := Platzhalter; in Deklarationsreihenfolge, mit 0, '''', False, nil oder dem ersten Aufzählungswert als Vorgabe im Platzhalter-Modus. Felder, die die folgenden Zeilen sch' + 'on zuweisen, fallen weg. Bei mehr als 15 Feldern zuerst eine Liste mit Kontrollkästchen.",',
     '          "x-experimental": true,',
     '          "x-issue": "#491"',
+    '        },',
+    '        "usesDetails": {',
+    '          "type": "boolean",',
+    '          "default": true,',
+    '          "description": "Im uses-Abschnitt: schon eingebundene Units ausblenden (die Fußzeile nennt sie), Units nach Projekt, RTL/VCL und Drittanbietern gruppieren, Kurzformen auf den Namespace ergän' + 'zen (Classes → System.Classes), Units aus dem anderen Abschnitt mit „bereits im interface-Teil“ bzw. „… implementation-Teil“ und im interface-Teil Units mit Zirkelbezug markieren; im Detailpanel Pfad ' + 'und die ersten exportierten Typen. Aus: alle Units des Index als schlichte Liste.",',
+    '          "x-issue": "#469"',
     '        },',
     '        "nameSuggestions": {',
     '          "type": "boolean",',

@@ -202,6 +202,15 @@ type
     Constraint: string;
     ConstraintHint: string;
     HiddenKinds: string;
+    /// <summary>uses-Abschnitt (#469): Gruppe ("project", "rtl", "library"), Abschnitt, in dem die Unit schon steht
+    /// ("interface", "implementation"; '' sonst), Kette eines Zirkelbezugs ("uA → uB → Haupt"; '' ohne), die ersten
+    /// exportierten Typen samt ihrer Gesamtzahl und die schon eingebundenen Units für die Fußzeile.</summary>
+    UsesGroup: string;
+    UsesElsewhere: string;
+    UsesCycle: string;
+    UsesTypes: TArray<string>;
+    UsesTypeCount: Integer;
+    UsesHidden: TArray<string>;
     /// <summary>Zahl der Überladungen samt dieser (mindestens 1).</summary>
     function OverloadCount: Integer;
   end;
@@ -247,6 +256,14 @@ type
     /// <summary>Gleitkomma für eine Ganzzahl (#490): Typ des Werts und erwarteter Typ; '' sonst.</summary>
     LossyFrom: string;
     LossyTo: string;
+    /// <summary>Unit im uses-Abschnitt (#469): Pfad (gekürzt, "$(BDS)\source\…"), die ersten exportierten Typen
+    /// und ihre Gesamtzahl, Kette eines Zirkelbezugs ("uA → Haupt") und der Abschnitt, in dem sie schon steht
+    /// ("interface", "implementation"); leer sonst.</summary>
+    UnitPath: string;
+    UnitTypes: TArray<string>;
+    UnitTypeCount: Integer;
+    UsesCycle: string;
+    UsesElsewhere: string;
     function IsEmpty: Boolean;
   end;
 
@@ -298,7 +315,7 @@ end;
 function TAtlasItemDetails.IsEmpty: Boolean;
 begin
   Result := (Declaration = '') and (Summary = '') and (UnitName = '') and (Availability = '') and (LossyFrom = '') and
-    (AddsUnit = '');
+    (AddsUnit = '') and (UnitPath = '');
 end;
 
 end.

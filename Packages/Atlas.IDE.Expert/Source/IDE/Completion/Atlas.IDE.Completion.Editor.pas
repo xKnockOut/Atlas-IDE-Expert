@@ -1151,6 +1151,12 @@ begin
   // Überladung (#425): deren Position statt der ersten nachfragen.
   if (FOverloadIndex > 0) and (FOverloadIndex <= Length(Item.OverloadData)) then
     Item.ResolveData := Item.OverloadData[FOverloadIndex - 1];
+  // Unit im uses-Abschnitt (#469): alles Nötige liefert schon die Liste.
+  if Item.UsesGroup <> '' then
+  begin
+    FPopup.ShowDetails(TAtlasItemPresentation.UsesDetails(Item));
+    Exit;
+  end;
   // Helper aus nicht eingebundener Unit (#456): Hinweis, dass Enter die uses ergänzt.
   AddsUnit := '';
   if Item.IsHelper and TAtlasIdeSettings.Current.AutoUses then

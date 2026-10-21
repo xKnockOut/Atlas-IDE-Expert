@@ -177,6 +177,21 @@ type
     /// <summary>„Alle Felder zuweisen“ mit mehr als 15 Feldern (#491): Atlas zeigt beim Übernehmen erst diese
     /// Zeilen mit Kontrollkästchen; TextEdit reicht vom Anfang des Ausdrucks bis zum Cursor.</summary>
     Assignments: TArray<TCompletionAssignment>;
+    /// <summary>uses-Abschnitt (#469): Gruppe der Unit (project, rtl, library); '' bei anderen Einträgen.
+    /// </summary>
+    UsesGroup: string;
+    /// <summary>Teil des Unit-Namens, gegen den das Plugin das Wort hinter dem letzten Punkt filtert
+    /// ("Generics.Collections" für "Gener").</summary>
+    UsesFilter: string;
+    /// <summary>Schon im anderen Abschnitt eingebunden: 'interface' bzw. 'implementation'; '' sonst.</summary>
+    UsesElsewhere: string;
+    /// <summary>Zirkelbezug im interface-Teil: Kette "uA → uB → Eigene"; '' ohne.</summary>
+    UsesCycle: string;
+    /// <summary>Erste exportierte Typen und ihre Gesamtzahl für das Detailpanel.</summary>
+    UsesTypes: TArray<string>;
+    UsesTypeCount: Integer;
+    /// <summary>In der Liste am Cursor schon eingebundene Units für die Fußzeile.</summary>
+    UsesHidden: TArray<string>;
   end;
 
   TCompletionItems = record
