@@ -1175,6 +1175,10 @@ begin
     Assert.AreEqual(ShortCutToText($C00D), Page.NewLineAboveKey.Text);
     Assert.IsTrue(Page.NewLineAroundStatementAware.Checked);
     Page.NewLineAroundStatementAware.Checked := False;
+    // Markierung beim Tippen umschließen (#672).
+    Assert.IsTrue(Page.WrapSelection.Checked, 'Umschließen standardmäßig an (#672)');
+    Assert.AreEqual('([{''', Page.WrapSelectionChars.Text);
+    Page.WrapSelectionChars.Text := ' ([<';
     // Fehlertext am Zeilenende, Zähler und Sprungtasten (#509).
     Assert.AreEqual(1, Page.InlineDiagnostics.Choice, 'nur Fehler');
     Assert.IsTrue(Page.ProblemsStatusCounterCheck.Checked);
@@ -1215,6 +1219,8 @@ begin
     Assert.AreEqual($200D, Saved.NewLineBelowKey);
     Assert.AreEqual($C00D, Saved.NewLineAboveKey);
     Assert.IsFalse(Saved.NewLineAroundStatementAware);
+    Assert.IsTrue(Saved.WrapSelection);
+    Assert.AreEqual('([<', Saved.WrapSelectionChars);
     Assert.AreEqual('errorsAndWarnings', Saved.InlineDiagnostics);
     Assert.IsFalse(Saved.ProblemsStatusCounter);
     Assert.AreEqual($C077, Saved.NextProblemKey);

@@ -106,6 +106,10 @@
       "caption": "Kommentare fortsetzen",
       "captionEn": "Continue comments"
     },
+    "editor.wrapSelection": {
+      "caption": "Markierung umschließen",
+      "captionEn": "Wrap selection"
+    },
     "editor.completeStatement": {
       "caption": "Anweisung vervollständigen",
       "captionEn": "Complete statement"
@@ -1904,6 +1908,29 @@
       "x-area": "editor",
       "x-page": "Editor",
       "x-issue": "#696"
+    },
+    "WrapSelection": {
+      "description": "Markierung beim Tippen umschließen: Ist Text markiert und tippt man ein öffnendes Zeichen, kommt die Markierung zwischen das Zeichenpaar (( … ), [ … ], ' … ' mit verdoppelten Hochkommas, { … }, < … > hinter einem Typnamen), statt überschrieben zu werden. { über ganze Zeilen setzt { und } auf eigene Zeilen, mit } in der Markierung (* … *). Die Markierung bleibt auf dem Text, ein Rückgängig-Schritt; Spaltenblock und mehrere Einfügemarken je Zeile bzw. Marke. Ohne Markierung keine Änderung.",
+      "type": "boolean",
+      "default": true,
+      "x-key": "editor.wrapSelection",
+      "x-area": "editor",
+      "x-feature": "EditorCommands",
+      "x-page": "Editor",
+      "x-node": "editor.wrapSelection",
+      "x-caption": "Markierung beim Tippen umschließen",
+      "x-captionEn": "Wrap selection when typing",
+      "x-control": "Kontrollkästchen",
+      "x-issue": "#672"
+    },
+    "WrapSelectionChars": {
+      "description": "Zeichen, die umschließen, aus ( [ { ' <; < nur, wenn hier enthalten. Andere Zeichen zählen nicht.",
+      "type": "string",
+      "default": "([{'",
+      "x-key": "editor.wrapSelection.chars",
+      "x-area": "editor",
+      "x-page": "Editor",
+      "x-issue": "#672"
     },
     "TestUnitKey": {
       "type": "integer",
