@@ -2467,3 +2467,24 @@ Voraussetzung für EX2 bis EX7: mindestens eine Einstellung trägt `x-experiment
 | RS9 | Cursor in `const C = 'Text';`, in `[Attr('x y')]`, in `case S of 'ab': …` und in `procedure P(const S: string = 'xy')`, Strg+Leertaste | Kein Eintrag „Als resourcestring auslagern“ |
 | RS10 | Literal `'x'` bzw. `''` | Kein Eintrag (könnte ein Char sein) |
 | RS11 | `completion.resourceStrings` aus, RS1 | Kein Eintrag |
+
+## Suchleiste unter dem Editor und Reiter „Atlas-Suche“ (#878, #877)
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| SU1 | Cursor auf `Open` in einer Methode, Strg+F | Unter dem Editor erscheint die Suchleiste, „Open“ steht markiert im Suchfeld, der Fokus liegt dort; alle Treffer im Bereich sind gerahmt, der Zähler zeigt „n von m“ |
+| SU2 | Im Suchfeld tippen | Rahmen und Zähler folgen jedem Tastendruck; der Editor springt zum nächsten Treffer ab der Stelle, an der die Leiste geöffnet wurde |
+| SU3 | Enter, Enter, Umschalt+Enter | Nächster, nächster, voriger Treffer; Zähler passt; am Ende geht es mit Meldung von vorn weiter |
+| SU4 | Nach SU3 das Fenster Meldungen ansehen | Neuer Reiter „Atlas-Suche“ mit Kopfzeile „Suche nach „Open“ … in Datei.pas, Methode X: m Treffer“ und je Treffer Datei(Zeile) und Zeilentext; der Fokus ist zurück in der Leiste; Enter baut die Liste nicht neu auf |
+| SU5 | Doppelklick auf eine Zeile im Reiter | Editor springt auf die Zeile und Spalte des Treffers (auch bei Tabs) |
+| SU6 | „Bezeichner“ anhaken | Treffer in Kommentaren und Strings verschwinden; „Groß/klein“ und „Ganzes Wort“ sind gesperrt; Kopfzeile der Liste nennt „(Bezeichner)“ |
+| SU7 | Bereich „Unit“, dann zurück auf „Methode“ und in der zweiten Liste die äußere Routine wählen (verschachtelte Routine) | Treffer der ganzen Unit bzw. der äußeren Routine; die Stufenliste gibt es nur bei „Methode“ |
+| SU8 | Mehrere Zeilen markieren, Strg+F | Bereich „Auswahl“ vorgewählt; nur Treffer in der Markierung; ohne Markierung fehlt „Auswahl“ in der Liste |
+| SU9 | Esc in der Leiste (auch nach Klick in eine Auswahlliste oder ein Kästchen) | Leiste verschwindet, Fokus im Editor, Rahmen weg; F3 springt weiter zum nächsten Treffer der letzten Suche |
+| SU10 | Strg+Umschalt+Alt+F im Editor | Leiste mit Bereich „Methode“, innerste Routine |
+| SU11 | Zweites Editorfenster (Ansicht › Neues Editorfenster), dort Strg+F | Eigene Leiste in diesem Fenster; die Leiste im ersten Fenster ist zu |
+| SU12 | Anderen Reiter (andere Unit) aktivieren, im Suchfeld weitertippen | Suche gilt für die neue Unit ab deren Cursor |
+| SU13 | Optionen › Atlas › Units suchen › „Treffer im Reiter „Atlas-Suche“ … auflisten“ aus | Reiter „Atlas-Suche“ verschwindet, Schaltfläche „In Meldungen“ fehlt, Enter springt nur |
+| SU14 | „Atlas-Suche statt IDE-Suche“ aus | Strg+F und F3 gehören wieder der IDE; Strg+Umschalt+Alt+F öffnet weiter die Atlas-Leiste |
+| SU15 | Helles und dunkles IDE-Thema wechseln, Leiste offen | Leiste folgt dem Thema (Felder, Kästchen, Knöpfe lesbar) |
+| SU16 | Leiste offen, Tastatur in der Leiste: Strg+A, Strg+C, Strg+V, Pfeile im Suchfeld | Wirken im Suchfeld, nicht im Editor |

@@ -86,6 +86,8 @@ type
     /// <summary>„12: Zeilentext“ für die Trefferliste (Zeile 1-basiert, Text ohne Einzug, höchstens 200 Zeichen).
     /// </summary>
     class function HitCaption(const ALines: TArray<string>; const AHit: TAtlasSearchHit): string; static;
+    /// <summary>Zeilentext des Treffers ohne Einzug, Tabs als Leerzeichen, höchstens 200 Zeichen.</summary>
+    class function HitText(const ALines: TArray<string>; const AHit: TAtlasSearchHit): string; static;
     /// <summary>Alle Treffer von ANeedle im Bereich, in Textreihenfolge; leerer Suchtext = keine.</summary>
     class function FindAll(const ALines: TArray<string>; const ANeedle: string; const AOptions: TAtlasSearchOptions;
       const AArea: TAtlasSearchArea): TArray<TAtlasSearchHit>; static;
@@ -205,18 +207,20 @@ begin
     SetLength(Result, Length(Result) - 1);
 end;
 
-class function TAtlasTextSearch.HitCaption(const ALines: TArray<string>; const AHit: TAtlasSearchHit): string;
+class function TAtlasTextSearch.HitText(const ALines: TArray<string>; const AHit: TAtlasSearchHit): string;
 const
   MaxText = 200;
-var
-  Text: string;
 begin
-  Text := '';
+  Result := '';
   if (AHit.Line >= 0) and (AHit.Line <= High(ALines)) then
-    Text := Trim(CleanLine(ALines[AHit.Line]).Replace(#9, ' '));
-  if Length(Text) > MaxText then
-    Text := Copy(Text, 1, MaxText) + '…';
-  Result := IntToStr(AHit.Line + 1) + ': ' + Text;
+    Result := Trim(CleanLine(ALines[AHit.Line]).Replace(#9, ' '));
+  if Length(Result) > MaxText then
+    Result := Copy(Result, 1, MaxText) + '…';
+end;
+
+class function TAtlasTextSearch.HitCaption(const ALines: TArray<string>; const AHit: TAtlasSearchHit): string;
+begin
+  Result := IntToStr(AHit.Line + 1) + ': ' + HitText(ALines, AHit);
 end;
 
 class function TAtlasTextSearch.IsReserved(const AWord: string): Boolean;

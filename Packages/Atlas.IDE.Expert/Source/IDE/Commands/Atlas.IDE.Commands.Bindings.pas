@@ -29,8 +29,8 @@
 // bleibt es bei „Erneut suchen“ der IDE. Strg+. (HideElementKey, #628) öffnet
 // das Menü „Ausblenden“ zu den Elementen der Zeile; ohne Element geht die Taste
 // an die IDE (IDE Insight).
-// Atlas-Suche (#878, search.replaceIdeSearch): Strg+F öffnet den
-// Atlas-Suchdialog, F3/Umschalt+F3 springen in der letzten Atlas-Suche; ohne
+// Atlas-Suche (#878, search.replaceIdeSearch): Strg+F öffnet die
+// Suchleiste unter dem Editor, F3/Umschalt+F3 springen in der letzten Atlas-Suche; ohne
 // letzte Atlas-Suche bleibt es bei Markierung suchen bzw. der IDE. Die Tasten
 // sind bewusst übernommen (ohne Konfliktprüfung, wie Strg+F12 bei „Units
 // suchen“); mit dem Schalter aus belegt Atlas sie nicht. „In Methode suchen“
@@ -315,7 +315,7 @@ begin
       AddAttemptKey(Settings.SearchKey, TAtlasStrings.Text(TAtlasTextId.SearchCommand),
         function: Boolean
         begin
-          // Der Dialog erst nach der Tastenverarbeitung.
+          // Die Leiste erst nach der Tastenverarbeitung (sie nimmt den Fokus).
           TAtlasMainThread.ForceQueue(TAtlasFeature.EditorCommands,
             procedure
             begin
