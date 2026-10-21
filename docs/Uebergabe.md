@@ -663,5 +663,5 @@ Jeder Branch baut auf dem vorigen auf. Nichts davon ist gebaut, getestet oder in
 - Konflikte: erzeugte Units/Doku neu mit `Tools/Update-ConfigDoc.ps1`; Tastenliste `TAtlasKeyFunction` in `Atlas.Core.Commands.KeyConflicts.pas` vereinigt; CHANGELOG beide Seiten; README/README_DE neue Fassung plus Punkte zu #657–#845.
 - Delphi-Fehler aus #715 behoben (E2555 Result im Methodenzeiger, H2077), H2443 in OverrideMarks-Tests, Erstgebrauchslecks in Unwrap- und Outline-Frame-Tests. Win64 0/0/0, 5334 Tests grün, Win32-Plugin sauber.
 - #874 geschlossen (Rest war schon in 51d305cd).
-- Offen: `feature/846-variante-records` (neu, in Arbeit).
+- Nachtrag (main 0bc86552): #846 Variante Records gemergt; Index-Cache `FormatVersion` 18 in Server und Plugin (`TAtlasWelcomeIndexFiles`), H2443 in VariantRecords-Tests. 5342 Tests grün. Kein Branch mehr mit Commits, die main fehlen.
 - Skripte im Scratchpad: `mergeall.sh` (Merge-Kette mit automatischer Auflösung der erzeugten Dateien, Tastenliste, CHANGELOG), `kc_resolve.py`, `union.py`.
