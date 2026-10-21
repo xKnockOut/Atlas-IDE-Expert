@@ -597,6 +597,17 @@
       "id": "operator-precedence",
       "name": "Vorrang von not übersehen",
       "description": "In Pascal bindet not stärker als in und Vergleiche: not X in Menge heißt (not X) in Menge, not A = B heißt (not A) = B, bei Ganzzahlen wird not bitweise. Die Regel meldet diese Formen, wenn der deklarierte Typ des Operanden zeigt, dass es nicht gemeint sein kann (kein Boolean). Schnellkorrektur: Klammern setzen, not (X in Menge)."
+    },
+    {
+      "id": "empty-statement",
+      "name": "Leere Anweisung nach then, do oder else",
+      "description": "Ein Semikolon direkt nach then, do oder else beendet die Anweisung: Die folgende Zeile läuft dann immer bzw. die Schleife dreht leer. Ein leerer Block begin … end nach then, do oder else wird ebenfalls gemeldet, außer er enthält einen erklärenden Kommentar (Option allowCommented). Ein Semikolon direkt vor end, until, except oder finally ändert nichts und bleibt unbeanstandet. Schnellkorrektur: Semikolon entfernen.",
+      "options": [
+        {
+          "name": "allowCommented",
+          "description": "begin { absichtlich leer } end nicht melden."
+        }
+      ]
     }
   ]
 }

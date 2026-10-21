@@ -146,6 +146,7 @@
         <DCCReference Include="Source\Rules\Atlas.Common.Rules.Output.pas"/>
         <DCCReference Include="Source\Rules\Atlas.Common.Rules.Baseline.pas"/>
         <DCCReference Include="Source\Rules\Atlas.Common.Rules.Scopes.pas"/>
+        <DCCReference Include="Source\Rules\Atlas.Common.Rules.Options.pas"/>
         <DCCReference Include="Source\Rules\Atlas.Common.Rules.SuppressionStats.pas"/>
         <DCCReference Include="Source\Rules\Atlas.Common.Rules.Catalog.pas"/>
         <DCCReference Include="Source\Rules\Atlas.Common.Rules.Catalog.Data.pas"/>
@@ -379,6 +380,7 @@
         <DCCReference Include="Source\Rules\Builtin\Atlas.Common.Rules.Builtin.ForwardDeclarations.pas"/>
         <DCCReference Include="Source\Rules\Builtin\Atlas.Common.Rules.Builtin.FreeFields.pas"/>
         <DCCReference Include="Source\Rules\Builtin\Atlas.Common.Rules.Builtin.Expressions.pas"/>
+        <DCCReference Include="Source\Rules\Builtin\Atlas.Common.Rules.Builtin.Statements.pas"/>
         <DCCReference Include="Source\Rules\Builtin\Atlas.Common.Rules.Builtin.Packages.pas"/>
         <DCCReference Include="Source\Rules\Atlas.Common.Rules.Conventions.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.InactiveRegions.pas"/>

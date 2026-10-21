@@ -31,3 +31,4 @@ string-concat-in-loop | Ref.Formulare.Haupt.pas | KundenListe.Items.Clear;\n    
 redundant-begin-end | Ref.Formulare.Haupt.pas | KundenListe.Items.Add(Kunde); | begin\n        KundenListe.Items.Add(Kunde);\n      end;
 setter-recursion | Ref.Komponenten.Anzeige.pas | FWert := AValue; | Wert := AValue;
 operator-precedence | Ref.Komponenten.Anzeige.pas | if FWert <> AValue then | if not FWert = AValue then
+empty-statement | Ref.Komponenten.Anzeige.pas | if FStil <> AValue then | if FStil <> AValue then;

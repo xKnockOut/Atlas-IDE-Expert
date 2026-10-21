@@ -217,6 +217,11 @@
                 "type": "string",
                 "description": "Nur file-header: erwarteter Dateikopf mit Platzhaltern (siehe Regeln.md)."
               },
+              "allowCommented": {
+                "type": "boolean",
+                "default": true,
+                "description": "Nur empty-statement: leere Blöcke begin … end mit Kommentar darin nicht melden (#912)."
+              },
               "mutatingMethods": {
                 "type": "array",
                 "items": {

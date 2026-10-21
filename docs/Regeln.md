@@ -6,7 +6,7 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 
 | Gruppe | Regeln |
 |---|---|
-| [Fehler finden](#gruppe-find-bugs) | 28 |
+| [Fehler finden](#gruppe-find-bugs) | 29 |
 | [Exceptions](#gruppe-exceptions) | 5 |
 | [Threads](#gruppe-threads) | 6 |
 | [Robustheit und Muster](#gruppe-robustness) | 2 |
@@ -52,6 +52,7 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 | [`owned-field-not-freed`](#owned-field-not-freed) | Erzeugtes Feld wird nicht freigegeben | Bug | Warnung |
 | [`owned-field-free-unclear`](#owned-field-free-unclear) | Unklar, ob ein erzeugtes Feld freigegeben werden muss | Bug | Hinweis |
 | [`operator-precedence`](#operator-precedence) | Vorrang von not übersehen | Bug | Warnung |
+| [`empty-statement`](#empty-statement) | Leere Anweisung nach then, do oder else | Bug | Warnung |
 
 <a id="gruppe-exceptions"></a>
 ### Exceptions
@@ -2516,4 +2517,29 @@ Richtig:
 ```pascal
 if not (Zustand in [zsOffen, zsGesperrt]) then
   Bearbeiten;
+```
+
+<a id="empty-statement"></a>
+### empty-statement
+
+**Leere Anweisung nach then, do oder else** · Bug · Warnung · Gruppe Fehler finden
+
+Ein Semikolon direkt nach then, do oder else beendet die Anweisung: Die folgende Zeile läuft dann immer bzw. die Schleife dreht leer. Ein leerer Block begin … end nach then, do oder else wird ebenfalls gemeldet, außer er enthält einen erklärenden Kommentar (Option allowCommented). Ein Semikolon direkt vor end, until, except oder finally ändert nichts und bleibt unbeanstandet. Schnellkorrektur: Semikolon entfernen.
+
+| Option | Typ | Vorgabe | Bedeutung |
+|---|---|---|---|
+| `allowCommented` | boolean | `true` | begin { absichtlich leer } end nicht melden. |
+
+Mit Treffer:
+
+```pascal
+if Liste.Count = 0 then;
+  raise EKeineDaten.Create('Keine Daten');
+```
+
+Richtig:
+
+```pascal
+if Liste.Count = 0 then
+  raise EKeineDaten.Create('Keine Daten');
 ```
