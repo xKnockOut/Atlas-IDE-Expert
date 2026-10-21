@@ -266,12 +266,12 @@ begin
   Assert.AreEqual(0, FBar.SeparatorAt(Area.CenterPoint.X, Area.CenterPoint.Y));
   Assert.AreEqual(-1, FBar.CrumbAt(Area.CenterPoint.X, Area.CenterPoint.Y), 'kein Glied');
   Assert.IsTrue(FBar.SeparatorRect(2).IsEmpty, 'letztes Glied ohne Kinder');
-  TBarAccess(FBar).MouseDown(mbLeft, [], Area.CenterPoint.X, Area.CenterPoint.Y);
+  TBarAccess(FBar).MouseUp(mbLeft, [], Area.CenterPoint.X, Area.CenterPoint.Y);
   Assert.AreEqual(0, Opened);
   Assert.AreEqual(-1, Menu, 'kein Geschwistermenü');
   // Klick aufs Unit-Glied: Menü mit allen Elementen der Unit.
   Area := FBar.CrumbRect(0);
-  TBarAccess(FBar).MouseDown(mbLeft, [], Area.CenterPoint.X, Area.CenterPoint.Y);
+  TBarAccess(FBar).MouseUp(mbLeft, [], Area.CenterPoint.X, Area.CenterPoint.Y);
   Assert.AreEqual(0, Menu);
   // Letztes Glied mit Kindern: „›“ auch dahinter.
   Crumbs := PathWithChildren;
@@ -312,11 +312,11 @@ begin
     end;
   FBar.SetCrumbs(PathWithChildren);
   Area := FBar.CrumbRect(1);
-  TBarAccess(FBar).MouseDown(mbLeft, [ssCtrl], Area.CenterPoint.X, Area.CenterPoint.Y);
+  TBarAccess(FBar).MouseUp(mbLeft, [ssCtrl], Area.CenterPoint.X, Area.CenterPoint.Y);
   Assert.AreEqual(1, Jumped, 'Strg+Klick springt');
   Assert.IsFalse(Declaration);
   Assert.AreEqual(-1, Menu, 'kein Menü bei Strg+Klick');
-  TBarAccess(FBar).MouseDown(mbLeft, [ssCtrl, ssShift], Area.CenterPoint.X, Area.CenterPoint.Y);
+  TBarAccess(FBar).MouseUp(mbLeft, [ssCtrl, ssShift], Area.CenterPoint.X, Area.CenterPoint.Y);
   Assert.IsTrue(Declaration, 'Strg+Umschalt+Klick: Deklaration');
   // Unit-Glied springt an den Anfang.
   Jumped := -1;
@@ -332,7 +332,7 @@ begin
   Crumbs[2].Siblings := nil;
   FBar.SetCrumbs(Crumbs);
   Area := FBar.CrumbRect(2);
-  TBarAccess(FBar).MouseDown(mbLeft, [], Area.CenterPoint.X, Area.CenterPoint.Y);
+  TBarAccess(FBar).MouseUp(mbLeft, [], Area.CenterPoint.X, Area.CenterPoint.Y);
   Assert.AreEqual(2, Jumped);
   // Strg+Enter mit Fokus.
   Jumped := -1;
