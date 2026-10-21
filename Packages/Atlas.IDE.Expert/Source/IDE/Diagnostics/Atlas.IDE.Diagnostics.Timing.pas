@@ -12,6 +12,9 @@
 //   (#591; Klick öffnet das Fenster; die Zustandskachel #754 liest dieselbe
 //   Zeile), ein Zeitgeber zeichnet das Fenster bei neuem Stand neu (alle
 //   500 ms) und schreibt höchstens alle 30 s die letzten Diagnosedaten.
+//   Das Fenster öffnet erst, wenn kein Compile läuft (TAtlasIdeBuildIdleGate):
+//   Lädt die IDE das Plugin mitten in einem Gruppen-Build neu, stürzte sie
+//   sonst am nächsten Projekt ab.
 // - Aus: keine Messung, kein Zeitgeber, Fenster zu, keine Statuszeile; die
 //   letzten Diagnosedaten werden noch einmal geschrieben.
 // - Letzte Diagnosedaten (für „Problem melden“, #766): der Bericht ohne
@@ -29,6 +32,7 @@ uses
   Atlas.Core.Status.Registry,
   Atlas.Core.Status.Lines,
   Atlas.IDE.Foundation.Keys,
+  Atlas.IDE.Build.IdleGate,
   Atlas.UI.Diagnostics.TimingFrame,
   Atlas.Core.Commands.Palette;
 
@@ -50,6 +54,8 @@ type
     FLineRef: IAtlasStatusItem;
     FKey: TAtlasIdeKeyBinding;
     FTimer: TTimer;
+    /// <summary>Öffnet das Fenster erst ohne laufenden Compile.</summary>
+    FGate: TAtlasIdeBuildIdleGate;
     FActive: Boolean;
     FShownVersion: Integer;
     FSavedVersion: Integer;
@@ -85,7 +91,6 @@ type
 implementation
 
 uses
-  Atlas.Core.Diagnostics.MainThread,
   System.IOUtils,
   System.JSON,
   Vcl.Clipbrd,
@@ -115,6 +120,7 @@ begin
   FTimer.Enabled := False;
   FTimer.Interval := RefreshMs;
   FTimer.OnTimer := TimerTick;
+  FGate := TAtlasIdeBuildIdleGate.Create(TAtlasFeature.Settings);
   TAtlasIdeTimingWindow.OnFrame :=
     procedure(AFrame: TAtlasTimingFrame)
     begin
@@ -136,6 +142,7 @@ begin
     FInstance := nil;
   // Erst abmelden, dann freigeben (#493).
   FreeAndNil(FKey);
+  FreeAndNil(FGate);
   FTimer.Free;
   if FActive then
     SaveLastData;
@@ -181,16 +188,13 @@ begin
     FSavedAt := TThread.GetTickCount64;
     FTimer.Enabled := True;
     AddStatusLine;
-    // Nicht mitten im Laden des Packages bzw. im Optionsdialog andocken: erst in der nächsten Runde.
-    TAtlasMainThread.ForceQueue(TAtlasFeature.Settings,
+    // Nicht mitten im Laden des Packages, im Optionsdialog oder während eines Compiles andocken: Nach dem
+    // Neuladen mitten im Gruppen-Build ließe ein neues Dockfenster die IDE am nächsten Projekt abstürzen.
+    FGate.Run(
       procedure
       begin
         if (FInstance <> nil) and FInstance.FActive then
-          TAtlasGuard.Run(TAtlasFeature.Settings,
-            procedure
-            begin
-              FInstance.ShowWindow;
-            end);
+          FInstance.ShowWindow;
       end);
   end
   else

@@ -1716,7 +1716,7 @@ const
     '    },',
     '    "SafeStartupTimeoutMs": {',
     '      "type": "integer",',
-    '      "default": 10000,',
+    '      "default": 30000,',
     '      "x-key": "safeMode.startupTimeoutMs",',
     '      "x-area": "general",',
     '      "x-page": "Start und Updates"',

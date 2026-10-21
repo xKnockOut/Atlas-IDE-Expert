@@ -1183,7 +1183,8 @@ begin
   Result.SafeAskAfterCrash := True;
   Result.SafeAutoAfterRepeatedCrash := True;
   Result.SafeStartupKey := 'shift';
-  Result.SafeStartupTimeoutMs := 10000;
+  // Gemessen bis zur freien Nachrichtenschleife, mit Desktop, übrigen Packages und Projekt (#874).
+  Result.SafeStartupTimeoutMs := 30000;
   Result.SafeKeepSettingsHistory := 5;
   Result.UndoMultiFile := True;
   Result.UndoMultiFileDepth := 20;

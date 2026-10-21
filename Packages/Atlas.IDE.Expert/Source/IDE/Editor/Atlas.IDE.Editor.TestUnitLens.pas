@@ -226,6 +226,7 @@ var
   Answer: TJSONValue;
   Info: TAtlasTestUnitInfo;
   Line: Integer;
+  Percent: Integer;
 begin
   Line := TAtlasTestUnits.UnitLine(FText.Replace(#13#10, #10).Split([#10]));
   if Line < 0 then
@@ -239,6 +240,12 @@ begin
   Session := FSession();
   if Session = nil then
     Exit;
+  // Server indexiert: Er antwortet erst danach, der Hauptthread würde warten (#874). Später noch einmal.
+  if Session.Indexing(Percent) then
+  begin
+    FRetryAt := GetTickCount + RetryMs;
+    Exit;
+  end;
   Values := TJSONArray.Create;
   try
     Values.Add(TLspSession.PathToUri(FFileName));

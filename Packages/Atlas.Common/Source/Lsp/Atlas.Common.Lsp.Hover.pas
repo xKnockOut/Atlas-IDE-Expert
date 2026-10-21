@@ -154,6 +154,7 @@ uses
   Atlas.Common.Dfm.Parser,
   Atlas.Common.Lsp.DocWiki,
   Atlas.Common.Lsp.WinApiDocs,
+  Atlas.Common.Semantics.SystemIntrinsics,
   Atlas.Common.Lsp.MessageHandlers,
   Atlas.Common.Lsp.HoverValues,
   Atlas.Common.Lsp.CompilerDirectives,
@@ -456,6 +457,8 @@ var
   SelfName, ChainName, DocContainer: string;
   TypeSymbol: Boolean;
   Resolved, DocSymbol: TResolvedSymbol;
+  IntrinsicName: string;
+  Intrinsic: TSystemIntrinsic;
 begin
   Result := Default(THoverInfo);
   // Zahlenliteral unter dem Cursor: Schreibweisen statt Deklaration.
@@ -473,6 +476,20 @@ begin
       Exit;
     end;
   Targets := TLspDefinition.Targets(AResolver, AIndex, ATree, AFileName, APosition, True);
+  // Bezeichner von System ohne Quelltext (#880): Kopf und Beschreibung aus der eingebauten Liste.
+  if (Length(Targets) = 0) and TSystemIntrinsics.NameAt(ATree, APosition, IntrinsicName) then
+  begin
+    for Intrinsic in TSystemIntrinsics.Find(IntrinsicName) do
+    begin
+      if Result.Declaration <> '' then
+        Result.Declaration := Result.Declaration + #10;
+      Result.Declaration := Result.Declaration + Intrinsic.Declaration;
+      if Result.Documentation = '' then
+        Result.Documentation := Intrinsic.Documentation;
+    end;
+    Result.UnitName := 'System';
+    Exit;
+  end;
   if Length(Targets) = 0 then
   begin
     // Grundcodes für das Diagnoselog (#647).

@@ -62,7 +62,7 @@ type
     FImageItems: TArray<TMenuItem>;
     FTimer: TTimer;
     FProgress: TFunc<string>;
-    FCommand: TFunc<string, TJSONValue>;
+    FCommand: TProc<string, TProc<TJSONValue>>;
     FMessage: TProc<string>;
     FShownProgress: string;
     FOnRename: TProc;
@@ -107,8 +107,9 @@ type
     procedure ProjectClick(Sender: TObject);
     procedure OptionsClick(Sender: TObject);
   public
-    /// <summary>AProgress: Fortschritt des Servers; ACommand: Serverbefehl ausführen; AMessage: Zeile in die Meldungsansicht.</summary>
-    constructor Create(const AProgress: TFunc<string>; const ACommand: TFunc<string, TJSONValue>;
+    /// <summary>AProgress: Fortschritt des Servers; ACommand: Serverbefehl im Hintergrund ausführen, das Ergebnis
+    /// (nil ohne Server oder bei Fehler) kommt im Hauptthread (#874); AMessage: Zeile in die Meldungsansicht.</summary>
+    constructor Create(const AProgress: TFunc<string>; const ACommand: TProc<string, TProc<TJSONValue>>;
       const AMessage: TProc<string>);
     destructor Destroy; override;
     /// <summary>„Symbol umbenennen…“ (#397).</summary>
@@ -197,7 +198,7 @@ end;
 
 { TAtlasMainMenu }
 
-constructor TAtlasMainMenu.Create(const AProgress: TFunc<string>; const ACommand: TFunc<string, TJSONValue>;
+constructor TAtlasMainMenu.Create(const AProgress: TFunc<string>; const ACommand: TProc<string, TProc<TJSONValue>>;
   const AMessage: TProc<string>);
 var
   Services: INTAServices;
@@ -471,24 +472,23 @@ end;
 
 procedure TAtlasMainMenu.IndexStatusClick(Sender: TObject);
 begin
+  // Im Hintergrund: Ein Server, der gerade indexiert, antwortet erst danach (#874).
   TAtlasGuard.Run(TAtlasFeature.Server,
     procedure
-    var
-      Status: TJSONValue;
-      Line: string;
     begin
-      Status := nil;
-      if Assigned(FCommand) then
-        Status := FCommand('atlas.server.status');
-      try
-        if Status = nil then
-          FMessage(TAtlasStrings.Text(TAtlasTextId.MenuIndexNoServer))
-        else
-          for Line in TLspIndexStatus.Lines(Status) do
-            FMessage(Line);
-      finally
-        Status.Free;
-      end;
+      if not Assigned(FCommand) then
+        Exit;
+      FCommand('atlas.server.status',
+        procedure(AStatus: TJSONValue)
+        var
+          Line: string;
+        begin
+          if AStatus = nil then
+            FMessage(TAtlasStrings.Text(TAtlasTextId.MenuIndexNoServer))
+          else
+            for Line in TLspIndexStatus.Lines(AStatus) do
+              FMessage(Line);
+        end);
     end);
 end;
 
@@ -496,20 +496,17 @@ procedure TAtlasMainMenu.IndexRebuildClick(Sender: TObject);
 begin
   TAtlasGuard.Run(TAtlasFeature.Server,
     procedure
-    var
-      Answer: TJSONValue;
     begin
-      Answer := nil;
-      if Assigned(FCommand) then
-        Answer := FCommand('atlas.server.rebuildIndex');
-      try
-        if Answer = nil then
-          FMessage(TAtlasStrings.Text(TAtlasTextId.MenuIndexNoServer))
-        else
-          FMessage(TAtlasStrings.Text(TAtlasTextId.MenuIndexRebuilding));
-      finally
-        Answer.Free;
-      end;
+      if not Assigned(FCommand) then
+        Exit;
+      FCommand('atlas.server.rebuildIndex',
+        procedure(AAnswer: TJSONValue)
+        begin
+          if AAnswer = nil then
+            FMessage(TAtlasStrings.Text(TAtlasTextId.MenuIndexNoServer))
+          else
+            FMessage(TAtlasStrings.Text(TAtlasTextId.MenuIndexRebuilding));
+        end);
     end);
 end;
 

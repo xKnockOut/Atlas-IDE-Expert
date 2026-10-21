@@ -1846,12 +1846,12 @@ begin
       else
         Result := '';
     end,
-    function(ACommand: string): TJSONValue
+    procedure(ACommand: string; ADone: TProc<TJSONValue>)
     begin
       if Manager <> nil then
-        Result := Manager.ExecuteServerCommand(ACommand)
+        Manager.ExecuteServerCommandAsync(ACommand, 30000, ADone)
       else
-        Result := nil;
+        ADone(nil);
     end,
     procedure(AText: string)
     begin
