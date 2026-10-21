@@ -39,6 +39,8 @@ type
     procedure MarksUnterminatedTokens;
     [Test]
     procedure ReportsUnknownCharacters;
+    [Test]
+    procedure NamesDirectives;
   end;
 
 implementation
@@ -198,6 +200,15 @@ end;
 procedure TPascalLexerTests.ReportsUnknownCharacters;
 begin
   Assert.AreEqual('Identifier:a|Unknown:?|Unknown:"|Identifier:b', Describe('a ? " b'));
+end;
+
+procedure TPascalLexerTests.NamesDirectives;
+begin
+  Assert.AreEqual('IFDEF', TPascalLexer.DirectiveName('{$ifdef DEBUG}'));
+  Assert.AreEqual('ENDREGION', TPascalLexer.DirectiveName('(*$EndRegion*)'));
+  Assert.AreEqual('ELSE', TPascalLexer.DirectiveName('{$ELSE}'));
+  Assert.AreEqual('', TPascalLexer.DirectiveName('{ kein $IFDEF }'));
+  Assert.AreEqual('', TPascalLexer.DirectiveName('// {$IFDEF}'));
 end;
 
 initialization

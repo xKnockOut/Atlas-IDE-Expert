@@ -21,6 +21,8 @@ type
     class function IsReservedWord(const AWord: string): Boolean; static;
     /// <summary>Alle reservierten Wörter in Kleinbuchstaben (#187).</summary>
     class function ReservedWordList: TArray<string>; static;
+    /// <summary>Name einer Direktive in Großbuchstaben, z. B. IFDEF für {$ifdef X}; '' ohne Direktive.</summary>
+    class function DirectiveName(const AText: string): string; static;
   end;
 
 implementation
@@ -400,6 +402,22 @@ end;
 class function TPascalLexer.IsReservedWord(const AWord: string): Boolean;
 begin
   Result := ReservedWordSet.ContainsKey(LowerCase(AWord));
+end;
+
+class function TPascalLexer.DirectiveName(const AText: string): string;
+var
+  Start, Stop: Integer;
+begin
+  if Copy(AText, 1, 2) = '{$' then
+    Start := 3
+  else if Copy(AText, 1, 3) = '(*$' then
+    Start := 4
+  else
+    Exit('');
+  Stop := Start;
+  while (Stop <= Length(AText)) and CharInSet(AText[Stop], ['A'..'Z', 'a'..'z']) do
+    Inc(Stop);
+  Result := UpperCase(Copy(AText, Start, Stop - Start));
 end;
 
 class function TPascalLexer.ReservedWordList: TArray<string>;

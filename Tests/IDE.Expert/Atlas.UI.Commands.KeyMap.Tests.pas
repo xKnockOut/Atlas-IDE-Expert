@@ -303,6 +303,7 @@ begin
     TAtlasKeyMapWindow.FunctionCaption(TAtlasKeyFunction.ToggleBlockComment));
   Assert.AreEqual('Neue Zeile darunter', TAtlasKeyMapWindow.FunctionCaption(TAtlasKeyFunction.NewLineBelow));
   Assert.AreEqual('Neue Zeile darüber', TAtlasKeyMapWindow.FunctionCaption(TAtlasKeyFunction.NewLineAbove));
+  Assert.AreEqual('Umschließung entfernen', TAtlasKeyMapWindow.FunctionCaption(TAtlasKeyFunction.Unwrap));
   Assert.AreEqual('Zeilen darunter duplizieren',
     TAtlasKeyMapWindow.FunctionCaption(TAtlasKeyFunction.DuplicateLinesDown));
   // #764: Schnellaktionen der Willkommensseite.
