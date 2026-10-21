@@ -33,6 +33,10 @@ type
     procedure VirtualInsteadOfOverrideReplacesDirective;
     [Test]
     procedure NewVirtualMethodIsSilent;
+    /// <summary>#1094: Tiefe Ausdrücke in Routinen sprengen den Stapel nicht mehr; die Regeln melden weiter.
+    /// Ohne Fix stieg ClassMethods rekursiv durch jeden Ausdruck ab und lief in 256 KB Stapel über.</summary>
+    [Test]
+    procedure DeepExpressionDoesNotOverflowStack;
   end;
 
 implementation
@@ -48,7 +52,10 @@ uses
   Atlas.Common.Index.SymbolIndex,
   Atlas.Common.Index.Extractor,
   Atlas.Common.Rules.Builtin.Inheritance,
-  Atlas.Tests.RuleAssert;
+  Atlas.Common.Rules.Derived,
+  Atlas.Common.Documents.Contract,
+  Atlas.Tests.RuleAssert,
+  Atlas.Tests.SmallStack;
 
 const
   // Ausschnitte aus RTL und VCL, wie sie der Index aus den Quellen liest.
@@ -213,6 +220,102 @@ procedure TInheritanceRulesTests.NewVirtualMethodIsSilent;
 begin
   TRuleAssert.Silent(TVirtualInsteadOfOverrideRule.Create, ClassUnit('    procedure Neu; virtual;'));
   TRuleAssert.Silent(THidesVirtualRule.Create, ClassUnit('    procedure Neu; virtual;'));
+end;
+
+type
+  /// <summary>Zählt Treffer einer direkt aufgerufenen Regel (ohne Engine und deren Tiefenlimit).</summary>
+  TCountingReport = class(TInterfacedObject, IRuleReport)
+  public
+    Count: Integer;
+    procedure Add(const ARange: TTextRange; const AMessage: string); overload;
+    procedure Add(const ARange: TTextRange; const AMessage: string; const AFixes: TArray<TRuleFix>); overload;
+    procedure Add(const ARange: TTextRange; const AMessage: string; AConfidence: TRuleConfidence); overload;
+    procedure Add(const ARange: TTextRange; const AMessage: string; AConfidence: TRuleConfidence;
+      const AFixes: TArray<TRuleFix>); overload;
+    procedure AddWithSeverity(const ARange: TTextRange; const AMessage: string; ASeverity: TRuleSeverity;
+      const AFixes: TArray<TRuleFix>);
+  end;
+
+procedure TCountingReport.Add(const ARange: TTextRange; const AMessage: string);
+begin
+  Inc(Count);
+end;
+
+procedure TCountingReport.Add(const ARange: TTextRange; const AMessage: string; const AFixes: TArray<TRuleFix>);
+begin
+  Inc(Count);
+end;
+
+procedure TCountingReport.Add(const ARange: TTextRange; const AMessage: string; AConfidence: TRuleConfidence);
+begin
+  Inc(Count);
+end;
+
+procedure TCountingReport.Add(const ARange: TTextRange; const AMessage: string; AConfidence: TRuleConfidence;
+  const AFixes: TArray<TRuleFix>);
+begin
+  Inc(Count);
+end;
+
+procedure TCountingReport.AddWithSeverity(const ARange: TTextRange; const AMessage: string;
+  ASeverity: TRuleSeverity; const AFixes: TArray<TRuleFix>);
+begin
+  Inc(Count);
+end;
+
+procedure TInheritanceRulesTests.DeepExpressionDoesNotOverflowStack;
+var
+  Builder: TStringBuilder;
+  Index: Integer;
+  Text, Failure: string;
+  Tree: TSyntaxTree;
+  Context: TRuleContext;
+  Rules: TArray<IRule>;
+  Counter: TCountingReport;
+  Report: IRuleReport;
+begin
+  // Subtraktion bleibt im Parser linkslastig: 3000 Glieder ergeben gut 3000 Ebenen.
+  Builder := TStringBuilder.Create;
+  try
+    Builder.Append('unit U;'#10'interface'#10'type'#10 +
+      '  TBasis = class'#10'  public'#10'    procedure Lauf(A: Integer); virtual;'#10'  end;'#10 +
+      '  TFoo = class(TBasis)'#10'  public'#10'    destructor Destroy;'#10 +
+      '    procedure Lauf(A: Integer); virtual;'#10'  end;'#10 +
+      'implementation'#10'procedure Rechne;'#10'begin'#10'  X := 1');
+    for Index := 1 to 3000 do
+      Builder.Append(' - 1');
+    Builder.Append(';'#10'end;'#10'end.');
+    Text := Builder.ToString;
+  finally
+    Builder.Free;
+  end;
+  Rules := [TDestroyWithoutOverrideRule.Create, TComponentCreateWithoutOverrideRule.Create,
+    THidesVirtualRule.Create, TVirtualInsteadOfOverrideRule.Create];
+  Counter := TCountingReport.Create;
+  Report := Counter;
+  Tree := TPascalParser.Parse(Text);
+  try
+    Context := Default(TRuleContext);
+    Context.Text := Text;
+    Context.Tree := Tree;
+    Context.Derived := TRuleDerivedCache.Create;
+    Failure := TSmallStack.Run(256,
+      procedure
+      var
+        Rule: IRule;
+      begin
+        for Rule in Rules do
+          Rule.Check(Context, Report);
+      end);
+    // Der Ableitungscache hält Verweise in den Baum: vor ihm leeren.
+    Context.Derived := nil;
+  finally
+    Tree.Free;
+  end;
+  Assert.AreEqual('', Failure, 'kein Stapelüberlauf');
+  // destroy-without-override und virtual-instead-of-override.
+  Assert.AreEqual(2, Counter.Count);
+  Rules := nil;
 end;
 
 initialization

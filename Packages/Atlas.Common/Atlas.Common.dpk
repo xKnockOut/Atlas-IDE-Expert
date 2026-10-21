@@ -86,6 +86,7 @@ contains
   Atlas.Common.Diagnostics.BugReport in 'Source\Diagnostics\Atlas.Common.Diagnostics.BugReport.pas',
   Atlas.Common.Diagnostics.ShutdownLeaks in 'Source\Diagnostics\Atlas.Common.Diagnostics.ShutdownLeaks.pas',
   Atlas.Common.Diagnostics.RequestScope in 'Source\Diagnostics\Atlas.Common.Diagnostics.RequestScope.pas',
+  Atlas.Common.Diagnostics.StackGuard in 'Source\Diagnostics\Atlas.Common.Diagnostics.StackGuard.pas',
   Atlas.Common.Diagnostics.Providers.Log in 'Source\Diagnostics\Providers\Atlas.Common.Diagnostics.Providers.Log.pas',
   Atlas.Common.Diagnostics.Adapters.LogFolder in 'Source\Diagnostics\Adapters\Atlas.Common.Diagnostics.Adapters.LogFolder.pas',
   Atlas.Common.Index.Contract in 'Source\Index\Atlas.Common.Index.Contract.pas',

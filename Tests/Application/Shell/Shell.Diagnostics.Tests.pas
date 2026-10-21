@@ -48,6 +48,9 @@ type
     procedure AddLogFile_EmptyName_DoesNothing;
     [Test]
     procedure AddLogFile_BadPath_LogsError;
+    /// <summary>#1094: Ein Fehler nennt die Unit (anonym) und die Prüfregel, an der die Anfrage scheiterte.</summary>
+    [Test]
+    procedure ErrorLineNamesUnitAndRule;
   end;
 
 implementation
@@ -74,6 +77,7 @@ uses
   Atlas.Common.Logging.Contract,
   Atlas.Common.Logging.Providers.Logger,
   Atlas.Common.Diagnostics.Anonymizer,
+  Atlas.Common.Diagnostics.RequestScope,
   Shell.Diagnostics;
 
 type
@@ -428,6 +432,45 @@ begin
   Assert.IsFalse(TShellDiagnostics.AddLogFile(Logger, TPath.Combine(Blocker, 'server.log'), '1', True,
     TLogLevel.Info, Anonymizer));
   Assert.Contains(Sink.Text, 'kann nicht geöffnet werden');
+end;
+
+procedure TShellDiagnosticsTests.ErrorLineNamesUnitAndRule;
+var
+  Diagnostics: TShellDiagnostics;
+  Ref: IJsonRpcRequestObserver;
+  Settings: TServerSettings;
+  Error: Exception;
+  FileName, UnitLabel, Text: string;
+begin
+  FileName := TPath.Combine(TPath.Combine(FRoot, 'MarkerPfadXq7'), 'MarkerUnitZk3.pas');
+  Diagnostics := TShellDiagnostics.Create(FLogFolder, 'test', nil, nil);
+  Ref := Diagnostics;
+  Diagnostics.AllowMethods(['workspace/diagnostic']);
+  Diagnostics.BeginRun('1.0.0', 1024 * 1024);
+  Settings := TServerSettings.Default;
+  Settings.DiagnosticsLog := True;
+  Diagnostics.ApplySettings(Settings);
+  UnitLabel := Diagnostics.FileLabel(FileName);
+  Assert.StartsWith('unit#', UnitLabel);
+  Assert.AreEqual(UnitLabel, Diagnostics.FileLabel(FileName), 'gleiche Datei, gleiches Kennzeichen');
+  Diagnostics.Started('workspace/diagnostic');
+  TRequestDiagnostics.Open;
+  TRequestDiagnostics.Subject(UnitLabel);
+  TRequestDiagnostics.CurrentRule('hides-virtual');
+  Error := EStackOverflow.Create('Stapel');
+  try
+    Diagnostics.Finished('workspace/diagnostic', nil, nil, Error, 0, 77);
+  finally
+    Error.Free;
+  end;
+  Diagnostics.EndRun(TDiagnosticEndReason.ParentExited, 0, 2 * 1024 * 1024);
+  Ref := nil;
+  Text := AllLogText;
+  Assert.Contains(Text, 'error:EStackOverflow');
+  Assert.Contains(Text, 'unit=' + UnitLabel);
+  Assert.Contains(Text, 'rule=hides-virtual');
+  Assert.DoesNotContain(Text, 'MarkerUnitZk3', False);
+  Assert.DoesNotContain(Text, 'MarkerPfadXq7', False);
 end;
 
 initialization

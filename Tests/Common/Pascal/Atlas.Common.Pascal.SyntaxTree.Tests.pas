@@ -1,6 +1,7 @@
 ﻿unit Atlas.Common.Pascal.SyntaxTree.Tests;
 
-// Tests für den Besucher TSyntaxNode.Walk (Review P-03).
+// Tests für den Besucher TSyntaxNode.Walk (Review P-03) und die Baumtiefe
+// TSyntaxTree.Depth (#1094).
 
 interface
 
@@ -15,6 +16,11 @@ type
     procedure WalkVisitsAllNodesInTreeOrder;
     [Test]
     procedure WalkSkipsChildrenWhenVisitReturnsFalse;
+    [Test]
+    procedure DepthCountsLongestPath;
+    /// <summary>Depth arbeitet ohne Rekursion und reicht mit wenig Stapel auch für sehr tiefe Bäume.</summary>
+    [Test]
+    procedure DepthOfDeepTreeNeedsLittleStack;
   end;
 
 implementation
@@ -23,7 +29,8 @@ uses
   System.SysUtils,
   System.Generics.Collections,
   Atlas.Common.Pascal.SyntaxTree,
-  Atlas.Common.Pascal.Parser;
+  Atlas.Common.Pascal.Parser,
+  Atlas.Tests.SmallStack;
 
 const
   Source = 'unit A;'#10'interface'#10'implementation'#10 +
@@ -100,6 +107,65 @@ begin
       end);
     Assert.AreEqual(2, Routines, 'Routinen besucht');
     Assert.AreEqual(0, Blocks, 'keine Blöcke unter übersprungenen Routinen');
+  finally
+    Tree.Free;
+  end;
+end;
+
+function RecursiveDepth(ANode: TSyntaxNode): Integer;
+var
+  Index, Child: Integer;
+begin
+  Result := 1;
+  for Index := 0 to ANode.ChildCount - 1 do
+  begin
+    Child := RecursiveDepth(ANode.Children[Index]) + 1;
+    if Child > Result then
+      Result := Child;
+  end;
+end;
+
+procedure TSyntaxTreeTests.DepthCountsLongestPath;
+var
+  Tree: TSyntaxTree;
+begin
+  Tree := TPascalParser.Parse(Source);
+  try
+    Assert.AreEqual(RecursiveDepth(Tree.Root), Tree.Depth);
+    // Gemerkt: der zweite Aufruf liefert dasselbe.
+    Assert.AreEqual(RecursiveDepth(Tree.Root), Tree.Depth);
+  finally
+    Tree.Free;
+  end;
+end;
+
+procedure TSyntaxTreeTests.DepthOfDeepTreeNeedsLittleStack;
+var
+  Builder: TStringBuilder;
+  Index, Depth: Integer;
+  Tree: TSyntaxTree;
+  Failure: string;
+begin
+  // Subtraktion bleibt linkslastig: 100000 Glieder ergeben über 100000 Ebenen.
+  Builder := TStringBuilder.Create;
+  try
+    Builder.Append('program P; begin X := 1');
+    for Index := 1 to 100000 do
+      Builder.Append('-1');
+    Builder.Append('; end.');
+    Tree := TPascalParser.Parse(Builder.ToString);
+  finally
+    Builder.Free;
+  end;
+  try
+    Depth := 0;
+    Failure := TSmallStack.Run(128,
+      procedure
+      begin
+        Depth := Tree.Depth;
+      end);
+    Assert.AreEqual('', Failure);
+    Assert.IsTrue(Depth > 100000, 'Tiefe ' + IntToStr(Depth));
   finally
     Tree.Free;
   end;
