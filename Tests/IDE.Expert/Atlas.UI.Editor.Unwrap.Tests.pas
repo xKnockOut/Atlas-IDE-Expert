@@ -76,6 +76,8 @@ end;
 procedure TAtlasUnwrapWindowTests.WarmUpFirstUse;
 begin
   CaptionsAndNotes;
+  // Auch das erste Zeigen eines Fensters samt Ereignis (Erstgebrauch der VCL).
+  KeysSkipUnavailableAndReport;
 end;
 
 procedure TAtlasUnwrapWindowTests.CaptionsAndNotes;
