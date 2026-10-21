@@ -147,6 +147,7 @@ type
     FFilterChips: TCheckBox;
     FLearning: TCheckBox;
     FGroupInherited: TCheckBox;
+    FCompletionVariantBranch: TCheckBox;
     /// <summary>Listenmodus beim Tippen und sein Geltungsbereich (#497).</summary>
     FListMode: TAtlasChoiceBox;
     FListScope: TAtlasChoiceBox;
@@ -1353,6 +1354,7 @@ begin
   FLearning := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsLearning));
   FFavorites := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsFavorites));
   FGroupInherited := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsGroupInherited));
+  FCompletionVariantBranch := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsCompletionVariantBranch));
   // In der Reihenfolge von TAtlasListMode bzw. TAtlasListScope.
   FListMode := AddChoice(TAtlasStrings.Text(TAtlasTextId.SettingsListMode),
     [TAtlasStrings.Text(TAtlasTextId.SettingsListModeFilter), TAtlasStrings.Text(TAtlasTextId.SettingsListModeAll),
@@ -2589,6 +2591,7 @@ begin
   FMarks.Bind(FLearning, ['Learning']);
   FMarks.Bind(FFavorites, ['Favorites']);
   FMarks.Bind(FGroupInherited, ['GroupInherited']);
+  FMarks.Bind(FCompletionVariantBranch, ['CompletionVariantBranch']);
   FMarks.Bind(FListMode, ['CompletionListMode']);
   FMarks.Bind(FListScope, ['CompletionListScope']);
   FMarks.Bind(FPreview, ['Preview']);
@@ -4538,6 +4541,7 @@ begin
   FLearning.Checked := ASettings.Learning;
   FFavorites.Checked := ASettings.Favorites;
   FGroupInherited.Checked := ASettings.GroupInherited;
+  FCompletionVariantBranch.Checked := ASettings.CompletionVariantBranch;
   FListMode.Choice := Ord(TAtlasListModes.ModeOf(ASettings.CompletionListMode));
   FListScope.Choice := Ord(TAtlasListModes.ScopeOf(ASettings.CompletionListScope));
   FPreview.Checked := ASettings.Preview;
@@ -4942,6 +4946,7 @@ begin
   ASettings.Learning := FLearning.Checked;
   ASettings.Favorites := FFavorites.Checked;
   ASettings.GroupInherited := FGroupInherited.Checked;
+  ASettings.CompletionVariantBranch := FCompletionVariantBranch.Checked;
   if (FListMode.Choice >= Ord(Low(TAtlasListMode))) and (FListMode.Choice <= Ord(High(TAtlasListMode))) then
     ASettings.CompletionListMode := TAtlasListModes.ModeNames[TAtlasListMode(FListMode.Choice)];
   if (FListScope.Choice >= Ord(Low(TAtlasListScope))) and (FListScope.Choice <= Ord(High(TAtlasListScope))) then

@@ -169,6 +169,7 @@ uses
   Atlas.Common.Pascal.Parser.Tests in 'Common\Pascal\Atlas.Common.Pascal.Parser.Tests.pas',
   Atlas.Common.Pascal.TreeCache.Tests in 'Common\Pascal\Atlas.Common.Pascal.TreeCache.Tests.pas',
   Atlas.Common.Pascal.ActiveBranches.Tests in 'Common\Pascal\Atlas.Common.Pascal.ActiveBranches.Tests.pas',
+  Atlas.Common.Pascal.VariantRecords.Tests in 'Common\Pascal\Atlas.Common.Pascal.VariantRecords.Tests.pas',
   Atlas.Common.Pascal.SyntaxTree.Tests in 'Common\Pascal\Atlas.Common.Pascal.SyntaxTree.Tests.pas',
   Atlas.Common.Pascal.IncludeFiles.Tests in 'Common\Pascal\Atlas.Common.Pascal.IncludeFiles.Tests.pas',
   Atlas.Common.Pascal.Parser.Robustness.Tests in 'Common\Pascal\Atlas.Common.Pascal.Parser.Robustness.Tests.pas',

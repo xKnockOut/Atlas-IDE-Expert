@@ -156,8 +156,12 @@ type
     procedure ParseClassBody(ANode: TSyntaxNode; AKind: TSyntaxKind);
     procedure ParseMembers(AParent: TSyntaxNode);
     procedure ParseProperty(AParent: TSyntaxNode);
-    procedure ParseFieldDecl(AParent: TSyntaxNode);
+    procedure ParseFieldDecl(AParent: TSyntaxNode); overload;
+    /// <summary>AInVariant: Feld in der Klammer eines varianten Zweigs; vor ")" fehlt das ";".</summary>
+    procedure ParseFieldDecl(AParent: TSyntaxNode; AInVariant: Boolean); overload;
     procedure ParseVariantPart(AParent: TSyntaxNode);
+    procedure ParseVariantBody(ANode: TSyntaxNode);
+    procedure ParseVariantFields(AParent: TSyntaxNode);
     procedure ParseProcedureType(ANode: TSyntaxNode);
 
     // Anweisungen
@@ -1536,6 +1540,11 @@ begin
 end;
 
 procedure TParser.ParseFieldDecl(AParent: TSyntaxNode);
+begin
+  ParseFieldDecl(AParent, False);
+end;
+
+procedure TParser.ParseFieldDecl(AParent: TSyntaxNode; AInVariant: Boolean);
 var
   Start: Integer;
   Node: TSyntaxNode;
@@ -1551,7 +1560,8 @@ begin
   ExpectSym(':');
   ParseType(Node);
   ParseHints;
-  ExpectSym(';');
+  if not AInVariant or not IsSym(')') then
+    ExpectSym(';');
   FinishNode(Node, Start);
 end;
 
@@ -1586,24 +1596,98 @@ procedure TParser.ParseVariantPart(AParent: TSyntaxNode);
 var
   Start: Integer;
   Node: TSyntaxNode;
-  Depth: Integer;
 begin
-  // case Tag: Integer of 0: (A: Integer); 1: (B: Double); — bis zum end des Records.
+  // case [Tag:] Typ of Marken: (Felder); … (#846). Endet vor dem end des Records bzw. vor der ")" des
+  // umschließenden Zweigs. VariantPart: Selektorfeld (Field) oder Selektortyp (TypeReference), dann je
+  // Zweig ein CaseItem mit den Marken als Name und den Feldern (auch einem weiteren VariantPart).
   Start := NodeStart;
   Node := StartNode(TSyntaxKind.VariantPart);
   AParent.Add(Node);
-  Depth := 0;
-  while not AtEnd do
+  if not EnterNesting then
   begin
-    if IsSym('(') then
-      Inc(Depth)
-    else if IsSym(')') then
-      Dec(Depth)
-    else if (Depth <= 0) and IsKw('end') then
-      Break;
-    Advance;
+    Node.Add(TooDeep);
+    FinishNode(Node, Start);
+    Exit;
+  end;
+  try
+    ParseVariantBody(Node);
+  finally
+    Dec(FDepth);
   end;
   FinishNode(Node, Start);
+end;
+
+procedure TParser.ParseVariantBody(ANode: TSyntaxNode);
+var
+  FieldStart, ItemStart, Before: Integer;
+  Selector, Item: TSyntaxNode;
+  Labels: string;
+begin
+  Advance; // case
+  if IsIdent and PeekIsSym(1, ':') then
+  begin
+    FieldStart := NodeStart;
+    Selector := StartNode(TSyntaxKind.Field);
+    ANode.Add(Selector);
+    Selector.Name := ExpectIdent;
+    ExpectSym(':');
+    ParseTypeReference(Selector);
+    FinishNode(Selector, FieldStart);
+    ANode.Name := Selector.Name;
+  end
+  else
+    ParseTypeReference(ANode);
+  ExpectKw('of');
+  while not AtEnd and not IsKw('end') and not IsSym(')') do
+  begin
+    Before := FIndex;
+    ItemStart := NodeStart;
+    Item := StartNode(TSyntaxKind.CaseItem);
+    ANode.Add(Item);
+    // Marken: Konstanten, Bereiche und Listen ("0", "1..3", "mkA, mkB").
+    Labels := '';
+    while not AtEnd and not IsSym(':') and not IsSym('(') and not IsSym(';') and not IsSym(')') and
+      not IsKw('end') do
+    begin
+      if IsSym(',') then
+        Labels := Labels + ', '
+      else
+        Labels := Labels + Current.Text;
+      Advance;
+    end;
+    Item.Name := Labels;
+    ExpectSym(':');
+    if AcceptSym('(') then
+    begin
+      ParseVariantFields(Item);
+      ExpectSym(')');
+    end
+    else
+      DiagnoseUnexpected('"("');
+    FinishNode(Item, ItemStart);
+    AcceptSym(';');
+    if FIndex = Before then
+      Advance;
+  end;
+end;
+
+procedure TParser.ParseVariantFields(AParent: TSyntaxNode);
+var
+  Before: Integer;
+begin
+  while not AtEnd and not IsSym(')') and not IsKw('end') do
+  begin
+    Before := FIndex;
+    if IsKw('case') then
+      ParseVariantPart(AParent)
+    else if IsIdent then
+      ParseFieldDecl(AParent, True)
+    else
+      DiagnoseUnexpected('Feldname');
+    AcceptSym(';');
+    if FIndex = Before then
+      Advance;
+  end;
 end;
 
 { Anweisungen }
