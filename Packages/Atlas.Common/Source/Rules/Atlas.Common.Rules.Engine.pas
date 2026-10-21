@@ -324,6 +324,8 @@ begin
       Context.DfmPropertyRules := Settings.DfmPropertyRules;
       Context.NoSignatureSync := not Settings.Refactoring.SyncSignatures;
       Context.NoForwardDeclaration := not Settings.Refactoring.ForwardDeclaration;
+      Context.NoFreeFields := not Settings.Refactoring.FreeFields;
+      Context.FreeFieldsFreeAndNil := SameText(Settings.Refactoring.FreeFieldsStyle, 'freeAndNil');
       if IsExceptedByOptions(Context.Options, Context.RelativePath, Context.UnitName) then
         Continue;
       // Erst in einer Interface-Variablen halten: Check nimmt den Report als

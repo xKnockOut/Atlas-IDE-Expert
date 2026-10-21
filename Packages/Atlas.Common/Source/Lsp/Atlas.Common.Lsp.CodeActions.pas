@@ -127,6 +127,7 @@ uses
   Atlas.Common.Index.Contract,
   Atlas.Common.Editing.AssignmentSwap,
   Atlas.Common.Editing.Extract,
+  Atlas.Common.Editing.FreeFields,
   Atlas.Common.Lsp.InactiveRegions;
 
 { TLspCodeActions }
@@ -269,6 +270,8 @@ var
   ClassContext: TClassActionContext;
   Defines: TArray<string>;
   Inactive: TArray<TTextRange>;
+  FieldIndex: ISymbolIndex;
+  RuleOffersField: Boolean;
 begin
   if not ((AParams is TJSONObject) and TJSONObject(AParams).TryGetValue<string>('textDocument.uri', Uri) and
     TJSONObject(AParams).TryGetValue<TJSONValue>('range', RangeValue)) then
@@ -360,6 +363,20 @@ begin
       end;
       ClassContext.Style := Style;
       for Action in TClassActions.Actions(Document.Text, Tree, Range.StartPos.Line, ClassContext) do
+        TJSONArray(Result).AddElement(ActionToJson(Uri, Action));
+    end;
+    // Felder im Destruktor freigeben (#666): Die Aktion am Feld bringt die Regel mit, wenn sie läuft.
+    if Refactoring.FreeFields then
+    begin
+      FieldIndex := nil;
+      if HasRules then
+        FieldIndex := Rules.Index;
+      RuleOffersField := False;
+      for Finding in Findings do
+        if (Finding.RuleId = 'owned-field-not-freed') and (Finding.Range.StartPos.Line = Range.StartPos.Line) then
+          RuleOffersField := True;
+      for Action in TFreeFields.Actions(Tree, Document.Text, FieldIndex, Range.StartPos.Line,
+        TFreeFields.StyleOf(Refactoring.FreeFieldsStyle), not RuleOffersField) do
         TJSONArray(Result).AddElement(ActionToJson(Uri, Action));
     end;
   end;

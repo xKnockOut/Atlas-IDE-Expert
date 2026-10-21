@@ -2793,6 +2793,26 @@ Voraussetzung: Server läuft; Einstellungen auf Vorgabe; Unit `Panels.pas` mit `
 | PA12 | `"propertyFromAccessorsReplaceCalls": "never"` bzw. `"always"` | Nur „Property Caption anlegen“ bzw. nur „… und Aufrufe umstellen“ |
 | PA13 | `"refactoring": {"propertyFromAccessors": false}` in atlas.json | Keine der Aktionen mehr (**Abnahme**) |
 
+## Felder im Destruktor freigeben (#666)
+
+Voraussetzung: Server läuft; Einstellungen auf Vorgabe; Unit mit `TOrderList = class private FItems: TObjectList<TOrder>; FIndex: TDictionary<Integer, TOrder>; public constructor Create; end;`, im Konstruktor `FItems := TObjectList<TOrder>.Create(True);` und `FIndex := TDictionary<Integer, TOrder>.Create;`, ohne Destruktor.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| FF1 | Unit öffnen | Warnung `owned-field-not-freed` an `FItems` und an `FIndex` |
+| FF2 | Glühbirne auf der Zeile von `FItems` | „Im Destruktor freigeben“ und „Alle eigenen Objekte freigeben (2)“ |
+| FF3 | „Alle eigenen Objekte freigeben (2)“ | `destructor Destroy; override;` hinter `constructor Create;`; hinter dem Konstruktor `destructor TOrderList.Destroy;` mit `FIndex.Free;`, `FItems.Free;`, `inherited;`; kompiliert, keine Warnung mehr; Strg+Z nimmt alles in einem Schritt zurück (**Abnahme**) |
+| FF4 | Wie FF3 mit vorhandenem Destruktor `begin FItems.Free; inherited; end;` | Nur `FIndex` gemeldet; `FIndex.Free;` vor `inherited;` |
+| FF5 | Glühbirne auf der Kopfzeile `TOrderList = class` | „Alle eigenen Objekte freigeben (2)“ |
+| FF6 | Feld `FTimer: TTimer`, im Konstruktor `FTimer := TTimer.Create(Self);` | Keine Meldung (Owner gibt frei) (**Abnahme**) |
+| FF7 | Feld `FLog: ILog`, im Konstruktor `FLog := TFileLog.Create;` | Keine Meldung (Interface) (**Abnahme**) |
+| FF8 | Erzeugung in einer privaten Methode `Init`, die der Konstruktor aufruft | Gemeldet wie FF1, die Meldung nennt `TOrderList.Init` (**Abnahme**) |
+| FF9 | `function Take: TList; begin Result := FList; end;` für ein erzeugtes Feld | Hinweis `owned-field-free-unclear` „… wird von TOrderList.Take zurückgegeben“, keine Aktion |
+| FF10 | Drei Felder in der Reihenfolge FA, FB, FC erzeugt, „Alle eigenen Objekte freigeben (3)“ | Freigaben FC, FB, FA (**Abnahme**) |
+| FF11 | `"refactoring": {"freeFieldsStyle": "freeAndNil"}` | `FreeAndNil(FIndex);` statt `FIndex.Free;` |
+| FF12 | Generische Klasse `TCache<T>` | Rumpf heißt `destructor TCache<T>.Destroy;` und kompiliert |
+| FF13 | `"refactoring": {"freeFields": false}` in atlas.json | Keine Meldungen und keine der Aktionen mehr (**Abnahme**) |
+
 ## Forward-Deklaration ergänzen (#685)
 
 Voraussetzung: Server läuft; Einstellungen auf Vorgabe; neue Unit `Tree.pas`.
