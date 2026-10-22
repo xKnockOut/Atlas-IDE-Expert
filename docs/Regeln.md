@@ -6,7 +6,7 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 
 | Gruppe | Regeln |
 |---|---|
-| [Fehler finden](#gruppe-find-bugs) | 46 |
+| [Fehler finden](#gruppe-find-bugs) | 47 |
 | [Exceptions](#gruppe-exceptions) | 6 |
 | [Threads](#gruppe-threads) | 9 |
 | [Robustheit und Muster](#gruppe-robustness) | 2 |
@@ -70,6 +70,7 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 | [`pair-without-finally`](#pair-without-finally) | Paarige Aufrufe ohne try/finally | Bug | Warnung |
 | [`unchecked-conversion`](#unchecked-conversion) | Umwandlung einer Benutzereingabe ohne Prüfung | Bug | Hinweis |
 | [`dictionary-get-without-check`](#dictionary-get-without-check) | Dictionary-Zugriff ohne Prüfung des Schlüssels | Bug | Hinweis |
+| [`event-call-without-assigned`](#event-call-without-assigned) | Ereignis ohne Assigned-Prüfung aufgerufen | Bug | Warnung |
 
 <a id="gruppe-exceptions"></a>
 ### Exceptions
@@ -3497,5 +3498,33 @@ procedure TImportTests.LeereDateiWirdGelesen;
 begin
   FImport.Laden('leer.csv');
   Assert.AreEqual(0, FImport.Anzahl);
+end;
+```
+
+<a id="event-call-without-assigned"></a>
+### event-call-without-assigned
+
+**Ereignis ohne Assigned-Prüfung aufgerufen** · Bug · Warnung · Gruppe Fehler finden
+
+FOnChange(Self) oder OnChange(Self) wird in einer Methode der Klasse aufgerufen, ohne dass Assigned(FOnChange) oder FOnChange <> nil den Aufruf schützt: Ohne Handler folgt eine Zugriffsverletzung. Ereignisse sind Felder und Properties der Klasse mit Methodenzeiger- oder Referenztyp (procedure … of object, reference to …, TNotifyEvent, TProc/TFunc, Typen auf Event, prozedurale Typen der Unit oder des Index). Schutz: der then-Zweig einer Bedingung mit Assigned (auch while), der else-Zweig von not Assigned, "Assigned(F) and" vor dem Aufruf oder "if not Assigned(F) then Exit/raise" davor, auch über einen Merker oder eine Methode der Klasse ohne Parameter, deren Result Assigned(F) enthält. Still bleiben Felder, die ein Konstruktor mit einem Wert belegt (eingereichte Abhängigkeiten wie FReadText := AReadText), Properties darauf und gleichnamige lokale Namen. Sicherheit hoch. Korrektur: den Aufruf in "if Assigned(F) then" einschließen, wenn er als eigene Anweisung in einem Block steht.
+
+Mit Treffer:
+
+```pascal
+procedure TZaehler.Erhoehen;
+begin
+  Inc(FWert);
+  FOnChange(Self);
+end;
+```
+
+Richtig:
+
+```pascal
+procedure TZaehler.Erhoehen;
+begin
+  Inc(FWert);
+  if Assigned(FOnChange) then
+    FOnChange(Self);
 end;
 ```
