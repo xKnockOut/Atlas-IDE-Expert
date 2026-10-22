@@ -2,7 +2,7 @@
 
 // Tests der Regeln für Unit-Kopf, uses und Dateiende: unit-name-mismatch
 // (#990), text-after-final-end (#991), exports-invalid (#1077),
-// unit-name-conflict (#1079).
+// unit-name-conflict (#1079), implicit-variants-unit (#1082).
 
 interface
 
@@ -53,6 +53,14 @@ type
     procedure ConflictNoInclude;
     [Test]
     procedure ConflictOptions;
+    [Test]
+    procedure VariantsIssueExample;
+    [Test]
+    procedure VariantsSilentCases;
+    [Test]
+    procedure VariantsSpelling;
+    [Test]
+    procedure VariantsOptions;
   end;
 
 implementation
@@ -204,6 +212,21 @@ begin
   AFileName := '';
   AText := '';
   Result := False;
+end;
+
+const
+  /// <summary>implicit-variants-unit ist experimentell und muss eingeschaltet werden.</summary>
+  VariantsOn = '{"rules": {"implicit-variants-unit": "hint"}}';
+
+function Speicher(const AUses, ADeclaration: string): string;
+begin
+  Result := 'unit Speicher;'#10'interface'#10'uses'#10'  ' + AUses + ';'#10 + ADeclaration + 'implementation'#10 +
+    'end.';
+end;
+
+function VariantFindings(const ASource: string): TArray<TRuleFinding>;
+begin
+  Result := TRuleAssert.Findings(TImplicitVariantsUnitRule.Create, ASource, VariantsOn, 'Speicher.pas');
 end;
 
 function Werkzeug(const ADeclarations, AExports: string): string;
@@ -628,6 +651,84 @@ begin
     '{"rules": {"group:compiler": "off"}}', 'Src/System.pas'))));
   Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TUnitNameConflictRule.Create, Source,
     '{"rules": {"unit-name-conflict": {"exclude": ["Src/*.pas"]}}}', 'Src/System.pas'))));
+end;
+
+procedure TUnitRulesTests.VariantsIssueExample;
+var
+  Source, Fixed: string;
+  Found: TArray<TRuleFinding>;
+begin
+  Source := Speicher('System.SysUtils', 'var Wert: Variant;'#10);
+  Found := VariantFindings(Source);
+  Assert.AreEqual(1, Integer(Length(Found)));
+  Assert.AreEqual('Variant wird ohne System.Variants in uses verwendet (wie W1040).', Found[0].Message);
+  Assert.AreEqual(4, Found[0].Range.StartPos.Line);
+  Assert.AreEqual(10, Found[0].Range.StartPos.Character);
+  Assert.AreEqual('System.Variants in uses aufnehmen', Found[0].Fixes[0].Title);
+  Fixed := ApplyAny(Source, Found[0].Fixes[0].Edits[0]);
+  Assert.AreEqual(Speicher('System.SysUtils,'#10'  System.Variants', 'var Wert: Variant;'#10), Fixed);
+  Assert.AreEqual(0, Integer(Length(VariantFindings(Fixed))));
+  // OleVariant als Parameter im interface, Typargument.
+  Found := VariantFindings('unit Speicher;'#10'interface'#10'procedure Setzen(const AWert: OleVariant);'#10 +
+    'implementation'#10'procedure Setzen(const AWert: OleVariant);'#10'begin'#10'end;'#10'end.');
+  Assert.AreEqual(1, Integer(Length(Found)));
+  Assert.AreEqual('OleVariant wird ohne System.Variants in uses verwendet (wie W1040).', Found[0].Message);
+  Assert.AreEqual(2, Found[0].Range.StartPos.Line);
+  Assert.AreEqual(1, Integer(Length(VariantFindings(Speicher('System.Generics.Collections',
+    'var Liste: TList<Variant>;'#10)))));
+end;
+
+procedure TUnitRulesTests.VariantsSilentCases;
+begin
+  // Variants eingebunden (auch ohne Namespace, im implementation-uses, in einem Zweig).
+  Assert.AreEqual(0, Integer(Length(VariantFindings(Speicher('SysUtils, Variants', 'var Wert: Variant;'#10)))));
+  Assert.AreEqual(0, Integer(Length(VariantFindings('unit Speicher;'#10'interface'#10'implementation'#10 +
+    'uses'#10'  {$IFDEF MSWINDOWS}System.Variants{$ENDIF};'#10'var Wert: Variant;'#10'end.'))));
+  // Kein Variant, eigener Typ Variant, die Unit Variants selbst, abgeschaltete Warnung.
+  Assert.AreEqual(0, Integer(Length(VariantFindings(Speicher('System.SysUtils', 'var Wert: Integer;'#10)))));
+  Assert.AreEqual(0, Integer(Length(VariantFindings(Speicher('System.SysUtils',
+    'type Variant = Integer;'#10'var Wert: Variant;'#10)))));
+  Assert.AreEqual(0, Integer(Length(VariantFindings('unit System.Variants;'#10'interface'#10 +
+    'function VarIsNull(const V: Variant): Boolean;'#10'implementation'#10'end.'))));
+  Assert.AreEqual(0, Integer(Length(VariantFindings('{$WARN IMPLICIT_VARIANTS OFF}'#10 +
+    Speicher('System.SysUtils', 'var Wert: Variant;'#10)))));
+  // Ohne Einschalten (experimentell) still.
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TImplicitVariantsUnitRule.Create,
+    Speicher('System.SysUtils', 'var Wert: Variant;'#10), '', 'Speicher.pas'))));
+end;
+
+procedure TUnitRulesTests.VariantsSpelling;
+var
+  Source: string;
+  Found: TArray<TRuleFinding>;
+begin
+  // Ohne Namespace wie die übrigen Einträge.
+  Source := Speicher('SysUtils, Classes', 'var Wert: Variant;'#10);
+  Found := VariantFindings(Source);
+  Assert.AreEqual('Variants in uses aufnehmen', Found[0].Fixes[0].Title);
+  Assert.AreEqual(Speicher('SysUtils, Classes,'#10'  Variants', 'var Wert: Variant;'#10),
+    ApplyAny(Source, Found[0].Fixes[0].Edits[0]));
+  // Ohne uses im Abschnitt: neues uses hinter implementation.
+  Source := 'unit Speicher;'#10'interface'#10'implementation'#10'var Wert: Variant;'#10'end.';
+  Found := VariantFindings(Source);
+  Assert.AreEqual(1, Integer(Length(Found)));
+  Assert.Contains(ApplyAny(Source, Found[0].Fixes[0].Edits[0]), 'uses');
+  Assert.Contains(ApplyAny(Source, Found[0].Fixes[0].Edits[0]), 'System.Variants;');
+end;
+
+procedure TUnitRulesTests.VariantsOptions;
+var
+  Source: string;
+begin
+  Source := Speicher('System.SysUtils', 'var Wert: Variant;'#10);
+  Assert.AreEqual(1, Integer(Length(TRuleAssert.Findings(TImplicitVariantsUnitRule.Create, Source, VariantsOn,
+    'Src/Speicher.pas'))));
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TImplicitVariantsUnitRule.Create, Source,
+    '{"rules": {"implicit-variants-unit": "off"}}', 'Src/Speicher.pas'))));
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TImplicitVariantsUnitRule.Create, Source,
+    '{"rules": {"implicit-variants-unit": "hint", "group:compiler": "off"}}', 'Src/Speicher.pas'))));
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TImplicitVariantsUnitRule.Create, Source,
+    '{"rules": {"implicit-variants-unit": {"severity": "hint", "exclude": ["Src/*.pas"]}}}', 'Src/Speicher.pas'))));
 end;
 
 initialization

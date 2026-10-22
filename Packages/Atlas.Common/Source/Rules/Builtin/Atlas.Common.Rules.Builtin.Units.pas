@@ -15,6 +15,9 @@
 //   unit-name-conflict  Eine Unit heißt System oder SysInit (#1079, wie
 //                       E2272), oder {$NOINCLUDE X} nennt eine Unit, die die
 //                       Unit-Suche sicher nicht findet (wie E2242).
+//   implicit-variants-unit  Variant oder OleVariant als Typ ohne System.Variants
+//                       in uses (#1082, wie W1040); experimentell, also nur
+//                       eingeschaltet aktiv.
 //
 // Die Regeln lesen nur den Text der Datei und, für "in '…'", die genannte
 // Datei über TRuleContext.ReadFile. Ohne Dateinamen, ohne lesbare Datei und
@@ -29,7 +32,12 @@
 // meldet sie nicht: E2447, W1051 und X2421 gehören zu den Namensräumen der
 // .NET-Metadaten, die dcc32/dcc64 nicht erzeugt; für E2399 nennt die
 // docwiki keine Bedingung, und eine Unit Kunden neben Kunden.Daten übersetzt
-// Delphi ohne Fehler (Spring.pas neben Spring.Collections.pas, Atlas selbst). {$WARN UNIT_NAME_MISMATCH
+// Delphi ohne Fehler (Spring.pas neben Spring.Collections.pas, Atlas selbst).
+// implicit-variants-unit zählt Typangaben im Syntaxbaum (Variablen, Felder,
+// Parameter, Ergebnisse, Typargumente); Variants im uses gilt auch in einem
+// {$IF…}-Zweig und ohne Namespace. Schweigt in System, SysInit und Variants
+// selbst, wenn die Datei einen eigenen Typ Variant deklariert und nach
+// {$WARN IMPLICIT_VARIANTS OFF}. {$WARN UNIT_NAME_MISMATCH
 // OFF} und {$WARNINGS OFF} vor dem Unit-Namen schalten W1038 wie beim
 // Compiler ab.
 
@@ -46,6 +54,7 @@ const
   TextAfterFinalEndRuleId = 'text-after-final-end';
   ExportsInvalidRuleId = 'exports-invalid';
   UnitNameConflictRuleId = 'unit-name-conflict';
+  ImplicitVariantsUnitRuleId = 'implicit-variants-unit';
 
 type
 {$SCOPEDENUMS ON}
@@ -114,6 +123,12 @@ type
     procedure Check(const AContext: TRuleContext; const AReport: IRuleReport);
   end;
 
+  TImplicitVariantsUnitRule = class(TInterfacedObject, IRule)
+  public
+    function Descriptor: TRuleDescriptor;
+    procedure Check(const AContext: TRuleContext; const AReport: IRuleReport);
+  end;
+
 /// <summary>Ist die Warnung AName ({$WARN AName …}) an AOffset eingeschaltet? Wertet {$WARN AName ON|OFF|ERROR|
 /// DEFAULT} und {$WARNINGS ON|OFF} davor aus, wie der Compiler in Textreihenfolge.</summary>
 function WarningEnabled(const ATokens: TArray<TPascalToken>; const AName: string; AOffset: Integer): Boolean;
@@ -134,6 +149,8 @@ uses
   Atlas.Common.Pascal.ConditionalBranches,
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Rules.Options,
+  Atlas.Common.Editing.UsesClause,
+  Atlas.Text.Lines,
   Atlas.Common.Pascal.DirectiveNames,
   Atlas.Common.Rules.Builtin.Unresolved;
 
@@ -766,12 +783,68 @@ begin
   end;
 end;
 
+{ TImplicitVariantsUnitRule }
+
+function TImplicitVariantsUnitRule.Descriptor: TRuleDescriptor;
+begin
+  Result := TRuleDescriptor.Create(ImplicitVariantsUnitRuleId, TRuleSeverity.Hint,
+    'Variant ohne System.Variants in uses (wie W1040)', True);
+end;
+
+procedure TImplicitVariantsUnitRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
+var
+  Tokens: TArray<TPascalToken>;
+  Header: TModuleHeader;
+  Used: TArray<string>;
+  Name, UnitName: string;
+  First: TSyntaxNode;
+  OwnType: Boolean;
+  Edit: TTextEdit;
+  Fixes: TArray<TRuleFix>;
+begin
+  if (AContext.Tree = nil) or (AContext.Tree.Root = nil) then
+    Exit;
+  Tokens := AContext.Tree.Tokens;
+  Header := TModuleHeader.Read(Tokens);
+  if MatchText(Header.Name, ['System', 'SysInit', 'System.Variants', 'Variants']) then
+    Exit;
+  Used := TUsesClauses.UsedUnits(Tokens);
+  for Name in Used do
+    if MatchText(Name, ['System.Variants', 'Variants']) then
+      Exit;
+  First := nil;
+  OwnType := False;
+  AContext.Tree.Root.Walk(
+    function(ANode: TSyntaxNode): Boolean
+    begin
+      if (ANode.Kind = TSyntaxKind.TypeReference) and (First = nil) and
+        MatchText(ANode.Name, ['Variant', 'OleVariant', 'System.Variant', 'System.OleVariant']) then
+        First := ANode
+      else if (ANode.Kind = TSyntaxKind.TypeDecl) and MatchText(ANode.Name, ['Variant', 'OleVariant']) then
+        OwnType := True;
+      Result := True;
+    end);
+  if (First = nil) or OwnType or not WarningEnabled(Tokens, 'IMPLICIT_VARIANTS', First.StartOffset) then
+    Exit;
+  // Schreibweise wie die übrigen Einträge: ohne Namespace, wenn die Unit SysUtils statt System.SysUtils nennt.
+  UnitName := 'System.Variants';
+  for Name in Used do
+    if MatchText(Name, ['SysUtils', 'Classes']) then
+      UnitName := 'Variants';
+  Fixes := nil;
+  if TUsesClauses.AddUnit(Tokens, First.StartOffset, UnitName, TTextLines.LineBreakOf(AContext.Text), Edit) then
+    Fixes := [TRuleFix.Create(Format('%s in uses aufnehmen', [UnitName]), [Edit], True)];
+  AReport.Add(TTextRange.Create(First.StartPos, First.EndPos), Format('%s wird ohne System.Variants in uses ' +
+    'verwendet (wie W1040).', [First.Name]), TRuleConfidence.High, Fixes);
+end;
+
 procedure RegisterUnitRules(const ARegistry: TRuleRegistry);
 begin
   ARegistry.Register(TUnitNameMismatchRule.Create);
   ARegistry.Register(TTextAfterFinalEndRule.Create);
   ARegistry.Register(TExportsInvalidRule.Create);
   ARegistry.Register(TUnitNameConflictRule.Create);
+  ARegistry.Register(TImplicitVariantsUnitRule.Create);
 end;
 
 end.

@@ -10,7 +10,7 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 | [Exceptions](#gruppe-exceptions) | 8 |
 | [Threads](#gruppe-threads) | 13 |
 | [Datenbank](#gruppe-database) | 4 |
-| [Compiler vorab](#gruppe-compiler) | 19 |
+| [Compiler vorab](#gruppe-compiler) | 20 |
 | [Robustheit und Muster](#gruppe-robustness) | 3 |
 | [Performance](#gruppe-performance) | 4 |
 | [Sicherheit](#gruppe-security) | 11 |
@@ -150,6 +150,7 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 | [`text-after-final-end`](#text-after-final-end) | Text nach dem abschließenden end. | Code Smell | Warnung |
 | [`exports-invalid`](#exports-invalid) | exports-Klausel unzulässig | Bug | Fehler |
 | [`unit-name-conflict`](#unit-name-conflict) | Unit-Name kollidiert | Bug | Fehler |
+| [`implicit-variants-unit`](#implicit-variants-unit) | Variant ohne System.Variants in uses | Code Smell | Hinweis |
 
 <a id="gruppe-robustness"></a>
 ### Robustheit und Muster
@@ -4650,4 +4651,31 @@ Richtig:
 unit Kunden.Systemdienste;
 
 interface
+```
+
+<a id="implicit-variants-unit"></a>
+### implicit-variants-unit
+
+**Variant ohne System.Variants in uses** · Code Smell · Hinweis · Gruppe Compiler vorab
+
+Die Unit verwendet Variant oder OleVariant als Typ, ohne System.Variants in uses zu haben. Der Compiler bindet die Unit dann still ein (wie W1040) und ändert damit die Initialisierungsreihenfolge. Die Regel zählt Typangaben im Syntaxbaum (Variablen, Felder, Parameter, Ergebnisse, Typargumente); Variants in uses gilt auch in einem {$IF…}-Zweig und ohne Namespace. Still in System, SysInit und Variants selbst, wenn die Datei einen eigenen Typ Variant deklariert, und nach {$WARN IMPLICIT_VARIANTS OFF}. Standardmäßig aus (Profil strict). Schnellkorrektur: System.Variants in uses aufnehmen (Variants, wenn die Unit SysUtils oder Classes ohne Namespace nennt).
+
+Entspricht der Compilermeldung `W1040`.
+
+Mit Treffer:
+
+```pascal
+uses
+  System.SysUtils;
+…
+var Wert: Variant;
+```
+
+Richtig:
+
+```pascal
+uses
+  System.SysUtils, System.Variants;
+…
+var Wert: Variant;
 ```

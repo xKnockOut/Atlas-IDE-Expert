@@ -2379,6 +2379,19 @@ begin
     '        "E2272",' + #10 +
     '        "E2242"' + #10 +
     '      ]' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "implicit-variants-unit",' + #10 +
+    '      "name": "Variant without System.Variants in uses",' + #10 +
+    '      "category": "code-smell",' + #10 +
+    '      "severity": "hint",' + #10 +
+    '      "group": "compiler",' + #10 +
+    '      "description": "The unit uses Variant or OleVariant as a type without System.Variants in uses. The compiler then adds the unit silently (like W1040) and so changes the initialization order. The ' + 'rule counts type references in the syntax tree (variables, fields, parameters, results, type arguments); Variants in uses also counts inside an {$IF…} branch and without namespace. Silent in System, S' + 'ysInit and Variants themselves, when the file declares its own type Variant, and after {$WARN IMPLICIT_VARIANTS OFF}. Off by default (strict profile). Quick fix: add System.Variants to uses (Variants ' + 'when the unit names SysUtils or Classes without namespace).",' + #10 +
+    '      "bad": "uses\n  System.SysUtils;\n…\nvar Wert: Variant;",' + #10 +
+    '      "good": "uses\n  System.SysUtils, System.Variants;\n…\nvar Wert: Variant;",' + #10 +
+    '      "compilerCodes": [' + #10 +
+    '        "W1040"' + #10 +
+    '      ]' + #10 +
     '    }' + #10 +
     '  ]' + #10 +
     '}' + #10 +
@@ -3575,6 +3588,11 @@ begin
     '      "id": "unit-name-conflict",' + #10 +
     '      "name": "Unit-Name kollidiert",' + #10 +
     '      "description": "Eine Unit heißt wie eine für den Compiler reservierte Unit, System oder SysInit (wie E2272), oder {$NOINCLUDE X} nennt eine Unit, die der Compiler nicht kennt (wie E2242); dafür ' + 'braucht die Regel die Unit-Suche des Projekts und schweigt ohne sichere Antwort. Die Quellen der RTL (source/rtl) prüft sie nicht. Nicht gemeldet: E2447, W1051 und X2421 gehören zu den Namensräumen de' + 'r .NET-Metadaten, die dcc32/dcc64 nicht erzeugt; für E2399 nennt die Dokumentation keine Bedingung, und eine Unit Kunden neben Kunden.Daten übersetzt Delphi ohne Fehler (Spring.pas neben Spring.Collec' + 'tions.pas). Schnellkorrektur für {$NOINCLUDE}: eine ähnlich geschriebene bekannte Unit einsetzen."' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "implicit-variants-unit",' + #10 +
+    '      "name": "Variant ohne System.Variants in uses",' + #10 +
+    '      "description": "Die Unit verwendet Variant oder OleVariant als Typ, ohne System.Variants in uses zu haben. Der Compiler bindet die Unit dann still ein (wie W1040) und ändert damit die Initialisi' + 'erungsreihenfolge. Die Regel zählt Typangaben im Syntaxbaum (Variablen, Felder, Parameter, Ergebnisse, Typargumente); Variants in uses gilt auch in einem {$IF…}-Zweig und ohne Namespace. Still in Syst' + 'em, SysInit und Variants selbst, wenn die Datei einen eigenen Typ Variant deklariert, und nach {$WARN IMPLICIT_VARIANTS OFF}. Standardmäßig aus (Profil strict). Schnellkorrektur: System.Variants in us' + 'es aufnehmen (Variants, wenn die Unit SysUtils oder Classes ohne Namespace nennt)."' + #10 +
     '    }' + #10 +
     '  ]' + #10 +
     '}' + #10 +
