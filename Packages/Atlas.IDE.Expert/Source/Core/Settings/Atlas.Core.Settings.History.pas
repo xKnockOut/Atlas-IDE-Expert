@@ -80,8 +80,9 @@ type
     function LastChangedKeys(const ACurrent: TAtlasPluginSettings): TArray<string>;
     procedure Clear;
     function ToJson: string;
-    /// <summary>Liste aus ToJson; bei ungültigem Text leer.</summary>
-    procedure LoadJson(const AText: string);
+    /// <summary>Liste aus ToJson; ungültige Einträge fallen weg. False (und leer), wenn AText keine Liste ist.
+    /// </summary>
+    function LoadJson(const AText: string): Boolean;
     property Count: Integer read GetCount;
     /// <summary>0 = neuester Stand.</summary>
     property Snapshots[AIndex: Integer]: TAtlasSettingsSnapshot read GetSnapshot; default;
@@ -293,7 +294,7 @@ begin
   end;
 end;
 
-procedure TAtlasSettingsHistory.LoadJson(const AText: string);
+function TAtlasSettingsHistory.LoadJson(const AText: string): Boolean;
 var
   Root, Values: TJSONValue;
   Element: TJSONValue;
@@ -304,7 +305,8 @@ begin
   FSnapshots.Clear;
   Root := TJSONObject.ParseJSONValue(AText);
   try
-    if not (Root is TJSONArray) then
+    Result := Root is TJSONArray;
+    if not Result then
       Exit;
     for Element in TJSONArray(Root) do
     begin

@@ -25,13 +25,19 @@ type
     procedure ParseRejectsGarbageAndNewerFormat;
     [Test]
     procedure SaveAndLoadKeepNewerFormat;
+    /// <summary>Unbrauchbare Datei liegt danach als .defekt daneben; eine beim Lesen gesperrte wird nicht
+    /// überschrieben (Bericht N3).</summary>
+    [Test]
+    procedure BrokenFileSetAsideLockedFileKept;
   end;
 
 implementation
 
 uses
   System.SysUtils,
+  System.Classes,
   System.IOUtils,
+  Atlas.Core.Files.DataFile,
   Atlas.Core.Tests.ProjectChoice;
 
 { TAtlasTestProjectChoiceTests }
@@ -130,6 +136,35 @@ begin
     if FileExists(FileName) then
       System.SysUtils.DeleteFile(FileName);
     RemoveDir(Folder);
+  end;
+end;
+
+procedure TAtlasTestProjectChoiceTests.BrokenFileSetAsideLockedFileKept;
+var
+  Folder, FileName: string;
+  Choices: TArray<TAtlasTestProjectChoice>;
+  Lock: TFileStream;
+begin
+  Folder := IncludeTrailingPathDelimiter(TPath.GetTempPath) + 'atlas-test-' + IntToStr(Random(MaxInt));
+  FileName := IncludeTrailingPathDelimiter(Folder) + TAtlasTestProjectChoices.FileName;
+  ForceDirectories(Folder);
+  try
+    TFile.WriteAllText(FileName, '{"choices": [');
+    Assert.IsTrue(TAtlasTestProjectChoices.Load(FileName, Choices) = TAtlasDataLoad.Renewed);
+    Assert.IsTrue(FileExists(FileName + TAtlasDataFile.DefectExtension), 'beiseitegelegt');
+    TAtlasTestProjectChoices.Remember(Choices, ['A', 'B'], 'B');
+    Assert.IsTrue(TAtlasTestProjectChoices.Save(FileName, Choices));
+    Lock := TFileStream.Create(FileName, fmOpenRead or fmShareExclusive);
+    try
+      Assert.IsTrue(TAtlasTestProjectChoices.Load(FileName, Choices) = TAtlasDataLoad.Kept);
+      Assert.AreEqual(0, Integer(Length(Choices)));
+      Assert.IsFalse(TAtlasTestProjectChoices.Save(FileName, Choices), 'gerade nicht lesbar: nicht überschreiben');
+    finally
+      Lock.Free;
+    end;
+    Assert.AreEqual(1, Integer(Length(TAtlasTestProjectChoices.Load(FileName))));
+  finally
+    TDirectory.Delete(Folder, True);
   end;
 end;
 

@@ -20,6 +20,9 @@
 // zählt nicht mit: Der Server hält es absichtlich bis zu 10 s offen
 // (Long-Polling), das Statusfeld meldete sonst dauerhaft "langsam"
 // (Rückmeldung 15.10.2026).
+// Ende der Verbindung (Bericht H5): CloseInfo nennt die zuletzt gesendete
+// Anfrage, die beim Ende noch offenen und, wenn der Transport sie über
+// CloseWith mitgibt, Exit-Code, Laufzeit und Zeilen auf stderr des Servers.
 
 interface
 
@@ -43,6 +46,21 @@ type
 
   ELspClientError = class(Exception);
 
+  /// <summary>Wie die Verbindung endete (Bericht H5); Exit-Angaben setzt der Transport über CloseWith.</summary>
+  TLspCloseInfo = record
+    /// <summary>Exit-Code des Serverprozesses bekannt?</summary>
+    ExitKnown: Boolean;
+    ExitCode: Cardinal;
+    /// <summary>Laufzeit des Serverprozesses in ms; 0 = unbekannt.</summary>
+    RuntimeMs: Int64;
+    /// <summary>Zeilen, die der Server in diesem Lauf auf stderr schrieb.</summary>
+    ErrorLines: Integer;
+    /// <summary>Zuletzt gesendete Anfrage ohne Long-Polling; setzt der Client.</summary>
+    LastMethod: string;
+    /// <summary>Beim Ende noch offene Anfragen ohne Long-Polling; setzt der Client.</summary>
+    OpenMethods: TArray<string>;
+  end;
+
   TLspClient = class
   public const
     /// <summary>So viele Antwortzeiten gehen in AverageMs ein (#591).</summary>
@@ -54,6 +72,7 @@ type
   private type
     TPending = class
     public
+      Method: string;
       Done: TEvent;
       Result: TJSONValue;
       Error: string;
@@ -69,6 +88,8 @@ type
     FNextPartial: Integer;
     FBuffer: TBytes;
     FClosed: Boolean;
+    FLastMethod: string;
+    FCloseInfo: TLspCloseInfo;
     FOnServerMessage: TLspServerMessageProc;
     FOnServerRequest: TLspServerRequestFunc;
     FOnClosed: TProc;
@@ -106,6 +127,11 @@ type
     procedure Receive(const ABytes: TBytes; ACount: Integer);
     /// <summary>Verbindung beendet: Wartende Anfragen schlagen fehl, neue auch.</summary>
     procedure Close;
+    /// <summary>Wie Close, mit den Angaben des Transports zum Ende des Servers (Exit-Code, Laufzeit, stderr).
+    /// Nur das erste Close zählt.</summary>
+    procedure CloseWith(const AInfo: TLspCloseInfo);
+    /// <summary>Angaben zum Ende der Verbindung; leer, solange sie offen ist.</summary>
+    function CloseInfo: TLspCloseInfo;
     /// <summary>Antwortzeit einer Anfrage merken; Request ruft das selbst (öffentlich für Tests).</summary>
     procedure AddResponseTime(AMilliseconds: Int64);
     /// <summary>Mittlere Antwortzeit der letzten TimeSamples Anfragen in ms; ASamples = deren Anzahl.</summary>
@@ -208,7 +234,10 @@ begin
       end;
       Inc(FNextId);
       Id := FNextId;
+      Pending.Method := AMethod;
       FPending.Add(Id, Pending);
+      if CountsResponseTime(AMethod) then
+        FLastMethod := AMethod;
     finally
       TMonitor.Exit(FLock);
     end;
@@ -536,6 +565,11 @@ begin
 end;
 
 procedure TLspClient.Close;
+begin
+  CloseWith(Default(TLspCloseInfo));
+end;
+
+procedure TLspClient.CloseWith(const AInfo: TLspCloseInfo);
 var
   Pending: TPending;
   WasOpen: Boolean;
@@ -545,6 +579,15 @@ begin
   try
     WasOpen := not FClosed;
     FClosed := True;
+    if WasOpen then
+    begin
+      FCloseInfo := AInfo;
+      FCloseInfo.LastMethod := FLastMethod;
+      FCloseInfo.OpenMethods := nil;
+      for Pending in FPending.Values do
+        if CountsResponseTime(Pending.Method) then
+          FCloseInfo.OpenMethods := FCloseInfo.OpenMethods + [Pending.Method];
+    end;
     for Pending in FPending.Values do
     begin
       Pending.Error := 'Verbindung zum Server ist beendet';
@@ -562,6 +605,16 @@ begin
       on Exception do
         ;
     end;
+end;
+
+function TLspClient.CloseInfo: TLspCloseInfo;
+begin
+  TMonitor.Enter(FLock);
+  try
+    Result := FCloseInfo;
+  finally
+    TMonitor.Exit(FLock);
+  end;
 end;
 
 procedure TLspClient.AddResponseTime(AMilliseconds: Int64);

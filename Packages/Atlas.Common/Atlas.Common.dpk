@@ -81,7 +81,6 @@ contains
   Atlas.Common.Compiler.Edition in 'Source\Compiler\Atlas.Common.Compiler.Edition.pas',
   Atlas.Common.Compiler.Backend in 'Source\Compiler\Atlas.Common.Compiler.Backend.pas',
   Atlas.Common.Compiler.IdeCommand in 'Source\Compiler\Atlas.Common.Compiler.IdeCommand.pas',
-  Atlas.Common.Diagnostics.MapFile in 'Source\Diagnostics\Atlas.Common.Diagnostics.MapFile.pas',
   Atlas.Common.Diagnostics.Contract in 'Source\Diagnostics\Atlas.Common.Diagnostics.Contract.pas',
   Atlas.Common.Diagnostics.Anonymizer in 'Source\Diagnostics\Atlas.Common.Diagnostics.Anonymizer.pas',
   Atlas.Common.Diagnostics.BugReport in 'Source\Diagnostics\Atlas.Common.Diagnostics.BugReport.pas',

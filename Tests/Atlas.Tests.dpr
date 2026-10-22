@@ -9,6 +9,7 @@ uses
   // Muss als erste Unit stehen: zählt den Speicherrest beim Beenden (#177).
   Atlas.Common.Diagnostics.ShutdownLeaks,
   System.SysUtils,
+  System.IOUtils,
   {$IFDEF TESTINSIGHT}
   TestInsight.DUnitX,
   {$ELSE}
@@ -30,6 +31,7 @@ uses
   Atlas.Text.Checkin.Tests in 'Text\Atlas.Text.Checkin.Tests.pas',
   Atlas.Text.DUnitX.Tests in 'Text\Atlas.Text.DUnitX.Tests.pas',
   Atlas.Text.TestResults.Tests in 'Text\Atlas.Text.TestResults.Tests.pas',
+  Atlas.Text.MapFile.Tests in 'Text\Atlas.Text.MapFile.Tests.pas',
   Atlas.Common.Logging.Providers.Logger.Tests in 'Common\Logging\Atlas.Common.Logging.Providers.Logger.Tests.pas',
   Atlas.Common.Logging.Providers.StreamSink.Tests in 'Common\Logging\Atlas.Common.Logging.Providers.StreamSink.Tests.pas',
   Atlas.Common.Logging.RotatingFileStream.Tests in 'Common\Logging\Atlas.Common.Logging.RotatingFileStream.Tests.pas',
@@ -53,7 +55,6 @@ uses
   Atlas.Windows.Projects.DelphiInstallation.Tests in 'Windows\Projects\Atlas.Windows.Projects.DelphiInstallation.Tests.pas',
   Atlas.Common.Compiler.Tests in 'Common\Compiler\Atlas.Common.Compiler.Tests.pas',
   Atlas.Common.Compiler.Backend.Tests in 'Common\Compiler\Atlas.Common.Compiler.Backend.Tests.pas',
-  Atlas.Common.Diagnostics.MapFile.Tests in 'Common\Diagnostics\Atlas.Common.Diagnostics.MapFile.Tests.pas',
   Atlas.Common.Diagnostics.Tests in 'Common\Diagnostics\Atlas.Common.Diagnostics.Tests.pas',
   Atlas.Common.Diagnostics.StackGuard.Tests in 'Common\Diagnostics\Atlas.Common.Diagnostics.StackGuard.Tests.pas',
   Atlas.Windows.Compiler.Adapters.ProcessRunner.Tests in 'Windows\Compiler\Atlas.Windows.Compiler.Adapters.ProcessRunner.Tests.pas',
@@ -101,6 +102,7 @@ uses
   Atlas.Common.Lsp.Hierarchies.Tests in 'Common\Lsp\Atlas.Common.Lsp.Hierarchies.Tests.pas',
   Atlas.Common.Lsp.Implementations.Tests in 'Common\Lsp\Atlas.Common.Lsp.Implementations.Tests.pas',
   Atlas.Common.Lsp.InlayHints.Tests in 'Common\Lsp\Atlas.Common.Lsp.InlayHints.Tests.pas',
+  Atlas.Common.Lsp.DeepTrees.Tests in 'Common\Lsp\Atlas.Common.Lsp.DeepTrees.Tests.pas',
   Atlas.Common.Lsp.CodeLens.Tests in 'Common\Lsp\Atlas.Common.Lsp.CodeLens.Tests.pas',
   Atlas.Common.Lsp.OverrideMarks.Tests in 'Common\Lsp\Atlas.Common.Lsp.OverrideMarks.Tests.pas',
   Atlas.Common.Metrics.Calculator.Tests in 'Common\Metrics\Atlas.Common.Metrics.Calculator.Tests.pas',
@@ -163,6 +165,7 @@ uses
   Atlas.Common.Lsp.WorkspaceFolders.Tests in 'Common\Lsp\Atlas.Common.Lsp.WorkspaceFolders.Tests.pas',
   Atlas.Windows.Documents.PathCanonicalizer.Tests in 'Windows\Documents\Atlas.Windows.Documents.PathCanonicalizer.Tests.pas',
   Atlas.Windows.Documents.FileWatcher.Tests in 'Windows\Documents\Atlas.Windows.Documents.FileWatcher.Tests.pas',
+  Atlas.Windows.Documents.SharedRead.Tests in 'Windows\Documents\Atlas.Windows.Documents.SharedRead.Tests.pas',
   Atlas.Windows.Process.Instances.Tests in 'Windows\Process\Atlas.Windows.Process.Instances.Tests.pas',
   Atlas.Common.Pascal.Lexer.Tests in 'Common\Pascal\Atlas.Common.Pascal.Lexer.Tests.pas',
   Atlas.Common.Lsp.Internals.Debouncer.Tests in 'Common\Lsp\Atlas.Common.Lsp.Internals.Debouncer.Tests.pas',
@@ -314,6 +317,7 @@ uses
   Atlas.Common.Rules.Builtin.Unused.Tests in 'Common\Rules\Builtin\Atlas.Common.Rules.Builtin.Unused.Tests.pas',
   Atlas.Common.Rules.Builtin.Declarations.Tests in 'Common\Rules\Builtin\Atlas.Common.Rules.Builtin.Declarations.Tests.pas',
   Atlas.Common.Rules.Builtin.Inheritance.Tests in 'Common\Rules\Builtin\Atlas.Common.Rules.Builtin.Inheritance.Tests.pas',
+  Atlas.Common.Rules.Builtin.Tests in 'Common\Rules\Builtin\Atlas.Common.Rules.Builtin.Tests.pas',
   Atlas.Common.Rules.Builtin.Capture.Tests in 'Common\Rules\Builtin\Atlas.Common.Rules.Builtin.Capture.Tests.pas',
   Atlas.Common.Rules.Builtin.Components.Tests in 'Common\Rules\Builtin\Atlas.Common.Rules.Builtin.Components.Tests.pas',
   Atlas.Core.Settings.OverviewKinds in '..\Packages\Atlas.IDE.Expert\Source\Core\Settings\Atlas.Core.Settings.OverviewKinds.pas',
@@ -348,6 +352,7 @@ uses
   Atlas.UI.Diagnostics.ProcessesDialog in '..\Packages\Atlas.IDE.Expert\Source\UI\Diagnostics\Atlas.UI.Diagnostics.ProcessesDialog.pas',
   Atlas.UI.Diagnostics.ProcessesDialog.Tests in 'IDE.Expert\Atlas.UI.Diagnostics.ProcessesDialog.Tests.pas',
   Atlas.Core.Lsp.Progress in '..\Packages\Atlas.IDE.Expert\Source\Core\Lsp\Atlas.Core.Lsp.Progress.pas',
+  Atlas.Core.Lsp.Crashes in '..\Packages\Atlas.IDE.Expert\Source\Core\Lsp\Atlas.Core.Lsp.Crashes.pas',
   Atlas.Core.Commands.KeyConflicts in '..\Packages\Atlas.IDE.Expert\Source\Core\Commands\Atlas.Core.Commands.KeyConflicts.pas',
   Atlas.Core.Commands.KeyConflicts.Tests in 'IDE.Expert\Atlas.Core.Commands.KeyConflicts.Tests.pas',
   Atlas.Core.Commands.KeyMap in '..\Packages\Atlas.IDE.Expert\Source\Core\Commands\Atlas.Core.Commands.KeyMap.pas',
@@ -364,6 +369,7 @@ uses
   Atlas.UI.Commands.ShortcutTip in '..\Packages\Atlas.IDE.Expert\Source\UI\Commands\Atlas.UI.Commands.ShortcutTip.pas',
   Atlas.UI.Commands.ShortcutTip.Tests in 'IDE.Expert\Atlas.UI.Commands.ShortcutTip.Tests.pas',
   Atlas.Core.Lsp.Progress.Tests in 'IDE.Expert\Atlas.Core.Lsp.Progress.Tests.pas',
+  Atlas.Core.Lsp.Crashes.Tests in 'IDE.Expert\Atlas.Core.Lsp.Crashes.Tests.pas',
   Atlas.Core.Diagnostics.Guard.Tests in 'IDE.Expert\Atlas.Core.Diagnostics.Guard.Tests.pas',
   Atlas.Core.Diagnostics.MainThread.Tests in 'IDE.Expert\Atlas.Core.Diagnostics.MainThread.Tests.pas',
   Atlas.Core.Diagnostics.TimeLimit.Tests in 'IDE.Expert\Atlas.Core.Diagnostics.TimeLimit.Tests.pas',
@@ -423,8 +429,12 @@ uses
   Atlas.UI.Settings.Keys.Tests in 'IDE.Expert\Atlas.UI.Settings.Keys.Tests.pas',
   Atlas.Core.Build.Events in '..\Packages\Atlas.IDE.Expert\Source\Core\Build\Atlas.Core.Build.Events.pas',
   Atlas.Core.Build.Events.Tests in 'IDE.Expert\Atlas.Core.Build.Events.Tests.pas',
+  Atlas.Core.Diagnostics.StartTimes in '..\Packages\Atlas.IDE.Expert\Source\Core\Diagnostics\Atlas.Core.Diagnostics.StartTimes.pas',
+  Atlas.Core.Diagnostics.StartTimes.Tests in 'IDE.Expert\Atlas.Core.Diagnostics.StartTimes.Tests.pas',
   Atlas.Core.Diagnostics.Hangs in '..\Packages\Atlas.IDE.Expert\Source\Core\Diagnostics\Atlas.Core.Diagnostics.Hangs.pas',
   Atlas.Core.Diagnostics.Hangs.Tests in 'IDE.Expert\Atlas.Core.Diagnostics.Hangs.Tests.pas',
+  Atlas.Core.Diagnostics.StackRing in '..\Packages\Atlas.IDE.Expert\Source\Core\Diagnostics\Atlas.Core.Diagnostics.StackRing.pas',
+  Atlas.Core.Diagnostics.StackRing.Tests in 'IDE.Expert\Atlas.Core.Diagnostics.StackRing.Tests.pas',
   Atlas.Core.Files.ExternalChanges in '..\Packages\Atlas.IDE.Expert\Source\Core\Files\Atlas.Core.Files.ExternalChanges.pas',
   Atlas.Core.Files.ExternalChanges.Tests in 'IDE.Expert\Atlas.Core.Files.ExternalChanges.Tests.pas',
   Atlas.Core.Files.TextDiff in '..\Packages\Atlas.IDE.Expert\Source\Core\Files\Atlas.Core.Files.TextDiff.pas',
@@ -434,6 +444,8 @@ uses
   Atlas.Core.Files.TextFile in '..\Packages\Atlas.IDE.Expert\Source\Core\Files\Atlas.Core.Files.TextFile.pas',
   Atlas.Core.Files.EncodingDefault in '..\Packages\Atlas.IDE.Expert\Source\Core\Files\Atlas.Core.Files.EncodingDefault.pas',
   Atlas.Core.Files.TextFile.Tests in 'IDE.Expert\Atlas.Core.Files.TextFile.Tests.pas',
+  Atlas.Core.Files.DataFile in '..\Packages\Atlas.IDE.Expert\Source\Core\Files\Atlas.Core.Files.DataFile.pas',
+  Atlas.Core.Files.DataFile.Tests in 'IDE.Expert\Atlas.Core.Files.DataFile.Tests.pas',
   Atlas.Core.Text.Agreement.Tests in 'IDE.Expert\Atlas.Core.Text.Agreement.Tests.pas',
   Atlas.Core.Files.EncodingDefault.Tests in 'IDE.Expert\Atlas.Core.Files.EncodingDefault.Tests.pas',
   Atlas.Core.Projects.Contract in '..\Packages\Atlas.IDE.Expert\Source\Core\Projects\Atlas.Core.Projects.Contract.pas',
@@ -620,6 +632,10 @@ uses
   Atlas.Core.Outline.Breadcrumbs.Tests in 'IDE.Expert\Atlas.Core.Outline.Breadcrumbs.Tests.pas',
   Atlas.Core.Outline.StickyScroll in '..\Packages\Atlas.IDE.Expert\Source\Core\Outline\Atlas.Core.Outline.StickyScroll.pas',
   Atlas.Core.Outline.StickyScroll.Tests in 'IDE.Expert\Atlas.Core.Outline.StickyScroll.Tests.pas',
+  Atlas.Core.Outline.LoadGuard in '..\Packages\Atlas.IDE.Expert\Source\Core\Outline\Atlas.Core.Outline.LoadGuard.pas',
+  Atlas.Core.Outline.LoadGuard.Tests in 'IDE.Expert\Atlas.Core.Outline.LoadGuard.Tests.pas',
+  Atlas.Core.Outline.NavigationOption in '..\Packages\Atlas.IDE.Expert\Source\Core\Outline\Atlas.Core.Outline.NavigationOption.pas',
+  Atlas.Core.Outline.NavigationOption.Tests in 'IDE.Expert\Atlas.Core.Outline.NavigationOption.Tests.pas',
   Atlas.UI.Outline.Breadcrumbs in '..\Packages\Atlas.IDE.Expert\Source\UI\Outline\Atlas.UI.Outline.Breadcrumbs.pas',
   Atlas.UI.Outline.Breadcrumbs.Tests in 'IDE.Expert\Atlas.UI.Outline.Breadcrumbs.Tests.pas',
   Atlas.UI.Outline.NavigationToolbar in '..\Packages\Atlas.IDE.Expert\Source\UI\Outline\Atlas.UI.Outline.NavigationToolbar.pas',
@@ -875,6 +891,10 @@ begin
   {$IFDEF DEBUG}
   TShutdownLeaks.Enable(ReportShutdownLeak);
   {$ENDIF}
+  // Protokoll der Absturzsicherung in einen eigenen Ordner: Die Tests lösen absichtlich Fehler aus („Fehler in
+  // Quelle Testquelle“), die sonst im atlas.log der installierten Atlas-Version landen und bei der Fehlersuche wie
+  // echte Fehler aussehen.
+  TAtlasGuard.RotatingLog.Folder := TPath.Combine(TPath.GetTempPath, 'AtlasTests' + PathDelim + 'Logs');
   RegisterLeakMonitor;
 {$IFDEF TESTINSIGHT}
   TestInsight.DUnitX.RunRegisteredTests;

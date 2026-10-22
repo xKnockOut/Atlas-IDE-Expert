@@ -72,82 +72,99 @@ end;
 
 function FindClassNode(ANode: TSyntaxNode; const ATypeName: string): TSyntaxNode;
 var
-  Index: Integer;
-  Child: TSyntaxNode;
+  Root, Found: TSyntaxNode;
+  TypeName: string;
 begin
-  for Index := 0 to ANode.ChildCount - 1 do
-  begin
-    Child := ANode[Index];
-    if (Child.Kind = TSyntaxKind.TypeDecl) and SameText(Child.Name, ATypeName) then
+  Root := ANode;
+  TypeName := ATypeName;
+  // Search statt Rekursion (Bericht M1).
+  Found := ANode.Search(
+    function(ACandidate: TSyntaxNode): TSyntaxSearchStep
     begin
-      Result := Child.FindChild(TSyntaxKind.ClassType);
-      if Result <> nil then
-        Exit;
-    end;
-    // Routinen enthalten keine Klassen, die hier gemeint sind.
-    if Child.Kind <> TSyntaxKind.RoutineDecl then
-    begin
-      Result := FindClassNode(Child, ATypeName);
-      if Result <> nil then
-        Exit;
-    end;
-  end;
+      if ACandidate = Root then
+        Exit(TSyntaxSearchStep.Descend);
+      if (ACandidate.Kind = TSyntaxKind.TypeDecl) and SameText(ACandidate.Name, TypeName) and
+        (ACandidate.FindChild(TSyntaxKind.ClassType) <> nil) then
+        Exit(TSyntaxSearchStep.Found);
+      // Routinen enthalten keine Klassen, die hier gemeint sind.
+      if ACandidate.Kind = TSyntaxKind.RoutineDecl then
+        Exit(TSyntaxSearchStep.Skip);
+      Result := TSyntaxSearchStep.Descend;
+    end);
   Result := nil;
+  if Found <> nil then
+    Result := Found.FindChild(TSyntaxKind.ClassType);
+end;
+
+/// <summary>Botschaftsbehandler aus dem Methodenkopf AHeader (Direktive message) in AList.</summary>
+procedure AddHandlers(const ATokens: TArray<TPascalToken>; AHeader: TSyntaxNode; const AFileName, ATypeName: string;
+  AList: TList<TMessageHandler>);
+var
+  Inner, TokenIndex: Integer;
+  Directive: TSyntaxNode;
+  Handler: TMessageHandler;
+begin
+  for Inner := 0 to AHeader.ChildCount - 1 do
+  begin
+    Directive := AHeader[Inner];
+    if (Directive.Kind <> TSyntaxKind.Directive) or (Directive.Name <> 'message') then
+      Continue;
+    Handler := Default(TMessageHandler);
+    Handler.MethodName := AHeader.Name;
+    Handler.TypeName := ATypeName;
+    Handler.FileName := AFileName;
+    Handler.SelectionRange := TTextRange.Create(AHeader.StartPos, AHeader.EndPos);
+    // Argument: alle Tokens der Direktive hinter "message".
+    TokenIndex := FirstTokenAt(ATokens, Directive.StartOffset) + 1;
+    while (TokenIndex <= High(ATokens)) and (ATokens[TokenIndex].Offset < Directive.EndOffset) do
+    begin
+      if not (ATokens[TokenIndex].Kind in [TPascalTokenKind.Comment, TPascalTokenKind.Directive]) then
+        Handler.Message := Handler.Message + ATokens[TokenIndex].Text;
+      Inc(TokenIndex);
+    end;
+    // Auswahl auf den Methodennamen.
+    TokenIndex := FirstTokenAt(ATokens, AHeader.StartOffset);
+    while (TokenIndex <= High(ATokens)) and (ATokens[TokenIndex].Offset < AHeader.EndOffset) do
+    begin
+      if (ATokens[TokenIndex].Kind = TPascalTokenKind.Identifier) and SameText(ATokens[TokenIndex].Text, AHeader.Name) then
+      begin
+        Handler.SelectionRange := TTextRange.Create(ATokens[TokenIndex].StartPos, ATokens[TokenIndex].EndPos);
+        Break;
+      end;
+      Inc(TokenIndex);
+    end;
+    if Handler.Message <> '' then
+      AList.Add(Handler);
+  end;
 end;
 
 procedure CollectHandlers(ATree: TSyntaxTree; ANode: TSyntaxNode; const AFileName, ATypeName: string;
   AList: TList<TMessageHandler>);
 var
-  Index, Inner, TokenIndex: Integer;
-  Child, Directive: TSyntaxNode;
+  Root: TSyntaxNode;
   Tokens: TArray<TPascalToken>;
-  Handler: TMessageHandler;
+  FileName, TypeName: string;
+  List: TList<TMessageHandler>;
 begin
+  Root := ANode;
   Tokens := ATree.Tokens;
-  for Index := 0 to ANode.ChildCount - 1 do
-  begin
-    Child := ANode[Index];
-    // Verschachtelte Typen gehören nicht zur Klasse.
-    if Child.Kind = TSyntaxKind.TypeDecl then
-      Continue;
-    if Child.Kind <> TSyntaxKind.RoutineHeader then
+  FileName := AFileName;
+  TypeName := ATypeName;
+  List := AList;
+  // Walk statt Rekursion (Bericht M1); die Reihenfolge der Behandler bleibt die des Quelltexts.
+  ANode.Walk(
+    function(AChild: TSyntaxNode): Boolean
     begin
-      CollectHandlers(ATree, Child, AFileName, ATypeName, AList);
-      Continue;
-    end;
-    for Inner := 0 to Child.ChildCount - 1 do
-    begin
-      Directive := Child[Inner];
-      if (Directive.Kind <> TSyntaxKind.Directive) or (Directive.Name <> 'message') then
-        Continue;
-      Handler := Default(TMessageHandler);
-      Handler.MethodName := Child.Name;
-      Handler.TypeName := ATypeName;
-      Handler.FileName := AFileName;
-      Handler.SelectionRange := TTextRange.Create(Child.StartPos, Child.EndPos);
-      // Argument: alle Tokens der Direktive hinter "message".
-      TokenIndex := FirstTokenAt(Tokens, Directive.StartOffset) + 1;
-      while (TokenIndex <= High(Tokens)) and (Tokens[TokenIndex].Offset < Directive.EndOffset) do
-      begin
-        if not (Tokens[TokenIndex].Kind in [TPascalTokenKind.Comment, TPascalTokenKind.Directive]) then
-          Handler.Message := Handler.Message + Tokens[TokenIndex].Text;
-        Inc(TokenIndex);
-      end;
-      // Auswahl auf den Methodennamen.
-      TokenIndex := FirstTokenAt(Tokens, Child.StartOffset);
-      while (TokenIndex <= High(Tokens)) and (Tokens[TokenIndex].Offset < Child.EndOffset) do
-      begin
-        if (Tokens[TokenIndex].Kind = TPascalTokenKind.Identifier) and SameText(Tokens[TokenIndex].Text, Child.Name) then
-        begin
-          Handler.SelectionRange := TTextRange.Create(Tokens[TokenIndex].StartPos, Tokens[TokenIndex].EndPos);
-          Break;
-        end;
-        Inc(TokenIndex);
-      end;
-      if Handler.Message <> '' then
-        AList.Add(Handler);
-    end;
-  end;
+      if AChild = Root then
+        Exit(True);
+      // Verschachtelte Typen gehören nicht zur Klasse.
+      if AChild.Kind = TSyntaxKind.TypeDecl then
+        Exit(False);
+      if AChild.Kind <> TSyntaxKind.RoutineHeader then
+        Exit(True);
+      AddHandlers(Tokens, AChild, FileName, TypeName, List);
+      Result := False;
+    end);
 end;
 
 { TMessageOverview }

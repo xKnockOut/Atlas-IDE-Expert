@@ -56,19 +56,23 @@ end;
 /// <summary>Deklariert die Datei einen Namen AName (Typ, Variable, Feld, Parameter, Routine …)?</summary>
 function Declares(ANode: TSyntaxNode; const AName: string): Boolean;
 var
-  Index: Integer;
-  Name: string;
+  Wanted: string;
 begin
-  if ANode.Kind in [TSyntaxKind.TypeDecl, TSyntaxKind.ConstDecl, TSyntaxKind.VarDecl, TSyntaxKind.Field,
-    TSyntaxKind.PropertyDecl, TSyntaxKind.Parameter, TSyntaxKind.InlineVar, TSyntaxKind.InlineConst,
-    TSyntaxKind.RoutineHeader] then
-    for Name in ANode.Name.Split([',']) do
-      if SameText(CleanName(Trim(Name)), AName) then
-        Exit(True);
-  for Index := 0 to ANode.ChildCount - 1 do
-    if Declares(ANode[Index], AName) then
-      Exit(True);
-  Result := False;
+  Wanted := AName;
+  // Search statt Rekursion (Bericht M1).
+  Result := ANode.Search(
+    function(ACandidate: TSyntaxNode): TSyntaxSearchStep
+    var
+      Name: string;
+    begin
+      Result := TSyntaxSearchStep.Descend;
+      if ACandidate.Kind in [TSyntaxKind.TypeDecl, TSyntaxKind.ConstDecl, TSyntaxKind.VarDecl, TSyntaxKind.Field,
+        TSyntaxKind.PropertyDecl, TSyntaxKind.Parameter, TSyntaxKind.InlineVar, TSyntaxKind.InlineConst,
+        TSyntaxKind.RoutineHeader] then
+        for Name in ACandidate.Name.Split([',']) do
+          if SameText(CleanName(Trim(Name)), Wanted) then
+            Exit(TSyntaxSearchStep.Found);
+    end) <> nil;
 end;
 
 /// <summary>Stehen ab AIndex die Teile von AParts (A . B . C)? AEnd: Index des letzten Teils.</summary>

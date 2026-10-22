@@ -41,6 +41,8 @@
     </PropertyGroup>
     <PropertyGroup Condition="'$(Base)'!=''">
         <SanitizedProjectName>Atlas_IDE_Expert</SanitizedProjectName>
+        <DCC_MapFile>3</DCC_MapFile>
+        <DCC_GenerateStackFrames>true</DCC_GenerateStackFrames>
         <GenPackage>true</GenPackage>
         <GenDll>true</GenDll>
         <DesignOnlyPackage>true</DesignOnlyPackage>
@@ -103,7 +105,9 @@
         <DCCReference Include="..\Atlas.Text\Source\Checkin\Atlas.Text.Checkin.pas"/>
         <DCCReference Include="..\Atlas.Text\Source\DUnitX\Atlas.Text.DUnitX.pas"/>
         <DCCReference Include="..\Atlas.Text\Source\TestResults\Atlas.Text.TestResults.pas"/>
+        <DCCReference Include="..\Atlas.Text\Source\MapFile\Atlas.Text.MapFile.pas"/>
         <DCCReference Include="Source\Core\Lsp\Atlas.Core.Lsp.Progress.pas"/>
+        <DCCReference Include="Source\Core\Lsp\Atlas.Core.Lsp.Crashes.pas"/>
         <DCCReference Include="Source\Core\Lsp\Atlas.Core.Lsp.Client.pas"/>
         <DCCReference Include="Source\Core\Lsp\Atlas.Core.Lsp.Contract.pas"/>
         <DCCReference Include="Source\Core\Lsp\Atlas.Core.Lsp.Session.pas"/>
@@ -284,8 +288,11 @@
         <DCCReference Include="Source\Core\Diagnostics\Atlas.Core.Diagnostics.Shutdown.pas"/>
         <DCCReference Include="Source\Core\Diagnostics\Atlas.Core.Diagnostics.TimeLimit.pas"/>
         <DCCReference Include="Source\Core\Product\Atlas.Core.Product.Version.pas"/>
+        <DCCReference Include="Source\Core\Diagnostics\Atlas.Core.Diagnostics.StartTimes.pas"/>
         <DCCReference Include="Source\Core\Diagnostics\Atlas.Core.Diagnostics.Hangs.pas"/>
         <DCCReference Include="Source\IDE\Diagnostics\Atlas.IDE.Diagnostics.Watchdog.pas"/>
+        <DCCReference Include="Source\Core\Diagnostics\Atlas.Core.Diagnostics.StackRing.pas"/>
+        <DCCReference Include="Source\IDE\Diagnostics\Atlas.IDE.Diagnostics.StackCapture.pas"/>
         <DCCReference Include="Source\Core\Diagnostics\Atlas.Core.Diagnostics.Export.pas"/>
         <DCCReference Include="Source\UI\Diagnostics\Atlas.UI.Diagnostics.ExportDialog.pas"/>
         <DCCReference Include="Source\Core\Diagnostics\Atlas.Core.Diagnostics.Package.pas"/>
@@ -406,6 +413,7 @@
         <DCCReference Include="Source\Core\Files\Atlas.Core.Files.WatchedChanges.pas"/>
         <DCCReference Include="Source\Core\Files\Atlas.Core.Files.Contract.pas"/>
         <DCCReference Include="Source\Core\Files\Atlas.Core.Files.TextFile.pas"/>
+        <DCCReference Include="Source\Core\Files\Atlas.Core.Files.DataFile.pas"/>
         <DCCReference Include="Source\Core\Files\Atlas.Core.Files.EncodingDefault.pas"/>
         <DCCReference Include="Source\Core\Projects\Atlas.Core.Projects.Contract.pas"/>
         <DCCReference Include="Source\Core\Projects\Atlas.Core.Projects.Summary.pas"/>
@@ -572,8 +580,11 @@
         <DCCReference Include="Source\IDE\Outline\Atlas.IDE.Outline.Cache.pas"/>
         <DCCReference Include="Source\Core\Outline\Atlas.Core.Outline.Breadcrumbs.pas"/>
         <DCCReference Include="Source\Core\Outline\Atlas.Core.Outline.StickyScroll.pas"/>
+        <DCCReference Include="Source\Core\Outline\Atlas.Core.Outline.LoadGuard.pas"/>
+        <DCCReference Include="Source\Core\Outline\Atlas.Core.Outline.NavigationOption.pas"/>
         <DCCReference Include="Source\UI\Outline\Atlas.UI.Outline.Breadcrumbs.pas"/>
         <DCCReference Include="Source\UI\Outline\Atlas.UI.Outline.NavigationToolbar.pas"/>
+        <DCCReference Include="Source\IDE\Outline\Atlas.IDE.Outline.NavigationOption.pas"/>
         <DCCReference Include="Source\IDE\Outline\Atlas.IDE.Outline.Breadcrumbs.pas"/>
         <DCCReference Include="Source\IDE\Outline\Atlas.IDE.Outline.StickyScroll.pas"/>
         <DCCReference Include="Source\IDE\Notes\Atlas.IDE.Notes.Service.pas"/>

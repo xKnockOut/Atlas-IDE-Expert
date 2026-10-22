@@ -437,6 +437,14 @@ begin
   Assert.AreEqual('um 14:32', TAtlasStatusLines.ServerDetail(Info, Today(15, 0)));
   Assert.AreEqual(Ord(TAtlasStatusState.Red), Ord(TAtlasStatusLines.ServerState(Info)));
   Assert.AreEqual('Server abgestürzt', TAtlasStatusLines.ServerSummary(Info));
+  // Ursache aus dem Exit-Code (Bericht H5).
+  Info.Error := 'Stapelüberlauf (0xC00000FD)';
+  Assert.AreEqual('Server: abgestürzt um 14:32 (Stapelüberlauf (0xC00000FD))',
+    TAtlasStatusLines.ServerText(Info, Today(15, 0)));
+  Assert.AreEqual('um 14:32, Stapelüberlauf (0xC00000FD)', TAtlasStatusLines.ServerDetail(Info, Today(15, 0)));
+  // Von Atlas beendet: keine Ursache, auch wenn noch eine gesetzt ist.
+  Info.Ended := True;
+  Assert.AreEqual('Server: beendet um 14:32', TAtlasStatusLines.ServerText(Info, Today(15, 0)));
 end;
 
 procedure TAtlasStateLinesTests.EndedServerIsNeutral;

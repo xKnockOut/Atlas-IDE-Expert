@@ -34,7 +34,8 @@ type
     function ReadText(const AFileName: string; out AText: string): Boolean;
     function WriteText(const AFileName, AText: string): Boolean;
     function ReadBytes(const AFileName: string; out ABytes: TBytes): Boolean;
-    function WriteBytes(const AFileName: string; const ABytes: TBytes): Boolean;
+    function WriteBytes(const AFileName: string; const ABytes: TBytes; out AError: string): Boolean;
+    function TryLockWrite(const AFileName: string): IInterface;
   end;
 
 constructor TStampFileSystem.Create;
@@ -71,9 +72,15 @@ begin
   Result := False;
 end;
 
-function TStampFileSystem.WriteBytes(const AFileName: string; const ABytes: TBytes): Boolean;
+function TStampFileSystem.WriteBytes(const AFileName: string; const ABytes: TBytes; out AError: string): Boolean;
 begin
+  AError := 'nur Zeitstempel';
   Result := False;
+end;
+
+function TStampFileSystem.TryLockWrite(const AFileName: string): IInterface;
+begin
+  Result := nil;
 end;
 
 procedure TMcpFreshnessTests.ReportsChangedCreatedAndDeleted;

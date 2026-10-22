@@ -467,32 +467,33 @@ begin
 end;
 
 function TRewriter.ContainsDirect(ANode: TSyntaxNode): Boolean;
-var
-  Index: Integer;
-  Name: TInvertName;
-  Arguments: TArray<Integer>;
 begin
-  if ANode.Kind = TSyntaxKind.AnonymousMethod then
-    Exit(False);
-  if (ANode.Kind in [TSyntaxKind.Identifier, TSyntaxKind.MemberAccess, TSyntaxKind.InheritedExpr]) and
-    (InvertedName(NameOffset(ANode), Name) or FCalls.TryGetValue(NameOffset(ANode), Arguments)) then
-    Exit(True);
-  for Index := 0 to ANode.ChildCount - 1 do
-    if ContainsDirect(ANode[Index]) then
-      Exit(True);
-  Result := False;
+  // Search statt Rekursion (Bericht M1); anonyme Methoden zählen nicht.
+  Result := ANode.Search(
+    function(ACandidate: TSyntaxNode): TSyntaxSearchStep
+    var
+      Name: TInvertName;
+      Arguments: TArray<Integer>;
+    begin
+      if ACandidate.Kind = TSyntaxKind.AnonymousMethod then
+        Exit(TSyntaxSearchStep.Skip);
+      Result := TSyntaxSearchStep.Descend;
+      if (ACandidate.Kind in [TSyntaxKind.Identifier, TSyntaxKind.MemberAccess, TSyntaxKind.InheritedExpr]) and
+        (InvertedName(NameOffset(ACandidate), Name) or FCalls.TryGetValue(NameOffset(ACandidate), Arguments)) then
+        Result := TSyntaxSearchStep.Found;
+    end) <> nil;
 end;
 
 function TRewriter.HasAnonymous(ANode: TSyntaxNode): Boolean;
-var
-  Index: Integer;
 begin
-  if ANode.Kind = TSyntaxKind.AnonymousMethod then
-    Exit(True);
-  for Index := 0 to ANode.ChildCount - 1 do
-    if HasAnonymous(ANode[Index]) then
-      Exit(True);
-  Result := False;
+  // Search statt Rekursion (Bericht M1).
+  Result := ANode.Search(
+    function(ACandidate: TSyntaxNode): TSyntaxSearchStep
+    begin
+      Result := TSyntaxSearchStep.Descend;
+      if ACandidate.Kind = TSyntaxKind.AnonymousMethod then
+        Result := TSyntaxSearchStep.Found;
+    end) <> nil;
 end;
 
 function TRewriter.HeaderNameOffset(ARoutine: TSyntaxNode): Integer;
@@ -891,61 +892,90 @@ end;
 
 procedure TRewriter.CollectIdentifiers(ANode: TSyntaxNode; const AName, ANewName: string);
 var
-  Index: Integer;
-  Item: TInvertName;
+  Name, NewName: string;
 begin
-  if ANode.Kind in [TSyntaxKind.AnonymousMethod, TSyntaxKind.RoutineDecl] then
-    Exit;
-  if (ANode.Kind = TSyntaxKind.Identifier) and SameText(ANode.Name, AName) and
-    not ((ANode.Parent <> nil) and (ANode.Parent.Kind = TSyntaxKind.Call) and (ANode.Parent[0] = ANode) and
-    SameText(AName, 'Result')) then
-  begin
-    Item.Offset := ANode.StartOffset;
-    Item.NewName := ANewName;
-    Item.Invert := True;
-    FNames.AddOrSetValue(Item.Offset, Item);
-  end;
-  for Index := 0 to ANode.ChildCount - 1 do
-    CollectIdentifiers(ANode[Index], AName, ANewName);
+  Name := AName;
+  NewName := ANewName;
+  // Walk statt Rekursion (Bericht M1).
+  ANode.Walk(
+    function(AChild: TSyntaxNode): Boolean
+    var
+      Item: TInvertName;
+    begin
+      if AChild.Kind in [TSyntaxKind.AnonymousMethod, TSyntaxKind.RoutineDecl] then
+        Exit(False);
+      if (AChild.Kind = TSyntaxKind.Identifier) and SameText(AChild.Name, Name) and
+        not ((AChild.Parent <> nil) and (AChild.Parent.Kind = TSyntaxKind.Call) and (AChild.Parent[0] = AChild) and
+        SameText(Name, 'Result')) then
+      begin
+        Item.Offset := AChild.StartOffset;
+        Item.NewName := NewName;
+        Item.Invert := True;
+        FNames.AddOrSetValue(Item.Offset, Item);
+      end;
+      Result := True;
+    end);
 end;
 
 procedure TRewriter.CollectLocals(ANode: TSyntaxNode);
 var
-  Index, Offset: Integer;
+  Routines: TList<TSyntaxNode>;
+  Routine, Block: TSyntaxNode;
+  Offset: Integer;
   Local: TInvertLocal;
-  Block: TSyntaxNode;
 begin
-  if ANode.Kind = TSyntaxKind.RoutineDecl then
-  begin
-    Offset := HeaderNameOffset(ANode);
-    Block := ANode.FindChild(TSyntaxKind.Block);
-    if (Block <> nil) and (Offset >= 0) then
+  // Walk statt Rekursion (Bericht M1): erst die Routinen sammeln, dann ihre Rümpfe durchgehen.
+  Routines := TList<TSyntaxNode>.Create;
+  try
+    ANode.Walk(
+      function(AChild: TSyntaxNode): Boolean
+      begin
+        if AChild.Kind = TSyntaxKind.RoutineDecl then
+          Routines.Add(AChild);
+        Result := True;
+      end);
+    for Routine in Routines do
     begin
+      Offset := HeaderNameOffset(Routine);
+      Block := Routine.FindChild(TSyntaxKind.Block);
+      if (Block = nil) or (Offset < 0) then
+        Continue;
       if FBodies.ContainsKey(Offset) then
         CollectIdentifiers(Block, 'Result', 'Result');
       for Local in FLocals do
         if Local.BodyOffset = Offset then
           CollectIdentifiers(Block, Local.Name, Local.NewName);
     end;
+  finally
+    Routines.Free;
   end;
-  for Index := 0 to ANode.ChildCount - 1 do
-    CollectLocals(ANode[Index]);
 end;
 
 procedure TRewriter.VisitExpression(ANode: TSyntaxNode; AInBody: Boolean);
 var
+  Pending: TStack<TSyntaxNode>;
+  Node: TSyntaxNode;
   Index: Integer;
 begin
-  if ANode.Kind = TSyntaxKind.AnonymousMethod then
-  begin
-    Visit(ANode, False);
-    Exit;
+  // Eigener Stapel statt Rekursion (Bericht M1), in derselben Reihenfolge. Print und Rebuild bleiben rekursiv;
+  // sie folgen nur Teilausdrücken mit dem umgekehrten Namen.
+  Pending := TStack<TSyntaxNode>.Create;
+  try
+    Pending.Push(ANode);
+    while Pending.Count > 0 do
+    begin
+      Node := Pending.Pop;
+      if Node.Kind = TSyntaxKind.AnonymousMethod then
+        Visit(Node, False)
+      else if ContainsDirect(Node) then
+        Emit(Node, Print(Node, False, True))
+      else
+        for Index := Node.ChildCount - 1 downto 0 do
+          Pending.Push(Node[Index]);
+    end;
+  finally
+    Pending.Free;
   end;
-  if ContainsDirect(ANode) then
-    Emit(ANode, Print(ANode, False, True))
-  else
-    for Index := 0 to ANode.ChildCount - 1 do
-      VisitExpression(ANode[Index], AInBody);
 end;
 
 procedure TRewriter.VisitAssign(ANode: TSyntaxNode; AInBody: Boolean);

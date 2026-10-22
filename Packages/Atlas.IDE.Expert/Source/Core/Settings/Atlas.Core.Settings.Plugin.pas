@@ -522,8 +522,9 @@ type
     SafeAutoAfterRepeatedCrash: Boolean;
     /// <summary>Taste beim Laden für den abgesicherten Start: shift, ctrl, none (safeMode.startupKey).</summary>
     SafeStartupKey: string;
-    /// <summary>Längste Ladezeit; länger gilt beim nächsten Start wie ein Absturz
-    /// (safeMode.startupTimeoutMs).</summary>
+    /// <summary>Langsamer Start ab dieser Zeit bis zur freien Nachrichtenschleife: Atlas nennt seine Startanteile
+    /// im Meldungsfenster; kein Absturz, abgesichert startet Atlas deshalb nicht (safeMode.startupTimeoutMs,
+    /// Bericht N4).</summary>
     SafeStartupTimeoutMs: Integer;
     /// <summary>Gemerkte Einstellungsstände zum Zurücksetzen (safeMode.keepSettingsHistory).</summary>
     SafeKeepSettingsHistory: Integer;

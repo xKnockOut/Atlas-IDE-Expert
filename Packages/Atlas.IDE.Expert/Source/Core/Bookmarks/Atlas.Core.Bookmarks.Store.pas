@@ -32,6 +32,10 @@
 // zum Ordner der Datei (mit "/"), damit sie in jedem Klon gelten.
 // Lesbar ohne Server und ohne geöffnetes Projekt (Load), etwa für
 // „Weiterarbeiten“ auf der Willkommensseite (#755).
+// Lesen und Schreiben über TAtlasDataFile (Bericht N3): atomar ersetzt
+// (früher Löschen und Umbenennen), eine unbrauchbare Datei liegt danach als
+// .defekt daneben; eine beim Lesen gesperrte merkt sich die Liste
+// (KeptFile), und Save überschreibt sie nicht.
 //
 // Format 1 (UTF-8 ohne BOM; Zeiten in UTC wie "2026-10-15T09:30:00Z"):
 //   {
@@ -94,6 +98,9 @@ type
     Bookmarks: TArray<TAtlasBookmark>;
     /// <summary>Gelesener Text der Datei; ToJson behält daraus unbekannte Felder.</summary>
     Raw: string;
+    /// <summary>Vorhandene Datei, die beim Lesen gesperrt war: Save überschreibt sie nicht, sonst gingen ihre
+    /// Lesezeichen verloren (Bericht N3). '' sonst.</summary>
+    KeptFile: string;
     class function Create(const AProject: string): TAtlasBookmarkList; static;
     function Count: Integer;
     function IndexOf(const AId: string): Integer;
@@ -164,15 +171,16 @@ type
     class function ToJson(const AList: TAtlasBookmarkList; const AFolder: string): string; static;
     /// <summary>Format einer Datei (0 ohne oder bei ungültigem Inhalt).</summary>
     class function FormatOf(const AJson: string): Integer; static;
-    /// <summary>Liest AFileName für AProject; False ohne oder bei ungültiger Datei (AList dann leer mit
-    /// Project = AProject).</summary>
+    /// <summary>Liest AFileName für AProject über TAtlasDataFile.Load; False ohne, bei unbrauchbarer (dann als
+    /// .defekt beiseitegelegt) oder gesperrter Datei (dann KeptFile). AList ist dann leer mit Project = AProject.
+    /// </summary>
     class function LoadFile(const AFileName, AProject: string; out AList: TAtlasBookmarkList): Boolean; static;
     /// <summary>Lesezeichen zu AProject ohne Server und ohne IDE (#755). AShared: Datei des Teams, ersatzweise
     /// die lokale, solange es die des Teams noch nicht gibt.</summary>
     class function Load(const AProject: string; AShared: Boolean; out AList: TAtlasBookmarkList): Boolean; static;
-    /// <summary>Schreibt über eine temporäre Datei; ohne Lesezeichen wird die Datei gelöscht. Die lokale Datei
-    /// trägt sich in .git/info/exclude ein. False bei Fehler oder wenn die vorhandene Datei ein höheres Format
-    /// hat.</summary>
+    /// <summary>Ersetzt die Datei atomar; ohne Lesezeichen wird sie gelöscht. Die lokale Datei trägt sich in
+    /// .git/info/exclude ein. False bei Fehler (einmal protokolliert), wenn die vorhandene Datei ein höheres
+    /// Format hat, gerade nicht lesbar ist oder beim Laden gesperrt war (AList.KeptFile).</summary>
     class function Save(const AList: TAtlasBookmarkList; AShared: Boolean): Boolean; static;
     /// <summary>Trägt AFileName in .git/info/exclude des Repositorys darüber ein (auch Worktrees); True, wenn
     /// der Eintrag danach dort steht. False ohne Git-Repository.</summary>
@@ -188,7 +196,8 @@ uses
   System.IOUtils,
   System.JSON,
   System.Math,
-  Atlas.Core.Projects.Summary;
+  Atlas.Core.Projects.Summary,
+  Atlas.Core.Files.DataFile;
 
 const
   // Bekannte Felder; alles andere bleibt beim Schreiben erhalten.
@@ -908,25 +917,31 @@ end;
 
 class function TAtlasBookmarks.LoadFile(const AFileName, AProject: string; out AList: TAtlasBookmarkList): Boolean;
 var
-  Text: string;
+  List: TAtlasBookmarkList;
+  Parsed: Boolean;
+  Load: TAtlasDataLoad;
 begin
   AList := TAtlasBookmarkList.Create(AProject);
   Result := False;
-  if (AFileName = '') or not FileExists(AFileName) then
+  if AFileName = '' then
     Exit;
-  try
-    Text := ReadText(AFileName);
-  except
-    // Gesperrt oder unlesbar: wie ohne Datei.
-    on Exception do
-      Exit;
-  end;
-  Result := Parse(Text, ExtractFilePath(AFileName), AList);
-  if not Result then
-    AList := TAtlasBookmarkList.Create(AProject)
-  else
+  Parsed := False;
+  Load := TAtlasDataFile.Load(AFileName, 'Lesezeichen',
+    function(const AText: string): Boolean
+    begin
+      Parsed := Parse(AText, ExtractFilePath(AFileName), List);
+      // Ein höheres Format ist nicht unbrauchbar: nicht beiseitelegen; Save überschreibt es nicht.
+      Result := Parsed or (FormatOf(AText) > Format);
+    end);
+  Result := Parsed and (Load = TAtlasDataLoad.Loaded);
+  if Result then
+  begin
+    AList := List;
     // Mehrere Projekte im Ordner teilen sich die Datei; es gilt das angefragte.
     AList.Project := AProject;
+  end
+  else if not TAtlasDataFile.Writable(Load) then
+    AList.KeptFile := AFileName;
 end;
 
 class function TAtlasBookmarks.Load(const AProject: string; AShared: Boolean; out AList: TAtlasBookmarkList): Boolean;
@@ -942,15 +957,16 @@ end;
 
 class function TAtlasBookmarks.Save(const AList: TAtlasBookmarkList; AShared: Boolean): Boolean;
 var
-  FileName, Temp: string;
+  FileName, Text: string;
 begin
   Result := False;
   FileName := FileFor(AList.Project, AShared);
-  if FileName = '' then
+  // Beim Laden gesperrt: Die Liste kennt den Inhalt der Datei nicht.
+  if (FileName = '') or SameFileName(FileName, AList.KeptFile) then
     Exit;
   try
-    // Eine neuere Fassung hat die Datei geschrieben: nicht überschreiben.
-    if FileExists(FileName) and (FormatOf(ReadText(FileName)) > Format) then
+    // Eine neuere Fassung hat die Datei geschrieben oder sie ist gerade nicht lesbar: nicht überschreiben.
+    if FileExists(FileName) and (not TAtlasDataFile.TryRead(FileName, Text) or (FormatOf(Text) > Format)) then
       Exit;
     if AList.Count = 0 then
     begin
@@ -958,15 +974,12 @@ begin
       Result := not FileExists(FileName) or System.SysUtils.DeleteFile(FileName);
       Exit;
     end;
-    Temp := FileName + '.tmp';
-    // Ohne BOM: UTF-8 wie JSON üblich.
-    TFile.WriteAllBytes(Temp, TEncoding.UTF8.GetBytes(ToJson(AList, ExtractFilePath(FileName))));
-    if FileExists(FileName) then
-      System.SysUtils.DeleteFile(FileName);
-    Result := RenameFile(Temp, FileName);
+    // Atomar ersetzt, UTF-8 ohne BOM wie JSON üblich.
+    TAtlasDataFile.Write(FileName, ToJson(AList, ExtractFilePath(FileName)));
+    Result := True;
   except
-    on Exception do
-      Result := False;
+    on E: Exception do
+      TAtlasDataFile.ReportNotWritten('Lesezeichen', E);
   end;
   // Die lokale Datei gehört nicht ins Repository; ohne Git bleibt es beim Speichern.
   if Result and not AShared then
@@ -1036,8 +1049,8 @@ begin
     if (Text <> '') and not Text.EndsWith(#10) then
       Text := Text + #10;
     Text := Text + ExcludeComment + #10 + Pattern + #10;
-    ForceDirectories(ExtractFilePath(Exclude));
-    TFile.WriteAllBytes(Exclude, TEncoding.UTF8.GetBytes(Text));
+    // Atomar: Ein Abbruch kürzt die Datei von Git nicht (Bericht N3).
+    TAtlasDataFile.Write(Exclude, Text);
     Result := True;
   except
     // Kein Schreibrecht o. Ä.: Die Lesezeichen sind trotzdem gespeichert.

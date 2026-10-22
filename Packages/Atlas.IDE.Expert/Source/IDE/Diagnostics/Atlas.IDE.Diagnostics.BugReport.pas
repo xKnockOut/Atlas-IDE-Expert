@@ -3,7 +3,8 @@
 // Befehl „Fehlerbericht erstellen…“ (#108) für Menü Atlas, Befehlspalette und
 // das Fenster des abgesicherten Starts: holt den Bericht des laufenden
 // Servers (atlas.server.bugReport; ein gestoppter Server wird dafür nicht
-// gestartet), ergänzt Plugin- und IDE-Version, Einstellungen und atlas.log,
+// gestartet), ergänzt Plugin- und IDE-Version, Einstellungen, atlas.log und
+// das Ende von server-stderr.log (Bericht H5),
 // zeigt die Vorschau und schreibt nach Bestätigung eine Markdown-Datei.
 // Die Meldungsansicht nennt Datei und Adresse für ein neues Issue.
 // Der Bericht des Servers kommt im Hintergrund (#874); bis dahin bleibt die IDE
@@ -52,6 +53,7 @@ uses
   Atlas.Core.Settings.Plugin,
   Atlas.Core.Settings.History,
   Atlas.Core.Diagnostics.Guard,
+  Atlas.Core.Lsp.Crashes,
   Atlas.UI.Diagnostics.ExportDialog,
   Atlas.UI.Strings,
   Atlas.IDE.Foundation.Settings;
@@ -123,6 +125,8 @@ begin
   Input.Experimental := TAtlasIdeSettings.ActiveExperimental;
   Input.PluginLog := TAtlasBugReport.Tail(TPath.Combine(TAtlasRotatingLog.DefaultFolder, 'atlas.log'),
     TAtlasBugReport.LogLines);
+  Input.ServerErrorOutput := TAtlasBugReport.Tail(TAtlasServerExits.StderrFileName(TAtlasRotatingLog.DefaultFolder),
+    TAtlasBugReport.ErrorOutputLines);
   if not Assigned(AServer) then
   begin
     Finish(Input, nil, Message);

@@ -22,11 +22,18 @@
 //   das letzte Glied der aktiven Leiste; Esc gibt ihn an den Editor zurück.
 // - editor.breadcrumbs aus entfernt alle Leisten, editor.breadcrumbsShowUnit
 //   setzt den Unit-Namen als erstes Glied.
+// - Eigene Sicherung TAtlasFeature.Breadcrumbs: Fehler anderer Editorfunktionen
+//   (früher gemeinsam Editorbefehle) schalten die Leiste nicht mehr still ab.
+//   Löst die eigene Sicherung aus, sagt die Leiste das, statt stehen zu
+//   bleiben; nach „Abgeschaltete Funktionen einschalten“ läuft sie weiter.
 // - editor.breadcrumbsIdeColors: Fläche und Schrift wie die Werkzeugleisten
 //   des IDE-Themas (TAtlasIdeStyle.ChromeColors), sonst Atlas-Palette.
 // - editor.breadcrumbsHideIdeToolbar: Die Navigationsleiste der IDE („Typ
-//   suchen“/„Methode suchen“) ist ausgeblendet, solange die Leiste an ist
-//   (TAtlasNavigationToolbar); aus oder beim Entladen kommt sie zurück.
+//   suchen“/„Methode suchen“) ist ausgeblendet, solange die Leiste an ist;
+//   aus oder beim Entladen kommt sie zurück. Ausgeblendet wird über die
+//   IDE-Option „Navigationssymbolleiste anzeigen“ (TAtlasIdeNavigationOption,
+//   Bericht M3). Nur wenn die IDE keine solche Option hat, hängt
+//   TAtlasNavigationToolbar die Leiste um (Netz).
 // Abgrenzung zum mitlaufenden Kopf (#506) und zum Gliederungsfenster (#537):
 // docs/Architektur.md. Nur im Hauptthread.
 
@@ -72,6 +79,7 @@ uses
   Atlas.UI.Commands.Palette,
   Atlas.UI.Outline.Breadcrumbs,
   Atlas.UI.Outline.NavigationToolbar,
+  Atlas.IDE.Outline.NavigationOption,
   Atlas.IDE.Foundation.EditorBuffer,
   Atlas.IDE.Foundation.EditorStyle,
   Atlas.IDE.Foundation.Navigation,
@@ -80,6 +88,8 @@ uses
 
 const
   TickMs = 150;
+  /// <summary>Höchstens so oft den Stack beim Sperren der Leiste protokollieren.</summary>
+  MaxDisabledTraces = 3;
   MenuWidth = 380;
 
 type
@@ -109,10 +119,20 @@ type
     FShown: Boolean;
     FActiveBar: TAtlasBreadcrumbBar;
     FToolbars: TAtlasNavigationToolbar;
+    /// <summary>Blendet die IDE die Navigationsleiste über ihre Option aus? Dann hängt Atlas nichts um.</summary>
+    FToolbarByIde: Boolean;
     /// <summary>Fenster, das zuletzt unter der Maus über der Leiste lag (Diagnose).</summary>
     FProbed: HWND;
+    /// <summary>Zeigen die Leisten gerade den Hinweis „abgeschaltet“?</summary>
+    FDisabled: Boolean;
+    /// <summary>Zuletzt protokollierte Ursache am Fenster der Leiste ('' = keine).</summary>
+    FProblem: string;
+    /// <summary>So oft wurde der Aufrufer beim Sperren schon protokolliert.</summary>
+    FDisabledTraces: Integer;
     procedure Tick(Sender: TObject);
     procedure Probe;
+    procedure ShowDisabled;
+    procedure Disabled(ABar: TAtlasBreadcrumbBar);
     function BarOf(AParent: TWinControl): TAtlasBreadcrumbBar;
     function EditorOf(const AWindow: INTAEditWindow): TWinControl;
     procedure EnsureBars;
@@ -139,7 +159,7 @@ type
 
 function Active: Boolean;
 begin
-  Result := TAtlasIdeSettings.Current.Breadcrumbs and not TAtlasGuard.Disabled(TAtlasFeature.EditorCommands);
+  Result := TAtlasIdeSettings.Current.Breadcrumbs and not TAtlasGuard.Disabled(TAtlasFeature.Breadcrumbs);
 end;
 
 { TBarWatcher }
@@ -172,7 +192,8 @@ var
   Bar: TAtlasBreadcrumbBar;
 begin
   FTimer.Free;
-  // Navigationsleisten der IDE zurückhängen.
+  // Navigationsleisten der IDE wieder zeigen: Option zurück, wenn Atlas sie ausgeschaltet hatte, bzw. zurückhängen.
+  TAtlasIdeNavigationOption.Apply(False);
   FToolbars.Free;
   // Leisten selbst freigeben; der Wächter darf dabei nicht mehr zurückschreiben.
   FWatcher.FState := nil;
@@ -197,15 +218,20 @@ begin
 end;
 
 procedure TBreadcrumbsState.Reset;
+var
+  Hide: Boolean;
 begin
   FFileName := '';
   FStamp := 0;
   FShown := False;
   FLine := -1;
   FCharacter := -1;
-  // Farben und Navigationsleiste der IDE nach geänderten Einstellungen.
+  // Farben und Navigationsleiste der IDE nach geänderten Einstellungen. Die Leiste blendet die IDE über ihre
+  // Option aus (Bericht M3); umgehängt wird nur ohne diese Option (Netz).
   ApplyTheme;
-  if not TAtlasIdeSettings.Current.BreadcrumbsHideIdeToolbar then
+  Hide := TAtlasIdeSettings.Current.BreadcrumbsHideIdeToolbar;
+  FToolbarByIde := TAtlasIdeNavigationOption.Apply(Hide);
+  if FToolbarByIde or not Hide then
     FToolbars.RestoreAll;
 end;
 
@@ -227,8 +253,11 @@ begin
     Bar.SetColors(Colors);
 end;
 
+/// <summary>Netz, nur ohne Option der IDE (siehe Reset): Navigationsleiste in ein eigenes Panel umhängen.</summary>
 procedure TBreadcrumbsState.ApplyToolbar(AParent: TWinControl);
 begin
+  if FToolbarByIde then
+    Exit;
   if TAtlasIdeSettings.Current.BreadcrumbsHideIdeToolbar then
     FToolbars.Apply(AParent, True);
 end;
@@ -313,7 +342,7 @@ begin
   Bar.OnJump :=
     procedure(AIndex: Integer; ADeclaration: Boolean)
     begin
-      TAtlasGuard.Run(TAtlasFeature.EditorCommands,
+      TAtlasGuard.Run(TAtlasFeature.Breadcrumbs,
         procedure
         begin
           Jump(Bar, AIndex, ADeclaration);
@@ -323,6 +352,11 @@ begin
     procedure
     begin
       Leave(Bar);
+    end;
+  Bar.OnDisabled :=
+    procedure
+    begin
+      Disabled(Bar);
     end;
   // Über dem Editor: zuerst ganz oben einhängen, dann oben ausrichten.
   Bar.Top := 0;
@@ -525,7 +559,7 @@ begin
   State := Self;
   Bar := ABar;
   Action := AAction;
-  TAtlasMainThread.ForceQueue(TAtlasFeature.EditorCommands,
+  TAtlasMainThread.ForceQueue(TAtlasFeature.Breadcrumbs,
     procedure
     begin
       if (TAtlasIdeBreadcrumbs.FState <> State) or not State.FBars.Contains(Bar) then
@@ -549,9 +583,23 @@ end;
 
 procedure TBreadcrumbsState.Tick(Sender: TObject);
 begin
-  if not Active then
+  if not TAtlasIdeSettings.Current.Breadcrumbs then
     Exit;
-  TAtlasGuard.Run(TAtlasFeature.EditorCommands,
+  if TAtlasGuard.Disabled(TAtlasFeature.Breadcrumbs) then
+  begin
+    ShowDisabled;
+    Exit;
+  end;
+  if FDisabled then
+  begin
+    // Wieder eingeschaltet: alles neu zeichnen.
+    FDisabled := False;
+    FShown := False;
+    FLine := -1;
+    FCharacter := -1;
+    TAtlasGuard.Log('Brotkrumen: wieder eingeschaltet');
+  end;
+  TAtlasGuard.Run(TAtlasFeature.Breadcrumbs,
     procedure
     begin
       Update;
@@ -559,8 +607,71 @@ begin
     end);
 end;
 
-/// <summary>Steht die Maus über der Leiste, aber ein anderes Fenster liegt darüber, bekommt die Leiste keine
-/// Mausereignisse. Das Fenster einmal je Wechsel protokollieren und die Leiste nach vorn holen.</summary>
+/// <summary>Nach ausgelöster Sicherung einmal den Hinweis in alle Leisten schreiben; vorher blieb die Leiste mit dem
+/// letzten Pfad stehen und reagierte auf keinen Klick mehr.</summary>
+procedure TBreadcrumbsState.ShowDisabled;
+var
+  Bar: TAtlasBreadcrumbBar;
+begin
+  if FDisabled then
+    Exit;
+  FDisabled := True;
+  TAtlasGuard.Log('Brotkrumen: durch die Sicherung abgeschaltet');
+  try
+    for Bar in FBars do
+    begin
+      Bar.EmptyText := TAtlasStrings.Text(TAtlasTextId.BreadcrumbsDisabled);
+      Bar.SetCrumbs(nil);
+    end;
+  except
+    // Läuft außerhalb von TAtlasGuard.Run (Feature abgeschaltet); nichts darf in die IDE durchschlagen.
+    on E: Exception do
+      TAtlasGuard.Log('Brotkrumen: Hinweis nicht gesetzt: ' + TAtlasGuard.SafeMessage(E.Message));
+  end;
+end;
+
+/// <summary>Steuerelement mit seinen Eltern bis zum Formular, für das Protokoll.</summary>
+function ControlChain(AControl: TControl): string;
+var
+  Depth: Integer;
+begin
+  Result := '';
+  Depth := 0;
+  while (AControl <> nil) and (Depth < 8) do
+  begin
+    if Result <> '' then
+      Result := Result + ' < ';
+    Result := Result + AControl.ClassName + ' ' + AControl.Name;
+    AControl := AControl.Parent;
+    Inc(Depth);
+  end;
+end;
+
+/// <summary>Gesperrt wird das Fenster der Leiste nur von außen (IDE oder anderer Experte). Den Aufrufer einmal je
+/// Leiste mit Stack protokollieren, damit die Ursache feststeht.</summary>
+procedure TBreadcrumbsState.Disabled(ABar: TAtlasBreadcrumbBar);
+begin
+  if FDisabledTraces >= MaxDisabledTraces then
+    Exit;
+  Inc(FDisabledTraces);
+  try
+    raise Exception.Create('Fenster der Leiste wird gesperrt');
+  except
+    on E: Exception do
+      TAtlasGuard.Log(Format('Brotkrumen: Fenster der Leiste wird gesperrt (in %s); Aufrufer:%s%s',
+        [ControlChain(ABar.Parent), sLineBreak, E.StackTrace]));
+  end;
+end;
+
+/// <summary>Diagnose, warum die Leiste keine Maus bekommt (Bericht M2). Die Ursache am Fenster der Leiste
+/// (WindowProblem: anderer Thread, falsches Elternfenster, gesperrt, ausgeblendet) prüft jeder Takt, nicht erst
+/// das Überfahren; landet die Maus über der Leiste bei einem anderen Fenster desselben Formulars, nennt HitProblem
+/// die Ursache am Mauspunkt (Region, HTTRANSPARENT, Geschwister darüber). Beides einmal je Wechsel mit Eltern-
+/// kette protokollieren.
+/// Netz, nicht Ursache: Danach wird die Leiste wieder bedienbar gemacht (freigeben, zeigen, neu anlegen, nach vorn
+/// holen), bis das Protokoll den Verursacher nennt und er an der Wurzel behoben ist. Die Einfügereihenfolge ist es
+/// nicht: Im Protokoll vom 21.10. lag die Leiste mit alTop bei 0,0 und kein Geschwister darüber, die Maus landete
+/// beim Elternfenster „EditorPanel“ selbst.</summary>
 procedure TBreadcrumbsState.Probe;
 var
   Bar: TAtlasBreadcrumbBar;
@@ -568,13 +679,45 @@ var
   Window: HWND;
   WindowClass: array[0..255] of Char;
   Control: TWinControl;
-  Name: string;
+  Problem, Name, Relation, Cause: string;
+  Ancestor: Boolean;
 begin
   Bar := FActiveBar;
-  if (Bar = nil) or not Bar.HandleAllocated or not Bar.Showing or not GetCursorPos(Cursor) then
+  if (Bar = nil) or not Bar.HandleAllocated or not Bar.Showing then
     Exit;
-  if not PtInRect(Bar.ClientRect, Bar.ScreenToClient(Cursor)) then
+  Problem := Bar.WindowProblem;
+  if Problem <> FProblem then
+  begin
+    FProblem := Problem;
+    if Problem <> '' then
+      TAtlasGuard.Log(Format('Brotkrumen: %s (in %s)', [Problem, ControlChain(Bar.Parent)]));
+  end;
+  if Problem <> '' then
+  begin
+    // Netz (siehe oben). Ein Fenster eines fremden Threads lässt sich von hier nicht zerstören (DestroyWindow
+    // schlägt fehl); nur protokollieren, damit die Ursache feststeht.
+    if GetWindowThreadProcessId(Bar.Handle, nil) <> MainThreadID then
+      Exit;
+    if (Bar.Parent = nil) or not Bar.Parent.HandleAllocated or (GetParent(Bar.Handle) <> Bar.Parent.Handle) then
+    begin
+      Bar.Free;
+      Exit;
+    end;
+    if not IsWindowEnabled(Bar.Handle) then
+    begin
+      Bar.Enabled := True;
+      EnableWindow(Bar.Handle, True);
+    end;
+    if GetWindowLongPtr(Bar.Handle, GWL_STYLE) and WS_VISIBLE = 0 then
+      ShowWindow(Bar.Handle, SW_SHOWNA);
     Exit;
+  end;
+  if not GetCursorPos(Cursor) or not PtInRect(Bar.ClientRect, Bar.ScreenToClient(Cursor)) then
+  begin
+    // Maus weg: Liegt beim nächsten Mal dasselbe Fenster darüber, wird es wieder protokolliert und behoben.
+    FProbed := 0;
+    Exit;
+  end;
   Window := WindowFromPoint(Cursor);
   if Window = FProbed then
     Exit;
@@ -584,14 +727,31 @@ begin
     TAtlasGuard.Log('Brotkrumen: Maus kommt an der Leiste an');
     Exit;
   end;
+  // Ein Fenster eines anderen Formulars (Dialog, Popup) liegt zu Recht darüber.
+  if GetAncestor(Window, GA_ROOT) <> GetAncestor(Bar.Handle, GA_ROOT) then
+    Exit;
   WindowClass[0] := #0;
   GetClassName(Window, WindowClass, Length(WindowClass));
   Control := FindControl(Window);
   Name := '';
   if Control <> nil then
-    Name := Control.ClassName + ' ' + Control.Name;
-  TAtlasGuard.Log(Format('Brotkrumen: Über der Leiste liegt ein anderes Fenster (%s, %s); hole die Leiste nach vorn',
-    [string(WindowClass), Name]));
+    Name := ControlChain(Control);
+  Ancestor := IsChild(Window, Bar.Handle);
+  if Ancestor then
+    Relation := 'Vorfahr der Leiste; lege die Leiste neu an'
+  else
+    Relation := 'kein Vorfahr; hole die Leiste nach vorn';
+  Cause := Bar.HitProblem(Cursor);
+  if Cause = '' then
+    Cause := 'am Fenster der Leiste keine erkennbar';
+  TAtlasGuard.Log(Format('Brotkrumen: Maus landet bei %s (%s, %s) statt bei der Leiste (in %s); Ursache: %s',
+    [string(WindowClass), Name, Relation, ControlChain(Bar.Parent), Cause]));
+  // Netz (siehe oben).
+  if Ancestor then
+  begin
+    Bar.Free;
+    Exit;
+  end;
   Bar.BringToFront;
 end;
 
@@ -605,8 +765,12 @@ end;
 class procedure TAtlasIdeBreadcrumbs.Install;
 begin
   FreeAndNil(FState);
-  if Active then
-    FState := TBreadcrumbsState.Create;
+  // Auch bei ausgelöster Sicherung: Die Leiste zeigt dann den Hinweis (ShowDisabled).
+  if Enabled then
+    FState := TBreadcrumbsState.Create
+  else
+    // Hatte Atlas die Navigationsleiste ausgeblendet und die IDE endete ohne Entladen: wieder zeigen.
+    TAtlasIdeNavigationOption.Apply(False);
 end;
 
 class procedure TAtlasIdeBreadcrumbs.Uninstall;
@@ -617,7 +781,7 @@ end;
 class procedure TAtlasIdeBreadcrumbs.ApplySettings;
 begin
   // Aus: alle Leisten weg, der Editor bekommt seine Höhe zurück.
-  if not Active then
+  if not Enabled then
   begin
     FreeAndNil(FState);
     Exit;

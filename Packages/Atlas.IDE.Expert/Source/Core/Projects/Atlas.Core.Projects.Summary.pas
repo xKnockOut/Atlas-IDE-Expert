@@ -518,10 +518,11 @@ type
     /// <summary>Liest die Datei zu AProject; False ohne oder bei ungültiger Datei (ASummary dann leer mit
     /// Project = AProject).</summary>
     class function Load(const AFolder, AProject: string; out ASummary: TAtlasProjectSummary): Boolean; static;
-    /// <summary>Schreibt (über eine temporäre Datei); False bei Fehler oder wenn die vorhandene Datei ein
-    /// höheres Format hat.</summary>
+    /// <summary>Ersetzt die Datei atomar (TAtlasDataFile.Write); False bei Fehler (einmal protokolliert), wenn
+    /// die vorhandene Datei ein höheres Format hat oder gerade nicht lesbar ist.</summary>
     class function Save(const AFolder: string; const ASummary: TAtlasProjectSummary): Boolean; static;
-    /// <summary>Lesen, AChange anwenden, schreiben.</summary>
+    /// <summary>Lesen, AChange anwenden, schreiben. Eine unbrauchbare Datei liegt danach als .defekt daneben
+    /// (Bericht N3); eine gesperrte bleibt unverändert (False).</summary>
     class function Update(const AFolder, AProject: string; const AChange: TAtlasProjectSummaryChange): Boolean; static;
   end;
 
@@ -532,7 +533,8 @@ uses
   System.Generics.Collections,
   System.Classes,
   System.IOUtils,
-  System.JSON;
+  System.JSON,
+  Atlas.Core.Files.DataFile;
 
 {$OVERFLOWCHECKS OFF}
 {$RANGECHECKS OFF}
@@ -1920,66 +1922,63 @@ begin
   end;
 end;
 
-function ReadText(const AFileName: string): string;
+/// <summary>Liest die Übersicht aus AFileName über TAtlasDataFile (Bericht N3). AParsed: gelesen; sonst ist
+/// ASummary leer mit Project = AProject. Ergebnis Kept: vorhanden, aber nicht gelesen; nicht überschreiben.
+/// </summary>
+function ReadSummary(const AFileName, AProject: string; out ASummary: TAtlasProjectSummary;
+  out AParsed: Boolean): TAtlasDataLoad;
 var
-  Bytes: TBytes;
+  Summary: TAtlasProjectSummary;
+  Parsed: Boolean;
 begin
-  Bytes := TFile.ReadAllBytes(AFileName);
-  // Mit oder ohne BOM.
-  if (Length(Bytes) >= 3) and (Bytes[0] = $EF) and (Bytes[1] = $BB) and (Bytes[2] = $BF) then
-    Result := TEncoding.UTF8.GetString(Bytes, 3, Length(Bytes) - 3)
+  Parsed := False;
+  Result := TAtlasDataFile.Load(AFileName, 'Projektübersicht',
+    function(const AText: string): Boolean
+    begin
+      Parsed := TAtlasProjectSummaries.Parse(AText, Summary);
+      // Ein höheres Format ist nicht unbrauchbar: nicht beiseitelegen; Save überschreibt es nicht.
+      Result := Parsed or (TAtlasProjectSummaries.FormatOf(AText) > TAtlasProjectSummaries.Format);
+    end);
+  AParsed := Parsed and (Result = TAtlasDataLoad.Loaded);
+  if AParsed then
+  begin
+    ASummary := Summary;
+    if ASummary.Project = '' then
+      ASummary.Project := AProject;
+  end
   else
-    Result := TEncoding.UTF8.GetString(Bytes);
+    ASummary := TAtlasProjectSummary.Create(AProject);
 end;
 
 class function TAtlasProjectSummaries.Load(const AFolder, AProject: string;
   out ASummary: TAtlasProjectSummary): Boolean;
-var
-  FileName, Text: string;
 begin
   ASummary := TAtlasProjectSummary.Create(AProject);
   Result := False;
   if (AFolder = '') or (Trim(AProject) = '') then
     Exit;
-  FileName := FileFor(AFolder, AProject);
-  if not FileExists(FileName) then
-    Exit;
-  try
-    Text := ReadText(FileName);
-  except
-    // Gesperrt oder unlesbar: wie ohne Datei.
-    on Exception do
-      Exit;
-  end;
-  Result := Parse(Text, ASummary);
-  if not Result then
-    ASummary := TAtlasProjectSummary.Create(AProject)
-  else if ASummary.Project = '' then
-    ASummary.Project := AProject;
+  // Fehlt, unbrauchbar (dann als .defekt beiseitegelegt) oder gesperrt: leere Übersicht.
+  ReadSummary(FileFor(AFolder, AProject), AProject, ASummary, Result);
 end;
 
 class function TAtlasProjectSummaries.Save(const AFolder: string; const ASummary: TAtlasProjectSummary): Boolean;
 var
-  FileName, Temp: string;
+  FileName, Text: string;
 begin
   Result := False;
   if (AFolder = '') or (Trim(ASummary.Project) = '') then
     Exit;
   FileName := FileFor(AFolder, ASummary.Project);
   try
-    // Eine neuere Fassung hat die Datei geschrieben: nicht überschreiben.
-    if FileExists(FileName) and (FormatOf(ReadText(FileName)) > Format) then
+    // Eine neuere Fassung hat die Datei geschrieben oder sie ist gerade nicht lesbar: nicht überschreiben.
+    if FileExists(FileName) and (not TAtlasDataFile.TryRead(FileName, Text) or (FormatOf(Text) > Format)) then
       Exit;
-    ForceDirectories(AFolder);
-    Temp := FileName + '.tmp';
-    // Ohne BOM: UTF-8 wie JSON üblich.
-    TFile.WriteAllBytes(Temp, TEncoding.UTF8.GetBytes(ToJson(ASummary)));
-    if FileExists(FileName) then
-      System.SysUtils.DeleteFile(FileName);
-    Result := RenameFile(Temp, FileName);
+    // Atomar ersetzt, UTF-8 ohne BOM wie JSON üblich.
+    TAtlasDataFile.Write(FileName, ToJson(ASummary));
+    Result := True;
   except
-    on Exception do
-      Result := False;
+    on E: Exception do
+      TAtlasDataFile.ReportNotWritten('Projektübersicht', E);
   end;
 end;
 
@@ -1987,12 +1986,15 @@ class function TAtlasProjectSummaries.Update(const AFolder, AProject: string;
   const AChange: TAtlasProjectSummaryChange): Boolean;
 var
   Summary: TAtlasProjectSummary;
+  Parsed: Boolean;
 begin
   Result := False;
   if (AFolder = '') or (Trim(AProject) = '') then
     Exit;
-  // Ohne lesbare Datei beginnt eine neue; eine Datei mit höherem Format bleibt unangetastet (Save prüft das).
-  Load(AFolder, AProject, Summary);
+  // Ohne Datei oder mit unbrauchbarer (jetzt .defekt) beginnt eine neue; eine gesperrte bleibt unverändert,
+  // sonst ginge ihr Inhalt verloren. Eine Datei mit höherem Format bleibt unangetastet (Save prüft das).
+  if not TAtlasDataFile.Writable(ReadSummary(FileFor(AFolder, AProject), AProject, Summary, Parsed)) then
+    Exit;
   if Assigned(AChange) then
     AChange(Summary);
   Result := Save(AFolder, Summary);

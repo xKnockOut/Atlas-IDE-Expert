@@ -47,6 +47,10 @@ type
     procedure SaveAndLoadWithoutIde;
     [Test]
     procedure SaveKeepsNewerFormat;
+    /// <summary>Unbrauchbare Datei liegt danach als .defekt daneben; eine beim Lesen gesperrte wird nicht
+    /// überschrieben (Bericht N3).</summary>
+    [Test]
+    procedure BrokenFileSetAsideLockedFileKept;
     [Test]
     procedure TemporaryParametersAreRestored;
     [Test]
@@ -58,7 +62,8 @@ implementation
 uses
   System.SysUtils,
   System.Classes,
-  System.IOUtils;
+  System.IOUtils,
+  Atlas.Core.Files.DataFile;
 
 const
   Project = 'C:\Repo\App\App.dproj';
@@ -454,6 +459,39 @@ begin
   Back := TAtlasStartProfiles.Parse(TAtlasStartProfiles.ToJson(Back), Project);
   Assert.IsFalse(Back.HasTemporary, 'ohne Eintrag kein Abschnitt');
   Assert.DoesNotContain(TAtlasStartProfiles.ToJson(Back), '"temporary"');
+end;
+
+procedure TAtlasStartProfilesTests.BrokenFileSetAsideLockedFileKept;
+var
+  Folder, FileName: string;
+  State: TAtlasStartProfileState;
+  Lock: TFileStream;
+begin
+  Folder := TempFolder;
+  try
+    ForceDirectories(Folder);
+    FileName := TAtlasStartProfiles.FileFor(Folder, Project);
+    TFile.WriteAllText(FileName, '{"profiles": [');
+    State := TAtlasStartProfiles.Load(Folder, Project);
+    Assert.AreEqual(0, Integer(Length(State.Profiles)));
+    Assert.IsTrue(FileExists(FileName + TAtlasDataFile.DefectExtension), 'beiseitegelegt');
+    State.Profiles := [Profile('Lokal', '-lokal')];
+    Assert.IsTrue(TAtlasStartProfiles.Save(Folder, State));
+    Lock := TFileStream.Create(FileName, fmOpenRead or fmShareExclusive);
+    try
+      State := TAtlasStartProfiles.Load(Folder, Project);
+    finally
+      Lock.Free;
+    end;
+    Assert.AreEqual(0, Integer(Length(State.Profiles)));
+    Assert.AreEqual(FileName, State.KeptFile);
+    State.Profiles := [Profile('Ersatz', '-ersatz')];
+    Assert.IsFalse(TAtlasStartProfiles.Save(Folder, State), 'beim Laden gesperrt: nicht überschreiben');
+    Assert.Contains(TFile.ReadAllText(FileName), '-lokal');
+    Assert.DoesNotContain(TFile.ReadAllText(FileName), '-ersatz');
+  finally
+    RemoveFolder(Folder);
+  end;
 end;
 
 initialization

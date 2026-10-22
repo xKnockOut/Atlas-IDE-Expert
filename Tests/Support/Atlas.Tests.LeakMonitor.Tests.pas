@@ -27,15 +27,17 @@ type
     [Test]
     procedure ReportNamesThreads;
     [Test]
-    // Misst das Wachstum selbst über viele Runden; die Aufwärmrunde füllt gewollte Caches (RTTI, JSON).
+    // Ausnahme mit Grund: Misst das Wachstum selbst über viele Runden; die Aufwärmrunde füllt gewollte Caches
+    // (RTTI, JSON), die der Monitor sonst diesem Test anlastete.
     [IgnoreMemoryLeaks]
     procedure ReplayDoesNotGrowMemory;
     [Test]
-    // Misst das Wachstum selbst über viele Runden; Pool-Threads behalten Verwaltungsdaten.
+    // Ausnahme mit Grund: Misst das Wachstum selbst über viele Runden. Er läuft absichtlich über den
+    // Thread-Pool der RTL wie der Server; dessen Worker bleiben über den Test hinaus bestehen.
     [IgnoreMemoryLeaks]
     procedure ConnectionSoakDoesNotGrowMemory;
     [Test]
-    // Wie oben, mit absichtlichem Leck im Worker-Pfad.
+    // Ausnahme mit Grund: leckt absichtlich im Worker-Pfad und prüft selbst, dass der Dauerlauf das erkennt.
     [IgnoreMemoryLeaks]
     procedure ConnectionSoakDetectsWorkerLeak;
   end;

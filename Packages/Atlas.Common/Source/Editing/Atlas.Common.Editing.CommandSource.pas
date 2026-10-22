@@ -100,6 +100,7 @@ implementation
 uses
   System.SysUtils,
   System.StrUtils,
+  System.Generics.Collections,
   Atlas.Common.Pascal.Contract,
   Atlas.Common.Pascal.TreeCache,
   Atlas.Common.Index.Extractor,
@@ -184,23 +185,37 @@ end;
 
 function FindRoutine(ANode: TSyntaxNode; ALine: Integer): TSyntaxNode;
 var
+  Pending: TStack<TSyntaxPostOrderEntry>;
+  Entry: TSyntaxPostOrderEntry;
   Index: Integer;
-  Block, Inner: TSyntaxNode;
+  Block: TSyntaxNode;
 begin
+  // Eigener Stapel statt Rekursion (Bericht M1): Die innerste Routine gewinnt, also wird ein Knoten erst nach
+  // seinen Kindern geprüft; unter ANode nur Knoten, die ALine überdecken.
   Result := nil;
-  if (ANode.Kind = TSyntaxKind.RoutineDecl) then
-  begin
-    Block := ANode.FindChild(TSyntaxKind.Block);
-    if (Block <> nil) and (Block.StartPos.Line < ALine) and (Block.EndPos.Line >= ALine) then
-      Result := ANode;
-  end;
-  for Index := 0 to ANode.ChildCount - 1 do
-    if (ANode[Index].StartPos.Line <= ALine) and (ANode[Index].EndPos.Line >= ALine) then
+  Pending := TStack<TSyntaxPostOrderEntry>.Create;
+  try
+    Pending.Push(TSyntaxPostOrderEntry.Create(ANode, False));
+    while Pending.Count > 0 do
     begin
-      Inner := FindRoutine(ANode[Index], ALine);
-      if Inner <> nil then
-        Exit(Inner);
+      Entry := Pending.Pop;
+      if not Entry.Done then
+      begin
+        Pending.Push(TSyntaxPostOrderEntry.Create(Entry.Node, True));
+        for Index := Entry.Node.ChildCount - 1 downto 0 do
+          if (Entry.Node[Index].StartPos.Line <= ALine) and (Entry.Node[Index].EndPos.Line >= ALine) then
+            Pending.Push(TSyntaxPostOrderEntry.Create(Entry.Node[Index], False));
+        Continue;
+      end;
+      if Entry.Node.Kind <> TSyntaxKind.RoutineDecl then
+        Continue;
+      Block := Entry.Node.FindChild(TSyntaxKind.Block);
+      if (Block <> nil) and (Block.StartPos.Line < ALine) and (Block.EndPos.Line >= ALine) then
+        Exit(Entry.Node);
     end;
+  finally
+    Pending.Free;
+  end;
 end;
 
 function TCommandSource.RoutineAt: TSyntaxNode;

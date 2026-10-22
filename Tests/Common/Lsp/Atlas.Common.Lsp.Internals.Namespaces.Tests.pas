@@ -19,8 +19,6 @@ type
     /// <summary>Ein Thread ersetzt fortlaufend, ein anderer liest: kein zerrissenes Array, keine
     /// Zugriffsverletzung.</summary>
     [Test]
-    // Der Schreib-Thread legt Verwaltungsdaten an, die erst nach dem Test freigegeben werden.
-    [IgnoreMemoryLeaks]
     procedure ParallelReadAndWriteKeepArraysIntact;
   end;
 

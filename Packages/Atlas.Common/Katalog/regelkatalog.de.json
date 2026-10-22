@@ -16,6 +16,11 @@
       "description": "Ein lsp-ignore-Kommentar nennt eine Regelkennung, die es nicht gibt, und unterdrückt deshalb nichts. Die Meldung schlägt die ähnlichste bekannte Kennung vor (Tippfehler); ein solcher Kommentar zählt nicht zusätzlich als unused-suppression."
     },
     {
+      "id": "unit-too-deep",
+      "name": "Unit zu tief für die Prüfung",
+      "description": "Der Syntaxbaum der Unit ist mehr als 100000 Ebenen tief; die Prüfregeln laufen für sie nicht. So tiefe Bäume entstehen nur aus Ketten mit ebenso vielen Gliedern wie X := A - B - C - … Der Hinweis markiert die tiefste Stelle; wer die Kette in Teilausdrücke aufteilt, macht die Unit wieder prüfbar."
+    },
+    {
       "id": "bidi-control",
       "name": "Bidirektionales Steuerzeichen",
       "description": "Bidirektionale Steuerzeichen können Code anders anzeigen, als er kompiliert wird (Trojan Source); auch in Formulardateien. Richtungsmarken in RTL-Text nur mit niedriger Konfidenz."

@@ -10,12 +10,16 @@
 // Eingabe stehen sie oben, danach alphabetisch.
 // Mit AKeepOrder (Code-Aktionen, #399) bleibt ohne Eingabe die Reihenfolge der
 // Liste, bei Gleichstand ebenso.
+// Der Verlauf (palette.json) wird über TAtlasDataFile gelesen und atomar
+// geschrieben (Bericht N3): Eine unbrauchbare Datei liegt danach als .defekt
+// daneben, eine gesperrte bleibt unverändert und wird nicht überschrieben.
 
 interface
 
 uses
   System.SysUtils,
-  System.Generics.Collections;
+  System.Generics.Collections,
+  Atlas.Core.Files.DataFile;
 
 type
   TAtlasCommand = record
@@ -50,14 +54,26 @@ type
   private
     FEntries: TDictionary<string, TEntry>;
     FTick: Int64;
+    /// <summary>Vorhandene Datei, die LoadFromFile nicht lesen konnte: SaveToFile überschreibt sie nicht.</summary>
+    FKept: string;
+    FKind: string;
   public
     constructor Create;
     destructor Destroy; override;
     procedure Executed(const AId: string);
     /// <summary>Zuschlag 0..99: zuletzt ausgeführt am meisten, Häufigkeit dazu.</summary>
     function Boost(const AId: string): Integer;
-    procedure LoadFromFile(const AFileName: string);
-    procedure SaveToFile(const AFileName: string);
+    /// <summary>Übernimmt AText ({"Befehl": [Anzahl, Zeitpunkt], …}); Einträge anderer Form fallen weg. False,
+    /// wenn AText kein Objekt ist.</summary>
+    function Parse(const AText: string): Boolean;
+    /// <summary>Liest über TAtlasDataFile.Load; fehlt die Datei oder ist sie unbrauchbar, beginnt der Verlauf
+    /// leer. Ergebnis Kept: Die Datei bleibt unverändert, SaveToFile schreibt sie nicht.</summary>
+    function LoadFromFile(const AFileName: string): TAtlasDataLoad;
+    /// <summary>Schreibt atomar; False, wenn LoadFromFile die vorhandene Datei nicht lesen konnte.</summary>
+    function SaveToFile(const AFileName: string): Boolean;
+    /// <summary>Name der Ablage im Protokoll; Vorgabe „Verlauf der Befehlspalette“ (Schnell öffnen nutzt die
+    /// Klasse auch).</summary>
+    property Kind: string read FKind write FKind;
   end;
 
   TAtlasCommandPalette = class
@@ -74,7 +90,6 @@ implementation
 
 uses
   System.Math,
-  System.IOUtils,
   System.JSON,
   System.Generics.Defaults,
   Atlas.Core.Completion.Matching;
@@ -85,6 +100,7 @@ constructor TAtlasCommandHistory.Create;
 begin
   inherited Create;
   FEntries := TDictionary<string, TEntry>.Create;
+  FKind := 'Verlauf der Befehlspalette';
 end;
 
 destructor TAtlasCommandHistory.Destroy;
@@ -116,44 +132,69 @@ begin
   Result := Max(0, 70 - Integer(FTick - Entry.Last) * 10) + Min(29, Entry.Count * 3);
 end;
 
-procedure TAtlasCommandHistory.LoadFromFile(const AFileName: string);
+function TAtlasCommandHistory.Parse(const AText: string): Boolean;
 var
   Root: TJSONValue;
   Pair: TJSONPair;
+  Values: TJSONArray;
   Entry: TEntry;
 begin
   FEntries.Clear;
   FTick := 0;
-  if not TFile.Exists(AFileName) then
-    Exit;
-  Root := TJSONObject.ParseJSONValue(TFile.ReadAllText(AFileName, TEncoding.UTF8));
+  Root := TJSONObject.ParseJSONValue(AText);
   try
-    if not (Root is TJSONObject) then
+    Result := Root is TJSONObject;
+    if not Result then
       Exit;
     for Pair in TJSONObject(Root) do
-      if Pair.JsonValue is TJSONArray then
-      begin
-        Entry.Count := TJSONArray(Pair.JsonValue).Items[0].GetValue<Integer>;
-        Entry.Last := TJSONArray(Pair.JsonValue).Items[1].GetValue<Int64>;
-        FEntries.AddOrSetValue(Pair.JsonString.Value, Entry);
-        FTick := Max(FTick, Entry.Last);
-      end;
+    begin
+      // Früher brach ein kurzes oder falsch getyptes Paar das Lesen mit einer Ausnahme ab.
+      if not (Pair.JsonValue is TJSONArray) then
+        Continue;
+      Values := TJSONArray(Pair.JsonValue);
+      if (Values.Count < 2) or not Values.Items[0].TryGetValue<Integer>(Entry.Count) or
+        not Values.Items[1].TryGetValue<Int64>(Entry.Last) then
+        Continue;
+      FEntries.AddOrSetValue(Pair.JsonString.Value, Entry);
+      FTick := Max(FTick, Entry.Last);
+    end;
   finally
     Root.Free;
   end;
 end;
 
-procedure TAtlasCommandHistory.SaveToFile(const AFileName: string);
+function TAtlasCommandHistory.LoadFromFile(const AFileName: string): TAtlasDataLoad;
+begin
+  FEntries.Clear;
+  FTick := 0;
+  FKept := '';
+  Result := TAtlasDataFile.Load(AFileName, FKind,
+    function(const AText: string): Boolean
+    begin
+      Result := Parse(AText);
+    end);
+  if not TAtlasDataFile.Writable(Result) then
+    FKept := AFileName;
+  if Result <> TAtlasDataLoad.Loaded then
+  begin
+    FEntries.Clear;
+    FTick := 0;
+  end;
+end;
+
+function TAtlasCommandHistory.SaveToFile(const AFileName: string): Boolean;
 var
   Root: TJSONObject;
   Pair: TPair<string, TEntry>;
 begin
+  Result := not SameFileName(AFileName, FKept);
+  if not Result then
+    Exit;
   Root := TJSONObject.Create;
   try
     for Pair in FEntries do
       Root.AddPair(Pair.Key, TJSONArray.Create.Add(Pair.Value.Count).Add(Pair.Value.Last));
-    ForceDirectories(ExtractFileDir(AFileName));
-    TFile.WriteAllText(AFileName, Root.ToJSON, TEncoding.UTF8);
+    TAtlasDataFile.Write(AFileName, Root.ToJSON);
   finally
     Root.Free;
   end;

@@ -18,7 +18,7 @@
 // - highlight.selectionMatches aus oder Atlas aus: keine Hervorhebung. Je
 //   Datei oder überall ausblenden über das Element SelectionMatches (#628) an
 //   der Anzahl.
-// Gesichert über TAtlasFeature.EditorCommands (#493). Nur im Hauptthread.
+// Gesichert über TAtlasFeature.SelectionMatches (#493). Nur im Hauptthread.
 
 interface
 
@@ -211,7 +211,7 @@ begin
     Update;
   except
     on E: Exception do
-      TAtlasGuard.Report(TAtlasFeature.EditorCommands, E);
+      TAtlasGuard.Report(TAtlasFeature.SelectionMatches, E);
   end;
 end;
 
@@ -228,7 +228,7 @@ begin
   View := nil;
   Term := '';
   if TAtlasIdeSettings.SelectionMatchesOn(Options, NavigateF3) and
-    not TAtlasGuard.Disabled(TAtlasFeature.EditorCommands) then
+    not TAtlasGuard.Disabled(TAtlasFeature.SelectionMatches) then
     View := TAtlasEditorBuffer.ActiveView;
   if (View <> nil) and (View.Buffer <> nil) then
   begin
@@ -392,7 +392,7 @@ var
   Back: TAtlasColor;
 begin
   if BeforeEvent or (Stage <> plsEndPaint) or (Context = nil) or (FTerm = '') or
-    TAtlasGuard.Disabled(TAtlasFeature.EditorCommands) then
+    TAtlasGuard.Disabled(TAtlasFeature.SelectionMatches) then
     Exit;
   try
     if not SameText(Context.FileName, FFileName) or
@@ -417,7 +417,7 @@ begin
       PaintCount(Rect, Context, Text, Back);
   except
     on E: Exception do
-      TAtlasGuard.Report(TAtlasFeature.EditorCommands, E);
+      TAtlasGuard.Report(TAtlasFeature.SelectionMatches, E);
   end;
 end;
 

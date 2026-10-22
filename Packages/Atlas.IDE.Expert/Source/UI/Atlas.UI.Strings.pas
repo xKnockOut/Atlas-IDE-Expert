@@ -83,7 +83,7 @@ type
     QuickTogglesAllOffActive, QuickToggleAskText, QuickToggleAskSession, QuickToggleAskProject, QuickTogglePalette,
     QuickTogglePaletteHint, QuickTogglePaletteOpen, SettingsQuickToggleKey, QuickToggleWriteFailed,
     SafeTitle, SafeAskText, SafeAskSafe, SafeAskNormal, SafeDetails, SafeRepeatedText, SafeMinimalText,
-    SafeReasonKey, SafeReasonForced, SafeActiveText, SafeSuggest, SafeSlowStart, SafeContinueNormal,
+    SafeReasonKey, SafeReasonForced, SafeActiveText, SafeSuggest, StartSlow, SafeContinueNormal,
     SafeOpenToggles, SafeRestore, SafeRestored, SafeBugReport, SafeStatusLine, SafeStatusSummary, SafeNoDetails,
     SafeLogTitle, SafeLeft, SettingsSafeTitle, SettingsSafeAsk, SettingsSafeAuto, SettingsSafeKey,
     SettingsSafeKeyShift, SettingsSafeKeyCtrl, SettingsSafeKeyNone, SettingsSafeTimeout, SettingsSafeHistory,
@@ -359,7 +359,7 @@ type
     TodoFilterDone, TodoFilterHint, TodoFilterOk, TodoFilterCancel, TodoFilterReset, TodoListFilteredTitle,
     TodoListNoMatch,
     SettingsBaselineUpdate, BaselineUpdateCommand, BaselineUpdateNoProject, BaselineUpdateFailed,
-    BaselineUpdateRunning, BaselineUpdateBusy, BaselineUpdateDone, BaselineUpdateCompleted,
+    BaselineUpdateRunning, BaselineUpdateBusy, BaselineUpdateDone, BaselineUpdateCompleted, BaselineUpdateSetAside,
     BaselineUpdateOrphans, BaselineUpdateOrphanLine, BaselineUpdateOrphansMore, BaselineUpdateConfirm,
     WelcomeTrendsTitle, WelcomeTrendsHeading, WelcomeTrendsNoProject, WelcomeTrendsNoPoints,
     WelcomeTrendsNoSeries, WelcomeTrendsWarnings, WelcomeTrendsRuleHits, WelcomeTrendsTodos,
@@ -677,7 +677,9 @@ type
     SettingsProblemsWindowGroupBy, SettingsProblemsWindowCompiler, SettingsProblemsWindowFollowCursor,
     SettingsProblemsLive, SettingsHoverProblemActions, MetricsLensMembers, MetricsLensUses,
     ProblemsColumnCompiler, ProblemsCompilerConfirmed, ProblemsCompilerConfirmedCode, SettingsProblemsCompilerMerge,
-    ProblemsCompilerMergeMerge, ProblemsCompilerMergeBoth, SettingsProblemsShowCompilerCode, RulesTypeLevel);
+    ProblemsCompilerMergeMerge, ProblemsCompilerMergeBoth, SettingsProblemsShowCompilerCode, RulesTypeLevel,
+    BreadcrumbsDisabled, FuseTrippedTitle, FuseTrippedEnable, FuseTrippedOpenLog, ServerCrashedCause, ServerHeldTitle,
+    ServerHeldText, ServerHeldPhase, LogBrokenTitle, LogBrokenText);
 
   TAtlasStrings = class
   private class var
@@ -963,7 +965,7 @@ const
      'Atlas läuft abgesichert: Editor-Zeichnungen, Notifier für Tippen und Designer und ' +
        'Hintergrundaufgaben sind aus. Einzelne Funktionen schalten die Schnellschalter wieder ein.',
      'Vorschlag zum Anfangen: %s',
-     'Der letzte Start von Atlas dauerte länger als %d ms.',
+     'Atlas: Der Start der IDE dauerte %d ms (Zeitlimit %d ms); Atlas selbst brauchte davon %d ms%s.',
      'Normal weiterarbeiten',
      'Schnellschalter…',
      'Einstellungen auf den Stand vor %s zurücksetzen',
@@ -981,7 +983,7 @@ const
      'Umschalt',
      'Strg',
      'keine',
-     'Längste Ladezeit (ms)',
+     'Langsamer Start ab (ms)',
      'Gemerkte Einstellungsstände',
      'Letzte Atlas-Änderung zurücknehmen',
      'Letzte Atlas-Änderung wiederherstellen',
@@ -1394,6 +1396,7 @@ const
      'Baseline aktualisieren: Der Atlas-Server ist gerade beschäftigt; bitte gleich noch einmal versuchen.',
      'Baseline geschrieben: %s (%d Treffer, %d Dateien geprüft; %d neu, %d entfernt, %d unverändert)',
      'Baseline: %d Einträge der älteren Baseline um die Routine ergänzt.',
+     'Baseline: Die bisherige Datei war unbrauchbar und liegt jetzt als %s daneben.',
      'Baseline: %d Einträge ohne Datei entfernt (umbenannt, verschoben oder gelöscht):', '  %s (%d Treffer)',
      '  … und %d weitere',
      'Die Baseline enthält %d Einträge ohne Datei (umbenannt, verschoben oder gelöscht):%sBeim Aktualisieren ' +
@@ -2145,7 +2148,20 @@ const
      'mit Atlas-Befund zusammenführen',
      'beide zeigen',
      'Compilercode (E2035 …) zu Befunden zeigen',
-     'Regeln der Stufe T prüfen (brauchen Ausdruckstypen; aus: nur die sicheren Stufen A und B)'),
+     'Regeln der Stufe T prüfen (brauchen Ausdruckstypen; aus: nur die sicheren Stufen A und B)',
+     'Brotkrumenleiste nach Fehlern abgeschaltet – wieder einschalten über Atlas › Abgeschaltete Funktionen einschalten',
+     '%s nach Fehlern abgeschaltet',
+     'Wieder einschalten',
+     'Protokoll öffnen',
+     'Der Server war beendet (%s) und läuft wieder.',
+     'Server wiederholt abgestürzt',
+     'Der Server endete zweimal mit %s innerhalb von %d Minuten. Atlas startet ihn nicht mehr von selbst neu, ' +
+     'damit der Fehler nicht in einer Schleife wiederkehrt. Der Fehlerbericht enthält das Protokoll und die ' +
+     'Ausgabe des Servers auf stderr.',
+     '%s; zweimal, kein automatischer Neustart',
+     'Atlas-Protokoll gestört',
+     'Atlas kann nicht in %s schreiben: %s. Atlas versucht es bei jeder Zeile weiter und vermerkt die Lücke im ' +
+     'Protokoll, sobald es wieder geht.'),
     ('Enter to accept · Esc to close', '%d of %d', 'No matches for “%s”', 'Backspace widens the search',
      'No suggestions here', 'Esc closes', 'No details for this entry', 'Overload', 'Deprecated: %s', 'Deprecated.',
      'Inherited from %s', 'Inherited', 'optional, default %s', 'No overload with %d parameters.', '… %d more',
@@ -2388,7 +2404,7 @@ const
      'Atlas runs in safe mode: editor drawings, typing and designer notifiers and background tasks are ' +
        'off. Quick switches turn single features back on.',
      'Suggested to start with: %s',
-     'The last start of Atlas took longer than %d ms.',
+     'Atlas: the IDE start took %d ms (time limit %d ms); Atlas itself took %d ms of it%s.',
      'Continue normally',
      'Quick switches…',
      'Reset settings to before %s',
@@ -2406,7 +2422,7 @@ const
      'Shift',
      'Ctrl',
      'none',
-     'Longest load time (ms)',
+     'Slow start from (ms)',
      'Remembered settings states',
      'Undo last Atlas change',
      'Redo last Atlas change',
@@ -2802,6 +2818,7 @@ const
      'Update baseline: the Atlas server is busy right now; please try again shortly.',
      'Baseline written: %s (%d findings in %d files; %d added, %d removed, %d unchanged)',
      'Baseline: %d entries of the older baseline completed with their routine.',
+     'Baseline: the previous file was unusable and has been set aside as %s.',
      'Baseline: removed %d entries without a file (renamed, moved or deleted):', '  %s (%d findings)',
      '  … and %d more',
      'The baseline contains %d entries without a file (renamed, moved or deleted):%sUpdating removes them; ' +
@@ -3518,7 +3535,19 @@ const
      'merge with the Atlas finding',
      'show both',
      'Show the compiler code (E2035 …) with findings',
-     'Check level T rules (need expression types; off: only the certain levels A and B)'));
+     'Check level T rules (need expression types; off: only the certain levels A and B)',
+     'Breadcrumbs switched off after errors – switch on again via Atlas › Re-enable switched-off features',
+     '%s switched off after errors',
+     'Switch on again',
+     'Open log',
+     'The server had stopped (%s) and is running again.',
+     'Server crashed repeatedly',
+     'The server ended twice with %s within %d minutes. Atlas no longer restarts it on its own, so the error ' +
+     'does not recur in a loop. The bug report contains the log and the server''s output on stderr.',
+     '%s; twice, no automatic restart',
+     'Atlas log disrupted',
+     'Atlas cannot write to %s: %s. Atlas keeps trying with every line and notes the gap in the log once writing ' +
+     'works again.'));
 
 { TAtlasStrings }
 

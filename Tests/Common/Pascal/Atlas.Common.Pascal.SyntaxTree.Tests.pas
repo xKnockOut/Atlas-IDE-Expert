@@ -1,7 +1,8 @@
 ﻿unit Atlas.Common.Pascal.SyntaxTree.Tests;
 
-// Tests für den Besucher TSyntaxNode.Walk (Review P-03) und die Baumtiefe
-// TSyntaxTree.Depth (#1094).
+// Tests für den Besucher TSyntaxNode.Walk (Review P-03), die Suche
+// TSyntaxNode.Search und die Baumtiefe TSyntaxTree.Depth/Deepest (#1094,
+// Bericht M1).
 
 interface
 
@@ -21,6 +22,15 @@ type
     /// <summary>Depth arbeitet ohne Rekursion und reicht mit wenig Stapel auch für sehr tiefe Bäume.</summary>
     [Test]
     procedure DepthOfDeepTreeNeedsLittleStack;
+    [Test]
+    procedure SearchFindsFirstMatchInTreeOrder;
+    [Test]
+    procedure SearchSkipLeavesOutChildren;
+    /// <summary>Bericht M1: Walk und Search arbeiten ohne Rekursion.</summary>
+    [Test]
+    procedure WalkAndSearchOfDeepTreeNeedLittleStack;
+    [Test]
+    procedure DeepestIsFirstNodeAtGreatestDepth;
   end;
 
 implementation
@@ -166,6 +176,166 @@ begin
       end);
     Assert.AreEqual('', Failure);
     Assert.IsTrue(Depth > 100000, 'Tiefe ' + IntToStr(Depth));
+  finally
+    Tree.Free;
+  end;
+end;
+
+procedure TSyntaxTreeTests.SearchFindsFirstMatchInTreeOrder;
+var
+  Tree: TSyntaxTree;
+  All: TList<TSyntaxNode>;
+  Expected, Found: TSyntaxNode;
+  Index, Visits: Integer;
+begin
+  Tree := TPascalParser.Parse(Source);
+  All := TList<TSyntaxNode>.Create;
+  try
+    CollectRecursive(Tree.Root, All);
+    Expected := nil;
+    for Index := All.Count - 1 downto 0 do
+      if All[Index].Kind = TSyntaxKind.AssignStatement then
+        Expected := All[Index];
+    Assert.IsTrue(Expected <> nil, 'Zuweisung vorhanden');
+    Visits := 0;
+    Found := Tree.Root.Search(
+      function(ANode: TSyntaxNode): TSyntaxSearchStep
+      begin
+        Inc(Visits);
+        if ANode.Kind = TSyntaxKind.AssignStatement then
+          Exit(TSyntaxSearchStep.Found);
+        Result := TSyntaxSearchStep.Descend;
+      end);
+    Assert.IsTrue(Found = Expected, 'erste Zuweisung in Baumreihenfolge');
+    // Bis zum Treffer jeder Knoten genau einmal, danach keiner mehr.
+    Assert.AreEqual(All.IndexOf(Expected) + 1, Visits);
+    Assert.IsTrue(Tree.Root.Search(
+      function(ANode: TSyntaxNode): TSyntaxSearchStep
+      begin
+        Result := TSyntaxSearchStep.Descend;
+      end) = nil, 'ohne Treffer nil');
+  finally
+    All.Free;
+    Tree.Free;
+  end;
+end;
+
+procedure TSyntaxTreeTests.SearchSkipLeavesOutChildren;
+var
+  Tree: TSyntaxTree;
+  Found: TSyntaxNode;
+begin
+  Tree := TPascalParser.Parse(Source);
+  try
+    Found := Tree.Root.Search(
+      function(ANode: TSyntaxNode): TSyntaxSearchStep
+      begin
+        if ANode.Kind = TSyntaxKind.RoutineDecl then
+          Exit(TSyntaxSearchStep.Skip);
+        if ANode.Kind = TSyntaxKind.Block then
+          Exit(TSyntaxSearchStep.Found);
+        Result := TSyntaxSearchStep.Descend;
+      end);
+    Assert.IsTrue(Found = nil, 'alle Blöcke liegen in übersprungenen Routinen');
+    // Auch die Wurzel selbst kann übersprungen werden.
+    Assert.IsTrue(Tree.Root.Search(
+      function(ANode: TSyntaxNode): TSyntaxSearchStep
+      begin
+        Result := TSyntaxSearchStep.Skip;
+      end) = nil);
+  finally
+    Tree.Free;
+  end;
+end;
+
+procedure TSyntaxTreeTests.WalkAndSearchOfDeepTreeNeedLittleStack;
+var
+  Builder: TStringBuilder;
+  Index, Count: Integer;
+  Tree: TSyntaxTree;
+  Found: TSyntaxNode;
+  Failure: string;
+begin
+  // Wie DepthOfDeepTreeNeedsLittleStack: über 100000 Ebenen.
+  Builder := TStringBuilder.Create;
+  try
+    Builder.Append('program P; begin X := 1');
+    for Index := 1 to 100000 do
+      Builder.Append('-2');
+    Builder.Append('; end.');
+    Tree := TPascalParser.Parse(Builder.ToString);
+  finally
+    Builder.Free;
+  end;
+  try
+    Count := 0;
+    Found := nil;
+    Failure := TSmallStack.Run(128,
+      procedure
+      begin
+        Tree.Root.Walk(
+          function(ANode: TSyntaxNode): Boolean
+          begin
+            if ANode.Kind = TSyntaxKind.Literal then
+              Inc(Count);
+            Result := True;
+          end);
+        // Das erste Glied liegt ganz unten in der linkslastigen Kette.
+        Found := Tree.Root.Search(
+          function(ANode: TSyntaxNode): TSyntaxSearchStep
+          begin
+            if (ANode.Kind = TSyntaxKind.Literal) and (ANode.Name = '1') then
+              Exit(TSyntaxSearchStep.Found);
+            Result := TSyntaxSearchStep.Descend;
+          end);
+      end);
+    Assert.AreEqual('', Failure);
+    Assert.AreEqual(100001, Count);
+    Assert.IsTrue(Found <> nil, 'erstes Glied gefunden');
+  finally
+    Tree.Free;
+  end;
+end;
+
+/// <summary>Zahl der Knoten von der Wurzel bis ANode (Wurzel = 1).</summary>
+function LevelOf(ANode: TSyntaxNode): Integer;
+var
+  Node: TSyntaxNode;
+begin
+  Result := 1;
+  Node := ANode;
+  while Node.Parent <> nil do
+  begin
+    Inc(Result);
+    Node := Node.Parent;
+  end;
+end;
+
+procedure TSyntaxTreeTests.DeepestIsFirstNodeAtGreatestDepth;
+var
+  Tree: TSyntaxTree;
+  All: TList<TSyntaxNode>;
+  Node, Expected: TSyntaxNode;
+begin
+  Tree := TPascalParser.Parse(Source);
+  All := TList<TSyntaxNode>.Create;
+  try
+    CollectRecursive(Tree.Root, All);
+    Expected := nil;
+    for Node in All do
+      if (Expected = nil) and (LevelOf(Node) = Tree.Depth) then
+        Expected := Node;
+    Assert.IsTrue(Expected <> nil, 'Knoten in größter Tiefe');
+    Assert.IsTrue(Tree.Deepest = Expected, 'erster in Baumreihenfolge');
+  finally
+    All.Free;
+    Tree.Free;
+  end;
+  // In einer linkslastigen Kette liegen die ersten beiden Glieder am tiefsten; gemeldet wird das erste.
+  Tree := TPascalParser.Parse('program P; begin X := 1 - 2 - 3 - 4; end.');
+  try
+    Assert.AreEqual('1', Tree.Deepest.Name);
+    Assert.AreEqual(LevelOf(Tree.Deepest), Tree.Depth);
   finally
     Tree.Free;
   end;

@@ -21,7 +21,8 @@ interface
 uses
   System.SysUtils,
   System.Classes,
-  Vcl.ActnList;
+  Vcl.ActnList,
+  Atlas.Core.Diagnostics.Guard;
 
 type
   TAtlasIdeContextMenu = class
@@ -33,6 +34,8 @@ type
       /// <summary>Tastenkürzel als TShortCut, 0 = keins; nil ohne Kürzel.</summary>
       Key: TFunc<Integer>;
       Proc: TProc;
+      /// <summary>Sicherung (#493), unter der der Eintrag läuft.</summary>
+      Feature: TAtlasFeature;
     end;
   private const
     Category = 'Atlas';
@@ -55,6 +58,11 @@ type
     /// <summary>Wie oben, mit dem Befehl der Palette (AId), der sich beim Aufruf bei den Tastenkürzel-Tipps meldet.
     /// </summary>
     procedure Add(const AId, ACaption: string; const AKey: TFunc<Integer>; const AProc: TProc); overload;
+    /// <summary>Wie Add, unter der Sicherung AFeature statt der der Editorbefehle: Fehler anderer Einträge schalten
+    /// ihn nicht ab. Eigener Name statt Überladung: anonyme Methoden als Argument vertragen keine Überladungen.
+    /// </summary>
+    procedure AddGuarded(AFeature: TAtlasFeature; const AId, ACaption: string; const AKey: TFunc<Integer>;
+      const AProc: TProc);
     /// <summary>Registriert das Untermenü bei der IDE, einmal nach allen Add.</summary>
     procedure EnsureAll;
   end;
@@ -64,7 +72,6 @@ implementation
 uses
   Vcl.Menus,
   ToolsAPI,
-  Atlas.Core.Diagnostics.Guard,
   Atlas.UI.Strings,
   Atlas.IDE.Commands.ShortcutTips;
 
@@ -92,6 +99,12 @@ begin
 end;
 
 procedure TAtlasIdeContextMenu.Add(const AId, ACaption: string; const AKey: TFunc<Integer>; const AProc: TProc);
+begin
+  AddGuarded(TAtlasFeature.EditorCommands, AId, ACaption, AKey, AProc);
+end;
+
+procedure TAtlasIdeContextMenu.AddGuarded(AFeature: TAtlasFeature; const AId, ACaption: string;
+  const AKey: TFunc<Integer>; const AProc: TProc);
 var
   Entry: TEntry;
 begin
@@ -99,6 +112,7 @@ begin
   Entry.Caption := ACaption;
   Entry.Key := AKey;
   Entry.Proc := AProc;
+  Entry.Feature := AFeature;
   FEntries := FEntries + [Entry];
 end;
 
@@ -192,7 +206,7 @@ begin
   end;
   if FEntries[Index].Id <> '' then
     TAtlasIdeShortcutTips.Invoked(FEntries[Index].Id);
-  TAtlasGuard.Run(TAtlasFeature.EditorCommands, FEntries[Index].Proc);
+  TAtlasGuard.Run(FEntries[Index].Feature, FEntries[Index].Proc);
 end;
 
 end.

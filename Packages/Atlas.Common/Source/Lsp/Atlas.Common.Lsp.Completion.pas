@@ -1354,22 +1354,27 @@ end;
 /// "class function" oder "operator".</summary>
 function InFunctionAt(ATree: TSyntaxTree; const AText: string; AOffset: Integer): Boolean;
 
-  function Innermost(ANode: TSyntaxNode): TSyntaxNode;
+  function Innermost(ARoot: TSyntaxNode): TSyntaxNode;
   var
     Index: Integer;
-    Child: TSyntaxNode;
+    Node, Child: TSyntaxNode;
   begin
+    // Schleife statt Rekursion (Bericht M1): dem ersten Kind folgen, das AOffset enthält; die letzte Routine
+    // auf dem Weg ist die innerste.
     Result := nil;
-    for Index := 0 to ANode.ChildCount - 1 do
+    Node := ARoot;
+    while Node <> nil do
     begin
-      Child := ANode[Index];
-      if (Child.StartOffset <= AOffset) and (AOffset <= Child.EndOffset) then
-      begin
-        Result := Innermost(Child);
-        if (Result = nil) and (Child.Kind = TSyntaxKind.RoutineDecl) then
-          Result := Child;
-        Exit;
-      end;
+      Child := nil;
+      for Index := 0 to Node.ChildCount - 1 do
+        if (Node[Index].StartOffset <= AOffset) and (AOffset <= Node[Index].EndOffset) then
+        begin
+          Child := Node[Index];
+          Break;
+        end;
+      if (Child <> nil) and (Child.Kind = TSyntaxKind.RoutineDecl) then
+        Result := Child;
+      Node := Child;
     end;
   end;
 

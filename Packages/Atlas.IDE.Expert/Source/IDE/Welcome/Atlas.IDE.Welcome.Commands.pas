@@ -66,6 +66,7 @@ uses
   Atlas.Core.Status.Lines,
   Atlas.Core.Welcome.Sections,
   Atlas.Core.Welcome.Backup,
+  Atlas.Core.Files.DataFile,
   Atlas.Core.Welcome.WhatsNew,
   Atlas.UI.Welcome.Frame,
   Atlas.UI.Welcome.Header,
@@ -282,12 +283,12 @@ begin
   Result := Trim(Result);
 end;
 
-/// <summary>Textdatei lesen; ohne Byte-Order-Mark, das TFile.WriteAllText mit UTF-8 schreibt.</summary>
+/// <summary>Textdatei lesen, mit oder ohne Byte-Order-Mark (frühere Fassungen schrieben eines); teilt Löschen,
+/// damit es das atomare Ersetzen nicht blockiert. EInOutError, wenn sie nicht lesbar ist.</summary>
 function ReadText(const AFileName: string): string;
 begin
-  Result := TFile.ReadAllText(AFileName, TEncoding.UTF8);
-  if (Result <> '') and (Result[1] = #$FEFF) then
-    Delete(Result, 1, 1);
+  if not TAtlasDataFile.TryRead(AFileName, Result) then
+    raise EInOutError.Create('Datei der Willkommensseite nicht lesbar');
 end;
 
 function Settings: TAtlasPluginSettings;
@@ -1106,8 +1107,8 @@ begin
   // Nur die erste Sicherung zählt: Sie hält das Layout vor Atlas.
   if not FileExists(Backup) then
     try
-      ForceDirectories(AtlasFolder);
-      TFile.WriteAllText(Backup, TAtlasWelcomeBackup.Snapshot(FAccess, WelcomeKey), TEncoding.UTF8);
+      // Atomar (Bericht N3): Eine halb geschriebene Sicherung verlöre das Layout vor Atlas für immer.
+      TAtlasDataFile.Write(Backup, TAtlasWelcomeBackup.Snapshot(FAccess, WelcomeKey));
     except
       on E: Exception do
       begin
@@ -1116,7 +1117,7 @@ begin
       end;
     end;
   PlaceBoard;
-  TFile.WriteAllText(PendingFile, 'atlas', TEncoding.UTF8);
+  TAtlasDataFile.Write(PendingFile, 'atlas');
   Result := True;
   if AReport then
     Report(TAtlasStrings.Text(TAtlasTextId.WelcomeApplied));
@@ -1141,7 +1142,7 @@ begin
     Exit;
   end;
   // Bis die IDE den Stand übernommen hat, gilt die Sicherung als gewünschter Stand (CheckPending).
-  TFile.WriteAllText(PendingFile, Snapshot, TEncoding.UTF8);
+  TAtlasDataFile.Write(PendingFile, Snapshot);
   System.SysUtils.DeleteFile(Backup);
   if AReport then
     Report(TAtlasStrings.Text(TAtlasTextId.WelcomeResetDone));

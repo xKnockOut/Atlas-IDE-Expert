@@ -25,7 +25,7 @@
 //   Den Platz hinter dem Zeilenende teilt der Text mit Inlay-Hints,
 //   Blockende-Beschriftungen und Fehlertext (TAtlasLineTail).
 // - Beide Elemente lassen sich je Datei in .atlas ausblenden (#628).
-// Gesichert über TAtlasFeature.EditorCommands. Nur im Hauptthread.
+// Gesichert über TAtlasFeature.LineChanges. Nur im Hauptthread.
 
 interface
 
@@ -209,7 +209,7 @@ var
   Settings: TAtlasPluginSettings;
 begin
   Settings := TAtlasIdeSettings.Current;
-  Result := (Settings.GitGutter or Settings.GitBlame) and not TAtlasGuard.Disabled(TAtlasFeature.EditorCommands);
+  Result := (Settings.GitGutter or Settings.GitBlame) and not TAtlasGuard.Disabled(TAtlasFeature.LineChanges);
 end;
 
 function Current: TLineChangesState;
@@ -298,7 +298,7 @@ begin
   FRows := TDictionary<Integer, TMarkRow>.Create;
   FFont := TFont.Create;
   FTip := TAtlasNoteTip.Create(nil);
-  FTip.GuardFeature := TAtlasFeature.EditorCommands;
+  FTip.GuardFeature := TAtlasFeature.LineChanges;
   FEvents := TEvents.Create;
   FEventsRef := FEvents;
   FEvents.OnEditorPaintGutter := PaintGutter;
@@ -391,7 +391,7 @@ begin
     CheckHover;
   except
     on E: Exception do
-      TAtlasGuard.Report(TAtlasFeature.EditorCommands, E);
+      TAtlasGuard.Report(TAtlasFeature.LineChanges, E);
   end;
 end;
 
@@ -676,7 +676,7 @@ var
 begin
   if BeforeEvent or (Stage <> High(TPaintGutterStage)) or (Context = nil) or (Context.EditView = nil) then
     Exit;
-  if not FGutterOn or (FChanges = nil) or TAtlasGuard.Disabled(TAtlasFeature.EditorCommands) or
+  if not FGutterOn or (FChanges = nil) or TAtlasGuard.Disabled(TAtlasFeature.LineChanges) or
     not SameText(Context.FileName, FFileName) then
     Exit;
   try
@@ -762,7 +762,7 @@ begin
   except
     // Zeichnen darf die IDE nie stören.
     on E: Exception do
-      TAtlasGuard.Report(TAtlasFeature.EditorCommands, E);
+      TAtlasGuard.Report(TAtlasFeature.LineChanges, E);
   end;
 end;
 
@@ -783,7 +783,7 @@ begin
     Exit;
   // Nur die Cursorzeile, nur zum aktuellen Vergleich.
   if not FBlameOn or not FBlameOk or (Context.EditView.CursorPos.Line <> Context.LogicalLineNum) or
-    TAtlasGuard.Disabled(TAtlasFeature.EditorCommands) or not SameText(Context.FileName, FFileName) or not Fresh then
+    TAtlasGuard.Disabled(TAtlasFeature.LineChanges) or not SameText(Context.FileName, FFileName) or not Fresh then
     Exit;
   try
     LineState := Context.LineState;
@@ -824,7 +824,7 @@ begin
       FBlameRect, FBlameTopRow, Rect.Height);
   except
     on E: Exception do
-      TAtlasGuard.Report(TAtlasFeature.EditorCommands, E);
+      TAtlasGuard.Report(TAtlasFeature.LineChanges, E);
   end;
 end;
 
@@ -855,7 +855,7 @@ begin
       Editor.ClientToScreen(FBlameRect.BottomRight));
   except
     on E: Exception do
-      TAtlasGuard.Report(TAtlasFeature.EditorCommands, E);
+      TAtlasGuard.Report(TAtlasFeature.LineChanges, E);
   end;
 end;
 
@@ -893,7 +893,7 @@ begin
     Gen := Generation;
     Change := Found.Change;
     // Erst nach dem Mausereignis: Der Editor setzt sonst danach den Cursor und schließt das Fenster.
-    TAtlasMainThread.ForceQueue(TAtlasFeature.EditorCommands,
+    TAtlasMainThread.ForceQueue(TAtlasFeature.LineChanges,
       procedure
       var
         State: TLineChangesState;
@@ -904,7 +904,7 @@ begin
       end);
   except
     on E: Exception do
-      TAtlasGuard.Report(TAtlasFeature.EditorCommands, E);
+      TAtlasGuard.Report(TAtlasFeature.LineChanges, E);
   end;
 end;
 

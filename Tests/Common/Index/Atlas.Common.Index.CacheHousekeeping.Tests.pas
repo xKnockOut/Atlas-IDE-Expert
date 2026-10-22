@@ -52,8 +52,6 @@ type
     [TearDown]
     procedure TearDown;
     [Test]
-    // Die RTL legt bei der ersten fehlgeschlagenen Dateisperre (EFCreateError) Daten an, die bis Programmende bleiben; kein Leck des Testcodes.
-    [IgnoreMemoryLeaks]
     procedure SecondLockFails;
     [Test]
     procedure ClearSkipsLockedCaches;
@@ -75,6 +73,10 @@ type
     procedure ConcurrentWritersLeaveReadableCache;
     [Test]
     procedure FailedReplaceLeavesNoRemains;
+    /// <summary>Ein Schreiber je Cache (Bericht N1): TryLockWrite ist exklusiv und nutzt die Sperrdatei, die
+    /// auch Aufräumen und Leeren beachten.</summary>
+    [Test]
+    procedure DiskWriteLockIsExclusive;
     [Test]
     procedure RemoveOrphansDeletesCacheOfDeletedProject;
     [Test]
@@ -273,10 +275,19 @@ var
   Lock, BackupLock: TFileStream;
   Disk: IIndexFileSystem;
   Missing: string;
+  CacheLock: TStream;
 begin
   Disk := TDiskIndexFileSystem.Create;
   Target := TPath.Combine(ARoot, 'index-00000001.json');
   Disk.WriteText(Target, 'x');
+  // Die RTL legt bei der ersten gescheiterten Sperre (EFCreateError) Daten an, die bis Programmende bleiben:
+  // hier statt [IgnoreMemoryLeaks] an SecondLockFails (Bericht N2).
+  CacheLock := TIndexCacheDirectory.TryLock(Target);
+  try
+    TIndexCacheDirectory.TryLock(Target).Free;
+  finally
+    CacheLock.Free;
+  end;
   Lock := TFileStream.Create(Target, fmOpenRead or fmShareExclusive);
   try
     Disk.WriteText(Target, 'y');
@@ -388,14 +399,15 @@ end;
 procedure TIndexCacheDirectoryTests.DiskFileSystemRoundTripsBytes;
 var
   FileSystem: TDiskIndexFileSystem;
-  Cache: string;
+  Cache, Error: string;
   Data: TBytes;
 begin
   // Binärer Cache (#617): Bytes kommen unverändert zurück, auch Nullbytes; fehlende Datei = False.
   Cache := CreateCache('index-00000003.json');
   FileSystem := TDiskIndexFileSystem.Create;
   try
-    Assert.IsTrue(FileSystem.WriteBytes(Cache, TBytes.Create(0, 1, 255, 0, 13, 10)));
+    Assert.IsTrue(FileSystem.WriteBytes(Cache, TBytes.Create(0, 1, 255, 0, 13, 10), Error));
+    Assert.AreEqual('', Error);
     Assert.IsTrue(FileSystem.ReadBytes(Cache, Data));
     Assert.AreEqual<NativeInt>(6, Length(Data));
     Assert.AreEqual<Byte>(255, Data[2]);
@@ -552,9 +564,29 @@ begin
   Assert.AreEqual<NativeInt>(1, Length(TDirectory.GetFiles(FRoot)));
 end;
 
+procedure TIndexCacheDirectoryTests.DiskWriteLockIsExclusive;
+var
+  Cache: string;
+  FileSystem: IIndexFileSystem;
+  First, Second: IInterface;
+begin
+  Cache := CreateCache('index-00000005.json');
+  FileSystem := TDiskIndexFileSystem.Create;
+  First := FileSystem.TryLockWrite(Cache);
+  Assert.IsTrue(First <> nil);
+  Second := FileSystem.TryLockWrite(Cache);
+  Assert.IsTrue(Second = nil, 'nur ein Schreiber');
+  Assert.IsTrue(TIndexCacheDirectory.IsLocked(Cache));
+  First := nil;
+  Assert.IsFalse(TIndexCacheDirectory.IsLocked(Cache));
+  Second := FileSystem.TryLockWrite(Cache);
+  Assert.IsTrue(Second <> nil, 'nach dem Freigeben wieder frei');
+  Second := nil;
+end;
+
 procedure TIndexCacheDirectoryTests.FailedReplaceLeavesNoRemains;
 var
-  Cache, Text: string;
+  Cache, Text, Error: string;
   Lock: TFileStream;
   FileSystem: IIndexFileSystem;
 begin
@@ -566,6 +598,10 @@ begin
   Lock := TFileStream.Create(Cache, fmOpenRead or fmShareExclusive);
   try
     Assert.IsFalse(FileSystem.WriteText(Cache, '{"version":2}'));
+    // Der Grund kommt mit, ohne Pfad (anonymes Log, Bericht N1).
+    Assert.IsFalse(FileSystem.WriteBytes(Cache, TEncoding.UTF8.GetBytes('{"version":2}'), Error));
+    Assert.AreNotEqual('', Error);
+    Assert.IsFalse(Error.Contains(FRoot), Error);
   finally
     Lock.Free;
   end;

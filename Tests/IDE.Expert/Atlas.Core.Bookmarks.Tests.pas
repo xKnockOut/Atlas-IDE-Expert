@@ -100,6 +100,10 @@ type
     procedure EmptyListRemovesFile;
     [Test]
     procedure SaveKeepsNewerFormatFile;
+    /// <summary>Unbrauchbare Datei liegt danach als .defekt daneben; eine beim Lesen gesperrte wird nicht
+    /// überschrieben (Bericht N3).</summary>
+    [Test]
+    procedure BrokenFileSetAsideLockedFileKept;
     [Test]
     procedure LoadWithoutFileIsEmpty;
     [Test]
@@ -117,9 +121,11 @@ implementation
 uses
   System.Generics.Collections,
   System.SysUtils,
+  System.Classes,
   System.IOUtils,
   System.JSON,
   Atlas.Core.Editor.LineAnchor,
+  Atlas.Core.Files.DataFile,
   Atlas.Core.Commands.Palette,
   Atlas.Core.Bookmarks.Store;
 
@@ -861,6 +867,34 @@ begin
   List.Add(UnitFile, Join(Code), 18, 'Rundung', 0);
   Assert.IsTrue(TAtlasBookmarks.Save(List, False), 'Speichern klappt auch ohne Git');
   Assert.IsFalse(DirectoryExists(TPath.Combine(FFolder, '.git')));
+end;
+
+procedure TAtlasBookmarkStorageTests.BrokenFileSetAsideLockedFileKept;
+var
+  List: TAtlasBookmarkList;
+  FileName: string;
+  Lock: TFileStream;
+begin
+  FileName := TPath.Combine(FFolder, '.atlas-bookmarks.json');
+  WriteText(FileName, '{"bookmarks": [');
+  Assert.IsFalse(TAtlasBookmarks.Load(Project, False, List));
+  Assert.AreEqual(Project, List.Project);
+  Assert.IsTrue(FileExists(FileName + TAtlasDataFile.DefectExtension), 'beiseitegelegt');
+  Assert.IsFalse(FileExists(FileName));
+  List.Add(UnitFile, Join(Code), 18, 'Rundung', 0);
+  Assert.IsTrue(TAtlasBookmarks.Save(List, False));
+  Lock := TFileStream.Create(FileName, fmOpenRead or fmShareExclusive);
+  try
+    Assert.IsFalse(TAtlasBookmarks.Load(Project, False, List));
+  finally
+    Lock.Free;
+  end;
+  Assert.AreEqual(0, Integer(List.Count));
+  Assert.AreEqual(FileName, List.KeptFile);
+  List.Add(UnitFile, Join(Code), 18, 'Ersatz', 0);
+  Assert.IsFalse(TAtlasBookmarks.Save(List, False), 'beim Laden gesperrt: nicht überschreiben');
+  Assert.Contains(TFile.ReadAllText(FileName), 'Rundung');
+  Assert.DoesNotContain(TFile.ReadAllText(FileName), 'Ersatz');
 end;
 
 initialization

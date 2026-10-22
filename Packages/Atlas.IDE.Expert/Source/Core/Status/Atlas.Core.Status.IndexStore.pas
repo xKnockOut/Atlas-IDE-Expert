@@ -9,6 +9,9 @@
 //   Zeitzone). Als JSON in %LOCALAPPDATA%\Atlas\index-state.json:
 //   {"format": 1, "units": 1284, "fullIndexAt": "…", "at": "…"}.
 //   Die Datei gehört nur dem Plugin; sie hält keinen Pfad und keinen Namen.
+//   Geschrieben wird atomar über TAtlasDataFile (Bericht N3); eine
+//   unbrauchbare Datei wird nicht beiseitegelegt: Sie hält nur einen Stand,
+//   den der nächste laufende Server neu liefert.
 // - TAtlasIndexTracker: verfolgt bei laufendem Server, was das Statusfeld
 //   ohnehin abfragt (Fortschritt aus $/progress, Units aus atlas.server.status
 //   alle 5 s). Endet eine Indizierung, gilt das als vollständige Indizierung.
@@ -75,7 +78,8 @@ implementation
 uses
   System.IOUtils,
   System.DateUtils,
-  System.JSON;
+  System.JSON,
+  Atlas.Core.Files.DataFile;
 
 function DateText(AValue: TDateTime): string;
 begin
@@ -246,28 +250,30 @@ begin
 end;
 
 class function TAtlasIndexStore.Load(const AFileName: string): TAtlasIndexSnapshot;
+var
+  Text: string;
 begin
+  // Fehlt, gesperrt oder unbrauchbar: kein gespeicherter Stand.
   Result := TAtlasIndexSnapshot.Empty;
-  try
-    if TFile.Exists(AFileName) then
-      Result := TAtlasIndexSnapshot.FromJson(TFile.ReadAllText(AFileName, TEncoding.UTF8));
-  except
-    on Exception do
-      Result := TAtlasIndexSnapshot.Empty;
-  end;
+  if TAtlasDataFile.TryRead(AFileName, Text) then
+    try
+      Result := TAtlasIndexSnapshot.FromJson(Text);
+    except
+      // Unerwarteter Inhalt, den FromJson nicht abfängt: ebenso kein gespeicherter Stand.
+      on Exception do
+        Result := TAtlasIndexSnapshot.Empty;
+    end;
 end;
 
 class function TAtlasIndexStore.Save(const AFileName: string; const ASnapshot: TAtlasIndexSnapshot): Boolean;
 begin
   Result := False;
   try
-    if ExtractFileDir(AFileName) <> '' then
-      ForceDirectories(ExtractFileDir(AFileName));
-    TFile.WriteAllText(AFileName, ASnapshot.ToJson, TEncoding.UTF8);
+    TAtlasDataFile.Write(AFileName, ASnapshot.ToJson);
     Result := True;
   except
-    on Exception do
-      ;
+    on E: Exception do
+      TAtlasDataFile.ReportNotWritten('Index-Stand', E);
   end;
 end;
 

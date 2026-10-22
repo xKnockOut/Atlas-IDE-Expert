@@ -148,9 +148,8 @@ begin
   AList.Add(Finding);
 end;
 
-procedure WalkNodes(ANode: TSyntaxNode; AList: TList<TLanguageFeatureFinding>; const AVersion: string);
+procedure CheckNode(ANode: TSyntaxNode; AList: TList<TLanguageFeatureFinding>; const AVersion: string);
 var
-  Index: Integer;
   Feature: TLanguageFeature;
   Found: Boolean;
 begin
@@ -168,8 +167,22 @@ begin
   end;
   if Found and not TLanguageFeatures.IsAvailable(Feature, AVersion) then
     AddFinding(AList, Feature, ANode.StartPos, ANode.EndPos, AVersion);
-  for Index := 0 to ANode.ChildCount - 1 do
-    WalkNodes(ANode.Children[Index], AList, AVersion);
+end;
+
+procedure WalkNodes(ANode: TSyntaxNode; AList: TList<TLanguageFeatureFinding>; const AVersion: string);
+var
+  List: TList<TLanguageFeatureFinding>;
+  Version: string;
+begin
+  List := AList;
+  Version := AVersion;
+  // Walk statt Rekursion (Bericht M1).
+  ANode.Walk(
+    function(AChild: TSyntaxNode): Boolean
+    begin
+      CheckNode(AChild, List, Version);
+      Result := True;
+    end);
 end;
 
 /// <summary>Nächstes Token nach AIndex, das kein Kommentar und keine Direktive ist; -1 ohne.</summary>

@@ -3,6 +3,8 @@
 // Einfrier-Wächter (#501), Teil ohne Windows und Open Tools API:
 // - TAtlasActivity: Atlas-Arbeit im Hauptthread meldet sich mit Scope an; der
 //   Wächter liest den Namen aus seinem Thread (threadsicher, ohne zu warten).
+//   Während des Starts zählt TimeInto die Dauer jeder äußersten Aktion zu den
+//   Startanteilen (Bericht N4).
 // - TAtlasHangMonitor: Schwelle, Statistik je Sitzung und Bericht.
 // - TAtlasStackScan: ordnet Adressen eines rohen Stapelabzugs Modulen zu
 //   (Modul+Offset), ohne Symbole; der Bericht zeigt so, ob Atlas beteiligt ist.
@@ -11,20 +13,27 @@ interface
 
 uses
   System.SysUtils,
-  System.SyncObjs;
+  System.SyncObjs,
+  Atlas.Core.Diagnostics.StartTimes;
 
 type
   TAtlasActivity = class
   private class var
     FLock: TCriticalSection;
     FNames: TArray<string>;
+    FTimes: TAtlasStartTimes;
   private
-    class procedure Leave; static;
+    /// <summary>ATimed: äußerste Aktion, begonnen bei AStarted (Uhr der Startanteile).</summary>
+    class procedure Leave(const AName: string; ATimed: Boolean; AStarted: Int64); static;
   public
     class constructor Create;
     class destructor Destroy;
     /// <summary>Meldet AName an, bis das Ergebnis freigegeben wird (Ende der Routine).</summary>
     class function Scope(const AName: string): IInterface; static;
+    /// <summary>Ab jetzt die Dauer jeder äußersten Aktion als „Aktion Name“ zu ATimes addieren (Startanteile,
+    /// Bericht N4); nil beendet das. ATimes gehört dem Aufrufer und darf nach TimeInto(nil) freigegeben werden.
+    /// </summary>
+    class procedure TimeInto(ATimes: TAtlasStartTimes); static;
     /// <summary>Innerste laufende Aktion; '' ohne oder wenn gerade gesperrt.</summary>
     class function Current: string; static;
   end;
@@ -78,13 +87,26 @@ implementation
 
 type
   TActivityScope = class(TInterfacedObject)
+  private
+    FName: string;
+    FTimed: Boolean;
+    FStarted: Int64;
   public
+    constructor Create(const AName: string; ATimed: Boolean; AStarted: Int64);
     destructor Destroy; override;
   end;
 
+constructor TActivityScope.Create(const AName: string; ATimed: Boolean; AStarted: Int64);
+begin
+  inherited Create;
+  FName := AName;
+  FTimed := ATimed;
+  FStarted := AStarted;
+end;
+
 destructor TActivityScope.Destroy;
 begin
-  TAtlasActivity.Leave;
+  TAtlasActivity.Leave(FName, FTimed, FStarted);
   inherited;
 end;
 
@@ -101,22 +123,43 @@ begin
 end;
 
 class function TAtlasActivity.Scope(const AName: string): IInterface;
+var
+  Timed: Boolean;
+  Started: Int64;
 begin
+  Started := 0;
   FLock.Enter;
   try
+    // Nur die äußerste Aktion zählt: Verschachtelte stecken in ihrer Dauer.
+    Timed := (Length(FNames) = 0) and (FTimes <> nil);
+    if Timed then
+      Started := FTimes.Clock;
     FNames := FNames + [AName];
   finally
     FLock.Leave;
   end;
-  Result := TActivityScope.Create;
+  Result := TActivityScope.Create(AName, Timed, Started);
 end;
 
-class procedure TAtlasActivity.Leave;
+class procedure TAtlasActivity.Leave(const AName: string; ATimed: Boolean; AStarted: Int64);
 begin
   FLock.Enter;
   try
     if Length(FNames) > 0 then
       SetLength(FNames, Length(FNames) - 1);
+    // Unter der Sperre: Nach TimeInto(nil) schreibt keine Aktion mehr in die freigegebenen Startanteile.
+    if ATimed and (FTimes <> nil) then
+      FTimes.Add('Aktion ' + AName, FTimes.Clock - AStarted);
+  finally
+    FLock.Leave;
+  end;
+end;
+
+class procedure TAtlasActivity.TimeInto(ATimes: TAtlasStartTimes);
+begin
+  FLock.Enter;
+  try
+    FTimes := ATimes;
   finally
     FLock.Leave;
   end;

@@ -161,7 +161,7 @@ begin
     Exit;
   View := EditView;
   // Keine Exception an die IDE (#493).
-  TAtlasGuard.Run(TAtlasFeature.EditorCommands,
+  TAtlasGuard.Run(TAtlasFeature.NavHistory,
     procedure
     begin
       Owner.Edited(View);
@@ -262,7 +262,7 @@ begin
     TrackLines(View, Current.Line);
   except
     on E: Exception do
-      TAtlasGuard.Report(TAtlasFeature.EditorCommands, E);
+      TAtlasGuard.Report(TAtlasFeature.NavHistory, E);
   end;
 end;
 

@@ -81,6 +81,7 @@ implementation
 
 uses
   Atlas.Core.Diagnostics.Guard,
+  Atlas.Core.Files.DataFile,
   System.IOUtils,
   System.Types,
   System.Actions,
@@ -138,11 +139,9 @@ var
 begin
   inherited Create;
   FHistory := TAtlasCommandHistory.Create;
-  try
-    FHistory.LoadFromFile(HistoryFile);
-  except
-    // Verlauf kaputt: leer anfangen.
-  end;
+  // Fehlt, unbrauchbar oder gesperrt: leer anfangen; TAtlasDataFile legt Unbrauchbares beiseite und
+  // protokolliert, eine gesperrte Datei schreibt SaveToFile nicht (Bericht N3).
+  FHistory.LoadFromFile(HistoryFile);
   FAtlasCommands := TList<TPair<TAtlasCommand, TProc>>.Create;
   FVisible := TDictionary<string, TFunc<Boolean>>.Create;
   FBindingIndex := -1;
@@ -335,6 +334,9 @@ begin
   try
     FHistory.SaveToFile(HistoryFile);
   except
+    // Der Befehl läuft trotzdem; der Grund steht einmal im Protokoll.
+    on E: Exception do
+      TAtlasDataFile.ReportNotWritten('Verlauf der Befehlspalette', E);
   end;
   // Vor dem Ausführen: Die Aktion der IDE zählt dann nicht noch einmal über OnActionExecute.
   TAtlasIdeShortcutTips.Invoked(ACommand.Id);

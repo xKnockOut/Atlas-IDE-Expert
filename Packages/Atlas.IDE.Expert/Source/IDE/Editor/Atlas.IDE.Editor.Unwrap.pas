@@ -14,7 +14,7 @@
 //   Stand, für den die Antwort gilt. Esc, jede andere Taste, ein Klick daneben,
 //   eine Änderung oder ein Wechsel der Ansicht schließt ohne Änderung.
 // - keys.unwrap aus oder Atlas aus: kein Kürzel, kein Menüeintrag.
-// Gesichert über TAtlasFeature.EditorCommands (#493). Nur im Hauptthread.
+// Gesichert über TAtlasFeature.Unwrap (#493). Nur im Hauptthread.
 
 interface
 
@@ -329,7 +329,7 @@ begin
     FWindow.OnSelect :=
       procedure(AIndex: Integer)
       begin
-        TAtlasGuard.Run(TAtlasFeature.EditorCommands,
+        TAtlasGuard.Run(TAtlasFeature.Unwrap,
           procedure
           begin
             if FInstance <> nil then
@@ -339,7 +339,7 @@ begin
     FWindow.OnAccept :=
       procedure(AIndex: Integer)
       begin
-        TAtlasGuard.Run(TAtlasFeature.EditorCommands,
+        TAtlasGuard.Run(TAtlasFeature.Unwrap,
           procedure
           begin
             if FInstance <> nil then
@@ -349,7 +349,7 @@ begin
     FWindow.OnCancel :=
       procedure
       begin
-        TAtlasGuard.Run(TAtlasFeature.EditorCommands,
+        TAtlasGuard.Run(TAtlasFeature.Unwrap,
           procedure
           begin
             if FInstance <> nil then
@@ -457,7 +457,7 @@ end;
 
 procedure TAtlasIdeUnwrap.AppMessage(var Msg: TMsg; var Handled: Boolean);
 begin
-  if TAtlasGuard.Disabled(TAtlasFeature.EditorCommands) or (FWindow = nil) or not FWindow.IsShown then
+  if TAtlasGuard.Disabled(TAtlasFeature.Unwrap) or (FWindow = nil) or not FWindow.IsShown then
     Exit;
   try
     case Msg.message of
@@ -473,7 +473,7 @@ begin
     on E: Exception do
     begin
       Handled := False;
-      TAtlasGuard.Report(TAtlasFeature.EditorCommands, E);
+      TAtlasGuard.Report(TAtlasFeature.Unwrap, E);
     end;
   end;
 end;
@@ -492,7 +492,7 @@ var
   Pen, OldPen: HPEN;
 begin
   if BeforeEvent or (Stage <> plsEndPaint) or (Context = nil) or (FPreview < 0) or (FPreview > High(FEntries)) or
-    TAtlasGuard.Disabled(TAtlasFeature.EditorCommands) then
+    TAtlasGuard.Disabled(TAtlasFeature.Unwrap) then
     Exit;
   try
     if not SameText(Context.FileName, FFileName) then
@@ -548,7 +548,7 @@ begin
     end;
   except
     on E: Exception do
-      TAtlasGuard.Report(TAtlasFeature.EditorCommands, E);
+      TAtlasGuard.Report(TAtlasFeature.Unwrap, E);
   end;
 end;
 

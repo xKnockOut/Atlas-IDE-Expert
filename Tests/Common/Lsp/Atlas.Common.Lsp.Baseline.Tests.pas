@@ -29,8 +29,14 @@ type
     procedure RefusesWithoutProjectFiles;
     [Test]
     procedure RefusesWithoutWorkspace;
+    /// <summary>Bericht N3: Eine unbrauchbare bisherige Baseline wird nicht still ersetzt, sondern als .defekt
+    /// beiseitegelegt und in "setAside" genannt.</summary>
     [Test]
-    procedure InvalidPreviousBaselineIsReplaced;
+    procedure InvalidPreviousBaselineIsSetAside;
+    /// <summary>Lässt sie sich nicht beiseitelegen, wird sie trotzdem neu geschrieben (der Befehl soll sie neu
+    /// schreiben); "setAside" fehlt dann.</summary>
+    [Test]
+    procedure InvalidPreviousBaselineIsReplacedWhenSetAsideFails;
     [Test]
     procedure UnreadableFileIsSkipped;
   end;
@@ -67,6 +73,8 @@ var
   /// <summary>Unechte Prüfung: voller Pfad → Zeilen mit einem Treffer der Regel "a".</summary>
   Hits: TDictionary<string, TArray<Integer>>;
   Written: string;
+  /// <summary>Unechte Sperre: SetAside scheitert.</summary>
+  Locked: Boolean;
 
 function FullPath(const ARelative: string): string;
 begin
@@ -89,6 +97,18 @@ begin
     procedure(const AFileName, AText: string)
     begin
       Disk.AddOrSetValue(AFileName, AText);
+    end;
+  Result.SetAside :=
+    function(const AFileName: string; out ATarget: string): Boolean
+    var
+      Text: string;
+    begin
+      ATarget := AFileName + '.defekt';
+      Result := not Locked and Disk.TryGetValue(AFileName, Text);
+      if not Result then
+        Exit;
+      Disk.AddOrSetValue(ATarget, Text);
+      Disk.Remove(AFileName);
     end;
 end;
 
@@ -191,6 +211,7 @@ begin
   Disk.Clear;
   Hits.Clear;
   Written := '';
+  Locked := False;
   Disk.Add(FullPath('A.pas'), UnitA);
   Disk.Add(FullPath('B.pas'), UnitA);
   Hits.Add(FullPath('A.pas'), [5]);
@@ -381,7 +402,7 @@ begin
   end;
 end;
 
-procedure TLspBaselineTests.InvalidPreviousBaselineIsReplaced;
+procedure TLspBaselineTests.InvalidPreviousBaselineIsSetAside;
 var
   Command: TLspBaseline;
   Answer: TJSONObject;
@@ -393,6 +414,7 @@ begin
     Answer := Run(Command);
     try
       Assert.AreEqual('invalid', TextAt(Answer, 'previous'));
+      Assert.AreEqual(FullPath(BaselineFileName) + '.defekt', TextAt(Answer, 'setAside'));
       Assert.AreEqual(1, NumberAt(Answer, 'added'));
     finally
       Answer.Free;
@@ -400,6 +422,31 @@ begin
   finally
     Command.Free;
   end;
+  Assert.AreEqual('{"version": 7}', Disk[FullPath(BaselineFileName) + '.defekt'], 'alter Inhalt bleibt erhalten');
+  Assert.AreEqual(1, Integer(TRuleBaseline.FromJson(Disk[FullPath(BaselineFileName)]).Count));
+end;
+
+procedure TLspBaselineTests.InvalidPreviousBaselineIsReplacedWhenSetAsideFails;
+var
+  Command: TLspBaseline;
+  Answer: TJSONObject;
+begin
+  Reset;
+  Locked := True;
+  Disk.Add(FullPath(BaselineFileName), '{"version": 7}');
+  Command := MakeCommand([FullPath('A.pas')]);
+  try
+    Answer := Run(Command);
+    try
+      Assert.AreEqual('invalid', TextAt(Answer, 'previous'));
+      Assert.IsNull(Answer.FindValue('setAside'));
+    finally
+      Answer.Free;
+    end;
+  finally
+    Command.Free;
+  end;
+  Assert.IsFalse(Disk.ContainsKey(FullPath(BaselineFileName) + '.defekt'));
   Assert.AreEqual(1, Integer(TRuleBaseline.FromJson(Disk[FullPath(BaselineFileName)]).Count));
 end;
 

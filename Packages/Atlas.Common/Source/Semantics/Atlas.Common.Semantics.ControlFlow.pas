@@ -298,15 +298,15 @@ end;
 
 /// <summary>Enthält der Teilbaum einen Fehlerknoten (auch in Ausdrücken)?</summary>
 function ContainsError(ANode: TSyntaxNode): Boolean;
-var
-  Index: Integer;
 begin
-  if ANode.Kind = TSyntaxKind.Error then
-    Exit(True);
-  for Index := 0 to ANode.ChildCount - 1 do
-    if ContainsError(ANode.Children[Index]) then
-      Exit(True);
-  Result := False;
+  // Iterativ (Bericht M1): Ausdrücke wie 1 - 1 - … - 1 sind so tief wie lang.
+  Result := ANode.Search(
+    function(AVisited: TSyntaxNode): TSyntaxSearchStep
+    begin
+      if AVisited.Kind = TSyntaxKind.Error then
+        Exit(TSyntaxSearchStep.Found);
+      Result := TSyntaxSearchStep.Descend;
+    end) <> nil;
 end;
 
 function Concat(const A, B: TArray<TFlowNode>): TArray<TFlowNode>;
@@ -503,12 +503,24 @@ end;
 
 procedure TFlowRoutineTable.Collect(ANode: TSyntaxNode);
 var
-  Index: Integer;
+  Headers: TList<TSyntaxNode>;
+  Header: TSyntaxNode;
 begin
-  if ANode.Kind = TSyntaxKind.RoutineHeader then
-    AddHeader(ANode);
-  for Index := 0 to ANode.ChildCount - 1 do
-    Collect(ANode.Children[Index]);
+  // Iterativ (Bericht M1): erst die Köpfe sammeln, dann eintragen.
+  Headers := TList<TSyntaxNode>.Create;
+  try
+    ANode.Walk(
+      function(AVisited: TSyntaxNode): Boolean
+      begin
+        if AVisited.Kind = TSyntaxKind.RoutineHeader then
+          Headers.Add(AVisited);
+        Result := True;
+      end);
+    for Header in Headers do
+      AddHeader(Header);
+  finally
+    Headers.Free;
+  end;
 end;
 
 function TFlowRoutineTable.Find(const AName: string; AArgument: Integer; out AMode: TFlowArgumentMode): Boolean;
@@ -969,6 +981,29 @@ begin
     Result := [Node];
 end;
 
+type
+  /// <summary>Schritt in TFlowBuilder.Analyze: Namen in Node lesen oder, bei Node = nil, Name berühren.</summary>
+  TAnalyzeStep = record
+    Node: TSyntaxNode;
+    ChainParts: Boolean;
+    Name: string;
+    MaybeRead: Boolean;
+  end;
+
+function VisitStep(ANode: TSyntaxNode; AChainParts: Boolean): TAnalyzeStep;
+begin
+  Result := Default(TAnalyzeStep);
+  Result.Node := ANode;
+  Result.ChainParts := AChainParts;
+end;
+
+function TouchStep(const AName: string; AMaybeRead: Boolean): TAnalyzeStep;
+begin
+  Result := Default(TAnalyzeStep);
+  Result.Name := AName;
+  Result.MaybeRead := AMaybeRead;
+end;
+
 procedure TFlowBuilder.Analyze(ANode: TFlowNode);
 
   procedure Touch(const AName: string; AMaybeRead: Boolean);
@@ -981,19 +1016,35 @@ procedure TFlowBuilder.Analyze(ANode: TFlowNode);
   /// <summary>Jede Erwähnung in einer anonymen Methode: Sie kann die Variable später ändern.</summary>
   procedure Captured(E: TSyntaxNode);
   var
+    Pending: TStack<TSyntaxNode>;
+    Node: TSyntaxNode;
     Index: Integer;
   begin
-    if E.Kind = TSyntaxKind.Identifier then
-      Touch(E.Name, True);
-    for Index := 0 to E.ChildCount - 1 do
-      Captured(E.Children[Index]);
+    // Iterativ mit eigenem Stapel (Bericht M1), Reihenfolge wie die frühere Rekursion.
+    Pending := TStack<TSyntaxNode>.Create;
+    try
+      Pending.Push(E);
+      while Pending.Count > 0 do
+      begin
+        Node := Pending.Pop;
+        if Node.Kind = TSyntaxKind.Identifier then
+          Touch(Node.Name, True);
+        for Index := Node.ChildCount - 1 downto 0 do
+          Pending.Push(Node.Children[Index]);
+      end;
+    finally
+      Pending.Free;
+    end;
   end;
 
-  /// <summary>Liest die Namen in E. Mit AChainParts nur die Teile einer Kette wie X[I].Feld
+  /// <summary>Liest die Namen in ARoot. Mit AChainParts nur die Teile einer Kette wie X[I].Feld
   /// außer dem Bezeichner am Anfang (die Indizes werden gelesen).</summary>
-  procedure Visit(E: TSyntaxNode; AChainParts: Boolean);
+  procedure Visit(ARoot: TSyntaxNode; AChainParts: Boolean);
+  var
+    Pending: TStack<TAnalyzeStep>;
+    Steps: TList<TAnalyzeStep>;
 
-    procedure VisitArgument(ACall: TSyntaxNode; AIndex: Integer);
+    procedure AddArgument(ACall: TSyntaxNode; AIndex: Integer);
     var
       Arg: TSyntaxNode;
       Root: string;
@@ -1004,7 +1055,7 @@ procedure TFlowBuilder.Analyze(ANode: TFlowNode);
       // Nur eine Variable oder ein Teil davon kann als var/out übergeben werden.
       if (Root = '') or ThroughPointer(Arg) then
       begin
-        Visit(Arg, False);
+        Steps.Add(VisitStep(Arg, False));
         Exit;
       end;
       Mode := TFlowArgumentMode.Unknown;
@@ -1012,70 +1063,94 @@ procedure TFlowBuilder.Analyze(ANode: TFlowNode);
         Mode := FLookup(ACall, AIndex - 1);
       case Mode of
         TFlowArgumentMode.Value:
-          Visit(Arg, False);
+          Steps.Add(VisitStep(Arg, False));
         TFlowArgumentMode.Output:
           begin
-            Touch(Root, False);
-            Visit(Arg, True);
+            Steps.Add(TouchStep(Root, False));
+            Steps.Add(VisitStep(Arg, True));
           end;
       else
         begin
           // var oder unbekannt: kann lesen und schreiben.
-          Touch(Root, True);
-          Visit(Arg, True);
+          Steps.Add(TouchStep(Root, True));
+          Steps.Add(VisitStep(Arg, True));
         end;
       end;
     end;
 
   var
+    Step: TAnalyzeStep;
+    E: TSyntaxNode;
     Index: Integer;
     Root: string;
   begin
-    if AChainParts then
-    begin
-      while (E <> nil) and (E.Kind in [TSyntaxKind.MemberAccess, TSyntaxKind.IndexAccess,
-        TSyntaxKind.Dereference]) and (E.ChildCount > 0) do
+    // Iterativ mit eigenem Stapel (Bericht M1): Ausdrücke wie 1 - 1 - … - 1 sind so tief wie lang. Jeder Knoten
+    // legt seine Folgeschritte in Steps ab; sie kommen rückwärts auf den Stapel, damit Lesen und Berühren in
+    // derselben Reihenfolge geschehen wie in der früheren Rekursion.
+    Pending := TStack<TAnalyzeStep>.Create;
+    Steps := TList<TAnalyzeStep>.Create;
+    try
+      Pending.Push(VisitStep(ARoot, AChainParts));
+      while Pending.Count > 0 do
       begin
-        for Index := 1 to E.ChildCount - 1 do
-          Visit(E.Children[Index], False);
-        E := E.Children[0];
-      end;
-      Exit;
-    end;
-    case E.Kind of
-      TSyntaxKind.Identifier:
-        AddName(ANode.FReads, E.Name);
-      TSyntaxKind.TypeReference, TSyntaxKind.GenericArgs, TSyntaxKind.Literal:
-        ;
-      TSyntaxKind.AnonymousMethod, TSyntaxKind.RoutineDecl:
-        Captured(E);
-      TSyntaxKind.AddressOf:
+        Step := Pending.Pop;
+        if Step.Node = nil then
         begin
-          Root := '';
-          if E.ChildCount > 0 then
-            Root := RootName(E.Children[0]);
-          if (Root <> '') and not ThroughPointer(E.Children[0]) then
+          Touch(Step.Name, Step.MaybeRead);
+          Continue;
+        end;
+        Steps.Clear;
+        E := Step.Node;
+        if Step.ChainParts then
+          while (E <> nil) and (E.Kind in [TSyntaxKind.MemberAccess, TSyntaxKind.IndexAccess,
+            TSyntaxKind.Dereference]) and (E.ChildCount > 0) do
           begin
-            Touch(Root, False);
-            Visit(E.Children[0], True);
+            for Index := 1 to E.ChildCount - 1 do
+              Steps.Add(VisitStep(E.Children[Index], False));
+            E := E.Children[0];
           end
+        else
+          case E.Kind of
+            TSyntaxKind.Identifier:
+              AddName(ANode.FReads, E.Name);
+            TSyntaxKind.TypeReference, TSyntaxKind.GenericArgs, TSyntaxKind.Literal:
+              ;
+            TSyntaxKind.AnonymousMethod, TSyntaxKind.RoutineDecl:
+              Captured(E);
+            TSyntaxKind.AddressOf:
+              begin
+                Root := '';
+                if E.ChildCount > 0 then
+                  Root := RootName(E.Children[0]);
+                if (Root <> '') and not ThroughPointer(E.Children[0]) then
+                begin
+                  Touch(Root, False);
+                  Steps.Add(VisitStep(E.Children[0], True));
+                end
+                else
+                  for Index := 0 to E.ChildCount - 1 do
+                    Steps.Add(VisitStep(E.Children[Index], False));
+              end;
+            TSyntaxKind.Call:
+              if E.ChildCount > 0 then
+              begin
+                Steps.Add(VisitStep(E.Children[0], False));
+                // Methode auf einer Variablen (X.Clear, R.Init(…)) kann deren Teile ändern.
+                if (E.Children[0].Kind = TSyntaxKind.MemberAccess) and not ThroughPointer(E.Children[0]) then
+                  Steps.Add(TouchStep(RootName(E.Children[0]), True));
+                for Index := 1 to E.ChildCount - 1 do
+                  AddArgument(E, Index);
+              end;
           else
             for Index := 0 to E.ChildCount - 1 do
-              Visit(E.Children[Index], False);
-        end;
-      TSyntaxKind.Call:
-        if E.ChildCount > 0 then
-        begin
-          Visit(E.Children[0], False);
-          // Methode auf einer Variablen (X.Clear, R.Init(…)) kann deren Teile ändern.
-          if (E.Children[0].Kind = TSyntaxKind.MemberAccess) and not ThroughPointer(E.Children[0]) then
-            Touch(RootName(E.Children[0]), True);
-          for Index := 1 to E.ChildCount - 1 do
-            VisitArgument(E, Index);
-        end;
-    else
-      for Index := 0 to E.ChildCount - 1 do
-        Visit(E.Children[Index], False);
+              Steps.Add(VisitStep(E.Children[Index], False));
+          end;
+        for Index := Steps.Count - 1 downto 0 do
+          Pending.Push(Steps[Index]);
+      end;
+    finally
+      Steps.Free;
+      Pending.Free;
     end;
   end;
 

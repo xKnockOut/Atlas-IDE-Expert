@@ -8,6 +8,14 @@
 // Bewegung löst nie eine Anfrage aus. Bleibt die Antwort leer, obwohl es
 // vorher Knoten gab (Syntaxfehler), bleibt der letzte gültige Stand. Die
 // letzten Dateien bleiben gemerkt, ein Wechsel zurück fragt nicht neu.
+// Antwortet der Server nicht rechtzeitig (ELspClientError), ist das kein
+// Fehler des Aufrufers: Der alte Stand bleibt, später neu versuchen. Früher
+// lief die Ausnahme bis in den Takt von Brotkrumen und mitlaufendem Kopf und
+// zählte dort für die Absturzsicherung.
+// Während einer Abfrage (Sitzung holen, Server starten, auf documentSymbol
+// warten) kann der Manager alle Stände vergessen oder ein weiterer Takt
+// einsteigen; Entfernen und Leeren hält TAtlasOutlineLoadGuard bis zum Ende
+// der Abfrage zurück, damit der ladende Eintrag gültig bleibt.
 // Nur im Hauptthread.
 
 interface
@@ -54,6 +62,9 @@ uses
   Winapi.Windows,
   System.JSON,
   System.Generics.Collections,
+  Atlas.Core.Lsp.Client,
+  Atlas.Core.Diagnostics.Guard,
+  Atlas.Core.Outline.LoadGuard,
   Atlas.IDE.Foundation.EditorSnapshot;
 
 const
@@ -85,6 +96,7 @@ type
 var
   SessionOf: TFunc<TLspSession>;
   Entries: TObjectDictionary<string, TEntry>;
+  Guard: TAtlasOutlineLoadGuard;
   LastStamp: Cardinal;
 
 function Key(const AFileName: string): string;
@@ -121,6 +133,7 @@ begin
   AEntry.Version := ASnapshot.Version;
   AEntry.PendingVersion := ASnapshot.Version;
   Session := nil;
+  // Kann den Server starten und die Projektkontexte abgleichen (InvalidateAll); der Wächter hält das zurück.
   if Assigned(SessionOf) then
     Session := SessionOf();
   AEntry.NoServer := Session = nil;
@@ -130,8 +143,18 @@ begin
     AEntry.RetryAt := GetTickCount64 + RetryMs;
     Exit;
   end;
-  Session.Sync(AEntry.FileName, ASnapshot.Text);
-  Response := Session.DocumentSymbolTree(AEntry.FileName, RequestTimeoutMs);
+  try
+    Session.Sync(AEntry.FileName, ASnapshot.Text);
+    Response := Session.DocumentSymbolTree(AEntry.FileName, RequestTimeoutMs);
+  except
+    // Zeitgrenze, Fehlerantwort oder beendete Verbindung: wie keine Antwort.
+    on E: ELspClientError do
+    begin
+      TAtlasGuard.Log('Gliederung: keine Antwort vom Server (' + TAtlasGuard.SafeMessage(E.Message) +
+        '); alter Stand bleibt');
+      Response := nil;
+    end;
+  end;
   try
     if Response = nil then
     begin
@@ -154,6 +177,26 @@ begin
   AEntry.Stamp := LastStamp;
 end;
 
+/// <summary>Load unter dem Wächter; danach Vorgemerktes nachholen. Der Eintrag kann danach freigegeben sein.</summary>
+procedure GuardedLoad(AEntry: TEntry; const ASnapshot: TAtlasEditorSnapshot);
+var
+  Clear: Boolean;
+  Keys: TArray<string>;
+  Pending: string;
+begin
+  Guard.Enter;
+  try
+    Load(AEntry, ASnapshot);
+  finally
+    if Guard.Leave(Clear, Keys) and (Entries <> nil) then
+      if Clear then
+        Entries.Clear
+      else
+        for Pending in Keys do
+          Entries.Remove(Pending);
+  end;
+end;
+
 { TAtlasIdeOutlineCache }
 
 class procedure TAtlasIdeOutlineCache.Install(const ASessionOf: TFunc<TLspSession>);
@@ -161,12 +204,15 @@ begin
   SessionOf := ASessionOf;
   if Entries = nil then
     Entries := TObjectDictionary<string, TEntry>.Create([doOwnsValues]);
+  if Guard = nil then
+    Guard := TAtlasOutlineLoadGuard.Create;
 end;
 
 class procedure TAtlasIdeOutlineCache.Uninstall;
 begin
   SessionOf := nil;
   FreeAndNil(Entries);
+  FreeAndNil(Guard);
 end;
 
 class function TAtlasIdeOutlineCache.IsPascal(const AFileName: string): Boolean;
@@ -181,13 +227,13 @@ end;
 
 class procedure TAtlasIdeOutlineCache.Invalidate(const AFileName: string);
 begin
-  if Entries <> nil then
+  if (Entries <> nil) and Guard.Remove(Key(AFileName)) then
     Entries.Remove(Key(AFileName));
 end;
 
 class procedure TAtlasIdeOutlineCache.InvalidateAll;
 begin
-  if Entries <> nil then
+  if (Entries <> nil) and Guard.ClearAll then
     Entries.Clear;
 end;
 
@@ -205,16 +251,24 @@ begin
   FileName := AView.Buffer.FileName;
   if not IsPascal(FileName) then
     Exit;
+  Result.FileName := FileName;
+  Result.Status := TAtlasOutlineStatus.Waiting;
   Snapshot := TAtlasEditorSnapshots.Get(AView);
   Moment := GetTickCount64;
-  if not Entries.TryGetValue(Key(FileName), Entry) then
+  // Ein Takt mitten in einer Abfrage (Nachrichten beim Warten): nur zeigen, was schon da ist.
+  if Guard.Busy then
+  begin
+    if not Entries.TryGetValue(Key(FileName), Entry) then
+      Exit;
+  end
+  else if not Entries.TryGetValue(Key(FileName), Entry) then
   begin
     Entry := TEntry.Create;
     Entry.FileName := FileName;
     Entries.Add(Key(FileName), Entry);
     Entry.Used := Moment;
     TrimEntries;
-    Load(Entry, Snapshot);
+    GuardedLoad(Entry, Snapshot);
   end
   else if Snapshot.Version <> Entry.Version then
   begin
@@ -225,12 +279,14 @@ begin
       Entry.PendingSince := Moment;
     end
     else if Moment - Entry.PendingSince >= PauseMs then
-      Load(Entry, Snapshot);
+      GuardedLoad(Entry, Snapshot);
   end
   else if not Entry.Loaded and (Moment >= Entry.RetryAt) then
-    Load(Entry, Snapshot);
+    GuardedLoad(Entry, Snapshot);
+  // Nach dem Laden neu nachschlagen: Vorgemerktes Leeren kann den Eintrag freigegeben haben.
+  if (Entries = nil) or not Entries.TryGetValue(Key(FileName), Entry) then
+    Exit;
   Entry.Used := Moment;
-  Result.FileName := FileName;
   Result.Nodes := Entry.Nodes;
   Result.Text := Entry.Text;
   Result.Stamp := Entry.Stamp;

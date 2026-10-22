@@ -29,7 +29,8 @@ implementation
 
 uses
   System.SysUtils,
-  System.IOUtils;
+  System.IOUtils,
+  Atlas.Core.Files.DataFile;
 
 { TAtlasIdeHistory }
 
@@ -43,13 +44,9 @@ begin
   if FUsage = nil then
   begin
     FUsage := TAtlasUsage.Create;
-    try
-      FUsage.LoadFromFile(FileName);
-    except
-      // Unlesbarer Verlauf: leer beginnen.
-      on Exception do
-        FUsage.Clear;
-    end;
+    // Fehlt, unbrauchbar oder gesperrt: leer beginnen; TAtlasDataFile legt Unbrauchbares beiseite und
+    // protokolliert, eine gesperrte Datei schreibt Save nicht (Bericht N3).
+    FUsage.LoadFromFile(FileName);
   end;
   Result := FUsage;
 end;
@@ -68,9 +65,9 @@ begin
   try
     FUsage.SaveToFile(FileName);
   except
-    // Speichern darf die IDE nie stören.
-    on Exception do
-      ;
+    // Speichern darf die IDE nie stören; der Grund steht einmal im Protokoll, Changed bleibt gesetzt.
+    on E: Exception do
+      TAtlasDataFile.ReportNotWritten('Lernende Gewichtung', E);
   end;
 end;
 

@@ -26,6 +26,10 @@ type
     procedure ItemsShowProjectAndSession;
     [Test]
     procedure ToggleTargets;
+    /// <summary>x-feature nennt eine Sicherung aus TAtlasFeature, sonst findet der Vorschlag nach einem Absturz
+    /// (#722) den Schalter nie.</summary>
+    [Test]
+    procedure FeaturesNameGuardFeatures;
   end;
 
 implementation
@@ -34,6 +38,8 @@ uses
   System.SysUtils,
   System.JSON,
   System.Generics.Collections,
+  System.TypInfo,
+  Atlas.Core.Diagnostics.Guard,
   Atlas.Core.Settings.Plugin,
   Atlas.Core.Settings.SchemaData,
   Atlas.Core.Settings.QuickToggles;
@@ -140,12 +146,12 @@ begin
   Assert.IsTrue(TAtlasQuickToggles.Find(Toggles, 'GenerateMenu', Toggle));
   Assert.AreEqual('Befehle', Toggle.Page);
   Assert.IsFalse(Toggle.Drawing);
-  Assert.AreEqual('EditorCommands', Toggle.Feature);
+  Assert.AreEqual('Generate', Toggle.Feature);
   // Code Lens mit Code-Metriken (#66): Zeichnung im Editor, „Alles aus“ schaltet sie ab.
   Assert.IsTrue(TAtlasQuickToggles.Find(Toggles, 'CodeLensMetrics', Toggle));
   Assert.AreEqual('Editor', Toggle.Page);
   Assert.IsTrue(Toggle.Drawing);
-  Assert.AreEqual('EditorCommands', Toggle.Feature);
+  Assert.AreEqual('CodeLens', Toggle.Feature);
   // Befehl (#66): Schalter auf der Seite Editor; keine Zeichnung, „Alles aus“ lässt ihn stehen.
   Assert.IsTrue(TAtlasQuickToggles.Find(Toggles, 'MetricsReport', Toggle));
   Assert.AreEqual('Editor', Toggle.Page);
@@ -367,6 +373,20 @@ begin
   Assert.AreEqual('false', TAtlasQuickToggles.Toggle(Items[3], TAtlasToggleTarget.Project, Stored, Session));
   Assert.IsTrue(Stored.SlashCommands);
   Assert.IsFalse(Session.TryGet('SlashCommands', Value));
+end;
+
+procedure TAtlasQuickTogglesTests.FeaturesNameGuardFeatures;
+var
+  Toggle: TAtlasQuickToggle;
+  Ordinal: Integer;
+begin
+  for Toggle in TAtlasQuickToggles.Build(TAtlasQuickToggles.PluginCatalog, AtlasSchemaJson) do
+    if Toggle.Feature <> '' then
+    begin
+      Ordinal := GetEnumValue(TypeInfo(TAtlasFeature), Toggle.Feature);
+      Assert.IsTrue(Ordinal >= 0, Toggle.Key + ': ' + Toggle.Feature);
+      Assert.AreEqual(Toggle.Feature, GetEnumName(TypeInfo(TAtlasFeature), Ordinal), Toggle.Key);
+    end;
 end;
 
 initialization

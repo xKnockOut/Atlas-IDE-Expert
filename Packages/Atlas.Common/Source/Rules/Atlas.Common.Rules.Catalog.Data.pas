@@ -52,6 +52,15 @@ begin
     '      "good": "// lsp-ignore: empty-except\ntry X; except end;"' + #10 +
     '    },' + #10 +
     '    {' + #10 +
+    '      "id": "unit-too-deep",' + #10 +
+    '      "name": "Unit too deep to check",' + #10 +
+    '      "category": "code-smell",' + #10 +
+    '      "severity": "hint",' + #10 +
+    '      "description": "The syntax tree of the unit is more than 100000 levels deep, so the rules do not run for it. Such trees only come from chains with as many terms, such as X := A - B - C - … The h' + 'int marks the deepest point; splitting the chain into partial expressions makes the unit checkable again.",' + #10 +
+    '      "bad": "X := A - B - C - D - E; // … 100000 terms",' + #10 +
+    '      "good": "Part := A - B - C;\nX := Part - D - E;"' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
     '      "id": "bidi-control",' + #10 +
     '      "name": "Bidirectional control character",' + #10 +
     '      "category": "vulnerability",' + #10 +
@@ -2372,6 +2381,11 @@ begin
     '      "id": "unknown-rule-id",' + #10 +
     '      "name": "Unbekannte Regelkennung",' + #10 +
     '      "description": "Ein lsp-ignore-Kommentar nennt eine Regelkennung, die es nicht gibt, und unterdrückt deshalb nichts. Die Meldung schlägt die ähnlichste bekannte Kennung vor (Tippfehler); ein sol' + 'cher Kommentar zählt nicht zusätzlich als unused-suppression."' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "unit-too-deep",' + #10 +
+    '      "name": "Unit zu tief für die Prüfung",' + #10 +
+    '      "description": "Der Syntaxbaum der Unit ist mehr als 100000 Ebenen tief; die Prüfregeln laufen für sie nicht. So tiefe Bäume entstehen nur aus Ketten mit ebenso vielen Gliedern wie X := A - B - ' + 'C - … Der Hinweis markiert die tiefste Stelle; wer die Kette in Teilausdrücke aufteilt, macht die Unit wieder prüfbar."' + #10 +
     '    },' + #10 +
     '    {' + #10 +
     '      "id": "bidi-control",' + #10 +

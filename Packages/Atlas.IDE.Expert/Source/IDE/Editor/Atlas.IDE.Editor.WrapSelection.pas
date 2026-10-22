@@ -152,7 +152,7 @@ procedure TAtlasIdeWrapSelection.AppMessage(var Msg: TMsg; var Handled: Boolean)
 var
   Typed: Char;
 begin
-  if Handled or (Msg.message <> WM_CHAR) or TAtlasGuard.Disabled(TAtlasFeature.EditorCommands) then
+  if Handled or (Msg.message <> WM_CHAR) or TAtlasGuard.Disabled(TAtlasFeature.WrapSelection) then
     Exit;
   try
     Typed := Char(Msg.wParam);
@@ -166,7 +166,7 @@ begin
     on E: Exception do
     begin
       Handled := False;
-      TAtlasGuard.Report(TAtlasFeature.EditorCommands, E);
+      TAtlasGuard.Report(TAtlasFeature.WrapSelection, E);
     end;
   end;
 end;

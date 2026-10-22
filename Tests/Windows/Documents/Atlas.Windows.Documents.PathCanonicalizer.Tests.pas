@@ -17,8 +17,6 @@ type
     [TearDown]
     procedure TearDown;
     [Test]
-    // RTL legt bei erster Benutzung Singletons an (Kodierungen, Pfad-/Registry-Hilfen); kein Leck des Testcodes.
-    [IgnoreMemoryLeaks]
     procedure ResolvesCaseAndDots;
     [Test]
     procedure KeepsMissingPathUnchanged;
@@ -44,6 +42,9 @@ end;
 procedure TWindowsPathCanonicalizerTests.TearDown;
 begin
   TDirectory.Delete(FDir, True);
+  // Sonst gibt erst das nächste Setup die Pfade frei, und der erste Test meldete sie als Leck (Bericht N2).
+  FDir := '';
+  FFile := '';
 end;
 
 procedure TWindowsPathCanonicalizerTests.ResolvesCaseAndDots;
