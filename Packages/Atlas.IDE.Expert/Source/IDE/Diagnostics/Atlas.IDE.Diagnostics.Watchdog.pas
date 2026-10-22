@@ -65,7 +65,6 @@ type
     function TakeAddresses: TArray<UInt64>;
     class function NowMs: Int64; static;
     class function ForegroundWindowText: string; static;
-    class function Modules: TArray<TAtlasModuleRange>; static;
   public
     /// <summary>ALoadedAt: NowMs beim Laden des Packages; AThreshold liefert die Schwelle (im Hauptthread gelesen).</summary>
     constructor Create(ALoadedAt: Int64; const AThreshold: TFunc<Integer>);
@@ -82,8 +81,8 @@ implementation
 
 uses
   Atlas.Core.Diagnostics.Guard,
+  Atlas.IDE.Diagnostics.StackCapture,
   System.Diagnostics,
-  Winapi.PsAPI,
   Vcl.Forms;
 
 /// <summary>IDE läuft normal: Hauptfenster sichtbar, nicht im Beenden. Liest nur Felder, aus jedem Thread.</summary>
@@ -163,7 +162,9 @@ begin
     procedure
     begin
       // Module erst jetzt im Hauptthread: Die Ladersperre ist frei.
-      Hang.Frames := TAtlasStackScan.Frames(Addresses, TAtlasWatchdog.Modules);
+      // Rahmen im Atlas-Modul mit Unit, Routine und Zeile, wenn die Map-Datei neben der BPL liegt.
+      Hang.Frames := TAtlasIdeStackCapture.Symbolize(TAtlasStackScan.Frames(Addresses,
+        TAtlasIdeStackCapture.Modules));
       if Assigned(FOwner.FOnHang) then
         FOwner.FOnHang(Hang);
     end);
@@ -309,29 +310,6 @@ begin
   Length_ := InternalGetWindowText(Window, Buffer, Length(Buffer));
   if Length_ > 0 then
     SetString(Result, PWideChar(@Buffer[0]), Length_);
-end;
-
-class function TAtlasWatchdog.Modules: TArray<TAtlasModuleRange>;
-var
-  Handles: array[0..1023] of HMODULE;
-  Needed: DWORD;
-  Index: Integer;
-  Info: TModuleInfo;
-  Name: array[0..MAX_PATH] of Char;
-  Range: TAtlasModuleRange;
-begin
-  Result := nil;
-  if not EnumProcessModules(GetCurrentProcess, @Handles[0], SizeOf(Handles), Needed) then
-    Exit;
-  for Index := 0 to Integer(Needed div SizeOf(HMODULE)) - 1 do
-    if (Index <= High(Handles)) and GetModuleInformation(GetCurrentProcess, Handles[Index], @Info, SizeOf(Info)) and
-      (GetModuleFileName(Handles[Index], Name, Length(Name)) > 0) then
-    begin
-      Range.Name := ExtractFileName(Name);
-      Range.Base := NativeUInt(Info.lpBaseOfDll);
-      Range.Size := Info.SizeOfImage;
-      Result := Result + [Range];
-    end;
 end;
 
 end.

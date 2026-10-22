@@ -31,7 +31,7 @@
 // Platform-Package mit Textcode, den Server und IDE-Plugin gleich brauchen
 // (ADR 0012): Zeilen, Zeichenklassen, Kodierungserkennung, URIs,
 // Anonymisierung, Zeilenvergleich, unscharfe Namensregeln, JSONC, XML-Entities
-// die Versionsangabe sowie DUnitX-Tests im Quelltext und ihre Berichte (#69). Nur RTL (System.*), keine Zustände, kein inline.
+// die Versionsangabe, DUnitX-Tests im Quelltext und ihre Berichte (#69) sowie Map-Dateien des Linkers für Stacktraces. Nur RTL (System.*), keine Zustände, kein inline.
 // Server und Tests linken dieses Package statisch über seine DCUs; das Plugin
 // übersetzt dieselben Quelldateien per "contains … in" mit, damit die IDE
 // weiterhin nur ein BPL lädt. Geprüft durch Tools\Check-PackageDependencies.ps1.
@@ -53,6 +53,7 @@ contains
   Atlas.Text.Defines in 'Source\Defines\Atlas.Text.Defines.pas',
   Atlas.Text.Checkin in 'Source\Checkin\Atlas.Text.Checkin.pas',
   Atlas.Text.DUnitX in 'Source\DUnitX\Atlas.Text.DUnitX.pas',
-  Atlas.Text.TestResults in 'Source\TestResults\Atlas.Text.TestResults.pas';
+  Atlas.Text.TestResults in 'Source\TestResults\Atlas.Text.TestResults.pas',
+  Atlas.Text.MapFile in 'Source\MapFile\Atlas.Text.MapFile.pas';
 
 end.

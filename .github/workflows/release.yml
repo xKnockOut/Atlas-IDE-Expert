@@ -133,6 +133,17 @@ jobs:
           Copy-Item 'Setup\Profile' "$dist\Profile" -Recurse
           Copy-Item 'Output\Win32\Release\Bpl\Atlas.IDE.Expert*.bpl' "$dist\Win32"
           Copy-Item 'Output\Win64\Release\Bpl\Atlas.IDE.Expert*.bpl' "$dist\Win64"
+          # Map-Dateien für Stacktraces mit Unit und Zeile: AtlasServer.map neben die EXE, die Map des Plugins
+          # unter dem Namen der BPL daneben (der Installer kopiert beide mit). Alle Projekte bauen mit
+          # DCC_MapFile=3; fehlt eine Map, stimmt der Build nicht.
+          Copy-Item 'Output\Win64\Release\Bin\AtlasServer.map' $dist
+          foreach ($platform in 'Win32', 'Win64') {
+            $map = Get-ChildItem "Output\$platform\Release\Bpl\Atlas.IDE.Expert*.map" | Select-Object -First 1
+            if (-not $map) { throw "Map-Datei des Plugins ($platform) fehlt" }
+            foreach ($bpl in Get-ChildItem "$dist\$platform\*.bpl") {
+              Copy-Item $map.FullName ([IO.Path]::ChangeExtension($bpl.FullName, '.map'))
+            }
+          }
           if (-not (Get-ChildItem "$dist\Win32\*.bpl")) { throw 'Win32-BPL fehlt' }
           # Neben die EXE, damit das Artefakt flach bleibt (gemeinsamer Ordner aller Dateien).
           Compress-Archive -Path "$dist\*" -DestinationPath 'Output\Win64\Release\Bin\atlas-ide-expert-${{ needs.version.outputs.version }}.zip' -Force

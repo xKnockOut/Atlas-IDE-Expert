@@ -649,6 +649,19 @@ Protokoll: `Atlas.IDE.Expert370.log` neben dem Plugin (Hänger stehen dort immer
 | W6 | IDE schließen | Schließt ohne Verzögerung; bei Hängern in der Sitzung steht am Ende „Sitzung: n Hänger, längster …“ |
 | W7 | Diagnosemodus aus; Reiter *Robustheit* ansehen und in der Befehlspalette „Wächter“ suchen | Kein Knopf „Wächter testen“, kein Palettenbefehl; nach dem Einschalten des Diagnosemodus erscheint der Knopf sofort, der Befehl beim nächsten Öffnen der Palette (Code-Review S-07) |
 
+## Stacktraces der Absturzsicherung (#493)
+
+Protokoll: `atlas.log` (Diagnosemodus an). Voraussetzung: `Atlas.IDE.Expert370.map` liegt neben der BPL (Release/Installer oder eigener Build mit Map-Datei „detailliert“).
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| ST1 | IDE mit Atlas starten | Zeile „Stacktraces: Map-Datei … geladen“ spätestens beim ersten Fehler; keine Meldung über einen fehlgeschlagenen Ausnahmebehandler |
+| ST2 | Einen Fehler in einer Atlas-Funktion auslösen (z. B. Datei mit Syntaxfehlern öffnen, während der Server gestoppt ist, und Brotkrumen anklicken) | Unter der Zeile „Fehler in …“ folgen Zeilen `Atlas.IDE.Expert370.bpl+$… Unit.Klasse.Methode (Unit.pas:Zeile)`, die oberste nennt die Stelle des Fehlers |
+| ST3 | Map-Datei umbenennen, IDE neu starten, ST2 wiederholen | Stack nur mit `Modul+$Offset`-Zeilen, Protokoll nennt die fehlende Map einmal |
+| ST4 | Andere Packages der IDE werfen Ausnahmen (z. B. Debuggen eines Programms mit Ausnahmen, Formulardesigner) | Kein spürbarer Unterschied, keine Atlas-Zeilen für diese Ausnahmen |
+| ST5 | Einfrier-Wächter testen (W1) | Rahmen in `Atlas.IDE.Expert370.bpl` tragen Unit, Routine und Zeile |
+| ST6 | IDE beenden und Atlas über *Komponenten › Packages installieren* entladen | Kein Absturz; Protokoll nennt den Abbauschritt „StackCapture“ ohne Fehler |
+
 ## Include-Dateien (#500)
 
 Vorbereitung: `Tests\Referenzprojekt\RefGruppe.groupproj` öffnen; `Ref.Daten.Auftraege.pas` bindet `Ref.Daten.Auftraege.inc` (Typen) und `Ref.Daten.Auftraege.Rumpf.inc` (Rümpfe) ein.

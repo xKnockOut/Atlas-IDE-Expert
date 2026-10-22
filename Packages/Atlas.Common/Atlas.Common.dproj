@@ -114,7 +114,6 @@
         <DCCReference Include="Source\Compiler\Atlas.Common.Compiler.Edition.pas"/>
         <DCCReference Include="Source\Compiler\Atlas.Common.Compiler.Backend.pas"/>
         <DCCReference Include="Source\Compiler\Atlas.Common.Compiler.IdeCommand.pas"/>
-        <DCCReference Include="Source\Diagnostics\Atlas.Common.Diagnostics.MapFile.pas"/>
         <DCCReference Include="Source\Diagnostics\Atlas.Common.Diagnostics.Contract.pas"/>
         <DCCReference Include="Source\Diagnostics\Atlas.Common.Diagnostics.Anonymizer.pas"/>
         <DCCReference Include="Source\Diagnostics\Atlas.Common.Diagnostics.BugReport.pas"/>

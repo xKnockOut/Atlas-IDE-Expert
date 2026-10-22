@@ -16,8 +16,10 @@ Für das IDE-Plugin (#495) enthält jedes Release `atlas-ide-expert-<Version>.zi
 ```
 AtlasSetup.exe          Installer
 AtlasServer.exe         Server (Win64)
+AtlasServer.map         Map-Datei: Stacktraces im Server-Log mit Unit, Routine und Zeile
 Win32\Atlas.IDE.Expert370.bpl   Plugin für die klassische IDE
 Win64\Atlas.IDE.Expert370.bpl   Plugin für die 64-Bit-IDE
+Win32\Atlas.IDE.Expert370.map, Win64\…   Map-Dateien des Plugins für Stacktraces im atlas.log
 LICENSE, THIRD-PARTY-NOTICES.md
 EULA.txt                Lizenzvereinbarung, die der Installer vor dem ersten Installieren bestätigen lässt
 whatsnew.json           Neuerungen je Version für die Karte „Neu in Atlas“ (#756)
