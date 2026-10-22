@@ -22,6 +22,9 @@ type
     class function FromSource(const AText, AName: string): string; static;
     /// <summary>SQL.Strings bzw. CommandText der Komponente AName in der Formulardatei; '' ohne.</summary>
     class function FromForm(const AFormText, AName: string): string; static;
+    /// <summary>Text eines SQL-Werts der Formulardatei: ('Zeile' 'Zeile') bzw. 'Text', lange Zeilen mit "+"
+    /// fortgesetzt; False, wenn der Wert etwas anderes als Literale enthält.</summary>
+    class function FormValue(const AValue: string; out AText: string): Boolean; static;
     /// <summary>Namen aus AName.ParamByName('X'), auch über .Params bzw. .Parameters, ohne Doppelte.</summary>
     class function AssignedParams(const AText, AName: string): TArray<string>; static;
     /// <summary>Namen aus AItems, die in AOf fehlen (ohne Groß-/Kleinschreibung).</summary>
@@ -280,15 +283,45 @@ begin
   Result := nil;
 end;
 
+class function TSqlText.FormValue(const AValue: string; out AText: string): Boolean;
+var
+  Value, Line, Plain, Rest: string;
+  Continued: Boolean;
+  Separator: Integer;
+begin
+  AText := '';
+  Value := Trim(AValue);
+  if StartsStr('(', Value) and EndsStr(')', Value) then
+    Value := Copy(Value, 2, Length(Value) - 2);
+  Continued := True;
+  Rest := StringReplace(Value, #13#10, #10, [rfReplaceAll]) + #10;
+  Separator := Pos(#10, Rest);
+  while Separator > 0 do
+  begin
+    Line := Trim(Copy(Rest, 1, Separator - 1));
+    Delete(Rest, 1, Separator);
+    Separator := Pos(#10, Rest);
+    if Line = '' then
+      Continue;
+    if not TStringLiterals.PlainText(Line, Plain) then
+    begin
+      AText := '';
+      Exit(False);
+    end;
+    if not Continued then
+      AText := AText + #13#10;
+    AText := AText + Plain;
+    // Lange DFM-Zeilen setzen sich mit "+" in der nächsten fort.
+    Continued := EndsStr('+', Line);
+  end;
+  Result := True;
+end;
+
 class function TSqlText.FromForm(const AFormText, AName: string): string;
 var
   Document: TDfmDocument;
   Found: TDfmObject;
   Prop: TDfmProperty;
-  Value, Line, Plain: string;
-  Continued: Boolean;
-  Rest: string;
-  Separator: Integer;
 begin
   Result := '';
   // Name ohne Datenmodul-Präfix: DM.Q steht in der DFM als Q.
@@ -302,27 +335,7 @@ begin
     for Prop in Found.Properties do
       if SameText(Prop.Name, 'SQL.Strings') or SameText(Prop.Name, 'CommandText') then
       begin
-        Value := Trim(Prop.Value);
-        if StartsStr('(', Value) and EndsStr(')', Value) then
-          Value := Copy(Value, 2, Length(Value) - 2);
-        Continued := True;
-        Rest := StringReplace(Value, #13#10, #10, [rfReplaceAll]) + #10;
-        Separator := Pos(#10, Rest);
-        while Separator > 0 do
-        begin
-          Line := Trim(Copy(Rest, 1, Separator - 1));
-          Delete(Rest, 1, Separator);
-          Separator := Pos(#10, Rest);
-          if Line = '' then
-            Continue;
-          if not TStringLiterals.PlainText(Line, Plain) then
-            Exit('');
-          if not Continued then
-            Result := Result + #13#10;
-          Result := Result + Plain;
-          // Lange DFM-Zeilen setzen sich mit "+" in der nächsten fort.
-          Continued := EndsStr('+', Line);
-        end;
+        FormValue(Prop.Value, Result);
         Exit;
       end;
   finally

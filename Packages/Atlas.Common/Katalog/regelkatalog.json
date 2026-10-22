@@ -2029,6 +2029,24 @@
           "description": "Transaction methods per library as [{\"start\": …, \"commit\": …, \"rollback\": …}]; replaces the built-in pairs."
         }
       ]
+    },
+    {
+      "id": "sql-write-without-where",
+      "name": "UPDATE or DELETE without WHERE",
+      "category": "bug",
+      "severity": "warning",
+      "group": "database",
+      "description": "An UPDATE or DELETE without WHERE in a string literal, SQL.Text, SQL.Add, CommandText, the first argument of ExecSQL, ExecSQLScalar, ExecuteDirect or Execute, or in SQL.Strings/CommandText of the form file. It affects every row of the table; usually the condition was forgotten. The rule assembles the SQL text per query within a routine (Clear and a new Text start over) and substitutes constants and local values. JOIN, TOP, LIMIT and ROWS restrict the rows as well; a WHERE in a subquery or comment does not count. Unknown parts behind the table name (variables, calls at the place of a clause) keep the statement silent; a dynamic table name reports with medium confidence. Silent when the routine passes the SQL on or another routine of the unit adds to it; form file SQL only counts when the unit does not change it. Literals outside SQL properties count only with DELETE or UPDATE in capitals, so message texts stay silent. High confidence, no quick fix; tables that are emptied on purpose go into allowTables.",
+      "bad": "qry.SQL.Text := 'DELETE FROM Warenkorb';\nqry.ExecSQL;",
+      "good": "qry.SQL.Text := 'DELETE FROM Warenkorb WHERE Kunde = :Kunde';\nqry.ParamByName('Kunde').AsInteger := KundeId;\nqry.ExecSQL;",
+      "options": [
+        {
+          "name": "allowTables",
+          "type": "string-list",
+          "default": [],
+          "description": "Tables that are deliberately emptied or changed completely, with or without schema."
+        }
+      ]
     }
   ]
 }
