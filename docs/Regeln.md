@@ -15,7 +15,7 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 | [Komponenten](#gruppe-components) | 8 |
 | [Formulare und Daten](#gruppe-forms) | 10 |
 | [Architektur](#gruppe-architecture) | 3 |
-| [Stil und Metriken](#gruppe-style) | 25 |
+| [Stil und Metriken](#gruppe-style) | 26 |
 | [Packages und Tests](#gruppe-packages) | 1 |
 | [Atlas intern](#gruppe-internal) | 3 |
 
@@ -201,6 +201,7 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 | [`metric-class-size`](#metric-class-size) | Klasse mit zu vielen Membern | Code Smell | Hinweis |
 | [`metric-unit-length`](#metric-unit-length) | Unit zu lang | Code Smell | Hinweis |
 | [`metric-uses-count`](#metric-uses-count) | Zu viele Units im uses | Code Smell | Hinweis |
+| [`public-field`](#public-field) | Öffentliches Feld | Code Smell | Hinweis |
 
 <a id="gruppe-packages"></a>
 ### Packages und Tests
@@ -3304,4 +3305,35 @@ Richtig:
 ```pascal
 uses
   { 12 units; reports in Kasse.Berichte }
+```
+
+<a id="public-field"></a>
+### public-field
+
+**Öffentliches Feld** · Code Smell · Hinweis · Gruppe Stil und Metriken
+
+Felder im public- oder published-Abschnitt einer Klasse. Der Abschnitt ohne Sichtbarkeitswort zählt nur bei Klassen ohne Vorfahren oder mit TObject, weil der Formulardesigner dort seine Felder anlegt. Records sind ausgenommen, außer mit includeRecords; class var wird nicht gemeldet. Standard aus. Schnellkorrektur: Feld kapseln legt das Feld als FName in einen private-Abschnitt am Ende der Klasse und ergänzt im alten Abschnitt property Name read FName write FName; Zugriffe von außen bleiben gültig.
+
+| Option | Typ | Vorgabe | Bedeutung |
+|---|---|---|---|
+| `includeRecords` | boolean | `false` | Auch Felder von Records melden. |
+
+Mit Treffer:
+
+```pascal
+TKunde = class
+public
+  Name: string;
+end;
+```
+
+Richtig:
+
+```pascal
+TKunde = class
+private
+  FName: string;
+public
+  property Name: string read FName write FName;
+end;
 ```

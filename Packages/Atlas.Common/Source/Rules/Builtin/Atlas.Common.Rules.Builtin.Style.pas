@@ -17,6 +17,11 @@
 //   line-length              Zeile über der Grenze "max" (Vorgabe 120, Tabs nach format.indentSize), Strings
 //                            und Kommentare abschaltbar ausgenommen (Standard aus); Korrektur bricht hinter
 //                            Kommas bzw. vor Operatoren um. Über 1023 Zeichen immer Error wie F2069 (#938)
+//   public-field             Feld im public- oder published-Abschnitt einer Klasse (Standard aus, #940);
+//                            Records nur mit includeRecords. Der Abschnitt ohne Sichtbarkeitswort zählt nur
+//                            bei Klassen ohne Vorfahren bzw. mit TObject: sonst stehen dort die Felder des
+//                            Designers. Korrektur „Feld kapseln“: FName im private-Abschnitt am Ende der Klasse,
+//                            dazu property Name read FName write FName (wie /encapsulate, #298)
 // Exit, Break und Continue aus einem finally-Block lehnt der Compiler selbst ab;
 // dafür gibt es keine eigene Regel.
 
@@ -79,6 +84,12 @@ type
   TMagicNumberRule = class(TInterfacedObject, IRule)
   public const
     DefaultAllowed: array[0..5] of Double = (0, 1, -1, 2, 10, 100);
+  public
+    function Descriptor: TRuleDescriptor;
+    procedure Check(const AContext: TRuleContext; const AReport: IRuleReport);
+  end;
+
+  TPublicFieldRule = class(TInterfacedObject, IRule)
   public
     function Descriptor: TRuleDescriptor;
     procedure Check(const AContext: TRuleContext; const AReport: IRuleReport);
@@ -991,6 +1002,176 @@ begin
   Visit(AContext.Tree.Root, False);
 end;
 
+{ TPublicFieldRule }
+
+function TPublicFieldRule.Descriptor: TRuleDescriptor;
+begin
+  Result := TRuleDescriptor.Create('public-field', TRuleSeverity.Hint, 'Öffentliches Feld', True);
+end;
+
+procedure TPublicFieldRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
+var
+  Lines: TArray<string>;
+  LineBreak: string;
+  IncludeRecords: Boolean;
+
+  function NodeText(ANode: TSyntaxNode): string;
+  begin
+    Result := Trim(Copy(AContext.Text, ANode.StartOffset + 1, ANode.EndOffset - ANode.StartOffset));
+  end;
+
+  function LineOf(ALine: Integer): string;
+  begin
+    Result := '';
+    if (ALine >= 0) and (ALine <= High(Lines)) then
+      Result := Lines[ALine];
+  end;
+
+  // Steht ANode allein in seiner Zeile (nur Leerraum davor und dahinter)?
+  function AloneInLine(ANode: TSyntaxNode): Boolean;
+  begin
+    Result := (ANode.StartPos.Line = ANode.EndPos.Line) and
+      (Trim(Copy(LineOf(ANode.StartPos.Line), 1, ANode.StartPos.Character)) = '') and
+      (Trim(Copy(LineOf(ANode.EndPos.Line), ANode.EndPos.Character + 1, MaxInt)) = '');
+  end;
+
+  function HasMember(AType: TSyntaxNode; const AName: string): Boolean;
+  var
+    Index: Integer;
+    Name: string;
+  begin
+    for Index := 0 to AType.ChildCount - 1 do
+      if AType[Index].Kind in [TSyntaxKind.Field, TSyntaxKind.PropertyDecl, TSyntaxKind.RoutineHeader] then
+        for Name in AType[Index].Name.Split([',']) do
+          if SameText(Trim(Name), AName) then
+            Exit(True);
+    Result := False;
+  end;
+
+  // FName in private am Ende des Typs, Property im alten Abschnitt; der leere Abschnitt fällt weg.
+  function Encapsulate(AType, AField, ASection: TSyntaxNode; const AVisibility: string;
+    out AFix: TRuleFix): Boolean;
+  var
+    TypeRef, Next: TSyntaxNode;
+    Name, FieldName, TypeName, Indent: string;
+    EndLine, Index, Position: Integer;
+    Edits: TArray<TTextEdit>;
+  begin
+    Result := False;
+    Name := Trim(AField.Name);
+    TypeRef := AField.FindChild(TSyntaxKind.TypeReference);
+    if (Pos(',', Name) > 0) or (TypeRef = nil) or not AloneInLine(AField) then
+      Exit;
+    // Mit F-Präfix hieße die Property anders als das Feld; Zugriffe von außen gingen verloren.
+    if (Length(Name) >= 2) and CharInSet(Name[1], ['F', 'f']) and CharInSet(Name[2], ['A'..'Z']) then
+      Exit;
+    FieldName := 'F' + UpperCase(Copy(Name, 1, 1)) + Copy(Name, 2, MaxInt);
+    if HasMember(AType, FieldName) then
+      Exit;
+    TypeName := NodeText(TypeRef);
+    EndLine := AType.EndPos.Line;
+    if Trim(Copy(LineOf(EndLine), 1, AType.EndPos.Character - 3)) <> '' then
+      Exit;
+    Indent := TTextLines.IndentOf(LineOf(EndLine));
+    Edits := [TTextEdit.Create(TTextRange.Create(AField.StartPos.Line, 0, AField.StartPos.Line + 1, 0), '')];
+    // Einziges Mitglied seines Abschnitts: das Sichtbarkeitswort geht mit.
+    if (ASection <> nil) and AloneInLine(ASection) then
+    begin
+      Position := -1;
+      for Index := 0 to AType.ChildCount - 1 do
+        if AType[Index] = AField then
+          Position := Index;
+      Next := nil;
+      if (Position >= 0) and (Position < AType.ChildCount - 1) then
+        Next := AType[Position + 1];
+      if (Position > 0) and (AType[Position - 1] = ASection) and
+        ((Next = nil) or (Next.Kind = TSyntaxKind.Visibility)) then
+        Edits := [TTextEdit.Create(TTextRange.Create(ASection.StartPos.Line, 0, ASection.StartPos.Line + 1, 0), '')] +
+          Edits;
+    end;
+    Edits := Edits + [TTextEdit.Create(TTextRange.Create(EndLine, 0, EndLine, 0), Indent + 'private' + LineBreak +
+      Indent + '  ' + FieldName + ': ' + TypeName + ';' + LineBreak + Indent + AVisibility + LineBreak + Indent +
+      '  property ' + Name + ': ' + TypeName + ' read ' + FieldName + ' write ' + FieldName + ';' + LineBreak)];
+    AFix := TRuleFix.Create('Feld kapseln', Edits);
+    Result := True;
+  end;
+
+  procedure CheckType(AType: TSyntaxNode; AImplicitCounts: Boolean; const AImplicit: string);
+  var
+    Index: Integer;
+    Child, Section: TSyntaxNode;
+    Visibility, Name: string;
+    Fix: TRuleFix;
+    Fixes: TArray<TRuleFix>;
+  begin
+    Visibility := '';
+    Section := nil;
+    for Index := 0 to AType.ChildCount - 1 do
+    begin
+      Child := AType[Index];
+      if Child.Kind = TSyntaxKind.Visibility then
+      begin
+        Visibility := Child.Name;
+        Section := Child;
+        Continue;
+      end;
+      if Child.Kind <> TSyntaxKind.Field then
+        Continue;
+      if Visibility = '' then
+      begin
+        if not AImplicitCounts then
+          Continue;
+      end
+      else if not MatchText(Visibility, ['public', 'published']) then
+        Continue;
+      Fixes := nil;
+      if Visibility = '' then
+      begin
+        if Encapsulate(AType, Child, nil, AImplicit, Fix) then
+          Fixes := [Fix];
+      end
+      else if Encapsulate(AType, Child, Section, Visibility, Fix) then
+        Fixes := [Fix];
+      for Name in Child.Name.Split([',']) do
+        AReport.Add(TTextRange.Create(Child.StartPos, Child.EndPos), Format('Öffentliches Feld %s; eine Property ' +
+          'hält die Klasse änderbar.', [Trim(Name)]), Fixes);
+    end;
+  end;
+
+  // Abschnitt ohne Sichtbarkeitswort: bei Klassen ohne Vorfahren public, sonst oft Felder des Designers.
+  function PlainClass(AClass: TSyntaxNode): Boolean;
+  var
+    Ancestor: TSyntaxNode;
+  begin
+    Ancestor := AClass.FindChild(TSyntaxKind.TypeReference);
+    Result := (Ancestor = nil) or SameText(NodeText(Ancestor), 'TObject');
+  end;
+
+  procedure Visit(ANode: TSyntaxNode);
+  var
+    Index: Integer;
+  begin
+    case ANode.Kind of
+      TSyntaxKind.ClassType:
+        CheckType(ANode, PlainClass(ANode), 'public');
+      TSyntaxKind.RecordType:
+        if IncludeRecords then
+          CheckType(ANode, True, 'public');
+      TSyntaxKind.Block, TSyntaxKind.AsmBlock:
+        Exit;
+    end;
+    for Index := 0 to ANode.ChildCount - 1 do
+      Visit(ANode[Index]);
+  end;
+
+begin
+  if (AContext.Tree = nil) or (AContext.Tree.Root = nil) then
+    Exit;
+  IncludeRecords := TRuleOptions.Bool(AContext.Options, 'includeRecords', False);
+  Lines := TTextLines.SplitLines(AContext.Text, LineBreak);
+  Visit(AContext.Tree.Root);
+end;
+
 { TLineLengthRule }
 
 function TLineLengthRule.Descriptor: TRuleDescriptor;
@@ -1218,6 +1399,7 @@ begin
   ARegistry.Register(TCaseInsensitiveCompareRule.Create);
   ARegistry.Register(TMagicNumberRule.Create);
   ARegistry.Register(TLineLengthRule.Create);
+  ARegistry.Register(TPublicFieldRule.Create);
 end;
 
 end.

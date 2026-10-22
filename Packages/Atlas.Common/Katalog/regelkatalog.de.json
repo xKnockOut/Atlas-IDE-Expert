@@ -856,6 +856,17 @@
           "description": "Höchstzahl der Units in allen uses-Klauseln."
         }
       ]
+    },
+    {
+      "id": "public-field",
+      "name": "Öffentliches Feld",
+      "description": "Felder im public- oder published-Abschnitt einer Klasse. Der Abschnitt ohne Sichtbarkeitswort zählt nur bei Klassen ohne Vorfahren oder mit TObject, weil der Formulardesigner dort seine Felder anlegt. Records sind ausgenommen, außer mit includeRecords; class var wird nicht gemeldet. Standard aus. Schnellkorrektur: Feld kapseln legt das Feld als FName in einen private-Abschnitt am Ende der Klasse und ergänzt im alten Abschnitt property Name read FName write FName; Zugriffe von außen bleiben gültig.",
+      "options": [
+        {
+          "name": "includeRecords",
+          "description": "Auch Felder von Records melden."
+        }
+      ]
     }
   ]
 }

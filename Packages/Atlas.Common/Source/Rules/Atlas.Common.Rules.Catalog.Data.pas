@@ -1647,6 +1647,24 @@ begin
     '          "description": "Maximum number of units in all uses clauses."' + #10 +
     '        }' + #10 +
     '      ]' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "public-field",' + #10 +
+    '      "name": "Public field",' + #10 +
+    '      "category": "code-smell",' + #10 +
+    '      "severity": "hint",' + #10 +
+    '      "group": "style",' + #10 +
+    '      "description": "Fields in the public or published section of a class. The section without a visibility keyword only counts for classes without an ancestor or with TObject, because the form desig' + 'ner puts its fields there. Records are excluded unless includeRecords is set; class var is not reported. Off by default. Quick fix: Encapsulate field moves the field as FName into a private section at' + ' the end of the class and adds property Name read FName write FName in the old section; accesses from outside stay valid.",' + #10 +
+    '      "bad": "TKunde = class\npublic\n  Name: string;\nend;",' + #10 +
+    '      "good": "TKunde = class\nprivate\n  FName: string;\npublic\n  property Name: string read FName write FName;\nend;",' + #10 +
+    '      "options": [' + #10 +
+    '        {' + #10 +
+    '          "name": "includeRecords",' + #10 +
+    '          "type": "boolean",' + #10 +
+    '          "default": false,' + #10 +
+    '          "description": "Also report fields of records."' + #10 +
+    '        }' + #10 +
+    '      ]' + #10 +
     '    }' + #10 +
     '  ]' + #10 +
     '}' + #10 +
@@ -2513,6 +2531,17 @@ begin
     '        {' + #10 +
     '          "name": "max",' + #10 +
     '          "description": "Höchstzahl der Units in allen uses-Klauseln."' + #10 +
+    '        }' + #10 +
+    '      ]' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "public-field",' + #10 +
+    '      "name": "Öffentliches Feld",' + #10 +
+    '      "description": "Felder im public- oder published-Abschnitt einer Klasse. Der Abschnitt ohne Sichtbarkeitswort zählt nur bei Klassen ohne Vorfahren oder mit TObject, weil der Formulardesigner dor' + 't seine Felder anlegt. Records sind ausgenommen, außer mit includeRecords; class var wird nicht gemeldet. Standard aus. Schnellkorrektur: Feld kapseln legt das Feld als FName in einen private-Abschnit' + 't am Ende der Klasse und ergänzt im alten Abschnitt property Name read FName write FName; Zugriffe von außen bleiben gültig.",' + #10 +
+    '      "options": [' + #10 +
+    '        {' + #10 +
+    '          "name": "includeRecords",' + #10 +
+    '          "description": "Auch Felder von Records melden."' + #10 +
     '        }' + #10 +
     '      ]' + #10 +
     '    }' + #10 +
