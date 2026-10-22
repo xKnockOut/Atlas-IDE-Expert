@@ -2467,6 +2467,125 @@
       "level": "T"
     },
     {
+      "id": "abstract-declaration-invalid",
+      "name": "abstract, final or static combined wrongly",
+      "category": "bug",
+      "severity": "error",
+      "group": "compiler",
+      "description": "A method directive the compiler rejects: abstract without virtual, dynamic or override (like E2167), a body in the implementation section for an abstract method (like E2136), final on a method that is not virtual (like E2351), abstract together with final (like E2371), a class declared abstract sealed (like E2383, E2540) or static on an instance method or a virtual class method (like E2376). A body only counts for an abstract method when no non-abstract method of the same name in the same class is compiled with it (overloads, {$IFDEF} branches). Quick fixes: insert virtual; before abstract, remove the body.",
+      "bad": "TForm = class\n  function Flaeche: Double; abstract;\nend;",
+      "good": "TForm = class\n  function Flaeche: Double; virtual; abstract;\nend;",
+      "compilerCodes": [
+        "E2167",
+        "E2136",
+        "E2351",
+        "E2371",
+        "E2383",
+        "E2540",
+        "E2376"
+      ]
+    },
+    {
+      "id": "unsatisfied-forward",
+      "name": "Forward declaration never satisfied",
+      "category": "bug",
+      "severity": "error",
+      "group": "compiler",
+      "description": "A routine declared in the interface section or with forward has no body (like E2065), or a forward declaration TFoo = class; or IFoo = interface; is never completed in the same type section (like E2086, E2420). Methods are checked by declared-not-implemented. A body fits when it has the same name; with overload the number of parameters must match too. An external declaration in the implementation section counts as a body. Declarations inside a {$IFDEF} branch are skipped; with include files the rule does not check routines. Quick fix: create an empty body before initialization or the final end.",
+      "bad": "interface\n\nfunction Pruefsumme(const Daten: TBytes): Cardinal;\n\nimplementation\n\nend.",
+      "good": "interface\n\nfunction Pruefsumme(const Daten: TBytes): Cardinal;\n\nimplementation\n\nfunction Pruefsumme(const Daten: TBytes): Cardinal;\nbegin\n  Result := 0;\nend;\n\nend.",
+      "compilerCodes": [
+        "E2065",
+        "E2086",
+        "E2420"
+      ]
+    },
+    {
+      "id": "member-hides-ancestor",
+      "name": "Member hides a member of the ancestor",
+      "category": "bug",
+      "severity": "warning",
+      "group": "compiler",
+      "description": "A property has the name of a field of an ancestor (like W1009), a field has the name of a field or property of an ancestor, or a non-virtual method has the name and parameters of a non-virtual method of an ancestor. Code that accesses the object through the ancestor type still sees the old member. Virtual methods are reported by hides-virtual, local names by shadowed-name. Republished properties (property Caption;), properties with a new type over an ancestor property, overload, reintroduce, constructors and class methods are not reported. Members the descendant cannot see (private in another unit, strict private with ignoreStrictPrivate) are skipped; ancestors come from the file and the symbol index. Quick fix for fields and properties: rename the member in the class declaration and the bodies of its methods in this unit (FName becomes FKundeName).",
+      "bad": "TBasis = class\n  FName: string;\nend;\nTKunde = class(TBasis)\n  FName: string;\nend;",
+      "good": "TBasis = class\n  FName: string;\nend;\nTKunde = class(TBasis)\n  FKundeName: string;\nend;",
+      "compilerCodes": [
+        "W1009"
+      ],
+      "options": [
+        {
+          "name": "ignoreStrictPrivate",
+          "type": "boolean",
+          "default": true,
+          "description": "Do not report hidden strict private members of the ancestor."
+        }
+      ]
+    },
+    {
+      "id": "published-type-invalid",
+      "name": "Invalid member in the published section",
+      "category": "bug",
+      "severity": "error",
+      "group": "compiler",
+      "description": "A member behind an explicit published that the compiler rejects: a property of a record, array, pointer or plain procedural type (like E2188), of type Real48 (like E2186) or of a set larger than 4 bytes (like E2187), a field that is neither a class nor an interface (like E2217), more than one published overload (like E2266), a class property (like E2545) or a name with non-ASCII characters (like E2452). Types are resolved through the file and the index, aliases are followed; type parameters, unknown types and sections whose published is in another conditional branch than the member stay silent. The section without visibility specifier is not checked, because the compiler silently demotes such members to public there. Quick fix: move the member into the public section.",
+      "bad": "TKarte = class(TCustomControl)\npublished\n  property Mitte: TPointF read FMitte write SetMitte;\nend;",
+      "good": "TKarte = class(TCustomControl)\npublic\n  property Mitte: TPointF read FMitte write SetMitte;\nend;",
+      "compilerCodes": [
+        "E2188",
+        "E2217",
+        "E2186",
+        "E2187",
+        "E2266",
+        "E2545",
+        "E2452"
+      ]
+    },
+    {
+      "id": "override-case-mismatch",
+      "name": "Spelling or visibility differs from the ancestor",
+      "category": "code-smell",
+      "severity": "hint",
+      "group": "compiler",
+      "description": "An overriding method spells its name differently from the ancestor (destructor destroy, like H2365) or has a lower visibility than the overridden method (like H2269, only for classes in the interface section; visibilities are compared in tiers private, protected, public), a getter or setter is named Get<Property> or Set<Property> but spelled differently (like H2367), or an inline method accesses a member that is less visible than the method itself, so the compiler cannot expand it outside the class (like H2440). Matters for C++Builder users of the units and for consistent code. The docwiki lists H2269 and H2367 as X2269 and X2367 because their level can be changed; dcc reports them as hints by default. H2368 and H2369 are not covered, since it is not documented when dcc reports them. Off by default; switch it on in atlas.json. Quick fixes: adopt the ancestor's spelling, rename the accessor.",
+      "bad": "TKunde = class\n  destructor destroy; override;\nend;",
+      "good": "TKunde = class\n  destructor Destroy; override;\nend;",
+      "compilerCodes": [
+        "H2365",
+        "H2440",
+        "H2269",
+        "H2367"
+      ]
+    },
+    {
+      "id": "default-property-invalid",
+      "name": "default property declared wrongly or missing",
+      "category": "bug",
+      "severity": "error",
+      "group": "compiler",
+      "description": "default; behind a property without index parameters (like E2132), a second default property of the same class with the same index types (like E2131; overloading by index type is allowed), or Obj[I] on a class that has no default property in its whole ancestor chain (like E2149). The type of Obj is resolved by name resolution; unresolvable types, broken ancestor chains and classes with a class helper in the unit stay silent. Property redeclarations without a type (property Items; default;) take the index from the ancestor and are not checked.",
+      "bad": "TListe = class\n  property Name: string read FName; default;\nend;",
+      "good": "TListe = class\n  property Items[I: Integer]: string read GetItem; default;\nend;",
+      "compilerCodes": [
+        "E2131",
+        "E2132",
+        "E2149"
+      ]
+    },
+    {
+      "id": "property-redeclaration-invalid",
+      "name": "Redeclared property missing in the ancestor",
+      "category": "bug",
+      "severity": "error",
+      "group": "compiler",
+      "description": "A property redeclaration without type such as property Caption; (to change the visibility or the default value) names a property that no ancestor has (like E2147), or the ancestor's property is not accessible from here: strict private, or private in another unit (like E2233). Only reported when the whole ancestor chain is known; a field or method of the same name and declarations in inactive conditional branches stay silent. Quick fix: use the most similar property name of the ancestors.",
+      "bad": "TMeinPanel = class(TCustomPanel)\npublished\n  property Captoin;\nend;",
+      "good": "TMeinPanel = class(TCustomPanel)\npublished\n  property Caption;\nend;",
+      "compilerCodes": [
+        "E2147",
+        "E2233"
+      ]
+    },
+    {
       "id": "inline-not-expanded",
       "name": "Inline function is not expanded",
       "category": "code-smell",

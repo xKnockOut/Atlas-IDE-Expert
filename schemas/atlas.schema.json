@@ -497,6 +497,11 @@
                 "minimum": 2,
                 "default": 4,
                 "description": "Nur string-if-chain: so viele Vergleiche desselben Strings in einer if-Kette meldet die Regel (#1066)."
+              },
+              "ignoreStrictPrivate": {
+                "type": "boolean",
+                "default": true,
+                "description": "Nur member-hides-ancestor: verdeckte strict private Member des Vorfahren nicht melden (#1003)."
               }
             }
           }

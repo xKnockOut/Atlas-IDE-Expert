@@ -154,3 +154,10 @@ inline-not-expanded | Ref.Sprache.Merkmale.pas | function Zaehler: TZaehlerFunkt
 deprecated-symbol | Ref.Komponenten.Anzeige.pas | StandardBreite = 120; | StandardBreite = 120 deprecated 'Nutze Width';
 syntax | Ref.Daten.Suche.pas |     Result := FAnbieter(AName)\n  else |     Result := FAnbieter(AName);\n  else
 directive-typo | Ref.Komponenten.Anzeige.pas | procedure Paint; override; | procedure Paint; overide;
+abstract-declaration-invalid | Ref.Daten.Suche.pas | class procedure Anmelden(const AAnbieter: TFunc<string, TArray<string>>); static; | procedure Anmelden(const AAnbieter: TFunc<string, TArray<string>>); static;
+unsatisfied-forward | Ref.Sprache.Merkmale.pas | function Zaehler: TZaehlerFunktion;\nbegin | function ZaehlerNeu: TZaehlerFunktion;\nbegin
+member-hides-ancestor | Ref.Sprache.Merkmale.pas |   TDezimalFormatierer = class(TInterfacedObject, IFormatierer) |   THuelleBasis = class\n    FWert: Integer;\n  end;\n  THuelle = class(THuelleBasis)\n    FWert: Integer;\n  end;\n  TDezimalFormatierer = class(TInterfacedObject, IFormatierer)
+published-type-invalid | Ref.Komponenten.Anzeige.pas |   published\n    property Stil: |   published\n    FZaehler: Integer;\n    property Stil:
+override-case-mismatch | Ref.Daten.Kunden.pas | destructor Destroy; override; | destructor destroy; override;
+default-property-invalid | Ref.Daten.Kunden.pas | procedure Speichern(AId: Integer; const AName: string);\n  end; | procedure Speichern(AId: Integer; const AName: string);\n    property Abfrage: TFDQuery read FAbfrage; default;\n  end;
+property-redeclaration-invalid | Ref.Sprache.Merkmale.pas |   TDezimalFormatierer = class(TInterfacedObject, IFormatierer) |   TAnzeigeBasis = class\n  protected\n    FWert: Integer;\n    property Wert: Integer read FWert;\n  end;\n  TAnzeigeWert = class(TAnzeigeBasis)\n  public\n    property Wret;\n  end;\n  TDezimalFormatierer = class(TInterfacedObject, IFormatierer)

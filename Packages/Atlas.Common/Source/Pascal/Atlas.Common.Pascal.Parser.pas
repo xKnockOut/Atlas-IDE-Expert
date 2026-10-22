@@ -242,7 +242,11 @@ type
     function TooDeep: TSyntaxNode;
     function ParsePrimary: TSyntaxNode;
     function ParseAnonymousMethod: TSyntaxNode;
-    function LooksLikeGenericArgs: Boolean;
+    /// <summary>Steht auf "&lt;": Folgen generische Argumente? Im Ausdruck darf danach kein Operand stehen.</summary>
+    function LooksLikeGenericArgs: Boolean; overload;
+    /// <summary>Wie oben; AInType: im Typverweis ist "&lt;" immer der Anfang von Typargumenten, danach darf auch
+    /// ein Bezeichner folgen (property L: TList&lt;Integer&gt; read FL).</summary>
+    function LooksLikeGenericArgs(AInType: Boolean): Boolean; overload;
     procedure ParseGenericArgs(AParent: TSyntaxNode);
     procedure ParseArguments(AParent: TSyntaxNode; const ACloser: string);
     function Binary(const AOperator: string; ALeft, ARight: TSyntaxNode; AStartIndex: Integer): TSyntaxNode;
@@ -1400,7 +1404,7 @@ begin
   else
     DiagnoseUnexpected('Typ');
   repeat
-    if IsSym('<') and LooksLikeGenericArgs then
+    if IsSym('<') and LooksLikeGenericArgs(True) then
       ParseGenericArgs(Result);
     if IsSym('.') and (PeekToken(1).Kind in [TPascalTokenKind.Identifier, TPascalTokenKind.Keyword]) then
     begin
@@ -2589,6 +2593,11 @@ begin
 end;
 
 function TParser.LooksLikeGenericArgs: Boolean;
+begin
+  Result := LooksLikeGenericArgs(False);
+end;
+
+function TParser.LooksLikeGenericArgs(AInType: Boolean): Boolean;
 var
   Delta: Integer;
   Depth: Integer;
@@ -2612,7 +2621,8 @@ begin
   if Depth <> 0 then
     Exit(False);
   Token := PeekToken(Delta);
-  Result := not (Token.Kind in [TPascalTokenKind.Identifier, TPascalTokenKind.Number,
+  Result := AInType and (Token.Kind = TPascalTokenKind.Identifier);
+  Result := Result or not (Token.Kind in [TPascalTokenKind.Identifier, TPascalTokenKind.Number,
     TPascalTokenKind.StringLiteral, TPascalTokenKind.CharLiteral]);
 end;
 
