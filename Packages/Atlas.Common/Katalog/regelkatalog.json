@@ -1277,6 +1277,16 @@
           "description": "Checked methods; Create stands for all constructors whose name starts with Create."
         }
       ]
+    },
+    {
+      "id": "destroy-called-directly",
+      "name": "Destroy called instead of Free",
+      "category": "bug",
+      "severity": "warning",
+      "group": "find-bugs",
+      "description": "Obj.Destroy is called directly as a statement. If Obj is nil, the call crashes; Free checks for nil first and is the usual way to release an object. inherited Destroy and calls of a destructor with arguments are exempt. High confidence. Quick fix: Destroy becomes Free.",
+      "bad": "Verbindung.Destroy;",
+      "good": "Verbindung.Free;"
     }
   ]
 }

@@ -1297,6 +1297,16 @@ begin
     '          "description": "Checked methods; Create stands for all constructors whose name starts with Create."' + #10 +
     '        }' + #10 +
     '      ]' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "destroy-called-directly",' + #10 +
+    '      "name": "Destroy called instead of Free",' + #10 +
+    '      "category": "bug",' + #10 +
+    '      "severity": "warning",' + #10 +
+    '      "group": "find-bugs",' + #10 +
+    '      "description": "Obj.Destroy is called directly as a statement. If Obj is nil, the call crashes; Free checks for nil first and is the usual way to release an object. inherited Destroy and calls o' + 'f a destructor with arguments are exempt. High confidence. Quick fix: Destroy becomes Free.",' + #10 +
+    '      "bad": "Verbindung.Destroy;",' + #10 +
+    '      "good": "Verbindung.Free;"' + #10 +
     '    }' + #10 +
     '  ]' + #10 +
     '}' + #10 +
@@ -1977,6 +1987,11 @@ begin
     '          "description": "Geprüfte Methoden; Create steht für alle Konstruktoren, deren Name mit Create beginnt."' + #10 +
     '        }' + #10 +
     '      ]' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "destroy-called-directly",' + #10 +
+    '      "name": "Destroy statt Free aufgerufen",' + #10 +
+    '      "description": "Obj.Destroy wird direkt als Anweisung aufgerufen. Ist Obj nil, knallt der Aufruf; Free prüft vorher auf nil und ist der übliche Weg, ein Objekt freizugeben. inherited Destroy und' + ' Aufrufe eines Destruktors mit Argumenten sind ausgenommen. Konfidenz hoch. Schnellkorrektur: aus Destroy wird Free."' + #10 +
     '    }' + #10 +
     '  ]' + #10 +
     '}' + #10 +
