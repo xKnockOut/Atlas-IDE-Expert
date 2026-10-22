@@ -61,6 +61,15 @@ type
     class function IsInterfaceType(const AType: string): Boolean; static;
   end;
 
+  TRawMemoryLeakRule = class(TInterfacedObject, IRule)
+  public
+    function Descriptor: TRuleDescriptor;
+    procedure Check(const AContext: TRuleContext; const AReport: IRuleReport);
+    /// <summary>Passende Freigabe zur Belegung AAllocator (GetMem → FreeMem, New → Dispose, StrAlloc →
+    /// StrDispose); '' für eine unbekannte Belegung.</summary>
+    class function ReleaseFor(const AAllocator: string): string; static;
+  end;
+
 procedure RegisterOwnershipRules(const ARegistry: TRuleRegistry);
 
 implementation
@@ -84,6 +93,7 @@ const
   OwnedItemFreedRuleId = 'owned-item-freed';
   CreateWithoutAssignmentRuleId = 'create-without-assignment';
   SelfAsInterfaceInConstructorRuleId = 'self-as-interface-in-constructor';
+  RawMemoryLeakRuleId = 'raw-memory-leak';
   RemoveMethods: array[0..4] of string = ('Delete', 'Remove', 'RemoveItem', 'Clear', 'DeleteRange');
   ExtractMethods: array[0..3] of string = ('Extract', 'ExtractAt', 'ExtractItem', 'ExtractPair');
 
@@ -109,6 +119,52 @@ type
     /// <summary>Name der Elementvariablen bei Element.Free, sonst leer.</summary>
     Alias: string;
   end;
+
+/// <summary>Setzt die Anweisung AStatement (eine Zeile, allein in ihrer Zeile, mit APrefix davor) vor ein
+/// try, rückt die folgenden Anweisungen ihres Blocks ein und gibt im finally mit AFree frei (#948, #1047).
+/// False, wenn der Block sich so nicht umschließen lässt.</summary>
+function WrapFollowingInTryFinally(const ALines: TArray<string>; const ALineBreak: string; AStatement: TSyntaxNode;
+  const APrefix, AFree: string; const AStyle: TFormatStyle; out AEdit: TTextEdit): Boolean;
+var
+  Parent, LastSibling: TSyntaxNode;
+  Index, Line, LastLine: Integer;
+  Indent, UnitIndent, Rest, NewText: string;
+begin
+  Result := False;
+  Parent := AStatement.Parent;
+  if (Parent = nil) or not (Parent.Kind in [TSyntaxKind.Block, TSyntaxKind.TryStatement, TSyntaxKind.FinallyBlock,
+    TSyntaxKind.ExceptBlock]) or (AStatement.StartPos.Line <> AStatement.EndPos.Line) or
+    (AStatement.EndPos.Line > High(ALines)) or
+    (Trim(Copy(ALines[AStatement.StartPos.Line], 1, AStatement.StartPos.Character)) <> '') then
+    Exit;
+  Rest := Trim(Copy(ALines[AStatement.EndPos.Line], AStatement.EndPos.Character + 1, MaxInt));
+  if (Rest <> '') and (Rest <> ';') then
+    Exit;
+  // Letzte folgende Anweisung desselben Blocks; sie muss ihre Zeile allein beenden.
+  LastSibling := AStatement;
+  for Index := 0 to Parent.ChildCount - 1 do
+    if Parent[Index].StartOffset > AStatement.StartOffset then
+      LastSibling := Parent[Index];
+  LastLine := LastSibling.EndPos.Line;
+  if LastLine > High(ALines) then
+    Exit;
+  Rest := Trim(Copy(ALines[LastLine], LastSibling.EndPos.Character + 1, MaxInt));
+  if (Rest <> '') and (Rest <> ';') then
+    Exit;
+  Indent := Copy(ALines[AStatement.StartPos.Line], 1, AStatement.StartPos.Character);
+  UnitIndent := TRoutineBody.IndentUnit(AStyle);
+  NewText := Indent + APrefix + TrimLeft(ALines[AStatement.StartPos.Line]) + ALineBreak + Indent + 'try' +
+    ALineBreak;
+  for Line := AStatement.StartPos.Line + 1 to LastLine do
+    if Trim(ALines[Line]) = '' then
+      NewText := NewText + ALineBreak
+    else
+      NewText := NewText + UnitIndent + ALines[Line] + ALineBreak;
+  NewText := NewText + Indent + 'finally' + ALineBreak + Indent + UnitIndent + AFree + ALineBreak + Indent +
+    'end;' + ALineBreak;
+  AEdit := TTextEdit.Create(TTextRange.Create(AStatement.StartPos.Line, 0, LastLine + 1, 0), NewText);
+  Result := True;
+end;
 
 { TOwnedItemFreedRule }
 
@@ -750,47 +806,15 @@ var
   // "Name := T.Create(…);" mit try/finally um die folgenden Anweisungen des Blocks.
   function AssignFix(ARoutine, AStatement: TSyntaxNode; const ATypeText: string; out AFix: TRuleFix): Boolean;
   var
-    Parent, LastSibling: TSyntaxNode;
-    Index, Line, LastLine: Integer;
-    Indent, UnitIndent, Name, Rest, NewText: string;
+    Name: string;
+    Edit: TTextEdit;
   begin
-    Result := False;
-    Parent := AStatement.Parent;
-    if (Parent = nil) or not (Parent.Kind in [TSyntaxKind.Block, TSyntaxKind.TryStatement, TSyntaxKind.FinallyBlock,
-      TSyntaxKind.ExceptBlock]) or (AStatement.StartPos.Line <> AStatement.EndPos.Line) or
-      (AStatement.EndPos.Line > High(Lines)) or
-      (Trim(Copy(Lines[AStatement.StartPos.Line], 1, AStatement.StartPos.Character)) <> '') then
-      Exit;
-    Rest := Trim(Copy(Lines[AStatement.EndPos.Line], AStatement.EndPos.Character + 1, MaxInt));
-    if (Rest <> '') and (Rest <> ';') then
-      Exit;
-    // Letzte folgende Anweisung desselben Blocks; sie muss ihre Zeile allein beenden.
-    LastSibling := AStatement;
-    for Index := 0 to Parent.ChildCount - 1 do
-      if Parent[Index].StartOffset > AStatement.StartOffset then
-        LastSibling := Parent[Index];
-    LastLine := LastSibling.EndPos.Line;
-    if LastLine > High(Lines) then
-      Exit;
-    Rest := Trim(Copy(Lines[LastLine], LastSibling.EndPos.Character + 1, MaxInt));
-    if (Rest <> '') and (Rest <> ';') then
-      Exit;
-    Indent := Copy(Lines[AStatement.StartPos.Line], 1, AStatement.StartPos.Character);
-    UnitIndent := TRoutineBody.IndentUnit(AContext.Formatting);
     Name := TRoutineBody.UniqueName(Tokens, VariableName(ATypeText));
-    NewText := Indent + Name + ' := ' + TrimLeft(Lines[AStatement.StartPos.Line]) + LineBreak + Indent + 'try' +
-      LineBreak;
-    for Line := AStatement.StartPos.Line + 1 to LastLine do
-      if Trim(Lines[Line]) = '' then
-        NewText := NewText + LineBreak
-      else
-        NewText := NewText + UnitIndent + Lines[Line] + LineBreak;
-    NewText := NewText + Indent + 'finally' + LineBreak + Indent + UnitIndent + Name + '.Free;' + LineBreak + Indent +
-      'end;' + LineBreak;
-    AFix := TRuleFix.Create(Format('An %s zuweisen und in try/finally freigeben', [Name]),
-      [TRoutineBody.AddVariable(AContext.Text, ARoutine, Name, ATypeText, AContext.Formatting),
-      TTextEdit.Create(TTextRange.Create(AStatement.StartPos.Line, 0, LastLine + 1, 0), NewText)]);
-    Result := True;
+    Result := WrapFollowingInTryFinally(Lines, LineBreak, AStatement, Name + ' := ', Name + '.Free;',
+      AContext.Formatting, Edit);
+    if Result then
+      AFix := TRuleFix.Create(Format('An %s zuweisen und in try/finally freigeben', [Name]),
+        [TRoutineBody.AddVariable(AContext.Text, ARoutine, Name, ATypeText, AContext.Formatting), Edit]);
   end;
 
   procedure CheckStatement(ARoutine, AStatement: TSyntaxNode);
@@ -1255,11 +1279,322 @@ begin
   end;
 end;
 
+{ TRawMemoryLeakRule }
+
+type
+  /// <summary>Wie eine lokale Variable an einer Stelle vorkommt (raw-memory-leak, #1047).</summary>
+{$SCOPEDENUMS ON}
+  TRawMemoryUse = (Use, Alloc, Release, Escape);
+{$SCOPEDENUMS OFF}
+
+const
+  // Belegungen mit der Variablen als erstem Argument bzw. als Ziel der Zuweisung.
+  RawAllocCalls: array[0..2] of string = ('GetMem', 'New', 'ReallocMem');
+  RawAllocFunctions: array[0..4] of string = ('AllocMem', 'GetMemory', 'StrAlloc', 'StrNew', 'AnsiStrAlloc');
+  RawReleaseCalls: array[0..4] of string = ('FreeMem', 'Dispose', 'StrDispose', 'FreeMemory', 'FreeMemAndNil');
+  // Methoden, die den Zeiger übernehmen (in Listen, Felder anderer Objekte).
+  RawStorePrefixes: array[0..11] of string = ('Add', 'Insert', 'Push', 'Enqueue', 'Put', 'Store', 'Register',
+    'Attach', 'Append', 'Set', 'Assign', 'TryAdd');
+  // Teile eines Routinennamens, die auf eine eigene Freigaberoutine schließen lassen.
+  RawReleaseWords: array[0..5] of string = ('Free', 'Frei', 'Release', 'Dispose', 'Destroy', 'Dealloc');
+
+function TRawMemoryLeakRule.Descriptor: TRuleDescriptor;
+begin
+  Result := TRuleDescriptor.Create(RawMemoryLeakRuleId, TRuleSeverity.Warning,
+    'GetMem oder New ohne Freigabe');
+end;
+
+class function TRawMemoryLeakRule.ReleaseFor(const AAllocator: string): string;
+begin
+  if MatchText(AAllocator, ['GetMem', 'AllocMem', 'ReallocMem']) then
+    Result := 'FreeMem'
+  else if SameText(AAllocator, 'GetMemory') then
+    Result := 'FreeMemory'
+  else if SameText(AAllocator, 'New') then
+    Result := 'Dispose'
+  else if MatchText(AAllocator, ['StrAlloc', 'StrNew', 'AnsiStrAlloc']) then
+    Result := 'StrDispose'
+  else
+    Result := '';
+end;
+
+procedure TRawMemoryLeakRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
+var
+  Lines: TArray<string>;
+  LineBreak: string;
+
+  function StartsWithAny(const AName: string; const APrefixes: array of string): Boolean;
+  var
+    Prefix: string;
+  begin
+    for Prefix in APrefixes do
+      if StartsText(Prefix, AName) then
+        Exit(True);
+    Result := False;
+  end;
+
+  function ContainsAny(const AName: string; const AWords: array of string): Boolean;
+  var
+    Word: string;
+  begin
+    for Word in AWords do
+      if ContainsText(AName, Word) then
+        Exit(True);
+    Result := False;
+  end;
+
+  // Typumwandlung wie PByte(P), PChar(P), Pointer(P): ein Argument, Aufruf über einen Typnamen.
+  function IsTypeCast(ACall: TSyntaxNode): Boolean;
+  var
+    Name: string;
+  begin
+    Result := False;
+    if (ACall.ChildCount <> 2) or (ACall[0].Kind <> TSyntaxKind.Identifier) then
+      Exit;
+    Name := ACall[0].Name;
+    Result := MatchText(Name, ['Pointer', 'NativeInt', 'NativeUInt', 'IntPtr', 'UIntPtr', 'PChar', 'PAnsiChar',
+      'PWideChar', 'PByte', 'Integer', 'Cardinal', 'Int64', 'UInt64', 'LongInt', 'LongWord']) or
+      ((Length(Name) > 1) and CharInSet(Name[1], ['P', 'T']) and CharInSet(Name[2], ['A'..'Z']));
+  end;
+
+  // Art des Vorkommens ANode (Bezeichner der Variablen) vom Knoten aus nach oben bis zur Anweisung.
+  function Classify(ANode: TSyntaxNode): TRawMemoryUse;
+  var
+    Current, Parent, Value: TSyntaxNode;
+    Direct: Boolean;
+  begin
+    Current := ANode;
+    Direct := True;
+    while Current.Parent <> nil do
+    begin
+      Parent := Current.Parent;
+      case Parent.Kind of
+        // P^, P.Feld, P[I]: Zugriff auf den Speicher.
+        TSyntaxKind.Dereference, TSyntaxKind.IndexAccess, TSyntaxKind.MemberAccess:
+          Exit(TRawMemoryUse.Use);
+        TSyntaxKind.AddressOf, TSyntaxKind.InlineVar, TSyntaxKind.VarDecl, TSyntaxKind.AnonymousMethod:
+          Exit(TRawMemoryUse.Escape);
+        TSyntaxKind.Call:
+          begin
+            if Parent[0] = Current then
+              Exit(TRawMemoryUse.Use);
+            if Direct and (Parent[1] = Current) and MatchText(Parent.Name, RawAllocCalls) then
+            begin
+              // ReallocMem(P, 0) gibt frei.
+              if SameText(Parent.Name, 'ReallocMem') and (Parent.ChildCount = 3) and
+                (Parent[2].Kind = TSyntaxKind.Literal) and (Parent[2].Name = '0') then
+                Exit(TRawMemoryUse.Release);
+              Exit(TRawMemoryUse.Alloc);
+            end;
+            if MatchText(Parent.Name, RawReleaseCalls) or ContainsAny(Parent.Name, RawReleaseWords) then
+              Exit(TRawMemoryUse.Release);
+            if SameText(Parent.Name, 'Exit') then
+              Exit(TRawMemoryUse.Escape);
+            if IsTypeCast(Parent) then
+            begin
+              Current := Parent;
+              Direct := False;
+              Continue;
+            end;
+            if (Parent[0].Kind = TSyntaxKind.MemberAccess) and StartsWithAny(Parent.Name, RawStorePrefixes) then
+              Exit(TRawMemoryUse.Escape);
+            // Als Argument zum Lesen oder Füllen weitergegeben (Pruefsumme(P, N), Stream.ReadBuffer(P^, N)).
+            Exit(TRawMemoryUse.Use);
+          end;
+        TSyntaxKind.ParenExpr, TSyntaxKind.UnaryExpr, TSyntaxKind.IfExpr:
+          begin
+            Current := Parent;
+            Direct := False;
+          end;
+        TSyntaxKind.BinaryExpr:
+          begin
+            // Vergleiche lesen nur; P + N rechnet mit dem Zeiger weiter.
+            if not MatchText(Parent.Name, ['+', '-']) then
+              Exit(TRawMemoryUse.Use);
+            Current := Parent;
+            Direct := False;
+          end;
+        TSyntaxKind.AssignStatement:
+          begin
+            if Parent[0] <> Current then
+              Exit(TRawMemoryUse.Escape);
+            if not Direct then
+              Exit(TRawMemoryUse.Use);
+            Value := nil;
+            if Parent.ChildCount > 1 then
+              Value := Parent[1];
+            if (Value <> nil) and (Value.Kind = TSyntaxKind.Call) and MatchText(Value.Name, RawAllocFunctions) then
+              Exit(TRawMemoryUse.Alloc);
+            // Neue Zuweisung (P := Q, P := nil): Herkunft unklar.
+            Exit(TRawMemoryUse.Escape);
+          end;
+      else
+        Exit(TRawMemoryUse.Use);
+      end;
+    end;
+    Result := TRawMemoryUse.Use;
+  end;
+
+  // Name der Belegung an der Anweisung des Vorkommens ANode.
+  function AllocatorOf(ANode: TSyntaxNode): string;
+  begin
+    if ANode.Parent.Kind = TSyntaxKind.Call then
+      Result := ANode.Parent.Name
+    else
+      Result := ANode.Parent[1].Name;
+  end;
+
+  procedure Occurrences(ANode: TSyntaxNode; const AName: string; var AFound: TArray<TSyntaxNode>);
+  var
+    Index: Integer;
+  begin
+    if (ANode.Kind = TSyntaxKind.Identifier) and SameText(ANode.Name, AName) and
+      not ((ANode.Parent <> nil) and (ANode.Parent.Kind = TSyntaxKind.MemberAccess) and (ANode.Parent[0] <> ANode))
+      then
+      AFound := AFound + [ANode];
+    for Index := 0 to ANode.ChildCount - 1 do
+      Occurrences(ANode[Index], AName, AFound);
+  end;
+
+  function HasAsm(ANode: TSyntaxNode): Boolean;
+  var
+    Index: Integer;
+  begin
+    if ANode.Kind = TSyntaxKind.AsmBlock then
+      Exit(True);
+    for Index := 0 to ANode.ChildCount - 1 do
+      if HasAsm(ANode[Index]) then
+        Exit(True);
+    Result := False;
+  end;
+
+  // Steht ANode in einer anonymen Methode der Routine (die Variable wird eingefangen)?
+  function InsideAnonymous(ANode, ARoutine: TSyntaxNode): Boolean;
+  var
+    Current: TSyntaxNode;
+  begin
+    Current := ANode.Parent;
+    while (Current <> nil) and (Current <> ARoutine) do
+    begin
+      if Current.Kind = TSyntaxKind.AnonymousMethod then
+        Exit(True);
+      Current := Current.Parent;
+    end;
+    Result := False;
+  end;
+
+  // Die Anweisung, die das Vorkommen ANode enthält.
+  function StatementOf(ANode: TSyntaxNode): TSyntaxNode;
+  begin
+    Result := ANode;
+    while (Result <> nil) and not (Result.Kind in [TSyntaxKind.CallStatement, TSyntaxKind.AssignStatement]) do
+      Result := Result.Parent;
+  end;
+
+  procedure CheckVariable(ARoutine: TSyntaxNode; const AName: string);
+  var
+    Found: TArray<TSyntaxNode>;
+    Node, First, Statement: TSyntaxNode;
+    Index: Integer;
+    Use: TRawMemoryUse;
+    Allocator, Release: string;
+    Edit: TTextEdit;
+    Fixes: TArray<TRuleFix>;
+  begin
+    Found := nil;
+    Occurrences(ARoutine, AName, Found);
+    First := nil;
+    for Node in Found do
+    begin
+      Use := Classify(Node);
+      if InsideAnonymous(Node, ARoutine) then
+        Use := TRawMemoryUse.Escape;
+      if Use in [TRawMemoryUse.Release, TRawMemoryUse.Escape] then
+        Exit;
+      if (Use = TRawMemoryUse.Alloc) and (First = nil) then
+        First := Node;
+    end;
+    // Lokale Routinen sehen die Variable ebenfalls: dort könnte sie freigegeben werden.
+    for Index := 0 to ARoutine.ChildCount - 1 do
+      if ARoutine[Index].Kind = TSyntaxKind.RoutineDecl then
+      begin
+        Found := nil;
+        Occurrences(ARoutine[Index], AName, Found);
+        if Found <> nil then
+          Exit;
+      end;
+    if First = nil then
+      Exit;
+    Allocator := AllocatorOf(First);
+    Release := ReleaseFor(Allocator);
+    Statement := StatementOf(First);
+    Fixes := nil;
+    if (Release <> '') and (Statement <> nil) and WrapFollowingInTryFinally(Lines, LineBreak, Statement, '',
+      Release + '(' + AName + ');', AContext.Formatting, Edit) then
+      Fixes := [TRuleFix.Create(Format('try … finally %s(%s) end einfügen', [Release, AName]), [Edit])];
+    AReport.Add(TTextRange.Create(Statement.StartPos, Statement.EndPos),
+      Format('%s wird mit %s angelegt, aber nie freigegeben.', [AName, Allocator]), TRuleConfidence.Medium,
+      Fixes);
+  end;
+
+  procedure CheckRoutine(ARoutine: TSyntaxNode);
+  var
+    Index, Inner: Integer;
+    Section, Decl: TSyntaxNode;
+    Name: string;
+  begin
+    if HasAsm(ARoutine) then
+      Exit;
+    for Index := 0 to ARoutine.ChildCount - 1 do
+    begin
+      Section := ARoutine[Index];
+      if Section.Kind <> TSyntaxKind.VarSection then
+        Continue;
+      for Inner := 0 to Section.ChildCount - 1 do
+      begin
+        Decl := Section[Inner];
+        if Decl.Kind <> TSyntaxKind.VarDecl then
+          Continue;
+        for Name in Decl.Name.Split([',']) do
+          if Trim(Name) <> '' then
+            CheckVariable(ARoutine, Trim(Name));
+      end;
+    end;
+  end;
+
+  procedure Visit(ANode: TSyntaxNode);
+  var
+    Index: Integer;
+  begin
+    if ANode.Kind = TSyntaxKind.RoutineDecl then
+      CheckRoutine(ANode);
+    for Index := 0 to ANode.ChildCount - 1 do
+      Visit(ANode[Index]);
+  end;
+
+var
+  Word: string;
+  Any: Boolean;
+begin
+  if (AContext.Tree = nil) or (AContext.Tree.Root = nil) then
+    Exit;
+  Any := False;
+  for Word in RawAllocCalls do
+    Any := Any or ContainsText(AContext.Text, Word);
+  for Word in RawAllocFunctions do
+    Any := Any or ContainsText(AContext.Text, Word);
+  if not Any then
+    Exit;
+  Lines := TTextLines.SplitLines(AContext.Text, LineBreak);
+  Visit(AContext.Tree.Root);
+end;
+
 procedure RegisterOwnershipRules(const ARegistry: TRuleRegistry);
 begin
   ARegistry.Register(TOwnedItemFreedRule.Create);
   ARegistry.Register(TCreateWithoutAssignmentRule.Create);
   ARegistry.Register(TSelfAsInterfaceInConstructorRule.Create);
+  ARegistry.Register(TRawMemoryLeakRule.Create);
 end;
 
 end.
