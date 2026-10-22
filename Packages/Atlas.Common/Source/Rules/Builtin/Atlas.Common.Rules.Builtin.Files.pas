@@ -12,6 +12,11 @@
 //                                  Trennzeichen, Endungen und Texte, die mit
 //                                  Leerzeichen oder Satzzeichen beginnen, bleiben
 //                                  still. Korrektur: TPath.Combine.
+//   hardcoded-path                 String-Literal mit Laufwerksbuchstaben oder
+//                                  UNC-Pfad, eigene Meldung für Benutzerordner
+//                                  (#969). Laufwerkswurzeln wie 'C:\' und
+//                                  Präfixe wie '\\?\' bleiben still, ebenso
+//                                  Test-Units und Units aus allowUnits.
 
 interface
 
@@ -22,6 +27,7 @@ uses
 
 const
   PathConcatWithoutDelimiterRuleId = 'path-concat-without-delimiter';
+  HardcodedPathRuleId = 'hardcoded-path';
 
 type
   TPathConcatWithoutDelimiterRule = class(TInterfacedObject, IRule)
@@ -31,6 +37,22 @@ type
     /// <summary>Name der Funktion, wenn ANode einen Ordner ohne abschließendes Trennzeichen liefert
     /// (ExtractFileDir, TPath.GetDocumentsPath …); sonst ''.</summary>
     class function DirectorySource(ANode: TSyntaxNode): string; static;
+  end;
+
+{$SCOPEDENUMS ON}
+  /// <summary>Art eines festen Pfads; None, wenn der Text kein fester Pfad ist.</summary>
+  THardcodedPathKind = (None, Drive, UserFolder, Network);
+{$SCOPEDENUMS OFF}
+
+  THardcodedPathRule = class(TInterfacedObject, IRule)
+  public
+    function Descriptor: TRuleDescriptor;
+    procedure Check(const AContext: TRuleContext; const AReport: IRuleReport);
+    /// <summary>Art des Pfads im Klartext APath: C:\…, C:\Users\…, \\server\….</summary>
+    class function PathKind(const APath: string): THardcodedPathKind; static;
+    /// <summary>Passt AUnitName auf einen Eintrag aus allowUnits (Groß-/Kleinschreibung egal, * am Ende als
+    /// Präfix)?</summary>
+    class function UnitAllowed(const AUnitName: string; const AAllowed: TArray<string>): Boolean; static;
   end;
 
 /// <summary>Name und Qualifizierer eines Aufrufs oder Bezeichners: TPath.GetDocumentsPath ergibt
@@ -46,7 +68,11 @@ uses
   System.StrUtils,
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Documents.Contract,
+  Atlas.Common.Pascal.Contract,
   Atlas.Common.Editing.StringLiterals,
+  Atlas.Common.Rules.Derived,
+  Atlas.Common.Rules.Options,
+  Atlas.Common.Rules.Profiles,
   Atlas.Common.Editing.UsesClause,
   Atlas.Text.Chars,
   Atlas.Text.Lines;
@@ -373,9 +399,98 @@ begin
     CheckPlus(Plus);
 end;
 
+{ THardcodedPathRule }
+
+const
+  UserFolders: array[0..1] of string = ('Users', 'Documents and Settings');
+
+function THardcodedPathRule.Descriptor: TRuleDescriptor;
+begin
+  Result := TRuleDescriptor.Create(HardcodedPathRuleId, TRuleSeverity.Hint, 'Fester Dateipfad im Code');
+end;
+
+function IsSlash(C: Char): Boolean;
+begin
+  Result := (C = '\') or (C = '/');
+end;
+
+class function THardcodedPathRule.PathKind(const APath: string): THardcodedPathKind;
+var
+  Index: Integer;
+  Folder: string;
+begin
+  Result := THardcodedPathKind.None;
+  if (Length(APath) > 3) and CharInSet(APath[1], ['A'..'Z', 'a'..'z']) and (APath[2] = ':') and IsSlash(APath[3]) and
+    not IsSlash(APath[4]) then
+  begin
+    // Laufwerkswurzel 'C:\' allein bleibt still (Länge 3); erster Ordner entscheidet über Benutzerpfade.
+    Index := 4;
+    while (Index <= Length(APath)) and not IsSlash(APath[Index]) do
+      Inc(Index);
+    Folder := Copy(APath, 4, Index - 4);
+    if MatchText(Folder, UserFolders) and (Index < Length(APath)) then
+      Result := THardcodedPathKind.UserFolder
+    else
+      Result := THardcodedPathKind.Drive;
+  end
+  else if (Length(APath) > 3) and (APath[1] = '\') and (APath[2] = '\') and
+    TTextChars.IsIdentChar(APath[3]) then
+  begin
+    // \\server\freigabe; \\?\ und \\.\ sind Präfixe bzw. Geräte.
+    Index := 3;
+    while (Index <= Length(APath)) and not IsSlash(APath[Index]) and (APath[Index] > ' ') do
+      Inc(Index);
+    if (Index < Length(APath)) and IsSlash(APath[Index]) then
+      Result := THardcodedPathKind.Network;
+  end;
+end;
+
+class function THardcodedPathRule.UnitAllowed(const AUnitName: string; const AAllowed: TArray<string>): Boolean;
+var
+  Item: string;
+begin
+  for Item in AAllowed do
+    if SameText(Item, AUnitName) or (EndsStr('*', Item) and StartsText(Copy(Item, 1, Length(Item) - 1), AUnitName)) then
+      Exit(True);
+  Result := False;
+end;
+
+procedure THardcodedPathRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
+var
+  Tokens: TArray<TPascalToken>;
+  Token: TPascalToken;
+  UnitName, Plain, Message: string;
+begin
+  Tokens := TRuleDerived.CodeTokens(TRuleDerived.Open(AContext), AContext);
+  if TRuleProfiles.IsTestUnit(Tokens) then
+    Exit;
+  UnitName := TUsesClauses.OwnName(Tokens);
+  if UnitName = '' then
+    UnitName := AContext.UnitName;
+  if THardcodedPathRule.UnitAllowed(UnitName, TRuleOptions.Strings(AContext.Options, 'allowUnits', nil)) then
+    Exit;
+  for Token in Tokens do
+  begin
+    if (Token.Kind <> TPascalTokenKind.StringLiteral) or not TStringLiterals.PlainText(Token.Text, Plain) then
+      Continue;
+    case PathKind(Plain) of
+      THardcodedPathKind.Drive:
+        Message := 'Fester Dateipfad; auf anderen Rechnern fehlt er womöglich.';
+      THardcodedPathKind.UserFolder:
+        Message := 'Fester Benutzerpfad; auf anderen Rechnern gibt es ihn nicht.';
+      THardcodedPathKind.Network:
+        Message := 'Fester Netzwerkpfad; auf anderen Rechnern und ohne Netzwerk fehlt er womöglich.';
+    else
+      Continue;
+    end;
+    AReport.Add(TTextRange.Create(Token.StartPos, Token.EndPos), Message, TRuleConfidence.High);
+  end;
+end;
+
 procedure RegisterFileRules(const ARegistry: TRuleRegistry);
 begin
   ARegistry.Register(TPathConcatWithoutDelimiterRule.Create);
+  ARegistry.Register(THardcodedPathRule.Create);
 end;
 
 end.

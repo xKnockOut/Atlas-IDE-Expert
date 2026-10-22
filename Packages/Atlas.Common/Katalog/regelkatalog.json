@@ -2313,6 +2313,24 @@
       "description": "A folder without a trailing path delimiter is joined to a file or folder name with +: results of ExtractFileDir, ExcludeTrailingPathDelimiter, GetCurrentDir, GetHomePath, TPath.GetDocumentsPath and the other TPath.Get…Path folders, TPath.GetDirectoryName, TDirectory.GetCurrentDirectory and TDirectory.GetParent, called directly or held in a local variable that the routine only assigns such values to. The result is C:\\Datadatei.txt instead of C:\\Data\\datei.txt. ExtractFilePath, IncludeTrailingPathDelimiter and TPath.GetTempPath end with a delimiter and stay silent, as do delimiters, extensions (ExtractFileExt, '.bak') and texts that start with a space or punctuation. A literal name reports with high confidence, an identifier with medium confidence. A local variable passed to a procedure other than ForceDirectories, FileExists and similar read-only calls may be changed there and stays silent. Quick fix: TPath.Combine(Folder, Name), adding System.IOUtils to uses.",
       "bad": "Ordner := TPath.GetDocumentsPath;\nDatei := Ordner + 'export.csv';",
       "good": "Ordner := TPath.GetDocumentsPath;\nDatei := TPath.Combine(Ordner, 'export.csv');"
+    },
+    {
+      "id": "hardcoded-path",
+      "name": "Hard-coded file path",
+      "category": "code-smell",
+      "severity": "hint",
+      "group": "robustness",
+      "description": "A string literal with a drive letter (C:\\…, also with /) or a UNC path (\\\\server\\share\\…); paths under C:\\Users or C:\\Documents and Settings get their own message. On other computers the path is missing. Drive roots such as 'C:\\' alone and the prefixes \\\\?\\ and \\\\.\\ stay silent, as do comments, test units and units listed in allowUnits (for example a unit with the default paths of an installation). High confidence, no quick fix: take the path from TPath (GetDocumentsPath, GetHomePath, GetSharedDocumentsPath), the settings or an environment variable.",
+      "bad": "Protokoll.SaveToFile('C:\\Users\\marco\\Desktop\\log.txt');",
+      "good": "Protokoll.SaveToFile(TPath.Combine(TPath.GetDocumentsPath, 'log.txt'));",
+      "options": [
+        {
+          "name": "allowUnits",
+          "type": "string-list",
+          "default": [],
+          "description": "Units in which hard-coded paths are allowed, by unit name; * at the end matches a prefix (App.Config*)."
+        }
+      ]
     }
   ]
 }

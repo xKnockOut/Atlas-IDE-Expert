@@ -5,6 +5,9 @@
 // direkte Aufrufe, lokale Variablen, Bezeichner als Name, Ketten, Fälle
 // ohne Meldung (ExtractFilePath, Trennzeichen, Endung, Meldungstext, andere
 // Werte, var-Parameter), Abschalten und Ausnahmen.
+// hardcoded-path (#969): Beispiel aus dem Issue, Laufwerk, UNC, Schrägstrich,
+// Fälle ohne Meldung (Wurzel, \\?\, relative Pfade, Meldungstexte),
+// Test-Units, allowUnits, Abschalten und falscher Optionstyp.
 
 interface
 
@@ -26,6 +29,12 @@ type
     [Test]
     procedure PathConcatOptions;
     [Test]
+    procedure HardcodedPathIssueExample;
+    [Test]
+    procedure HardcodedPathKinds;
+    [Test]
+    procedure HardcodedPathAllowedUnitsAndTests;
+    [Test]
     procedure RulesAreRegistered;
   end;
 
@@ -34,6 +43,7 @@ implementation
 uses
   System.SysUtils,
   Atlas.Common.Configuration.Contract,
+  Atlas.Common.Configuration.Parser,
   Atlas.Common.Rules.Contract,
   Atlas.Common.Rules.Builtin,
   Atlas.Common.Rules.Builtin.Files,
@@ -163,6 +173,90 @@ begin
     '{"rules": {"path-concat-without-delimiter": {"exclude": ["Source/*.pas"]}}}', 'Source/Pfade.pas'))));
 end;
 
+function UnitWith(const AStatement: string): string;
+begin
+  Result := 'unit Protokoll;'#10'interface'#10'implementation'#10'procedure Sichern(Protokoll: TStrings);'#10 +
+    'begin'#10 + AStatement + #10'end;'#10'end.';
+end;
+
+function HardcodedCount(const ASource, AConfig: string): Integer; overload;
+begin
+  Result := Length(TRuleAssert.Findings(THardcodedPathRule.Create, ASource, AConfig));
+end;
+
+function HardcodedCount(const ASource: string): Integer; overload;
+begin
+  Result := HardcodedCount(ASource, '');
+end;
+
+procedure TFileRulesTests.HardcodedPathIssueExample;
+var
+  Findings: TArray<TRuleFinding>;
+begin
+  Findings := TRuleAssert.Findings(THardcodedPathRule.Create,
+    UnitWith('  Protokoll.SaveToFile(''C:\Users\marco\Desktop\log.txt'');'));
+  Assert.AreEqual(1, Integer(Length(Findings)));
+  Assert.AreEqual(HardcodedPathRuleId, Findings[0].RuleId);
+  Assert.AreEqual(Ord(TRuleSeverity.Hint), Ord(Findings[0].Severity));
+  Assert.AreEqual(Ord(TRuleConfidence.High), Ord(Findings[0].Confidence));
+  Assert.AreEqual('Fester Benutzerpfad; auf anderen Rechnern gibt es ihn nicht.', Findings[0].Message);
+  Assert.AreEqual(5, Findings[0].Range.StartPos.Line);
+  Assert.AreEqual(23, Findings[0].Range.StartPos.Character);
+  Assert.AreEqual(0, Integer(Length(Findings[0].Fixes)));
+  // Korrigierte Form und naheliegender Negativfall
+  Assert.AreEqual(0, HardcodedCount(UnitWith(
+    '  Protokoll.SaveToFile(TPath.Combine(TPath.GetDocumentsPath, ''log.txt''));')));
+  Assert.AreEqual(0, HardcodedCount(UnitWith('  Protokoll.SaveToFile(''Logs\log.txt'');')));
+end;
+
+procedure TFileRulesTests.HardcodedPathKinds;
+begin
+  Assert.AreEqual(Ord(THardcodedPathKind.Drive), Ord(THardcodedPathRule.PathKind('D:\Daten\Kunden.db')));
+  Assert.AreEqual(Ord(THardcodedPathKind.Drive), Ord(THardcodedPathRule.PathKind('c:/Programme/Tool.exe')));
+  Assert.AreEqual(Ord(THardcodedPathKind.UserFolder), Ord(THardcodedPathRule.PathKind('C:\users\Public\x.txt')));
+  Assert.AreEqual(Ord(THardcodedPathKind.UserFolder),
+    Ord(THardcodedPathRule.PathKind('C:\Documents and Settings\marco\x')));
+  Assert.AreEqual(Ord(THardcodedPathKind.Drive), Ord(THardcodedPathRule.PathKind('C:\Users')));
+  Assert.AreEqual(Ord(THardcodedPathKind.Network), Ord(THardcodedPathRule.PathKind('\\server\Freigabe\x.csv')));
+  // Kein fester Pfad
+  Assert.AreEqual(Ord(THardcodedPathKind.None), Ord(THardcodedPathRule.PathKind('C:\')));
+  Assert.AreEqual(Ord(THardcodedPathKind.None), Ord(THardcodedPathRule.PathKind('\\?\')));
+  Assert.AreEqual(Ord(THardcodedPathKind.None), Ord(THardcodedPathRule.PathKind('\\.\COM3')));
+  Assert.AreEqual(Ord(THardcodedPathKind.None), Ord(THardcodedPathRule.PathKind('\\server')));
+  Assert.AreEqual(Ord(THardcodedPathKind.None), Ord(THardcodedPathRule.PathKind('Daten\x.txt')));
+  Assert.AreEqual(Ord(THardcodedPathKind.None), Ord(THardcodedPathRule.PathKind('Pfad: C:\Daten')));
+  Assert.AreEqual(Ord(THardcodedPathKind.None), Ord(THardcodedPathRule.PathKind('C:Daten')));
+  // Meldungen je Art; Kommentare bleiben still.
+  Assert.AreEqual(1, HardcodedCount(UnitWith('  Protokoll.SaveToFile(''D:\Daten\log.txt''); // C:\Alt')));
+  Assert.AreEqual('Fester Netzwerkpfad; auf anderen Rechnern und ohne Netzwerk fehlt er womöglich.',
+    TRuleAssert.Findings(THardcodedPathRule.Create,
+    UnitWith('  Protokoll.SaveToFile(''\\nas\Logs\log.txt'');'))[0].Message);
+  Assert.AreEqual('Fester Dateipfad; auf anderen Rechnern fehlt er womöglich.',
+    TRuleAssert.Findings(THardcodedPathRule.Create,
+    UnitWith('  Protokoll.SaveToFile(''D:\Daten\log.txt'');'))[0].Message);
+end;
+
+procedure TFileRulesTests.HardcodedPathAllowedUnitsAndTests;
+const
+  Constants = 'unit App.Pfade;'#10'interface'#10'const'#10'  Standardordner = ''C:\ProgramData\Atlas'';'#10 +
+    'implementation'#10'end.';
+var
+  Issues: TArray<TConfigurationIssue>;
+begin
+  Assert.AreEqual(1, HardcodedCount(Constants));
+  Assert.AreEqual(0, HardcodedCount(Constants, '{"rules": {"hardcoded-path": {"allowUnits": ["app.pfade"]}}}'));
+  Assert.AreEqual(0, HardcodedCount(Constants, '{"rules": {"hardcoded-path": {"allowUnits": ["App.*"]}}}'));
+  Assert.AreEqual(1, HardcodedCount(Constants, '{"rules": {"hardcoded-path": {"allowUnits": ["App.Andere"]}}}'));
+  Assert.AreEqual(0, HardcodedCount(Constants, '{"rules": {"hardcoded-path": "off"}}'));
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(THardcodedPathRule.Create, Constants,
+    '{"rules": {"hardcoded-path": {"exclude": ["Source/*.pas"]}}}', 'Source/App.Pfade.pas'))));
+  // Test-Units bleiben still.
+  Assert.AreEqual(0, HardcodedCount('unit Pfade.Tests;'#10'interface'#10'uses'#10'  DUnitX.TestFramework;'#10 +
+    'implementation'#10'const'#10'  Probe = ''C:\Temp\probe.txt'';'#10'end.'));
+  TConfigurationParser.Parse('{"rules": {"hardcoded-path": {"allowUnits": "App.Pfade"}}}', Issues);
+  Assert.AreEqual(1, Integer(Length(Issues)));
+end;
+
 procedure TFileRulesTests.RulesAreRegistered;
 var
   Rule: IRule;
@@ -172,6 +266,7 @@ begin
   for Rule in BuiltinRules do
     Ids := Ids + ' ' + Rule.Descriptor.Id;
   Assert.IsTrue(Pos(' ' + PathConcatWithoutDelimiterRuleId, Ids) > 0);
+  Assert.IsTrue(Pos(' ' + HardcodedPathRuleId, Ids) > 0);
 end;
 
 initialization

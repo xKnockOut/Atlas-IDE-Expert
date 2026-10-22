@@ -179,7 +179,7 @@ const
     'dfm-master-without-fields,dfm-property,dfm-required-field-without-control,dictionary-get-without-check,dunitx-test-without-assert,duplicate-case-label,duplicate-condition,duplicate-declaration,duplicate-interface-guid,' +
     'empty-except,empty-statement,event-call-without-assigned,except-handler-order,exception-freed,exception-in-destructor,exception-not-raised,field-after-method,field-free-without-nil,field-not-freed,float-equality,for-high-to-low,forbidden-uses,' +
     'foreign-form-control-access,form-access-before-create,form-field-type-mismatch,form-field-without-object,' +
-    'form-object-without-field,format-without-settings,generic-exception-raised,hides-virtual,' +
+    'form-object-without-field,format-without-settings,generic-exception-raised,hardcoded-path,hides-virtual,' +
     'ifthen-side-effect,implemented-not-declared,implicit-package-import,int32-mul-overflow,interface-guid,interface-not-implemented,' +
     'invisible-char,' +
     'lock-without-finally,loop-off-by-one,managed-type-raw-memory,message-handler-without-inherited,metric-class-size,metric-cognitive-complexity,metric-cyclomatic-complexity,' +
@@ -225,7 +225,7 @@ begin
     ActiveRules('security'));
   Assert.AreEqual('blocking-call-in-main-thread,bool-compare,boolean-assign-if,case-insensitive-compare,commented-out-code,component-fixed-pixels,component-hardcoded-color,component-palette-icon,' +
     'component-setter-without-invalidate,deprecated-symbol,dfm-property,dunitx-test-without-assert,empty-except,forbidden-uses,' +
-    'foreign-form-control-access,format-without-settings,generic-exception-raised,implicit-package-import,' +
+    'foreign-form-control-access,format-without-settings,generic-exception-raised,hardcoded-path,implicit-package-import,' +
     'metric-class-size,metric-cognitive-complexity,metric-cyclomatic-complexity,metric-method-length,' +
     'metric-nesting-depth,metric-parameter-count,metric-unit-length,metric-uses-count,' +
     'null-compare,processmessages-in-loop,redundant-assigned-free,reraise-exception-object,shadowed-name,slash-command,task-exception-unobserved,thread-resume-suspend,unneeded-forward-declaration,' +
