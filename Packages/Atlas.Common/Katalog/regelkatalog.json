@@ -1495,6 +1495,16 @@
           "description": "Name patterns (* and ?) that are never reported."
         }
       ]
+    },
+    {
+      "id": "boolean-assign-if",
+      "name": "if that only assigns True or False",
+      "category": "code-smell",
+      "severity": "hint",
+      "group": "style",
+      "description": "if B then X := True else X := False (also with begin/end and the values swapped), if B then Exit(True) else Exit(False) and if B then Exit(True); followed by Exit(False); can be written directly. Complements bool-compare. High confidence. Quick fix: X := B, X := not B or Exit(B); negations are simplified (not B becomes B), compound conditions are wrapped in parentheses. Without a fix when comments stand inside the if.",
+      "bad": "if Betrag > 0 then\n  Result := True\nelse\n  Result := False;",
+      "good": "Result := Betrag > 0;"
     }
   ]
 }

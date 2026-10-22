@@ -1515,6 +1515,16 @@ begin
     '          "description": "Name patterns (* and ?) that are never reported."' + #10 +
     '        }' + #10 +
     '      ]' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "boolean-assign-if",' + #10 +
+    '      "name": "if that only assigns True or False",' + #10 +
+    '      "category": "code-smell",' + #10 +
+    '      "severity": "hint",' + #10 +
+    '      "group": "style",' + #10 +
+    '      "description": "if B then X := True else X := False (also with begin/end and the values swapped), if B then Exit(True) else Exit(False) and if B then Exit(True); followed by Exit(False); can be ' + 'written directly. Complements bool-compare. High confidence. Quick fix: X := B, X := not B or Exit(B); negations are simplified (not B becomes B), compound conditions are wrapped in parentheses. Witho' + 'ut a fix when comments stand inside the if.",' + #10 +
+    '      "bad": "if Betrag > 0 then\n  Result := True\nelse\n  Result := False;",' + #10 +
+    '      "good": "Result := Betrag > 0;"' + #10 +
     '    }' + #10 +
     '  ]' + #10 +
     '}' + #10 +
@@ -2310,6 +2320,11 @@ begin
     '          "description": "Namensmuster (* und ?), die nie gemeldet werden."' + #10 +
     '        }' + #10 +
     '      ]' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "boolean-assign-if",' + #10 +
+    '      "name": "if, das nur True oder False zuweist",' + #10 +
+    '      "description": "if B then X := True else X := False (auch mit begin/end und vertauschten Werten), if B then Exit(True) else Exit(False) sowie if B then Exit(True); gefolgt von Exit(False); lasse' + 'n sich direkt schreiben. Ergänzt bool-compare. Konfidenz hoch. Schnellkorrektur: X := B, X := not B bzw. Exit(B); Verneinungen werden vereinfacht (aus not B wird B), zusammengesetzte Bedingungen einge' + 'klammert. Ohne Korrektur, wenn Kommentare im if stehen."' + #10 +
     '    }' + #10 +
     '  ]' + #10 +
     '}' + #10 +

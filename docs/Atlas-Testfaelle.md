@@ -3435,3 +3435,16 @@ Voraussetzung: Server läuft; Einstellungen auf Vorgabe; VCL-Formular `TfrmKunde
 | SN5 | `FormClose(Sender: TObject; var Action: TCloseAction)` bzw. Setter mit `Value` | Keine Meldung |
 | SN6 | `"shadowed-name": {"ignore": ["Cap*"]}` | Keine Meldung zu `Caption` |
 | SN7 | `"shadowed-name": "off"` bzw. `exclude` mit dem Pfad der Datei | Keine Meldung |
+
+## if, das nur True oder False zuweist (#935)
+
+Voraussetzung: Server läuft; Einstellungen auf Vorgabe; Funktion mit `if Betrag > 0 then Result := True else Result := False;` über vier Zeilen.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| BA1 | Unit öffnen | Hinweis `boolean-assign-if` an `if Betrag > 0`: „Das if weist nur True oder False zu.“; im Fenster „Atlas-Prüfung“ und im Befund-Hover (**Abnahme**) |
+| BA2 | Glühbirne, „Durch Result := Betrag > 0 ersetzen“ | Eine Zeile `Result := Betrag > 0;`; ein Strg+Z stellt das if wieder her (**Abnahme**) |
+| BA3 | Werte vertauschen (`Result := False … else Result := True`) | Korrektur `Result := not (Betrag > 0)` |
+| BA4 | `if Gefunden then Exit(True);` und in der nächsten Zeile `Exit(False);` | Hinweis; Korrektur `Exit(Gefunden)` ersetzt beide Zeilen |
+| BA5 | Kommentar in einem Zweig bzw. eine zweite Anweisung im then-Zweig | Mit Kommentar Hinweis ohne Korrektur; mit zweiter Anweisung keine Meldung |
+| BA6 | `"boolean-assign-if": "off"` bzw. `exclude` mit dem Pfad der Datei | Keine Meldung |

@@ -15,7 +15,7 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 | [Komponenten](#gruppe-components) | 8 |
 | [Formulare und Daten](#gruppe-forms) | 10 |
 | [Architektur](#gruppe-architecture) | 3 |
-| [Stil und Metriken](#gruppe-style) | 19 |
+| [Stil und Metriken](#gruppe-style) | 20 |
 | [Packages und Tests](#gruppe-packages) | 1 |
 | [Atlas intern](#gruppe-internal) | 3 |
 
@@ -194,6 +194,7 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 | [`deprecated-symbol`](#deprecated-symbol) | Veraltetes Symbol | Code Smell | Hinweis |
 | [`unneeded-forward-declaration`](#unneeded-forward-declaration) | Überflüssige Forward-Deklaration | Code Smell | Hinweis |
 | [`shadowed-name`](#shadowed-name) | Lokaler Name verdeckt Feld oder Property | Code Smell | Hinweis |
+| [`boolean-assign-if`](#boolean-assign-if) | if, das nur True oder False zuweist | Code Smell | Hinweis |
 
 <a id="gruppe-packages"></a>
 ### Packages und Tests
@@ -3123,4 +3124,26 @@ procedure TfrmKunde.Laden(const ACaption: string);
 begin
   Caption := ACaption + ' (geladen)';
 end;
+```
+
+<a id="boolean-assign-if"></a>
+### boolean-assign-if
+
+**if, das nur True oder False zuweist** · Code Smell · Hinweis · Gruppe Stil und Metriken
+
+if B then X := True else X := False (auch mit begin/end und vertauschten Werten), if B then Exit(True) else Exit(False) sowie if B then Exit(True); gefolgt von Exit(False); lassen sich direkt schreiben. Ergänzt bool-compare. Konfidenz hoch. Schnellkorrektur: X := B, X := not B bzw. Exit(B); Verneinungen werden vereinfacht (aus not B wird B), zusammengesetzte Bedingungen eingeklammert. Ohne Korrektur, wenn Kommentare im if stehen.
+
+Mit Treffer:
+
+```pascal
+if Betrag > 0 then
+  Result := True
+else
+  Result := False;
+```
+
+Richtig:
+
+```pascal
+Result := Betrag > 0;
 ```

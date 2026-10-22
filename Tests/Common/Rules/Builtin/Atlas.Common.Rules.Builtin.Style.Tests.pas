@@ -1,6 +1,6 @@
 ﻿unit Atlas.Common.Rules.Builtin.Style.Tests;
 
-// Tests für die Stilregeln (#104): je Regel positiv, negativ und Schnellkorrektur.
+// Tests für die Stilregeln (#104): je Regel positiv, negativ und Schnellkorrektur; boolean-assign-if (#935).
 
 interface
 
@@ -39,6 +39,12 @@ type
     procedure WithStatementReported;
     [Test]
     procedure WithoutWithSilent;
+    [Test]
+    procedure BooleanAssignIfIssueExample;
+    [Test]
+    procedure BooleanAssignIfVariants;
+    [Test]
+    procedure BooleanAssignIfSilentCases;
   end;
 
 implementation
@@ -225,6 +231,61 @@ end;
 procedure TStyleRulesTests.WithoutWithSilent;
 begin
   TRuleAssert.Silent(TWithStatementRule.Create, InRoutine('  P: TPoint;', '  P.X := P.Y; // with P do'));
+end;
+
+procedure TStyleRulesTests.BooleanAssignIfIssueExample;
+var
+  Source: string;
+  Findings: TArray<TRuleFinding>;
+begin
+  Source := InRoutine('  Betrag: Integer;', '  if Betrag > 0 then'#10'    Result := True'#10'  else'#10 +
+    '    Result := False;');
+  Findings := TRuleAssert.Findings(TBooleanAssignIfRule.Create, Source);
+  Assert.AreEqual(1, Integer(Length(Findings)));
+  Assert.AreEqual('Das if weist nur True oder False zu.', Findings[0].Message);
+  Assert.AreEqual(Ord(TRuleSeverity.Hint), Ord(Findings[0].Severity));
+  Assert.AreEqual(Ord(TRuleConfidence.High), Ord(Findings[0].Confidence));
+  Assert.AreEqual('Durch Result := Betrag > 0 ersetzen', Findings[0].Fixes[0].Title);
+  Assert.AreEqual(InRoutine('  Betrag: Integer;', '  Result := Betrag > 0;'), Fixed(Source, Findings));
+  TRuleAssert.Silent(TBooleanAssignIfRule.Create, Fixed(Source, Findings));
+end;
+
+procedure TStyleRulesTests.BooleanAssignIfVariants;
+var
+  Source: string;
+  Findings: TArray<TRuleFinding>;
+begin
+  // Umgekehrt, mit begin/end, mit not, Exit mit else und Exit als Folgeanweisung.
+  Source := InRoutine('  X: Boolean;', '  if Liste.Count = 0 then begin X := False; end else begin X := True; end;');
+  Assert.AreEqual(InRoutine('  X: Boolean;', '  X := not (Liste.Count = 0);'),
+    Fixed(Source, TRuleAssert.Findings(TBooleanAssignIfRule.Create, Source)));
+  Source := InRoutine('  X: Boolean;', '  if not Fertig then X := False else X := True;');
+  Assert.AreEqual(InRoutine('  X: Boolean;', '  X := Fertig;'),
+    Fixed(Source, TRuleAssert.Findings(TBooleanAssignIfRule.Create, Source)));
+  Source := InRoutine('  X: Boolean;', '  if Gefunden(A) then Exit(False) else Exit(True);');
+  Assert.AreEqual(InRoutine('  X: Boolean;', '  Exit(not Gefunden(A));'),
+    Fixed(Source, TRuleAssert.Findings(TBooleanAssignIfRule.Create, Source)));
+  Source := InRoutine('  X: Boolean;', '  if A and B then'#10'    Exit(True);'#10'  Exit(False);');
+  Assert.AreEqual(InRoutine('  X: Boolean;', '  Exit(A and B);'),
+    Fixed(Source, TRuleAssert.Findings(TBooleanAssignIfRule.Create, Source)));
+  // Kommentar im if: Meldung ohne Korrektur.
+  Findings := TRuleAssert.Findings(TBooleanAssignIfRule.Create, InRoutine('  X: Boolean;',
+    '  if A then X := True // wichtig'#10'  else X := False;'));
+  Assert.AreEqual(1, Integer(Length(Findings)));
+  Assert.AreEqual(0, Integer(Length(Findings[0].Fixes)));
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TBooleanAssignIfRule.Create, Source,
+    '{"rules": {"boolean-assign-if": "off"}}', 'U.pas'))));
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TBooleanAssignIfRule.Create, Source,
+    '{"rules": {"boolean-assign-if": {"exclude": ["Alt/*.pas"]}}}', 'Alt/U.pas'))));
+end;
+
+procedure TStyleRulesTests.BooleanAssignIfSilentCases;
+begin
+  // Verschiedene Ziele, gleiche Werte, weitere Anweisungen, Exit mit Folgeanweisung im else, Result := B.
+  TRuleAssert.Silent(TBooleanAssignIfRule.Create, InRoutine('  X, Y: Boolean;', '  if A then X := True else Y := False;'#10 +
+    '  if A then X := True else X := True;'#10'  if A then begin X := True; Log; end else X := False;'#10 +
+    '  if A then Exit(True);'#10'  Log;'#10'  if A then X := 1 else X := 0;'#10'  Result := A;'#10 +
+    '  if A then Exit(True) else if B then Exit(False);'#10'  Exit(True);'));
 end;
 
 initialization

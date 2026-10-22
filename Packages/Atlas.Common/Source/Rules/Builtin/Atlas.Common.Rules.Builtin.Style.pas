@@ -7,6 +7,8 @@
 //   redundant-parens         Klammern um die ganze Bedingung bzw. rechte Seite (Standard aus)
 //   redundant-begin-end      begin/end um eine einzelne Anweisung (Standard aus)
 //   with-statement           with verdeckt, zu welchem Objekt ein Bezeichner gehört (#94)
+//   boolean-assign-if        if B then X := True else X := False bzw. if B then Exit(True); Exit(False);
+//                            Korrektur X := B, X := not B bzw. Exit(B) (#935)
 // Exit, Break und Continue aus einem finally-Block lehnt der Compiler selbst ab;
 // dafür gibt es keine eigene Regel.
 
@@ -54,6 +56,12 @@ type
   end;
 
 /// <summary>Registriert die Stilregeln.</summary>
+  TBooleanAssignIfRule = class(TInterfacedObject, IRule)
+  public
+    function Descriptor: TRuleDescriptor;
+    procedure Check(const AContext: TRuleContext; const AReport: IRuleReport);
+  end;
+
 procedure RegisterStyleRules(const ARegistry: TRuleRegistry);
 
 implementation
@@ -529,6 +537,172 @@ begin
     VisitWith(AContext.Tree.Root, AContext.Tree.Tokens, AReport);
 end;
 
+{ TBooleanAssignIfRule }
+
+function TBooleanAssignIfRule.Descriptor: TRuleDescriptor;
+begin
+  Result := TRuleDescriptor.Create('boolean-assign-if', TRuleSeverity.Hint, 'if, das nur True oder False zuweist');
+end;
+
+procedure TBooleanAssignIfRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
+const
+  Message = 'Das if weist nur True oder False zu.';
+var
+  Tokens: TTokens;
+
+  function Text(ANode: TSyntaxNode): string;
+  begin
+    Result := Trim(Copy(AContext.Text, ANode.StartOffset + 1, ANode.EndOffset - ANode.StartOffset));
+  end;
+
+  // Vergleichsschlüssel ohne Leerraum.
+  function Key(ANode: TSyntaxNode): string;
+  begin
+    Result := LowerCase(StringReplace(StringReplace(Text(ANode), ' ', '', [rfReplaceAll]), #9, '', [rfReplaceAll]));
+  end;
+
+  // begin X end mit genau einer Anweisung: die Anweisung.
+  function Single(ANode: TSyntaxNode): TSyntaxNode;
+  begin
+    Result := ANode;
+    while (Result <> nil) and (Result.Kind = TSyntaxKind.Block) do
+      if Result.ChildCount = 1 then
+        Result := Result[0]
+      else
+        Result := nil;
+  end;
+
+  // 1 für True, 0 für False, -1 sonst.
+  function BoolValue(ANode: TSyntaxNode): Integer;
+  begin
+    Result := -1;
+    if (ANode <> nil) and (ANode.Kind = TSyntaxKind.Identifier) then
+      if SameText(ANode.Name, 'True') then
+        Result := 1
+      else if SameText(ANode.Name, 'False') then
+        Result := 0;
+  end;
+
+  // X := True/False: Wert, Ziel in ATarget.
+  function AssignedValue(ANode: TSyntaxNode; out ATarget: TSyntaxNode): Integer;
+  begin
+    Result := -1;
+    ATarget := nil;
+    if (ANode <> nil) and (ANode.Kind = TSyntaxKind.AssignStatement) and (ANode.ChildCount = 2) then
+    begin
+      ATarget := ANode[0];
+      Result := BoolValue(ANode[1]);
+    end;
+  end;
+
+  // Exit(True/False) als Anweisung.
+  function ExitValue(ANode: TSyntaxNode): Integer;
+  begin
+    Result := -1;
+    if (ANode <> nil) and (ANode.Kind = TSyntaxKind.CallStatement) and (ANode.ChildCount = 1) and
+      (ANode[0].Kind = TSyntaxKind.Call) and SameText(ANode[0].Name, 'Exit') and (ANode[0].ChildCount = 2) then
+      Result := BoolValue(ANode[0][1]);
+  end;
+
+  function Negated(ACondition: TSyntaxNode): string;
+  begin
+    if (ACondition.Kind = TSyntaxKind.UnaryExpr) and SameText(ACondition.Name, 'not') and
+      (ACondition.ChildCount = 1) then
+      Result := Text(ACondition[0])
+    else if ACondition.Kind in [TSyntaxKind.Identifier, TSyntaxKind.MemberAccess, TSyntaxKind.Call,
+      TSyntaxKind.IndexAccess, TSyntaxKind.ParenExpr] then
+      Result := 'not ' + Text(ACondition)
+    else
+      Result := 'not (' + Text(ACondition) + ')';
+  end;
+
+  function HasComment(AStart, AEnd: Integer): Boolean;
+  var
+    Token: TPascalToken;
+  begin
+    for Token in Tokens do
+      if (Token.Offset >= AStart) and (Token.Offset < AEnd) and (Token.Kind = TPascalTokenKind.Comment) then
+        Exit(True);
+    Result := False;
+  end;
+
+  procedure Report(AIf, ALast: TSyntaxNode; const ANewText: string);
+  var
+    Fixes: TArray<TRuleFix>;
+  begin
+    Fixes := nil;
+    if not HasComment(AIf.StartOffset, ALast.EndOffset) then
+      Fixes := [TRuleFix.Create('Durch ' + ANewText + ' ersetzen', [TRuleEdit.Create(TTextRange.Create(AIf.StartPos,
+        ALast.EndPos), ANewText)])];
+    AReport.Add(TTextRange.Create(AIf.StartPos, AIf[0].EndPos), Message, TRuleConfidence.High, Fixes);
+  end;
+
+  function Expression(ACondition: TSyntaxNode; AValue: Integer): string;
+  begin
+    if AValue = 1 then
+      Result := Text(ACondition)
+    else
+      Result := Negated(ACondition);
+  end;
+
+  procedure CheckIf(AIf: TSyntaxNode; ANext: TSyntaxNode);
+  var
+    ThenTarget, ElseTarget: TSyntaxNode;
+    ThenValue, ElseValue: Integer;
+  begin
+    if AIf.ChildCount < 2 then
+      Exit;
+    if AIf.ChildCount = 3 then
+    begin
+      // if B then X := True else X := False
+      ThenValue := AssignedValue(Single(AIf[1]), ThenTarget);
+      ElseValue := AssignedValue(Single(AIf[2]), ElseTarget);
+      if (ThenValue >= 0) and (ElseValue >= 0) and (ThenValue <> ElseValue) and (Key(ThenTarget) = Key(ElseTarget)) then
+      begin
+        Report(AIf, AIf, Text(ThenTarget) + ' := ' + Expression(AIf[0], ThenValue));
+        Exit;
+      end;
+      // if B then Exit(True) else Exit(False)
+      ThenValue := ExitValue(Single(AIf[1]));
+      ElseValue := ExitValue(Single(AIf[2]));
+      if (ThenValue >= 0) and (ElseValue >= 0) and (ThenValue <> ElseValue) then
+        Report(AIf, AIf, 'Exit(' + Expression(AIf[0], ThenValue) + ')');
+      Exit;
+    end;
+    // if B then Exit(True); Exit(False);
+    ThenValue := ExitValue(Single(AIf[1]));
+    ElseValue := ExitValue(ANext);
+    if (ThenValue >= 0) and (ElseValue >= 0) and (ThenValue <> ElseValue) then
+      Report(AIf, ANext, 'Exit(' + Expression(AIf[0], ThenValue) + ')');
+  end;
+
+  procedure Visit(ANode: TSyntaxNode);
+  var
+    Index: Integer;
+    Next: TSyntaxNode;
+  begin
+    for Index := 0 to ANode.ChildCount - 1 do
+    begin
+      if ANode[Index].Kind = TSyntaxKind.IfStatement then
+      begin
+        Next := nil;
+        // Folgeanweisung nur in Anweisungslisten, nicht im else-Zweig eines äußeren if.
+        if (Index < ANode.ChildCount - 1) and (ANode.Kind in [TSyntaxKind.Block, TSyntaxKind.TryStatement,
+          TSyntaxKind.FinallyBlock, TSyntaxKind.ExceptBlock, TSyntaxKind.RepeatStatement]) then
+          Next := ANode[Index + 1];
+        CheckIf(ANode[Index], Next);
+      end;
+      Visit(ANode[Index]);
+    end;
+  end;
+
+begin
+  if (AContext.Tree = nil) or (AContext.Tree.Root = nil) then
+    Exit;
+  Tokens := AContext.Tree.Tokens;
+  Visit(AContext.Tree.Root);
+end;
+
 procedure RegisterStyleRules(const ARegistry: TRuleRegistry);
 begin
   ARegistry.Register(TBoolCompareRule.Create);
@@ -537,6 +711,7 @@ begin
   ARegistry.Register(TRedundantParensRule.Create);
   ARegistry.Register(TRedundantBeginEndRule.Create);
   ARegistry.Register(TWithStatementRule.Create);
+  ARegistry.Register(TBooleanAssignIfRule.Create);
 end;
 
 end.
