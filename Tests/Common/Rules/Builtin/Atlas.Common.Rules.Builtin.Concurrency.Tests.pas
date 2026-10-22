@@ -93,6 +93,14 @@ type
     procedure ThreadLoopSilentCases;
     [Test]
     procedure ThreadLoopOffAndExclude;
+    [Test]
+    procedure AnonymousThreadIssueExample;
+    [Test]
+    procedure AnonymousThreadVariables;
+    [Test]
+    procedure AnonymousThreadSilentCases;
+    [Test]
+    procedure AnonymousThreadOffAndExclude;
   end;
 
 implementation
@@ -808,6 +816,73 @@ begin
     '{"rules": {"thread-loop-without-terminated": "off"}}', 'U.pas'))));
   Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TThreadLoopWithoutTerminatedRule.Create, Source,
     '{"rules": {"thread-loop-without-terminated": {"exclude": ["Alt/*.pas"]}}}', 'Alt/U.pas'))));
+end;
+
+procedure TConcurrencyRulesTests.AnonymousThreadIssueExample;
+var
+  Source, Fixed: string;
+  Findings: TArray<TRuleFinding>;
+begin
+  Source := Routine('  TThread.CreateAnonymousThread('#10'    procedure'#10'    begin'#10'      Synchronisieren;'#10 +
+    '    end);');
+  Findings := TRuleAssert.Findings(TAnonymousThreadNotStartedRule.Create, Source);
+  Assert.AreEqual(1, Integer(Length(Findings)));
+  Assert.AreEqual('anonymous-thread-not-started', Findings[0].RuleId);
+  Assert.AreEqual(Ord(TRuleSeverity.Warning), Ord(Findings[0].Severity));
+  Assert.AreEqual(Ord(TRuleConfidence.High), Ord(Findings[0].Confidence));
+  Assert.AreEqual('Der anonyme Thread wird nie gestartet und nie freigegeben.', Findings[0].Message);
+  Assert.AreEqual(5, Findings[0].Range.StartPos.Line);
+  Assert.AreEqual(10, Findings[0].Range.StartPos.Character);
+  Assert.AreEqual('.Start anhängen', Findings[0].Fixes[0].Title);
+  Fixed := TChangeSignature.ApplyEdits(Source, Findings[0].Fixes[0].Edits);
+  Assert.AreEqual(Routine('  TThread.CreateAnonymousThread('#10'    procedure'#10'    begin'#10 +
+    '      Synchronisieren;'#10'    end).Start;'), Fixed);
+  TRuleAssert.Silent(TAnonymousThreadNotStartedRule.Create, Fixed);
+end;
+
+procedure TConcurrencyRulesTests.AnonymousThreadVariables;
+var
+  Source: string;
+  Findings: TArray<TRuleFinding>;
+begin
+  // Lokale Variable mit gesetzten Eigenschaften: Start nach der letzten Anweisung, die sie erwähnt.
+  Source := Routine('  T := System.Classes.TThread.CreateAnonymousThread(Arbeit);'#10'  T.FreeOnTerminate := False;'#10 +
+    '  Weiter;', 'procedure TA.Run;'#10'var'#10'  T: TThread;');
+  Findings := TRuleAssert.Findings(TAnonymousThreadNotStartedRule.Create, Source);
+  Assert.AreEqual(1, Integer(Length(Findings)));
+  Assert.AreEqual('T.Start ergänzen', Findings[0].Fixes[0].Title);
+  Assert.AreEqual(Routine('  T := System.Classes.TThread.CreateAnonymousThread(Arbeit);'#10 +
+    '  T.FreeOnTerminate := False;'#10'  T.Start;'#10'  Weiter;', 'procedure TA.Run;'#10'var'#10'  T: TThread;'),
+    TChangeSignature.ApplyEdits(Source, Findings[0].Fixes[0].Edits));
+  // Inline-Variable.
+  Findings := TRuleAssert.Findings(TAnonymousThreadNotStartedRule.Create, Routine(
+    '  var Aufgabe := TThread.CreateAnonymousThread(Arbeit);'#10'  Weiter;'));
+  Assert.AreEqual(1, Integer(Length(Findings)));
+  Assert.AreEqual(Routine('  var Aufgabe := TThread.CreateAnonymousThread(Arbeit);'#10'  Aufgabe.Start;'#10 +
+    '  Weiter;'), TChangeSignature.ApplyEdits(Routine('  var Aufgabe := TThread.CreateAnonymousThread(Arbeit);'#10 +
+    '  Weiter;'), Findings[0].Fixes[0].Edits));
+end;
+
+procedure TConcurrencyRulesTests.AnonymousThreadSilentCases;
+begin
+  // Gestartet, später gestartet, Resume, weitergegeben, Ergebnis, Feld, fremde Fabrik.
+  TRuleAssert.Silent(TAnonymousThreadNotStartedRule.Create, Routine(
+    '  TThread.CreateAnonymousThread(Arbeit).Start;'#10'  T := TThread.CreateAnonymousThread(Arbeit);'#10 +
+    '  T.FreeOnTerminate := False;'#10'  T.Start;'#10'  U := TThread.CreateAnonymousThread(Arbeit);'#10 +
+    '  U.Resume;'#10'  V := TThread.CreateAnonymousThread(Arbeit);'#10'  FListe.Add(V);'#10 +
+    '  Result := TThread.CreateAnonymousThread(Arbeit);'#10'  FThread := TThread.CreateAnonymousThread(Arbeit);'#10 +
+    '  Fabrik.CreateAnonymousThread(Arbeit);', 'function TA.Run: TThread;'#10'var'#10'  T, U, V: TThread;'));
+end;
+
+procedure TConcurrencyRulesTests.AnonymousThreadOffAndExclude;
+var
+  Source: string;
+begin
+  Source := Routine('  TThread.CreateAnonymousThread(Arbeit);');
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TAnonymousThreadNotStartedRule.Create, Source,
+    '{"rules": {"anonymous-thread-not-started": "off"}}', 'U.pas'))));
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TAnonymousThreadNotStartedRule.Create, Source,
+    '{"rules": {"anonymous-thread-not-started": {"exclude": ["Alt/*.pas"]}}}', 'Alt/U.pas'))));
 end;
 
 initialization
