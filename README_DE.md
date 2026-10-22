@@ -96,7 +96,7 @@ Alles Folgende ist in `main` umgesetzt. Funktionen mit *(experimentell)* sind ab
 
 Der Server prüft jede Unit beim Tippen. Treffer erscheinen als Wellenlinien, im Tooltip, gekürzt am Zeilenende und projektweit im andockbaren Fenster **„Atlas-Prüfung“** (Strg+Alt+P); die Markierungen wandern beim Tippen mit.
 
-- **Fenster „Atlas-Prüfung“:** Befunde der Datei, des Projekts oder der Projektgruppe live, Filter je Art, Kategorie und Text, Gruppierung nach Datei, Regel oder Kategorie, sortierbare Spalten; Enter springt, Alt+Enter korrigiert, Kontextmenü zum Unterdrücken, Einstellen, Abschalten und Erklären der Regel
+- **Fenster „Atlas-Prüfung“:** Befunde der Datei, des Projekts oder der Projektgruppe live, Filter je Art, Kategorie und Text, Gruppierung nach Datei, Regel oder Kategorie, sortierbare Spalten; Enter springt, Alt+Enter korrigiert, Kontextmenü zum Unterdrücken, Einstellen, Abschalten und Erklären der Regel. „Offene zuerst“: Die Unit im Editor steht angepinnt oben, darunter die übrigen geöffneten Units, nicht geöffnete folgen ausgegraut (oder normal bzw. ausgeblendet); auf Wunsch auch die aktive Unit ohne Befunde („Keine Befunde“)
 - **Befund-Hover** mit Schweregrad, Regel und Aktionszeile „Alt+Enter: Korrektur“, „Für diese Zeile unterdrücken“, „Regel einstellen…“
 - **Seite „Prüfregeln“** in den Optionen: je Regelgruppe ein Hauptschalter und eine Tabelle mit Schweregrad, Ausnahmen und Optionen jeder Regel, Suche und Katalogtext mit Beispielen
 

@@ -142,6 +142,10 @@ type
     /// und den Änderungen für settings.json.</summary>
     [Test]
     procedure RulesAreaEditsGlobalRules;
+    /// <summary>#1108: offene Units zuerst auf dem Knoten „Prüffenster“; der Schalter sperrt seine Unterpunkte.
+    /// </summary>
+    [Test]
+    procedure ProblemsWindowOpenFirstLocksItsOptions;
     /// <summary>Reiter „Projektdatei“ (#486): jeder Wert mit „aus .atlas“, Hinweise, Öffnen.</summary>
     [Test]
     procedure TeamFileTabShowsValuesFromAtlas;
@@ -2428,6 +2432,39 @@ begin
     Assert.IsTrue(Page.HangTestRow.Visible, 'mit Diagnosemodus geladen');
   finally
     Page.Free;
+  end;
+end;
+
+procedure TAtlasSettingsPageTests.ProblemsWindowOpenFirstLocksItsOptions;
+var
+  Page: TAtlasSettingsPage;
+  Settings: TAtlasPluginSettings;
+begin
+  Page := TAtlasSettingsPage.Create(nil);
+  try
+    Settings := TAtlasPluginSettings.Defaults;
+    Page.LoadFrom(Settings);
+    Assert.IsTrue(Page.ProblemsWindowOpenFirstCheck.Checked);
+    Assert.AreEqual(0, Page.ProblemsWindowClosedUnitsChoice.Choice);
+    Assert.IsTrue(Page.ProblemsWindowShowCleanActiveCheck.Checked);
+    Assert.IsTrue(SheetOf(Page.ProblemsWindowOpenFirstCheck) = Page.NodeSheet('rules.window'));
+    Assert.IsTrue(SheetOf(Page.ProblemsWindowClosedUnitsChoice) = Page.NodeSheet('rules.window'));
+    Assert.IsTrue(Page.ProblemsWindowClosedUnitsChoice.Enabled and Page.ProblemsWindowShowCleanActiveCheck.Enabled);
+    Page.ProblemsWindowOpenFirstCheck.Checked := False;
+    Assert.IsFalse(Page.ProblemsWindowClosedUnitsChoice.Enabled, 'Auswahl gesperrt');
+    Assert.IsFalse(Page.ProblemsWindowShowCleanActiveCheck.Enabled, 'Schalter gesperrt');
+    Page.ProblemsWindowClosedUnitsChoice.Choice := 2;
+    Page.ProblemsWindowShowCleanActiveCheck.Checked := False;
+    Settings := TAtlasPluginSettings.Defaults;
+    Page.SaveTo(Settings);
+    Assert.IsFalse(Settings.ProblemsWindowOpenFirst);
+    Assert.AreEqual('hidden', Settings.ProblemsWindowClosedUnits);
+    Assert.IsFalse(Settings.ProblemsWindowShowCleanActive);
+    Page.ProblemsWindowOpenFirstCheck.Checked := True;
+    Assert.IsTrue(Page.ProblemsWindowClosedUnitsChoice.Enabled, 'wieder frei');
+  finally
+    Page.Free;
+    TAtlasSettingsPage.ForgetTreeState;
   end;
 end;
 

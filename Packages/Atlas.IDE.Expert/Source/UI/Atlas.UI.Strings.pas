@@ -683,7 +683,11 @@ type
     RulesOverriddenBy,
     MetricsLensOperands, MetricsLensLocals, MetricsLensExits, MetricsLensInheritance, MetricsLensInheritanceAtLeast,
     SettingsInlayDefineHints, ElementInlayDefineHints, ElementInlayDefineHintsPlural, InlayDefinesLabel,
-    SettingsInlayCharHints, ElementInlayCharHints, ElementInlayCharHintsPlural);
+    SettingsInlayCharHints, ElementInlayCharHints, ElementInlayCharHintsPlural,
+    ProblemsSectionActive, ProblemsSectionOpen, ProblemsSectionClosed, ProblemsTagActive, ProblemsTagClosed,
+    ProblemsCleanActive, ProblemsCheckingActive, ProblemsOpenFirst, ProblemsOpenFirstHint, ProblemsStatusTiers,
+    ProblemsStatusHidden, SettingsProblemsWindowOpenFirst, SettingsProblemsWindowClosedUnits, ProblemsClosedDimmed,
+    ProblemsClosedNormal, ProblemsClosedHidden, SettingsProblemsWindowShowCleanActive);
 
   TAtlasStrings = class
   private class var
@@ -2179,7 +2183,24 @@ const
      'definiert %s',
      'Code von Steuerzeichen wie ^C in Konstanten zeigen (#3)',
      'Steuerzeichen-Code',
-     'Steuerzeichen-Codes'),
+     'Steuerzeichen-Codes',
+     '%s · aktiver Editor',
+     'Geöffnet · %d Units · %d Befunde',
+     'Nicht geöffnet · %d Units · %d Befunde',
+     'aktiver Editor',
+     'nicht geöffnet',
+     '%s · Keine Befunde',
+     '%s · wird geprüft …',
+     'Offene zuerst',
+     'Aktive Unit oben anpinnen, geöffnete Units zuerst, nicht geöffnete danach',
+     '%d Befunde · %d offene Units (%d) · %d nicht geöffnete Units (%d)',
+     '%d nicht geöffnete Units ausgeblendet',
+     'Offene Units zuerst (aktive Unit oben angepinnt)',
+     'Nicht geöffnete Units:',
+     'ausgegraut',
+     'normal einsortiert',
+     'ausblenden',
+     'Aktive Unit auch ohne Befunde oben zeigen'),
     ('Enter to accept · Esc to close', '%d of %d', 'No matches for “%s”', 'Backspace widens the search',
      'No suggestions here', 'Esc closes', 'No details for this entry', 'Overload', 'Deprecated: %s', 'Deprecated.',
      'Inherited from %s', 'Inherited', 'optional, default %s', 'No overload with %d parameters.', '… %d more',
@@ -3579,7 +3600,24 @@ const
      'defines %s',
      'Show the code of control characters such as ^C in constants (#3)',
      'control character code',
-     'control character codes'));
+     'control character codes',
+     '%s · active editor',
+     'Open · %d units · %d findings',
+     'Not open · %d units · %d findings',
+     'active editor',
+     'not open',
+     '%s · No findings',
+     '%s · checking …',
+     'Open first',
+     'Pin the active unit on top, open units first, units that are not open after them',
+     '%d findings · %d open units (%d) · %d units not open (%d)',
+     '%d units that are not open hidden',
+     'Open units first (active unit pinned on top)',
+     'Units that are not open:',
+     'dimmed',
+     'sorted in normally',
+     'hidden',
+     'Show the active unit on top even without findings'));
 
 { TAtlasStrings }
 

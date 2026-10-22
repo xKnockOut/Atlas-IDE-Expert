@@ -21,6 +21,14 @@
 // Sortierung zurücksetzen. Neue Einträge werden kurz hervorgehoben.
 // Den Inhalt (SetFindings) und die Statuszeile setzt die IDE-Schicht; Auswahl,
 // Aufklappzustand und Bildlauf bleiben dabei erhalten (TAtlasFindingsView).
+// Offene Units zuerst (#1108): Umschaltknopf „Offene zuerst“ (Nadel) neben
+// der Gruppierung; die Gruppe bzw. die Zeilen der aktiven Unit hinterlegt in
+// Akzentfarbe mit Nadel und „aktiver Editor“, Trennzeilen „Geöffnet“ und
+// „Nicht geöffnet“ über die ganze Zeile, nicht geöffnete Units ausgegraut
+// (Text mit mindestens 4,5 : 1, Symbole aufgehellt in gleicher Form) und
+// voll bedienbar. Trennzeilen lassen sich nicht wählen; ↑/↓ springen über sie.
+// Wechselt die aktive Unit, bleibt die Auswahl sichtbar, ohne Auswahl steht
+// die oberste Zeile oben.
 // Die DFM ist leer, weil TCustomFrame.Create für abgeleitete Frames eine
 // Ressource verlangt; aufgebaut wird im Code.
 
@@ -54,6 +62,7 @@ type
     FKinds: array[TAtlasFindingKind] of TSpeedButton;
     FCategory: TComboBox;
     FGrouping: TComboBox;
+    FOpenFirst: TSpeedButton;
     FFilter: TEdit;
     FLive: TLabel;
     FList: TListView;
@@ -85,6 +94,8 @@ type
     FOrderHandle: HWND;
     FUpdating: Boolean;
     FShowCompilerCode: Boolean;
+    /// <summary>Fläche, für die die ausgegrauten Symbole gebaut sind.</summary>
+    FImagesBack: TColor;
     FOnOpen: TAtlasFindingEvent;
     FOnFix: TAtlasFindingEvent;
     FOnSuppress: TAtlasFindingEvent;
@@ -97,6 +108,12 @@ type
     function AddCombo(AWidth: Integer): TComboBox;
     procedure FillCombo(ACombo: TComboBox; const ATexts: TArray<string>; AIndex: Integer);
     procedure BuildImages;
+    /// <summary>Fläche und Text der Liste nach dem IDE-Thema.</summary>
+    function ListBack: TColor;
+    function ListText: TColor;
+    /// <summary>Text einer Trennzeile bzw. der Zeile „Keine Befunde“ (#1108).</summary>
+    function SectionText(const ARow: TAtlasFindingRow): string;
+    procedure DrawSection(ACanvas: TCanvas; AItem: TListItem; const ARow: TAtlasFindingRow);
     procedure BuildColumns;
     procedure SetShowCompilerCode(AValue: Boolean);
     /// <summary>Anzeigereihenfolge und Breiten der Liste nach FColumns übernehmen.</summary>
@@ -116,6 +133,7 @@ type
     procedure ControlsChanged(Sender: TObject);
     procedure ScopeChange(Sender: TObject);
     procedure GroupingChange(Sender: TObject);
+    procedure OpenFirstClick(Sender: TObject);
     procedure FilterKeyDown(Sender: TObject; var Key: Word; Shift: TShiftState);
     procedure ListData(Sender: TObject; Item: TListItem);
     procedure ListSelectItem(Sender: TObject; Item: TListItem; Selected: Boolean);
@@ -147,6 +165,13 @@ type
     /// Compilermeldungen.</summary>
     procedure ApplySettings(AScope: TAtlasFindingScope; AGrouping: TAtlasFindingGrouping; const AColumns: string;
       ACompiler: Boolean);
+    /// <summary>Offene Units zuerst (#1108): problems.window.openFirst, .closedUnits, .showCleanActive.</summary>
+    procedure ApplyTierSettings(AOpenFirst: Boolean; AClosedUnits: TAtlasClosedUnits; AShowCleanActive: Boolean);
+    /// <summary>Aktive und geöffnete Dateien (#1108); AActiveChecked: der Server hat die aktive Datei geliefert.
+    /// Hält die Auswahl sichtbar bzw. ohne Auswahl die oberste Zeile oben, wenn die aktive Unit wechselt.</summary>
+    procedure SetOpenFiles(const AActive: string; const AOpen: TArray<string>; AActiveChecked: Boolean);
+    /// <summary>Umschaltknopf „Offene zuerst“ gedrückt.</summary>
+    function OpenFirst: Boolean;
     /// <summary>Neuer Stand; ACurrentFile und AFiles bestimmen den Bereich (siehe TAtlasFindingFilter).</summary>
     procedure SetFindings(const AFindings: TArray<TAtlasFinding>; const ACurrentFile: string;
       const AFiles: TArray<string>);
@@ -175,6 +200,7 @@ type
     property ScopeBox: TComboBox read FScope;
     property CategoryBox: TComboBox read FCategory;
     property GroupingBox: TComboBox read FGrouping;
+    property OpenFirstButton: TSpeedButton read FOpenFirst;
     property FilterEdit: TEdit read FFilter;
     property LiveLabel: TLabel read FLive;
     property StatusLabel: TLabel read FStatus;
@@ -188,7 +214,7 @@ type
     property OnExplain: TAtlasFindingEvent read FOnExplain write FOnExplain;
     /// <summary>Bereich gewechselt: Die IDE-Schicht liefert die Dateien des Bereichs neu.</summary>
     property OnScope: TAtlasFindingScopeEvent read FOnScope write FOnScope;
-    /// <summary>Bereich, Gruppierung oder Spalten geändert: zum Speichern.</summary>
+    /// <summary>Bereich, Gruppierung, Spalten oder „Offene zuerst“ geändert: zum Speichern.</summary>
     property OnLayout: TProc read FOnLayout write FOnLayout;
   end;
 
@@ -198,6 +224,9 @@ uses
   System.Math,
   Winapi.CommCtrl,
   Vcl.Clipbrd,
+  Vcl.Themes,
+  Atlas.Core.Style.Color,
+  Atlas.Core.Problems.Colors,
   Atlas.UI.Strings;
 
 {$R *.dfm}
@@ -208,6 +237,11 @@ const
   /// <summary>Hervorhebung neuer Einträge.</summary>
   NewMs = 1500;
   IconSize = 16;
+  /// <summary>Symbole der Arten; dahinter dieselben ausgegraut (#1108).</summary>
+  KindColors: array[TAtlasFindingKind] of TColor = ($003C3CD8, $0020A8F0, $00D08030);
+  DimmedImageOffset = 3;
+  PinMark = #$D83D#$DCCC;
+  CheckMark = #$2713;
 
 { TAtlasProblemsFrame }
 
@@ -265,10 +299,24 @@ begin
   FGrouping := AddCombo(120);
   FGrouping.Left := FCategory.Left + FCategory.Width + MulDiv(4, CurrentPPI, 96);
   FGrouping.OnChange := GroupingChange;
+  // Offene Units zuerst (#1108): gedrückt = an; eigene Gruppe, damit er allein an und aus geht.
+  FOpenFirst := TSpeedButton.Create(Self);
+  FOpenFirst.Parent := FBar;
+  FOpenFirst.Top := MulDiv(2, CurrentPPI, 96);
+  FOpenFirst.Height := MulDiv(22, CurrentPPI, 96);
+  FOpenFirst.Width := MulDiv(110, CurrentPPI, 96);
+  FOpenFirst.Left := FGrouping.Left + FGrouping.Width + MulDiv(4, CurrentPPI, 96);
+  FOpenFirst.Flat := True;
+  FOpenFirst.GroupIndex := Ord(High(TAtlasFindingKind)) + 2;
+  FOpenFirst.AllowAllUp := True;
+  FOpenFirst.Caption := PinMark + ' ' + TAtlasStrings.Text(TAtlasTextId.ProblemsOpenFirst);
+  FOpenFirst.Hint := TAtlasStrings.Text(TAtlasTextId.ProblemsOpenFirstHint);
+  FOpenFirst.ShowHint := True;
+  FOpenFirst.OnClick := OpenFirstClick;
   FFilter := TEdit.Create(Self);
   FFilter.Parent := FBar;
   FFilter.Top := MulDiv(3, CurrentPPI, 96);
-  FFilter.Left := FGrouping.Left + FGrouping.Width + MulDiv(4, CurrentPPI, 96);
+  FFilter.Left := FOpenFirst.Left + FOpenFirst.Width + MulDiv(4, CurrentPPI, 96);
   FFilter.Width := MulDiv(200, CurrentPPI, 96);
   FFilter.TextHint := TAtlasStrings.Text(TAtlasTextId.ProblemsFilterHint);
   FFilter.OnChange := ControlsChanged;
@@ -293,7 +341,6 @@ begin
   FImages := TImageList.Create(Self);
   FImages.Width := MulDiv(IconSize, CurrentPPI, 96);
   FImages.Height := FImages.Width;
-  BuildImages;
 
   FMenu := TPopupMenu.Create(Self);
   FMenu.OnPopup := MenuPopup;
@@ -354,6 +401,7 @@ begin
 
   FColumns := TAtlasFindings.ParseColumns('');
   FShowCompilerCode := True;
+  BuildImages;
   BuildColumns;
   UpdateKindCaptions;
 end;
@@ -416,70 +464,94 @@ begin
   Result.Width := MulDiv(AWidth, CurrentPPI, 96);
 end;
 
+function TAtlasProblemsFrame.ListBack: TColor;
+begin
+  Result := ColorToRGB(StyleServices.GetSystemColor(FList.Color));
+end;
+
+function TAtlasProblemsFrame.ListText: TColor;
+begin
+  Result := ColorToRGB(StyleServices.GetSystemColor(FList.Font.Color));
+end;
+
 procedure TAtlasProblemsFrame.BuildImages;
-const
-  Colors: array[TAtlasFindingKind] of TColor = ($003C3CD8, $0020A8F0, $00D08030);
 var
   Kind: TAtlasFindingKind;
   Bitmap: TBitmap;
-  Size, Pad: Integer;
+  Size, Pad, Pass: Integer;
   Points: array[0..2] of TPoint;
+  Color, Mark: TColor;
 begin
+  // Zuerst die drei Arten, dahinter dieselben Formen ausgegraut für nicht geöffnete Units (#1108): aufgehellt bzw.
+  // abgedunkelt zur Fläche der Liste, damit Fehler weiter von Warnungen unterscheidbar bleiben.
+  FImagesBack := ListBack;
+  FImages.Clear;
   Size := FImages.Width;
   Pad := Size div 8;
-  for Kind := Low(TAtlasFindingKind) to High(TAtlasFindingKind) do
-  begin
-    Bitmap := TBitmap.Create;
-    try
-      Bitmap.SetSize(Size, Size);
-      Bitmap.Canvas.Brush.Color := clFuchsia;
-      Bitmap.Canvas.FillRect(Rect(0, 0, Size, Size));
-      Bitmap.Canvas.Brush.Color := Colors[Kind];
-      Bitmap.Canvas.Pen.Color := Colors[Kind];
-      Bitmap.Canvas.Font.Color := clWhite;
-      Bitmap.Canvas.Font.Style := [fsBold];
-      Bitmap.Canvas.Font.Height := -(Size - 2 * Pad);
-      Bitmap.Canvas.Pen.Width := Max(1, Size div 8);
-      case Kind of
-        TAtlasFindingKind.Error:
-          begin
-            // Rotes Kreuz im Kreis.
-            Bitmap.Canvas.Ellipse(Pad, Pad, Size - Pad, Size - Pad);
-            Bitmap.Canvas.Pen.Color := clWhite;
-            Bitmap.Canvas.MoveTo(Size div 3, Size div 3);
-            Bitmap.Canvas.LineTo(Size - Size div 3, Size - Size div 3);
-            Bitmap.Canvas.MoveTo(Size - Size div 3 - 1, Size div 3);
-            Bitmap.Canvas.LineTo(Size div 3 - 1, Size - Size div 3);
-          end;
-        TAtlasFindingKind.Warning:
-          begin
-            // Gelb-oranges Dreieck mit Ausrufezeichen.
-            Points[0] := Point(Size div 2, Pad);
-            Points[1] := Point(Size - Pad, Size - Pad);
-            Points[2] := Point(Pad, Size - Pad);
-            Bitmap.Canvas.Polygon(Points);
-            Bitmap.Canvas.Pen.Color := clBlack;
-            Bitmap.Canvas.MoveTo(Size div 2, Size * 2 div 5);
-            Bitmap.Canvas.LineTo(Size div 2, Size * 2 div 3);
-            Bitmap.Canvas.MoveTo(Size div 2, Size - 2 * Pad - 1);
-            Bitmap.Canvas.LineTo(Size div 2, Size - 2 * Pad);
-          end;
-      else
-        begin
-          // Blauer Kreis mit „i“.
-          Bitmap.Canvas.Ellipse(Pad, Pad, Size - Pad, Size - Pad);
-          Bitmap.Canvas.Pen.Color := clWhite;
-          Bitmap.Canvas.MoveTo(Size div 2, Size * 2 div 5 + 1);
-          Bitmap.Canvas.LineTo(Size div 2, Size - Size div 4);
-          Bitmap.Canvas.MoveTo(Size div 2, Size div 4);
-          Bitmap.Canvas.LineTo(Size div 2, Size div 4 + 1);
-        end;
+  for Pass := 0 to 1 do
+    for Kind := Low(TAtlasFindingKind) to High(TAtlasFindingKind) do
+    begin
+      Color := KindColors[Kind];
+      Mark := clWhite;
+      if Pass = 1 then
+      begin
+        Color := TColor(DimmedIconColor(TAtlasColor(Color), TAtlasColor(FImagesBack)));
+        Mark := TColor(DimmedIconColor(TAtlasColor(clWhite), TAtlasColor(FImagesBack)));
       end;
-      FImages.AddMasked(Bitmap, clFuchsia);
-    finally
-      Bitmap.Free;
+      Bitmap := TBitmap.Create;
+      try
+        Bitmap.SetSize(Size, Size);
+        Bitmap.Canvas.Brush.Color := clFuchsia;
+        Bitmap.Canvas.FillRect(Rect(0, 0, Size, Size));
+        Bitmap.Canvas.Brush.Color := Color;
+        Bitmap.Canvas.Pen.Color := Color;
+        Bitmap.Canvas.Font.Color := Mark;
+        Bitmap.Canvas.Font.Style := [fsBold];
+        Bitmap.Canvas.Font.Height := -(Size - 2 * Pad);
+        Bitmap.Canvas.Pen.Width := Max(1, Size div 8);
+        case Kind of
+          TAtlasFindingKind.Error:
+            begin
+              // Rotes Kreuz im Kreis.
+              Bitmap.Canvas.Ellipse(Pad, Pad, Size - Pad, Size - Pad);
+              Bitmap.Canvas.Pen.Color := Mark;
+              Bitmap.Canvas.MoveTo(Size div 3, Size div 3);
+              Bitmap.Canvas.LineTo(Size - Size div 3, Size - Size div 3);
+              Bitmap.Canvas.MoveTo(Size - Size div 3 - 1, Size div 3);
+              Bitmap.Canvas.LineTo(Size div 3 - 1, Size - Size div 3);
+            end;
+          TAtlasFindingKind.Warning:
+            begin
+              // Gelb-oranges Dreieck mit Ausrufezeichen.
+              Points[0] := Point(Size div 2, Pad);
+              Points[1] := Point(Size - Pad, Size - Pad);
+              Points[2] := Point(Pad, Size - Pad);
+              Bitmap.Canvas.Polygon(Points);
+              if Pass = 1 then
+                Bitmap.Canvas.Pen.Color := TColor(DimmedIconColor(TAtlasColor(clBlack), TAtlasColor(FImagesBack)))
+              else
+                Bitmap.Canvas.Pen.Color := clBlack;
+              Bitmap.Canvas.MoveTo(Size div 2, Size * 2 div 5);
+              Bitmap.Canvas.LineTo(Size div 2, Size * 2 div 3);
+              Bitmap.Canvas.MoveTo(Size div 2, Size - 2 * Pad - 1);
+              Bitmap.Canvas.LineTo(Size div 2, Size - 2 * Pad);
+            end;
+        else
+          begin
+            // Blauer Kreis mit „i“.
+            Bitmap.Canvas.Ellipse(Pad, Pad, Size - Pad, Size - Pad);
+            Bitmap.Canvas.Pen.Color := Mark;
+            Bitmap.Canvas.MoveTo(Size div 2, Size * 2 div 5 + 1);
+            Bitmap.Canvas.LineTo(Size div 2, Size - Size div 4);
+            Bitmap.Canvas.MoveTo(Size div 2, Size div 4);
+            Bitmap.Canvas.LineTo(Size div 2, Size div 4 + 1);
+          end;
+        end;
+        FImages.AddMasked(Bitmap, clFuchsia);
+      finally
+        Bitmap.Free;
+      end;
     end;
-  end;
 end;
 
 function TAtlasProblemsFrame.ColumnCaption(AColumn: TAtlasFindingColumn): string;
@@ -671,6 +743,50 @@ begin
   Refill;
 end;
 
+procedure TAtlasProblemsFrame.ApplyTierSettings(AOpenFirst: Boolean; AClosedUnits: TAtlasClosedUnits;
+  AShowCleanActive: Boolean);
+begin
+  FOpenFirst.Down := AOpenFirst;
+  FView.ClosedUnits := AClosedUnits;
+  FView.ShowCleanActive := AShowCleanActive;
+  FView.OpenFirst := AOpenFirst;
+  Refill;
+end;
+
+function TAtlasProblemsFrame.OpenFirst: Boolean;
+begin
+  Result := FOpenFirst.Down;
+end;
+
+procedure TAtlasProblemsFrame.SetOpenFiles(const AActive: string; const AOpen: TArray<string>;
+  AActiveChecked: Boolean);
+var
+  Before: string;
+  Selected: Integer;
+begin
+  Before := FView.ActiveFile;
+  FView.SetOpenFiles(AActive, AOpen, AActiveChecked);
+  Refill;
+  if SameText(Before, FView.ActiveFile) or (FList.Items.Count = 0) then
+    Exit;
+  // Editorwechsel: Die ausgewählte Zeile bleibt sichtbar; ohne Auswahl steht die angepinnte Unit oben.
+  Selected := FView.SelectedRow;
+  if (Selected >= 0) and (FList.Items[Selected] <> nil) then
+    FList.Items[Selected].MakeVisible(False)
+  else if FList.Items[0] <> nil then
+    FList.Items[0].MakeVisible(False);
+end;
+
+procedure TAtlasProblemsFrame.OpenFirstClick(Sender: TObject);
+begin
+  if FUpdating then
+    Exit;
+  FView.OpenFirst := FOpenFirst.Down;
+  Refill;
+  if Assigned(FOnLayout) then
+    FOnLayout();
+end;
+
 function TAtlasProblemsFrame.Scope: TAtlasFindingScope;
 begin
   Result := FView.Filter.Scope;
@@ -739,6 +855,9 @@ var
 begin
   // Gezogene Spalten merken, bevor ein neues Fenster der Liste (Andocken) sie vergisst; dann wieder setzen.
   ReadColumns;
+  // Thema gewechselt: ausgegraute Symbole zur neuen Fläche (#1108).
+  if ListBack <> FImagesBack then
+    BuildImages;
   ApplyOrder;
   FUpdating := True;
   try
@@ -824,6 +943,13 @@ var
   Arrow: string;
 begin
   Result := '';
+  if ARow.IsSection then
+  begin
+    // Gezeichnet über die ganze Zeile (DrawSection); der Text steht für Bildschirmleser in der Gruppenspalte.
+    if AColumn = GroupColumn then
+      Result := SectionText(ARow);
+    Exit;
+  end;
   if ARow.IsGroup then
   begin
     if AColumn = GroupColumn then
@@ -832,7 +958,14 @@ begin
         Arrow := #$25BE' '
       else
         Arrow := #$25B8' ';
+      if ARow.Pinned then
+        Arrow := Arrow + PinMark + ' ';
       Result := Arrow + ARow.Caption + ' (' + IntToStr(ARow.Count) + ')';
+      // Kennzeichen der Stufe (#1108).
+      if ARow.Pinned then
+        Result := Result + ' ' + #$00B7 + ' ' + TAtlasStrings.Text(TAtlasTextId.ProblemsTagActive)
+      else if ARow.Dimmed then
+        Result := Result + ' ' + #$00B7 + ' ' + TAtlasStrings.Text(TAtlasTextId.ProblemsTagClosed);
     end;
     Exit;
   end;
@@ -855,6 +988,56 @@ begin
   end;
 end;
 
+function TAtlasProblemsFrame.SectionText(const ARow: TAtlasFindingRow): string;
+begin
+  if ARow.IsCleanActive then
+  begin
+    if ARow.Checking then
+      Result := PinMark + ' ' + TAtlasStrings.Fmt(TAtlasTextId.ProblemsCheckingActive, [ARow.Caption])
+    else
+      Result := PinMark + ' ' + CheckMark + ' ' + TAtlasStrings.Fmt(TAtlasTextId.ProblemsCleanActive, [ARow.Caption]);
+    Exit;
+  end;
+  case ARow.Tier of
+    TAtlasFindingTier.Active:
+      Result := PinMark + ' ' + TAtlasStrings.Fmt(TAtlasTextId.ProblemsSectionActive, [ARow.Caption]);
+    TAtlasFindingTier.Open:
+      Result := TAtlasStrings.Fmt(TAtlasTextId.ProblemsSectionOpen, [ARow.Units, ARow.Count]);
+  else
+    Result := TAtlasStrings.Fmt(TAtlasTextId.ProblemsSectionClosed, [ARow.Units, ARow.Count]);
+  end;
+end;
+
+procedure TAtlasProblemsFrame.DrawSection(ACanvas: TCanvas; AItem: TListItem; const ARow: TAtlasFindingRow);
+var
+  Bounds: TRect;
+  Text: string;
+  Back: TColor;
+begin
+  // Trennzeile über die ganze Breite: Linie oben, Text klein und fett in Sekundärfarbe; die aktive Unit ohne
+  // Befunde wie eine angepinnte Gruppe, „Keine Befunde“ mit grünem Haken.
+  Bounds := AItem.DisplayRect(drBounds);
+  Back := ListBack;
+  if ARow.Pinned then
+    Back := TColor(PinnedBackColor(TAtlasColor(Back)));
+  ACanvas.Brush.Color := Back;
+  ACanvas.FillRect(Bounds);
+  ACanvas.Pen.Color := TColor(TAtlasColorMath.Mix(TAtlasColor(ListText), TAtlasColor(ListBack), 0.2));
+  ACanvas.MoveTo(Bounds.Left, Bounds.Top);
+  ACanvas.LineTo(Bounds.Right, Bounds.Top);
+  ACanvas.Font.Style := [fsBold];
+  if ARow.IsCleanActive and not ARow.Checking then
+    ACanvas.Font.Color := $0050A030
+  else
+    ACanvas.Font.Color := TColor(DimmedTextColor(TAtlasColor(ListText), TAtlasColor(Back)));
+  Text := SectionText(ARow);
+  Inc(Bounds.Left, MulDiv(6, CurrentPPI, 96));
+  ACanvas.Brush.Style := bsClear;
+  DrawText(ACanvas.Handle, PChar(Text), Length(Text), Bounds, DT_SINGLELINE or DT_VCENTER or DT_END_ELLIPSIS or
+    DT_NOPREFIX);
+  ACanvas.Brush.Style := bsSolid;
+end;
+
 function TAtlasProblemsFrame.RowAt(AIndex: Integer; out ARow: TAtlasFindingRow): Boolean;
 var
   Rows: TArray<TAtlasFindingRow>;
@@ -875,8 +1058,12 @@ begin
   if not RowAt(Item.Index, Row) then
     Exit;
   Item.ImageIndex := -1;
-  if not Row.IsGroup then
+  if not Row.IsGroup and not Row.IsSection then
+  begin
     Item.ImageIndex := Ord(FView.Finding(Row.Finding).Kind);
+    if Row.Dimmed then
+      Item.ImageIndex := Item.ImageIndex + DimmedImageOffset;
+  end;
   Item.Caption := '';
   Item.SubItems.Clear;
   for Index := 1 to High(FShown) do
@@ -884,9 +1071,22 @@ begin
 end;
 
 procedure TAtlasProblemsFrame.ListSelectItem(Sender: TObject; Item: TListItem; Selected: Boolean);
+var
+  Row: TAtlasFindingRow;
 begin
   if FUpdating or not Selected or (Item = nil) then
     Exit;
+  // Trennzeilen (#1108) sind nicht wählbar.
+  if RowAt(Item.Index, Row) and Row.IsSection then
+  begin
+    FUpdating := True;
+    try
+      Item.Selected := False;
+    finally
+      FUpdating := False;
+    end;
+    Exit;
+  end;
   FView.Select(Item.Index);
 end;
 
@@ -899,7 +1099,7 @@ begin
   if (Button <> mbLeft) or (Shift * [ssCtrl, ssShift] <> []) then
     Exit;
   Hit := FList.GetItemAt(X, Y);
-  if (Hit <> nil) and RowAt(Hit.Index, Row) and Row.IsGroup then
+  if (Hit <> nil) and RowAt(Hit.Index, Row) and Row.IsGroup and not Row.IsSection then
   begin
     FView.Toggle(Hit.Index);
     Refill;
@@ -916,15 +1116,39 @@ procedure TAtlasProblemsFrame.ListDblClick(Sender: TObject);
 var
   Row: TAtlasFindingRow;
 begin
-  if RowAt(FList.ItemIndex, Row) and not Row.IsGroup then
+  if RowAt(FList.ItemIndex, Row) and not Row.IsGroup and not Row.IsSection then
     Fire(FOnOpen);
 end;
 
 procedure TAtlasProblemsFrame.ListKeyDown(Sender: TObject; var Key: Word; Shift: TShiftState);
 var
-  Row: TAtlasFindingRow;
+  Row, Next: TAtlasFindingRow;
+  Target, Step: Integer;
 begin
-  if not RowAt(FList.ItemIndex, Row) then
+  // ↑/↓ springen über Trennzeilen (#1108); am Rand bleibt die Auswahl.
+  if (Key = VK_UP) or (Key = VK_DOWN) then
+  begin
+    Step := 1;
+    if Key = VK_UP then
+      Step := -1;
+    Target := FList.ItemIndex + Step;
+    while RowAt(Target, Next) and Next.IsSection do
+      Inc(Target, Step);
+    if (Target <> FList.ItemIndex + Step) and (Shift * [ssShift, ssCtrl] = []) then
+    begin
+      Key := 0;
+      if RowAt(Target, Next) then
+      begin
+        FList.ClearSelection;
+        FList.ItemIndex := Target;
+        FList.Items[Target].Focused := True;
+        FList.Items[Target].MakeVisible(False);
+        FView.Select(Target);
+      end;
+      Exit;
+    end;
+  end;
+  if not RowAt(FList.ItemIndex, Row) or Row.IsSection then
     Exit;
   case Key of
     VK_RETURN:
@@ -977,7 +1201,7 @@ var
   Finding: TAtlasFinding;
 begin
   InfoTip := '';
-  if (Item = nil) or not RowAt(Item.Index, Row) or Row.IsGroup then
+  if (Item = nil) or not RowAt(Item.Index, Row) or Row.IsGroup or Row.IsSection then
     Exit;
   // Ganze Zeile und ganze Meldung.
   Finding := FView.Finding(Row.Finding);
@@ -996,10 +1220,24 @@ begin
   DefaultDraw := True;
   if (Item = nil) or not RowAt(Item.Index, Row) then
     Exit;
+  if Row.IsSection then
+  begin
+    DrawSection(Sender.Canvas, Item, Row);
+    DefaultDraw := False;
+    Exit;
+  end;
   if Row.IsGroup then
     Sender.Canvas.Font.Style := [fsBold]
   else
     Sender.Canvas.Font.Style := [];
+  // Offene Units zuerst (#1108): aktive Unit hinterlegt, nicht geöffnete ausgegraut (nicht über der Auswahl).
+  if not (cdsSelected in State) then
+  begin
+    if Row.Pinned then
+      Sender.Canvas.Brush.Color := TColor(PinnedBackColor(TAtlasColor(ListBack)));
+    if Row.Dimmed then
+      Sender.Canvas.Font.Color := TColor(DimmedTextColor(TAtlasColor(ListText), TAtlasColor(ListBack)));
+  end;
   // Neu dazugekommen: kurz hinterlegt (nicht über der Auswahl).
   if Row.IsNew and not (cdsSelected in State) then
     Sender.Canvas.Brush.Color := $00C8F0FF;
@@ -1074,7 +1312,7 @@ function TAtlasProblemsFrame.Current(out AFinding: TAtlasFinding): Boolean;
 var
   Row: TAtlasFindingRow;
 begin
-  Result := RowAt(FList.ItemIndex, Row) and not Row.IsGroup;
+  Result := RowAt(FList.ItemIndex, Row) and not Row.IsGroup and not Row.IsSection;
   if Result then
     AFinding := FView.Finding(Row.Finding)
   else

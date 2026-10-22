@@ -399,6 +399,9 @@ type
     FProblemsWindowGroupBy: TAtlasChoiceBox;
     FProblemsWindowCompiler: TCheckBox;
     FProblemsWindowFollowCursor: TCheckBox;
+    FProblemsWindowOpenFirst: TCheckBox;
+    FProblemsWindowClosedUnits: TAtlasChoiceBox;
+    FProblemsWindowShowCleanActive: TCheckBox;
     FProblemsLive: TCheckBox;
     FProblemsCompilerMerge: TAtlasChoiceBox;
     FProblemsShowCompilerCode: TCheckBox;
@@ -1089,6 +1092,9 @@ type
     property ProblemsWindowGroupByChoice: TAtlasChoiceBox read FProblemsWindowGroupBy;
     property ProblemsWindowCompilerCheck: TCheckBox read FProblemsWindowCompiler;
     property ProblemsWindowFollowCursorCheck: TCheckBox read FProblemsWindowFollowCursor;
+    property ProblemsWindowOpenFirstCheck: TCheckBox read FProblemsWindowOpenFirst;
+    property ProblemsWindowClosedUnitsChoice: TAtlasChoiceBox read FProblemsWindowClosedUnits;
+    property ProblemsWindowShowCleanActiveCheck: TCheckBox read FProblemsWindowShowCleanActive;
     property ProblemsLiveCheck: TCheckBox read FProblemsLive;
     property ProblemsCompilerMergeChoice: TAtlasChoiceBox read FProblemsCompilerMerge;
     property ProblemsShowCompilerCodeCheck: TCheckBox read FProblemsShowCompilerCode;
@@ -1289,6 +1295,8 @@ const
   /// </summary>
   ScopeValues: array[0..2] of string = ('file', 'project', 'group');
   GroupByValues: array[0..3] of string = ('none', 'file', 'rule', 'category');
+  /// <summary>Werte von problems.window.closedUnits in der Reihenfolge der Auswahl (#1108).</summary>
+  ClosedUnitsValues: array[0..2] of string = ('dimmed', 'normal', 'hidden');
   /// <summary>Werte von problems.compilerMerge in der Reihenfolge der Auswahl (#1024).</summary>
   CompilerMergeValues: array[0..1] of string = ('merge', 'both');
 
@@ -1718,6 +1726,13 @@ begin
     TAtlasStrings.Text(TAtlasTextId.ProblemsGroupRule), TAtlasStrings.Text(TAtlasTextId.ProblemsGroupCategory)]);
   FProblemsWindowCompiler := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsProblemsWindowCompiler));
   FProblemsWindowFollowCursor := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsProblemsWindowFollowCursor));
+  // Offene Units zuerst (#1108); der Hauptschalter sperrt die beiden Zeilen darunter (x-parent).
+  FProblemsWindowOpenFirst := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsProblemsWindowOpenFirst));
+  FProblemsWindowClosedUnits := AddChoice(TAtlasStrings.Text(TAtlasTextId.SettingsProblemsWindowClosedUnits),
+    [TAtlasStrings.Text(TAtlasTextId.ProblemsClosedDimmed), TAtlasStrings.Text(TAtlasTextId.ProblemsClosedNormal),
+    TAtlasStrings.Text(TAtlasTextId.ProblemsClosedHidden)]);
+  FProblemsWindowShowCleanActive := AddCheck(
+    TAtlasStrings.Text(TAtlasTextId.SettingsProblemsWindowShowCleanActive));
   FProblemsLive := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsProblemsLive));
   // Gruppe „Compiler vorab“ (#1024): stehen über x-node im Knoten der Gruppe unter dem Regel-Editor.
   FProblemsCompilerMerge := AddChoice(TAtlasStrings.Text(TAtlasTextId.SettingsProblemsCompilerMerge),
@@ -2814,6 +2829,9 @@ begin
   FMarks.Bind(FProblemsWindowGroupBy, ['ProblemsWindowGroupBy']);
   FMarks.Bind(FProblemsWindowCompiler, ['ProblemsWindowCompiler']);
   FMarks.Bind(FProblemsWindowFollowCursor, ['ProblemsWindowFollowCursor']);
+  FMarks.Bind(FProblemsWindowOpenFirst, ['ProblemsWindowOpenFirst']);
+  FMarks.Bind(FProblemsWindowClosedUnits, ['ProblemsWindowClosedUnits']);
+  FMarks.Bind(FProblemsWindowShowCleanActive, ['ProblemsWindowShowCleanActive']);
   FMarks.Bind(FProblemsLive, ['ProblemsLive']);
   FMarks.Bind(FProblemsCompilerMerge, ['ProblemsCompilerMerge']);
   FMarks.Bind(FProblemsShowCompilerCode, ['ProblemsShowCompilerCode']);
@@ -5015,6 +5033,9 @@ begin
   FProblemsWindowGroupBy.Choice := Max(0, IndexText(ASettings.ProblemsWindowGroupBy, GroupByValues));
   FProblemsWindowCompiler.Checked := ASettings.ProblemsWindowCompiler;
   FProblemsWindowFollowCursor.Checked := ASettings.ProblemsWindowFollowCursor;
+  FProblemsWindowOpenFirst.Checked := ASettings.ProblemsWindowOpenFirst;
+  FProblemsWindowClosedUnits.Choice := Max(0, IndexText(ASettings.ProblemsWindowClosedUnits, ClosedUnitsValues));
+  FProblemsWindowShowCleanActive.Checked := ASettings.ProblemsWindowShowCleanActive;
   FProblemsCompilerMerge.Choice := Max(0, IndexText(ASettings.ProblemsCompilerMerge, CompilerMergeValues));
   FProblemsShowCompilerCode.Checked := ASettings.ProblemsShowCompilerCode;
   FProblemsLive.Checked := ASettings.ProblemsLive;
@@ -5441,6 +5462,10 @@ begin
     ASettings.ProblemsWindowGroupBy := GroupByValues[FProblemsWindowGroupBy.Choice];
   ASettings.ProblemsWindowCompiler := FProblemsWindowCompiler.Checked;
   ASettings.ProblemsWindowFollowCursor := FProblemsWindowFollowCursor.Checked;
+  ASettings.ProblemsWindowOpenFirst := FProblemsWindowOpenFirst.Checked;
+  if (FProblemsWindowClosedUnits.Choice >= 0) and (FProblemsWindowClosedUnits.Choice <= High(ClosedUnitsValues)) then
+    ASettings.ProblemsWindowClosedUnits := ClosedUnitsValues[FProblemsWindowClosedUnits.Choice];
+  ASettings.ProblemsWindowShowCleanActive := FProblemsWindowShowCleanActive.Checked;
   if (FProblemsCompilerMerge.Choice >= 0) and (FProblemsCompilerMerge.Choice <= High(CompilerMergeValues)) then
     ASettings.ProblemsCompilerMerge := CompilerMergeValues[FProblemsCompilerMerge.Choice];
   ASettings.ProblemsShowCompilerCode := FProblemsShowCompilerCode.Checked;

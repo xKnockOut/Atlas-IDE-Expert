@@ -15,6 +15,9 @@ type
     procedure EmptyStoreGivesDefaults;
     [Test]
     procedure ProblemsWindowOptions;
+    /// <summary>#1108: offene Units zuerst, nicht geöffnete Units, aktive Unit ohne Befunde.</summary>
+    [Test]
+    procedure ProblemsWindowOpenFirstOptions;
     [Test]
     procedure SaveAndLoadRoundTrip;
     [Test]
@@ -1997,6 +2000,33 @@ begin
   Assert.AreEqual('both', Loaded.ProblemsCompilerMerge);
   Assert.IsFalse(Loaded.ProblemsShowCompilerCode);
   Assert.IsTrue(Loaded.ProblemsList);
+end;
+
+procedure TAtlasPluginSettingsTests.ProblemsWindowOpenFirstOptions;
+var
+  Settings, Loaded: TAtlasPluginSettings;
+  Store: IAtlasSettingsStore;
+begin
+  Settings := TAtlasPluginSettings.Defaults;
+  Assert.IsTrue(Settings.ProblemsWindowOpenFirst);
+  Assert.AreEqual('dimmed', Settings.ProblemsWindowClosedUnits);
+  Assert.IsTrue(Settings.ProblemsWindowShowCleanActive);
+  Settings.ProblemsWindowClosedUnits := 'HIDDEN';
+  Settings.Normalize;
+  Assert.AreEqual('hidden', Settings.ProblemsWindowClosedUnits);
+  Settings.ProblemsWindowClosedUnits := 'grau';
+  Settings.Normalize;
+  Assert.AreEqual('dimmed', Settings.ProblemsWindowClosedUnits, 'Unbekanntes = Vorgabe');
+  Settings.ProblemsWindowOpenFirst := False;
+  Settings.ProblemsWindowClosedUnits := 'normal';
+  Settings.ProblemsWindowShowCleanActive := False;
+  Store := TMemoryStore.Create;
+  Settings.Save(Store);
+  Loaded := TAtlasPluginSettings.Defaults;
+  Loaded.Load(Store);
+  Assert.IsFalse(Loaded.ProblemsWindowOpenFirst);
+  Assert.AreEqual('normal', Loaded.ProblemsWindowClosedUnits);
+  Assert.IsFalse(Loaded.ProblemsWindowShowCleanActive);
 end;
 
 initialization

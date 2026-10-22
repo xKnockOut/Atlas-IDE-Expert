@@ -3246,6 +3246,31 @@ Voraussetzung: Server läuft; Einstellungen auf Vorgabe; Projekt mit einigen Bef
 | AP25 | Knoten „Profile und Baseline“ | Knopf „Projekt-Einstellungen…“, Baseline-Stand, „Aktualisieren“ und „Löschen“ arbeiten |
 | AP26 | Oberfläche auf Englisch | Fenster, Tooltip und Seite englisch, Katalogtexte englisch |
 
+## Atlas-Prüfung: offene Units zuerst (#1108)
+
+Voraussetzung: Fenster „Atlas-Prüfung“ offen, Bereich „Projektgruppe“, Gruppierung „Datei“, Einstellungen auf Vorgabe; Projekt mit mindestens vier Units mit Befunden.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| AO1 | Drei Units öffnen, eine vierte mit Befunden geschlossen lassen (**Abnahme**) | Ganz oben die Gruppe der Unit im Editor, hinterlegt in Akzentfarbe, mit Nadel und „aktiver Editor“; darunter „Geöffnet · 2 Units · n Befunde“ und die beiden anderen alphabetisch; dann „Nicht geöffnet · …“ und die vierte ausgegraut mit „nicht geöffnet“ |
+| AO2 | Editor-Reiter wechseln | Innerhalb von 250 ms steht die neue Unit oben, nur diese Gruppe springt, die Auswahl bleibt, kein Flackern |
+| AO3 | Doppelklick auf einen ausgegrauten Befund | Unit öffnet, Editor springt, die Unit steht oben und ist nicht mehr grau |
+| AO4 | Eine geöffnete Unit schließen | Sie rutscht nach „Nicht geöffnet“ und wird grau; ihre Befunde bleiben |
+| AO5 | Formularansicht (F12) einer Unit | Die `.pas` bleibt angepinnt |
+| AO6 | Alt+Enter bzw. „Für diese Zeile unterdrücken“ auf einem ausgegrauten Befund | Die Unit öffnet sich zuerst, dann wirkt die Code-Aktion |
+| AO7 | Knopf „Offene zuerst“ aus und wieder an | Aus: Reihenfolge wie vor #1108 (ohne Trennzeilen, ohne Grau); der Zustand bleibt nach einem IDE-Neustart (`problems.window.openFirst`) |
+| AO8 | Gruppierung „Keine“, dann „Regel“ und „Kategorie“ | Keine: Trennzeilen „‹Unit› · aktiver Editor“, „Geöffnet“, „Nicht geöffnet“; Regel/Kategorie: Gruppen wie bisher, innerhalb jeder Gruppe aktive Unit (hinterlegt) zuerst, ausgegraute zuletzt, ohne Trennzeilen |
+| AO9 | Spaltenkopf „Stelle“ zweimal klicken | Absteigend sortiert, aber nur innerhalb der Stufen; die aktive Unit bleibt oben |
+| AO10 | ↑/↓ über eine Trennzeile, F8/Umschalt+F8, Strg+C auf mehreren Zeilen | Trennzeilen werden übersprungen und nicht kopiert |
+| AO11 | `problems.window.closedUnits` = hidden | Nicht geöffnete Units fehlen; Umschalter zählen nur Sichtbares; Statuszeile „n nicht geöffnete Units ausgeblendet“ |
+| AO12 | `problems.window.closedUnits` = normal | Nicht geöffnete Units nur einsortiert, nicht grau |
+| AO13 | Unit ohne Befunde öffnen | Oben „‹Unit› · Keine Befunde“ mit grünem Haken, direkt nach dem Öffnen kurz „wird geprüft …“; mit `problems.window.showCleanActive` aus fehlt die Zeile |
+| AO14 | Bereich „Projekt“ | „Nicht geöffnet“ enthält nur Dateien des aktiven Projekts |
+| AO15 | Bereich „Aktuelle Datei“ | Keine Trennzeilen, kein Grau |
+| AO16 | Statuszeile | „15 Befunde · 3 offene Units (8) · 3 nicht geöffnete Units (7) · zuletzt … · 214 von 214 Units geprüft“ |
+| AO17 | Helles und dunkles IDE-Thema | Ausgegraute Zeilen lesbar, Symbole (Kreuz, Dreieck, Kreis) aufgehellt, aber unterscheidbar; Hinterlegung der aktiven Unit passt zum Thema |
+| AO18 | *Tools › Optionen › Atlas › Prüfregeln › Prüffenster*: „Offene Units zuerst“ aus | „Nicht geöffnete Units“ und „Aktive Unit auch ohne Befunde“ gesperrt, Werte bleiben |
+
 ## Setter oder Getter ruft sich selbst auf (#910)
 
 Voraussetzung: Server läuft; Einstellungen auf Vorgabe.

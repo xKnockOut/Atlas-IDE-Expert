@@ -21,9 +21,16 @@
 // atlas.server.settingsCatalog im Hintergrund, #874).
 // Markierung folgt dem Cursor (problems.window.followCursor); F8/Umschalt+F8
 // gehen bei sichtbarem Fenster durch dessen gefilterte Liste (StepWindow).
-// Bereich, Gruppierung und Spalten landen in den Einstellungen
-// (problems.window.scope/groupBy/columns). Mit problems.window aus gibt es
-// weder Menüeintrag noch Fenster. Nur im Hauptthread verwenden.
+// Offene Units zuerst (#1108): Der Takt gibt dem Frame die Datei des oberen
+// Editors und alle in der IDE geöffneten Module (.dfm/.fmx als ihre .pas,
+// das ordnet das Modell zu); geänderte Eingaben bauen die Liste neu, sonst
+// nichts. Statuszeile dann „n Befunde · a offene Units (b) · c nicht geöffnete
+// Units (d)“ bzw. „… ausgeblendet“. Schnellkorrektur und Unterdrücken öffnen
+// eine nicht geöffnete Unit zuerst (ApplyTag).
+// Bereich, Gruppierung, Spalten und „Offene zuerst“ landen in den
+// Einstellungen (problems.window.scope/groupBy/columns/openFirst). Mit
+// problems.window aus gibt es weder Menüeintrag noch Fenster. Nur im
+// Hauptthread verwenden.
 
 interface
 
@@ -185,6 +192,29 @@ begin
   end;
 end;
 
+/// <summary>Alle in der IDE geöffneten Module (#1108), auch Projektdateien und Includes.</summary>
+function OpenFiles: TArray<string>;
+var
+  Modules: IOTAModuleServices;
+  Index: Integer;
+  Module: IOTAModule;
+begin
+  Result := nil;
+  if not Supports(BorlandIDEServices, IOTAModuleServices, Modules) then
+    Exit;
+  for Index := 0 to Modules.ModuleCount - 1 do
+  begin
+    Module := Modules.Modules[Index];
+    if (Module <> nil) and (Module.FileName <> '') then
+      Result := Result + [Module.FileName];
+  end;
+end;
+
+function ClosedUnitsOf(const AText: string): TAtlasClosedUnits;
+begin
+  TAtlasFindings.TryParseClosedUnits(AText, Result);
+end;
+
 /// <summary>Zeile einer ungeöffneten Datei (0-basiert) von der Platte; je Datei und Änderungszeit gemerkt.</summary>
 function DiskLine(const AFileName: string; ALine: Integer): string;
 var
@@ -234,9 +264,11 @@ begin
   Next.ProblemsWindowScope := TAtlasFindings.ScopeNames[AFrame.Scope];
   Next.ProblemsWindowGroupBy := TAtlasFindings.GroupingNames[AFrame.Grouping];
   Next.ProblemsWindowColumns := AFrame.ColumnsText;
+  Next.ProblemsWindowOpenFirst := AFrame.OpenFirst;
   if (Next.ProblemsWindowScope = TAtlasIdeSettings.Stored.ProblemsWindowScope) and
     (Next.ProblemsWindowGroupBy = TAtlasIdeSettings.Stored.ProblemsWindowGroupBy) and
-    (Next.ProblemsWindowColumns = TAtlasIdeSettings.Stored.ProblemsWindowColumns) then
+    (Next.ProblemsWindowColumns = TAtlasIdeSettings.Stored.ProblemsWindowColumns) and
+    (Next.ProblemsWindowOpenFirst = TAtlasIdeSettings.Stored.ProblemsWindowOpenFirst) then
     Exit;
   TAtlasIdeSettings.Update(Next);
 end;
@@ -247,7 +279,8 @@ var
   Store: TAtlasProblemStore;
   Current, Inputs, Status, Last: string;
   Line: Integer;
-  Files, Project: TArray<string>;
+  Files, Project, Opened: TArray<string>;
+  Checked: Boolean;
   Findings: TArray<TAtlasFinding>;
   Counts: TAtlasFindingCounts;
   Check: TAtlasProblemsCheck;
@@ -265,7 +298,15 @@ begin
     Project := ProjectFiles;
   if Frame.Scope = TAtlasFindingScope.Project then
     Files := Project;
-  Inputs := Ord(Frame.Scope).ToString + '|' + Current + '|' + string.Join(';', Files);
+  // Offene Units zuerst (#1108): geöffnete Module gehören zu den Eingaben; die Modulliste ist billig.
+  Opened := nil;
+  if Frame.OpenFirst then
+    Opened := OpenFiles;
+  // Zeigt der Editor das Formular, gilt die Unit: Hat der Server die .pas schon geliefert?
+  Checked := (Store <> nil) and (Current <> '') and (Store.Contains(Current) or
+    Store.Contains(ChangeFileExt(Current, '.pas')));
+  Inputs := Ord(Frame.Scope).ToString + '|' + Current + '|' + string.Join(';', Files) + '|' +
+    string.Join(';', Opened) + '|' + BoolToStr(Checked, True);
   Frame.SetLive(Settings.ProblemsLive and Settings.Problems);
   if (Store <> nil) and (AForce or (Store.Version <> State.Version) or (Inputs <> State.Inputs)) then
   begin
@@ -281,12 +322,24 @@ begin
     else
       Findings := TAtlasFindings.FromStore(Store, Files, ReadLine);
     Frame.SetFindings(Findings, Current, Files);
+    Frame.SetOpenFiles(Current, Opened, Checked);
   end
   else if Store = nil then
+  begin
     Frame.SetFindings(nil, Current, Files);
+    Frame.SetOpenFiles(Current, Opened, False);
+  end;
   // Statuszeile.
   Counts := Frame.View.Counts;
-  Status := TAtlasStrings.Fmt(TAtlasTextId.ProblemsStatusCount, [Counts.Total, Counts.Files]);
+  if Frame.View.TiersActive then
+  begin
+    Status := TAtlasStrings.Fmt(TAtlasTextId.ProblemsStatusTiers, [Counts.Total, Counts.OpenUnits,
+      Counts.OpenFindings, Counts.ClosedUnits, Counts.ClosedFindings]);
+    if Counts.HiddenUnits > 0 then
+      Status := Status + ' · ' + TAtlasStrings.Fmt(TAtlasTextId.ProblemsStatusHidden, [Counts.HiddenUnits]);
+  end
+  else
+    Status := TAtlasStrings.Fmt(TAtlasTextId.ProblemsStatusCount, [Counts.Total, Counts.Files]);
   Check := TAtlasProblemsController.LastCheck;
   if Check.FileName <> '' then
   begin
@@ -445,6 +498,8 @@ begin
   AFrame.ShowCompilerCode := Settings.ProblemsShowCompilerCode;
   AFrame.ApplySettings(ScopeOf(Settings.ProblemsWindowScope), GroupingOf(Settings.ProblemsWindowGroupBy),
     Settings.ProblemsWindowColumns, Settings.ProblemsWindowCompiler);
+  AFrame.ApplyTierSettings(Settings.ProblemsWindowOpenFirst, ClosedUnitsOf(Settings.ProblemsWindowClosedUnits),
+    Settings.ProblemsWindowShowCleanActive);
   AFrame.OnOpen :=
     procedure(const AFinding: TAtlasFinding)
     begin
@@ -505,6 +560,8 @@ begin
     procedure
     begin
       SaveLayout(AFrame);
+      // „Offene zuerst“ braucht die geöffneten Module: gleich neu füllen statt beim nächsten Takt.
+      Refresh(True);
     end;
 end;
 
@@ -596,6 +653,8 @@ begin
     Frame.ShowCompilerCode := Settings.ProblemsShowCompilerCode;
     Frame.ApplySettings(ScopeOf(Settings.ProblemsWindowScope), GroupingOf(Settings.ProblemsWindowGroupBy),
       Settings.ProblemsWindowColumns, Settings.ProblemsWindowCompiler);
+    Frame.ApplyTierSettings(Settings.ProblemsWindowOpenFirst, ClosedUnitsOf(Settings.ProblemsWindowClosedUnits),
+      Settings.ProblemsWindowShowCleanActive);
     Refresh(True);
   end;
 end;
