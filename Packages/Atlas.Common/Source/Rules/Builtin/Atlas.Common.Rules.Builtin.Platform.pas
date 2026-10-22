@@ -95,12 +95,16 @@ begin
     SameText(ANode.Name, AName);
 end;
 
-/// <summary>Nur Bezeichner und Punkte: Unit- oder Klassenname vor einer Routine.</summary>
+/// <summary>Nur Bezeichner und Punkte: Unit- oder Klassenname vor einer Routine. Iterativ (Bericht M1).
+/// </summary>
 function IsQualifiedName(ANode: TSyntaxNode): Boolean;
+var
+  Node: TSyntaxNode;
 begin
-  if ANode.Kind = TSyntaxKind.Identifier then
-    Exit(True);
-  Result := (ANode.Kind = TSyntaxKind.MemberAccess) and (ANode.ChildCount = 1) and IsQualifiedName(ANode[0]);
+  Node := ANode;
+  while (Node.Kind = TSyntaxKind.MemberAccess) and (Node.ChildCount = 1) do
+    Node := Node[0];
+  Result := Node.Kind = TSyntaxKind.Identifier;
 end;
 
 /// <summary>Index des ersten Tokens ab AOffset (binäre Suche); Length(ATokens), wenn keiner folgt.</summary>
@@ -127,15 +131,28 @@ begin
   Result := TConditionalBranches.PathAt(APaths, TokenAt(ATokens, ANode.StartOffset));
 end;
 
-procedure CollectNodes(ANode, ARoot: TSyntaxNode; AOwnRoutineOnly: Boolean; AList: TList<TSyntaxNode>);
+// Iterativ (Bericht M1).
+procedure CollectNodes(ARoot: TSyntaxNode; AOwnRoutineOnly: Boolean; AList: TList<TSyntaxNode>);
 var
+  Pending: TStack<TSyntaxNode>;
+  Node: TSyntaxNode;
   Index: Integer;
 begin
-  if AOwnRoutineOnly and (ANode <> ARoot) and (ANode.Kind = TSyntaxKind.RoutineDecl) then
-    Exit;
-  AList.Add(ANode);
-  for Index := 0 to ANode.ChildCount - 1 do
-    CollectNodes(ANode[Index], ARoot, AOwnRoutineOnly, AList);
+  Pending := TStack<TSyntaxNode>.Create;
+  try
+    Pending.Push(ARoot);
+    while Pending.Count > 0 do
+    begin
+      Node := Pending.Pop;
+      if AOwnRoutineOnly and (Node <> ARoot) and (Node.Kind = TSyntaxKind.RoutineDecl) then
+        Continue;
+      AList.Add(Node);
+      for Index := Node.ChildCount - 1 downto 0 do
+        Pending.Push(Node[Index]);
+    end;
+  finally
+    Pending.Free;
+  end;
 end;
 
 /// <summary>ARoot und alle Knoten darunter in Baumreihenfolge (Reihenfolge des Quelltexts). Mit
@@ -146,7 +163,7 @@ var
 begin
   List := TList<TSyntaxNode>.Create;
   try
-    CollectNodes(ARoot, ARoot, AOwnRoutineOnly, List);
+    CollectNodes(ARoot, AOwnRoutineOnly, List);
     Result := List.ToArray;
   finally
     List.Free;
@@ -170,17 +187,28 @@ begin
     end;
 end;
 
-/// <summary>Kommt ein Bezeichner AName in ANode oder darunter vor?</summary>
+/// <summary>Kommt ein Bezeichner AName in ANode oder darunter vor? Iterativ (Bericht M1).</summary>
 function Mentions(ANode: TSyntaxNode; const AName: string): Boolean;
 var
+  Pending: TStack<TSyntaxNode>;
+  Node: TSyntaxNode;
   Index: Integer;
 begin
-  if (ANode.Kind = TSyntaxKind.Identifier) and SameText(ANode.Name, AName) then
-    Exit(True);
-  for Index := 0 to ANode.ChildCount - 1 do
-    if Mentions(ANode[Index], AName) then
-      Exit(True);
   Result := False;
+  Pending := TStack<TSyntaxNode>.Create;
+  try
+    Pending.Push(ANode);
+    while Pending.Count > 0 do
+    begin
+      Node := Pending.Pop;
+      if (Node.Kind = TSyntaxKind.Identifier) and SameText(Node.Name, AName) then
+        Exit(True);
+      for Index := Node.ChildCount - 1 downto 0 do
+        Pending.Push(Node[Index]);
+    end;
+  finally
+    Pending.Free;
+  end;
 end;
 
 /// <summary>Edit, das AUnitName ins uses einträgt, wenn die Unit (auch ohne Namespace) fehlt.</summary>
@@ -277,20 +305,33 @@ var
       MatchText(ACallee[0].Name, DialogServices);
   end;
 
-  procedure Visit(ANode: TSyntaxNode);
+  // Iterativ (Bericht M1).
+  procedure Visit(ARoot: TSyntaxNode);
   var
+    Pending: TStack<TSyntaxNode>;
+    Node: TSyntaxNode;
     Index: Integer;
     Callee: TSyntaxNode;
   begin
-    if (ANode.Kind = TSyntaxKind.Call) and (ANode.ChildCount > 0) then
-    begin
-      Callee := ANode[0];
-      if IsDialog(Callee) and not Guarded(ANode) then
-        AReport.Add(NodeRange(Callee), Format('%s %s %s', [NodeText(AContext, Callee), Place, Advice]),
-          Confidence);
+    Pending := TStack<TSyntaxNode>.Create;
+    try
+      Pending.Push(ARoot);
+      while Pending.Count > 0 do
+      begin
+        Node := Pending.Pop;
+        if (Node.Kind = TSyntaxKind.Call) and (Node.ChildCount > 0) then
+        begin
+          Callee := Node[0];
+          if IsDialog(Callee) and not Guarded(Node) then
+            AReport.Add(NodeRange(Callee), Format('%s %s %s', [NodeText(AContext, Callee), Place, Advice]),
+              Confidence);
+        end;
+        for Index := Node.ChildCount - 1 downto 0 do
+          Pending.Push(Node[Index]);
+      end;
+    finally
+      Pending.Free;
     end;
-    for Index := 0 to ANode.ChildCount - 1 do
-      Visit(ANode[Index]);
   end;
 
 begin

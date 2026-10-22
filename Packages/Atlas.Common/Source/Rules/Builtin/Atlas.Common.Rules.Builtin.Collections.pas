@@ -278,18 +278,31 @@ var
     Found.Add(Read);
   end;
 
-  procedure Visit(ANode: TSyntaxNode);
+  // Iterativ (Bericht M1).
+  procedure Visit(ARoot: TSyntaxNode);
   var
+    Pending: TStack<TSyntaxNode>;
+    Node: TSyntaxNode;
     Index: Integer;
   begin
-    // T(Wert): Aufruf mit einem Argument, dessen Name ein Typ ist.
-    if (ANode.Kind = TSyntaxKind.Call) and (ANode.ChildCount = 2) and (ANode[0].Kind = TSyntaxKind.Identifier) then
-      Add(ANode, ANode[1], ANode[0])
-    // Wert as T
-    else if (ANode.Kind = TSyntaxKind.BinaryExpr) and SameText(ANode.Name, 'as') and (ANode.ChildCount = 2) then
-      Add(ANode, ANode[0], Unparenthesized(ANode[1]));
-    for Index := 0 to ANode.ChildCount - 1 do
-      Visit(ANode[Index]);
+    Pending := TStack<TSyntaxNode>.Create;
+    try
+      Pending.Push(ARoot);
+      while Pending.Count > 0 do
+      begin
+        Node := Pending.Pop;
+        // T(Wert): Aufruf mit einem Argument, dessen Name ein Typ ist.
+        if (Node.Kind = TSyntaxKind.Call) and (Node.ChildCount = 2) and (Node[0].Kind = TSyntaxKind.Identifier) then
+          Add(Node, Node[1], Node[0])
+        // Wert as T
+        else if (Node.Kind = TSyntaxKind.BinaryExpr) and SameText(Node.Name, 'as') and (Node.ChildCount = 2) then
+          Add(Node, Node[0], Unparenthesized(Node[1]));
+        for Index := Node.ChildCount - 1 downto 0 do
+          Pending.Push(Node[Index]);
+      end;
+    finally
+      Pending.Free;
+    end;
   end;
 
 begin

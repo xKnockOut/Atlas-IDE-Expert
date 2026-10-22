@@ -458,37 +458,51 @@ var
     Result := -1;
   end;
 
-  procedure Visit(ANode: TSyntaxNode);
+  procedure Visit(ARoot: TSyntaxNode);
   var
     Index, Stop, ThenIndex, ElseIndex, DoIndex: Integer;
-    Body: TSyntaxNode;
+    Node, Body: TSyntaxNode;
+    Pending: TStack<TSyntaxNode>;
   begin
-    Stop := TokenFrom(Tokens, ANode.EndOffset);
-    case ANode.Kind of
-      TSyntaxKind.IfStatement:
-        if ANode.ChildCount > 0 then
-        begin
-          ThenIndex := OwnKeyword(ANode, TokenFrom(Tokens, ANode[0].EndOffset), Stop, 'then');
-          if ThenIndex >= 0 then
-          begin
-            ElseIndex := OwnKeyword(ANode, ThenIndex + 1, Stop, 'else');
-            Body := StatementAfter(ANode, Tokens[ThenIndex].Offset);
-            if (Body <> nil) and (ElseIndex >= 0) and (Body.StartOffset > Tokens[ElseIndex].Offset) then
-              Body := nil;
-            Inspect(ThenIndex, Body, False);
-            if ElseIndex >= 0 then
-              Inspect(ElseIndex, StatementAfter(ANode, Tokens[ElseIndex].Offset), False);
-          end;
+    // Iterativ (Bericht M1): lange else-if-Ketten ergeben sehr tiefe Bäume.
+    Pending := TStack<TSyntaxNode>.Create;
+    try
+      Pending.Push(ARoot);
+      while Pending.Count > 0 do
+      begin
+        Node := Pending.Pop;
+        Stop := TokenFrom(Tokens, Node.EndOffset);
+        case Node.Kind of
+          TSyntaxKind.IfStatement:
+            if Node.ChildCount > 0 then
+            begin
+              ThenIndex := OwnKeyword(Node, TokenFrom(Tokens, Node[0].EndOffset), Stop, 'then');
+              if ThenIndex >= 0 then
+              begin
+                ElseIndex := OwnKeyword(Node, ThenIndex + 1, Stop, 'else');
+                Body := StatementAfter(Node, Tokens[ThenIndex].Offset);
+                if (Body <> nil) and (ElseIndex >= 0) and (Body.StartOffset > Tokens[ElseIndex].Offset) then
+                  Body := nil;
+                Inspect(ThenIndex, Body, False);
+                if ElseIndex >= 0 then
+                  Inspect(ElseIndex, StatementAfter(Node, Tokens[ElseIndex].Offset), False);
+              end;
+            end;
+          TSyntaxKind.WhileStatement, TSyntaxKind.ForStatement, TSyntaxKind.ForInStatement,
+          TSyntaxKind.WithStatement:
+            begin
+              DoIndex := OwnKeyword(Node, TokenFrom(Tokens, Node.StartOffset), Stop, 'do');
+              if DoIndex >= 0 then
+                Inspect(DoIndex, StatementAfter(Node, Tokens[DoIndex].Offset),
+                  Node.Kind <> TSyntaxKind.WithStatement);
+            end;
         end;
-      TSyntaxKind.WhileStatement, TSyntaxKind.ForStatement, TSyntaxKind.ForInStatement, TSyntaxKind.WithStatement:
-        begin
-          DoIndex := OwnKeyword(ANode, TokenFrom(Tokens, ANode.StartOffset), Stop, 'do');
-          if DoIndex >= 0 then
-            Inspect(DoIndex, StatementAfter(ANode, Tokens[DoIndex].Offset), ANode.Kind <> TSyntaxKind.WithStatement);
-        end;
+        for Index := Node.ChildCount - 1 downto 0 do
+          Pending.Push(Node[Index]);
+      end;
+    finally
+      Pending.Free;
     end;
-    for Index := 0 to ANode.ChildCount - 1 do
-      Visit(ANode[Index]);
   end;
 
 begin
@@ -542,19 +556,32 @@ var
     Result := False;
   end;
 
-  procedure CollectBlocks(ANode: TSyntaxNode);
+  procedure CollectBlocks(ARoot: TSyntaxNode);
   var
     Index: Integer;
+    Node: TSyntaxNode;
+    Pending: TStack<TSyntaxNode>;
   begin
-    if (ANode.Kind = TSyntaxKind.Block) and (ANode.Parent <> nil) and
-      (ANode.Parent.Kind in [TSyntaxKind.RoutineDecl, TSyntaxKind.InitializationSection,
-      TSyntaxKind.FinalizationSection, TSyntaxKind.ProgramFile, TSyntaxKind.LibraryFile]) then
-    begin
-      Blocks := Blocks + [ANode];
-      Exit;
+    // Iterativ (Bericht M1).
+    Pending := TStack<TSyntaxNode>.Create;
+    try
+      Pending.Push(ARoot);
+      while Pending.Count > 0 do
+      begin
+        Node := Pending.Pop;
+        if (Node.Kind = TSyntaxKind.Block) and (Node.Parent <> nil) and
+          (Node.Parent.Kind in [TSyntaxKind.RoutineDecl, TSyntaxKind.InitializationSection,
+          TSyntaxKind.FinalizationSection, TSyntaxKind.ProgramFile, TSyntaxKind.LibraryFile]) then
+        begin
+          Blocks := Blocks + [Node];
+          Continue;
+        end;
+        for Index := Node.ChildCount - 1 downto 0 do
+          Pending.Push(Node[Index]);
+      end;
+    finally
+      Pending.Free;
     end;
-    for Index := 0 to ANode.ChildCount - 1 do
-      CollectBlocks(ANode[Index]);
   end;
 
   /// Erstes Code-Token AWord bzw. ASymbol auf Klammerebene 0 in AFrom..AStop-1; -1 ohne.
@@ -760,14 +787,27 @@ var
       [TRuleFix.Create(FixTitle, [Edit])]);
   end;
 
-  procedure Visit(ANode: TSyntaxNode);
+  procedure Visit(ARoot: TSyntaxNode);
   var
     Index: Integer;
+    Node: TSyntaxNode;
+    Pending: TStack<TSyntaxNode>;
   begin
-    if ANode.Kind = TSyntaxKind.ForStatement then
-      Inspect(ANode);
-    for Index := 0 to ANode.ChildCount - 1 do
-      Visit(ANode[Index]);
+    // Iterativ (Bericht M1).
+    Pending := TStack<TSyntaxNode>.Create;
+    try
+      Pending.Push(ARoot);
+      while Pending.Count > 0 do
+      begin
+        Node := Pending.Pop;
+        if Node.Kind = TSyntaxKind.ForStatement then
+          Inspect(Node);
+        for Index := Node.ChildCount - 1 downto 0 do
+          Pending.Push(Node[Index]);
+      end;
+    finally
+      Pending.Free;
+    end;
   end;
 
   // S[0] bei einsbasierten Strings.
@@ -990,14 +1030,27 @@ var
     FindCalls(DoIndex + 1, Stop, BaseKey, BaseText, CodeCount(BaseFirst, BaseLast), False, Fix);
   end;
 
-  procedure Visit(ANode: TSyntaxNode);
+  procedure Visit(ARoot: TSyntaxNode);
   var
     Index: Integer;
+    Node: TSyntaxNode;
+    Pending: TStack<TSyntaxNode>;
   begin
-    if ANode.Kind in [TSyntaxKind.ForStatement, TSyntaxKind.ForInStatement] then
-      Inspect(ANode);
-    for Index := 0 to ANode.ChildCount - 1 do
-      Visit(ANode[Index]);
+    // Iterativ (Bericht M1).
+    Pending := TStack<TSyntaxNode>.Create;
+    try
+      Pending.Push(ARoot);
+      while Pending.Count > 0 do
+      begin
+        Node := Pending.Pop;
+        if Node.Kind in [TSyntaxKind.ForStatement, TSyntaxKind.ForInStatement] then
+          Inspect(Node);
+        for Index := Node.ChildCount - 1 downto 0 do
+          Pending.Push(Node[Index]);
+      end;
+    finally
+      Pending.Free;
+    end;
   end;
 
 begin
@@ -1020,40 +1073,52 @@ procedure TDestroyCalledDirectlyRule.Check(const AContext: TRuleContext; const A
 var
   Tokens: TTokens;
 
-  procedure Visit(ANode: TSyntaxNode);
+  procedure Visit(ARoot: TSyntaxNode);
   var
-    Target: TSyntaxNode;
+    Node, Target: TSyntaxNode;
     Index, Name: Integer;
     Range: TTextRange;
+    Pending: TStack<TSyntaxNode>;
   begin
-    if (ANode.Kind = TSyntaxKind.CallStatement) and (ANode.ChildCount > 0) then
-    begin
-      Target := ANode[0];
-      // X.Destroy() ohne Argumente zählt wie X.Destroy.
-      if (Target.Kind = TSyntaxKind.Call) and (Target.ChildCount = 1) then
-        Target := Target[0];
-      if (Target.Kind = TSyntaxKind.MemberAccess) and (Target.ChildCount = 1) and
-        SameText(Target.Name, 'Destroy') then
+    // Iterativ (Bericht M1).
+    Pending := TStack<TSyntaxNode>.Create;
+    try
+      Pending.Push(ARoot);
+      while Pending.Count > 0 do
       begin
-        // Name ist das letzte Token "Destroy" im Zugriff.
-        Name := -1;
-        for Index := TokenFrom(Tokens, Target.StartOffset) to High(Tokens) do
+        Node := Pending.Pop;
+        if (Node.Kind = TSyntaxKind.CallStatement) and (Node.ChildCount > 0) then
         begin
-          if Tokens[Index].Offset >= Target.EndOffset then
-            Break;
-          if (Tokens[Index].Kind = TPascalTokenKind.Identifier) and SameText(Tokens[Index].Text, 'Destroy') then
-            Name := Index;
+          Target := Node[0];
+          // X.Destroy() ohne Argumente zählt wie X.Destroy.
+          if (Target.Kind = TSyntaxKind.Call) and (Target.ChildCount = 1) then
+            Target := Target[0];
+          if (Target.Kind = TSyntaxKind.MemberAccess) and (Target.ChildCount = 1) and
+            SameText(Target.Name, 'Destroy') then
+          begin
+            // Name ist das letzte Token "Destroy" im Zugriff.
+            Name := -1;
+            for Index := TokenFrom(Tokens, Target.StartOffset) to High(Tokens) do
+            begin
+              if Tokens[Index].Offset >= Target.EndOffset then
+                Break;
+              if (Tokens[Index].Kind = TPascalTokenKind.Identifier) and SameText(Tokens[Index].Text, 'Destroy') then
+                Name := Index;
+            end;
+            if Name >= 0 then
+            begin
+              Range := TTextRange.Create(Tokens[Name].StartPos, Tokens[Name].EndPos);
+              AReport.Add(Range, 'Destroy direkt aufgerufen; Free prüft vorher auf nil.', TRuleConfidence.High,
+                [TRuleFix.Create('Free statt Destroy', [TRuleEdit.Create(Range, 'Free')], True)]);
+            end;
+          end;
         end;
-        if Name >= 0 then
-        begin
-          Range := TTextRange.Create(Tokens[Name].StartPos, Tokens[Name].EndPos);
-          AReport.Add(Range, 'Destroy direkt aufgerufen; Free prüft vorher auf nil.', TRuleConfidence.High,
-            [TRuleFix.Create('Free statt Destroy', [TRuleEdit.Create(Range, 'Free')], True)]);
-        end;
+        for Index := Node.ChildCount - 1 downto 0 do
+          Pending.Push(Node[Index]);
       end;
+    finally
+      Pending.Free;
     end;
-    for Index := 0 to ANode.ChildCount - 1 do
-      Visit(ANode[Index]);
   end;
 
 begin
@@ -1079,24 +1144,27 @@ var
 
   // Kette A.B.C aus Bezeichnern; False bei Aufrufen, Indizes und Ausdrücken.
   function Chain(ANode: TSyntaxNode; var ANames: TArray<string>): Boolean;
+  var
+    Node: TSyntaxNode;
+    Members: TArray<string>;
+    Index: Integer;
   begin
-    case ANode.Kind of
-      TSyntaxKind.Identifier:
-        begin
-          ANames := ANames + [ANode.Name];
-          Result := True;
-        end;
-      TSyntaxKind.MemberAccess:
-        begin
-          Result := (ANode.ChildCount = 1) and Chain(ANode[0], ANames);
-          if Result then
-            ANames := ANames + [ANode.Name];
-        end;
-      TSyntaxKind.ParenExpr:
-        Result := (ANode.ChildCount = 1) and Chain(ANode[0], ANames);
-    else
-      Result := False;
+    // Iterativ (Bericht M1): von rechts nach links an der Kette entlang; die Namen der Zugriffe kommen erst nach
+    // dem Bezeichner ganz links dazu.
+    Members := nil;
+    Node := ANode;
+    while (Node.Kind in [TSyntaxKind.MemberAccess, TSyntaxKind.ParenExpr]) and (Node.ChildCount = 1) do
+    begin
+      if Node.Kind = TSyntaxKind.MemberAccess then
+        Members := Members + [Node.Name];
+      Node := Node[0];
     end;
+    Result := Node.Kind = TSyntaxKind.Identifier;
+    if not Result then
+      Exit;
+    ANames := ANames + [Node.Name];
+    for Index := High(Members) downto 0 do
+      ANames := ANames + [Members[Index]];
   end;
 
   function OwnerUnit(const AType: TResolvedSymbol; out AUnit: TUnitIndex): Boolean;
@@ -1177,14 +1245,27 @@ var
       [TypeName, string.Join(', ', Absent)]), TRuleConfidence.High, Fixes);
   end;
 
-  procedure Visit(ANode: TSyntaxNode);
+  procedure Visit(ARoot: TSyntaxNode);
   var
     Index: Integer;
+    Node: TSyntaxNode;
+    Pending: TStack<TSyntaxNode>;
   begin
-    if ANode.Kind = TSyntaxKind.CaseStatement then
-      CheckCase(ANode);
-    for Index := 0 to ANode.ChildCount - 1 do
-      Visit(ANode[Index]);
+    // Iterativ (Bericht M1).
+    Pending := TStack<TSyntaxNode>.Create;
+    try
+      Pending.Push(ARoot);
+      while Pending.Count > 0 do
+      begin
+        Node := Pending.Pop;
+        if Node.Kind = TSyntaxKind.CaseStatement then
+          CheckCase(Node);
+        for Index := Node.ChildCount - 1 downto 0 do
+          Pending.Push(Node[Index]);
+      end;
+    finally
+      Pending.Free;
+    end;
   end;
 
 begin
@@ -1281,16 +1362,60 @@ var
   var
     Index: Integer;
     Receiver: string;
+    Node: TSyntaxNode;
+    Pending: TStack<TSyntaxNode>;
   begin
-    if ANode.Kind in [TSyntaxKind.WhileStatement, TSyntaxKind.RepeatStatement, TSyntaxKind.ForStatement,
-      TSyntaxKind.ForInStatement, TSyntaxKind.AnonymousMethod] then
-      Exit(False);
-    if SameText(StatementName(ANode, Receiver), 'Continue') and (Receiver = '') then
-      Exit(True);
-    for Index := 0 to ANode.ChildCount - 1 do
-      if HasContinue(ANode[Index]) then
-        Exit(True);
+    // Iterativ (Bericht M1).
     Result := False;
+    Pending := TStack<TSyntaxNode>.Create;
+    try
+      Pending.Push(ANode);
+      while Pending.Count > 0 do
+      begin
+        Node := Pending.Pop;
+        if Node.Kind in [TSyntaxKind.WhileStatement, TSyntaxKind.RepeatStatement, TSyntaxKind.ForStatement,
+          TSyntaxKind.ForInStatement, TSyntaxKind.AnonymousMethod] then
+          Continue;
+        if SameText(StatementName(Node, Receiver), 'Continue') and (Receiver = '') then
+          Exit(True);
+        for Index := Node.ChildCount - 1 downto 0 do
+          Pending.Push(Node[Index]);
+      end;
+    finally
+      Pending.Free;
+    end;
+  end;
+
+  // Teile von ANode, von deren Advances das Ergebnis für ANode abhängt (in Quelltextreihenfolge).
+  function AdvanceParts(ANode: TSyntaxNode): TArray<TSyntaxNode>;
+  var
+    Index: Integer;
+  begin
+    Result := nil;
+    case ANode.Kind of
+      TSyntaxKind.Block, TSyntaxKind.FinallyBlock, TSyntaxKind.CaseElse:
+        for Index := 0 to ANode.ChildCount - 1 do
+          Result := Result + [ANode[Index]];
+      TSyntaxKind.IfStatement:
+        if ANode.ChildCount = 3 then
+          Result := [ANode[1], ANode[2]];
+      TSyntaxKind.CaseStatement:
+        for Index := 1 to ANode.ChildCount - 1 do
+          if ANode[Index].Kind = TSyntaxKind.CaseItem then
+            Result := Result + [ANode[Index][ANode[Index].ChildCount - 1]]
+          else if ANode[Index].Kind = TSyntaxKind.CaseElse then
+            Result := Result + [ANode[Index]];
+      TSyntaxKind.TryStatement:
+        for Index := 0 to ANode.ChildCount - 1 do
+          if ANode[Index].Kind <> TSyntaxKind.ExceptBlock then
+            Result := Result + [ANode[Index]];
+      TSyntaxKind.WithStatement:
+        Result := [ANode[ANode.ChildCount - 1]];
+      // repeat läuft mindestens einmal; while und for vielleicht nie.
+      TSyntaxKind.RepeatStatement:
+        for Index := 0 to ANode.ChildCount - 2 do
+          Result := Result + [ANode[Index]];
+    end;
   end;
 
   // Endet jeder Weg durch ANode, der die Schleife fortsetzt, mit einem Weiterbewegen?
@@ -1298,85 +1423,141 @@ var
   var
     Index: Integer;
     Receiver, Name: string;
-    Child: TSyntaxNode;
+    Node: TSyntaxNode;
+    Parts: TArray<TSyntaxNode>;
+    Entry: TSyntaxPostOrderEntry;
+    Value: Boolean;
+    Pending: TStack<TSyntaxPostOrderEntry>;
+    Values: TDictionary<TSyntaxNode, Boolean>;
   begin
+    // Iterativ (Bericht M1): Nachordnung, die Teile zuerst; lange else-if-Ketten ergeben sehr tiefe Bäume.
     Result := False;
     if ANode = nil then
       Exit;
-    case ANode.Kind of
-      TSyntaxKind.CallStatement:
+    Pending := TStack<TSyntaxPostOrderEntry>.Create;
+    Values := TDictionary<TSyntaxNode, Boolean>.Create;
+    try
+      Pending.Push(TSyntaxPostOrderEntry.Create(ANode, False));
+      while Pending.Count > 0 do
+      begin
+        Entry := Pending.Pop;
+        Node := Entry.Node;
+        Parts := AdvanceParts(Node);
+        if not Entry.Done then
         begin
-          Name := StatementName(ANode, Receiver);
-          // Break, Exit und Halt verlassen die Schleife; Continue setzt sie ohne Weiterbewegen fort.
-          Result := IsAdvance(ANode) or ((Receiver = '') and MatchText(Name, ['Break', 'Exit', 'Halt', 'Abort']));
+          Pending.Push(TSyntaxPostOrderEntry.Create(Node, True));
+          for Index := High(Parts) downto 0 do
+            Pending.Push(TSyntaxPostOrderEntry.Create(Parts[Index], False));
+          Continue;
         end;
-      TSyntaxKind.RaiseStatement:
-        Result := True;
-      TSyntaxKind.Block, TSyntaxKind.FinallyBlock, TSyntaxKind.CaseElse:
-        for Index := 0 to ANode.ChildCount - 1 do
-        begin
-          Child := ANode[Index];
-          if Advances(Child) then
-            Exit(True);
-          // Ein Continue vor dem Weiterbewegen setzt die Schleife auf demselben Datensatz fort.
-          if HasContinue(Child) then
-            Exit(False);
+        Value := False;
+        case Node.Kind of
+          TSyntaxKind.CallStatement:
+            begin
+              Name := StatementName(Node, Receiver);
+              // Break, Exit und Halt verlassen die Schleife; Continue setzt sie ohne Weiterbewegen fort.
+              Value := IsAdvance(Node) or ((Receiver = '') and MatchText(Name, ['Break', 'Exit', 'Halt', 'Abort']));
+            end;
+          TSyntaxKind.RaiseStatement:
+            Value := True;
+          TSyntaxKind.Block, TSyntaxKind.FinallyBlock, TSyntaxKind.CaseElse:
+            for Index := 0 to High(Parts) do
+            begin
+              if Values[Parts[Index]] then
+              begin
+                Value := True;
+                Break;
+              end;
+              // Ein Continue vor dem Weiterbewegen setzt die Schleife auf demselben Datensatz fort.
+              if HasContinue(Parts[Index]) then
+                Break;
+            end;
+          TSyntaxKind.IfStatement:
+            Value := (Length(Parts) = 2) and Values[Parts[0]] and Values[Parts[1]];
+          TSyntaxKind.CaseStatement:
+            begin
+              Value := Node.FindChild(TSyntaxKind.CaseElse) <> nil;
+              for Index := 0 to High(Parts) do
+                Value := Value and Values[Parts[Index]];
+            end;
+          TSyntaxKind.TryStatement, TSyntaxKind.WithStatement, TSyntaxKind.RepeatStatement:
+            for Index := 0 to High(Parts) do
+              if Values[Parts[Index]] then
+              begin
+                Value := True;
+                Break;
+              end;
         end;
-      TSyntaxKind.IfStatement:
-        Result := (ANode.ChildCount = 3) and Advances(ANode[1]) and Advances(ANode[2]);
-      TSyntaxKind.CaseStatement:
-        begin
-          Result := ANode.FindChild(TSyntaxKind.CaseElse) <> nil;
-          for Index := 1 to ANode.ChildCount - 1 do
-            if ANode[Index].Kind = TSyntaxKind.CaseItem then
-              Result := Result and Advances(ANode[Index][ANode[Index].ChildCount - 1])
-            else if ANode[Index].Kind = TSyntaxKind.CaseElse then
-              Result := Result and Advances(ANode[Index]);
-        end;
-      TSyntaxKind.TryStatement:
-        for Index := 0 to ANode.ChildCount - 1 do
-          if (ANode[Index].Kind <> TSyntaxKind.ExceptBlock) and Advances(ANode[Index]) then
-            Exit(True);
-      TSyntaxKind.WithStatement:
-        Result := Advances(ANode[ANode.ChildCount - 1]);
-      // repeat läuft mindestens einmal; while und for vielleicht nie.
-      TSyntaxKind.RepeatStatement:
-        for Index := 0 to ANode.ChildCount - 2 do
-          if Advances(ANode[Index]) then
-            Exit(True);
+        Values.AddOrSetValue(Node, Value);
+      end;
+      Result := Values[ANode];
+    finally
+      Values.Free;
+      Pending.Free;
     end;
   end;
 
   // Kommt die Datenmenge im Rumpf vor, außer als Empfänger (Argument, Zuweisung, with)?
   // Dann bewegt vielleicht der Aufgerufene den Zeiger.
-  function Escapes(ANode, AParent: TSyntaxNode): Boolean;
+  function Escapes(ANode: TSyntaxNode): Boolean;
   var
     Index: Integer;
+    Node, Parent: TSyntaxNode;
+    Pending, Parents: TStack<TSyntaxNode>;
   begin
-    if (ANode.Kind = TSyntaxKind.AnonymousMethod) then
-      Exit(False);
-    if (ANode.Kind in [TSyntaxKind.Identifier, TSyntaxKind.MemberAccess]) and
-      SameText(NodeText(ANode), DataSet) and
-      not ((AParent <> nil) and (AParent.Kind = TSyntaxKind.MemberAccess) and (AParent[0] = ANode)) then
-      Exit(True);
-    if ANode.Kind = TSyntaxKind.WithStatement then
-      Exit(True);
-    for Index := 0 to ANode.ChildCount - 1 do
-      if Escapes(ANode[Index], ANode) then
-        Exit(True);
+    // Iterativ (Bericht M1): zu jedem Knoten auf dem Stapel sein Elternknoten (nil an der Wurzel).
     Result := False;
+    Pending := TStack<TSyntaxNode>.Create;
+    Parents := TStack<TSyntaxNode>.Create;
+    try
+      Pending.Push(ANode);
+      Parents.Push(nil);
+      while Pending.Count > 0 do
+      begin
+        Node := Pending.Pop;
+        Parent := Parents.Pop;
+        if Node.Kind = TSyntaxKind.AnonymousMethod then
+          Continue;
+        if (Node.Kind in [TSyntaxKind.Identifier, TSyntaxKind.MemberAccess]) and
+          SameText(NodeText(Node), DataSet) and
+          not ((Parent <> nil) and (Parent.Kind = TSyntaxKind.MemberAccess) and (Parent[0] = Node)) then
+          Exit(True);
+        if Node.Kind = TSyntaxKind.WithStatement then
+          Exit(True);
+        for Index := Node.ChildCount - 1 downto 0 do
+        begin
+          Pending.Push(Node[Index]);
+          Parents.Push(Node);
+        end;
+      end;
+    finally
+      Parents.Free;
+      Pending.Free;
+    end;
   end;
 
   function MentionsAdvance(ANode: TSyntaxNode): Boolean;
   var
     Index: Integer;
+    Node: TSyntaxNode;
+    Pending: TStack<TSyntaxNode>;
   begin
-    if IsAdvance(ANode) then
-      Exit(True);
-    for Index := 0 to ANode.ChildCount - 1 do
-      if MentionsAdvance(ANode[Index]) then
-        Exit(True);
+    // Iterativ (Bericht M1).
     Result := False;
+    Pending := TStack<TSyntaxNode>.Create;
+    try
+      Pending.Push(ANode);
+      while Pending.Count > 0 do
+      begin
+        Node := Pending.Pop;
+        if IsAdvance(Node) then
+          Exit(True);
+        for Index := Node.ChildCount - 1 downto 0 do
+          Pending.Push(Node[Index]);
+      end;
+    finally
+      Pending.Free;
+    end;
   end;
 
   // Korrektur: Q.Next; vor dem end des Rumpfs.
@@ -1395,32 +1576,46 @@ var
       TRoutineBody.IndentUnit(AContext.Formatting) + DataSet + '.Next;' + LineBreak)])];
   end;
 
-  procedure Visit(ANode: TSyntaxNode);
+  procedure Visit(ARoot: TSyntaxNode);
   var
     Index: Integer;
-    Condition, Body: TSyntaxNode;
+    Node, Condition, Body: TSyntaxNode;
+    Pending: TStack<TSyntaxNode>;
   begin
-    // while not Q.Eof do …
-    if (ANode.Kind = TSyntaxKind.WhileStatement) and (ANode.ChildCount = 2) then
-    begin
-      Condition := ANode[0];
-      Body := ANode[1];
-      if (Condition.Kind = TSyntaxKind.UnaryExpr) and SameText(Condition.Name, 'not') and
-        (Condition.ChildCount = 1) and (Condition[0].Kind = TSyntaxKind.MemberAccess) and
-        SameText(Condition[0].Name, 'Eof') and (Condition[0].ChildCount = 1) then
+    // Iterativ (Bericht M1).
+    Pending := TStack<TSyntaxNode>.Create;
+    try
+      Pending.Push(ARoot);
+      while Pending.Count > 0 do
       begin
-        DataSet := NodeText(Condition[0][0]);
-        if not Escapes(Body, nil) and not Advances(Body) then
-          if not MentionsAdvance(Body) then
-            AReport.Add(TTextRange.Create(Condition.StartPos, Condition.EndPos), Format('Im Rumpf fehlt %s.Next; die Schleife läuft endlos.',
-              [DataSet]), TRuleConfidence.High, NextFix(Body))
-          else
-            AReport.Add(TTextRange.Create(Condition.StartPos, Condition.EndPos), Format('Nicht jeder Weg durch den Rumpf ruft %s.Next auf; dort ' +
-              'läuft die Schleife endlos.', [DataSet]), TRuleConfidence.Medium);
+        Node := Pending.Pop;
+        // while not Q.Eof do …
+        if (Node.Kind = TSyntaxKind.WhileStatement) and (Node.ChildCount = 2) then
+        begin
+          Condition := Node[0];
+          Body := Node[1];
+          if (Condition.Kind = TSyntaxKind.UnaryExpr) and SameText(Condition.Name, 'not') and
+            (Condition.ChildCount = 1) and (Condition[0].Kind = TSyntaxKind.MemberAccess) and
+            SameText(Condition[0].Name, 'Eof') and (Condition[0].ChildCount = 1) then
+          begin
+            DataSet := NodeText(Condition[0][0]);
+            if not Escapes(Body) and not Advances(Body) then
+              if not MentionsAdvance(Body) then
+                AReport.Add(TTextRange.Create(Condition.StartPos, Condition.EndPos),
+                  Format('Im Rumpf fehlt %s.Next; die Schleife läuft endlos.', [DataSet]), TRuleConfidence.High,
+                  NextFix(Body))
+              else
+                AReport.Add(TTextRange.Create(Condition.StartPos, Condition.EndPos),
+                  Format('Nicht jeder Weg durch den Rumpf ruft %s.Next auf; dort läuft die Schleife endlos.',
+                  [DataSet]), TRuleConfidence.Medium);
+          end;
+        end;
+        for Index := Node.ChildCount - 1 downto 0 do
+          Pending.Push(Node[Index]);
       end;
+    finally
+      Pending.Free;
     end;
-    for Index := 0 to ANode.ChildCount - 1 do
-      Visit(ANode[Index]);
   end;
 
 begin
@@ -1458,46 +1653,97 @@ var
   var
     Index, Arguments: Integer;
     Receiver, Name: string;
+    Node: TSyntaxNode;
+    Pending: TStack<TSyntaxNode>;
   begin
-    if ANode.StartOffset >= AFrom then
-    begin
-      Name := StatementCall(AContext.Text, ANode, Receiver, Arguments);
-      if SameText(Receiver, ADataSet) and MatchText(Name, DatasetPostMethods) then
-        Exit(True);
-    end;
-    for Index := 0 to ANode.ChildCount - 1 do
-      if (ANode[Index].EndOffset > AFrom) and Ends(ANode[Index], ADataSet, AFrom) then
-        Exit(True);
+    // Iterativ (Bericht M1).
     Result := False;
+    Pending := TStack<TSyntaxNode>.Create;
+    try
+      Pending.Push(ANode);
+      while Pending.Count > 0 do
+      begin
+        Node := Pending.Pop;
+        if Node.StartOffset >= AFrom then
+        begin
+          Name := StatementCall(AContext.Text, Node, Receiver, Arguments);
+          if SameText(Receiver, ADataSet) and MatchText(Name, DatasetPostMethods) then
+            Exit(True);
+        end;
+        for Index := Node.ChildCount - 1 downto 0 do
+          if Node[Index].EndOffset > AFrom then
+            Pending.Push(Node[Index]);
+      end;
+    finally
+      Pending.Free;
+    end;
   end;
 
   // Kommt ADataSet ab AFrom als Wert vor (Argument, Zuweisung), nicht nur als Empfänger (Q.X, Q['X'])?
-  function Escapes(ANode, AParent: TSyntaxNode; const ADataSet: string; AFrom: Integer): Boolean;
+  function Escapes(ANode: TSyntaxNode; const ADataSet: string; AFrom: Integer): Boolean;
   var
     Index: Integer;
+    Node, Parent: TSyntaxNode;
+    Pending, Parents: TStack<TSyntaxNode>;
   begin
-    if (ANode.StartOffset >= AFrom) and (ANode.Kind in [TSyntaxKind.Identifier, TSyntaxKind.MemberAccess]) and
-      SameText(NodeText(ANode), ADataSet) then
-      Exit(not ((AParent <> nil) and (AParent.Kind in [TSyntaxKind.MemberAccess, TSyntaxKind.IndexAccess]) and
-        (AParent[0] = ANode)));
-    if (ANode.StartOffset >= AFrom) and (ANode.Kind = TSyntaxKind.WithStatement) then
-      Exit(True);
-    for Index := 0 to ANode.ChildCount - 1 do
-      if (ANode[Index].EndOffset > AFrom) and Escapes(ANode[Index], ANode, ADataSet, AFrom) then
-        Exit(True);
+    // Iterativ (Bericht M1): zu jedem Knoten auf dem Stapel sein Elternknoten (nil an der Wurzel). Eine Nennung
+    // der Datenmenge als Empfänger beendet nur ihren Zweig, wie in der Rekursion.
     Result := False;
+    Pending := TStack<TSyntaxNode>.Create;
+    Parents := TStack<TSyntaxNode>.Create;
+    try
+      Pending.Push(ANode);
+      Parents.Push(nil);
+      while Pending.Count > 0 do
+      begin
+        Node := Pending.Pop;
+        Parent := Parents.Pop;
+        if (Node.StartOffset >= AFrom) and (Node.Kind in [TSyntaxKind.Identifier, TSyntaxKind.MemberAccess]) and
+          SameText(NodeText(Node), ADataSet) then
+        begin
+          if not ((Parent <> nil) and (Parent.Kind in [TSyntaxKind.MemberAccess, TSyntaxKind.IndexAccess]) and
+            (Parent[0] = Node)) then
+            Exit(True);
+          Continue;
+        end;
+        if (Node.StartOffset >= AFrom) and (Node.Kind = TSyntaxKind.WithStatement) then
+          Exit(True);
+        for Index := Node.ChildCount - 1 downto 0 do
+          if Node[Index].EndOffset > AFrom then
+          begin
+            Pending.Push(Node[Index]);
+            Parents.Push(Node);
+          end;
+      end;
+    finally
+      Parents.Free;
+      Pending.Free;
+    end;
   end;
 
   function UsesDataSet(ANode: TSyntaxNode; const ADataSet: string): Boolean;
   var
     Index: Integer;
+    Node: TSyntaxNode;
+    Pending: TStack<TSyntaxNode>;
   begin
-    if (ANode.Kind in [TSyntaxKind.Identifier, TSyntaxKind.MemberAccess]) and SameText(NodeText(ANode), ADataSet) then
-      Exit(True);
-    for Index := 0 to ANode.ChildCount - 1 do
-      if UsesDataSet(ANode[Index], ADataSet) then
-        Exit(True);
+    // Iterativ (Bericht M1).
     Result := False;
+    Pending := TStack<TSyntaxNode>.Create;
+    try
+      Pending.Push(ANode);
+      while Pending.Count > 0 do
+      begin
+        Node := Pending.Pop;
+        if (Node.Kind in [TSyntaxKind.Identifier, TSyntaxKind.MemberAccess]) and
+          SameText(NodeText(Node), ADataSet) then
+          Exit(True);
+        for Index := Node.ChildCount - 1 downto 0 do
+          Pending.Push(Node[Index]);
+      end;
+    finally
+      Pending.Free;
+    end;
   end;
 
   function OwnLine(ANode: TSyntaxNode): Boolean;
@@ -1552,25 +1798,45 @@ var
     Result := False;
   end;
 
-  procedure Visit(ANode, ARoutine: TSyntaxNode);
+  procedure Visit(ARoot: TSyntaxNode);
   var
     Index, Arguments: Integer;
     Receiver, Name: string;
+    Node, Routine: TSyntaxNode;
+    Pending, PendingRoutines: TStack<TSyntaxNode>;
   begin
-    if ANode.Kind = TSyntaxKind.RoutineDecl then
-      ARoutine := ANode;
-    if (ARoutine <> nil) and (ANode.Kind = TSyntaxKind.CallStatement) then
-    begin
-      Name := StatementCall(AContext.Text, ANode, Receiver, Arguments);
-      if (Receiver <> '') and (Arguments = 0) and MatchText(Name, DatasetEditMethods) and
-        not Ends(ARoutine, Receiver, ANode.EndOffset) and not Escapes(ARoutine, nil, Receiver, ANode.EndOffset) and
-        not EndedElsewhere(ARoutine, Receiver) then
-        AReport.Add(TTextRange.Create(ANode[0].EndPos.Line, ANode[0].EndPos.Character - Length(Name),
-          ANode[0].EndPos.Line, ANode[0].EndPos.Character), Format('Nach %s fehlt Post oder Cancel; die Änderung ' +
-          'bleibt offen.', [Name]), TRuleConfidence.Medium, PostFix(ANode, Receiver));
+    // Iterativ (Bericht M1): zu jedem Knoten auf dem Stapel die umgebende Routine.
+    Pending := TStack<TSyntaxNode>.Create;
+    PendingRoutines := TStack<TSyntaxNode>.Create;
+    try
+      Pending.Push(ARoot);
+      PendingRoutines.Push(nil);
+      while Pending.Count > 0 do
+      begin
+        Node := Pending.Pop;
+        Routine := PendingRoutines.Pop;
+        if Node.Kind = TSyntaxKind.RoutineDecl then
+          Routine := Node;
+        if (Routine <> nil) and (Node.Kind = TSyntaxKind.CallStatement) then
+        begin
+          Name := StatementCall(AContext.Text, Node, Receiver, Arguments);
+          if (Receiver <> '') and (Arguments = 0) and MatchText(Name, DatasetEditMethods) and
+            not Ends(Routine, Receiver, Node.EndOffset) and not Escapes(Routine, Receiver, Node.EndOffset) and
+            not EndedElsewhere(Routine, Receiver) then
+            AReport.Add(TTextRange.Create(Node[0].EndPos.Line, Node[0].EndPos.Character - Length(Name),
+              Node[0].EndPos.Line, Node[0].EndPos.Character), Format('Nach %s fehlt Post oder Cancel; die ' +
+              'Änderung bleibt offen.', [Name]), TRuleConfidence.Medium, PostFix(Node, Receiver));
+        end;
+        for Index := Node.ChildCount - 1 downto 0 do
+        begin
+          Pending.Push(Node[Index]);
+          PendingRoutines.Push(Routine);
+        end;
+      end;
+    finally
+      PendingRoutines.Free;
+      Pending.Free;
     end;
-    for Index := 0 to ANode.ChildCount - 1 do
-      Visit(ANode[Index], ARoutine);
   end;
 
 begin
@@ -1585,7 +1851,7 @@ begin
         Routines := Routines + [ANode];
       Result := ANode.Kind <> TSyntaxKind.RoutineDecl;
     end);
-  Visit(AContext.Tree.Root, nil);
+  Visit(AContext.Tree.Root);
 end;
 
 { TTransactionWithoutRollbackRule }
@@ -1688,23 +1954,43 @@ var
   end;
 
   // Ruft ANode (auch verschachtelt) AReceiver.AMethod auf? Nur in except-Teilen, wenn AInExcept.
-  function Calls(ANode: TSyntaxNode; const AReceiver, AMethod: string; AInExcept, AInside: Boolean): Boolean;
+  function Calls(ANode: TSyntaxNode; const AReceiver, AMethod: string; AInExcept: Boolean): Boolean;
   var
     Index: Integer;
     Receiver: string;
-    Call, Member: TSyntaxNode;
+    Node, Call, Member: TSyntaxNode;
+    Inside: Boolean;
+    Pending: TStack<TSyntaxNode>;
+    PendingInside: TStack<Boolean>;
   begin
-    if ANode.Kind in [TSyntaxKind.AnonymousMethod, TSyntaxKind.RoutineDecl] then
-      Exit(False);
-    if ANode.Kind = TSyntaxKind.ExceptBlock then
-      AInside := True;
-    if (AInside or not AInExcept) and SameText(CallIn(ANode, Receiver, Call, Member), AMethod) and
-      SameText(Receiver, AReceiver) then
-      Exit(True);
-    for Index := 0 to ANode.ChildCount - 1 do
-      if Calls(ANode[Index], AReceiver, AMethod, AInExcept, AInside) then
-        Exit(True);
+    // Iterativ (Bericht M1): zu jedem Knoten auf dem Stapel, ob er in einem except-Teil liegt.
     Result := False;
+    Pending := TStack<TSyntaxNode>.Create;
+    PendingInside := TStack<Boolean>.Create;
+    try
+      Pending.Push(ANode);
+      PendingInside.Push(False);
+      while Pending.Count > 0 do
+      begin
+        Node := Pending.Pop;
+        Inside := PendingInside.Pop;
+        if Node.Kind in [TSyntaxKind.AnonymousMethod, TSyntaxKind.RoutineDecl] then
+          Continue;
+        if Node.Kind = TSyntaxKind.ExceptBlock then
+          Inside := True;
+        if (Inside or not AInExcept) and SameText(CallIn(Node, Receiver, Call, Member), AMethod) and
+          SameText(Receiver, AReceiver) then
+          Exit(True);
+        for Index := Node.ChildCount - 1 downto 0 do
+        begin
+          Pending.Push(Node[Index]);
+          PendingInside.Push(Inside);
+        end;
+      end;
+    finally
+      PendingInside.Free;
+      Pending.Free;
+    end;
   end;
 
   function OwnLine(ANode: TSyntaxNode): Boolean;
@@ -1776,12 +2062,12 @@ var
         // Rollback im except des unmittelbar folgenden try (auch in einem try … finally darum).
         Handled := (Position >= 0) and (Position + 1 < List.ChildCount) and
           (List[Position + 1].Kind = TSyntaxKind.TryStatement) and
-          Calls(List[Position + 1], Receiver, Pair.Rollback, True, False);
+          Calls(List[Position + 1], Receiver, Pair.Rollback, True);
         // Commit und Rollback in einer anderen Routine der Unit (Transaktion über mehrere Ereignisse).
         for Other in Routines do
           if Other <> ARoutine then
             for Index := 0 to Other.ChildCount - 1 do
-              if Calls(Other[Index], Receiver, Pair.Rollback, False, False) then
+              if Calls(Other[Index], Receiver, Pair.Rollback, False) then
                 Handled := True;
         if not Handled then
           AReport.Add(TTextRange.Create(Member.EndPos.Line, Member.EndPos.Character - Length(Member.Name),
@@ -1791,17 +2077,37 @@ var
       end;
   end;
 
-  procedure Visit(ANode, ARoutine: TSyntaxNode);
+  procedure Visit(ARoot: TSyntaxNode);
   var
     Index: Integer;
+    Node, Routine: TSyntaxNode;
+    Pending, PendingRoutines: TStack<TSyntaxNode>;
   begin
-    if ANode.Kind = TSyntaxKind.RoutineDecl then
-      ARoutine := ANode;
-    if (ARoutine <> nil) and (ANode.Kind in [TSyntaxKind.CallStatement, TSyntaxKind.AssignStatement,
-      TSyntaxKind.InlineVar]) then
-      CheckStatement(ANode, ARoutine);
-    for Index := 0 to ANode.ChildCount - 1 do
-      Visit(ANode[Index], ARoutine);
+    // Iterativ (Bericht M1): zu jedem Knoten auf dem Stapel die umgebende Routine.
+    Pending := TStack<TSyntaxNode>.Create;
+    PendingRoutines := TStack<TSyntaxNode>.Create;
+    try
+      Pending.Push(ARoot);
+      PendingRoutines.Push(nil);
+      while Pending.Count > 0 do
+      begin
+        Node := Pending.Pop;
+        Routine := PendingRoutines.Pop;
+        if Node.Kind = TSyntaxKind.RoutineDecl then
+          Routine := Node;
+        if (Routine <> nil) and (Node.Kind in [TSyntaxKind.CallStatement, TSyntaxKind.AssignStatement,
+          TSyntaxKind.InlineVar]) then
+          CheckStatement(Node, Routine);
+        for Index := Node.ChildCount - 1 downto 0 do
+        begin
+          Pending.Push(Node[Index]);
+          PendingRoutines.Push(Routine);
+        end;
+      end;
+    finally
+      PendingRoutines.Free;
+      Pending.Free;
+    end;
   end;
 
 begin
@@ -1817,7 +2123,7 @@ begin
         Routines := Routines + [ANode];
       Result := ANode.Kind <> TSyntaxKind.RoutineDecl;
     end);
-  Visit(AContext.Tree.Root, nil);
+  Visit(AContext.Tree.Root);
 end;
 
 { TComparisonAsStatementRule }
@@ -1904,42 +2210,54 @@ var
     Result := -1;
   end;
 
-  procedure Visit(ANode: TSyntaxNode);
+  procedure Visit(ARoot: TSyntaxNode);
   var
-    Expression: TSyntaxNode;
+    Node, Expression: TSyntaxNode;
     Index, Equals: Integer;
     Range, OperatorRange: TTextRange;
     Suggestion, Message: string;
     Fixes: TArray<TRuleFix>;
+    Pending: TStack<TSyntaxNode>;
   begin
-    Expression := ExpressionOf(ANode);
-    if Expression <> nil then
-    begin
-      Range := TTextRange.Create(Expression.StartPos, Expression.EndPos);
-      Fixes := nil;
-      if (Expression.Kind = TSyntaxKind.BinaryExpr) and IsComparison(Expression.Name) then
+    // Iterativ (Bericht M1).
+    Pending := TStack<TSyntaxNode>.Create;
+    try
+      Pending.Push(ARoot);
+      while Pending.Count > 0 do
       begin
-        Message := 'Vergleich als Anweisung (wie E2014); das Ergebnis wird nicht verwendet.';
-        Equals := -1;
-        if (Expression.Name = '=') and (Expression.ChildCount = 2) and Assignable(Expression[0]) then
-          Equals := EqualsToken(Expression);
-        if Equals >= 0 then
+        Node := Pending.Pop;
+        Expression := ExpressionOf(Node);
+        if Expression <> nil then
         begin
-          Suggestion := Compact(Expression[0]) + ' := ' + Compact(Expression[1]);
-          if Length(Suggestion) <= MaxSuggestion then
-            Message := Format('Vergleich als Anweisung (wie E2014); gemeint ist wohl %s.', [Suggestion])
+          Range := TTextRange.Create(Expression.StartPos, Expression.EndPos);
+          Fixes := nil;
+          if (Expression.Kind = TSyntaxKind.BinaryExpr) and IsComparison(Expression.Name) then
+          begin
+            Message := 'Vergleich als Anweisung (wie E2014); das Ergebnis wird nicht verwendet.';
+            Equals := -1;
+            if (Expression.Name = '=') and (Expression.ChildCount = 2) and Assignable(Expression[0]) then
+              Equals := EqualsToken(Expression);
+            if Equals >= 0 then
+            begin
+              Suggestion := Compact(Expression[0]) + ' := ' + Compact(Expression[1]);
+              if Length(Suggestion) <= MaxSuggestion then
+                Message := Format('Vergleich als Anweisung (wie E2014); gemeint ist wohl %s.', [Suggestion])
+              else
+                Message := 'Vergleich als Anweisung (wie E2014); gemeint ist wohl := statt =.';
+              OperatorRange := TTextRange.Create(Tokens[Equals].StartPos, Tokens[Equals].EndPos);
+              Fixes := [TRuleFix.Create('= durch := ersetzen', [TRuleEdit.Create(OperatorRange, ':=')], True)];
+            end;
+          end
           else
-            Message := 'Vergleich als Anweisung (wie E2014); gemeint ist wohl := statt =.';
-          OperatorRange := TTextRange.Create(Tokens[Equals].StartPos, Tokens[Equals].EndPos);
-          Fixes := [TRuleFix.Create('= durch := ersetzen', [TRuleEdit.Create(OperatorRange, ':=')], True)];
+            Message := 'Ausdruck als Anweisung (wie E2014); das Ergebnis wird nicht verwendet.';
+          AReport.Add(Range, Message, TRuleConfidence.High, Fixes);
         end;
-      end
-      else
-        Message := 'Ausdruck als Anweisung (wie E2014); das Ergebnis wird nicht verwendet.';
-      AReport.Add(Range, Message, TRuleConfidence.High, Fixes);
+        for Index := Node.ChildCount - 1 downto 0 do
+          Pending.Push(Node[Index]);
+      end;
+    finally
+      Pending.Free;
     end;
-    for Index := 0 to ANode.ChildCount - 1 do
-      Visit(ANode[Index]);
   end;
 
 begin
@@ -2152,16 +2470,29 @@ var
         end;
   end;
 
-  procedure Visit(ANode: TSyntaxNode);
+  procedure Visit(ARoot: TSyntaxNode);
   var
     Index: Integer;
+    Node: TSyntaxNode;
+    Pending: TStack<TSyntaxNode>;
   begin
-    if ANode.Kind = TSyntaxKind.CaseStatement then
-      CheckLabels(ANode, 'E2030')
-    else if ANode.Kind = TSyntaxKind.VariantPart then
-      CheckLabels(ANode, 'E2027');
-    for Index := 0 to ANode.ChildCount - 1 do
-      Visit(ANode[Index]);
+    // Iterativ (Bericht M1).
+    Pending := TStack<TSyntaxNode>.Create;
+    try
+      Pending.Push(ARoot);
+      while Pending.Count > 0 do
+      begin
+        Node := Pending.Pop;
+        if Node.Kind = TSyntaxKind.CaseStatement then
+          CheckLabels(Node, 'E2030')
+        else if Node.Kind = TSyntaxKind.VariantPart then
+          CheckLabels(Node, 'E2027');
+        for Index := Node.ChildCount - 1 downto 0 do
+          Pending.Push(Node[Index]);
+      end;
+    finally
+      Pending.Free;
+    end;
   end;
 
 var
@@ -2270,60 +2601,67 @@ var
   /// <summary>Schreibt die Zuweisung an ATarget (ein Feld hinter dem Punkt) in eine Kopie?</summary>
   procedure CheckMember(AStatement, ATarget: TSyntaxNode);
   var
-    Receiver: TSyntaxNode;
+    Target, Receiver: TSyntaxNode;
     Symbol, TypeInfo: TResolvedSymbol;
     TypeFound, ReadsField: Boolean;
     Name: string;
     Fix: TRuleFix;
     Fixes: TArray<TRuleFix>;
   begin
-    if (ATarget.Kind <> TSyntaxKind.MemberAccess) or (ATarget.ChildCount = 0) then
-      Exit;
-    Receiver := ATarget[0];
-    if not (Receiver.Kind in [TSyntaxKind.Identifier, TSyntaxKind.MemberAccess, TSyntaxKind.IndexAccess,
-      TSyntaxKind.Call]) then
-      Exit;
-    if not Resolver.NodeType(AContext.Tree, FileName, Receiver, Symbol, TypeInfo, TypeFound) or not TypeFound or
-      (TypeInfo.SymbolKind <> TIndexSymbolKind.RecordType) or Symbol.IsType then
-      Exit;
-    Name := Symbol.Name;
-    if Receiver.Kind = TSyntaxKind.IndexAccess then
-      Name := NodeText(Receiver);
-    Fixes := nil;
-    case Symbol.SymbolKind of
-      TIndexSymbolKind.Property_:
-        begin
-          // Liest die Property ein Feld, schreibt Delphi in das Feld; weiter oben kann es wieder eine Kopie geben.
-          if (Symbol.MaxArgs = 0) and (Receiver.Kind <> TSyntaxKind.IndexAccess) then
+    // Iterativ (Bericht M1): statt sich mit dem Empfänger erneut aufzurufen, geht die Schleife zum Empfänger weiter.
+    Target := ATarget;
+    while True do
+    begin
+      if (Target.Kind <> TSyntaxKind.MemberAccess) or (Target.ChildCount = 0) then
+        Exit;
+      Receiver := Target[0];
+      if not (Receiver.Kind in [TSyntaxKind.Identifier, TSyntaxKind.MemberAccess, TSyntaxKind.IndexAccess,
+        TSyntaxKind.Call]) then
+        Exit;
+      if not Resolver.NodeType(AContext.Tree, FileName, Receiver, Symbol, TypeInfo, TypeFound) or not TypeFound or
+        (TypeInfo.SymbolKind <> TIndexSymbolKind.RecordType) or Symbol.IsType then
+        Exit;
+      Name := Symbol.Name;
+      if Receiver.Kind = TSyntaxKind.IndexAccess then
+        Name := NodeText(Receiver);
+      Fixes := nil;
+      case Symbol.SymbolKind of
+        TIndexSymbolKind.Property_:
           begin
-            if not Resolver.PropertyReadsField(Symbol, ReadsField) then
-              Exit;
-            if ReadsField then
+            // Liest die Property ein Feld, schreibt Delphi in das Feld; weiter oben kann es wieder eine Kopie geben.
+            if (Symbol.MaxArgs = 0) and (Receiver.Kind <> TSyntaxKind.IndexAccess) then
             begin
-              CheckMember(AStatement, Receiver);
-              Exit;
+              if not Resolver.PropertyReadsField(Symbol, ReadsField) then
+                Exit;
+              if ReadsField then
+              begin
+                Target := Receiver;
+                Continue;
+              end;
             end;
+            if ContainsText(' ' + Symbol.Signature.Replace(';', ' ') + ' ', ' write ') and
+              CopyFix(AStatement, Receiver, TypeInfo, Fix) then
+              Fixes := [Fix];
           end;
-          if ContainsText(' ' + Symbol.Signature.Replace(';', ' ') + ' ', ' write ') and
-            CopyFix(AStatement, Receiver, TypeInfo, Fix) then
-            Fixes := [Fix];
-        end;
-      TIndexSymbolKind.Method, TIndexSymbolKind.Routine:
-        // Ohne Ergebnistyp ist es kein Wert; das meldet der Compiler anders.
-        if Symbol.TypeName = '' then
-          Exit;
-      TIndexSymbolKind.Field, TIndexSymbolKind.Variable:
-        begin
-          // Feld eines Records in einem Feld: weiter zum Empfänger.
-          if Receiver.Kind = TSyntaxKind.MemberAccess then
-            CheckMember(AStatement, Receiver);
-          Exit;
-        end;
-    else
+        TIndexSymbolKind.Method, TIndexSymbolKind.Routine:
+          // Ohne Ergebnistyp ist es kein Wert; das meldet der Compiler anders.
+          if Symbol.TypeName = '' then
+            Exit;
+        TIndexSymbolKind.Field, TIndexSymbolKind.Variable:
+          begin
+            // Feld eines Records in einem Feld: weiter zum Empfänger.
+            if Receiver.Kind <> TSyntaxKind.MemberAccess then
+              Exit;
+            Target := Receiver;
+            Continue;
+          end;
+      else
+        Exit;
+      end;
+      AReport.Add(TTextRange.Create(Target.StartPos, Target.EndPos), Format('%s liefert eine Kopie; die ' +
+        'Zuweisung an %s hat keine Wirkung (wie E2064).', [Name, Target.Name]), TRuleConfidence.High, Fixes);
       Exit;
     end;
-    AReport.Add(TTextRange.Create(ATarget.StartPos, ATarget.EndPos), Format('%s liefert eine Kopie; die ' +
-      'Zuweisung an %s hat keine Wirkung (wie E2064).', [Name, ATarget.Name]), TRuleConfidence.High, Fixes);
   end;
 
   procedure CheckConstant(ATarget: TSyntaxNode);
@@ -2338,19 +2676,32 @@ var
         'sich nichts zuweisen (wie E2064).', [Symbol.Name]), TRuleConfidence.High);
   end;
 
-  procedure Visit(ANode: TSyntaxNode);
+  procedure Visit(ARoot: TSyntaxNode);
   var
     Index: Integer;
+    Node: TSyntaxNode;
+    Pending: TStack<TSyntaxNode>;
   begin
-    if (ANode.Kind = TSyntaxKind.AssignStatement) and (ANode.ChildCount > 0) then
-    begin
-      if ANode[0].Kind = TSyntaxKind.Identifier then
-        CheckConstant(ANode[0])
-      else
-        CheckMember(ANode, ANode[0]);
+    // Iterativ (Bericht M1).
+    Pending := TStack<TSyntaxNode>.Create;
+    try
+      Pending.Push(ARoot);
+      while Pending.Count > 0 do
+      begin
+        Node := Pending.Pop;
+        if (Node.Kind = TSyntaxKind.AssignStatement) and (Node.ChildCount > 0) then
+        begin
+          if Node[0].Kind = TSyntaxKind.Identifier then
+            CheckConstant(Node[0])
+          else
+            CheckMember(Node, Node[0]);
+        end;
+        for Index := Node.ChildCount - 1 downto 0 do
+          Pending.Push(Node[Index]);
+      end;
+    finally
+      Pending.Free;
     end;
-    for Index := 0 to ANode.ChildCount - 1 do
-      Visit(ANode[Index]);
   end;
 
 begin
@@ -2756,26 +3107,54 @@ var
         [Symbol.Container, Symbol.Name]), TRuleConfidence.High);
   end;
 
-  procedure Visit(ANode: TSyntaxNode; AWritten: Boolean);
+  procedure Visit(ARoot: TSyntaxNode);
   var
     Index: Integer;
-    Target: TSyntaxNode;
+    Node, Target: TSyntaxNode;
+    Written: Boolean;
+    Pending: TStack<TSyntaxNode>;
+    PendingWritten: TStack<Boolean>;
   begin
-    if (ANode.Kind = TSyntaxKind.AssignStatement) and (ANode.ChildCount > 0) then
-    begin
-      Target := ANode[0];
-      CheckWrite(ANode, Target);
-      // Das Ziel selbst wird geschrieben, bei Liste.Items[I] auch die Property davor.
-      for Index := 0 to Target.ChildCount - 1 do
-        Visit(Target[Index], (Target.Kind = TSyntaxKind.IndexAccess) and (Index = 0));
-      for Index := 1 to ANode.ChildCount - 1 do
-        Visit(ANode[Index], False);
-      Exit;
+    // Iterativ (Bericht M1): zu jedem Knoten auf dem Stapel, ob er geschrieben wird.
+    Pending := TStack<TSyntaxNode>.Create;
+    PendingWritten := TStack<Boolean>.Create;
+    try
+      Pending.Push(ARoot);
+      PendingWritten.Push(False);
+      while Pending.Count > 0 do
+      begin
+        Node := Pending.Pop;
+        Written := PendingWritten.Pop;
+        if (Node.Kind = TSyntaxKind.AssignStatement) and (Node.ChildCount > 0) then
+        begin
+          Target := Node[0];
+          CheckWrite(Node, Target);
+          // Erst die Kinder des Ziels, dann die übrigen Kinder der Zuweisung (umgekehrt auf den Stapel).
+          for Index := Node.ChildCount - 1 downto 1 do
+          begin
+            Pending.Push(Node[Index]);
+            PendingWritten.Push(False);
+          end;
+          // Das Ziel selbst wird geschrieben, bei Liste.Items[I] auch die Property davor.
+          for Index := Target.ChildCount - 1 downto 0 do
+          begin
+            Pending.Push(Target[Index]);
+            PendingWritten.Push((Target.Kind = TSyntaxKind.IndexAccess) and (Index = 0));
+          end;
+          Continue;
+        end;
+        if not Written and (Node.Kind in [TSyntaxKind.Identifier, TSyntaxKind.MemberAccess]) then
+          CheckRead(Node);
+        for Index := Node.ChildCount - 1 downto 0 do
+        begin
+          Pending.Push(Node[Index]);
+          PendingWritten.Push(False);
+        end;
+      end;
+    finally
+      PendingWritten.Free;
+      Pending.Free;
     end;
-    if not AWritten and (ANode.Kind in [TSyntaxKind.Identifier, TSyntaxKind.MemberAccess]) then
-      CheckRead(ANode);
-    for Index := 0 to ANode.ChildCount - 1 do
-      Visit(ANode[Index], False);
   end;
 
 begin
@@ -2799,7 +3178,7 @@ begin
     Resolver.PinTree(AContext.Tree, FileName);
     try
       Local := Resolver.ExtractedUnit(AContext.Tree, FileName);
-      Visit(AContext.Tree.Root, False);
+      Visit(AContext.Tree.Root);
     finally
       Resolver.UnpinTree;
     end;

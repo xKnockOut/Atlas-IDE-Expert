@@ -69,6 +69,17 @@ uses
   Atlas.Common.Pascal.Contract,
   Atlas.Common.Pascal.ConditionalBranches;
 
+type
+  /// <summary>Eintrag des eigenen Stapels von TJumpOutsideAllowedScopeRule.Check (Bericht M1): Knoten samt
+  /// Zustand der umschließenden Sprunggrenze.</summary>
+  TJumpVisit = record
+    Node: TSyntaxNode;
+    Scope: TSyntaxNode;
+    HasLoop: Boolean;
+    FinallySinceLoop: Boolean;
+    InFinally: Boolean;
+  end;
+
 /// <summary>Hat der Parser im Bereich von AScope einen Fehler gemeldet (nil: irgendwo)? Dann ist die
 /// Schachtelung dort nicht sicher.</summary>
 function ParserBroken(ATree: TSyntaxTree; AScope: TSyntaxNode): Boolean;
@@ -161,44 +172,65 @@ var
 
   // AHasLoop: eine Schleife umschließt die Stelle in derselben Routine; AFinallySinceLoop: zwischen ihr und der
   // Stelle liegt ein finally; AInFinally: irgendein finally der Routine umschließt die Stelle.
-  procedure Visit(ANode, AScope: TSyntaxNode; AHasLoop, AFinallySinceLoop, AInFinally: Boolean);
+  // Iterativ (Bericht M1): der Stapel trägt den Zustand je Knoten mit, wie zuvor die Parameter der Rekursion.
+  procedure Visit(ARoot: TSyntaxNode);
   var
+    Pending: TStack<TJumpVisit>;
+    Entry, ChildEntry: TJumpVisit;
+    Node: TSyntaxNode;
     Index: Integer;
     Name, Written: string;
   begin
-    if IsJumpScope(ANode) then
-    begin
-      AScope := ANode;
-      AHasLoop := False;
-      AFinallySinceLoop := False;
-      AInFinally := False;
-    end
-    else if IsLoop(ANode) then
-    begin
-      AHasLoop := True;
-      AFinallySinceLoop := False;
-    end
-    else if ANode.Kind = TSyntaxKind.FinallyBlock then
-    begin
-      AFinallySinceLoop := True;
-      AInFinally := True;
-    end
-    else if ANode.Kind = TSyntaxKind.CallStatement then
-    begin
-      Name := PlainCallName(ANode);
-      if ((Name = 'break') or (Name = 'continue') or (Name = 'exit')) and not Declared.ContainsKey(Name) then
+    Pending := TStack<TJumpVisit>.Create;
+    try
+      Entry := Default(TJumpVisit);
+      Entry.Node := ARoot;
+      Pending.Push(Entry);
+      while Pending.Count > 0 do
       begin
-        Written := Copy(AContext.Text, ANode.StartOffset + 1, Length(Name));
-        if (Name <> 'exit') and not AHasLoop then
-          Report(ANode, AScope, Name, Format('%s außerhalb einer Schleife (wie E2097).', [Written]),
-            (Name = 'break') and not AInFinally)
-        else if ((Name <> 'exit') and AFinallySinceLoop) or ((Name = 'exit') and AInFinally) then
-          Report(ANode, AScope, Name, Format('%s darf einen finally-Block nicht verlassen (wie E2126).',
-            [Written]), False);
+        Entry := Pending.Pop;
+        Node := Entry.Node;
+        if IsJumpScope(Node) then
+        begin
+          Entry.Scope := Node;
+          Entry.HasLoop := False;
+          Entry.FinallySinceLoop := False;
+          Entry.InFinally := False;
+        end
+        else if IsLoop(Node) then
+        begin
+          Entry.HasLoop := True;
+          Entry.FinallySinceLoop := False;
+        end
+        else if Node.Kind = TSyntaxKind.FinallyBlock then
+        begin
+          Entry.FinallySinceLoop := True;
+          Entry.InFinally := True;
+        end
+        else if Node.Kind = TSyntaxKind.CallStatement then
+        begin
+          Name := PlainCallName(Node);
+          if ((Name = 'break') or (Name = 'continue') or (Name = 'exit')) and not Declared.ContainsKey(Name) then
+          begin
+            Written := Copy(AContext.Text, Node.StartOffset + 1, Length(Name));
+            if (Name <> 'exit') and not Entry.HasLoop then
+              Report(Node, Entry.Scope, Name, Format('%s außerhalb einer Schleife (wie E2097).', [Written]),
+                (Name = 'break') and not Entry.InFinally)
+            else if ((Name <> 'exit') and Entry.FinallySinceLoop) or ((Name = 'exit') and Entry.InFinally) then
+              Report(Node, Entry.Scope, Name, Format('%s darf einen finally-Block nicht verlassen (wie E2126).',
+                [Written]), False);
+          end;
+        end;
+        for Index := Node.ChildCount - 1 downto 0 do
+        begin
+          ChildEntry := Entry;
+          ChildEntry.Node := Node[Index];
+          Pending.Push(ChildEntry);
+        end;
       end;
+    finally
+      Pending.Free;
     end;
-    for Index := 0 to ANode.ChildCount - 1 do
-      Visit(ANode[Index], AScope, AHasLoop, AFinallySinceLoop, AInFinally);
   end;
 
 begin
@@ -206,7 +238,7 @@ begin
     Exit;
   Declared := DeclaredNames(AContext.Tree.Root);
   try
-    Visit(AContext.Tree.Root, nil, False, False, False);
+    Visit(AContext.Tree.Root);
   finally
     Declared.Free;
   end;
@@ -316,31 +348,44 @@ var
     Pair: TPair<string, Integer>;
     GotoChain, TargetChain: TArray<TSyntaxNode>;
 
-    procedure Collect(ANode: TSyntaxNode);
+    // Iterativ (Bericht M1).
+    procedure Collect(ARoot: TSyntaxNode);
     var
+      Pending: TStack<TSyntaxNode>;
+      Node: TSyntaxNode;
       Child: Integer;
       Name: string;
       List: TList<TSyntaxNode>;
     begin
-      // Verschachtelte Routinen und anonyme Methoden haben eigene Marken.
-      if ANode.Kind in [TSyntaxKind.RoutineDecl, TSyntaxKind.AnonymousMethod] then
-        Exit;
-      if ANode.Kind = TSyntaxKind.AsmBlock then
-        HasAsm := True
-      else if ANode.Kind = TSyntaxKind.LabeledStatement then
-      begin
-        Name := LabelKey(ANode.Name);
-        if not Sets.TryGetValue(Name, List) then
+      Pending := TStack<TSyntaxNode>.Create;
+      try
+        Pending.Push(ARoot);
+        while Pending.Count > 0 do
         begin
-          List := TList<TSyntaxNode>.Create;
-          Sets.Add(Name, List);
+          Node := Pending.Pop;
+          // Verschachtelte Routinen und anonyme Methoden haben eigene Marken.
+          if Node.Kind in [TSyntaxKind.RoutineDecl, TSyntaxKind.AnonymousMethod] then
+            Continue;
+          if Node.Kind = TSyntaxKind.AsmBlock then
+            HasAsm := True
+          else if Node.Kind = TSyntaxKind.LabeledStatement then
+          begin
+            Name := LabelKey(Node.Name);
+            if not Sets.TryGetValue(Name, List) then
+            begin
+              List := TList<TSyntaxNode>.Create;
+              Sets.Add(Name, List);
+            end;
+            List.Add(Node);
+          end
+          else if (Node.Kind = TSyntaxKind.GotoStatement) and (Node.Name <> '') then
+            Gotos.Add(Node);
+          for Child := Node.ChildCount - 1 downto 0 do
+            Pending.Push(Node[Child]);
         end;
-        List.Add(ANode);
-      end
-      else if (ANode.Kind = TSyntaxKind.GotoStatement) and (ANode.Name <> '') then
-        Gotos.Add(ANode);
-      for Child := 0 to ANode.ChildCount - 1 do
-        Collect(ANode[Child]);
+      finally
+        Pending.Free;
+      end;
     end;
 
   begin
@@ -436,19 +481,32 @@ var
     end;
   end;
 
-  procedure Visit(ANode: TSyntaxNode);
+  // Iterativ (Bericht M1).
+  procedure Visit(ARoot: TSyntaxNode);
   var
+    Pending: TStack<TSyntaxNode>;
+    Node: TSyntaxNode;
     Index: Integer;
     Body: TSyntaxNode;
   begin
-    if ANode.Kind in [TSyntaxKind.RoutineDecl, TSyntaxKind.ProgramFile, TSyntaxKind.LibraryFile] then
-    begin
-      Body := ANode.FindChild(TSyntaxKind.Block);
-      if (Body <> nil) and not ParserBroken(AContext.Tree, ANode) then
-        CheckScope(ANode, Body);
+    Pending := TStack<TSyntaxNode>.Create;
+    try
+      Pending.Push(ARoot);
+      while Pending.Count > 0 do
+      begin
+        Node := Pending.Pop;
+        if Node.Kind in [TSyntaxKind.RoutineDecl, TSyntaxKind.ProgramFile, TSyntaxKind.LibraryFile] then
+        begin
+          Body := Node.FindChild(TSyntaxKind.Block);
+          if (Body <> nil) and not ParserBroken(AContext.Tree, Node) then
+            CheckScope(Node, Body);
+        end;
+        for Index := Node.ChildCount - 1 downto 0 do
+          Pending.Push(Node[Index]);
+      end;
+    finally
+      Pending.Free;
     end;
-    for Index := 0 to ANode.ChildCount - 1 do
-      Visit(ANode[Index]);
   end;
 
 begin

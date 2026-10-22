@@ -2496,19 +2496,29 @@ begin
     Result := AItem[0];
 end;
 
-/// <summary>Punktkette eines Bezeichners bzw. MemberAccess; '' bei anderen Ausdrücken.</summary>
+/// <summary>Punktkette eines Bezeichners bzw. MemberAccess; '' bei anderen Ausdrücken. Iterativ (Bericht M1):
+/// erst die Kette hinab, dann die Namen von innen nach außen anhängen.</summary>
 function DottedNameOf(ANode: TSyntaxNode): string;
 var
-  Left: string;
+  Chain: TStack<TSyntaxNode>;
+  Node: TSyntaxNode;
 begin
-  Result := '';
-  if ANode.Kind = TSyntaxKind.Identifier then
-    Exit(ANode.Name);
-  if (ANode.Kind <> TSyntaxKind.MemberAccess) or (ANode.ChildCount <> 1) then
-    Exit;
-  Left := DottedNameOf(ANode[0]);
-  if Left <> '' then
-    Result := Left + '.' + ANode.Name;
+  Chain := TStack<TSyntaxNode>.Create;
+  try
+    Node := ANode;
+    while (Node.Kind = TSyntaxKind.MemberAccess) and (Node.ChildCount = 1) do
+    begin
+      Chain.Push(Node);
+      Node := Node[0];
+    end;
+    Result := '';
+    if Node.Kind = TSyntaxKind.Identifier then
+      Result := Node.Name;
+    while (Chain.Count > 0) and (Result <> '') do
+      Result := Result + '.' + Chain.Pop.Name;
+  finally
+    Chain.Free;
+  end;
 end;
 
 /// <summary>Name des Compiler-Attributs (Weak, Unsafe, Volatile, Ref) für den Eintrag AItem, '' bei anderen.
@@ -2780,40 +2790,50 @@ var
         Exit(True);
   end;
 
+  // Iterativ (Bericht M1).
   procedure CheckArgument(AArgument, AAttribute: TSyntaxNode; const AAttributeName: string; var AReported: Boolean);
   var
+    Pending: TStack<TSyntaxNode>;
+    Node, Callee: TSyntaxNode;
     Index: Integer;
-    Callee: TSyntaxNode;
   begin
-    if AReported then
-      Exit;
-    case AArgument.Kind of
-      TSyntaxKind.Identifier:
-        if CertainVariable(AArgument.Name, AAttribute) then
-        begin
-          AReport.Add(NodeRange(AArgument), Format('Das Argument %s von [%s] ist kein konstanter Ausdruck; ' +
-            'Attributargumente müssen Konstanten, TypeInfo-Ausdrücke oder Array-Konstruktoren sein (wie E2448).',
-            [AArgument.Name, AAttributeName]), TRuleConfidence.High, nil);
-          AReported := True;
+    Pending := TStack<TSyntaxNode>.Create;
+    try
+      Pending.Push(AArgument);
+      while (Pending.Count > 0) and not AReported do
+      begin
+        Node := Pending.Pop;
+        case Node.Kind of
+          TSyntaxKind.Identifier:
+            if CertainVariable(Node.Name, AAttribute) then
+            begin
+              AReport.Add(NodeRange(Node), Format('Das Argument %s von [%s] ist kein konstanter Ausdruck; ' +
+                'Attributargumente müssen Konstanten, TypeInfo-Ausdrücke oder Array-Konstruktoren sein (wie E2448).',
+                [Node.Name, AAttributeName]), TRuleConfidence.High, nil);
+              AReported := True;
+            end;
+          TSyntaxKind.Call:
+            begin
+              // Nur Aufrufe eigener Routinen; SizeOf, High, TypeInfo usw. sind konstant, Typumwandlungen auch.
+              if Node.ChildCount = 0 then
+                Continue;
+              Callee := Node[0];
+              if (Callee.Kind = TSyntaxKind.Identifier) and CertainVariable(Callee.Name, AAttribute) then
+              begin
+                AReport.Add(NodeRange(Node), Format('Der Aufruf %s in [%s] ist kein konstanter Ausdruck; ' +
+                  'Attributargumente müssen Konstanten, TypeInfo-Ausdrücke oder Array-Konstruktoren sein ' +
+                  '(wie E2448).', [Callee.Name, AAttributeName]), TRuleConfidence.High, nil);
+                AReported := True;
+              end;
+            end;
+          TSyntaxKind.BinaryExpr, TSyntaxKind.UnaryExpr, TSyntaxKind.ParenExpr, TSyntaxKind.SetConstructor,
+          TSyntaxKind.IndexAccess, TSyntaxKind.RangeExpr:
+            for Index := Node.ChildCount - 1 downto 0 do
+              Pending.Push(Node[Index]);
         end;
-      TSyntaxKind.Call:
-        begin
-          // Nur Aufrufe eigener Routinen; SizeOf, High, TypeInfo usw. sind konstant, Typumwandlungen auch.
-          if AArgument.ChildCount = 0 then
-            Exit;
-          Callee := AArgument[0];
-          if (Callee.Kind = TSyntaxKind.Identifier) and CertainVariable(Callee.Name, AAttribute) then
-          begin
-            AReport.Add(NodeRange(AArgument), Format('Der Aufruf %s in [%s] ist kein konstanter Ausdruck; ' +
-              'Attributargumente müssen Konstanten, TypeInfo-Ausdrücke oder Array-Konstruktoren sein (wie E2448).',
-              [Callee.Name, AAttributeName]), TRuleConfidence.High, nil);
-            AReported := True;
-          end;
-        end;
-      TSyntaxKind.BinaryExpr, TSyntaxKind.UnaryExpr, TSyntaxKind.ParenExpr, TSyntaxKind.SetConstructor,
-      TSyntaxKind.IndexAccess, TSyntaxKind.RangeExpr:
-        for Index := 0 to AArgument.ChildCount - 1 do
-          CheckArgument(AArgument[Index], AAttribute, AAttributeName, AReported);
+      end;
+    finally
+      Pending.Free;
     end;
   end;
 

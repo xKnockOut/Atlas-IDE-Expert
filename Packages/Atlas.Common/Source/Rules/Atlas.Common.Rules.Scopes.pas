@@ -51,6 +51,7 @@ type
 implementation
 
 uses
+  System.Generics.Collections,
   Atlas.Common.Pascal.TreeCache;
 
 function HasBody(ANode: TSyntaxNode): Boolean;
@@ -89,34 +90,53 @@ begin
   end;
 end;
 
-procedure Collect(ANode: TSyntaxNode; const AOuter: string; var ARoutines, ASections: TArray<TFindingScope>);
+// Iterativ (Bericht M1): neben jedem Knoten liegt der Name der umschließenden Routine auf dem Stapel.
+procedure Collect(ARoot: TSyntaxNode; var ARoutines, ASections: TArray<TFindingScope>);
 var
+  Pending: TStack<TSyntaxNode>;
+  PendingOuter: TStack<string>;
   Index: Integer;
   Child: TSyntaxNode;
-  Name, Section: string;
+  Outer, Name, Section: string;
 begin
-  for Index := 0 to ANode.ChildCount - 1 do
-  begin
-    Child := ANode[Index];
-    Name := AOuter;
-    if (Child.Kind = TSyntaxKind.RoutineDecl) and (Child.Name <> '') and HasBody(Child) then
+  Pending := TStack<TSyntaxNode>.Create;
+  PendingOuter := TStack<string>.Create;
+  try
+    for Index := ARoot.ChildCount - 1 downto 0 do
     begin
-      if AOuter = '' then
-        Name := Child.Name
-      else
-        Name := AOuter + '.' + Child.Name;
-      ARoutines := ARoutines + [Scope(Name, Child)];
-    end
-    else if AOuter = '' then
-    begin
-      Section := SectionName(Child.Kind);
-      if Section <> '' then
-        ASections := ASections + [Scope(Section, Child)];
+      Pending.Push(ARoot[Index]);
+      PendingOuter.Push('');
     end;
-    // Routinen stehen nie in Anweisungen und Ausdrücken; dort nicht absteigen, sonst läuft der Stapel
-    // bei sehr tiefen Ausdrücken über (#1094).
-    if not (Child.Kind in [TSyntaxKind.Block .. TSyntaxKind.IfExpr]) then
-      Collect(Child, Name, ARoutines, ASections);
+    while Pending.Count > 0 do
+    begin
+      Child := Pending.Pop;
+      Outer := PendingOuter.Pop;
+      Name := Outer;
+      if (Child.Kind = TSyntaxKind.RoutineDecl) and (Child.Name <> '') and HasBody(Child) then
+      begin
+        if Outer = '' then
+          Name := Child.Name
+        else
+          Name := Outer + '.' + Child.Name;
+        ARoutines := ARoutines + [Scope(Name, Child)];
+      end
+      else if Outer = '' then
+      begin
+        Section := SectionName(Child.Kind);
+        if Section <> '' then
+          ASections := ASections + [Scope(Section, Child)];
+      end;
+      // Routinen stehen nie in Anweisungen und Ausdrücken; dort nicht absteigen (#1094).
+      if not (Child.Kind in [TSyntaxKind.Block .. TSyntaxKind.IfExpr]) then
+        for Index := Child.ChildCount - 1 downto 0 do
+        begin
+          Pending.Push(Child[Index]);
+          PendingOuter.Push(Name);
+        end;
+    end;
+  finally
+    PendingOuter.Free;
+    Pending.Free;
   end;
 end;
 
@@ -133,7 +153,7 @@ begin
   Section := SectionName(ATree.Root.Kind);
   if Section <> '' then
     Result.FSections := [Scope(Section, ATree.Root)];
-  Collect(ATree.Root, '', Result.FRoutines, Result.FSections);
+  Collect(ATree.Root, Result.FRoutines, Result.FSections);
 end;
 
 class function TFindingScopes.FromText(const AText: string): TFindingScopes;

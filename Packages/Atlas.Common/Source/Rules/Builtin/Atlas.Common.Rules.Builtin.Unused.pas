@@ -929,26 +929,41 @@ begin
     'Feld oder Property wird zweimal gesetzt');
 end;
 
+// Iterativ (Bericht M1): erst die Kette aus Punkten und ^ hinab, dann den Schlüssel von innen nach außen bauen.
 class function TDuplicateAssignmentRule.TargetKey(ANode: TSyntaxNode): string;
 var
+  Chain: TStack<TSyntaxNode>;
+  Node: TSyntaxNode;
   Base: string;
 begin
-  Result := '';
-  if ANode.Kind = TSyntaxKind.Identifier then
-    Result := ANode.Name
-  else if (ANode.Kind = TSyntaxKind.MemberAccess) and (ANode.ChildCount = 1) then
-  begin
-    Base := TargetKey(ANode[0]);
-    if SameText(Base, 'Self') then
-      Result := ANode.Name
-    else if Base <> '' then
-      Result := Base + '.' + ANode.Name;
-  end
-  else if (ANode.Kind = TSyntaxKind.Dereference) and (ANode.ChildCount = 1) then
-  begin
-    Base := TargetKey(ANode[0]);
-    if Base <> '' then
-      Result := Base + '^';
+  Chain := TStack<TSyntaxNode>.Create;
+  try
+    Node := ANode;
+    while (Node.Kind in [TSyntaxKind.MemberAccess, TSyntaxKind.Dereference]) and (Node.ChildCount = 1) do
+    begin
+      Chain.Push(Node);
+      Node := Node[0];
+    end;
+    Result := '';
+    if Node.Kind = TSyntaxKind.Identifier then
+      Result := Node.Name;
+    while Chain.Count > 0 do
+    begin
+      Node := Chain.Pop;
+      Base := Result;
+      Result := '';
+      if Node.Kind = TSyntaxKind.MemberAccess then
+      begin
+        if SameText(Base, 'Self') then
+          Result := Node.Name
+        else if Base <> '' then
+          Result := Base + '.' + Node.Name;
+      end
+      else if Base <> '' then
+        Result := Base + '^';
+    end;
+  finally
+    Chain.Free;
   end;
 end;
 
@@ -972,18 +987,30 @@ end;
 
 /// <summary>Kommt unter ANode ein Bezeichner aus AParts vor, ein Aufruf oder etwas, das Code ausführt?
 /// Dann kann der Ausdruck den ersten Wert lesen.</summary>
+// Iterativ (Bericht M1).
 function MayRead(ANode: TSyntaxNode; const AParts: TArray<string>): Boolean;
 var
+  Pending: TStack<TSyntaxNode>;
+  Node: TSyntaxNode;
   Index: Integer;
 begin
-  if ANode.Kind in [TSyntaxKind.Call, TSyntaxKind.InheritedExpr, TSyntaxKind.AnonymousMethod] then
-    Exit(True);
-  if (ANode.Kind = TSyntaxKind.Identifier) and MatchText(ANode.Name, AParts) then
-    Exit(True);
-  for Index := 0 to ANode.ChildCount - 1 do
-    if MayRead(ANode[Index], AParts) then
-      Exit(True);
   Result := False;
+  Pending := TStack<TSyntaxNode>.Create;
+  try
+    Pending.Push(ANode);
+    while Pending.Count > 0 do
+    begin
+      Node := Pending.Pop;
+      if Node.Kind in [TSyntaxKind.Call, TSyntaxKind.InheritedExpr, TSyntaxKind.AnonymousMethod] then
+        Exit(True);
+      if (Node.Kind = TSyntaxKind.Identifier) and MatchText(Node.Name, AParts) then
+        Exit(True);
+      for Index := Node.ChildCount - 1 downto 0 do
+        Pending.Push(Node[Index]);
+    end;
+  finally
+    Pending.Free;
+  end;
 end;
 
 /// <summary>Lokale Namen von ARoutine und umschließenden Routinen: Variablen, Parameter, Result, Routinenname.</summary>
@@ -1120,38 +1147,60 @@ var
     Result := False;
   end;
 
-  procedure Visit(ANode: TSyntaxNode);
+  // Iterativ (Bericht M1): der Stapel hält Elternknoten und Kindindex, damit jedes Kind wie bisher vor dem
+  // Abstieg in seine Kinder geprüft wird.
+  procedure Visit(ARoot: TSyntaxNode);
   var
-    Index: Integer;
-    Child: TSyntaxNode;
+    PendingParent: TStack<TSyntaxNode>;
+    PendingIndex: TStack<Integer>;
+    Parent, Child, LocalsOwner: TSyntaxNode;
+    Index, ChildIndex: Integer;
     Key: string;
     Locals: TArray<string>;
-    LocalsKnown: Boolean;
   begin
-    LocalsKnown := False;
-    for Index := 0 to ANode.ChildCount - 1 do
-    begin
-      Child := ANode[Index];
-      // Nur Anweisungsfolgen; then- und else-Zweig eines if stehen auch nebeneinander.
-      if (ANode.Kind in StatementLists) and (Child.Kind = TSyntaxKind.AssignStatement) and (Child.ChildCount >= 2) then
+    LocalsOwner := nil;
+    PendingParent := TStack<TSyntaxNode>.Create;
+    PendingIndex := TStack<Integer>.Create;
+    try
+      for ChildIndex := ARoot.ChildCount - 1 downto 0 do
       begin
-        Key := TargetKey(Child[0]);
-        if (Key = '') or IsAllowed(Key) then
-          Continue;
-        // Lokale Variablen deckt unused-assignment ab.
-        if Pos('.', Key) + Pos('^', Key) = 0 then
-        begin
-          if not LocalsKnown then
-          begin
-            Locals := LocalNames(ANode);
-            LocalsKnown := True;
-          end;
-          if MatchText(Key, Locals) then
-            Continue;
-        end;
-        CheckFrom(ANode, Index, Key);
+        PendingParent.Push(ARoot);
+        PendingIndex.Push(ChildIndex);
       end;
-      Visit(Child);
+      while PendingParent.Count > 0 do
+      begin
+        Parent := PendingParent.Pop;
+        Index := PendingIndex.Pop;
+        Child := Parent[Index];
+        // Nur Anweisungsfolgen; then- und else-Zweig eines if stehen auch nebeneinander.
+        if (Parent.Kind in StatementLists) and (Child.Kind = TSyntaxKind.AssignStatement) and
+          (Child.ChildCount >= 2) then
+        begin
+          Key := TargetKey(Child[0]);
+          if (Key = '') or IsAllowed(Key) then
+            Continue;
+          // Lokale Variablen deckt unused-assignment ab.
+          if Pos('.', Key) + Pos('^', Key) = 0 then
+          begin
+            if LocalsOwner <> Parent then
+            begin
+              Locals := LocalNames(Parent);
+              LocalsOwner := Parent;
+            end;
+            if MatchText(Key, Locals) then
+              Continue;
+          end;
+          CheckFrom(Parent, Index, Key);
+        end;
+        for ChildIndex := Child.ChildCount - 1 downto 0 do
+        begin
+          PendingParent.Push(Child);
+          PendingIndex.Push(ChildIndex);
+        end;
+      end;
+    finally
+      PendingIndex.Free;
+      PendingParent.Free;
     end;
   end;
 

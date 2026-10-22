@@ -63,7 +63,6 @@ uses
   Atlas.Common.Editing.ChangeSignature,
   Atlas.Common.Rules.Contract,
   Atlas.Common.Rules.Builtin.General,
-  Atlas.Common.Editing.ChangeSignature,
   Atlas.Tests.RuleAssert;
 
 const

@@ -1059,27 +1059,38 @@ var
   end;
 
   // Ruft der Rumpf einen anderen Konstruktor derselben Klasse auf (Create(nil), Self.Create(nil))?
-  function CallsOwnConstructor(ANode: TSyntaxNode): Boolean;
+  function CallsOwnConstructor(ARoot: TSyntaxNode): Boolean;
   var
-    Target: TSyntaxNode;
+    Node, Target: TSyntaxNode;
     Child: Integer;
+    Pending: TStack<TSyntaxNode>;
   begin
+    // Iterativ (Bericht M1).
     Result := False;
-    if ANode.Kind = TSyntaxKind.AnonymousMethod then
-      Exit;
-    if (ANode.Kind = TSyntaxKind.CallStatement) and (ANode.ChildCount > 0) then
-    begin
-      Target := ANode[0];
-      if (Target.Kind = TSyntaxKind.Call) and (Target.ChildCount > 0) then
-        Target := Target[0];
-      if ((Target.Kind = TSyntaxKind.Identifier) or ((Target.Kind = TSyntaxKind.MemberAccess) and
-        (Target.ChildCount = 1) and (Target[0].Kind = TSyntaxKind.Identifier) and
-        SameText(Target[0].Name, 'Self'))) and IsIn(Target.Name, Constructors) then
-        Exit(True);
+    Pending := TStack<TSyntaxNode>.Create;
+    try
+      Pending.Push(ARoot);
+      while Pending.Count > 0 do
+      begin
+        Node := Pending.Pop;
+        if Node.Kind = TSyntaxKind.AnonymousMethod then
+          Continue;
+        if (Node.Kind = TSyntaxKind.CallStatement) and (Node.ChildCount > 0) then
+        begin
+          Target := Node[0];
+          if (Target.Kind = TSyntaxKind.Call) and (Target.ChildCount > 0) then
+            Target := Target[0];
+          if ((Target.Kind = TSyntaxKind.Identifier) or ((Target.Kind = TSyntaxKind.MemberAccess) and
+            (Target.ChildCount = 1) and (Target[0].Kind = TSyntaxKind.Identifier) and
+            SameText(Target[0].Name, 'Self'))) and IsIn(Target.Name, Constructors) then
+            Exit(True);
+        end;
+        for Child := Node.ChildCount - 1 downto 0 do
+          Pending.Push(Node[Child]);
+      end;
+    finally
+      Pending.Free;
     end;
-    for Child := 0 to ANode.ChildCount - 1 do
-      if CallsOwnConstructor(ANode[Child]) then
-        Exit(True);
   end;
 
 begin
@@ -1369,18 +1380,27 @@ end;
 function FirstFreedField(ANode: TSyntaxNode; const AFields: TArray<string>): string;
 var
   Index: Integer;
+  Node: TSyntaxNode;
+  Pending: TStack<TSyntaxNode>;
 begin
-  Result := FreedName(ANode);
-  if (Result <> '') and IsIn(Result, AFields) then
-    Exit;
-  Result := '';
-  if ANode.Kind = TSyntaxKind.AnonymousMethod then
-    Exit;
-  for Index := 0 to ANode.ChildCount - 1 do
-  begin
-    Result := FirstFreedField(ANode[Index], AFields);
-    if Result <> '' then
-      Exit;
+  // Iterativ (Bericht M1).
+  Pending := TStack<TSyntaxNode>.Create;
+  try
+    Pending.Push(ANode);
+    while Pending.Count > 0 do
+    begin
+      Node := Pending.Pop;
+      Result := FreedName(Node);
+      if (Result <> '') and IsIn(Result, AFields) then
+        Exit;
+      if Node.Kind = TSyntaxKind.AnonymousMethod then
+        Continue;
+      for Index := Node.ChildCount - 1 downto 0 do
+        Pending.Push(Node[Index]);
+    end;
+    Result := '';
+  finally
+    Pending.Free;
   end;
 end;
 
@@ -1489,50 +1509,71 @@ var
   end;
 
   // Erstes geerbtes Feld bzw. erste geerbte Property in ANode (F, Self.F); nil ohne.
-  function FirstInheritedAccess(ANode: TSyntaxNode; const AParent: string; const AExcluded: TArray<string>;
+  function FirstInheritedAccess(ARoot: TSyntaxNode; const AParent: string; const AExcluded: TArray<string>;
     out AName, AOwner: string): TSyntaxNode;
   var
     Index: Integer;
     Name, Unresolved: string;
     Member: TIndexSymbol;
+    Node: TSyntaxNode;
+    Pending: TStack<TSyntaxNode>;
   begin
+    // Iterativ (Bericht M1).
     Result := nil;
-    if ANode.Kind = TSyntaxKind.AnonymousMethod then
-      Exit;
-    Name := '';
-    if (ANode.Kind = TSyntaxKind.Identifier) and not ((ANode.Parent <> nil) and
-      (ANode.Parent.Kind = TSyntaxKind.Call) and (ANode.Parent[0] = ANode)) then
-      Name := ANode.Name
-    else if (ANode.Kind = TSyntaxKind.MemberAccess) and (ANode.ChildCount = 1) and
-      (ANode[0].Kind = TSyntaxKind.Identifier) and SameText(ANode[0].Name, 'Self') then
-      Name := ANode.Name;
-    if (Name <> '') and not SameText(Name, 'Self') and not IsIn(Name, AExcluded) and
-      Model.FAncestry.FindMember(AParent, Name, Member, Unresolved) and
-      (Member.Kind in [TIndexSymbolKind.Field, TIndexSymbolKind.Property_]) then
-    begin
-      AName := Name;
-      AOwner := Member.Container;
-      Exit(ANode);
-    end;
-    for Index := 0 to ANode.ChildCount - 1 do
-    begin
-      Result := FirstInheritedAccess(ANode[Index], AParent, AExcluded, AName, AOwner);
-      if Result <> nil then
-        Exit;
+    Pending := TStack<TSyntaxNode>.Create;
+    try
+      Pending.Push(ARoot);
+      while Pending.Count > 0 do
+      begin
+        Node := Pending.Pop;
+        if Node.Kind = TSyntaxKind.AnonymousMethod then
+          Continue;
+        Name := '';
+        if (Node.Kind = TSyntaxKind.Identifier) and not ((Node.Parent <> nil) and
+          (Node.Parent.Kind = TSyntaxKind.Call) and (Node.Parent[0] = Node)) then
+          Name := Node.Name
+        else if (Node.Kind = TSyntaxKind.MemberAccess) and (Node.ChildCount = 1) and
+          (Node[0].Kind = TSyntaxKind.Identifier) and SameText(Node[0].Name, 'Self') then
+          Name := Node.Name;
+        if (Name <> '') and not SameText(Name, 'Self') and not IsIn(Name, AExcluded) and
+          Model.FAncestry.FindMember(AParent, Name, Member, Unresolved) and
+          (Member.Kind in [TIndexSymbolKind.Field, TIndexSymbolKind.Property_]) then
+        begin
+          AName := Name;
+          AOwner := Member.Container;
+          Exit(Node);
+        end;
+        for Index := Node.ChildCount - 1 downto 0 do
+          Pending.Push(Node[Index]);
+      end;
+    finally
+      Pending.Free;
     end;
   end;
 
   // Verwenden die Argumente von inherited Create(…) lokale Variablen, die die Anweisungen davor setzen?
-  function ArgumentsUseLocals(ANode: TSyntaxNode; const ALocals: TArray<string>): Boolean;
+  function ArgumentsUseLocals(ARoot: TSyntaxNode; const ALocals: TArray<string>): Boolean;
   var
     Index: Integer;
+    Node: TSyntaxNode;
+    Pending: TStack<TSyntaxNode>;
   begin
-    if (ANode.Kind = TSyntaxKind.Identifier) and IsIn(ANode.Name, ALocals) then
-      Exit(True);
-    for Index := 0 to ANode.ChildCount - 1 do
-      if ArgumentsUseLocals(ANode[Index], ALocals) then
-        Exit(True);
+    // Iterativ (Bericht M1).
     Result := False;
+    Pending := TStack<TSyntaxNode>.Create;
+    try
+      Pending.Push(ARoot);
+      while Pending.Count > 0 do
+      begin
+        Node := Pending.Pop;
+        if (Node.Kind = TSyntaxKind.Identifier) and IsIn(Node.Name, ALocals) then
+          Exit(True);
+        for Index := Node.ChildCount - 1 downto 0 do
+          Pending.Push(Node[Index]);
+      end;
+    finally
+      Pending.Free;
+    end;
   end;
 
   procedure CheckConstructor(const AMethod: TMethodImpl; const AInfo: TClassInfo);
@@ -1637,23 +1678,36 @@ var
 
   // Aufrufe inherited Name bzw. inherited Name(…) als Anweisung oder mit Klammern; nur sie sind sicher Methoden
   // (inherited Caption ohne Klammern kann eine Property sein).
-  procedure CollectCalls(ANode: TSyntaxNode; var ACalls: TArray<TSyntaxNode>; var ASameName: Boolean;
+  procedure CollectCalls(ARoot: TSyntaxNode; var ACalls: TArray<TSyntaxNode>; var ASameName: Boolean;
     const AMethodName: string);
   var
     Index: Integer;
+    Node: TSyntaxNode;
+    Pending: TStack<TSyntaxNode>;
   begin
-    if ANode.Kind = TSyntaxKind.InheritedExpr then
-    begin
-      if (ANode.Name = '') or SameText(ANode.Name, AMethodName) then
-        ASameName := True
-      else if (ANode.Parent <> nil) and ((ANode.Parent.Kind = TSyntaxKind.CallStatement) or
-        ((ANode.Parent.Kind = TSyntaxKind.Call) and (ANode.Parent[0] = ANode))) then
-        ACalls := ACalls + [ANode];
+    // Iterativ (Bericht M1).
+    Pending := TStack<TSyntaxNode>.Create;
+    try
+      Pending.Push(ARoot);
+      while Pending.Count > 0 do
+      begin
+        Node := Pending.Pop;
+        if Node.Kind = TSyntaxKind.InheritedExpr then
+        begin
+          if (Node.Name = '') or SameText(Node.Name, AMethodName) then
+            ASameName := True
+          else if (Node.Parent <> nil) and ((Node.Parent.Kind = TSyntaxKind.CallStatement) or
+            ((Node.Parent.Kind = TSyntaxKind.Call) and (Node.Parent[0] = Node))) then
+            ACalls := ACalls + [Node];
+        end;
+        if Node.Kind = TSyntaxKind.AnonymousMethod then
+          Continue;
+        for Index := Node.ChildCount - 1 downto 0 do
+          Pending.Push(Node[Index]);
+      end;
+    finally
+      Pending.Free;
     end;
-    if ANode.Kind = TSyntaxKind.AnonymousMethod then
-      Exit;
-    for Index := 0 to ANode.ChildCount - 1 do
-      CollectCalls(ANode[Index], ACalls, ASameName, AMethodName);
   end;
 
   // Anzahl der Parameter im Kopf der Methode (A, B: Integer zählt zwei).
@@ -1741,15 +1795,28 @@ procedure CollectAssignedNames(ANode: TSyntaxNode; var ANames: TArray<string>);
 var
   Index: Integer;
   Name: string;
+  Node: TSyntaxNode;
+  Pending: TStack<TSyntaxNode>;
 begin
-  if (ANode.Kind = TSyntaxKind.AssignStatement) and (ANode.ChildCount > 0) then
-  begin
-    Name := SelfMemberName(ANode[0]);
-    if Name <> '' then
-      ANames := ANames + [Name];
+  // Iterativ (Bericht M1).
+  Pending := TStack<TSyntaxNode>.Create;
+  try
+    Pending.Push(ANode);
+    while Pending.Count > 0 do
+    begin
+      Node := Pending.Pop;
+      if (Node.Kind = TSyntaxKind.AssignStatement) and (Node.ChildCount > 0) then
+      begin
+        Name := SelfMemberName(Node[0]);
+        if Name <> '' then
+          ANames := ANames + [Name];
+      end;
+      for Index := Node.ChildCount - 1 downto 0 do
+        Pending.Push(Node[Index]);
+    end;
+  finally
+    Pending.Free;
   end;
-  for Index := 0 to ANode.ChildCount - 1 do
-    CollectAssignedNames(ANode[Index], ANames);
 end;
 
 /// <summary>Nennt ANode einen der Namen (F oder Self.F)?</summary>
@@ -1757,27 +1824,51 @@ function MentionsName(ANode: TSyntaxNode; const ANames: TArray<string>): Boolean
 var
   Index: Integer;
   Name: string;
+  Node: TSyntaxNode;
+  Pending: TStack<TSyntaxNode>;
 begin
-  Name := SelfMemberName(ANode);
-  if (Name <> '') and IsIn(Name, ANames) then
-    Exit(True);
-  for Index := 0 to ANode.ChildCount - 1 do
-    if MentionsName(ANode[Index], ANames) then
-      Exit(True);
+  // Iterativ (Bericht M1).
   Result := False;
+  Pending := TStack<TSyntaxNode>.Create;
+  try
+    Pending.Push(ANode);
+    while Pending.Count > 0 do
+    begin
+      Node := Pending.Pop;
+      Name := SelfMemberName(Node);
+      if (Name <> '') and IsIn(Name, ANames) then
+        Exit(True);
+      for Index := Node.ChildCount - 1 downto 0 do
+        Pending.Push(Node[Index]);
+    end;
+  finally
+    Pending.Free;
+  end;
 end;
 
 /// <summary>Enthält ANode einen Konstruktoraufruf (X.Create, X.Create(…))?</summary>
 function ContainsCreate(ANode: TSyntaxNode): Boolean;
 var
   Index: Integer;
+  Node: TSyntaxNode;
+  Pending: TStack<TSyntaxNode>;
 begin
-  if (ANode.Kind = TSyntaxKind.MemberAccess) and StartsText('Create', ANode.Name) then
-    Exit(True);
-  for Index := 0 to ANode.ChildCount - 1 do
-    if ContainsCreate(ANode[Index]) then
-      Exit(True);
+  // Iterativ (Bericht M1).
   Result := False;
+  Pending := TStack<TSyntaxNode>.Create;
+  try
+    Pending.Push(ANode);
+    while Pending.Count > 0 do
+    begin
+      Node := Pending.Pop;
+      if (Node.Kind = TSyntaxKind.MemberAccess) and StartsText('Create', Node.Name) then
+        Exit(True);
+      for Index := Node.ChildCount - 1 downto 0 do
+        Pending.Push(Node[Index]);
+    end;
+  finally
+    Pending.Free;
+  end;
 end;
 
 /// <summary>Lazy-Initialisierung: Ein umschließendes if (bis ARoot) prüft in der Bedingung etwas, das im Zweig
@@ -1850,26 +1941,38 @@ var
 
   procedure Visit(ANode, ARoot: TSyntaxNode; const AGetter: string);
   var
-    Target: TSyntaxNode;
+    Node, Target: TSyntaxNode;
     Name: string;
     Index: Integer;
+    Pending: TStack<TSyntaxNode>;
   begin
-    if ANode.Kind = TSyntaxKind.AnonymousMethod then
-      Exit;
-    Target := ChangedTarget(ANode);
-    if Target <> nil then
-    begin
-      Name := SelfMemberName(Target);
-      if IsState(Name) and not IsIn(Name, Reported) and not (AllowLazyInit and IsLazyInit(ANode, ARoot)) then
+    // Iterativ (Bericht M1).
+    Pending := TStack<TSyntaxNode>.Create;
+    try
+      Pending.Push(ANode);
+      while Pending.Count > 0 do
       begin
-        Reported := Reported + [Name];
-        AReport.Add(TTextRange.Create(Target.StartPos, Target.EndPos),
-          Format('Der Getter %s verändert %s; schon das Anzeigen im Debugger ändert den Zustand.', [AGetter, Name]),
-          TRuleConfidence.Medium);
+        Node := Pending.Pop;
+        if Node.Kind = TSyntaxKind.AnonymousMethod then
+          Continue;
+        Target := ChangedTarget(Node);
+        if Target <> nil then
+        begin
+          Name := SelfMemberName(Target);
+          if IsState(Name) and not IsIn(Name, Reported) and not (AllowLazyInit and IsLazyInit(Node, ARoot)) then
+          begin
+            Reported := Reported + [Name];
+            AReport.Add(TTextRange.Create(Target.StartPos, Target.EndPos),
+              Format('Der Getter %s verändert %s; schon das Anzeigen im Debugger ändert den Zustand.', [AGetter, Name]),
+              TRuleConfidence.Medium);
+          end;
+        end;
+        for Index := Node.ChildCount - 1 downto 0 do
+          Pending.Push(Node[Index]);
       end;
+    finally
+      Pending.Free;
     end;
-    for Index := 0 to ANode.ChildCount - 1 do
-      Visit(ANode[Index], ARoot, AGetter);
   end;
 
 var
@@ -1994,22 +2097,35 @@ var
   end;
 
   // Eigene Felder in der Reihenfolge, in der Equals sie nennt, je mit dem Vergleich (SameText …), in dem sie stehen.
-  procedure CollectFields(ANode: TSyntaxNode; const AFields: TArray<string>; var ANames, ACompares: TArray<string>);
+  procedure CollectFields(ARoot: TSyntaxNode; const AFields: TArray<string>; var ANames, ACompares: TArray<string>);
   var
     Index: Integer;
     Compare: string;
+    Node: TSyntaxNode;
+    Pending: TStack<TSyntaxNode>;
   begin
-    if (ANode.Kind in [TSyntaxKind.Identifier, TSyntaxKind.MemberAccess]) and IsIn(ANode.Name, AFields) and
-      not IsIn(ANode.Name, ANames) then
-    begin
-      Compare := '';
-      if (ANode.Parent <> nil) and (ANode.Parent.Kind = TSyntaxKind.Call) and (ANode.Parent[0] <> ANode) then
-        Compare := ANode.Parent.Name;
-      ANames := ANames + [ANode.Name];
-      ACompares := ACompares + [Compare];
+    // Iterativ (Bericht M1); Vorordnung, damit die Reihenfolge der Felder bleibt.
+    Pending := TStack<TSyntaxNode>.Create;
+    try
+      Pending.Push(ARoot);
+      while Pending.Count > 0 do
+      begin
+        Node := Pending.Pop;
+        if (Node.Kind in [TSyntaxKind.Identifier, TSyntaxKind.MemberAccess]) and IsIn(Node.Name, AFields) and
+          not IsIn(Node.Name, ANames) then
+        begin
+          Compare := '';
+          if (Node.Parent <> nil) and (Node.Parent.Kind = TSyntaxKind.Call) and (Node.Parent[0] <> Node) then
+            Compare := Node.Parent.Name;
+          ANames := ANames + [Node.Name];
+          ACompares := ACompares + [Compare];
+        end;
+        for Index := Node.ChildCount - 1 downto 0 do
+          Pending.Push(Node[Index]);
+      end;
+    finally
+      Pending.Free;
     end;
-    for Index := 0 to ANode.ChildCount - 1 do
-      CollectFields(ANode[Index], AFields, ANames, ACompares);
   end;
 
   // Korrektur: GetHashCode hinter Equals deklarieren und hinter dem Rumpf von Equals umsetzen.
@@ -2106,34 +2222,46 @@ var
   end;
 
   // Records der Datei mit class operator Equal und einem Feld, das der Byte-Vergleich falsch vergleicht.
-  procedure CollectRecords(ANode: TSyntaxNode; var ANames: TArray<string>);
+  procedure CollectRecords(ARoot: TSyntaxNode; var ANames: TArray<string>);
   var
     Index: Integer;
-    Body, Header: TSyntaxNode;
+    Node, Body, Header: TSyntaxNode;
     TypeName: string;
     Unsafe: Boolean;
+    Pending: TStack<TSyntaxNode>;
   begin
-    if ANode.Kind = TSyntaxKind.TypeDecl then
-    begin
-      Body := ANode.FindChild(TSyntaxKind.RecordType);
-      if Body <> nil then
+    // Iterativ (Bericht M1).
+    Pending := TStack<TSyntaxNode>.Create;
+    try
+      Pending.Push(ARoot);
+      while Pending.Count > 0 do
       begin
-        Header := MemberHeader(Body, 'Equal');
-        Unsafe := False;
-        for Index := 0 to Body.ChildCount - 1 do
-          if Body[Index].Kind = TSyntaxKind.Field then
+        Node := Pending.Pop;
+        if Node.Kind = TSyntaxKind.TypeDecl then
+        begin
+          Body := Node.FindChild(TSyntaxKind.RecordType);
+          if Body <> nil then
           begin
-            TypeName := FieldTypeName(Body, Trim(Body[Index].Name.Split([','])[0]));
-            if MatchText(TypeName, BinaryUnsafeTypes) or SameText(TypeName, 'TArray') or
-              ((Length(TypeName) > 1) and (TypeName[1] = 'I') and CharInSet(TypeName[2], ['A'..'Z'])) then
-              Unsafe := True;
+            Header := MemberHeader(Body, 'Equal');
+            Unsafe := False;
+            for Index := 0 to Body.ChildCount - 1 do
+              if Body[Index].Kind = TSyntaxKind.Field then
+              begin
+                TypeName := FieldTypeName(Body, Trim(Body[Index].Name.Split([','])[0]));
+                if MatchText(TypeName, BinaryUnsafeTypes) or SameText(TypeName, 'TArray') or
+                  ((Length(TypeName) > 1) and (TypeName[1] = 'I') and CharInSet(TypeName[2], ['A'..'Z'])) then
+                  Unsafe := True;
+              end;
+            if (Header <> nil) and ContainsText(Model.NodeText(Header), 'operator') and Unsafe then
+              ANames := ANames + [Node.Name];
           end;
-        if (Header <> nil) and ContainsText(Model.NodeText(Header), 'operator') and Unsafe then
-          ANames := ANames + [ANode.Name];
+        end;
+        for Index := Node.ChildCount - 1 downto 0 do
+          Pending.Push(Node[Index]);
       end;
+    finally
+      Pending.Free;
     end;
-    for Index := 0 to ANode.ChildCount - 1 do
-      CollectRecords(ANode[Index], ANames);
   end;
 
   // Argumente ohne möglichen Comparer: nur Literale und Mengen (Kapazität, Besitz).
@@ -2147,28 +2275,40 @@ var
     Result := True;
   end;
 
-  procedure CheckCreates(ANode: TSyntaxNode; const ARecords: TArray<string>);
+  procedure CheckCreates(ARoot: TSyntaxNode; const ARecords: TArray<string>);
   var
     Index: Integer;
-    Collection, Args: TSyntaxNode;
+    Node, Collection, Args: TSyntaxNode;
     Key: string;
+    Pending: TStack<TSyntaxNode>;
   begin
-    if (ANode.Kind = TSyntaxKind.MemberAccess) and SameText(ANode.Name, 'Create') and (ANode.ChildCount = 1) and
-      (ANode[0].Kind = TSyntaxKind.MemberAccess) and IsIn(ANode[0].Name, HashedCollections) then
-    begin
-      Collection := ANode[0];
-      Args := Collection.FindChild(TSyntaxKind.GenericArgs);
-      Key := '';
-      if (Args <> nil) and (Args.ChildCount > 0) then
-        Key := Args[0].Name;
-      if (Key <> '') and IsIn(Key, ARecords) and (not ((ANode.Parent <> nil) and
-        (ANode.Parent.Kind = TSyntaxKind.Call) and (ANode.Parent[0] = ANode)) or OnlyConstants(ANode.Parent)) then
-        AReport.Add(TTextRange.Create(Collection.StartPos, Collection.EndPos), Format('%s hat class operator ' +
-          'Equal, %s vergleicht Schlüssel ohne Comparer aber Byte für Byte; gleiche Schlüssel finden sich nicht.',
-          [Key, Collection.Name]), TRuleConfidence.High);
+    // Iterativ (Bericht M1).
+    Pending := TStack<TSyntaxNode>.Create;
+    try
+      Pending.Push(ARoot);
+      while Pending.Count > 0 do
+      begin
+        Node := Pending.Pop;
+        if (Node.Kind = TSyntaxKind.MemberAccess) and SameText(Node.Name, 'Create') and (Node.ChildCount = 1) and
+          (Node[0].Kind = TSyntaxKind.MemberAccess) and IsIn(Node[0].Name, HashedCollections) then
+        begin
+          Collection := Node[0];
+          Args := Collection.FindChild(TSyntaxKind.GenericArgs);
+          Key := '';
+          if (Args <> nil) and (Args.ChildCount > 0) then
+            Key := Args[0].Name;
+          if (Key <> '') and IsIn(Key, ARecords) and (not ((Node.Parent <> nil) and
+            (Node.Parent.Kind = TSyntaxKind.Call) and (Node.Parent[0] = Node)) or OnlyConstants(Node.Parent)) then
+            AReport.Add(TTextRange.Create(Collection.StartPos, Collection.EndPos), Format('%s hat class operator ' +
+              'Equal, %s vergleicht Schlüssel ohne Comparer aber Byte für Byte; gleiche Schlüssel finden sich nicht.',
+              [Key, Collection.Name]), TRuleConfidence.High);
+        end;
+        for Index := Node.ChildCount - 1 downto 0 do
+          Pending.Push(Node[Index]);
+      end;
+    finally
+      Pending.Free;
     end;
-    for Index := 0 to ANode.ChildCount - 1 do
-      CheckCreates(ANode[Index], ARecords);
   end;
 
 var

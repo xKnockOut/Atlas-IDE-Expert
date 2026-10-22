@@ -42,6 +42,7 @@ procedure RegisterMethodDirectiveRules(const ARegistry: TRuleRegistry);
 implementation
 
 uses
+  System.Generics.Collections,
   Atlas.Common.Documents.Contract,
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Pascal.Contract,
@@ -195,31 +196,43 @@ var
     end;
   end;
 
-  procedure Visit(ANode: TSyntaxNode);
+  // Iterativ (Bericht M1).
+  procedure Visit(ARoot: TSyntaxNode);
   var
+    Pending: TStack<TSyntaxNode>;
+    Node, Body: TSyntaxNode;
     Index: Integer;
-    Body: TSyntaxNode;
   begin
-    if ANode.Kind = TSyntaxKind.TypeDecl then
-    begin
-      Body := ANode.FindChild(TSyntaxKind.ClassType);
-      if Body = nil then
-        Body := ANode.FindChild(TSyntaxKind.ObjectType);
-      if Body <> nil then
+    Pending := TStack<TSyntaxNode>.Create;
+    try
+      Pending.Push(ARoot);
+      while Pending.Count > 0 do
       begin
-        if Body.Kind = TSyntaxKind.ClassType then
-          CheckClassHeader(Body);
-        for Index := 0 to Body.ChildCount - 1 do
-          if Body[Index].Kind = TSyntaxKind.RoutineHeader then
-            CheckHeader(WithoutTypeParams(ANode.Name), Body[Index]);
-        ANode := Body;
+        Node := Pending.Pop;
+        if Node.Kind = TSyntaxKind.TypeDecl then
+        begin
+          Body := Node.FindChild(TSyntaxKind.ClassType);
+          if Body = nil then
+            Body := Node.FindChild(TSyntaxKind.ObjectType);
+          if Body <> nil then
+          begin
+            if Body.Kind = TSyntaxKind.ClassType then
+              CheckClassHeader(Body);
+            for Index := 0 to Body.ChildCount - 1 do
+              if Body[Index].Kind = TSyntaxKind.RoutineHeader then
+                CheckHeader(WithoutTypeParams(Node.Name), Body[Index]);
+            Node := Body;
+          end;
+        end;
+        // Nur Deklarationscontainer: Anweisungen und Ausdrücke enthalten keine Typen (#1094).
+        for Index := Node.ChildCount - 1 downto 0 do
+          if Node[Index].Kind in [TSyntaxKind.InterfaceSection, TSyntaxKind.ImplementationSection,
+            TSyntaxKind.TypeSection, TSyntaxKind.TypeDecl, TSyntaxKind.RoutineDecl] then
+            Pending.Push(Node[Index]);
       end;
+    finally
+      Pending.Free;
     end;
-    // Nur Deklarationscontainer: Anweisungen und Ausdrücke enthalten keine Typen (#1094).
-    for Index := 0 to ANode.ChildCount - 1 do
-      if ANode[Index].Kind in [TSyntaxKind.InterfaceSection, TSyntaxKind.ImplementationSection,
-        TSyntaxKind.TypeSection, TSyntaxKind.TypeDecl, TSyntaxKind.RoutineDecl] then
-        Visit(ANode[Index]);
   end;
 
   /// <summary>Wird mit dem Rumpf an APath eine nicht abstrakte Deklaration AClassName.AName übersetzt? Und
@@ -294,6 +307,7 @@ var
       [ClassName, Name]), TRuleConfidence.High, RemoveBody(ARoutine));
   end;
 
+  // Rekursion nur in den implementation-Abschnitt (höchstens zwei Ebenen, unabhängig von der Ausdruckstiefe).
   procedure VisitBodies(ANode: TSyntaxNode);
   var
     Index: Integer;

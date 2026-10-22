@@ -97,6 +97,7 @@ implementation
 uses
   System.SysUtils,
   System.StrUtils,
+  System.Generics.Collections,
   Atlas.Common.Documents.Contract,
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Pascal.Contract,
@@ -203,24 +204,33 @@ end;
 /// <summary>Liegt APosition im Rumpf (begin … end) einer Routine?</summary>
 function InStatements(ATree: TSyntaxTree; const APosition: TTextPosition): Boolean;
 
-  function Search(ANode: TSyntaxNode): Boolean;
+  // Iterativ (Bericht M1).
+  function Search(ARoot: TSyntaxNode): Boolean;
   var
-    Index: Integer;
+    Pending: TStack<TSyntaxNode>;
     Child: TSyntaxNode;
+    Index: Integer;
   begin
-    for Index := 0 to ANode.ChildCount - 1 do
-    begin
-      Child := ANode[Index];
-      if (Child.Kind = TSyntaxKind.Block) and
-        ((Child.StartPos.Line < APosition.Line) or ((Child.StartPos.Line = APosition.Line) and
-        (Child.StartPos.Character <= APosition.Character))) and
-        ((Child.EndPos.Line > APosition.Line) or ((Child.EndPos.Line = APosition.Line) and
-        (Child.EndPos.Character > APosition.Character))) then
-        Exit(True);
-      if Search(Child) then
-        Exit(True);
-    end;
     Result := False;
+    Pending := TStack<TSyntaxNode>.Create;
+    try
+      for Index := ARoot.ChildCount - 1 downto 0 do
+        Pending.Push(ARoot[Index]);
+      while Pending.Count > 0 do
+      begin
+        Child := Pending.Pop;
+        if (Child.Kind = TSyntaxKind.Block) and
+          ((Child.StartPos.Line < APosition.Line) or ((Child.StartPos.Line = APosition.Line) and
+          (Child.StartPos.Character <= APosition.Character))) and
+          ((Child.EndPos.Line > APosition.Line) or ((Child.EndPos.Line = APosition.Line) and
+          (Child.EndPos.Character > APosition.Character))) then
+          Exit(True);
+        for Index := Child.ChildCount - 1 downto 0 do
+          Pending.Push(Child[Index]);
+      end;
+    finally
+      Pending.Free;
+    end;
   end;
 
 begin
@@ -368,21 +378,33 @@ var
     Result := Trim(Copy(AContext.Text, Node.StartOffset + 1, Node.EndOffset - Node.StartOffset));
   end;
 
+  // Iterativ (Bericht M1).
   function Impure(ANode: TSyntaxNode): Boolean;
   var
+    Pending: TStack<TSyntaxNode>;
+    Node: TSyntaxNode;
     Index: Integer;
   begin
-    if (ANode.Kind in [TSyntaxKind.Call, TSyntaxKind.Identifier, TSyntaxKind.MemberAccess]) and
-      MatchText(ANode.Name, ImpureCalls) then
-      Exit(True);
-    if (ANode.Kind = TSyntaxKind.Call) and not MatchText(ANode.Name, PureCalls) then
-      Exit(True);
-    if ANode.Kind = TSyntaxKind.AnonymousMethod then
-      Exit(True);
-    for Index := 0 to ANode.ChildCount - 1 do
-      if Impure(ANode[Index]) then
-        Exit(True);
     Result := False;
+    Pending := TStack<TSyntaxNode>.Create;
+    try
+      Pending.Push(ANode);
+      while Pending.Count > 0 do
+      begin
+        Node := Pending.Pop;
+        if (Node.Kind in [TSyntaxKind.Call, TSyntaxKind.Identifier, TSyntaxKind.MemberAccess]) and
+          MatchText(Node.Name, ImpureCalls) then
+          Exit(True);
+        if (Node.Kind = TSyntaxKind.Call) and not MatchText(Node.Name, PureCalls) then
+          Exit(True);
+        if Node.Kind = TSyntaxKind.AnonymousMethod then
+          Exit(True);
+        for Index := Node.ChildCount - 1 downto 0 do
+          Pending.Push(Node[Index]);
+      end;
+    finally
+      Pending.Free;
+    end;
   end;
 
   // if … else if …: spätere Bedingung gleich einer früheren.
@@ -428,19 +450,30 @@ var
       [TRuleFix.Jump('Zum then-Zweig springen', AIf[1].StartPos)]);
   end;
 
-  // Operanden einer Kette aus demselben Operator: A and B and A.
+  // Operanden einer Kette aus demselben Operator: A and B and A. Iterativ (Bericht M1): rechter Operand
+  // zuerst auf den Stapel, damit die Operanden von links nach rechts in AList landen.
   procedure Operands(ANode: TSyntaxNode; const AOperator: string; var AList: TArray<TSyntaxNode>);
   var
+    Pending: TStack<TSyntaxNode>;
     Node: TSyntaxNode;
   begin
-    Node := Unwrapped(ANode);
-    if (Node.Kind = TSyntaxKind.BinaryExpr) and SameText(Node.Name, AOperator) and (Node.ChildCount = 2) then
-    begin
-      Operands(Node[0], AOperator, AList);
-      Operands(Node[1], AOperator, AList);
-    end
-    else
-      AList := AList + [Node];
+    Pending := TStack<TSyntaxNode>.Create;
+    try
+      Pending.Push(ANode);
+      while Pending.Count > 0 do
+      begin
+        Node := Unwrapped(Pending.Pop);
+        if (Node.Kind = TSyntaxKind.BinaryExpr) and SameText(Node.Name, AOperator) and (Node.ChildCount = 2) then
+        begin
+          Pending.Push(Node[1]);
+          Pending.Push(Node[0]);
+        end
+        else
+          AList := AList + [Node];
+      end;
+    finally
+      Pending.Free;
+    end;
   end;
 
   procedure CheckLogical(ANode: TSyntaxNode);
@@ -484,18 +517,30 @@ var
   end;
 
   // TKlasse.Instanz = TKlasse.Instanz prüft bewusst die Identität eines Singletons.
+  // Iterativ (Bericht M1).
   function OnClass(ANode: TSyntaxNode): Boolean;
   var
+    Pending: TStack<TSyntaxNode>;
+    Node: TSyntaxNode;
     Index: Integer;
   begin
-    if (ANode.Kind = TSyntaxKind.MemberAccess) and (ANode.ChildCount > 0) and
-      (ANode[0].Kind = TSyntaxKind.Identifier) and (Length(ANode[0].Name) > 1) and (ANode[0].Name[1] = 'T') and
-      CharInSet(ANode[0].Name[2], ['A'..'Z']) then
-      Exit(True);
-    for Index := 0 to ANode.ChildCount - 1 do
-      if OnClass(ANode[Index]) then
-        Exit(True);
     Result := False;
+    Pending := TStack<TSyntaxNode>.Create;
+    try
+      Pending.Push(ANode);
+      while Pending.Count > 0 do
+      begin
+        Node := Pending.Pop;
+        if (Node.Kind = TSyntaxKind.MemberAccess) and (Node.ChildCount > 0) and
+          (Node[0].Kind = TSyntaxKind.Identifier) and (Length(Node[0].Name) > 1) and (Node[0].Name[1] = 'T') and
+          CharInSet(Node[0].Name[2], ['A'..'Z']) then
+          Exit(True);
+        for Index := Node.ChildCount - 1 downto 0 do
+          Pending.Push(Node[Index]);
+      end;
+    finally
+      Pending.Free;
+    end;
   end;
 
   procedure CheckComparison(ANode: TSyntaxNode);
@@ -515,27 +560,40 @@ var
       'das Ergebnis ist immer %s.', [Display(ANode[0]), Outcome]), TRuleConfidence.High);
   end;
 
-  procedure Visit(ANode: TSyntaxNode);
+  // Iterativ (Bericht M1).
+  procedure Visit(ARoot: TSyntaxNode);
   var
+    Pending: TStack<TSyntaxNode>;
+    Node: TSyntaxNode;
     Index: Integer;
   begin
-    if ANode.Kind = TSyntaxKind.IfStatement then
-    begin
-      // Kette nur vom ersten if aus.
-      if not ((ANode.Parent <> nil) and (ANode.Parent.Kind = TSyntaxKind.IfStatement) and
-        (ANode.Parent.ChildCount = 3) and (ANode.Parent[2] = ANode)) then
-        CheckChain(ANode);
-      CheckBranches(ANode);
-    end
-    else if ANode.Kind = TSyntaxKind.BinaryExpr then
-    begin
-      if MatchText(ANode.Name, ['and', 'or', 'xor']) then
-        CheckLogical(ANode)
-      else if MatchStr(ANode.Name, ['=', '<>', '<', '>', '<=', '>=']) then
-        CheckComparison(ANode);
+    Pending := TStack<TSyntaxNode>.Create;
+    try
+      Pending.Push(ARoot);
+      while Pending.Count > 0 do
+      begin
+        Node := Pending.Pop;
+        if Node.Kind = TSyntaxKind.IfStatement then
+        begin
+          // Kette nur vom ersten if aus.
+          if not ((Node.Parent <> nil) and (Node.Parent.Kind = TSyntaxKind.IfStatement) and
+            (Node.Parent.ChildCount = 3) and (Node.Parent[2] = Node)) then
+            CheckChain(Node);
+          CheckBranches(Node);
+        end
+        else if Node.Kind = TSyntaxKind.BinaryExpr then
+        begin
+          if MatchText(Node.Name, ['and', 'or', 'xor']) then
+            CheckLogical(Node)
+          else if MatchStr(Node.Name, ['=', '<>', '<', '>', '<=', '>=']) then
+            CheckComparison(Node);
+        end;
+        for Index := Node.ChildCount - 1 downto 0 do
+          Pending.Push(Node[Index]);
+      end;
+    finally
+      Pending.Free;
     end;
-    for Index := 0 to ANode.ChildCount - 1 do
-      Visit(ANode[Index]);
   end;
 
 begin
@@ -1169,24 +1227,12 @@ var
     Result := LiteralLength(Text);
   end;
 
-  // Ist das Argument AFirst..ALast sicher ein String und kein Zeichen? Deklarierter String-Typ, .Text/.Caption,
-  // Aufruf einer String-Funktion der RTL oder Verkettung mit einem String-Teil.
-  function IsStringArgument(AFirst, ALast: Integer): Boolean;
-  var
-    Position, Depth: Integer;
+  // Teil AFirst..ALast ohne + auf oberster Ebene: deklarierter String-Typ, .Text/.Caption oder Aufruf einer
+  // String-Funktion der RTL.
+  function IsStringPart(AFirst, ALast: Integer): Boolean;
   begin
     if ALast < AFirst then
       Exit(False);
-    Depth := 0;
-    for Position := AFirst to ALast do
-      if Token(Position).IsSymbol('(') or Token(Position).IsSymbol('[') then
-        Inc(Depth)
-      else if Token(Position).IsSymbol(')') or Token(Position).IsSymbol(']') then
-        Dec(Depth)
-      else if (Depth = 0) and Token(Position).IsSymbol('+') then
-        // Zeichen + Zeichen ist schon ein String, Zahl + Zahl nicht: ein Teil muss sicher String sein.
-        Exit(IsStringArgument(AFirst, Position - 1) or IsStringArgument(Position + 1, ALast) or
-          (Literal(AFirst, Position - 1) >= 2) or (Literal(Position + 1, ALast) >= 2));
     if (Token(ALast).Kind = TPascalTokenKind.Identifier) and IsSym(ALast - 1, '.') and
       MatchText(Token(ALast).Text, ['Text', 'Caption']) then
       Exit(True);
@@ -1200,6 +1246,38 @@ var
       Inc(AFirst, 2);
     Result := (AFirst = ALast) and (Token(AFirst).Kind = TPascalTokenKind.Identifier) and
       TStringIndexBaseRule.IsStringType(Types.DeclaredType(Token(AFirst).Text, Token(AFirst).StartPos));
+  end;
+
+  // Ist das Argument AFirst..ALast sicher ein String und kein Zeichen? Deklarierter String-Typ, .Text/.Caption,
+  // Aufruf einer String-Funktion der RTL oder Verkettung mit einem String-Teil. Iterativ (Bericht M1): die
+  // Teile einer langen Verkettung nacheinander statt einer Rekursionsebene je +.
+  function IsStringArgument(AFirst, ALast: Integer): Boolean;
+  var
+    Start, Position, Depth, Plus: Integer;
+  begin
+    Result := False;
+    Start := AFirst;
+    while Start <= ALast do
+    begin
+      Plus := -1;
+      Depth := 0;
+      for Position := Start to ALast do
+        if Token(Position).IsSymbol('(') or Token(Position).IsSymbol('[') then
+          Inc(Depth)
+        else if Token(Position).IsSymbol(')') or Token(Position).IsSymbol(']') then
+          Dec(Depth)
+        else if (Depth = 0) and Token(Position).IsSymbol('+') then
+        begin
+          Plus := Position;
+          Break;
+        end;
+      if Plus < 0 then
+        Exit(IsStringPart(Start, ALast));
+      // Zeichen + Zeichen ist schon ein String, Zahl + Zahl nicht: ein Teil muss sicher String sein.
+      if IsStringPart(Start, Plus - 1) or (Literal(Start, Plus - 1) >= 2) or (Literal(Plus + 1, ALast) >= 2) then
+        Exit(True);
+      Start := Plus + 1;
+    end;
   end;
 
   // ATextFirst: ContainsText(Text, Teil), sonst Pos(Teil, Text). Vertauscht steht an der Stelle des Textes ein
@@ -1358,29 +1436,41 @@ var
 
   // div in AExpression, deren Ergebnis ungekürzt in die Gleitkommazahl fließt: durch Klammern, Vorzeichen und
   // + - * / hindurch, nicht in Aufrufe, Indizes, mod oder Vergleiche.
+  // Iterativ (Bericht M1).
   procedure Search(AExpression: TSyntaxNode; const ATarget, AType: string);
   var
+    Pending: TStack<TSyntaxNode>;
+    Node: TSyntaxNode;
     Token: TPascalToken;
     Index: Integer;
   begin
-    case AExpression.Kind of
-      TSyntaxKind.ParenExpr, TSyntaxKind.UnaryExpr:
-        if (AExpression.Kind = TSyntaxKind.ParenExpr) or (AExpression.Name = '-') or (AExpression.Name = '+') then
-          for Index := 0 to AExpression.ChildCount - 1 do
-            Search(AExpression[Index], ATarget, AType);
-      TSyntaxKind.BinaryExpr:
-        if SameText(AExpression.Name, 'div') and (AExpression.ChildCount = 2) then
-        begin
-          if not IsExplicitInteger(AExpression[0]) and not IsExplicitInteger(AExpression[1]) and
-            DivToken(AExpression, Token) then
-            AReport.Add(TTextRange.Create(AExpression.StartPos, AExpression.EndPos),
-              Format('div rechnet ganzzahlig; %s ist %s und verliert die Nachkommastellen.', [ATarget, AType]),
-              TRuleConfidence.High, [TRuleFix.Create('div durch / ersetzen',
-              [TRuleEdit.Create(TTextRange.Create(Token.StartPos, Token.EndPos), '/')])]);
-        end
-        else if MatchStr(AExpression.Name, ['+', '-', '*', '/']) then
-          for Index := 0 to AExpression.ChildCount - 1 do
-            Search(AExpression[Index], ATarget, AType);
+    Pending := TStack<TSyntaxNode>.Create;
+    try
+      Pending.Push(AExpression);
+      while Pending.Count > 0 do
+      begin
+        Node := Pending.Pop;
+        case Node.Kind of
+          TSyntaxKind.ParenExpr, TSyntaxKind.UnaryExpr:
+            if (Node.Kind = TSyntaxKind.ParenExpr) or (Node.Name = '-') or (Node.Name = '+') then
+              for Index := Node.ChildCount - 1 downto 0 do
+                Pending.Push(Node[Index]);
+          TSyntaxKind.BinaryExpr:
+            if SameText(Node.Name, 'div') and (Node.ChildCount = 2) then
+            begin
+              if not IsExplicitInteger(Node[0]) and not IsExplicitInteger(Node[1]) and DivToken(Node, Token) then
+                AReport.Add(TTextRange.Create(Node.StartPos, Node.EndPos),
+                  Format('div rechnet ganzzahlig; %s ist %s und verliert die Nachkommastellen.', [ATarget, AType]),
+                  TRuleConfidence.High, [TRuleFix.Create('div durch / ersetzen',
+                  [TRuleEdit.Create(TTextRange.Create(Token.StartPos, Token.EndPos), '/')])]);
+            end
+            else if MatchStr(Node.Name, ['+', '-', '*', '/']) then
+              for Index := Node.ChildCount - 1 downto 0 do
+                Pending.Push(Node[Index]);
+        end;
+      end;
+    finally
+      Pending.Free;
     end;
   end;
 
@@ -1426,16 +1516,29 @@ var
         Search(ANode[Index], Trim(ANode.Name), TypeName);
   end;
 
-  procedure Walk(ANode: TSyntaxNode);
+  // Iterativ (Bericht M1).
+  procedure Walk(ARoot: TSyntaxNode);
   var
+    Pending: TStack<TSyntaxNode>;
+    Node: TSyntaxNode;
     Index: Integer;
   begin
-    if ANode.Kind = TSyntaxKind.AssignStatement then
-      CheckAssignment(ANode)
-    else if ANode.Kind = TSyntaxKind.InlineVar then
-      CheckInlineVar(ANode);
-    for Index := 0 to ANode.ChildCount - 1 do
-      Walk(ANode[Index]);
+    Pending := TStack<TSyntaxNode>.Create;
+    try
+      Pending.Push(ARoot);
+      while Pending.Count > 0 do
+      begin
+        Node := Pending.Pop;
+        if Node.Kind = TSyntaxKind.AssignStatement then
+          CheckAssignment(Node)
+        else if Node.Kind = TSyntaxKind.InlineVar then
+          CheckInlineVar(Node);
+        for Index := Node.ChildCount - 1 downto 0 do
+          Pending.Push(Node[Index]);
+      end;
+    finally
+      Pending.Free;
+    end;
   end;
 
 begin

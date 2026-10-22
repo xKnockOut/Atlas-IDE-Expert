@@ -404,47 +404,69 @@ var
       Inc(Result);
   end;
 
-  procedure Collect(ANode: TSyntaxNode; const AOwner: string);
+  // Iterativ (Bericht M1).
+  procedure Collect(ARoot: TSyntaxNode; const AOwner: string);
   var
+    Pending: TStack<TSyntaxNode>;
+    PendingOwner: TStack<string>;
+    Node: TSyntaxNode;
+    Owner: string;
     Index, Inner, Stop: Integer;
     Name: string;
     Header, Directive: TSyntaxNode;
     Method: TMessageMethod;
   begin
-    Name := AOwner;
-    if ANode.Kind = TSyntaxKind.TypeDecl then
-    begin
-      if AOwner = '' then
-        Name := ANode.Name
-      else
-        Name := AOwner + '.' + ANode.Name;
-    end;
-    if ANode.Kind = TSyntaxKind.ClassType then
-      for Index := 0 to ANode.ChildCount - 1 do
+    Pending := TStack<TSyntaxNode>.Create;
+    PendingOwner := TStack<string>.Create;
+    try
+      Pending.Push(ARoot);
+      PendingOwner.Push(AOwner);
+      while Pending.Count > 0 do
       begin
-        Header := ANode[Index];
-        if Header.Kind <> TSyntaxKind.RoutineHeader then
-          Continue;
-        Directive := nil;
-        for Inner := 0 to Header.ChildCount - 1 do
-          if (Header[Inner].Kind = TSyntaxKind.Directive) and (Header[Inner].Name = 'message') then
-            Directive := Header[Inner];
-        if Directive = nil then
-          Continue;
-        Method := Default(TMessageMethod);
-        Method.ClassName := Name;
-        Method.Header := Header;
-        Method.Directive := Directive;
-        Stop := TConstantValues.TokenFrom(Tokens, Directive.EndOffset);
-        Method.First := NextCode(FirstToken(Directive) + 1, Stop);
-        Method.Last := Stop - 1;
-        while (Method.Last >= Method.First) and IsTrivia(Tokens[Method.Last]) do
-          Dec(Method.Last);
-        Methods.Add(Method);
+        Node := Pending.Pop;
+        Owner := PendingOwner.Pop;
+        Name := Owner;
+        if Node.Kind = TSyntaxKind.TypeDecl then
+        begin
+          if Owner = '' then
+            Name := Node.Name
+          else
+            Name := Owner + '.' + Node.Name;
+        end;
+        if Node.Kind = TSyntaxKind.ClassType then
+          for Index := 0 to Node.ChildCount - 1 do
+          begin
+            Header := Node[Index];
+            if Header.Kind <> TSyntaxKind.RoutineHeader then
+              Continue;
+            Directive := nil;
+            for Inner := 0 to Header.ChildCount - 1 do
+              if (Header[Inner].Kind = TSyntaxKind.Directive) and (Header[Inner].Name = 'message') then
+                Directive := Header[Inner];
+            if Directive = nil then
+              Continue;
+            Method := Default(TMessageMethod);
+            Method.ClassName := Name;
+            Method.Header := Header;
+            Method.Directive := Directive;
+            Stop := TConstantValues.TokenFrom(Tokens, Directive.EndOffset);
+            Method.First := NextCode(FirstToken(Directive) + 1, Stop);
+            Method.Last := Stop - 1;
+            while (Method.Last >= Method.First) and IsTrivia(Tokens[Method.Last]) do
+              Dec(Method.Last);
+            Methods.Add(Method);
+          end;
+        for Index := Node.ChildCount - 1 downto 0 do
+          if Node[Index].Kind in DeclarationKinds then
+          begin
+            Pending.Push(Node[Index]);
+            PendingOwner.Push(Name);
+          end;
       end;
-    for Index := 0 to ANode.ChildCount - 1 do
-      if ANode[Index].Kind in DeclarationKinds then
-        Collect(ANode[Index], Name);
+    finally
+      PendingOwner.Free;
+      Pending.Free;
+    end;
   end;
 
   /// <summary>Name der Methode im Kopf (Token hinter procedure/function).</summary>
@@ -849,23 +871,36 @@ var
     CheckInheritedMembers(AType, AName);
   end;
 
-  procedure Visit(ANode: TSyntaxNode);
+  // Iterativ (Bericht M1).
+  procedure Visit(ARoot: TSyntaxNode);
   var
+    Pending: TStack<TSyntaxNode>;
+    Node: TSyntaxNode;
     Index: Integer;
     Body: TSyntaxNode;
   begin
-    if ANode.Kind = TSyntaxKind.TypeDecl then
-    begin
-      Body := ANode.FindChild(TSyntaxKind.InterfaceType);
-      if Body <> nil then
-        CheckInterface(Body, ANode.Name);
-      Body := ANode.FindChild(TSyntaxKind.ClassType);
-      if Body <> nil then
-        CheckClassList(Body);
+    Pending := TStack<TSyntaxNode>.Create;
+    try
+      Pending.Push(ARoot);
+      while Pending.Count > 0 do
+      begin
+        Node := Pending.Pop;
+        if Node.Kind = TSyntaxKind.TypeDecl then
+        begin
+          Body := Node.FindChild(TSyntaxKind.InterfaceType);
+          if Body <> nil then
+            CheckInterface(Body, Node.Name);
+          Body := Node.FindChild(TSyntaxKind.ClassType);
+          if Body <> nil then
+            CheckClassList(Body);
+        end;
+        for Index := Node.ChildCount - 1 downto 0 do
+          if Node[Index].Kind in DeclarationKinds then
+            Pending.Push(Node[Index]);
+      end;
+    finally
+      Pending.Free;
     end;
-    for Index := 0 to ANode.ChildCount - 1 do
-      if ANode[Index].Kind in DeclarationKinds then
-        Visit(ANode[Index]);
   end;
 
 begin
@@ -1042,17 +1077,30 @@ var
     end;
   end;
 
-  procedure Visit(ANode: TSyntaxNode);
+  // Iterativ (Bericht M1).
+  procedure Visit(ARoot: TSyntaxNode);
   var
+    Pending: TStack<TSyntaxNode>;
+    Node: TSyntaxNode;
     Index: Integer;
   begin
-    if ANode.Kind in [TSyntaxKind.ClassType, TSyntaxKind.RecordType, TSyntaxKind.InterfaceType,
-      TSyntaxKind.ObjectType, TSyntaxKind.HelperType] then
-      CheckClass(ANode);
-    for Index := 0 to ANode.ChildCount - 1 do
-      if ANode[Index].Kind in DeclarationKinds + [TSyntaxKind.RecordType, TSyntaxKind.InterfaceType,
-        TSyntaxKind.ObjectType, TSyntaxKind.HelperType] then
-        Visit(ANode[Index]);
+    Pending := TStack<TSyntaxNode>.Create;
+    try
+      Pending.Push(ARoot);
+      while Pending.Count > 0 do
+      begin
+        Node := Pending.Pop;
+        if Node.Kind in [TSyntaxKind.ClassType, TSyntaxKind.RecordType, TSyntaxKind.InterfaceType,
+          TSyntaxKind.ObjectType, TSyntaxKind.HelperType] then
+          CheckClass(Node);
+        for Index := Node.ChildCount - 1 downto 0 do
+          if Node[Index].Kind in DeclarationKinds + [TSyntaxKind.RecordType, TSyntaxKind.InterfaceType,
+            TSyntaxKind.ObjectType, TSyntaxKind.HelperType] then
+            Pending.Push(Node[Index]);
+      end;
+    finally
+      Pending.Free;
+    end;
   end;
 
 begin
@@ -1224,27 +1272,49 @@ var
       TRuleConfidence.High, [TRuleFix.Create('cdecl setzen', [Edit])]);
   end;
 
-  procedure Visit(ANode: TSyntaxNode; const AOwner: string);
+  // Iterativ (Bericht M1).
+  procedure Visit(ARoot: TSyntaxNode; const AOwner: string);
   var
+    Pending: TStack<TSyntaxNode>;
+    PendingOwner: TStack<string>;
+    Node: TSyntaxNode;
+    Owner: string;
     Index: Integer;
     Name: string;
   begin
-    Name := AOwner;
-    if ANode.Kind = TSyntaxKind.TypeDecl then
-    begin
-      if AOwner = '' then
-        Name := ANode.Name
-      else
-        Name := AOwner + '.' + ANode.Name;
+    Pending := TStack<TSyntaxNode>.Create;
+    PendingOwner := TStack<string>.Create;
+    try
+      Pending.Push(ARoot);
+      PendingOwner.Push(AOwner);
+      while Pending.Count > 0 do
+      begin
+        Node := Pending.Pop;
+        Owner := PendingOwner.Pop;
+        Name := Owner;
+        if Node.Kind = TSyntaxKind.TypeDecl then
+        begin
+          if Owner = '' then
+            Name := Node.Name
+          else
+            Name := Owner + '.' + Node.Name;
+        end;
+        if Node.Kind = TSyntaxKind.ClassType then
+          CheckClass(Node, Name);
+        if Node.Kind = TSyntaxKind.RoutineHeader then
+          CheckVarargs(Node);
+        for Index := Node.ChildCount - 1 downto 0 do
+          if Node[Index].Kind in DeclarationKinds + [TSyntaxKind.RoutineDecl, TSyntaxKind.RoutineHeader,
+            TSyntaxKind.RecordType, TSyntaxKind.ObjectType, TSyntaxKind.HelperType] then
+          begin
+            Pending.Push(Node[Index]);
+            PendingOwner.Push(Name);
+          end;
+      end;
+    finally
+      PendingOwner.Free;
+      Pending.Free;
     end;
-    if ANode.Kind = TSyntaxKind.ClassType then
-      CheckClass(ANode, Name);
-    if ANode.Kind = TSyntaxKind.RoutineHeader then
-      CheckVarargs(ANode);
-    for Index := 0 to ANode.ChildCount - 1 do
-      if ANode[Index].Kind in DeclarationKinds + [TSyntaxKind.RoutineDecl, TSyntaxKind.RoutineHeader,
-        TSyntaxKind.RecordType, TSyntaxKind.ObjectType, TSyntaxKind.HelperType] then
-        Visit(ANode[Index], Name);
   end;
 
 begin

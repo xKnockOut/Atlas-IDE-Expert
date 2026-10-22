@@ -121,22 +121,35 @@ begin
   inherited;
 end;
 
+// Iterativ (Bericht M1).
 function TBindingModel.FindAnchor(ANode: TSyntaxNode; const AName: string): Boolean;
 var
+  Pending: TStack<TSyntaxNode>;
+  Node: TSyntaxNode;
   Index: Integer;
 begin
-  if (ANode.Kind = TSyntaxKind.TypeDecl) and SameText(ANode.Name, AName) then
-  begin
-    FAnchor := TTextRange.Create(ANode.StartPos.Line, ANode.StartPos.Character, ANode.StartPos.Line,
-      ANode.StartPos.Character + Length(AName));
-    Exit(True);
-  end;
-  for Index := 0 to ANode.ChildCount - 1 do
-    if ANode.Children[Index].Kind in [TSyntaxKind.UnitFile, TSyntaxKind.ProgramFile, TSyntaxKind.InterfaceSection,
-      TSyntaxKind.ImplementationSection, TSyntaxKind.TypeSection, TSyntaxKind.TypeDecl] then
-      if FindAnchor(ANode.Children[Index], AName) then
-        Exit(True);
   Result := False;
+  Pending := TStack<TSyntaxNode>.Create;
+  try
+    Pending.Push(ANode);
+    while Pending.Count > 0 do
+    begin
+      Node := Pending.Pop;
+      if (Node.Kind = TSyntaxKind.TypeDecl) and SameText(Node.Name, AName) then
+      begin
+        FAnchor := TTextRange.Create(Node.StartPos.Line, Node.StartPos.Character, Node.StartPos.Line,
+          Node.StartPos.Character + Length(AName));
+        Exit(True);
+      end;
+      for Index := Node.ChildCount - 1 downto 0 do
+        if Node.Children[Index].Kind in [TSyntaxKind.UnitFile, TSyntaxKind.ProgramFile,
+          TSyntaxKind.InterfaceSection, TSyntaxKind.ImplementationSection, TSyntaxKind.TypeSection,
+          TSyntaxKind.TypeDecl] then
+          Pending.Push(Node.Children[Index]);
+    end;
+  finally
+    Pending.Free;
+  end;
 end;
 
 procedure TBindingModel.Collect(AObject, AParent: TDfmObject);

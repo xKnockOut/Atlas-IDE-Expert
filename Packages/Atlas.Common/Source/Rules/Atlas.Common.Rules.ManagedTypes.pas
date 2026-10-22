@@ -43,7 +43,8 @@ implementation
 
 uses
   System.SysUtils,
-  System.StrUtils;
+  System.StrUtils,
+  System.Generics.Collections;
 
 const
   // RTL-Records mit verwalteten Feldern, auch ohne Index.
@@ -94,24 +95,36 @@ begin
   end;
 end;
 
+// Iterativ (Bericht M1).
 function TManagedTypes.FieldsManaged(ARecord: TSyntaxNode; ADepth: Integer): string;
 var
+  Pending: TStack<TSyntaxNode>;
   Index: Integer;
   Child: TSyntaxNode;
 begin
   Result := '';
-  for Index := 0 to ARecord.ChildCount - 1 do
-  begin
-    Child := ARecord[Index];
-    // Verschachtelte Typdeklarationen sind keine Felder.
-    if Child.Kind = TSyntaxKind.TypeDecl then
-      Continue;
-    if Child.Kind = TSyntaxKind.Field then
-      Result := Managed(NodeTypeText(Child), ADepth + 1)
-    else if not (Child.Kind in [TSyntaxKind.RoutineHeader, TSyntaxKind.PropertyDecl]) then
-      Result := FieldsManaged(Child, ADepth);
-    if Result <> '' then
-      Exit;
+  Pending := TStack<TSyntaxNode>.Create;
+  try
+    for Index := ARecord.ChildCount - 1 downto 0 do
+      Pending.Push(ARecord[Index]);
+    while Pending.Count > 0 do
+    begin
+      Child := Pending.Pop;
+      // Verschachtelte Typdeklarationen sind keine Felder.
+      if Child.Kind = TSyntaxKind.TypeDecl then
+        Continue;
+      if Child.Kind = TSyntaxKind.Field then
+      begin
+        Result := Managed(NodeTypeText(Child), ADepth + 1);
+        if Result <> '' then
+          Exit;
+      end
+      else if not (Child.Kind in [TSyntaxKind.RoutineHeader, TSyntaxKind.PropertyDecl]) then
+        for Index := Child.ChildCount - 1 downto 0 do
+          Pending.Push(Child[Index]);
+    end;
+  finally
+    Pending.Free;
   end;
 end;
 
@@ -229,29 +242,39 @@ begin
   end;
 end;
 
+// Iterativ (Bericht M1).
 function TManagedTypes.FieldsCustomManaged(ARecord: TSyntaxNode; ADepth: Integer): Boolean;
 var
+  Pending: TStack<TSyntaxNode>;
   Index: Integer;
   Child: TSyntaxNode;
   Head: string;
 begin
   Result := False;
-  for Index := 0 to ARecord.ChildCount - 1 do
-  begin
-    Child := ARecord[Index];
-    if Child.Kind in [TSyntaxKind.TypeDecl, TSyntaxKind.PropertyDecl] then
-      Continue;
-    if Child.Kind = TSyntaxKind.RoutineHeader then
+  Pending := TStack<TSyntaxNode>.Create;
+  try
+    for Index := ARecord.ChildCount - 1 downto 0 do
+      Pending.Push(ARecord[Index]);
+    while Pending.Count > 0 do
     begin
-      Head := Copy(FText, Child.StartOffset + 1, Child.EndOffset - Child.StartOffset);
-      Result := MatchText(Child.Name, ['Initialize', 'Finalize']) and ContainsText(Head, 'operator');
-    end
-    else if Child.Kind = TSyntaxKind.Field then
-      Result := CustomManaged(NodeTypeText(Child), ADepth + 1)
-    else
-      Result := FieldsCustomManaged(Child, ADepth);
-    if Result then
-      Exit;
+      Child := Pending.Pop;
+      if Child.Kind in [TSyntaxKind.TypeDecl, TSyntaxKind.PropertyDecl] then
+        Continue;
+      if Child.Kind = TSyntaxKind.RoutineHeader then
+      begin
+        Head := Copy(FText, Child.StartOffset + 1, Child.EndOffset - Child.StartOffset);
+        Result := MatchText(Child.Name, ['Initialize', 'Finalize']) and ContainsText(Head, 'operator');
+      end
+      else if Child.Kind = TSyntaxKind.Field then
+        Result := CustomManaged(NodeTypeText(Child), ADepth + 1)
+      else
+        for Index := Child.ChildCount - 1 downto 0 do
+          Pending.Push(Child[Index]);
+      if Result then
+        Exit;
+    end;
+  finally
+    Pending.Free;
   end;
 end;
 

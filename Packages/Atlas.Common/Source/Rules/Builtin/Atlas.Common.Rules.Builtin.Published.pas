@@ -45,6 +45,7 @@ implementation
 
 uses
   System.StrUtils,
+  System.Generics.Collections,
   Atlas.Common.Documents.Contract,
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Index.Contract,
@@ -547,28 +548,41 @@ var
     end;
   end;
 
-  procedure Visit(ANode: TSyntaxNode);
+  // Iterativ (Bericht M1).
+  procedure Visit(ARoot: TSyntaxNode);
   var
+    Pending: TStack<TSyntaxNode>;
+    Node, Body: TSyntaxNode;
     Index: Integer;
-    Body: TSyntaxNode;
   begin
-    if ANode.Kind = TSyntaxKind.TypeDecl then
-    begin
-      Body := ANode.FindChild(TSyntaxKind.ClassType);
-      if Body <> nil then
+    Pending := TStack<TSyntaxNode>.Create;
+    try
+      Pending.Push(ARoot);
+      while Pending.Count > 0 do
       begin
-        CheckClass(ANode, Body);
-        ANode := Body;
+        Node := Pending.Pop;
+        if Node.Kind = TSyntaxKind.TypeDecl then
+        begin
+          Body := Node.FindChild(TSyntaxKind.ClassType);
+          if Body <> nil then
+          begin
+            CheckClass(Node, Body);
+            Node := Body;
+          end;
+        end;
+        // Nur Deklarationscontainer: Anweisungen und Ausdrücke enthalten keine Klassen (#1094).
+        for Index := Node.ChildCount - 1 downto 0 do
+          if Node[Index].Kind in [TSyntaxKind.InterfaceSection, TSyntaxKind.ImplementationSection,
+            TSyntaxKind.TypeSection, TSyntaxKind.TypeDecl, TSyntaxKind.RoutineDecl] then
+            Pending.Push(Node[Index]);
       end;
+    finally
+      Pending.Free;
     end;
-    // Nur Deklarationscontainer: Anweisungen und Ausdrücke enthalten keine Klassen (#1094).
-    for Index := 0 to ANode.ChildCount - 1 do
-      if ANode[Index].Kind in [TSyntaxKind.InterfaceSection, TSyntaxKind.ImplementationSection,
-        TSyntaxKind.TypeSection, TSyntaxKind.TypeDecl, TSyntaxKind.RoutineDecl] then
-        Visit(ANode[Index]);
   end;
 
-  /// <summary>Bindet die Unit System.Types oder Winapi.Windows ein (TPoint, TRect, TPointF ...)?</summary>
+  /// <summary>Bindet die Unit System.Types oder Winapi.Windows ein (TPoint, TRect, TPointF ...)? Die Rekursion
+  /// geht nur über Abschnitt, uses und Unit (feste Tiefe) und bleibt deshalb (Bericht M1).</summary>
   function FindTypesUnit(ANode: TSyntaxNode): Boolean;
   var
     Index: Integer;

@@ -58,6 +58,7 @@ implementation
 
 uses
   System.StrUtils,
+  System.Generics.Collections,
   Atlas.Common.Documents.Contract,
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Pascal.Contract,
@@ -338,27 +339,49 @@ var
       [TRuleEdit.Create(TTextRange.Create(At, At), Head + Break_ + 'begin' + Break_ + 'end;' + Break_ + Break_)])];
   end;
 
-  procedure CheckRoutines(AContainer: TSyntaxNode);
+  // Iterativ (Bericht M1): der Stapel hält Container und Index der Routinen, in derselben Reihenfolge wie
+  // zuvor die Rekursion in lokale Routinen.
+  procedure CheckRoutines(ARoot: TSyntaxNode);
   var
-    Index: Integer;
-    Child, Header: TSyntaxNode;
+    PendingContainer: TStack<TSyntaxNode>;
+    PendingIndex: TStack<Integer>;
+    Container, Child, Header: TSyntaxNode;
+    Index, ChildIndex: Integer;
   begin
-    for Index := 0 to AContainer.ChildCount - 1 do
-    begin
-      Child := AContainer[Index];
-      if Child.Kind <> TSyntaxKind.RoutineDecl then
-        Continue;
-      Header := Child.FindChild(TSyntaxKind.RoutineHeader);
-      if (Header <> nil) and HasDirective(Header, 'forward') and (Pos('.', Child.Name) = 0) and
-        (PathOf(Child) = '') and not Satisfied(AContainer, Index + 1, Child) then
-        if AContainer = Implementation_ then
-          AReport.Add(NameRange(Header, Child.Name), Format('%s ist forward deklariert, aber nicht implementiert ' +
-            '(wie E2065).', [Child.Name]), TRuleConfidence.High, CreateBody(Child))
-        else
-          AReport.Add(NameRange(Header, Child.Name), Format('%s ist forward deklariert, aber nicht implementiert ' +
-            '(wie E2065).', [Child.Name]), TRuleConfidence.High);
-      // Lokale Routinen mit forward.
-      CheckRoutines(Child);
+    PendingContainer := TStack<TSyntaxNode>.Create;
+    PendingIndex := TStack<Integer>.Create;
+    try
+      for ChildIndex := ARoot.ChildCount - 1 downto 0 do
+        if ARoot[ChildIndex].Kind = TSyntaxKind.RoutineDecl then
+        begin
+          PendingContainer.Push(ARoot);
+          PendingIndex.Push(ChildIndex);
+        end;
+      while PendingContainer.Count > 0 do
+      begin
+        Container := PendingContainer.Pop;
+        Index := PendingIndex.Pop;
+        Child := Container[Index];
+        Header := Child.FindChild(TSyntaxKind.RoutineHeader);
+        if (Header <> nil) and HasDirective(Header, 'forward') and (Pos('.', Child.Name) = 0) and
+          (PathOf(Child) = '') and not Satisfied(Container, Index + 1, Child) then
+          if Container = Implementation_ then
+            AReport.Add(NameRange(Header, Child.Name), Format('%s ist forward deklariert, aber nicht implementiert ' +
+              '(wie E2065).', [Child.Name]), TRuleConfidence.High, CreateBody(Child))
+          else
+            AReport.Add(NameRange(Header, Child.Name), Format('%s ist forward deklariert, aber nicht implementiert ' +
+              '(wie E2065).', [Child.Name]), TRuleConfidence.High);
+        // Lokale Routinen mit forward.
+        for ChildIndex := Child.ChildCount - 1 downto 0 do
+          if Child[ChildIndex].Kind = TSyntaxKind.RoutineDecl then
+          begin
+            PendingContainer.Push(Child);
+            PendingIndex.Push(ChildIndex);
+          end;
+      end;
+    finally
+      PendingIndex.Free;
+      PendingContainer.Free;
     end;
   end;
 
@@ -420,18 +443,31 @@ var
     end;
   end;
 
-  procedure VisitTypes(ANode: TSyntaxNode);
+  // Iterativ (Bericht M1).
+  procedure VisitTypes(ARoot: TSyntaxNode);
   var
+    Pending: TStack<TSyntaxNode>;
+    Node: TSyntaxNode;
     Index: Integer;
   begin
-    if ANode.Kind = TSyntaxKind.TypeSection then
-      CheckTypes(ANode);
-    // Nur Deklarationscontainer (#1094).
-    for Index := 0 to ANode.ChildCount - 1 do
-      if ANode[Index].Kind in [TSyntaxKind.InterfaceSection, TSyntaxKind.ImplementationSection,
-        TSyntaxKind.TypeSection, TSyntaxKind.TypeDecl, TSyntaxKind.ClassType, TSyntaxKind.ObjectType,
-        TSyntaxKind.RecordType, TSyntaxKind.RoutineDecl] then
-        VisitTypes(ANode[Index]);
+    Pending := TStack<TSyntaxNode>.Create;
+    try
+      Pending.Push(ARoot);
+      while Pending.Count > 0 do
+      begin
+        Node := Pending.Pop;
+        if Node.Kind = TSyntaxKind.TypeSection then
+          CheckTypes(Node);
+        // Nur Deklarationscontainer (#1094).
+        for Index := Node.ChildCount - 1 downto 0 do
+          if Node[Index].Kind in [TSyntaxKind.InterfaceSection, TSyntaxKind.ImplementationSection,
+            TSyntaxKind.TypeSection, TSyntaxKind.TypeDecl, TSyntaxKind.ClassType, TSyntaxKind.ObjectType,
+            TSyntaxKind.RecordType, TSyntaxKind.RoutineDecl] then
+            Pending.Push(Node[Index]);
+      end;
+    finally
+      Pending.Free;
+    end;
   end;
 
 var

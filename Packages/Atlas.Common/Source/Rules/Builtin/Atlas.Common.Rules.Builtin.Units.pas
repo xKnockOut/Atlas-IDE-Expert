@@ -532,6 +532,8 @@ function GlobalKinds(ARoot: TSyntaxNode; const AName: string): TGlobalKinds;
 var
   Found: TGlobalKinds;
 
+  // Rekursion nur in interface- und implementation-Abschnitt (höchstens zwei Ebenen, unabhängig von der
+  // Ausdruckstiefe).
   procedure Visit(ANode: TSyntaxNode);
   var
     Index, Inner: Integer;

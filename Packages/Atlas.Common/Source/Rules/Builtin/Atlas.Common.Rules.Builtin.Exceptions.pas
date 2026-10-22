@@ -82,6 +82,7 @@ implementation
 uses
   System.SysUtils,
   System.StrUtils,
+  System.Generics.Collections,
   Atlas.Text.Lines,
   Atlas.Common.Documents.Contract,
   Atlas.Common.Configuration.Contract,
@@ -426,84 +427,130 @@ var
   end;
 
   // Erstes inherited im Destruktor, ohne eingebettete Routinen und anonyme Methoden.
-  procedure FindInherited(ANode: TSyntaxNode);
+  procedure FindInherited(ARoot: TSyntaxNode);
   var
     Index: Integer;
+    Node: TSyntaxNode;
+    Pending: TStack<TSyntaxNode>;
   begin
-    if ANode.Kind in [TSyntaxKind.AnonymousMethod, TSyntaxKind.RoutineDecl] then
-      Exit;
-    if (ANode.Kind = TSyntaxKind.InheritedExpr) and (ANode.StartOffset < InheritedOffset) then
-      InheritedOffset := ANode.StartOffset;
-    for Index := 0 to ANode.ChildCount - 1 do
-      FindInherited(ANode[Index]);
+    // Iterativ (Bericht M1).
+    Pending := TStack<TSyntaxNode>.Create;
+    try
+      Pending.Push(ARoot);
+      while Pending.Count > 0 do
+      begin
+        Node := Pending.Pop;
+        if Node.Kind in [TSyntaxKind.AnonymousMethod, TSyntaxKind.RoutineDecl] then
+          Continue;
+        if (Node.Kind = TSyntaxKind.InheritedExpr) and (Node.StartOffset < InheritedOffset) then
+          InheritedOffset := Node.StartOffset;
+        for Index := Node.ChildCount - 1 downto 0 do
+          Pending.Push(Node[Index]);
+      end;
+    finally
+      Pending.Free;
+    end;
   end;
 
-  // AActive: eine Ausnahme an dieser Stelle verlässt den Destruktor.
-  procedure Visit(ANode: TSyntaxNode; AActive: Boolean);
+  // Active: eine Ausnahme an dieser Stelle verlässt den Destruktor.
+  procedure Visit(ARoot: TSyntaxNode);
   var
     Index: Integer;
-    Child: TSyntaxNode;
-    HasExcept: Boolean;
+    Node, Child: TSyntaxNode;
+    Active, HasExcept: Boolean;
     Message: string;
+    Pending: TStack<TSyntaxNode>;
+    PendingActive: TStack<Boolean>;
   begin
-    if ANode.Kind in [TSyntaxKind.AnonymousMethod, TSyntaxKind.RoutineDecl] then
-      Exit;
-    if ANode.Kind = TSyntaxKind.RaiseStatement then
-    begin
-      if not AActive then
-        Exit;
-      if ANode.StartOffset < InheritedOffset then
-        Message := Format('raise im Destruktor: inherited %s läuft nicht mehr, Felder bleiben liegen.',
-          [RoutineName])
-      else
-        Message := Format('raise im Destruktor: die Ausnahme verlässt %s, der Aufrufer erwartet eine ' +
-          'Freigabe ohne Ausnahme.', [RoutineName]);
-      AReport.Add(TTextRange.Create(ANode.StartPos, TTextPosition.Create(ANode.StartPos.Line,
-        ANode.StartPos.Character + Length('raise'))), Message, TRuleConfidence.High);
-      Exit;
-    end;
-    if ANode.Kind = TSyntaxKind.TryStatement then
-    begin
-      HasExcept := False;
-      for Index := 0 to ANode.ChildCount - 1 do
-        if ANode[Index].Kind = TSyntaxKind.ExceptBlock then
-          HasExcept := True;
-      for Index := 0 to ANode.ChildCount - 1 do
+    // Iterativ (Bericht M1).
+    Pending := TStack<TSyntaxNode>.Create;
+    PendingActive := TStack<Boolean>.Create;
+    try
+      Pending.Push(ARoot);
+      PendingActive.Push(True);
+      while Pending.Count > 0 do
       begin
-        Child := ANode[Index];
-        // Im try-Teil fängt ein eigenes except die Ausnahme ab; except- und finally-Teil nicht.
-        if Child.Kind in [TSyntaxKind.ExceptBlock, TSyntaxKind.FinallyBlock] then
-          Visit(Child, AActive)
-        else
-          Visit(Child, AActive and not HasExcept);
+        Node := Pending.Pop;
+        Active := PendingActive.Pop;
+        if Node.Kind in [TSyntaxKind.AnonymousMethod, TSyntaxKind.RoutineDecl] then
+          Continue;
+        if Node.Kind = TSyntaxKind.RaiseStatement then
+        begin
+          if not Active then
+            Continue;
+          if Node.StartOffset < InheritedOffset then
+            Message := Format('raise im Destruktor: inherited %s läuft nicht mehr, Felder bleiben liegen.',
+              [RoutineName])
+          else
+            Message := Format('raise im Destruktor: die Ausnahme verlässt %s, der Aufrufer erwartet eine ' +
+              'Freigabe ohne Ausnahme.', [RoutineName]);
+          AReport.Add(TTextRange.Create(Node.StartPos, TTextPosition.Create(Node.StartPos.Line,
+            Node.StartPos.Character + Length('raise'))), Message, TRuleConfidence.High);
+          Continue;
+        end;
+        if Node.Kind = TSyntaxKind.TryStatement then
+        begin
+          HasExcept := False;
+          for Index := 0 to Node.ChildCount - 1 do
+            if Node[Index].Kind = TSyntaxKind.ExceptBlock then
+              HasExcept := True;
+          for Index := Node.ChildCount - 1 downto 0 do
+          begin
+            Child := Node[Index];
+            Pending.Push(Child);
+            // Im try-Teil fängt ein eigenes except die Ausnahme ab; except- und finally-Teil nicht.
+            if Child.Kind in [TSyntaxKind.ExceptBlock, TSyntaxKind.FinallyBlock] then
+              PendingActive.Push(Active)
+            else
+              PendingActive.Push(Active and not HasExcept);
+          end;
+          Continue;
+        end;
+        for Index := Node.ChildCount - 1 downto 0 do
+        begin
+          Pending.Push(Node[Index]);
+          PendingActive.Push(Active);
+        end;
       end;
-      Exit;
+    finally
+      PendingActive.Free;
+      Pending.Free;
     end;
-    for Index := 0 to ANode.ChildCount - 1 do
-      Visit(ANode[Index], AActive);
   end;
 
-  procedure Search(ANode: TSyntaxNode);
+  procedure Search(ARoot: TSyntaxNode);
   var
     Index: Integer;
-    Body: TSyntaxNode;
+    Node, Body: TSyntaxNode;
+    Pending: TStack<TSyntaxNode>;
   begin
-    if (ANode.Kind = TSyntaxKind.RoutineDecl) and IsDestructor(ANode) then
-    begin
-      RoutineName := ANode.Name;
-      if LastDelimiter('.', RoutineName) > 0 then
-        RoutineName := Copy(RoutineName, LastDelimiter('.', RoutineName) + 1, MaxInt);
-      Body := ANode.FindChild(TSyntaxKind.Block);
-      if Body <> nil then
+    // Iterativ (Bericht M1).
+    Pending := TStack<TSyntaxNode>.Create;
+    try
+      Pending.Push(ARoot);
+      while Pending.Count > 0 do
       begin
-        InheritedOffset := MaxInt;
-        FindInherited(Body);
-        Visit(Body, True);
+        Node := Pending.Pop;
+        if (Node.Kind = TSyntaxKind.RoutineDecl) and IsDestructor(Node) then
+        begin
+          RoutineName := Node.Name;
+          if LastDelimiter('.', RoutineName) > 0 then
+            RoutineName := Copy(RoutineName, LastDelimiter('.', RoutineName) + 1, MaxInt);
+          Body := Node.FindChild(TSyntaxKind.Block);
+          if Body <> nil then
+          begin
+            InheritedOffset := MaxInt;
+            FindInherited(Body);
+            Visit(Body);
+          end;
+        end;
+        // Auch eingebettete Routinen und Klassen in Routinen.
+        for Index := Node.ChildCount - 1 downto 0 do
+          Pending.Push(Node[Index]);
       end;
+    finally
+      Pending.Free;
     end;
-    // Auch eingebettete Routinen und Klassen in Routinen.
-    for Index := 0 to ANode.ChildCount - 1 do
-      Search(ANode[Index]);
   end;
 
 begin
@@ -660,14 +707,27 @@ var
     end;
   end;
 
-  procedure Visit(ANode: TSyntaxNode);
+  procedure Visit(ARoot: TSyntaxNode);
   var
     Index: Integer;
+    Node: TSyntaxNode;
+    Pending: TStack<TSyntaxNode>;
   begin
-    if ANode.Kind = TSyntaxKind.ExceptBlock then
-      CheckBlock(ANode);
-    for Index := 0 to ANode.ChildCount - 1 do
-      Visit(ANode[Index]);
+    // Iterativ (Bericht M1).
+    Pending := TStack<TSyntaxNode>.Create;
+    try
+      Pending.Push(ARoot);
+      while Pending.Count > 0 do
+      begin
+        Node := Pending.Pop;
+        if Node.Kind = TSyntaxKind.ExceptBlock then
+          CheckBlock(Node);
+        for Index := Node.ChildCount - 1 downto 0 do
+          Pending.Push(Node[Index]);
+      end;
+    finally
+      Pending.Free;
+    end;
   end;
 
 begin
@@ -788,41 +848,78 @@ procedure TReraiseOutsideHandlerRule.Check(const AContext: TRuleContext; const A
     Result := False;
   end;
 
-  // AInExcept: ein except der Routine umschließt die Stelle; AUnknown: anonyme Methode in einem except.
-  procedure Visit(ANode, AScope: TSyntaxNode; AInExcept, AUnknown: Boolean);
+  // InExcept: ein except der Routine umschließt die Stelle; Unknown: anonyme Methode in einem except.
+  procedure Visit(ARoot: TSyntaxNode);
+  const
+    InExceptFlag = 1;
+    UnknownFlag = 2;
   var
-    Index: Integer;
+    Index, Flags: Integer;
+    Node, Scope: TSyntaxNode;
+    InExcept, Unknown: Boolean;
+    Pending, PendingScope: TStack<TSyntaxNode>;
+    PendingFlags: TStack<Integer>;
   begin
-    case ANode.Kind of
-      TSyntaxKind.RoutineDecl, TSyntaxKind.InitializationSection, TSyntaxKind.FinalizationSection,
-      TSyntaxKind.ProgramFile, TSyntaxKind.LibraryFile:
-        begin
-          AScope := ANode;
-          AInExcept := False;
-          AUnknown := False;
+    // Iterativ (Bericht M1).
+    Pending := TStack<TSyntaxNode>.Create;
+    PendingScope := TStack<TSyntaxNode>.Create;
+    PendingFlags := TStack<Integer>.Create;
+    try
+      Pending.Push(ARoot);
+      PendingScope.Push(nil);
+      PendingFlags.Push(0);
+      while Pending.Count > 0 do
+      begin
+        Node := Pending.Pop;
+        Scope := PendingScope.Pop;
+        Flags := PendingFlags.Pop;
+        InExcept := (Flags and InExceptFlag) <> 0;
+        Unknown := (Flags and UnknownFlag) <> 0;
+        case Node.Kind of
+          TSyntaxKind.RoutineDecl, TSyntaxKind.InitializationSection, TSyntaxKind.FinalizationSection,
+          TSyntaxKind.ProgramFile, TSyntaxKind.LibraryFile:
+            begin
+              Scope := Node;
+              InExcept := False;
+              Unknown := False;
+            end;
+          TSyntaxKind.AnonymousMethod:
+            begin
+              Scope := Node;
+              Unknown := Unknown or InExcept;
+              InExcept := False;
+            end;
+          TSyntaxKind.ExceptBlock:
+            InExcept := True;
+          TSyntaxKind.RaiseStatement:
+            if (Node.ChildCount = 0) and not InExcept and not Unknown and not Broken(Scope) then
+              AReport.Add(TTextRange.Create(Node.StartPos, TTextPosition.Create(Node.StartPos.Line,
+                Node.StartPos.Character + Length('raise'))),
+                'raise ohne Argument ist nur in einem except-Block erlaubt (wie E2145).', TRuleConfidence.High);
         end;
-      TSyntaxKind.AnonymousMethod:
+        Flags := 0;
+        if InExcept then
+          Flags := Flags or InExceptFlag;
+        if Unknown then
+          Flags := Flags or UnknownFlag;
+        for Index := Node.ChildCount - 1 downto 0 do
         begin
-          AScope := ANode;
-          AUnknown := AUnknown or AInExcept;
-          AInExcept := False;
+          Pending.Push(Node[Index]);
+          PendingScope.Push(Scope);
+          PendingFlags.Push(Flags);
         end;
-      TSyntaxKind.ExceptBlock:
-        AInExcept := True;
-      TSyntaxKind.RaiseStatement:
-        if (ANode.ChildCount = 0) and not AInExcept and not AUnknown and not Broken(AScope) then
-          AReport.Add(TTextRange.Create(ANode.StartPos, TTextPosition.Create(ANode.StartPos.Line,
-            ANode.StartPos.Character + Length('raise'))),
-            'raise ohne Argument ist nur in einem except-Block erlaubt (wie E2145).', TRuleConfidence.High);
+      end;
+    finally
+      PendingFlags.Free;
+      PendingScope.Free;
+      Pending.Free;
     end;
-    for Index := 0 to ANode.ChildCount - 1 do
-      Visit(ANode[Index], AScope, AInExcept, AUnknown);
   end;
 
 begin
   if (AContext.Tree = nil) or (AContext.Tree.Root = nil) or not ContainsText(AContext.Text, 'raise') then
     Exit;
-  Visit(AContext.Tree.Root, nil, False, False);
+  Visit(AContext.Tree.Root);
 end;
 
 { TInheritedConstructorAfterTryRule }

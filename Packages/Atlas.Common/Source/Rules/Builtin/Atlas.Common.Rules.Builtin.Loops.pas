@@ -163,17 +163,29 @@ end;
 // Kommt im Rumpf ein Continue dieser Schleife vor (nicht in einer inneren Schleife)?
 function HasOwnContinue(ANode: TSyntaxNode): Boolean;
 var
+  Pending: TStack<TSyntaxNode>;
+  Node: TSyntaxNode;
   Index: Integer;
 begin
-  if ANode.Kind in [TSyntaxKind.ForStatement, TSyntaxKind.ForInStatement, TSyntaxKind.WhileStatement,
-    TSyntaxKind.RepeatStatement, TSyntaxKind.AnonymousMethod] then
-    Exit(False);
-  if (ANode.Kind = TSyntaxKind.CallStatement) and SameText(ANode.Name, 'Continue') then
-    Exit(True);
-  for Index := 0 to ANode.ChildCount - 1 do
-    if HasOwnContinue(ANode[Index]) then
-      Exit(True);
+  // Iterativ (Bericht M1).
   Result := False;
+  Pending := TStack<TSyntaxNode>.Create;
+  try
+    Pending.Push(ANode);
+    while Pending.Count > 0 do
+    begin
+      Node := Pending.Pop;
+      if Node.Kind in [TSyntaxKind.ForStatement, TSyntaxKind.ForInStatement, TSyntaxKind.WhileStatement,
+        TSyntaxKind.RepeatStatement, TSyntaxKind.AnonymousMethod] then
+        Continue;
+      if (Node.Kind = TSyntaxKind.CallStatement) and SameText(Node.Name, 'Continue') then
+        Exit(True);
+      for Index := Node.ChildCount - 1 downto 0 do
+        Pending.Push(Node[Index]);
+    end;
+  finally
+    Pending.Free;
+  end;
 end;
 
 // Korrektur: for I := A to B do S wird I := A; while I <= B do begin S; Inc(I); end.
@@ -258,40 +270,57 @@ var
     Index, Item, Count: Integer;
     Child, Params: TSyntaxNode;
     Modes: TArray<Boolean>;
-    Key: string;
+    Key, ClassName: string;
     Known: TArray<TArray<Boolean>>;
+    Pending: TStack<TSyntaxNode>;
+    Classes: TStack<string>;
   begin
-    for Index := 0 to ANode.ChildCount - 1 do
-    begin
-      Child := ANode[Index];
-      if (Child.Kind = TSyntaxKind.Field) and (AClass <> '') then
+    // Iterativ (Bericht M1): zu jedem Kind auf dem Stapel der Name der umgebenden Klasse.
+    Pending := TStack<TSyntaxNode>.Create;
+    Classes := TStack<string>.Create;
+    try
+      for Index := ANode.ChildCount - 1 downto 0 do
       begin
-        for Key in Child.Name.Split([',']) do
-          Fields.AddOrSetValue(AClass + '.' + LowerCase(Trim(Key)), True);
-      end
-      else if Child.Kind = TSyntaxKind.TypeDecl then
-      begin
-        CollectDeclarations(Child, LowerCase(Child.Name));
-        Continue;
-      end
-      else if Child.Kind = TSyntaxKind.RoutineHeader then
-      begin
-        Params := Child.FindChild(TSyntaxKind.Parameters);
-        Modes := nil;
-        if Params <> nil then
-          for Item := 0 to Params.ChildCount - 1 do
-            if Params[Item].Kind = TSyntaxKind.Parameter then
-              for Count := 1 to Length(Params[Item].Name.Split([','])) do
-                Modes := Modes + [Params[Item].Modifier in [TParameterModifier.VarParam,
-                  TParameterModifier.OutParam]];
-        Key := LowerCase(Child.Name);
-        if Pos('.', Key) > 0 then
-          Key := Copy(Key, LastDelimiter('.', Key) + 1, MaxInt);
-        if not VarRoutines.TryGetValue(Key, Known) then
-          Known := nil;
-        VarRoutines.AddOrSetValue(Key, Known + [Modes]);
+        Pending.Push(ANode[Index]);
+        Classes.Push(AClass);
       end;
-      CollectDeclarations(Child, AClass);
+      while Pending.Count > 0 do
+      begin
+        Child := Pending.Pop;
+        ClassName := Classes.Pop;
+        if (Child.Kind = TSyntaxKind.Field) and (ClassName <> '') then
+        begin
+          for Key in Child.Name.Split([',']) do
+            Fields.AddOrSetValue(ClassName + '.' + LowerCase(Trim(Key)), True);
+        end
+        else if Child.Kind = TSyntaxKind.TypeDecl then
+          ClassName := LowerCase(Child.Name)
+        else if Child.Kind = TSyntaxKind.RoutineHeader then
+        begin
+          Params := Child.FindChild(TSyntaxKind.Parameters);
+          Modes := nil;
+          if Params <> nil then
+            for Item := 0 to Params.ChildCount - 1 do
+              if Params[Item].Kind = TSyntaxKind.Parameter then
+                for Count := 1 to Length(Params[Item].Name.Split([','])) do
+                  Modes := Modes + [Params[Item].Modifier in [TParameterModifier.VarParam,
+                    TParameterModifier.OutParam]];
+          Key := LowerCase(Child.Name);
+          if Pos('.', Key) > 0 then
+            Key := Copy(Key, LastDelimiter('.', Key) + 1, MaxInt);
+          if not VarRoutines.TryGetValue(Key, Known) then
+            Known := nil;
+          VarRoutines.AddOrSetValue(Key, Known + [Modes]);
+        end;
+        for Index := Child.ChildCount - 1 downto 0 do
+        begin
+          Pending.Push(Child[Index]);
+          Classes.Push(ClassName);
+        end;
+      end;
+    finally
+      Classes.Free;
+      Pending.Free;
     end;
   end;
 
@@ -312,60 +341,84 @@ var
 
 
   // Meldungen im Rumpf: Zuweisung, Inc/Dec und var-Übergabe der Schleifenvariablen AName.
-  procedure CheckBody(ANode, ALoop: TSyntaxNode; const AName: string; AInline: Boolean);
+  procedure CheckBody(ABody, ALoop: TSyntaxNode; const AName: string; AInline: Boolean);
   var
     Index: Integer;
-    Target, Call: TSyntaxNode;
+    Node, Target, Call: TSyntaxNode;
     Name: string;
+    Pending: TStack<TSyntaxNode>;
   begin
-    // Anonyme Methoden laufen später, with kann den Namen umdeuten, eine innere Schleife mit demselben
-    // Namen prüft der eigene Durchlauf.
-    if (ANode.Kind in [TSyntaxKind.AnonymousMethod, TSyntaxKind.WithStatement]) or
-      ((ANode.Kind = TSyntaxKind.ForStatement) and SameText(ANode.Name, AName)) then
-      Exit;
-    if (ANode.Kind = TSyntaxKind.AssignStatement) and (ANode.ChildCount > 0) and IsPlainName(ANode[0], AName) then
-      AReport.Add(TTextRange.Create(ANode[0].StartPos, ANode[0].EndPos),
-        Format('Schleifenvariable %s darf im Rumpf nicht zugewiesen werden (wie E2081).', [AName]),
-        TRuleConfidence.High, WhileLoopFix(AContext.Text, Tokens, ALoop, AInline))
-    else if (ANode.Kind = TSyntaxKind.CallStatement) and (ANode.ChildCount = 1) and
-      (ANode[0].Kind = TSyntaxKind.Call) and (ANode[0].ChildCount > 1) and
-      (ANode[0][0].Kind = TSyntaxKind.Identifier) then
-    begin
-      Call := ANode[0];
-      Name := Call[0].Name;
-      for Index := 1 to Call.ChildCount - 1 do
+    // Iterativ (Bericht M1).
+    Pending := TStack<TSyntaxNode>.Create;
+    try
+      Pending.Push(ABody);
+      while Pending.Count > 0 do
       begin
-        Target := Call[Index];
-        if not IsPlainName(Target, AName) then
+        Node := Pending.Pop;
+        // Anonyme Methoden laufen später, with kann den Namen umdeuten, eine innere Schleife mit demselben
+        // Namen prüft der eigene Durchlauf.
+        if (Node.Kind in [TSyntaxKind.AnonymousMethod, TSyntaxKind.WithStatement]) or
+          ((Node.Kind = TSyntaxKind.ForStatement) and SameText(Node.Name, AName)) then
           Continue;
-        if (Index = 1) and (SameText(Name, 'Inc') or SameText(Name, 'Dec')) and not VarRoutines.ContainsKey('inc') and
-          not VarRoutines.ContainsKey('dec') then
-          AReport.Add(TTextRange.Create(Target.StartPos, Target.EndPos),
-            Format('Schleifenvariable %s darf im Rumpf nicht verändert werden (wie E2081).', [AName]),
+        if (Node.Kind = TSyntaxKind.AssignStatement) and (Node.ChildCount > 0) and IsPlainName(Node[0], AName) then
+          AReport.Add(TTextRange.Create(Node[0].StartPos, Node[0].EndPos),
+            Format('Schleifenvariable %s darf im Rumpf nicht zugewiesen werden (wie E2081).', [AName]),
             TRuleConfidence.High, WhileLoopFix(AContext.Text, Tokens, ALoop, AInline))
-        else if PassesByReference(Name, Index - 1) then
-          AReport.Add(TTextRange.Create(Target.StartPos, Target.EndPos),
-            Format('Schleifenvariable %s wird als var-Parameter an %s übergeben (wie W1015).', [AName, Name]),
-            TRuleConfidence.High);
+        else if (Node.Kind = TSyntaxKind.CallStatement) and (Node.ChildCount = 1) and
+          (Node[0].Kind = TSyntaxKind.Call) and (Node[0].ChildCount > 1) and
+          (Node[0][0].Kind = TSyntaxKind.Identifier) then
+        begin
+          Call := Node[0];
+          Name := Call[0].Name;
+          for Index := 1 to Call.ChildCount - 1 do
+          begin
+            Target := Call[Index];
+            if not IsPlainName(Target, AName) then
+              Continue;
+            if (Index = 1) and (SameText(Name, 'Inc') or SameText(Name, 'Dec')) and
+              not VarRoutines.ContainsKey('inc') and not VarRoutines.ContainsKey('dec') then
+              AReport.Add(TTextRange.Create(Target.StartPos, Target.EndPos),
+                Format('Schleifenvariable %s darf im Rumpf nicht verändert werden (wie E2081).', [AName]),
+                TRuleConfidence.High, WhileLoopFix(AContext.Text, Tokens, ALoop, AInline))
+            else if PassesByReference(Name, Index - 1) then
+              AReport.Add(TTextRange.Create(Target.StartPos, Target.EndPos),
+                Format('Schleifenvariable %s wird als var-Parameter an %s übergeben (wie W1015).', [AName, Name]),
+                TRuleConfidence.High);
+          end;
+        end;
+        for Index := Node.ChildCount - 1 downto 0 do
+          Pending.Push(Node[Index]);
       end;
+    finally
+      Pending.Free;
     end;
-    for Index := 0 to ANode.ChildCount - 1 do
-      CheckBody(ANode[Index], ALoop, AName, AInline);
   end;
 
   // Kommt AName in ANode außerhalb von ALoop vor?
   function UsedOutside(ANode, ALoop: TSyntaxNode; const AName: string): Boolean;
   var
     Index: Integer;
+    Node: TSyntaxNode;
+    Pending: TStack<TSyntaxNode>;
   begin
-    if ANode = ALoop then
-      Exit(False);
-    if (ANode.Kind = TSyntaxKind.Identifier) and SameText(ANode.Name, AName) then
-      Exit(True);
-    for Index := 0 to ANode.ChildCount - 1 do
-      if UsedOutside(ANode[Index], ALoop, AName) then
-        Exit(True);
+    // Iterativ (Bericht M1).
     Result := False;
+    Pending := TStack<TSyntaxNode>.Create;
+    try
+      Pending.Push(ANode);
+      while Pending.Count > 0 do
+      begin
+        Node := Pending.Pop;
+        if Node = ALoop then
+          Continue;
+        if (Node.Kind = TSyntaxKind.Identifier) and SameText(Node.Name, AName) then
+          Exit(True);
+        for Index := Node.ChildCount - 1 downto 0 do
+          Pending.Push(Node[Index]);
+      end;
+    finally
+      Pending.Free;
+    end;
   end;
 
   // Schleifen der Routine ARoutine (Rumpf ABody); AOuterLocals: Variablen der umgebenden Routinen.
@@ -375,61 +428,97 @@ var
     Header, Params: TSyntaxNode;
     Index: Integer;
 
-    procedure CollectInline(ANode: TSyntaxNode);
+    procedure CollectInline(ARoot: TSyntaxNode);
     var
       Child: Integer;
+      Node: TSyntaxNode;
+      Pending: TStack<TSyntaxNode>;
     begin
-      if ANode.Kind in [TSyntaxKind.RoutineDecl, TSyntaxKind.AnonymousMethod] then
-        Exit;
-      if ANode.Kind in [TSyntaxKind.InlineVar, TSyntaxKind.InlineConst] then
-        AddNames(Locals, ANode.Name);
-      for Child := 0 to ANode.ChildCount - 1 do
-        CollectInline(ANode[Child]);
+      // Iterativ (Bericht M1).
+      Pending := TStack<TSyntaxNode>.Create;
+      try
+        Pending.Push(ARoot);
+        while Pending.Count > 0 do
+        begin
+          Node := Pending.Pop;
+          if Node.Kind in [TSyntaxKind.RoutineDecl, TSyntaxKind.AnonymousMethod] then
+            Continue;
+          if Node.Kind in [TSyntaxKind.InlineVar, TSyntaxKind.InlineConst] then
+            AddNames(Locals, Node.Name);
+          for Child := Node.ChildCount - 1 downto 0 do
+            Pending.Push(Node[Child]);
+        end;
+      finally
+        Pending.Free;
+      end;
     end;
 
-    procedure VisitLoops(ANode: TSyntaxNode; AInWith: Boolean);
+    procedure VisitLoops(ARoot: TSyntaxNode);
     var
       Child, ForToken: Integer;
       Name, Key, Kind: string;
-      IsInline: Boolean;
+      IsInline, InWith: Boolean;
       Fixes: TArray<TRuleFix>;
+      Node: TSyntaxNode;
+      Pending: TStack<TSyntaxNode>;
+      PendingInWith: TStack<Boolean>;
     begin
-      if ANode.Kind in [TSyntaxKind.RoutineDecl, TSyntaxKind.AnonymousMethod] then
-        Exit;
-      if ANode.Kind = TSyntaxKind.WithStatement then
-        AInWith := True;
-      if (ANode.Kind = TSyntaxKind.ForStatement) and (ANode.Name <> '') and not AInWith then
-      begin
-        Name := ANode.Name;
-        // Erstes Code-Token nach for: var bei for var I, sonst der Name.
-        ForToken := NextCode(Tokens, TokenAt(Tokens, ANode.StartOffset) + 1);
-        IsInline := (ForToken <= High(Tokens)) and Tokens[ForToken].IsKeyword('var');
-        Key := LowerCase(Name);
-        if not IsInline and not Locals.ContainsKey(Key) then
+      // Iterativ (Bericht M1): zu jedem Knoten auf dem Stapel, ob er in einer with-Anweisung liegt.
+      Pending := TStack<TSyntaxNode>.Create;
+      PendingInWith := TStack<Boolean>.Create;
+      try
+        Pending.Push(ARoot);
+        PendingInWith.Push(False);
+        while Pending.Count > 0 do
         begin
-          // Nicht lokal: lokale Variable einer umgebenden Routine, Feld der eigenen Klasse oder globale Variable.
-          Kind := '';
-          if AOuterLocals.ContainsKey(Key) then
-            Kind := 'eine Variable der umgebenden Routine'
-          else if (AClass <> '') and Fields.ContainsKey(AClass + '.' + Key) then
-            Kind := 'ein Feld'
-          else if Globals.ContainsKey(Key) then
-            Kind := 'eine globale Variable';
-          if Kind <> '' then
+          Node := Pending.Pop;
+          InWith := PendingInWith.Pop;
+          if Node.Kind in [TSyntaxKind.RoutineDecl, TSyntaxKind.AnonymousMethod] then
+            Continue;
+          if Node.Kind = TSyntaxKind.WithStatement then
+            InWith := True;
+          if (Node.Kind = TSyntaxKind.ForStatement) and (Node.Name <> '') and not InWith then
           begin
-            Fixes := nil;
-            if not UsedOutside(ABody, ANode, Name) then
-              Fixes := [TRuleFix.Create('for var ' + Name + ' verwenden',
-                [TRuleEdit.Create(TTextRange.Create(Tokens[ForToken].StartPos, Tokens[ForToken].StartPos), 'var ')])];
-            AReport.Add(TTextRange.Create(Tokens[ForToken].StartPos, Tokens[ForToken].EndPos), Format('Schleifenvariable %s ist %s, keine einfache ' +
-              'lokale Variable (wie E1019).', [Name, Kind]), TRuleConfidence.High, Fixes);
+            Name := Node.Name;
+            // Erstes Code-Token nach for: var bei for var I, sonst der Name.
+            ForToken := NextCode(Tokens, TokenAt(Tokens, Node.StartOffset) + 1);
+            IsInline := (ForToken <= High(Tokens)) and Tokens[ForToken].IsKeyword('var');
+            Key := LowerCase(Name);
+            if not IsInline and not Locals.ContainsKey(Key) then
+            begin
+              // Nicht lokal: lokale Variable einer umgebenden Routine, Feld der eigenen Klasse oder globale Variable.
+              Kind := '';
+              if AOuterLocals.ContainsKey(Key) then
+                Kind := 'eine Variable der umgebenden Routine'
+              else if (AClass <> '') and Fields.ContainsKey(AClass + '.' + Key) then
+                Kind := 'ein Feld'
+              else if Globals.ContainsKey(Key) then
+                Kind := 'eine globale Variable';
+              if Kind <> '' then
+              begin
+                Fixes := nil;
+                if not UsedOutside(ABody, Node, Name) then
+                  Fixes := [TRuleFix.Create('for var ' + Name + ' verwenden',
+                    [TRuleEdit.Create(TTextRange.Create(Tokens[ForToken].StartPos, Tokens[ForToken].StartPos),
+                    'var ')])];
+                AReport.Add(TTextRange.Create(Tokens[ForToken].StartPos, Tokens[ForToken].EndPos),
+                  Format('Schleifenvariable %s ist %s, keine einfache lokale Variable (wie E1019).', [Name, Kind]),
+                  TRuleConfidence.High, Fixes);
+              end;
+            end;
+            if Node.ChildCount > 0 then
+              CheckBody(Node[Node.ChildCount - 1], Node, Name, IsInline);
+          end;
+          for Child := Node.ChildCount - 1 downto 0 do
+          begin
+            Pending.Push(Node[Child]);
+            PendingInWith.Push(InWith);
           end;
         end;
-        if ANode.ChildCount > 0 then
-          CheckBody(ANode[ANode.ChildCount - 1], ANode, Name, IsInline);
+      finally
+        PendingInWith.Free;
+        Pending.Free;
       end;
-      for Child := 0 to ANode.ChildCount - 1 do
-        VisitLoops(ANode[Child], AInWith);
     end;
 
   var
@@ -451,8 +540,9 @@ var
       end;
       CollectInline(ABody);
       if not ParserBroken(AContext.Tree, ARoutine) then
-        VisitLoops(ABody, False);
-      // Lokale Routinen: deren umgebende Variablen sind diese plus die äußeren.
+        VisitLoops(ABody);
+      // Lokale Routinen: deren umgebende Variablen sind diese plus die äußeren. Die Rekursion bleibt (Bericht M1):
+      // sie geht nur über verschachtelte Routinendeklarationen, nicht über Ausdrücke oder Anweisungsketten.
       for Pair in AOuterLocals do
         Outer.AddOrSetValue(Pair.Key, True);
       for Pair in Locals do
@@ -551,23 +641,32 @@ var
   function FindName(ASyntax: TSyntaxNode; const AName: string): TSyntaxNode;
   var
     Index: Integer;
+    Node: TSyntaxNode;
+    Pending: TStack<TSyntaxNode>;
   begin
-    if ASyntax.Kind = TSyntaxKind.AnonymousMethod then
-      Exit(nil);
-    if (ASyntax.Kind = TSyntaxKind.Identifier) and SameText(ASyntax.Name, AName) then
-      Exit(ASyntax);
-    for Index := 0 to ASyntax.ChildCount - 1 do
-      if not (ASyntax[Index].Kind in [TSyntaxKind.Block, TSyntaxKind.AssignStatement, TSyntaxKind.CallStatement,
-        TSyntaxKind.IfStatement, TSyntaxKind.CaseStatement, TSyntaxKind.CaseItem, TSyntaxKind.CaseElse,
-        TSyntaxKind.ForStatement, TSyntaxKind.ForInStatement, TSyntaxKind.WhileStatement,
-        TSyntaxKind.RepeatStatement, TSyntaxKind.WithStatement, TSyntaxKind.TryStatement,
-        TSyntaxKind.RaiseStatement, TSyntaxKind.LabeledStatement]) then
-      begin
-        Result := FindName(ASyntax[Index], AName);
-        if Result <> nil then
-          Exit;
-      end;
+    // Iterativ (Bericht M1).
     Result := nil;
+    Pending := TStack<TSyntaxNode>.Create;
+    try
+      Pending.Push(ASyntax);
+      while Pending.Count > 0 do
+      begin
+        Node := Pending.Pop;
+        if Node.Kind = TSyntaxKind.AnonymousMethod then
+          Continue;
+        if (Node.Kind = TSyntaxKind.Identifier) and SameText(Node.Name, AName) then
+          Exit(Node);
+        for Index := Node.ChildCount - 1 downto 0 do
+          if not (Node[Index].Kind in [TSyntaxKind.Block, TSyntaxKind.AssignStatement, TSyntaxKind.CallStatement,
+            TSyntaxKind.IfStatement, TSyntaxKind.CaseStatement, TSyntaxKind.CaseItem, TSyntaxKind.CaseElse,
+            TSyntaxKind.ForStatement, TSyntaxKind.ForInStatement, TSyntaxKind.WhileStatement,
+            TSyntaxKind.RepeatStatement, TSyntaxKind.WithStatement, TSyntaxKind.TryStatement,
+            TSyntaxKind.RaiseStatement, TSyntaxKind.LabeledStatement]) then
+            Pending.Push(Node[Index]);
+      end;
+    finally
+      Pending.Free;
+    end;
   end;
 
   procedure CheckLoop(ALoop: TSyntaxNode);
@@ -623,20 +722,33 @@ var
     end;
   end;
 
-  procedure VisitLoops(ANode: TSyntaxNode; ALocals: TNameSet);
+  procedure VisitLoops(ARoot: TSyntaxNode; ALocals: TNameSet);
   var
     Index, ForToken: Integer;
+    Node: TSyntaxNode;
+    Pending: TStack<TSyntaxNode>;
   begin
-    if ANode.Kind in [TSyntaxKind.RoutineDecl, TSyntaxKind.AnonymousMethod] then
-      Exit;
-    if (ANode.Kind = TSyntaxKind.ForStatement) and ALocals.ContainsKey(LowerCase(ANode.Name)) then
-    begin
-      ForToken := NextCode(Tokens, TokenAt(Tokens, ANode.StartOffset) + 1);
-      if (ForToken <= High(Tokens)) and not Tokens[ForToken].IsKeyword('var') then
-        CheckLoop(ANode);
+    // Iterativ (Bericht M1).
+    Pending := TStack<TSyntaxNode>.Create;
+    try
+      Pending.Push(ARoot);
+      while Pending.Count > 0 do
+      begin
+        Node := Pending.Pop;
+        if Node.Kind in [TSyntaxKind.RoutineDecl, TSyntaxKind.AnonymousMethod] then
+          Continue;
+        if (Node.Kind = TSyntaxKind.ForStatement) and ALocals.ContainsKey(LowerCase(Node.Name)) then
+        begin
+          ForToken := NextCode(Tokens, TokenAt(Tokens, Node.StartOffset) + 1);
+          if (ForToken <= High(Tokens)) and not Tokens[ForToken].IsKeyword('var') then
+            CheckLoop(Node);
+        end;
+        for Index := Node.ChildCount - 1 downto 0 do
+          Pending.Push(Node[Index]);
+      end;
+    finally
+      Pending.Free;
     end;
-    for Index := 0 to ANode.ChildCount - 1 do
-      VisitLoops(ANode[Index], ALocals);
   end;
 
 var

@@ -79,6 +79,7 @@ uses
   System.StrUtils,
   System.Math,
   System.Character,
+  System.Generics.Collections,
   System.JSON,
   Atlas.Common.Documents.Contract,
   Atlas.Common.Configuration.Contract,
@@ -337,14 +338,27 @@ var
       AReport.Add(TokenRange(Tokens[FinallyToken]), Message, TRuleConfidence.High, []);
   end;
 
-  procedure Walk(ANode: TSyntaxNode);
+  // Iterativ (Bericht M1).
+  procedure Walk(ARoot: TSyntaxNode);
   var
+    Pending: TStack<TSyntaxNode>;
+    Node: TSyntaxNode;
     Index: Integer;
   begin
-    if (ANode.Kind = TSyntaxKind.TryStatement) and (ANode.ChildCount > 0) then
-      CheckTry(ANode);
-    for Index := 0 to ANode.ChildCount - 1 do
-      Walk(ANode[Index]);
+    Pending := TStack<TSyntaxNode>.Create;
+    try
+      Pending.Push(ARoot);
+      while Pending.Count > 0 do
+      begin
+        Node := Pending.Pop;
+        if (Node.Kind = TSyntaxKind.TryStatement) and (Node.ChildCount > 0) then
+          CheckTry(Node);
+        for Index := Node.ChildCount - 1 downto 0 do
+          Pending.Push(Node[Index]);
+      end;
+    finally
+      Pending.Free;
+    end;
   end;
 
 begin

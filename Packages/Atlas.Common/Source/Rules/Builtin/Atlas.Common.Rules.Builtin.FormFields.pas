@@ -171,22 +171,36 @@ begin
   inherited;
 end;
 
+// Iterativ (Bericht M1).
 function TFormMatch.FindClass(ANode: TSyntaxNode; const AName: string): TSyntaxNode;
 var
+  Pending: TStack<TSyntaxNode>;
+  Node: TSyntaxNode;
   Index: Integer;
 begin
-  if (ANode.Kind = TSyntaxKind.TypeDecl) and SameText(ANode.Name, AName) then
-    Exit(ANode.FindChild(TSyntaxKind.ClassType));
-  for Index := 0 to ANode.ChildCount - 1 do
-    if ANode.Children[Index].Kind in [TSyntaxKind.UnitFile, TSyntaxKind.ProgramFile, TSyntaxKind.LibraryFile,
-      TSyntaxKind.InterfaceSection, TSyntaxKind.ImplementationSection, TSyntaxKind.TypeSection,
-      TSyntaxKind.TypeDecl] then
-    begin
-      Result := FindClass(ANode.Children[Index], AName);
-      if Result <> nil then
-        Exit;
-    end;
   Result := nil;
+  Pending := TStack<TSyntaxNode>.Create;
+  try
+    Pending.Push(ANode);
+    while Pending.Count > 0 do
+    begin
+      Node := Pending.Pop;
+      if (Node.Kind = TSyntaxKind.TypeDecl) and SameText(Node.Name, AName) then
+      begin
+        Result := Node.FindChild(TSyntaxKind.ClassType);
+        if Result <> nil then
+          Exit;
+        Continue;
+      end;
+      for Index := Node.ChildCount - 1 downto 0 do
+        if Node.Children[Index].Kind in [TSyntaxKind.UnitFile, TSyntaxKind.ProgramFile, TSyntaxKind.LibraryFile,
+          TSyntaxKind.InterfaceSection, TSyntaxKind.ImplementationSection, TSyntaxKind.TypeSection,
+          TSyntaxKind.TypeDecl] then
+          Pending.Push(Node.Children[Index]);
+    end;
+  finally
+    Pending.Free;
+  end;
 end;
 
 procedure TFormMatch.CollectObjects(AObject: TDfmObject; AInFrame: Boolean);
@@ -513,23 +527,37 @@ var
     Result := False;
   end;
 
-  // Deklariert die Routine AName selbst (Parameter, lokale Variable)?
+  // Deklariert die Routine AName selbst (Parameter, lokale Variable)? Iterativ (Bericht M1).
   function DeclaresLocally(ANode: TSyntaxNode; const AName: string): Boolean;
   var
+    Pending: TStack<TSyntaxNode>;
+    Node, Child: TSyntaxNode;
     Index: Integer;
     Name: string;
   begin
-    for Index := 0 to ANode.ChildCount - 1 do
-    begin
-      if ANode[Index].Kind in [TSyntaxKind.VarDecl, TSyntaxKind.InlineVar, TSyntaxKind.Parameter,
-        TSyntaxKind.ConstDecl] then
-        for Name in SplitString(ANode[Index].Name, ',') do
-          if SameText(Trim(Name), AName) then
-            Exit(True);
-      if (ANode[Index].Kind <> TSyntaxKind.Block) and DeclaresLocally(ANode[Index], AName) then
-        Exit(True);
-    end;
     Result := False;
+    Pending := TStack<TSyntaxNode>.Create;
+    try
+      Pending.Push(ANode);
+      while Pending.Count > 0 do
+      begin
+        Node := Pending.Pop;
+        for Index := 0 to Node.ChildCount - 1 do
+        begin
+          Child := Node[Index];
+          if Child.Kind in [TSyntaxKind.VarDecl, TSyntaxKind.InlineVar, TSyntaxKind.Parameter,
+            TSyntaxKind.ConstDecl] then
+            for Name in SplitString(Child.Name, ',') do
+              if SameText(Trim(Name), AName) then
+                Exit(True);
+        end;
+        for Index := Node.ChildCount - 1 downto 0 do
+          if Node[Index].Kind <> TSyntaxKind.Block then
+            Pending.Push(Node[Index]);
+      end;
+    finally
+      Pending.Free;
+    end;
   end;
 
   // Prüft oder setzt die Routine die Variable selbst (Assigned, nil-Vergleich, Zuweisung, CreateForm)?

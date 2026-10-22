@@ -538,15 +538,30 @@ end;
 
 /// <summary>Endet die Anweisung mit einem if ohne else (auch verschachtelt in for/while/with)?</summary>
 function EndsWithOpenIf(ANode: TSyntaxNode): Boolean;
+var
+  Node: TSyntaxNode;
 begin
-  case ANode.Kind of
-    TSyntaxKind.IfStatement:
-      Result := (ANode.ChildCount < 3) or EndsWithOpenIf(ANode[ANode.ChildCount - 1]);
-    TSyntaxKind.ForStatement, TSyntaxKind.ForInStatement, TSyntaxKind.WhileStatement, TSyntaxKind.WithStatement:
-      Result := (ANode.ChildCount > 0) and EndsWithOpenIf(ANode[ANode.ChildCount - 1]);
-  else
-    Result := False;
-  end;
+  // Iterativ (Bericht M1): am letzten Kind entlang, z. B. durch lange else-if-Ketten.
+  Result := False;
+  Node := ANode;
+  while Node <> nil do
+    case Node.Kind of
+      TSyntaxKind.IfStatement:
+        if Node.ChildCount < 3 then
+        begin
+          Result := True;
+          Node := nil;
+        end
+        else
+          Node := Node[Node.ChildCount - 1];
+      TSyntaxKind.ForStatement, TSyntaxKind.ForInStatement, TSyntaxKind.WhileStatement, TSyntaxKind.WithStatement:
+        if Node.ChildCount = 0 then
+          Node := nil
+        else
+          Node := Node[Node.ChildCount - 1];
+    else
+      Node := nil;
+    end;
 end;
 
 function TokenIndexAt(const ATokens: TTokens; const APosition: TTextPosition): Integer;
@@ -798,21 +813,43 @@ var
 
   procedure Visit(ANode: TSyntaxNode);
   var
-    Index: Integer;
-    Next: TSyntaxNode;
+    Parents: TStack<TSyntaxNode>;
+    Indexes: TStack<Integer>;
+    Parent, Child, Next: TSyntaxNode;
+    Index, Item: Integer;
   begin
-    for Index := 0 to ANode.ChildCount - 1 do
-    begin
-      if ANode[Index].Kind = TSyntaxKind.IfStatement then
+    // Iterativ (Bericht M1): Paare (Elternknoten, Kindindex), Reihenfolge wie die frühere Rekursion.
+    Parents := TStack<TSyntaxNode>.Create;
+    Indexes := TStack<Integer>.Create;
+    try
+      for Item := ANode.ChildCount - 1 downto 0 do
       begin
-        Next := nil;
-        // Folgeanweisung nur in Anweisungslisten, nicht im else-Zweig eines äußeren if.
-        if (Index < ANode.ChildCount - 1) and (ANode.Kind in [TSyntaxKind.Block, TSyntaxKind.TryStatement,
-          TSyntaxKind.FinallyBlock, TSyntaxKind.ExceptBlock, TSyntaxKind.RepeatStatement]) then
-          Next := ANode[Index + 1];
-        CheckIf(ANode[Index], Next);
+        Parents.Push(ANode);
+        Indexes.Push(Item);
       end;
-      Visit(ANode[Index]);
+      while Parents.Count > 0 do
+      begin
+        Parent := Parents.Pop;
+        Index := Indexes.Pop;
+        Child := Parent[Index];
+        if Child.Kind = TSyntaxKind.IfStatement then
+        begin
+          Next := nil;
+          // Folgeanweisung nur in Anweisungslisten, nicht im else-Zweig eines äußeren if.
+          if (Index < Parent.ChildCount - 1) and (Parent.Kind in [TSyntaxKind.Block, TSyntaxKind.TryStatement,
+            TSyntaxKind.FinallyBlock, TSyntaxKind.ExceptBlock, TSyntaxKind.RepeatStatement]) then
+            Next := Parent[Index + 1];
+          CheckIf(Child, Next);
+        end;
+        for Item := Child.ChildCount - 1 downto 0 do
+        begin
+          Parents.Push(Child);
+          Indexes.Push(Item);
+        end;
+      end;
+    finally
+      Indexes.Free;
+      Parents.Free;
     end;
   end;
 
@@ -954,12 +991,25 @@ procedure TCaseInsensitiveCompareRule.Check(const AContext: TRuleContext; const 
 
   procedure Visit(ANode: TSyntaxNode);
   var
+    Pending: TStack<TSyntaxNode>;
+    Node: TSyntaxNode;
     Index: Integer;
   begin
-    if (ANode.Kind = TSyntaxKind.BinaryExpr) and ((ANode.Name = '=') or (ANode.Name = '<>')) then
-      CheckComparison(ANode);
-    for Index := 0 to ANode.ChildCount - 1 do
-      Visit(ANode[Index]);
+    // Iterativ (Bericht M1).
+    Pending := TStack<TSyntaxNode>.Create;
+    try
+      Pending.Push(ANode);
+      while Pending.Count > 0 do
+      begin
+        Node := Pending.Pop;
+        if (Node.Kind = TSyntaxKind.BinaryExpr) and ((Node.Name = '=') or (Node.Name = '<>')) then
+          CheckComparison(Node);
+        for Index := Node.ChildCount - 1 downto 0 do
+          Pending.Push(Node[Index]);
+      end;
+    finally
+      Pending.Free;
+    end;
   end;
 
 begin
@@ -1040,23 +1090,45 @@ var
 
   procedure Visit(ANode: TSyntaxNode; AInBody: Boolean);
   var
+    Pending: TStack<TSyntaxNode>;
+    InBodies: TStack<Boolean>;
+    Node: TSyntaxNode;
+    InBody: Boolean;
     Index: Integer;
   begin
-    case ANode.Kind of
-      // Konstanten, Typen, Array-Grenzen und Teilbereiche haben ihren Namen schon.
-      TSyntaxKind.ConstSection, TSyntaxKind.ConstDecl, TSyntaxKind.InlineConst, TSyntaxKind.TypeSection,
-      TSyntaxKind.TypeDecl, TSyntaxKind.TypeReference, TSyntaxKind.ArrayType, TSyntaxKind.SubrangeType,
-      TSyntaxKind.SetType, TSyntaxKind.EnumType, TSyntaxKind.VarSection, TSyntaxKind.Attribute,
-      TSyntaxKind.AsmBlock, TSyntaxKind.RoutineHeader:
-        Exit;
-      TSyntaxKind.Block:
-        AInBody := True;
-      TSyntaxKind.Literal:
-        if AInBody then
-          CheckLiteral(ANode);
+    // Iterativ (Bericht M1); InBodies führt AInBody je Knoten mit.
+    Pending := TStack<TSyntaxNode>.Create;
+    InBodies := TStack<Boolean>.Create;
+    try
+      Pending.Push(ANode);
+      InBodies.Push(AInBody);
+      while Pending.Count > 0 do
+      begin
+        Node := Pending.Pop;
+        InBody := InBodies.Pop;
+        case Node.Kind of
+          // Konstanten, Typen, Array-Grenzen und Teilbereiche haben ihren Namen schon.
+          TSyntaxKind.ConstSection, TSyntaxKind.ConstDecl, TSyntaxKind.InlineConst, TSyntaxKind.TypeSection,
+          TSyntaxKind.TypeDecl, TSyntaxKind.TypeReference, TSyntaxKind.ArrayType, TSyntaxKind.SubrangeType,
+          TSyntaxKind.SetType, TSyntaxKind.EnumType, TSyntaxKind.VarSection, TSyntaxKind.Attribute,
+          TSyntaxKind.AsmBlock, TSyntaxKind.RoutineHeader:
+            Continue;
+          TSyntaxKind.Block:
+            InBody := True;
+          TSyntaxKind.Literal:
+            if InBody then
+              CheckLiteral(Node);
+        end;
+        for Index := Node.ChildCount - 1 downto 0 do
+        begin
+          Pending.Push(Node[Index]);
+          InBodies.Push(InBody);
+        end;
+      end;
+    finally
+      InBodies.Free;
+      Pending.Free;
     end;
-    for Index := 0 to ANode.ChildCount - 1 do
-      Visit(ANode[Index], AInBody);
   end;
 
 var
@@ -1220,19 +1292,32 @@ var
 
   procedure Visit(ANode: TSyntaxNode);
   var
+    Pending: TStack<TSyntaxNode>;
+    Node: TSyntaxNode;
     Index: Integer;
   begin
-    case ANode.Kind of
-      TSyntaxKind.ClassType:
-        CheckType(ANode, PlainClass(ANode), 'public');
-      TSyntaxKind.RecordType:
-        if IncludeRecords then
-          CheckType(ANode, True, 'public');
-      TSyntaxKind.Block, TSyntaxKind.AsmBlock:
-        Exit;
+    // Iterativ (Bericht M1).
+    Pending := TStack<TSyntaxNode>.Create;
+    try
+      Pending.Push(ANode);
+      while Pending.Count > 0 do
+      begin
+        Node := Pending.Pop;
+        case Node.Kind of
+          TSyntaxKind.ClassType:
+            CheckType(Node, PlainClass(Node), 'public');
+          TSyntaxKind.RecordType:
+            if IncludeRecords then
+              CheckType(Node, True, 'public');
+          TSyntaxKind.Block, TSyntaxKind.AsmBlock:
+            Continue;
+        end;
+        for Index := Node.ChildCount - 1 downto 0 do
+          Pending.Push(Node[Index]);
+      end;
+    finally
+      Pending.Free;
     end;
-    for Index := 0 to ANode.ChildCount - 1 do
-      Visit(ANode[Index]);
   end;
 
 begin
@@ -1268,24 +1353,37 @@ var
   // Vorfahren, sonst die direkten Nachfahren bekannter Designerklassen.
   procedure CollectForms(ANode: TSyntaxNode);
   var
+    Pending: TStack<TSyntaxNode>;
+    Node: TSyntaxNode;
     Index: Integer;
     Body, Ancestor: TSyntaxNode;
   begin
-    if ANode.Kind = TSyntaxKind.TypeDecl then
-    begin
-      Body := ANode.FindChild(TSyntaxKind.ClassType);
-      if Body <> nil then
+    // Iterativ (Bericht M1).
+    Pending := TStack<TSyntaxNode>.Create;
+    try
+      Pending.Push(ANode);
+      while Pending.Count > 0 do
       begin
-        Ancestor := Body.FindChild(TSyntaxKind.TypeReference);
-        if (Ancestor <> nil) and ((AContext.FormText <> '') or MatchText(NodeText(Ancestor), FormRoots)) then
-          FormClasses := FormClasses + [ANode.Name];
+        Node := Pending.Pop;
+        if Node.Kind = TSyntaxKind.TypeDecl then
+        begin
+          Body := Node.FindChild(TSyntaxKind.ClassType);
+          if Body <> nil then
+          begin
+            Ancestor := Body.FindChild(TSyntaxKind.TypeReference);
+            if (Ancestor <> nil) and ((AContext.FormText <> '') or MatchText(NodeText(Ancestor), FormRoots)) then
+              FormClasses := FormClasses + [Node.Name];
+          end;
+          Continue;
+        end;
+        if Node.Kind in [TSyntaxKind.Block, TSyntaxKind.AsmBlock, TSyntaxKind.RoutineDecl] then
+          Continue;
+        for Index := Node.ChildCount - 1 downto 0 do
+          Pending.Push(Node[Index]);
       end;
-      Exit;
+    finally
+      Pending.Free;
     end;
-    if ANode.Kind in [TSyntaxKind.Block, TSyntaxKind.AsmBlock, TSyntaxKind.RoutineDecl] then
-      Exit;
-    for Index := 0 to ANode.ChildCount - 1 do
-      CollectForms(ANode[Index]);
   end;
 
   function NameRange(ADecl: TSyntaxNode; const AName: string): TTextRange;

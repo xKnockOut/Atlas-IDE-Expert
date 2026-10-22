@@ -55,6 +55,7 @@ implementation
 uses
   System.StrUtils,
   System.RegularExpressions,
+  System.Generics.Collections,
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Documents.Contract,
   Atlas.Common.Index.Contract,
@@ -174,7 +175,7 @@ type
     FHarmless: TArray<TSyntaxNode>;
     function IsRef(ANode: TSyntaxNode): Boolean;
     procedure Harmless(ANode: TSyntaxNode);
-    procedure Visit(ANode: TSyntaxNode);
+    procedure Visit(ARoot: TSyntaxNode);
   public
     constructor Create(const AContext: TRuleContext; const ACreation: TInitCreation);
     /// <summary>True, wenn die Unit das Objekt nirgends freigibt und nirgends weitergibt.</summary>
@@ -208,45 +209,58 @@ begin
   FHarmless := FHarmless + [ANode];
 end;
 
-procedure TInitUses.Visit(ANode: TSyntaxNode);
+// Iterativ (Bericht M1).
+procedure TInitUses.Visit(ARoot: TSyntaxNode);
 var
+  Pending: TStack<TSyntaxNode>;
+  Node: TSyntaxNode;
   Index: Integer;
   TypeName: string;
   Owned: Boolean;
 begin
-  case ANode.Kind of
-    TSyntaxKind.MemberAccess:
-      if (ANode.ChildCount >= 1) and IsRef(ANode[0]) then
-      begin
-        if MatchText(ANode.Name, ReleasingMethods) then
-          FFreed := True
-        else if SameText(ANode.Name, 'FreeOnTerminate') then
-          // Ein Thread, der sich selbst freigibt.
-          FEscaped := True
-        else
-          Harmless(ANode[0]);
+  Pending := TStack<TSyntaxNode>.Create;
+  try
+    Pending.Push(ARoot);
+    while Pending.Count > 0 do
+    begin
+      Node := Pending.Pop;
+      case Node.Kind of
+        TSyntaxKind.MemberAccess:
+          if (Node.ChildCount >= 1) and IsRef(Node[0]) then
+          begin
+            if MatchText(Node.Name, ReleasingMethods) then
+              FFreed := True
+            else if SameText(Node.Name, 'FreeOnTerminate') then
+              // Ein Thread, der sich selbst freigibt.
+              FEscaped := True
+            else
+              Harmless(Node[0]);
+          end;
+        TSyntaxKind.Call:
+          if (Node.ChildCount = 2) and (Node[0].Kind = TSyntaxKind.Identifier) and IsRef(Node[1]) then
+          begin
+            if SameText(Node[0].Name, 'FreeAndNil') then
+              FFreed := True
+            else if SameText(Node[0].Name, 'Assigned') then
+              Harmless(Node[1]);
+          end;
+        TSyntaxKind.BinaryExpr:
+          if (Node.Name = '=') or (Node.Name = '<>') then
+            for Index := 0 to Node.ChildCount - 1 do
+              if IsRef(Node[Index]) then
+                Harmless(Node[Index]);
+        TSyntaxKind.AssignStatement:
+          if (Node.ChildCount >= 2) and IsRef(Node[0]) and (((Node[1].Kind = TSyntaxKind.Literal) and
+            SameText(Node[1].Name, 'nil')) or (TFreeFields.ObjectCreation(FContext.Tree, FContext.Text,
+            FContext.Index, Node[1], TypeName, Owned) and not Owned)) then
+            Harmless(Node[0]);
       end;
-    TSyntaxKind.Call:
-      if (ANode.ChildCount = 2) and (ANode[0].Kind = TSyntaxKind.Identifier) and IsRef(ANode[1]) then
-      begin
-        if SameText(ANode[0].Name, 'FreeAndNil') then
-          FFreed := True
-        else if SameText(ANode[0].Name, 'Assigned') then
-          Harmless(ANode[1]);
-      end;
-    TSyntaxKind.BinaryExpr:
-      if (ANode.Name = '=') or (ANode.Name = '<>') then
-        for Index := 0 to ANode.ChildCount - 1 do
-          if IsRef(ANode[Index]) then
-            Harmless(ANode[Index]);
-    TSyntaxKind.AssignStatement:
-      if (ANode.ChildCount >= 2) and IsRef(ANode[0]) and (((ANode[1].Kind = TSyntaxKind.Literal) and
-        SameText(ANode[1].Name, 'nil')) or (TFreeFields.ObjectCreation(FContext.Tree, FContext.Text,
-        FContext.Index, ANode[1], TypeName, Owned) and not Owned)) then
-        Harmless(ANode[0]);
+      for Index := Node.ChildCount - 1 downto 0 do
+        Pending.Push(Node[Index]);
+    end;
+  finally
+    Pending.Free;
   end;
-  for Index := 0 to ANode.ChildCount - 1 do
-    Visit(ANode[Index]);
 end;
 
 function TInitUses.Leaks(const ACreation: TInitCreation): Boolean;
@@ -387,10 +401,12 @@ begin
 end;
 
 /// <summary>Zuweisungen Variable := TKlasse.Create… in ANode (ohne anonyme Methoden); AClassDecl nil für
-/// initialization, sonst die Klasse des class constructor.</summary>
+/// initialization, sonst die Klasse des class constructor. Iterativ (Bericht M1).</summary>
 procedure FindCreations(const AContext: TRuleContext; ANode, AClassDecl: TSyntaxNode;
   const AVariables: TArray<TInitVariable>; var ACreations: TArray<TInitCreation>);
 var
+  Pending: TStack<TSyntaxNode>;
+  Node: TSyntaxNode;
   Index: Integer;
   Variable: TInitVariable;
   Creation: TInitCreation;
@@ -398,40 +414,50 @@ var
   TypeName, Name: string;
   Owned, Known: Boolean;
 begin
-  if ANode.Kind = TSyntaxKind.AnonymousMethod then
-    Exit;
-  if (ANode.Kind = TSyntaxKind.AssignStatement) and (ANode.ChildCount >= 2) then
-  begin
-    Target := ANode[0];
-    Name := '';
-    if Target.Kind = TSyntaxKind.Identifier then
-      Name := Target.Name
-    else if (AClassDecl <> nil) and (Target.Kind = TSyntaxKind.MemberAccess) and (Target.ChildCount = 1) and
-      (Target[0].Kind = TSyntaxKind.Identifier) and (SameText(Target[0].Name, 'Self') or
-      SameText(Target[0].Name, AClassDecl.Name)) then
-      Name := Target.Name;
-    Known := False;
-    for Creation in ACreations do
-      if SameText(Creation.Name, Name) and (Creation.ClassDecl = AClassDecl) then
-        Known := True;
-    if (Name <> '') and not Known and TFreeFields.ObjectCreation(AContext.Tree, AContext.Text, AContext.Index,
-      ANode[1], TypeName, Owned) and not Owned then
-      for Variable in AVariables do
-        if SameText(Variable.Name, Name) and (Variable.ClassDecl = AClassDecl) then
-        begin
-          Creation := Default(TInitCreation);
-          Creation.Name := Variable.Name;
-          Creation.Assignment := ANode;
-          Creation.ClassDecl := AClassDecl;
-          Creation.Visible := Variable.Visible;
-          Creation.DeclStart := Variable.DeclStart;
-          Creation.DeclEnd := Variable.DeclEnd;
-          ACreations := ACreations + [Creation];
-          Break;
-        end;
+  Pending := TStack<TSyntaxNode>.Create;
+  try
+    Pending.Push(ANode);
+    while Pending.Count > 0 do
+    begin
+      Node := Pending.Pop;
+      if Node.Kind = TSyntaxKind.AnonymousMethod then
+        Continue;
+      if (Node.Kind = TSyntaxKind.AssignStatement) and (Node.ChildCount >= 2) then
+      begin
+        Target := Node[0];
+        Name := '';
+        if Target.Kind = TSyntaxKind.Identifier then
+          Name := Target.Name
+        else if (AClassDecl <> nil) and (Target.Kind = TSyntaxKind.MemberAccess) and (Target.ChildCount = 1) and
+          (Target[0].Kind = TSyntaxKind.Identifier) and (SameText(Target[0].Name, 'Self') or
+          SameText(Target[0].Name, AClassDecl.Name)) then
+          Name := Target.Name;
+        Known := False;
+        for Creation in ACreations do
+          if SameText(Creation.Name, Name) and (Creation.ClassDecl = AClassDecl) then
+            Known := True;
+        if (Name <> '') and not Known and TFreeFields.ObjectCreation(AContext.Tree, AContext.Text, AContext.Index,
+          Node[1], TypeName, Owned) and not Owned then
+          for Variable in AVariables do
+            if SameText(Variable.Name, Name) and (Variable.ClassDecl = AClassDecl) then
+            begin
+              Creation := Default(TInitCreation);
+              Creation.Name := Variable.Name;
+              Creation.Assignment := Node;
+              Creation.ClassDecl := AClassDecl;
+              Creation.Visible := Variable.Visible;
+              Creation.DeclStart := Variable.DeclStart;
+              Creation.DeclEnd := Variable.DeclEnd;
+              ACreations := ACreations + [Creation];
+              Break;
+            end;
+      end;
+      for Index := Node.ChildCount - 1 downto 0 do
+        Pending.Push(Node[Index]);
+    end;
+  finally
+    Pending.Free;
   end;
-  for Index := 0 to ANode.ChildCount - 1 do
-    FindCreations(AContext, ANode[Index], AClassDecl, AVariables, ACreations);
 end;
 
 /// <summary>"FreeAndNil(X);" vor das "end." der Unit, in finalization; fehlt sie, wird sie angelegt.

@@ -32,6 +32,7 @@ implementation
 
 uses
   System.StrUtils,
+  System.Generics.Collections,
   Atlas.Text.Lines,
   Atlas.Common.Documents.Contract,
   Atlas.Common.Configuration.Contract,
@@ -96,17 +97,30 @@ var
       (Token(APosition).Kind = TPascalTokenKind.Identifier);
   end;
 
-  procedure CollectRoutines(ANode: TSyntaxNode);
+  // Iterativ (Bericht M1).
+  procedure CollectRoutines(ARoot: TSyntaxNode);
   var
+    Pending: TStack<TSyntaxNode>;
+    Node: TSyntaxNode;
     Index: Integer;
   begin
-    if ANode.Kind = TSyntaxKind.RoutineDecl then
-    begin
-      Routines := Routines + [ANode];
-      Exit;
+    Pending := TStack<TSyntaxNode>.Create;
+    try
+      Pending.Push(ARoot);
+      while Pending.Count > 0 do
+      begin
+        Node := Pending.Pop;
+        if Node.Kind = TSyntaxKind.RoutineDecl then
+        begin
+          Routines := Routines + [Node];
+          Continue;
+        end;
+        for Index := Node.ChildCount - 1 downto 0 do
+          Pending.Push(Node[Index]);
+      end;
+    finally
+      Pending.Free;
     end;
-    for Index := 0 to ANode.ChildCount - 1 do
-      CollectRoutines(ANode[Index]);
   end;
 
   function FindRoutine(const AName: string): TSyntaxNode;
@@ -239,22 +253,35 @@ var
     end;
   end;
 
-  procedure Visit(ANode: TSyntaxNode);
+  // Iterativ (Bericht M1).
+  procedure Visit(ARoot: TSyntaxNode);
   var
+    Pending: TStack<TSyntaxNode>;
+    Node: TSyntaxNode;
     Index: Integer;
     Body: TSyntaxNode;
   begin
-    if ANode.Kind = TSyntaxKind.TypeDecl then
-    begin
-      Body := ANode.FindChild(TSyntaxKind.ClassType);
-      if Body <> nil then
-        CheckClass(ANode.Name, Body);
-      Exit;
+    Pending := TStack<TSyntaxNode>.Create;
+    try
+      Pending.Push(ARoot);
+      while Pending.Count > 0 do
+      begin
+        Node := Pending.Pop;
+        if Node.Kind = TSyntaxKind.TypeDecl then
+        begin
+          Body := Node.FindChild(TSyntaxKind.ClassType);
+          if Body <> nil then
+            CheckClass(Node.Name, Body);
+          Continue;
+        end;
+        if Node.Kind in [TSyntaxKind.Block, TSyntaxKind.RoutineDecl] then
+          Continue;
+        for Index := Node.ChildCount - 1 downto 0 do
+          Pending.Push(Node[Index]);
+      end;
+    finally
+      Pending.Free;
     end;
-    if ANode.Kind in [TSyntaxKind.Block, TSyntaxKind.RoutineDecl] then
-      Exit;
-    for Index := 0 to ANode.ChildCount - 1 do
-      Visit(ANode[Index]);
   end;
 
 var

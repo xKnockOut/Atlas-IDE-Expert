@@ -103,7 +103,6 @@ uses
   Atlas.Common.Index.Extractor,
   Atlas.Common.Rules.Builtin.Inheritance,
   Atlas.Common.Rules.Derived,
-  Atlas.Common.Documents.Contract,
   Atlas.Tests.RuleAssert,
   Atlas.Tests.SmallStack,
   Atlas.Common.Editing.ChangeSignature,

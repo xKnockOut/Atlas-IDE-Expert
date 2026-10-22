@@ -456,8 +456,11 @@ var
       Result := False;
     end;
 
-    procedure Visit(ANode: TSyntaxNode);
+    // Iterativ (Bericht M1).
+    procedure Visit(ARoot: TSyntaxNode);
     var
+      Pending: TStack<TSyntaxNode>;
+      Node: TSyntaxNode;
       Index, Child: Integer;
       Receiver: TSyntaxNode;
       Symbol: TResolvedSymbol;
@@ -466,45 +469,55 @@ var
       Fixes: TArray<TRuleFix>;
       Text: string;
     begin
-      if (ANode.Kind = TSyntaxKind.MemberAccess) and (ANode.ChildCount > 0) and
-        (ANode[0].Kind = TSyntaxKind.Identifier) then
-      begin
-        Receiver := ANode[0];
-        if FindParam(Receiver.Name, Index) then
+      Pending := TStack<TSyntaxNode>.Create;
+      try
+        Pending.Push(ARoot);
+        while Pending.Count > 0 do
         begin
-          Param := AParams[Index];
-          // T.Create ohne constructor; eine Basisklasse oder record als Einschränkung lässt die Regel aus.
-          if SameText(ANode.Name, 'Create') and not Param.Has('constructor') and not Param.Has('record') and
-            (Param.TypeConstraints = nil) then
+          Node := Pending.Pop;
+          if (Node.Kind = TSyntaxKind.MemberAccess) and (Node.ChildCount > 0) and
+            (Node[0].Kind = TSyntaxKind.Identifier) then
           begin
-            Fixes := nil;
-            Text := ': class, constructor';
-            if Param.Constraints <> nil then
-              Text := ', constructor';
-            if ConstraintFix(Param, AStarts[Index], Text, Fix) then
-              Fixes := [Fix];
-            AReport.Add(RangeOf(ANode), Format('%s hat keine constructor-Einschränkung; %s.Create ist nicht erlaubt ' +
-              '(wie E2568).', [Param.Name, Param.Name]), TRuleConfidence.High, Fixes);
+            Receiver := Node[0];
+            if FindParam(Receiver.Name, Index) then
+            begin
+              Param := AParams[Index];
+              // T.Create ohne constructor; eine Basisklasse oder record als Einschränkung lässt die Regel aus.
+              if SameText(Node.Name, 'Create') and not Param.Has('constructor') and not Param.Has('record') and
+                (Param.TypeConstraints = nil) then
+              begin
+                Fixes := nil;
+                Text := ': class, constructor';
+                if Param.Constraints <> nil then
+                  Text := ', constructor';
+                if ConstraintFix(Param, AStarts[Index], Text, Fix) then
+                  Fixes := [Fix];
+                AReport.Add(RangeOf(Node), Format('%s hat keine constructor-Einschränkung; %s.Create ist nicht ' +
+                  'erlaubt (wie E2568).', [Param.Name, Param.Name]), TRuleConfidence.High, Fixes);
+              end;
+            end
+            else
+            begin
+              Symbol := Resolver.Resolve(AContext.Tree, FileName, Receiver.StartPos);
+              if Symbol.Found and not Symbol.IsType and FindParam(Symbol.TypeName, Index) and
+                (AParams[Index].Constraints = nil) then
+              begin
+                Fixes := nil;
+                if ConstraintFix(AParams[Index], AStarts[Index], ': class', Fix) then
+                  Fixes := [Fix];
+                AReport.Add(RangeOf(Node), Format('%s hat keine class- oder Interface-Einschränkung; %s.%s ist nicht ' +
+                  'erlaubt (wie E2571).', [AParams[Index].Name, Receiver.Name, Node.Name]), TRuleConfidence.High,
+                  Fixes);
+              end;
+            end;
           end;
-        end
-        else
-        begin
-          Symbol := Resolver.Resolve(AContext.Tree, FileName, Receiver.StartPos);
-          if Symbol.Found and not Symbol.IsType and FindParam(Symbol.TypeName, Index) and
-            (AParams[Index].Constraints = nil) then
-          begin
-            Fixes := nil;
-            if ConstraintFix(AParams[Index], AStarts[Index], ': class', Fix) then
-              Fixes := [Fix];
-            AReport.Add(RangeOf(ANode), Format('%s hat keine class- oder Interface-Einschränkung; %s.%s ist nicht ' +
-              'erlaubt (wie E2571).', [AParams[Index].Name, Receiver.Name, ANode.Name]), TRuleConfidence.High,
-              Fixes);
-          end;
+          for Child := Node.ChildCount - 1 downto 0 do
+            if Node[Child].Kind <> TSyntaxKind.AnonymousMethod then
+              Pending.Push(Node[Child]);
         end;
+      finally
+        Pending.Free;
       end;
-      for Child := 0 to ANode.ChildCount - 1 do
-        if ANode[Child].Kind <> TSyntaxKind.AnonymousMethod then
-          Visit(ANode[Child]);
     end;
 
   var
@@ -521,16 +534,29 @@ var
   var
     Types: TDictionary<string, TSyntaxNode>;
 
-    procedure CollectTypes(ANode: TSyntaxNode);
+    // Iterativ (Bericht M1).
+    procedure CollectTypes(ARoot: TSyntaxNode);
     var
+      Pending: TStack<TSyntaxNode>;
+      Node: TSyntaxNode;
       Child: Integer;
     begin
-      if (ANode.Kind = TSyntaxKind.TypeDecl) and (ANode.FindChild(TSyntaxKind.GenericParams) <> nil) then
-        Types.AddOrSetValue(LowerCase(ANode.Name), ANode);
-      if ANode.Kind in [TSyntaxKind.RoutineDecl, TSyntaxKind.Block] then
-        Exit;
-      for Child := 0 to ANode.ChildCount - 1 do
-        CollectTypes(ANode[Child]);
+      Pending := TStack<TSyntaxNode>.Create;
+      try
+        Pending.Push(ARoot);
+        while Pending.Count > 0 do
+        begin
+          Node := Pending.Pop;
+          if (Node.Kind = TSyntaxKind.TypeDecl) and (Node.FindChild(TSyntaxKind.GenericParams) <> nil) then
+            Types.AddOrSetValue(LowerCase(Node.Name), Node);
+          if Node.Kind in [TSyntaxKind.RoutineDecl, TSyntaxKind.Block] then
+            Continue;
+          for Child := Node.ChildCount - 1 downto 0 do
+            Pending.Push(Node[Child]);
+        end;
+      finally
+        Pending.Free;
+      end;
     end;
 
     /// <summary>Kopf der Methode AName im Typ ATypeDecl, wenn es genau einen gibt.</summary>
@@ -554,37 +580,50 @@ var
         end;
     end;
 
-    procedure Visit(ANode: TSyntaxNode);
+    // Iterativ (Bericht M1).
+    procedure Visit(ARoot: TSyntaxNode);
     var
+      Pending: TStack<TSyntaxNode>;
+      Node: TSyntaxNode;
       Child, Index, Start, Dot: Integer;
       TypeDecl, Header: TSyntaxNode;
       Params, Own: TArray<TGenericParam>;
       Starts: TArray<Integer>;
     begin
-      if ANode.Kind = TSyntaxKind.RoutineDecl then
-      begin
-        Dot := LastDelimiter('.', ANode.Name);
-        if (Dot > 0) and Types.TryGetValue(LowerCase(Copy(ANode.Name, 1, Dot - 1)), TypeDecl) then
+      Pending := TStack<TSyntaxNode>.Create;
+      try
+        Pending.Push(ARoot);
+        while Pending.Count > 0 do
         begin
-          Params := ParamsOf(TypeDecl, Start);
-          Starts := nil;
-          for Index := 0 to High(Params) do
-            Starts := Starts + [Start];
-          Header := MethodHeader(TypeDecl, Copy(ANode.Name, Dot + 1, MaxInt));
-          if Header <> nil then
+          Node := Pending.Pop;
+          if Node.Kind = TSyntaxKind.RoutineDecl then
           begin
-            Own := ParamsOf(Header, Start);
-            for Index := 0 to High(Own) do
-              Starts := Starts + [Start];
-            Params := Params + Own;
+            Dot := LastDelimiter('.', Node.Name);
+            if (Dot > 0) and Types.TryGetValue(LowerCase(Copy(Node.Name, 1, Dot - 1)), TypeDecl) then
+            begin
+              Params := ParamsOf(TypeDecl, Start);
+              Starts := nil;
+              for Index := 0 to High(Params) do
+                Starts := Starts + [Start];
+              Header := MethodHeader(TypeDecl, Copy(Node.Name, Dot + 1, MaxInt));
+              if Header <> nil then
+              begin
+                Own := ParamsOf(Header, Start);
+                for Index := 0 to High(Own) do
+                  Starts := Starts + [Start];
+                Params := Params + Own;
+              end;
+              if Params <> nil then
+                CheckBody(Node, Params, Starts);
+            end;
+            Continue;
           end;
-          if Params <> nil then
-            CheckBody(ANode, Params, Starts);
+          for Child := Node.ChildCount - 1 downto 0 do
+            Pending.Push(Node[Child]);
         end;
-        Exit;
+      finally
+        Pending.Free;
       end;
-      for Child := 0 to ANode.ChildCount - 1 do
-        Visit(ANode[Child]);
     end;
 
   begin
