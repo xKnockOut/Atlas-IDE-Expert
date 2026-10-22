@@ -2388,6 +2388,20 @@
       "compilerCodes": [
         "W1070"
       ]
+    },
+    {
+      "id": "type-too-large",
+      "name": "Type exceeds a size limit",
+      "category": "bug",
+      "severity": "error",
+      "group": "compiler",
+      "description": "A static array or record is 2 GB or larger (like E2100), or an instance of a generic type of this file is (like E2543). Atlas computes a lower bound from the declarations: index ranges via constant expressions, constants and enumerations of the file, built-in types, records from the index; unknown parts count as 0, so the rule reports only for sure. Only the innermost type that crosses the limit is reported. E2419 (records over 1 MB) applies only to Delphi for .NET and is not reported. No quick fix; use a dynamic array or a pointer instead.",
+      "bad": "type TPuffer = array[0..High(Integer)] of Int64;",
+      "good": "type TPuffer = array of Int64;",
+      "compilerCodes": [
+        "E2100",
+        "E2543"
+      ]
     }
   ]
 }

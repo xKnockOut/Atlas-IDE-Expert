@@ -10,7 +10,7 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 | [Exceptions](#gruppe-exceptions) | 8 |
 | [Threads](#gruppe-threads) | 13 |
 | [Datenbank](#gruppe-database) | 4 |
-| [Compiler vorab](#gruppe-compiler) | 19 |
+| [Compiler vorab](#gruppe-compiler) | 20 |
 | [Robustheit und Muster](#gruppe-robustness) | 3 |
 | [Performance](#gruppe-performance) | 4 |
 | [Sicherheit](#gruppe-security) | 11 |
@@ -150,6 +150,7 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 | [`variant-record-managed-field`](#variant-record-managed-field) | Verwalteter Typ im varianten Teil eines Records | Bug | Fehler |
 | [`guid-syntax-invalid`](#guid-syntax-invalid) | GUID mit falscher Schreibweise | Bug | Fehler |
 | [`untyped-pointer-refcount`](#untyped-pointer-refcount) | Untypisierter Zeiger umgeht die Referenzzählung | Bug | Warnung |
+| [`type-too-large`](#type-too-large) | Typ überschreitet eine Größengrenze | Bug | Fehler |
 
 <a id="gruppe-robustness"></a>
 ### Robustheit und Muster
@@ -4686,4 +4687,25 @@ Richtig:
 [weak] FBesitzer: IBesitzer;
 …
 FBesitzer := Besitzer;
+```
+
+<a id="type-too-large"></a>
+### type-too-large
+
+**Typ überschreitet eine Größengrenze** · Bug · Fehler · Gruppe Compiler vorab
+
+Ein statisches Array oder Record ist 2 GB groß oder größer (wie E2100), ebenso eine Instanz eines generischen Typs dieser Datei (wie E2543). Atlas rechnet eine untere Grenze aus den Deklarationen: Indexbereiche über konstante Ausdrücke, Konstanten und Aufzählungen der Datei, eingebaute Typen, Records aus dem Index; Unbekanntes zählt 0, gemeldet wird also nur sicher. Gemeldet wird nur der innerste Typ, der die Grenze überschreitet. E2419 (Records über 1 MB) gilt nur für Delphi für .NET und wird nicht gemeldet. Keine Korrektur; stattdessen ein dynamisches Array oder einen Zeiger verwenden.
+
+Entspricht der Compilermeldung `E2100`, `E2543`.
+
+Mit Treffer:
+
+```pascal
+type TPuffer = array[0..High(Integer)] of Int64;
+```
+
+Richtig:
+
+```pascal
+type TPuffer = array of Int64;
 ```

@@ -2408,6 +2408,20 @@ begin
     '      "compilerCodes": [' + #10 +
     '        "W1070"' + #10 +
     '      ]' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "type-too-large",' + #10 +
+    '      "name": "Type exceeds a size limit",' + #10 +
+    '      "category": "bug",' + #10 +
+    '      "severity": "error",' + #10 +
+    '      "group": "compiler",' + #10 +
+    '      "description": "A static array or record is 2 GB or larger (like E2100), or an instance of a generic type of this file is (like E2543). Atlas computes a lower bound from the declarations: index ' + 'ranges via constant expressions, constants and enumerations of the file, built-in types, records from the index; unknown parts count as 0, so the rule reports only for sure. Only the innermost type th' + 'at crosses the limit is reported. E2419 (records over 1 MB) applies only to Delphi for .NET and is not reported. No quick fix; use a dynamic array or a pointer instead.",' + #10 +
+    '      "bad": "type TPuffer = array[0..High(Integer)] of Int64;",' + #10 +
+    '      "good": "type TPuffer = array of Int64;",' + #10 +
+    '      "compilerCodes": [' + #10 +
+    '        "E2100",' + #10 +
+    '        "E2543"' + #10 +
+    '      ]' + #10 +
     '    }' + #10 +
     '  ]' + #10 +
     '}' + #10 +
@@ -3617,6 +3631,11 @@ begin
     '      "id": "untyped-pointer-refcount",' + #10 +
     '      "name": "Untypisierter Zeiger umgeht die Referenzzählung",' + #10 +
     '      "description": "Ein Interface wird über eine Typumwandlung nach Pointer zugewiesen (Pointer(FIntf) := P, wie W1070). Die Referenzzählung läuft dann nicht mit: das Objekt wird zu früh freigegeben' + ' oder nie. Die Regel meldet nur, wenn die Namensauflösung den Interface-Typ sicher kennt; Strings (string, AnsiString …) meldet sie ebenfalls, mit dem Zusatz „dcc meldet das nicht“, weil Delphi bei ih' + 'nen nur unter NEXTGEN warnt. Felder mit [weak] oder [unsafe] bleiben still. Korrekturen für ein Interface-Feld dieser Datei mit Pointer(Y) oder nil rechts: das Feld mit [weak] bzw. [unsafe] auszeichne' + 'n und ohne Pointer zuweisen."' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "type-too-large",' + #10 +
+    '      "name": "Typ überschreitet eine Größengrenze",' + #10 +
+    '      "description": "Ein statisches Array oder Record ist 2 GB groß oder größer (wie E2100), ebenso eine Instanz eines generischen Typs dieser Datei (wie E2543). Atlas rechnet eine untere Grenze aus ' + 'den Deklarationen: Indexbereiche über konstante Ausdrücke, Konstanten und Aufzählungen der Datei, eingebaute Typen, Records aus dem Index; Unbekanntes zählt 0, gemeldet wird also nur sicher. Gemeldet ' + 'wird nur der innerste Typ, der die Grenze überschreitet. E2419 (Records über 1 MB) gilt nur für Delphi für .NET und wird nicht gemeldet. Keine Korrektur; stattdessen ein dynamisches Array oder einen Z' + 'eiger verwenden."' + #10 +
     '    }' + #10 +
     '  ]' + #10 +
     '}' + #10 +
