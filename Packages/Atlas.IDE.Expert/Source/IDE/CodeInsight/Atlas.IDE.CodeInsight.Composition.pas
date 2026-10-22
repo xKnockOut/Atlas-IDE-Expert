@@ -2007,8 +2007,12 @@ begin
       if ARestart then
         Result := Manager.RestartServer
       else
-        // Die aktive Sitzung startet den Server, wenn er noch nicht läuft.
+      begin
+        // Von Hand: auch nach zwei gleichen Abstürzen (Bericht H5). Die aktive Sitzung startet den Server,
+        // wenn er noch nicht läuft.
+        Manager.AllowStart;
         Result := Manager.ActiveSession <> nil;
+      end;
     end;
   Hooks.ServerCommand :=
     function(ACommand: string): Boolean
@@ -2097,6 +2101,8 @@ begin
     ManagerRef := Manager;
     // „Protokoll öffnen“ an den Einträgen des Servers in der Benachrichtigungszentrale (#601).
     Manager.OnOpenLog := OpenLog;
+    // Nach zwei gleichen Abstürzen des Servers bietet die Meldung den Fehlerbericht an (Bericht H5).
+    Manager.OnBugReport := CreateBugReport;
     ManagerIndex := Services.AddCodeInsightManager(Manager);
   end;
 end;

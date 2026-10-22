@@ -65,6 +65,7 @@ contains
   Atlas.Text.TestResults in '..\Atlas.Text\Source\TestResults\Atlas.Text.TestResults.pas',
   Atlas.Text.MapFile in '..\Atlas.Text\Source\MapFile\Atlas.Text.MapFile.pas',
   Atlas.Core.Lsp.Progress in 'Source\Core\Lsp\Atlas.Core.Lsp.Progress.pas',
+  Atlas.Core.Lsp.Crashes in 'Source\Core\Lsp\Atlas.Core.Lsp.Crashes.pas',
   Atlas.Core.Lsp.Client in 'Source\Core\Lsp\Atlas.Core.Lsp.Client.pas',
   Atlas.Core.Lsp.Contract in 'Source\Core\Lsp\Atlas.Core.Lsp.Contract.pas',
   Atlas.Core.Lsp.Session in 'Source\Core\Lsp\Atlas.Core.Lsp.Session.pas',

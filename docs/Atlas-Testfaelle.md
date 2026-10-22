@@ -3110,6 +3110,24 @@ Voraussetzung: Einstellungen auf Vorgabe, Diagnoselog an; Projektgruppe `Atlas.g
 | SN5 | Kommandozeile: `AtlasServer.exe --check` über die Gruppe (Abschnitt „Linter mode“ im README) | Läuft durch alle Units ohne Absturz; dieselben Befunde wie vor #1094 |
 | SN6 | Testlauf `Atlas.Tests.exe` | Grün, darunter `SecondOverflowInSameThreadIsCaughtAgain` (drei Stapelüberläufe im selben Thread werden abgefangen, der Prozess lebt) |
 
+## Ende des Servers mit Ursache (Bericht H5)
+
+Voraussetzung: Einstellungen auf Vorgabe, ein Projekt offen, Atlas-Feld in der Statuszeile sichtbar. „Beenden“ heißt: `AtlasServer.exe` im Task-Manager über „Task beenden“ schließen (Exit-Code 1).
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| SK1 | Server beenden | Atlas-Feld rot, Text „Server: abgestürzt um hh:mm (Code 1 (unbehandelte Ausnahme oder von außen beendet))“; `%LOCALAPPDATA%\Atlas\Logs\atlas.log` enthält „Server beendet: Code 1 (…) nach …; letzte Anfrage …; nichts auf stderr“ (**Abnahme**) |
+| SK2 | Nach SK1 Maus über einen Bezeichner | Der Server startet wieder, Hover erscheint; Benachrichtigung „Server neu gestartet“ mit „Der Server war beendet (Code 1 (…)) und läuft wieder.“ |
+| SK3 | Innerhalb von zehn Minuten nach SK1 den Server noch einmal beenden, danach Maus über Bezeichner, Strg+Leer | Benachrichtigung „Server wiederholt abgestürzt“ (Fehler) mit „Server neu starten“, „Fehlerbericht erstellen…“ und „Protokoll öffnen“; Atlas-Feld „… zweimal, kein automatischer Neustart“; Hover und Vervollständigung starten keinen Server, im Task-Manager kein `AtlasServer.exe` (**Abnahme**) |
+| SK4 | In SK3 „Fehlerbericht erstellen…“ | Vorschau mit beiden Zeilen „Server beendet: …“ im Protokollauszug und dem Hinweis, dass der Server nicht läuft; steht etwas in `server-stderr.log`, der Abschnitt „Fehlerausgabe des Servers (stderr, letzte n Zeilen)“ ohne Pfade und Benutzernamen |
+| SK5 | In SK3 „Server neu starten“ | Server läuft wieder; atlas.log „Server: Start von Hand nach wiederholtem Absturz“; ein weiteres Beenden startet beim nächsten Zugriff wieder von selbst (Zählung von vorn) |
+| SK6 | Wie SK3, dann statt SK5 das Atlas-Feld anklicken › „Server neu starten“ bzw. in der Einrichtung „Server starten“ | Server läuft wieder wie in SK5 |
+| SK7 | `%LOCALAPPDATA%\Atlas\Logs\server-stderr.log` nach einigen Starts öffnen | Je Start eine Zeile „---- <Datum Uhrzeit> Serverstart ----“; ist die Datei beim Start größer als 1 MB, liegt sie danach als `server-stderr.1.log` daneben |
+| SK8 | Atlas › Server neu starten, danach IDE schließen | Kein Eintrag „Server beendet: …“ im atlas.log: Von Atlas beendet ist kein Absturz |
+| SK9 | Zwei IDEs gleichzeitig offen, in beiden arbeiten | Beide Server schreiben in dieselbe `server-stderr.log`, keine Fehlermeldung, kein Start scheitert |
+| SK10 | IDE mit Englisch als Sprache, SK3 | „Server crashed repeatedly“, Knöpfe „Restart server“, „Create bug report…“, „Open log“ |
+| SK11 | Testlauf `Atlas.Tests.exe` | Grün, darunter `EndReportsExitCodeAndStderr` (Exit-Code 3 und eine Zeile stderr von `cmd.exe`) und `CloseInfoNamesLastAndOpenRequests` |
+
 ## Gliederung beim Start und Kontextwechsel ohne Zugriffsverletzung
 
 Voraussetzung: experimentelles `editor.stickyScroll` an (wie bei Marco), Brotkrumen an; IDE frisch gestartet, eine Gruppe mit mehreren Plattformen.

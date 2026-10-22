@@ -1,7 +1,8 @@
 ﻿unit Atlas.Core.Diagnostics.BugReport;
 
 // Fehlerbericht des Plugins (#108): Teil des Plugins (Atlas-, IDE-Version,
-// Plattform, Einstellungen, Auszug aus atlas.log) und davor der Bericht des
+// Plattform, Einstellungen, Auszug aus atlas.log, Ende von server-stderr.log,
+// Bericht H5) und dahinter der Bericht des
 // Servers (atlas.server.bugReport mit Version, wirksamer Konfiguration,
 // Protokoll und den letzten Anfragen). Quelltext steht nie darin.
 // Anonymisiert (Einstellung diagnostics.bugReport.anonymize, Vorgabe an)
@@ -25,6 +26,8 @@ type
     /// <summary>Wirksame experimentelle Schalter (#834), nur Schlüssel; leer = keine.</summary>
     Experimental: TArray<string>;
     PluginLog: TArray<string>;
+    /// <summary>Letzte Zeilen aus server-stderr.log (Bericht H5); leer = Abschnitt entfällt.</summary>
+    ServerErrorOutput: TArray<string>;
     /// <summary>Text des Servers; '' wenn er nicht läuft oder nicht antwortet.</summary>
     ServerReport: string;
     /// <summary>Warum der Teil des Servers fehlt; '' wenn er da ist.</summary>
@@ -42,6 +45,8 @@ type
     IssuesUrl = 'https://github.com/xKnockOut/Atlas-IDE-Expert/issues/new/choose';
     /// <summary>So viele Zeilen aus atlas.log.</summary>
     LogLines = 100;
+    /// <summary>So viele Zeilen aus server-stderr.log.</summary>
+    ErrorOutputLines = 50;
   public
     /// <summary>Angaben für den Server: [{"anonymize": …, "client": "Atlas-Plugin …, IDE …, Win32"}].</summary>
     class function ServerArguments(const AInput: TAtlasBugReportInput): string; static;
@@ -136,6 +141,22 @@ begin
       Builder.Append(TTextAnonymizer.FenceSafe(Text)).Append(sLineBreak);
     end;
     Builder.Append('```').Append(sLineBreak).Append(sLineBreak);
+
+    // Was die Laufzeit des Servers vor einem Absturz noch ausgab (Bericht H5); anonymisiert wie das Protokoll.
+    if Length(AInput.ServerErrorOutput) > 0 then
+    begin
+      Builder.Append(Format('### Fehlerausgabe des Servers (stderr, letzte %d Zeilen)',
+        [Length(AInput.ServerErrorOutput)]));
+      Builder.Append(sLineBreak).Append(sLineBreak).Append('```').Append(sLineBreak);
+      for Line in AInput.ServerErrorOutput do
+      begin
+        Text := Line;
+        if AInput.Anonymize then
+          Text := AnonymizeLogLine(Text, AInput.Roots, AInput.Identity);
+        Builder.Append(TTextAnonymizer.FenceSafe(Text)).Append(sLineBreak);
+      end;
+      Builder.Append('```').Append(sLineBreak).Append(sLineBreak);
+    end;
 
     if AInput.ServerReport <> '' then
     begin
