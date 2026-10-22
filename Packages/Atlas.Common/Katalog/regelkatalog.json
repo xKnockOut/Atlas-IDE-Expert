@@ -2293,6 +2293,20 @@
         "E2129",
         "E2130"
       ]
+    },
+    {
+      "id": "jump-outside-allowed-scope",
+      "name": "Break, Continue or Exit in a place where it is not allowed",
+      "category": "bug",
+      "severity": "error",
+      "group": "compiler",
+      "description": "Break or Continue outside a loop (like E2097), or Break, Continue or Exit that leave a finally block (like E2126). Delphi only reports both when compiling; it happens often after moving a loop body into a method of its own. A loop that lies entirely inside the finally block may use Break and Continue. Routines and anonymous methods start afresh: a Break in an anonymous method does not belong to the loop around it. Only plain calls are reported (not TMonitor.Exit(FLock)), and not when the file declares a routine or variable of that name. Quick fix outside a finally block: replace Break with Exit.",
+      "bad": "if Eintrag.Treffer then\n  Break;",
+      "good": "if Eintrag.Treffer then\n  Exit;",
+      "compilerCodes": [
+        "E2097",
+        "E2126"
+      ]
     }
   ]
 }

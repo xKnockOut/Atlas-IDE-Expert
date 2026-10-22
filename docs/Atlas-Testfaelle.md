@@ -4119,3 +4119,18 @@ Voraussetzung: Server läuft in der IDE mit Projekt; RTL und VCL im Index.
 | RO5 | `Liste.Text := ''`, `if Liste.Count = 0`, gleichnamige lokale Variable `Count := 0`, `property Caption;` aus einem Vorfahren | Keine Meldung |
 | RO6 | `"readonly-property-assigned": "off"`, `"group:compiler": "off"` bzw. `exclude` | Keine Meldung |
 | RO7 | Abgleich mit Delphi: RO1, RO3, RO4 übersetzen | dcc meldet E2129 bzw. E2130 an denselben Stellen, für RO5 nichts |
+
+## Break, Continue oder Exit an unzulässiger Stelle (#984)
+
+Voraussetzung: Server läuft in der IDE mit Projekt.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| JS1 | Das Beispiel aus #984: Methode mit `if Eintrag.Treffer then Break;` ohne Schleife | Fehler `jump-outside-allowed-scope` an `Break`: „Break außerhalb einer Schleife (wie E2097).“; im Fenster „Atlas-Prüfung“ und im Befund-Hover (**Abnahme**) |
+| JS2 | Schnellkorrektur „Break durch Exit ersetzen“, danach Strg+Z | Zeile wird `Exit;`, keine Meldung mehr; ein Undo-Schritt |
+| JS3 | `Continue;` ohne Schleife | „Continue außerhalb einer Schleife (wie E2097).“, keine Korrektur |
+| JS4 | In einer Schleife `try … finally if Fertig then Break; end;`, ebenso `Continue` und `Exit` im finally | „Break darf einen finally-Block nicht verlassen (wie E2126).“ bzw. für Continue und Exit; keine Korrektur |
+| JS5 | Schleife ganz im finally mit `Break`, `Exit` im try-Teil, `Break` in `case` und `with` einer Schleife, `TMonitor.Exit(FLock)`, `Exit` in einer anonymen Methode im finally | Keine Meldung |
+| JS6 | `Break` in einer anonymen Methode, die in einer Schleife steht | „Break außerhalb einer Schleife (wie E2097).“ |
+| JS7 | `"jump-outside-allowed-scope": "off"`, `"group:compiler": "off"` bzw. `exclude` | Keine Meldung |
+| JS8 | Abgleich mit Delphi: JS1, JS3, JS4, JS6 übersetzen | dcc meldet E2097 bzw. E2126 an denselben Stellen, für JS5 nichts |
