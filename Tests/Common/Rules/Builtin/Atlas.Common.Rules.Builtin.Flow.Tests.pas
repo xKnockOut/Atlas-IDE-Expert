@@ -12,7 +12,9 @@
 // stille Muster (Destruktor, := nil, Methode setzt neu, lokale Variable),
 // Option ignoreMethods, Abschalten und Ausnahmen; out-param-read (#924):
 // Beispiel mit Korrektur in Deklaration und Implementierung, Integer,
-// stille Muster, Abschalten.
+// stille Muster, Abschalten; destructor-not-nil-safe (#1087): Beispiel mit
+// Korrektur, bedingtes Anlegen, Hilfsmethode des Destruktors, Option
+// onlyAfterRaisingCode, stille Muster, Abschalten und Ausnahmen.
 
 interface
 
@@ -85,6 +87,12 @@ type
     procedure OutParamReadMethodAndInteger;
     [Test]
     procedure OutParamReadSilentAndOff;
+    [Test]
+    procedure DestructorNotNilSafeIssueExample;
+    [Test]
+    procedure DestructorNotNilSafeVariants;
+    [Test]
+    procedure DestructorNotNilSafeSilentCases;
   end;
 
 implementation
@@ -679,6 +687,171 @@ begin
     '{"rules": {"out-param-read": {"exclude": ["Alt/*.pas"]}}}', 'Alt/U.pas'))));
   Assert.AreEqual(1, Integer(Length(TRuleAssert.Findings(TOutParamReadRule.Create, Anhaengen,
     '{"rules": {"out-param-read": {"exclude": ["Alt/*.pas"]}}}', 'Neu/U.pas'))));
+end;
+
+function ImportUnit(const AConstructor, ADestructor, AExtra: string): string; overload;
+begin
+  Result := 'unit U;'#10'interface'#10'type'#10'  TImport = class'#10'  private'#10'    FStrom: TFileStream;'#10 +
+    '    FZeilen: TStringList;'#10'    procedure Leeren;'#10'  public'#10 +
+    '    constructor Create(const Datei: string);'#10'    destructor Destroy; override;'#10'  end;'#10 +
+    'implementation'#10'constructor TImport.Create(const Datei: string);'#10'begin'#10 + AConstructor + #10 +
+    'end;'#10'destructor TImport.Destroy;'#10'begin'#10 + ADestructor + #10'end;'#10 + AExtra + 'end.';
+end;
+
+function ImportUnit(const AConstructor, ADestructor: string): string; overload;
+begin
+  Result := ImportUnit(AConstructor, ADestructor, '');
+end;
+
+const
+  ImportCreate = '  inherited Create;'#10'  FStrom := TFileStream.Create(Datei, fmOpenRead);'#10 +
+    '  FZeilen := TStringList.Create;';
+
+procedure TFlowRulesTests.DestructorNotNilSafeIssueExample;
+const
+  Destroy = '  FZeilen.Clear;'#10'  FZeilen.Free;'#10'  FStrom.Free;'#10'  inherited;';
+  Fixed = '  if Assigned(FZeilen) then'#10'    FZeilen.Clear;'#10'  FZeilen.Free;'#10'  FStrom.Free;'#10'  inherited;';
+var
+  Findings: TArray<TRuleFinding>;
+  Text: string;
+  Tree: TSyntaxTree;
+  Rule: IRule;
+  Found: Boolean;
+begin
+  Findings := TRuleAssert.Findings(TDestructorNotNilSafeRule.Create, ImportUnit(ImportCreate, Destroy));
+  Assert.AreEqual(1, Integer(Length(Findings)));
+  Assert.AreEqual(DestructorNotNilSafeRuleId, Findings[0].RuleId);
+  Assert.AreEqual(Ord(TRuleSeverity.Warning), Ord(Findings[0].Severity));
+  Assert.AreEqual(Ord(TRuleConfidence.High), Ord(Findings[0].Confidence));
+  Assert.AreEqual('Wirft TFileStream.Create, ist FZeilen beim Destruktor noch nil; FZeilen.Clear stürzt ab und ' +
+    'verdeckt die eigentliche Exception.', Findings[0].Message);
+  Assert.AreEqual(21, Findings[0].Range.StartPos.Line);
+  Assert.AreEqual(2, Findings[0].Range.StartPos.Character);
+  Assert.AreEqual(1, Integer(Length(Findings[0].Fixes)));
+  Assert.AreEqual('In if Assigned(FZeilen) then einschließen', Findings[0].Fixes[0].Title);
+  Assert.AreEqual(1, Integer(Length(Findings[0].Fixes[0].Edits)), 'ein Undo-Schritt');
+  Text := TChangeSignature.ApplyEdits(ImportUnit(ImportCreate, Destroy), Findings[0].Fixes[0].Edits);
+  Assert.AreEqual(ImportUnit(ImportCreate, Fixed), Text);
+  Tree := TPascalParser.Parse(Text);
+  try
+    Assert.AreEqual(0, Integer(Length(Tree.Diagnostics)), 'Ergebnis parst fehlerfrei');
+  finally
+    Tree.Free;
+  end;
+  TRuleAssert.Silent(TDestructorNotNilSafeRule.Create, Text);
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TDestructorNotNilSafeRule.Create,
+    ImportUnit(ImportCreate, Destroy), '{"rules": {"destructor-not-nil-safe": "off"}}', 'U.pas'))));
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TDestructorNotNilSafeRule.Create,
+    ImportUnit(ImportCreate, Destroy), '{"rules": {"destructor-not-nil-safe": {"exclude": ["Alt/*.pas"]}}}',
+    'Alt/U.pas'))));
+  Assert.AreEqual(1, Integer(Length(TRuleAssert.Findings(TDestructorNotNilSafeRule.Create,
+    ImportUnit(ImportCreate, Destroy), '{"rules": {"destructor-not-nil-safe": {"exclude": ["Alt/*.pas"]}}}',
+    'Neu/U.pas'))));
+  Found := False;
+  for Rule in BuiltinRules do
+    if Rule.Descriptor.Id = DestructorNotNilSafeRuleId then
+      Found := True;
+  Assert.IsTrue(Found, DestructorNotNilSafeRuleId);
+end;
+
+procedure TFlowRulesTests.DestructorNotNilSafeVariants;
+var
+  Findings: TArray<TRuleFinding>;
+  Issues: TArray<TConfigurationIssue>;
+begin
+  // Nur bedingt angelegt: auch ohne Aufruf davor; Zugriff über Self, Property und Index.
+  Findings := TRuleAssert.Findings(TDestructorNotNilSafeRule.Create, ImportUnit(
+    '  inherited Create;'#10'  if Datei <> '''' then'#10'    FZeilen := TStringList.Create;',
+    '  if Self.FZeilen.Count > 0 then'#10'    Speichern;'#10'  FZeilen.Free;'#10'  inherited;'));
+  Assert.AreEqual(1, Integer(Length(Findings)));
+  Assert.AreEqual('FZeilen wird im Konstruktor nur bedingt angelegt und kann beim Destruktor nil sein; ' +
+    'Self.FZeilen.Count stürzt dann ab.', Findings[0].Message);
+  Assert.AreEqual(0, Integer(Length(Findings[0].Fixes)), 'if über mehrere Zeilen: keine Korrektur');
+  // Ein Aufruf ohne Klammern vor dem Anlegen; Zugriff in einer Hilfsmethode, die nur der Destruktor aufruft.
+  Findings := TRuleAssert.Findings(TDestructorNotNilSafeRule.Create, ImportUnit(
+    '  inherited Create;'#10'  Pruefen;'#10'  FZeilen := TStringList.Create;',
+    '  Leeren;'#10'  FZeilen.Free;'#10'  inherited;',
+    'procedure TImport.Leeren;'#10'begin'#10'  FZeilen[0] := '''';'#10'end;'#10));
+  Assert.AreEqual(1, Integer(Length(Findings)));
+  Assert.AreEqual('Wirft Pruefen, ist FZeilen beim Destruktor noch nil; FZeilen[0] stürzt ab und verdeckt die ' +
+    'eigentliche Exception.', Findings[0].Message);
+  Assert.AreEqual(27, Findings[0].Range.StartPos.Line);
+  // onlyAfterRaisingCode aus: auch das erste angelegte Feld.
+  Findings := TRuleAssert.Findings(TDestructorNotNilSafeRule.Create, ImportUnit(ImportCreate,
+    '  FStrom.Position := 0;'#10'  FStrom.Free;'#10'  inherited;'),
+    '{"rules": {"destructor-not-nil-safe": {"onlyAfterRaisingCode": false}}}', 'U.pas');
+  Assert.AreEqual(1, Integer(Length(Findings)));
+  Assert.AreEqual('Wirft TFileStream.Create, ist FStrom beim Destruktor noch nil; FStrom.Position stürzt ab und ' +
+    'verdeckt die eigentliche Exception.', Findings[0].Message);
+  TRuleAssert.Silent(TDestructorNotNilSafeRule.Create, ImportUnit(ImportCreate,
+    '  FStrom.Position := 0;'#10'  FStrom.Free;'#10'  inherited;'));
+  // Der Parser prüft die Option als Wahrheitswert.
+  TConfigurationParser.Parse('{"rules": {"destructor-not-nil-safe": {"onlyAfterRaisingCode": "ja"}}}', Issues);
+  Assert.AreEqual(1, Integer(Length(Issues)));
+  TConfigurationParser.Parse('{"rules": {"destructor-not-nil-safe": {"onlyAfterRaisingCode": false}}}', Issues);
+  Assert.AreEqual(0, Integer(Length(Issues)));
+  // Je Anweisung ein Befund, damit jede Korrektur ihre Anweisung schützt.
+  TRuleAssert.Reports(TDestructorNotNilSafeRule.Create, ImportUnit(ImportCreate,
+    '  FZeilen.Clear;'#10'  FZeilen.Sorted := False;'#10'  FZeilen.Free;'#10'  inherited;'), 2);
+  // TObjectList<T>.Create(True) wirft höchstens EOutOfMemory; ein Konstruktor mit Datei davor schon.
+  TRuleAssert.Silent(TDestructorNotNilSafeRule.Create, ImportUnit(
+    '  FStrom := TObjectList<TObject>.Create(True);'#10'  FZeilen := TStringList.Create;',
+    '  FZeilen.Clear;'#10'  inherited;'));
+  // Destroy ist nicht nil-sicher; DisposeOf schon.
+  TRuleAssert.Reports(TDestructorNotNilSafeRule.Create, ImportUnit(ImportCreate,
+    '  FZeilen.Destroy;'#10'  FStrom.DisposeOf;'#10'  inherited;'));
+end;
+
+procedure TFlowRulesTests.DestructorNotNilSafeSilentCases;
+begin
+  // Free, FreeAndNil, Assigned, <> nil, = nil mit Exit.
+  TRuleAssert.Silent(TDestructorNotNilSafeRule.Create, ImportUnit(ImportCreate,
+    '  FreeAndNil(FZeilen);'#10'  FStrom.Free;'#10'  inherited;'));
+  TRuleAssert.Silent(TDestructorNotNilSafeRule.Create, ImportUnit(ImportCreate,
+    '  if Assigned(FZeilen) and (FZeilen.Count > 0) then'#10'    FZeilen.Clear;'#10'  FZeilen.Free;'#10 +
+    '  inherited;'));
+  TRuleAssert.Silent(TDestructorNotNilSafeRule.Create, ImportUnit(ImportCreate,
+    '  if FZeilen <> nil then'#10'    FZeilen.Clear;'#10'  inherited;'));
+  // Kein werfender Aufruf vor dem Anlegen: inherited Create zählt nicht.
+  TRuleAssert.Silent(TDestructorNotNilSafeRule.Create, ImportUnit(
+    '  inherited Create;'#10'  FZeilen := TStringList.Create;'#10'  FStrom := TFileStream.Create(Datei, fmOpenRead);',
+    '  FZeilen.Clear;'#10'  FZeilen.Free;'#10'  FStrom.Free;'#10'  inherited;'));
+  // Auf beiden Zweigen angelegt, ohne Aufruf davor.
+  TRuleAssert.Silent(TDestructorNotNilSafeRule.Create, ImportUnit(
+    '  if Datei = '''' then'#10'    FZeilen := TStringList.Create'#10'  else'#10 +
+    '    FZeilen := THashedStringList.Create;',
+    '  FZeilen.Clear;'#10'  inherited;'));
+  // BeforeDestruction läuft nach einer Exception im Konstruktor nicht; Leeren wird auch anderswo aufgerufen.
+  TRuleAssert.Silent(TDestructorNotNilSafeRule.Create, ImportUnit(ImportCreate,
+    '  Leeren;'#10'  inherited;',
+    'procedure TImport.BeforeDestruction;'#10'begin'#10'  FZeilen.SaveToFile(''x'');'#10'end;'#10 +
+    'procedure TImport.Leeren;'#10'begin'#10'  FZeilen.Clear;'#10'end;'#10 +
+    'procedure TImport.Neu;'#10'begin'#10'  Leeren;'#10'end;'#10));
+  // Im Destruktor neu gesetzt; Feld nicht im Konstruktor angelegt; Klasse ohne Konstruktor.
+  TRuleAssert.Silent(TDestructorNotNilSafeRule.Create, ImportUnit(ImportCreate,
+    '  FZeilen := nil;'#10'  FZeilen.Free;'#10'  inherited;'));
+  TRuleAssert.Silent(TDestructorNotNilSafeRule.Create, ImportUnit('  inherited Create;'#10'  Pruefen;',
+    '  FZeilen.Clear;'#10'  inherited;'));
+  TRuleAssert.Silent(TDestructorNotNilSafeRule.Create, 'unit U;'#10'interface'#10'type'#10'  TA = class'#10 +
+    '    FL: TList;'#10'    destructor Destroy; override;'#10'  end;'#10'implementation'#10 +
+    'destructor TA.Destroy;'#10'begin'#10'  FL.Clear;'#10'end;'#10'end.');
+  // Konstruktoren der RTL, die höchstens EOutOfMemory werfen, und Supports zählen nicht als werfend.
+  TRuleAssert.Silent(TDestructorNotNilSafeRule.Create, ImportUnit(
+    '  FStrom := TMemoryStream.Create;'#10'  if Supports(Datei, IInterface) then'#10'    Exit;'#10 +
+    '  FZeilen := TStringList.Create;', '  FZeilen.Clear;'#10'  inherited;'));
+  // Öffentliche Methoden rufen auch andere Units auf; sie laufen nicht nur im Destruktor.
+  TRuleAssert.Silent(TDestructorNotNilSafeRule.Create, 'unit U;'#10'interface'#10'type'#10'  TA = class'#10 +
+    '    FS: TFileStream;'#10'    FL: TList;'#10'  public'#10'    constructor Create;'#10 +
+    '    destructor Destroy; override;'#10'    procedure Schliessen;'#10'  end;'#10'implementation'#10 +
+    'constructor TA.Create;'#10'begin'#10'  FS := TFileStream.Create(''x'', fmOpenRead);'#10 +
+    '  FL := TList.Create;'#10'end;'#10'destructor TA.Destroy;'#10'begin'#10'  Schliessen;'#10'end;'#10 +
+    'procedure TA.Schliessen;'#10'begin'#10'  FL.Clear;'#10'end;'#10'end.');
+  // Record mit Create (TStopwatch).
+  TRuleAssert.Silent(TDestructorNotNilSafeRule.Create, 'unit U;'#10'interface'#10'type'#10'  TA = class'#10 +
+    '    FL: TList;'#10'    FUhr: TStopwatch;'#10'    constructor Create;'#10'    destructor Destroy; override;'#10 +
+    '  end;'#10'implementation'#10'constructor TA.Create;'#10'begin'#10'  FL := TList.Create;'#10 +
+    '  FUhr := TStopwatch.StartNew;'#10'  FUhr := TStopwatch.Create;'#10'end;'#10'destructor TA.Destroy;'#10 +
+    'begin'#10'  FUhr.Stop;'#10'  FL.Free;'#10'end;'#10'end.');
 end;
 
 initialization

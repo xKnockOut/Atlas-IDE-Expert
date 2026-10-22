@@ -6,7 +6,7 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 
 | Gruppe | Regeln |
 |---|---|
-| [Fehler finden](#gruppe-find-bugs) | 56 |
+| [Fehler finden](#gruppe-find-bugs) | 57 |
 | [Exceptions](#gruppe-exceptions) | 8 |
 | [Threads](#gruppe-threads) | 13 |
 | [Datenbank](#gruppe-database) | 4 |
@@ -82,6 +82,7 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 | [`unchecked-enum-cast`](#unchecked-enum-cast) | Zahl ungeprüft in Aufzählung umgewandelt | Bug | Hinweis |
 | [`createprocess-readonly-commandline`](#createprocess-readonly-commandline) | CreateProcess mit unveränderlicher Befehlszeile | Bug | Fehler |
 | [`form-access-before-create`](#form-access-before-create) | Zugriff auf ein Formular, das noch nicht erzeugt ist | Bug | Warnung |
+| [`destructor-not-nil-safe`](#destructor-not-nil-safe) | Destruktor benutzt Felder, die nil sein können | Bug | Warnung |
 
 <a id="gruppe-exceptions"></a>
 ### Exceptions
@@ -4540,4 +4541,47 @@ Richtig:
 
 ```pascal
 Liste.Clear;
+```
+
+<a id="destructor-not-nil-safe"></a>
+### destructor-not-nil-safe
+
+**Destruktor benutzt Felder, die nil sein können** · Bug · Warnung · Gruppe Fehler finden
+
+Wirft ein Konstruktor, ruft Delphi sofort den Destruktor auf, obwohl noch nicht alle Felder angelegt sind. Gemeldet wird ein Zugriff im Destruktor (oder in einer privaten Methode, die nur der Destruktor aufruft) auf ein Feld wie FZeilen.Clear, FDatei.Position oder FZeilen[0], wenn ein Konstruktor der Klasse das Feld (TKlasse.Create) erst nach einem Aufruf anlegt, der werfen kann, oder nur auf manchen Wegen. Die Zugriffsverletzung verdeckt dann die eigentliche Exception. Free, FreeAndNil, DisposeOf und Zugriffe nach Assigned(FFeld) bzw. FFeld <> nil sind nil-sicher; BeforeDestruction läuft auf diesem Weg nicht. Konstruktoren von RTL-Klassen, die höchstens EOutOfMemory werfen (TStringList.Create, TObjectList<T>.Create(True)), inherited Create und Supports zählen nicht als werfend. Konfidenz hoch. Schnellkorrektur: if Assigned(FFeld) then vor die Anweisung setzen. Mit onlyAfterRaisingCode aus zählt jedes im Konstruktor angelegte Feld.
+
+| Option | Typ | Vorgabe | Bedeutung |
+|---|---|---|---|
+| `onlyAfterRaisingCode` | boolean | `true` | Nur melden, wenn der Konstruktor vor dem Anlegen des Felds etwas aufruft, das eine Exception werfen kann. |
+
+Mit Treffer:
+
+```pascal
+constructor TImport.Create(const Datei: string);
+begin
+  inherited Create;
+  FStrom := TFileStream.Create(Datei, fmOpenRead);
+  FZeilen := TStringList.Create;
+end;
+
+destructor TImport.Destroy;
+begin
+  FZeilen.Clear;
+  FZeilen.Free;
+  FStrom.Free;
+  inherited;
+end;
+```
+
+Richtig:
+
+```pascal
+destructor TImport.Destroy;
+begin
+  if Assigned(FZeilen) then
+    FZeilen.Clear;
+  FZeilen.Free;
+  FStrom.Free;
+  inherited;
+end;
 ```

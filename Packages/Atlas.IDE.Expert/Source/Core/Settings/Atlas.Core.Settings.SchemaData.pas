@@ -11,7 +11,7 @@ function AtlasSchemaJson: string;
 implementation
 
 const
-  Lines: array[0..1760] of string = (
+  Lines: array[0..1765] of string = (
     '{',
     '  "$schema": "http://json-schema.org/draft-07/schema#",',
     '  "title": "Atlas-Konfiguration",',
@@ -352,6 +352,11 @@ const
     '                },',
     '                "default": [],',
     '                "description": "Nur pair-without-finally: weitere Paare neben den eingebauten (DisableControls/EnableControls, BeginUpdate/EndUpdate, FindFirst/FindClose, Reset/CloseFile, GetMem/FreeM' + 'em, Screen.Cursor) (#930)."',
+    '              },',
+    '              "onlyAfterRaisingCode": {',
+    '                "type": "boolean",',
+    '                "default": true,',
+    '                "description": "Nur destructor-not-nil-safe: nur melden, wenn der Konstruktor vor dem Anlegen des Felds etwas aufruft, das eine Exception werfen kann; aus zählt jedes im Konstruktor an' + 'gelegte Feld (#1087)."',
     '              },',
     '              "requireElse": {',
     '                "type": "boolean",',

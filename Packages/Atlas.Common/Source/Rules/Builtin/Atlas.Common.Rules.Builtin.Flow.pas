@@ -35,6 +35,17 @@
 //                             Klassendeklaration in der Unit. Ausgenommen sind
 //                             die Methoden aus ignoreMethods (Vorgabe Destroy,
 //                             BeforeDestruction); Korrektur FreeAndNil(FFeld).
+//   destructor-not-nil-safe   Der Destruktor (oder eine Methode, die nur er
+//                             aufruft) benutzt ein Feld (FFeld.Clear), das ein
+//                             Konstruktor erst nach Code anlegt, der eine
+//                             Exception werfen kann, oder nur bedingt (#1087).
+//                             Wirft der Konstruktor, ruft Delphi den Destruktor
+//                             mit dem noch leeren Feld auf. Free, FreeAndNil,
+//                             DisposeOf und Zugriffe nach Assigned(FFeld) bzw.
+//                             FFeld <> nil sind sicher; BeforeDestruction läuft
+//                             auf diesem Weg nicht. Mit onlyAfterRaisingCode
+//                             aus zählt jedes im Konstruktor angelegte Feld.
+//                             Korrektur: if Assigned(FFeld) then davor.
 //   out-param-read            out-Parameter wird gelesen, bevor die Routine ihn
 //                             setzt (#924); bei verwalteten Typen hat ihn der
 //                             Aufrufer schon geleert. Korrektur out -> var in
@@ -99,6 +110,12 @@ type
     class function DefaultIgnoreMethods: TArray<string>; static;
   end;
 
+  TDestructorNotNilSafeRule = class(TInterfacedObject, IRule)
+  public
+    function Descriptor: TRuleDescriptor;
+    procedure Check(const AContext: TRuleContext; const AReport: IRuleReport);
+  end;
+
   TOutParamReadRule = class(TInterfacedObject, IRule)
   public
     function Descriptor: TRuleDescriptor;
@@ -110,6 +127,7 @@ const
   UseAfterFreeRuleId = 'use-after-free';
   DerefBeforeNilCheckRuleId = 'deref-before-nil-check';
   FieldFreeWithoutNilRuleId = 'field-free-without-nil';
+  DestructorNotNilSafeRuleId = 'destructor-not-nil-safe';
 
 /// <summary>Wird AName in ABlock so benutzt, dass der Kontrollfluss die Zuweisung nicht sieht?</summary>
 function HasOpaqueUse(ABlock: TSyntaxNode; const AName: string): Boolean;
@@ -1429,6 +1447,518 @@ begin
   end;
 end;
 
+{ TDestructorNotNilSafeRule }
+
+function TDestructorNotNilSafeRule.Descriptor: TRuleDescriptor;
+begin
+  Result := TRuleDescriptor.Create(DestructorNotNilSafeRuleId, TRuleSeverity.Warning,
+    'Destruktor benutzt ein Feld, das nach einer Exception im Konstruktor nil ist');
+end;
+
+const
+  /// <summary>Klassen der RTL, deren Konstruktor ohne Argumente höchstens EOutOfMemory wirft; danach gilt
+  /// ohnehin nichts mehr.</summary>
+  QuietConstructions: array[0..21] of string = ('TObject', 'TInterfacedObject', 'TPersistent', 'TList',
+    'TObjectList', 'TDictionary', 'TObjectDictionary', 'TStringList', 'TQueue', 'TObjectQueue', 'TStack',
+    'TObjectStack', 'THashSet', 'TMemoryStream', 'TStringBuilder', 'TCriticalSection', 'TMultiReadExclusiveWriteSynchronizer',
+    'TBits', 'TThreadList', 'TInterfaceList', 'TStringStream', 'TBytesStream');
+  /// <summary>Standardroutinen, die nicht werfen.</summary>
+  QuietRoutines: array[0..22] of string = ('Assigned', 'Length', 'High', 'Low', 'SizeOf', 'Ord', 'Chr', 'Inc',
+    'Dec', 'Include', 'Exclude', 'Default', 'Supports', 'Max', 'Min', 'TypeInfo', 'Trim', 'SameText', 'LowerCase',
+    'UpperCase', 'Exit', 'Break', 'Continue');
+
+type
+  /// <summary>Feld, das beim Destruktor nach einer Exception im Konstruktor noch nil sein kann.</summary>
+  TNilAtDestroy = record
+    Field: string;
+    /// <summary>Aufruf vor dem Anlegen, der werfen kann (TFileStream.Create); '' bei bedingtem Anlegen.</summary>
+    Raiser: string;
+    /// <summary>Wird das Feld im Konstruktor nur bedingt angelegt?</summary>
+    Conditional: Boolean;
+  end;
+
+procedure TDestructorNotNilSafeRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
+var
+  Routines: TArray<TSyntaxNode>;
+  Fields: TArray<string>;
+  Risky: TArray<TNilAtDestroy>;
+  PrivateMethods: TArray<string>;
+  OnlyAfterRaising: Boolean;
+  QualifiedClass, LineBreak: string;
+
+  function Text(ANode: TSyntaxNode): string;
+  begin
+    Result := Copy(AContext.Text, ANode.StartOffset + 1, ANode.EndOffset - ANode.StartOffset);
+  end;
+
+  function Contains(const AList: TArray<string>; const AName: string): Boolean;
+  var
+    Item: string;
+  begin
+    for Item in AList do
+      if SameText(Item, AName) then
+        Exit(True);
+    Result := False;
+  end;
+
+  function MethodOf(ARoutine: TSyntaxNode): string;
+  begin
+    Result := Copy(ARoutine.Name, LastDelimiter('.', ARoutine.Name) + 1, MaxInt);
+  end;
+
+  // Methoden in private- und strict-private-Abschnitten der Klassendeklaration.
+  function PrivateOf(AClass: TSyntaxNode): TArray<string>;
+  var
+    Index: Integer;
+    IsPrivate: Boolean;
+  begin
+    Result := nil;
+    if AClass = nil then
+      Exit;
+    IsPrivate := False;
+    for Index := 0 to AClass.ChildCount - 1 do
+      if AClass[Index].Kind = TSyntaxKind.Visibility then
+        IsPrivate := MatchText(AClass[Index].Name, ['private', 'strict private'])
+      else if IsPrivate and (AClass[Index].Kind = TSyntaxKind.RoutineHeader) and (AClass[Index].Name <> '') then
+        Result := Result + [AClass[Index].Name];
+  end;
+
+  function ClassOf(ARoutine: TSyntaxNode): string;
+  begin
+    Result := Copy(ARoutine.Name, 1, LastDelimiter('.', ARoutine.Name) - 1);
+  end;
+
+  // constructor bzw. destructor, ohne class constructor und class destructor.
+  function StartsWithWord(ARoutine: TSyntaxNode; const AWord: string): Boolean;
+  var
+    Head: string;
+  begin
+    Head := TrimLeft(Text(ARoutine));
+    Result := StartsText(AWord, Head) and (Length(Head) > Length(AWord)) and
+      CharInSet(Head[Length(AWord) + 1], [' ', #9, #10, #13]);
+  end;
+
+  // Konstruktoraufruf TKlasse.Create…(…) bzw. TKlasse<T>.Create…; liefert TKlasse.Create….
+  function CreationCall(AValue: TSyntaxNode; out ACallee: string): Boolean;
+  var
+    Callee: TSyntaxNode;
+  begin
+    Result := False;
+    Callee := AValue;
+    if (Callee.Kind = TSyntaxKind.Call) and (Callee.ChildCount > 0) then
+      Callee := Callee[0];
+    if (Callee.Kind <> TSyntaxKind.MemberAccess) or (Callee.ChildCount = 0) or not StartsText('Create', Callee.Name) then
+      Exit;
+    // Records mit Create (TStopwatch.Create) brauchen keine Freigabe und sind nie nil.
+    if MatchText(RootName(Callee[0]), ['TStopwatch', 'TTimeSpan', 'TRect', 'TPoint', 'TSize', 'TGUID',
+      'TFormatSettings', 'TValue', 'TRegEx', 'TRttiContext']) then
+      Exit;
+    ACallee := Trim(Text(Callee));
+    Result := True;
+  end;
+
+  // Wirft der Konstruktoraufruf höchstens EOutOfMemory (TStringList.Create, TDictionary<K, V>.Create)?
+  function QuietCreation(AValue: TSyntaxNode): Boolean;
+  var
+    Callee: TSyntaxNode;
+    Name: string;
+    Index: Integer;
+  begin
+    Callee := AValue;
+    if (Callee.Kind = TSyntaxKind.Call) and (Callee.ChildCount > 0) then
+    begin
+      // Nur feste Argumente wie TObjectList<T>.Create(True).
+      for Index := 1 to Callee.ChildCount - 1 do
+        if (Callee[Index].Kind <> TSyntaxKind.Literal) and not ((Callee[Index].Kind = TSyntaxKind.Identifier) and
+          MatchText(Callee[Index].Name, ['True', 'False', 'nil'])) then
+          Exit(False);
+      Callee := Callee[0];
+    end;
+    Result := (Callee.Kind = TSyntaxKind.MemberAccess) and SameText(Callee.Name, 'Create') and (Callee.ChildCount > 0);
+    if not Result then
+      Exit;
+    Name := Trim(Text(Callee[0]));
+    if Pos('<', Name) > 0 then
+      Name := Copy(Name, 1, Pos('<', Name) - 1);
+    Result := MatchText(Name, QuietConstructions);
+  end;
+
+  // Weist AStatement einem Feld mit TKlasse.Create zu? Liefert Feld und Aufruf.
+  function CreatesField(AStatement: TSyntaxNode; out AField, ACallee: string): Boolean;
+  begin
+    Result := (AStatement.Kind = TSyntaxKind.AssignStatement) and (AStatement.ChildCount = 2);
+    if not Result then
+      Exit;
+    AField := FreedPath(AStatement[0]);
+    Result := (AField <> '') and Contains(Fields, AField) and CreationCall(AStatement[1], ACallee);
+  end;
+
+  // Erster Aufruf in ANode, der werfen kann (ohne inherited); '' ohne. AStatement: ANode ist eine Anweisung.
+  function RaisingCall(ANode: TSyntaxNode): string;
+  var
+    Index: Integer;
+    Callee: TSyntaxNode;
+  begin
+    Result := '';
+    if ANode.Kind in [TSyntaxKind.AnonymousMethod, TSyntaxKind.RoutineDecl, TSyntaxKind.InheritedExpr] then
+      Exit;
+    if ANode.Kind = TSyntaxKind.RaiseStatement then
+      Exit('raise');
+    // Aufruf ohne Klammern als Anweisung: Laden; bzw. FLog.Oeffnen;
+    if (ANode.Kind = TSyntaxKind.CallStatement) and (ANode.ChildCount > 0) and
+      (ANode[0].Kind in [TSyntaxKind.Identifier, TSyntaxKind.MemberAccess]) then
+    begin
+      if (ANode[0].Kind = TSyntaxKind.Identifier) and MatchText(ANode[0].Name, QuietRoutines) then
+        Exit;
+      if QuietCreation(ANode[0]) then
+        Exit;
+      Exit(Trim(Text(ANode[0])));
+    end;
+    // TKlasse.Create ohne Klammern ist ebenfalls ein Aufruf.
+    if (ANode.Kind = TSyntaxKind.MemberAccess) and StartsText('Create', ANode.Name) and
+      ((ANode.Parent = nil) or (ANode.Parent.Kind <> TSyntaxKind.Call)) then
+    begin
+      if QuietCreation(ANode) then
+        Exit;
+      Exit(Trim(Text(ANode)));
+    end;
+    if (ANode.Kind = TSyntaxKind.Call) and (ANode.ChildCount > 0) then
+    begin
+      Callee := ANode[0];
+      if (Callee.Kind = TSyntaxKind.InheritedExpr) or QuietCreation(ANode) or
+        ((Callee.Kind = TSyntaxKind.Identifier) and MatchText(Callee.Name, QuietRoutines)) then
+        Exit;
+      Exit(Trim(Text(Callee)));
+    end;
+    for Index := 0 to ANode.ChildCount - 1 do
+    begin
+      Result := RaisingCall(ANode[Index]);
+      if Result <> '' then
+        Exit;
+    end;
+  end;
+
+  // Weist eine Anweisung unter ANode dem Feld AField zu?
+  function AssignsField(ANode: TSyntaxNode; const AField: string): Boolean;
+  var
+    Index: Integer;
+  begin
+    if ANode.Kind in [TSyntaxKind.AnonymousMethod, TSyntaxKind.RoutineDecl] then
+      Exit(False);
+    if (ANode.Kind = TSyntaxKind.AssignStatement) and (ANode.ChildCount = 2) and
+      SameText(FreedPath(ANode[0]), AField) then
+      Exit(True);
+    for Index := 0 to ANode.ChildCount - 1 do
+      if AssignsField(ANode[Index], AField) then
+        Exit(True);
+    Result := False;
+  end;
+
+  // Weist ANode dem Feld AField auf jedem Weg zu (if mit beiden Zweigen, case mit else, begin … end)?
+  function AssignsAlways(ANode: TSyntaxNode; const AField: string): Boolean;
+  var
+    Index, Branches: Integer;
+    HasElse: Boolean;
+  begin
+    Result := False;
+    case ANode.Kind of
+      TSyntaxKind.AssignStatement:
+        Result := (ANode.ChildCount = 2) and SameText(FreedPath(ANode[0]), AField);
+      TSyntaxKind.Block:
+        for Index := 0 to ANode.ChildCount - 1 do
+          if AssignsAlways(ANode[Index], AField) then
+            Exit(True);
+      TSyntaxKind.IfStatement:
+        begin
+          Branches := 0;
+          for Index := 0 to ANode.ChildCount - 1 do
+            if ANode[Index].Kind in FlowStatementKinds then
+            begin
+              if not AssignsAlways(ANode[Index], AField) then
+                Exit(False);
+              Inc(Branches);
+            end;
+          Result := Branches = 2;
+        end;
+      TSyntaxKind.CaseStatement:
+        begin
+          HasElse := False;
+          for Index := 0 to ANode.ChildCount - 1 do
+            if ANode[Index].Kind in [TSyntaxKind.CaseItem, TSyntaxKind.CaseElse] then
+            begin
+              HasElse := HasElse or (ANode[Index].Kind = TSyntaxKind.CaseElse);
+              if not AssignsAlways(ANode[Index], AField) then
+                Exit(False);
+            end;
+          Result := HasElse;
+        end;
+      TSyntaxKind.CaseItem, TSyntaxKind.CaseElse:
+        for Index := 0 to ANode.ChildCount - 1 do
+          if (ANode[Index].Kind in FlowStatementKinds) and AssignsAlways(ANode[Index], AField) then
+            Exit(True);
+    end;
+  end;
+
+  procedure AddRisky(const AField, ARaiser: string; AConditional: Boolean);
+  var
+    Item: TNilAtDestroy;
+  begin
+    for Item in Risky do
+      if SameText(Item.Field, AField) then
+        Exit;
+    Item.Field := AField;
+    Item.Raiser := ARaiser;
+    if not AConditional and (ARaiser = '') then
+      Item.Raiser := 'der Konstruktor';
+    Item.Conditional := AConditional;
+    Risky := Risky + [Item];
+  end;
+
+  // Felder, die nach einer Exception in AConstructor beim Destruktor noch nil sein können.
+  procedure ScanConstructor(AConstructor: TSyntaxNode);
+  var
+    Body, Statement: TSyntaxNode;
+    Index: Integer;
+    Raiser, Field, Callee, Created: string;
+    Done: TArray<string>;
+  begin
+    Body := AConstructor.FindChild(TSyntaxKind.Block);
+    if Body = nil then
+      Exit;
+    Raiser := '';
+    Done := nil;
+    for Index := 0 to Body.ChildCount - 1 do
+    begin
+      Statement := Body[Index];
+      if CreatesField(Statement, Field, Callee) then
+      begin
+        if not Contains(Done, Field) then
+        begin
+          Done := Done + [Field];
+          if Raiser <> '' then
+            AddRisky(Field, Raiser, False)
+          else if not OnlyAfterRaising then
+            AddRisky(Field, Callee, False);
+        end;
+        if not QuietCreation(Statement[1]) then
+          Raiser := Callee;
+        Continue;
+      end;
+      // In if, case, try, Schleife oder with angelegt: auf jedem Weg wie eine einfache Zuweisung, sonst bedingt.
+      if (Statement.Kind in FlowStatementKinds) and (Statement.Kind <> TSyntaxKind.AssignStatement) then
+        for Created in Fields do
+          if not Contains(Done, Created) and AssignsField(Statement, Created) then
+          begin
+            Done := Done + [Created];
+            if not AssignsAlways(Statement, Created) then
+              AddRisky(Created, '', True)
+            else if Raiser <> '' then
+              AddRisky(Created, Raiser, False)
+            else if not OnlyAfterRaising then
+              AddRisky(Created, RaisingCall(Statement), False);
+          end;
+      Callee := RaisingCall(Statement);
+      if Callee <> '' then
+        Raiser := Callee;
+    end;
+  end;
+
+  function RiskOf(const AField: string; out AItem: TNilAtDestroy): Boolean;
+  var
+    Item: TNilAtDestroy;
+  begin
+    for Item in Risky do
+      if SameText(Item.Field, AField) then
+      begin
+        AItem := Item;
+        Exit(True);
+      end;
+    Result := False;
+  end;
+
+  // Ruft ARoutine die Methode AName der eigenen Klasse auf (AName; AName(…); Self.AName)?
+  function Calls(ARoutine: TSyntaxNode; const AName: string): Boolean;
+
+    function Visit(E: TSyntaxNode): Boolean;
+    var
+      Index: Integer;
+    begin
+      if (E.Kind in [TSyntaxKind.CallStatement, TSyntaxKind.Call]) and (E.ChildCount > 0) and
+        SameText(FreedPath(E[0]), AName) then
+        Exit(True);
+      for Index := 0 to E.ChildCount - 1 do
+        if Visit(E[Index]) then
+          Exit(True);
+      Result := False;
+    end;
+
+  begin
+    Result := Visit(ARoutine);
+  end;
+
+  // Private Methode der Klasse, die nur aus dem Destruktor aufgerufen wird (FreeAll aus Destroy); öffentliche
+  // Methoden rufen auch andere Units.
+  function OnlyCalledFromDestructor(ARoutine: TSyntaxNode): Boolean;
+  var
+    Other: TSyntaxNode;
+    Callers: Integer;
+  begin
+    if not Contains(PrivateMethods, MethodOf(ARoutine)) then
+      Exit(False);
+    Callers := 0;
+    for Other in Routines do
+      if (Other <> ARoutine) and Calls(Other, MethodOf(ARoutine)) then
+      begin
+        if not SameText(ClassOf(Other), QualifiedClass) or not StartsWithWord(Other, 'destructor') then
+          Exit(False);
+        Inc(Callers);
+      end;
+    Result := Callers > 0;
+  end;
+
+  // Einrückung vor ANode; False, wenn davor in der Zeile noch Code steht.
+  function Indent(ANode: TSyntaxNode; out AIndent: string): Boolean;
+  var
+    Start: Integer;
+  begin
+    Start := ANode.StartOffset;
+    while (Start > 0) and CharInSet(AContext.Text[Start], [' ', #9]) do
+      Dec(Start);
+    AIndent := Copy(AContext.Text, Start + 1, ANode.StartOffset - Start);
+    Result := (Start = 0) or CharInSet(AContext.Text[Start], [#10, #13]);
+  end;
+
+  // Korrektur: "if Assigned(FFeld) then" vor eine Anweisung, die allein in einer Anweisungsliste steht.
+  function GuardFix(AStatement: TSyntaxNode; const AField: string): TArray<TRuleFix>;
+  var
+    Outer: string;
+  begin
+    Result := nil;
+    if (AStatement.Parent = nil) or (AStatement.Parent.Kind <> TSyntaxKind.Block) or
+      (AStatement.StartPos.Line <> AStatement.EndPos.Line) or not Indent(AStatement, Outer) then
+      Exit;
+    Result := [TRuleFix.Create(Format('In if Assigned(%s) then einschließen', [AField]),
+      [TRuleEdit.Create(NodeRange(AStatement), Format('if Assigned(%s) then', [AField]) + LineBreak + Outer + '  ' +
+      Trim(Text(AStatement)))])];
+  end;
+
+  procedure CheckBody(ARoutine: TSyntaxNode);
+  var
+    Checked, Reported: TArray<string>;
+
+    // Assigned(X), X <> nil, X = nil in E sammeln: danach gilt X als geprüft.
+    procedure CollectChecks(E: TSyntaxNode);
+    var
+      Index: Integer;
+    begin
+      if (E.Kind = TSyntaxKind.Call) and (E.ChildCount = 2) and IsName(E[0], 'Assigned') and (FreedPath(E[1]) <> '') then
+        Checked := Checked + [FreedPath(E[1])];
+      if (E.Kind = TSyntaxKind.BinaryExpr) and (E.ChildCount = 2) then
+        for Index := 0 to 1 do
+          if (FreedPath(E[Index]) <> '') and (E[1 - Index].Kind = TSyntaxKind.Literal) and
+            SameText(E[1 - Index].Name, 'nil') then
+            Checked := Checked + [FreedPath(E[Index])];
+      for Index := 0 to E.ChildCount - 1 do
+        CollectChecks(E[Index]);
+    end;
+
+    // Zugriffe FFeld.X (außer Free und DisposeOf), FFeld[…] und FFeld^ in E, in Textreihenfolge.
+    procedure Visit(E, AStatement: TSyntaxNode);
+    var
+      Index: Integer;
+      Field, Access: string;
+      Item: TNilAtDestroy;
+      Message: string;
+    begin
+      if E.Kind in [TSyntaxKind.AnonymousMethod, TSyntaxKind.RoutineDecl] then
+        Exit;
+      if E.Kind in FlowStatementKinds + [TSyntaxKind.AssignStatement, TSyntaxKind.CallStatement] then
+        AStatement := E;
+      // if Assigned(FFeld) then …, while FFeld <> nil do …: die Bedingung schützt alles danach.
+      if E.Kind in [TSyntaxKind.IfStatement, TSyntaxKind.WhileStatement, TSyntaxKind.RepeatStatement,
+        TSyntaxKind.CaseStatement] then
+        for Index := 0 to E.ChildCount - 1 do
+          if not (E[Index].Kind in FlowStatementKinds) then
+            CollectChecks(E[Index]);
+      // Neu zugewiesen im Destruktor: der Wert stammt nicht mehr aus dem Konstruktor.
+      if (E.Kind = TSyntaxKind.AssignStatement) and (E.ChildCount = 2) and (FreedPath(E[0]) <> '') then
+        Checked := Checked + [FreedPath(E[0])];
+      if (E.Kind in [TSyntaxKind.MemberAccess, TSyntaxKind.IndexAccess, TSyntaxKind.Dereference]) and
+        (E.ChildCount > 0) then
+      begin
+        Field := FreedPath(E[0]);
+        if (Field <> '') and not ((E.Kind = TSyntaxKind.MemberAccess) and MatchText(E.Name, ['Free', 'DisposeOf'])) and
+          not Contains(Checked, Field) and not Contains(Reported, Field + '@' + IntToStr(AStatement.StartOffset)) and
+          RiskOf(Field, Item) then
+        begin
+          // Je Anweisung und Feld ein Befund, damit jede Korrektur ihre Anweisung schützt.
+          Reported := Reported + [Field + '@' + IntToStr(AStatement.StartOffset)];
+          Access := Trim(Text(E));
+          if Item.Conditional then
+            Message := Format('%s wird im Konstruktor nur bedingt angelegt und kann beim Destruktor nil sein; ' +
+              '%s stürzt dann ab.', [Field, Access])
+          else
+            Message := Format('Wirft %s, ist %s beim Destruktor noch nil; %s stürzt ab und verdeckt die ' +
+              'eigentliche Exception.', [Item.Raiser, Field, Access]);
+          AReport.Add(NodeRange(E), Message, TRuleConfidence.High, GuardFix(AStatement, Field));
+        end;
+      end;
+      for Index := 0 to E.ChildCount - 1 do
+        Visit(E[Index], AStatement);
+    end;
+
+  var
+    Body: TSyntaxNode;
+  begin
+    Body := ARoutine.FindChild(TSyntaxKind.Block);
+    if Body = nil then
+      Exit;
+    Checked := nil;
+    Reported := nil;
+    Visit(Body, Body);
+  end;
+
+var
+  Routine, Other: TSyntaxNode;
+  ClassName: string;
+  Classes: TArray<string>;
+begin
+  if (AContext.Tree = nil) or not ContainsText(AContext.Text, 'destructor') then
+    Exit;
+  OnlyAfterRaising := TRuleOptions.Bool(AContext.Options, 'onlyAfterRaisingCode', True);
+  LineBreak := #10;
+  if Pos(#13#10, AContext.Text) > 0 then
+    LineBreak := #13#10;
+  Routines := TRuleDerived.Routines(TRuleDerived.Open(AContext), AContext);
+  Classes := nil;
+  for Routine in Routines do
+  begin
+    QualifiedClass := ClassOf(Routine);
+    if (QualifiedClass = '') or Contains(Classes, QualifiedClass) or not StartsWithWord(Routine, 'destructor') then
+      Continue;
+    Classes := Classes + [QualifiedClass];
+    ClassName := Copy(QualifiedClass, LastDelimiter('.', QualifiedClass) + 1, MaxInt);
+    if Pos('<', ClassName) > 0 then
+      ClassName := Copy(ClassName, 1, Pos('<', ClassName) - 1);
+    Fields := ClassFields(FindClassType(AContext.Tree.Root, ClassName));
+    if Fields = nil then
+      Continue;
+    PrivateMethods := PrivateOf(FindClassType(AContext.Tree.Root, ClassName));
+    Risky := nil;
+    for Other in Routines do
+      if SameText(ClassOf(Other), QualifiedClass) and StartsWithWord(Other, 'constructor') then
+        ScanConstructor(Other);
+    if Risky = nil then
+      Continue;
+    // Destruktoren und Methoden, die nur sie aufrufen; BeforeDestruction läuft nach einer Exception im
+    // Konstruktor nicht.
+    for Other in Routines do
+      if SameText(ClassOf(Other), QualifiedClass) and (StartsWithWord(Other, 'destructor') or
+        (not StartsWithWord(Other, 'constructor') and OnlyCalledFromDestructor(Other))) then
+        CheckBody(Other);
+  end;
+end;
+
 { TOutParamReadRule }
 
 function TOutParamReadRule.Descriptor: TRuleDescriptor;
@@ -1644,6 +2174,7 @@ begin
   ARegistry.Register(TUseAfterFreeRule.Create);
   ARegistry.Register(TDerefBeforeNilCheckRule.Create);
   ARegistry.Register(TFieldFreeWithoutNilRule.Create);
+  ARegistry.Register(TDestructorNotNilSafeRule.Create);
   ARegistry.Register(TOutParamReadRule.Create);
 end;
 

@@ -4119,3 +4119,19 @@ Voraussetzung: Server läuft in der IDE mit Projekt; RTL und VCL im Index.
 | RO5 | `Liste.Text := ''`, `if Liste.Count = 0`, gleichnamige lokale Variable `Count := 0`, `property Caption;` aus einem Vorfahren | Keine Meldung |
 | RO6 | `"readonly-property-assigned": "off"`, `"group:compiler": "off"` bzw. `exclude` | Keine Meldung |
 | RO7 | Abgleich mit Delphi: RO1, RO3, RO4 übersetzen | dcc meldet E2129 bzw. E2130 an denselben Stellen, für RO5 nichts |
+
+## Destruktor greift auf Felder zu, die nil sein können (#1087)
+
+Voraussetzung: Server läuft; Einstellungen auf Vorgabe; Klasse `TImport` mit `constructor Create(const Datei: string)` (`inherited Create; FStrom := TFileStream.Create(Datei, fmOpenRead); FZeilen := TStringList.Create;`) und `destructor Destroy; override;` (`FZeilen.Clear; FZeilen.Free; FStrom.Free; inherited;`), je Anweisung eine Zeile.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| NS1 | Unit öffnen | Warnung `destructor-not-nil-safe` an `FZeilen.Clear`: „Wirft TFileStream.Create, ist FZeilen beim Destruktor noch nil; FZeilen.Clear stürzt ab und verdeckt die eigentliche Exception.“; im Fenster „Atlas-Prüfung“ und im Befund-Hover (**Abnahme**) |
+| NS2 | Glühbirne „In if Assigned(FZeilen) then einschließen“, danach Strg+Z | `if Assigned(FZeilen) then` mit eingerücktem `FZeilen.Clear;` darunter, Meldung weg; kompiliert; ein Undo-Schritt stellt alles her (**Abnahme**) |
+| NS3 | Im Konstruktor `FZeilen := TStringList.Create;` vor `FStrom := …` ziehen | Keine Meldung (vor dem Anlegen wirft nur `inherited Create`) |
+| NS4 | Im Konstruktor `if Datei <> '' then FZeilen := TStringList.Create;` | Meldung „FZeilen wird im Konstruktor nur bedingt angelegt und kann beim Destruktor nil sein; FZeilen.Clear stürzt dann ab.“ |
+| NS5 | `FZeilen.Clear` in eine private Methode `Leeren` verschieben, die nur `Destroy` aufruft | Meldung in `Leeren`; ist `Leeren` public oder ruft eine andere Methode sie auf, keine Meldung |
+| NS6 | Fall NS3 mit `"destructor-not-nil-safe": {"onlyAfterRaisingCode": false}` und Zugriff `FZeilen.Clear` | Meldung „Wirft TStringList.Create, ist FZeilen beim Destruktor noch nil; …“; mit `true` keine Meldung |
+| NS7 | `FreeAndNil(FZeilen)`, `if Assigned(FZeilen) then FZeilen.Clear`, Zugriff in `BeforeDestruction` | Keine Meldung |
+| NS8 | `"destructor-not-nil-safe": "off"` bzw. `exclude` mit dem Pfad der Datei | Keine Meldung |
+| NS9 | Abgleich mit Delphi: Konstruktor mit nicht vorhandener Datei aufrufen (`TImport.Create('fehlt.txt')`) | Ohne Korrektur meldet die IDE eine Zugriffsverletzung statt EFOpenError; mit Korrektur erscheint EFOpenError |
