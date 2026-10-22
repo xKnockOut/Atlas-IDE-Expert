@@ -2293,6 +2293,21 @@
         "E2129",
         "E2130"
       ]
+    },
+    {
+      "id": "unit-name-mismatch",
+      "name": "Unit name does not match the file name",
+      "category": "bug",
+      "severity": "error",
+      "group": "compiler",
+      "description": "The name after unit differs from the file name, usually after renaming the file outside the IDE (like E1038, W1038). Case does not matter, dots in the name do. In a program, library or package, an entry uses X in 'File.pas' whose file declares a different unit is reported too (like E2085); the rule reads that file. Programs, libraries and packages themselves are not compared with their file name, because the compiler does not either. {$WARN UNIT_NAME_MISMATCH OFF} or {$WARNINGS OFF} before the unit name silences the rule like the compiler. Quick fixes: change the unit name to the file name (renaming the file is up to the IDE), or change the uses entry to the unit the file declares.",
+      "bad": "// File: Kunden.Daten.pas\nunit Kunden.Model;\n\ninterface",
+      "good": "// File: Kunden.Daten.pas\nunit Kunden.Daten;\n\ninterface",
+      "compilerCodes": [
+        "E1038",
+        "W1038",
+        "E2085"
+      ]
     }
   ]
 }

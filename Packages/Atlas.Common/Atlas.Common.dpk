@@ -327,6 +327,7 @@ contains
   Atlas.Common.Rules.Builtin.Statements in 'Source\Rules\Builtin\Atlas.Common.Rules.Builtin.Statements.pas',
   Atlas.Common.Rules.Builtin.Database in 'Source\Rules\Builtin\Atlas.Common.Rules.Builtin.Database.pas',
   Atlas.Common.Rules.Builtin.Directives in 'Source\Rules\Builtin\Atlas.Common.Rules.Builtin.Directives.pas',
+  Atlas.Common.Rules.Builtin.Units in 'Source\Rules\Builtin\Atlas.Common.Rules.Builtin.Units.pas',
   Atlas.Common.Rules.Builtin.Properties in 'Source\Rules\Builtin\Atlas.Common.Rules.Builtin.Properties.pas',
   Atlas.Common.Rules.Builtin.Packages in 'Source\Rules\Builtin\Atlas.Common.Rules.Builtin.Packages.pas',
   Atlas.Common.Rules.Builtin.OpenTools in 'Source\Rules\Builtin\Atlas.Common.Rules.Builtin.OpenTools.pas',
