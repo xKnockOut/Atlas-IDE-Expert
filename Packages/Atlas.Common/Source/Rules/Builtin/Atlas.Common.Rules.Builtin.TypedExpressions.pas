@@ -13,8 +13,10 @@
 //                     des Ausdrucks (wie W1018). Die Konstante rechnet
 //                     Semantics.ConstantValues aus. NativeInt, LongInt und ihre
 //                     vorzeichenlosen Gegenstücke gelten mit dem weitesten Bereich
-//                     aller Plattformen; Teilbereichstypen und Length(…) meldet die
-//                     Regel nicht, weil dcc dort nicht warnt.
+//                     aller Plattformen; Teilbereichstypen meldet die Regel nicht.
+//                     Length(…) < 0 und Length(…) >= 0 meldet sie auch, obwohl dcc
+//                     dort nicht warnt (Wunsch aus #1011: offensichtlich falsch);
+//                     die Meldung sagt das dazu.
 
 interface
 
@@ -281,6 +283,20 @@ var
       Result := ', die Schleife endet nie';
   end;
 
+  /// <summary>Ist ANode ein Aufruf von Length aus System (nie negativ)?</summary>
+  function IsLengthCall(ANode: TSyntaxNode): Boolean;
+  var
+    Callee: TResolvedSymbol;
+  begin
+    Result := (ANode <> nil) and (ANode.Kind = TSyntaxKind.Call) and (ANode.ChildCount = 2) and
+      (ANode[0].Kind = TSyntaxKind.Identifier) and SameText(ANode[0].Name, 'Length');
+    if not Result then
+      Exit;
+    // Eine eigene Funktion Length kann negativ werden.
+    Callee := Scope.Resolver.Resolve(AContext.Tree, Scope.FileName, ANode[0].StartPos);
+    Result := not Callee.Found or SameText(Callee.UnitName, 'System');
+  end;
+
   procedure CheckComparison(ANode: TSyntaxNode);
   var
     Left, Right, Operand: TSyntaxNode;
@@ -302,6 +318,22 @@ var
     end
     else
       Exit;
+    if IsLengthCall(Operand) then
+    begin
+      Verdict := Outcome(Operation, Value, 0, High(Int64));
+      if Verdict < 0 then
+        Exit;
+      Note := LoopNote(ANode, Verdict = 1);
+      if Verdict = 1 then
+        AReport.Add(TTextRange.Create(ANode.StartPos, ANode.EndPos), Format(
+          '%s ist nie negativ; %s ist immer wahr%s (dcc meldet das nicht).', [Scope.Text(Operand), Scope.Text(ANode),
+          Note]), TRuleConfidence.High)
+      else
+        AReport.Add(TTextRange.Create(ANode.StartPos, ANode.EndPos), Format(
+          '%s ist nie negativ; %s ist immer falsch%s (dcc meldet das nicht).', [Scope.Text(Operand), Scope.Text(ANode),
+          Note]), TRuleConfidence.High);
+      Exit;
+    end;
     if not IntegerOperand(Operand, TypeName, LowValue, HighValue) then
       Exit;
     Verdict := Outcome(Operation, Value, LowValue, HighValue);

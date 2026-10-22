@@ -2300,7 +2300,7 @@
       "category": "bug",
       "severity": "warning",
       "group": "compiler",
-      "description": "A comparison of a variable, field, property or function result of a built-in integer type with a constant outside or at the edge of its value range (like W1021, W1022): Cardinal >= 0 is always true, Byte > 255 always false. Case labels outside the range of the case expression are reported as well (like W1018). The rule only reports when the type is known for sure and its declaration is always compiled together with the comparison. NativeInt, LongInt and their unsigned counterparts count with the widest range of all platforms; subrange types and Length(...) are not reported because dcc does not warn there.",
+      "description": "A comparison of a variable, field, property or function result of a built-in integer type with a constant outside or at the edge of its value range (like W1021, W1022): Cardinal >= 0 is always true, Byte > 255 always false. Case labels outside the range of the case expression are reported as well (like W1018). The rule only reports when the type is known for sure and its declaration is always compiled together with the comparison. NativeInt, LongInt and their unsigned counterparts count with the widest range of all platforms; subrange types are not reported. Length(...) < 0 and Length(...) >= 0 are reported as well, although dcc does not warn there; the message says so.",
       "bad": "while Rest >= 0 do  // Rest: Cardinal",
       "good": "while Rest > 0 do",
       "compilerCodes": [

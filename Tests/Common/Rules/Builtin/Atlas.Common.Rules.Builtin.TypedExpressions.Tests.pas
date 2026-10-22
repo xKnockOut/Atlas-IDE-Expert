@@ -22,6 +22,8 @@ type
     [Test]
     procedure NamedConstantsAndIndexMembers;
     [Test]
+    procedure LengthIsNeverNegative;
+    [Test]
     procedure CaseLabelsOutsideRange;
     [Test]
     procedure ConditionalDeclarationIsSilent;
@@ -127,6 +129,26 @@ begin
   Assert.AreEqual('Konto.Saldo ist Cardinal; Konto.Saldo > Unten ist immer wahr (wie W1022).', Found[2].Message);
 end;
 
+procedure TComparisonAlwaysConstantTests.LengthIsNeverNegative;
+var
+  Found: TArray<TRuleFinding>;
+begin
+  Found := ComparisonFindings(Routine('  S: string;'#10'  A: TArray<Integer>;'#10,
+    '  if Length(S) < 0 then'#10'    Exit;'#10'  if Length(A) >= 0 then'#10'    Exit;'#10'  if 0 > Length(S) then'#10 +
+    '    Exit;'#10));
+  Assert.AreEqual(3, Integer(Length(Found)));
+  Assert.AreEqual('Length(S) ist nie negativ; Length(S) < 0 ist immer falsch (dcc meldet das nicht).',
+    Found[0].Message);
+  Assert.AreEqual('Length(A) ist nie negativ; Length(A) >= 0 ist immer wahr (dcc meldet das nicht).',
+    Found[1].Message);
+  Assert.AreEqual('Length(S) ist nie negativ; 0 > Length(S) ist immer falsch (dcc meldet das nicht).',
+    Found[2].Message);
+  // Eigene Funktion Length: kann negativ sein.
+  Assert.AreEqual(0, Integer(Length(ComparisonFindings('unit Zaehler;'#10'interface'#10'implementation'#10 +
+    'function Length(const S: string): Integer;'#10'begin'#10'  Result := -1;'#10'end;'#10 +
+    'procedure Pruefen(const S: string);'#10'begin'#10'  if Length(S) < 0 then'#10'    Exit;'#10'end;'#10'end.'))));
+end;
+
 procedure TComparisonAlwaysConstantTests.CaseLabelsOutsideRange;
 var
   Found: TArray<TRuleFinding>;
@@ -173,9 +195,9 @@ begin
     '  Stufe: 1..5;'#10'  Unbekannt: TUnbekannt;'#10'  D: Double;'#10,
     '  if I >= 0 then'#10'    Exit;'#10'  if C > 0 then'#10'    Exit;'#10'  if B < 255 then'#10'    Exit;'#10 +
     '  if B <= 254 then'#10'    Exit;'#10'  if N < 2147483648 then'#10'    Exit;'#10 +
-    '  if L > 2147483647 then'#10'    Exit;'#10'  if Length(S) < 0 then'#10'    Exit;'#10 +
+    '  if L > 2147483647 then'#10'    Exit;'#10 +
     '  if C - 1 >= 0 then'#10'    Exit;'#10'  if Stufe > 5 then'#10'    Exit;'#10 +
-    '  if Unbekannt >= 0 then'#10'    Exit;'#10'  if D >= 0 then'#10'    Exit;'#10'  if C >= I then'#10'    Exit;'#10 +
+    '  if Unbekannt >= 0 then'#10'    Exit;'#10'  if Length(S) > 0 then'#10'    Exit;'#10'  if D >= 0 then'#10'    Exit;'#10'  if C >= I then'#10'    Exit;'#10 +
     '  if 1 > 2 then'#10'    Exit;'#10)))));
 end;
 
