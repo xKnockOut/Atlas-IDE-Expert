@@ -4194,3 +4194,16 @@ Voraussetzung: Server läuft in der IDE mit Projekt; RTL und VCL im Index.
 | YB5 | `if Flag then` mit `Flag: Boolean`, `LongBool` bzw. `BOOL`, `if not Liste.IsEmpty then`, `if A and B then` mit Booleans, Variant als Bedingung, unbekannter Bezeichner | Keine Meldung |
 | YB6 | `"condition-not-boolean": "off"`, `"group:compiler": "off"` bzw. `exclude` | Keine Meldung |
 | YB7 | Abgleich mit Delphi: YB1, YB3 übersetzen | dcc meldet E2012 an denselben Stellen, für YB5 nicht |
+
+## for-in über einen Typ ohne Enumerator (#1034)
+
+Voraussetzung: Server läuft in der IDE mit Projekt; RTL, VCL und Data.DB im Index.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| YF1 | Das Beispiel aus #1034: `var Felder: TFields; F: TField; … for F in Felder.Dataset do` | Fehler `for-in-not-enumerable` an `Felder.Dataset`: „TDataSet hat keinen Enumerator; for-in ist hier nicht möglich (wie E2430).“; im Fenster „Atlas-Prüfung“ und im Befund-Hover (**Abnahme**) |
+| YF2 | `for I in Anzahl do` mit `Anzahl: Integer`, for-in über einen Record ohne GetEnumerator, über eine eigene Klasse mit `Count`, aber ohne GetEnumerator | Meldungen wie YF1; bei der Klasse mit Count der Zusatz „stattdessen über Count mit Index durchlaufen“ |
+| YF3 | Eigene Klasse mit `GetEnumerator`, dessen Enumerator kein `Current` hat | „Der Enumerator … hat kein öffentliches Current; for-in ist hier nicht möglich (wie E2431).“ |
+| YF4 | for-in über `TFields`, `TStringList`, `TList<T>`, `TDictionary<K, V>`, Strings, Arrays, Mengen, eine Klasse mit geerbtem GetEnumerator und einen Typ mit GetEnumerator aus einem Class-Helper | Keine Meldung |
+| YF5 | `"for-in-not-enumerable": "off"`, `"group:compiler": "off"` bzw. `exclude` | Keine Meldung |
+| YF6 | Abgleich mit Delphi: YF1 bis YF3 übersetzen | dcc meldet an denselben Stellen E2430 bzw. E2431; meldet dcc für YF1 E2431 (wie im Issue-Beispiel), bitte notieren |
