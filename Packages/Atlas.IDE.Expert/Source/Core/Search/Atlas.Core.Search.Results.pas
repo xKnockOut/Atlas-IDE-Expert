@@ -12,6 +12,9 @@
 // - FollowSelection: F3 mit einzeiliger Markierung sucht nach dem markierten
 //   Text, wenn er nicht der letzte Suchtext ist (etwa ein Bezeichner außerhalb
 //   jeder Methode).
+// - StartQuery: Suche beim Öffnen der Leiste. Vorgabe ist immer die Unit;
+//   Methode nur über „In Methode suchen“ oder gezielt in der Bereichsliste,
+//   eine mehrzeilige Markierung schlägt „Auswahl“ vor.
 
 interface
 
@@ -46,6 +49,10 @@ type
     /// sonst bleibt ALast. AChanged: Suchtext gewechselt.</summary>
     class function FollowSelection(const ALast: TAtlasSearchQuery; const ASelected: string;
       out AChanged: Boolean): TAtlasSearchQuery; static;
+    /// <summary>Suche beim Öffnen der Leiste: Text AProposal, Optionen der letzten Suche ALast; Bereich Unit,
+    /// bei mehrzeiliger Markierung Auswahl, mit AInMethod Methode (innerste Routine).</summary>
+    class function StartQuery(const ALast: TAtlasSearchQuery; const AProposal: string;
+      AMultiLineSelection, AInMethod: Boolean): TAtlasSearchQuery; static;
   end;
 
 implementation
@@ -147,6 +154,20 @@ begin
       Identifier := False;
   if not Identifier then
     Result.Options.Identifier := False;
+end;
+
+class function TAtlasSearchResults.StartQuery(const ALast: TAtlasSearchQuery; const AProposal: string;
+  AMultiLineSelection, AInMethod: Boolean): TAtlasSearchQuery;
+begin
+  // Nur Optionen übernehmen: Ein früher gewählter Bereich Methode gilt nicht für die nächste Suche.
+  Result := Default(TAtlasSearchQuery);
+  Result.Text := AProposal;
+  Result.Options := ALast.Options;
+  Result.Scope := TAtlasSearchScope.UnitFile;
+  if AMultiLineSelection then
+    Result.Scope := TAtlasSearchScope.Selection;
+  if AInMethod then
+    Result.Scope := TAtlasSearchScope.Method;
 end;
 
 end.

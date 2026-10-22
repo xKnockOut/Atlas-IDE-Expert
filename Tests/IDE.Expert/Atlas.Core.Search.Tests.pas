@@ -43,6 +43,8 @@ type
     [Test]
     procedure FollowSelectionTakesOtherMarkedText;
     [Test]
+    procedure StartQuerySearchesTheUnitUnlessAskedForTheMethod;
+    [Test]
     procedure KeysComeFromSettingsAndFollowTheSwitch;
     [Test]
     procedure SettingsDefaultsAndRoundTrip;
@@ -350,6 +352,32 @@ begin
   Query := TAtlasSearchResults.FollowSelection(Last, 'a'#13#10'b', Changed);
   Assert.IsFalse(Changed);
   Assert.AreEqual('Open', Query.Text);
+end;
+
+procedure TAtlasSearchTests.StartQuerySearchesTheUnitUnlessAskedForTheMethod;
+var
+  Last, Query: TAtlasSearchQuery;
+begin
+  Assert.AreEqual(Ord(TAtlasSearchScope.UnitFile), Ord(Default(TAtlasSearchQuery).Scope), 'Vorgabe Unit');
+  // Zuletzt gezielt in der zweiten Routine gesucht: Die nächste Suche beginnt trotzdem in der Unit.
+  Last := Default(TAtlasSearchQuery);
+  Last.Text := 'Open';
+  Last.Options := TAtlasSearchOptions.Create(True, True, False);
+  Last.Scope := TAtlasSearchScope.Method;
+  Last.Level := 1;
+  Last.Area := TAtlasSearchArea.Create(2, 0, 9, 0);
+  Query := TAtlasSearchResults.StartQuery(Last, 'Close', False, False);
+  Assert.AreEqual('Close', Query.Text);
+  Assert.AreEqual(Ord(TAtlasSearchScope.UnitFile), Ord(Query.Scope));
+  Assert.AreEqual(0, Query.Level);
+  Assert.IsTrue(Query.Area.IsEmpty);
+  Assert.IsTrue(Query.Options.CaseSensitive, 'Optionen bleiben');
+  Assert.IsTrue(Query.Options.WholeWord);
+  // Mehrzeilige Markierung: Auswahl; „In Methode suchen“: Methode, innerste Routine.
+  Assert.AreEqual(Ord(TAtlasSearchScope.Selection), Ord(TAtlasSearchResults.StartQuery(Last, 'x', True, False).Scope));
+  Query := TAtlasSearchResults.StartQuery(Last, 'x', True, True);
+  Assert.AreEqual(Ord(TAtlasSearchScope.Method), Ord(Query.Scope));
+  Assert.AreEqual(0, Query.Level);
 end;
 
 procedure TAtlasSearchTests.KeysComeFromSettingsAndFollowTheSwitch;
