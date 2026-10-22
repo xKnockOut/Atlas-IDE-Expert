@@ -1895,6 +1895,16 @@
       "description": "The constructor, AfterConstruction or the OnCreate handler of an automatically created form or data module uses the global variable of another form that the .dpr creates later with Application.CreateForm. The variable is still nil at that point. The order comes from the .dpr of the project the unit belongs to; the OnCreate handler from the form file (FormCreate or DataModuleCreate without one). Silent when the routine checks the variable (Assigned, comparison with nil), assigns it itself, creates it with CreateForm or declares a local name of the same name, and for forms that are not created automatically. Each variable is reported once per routine. Medium confidence. No quick fix: change the order in the .dpr or move the access to OnShow.",
       "bad": "procedure TfrmHaupt.FormCreate(Sender: TObject);\nbegin\n  lblNutzer.Caption := dmDaten.Benutzer;\nend;",
       "good": "// .dpr: Application.CreateForm(TdmDaten, dmDaten) before TfrmHaupt\nprocedure TfrmHaupt.FormCreate(Sender: TObject);\nbegin\n  lblNutzer.Caption := dmDaten.Benutzer;\nend;"
+    },
+    {
+      "id": "except-handler-order",
+      "name": "General exception handler before a specific one",
+      "category": "bug",
+      "severity": "warning",
+      "group": "exceptions",
+      "description": "In a try..except with several on handlers the first matching handler wins. A handler for a class that an earlier handler already catches is never reached: its code is dead and the special treatment never runs. Reported when an earlier handler names the same class, an ancestor of it, Exception (covers every exception class) or TObject. Ancestors come from the unit, the project index and a table of known RTL, VCL and FireDAC exception classes (for example EStreamError > EFOpenError, EIntError > ERangeError); unknown classes are only compared with Exception and TObject. Quick fix: move the specific handler before the general one (only when both handlers stand on their own lines). A duplicate handler for the same class is reported without a quick fix.",
+      "bad": "except\n  on E: Exception do\n    Protokoll(E.Message);\n  on E: EConvertError do\n    ShowMessage('Ungültige Zahl');\nend;",
+      "good": "except\n  on E: EConvertError do\n    ShowMessage('Ungültige Zahl');\n  on E: Exception do\n    Protokoll(E.Message);\nend;"
     }
   ]
 }

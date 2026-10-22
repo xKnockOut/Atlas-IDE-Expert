@@ -1915,6 +1915,16 @@ begin
     '      "description": "The constructor, AfterConstruction or the OnCreate handler of an automatically created form or data module uses the global variable of another form that the .dpr creates later wi' + 'th Application.CreateForm. The variable is still nil at that point. The order comes from the .dpr of the project the unit belongs to; the OnCreate handler from the form file (FormCreate or DataModuleC' + 'reate without one). Silent when the routine checks the variable (Assigned, comparison with nil), assigns it itself, creates it with CreateForm or declares a local name of the same name, and for forms ' + 'that are not created automatically. Each variable is reported once per routine. Medium confidence. No quick fix: change the order in the .dpr or move the access to OnShow.",' + #10 +
     '      "bad": "procedure TfrmHaupt.FormCreate(Sender: TObject);\nbegin\n  lblNutzer.Caption := dmDaten.Benutzer;\nend;",' + #10 +
     '      "good": "// .dpr: Application.CreateForm(TdmDaten, dmDaten) before TfrmHaupt\nprocedure TfrmHaupt.FormCreate(Sender: TObject);\nbegin\n  lblNutzer.Caption := dmDaten.Benutzer;\nend;"' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "except-handler-order",' + #10 +
+    '      "name": "General exception handler before a specific one",' + #10 +
+    '      "category": "bug",' + #10 +
+    '      "severity": "warning",' + #10 +
+    '      "group": "exceptions",' + #10 +
+    '      "description": "In a try..except with several on handlers the first matching handler wins. A handler for a class that an earlier handler already catches is never reached: its code is dead and th' + 'e special treatment never runs. Reported when an earlier handler names the same class, an ancestor of it, Exception (covers every exception class) or TObject. Ancestors come from the unit, the project' + ' index and a table of known RTL, VCL and FireDAC exception classes (for example EStreamError > EFOpenError, EIntError > ERangeError); unknown classes are only compared with Exception and TObject. Quic' + 'k fix: move the specific handler before the general one (only when both handlers stand on their own lines). A duplicate handler for the same class is reported without a quick fix.",' + #10 +
+    '      "bad": "except\n  on E: Exception do\n    Protokoll(E.Message);\n  on E: EConvertError do\n    ShowMessage(''Ungültige Zahl'');\nend;",' + #10 +
+    '      "good": "except\n  on E: EConvertError do\n    ShowMessage(''Ungültige Zahl'');\n  on E: Exception do\n    Protokoll(E.Message);\nend;"' + #10 +
     '    }' + #10 +
     '  ]' + #10 +
     '}' + #10 +
@@ -2926,6 +2936,11 @@ begin
     '      "id": "form-access-before-create",' + #10 +
     '      "name": "Zugriff auf ein Formular, das noch nicht erzeugt ist",' + #10 +
     '      "description": "Der Konstruktor, AfterConstruction oder der OnCreate-Handler eines automatisch erzeugten Formulars bzw. Datenmoduls benutzt die globale Variable eines anderen Formulars, das die ' + '.dpr erst danach mit Application.CreateForm erzeugt. Die Variable ist dort noch nil. Die Reihenfolge stammt aus der .dpr des Projekts, zu dem die Unit gehört; der OnCreate-Handler aus der Formulardate' + 'i (ohne Eintrag FormCreate bzw. DataModuleCreate). Still, wenn die Routine die Variable prüft (Assigned, Vergleich mit nil), selbst zuweist, mit CreateForm erzeugt oder einen gleichnamigen lokalen Nam' + 'en deklariert, und bei Formularen, die nicht automatisch erzeugt werden. Jede Variable wird je Routine einmal gemeldet. Sicherheit mittel. Keine Korrektur: die Reihenfolge in der .dpr ändern oder den ' + 'Zugriff nach OnShow verlegen."' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "except-handler-order",' + #10 +
+    '      "name": "Allgemeiner Exception-Handler vor speziellem",' + #10 +
+    '      "description": "In einem try..except mit mehreren on-Handlern gewinnt der erste passende. Ein Handler für eine Klasse, die ein früherer Handler schon fängt, wird nie erreicht: Sein Code ist tot ' + 'und die Sonderbehandlung läuft nie. Gemeldet, wenn ein früherer Handler dieselbe Klasse, einen Vorfahren davon, Exception (deckt jede Exception-Klasse ab) oder TObject nennt. Vorfahren kommen aus der ' + 'Unit, dem Projektindex und einer Tabelle bekannter RTL-, VCL- und FireDAC-Exceptions (etwa EStreamError > EFOpenError, EIntError > ERangeError); unbekannte Klassen werden nur mit Exception und TObject' + ' verglichen. Korrektur: den speziellen Handler vor den allgemeinen verschieben (nur, wenn beide Handler auf eigenen Zeilen stehen). Ein doppelter Handler für dieselbe Klasse wird ohne Korrektur gemeld' + 'et."' + #10 +
     '    }' + #10 +
     '  ]' + #10 +
     '}' + #10 +

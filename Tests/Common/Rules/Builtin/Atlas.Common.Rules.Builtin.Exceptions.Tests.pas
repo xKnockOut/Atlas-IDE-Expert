@@ -32,6 +32,14 @@ type
     procedure ExceptionInDestructorVariants;
     [Test]
     procedure ExceptionInDestructorSilentCases;
+    [Test]
+    procedure ExceptHandlerOrderIssueExample;
+    [Test]
+    procedure ExceptHandlerOrderVariants;
+    [Test]
+    procedure ExceptHandlerOrderSilentCases;
+    [Test]
+    procedure ExceptHandlerOrderOffAndExclude;
   end;
 
 implementation
@@ -41,6 +49,7 @@ uses
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Rules.Contract,
   Atlas.Common.Rules.Builtin.Exceptions,
+  Atlas.Common.Editing.ChangeSignature,
   Atlas.Tests.RuleAssert;
 
 const
@@ -185,6 +194,97 @@ begin
     'destructor TSitzung.Destroy;'#10'  procedure Pruefen;'#10'  begin'#10'    raise ESitzung.Create(''x'');'#10 +
     '  end;'#10'begin'#10'  FAufgabe := procedure'#10'    begin'#10'      raise ESitzung.Create(''x'');'#10 +
     '    end;'#10'  inherited;'#10'end;'#10'end.');
+end;
+
+function Handler(const AHandlers: string): string;
+begin
+  Result := InRoutine('  try'#10'    Wert := StrToInt(Text);'#10'  except'#10 + AHandlers + '  end;');
+end;
+
+procedure TExceptionRulesTests.ExceptHandlerOrderIssueExample;
+var
+  Source, Fixed: string;
+  Findings: TArray<TRuleFinding>;
+begin
+  Source := Handler('    on E: Exception do'#10'      Protokoll(E.Message);'#10 +
+    '    on E: EConvertError do'#10'      ShowMessage(''Ungültige Zahl'');'#10);
+  Findings := TRuleAssert.Findings(TExceptHandlerOrderRule.Create, Source);
+  Assert.AreEqual(1, Integer(Length(Findings)));
+  Assert.AreEqual('except-handler-order', Findings[0].RuleId);
+  Assert.AreEqual(Ord(TRuleSeverity.Warning), Ord(Findings[0].Severity));
+  Assert.AreEqual('Nie erreicht: EConvertError ist ein Nachfahr von Exception, das schon in Zeile 9 behandelt wird.',
+    Findings[0].Message);
+  Assert.AreEqual(10, Findings[0].Range.StartPos.Line);
+  Assert.AreEqual(10, Findings[0].Range.StartPos.Character);
+  Assert.AreEqual('on EConvertError vor on Exception verschieben', Findings[0].Fixes[0].Title);
+  Fixed := TChangeSignature.ApplyEdits(Source, Findings[0].Fixes[0].Edits);
+  Assert.AreEqual(Handler('    on E: EConvertError do'#10'      ShowMessage(''Ungültige Zahl'');'#10 +
+    '    on E: Exception do'#10'      Protokoll(E.Message);'#10), Fixed);
+  TRuleAssert.Silent(TExceptHandlerOrderRule.Create, Fixed);
+end;
+
+procedure TExceptionRulesTests.ExceptHandlerOrderVariants;
+var
+  Source: string;
+  Findings: TArray<TRuleFinding>;
+begin
+  // Doppelter Handler: keine Korrektur.
+  Findings := TRuleAssert.Findings(TExceptHandlerOrderRule.Create, Handler('    on E: EConvertError do'#10 +
+    '      Protokoll(E.Message);'#10'    on EConvertError do'#10'      Abbrechen;'#10));
+  Assert.AreEqual(1, Integer(Length(Findings)));
+  Assert.AreEqual('Nie erreicht: EConvertError wird schon in Zeile 9 behandelt.', Findings[0].Message);
+  Assert.AreEqual(0, Integer(Length(Findings[0].Fixes)));
+  // Bekannte Hierarchie über zwei Stufen; letzter Handler ohne Semikolon, danach else.
+  Source := Handler('    on E: EStreamError do'#10'      Protokoll(E.Message);'#10 +
+    '    on E: EFOpenError do'#10'      begin'#10'        Abbrechen;'#10'      end'#10'  else'#10'    raise;'#10);
+  Findings := TRuleAssert.Findings(TExceptHandlerOrderRule.Create, Source);
+  Assert.AreEqual(1, Integer(Length(Findings)));
+  Assert.AreEqual('Nie erreicht: EFOpenError ist ein Nachfahr von EStreamError, das schon in Zeile 9 behandelt wird.',
+    Findings[0].Message);
+  Assert.AreEqual(Handler('    on E: EFOpenError do'#10'      begin'#10'        Abbrechen;'#10'      end;'#10 +
+    '    on E: EStreamError do'#10'      Protokoll(E.Message);'#10'  else'#10'    raise;'#10),
+    TChangeSignature.ApplyEdits(Source, Findings[0].Fixes[0].Edits));
+  // Eigene Hierarchie aus der Unit, TObject, geschachteltes try.
+  Findings := TRuleAssert.Findings(TExceptHandlerOrderRule.Create, 'unit U;'#10'interface'#10'type'#10 +
+    '  EBasis = class(Exception);'#10'  EKunde = class(EBasis);'#10'implementation'#10'procedure P;'#10'begin'#10 +
+    '  try'#10'    try'#10'      Laden;'#10'    except'#10'      on EBasis do Abbrechen;'#10 +
+    '      on E: EKunde do Melden(E);'#10'    end;'#10'  except'#10'    on TObject do Abbrechen;'#10 +
+    '    on E: Exception do Melden(E);'#10'  end;'#10'end;'#10'end.');
+  Assert.AreEqual(2, Integer(Length(Findings)));
+  Assert.AreEqual('Nie erreicht: Exception ist ein Nachfahr von TObject, das schon in Zeile 17 behandelt wird.',
+    Findings[1].Message);
+  Assert.AreEqual('Nie erreicht: EKunde ist ein Nachfahr von EBasis, das schon in Zeile 13 behandelt wird.',
+    Findings[0].Message);
+  Assert.AreEqual(1, Integer(Length(Findings[0].Fixes)));
+  // Beide Handler in einer Zeile: gemeldet, aber ohne Korrektur.
+  Findings := TRuleAssert.Findings(TExceptHandlerOrderRule.Create, Handler(
+    '    on Exception do Abbrechen; on SysUtils.EConvertError do Melden;'#10));
+  Assert.AreEqual(1, Integer(Length(Findings)));
+  Assert.AreEqual(0, Integer(Length(Findings[0].Fixes)));
+  Assert.AreEqual('EIntError', TExceptHandlerOrderRule.KnownParent('ERangeError'));
+  Assert.AreEqual('', TExceptHandlerOrderRule.KnownParent('EFremd'));
+end;
+
+procedure TExceptionRulesTests.ExceptHandlerOrderSilentCases;
+begin
+  // Speziell vor allgemein, unverwandte Klassen, unbekannte Klassen untereinander, Exception nach TObject-fremdem.
+  TRuleAssert.Silent(TExceptHandlerOrderRule.Create, Handler('    on E: EConvertError do'#10'      Melden;'#10 +
+    '    on E: EInOutError do'#10'      Melden;'#10'    on E: EFremd do'#10'      Melden;'#10 +
+    '    on E: EAnders do'#10'      Melden;'#10'    on E: Exception do'#10'      Protokoll(E.Message);'#10));
+  TRuleAssert.Silent(TExceptHandlerOrderRule.Create, Handler('    on E: EDivByZero do Melden;'#10 +
+    '    on E: EMathError do Melden;'#10'    on E: EIntError do Melden;'#10));
+  TRuleAssert.Silent(TExceptHandlerOrderRule.Create, Handler('    Protokoll;'#10));
+end;
+
+procedure TExceptionRulesTests.ExceptHandlerOrderOffAndExclude;
+var
+  Source: string;
+begin
+  Source := Handler('    on Exception do Abbrechen;'#10'    on EConvertError do Melden;'#10);
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TExceptHandlerOrderRule.Create, Source,
+    '{"rules": {"except-handler-order": "off"}}'))));
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TExceptHandlerOrderRule.Create, Source,
+    '{"rules": {"except-handler-order": {"exclude": ["Source/*.pas"]}}}', 'Source/U.pas'))));
 end;
 
 initialization
