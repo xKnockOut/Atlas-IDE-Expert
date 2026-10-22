@@ -15,7 +15,7 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 | [Performance](#gruppe-performance) | 4 |
 | [Sicherheit](#gruppe-security) | 11 |
 | [Komponenten](#gruppe-components) | 8 |
-| [Formulare und Daten](#gruppe-forms) | 10 |
+| [Formulare und Daten](#gruppe-forms) | 11 |
 | [Architektur](#gruppe-architecture) | 3 |
 | [Stil und Metriken](#gruppe-style) | 28 |
 | [Packages und Tests](#gruppe-packages) | 3 |
@@ -212,6 +212,7 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 | [`dfm-duplicate-binding`](#dfm-duplicate-binding) | Zwei Controls an demselben Feld | Bug | Warnung |
 | [`dfm-property`](#dfm-property) | Komponenten-Property verletzt eine Eigenschaftsregel | Code Smell | Warnung |
 | [`foreign-form-control-access`](#foreign-form-control-access) | Zugriff auf Controls eines anderen Formulars | Code Smell | Warnung |
+| [`form-resource-missing`](#form-resource-missing) | Formular-Unit ohne {$R *.dfm} | Bug | Fehler |
 
 <a id="gruppe-architecture"></a>
 ### Architektur
@@ -4540,4 +4541,31 @@ Richtig:
 
 ```pascal
 Liste.Clear;
+```
+
+<a id="form-resource-missing"></a>
+### form-resource-missing
+
+**Formular-Unit ohne {$R *.dfm}** · Bug · Fehler · Gruppe Formulare und Daten
+
+Neben der Unit liegt eine .dfm bzw. .fmx, die Unit deklariert die Klasse ihres Wurzelobjekts, aber keine {$R …}-Direktive bindet eine Formulardatei ein: Beim Erzeugen des Formulars folgt EResNotFound. Umgekehrt meldet die Regel ein {$R *.dfm} bzw. {$R Name.dfm}, dessen Datei neben der Unit fehlt (der Compiler bricht mit F1026 ab). Eine Direktive in einem beliebigen Zweig der bedingten Übersetzung zählt als eingebunden. Still bleibt die Regel, wenn die Klasse der Formulardatei nicht in der Unit steht und wenn sie keine Dateien neben der Unit sieht. Korrektur: {$R *.dfm} (bzw. {$R *.fmx}) nach implementation einfügen.
+
+Entspricht der Compilermeldung `F1026`.
+
+Mit Treffer:
+
+```pascal
+implementation
+
+procedure TfrmKunde.FormShow(Sender: TObject);
+```
+
+Richtig:
+
+```pascal
+implementation
+
+{$R *.dfm}
+
+procedure TfrmKunde.FormShow(Sender: TObject);
 ```

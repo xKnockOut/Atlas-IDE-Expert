@@ -43,6 +43,10 @@ type
     /// ('' = Vorgaben) unter ARelativePath.</summary>
     class function IndexFindings(ARule: IRule; const ASource: string; const AIndex: ISymbolIndex;
       const AConfigJson, ARelativePath: string): TArray<TRuleFinding>; static;
+    /// <summary>Treffer von ARule mit dem vorbereiteten Kontext AContext (#1054): Tree wird aus AContext.Text
+    /// geparst; Einstellungen aus AConfigJson ('' = Vorgaben).</summary>
+    class function ContextFindings(ARule: IRule; const AContext: TRuleContext;
+      const AConfigJson: string): TArray<TRuleFinding>; static;
     /// <summary>Positiver Testfall: genau ACount Treffer.</summary>
     class procedure Reports(ARule: IRule; const ASource: string; ACount: Integer = 1); static;
     /// <summary>Negativer Testfall: kein Treffer.</summary>
@@ -189,6 +193,28 @@ begin
     Context.Tree := Tree;
     Context.FormText := AFormText;
     Context.AutoCreateForms := AForms;
+    Result := TRuleEngine.Run([ARule], Settings, Context);
+  finally
+    Tree.Free;
+  end;
+end;
+
+class function TRuleAssert.ContextFindings(ARule: IRule; const AContext: TRuleContext;
+  const AConfigJson: string): TArray<TRuleFinding>;
+var
+  Settings: TServerSettings;
+  Issues: TArray<TConfigurationIssue>;
+  Context: TRuleContext;
+  Tree: TSyntaxTree;
+begin
+  if AConfigJson = '' then
+    Settings := TServerSettings.Default
+  else
+    Settings := TConfigurationParser.Parse(AConfigJson, Issues);
+  Tree := TPascalParser.Parse(AContext.Text);
+  try
+    Context := AContext;
+    Context.Tree := Tree;
     Result := TRuleEngine.Run([ARule], Settings, Context);
   finally
     Tree.Free;

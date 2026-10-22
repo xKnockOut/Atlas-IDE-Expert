@@ -41,6 +41,9 @@ type
     Name: string;
     /// <summary>Automatisch erzeugte Formulare in der Reihenfolge der .dpr (#956).</summary>
     AutoCreateForms: TArray<string>;
+    /// <summary>Absoluter Pfad der geprüften Datei (#1054); '' = unbekannt. Damit sehen die Regeln die
+    /// Formulardatei daneben (FormText) und lesen Dateien neben der Unit (ReadFile) wie im Server.</summary>
+    FileName: string;
   end;
 
   TFileChecker = class
@@ -67,11 +70,53 @@ type
 implementation
 
 uses
+  System.Classes,
+  System.IOUtils,
+  Atlas.Common.Documents.FileEncoding,
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.Parser,
   Atlas.Common.Pascal.TreeCache,
   Atlas.Common.Documents.Contract,
   Atlas.Common.Rules.Engine;
+
+/// <summary>Formulardatei neben AFileName und Dateizugriff relativ zu ihrem Ordner, wie im Server (#1054).</summary>
+procedure SetFiles(var AContext: TRuleContext; const AFileName: string);
+var
+  Folder, Extension: string;
+  FileFormat: TFileFormat;
+begin
+  AContext.FileName := AFileName;
+  if SameText(ExtractFileExt(AFileName), '.pas') then
+    for Extension in TArray<string>.Create('.dfm', '.fmx') do
+      if TFile.Exists(ChangeFileExt(AFileName, Extension)) then
+      begin
+        try
+          AContext.FormText := TFileEncoding.LoadFromFile(ChangeFileExt(AFileName, Extension), FileFormat);
+          AContext.FormFile := ChangeFileExt(AFileName, Extension);
+        except
+          on EInOutError do
+            AContext.FormText := '';
+          on EStreamError do
+            AContext.FormText := '';
+        end;
+        Break;
+      end;
+  Folder := ExtractFilePath(AFileName);
+  AContext.ReadFile :=
+    function(const AName: string; out AData: TBytes): Boolean
+    begin
+      Result := TFile.Exists(TPath.Combine(Folder, AName));
+      if Result then
+      try
+        AData := TFile.ReadAllBytes(TPath.Combine(Folder, AName));
+      except
+        on EInOutError do
+          Result := False;
+        on EStreamError do
+          Result := False;
+      end;
+    end;
+end;
 
 class function TFileChecker.SyntaxDescriptor: TRuleDescriptor;
 begin
@@ -157,6 +202,8 @@ begin
     Context.Application := AProject.Application;
     Context.ProjectName := AProject.Name;
     Context.AutoCreateForms := AProject.AutoCreateForms;
+    if AProject.FileName <> '' then
+      SetFiles(Context, AProject.FileName);
     Result := Syntax + TRuleEngine.Run(ARules, ASettings, Context);
   finally
     Tree.Free;

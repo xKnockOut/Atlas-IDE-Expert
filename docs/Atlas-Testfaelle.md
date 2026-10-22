@@ -4119,3 +4119,19 @@ Voraussetzung: Server läuft in der IDE mit Projekt; RTL und VCL im Index.
 | RO5 | `Liste.Text := ''`, `if Liste.Count = 0`, gleichnamige lokale Variable `Count := 0`, `property Caption;` aus einem Vorfahren | Keine Meldung |
 | RO6 | `"readonly-property-assigned": "off"`, `"group:compiler": "off"` bzw. `exclude` | Keine Meldung |
 | RO7 | Abgleich mit Delphi: RO1, RO3, RO4 übersetzen | dcc meldet E2129 bzw. E2130 an denselben Stellen, für RO5 nichts |
+
+## Formular-Unit ohne {$R *.dfm} (#1054)
+
+Voraussetzung: Server läuft in der IDE mit Projekt; ein Formular `TfrmKunde` in `Kunde.pas` mit `Kunde.dfm`.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| FR1 | Das Beispiel aus #1054: in `Kunde.pas` die Zeile `{$R *.dfm}` löschen | Fehler `form-resource-missing` an `implementation`: „Kunde.dfm wird nicht eingebunden; TfrmKunde.Create löst EResNotFound aus.“; im Fenster „Atlas-Prüfung“ und im Befund-Hover (**Abnahme**) |
+| FR2 | Schnellkorrektur „{$R *.dfm} nach implementation einfügen“, danach Strg+Z | `{$R *.dfm}` steht mit Leerzeile nach `implementation`, keine Meldung mehr; Strg+Z nimmt es in einem Schritt zurück |
+| FR3 | `{$R *.dfm}` in `{$IFDEF MSWINDOWS}` … `{$ENDIF}`, bzw. `{$R *.DFM}` großgeschrieben | Keine Meldung |
+| FR4 | Unit mit `{$R *.dfm}`, die `.dfm` im Explorer umbenennen (Unit neu öffnen) | Fehler am `{$R *.dfm}`: „Kunde.dfm fehlt; der Compiler bricht mit F1026 ab.“; ohne Korrektur |
+| FR5 | FireMonkey-Formular ohne `{$R *.fmx}` | Meldung mit `Kunde.fmx`, Korrektur fügt `{$R *.fmx}` ein |
+| FR6 | Unit ohne Formulardatei (reine Logik-Unit), Formulardatei mit fremder Klasse, `{$R *.res}` | Keine Meldung |
+| FR7 | `"form-resource-missing": "off"`, `"group:forms": "off"` bzw. `exclude` | Keine Meldung |
+| FR8 | Linter: `AtlasServer --check` über ein Projekt mit einer Unit wie FR1 | Treffer `form-resource-missing` in der Ausgabe |
+| FR9 | Abgleich mit Delphi: FR1 übersetzen und das Formular erzeugen, FR4 übersetzen | FR1: EResNotFound zur Laufzeit; FR4: F1026 |
