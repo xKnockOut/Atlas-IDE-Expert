@@ -5,6 +5,10 @@
 // und gespiegelte Vergleiche, benannte Konstanten, Felder aus dem Index,
 // case-Marken außerhalb des Bereichs, bedingte Deklarationen, stille Fälle,
 // Abschalten.
+// constant-initializer-mismatch (#1015): Beispiel mit Korrektur, zu viele
+// Einträge, Teilbereiche, Boolean, mehrere Dimensionen, benannte Array-Typen,
+// Aufzählungen aus dem Index, Record-Felder in falscher Reihenfolge, bedingte
+// Einträge, stille Fälle, Abschalten.
 
 interface
 
@@ -31,6 +35,27 @@ type
     procedure PossibleComparisonsAreSilent;
     [Test]
     procedure OutcomeTable;
+    [Test]
+    procedure OffAndExclude;
+  end;
+
+  [TestFixture]
+  TConstantInitializerMismatchTests = class
+  public
+    [Test]
+    procedure IssueExampleWithFix;
+    [Test]
+    procedure TooManyAndSubranges;
+    [Test]
+    procedure DimensionsAndNamedTypes;
+    [Test]
+    procedure EnumFromIndex;
+    [Test]
+    procedure RecordFieldOrder;
+    [Test]
+    procedure MatchingAndUnsureAreSilent;
+    [Test]
+    procedure Placeholders;
     [Test]
     procedure OffAndExclude;
   end;
@@ -233,7 +258,210 @@ begin
     '{"rules": {"comparison-always-constant": {"exclude": ["Source/*.pas"]}}}', 'Source/Zaehler.pas'))));
 end;
 
+{ TConstantInitializerMismatchTests }
+
+/// <summary>Meldungen der Treffer, durch " | " getrennt (für Fehlermeldungen der Tests).</summary>
+function Messages(const AFound: TArray<TRuleFinding>): string;
+var
+  Finding: TRuleFinding;
+begin
+  Result := '';
+  for Finding in AFound do
+    Result := Result + Finding.Message + ' | ';
+end;
+
+function InitFindings(const ASource: string): TArray<TRuleFinding>; overload;
+begin
+  Result := TRuleAssert.Findings(TConstantInitializerMismatchRule.Create, ASource);
+end;
+
+function InitFindings(const ASource, AConfig, APath: string): TArray<TRuleFinding>; overload;
+begin
+  Result := TRuleAssert.Findings(TConstantInitializerMismatchRule.Create, ASource, AConfig, APath);
+end;
+
+/// <summary>Unit Status mit TStatus (vier Werte) und den Deklarationen ADecls im interface.</summary>
+function StatusUnit(const ADecls: string): string;
+begin
+  Result := 'unit Status;'#10'interface'#10'type'#10'  TStatus = (stNeu, stOffen, stGeschlossen, stArchiviert);'#10 +
+    ADecls + 'implementation'#10'end.';
+end;
+
+/// <summary>Wendet die Edits einer Korrektur von hinten nach vorn an (Positionen 0-basiert, Zeilen mit #10).
+/// </summary>
+function Applied(const AText: string; const AFix: TRuleFix): string;
+var
+  Lines: TArray<string>;
+  Index: Integer;
+  Edit: TRuleEdit;
+  Line: string;
+begin
+  Lines := AText.Split([#10]);
+  for Index := High(AFix.Edits) downto 0 do
+  begin
+    Edit := AFix.Edits[Index];
+    Assert.AreEqual(Edit.Range.StartPos.Line, Edit.Range.EndPos.Line, 'nur einzeilige Edits');
+    Line := Lines[Edit.Range.StartPos.Line];
+    Lines[Edit.Range.StartPos.Line] := Copy(Line, 1, Edit.Range.StartPos.Character) + Edit.NewText +
+      Copy(Line, Edit.Range.EndPos.Character + 1, MaxInt);
+  end;
+  Result := string.Join(#10, Lines);
+end;
+
+procedure TConstantInitializerMismatchTests.IssueExampleWithFix;
+var
+  Source, Fixed: string;
+  Found: TArray<TRuleFinding>;
+begin
+  Source := StatusUnit('const'#10'  StatusText: array[TStatus] of string ='#10 +
+    '    (''Neu'', ''Offen'', ''Geschlossen'');'#10);
+  Found := InitFindings(Source);
+  Assert.AreEqual(1, Integer(Length(Found)));
+  Assert.AreEqual(ConstantInitializerMismatchRuleId, Found[0].RuleId);
+  Assert.AreEqual('TStatus hat 4 Werte, die Konstante 3 Einträge; stArchiviert fehlt (wie E2072).',
+    Found[0].Message);
+  Assert.AreEqual(Ord(TRuleSeverity.Error), Ord(Found[0].Severity));
+  Assert.AreEqual(6, Found[0].Range.StartPos.Line);
+  Assert.AreEqual(4, Found[0].Range.StartPos.Character);
+  Assert.AreEqual(1, Integer(Length(Found[0].Fixes)));
+  Assert.AreEqual('Fehlende Einträge mit Platzhalter ergänzen', Found[0].Fixes[0].Title);
+  Fixed := Applied(Source, Found[0].Fixes[0]);
+  Assert.IsTrue(Pos('    (''Neu'', ''Offen'', ''Geschlossen'', ''''{stArchiviert});', Fixed) > 0, Fixed);
+  Assert.AreEqual(0, Integer(Length(InitFindings(Fixed))), Fixed);
+  // Zwei fehlende Werte.
+  Found := InitFindings(StatusUnit('const'#10'  Kurz: array[TStatus] of Integer = (1, 2);'#10));
+  Assert.AreEqual(1, Integer(Length(Found)));
+  Assert.AreEqual('TStatus hat 4 Werte, die Konstante 2 Einträge; stGeschlossen, stArchiviert fehlen (wie E2072).',
+    Found[0].Message);
+  Assert.IsTrue(Pos('(1, 2, 0{stGeschlossen}, 0{stArchiviert});', Applied(StatusUnit('const'#10 +
+    '  Kurz: array[TStatus] of Integer = (1, 2);'#10), Found[0].Fixes[0])) > 0);
+end;
+
+procedure TConstantInitializerMismatchTests.TooManyAndSubranges;
+var
+  Found: TArray<TRuleFinding>;
+begin
+  Found := InitFindings(StatusUnit('const'#10'  Max = 2;'#10 +
+    '  Viele: array[TStatus] of Integer = (1, 2, 3, 4, 5);'#10 +
+    '  Zahlen: array[0..Max] of Integer = (1, 2, 3, 4);'#10 +
+    '  Eins: array[1..1] of string = (''a'', ''b'');'#10 +
+    '  JaNein: array[Boolean] of string = (''Nein'');'#10 +
+    '  Bereich: array[stOffen..stArchiviert] of Integer = (1, 2);'#10 +
+    'var'#10'  Start: array[0..1] of Integer = (7);'#10));
+  Assert.AreEqual(6, Integer(Length(Found)));
+  Assert.AreEqual('TStatus hat 4 Werte, die Konstante 5 Einträge (wie E2072).', Found[0].Message);
+  Assert.AreEqual(0, Integer(Length(Found[0].Fixes)));
+  Assert.AreEqual('0..Max hat 3 Werte, die Konstante 4 Einträge (wie E2072).', Found[1].Message);
+  Assert.AreEqual('1..1 hat 1 Wert, die Konstante 2 Einträge (wie E2072).', Found[2].Message);
+  Assert.AreEqual('Boolean hat 2 Werte, die Konstante 1 Eintrag (wie E2072).', Found[3].Message);
+  Assert.AreEqual(1, Integer(Length(Found[3].Fixes)));
+  Assert.AreEqual('stOffen..stArchiviert hat 3 Werte, die Konstante 2 Einträge (wie E2072).', Found[4].Message);
+  Assert.AreEqual('0..1 hat 2 Werte, die Konstante 1 Eintrag (wie E2072).', Found[5].Message);
+end;
+
+procedure TConstantInitializerMismatchTests.DimensionsAndNamedTypes;
+var
+  Found: TArray<TRuleFinding>;
+begin
+  Found := InitFindings(StatusUnit('  TNamen = array[TStatus] of string;'#10'  TIndex = 1..3;'#10 +
+    '  TFeld = array[TIndex] of Integer;'#10'const'#10 +
+    '  Namen: TNamen = (''a'', ''b'', ''c'', ''d'', ''e'');'#10 +
+    '  Feld: TFeld = (1, 2);'#10 +
+    '  Matrix: array[0..1, 0..2] of Integer = ((1, 2, 3), (4, 5));'#10 +
+    '  Tief: array[0..1] of array[0..1] of Integer = ((1, 2), (3, 4, 5));'#10 +
+    '  Liste: array of TFeld = ((1, 2, 3), (1));'#10));
+  Assert.AreEqual(5, Integer(Length(Found)));
+  Assert.AreEqual('TStatus hat 4 Werte, die Konstante 5 Einträge (wie E2072).', Found[0].Message);
+  Assert.AreEqual('TIndex hat 3 Werte, die Konstante 2 Einträge (wie E2072).', Found[1].Message);
+  Assert.AreEqual('0..2 hat 3 Werte, die Konstante 2 Einträge (wie E2072).', Found[2].Message);
+  Assert.AreEqual('0..1 hat 2 Werte, die Konstante 3 Einträge (wie E2072).', Found[3].Message);
+  Assert.AreEqual('TIndex hat 3 Werte, die Konstante 1 Eintrag (wie E2072).', Found[4].Message);
+end;
+
+procedure TConstantInitializerMismatchTests.EnumFromIndex;
+var
+  Index: ISymbolIndex;
+  Found: TArray<TRuleFinding>;
+begin
+  Index := TSymbolIndex.Create;
+  Index.AddUnit(TIndexExtractor.ExtractText('unit Farben;'#10'interface'#10'type'#10 +
+    '  TFarbe = (fRot, fGruen, fBlau);'#10'  TCode = (cA = 1, cB = 5);'#10'implementation'#10'end.',
+    'C:\Projekt\Farben.pas', nil));
+  Found := TRuleAssert.IndexFindings(TConstantInitializerMismatchRule.Create, 'unit Probe;'#10'interface'#10'uses'#10 +
+    '  Farben;'#10'const'#10'  Namen: array[TFarbe] of string = (''Rot'', ''Gruen'');'#10 +
+    '  Codes: array[TCode] of Integer = (1);'#10'implementation'#10'end.', Index, '', 'Probe.pas');
+  Assert.AreEqual(1, Integer(Length(Found)));
+  Assert.AreEqual('TFarbe hat 3 Werte, die Konstante 2 Einträge; fBlau fehlt (wie E2072).', Found[0].Message);
+end;
+
+procedure TConstantInitializerMismatchTests.RecordFieldOrder;
+var
+  Source, Fixed: string;
+  Found: TArray<TRuleFinding>;
+begin
+  Source := 'unit Punkte;'#10'interface'#10'type'#10'  TPunkt = record'#10'    X, Y: Integer;'#10'    Name: string;'#10 +
+    '  end;'#10'const'#10'  Ursprung: TPunkt = (Y: 0; X: 0; Name: ''O'');'#10 +
+    '  Ecken: array[0..1] of TPunkt = ((X: 1; Y: 1), (Name: ''B''; X: 2));'#10 +
+    '  Gut: TPunkt = (X: 1; Name: ''G'');'#10'implementation'#10'end.';
+  Found := InitFindings(Source);
+  Assert.AreEqual(2, Integer(Length(Found)));
+  Assert.AreEqual('X steht in TPunkt vor Y; die Felder müssen in der Reihenfolge der Deklaration stehen (wie E2083).',
+    Found[0].Message);
+  Assert.AreEqual(8, Found[0].Range.StartPos.Line);
+  Assert.AreEqual(1, Integer(Length(Found[0].Fixes)));
+  Fixed := Applied(Source, Found[0].Fixes[0]);
+  Assert.IsTrue(Pos('Ursprung: TPunkt = (X: 0; Y: 0; Name: ''O'');', Fixed) > 0, Fixed);
+  Assert.AreEqual('X steht in TPunkt vor Name; die Felder müssen in der Reihenfolge der Deklaration stehen (wie E2083).',
+    Found[1].Message);
+  Fixed := Applied(Fixed, InitFindings(Fixed)[0].Fixes[0]);
+  Assert.IsTrue(Pos('((X: 1; Y: 1), (X: 2; Name: ''B''))', Fixed) > 0, Fixed);
+  Assert.AreEqual(0, Integer(Length(InitFindings(Fixed))), Fixed);
+end;
+
+procedure TConstantInitializerMismatchTests.MatchingAndUnsureAreSilent;
+begin
+  Assert.AreEqual('', Messages(InitFindings(StatusUnit(
+    '  TVariante = record'#10'    case Integer of'#10'      0: (A: Integer);'#10'      1: (B: Byte);'#10'  end;'#10 +
+    'const'#10'  Gut: array[TStatus] of string = (''a'', ''b'', ''c'', ''d'');'#10 +
+    '  Dynamisch: array of Integer = (1, 2, 3);'#10'  Text: array[0..2] of Char = ''abc'';'#10 +
+    '  Unbekannt: array[TFremd] of Integer = (1, 2);'#10'  Offen: array[0..Fremd] of Integer = (1);'#10 +
+    '  Bedingt: array[0..1] of Integer = (1{$IFDEF X}, 2{$ENDIF});'#10 +
+    '  Variante: TVariante = (B: 1);'#10'  Zahl = 5;'#10))));
+  // Aufzählung mit bedingtem Wert: Anzahl hängt von der Konfiguration ab.
+  Assert.AreEqual(0, Integer(Length(InitFindings('unit Status;'#10'interface'#10'type'#10 +
+    '  TStatus = (stNeu{$IFDEF X}, stOffen{$ENDIF});'#10'const'#10'  T: array[TStatus] of string = (''a'');'#10 +
+    'implementation'#10'end.'))));
+end;
+
+procedure TConstantInitializerMismatchTests.Placeholders;
+begin
+  Assert.AreEqual('''''', TConstantInitializerMismatchRule.Placeholder('string'));
+  Assert.AreEqual('0', TConstantInitializerMismatchRule.Placeholder('Double'));
+  Assert.AreEqual('False', TConstantInitializerMismatchRule.Placeholder('boolean'));
+  Assert.AreEqual('#0', TConstantInitializerMismatchRule.Placeholder('Char'));
+  Assert.AreEqual('nil', TConstantInitializerMismatchRule.Placeholder('Pointer'));
+  Assert.AreEqual('', TConstantInitializerMismatchRule.Placeholder('TPunkt'));
+  Assert.AreEqual(Int64(2), TConstantInitializerMismatchRule.BuiltinIndexCount('Boolean'));
+  Assert.AreEqual(Int64(256), TConstantInitializerMismatchRule.BuiltinIndexCount('AnsiChar'));
+  Assert.AreEqual(Int64(0), TConstantInitializerMismatchRule.BuiltinIndexCount('Integer'));
+end;
+
+procedure TConstantInitializerMismatchTests.OffAndExclude;
+var
+  Source: string;
+begin
+  Source := StatusUnit('const'#10'  T: array[TStatus] of string = (''a'');'#10);
+  Assert.AreEqual(1, Integer(Length(InitFindings(Source, '', 'Source/Status.pas'))));
+  Assert.AreEqual(0, Integer(Length(InitFindings(Source, '{"rules": {"constant-initializer-mismatch": "off"}}',
+    'Source/Status.pas'))));
+  Assert.AreEqual(0, Integer(Length(InitFindings(Source, '{"rules": {"group:compiler": "off"}}',
+    'Source/Status.pas'))));
+  Assert.AreEqual(0, Integer(Length(InitFindings(Source,
+    '{"rules": {"constant-initializer-mismatch": {"exclude": ["Source/*.pas"]}}}', 'Source/Status.pas'))));
+end;
+
 initialization
   TDUnitX.RegisterTestFixture(TComparisonAlwaysConstantTests);
+  TDUnitX.RegisterTestFixture(TConstantInitializerMismatchTests);
 
 end.
