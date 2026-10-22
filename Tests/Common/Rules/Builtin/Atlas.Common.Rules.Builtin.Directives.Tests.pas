@@ -29,6 +29,18 @@ type
     procedure UnbalancedAlign;
     [Test]
     procedure UnbalancedOptions;
+    [Test]
+    procedure TypoIssueExample;
+    [Test]
+    procedure TypoOtherDirectives;
+    [Test]
+    procedure TypoWithoutSuggestion;
+    [Test]
+    procedure TypoPropertyDefault;
+    [Test]
+    procedure TypoSilentCases;
+    [Test]
+    procedure TypoOptions;
   end;
 
 implementation
@@ -244,6 +256,113 @@ begin
     '{"rules": {"conditional-directive-unbalanced": {"exclude": ["Source/*.pas"]}}}', 'Source/Dienst.pas'))));
   Assert.AreEqual(1, Integer(Length(Findings(Source,
     '{"rules": {"conditional-directive-unbalanced": {"exclude": ["Alt/*.pas"]}}}', 'Source/Dienst.pas'))));
+end;
+
+function Klasse(const AMembers: string): string;
+begin
+  Result := 'unit Dienst;'#10'interface'#10'type'#10'  TAnzeige = class'#10 + AMembers + '  end;'#10 +
+    'implementation'#10'end.';
+end;
+
+function TypoFindings(const ASource: string): TArray<TRuleFinding>; overload;
+begin
+  Result := TRuleAssert.Findings(TDirectiveTypoRule.Create, ASource);
+end;
+
+function TypoFindings(const ASource, AConfig, APath: string): TArray<TRuleFinding>; overload;
+begin
+  Result := TRuleAssert.Findings(TDirectiveTypoRule.Create, ASource, AConfig, APath);
+end;
+
+procedure TDirectiveRulesTests.TypoIssueExample;
+var
+  Source, Fixed: string;
+  Found: TArray<TRuleFinding>;
+begin
+  Source := Klasse('    procedure Paint; overide;'#10);
+  Found := TypoFindings(Source);
+  Assert.AreEqual(1, Integer(Length(Found)));
+  Assert.AreEqual('Unbekannte Direktive overide; gemeint ist override (wie E2070).', Found[0].Message);
+  Assert.IsTrue(Found[0].Confidence = TRuleConfidence.High);
+  Assert.AreEqual(4, Found[0].Range.StartPos.Line);
+  Assert.AreEqual(21, Found[0].Range.StartPos.Character);
+  Assert.AreEqual(28, Found[0].Range.EndPos.Character);
+  Assert.AreEqual(1, Integer(Length(Found[0].Fixes)));
+  Assert.AreEqual('Durch override ersetzen', Found[0].Fixes[0].Title);
+  Fixed := ApplyFix(Source, Found[0].Fixes[0]);
+  Assert.AreEqual(Klasse('    procedure Paint; override;'#10), Fixed);
+  TRuleAssert.Silent(TDirectiveTypoRule.Create, Fixed);
+end;
+
+procedure TDirectiveRulesTests.TypoOtherDirectives;
+var
+  Found: TArray<TRuleFinding>;
+begin
+  Found := TypoFindings(Klasse('    procedure Laden; virutal; overlaod;'#10 +
+    '    procedure Zeichnen; REINTRODUCES;'#10));
+  Assert.AreEqual(3, Integer(Length(Found)));
+  Assert.AreEqual('Unbekannte Direktive virutal; gemeint ist virtual (wie E2070).', Found[0].Message);
+  Assert.AreEqual('Unbekannte Direktive overlaod; gemeint ist overload (wie E2070).', Found[1].Message);
+  // Groß geschrieben bleibt groß.
+  Assert.AreEqual('Unbekannte Direktive REINTRODUCES; gemeint ist REINTRODUCE (wie E2070).', Found[2].Message);
+  Found := TypoFindings('unit Dienst;'#10'interface'#10'implementation'#10'procedure Frei; stdcal;'#10 +
+    'begin'#10'end;'#10'end.');
+  Assert.AreEqual(1, Integer(Length(Found)));
+  Assert.AreEqual('Unbekannte Direktive stdcal; gemeint ist stdcall (wie E2070).', Found[0].Message);
+end;
+
+procedure TDirectiveRulesTests.TypoWithoutSuggestion;
+var
+  Found: TArray<TRuleFinding>;
+begin
+  Found := TypoFindings(Klasse('    procedure Paint; Zeichnen;'#10));
+  Assert.AreEqual(1, Integer(Length(Found)));
+  Assert.AreEqual('Unbekannte Direktive Zeichnen (wie E2070).', Found[0].Message);
+  Assert.AreEqual(0, Integer(Length(Found[0].Fixes)));
+end;
+
+procedure TDirectiveRulesTests.TypoPropertyDefault;
+var
+  Source: string;
+  Found: TArray<TRuleFinding>;
+begin
+  Source := Klasse('    function Get(I: Integer): string;'#10 +
+    '    property Items[I: Integer]: string read Get; defualt;'#10);
+  Found := TypoFindings(Source);
+  Assert.AreEqual(1, Integer(Length(Found)));
+  Assert.AreEqual('Unbekannte Direktive defualt; gemeint ist default (wie E2070).', Found[0].Message);
+  TRuleAssert.Silent(TDirectiveTypoRule.Create, ApplyFix(Source, Found[0].Fixes[0]));
+end;
+
+procedure TDirectiveRulesTests.TypoSilentCases;
+begin
+  // Bekannte Direktiven, Hinweise, external mit Argumenten, inline und Felder nach Methoden.
+  TRuleAssert.Silent(TDirectiveTypoRule.Create, Klasse('    procedure A; virtual; abstract;'#10 +
+    '    procedure B; overload; deprecated ''Nutze A'';'#10 +
+    '    procedure C(Msg: Integer); message 15;'#10 +
+    '    function D: Integer; inline;'#10 +
+    '    class procedure E; static;'#10 +
+    '    property Items[I: Integer]: Integer read D; default;'#10));
+  TRuleAssert.Silent(TDirectiveTypoRule.Create, 'unit Dienst;'#10'interface'#10 +
+    'function MessageBoxW(H: Pointer; T, C: PChar; F: Cardinal): Integer; stdcall; external ''user32.dll'' ' +
+    'name ''MessageBoxW'';'#10'implementation'#10'end.');
+  // FPC kennt weitere Direktiven.
+  TRuleAssert.Silent(TDirectiveTypoRule.Create, 'unit Dienst;'#10'interface'#10'implementation'#10 +
+    'procedure Frei;'#10'{$IFDEF FPC} nostackframe; {$ENDIF}'#10'begin'#10'end;'#10'end.');
+end;
+
+procedure TDirectiveRulesTests.TypoOptions;
+var
+  Source: string;
+begin
+  Source := Klasse('    procedure Paint; overide;'#10);
+  Assert.AreEqual(1, Integer(Length(TypoFindings(Source, '', 'Source/Dienst.pas'))));
+  Assert.AreEqual(0, Integer(Length(TypoFindings(Source, '{"rules": {"directive-typo": "off"}}',
+    'Source/Dienst.pas'))));
+  Assert.AreEqual(0, Integer(Length(TypoFindings(Source, '{"rules": {"group:compiler": "off"}}',
+    'Source/Dienst.pas'))));
+  Assert.AreEqual(0, Integer(Length(TypoFindings(Source, '{"rules": {"directive-typo": {"exclude": ["Source/*.pas"]}}}',
+    'Source/Dienst.pas'))));
 end;
 
 initialization

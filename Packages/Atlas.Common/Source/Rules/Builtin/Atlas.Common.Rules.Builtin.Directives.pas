@@ -1,6 +1,6 @@
 ﻿unit Atlas.Common.Rules.Builtin.Directives;
 
-// Regeln für Compiler-Direktiven (#909, Gruppe Compiler vorab):
+// Regeln für Direktiven (#909, Gruppe Compiler vorab):
 //   conditional-directive-unbalanced  Bedingte Direktiven unvollständig oder
 //                                     unbekannt (#989): {$IF…} ohne {$ENDIF}
 //                                     (E2095, E2280), {$ELSE}/{$ENDIF} ohne
@@ -10,12 +10,21 @@
 //                                     {$POPOPT}/{$PUSHOPT} ohne Gegenstück
 //                                     (W1078, W1079), ungültiger Wert für
 //                                     {$ALIGN} (E2573).
+//   directive-typo                    Unbekanntes Wort an der Stelle einer
+//                                     Direktive nach einem Routinenkopf
+//                                     (overide;) bzw. nach einer Property
+//                                     (defualt;), mit Vorschlag (E2070, #1068).
 //
 // Die Regel liest die Direktiven-Token des ganzen Textes, auch in inaktiven
 // Zweigen; dort zählt Delphi die Verschachtelung ebenfalls. Unbekannte Namen
 // prüft sie nicht in Zweigen, deren Bedingung FPC abfragt ({$IFDEF FPC}{$MODE
 // DELPHI}{$ENDIF}). {$PUSHOPT}/{$POPOPT} prüft sie nur, wenn keines davon in
 // einem bedingten Zweig steht.
+//
+// directive-typo liest die Directive-Knoten des Syntaxbaums: Der Parser legt
+// sie auch für unbekannte Wörter mit ';' dahinter an. In Zweigen, deren
+// Bedingung FPC abfragt, bleibt sie still (FPC kennt weitere Direktiven wie
+// nostackframe).
 
 interface
 
@@ -26,9 +35,16 @@ uses
 
 const
   ConditionalDirectiveUnbalancedRuleId = 'conditional-directive-unbalanced';
+  DirectiveTypoRuleId = 'directive-typo';
 
 type
   TConditionalDirectiveUnbalancedRule = class(TInterfacedObject, IRule)
+  public
+    function Descriptor: TRuleDescriptor;
+    procedure Check(const AContext: TRuleContext; const AReport: IRuleReport);
+  end;
+
+  TDirectiveTypoRule = class(TInterfacedObject, IRule)
   public
     function Descriptor: TRuleDescriptor;
     procedure Check(const AContext: TRuleContext; const AReport: IRuleReport);
@@ -44,6 +60,7 @@ uses
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Pascal.Contract,
   Atlas.Common.Pascal.DirectiveNames,
+  Atlas.Common.Pascal.SyntaxTree,
   Atlas.Text.Fuzzy;
 
 type
@@ -409,9 +426,95 @@ begin
   CheckOptionStack;
 end;
 
+{ TDirectiveTypoRule }
+
+function TDirectiveTypoRule.Descriptor: TRuleDescriptor;
+begin
+  Result := TRuleDescriptor.Create(DirectiveTypoRuleId, TRuleSeverity.Error, 'Unbekannte Direktive (Tippfehler)');
+end;
+
+/// <summary>Offsets der Token in Zweigen, deren Bedingung (auch umschließend) FPC abfragt.</summary>
+function FpcOffsets(const ATokens: TArray<TPascalToken>): TArray<Integer>;
+var
+  Token: TPascalToken;
+  Stack: TArray<Boolean>;
+  Body, Name, Rest: string;
+  Fpc: Boolean;
+begin
+  Result := nil;
+  Stack := nil;
+  for Token in ATokens do
+  begin
+    Fpc := (Stack <> nil) and Stack[High(Stack)];
+    if Token.Kind <> TPascalTokenKind.Directive then
+    begin
+      if Fpc then
+        Result := Result + [Token.Offset];
+      Continue;
+    end;
+    Body := TDirectiveNames.Body(Token.Text);
+    Name := UpperCase(TDirectiveNames.LeadingName(Body));
+    Rest := Copy(Body, Length(Name) + 1, MaxInt);
+    if (Name = 'IF') or (Name = 'IFDEF') or (Name = 'IFNDEF') or (Name = 'IFOPT') then
+      Stack := Stack + [Fpc or MentionsFpc(Rest)]
+    else if (Name = 'ELSEIF') and (Stack <> nil) then
+      Stack[High(Stack)] := Stack[High(Stack)] or MentionsFpc(Rest)
+    else if ((Name = 'ENDIF') or (Name = 'IFEND')) and (Stack <> nil) then
+      SetLength(Stack, Length(Stack) - 1);
+  end;
+end;
+
+procedure TDirectiveTypoRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
+var
+  Fpc: TArray<Integer>;
+begin
+  if AContext.Tree = nil then
+    Exit;
+  Fpc := nil;
+  if Pos('{$', AContext.Text) > 0 then
+    Fpc := FpcOffsets(AContext.Tree.Tokens);
+  AContext.Tree.Root.Walk(
+    function(ANode: TSyntaxNode): Boolean
+    var
+      Word, Closest: string;
+      Candidates: TArray<string>;
+      Range: TTextRange;
+      Offset: Integer;
+    begin
+      Result := True;
+      if (ANode.Kind <> TSyntaxKind.Directive) or (ANode.Parent = nil) then
+        Exit;
+      // Nach einer Property steht nur default, nach Routinenköpfen eine der Direktiven.
+      if ANode.Parent.Kind = TSyntaxKind.PropertyDecl then
+        Candidates := ['default']
+      else if ANode.Parent.Kind = TSyntaxKind.RoutineHeader then
+        Candidates := TDirectiveNames.RoutineDirectives
+      else
+        Exit;
+      if MatchText(ANode.Name, Candidates) then
+        Exit;
+      for Offset in Fpc do
+        if Offset = ANode.StartOffset then
+          Exit;
+      Word := Copy(AContext.Text, ANode.StartOffset + 1, ANode.EndOffset - ANode.StartOffset);
+      Range := TTextRange.Create(ANode.StartPos, ANode.EndPos);
+      Closest := TTextFuzzy.Closest(Word, Candidates);
+      if Closest <> '' then
+      begin
+        Closest := LikeOriginal(Word, Closest);
+        AReport.Add(Range, Format('Unbekannte Direktive %s; gemeint ist %s (wie E2070).', [Word, Closest]),
+          TRuleConfidence.High, [TRuleFix.Create(Format('Durch %s ersetzen', [Closest]),
+          [TRuleEdit.Create(Range, Closest)])]);
+      end
+      else
+        AReport.Add(Range, Format('Unbekannte Direktive %s (wie E2070).', [Word]), TRuleConfidence.High);
+    end);
+end;
+
 procedure RegisterDirectiveRules(const ARegistry: TRuleRegistry);
 begin
   ARegistry.Register(TConditionalDirectiveUnbalancedRule.Create);
+  ARegistry.Register(TDirectiveTypoRule.Create);
 end;
 
 end.
