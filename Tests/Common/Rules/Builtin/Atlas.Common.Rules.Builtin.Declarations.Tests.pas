@@ -7,6 +7,9 @@
 // interface-not-implemented (#1000): fehlende Interface-Methoden (E2291),
 // abweichender Kopf (E2211), Zuordnung ohne Interface (E2265), geerbte
 // Methoden, Zuordnungen, implements und unbekannte Vorfahren.
+// field-after-method (#986): Beispiel mit beiden Korrekturen, Attribute und
+// Kommentare wandern mit, Records mit var zuerst, Feld neben anderem auf der
+// Zeile, neue Abschnitte und var, Zweige bedingter Übersetzung, Abschalten.
 
 interface
 
@@ -65,6 +68,16 @@ type
     procedure InterfaceResolutionForUnlistedInterface;
     [Test]
     procedure InterfaceOffAndExclude;
+    [Test]
+    procedure FieldAfterMethodIssueExample;
+    [Test]
+    procedure FieldAfterMethodVariants;
+    [Test]
+    procedure FieldAfterMethodSilentCases;
+    [Test]
+    procedure FieldAfterMethodConditional;
+    [Test]
+    procedure FieldAfterMethodOffAndExclude;
   end;
 
 implementation
@@ -76,6 +89,7 @@ uses
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.Parser,
   Atlas.Common.Rules.Builtin.Declarations,
+  Atlas.Common.Editing.ChangeSignature,
   Atlas.Tests.RuleAssert;
 
 function ClassUnit(const AMembers, AImplementation: string; const AHead: string = 'TFoo = class'): string;
@@ -490,6 +504,108 @@ begin
     '{"rules": {"group:compiler": "off"}}'))));
   Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TInterfaceNotImplementedRule.Create, Source,
     '{"rules": {"interface-not-implemented": {"exclude": ["Source/*.pas"]}}}', 'Source/U.pas'))));
+end;
+
+function Kunde(const AMembers: string): string;
+begin
+  Result := 'unit Kunden;'#10'interface'#10'type'#10'  TKunde = class'#10 + AMembers + '  end;'#10 +
+    'implementation'#10'end.';
+end;
+
+procedure TDeclarationRulesTests.FieldAfterMethodIssueExample;
+const
+  Members = '  private'#10'    function GetName: string;'#10'    FName: string;'#10;
+var
+  Findings: TArray<TRuleFinding>;
+  Text: string;
+begin
+  Findings := TRuleAssert.Findings(TFieldAfterMethodRule.Create, Kunde(Members));
+  Assert.AreEqual(1, Integer(Length(Findings)));
+  Assert.AreEqual(FieldAfterMethodRuleId, Findings[0].RuleId);
+  Assert.AreEqual('Feld nach Methoden im selben Abschnitt (wie E2169).', Findings[0].Message);
+  Assert.AreEqual(Ord(TRuleSeverity.Error), Ord(Findings[0].Severity));
+  Assert.AreEqual(Ord(TRuleConfidence.High), Ord(Findings[0].Confidence));
+  Assert.AreEqual(6, Findings[0].Range.StartPos.Line);
+  Assert.AreEqual(2, Integer(Length(Findings[0].Fixes)));
+  Assert.AreEqual('Feld an den Anfang des Abschnitts verschieben', Findings[0].Fixes[0].Title);
+  Text := TChangeSignature.ApplyEdits(Kunde(Members), Findings[0].Fixes[0].Edits);
+  Assert.AreEqual(Kunde('  private'#10'    FName: string;'#10'    function GetName: string;'#10), Text);
+  TRuleAssert.Silent(TFieldAfterMethodRule.Create, Text);
+  Assert.AreEqual('var davor setzen', Findings[0].Fixes[1].Title);
+  Text := TChangeSignature.ApplyEdits(Kunde(Members), Findings[0].Fixes[1].Edits);
+  Assert.AreEqual(Kunde('  private'#10'    function GetName: string;'#10'    var FName: string;'#10), Text);
+  TRuleAssert.Silent(TFieldAfterMethodRule.Create, Text);
+end;
+
+procedure TDeclarationRulesTests.FieldAfterMethodVariants;
+const
+  Members = '  private'#10'    /// <summary>Name</summary>'#10'    [Stored]'#10'    property Name: string read FName;'#10 +
+    '    procedure Setzen;'#10'    // Puffer'#10'    [Weak] FPuffer: TObject;'#10'    FA, FB: Integer;'#10;
+  Rec = 'unit R;'#10'interface'#10'type'#10'  TPunkt = record'#10'    procedure Setzen;'#10'    X: Integer;'#10 +
+    '  end;'#10'implementation'#10'end.';
+var
+  Findings: TArray<TRuleFinding>;
+begin
+  // Nach einer Property, mit Attribut und Kommentar; zwei Felder je eine Meldung.
+  Findings := TRuleAssert.Findings(TFieldAfterMethodRule.Create, Kunde(Members));
+  Assert.AreEqual(2, Integer(Length(Findings)));
+  Assert.AreEqual(Kunde('  private'#10'    // Puffer'#10'    [Weak] FPuffer: TObject;'#10 +
+    '    /// <summary>Name</summary>'#10'    [Stored]'#10'    property Name: string read FName;'#10 +
+    '    procedure Setzen;'#10'    FA, FB: Integer;'#10),
+    TChangeSignature.ApplyEdits(Kunde(Members), Findings[0].Fixes[0].Edits));
+  Assert.AreEqual(Kunde('  private'#10'    /// <summary>Name</summary>'#10'    [Stored]'#10 +
+    '    property Name: string read FName;'#10'    procedure Setzen;'#10'    // Puffer'#10 +
+    '    var [Weak] FPuffer: TObject;'#10'    FA, FB: Integer;'#10),
+    TChangeSignature.ApplyEdits(Kunde(Members), Findings[0].Fixes[1].Edits));
+  // Record: var zuerst, weil Verschieben das Speicherlayout ändert.
+  Findings := TRuleAssert.Findings(TFieldAfterMethodRule.Create, Rec);
+  Assert.AreEqual(1, Integer(Length(Findings)));
+  Assert.AreEqual('var davor setzen', Findings[0].Fixes[0].Title);
+  Assert.AreEqual('Feld an den Anfang des Abschnitts verschieben', Findings[0].Fixes[1].Title);
+  // Feld auf derselben Zeile wie anderes: nur var.
+  Findings := TRuleAssert.Findings(TFieldAfterMethodRule.Create, Kunde('    procedure A; FX: Integer;'#10));
+  Assert.AreEqual(1, Integer(Length(Findings)));
+  Assert.AreEqual(1, Integer(Length(Findings[0].Fixes)));
+  Assert.AreEqual('var davor setzen', Findings[0].Fixes[0].Title);
+end;
+
+procedure TDeclarationRulesTests.FieldAfterMethodSilentCases;
+begin
+  // Felder zuerst, neuer Abschnitt, var und class var, verschiedene {$IF}-Zweige.
+  TRuleAssert.Silent(TFieldAfterMethodRule.Create, Kunde('    FErst: Integer;'#10'    procedure A;'#10 +
+    '  private'#10'    FZweit: Integer;'#10'    procedure B;'#10'    var'#10'      FDritt: Integer;'#10 +
+    '    class var FKlasse: Integer;'#10'  public'#10'    procedure C;'#10'  type'#10'    TArt = Integer;'#10 +
+    '  var'#10'    FViert: TArt;'#10));
+  TRuleAssert.Silent(TFieldAfterMethodRule.Create, Kunde('{$IFDEF DEBUG}'#10'    procedure A;'#10'{$ENDIF}'#10 +
+    '    FX: Integer;'#10));
+  TRuleAssert.Silent(TFieldAfterMethodRule.Create, Kunde('{$IFDEF DEBUG}'#10'    procedure A;'#10'{$ELSE}'#10 +
+    '    FX: Integer;'#10'{$ENDIF}'#10));
+end;
+
+procedure TDeclarationRulesTests.FieldAfterMethodConditional;
+var
+  Findings: TArray<TRuleFinding>;
+begin
+  // Methode ohne Bedingung, Feld unter DEBUG: dort immer ein Fehler, verschoben wird nicht.
+  Findings := TRuleAssert.Findings(TFieldAfterMethodRule.Create, Kunde('    procedure A;'#10'{$IFDEF DEBUG}'#10 +
+    '    FX: Integer;'#10'{$ENDIF}'#10));
+  Assert.AreEqual(1, Integer(Length(Findings)));
+  Assert.AreEqual(1, Integer(Length(Findings[0].Fixes)));
+  Assert.AreEqual('var davor setzen', Findings[0].Fixes[0].Title);
+end;
+
+procedure TDeclarationRulesTests.FieldAfterMethodOffAndExclude;
+const
+  Members = '    procedure A;'#10'    FX: Integer;'#10;
+begin
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TFieldAfterMethodRule.Create, Kunde(Members),
+    '{"rules": {"field-after-method": "off"}}', 'Kunden.pas'))));
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TFieldAfterMethodRule.Create, Kunde(Members),
+    '{"rules": {"group:compiler": "off"}}', 'Kunden.pas'))));
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TFieldAfterMethodRule.Create, Kunde(Members),
+    '{"rules": {"field-after-method": {"exclude": ["Alt/*.pas"]}}}', 'Alt/Kunden.pas'))));
+  Assert.AreEqual(1, Integer(Length(TRuleAssert.Findings(TFieldAfterMethodRule.Create, Kunde(Members),
+    '{"rules": {"field-after-method": {"exclude": ["Alt/*.pas"]}}}', 'Neu/Kunden.pas'))));
 end;
 
 initialization

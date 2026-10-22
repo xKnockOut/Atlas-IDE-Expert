@@ -93,3 +93,4 @@ interface-not-implemented | Ref.Sprache.Merkmale.pas | ['{6F1C2B9E-4A37-4D2B-9E6
 uses-unit-not-found | Ref.Sprache.Merkmale.pas | System.SysUtils, | System.SysUtils, Ref.Sprache.Merkmale,
 comparison-as-statement | Ref.Sprache.Merkmale.pas | Result := 0;\n  for var Wert in AWerte do | Result = 0;\n  for var Wert in AWerte do
 duplicate-case-label | Ref.Sprache.Merkmale.pas | Inc(Result, Quadrat); | case Wert of\n      1, 2: Inc(Result, Quadrat);\n      2: Inc(Result);\n    else\n      Inc(Result, Quadrat);\n    end;
+field-after-method | Ref.Daten.Suche.pas | class function Suchen(const AName: string): TArray<string>; static; | class function Suchen(const AName: string): TArray<string>; static;\n    FTreffer: Integer;

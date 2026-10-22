@@ -3974,3 +3974,18 @@ Voraussetzung: Server läuft in der IDE mit Projekt.
 | DK7 | `{$IFDEF DEBUG} 1: A; {$ELSE} 1: B; {$ENDIF}`; Konstante aus einer Unit ohne Quelltext; Aufzählung mit eigenen Werten | Keine Meldung |
 | DK8 | `"duplicate-case-label": "off"`, `"group:compiler": "off"` bzw. `exclude` mit dem Pfad der Datei | Keine Meldung |
 | DK9 | Abgleich mit Delphi: DK1, DK4, DK5 und DK6 übersetzen | dcc meldet E2030 bzw. E2027 an denselben Stellen, für DK7 nichts |
+
+## Feld nach Methoden (#986)
+
+Voraussetzung: Server läuft in der IDE mit Projekt.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| FM1 | Das Beispiel aus #986: `function GetName: string;` und danach `FName: string;` im private-Abschnitt | Fehler `field-after-method` am Feld: „Feld nach Methoden im selben Abschnitt (wie E2169).“; im Fenster „Atlas-Prüfung“ (Gruppe Compiler vorab) und im Befund-Hover (**Abnahme**) |
+| FM2 | Schnellkorrektur „Feld an den Anfang des Abschnitts verschieben“, danach Strg+Z | `FName` steht vor `GetName`, Meldung weg; ein Undo-Schritt stellt es wieder her |
+| FM3 | Wie FM1, Korrektur „var davor setzen“ | `var FName: string;`, Meldung weg, Delphi übersetzt |
+| FM4 | Feld mit `[Weak]` und Kommentar darüber hinter einer Property mit XMLDoc; verschieben | Attribut und Kommentar wandern mit, das Feld steht vor dem XMLDoc der Property |
+| FM5 | Record mit `procedure Setzen;` und danach `X: Integer;` | Meldung; erste Korrektur ist „var davor setzen“ |
+| FM6 | Felder zuerst, neuer Abschnitt (`private`, `public`), `var` und `class var` nach Methoden; Methode nur unter `{$IFDEF DEBUG}` und Feld danach | Keine Meldung |
+| FM7 | `"field-after-method": "off"`, `"group:compiler": "off"` bzw. `exclude` mit dem Pfad der Datei | Keine Meldung |
+| FM8 | Abgleich mit Delphi: FM1, FM4 und FM5 übersetzen | dcc meldet E2169 an denselben Stellen, für FM6 nichts |
