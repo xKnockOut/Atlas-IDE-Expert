@@ -4185,3 +4185,15 @@ Voraussetzung: Server läuft in der IDE mit Projekt.
 | PO4 | `Pos(';', Zeile)`, `Pos(C, ';,')` mit `C: Char`, `Pos(Zeile, 'Ende')`, `Liste.Pos(Zeile, ';')` | Keine Meldung |
 | PO5 | `"pos-arguments-swapped": {"maxLiteralLength": 4}` und `Pos(Zeile, 'END;')` | Meldung; ohne Option keine |
 | PO6 | `"pos-arguments-swapped": "off"`, `"group:find-bugs": "off"` bzw. `exclude` | Keine Meldung |
+
+## Ganzzahldivision an Gleitkommazahl (#1046)
+
+Voraussetzung: Server läuft in der IDE mit Projekt.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| GD1 | Das Beispiel aus #1046: `var Schnitt: Double; … Schnitt := Summe div Anzahl;` | Warnung `integer-division-to-float` über `Summe div Anzahl`: „div rechnet ganzzahlig; Schnitt ist Double und verliert die Nachkommastellen.“; im Fenster „Atlas-Prüfung“ und im Befund-Hover (**Abnahme**) |
+| GD2 | Schnellkorrektur „div durch / ersetzen“, danach Strg+Z | `Schnitt := Summe / Anzahl;`, Meldung weg; ein Strg+Z stellt das Original her |
+| GD3 | `Prozent := Teil div Gesamt * 100` mit `Prozent: Single`; `Result := A div B` in einer Funktion `: Double`; `var M: Extended := Summe div 2;` | Je eine Meldung |
+| GD4 | `Ganz := Summe div Anzahl` (Integer), `Schnitt := Round(Summe div Anzahl)`, `Schnitt := Trunc(X) div Trunc(Y)`, `Datum := Sekunden div 86400` (TDateTime), Zuweisung in `with` | Keine Meldung |
+| GD5 | `"integer-division-to-float": "off"`, `"group:find-bugs": "off"` bzw. `exclude` | Keine Meldung |

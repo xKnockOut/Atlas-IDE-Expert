@@ -107,3 +107,4 @@ infinite-loop | Ref.Daten.Kunden.pas | while not Daten.Eof do | while True do
 loop-condition-unchanged | Ref.Pruefung.Verstoesse.pas |   if Benutzt > 0 then\n    Exit; |   while Benutzt > 0 do\n    Beep;
 unconditional-recursion | Ref.Sprache.Merkmale.pas | Result := 0;\n  for var Wert in AWerte do | Result := SummeQuadrate(AWerte);\n  for var Wert in AWerte do
 pos-arguments-swapped | Ref.Daten.Suche.pas | if Assigned(FAnbieter) then | if Assigned(FAnbieter) and (Pos(AName, '*') = 0) then
+integer-division-to-float | Ref.Komponenten.Anzeige.pas |   Canvas.TextOut(TextAbstand, (Height - Canvas.TextHeight(Anzeigetext)) div 2, Anzeigetext); |   var Mitte: Double := (Height - Canvas.TextHeight(Anzeigetext)) div 2;\n  Canvas.TextOut(TextAbstand, Round(Mitte), Anzeigetext);
