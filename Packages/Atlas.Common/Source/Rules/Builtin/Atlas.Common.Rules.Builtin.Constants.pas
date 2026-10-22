@@ -50,6 +50,13 @@
 //                              Korrekturen: globale Konstante in eine
 //                              Variable mit Initialwert umwandeln; nil
 //                              statt 0.
+//   string-length-limit        String-Grenze überschritten (#1036): Literal,
+//                              das an string[N]/ShortString gekürzt wird
+//                              (Zuweisung, typisierte Konstante, initialisierte
+//                              Variable; W1014), ein Literal über 255 Zeichen
+//                              vor Delphi 12 (E2056) und ein resourcestring
+//                              über 4096 Zeichen (E2381). Korrekturen: Ziel als
+//                              string deklarieren; Literal teilen.
 //
 // Ausgewertet wird mit Semantics.ConstantValues (Literale, Konstanten auch aus
 // anderen Units, SizeOf/High/Low von Typen fester Größe). Konstanten aus einem
@@ -68,6 +75,7 @@ const
   SignedUnsignedMixRuleId = 'signed-unsigned-mix';
   NarrowingAssignmentRuleId = 'narrowing-assignment';
   TypedConstantModifiedRuleId = 'typed-constant-modified';
+  StringLengthLimitRuleId = 'string-length-limit';
 
 type
   TConstantExpressionErrorRule = class(TInterfacedObject, IRule)
@@ -109,6 +117,18 @@ type
     /// <summary>Je Parameter der Signatur (mehrere Namen einzeln), ob er var oder out ist; nil ohne
     /// Parameterliste.</summary>
     class function VarParameters(const ASignature: string): TArray<Boolean>; static;
+  end;
+
+  TStringLengthLimitRule = class(TInterfacedObject, IRule)
+  public
+    function Descriptor: TRuleDescriptor;
+    procedure Check(const AContext: TRuleContext; const AReport: IRuleReport);
+    /// <summary>Zeichen eines String-Literals wie im Quelltext ('ab''c'#13 → 5); ALongest ist das längste
+    /// Stück in Anführungszeichen. -1, wenn der Text kein einfaches Literal ist (z. B. mehrzeilig).</summary>
+    class function LiteralLength(const AText: string; out ALongest: Integer): Integer; static;
+    /// <summary>Länge N von string[N] bzw. 255 bei ShortString in einem Typ- oder Signaturtext; 0 sonst.
+    /// </summary>
+    class function ShortStringLength(const AText: string): Integer; static;
   end;
 
 procedure RegisterConstantRules(const ARegistry: TRuleRegistry);
@@ -2009,6 +2029,544 @@ begin
   end;
 end;
 
+{ TStringLengthLimitRule }
+
+function TStringLengthLimitRule.Descriptor: TRuleDescriptor;
+begin
+  Result := TRuleDescriptor.Create(StringLengthLimitRuleId, TRuleSeverity.Warning, 'String-Grenze überschritten');
+end;
+
+class function TStringLengthLimitRule.LiteralLength(const AText: string; out ALongest: Integer): Integer;
+var
+  Index, Segment: Integer;
+begin
+  Result := 0;
+  ALongest := 0;
+  Index := 1;
+  // Mehrzeilige Strings (''' … ''') zählen nicht.
+  if AText.StartsWith('''''''') then
+    Exit(-1);
+  while Index <= Length(AText) do
+    if AText[Index] = '''' then
+    begin
+      Segment := 0;
+      Inc(Index);
+      while True do
+      begin
+        if Index > Length(AText) then
+          Exit(-1);
+        if AText[Index] = '''' then
+        begin
+          if (Index < Length(AText)) and (AText[Index + 1] = '''') then
+            Inc(Index)
+          else
+            Break;
+        end;
+        // Ein Zeichen außerhalb der Basisebene ist ein Element, aber zwei UTF-16-Einheiten.
+        if not ((Ord(AText[Index]) >= $DC00) and (Ord(AText[Index]) <= $DFFF)) then
+          Inc(Segment);
+        Inc(Index);
+      end;
+      Inc(Index);
+      Inc(Result, Segment);
+      if Segment > ALongest then
+        ALongest := Segment;
+    end
+    else if AText[Index] = '#' then
+    begin
+      Inc(Index);
+      if (Index <= Length(AText)) and (AText[Index] = '$') then
+      begin
+        Inc(Index);
+        while (Index <= Length(AText)) and CharInSet(AText[Index], ['0'..'9', 'a'..'f', 'A'..'F']) do
+          Inc(Index);
+      end
+      else
+        while (Index <= Length(AText)) and CharInSet(AText[Index], ['0'..'9']) do
+          Inc(Index);
+      Inc(Result);
+    end
+    else
+      Exit(-1);
+end;
+
+class function TStringLengthLimitRule.ShortStringLength(const AText: string): Integer;
+var
+  Text, Inner: string;
+  Start, Open, Close: Integer;
+  Value: Int64;
+begin
+  Result := 0;
+  Text := LowerCase(AText);
+  for Inner in DeclarationWords(Text) do
+    if (Inner = 'shortstring') or (Inner = 'system.shortstring') then
+      Exit(255);
+  Start := 1;
+  while True do
+  begin
+    Open := PosEx('string', Text, Start);
+    if Open = 0 then
+      Exit;
+    Start := Open + Length('string');
+    // Ganzes Wort: nicht Teil von "AnsiString" oder "TStringList".
+    if (Open > 1) and CharInSet(Text[Open - 1], ['a'..'z', '0'..'9', '_', '.']) then
+      Continue;
+    Open := Start;
+    while (Open <= Length(Text)) and CharInSet(Text[Open], [' ', #9]) do
+      Inc(Open);
+    if (Open > Length(Text)) or (Text[Open] <> '[') then
+      Continue;
+    Close := PosEx(']', Text, Open);
+    if Close = 0 then
+      Exit;
+    Inner := Copy(AText, Open + 1, Close - Open - 1);
+    if TOrdinalConstants.Evaluate(Inner, nil, Value) and (Value >= 1) and (Value <= 255) then
+      Result := Value;
+    Exit;
+  end;
+end;
+
+procedure TStringLengthLimitRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
+const
+  MaxLiteral = 255;
+  MaxResourceString = 4096;
+  // Ab Delphi 12 (BDS 23) dürfen Literale länger sein.
+  LongLiteralVersion = 23;
+var
+  FileName: string;
+  Resolver: TNameResolver;
+  // Namen und Typen mit string[N]/ShortString (Vorfilter vor der Namensauflösung).
+  LocalNames, ShortTypes, Suspects: TDictionary<string, Boolean>;
+  // Werte von Konstanten für string[Laenge]; erst bei Bedarf.
+  Values: TConstantValues;
+
+  function NodeText(ANode: TSyntaxNode): string;
+  begin
+    Result := Copy(AContext.Text, ANode.StartOffset + 1, ANode.EndOffset - ANode.StartOffset);
+  end;
+
+  procedure EnsureResolver;
+  begin
+    if Resolver = nil then
+    begin
+      Resolver := TNameResolver.Create(AContext.Index, AContext.EnsureUnit);
+      Resolver.Namespaces := AContext.Namespaces;
+      Resolver.PinTree(AContext.Tree, FileName);
+    end;
+  end;
+
+  /// <summary>Typknoten string[Ausdruck] aus dem Baum: N über die Konstantenwerte (auch string[Laenge]); 0 bei
+  /// anderen Typen.</summary>
+  function BracketLength(ATypeNode: TSyntaxNode): Integer;
+  var
+    Value: Int64;
+  begin
+    Result := 0;
+    if (ATypeNode.Kind <> TSyntaxKind.TypeReference) or not SameText(ATypeNode.Name, 'string') or
+      (ATypeNode.ChildCount <> 1) then
+      Exit;
+    EnsureResolver;
+    if Values = nil then
+      Values := TConstantValues.Create(AContext.Tree, FileName, AContext.Index, Resolver);
+    if (Values.Check(ATypeNode[0], Value) = TOrdinalStatus.Value) and (Value >= 1) and (Value <= 255) then
+      Result := Value;
+  end;
+
+  /// <summary>Nennt der Typknoten string[…], ShortString oder einen eigenen Alias darauf?</summary>
+  function IsShortTypeNode(ATypeNode: TSyntaxNode): Boolean;
+  begin
+    Result := ((ATypeNode.Kind = TSyntaxKind.TypeReference) and SameText(ATypeNode.Name, 'string') and
+      (ATypeNode.ChildCount = 1)) or (ShortStringLength(NodeText(ATypeNode)) > 0) or
+      ShortTypes.ContainsKey(LowerCase(Trim(NodeText(ATypeNode))));
+  end;
+
+  /// <summary>Zeichen des konstanten String-Ausdrucks ANode (Literale, mit + verkettet); -1 sonst.</summary>
+  function ExpressionLength(ANode: TSyntaxNode): Integer;
+  var
+    Left, Right, Longest: Integer;
+  begin
+    Result := -1;
+    case ANode.Kind of
+      TSyntaxKind.Literal:
+        Result := LiteralLength(NodeText(ANode), Longest);
+      TSyntaxKind.ParenExpr:
+        if ANode.ChildCount = 1 then
+          Result := ExpressionLength(ANode[0]);
+      TSyntaxKind.BinaryExpr:
+        if (ANode.Name = '+') and (ANode.ChildCount = 2) then
+        begin
+          Left := ExpressionLength(ANode[0]);
+          Right := ExpressionLength(ANode[1]);
+          if (Left >= 0) and (Right >= 0) then
+            Result := Left + Right;
+        end;
+    end;
+  end;
+
+  /// <summary>Ist ATypeName ein Alias auf string[N]/ShortString (eigene Datei oder Index)? Liefert N.</summary>
+  function AliasLength(const ATypeName: string): Integer;
+  var
+    Location: TSymbolLocation;
+  begin
+    Result := ShortStringLength(ATypeName);
+    if (Result > 0) or not IsValidIdent(ATypeName, True) then
+      Exit;
+    if ShortTypes.ContainsKey(LowerCase(ATypeName)) then
+      Exit(1);
+    if AContext.Index <> nil then
+      for Location in AContext.Index.FindSymbols(ATypeName) do
+        if Location.Symbol.Kind = TIndexSymbolKind.TypeAlias then
+        begin
+          Result := ShortStringLength(TypeBodyOf(Location.Symbol.Signature));
+          if Result > 0 then
+            Exit;
+        end;
+  end;
+
+  procedure CollectTypes(ANode: TSyntaxNode);
+  var
+    Index: Integer;
+  begin
+    if (ANode.Kind = TSyntaxKind.TypeDecl) and (ANode.ChildCount > 0) and IsShortTypeNode(ANode[0]) then
+      ShortTypes.AddOrSetValue(LowerCase(ANode.Name), True);
+    for Index := 0 to ANode.ChildCount - 1 do
+      CollectTypes(ANode[Index]);
+  end;
+
+  procedure CollectLocal(ANode: TSyntaxNode);
+  var
+    Index: Integer;
+    Name: string;
+  begin
+    if (ANode.Kind in [TSyntaxKind.VarDecl, TSyntaxKind.Field, TSyntaxKind.Parameter, TSyntaxKind.PropertyDecl,
+      TSyntaxKind.InlineVar]) and (ANode.ChildCount > 0) and IsShortTypeNode(ANode[0]) then
+      for Name in ANode.Name.Split([',']) do
+        LocalNames.AddOrSetValue(LowerCase(Trim(Name)), True);
+    for Index := 0 to ANode.ChildCount - 1 do
+      CollectLocal(ANode[Index]);
+  end;
+
+  function Suspect(const AName: string): Boolean;
+  var
+    Key: string;
+    Location: TSymbolLocation;
+  begin
+    Key := LowerCase(AName);
+    if (Key = '') or LocalNames.ContainsKey(Key) then
+      Exit(Key <> '');
+    if Suspects.TryGetValue(Key, Result) then
+      Exit;
+    Result := False;
+    if AContext.Index <> nil then
+      for Location in AContext.Index.FindSymbols(AName) do
+        if (Location.Symbol.Kind in [TIndexSymbolKind.Variable, TIndexSymbolKind.Field,
+          TIndexSymbolKind.Property_]) and ((ShortStringLength(Location.Symbol.Signature) > 0) or
+          ((Location.Symbol.TypeName <> '') and (AliasLength(Location.Symbol.TypeName) > 0))) then
+        begin
+          Result := True;
+          Break;
+        end;
+    Suspects.Add(Key, Result);
+  end;
+
+  /// <summary>Typknoten hinter "=" der Typdeklaration ATypeName in dieser Datei; nil sonst.</summary>
+  function LocalTypeBody(const ATypeName: string): TSyntaxNode;
+  var
+    Found: TSyntaxNode;
+
+    procedure Search(ANode: TSyntaxNode);
+    var
+      Index: Integer;
+    begin
+      if Found <> nil then
+        Exit;
+      if (ANode.Kind = TSyntaxKind.TypeDecl) and (ANode.ChildCount > 0) and SameText(ANode.Name, ATypeName) then
+      begin
+        Found := ANode[0];
+        Exit;
+      end;
+      for Index := 0 to ANode.ChildCount - 1 do
+        Search(ANode[Index]);
+    end;
+
+  begin
+    Found := nil;
+    Search(AContext.Tree.Root);
+    Result := Found;
+  end;
+
+  function TypeNameLength(const ATypeName: string; AFrom: TSyntaxNode): Integer; forward;
+
+  /// <summary>N des Typknotens ATypeNode (string[N], ShortString oder Alias darauf); 0 sonst.</summary>
+  function TypeNodeLength(ATypeNode: TSyntaxNode): Integer;
+  begin
+    Result := BracketLength(ATypeNode);
+    if Result = 0 then
+      Result := ShortStringLength(NodeText(ATypeNode));
+    if (Result = 0) and (ATypeNode.Kind = TSyntaxKind.TypeReference) then
+      Result := TypeNameLength(Trim(NodeText(ATypeNode)), ATypeNode);
+  end;
+
+  /// <summary>N des Alias ATypeName: eigener Alias aus dem Baum (auch string[Laenge]), sonst aus der Signatur
+  /// im Index; 0 sonst. AFrom verhindert, dass ein Knoten sich selbst auswertet.</summary>
+  function TypeNameLength(const ATypeName: string; AFrom: TSyntaxNode): Integer;
+  var
+    Body: TSyntaxNode;
+  begin
+    Result := 0;
+    if ShortTypes.ContainsKey(LowerCase(ATypeName)) then
+    begin
+      Body := LocalTypeBody(ATypeName);
+      if (Body <> nil) and (Body <> AFrom) then
+        Result := TypeNodeLength(Body);
+    end
+    else
+      Result := AliasLength(ATypeName);
+  end;
+
+  /// <summary>Typknoten der Deklaration von ASymbol in dieser Datei; nil, wenn sie woanders steht. AFixable:
+  /// einzelne Variable, Inline-Variable oder typisierte Konstante (keine Record-Felder, deren Größe zählen kann,
+  /// keine Parameter).</summary>
+  function DeclarationTypeNode(const ASymbol: TResolvedSymbol; out AFixable: Boolean): TSyntaxNode;
+  var
+    Found: TSyntaxNode;
+
+    procedure Search(ANode: TSyntaxNode);
+    var
+      Index: Integer;
+      Name: string;
+    begin
+      if Found <> nil then
+        Exit;
+      if (ANode.Kind in [TSyntaxKind.VarDecl, TSyntaxKind.InlineVar, TSyntaxKind.ConstDecl, TSyntaxKind.Field,
+        TSyntaxKind.Parameter]) and (ANode.ChildCount > 0) and
+        (ANode.StartPos.Line <= ASymbol.SelectionRange.StartPos.Line) and
+        (ANode.EndPos.Line >= ASymbol.SelectionRange.StartPos.Line) then
+        for Name in ANode.Name.Split([',']) do
+          if SameText(Trim(Name), ASymbol.Name) then
+          begin
+            Found := ANode[0];
+            AFixable := (ANode.Kind in [TSyntaxKind.VarDecl, TSyntaxKind.InlineVar, TSyntaxKind.ConstDecl]) and
+              (Pos(',', ANode.Name) = 0) and (Found.Kind = TSyntaxKind.TypeReference);
+            Exit;
+          end;
+      for Index := 0 to ANode.ChildCount - 1 do
+        Search(ANode[Index]);
+    end;
+
+  begin
+    Found := nil;
+    AFixable := False;
+    if (ASymbol.FileName = '') or SameText(ASymbol.FileName, FileName) or
+      SameText(ExtractFileName(ASymbol.FileName), ExtractFileName(FileName)) then
+      Search(AContext.Tree.Root);
+    Result := Found;
+  end;
+
+  procedure ReportTruncated(AValue: TSyntaxNode; ALength, ALimit: Integer; ATypeNode: TSyntaxNode);
+  var
+    Fixes: TArray<TRuleFix>;
+  begin
+    Fixes := nil;
+    if ATypeNode <> nil then
+      Fixes := [TRuleFix.Create('Als string deklarieren', [TTextEdit.Create(TTextRange.Create(ATypeNode.StartPos,
+        ATypeNode.EndPos), 'string')])];
+    AReport.Add(TTextRange.Create(AValue.StartPos, AValue.EndPos), Format('Das Literal hat %d Zeichen und wird ' +
+      'auf %d gekürzt (wie W1014).', [ALength, ALimit]), TRuleConfidence.High, Fixes);
+  end;
+
+  /// <summary>Typisierte Konstante oder initialisierte Variable: const K: string[8] = '…'.</summary>
+  procedure CheckDeclaration(ANode: TSyntaxNode);
+  var
+    Limit, Chars: Integer;
+    TypeNode: TSyntaxNode;
+  begin
+    if ANode.ChildCount <> 2 then
+      Exit;
+    Chars := ExpressionLength(ANode[1]);
+    if Chars <= 0 then
+      Exit;
+    Limit := TypeNodeLength(ANode[0]);
+    if (Limit = 0) or (Chars <= Limit) then
+      Exit;
+    TypeNode := nil;
+    if (Pos(',', ANode.Name) = 0) and (ANode[0].Kind = TSyntaxKind.TypeReference) then
+      TypeNode := ANode[0];
+    ReportTruncated(ANode[1], Chars, Limit, TypeNode);
+  end;
+
+  procedure CheckAssignment(ANode: TSyntaxNode);
+  var
+    Symbol, TypeInfo: TResolvedSymbol;
+    TypeFound, Fixable: Boolean;
+    Limit, Chars: Integer;
+    TypeNode: TSyntaxNode;
+  begin
+    if (ANode.ChildCount <> 2) or not (ANode[0].Kind in [TSyntaxKind.Identifier, TSyntaxKind.MemberAccess]) or
+      not Suspect(ANode[0].Name) then
+      Exit;
+    Chars := ExpressionLength(ANode[1]);
+    if Chars <= 0 then
+      Exit;
+    EnsureResolver;
+    if not Resolver.NodeType(AContext.Tree, FileName, ANode[0], Symbol, TypeInfo, TypeFound) or
+      not (Symbol.SymbolKind in [TIndexSymbolKind.Variable, TIndexSymbolKind.Field, TIndexSymbolKind.Property_]) then
+      Exit;
+    // Deklaration in dieser Datei: Länge aus dem Baum (auch string[Laenge]); sonst aus der Signatur.
+    TypeNode := DeclarationTypeNode(Symbol, Fixable);
+    if TypeNode <> nil then
+      Limit := TypeNodeLength(TypeNode)
+    else
+    begin
+      Limit := ShortStringLength(Copy(Symbol.Signature, Pos(':', Symbol.Signature) + 1, MaxInt));
+      if (Limit = 0) and (Symbol.TypeName <> '') then
+        Limit := TypeNameLength(Symbol.TypeName, nil);
+    end;
+    if (Limit = 0) or (Chars <= Limit) then
+      Exit;
+    if Fixable and (ANode[0].Kind = TSyntaxKind.Identifier) then
+      ReportTruncated(ANode[1], Chars, Limit, TypeNode)
+    else
+      ReportTruncated(ANode[1], Chars, Limit, nil);
+  end;
+
+  procedure CheckResourceStrings(ASection: TSyntaxNode);
+  var
+    Index, Chars: Integer;
+    Decl: TSyntaxNode;
+  begin
+    for Index := 0 to ASection.ChildCount - 1 do
+    begin
+      Decl := ASection[Index];
+      if (Decl.Kind <> TSyntaxKind.ConstDecl) or (Decl.ChildCount = 0) then
+        Continue;
+      Chars := ExpressionLength(Decl[Decl.ChildCount - 1]);
+      if Chars > MaxResourceString then
+        AReport.AddWithSeverity(TTextRange.Create(Decl[Decl.ChildCount - 1].StartPos,
+          Decl[Decl.ChildCount - 1].EndPos), Format('Der resourcestring %s hat %d Zeichen; Windows erlaubt höchstens ' +
+          '%d (wie E2381).', [Decl.Name, Chars, MaxResourceString]), TRuleSeverity.Error, nil);
+    end;
+  end;
+
+  /// <summary>Teilt das Literal ATokenText in Stücke zu höchstens MaxLiteral Zeichen ('…' + '…'); '' wenn es
+  /// nicht nur aus einem Stück in Anführungszeichen besteht.</summary>
+  function SplitLiteral(const ATokenText: string): string;
+  var
+    Index, Count: Integer;
+    Part: string;
+  begin
+    Result := '';
+    if (Length(ATokenText) < 2) or (ATokenText[1] <> '''') or (ATokenText[Length(ATokenText)] <> '''') then
+      Exit;
+    Part := '';
+    Count := 0;
+    Index := 2;
+    while Index < Length(ATokenText) do
+    begin
+      if Count = MaxLiteral then
+      begin
+        Result := Result + '''' + Part + ''' + ';
+        Part := '';
+        Count := 0;
+      end;
+      if ATokenText[Index] = '''' then
+      begin
+        // Nur verdoppelte Anführungszeichen dürfen innen stehen.
+        if (Index + 1 >= Length(ATokenText)) or (ATokenText[Index + 1] <> '''') then
+          Exit('');
+        Part := Part + '''''';
+        Inc(Index, 2);
+      end
+      else
+      begin
+        Part := Part + ATokenText[Index];
+        // Ersatzpaar zusammenhalten.
+        if (Ord(ATokenText[Index]) >= $D800) and (Ord(ATokenText[Index]) <= $DBFF) and
+          (Index + 1 < Length(ATokenText)) then
+        begin
+          Inc(Index);
+          Part := Part + ATokenText[Index];
+        end;
+        Inc(Index);
+      end;
+      Inc(Count);
+    end;
+    Result := Result + '''' + Part + '''';
+  end;
+
+  procedure CheckLongLiterals;
+  var
+    Token: TPascalToken;
+    Longest, Major: Integer;
+    Split: string;
+    Fixes: TArray<TRuleFix>;
+  begin
+    Major := StrToIntDef(Copy(AContext.DelphiVersion, 1, Pos('.', AContext.DelphiVersion + '.') - 1), 0);
+    if (Major <= 0) or (Major >= LongLiteralVersion) then
+      Exit;
+    for Token in AContext.Tree.Tokens do
+      if (Token.Kind = TPascalTokenKind.StringLiteral) and (Length(Token.Text) > MaxLiteral) and
+        (LiteralLength(Token.Text, Longest) >= 0) and (Longest > MaxLiteral) then
+      begin
+        Fixes := nil;
+        Split := SplitLiteral(Token.Text);
+        if Split <> '' then
+          Fixes := [TRuleFix.Create('Literal teilen', [TTextEdit.Create(TTextRange.Create(Token.StartPos,
+            Token.EndPos), Split)])];
+        AReport.AddWithSeverity(TTextRange.Create(Token.StartPos, Token.EndPos), Format('Das Literal hat %d ' +
+          'Zeichen in Anführungszeichen; vor Delphi 12 sind höchstens %d erlaubt (wie E2056).',
+          [Longest, MaxLiteral]), TRuleSeverity.Error, Fixes);
+      end;
+  end;
+
+  procedure Visit(ANode: TSyntaxNode);
+  var
+    Index: Integer;
+  begin
+    case ANode.Kind of
+      TSyntaxKind.AssignStatement:
+        CheckAssignment(ANode);
+      TSyntaxKind.ConstDecl, TSyntaxKind.VarDecl, TSyntaxKind.InlineVar:
+        CheckDeclaration(ANode);
+      TSyntaxKind.ConstSection:
+        if SameText(ANode.Name, 'resourcestring') then
+          CheckResourceStrings(ANode);
+    end;
+    for Index := 0 to ANode.ChildCount - 1 do
+      Visit(ANode[Index]);
+  end;
+
+begin
+  if (AContext.Tree = nil) or (AContext.Tree.Root = nil) then
+    Exit;
+  FileName := AContext.FileName;
+  if FileName = '' then
+    FileName := AContext.RelativePath;
+  if FileName = '' then
+    FileName := AContext.UnitName + '.pas';
+  Resolver := nil;
+  Values := nil;
+  LocalNames := TDictionary<string, Boolean>.Create;
+  ShortTypes := TDictionary<string, Boolean>.Create;
+  Suspects := TDictionary<string, Boolean>.Create;
+  try
+    CollectTypes(AContext.Tree.Root);
+    CollectLocal(AContext.Tree.Root);
+    Visit(AContext.Tree.Root);
+    CheckLongLiterals;
+  finally
+    Values.Free;
+    if Resolver <> nil then
+    begin
+      Resolver.UnpinTree;
+      Resolver.Free;
+    end;
+    Suspects.Free;
+    ShortTypes.Free;
+    LocalNames.Free;
+  end;
+end;
+
 procedure RegisterConstantRules(const ARegistry: TRuleRegistry);
 begin
   ARegistry.Register(TConstantExpressionErrorRule.Create);
@@ -2016,6 +2574,7 @@ begin
   ARegistry.Register(TSignedUnsignedMixRule.Create);
   ARegistry.Register(TNarrowingAssignmentRule.Create);
   ARegistry.Register(TTypedConstantModifiedRule.Create);
+  ARegistry.Register(TStringLengthLimitRule.Create);
 end;
 
 end.

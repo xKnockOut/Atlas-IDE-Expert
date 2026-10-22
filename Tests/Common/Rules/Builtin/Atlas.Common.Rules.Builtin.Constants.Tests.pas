@@ -20,6 +20,10 @@
 // Konstante, Element und Feld, var-Parameter eigener Routinen, {$J-} und
 // {$J+}, Abschnitte aufteilen, Konstanten aus anderen Units, 0 statt nil,
 // stille Fälle, Abschalten.
+// string-length-limit (#1036): Beispiel mit Korrektur, typisierte Konstante,
+// Alias und Feld aus dem Index, Verkettung, lange Literale nach
+// Delphi-Version mit Teilen, resourcestring über 4096 Zeichen, Zählen der
+// Literale, stille Fälle, Abschalten.
 
 interface
 
@@ -124,10 +128,32 @@ type
     procedure OffGroupAndExclude;
   end;
 
+  [TestFixture]
+  TStringLengthLimitTests = class
+  public
+    [Test]
+    procedure IssueExampleWithFix;
+    [Test]
+    procedure ConstantsAliasesAndConcatenation;
+    [Test]
+    procedure FieldFromIndex;
+    [Test]
+    procedure LongLiteralBeforeDelphi12;
+    [Test]
+    procedure LongResourceString;
+    [Test]
+    procedure CountingAndLengths;
+    [Test]
+    procedure FittingAndLongStringsAreSilent;
+    [Test]
+    procedure OffGroupAndExclude;
+  end;
+
 implementation
 
 uses
   System.SysUtils,
+  System.StrUtils,
   Atlas.Common.Documents.Contract,
   Atlas.Common.Index.Contract,
   Atlas.Common.Index.SymbolIndex,
@@ -323,6 +349,11 @@ begin
     if Rule.Descriptor.Id = TypedConstantModifiedRuleId then
       Found := True;
   Assert.IsTrue(Found, TypedConstantModifiedRuleId);
+  Found := False;
+  for Rule in BuiltinRules do
+    if Rule.Descriptor.Id = StringLengthLimitRuleId then
+      Found := True;
+  Assert.IsTrue(Found, StringLengthLimitRuleId);
 end;
 
 /// <summary>Offset von APosition in AText mit Zeilen aus #10.</summary>
@@ -899,11 +930,151 @@ begin
     '{"rules": {"typed-constant-modified": {"exclude": ["Source/*.pas"]}}}', 'Source/Zaehlen.pas'))));
 end;
 
+{ TStringLengthLimitTests }
+
+function LimitFindings(const ASource: string): TArray<TRuleFinding>; overload;
+begin
+  Result := TRuleAssert.Findings(TStringLengthLimitRule.Create, ASource);
+end;
+
+function LimitFindings(const ASource, AConfig, APath: string): TArray<TRuleFinding>; overload;
+begin
+  Result := TRuleAssert.Findings(TStringLengthLimitRule.Create, ASource, AConfig, APath);
+end;
+
+/// <summary>Unit Kennungen mit ADeclarations und den Variablen AVariables und Anweisungen AStatements.</summary>
+function Kennungen(const ADeclarations, AVariables, AStatements: string): string;
+begin
+  Result := 'unit Kennungen;'#10'interface'#10 + ADeclarations + 'implementation'#10'procedure Setze;'#10'var'#10 +
+    AVariables + 'begin'#10 + AStatements + 'end;'#10'end.';
+end;
+
+procedure TStringLengthLimitTests.IssueExampleWithFix;
+var
+  Source, Fixed: string;
+  Found: TArray<TRuleFinding>;
+begin
+  Source := Kennungen('', '  Kennung: string[8];'#10, '  Kennung := ''KUNDE-2026-0001'';'#10);
+  Found := LimitFindings(Source);
+  Assert.AreEqual(1, Integer(Length(Found)));
+  Assert.AreEqual('Das Literal hat 15 Zeichen und wird auf 8 gekürzt (wie W1014).', Found[0].Message);
+  Assert.AreEqual(1, Integer(Length(Found[0].Fixes)));
+  Assert.AreEqual('Als string deklarieren', Found[0].Fixes[0].Title);
+  Fixed := ApplyAll(Source, Found[0].Fixes[0]);
+  Assert.IsTrue(Pos('  Kennung: string;', Fixed) > 0, Fixed);
+  Assert.AreEqual(0, Integer(Length(LimitFindings(Fixed))));
+  // Korrigierte Form: passendes Literal.
+  Assert.AreEqual(0, Integer(Length(LimitFindings(Kennungen('', '  Kennung: string[8];'#10,
+    '  Kennung := ''KD-0001'';'#10)))));
+end;
+
+procedure TStringLengthLimitTests.ConstantsAliasesAndConcatenation;
+begin
+  Assert.AreEqual('Das Literal hat 9 Zeichen und wird auf 4 gekürzt (wie W1014).'#10 +
+    'Das Literal hat 6 Zeichen und wird auf 5 gekürzt (wie W1014).'#10 +
+    'Das Literal hat 7 Zeichen und wird auf 3 gekürzt (wie W1014).'#10 +
+    'Das Literal hat 7 Zeichen und wird auf 5 gekürzt (wie W1014).'#10,
+    Messages(LimitFindings(Kennungen('type'#10'  TKurz = string[5];'#10'const'#10 +
+    '  Laenge = 3;'#10'  Kopf: string[4] = ''Kopfzeile'';'#10'  Fuss: TKurz = ''ab''#13''cde'';'#10,
+    '  Code: string[Laenge];'#10'  Kurz: TKurz;'#10, '  Code := ''abc'' + ''de''''f'';'#10 +
+    '  Kurz := (''abcdefg'');'#10))));
+end;
+
+procedure TStringLengthLimitTests.FieldFromIndex;
+var
+  Index: ISymbolIndex;
+  Found: TArray<TRuleFinding>;
+begin
+  Index := TSymbolIndex.Create;
+  Index.AddUnit(TIndexExtractor.ExtractText('unit Satz;'#10'interface'#10'type'#10'  TName = string[10];'#10 +
+    '  TSatz = record'#10'    Kennung: string[8];'#10'    Name: TName;'#10'  end;'#10'implementation'#10'end.',
+    'C:\Projekt\Satz.pas', nil));
+  Found := TRuleAssert.IndexFindings(TStringLengthLimitRule.Create, 'unit Kennungen;'#10'interface'#10'uses'#10 +
+    '  Satz;'#10'implementation'#10'procedure Setze(var S: TSatz);'#10'begin'#10 +
+    '  S.Kennung := ''KUNDE-2026-0001'';'#10'  S.Name := ''Mustermann GmbH'';'#10'end;'#10'end.',
+    Index, '', 'Kennungen.pas');
+  Assert.AreEqual('Das Literal hat 15 Zeichen und wird auf 8 gekürzt (wie W1014).'#10 +
+    'Das Literal hat 15 Zeichen und wird auf 10 gekürzt (wie W1014).'#10, Messages(Found));
+  // Record-Felder: keine Korrektur, die Größe des Records kann zählen.
+  Assert.AreEqual(0, Integer(Length(Found[0].Fixes)));
+end;
+
+procedure TStringLengthLimitTests.LongLiteralBeforeDelphi12;
+var
+  Source, Fixed: string;
+  Found: TArray<TRuleFinding>;
+begin
+  Source := Kennungen('const'#10'  Lang = ''' + StringOfChar('a', 300) + ''';'#10, '', '');
+  Assert.AreEqual(0, Integer(Length(LimitFindings(Source))));
+  Assert.AreEqual(0, Integer(Length(LimitFindings(Source, '{"delphiVersion": "23.0"}', 'Kennungen.pas'))));
+  Found := LimitFindings(Source, '{"delphiVersion": "22.0"}', 'Kennungen.pas');
+  Assert.AreEqual(1, Integer(Length(Found)));
+  Assert.AreEqual('Das Literal hat 300 Zeichen in Anführungszeichen; vor Delphi 12 sind höchstens 255 erlaubt ' +
+    '(wie E2056).', Found[0].Message);
+  Assert.AreEqual(Ord(TRuleSeverity.Error), Ord(Found[0].Severity));
+  Assert.AreEqual('Literal teilen', Found[0].Fixes[0].Title);
+  Fixed := ApplyAll(Source, Found[0].Fixes[0]);
+  Assert.IsTrue(Pos('Lang = ''' + StringOfChar('a', 255) + ''' + ''' + StringOfChar('a', 45) + ''';', Fixed) > 0);
+  Assert.AreEqual(0, Integer(Length(LimitFindings(Fixed, '{"delphiVersion": "22.0"}', 'Kennungen.pas'))));
+end;
+
+procedure TStringLengthLimitTests.LongResourceString;
+var
+  Found: TArray<TRuleFinding>;
+begin
+  Found := LimitFindings('unit Texte;'#10'interface'#10'resourcestring'#10'  Hilfe = ''' + StringOfChar('x', 250) +
+    ''' + ''' + StringOfChar('y', 250) + ''''#10 + DupeString('    + ''' + StringOfChar('z', 250) + ''''#10, 16) +
+    '  ;'#10'  Kurz = ''ok'';'#10'implementation'#10'end.');
+  Assert.AreEqual(1, Integer(Length(Found)));
+  Assert.AreEqual('Der resourcestring Hilfe hat 4500 Zeichen; Windows erlaubt höchstens 4096 (wie E2381).',
+    Found[0].Message);
+  Assert.AreEqual(Ord(TRuleSeverity.Error), Ord(Found[0].Severity));
+end;
+
+procedure TStringLengthLimitTests.CountingAndLengths;
+var
+  Longest: Integer;
+begin
+  Assert.AreEqual(5, TStringLengthLimitRule.LiteralLength('''ab''''c''#13', Longest));
+  Assert.AreEqual(4, Longest);
+  Assert.AreEqual(3, TStringLengthLimitRule.LiteralLength('#$41#66#13', Longest));
+  Assert.AreEqual(-1, TStringLengthLimitRule.LiteralLength('Name', Longest));
+  Assert.AreEqual(-1, TStringLengthLimitRule.LiteralLength('''offen', Longest));
+  Assert.AreEqual(8, TStringLengthLimitRule.ShortStringLength('Kennung: string[8]'));
+  Assert.AreEqual(255, TStringLengthLimitRule.ShortStringLength('ShortString'));
+  Assert.AreEqual(0, TStringLengthLimitRule.ShortStringLength('AnsiString'));
+  Assert.AreEqual(0, TStringLengthLimitRule.ShortStringLength('TStringList'));
+  Assert.AreEqual(0, TStringLengthLimitRule.ShortStringLength('string'));
+end;
+
+procedure TStringLengthLimitTests.FittingAndLongStringsAreSilent;
+begin
+  Assert.AreEqual(0, Integer(Length(LimitFindings(Kennungen('const'#10'  Kopf: string = ''Kopfzeile'';'#10,
+    '  Kennung: string[8];'#10'  Text: string;'#10'  Ansi: AnsiString;'#10'  Name: string;'#10,
+    '  Text := ''KUNDE-2026-0001'';'#10'  Ansi := ''KUNDE-2026-0001'';'#10'  Kennung := Name;'#10 +
+    '  Kennung := ''ABCDEFGH'';'#10)))));
+end;
+
+procedure TStringLengthLimitTests.OffGroupAndExclude;
+var
+  Source: string;
+begin
+  Source := Kennungen('', '  Kennung: string[8];'#10, '  Kennung := ''KUNDE-2026-0001'';'#10);
+  Assert.AreEqual(1, Integer(Length(LimitFindings(Source, '', 'Source/Kennungen.pas'))));
+  Assert.AreEqual(0, Integer(Length(LimitFindings(Source, '{"rules": {"string-length-limit": "off"}}',
+    'Source/Kennungen.pas'))));
+  Assert.AreEqual(0, Integer(Length(LimitFindings(Source, '{"rules": {"group:compiler": "off"}}',
+    'Source/Kennungen.pas'))));
+  Assert.AreEqual(0, Integer(Length(LimitFindings(Source,
+    '{"rules": {"string-length-limit": {"exclude": ["Source/*.pas"]}}}', 'Source/Kennungen.pas'))));
+end;
+
 initialization
   TDUnitX.RegisterTestFixture(TConstantExpressionErrorTests);
   TDUnitX.RegisterTestFixture(TDefaultParameterInvalidTests);
   TDUnitX.RegisterTestFixture(TSignedUnsignedMixTests);
   TDUnitX.RegisterTestFixture(TNarrowingAssignmentTests);
   TDUnitX.RegisterTestFixture(TTypedConstantModifiedTests);
+  TDUnitX.RegisterTestFixture(TStringLengthLimitTests);
 
 end.

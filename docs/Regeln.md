@@ -10,7 +10,7 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 | [Exceptions](#gruppe-exceptions) | 8 |
 | [Threads](#gruppe-threads) | 13 |
 | [Datenbank](#gruppe-database) | 4 |
-| [Compiler vorab](#gruppe-compiler) | 20 |
+| [Compiler vorab](#gruppe-compiler) | 21 |
 | [Robustheit und Muster](#gruppe-robustness) | 3 |
 | [Performance](#gruppe-performance) | 4 |
 | [Sicherheit](#gruppe-security) | 11 |
@@ -151,6 +151,7 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 | [`signed-unsigned-mix`](#signed-unsigned-mix) | Vorzeichenbehaftet und vorzeichenlos gemischt | Bug | Warnung |
 | [`narrowing-assignment`](#narrowing-assignment) | Zuweisung mit möglichem Datenverlust | Bug | Warnung |
 | [`typed-constant-modified`](#typed-constant-modified) | Typisierte Konstante verändert | Bug | Warnung |
+| [`string-length-limit`](#string-length-limit) | String-Grenze überschritten | Bug | Warnung |
 
 <a id="gruppe-robustness"></a>
 ### Robustheit und Muster
@@ -4664,4 +4665,29 @@ var
   Zaehler: Integer = 0;
 …
 Inc(Zaehler);
+```
+
+<a id="string-length-limit"></a>
+### string-length-limit
+
+**String-Grenze überschritten** · Bug · Warnung · Gruppe Compiler vorab
+
+Ein String-Literal wird an ein Ziel vom Typ string[N] oder ShortString gekürzt: Zuweisung, typisierte Konstante oder initialisierte Variable, auch über eigene Aliase, string[Konstante] und Felder aus anderen Units (wie W1014). Vor Delphi 12 (delphiVersion unter 23) darf ein Literal in Anführungszeichen höchstens 255 Zeichen haben (wie E2056), und ein resourcestring höchstens 4096 Zeichen, mit + verbundene Literale eingerechnet (wie E2381); beides sind Fehler. Gezählt wird wie geschrieben, '' und #13 zählen als ein Zeichen. Korrekturen: das Ziel als string deklarieren (einzelne Variable oder typisierte Konstante derselben Datei; Record-Felder behalten ihre Größe); das Literal in Stücke zu 255 Zeichen teilen, verbunden mit +.
+
+Entspricht der Compilermeldung `W1014`, `E2056`, `E2381`.
+
+Mit Treffer:
+
+```pascal
+var Kennung: string[8];
+…
+Kennung := 'KUNDE-2026-0001';
+```
+
+Richtig:
+
+```pascal
+var Kennung: string;
+…
+Kennung := 'KUNDE-2026-0001';
 ```

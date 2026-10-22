@@ -4204,3 +4204,19 @@ Voraussetzung: Server läuft in der IDE mit Projekt.
 | QT9 | Lesen, `Ziel^ := 1` bei einer Zeigerkonstante, lokale Variable mit demselben Namen | Keine Meldung |
 | QT10 | `"typed-constant-modified": "off"`, `"group:compiler": "off"` bzw. `exclude` | Keine Meldung |
 | QT11 | Abgleich mit Delphi: QT1, QT4 bis QT6, QT8 übersetzen, einmal mit `{$J+}`, einmal ohne | Mit `{$J+}` W1016/W1017 bzw. W1013, mit `{$J-}` E2064/E2197 an denselben Stellen; für QT9 nichts |
+
+## String-Grenze überschritten (#1036)
+
+Voraussetzung: Server läuft in der IDE mit Projekt.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| QL1 | Das Beispiel aus #1036: `var Kennung: string[8];` und `Kennung := 'KUNDE-2026-0001';` | Warnung `string-length-limit` am Literal: „Das Literal hat 15 Zeichen und wird auf 8 gekürzt (wie W1014).“; im Fenster „Atlas-Prüfung“ und im Befund-Hover (**Abnahme**) |
+| QL2 | Schnellkorrektur „Als string deklarieren“, danach Strg+Z | Die Deklaration wird `Kennung: string;`; keine Meldung mehr; ein Undo-Schritt |
+| QL3 | `const Kopf: string[4] = 'Kopfzeile';`, `type TKurz = string[5];` mit `Kurz := 'abcdefg';`, `Code: string[Laenge]` mit `const Laenge = 3` und `Code := 'abc' + 'de''f';` | Meldungen mit 9/4, 7/5 und 7/3 Zeichen |
+| QL4 | Record `TSatz` mit `Kennung: string[8]` in einer anderen Unit, `S.Kennung := 'KUNDE-2026-0001';` | Meldung wie QL1, aber ohne Korrektur (Record-Felder behalten ihre Größe) |
+| QL5 | `"delphiVersion": "22.0"` in `atlas.json`, Konstante mit einem Literal aus 300 Zeichen; Schnellkorrektur „Literal teilen“ | Fehler „Das Literal hat 300 Zeichen in Anführungszeichen; vor Delphi 12 sind höchstens 255 erlaubt (wie E2056).“; danach `'…255…' + '…45…'`, keine Meldung. Mit Delphi 12 oder 13 keine Meldung |
+| QL6 | `resourcestring` aus mit + verbundenen Literalen, zusammen über 4096 Zeichen | Fehler „Der resourcestring … hat … Zeichen; Windows erlaubt höchstens 4096 (wie E2381).“ |
+| QL7 | Passende Literale, `string`, `AnsiString`, Zuweisung einer Variablen an `string[8]` | Keine Meldung |
+| QL8 | `"string-length-limit": "off"`, `"group:compiler": "off"` bzw. `exclude` | Keine Meldung |
+| QL9 | Abgleich mit Delphi: QL1, QL3, QL4, QL6 übersetzen (QL5 mit Delphi 11 oder älter) | dcc meldet W1014, E2381 bzw. E2056 an denselben Stellen, für QL7 nichts |
