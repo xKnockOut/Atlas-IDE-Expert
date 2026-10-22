@@ -690,3 +690,11 @@ Jeder Branch baut auf dem vorigen auf. Nichts davon ist gebaut, getestet oder in
 - Unter FPC getestet: RuleTable, Hover.Layout, Findings. VCL-Tests (`Atlas.UI.Settings.Rules.Tests`, Page.Tests) nur mit Delphi.
 - Risiken beim ersten Delphi-Build: `TListView.OnItemChecked`, AutoSize des Editors, `HandleNeeded` der Editoren auf verborgenen Seiten.
 - Handtest AP1–AP26 in `docs/Atlas-Testfaelle.md`. Danach folgen die Unter-Issues (#910 ff.) als Kette auf diesem Branch.
+
+## Regeln Runde 67, Kette #1041–#1046, #1065 (22.10.2026, ab `feature/1006-readonly-property-assigned`, ungebaut)
+- Branches, jeder auf dem vorigen: `feature/1041-constant-condition` → `feature/1042-infinite-loop` → `feature/1043-loop-condition-unchanged` → `feature/1044-unconditional-recursion` → `feature/1045-pos-arguments-swapped` → `feature/1046-integer-division-to-float` → `feature/1065-empty-finally`. Nichts nach main gemergt; Issues bleiben für den Handtest offen.
+- Neue Unit `Atlas.Common.Rules.Builtin.Conditions` (constant-condition, infinite-loop, loop-condition-unchanged, gemeinsame Helfer `TConditionValues`, `HasExit`, `InTryExcept`). unconditional-recursion in `Builtin.Recursion`, pos-arguments-swapped und integer-division-to-float in `Builtin.Expressions`, empty-finally in `Builtin.General`.
+- Neue Optionen: `switchConstants` (constant-condition) und `maxLiteralLength` (pos-arguments-swapped), beide im Schema, Parser und Test.
+- Handtests mit den Präfixen KB, EL, SV, RA, PO, GD und EF in `docs/Atlas-Testfaelle.md`. Je Regel eine Mutation in `Tests/Referenzprojekt/mutationen.txt`.
+- Fehlalarm-Scan über die Atlas-Quellen und das Referenzprojekt mit FPC trunk: 0 Treffer. Dabei gefundene Ursachen sind behoben: `while True` im try-Teil eines try/except (infinite-loop) und `Trunc(A) div Trunc(B)` im Präprozessor (integer-division-to-float).
+- Beim Zusammenführen mit den anderen Regel-Threads entstehen Konflikte in den Katalog-JSONs, `Catalog.Data.pas`, `Regeln.md`, Profiles.Tests, README und CHANGELOG. Nach dem Auflösen `Tools/Update-RuleCatalog.ps1` und `Tools/Update-ConfigDoc.ps1` ausführen und die README-Zählung prüfen.
