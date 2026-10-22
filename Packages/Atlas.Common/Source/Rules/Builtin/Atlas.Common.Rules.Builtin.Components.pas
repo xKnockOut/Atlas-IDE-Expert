@@ -12,6 +12,10 @@
 //                                        alle Klassen (#919); Destroy von
 //                                        Komponenten meldet nur
 //                                        component-missing-inherited
+//   message-handler-without-inherited    Methode mit "message WM_…"/"CM_…" ohne inherited,
+//                                        DefaultHandler, DefWindowProc oder CallWindowProc
+//                                        (#949); Nachrichten aus "swallow" und Handler, die
+//                                        Msg.Result selbst setzen, bleiben still
 //
 // Geprüft werden nur Klassen, deren Vorfahrenkette (Datei, Symbolindex) eine
 // bekannte VCL-Basisklasse erreicht. Teil B (nicht registriert, Design-Time-Units
@@ -69,6 +73,16 @@ type
     class function DefaultMethods: TArray<string>; static;
   end;
 
+  TMessageHandlerWithoutInheritedRule = class(TInterfacedObject, IRule)
+  public
+    function Descriptor: TRuleDescriptor;
+    procedure Check(const AContext: TRuleContext; const AReport: IRuleReport);
+    /// <summary>Vorgabe der Option swallow: WM_ERASEBKGND.</summary>
+    class function DefaultSwallow: TArray<string>; static;
+    /// <summary>Folge für die Meldung: was ohne inherited bei der Nachricht AMessage wegfällt.</summary>
+    class function Consequence(const AMessage: string): string; static;
+  end;
+
 procedure RegisterComponentRules(const ARegistry: TRuleRegistry);
 
 implementation
@@ -76,6 +90,7 @@ implementation
 uses
   System.StrUtils,
   System.Generics.Collections,
+  System.RegularExpressions,
   Atlas.Common.Documents.Contract,
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Pascal.Contract,
@@ -1071,9 +1086,123 @@ begin
   end;
 end;
 
+{ TMessageHandlerWithoutInheritedRule }
+
+function TMessageHandlerWithoutInheritedRule.Descriptor: TRuleDescriptor;
+begin
+  Result := TRuleDescriptor.Create('message-handler-without-inherited', TRuleSeverity.Warning,
+    'Message-Handler ohne inherited');
+end;
+
+class function TMessageHandlerWithoutInheritedRule.DefaultSwallow: TArray<string>;
+begin
+  Result := ['WM_ERASEBKGND'];
+end;
+
+class function TMessageHandlerWithoutInheritedRule.Consequence(const AMessage: string): string;
+var
+  Name: string;
+begin
+  Name := UpperCase(Copy(AMessage, LastDelimiter('.', AMessage) + 1, MaxInt));
+  if (Name = 'WM_SIZE') or (Name = 'WM_WINDOWPOSCHANGED') or (Name = 'WM_WINDOWPOSCHANGING') then
+    Result := 'die VCL passt Ausrichtung und Anker nicht mehr an'
+  else if (Name = 'WM_CLOSE') or (Name = 'WM_QUERYENDSESSION') then
+    Result := 'das Fenster schließt nicht mehr'
+  else if (Name = 'WM_PAINT') or (Name = 'WM_NCPAINT') or (Name = 'WM_PRINTCLIENT') then
+    Result := 'die VCL zeichnet das Steuerelement nicht mehr'
+  else if (Name = 'WM_KEYDOWN') or (Name = 'WM_KEYUP') or (Name = 'WM_CHAR') or (Name = 'WM_SYSKEYDOWN') or
+    (Name = 'WM_SYSCHAR') or (Name = 'CM_DIALOGKEY') or (Name = 'CM_DIALOGCHAR') or (Name = 'CM_WANTSPECIALKEY') then
+    Result := 'Tastatureingaben erreichen die Standardbehandlung nicht mehr'
+  else if (Name = 'WM_SETFOCUS') or (Name = 'WM_KILLFOCUS') or (Name = 'CM_ENTER') or (Name = 'CM_EXIT') then
+    Result := 'die Fokusbehandlung der VCL entfällt'
+  else if StartsStr('WM_LBUTTON', Name) or StartsStr('WM_RBUTTON', Name) or StartsStr('WM_MBUTTON', Name) or
+    (Name = 'WM_MOUSEMOVE') or (Name = 'WM_MOUSEWHEEL') or (Name = 'CM_MOUSEENTER') or (Name = 'CM_MOUSELEAVE') then
+    Result := 'Mausereignisse wie OnClick und OnMouseDown entfallen'
+  else if (Name = 'WM_DESTROY') or (Name = 'WM_NCDESTROY') then
+    Result := 'die VCL räumt das Fenster nicht mehr auf'
+  else if (Name = 'WM_DPICHANGED') or (Name = 'CM_PARENTFONTCHANGED') or (Name = 'CM_FONTCHANGED') or
+    (Name = 'CM_STYLECHANGED') then
+    Result := 'Schrift und Skalierung passen sich nicht mehr an'
+  else if StartsStr('CM_', Name) then
+    Result := 'die Standardbehandlung der VCL entfällt'
+  else
+    Result := 'die Standardbehandlung von Windows bzw. der VCL entfällt';
+end;
+
+procedure TMessageHandlerWithoutInheritedRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
+var
+  Model: TComponentModel;
+  Cache: IRuleDerivedCache;
+  Info: TClassInfo;
+  Method: TMethodImpl;
+  Token: TPascalToken;
+  Edit: TRuleEdit;
+  Swallow: TArray<string>;
+  Parent, MessageName: string;
+  Index: Integer;
+  Header: TSyntaxNode;
+  Match: TMatch;
+
+  // Setzt der Rumpf "Msg.Result := …"? Dann beantwortet der Handler die Nachricht bewusst selbst
+  // (MA_NOACTIVATE, HTCLIENT).
+  function AnswersItself(ABlock: TSyntaxNode): Boolean;
+  var
+    Code: TArray<TPascalToken>;
+    Token: TPascalToken;
+    Index: Integer;
+  begin
+    Code := nil;
+    for Token in AContext.Tree.Tokens do
+      if (Token.Offset >= ABlock.StartOffset) and (Token.Offset < ABlock.EndOffset) and
+        not (Token.Kind in [TPascalTokenKind.Comment, TPascalTokenKind.Directive]) then
+        Code := Code + [Token];
+    for Index := 1 to High(Code) - 1 do
+      if Code[Index - 1].IsSymbol('.') and SameText(Code[Index].Text, 'Result') and Code[Index + 1].IsSymbol(':=') then
+        Exit(True);
+    Result := False;
+  end;
+
+begin
+  Cache := TRuleDerived.Open(AContext);
+  if not ContainsText(AContext.Text, 'message') or not Prepare(Cache, AContext, Model) then
+    Exit;
+  Swallow := TRuleOptions.Strings(AContext.Options, 'swallow', DefaultSwallow);
+  for Info in Model.Classes do
+  begin
+    // Ohne Vorfahr behandelt TObject.DefaultHandler nichts.
+    Parent := DeclaredParent(Info);
+    if (Parent = '') or SameText(Parent, 'TObject') then
+      Continue;
+    for Index := 0 to Info.Body.ChildCount - 1 do
+    begin
+      Header := Info.Body[Index];
+      if Header.Kind <> TSyntaxKind.RoutineHeader then
+        Continue;
+      Match := TRegEx.Match(Model.NodeText(Header), '\bmessage\s+([\w.]+)', [roIgnoreCase]);
+      if not Match.Success then
+        Continue;
+      MessageName := Match.Groups[1].Value;
+      if MatchText(Copy(MessageName, LastDelimiter('.', MessageName) + 1, MaxInt), Swallow) or
+        not Model.FindMethod(Info.Name, Header.Name, Method) or (Method.Block = nil) or
+        Model.HasToken(Method.Block, ['inherited', 'DefaultHandler', 'DefWindowProc', 'CallWindowProc']) or
+        AnswersItself(Method.Block) or not Model.NameToken(Method, Token) then
+        Continue;
+      if Model.InsertAfterBegin(Method.Block, 'inherited;', Edit) then
+        AReport.Add(TTextRange.Create(Token.StartPos, Token.EndPos),
+          Format('%s ruft inherited nicht auf; %s.', [Method.MethodName, Consequence(MessageName)]),
+          TRuleConfidence.Medium, [TRuleFix.Create('"inherited;" am Anfang einfügen', [Edit])])
+      else
+        AReport.Add(TTextRange.Create(Token.StartPos, Token.EndPos),
+          Format('%s ruft inherited nicht auf; %s.', [Method.MethodName, Consequence(MessageName)]),
+          TRuleConfidence.Medium);
+    end;
+  end;
+end;
+
 procedure RegisterComponentRules(const ARegistry: TRuleRegistry);
 begin
   ARegistry.Register(TMissingInheritedRule.Create);
+  ARegistry.Register(TMessageHandlerWithoutInheritedRule.Create);
   ARegistry.Register(TComponentMissingInheritedRule.Create);
   ARegistry.Register(TComponentDefaultMismatchRule.Create);
   ARegistry.Register(TComponentMissingFreeNotificationRule.Create);

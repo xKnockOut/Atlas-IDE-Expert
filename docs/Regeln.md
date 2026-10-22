@@ -6,7 +6,7 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 
 | Gruppe | Regeln |
 |---|---|
-| [Fehler finden](#gruppe-find-bugs) | 49 |
+| [Fehler finden](#gruppe-find-bugs) | 50 |
 | [Exceptions](#gruppe-exceptions) | 6 |
 | [Threads](#gruppe-threads) | 9 |
 | [Robustheit und Muster](#gruppe-robustness) | 2 |
@@ -73,6 +73,7 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 | [`event-call-without-assigned`](#event-call-without-assigned) | Ereignis ohne Assigned-Prüfung aufgerufen | Bug | Warnung |
 | [`owned-item-freed`](#owned-item-freed) | Element einer besitzenden Liste zusätzlich freigegeben | Bug | Fehler |
 | [`create-without-assignment`](#create-without-assignment) | Objekt erzeugt und sofort verloren | Bug | Warnung |
+| [`message-handler-without-inherited`](#message-handler-without-inherited) | Message-Handler ohne inherited | Bug | Warnung |
 
 <a id="gruppe-exceptions"></a>
 ### Exceptions
@@ -3589,5 +3590,35 @@ begin
   finally
     ImportProtokoll.Free;
   end;
+end;
+```
+
+<a id="message-handler-without-inherited"></a>
+### message-handler-without-inherited
+
+**Message-Handler ohne inherited** · Bug · Warnung · Gruppe Fehler finden
+
+Eine Methode mit message WM_… oder CM_… ruft weder inherited noch DefaultHandler (bzw. DefWindowProc, CallWindowProc) auf. Die Standardbehandlung der VCL bzw. von Windows fällt weg: kein Neuausrichten bei WM_SIZE, kein Schließen bei WM_CLOSE, kein Zeichnen bei WM_PAINT. Die Meldung nennt für gängige Nachrichten die Folge. Still bleiben Klassen ohne Vorfahr, Nachrichten aus swallow (Vorgabe WM_ERASEBKGND) und Handler, die Msg.Result selbst setzen (bewusste Antwort wie MA_NOACTIVATE). Sicherheit mittel. Korrektur: inherited; am Anfang einfügen.
+
+| Option | Typ | Vorgabe | Bedeutung |
+|---|---|---|---|
+| `swallow` | string-list | `["WM_ERASEBKGND"]` | Nachrichten, die ohne inherited behandelt werden dürfen; ersetzt die Vorgabe. |
+
+Mit Treffer:
+
+```pascal
+procedure TfrmHaupt.WMSize(var Msg: TWMSize);
+begin
+  AnordnungAnpassen;
+end;
+```
+
+Richtig:
+
+```pascal
+procedure TfrmHaupt.WMSize(var Msg: TWMSize);
+begin
+  inherited;
+  AnordnungAnpassen;
 end;
 ```

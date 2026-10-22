@@ -70,3 +70,4 @@ dunitx-test-without-assert | Ref.Daten.Suche.pas | \nimplementation | \ntype\n  
 event-call-without-assigned | Ref.Formulare.Suchrahmen.pas | if Assigned(FOnSuchen) then\n    FOnSuchen(Self); | FOnSuchen(Self);
 owned-item-freed | Ref.Daten.Suche.pas | \nimplementation | \nimplementation\n\nuses\n  System.Generics.Collections;\n\nprocedure Bereinigen(AListe: TObjectList<TObject>; I: Integer);\nbegin\n  AListe[I].Free;\n  AListe.Delete(I);\nend;
 create-without-assignment | Ref.Daten.Suche.pas | \nimplementation | \nimplementation\n\nprocedure Protokollieren;\nbegin\n  TStringList.Create;\nend;
+message-handler-without-inherited | Ref.Daten.Suche.pas | \nimplementation | \nimplementation\n\ntype\n  TRahmen = class(TForm)\n    procedure WMSize(var Msg: TWMSize); message WM_SIZE;\n  end;\n\nprocedure TRahmen.WMSize(var Msg: TWMSize);\nbegin\n  Anpassen;\nend;
