@@ -276,6 +276,10 @@ begin
           else if (Value.Keys[Inner] = 'minLines') and not ((Value[Inner].Kind = TJsonKind.Number) and
             TryStrToInt(Value[Inner].Value, Limit) and (Limit >= 1)) then
             ReportNode(Value[Inner], '"minLines" muss eine ganze Zahl ab 1 sein')
+          // Mindestzahl der Vergleiche von string-if-chain (#1066).
+          else if (Value.Keys[Inner] = 'min') and not ((Value[Inner].Kind = TJsonKind.Number) and
+            TryStrToInt(Value[Inner].Value, Limit) and (Limit >= 2)) then
+            ReportNode(Value[Inner], '"min" muss eine ganze Zahl ab 2 sein')
           // Kürzeste gemeldete Wartezeit von blocking-call-in-main-thread (#959).
           else if (Value.Keys[Inner] = 'maxSleepMs') and not ((Value[Inner].Kind = TJsonKind.Number) and
             TryStrToInt(Value[Inner].Value, Limit) and (Limit >= 0)) then

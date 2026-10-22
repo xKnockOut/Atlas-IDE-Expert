@@ -11,7 +11,7 @@ function AtlasSchemaJson: string;
 implementation
 
 const
-  Lines: array[0..1779] of string = (
+  Lines: array[0..1785] of string = (
     '{',
     '  "$schema": "http://json-schema.org/draft-07/schema#",',
     '  "title": "Atlas-Konfiguration",',
@@ -462,6 +462,12 @@ const
     '                "type": "boolean",',
     '                "default": false,',
     '                "description": "Nur money-as-float: zusätzlich Round mit einem Geldbetrag im Argument melden (Banker''s Rounding) (#1064)."',
+    '              },',
+    '              "min": {',
+    '                "type": "integer",',
+    '                "minimum": 2,',
+    '                "default": 4,',
+    '                "description": "Nur string-if-chain: so viele Vergleiche desselben Strings in einer if-Kette meldet die Regel (#1066)."',
     '              }',
     '            }',
     '          }',

@@ -4188,3 +4188,18 @@ Voraussetzung: Server läuft in der IDE mit Projekt; in `atlas.json` `"minConfid
 | GF7 | `"namePatterns": ["Kosten"]` | Nur noch `Kosten: Double` wird gemeldet |
 | GF8 | `"checkRound": true` und `Anzahl := Round(Preis * 100);` | Zusätzlich „Round rundet Preis auf die nächste gerade Zahl (2,5 wird 2); …“ |
 | GF9 | Ohne Einstellung bzw. `"money-as-float": "off"`, `exclude` mit dem Pfad der Datei | Keine Meldung |
+
+## Lange if-Kette über denselben String (#1066)
+
+Voraussetzung: Server läuft in der IDE mit Projekt; in `atlas.json` `"string-if-chain": "hint"`.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| SK1 | Das Beispiel aus #1066: `if Befehl = 'neu' then Neu else if Befehl = 'oeffnen' then Oeffnen else if Befehl = 'speichern' then Speichern else if Befehl = 'beenden' then Beenden;` | Hinweis `string-if-chain` am ersten `if`: „Vier Vergleiche desselben Strings; case IndexStr(Befehl, [...]) ist kürzer.“; im Fenster „Atlas-Prüfung“ (Gruppe Stil und Metriken) und im Befund-Hover (**Abnahme**) |
+| SK2 | Schnellkorrektur „In case IndexStr(…) umwandeln“, danach Strg+Z | `case IndexStr(Befehl, ['neu', 'oeffnen', 'speichern', 'beenden']) of 0: Neu; 1: Oeffnen; 2: Speichern; 3: Beenden; end;`, `System.StrUtils` im uses; kompiliert und verhält sich gleich; ein Undo-Schritt nimmt alles zurück |
+| SK3 | Kette mit `SameText(Befehl, 'neu') or SameText(Befehl, 'new')`, einem `begin … end`-Zweig und abschließendem `else Fehler(Befehl)` | Meldung mit `IndexText`; Korrektur ergibt `0, 1: Neu;`, den Block unter seiner Marke und `else Fehler(Befehl);` |
+| SK4 | Kette, deren Kopf etwas anderes prüft (`if Bereit then … else if Edit1.Text = 'a' then …` mit fünf Vergleichen) | Meldung „Fünf Vergleiche …“ am zweiten `if`; Korrektur ergibt `else case IndexStr(Edit1.Text, …) of` |
+| SK5 | Gemischt `=` und `SameText`, ein Literal doppelt, ein Kommentar zwischen zwei Zweigen | Meldung ohne Korrektur |
+| SK6 | Drei Vergleiche, verschiedene Variablen, `and` in einer Bedingung, `Lesen() = 'a'`, Zahlenvergleiche, ein Zweig nur unter `{$IFDEF DEBUG}` (dann nur drei) | Keine Meldung |
+| SK7 | `"string-if-chain": {"min": 3}` bzw. `{"min": 5}`; `{"min": 1}` | Drei Vergleiche werden gemeldet bzw. das Beispiel nicht mehr; `min` 1 meldet die Konfiguration als Fehler |
+| SK8 | Ohne Einstellung, `"string-if-chain": "off"` bzw. `exclude` mit dem Pfad der Datei | Keine Meldung |

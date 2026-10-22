@@ -448,6 +448,12 @@
                 "type": "boolean",
                 "default": false,
                 "description": "Nur money-as-float: zusätzlich Round mit einem Geldbetrag im Argument melden (Banker's Rounding) (#1064)."
+              },
+              "min": {
+                "type": "integer",
+                "minimum": 2,
+                "default": 4,
+                "description": "Nur string-if-chain: so viele Vergleiche desselben Strings in einer if-Kette meldet die Regel (#1066)."
               }
             }
           }

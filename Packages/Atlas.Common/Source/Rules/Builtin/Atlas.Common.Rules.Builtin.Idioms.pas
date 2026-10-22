@@ -15,6 +15,17 @@
 //                    und Properties auch die Property bzw. das Feld hinter read
 //                    und write (sonst E2010). Mit checkRound zusätzlich Round
 //                    mit einem Geldbetrag im Argument (Banker's Rounding).
+//   string-if-chain  if … else if-Kette, die denselben String (Bezeichner oder
+//                    A.B) mit mindestens min Literalen vergleicht (#1066, Vorgabe
+//                    4): S = 'x', 'x' = S, SameText(S, 'x'), auch mit or
+//                    verknüpft, in mindestens zwei Zweigen. Gezählt werden nur
+//                    Vergleiche, die immer mit dem Kopf übersetzt werden
+//                    (Pascal.ConditionalBranches).
+//                    Standard aus. Korrektur wie #646: case IndexStr(S, [...]) of
+//                    bzw. IndexText bei SameText, der Rest der Kette als else,
+//                    System.StrUtils im uses; keine Korrektur bei Kommentaren oder
+//                    Direktiven in der Kette, doppelten Literalen oder gemischter
+//                    Groß-/Kleinschreibung.
 
 interface
 
@@ -24,6 +35,7 @@ uses
 
 const
   MoneyAsFloatRuleId = 'money-as-float';
+  StringIfChainRuleId = 'string-if-chain';
 
 type
   TMoneyAsFloatRule = class(TInterfacedObject, IRule)
@@ -37,6 +49,16 @@ type
     class function HeadOf(const AName: string): string; static;
     /// <summary>AName bezeichnet nach APatterns einen Geldbetrag (Mehrzahl eingeschlossen, Sätze ausgenommen).</summary>
     class function IsMoneyName(const AName: string; const APatterns: TArray<string>): Boolean; static;
+  end;
+
+  TStringIfChainRule = class(TInterfacedObject, IRule)
+  public const
+    DefaultMin = 4;
+  public
+    function Descriptor: TRuleDescriptor;
+    procedure Check(const AContext: TRuleContext; const AReport: IRuleReport);
+    /// <summary>Zahlwort mit großem Anfangsbuchstaben bis zwölf, darüber Ziffern.</summary>
+    class function CountWord(ACount: Integer): string; static;
   end;
 
 /// <summary>Registriert die Regeln für das passendere Sprachmittel.</summary>
@@ -53,7 +75,10 @@ uses
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Pascal.Contract,
   Atlas.Common.Pascal.SyntaxTree,
-  Atlas.Common.Rules.Options;
+  Atlas.Common.Pascal.ConditionalBranches,
+  Atlas.Common.Editing.UsesClause,
+  Atlas.Common.Rules.Options,
+  Atlas.Text.Lines;
 
 type
   TTokens = TArray<TPascalToken>;
@@ -527,9 +552,334 @@ begin
   end;
 end;
 
+{ TStringIfChainRule }
+
+const
+  CountWords: array[2..12] of string = ('Zwei', 'Drei', 'Vier', 'Fünf', 'Sechs', 'Sieben', 'Acht', 'Neun', 'Zehn',
+    'Elf', 'Zwölf');
+
+type
+  /// <summary>Ein Zweig der Kette: Literale der Bedingung und die Anweisung dahinter.</summary>
+  TChainBranch = record
+    Literals: TArray<string>;
+    Statement: TSyntaxNode;
+    Condition: TSyntaxNode;
+  end;
+
+function TStringIfChainRule.Descriptor: TRuleDescriptor;
+begin
+  Result := TRuleDescriptor.Create(StringIfChainRuleId, TRuleSeverity.Hint, 'Lange if-Kette über denselben String',
+    True);
+end;
+
+class function TStringIfChainRule.CountWord(ACount: Integer): string;
+begin
+  if (ACount >= Low(CountWords)) and (ACount <= High(CountWords)) then
+    Result := CountWords[ACount]
+  else
+    Result := IntToStr(ACount);
+end;
+
+function UsesEdit(const AContext: TRuleContext; const ATokens: TTokens; AOffset: Integer;
+  const AUnitName: string; out AEdit: TTextEdit): Boolean;
+var
+  Used: TArray<string>;
+  Short: string;
+begin
+  Used := TUsesClauses.UsedUnits(ATokens);
+  Short := Copy(AUnitName, LastDelimiter('.', AUnitName) + 1, MaxInt);
+  if TUsesClauses.IsUsed(Used, AUnitName, AContext.Namespaces) or TUsesClauses.IsUsed(Used, Short, nil) then
+    Exit(False);
+  Result := TUsesClauses.AddUnit(ATokens, AOffset, AUnitName, TTextLines.LineBreakOf(AContext.Text), AEdit);
+end;
+
+/// <summary>Nur Bezeichner und Punkte: S, Self.FBefehl, Edit1.Text.</summary>
+function IsSubject(ANode: TSyntaxNode): Boolean;
+begin
+  if ANode.Kind = TSyntaxKind.Identifier then
+    Exit(True);
+  Result := (ANode.Kind = TSyntaxKind.MemberAccess) and (ANode.ChildCount = 1) and IsSubject(ANode[0]);
+end;
+
+function IsStringLiteral(const AContext: TRuleContext; ANode: TSyntaxNode): Boolean;
+begin
+  Result := (ANode.Kind = TSyntaxKind.Literal) and StartsStr('''', NodeText(AContext, ANode));
+end;
+
+procedure TStringIfChainRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
+var
+  Tokens: TTokens;
+  Paths: TArray<string>;
+  LineBreak: string;
+  Lines: TArray<string>;
+
+  function Normalized(ANode: TSyntaxNode): string;
+  begin
+    Result := StringReplace(NodeText(AContext, ANode), ' ', '', [rfReplaceAll]);
+  end;
+
+  // Vergleiche in ACondition: S = 'x', 'x' = S, SameText(S, 'x'), mit or verknüpft und geklammert.
+  // ASensitive: 1 = nur =, 2 = nur SameText, 3 = gemischt.
+  function Comparisons(ACondition: TSyntaxNode; var ASubject: string; var ALiterals: TArray<string>;
+    var ASensitive: Integer): Boolean;
+  var
+    Subject, Literal: TSyntaxNode;
+  begin
+    case ACondition.Kind of
+      TSyntaxKind.ParenExpr:
+        Exit((ACondition.ChildCount = 1) and Comparisons(ACondition[0], ASubject, ALiterals, ASensitive));
+      TSyntaxKind.BinaryExpr:
+        if SameText(ACondition.Name, 'or') and (ACondition.ChildCount = 2) then
+          Exit(Comparisons(ACondition[0], ASubject, ALiterals, ASensitive) and
+            Comparisons(ACondition[1], ASubject, ALiterals, ASensitive))
+        else if (ACondition.Name = '=') and (ACondition.ChildCount = 2) then
+        begin
+          Subject := ACondition[0];
+          Literal := ACondition[1];
+          if IsStringLiteral(AContext, Subject) then
+          begin
+            Subject := ACondition[1];
+            Literal := ACondition[0];
+          end;
+          ASensitive := ASensitive or 1;
+        end
+        else
+          Exit(False);
+      TSyntaxKind.Call:
+        if (ACondition.ChildCount = 3) and (ACondition[0].Kind = TSyntaxKind.Identifier) and
+          MatchText(ACondition[0].Name, ['SameText', 'AnsiSameText']) then
+        begin
+          Subject := ACondition[1];
+          Literal := ACondition[2];
+          if IsStringLiteral(AContext, Subject) then
+          begin
+            Subject := ACondition[2];
+            Literal := ACondition[1];
+          end;
+          ASensitive := ASensitive or 2;
+        end
+        else
+          Exit(False);
+    else
+      Exit(False);
+    end;
+    if not IsStringLiteral(AContext, Literal) or not IsSubject(Subject) then
+      Exit(False);
+    if ASubject = '' then
+      ASubject := Normalized(Subject)
+    else if not SameText(ASubject, Normalized(Subject)) then
+      Exit(False);
+    ALiterals := ALiterals + [NodeText(AContext, Literal)];
+    Result := True;
+  end;
+
+  function SubjectOf(AIf: TSyntaxNode): string;
+  var
+    Literals: TArray<string>;
+    Sensitive: Integer;
+  begin
+    Result := '';
+    Literals := nil;
+    Sensitive := 0;
+    if (AIf.Kind <> TSyntaxKind.IfStatement) or (AIf.ChildCount < 2) or
+      not Comparisons(AIf[0], Result, Literals, Sensitive) then
+      Result := '';
+  end;
+
+  function PathOf(ANode: TSyntaxNode): string;
+  begin
+    Result := TConditionalBranches.PathAt(Paths, TokenAt(Tokens, ANode.StartOffset));
+  end;
+
+  function LineOf(ALine: Integer): string;
+  begin
+    Result := '';
+    if (ALine >= 0) and (ALine <= High(Lines)) then
+      Result := Lines[ALine];
+  end;
+
+  // Text von ANode, Folgezeilen um die Einrückung seiner ersten Zeile auf AIndent verschoben.
+  function Reindented(ANode: TSyntaxNode; const AIndent: string): string;
+  var
+    Parts: TArray<string>;
+    Base, Index: Integer;
+    Line: string;
+  begin
+    Parts := NodeText(AContext, ANode).Replace(#13#10, #10).Split([#10]);
+    Base := Length(TTextLines.IndentOf(LineOf(ANode.StartPos.Line)));
+    Result := AIndent + Parts[0];
+    for Index := 1 to High(Parts) do
+    begin
+      Line := Parts[Index];
+      if Length(TTextLines.IndentOf(Line)) >= Base then
+        Line := Copy(Line, Base + 1, MaxInt)
+      else
+        Line := TrimLeft(Line);
+      Result := Result + LineBreak + AIndent + Line;
+    end;
+  end;
+
+  // Kommentare und Direktiven zwischen den Zweigen gingen verloren.
+  function OnlyCode(AHead: TSyntaxNode; const ABranches: TArray<TChainBranch>; AElse: TSyntaxNode): Boolean;
+  var
+    Index: Integer;
+    Inside: Boolean;
+    Branch: TChainBranch;
+  begin
+    Index := TokenAt(Tokens, AHead.StartOffset);
+    while (Index <= High(Tokens)) and (Tokens[Index].Offset < AHead.EndOffset) do
+    begin
+      if Tokens[Index].Kind = TPascalTokenKind.Directive then
+        Exit(False);
+      if Tokens[Index].Kind = TPascalTokenKind.Comment then
+      begin
+        Inside := (AElse <> nil) and (Tokens[Index].Offset >= AElse.StartOffset) and
+          (Tokens[Index].Offset < AElse.EndOffset);
+        for Branch in ABranches do
+          if (Tokens[Index].Offset >= Branch.Statement.StartOffset) and
+            (Tokens[Index].Offset < Branch.Statement.EndOffset) then
+            Inside := True;
+        if not Inside then
+          Exit(False);
+      end;
+      Inc(Index);
+    end;
+    Result := True;
+  end;
+
+  function Fix(AHead: TSyntaxNode; const ASubject: string; const ABranches: TArray<TChainBranch>;
+    AElse: TSyntaxNode; ASensitive: Boolean; out AFix: TRuleFix): Boolean;
+  var
+    Seen: TArray<string>;
+    Branch: TChainBranch;
+    Literal, Indent, Labels, Text, Function_: string;
+    Number: Integer;
+    Edits: TArray<TRuleEdit>;
+    Extra: TTextEdit;
+  begin
+    Result := False;
+    Seen := nil;
+    for Branch in ABranches do
+    begin
+      if Branch.Statement = nil then
+        Exit;
+      for Literal in Branch.Literals do
+      begin
+        if (ASensitive and MatchStr(Literal, Seen)) or (not ASensitive and MatchText(Literal, Seen)) then
+          Exit;
+        Seen := Seen + [Literal];
+      end;
+    end;
+    if not OnlyCode(AHead, ABranches, AElse) then
+      Exit;
+    Function_ := 'IndexText';
+    if ASensitive then
+      Function_ := 'IndexStr';
+    Indent := TTextLines.IndentOf(LineOf(AHead.StartPos.Line));
+    Text := 'case ' + Function_ + '(' + ASubject + ', [' + string.Join(', ', Seen) + ']) of';
+    Number := 0;
+    for Branch in ABranches do
+    begin
+      Labels := '';
+      for Literal in Branch.Literals do
+      begin
+        if Labels <> '' then
+          Labels := Labels + ', ';
+        Labels := Labels + IntToStr(Number);
+        Inc(Number);
+      end;
+      if Branch.Statement.StartPos.Line = Branch.Statement.EndPos.Line then
+        Text := Text + LineBreak + Indent + '  ' + Labels + ': ' + NodeText(AContext, Branch.Statement) + ';'
+      else
+        Text := Text + LineBreak + Indent + '  ' + Labels + ':' + LineBreak +
+          Reindented(Branch.Statement, Indent + '    ') + ';';
+    end;
+    if AElse <> nil then
+      Text := Text + LineBreak + Indent + 'else' + LineBreak + Reindented(AElse, Indent + '  ') + ';';
+    Text := Text + LineBreak + Indent + 'end';
+    Edits := [TRuleEdit.Create(NodeRange(AHead), Text)];
+    if UsesEdit(AContext, Tokens, AHead.StartOffset, 'System.StrUtils', Extra) then
+      Edits := Edits + [Extra];
+    AFix := TRuleFix.Create(Format('In case %s(…) umwandeln', [Function_]), Edits);
+    Result := True;
+  end;
+
+  procedure CheckChain(AHead: TSyntaxNode; AMin: Integer);
+  var
+    Subject, HeadPath: string;
+    Current: TSyntaxNode;
+    Branches: TArray<TChainBranch>;
+    Branch: TChainBranch;
+    Sensitive, Count: Integer;
+    SamePath: Boolean;
+    Fixes: TArray<TRuleFix>;
+    One: TRuleFix;
+  begin
+    Subject := '';
+    Sensitive := 0;
+    Branches := nil;
+    Current := AHead;
+    HeadPath := PathOf(AHead);
+    Count := 0;
+    SamePath := True;
+    while (Current <> nil) and (Current.Kind = TSyntaxKind.IfStatement) and (Current.ChildCount >= 2) do
+    begin
+      Branch := Default(TChainBranch);
+      Branch.Condition := Current[0];
+      if not Comparisons(Current[0], Subject, Branch.Literals, Sensitive) then
+        Break;
+      Branch.Statement := Current[1];
+      Branches := Branches + [Branch];
+      // Nur Vergleiche, die immer mit dem Kopf übersetzt werden.
+      if TConditionalBranches.Implies(HeadPath, PathOf(Current[0])) then
+        Inc(Count, Length(Branch.Literals));
+      if PathOf(Current[0]) <> HeadPath then
+        SamePath := False;
+      if Current.ChildCount > 2 then
+        Current := Current[2]
+      else
+        Current := nil;
+    end;
+    // Ein einzelnes if mit or ist keine Kette (dafür MatchStr).
+    if (Count < AMin) or (Length(Branches) < 2) then
+      Exit;
+    Fixes := nil;
+    if SamePath and (Sensitive <> 3) and Fix(AHead, Subject, Branches, Current, Sensitive = 1, One) then
+      Fixes := [One];
+    AReport.Add(TTextRange.Create(AHead.StartPos, AHead[0].EndPos),
+      Format('%s Vergleiche desselben Strings; case %s(%s, [...]) ist kürzer.', [CountWord(Count),
+      IfThen(Sensitive = 2, 'IndexText', 'IndexStr'), Subject]), TRuleConfidence.High, Fixes);
+  end;
+
+var
+  Node: TSyntaxNode;
+  Min: Integer;
+begin
+  if (AContext.Tree = nil) or (AContext.Tree.Root = nil) then
+    Exit;
+  Min := TRuleOptions.Int(AContext.Options, 'min', DefaultMin);
+  if Min < 2 then
+    Min := DefaultMin;
+  Tokens := AContext.Tree.Tokens;
+  Paths := TConditionalBranches.Paths(Tokens);
+  LineBreak := TTextLines.LineBreakOf(AContext.Text);
+  Lines := TTextLines.SplitLines(AContext.Text);
+  for Node in NodesOf(AContext.Tree.Root) do
+    if (Node.Kind = TSyntaxKind.IfStatement) and (Node.ChildCount >= 2) then
+    begin
+      // Fortsetzung einer Kette über denselben String: der Kopf meldet sie.
+      if (Node.Parent <> nil) and (Node.Parent.Kind = TSyntaxKind.IfStatement) and (Node.Parent.ChildCount > 2) and
+        (Node.Parent[2] = Node) and (SubjectOf(Node) <> '') and SameText(SubjectOf(Node.Parent), SubjectOf(Node)) then
+        Continue;
+      if SubjectOf(Node) <> '' then
+        CheckChain(Node, Min);
+    end;
+end;
+
 procedure RegisterIdiomRules(const ARegistry: TRuleRegistry);
 begin
   ARegistry.Register(TMoneyAsFloatRule.Create);
+  ARegistry.Register(TStringIfChainRule.Create);
 end;
 
 end.

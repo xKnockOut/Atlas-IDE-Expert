@@ -24,6 +24,16 @@ type
     procedure MoneySilentCases;
     [Test]
     procedure MoneyOptions;
+    [Test]
+    procedure ChainIssueExample;
+    [Test]
+    procedure ChainVariants;
+    [Test]
+    procedure ChainWithoutFix;
+    [Test]
+    procedure ChainSilentCases;
+    [Test]
+    procedure ChainOptions;
   end;
 
 implementation
@@ -40,6 +50,7 @@ uses
 const
   // Niedrige Konfidenz und Standard aus: erst mit minConfidence low und eingeschalteter Regel sichtbar.
   MoneyOn = '{"minConfidence": "low", "rules": {"money-as-float": "hint"}}';
+  ChainOn = '{"rules": {"string-if-chain": "hint"}}';
 
 function TypeUnit(const ATypes: string): string;
 begin
@@ -214,6 +225,139 @@ begin
   Assert.AreEqual(2, Integer(Length(Issues)));
   Assert.AreEqual('"namePatterns" muss eine Liste von Texten sein', Issues[0].Message);
   Assert.AreEqual('"checkRound" muss true oder false sein', Issues[1].Message);
+  Issues := nil;
+end;
+
+{ string-if-chain }
+
+function ChainUnit(const ABody: string): string;
+begin
+  Result := 'unit Werkzeug;'#10'interface'#10'implementation'#10'uses'#10'  System.SysUtils;'#10 +
+    'procedure Ausfuehren(const Befehl: string);'#10'begin'#10 + ABody + #10'end;'#10'end.';
+end;
+
+const
+  IssueChain = '  if Befehl = ''neu'' then Neu'#10'  else if Befehl = ''oeffnen'' then Oeffnen'#10 +
+    '  else if Befehl = ''speichern'' then Speichern'#10'  else if Befehl = ''beenden'' then Beenden;';
+
+procedure TIdiomRulesTests.ChainIssueExample;
+var
+  Source, Fixed: string;
+  Findings: TArray<TRuleFinding>;
+begin
+  Source := ChainUnit(IssueChain);
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TStringIfChainRule.Create, Source))), 'Standard aus');
+  Findings := TRuleAssert.Findings(TStringIfChainRule.Create, Source, ChainOn);
+  Assert.AreEqual(1, Integer(Length(Findings)));
+  Assert.AreEqual('Vier Vergleiche desselben Strings; case IndexStr(Befehl, [...]) ist kürzer.', Findings[0].Message);
+  Assert.AreEqual(Ord(TRuleSeverity.Hint), Ord(Findings[0].Severity));
+  Assert.AreEqual(Ord(TRuleConfidence.High), Ord(Findings[0].Confidence));
+  Assert.AreEqual(7, Findings[0].Range.StartPos.Line);
+  Assert.AreEqual(2, Findings[0].Range.StartPos.Character);
+  Assert.AreEqual(1, Integer(Length(Findings[0].Fixes)));
+  Assert.AreEqual('In case IndexStr(…) umwandeln', Findings[0].Fixes[0].Title);
+  Fixed := TChangeSignature.ApplyEdits(Source, Findings[0].Fixes[0].Edits);
+  Assert.AreEqual(ChainUnit('  case IndexStr(Befehl, [''neu'', ''oeffnen'', ''speichern'', ''beenden'']) of'#10 +
+    '    0: Neu;'#10'    1: Oeffnen;'#10'    2: Speichern;'#10'    3: Beenden;'#10'  end;').Replace(
+    '  System.SysUtils;', '  System.SysUtils,'#10'  System.StrUtils;'), Fixed);
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TStringIfChainRule.Create, Fixed, ChainOn))));
+end;
+
+procedure TIdiomRulesTests.ChainVariants;
+var
+  Source, Fixed: string;
+  Findings: TArray<TRuleFinding>;
+begin
+  // SameText mit or, umgedrehter Vergleich, Block als Zweig und Rest als else.
+  Source := ChainUnit('  if SameText(Befehl, ''neu'') or SameText(Befehl, ''new'') then'#10'    Neu'#10 +
+    '  else if SameText(''oeffnen'', Befehl) then'#10'  begin'#10'    Laden;'#10'    Zeigen;'#10'  end'#10 +
+    '  else if (SameText(Befehl, ''ende'')) then'#10'    Beenden'#10'  else'#10'    Fehler(Befehl);');
+  Findings := TRuleAssert.Findings(TStringIfChainRule.Create, Source, ChainOn);
+  Assert.AreEqual(1, Integer(Length(Findings)));
+  Assert.AreEqual('Vier Vergleiche desselben Strings; case IndexText(Befehl, [...]) ist kürzer.', Findings[0].Message);
+  Fixed := TChangeSignature.ApplyEdits(Source, Findings[0].Fixes[0].Edits);
+  Assert.AreEqual(ChainUnit('  case IndexText(Befehl, [''neu'', ''new'', ''oeffnen'', ''ende'']) of'#10 +
+    '    0, 1: Neu;'#10'    2:'#10'      begin'#10'        Laden;'#10'        Zeigen;'#10'      end;'#10 +
+    '    3: Beenden;'#10 +
+    '  else'#10'    Fehler(Befehl);'#10'  end;').Replace('  System.SysUtils;', '  System.SysUtils,'#10'  System.StrUtils;'),
+    Fixed);
+  // Feld eines Objekts als String; die Kette beginnt erst im else-Zweig.
+  Source := ChainUnit('  if Bereit then'#10'    Starten'#10'  else if Edit1.Text = ''a'' then A'#10 +
+    '  else if Edit1.Text = ''b'' then B'#10'  else if Edit1.Text = ''c'' then C'#10 +
+    '  else if Edit1.Text = ''d'' then D'#10'  else if Edit1.Text = ''e'' then E;');
+  Findings := TRuleAssert.Findings(TStringIfChainRule.Create, Source, ChainOn);
+  Assert.AreEqual(1, Integer(Length(Findings)));
+  Assert.AreEqual('Fünf Vergleiche desselben Strings; case IndexStr(Edit1.Text, [...]) ist kürzer.',
+    Findings[0].Message);
+  Fixed := TChangeSignature.ApplyEdits(Source, Findings[0].Fixes[0].Edits);
+  Assert.Contains(Fixed, '  else case IndexStr(Edit1.Text, [''a'', ''b'', ''c'', ''d'', ''e'']) of'#10'    0: A;');
+  Assert.AreEqual('Zwölf', TStringIfChainRule.CountWord(12));
+  Assert.AreEqual('13', TStringIfChainRule.CountWord(13));
+end;
+
+procedure TIdiomRulesTests.ChainWithoutFix;
+var
+  Findings: TArray<TRuleFinding>;
+begin
+  // Gemischte Groß-/Kleinschreibung, doppeltes Literal, Kommentar zwischen den Zweigen.
+  Findings := TRuleAssert.Findings(TStringIfChainRule.Create, ChainUnit('  if Befehl = ''a'' then A'#10 +
+    '  else if SameText(Befehl, ''b'') then B'#10'  else if Befehl = ''c'' then C'#10 +
+    '  else if Befehl = ''d'' then D;'), ChainOn);
+  Assert.AreEqual(1, Integer(Length(Findings)));
+  Assert.AreEqual(0, Integer(Length(Findings[0].Fixes)));
+  Findings := TRuleAssert.Findings(TStringIfChainRule.Create, ChainUnit('  if Befehl = ''a'' then A'#10 +
+    '  else if Befehl = ''b'' then B'#10'  else if Befehl = ''a'' then C'#10'  else if Befehl = ''d'' then D;'),
+    ChainOn);
+  Assert.AreEqual(1, Integer(Length(Findings)));
+  Assert.AreEqual(0, Integer(Length(Findings[0].Fixes)));
+  Findings := TRuleAssert.Findings(TStringIfChainRule.Create, ChainUnit('  if Befehl = ''a'' then A'#10 +
+    '  // b kommt bald weg'#10'  else if Befehl = ''b'' then B'#10'  else if Befehl = ''c'' then C'#10 +
+    '  else if Befehl = ''d'' then D;'), ChainOn);
+  Assert.AreEqual(1, Integer(Length(Findings)));
+  Assert.AreEqual(0, Integer(Length(Findings[0].Fixes)));
+end;
+
+procedure TIdiomRulesTests.ChainSilentCases;
+begin
+  // Drei Vergleiche, verschiedene Strings, and, Aufruf statt Variable, Zahlen, ein einzelnes if mit or.
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TStringIfChainRule.Create, ChainUnit(
+    '  if Befehl = ''a'' then A'#10'  else if Befehl = ''b'' then B'#10'  else if Befehl = ''c'' then C;'#10 +
+    '  if Befehl = ''a'' then A'#10'  else if Name = ''b'' then B'#10'  else if Befehl = ''c'' then C'#10 +
+    '  else if Name = ''d'' then D;'#10 +
+    '  if (Befehl = ''a'') and Bereit then A'#10'  else if Befehl = ''b'' then B'#10'  else if Befehl = ''c'' then C'#10 +
+    '  else if Befehl = ''d'' then D;'#10 +
+    '  if Lesen() = ''a'' then A'#10'  else if Lesen() = ''b'' then B'#10'  else if Lesen() = ''c'' then C'#10 +
+    '  else if Lesen() = ''d'' then D;'#10 +
+    '  if Zahl = 1 then A'#10'  else if Zahl = 2 then B'#10'  else if Zahl = 3 then C'#10'  else if Zahl = 4 then D;'#10 +
+    '  if (Befehl = ''a'') or (Befehl = ''b'') or (Befehl = ''c'') or (Befehl = ''d'') then A'#10 +
+    '  else if Bereit then B;'),
+    ChainOn))));
+  // Ein Zweig nur unter {$IFDEF}: zählt nicht mit, drei bleiben.
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TStringIfChainRule.Create, ChainUnit(
+    '  if Befehl = ''a'' then A'#10'{$IFDEF DEBUG}'#10'  else if Befehl = ''b'' then B'#10'{$ENDIF}'#10 +
+    '  else if Befehl = ''c'' then C'#10'  else if Befehl = ''d'' then D;'), ChainOn))));
+end;
+
+procedure TIdiomRulesTests.ChainOptions;
+var
+  Source: string;
+  Issues: TArray<TConfigurationIssue>;
+begin
+  Source := ChainUnit('  if Befehl = ''a'' then A'#10'  else if Befehl = ''b'' then B'#10'  else if Befehl = ''c'' then C;');
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TStringIfChainRule.Create, Source, ChainOn))));
+  Assert.AreEqual(1, Integer(Length(TRuleAssert.Findings(TStringIfChainRule.Create, Source,
+    '{"rules": {"string-if-chain": {"severity": "hint", "min": 3}}}'))));
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TStringIfChainRule.Create, ChainUnit(IssueChain),
+    '{"rules": {"string-if-chain": {"severity": "hint", "min": 5}}}'))));
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TStringIfChainRule.Create, ChainUnit(IssueChain),
+    '{"rules": {"string-if-chain": "off"}}'))));
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TStringIfChainRule.Create, ChainUnit(IssueChain),
+    '{"rules": {"string-if-chain": {"severity": "hint", "exclude": ["Werkzeug"]}}}', 'Quellen/Werkzeug.pas'))));
+  Assert.AreEqual(1, Integer(Length(TRuleAssert.Findings(TStringIfChainRule.Create, ChainUnit(IssueChain), ChainOn,
+    'Quellen/Werkzeug.pas'))));
+  TConfigurationParser.Parse('{"rules": {"string-if-chain": {"min": 1}}}', Issues);
+  Assert.AreEqual(1, Integer(Length(Issues)));
+  Assert.AreEqual('"min" muss eine ganze Zahl ab 2 sein', Issues[0].Message);
   Issues := nil;
 end;
 
