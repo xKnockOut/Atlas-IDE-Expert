@@ -91,3 +91,4 @@ sql-write-without-where | Ref.Daten.Suche.pas | \nimplementation | \nimplementat
 signature-mismatch | Ref.Daten.Suche.pas | class function TKundenSuche.Suchen(const AName: string): TArray<string>; | class function TKundenSuche.Suchen(AName: string): TArray<string>;
 interface-not-implemented | Ref.Sprache.Merkmale.pas | ['{6F1C2B9E-4A37-4D2B-9E61-3C5A7B8D9E01}'] | ['{6F1C2B9E-4A37-4D2B-9E61-3C5A7B8D9E01}']\n    function Kurzform(const AWert: Integer): string;
 uses-unit-not-found | Ref.Sprache.Merkmale.pas | System.SysUtils, | System.SysUtils, Ref.Sprache.Merkmale,
+comparison-as-statement | Ref.Sprache.Merkmale.pas | Result := 0;\n  for var Wert in AWerte do | Result = 0;\n  for var Wert in AWerte do

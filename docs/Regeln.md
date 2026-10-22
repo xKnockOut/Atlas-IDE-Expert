@@ -10,7 +10,7 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 | [Exceptions](#gruppe-exceptions) | 8 |
 | [Threads](#gruppe-threads) | 13 |
 | [Datenbank](#gruppe-database) | 4 |
-| [Compiler vorab](#gruppe-compiler) | 4 |
+| [Compiler vorab](#gruppe-compiler) | 5 |
 | [Robustheit und Muster](#gruppe-robustness) | 3 |
 | [Performance](#gruppe-performance) | 4 |
 | [Sicherheit](#gruppe-security) | 11 |
@@ -135,6 +135,7 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 | [`interface-not-implemented`](#interface-not-implemented) | Interface-Methode fehlt in der Klasse | Bug | Fehler |
 | [`uses-unit-not-found`](#uses-unit-not-found) | Unit in uses nicht gefunden | Bug | Fehler |
 | [`unresolved-attribute`](#unresolved-attribute) | Attribut nicht gefunden und still ignoriert | Bug | Fehler |
+| [`comparison-as-statement`](#comparison-as-statement) | Vergleich statt Zuweisung als Anweisung | Bug | Fehler |
 
 <a id="gruppe-robustness"></a>
 ### Robustheit und Muster
@@ -4241,4 +4242,25 @@ uses
 type
   [TestFixture]
   TKundeTests = class
+```
+
+<a id="comparison-as-statement"></a>
+### comparison-as-statement
+
+**Vergleich statt Zuweisung als Anweisung** · Bug · Fehler · Gruppe Compiler vorab
+
+Ein Vergleich wie Result = 0; oder FAktiv = True; steht als eigene Anweisung; gemeint war :=. Delphi meldet E2014 erst beim Übersetzen. Bei = mit zuweisbarer linker Seite (Variable, Feld, Element, Ziel eines Zeigers) ersetzt die Korrektur = durch :=. Andere Vergleiche und Ausdrücke, deren Wert verfällt (A <> B;, A + B;, not A;, ein Literal), meldet die Regel ohne Korrektur, ebenso einen Aufruf links.
+
+Entspricht der Compilermeldung `E2014`.
+
+Mit Treffer:
+
+```pascal
+Result = 0;
+```
+
+Richtig:
+
+```pascal
+Result := 0;
 ```

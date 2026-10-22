@@ -40,6 +40,11 @@
 //                     StartTransaction (BeginTransaction, BeginTrans) ohne Rollback
 //                     im except des unmittelbar folgenden try (#965); Paare aus der
 //                     Option pairs (start, commit, rollback) ersetzen die eingebauten.
+//   comparison-as-statement
+//                     Result = 0; als eigene Anweisung (#982, wie E2014): gemeint
+//                     war :=. Bei = mit zuweisbarer linker Seite ersetzt die
+//                     Korrektur = durch :=; andere Vergleiche und Ausdrücke wie
+//                     A + B; oder not A; meldet die Regel ohne Korrektur.
 // Grundlage ist der Syntaxbaum: if, while, for, for-in und with ohne Rumpf
 // bzw. mit leerem Block; das Schlüsselwort davor sucht die Regel in den Token.
 
@@ -47,6 +52,7 @@ interface
 
 uses
   Atlas.Common.Pascal.Contract,
+  Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Rules.Contract,
   Atlas.Common.Rules.Registry;
 
@@ -56,6 +62,7 @@ const
   CollectionModifiedInLoopRuleId = 'collection-modified-in-loop';
   DestroyCalledDirectlyRuleId = 'destroy-called-directly';
   CaseMissingEnumValueRuleId = 'case-missing-enum-value';
+  ComparisonAsStatementRuleId = 'comparison-as-statement';
 
 type
   TEmptyStatementRule = class(TInterfacedObject, IRule)
@@ -119,6 +126,14 @@ type
     class function Pairs(const AOptions: string): TArray<TTransactionPair>; static;
   end;
 
+  TComparisonAsStatementRule = class(TInterfacedObject, IRule)
+  public
+    function Descriptor: TRuleDescriptor;
+    procedure Check(const AContext: TRuleContext; const AReport: IRuleReport);
+    /// <summary>Ausdruck, den die Aufrufanweisung AStatement als Anweisung stehen lässt (Vergleich, Operator, Literal); nil sonst.</summary>
+    class function ExpressionOf(AStatement: TSyntaxNode): TSyntaxNode; static;
+  end;
+
 procedure RegisterStatementRules(const ARegistry: TRuleRegistry);
 
 implementation
@@ -130,7 +145,6 @@ uses
   System.Generics.Collections,
   Atlas.Common.Documents.Contract,
   Atlas.Common.Configuration.Contract,
-  Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.DeclaredTypes,
   Atlas.Common.Index.Contract,
   Atlas.Common.Semantics.NameResolver,
@@ -1732,6 +1746,135 @@ begin
   Visit(AContext.Tree.Root, nil);
 end;
 
+{ TComparisonAsStatementRule }
+
+function TComparisonAsStatementRule.Descriptor: TRuleDescriptor;
+begin
+  Result := TRuleDescriptor.Create(ComparisonAsStatementRuleId, TRuleSeverity.Error,
+    'Vergleich statt Zuweisung als Anweisung');
+end;
+
+class function TComparisonAsStatementRule.ExpressionOf(AStatement: TSyntaxNode): TSyntaxNode;
+begin
+  Result := nil;
+  if (AStatement = nil) or (AStatement.Kind <> TSyntaxKind.CallStatement) or (AStatement.ChildCount <> 1) then
+    Exit;
+  Result := AStatement[0];
+  // (A = 1); zählt wie A = 1;
+  while (Result.Kind = TSyntaxKind.ParenExpr) and (Result.ChildCount = 1) do
+    Result := Result[0];
+  if not (Result.Kind in [TSyntaxKind.BinaryExpr, TSyntaxKind.UnaryExpr, TSyntaxKind.Literal,
+    TSyntaxKind.SetConstructor]) then
+    Result := nil;
+end;
+
+procedure TComparisonAsStatementRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
+const
+  Comparisons: array[0..7] of string = ('=', '<>', '<', '>', '<=', '>=', 'in', 'is');
+  // Längere Vorschläge kürzt die Meldung nicht, sie lässt sie weg.
+  MaxSuggestion = 60;
+var
+  Tokens: TTokens;
+
+  function IsComparison(const AOperator: string): Boolean;
+  var
+    Item: string;
+  begin
+    for Item in Comparisons do
+      if SameText(Item, AOperator) then
+        Exit(True);
+    Result := False;
+  end;
+
+  // Quelltext von ANode, Leerraum und Zeilenumbrüche zu einem Leerzeichen.
+  function Compact(ANode: TSyntaxNode): string;
+  var
+    Raw: string;
+    Index: Integer;
+    Space: Boolean;
+  begin
+    Raw := Copy(AContext.Text, ANode.StartOffset + 1, ANode.EndOffset - ANode.StartOffset);
+    Result := '';
+    Space := False;
+    for Index := 1 to Length(Raw) do
+      if CharInSet(Raw[Index], [' ', #9, #10, #13]) then
+        Space := True
+      else
+      begin
+        if Space and (Result <> '') then
+          Result := Result + ' ';
+        Space := False;
+        Result := Result + Raw[Index];
+      end;
+  end;
+
+  // Linke Seite, der man zuweisen kann (Variable, Feld, Element, Ziel eines Zeigers).
+  function Assignable(ANode: TSyntaxNode): Boolean;
+  begin
+    Result := ANode.Kind in [TSyntaxKind.Identifier, TSyntaxKind.MemberAccess, TSyntaxKind.IndexAccess,
+      TSyntaxKind.Dereference];
+  end;
+
+  // Token "=" zwischen linker und rechter Seite; -1 ohne.
+  function EqualsToken(AExpression: TSyntaxNode): Integer;
+  var
+    Index: Integer;
+  begin
+    for Index := TokenFrom(Tokens, AExpression[0].EndOffset) to High(Tokens) do
+    begin
+      if Tokens[Index].Offset >= AExpression[1].StartOffset then
+        Break;
+      if Tokens[Index].IsSymbol('=') then
+        Exit(Index);
+    end;
+    Result := -1;
+  end;
+
+  procedure Visit(ANode: TSyntaxNode);
+  var
+    Expression: TSyntaxNode;
+    Index, Equals: Integer;
+    Range, OperatorRange: TTextRange;
+    Suggestion, Message: string;
+    Fixes: TArray<TRuleFix>;
+  begin
+    Expression := ExpressionOf(ANode);
+    if Expression <> nil then
+    begin
+      Range := TTextRange.Create(Expression.StartPos, Expression.EndPos);
+      Fixes := nil;
+      if (Expression.Kind = TSyntaxKind.BinaryExpr) and IsComparison(Expression.Name) then
+      begin
+        Message := 'Vergleich als Anweisung (wie E2014); das Ergebnis wird nicht verwendet.';
+        Equals := -1;
+        if (Expression.Name = '=') and (Expression.ChildCount = 2) and Assignable(Expression[0]) then
+          Equals := EqualsToken(Expression);
+        if Equals >= 0 then
+        begin
+          Suggestion := Compact(Expression[0]) + ' := ' + Compact(Expression[1]);
+          if Length(Suggestion) <= MaxSuggestion then
+            Message := Format('Vergleich als Anweisung (wie E2014); gemeint ist wohl %s.', [Suggestion])
+          else
+            Message := 'Vergleich als Anweisung (wie E2014); gemeint ist wohl := statt =.';
+          OperatorRange := TTextRange.Create(Tokens[Equals].StartPos, Tokens[Equals].EndPos);
+          Fixes := [TRuleFix.Create('= durch := ersetzen', [TRuleEdit.Create(OperatorRange, ':=')], True)];
+        end;
+      end
+      else
+        Message := 'Ausdruck als Anweisung (wie E2014); das Ergebnis wird nicht verwendet.';
+      AReport.Add(Range, Message, TRuleConfidence.High, Fixes);
+    end;
+    for Index := 0 to ANode.ChildCount - 1 do
+      Visit(ANode[Index]);
+  end;
+
+begin
+  if (AContext.Tree = nil) or (AContext.Tree.Root = nil) then
+    Exit;
+  Tokens := AContext.Tree.Tokens;
+  Visit(AContext.Tree.Root);
+end;
+
 procedure RegisterStatementRules(const ARegistry: TRuleRegistry);
 begin
   ARegistry.Register(TEmptyStatementRule.Create);
@@ -1742,6 +1885,7 @@ begin
   ARegistry.Register(TDatasetLoopWithoutNextRule.Create);
   ARegistry.Register(TDatasetEditWithoutPostRule.Create);
   ARegistry.Register(TTransactionWithoutRollbackRule.Create);
+  ARegistry.Register(TComparisonAsStatementRule.Create);
 end;
 
 end.

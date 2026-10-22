@@ -2116,6 +2116,19 @@
         "W1074",
         "E2289"
       ]
+    },
+    {
+      "id": "comparison-as-statement",
+      "name": "Comparison instead of assignment as a statement",
+      "category": "bug",
+      "severity": "error",
+      "group": "compiler",
+      "description": "A comparison such as Result = 0; or FAktiv = True; stands on its own as a statement; := was meant. Delphi only reports E2014 when compiling. With = and an assignable left side (variable, field, element, pointer target) the quick fix replaces = with :=. Other comparisons and expressions whose value is discarded (A <> B;, A + B;, not A;, a literal) are reported without a fix, as is a call on the left side.",
+      "bad": "Result = 0;",
+      "good": "Result := 0;",
+      "compilerCodes": [
+        "E2014"
+      ]
     }
   ]
 }

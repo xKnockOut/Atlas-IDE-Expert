@@ -170,7 +170,7 @@ procedure TRuleProfilesTests.BuiltinProfilesActivateExpectedRules;
 const
   Threads = 'thread-free-with-free-on-terminate,thread-use-after-free-on-terminate,thread-vcl-access';
   All = 'anonymous-thread-not-started,assert-side-effect,bidi-control,blocking-call-in-main-thread,bool-compare,boolean-assign-if,captured-loop-variable,case-insensitive-compare,case-missing-enum-value,char-to-pchar,' +
-    'collection-modified-in-loop,commented-out-code,' +
+    'collection-modified-in-loop,commented-out-code,comparison-as-statement,' +
     'component-create-without-override,component-default-mismatch,component-fixed-pixels,' +
     'component-hardcoded-color,component-missing-free-notification,component-missing-inherited,' +
     'component-palette-icon,component-setter-without-invalidate,confusable-identifier,' +
@@ -203,7 +203,7 @@ begin
     'line-length', 'loop-invariant-call', 'magic-number', 'missing-begin-update', 'public-field', 'random-without-randomize', 'redundant-begin-end',
     'redundant-parens', 'security-path-traversal', 'string-concat-in-loop', 'todo-comment']), ActiveRules('strict'));
   Assert.AreEqual('anonymous-thread-not-started,assert-side-effect,bidi-control,captured-loop-variable,case-missing-enum-value,char-to-pchar,' +
-    'collection-modified-in-loop,' +
+    'collection-modified-in-loop,comparison-as-statement,' +
     'component-create-without-override,component-default-mismatch,component-missing-free-notification,' +
     'component-missing-inherited,constructor-on-instance,control-char,create-without-assignment,createprocess-readonly-commandline,dataset-edit-without-post,dataset-loop-without-next,declared-not-implemented,delimited-text-without-strict,' +
     'deref-before-nil-check,destroy-called-directly,destroy-without-override,dfm-circular-datasource,dfm-control-field-type-mismatch,' +

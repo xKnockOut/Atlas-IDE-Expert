@@ -11,6 +11,9 @@
 // Abschalten und Ausnahmen. case-missing-enum-value (#929): Beispiel mit
 // Korrektur, Feld über eine Kette, Aufzählung mit Typpräfix, else mit und ohne
 // requireElse, Bereiche und vollständige case-Anweisungen.
+// comparison-as-statement (#982): Beispiel mit Korrektur, Feld, Element,
+// Zeiger, nach then und in Klammern, ohne Korrektur bei Aufruf links und
+// anderen Ausdrücken, stille Fälle, Abschalten, Gruppe und Ausnahmen.
 
 interface
 
@@ -99,6 +102,14 @@ type
     procedure TransactionSilentCases;
     [Test]
     procedure TransactionOptions;
+    [Test]
+    procedure ComparisonAsStatementIssueExample;
+    [Test]
+    procedure ComparisonAsStatementVariants;
+    [Test]
+    procedure ComparisonAsStatementSilentCases;
+    [Test]
+    procedure ComparisonAsStatementOffAndExclude;
   end;
 
 implementation
@@ -838,6 +849,86 @@ begin
   TConfigurationParser.Parse('{"rules": {"transaction-without-rollback": {"pairs": [{"start": "A", "commit": "B", ' +
     '"rollback": "C"}]}, "pair-without-finally": {"pairs": [{"open": "A", "close": "B"}]}}}', Issues);
   Assert.AreEqual(0, Integer(Length(Issues)));
+end;
+
+function Konto(const AStatements: string): string;
+begin
+  Result := 'unit Konten;'#10'interface'#10'implementation'#10'function TKonto.Saldo: Currency;'#10'begin'#10 +
+    AStatements + 'end;'#10'end.';
+end;
+
+procedure TStatementRulesTests.ComparisonAsStatementIssueExample;
+const
+  Statements = '  Result = 0;'#10'  for var B in FBuchungen do'#10'    Result := Result + B.Betrag;'#10;
+  Fixed = '  Result := 0;'#10'  for var B in FBuchungen do'#10'    Result := Result + B.Betrag;'#10;
+var
+  Findings: TArray<TRuleFinding>;
+  Text: string;
+begin
+  Findings := TRuleAssert.Findings(TComparisonAsStatementRule.Create, Konto(Statements));
+  Assert.AreEqual(1, Integer(Length(Findings)));
+  Assert.AreEqual(ComparisonAsStatementRuleId, Findings[0].RuleId);
+  Assert.AreEqual('Vergleich als Anweisung (wie E2014); gemeint ist wohl Result := 0.', Findings[0].Message);
+  Assert.AreEqual(Ord(TRuleSeverity.Error), Ord(Findings[0].Severity));
+  Assert.AreEqual(Ord(TRuleConfidence.High), Ord(Findings[0].Confidence));
+  Assert.AreEqual(5, Findings[0].Range.StartPos.Line);
+  Assert.AreEqual(2, Findings[0].Range.StartPos.Character);
+  Assert.AreEqual(12, Findings[0].Range.EndPos.Character);
+  Assert.AreEqual('= durch := ersetzen', Findings[0].Fixes[0].Title);
+  Text := TChangeSignature.ApplyEdits(Konto(Statements), Findings[0].Fixes[0].Edits);
+  Assert.AreEqual(Konto(Fixed), Text);
+  TRuleAssert.Silent(TComparisonAsStatementRule.Create, Text);
+end;
+
+procedure TStatementRulesTests.ComparisonAsStatementVariants;
+var
+  Findings: TArray<TRuleFinding>;
+begin
+  // Feld, Element, Zeiger und Anweisung nach then: jeweils mit Korrektur.
+  Findings := TRuleAssert.Findings(TComparisonAsStatementRule.Create, Konto('  FAktiv = True;'#10 +
+    '  FWerte[I] = 2;'#10'  P^ = 3;'#10'  if Neu then Self.FName = '''';'#10'  (Result = 1);'#10));
+  Assert.AreEqual(5, Integer(Length(Findings)));
+  Assert.AreEqual('Vergleich als Anweisung (wie E2014); gemeint ist wohl FAktiv := True.', Findings[0].Message);
+  Assert.AreEqual('Vergleich als Anweisung (wie E2014); gemeint ist wohl Self.FName := ''''.', Findings[3].Message);
+  Assert.AreEqual(1, Integer(Length(Findings[4].Fixes)));
+  Assert.AreEqual(Konto('  FAktiv := True;'#10'  FWerte[I] = 2;'#10'  P^ = 3;'#10 +
+    '  if Neu then Self.FName = '''';'#10'  (Result = 1);'#10),
+    TChangeSignature.ApplyEdits(Konto('  FAktiv = True;'#10'  FWerte[I] = 2;'#10'  P^ = 3;'#10 +
+    '  if Neu then Self.FName = '''';'#10'  (Result = 1);'#10), Findings[0].Fixes[0].Edits));
+  // Aufruf links, andere Vergleiche und Ausdrücke: ohne Korrektur.
+  Findings := TRuleAssert.Findings(TComparisonAsStatementRule.Create, Konto('  Laden(1) = 2;'#10 +
+    '  Result <> 0;'#10'  Result + 1;'#10'  not FAktiv;'#10'  5;'#10));
+  Assert.AreEqual(5, Integer(Length(Findings)));
+  Assert.AreEqual(0, Integer(Length(Findings[0].Fixes)));
+  Assert.AreEqual('Vergleich als Anweisung (wie E2014); das Ergebnis wird nicht verwendet.', Findings[1].Message);
+  Assert.AreEqual('Ausdruck als Anweisung (wie E2014); das Ergebnis wird nicht verwendet.', Findings[2].Message);
+  Assert.AreEqual(0, Integer(Length(Findings[2].Fixes)));
+  Assert.AreEqual('Ausdruck als Anweisung (wie E2014); das Ergebnis wird nicht verwendet.', Findings[4].Message);
+  // Mehrzeiliger Vorschlag: Leerraum zusammengefasst.
+  Findings := TRuleAssert.Findings(TComparisonAsStatementRule.Create, Konto('  Result ='#10'    0;'#10));
+  Assert.AreEqual('Vergleich als Anweisung (wie E2014); gemeint ist wohl Result := 0.', Findings[0].Message);
+end;
+
+procedure TStatementRulesTests.ComparisonAsStatementSilentCases;
+begin
+  // Zuweisungen, Bedingungen, generische Aufrufe und Typumwandlungen.
+  TRuleAssert.Silent(TComparisonAsStatementRule.Create, Konto('  Result := 0;'#10 +
+    '  if Result = 0 then'#10'    Exit;'#10'  FAktiv := Result = 0;'#10'  Assert.AreEqual<Integer>(1, 2);'#10 +
+    '  TFoo.Bar<Integer>(1);'#10'  (Sender as TButton).Click;'#10'  while not FAktiv do'#10'    Laden;'#10));
+end;
+
+procedure TStatementRulesTests.ComparisonAsStatementOffAndExclude;
+const
+  Statements = '  Result = 0;'#10;
+begin
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TComparisonAsStatementRule.Create, Konto(Statements),
+    '{"rules": {"comparison-as-statement": "off"}}', 'Konten.pas'))));
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TComparisonAsStatementRule.Create, Konto(Statements),
+    '{"rules": {"group:compiler": "off"}}', 'Konten.pas'))));
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TComparisonAsStatementRule.Create, Konto(Statements),
+    '{"rules": {"comparison-as-statement": {"exclude": ["Alt/*.pas"]}}}', 'Alt/Konten.pas'))));
+  Assert.AreEqual(1, Integer(Length(TRuleAssert.Findings(TComparisonAsStatementRule.Create, Konto(Statements),
+    '{"rules": {"comparison-as-statement": {"exclude": ["Alt/*.pas"]}}}', 'Neu/Konten.pas'))));
 end;
 
 initialization

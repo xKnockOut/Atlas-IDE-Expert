@@ -3944,3 +3944,17 @@ Voraussetzung: Server läuft in der IDE mit Projekt; RTL im Index (Bibliotheks-C
 | UA6 | Eine Unit aus uses ohne Quelltext (nur `.dcu`, nicht im Index); Attribut in `{$IFDEF TESTS} … {$ENDIF}` | Keine Meldung |
 | UA7 | `"unresolved-attribute": "off"`, `"group:compiler": "off"` bzw. `exclude` mit dem Pfad der Datei | Keine Meldung |
 | UA8 | Abgleich mit Delphi: UA1, UA3 und UA4 übersetzen | dcc meldet W1074 an denselben Stellen, für UA5 und UA6 nichts |
+
+## Vergleich als Anweisung (#982)
+
+Voraussetzung: Server läuft in der IDE mit Projekt.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| VA1 | In einer Funktion `Result = 0;` als erste Anweisung | Fehler `comparison-as-statement` am Ausdruck: „Vergleich als Anweisung (wie E2014); gemeint ist wohl Result := 0.“; im Fenster „Atlas-Prüfung“ (Gruppe Compiler vorab) und im Befund-Hover (**Abnahme**) |
+| VA2 | Schnellkorrektur „= durch := ersetzen“, danach Strg+Z | `Result := 0;`, Meldung weg; ein Undo-Schritt stellt es wieder her |
+| VA3 | `FAktiv = True;`, `FWerte[I] = 2;`, `P^ = 3;`, `if Neu then FName = '';` | Je eine Meldung mit Korrektur |
+| VA4 | `Laden(1) = 2;`, `Result <> 0;`, `A + B;`, `not FAktiv;` | Meldung ohne Korrektur („das Ergebnis wird nicht verwendet“) |
+| VA5 | `if Result = 0 then Exit;`, `FAktiv := Result = 0;`, `Assert.AreEqual<Integer>(1, 2);` | Keine Meldung |
+| VA6 | `"comparison-as-statement": "off"`, `"group:compiler": "off"` bzw. `exclude` mit dem Pfad der Datei | Keine Meldung |
+| VA7 | Abgleich mit Delphi: VA1, VA3 und VA4 übersetzen | dcc meldet E2014 an denselben Stellen, für VA5 nichts |
