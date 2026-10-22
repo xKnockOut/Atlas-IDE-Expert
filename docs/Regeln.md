@@ -9,6 +9,7 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 | [Fehler finden](#gruppe-find-bugs) | 56 |
 | [Exceptions](#gruppe-exceptions) | 8 |
 | [Threads](#gruppe-threads) | 13 |
+| [Datenbank](#gruppe-database) | 1 |
 | [Robustheit und Muster](#gruppe-robustness) | 3 |
 | [Performance](#gruppe-performance) | 4 |
 | [Sicherheit](#gruppe-security) | 11 |
@@ -113,6 +114,13 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 | [`thread-loop-without-terminated`](#thread-loop-without-terminated) | Thread-Schleife ohne Terminated | Bug | Warnung |
 | [`anonymous-thread-not-started`](#anonymous-thread-not-started) | Anonymer Thread nie gestartet | Bug | Warnung |
 | [`task-exception-unobserved`](#task-exception-unobserved) | Exception in TTask geht verloren | Code Smell | Hinweis |
+
+<a id="gruppe-database"></a>
+### Datenbank
+
+| Regel | Name | Kategorie | Schweregrad |
+|---|---|---|---|
+| [`dataset-loop-without-next`](#dataset-loop-without-next) | Datenmengen-Schleife ohne Next | Bug | Fehler |
 
 <a id="gruppe-robustness"></a>
 ### Robustheit und Muster
@@ -3994,4 +4002,32 @@ TTask.Run(
       end;
     end;
   end);
+```
+
+<a id="dataset-loop-without-next"></a>
+### dataset-loop-without-next
+
+**Datenmengen-Schleife ohne Next** · Bug · Fehler · Gruppe Datenbank
+
+while not Q.Eof do ohne Q.Next im Rumpf oder mit Next nur auf einem Teil der Wege, die die Schleife fortsetzen (if ohne else, Continue vor Next). Die Schleife dreht endlos auf demselben Datensatz. Delete, MoveBy, Last, Close, FindNext und Free zählen ebenfalls als Weiterbewegen; Break, Exit, Abort und raise beenden die Schleife. Innere while- und for-Schleifen laufen vielleicht nie und zählen nicht. Wird Q im Rumpf weitergegeben (Argument, Zuweisung, with), kann der Aufgerufene den Zeiger bewegen, und die Regel bleibt still. Konfidenz hoch, wenn Next ganz fehlt, mittel, wenn nur einzelne Wege es auslassen. Korrektur: Q.Next; am Ende des begin … end-Rumpfs einfügen (nur, wenn Next ganz fehlt).
+
+Mit Treffer:
+
+```pascal
+qryPositionen.First;
+while not qryPositionen.Eof do
+begin
+  Summe := Summe + qryPositionen.FieldByName('Betrag').AsCurrency;
+end;
+```
+
+Richtig:
+
+```pascal
+qryPositionen.First;
+while not qryPositionen.Eof do
+begin
+  Summe := Summe + qryPositionen.FieldByName('Betrag').AsCurrency;
+  qryPositionen.Next;
+end;
 ```
