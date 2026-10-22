@@ -2341,6 +2341,24 @@
       "description": "A routine calls itself on every path before it can return: there is no path without a self-call and no Exit or raise before it. The result is a stack overflow. Paths without a call are: an if without else or a case without else, the body of while and for, the right side of and/or, branches of if expressions and anonymous methods. Getters and setters of their own property are reported by setter-recursion; overloaded routines stay silent (the call may go to another overload). The margin marker from #623 shows every recursion.",
       "bad": "function TTree.Depth(N: TNode): Integer;\nbegin\n  Result := 1 + Max(Depth(N.Left), Depth(N.Right));\nend;",
       "good": "function TTree.Depth(N: TNode): Integer;\nbegin\n  if N = nil then\n    Exit(0);\n  Result := 1 + Max(Depth(N.Left), Depth(N.Right));\nend;"
+    },
+    {
+      "id": "pos-arguments-swapped",
+      "name": "Arguments of Pos swapped",
+      "category": "bug",
+      "severity": "warning",
+      "group": "find-bugs",
+      "description": "Pos(Text, ';'): Pos, PosEx, AnsiPos, StartsText, StartsStr, EndsText and EndsStr (also with Ansi prefix) expect the searched part first and the text second; ContainsText and ContainsStr expect the text first. Reported when a short literal (up to maxLiteralLength characters, default 3; '' counts as one character, #9 as well) stands where the text belongs and a certain string stands where the part belongs: a variable or field of a string type declared in the file, .Text or .Caption, a string function of the RTL (Trim, UpperCase, Copy-like LeftStr, Format …) or a concatenation with a string part. Characters stay silent, because Pos(C, ';,') deliberately checks whether C is one of the separators; so do unknown types, two literals and methods of other objects (Liste.Pos). Medium confidence. Quick fix: swap the arguments in one edit; comments between them stay.",
+      "bad": "if Pos(Zeile, ';') > 0 then",
+      "good": "if Pos(';', Zeile) > 0 then",
+      "options": [
+        {
+          "name": "maxLiteralLength",
+          "type": "integer",
+          "default": 3,
+          "description": "Longest literal in the place of the text that is still taken as swapped."
+        }
+      ]
     }
   ]
 }

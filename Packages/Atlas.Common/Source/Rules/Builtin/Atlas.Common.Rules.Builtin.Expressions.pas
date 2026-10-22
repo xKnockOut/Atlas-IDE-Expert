@@ -18,6 +18,11 @@
 //                         ncrLoose vergleicht wie erwartet, ncrStrict liefert nie wahr, ncrError eine Exception).
 //                         Korrektur: Feld.IsNull bei X.Value auf FieldByName/FindField/Fields[…]/Params bzw.
 //                         einem Feld vom Typ T…Field/T…Param, sonst VarIsNull(X); bei <> mit not.
+//   pos-arguments-swapped Pos(Text, ';') statt Pos(';', Text), ebenso PosEx, StartsText, EndsText (…Str, Ansi…) und
+//                         umgekehrt ContainsText(';', Text) (#1045): an der Stelle des Textes ein kurzes Literal
+//                         (bis maxLiteralLength Zeichen, Vorgabe 3), an der Stelle des Teils sicher ein String
+//                         (deklarierter Typ, .Text/.Caption, String-Funktion, Verkettung). Zeichen bleiben stumm:
+//                         Pos(C, ';,') prüft bewusst, ob C einer der Trenner ist.
 
 interface
 
@@ -30,6 +35,7 @@ const
   DuplicateConditionRuleId = 'duplicate-condition';
   StringIndexBaseRuleId = 'string-index-base';
   NullCompareRuleId = 'null-compare';
+  PosArgumentsSwappedRuleId = 'pos-arguments-swapped';
 
 type
   TOperatorPrecedenceRule = class(TInterfacedObject, IRule)
@@ -60,6 +66,15 @@ type
     class function IsDataType(const AType: string): Boolean; static;
   end;
 
+  TPosArgumentsSwappedRule = class(TInterfacedObject, IRule)
+  public
+    function Descriptor: TRuleDescriptor;
+    procedure Check(const AContext: TRuleContext; const AReport: IRuleReport);
+    /// <summary>Zeichenzahl eines Literals aus '…'- und #n-Teilen ('''' zählt als ein Zeichen); -1, wenn
+    /// ALiteral kein solches Literal ist.</summary>
+    class function LiteralLength(const ALiteral: string): Integer; static;
+  end;
+
 procedure RegisterExpressionRules(const ARegistry: TRuleRegistry);
 
 implementation
@@ -71,7 +86,8 @@ uses
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Pascal.Contract,
   Atlas.Common.Pascal.SyntaxTree,
-  Atlas.Common.Pascal.DeclaredTypes;
+  Atlas.Common.Pascal.DeclaredTypes,
+  Atlas.Common.Rules.Options;
 
 type
   TTokens = TArray<TPascalToken>;
@@ -1005,12 +1021,258 @@ begin
   end;
 end;
 
+{ TPosArgumentsSwappedRule }
+
+function TPosArgumentsSwappedRule.Descriptor: TRuleDescriptor;
+begin
+  Result := TRuleDescriptor.Create(PosArgumentsSwappedRuleId, TRuleSeverity.Warning,
+    'Argumente von Pos, StartsText oder ContainsText vertauscht');
+end;
+
+class function TPosArgumentsSwappedRule.LiteralLength(const ALiteral: string): Integer;
+var
+  Index, Value: Integer;
+  Digits: string;
+begin
+  Result := 0;
+  Index := 1;
+  while Index <= Length(ALiteral) do
+    if ALiteral[Index] = '''' then
+    begin
+      Inc(Index);
+      while Index <= Length(ALiteral) do
+      begin
+        if ALiteral[Index] = '''' then
+        begin
+          // '' im Literal ist ein Apostroph, sonst endet der Abschnitt.
+          if (Index < Length(ALiteral)) and (ALiteral[Index + 1] = '''') then
+            Inc(Index)
+          else
+            Break;
+        end;
+        Inc(Result);
+        Inc(Index);
+      end;
+      Inc(Index);
+    end
+    else if ALiteral[Index] = '#' then
+    begin
+      Inc(Index);
+      Digits := '';
+      while (Index <= Length(ALiteral)) and CharInSet(ALiteral[Index], ['$', '0'..'9', 'A'..'F', 'a'..'f', '_']) do
+      begin
+        if ALiteral[Index] <> '_' then
+          Digits := Digits + ALiteral[Index];
+        Inc(Index);
+      end;
+      if not TryStrToInt(Digits, Value) then
+        Exit(-1);
+      Inc(Result);
+    end
+    else
+      Exit(-1);
+end;
+
+procedure TPosArgumentsSwappedRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
+var
+  Tokens: TArray<TPascalToken>;
+  Code: TArray<Integer>;
+  Types: TDeclaredTypes;
+  MaxLength: Integer;
+
+  function Token(APosition: Integer): TPascalToken;
+  begin
+    Result := Tokens[Code[APosition]];
+  end;
+
+  function IsSym(APosition: Integer; const ASymbol: string): Boolean;
+  begin
+    Result := (APosition >= 0) and (APosition <= High(Code)) and Token(APosition).IsSymbol(ASymbol);
+  end;
+
+  function IsName(APosition: Integer; const AName: string): Boolean;
+  begin
+    Result := (APosition >= 0) and (APosition <= High(Code)) and
+      (Token(APosition).Kind = TPascalTokenKind.Identifier) and SameText(Token(APosition).Text, AName);
+  end;
+
+  function Closing(AOpen: Integer): Integer;
+  var
+    Depth: Integer;
+  begin
+    Depth := 0;
+    for Result := AOpen to High(Code) do
+      if Token(Result).IsSymbol('(') or Token(Result).IsSymbol('[') then
+        Inc(Depth)
+      else if Token(Result).IsSymbol(')') or Token(Result).IsSymbol(']') then
+      begin
+        Dec(Depth);
+        if Depth = 0 then
+          Exit;
+      end;
+    Result := -1;
+  end;
+
+  // Erstes Token jedes Arguments zwischen AOpen und AClose, dazu AClose + 1 als Ende des letzten.
+  function Arguments(AOpen, AClose: Integer): TArray<Integer>;
+  var
+    Position, Depth: Integer;
+  begin
+    Result := [AOpen + 1];
+    Depth := 0;
+    for Position := AOpen + 1 to AClose - 1 do
+      if Token(Position).IsSymbol('(') or Token(Position).IsSymbol('[') then
+        Inc(Depth)
+      else if Token(Position).IsSymbol(')') or Token(Position).IsSymbol(']') then
+        Dec(Depth)
+      else if (Depth = 0) and Token(Position).IsSymbol(',') then
+        Result := Result + [Position + 1];
+    Result := Result + [AClose + 1];
+  end;
+
+  function TextOf(AFirst, ALast: Integer): string;
+  begin
+    Result := SourceText(AContext.Text, Tokens, Code[AFirst], Code[ALast]);
+  end;
+
+  // Zeichenzahl des Literals AFirst..ALast (nur String- und Zeichenliterale, keine mehrzeiligen); -1 sonst.
+  function Literal(AFirst, ALast: Integer): Integer;
+  var
+    Position: Integer;
+    Text: string;
+  begin
+    if ALast < AFirst then
+      Exit(-1);
+    Text := '';
+    for Position := AFirst to ALast do
+    begin
+      if not (Token(Position).Kind in [TPascalTokenKind.StringLiteral, TPascalTokenKind.CharLiteral]) or
+        (Pos(#10, Token(Position).Text) > 0) then
+        Exit(-1);
+      Text := Text + Token(Position).Text;
+    end;
+    Result := LiteralLength(Text);
+  end;
+
+  // Ist das Argument AFirst..ALast sicher ein String und kein Zeichen? Deklarierter String-Typ, .Text/.Caption,
+  // Aufruf einer String-Funktion der RTL oder Verkettung mit einem String-Teil.
+  function IsStringArgument(AFirst, ALast: Integer): Boolean;
+  var
+    Position, Depth: Integer;
+  begin
+    if ALast < AFirst then
+      Exit(False);
+    Depth := 0;
+    for Position := AFirst to ALast do
+      if Token(Position).IsSymbol('(') or Token(Position).IsSymbol('[') then
+        Inc(Depth)
+      else if Token(Position).IsSymbol(')') or Token(Position).IsSymbol(']') then
+        Dec(Depth)
+      else if (Depth = 0) and Token(Position).IsSymbol('+') then
+        // Zeichen + Zeichen ist schon ein String, Zahl + Zahl nicht: ein Teil muss sicher String sein.
+        Exit(IsStringArgument(AFirst, Position - 1) or IsStringArgument(Position + 1, ALast) or
+          (Literal(AFirst, Position - 1) >= 2) or (Literal(Position + 1, ALast) >= 2));
+    if (Token(ALast).Kind = TPascalTokenKind.Identifier) and IsSym(ALast - 1, '.') and
+      MatchText(Token(ALast).Text, ['Text', 'Caption']) then
+      Exit(True);
+    if (Token(AFirst).Kind = TPascalTokenKind.Identifier) and IsSym(AFirst + 1, '(') and
+      not IsSym(AFirst - 1, '.') and MatchText(Token(AFirst).Text, ['Trim', 'TrimLeft', 'TrimRight', 'UpperCase',
+      'LowerCase', 'AnsiUpperCase', 'AnsiLowerCase', 'IntToStr', 'Format', 'QuotedStr', 'StringReplace',
+      'ExtractFileName', 'ExtractFilePath', 'ExtractFileExt', 'ChangeFileExt', 'IncludeTrailingPathDelimiter',
+      'ExcludeTrailingPathDelimiter', 'LeftStr', 'RightStr', 'MidStr', 'ReverseString', 'DupeString']) then
+      Exit(Closing(AFirst + 1) = ALast);
+    if IsName(AFirst, 'Self') and IsSym(AFirst + 1, '.') then
+      Inc(AFirst, 2);
+    Result := (AFirst = ALast) and (Token(AFirst).Kind = TPascalTokenKind.Identifier) and
+      TStringIndexBaseRule.IsStringType(Types.DeclaredType(Token(AFirst).Text, Token(AFirst).StartPos));
+  end;
+
+  // ATextFirst: ContainsText(Text, Teil), sonst Pos(Teil, Text). Vertauscht steht an der Stelle des Textes ein
+  // kurzes Literal und an der Stelle des Teils ein String.
+  procedure CheckCall(APosition: Integer; ATextFirst: Boolean);
+  var
+    Close, TextArg, PartArg, Size: Integer;
+    Args: TArray<Integer>;
+    Name, Message, Between: string;
+    Range: TTextRange;
+  begin
+    if not IsSym(APosition + 1, '(') then
+      Exit;
+    // Nur die RTL-Routine: ohne Punkt davor oder mit System. bzw. StrUtils. (auch System.StrUtils.).
+    if IsSym(APosition - 1, '.') and not IsName(APosition - 2, 'System') and
+      not IsName(APosition - 2, 'StrUtils') then
+      Exit;
+    Close := Closing(APosition + 1);
+    if Close < 0 then
+      Exit;
+    Args := Arguments(APosition + 1, Close);
+    if Length(Args) < 3 then
+      Exit;
+    if ATextFirst then
+    begin
+      TextArg := 0;
+      PartArg := 1;
+    end
+    else
+    begin
+      TextArg := 1;
+      PartArg := 0;
+    end;
+    Size := Literal(Args[TextArg], Args[TextArg + 1] - 2);
+    if (Size < 1) or (Size > MaxLength) or (Literal(Args[PartArg], Args[PartArg + 1] - 2) >= 0) or
+      not IsStringArgument(Args[PartArg], Args[PartArg + 1] - 2) then
+      Exit;
+    Name := Token(APosition).Text;
+    if ATextFirst then
+      Message := '%s(Text, Teil): vermutlich vertauscht, gesucht wird %s in %s.'
+    else
+      Message := '%s(Teil, Text): vermutlich vertauscht, gesucht wird %s in %s.';
+    Message := Format(Message, [Name, TextOf(Args[TextArg], Args[TextArg + 1] - 2),
+      TextOf(Args[PartArg], Args[PartArg + 1] - 2)]);
+    // Eine Änderung über beide Argumente (ein Undo-Schritt); Komma, Leerraum und Kommentare dazwischen bleiben.
+    Between := Copy(AContext.Text, Tokens[Code[Args[1] - 2]].Offset + Length(Tokens[Code[Args[1] - 2]].Text) + 1,
+      Tokens[Code[Args[1]]].Offset - Tokens[Code[Args[1] - 2]].Offset - Length(Tokens[Code[Args[1] - 2]].Text));
+    Range := TTextRange.Create(Token(Args[0]).StartPos, Token(Args[2] - 2).EndPos);
+    AReport.Add(Range, Message, TRuleConfidence.Medium, [TRuleFix.Create('Argumente tauschen',
+      [TRuleEdit.Create(Range, TextOf(Args[1], Args[2] - 2) + Between + TextOf(Args[0], Args[1] - 2))])]);
+  end;
+
+var
+  Index, Position: Integer;
+begin
+  if (AContext.Tree = nil) or (AContext.Tree.Root = nil) then
+    Exit;
+  MaxLength := TRuleOptions.Int(AContext.Options, 'maxLiteralLength', 3);
+  Tokens := AContext.Tree.Tokens;
+  Code := nil;
+  for Index := 0 to High(Tokens) do
+    if not IsTrivia(Tokens[Index]) then
+      Code := Code + [Index];
+  Types := TDeclaredTypes.Create(AContext.Tree, AContext.Text);
+  try
+    for Position := 0 to High(Code) do
+    begin
+      if Token(Position).Kind <> TPascalTokenKind.Identifier then
+        Continue;
+      if MatchText(Token(Position).Text, ['Pos', 'PosEx', 'AnsiPos', 'StartsText', 'StartsStr', 'EndsText',
+        'EndsStr', 'AnsiStartsText', 'AnsiStartsStr', 'AnsiEndsText', 'AnsiEndsStr']) then
+        CheckCall(Position, False)
+      else if MatchText(Token(Position).Text, ['ContainsText', 'ContainsStr', 'AnsiContainsText',
+        'AnsiContainsStr']) then
+        CheckCall(Position, True);
+    end;
+  finally
+    Types.Free;
+  end;
+end;
+
 procedure RegisterExpressionRules(const ARegistry: TRuleRegistry);
 begin
   ARegistry.Register(TOperatorPrecedenceRule.Create);
   ARegistry.Register(TDuplicateConditionRule.Create);
   ARegistry.Register(TStringIndexBaseRule.Create);
   ARegistry.Register(TNullCompareRule.Create);
+  ARegistry.Register(TPosArgumentsSwappedRule.Create);
 end;
 
 end.

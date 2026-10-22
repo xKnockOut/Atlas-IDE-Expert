@@ -4172,3 +4172,16 @@ Voraussetzung: Server läuft in der IDE mit Projekt.
 | RA4 | RA1 mit `if K = nil then Exit(0);` davor, Aufruf nur im then-Zweig, rechts von `and`, im Rumpf von while/for, in case ohne Aufruf im else, in einer anonymen Methode | Keine Meldung |
 | RA5 | `procedure Log(I: Integer); overload;` ruft `Log(IntToStr(I))`; Getter, der die eigene Property liest | Keine Meldung von `unconditional-recursion` (Getter: `setter-recursion`) |
 | RA6 | `"unconditional-recursion": "off"`, `"group:find-bugs": "off"` bzw. `exclude` | Keine Meldung |
+
+## Vertauschte Argumente von Pos (#1045)
+
+Voraussetzung: Server läuft in der IDE mit Projekt.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| PO1 | Das Beispiel aus #1045: `Zeile: string`, `if Pos(Zeile, ';') > 0 then` | Warnung `pos-arguments-swapped` über `Zeile, ';'`: „Pos(Teil, Text): vermutlich vertauscht, gesucht wird ';' in Zeile.“; im Fenster „Atlas-Prüfung“ und im Befund-Hover (**Abnahme**) |
+| PO2 | Schnellkorrektur „Argumente tauschen“, danach Strg+Z | `Pos(';', Zeile)`, Meldung weg; ein Strg+Z stellt das Original her |
+| PO3 | `ContainsText(', ', Zeile)`, `PosEx(Zeile, #9, 3)`, `StartsText(Edit1.Text, '//')` | Je eine Meldung; bei ContainsText „ContainsText(Text, Teil): …“ |
+| PO4 | `Pos(';', Zeile)`, `Pos(C, ';,')` mit `C: Char`, `Pos(Zeile, 'Ende')`, `Liste.Pos(Zeile, ';')` | Keine Meldung |
+| PO5 | `"pos-arguments-swapped": {"maxLiteralLength": 4}` und `Pos(Zeile, 'END;')` | Meldung; ohne Option keine |
+| PO6 | `"pos-arguments-swapped": "off"`, `"group:find-bugs": "off"` bzw. `exclude` | Keine Meldung |

@@ -2361,6 +2361,24 @@ begin
     '      "description": "A routine calls itself on every path before it can return: there is no path without a self-call and no Exit or raise before it. The result is a stack overflow. Paths without a ca' + 'll are: an if without else or a case without else, the body of while and for, the right side of and/or, branches of if expressions and anonymous methods. Getters and setters of their own property are ' + 'reported by setter-recursion; overloaded routines stay silent (the call may go to another overload). The margin marker from #623 shows every recursion.",' + #10 +
     '      "bad": "function TTree.Depth(N: TNode): Integer;\nbegin\n  Result := 1 + Max(Depth(N.Left), Depth(N.Right));\nend;",' + #10 +
     '      "good": "function TTree.Depth(N: TNode): Integer;\nbegin\n  if N = nil then\n    Exit(0);\n  Result := 1 + Max(Depth(N.Left), Depth(N.Right));\nend;"' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "pos-arguments-swapped",' + #10 +
+    '      "name": "Arguments of Pos swapped",' + #10 +
+    '      "category": "bug",' + #10 +
+    '      "severity": "warning",' + #10 +
+    '      "group": "find-bugs",' + #10 +
+    '      "description": "Pos(Text, '';''): Pos, PosEx, AnsiPos, StartsText, StartsStr, EndsText and EndsStr (also with Ansi prefix) expect the searched part first and the text second; ContainsText and Cont' + 'ainsStr expect the text first. Reported when a short literal (up to maxLiteralLength characters, default 3; '''' counts as one character, #9 as well) stands where the text belongs and a certain string s' + 'tands where the part belongs: a variable or field of a string type declared in the file, .Text or .Caption, a string function of the RTL (Trim, UpperCase, Copy-like LeftStr, Format …) or a concatenati' + 'on with a string part. Characters stay silent, because Pos(C, '';,'') deliberately checks whether C is one of the separators; so do unknown types, two literals and methods of other objects (Liste.Pos). ' + 'Medium confidence. Quick fix: swap the arguments in one edit; comments between them stay.",' + #10 +
+    '      "bad": "if Pos(Zeile, '';'') > 0 then",' + #10 +
+    '      "good": "if Pos('';'', Zeile) > 0 then",' + #10 +
+    '      "options": [' + #10 +
+    '        {' + #10 +
+    '          "name": "maxLiteralLength",' + #10 +
+    '          "type": "integer",' + #10 +
+    '          "default": 3,' + #10 +
+    '          "description": "Longest literal in the place of the text that is still taken as swapped."' + #10 +
+    '        }' + #10 +
+    '      ]' + #10 +
     '    }' + #10 +
     '  ]' + #10 +
     '}' + #10 +
@@ -3557,6 +3575,17 @@ begin
     '      "id": "unconditional-recursion",' + #10 +
     '      "name": "Rekursion ohne Abbruch",' + #10 +
     '      "description": "Eine Routine ruft sich auf jedem Pfad selbst auf, bevor sie zurückkehren kann: Es gibt keinen Pfad ohne Selbstaufruf und kein Exit oder raise davor. Ergebnis ist ein Stapelüberla' + 'uf. Pfade ohne Aufruf sind: if ohne else bzw. case ohne else, der Rumpf von while und for, die rechte Seite von and/or, Zweige von if-Ausdrücken und anonyme Methoden. Getter und Setter der eigenen Pro' + 'perty meldet setter-recursion; überladene Routinen bleiben still (der Aufruf kann eine andere Überladung treffen). Das Randsymbol aus #623 zeigt jede Rekursion."' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "pos-arguments-swapped",' + #10 +
+    '      "name": "Argumente von Pos vertauscht",' + #10 +
+    '      "description": "Pos(Text, '';''): Pos, PosEx, AnsiPos, StartsText, StartsStr, EndsText und EndsStr (auch mit Ansi-Präfix) erwarten zuerst den gesuchten Teil, dann den Text; ContainsText und Contai' + 'nsStr erwarten zuerst den Text. Gemeldet, wenn an der Stelle des Textes ein kurzes Literal steht (bis maxLiteralLength Zeichen, Vorgabe 3; '''' zählt als ein Zeichen, #9 ebenso) und an der Stelle des Te' + 'ils sicher ein String: eine Variable oder ein Feld mit in der Datei deklariertem String-Typ, .Text oder .Caption, eine String-Funktion der RTL (Trim, UpperCase, LeftStr, Format …) oder eine Verkettung' + ' mit einem String-Teil. Zeichen bleiben still, weil Pos(C, '';,'') bewusst prüft, ob C einer der Trenner ist; ebenso unbekannte Typen, zwei Literale und Methoden anderer Objekte (Liste.Pos). Konfidenz m' + 'ittel. Schnellkorrektur: Argumente in einer Änderung tauschen; Kommentare dazwischen bleiben.",' + #10 +
+    '      "options": [' + #10 +
+    '        {' + #10 +
+    '          "name": "maxLiteralLength",' + #10 +
+    '          "description": "Längstes Literal an der Stelle des Textes, das noch als vertauscht gilt."' + #10 +
+    '        }' + #10 +
+    '      ]' + #10 +
     '    }' + #10 +
     '  ]' + #10 +
     '}' + #10 +

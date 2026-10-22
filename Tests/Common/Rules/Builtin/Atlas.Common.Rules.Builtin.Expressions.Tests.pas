@@ -3,7 +3,8 @@
 // Tests der Regel operator-precedence (#911): not vor in und Vergleichen bei
 // Aufzählungen und Ganzzahlen, Klammern als Korrektur, keine Meldung bei
 // Boolean, unbekanntem Typ und geklammerter Form, Abschalten und Ausnahmen;
-// duplicate-condition (#928); string-index-base (#951); null-compare (#953).
+// duplicate-condition (#928); string-index-base (#951); null-compare (#953);
+// pos-arguments-swapped (#1045).
 
 interface
 
@@ -52,6 +53,14 @@ type
     procedure NullCompareSilentCases;
     [Test]
     procedure NullCompareOffAndExclude;
+    [Test]
+    procedure PosArgumentsSwappedIssueExample;
+    [Test]
+    procedure PosArgumentsSwappedVariants;
+    [Test]
+    procedure PosArgumentsSwappedSilentCases;
+    [Test]
+    procedure PosArgumentsSwappedOptions;
   end;
 
 implementation
@@ -59,6 +68,7 @@ implementation
 uses
   System.SysUtils,
   Atlas.Common.Documents.Contract,
+  Atlas.Common.Configuration.Parser,
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Rules.Contract,
   Atlas.Common.Rules.Builtin,
@@ -425,6 +435,98 @@ begin
     '{"rules": {"null-compare": "off"}}'))));
   Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TNullCompareRule.Create, Source,
     '{"rules": {"null-compare": {"exclude": ["Source/*.pas"]}}}', 'Source/Kunden.pas'))));
+end;
+
+function Suche(const AStatements: string): string;
+begin
+  Result := 'unit Suche;'#10'interface'#10'uses System.StrUtils;'#10'implementation'#10 +
+    'procedure Finden(const Zeile: string; Zeichen: Char; Feld: TEdit);'#10'var'#10'  Treffer: Integer;'#10 +
+    '  Gefunden: Boolean;'#10'begin'#10 + AStatements + 'end;'#10'end.';
+end;
+
+procedure TExpressionRulesTests.PosArgumentsSwappedIssueExample;
+var
+  Source, Fixed: string;
+  Findings: TArray<TRuleFinding>;
+begin
+  Source := Suche('  if Pos(Zeile, '';'') > 0 then'#10'    Treffer := 1;'#10);
+  Findings := TRuleAssert.Findings(TPosArgumentsSwappedRule.Create, Source);
+  Assert.AreEqual(1, Integer(Length(Findings)));
+  Assert.AreEqual('pos-arguments-swapped', Findings[0].RuleId);
+  Assert.AreEqual(Ord(TRuleSeverity.Warning), Ord(Findings[0].Severity));
+  Assert.AreEqual(Ord(TRuleConfidence.Medium), Ord(Findings[0].Confidence));
+  Assert.AreEqual('Pos(Teil, Text): vermutlich vertauscht, gesucht wird '';'' in Zeile.', Findings[0].Message);
+  Assert.AreEqual(9, Findings[0].Range.StartPos.Line);
+  Assert.AreEqual(9, Findings[0].Range.StartPos.Character);
+  Assert.AreEqual('Argumente tauschen', Findings[0].Fixes[0].Title);
+  Assert.AreEqual(1, Integer(Length(Findings[0].Fixes[0].Edits)), 'ein Undo-Schritt');
+  Fixed := ApplyFixes(Source, Findings);
+  Assert.AreEqual(Suche('  if Pos('';'', Zeile) > 0 then'#10'    Treffer := 1;'#10), Fixed);
+  TRuleAssert.Silent(TPosArgumentsSwappedRule.Create, Fixed);
+end;
+
+procedure TExpressionRulesTests.PosArgumentsSwappedVariants;
+var
+  Findings: TArray<TRuleFinding>;
+begin
+  // ContainsText erwartet den Text zuerst.
+  Findings := TRuleAssert.Findings(TPosArgumentsSwappedRule.Create,
+    Suche('  Gefunden := ContainsText('', '', Zeile);'#10));
+  Assert.AreEqual(1, Integer(Length(Findings)));
+  Assert.AreEqual('ContainsText(Text, Teil): vermutlich vertauscht, gesucht wird '', '' in Zeile.',
+    Findings[0].Message);
+  Assert.AreEqual('Zeile, '', ''', Findings[0].Fixes[0].Edits[0].NewText);
+  // PosEx mit drittem Argument, StartsText, Kommentar zwischen den Argumenten bleibt erhalten.
+  Findings := TRuleAssert.Findings(TPosArgumentsSwappedRule.Create,
+    Suche('  Treffer := PosEx(Zeile, #9, 3);'#10));
+  Assert.AreEqual(1, Integer(Length(Findings)));
+  Assert.AreEqual('#9, Zeile', Findings[0].Fixes[0].Edits[0].NewText);
+  Findings := TRuleAssert.Findings(TPosArgumentsSwappedRule.Create,
+    Suche('  Gefunden := System.StrUtils.StartsText(Trim(Zeile), {Kopf} ''//'');'#10));
+  Assert.AreEqual(1, Integer(Length(Findings)));
+  Assert.AreEqual('''//'', {Kopf} Trim(Zeile)', Findings[0].Fixes[0].Edits[0].NewText);
+  // .Text, Verkettung und '''' als ein Zeichen.
+  TRuleAssert.Reports(TPosArgumentsSwappedRule.Create, Suche('  Treffer := Pos(Feld.Text, ''.'');'#10));
+  TRuleAssert.Reports(TPosArgumentsSwappedRule.Create, Suche('  Treffer := Pos(Zeile + ''x'', '''''''');'#10));
+  TRuleAssert.Reports(TPosArgumentsSwappedRule.Create, Suche('  Gefunden := EndsStr(Zeile, ''\'');'#10));
+end;
+
+procedure TExpressionRulesTests.PosArgumentsSwappedSilentCases;
+begin
+  // Richtige Reihenfolge, Zeichen in einer Trennerliste, unbekannter Typ, langes Literal, zwei Literale.
+  TRuleAssert.Silent(TPosArgumentsSwappedRule.Create, Suche('  Treffer := Pos('';'', Zeile);'#10 +
+    '  Gefunden := ContainsText(Zeile, '';'');'#10'  Gefunden := StartsText(''//'', Zeile);'#10));
+  TRuleAssert.Silent(TPosArgumentsSwappedRule.Create, Suche('  Treffer := Pos(Zeichen, '';,'');'#10));
+  TRuleAssert.Silent(TPosArgumentsSwappedRule.Create, Suche('  Treffer := Pos(Unbekannt, '';'');'#10));
+  TRuleAssert.Silent(TPosArgumentsSwappedRule.Create, Suche('  Treffer := Pos(Zeile, ''Ende'');'#10));
+  TRuleAssert.Silent(TPosArgumentsSwappedRule.Create, Suche('  Treffer := Pos(''ab'', '';'');'#10));
+  // Eigene Methode eines Objekts und Zeichen + Zeichen.
+  TRuleAssert.Silent(TPosArgumentsSwappedRule.Create, Suche('  Treffer := Liste.Pos(Zeile, '';'');'#10));
+  TRuleAssert.Silent(TPosArgumentsSwappedRule.Create, Suche('  Treffer := Pos(Zeichen + Zeichen, '';'');'#10));
+  Assert.AreEqual(1, TPosArgumentsSwappedRule.LiteralLength(''''''''''));
+  Assert.AreEqual(3, TPosArgumentsSwappedRule.LiteralLength('''a''#13#$0A'));
+  Assert.AreEqual(-1, TPosArgumentsSwappedRule.LiteralLength('X'));
+end;
+
+procedure TExpressionRulesTests.PosArgumentsSwappedOptions;
+var
+  Source: string;
+  Issues: TArray<TConfigurationIssue>;
+begin
+  Source := Suche('  Treffer := Pos(Zeile, ''END;'');'#10);
+  TRuleAssert.Silent(TPosArgumentsSwappedRule.Create, Source);
+  Assert.AreEqual(1, Integer(Length(TRuleAssert.Findings(TPosArgumentsSwappedRule.Create, Source,
+    '{"rules": {"pos-arguments-swapped": {"maxLiteralLength": 4}}}'))));
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TPosArgumentsSwappedRule.Create,
+    Suche('  Treffer := Pos(Zeile, ''//'');'#10), '{"rules": {"pos-arguments-swapped": {"maxLiteralLength": 1}}}'))));
+  Source := Suche('  Treffer := Pos(Zeile, '';'');'#10);
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TPosArgumentsSwappedRule.Create, Source,
+    '{"rules": {"pos-arguments-swapped": "off"}}'))));
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TPosArgumentsSwappedRule.Create, Source,
+    '{"rules": {"pos-arguments-swapped": {"exclude": ["Source/*.pas"]}}}', 'Source/Suche.pas'))));
+  TConfigurationParser.Parse('{"rules": {"pos-arguments-swapped": {"maxLiteralLength": 0}}}', Issues);
+  Assert.AreEqual(1, Integer(Length(Issues)));
+  Assert.AreEqual('"maxLiteralLength" muss eine ganze Zahl ab 1 sein', Issues[0].Message);
 end;
 
 initialization
