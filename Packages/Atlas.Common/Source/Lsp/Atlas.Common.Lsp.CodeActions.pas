@@ -326,6 +326,7 @@ begin
     Context.ProjectName := Rules.ProjectName;
     Context.AutoCreateForms := Rules.AutoCreateForms;
     Context.ProjectMainSource := Rules.ProjectMainSource;
+    Context.ProjectFiles := Rules.ProjectFiles;
     Findings := TRuleEngine.Run(Rules.Rules, Rules.Settings, Context);
   end;
   // Syntaxfehler mit der Korrektur des Parsers (#1022), auch ohne Prüfregeln; Schweregrad und Abschalten wie

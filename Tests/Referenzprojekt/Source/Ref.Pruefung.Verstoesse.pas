@@ -7,27 +7,37 @@
 //
 // Einige Verstöße erzeugen beim Übersetzen gewollt Hinweise oder Warnungen;
 // die Liste steht in erwartete-meldungen.txt.
+//
+// "// ERWARTET-INDEX: <regel>" markiert Treffer von Regeln, die die RTL im
+// Index brauchen (z. B. legacy-stack-queue, #1106). Der Golden-Korpus prüft
+// je Datei ohne Index; diese Marker prüfen die Tests der Regel mit RTL-Stubs.
 
 interface
 
 uses
   System.SysUtils,
-  System.Classes;
+  System.Classes,
+  System.Contnrs,
+  System.Generics.Collections;
 
 type
   TPunkt = record
     X, Y: Integer;
   end;
 
-function OhneErgebnis(AWert: Integer): Integer;
-procedure MitWith(var APunkt: TPunkt);
-procedure UngenutzteVariable;
-procedure Leck;
-procedure KeinLeck;
-procedure LeererExceptBlock;
-procedure Unerreichbar;
+function OhneErgebnis(AWert: Integer): Integer; // ERWARTET-PROJEKT: unused-public-member
+procedure MitWith(var APunkt: TPunkt); // ERWARTET-PROJEKT: unused-public-member
+procedure UngenutzteVariable; // ERWARTET-PROJEKT: unused-public-member
+procedure Leck; // ERWARTET-PROJEKT: unused-public-member
+procedure KeinLeck; // ERWARTET-PROJEKT: unused-public-member
+procedure LeererExceptBlock; // ERWARTET-PROJEKT: unused-public-member
+procedure Unerreichbar; // ERWARTET-PROJEKT: unused-public-member
 
 implementation
+
+type
+  TKnoten = class
+  end;
 
 function OhneErgebnis(AWert: Integer): Integer; // ERWARTET: result-not-set
 begin
@@ -96,6 +106,33 @@ end;
 procedure NameUebernehmen(var AName: string);
 begin
   AName := AName; // ERWARTET: self-assignment
+end;
+
+procedure StapelLesen;
+var
+  Offen: TObjectStack; // ERWARTET-INDEX: legacy-stack-queue
+  Knoten: TKnoten;
+begin
+  Offen := TObjectStack.Create;
+  try
+    Offen.Push(TKnoten.Create);
+    Knoten := TKnoten(Offen.Pop);
+    Knoten.Free;
+  finally
+    Offen.Free;
+  end;
+end;
+
+procedure StapelGenerisch;
+var
+  Fertig: TObjectStack<TKnoten>; // KEIN-TREFFER: legacy-stack-queue
+begin
+  Fertig := TObjectStack<TKnoten>.Create;
+  try
+    Fertig.Push(TKnoten.Create);
+  finally
+    Fertig.Free;
+  end;
 end;
 
 end.

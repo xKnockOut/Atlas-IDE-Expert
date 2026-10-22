@@ -36,6 +36,8 @@ uses
 type
   TAtlasProblemsCommandProc = reference to procedure(const ACommand, AArgumentsJson: string;
     const ADone: TProc<TJSONValue>);
+  /// <summary>Baut der Server gerade den Index auf? APercent: Fortschritt, -1 = unbekannt.</summary>
+  TAtlasProblemsIndexingFunc = reference to function(out APercent: Integer): Boolean;
 
   /// <summary>Was das Fenster von anderen Features braucht; setzt die Composition (keine Zyklen).</summary>
   TAtlasIdeProblemsHooks = record
@@ -47,6 +49,9 @@ type
     Command: TAtlasProblemsCommandProc;
     /// <summary>Zeile in der Meldungsansicht.</summary>
     Message: TProc<string>;
+    /// <summary>Indexaufbau des Servers; projektweite Regeln (unused-public-member, #1102) schweigen so lange.
+    /// nil = unbekannt.</summary>
+    Indexing: TAtlasProblemsIndexingFunc;
   end;
 
   TAtlasIdeProblems = class
@@ -247,6 +252,7 @@ var
   Counts: TAtlasFindingCounts;
   Check: TAtlasProblemsCheck;
   ReadLine: TFunc<string, Integer, string>;
+  Percent: Integer;
 begin
   Frame := TAtlasIdeProblemsWindow.ExistingFrame;
   if (Frame = nil) or not TAtlasIdeProblemsWindow.Visible then
@@ -291,6 +297,13 @@ begin
   if (Store <> nil) and (Length(Project) > 0) then
     Status := Status + ' · ' + TAtlasStrings.Fmt(TAtlasTextId.ProblemsStatusProject,
       [TAtlasFindings.CheckedCount(Store, Project), Length(Project)]);
+  // Projektweite Regeln (#1102) prüfen erst mit vollständigem Index; bis dahin fehlen ihre Befunde.
+  if (State <> nil) and Assigned(State.Hooks.Indexing) and State.Hooks.Indexing(Percent) then
+  begin
+    if Percent < 0 then
+      Percent := 0;
+    Status := Status + ' · ' + TAtlasStrings.Fmt(TAtlasTextId.ProblemsStatusWaiting, [Percent]);
+  end;
   if Status <> State.Status then
   begin
     State.Status := Status;

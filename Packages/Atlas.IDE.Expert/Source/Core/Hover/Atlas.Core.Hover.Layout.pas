@@ -942,6 +942,12 @@ begin
       Inc(FY, Height(SmallFace) + Scale(2));
       AddText(FLeft, FY, Caption, SmallFace, FColors.Muted);
     end;
+    // Zusatz der Regel, z. B. der durchsuchte Bereich projektweiter Regeln (#1102).
+    if Problem.Details <> '' then
+    begin
+      Inc(FY, Height(SmallFace) + Scale(2));
+      AddText(FLeft, FY, Problem.Details, SmallFace, FColors.Muted);
+    end;
     Inc(FY, Height(SmallFace) + Scale(6));
     // Aktionen zum uses-Eintrag (#621).
     if (Problem.UsesState = TAtlasProblem.UsesUnused) or (Problem.UsesState = TAtlasProblem.UsesImplementation) then

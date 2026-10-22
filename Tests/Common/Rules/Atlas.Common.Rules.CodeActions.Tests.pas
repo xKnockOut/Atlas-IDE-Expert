@@ -24,6 +24,8 @@ type
     procedure FindingOutsideRangeIgnored;
     [Test]
     procedure ForRangeAddsTryFinally;
+    [Test]
+    procedure FixWithOtherFiles;
   end;
 
 implementation
@@ -131,6 +133,26 @@ begin
   Actions := TRuleCodeActions.ForRange(nil, Body, TTextRange.Create(4, 0, 4, 0));
   Assert.AreEqual(1, Integer(Length(Actions)));
   Assert.AreEqual('', Actions[0].RuleId);
+end;
+
+procedure TRuleCodeActionTests.FixWithOtherFiles;
+var
+  Finding: TRuleFinding;
+  Other: TRuleFileEdits;
+  Actions: TArray<TCodeAction>;
+  Action: TCodeAction;
+begin
+  // Korrektur über mehrere Units (#1105): alle Dateien in einer Aktion, aber nie in source.fixAll.
+  Finding := FindingWith(2, 'X', True);
+  Other.FileName := 'C:\P\Andere.pas';
+  Other.Edits := [TRuleEdit.Create(TTextRange.Create(1, 0, 1, 1), 'Y')];
+  Finding.Fixes[0].OtherFiles := [Other];
+  Actions := TRuleCodeActions.ForFindings([Finding], Body, TTextRange.Create(2, 0, 2, 0));
+  Assert.AreEqual('X', Actions[0].Edits[0].NewText);
+  Assert.AreEqual(1, Integer(Length(Actions[0].FileEdits)));
+  Assert.AreEqual('C:\P\Andere.pas', Actions[0].FileEdits[0].FileName);
+  Assert.AreEqual('Y', Actions[0].FileEdits[0].Edits[0].NewText);
+  Assert.IsFalse(TRuleCodeActions.FixAll([Finding], Action));
 end;
 
 initialization

@@ -15,6 +15,7 @@ uses
   System.JSON,
   System.Generics.Collections,
   Atlas.Common.Logging.Contract,
+  Atlas.Common.Rules.Contract,
   Atlas.Common.JsonRpc.Contract,
   Atlas.Common.JsonRpc.Dispatcher,
   Atlas.Common.JsonRpc.Connection,
@@ -196,6 +197,12 @@ type
     /// ein entfernter wird erst freigegeben, wenn er hier fehlt. Nur unter FWorkspacesLock.</summary>
     FWorkspaceUsers: TDictionary<TShellWorkspace, Integer>;
     FWorkspaceCounter: Integer;
+    /// <summary>Projekte aller Arbeitsbereiche für projektweite Prüfregeln (#1102). Gültig, solange
+    /// FRuleProjectsStamp = FWorkspacesStamp; FWorkspacesStamp steigt mit jedem geladenen Projekt und jedem
+    /// hinzugefügten oder entfernten Arbeitsbereich. Nur unter FWorkspacesLock.</summary>
+    FRuleProjects: TArray<TRuleProject>;
+    FRuleProjectsStamp: Integer;
+    FWorkspacesStamp: Integer;
     /// <summary>Reihenfolge der Indexaufbauten aller Projekte (#648); kleiner = früher.</summary>
     FIndexScheduler: TIndexScheduler;
     FWorkspacePriority: Integer;
@@ -302,6 +309,11 @@ type
     function ProjectIndexPending: Boolean;
     /// <summary>Text einer Quelldatei; geöffnete Dokumente haben Vorrang vor der Platte.</summary>
     function ReadSourceText(const AFileName: string; out AText: string): Boolean;
+    /// <summary>Projekte aller Arbeitsbereiche mit Art, Testkennung und Formulardateien (#1102); zwischengespeichert
+    /// bis zum nächsten geladenen Projekt. Hintergrund-Thread.</summary>
+    function RuleProjects: TArray<TRuleProject>;
+    /// <summary>Sind alle Projekte geladen und vollständig indiziert? Sonst der Grund in AReason (#1102).</summary>
+    function RuleProjectsComplete(out AReason: string): Boolean;
     /// <summary>Dateizugriffe für atlas.updateBaseline (#97): schreibt UTF-8 ohne BOM wie --update-baseline.</summary>
     function BaselineFiles: TLspBaselineFiles;
     /// <summary>Muster, Ordner und Testprogramm für Testunits zur Datei (#274, #189).</summary>
@@ -476,7 +488,7 @@ uses
   Shell.Commands.Build,
   Shell.Commands.Index,
   Atlas.Common.Rules.Engine,
-  Atlas.Common.Rules.Contract,
+  Atlas.Common.Rules.ProjectFiles,
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.TreeCache,
   Atlas.Common.Rules.Builtin.General,
@@ -908,6 +920,7 @@ end;
 procedure TServerComposition.WireWorkspaces;
 begin
   FWorkspaces := TObjectList<TShellWorkspace>.Create(True);
+  FRuleProjectsStamp := -1;
   FLooseSettings := TServerSettings.Default;
   FWorkspacesLock := TObject.Create;
   FWorkspaceUsers := TDictionary<TShellWorkspace, Integer>.Create;
@@ -2216,6 +2229,7 @@ begin
   TMonitor.Enter(FWorkspacesLock);
   try
     FWorkspaces.Add(Workspace);
+    Inc(FWorkspacesStamp);
   finally
     TMonitor.Exit(FWorkspacesLock);
   end;
@@ -2254,6 +2268,7 @@ begin
       if SameText(FWorkspaces[Index].Origin, AFolder.Key) then
         Removed := Removed + [FWorkspaces.Extract(FWorkspaces[Index])];
     Remaining := FWorkspaces.ToArray;
+    Inc(FWorkspacesStamp);
   finally
     TMonitor.Exit(FWorkspacesLock);
   end;
@@ -2567,6 +2582,96 @@ begin
   finally
     TMonitor.Exit(FWorkspacesLock);
   end;
+end;
+
+function TServerComposition.RuleProjects: TArray<TRuleProject>;
+var
+  Workspace: TShellWorkspace;
+  Info: TProjectInfo;
+  Stamp, Index: Integer;
+  Built: TArray<TRuleProject>;
+  Project: TRuleProject;
+  MainSources: TArray<string>;
+  Source, Text: string;
+begin
+  Built := nil;
+  MainSources := nil;
+  TMonitor.Enter(FWorkspacesLock);
+  try
+    if FRuleProjectsStamp = FWorkspacesStamp then
+      Exit(FRuleProjects);
+    Stamp := FWorkspacesStamp;
+    for Workspace in FWorkspaces do
+      if Workspace.Project(Info) then
+      begin
+        Project := Default(TRuleProject);
+        Project.FileName := Workspace.ProjectFileName;
+        Project.Sources := Workspace.ProjectFiles;
+        Built := Built + [Project];
+        MainSources := MainSources + [Info.MainSource];
+      end;
+  finally
+    TMonitor.Exit(FWorkspacesLock);
+  end;
+  // Hauptquelltexte und Formulardateien außerhalb der Sperre lesen.
+  for Index := 0 to High(Built) do
+  begin
+    if ReadSourceText(MainSources[Index], Text) then
+    begin
+      Built[Index].Kind := TRuleProjectFiles.KindOfSource(MainSources[Index], Text);
+      Built[Index].IsTest := TRuleProjectFiles.IsTestSource(Text);
+    end
+    else if SameText(ExtractFileExt(MainSources[Index]), '.dpk') then
+      Built[Index].Kind := TRuleProjectKind.Package;
+    for Source in Built[Index].Sources do
+      if SameText(ExtractFileExt(Source), '.pas') then
+      begin
+        if TFile.Exists(ChangeFileExt(Source, '.dfm')) then
+          Built[Index].Forms := Built[Index].Forms + [ChangeFileExt(Source, '.dfm')]
+        else if TFile.Exists(ChangeFileExt(Source, '.fmx')) then
+          Built[Index].Forms := Built[Index].Forms + [ChangeFileExt(Source, '.fmx')];
+      end;
+  end;
+  TMonitor.Enter(FWorkspacesLock);
+  try
+    // Inzwischen ein anderes Projekt geladen: Das Ergebnis gilt für diese Prüfung, aber nicht als Vorrat.
+    if Stamp = FWorkspacesStamp then
+    begin
+      FRuleProjects := Built;
+      FRuleProjectsStamp := Stamp;
+    end;
+  finally
+    TMonitor.Exit(FWorkspacesLock);
+  end;
+  Result := Built;
+end;
+
+function TServerComposition.RuleProjectsComplete(out AReason: string): Boolean;
+var
+  Workspace: TShellWorkspace;
+  Info: TProjectInfo;
+begin
+  AReason := '';
+  TMonitor.Enter(FWorkspacesLock);
+  try
+    for Workspace in FWorkspaces do
+    begin
+      // Ein Arbeitsbereich ohne geladenes Projekt kann Verwendungen enthalten, die keiner kennt.
+      if Workspace.ProjectPending or not Workspace.Project(Info) then
+      begin
+        AReason := 'Projekte werden geladen';
+        Exit(False);
+      end;
+      if Workspace.IndexLoading >= 0 then
+      begin
+        AReason := 'Index wird aufgebaut';
+        Exit(False);
+      end;
+    end;
+  finally
+    TMonitor.Exit(FWorkspacesLock);
+  end;
+  Result := True;
 end;
 
 function TServerComposition.DefinesFor(const AUri: string; out ADefines: TArray<string>): Boolean;
@@ -3947,6 +4052,8 @@ begin
   AContext.Rules := BuiltinRules;
   AContext.Index := FIndex;
   AContext.EnsureUnit := EnsureUnit;
+  // Projekte der Gruppe für unused-public-member (#1102); still, solange Projekte laden oder der Index läuft.
+  AContext.ProjectFiles := TRuleProjectFiles.Create(RuleProjects, FIndex, ReadSourceText, RuleProjectsComplete);
   // Formulardatei neben der Unit für den Abgleich von Feldern und Objekten (#123).
   // Mit Pfad, damit Korrekturen die Formulardatei ändern können (#309).
   if SameText(ExtractFileExt(FileName), '.pas') then
@@ -4001,6 +4108,8 @@ begin
   LibraryRoots := nil;
   TMonitor.Enter(FWorkspacesLock);
   try
+    // Projekte für projektweite Prüfregeln neu bestimmen (#1102).
+    Inc(FWorkspacesStamp);
     for Workspace in FWorkspaces do
     begin
       for Namespace in Workspace.Namespaces do

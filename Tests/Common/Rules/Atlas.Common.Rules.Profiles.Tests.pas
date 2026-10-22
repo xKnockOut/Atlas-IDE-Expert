@@ -191,7 +191,7 @@ const
     'slash-command,sql-write-without-where,string-index-base,string-length-limit,stringlist-objects-leak,stringlist-unsorted,suspicious-string-pointer-cast,synchronize-in-destructor,task-exception-unobserved,text-after-final-end,thread-free-with-free-on-terminate,thread-loop-without-terminated,thread-resume-suspend,' +
     'thread-unsafe-increment,thread-use-after-free-on-terminate,thread-vcl-access,threadvar-managed,transaction-without-rollback,type-restriction-violated,type-too-large,type-used-before-declaration,typed-constant-modified,typeinfo-invalid,' +
     'ui-call-in-console-or-service,unchecked-conversion,unchecked-enum-cast,unconditional-recursion,unit-name-conflict,unit-name-mismatch,unneeded-forward-declaration,unreachable-code,unresolved-attribute,unresolved-identifier,unresolved-type,unsatisfied-forward,' +
-    'untyped-pointer-refcount,unused-assignment,unused-local,unused-parameter,unused-private-member,use-after-free,uses-unit-not-found,variant-record-managed-field,virtual-instead-of-override,with-statement,' +
+    'untyped-pointer-refcount,unused-assignment,unused-local,unused-parameter,unused-private-member,unused-public-member,use-after-free,uses-unit-not-found,variant-record-managed-field,virtual-instead-of-override,with-statement,' +
     'writeln-in-gui-app';
 begin
   Assert.AreEqual(All, ActiveRules('standard'));
@@ -200,7 +200,7 @@ begin
   // die Architekturregeln des Rollenkonzepts (ohne "prefixes" stumm, Code-Review A-12).
   Assert.AreEqual(Merged(All, ['architecture-contract-content', 'architecture-role-import',
     'catch-all-without-raise', 'file-header', 'global-variable', 'hardcoded-string',
-    'line-length', 'loop-invariant-call', 'magic-number', 'missing-begin-update', 'narrowing-assignment', 'public-field', 'random-without-randomize', 'redundant-begin-end',
+    'legacy-stack-queue', 'loop-invariant-call', 'magic-number', 'missing-begin-update', 'narrowing-assignment', 'public-field', 'random-without-randomize', 'redundant-begin-end',
     'redundant-parens', 'security-path-traversal', 'string-concat-in-loop', 'todo-comment']), ActiveRules('strict'));
   Assert.AreEqual('abstract-class-instantiated,abstract-declaration-invalid,anonymous-capture-invalid,anonymous-thread-not-started,argument-count-mismatch,assert-side-effect,assign-to-property-member,attribute-usage-invalid,bidi-control,calling-convention-required,captured-loop-variable,case-missing-enum-value,case-selector-not-ordinal,char-to-pchar,' +
     'class-reference-nonvirtual-constructor,collection-modified-in-loop,comparison-always-constant,comparison-as-statement,' +
@@ -230,7 +230,7 @@ begin
     'metric-nesting-depth,metric-parameter-count,metric-unit-length,metric-uses-count,missing-begin-end,' +
     'now-for-elapsed-time,null-compare,processmessages-in-loop,redundant-assigned-free,reraise-exception-object,shadowed-name,slash-command,task-exception-unobserved,text-after-final-end,thread-resume-suspend,unneeded-forward-declaration,' +
     'unused-assignment,unused-local,' +
-    'unused-parameter,unused-private-member,with-statement',
+    'unused-parameter,unused-private-member,unused-public-member,with-statement',
     ActiveRules('style'));
 end;
 
