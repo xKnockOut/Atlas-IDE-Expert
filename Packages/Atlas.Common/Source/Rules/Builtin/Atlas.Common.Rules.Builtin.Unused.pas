@@ -556,7 +556,6 @@ begin
   Result := TRuleDescriptor.Create('unused-parameter', TRuleSeverity.Hint, 'Parameter wird nicht verwendet');
 end;
 
-/// <summary>Rumpf der Typdeklaration (Klasse, Record, Objekt, Helfer) mit diesem Namen in der Datei.</summary>
 /// <summary>Rumpf (Klasse, Record, Objekt, Helfer) einer Typdeklaration, sonst nil.</summary>
 function TypeBodyOf(ADecl: TSyntaxNode): TSyntaxNode;
 var

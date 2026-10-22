@@ -301,7 +301,6 @@ begin
   Result := Result + [TrimRight(Line)];
 end;
 
-/// <summary>Elementtyp von "ATypeName = set of TElement" im Baum; False ohne oder bei namenloser Aufzählung.</summary>
 /// <summary>Elementtyp des Mengentyps ADecl ("set of TElement"); '' bei namenloser Aufzählung.</summary>
 function SetElementOf(ADecl: TSyntaxNode): string;
 var
