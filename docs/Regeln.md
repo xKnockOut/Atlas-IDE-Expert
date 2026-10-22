@@ -10,7 +10,7 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 | [Exceptions](#gruppe-exceptions) | 8 |
 | [Threads](#gruppe-threads) | 13 |
 | [Datenbank](#gruppe-database) | 4 |
-| [Compiler vorab](#gruppe-compiler) | 16 |
+| [Compiler vorab](#gruppe-compiler) | 17 |
 | [Robustheit und Muster](#gruppe-robustness) | 3 |
 | [Performance](#gruppe-performance) | 4 |
 | [Sicherheit](#gruppe-security) | 11 |
@@ -147,6 +147,7 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 | [`assign-to-property-member`](#assign-to-property-member) | Zuweisung an ein Feld eines Property-Records | Bug | Fehler |
 | [`readonly-property-assigned`](#readonly-property-assigned) | Zuweisung an eine Property ohne write | Bug | Fehler |
 | [`dynamic-array-misuse`](#dynamic-array-misuse) | New, Dispose oder SetLength falsch für dynamische Arrays | Bug | Fehler |
+| [`local-routine-as-callback`](#local-routine-as-callback) | Lokale Routine als Prozedurvariable | Bug | Fehler |
 
 <a id="gruppe-robustness"></a>
 ### Robustheit und Muster
@@ -4562,4 +4563,40 @@ Richtig:
 
 ```pascal
 Werte := nil;
+```
+
+<a id="local-routine-as-callback"></a>
+### local-routine-as-callback
+
+**Lokale Routine als Prozedurvariable** · Bug · Fehler · Gruppe Compiler vorab
+
+Eine lokale (verschachtelte) Routine wird einer Variablen oder einem Parameter eines prozeduralen Typs ohne of object zugewiesen (wie E2094), oder eine typisierte Konstante einer Routine nimmt die Adresse einer lokalen Variablen (wie E2278). Gemeint ist meist eine anonyme Methode oder eine Routine der Unit. Die Regel meldet nur, wenn die Namensauflösung den Zieltyp sicher kennt; Methodenzeiger und Methodenreferenzen bleiben still, weil der Compiler sie mit anderen Codes meldet, ebenso @Routine (ein untypisierter Zeiger). Korrektur: die Routine als Routine der Unit vor die umgebende Routine verschieben, wenn sie nichts aus ihr nutzt (keine lokalen Namen weiter außen, keine Klassenmitglieder ohne Präfix).
+
+Entspricht der Compilermeldung `E2094`, `E2278`.
+
+Mit Treffer:
+
+```pascal
+procedure TListe.Sortieren;
+  function Vergleich(A, B: Pointer): Integer;
+  begin
+    Result := 0;
+  end;
+begin
+  FListe.Sort(Vergleich);
+end;
+```
+
+Richtig:
+
+```pascal
+function Vergleich(A, B: Pointer): Integer;
+begin
+  Result := 0;
+end;
+
+procedure TListe.Sortieren;
+begin
+  FListe.Sort(Vergleich);
+end;
 ```

@@ -4,6 +4,10 @@
 // Beispiel Dispose mit Korrektur, New und SetLength auf Arrays, New(Typ) mit
 // und ohne Länge, Alias über die Datei und TBytes ohne Index, stille Fälle
 // (Zeiger, offene Array-Parameter, eigene Routine New), Abschalten.
+// local-routine-as-callback (#1039): Beispiel mit Korrektur (Auslagern),
+// Zuweisung, Prozedur und parameterlose Funktion, ohne Korrektur bei Zugriff
+// auf äußere Namen, Adresse in typisierter Konstante, stille Fälle (Aufrufe,
+// of object, reference to, Unit-Routinen, @Routine), Abschalten.
 
 interface
 
@@ -28,6 +32,23 @@ type
     procedure OffAndExclude;
     [Test]
     procedure RuleIsRegistered;
+  end;
+
+  [TestFixture]
+  TLocalRoutineAsCallbackTests = class
+  public
+    [Test]
+    procedure IssueExampleWithMoveFix;
+    [Test]
+    procedure AssignmentAndParameterlessRoutines;
+    [Test]
+    procedure NoMoveWhenOuterNamesAreUsed;
+    [Test]
+    procedure AddressInTypedConstant;
+    [Test]
+    procedure CallsAndOtherTypesAreSilent;
+    [Test]
+    procedure OffAndExclude;
   end;
 
 implementation
@@ -184,9 +205,134 @@ begin
     if Rule.Descriptor.Id = DynamicArrayMisuseRuleId then
       Found := True;
   Assert.IsTrue(Found);
+  Found := False;
+  for Rule in BuiltinRules do
+    if Rule.Descriptor.Id = LocalRoutineAsCallbackRuleId then
+      Found := True;
+  Assert.IsTrue(Found);
+end;
+
+{ TLocalRoutineAsCallbackTests }
+
+function CallbackFindings(const ASource: string): TArray<TRuleFinding>; overload;
+begin
+  Result := TRuleAssert.IndexFindings(TLocalRoutineAsCallbackRule.Create, ASource, SystemIndex, '', 'Listen.pas');
+end;
+
+function CallbackFindings(const ASource, AConfig, APath: string): TArray<TRuleFinding>; overload;
+begin
+  Result := TRuleAssert.IndexFindings(TLocalRoutineAsCallbackRule.Create, ASource, SystemIndex, AConfig, APath);
+end;
+
+/// <summary>Unit mit TListe.Sort(Compare: TVergleich), Ereignis und Methodenreferenz; ANested sind die
+/// verschachtelten Routinen von TListe.Sortieren, AStatements ihr Rumpf.</summary>
+function Liste(const ANested, AStatements: string): string;
+begin
+  Result := 'unit Listen;'#10'interface'#10'type'#10'  TVergleich = function(A, B: Pointer): Integer;'#10 +
+    '  TAktion = procedure;'#10'  TEreignis = procedure of object;'#10'  TAufgabe = reference to procedure;'#10 +
+    '  TListe = class'#10'  private'#10'    FAnzahl: Integer;'#10'  public'#10 +
+    '    procedure Sort(Compare: TVergleich);'#10'    procedure Ausfuehren(Aufgabe: TAufgabe; Ereignis: TEreignis);'#10 +
+    '    procedure Sortieren;'#10'  end;'#10'implementation'#10'procedure TListe.Sort(Compare: TVergleich);'#10 +
+    'begin'#10'end;'#10'procedure TListe.Ausfuehren(Aufgabe: TAufgabe; Ereignis: TEreignis);'#10'begin'#10'end;'#10 +
+    'procedure TListe.Sortieren;'#10'var'#10'  Aktion: TAktion;'#10 + ANested + 'begin'#10 + AStatements + 'end;'#10 +
+    'end.';
+end;
+
+const
+  Vergleich = '  function Vergleich(A, B: Pointer): Integer;'#10'  begin'#10'    Result := 0;'#10'  end;'#10;
+
+procedure TLocalRoutineAsCallbackTests.IssueExampleWithMoveFix;
+var
+  Source, Fixed: string;
+  Found: TArray<TRuleFinding>;
+begin
+  Source := Liste(Vergleich, '  Sort(Vergleich);'#10);
+  Found := CallbackFindings(Source);
+  Assert.AreEqual(1, Integer(Length(Found)));
+  Assert.AreEqual(LocalRoutineAsCallbackRuleId, Found[0].RuleId);
+  Assert.AreEqual('Die lokale Funktion Vergleich kann nicht als Prozedurvariable übergeben werden (wie E2094).',
+    Found[0].Message);
+  Assert.AreEqual(30, Found[0].Range.StartPos.Line);
+  Assert.AreEqual(1, Integer(Length(Found[0].Fixes)));
+  Assert.AreEqual('Vergleich als Routine der Unit auslagern', Found[0].Fixes[0].Title);
+  Fixed := Apply(Source, Found[0].Fixes[0]);
+  Assert.IsTrue(Pos('end;'#10'function Vergleich(A, B: Pointer): Integer;'#10'begin'#10'  Result := 0;'#10'end;'#10#10 +
+    'procedure TListe.Sortieren;'#10'var'#10'  Aktion: TAktion;'#10'begin'#10'  Sort(Vergleich);', Fixed) > 0, Fixed);
+  Assert.AreEqual(0, Integer(Length(CallbackFindings(Fixed))), Fixed);
+end;
+
+procedure TLocalRoutineAsCallbackTests.AssignmentAndParameterlessRoutines;
+var
+  Found: TArray<TRuleFinding>;
+begin
+  Found := CallbackFindings(Liste('  procedure Melden;'#10'  begin'#10'  end;'#10, '  Aktion := Melden;'#10));
+  Assert.AreEqual(1, Integer(Length(Found)));
+  Assert.AreEqual('Die lokale Prozedur Melden kann keiner Prozedurvariablen zugewiesen werden (wie E2094).',
+    Found[0].Message);
+  // Parameterlose Funktion an einen Integer: ein Aufruf.
+  Assert.AreEqual(0, Integer(Length(CallbackFindings(Liste('  function Null: Integer;'#10'  begin'#10 +
+    '    Result := 0;'#10'  end;'#10, '  FAnzahl := Null;'#10)))));
+end;
+
+procedure TLocalRoutineAsCallbackTests.NoMoveWhenOuterNamesAreUsed;
+var
+  Found: TArray<TRuleFinding>;
+begin
+  // FAnzahl gehört zur Klasse: Auf Unit-Ebene wäre es unbekannt.
+  Found := CallbackFindings(Liste('  function Vergleich(A, B: Pointer): Integer;'#10'  begin'#10 +
+    '    Result := FAnzahl;'#10'  end;'#10, '  Sort(Vergleich);'#10));
+  Assert.AreEqual(1, Integer(Length(Found)));
+  Assert.AreEqual(0, Integer(Length(Found[0].Fixes)));
+  // Lokale Variable der äußeren Routine.
+  Found := CallbackFindings(Liste('  function Vergleich(A, B: Pointer): Integer;'#10'  begin'#10 +
+    '    Aktion := nil;'#10'    Result := 0;'#10'  end;'#10, '  Sort(Vergleich);'#10));
+  Assert.AreEqual(1, Integer(Length(Found)));
+  Assert.AreEqual(0, Integer(Length(Found[0].Fixes)));
+end;
+
+procedure TLocalRoutineAsCallbackTests.AddressInTypedConstant;
+var
+  Found: TArray<TRuleFinding>;
+begin
+  Found := CallbackFindings('unit Zeiger;'#10'interface'#10'implementation'#10'procedure Lesen;'#10'var'#10 +
+    '  Wert: Integer;'#10'const'#10'  Adresse: Pointer = @Wert;'#10'begin'#10'end;'#10'end.');
+  Assert.AreEqual(1, Integer(Length(Found)));
+  Assert.AreEqual('Die Adresse des lokalen Symbols Wert ist keine Konstante (wie E2278).', Found[0].Message);
+  // Globale Variable: erlaubt.
+  Assert.AreEqual(0, Integer(Length(CallbackFindings('unit Zeiger;'#10'interface'#10'implementation'#10'var'#10 +
+    '  Wert: Integer;'#10'procedure Lesen;'#10'const'#10'  Adresse: Pointer = @Wert;'#10'begin'#10'end;'#10 +
+    'end.'))));
+end;
+
+procedure TLocalRoutineAsCallbackTests.CallsAndOtherTypesAreSilent;
+begin
+  // Aufrufe, Adresse mit @ (untypisierter Zeiger), anonyme Methode.
+  Assert.AreEqual(0, Integer(Length(CallbackFindings(Liste(Vergleich, '  Vergleich(nil, nil);'#10 +
+    '  FAnzahl := Vergleich(nil, nil);'#10'  Sort(function(A, B: Pointer): Integer begin Result := 0; end);'#10)))));
+  // Methodenzeiger und Methodenreferenz meldet der Compiler mit anderen Codes.
+  Assert.AreEqual(0, Integer(Length(CallbackFindings(Liste('  procedure Melden;'#10'  begin'#10'  end;'#10,
+    '  Ausfuehren(Melden, Melden);'#10)))));
+  // Routine der Unit statt lokaler Routine.
+  Assert.AreEqual(0, Integer(Length(CallbackFindings(Liste('', '  Sort(Vergleich);'#10).Replace(
+    'procedure TListe.Sortieren;'#10, Vergleich.Replace('  ', '') + 'procedure TListe.Sortieren;'#10)))));
+end;
+
+procedure TLocalRoutineAsCallbackTests.OffAndExclude;
+var
+  Source: string;
+begin
+  Source := Liste(Vergleich, '  Sort(Vergleich);'#10);
+  Assert.AreEqual(1, Integer(Length(CallbackFindings(Source, '', 'Source/Listen.pas'))));
+  Assert.AreEqual(0, Integer(Length(CallbackFindings(Source, '{"rules": {"local-routine-as-callback": "off"}}',
+    'Source/Listen.pas'))));
+  Assert.AreEqual(0, Integer(Length(CallbackFindings(Source, '{"rules": {"group:compiler": "off"}}',
+    'Source/Listen.pas'))));
+  Assert.AreEqual(0, Integer(Length(CallbackFindings(Source,
+    '{"rules": {"local-routine-as-callback": {"exclude": ["Source/*.pas"]}}}', 'Source/Listen.pas'))));
 end;
 
 initialization
   TDUnitX.RegisterTestFixture(TDynamicArrayMisuseTests);
+  TDUnitX.RegisterTestFixture(TLocalRoutineAsCallbackTests);
 
 end.

@@ -2330,6 +2330,20 @@ begin
     '        "E2307",' + #10 +
     '        "E2308"' + #10 +
     '      ]' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "local-routine-as-callback",' + #10 +
+    '      "name": "Local routine as procedure variable",' + #10 +
+    '      "category": "bug",' + #10 +
+    '      "severity": "error",' + #10 +
+    '      "group": "compiler",' + #10 +
+    '      "description": "A local (nested) routine is assigned to a variable or passed to a parameter of a procedural type without of object (like E2094), or a typed constant of a routine takes the addres' + 's of a local variable (like E2278). Usually an anonymous method or a routine of the unit was meant. The rule only reports when name resolution knows the target type for sure; method pointers and metho' + 'd references stay silent because the compiler reports them with other codes, and so does @Routine (an untyped pointer). Quick fix: move the routine in front of the enclosing routine as a routine of th' + 'e unit, if it uses nothing from it (no local names further out, no class members without a prefix).",' + #10 +
+    '      "bad": "procedure TListe.Sortieren;\n  function Vergleich(A, B: Pointer): Integer;\n  begin\n    Result := 0;\n  end;\nbegin\n  FListe.Sort(Vergleich);\nend;",' + #10 +
+    '      "good": "function Vergleich(A, B: Pointer): Integer;\nbegin\n  Result := 0;\nend;\n\nprocedure TListe.Sortieren;\nbegin\n  FListe.Sort(Vergleich);\nend;",' + #10 +
+    '      "compilerCodes": [' + #10 +
+    '        "E2094",' + #10 +
+    '        "E2278"' + #10 +
+    '      ]' + #10 +
     '    }' + #10 +
     '  ]' + #10 +
     '}' + #10 +
@@ -3505,6 +3519,11 @@ begin
     '      "id": "dynamic-array-misuse",' + #10 +
     '      "name": "New, Dispose oder SetLength falsch für dynamische Arrays",' + #10 +
     '      "description": "New (wie E2255) oder Dispose (wie E2256) auf einem dynamischen Array, SetLength ohne Länge (wie E2246), New mit Länge auf einem Typ, der kein dynamisches Array ist (wie E2307), u' + 'nd New(TArrayTyp) ohne Länge (wie E2308). Häufig in altem Code, der von Zeigern auf dynamische Arrays umgestellt wurde. Die Regel meldet nur, wenn die Namensauflösung Variable bzw. Typ sicher kennt; A' + 'liase werden verfolgt (TWerte = array of Double), TBytes und die übrigen dynamischen Arrays der RTL gelten auch ohne Index; offene Array-Parameter und Zeiger bleiben still. Korrekturen: Dispose(A) wir' + 'd A := nil, New(A) wird SetLength(A, 1)."' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "local-routine-as-callback",' + #10 +
+    '      "name": "Lokale Routine als Prozedurvariable",' + #10 +
+    '      "description": "Eine lokale (verschachtelte) Routine wird einer Variablen oder einem Parameter eines prozeduralen Typs ohne of object zugewiesen (wie E2094), oder eine typisierte Konstante einer' + ' Routine nimmt die Adresse einer lokalen Variablen (wie E2278). Gemeint ist meist eine anonyme Methode oder eine Routine der Unit. Die Regel meldet nur, wenn die Namensauflösung den Zieltyp sicher ken' + 'nt; Methodenzeiger und Methodenreferenzen bleiben still, weil der Compiler sie mit anderen Codes meldet, ebenso @Routine (ein untypisierter Zeiger). Korrektur: die Routine als Routine der Unit vor die' + ' umgebende Routine verschieben, wenn sie nichts aus ihr nutzt (keine lokalen Namen weiter außen, keine Klassenmitglieder ohne Präfix)."' + #10 +
     '    }' + #10 +
     '  ]' + #10 +
     '}' + #10 +

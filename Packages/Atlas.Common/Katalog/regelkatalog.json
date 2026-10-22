@@ -2310,6 +2310,20 @@
         "E2307",
         "E2308"
       ]
+    },
+    {
+      "id": "local-routine-as-callback",
+      "name": "Local routine as procedure variable",
+      "category": "bug",
+      "severity": "error",
+      "group": "compiler",
+      "description": "A local (nested) routine is assigned to a variable or passed to a parameter of a procedural type without of object (like E2094), or a typed constant of a routine takes the address of a local variable (like E2278). Usually an anonymous method or a routine of the unit was meant. The rule only reports when name resolution knows the target type for sure; method pointers and method references stay silent because the compiler reports them with other codes, and so does @Routine (an untyped pointer). Quick fix: move the routine in front of the enclosing routine as a routine of the unit, if it uses nothing from it (no local names further out, no class members without a prefix).",
+      "bad": "procedure TListe.Sortieren;\n  function Vergleich(A, B: Pointer): Integer;\n  begin\n    Result := 0;\n  end;\nbegin\n  FListe.Sort(Vergleich);\nend;",
+      "good": "function Vergleich(A, B: Pointer): Integer;\nbegin\n  Result := 0;\nend;\n\nprocedure TListe.Sortieren;\nbegin\n  FListe.Sort(Vergleich);\nend;",
+      "compilerCodes": [
+        "E2094",
+        "E2278"
+      ]
     }
   ]
 }
