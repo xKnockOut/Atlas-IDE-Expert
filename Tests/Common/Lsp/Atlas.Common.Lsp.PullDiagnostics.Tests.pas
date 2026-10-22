@@ -691,7 +691,6 @@ begin
       function(const AUri: string; out AContext: TRuleCheckContext): Boolean
       begin
         AContext := Default(TRuleCheckContext);
-        Result := False;
         raise EArgumentException.Create('Unit kaputt');
       end;
     Fixture.Pull.FileLabel := LabelOfFile;

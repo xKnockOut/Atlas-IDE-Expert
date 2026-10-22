@@ -103,6 +103,10 @@ uses
   Atlas.Tests.RuleAssert;
 
 type
+  /// <summary>Gleichnamig zur veralteten RTL-Klasse (W1000): Atlas erkennt den Überlauf am Namen.</summary>
+  EStackOverflow = class(Exception);
+
+type
   /// <summary>Beispielregel: meldet jeden Bezeichner "Marker".</summary>
   TMarkerRule = class(TInterfacedObject, IRule)
   private
