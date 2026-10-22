@@ -183,7 +183,7 @@ const
     'ifthen-side-effect,implemented-not-declared,implicit-package-import,int32-mul-overflow,interface-guid,' +
     'invisible-char,' +
     'lock-without-finally,loop-off-by-one,managed-type-raw-memory,metric-class-size,metric-cognitive-complexity,metric-cyclomatic-complexity,' +
-    'metric-method-length,metric-nesting-depth,metric-parameter-count,metric-unit-length,metric-uses-count,missing-inherited,operator-precedence,out-param-read,owned-field-free-unclear,pair-without-finally,pchar-of-temporary,' +
+    'metric-method-length,metric-nesting-depth,metric-parameter-count,metric-unit-length,metric-uses-count,missing-inherited,operator-precedence,ota-notifier-not-removed,out-param-read,owned-field-free-unclear,pair-without-finally,pchar-of-temporary,' +
     'possibly-uninitialized,processmessages-in-loop,queue-nil-in-package,raise-in-finally,redundant-assigned-free,' +
     'result-not-set,' +
     'security-command-injection,security-insecure-http,security-insecure-random,security-sql-injection,' +
@@ -211,7 +211,7 @@ begin
     'duplicate-condition,duplicate-interface-guid,empty-statement,exception-freed,exception-in-destructor,exception-not-raised,field-free-without-nil,field-not-freed,float-equality,for-high-to-low,' +
     'form-field-type-mismatch,form-field-without-object,form-object-without-field,hides-virtual,' +
     'ifthen-side-effect,implemented-not-declared,int32-mul-overflow,interface-guid,lock-without-finally,loop-off-by-one,managed-type-raw-memory,' +
-    'missing-inherited,operator-precedence,out-param-read,owned-field-free-unclear,pair-without-finally,pchar-of-temporary,' +
+    'missing-inherited,operator-precedence,ota-notifier-not-removed,out-param-read,owned-field-free-unclear,pair-without-finally,pchar-of-temporary,' +
     'possibly-uninitialized,queue-nil-in-package,raise-in-finally,result-not-set,security-command-injection,' +
     'security-sql-injection,security-tls-verification-disabled,self-assignment,setter-recursion,sizeof-pointer,' +
     'stringlist-unsorted,synchronize-in-destructor,thread-free-with-free-on-terminate,' +

@@ -286,7 +286,10 @@ begin
           else if (IndexStr(Value.Keys[Inner], StringRuleOptions) >= 0) and (Value[Inner].Kind <> TJsonKind.String_) then
             ReportNode(Value[Inner], Format('"%s" muss ein Text sein', [Value.Keys[Inner]]))
           else if (Value.Keys[Inner] = 'pairs') and not IsPairList(Value[Inner]) then
-            ReportNode(Value[Inner], '"pairs" muss eine Liste von Objekten mit "open" und "close" sein');
+            ReportNode(Value[Inner], '"pairs" muss eine Liste von Objekten mit "open" und "close" sein')
+          // Paare von ota-notifier-not-removed (#944).
+          else if (Value.Keys[Inner] = 'registerPairs') and not IsPairList(Value[Inner]) then
+            ReportNode(Value[Inner], '"registerPairs" muss eine Liste von Objekten mit "open" und "close" sein');
         Rule.Options := Copy(FText, Value.Start + 1, Value.Stop - Value.Start);
       end
       else

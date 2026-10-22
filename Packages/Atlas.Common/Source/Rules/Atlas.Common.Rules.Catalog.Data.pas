@@ -1725,6 +1725,33 @@ begin
     '          "description": "Comment that exempts a line."' + #10 +
     '        }' + #10 +
     '      ]' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "ota-notifier-not-removed",' + #10 +
+    '      "name": "IDE notifier without RemoveNotifier",' + #10 +
+    '      "category": "bug",' + #10 +
+    '      "severity": "warning",' + #10 +
+    '      "group": "packages",' + #10 +
+    '      "description": "AddNotifier on IOTAServices, IOTAEditorServices, IOTAModule and so on (or another pair from registerPairs) whose index never reaches RemoveNotifier: the call is a statement witho' + 'ut assignment, or the variable it is assigned to is never passed to RemoveNotifier in the unit (in finalization, a destructor or Destroyed). The IDE then calls the notifier after the package is unload' + 'ed, in memory that no longer holds the code. Register… calls inside the procedure Register are exempt: the IDE removes those wizards itself. Medium confidence. Quick fix in methods: keep the index in ' + 'a field (FNotifierIndex in the private section) and add RemoveNotifier to the destructor, which is created if missing; in procedures of the unit: a global variable initialized with -1 and RemoveNotifi' + 'er in finalization. No quick fix when the receiver is a parameter or local variable.",' + #10 +
+    '      "bad": "procedure Register;\nbegin\n  (BorlandIDEServices as IOTAServices).AddNotifier(TSpeicherNotifier.Create);\nend;",' + #10 +
+    '      "good": "var\n  NotifierIndex: Integer = -1;\n\nprocedure Register;\nbegin\n  NotifierIndex := (BorlandIDEServices as IOTAServices).AddNotifier(TSpeicherNotifier.Create);\nend;\n\ninitialization' + '\n\nfinalization\n  if NotifierIndex >= 0 then\n    (BorlandIDEServices as IOTAServices).RemoveNotifier(NotifierIndex);",' + #10 +
+    '      "options": [' + #10 +
+    '        {' + #10 +
+    '          "name": "registerPairs",' + #10 +
+    '          "type": "json",' + #10 +
+    '          "default": [' + #10 +
+    '            {' + #10 +
+    '              "open": "AddNotifier",' + #10 +
+    '              "close": "RemoveNotifier"' + #10 +
+    '            },' + #10 +
+    '            {' + #10 +
+    '              "open": "RegisterPackageWizard",' + #10 +
+    '              "close": "RemoveWizard"' + #10 +
+    '            }' + #10 +
+    '          ],' + #10 +
+    '          "description": "Pairs of the Open Tools API as [{\"open\": \"AddNotifier\", \"close\": \"RemoveNotifier\"}]; replaces the default."' + #10 +
+    '        }' + #10 +
+    '      ]' + #10 +
     '    }' + #10 +
     '  ]' + #10 +
     '}' + #10 +
@@ -2639,6 +2666,17 @@ begin
     '        {' + #10 +
     '          "name": "okMarker",' + #10 +
     '          "description": "Kommentar, der eine Zeile ausnimmt."' + #10 +
+    '        }' + #10 +
+    '      ]' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "ota-notifier-not-removed",' + #10 +
+    '      "name": "IDE-Notifier ohne RemoveNotifier",' + #10 +
+    '      "description": "AddNotifier an IOTAServices, IOTAEditorServices, IOTAModule usw. (oder ein anderes Paar aus registerPairs), dessen Index nie an RemoveNotifier geht: Der Aufruf steht als Anweisun' + 'g ohne Zuweisung, oder die Variable, der er zugewiesen wird, erhält in der Unit kein RemoveNotifier (in finalization, im Destruktor oder in Destroyed). Die IDE ruft den Notifier dann nach dem Entladen' + ' des Packages in fremdem Speicher auf. Register…-Aufrufe in der Prozedur Register sind ausgenommen: Diese Wizards entfernt die IDE selbst. Sicherheit mittel. Korrektur in Methoden: Index in ein Feld l' + 'egen (FNotifierIndex im private-Abschnitt) und RemoveNotifier im Destruktor ergänzen, der bei Bedarf angelegt wird; in Prozeduren der Unit: globale Variable mit -1 und RemoveNotifier in finalization. ' + 'Keine Korrektur, wenn der Empfänger ein Parameter oder eine lokale Variable ist.",' + #10 +
+    '      "options": [' + #10 +
+    '        {' + #10 +
+    '          "name": "registerPairs",' + #10 +
+    '          "description": "Paare der Open Tools API als [{\"open\": \"AddNotifier\", \"close\": \"RemoveNotifier\"}]; ersetzt die Vorgabe."' + #10 +
     '        }' + #10 +
     '      ]' + #10 +
     '    }' + #10 +

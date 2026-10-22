@@ -16,7 +16,7 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 | [Formulare und Daten](#gruppe-forms) | 10 |
 | [Architektur](#gruppe-architecture) | 3 |
 | [Stil und Metriken](#gruppe-style) | 28 |
-| [Packages und Tests](#gruppe-packages) | 1 |
+| [Packages und Tests](#gruppe-packages) | 2 |
 | [Atlas intern](#gruppe-internal) | 3 |
 
 <a id="gruppe-find-bugs"></a>
@@ -212,6 +212,7 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 | Regel | Name | Kategorie | Schweregrad |
 |---|---|---|---|
 | [`implicit-package-import`](#implicit-package-import) | Implizit eingebundene Unit | Code Smell | Warnung |
+| [`ota-notifier-not-removed`](#ota-notifier-not-removed) | IDE-Notifier ohne RemoveNotifier | Bug | Warnung |
 
 <a id="gruppe-internal"></a>
 ### Atlas intern
@@ -3426,4 +3427,42 @@ TAtlasMainThread.Queue(
   begin
     FPanel.Aktualisieren;
   end);
+```
+
+<a id="ota-notifier-not-removed"></a>
+### ota-notifier-not-removed
+
+**IDE-Notifier ohne RemoveNotifier** · Bug · Warnung · Gruppe Packages und Tests
+
+AddNotifier an IOTAServices, IOTAEditorServices, IOTAModule usw. (oder ein anderes Paar aus registerPairs), dessen Index nie an RemoveNotifier geht: Der Aufruf steht als Anweisung ohne Zuweisung, oder die Variable, der er zugewiesen wird, erhält in der Unit kein RemoveNotifier (in finalization, im Destruktor oder in Destroyed). Die IDE ruft den Notifier dann nach dem Entladen des Packages in fremdem Speicher auf. Register…-Aufrufe in der Prozedur Register sind ausgenommen: Diese Wizards entfernt die IDE selbst. Sicherheit mittel. Korrektur in Methoden: Index in ein Feld legen (FNotifierIndex im private-Abschnitt) und RemoveNotifier im Destruktor ergänzen, der bei Bedarf angelegt wird; in Prozeduren der Unit: globale Variable mit -1 und RemoveNotifier in finalization. Keine Korrektur, wenn der Empfänger ein Parameter oder eine lokale Variable ist.
+
+| Option | Typ | Vorgabe | Bedeutung |
+|---|---|---|---|
+| `registerPairs` | json | `[{"open":"AddNotifier","close":"RemoveNotifier"},{"open":"RegisterPackageWizard","close":"RemoveWizard"}]` | Paare der Open Tools API als [{"open": "AddNotifier", "close": "RemoveNotifier"}]; ersetzt die Vorgabe. |
+
+Mit Treffer:
+
+```pascal
+procedure Register;
+begin
+  (BorlandIDEServices as IOTAServices).AddNotifier(TSpeicherNotifier.Create);
+end;
+```
+
+Richtig:
+
+```pascal
+var
+  NotifierIndex: Integer = -1;
+
+procedure Register;
+begin
+  NotifierIndex := (BorlandIDEServices as IOTAServices).AddNotifier(TSpeicherNotifier.Create);
+end;
+
+initialization
+
+finalization
+  if NotifierIndex >= 0 then
+    (BorlandIDEServices as IOTAServices).RemoveNotifier(NotifierIndex);
 ```
