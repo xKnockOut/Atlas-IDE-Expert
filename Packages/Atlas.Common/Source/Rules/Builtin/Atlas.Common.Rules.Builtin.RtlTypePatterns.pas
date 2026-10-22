@@ -13,6 +13,9 @@
 //                            (#921). Records und Aliasse werden in der Datei und im Index aufgelöst.
 //   threadvar-managed        threadvar mit verwaltetem Typ: Delphi finalisiert ihn am Thread-Ende
 //                            nicht (#922)
+//   pchar-of-temporary       PChar(S + '.bak'), PChar(IntToStr(N)) … in einer Variablen, einem Feld oder
+//                            Result gemerkt bzw. an PostMessage übergeben (#923): der temporäre String
+//                            ist nach der Anweisung weg
 // Bezeichner, deren Typ in der Datei nicht deklariert ist, lösen keinen Treffer aus.
 
 interface
@@ -72,6 +75,12 @@ type
     procedure Check(const AContext: TRuleContext; const AReport: IRuleReport);
   end;
 
+  TPCharOfTemporaryRule = class(TInterfacedObject, IRule)
+  public
+    function Descriptor: TRuleDescriptor;
+    procedure Check(const AContext: TRuleContext; const AReport: IRuleReport);
+  end;
+
 /// <summary>Registriert die typbasierten Regeln für RTL-Muster.</summary>
 procedure RegisterRtlTypePatternRules(const ARegistry: TRuleRegistry);
 
@@ -85,7 +94,8 @@ uses
   Atlas.Common.Pascal.Contract,
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.DeclaredTypes,
-  Atlas.Common.Index.Contract;
+  Atlas.Common.Index.Contract,
+  Atlas.Text.Lines;
 
 type
   TTokens = TArray<TPascalToken>;
@@ -1059,6 +1069,216 @@ begin
   end;
 end;
 
+{ TPCharOfTemporaryRule }
+
+const
+  PCharCasts: array[0..2] of string = ('PChar', 'PWideChar', 'PAnsiChar');
+  // Umwandlungen, durch die die Regel hindurchsieht: LPARAM(PChar(…)).
+  PassThroughCasts: array[0..9] of string = ('LPARAM', 'WPARAM', 'NativeInt', 'NativeUInt', 'Pointer', 'Integer',
+    'Cardinal', 'Int64', 'UInt64', 'IntPtr');
+  StringCasts: array[0..4] of string = ('string', 'UnicodeString', 'AnsiString', 'WideString', 'RawByteString');
+  // Asynchrone Nachrichten: der Empfänger liest den Zeiger erst nach der Anweisung.
+  AsyncMessages: array[0..3] of string = ('PostMessage', 'PostThreadMessage', 'SendNotifyMessage',
+    'SendMessageCallback');
+
+function TPCharOfTemporaryRule.Descriptor: TRuleDescriptor;
+begin
+  Result := TRuleDescriptor.Create('pchar-of-temporary', TRuleSeverity.Warning,
+    'PChar auf einen temporären String');
+end;
+
+procedure TPCharOfTemporaryRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
+var
+  Types: TDeclaredTypes;
+  Tokens: TTokens;
+  LineBreak: string;
+
+  function Text(ANode: TSyntaxNode): string;
+  begin
+    Result := Copy(AContext.Text, ANode.StartOffset + 1, ANode.EndOffset - ANode.StartOffset);
+  end;
+
+  function IsStringValue(ANode: TSyntaxNode): Boolean;
+  var
+    TypeName: string;
+  begin
+    case ANode.Kind of
+      TSyntaxKind.Literal:
+        Result := (ANode.Name <> '') and CharInSet(ANode.Name[1], ['''', '#']);
+      TSyntaxKind.Identifier:
+        begin
+          TypeName := Types.DeclaredType(ANode.Name, ANode.StartPos);
+          Result := MatchText(TypeName, StringCasts);
+        end;
+      TSyntaxKind.Call:
+        Result := not MatchText(ANode.Name, PCharCasts) and not MatchText(ANode.Name, PassThroughCasts);
+      TSyntaxKind.ParenExpr:
+        Result := (ANode.ChildCount = 1) and IsStringValue(ANode[0]);
+      TSyntaxKind.BinaryExpr:
+        Result := (ANode.Name = '+') and (ANode.ChildCount = 2) and
+          (IsStringValue(ANode[0]) or IsStringValue(ANode[1]));
+    else
+      Result := False;
+    end;
+  end;
+
+  // Nur Literale: der Compiler legt den String als Konstante ab.
+  function IsConstant(ANode: TSyntaxNode): Boolean;
+  begin
+    case ANode.Kind of
+      TSyntaxKind.Literal:
+        Result := True;
+      TSyntaxKind.ParenExpr:
+        Result := (ANode.ChildCount = 1) and IsConstant(ANode[0]);
+      TSyntaxKind.BinaryExpr:
+        Result := (ANode.ChildCount = 2) and IsConstant(ANode[0]) and IsConstant(ANode[1]);
+    else
+      Result := False;
+    end;
+  end;
+
+  // Temporärer String: Verkettung mit einem String oder Ergebnis eines Funktionsaufrufs.
+  function IsTemporary(ANode: TSyntaxNode): Boolean;
+  begin
+    if (ANode.Kind = TSyntaxKind.Call) and MatchText(ANode.Name, StringCasts) and (ANode.ChildCount = 2) then
+      Exit(IsTemporary(ANode[1]));
+    if ANode.Kind = TSyntaxKind.ParenExpr then
+      Exit((ANode.ChildCount = 1) and IsTemporary(ANode[0]));
+    Result := not IsConstant(ANode) and (((ANode.Kind = TSyntaxKind.BinaryExpr) and IsStringValue(ANode)) or
+      ((ANode.Kind = TSyntaxKind.Call) and IsStringValue(ANode)));
+  end;
+
+  // PChar(temporär) in AValue, auch hinter LPARAM(…) und ähnlichen Umwandlungen; sonst nil.
+  function TemporaryPChar(AValue: TSyntaxNode): TSyntaxNode;
+  begin
+    Result := nil;
+    if (AValue = nil) or (AValue.Kind <> TSyntaxKind.Call) or (AValue.ChildCount <> 2) then
+      Exit;
+    if MatchText(AValue.Name, PCharCasts) and IsTemporary(AValue[1]) then
+      Exit(AValue[1]);
+    if MatchText(AValue.Name, PassThroughCasts) then
+      Result := TemporaryPChar(AValue[1]);
+  end;
+
+  function IsLocal(ARoutine: TSyntaxNode; const AName: string): Boolean;
+  var
+    Index, Inner: Integer;
+    Section: TSyntaxNode;
+    Name: string;
+  begin
+    Result := False;
+    if ARoutine = nil then
+      Exit;
+    for Index := 0 to ARoutine.ChildCount - 1 do
+    begin
+      Section := ARoutine[Index];
+      if (Section.Kind <> TSyntaxKind.VarSection) or not SameText(Section.Name, 'var') then
+        Continue;
+      for Inner := 0 to Section.ChildCount - 1 do
+        if Section[Inner].Kind = TSyntaxKind.VarDecl then
+          for Name in SplitString(Section[Inner].Name, ',') do
+            if SameText(Trim(Name), AName) then
+              Exit(True);
+    end;
+  end;
+
+  // Neuer Name AName + 'Text', der in der Routine noch nicht vorkommt.
+  function FreshName(ARoutine: TSyntaxNode; const ABase: string): string;
+  var
+    Number: Integer;
+
+    function Used(const AName: string): Boolean;
+    var
+      Token: TPascalToken;
+    begin
+      for Token in Tokens do
+        if (Token.Offset >= ARoutine.StartOffset) and (Token.Offset < ARoutine.EndOffset) and
+          (Token.Kind = TPascalTokenKind.Identifier) and SameText(Token.Text, AName) then
+          Exit(True);
+      Result := False;
+    end;
+
+  begin
+    Result := ABase + 'Text';
+    Number := 2;
+    while Used(Result) do
+    begin
+      Result := ABase + 'Text' + IntToStr(Number);
+      Inc(Number);
+    end;
+  end;
+
+  procedure CheckAssign(AStatement, ARoutine, AParent: TSyntaxNode);
+  var
+    Expression: TSyntaxNode;
+    Target, Name, Indent: string;
+    Fixes: TArray<TRuleFix>;
+  begin
+    Expression := TemporaryPChar(AStatement[1]);
+    if Expression = nil then
+      Exit;
+    Target := Trim(Text(AStatement[0]));
+    Fixes := nil;
+    // Lokale Variable direkt in einem Block: das Zwischenergebnis in eine Inline-Variable legen.
+    if (AStatement[0].Kind = TSyntaxKind.Identifier) and (AParent <> nil) and (AParent.Kind = TSyntaxKind.Block) and
+      IsLocal(ARoutine, Target) then
+    begin
+      Name := FreshName(ARoutine, Target);
+      Indent := StringOfChar(' ', AStatement.StartPos.Character);
+      Fixes := [TRuleFix.Create(Format('Zwischenergebnis in %s ablegen', [Name]),
+        [TRuleEdit.Create(TTextRange.Create(AStatement.StartPos, AStatement.StartPos),
+        Format('var %s: string := %s;', [Name, Trim(Text(Expression))]) + LineBreak + Indent),
+        TRuleEdit.Create(TTextRange.Create(Expression.StartPos, Expression.EndPos), Name)])];
+    end;
+    AReport.Add(TTextRange.Create(Expression.StartPos, Expression.EndPos), Format('Der Ausdruck %s ist temporär; ' +
+      '%s zeigt nach dieser Zeile auf freigegebenen Speicher.', [Trim(Text(Expression)), Target]),
+      TRuleConfidence.High, Fixes);
+  end;
+
+  procedure CheckAsync(ACall: TSyntaxNode);
+  var
+    Index: Integer;
+    Expression: TSyntaxNode;
+  begin
+    for Index := 1 to ACall.ChildCount - 1 do
+    begin
+      Expression := TemporaryPChar(ACall[Index]);
+      if Expression <> nil then
+        AReport.Add(TTextRange.Create(Expression.StartPos, Expression.EndPos), Format('Der Ausdruck %s ist ' +
+          'temporär; %s liest den Zeiger erst später aus freigegebenem Speicher.', [Trim(Text(Expression)),
+          ACall.Name]), TRuleConfidence.High);
+    end;
+  end;
+
+  procedure Visit(ANode, ARoutine, AParent: TSyntaxNode);
+  var
+    Index: Integer;
+    Routine: TSyntaxNode;
+  begin
+    Routine := ARoutine;
+    if ANode.Kind = TSyntaxKind.RoutineDecl then
+      Routine := ANode;
+    if (ANode.Kind = TSyntaxKind.AssignStatement) and (ANode.ChildCount = 2) then
+      CheckAssign(ANode, Routine, AParent)
+    else if (ANode.Kind = TSyntaxKind.Call) and MatchText(ANode.Name, AsyncMessages) then
+      CheckAsync(ANode);
+    for Index := 0 to ANode.ChildCount - 1 do
+      Visit(ANode[Index], Routine, ANode);
+  end;
+
+begin
+  if AContext.Tree = nil then
+    Exit;
+  Tokens := AContext.Tree.Tokens;
+  LineBreak := TTextLines.LineBreakOf(AContext.Text);
+  Types := TDeclaredTypes.Create(AContext.Tree, AContext.Text);
+  try
+    Visit(AContext.Tree.Root, nil, nil);
+  finally
+    Types.Free;
+  end;
+end;
+
 procedure RegisterRtlTypePatternRules(const ARegistry: TRuleRegistry);
 begin
   ARegistry.Register(TInt32MulOverflowRule.Create);
@@ -1069,6 +1289,7 @@ begin
   ARegistry.Register(TFormatWithoutSettingsRule.Create);
   ARegistry.Register(TManagedTypeRawMemoryRule.Create);
   ARegistry.Register(TThreadvarManagedRule.Create);
+  ARegistry.Register(TPCharOfTemporaryRule.Create);
 end;
 
 end.

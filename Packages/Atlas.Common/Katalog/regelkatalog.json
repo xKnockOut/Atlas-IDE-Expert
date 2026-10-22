@@ -1307,6 +1307,16 @@
       "description": "Delphi does not finalize threadvar variables. A string, interface, dynamic array or variant in a threadvar (also inside a record or static array) leaks in every thread that ends. Types are resolved in the file and in the index. High confidence. No quick fix: release the value at the end of the thread (for example set it to '' or nil in TThread.Execute), or store a pointer or a fixed-size buffer instead.",
       "bad": "threadvar\n  LetzteMeldung: string;",
       "good": "threadvar\n  LetzteMeldung: PChar;"
+    },
+    {
+      "id": "pchar-of-temporary",
+      "name": "PChar of a temporary string",
+      "category": "bug",
+      "severity": "warning",
+      "group": "find-bugs",
+      "description": "PChar (PWideChar, PAnsiChar) of a temporary string, such as a concatenation with a string (S + '.bak') or a function result (IntToStr(N)), is stored in a variable, a field or Result, or passed to PostMessage, PostThreadMessage, SendNotifyMessage or SendMessageCallback (also behind LPARAM(…)). The temporary string is released after the statement, so the pointer points to freed memory. Passing it to an ordinary call such as CopyFile is fine. High confidence. Quick fix for local variables: keep the intermediate result in an inline string variable.",
+      "bad": "Ziel := PChar(Pfad + '.bak');\nCopyFile(PChar(Pfad), Ziel, False);",
+      "good": "var ZielText: string := Pfad + '.bak';\nZiel := PChar(ZielText);\nCopyFile(PChar(Pfad), Ziel, False);"
     }
   ]
 }

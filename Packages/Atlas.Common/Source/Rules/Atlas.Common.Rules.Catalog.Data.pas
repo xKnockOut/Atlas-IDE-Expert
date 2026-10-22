@@ -1327,6 +1327,16 @@ begin
     '      "description": "Delphi does not finalize threadvar variables. A string, interface, dynamic array or variant in a threadvar (also inside a record or static array) leaks in every thread that ends.' + ' Types are resolved in the file and in the index. High confidence. No quick fix: release the value at the end of the thread (for example set it to '''' or nil in TThread.Execute), or store a pointer or ' + 'a fixed-size buffer instead.",' + #10 +
     '      "bad": "threadvar\n  LetzteMeldung: string;",' + #10 +
     '      "good": "threadvar\n  LetzteMeldung: PChar;"' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "pchar-of-temporary",' + #10 +
+    '      "name": "PChar of a temporary string",' + #10 +
+    '      "category": "bug",' + #10 +
+    '      "severity": "warning",' + #10 +
+    '      "group": "find-bugs",' + #10 +
+    '      "description": "PChar (PWideChar, PAnsiChar) of a temporary string, such as a concatenation with a string (S + ''.bak'') or a function result (IntToStr(N)), is stored in a variable, a field or Res' + 'ult, or passed to PostMessage, PostThreadMessage, SendNotifyMessage or SendMessageCallback (also behind LPARAM(…)). The temporary string is released after the statement, so the pointer points to freed' + ' memory. Passing it to an ordinary call such as CopyFile is fine. High confidence. Quick fix for local variables: keep the intermediate result in an inline string variable.",' + #10 +
+    '      "bad": "Ziel := PChar(Pfad + ''.bak'');\nCopyFile(PChar(Pfad), Ziel, False);",' + #10 +
+    '      "good": "var ZielText: string := Pfad + ''.bak'';\nZiel := PChar(ZielText);\nCopyFile(PChar(Pfad), Ziel, False);"' + #10 +
     '    }' + #10 +
     '  ]' + #10 +
     '}' + #10 +
@@ -2022,6 +2032,11 @@ begin
     '      "id": "threadvar-managed",' + #10 +
     '      "name": "threadvar mit verwaltetem Typ",' + #10 +
     '      "description": "Delphi finalisiert threadvar-Variablen nicht. Ein String, Interface, dynamisches Array oder Variant in einer threadvar (auch in einem Record oder statischen Array) leckt in jedem' + ' Thread, der endet. Typen werden in der Datei und im Index aufgelöst. Konfidenz hoch. Keine Schnellkorrektur: den Wert am Thread-Ende freigeben (etwa in TThread.Execute auf '''' bzw. nil setzen) oder st' + 'attdessen einen Zeiger bzw. Puffer fester Größe ablegen."' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "pchar-of-temporary",' + #10 +
+    '      "name": "PChar auf einen temporären String",' + #10 +
+    '      "description": "PChar (PWideChar, PAnsiChar) eines temporären Strings, etwa einer Verkettung mit einem String (S + ''.bak'') oder eines Funktionsergebnisses (IntToStr(N)), wird in einer Variablen,' + ' einem Feld oder Result gemerkt oder an PostMessage, PostThreadMessage, SendNotifyMessage oder SendMessageCallback übergeben (auch hinter LPARAM(…)). Der temporäre String wird nach der Anweisung freig' + 'egeben, der Zeiger zeigt dann ins Leere. Die Übergabe an einen gewöhnlichen Aufruf wie CopyFile ist in Ordnung. Konfidenz hoch. Schnellkorrektur für lokale Variablen: das Zwischenergebnis in eine Inli' + 'ne-String-Variable legen."' + #10 +
     '    }' + #10 +
     '  ]' + #10 +
     '}' + #10 +

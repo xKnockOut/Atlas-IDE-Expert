@@ -683,6 +683,11 @@
       "id": "threadvar-managed",
       "name": "threadvar mit verwaltetem Typ",
       "description": "Delphi finalisiert threadvar-Variablen nicht. Ein String, Interface, dynamisches Array oder Variant in einer threadvar (auch in einem Record oder statischen Array) leckt in jedem Thread, der endet. Typen werden in der Datei und im Index aufgelöst. Konfidenz hoch. Keine Schnellkorrektur: den Wert am Thread-Ende freigeben (etwa in TThread.Execute auf '' bzw. nil setzen) oder stattdessen einen Zeiger bzw. Puffer fester Größe ablegen."
+    },
+    {
+      "id": "pchar-of-temporary",
+      "name": "PChar auf einen temporären String",
+      "description": "PChar (PWideChar, PAnsiChar) eines temporären Strings, etwa einer Verkettung mit einem String (S + '.bak') oder eines Funktionsergebnisses (IntToStr(N)), wird in einer Variablen, einem Feld oder Result gemerkt oder an PostMessage, PostThreadMessage, SendNotifyMessage oder SendMessageCallback übergeben (auch hinter LPARAM(…)). Der temporäre String wird nach der Anweisung freigegeben, der Zeiger zeigt dann ins Leere. Die Übergabe an einen gewöhnlichen Aufruf wie CopyFile ist in Ordnung. Konfidenz hoch. Schnellkorrektur für lokale Variablen: das Zwischenergebnis in eine Inline-String-Variable legen."
     }
   ]
 }

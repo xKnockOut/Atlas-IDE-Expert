@@ -42,3 +42,4 @@ missing-inherited | Ref.Komponenten.Anzeige.pas |   inherited;\n  FStil := asRah
 destroy-called-directly | Ref.Formulare.Haupt.pas | Formular.Free; | Formular.Destroy;
 managed-type-raw-memory | Ref.Komponenten.Anzeige.pas | FStil := asRahmen; | FStil := asRahmen;\n  FillChar(FBeschriftung, SizeOf(FBeschriftung), 0);
 threadvar-managed | Ref.Sprache.Merkmale.pas | { TDezimalFormatierer } | threadvar\n  LetzteMeldung: string;\n\n{ TDezimalFormatierer }
+pchar-of-temporary | Ref.Formulare.Haupt.pas | Formular.ShowModal; | Formular.ShowModal;\n    Caption := PChar(IntToStr(Tag));
