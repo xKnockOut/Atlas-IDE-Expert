@@ -174,8 +174,9 @@ begin
     FSettings.Rules := Rules;
 end;
 
-/// <summary>Array aus Objekten mit den Texten "open" und "close" (pair-without-finally, #930).</summary>
-function IsPairList(ANode: TJsonNode): Boolean;
+/// <summary>Array aus Objekten, die alle Texte AKeys haben: "open" und "close" (pair-without-finally, #930),
+/// "start", "commit" und "rollback" (transaction-without-rollback, #965).</summary>
+function IsPairList(ANode: TJsonNode; const AKeys: array of string): Boolean;
 var
   Index, Inner, Found: Integer;
   Item: TJsonNode;
@@ -190,9 +191,9 @@ begin
       Exit(False);
     Found := 0;
     for Inner := 0 to Item.Count - 1 do
-      if ((Item.Keys[Inner] = 'open') or (Item.Keys[Inner] = 'close')) and (Item[Inner].Kind = TJsonKind.String_) then
+      if (IndexStr(Item.Keys[Inner], AKeys) >= 0) and (Item[Inner].Kind = TJsonKind.String_) then
         Inc(Found);
-    if Found <> 2 then
+    if Found <> Length(AKeys) then
       Exit(False);
   end;
 end;
@@ -289,10 +290,16 @@ begin
             ReportNode(Value[Inner], Format('"%s" muss eine Liste von Zahlen sein', [Value.Keys[Inner]]))
           else if (IndexStr(Value.Keys[Inner], StringRuleOptions) >= 0) and (Value[Inner].Kind <> TJsonKind.String_) then
             ReportNode(Value[Inner], Format('"%s" muss ein Text sein', [Value.Keys[Inner]]))
-          else if (Value.Keys[Inner] = 'pairs') and not IsPairList(Value[Inner]) then
+          // Transaktionspaare von transaction-without-rollback (#965).
+          else if (Value.Keys[Inner] = 'pairs') and (Rule.Id = 'transaction-without-rollback') then
+          begin
+            if not IsPairList(Value[Inner], ['start', 'commit', 'rollback']) then
+              ReportNode(Value[Inner], '"pairs" muss eine Liste von Objekten mit "start", "commit" und "rollback" sein');
+          end
+          else if (Value.Keys[Inner] = 'pairs') and not IsPairList(Value[Inner], ['open', 'close']) then
             ReportNode(Value[Inner], '"pairs" muss eine Liste von Objekten mit "open" und "close" sein')
           // Paare von ota-notifier-not-removed (#944).
-          else if (Value.Keys[Inner] = 'registerPairs') and not IsPairList(Value[Inner]) then
+          else if (Value.Keys[Inner] = 'registerPairs') and not IsPairList(Value[Inner], ['open', 'close']) then
             ReportNode(Value[Inner], '"registerPairs" muss eine Liste von Objekten mit "open" und "close" sein');
         Rule.Options := Copy(FText, Value.Start + 1, Value.Stop - Value.Start);
       end

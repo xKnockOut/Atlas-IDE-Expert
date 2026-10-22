@@ -1995,6 +1995,40 @@
       "description": "After Edit, Append or Insert (without arguments) on a dataset, the same routine calls neither Post nor Cancel (nor CheckBrowseMode). The change stays open and is silently lost on scrolling or saved unexpectedly later; on an exception in between, nothing cancels it. Silent when another routine of the unit posts or cancels the same dataset (an Edit button with a separate Save button) and when the dataset is passed on after Edit (argument, assignment, with). Medium confidence. Quick fix: wrap the following statements that use the dataset in try … except, with Post at the end of the try part and Cancel; raise; in the except part.",
       "bad": "tblKunde.Edit;\ntblKunde.FieldByName('Status').AsInteger := Ord(ksAktiv);\nProtokollieren;",
       "good": "tblKunde.Edit;\ntry\n  tblKunde.FieldByName('Status').AsInteger := Ord(ksAktiv);\n  tblKunde.Post;\nexcept\n  tblKunde.Cancel;\n  raise;\nend;\nProtokollieren;"
+    },
+    {
+      "id": "transaction-without-rollback",
+      "name": "Transaction without Rollback",
+      "category": "bug",
+      "severity": "warning",
+      "group": "database",
+      "description": "StartTransaction without Rollback in the except part of the try that directly follows. On an exception the transaction stays open and holds locks. Recognized for FireDAC (TFDConnection, TFDTransaction), IBX and dbExpress (StartTransaction/Commit/Rollback), dbExpress from XE (BeginTransaction/CommitFreeAndNil/RollbackFreeAndNil, also as T := Conn.BeginTransaction) and ADO (BeginTrans/CommitTrans/RollbackTrans). The option pairs replaces these pairs with your own. The Rollback may sit in a try … except inside a try … finally that follows directly. Silent when another routine of the unit rolls back the same connection (transaction across several events). High confidence. Quick fix: wrap the statements up to the Commit of the same block in try … except with Rollback (with the arguments of the Commit) and raise; only when a Commit follows in the same block.",
+      "bad": "Verbindung.StartTransaction;\nBuchen(Auftrag);\nVerbindung.Commit;",
+      "good": "Verbindung.StartTransaction;\ntry\n  Buchen(Auftrag);\n  Verbindung.Commit;\nexcept\n  Verbindung.Rollback;\n  raise;\nend;",
+      "options": [
+        {
+          "name": "pairs",
+          "type": "json",
+          "default": [
+            {
+              "start": "StartTransaction",
+              "commit": "Commit",
+              "rollback": "Rollback"
+            },
+            {
+              "start": "BeginTransaction",
+              "commit": "CommitFreeAndNil",
+              "rollback": "RollbackFreeAndNil"
+            },
+            {
+              "start": "BeginTrans",
+              "commit": "CommitTrans",
+              "rollback": "RollbackTrans"
+            }
+          ],
+          "description": "Transaction methods per library as [{\"start\": …, \"commit\": …, \"rollback\": …}]; replaces the built-in pairs."
+        }
+      ]
     }
   ]
 }
