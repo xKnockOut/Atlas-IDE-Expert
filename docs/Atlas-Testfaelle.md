@@ -3929,3 +3929,18 @@ Voraussetzung: Server läuft in der IDE mit Projekt; Delphi-Installation bekannt
 | UN11 | `"searchPaths": "atlas"` bzw. `"both"`; `"searchPaths": "alles"` | Units aus dem Index bzw. den Quellpfaden gelten als gefunden; beim falschen Wert ein Konfigurationsfehler |
 | UN12 | `"uses-unit-not-found": "off"`, `"group:compiler": "off"` bzw. `exclude` mit dem Pfad der Datei | Keine Meldung |
 | UN13 | Abgleich mit Delphi: UN1, UN4, UN6, UN7, UN8, UN9 übersetzen; außerdem ein großes echtes Projekt öffnen | dcc meldet F2613, F1026, E2202, F2092 bzw. F1027 an denselben Stellen; im echten Projekt meldet Atlas nichts, was dcc nicht meldet |
+
+## Attribut nicht gefunden (#1019)
+
+Voraussetzung: Server läuft in der IDE mit Projekt; RTL im Index (Bibliotheks-Cache).
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| UA1 | Testunit mit `uses System.SysUtils;` und `[TestFixture]` vor der Klasse, `[Test]` vor einer Methode | Fehler `unresolved-attribute` an beiden Namen: „Attribut TestFixture nicht gefunden und wird ignoriert; die Tests laufen nicht (wie W1074). Unit DUnitX.TestFramework fehlt.“; im Fenster „Atlas-Prüfung“ (Gruppe Compiler vorab) und im Befund-Hover (**Abnahme**) |
+| UA2 | Schnellkorrektur „uses DUnitX.TestFramework ergänzen“, danach Strg+Z | Unit im interface-uses ergänzt, beide Meldungen weg, Test läuft im Test-Explorer; ein Undo-Schritt stellt es wieder her |
+| UA3 | `[JSONName('name')]` an einem Feld ohne `REST.Json.Types` in uses | „Attribut JSONName nicht gefunden und wird ignoriert (wie W1074). Unit REST.Json.Types fehlt.“ |
+| UA4 | `[GibtEsNicht]` | Meldung ohne Unit, ohne Korrektur |
+| UA5 | Eigene Klasse `MarkeAttribute = class(TCustomAttribute)` und `[Marke]`; `[Weak]`, `[Unsafe]`, `[Volatile]` an Feldern; GUID `['{…}']` im Interface | Keine Meldung |
+| UA6 | Eine Unit aus uses ohne Quelltext (nur `.dcu`, nicht im Index); Attribut in `{$IFDEF TESTS} … {$ENDIF}` | Keine Meldung |
+| UA7 | `"unresolved-attribute": "off"`, `"group:compiler": "off"` bzw. `exclude` mit dem Pfad der Datei | Keine Meldung |
+| UA8 | Abgleich mit Delphi: UA1, UA3 und UA4 übersetzen | dcc meldet W1074 an denselben Stellen, für UA5 und UA6 nichts |

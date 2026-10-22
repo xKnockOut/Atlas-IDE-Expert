@@ -10,7 +10,7 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 | [Exceptions](#gruppe-exceptions) | 8 |
 | [Threads](#gruppe-threads) | 13 |
 | [Datenbank](#gruppe-database) | 4 |
-| [Compiler vorab](#gruppe-compiler) | 3 |
+| [Compiler vorab](#gruppe-compiler) | 4 |
 | [Robustheit und Muster](#gruppe-robustness) | 3 |
 | [Performance](#gruppe-performance) | 4 |
 | [Sicherheit](#gruppe-security) | 11 |
@@ -134,6 +134,7 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 | [`signature-mismatch`](#signature-mismatch) | Implementierung weicht von der Deklaration ab | Bug | Fehler |
 | [`interface-not-implemented`](#interface-not-implemented) | Interface-Methode fehlt in der Klasse | Bug | Fehler |
 | [`uses-unit-not-found`](#uses-unit-not-found) | Unit in uses nicht gefunden | Bug | Fehler |
+| [`unresolved-attribute`](#unresolved-attribute) | Attribut nicht gefunden und still ignoriert | Bug | Fehler |
 
 <a id="gruppe-robustness"></a>
 ### Robustheit und Muster
@@ -4211,4 +4212,33 @@ Richtig:
 ```pascal
 uses
   System.SysUtils, Vcl.Forms, Kunden.Daten, Rechnung.Druck;
+```
+
+<a id="unresolved-attribute"></a>
+### unresolved-attribute
+
+**Attribut nicht gefunden und still ignoriert** · Bug · Fehler · Gruppe Compiler vorab
+
+Ein Attribut [Name] lässt sich weder einer Klasse NameAttribute noch Name zuordnen, meist weil eine Unit in uses fehlt. Delphi warnt nur (W1074) und übergeht das Attribut: DUnitX-Tests laufen dann nicht, JSON- oder ORM-Zuordnungen fehlen. Die Meldung nennt die Unit, die das Attribut im Index deklariert; eine Fassaden-Unit, die den Typ aus einer anderen Kandidatin weiterreicht (DUnitX.TestFramework statt DUnitX.Attributes), geht vor, und die DUnitX-Attribute sind auch ohne DUnitX im Index bekannt. Attribute des Compilers wie Weak, Unsafe, Ref und Volatile zählen immer. Still ohne die Unit System im Index, wenn eine Unit aus uses nicht im Index steht (sie könnte das Attribut deklarieren), in {$IF}-Blöcken und bei unbekanntem Vorfahren der umgebenden Klasse; mit Include-Dateien ist die Konfidenz mittel. Korrektur: Unit in uses aufnehmen.
+
+Entspricht der Compilermeldung `W1074`, `E2289`.
+
+Mit Treffer:
+
+```pascal
+uses
+  System.SysUtils;
+type
+  [TestFixture]
+  TKundeTests = class
+```
+
+Richtig:
+
+```pascal
+uses
+  System.SysUtils, DUnitX.TestFramework;
+type
+  [TestFixture]
+  TKundeTests = class
 ```

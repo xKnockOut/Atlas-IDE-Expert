@@ -16,12 +16,22 @@
 // Pfad). Korrekturen: Namen mit Namespace bzw. ähnlich geschriebene Units
 // einsetzen, Ordner außerhalb der Suchpfade in DCC_UnitSearchPath der .dproj
 // aufnehmen.
+//
+// unresolved-attribute (#1019, wie W1074, E2289): Ein Attribut [Name] lässt
+// sich weder als Klasse NameAttribute noch als Name auflösen; Delphi warnt nur
+// und übergeht es (DUnitX-Tests laufen dann nicht). Vorgeschlagen wird die Unit,
+// die den Typ im Index deklariert; Fassaden-Units, die ihn aus einer anderen
+// Kandidaten-Unit weiterreichen (DUnitX.TestFramework), gehen vor. Ohne System
+// im Index, wenn eine Unit aus uses nicht im Index steht (sie könnte das
+// Attribut deklarieren), in {$IF…}-Blöcken und bei unbekannten Vorfahren bleibt
+// die Regel still; Attribute des Compilers (Weak, Unsafe, Ref …) zählen immer.
 
 interface
 
 uses
   Atlas.Common.Documents.Contract,
   Atlas.Common.Pascal.Contract,
+  Atlas.Common.Index.Contract,
   Atlas.Common.Rules.Contract,
   Atlas.Common.Rules.Registry;
 
@@ -38,6 +48,15 @@ type
     InPath: string;
     /// <summary>Alle Namensteile.</summary>
     Range: TTextRange;
+  end;
+
+  TUnresolvedAttributeRule = class(TInterfacedObject, IRule)
+  public
+    function Descriptor: TRuleDescriptor;
+    procedure Check(const AContext: TRuleContext; const AReport: IRuleReport);
+    /// <summary>Units, die AName bzw. ANameAttribute als Typ deklarieren, ohne die, die eine andere Kandidaten-Unit
+    /// im interface einbindet und weiterreicht; sortiert.</summary>
+    class function DeclaringUnits(const AIndex: ISymbolIndex; const AName: string): TArray<string>; static;
   end;
 
   TUsesUnitNotFoundRule = class(TInterfacedObject, IRule)
@@ -63,11 +82,14 @@ uses
   System.Math,
   System.Generics.Collections,
   System.Generics.Defaults,
+  Atlas.Text.Lines,
   Atlas.Common.Rules.Options,
   Atlas.Common.Projects.DprojEditor,
   Atlas.Common.Editing.UsesClause,
   Atlas.Common.Configuration.Contract,
+  Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Semantics.NameResolver,
+  Atlas.Common.Semantics.Attributes,
   Atlas.Common.Semantics.UnresolvedNames;
 
 type
@@ -483,10 +505,208 @@ begin
   end;
 end;
 
+{ TUnresolvedAttributeRule }
+
+const
+  // Attribute, die der Compiler selbst kennt (System); sie fehlen in einem unvollständigen Index.
+  CompilerAttributes: array[0..8] of string = ('Weak', 'Unsafe', 'Ref', 'Volatile', 'Align', 'HPPGEN', 'HFA',
+    'Stored', 'Result');
+  // DUnitX-Attribute: ohne sie laufen die Tests nicht. Unit, falls DUnitX nicht im Index steht.
+  DUnitXAttributes: array[0..16] of string = ('TestFixture', 'Test', 'TestCase', 'Setup', 'TearDown',
+    'SetupFixture', 'TearDownFixture', 'Ignore', 'Category', 'WillRaise', 'WillRaiseAny', 'RepeatTest', 'MaxTime',
+    'TestCaseProvider', 'TestInOwnThread', 'IgnoreMemoryLeaks', 'AutoNameTestCase');
+  DUnitXUnit = 'DUnitX.TestFramework';
+
+function TUnresolvedAttributeRule.Descriptor: TRuleDescriptor;
+begin
+  Result := TRuleDescriptor.Create('unresolved-attribute', TRuleSeverity.Error,
+    'Attribut nicht gefunden und vom Compiler still ignoriert (wie W1074)');
+end;
+
+class function TUnresolvedAttributeRule.DeclaringUnits(const AIndex: ISymbolIndex; const AName: string): TArray<string>;
+var
+  Candidates: TList<string>;
+  Location: TSymbolLocation;
+  Name, Other: string;
+  Found: TUnitIndex;
+  Used: Boolean;
+begin
+  Result := nil;
+  if AIndex = nil then
+    Exit;
+  Candidates := TList<string>.Create;
+  try
+    for Name in TAttributes.ClassNames(AName) do
+      for Location in AIndex.FindSymbols(Name) do
+        if (Location.Symbol.Container = '') and (Location.Symbol.Kind in [TIndexSymbolKind.ClassType,
+          TIndexSymbolKind.TypeAlias]) and not Candidates.Contains(Location.UnitName) then
+          Candidates.Add(Location.UnitName);
+    // Fassade vor Quelle: eine Unit, die eine andere Kandidatin im interface einbindet, reicht den Typ weiter.
+    for Name in Candidates do
+    begin
+      Used := False;
+      for Other in Candidates do
+        if not SameText(Other, Name) and AIndex.FindUnit(Other, Found) and
+          (IndexText(Name, Found.InterfaceUses) >= 0) then
+          Used := True;
+      if not Used then
+        Result := Result + [Name];
+    end;
+    TArray.Sort<string>(Result);
+  finally
+    Candidates.Free;
+  end;
+end;
+
+/// <summary>Stehen alle Units aus uses im Index (auch über einen Namespace, notfalls nachgeladen)? Sonst kann
+/// eine davon das Attribut deklarieren.</summary>
+function UsesKnown(const AContext: TRuleContext): Boolean;
+var
+  Name, Namespace: string;
+  Found: TUnitIndex;
+  Known: Boolean;
+begin
+  for Name in TUsesClauses.UsedUnits(AContext.Tree.Tokens) do
+  begin
+    Known := AContext.Index.FindUnit(Name, Found);
+    for Namespace in AContext.Namespaces do
+      if not Known then
+        Known := AContext.Index.FindUnit(Namespace + '.' + Name, Found);
+    if not Known and Assigned(AContext.EnsureUnit) then
+      Known := AContext.EnsureUnit(Name);
+    if not Known then
+      Exit(False);
+  end;
+  Result := True;
+end;
+
+/// <summary>Offset ab 0 des ersten Tokens an APosition; 0 ohne.</summary>
+function OffsetAt(const ATokens: TArray<TPascalToken>; const APosition: TTextPosition): Integer;
+var
+  Token: TPascalToken;
+begin
+  for Token in ATokens do
+    if (Token.StartPos.Line = APosition.Line) and (Token.StartPos.Character = APosition.Character) then
+      Exit(Token.Offset);
+  Result := 0;
+end;
+
+procedure TUnresolvedAttributeRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
+var
+  Resolver: TNameResolver;
+  Lines: TArray<Boolean>;
+  LineBreak: string;
+  Level: TRuleConfidence;
+
+  procedure CheckItem(AItem: TSyntaxNode);
+  var
+    NameNode: TSyntaxNode;
+    Use: TAttributeUse;
+    Names: TArray<string>;
+    Resolved: TResolvedSymbol;
+    Units: TArray<string>;
+    UnitName, Message, Bare: string;
+    Fixes: TArray<TRuleFix>;
+    Fix: TRuleFix;
+    Edit: TTextEdit;
+    Index: Integer;
+  begin
+    NameNode := AItem;
+    if (AItem.Kind = TSyntaxKind.Call) and (AItem.ChildCount > 0) then
+      NameNode := AItem[0];
+    if not (NameNode.Kind in [TSyntaxKind.Identifier, TSyntaxKind.MemberAccess]) or
+      not TAttributes.At(AContext.Tree, NameNode.StartPos, Use) then
+      Exit;
+    Bare := Copy(Use.Name, LastDelimiter('.', Use.Name) + 1, MaxInt);
+    if MatchText(Bare, CompilerAttributes) or MatchText(Bare + 'Attribute', CompilerAttributes) then
+      Exit;
+    // Zuerst NameAttribute, dann Name, wie der Compiler.
+    Names := Use.Name.Split(['.']);
+    Names[High(Names)] := Names[High(Names)] + 'Attribute';
+    Resolved := Resolver.ResolveChain(AContext.Tree, AContext.RelativePath, Names, NameNode.StartOffset);
+    if Resolved.Found or Resolver.HasUnknownAncestor then
+      Exit;
+    Resolved := Resolver.ResolveChain(AContext.Tree, AContext.RelativePath, Use.Name.Split(['.']),
+      NameNode.StartOffset);
+    if Resolved.Found or Resolver.HasUnknownAncestor or Resolver.IsUnitPrefix(Use.Name) then
+      Exit;
+    Units := DeclaringUnits(AContext.Index, Bare);
+    if (Length(Units) = 0) and MatchText(Bare, DUnitXAttributes) then
+      Units := [DUnitXUnit];
+    Message := Format('Attribut %s nicht gefunden und wird ignoriert', [Use.Name]);
+    if MatchText(Bare, DUnitXAttributes) or ((Length(Units) > 0) and StartsText('DUnitX', Units[0])) then
+      Message := Message + '; die Tests laufen nicht';
+    Message := Message + ' (wie W1074).';
+    if Length(Units) = 1 then
+      Message := Message + Format(' Unit %s fehlt.', [Units[0]])
+    else if Length(Units) > 1 then
+      Message := Message + Format(' In Frage kommen %s.', [Alternatives(Units)]);
+    Fixes := nil;
+    for UnitName in Units do
+      if TUsesClauses.AddUnit(AContext.Tree.Tokens, OffsetAt(AContext.Tree.Tokens, NameNode.StartPos), UnitName,
+        LineBreak, Edit) then
+      begin
+        Fix := TRuleFix.Create(Format('uses %s ergänzen', [UnitName]), [Edit]);
+        Fixes := Fixes + [Fix];
+      end;
+    if Length(Fixes) > 1 then
+      for Index := 0 to High(Fixes) do
+        Fixes[Index].Alternative := True;
+    AReport.Add(Use.NameRange, Message, Level, Fixes);
+  end;
+
+  procedure Visit(ANode: TSyntaxNode);
+  var
+    Index: Integer;
+  begin
+    if ANode.Kind = TSyntaxKind.Attribute then
+    begin
+      if (ANode.StartPos.Line <= High(Lines)) and Lines[ANode.StartPos.Line] then
+        Exit;
+      for Index := 0 to ANode.ChildCount - 1 do
+        CheckItem(ANode[Index]);
+      Exit;
+    end;
+    // In Anweisungen gibt es keine Attribute.
+    if ANode.Kind in [TSyntaxKind.Block, TSyntaxKind.AsmBlock] then
+      Exit;
+    for Index := 0 to ANode.ChildCount - 1 do
+      Visit(ANode[Index]);
+  end;
+
+var
+  Token: TPascalToken;
+begin
+  if (AContext.Tree = nil) or (AContext.Tree.Root = nil) or not TUnresolvedNames.Available(AContext.Index) or
+    not UsesKnown(AContext) then
+    Exit;
+  Lines := ConditionalLines(AContext.Tree.Tokens);
+  LineBreak := TTextLines.LineBreakOf(AContext.Text);
+  // Mit Include-Dateien kann das Attribut dort deklariert sein.
+  Level := TRuleConfidence.High;
+  for Token in AContext.Tree.Tokens do
+    if (Token.Kind = TPascalTokenKind.Directive) and (StartsText('{$I ', Token.Text) or
+      StartsText('{$INCLUDE ', Token.Text)) then
+      Level := TRuleConfidence.Medium;
+  Resolver := TNameResolver.Create(AContext.Index, AContext.EnsureUnit);
+  try
+    Resolver.Namespaces := AContext.Namespaces;
+    Resolver.PinTree(AContext.Tree, AContext.RelativePath);
+    try
+      Visit(AContext.Tree.Root);
+    finally
+      Resolver.UnpinTree;
+    end;
+  finally
+    Resolver.Free;
+  end;
+end;
+
 procedure RegisterUnresolvedRules(ARegistry: TRuleRegistry);
 begin
   ARegistry.Register(TUnresolvedIdentifierRule.Create);
   ARegistry.Register(TUsesUnitNotFoundRule.Create);
+  ARegistry.Register(TUnresolvedAttributeRule.Create);
 end;
 
 end.
