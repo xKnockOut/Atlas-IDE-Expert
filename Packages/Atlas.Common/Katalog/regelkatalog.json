@@ -2243,6 +2243,28 @@
         "W1020",
         "E2402"
       ]
+    },
+    {
+      "id": "property-accessor-invalid",
+      "name": "Invalid property getter or setter",
+      "category": "bug",
+      "severity": "error",
+      "group": "compiler",
+      "description": "The name after read or write of a property does not fit: it is declared neither in the class nor in its ancestors, or it is a property (like E2168); the getter or setter has the wrong kind, parameters or types (like E2234); the setter takes a var or out parameter (like E2282); the accessor is overloaded (like E2271); a class property uses an instance member or a class method without static (like E2355), or an instance property uses a class member (like E2356); an array property or a property with index uses a field (like E2174); a field selector goes through a field that is no record (like E2459), names a member that is no field (like E2461) or a field the record lacks (like E2562). Names are looked up in the file and, for ancestors, in the symbol index; the rule stays silent when the ancestor chain breaks, the name only exists in an inactive branch, the class cannot see it or the class includes files. Types are compared only when both are built in or declared as types of their own. Quick fix for a missing F<Name>, Get<Name> or Set<Name>: create it (like the completion after read/write, completion.accessorSection).",
+      "bad": "TKunde = class\nprivate\n  FName: string;\npublic\n  property Name: string read FName write SetName;\nend;",
+      "good": "TKunde = class\nprivate\n  FName: string;\n  procedure SetName(const Value: string);\npublic\n  property Name: string read FName write SetName;\nend;",
+      "compilerCodes": [
+        "E2168",
+        "E2234",
+        "E2282",
+        "E2271",
+        "E2355",
+        "E2356",
+        "E2174",
+        "E2459",
+        "E2461",
+        "E2562"
+      ]
     }
   ]
 }

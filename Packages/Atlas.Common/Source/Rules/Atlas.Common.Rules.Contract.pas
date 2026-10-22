@@ -167,6 +167,9 @@ type
     NoFreeFields: Boolean;
     /// <summary>Freigabe als FreeAndNil(FFeld) statt FFeld.Free (refactoring.freeFieldsStyle, #666).</summary>
     FreeFieldsFreeAndNil: Boolean;
+    /// <summary>Zugriffsmethoden im protected-Abschnitt anlegen (completion.accessorSection, #467, für #1001).
+    /// </summary>
+    AccessorsProtected: Boolean;
     /// <summary>Abbruch zwischen den Regeln (Diagnoselog 15.10.2026); nil = nie abbrechen.</summary>
     Cancelled: TRuleCancelled;
     /// <summary>Gemeinsame Ableitungen des Laufs (Review P-03); setzt TRuleEngine.Run. nil = jede Regel

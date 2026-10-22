@@ -10,7 +10,7 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 | [Exceptions](#gruppe-exceptions) | 8 |
 | [Threads](#gruppe-threads) | 13 |
 | [Datenbank](#gruppe-database) | 4 |
-| [Compiler vorab](#gruppe-compiler) | 12 |
+| [Compiler vorab](#gruppe-compiler) | 13 |
 | [Robustheit und Muster](#gruppe-robustness) | 3 |
 | [Performance](#gruppe-performance) | 4 |
 | [Sicherheit](#gruppe-security) | 11 |
@@ -143,6 +143,7 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 | [`conditional-directive-unbalanced`](#conditional-directive-unbalanced) | Bedingte Direktiven unvollständig oder unbekannt | Bug | Fehler |
 | [`override-target-missing`](#override-target-missing) | override ohne passende virtuelle Methode | Bug | Fehler |
 | [`abstract-class-instantiated`](#abstract-class-instantiated) | Instanz einer Klasse mit abstrakten Methoden | Bug | Warnung |
+| [`property-accessor-invalid`](#property-accessor-invalid) | Getter oder Setter einer Property ungültig | Bug | Fehler |
 
 <a id="gruppe-robustness"></a>
 ### Robustheit und Muster
@@ -4461,4 +4462,36 @@ Richtig:
 ```pascal
 Form := TKreis.Create;
 Gesamt := Gesamt + Form.Flaeche;
+```
+
+<a id="property-accessor-invalid"></a>
+### property-accessor-invalid
+
+**Getter oder Setter einer Property ungültig** · Bug · Fehler · Gruppe Compiler vorab
+
+Der Name hinter read oder write einer Property passt nicht: Er ist weder in der Klasse noch in ihren Vorfahren deklariert oder ist eine Property (wie E2168); Getter oder Setter haben die falsche Art, Parameter oder Typen (wie E2234); der Setter nimmt einen var- oder out-Parameter (wie E2282); die Zugriffsmethode ist überladen (wie E2271); eine Klassen-Property nutzt ein Instanzmitglied oder eine Klassenmethode ohne static (wie E2355), eine Instanz-Property ein Klassenmitglied (wie E2356); eine Array-Property oder eine Property mit index nutzt ein Feld (wie E2174); ein Feldselektor geht über ein Feld, das kein Record ist (wie E2459), nennt ein Mitglied, das kein Feld ist (wie E2461), oder ein Feld, das dem Record fehlt (wie E2562). Namen sucht die Regel in der Datei und für Vorfahren im Symbolindex; sie bleibt still, wenn die Kette der Vorfahren abbricht, der Name nur in einem inaktiven Zweig steht, die Klasse ihn nicht sieht oder Include-Dateien einbindet. Typen vergleicht sie nur, wenn beide eingebaut oder als eigener Typ deklariert sind. Korrektur für ein fehlendes F<Name>, Get<Name> oder Set<Name>: anlegen (wie die Vervollständigung hinter read/write, completion.accessorSection).
+
+Entspricht der Compilermeldung `E2168`, `E2234`, `E2282`, `E2271`, `E2355`, `E2356`, `E2174`, `E2459`, `E2461`, `E2562`.
+
+Mit Treffer:
+
+```pascal
+TKunde = class
+private
+  FName: string;
+public
+  property Name: string read FName write SetName;
+end;
+```
+
+Richtig:
+
+```pascal
+TKunde = class
+private
+  FName: string;
+  procedure SetName(const Value: string);
+public
+  property Name: string read FName write SetName;
+end;
 ```

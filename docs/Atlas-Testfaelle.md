@@ -4072,3 +4072,21 @@ Voraussetzung: Server läuft in der IDE mit Projekt; RTL und VCL im Index.
 | AI6 | Konstruktor-Rumpf `constructor TA.Create`, `inherited Create`, Klassenreferenz `K.Create`, unbekannte Klasse | Keine Meldung |
 | AI7 | `"abstract-class-instantiated": "off"`, `"group:compiler": "off"` bzw. `exclude` mit dem Pfad der Datei | Keine Meldung |
 | AI8 | Abgleich mit Delphi: AI1, AI3 bis AI5 übersetzen | dcc meldet W1020 (je abstrakte Methode) bzw. E2402 an denselben Aufrufen, für AI6 nichts |
+
+## Getter oder Setter einer Property ungültig (#1001)
+
+Voraussetzung: Server läuft in der IDE mit Projekt; RTL und VCL im Index.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| ZG1 | Das Beispiel aus #1001: `TKunde = class` mit `FName: string;` und `property Name: string read FName write SetName;` | Fehler `property-accessor-invalid` an `SetName`: „SetName ist in TKunde nicht deklariert (wie E2168).“; im Fenster „Atlas-Prüfung“ (Gruppe Compiler vorab) und im Befund-Hover (**Abnahme**) |
+| ZG2 | Schnellkorrektur „SetName anlegen“, danach Strg+Z | Deklaration `procedure SetName(const Value: string);` vor der Property und Rumpf mit Änderungsprüfung; danach keine Meldung; ein Undo-Schritt nimmt es zurück. Mit `completion.accessorSection` = `protected` landet der Setter in protected |
+| ZG3 | `read GetName` mit `procedure GetName;` bzw. `function GetName: Integer;`, `property Items[Index: Integer]: string read GetItem` mit `function GetItem: string;` | „… passt nicht als Getter von …; erwartet wird function …“ (wie E2234) |
+| ZG4 | Setter `procedure SetName(var Value: string);` | „Der Setter SetName nimmt den Wert als var-Parameter …“ (wie E2282) |
+| ZG5 | `GetName` zweimal mit `overload` | „GetName ist überladen …“ (wie E2271) |
+| ZG6 | `class property Anzahl: Integer read FAnzahl` mit Instanzfeld, mit `class function GetAnzahl` ohne `static`; `property Anzahl read FAnzahl` mit `class var FAnzahl` | Meldungen wie E2355 bzw. E2356 |
+| ZG7 | `property Items[I: Integer]: string read FItems;`, `property Rot: Integer index 1 read FRot;`, `read Basis` auf eine andere Property | Meldungen wie E2174 bzw. E2168 |
+| ZG8 | Feldselektoren: `read FAdresse.Ort` (Klasse), `read FPunkt.Z` (fehlt im Record), `read FPunkt.Laenge` (Methode des Records); `read FPunkt.X` | Meldungen wie E2459, E2562, E2461; `FPunkt.X` still |
+| ZG9 | Geerbte Felder und Methoden aus VCL-Vorfahren (`TCustomControl`), Property ohne Typ (`property Caption;`), Klasse mit `{$I …}`, Accessor nur in `{$IFDEF}` | Keine Meldung |
+| ZG10 | `"property-accessor-invalid": "off"`, `"group:compiler": "off"` bzw. `exclude` mit dem Pfad der Datei | Keine Meldung |
+| ZG11 | Abgleich mit Delphi: ZG1, ZG3 bis ZG8 übersetzen | dcc meldet an denselben Stellen E2168, E2234, E2282, E2271, E2355, E2356, E2174, E2459, E2461 bzw. E2562; für ZG9 nichts. Abweichende Codes im Issue nachtragen |
