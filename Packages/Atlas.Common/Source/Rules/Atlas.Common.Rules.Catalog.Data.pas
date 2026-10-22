@@ -2365,6 +2365,20 @@ begin
     '        "E2121",' + #10 +
     '        "E2287"' + #10 +
     '      ]' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "unit-name-conflict",' + #10 +
+    '      "name": "Unit name conflicts",' + #10 +
+    '      "category": "bug",' + #10 +
+    '      "severity": "error",' + #10 +
+    '      "group": "compiler",' + #10 +
+    '      "description": "A unit is named like a unit reserved for the compiler, System or SysInit (like E2272), or {$NOINCLUDE X} names a unit the compiler does not know (like E2242); the latter needs th' + 'e project''s unit search and stays silent when it gives no sure answer. The RTL sources (source/rtl) are not checked. Not reported: E2447, W1051 and X2421 belong to the namespaces of .NET metadata, whi' + 'ch dcc32/dcc64 do not create; for E2399 the documentation gives no condition, and a unit Kunden next to Kunden.Daten compiles without error in Delphi (Spring.pas next to Spring.Collections.pas). Quick' + ' fix for {$NOINCLUDE}: use a similarly spelled known unit.",' + #10 +
+    '      "bad": "unit System;\n\ninterface",' + #10 +
+    '      "good": "unit Kunden.Systemdienste;\n\ninterface",' + #10 +
+    '      "compilerCodes": [' + #10 +
+    '        "E2272",' + #10 +
+    '        "E2242"' + #10 +
+    '      ]' + #10 +
     '    }' + #10 +
     '  ]' + #10 +
     '}' + #10 +
@@ -3556,6 +3570,11 @@ begin
     '      "id": "exports-invalid",' + #10 +
     '      "name": "exports-Klausel unzulässig",' + #10 +
     '      "description": "Eine exports-Klausel in einer Routine (wie E2191), der Export einer threadvar oder einer mit local deklarierten Routine (wie E2276), einer Variablen, Konstanten oder eines Typs (' + 'wie E2121) oder derselbe Eintrag bzw. Exportname zweimal (wie E2287). Namen löst die Regel nur gegen globale Deklarationen der Datei auf; Namen aus anderen Units und Namen mit Punkt bleiben still, ebe' + 'nso zwei Einträge in sich ausschließenden {$IF…}-Zweigen. Überladene Routinen mit verschiedenen Parameterlisten oder Exportnamen gelten als verschiedene Einträge. Ergänzt dll-export-unsafe (#973). Sch' + 'nellkorrektur: doppelten Eintrag entfernen."' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "unit-name-conflict",' + #10 +
+    '      "name": "Unit-Name kollidiert",' + #10 +
+    '      "description": "Eine Unit heißt wie eine für den Compiler reservierte Unit, System oder SysInit (wie E2272), oder {$NOINCLUDE X} nennt eine Unit, die der Compiler nicht kennt (wie E2242); dafür ' + 'braucht die Regel die Unit-Suche des Projekts und schweigt ohne sichere Antwort. Die Quellen der RTL (source/rtl) prüft sie nicht. Nicht gemeldet: E2447, W1051 und X2421 gehören zu den Namensräumen de' + 'r .NET-Metadaten, die dcc32/dcc64 nicht erzeugt; für E2399 nennt die Dokumentation keine Bedingung, und eine Unit Kunden neben Kunden.Daten übersetzt Delphi ohne Fehler (Spring.pas neben Spring.Collec' + 'tions.pas). Schnellkorrektur für {$NOINCLUDE}: eine ähnlich geschriebene bekannte Unit einsetzen."' + #10 +
     '    }' + #10 +
     '  ]' + #10 +
     '}' + #10 +

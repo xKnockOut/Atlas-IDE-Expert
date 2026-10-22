@@ -1,7 +1,8 @@
 ﻿unit Atlas.Common.Rules.Builtin.Units.Tests;
 
 // Tests der Regeln für Unit-Kopf, uses und Dateiende: unit-name-mismatch
-// (#990), text-after-final-end (#991), exports-invalid (#1077).
+// (#990), text-after-final-end (#991), exports-invalid (#1077),
+// unit-name-conflict (#1079).
 
 interface
 
@@ -46,6 +47,12 @@ type
     procedure ExportsEntries;
     [Test]
     procedure ExportsOptions;
+    [Test]
+    procedure ConflictReservedName;
+    [Test]
+    procedure ConflictNoInclude;
+    [Test]
+    procedure ConflictOptions;
   end;
 
 implementation
@@ -141,6 +148,62 @@ function Kunde(const ATail: string): string;
 begin
   Result := 'unit Kunde;'#10'interface'#10'implementation'#10'procedure TKunde.Laden;'#10'begin'#10'end;'#10 +
     'end.' + ATail;
+end;
+
+type
+  /// <summary>Unit-Suche, die genau die Units aus FKnown findet; mit FUnknown ohne Aussage.</summary>
+  TFakeUnits = class(TInterfacedObject, IRuleUnitLookup)
+  private
+    FKnown: TArray<string>;
+    FUnknown: Boolean;
+  public
+    constructor Create(const AKnown: TArray<string>; AUnknown: Boolean);
+    function Find(const AUnitName, AInPath, AFromFile: string; ASources: TRuleUnitSources): TRuleUnitAnswer;
+    function FindPackage(const APackage: string): TRuleUnitAnswer;
+    function KnownUnits(ASources: TRuleUnitSources): TArray<string>;
+    function FolderOutsidePaths(const AUnitName: string): string;
+    function ReadProject(out AFileName, AText: string): Boolean;
+  end;
+
+constructor TFakeUnits.Create(const AKnown: TArray<string>; AUnknown: Boolean);
+begin
+  inherited Create;
+  FKnown := AKnown;
+  FUnknown := AUnknown;
+end;
+
+function TFakeUnits.Find(const AUnitName, AInPath, AFromFile: string; ASources: TRuleUnitSources): TRuleUnitAnswer;
+var
+  Known: string;
+begin
+  Result := TRuleUnitAnswer.Missing;
+  if FUnknown then
+    Result := TRuleUnitAnswer.Unknown;
+  for Known in FKnown do
+    if SameText(Known, AUnitName) then
+      Result := TRuleUnitAnswer.Found;
+end;
+
+function TFakeUnits.FindPackage(const APackage: string): TRuleUnitAnswer;
+begin
+  Result := TRuleUnitAnswer.Unknown;
+end;
+
+function TFakeUnits.KnownUnits(ASources: TRuleUnitSources): TArray<string>;
+begin
+  Result := FKnown;
+end;
+
+function TFakeUnits.FolderOutsidePaths(const AUnitName: string): string;
+begin
+  Result := '';
+end;
+
+function TFakeUnits.ReadProject(out AFileName, AText: string): Boolean;
+begin
+  AFileName := '';
+  AText := '';
+  Result := False;
 end;
 
 function Werkzeug(const ADeclarations, AExports: string): string;
@@ -507,6 +570,64 @@ begin
     '{"rules": {"group:compiler": "off"}}', 'Werkzeug.dpr'))));
   Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TExportsInvalidRule.Create, Source,
     '{"rules": {"exports-invalid": {"exclude": ["Werkzeug.dpr"]}}}', 'Werkzeug.dpr'))));
+end;
+
+procedure TUnitRulesTests.ConflictReservedName;
+var
+  Found: TArray<TRuleFinding>;
+begin
+  Found := Run(TUnitNameConflictRule.Create, 'unit System;'#10'interface'#10'implementation'#10'end.', 'System.pas');
+  Assert.AreEqual(1, Integer(Length(Found)));
+  Assert.AreEqual('Der Unit-Name System ist für den Compiler reserviert (wie E2272).', Found[0].Message);
+  Assert.AreEqual(0, Found[0].Range.StartPos.Line);
+  Assert.AreEqual(5, Found[0].Range.StartPos.Character);
+  Assert.AreEqual(1, Integer(Length(Run(TUnitNameConflictRule.Create, 'unit sysinit;'#10'interface'#10 +
+    'implementation'#10'end.', 'sysinit.pas'))));
+  // Namensraum System, andere Units und die RTL selbst bleiben still.
+  Assert.AreEqual(0, Integer(Length(Run(TUnitNameConflictRule.Create, 'unit System.Kunden;'#10'interface'#10 +
+    'implementation'#10'end.', 'System.Kunden.pas'))));
+  Assert.AreEqual(0, Integer(Length(Run(TUnitNameConflictRule.Create, 'unit Kunden;'#10'interface'#10 +
+    'implementation'#10'end.', 'Kunden.pas'))));
+  Assert.AreEqual(0, Integer(Length(Run(TUnitNameConflictRule.Create, 'unit System;'#10'interface'#10 +
+    'implementation'#10'end.', 'C:\BDS\source\rtl\sys\System.pas'))));
+  // Das Beispiel aus #1079 übersetzt Delphi: keine Meldung.
+  Assert.AreEqual(0, Integer(Length(Run(TUnitNameConflictRule.Create, 'unit Kunden;'#10'interface'#10'uses'#10 +
+    '  Kunden.Daten;'#10'implementation'#10'end.', 'Kunden.pas'))));
+end;
+
+procedure TUnitRulesTests.ConflictNoInclude;
+const
+  Source = 'unit Haupt;'#10'{$NOINCLUDE Kunden.Datn}'#10'{$NOINCLUDE Kunden.Daten}'#10'interface'#10 +
+    'implementation'#10'end.';
+var
+  Found: TArray<TRuleFinding>;
+begin
+  Found := TRuleAssert.UnitFindings(TUnitNameConflictRule.Create, Source, 'C:\P\Haupt.pas',
+    TFakeUnits.Create(['Kunden.Daten', 'System'], False), '', '');
+  Assert.AreEqual(1, Integer(Length(Found)));
+  Assert.AreEqual('{$NOINCLUDE Kunden.Datn}: Kunden.Datn ist keine bekannte Unit (wie E2242).', Found[0].Message);
+  Assert.AreEqual(1, Found[0].Range.StartPos.Line);
+  Assert.AreEqual(12, Found[0].Range.StartPos.Character);
+  Assert.AreEqual(23, Found[0].Range.EndPos.Character);
+  Assert.AreEqual('Kunden.Daten verwenden', Found[0].Fixes[0].Title);
+  // Ohne Unit-Suche bzw. ohne sichere Aussage: still.
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.UnitFindings(TUnitNameConflictRule.Create, Source, 'C:\P\Haupt.pas',
+    nil, '', ''))));
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.UnitFindings(TUnitNameConflictRule.Create, Source, 'C:\P\Haupt.pas',
+    TFakeUnits.Create(['Kunden.Daten'], True), '', ''))));
+end;
+
+procedure TUnitRulesTests.ConflictOptions;
+const
+  Source = 'unit System;'#10'interface'#10'implementation'#10'end.';
+begin
+  Assert.AreEqual(1, Integer(Length(TRuleAssert.Findings(TUnitNameConflictRule.Create, Source, '', 'Src/System.pas'))));
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TUnitNameConflictRule.Create, Source,
+    '{"rules": {"unit-name-conflict": "off"}}', 'Src/System.pas'))));
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TUnitNameConflictRule.Create, Source,
+    '{"rules": {"group:compiler": "off"}}', 'Src/System.pas'))));
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TUnitNameConflictRule.Create, Source,
+    '{"rules": {"unit-name-conflict": {"exclude": ["Src/*.pas"]}}}', 'Src/System.pas'))));
 end;
 
 initialization
