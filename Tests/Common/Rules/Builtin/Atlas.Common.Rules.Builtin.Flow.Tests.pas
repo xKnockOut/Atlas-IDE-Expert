@@ -10,7 +10,9 @@
 // Schleife), Rumpf mit begin … end, else ohne Korrektur, Abschalten;
 // field-free-without-nil (#917): Beispiel mit Korrektur FreeAndNil, Zweig,
 // stille Muster (Destruktor, := nil, Methode setzt neu, lokale Variable),
-// Option ignoreMethods, Abschalten und Ausnahmen.
+// Option ignoreMethods, Abschalten und Ausnahmen; out-param-read (#924):
+// Beispiel mit Korrektur in Deklaration und Implementierung, Integer,
+// stille Muster, Abschalten.
 
 interface
 
@@ -77,6 +79,12 @@ type
     procedure FieldFreeWithoutNilSilentCases;
     [Test]
     procedure FieldFreeIgnoreMethodsAndOff;
+    [Test]
+    procedure OutParamReadIssueExample;
+    [Test]
+    procedure OutParamReadMethodAndInteger;
+    [Test]
+    procedure OutParamReadSilentAndOff;
   end;
 
 implementation
@@ -611,6 +619,66 @@ begin
     '{"rules": {"field-free-without-nil": {"exclude": ["Alt/*.pas"]}}}', 'Alt/U.pas'))));
   Assert.AreEqual(1, Integer(Length(TRuleAssert.Findings(TFieldFreeWithoutNilRule.Create, ClassUnit(Body),
     '{"rules": {"field-free-without-nil": {"exclude": ["Alt/*.pas"]}}}', 'Neu/U.pas'))));
+end;
+
+const
+  Anhaengen = 'unit U;'#10'interface'#10'procedure Anhaengen(out Text: string);'#10'implementation'#10 +
+    'procedure Anhaengen(out Text: string);'#10'begin'#10'  Text := Text + sLineBreak + ''Ende'';'#10'end;'#10'end.';
+
+procedure TFlowRulesTests.OutParamReadIssueExample;
+var
+  Findings: TArray<TRuleFinding>;
+  Fixed: string;
+begin
+  Findings := TRuleAssert.Findings(TOutParamReadRule.Create, Anhaengen);
+  Assert.AreEqual(1, Integer(Length(Findings)));
+  Assert.AreEqual('out-Parameter Text wird gelesen, bevor er gesetzt ist; bei string ist er hier immer leer.',
+    Findings[0].Message);
+  Assert.AreEqual(Ord(TRuleSeverity.Warning), Ord(Findings[0].Severity));
+  Assert.AreEqual(Ord(TRuleConfidence.High), Ord(Findings[0].Confidence));
+  Assert.AreEqual(6, Findings[0].Range.StartPos.Line);
+  Assert.AreEqual(10, Findings[0].Range.StartPos.Character);
+  Assert.AreEqual('out durch var ersetzen', Findings[0].Fixes[0].Title);
+  Assert.AreEqual(2, Integer(Length(Findings[0].Fixes[0].Edits)), 'Deklaration und Implementierung');
+  Fixed := TChangeSignature.ApplyEdits(Anhaengen, Findings[0].Fixes[0].Edits);
+  Assert.AreEqual(StringReplace(Anhaengen, '(out Text', '(var Text', [rfReplaceAll]), Fixed);
+  TRuleAssert.Silent(TOutParamReadRule.Create, Fixed);
+end;
+
+procedure TFlowRulesTests.OutParamReadMethodAndInteger;
+const
+  Source = 'unit U;'#10'interface'#10'type'#10'  TZaehler = class'#10'    procedure Weiter(out N: Integer);'#10 +
+    '  end;'#10'  TAnderer = class'#10'    procedure Weiter(out N: Integer);'#10'  end;'#10'implementation'#10 +
+    'procedure TZaehler.Weiter(out N: Integer);'#10'begin'#10'  if N > 0 then'#10'    N := 0;'#10'end;'#10 +
+    'procedure TAnderer.Weiter(out N: Integer);'#10'begin'#10'  N := 1;'#10'end;'#10'end.';
+var
+  Findings: TArray<TRuleFinding>;
+begin
+  Findings := TRuleAssert.Findings(TOutParamReadRule.Create, Source);
+  Assert.AreEqual(1, Integer(Length(Findings)));
+  Assert.AreEqual('out-Parameter N wird gelesen, bevor er gesetzt ist; sein Wert ist hier undefiniert.',
+    Findings[0].Message);
+  // Nur die Deklaration in TZaehler, nicht die gleichnamige in TAnderer.
+  Assert.AreEqual(2, Integer(Length(Findings[0].Fixes[0].Edits)));
+  Assert.AreEqual(4, Findings[0].Fixes[0].Edits[0].Range.StartPos.Line);
+  Assert.AreEqual(10, Findings[0].Fixes[0].Edits[1].Range.StartPos.Line);
+end;
+
+procedure TFlowRulesTests.OutParamReadSilentAndOff;
+begin
+  // Erst gesetzt, dann gelesen; an eine Routine übergeben; Feld eines Records gesetzt; var-Parameter.
+  TRuleAssert.Silent(TOutParamReadRule.Create, 'unit U;'#10'interface'#10'implementation'#10 +
+    'procedure A(out S: string);'#10'begin'#10'  S := '''';'#10'  S := S + ''x'';'#10'end;'#10 +
+    'procedure B(out S: string);'#10'begin'#10'  Fuellen(S);'#10'  S := S + ''x'';'#10'end;'#10 +
+    'procedure C(out R: TPunkt);'#10'begin'#10'  R.X := 1;'#10'  R.Y := R.X;'#10'end;'#10 +
+    'procedure D(var S: string);'#10'begin'#10'  S := S + ''x'';'#10'end;'#10 +
+    'function E(out P: TPunkt): Boolean;'#10'begin'#10'  Result := Lesen(P.X) and (P.X > 0);'#10'end;'#10'end.');
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TOutParamReadRule.Create, Anhaengen,
+    '{"rules": {"out-param-read": "off"}}', 'U.pas'))));
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TOutParamReadRule.Create, Anhaengen,
+    '{"rules": {"out-param-read": {"exclude": ["Alt/*.pas"]}}}', 'Alt/U.pas'))));
+  Assert.AreEqual(1, Integer(Length(TRuleAssert.Findings(TOutParamReadRule.Create, Anhaengen,
+    '{"rules": {"out-param-read": {"exclude": ["Alt/*.pas"]}}}', 'Neu/U.pas'))));
 end;
 
 initialization

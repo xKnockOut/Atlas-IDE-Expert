@@ -35,6 +35,10 @@
 //                             Klassendeklaration in der Unit. Ausgenommen sind
 //                             die Methoden aus ignoreMethods (Vorgabe Destroy,
 //                             BeforeDestruction); Korrektur FreeAndNil(FFeld).
+//   out-param-read            out-Parameter wird gelesen, bevor die Routine ihn
+//                             setzt (#924); bei verwalteten Typen hat ihn der
+//                             Aufrufer schon geleert. Korrektur out -> var in
+//                             Implementierung und Deklaration.
 //
 // Was der Graph nicht sieht, macht die Variable "unbekannt" und erzeugt keinen
 // Treffer: Übergabe als Argument (var/out-Parameter, SetLength, FillChar,
@@ -95,7 +99,14 @@ type
     class function DefaultIgnoreMethods: TArray<string>; static;
   end;
 
+  TOutParamReadRule = class(TInterfacedObject, IRule)
+  public
+    function Descriptor: TRuleDescriptor;
+    procedure Check(const AContext: TRuleContext; const AReport: IRuleReport);
+  end;
+
 const
+  OutParamReadRuleId = 'out-param-read';
   UseAfterFreeRuleId = 'use-after-free';
   DerefBeforeNilCheckRuleId = 'deref-before-nil-check';
   FieldFreeWithoutNilRuleId = 'field-free-without-nil';
@@ -1418,6 +1429,213 @@ begin
   end;
 end;
 
+{ TOutParamReadRule }
+
+function TOutParamReadRule.Descriptor: TRuleDescriptor;
+begin
+  Result := TRuleDescriptor.Create(OutParamReadRuleId, TRuleSeverity.Warning,
+    'out-Parameter gelesen, bevor er gesetzt ist');
+end;
+
+/// <summary>Verwaltete Typen leert der Aufrufer vor dem Aufruf mit out.</summary>
+function IsManagedParamType(const ATypeName: string): Boolean;
+begin
+  Result := MatchText(ATypeName, ManagedTypes) or MatchText(ATypeName, ['IInterface', 'IUnknown', 'TBytes']) or
+    StartsText('TArray<', ATypeName) or StartsText('array of', ATypeName) or
+    ((Length(ATypeName) > 1) and (ATypeName[1] = 'I') and CharInSet(ATypeName[2], ['A'..'Z']));
+end;
+
+/// <summary>Wird ein Teil von AName (AName.Feld, AName[I]) als Argument übergeben? Ein out-Argument
+/// setzt ihn dann, ohne dass der Graph es sieht.</summary>
+function PassesPart(ANode: TSyntaxNode; const AName: string): Boolean;
+var
+  Index: Integer;
+begin
+  if ANode.Kind in [TSyntaxKind.RoutineDecl, TSyntaxKind.AnonymousMethod] then
+    Exit(False);
+  if ANode.Kind = TSyntaxKind.Call then
+    for Index := 1 to ANode.ChildCount - 1 do
+      if (ANode[Index].Kind <> TSyntaxKind.Identifier) and SameText(RootName(ANode[Index]), AName) then
+        Exit(True);
+  for Index := 0 to ANode.ChildCount - 1 do
+    if PassesPart(ANode[Index], AName) then
+      Exit(True);
+  Result := False;
+end;
+
+procedure TOutParamReadRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
+var
+  Routines: TArray<TSyntaxNode>;
+  Routine, Header, Block, Params, Param: TSyntaxNode;
+  Graph: TControlFlowGraph;
+  Cache: IRuleDerivedCache;
+  Index: Integer;
+  Name, TypeName: string;
+  Reported: Boolean;
+
+  function FlowNodeOf(ANode: TSyntaxNode): TFlowNode;
+  begin
+    Result := nil;
+    while (ANode <> nil) and (Result = nil) do
+    begin
+      Result := Graph.NodeOf(ANode);
+      ANode := ANode.Parent;
+    end;
+  end;
+
+  function ShortOf(const AName: string): string;
+  begin
+    Result := Copy(AName, LastDelimiter('.', AName) + 1, MaxInt);
+  end;
+
+  function Collapsed(ANode: TSyntaxNode): string;
+  begin
+    Result := '';
+    if ANode <> nil then
+      Result := LowerCase(StringReplace(StringReplace(StringReplace(Copy(AContext.Text, ANode.StartOffset + 1,
+        ANode.EndOffset - ANode.StartOffset), ' ', '', [rfReplaceAll]), #13, '', [rfReplaceAll]), #10, '',
+        [rfReplaceAll]));
+  end;
+
+  // Das Token "out" vor dem Parameter mit den Namen ANames in AParams.
+  function OutToken(AParams: TSyntaxNode; const ANames: string; out AToken: TPascalToken): Boolean;
+  var
+    Inner: Integer;
+    Token: TPascalToken;
+  begin
+    Result := False;
+    for Inner := 0 to AParams.ChildCount - 1 do
+      if (AParams[Inner].Kind = TSyntaxKind.Parameter) and SameText(AParams[Inner].Name, ANames) and
+        (AParams[Inner].Modifier = TParameterModifier.OutParam) then
+        for Token in AContext.Tree.Tokens do
+        begin
+          if Token.Offset >= AParams[Inner].EndOffset then
+            Break;
+          if (Token.Offset >= AParams[Inner].StartOffset) and SameText(Token.Text, 'out') then
+          begin
+            AToken := Token;
+            Exit(True);
+          end;
+        end;
+  end;
+
+  // out -> var in der Implementierung und in jeder Deklaration mit gleicher Parameterliste.
+  function Fix(const ANames: string): TArray<TRuleFix>;
+  var
+    Edits: TArray<TRuleEdit>;
+    Token: TPascalToken;
+    Key: string;
+    Short: string;
+    ClassPart: string;
+
+    // AOwner: Klasse, in deren Deklaration ANode steht ('' außerhalb).
+    procedure Declarations(ANode: TSyntaxNode; const AOwner: string);
+    var
+      Child: Integer;
+      Other: TSyntaxNode;
+      Found: TPascalToken;
+      Owner: string;
+    begin
+      Owner := AOwner;
+      if ANode.Kind = TSyntaxKind.TypeDecl then
+        Owner := ANode.Name;
+      if (ANode.Kind = TSyntaxKind.RoutineHeader) and (ANode <> Header) and SameText(ShortOf(ANode.Name), Short) and
+        SameText(Owner, ClassPart) then
+      begin
+        Other := ANode.FindChild(TSyntaxKind.Parameters);
+        if (Other <> nil) and (Collapsed(Other) = Key) and OutToken(Other, ANames, Found) then
+          Edits := Edits + [TRuleEdit.Create(TTextRange.Create(Found.StartPos, Found.EndPos), 'var')];
+      end;
+      // Rümpfe anderer Routinen enthalten keine Deklarationen dieser Routine.
+      if ANode.Kind = TSyntaxKind.Block then
+        Exit;
+      for Child := 0 to ANode.ChildCount - 1 do
+        Declarations(ANode[Child], Owner);
+    end;
+
+  begin
+    Result := nil;
+    Edits := nil;
+    Key := Collapsed(Params);
+    Short := ShortOf(Routine.Name);
+    ClassPart := Copy(Routine.Name, 1, Length(Routine.Name) - Length(Short) - 1);
+    if Pos('<', ClassPart) > 0 then
+      ClassPart := Copy(ClassPart, 1, Pos('<', ClassPart) - 1);
+    // Deklarationen stehen vor der Implementierung; die Änderungen bleiben nach Stelle sortiert.
+    Declarations(AContext.Tree.Root, '');
+    if OutToken(Params, ANames, Token) then
+      Edits := Edits + [TRuleEdit.Create(TTextRange.Create(Token.StartPos, Token.EndPos), 'var')];
+    if Edits <> nil then
+      Result := [TRuleFix.Create('out durch var ersetzen', Edits)];
+  end;
+
+  procedure Visit(ANode: TSyntaxNode; const ANames: string);
+  var
+    Child: Integer;
+    Flow: TFlowNode;
+    Detail: string;
+  begin
+    if Reported or (ANode.Kind in [TSyntaxKind.RoutineDecl, TSyntaxKind.AnonymousMethod]) then
+      Exit;
+    if IsName(ANode, Name) and not ((ANode.Parent <> nil) and (ANode.Parent.Kind = TSyntaxKind.AssignStatement) and
+      (ANode.Parent.ChildCount > 0) and (ANode.Parent[0] = ANode)) then
+    begin
+      Flow := FlowNodeOf(ANode);
+      if (Flow <> nil) and (Graph.IsReachable(Flow) = TFlowAnswer.Yes) and
+        Graph.ReachingDefinitions(Flow, Name).FromEntry then
+      begin
+        if IsManagedParamType(TypeName) then
+          Detail := Format('bei %s ist er hier immer leer.', [TypeName])
+        else
+          Detail := 'sein Wert ist hier undefiniert.';
+        AReport.Add(NodeRange(ANode), Format('out-Parameter %s wird gelesen, bevor er gesetzt ist; %s',
+          [Name, Detail]), TRuleConfidence.High, Fix(ANames));
+        Reported := True;
+        Exit;
+      end;
+    end;
+    for Child := 0 to ANode.ChildCount - 1 do
+      Visit(ANode[Child], ANames);
+  end;
+
+begin
+  if AContext.Tree = nil then
+    Exit;
+  Cache := TRuleDerived.Open(AContext);
+  Routines := TRuleDerived.Routines(Cache, AContext);
+  for Routine in Routines do
+  begin
+    Block := Routine.FindChild(TSyntaxKind.Block);
+    Header := Routine.FindChild(TSyntaxKind.RoutineHeader);
+    if (Block = nil) or (Header = nil) then
+      Continue;
+    Params := Header.FindChild(TSyntaxKind.Parameters);
+    if Params = nil then
+      Continue;
+    Graph := nil;
+    for Index := 0 to Params.ChildCount - 1 do
+    begin
+      Param := Params[Index];
+      if (Param.Kind <> TSyntaxKind.Parameter) or (Param.Modifier <> TParameterModifier.OutParam) then
+        Continue;
+      TypeName := '';
+      if Param.FindChild(TSyntaxKind.TypeReference) <> nil then
+        TypeName := Param.FindChild(TSyntaxKind.TypeReference).Name;
+      for Name in Param.Name.Split([',']) do
+      begin
+        if HasOpaqueUse(Block, Name.Trim) or PassesPart(Block, Name.Trim) then
+          Continue;
+        if Graph = nil then
+          Graph := TRuleDerived.Graph(Cache, AContext, Routine);
+        if not Graph.Complete then
+          Break;
+        Reported := False;
+        Visit(Block, Param.Name);
+      end;
+    end;
+  end;
+end;
+
 procedure RegisterFlowRules(const ARegistry: TRuleRegistry);
 begin
   ARegistry.Register(TResultNotSetRule.Create);
@@ -1426,6 +1644,7 @@ begin
   ARegistry.Register(TUseAfterFreeRule.Create);
   ARegistry.Register(TDerefBeforeNilCheckRule.Create);
   ARegistry.Register(TFieldFreeWithoutNilRule.Create);
+  ARegistry.Register(TOutParamReadRule.Create);
 end;
 
 end.

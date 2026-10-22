@@ -3290,3 +3290,15 @@ Voraussetzung: Server läuft; Einstellungen auf Vorgabe; Routine mit `const Pfad
 | PT4 | `FName := PChar(IntToStr(N));` mit Feld `FName` | Meldung ohne Korrektur |
 | PT5 | `CopyFile(PChar(Pfad + '.bak'), …)`, `Ziel := PChar(Pfad);`, `SendMessage(…, LPARAM(PChar(Pfad + 'x')))` | Keine Meldung |
 | PT6 | `"pchar-of-temporary": "off"` bzw. `exclude` mit dem Pfad der Datei | Keine Meldung |
+
+## out-Parameter gelesen, bevor er gesetzt ist (#924)
+
+Voraussetzung: Server läuft; Einstellungen auf Vorgabe; Unit mit `procedure Anhaengen(out Text: string);` im interface und der Implementierung `Text := Text + sLineBreak + 'Ende';`.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| OP1 | Unit öffnen | Warnung `out-param-read` am gelesenen `Text`: „out-Parameter Text wird gelesen, bevor er gesetzt ist; bei string ist er hier immer leer.“; im Fenster „Atlas-Prüfung“ und im Befund-Hover (**Abnahme**) |
+| OP2 | Glühbirne, „out durch var ersetzen“ | `var Text` in interface und Implementierung; kompiliert; Strg+Z nimmt beides in einem Schritt zurück (**Abnahme**) |
+| OP3 | Methode `procedure Weiter(out N: Integer);` mit `if N > 0 then` vor der Zuweisung | Meldung „… sein Wert ist hier undefiniert.“; Korrektur ändert nur die Deklaration dieser Klasse |
+| OP4 | Erst `S := '';`, dann `S := S + 'x';` bzw. `Lesen(P.X)` mit `out P: TPunkt` | Keine Meldung |
+| OP5 | `"out-param-read": "off"` bzw. `exclude` mit dem Pfad der Datei | Keine Meldung |
