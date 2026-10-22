@@ -636,6 +636,14 @@ begin
   // private aus einer anderen Unit sieht der Nachfahre nicht.
   Assert.AreEqual('Kein Vorfahr von TA hat ein virtuelles Geheim (wie E2137).', Findings[0].Message);
   Assert.AreEqual('TFest ist sealed; davon lässt sich nicht ableiten (wie E2353).', Findings[1].Message);
+  // Ein gleichnamiger Typ aus dem implementation-Teil einer anderen Unit ist nicht der Vorfahr: Der echte TFrame
+  // (Vcl.Forms) fehlt im Index, also keine Aussage.
+  Index := IndexWith(['unit Fremd;'#10'interface'#10'implementation'#10'type'#10'  TFrame = class'#10'  end;'#10 +
+    'end.']);
+  Findings := Run(TOverrideTargetMissingRule.Create, 'unit U;'#10'interface'#10'uses Vcl.Forms;'#10'type'#10 +
+    '  TMeinFrame = class(TFrame)'#10'  protected'#10'    procedure CreateWnd; override;'#10'  end;'#10 +
+    'implementation'#10'end.', Index);
+  Assert.AreEqual(0, Integer(Length(Findings)));
 end;
 
 procedure TInheritanceRulesTests.OverrideTargetOptions;

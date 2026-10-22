@@ -69,6 +69,9 @@ type
     FIndex: ISymbolIndex;
     FLocal: TUnitIndex;
     function FindType(const AName: string; out AType: TSymbolLocation): Boolean;
+    /// <summary>Ist der Treffer aus dem Index von dieser Datei aus sichtbar? Typen aus dem implementation-Teil
+    /// anderer Units nicht (sonst wurde TFrame einer fremden Unit zum Vorfahren von VCL-Frames).</summary>
+    function Reachable(const ALocation: TSymbolLocation): Boolean;
     function MethodsOf(const AType: TSymbolLocation; const AName: string): TArray<TIndexSymbol>;
   public
     /// <summary>ALocal ist der Index der geprüften Datei (TRuleDerived.UnitIndex, Review P-03).</summary>
@@ -268,6 +271,11 @@ begin
   FLocal := ALocal;
 end;
 
+function TAncestry.Reachable(const ALocation: TSymbolLocation): Boolean;
+begin
+  Result := ALocation.Symbol.InInterface or (ALocation.FileName = '') or SameText(ALocation.FileName, FLocal.FileName);
+end;
+
 function TAncestry.FindType(const AName: string; out AType: TSymbolLocation): Boolean;
 var
   Symbol: TIndexSymbol;
@@ -287,7 +295,8 @@ begin
   Found := False;
   for Location in FIndex.FindSymbols(AName) do
   begin
-    if (Location.Symbol.Kind <> TIndexSymbolKind.ClassType) or (Location.Symbol.Container <> '') then
+    if (Location.Symbol.Kind <> TIndexSymbolKind.ClassType) or (Location.Symbol.Container <> '') or
+      not Reachable(Location) then
       Continue;
     if not Found then
     begin
@@ -350,7 +359,7 @@ begin
     end;
   if FIndex <> nil then
     for Location in FIndex.FindSymbols(AName) do
-      if (Location.Symbol.Kind in Kinds) and (Location.Symbol.Container = '') then
+      if (Location.Symbol.Kind in Kinds) and (Location.Symbol.Container = '') and Reachable(Location) then
       begin
         AType := Location;
         Exit(True);
@@ -433,7 +442,7 @@ begin
       Exit(True);
   if FIndex <> nil then
     for Location in FIndex.FindSymbols(AName) do
-      if (Location.Symbol.Kind in Kinds) and (Location.Symbol.Container = '') then
+      if (Location.Symbol.Kind in Kinds) and (Location.Symbol.Container = '') and Reachable(Location) then
         Exit(True);
   Result := False;
 end;
@@ -448,7 +457,7 @@ begin
       Exit(True);
   if FIndex <> nil then
     for Location in FIndex.FindSymbols(AName) do
-      if Location.Symbol.Kind = TIndexSymbolKind.TypeAlias then
+      if (Location.Symbol.Kind = TIndexSymbolKind.TypeAlias) and Reachable(Location) then
         Exit(True);
   Result := False;
 end;
