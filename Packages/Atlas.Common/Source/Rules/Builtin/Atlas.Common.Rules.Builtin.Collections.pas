@@ -1,8 +1,11 @@
 ﻿unit Atlas.Common.Rules.Builtin.Collections;
 
 // Regeln für Listen und andere Sammlungen (#909, Gruppe Stil und Metriken):
-//   legacy-tlist  Ungenerische TList (System.Classes) bzw. TObjectList
-//                 (System.Contnrs) mit Cast beim Lesen (#981, Standard aus).
+//   legacy-tlist        Ungenerische TList (System.Classes) bzw. TObjectList
+//                       (System.Contnrs) mit Cast beim Lesen (#981, Standard aus).
+//   legacy-stack-queue  Ungenerische TStack, TQueue, TObjectStack bzw.
+//                       TObjectQueue (System.Contnrs) mit Cast beim Lesen über
+//                       Pop oder Peek (#1106, Standard aus).
 //
 // TLegacyCollections.Reads sucht Casts T(Liste[I]), T(Liste.Items[I]),
 // T(Liste.First), Liste[I] as T usw. im Syntaxbaum und löst Sammlung und
@@ -31,6 +34,7 @@ uses
 
 const
   LegacyTListRuleId = 'legacy-tlist';
+  LegacyStackQueueRuleId = 'legacy-stack-queue';
 
 type
   /// <summary>Ungenerische Sammlung der RTL: Unit (mit und ohne Namespace) und Klassenname.</summary>
@@ -103,12 +107,26 @@ type
     function Descriptor: TRuleDescriptor; override;
   end;
 
+  /// <summary>Stapel und Warteschlangen aus System.Contnrs (#1106). Die Korrektur benennt bei Warteschlangen
+  /// Push/Pop in Enqueue/Dequeue um und erzeugt TObjectStack&lt;T&gt;/TObjectQueue&lt;T&gt; mit Create(False), weil
+  /// die Contnrs-Klassen ihre Objekte nicht besitzen (Editing.GenericLists).</summary>
+  TLegacyStackQueueRule = class(TLegacyCollectionRule)
+  protected
+    function CollectionTypes: TArray<TLegacyCollectionType>; override;
+    function ReadMembers: TArray<string>; override;
+    function IndexedReads: Boolean; override;
+    function FindingMessage(const ACollectionType: string; const ACastTypes: TArray<string>): string; override;
+  public
+    function Descriptor: TRuleDescriptor; override;
+  end;
+
 procedure RegisterCollectionRules(const ARegistry: TRuleRegistry);
 
 implementation
 
 uses
   System.SysUtils,
+  System.StrUtils,
   System.Generics.Collections,
   Atlas.Common.Documents.Contract,
   Atlas.Common.Configuration.Contract,
@@ -591,9 +609,63 @@ begin
       'beim Übersetzen.', [ACollectionType, string.Join(', ', ACastTypes)]);
 end;
 
+{ TLegacyStackQueueRule }
+
+function TLegacyStackQueueRule.Descriptor: TRuleDescriptor;
+begin
+  Result := TRuleDescriptor.Create(LegacyStackQueueRuleId, TRuleSeverity.Information,
+    'Ungenerischer Stapel oder ungenerische Warteschlange mit Cast', True);
+end;
+
+function TLegacyStackQueueRule.CollectionTypes: TArray<TLegacyCollectionType>;
+begin
+  Result := [TLegacyCollectionType.Create('System.Contnrs', 'Contnrs', 'TStack'),
+    TLegacyCollectionType.Create('System.Contnrs', 'Contnrs', 'TQueue'),
+    TLegacyCollectionType.Create('System.Contnrs', 'Contnrs', 'TObjectStack'),
+    TLegacyCollectionType.Create('System.Contnrs', 'Contnrs', 'TObjectQueue')];
+end;
+
+function TLegacyStackQueueRule.ReadMembers: TArray<string>;
+begin
+  Result := ['Pop', 'Peek', 'Extract'];
+end;
+
+function TLegacyStackQueueRule.IndexedReads: Boolean;
+begin
+  // TOrderedList hat keinen Index.
+  Result := False;
+end;
+
+function TLegacyStackQueueRule.FindingMessage(const ACollectionType: string;
+  const ACastTypes: TArray<string>): string;
+var
+  Stack: Boolean;
+  Adjective, Generic: string;
+begin
+  // Der Stapel, die Warteschlange.
+  Stack := EndsText('Stack', ACollectionType);
+  if Stack then
+  begin
+    Adjective := 'Ungenerischer';
+    Generic := 'ein generischer Stapel';
+  end
+  else
+  begin
+    Adjective := 'Ungenerische';
+    Generic := 'eine generische Warteschlange';
+  end;
+  if Length(ACastTypes) = 1 then
+    Result := Format('%s %s mit Cast beim Lesen; %s<%s> prüft den Typ beim Übersetzen.',
+      [Adjective, ACollectionType, ACollectionType, ACastTypes[0]])
+  else
+    Result := Format('%s %s mit Casts auf %s beim Lesen; %s prüft den Typ beim Übersetzen.',
+      [Adjective, ACollectionType, string.Join(', ', ACastTypes), Generic]);
+end;
+
 procedure RegisterCollectionRules(const ARegistry: TRuleRegistry);
 begin
   ARegistry.Register(TLegacyTListRule.Create);
+  ARegistry.Register(TLegacyStackQueueRule.Create);
 end;
 
 end.
