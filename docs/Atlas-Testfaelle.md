@@ -3687,3 +3687,17 @@ Voraussetzung: Server läuft; Unit mit `IQuelle.Anmelden(const ABeobachter: IBeo
 | SA5 | Bei SA4 Alt+Enter, „Vor inherited verschieben“ | `FQuelle.Anmelden(Self);` steht vor `inherited;`; ein Undo-Schritt, übersetzt, keine Meldung mehr (**Abnahme**) |
 | SA6 | `(Self as IBeobachter)`, `IBeobachter(Self)` bzw. `FSelbst := Self` mit `FSelbst: IBeobachter` statt des Aufrufs in SA1 | Warnung; `FQuelle.Merken(Self)` mit Parameter `TObject` bleibt still |
 | SA7 | `"self-as-interface-in-constructor": "off"` bzw. `exclude` mit dem Pfad der Datei | Keine Meldung |
+
+## Vergleich mit Null (#953)
+
+Voraussetzung: Server läuft; Unit mit `uses System.Variants, Data.DB;`, Datenmenge `qryKunde` und Variant `Wert`.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| NC1 | `if qryKunde.FieldByName('Geburtstag').Value = Null then` | Warnung `null-compare` auf dem Vergleich: „Der Vergleich mit Null hängt von NullEqualityRule ab (ncrStrict: nie wahr, ncrError: Exception); IsNull prüft das Feld unabhängig davon.“; im Fenster „Atlas-Prüfung“ und im Befund-Hover (**Abnahme**) |
+| NC2 | Alt+Enter, „Durch "qryKunde.FieldByName('Geburtstag').IsNull" ersetzen“ | `if qryKunde.FieldByName('Geburtstag').IsNull then`; ein Undo-Schritt, übersetzt, keine Meldung mehr (**Abnahme**) |
+| NC3 | `if Wert <> Null then` | Warnung mit „VarIsNull prüft den Wert …“; Korrektur ergibt `if not VarIsNull(Wert) then` |
+| NC4 | `if (Null = Feld.Value) and …` mit `Feld: TDateField` | Warnung; Korrektur ergibt `(Feld.IsNull)` |
+| NC5 | `if not Wert = Null then` | Warnung ohne Korrektur (bindet als `(not Wert) = Null`) |
+| NC6 | `Wert := Null;`, `if VarIsNull(Wert) then`, `if (A > 0) and Wert = Null then` | Keine Meldung |
+| NC7 | `"null-compare": "off"` bzw. `exclude` mit dem Pfad der Datei | Keine Meldung |

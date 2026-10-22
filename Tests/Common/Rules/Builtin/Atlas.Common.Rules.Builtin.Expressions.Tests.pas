@@ -3,7 +3,7 @@
 // Tests der Regel operator-precedence (#911): not vor in und Vergleichen bei
 // Aufzählungen und Ganzzahlen, Klammern als Korrektur, keine Meldung bei
 // Boolean, unbekanntem Typ und geklammerter Form, Abschalten und Ausnahmen;
-// duplicate-condition (#928); string-index-base (#951).
+// duplicate-condition (#928); string-index-base (#951); null-compare (#953).
 
 interface
 
@@ -44,6 +44,14 @@ type
     procedure StringIndexBaseSilentCases;
     [Test]
     procedure StringIndexBaseOffAndExclude;
+    [Test]
+    procedure NullCompareIssueExample;
+    [Test]
+    procedure NullCompareVariants;
+    [Test]
+    procedure NullCompareSilentCases;
+    [Test]
+    procedure NullCompareOffAndExclude;
   end;
 
 implementation
@@ -345,6 +353,78 @@ begin
   Assert.IsTrue(TStringIndexBaseRule.IsStringType('String[20]'));
   Assert.IsTrue(TStringIndexBaseRule.IsStringType('AnsiString'));
   Assert.IsFalse(TStringIndexBaseRule.IsStringType('TArray<Integer>'));
+end;
+
+function Kunden(const AStatements: string): string;
+begin
+  Result := 'unit Kunden;'#10'interface'#10'implementation'#10'uses System.Variants, Data.DB;'#10 +
+    'procedure Berechnen(qryKunde: TDataSet; Feld: TDateField; Wert: Variant; var Alter: Integer);'#10 +
+    'begin'#10 + AStatements + 'end;'#10'end.';
+end;
+
+procedure TExpressionRulesTests.NullCompareIssueExample;
+var
+  Source, Fixed: string;
+  Findings: TArray<TRuleFinding>;
+begin
+  Source := Kunden('  if qryKunde.FieldByName(''Geburtstag'').Value = Null then'#10'    Alter := 0;'#10);
+  Findings := TRuleAssert.Findings(TNullCompareRule.Create, Source);
+  Assert.AreEqual(1, Integer(Length(Findings)));
+  Assert.AreEqual('null-compare', Findings[0].RuleId);
+  Assert.AreEqual(Ord(TRuleSeverity.Warning), Ord(Findings[0].Severity));
+  Assert.AreEqual(Ord(TRuleConfidence.High), Ord(Findings[0].Confidence));
+  Assert.AreEqual('Der Vergleich mit Null hängt von NullEqualityRule ab (ncrStrict: nie wahr, ncrError: ' +
+    'Exception); IsNull prüft das Feld unabhängig davon.', Findings[0].Message);
+  Assert.AreEqual(6, Findings[0].Range.StartPos.Line);
+  Assert.AreEqual(5, Findings[0].Range.StartPos.Character);
+  Assert.AreEqual('Durch "qryKunde.FieldByName(''Geburtstag'').IsNull" ersetzen', Findings[0].Fixes[0].Title);
+  Fixed := ApplyFixes(Source, Findings);
+  Assert.AreEqual(Kunden('  if qryKunde.FieldByName(''Geburtstag'').IsNull then'#10'    Alter := 0;'#10), Fixed);
+  TRuleAssert.Silent(TNullCompareRule.Create, Fixed);
+end;
+
+procedure TExpressionRulesTests.NullCompareVariants;
+var
+  Source: string;
+  Findings: TArray<TRuleFinding>;
+begin
+  // Variant: VarIsNull; <> mit not; Null links.
+  Source := Kunden('  if Wert <> Null then Exit;'#10'  if (Null = Feld.Value) and (Alter > 0) then Exit;'#10 +
+    '  Alter := Ord(qryKunde.Fields[0].Value = Null);'#10);
+  Findings := TRuleAssert.Findings(TNullCompareRule.Create, Source);
+  Assert.AreEqual(3, Integer(Length(Findings)));
+  Assert.AreEqual('Der Vergleich mit Null hängt von NullEqualityRule ab (ncrStrict: nie wahr, ncrError: ' +
+    'Exception); VarIsNull prüft den Wert unabhängig davon.', Findings[0].Message);
+  Assert.AreEqual(Kunden('  if not VarIsNull(Wert) then Exit;'#10'  if (Feld.IsNull) and (Alter > 0) then Exit;'#10 +
+    '  Alter := Ord(qryKunde.Fields[0].IsNull);'#10), ApplyFixes(Source, Findings));
+  // "not X = Null" bindet als "(not X) = Null": Meldung ohne Korrektur.
+  Findings := TRuleAssert.Findings(TNullCompareRule.Create, Kunden('  if not Wert = Null then Exit;'#10));
+  Assert.AreEqual(1, Integer(Length(Findings)));
+  Assert.AreEqual(0, Integer(Length(Findings[0].Fixes)));
+end;
+
+procedure TExpressionRulesTests.NullCompareSilentCases;
+begin
+  // Richtige Formen, Zuweisung von Null, nil, andere Operatoren und andere Bindung.
+  TRuleAssert.Silent(TNullCompareRule.Create, Kunden('  if VarIsNull(Wert) or Feld.IsNull then Exit;'#10 +
+    '  Wert := Null;'#10'  if qryKunde = nil then Exit;'#10'  if (Alter > 0) and Wert = Null then Exit;'#10 +
+    '  if Wert = Null + 1 then Exit;'#10'  if Wert = Werte.Null then Exit;'#10));
+  Assert.IsTrue(TNullCompareRule.IsDataType('TStringField'));
+  Assert.IsTrue(TNullCompareRule.IsDataType('Data.DB.TParam'));
+  Assert.IsTrue(TNullCompareRule.IsDataType('TFDParam'));
+  Assert.IsFalse(TNullCompareRule.IsDataType('Variant'));
+  Assert.IsFalse(TNullCompareRule.IsDataType('TFieldDef'));
+end;
+
+procedure TExpressionRulesTests.NullCompareOffAndExclude;
+var
+  Source: string;
+begin
+  Source := Kunden('  if Wert = Null then Exit;'#10);
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TNullCompareRule.Create, Source,
+    '{"rules": {"null-compare": "off"}}'))));
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TNullCompareRule.Create, Source,
+    '{"rules": {"null-compare": {"exclude": ["Source/*.pas"]}}}', 'Source/Kunden.pas'))));
 end;
 
 initialization

@@ -7,6 +7,7 @@ Server und Claude-Code-Plugin tragen immer dieselbe Version.
 ## [Unveröffentlicht]
 
 ### Neu
+- Regel `null-compare` (#953): `X = Null` bzw. `X <> Null` meldet Atlas als Warnung, weil das Ergebnis von `NullEqualityRule` abhängt (Vorgabe `ncrLoose` vergleicht wie erwartet, `ncrStrict` liefert nie wahr, `ncrError` eine Exception). Korrektur: `Feld.IsNull` bei `X.Value` auf Datenbankfeldern und Parametern, sonst `VarIsNull(X)`.
 - Regel `self-as-interface-in-constructor` (#950): Gibt eine Klasse mit eigener Referenzzählung `Self` im Konstruktor als Interface weiter oder ein Nachfahr von `TInterfacedObject` in `AfterConstruction` nach `inherited`, warnt Atlas: Der Zähler fällt danach auf 0 und das Objekt ist schon freigegeben. Im Konstruktor von `TInterfacedObject`-Nachfahren bleibt die Regel still (Schutz durch `NewInstance`). Korrektur: den Aufruf vor `inherited` verschieben.
 - Regel `delimited-text-without-strict` (#952): Setzt eine Routine `Delimiter` und danach `DelimitedText`, ohne `StrictDelimiter` zu setzen, warnt Atlas („Ohne StrictDelimiter trennt DelimitedText auch an Leerzeichen: 'Max Muster' wird zu zwei Einträgen.“). Korrektur: `StrictDelimiter := True;` davor einfügen.
 - Regel `string-index-base` (#951): `Copy(S, 0, N)`, `Delete(S, 0, N)` und `Insert(T, S, 0)` auf Strings sowie `Pos(…) > -1`, `>= 0`, `<> -1`, `= -1` meldet Atlas („Pos liefert 0 bei keinem Treffer; der Vergleich > -1 ist immer wahr.“), umgekehrt `S.IndexOf(…) > 0` und `< 1`. Dynamische Arrays bleiben still. Korrektur: Startwert 1 bzw. der richtige Vergleich.

@@ -9,7 +9,7 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 | [Fehler finden](#gruppe-find-bugs) | 53 |
 | [Exceptions](#gruppe-exceptions) | 6 |
 | [Threads](#gruppe-threads) | 9 |
-| [Robustheit und Muster](#gruppe-robustness) | 2 |
+| [Robustheit und Muster](#gruppe-robustness) | 3 |
 | [Performance](#gruppe-performance) | 4 |
 | [Sicherheit](#gruppe-security) | 11 |
 | [Komponenten](#gruppe-components) | 8 |
@@ -112,6 +112,7 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 |---|---|---|---|
 | [`random-without-randomize`](#random-without-randomize) | Random ohne Randomize | Code Smell | Hinweis |
 | [`format-without-settings`](#format-without-settings) | Formatierung abhängig vom Gebietsschema | Code Smell | Hinweis |
+| [`null-compare`](#null-compare) | Vergleich mit Null statt VarIsNull oder IsNull | Code Smell | Warnung |
 
 <a id="gruppe-performance"></a>
 ### Performance
@@ -3694,4 +3695,25 @@ begin
   FQuelle.Anmelden(Self);
   inherited;
 end;
+```
+
+<a id="null-compare"></a>
+### null-compare
+
+**Vergleich mit Null statt VarIsNull oder IsNull** · Code Smell · Warnung · Gruppe Robustheit und Muster
+
+X = Null bzw. X <> Null vergleicht einen Variant mit Null. Das Ergebnis hängt von der globalen Einstellung System.Variants.NullEqualityRule ab: Mit der Vorgabe ncrLoose vergleicht er wie erwartet, mit ncrStrict ist er nie wahr, mit ncrError löst er eine Exception aus. Eine Bibliothek, ein Testrahmen oder ein anderer Teil des Projekts kann die Einstellung ändern. VarIsNull(X) und Feld.IsNull prüfen unabhängig davon. Gemeldet wird nur, wo der Vergleich für sich steht (Bedingung, Argument, Zuweisung); not X = Null bindet als (not X) = Null und bekommt keine Korrektur. Sicherheit hoch. Korrektur: Feld.IsNull bei X.Value auf FieldByName, FindField, Fields[…], ParamByName, Params[…] oder einem Feld vom Typ T…Field/T…Param, sonst VarIsNull(X); bei <> mit not davor.
+
+Mit Treffer:
+
+```pascal
+if qryKunde.FieldByName('Geburtstag').Value = Null then
+  Alter := 0;
+```
+
+Richtig:
+
+```pascal
+if qryKunde.FieldByName('Geburtstag').IsNull then
+  Alter := 0;
 ```

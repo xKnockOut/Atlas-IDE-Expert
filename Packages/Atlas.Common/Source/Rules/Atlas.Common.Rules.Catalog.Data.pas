@@ -1862,6 +1862,16 @@ begin
     '      "description": "Self is passed as an interface while reference counting can already free the object. Only two real error cases are reported: (1) a class with its own reference counting (an _Rele' + 'ase in the class chain frees the object, no class overrides NewInstance, the chain is known up to TObject) passes Self as an interface in a constructor or in AfterConstruction: the counter goes from 0' + ' to 1 and back to 0, the object is destroyed before construction ends. (2) A TInterfacedObject descendant passes Self as an interface in AfterConstruction after inherited: inherited AfterConstruction ' + 'has already removed the protective count from NewInstance. In the constructor of a TInterfacedObject descendant Self is protected and the rule stays silent. Passing counts as Self as IX, IX(Self), an ' + 'argument whose parameter is an interface in all known overloads, and an assignment to an interface variable. High confidence. Quick fix in case 2: move the statement before inherited.",' + #10 +
     '      "bad": "procedure TBeobachter.AfterConstruction;\nbegin\n  inherited;\n  FQuelle.Anmelden(Self);\nend;",' + #10 +
     '      "good": "procedure TBeobachter.AfterConstruction;\nbegin\n  FQuelle.Anmelden(Self);\n  inherited;\nend;"' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "null-compare",' + #10 +
+    '      "name": "Comparison with Null instead of VarIsNull or IsNull",' + #10 +
+    '      "category": "code-smell",' + #10 +
+    '      "severity": "warning",' + #10 +
+    '      "group": "robustness",' + #10 +
+    '      "description": "X = Null or X <> Null compares a variant with Null. The result depends on the global System.Variants.NullEqualityRule: with the default ncrLoose the comparison works as expected,' + ' with ncrStrict it is never true and with ncrError it raises an exception. A library, a test framework or another part of the project can change the rule. VarIsNull(X) and Field.IsNull check independe' + 'ntly of it. Reported only where the comparison stands on its own (condition, argument, assignment); not X = Null binds as (not X) = Null and gets no quick fix. High confidence. Quick fix: Field.IsNull' + ' for X.Value on FieldByName, FindField, Fields[...], ParamByName, Params[...] or a field of type T...Field/T...Param, otherwise VarIsNull(X); with <> preceded by not.",' + #10 +
+    '      "bad": "if qryKunde.FieldByName(''Geburtstag'').Value = Null then\n  Alter := 0;",' + #10 +
+    '      "good": "if qryKunde.FieldByName(''Geburtstag'').IsNull then\n  Alter := 0;"' + #10 +
     '    }' + #10 +
     '  ]' + #10 +
     '}' + #10 +
@@ -2847,6 +2857,11 @@ begin
     '      "id": "self-as-interface-in-constructor",' + #10 +
     '      "name": "Self während der Konstruktion als Interface weitergegeben",' + #10 +
     '      "description": "Self wird als Interface weitergegeben, während die Referenzzählung das Objekt schon freigeben kann. Gemeldet werden nur zwei echte Fehlerfälle: (1) Eine Klasse mit eigener Refere' + 'nzzählung (ein _Release in der Klassenkette gibt das Objekt frei, keine Klasse überschreibt NewInstance, die Kette ist bis TObject bekannt) gibt Self im Konstruktor oder in AfterConstruction als Inter' + 'face weiter: Der Zähler steigt von 0 auf 1 und fällt wieder auf 0, das Objekt wird freigegeben, bevor die Konstruktion endet. (2) Ein Nachfahr von TInterfacedObject gibt Self in AfterConstruction nach' + ' inherited als Interface weiter: inherited AfterConstruction hat den Schutzzähler aus NewInstance schon abgebaut. Im Konstruktor eines TInterfacedObject-Nachfahren ist Self geschützt, die Regel bleibt' + ' still. Als Weitergabe zählen Self as IX, IX(Self), ein Argument, dessen Parameter in allen bekannten Überladungen ein Interface ist, und die Zuweisung an eine Interface-Variable. Sicherheit hoch. Kor' + 'rektur in Fall 2: die Anweisung vor inherited verschieben."' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "null-compare",' + #10 +
+    '      "name": "Vergleich mit Null statt VarIsNull oder IsNull",' + #10 +
+    '      "description": "X = Null bzw. X <> Null vergleicht einen Variant mit Null. Das Ergebnis hängt von der globalen Einstellung System.Variants.NullEqualityRule ab: Mit der Vorgabe ncrLoose vergleich' + 't er wie erwartet, mit ncrStrict ist er nie wahr, mit ncrError löst er eine Exception aus. Eine Bibliothek, ein Testrahmen oder ein anderer Teil des Projekts kann die Einstellung ändern. VarIsNull(X) ' + 'und Feld.IsNull prüfen unabhängig davon. Gemeldet wird nur, wo der Vergleich für sich steht (Bedingung, Argument, Zuweisung); not X = Null bindet als (not X) = Null und bekommt keine Korrektur. Sicher' + 'heit hoch. Korrektur: Feld.IsNull bei X.Value auf FieldByName, FindField, Fields[…], ParamByName, Params[…] oder einem Feld vom Typ T…Field/T…Param, sonst VarIsNull(X); bei <> mit not davor."' + #10 +
     '    }' + #10 +
     '  ]' + #10 +
     '}' + #10 +
