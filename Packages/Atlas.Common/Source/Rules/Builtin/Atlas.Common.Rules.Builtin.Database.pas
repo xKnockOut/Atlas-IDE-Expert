@@ -4,12 +4,20 @@
 //   sql-write-without-where  UPDATE bzw. DELETE ohne WHERE (#966). Der SQL-Text
 //                            entsteht je Empfänger in einer Routine aus
 //                            SQL.Text :=, SQL.Add, CommandText := und Clear, dazu
-//                            das erste Argument von ExecSQL, ExecSQLScalar,
+//                            das erste Argument von ExecSQL, ExecSQLScalar, Open,
 //                            ExecuteDirect und Execute; Werte aus Konstanten und
 //                            lokalen Zuweisungen setzt die Regel ein. In der
 //                            Formulardatei zählen SQL.Strings (auch DeleteSQL,
 //                            ModifySQL) und CommandText, solange die Unit die
 //                            Eigenschaft nicht selbst verändert.
+//   sql-select-star          SELECT * bzw. SELECT t.* (#967) in denselben
+//                            Quellen; EXISTS (SELECT * …) und COUNT(*) bleiben
+//                            still. Korrektur: * durch die persistenten Felder
+//                            der Datenmenge aus der Formulardatei ersetzen,
+//                            solange der Stern in einem einzelnen Literal steht.
+//
+// Beide Regeln teilen den Lauf TSqlScan; welche Stellen eines SQL-Texts zählen,
+// entscheidet ein TSqlFinder je Regel.
 //
 // Unbekannte Teile (Variablen, Aufrufe) stehen im SQL-Text als #1. Stehen sie
 // hinter der Tabelle an einer Stelle, an der eine Klausel stehen kann, bleibt
@@ -28,6 +36,7 @@ uses
 
 const
   SqlWriteWithoutWhereRuleId = 'sql-write-without-where';
+  SqlSelectStarRuleId = 'sql-select-star';
 
 type
   /// <summary>Schreibende SQL-Anweisung, die alle Zeilen trifft.</summary>
@@ -49,6 +58,23 @@ type
     class function Writes(const ASql: string; AStrictCase: Boolean): TArray<TSqlWrite>; static;
     /// <summary>Steht ATable (mit oder ohne Schema, Anführungszeichen und eckige Klammern) in AAllowed?</summary>
     class function Allowed(const ATable: string; const AAllowed: TArray<string>): Boolean; static;
+  end;
+
+  /// <summary>SELECT * bzw. SELECT Alias.* in einer Spaltenliste.</summary>
+  TSqlStar = record
+    /// <summary>Stelle des Sterns im SQL-Text (1-basiert).</summary>
+    Offset: Integer;
+    /// <summary>Alias bzw. Tabelle vor .*; '' bei *.</summary>
+    Qualifier: string;
+  end;
+
+  TSqlSelectStarRule = class(TInterfacedObject, IRule)
+  public
+    function Descriptor: TRuleDescriptor;
+    procedure Check(const AContext: TRuleContext; const AReport: IRuleReport);
+    /// <summary>Sterne in Spaltenlisten von ASql, auch in Unterabfragen, außer in EXISTS (…). #1 steht für
+    /// einen unbekannten Teil. AStrictCase: SELECT nur in Großbuchstaben.</summary>
+    class function Stars(const ASql: string; AStrictCase: Boolean): TArray<TSqlStar>; static;
   end;
 
 procedure RegisterDatabaseRules(const ARegistry: TRuleRegistry);
@@ -79,7 +105,8 @@ const
   ValueWords: array[0..10] of string = ('AND', 'OR', 'NOT', 'LIKE', 'IN', 'IS', 'THEN', 'ELSE', 'WHEN', 'VALUES',
     'BETWEEN');
   ValueSymbols = '=<>,(+-*/|%';
-  SqlCalls: array[0..3] of string = ('ExecSQL', 'ExecSQLScalar', 'ExecuteDirect', 'Execute');
+  // Open(SQL) gibt es bei FireDAC (TFDQuery, TFDConnection).
+  SqlCalls: array[0..4] of string = ('ExecSQL', 'ExecSQLScalar', 'ExecuteDirect', 'Execute', 'Open');
   // Zugriffe auf einen Empfänger, die seinen SQL-Text nicht ändern.
   HarmlessMembers: array[0..3] of string = ('Text', 'Count', 'BeginUpdate', 'EndUpdate');
   QuoteChars: array[0..3] of string = ('"', '[', ']', '`');
@@ -279,6 +306,8 @@ type
     /// <summary>Ab hier im Text (1-basiert) stammt der Text aus Token.</summary>
     Offset: Integer;
     Token: Integer;
+    /// <summary>Der Text stammt unverändert aus dem Literal Token (nicht aus einer Konstanten).</summary>
+    Direct: Boolean;
   end;
 
   /// <summary>SQL-Text, wie ihn die Unit zusammensetzt; #1 für unbekannte Teile.</summary>
@@ -292,11 +321,15 @@ type
     Unknown: Boolean;
     constructor Create(ASqlContext: Boolean);
     procedure AddText(const AText: string; AToken: Integer);
+    /// <summary>Text eines String-Literals, das an der Stelle AToken steht.</summary>
+    procedure AddLiteral(const AText: string; AToken: Integer);
     procedure AddHole(AToken: Integer);
     /// <summary>Text von ABuild anhängen; AToken &lt; 0 übernimmt dessen Stücke, sonst zählt alles zu AToken.</summary>
     procedure AddBuild(ABuild: TSqlBuild; AToken: Integer);
     procedure NewLine;
     function TokenAt(AOffset: Integer): Integer;
+    /// <summary>Stück, aus dem AOffset stammt; False ohne.</summary>
+    function PieceAt(AOffset: Integer; out APiece: TSqlPiece): Boolean;
   end;
 
 constructor TSqlBuild.Create(ASqlContext: Boolean);
@@ -313,8 +346,16 @@ begin
     Exit;
   Piece.Offset := Length(Text) + 1;
   Piece.Token := AToken;
+  Piece.Direct := False;
   Pieces := Pieces + [Piece];
   Text := Text + AText;
+end;
+
+procedure TSqlBuild.AddLiteral(const AText: string; AToken: Integer);
+begin
+  AddText(AText, AToken);
+  if AText <> '' then
+    Pieces[High(Pieces)].Direct := True;
 end;
 
 procedure TSqlBuild.AddHole(AToken: Integer);
@@ -357,6 +398,20 @@ begin
       Result := Piece.Token;
 end;
 
+function TSqlBuild.PieceAt(AOffset: Integer; out APiece: TSqlPiece): Boolean;
+var
+  Piece: TSqlPiece;
+begin
+  Result := False;
+  APiece := Default(TSqlPiece);
+  for Piece in Pieces do
+    if Piece.Offset <= AOffset then
+    begin
+      APiece := Piece;
+      Result := True;
+    end;
+end;
+
 type
   /// <summary>Werte eines Namens (Konstante oder lokale Zuweisung) und die Stellen ihrer Zuweisung.</summary>
   TNamedValue = class
@@ -371,20 +426,41 @@ type
     procedure Assign(ABuild: TSqlBuild; ADefinition: Integer);
   end;
 
-  TFoundWrite = record
+  /// <summary>Stelle in einem SQL-Text, die eine Regel meldet.</summary>
+  TSqlHit = record
+    /// <summary>Stelle im SQL-Text (1-basiert).</summary>
+    Offset: Integer;
+    Message: string;
+    Confidence: TRuleConfidence;
+  end;
+
+  /// <summary>Meldet die Stellen eines SQL-Texts; AStrictCase wie bei TSqlWriteWithoutWhereRule.Writes.
+  /// ASuffix ergänzt die Meldung um die Herkunft, z. B. " (qry.SQL in der Formulardatei)".</summary>
+  TSqlFinder = reference to function(const ASql: string; AStrictCase: Boolean; const ASuffix: string):
+    TArray<TSqlHit>;
+
+  TSqlFound = record
     Range: TTextRange;
     Message: string;
     Confidence: TRuleConfidence;
     /// <summary>Empfänger in Kleinbuchstaben; '' bei einzelnen Ausdrücken.</summary>
     Key: string;
     Segment: Integer;
+    /// <summary>Token, an dem die Meldung steht.</summary>
+    Token: Integer;
+    /// <summary>Stelle im Klartext des Literals Token (1-basiert); 0, wenn die Stelle aus einer Konstanten
+    /// oder einem lokalen Wert stammt.</summary>
+    LiteralOffset: Integer;
   end;
 
+  /// <summary>Korrekturen zu einem Fund; nil ohne.</summary>
+  TSqlFixer = reference to function(const AFound: TSqlFound): TArray<TRuleFix>;
+
   /// <summary>Ein Lauf der Regel über die Token einer Unit.</summary>
-  TSqlWriteScan = class
+  TSqlScan = class
   private
     FTokens: TArray<TPascalToken>;
-    FAllowed: TArray<string>;
+    FFinder: TSqlFinder;
     FConsumed: TArray<Boolean>;
     FSegments: TArray<Integer>;
     FConstants: TObjectDictionary<string, TNamedValue>;
@@ -393,7 +469,7 @@ type
     FKeys: TDictionary<string, Boolean>;
     /// <summary>Segmente, in denen ein Empfänger ergänzt oder weitergegeben wird.</summary>
     FTouched: TObjectDictionary<string, TList<Integer>>;
-    FFound: TList<TFoundWrite>;
+    FFound: TList<TSqlFound>;
     FReceiverRead: string;
     FSegment: Integer;
     function IsChainStart(AIndex: Integer): Boolean;
@@ -414,10 +490,11 @@ type
     procedure CollectKeys;
     procedure Scan;
   public
-    constructor Create(const ATokens: TArray<TPascalToken>; const AAllowed: TArray<string>);
+    constructor Create(const ATokens: TArray<TPascalToken>; const AFinder: TSqlFinder);
     destructor Destroy; override;
     procedure Run;
-    procedure Report(const AReport: IRuleReport);
+    /// <summary>Meldet die Funde; AFixer liefert ihre Korrekturen (nil: keine).</summary>
+    procedure Report(const AReport: IRuleReport; const AFixer: TSqlFixer);
     property Tokens: TArray<TPascalToken> read FTokens;
   end;
 
@@ -502,23 +579,23 @@ begin
   Current := ABuild;
 end;
 
-{ TSqlWriteScan }
+{ TSqlScan }
 
-constructor TSqlWriteScan.Create(const ATokens: TArray<TPascalToken>; const AAllowed: TArray<string>);
+constructor TSqlScan.Create(const ATokens: TArray<TPascalToken>; const AFinder: TSqlFinder);
 begin
   inherited Create;
   FTokens := ATokens;
-  FAllowed := AAllowed;
+  FFinder := AFinder;
   SetLength(FConsumed, Length(FTokens));
   FConstants := TObjectDictionary<string, TNamedValue>.Create([doOwnsValues]);
   FLocals := TObjectDictionary<string, TNamedValue>.Create([doOwnsValues]);
   FReceivers := TObjectDictionary<string, TSqlBuild>.Create([doOwnsValues]);
   FKeys := TDictionary<string, Boolean>.Create;
   FTouched := TObjectDictionary<string, TList<Integer>>.Create([doOwnsValues]);
-  FFound := TList<TFoundWrite>.Create;
+  FFound := TList<TSqlFound>.Create;
 end;
 
-destructor TSqlWriteScan.Destroy;
+destructor TSqlScan.Destroy;
 begin
   FFound.Free;
   FTouched.Free;
@@ -529,13 +606,13 @@ begin
   inherited;
 end;
 
-function TSqlWriteScan.IsChainStart(AIndex: Integer): Boolean;
+function TSqlScan.IsChainStart(AIndex: Integer): Boolean;
 begin
   Result := (FTokens[AIndex].Kind = TPascalTokenKind.Identifier) and
     ((AIndex = 0) or not FTokens[AIndex - 1].IsSymbol('.'));
 end;
 
-function TSqlWriteScan.Chain(AIndex: Integer; out ALast: Integer): string;
+function TSqlScan.Chain(AIndex: Integer; out ALast: Integer): string;
 begin
   Result := FTokens[AIndex].Text;
   ALast := AIndex;
@@ -547,7 +624,7 @@ begin
   end;
 end;
 
-function TSqlWriteScan.Carrier(AIndex: Integer; out AKey: string; out ALast: Integer): TCarrier;
+function TSqlScan.Carrier(AIndex: Integer; out AKey: string; out ALast: Integer): TCarrier;
 var
   Full, Base, Member: string;
   Next: Integer;
@@ -585,7 +662,7 @@ begin
   AKey := LowerCase(AKey);
 end;
 
-function TSqlWriteScan.MatchingClose(AOpen: Integer): Integer;
+function TSqlScan.MatchingClose(AOpen: Integer): Integer;
 var
   Depth: Integer;
 begin
@@ -602,7 +679,7 @@ begin
   Result := High(FTokens);
 end;
 
-function TSqlWriteScan.ExpressionEnd(AFirst: Integer): Integer;
+function TSqlScan.ExpressionEnd(AFirst: Integer): Integer;
 var
   Index: Integer;
   Token: TPascalToken;
@@ -621,14 +698,14 @@ begin
   Result := Index - 1;
 end;
 
-function TSqlWriteScan.StartsLiteral(AIndex: Integer): Boolean;
+function TSqlScan.StartsLiteral(AIndex: Integer): Boolean;
 begin
   Result := (AIndex <= High(FTokens)) and ((FTokens[AIndex].Kind in [TPascalTokenKind.StringLiteral,
     TPascalTokenKind.CharLiteral]) or ((AIndex < High(FTokens)) and MatchText(FTokens[AIndex].Text,
     ['Format', 'Concat']) and FTokens[AIndex + 1].IsSymbol('(')));
 end;
 
-function TSqlWriteScan.ChangesReceiver(const AChain, AKey: string): Boolean;
+function TSqlScan.ChangesReceiver(const AChain, AKey: string): Boolean;
 var
   Rest: string;
 begin
@@ -643,7 +720,7 @@ begin
   Result := not MatchText(Rest, HarmlessMembers);
 end;
 
-procedure TSqlWriteScan.Consume(AFirst, ALast: Integer);
+procedure TSqlScan.Consume(AFirst, ALast: Integer);
 var
   Index: Integer;
 begin
@@ -651,7 +728,7 @@ begin
     FConsumed[Index] := True;
 end;
 
-procedure TSqlWriteScan.Evaluate(AFirst, ALast: Integer; ABuild: TSqlBuild);
+procedure TSqlScan.Evaluate(AFirst, ALast: Integer; ABuild: TSqlBuild);
 var
   Index, Last, Close, Start: Integer;
   Name, Plain, Key: string;
@@ -666,7 +743,7 @@ begin
     if FTokens[Index].Kind in [TPascalTokenKind.StringLiteral, TPascalTokenKind.CharLiteral] then
     begin
       if TStringLiterals.PlainText(FTokens[Index].Text, Plain) then
-        ABuild.AddText(Plain, Index)
+        ABuild.AddLiteral(Plain, Index)
       else
         ABuild.AddHole(Index);
     end
@@ -752,31 +829,34 @@ begin
   end;
 end;
 
-procedure TSqlWriteScan.Finish(ABuild: TSqlBuild; const AKey: string);
+procedure TSqlScan.Finish(ABuild: TSqlBuild; const AKey: string);
 var
-  Write: TSqlWrite;
-  Found: TFoundWrite;
+  Hit: TSqlHit;
+  Found: TSqlFound;
   Token: Integer;
+  Piece: TSqlPiece;
 begin
   if ABuild.Unknown then
     Exit;
-  for Write in TSqlWriteWithoutWhereRule.Writes(ABuild.Text, not ABuild.SqlContext) do
+  for Hit in FFinder(ABuild.Text, not ABuild.SqlContext, '') do
   begin
-    if (Write.Table <> '') and TSqlWriteWithoutWhereRule.Allowed(Write.Table, FAllowed) then
-      Continue;
-    Token := ABuild.TokenAt(Write.Offset);
+    Token := ABuild.TokenAt(Hit.Offset);
     if Token < 0 then
       Continue;
     Found.Range := TTextRange.Create(FTokens[Token].StartPos, FTokens[Token].EndPos);
-    Found.Message := WriteMessage(Write, '');
-    Found.Confidence := WriteConfidence(Write);
+    Found.Message := Hit.Message;
+    Found.Confidence := Hit.Confidence;
     Found.Key := AKey;
     Found.Segment := FSegment;
+    Found.Token := Token;
+    Found.LiteralOffset := 0;
+    if ABuild.PieceAt(Hit.Offset, Piece) and Piece.Direct and (Piece.Token = Token) then
+      Found.LiteralOffset := Hit.Offset - Piece.Offset + 1;
     FFound.Add(Found);
   end;
 end;
 
-procedure TSqlWriteScan.FinishNamed(AValues: TObjectDictionary<string, TNamedValue>; AFirst, ALast: Integer);
+procedure TSqlScan.FinishNamed(AValues: TObjectDictionary<string, TNamedValue>; AFirst, ALast: Integer);
 var
   Pair: TPair<string, TNamedValue>;
   Index: Integer;
@@ -800,7 +880,7 @@ begin
   end;
 end;
 
-procedure TSqlWriteScan.FinishSegment(AFirst, ALast: Integer);
+procedure TSqlScan.FinishSegment(AFirst, ALast: Integer);
 var
   Pair: TPair<string, TSqlBuild>;
 begin
@@ -811,7 +891,7 @@ begin
   FLocals.Clear;
 end;
 
-procedure TSqlWriteScan.Touch(const AKey: string; ASegment: Integer);
+procedure TSqlScan.Touch(const AKey: string; ASegment: Integer);
 var
   Segments: TList<Integer>;
 begin
@@ -824,7 +904,7 @@ begin
     Segments.Add(ASegment);
 end;
 
-procedure TSqlWriteScan.ComputeSegments;
+procedure TSqlScan.ComputeSegments;
 var
   Index, Segment: Integer;
   Token: TPascalToken;
@@ -846,7 +926,7 @@ begin
   end;
 end;
 
-procedure TSqlWriteScan.CollectConstants;
+procedure TSqlScan.CollectConstants;
 var
   Index, Depth, First, Last: Integer;
   InConst: Boolean;
@@ -896,7 +976,7 @@ begin
   end;
 end;
 
-procedure TSqlWriteScan.CollectKeys;
+procedure TSqlScan.CollectKeys;
 var
   Index, Last: Integer;
   Key: string;
@@ -922,7 +1002,7 @@ begin
       end;
 end;
 
-procedure TSqlWriteScan.Scan;
+procedure TSqlScan.Scan;
 var
   Index, Last, First, Close, SegmentStart: Integer;
   Key, Name: string;
@@ -1067,7 +1147,7 @@ begin
   FinishNamed(FConstants, 0, High(FTokens));
 end;
 
-procedure TSqlWriteScan.Run;
+procedure TSqlScan.Run;
 begin
   if Length(FTokens) = 0 then
     Exit;
@@ -1077,9 +1157,9 @@ begin
   Scan;
 end;
 
-procedure TSqlWriteScan.Report(const AReport: IRuleReport);
+procedure TSqlScan.Report(const AReport: IRuleReport; const AFixer: TSqlFixer);
 var
-  Found: TFoundWrite;
+  Found: TSqlFound;
   Segments: TList<Integer>;
   Segment: Integer;
   Seen: TDictionary<string, Boolean>;
@@ -1101,7 +1181,10 @@ begin
       if Seen.ContainsKey(Id) then
         Continue;
       Seen.Add(Id, True);
-      AReport.Add(Found.Range, Found.Message, Found.Confidence);
+      if Assigned(AFixer) then
+        AReport.Add(Found.Range, Found.Message, Found.Confidence, AFixer(Found))
+      else
+        AReport.Add(Found.Range, Found.Message, Found.Confidence);
     end;
   finally
     Seen.Free;
@@ -1200,12 +1283,12 @@ begin
 end;
 
 procedure CheckForm(const ATokens: TArray<TPascalToken>; AObject: TDfmObject; const AFormClass: string;
-  const AAllowed: TArray<string>; const AReport: IRuleReport);
+  const AFinder: TSqlFinder; const AReport: IRuleReport);
 var
   Prop: TDfmProperty;
   Child: TDfmObject;
   Text, Root: string;
-  Write: TSqlWrite;
+  Hit: TSqlHit;
   Anchor: Integer;
 begin
   if AObject.Name <> '' then
@@ -1218,34 +1301,31 @@ begin
         Root := Copy(Root, 1, Length(Root) - Length('.Strings'));
       if SourceTouches(ATokens, AObject.Name + '.' + Root) then
         Continue;
-      for Write in TSqlWriteWithoutWhereRule.Writes(Text, False) do
+      for Hit in AFinder(Text, False, Format(' (%s.%s in der Formulardatei)', [AObject.Name, Root])) do
       begin
-        if (Write.Table <> '') and TSqlWriteWithoutWhereRule.Allowed(Write.Table, AAllowed) then
-          Continue;
         Anchor := FormAnchor(ATokens, AObject.Name, AFormClass);
         if Anchor >= 0 then
-          AReport.Add(TTextRange.Create(ATokens[Anchor].StartPos, ATokens[Anchor].EndPos),
-            WriteMessage(Write, Format(' (%s.%s in der Formulardatei)', [AObject.Name, Root])),
-            WriteConfidence(Write));
+          AReport.Add(TTextRange.Create(ATokens[Anchor].StartPos, ATokens[Anchor].EndPos), Hit.Message,
+            Hit.Confidence);
       end;
     end;
   for Child in AObject.Children do
-    CheckForm(ATokens, Child, AFormClass, AAllowed, AReport);
+    CheckForm(ATokens, Child, AFormClass, AFinder, AReport);
 end;
 
-procedure TSqlWriteWithoutWhereRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
+/// <summary>Läuft TSqlScan mit AFinder über die Unit und die Formulardatei.</summary>
+procedure CheckSql(const AContext: TRuleContext; const AReport: IRuleReport; const AFinder: TSqlFinder;
+  const AFixer: TSqlFixer);
 var
   Tokens: TArray<TPascalToken>;
-  Allowed: TArray<string>;
-  Scan: TSqlWriteScan;
+  Scan: TSqlScan;
   Document: TDfmDocument;
 begin
   Tokens := TRuleDerived.CodeTokens(TRuleDerived.Open(AContext), AContext);
-  Allowed := TRuleOptions.Strings(AContext.Options, 'allowTables', nil);
-  Scan := TSqlWriteScan.Create(Tokens, Allowed);
+  Scan := TSqlScan.Create(Tokens, AFinder);
   try
     Scan.Run;
-    Scan.Report(AReport);
+    Scan.Report(AReport, AFixer);
   finally
     Scan.Free;
   end;
@@ -1254,7 +1334,268 @@ begin
   Document := TDfmParser.Parse(AContext.FormText);
   try
     if Document.Root <> nil then
-      CheckForm(Tokens, Document.Root, Document.Root.TypeName, Allowed, AReport);
+      CheckForm(Tokens, Document.Root, Document.Root.TypeName, AFinder, AReport);
+  finally
+    Document.Free;
+  end;
+end;
+
+procedure TSqlWriteWithoutWhereRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
+var
+  Allowed: TArray<string>;
+  Finder: TSqlFinder;
+begin
+  Allowed := TRuleOptions.Strings(AContext.Options, 'allowTables', nil);
+  Finder :=
+    function(const ASql: string; AStrictCase: Boolean; const ASuffix: string): TArray<TSqlHit>
+    var
+      Write: TSqlWrite;
+      Hit: TSqlHit;
+    begin
+      Result := nil;
+      for Write in TSqlWriteWithoutWhereRule.Writes(ASql, AStrictCase) do
+      begin
+        if (Write.Table <> '') and TSqlWriteWithoutWhereRule.Allowed(Write.Table, Allowed) then
+          Continue;
+        Hit.Offset := Write.Offset;
+        Hit.Message := WriteMessage(Write, ASuffix);
+        Hit.Confidence := WriteConfidence(Write);
+        Result := Result + [Hit];
+      end;
+    end;
+  CheckSql(AContext, AReport, Finder, nil);
+end;
+
+{ TSqlSelectStarRule }
+
+const
+  // Stehen zwischen SELECT und der Spaltenliste.
+  SelectModifiers: array[0..3] of string = ('DISTINCT', 'ALL', 'UNIQUE', 'DISTINCTROW');
+  // Nehmen eine Zahl, einen Parameter oder einen Ausdruck in Klammern mit (TOP 10, FIRST 5 SKIP 10).
+  SelectLimits: array[0..2] of string = ('TOP', 'FIRST', 'SKIP');
+  // Feldarten, die nicht aus der Abfrage kommen (TFieldKind).
+  ComputedFieldKinds: array[0..3] of string = ('fkCalculated', 'fkLookup', 'fkInternalCalc', 'fkAggregate');
+
+function TSqlSelectStarRule.Descriptor: TRuleDescriptor;
+begin
+  Result := TRuleDescriptor.Create(SqlSelectStarRuleId, TRuleSeverity.Hint, 'SELECT * im Code', True);
+end;
+
+class function TSqlSelectStarRule.Stars(const ASql: string; AStrictCase: Boolean): TArray<TSqlStar>;
+var
+  Tokens: TArray<TSqlToken>;
+  Index, Scan, Level: Integer;
+  ItemStart, SawFrom, SawHole: Boolean;
+  Found: TArray<TSqlStar>;
+  Star: TSqlStar;
+begin
+  Result := nil;
+  Tokens := SqlTokens(ASql);
+  for Index := 0 to High(Tokens) do
+  begin
+    if not IsWord(Tokens, Index, High(Tokens), 'SELECT') then
+      Continue;
+    if AStrictCase and (Tokens[Index].Text <> 'SELECT') then
+      Continue;
+    // EXISTS (SELECT * …) fragt nur nach Zeilen; der Stern ist dort üblich.
+    if (Index >= 2) and (Tokens[Index - 1].Text = '(') and IsWord(Tokens, Index - 2, High(Tokens), 'EXISTS') then
+      Continue;
+    Level := Tokens[Index].Depth;
+    Scan := Index + 1;
+    while Scan <= High(Tokens) do
+      if IsWordIn(Tokens, Scan, High(Tokens), SelectModifiers) then
+        Inc(Scan)
+      else if IsWordIn(Tokens, Scan, High(Tokens), SelectLimits) and (Scan < High(Tokens)) then
+      begin
+        Inc(Scan);
+        if Tokens[Scan].Text = '(' then
+        begin
+          while (Scan <= High(Tokens)) and not ((Tokens[Scan].Text = ')') and (Tokens[Scan].Depth = Level)) do
+            Inc(Scan);
+          Inc(Scan);
+        end
+        else
+        begin
+          if Tokens[Scan].Text = ':' then
+            Inc(Scan);
+          Inc(Scan);
+        end;
+        if IsWord(Tokens, Scan, High(Tokens), 'PERCENT') then
+          Inc(Scan);
+        if IsWord(Tokens, Scan, High(Tokens), 'WITH') and IsWord(Tokens, Scan + 1, High(Tokens), 'TIES') then
+          Inc(Scan, 2);
+      end
+      else
+        Break;
+    // Spaltenliste bis FROM auf derselben Ebene
+    Found := nil;
+    ItemStart := True;
+    SawFrom := False;
+    SawHole := False;
+    while Scan <= High(Tokens) do
+    begin
+      if Tokens[Scan].Depth < Level then
+        Break;
+      if Tokens[Scan].Depth = Level then
+      begin
+        if IsWord(Tokens, Scan, High(Tokens), 'FROM') then
+        begin
+          SawFrom := True;
+          Break;
+        end;
+        if (Tokens[Scan].Kind = TSqlTokenKind.Symbol) and (Tokens[Scan].Text = ';') then
+          Break;
+        if Tokens[Scan].Kind = TSqlTokenKind.Hole then
+          SawHole := True;
+        if ItemStart then
+        begin
+          Star := Default(TSqlStar);
+          if Tokens[Scan].Text = '*' then
+          begin
+            Star.Offset := Tokens[Scan].Offset;
+            Found := Found + [Star];
+          end
+          else if (Tokens[Scan].Kind in [TSqlTokenKind.Word, TSqlTokenKind.Quoted]) and (Scan + 2 <= High(Tokens)) and
+            (Tokens[Scan + 1].Text = '.') and (Tokens[Scan + 2].Text = '*') then
+          begin
+            Star.Offset := Tokens[Scan + 2].Offset;
+            Star.Qualifier := Tokens[Scan].Text;
+            Found := Found + [Star];
+          end;
+        end;
+        ItemStart := (Tokens[Scan].Kind = TSqlTokenKind.Symbol) and (Tokens[Scan].Text = ',');
+      end;
+      Inc(Scan);
+    end;
+    // Ohne FROM ist es kein SQL (Meldungstext); im SQL-Text darf ein unbekannter Teil das FROM bringen.
+    if SawFrom or (not AStrictCase and (SawHole or (Scan > High(Tokens)))) then
+      Result := Result + Found;
+  end;
+end;
+
+/// <summary>Stelle (0-basiert ab Tokenanfang) des Zeichens APlain (1-basiert) im Klartext des einfachen
+/// Literals ARaw; -1, wenn ARaw kein einfaches einzeiliges Literal ist.</summary>
+function RawLiteralColumn(const ARaw: string; APlain: Integer): Integer;
+var
+  Index, Plain: Integer;
+begin
+  Result := -1;
+  if (Length(ARaw) < 2) or (ARaw[1] <> '''') or (ARaw[Length(ARaw)] <> '''') or StartsStr('''''''', ARaw) then
+    Exit;
+  Index := 2;
+  Plain := 1;
+  while Index < Length(ARaw) do
+  begin
+    if Plain = APlain then
+      Exit(Index - 1);
+    if (ARaw[Index] = '''') and (ARaw[Index + 1] = '''') then
+      Inc(Index, 2)
+    else
+      Inc(Index);
+    Inc(Plain);
+  end;
+end;
+
+function FindDfmObject(AObject: TDfmObject; const AName: string): TDfmObject;
+var
+  Child: TDfmObject;
+begin
+  if SameText(AObject.Name, AName) then
+    Exit(AObject);
+  for Child in AObject.Children do
+  begin
+    Result := FindDfmObject(Child, AName);
+    if Result <> nil then
+      Exit;
+  end;
+  Result := nil;
+end;
+
+/// <summary>FieldName der persistenten Felder von ADataSet, die aus der Abfrage kommen.</summary>
+function PersistentFields(ADataSet: TDfmObject): TArray<string>;
+var
+  Child: TDfmObject;
+  Prop: TDfmProperty;
+  Name: string;
+  Computed: Boolean;
+begin
+  Result := nil;
+  for Child in ADataSet.Children do
+  begin
+    Name := '';
+    Computed := False;
+    for Prop in Child.Properties do
+      if SameText(Prop.Name, 'FieldName') then
+        Name := AnsiDequotedStr(Trim(Prop.Value), '''')
+      else if SameText(Prop.Name, 'FieldKind') and MatchText(Trim(Prop.Value), ComputedFieldKinds) then
+        Computed := True;
+    if (Name <> '') and not Computed then
+      Result := Result + [Name];
+  end;
+end;
+
+procedure TSqlSelectStarRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
+var
+  Finder: TSqlFinder;
+  Fixer: TSqlFixer;
+  Document: TDfmDocument;
+  Tokens: TArray<TPascalToken>;
+begin
+  Finder :=
+    function(const ASql: string; AStrictCase: Boolean; const ASuffix: string): TArray<TSqlHit>
+    var
+      Star: TSqlStar;
+      Hit: TSqlHit;
+    begin
+      Result := nil;
+      for Star in TSqlSelectStarRule.Stars(ASql, AStrictCase) do
+      begin
+        Hit.Offset := Star.Offset;
+        if Star.Qualifier = '' then
+          Hit.Message := Format('SELECT * holt alle Spalten%s; neue Spalten ändern still die Datenmenge.', [ASuffix])
+        else
+          Hit.Message := Format('SELECT %s.* holt alle Spalten von %0:s%s; neue Spalten ändern still die Datenmenge.',
+            [Star.Qualifier, ASuffix]);
+        Hit.Confidence := TRuleConfidence.High;
+        Result := Result + [Hit];
+      end;
+    end;
+  Document := nil;
+  if AContext.FormText <> '' then
+    Document := TDfmParser.Parse(AContext.FormText);
+  try
+    Tokens := TRuleDerived.CodeTokens(TRuleDerived.Open(AContext), AContext);
+    Fixer :=
+      function(const AFound: TSqlFound): TArray<TRuleFix>
+      var
+        DataSet: TDfmObject;
+        Fields: TArray<string>;
+        Column: Integer;
+        Token: TPascalToken;
+        Name: string;
+      begin
+        Result := nil;
+        // Nur der Stern ohne Alias in einem einzeiligen Literal; die Felder kommen aus der Formulardatei.
+        if (AFound.LiteralOffset = 0) or (Document = nil) or (Document.Root = nil) or
+          not EndsText('.sql', AFound.Key) then
+          Exit;
+        Token := Tokens[AFound.Token];
+        Column := RawLiteralColumn(Token.Text, AFound.LiteralOffset);
+        if (Column < 0) or (Token.StartPos.Line <> Token.EndPos.Line) or (Token.Text[Column + 1] <> '*') then
+          Exit;
+        Name := Copy(AFound.Key, 1, Length(AFound.Key) - Length('.sql'));
+        Name := Copy(Name, LastDelimiter('.', Name) + 1, MaxInt);
+        DataSet := FindDfmObject(Document.Root, Name);
+        if DataSet = nil then
+          Exit;
+        Fields := PersistentFields(DataSet);
+        if Fields = nil then
+          Exit;
+        Result := [TRuleFix.Create('* durch die persistenten Felder ersetzen',
+          [TRuleEdit.Create(TTextRange.Create(Token.StartPos.Line, Token.StartPos.Character + Column,
+          Token.StartPos.Line, Token.StartPos.Character + Column + 1), string.Join(', ', Fields))])];
+      end;
+    CheckSql(AContext, AReport, Finder, Fixer);
   finally
     Document.Free;
   end;
@@ -1263,6 +1604,7 @@ end;
 procedure RegisterDatabaseRules(const ARegistry: TRuleRegistry);
 begin
   ARegistry.Register(TSqlWriteWithoutWhereRule.Create);
+  ARegistry.Register(TSqlSelectStarRule.Create);
 end;
 
 end.

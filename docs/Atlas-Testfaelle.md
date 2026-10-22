@@ -4119,3 +4119,17 @@ Voraussetzung: Server läuft in der IDE mit Projekt; RTL und VCL im Index.
 | RO5 | `Liste.Text := ''`, `if Liste.Count = 0`, gleichnamige lokale Variable `Count := 0`, `property Caption;` aus einem Vorfahren | Keine Meldung |
 | RO6 | `"readonly-property-assigned": "off"`, `"group:compiler": "off"` bzw. `exclude` | Keine Meldung |
 | RO7 | Abgleich mit Delphi: RO1, RO3, RO4 übersetzen | dcc meldet E2129 bzw. E2130 an denselben Stellen, für RO5 nichts |
+
+## SELECT * im Code (#967)
+
+Voraussetzung: Server läuft in der IDE mit Projekt; Regel `sql-select-star` in den Einstellungen auf „Hinweis“ (Standard aus).
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| SQ1 | Das Beispiel aus #967: `qry.SQL.Text := 'SELECT * FROM Kunden WHERE Ort = :Ort';` | Hinweis `sql-select-star` am Literal: „SELECT * holt alle Spalten; neue Spalten ändern still die Datenmenge.“; im Fenster „Atlas-Prüfung“ und im Befund-Hover (**Abnahme**) |
+| SQ2 | Datenmodul mit `qryKunden` und persistenten Feldern `Id`, `Name` und einem berechneten Feld in der .dfm; im Code `qryKunden.SQL.Text := 'SELECT * FROM Kunden';`, Alt+Enter „* durch die persistenten Felder ersetzen“, danach Strg+Z | Literal wird `'SELECT Id, Name FROM Kunden'` (ohne das berechnete Feld), keine Meldung mehr; ein Undo-Schritt |
+| SQ3 | `SELECT k.Id, a.* FROM Kunden k JOIN Auftrag a …` | „SELECT a.* holt alle Spalten von a; …“ |
+| SQ4 | `SQL.Strings` mit `SELECT *` nur in der .dfm | Hinweis an der Felddeklaration der Query: „… (qryLesen.SQL in der Formulardatei) …“ |
+| SQ5 | `SELECT COUNT(*) FROM Kunden`, `… WHERE EXISTS (SELECT * FROM Sperre …)`, `ShowMessage('Select * dauert')`, Spaltenliste aus einer Variablen | Keine Meldung |
+| SQ6 | Regel auf Standard, `"sql-select-star": "off"`, `"group:database": "off"` bzw. `exclude` | Keine Meldung |
+| SQ7 | Profil `strict` | Meldung wie SQ1 ohne eigene Einstellung |
