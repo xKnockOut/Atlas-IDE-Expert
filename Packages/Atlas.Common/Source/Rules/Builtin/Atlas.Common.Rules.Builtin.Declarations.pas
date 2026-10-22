@@ -11,6 +11,10 @@
 //   field-after-method         Feld nach Methode oder Property im selben
 //                              Abschnitt (#986, wie E2169); Korrektur:
 //                              Feld an den Anfang verschieben oder var davor
+//   overload-directive-missing Gleichnamige Routinen bzw. Methoden eines
+//                              Bereichs ohne overload (#987, wie E2254,
+//                              E2267) oder mit gleichen Parametern (E2252,
+//                              E2301); Korrektur: overload; anhängen
 //                              (#1000, wie E2291), bzw. Zuordnung IFoo.Bar = Baz
 //                              für ein nicht genanntes Interface (wie E2265).
 //                              Geerbte Methoden, Zuordnungen und implements
@@ -76,8 +80,15 @@ type
     procedure Check(const AContext: TRuleContext; const AReport: IRuleReport);
   end;
 
+  TOverloadDirectiveMissingRule = class(TInterfacedObject, IRule)
+  public
+    function Descriptor: TRuleDescriptor;
+    procedure Check(const AContext: TRuleContext; const AReport: IRuleReport);
+  end;
+
 const
   FieldAfterMethodRuleId = 'field-after-method';
+  OverloadDirectiveMissingRuleId = 'overload-directive-missing';
 
 procedure RegisterDeclarationRules(const ARegistry: TRuleRegistry);
 
@@ -714,6 +725,310 @@ begin
   Visit(AContext.Tree.Root);
 end;
 
+{ TOverloadDirectiveMissingRule }
+
+function TOverloadDirectiveMissingRule.Descriptor: TRuleDescriptor;
+begin
+  Result := TRuleDescriptor.Create(OverloadDirectiveMissingRuleId, TRuleSeverity.Error,
+    'Überladung ohne overload oder mit gleicher Signatur');
+end;
+
+type
+  /// <summary>Eine Deklaration in einem Gültigkeitsbereich für overload-directive-missing (#987).</summary>
+  TOverloadEntry = record
+    Header: TSyntaxNode;
+    Name: string;
+    HasOverload: Boolean;
+    /// <summary>Parameterarten und -typen samt Zahl der Typparameter, kleingeschrieben.</summary>
+    Parameters: string;
+    ResultType: string;
+    Path: string;
+  end;
+
+procedure TOverloadDirectiveMissingRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
+var
+  Tokens: TArray<TPascalToken>;
+  Paths: TArray<string>;
+
+  function FirstToken(ANode: TSyntaxNode): Integer;
+  var
+    Low, High, Middle: Integer;
+  begin
+    Low := 0;
+    High := Length(Tokens);
+    while Low < High do
+    begin
+      Middle := (Low + High) div 2;
+      if Tokens[Middle].Offset < ANode.StartOffset then
+        Low := Middle + 1
+      else
+        High := Middle;
+    end;
+    Result := Low;
+  end;
+
+  function NodeKey(ANode: TSyntaxNode): string;
+  var
+    Index: Integer;
+  begin
+    // Quelltext ohne Leerraum und Kommentare, kleingeschrieben.
+    Result := '';
+    for Index := FirstToken(ANode) to High(Tokens) do
+    begin
+      if Tokens[Index].Offset >= ANode.EndOffset then
+        Break;
+      if not (Tokens[Index].Kind in [TPascalTokenKind.Comment, TPascalTokenKind.Directive]) then
+        Result := Result + LowerCase(Tokens[Index].Text);
+    end;
+  end;
+
+  // class operator Implicit … darf ohne overload mehrfach stehen.
+  function IsOperator(AHeader: TSyntaxNode): Boolean;
+  var
+    Index: Integer;
+  begin
+    Index := FirstToken(AHeader);
+    while (Index <= High(Tokens)) and (Tokens[Index].Offset < AHeader.EndOffset) and
+      (Tokens[Index].Kind in [TPascalTokenKind.Keyword, TPascalTokenKind.Identifier, TPascalTokenKind.Comment]) and
+      not SameText(Tokens[Index].Text, AHeader.Name) do
+    begin
+      if SameText(Tokens[Index].Text, 'operator') then
+        Exit(True);
+      Inc(Index);
+    end;
+    Result := False;
+  end;
+
+  function EntryOf(AHeader: TSyntaxNode): TOverloadEntry;
+  const
+    Modifiers: array[TParameterModifier] of string = ('', 'const ', 'var ', 'out ', 'constref ');
+  var
+    Index, Inner, Count: Integer;
+    Child, Parameter: TSyntaxNode;
+    TypeText: string;
+  begin
+    Result := Default(TOverloadEntry);
+    Result.Header := AHeader;
+    Result.Name := AHeader.Name;
+    Result.Path := TConditionalBranches.PathAt(Paths, FirstToken(AHeader));
+    for Index := 0 to AHeader.ChildCount - 1 do
+    begin
+      Child := AHeader[Index];
+      case Child.Kind of
+        TSyntaxKind.Directive:
+          if SameText(Child.Name, 'overload') then
+            Result.HasOverload := True;
+        TSyntaxKind.GenericParams:
+          Result.Parameters := Result.Parameters + '<' + IntToStr(Child.ChildCount) + '>';
+        TSyntaxKind.Parameters:
+          for Inner := 0 to Child.ChildCount - 1 do
+          begin
+            Parameter := Child[Inner];
+            if Parameter.Kind <> TSyntaxKind.Parameter then
+              Continue;
+            TypeText := '?';
+            if (Parameter.ChildCount > 0) and (Parameter[0].Kind = TSyntaxKind.TypeReference) then
+              TypeText := NodeKey(Parameter[0]);
+            // A, B: Integer zählt als zwei Parameter.
+            for Count := 1 to Length(Parameter.Name.Split([','])) do
+              Result.Parameters := Result.Parameters + Modifiers[Parameter.Modifier] + TypeText + ';';
+          end;
+        TSyntaxKind.TypeReference:
+          Result.ResultType := NodeKey(Child);
+      end;
+    end;
+  end;
+
+  // Wird AEarlier immer mit übersetzt, wenn ALater übersetzt wird?
+  function Together(const ALater, AEarlier: TOverloadEntry): Boolean;
+  begin
+    Result := TConditionalBranches.Implies(ALater.Path, AEarlier.Path);
+  end;
+
+  // " overload;" hinter dem ersten Semikolon des Kopfs, also vor den übrigen Direktiven.
+  function OverloadEdit(const AEntry: TOverloadEntry; out AEdit: TRuleEdit): Boolean;
+  var
+    Index, Depth: Integer;
+  begin
+    Depth := 0;
+    for Index := FirstToken(AEntry.Header) to High(Tokens) do
+    begin
+      if Tokens[Index].Offset >= AEntry.Header.EndOffset then
+        Break;
+      if Tokens[Index].IsSymbol('(') or Tokens[Index].IsSymbol('[') then
+        Inc(Depth)
+      else if Tokens[Index].IsSymbol(')') or Tokens[Index].IsSymbol(']') then
+        Dec(Depth)
+      else if (Depth = 0) and Tokens[Index].IsSymbol(';') then
+      begin
+        AEdit := TRuleEdit.Create(TTextRange.Create(Tokens[Index].EndPos, Tokens[Index].EndPos), ' overload;');
+        Exit(True);
+      end;
+    end;
+    AEdit := Default(TRuleEdit);
+    Result := False;
+  end;
+
+  function NameRange(const AEntry: TOverloadEntry): TTextRange;
+  var
+    Index: Integer;
+  begin
+    for Index := FirstToken(AEntry.Header) to High(Tokens) do
+    begin
+      if Tokens[Index].Offset >= AEntry.Header.EndOffset then
+        Break;
+      if (Tokens[Index].Kind = TPascalTokenKind.Identifier) and SameText(Tokens[Index].Text, AEntry.Name) then
+        Exit(TTextRange.Create(Tokens[Index].StartPos, Tokens[Index].EndPos));
+    end;
+    Result := TTextRange.Create(AEntry.Header.StartPos, AEntry.Header.EndPos);
+  end;
+
+  procedure CheckGroup(const AEntries: TArray<TOverloadEntry>);
+  var
+    Later, Earlier: Integer;
+    Reported: Boolean;
+    Edits: TArray<TRuleEdit>;
+    Edit: TRuleEdit;
+    Entry: TOverloadEntry;
+    Message: string;
+    Fixes: TArray<TRuleFix>;
+  begin
+    Reported := False;
+    for Later := 1 to High(AEntries) do
+      for Earlier := 0 to Later - 1 do
+      begin
+        if not Together(AEntries[Later], AEntries[Earlier]) then
+          Continue;
+        // E2254/E2267 einmal je Name, mit einer Korrektur für alle Deklarationen ohne overload.
+        if not Reported and (not AEntries[Later].HasOverload or not AEntries[Earlier].HasOverload) then
+        begin
+          Reported := True;
+          if not AEntries[Later].HasOverload then
+            Message := Format('%s ist überladen, aber nicht mit overload markiert (wie E2254).',
+              [AEntries[Later].Name])
+          else
+            Message := Format('%s ist überladen, die frühere Deklaration in Zeile %d trägt kein overload (wie E2267).',
+              [AEntries[Later].Name, AEntries[Earlier].Header.StartPos.Line + 1]);
+          Edits := nil;
+          for Entry in AEntries do
+            if not Entry.HasOverload and OverloadEdit(Entry, Edit) then
+              Edits := Edits + [Edit];
+          Fixes := nil;
+          if Edits <> nil then
+            Fixes := [TRuleFix.Create('overload; an alle Deklarationen anhängen', Edits, True)];
+          AReport.Add(NameRange(AEntries[Later]), Message, TRuleConfidence.High, Fixes);
+        end;
+        if AEntries[Later].Parameters = AEntries[Earlier].Parameters then
+        begin
+          if (AEntries[Later].ResultType <> '') and (AEntries[Later].ResultType = AEntries[Earlier].ResultType) then
+            Message := Format('%s mit denselben Parametern und demselben Ergebnistyp gibt es schon in Zeile %d ' +
+              '(wie E2301).', [AEntries[Later].Name, AEntries[Earlier].Header.StartPos.Line + 1])
+          else
+            Message := Format('%s mit denselben Parametern gibt es schon in Zeile %d (wie E2252).',
+              [AEntries[Later].Name, AEntries[Earlier].Header.StartPos.Line + 1]);
+          AReport.Add(NameRange(AEntries[Later]), Message, TRuleConfidence.High);
+          Break;
+        end;
+      end;
+  end;
+
+  // Deklarationen eines Bereichs nach Namen; ein Rumpf zu einer früheren Deklaration (interface, forward)
+  // mit gleichen Parametern zählt nicht.
+  procedure CheckScope(const AHeaders: TArray<TSyntaxNode>; ABodiesFollow: Boolean);
+  var
+    Entries, Group: TArray<TOverloadEntry>;
+    Entry, Other: TOverloadEntry;
+    Index: Integer;
+    Done: TArray<string>;
+    IsBody: Boolean;
+  begin
+    Entries := nil;
+    for Index := 0 to High(AHeaders) do
+    begin
+      if (Pos('.', AHeaders[Index].Name) > 0) or (AHeaders[Index].Name = '') or IsOperator(AHeaders[Index]) then
+        Continue;
+      Entry := EntryOf(AHeaders[Index]);
+      IsBody := False;
+      if ABodiesFollow and (AHeaders[Index].Parent <> nil) and (AHeaders[Index].Parent.Kind = TSyntaxKind.RoutineDecl) and
+        (AHeaders[Index].Parent.FindChild(TSyntaxKind.Block) <> nil) then
+        for Other in Entries do
+          if SameText(Other.Name, Entry.Name) and (Other.Parameters = Entry.Parameters) and
+            ((Other.Header.Parent = nil) or (Other.Header.Parent.FindChild(TSyntaxKind.Block) = nil)) then
+            IsBody := True;
+      if not IsBody then
+        Entries := Entries + [Entry];
+    end;
+    Done := nil;
+    for Entry in Entries do
+    begin
+      if IndexText(Entry.Name, Done) >= 0 then
+        Continue;
+      Done := Done + [Entry.Name];
+      Group := nil;
+      for Other in Entries do
+        if SameText(Other.Name, Entry.Name) then
+          Group := Group + [Other];
+      if Length(Group) > 1 then
+        CheckGroup(Group);
+    end;
+  end;
+
+  // Köpfe der Routinen direkt unter ANode (RoutineDecl mit RoutineHeader).
+  procedure AddRoutines(ANode: TSyntaxNode; var AHeaders: TArray<TSyntaxNode>);
+  var
+    Index: Integer;
+    Header: TSyntaxNode;
+  begin
+    if ANode = nil then
+      Exit;
+    for Index := 0 to ANode.ChildCount - 1 do
+      if ANode[Index].Kind = TSyntaxKind.RoutineDecl then
+      begin
+        Header := ANode[Index].FindChild(TSyntaxKind.RoutineHeader);
+        if Header <> nil then
+          AHeaders := AHeaders + [Header];
+      end;
+  end;
+
+  procedure Visit(ANode: TSyntaxNode);
+  var
+    Headers: TArray<TSyntaxNode>;
+    Index: Integer;
+  begin
+    Headers := nil;
+    case ANode.Kind of
+      TSyntaxKind.ClassType, TSyntaxKind.ObjectType, TSyntaxKind.RecordType, TSyntaxKind.InterfaceType,
+      TSyntaxKind.HelperType:
+        begin
+          for Index := 0 to ANode.ChildCount - 1 do
+            if ANode[Index].Kind = TSyntaxKind.RoutineHeader then
+              Headers := Headers + [ANode[Index]];
+          CheckScope(Headers, False);
+        end;
+      TSyntaxKind.UnitFile:
+        begin
+          AddRoutines(ANode.FindChild(TSyntaxKind.InterfaceSection), Headers);
+          AddRoutines(ANode.FindChild(TSyntaxKind.ImplementationSection), Headers);
+          CheckScope(Headers, True);
+        end;
+      TSyntaxKind.ProgramFile, TSyntaxKind.LibraryFile, TSyntaxKind.RoutineDecl:
+        begin
+          AddRoutines(ANode, Headers);
+          CheckScope(Headers, True);
+        end;
+    end;
+    for Index := 0 to ANode.ChildCount - 1 do
+      Visit(ANode[Index]);
+  end;
+
+begin
+  if (AContext.Tree = nil) or (AContext.Tree.Root = nil) then
+    Exit;
+  Tokens := AContext.Tree.Tokens;
+  Paths := TConditionalBranches.Paths(Tokens);
+  Visit(AContext.Tree.Root);
+end;
+
 procedure RegisterDeclarationRules(const ARegistry: TRuleRegistry);
 begin
   ARegistry.Register(TDeclaredNotImplementedRule.Create);
@@ -721,6 +1036,7 @@ begin
   ARegistry.Register(TSignatureMismatchRule.Create);
   ARegistry.Register(TInterfaceNotImplementedRule.Create);
   ARegistry.Register(TFieldAfterMethodRule.Create);
+  ARegistry.Register(TOverloadDirectiveMissingRule.Create);
 end;
 
 end.

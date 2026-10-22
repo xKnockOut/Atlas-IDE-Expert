@@ -10,7 +10,7 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 | [Exceptions](#gruppe-exceptions) | 8 |
 | [Threads](#gruppe-threads) | 13 |
 | [Datenbank](#gruppe-database) | 4 |
-| [Compiler vorab](#gruppe-compiler) | 7 |
+| [Compiler vorab](#gruppe-compiler) | 8 |
 | [Robustheit und Muster](#gruppe-robustness) | 3 |
 | [Performance](#gruppe-performance) | 4 |
 | [Sicherheit](#gruppe-security) | 11 |
@@ -138,6 +138,7 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 | [`comparison-as-statement`](#comparison-as-statement) | Vergleich statt Zuweisung als Anweisung | Bug | Fehler |
 | [`duplicate-case-label`](#duplicate-case-label) | Doppelte case-Marke | Bug | Fehler |
 | [`field-after-method`](#field-after-method) | Feld nach Methoden im selben Abschnitt | Bug | Fehler |
+| [`overload-directive-missing`](#overload-directive-missing) | Überladung ohne overload oder mit gleicher Signatur | Bug | Fehler |
 
 <a id="gruppe-robustness"></a>
 ### Robustheit und Muster
@@ -4322,4 +4323,27 @@ private
   FName: string;
   function GetName: string;
 end;
+```
+
+<a id="overload-directive-missing"></a>
+### overload-directive-missing
+
+**Überladung ohne overload oder mit gleicher Signatur** · Bug · Fehler · Gruppe Compiler vorab
+
+Zwei Routinen oder Methoden gleichen Namens im selben Gültigkeitsbereich (ein Typ, die Unit über interface und implementation, die in einer Routine verschachtelten Routinen), von denen mindestens eine kein overload trägt (wie E2254, bzw. E2267, wenn es der früheren fehlt), oder zwei Überladungen mit gleichen Parameterarten und -typen (wie E2252, bzw. E2301 mit auch gleichem Ergebnistyp). Ein Rumpf zu einer früheren Deklaration (interface, forward) zählt nicht. Operatoren, Methodenrümpfe und Deklarationen in verschiedenen Zweigen desselben {$IF} bleiben außen vor. Korrektur: overload; an alle Deklarationen ohne anhängen, vor den übrigen Direktiven.
+
+Entspricht der Compilermeldung `E2254`, `E2267`, `E2252`, `E2301`.
+
+Mit Treffer:
+
+```pascal
+procedure Laden(const Datei: string);
+procedure Laden(Strom: TStream);
+```
+
+Richtig:
+
+```pascal
+procedure Laden(const Datei: string); overload;
+procedure Laden(Strom: TStream); overload;
 ```

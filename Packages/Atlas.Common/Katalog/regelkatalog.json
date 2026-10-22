@@ -2156,6 +2156,22 @@
       "compilerCodes": [
         "E2169"
       ]
+    },
+    {
+      "id": "overload-directive-missing",
+      "name": "Overload without overload or with the same signature",
+      "category": "bug",
+      "severity": "error",
+      "group": "compiler",
+      "description": "Two routines or methods of the same name in the same scope (a type, the unit across interface and implementation, the routines nested in a routine), of which at least one lacks overload (like E2254, or E2267 when the earlier one lacks it), or two overloads with the same parameter kinds and types (like E2252, or E2301 with the same result type as well). A body that implements an earlier declaration (interface, forward) does not count. Operators, method bodies and declarations in different branches of the same {$IF} are skipped. Quick fix: append overload; to every declaration without it, before the other directives.",
+      "bad": "procedure Laden(const Datei: string);\nprocedure Laden(Strom: TStream);",
+      "good": "procedure Laden(const Datei: string); overload;\nprocedure Laden(Strom: TStream); overload;",
+      "compilerCodes": [
+        "E2254",
+        "E2267",
+        "E2252",
+        "E2301"
+      ]
     }
   ]
 }

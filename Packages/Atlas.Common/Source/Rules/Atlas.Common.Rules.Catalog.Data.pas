@@ -2176,6 +2176,22 @@ begin
     '      "compilerCodes": [' + #10 +
     '        "E2169"' + #10 +
     '      ]' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "overload-directive-missing",' + #10 +
+    '      "name": "Overload without overload or with the same signature",' + #10 +
+    '      "category": "bug",' + #10 +
+    '      "severity": "error",' + #10 +
+    '      "group": "compiler",' + #10 +
+    '      "description": "Two routines or methods of the same name in the same scope (a type, the unit across interface and implementation, the routines nested in a routine), of which at least one lacks o' + 'verload (like E2254, or E2267 when the earlier one lacks it), or two overloads with the same parameter kinds and types (like E2252, or E2301 with the same result type as well). A body that implements ' + 'an earlier declaration (interface, forward) does not count. Operators, method bodies and declarations in different branches of the same {$IF} are skipped. Quick fix: append overload; to every declarat' + 'ion without it, before the other directives.",' + #10 +
+    '      "bad": "procedure Laden(const Datei: string);\nprocedure Laden(Strom: TStream);",' + #10 +
+    '      "good": "procedure Laden(const Datei: string); overload;\nprocedure Laden(Strom: TStream); overload;",' + #10 +
+    '      "compilerCodes": [' + #10 +
+    '        "E2254",' + #10 +
+    '        "E2267",' + #10 +
+    '        "E2252",' + #10 +
+    '        "E2301"' + #10 +
+    '      ]' + #10 +
     '    }' + #10 +
     '  ]' + #10 +
     '}' + #10 +
@@ -3300,6 +3316,11 @@ begin
     '      "id": "field-after-method",' + #10 +
     '      "name": "Feld nach Methoden im selben Abschnitt",' + #10 +
     '      "description": "In einem Sichtbarkeitsabschnitt einer Klasse, eines Objekts oder Records folgt eine Felddeklaration auf eine Methode oder Property. Delphi verlangt Felder zuerst oder einen neuen' + ' Abschnitt bzw. var (E2169); FPC übersetzt das. Korrekturen: das Feld samt Attributen und Kommentaren an den Anfang des Abschnitts verschieben oder var davor setzen. In Records steht var vorn, weil da' + 's Verschieben das Speicherlayout ändert. Gemeldet wird ein Feld nur, wenn eine Methode davor immer mit übersetzt wird, wenn das Feld übersetzt wird; mit bedingten Zweigen dazwischen gibt es nur var."' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "overload-directive-missing",' + #10 +
+    '      "name": "Überladung ohne overload oder mit gleicher Signatur",' + #10 +
+    '      "description": "Zwei Routinen oder Methoden gleichen Namens im selben Gültigkeitsbereich (ein Typ, die Unit über interface und implementation, die in einer Routine verschachtelten Routinen), von' + ' denen mindestens eine kein overload trägt (wie E2254, bzw. E2267, wenn es der früheren fehlt), oder zwei Überladungen mit gleichen Parameterarten und -typen (wie E2252, bzw. E2301 mit auch gleichem E' + 'rgebnistyp). Ein Rumpf zu einer früheren Deklaration (interface, forward) zählt nicht. Operatoren, Methodenrümpfe und Deklarationen in verschiedenen Zweigen desselben {$IF} bleiben außen vor. Korrektu' + 'r: overload; an alle Deklarationen ohne anhängen, vor den übrigen Direktiven."' + #10 +
     '    }' + #10 +
     '  ]' + #10 +
     '}' + #10 +
