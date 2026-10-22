@@ -164,8 +164,6 @@ type
     [Test]
     procedure ReleaseCacheDropsEntries;
     [Test]
-    // Worker- bzw. Pool-Threads legen Verwaltungsdaten an, die erst nach dem Test freigegeben werden.
-    [IgnoreMemoryLeaks]
     procedure ServiceBuildsInBackgroundAndWritesCache;
     [Test]
     procedure EnsureUnitDoesNotWaitForOtherRequests;
@@ -194,23 +192,17 @@ type
     [Test]
     procedure ReadsInstallationUnitsWithoutProjectDefines;
     [Test]
-    // Der Index-Dienst arbeitet in einem eigenen Thread; dessen Verwaltungsdaten bleiben bis Programmende.
-    [IgnoreMemoryLeaks]
     procedure ServiceWritesCacheAfterProjectStage;
     /// <summary>Code-Review A-04: Fehler im Aufbau gehen genau einmal an OnError.</summary>
     [Test]
-    [IgnoreMemoryLeaks]
     procedure ServiceReportsCacheWriteFailureOnce;
     [Test]
-    [IgnoreMemoryLeaks]
     procedure ServiceReportsCacheReadFailure;
     [Test]
-    [IgnoreMemoryLeaks]
     procedure ServiceSurvivesFailingErrorHandler;
     /// <summary>#874: Ein neuer Start wartet nicht auf den alten Aufbau; der neue beginnt erst nach dessen
     /// Ende, Prepare läuft dann im Index-Thread.</summary>
     [Test]
-    [IgnoreMemoryLeaks]
     procedure RestartDoesNotWaitForRunningBuild;
   end;
 

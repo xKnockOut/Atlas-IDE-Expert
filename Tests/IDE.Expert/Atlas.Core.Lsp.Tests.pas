@@ -124,7 +124,6 @@ type
     procedure WarmUpFirstUse;
     // Startet den echten Server neben dem Testprogramm.
     [Test]
-    [IgnoreMemoryLeaks]
     procedure HoverAndDefinitionAgainstServer;
     [Test]
     procedure PullsDiagnosticsAgainstServer;
@@ -1239,6 +1238,16 @@ end;
 procedure TLspServerProcessTests.WarmUpFirstUse;
 begin
   StartFailureLeavesNoHandles;
+  // Erster echter Start (Pipes, Lese- und Schreib-Thread, Sitzung) ungemessen statt [IgnoreMemoryLeaks]
+  // (Bericht N2). Ohne Server neben dem Testprogramm überspringen die Tests ohnehin.
+  if FileExists(TPath.Combine(ExtractFilePath(ParamStr(0)), 'AtlasServer.exe')) then
+    try
+      HoverAndDefinitionAgainstServer;
+    except
+      // Scheitert der Lauf, meldet das der Test selbst; das Aufwärmen hält die übrigen Tests nicht auf.
+      on Exception do
+        ;
+    end;
 end;
 
 procedure TLspServerProcessTests.StartFailureLeavesNoHandles;

@@ -1,5 +1,11 @@
 ﻿unit Atlas.Common.JsonRpc.Connection.Tests;
 
+// Nachrichtenschleife über Streams im Speicher. Kein Test lässt einen Thread
+// zurück (Bericht N2): Run wartet auf seinen Lese-Thread, und nebenläufige
+// Anfragen laufen in eigenen Threads (TJoinedWorkers), auf die der Test vor
+// dem Ende wartet. Der Thread-Pool der RTL behielte seine Worker über den
+// Test hinaus; ihn prüft der Dauerlauf in Atlas.Tests.LeakMonitor.Tests.
+
 interface
 
 uses
@@ -10,8 +16,6 @@ type
   TJsonRpcConnectionTests = class
   public
     [Test]
-    // Worker- bzw. Pool-Threads legen Verwaltungsdaten an, die erst nach dem Test freigegeben werden.
-    [IgnoreMemoryLeaks]
     procedure AnswersRequestsUntilInputCloses;
     [Test]
     procedure StopsAfterStopAndLeavesRemainingInput;
@@ -20,16 +24,10 @@ type
     [Test]
     procedure ReportsNotificationHandlerErrorAndContinues;
     [Test]
-    // Worker- bzw. Pool-Threads legen Verwaltungsdaten an, die erst nach dem Test freigegeben werden.
-    [IgnoreMemoryLeaks]
     procedure AnswersConcurrentRequestFromWorker;
     [Test]
-    // Worker- bzw. Pool-Threads legen Verwaltungsdaten an, die erst nach dem Test freigegeben werden.
-    [IgnoreMemoryLeaks]
     procedure CancelsRunningConcurrentRequest;
     [Test]
-    // Worker- bzw. Pool-Threads legen Verwaltungsdaten an, die erst nach dem Test freigegeben werden.
-    [IgnoreMemoryLeaks]
     procedure KeepsOrderOfNotificationsAndRequests;
     [Test]
     procedure RaisesTransportErrorOfBrokenStream;
@@ -47,13 +45,13 @@ type
     /// <summary>Code-Review A-06: Der Watchdog beantwortet eine hängende nebenläufige Anfrage, die späte
     /// Antwort des Handlers wird verworfen.</summary>
     [Test]
-    // Worker- bzw. Pool-Threads legen Verwaltungsdaten an, die erst nach dem Test freigegeben werden.
-    [IgnoreMemoryLeaks]
     procedure WatchdogAnswersHangingRequestOnce;
     [Test]
-    // Worker- bzw. Pool-Threads legen Verwaltungsdaten an, die erst nach dem Test freigegeben werden.
-    [IgnoreMemoryLeaks]
     procedure RunReportsUnfinishedWork;
+    /// <summary>Bericht N2: Nach Run hält kein Thread der Verbindung mehr etwas von ihr; der Transport ist mit
+    /// der Verbindung frei.</summary>
+    [Test]
+    procedure RunReleasesReaderBeforeReturning;
   end;
 
 implementation
@@ -73,6 +71,100 @@ uses
 
 type
   ETestFailure = class(Exception);
+
+  /// <summary>Scheduler für nebenläufige Anfragen: jede in einem eigenen Thread, auf den JoinAll wartet.</summary>
+  TJoinedWorkers = class
+  private
+    FLock: TObject;
+    FThreads: TList<TThread>;
+    procedure Start(const AWork: TProc);
+  public
+    constructor Create;
+    /// <summary>Wartet wie JoinAll.</summary>
+    destructor Destroy; override;
+    function Scheduler: TJsonRpcScheduler;
+    /// <summary>Wartet auf alle bisher gestarteten Threads und gibt sie frei.</summary>
+    procedure JoinAll;
+  end;
+
+  /// <summary>Transport, der sein Freigeben meldet.</summary>
+  TTrackedTransport = class(TJsonRpcStreamTransport)
+  private
+    FDestroyed: PBoolean;
+  public
+    constructor Create(AInput, AOutput: TStream; ADestroyed: PBoolean);
+    destructor Destroy; override;
+  end;
+
+{ TJoinedWorkers }
+
+constructor TJoinedWorkers.Create;
+begin
+  inherited Create;
+  FLock := TObject.Create;
+  FThreads := TList<TThread>.Create;
+end;
+
+destructor TJoinedWorkers.Destroy;
+begin
+  JoinAll;
+  FThreads.Free;
+  FLock.Free;
+  inherited;
+end;
+
+procedure TJoinedWorkers.Start(const AWork: TProc);
+var
+  Thread: TThread;
+begin
+  Thread := TThread.CreateAnonymousThread(AWork);
+  Thread.FreeOnTerminate := False;
+  TMonitor.Enter(FLock);
+  try
+    FThreads.Add(Thread);
+  finally
+    TMonitor.Exit(FLock);
+  end;
+  Thread.Start;
+end;
+
+function TJoinedWorkers.Scheduler: TJsonRpcScheduler;
+begin
+  Result := Start;
+end;
+
+procedure TJoinedWorkers.JoinAll;
+var
+  Threads: TArray<TThread>;
+  Thread: TThread;
+begin
+  TMonitor.Enter(FLock);
+  try
+    Threads := FThreads.ToArray;
+    FThreads.Clear;
+  finally
+    TMonitor.Exit(FLock);
+  end;
+  for Thread in Threads do
+  begin
+    Thread.WaitFor;
+    Thread.Free;
+  end;
+end;
+
+{ TTrackedTransport }
+
+constructor TTrackedTransport.Create(AInput, AOutput: TStream; ADestroyed: PBoolean);
+begin
+  inherited Create(AInput, AOutput, False);
+  FDestroyed := ADestroyed;
+end;
+
+destructor TTrackedTransport.Destroy;
+begin
+  FDestroyed^ := True;
+  inherited;
+end;
 
 // Lässt eine Verbindung über die Eingabe laufen und liefert die Antworten.
 // Gibt AInput frei.
@@ -259,9 +351,12 @@ procedure TJsonRpcConnectionTests.AnswersConcurrentRequestFromWorker;
 var
   Dispatcher: TJsonRpcDispatcher;
   Responses: TObjectList<TJSONObject>;
+  Workers: TJoinedWorkers;
 begin
+  Workers := TJoinedWorkers.Create;
   Dispatcher := CreateEchoDispatcher;
   try
+    Dispatcher.Scheduler := Workers.Scheduler();
     Dispatcher.RegisterConcurrentRequest('parallel',
       function(const AParams: TJSONValue; const ACancellation: IJsonRpcCancellationToken): TJSONValue
       begin
@@ -271,6 +366,7 @@ begin
     Responses := RunConnection([
       '{"jsonrpc":"2.0","id":1,"method":"parallel"}',
       '{"jsonrpc":"2.0","id":2,"method":"await"}'], Dispatcher, nil);
+    Workers.JoinAll;
     try
       Assert.AreEqual<NativeInt>(2, Responses.Count);
       Assert.AreEqual('aus dem Worker', FindResponse(Responses, 1).GetValue<string>('result'));
@@ -280,6 +376,7 @@ begin
     end;
   finally
     Dispatcher.Free;
+    Workers.Free;
   end;
 end;
 
@@ -287,9 +384,12 @@ procedure TJsonRpcConnectionTests.CancelsRunningConcurrentRequest;
 var
   Dispatcher: TJsonRpcDispatcher;
   Responses: TObjectList<TJSONObject>;
+  Workers: TJoinedWorkers;
 begin
+  Workers := TJoinedWorkers.Create;
   Dispatcher := CreateEchoDispatcher;
   try
+    Dispatcher.Scheduler := Workers.Scheduler();
     // Läuft, bis sie abgebrochen wird (höchstens 10 s).
     Dispatcher.RegisterConcurrentRequest('slow',
       function(const AParams: TJSONValue; const ACancellation: IJsonRpcCancellationToken): TJSONValue
@@ -308,6 +408,7 @@ begin
       '{"jsonrpc":"2.0","id":1,"method":"slow"}',
       '{"jsonrpc":"2.0","method":"$/cancelRequest","params":{"id":1}}',
       '{"jsonrpc":"2.0","id":2,"method":"await"}'], Dispatcher, nil);
+    Workers.JoinAll;
     try
       Assert.AreEqual<NativeInt>(2, Responses.Count);
       Assert.AreEqual(TJsonRpcErrorCode.RequestCancelled, FindResponse(Responses, 1).GetValue<Integer>('error.code'));
@@ -317,6 +418,7 @@ begin
     end;
   finally
     Dispatcher.Free;
+    Workers.Free;
   end;
 end;
 
@@ -569,9 +671,12 @@ var
   Responses: TObjectList<TJSONObject>;
   Response: TJSONObject;
   ForFirst: Integer;
+  Workers: TJoinedWorkers;
 begin
+  Workers := TJoinedWorkers.Create;
   Dispatcher := CreateEchoDispatcher;
   try
+    Dispatcher.Scheduler := Workers.Scheduler();
     Dispatcher.Watchdog := TJsonRpcWatchdog.Create(Dispatcher.PendingRequests, 100, nil);
     // Prüft das Abbruchsignal nicht: antwortet erst nach dem Zeitlimit.
     Dispatcher.RegisterConcurrentRequest('slow',
@@ -584,6 +689,7 @@ begin
     Responses := RunConnection([
       '{"jsonrpc":"2.0","id":1,"method":"slow"}',
       '{"jsonrpc":"2.0","id":2,"method":"await"}'], Dispatcher, nil);
+    Workers.JoinAll;
     try
       ForFirst := 0;
       for Response in Responses do
@@ -599,6 +705,7 @@ begin
   finally
     Dispatcher.Watchdog := nil;
     Dispatcher.Free;
+    Workers.Free;
   end;
 end;
 
@@ -609,10 +716,13 @@ var
   Connection: TJsonRpcConnection;
   Unfinished: Boolean;
   Started: Boolean;
+  Workers: TJoinedWorkers;
 begin
   Started := False;
+  Workers := TJoinedWorkers.Create;
   Dispatcher := CreateEchoDispatcher;
   try
+    Dispatcher.Scheduler := Workers.Scheduler();
     Dispatcher.RegisterConcurrentRequest('slow',
       function(const AParams: TJSONValue; const ACancellation: IJsonRpcCancellationToken): TJSONValue
       begin
@@ -645,11 +755,43 @@ begin
       end;
       // Erst nach dem Worker freigeben: Er schreibt seine Antwort noch in Output.
       Assert.IsTrue(Dispatcher.PendingRequests.WaitForWork(2000));
+      Workers.JoinAll;
     finally
       Output.Free;
       Input.Free;
     end;
     Assert.IsTrue(Unfinished);
+  finally
+    Dispatcher.Free;
+    Workers.Free;
+  end;
+end;
+
+procedure TJsonRpcConnectionTests.RunReleasesReaderBeforeReturning;
+var
+  Dispatcher: TJsonRpcDispatcher;
+  Input, Output: TBytesStream;
+  Connection: TJsonRpcConnection;
+  Destroyed: Boolean;
+begin
+  Destroyed := False;
+  Dispatcher := CreateEchoDispatcher;
+  try
+    Input := TJsonRpcTestSupport.InputOf(['{"jsonrpc":"2.0","id":1,"method":"echo","params":1}']);
+    Output := TBytesStream.Create;
+    try
+      Connection := TJsonRpcConnection.Create(TTrackedTransport.Create(Input, Output, @Destroyed), Dispatcher);
+      try
+        Connection.Run;
+      finally
+        Connection.Free;
+      end;
+      // Der Lese-Thread hält den Transport. Gab er sich erst nach Run selbst frei, lebte der hier noch.
+      Assert.IsTrue(Destroyed, 'Transport nach Run und Free noch gehalten');
+    finally
+      Output.Free;
+      Input.Free;
+    end;
   finally
     Dispatcher.Free;
   end;

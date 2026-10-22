@@ -27,6 +27,9 @@ type
     [Test]
     procedure EntryOfFreedWorkerStillRuns;
     [Test]
+    // Ausnahme mit Grund (Bericht N2): Stop gibt den Besitzer-Thread frei, Start legt einen neuen an, der wie
+    // im Plugin bis zum Entladen weiterläuft. Seine Startdaten (BeginThread) gibt erst der neue Thread frei,
+    // sobald er läuft, unter Last nach der Messung. Darauf zu warten hieße, Start im Plugin aufzuhalten.
     [IgnoreMemoryLeaks]
     procedure StopDropsWaitingAndLaterEntries;
     [Test]

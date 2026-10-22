@@ -12,8 +12,6 @@ type
     [Test]
     procedure RunsImmediatelyWithoutDelay;
     [Test]
-    // Worker- bzw. Pool-Threads legen Verwaltungsdaten an, die erst nach dem Test freigegeben werden.
-    [IgnoreMemoryLeaks]
     procedure RunsOnlyLastActionPerKey;
     [Test]
     procedure KeepsKeysSeparate;

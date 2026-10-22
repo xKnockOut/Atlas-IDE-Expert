@@ -14,8 +14,6 @@ type
     [Test]
     procedure TokenIsNilOutsideHandler;
     [Test]
-    // Der anonyme Thread legt Verwaltungsdaten an, die erst nach dem Test freigegeben werden.
-    [IgnoreMemoryLeaks]
     procedure EnterAffectsCurrentThreadOnly;
     [Test]
     procedure LeaveRestoresPreviousToken;

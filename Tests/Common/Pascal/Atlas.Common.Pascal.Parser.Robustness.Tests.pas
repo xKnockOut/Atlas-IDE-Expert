@@ -17,13 +17,16 @@ type
   [TestFixture]
   TPascalParserRobustnessTests = class
   public
+    /// <summary>Erste Benutzung ungemessen vorwegnehmen (Bericht N2, statt [IgnoreMemoryLeaks]): Thread mit
+    /// eigenem Stapel, alle Regeln, Dateien suchen und mit Kodierungserkennung lesen. Was die RTL dabei beim
+    /// ersten Mal anlegt, bleibt bis Programmende.</summary>
+    [SetupFixture]
+    procedure WarmUpFirstUse;
     [Test]
     procedure FuzzingNeverCrashesOrHangs;
     [Test]
     procedure DeepNestingIsReportedNotFatal;
     [Test]
-    // RTL legt bei erster Benutzung Singletons an (Kodierungen, Pfad-/Registry-Hilfen); kein Leck des Testcodes.
-    [IgnoreMemoryLeaks]
     procedure LongChainsDoNotOverflowStack;
     /// <summary>#1094: Lange Ketten von + (and, or, xor) werden ausgeglichen gebaut; Reihenfolge und
     /// Bereiche der Operanden bleiben erhalten.</summary>
@@ -35,12 +38,8 @@ type
     /// <summary>#1094: Eine Verkettung wie in Rules.Catalog.Data.pas läuft mit allen eingebauten Regeln in
     /// 512 KB Stapel. Vorher lief hier der Stapel über und der Server startete neu.</summary>
     [Test]
-    // RTL legt bei erster Benutzung Singletons an (Kodierungen, Pfad-/Registry-Hilfen); kein Leck des Testcodes.
-    [IgnoreMemoryLeaks]
     procedure LongConcatenationPassesAllRulesInSmallStack;
     [Test]
-    // RTL legt bei erster Benutzung Singletons an (Kodierungen, Pfad-/Registry-Hilfen); kein Leck des Testcodes.
-    [IgnoreMemoryLeaks]
     procedure ParsesDelphiSourceCorpus;
     [Test]
     [Category('Benchmark')]
@@ -213,6 +212,24 @@ begin
 end;
 
 { TPascalParserRobustnessTests }
+
+procedure TPascalParserRobustnessTests.WarmUpFirstUse;
+var
+  Folder, FileName: string;
+begin
+  LongChainsDoNotOverflowStack;
+  LongConcatenationPassesAllRulesInSmallStack;
+  // Wie der Korpustest, nur mit einer Datei.
+  Folder := TPath.Combine(TPath.GetTempPath, 'AtlasKorpus' + TGUID.NewGuid.ToString);
+  TDirectory.CreateDirectory(Folder);
+  try
+    TFile.WriteAllText(TPath.Combine(Folder, 'Probe.pas'), Samples[0], TEncoding.UTF8);
+    for FileName in TDirectory.GetFiles(Folder, '*.pas', TSearchOption.soAllDirectories) do
+      ParseAndFree(TFile.ReadAllText(FileName));
+  finally
+    TDirectory.Delete(Folder, True);
+  end;
+end;
 
 procedure TPascalParserRobustnessTests.FuzzingNeverCrashesOrHangs;
 var

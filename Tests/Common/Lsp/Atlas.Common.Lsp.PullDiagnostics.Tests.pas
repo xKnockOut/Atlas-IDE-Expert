@@ -47,8 +47,6 @@ type
     procedure WorkspaceWaitEndsBeforeRequestTimeout;
     /// <summary>Changed weckt die prüfende und die zweite, wartende Anfrage sofort.</summary>
     [Test]
-    // Die Test-Threads legen Verwaltungsdaten an, die erst nach dem Test freigegeben werden.
-    [IgnoreMemoryLeaks]
     procedure SecondWorkspaceRequestWakesOnChange;
     /// <summary>#1094: Scheitert eine Datei, überspringt workspace/diagnostic sie und prüft die übrigen; das
     /// Diagnoselog nennt die Unit anonym.</summary>
