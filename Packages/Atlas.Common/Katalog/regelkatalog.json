@@ -2303,6 +2303,16 @@
       "description": "SELECT * or SELECT alias.* in a column list, in the same places as sql-write-without-where: string literals, SQL.Text, SQL.Add, CommandText, the first argument of ExecSQL, Open and similar calls, constants, local values and SQL.Strings/CommandText of the form file. New columns silently change the dataset, persistent fields no longer match, and more data is transferred than needed. Subqueries count; EXISTS (SELECT * …) and COUNT(*) stay silent, as does a column list from a variable. Literals outside SQL properties count only with SELECT in capitals and a FROM, so message texts stay silent. Off by default (enable in the rules settings or with the strict profile). High confidence. Quick fix: when the star stands in a single literal and the dataset has persistent fields in the form file, replace * with their FieldName list (without calculated and lookup fields).",
       "bad": "qry.SQL.Text := 'SELECT * FROM Kunden WHERE Ort = :Ort';",
       "good": "qry.SQL.Text := 'SELECT Id, Name, Ort FROM Kunden WHERE Ort = :Ort';"
+    },
+    {
+      "id": "path-concat-without-delimiter",
+      "name": "Path joined without delimiter",
+      "category": "bug",
+      "severity": "warning",
+      "group": "robustness",
+      "description": "A folder without a trailing path delimiter is joined to a file or folder name with +: results of ExtractFileDir, ExcludeTrailingPathDelimiter, GetCurrentDir, GetHomePath, TPath.GetDocumentsPath and the other TPath.Get…Path folders, TPath.GetDirectoryName, TDirectory.GetCurrentDirectory and TDirectory.GetParent, called directly or held in a local variable that the routine only assigns such values to. The result is C:\\Datadatei.txt instead of C:\\Data\\datei.txt. ExtractFilePath, IncludeTrailingPathDelimiter and TPath.GetTempPath end with a delimiter and stay silent, as do delimiters, extensions (ExtractFileExt, '.bak') and texts that start with a space or punctuation. A literal name reports with high confidence, an identifier with medium confidence. A local variable passed to a procedure other than ForceDirectories, FileExists and similar read-only calls may be changed there and stays silent. Quick fix: TPath.Combine(Folder, Name), adding System.IOUtils to uses.",
+      "bad": "Ordner := TPath.GetDocumentsPath;\nDatei := Ordner + 'export.csv';",
+      "good": "Ordner := TPath.GetDocumentsPath;\nDatei := TPath.Combine(Ordner, 'export.csv');"
     }
   ]
 }

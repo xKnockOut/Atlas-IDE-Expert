@@ -4133,3 +4133,17 @@ Voraussetzung: Server läuft in der IDE mit Projekt; Regel `sql-select-star` in 
 | SQ5 | `SELECT COUNT(*) FROM Kunden`, `… WHERE EXISTS (SELECT * FROM Sperre …)`, `ShowMessage('Select * dauert')`, Spaltenliste aus einer Variablen | Keine Meldung |
 | SQ6 | Regel auf Standard, `"sql-select-star": "off"`, `"group:database": "off"` bzw. `exclude` | Keine Meldung |
 | SQ7 | Profil `strict` | Meldung wie SQ1 ohne eigene Einstellung |
+
+## Pfad ohne Trennzeichen zusammengesetzt (#968)
+
+Voraussetzung: Server läuft in der IDE mit Projekt.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| PC1 | Das Beispiel aus #968: `Ordner := TPath.GetDocumentsPath;` und `Datei := Ordner + 'export.csv';` | Warnung `path-concat-without-delimiter` an `Ordner + 'export.csv'`: „Ordner kommt aus GetDocumentsPath und hat keinen abschließenden Backslash; das Ergebnis ist …\Documentsexport.csv.“; im Fenster „Atlas-Prüfung“ und im Befund-Hover (**Abnahme**) |
+| PC2 | Alt+Enter „TPath.Combine verwenden“ in einer Unit ohne `System.IOUtils`, danach Strg+Z | Ausdruck wird `TPath.Combine(Ordner, 'export.csv')`, `System.IOUtils` steht in den uses, keine Meldung mehr; ein Undo-Schritt |
+| PC3 | `ExtractFileDir(Datei) + Name` | Meldung mit mittlerer Konfidenz: „… Name wird ohne Trennzeichen angehängt.“ |
+| PC4 | `ExtractFilePath(Datei) + 'x.txt'`, `TPath.GetTempPath + 'x.txt'`, `ExtractFileDir(Datei) + PathDelim + Name`, `ExtractFileDir(Datei) + '.bak'`, `ExtractFileDir(Datei) + ' fehlt'` | Keine Meldung |
+| PC5 | `Ordner := TPath.GetDocumentsPath; if … then Ordner := IncludeTrailingPathDelimiter(Ordner); Datei := Ordner + 'x';` | Keine Meldung |
+| PC6 | `"path-concat-without-delimiter": "off"`, `"group:robustness": "off"` bzw. `exclude` | Keine Meldung |
+| PC7 | Echtlauf: im Beispiel aus PC1 die Datei schreiben | Datei landet ohne Korrektur als `Documentsexport.csv` im Benutzerordner, mit Korrektur in `Documents` |
