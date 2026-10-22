@@ -14,7 +14,9 @@
 // Beispiel mit Korrektur in Deklaration und Implementierung, Integer,
 // stille Muster, Abschalten; destructor-not-nil-safe (#1087): Beispiel mit
 // Korrektur, bedingtes Anlegen, Hilfsmethode des Destruktors, Option
-// onlyAfterRaisingCode, stille Muster, Abschalten und Ausnahmen.
+// onlyAfterRaisingCode, stille Muster, Abschalten und Ausnahmen; handle-leak
+// (#1088): Beispiel mit Korrektur, Prüfung auf INVALID_HANDLE_VALUE, out-
+// Argument (RegOpenKeyEx), nicht jeder Weg, Option pairs, stille Muster.
 
 interface
 
@@ -93,6 +95,14 @@ type
     procedure DestructorNotNilSafeVariants;
     [Test]
     procedure DestructorNotNilSafeSilentCases;
+    [Test]
+    procedure HandleLeakIssueExample;
+    [Test]
+    procedure HandleLeakVariants;
+    [Test]
+    procedure HandleLeakSilentCases;
+    [Test]
+    procedure HandleLeakPairsAndOff;
   end;
 
 implementation
@@ -852,6 +862,173 @@ begin
     '  end;'#10'implementation'#10'constructor TA.Create;'#10'begin'#10'  FL := TList.Create;'#10 +
     '  FUhr := TStopwatch.StartNew;'#10'  FUhr := TStopwatch.Create;'#10'end;'#10'destructor TA.Destroy;'#10 +
     'begin'#10'  FUhr.Stop;'#10'  FL.Free;'#10'end;'#10'end.');
+end;
+
+function Prozess(const ABody: string): string;
+begin
+  Result := 'unit U;'#10'interface'#10'implementation'#10'procedure ProzessStarten(const Befehl: string);'#10 +
+    'var SI: TStartupInfo; PI: TProcessInformation;'#10'begin'#10 + ABody + #10'end;'#10'end.';
+end;
+
+function Datei(const AVars, ABody: string): string;
+begin
+  Result := 'unit U;'#10'interface'#10'implementation'#10'procedure Lesen(Wnd: HWND; Fehler: Boolean);'#10 +
+    'var'#10 + AVars + 'begin'#10 + ABody + #10'end;'#10'end.';
+end;
+
+procedure TFlowRulesTests.HandleLeakIssueExample;
+const
+  Body = '  CreateProcess(nil, PChar(Befehl), nil, nil, False, 0, nil, nil, SI, PI);'#10 +
+    '  WaitForSingleObject(PI.hProcess, INFINITE);';
+  Fixed = '  CreateProcess(nil, PChar(Befehl), nil, nil, False, 0, nil, nil, SI, PI);'#10'  try'#10 +
+    '    WaitForSingleObject(PI.hProcess, INFINITE);'#10'  finally'#10'    CloseHandle(PI.hThread);'#10 +
+    '    CloseHandle(PI.hProcess);'#10'  end;';
+var
+  Findings: TArray<TRuleFinding>;
+  Text: string;
+  Tree: TSyntaxTree;
+  Rule: IRule;
+  Found: Boolean;
+begin
+  Findings := TRuleAssert.Findings(THandleLeakRule.Create, Prozess(Body));
+  Assert.AreEqual(1, Integer(Length(Findings)));
+  Assert.AreEqual(HandleLeakRuleId, Findings[0].RuleId);
+  Assert.AreEqual(Ord(TRuleSeverity.Warning), Ord(Findings[0].Severity));
+  Assert.AreEqual(Ord(TRuleConfidence.Medium), Ord(Findings[0].Confidence));
+  Assert.AreEqual('PI.hProcess und PI.hThread werden nie mit CloseHandle geschlossen (Handle-Leck).',
+    Findings[0].Message);
+  Assert.AreEqual(6, Findings[0].Range.StartPos.Line);
+  Assert.AreEqual(2, Findings[0].Range.StartPos.Character);
+  Assert.AreEqual(1, Integer(Length(Findings[0].Fixes)));
+  Assert.AreEqual('In try … finally CloseHandle einschließen', Findings[0].Fixes[0].Title);
+  Assert.AreEqual(1, Integer(Length(Findings[0].Fixes[0].Edits)), 'ein Undo-Schritt');
+  Text := TChangeSignature.ApplyEdits(Prozess(Body), Findings[0].Fixes[0].Edits);
+  Assert.AreEqual(Prozess(Fixed), Text);
+  Tree := TPascalParser.Parse(Text);
+  try
+    Assert.AreEqual(0, Integer(Length(Tree.Diagnostics)), 'Ergebnis parst fehlerfrei');
+  finally
+    Tree.Free;
+  end;
+  TRuleAssert.Silent(THandleLeakRule.Create, Text);
+  Found := False;
+  for Rule in BuiltinRules do
+    if Rule.Descriptor.Id = HandleLeakRuleId then
+      Found := True;
+  Assert.IsTrue(Found, HandleLeakRuleId);
+end;
+
+procedure TFlowRulesTests.HandleLeakVariants;
+var
+  Findings: TArray<TRuleFinding>;
+  Text: string;
+begin
+  // Nach der Prüfung auf INVALID_HANDLE_VALUE, auf einem Weg mit Exit nicht geschlossen.
+  Findings := TRuleAssert.Findings(THandleLeakRule.Create, Datei('  H: THandle;'#10,
+    '  H := CreateFileW(''a.txt'', GENERIC_READ, 0, nil, OPEN_EXISTING, 0, 0);'#10 +
+    '  if H = INVALID_HANDLE_VALUE then'#10'    RaiseLastOSError;'#10'  if Fehler then'#10'    Exit;'#10 +
+    '  CloseHandle(H);'));
+  Assert.AreEqual(1, Integer(Length(Findings)));
+  Assert.AreEqual('H wird nicht auf jedem Weg mit CloseHandle geschlossen (Handle-Leck).', Findings[0].Message);
+  Assert.AreEqual(0, Integer(Length(Findings[0].Fixes)), 'nur ohne jedes Schließen eine Korrektur');
+  // out-Argument von RegOpenKeyEx im Zweig "gelungen".
+  Findings := TRuleAssert.Findings(THandleLeakRule.Create, Datei('  Key: HKEY;'#10,
+    '  if RegOpenKeyEx(HKEY_CURRENT_USER, ''Software\Atlas'', 0, KEY_READ, Key) = ERROR_SUCCESS then'#10 +
+    '    RegQueryValueEx(Key, ''Pfad'', nil, nil, nil, nil);'));
+  Assert.AreEqual(1, Integer(Length(Findings)));
+  Assert.AreEqual('Key wird nie mit RegCloseKey geschlossen (Handle-Leck).', Findings[0].Message);
+  // GetDC: das Gegenstück bekommt das Fenster; letzte Anweisung im Block: nur anhängen.
+  Findings := TRuleAssert.Findings(THandleLeakRule.Create, Datei('  DC: HDC;'#10,
+    '  DC := GetDC(Wnd);'#10'  TextOut(DC, 0, 0, ''x'', 1);'));
+  Assert.AreEqual(1, Integer(Length(Findings)));
+  Text := TChangeSignature.ApplyEdits(Datei('  DC: HDC;'#10, '  DC := GetDC(Wnd);'#10'  TextOut(DC, 0, 0, ''x'', 1);'),
+    Findings[0].Fixes[0].Edits);
+  Assert.AreEqual(Datei('  DC: HDC;'#10, '  DC := GetDC(Wnd);'#10'  try'#10'    TextOut(DC, 0, 0, ''x'', 1);'#10 +
+    '  finally'#10'    ReleaseDC(Wnd, DC);'#10'  end;'), Text);
+  Findings := TRuleAssert.Findings(THandleLeakRule.Create, Datei('  Lib: HMODULE;'#10,
+    '  Lib := LoadLibrary(''x.dll'');'));
+  Assert.AreEqual(1, Integer(Length(Findings)));
+  Assert.AreEqual('FreeLibrary ergänzen', Findings[0].Fixes[0].Title);
+  Assert.AreEqual(Datei('  Lib: HMODULE;'#10, '  Lib := LoadLibrary(''x.dll'');'#10'  FreeLibrary(Lib);'),
+    TChangeSignature.ApplyEdits(Datei('  Lib: HMODULE;'#10, '  Lib := LoadLibrary(''x.dll'');'),
+    Findings[0].Fixes[0].Edits));
+  // Inline-Variable und GDI-Objekt; if mit Fehlerwert 0 im else-Zweig.
+  TRuleAssert.Reports(THandleLeakRule.Create, Datei('  X: Integer;'#10,
+    '  var Stift := CreatePen(PS_SOLID, 1, 0);'#10'  SelectObject(0, Stift);'));
+  TRuleAssert.Reports(THandleLeakRule.Create, Datei('  E: THandle;'#10,
+    '  E := CreateEvent(nil, True, False, nil);'#10'  if E <> 0 then'#10'    SetEvent(E)'#10'  else'#10 +
+    '    Exit;'));
+end;
+
+procedure TFlowRulesTests.HandleLeakSilentCases;
+begin
+  // Geschlossen, auch im finally; Fehlerzweig ohne Schließen.
+  TRuleAssert.Silent(THandleLeakRule.Create, Prozess(
+    '  if not CreateProcess(nil, PChar(Befehl), nil, nil, False, 0, nil, nil, SI, PI) then'#10 +
+    '    RaiseLastOSError;'#10'  try'#10'    WaitForSingleObject(PI.hProcess, INFINITE);'#10'  finally'#10 +
+    '    CloseHandle(PI.hThread);'#10'    CloseHandle(PI.hProcess);'#10'  end;'));
+  TRuleAssert.Silent(THandleLeakRule.Create, Datei('  H: THandle;'#10,
+    '  H := CreateFile(''a.txt'', GENERIC_READ, 0, nil, OPEN_EXISTING, 0, 0);'#10 +
+    '  if H = INVALID_HANDLE_VALUE then'#10'    Exit;'#10'  ReadFile(H, X, 1, N, nil);'#10'  CloseHandle(H);'));
+  // Weitergabe: Ergebnis, Feld, unbekannte Routine, Methode, anonyme Methode.
+  TRuleAssert.Silent(THandleLeakRule.Create, 'unit U;'#10'interface'#10'implementation'#10 +
+    'function Oeffnen: THandle;'#10'var'#10'  H: THandle;'#10'begin'#10 +
+    '  H := CreateEvent(nil, True, False, nil);'#10'  Result := H;'#10'end;'#10'end.');
+  TRuleAssert.Silent(THandleLeakRule.Create, Datei('  H: THandle;'#10,
+    '  FEreignis := CreateEvent(nil, True, False, nil);'#10'  H := CreateEvent(nil, True, False, nil);'#10 +
+    '  Merken(H);'));
+  TRuleAssert.Silent(THandleLeakRule.Create, Datei('  H: THandle;'#10,
+    '  H := CreateFile(''a.txt'', GENERIC_READ, 0, nil, OPEN_EXISTING, 0, 0);'#10 +
+    '  FStrom := THandleStream.Create(H);'));
+  TRuleAssert.Silent(THandleLeakRule.Create, Datei('  H: THandle;'#10,
+    '  H := CreateEvent(nil, True, False, nil);'#10'  Liste.Add(H);'));
+  TRuleAssert.Silent(THandleLeakRule.Create, Datei('  H: THandle;'#10,
+    '  H := CreateEvent(nil, True, False, nil);'#10'  TThread.CreateAnonymousThread(procedure'#10 +
+    '    begin'#10'      CloseHandle(H);'#10'    end).Start;'));
+  // Funktionszeiger aus GetProcAddress außerhalb der Routine gespeichert: Das Modul bleibt absichtlich geladen.
+  TRuleAssert.Silent(THandleLeakRule.Create, Datei('  Lib: HMODULE;'#10,
+    '  Lib := LoadLibrary(''x.dll'');'#10'  if Lib = 0 then'#10'    Exit;'#10 +
+    '  @GlobalerZeiger := GetProcAddress(Lib, ''Funktion'');'));
+  // Nur lokal benutzt: Leck.
+  TRuleAssert.Reports(THandleLeakRule.Create, Datei('  Lib: HMODULE;'#10'  P: Pointer;'#10,
+    '  Lib := LoadLibrary(''x.dll'');'#10'  P := GetProcAddress(Lib, ''Funktion'');'));
+  // Parameter und Felder verfolgt die Regel nicht; Exit(H) gibt weiter.
+  TRuleAssert.Silent(THandleLeakRule.Create, 'unit U;'#10'interface'#10'implementation'#10 +
+    'function Oeffnen(var H: THandle): THandle;'#10'var'#10'  K: THandle;'#10'begin'#10 +
+    '  H := CreateEvent(nil, True, False, nil);'#10'  K := OpenProcess(0, False, 1);'#10'  Exit(K);'#10 +
+    'end;'#10'end.');
+end;
+
+procedure TFlowRulesTests.HandleLeakPairsAndOff;
+const
+  Body = '  H := MeinOeffnen(1);'#10'  Benutzen;';
+var
+  Issues: TArray<TConfigurationIssue>;
+begin
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(THandleLeakRule.Create, Datei('  H: THandle;'#10, Body),
+    '{}', 'U.pas'))));
+  Assert.AreEqual(1, Integer(Length(TRuleAssert.Findings(THandleLeakRule.Create, Datei('  H: THandle;'#10, Body),
+    '{"rules": {"handle-leak": {"pairs": ["MeinOeffnen>MeinSchliessen"]}}}', 'U.pas'))));
+  Assert.AreEqual('H wird nie mit MeinSchliessen geschlossen (Handle-Leck).', TRuleAssert.Findings(
+    THandleLeakRule.Create, Datei('  H: THandle;'#10, Body),
+    '{"rules": {"handle-leak": {"pairs": [{"open": "MeinOeffnen", "close": "MeinSchliessen"}]}}}',
+    'U.pas')[0].Message);
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(THandleLeakRule.Create, Datei('  H: THandle;'#10,
+    Body + #10'  MeinSchliessen(H);'), '{"rules": {"handle-leak": {"pairs": ["MeinOeffnen>MeinSchliessen"]}}}',
+    'U.pas'))));
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(THandleLeakRule.Create, Prozess(
+    '  CreateProcess(nil, PChar(Befehl), nil, nil, False, 0, nil, nil, SI, PI);'), '{"rules": {"handle-leak": "off"}}',
+    'U.pas'))));
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(THandleLeakRule.Create, Prozess(
+    '  CreateProcess(nil, PChar(Befehl), nil, nil, False, 0, nil, nil, SI, PI);'),
+    '{"rules": {"handle-leak": {"exclude": ["Alt/*.pas"]}}}', 'Alt/U.pas'))));
+  // Der Parser nimmt Texte "Öffnen>Schließen" und Objekte an, aber keine Zahlen.
+  TConfigurationParser.Parse('{"rules": {"handle-leak": {"pairs": ["A>B", {"open": "C", "close": "D"}]}}}', Issues);
+  Assert.AreEqual(0, Integer(Length(Issues)));
+  TConfigurationParser.Parse('{"rules": {"handle-leak": {"pairs": [1]}}}', Issues);
+  Assert.AreEqual(1, Integer(Length(Issues)));
+  TConfigurationParser.Parse('{"rules": {"handle-leak": {"pairs": ["OhnePfeil"]}}}', Issues);
+  Assert.AreEqual(1, Integer(Length(Issues)));
 end;
 
 initialization
