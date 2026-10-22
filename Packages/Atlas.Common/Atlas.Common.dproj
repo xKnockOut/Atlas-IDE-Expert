@@ -428,6 +428,7 @@
         <DCCReference Include="Source\Pascal\Atlas.Common.Pascal.Contract.pas"/>
         <DCCReference Include="Source\Pascal\Atlas.Common.Pascal.Lexer.pas"/>
         <DCCReference Include="Source\Pascal\Atlas.Common.Pascal.SyntaxTree.pas"/>
+        <DCCReference Include="Source\Pascal\Atlas.Common.Pascal.SyntaxChecks.pas"/>
         <DCCReference Include="Source\Pascal\Atlas.Common.Pascal.Parser.pas"/>
         <DCCReference Include="Source\Pascal\Atlas.Common.Pascal.TreeCache.pas"/>
         <DCCReference Include="Source\Pascal\Atlas.Common.Pascal.IncludeFiles.pas"/>

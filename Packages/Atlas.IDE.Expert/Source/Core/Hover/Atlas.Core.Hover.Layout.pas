@@ -862,7 +862,9 @@ begin
     if FLayout.FixProblem < 0 then
       FLayout.FixProblem := AIndex;
   end;
-  ProblemLink(FInput.Texts.Suppress, AIndex, TAtlasHoverProblemAction.SuppressLine);
+  // Syntaxfehler (#1022) lassen sich nicht unterdrücken, nur beheben oder einstellen.
+  if AProblem.CanSuppress then
+    ProblemLink(FInput.Texts.Suppress, AIndex, TAtlasHoverProblemAction.SuppressLine);
   ProblemLink(FInput.Texts.Configure, AIndex, TAtlasHoverProblemAction.Configure);
   EndFlow;
   Inc(FY, Scale(6));
@@ -905,7 +907,7 @@ begin
       Caption := FInput.Texts.SourceInactive
     else
     begin
-      // „Atlas · loop-off-by-one“, „dcc · W1036“; Syntaxfehler ohne Code nur mit der Herkunft.
+      // „Atlas · loop-off-by-one“, „dcc · W1036“, „Atlas · syntax“ (#1022).
       Caption := Problem.Source;
       if Caption = '' then
         Caption := FInput.Texts.SourceAtlas;

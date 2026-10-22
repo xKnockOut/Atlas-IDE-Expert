@@ -6,11 +6,11 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 
 | Gruppe | Regeln |
 |---|---|
-| [Fehler finden](#gruppe-find-bugs) | 56 |
+| [Fehler finden](#gruppe-find-bugs) | 55 |
 | [Exceptions](#gruppe-exceptions) | 8 |
 | [Threads](#gruppe-threads) | 13 |
 | [Datenbank](#gruppe-database) | 4 |
-| [Compiler vorab](#gruppe-compiler) | 17 |
+| [Compiler vorab](#gruppe-compiler) | 18 |
 | [Robustheit und Muster](#gruppe-robustness) | 3 |
 | [Performance](#gruppe-performance) | 4 |
 | [Sicherheit](#gruppe-security) | 11 |
@@ -26,7 +26,6 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 
 | Regel | Name | Kategorie | Schweregrad |
 |---|---|---|---|
-| [`syntax`](#syntax) | Syntaxfehler | Bug | Fehler |
 | [`result-not-set`](#result-not-set) | Funktionsergebnis eventuell nicht gesetzt | Bug | Warnung |
 | [`possibly-uninitialized`](#possibly-uninitialized) | Variable eventuell nicht initialisiert | Bug | Warnung |
 | [`unreachable-code`](#unreachable-code) | Unerreichbarer Code | Bug | Warnung |
@@ -131,6 +130,7 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 
 | Regel | Name | Kategorie | Schweregrad |
 |---|---|---|---|
+| [`syntax`](#syntax) | Syntaxfehler | Bug | Fehler |
 | [`deprecated-symbol`](#deprecated-symbol) | Veraltetes oder gebundenes Symbol | Code Smell | Warnung |
 | [`signature-mismatch`](#signature-mismatch) | Implementierung weicht von der Deklaration ab | Bug | Fehler |
 | [`interface-not-implemented`](#interface-not-implemented) | Interface-Methode fehlt in der Klasse | Bug | Fehler |
@@ -280,27 +280,28 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 <a id="syntax"></a>
 ### syntax
 
-**Syntaxfehler** · Bug · Fehler · Gruppe Fehler finden
+**Syntaxfehler** · Bug · Fehler · Gruppe Compiler vorab
 
-Der Parser konnte den Quelltext nicht lesen.
+Der Quelltext lässt sich nicht lesen. Die Meldung nennt wie der Compiler, was erwartet und was gefunden wurde („';' erwartet, aber 'end' gefunden (wie E2029).“), und trägt den Compilercode: fehlendes ';' (E2066 zwischen Anweisungen, E2029 in Deklarationen), ';' vor else (E2153), offener String (E2052) oder Kommentar mit Startzeile (E2057), Anweisungen im interface-Teil (E2050), Bezeichner nach einem Punkt am Ende (E2372), strict ohne private oder protected (E2375), class vor etwas anderem als einer Routine (E2357), try ohne except oder finally (E2125), for ohne Variable (E2088). Prüfungen am fertigen Baum: procedure mit Ergebnistyp (E2025), Deklaration einer function ohne Ergebnistyp (E2023; die Kurzform der Implementierung ist erlaubt), Wertparameter ohne Typ (E2067), lokale Variable mit Anfangswert (E2195) oder mehrere Variablen mit einem Anfangswert (E2196), Klassen-, Interface- oder Objekttyp im var-Abschnitt (E2060, E2058) oder lokal in einer Routine (E2061, E2059), label im interface-Teil (E2049) und goto auf eine nicht deklarierte Marke (E2031). Nach einem offenen String oder Kommentar fallen die Folgefehler weg, weil der Compiler dort abbricht. Inaktive {$IFDEF}-Zweige werden nicht gemeldet. Korrekturen: ';' vor else entfernen (sicher, auch beim Speichern), ';' ergänzen, String schließen, Kommentar am Ende seiner ersten Zeile schließen.
+
+Entspricht der Compilermeldung `E2023`, `E2025`, `E2029`, `E2031`, `E2049`, `E2050`, `E2052`, `E2057`, `E2058`, `E2059`, `E2060`, `E2061`, `E2066`, `E2067`, `E2088`, `E2125`, `E2153`, `E2195`, `E2196`, `E2357`, `E2372`, `E2375`.
 
 Mit Treffer:
 
 ```pascal
-procedure Foo;
-begin
-  if X then
-end;
+if Gueltig then
+  Speichern;
+else
+  Verwerfen;
 ```
 
 Richtig:
 
 ```pascal
-procedure Foo;
-begin
-  if X then
-    Bar;
-end;
+if Gueltig then
+  Speichern
+else
+  Verwerfen;
 ```
 
 <a id="unused-suppression"></a>

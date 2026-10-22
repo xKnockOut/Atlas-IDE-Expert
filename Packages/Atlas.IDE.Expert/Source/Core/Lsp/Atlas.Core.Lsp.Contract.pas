@@ -19,6 +19,8 @@ type
   TAtlasProblem = record
   public const
     CompilerSource = 'dcc';
+    /// <summary>Regel der Syntaxfehler des Servers (#1022); lässt sich nicht per Kommentar unterdrücken.</summary>
+    SyntaxCode = 'syntax';
     /// <summary>Zustände aus data.uses.state (#621).</summary>
     UsesUnused = 'unused';
     UsesInitialization = 'initialization';
@@ -30,7 +32,7 @@ type
     EndLine: Integer;
     EndCharacter: Integer;
     Severity: TAtlasProblemSeverity;
-    /// <summary>Regel-ID bzw. Meldungsnummer (E2003); '' bei Syntaxfehlern.</summary>
+    /// <summary>Regel-ID bzw. Meldungsnummer (E2003); "syntax" bei Syntaxfehlern des Servers (#1022).</summary>
     Code: string;
     /// <summary>"Atlas" oder "dcc".</summary>
     Source: string;
@@ -69,6 +71,8 @@ type
     function Contains(ALine, ACharacter: Integer): Boolean;
     /// <summary>"Meldung (Code)" bzw. nur die Meldung.</summary>
     function Caption: string;
+    /// <summary>Lässt sich der Befund per // lsp-ignore unterdrücken? Nicht bei Syntaxfehlern (#1022).</summary>
+    function CanSuppress: Boolean;
     /// <summary>Hinweis zu einem inaktiven Bereich (#615): AConditionFormat mit der Bedingung (%s), dahinter
     /// ATargetFormat mit Plattform und Konfiguration (%s, %s; "?" für Unbekanntes), wenn eins bekannt ist.
     /// Ohne Bedingung AFallback.</summary>
@@ -139,6 +143,11 @@ begin
     Result := Message
   else
     Result := Format('%s (%s)', [Message, Code]);
+end;
+
+function TAtlasProblem.CanSuppress: Boolean;
+begin
+  Result := (Code <> '') and not SameText(Code, SyntaxCode);
 end;
 
 function TAtlasProblem.InactiveHint(const AConditionFormat, ATargetFormat, AFallback: string): string;
