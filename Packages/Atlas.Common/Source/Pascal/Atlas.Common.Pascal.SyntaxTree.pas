@@ -131,6 +131,9 @@ type
     FixEdits: TArray<TTextEdit>;
     /// <summary>Korrektur ohne Rückfrage anwendbar (source.fixAll).</summary>
     FixSafe: Boolean;
+    /// <summary>Meldung der Prüfungen am fertigen Baum (Pascal.SyntaxChecks): Der Baum ist an der Stelle
+    /// vollständig, Regeln dürfen ihm dort trauen.</summary>
+    TreeIntact: Boolean;
   end;
 
   /// <summary>Ergebnis des Parsers. Besitzt alle Knoten.</summary>

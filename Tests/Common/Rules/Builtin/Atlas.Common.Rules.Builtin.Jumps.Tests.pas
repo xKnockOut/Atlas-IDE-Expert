@@ -234,11 +234,12 @@ procedure TLabelMisuseTests.DuplicateUndeclaredAndNotSet;
 var
   Findings: TArray<TRuleFinding>;
 begin
-  // E2073 doppelt gesetzt, E2093 nicht deklariert (gesetzt und angesprungen), E2074 nie gesetzt.
+  // E2073 doppelt gesetzt, E2093 nicht deklariert (gesetzt und angesprungen), E2074 nie gesetzt. goto Anders
+  // (nirgends deklariert, nie gesetzt) meldet die Syntaxprüfung als E2031, die Regel schweigt dazu.
   Findings := TRuleAssert.Findings(TLabelMisuseRule.Create, Ablauf('label Doppelt, Fehlt;'#10,
     'Doppelt:'#10'  Lesen;'#10'Doppelt:'#10'  Melden;'#10'Fremd:'#10'  goto Fremd;'#10'  goto Anders;'#10 +
     '  goto Fehlt;'#10));
-  Assert.AreEqual(4, Integer(Length(Findings)));
+  Assert.AreEqual(3, Integer(Length(Findings)));
   Assert.AreEqual('Marke Fehlt wird angesprungen, aber nie gesetzt (wie E2074).', Findings[0].Message);
   Assert.AreEqual(4, Findings[0].Range.StartPos.Line);
   Assert.AreEqual(15, Findings[0].Range.StartPos.Character);
@@ -246,8 +247,6 @@ begin
   Assert.AreEqual(8, Findings[1].Range.StartPos.Line);
   Assert.AreEqual('Marke Fremd ist in dieser Routine nicht deklariert (wie E2093).', Findings[2].Message);
   Assert.AreEqual(10, Findings[2].Range.StartPos.Line);
-  Assert.AreEqual('Marke Anders ist in dieser Routine nicht deklariert (wie E2093).', Findings[3].Message);
-  Assert.AreEqual(12, Findings[3].Range.StartPos.Line);
 end;
 
 procedure TLabelMisuseTests.NestedRoutinesHaveOwnLabels;
@@ -281,14 +280,16 @@ end;
 
 procedure TLabelMisuseTests.OffAndExclude;
 const
+  // Deklariert und angesprungen, aber nie gesetzt (E2074).
+  Labels = 'label Weiter;'#10;
   Statements = '  goto Weiter;'#10;
 begin
-  Assert.AreEqual(1, Integer(Length(TRuleAssert.Findings(TLabelMisuseRule.Create, Ablauf('', Statements)))));
-  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TLabelMisuseRule.Create, Ablauf('', Statements),
+  Assert.AreEqual(1, Integer(Length(TRuleAssert.Findings(TLabelMisuseRule.Create, Ablauf(Labels, Statements)))));
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TLabelMisuseRule.Create, Ablauf(Labels, Statements),
     '{"rules": {"label-misuse": "off"}}', 'Ablaeufe.pas'))));
-  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TLabelMisuseRule.Create, Ablauf('', Statements),
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TLabelMisuseRule.Create, Ablauf(Labels, Statements),
     '{"rules": {"group:compiler": "off"}}', 'Ablaeufe.pas'))));
-  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TLabelMisuseRule.Create, Ablauf('', Statements),
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TLabelMisuseRule.Create, Ablauf(Labels, Statements),
     '{"rules": {"label-misuse": {"exclude": ["Alt/*.pas"]}}}', 'Alt/Ablaeufe.pas'))));
 end;
 

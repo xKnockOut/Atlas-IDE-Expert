@@ -81,14 +81,15 @@ type
   end;
 
 /// <summary>Hat der Parser im Bereich von AScope einen Fehler gemeldet (nil: irgendwo)? Dann ist die
-/// Schachtelung dort nicht sicher.</summary>
+/// Schachtelung dort nicht sicher. Meldungen der Prüfungen am fertigen Baum (TreeIntact, z. B. E2031)
+/// zählen nicht: Der Baum ist dort vollständig.</summary>
 function ParserBroken(ATree: TSyntaxTree; AScope: TSyntaxNode): Boolean;
 var
   Diagnostic: TSyntaxDiagnostic;
 begin
   for Diagnostic in ATree.Diagnostics do
-    if (AScope = nil) or ((Diagnostic.StartPos.Line >= AScope.StartPos.Line) and
-      (Diagnostic.StartPos.Line <= AScope.EndPos.Line)) then
+    if not Diagnostic.TreeIntact and ((AScope = nil) or ((Diagnostic.StartPos.Line >= AScope.StartPos.Line) and
+      (Diagnostic.StartPos.Line <= AScope.EndPos.Line))) then
       Exit(True);
   Result := False;
 end;
@@ -336,6 +337,36 @@ var
       TTextPosition.Create(ANode.StartPos.Line, ANode.StartPos.Character + Length(AName)));
   end;
 
+  // Ist AKey in einer Routine deklariert, die AScope umgibt? Sonst meldet die Syntaxprüfung den Sprung (E2031).
+  function DeclaredOutside(AScope: TSyntaxNode; const AKey: string): Boolean;
+  var
+    Outer, Section: TSyntaxNode;
+    Index, First: Integer;
+  begin
+    Result := False;
+    Outer := AScope.Parent;
+    while (Outer <> nil) and not Result do
+    begin
+      if Outer.Kind = TSyntaxKind.RoutineDecl then
+        for Index := 0 to Outer.ChildCount - 1 do
+        begin
+          Section := Outer[Index];
+          if Section.Kind <> TSyntaxKind.LabelSection then
+            Continue;
+          First := TokenAt(Section.StartOffset) + 1;
+          while (First <= High(Tokens)) and (Tokens[First].Offset < Section.EndOffset) and
+            not Tokens[First].IsSymbol(';') do
+          begin
+            if (Tokens[First].Kind in [TPascalTokenKind.Identifier, TPascalTokenKind.Number]) and
+              (LabelKey(Tokens[First].Text) = AKey) then
+              Result := True;
+            Inc(First);
+          end;
+        end;
+      Outer := Outer.Parent;
+    end;
+  end;
+
   procedure CheckScope(AScope, ABody: TSyntaxNode);
   var
     Declared: TDictionary<string, Integer>;
@@ -439,7 +470,8 @@ var
         Key := LabelKey(Node.Name);
         if not Declared.ContainsKey(Key) then
         begin
-          if not Sets.ContainsKey(Key) then
+          // Nirgends deklariert und nirgends gesetzt: das meldet schon die Syntaxprüfung (E2031).
+          if not Sets.ContainsKey(Key) and DeclaredOutside(AScope, Key) then
             AReport.Add(TTextRange.Create(Node.StartPos, Node.EndPos), Format('Marke %s ist in dieser Routine ' +
               'nicht deklariert (wie E2093).', [Node.Name]), TRuleConfidence.High);
           Continue;

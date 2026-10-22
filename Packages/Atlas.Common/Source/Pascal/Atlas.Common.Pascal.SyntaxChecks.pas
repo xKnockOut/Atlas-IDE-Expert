@@ -125,6 +125,7 @@ begin
   Diagnostic.StartPos := AStartPos;
   Diagnostic.EndPos := AEndPos;
   Diagnostic.Code := ACode;
+  Diagnostic.TreeIntact := True;
   FResult.Add(Diagnostic);
 end;
 
@@ -385,7 +386,7 @@ end;
 
 procedure TTreeChecker.CheckGoto(AGoto: TSyntaxNode);
 var
-  Scope: TSyntaxNode;
+  Scope, Outer: TSyntaxNode;
   NameIndex: Integer;
   Labels: TArray<string>;
 begin
@@ -404,6 +405,14 @@ begin
   Labels := LabelsOf(Scope);
   if IndexStr(LabelKey(AGoto.Name), Labels) >= 0 then
     Exit;
+  // In einer umgebenden Routine deklariert: das meldet label-misuse genauer (E2093, #995).
+  Outer := Scope.Parent;
+  while Outer <> nil do
+  begin
+    if (Outer.Kind = TSyntaxKind.RoutineDecl) and (IndexStr(LabelKey(AGoto.Name), LabelsOf(Outer)) >= 0) then
+      Exit;
+    Outer := Outer.Parent;
+  end;
   NameIndex := IndexAt(AGoto.StartOffset);
   if NameIndex >= 0 then
     NameIndex := NextCode(NameIndex);

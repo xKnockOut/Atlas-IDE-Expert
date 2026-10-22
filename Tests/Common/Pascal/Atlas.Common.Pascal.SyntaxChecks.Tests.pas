@@ -434,12 +434,17 @@ begin
   Assert.AreEqual('E2031', Found[0].Code);
   Assert.AreEqual('Marke erwartet: Ende ist nicht als label deklariert (wie E2031).', Found[0].Message);
   Assert.IsTrue(TTextPosition.Create(9, 7) = Found[0].StartPos);
+  // Prüfung am fertigen Baum: Regeln wie label-misuse dürfen dem Baum dort trauen.
+  Assert.IsTrue(Found[0].TreeIntact);
 end;
 
 procedure TSyntaxChecksTests.GotoDeclaredLabelIsSilent;
 begin
   Assert.AreEqual('', Codes(InUnit([], ['procedure Rechne;', 'label', '  Ende, 10;', 'begin', '  goto Ende;',
     '  goto 010;', '  Ende:', '  10: ;', 'end;'])));
+  // Marke der umgebenden Routine: das meldet label-misuse als E2093, nicht die Syntaxprüfung.
+  Assert.AreEqual('', Codes(InUnit([], ['procedure Rechne;', 'label', '  Ende;', '  procedure Innen;', '  begin',
+    '    goto Ende;', '  end;', 'begin', '  Innen;', 'Ende:', 'end;'])));
 end;
 
 procedure TSyntaxChecksTests.InactiveBranchIsSilent;
