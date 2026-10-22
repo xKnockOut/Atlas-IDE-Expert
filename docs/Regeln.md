@@ -8,7 +8,7 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 |---|---|
 | [Fehler finden](#gruppe-find-bugs) | 56 |
 | [Exceptions](#gruppe-exceptions) | 8 |
-| [Threads](#gruppe-threads) | 10 |
+| [Threads](#gruppe-threads) | 11 |
 | [Robustheit und Muster](#gruppe-robustness) | 3 |
 | [Performance](#gruppe-performance) | 4 |
 | [Sicherheit](#gruppe-security) | 11 |
@@ -110,6 +110,7 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 | [`processmessages-in-loop`](#processmessages-in-loop) | Application.ProcessMessages in Schleifen | Code Smell | Hinweis |
 | [`queue-nil-in-package`](#queue-nil-in-package) | TThread.Queue(nil, …) in einem Package | Bug | Warnung |
 | [`blocking-call-in-main-thread`](#blocking-call-in-main-thread) | Blockierender Aufruf im Hauptthread | Code Smell | Warnung |
+| [`thread-loop-without-terminated`](#thread-loop-without-terminated) | Thread-Schleife ohne Terminated | Bug | Warnung |
 
 <a id="gruppe-robustness"></a>
 ### Robustheit und Muster
@@ -3891,5 +3892,38 @@ begin
       FExport.Ausfuehren;
       TThread.Queue(nil, procedure begin btnExport.Enabled := True; end);
     end);
+end;
+```
+
+<a id="thread-loop-without-terminated"></a>
+### thread-loop-without-terminated
+
+**Thread-Schleife ohne Terminated** · Bug · Warnung · Gruppe Threads
+
+Eine while- oder repeat-Schleife in TThread.Execute oder in einer Methode der Thread-Klasse, die nur von dort aufgerufen wird (auch über andere solche Methoden, eingebettete Routinen eingeschlossen), prüft Terminated nicht. Terminate wirkt dann nicht, und WaitFor bzw. Free hängen beim Beenden. Gemeldet für Endlosschleifen (while True, until False) und für Warteschleifen mit Sleep, WaitFor, WaitForSingleObject, WaitForMultipleObjects, MsgWaitForMultipleObjects, Wait oder Yield, deren Bedingung und Rumpf Terminated bzw. CheckTerminated nie erwähnen. Thread-Klassen kommen aus der Unit und dem Index. Begrenzte Schleifen, for-Schleifen, anonyme Methoden und Klassen, die TerminatedSet überschreiben (sie beenden ihre Schleifen auf anderem Weg), bleiben still. Konfidenz hoch. Korrektur: Terminated in die Schleifenbedingung aufnehmen (while True → while not Terminated, sonst and not Terminated; until False → until Terminated, sonst or Terminated).
+
+Mit Treffer:
+
+```pascal
+procedure TPoller.Execute;
+begin
+  while True do
+  begin
+    Abfragen;
+    Sleep(1000);
+  end;
+end;
+```
+
+Richtig:
+
+```pascal
+procedure TPoller.Execute;
+begin
+  while not Terminated do
+  begin
+    Abfragen;
+    Sleep(1000);
+  end;
 end;
 ```

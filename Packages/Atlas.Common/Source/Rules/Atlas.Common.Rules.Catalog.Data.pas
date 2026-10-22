@@ -1965,6 +1965,16 @@ begin
     '          "description": "Calls that block. Other names are reported regardless of their arguments."' + #10 +
     '        }' + #10 +
     '      ]' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "thread-loop-without-terminated",' + #10 +
+    '      "name": "Thread loop without Terminated",' + #10 +
+    '      "category": "bug",' + #10 +
+    '      "severity": "warning",' + #10 +
+    '      "group": "threads",' + #10 +
+    '      "description": "A while or repeat loop in TThread.Execute, or in a method of the thread class that is only called from there (also through other such methods, including nested routines), does no' + 't check Terminated. Terminate then has no effect, and WaitFor or Free hang when the program shuts down. Reported for endless loops (while True, until False) and for waiting loops with Sleep, WaitFor, ' + 'WaitForSingleObject, WaitForMultipleObjects, MsgWaitForMultipleObjects, Wait or Yield whose condition and body never mention Terminated or CheckTerminated. Thread classes come from the unit and the in' + 'dex. Bounded loops, for loops, anonymous methods and classes that override TerminatedSet (they end their loops another way) stay silent. High confidence. Quick fix: add Terminated to the loop conditio' + 'n (while True → while not Terminated, otherwise and not Terminated; until False → until Terminated, otherwise or Terminated).",' + #10 +
+    '      "bad": "procedure TPoller.Execute;\nbegin\n  while True do\n  begin\n    Abfragen;\n    Sleep(1000);\n  end;\nend;",' + #10 +
+    '      "good": "procedure TPoller.Execute;\nbegin\n  while not Terminated do\n  begin\n    Abfragen;\n    Sleep(1000);\n  end;\nend;"' + #10 +
     '    }' + #10 +
     '  ]' + #10 +
     '}' + #10 +
@@ -3001,6 +3011,11 @@ begin
     '          "description": "Aufrufe, die blockieren. Andere Namen werden unabhängig von ihren Argumenten gemeldet."' + #10 +
     '        }' + #10 +
     '      ]' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "thread-loop-without-terminated",' + #10 +
+    '      "name": "Thread-Schleife ohne Terminated",' + #10 +
+    '      "description": "Eine while- oder repeat-Schleife in TThread.Execute oder in einer Methode der Thread-Klasse, die nur von dort aufgerufen wird (auch über andere solche Methoden, eingebettete Rout' + 'inen eingeschlossen), prüft Terminated nicht. Terminate wirkt dann nicht, und WaitFor bzw. Free hängen beim Beenden. Gemeldet für Endlosschleifen (while True, until False) und für Warteschleifen mit S' + 'leep, WaitFor, WaitForSingleObject, WaitForMultipleObjects, MsgWaitForMultipleObjects, Wait oder Yield, deren Bedingung und Rumpf Terminated bzw. CheckTerminated nie erwähnen. Thread-Klassen kommen au' + 's der Unit und dem Index. Begrenzte Schleifen, for-Schleifen, anonyme Methoden und Klassen, die TerminatedSet überschreiben (sie beenden ihre Schleifen auf anderem Weg), bleiben still. Konfidenz hoch.' + ' Korrektur: Terminated in die Schleifenbedingung aufnehmen (while True → while not Terminated, sonst and not Terminated; until False → until Terminated, sonst or Terminated)."' + #10 +
     '    }' + #10 +
     '  ]' + #10 +
     '}' + #10 +

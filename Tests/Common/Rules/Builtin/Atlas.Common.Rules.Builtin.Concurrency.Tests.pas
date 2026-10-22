@@ -85,6 +85,14 @@ type
     procedure BlockingCallSilentCases;
     [Test]
     procedure BlockingCallOptions;
+    [Test]
+    procedure ThreadLoopIssueExample;
+    [Test]
+    procedure ThreadLoopVariants;
+    [Test]
+    procedure ThreadLoopSilentCases;
+    [Test]
+    procedure ThreadLoopOffAndExclude;
   end;
 
 implementation
@@ -710,6 +718,96 @@ begin
   TConfigurationParser.Parse('{"rules": {"blocking-call-in-main-thread": {"maxSleepMs": "x", "calls": 1}}}',
     Issues);
   Assert.AreEqual(2, Integer(Length(Issues)));
+end;
+
+function Poller(const AMethods: string): string;
+begin
+  Result := 'unit U;'#10'interface'#10'type'#10'  TPoller = class(TThread)'#10'  protected'#10 +
+    '    procedure Execute; override;'#10'  end;'#10'implementation'#10 + AMethods + 'end.';
+end;
+
+function PollerExecute(const ABody: string): string;
+begin
+  Result := Poller('procedure TPoller.Execute;'#10'begin'#10 + ABody + 'end;'#10);
+end;
+
+procedure TConcurrencyRulesTests.ThreadLoopIssueExample;
+var
+  Source, Fixed: string;
+  Findings: TArray<TRuleFinding>;
+begin
+  Source := PollerExecute('  while True do'#10'  begin'#10'    Abfragen;'#10'    Sleep(1000);'#10'  end;'#10);
+  Findings := TRuleAssert.Findings(TThreadLoopWithoutTerminatedRule.Create, Source);
+  Assert.AreEqual(1, Integer(Length(Findings)));
+  Assert.AreEqual('thread-loop-without-terminated', Findings[0].RuleId);
+  Assert.AreEqual(Ord(TRuleSeverity.Warning), Ord(Findings[0].Severity));
+  Assert.AreEqual(Ord(TRuleConfidence.High), Ord(Findings[0].Confidence));
+  Assert.AreEqual('Die Schleife prüft Terminated nicht; der Thread lässt sich nicht beenden.', Findings[0].Message);
+  Assert.AreEqual(10, Findings[0].Range.StartPos.Line);
+  Assert.AreEqual(2, Findings[0].Range.StartPos.Character);
+  Assert.AreEqual(7, Findings[0].Range.EndPos.Character);
+  Assert.AreEqual('Terminated in die Schleifenbedingung aufnehmen', Findings[0].Fixes[0].Title);
+  Fixed := TChangeSignature.ApplyEdits(Source, Findings[0].Fixes[0].Edits);
+  Assert.AreEqual(PollerExecute('  while not Terminated do'#10'  begin'#10'    Abfragen;'#10'    Sleep(1000);'#10 +
+    '  end;'#10), Fixed);
+  TRuleAssert.Silent(TThreadLoopWithoutTerminatedRule.Create, Fixed);
+end;
+
+procedure TConcurrencyRulesTests.ThreadLoopVariants;
+var
+  Source: string;
+  Findings: TArray<TRuleFinding>;
+begin
+  // Warteschleife mit Bedingung, repeat … until False und mit Bedingung.
+  Source := PollerExecute('  while not FFertig do'#10'    FEreignis.WaitFor(500);'#10'  repeat'#10 +
+    '    Abfragen;'#10'  until False;'#10'  repeat'#10'    Sleep(10);'#10'  until FFertig or FAbbruch;'#10);
+  Findings := TRuleAssert.Findings(TThreadLoopWithoutTerminatedRule.Create, Source);
+  Assert.AreEqual(3, Integer(Length(Findings)));
+  Assert.AreEqual(PollerExecute('  while not FFertig and not Terminated do'#10'    FEreignis.WaitFor(500);'#10 +
+    '  repeat'#10'    Abfragen;'#10'  until False;'#10'  repeat'#10'    Sleep(10);'#10'  until FFertig or FAbbruch;'#10),
+    TChangeSignature.ApplyEdits(Source, Findings[0].Fixes[0].Edits));
+  Assert.AreEqual(PollerExecute('  while not FFertig do'#10'    FEreignis.WaitFor(500);'#10'  repeat'#10 +
+    '    Abfragen;'#10'  until Terminated;'#10'  repeat'#10'    Sleep(10);'#10'  until FFertig or FAbbruch;'#10),
+    TChangeSignature.ApplyEdits(Source, Findings[1].Fixes[0].Edits));
+  Assert.AreEqual(PollerExecute('  while not FFertig do'#10'    FEreignis.WaitFor(500);'#10'  repeat'#10 +
+    '    Abfragen;'#10'  until False;'#10'  repeat'#10'    Sleep(10);'#10'  until (FFertig or FAbbruch) or Terminated;'#10),
+    TChangeSignature.ApplyEdits(Source, Findings[2].Fixes[0].Edits));
+  // Methode, die nur aus Execute kommt (auch über eine zweite), eingebettete Routine.
+  Findings := TRuleAssert.Findings(TThreadLoopWithoutTerminatedRule.Create, Poller(
+    'procedure TPoller.Execute;'#10'  procedure Warten;'#10'  begin'#10'    while True do Sleep(1);'#10'  end;'#10 +
+    'begin'#10'  Starten;'#10'  Warten;'#10'end;'#10'procedure TPoller.Starten;'#10'begin'#10'  Schleife;'#10 +
+    'end;'#10'procedure TPoller.Schleife;'#10'begin'#10'  while True do Abfragen;'#10'end;'#10));
+  Assert.AreEqual(2, Integer(Length(Findings)));
+end;
+
+procedure TConcurrencyRulesTests.ThreadLoopSilentCases;
+begin
+  // Terminated in Bedingung oder Rumpf, CheckTerminated, begrenzte Schleifen, for, anonyme Methode.
+  TRuleAssert.Silent(TThreadLoopWithoutTerminatedRule.Create, PollerExecute(
+    '  while not Terminated do Sleep(10);'#10'  while True do'#10'  begin'#10'    if Terminated then Exit;'#10 +
+    '    Sleep(10);'#10'  end;'#10'  repeat Sleep(10) until CheckTerminated;'#10 +
+    '  while I < Liste.Count do Inc(I);'#10'  for I := 0 to 9 do Sleep(10);'#10 +
+    '  TTask.Run(procedure begin while True do Sleep(10); end);'#10));
+  // Methode, die auch von außerhalb kommt; Klasse mit TerminatedSet; Klasse ohne Thread; Execute fremder Klasse.
+  TRuleAssert.Silent(TThreadLoopWithoutTerminatedRule.Create, Poller('procedure TPoller.Execute;'#10'begin'#10 +
+    '  Schleife;'#10'end;'#10'procedure TPoller.Schleife;'#10'begin'#10'  while True do Sleep(1);'#10'end;'#10 +
+    'procedure Fremd(P: TPoller);'#10'begin'#10'  P.Schleife;'#10'end;'#10));
+  TRuleAssert.Silent(TThreadLoopWithoutTerminatedRule.Create, Poller('procedure TPoller.TerminatedSet;'#10 +
+    'begin'#10'  FEreignis.SetEvent;'#10'end;'#10'procedure TPoller.Execute;'#10'begin'#10 +
+    '  while True do FEreignis.WaitFor;'#10'end;'#10));
+  TRuleAssert.Silent(TThreadLoopWithoutTerminatedRule.Create, 'unit U;'#10'interface'#10'implementation'#10 +
+    'procedure TDienst.Execute;'#10'begin'#10'  while True do Sleep(1);'#10'end;'#10'end.');
+end;
+
+procedure TConcurrencyRulesTests.ThreadLoopOffAndExclude;
+var
+  Source: string;
+begin
+  Source := PollerExecute('  while True do Sleep(1);'#10);
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TThreadLoopWithoutTerminatedRule.Create, Source,
+    '{"rules": {"thread-loop-without-terminated": "off"}}', 'U.pas'))));
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TThreadLoopWithoutTerminatedRule.Create, Source,
+    '{"rules": {"thread-loop-without-terminated": {"exclude": ["Alt/*.pas"]}}}', 'Alt/U.pas'))));
 end;
 
 initialization
