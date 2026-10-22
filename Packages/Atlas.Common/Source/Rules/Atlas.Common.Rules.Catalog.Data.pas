@@ -2136,6 +2136,19 @@ begin
     '        "W1074",' + #10 +
     '        "E2289"' + #10 +
     '      ]' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "comparison-as-statement",' + #10 +
+    '      "name": "Comparison instead of assignment as a statement",' + #10 +
+    '      "category": "bug",' + #10 +
+    '      "severity": "error",' + #10 +
+    '      "group": "compiler",' + #10 +
+    '      "description": "A comparison such as Result = 0; or FAktiv = True; stands on its own as a statement; := was meant. Delphi only reports E2014 when compiling. With = and an assignable left side (v' + 'ariable, field, element, pointer target) the quick fix replaces = with :=. Other comparisons and expressions whose value is discarded (A <> B;, A + B;, not A;, a literal) are reported without a fix, a' + 's is a call on the left side.",' + #10 +
+    '      "bad": "Result = 0;",' + #10 +
+    '      "good": "Result := 0;",' + #10 +
+    '      "compilerCodes": [' + #10 +
+    '        "E2014"' + #10 +
+    '      ]' + #10 +
     '    }' + #10 +
     '  ]' + #10 +
     '}' + #10 +
@@ -3245,6 +3258,11 @@ begin
     '      "id": "unresolved-attribute",' + #10 +
     '      "name": "Attribut nicht gefunden und still ignoriert",' + #10 +
     '      "description": "Ein Attribut [Name] lässt sich weder einer Klasse NameAttribute noch Name zuordnen, meist weil eine Unit in uses fehlt. Delphi warnt nur (W1074) und übergeht das Attribut: DUnitX' + '-Tests laufen dann nicht, JSON- oder ORM-Zuordnungen fehlen. Die Meldung nennt die Unit, die das Attribut im Index deklariert; eine Fassaden-Unit, die den Typ aus einer anderen Kandidatin weiterreicht' + ' (DUnitX.TestFramework statt DUnitX.Attributes), geht vor, und die DUnitX-Attribute sind auch ohne DUnitX im Index bekannt. Attribute des Compilers wie Weak, Unsafe, Ref und Volatile zählen immer. Sti' + 'll ohne die Unit System im Index, wenn eine Unit aus uses nicht im Index steht (sie könnte das Attribut deklarieren), in {$IF}-Blöcken und bei unbekanntem Vorfahren der umgebenden Klasse; mit Include-' + 'Dateien ist die Konfidenz mittel. Korrektur: Unit in uses aufnehmen."' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "comparison-as-statement",' + #10 +
+    '      "name": "Vergleich statt Zuweisung als Anweisung",' + #10 +
+    '      "description": "Ein Vergleich wie Result = 0; oder FAktiv = True; steht als eigene Anweisung; gemeint war :=. Delphi meldet E2014 erst beim Übersetzen. Bei = mit zuweisbarer linker Seite (Variab' + 'le, Feld, Element, Ziel eines Zeigers) ersetzt die Korrektur = durch :=. Andere Vergleiche und Ausdrücke, deren Wert verfällt (A <> B;, A + B;, not A;, ein Literal), meldet die Regel ohne Korrektur, e' + 'benso einen Aufruf links."' + #10 +
     '    }' + #10 +
     '  ]' + #10 +
     '}' + #10 +
