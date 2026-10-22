@@ -6,7 +6,7 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 
 | Gruppe | Regeln |
 |---|---|
-| [Fehler finden](#gruppe-find-bugs) | 59 |
+| [Fehler finden](#gruppe-find-bugs) | 60 |
 | [Exceptions](#gruppe-exceptions) | 8 |
 | [Threads](#gruppe-threads) | 13 |
 | [Datenbank](#gruppe-database) | 4 |
@@ -85,6 +85,7 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 | [`constant-condition`](#constant-condition) | Bedingung ist immer gleich | Bug | Warnung |
 | [`infinite-loop`](#infinite-loop) | Schleife ohne Ausgang | Bug | Fehler |
 | [`loop-condition-unchanged`](#loop-condition-unchanged) | Schleifenbedingung ändert sich im Rumpf nie | Bug | Warnung |
+| [`unconditional-recursion`](#unconditional-recursion) | Rekursion ohne Abbruch | Bug | Fehler |
 
 <a id="gruppe-exceptions"></a>
 ### Exceptions
@@ -4622,5 +4623,32 @@ while I < List.Count do
 begin
   Check(List[I]);
   Inc(I);
+end;
+```
+
+<a id="unconditional-recursion"></a>
+### unconditional-recursion
+
+**Rekursion ohne Abbruch** · Bug · Fehler · Gruppe Fehler finden
+
+Eine Routine ruft sich auf jedem Pfad selbst auf, bevor sie zurückkehren kann: Es gibt keinen Pfad ohne Selbstaufruf und kein Exit oder raise davor. Ergebnis ist ein Stapelüberlauf. Pfade ohne Aufruf sind: if ohne else bzw. case ohne else, der Rumpf von while und for, die rechte Seite von and/or, Zweige von if-Ausdrücken und anonyme Methoden. Getter und Setter der eigenen Property meldet setter-recursion; überladene Routinen bleiben still (der Aufruf kann eine andere Überladung treffen). Das Randsymbol aus #623 zeigt jede Rekursion.
+
+Mit Treffer:
+
+```pascal
+function TTree.Depth(N: TNode): Integer;
+begin
+  Result := 1 + Max(Depth(N.Left), Depth(N.Right));
+end;
+```
+
+Richtig:
+
+```pascal
+function TTree.Depth(N: TNode): Integer;
+begin
+  if N = nil then
+    Exit(0);
+  Result := 1 + Max(Depth(N.Left), Depth(N.Right));
 end;
 ```
