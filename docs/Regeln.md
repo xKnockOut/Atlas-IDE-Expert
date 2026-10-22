@@ -10,7 +10,7 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 | [Exceptions](#gruppe-exceptions) | 8 |
 | [Threads](#gruppe-threads) | 13 |
 | [Datenbank](#gruppe-database) | 4 |
-| [Compiler vorab](#gruppe-compiler) | 18 |
+| [Compiler vorab](#gruppe-compiler) | 19 |
 | [Robustheit und Muster](#gruppe-robustness) | 3 |
 | [Performance](#gruppe-performance) | 4 |
 | [Sicherheit](#gruppe-security) | 11 |
@@ -149,6 +149,7 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 | [`constant-expression-error`](#constant-expression-error) | Fehler in einem konstanten Ausdruck | Bug | Fehler |
 | [`default-parameter-invalid`](#default-parameter-invalid) | Unzulässiger Standardwert eines Parameters | Bug | Fehler |
 | [`signed-unsigned-mix`](#signed-unsigned-mix) | Vorzeichenbehaftet und vorzeichenlos gemischt | Bug | Warnung |
+| [`narrowing-assignment`](#narrowing-assignment) | Zuweisung mit möglichem Datenverlust | Bug | Warnung |
 
 <a id="gruppe-robustness"></a>
 ### Robustheit und Muster
@@ -4610,4 +4611,29 @@ Richtig:
 
 ```pascal
 if Int64(Groesse) + Delta < Grenze then
+```
+
+<a id="narrowing-assignment"></a>
+### narrowing-assignment
+
+**Zuweisung mit möglichem Datenverlust** · Bug · Warnung · Gruppe Compiler vorab
+
+Eine Zuweisung oder Inline-Variable mit einem Wert, dessen Typ breiter ist als das Ziel, ohne ausdrückliche Umwandlung: Int64 an Integer, NativeInt an Integer (Win64) und über die Option types z. B. Double an Single oder Extended an Double. Wie W1071 (Ganzzahlen), W1072 (Gleitkomma) und W1066 (Extended an Double); der Compiler zeigt W1071 nur, wenn man es einschaltet. Gemeldet wird nur, wenn beide Typen sicher bekannt sind (Variablen, Felder, Properties, Funktionsergebnisse, eigene Aliase und ganzzahlige Rechnungen daraus); Literale und ausdrückliche Umwandlungen bleiben still. Standardmäßig aus; mittlere Konfidenz. Korrekturen: ausdrücklich umwandeln; den Typ der Deklaration des Ziels vergrößern (einzelne Variable aus derselben Datei).
+
+Entspricht der Compilermeldung `W1071`, `W1072`, `W1066`.
+
+| Option | Typ | Vorgabe | Bedeutung |
+|---|---|---|---|
+| `types` | string-list | `["Int64>Integer","NativeInt>Integer"]` | Gemeldete Paare Quelltyp>Zieltyp, z. B. Double>Single oder Extended>Double. |
+
+Mit Treffer:
+
+```pascal
+Anzahl := Strom.Size;  // Anzahl: Integer
+```
+
+Richtig:
+
+```pascal
+Anzahl := Integer(Strom.Size);
 ```

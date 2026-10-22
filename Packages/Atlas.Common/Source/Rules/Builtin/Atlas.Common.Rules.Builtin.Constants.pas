@@ -18,6 +18,10 @@
 //                              und statische Arrays mit Standardwert (E2268),
 //                              Mengen über 4 Byte mit Standardwert (E2146, nur
 //                              "kleine Mengen" sind erlaubt; mittlere Konfidenz).
+//                              Korrekturen: Parameter einzeln deklarieren;
+//                              Parameter mit Standardwert ans Ende verschieben,
+//                              auch im zugehörigen Kopf derselben Datei
+//                              (Deklaration bzw. Implementierung).
 //   signed-unsigned-mix        Vorzeichenbehaftet und vorzeichenlos gemischt
 //                              (#1012): Vergleich (W1023) oder Rechnung
 //                              (W1024) eines Operanden bis 32 Bit mit Vorzeichen
@@ -27,10 +31,15 @@
 //                              nur bei sicher bekanntem Typ beider Operanden;
 //                              Literale zählen nicht. Korrektur: den
 //                              vorzeichenlosen Operanden in Int64 umwandeln.
-//                              Korrekturen: Parameter einzeln deklarieren;
-//                              Parameter mit Standardwert ans Ende verschieben,
-//                              auch im zugehörigen Kopf derselben Datei
-//                              (Deklaration bzw. Implementierung).
+//   narrowing-assignment       Zuweisung mit möglichem Datenverlust (#1013,
+//                              standardmäßig aus): Quelltyp und Zieltyp bilden
+//                              ein Paar aus der Option types (Vorgabe
+//                              Int64>Integer und NativeInt>Integer), wie W1071,
+//                              bei Gleitkomma W1072, Extended>Double W1066.
+//                              Zuweisungen und Inline-Variablen mit Wert;
+//                              Operanden und ganzzahlige Rechnungen mit sicher
+//                              bekanntem Typ. Korrekturen: ausdrücklich
+//                              umwandeln; Zieltyp der Deklaration vergrößern.
 //
 // Ausgewertet wird mit Semantics.ConstantValues (Literale, Konstanten auch aus
 // anderen Units, SizeOf/High/Low von Typen fester Größe). Konstanten aus einem
@@ -47,6 +56,7 @@ const
   ConstantExpressionErrorRuleId = 'constant-expression-error';
   DefaultParameterInvalidRuleId = 'default-parameter-invalid';
   SignedUnsignedMixRuleId = 'signed-unsigned-mix';
+  NarrowingAssignmentRuleId = 'narrowing-assignment';
 
 type
   TConstantExpressionErrorRule = class(TInterfacedObject, IRule)
@@ -70,6 +80,17 @@ type
     procedure Check(const AContext: TRuleContext; const AReport: IRuleReport);
   end;
 
+  TNarrowingAssignmentRule = class(TInterfacedObject, IRule)
+  public
+    function Descriptor: TRuleDescriptor;
+    procedure Check(const AContext: TRuleContext; const AReport: IRuleReport);
+    /// <summary>Einheitlicher Name eines eingebauten Zahltyps (LongInt → integer, DWORD → cardinal, Real →
+    /// double); sonst der Name in Kleinbuchstaben ohne "System.".</summary>
+    class function CanonicalTypeName(const ATypeName: string): string; static;
+    /// <summary>Vorgabe der Option types: Int64>Integer und NativeInt>Integer.</summary>
+    class function DefaultTypes: TArray<string>; static;
+  end;
+
 procedure RegisterConstantRules(const ARegistry: TRuleRegistry);
 
 implementation
@@ -84,7 +105,8 @@ uses
   Atlas.Common.Index.Contract,
   Atlas.Common.Semantics.NameResolver,
   Atlas.Common.Semantics.OrdinalConstants,
-  Atlas.Common.Semantics.ConstantValues;
+  Atlas.Common.Semantics.ConstantValues,
+  Atlas.Common.Rules.Options;
 
 /// <summary>Wertebereich eines ganzzahligen Typs fester Größe (Byte … Int64); False bei Zeichen, Boolean,
 /// Gleitkomma, UInt64 und unbekannten Typen.</summary>
@@ -176,23 +198,163 @@ begin
     Result.Bits := 64;
 end;
 
-/// <summary>Ist AWord ein vorzeichenloser Typ mit 32 oder 64 Bit?</summary>
-function IsUnsignedName(const AWord: string): Boolean;
-var
-  Word: string;
-begin
-  Word := LowerCase(AWord);
-  if Word.StartsWith('system.') then
-    Word := Copy(Word, Length('system.') + 1, MaxInt);
-  Result := (Word = 'cardinal') or (Word = 'longword') or (Word = 'uint32') or (Word = 'dword') or
-    (Word = 'uint64');
-end;
-
 /// <summary>Wörter einer Deklaration oder Signatur (Namen, Typen) ohne Satzzeichen.</summary>
 function DeclarationWords(const AText: string): TArray<string>;
 begin
   Result := AText.Split([' ', ':', ';', '(', ')', '[', ']', ',', '=', '<', '>', #9, #10, #13],
     TStringSplitOptions.ExcludeEmpty);
+end;
+
+type
+  /// <summary>Vorfilter vor der Namensauflösung: Namen (Variablen, Felder, Parameter, Properties, Funktionen),
+  /// deren Deklaration einen der gesuchten Typen nennt, in der Datei oder im Index. Gesuchte Typen sind
+  /// einheitliche Namen (CanonicalTypeName); eigene Aliase der Datei und Aliase aus dem Index zählen mit.</summary>
+  TTypedNames = class
+  private
+    FIndex: ISymbolIndex;
+    FText: string;
+    FWanted: TDictionary<string, Boolean>;
+    // Typname → gesucht (auch über Aliase), zwischengespeichert.
+    FTypes: TDictionary<string, Boolean>;
+    FLocal: TDictionary<string, Boolean>;
+    FSuspects: TDictionary<string, Boolean>;
+    function NodeText(ANode: TSyntaxNode): string;
+    function Mentions(const AText: string): Boolean;
+    procedure CollectTypes(ANode: TSyntaxNode);
+    procedure CollectLocal(ANode: TSyntaxNode);
+  public
+    constructor Create(const AContext: TRuleContext; const AWanted: TArray<string>);
+    destructor Destroy; override;
+    /// <summary>Ist ATypeName einer der gesuchten Typen oder ein Alias darauf?</summary>
+    function Wanted(const ATypeName: string): Boolean;
+    /// <summary>Kann der Name AName (letzter Teil eines Operanden) einen gesuchten Typ haben?</summary>
+    function Suspect(const AName: string): Boolean;
+  end;
+
+constructor TTypedNames.Create(const AContext: TRuleContext; const AWanted: TArray<string>);
+var
+  Name: string;
+begin
+  inherited Create;
+  FIndex := AContext.Index;
+  FText := AContext.Text;
+  FWanted := TDictionary<string, Boolean>.Create;
+  for Name in AWanted do
+    FWanted.AddOrSetValue(TNarrowingAssignmentRule.CanonicalTypeName(Name), True);
+  FTypes := TDictionary<string, Boolean>.Create;
+  FLocal := TDictionary<string, Boolean>.Create;
+  FSuspects := TDictionary<string, Boolean>.Create;
+  if (AContext.Tree <> nil) and (AContext.Tree.Root <> nil) then
+  begin
+    CollectTypes(AContext.Tree.Root);
+    CollectLocal(AContext.Tree.Root);
+  end;
+end;
+
+destructor TTypedNames.Destroy;
+begin
+  FSuspects.Free;
+  FLocal.Free;
+  FTypes.Free;
+  FWanted.Free;
+  inherited;
+end;
+
+function TTypedNames.NodeText(ANode: TSyntaxNode): string;
+begin
+  Result := Copy(FText, ANode.StartOffset + 1, ANode.EndOffset - ANode.StartOffset);
+end;
+
+function TTypedNames.Wanted(const ATypeName: string): Boolean;
+var
+  Key: string;
+  Location: TSymbolLocation;
+begin
+  Key := TNarrowingAssignmentRule.CanonicalTypeName(ATypeName);
+  if FWanted.ContainsKey(Key) then
+    Exit(True);
+  if FTypes.TryGetValue(Key, Result) then
+    Exit;
+  // Vorläufig False: schützt vor zyklischen Aliasen.
+  FTypes.Add(Key, False);
+  Result := False;
+  if (FIndex <> nil) and IsValidIdent(ATypeName, True) then
+    for Location in FIndex.FindSymbols(ATypeName) do
+      if (Location.Symbol.Kind = TIndexSymbolKind.TypeAlias) and Wanted(TypeBodyOf(Location.Symbol.Signature)) then
+      begin
+        Result := True;
+        Break;
+      end;
+  FTypes[Key] := Result;
+end;
+
+function TTypedNames.Mentions(const AText: string): Boolean;
+var
+  Word: string;
+begin
+  for Word in DeclarationWords(AText) do
+    if Wanted(Word) then
+      Exit(True);
+  Result := False;
+end;
+
+procedure TTypedNames.CollectTypes(ANode: TSyntaxNode);
+var
+  Index: Integer;
+  Body: string;
+begin
+  if (ANode.Kind = TSyntaxKind.TypeDecl) and (ANode.ChildCount > 0) then
+  begin
+    Body := Trim(NodeText(ANode[0]));
+    if (Pos(' ', Body) = 0) and Wanted(Body) then
+      FTypes.AddOrSetValue(TNarrowingAssignmentRule.CanonicalTypeName(ANode.Name), True);
+  end;
+  for Index := 0 to ANode.ChildCount - 1 do
+    CollectTypes(ANode[Index]);
+end;
+
+procedure TTypedNames.CollectLocal(ANode: TSyntaxNode);
+var
+  Index: Integer;
+  Name, Header: string;
+begin
+  if (ANode.Kind in [TSyntaxKind.VarDecl, TSyntaxKind.Field, TSyntaxKind.Parameter, TSyntaxKind.ConstDecl,
+    TSyntaxKind.PropertyDecl, TSyntaxKind.InlineVar]) and (ANode.ChildCount > 0) and
+    Mentions(NodeText(ANode[0])) then
+    for Name in ANode.Name.Split([',']) do
+      FLocal.AddOrSetValue(LowerCase(Trim(Name)), True);
+  // Funktionen mit gesuchtem Ergebnistyp.
+  if ANode.Kind = TSyntaxKind.RoutineHeader then
+  begin
+    Header := NodeText(ANode);
+    if Mentions(Copy(Header, LastDelimiter(')', Header) + 1, MaxInt)) then
+      FLocal.AddOrSetValue(LowerCase(Copy(ANode.Name, LastDelimiter('.', ANode.Name) + 1, MaxInt)), True);
+  end;
+  for Index := 0 to ANode.ChildCount - 1 do
+    CollectLocal(ANode[Index]);
+end;
+
+function TTypedNames.Suspect(const AName: string): Boolean;
+var
+  Key: string;
+  Location: TSymbolLocation;
+begin
+  Key := LowerCase(AName);
+  if (Key = '') or FLocal.ContainsKey(Key) then
+    Exit(Key <> '');
+  if FSuspects.TryGetValue(Key, Result) then
+    Exit;
+  Result := False;
+  if FIndex <> nil then
+    for Location in FIndex.FindSymbols(AName) do
+      if (Location.Symbol.Kind in [TIndexSymbolKind.Variable, TIndexSymbolKind.Field, TIndexSymbolKind.Property_,
+        TIndexSymbolKind.Method, TIndexSymbolKind.Routine, TIndexSymbolKind.Constant]) and
+        (Location.Symbol.TypeName <> '') and Wanted(Location.Symbol.TypeName) then
+      begin
+        Result := True;
+        Break;
+      end;
+  FSuspects.Add(Key, Result);
 end;
 
 /// <summary>Letzter Name eines Operanden (Liste.Count → Count, F(X) → F, A[I] → A); '' ohne.</summary>
@@ -879,108 +1041,12 @@ const
 var
   FileName: string;
   Resolver: TNameResolver;
-  // Namen, deren Deklaration einen vorzeichenlosen Typ nennt (Vorfilter vor der Namensauflösung).
-  Suspects: TDictionary<string, Boolean>;
-  LocalNames: TDictionary<string, Boolean>;
-  // Vorzeichenlose Typnamen (eingebaut oder Alias wie TGroesse = UInt64) samt Ergebnis der Prüfung.
-  UnsignedTypes: TDictionary<string, Boolean>;
+  // Vorfilter vor der Namensauflösung: Namen mit vorzeichenlosem Typ.
+  Unsigned: TTypedNames;
 
   function NodeText(ANode: TSyntaxNode): string;
   begin
     Result := Copy(AContext.Text, ANode.StartOffset + 1, ANode.EndOffset - ANode.StartOffset);
-  end;
-
-  /// <summary>Ist ATypeName vorzeichenlos: eingebaut, eigener Alias der Datei oder Alias aus dem Index?</summary>
-  function UnsignedType(const ATypeName: string): Boolean;
-  var
-    Key: string;
-    Location: TSymbolLocation;
-  begin
-    if IsUnsignedName(ATypeName) then
-      Exit(True);
-    Key := LowerCase(ATypeName);
-    if UnsignedTypes.TryGetValue(Key, Result) then
-      Exit;
-    // Vorläufig False: schützt vor zyklischen Aliasen.
-    UnsignedTypes.Add(Key, False);
-    Result := False;
-    if (AContext.Index <> nil) and IsValidIdent(ATypeName, True) then
-      for Location in AContext.Index.FindSymbols(ATypeName) do
-        if (Location.Symbol.Kind = TIndexSymbolKind.TypeAlias) and
-          UnsignedType(TypeBodyOf(Location.Symbol.Signature)) then
-        begin
-          Result := True;
-          Break;
-        end;
-    UnsignedTypes[Key] := Result;
-  end;
-
-  function MentionsUnsigned(const AText: string): Boolean;
-  var
-    Word: string;
-  begin
-    for Word in DeclarationWords(AText) do
-      if UnsignedType(Word) then
-        Exit(True);
-    Result := False;
-  end;
-
-  /// <summary>Eigene Aliase der Datei auf vorzeichenlose Typen (type TGroesse = UInt64).</summary>
-  procedure CollectTypes(ANode: TSyntaxNode);
-  var
-    Index: Integer;
-    Body: string;
-  begin
-    if (ANode.Kind = TSyntaxKind.TypeDecl) and (ANode.ChildCount > 0) then
-    begin
-      Body := Trim(NodeText(ANode[0]));
-      if (Pos(' ', Body) = 0) and UnsignedType(Body) then
-        UnsignedTypes.AddOrSetValue(LowerCase(ANode.Name), True);
-    end;
-    for Index := 0 to ANode.ChildCount - 1 do
-      CollectTypes(ANode[Index]);
-  end;
-
-  /// <summary>Deklarationen der Datei mit vorzeichenlosem Typ: Variablen, Felder, Parameter, Konstanten.</summary>
-  procedure CollectLocal(ANode: TSyntaxNode);
-  var
-    Index: Integer;
-    Name: string;
-  begin
-    if (ANode.Kind in [TSyntaxKind.VarDecl, TSyntaxKind.Field, TSyntaxKind.Parameter, TSyntaxKind.ConstDecl,
-      TSyntaxKind.PropertyDecl, TSyntaxKind.InlineVar]) and (ANode.ChildCount > 0) and
-      MentionsUnsigned(NodeText(ANode[0])) then
-      for Name in ANode.Name.Split([',']) do
-        LocalNames.AddOrSetValue(LowerCase(Trim(Name)), True);
-    // Funktionen mit vorzeichenlosem Ergebnis.
-    if (ANode.Kind = TSyntaxKind.RoutineHeader) and MentionsUnsigned(Copy(NodeText(ANode),
-      LastDelimiter(')', NodeText(ANode)) + 1, MaxInt)) then
-      LocalNames.AddOrSetValue(LowerCase(Copy(ANode.Name, LastDelimiter('.', ANode.Name) + 1, MaxInt)), True);
-    for Index := 0 to ANode.ChildCount - 1 do
-      CollectLocal(ANode[Index]);
-  end;
-
-  function Suspect(const AName: string): Boolean;
-  var
-    Key: string;
-    Location: TSymbolLocation;
-  begin
-    Key := LowerCase(AName);
-    if (Key = '') or LocalNames.ContainsKey(Key) then
-      Exit(Key <> '');
-    if Suspects.TryGetValue(Key, Result) then
-      Exit;
-    Result := False;
-    if AContext.Index <> nil then
-      for Location in AContext.Index.FindSymbols(AName) do
-        if (Location.Symbol.Kind in [TIndexSymbolKind.Variable, TIndexSymbolKind.Field,
-          TIndexSymbolKind.Property_, TIndexSymbolKind.Method, TIndexSymbolKind.Routine]) and
-          (Location.Symbol.TypeName <> '') and UnsignedType(Location.Symbol.TypeName) then
-        begin
-          Result := True;
-          Break;
-        end;
-    Suspects.Add(Key, Result);
   end;
 
   procedure CheckMix(ANode: TSyntaxNode);
@@ -995,7 +1061,7 @@ var
     if (ANode.ChildCount <> 2) or not (Comparison or (ANode.Name = '+') or (ANode.Name = '-') or
       (ANode.Name = '*') or SameText(ANode.Name, 'div') or SameText(ANode.Name, 'mod')) then
       Exit;
-    if not Suspect(OperandName(ANode[0])) and not Suspect(OperandName(ANode[1])) then
+    if not Unsigned.Suspect(OperandName(ANode[0])) and not Unsigned.Suspect(OperandName(ANode[1])) then
       Exit;
     if Resolver = nil then
     begin
@@ -1075,12 +1141,8 @@ begin
   if FileName = '' then
     FileName := AContext.UnitName + '.pas';
   Resolver := nil;
-  Suspects := TDictionary<string, Boolean>.Create;
-  LocalNames := TDictionary<string, Boolean>.Create;
-  UnsignedTypes := TDictionary<string, Boolean>.Create;
+  Unsigned := TTypedNames.Create(AContext, ['Cardinal', 'UInt64']);
   try
-    CollectTypes(AContext.Tree.Root);
-    CollectLocal(AContext.Tree.Root);
     Visit(AContext.Tree.Root);
   finally
     if Resolver <> nil then
@@ -1088,9 +1150,342 @@ begin
       Resolver.UnpinTree;
       Resolver.Free;
     end;
-    UnsignedTypes.Free;
-    LocalNames.Free;
-    Suspects.Free;
+    Unsigned.Free;
+  end;
+end;
+
+{ TNarrowingAssignmentRule }
+
+function TNarrowingAssignmentRule.Descriptor: TRuleDescriptor;
+begin
+  Result := TRuleDescriptor.Create(NarrowingAssignmentRuleId, TRuleSeverity.Warning,
+    'Zuweisung mit möglichem Datenverlust', True);
+end;
+
+class function TNarrowingAssignmentRule.DefaultTypes: TArray<string>;
+begin
+  Result := ['Int64>Integer', 'NativeInt>Integer'];
+end;
+
+class function TNarrowingAssignmentRule.CanonicalTypeName(const ATypeName: string): string;
+begin
+  Result := LowerCase(Trim(ATypeName));
+  if Result.StartsWith('system.') then
+    Result := Copy(Result, Length('system.') + 1, MaxInt);
+  if (Result = 'longint') or (Result = 'int32') then
+    Result := 'integer'
+  else if (Result = 'longword') or (Result = 'uint32') or (Result = 'dword') then
+    Result := 'cardinal'
+  else if Result = 'int16' then
+    Result := 'smallint'
+  else if Result = 'int8' then
+    Result := 'shortint'
+  else if Result = 'uint16' then
+    Result := 'word'
+  else if Result = 'uint8' then
+    Result := 'byte'
+  else if Result = 'intptr' then
+    Result := 'nativeint'
+  else if Result = 'uintptr' then
+    Result := 'nativeuint'
+  else if Result = 'real' then
+    Result := 'double';
+end;
+
+/// <summary>Ist der einheitliche Typname ein Gleitkommatyp?</summary>
+function IsFloatName(const ACanonical: string): Boolean;
+begin
+  Result := (ACanonical = 'single') or (ACanonical = 'double') or (ACanonical = 'extended') or
+    (ACanonical = 'real48') or (ACanonical = 'comp') or (ACanonical = 'currency');
+end;
+
+/// <summary>Breite eines ganzzahligen Typs für Rechnungen: 0 = kein ganzzahliger Typ, 32 = bis 32 Bit,
+/// 48 = NativeInt/NativeUInt (plattformabhängig), 64 = Int64/UInt64.</summary>
+function IntegerWidth(const ACanonical: string): Integer;
+begin
+  Result := 0;
+  if (ACanonical = 'int64') or (ACanonical = 'uint64') then
+    Result := 64
+  else if (ACanonical = 'nativeint') or (ACanonical = 'nativeuint') then
+    Result := 48
+  else if IntegerKindOf(ACanonical).Bits > 0 then
+    Result := 32;
+end;
+
+procedure TNarrowingAssignmentRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
+const
+  MaxValueText = 30;
+var
+  FileName: string;
+  Resolver: TNameResolver;
+  Sources: TTypedNames;
+  // Paare "quelle>ziel" in einheitlichen Namen.
+  Pairs: TDictionary<string, Boolean>;
+
+  function NodeText(ANode: TSyntaxNode): string;
+  begin
+    Result := Copy(AContext.Text, ANode.StartOffset + 1, ANode.EndOffset - ANode.StartOffset);
+  end;
+
+  procedure EnsureResolver;
+  begin
+    if Resolver = nil then
+    begin
+      Resolver := TNameResolver.Create(AContext.Index, AContext.EnsureUnit);
+      Resolver.Namespaces := AContext.Namespaces;
+      Resolver.PinTree(AContext.Tree, FileName);
+    end;
+  end;
+
+  /// <summary>Einheitlicher Name des Typs ATypeName; eigene Aliase über den aufgelösten Typ
+  /// (ATypeInfo aus NodeType bzw. ResolveType).</summary>
+  function Canonical(const ATypeName: string; const ATypeInfo: TResolvedSymbol; ATypeFound: Boolean): string;
+  var
+    Body: string;
+  begin
+    Result := CanonicalTypeName(ATypeName);
+    if (IntegerWidth(Result) > 0) or IsFloatName(Result) or not ATypeFound then
+      Exit;
+    // Aufgelöst ist entweder der Zieltyp selbst (Integer) oder der Alias mit Signatur (TZahl = Integer).
+    Body := CanonicalTypeName(ATypeInfo.Name);
+    if (IntegerWidth(Body) = 0) and not IsFloatName(Body) then
+      Body := CanonicalTypeName(TypeBodyOf(ATypeInfo.Signature));
+    if (IntegerWidth(Body) > 0) or IsFloatName(Body) then
+      Result := Body;
+  end;
+
+  /// <summary>Typ des Ausdrucks ANode: Operand mit sicher bekanntem Typ oder ganzzahlige Rechnung daraus.
+  /// ADisplay ist der Typ wie deklariert; False, wenn er nicht sicher bekannt ist.</summary>
+  function ExpressionType(ANode: TSyntaxNode; out ACanonical, ADisplay: string): Boolean;
+  var
+    Symbol, TypeInfo: TResolvedSymbol;
+    TypeFound: Boolean;
+    LeftCanonical, LeftDisplay, RightCanonical, RightDisplay: string;
+    Value: Int64;
+  begin
+    Result := False;
+    ACanonical := '';
+    ADisplay := '';
+    case ANode.Kind of
+      TSyntaxKind.ParenExpr:
+        if ANode.ChildCount = 1 then
+          Result := ExpressionType(ANode[0], ACanonical, ADisplay);
+      TSyntaxKind.UnaryExpr:
+        if (ANode.ChildCount = 1) and ((ANode.Name = '-') or (ANode.Name = '+')) then
+          Result := ExpressionType(ANode[0], ACanonical, ADisplay);
+      TSyntaxKind.Literal:
+        // Nur innerhalb ganzzahliger Rechnungen: kleine Zahlen ändern die Breite nicht.
+        if TOrdinalConstants.Evaluate(NodeText(ANode), nil, Value) and (Value >= Low(Integer)) and
+          (Value <= High(Integer)) then
+        begin
+          ACanonical := 'integer';
+          ADisplay := 'Integer';
+          Result := True;
+        end;
+      TSyntaxKind.BinaryExpr:
+        if (ANode.ChildCount = 2) and ((ANode.Name = '+') or (ANode.Name = '-') or (ANode.Name = '*') or
+          SameText(ANode.Name, 'div') or SameText(ANode.Name, 'mod') or SameText(ANode.Name, 'and') or
+          SameText(ANode.Name, 'or') or SameText(ANode.Name, 'xor')) and
+          ExpressionType(ANode[0], LeftCanonical, LeftDisplay) and
+          ExpressionType(ANode[1], RightCanonical, RightDisplay) and (IntegerWidth(LeftCanonical) > 0) and
+          (IntegerWidth(RightCanonical) > 0) then
+        begin
+          // Die breitere Seite bestimmt den Typ der Rechnung.
+          if IntegerWidth(RightCanonical) > IntegerWidth(LeftCanonical) then
+          begin
+            ACanonical := RightCanonical;
+            ADisplay := RightDisplay;
+          end
+          else
+          begin
+            ACanonical := LeftCanonical;
+            ADisplay := LeftDisplay;
+          end;
+          Result := True;
+        end;
+      TSyntaxKind.Identifier, TSyntaxKind.MemberAccess, TSyntaxKind.Call, TSyntaxKind.IndexAccess:
+        begin
+          EnsureResolver;
+          if Resolver.NodeType(AContext.Tree, FileName, ANode, Symbol, TypeInfo, TypeFound) and
+            (Symbol.SymbolKind in [TIndexSymbolKind.Variable, TIndexSymbolKind.Field, TIndexSymbolKind.Property_,
+            TIndexSymbolKind.Method, TIndexSymbolKind.Routine, TIndexSymbolKind.Constant]) and
+            (Symbol.TypeName <> '') then
+          begin
+            ACanonical := Canonical(Symbol.TypeName, TypeInfo, TypeFound);
+            ADisplay := Symbol.TypeName;
+            Result := (IntegerWidth(ACanonical) > 0) or IsFloatName(ACanonical);
+          end;
+        end;
+    end;
+  end;
+
+  /// <summary>Kann der Ausdruck einen Quelltyp aus den Paaren haben (Vorfilter ohne Namensauflösung)?</summary>
+  function MaySource(ANode: TSyntaxNode): Boolean;
+  var
+    Index: Integer;
+  begin
+    if ANode.Kind in [TSyntaxKind.Identifier, TSyntaxKind.MemberAccess, TSyntaxKind.Call,
+      TSyntaxKind.IndexAccess] then
+      Exit(Sources.Suspect(OperandName(ANode)));
+    Result := False;
+    if ANode.Kind in [TSyntaxKind.ParenExpr, TSyntaxKind.UnaryExpr, TSyntaxKind.BinaryExpr] then
+      for Index := 0 to ANode.ChildCount - 1 do
+        if MaySource(ANode[Index]) then
+          Exit(True);
+  end;
+
+  /// <summary>Typknoten der Deklaration des Ziels in dieser Datei (einzelne Variable oder einzelnes Feld);
+  /// nil, wenn die Deklaration woanders steht oder mehrere Namen teilt.</summary>
+  function DeclarationTypeNode(const ASymbol: TResolvedSymbol): TSyntaxNode;
+  var
+    Found: TSyntaxNode;
+
+    procedure Search(ANode: TSyntaxNode);
+    var
+      Index: Integer;
+    begin
+      if Found <> nil then
+        Exit;
+      if (ANode.Kind in [TSyntaxKind.VarDecl, TSyntaxKind.Field, TSyntaxKind.InlineVar]) and
+        (ANode.ChildCount > 0) and SameText(ANode.Name, ASymbol.Name) and
+        (ANode.StartPos.Line = ASymbol.SelectionRange.StartPos.Line) and
+        (ANode[0].Kind = TSyntaxKind.TypeReference) then
+      begin
+        Found := ANode[0];
+        Exit;
+      end;
+      for Index := 0 to ANode.ChildCount - 1 do
+        Search(ANode[Index]);
+    end;
+
+  begin
+    Found := nil;
+    if (ASymbol.FileName = '') or SameText(ASymbol.FileName, FileName) or
+      SameText(ExtractFileName(ASymbol.FileName), ExtractFileName(FileName)) then
+      Search(AContext.Tree.Root);
+    Result := Found;
+  end;
+
+  procedure Report(AValue: TSyntaxNode; const ATargetDisplay, ATargetCanonical: string;
+    ATargetTypeNode: TSyntaxNode);
+  var
+    SourceCanonical, SourceDisplay, ValueText, Code, Message: string;
+    Fixes: TArray<TRuleFix>;
+  begin
+    if not MaySource(AValue) or not ExpressionType(AValue, SourceCanonical, SourceDisplay) or
+      not Pairs.ContainsKey(SourceCanonical + '>' + ATargetCanonical) then
+      Exit;
+    if IsFloatName(ATargetCanonical) then
+    begin
+      if (SourceCanonical = 'extended') and (ATargetCanonical = 'double') then
+        Code := 'W1066'
+      else
+        Code := 'W1072';
+    end
+    else
+      Code := 'W1071';
+    ValueText := NodeText(AValue);
+    if (Length(ValueText) > MaxValueText) or (Pos(#10, ValueText) > 0) then
+      ValueText := 'Der Wert';
+    Message := Format('%s ist %s; die Zuweisung an %s kann Daten verlieren (wie %s).',
+      [ValueText, SourceDisplay, ATargetDisplay, Code]);
+    Fixes := [TRuleFix.Create('Ausdrücklich in ' + ATargetDisplay + ' umwandeln',
+      [TTextEdit.Create(TTextRange.Create(AValue.StartPos, AValue.EndPos),
+      ATargetDisplay + '(' + NodeText(AValue) + ')')])];
+    if ATargetTypeNode <> nil then
+      Fixes := Fixes + [TRuleFix.Create('Zieltyp auf ' + SourceDisplay + ' vergrößern',
+        [TTextEdit.Create(TTextRange.Create(ATargetTypeNode.StartPos, ATargetTypeNode.EndPos), SourceDisplay)])];
+    AReport.Add(TTextRange.Create(AValue.StartPos, AValue.EndPos), Message, TRuleConfidence.Medium, Fixes);
+  end;
+
+  procedure CheckAssignment(ANode: TSyntaxNode);
+  var
+    Symbol, TypeInfo: TResolvedSymbol;
+    TypeFound: Boolean;
+    Target: string;
+  begin
+    if (ANode.ChildCount <> 2) or not MaySource(ANode[1]) then
+      Exit;
+    EnsureResolver;
+    if not (ANode[0].Kind in [TSyntaxKind.Identifier, TSyntaxKind.MemberAccess, TSyntaxKind.IndexAccess]) or
+      not Resolver.NodeType(AContext.Tree, FileName, ANode[0], Symbol, TypeInfo, TypeFound) or
+      not (Symbol.SymbolKind in [TIndexSymbolKind.Variable, TIndexSymbolKind.Field,
+      TIndexSymbolKind.Property_]) or (Symbol.TypeName = '') then
+      Exit;
+    Target := Canonical(Symbol.TypeName, TypeInfo, TypeFound);
+    if (ANode[0].Kind = TSyntaxKind.Identifier) and not Symbol.IsParameter then
+      Report(ANode[1], Symbol.TypeName, Target, DeclarationTypeNode(Symbol))
+    else
+      Report(ANode[1], Symbol.TypeName, Target, nil);
+  end;
+
+  procedure CheckInlineVar(ANode: TSyntaxNode);
+  var
+    TypeInfo: TResolvedSymbol;
+    TypeName: string;
+  begin
+    if (ANode.ChildCount <> 2) or (ANode[0].Kind <> TSyntaxKind.TypeReference) or (Pos(',', ANode.Name) > 0) or
+      not MaySource(ANode[1]) then
+      Exit;
+    EnsureResolver;
+    TypeName := NodeText(ANode[0]);
+    TypeInfo := Resolver.ResolveType(AContext.Tree, FileName, ANode[0].StartPos);
+    Report(ANode[1], TypeName, Canonical(TypeName, TypeInfo, TypeInfo.Found), ANode[0]);
+  end;
+
+  procedure Visit(ANode: TSyntaxNode);
+  var
+    Index: Integer;
+  begin
+    if ANode.Kind = TSyntaxKind.AssignStatement then
+      CheckAssignment(ANode)
+    else if ANode.Kind = TSyntaxKind.InlineVar then
+      CheckInlineVar(ANode);
+    for Index := 0 to ANode.ChildCount - 1 do
+      Visit(ANode[Index]);
+  end;
+
+var
+  Pair, SourceName, TargetName: string;
+  SourceNames: TArray<string>;
+  Separator: Integer;
+begin
+  if (AContext.Tree = nil) or (AContext.Tree.Root = nil) then
+    Exit;
+  FileName := AContext.FileName;
+  if FileName = '' then
+    FileName := AContext.RelativePath;
+  if FileName = '' then
+    FileName := AContext.UnitName + '.pas';
+  Pairs := TDictionary<string, Boolean>.Create;
+  Resolver := nil;
+  Sources := nil;
+  try
+    SourceNames := nil;
+    for Pair in TRuleOptions.Strings(AContext.Options, 'types', DefaultTypes) do
+    begin
+      Separator := Pos('>', Pair);
+      if Separator = 0 then
+        Continue;
+      SourceName := CanonicalTypeName(Copy(Pair, 1, Separator - 1));
+      TargetName := CanonicalTypeName(Copy(Pair, Separator + 1, MaxInt));
+      if (SourceName = '') or (TargetName = '') then
+        Continue;
+      Pairs.AddOrSetValue(SourceName + '>' + TargetName, True);
+      SourceNames := SourceNames + [SourceName];
+    end;
+    if Pairs.Count = 0 then
+      Exit;
+    Sources := TTypedNames.Create(AContext, SourceNames);
+    Visit(AContext.Tree.Root);
+  finally
+    if Resolver <> nil then
+    begin
+      Resolver.UnpinTree;
+      Resolver.Free;
+    end;
+    Sources.Free;
+    Pairs.Free;
   end;
 end;
 
@@ -1099,6 +1494,7 @@ begin
   ARegistry.Register(TConstantExpressionErrorRule.Create);
   ARegistry.Register(TDefaultParameterInvalidRule.Create);
   ARegistry.Register(TSignedUnsignedMixRule.Create);
+  ARegistry.Register(TNarrowingAssignmentRule.Create);
 end;
 
 end.

@@ -11,7 +11,7 @@ function AtlasSchemaJson: string;
 implementation
 
 const
-  Lines: array[0..1760] of string = (
+  Lines: array[0..1769] of string = (
     '{',
     '  "$schema": "http://json-schema.org/draft-07/schema#",',
     '  "title": "Atlas-Konfiguration",',
@@ -240,6 +240,15 @@ const
     '                "type": "boolean",',
     '                "default": true,',
     '                "description": "Nur empty-statement: leere Blöcke begin … end mit Kommentar darin nicht melden (#912)."',
+    '              },',
+    '              "types": {',
+    '                "type": "array",',
+    '                "items": {',
+    '                  "type": "string",',
+    '                  "pattern": "^[A-Za-z_][A-Za-z0-9_.]*>[A-Za-z_][A-Za-z0-9_.]*$"',
+    '                },',
+    '                "default": ["Int64>Integer", "NativeInt>Integer"],',
+    '                "description": "Nur narrowing-assignment: gemeldete Paare Quelltyp>Zieltyp, z. B. \"Double>Single\" oder \"Extended>Double\" (#1013)."',
     '              },',
     '              "countNames": {',
     '                "type": "array",',
