@@ -8,6 +8,10 @@
 //   exception-in-destructor     raise in einem Destruktor, das kein except im Destruktor abfängt (#927)
 //   except-handler-order        on-Handler, der nie erreicht wird, weil ein früherer die Klasse schon fängt (#957)
 //   reraise-exception-object    raise E im Handler statt raise; (#958)
+//   reraise-outside-handler     raise; ohne Argument außerhalb eines except-Blocks (#985, wie E2145,
+//                               Gruppe Compiler vorab). Routinen und anonyme Methoden beginnen neu; in einer
+//                               anonymen Methode innerhalb eines except bleibt die Regel still, ebenso in
+//                               Routinen, in denen der Parser einen Fehler meldet.
 // Der leere except-Block bleibt bei empty-except (#56).
 
 interface
@@ -50,6 +54,12 @@ type
   end;
 
   TReraiseExceptionObjectRule = class(TInterfacedObject, IRule)
+  public
+    function Descriptor: TRuleDescriptor;
+    procedure Check(const AContext: TRuleContext; const AReport: IRuleReport);
+  end;
+
+  TReraiseOutsideHandlerRule = class(TInterfacedObject, IRule)
   public
     function Descriptor: TRuleDescriptor;
     procedure Check(const AContext: TRuleContext; const AReport: IRuleReport);
@@ -753,6 +763,65 @@ begin
   end;
 end;
 
+{ TReraiseOutsideHandlerRule }
+
+function TReraiseOutsideHandlerRule.Descriptor: TRuleDescriptor;
+begin
+  Result := TRuleDescriptor.Create('reraise-outside-handler', TRuleSeverity.Error,
+    'raise ohne Argument außerhalb eines except-Blocks');
+end;
+
+procedure TReraiseOutsideHandlerRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
+
+  // Hat der Parser im Bereich von AScope einen Fehler gemeldet (nil: irgendwo)?
+  function Broken(AScope: TSyntaxNode): Boolean;
+  var
+    Diagnostic: TSyntaxDiagnostic;
+  begin
+    for Diagnostic in AContext.Tree.Diagnostics do
+      if (AScope = nil) or ((Diagnostic.StartPos.Line >= AScope.StartPos.Line) and
+        (Diagnostic.StartPos.Line <= AScope.EndPos.Line)) then
+        Exit(True);
+    Result := False;
+  end;
+
+  // AInExcept: ein except der Routine umschließt die Stelle; AUnknown: anonyme Methode in einem except.
+  procedure Visit(ANode, AScope: TSyntaxNode; AInExcept, AUnknown: Boolean);
+  var
+    Index: Integer;
+  begin
+    case ANode.Kind of
+      TSyntaxKind.RoutineDecl, TSyntaxKind.InitializationSection, TSyntaxKind.FinalizationSection,
+      TSyntaxKind.ProgramFile, TSyntaxKind.LibraryFile:
+        begin
+          AScope := ANode;
+          AInExcept := False;
+          AUnknown := False;
+        end;
+      TSyntaxKind.AnonymousMethod:
+        begin
+          AScope := ANode;
+          AUnknown := AUnknown or AInExcept;
+          AInExcept := False;
+        end;
+      TSyntaxKind.ExceptBlock:
+        AInExcept := True;
+      TSyntaxKind.RaiseStatement:
+        if (ANode.ChildCount = 0) and not AInExcept and not AUnknown and not Broken(AScope) then
+          AReport.Add(TTextRange.Create(ANode.StartPos, TTextPosition.Create(ANode.StartPos.Line,
+            ANode.StartPos.Character + Length('raise'))),
+            'raise ohne Argument ist nur in einem except-Block erlaubt (wie E2145).', TRuleConfidence.High);
+    end;
+    for Index := 0 to ANode.ChildCount - 1 do
+      Visit(ANode[Index], AScope, AInExcept, AUnknown);
+  end;
+
+begin
+  if (AContext.Tree = nil) or (AContext.Tree.Root = nil) or not ContainsText(AContext.Text, 'raise') then
+    Exit;
+  Visit(AContext.Tree.Root, nil, False, False);
+end;
+
 procedure RegisterExceptionRules(const ARegistry: TRuleRegistry);
 begin
   ARegistry.Register(TGenericExceptionRaisedRule.Create);
@@ -761,6 +830,7 @@ begin
   ARegistry.Register(TExceptionInDestructorRule.Create);
   ARegistry.Register(TExceptHandlerOrderRule.Create);
   ARegistry.Register(TReraiseExceptionObjectRule.Create);
+  ARegistry.Register(TReraiseOutsideHandlerRule.Create);
 end;
 
 end.

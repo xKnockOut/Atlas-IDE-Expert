@@ -2327,6 +2327,19 @@ begin
     '        "E2097",' + #10 +
     '        "E2126"' + #10 +
     '      ]' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "reraise-outside-handler",' + #10 +
+    '      "name": "raise without an argument outside a handler",' + #10 +
+    '      "category": "bug",' + #10 +
+    '      "severity": "error",' + #10 +
+    '      "group": "compiler",' + #10 +
+    '      "description": "raise; without an exception object is only allowed in an except block (like E2145); Delphi only reports it when compiling. It happens in a local procedure called from the handler' + ', in a finally block or after moving code. Routines and anonymous methods start afresh. The rule stays silent in anonymous methods inside an except block and in routines where the parser reports an er' + 'ror. No quick fix: raise a new exception (raise EImport.Create(…)) or move the code into the handler. reraise-exception-object covers raise E; inside the handler.",' + #10 +
+    '      "bad": "Protokoll.Fehler(''Import abgebrochen'');\nraise;",' + #10 +
+    '      "good": "Protokoll.Fehler(''Import abgebrochen'');\nraise EImportAbgebrochen.Create(''Import abgebrochen'');",' + #10 +
+    '      "compilerCodes": [' + #10 +
+    '        "E2145"' + #10 +
+    '      ]' + #10 +
     '    }' + #10 +
     '  ]' + #10 +
     '}' + #10 +
@@ -3502,6 +3515,11 @@ begin
     '      "id": "jump-outside-allowed-scope",' + #10 +
     '      "name": "Break, Continue oder Exit an unzulässiger Stelle",' + #10 +
     '      "description": "Break oder Continue außerhalb einer Schleife (wie E2097) bzw. Break, Continue oder Exit, die einen finally-Block verlassen (wie E2126). Delphi meldet beides erst beim Übersetzen;' + ' häufig nach dem Herausziehen eines Schleifenrumpfs in eine eigene Methode. Eine Schleife ganz im finally-Block darf Break und Continue verwenden. Routinen und anonyme Methoden beginnen neu: Ein Break' + ' in einer anonymen Methode gehört nicht zur Schleife um sie herum. Gemeldet werden nur einfache Aufrufe (nicht TMonitor.Exit(FLock)) und nicht, wenn die Datei eine Routine oder Variable dieses Namens ' + 'deklariert. Korrektur außerhalb eines finally-Blocks: Break durch Exit ersetzen."' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "reraise-outside-handler",' + #10 +
+    '      "name": "raise ohne Argument außerhalb eines Handlers",' + #10 +
+    '      "description": "raise; ohne Exception-Objekt ist nur in einem except-Block erlaubt (wie E2145); Delphi meldet es erst beim Übersetzen. Es passiert in einer lokalen Prozedur, die aus dem Handler ' + 'gerufen wird, in einem finally-Block oder nach dem Verschieben von Code. Routinen und anonyme Methoden beginnen neu. Still bleibt die Regel in anonymen Methoden innerhalb eines except-Blocks und in Ro' + 'utinen, in denen der Parser einen Fehler meldet. Keine Korrektur: eine neue Exception auslösen (raise EImport.Create(…)) oder den Code in den Handler verschieben. raise E; im Handler meldet reraise-ex' + 'ception-object."' + #10 +
     '    }' + #10 +
     '  ]' + #10 +
     '}' + #10 +

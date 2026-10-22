@@ -103,3 +103,4 @@ property-accessor-invalid | Ref.Daten.Kunden.pas | procedure Speichern(AId: Inte
 assign-to-property-member | Ref.Komponenten.Anzeige.pas |   Width := StandardBreite; |   StandardBreite := Width;
 readonly-property-assigned | Ref.Formulare.Suchrahmen.pas | read FOnSuchen write FOnSuchen;\n  end;\n\nimplementation\n\n{$R *.dfm}\n\nprocedure TSuchrahmen.SuchenButtonClick(Sender: TObject);\nbegin\n  if Assigned(FOnSuchen) then | write FOnSuchen;\n  end;\n\nimplementation\n\n{$R *.dfm}\n\nprocedure TSuchrahmen.SuchenButtonClick(Sender: TObject);\nbegin\n  if Assigned(OnSuchen) then
 jump-outside-allowed-scope | Ref.Sprache.Merkmale.pas | Result := 0;\n  for var Wert in AWerte do | Result := 0;\n  if Length(AWerte) = 0 then\n    Break;\n  for var Wert in AWerte do
+reraise-outside-handler | Ref.Sprache.Merkmale.pas | Inc(Result, Quadrat);\n  end;\nend; | Inc(Result, Quadrat);\n  end;\n  if Result < 0 then\n    raise;\nend;
