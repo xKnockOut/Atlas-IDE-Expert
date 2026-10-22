@@ -348,6 +348,10 @@ begin
   FileName := '';
   HasJump := False;
   JumpTo := Default(TTextPosition);
+  // Ein Record-Konstruktor setzt nichts von selbst; ohne diese Zeilen trüge ein Sprung zufällig den
+  // Parameter-Hint (#1007) oder Edits fremder Dateien (#1105).
+  OpensSignature := False;
+  OtherFiles := nil;
 end;
 
 class function TRuleFix.Jump(const ATitle: string; const ATarget: TTextPosition): TRuleFix;
