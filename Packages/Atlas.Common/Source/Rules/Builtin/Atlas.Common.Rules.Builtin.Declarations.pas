@@ -7,6 +7,13 @@
 //                              abweichendem Kopf (#996, wie E2037): Parameter
 //                              (Anzahl, Name, Typ, const/var/out), Ergebnistyp,
 //                              procedure/function, Aufrufkonvention
+//   interface-not-implemented  Klasse nennt ein Interface, dem Methoden fehlen
+//                              (#1000, wie E2291), bzw. Zuordnung IFoo.Bar = Baz
+//                              für ein nicht genanntes Interface (wie E2265).
+//                              Geerbte Methoden, Zuordnungen und implements
+//                              zählen; bricht die Kette der Vorfahrklassen ab,
+//                              bleibt die Regel still (TNameResolver.
+//                              MissingInterfaceMembers mit AComplete)
 //
 // Den Abgleich (auch über Überladungen) liefert TClassCompletion.Unmatched aus
 // #42; Paare mit abweichendem Kopf ordnet TClassCompletion.Pairs zu. Sie meldet
@@ -24,6 +31,8 @@ interface
 
 uses
   System.SysUtils,
+  Atlas.Common.Documents.Contract,
+  Atlas.Common.Pascal.Contract,
   Atlas.Common.Rules.Contract,
   Atlas.Common.Rules.Registry,
   Atlas.Common.Editing.ClassCompletion;
@@ -41,6 +50,14 @@ type
     procedure Check(const AContext: TRuleContext; const AReport: IRuleReport);
   end;
 
+  TInterfaceNotImplementedRule = class(TInterfacedObject, IRule)
+  public
+    function Descriptor: TRuleDescriptor;
+    procedure Check(const AContext: TRuleContext; const AReport: IRuleReport);
+    /// <summary>Interfaces, die eine Property der Klasse mit implements übernimmt (Token im Bereich ARange).</summary>
+    class function Delegated(const ATokens: TArray<TPascalToken>; const ARange: TTextRange): TArray<string>; static;
+  end;
+
   TSignatureMismatchRule = class(TInterfacedObject, IRule)
   public
     function Descriptor: TRuleDescriptor;
@@ -56,10 +73,13 @@ implementation
 
 uses
   System.StrUtils,
-  Atlas.Common.Documents.Contract,
-  Atlas.Common.Pascal.Contract,
+  System.Generics.Collections,
   Atlas.Common.Configuration.Contract,
-  Atlas.Common.Editing.CodeActions;
+  Atlas.Common.Index.Contract,
+  Atlas.Common.Index.SymbolIndex,
+  Atlas.Common.Semantics.NameResolver,
+  Atlas.Common.Editing.CodeActions,
+  Atlas.Common.Editing.ClassActions;
 
 /// <summary>Zeilen innerhalb von {$IF…}…{$ENDIF}: Element I gilt für Zeile I.</summary>
 function ConditionalLines(const AContext: TRuleContext): TArray<Boolean>;
@@ -221,6 +241,190 @@ begin
   end;
 end;
 
+{ TInterfaceNotImplementedRule }
+
+function TInterfaceNotImplementedRule.Descriptor: TRuleDescriptor;
+begin
+  Result := TRuleDescriptor.Create('interface-not-implemented', TRuleSeverity.Error,
+    'Interface-Methode fehlt in der Klasse (wie E2291)');
+end;
+
+class function TInterfaceNotImplementedRule.Delegated(const ATokens: TArray<TPascalToken>;
+  const ARange: TTextRange): TArray<string>;
+var
+  Index: Integer;
+  Name: string;
+begin
+  Result := nil;
+  Index := 0;
+  while Index <= High(ATokens) do
+  begin
+    if (ATokens[Index].StartPos.Line >= ARange.StartPos.Line) and (ATokens[Index].EndPos.Line <= ARange.EndPos.Line) and
+      SameText(ATokens[Index].Text, 'implements') and (ATokens[Index].Kind = TPascalTokenKind.Identifier) then
+    begin
+      // implements IFoo, Units.IBar;
+      Inc(Index);
+      Name := '';
+      while (Index <= High(ATokens)) and not ATokens[Index].IsSymbol(';') do
+      begin
+        if ATokens[Index].IsSymbol(',') then
+        begin
+          Result := Result + [Name];
+          Name := '';
+        end
+        else if ATokens[Index].Kind <> TPascalTokenKind.Comment then
+          Name := Name + ATokens[Index].Text;
+        Inc(Index);
+      end;
+      if Name <> '' then
+        Result := Result + [Name];
+    end;
+    Inc(Index);
+  end;
+end;
+
+/// <summary>"A", "A und B", "A, B und C".</summary>
+function JoinedList(const AItems: TArray<string>): string;
+var
+  Index: Integer;
+begin
+  Result := '';
+  for Index := 0 to High(AItems) do
+  begin
+    if Index = 0 then
+      Result := AItems[Index]
+    else if Index = High(AItems) then
+      Result := Result + ' und ' + AItems[Index]
+    else
+      Result := Result + ', ' + AItems[Index];
+  end;
+end;
+
+function BareName(const AText: string): string;
+begin
+  Result := Trim(AText);
+  if Pos('<', Result) > 0 then
+    Result := Copy(Result, 1, Pos('<', Result) - 1);
+  Result := Copy(Result, LastDelimiter('.', Result) + 1, MaxInt);
+end;
+
+/// <summary>Methode AName der Klasse ATypeName (ohne Zuordnungen); Name leer, wenn es keine gibt.</summary>
+function OwnMethod(const AUnit: TUnitIndex; const ATypeName, AName: string): TIndexSymbol;
+var
+  Symbol: TIndexSymbol;
+begin
+  Result := Default(TIndexSymbol);
+  for Symbol in AUnit.Symbols do
+    if SameText(Symbol.Container, ATypeName) and SameText(Symbol.Name, AName) and
+      (Symbol.Kind in [TIndexSymbolKind.Method, TIndexSymbolKind.Constructor_]) then
+      Exit(Symbol);
+end;
+
+procedure TInterfaceNotImplementedRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
+var
+  Lines: TArray<Boolean>;
+  Index: ISymbolIndex;
+  Resolver: TNameResolver;
+  OwnUnit: TUnitIndex;
+  TypeSymbol, Symbol: TIndexSymbol;
+  TypeName, Ancestor, Prefix: string;
+  Missing: TArray<TResolvedSymbol>;
+  Member: TResolvedSymbol;
+  Names: TList<string>;
+  Complete, Listed, Differs: Boolean;
+  Own: TIndexSymbol;
+  Actions: TClassActionContext;
+  Action: TCodeAction;
+  Fixes: TArray<TRuleFix>;
+  Level: TRuleConfidence;
+begin
+  if AContext.Tree = nil then
+    Exit;
+  Lines := ConditionalLines(AContext);
+  Level := Confidence(AContext);
+  // Ohne Projektindex prüft die Regel nur, was die Datei selbst kennt; unbekannte Vorfahren halten sie still.
+  Index := AContext.Index;
+  if Index = nil then
+    Index := TSymbolIndex.Create;
+  Resolver := TNameResolver.Create(Index, AContext.EnsureUnit);
+  Names := TList<string>.Create;
+  try
+    Resolver.Namespaces := AContext.Namespaces;
+    Resolver.PinTree(AContext.Tree, AContext.RelativePath);
+    try
+      OwnUnit := Resolver.ExtractedUnit(AContext.Tree, AContext.RelativePath);
+      Actions := TClassActionContext.Default;
+      Actions.Index := Index;
+      Actions.Namespaces := AContext.Namespaces;
+      Actions.DelphiVersion := AContext.DelphiVersion;
+      Actions.Style := AContext.Formatting;
+      for TypeSymbol in OwnUnit.Symbols do
+      begin
+        if (TypeSymbol.Kind <> TIndexSymbolKind.ClassType) or (Length(TypeSymbol.Ancestors) = 0) or
+          ((TypeSymbol.SelectionRange.StartPos.Line <= High(Lines)) and Lines[TypeSymbol.SelectionRange.StartPos.Line]) then
+          Continue;
+        TypeName := TypeSymbol.Name;
+        if TypeSymbol.Container <> '' then
+          TypeName := TypeSymbol.Container + '.' + TypeName;
+        Missing := Resolver.MissingInterfaceMembers(OwnUnit, TypeName, nil,
+          Delegated(AContext.Tree.Tokens, TypeSymbol.Range), Complete);
+        if Complete and (Length(Missing) > 0) then
+        begin
+          Names.Clear;
+          Differs := False;
+          for Member in Missing do
+          begin
+            // Gleichnamige Methode der Klasse mit anderer Signatur: E2211 an der Methode statt "fehlt".
+            Own := OwnMethod(OwnUnit, TypeName, Member.Name);
+            if Own.Name <> '' then
+            begin
+              Differs := True;
+              AReport.Add(Own.SelectionRange, Format('%s weicht von der Deklaration in %s ab (wie E2211).',
+                [Own.Name, BareName(Member.Container)]), Level);
+            end
+            else if not Names.Contains(BareName(Member.Container) + '.' + Member.Name) then
+              Names.Add(BareName(Member.Container) + '.' + Member.Name);
+          end;
+          Names.Sort;
+          // Bei abweichenden Köpfen fügte die Korrektur eine zweite gleichnamige Methode ein; dann keine.
+          Fixes := nil;
+          if not Differs then
+            for Ancestor in TypeSymbol.Ancestors do
+              if TClassActions.ImplementInterface(AContext.Text, TypeSymbol.Range.StartPos.Line, Ancestor, Actions,
+                Action) then
+                Fixes := Fixes + [Alternative(TRuleFix.Create(Action.Title, Action.Edits), Length(Fixes) > 0)];
+          if Names.Count = 1 then
+            AReport.Add(TypeSymbol.SelectionRange, Format('%s fehlt in %s (wie E2291).', [Names[0], TypeSymbol.Name]),
+              Level, Fixes)
+          else if Names.Count > 1 then
+            AReport.Add(TypeSymbol.SelectionRange, Format('%s fehlen in %s (wie E2291).',
+              [JoinedList(Names.ToArray), TypeSymbol.Name]), Level, Fixes);
+        end;
+        // Zuordnung "procedure IFoo.Bar = Baz" für ein Interface, das die Klasse nicht nennt.
+        for Symbol in OwnUnit.Symbols do
+        begin
+          if not SameText(Symbol.Container, TypeName) or (Pos('.', Symbol.Name) = 0) or
+            not (Symbol.Kind in [TIndexSymbolKind.Method, TIndexSymbolKind.Constructor_]) then
+            Continue;
+          Prefix := BareName(Copy(Symbol.Name, 1, LastDelimiter('.', Symbol.Name) - 1));
+          Listed := False;
+          for Ancestor in TypeSymbol.Ancestors do
+            if SameText(BareName(Ancestor), Prefix) then
+              Listed := True;
+          if not Listed then
+            AReport.Add(Symbol.SelectionRange, Format('%s steht nicht in der Interface-Liste von %s (wie E2265).',
+              [Prefix, TypeSymbol.Name]), Level);
+        end;
+      end;
+    finally
+      Resolver.UnpinTree;
+    end;
+  finally
+    Names.Free;
+    Resolver.Free;
+  end;
+end;
+
 { TSignatureMismatchRule }
 
 function TSignatureMismatchRule.Descriptor: TRuleDescriptor;
@@ -321,6 +525,7 @@ begin
   ARegistry.Register(TDeclaredNotImplementedRule.Create);
   ARegistry.Register(TImplementedNotDeclaredRule.Create);
   ARegistry.Register(TSignatureMismatchRule.Create);
+  ARegistry.Register(TInterfaceNotImplementedRule.Create);
 end;
 
 end.

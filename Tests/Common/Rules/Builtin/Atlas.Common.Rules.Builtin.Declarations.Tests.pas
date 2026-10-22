@@ -3,7 +3,10 @@
 // Tests für declared-not-implemented und implemented-not-declared (#124) sowie
 // signature-mismatch (#996) mit dem Angleichen abweichender Köpfe (#100):
 // Beispiel aus dem Issue, Anzahl, Ergebnistyp, Namen, Modifizierer,
-// Aufrufkonvention, nächstliegende Überladung, Abschalten und Ausnahmen.
+// Aufrufkonvention, nächstliegende Überladung, Abschalten und Ausnahmen;
+// interface-not-implemented (#1000): fehlende Interface-Methoden (E2291),
+// abweichender Kopf (E2211), Zuordnung ohne Interface (E2265), geerbte
+// Methoden, Zuordnungen, implements und unbekannte Vorfahren.
 
 interface
 
@@ -50,6 +53,18 @@ type
     procedure SignatureMismatchVariants;
     [Test]
     procedure SignatureMismatchOffAndExclude;
+    [Test]
+    procedure InterfaceIssueExample;
+    [Test]
+    procedure InterfaceImplementationsThatCount;
+    [Test]
+    procedure InterfaceUnknownAncestorIsSilent;
+    [Test]
+    procedure InterfaceDifferentSignature;
+    [Test]
+    procedure InterfaceResolutionForUnlistedInterface;
+    [Test]
+    procedure InterfaceOffAndExclude;
   end;
 
 implementation
@@ -363,6 +378,118 @@ begin
   Assert.AreEqual(1, Integer(Length(Findings)));
   // Nur "Deklaration ergänzen".
   Assert.AreEqual(1, Integer(Length(Findings[0].Fixes)));
+end;
+
+/// <summary>Unit mit ILogger (Info, Warnung, Fehler) und der Klasse AClass samt AImplementation.</summary>
+function LoggerUnit(const AClass, AImplementation: string): string;
+begin
+  Result := 'unit U;'#10'interface'#10'type'#10 +
+    '  ILogger = interface'#10 +
+    '    procedure Info(const Text: string);'#10 +
+    '    procedure Warnung(const Text: string);'#10 +
+    '    procedure Fehler(const Text: string);'#10 +
+    '  end;'#10 + AClass + #10'implementation'#10 + AImplementation + #10'end.';
+end;
+
+const
+  DateiLog = '  TDateiLog = class(TInterfacedObject, ILogger)'#10'  public'#10 +
+    '    procedure Info(const Text: string);'#10'  end;';
+  DateiLogBody = 'procedure TDateiLog.Info(const Text: string);'#10'begin'#10'end;';
+
+procedure TDeclarationRulesTests.InterfaceIssueExample;
+var
+  Source, Fixed: string;
+  Findings: TArray<TRuleFinding>;
+begin
+  Source := LoggerUnit(DateiLog, DateiLogBody);
+  Findings := TRuleAssert.Findings(TInterfaceNotImplementedRule.Create, Source);
+  Assert.AreEqual(1, Integer(Length(Findings)));
+  Assert.AreEqual('ILogger.Fehler und ILogger.Warnung fehlen in TDateiLog (wie E2291).', Findings[0].Message);
+  Assert.AreEqual(8, Findings[0].Range.StartPos.Line);
+  Assert.AreEqual(1, Integer(Length(Findings[0].Fixes)));
+  // Die Korrektur deklariert die fehlenden Methoden und legt leere Rümpfe an.
+  Fixed := ApplyAll(Source, Findings[0].Fixes[0]);
+  Assert.IsTrue(Fixed.Contains('    procedure Info(const Text: string);'#10 +
+    '    procedure Warnung(const Text: string);'#10'    procedure Fehler(const Text: string);'#10'  end;'), Fixed);
+  Assert.IsTrue(Fixed.Contains('procedure TDateiLog.Fehler(const Text: string);'), Fixed);
+  Assert.IsTrue(ParsesCleanly(Fixed), Fixed);
+  TRuleAssert.Silent(TInterfaceNotImplementedRule.Create, Fixed);
+end;
+
+procedure TDeclarationRulesTests.InterfaceImplementationsThatCount;
+begin
+  // Vollständig.
+  TRuleAssert.Silent(TInterfaceNotImplementedRule.Create, LoggerUnit(
+    '  TLog = class(TInterfacedObject, ILogger)'#10'    procedure Info(const Text: string);'#10 +
+    '    procedure Warnung(const Text: string);'#10'    procedure Fehler(const Text: string);'#10'  end;', ''));
+  // Geerbt aus einer Vorfahrklasse.
+  TRuleAssert.Silent(TInterfaceNotImplementedRule.Create, LoggerUnit(
+    '  TBasis = class(TInterfacedObject)'#10'    procedure Warnung(const Text: string);'#10 +
+    '    procedure Fehler(const Text: string);'#10'  end;'#10 +
+    '  TLog = class(TBasis, ILogger)'#10'    procedure Info(const Text: string);'#10'  end;', ''));
+  // Methodenzuordnungen.
+  TRuleAssert.Silent(TInterfaceNotImplementedRule.Create, LoggerUnit(
+    '  TLog = class(TInterfacedObject, ILogger)'#10'    procedure ILogger.Warnung = Melde;'#10 +
+    '    procedure ILogger.Fehler = Melde;'#10'    procedure Info(const Text: string);'#10 +
+    '    procedure Melde(const Text: string);'#10'  end;', ''));
+  // implements-Delegation.
+  TRuleAssert.Silent(TInterfaceNotImplementedRule.Create, LoggerUnit(
+    '  TLog = class(TInterfacedObject, ILogger)'#10'    FLog: ILogger;'#10 +
+    '    property Log: ILogger read FLog implements ILogger;'#10'  end;', ''));
+  // TObject-Methoden zählen (ToString), Methoden von IInterface bringt TInterfacedObject mit.
+  TRuleAssert.Silent(TInterfaceNotImplementedRule.Create,
+    'unit U;'#10'interface'#10'type'#10'  IText = interface(IInterface)'#10'    function ToString: string;'#10 +
+    '    function _AddRef: Integer; stdcall;'#10'  end;'#10'  TText = class(TInterfacedObject, IText)'#10'  end;'#10 +
+    'implementation'#10'end.');
+end;
+
+procedure TDeclarationRulesTests.InterfaceUnknownAncestorIsSilent;
+begin
+  // Ein unbekannter Vorfahr kann die Methoden liefern; ein unbekanntes Interface ist nicht prüfbar.
+  TRuleAssert.Silent(TInterfaceNotImplementedRule.Create, LoggerUnit(
+    '  TLog = class(TFremdeBasis, ILogger)'#10'    procedure Info(const Text: string);'#10'  end;', ''));
+  TRuleAssert.Silent(TInterfaceNotImplementedRule.Create, LoggerUnit(
+    '  TLog = class(TInterfacedObject, IFremd)'#10'    procedure Info(const Text: string);'#10'  end;', ''));
+  // Bedingte Klasse.
+  TRuleAssert.Silent(TInterfaceNotImplementedRule.Create, LoggerUnit('{$IFDEF DEBUG}'#10 + DateiLog + #10'{$ENDIF}', ''));
+end;
+
+procedure TDeclarationRulesTests.InterfaceDifferentSignature;
+var
+  Findings: TArray<TRuleFinding>;
+begin
+  Findings := TRuleAssert.Findings(TInterfaceNotImplementedRule.Create, LoggerUnit(
+    '  TLog = class(TInterfacedObject, ILogger)'#10'    procedure Info(const Text: Integer);'#10 +
+    '    procedure Warnung(const Text: string);'#10'    procedure Fehler(const Text: string);'#10'  end;', ''));
+  Assert.AreEqual(1, Integer(Length(Findings)));
+  Assert.AreEqual('Info weicht von der Deklaration in ILogger ab (wie E2211).', Findings[0].Message);
+  Assert.AreEqual(9, Findings[0].Range.StartPos.Line);
+  Assert.AreEqual(0, Integer(Length(Findings[0].Fixes)));
+end;
+
+procedure TDeclarationRulesTests.InterfaceResolutionForUnlistedInterface;
+var
+  Findings: TArray<TRuleFinding>;
+begin
+  Findings := TRuleAssert.Findings(TInterfaceNotImplementedRule.Create, LoggerUnit(
+    '  TLog = class(TInterfacedObject, ILogger)'#10'    procedure IAnders.Info = Melde;'#10 +
+    '    procedure Info(const Text: string);'#10'    procedure Warnung(const Text: string);'#10 +
+    '    procedure Fehler(const Text: string);'#10'    procedure Melde(const Text: string);'#10'  end;', ''));
+  Assert.AreEqual(1, Integer(Length(Findings)));
+  Assert.AreEqual('IAnders steht nicht in der Interface-Liste von TLog (wie E2265).', Findings[0].Message);
+end;
+
+procedure TDeclarationRulesTests.InterfaceOffAndExclude;
+var
+  Source: string;
+begin
+  Source := LoggerUnit(DateiLog, DateiLogBody);
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TInterfaceNotImplementedRule.Create, Source,
+    '{"rules": {"interface-not-implemented": "off"}}'))));
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TInterfaceNotImplementedRule.Create, Source,
+    '{"rules": {"group:compiler": "off"}}'))));
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TInterfaceNotImplementedRule.Create, Source,
+    '{"rules": {"interface-not-implemented": {"exclude": ["Source/*.pas"]}}}', 'Source/U.pas'))));
 end;
 
 initialization

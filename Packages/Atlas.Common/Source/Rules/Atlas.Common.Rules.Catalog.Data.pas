@@ -2082,6 +2082,21 @@ begin
     '        "E2211",' + #10 +
     '        "E2065"' + #10 +
     '      ]' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "interface-not-implemented",' + #10 +
+    '      "name": "Interface method missing in the class",' + #10 +
+    '      "category": "bug",' + #10 +
+    '      "severity": "error",' + #10 +
+    '      "group": "compiler",' + #10 +
+    '      "description": "A class lists an interface but does not implement all of its methods, including those of ancestor interfaces (like E2291). A method of the class with the same name but a differen' + 't signature is reported at that method (like E2211). Methods inherited from ancestor classes, method resolution clauses (procedure IFoo.Bar = Baz) and properties with implements count; public TObject ' + 'methods and IInterface methods of TInterfacedObject and similar RTL bases count as well. If the chain of ancestor classes ends at an unknown class or the interface is unknown, the rule stays silent. A' + ' method resolution clause for an interface the class does not list is reported too (like E2265). Classes inside {$IF} blocks are skipped. Quick fix: declare the missing methods and create empty bodies' + ' (not offered when a header differs).",' + #10 +
+    '      "bad": "TDateiLog = class(TInterfacedObject, ILogger)\npublic\n  procedure Info(const Text: string);\nend;",' + #10 +
+    '      "good": "TDateiLog = class(TInterfacedObject, ILogger)\npublic\n  procedure Info(const Text: string);\n  procedure Warnung(const Text: string);\n  procedure Fehler(const Text: string);\nend;",' + #10 +
+    '      "compilerCodes": [' + #10 +
+    '        "E2291",' + #10 +
+    '        "E2211",' + #10 +
+    '        "E2265"' + #10 +
+    '      ]' + #10 +
     '    }' + #10 +
     '  ]' + #10 +
     '}' + #10 +
@@ -3170,6 +3185,11 @@ begin
     '      "id": "signature-mismatch",' + #10 +
     '      "name": "Implementierung weicht von der Deklaration ab",' + #10 +
     '      "description": "Der Kopf im implementation-Teil hat andere Parameter (Anzahl, Name, Typ, const/var/out), einen anderen Ergebnistyp, procedure statt function oder eine andere Aufrufkonvention als' + ' die Deklaration im Typ (wie E2037). Bei Überladungen wird die nächstliegende Deklaration verglichen (Parameteranzahl, dann Typen, Namen und Modifizierer); ist sie nicht eindeutig, melden declared-not' + '-implemented und implemented-not-declared beide Seiten. Ein Rumpf darf Parameterliste, Ergebnistyp und Aufrufkonvention weglassen. Methoden in {$IF}-Blöcken werden übergangen; mit Include-Dateien ist ' + 'die Konfidenz mittel. Korrektur: Kopf der Implementierung an die Deklaration angleichen oder als zweite Aktion die Deklaration an die Implementierung (Standardwerte bleiben in der Deklaration). refact' + 'oring.syncSignatures = false entfernt nur die Korrekturen."' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "interface-not-implemented",' + #10 +
+    '      "name": "Interface-Methode fehlt in der Klasse",' + #10 +
+    '      "description": "Eine Klasse nennt ein Interface, implementiert aber nicht alle seine Methoden, auch die der Vorfahr-Interfaces (wie E2291). Eine gleichnamige Methode der Klasse mit anderer Signa' + 'tur wird an dieser Methode gemeldet (wie E2211). Geerbte Methoden der Vorfahrklassen, Methodenzuordnungen (procedure IFoo.Bar = Baz) und Properties mit implements zählen; ebenso die öffentlichen Metho' + 'den von TObject und die IInterface-Methoden von TInterfacedObject und ähnlichen RTL-Basen. Endet die Kette der Vorfahrklassen bei einer unbekannten Klasse oder ist das Interface unbekannt, bleibt die ' + 'Regel still. Gemeldet wird auch eine Methodenzuordnung für ein Interface, das die Klasse nicht nennt (wie E2265). Klassen in {$IF}-Blöcken werden übergangen. Korrektur: fehlende Methoden deklarieren u' + 'nd leer implementieren (nicht bei abweichendem Kopf)."' + #10 +
     '    }' + #10 +
     '  ]' + #10 +
     '}' + #10 +

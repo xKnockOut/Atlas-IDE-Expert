@@ -356,7 +356,14 @@ type
     /// ("IComparer<TKunde>"); ohne gilt die des Index. Bei generischen Interfaces trägt jedes Ergebnis die
     /// Bindungen ("T=TKunde", ohne Unit-Präfix) in Bindings; verglichen wird mit eingesetzten Typen.</summary>
     function MissingInterfaceMembers(const AFromUnit: TUnitIndex; const ATypeName: string;
-      const AAncestors: TArray<string> = nil): TArray<TResolvedSymbol>;
+      const AAncestors: TArray<string> = nil): TArray<TResolvedSymbol>; overload;
+    /// <summary>Wie oben (#1000), dazu: ADelegated sind Interfaces, die eine Property mit implements übernimmt
+    /// (samt ihren Vorfahren); Methodenzuordnungen "procedure IFoo.Bar = Baz" zählen als Implementierung.
+    /// AComplete ist False, wenn die Kette der Vorfahrklassen vor TObject abbricht; dann kann ein unbekannter
+    /// Vorfahr die Methoden liefern. Unbekannte RTL-Basen wie TInterfacedObject gelten mit ihren öffentlichen
+    /// Methoden (TObject, QueryInterface, _AddRef, _Release) als vollständig.</summary>
+    function MissingInterfaceMembers(const AFromUnit: TUnitIndex; const ATypeName: string;
+      const AAncestors, ADelegated: TArray<string>; out AComplete: Boolean): TArray<TResolvedSymbol>; overload;
     /// <summary>Entfernt Unit-Präfixe aus einem Typtext ("Kunden.TKunde" → "TKunde", auch in Typargumenten):
     /// Units des Index und AOwnUnit.</summary>
     function UnqualifyType(const AText: string; const AOwnUnit: string = ''): string;
@@ -3096,6 +3103,35 @@ end;
 
 function TNameResolver.MissingInterfaceMembers(const AFromUnit: TUnitIndex; const ATypeName: string;
   const AAncestors: TArray<string>): TArray<TResolvedSymbol>;
+var
+  Complete: Boolean;
+begin
+  Result := MissingInterfaceMembers(AFromUnit, ATypeName, AAncestors, nil, Complete);
+end;
+
+const
+  // Öffentliche Methoden von TObject: Sie können Interface-Methoden gleichen Namens implementieren.
+  ObjectMethods: array[0..29] of string = ('Free', 'DisposeOf', 'ClassType', 'ClassName', 'ClassNameIs',
+    'ClassParent', 'ClassInfo', 'InstanceSize', 'InheritsFrom', 'MethodAddress', 'MethodName', 'QualifiedClassName',
+    'FieldAddress', 'GetInterface', 'GetInterfaceEntry', 'GetInterfaceTable', 'UnitName', 'UnitScope', 'Equals',
+    'GetHashCode', 'ToString', 'SafeCallException', 'AfterConstruction', 'BeforeDestruction', 'Dispatch',
+    'DefaultHandler', 'NewInstance', 'FreeInstance', 'Destroy', 'InitInstance');
+  // RTL-Basen, die IInterface implementieren; ohne Index gelten sie als Wurzel der Kette.
+  InterfacedRoots: array[0..4] of string = ('TInterfacedObject', 'TAggregatedObject', 'TContainedObject',
+    'TSingletonImplementation', 'TNoRefCountObject');
+  InterfaceMethods: array[0..2] of string = ('QueryInterface', '_AddRef', '_Release');
+
+/// <summary>Name ohne Unit-Präfix und Typargumente: "Generics.IComparer<T>" → "IComparer".</summary>
+function BareTypeName(const AText: string): string;
+begin
+  Result := Trim(AText);
+  if Pos('<', Result) > 0 then
+    Result := Copy(Result, 1, Pos('<', Result) - 1);
+  Result := Copy(Result, LastDelimiter('.', Result) + 1, MaxInt);
+end;
+
+function TNameResolver.MissingInterfaceMembers(const AFromUnit: TUnitIndex; const ATypeName: string;
+  const AAncestors, ADelegated: TArray<string>; out AComplete: Boolean): TArray<TResolvedSymbol>;
 
   function Unqualified(const ABindings: TArray<string>): TArray<string>;
   var
@@ -3123,37 +3159,97 @@ function TNameResolver.MissingInterfaceMembers(const AFromUnit: TUnitIndex; cons
     Result := SignatureKey(ASymbol.Name, Types);
   end;
 
+  /// <summary>Methoden einer RTL-Basis ohne Index nach Namen; False, wenn ABase keine bekannte Wurzel ist.</summary>
+  function AddRoot(const ABase: string; ANames: TDictionary<string, Boolean>): Boolean;
+  var
+    Method: string;
+  begin
+    Result := (ABase = '') or SameText(BareTypeName(ABase), 'TObject') or
+      MatchText(BareTypeName(ABase), InterfacedRoots);
+    if not Result then
+      Exit;
+    for Method in ObjectMethods do
+      ANames.AddOrSetValue(LowerCase(Method), True);
+    if (ABase <> '') and MatchText(BareTypeName(ABase), InterfacedRoots) then
+      for Method in InterfaceMethods do
+        ANames.AddOrSetValue(LowerCase(Method), True);
+  end;
+
+  /// <summary>Interface AName und seine Vorfahren als übernommen eintragen.</summary>
+  procedure AddDelegated(const AName: string; const AUnit: TUnitIndex; ASkipped: TDictionary<string, Boolean>);
+  var
+    Delegate, Parent: TResolvedSymbol;
+    Level: Integer;
+  begin
+    ASkipped.AddOrSetValue(UpperCase(BareTypeName(AName)), True);
+    if not ResolveTypeText(AName, AUnit, True, Delegate) then
+      Exit;
+    for Level := 0 to MaxDepth do
+    begin
+      ASkipped.AddOrSetValue(UpperCase(Delegate.Name), True);
+      if not AncestorOf(Delegate, Parent) or (Parent.SymbolKind <> TIndexSymbolKind.InterfaceType) then
+        Break;
+      Delegate := Parent;
+    end;
+  end;
+
 var
   Own, Current, Ancestor, Intf, Member: TResolvedSymbol;
   OwnerUnit, IntfUnit: TUnitIndex;
   Symbol: TIndexSymbol;
-  Implemented, SeenInterfaces: TDictionary<string, Boolean>;
+  Implemented, SeenInterfaces, ByName, Resolutions, Delegated: TDictionary<string, Boolean>;
   List: TList<TResolvedSymbol>;
   Depth: Integer;
-  Name, Key: string;
+  Name, Key, Parent: string;
   Names, Bindings: TArray<string>;
 begin
   Result := nil;
+  AComplete := False;
   if not ResolveTypeFrom(AFromUnit, ATypeName, Own) or not UnitOf(Own, OwnerUnit) then
     Exit;
+  AComplete := True;
   Implemented := TDictionary<string, Boolean>.Create;
   SeenInterfaces := TDictionary<string, Boolean>.Create;
+  ByName := TDictionary<string, Boolean>.Create;
+  Resolutions := TDictionary<string, Boolean>.Create;
+  Delegated := TDictionary<string, Boolean>.Create;
   List := TList<TResolvedSymbol>.Create;
   try
-    // Methoden der Klasse und ihrer Vorfahrklassen.
+    // Methoden der Klasse und ihrer Vorfahrklassen, dazu Zuordnungen "IFoo.Bar = Baz".
     Current := Own;
     for Depth := 0 to MaxDepth do
     begin
       if (Current.SymbolKind = TIndexSymbolKind.InterfaceType) or not UnitOf(Current, IntfUnit) then
+      begin
+        AComplete := False;
         Break;
+      end;
       Bindings := Unqualified(Current.Bindings);
       for Symbol in IntfUnit.Symbols do
         if SameText(Symbol.Container, Current.QualifiedName) and (Symbol.Kind in RoutineKinds) then
-          Implemented.AddOrSetValue(KeyOf(Symbol, Bindings), True);
-      if not AncestorOf(Current, Ancestor) then
-        Break;
-      Current := Ancestor;
+        begin
+          if Pos('.', Symbol.Name) > 0 then
+            Resolutions.AddOrSetValue(LowerCase(BareTypeName(Copy(Symbol.Name, 1, LastDelimiter('.', Symbol.Name) - 1)) +
+              Copy(Symbol.Name, LastDelimiter('.', Symbol.Name), MaxInt)), True)
+          else
+            Implemented.AddOrSetValue(KeyOf(Symbol, Bindings), True);
+        end;
+      if AncestorOf(Current, Ancestor) and (Ancestor.SymbolKind <> TIndexSymbolKind.InterfaceType) then
+      begin
+        Current := Ancestor;
+        Continue;
+      end;
+      // Kette zu Ende: ohne Vorfahr bzw. nur mit Interfaces gilt TObject, sonst eine bekannte RTL-Basis.
+      Parent := '';
+      if (Length(Current.Ancestors) > 0) and not (AncestorOf(Current, Ancestor) and
+        (Ancestor.SymbolKind = TIndexSymbolKind.InterfaceType)) then
+        Parent := Current.Ancestors[0];
+      if not AddRoot(Parent, ByName) then
+        AComplete := False;
+      Break;
     end;
+    for Name in ADelegated do
+      AddDelegated(Name, OwnerUnit, Delegated);
     // Interfaces der Vorfahrenliste, jeweils mit ihren Vorfahren.
     Names := AAncestors;
     if Length(Names) = 0 then
@@ -3167,12 +3263,15 @@ begin
         if SeenInterfaces.ContainsKey(UpperCase(Intf.QualifiedName)) or not UnitOf(Intf, IntfUnit) then
           Break;
         SeenInterfaces.Add(UpperCase(Intf.QualifiedName), True);
+        if Delegated.ContainsKey(UpperCase(Intf.Name)) then
+          Break;
         Bindings := Unqualified(Intf.Bindings);
         for Symbol in IntfUnit.Symbols do
           if SameText(Symbol.Container, Intf.QualifiedName) and (Symbol.Kind in RoutineKinds) then
           begin
             Key := KeyOf(Symbol, Bindings);
-            if Implemented.ContainsKey(Key) then
+            if Implemented.ContainsKey(Key) or ByName.ContainsKey(LowerCase(Symbol.Name)) or
+              Resolutions.ContainsKey(LowerCase(BareTypeName(Intf.Name) + '.' + Symbol.Name)) then
               Continue;
             Implemented.Add(Key, True);
             Member := FromSymbol(IntfUnit, Symbol);
@@ -3187,6 +3286,9 @@ begin
     Result := List.ToArray;
   finally
     List.Free;
+    Delegated.Free;
+    Resolutions.Free;
+    ByName.Free;
     SeenInterfaces.Free;
     Implemented.Free;
   end;

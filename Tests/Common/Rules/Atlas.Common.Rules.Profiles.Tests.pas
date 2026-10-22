@@ -180,7 +180,7 @@ const
     'empty-except,empty-statement,event-call-without-assigned,except-handler-order,exception-freed,exception-in-destructor,exception-not-raised,field-free-without-nil,field-not-freed,float-equality,for-high-to-low,forbidden-uses,' +
     'foreign-form-control-access,form-access-before-create,form-field-type-mismatch,form-field-without-object,' +
     'form-object-without-field,format-without-settings,generic-exception-raised,hides-virtual,' +
-    'ifthen-side-effect,implemented-not-declared,implicit-package-import,int32-mul-overflow,interface-guid,' +
+    'ifthen-side-effect,implemented-not-declared,implicit-package-import,int32-mul-overflow,interface-guid,interface-not-implemented,' +
     'invisible-char,' +
     'lock-without-finally,loop-off-by-one,managed-type-raw-memory,message-handler-without-inherited,metric-class-size,metric-cognitive-complexity,metric-cyclomatic-complexity,' +
     'metric-method-length,metric-nesting-depth,metric-parameter-count,metric-unit-length,metric-uses-count,missing-inherited,null-compare,operator-precedence,ota-notifier-not-removed,out-param-read,owned-field-free-unclear,owned-item-freed,pair-without-finally,pchar-of-temporary,' +
@@ -210,7 +210,7 @@ begin
     'dfm-duplicate-binding,dfm-master-without-fields,dfm-required-field-without-control,dictionary-get-without-check,' +
     'duplicate-condition,duplicate-interface-guid,empty-statement,event-call-without-assigned,except-handler-order,exception-freed,exception-in-destructor,exception-not-raised,field-free-without-nil,field-not-freed,float-equality,for-high-to-low,' +
     'form-access-before-create,form-field-type-mismatch,form-field-without-object,form-object-without-field,hides-virtual,' +
-    'ifthen-side-effect,implemented-not-declared,int32-mul-overflow,interface-guid,lock-without-finally,loop-off-by-one,managed-type-raw-memory,message-handler-without-inherited,' +
+    'ifthen-side-effect,implemented-not-declared,int32-mul-overflow,interface-guid,interface-not-implemented,lock-without-finally,loop-off-by-one,managed-type-raw-memory,message-handler-without-inherited,' +
     'missing-inherited,operator-precedence,ota-notifier-not-removed,out-param-read,owned-field-free-unclear,owned-item-freed,pair-without-finally,pchar-of-temporary,' +
     'possibly-uninitialized,queue-nil-in-package,raise-in-finally,result-not-set,security-command-injection,' +
     'security-sql-injection,security-tls-verification-disabled,self-as-interface-in-constructor,self-assignment,setter-recursion,signature-mismatch,sizeof-pointer,' +
