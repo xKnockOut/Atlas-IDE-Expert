@@ -4167,3 +4167,19 @@ Voraussetzung: Server läuft; Einstellungen auf Vorgabe; Unit mit `uses System.S
 | GF7 | In der .dpr vor `Application.Initialize` `FormatSettings.DecimalSeparator := '.';`, dann `"global-formatsettings-modified": {"allowInProgram": true}` | Ohne Option Meldung, mit Option keine; in Units bleibt die Meldung |
 | GF8 | `"global-formatsettings-modified": "off"` bzw. `exclude` mit dem Pfad der Datei | Keine Meldung |
 | GF9 | Abgleich mit Delphi: GF1 übersetzen, im IDE-Plugin ausführen und danach in der IDE eine Zahl im Objektinspektor eingeben | Ohne Korrektur zeigt die IDE danach Punkt statt Komma; mit Korrektur bleibt das Komma |
+
+## Komponente als Interface gespeichert und freigegeben (#1090)
+
+Voraussetzung: Server läuft; Einstellungen auf Vorgabe; Unit mit `IBeobachter = interface procedure Melden; end;`, einer Klasse `TBus` mit `Anmelden`/`Abmelden(const ABeobachter: IBeobachter)`, einer globalen Variablen `Bus: TBus`, dem Formular `TfrmKunden = class(TForm, IBeobachter)` und `TfrmHaupt` mit dem Feld `FAnsicht: TfrmKunden`. `AnsichtOeffnen` enthält `FAnsicht := TfrmKunden.Create(Self);` und `Bus.Anmelden(FAnsicht as IBeobachter);`, `AnsichtSchliessen` enthält `FAnsicht.Free;`.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| KD1 | Unit öffnen | Warnung `component-interface-dangling` an `Bus.Anmelden(…)`: „TfrmKunden ist ein TComponent ohne Referenzzählung; nach FAnsicht.Free hält Bus ein ungültiges IBeobachter.“; im Fenster „Atlas-Prüfung“ und im Befund-Hover (**Abnahme**) |
+| KD2 | Glühbirne „Abmeldung vor der Freigabe einfügen“, danach Strg+Z | `Bus.Abmelden(FAnsicht as IBeobachter);` steht vor `FAnsicht.Free;`, Meldung weg; kompiliert; ein Undo-Schritt stellt alles her (**Abnahme**) |
+| KD3 | Statt der Anmeldung ein Feld `FBeobachter: IBeobachter` mit `FBeobachter := FAnsicht;` und `FreeAndNil(FAnsicht)` | Meldung „… nach FreeAndNil(FAnsicht) hält FBeobachter …“; die Korrektur fügt `FBeobachter := nil;` davor ein |
+| KD4 | Feld `FListe: TList<IBeobachter>` mit `FListe.Add(FAnsicht);` | Meldung „… hält FListe ein ungültiges IBeobachter.“; ohne Glühbirne, wenn Atlas den Typ von `FListe` nicht kennt; mit `FListe.Remove(FAnsicht)` irgendwo in der Unit keine Meldung |
+| KD5 | `FAnsicht.FreeNotification(Self);` ergänzen bzw. die Freigabe entfernen (der Owner gibt frei) | Keine Meldung |
+| KD6 | `TfrmKunden = class(TInterfacedObject, IBeobachter)` | Meldung „TfrmKunden ist referenzgezählt (TInterfacedObject); FAnsicht.Free gibt es frei, obwohl Bus noch ein IBeobachter darauf hält.“, auch mit `Bus.Abmelden` davor; keine Glühbirne |
+| KD7 | `TfrmKunden` von einer eigenen Basis `TMeineBasis` ableiten, die nicht im Projekt steht; dann `"component-interface-dangling": {"componentClasses": ["TMeineBasis"]}` | Ohne Option keine Meldung, mit Option „TfrmKunden ist ein TMeineBasis ohne Referenzzählung; …“ |
+| KD8 | `"component-interface-dangling": "off"` bzw. `exclude` mit dem Pfad der Datei | Keine Meldung |
+| KD9 | Abgleich mit Delphi: KD1 übersetzen, `AnsichtOeffnen`, `AnsichtSchliessen`, danach `Bus` ein `Melden` an alle schicken lassen | Ohne Korrektur Zugriffsverletzung beim Aufruf über das gespeicherte Interface; mit Korrektur keine |

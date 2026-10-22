@@ -6,7 +6,7 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 
 | Gruppe | Regeln |
 |---|---|
-| [Fehler finden](#gruppe-find-bugs) | 58 |
+| [Fehler finden](#gruppe-find-bugs) | 59 |
 | [Exceptions](#gruppe-exceptions) | 8 |
 | [Threads](#gruppe-threads) | 13 |
 | [Datenbank](#gruppe-database) | 4 |
@@ -84,6 +84,7 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 | [`form-access-before-create`](#form-access-before-create) | Zugriff auf ein Formular, das noch nicht erzeugt ist | Bug | Warnung |
 | [`destructor-not-nil-safe`](#destructor-not-nil-safe) | Destruktor benutzt Felder, die nil sein können | Bug | Warnung |
 | [`handle-leak`](#handle-leak) | Windows-Handle wird nicht geschlossen | Bug | Warnung |
+| [`component-interface-dangling`](#component-interface-dangling) | Komponente als Interface gespeichert und freigegeben | Bug | Warnung |
 
 <a id="gruppe-exceptions"></a>
 ### Exceptions
@@ -4651,5 +4652,47 @@ var
 begin
   FS := TFormatSettings.Invariant;
   Zeile := FloatToStr(Betrag, FS);
+end;
+```
+
+<a id="component-interface-dangling"></a>
+### component-interface-dangling
+
+**Komponente als Interface gespeichert und freigegeben** · Bug · Warnung · Gruppe Fehler finden
+
+Ein Nachfahr von TComponent (Formular, Frame, Datenmodul, eigene Komponente) implementiert ein Interface, aber TComponent zählt keine Referenzen. Gemeldet wird das Speichern des Objekts als Interface in einem Feld, einer globalen Variablen oder einer Liste (FAnsicht as IBeobachter an Bus.Anmelden, FListe.Add, Register, Subscribe …, Zuweisung an ein Feld oder eine globale Variable, Add in TList<IFoo>/TInterfaceList), wenn dieselbe Unit das Objekt freigibt (Free, Release, DisposeOf, FreeAndNil) und es nirgends abmeldet: FreeNotification auf dem Objekt, ein anderer Aufruf am selben Empfänger mit dem Objekt als Argument (Abmelden, Remove, Unsubscribe …), Clear oder eine weitere Zuweisung an dasselbe Feld. Nach der Freigabe zeigt das gespeicherte Interface ins Leere. Still bei Klassen mit eigenem _Release und wenn die Kette der Vorfahren an einer unbekannten Klasse endet. Ebenso gemeldet, ohne Schnellkorrektur: Nachfahren von TInterfacedObject, die so gespeichert und zusätzlich mit Free freigegeben werden; das gespeicherte Interface hält dann ein freigegebenes Objekt, und eine Abmeldung davor gäbe es schon frei. Konfidenz mittel. Schnellkorrektur: Abmeldung vor der ersten Freigabe einfügen (Empfänger.Abmelden(…), wenn der Typ des Empfängers das Gegenstück hat, bzw. Feld := nil).
+
+| Option | Typ | Vorgabe | Bedeutung |
+|---|---|---|---|
+| `componentClasses` | string-list | `["TComponent"]` | Basisklassen ohne Referenzzählung; mit TComponent zählen auch die bekannten VCL- und FMX-Klassen (TForm, TFrame, TDataModule …). |
+
+Mit Treffer:
+
+```pascal
+procedure TfrmHaupt.AnsichtOeffnen;
+begin
+  FAnsicht := TfrmKunden.Create(Self);
+  Bus.Anmelden(FAnsicht as IBeobachter);
+end;
+
+procedure TfrmHaupt.AnsichtSchliessen;
+begin
+  FAnsicht.Free;
+end;
+```
+
+Richtig:
+
+```pascal
+procedure TfrmHaupt.AnsichtOeffnen;
+begin
+  FAnsicht := TfrmKunden.Create(Self);
+  Bus.Anmelden(FAnsicht as IBeobachter);
+end;
+
+procedure TfrmHaupt.AnsichtSchliessen;
+begin
+  Bus.Abmelden(FAnsicht as IBeobachter);
+  FAnsicht.Free;
 end;
 ```

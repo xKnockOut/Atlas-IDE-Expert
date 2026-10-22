@@ -272,6 +272,14 @@
                 "default": [],
                 "description": "Nur create-without-assignment (#948): Klassen, die sich im Konstruktor selbst registrieren (Muster mit * und ?); TKlasse.Create; bleibt für sie still."
               },
+              "componentClasses": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "default": ["TComponent"],
+                "description": "Nur component-interface-dangling (#1090): Basisklassen ohne Referenzzählung; ihre Nachfahren als Interface zu speichern und dann freizugeben wird gemeldet. Mit TComponent zählen auch die bekannten VCL- und FMX-Klassen (TForm, TFrame, TDataModule …)."
+              },
               "swallow": {
                 "type": "array",
                 "items": {

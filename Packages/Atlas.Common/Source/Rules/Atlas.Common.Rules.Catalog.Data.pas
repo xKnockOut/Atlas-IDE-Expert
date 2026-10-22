@@ -2367,6 +2367,26 @@ begin
     '          "description": "Allow the assignments in the .dpr, for example once at program start."' + #10 +
     '        }' + #10 +
     '      ]' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "component-interface-dangling",' + #10 +
+    '      "name": "Component stored as interface stays referenced after Free",' + #10 +
+    '      "category": "bug",' + #10 +
+    '      "severity": "warning",' + #10 +
+    '      "group": "find-bugs",' + #10 +
+    '      "description": "A descendant of TComponent (form, frame, data module, own component) implements an interface, but TComponent does not count references. Reported is storing the object as an inter' + 'face in a field, a global variable or a list (FView as IObserver passed to Bus.Subscribe, FList.Add, Register, Anmelden …, assigned to a field or global, or added to a TList<IFoo>/TInterfaceList) when' + ' the same unit frees the object (Free, Release, DisposeOf, FreeAndNil) and nowhere unregisters it: FreeNotification on the object, another call on the same receiver with the object as argument (Unsubs' + 'cribe, Remove, Abmelden …), Clear, or another assignment to the same field. After the Free the stored interface points to freed memory. Silent for classes with their own _Release and when the chain of' + ' ancestors ends at an unknown class. Also reported, without a quick fix: descendants of TInterfacedObject that are stored this way and additionally freed with Free; the stored interface keeps a freed ' + 'object, and unregistering first would already free it. Medium confidence. Quick fix: insert the unregistration before the first Free (Receiver.Abmelden(…) when the receiver''s type has the counterpart,' + ' or Field := nil).",' + #10 +
+    '      "bad": "procedure TfrmHaupt.AnsichtOeffnen;\nbegin\n  FAnsicht := TfrmKunden.Create(Self);\n  Bus.Anmelden(FAnsicht as IBeobachter);\nend;\n\nprocedure TfrmHaupt.AnsichtSchliessen;\nbegin\n  FAn' + 'sicht.Free;\nend;",' + #10 +
+    '      "good": "procedure TfrmHaupt.AnsichtOeffnen;\nbegin\n  FAnsicht := TfrmKunden.Create(Self);\n  Bus.Anmelden(FAnsicht as IBeobachter);\nend;\n\nprocedure TfrmHaupt.AnsichtSchliessen;\nbegin\n  Bu' + 's.Abmelden(FAnsicht as IBeobachter);\n  FAnsicht.Free;\nend;",' + #10 +
+    '      "options": [' + #10 +
+    '        {' + #10 +
+    '          "name": "componentClasses",' + #10 +
+    '          "type": "string-list",' + #10 +
+    '          "default": [' + #10 +
+    '            "TComponent"' + #10 +
+    '          ],' + #10 +
+    '          "description": "Base classes without reference counting; with TComponent the known VCL and FMX classes (TForm, TFrame, TDataModule …) count as well."' + #10 +
+    '        }' + #10 +
+    '      ]' + #10 +
     '    }' + #10 +
     '  ]' + #10 +
     '}' + #10 +
@@ -3568,6 +3588,17 @@ begin
     '        {' + #10 +
     '          "name": "allowInProgram",' + #10 +
     '          "description": "Zuweisungen in der .dpr erlauben, etwa einmal beim Programmstart."' + #10 +
+    '        }' + #10 +
+    '      ]' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "component-interface-dangling",' + #10 +
+    '      "name": "Komponente als Interface gespeichert und freigegeben",' + #10 +
+    '      "description": "Ein Nachfahr von TComponent (Formular, Frame, Datenmodul, eigene Komponente) implementiert ein Interface, aber TComponent zählt keine Referenzen. Gemeldet wird das Speichern des ' + 'Objekts als Interface in einem Feld, einer globalen Variablen oder einer Liste (FAnsicht as IBeobachter an Bus.Anmelden, FListe.Add, Register, Subscribe …, Zuweisung an ein Feld oder eine globale Vari' + 'able, Add in TList<IFoo>/TInterfaceList), wenn dieselbe Unit das Objekt freigibt (Free, Release, DisposeOf, FreeAndNil) und es nirgends abmeldet: FreeNotification auf dem Objekt, ein anderer Aufruf am' + ' selben Empfänger mit dem Objekt als Argument (Abmelden, Remove, Unsubscribe …), Clear oder eine weitere Zuweisung an dasselbe Feld. Nach der Freigabe zeigt das gespeicherte Interface ins Leere. Still' + ' bei Klassen mit eigenem _Release und wenn die Kette der Vorfahren an einer unbekannten Klasse endet. Ebenso gemeldet, ohne Schnellkorrektur: Nachfahren von TInterfacedObject, die so gespeichert und z' + 'usätzlich mit Free freigegeben werden; das gespeicherte Interface hält dann ein freigegebenes Objekt, und eine Abmeldung davor gäbe es schon frei. Konfidenz mittel. Schnellkorrektur: Abmeldung vor der' + ' ersten Freigabe einfügen (Empfänger.Abmelden(…), wenn der Typ des Empfängers das Gegenstück hat, bzw. Feld := nil).",' + #10 +
+    '      "options": [' + #10 +
+    '        {' + #10 +
+    '          "name": "componentClasses",' + #10 +
+    '          "description": "Basisklassen ohne Referenzzählung; mit TComponent zählen auch die bekannten VCL- und FMX-Klassen (TForm, TFrame, TDataModule …)."' + #10 +
     '        }' + #10 +
     '      ]' + #10 +
     '    }' + #10 +
