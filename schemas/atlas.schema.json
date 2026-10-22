@@ -446,6 +446,14 @@
                 "default": true,
                 "description": "Nur getter-side-effect: Lazy-Initialisierung im Getter erlauben (if FListe = nil then FListe := …, #1052)."
               },
+              "threadSafeTypes": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "default": ["TThreadList", "TThreadedQueue"],
+                "description": "Nur parallel-for-shared-write: Typen, die als threadsicher gelten; ihre Sammlungsaufrufe in TParallel.For bleiben still (#1058)."
+              },
               "searchPaths": {
                 "type": "string",
                 "enum": ["project", "atlas", "both"],

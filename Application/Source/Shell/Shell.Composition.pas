@@ -3936,6 +3936,8 @@ begin
       AContext.ProjectName := ChangeFileExt(ExtractFileName(Project.MainSource), '');
       // Reihenfolge von Application.CreateForm für form-access-before-create (#956).
       AContext.AutoCreateForms := TFormAccessBeforeCreateRule.AutoCreatedForms(MainText);
+      // .dpr für die Korrektur von form-autocreate-and-manual (#1055).
+      AContext.ProjectMainSource := Project.MainSource;
     end;
   end;
   // requires-Packages für implicit-package-import (#46); der Locator lebt so lange wie der Arbeitsbereich.

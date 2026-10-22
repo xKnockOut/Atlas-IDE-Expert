@@ -18,7 +18,7 @@ Projektgruppe des Servers und wird von dessen Build nicht übersetzt.
 | `Source/Ref.Komponenten.Anzeige.pas` | Komponente mit `published`-Properties samt `default`, `Notification`, `Paint` |
 | `Source/Ref.Komponenten.Registrierung.pas` | `Register` für das Design-Time-Package |
 | `Source/Ref.Formulare.Haupt.pas/.dfm` | Hauptformular mit Kundenliste |
-| `Source/Ref.Formulare.Detail.pas/.dfm` | Von `TBasisFormular` geerbtes Formular (`inherited` in der DFM); in RefApp nach dem Hauptformular automatisch erzeugt (`DetailFormular`, für `form-access-before-create`) |
+| `Source/Ref.Formulare.Detail.pas/.dfm` | Von `TBasisFormular` geerbtes Formular (`inherited` in der DFM); in RefApp nach dem Hauptformular automatisch erzeugt (`DetailFormular`, für `form-access-before-create`); eigener `SchliessenButtonClick` mit `inherited` (für `inherited-form-handler-without-inherited`) |
 | `Source/Ref.Formulare.Basis.pas/.dfm` | Basisformular |
 | `Source/Ref.Formulare.Suchrahmen.pas/.dfm` | Frame |
 | `Source/Ref.Sprache.Merkmale.pas` | Generics, Interfaces, Class Helper, anonyme Methoden, Inline-Variablen, `{$IFDEF WIN32/WIN64}` |

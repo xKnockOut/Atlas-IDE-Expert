@@ -57,6 +57,8 @@ uses
   Atlas.Common.Rules.Builtin.Generics,
   Atlas.Common.Rules.Builtin.TypeChecks,
   Atlas.Common.Rules.Builtin.Constants,
+  Atlas.Common.Rules.Builtin.Forms,
+  Atlas.Common.Rules.Builtin.SharedState,
   Atlas.Common.Rules.Builtin.Unresolved;
 
 function BuiltinRules: TArray<IRule>;
@@ -109,6 +111,8 @@ begin
     RegisterGenericRules(Registry);
     RegisterTypeCheckRules(Registry);
     RegisterConstantRules(Registry);
+    RegisterFormRules(Registry);
+    RegisterSharedStateRules(Registry);
     Result := Registry.Rules;
   finally
     Registry.Free;

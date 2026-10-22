@@ -4726,3 +4726,91 @@ Voraussetzung: Server läuft in der IDE mit Projekt.
 | JH5 | Record `TSchluessel` mit `Name: string` und `class operator Equal`, `TDictionary<TSchluessel, Integer>.Create` bzw. `THashSet<TSchluessel>.Create(10)` | Meldung an `TDictionary<…>`: „TSchluessel hat class operator Equal, TDictionary vergleicht Schlüssel ohne Comparer aber Byte für Byte; …“ |
 | JH6 | Wie JH5 mit Comparer im Create, ohne Operator oder mit nur Integer-Feldern | Keine Meldung |
 | JH7 | `"equals-without-gethashcode": "off"` bzw. `exclude` mit der Datei | Keine Meldung |
+
+## Formular-Unit ohne {$R *.dfm} (#1054)
+
+Voraussetzung: Server läuft in der IDE mit Projekt; ein Formular `TfrmKunde` in `Kunde.pas` mit `Kunde.dfm`.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| FR1 | Das Beispiel aus #1054: in `Kunde.pas` die Zeile `{$R *.dfm}` löschen | Fehler `form-resource-missing` an `implementation`: „Kunde.dfm wird nicht eingebunden; TfrmKunde.Create löst EResNotFound aus.“; im Fenster „Atlas-Prüfung“ und im Befund-Hover (**Abnahme**) |
+| FR2 | Schnellkorrektur „{$R *.dfm} nach implementation einfügen“, danach Strg+Z | `{$R *.dfm}` steht mit Leerzeile nach `implementation`, keine Meldung mehr; Strg+Z nimmt es in einem Schritt zurück |
+| FR3 | `{$R *.dfm}` in `{$IFDEF MSWINDOWS}` … `{$ENDIF}`, bzw. `{$R *.DFM}` großgeschrieben | Keine Meldung |
+| FR4 | Unit mit `{$R *.dfm}`, die `.dfm` im Explorer umbenennen (Unit neu öffnen) | Fehler am `{$R *.dfm}`: „Kunde.dfm fehlt; der Compiler bricht mit F1026 ab.“; ohne Korrektur |
+| FR5 | FireMonkey-Formular ohne `{$R *.fmx}` | Meldung mit `Kunde.fmx`, Korrektur fügt `{$R *.fmx}` ein |
+| FR6 | Unit ohne Formulardatei (reine Logik-Unit), Formulardatei mit fremder Klasse, `{$R *.res}` | Keine Meldung |
+| FR7 | `"form-resource-missing": "off"`, `"group:forms": "off"` bzw. `exclude` | Keine Meldung |
+| FR8 | Linter: `AtlasServer --check` über ein Projekt mit einer Unit wie FR1 | Treffer `form-resource-missing` in der Ausgabe |
+| FR9 | Abgleich mit Delphi: FR1 übersetzen und das Formular erzeugen, FR4 übersetzen | FR1: EResNotFound zur Laufzeit; FR4: F1026 |
+
+## Formular automatisch und zusätzlich von Hand erzeugt (#1055)
+
+Voraussetzung: Server läuft in der IDE mit Projekt; die `.dpr` enthält `Application.CreateForm(TfrmBericht, frmBericht);`.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| FX1 | Das Beispiel aus #1055: im Hauptformular `frmBericht := TfrmBericht.Create(Application); frmBericht.ShowModal;` | Warnung `form-autocreate-and-manual` an `frmBericht := TfrmBericht.Create`: „frmBericht wird schon in Projekt.dpr erzeugt; hier entsteht eine zweite Instanz.“; im Fenster „Atlas-Prüfung“ und im Befund-Hover (**Abnahme**) |
+| FX2 | Schnellkorrektur „Application.CreateForm(TfrmBericht, frmBericht) aus Projekt.dpr entfernen“, danach in der `.dpr` Strg+Z | Die Zeile verschwindet aus der `.dpr` (Projekt > Optionen > Formulare: frmBericht unter „Verfügbare Formulare“), keine Meldung mehr; Strg+Z stellt sie in einem Schritt wieder her |
+| FX3 | `if not Assigned(frmBericht) then frmBericht := …`, `if frmBericht = nil then …`, vorher `frmBericht.Free` bzw. `FreeAndNil(frmBericht)` | Keine Meldung |
+| FX4 | Lokale Variable `frmBericht`, Feld `frmBericht` in der eigenen Klasse, `Dialog := TfrmBericht.Create(nil)`, `with TfrmBericht.Create(nil) do`, `frmBericht := TfrmAnders.Create(nil)` | Keine Meldung |
+| FX5 | Formular nicht in der Liste der automatisch erzeugten (Projektoptionen) | Keine Meldung |
+| FX6 | `"form-autocreate-and-manual": "off"`, `"group:forms": "off"` bzw. `exclude` | Keine Meldung |
+| FX7 | Abgleich mit Delphi: FX1 ausführen, im Debugger `Screen.FormCount` vor und nach dem Klick | Ein Formular mehr als ohne Fehler; nach FX2 nicht mehr |
+
+## Ereignis-Handler im geerbten Formular ohne inherited (#1056)
+
+Voraussetzung: Server läuft in der IDE mit Projekt; `TfrmBasisDialog` mit `btnSpeichern.OnClick = btnSpeichernClick`, davon geerbt `TfrmKundeBearbeiten` (Datei > Neu > Weitere > Vererbbare Elemente).
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| IH1 | Im geerbten Formular auf `btnSpeichern` doppelklicken, im erzeugten Handler `inherited;` löschen und `FKunde.Speichern;` schreiben | Warnung `inherited-form-handler-without-inherited` am Methodennamen: „TfrmBasisDialog.btnSpeichernClick wird nicht mehr ausgeführt (kein inherited).“; im Fenster „Atlas-Prüfung“ und im Befund-Hover (**Abnahme**) |
+| IH2 | Schnellkorrektur „inherited; am Anfang einfügen“, danach Strg+Z | `inherited;` steht als erste Zeile nach `begin`, keine Meldung mehr; Strg+Z nimmt es in einem Schritt zurück |
+| IH3 | `inherited btnSpeichernClick(Sender);` am Ende des Rumpfs | Keine Meldung |
+| IH4 | Im Objektinspektor einen Handler mit anderem Namen zuweisen (`SpeichernNeuClick`) | Keine Meldung (bewusster Ersatz) |
+| IH5 | Drei Stufen: Basis setzt OnClick, Mitte erbt ohne eigenes OnClick, Nachfahr wie IH1 | Meldung nennt `TfrmBasisDialog` |
+| IH6 | Vorfahr liegt in einem anderen Ordner (Suchpfad); Vorfahr ohne OnClick; Formular ohne Vererbung | Meldung nur im ersten Fall (Index), sonst keine |
+| IH7 | `"inherited-form-handler-without-inherited": "off"`, `"group:forms": "off"` bzw. `exclude` | Keine Meldung |
+| IH8 | Abgleich: IH1 ausführen und auf Speichern klicken | Die Logik von `TfrmBasisDialog.btnSpeichernClick` läuft nicht; nach IH2 wieder |
+
+## Formular gibt sich im eigenen Ereignis frei (#1057)
+
+Voraussetzung: Server läuft in der IDE mit Projekt; Formular `TfrmMeldung` mit Button `btnOK`.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| FS1 | Das Beispiel aus #1057: `procedure TfrmMeldung.btnOKClick(Sender: TObject); begin Free; end;` | Fehler `self-free-in-event-handler` an `Free`: „Das Formular gibt sich im eigenen Click-Handler frei; die VCL greift danach noch darauf zu.“; im Fenster „Atlas-Prüfung“ und im Befund-Hover (**Abnahme**) |
+| FS2 | Schnellkorrektur „Free durch Release ersetzen“, danach Strg+Z | Zeile wird `Release;`, keine Meldung mehr; ein Undo-Schritt |
+| FS3 | `Self.Free`, `FreeAndNil(Self)`, `frmMeldung.Free`, `Destroy` im Handler; Handler im Code zugewiesen (`btnOK.OnClick := Weiter`) | Je eine Meldung, bei `Weiter` „im eigenen Ereignis-Handler“ |
+| FS4 | In `FormClose(Sender: TObject; var Action: TCloseAction)` `Free;` | Meldung „Close-Handler“, Korrektur „Durch Action := caFree ersetzen“ |
+| FS5 | `Release`, `btnOK.Free`, `Free` in `TThread.ForceQueue(nil, procedure begin Free end)`, `with TStringList.Create do Free`, Methode ohne `Sender`, Rahmen (TFrame) und Datenmodul | Keine Meldung |
+| FS6 | `"self-free-in-event-handler": "off"`, `"group:forms": "off"` bzw. `exclude` | Keine Meldung |
+| FS7 | Abgleich: FS1 ausführen und auf OK klicken | Zugriffsverletzung (bzw. FastMM-Meldung); nach FS2 schließt das Formular sauber |
+
+## Gemeinsame Variable in TParallel.For geschrieben (#1058)
+
+Voraussetzung: Server läuft in der IDE mit Projekt; eine Unit mit `uses System.Threading`.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| PW1 | Das Beispiel aus #1058: lokale `Summe: Integer`, `TParallel.For(0, High(Werte), procedure(I: Integer) begin Summe := Summe + Werte[I]; end);` | Warnung `parallel-for-shared-write` an der Zuweisung: „Summe wird parallel ohne Sperre geschrieben; Additionen gehen verloren.“; im Fenster „Atlas-Prüfung“ und im Befund-Hover (**Abnahme**) |
+| PW2 | Schnellkorrektur „TInterlocked.Add(Summe, Werte[I]) verwenden“, danach Strg+Z | Zeile wird `TInterlocked.Add(Summe, Werte[I]);`, `System.SyncObjs` steht in den uses, keine Meldung mehr; ein Undo-Schritt |
+| PW3 | `Inc(Anzahl)`, `Rest := Rest - Werte[I]`, Feld `FSumme` bzw. globale Variable im Rumpf | Je eine Meldung; Korrekturen `TInterlocked.Increment`, `TInterlocked.Add(Rest, -(Werte[I]))`; bei `Double` Meldung ohne Korrektur |
+| PW4 | `Liste: TList<Integer>`, im Rumpf `if Werte[I] > 0 then Liste.Add(Werte[I]);`, Korrektur „Sperre mit TMonitor um Liste.Add legen“ | Meldung „… verändert (Add); die Sammlung kann beschädigt werden.“; danach `begin System.TMonitor.Enter(Liste); try … finally System.TMonitor.Exit(Liste); end; end` im if-Zweig, übersetzt |
+| PW5 | `for J := 1 to 4 do TTask.Run(procedure begin Inc(FAnzahl) end);` | Meldung; ein einzelner `TTask.Run` außerhalb einer Schleife nicht |
+| PW6 | Eigene Variable der anonymen Methode, `Werte[I] := …`, Rumpf mit `Sperre.Enter … Leave` oder `TMonitor`, Zugriff in `TThread.Synchronize`, geerbtes Feld aus einer anderen Unit | Keine Meldung |
+| PW7 | `TThreadList<Integer>.Add` bzw. `TThreadedQueue.Enqueue`; dann `"threadSafeTypes": []`; dann eigener Typ in `threadSafeTypes` | Erst keine Meldung, mit leerer Liste eine Meldung; eigener Typ bleibt still |
+| PW8 | `"parallel-for-shared-write": "off"`, `"group:threads": "off"` bzw. `exclude` | Keine Meldung |
+
+## Zähler im Thread ohne TInterlocked (#1059)
+
+Voraussetzung: Server läuft in der IDE mit Projekt; eine Unit mit einer Klasse `TArbeiter = class(TThread)` und einer globalen Variablen `GVerarbeitet: Integer`.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| IZ1 | Das Beispiel aus #1059: `procedure TArbeiter.Execute; begin while not Terminated do if Holen then Inc(GVerarbeitet); end;` | Warnung `thread-unsafe-increment` an `Inc(GVerarbeitet)`: „GVerarbeitet wird aus mehreren Threads ohne Sperre erhöht; Inc ist nicht atomar.“; im Fenster „Atlas-Prüfung“ und im Befund-Hover (**Abnahme**) |
+| IZ2 | Schnellkorrektur „TInterlocked.Increment(GVerarbeitet) verwenden“, danach Strg+Z | Zeile wird `TInterlocked.Increment(GVerarbeitet);`, `System.SyncObjs` steht in den uses, keine Meldung mehr; ein Undo-Schritt |
+| IZ3 | `GVerarbeitet := GVerarbeitet + 1`, `Dec(GVerarbeitet)`, `Inc(GVerarbeitet, 5)`; Thread-Klasse über eine Zwischenklasse bzw. mit Vorfahr aus einer anderen Unit | Je eine Meldung; Korrekturen `Increment`, `Decrement`, `TInterlocked.Add(GVerarbeitet, 5)` |
+| IZ4 | In einer Formularmethode `TTask.Run(procedure begin Inc(FAnzahl) end)` bzw. `TThread.CreateAnonymousThread(procedure begin FAnzahl := FAnzahl + 1 end).Start` | Je eine Meldung |
+| IZ5 | `Inc(FEigene)` (Feld des Threads) in Execute, eingefangene lokale Variable eines einzelnen Tasks, Rumpf mit `TMonitor` oder `TInterlocked`, `Inc` in `Synchronize`, `Execute` einer Klasse ohne TThread, `X := X + 2` | Keine Meldung |
+| IZ6 | Task in einer `for`-Schleife mit `Inc(FAnzahl)` | Nur `parallel-for-shared-write`, nicht diese Regel |
+| IZ7 | `"thread-unsafe-increment": "off"`, `"group:threads": "off"` bzw. `exclude` | Keine Meldung |

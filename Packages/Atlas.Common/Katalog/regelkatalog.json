@@ -2422,6 +2422,80 @@
       "level": "T"
     },
     {
+      "id": "form-resource-missing",
+      "name": "Form unit without {$R *.dfm}",
+      "category": "bug",
+      "severity": "error",
+      "group": "forms",
+      "description": "A .dfm or .fmx lies next to the unit and the unit declares the class of its root object, but no {$R …} directive includes a form file: creating the form raises EResNotFound. Conversely, a {$R *.dfm} or {$R Name.dfm} whose file does not exist next to the unit is reported (the compiler stops with F1026). A directive in any branch of conditional compilation counts as included. Silent when the form file's class is not declared in the unit and when the rule cannot see files next to the unit. Quick fix: insert {$R *.dfm} (or {$R *.fmx}) after implementation.",
+      "bad": "implementation\n\nprocedure TfrmKunde.FormShow(Sender: TObject);",
+      "good": "implementation\n\n{$R *.dfm}\n\nprocedure TfrmKunde.FormShow(Sender: TObject);",
+      "compilerCodes": [
+        "F1026"
+      ]
+    },
+    {
+      "id": "form-autocreate-and-manual",
+      "name": "Form created automatically and by hand",
+      "category": "bug",
+      "severity": "warning",
+      "group": "forms",
+      "description": "The .dpr creates a form with Application.CreateForm, and the code also assigns TfrmX.Create(…) to the same global variable. There are then two instances; the first one stays invisible in memory. The automatically created forms come from the .dpr of the project the unit belongs to; when the rule can read the .dpr, the class must match the CreateForm call. Silent when the routine checks the variable (Assigned, comparison with nil) or frees it before (Free, FreeAndNil, Release), for local names and for fields of the own class with the same name, and for units without a project. High confidence. Quick fix: remove the Application.CreateForm line from the .dpr (the form is then only created by the code).",
+      "bad": "// Projekt.dpr: Application.CreateForm(TfrmBericht, frmBericht);\nfrmBericht := TfrmBericht.Create(Application);\nfrmBericht.ShowModal;",
+      "good": "// Projekt.dpr without CreateForm for TfrmBericht\nfrmBericht := TfrmBericht.Create(Application);\nfrmBericht.ShowModal;"
+    },
+    {
+      "id": "inherited-form-handler-without-inherited",
+      "name": "Event handler in an inherited form without inherited",
+      "category": "bug",
+      "severity": "warning",
+      "group": "forms",
+      "description": "With form inheritance, an ancestor form assigns a handler of the same name to the same event of the same component, but the handler in the descendant does not call inherited (any more). The IDE generates inherited; when the handler is created; once it is deleted, the logic of the ancestor is lost silently. The ancestor's form file comes from the index (file of the class) or from the units in the uses clause next to the unit; the chain follows inherited forms up to the first form with object. Handlers with a different name count as a deliberate replacement. Silent without the ancestor's form file. High confidence. Quick fix: insert inherited; at the start.",
+      "bad": "procedure TfrmKundeBearbeiten.btnSpeichernClick(Sender: TObject);\nbegin\n  FKunde.Speichern;\nend;",
+      "good": "procedure TfrmKundeBearbeiten.btnSpeichernClick(Sender: TObject);\nbegin\n  inherited;\n  FKunde.Speichern;\nend;"
+    },
+    {
+      "id": "self-free-in-event-handler",
+      "name": "Form frees itself in its own event",
+      "category": "bug",
+      "severity": "error",
+      "group": "forms",
+      "description": "Free, Destroy, DisposeOf or FreeAndNil on Self, or on the global variable of the form's own class, as a statement in an event handler of the form or one of its controls. After the handler returns, the VCL still accesses the object: access violation. Correct is Release, or Action := caFree in OnClose. Event handlers are the methods named in the form file and methods with a Sender: TObject parameter; a form is the root class of the form file with ClientWidth or ClientHeight, or a class derived directly from TForm or TCustomForm (frames and data modules have no Release). Statements in anonymous methods and with blocks do not count. Silent without the form file. High confidence. Quick fix: replace Free with Release; in OnClose (var Action: TCloseAction) with Action := caFree.",
+      "bad": "procedure TfrmMeldung.btnOKClick(Sender: TObject);\nbegin\n  Free;\nend;",
+      "good": "procedure TfrmMeldung.btnOKClick(Sender: TObject);\nbegin\n  Release;\nend;"
+    },
+    {
+      "id": "parallel-for-shared-write",
+      "name": "Shared variable written in TParallel.For",
+      "category": "bug",
+      "severity": "warning",
+      "group": "threads",
+      "description": "The body of TParallel.For, or of a TTask.Run/Create/Future started inside a loop, writes a variable from outside without a lock: Summe := Summe + …, Inc/Dec or another assignment, or changes a collection from outside (Add, Delete, Clear, Insert, Remove …). The iterations run at the same time, so additions get lost or the list is corrupted. Outside means a local variable or parameter of the enclosing routine, a field of its class or a global variable of the unit; names of unknown origin stay silent. Bodies with a lock (TMonitor, Enter, Acquire, Lock, LockList, BeginWrite, TInterlocked), writes through an index (Werte[I] := …) and nested anonymous methods (Synchronize, Queue) do not count. Types listed in threadSafeTypes count as thread-safe. Medium confidence. Quick fixes: TInterlocked.Add/Increment/Decrement for Integer, Int64 and Cardinal (adds System.SyncObjs), System.TMonitor.Enter/Exit in try … finally around the collection call.",
+      "bad": "TParallel.For(0, High(Werte), procedure(I: Integer)\n  begin\n    Summe := Summe + Werte[I];\n  end);",
+      "good": "TParallel.For(0, High(Werte), procedure(I: Integer)\n  begin\n    TInterlocked.Add(Summe, Werte[I]);\n  end);",
+      "options": [
+        {
+          "name": "threadSafeTypes",
+          "type": "string-list",
+          "default": [
+            "TThreadList",
+            "TThreadedQueue"
+          ],
+          "description": "Types that count as thread-safe; their collection calls stay silent."
+        }
+      ]
+    },
+    {
+      "id": "thread-unsafe-increment",
+      "name": "Counter in a thread without TInterlocked",
+      "category": "bug",
+      "severity": "warning",
+      "group": "threads",
+      "description": "Inc, Dec, X := X + 1 or X := X - 1 without a lock on a global variable in Execute of a TThread descendant, or on a field or global variable in the body of TTask.Run/Create/Future outside loops and of TThread.CreateAnonymousThread. Inc is not atomic: when several threads count at the same time, increments get lost. Thread classes come from the unit (also through intermediate classes) and from the index. Own fields of the thread in Execute and captured local variables of a single task have only one writer and stay silent, as do bodies with a lock (TMonitor, Enter, Acquire, Lock, LockList, BeginWrite, TInterlocked) and nested anonymous methods (Synchronize, Queue). Tasks inside loops and TParallel.For are reported by parallel-for-shared-write. Medium confidence. Quick fix: TInterlocked.Increment/Decrement/Add for Integer, Int64 and Cardinal (adds System.SyncObjs).",
+      "bad": "procedure TArbeiter.Execute;\nbegin\n  while not Terminated do\n    if Holen then Inc(GVerarbeitet);\nend;",
+      "good": "procedure TArbeiter.Execute;\nbegin\n  while not Terminated do\n    if Holen then TInterlocked.Increment(GVerarbeitet);\nend;"
+    },
+    {
       "id": "constant-expression-error",
       "name": "Error in a constant expression",
       "category": "bug",
