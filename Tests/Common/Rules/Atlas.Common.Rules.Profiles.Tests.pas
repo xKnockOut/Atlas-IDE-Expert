@@ -176,19 +176,19 @@ const
     'component-palette-icon,component-setter-without-invalidate,condition-not-boolean,conditional-directive-unbalanced,confusable-identifier,constant-expression-error,' +
     'constructor-on-instance,control-char,create-without-assignment,createprocess-readonly-commandline,dataset-edit-without-post,dataset-loop-without-next,declared-not-implemented,default-parameter-invalid,delimited-text-without-strict,deprecated-symbol,deref-before-nil-check,destroy-called-directly,destroy-without-override,' +
     'dfm-circular-datasource,dfm-control-field-type-mismatch,dfm-duplicate-binding,' +
-    'dfm-master-without-fields,dfm-property,dfm-required-field-without-control,dictionary-get-without-check,dunitx-test-without-assert,duplicate-case-label,duplicate-condition,duplicate-declaration,duplicate-interface-guid,dynamic-array-misuse,' +
-    'empty-except,empty-statement,event-call-without-assigned,except-handler-order,exception-freed,exception-in-destructor,exception-not-raised,field-after-method,field-free-without-nil,field-not-freed,float-equality,for-high-to-low,for-in-not-enumerable,for-variable-after-loop,for-variable-misuse,forbidden-uses,' +
+    'dfm-master-without-fields,dfm-property,dfm-required-field-without-control,dictionary-get-without-check,dunitx-test-without-assert,duplicate-assignment,duplicate-case-label,duplicate-condition,duplicate-declaration,duplicate-interface-guid,dynamic-array-misuse,' +
+    'empty-except,empty-statement,equals-without-gethashcode,event-call-without-assigned,except-handler-order,exception-freed,exception-in-destructor,exception-not-raised,field-after-method,field-free-without-nil,field-not-freed,float-equality,for-high-to-low,for-in-not-enumerable,for-variable-after-loop,for-variable-misuse,forbidden-uses,' +
     'foreign-form-control-access,form-access-before-create,form-field-type-mismatch,form-field-without-object,' +
-    'form-object-without-field,format-without-settings,generic-constraint-violated,generic-exception-raised,hides-virtual,' +
-    'hresult-integer-mix,ifthen-side-effect,implemented-not-declared,implicit-package-import,inherited-abstract-call,int32-mul-overflow,interface-guid,interface-not-implemented,' +
+    'form-object-without-field,format-without-settings,generic-constraint-violated,generic-exception-raised,getter-side-effect,hides-virtual,' +
+    'hresult-integer-mix,ifthen-side-effect,implemented-not-declared,implicit-package-import,inherited-abstract-call,inherited-order,inherited-wrong-method,int32-mul-overflow,interface-guid,interface-not-implemented,' +
     'invalid-var-argument,invisible-char,jump-outside-allowed-scope,label-misuse,' +
     'local-routine-as-callback,lock-without-finally,loop-off-by-one,managed-type-raw-memory,message-handler-without-inherited,metric-class-size,metric-cognitive-complexity,metric-cyclomatic-complexity,' +
     'metric-method-length,metric-nesting-depth,metric-parameter-count,metric-unit-length,metric-uses-count,missing-inherited,null-compare,operator-precedence,ota-notifier-not-removed,out-param-read,overload-directive-missing,override-target-missing,owned-field-free-unclear,owned-item-freed,pair-without-finally,pchar-of-temporary,' +
-    'possibly-uninitialized,processmessages-in-loop,property-accessor-invalid,queue-nil-in-package,raise-in-finally,readonly-property-assigned,redundant-assigned-free,reraise-exception-object,reraise-outside-handler,' +
+    'possibly-uninitialized,processmessages-in-loop,property-accessor-invalid,queue-nil-in-package,raise-in-finally,raw-memory-leak,readonly-property-assigned,redundant-assigned-free,reraise-exception-object,reraise-outside-handler,' +
     'result-not-set,' +
     'security-command-injection,security-insecure-http,security-insecure-random,security-sql-injection,' +
     'security-tls-verification-disabled,security-weak-crypto,self-as-interface-in-constructor,self-assignment,setter-recursion,shadowed-name,signature-mismatch,signed-unsigned-mix,sizeof-pointer,' +
-    'slash-command,sql-write-without-where,string-index-base,string-length-limit,stringlist-unsorted,synchronize-in-destructor,task-exception-unobserved,thread-free-with-free-on-terminate,thread-loop-without-terminated,thread-resume-suspend,' +
+    'slash-command,sql-write-without-where,string-index-base,string-length-limit,stringlist-objects-leak,stringlist-unsorted,synchronize-in-destructor,task-exception-unobserved,thread-free-with-free-on-terminate,thread-loop-without-terminated,thread-resume-suspend,' +
     'thread-use-after-free-on-terminate,thread-vcl-access,threadvar-managed,transaction-without-rollback,type-used-before-declaration,typed-constant-modified,' +
     'unchecked-conversion,unchecked-enum-cast,unneeded-forward-declaration,unreachable-code,unresolved-attribute,unresolved-identifier,unresolved-type,' +
     'unused-assignment,unused-local,unused-parameter,use-after-free,uses-unit-not-found,virtual-instead-of-override,with-statement,' +
@@ -208,13 +208,13 @@ begin
     'component-missing-inherited,condition-not-boolean,conditional-directive-unbalanced,constant-expression-error,constructor-on-instance,control-char,create-without-assignment,createprocess-readonly-commandline,dataset-edit-without-post,dataset-loop-without-next,declared-not-implemented,default-parameter-invalid,delimited-text-without-strict,' +
     'deref-before-nil-check,destroy-called-directly,destroy-without-override,dfm-circular-datasource,dfm-control-field-type-mismatch,' +
     'dfm-duplicate-binding,dfm-master-without-fields,dfm-required-field-without-control,dictionary-get-without-check,' +
-    'duplicate-case-label,duplicate-condition,duplicate-declaration,duplicate-interface-guid,dynamic-array-misuse,empty-statement,event-call-without-assigned,except-handler-order,exception-freed,exception-in-destructor,exception-not-raised,field-after-method,field-free-without-nil,field-not-freed,float-equality,for-high-to-low,for-in-not-enumerable,for-variable-after-loop,for-variable-misuse,' +
+    'duplicate-assignment,duplicate-case-label,duplicate-condition,duplicate-declaration,duplicate-interface-guid,dynamic-array-misuse,empty-statement,equals-without-gethashcode,event-call-without-assigned,except-handler-order,exception-freed,exception-in-destructor,exception-not-raised,field-after-method,field-free-without-nil,field-not-freed,float-equality,for-high-to-low,for-in-not-enumerable,for-variable-after-loop,for-variable-misuse,' +
     'form-access-before-create,form-field-type-mismatch,form-field-without-object,form-object-without-field,generic-constraint-violated,hides-virtual,' +
-    'hresult-integer-mix,ifthen-side-effect,implemented-not-declared,inherited-abstract-call,int32-mul-overflow,interface-guid,interface-not-implemented,invalid-var-argument,jump-outside-allowed-scope,label-misuse,local-routine-as-callback,lock-without-finally,loop-off-by-one,managed-type-raw-memory,message-handler-without-inherited,' +
+    'hresult-integer-mix,ifthen-side-effect,implemented-not-declared,inherited-abstract-call,inherited-order,inherited-wrong-method,int32-mul-overflow,interface-guid,interface-not-implemented,invalid-var-argument,jump-outside-allowed-scope,label-misuse,local-routine-as-callback,lock-without-finally,loop-off-by-one,managed-type-raw-memory,message-handler-without-inherited,' +
     'missing-inherited,operator-precedence,ota-notifier-not-removed,out-param-read,overload-directive-missing,override-target-missing,owned-field-free-unclear,owned-item-freed,pair-without-finally,pchar-of-temporary,' +
-    'possibly-uninitialized,property-accessor-invalid,queue-nil-in-package,raise-in-finally,readonly-property-assigned,reraise-outside-handler,result-not-set,security-command-injection,' +
+    'possibly-uninitialized,property-accessor-invalid,queue-nil-in-package,raise-in-finally,raw-memory-leak,readonly-property-assigned,reraise-outside-handler,result-not-set,security-command-injection,' +
     'security-sql-injection,security-tls-verification-disabled,self-as-interface-in-constructor,self-assignment,setter-recursion,signature-mismatch,signed-unsigned-mix,sizeof-pointer,' +
-    'sql-write-without-where,string-index-base,string-length-limit,stringlist-unsorted,synchronize-in-destructor,thread-free-with-free-on-terminate,thread-loop-without-terminated,' +
+    'sql-write-without-where,string-index-base,string-length-limit,stringlist-objects-leak,stringlist-unsorted,synchronize-in-destructor,thread-free-with-free-on-terminate,thread-loop-without-terminated,' +
     'thread-use-after-free-on-terminate,' +
     'thread-vcl-access,threadvar-managed,transaction-without-rollback,type-used-before-declaration,typed-constant-modified,unchecked-conversion,unchecked-enum-cast,unreachable-code,unresolved-attribute,unresolved-identifier,unresolved-type,use-after-free,uses-unit-not-found,' +
     'virtual-instead-of-override,writeln-in-gui-app',
@@ -225,7 +225,7 @@ begin
     ActiveRules('security'));
   Assert.AreEqual('blocking-call-in-main-thread,bool-compare,boolean-assign-if,case-insensitive-compare,commented-out-code,component-fixed-pixels,component-hardcoded-color,component-palette-icon,' +
     'component-setter-without-invalidate,deprecated-symbol,dfm-property,dunitx-test-without-assert,empty-except,forbidden-uses,' +
-    'foreign-form-control-access,format-without-settings,generic-exception-raised,implicit-package-import,' +
+    'foreign-form-control-access,format-without-settings,generic-exception-raised,getter-side-effect,implicit-package-import,' +
     'metric-class-size,metric-cognitive-complexity,metric-cyclomatic-complexity,metric-method-length,' +
     'metric-nesting-depth,metric-parameter-count,metric-unit-length,metric-uses-count,' +
     'null-compare,processmessages-in-loop,redundant-assigned-free,reraise-exception-object,shadowed-name,slash-command,task-exception-unobserved,thread-resume-suspend,unneeded-forward-declaration,' +

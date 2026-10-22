@@ -1,6 +1,14 @@
 ﻿unit Atlas.Common.Rules.Builtin.Components.Tests;
 
 // Tests für die Komponentenregeln (#55, Teil A) und missing-inherited (#919) sowie message-handler-without-inherited (#949).
+// inherited-order (#1049): Destruktor mit Korrektur, Threads, Konstruktor mit geerbter Property, stille Fälle,
+// Abschalten.
+// inherited-wrong-method (#1050): Beispiel mit Korrektur, Argumente, Option allowed samt Parser, stille Fälle,
+// Abschalten.
+// getter-side-effect (#1052): Beispiel, Arten der Änderung, geerbte Felder, Lazy-Initialisierung mit Option
+// allowLazyInit samt Parser, stille Fälle, Abschalten.
+// equals-without-gethashcode (#1053): Beispiel mit Korrektur, Gegenrichtung, Vorfahren, Records als Schlüssel,
+// Hashausdrücke, Abschalten.
 
 interface
 
@@ -60,6 +68,72 @@ type
     procedure MessageHandlerConsequences;
     [Test]
     procedure MessageHandlerSwallowOffAndExclude;
+  end;
+
+  [TestFixture]
+  TInheritedOrderTests = class
+  public
+    [Test]
+    procedure DestructorIssueExampleWithFix;
+    [Test]
+    procedure DestructorSilentCases;
+    [Test]
+    procedure ConstructorAccessBeforeInherited;
+    [Test]
+    procedure ConstructorSilentCases;
+    [Test]
+    procedure OffAndExclude;
+  end;
+
+  [TestFixture]
+  TInheritedWrongMethodTests = class
+  public
+    [Test]
+    procedure IssueExampleWithFix;
+    [Test]
+    procedure ArgumentsDecideFix;
+    [Test]
+    procedure SilentCases;
+    [Test]
+    procedure AllowedOption;
+    [Test]
+    procedure OffAndExclude;
+  end;
+
+  [TestFixture]
+  TGetterSideEffectTests = class
+  public
+    [Test]
+    procedure IssueExample;
+    [Test]
+    procedure KindsOfChange;
+    [Test]
+    procedure InheritedField;
+    [Test]
+    procedure LazyInitOption;
+    [Test]
+    procedure SilentCases;
+    [Test]
+    procedure OffAndExclude;
+  end;
+
+  [TestFixture]
+  TEqualsWithoutGetHashCodeTests = class
+  public
+    [Test]
+    procedure IssueExampleWithFix;
+    [Test]
+    procedure GetHashCodeWithoutEquals;
+    [Test]
+    procedure AncestorsAndSilentCases;
+    [Test]
+    procedure FixNeedsEqualsBodyWithFields;
+    [Test]
+    procedure RecordKeys;
+    [Test]
+    procedure HashExpressions;
+    [Test]
+    procedure OffAndExclude;
   end;
 
 implementation
@@ -541,7 +615,488 @@ begin
   Assert.AreEqual(1, Integer(Length(Issues)));
 end;
 
+{ TInheritedOrderTests }
+
+/// <summary>TExport erbt von TBasisExport (Property Name); ACtor und ADtor sind die Rümpfe.</summary>
+function Exporte(const AParent, ACtor, ADtor: string): string;
+begin
+  Result := 'unit Exporte;'#10'interface'#10'type'#10'  TBasisExport = class'#10'  private'#10 +
+    '    FName: string;'#10'  public'#10'    constructor Create(const AName: string);'#10 +
+    '    destructor Destroy; override;'#10'    property Name: string read FName write FName;'#10'  end;'#10 +
+    '  TExport = class(' + AParent + ')'#10'  private'#10'    FDatei, FPuffer: TObject;'#10'  public'#10 +
+    '    constructor Create;'#10'    destructor Destroy; override;'#10'  end;'#10'implementation'#10 +
+    'constructor TBasisExport.Create(const AName: string);'#10'begin'#10'end;'#10 +
+    'destructor TBasisExport.Destroy;'#10'begin'#10'  inherited;'#10'end;'#10 +
+    'constructor TExport.Create;'#10'begin'#10 + ACtor + 'end;'#10 +
+    'destructor TExport.Destroy;'#10'begin'#10 + ADtor + 'end;'#10'end.';
+end;
+
+procedure TInheritedOrderTests.DestructorIssueExampleWithFix;
+var
+  Source, Fixed: string;
+  Findings: TArray<TRuleFinding>;
+begin
+  Source := Exporte('TBasisExport', '  inherited Create(''x'');'#10, '  inherited;'#10'  FDatei.Free;'#10);
+  Findings := TRuleAssert.Findings(TInheritedOrderRule.Create, Source);
+  Assert.AreEqual(1, Integer(Length(Findings)));
+  Assert.AreEqual('inherited-order', Findings[0].RuleId);
+  Assert.AreEqual('inherited vor dem Freigeben der eigenen Felder; der Vorfahr kann noch auf FDatei zugreifen.',
+    Findings[0].Message);
+  Assert.AreEqual(Ord(TRuleConfidence.Medium), Ord(Findings[0].Confidence));
+  Assert.AreEqual(32, Findings[0].Range.StartPos.Line);
+  Assert.AreEqual('inherited an das Ende des Destruktors verschieben', Findings[0].Fixes[0].Title);
+  Fixed := ApplyFix(Source, Findings[0].Fixes[0]);
+  Assert.AreEqual(Exporte('TBasisExport', '  inherited Create(''x'');'#10, '  FDatei.Free;'#10'  inherited;'#10), Fixed);
+  TRuleAssert.Silent(TInheritedOrderRule.Create, Fixed);
+  // FreeAndNil, Self. und inherited Destroy ebenso.
+  TRuleAssert.Reports(TInheritedOrderRule.Create, Exporte('TBasisExport', '',
+    '  inherited Destroy;'#10'  if True then'#10'    FreeAndNil(Self.FPuffer);'#10));
+end;
+
+procedure TInheritedOrderTests.DestructorSilentCases;
+begin
+  // Richtige Reihenfolge, fremde Objekte, inherited in try/finally.
+  TRuleAssert.Silent(TInheritedOrderRule.Create, Exporte('TBasisExport', '', '  FDatei.Free;'#10'  inherited;'#10));
+  TRuleAssert.Silent(TInheritedOrderRule.Create, Exporte('TBasisExport', '', '  inherited;'#10'  Protokoll.Free;'#10));
+  TRuleAssert.Silent(TInheritedOrderRule.Create, Exporte('TBasisExport', '',
+    '  try'#10'    FDatei.Free;'#10'  finally'#10'    inherited;'#10'  end;'#10));
+  // Threads warten in Destroy auf das Ende von Execute: dort gehört inherited an den Anfang.
+  TRuleAssert.Silent(TInheritedOrderRule.Create, Exporte('TThread', '', '  inherited;'#10'  FDatei.Free;'#10));
+end;
+
+procedure TInheritedOrderTests.ConstructorAccessBeforeInherited;
+var
+  Source, Fixed: string;
+  Findings: TArray<TRuleFinding>;
+begin
+  Source := Exporte('TBasisExport', '  Name := ''Export'';'#10'  inherited Create(''x'');'#10, '  inherited;'#10);
+  Findings := TRuleAssert.Findings(TInheritedOrderRule.Create, Source);
+  Assert.AreEqual(1, Integer(Length(Findings)));
+  Assert.AreEqual('Create greift vor inherited auf Name aus TBasisExport zu; der Vorfahr ist noch nicht angelegt.',
+    Findings[0].Message);
+  Assert.AreEqual(28, Findings[0].Range.StartPos.Line);
+  Assert.AreEqual('inherited an den Anfang des Konstruktors verschieben', Findings[0].Fixes[0].Title);
+  Fixed := ApplyFix(Source, Findings[0].Fixes[0]);
+  Assert.AreEqual(Exporte('TBasisExport', '  inherited Create(''x'');'#10'  Name := ''Export'';'#10, '  inherited;'#10),
+    Fixed);
+  TRuleAssert.Silent(TInheritedOrderRule.Create, Fixed);
+  // Self.FName ebenso; inherited Create mit vorher gesetzter lokaler Variable: ohne Korrektur.
+  Findings := TRuleAssert.Findings(TInheritedOrderRule.Create, StringReplace(Exporte('TBasisExport',
+    '  Text := Self.FName;'#10'  inherited Create(Text);'#10, ''), 'constructor TExport.Create;'#10'begin',
+    'constructor TExport.Create;'#10'var'#10'  Text: string;'#10'begin', []));
+  Assert.AreEqual(1, Integer(Length(Findings)));
+  Assert.AreEqual(0, Integer(Length(Findings[0].Fixes)));
+end;
+
+procedure TInheritedOrderTests.ConstructorSilentCases;
+begin
+  // Eigene Felder vor inherited setzen ist üblich und erlaubt.
+  TRuleAssert.Silent(TInheritedOrderRule.Create, Exporte('TBasisExport',
+    '  FDatei := nil;'#10'  inherited Create(''x'');'#10'  Name := ''Export'';'#10, ''));
+  // Parameter, lokale Variablen und unbekannte Vorfahren.
+  TRuleAssert.Silent(TInheritedOrderRule.Create, Exporte('TUnbekannt',
+    '  Name := ''Export'';'#10'  inherited Create(''x'');'#10, ''));
+  TRuleAssert.Silent(TInheritedOrderRule.Create, StringReplace(Exporte('TBasisExport',
+    '  Name := ''Export'';'#10'  inherited Create(Name);'#10, ''), 'constructor TExport.Create;'#10'begin',
+    'constructor TExport.Create;'#10'var'#10'  Name: string;'#10'begin', []));
+end;
+
+procedure TInheritedOrderTests.OffAndExclude;
+var
+  Source: string;
+begin
+  Source := Exporte('TBasisExport', '', '  inherited;'#10'  FDatei.Free;'#10);
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TInheritedOrderRule.Create, Source,
+    '{"rules": {"inherited-order": "off"}}', 'Source/Exporte.pas'))));
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TInheritedOrderRule.Create, Source,
+    '{"rules": {"inherited-order": {"exclude": ["Source/*.pas"]}}}', 'Source/Exporte.pas'))));
+end;
+
+{ TInheritedWrongMethodTests }
+
+/// <summary>TKundenForm überschreibt Speichern und Laden von TBasisForm; ADecl ergänzt die Klasse.</summary>
+function Kundenform(const ABody, ADecl, AMore: string): string;
+begin
+  Result := 'unit Kundenform;'#10'interface'#10'type'#10'  TBasisForm = class'#10'  public'#10 +
+    '    procedure Speichern; virtual;'#10'    procedure Laden; virtual;'#10 +
+    '    procedure Schreiben(const AName: string); virtual;'#10'  end;'#10 +
+    '  TKundenForm = class(TBasisForm)'#10'  public'#10'    procedure Speichern; override;'#10 +
+    '    procedure Laden; override;'#10 + ADecl + '  end;'#10'implementation'#10 +
+    'procedure TKundenForm.Speichern;'#10'begin'#10 + ABody + 'end;'#10 +
+    'procedure TKundenForm.Laden;'#10'begin'#10'  inherited;'#10'end;'#10 + AMore + 'end.';
+end;
+
+procedure TInheritedWrongMethodTests.IssueExampleWithFix;
+var
+  Source, Fixed: string;
+  Findings: TArray<TRuleFinding>;
+begin
+  Source := Kundenform('  inherited Laden;'#10'  Protokollieren;'#10, '', '');
+  Findings := TRuleAssert.Findings(TInheritedWrongMethodRule.Create, Source);
+  Assert.AreEqual(1, Integer(Length(Findings)));
+  Assert.AreEqual('inherited-wrong-method', Findings[0].RuleId);
+  Assert.AreEqual('Speichern ruft inherited Laden auf; gemeint ist vermutlich inherited Speichern.',
+    Findings[0].Message);
+  Assert.AreEqual(Ord(TRuleConfidence.High), Ord(Findings[0].Confidence));
+  Assert.AreEqual(17, Findings[0].Range.StartPos.Line);
+  Assert.AreEqual('inherited Speichern aufrufen', Findings[0].Fixes[0].Title);
+  Fixed := ApplyFix(Source, Findings[0].Fixes[0]);
+  Assert.AreEqual(Kundenform('  inherited Speichern;'#10'  Protokollieren;'#10, '', ''), Fixed);
+  TRuleAssert.Silent(TInheritedWrongMethodRule.Create, Fixed);
+end;
+
+procedure TInheritedWrongMethodTests.ArgumentsDecideFix;
+var
+  Findings: TArray<TRuleFinding>;
+begin
+  // Andere Zahl an Argumenten als Parameter: Meldung ohne Korrektur.
+  Findings := TRuleAssert.Findings(TInheritedWrongMethodRule.Create,
+    Kundenform('  inherited Schreiben(''x'');'#10, '', ''));
+  Assert.AreEqual(1, Integer(Length(Findings)));
+  Assert.AreEqual(0, Integer(Length(Findings[0].Fixes)));
+  // Gleiche Zahl: Korrektur behält die Argumente.
+  Findings := TRuleAssert.Findings(TInheritedWrongMethodRule.Create, Kundenform('  inherited;'#10,
+    '    procedure Schreiben(const AName: string); override;'#10,
+    'procedure TKundenForm.Schreiben(const AName: string);'#10'begin'#10'  inherited Laden;'#10 +
+    '  inherited Speichern();'#10'end;'#10));
+  Assert.AreEqual(2, Integer(Length(Findings)));
+  Assert.AreEqual(0, Integer(Length(Findings[0].Fixes)));
+  Assert.AreEqual(0, Integer(Length(Findings[1].Fixes)));
+end;
+
+procedure TInheritedWrongMethodTests.SilentCases;
+begin
+  // Ruft auch sich selbst geerbt auf: der zweite Aufruf ist gewollt.
+  TRuleAssert.Silent(TInheritedWrongMethodRule.Create, Kundenform('  inherited;'#10'  inherited Laden;'#10, '', ''));
+  // Property über inherited ohne Klammern, nicht überschriebene Methode, Konstruktoren.
+  TRuleAssert.Silent(TInheritedWrongMethodRule.Create, Kundenform('  inherited;'#10'  X := inherited Caption;'#10,
+    '', ''));
+  TRuleAssert.Silent(TInheritedWrongMethodRule.Create, Kundenform('  inherited;'#10,
+    '    procedure Neu;'#10'    constructor Create;'#10, 'procedure TKundenForm.Neu;'#10'begin'#10 +
+    '  inherited Laden;'#10'end;'#10'constructor TKundenForm.Create;'#10'begin'#10'  inherited CreateNew(nil);'#10 +
+    'end;'#10));
+end;
+
+procedure TInheritedWrongMethodTests.AllowedOption;
+var
+  Source: string;
+  Issues: TArray<TConfigurationIssue>;
+begin
+  Source := Kundenform('  inherited Laden;'#10, '', '');
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TInheritedWrongMethodRule.Create, Source,
+    '{"rules": {"inherited-wrong-method": {"allowed": ["Speichern>Laden"]}}}'))));
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TInheritedWrongMethodRule.Create, Source,
+    '{"rules": {"inherited-wrong-method": {"allowed": ["Speich*>*"]}}}'))));
+  Assert.AreEqual(1, Integer(Length(TRuleAssert.Findings(TInheritedWrongMethodRule.Create, Source,
+    '{"rules": {"inherited-wrong-method": {"allowed": ["Laden>Speichern"]}}}'))));
+  Assert.IsTrue(TInheritedWrongMethodRule.Allowed(['Speichern > Laden'], 'Speichern', 'Laden'));
+  Assert.IsFalse(TInheritedWrongMethodRule.Allowed(['Speichern'], 'Speichern', 'Laden'));
+  // Der Parser verlangt hier Texte, bei magic-number weiter Zahlen.
+  TConfigurationParser.Parse('{"rules": {"inherited-wrong-method": {"allowed": [1]}}}', Issues);
+  Assert.AreEqual(1, Integer(Length(Issues)));
+  Assert.AreEqual('"allowed" muss eine Liste von Texten sein', Issues[0].Message);
+  TConfigurationParser.Parse('{"rules": {"inherited-wrong-method": {"allowed": ["A>B"]}}}', Issues);
+  Assert.AreEqual(0, Integer(Length(Issues)));
+  TConfigurationParser.Parse('{"rules": {"magic-number": {"allowed": ["A>B"]}}}', Issues);
+  Assert.AreEqual(1, Integer(Length(Issues)));
+end;
+
+procedure TInheritedWrongMethodTests.OffAndExclude;
+var
+  Source: string;
+begin
+  Source := Kundenform('  inherited Laden;'#10, '', '');
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TInheritedWrongMethodRule.Create, Source,
+    '{"rules": {"inherited-wrong-method": "off"}}', 'Source/Kundenform.pas'))));
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TInheritedWrongMethodRule.Create, Source,
+    '{"rules": {"inherited-wrong-method": {"exclude": ["Source/*.pas"]}}}', 'Source/Kundenform.pas'))));
+end;
+
+{ TGetterSideEffectTests }
+
+/// <summary>TZaehler mit Getter GetWert (Rumpf ABody, Variablen AVars) und GetListe (Rumpf AListe).</summary>
+function Zaehler(const ABody, AVars, AListe: string): string;
+begin
+  Result := 'unit Zaehler;'#10'interface'#10'type'#10'  TZaehler = class'#10'  private'#10 +
+    '    FWert, FAbrufe: Integer;'#10'    FListe: TList;'#10'    function GetWert: Integer;'#10 +
+    '    function GetListe: TList;'#10'  public'#10'    property Wert: Integer read GetWert;'#10 +
+    '    property Liste: TList read GetListe;'#10'  end;'#10'implementation'#10 +
+    'function TZaehler.GetWert: Integer;'#10 + AVars + 'begin'#10 + ABody + 'end;'#10 +
+    'function TZaehler.GetListe: TList;'#10'begin'#10 + AListe + 'end;'#10'end.';
+end;
+
+function GetterFindings(const ASource: string; const AConfig: string = ''): TArray<TRuleFinding>;
+begin
+  Result := TRuleAssert.Findings(TGetterSideEffectRule.Create, ASource, AConfig);
+end;
+
+procedure TGetterSideEffectTests.IssueExample;
+var
+  Findings: TArray<TRuleFinding>;
+begin
+  Findings := GetterFindings(Zaehler('  Inc(FAbrufe);'#10'  Result := FWert;'#10, '', '  Result := FListe;'#10));
+  Assert.AreEqual(1, Integer(Length(Findings)));
+  Assert.AreEqual('getter-side-effect', Findings[0].RuleId);
+  Assert.AreEqual('Der Getter GetWert verändert FAbrufe; schon das Anzeigen im Debugger ändert den Zustand.',
+    Findings[0].Message);
+  Assert.AreEqual(Ord(TRuleSeverity.Warning), Ord(Findings[0].Severity));
+  Assert.AreEqual(Ord(TRuleConfidence.Medium), Ord(Findings[0].Confidence));
+  Assert.AreEqual(16, Findings[0].Range.StartPos.Line);
+  Assert.AreEqual(6, Findings[0].Range.StartPos.Character);
+  Assert.AreEqual(0, Integer(Length(Findings[0].Fixes)));
+  // Die korrigierte Form ist still.
+  TRuleAssert.Silent(TGetterSideEffectRule.Create, Zaehler('  Result := FWert;'#10, '', '  Result := FListe;'#10));
+end;
+
+procedure TGetterSideEffectTests.KindsOfChange;
+var
+  Findings: TArray<TRuleFinding>;
+begin
+  // Zuweisung (auch über Self.), Dec, neu angelegtes Objekt an eine Methode eines Felds; je Feld eine Meldung.
+  Findings := GetterFindings(Zaehler('  Self.FWert := FWert + 1;'#10'  Dec(FAbrufe);'#10'  Dec(FAbrufe);'#10 +
+    '  Result := FWert;'#10, '', '  FListe.Add(TObject.Create);'#10'  Result := FListe;'#10));
+  Assert.AreEqual(3, Integer(Length(Findings)));
+  Assert.AreEqual('Der Getter GetWert verändert FWert; schon das Anzeigen im Debugger ändert den Zustand.',
+    Findings[0].Message);
+  Assert.AreEqual(16, Findings[0].Range.StartPos.Line);
+  Assert.AreEqual('Der Getter GetWert verändert FAbrufe; schon das Anzeigen im Debugger ändert den Zustand.',
+    Findings[1].Message);
+  Assert.AreEqual('Der Getter GetListe verändert FListe; schon das Anzeigen im Debugger ändert den Zustand.',
+    Findings[2].Message);
+  // Ein if ohne Prüfung des Zugewiesenen ist keine Lazy-Initialisierung.
+  Assert.AreEqual(1, Integer(Length(GetterFindings(Zaehler('  if FWert > 0 then'#10'    Inc(FAbrufe);'#10 +
+    '  Result := FWert;'#10, '', '  Result := FListe;'#10)))));
+end;
+
+procedure TGetterSideEffectTests.InheritedField;
+var
+  Source: string;
+begin
+  Source := StringReplace(Zaehler('  Inc(FZugriffe);'#10'  Result := FWert;'#10, '', '  Result := FListe;'#10),
+    '  TZaehler = class'#10, '  TBasis = class'#10'  protected'#10'    FZugriffe: Integer;'#10'  end;'#10 +
+    '  TZaehler = class(TBasis)'#10, []);
+  Assert.AreEqual('Der Getter GetWert verändert FZugriffe; schon das Anzeigen im Debugger ändert den Zustand.',
+    GetterFindings(Source)[0].Message);
+end;
+
+procedure TGetterSideEffectTests.LazyInitOption;
+var
+  Plain, Assigned_, ViaResult: string;
+  Issues: TArray<TConfigurationIssue>;
+begin
+  Plain := Zaehler('  Result := FWert;'#10, '', '  if FListe = nil then'#10'    FListe := TList.Create;'#10 +
+    '  Result := FListe;'#10);
+  Assigned_ := Zaehler('  Result := FWert;'#10, '', '  if not Assigned(FListe) then'#10'  begin'#10 +
+    '    FListe := TList.Create;'#10'    FListe.Add(TObject.Create);'#10'  end;'#10'  Result := FListe;'#10);
+  ViaResult := Zaehler('  Result := FWert;'#10, '', '  Result := FListe;'#10'  if Result = nil then'#10 +
+    '  begin'#10'    Result := TList.Create;'#10'    FListe := Result;'#10'  end;'#10);
+  TRuleAssert.Silent(TGetterSideEffectRule.Create, Plain);
+  TRuleAssert.Silent(TGetterSideEffectRule.Create, Assigned_);
+  TRuleAssert.Silent(TGetterSideEffectRule.Create, ViaResult);
+  // Zwischenspeicher mit Merker: if FAbrufe = 0 then begin FWert := …; FAbrufe := 1; end.
+  TRuleAssert.Silent(TGetterSideEffectRule.Create, Zaehler('  if FAbrufe = 0 then'#10'  begin'#10 +
+    '    FWert := 42;'#10'    FAbrufe := 1;'#10'  end;'#10'  Result := FWert;'#10, '', '  Result := FListe;'#10));
+  // Mit allowLazyInit = false wird auch sie gemeldet.
+  Assert.AreEqual(1, Integer(Length(GetterFindings(Plain,
+    '{"rules": {"getter-side-effect": {"allowLazyInit": false}}}'))));
+  Assert.AreEqual(1, Integer(Length(GetterFindings(Assigned_,
+    '{"rules": {"getter-side-effect": {"allowLazyInit": false}}}'))));
+  Assert.AreEqual(1, Integer(Length(GetterFindings(ViaResult,
+    '{"rules": {"getter-side-effect": {"allowLazyInit": false}}}'))));
+  TConfigurationParser.Parse('{"rules": {"getter-side-effect": {"allowLazyInit": "ja"}}}', Issues);
+  Assert.AreEqual(1, Integer(Length(Issues)));
+  Assert.AreEqual('"allowLazyInit" muss true oder false sein', Issues[0].Message);
+  TConfigurationParser.Parse('{"rules": {"getter-side-effect": {"allowLazyInit": false}}}', Issues);
+  Assert.AreEqual(0, Integer(Length(Issues)));
+end;
+
+procedure TGetterSideEffectTests.SilentCases;
+begin
+  // Lokale Variable mit Feldnamen, Result, Methoden ohne Property, anonyme Methoden.
+  TRuleAssert.Silent(TGetterSideEffectRule.Create, Zaehler('  FAbrufe := 1;'#10'  Result := FAbrufe;'#10,
+    'var'#10'  FAbrufe: Integer;'#10, '  Result := FListe;'#10));
+  TRuleAssert.Silent(TGetterSideEffectRule.Create, StringReplace(Zaehler('  Result := FWert;'#10, '',
+    '  Result := FListe;'#10), 'end;'#10'end.', 'end;'#10'procedure TZaehler.Zaehlen;'#10'begin'#10 +
+    '  Inc(FAbrufe);'#10'end;'#10'end.', []));
+  TRuleAssert.Silent(TGetterSideEffectRule.Create, Zaehler('  Ausfuehren(procedure begin Inc(FAbrufe); end);'#10 +
+    '  Result := FWert;'#10, '', '  Result := FListe;'#10));
+  // Methode eines Felds mit Argument, das nichts anlegt.
+  TRuleAssert.Silent(TGetterSideEffectRule.Create, Zaehler('  Result := FListe.IndexOf(nil);'#10, '',
+    '  Result := FListe;'#10));
+end;
+
+procedure TGetterSideEffectTests.OffAndExclude;
+var
+  Source: string;
+begin
+  Source := Zaehler('  Inc(FAbrufe);'#10'  Result := FWert;'#10, '', '  Result := FListe;'#10);
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TGetterSideEffectRule.Create, Source,
+    '{"rules": {"getter-side-effect": "off"}}', 'Source/Zaehler.pas'))));
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TGetterSideEffectRule.Create, Source,
+    '{"rules": {"getter-side-effect": {"exclude": ["Source/*.pas"]}}}', 'Source/Zaehler.pas'))));
+end;
+
+{ TEqualsWithoutGetHashCodeTests }
+
+/// <summary>TKundenNr überschreibt Equals über FNummer und FName; AMembers ergänzt die Klasse, AMore die
+/// Implementierung, AParent den Vorfahren ('' = keiner).</summary>
+function KundenNr(const AMembers, AMore, AParent: string): string;
+var
+  Parent: string;
+begin
+  Parent := '';
+  if AParent <> '' then
+    Parent := '(' + AParent + ')';
+  Result := 'unit Kunden;'#10'interface'#10'uses'#10'  System.SysUtils;'#10'type'#10 +
+    '  TKundenNr = class' + Parent + #10'  private'#10'    FNummer: Integer;'#10'    FName: string;'#10'  public'#10 +
+    '    function Equals(Obj: TObject): Boolean; override;'#10 + AMembers + '  end;'#10'implementation'#10 +
+    'function TKundenNr.Equals(Obj: TObject): Boolean;'#10'begin'#10 +
+    '  Result := (Obj is TKundenNr) and (TKundenNr(Obj).FNummer = FNummer) and SameText(TKundenNr(Obj).FName, FName);'#10 +
+    'end;'#10 + AMore + 'end.';
+end;
+
+function HashFindings(const ASource: string; const AConfig: string = ''; const APath: string = ''):
+  TArray<TRuleFinding>;
+begin
+  Result := TRuleAssert.Findings(TEqualsWithoutGetHashCodeRule.Create, ASource, AConfig, APath);
+end;
+
+procedure TEqualsWithoutGetHashCodeTests.IssueExampleWithFix;
+var
+  Source, Fixed: string;
+  Findings: TArray<TRuleFinding>;
+begin
+  Source := KundenNr('', '', '');
+  Findings := HashFindings(Source);
+  Assert.AreEqual(1, Integer(Length(Findings)));
+  Assert.AreEqual('equals-without-gethashcode', Findings[0].RuleId);
+  Assert.AreEqual('Equals ist überschrieben, GetHashCode nicht; als Schlüssel in TDictionary finden sich gleiche ' +
+    'Objekte nicht.', Findings[0].Message);
+  Assert.AreEqual(Ord(TRuleSeverity.Warning), Ord(Findings[0].Severity));
+  Assert.AreEqual(Ord(TRuleConfidence.High), Ord(Findings[0].Confidence));
+  Assert.AreEqual(10, Findings[0].Range.StartPos.Line);
+  Assert.AreEqual(1, Integer(Length(Findings[0].Fixes)));
+  Assert.AreEqual('GetHashCode mit FNummer, FName überschreiben (THashBobJenkins)', Findings[0].Fixes[0].Title);
+  Fixed := ApplyFix(Source, Findings[0].Fixes[0]);
+  Assert.IsTrue(Pos('    function Equals(Obj: TObject): Boolean; override;'#10 +
+    '    function GetHashCode: Integer; override;'#10'  end;', Fixed) > 0, Fixed);
+  Assert.IsTrue(Pos('end;'#10#10'function TKundenNr.GetHashCode: Integer;'#10'begin'#10 +
+    '  Result := THashBobJenkins.GetHashValue(FNummer, SizeOf(FNummer), 0);'#10 +
+    '  Result := THashBobJenkins.GetHashValue(LowerCase(FName), Result);'#10'end;'#10'end.', Fixed) > 0, Fixed);
+  Assert.IsTrue(Pos('System.Hash', Fixed) > 0, Fixed);
+  TRuleAssert.Silent(TEqualsWithoutGetHashCodeRule.Create, Fixed);
+end;
+
+procedure TEqualsWithoutGetHashCodeTests.GetHashCodeWithoutEquals;
+var
+  Source: string;
+  Findings: TArray<TRuleFinding>;
+begin
+  Source := StringReplace(KundenNr('', '', ''), 'function Equals(Obj: TObject): Boolean; override;',
+    'function GetHashCode: Integer; override;', []);
+  Findings := HashFindings(Source);
+  Assert.AreEqual(1, Integer(Length(Findings)));
+  Assert.AreEqual('GetHashCode ist überschrieben, Equals nicht; als Schlüssel in TDictionary gelten gleiche ' +
+    'Objekte weiter als verschieden.', Findings[0].Message);
+  Assert.AreEqual(0, Integer(Length(Findings[0].Fixes)));
+end;
+
+procedure TEqualsWithoutGetHashCodeTests.AncestorsAndSilentCases;
+var
+  Basis: string;
+begin
+  // Beides überschrieben.
+  TRuleAssert.Silent(TEqualsWithoutGetHashCodeRule.Create, KundenNr('    function GetHashCode: Integer; override;'#10,
+    'function TKundenNr.GetHashCode: Integer;'#10'begin'#10'  Result := FNummer;'#10'end;'#10, ''));
+  // Ein Vorfahr der Datei überschreibt beides; ein unbekannter Vorfahr gibt keine Aussage.
+  Basis := StringReplace(KundenNr('', '', 'TBasis'), '  TKundenNr = class(TBasis)',
+    '  TBasis = class'#10'  public'#10'    function Equals(Obj: TObject): Boolean; override;'#10 +
+    '    function GetHashCode: Integer; override;'#10'  end;'#10 +
+    '  TKundenNr = class(TBasis)', []);
+  TRuleAssert.Silent(TEqualsWithoutGetHashCodeRule.Create, Basis);
+  TRuleAssert.Silent(TEqualsWithoutGetHashCodeRule.Create, KundenNr('', '', 'TUnbekannt'));
+  // Eigenes Equals ohne override ist nicht TObject.Equals.
+  TRuleAssert.Silent(TEqualsWithoutGetHashCodeRule.Create, StringReplace(KundenNr('', '', ''),
+    'function Equals(Obj: TObject): Boolean; override;', 'function Equals(Obj: TObject): Boolean; reintroduce;', []));
+end;
+
+procedure TEqualsWithoutGetHashCodeTests.FixNeedsEqualsBodyWithFields;
+var
+  Findings: TArray<TRuleFinding>;
+begin
+  // Equals vergleicht keine eigenen Felder: Meldung ohne Korrektur.
+  Findings := HashFindings(StringReplace(KundenNr('', '', ''),
+    '(Obj is TKundenNr) and (TKundenNr(Obj).FNummer = FNummer) and SameText(TKundenNr(Obj).FName, FName)',
+    'Obj = Self', []));
+  Assert.AreEqual(1, Integer(Length(Findings)));
+  Assert.AreEqual(0, Integer(Length(Findings[0].Fixes)));
+end;
+
+/// <summary>Record TSchluessel mit AFields und class operator Equal (AOperator = False: ohne), Schlüssel in ACode.</summary>
+function Schluessel(const AFields, ACode: string; AOperator: Boolean): string;
+var
+  Operator_: string;
+begin
+  Operator_ := '';
+  if AOperator then
+    Operator_ := '    class operator Equal(const A, B: TSchluessel): Boolean;'#10;
+  Result := 'unit Schluessel;'#10'interface'#10'uses'#10'  System.Generics.Collections;'#10'type'#10 +
+    '  TSchluessel = record'#10 + AFields + Operator_ + '  end;'#10'implementation'#10'procedure Zaehlen;'#10 +
+    'var'#10'  D: TDictionary<TSchluessel, Integer>;'#10'begin'#10 + ACode + 'end;'#10'end.';
+end;
+
+procedure TEqualsWithoutGetHashCodeTests.RecordKeys;
+var
+  Findings: TArray<TRuleFinding>;
+const
+  Fields = '    Name: string;'#10'    Nr: Integer;'#10;
+begin
+  Findings := HashFindings(Schluessel(Fields, '  D := TDictionary<TSchluessel, Integer>.Create;'#10, True));
+  Assert.AreEqual(1, Integer(Length(Findings)));
+  Assert.AreEqual('TSchluessel hat class operator Equal, TDictionary vergleicht Schlüssel ohne Comparer aber Byte ' +
+    'für Byte; gleiche Schlüssel finden sich nicht.', Findings[0].Message);
+  Assert.AreEqual(15, Findings[0].Range.StartPos.Line);
+  // Kapazität und Mengen sind kein Comparer.
+  Assert.AreEqual(2, Integer(Length(HashFindings(Schluessel(Fields,
+    '  THashSet<TSchluessel>.Create(10).Free;'#10'  D := TObjectDictionary<TSchluessel, Integer>.Create([]);'#10,
+    True)))));
+  // Mit Comparer, ohne Operator, nur Ganzzahlfelder (Byte-Vergleich passt), Schlüssel nicht als erster Typ.
+  TRuleAssert.Silent(TEqualsWithoutGetHashCodeRule.Create, Schluessel(Fields,
+    '  D := TDictionary<TSchluessel, Integer>.Create(TSchluesselComparer.Create);'#10, True));
+  TRuleAssert.Silent(TEqualsWithoutGetHashCodeRule.Create, Schluessel(Fields,
+    '  D := TDictionary<TSchluessel, Integer>.Create;'#10, False));
+  TRuleAssert.Silent(TEqualsWithoutGetHashCodeRule.Create, Schluessel('    Nr, Teil: Integer;'#10,
+    '  D := TDictionary<TSchluessel, Integer>.Create;'#10, True));
+  TRuleAssert.Silent(TEqualsWithoutGetHashCodeRule.Create, Schluessel(Fields,
+    '  TDictionary<Integer, TSchluessel>.Create.Free;'#10, True));
+end;
+
+procedure TEqualsWithoutGetHashCodeTests.HashExpressions;
+begin
+  Assert.AreEqual('THashBobJenkins.GetHashValue(FNr, SizeOf(FNr), 0)',
+    TEqualsWithoutGetHashCodeRule.HashExpression('FNr', 'Integer', '', '0'));
+  Assert.AreEqual('THashBobJenkins.GetHashValue(FName, Result)',
+    TEqualsWithoutGetHashCodeRule.HashExpression('FName', 'string', 'SameStr', 'Result'));
+  Assert.AreEqual('THashBobJenkins.GetHashValue(AnsiLowerCase(FName), 0)',
+    TEqualsWithoutGetHashCodeRule.HashExpression('FName', 'UnicodeString', 'AnsiSameText', '0'));
+end;
+
+procedure TEqualsWithoutGetHashCodeTests.OffAndExclude;
+var
+  Source: string;
+begin
+  Source := KundenNr('', '', '');
+  Assert.AreEqual(0, Integer(Length(HashFindings(Source, '{"rules": {"equals-without-gethashcode": "off"}}',
+    'Source/Kunden.pas'))));
+  Assert.AreEqual(0, Integer(Length(HashFindings(Source,
+    '{"rules": {"equals-without-gethashcode": {"exclude": ["Source/*.pas"]}}}', 'Source/Kunden.pas'))));
+end;
+
 initialization
   TDUnitX.RegisterTestFixture(TComponentRulesTests);
+  TDUnitX.RegisterTestFixture(TInheritedOrderTests);
+  TDUnitX.RegisterTestFixture(TInheritedWrongMethodTests);
+  TDUnitX.RegisterTestFixture(TGetterSideEffectTests);
+  TDUnitX.RegisterTestFixture(TEqualsWithoutGetHashCodeTests);
 
 end.
