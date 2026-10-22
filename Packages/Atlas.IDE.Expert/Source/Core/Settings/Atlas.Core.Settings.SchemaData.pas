@@ -11,7 +11,7 @@ function AtlasSchemaJson: string;
 implementation
 
 const
-  Lines: array[0..1760] of string = (
+  Lines: array[0..1765] of string = (
     '{',
     '  "$schema": "http://json-schema.org/draft-07/schema#",',
     '  "title": "Atlas-Konfiguration",',
@@ -424,6 +424,11 @@ const
     '                "type": "boolean",',
     '                "default": false,',
     '                "description": "Nur global-variable: auch die Formularvariablen des Designers melden (#941)."',
+    '              },',
+    '              "includeFields": {',
+    '                "type": "boolean",',
+    '                "default": true,',
+    '                "description": "Nur unused-private-member: auch nie verwendete private Felder melden; der Compiler meldet nur Methoden (#1020)."',
     '              },',
     '              "checkUses": {',
     '                "type": "boolean",',

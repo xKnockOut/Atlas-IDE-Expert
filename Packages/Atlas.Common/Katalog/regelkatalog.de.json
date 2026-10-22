@@ -1163,6 +1163,17 @@
       "id": "inaccessible-member",
       "name": "Zugriff auf ein nicht sichtbares Mitglied",
       "description": "Zugriff A.B auf ein Mitglied, das an der Stelle nicht sichtbar ist: private bzw. strict private einer anderen Unit oder Klasse (wie E2361), protected bzw. strict protected außerhalb der deklarierenden Unit und ihrer Nachfahren (wie E2362, E2389). In einer Klassenmethode oder statischen Methode sind Instanzfelder, -methoden und -Properties der Klasse nicht erreichbar (wie E2124). Eine Property, die auf ein private-Mitglied eines Vorfahren derselben Unit verweist, meldet die Regel als Warnung (wie W1045). Gemeldet wird nur, wenn die Namensauflösung den Empfänger und seinen Typ sicher kennt und das Mitglied erst ohne Rücksicht auf die Sichtbarkeit findet; protected-Mitglieder bleiben über eine Klasse der eigenen Unit sichtbar (TZugang(Control).Click). Deklarationen in bedingten Zweigen, Methoden von Helfern und verschachtelten Typen bleiben still."
+    },
+    {
+      "id": "unused-private-member",
+      "name": "Privates Mitglied wird nie verwendet",
+      "description": "Ein private- oder strict-private-Feld, eine Methode, Konstante oder Property kommt in der Unit nirgends vor (wie H2219, das der Compiler nur für Methoden meldet; Felder ebenso, außer includeFields ist aus). Jedes Vorkommen des Namens als Bezeichner zählt als Verwendung, auch in inaktiven bedingten Zweigen und hinter read/write; Deklarationen und Methodenköpfe zählen nicht. Ausgenommen: Methoden mit message, virtual, dynamic, override oder abstract, Methoden von Typen, die Interfaces umsetzen, Konstruktoren und Destruktoren, Mitglieder mit Attributen (RTTI), Namen aus der Formulardatei und Units mit Include-Dateien. Korrektur: Deklaration (samt ///-Doku) und den Rumpf einer Methode entfernen; nicht, wenn sich mehrere Mitglieder die Deklaration teilen oder die Methode überladen ist.",
+      "options": [
+        {
+          "name": "includeFields",
+          "description": "Auch nie verwendete private Felder melden (der Compiler meldet nur Methoden)."
+        }
+      ]
     }
   ]
 }

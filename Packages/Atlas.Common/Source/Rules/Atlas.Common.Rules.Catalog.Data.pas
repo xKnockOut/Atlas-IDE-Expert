@@ -2330,6 +2330,27 @@ begin
     '        "E2124",' + #10 +
     '        "W1045"' + #10 +
     '      ]' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "unused-private-member",' + #10 +
+    '      "name": "Private member never used",' + #10 +
+    '      "category": "code-smell",' + #10 +
+    '      "severity": "hint",' + #10 +
+    '      "group": "compiler",' + #10 +
+    '      "description": "A private or strict private field, method, constant or property is never used in the unit (like H2219, which the compiler only reports for methods; fields too unless includeField' + 's is off). Any occurrence of the name as an identifier counts as a use, also in inactive conditional branches and behind read/write; declarations and method headers do not. Exempt: methods with messag' + 'e, virtual, dynamic, override or abstract, methods of types that implement interfaces, constructors and destructors, members with attributes (RTTI), names from the form file and units with include fil' + 'es. Quick fix: remove the declaration (with its /// documentation) and the body of a method; not when several members share the declaration or the method is overloaded.",' + #10 +
+    '      "bad": "  TImport = class\n  private\n    FAltFormat: Boolean;\n    procedure KonvertiereAlt;\n  end;",' + #10 +
+    '      "good": "  TImport = class\n  private\n  end;",' + #10 +
+    '      "compilerCodes": [' + #10 +
+    '        "H2219"' + #10 +
+    '      ],' + #10 +
+    '      "options": [' + #10 +
+    '        {' + #10 +
+    '          "name": "includeFields",' + #10 +
+    '          "type": "boolean",' + #10 +
+    '          "default": true,' + #10 +
+    '          "description": "Also report private fields that are never used (the compiler reports only methods)."' + #10 +
+    '        }' + #10 +
+    '      ]' + #10 +
     '    }' + #10 +
     '  ]' + #10 +
     '}' + #10 +
@@ -3505,6 +3526,17 @@ begin
     '      "id": "inaccessible-member",' + #10 +
     '      "name": "Zugriff auf ein nicht sichtbares Mitglied",' + #10 +
     '      "description": "Zugriff A.B auf ein Mitglied, das an der Stelle nicht sichtbar ist: private bzw. strict private einer anderen Unit oder Klasse (wie E2361), protected bzw. strict protected außerh' + 'alb der deklarierenden Unit und ihrer Nachfahren (wie E2362, E2389). In einer Klassenmethode oder statischen Methode sind Instanzfelder, -methoden und -Properties der Klasse nicht erreichbar (wie E212' + '4). Eine Property, die auf ein private-Mitglied eines Vorfahren derselben Unit verweist, meldet die Regel als Warnung (wie W1045). Gemeldet wird nur, wenn die Namensauflösung den Empfänger und seinen ' + 'Typ sicher kennt und das Mitglied erst ohne Rücksicht auf die Sichtbarkeit findet; protected-Mitglieder bleiben über eine Klasse der eigenen Unit sichtbar (TZugang(Control).Click). Deklarationen in be' + 'dingten Zweigen, Methoden von Helfern und verschachtelten Typen bleiben still."' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "unused-private-member",' + #10 +
+    '      "name": "Privates Mitglied wird nie verwendet",' + #10 +
+    '      "description": "Ein private- oder strict-private-Feld, eine Methode, Konstante oder Property kommt in der Unit nirgends vor (wie H2219, das der Compiler nur für Methoden meldet; Felder ebenso, a' + 'ußer includeFields ist aus). Jedes Vorkommen des Namens als Bezeichner zählt als Verwendung, auch in inaktiven bedingten Zweigen und hinter read/write; Deklarationen und Methodenköpfe zählen nicht. Au' + 'sgenommen: Methoden mit message, virtual, dynamic, override oder abstract, Methoden von Typen, die Interfaces umsetzen, Konstruktoren und Destruktoren, Mitglieder mit Attributen (RTTI), Namen aus der ' + 'Formulardatei und Units mit Include-Dateien. Korrektur: Deklaration (samt ///-Doku) und den Rumpf einer Methode entfernen; nicht, wenn sich mehrere Mitglieder die Deklaration teilen oder die Methode ü' + 'berladen ist.",' + #10 +
+    '      "options": [' + #10 +
+    '        {' + #10 +
+    '          "name": "includeFields",' + #10 +
+    '          "description": "Auch nie verwendete private Felder melden (der Compiler meldet nur Methoden)."' + #10 +
+    '        }' + #10 +
+    '      ]' + #10 +
     '    }' + #10 +
     '  ]' + #10 +
     '}' + #10 +

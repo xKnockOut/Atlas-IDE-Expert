@@ -2310,6 +2310,27 @@
         "E2124",
         "W1045"
       ]
+    },
+    {
+      "id": "unused-private-member",
+      "name": "Private member never used",
+      "category": "code-smell",
+      "severity": "hint",
+      "group": "compiler",
+      "description": "A private or strict private field, method, constant or property is never used in the unit (like H2219, which the compiler only reports for methods; fields too unless includeFields is off). Any occurrence of the name as an identifier counts as a use, also in inactive conditional branches and behind read/write; declarations and method headers do not. Exempt: methods with message, virtual, dynamic, override or abstract, methods of types that implement interfaces, constructors and destructors, members with attributes (RTTI), names from the form file and units with include files. Quick fix: remove the declaration (with its /// documentation) and the body of a method; not when several members share the declaration or the method is overloaded.",
+      "bad": "  TImport = class\n  private\n    FAltFormat: Boolean;\n    procedure KonvertiereAlt;\n  end;",
+      "good": "  TImport = class\n  private\n  end;",
+      "compilerCodes": [
+        "H2219"
+      ],
+      "options": [
+        {
+          "name": "includeFields",
+          "type": "boolean",
+          "default": true,
+          "description": "Also report private fields that are never used (the compiler reports only methods)."
+        }
+      ]
     }
   ]
 }

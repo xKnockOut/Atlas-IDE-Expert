@@ -10,6 +10,20 @@
 //                        Properties, die auf ein private-Mitglied eines
 //                        Vorfahren derselben Unit verweisen (wie W1045, als
 //                        Warnung).
+//   unused-private-member
+//                        private bzw. strict private Feld, Methode, Konstante
+//                        oder Property, die in der Unit nirgends vorkommt
+//                        (#1020, wie H2219, aber auch für Felder; Option
+//                        includeFields). Ausgenommen sind Methoden mit
+//                        message, virtual, dynamic, override oder abstract,
+//                        Methoden von Typen mit Interfaces (sie können
+//                        Interface-Methoden umsetzen), Konstruktoren und
+//                        Destruktoren, Mitglieder mit Attributen (RTTI), Namen
+//                        aus der Formulardatei und Units mit Include-Dateien.
+//                        Verwendung ist jedes Vorkommen des Namens als
+//                        Bezeichner außer Deklarationen und Methodenköpfen,
+//                        auch in inaktiven Zweigen. Korrektur: Deklaration
+//                        (samt ///-Doku) und den Rumpf einer Methode entfernen.
 //
 // Grundlage ist die Namensauflösung: Ein Zugriff gilt erst als unsichtbar, wenn
 // die Auflösung den Empfänger und seinen Typ sicher kennt, das Mitglied mit
@@ -25,9 +39,16 @@ uses
 
 const
   InaccessibleMemberRuleId = 'inaccessible-member';
+  UnusedPrivateMemberRuleId = 'unused-private-member';
 
 type
   TInaccessibleMemberRule = class(TInterfacedObject, IRule)
+  public
+    function Descriptor: TRuleDescriptor;
+    procedure Check(const AContext: TRuleContext; const AReport: IRuleReport);
+  end;
+
+  TUnusedPrivateMemberRule = class(TInterfacedObject, IRule)
   public
     function Descriptor: TRuleDescriptor;
     procedure Check(const AContext: TRuleContext; const AReport: IRuleReport);
@@ -47,8 +68,11 @@ uses
   Atlas.Common.Pascal.Contract,
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Semantics.NameResolver,
+  Atlas.Common.Pascal.DirectiveNames,
   Atlas.Common.Rules.Derived,
-  Atlas.Common.Rules.Builtin.Inheritance;
+  Atlas.Common.Rules.Options,
+  Atlas.Common.Rules.Builtin.Inheritance,
+  Atlas.Text.Lines;
 
 const
   Restricted = [TIndexVisibility.Private, TIndexVisibility.StrictPrivate, TIndexVisibility.Protected,
@@ -369,9 +393,291 @@ begin
   end;
 end;
 
+{ TUnusedPrivateMemberRule }
+
+function TUnusedPrivateMemberRule.Descriptor: TRuleDescriptor;
+begin
+  Result := TRuleDescriptor.Create(UnusedPrivateMemberRuleId, TRuleSeverity.Hint,
+    'Privates Mitglied wird nie verwendet');
+end;
+
+procedure TUnusedPrivateMemberRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
+const
+  MemberKinds = [TIndexSymbolKind.Field, TIndexSymbolKind.Method, TIndexSymbolKind.Constant,
+    TIndexSymbolKind.Property_];
+var
+  Cache: IRuleDerivedCache;
+  Local: TUnitIndex;
+  Tokens: TArray<TPascalToken>;
+  Lines: TArray<string>;
+  IncludeFields: Boolean;
+  // Name -> Positionen aller Bezeichner dieses Namens
+  Occurrences: TDictionary<string, TList<TTextPosition>>;
+  // Name -> Positionen, die keine Verwendung sind (Deklarationen, Methodenköpfe)
+  Declared: TDictionary<string, TList<TTextPosition>>;
+
+  procedure Note(ADictionary: TDictionary<string, TList<TTextPosition>>; const AName: string;
+    const APosition: TTextPosition);
+  var
+    List: TList<TTextPosition>;
+  begin
+    if not ADictionary.TryGetValue(LowerCase(AName), List) then
+    begin
+      List := TList<TTextPosition>.Create;
+      ADictionary.Add(LowerCase(AName), List);
+    end;
+    List.Add(APosition);
+  end;
+
+  function SamePosition(const A, B: TTextPosition): Boolean;
+  begin
+    Result := (A.Line = B.Line) and (A.Character = B.Character);
+  end;
+
+  function Used(const AName: string): Boolean;
+  var
+    Positions, Skip: TList<TTextPosition>;
+    Position, Other: TTextPosition;
+    Excluded: Boolean;
+  begin
+    if not Occurrences.TryGetValue(LowerCase(AName), Positions) then
+      Exit(False);
+    if not Declared.TryGetValue(LowerCase(AName), Skip) then
+      Exit(True);
+    for Position in Positions do
+    begin
+      Excluded := False;
+      for Other in Skip do
+        if SamePosition(Other, Position) then
+        begin
+          Excluded := True;
+          Break;
+        end;
+      if not Excluded then
+        Exit(True);
+    end;
+    Result := False;
+  end;
+
+  function HasIncludes: Boolean;
+  var
+    Token: TPascalToken;
+    Name: string;
+  begin
+    for Token in AContext.Tree.Tokens do
+      if Token.Kind = TPascalTokenKind.Directive then
+      begin
+        Name := TDirectiveNames.LeadingName(TDirectiveNames.Body(Token.Text));
+        if SameText(Name, 'I') or SameText(Name, 'INCLUDE') then
+          Exit(True);
+      end;
+    Result := False;
+  end;
+
+  /// <summary>Erstes Code-Token ab APosition; -1 ohne.</summary>
+  function TokenAt(const APosition: TTextPosition): Integer;
+  var
+    Low, High_, Middle: Integer;
+  begin
+    Low := 0;
+    High_ := Length(Tokens);
+    while Low < High_ do
+    begin
+      Middle := (Low + High_) div 2;
+      if (Tokens[Middle].StartPos.Line < APosition.Line) or ((Tokens[Middle].StartPos.Line = APosition.Line) and
+        (Tokens[Middle].StartPos.Character < APosition.Character)) then
+        Low := Middle + 1
+      else
+        High_ := Middle;
+    end;
+    Result := Low;
+    if Result > High(Tokens) then
+      Result := -1;
+  end;
+
+  /// <summary>Steht vor der Deklaration ein Attribut ([Weak], [JsonName('x')])?</summary>
+  function HasAttribute(const ASymbol: TIndexSymbol): Boolean;
+  var
+    At: Integer;
+  begin
+    At := TokenAt(ASymbol.Range.StartPos);
+    Result := (At > 0) and Tokens[At - 1].IsSymbol(']');
+  end;
+
+  /// <summary>Kann der Typ AName Interfaces umsetzen (mehr als ein Vorfahr oder ein Vorfahr I…)? Unbekannte
+  /// Typen gelten als ja.</summary>
+  function HasInterfaces(const AName: string): Boolean;
+  var
+    Owner: TIndexSymbol;
+    Short: string;
+    Position: Integer;
+  begin
+    for Owner in Local.Symbols do
+      if (Owner.Kind in [TIndexSymbolKind.ClassType, TIndexSymbolKind.ObjectType, TIndexSymbolKind.RecordType]) and
+        SameText(Owner.QualifiedName, AName) then
+      begin
+        if Length(Owner.Ancestors) > 1 then
+          Exit(True);
+        if Owner.Ancestors = nil then
+          Exit(False);
+        Short := Copy(Owner.Ancestors[0], LastDelimiter('.', Owner.Ancestors[0]) + 1, MaxInt);
+        Position := Pos('<', Short);
+        if Position > 0 then
+          Short := Copy(Short, 1, Position - 1);
+        Exit((Length(Short) > 1) and (Short[1] = 'I') and CharInSet(Short[2], ['A'..'Z']));
+      end;
+    Result := True;
+  end;
+
+  function KindText(const ASymbol: TIndexSymbol): string;
+  begin
+    case ASymbol.Kind of
+      TIndexSymbolKind.Field:
+        Result := 'Privates Feld';
+      TIndexSymbolKind.Constant:
+        Result := 'Private Konstante';
+      TIndexSymbolKind.Property_:
+        Result := 'Private Property';
+    else
+      Result := 'Private Methode';
+    end;
+  end;
+
+  /// <summary>Entfernt die Zeilen AFirst..ALast samt ///-Doku darüber.</summary>
+  function DeleteLines(AFirst, ALast: Integer): TTextEdit;
+  begin
+    while (AFirst > 0) and StartsStr('///', TrimLeft(Lines[AFirst - 1])) do
+      Dec(AFirst);
+    Result := TTextEdit.Create(TTextRange.Create(AFirst, 0, ALast + 1, 0), '');
+  end;
+
+  /// <summary>Rumpf der Methode ASymbol (Routine TFoo.Name nach der Deklaration); nil ohne oder bei mehreren.
+  /// </summary>
+  function Body(const ASymbol: TIndexSymbol; out AMany: Boolean): TSyntaxNode;
+  var
+    Node: TSyntaxNode;
+  begin
+    Result := nil;
+    AMany := False;
+    for Node in TRuleDerived.Routines(Cache, AContext) do
+      if SameText(Node.Name, ASymbol.Container + '.' + ASymbol.Name) and
+        (Node.StartPos.Line > ASymbol.Range.EndPos.Line) then
+      begin
+        if Result <> nil then
+          AMany := True;
+        Result := Node;
+      end;
+  end;
+
+  /// <summary>"Name entfernen": nur, wenn die Deklaration ihre Zeilen allein hat; bei Methoden mit dem einen
+  /// Rumpf.</summary>
+  function RemoveFix(const ASymbol: TIndexSymbol): TArray<TRuleFix>;
+  var
+    Other: TIndexSymbol;
+    Edits: TArray<TTextEdit>;
+    Node: TSyntaxNode;
+    Many: Boolean;
+    Last: Integer;
+  begin
+    Result := nil;
+    if (ASymbol.Range.EndPos.Line >= Length(Lines)) or
+      (Trim(Copy(Lines[ASymbol.Range.StartPos.Line], 1, ASymbol.Range.StartPos.Character)) <> '') or
+      (Trim(Copy(Lines[ASymbol.Range.EndPos.Line], ASymbol.Range.EndPos.Character + 1, MaxInt)) <> '') then
+      Exit;
+    // Weitere Deklarationen in denselben Zeilen (FA, FB: Integer).
+    for Other in Local.Symbols do
+      if (Other.Container <> '') and not SamePosition(Other.SelectionRange.StartPos,
+        ASymbol.SelectionRange.StartPos) and (Other.SelectionRange.StartPos.Line >= ASymbol.Range.StartPos.Line) and
+        (Other.SelectionRange.StartPos.Line <= ASymbol.Range.EndPos.Line) then
+        Exit;
+    Edits := [DeleteLines(ASymbol.Range.StartPos.Line, ASymbol.Range.EndPos.Line)];
+    if ASymbol.Kind = TIndexSymbolKind.Method then
+    begin
+      Node := Body(ASymbol, Many);
+      if Many or HasDirective(ASymbol.Directives, 'overload') then
+        Exit;
+      if Node <> nil then
+      begin
+        Last := Node.EndPos.Line;
+        // Eine Leerzeile danach mit entfernen.
+        if (Last + 1 < Length(Lines)) and (Trim(Lines[Last + 1]) = '') then
+          Inc(Last);
+        Edits := Edits + [DeleteLines(Node.StartPos.Line, Last)];
+      end;
+    end;
+    Result := [TRuleFix.Create(Format('%s entfernen', [ASymbol.Name]), Edits)];
+  end;
+
+  procedure CheckMember(const ASymbol: TIndexSymbol);
+  begin
+    if not (ASymbol.Visibility in [TIndexVisibility.Private, TIndexVisibility.StrictPrivate]) or
+      ((ASymbol.Kind = TIndexSymbolKind.Field) and not IncludeFields) or ASymbol.Unavailable or
+      HasDirective(ASymbol.Directives, 'message') or HasDirective(ASymbol.Directives, 'virtual') or
+      HasDirective(ASymbol.Directives, 'dynamic') or HasDirective(ASymbol.Directives, 'override') or
+      HasDirective(ASymbol.Directives, 'abstract') or HasAttribute(ASymbol) or Used(ASymbol.Name) then
+      Exit;
+    if (ASymbol.Kind = TIndexSymbolKind.Method) and HasInterfaces(ASymbol.Container) then
+      Exit;
+    // Komponenten und Ereignisse aus der Formulardatei.
+    if (AContext.FormText <> '') and ContainsText(AContext.FormText, ASymbol.Name) then
+      Exit;
+    AReport.Add(ASymbol.SelectionRange, Format('%s %s wird nie verwendet (wie H2219).', [KindText(ASymbol),
+      ASymbol.Name]), TRuleConfidence.High, RemoveFix(ASymbol));
+  end;
+
+var
+  Token: TPascalToken;
+  Symbol: TIndexSymbol;
+  Name: string;
+  List: TList<TTextPosition>;
+  Seen: TDictionary<string, Boolean>;
+begin
+  if (AContext.Tree = nil) or (AContext.Tree.Root = nil) or HasIncludes then
+    Exit;
+  Cache := TRuleDerived.Open(AContext);
+  Local := TRuleDerived.UnitIndex(Cache, AContext);
+  Tokens := TRuleDerived.CodeTokens(Cache, AContext);
+  Lines := TTextLines.SplitLines(AContext.Text);
+  IncludeFields := TRuleOptions.Bool(AContext.Options, 'includeFields', True);
+  Occurrences := TDictionary<string, TList<TTextPosition>>.Create;
+  Declared := TDictionary<string, TList<TTextPosition>>.Create;
+  Seen := TDictionary<string, Boolean>.Create;
+  try
+    for Token in Tokens do
+      if Token.Kind = TPascalTokenKind.Identifier then
+      begin
+        Name := Token.Text;
+        if StartsStr('&', Name) then
+          Name := Copy(Name, 2, MaxInt);
+        Note(Occurrences, Name, Token.StartPos);
+      end;
+    // Deklarationen von Mitgliedern und Methodenköpfe (TFoo.Name) sind keine Verwendung.
+    for Symbol in Local.Symbols do
+      if (Symbol.Container <> '') and (Symbol.Kind in MemberKinds + [TIndexSymbolKind.Constructor_]) then
+        Note(Declared, Symbol.Name, Symbol.SelectionRange.StartPos);
+    // Nur die Deklaration im Typ zählt (sie steht vor dem Rumpf).
+    for Symbol in Local.Symbols do
+      if (Symbol.Container <> '') and (Symbol.Kind in MemberKinds) and
+        not Seen.ContainsKey(LowerCase(Symbol.Container + '.' + Symbol.Name)) then
+      begin
+        Seen.Add(LowerCase(Symbol.Container + '.' + Symbol.Name), True);
+        CheckMember(Symbol);
+      end;
+  finally
+    for List in Occurrences.Values do
+      List.Free;
+    for List in Declared.Values do
+      List.Free;
+    Occurrences.Free;
+    Declared.Free;
+    Seen.Free;
+  end;
+end;
+
 procedure RegisterVisibilityRules(const ARegistry: TRuleRegistry);
 begin
   ARegistry.Register(TInaccessibleMemberRule.Create);
+  ARegistry.Register(TUnusedPrivateMemberRule.Create);
 end;
 
 end.

@@ -10,7 +10,7 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 | [Exceptions](#gruppe-exceptions) | 8 |
 | [Threads](#gruppe-threads) | 13 |
 | [Datenbank](#gruppe-database) | 4 |
-| [Compiler vorab](#gruppe-compiler) | 16 |
+| [Compiler vorab](#gruppe-compiler) | 17 |
 | [Robustheit und Muster](#gruppe-robustness) | 3 |
 | [Performance](#gruppe-performance) | 4 |
 | [Sicherheit](#gruppe-security) | 11 |
@@ -147,6 +147,7 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 | [`assign-to-property-member`](#assign-to-property-member) | Zuweisung an ein Feld eines Property-Records | Bug | Fehler |
 | [`readonly-property-assigned`](#readonly-property-assigned) | Zuweisung an eine Property ohne write | Bug | Fehler |
 | [`inaccessible-member`](#inaccessible-member) | Zugriff auf ein nicht sichtbares Mitglied | Bug | Fehler |
+| [`unused-private-member`](#unused-private-member) | Privates Mitglied wird nie verwendet | Code Smell | Hinweis |
 
 <a id="gruppe-robustness"></a>
 ### Robustheit und Muster
@@ -4570,4 +4571,35 @@ begin
   Result := TKonfig.Create;
   Result.Pfad := Result.FBasisPfad;
 end;
+```
+
+<a id="unused-private-member"></a>
+### unused-private-member
+
+**Privates Mitglied wird nie verwendet** · Code Smell · Hinweis · Gruppe Compiler vorab
+
+Ein private- oder strict-private-Feld, eine Methode, Konstante oder Property kommt in der Unit nirgends vor (wie H2219, das der Compiler nur für Methoden meldet; Felder ebenso, außer includeFields ist aus). Jedes Vorkommen des Namens als Bezeichner zählt als Verwendung, auch in inaktiven bedingten Zweigen und hinter read/write; Deklarationen und Methodenköpfe zählen nicht. Ausgenommen: Methoden mit message, virtual, dynamic, override oder abstract, Methoden von Typen, die Interfaces umsetzen, Konstruktoren und Destruktoren, Mitglieder mit Attributen (RTTI), Namen aus der Formulardatei und Units mit Include-Dateien. Korrektur: Deklaration (samt ///-Doku) und den Rumpf einer Methode entfernen; nicht, wenn sich mehrere Mitglieder die Deklaration teilen oder die Methode überladen ist.
+
+Entspricht der Compilermeldung `H2219`.
+
+| Option | Typ | Vorgabe | Bedeutung |
+|---|---|---|---|
+| `includeFields` | boolean | `true` | Auch nie verwendete private Felder melden (der Compiler meldet nur Methoden). |
+
+Mit Treffer:
+
+```pascal
+  TImport = class
+  private
+    FAltFormat: Boolean;
+    procedure KonvertiereAlt;
+  end;
+```
+
+Richtig:
+
+```pascal
+  TImport = class
+  private
+  end;
 ```

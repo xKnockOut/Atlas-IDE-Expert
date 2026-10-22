@@ -191,7 +191,7 @@ const
     'slash-command,sql-write-without-where,string-index-base,stringlist-unsorted,synchronize-in-destructor,task-exception-unobserved,thread-free-with-free-on-terminate,thread-loop-without-terminated,thread-resume-suspend,' +
     'thread-use-after-free-on-terminate,thread-vcl-access,threadvar-managed,transaction-without-rollback,type-used-before-declaration,' +
     'unchecked-conversion,unchecked-enum-cast,unneeded-forward-declaration,unreachable-code,unresolved-attribute,unresolved-identifier,' +
-    'unused-assignment,unused-local,unused-parameter,use-after-free,uses-unit-not-found,virtual-instead-of-override,with-statement,' +
+    'unused-assignment,unused-local,unused-parameter,unused-private-member,use-after-free,uses-unit-not-found,virtual-instead-of-override,with-statement,' +
     'writeln-in-gui-app';
 begin
   Assert.AreEqual(All, ActiveRules('standard'));
@@ -230,7 +230,7 @@ begin
     'metric-nesting-depth,metric-parameter-count,metric-unit-length,metric-uses-count,' +
     'null-compare,processmessages-in-loop,redundant-assigned-free,reraise-exception-object,shadowed-name,slash-command,task-exception-unobserved,thread-resume-suspend,unneeded-forward-declaration,' +
     'unused-assignment,unused-local,' +
-    'unused-parameter,with-statement',
+    'unused-parameter,unused-private-member,with-statement',
     ActiveRules('style'));
 end;
 

@@ -5,6 +5,9 @@
 // protected aus einer anderen Unit (E2361, E2362), strict private in derselben
 // Unit, stille Fälle (Nachfahren, protected über eine Klasse der eigenen Unit,
 // with, class var), W1045 und die Einstellungen.
+// unused-private-member (#1020): Beispiel aus dem Issue mit Korrektur, stille
+// Fälle (Verwendung, property read, message, override, Interfaces, Attribute,
+// Formulardatei, Include), Option includeFields und die Einstellungen.
 
 interface
 
@@ -27,6 +30,23 @@ type
     procedure StrictPrivateInSameUnit;
     [Test]
     procedure PropertyReferencesAncestorPrivate;
+    [Test]
+    procedure OffAndExclude;
+  end;
+
+  [TestFixture]
+  TUnusedPrivateMemberTests = class
+  public
+    [Test]
+    procedure IssueExampleWithFixes;
+    [Test]
+    procedure UsedMembersAreSilent;
+    [Test]
+    procedure ExemptMembersAreSilent;
+    [Test]
+    procedure ConstantsAndProperties;
+    [Test]
+    procedure IncludeFieldsOption;
     [Test]
     procedure OffAndExclude;
   end;
@@ -202,7 +222,147 @@ begin
     'Source/Kunden.pas'))));
 end;
 
+{ TUnusedPrivateMemberTests }
+
+function UnusedFindings(const ASource: string): TArray<TRuleFinding>; overload;
+begin
+  Result := TRuleAssert.Findings(TUnusedPrivateMemberRule.Create, ASource);
+end;
+
+function UnusedFindings(const ASource, AConfig, APath: string): TArray<TRuleFinding>; overload;
+begin
+  Result := TRuleAssert.Findings(TUnusedPrivateMemberRule.Create, ASource, AConfig, APath);
+end;
+
+/// <summary>Unit Import mit TImport: AMembers im private-Abschnitt, Run in public, ABody im Rumpf von Run.
+/// </summary>
+function Import(const AMembers, ABody: string): string;
+begin
+  Result := 'unit Import;'#10'interface'#10'type'#10'  TImport = class'#10'  private'#10 + AMembers +
+    '  public'#10'    procedure Run;'#10'  end;'#10'implementation'#10'procedure TImport.Run;'#10'begin'#10 + ABody +
+    'end;'#10'end.';
+end;
+
+/// <summary>Wendet die Edits einer Korrektur von hinten nach vorn an.</summary>
+function ApplyFix(const ASource: string; const AFix: TRuleFix): string;
+var
+  Lines: TArray<string>;
+  Index, Edit: Integer;
+  Text: string;
+begin
+  Result := ASource;
+  for Edit := High(AFix.Edits) downto 0 do
+  begin
+    Lines := Result.Split([#10]);
+    Text := '';
+    for Index := 0 to High(Lines) do
+      if (Index < AFix.Edits[Edit].Range.StartPos.Line) or (Index >= AFix.Edits[Edit].Range.EndPos.Line) then
+        Text := Text + Lines[Index] + #10;
+    Result := Copy(Text, 1, Length(Text) - 1);
+  end;
+end;
+
+procedure TUnusedPrivateMemberTests.IssueExampleWithFixes;
+var
+  Source, Fixed: string;
+  Found: TArray<TRuleFinding>;
+begin
+  Source := Import('    FAltFormat: Boolean;'#10'    procedure KonvertiereAlt;'#10, '').Replace(
+    'implementation'#10'procedure TImport.Run;', 'implementation'#10'procedure TImport.KonvertiereAlt;'#10 +
+    'begin'#10'end;'#10#10'procedure TImport.Run;');
+  Found := UnusedFindings(Source);
+  Assert.AreEqual(2, Integer(Length(Found)));
+  Assert.AreEqual('Privates Feld FAltFormat wird nie verwendet (wie H2219).', Found[0].Message);
+  Assert.AreEqual(5, Found[0].Range.StartPos.Line);
+  Assert.AreEqual(4, Found[0].Range.StartPos.Character);
+  Assert.AreEqual('Private Methode KonvertiereAlt wird nie verwendet (wie H2219).', Found[1].Message);
+  Assert.AreEqual(Integer(Ord(TRuleSeverity.Hint)), Integer(Ord(Found[1].Severity)));
+  Assert.AreEqual(1, Integer(Length(Found[1].Fixes)));
+  Assert.AreEqual('KonvertiereAlt entfernen', Found[1].Fixes[0].Title);
+  Fixed := ApplyFix(Source, Found[1].Fixes[0]);
+  Assert.AreEqual(0, Pos('KonvertiereAlt', Fixed), Fixed);
+  Assert.IsTrue(Pos('implementation'#10'procedure TImport.Run;', Fixed) > 0, Fixed);
+  Fixed := ApplyFix(Fixed, UnusedFindings(Fixed)[0].Fixes[0]);
+  Assert.AreEqual(0, Integer(Length(UnusedFindings(Fixed))), Fixed);
+  Assert.IsTrue(Pos('  private'#10'  public', Fixed) > 0, Fixed);
+end;
+
+procedure TUnusedPrivateMemberTests.UsedMembersAreSilent;
+begin
+  // Lesen, Schreiben, Aufruf, Verwendung nur in einem {$IFDEF}-Zweig und über eine Property.
+  Assert.AreEqual(0, Integer(Length(UnusedFindings(Import('    FAltFormat: Boolean;'#10 +
+    '    FWert: Integer;'#10'    FText: string;'#10'    function Pruefen: Boolean;'#10 +
+    '    property Text: string read FText;'#10, '  FAltFormat := True;'#10'  {$IFDEF DEBUG}'#10 +
+    '  if Pruefen then'#10'    Exit;'#10'  {$ENDIF}'#10'  Writeln(FWert, Text);'#10).Replace(
+    'procedure TImport.Run;', 'function TImport.Pruefen: Boolean;'#10'begin'#10'  Result := False;'#10'end;'#10 +
+    'procedure TImport.Run;')))));
+  // Verwendung über Self.
+  Assert.AreEqual(0, Integer(Length(UnusedFindings(Import('    FWert: Integer;'#10, '  Self.FWert := 1;'#10)))));
+end;
+
+procedure TUnusedPrivateMemberTests.ExemptMembersAreSilent;
+var
+  Source: string;
+begin
+  Source := Import('    procedure WMSize(var Msg: TMessage); message 5;'#10 +
+    '    procedure Paint; override;'#10'    [Weak] FBesitzer: TObject;'#10'    Button1: TObject;'#10, '');
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.FormFindings(TUnusedPrivateMemberRule.Create, Source,
+    'object Form1: TForm1'#10'  object Button1: TButton'#10'  end'#10'end'))));
+  Assert.AreEqual(1, Integer(Length(UnusedFindings(Source))), 'Button1 ohne Formulardatei');
+  // Methoden eines Typs mit Interface können Interface-Methoden umsetzen.
+  Assert.AreEqual(0, Integer(Length(UnusedFindings(Import('    function GetName: string;'#10, '').Replace(
+    'TImport = class', 'TImport = class(TInterfacedObject, INamed)')))));
+  Assert.AreEqual(0, Integer(Length(UnusedFindings(Import('    function GetName: string;'#10, '').Replace(
+    'TImport = class', 'TImport = class(INamed)')))));
+  // Include-Dateien können die Mitglieder verwenden.
+  Assert.AreEqual(0, Integer(Length(UnusedFindings(Import('    FAltFormat: Boolean;'#10, '  {$I Teil.inc}'#10)))));
+end;
+
+procedure TUnusedPrivateMemberTests.ConstantsAndProperties;
+var
+  Found: TArray<TRuleFinding>;
+begin
+  Found := UnusedFindings(Import('    const Grenze = 10;'#10'    function GetAnzahl: Integer;'#10 +
+    '    property Anzahl: Integer read GetAnzahl;'#10, '').Replace('procedure TImport.Run;',
+    'function TImport.GetAnzahl: Integer;'#10'begin'#10'  Result := 0;'#10'end;'#10'procedure TImport.Run;'));
+  Assert.AreEqual(2, Integer(Length(Found)));
+  Assert.AreEqual('Private Konstante Grenze wird nie verwendet (wie H2219).', Found[0].Message);
+  Assert.AreEqual('Private Property Anzahl wird nie verwendet (wie H2219).', Found[1].Message);
+  // strict private zählt wie private, public nie.
+  Assert.AreEqual(1, Integer(Length(UnusedFindings(Import('  strict private'#10'    FA: Integer;'#10, '')))));
+  Assert.AreEqual(0, Integer(Length(UnusedFindings(Import('  public'#10'    FA: Integer;'#10, '')))));
+  // Zwei Felder in einer Zeile: Meldung ohne Korrektur.
+  Found := UnusedFindings(Import('    FA, FB: Integer;'#10, '  FB := 1;'#10));
+  Assert.AreEqual(1, Integer(Length(Found)));
+  Assert.AreEqual(0, Integer(Length(Found[0].Fixes)));
+end;
+
+procedure TUnusedPrivateMemberTests.IncludeFieldsOption;
+var
+  Source: string;
+begin
+  Source := Import('    FAltFormat: Boolean;'#10'    procedure KonvertiereAlt;'#10, '');
+  Assert.AreEqual(2, Integer(Length(UnusedFindings(Source, '', 'Import.pas'))));
+  Assert.AreEqual(1, Integer(Length(UnusedFindings(Source,
+    '{"rules": {"unused-private-member": {"includeFields": false}}}', 'Import.pas'))));
+end;
+
+procedure TUnusedPrivateMemberTests.OffAndExclude;
+var
+  Source: string;
+begin
+  Source := Import('    FAltFormat: Boolean;'#10, '');
+  Assert.AreEqual(1, Integer(Length(UnusedFindings(Source, '', 'Source/Import.pas'))));
+  Assert.AreEqual(0, Integer(Length(UnusedFindings(Source, '{"rules": {"unused-private-member": "off"}}',
+    'Source/Import.pas'))));
+  Assert.AreEqual(0, Integer(Length(UnusedFindings(Source, '{"rules": {"group:compiler": "off"}}',
+    'Source/Import.pas'))));
+  Assert.AreEqual(0, Integer(Length(UnusedFindings(Source,
+    '{"rules": {"unused-private-member": {"exclude": ["Source/*.pas"]}}}', 'Source/Import.pas'))));
+end;
+
 initialization
   TDUnitX.RegisterTestFixture(TInaccessibleMemberTests);
+  TDUnitX.RegisterTestFixture(TUnusedPrivateMemberTests);
 
 end.
