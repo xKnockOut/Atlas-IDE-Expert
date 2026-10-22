@@ -493,9 +493,10 @@ begin
     if Root <> '' then
       Root := TPath.Combine(Root, 'source');
   end;
+  // Ohne Assert.Pass: Es hinterließ hier 192 Byte, die der Leckmonitor dem Test anrechnet (Bericht N2).
   if (Root = '') or not TDirectory.Exists(Root) then
   begin
-    Assert.Pass('Übersprungen: kein Korpus (ATLAS_CORPUS oder BDS setzen)');
+    System.Writeln('  Übersprungen: kein Korpus (ATLAS_CORPUS oder BDS setzen)');
     Exit;
   end;
   // In der Delphi-Installation RTL und VCL, sonst der ganze Ordner.
@@ -530,7 +531,7 @@ begin
     end;
   Assert.IsTrue(Files > 0, 'Keine .pas-Dateien unter ' + Root);
   Assert.IsTrue(Slowest < HangLimitMs, Format('%s braucht %d ms', [SlowestFile, Slowest]));
-  Assert.Pass(Format('%d Dateien in %d ms; langsamste: %s (%d ms)',
+  System.Writeln(Format('  %d Dateien in %d ms; langsamste: %s (%d ms)',
     [Files, Total.ElapsedMilliseconds, ExtractFileName(SlowestFile), Slowest]));
 end;
 

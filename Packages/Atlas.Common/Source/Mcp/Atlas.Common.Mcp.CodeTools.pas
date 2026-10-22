@@ -90,7 +90,6 @@ uses
   Atlas.Common.Pascal.TreeCache,
   Atlas.Common.Lsp.Hierarchies,
   Atlas.Common.Lsp.QualifiedNames,
-  Atlas.Common.Pascal.Parser,
   Atlas.Common.Pascal.Preprocessor,
   Atlas.Common.Rules.Output,
   Atlas.Common.Mcp.IndexTools,
@@ -479,7 +478,7 @@ begin
     if CheckNames then
     begin
       // Nur die aktiven Zweige (#860): Namen eines anderen Zielsystems sind dort nicht auflösbar.
-      Tree := TPascalParser.ParseActive(NewText, Source.Options, nil, Processed);
+      Tree := TSyntaxTreeCache.ParseActive(NewText, Source.Options, nil, Processed);
       try
         Resolver := TNameResolver.Create(FIndex, FEnsureUnit);
         try

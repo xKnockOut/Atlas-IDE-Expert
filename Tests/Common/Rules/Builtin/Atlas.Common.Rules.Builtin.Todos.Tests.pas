@@ -201,7 +201,7 @@ begin
   Assert.AreEqual(7, Findings[0].Range.StartPos.Line);
   Assert.AreEqual(2, Findings[0].Range.StartPos.Character);
   Assert.AreEqual(9, Findings[0].Range.EndPos.Line);
-  Assert.IsFalse(TCommentedOutCodeRule.Create.Descriptor.Experimental, 'Standard an');
+  Assert.IsFalse((TCommentedOutCodeRule.Create as IRule).Descriptor.Experimental, 'Standard an');
 end;
 
 procedure TTodoRulesTests.CommentedCodeFixRemovesLines;

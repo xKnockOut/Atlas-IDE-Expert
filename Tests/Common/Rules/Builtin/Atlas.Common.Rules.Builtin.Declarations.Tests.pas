@@ -1152,7 +1152,7 @@ var
   Source: string;
   Findings: TArray<TRuleFinding>;
 begin
-  Assert.IsTrue(TDefaultParameterRule.Create.Descriptor.Experimental, 'Standard aus');
+  Assert.IsTrue((TDefaultParameterRule.Create as IRule).Descriptor.Experimental, 'Standard aus');
   Source := 'unit U;'#10'interface'#10'procedure Exportieren(const Datei: string; MitKopf: Boolean = True);'#10 +
     'implementation'#10'procedure Exportieren(const Datei: string; MitKopf: Boolean);'#10'begin'#10'end;'#10'end.';
   Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TDefaultParameterRule.Create, Source))));

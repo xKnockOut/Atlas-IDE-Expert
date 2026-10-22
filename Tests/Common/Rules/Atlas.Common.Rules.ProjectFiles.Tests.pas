@@ -157,7 +157,7 @@ begin
   Assert.AreEqual('', Reason);
   Assert.IsFalse(Files(nil, nil, False).Complete(Reason));
   Assert.AreEqual('Index läuft', Reason);
-  Assert.IsTrue(TRuleProjectFiles.Create(nil, nil, nil, nil).Complete(Reason));
+  Assert.IsTrue((TRuleProjectFiles.Create(nil, nil, nil, nil) as IRuleProjectFiles).Complete(Reason));
 end;
 
 procedure TRuleProjectFilesTests.KindAndTestsFromMainSource;

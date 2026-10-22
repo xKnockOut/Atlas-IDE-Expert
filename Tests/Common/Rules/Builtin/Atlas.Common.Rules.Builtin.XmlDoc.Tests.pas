@@ -123,7 +123,7 @@ var
   Source, Expected: string;
   Found: TRuleFinding;
 begin
-  Assert.IsFalse(TXmlDocMismatchRule.Create.Descriptor.Experimental, 'Standard an');
+  Assert.IsFalse((TXmlDocMismatchRule.Create as IRule).Descriptor.Experimental, 'Standard an');
   Source := Kunden('    /// <summary>Sucht einen Kunden.</summary>'#10 +
     '    /// <param name="Nummer">Kundennummer</param>'#10 +
     '    function Suchen(const Id: Integer; Aktive: Boolean): TKunde;'#10);

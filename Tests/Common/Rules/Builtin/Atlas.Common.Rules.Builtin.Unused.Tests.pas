@@ -542,7 +542,7 @@ procedure TUnusedRulesTests.EmptyRoutineReported;
 var
   Findings: TArray<TRuleFinding>;
 begin
-  Assert.IsFalse(TEmptyRoutineRule.Create.Descriptor.Experimental, 'Standard an');
+  Assert.IsFalse((TEmptyRoutineRule.Create as IRule).Descriptor.Experimental, 'Standard an');
   Findings := TRuleAssert.Findings(TEmptyRoutineRule.Create, ImportUnit('  public'#10'    procedure Pruefen;',
     'procedure TImport.Pruefen;'#10'begin'#10'end;'));
   Assert.AreEqual(1, Integer(Length(Findings)));

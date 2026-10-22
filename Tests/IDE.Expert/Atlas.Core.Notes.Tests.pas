@@ -407,6 +407,8 @@ begin
   Assert.IsFalse(TAtlasNotes.Save(FFolder, Book), 'beim Laden gesperrt: nicht überschreiben');
   Assert.Contains(TFile.ReadAllText(FileName), 'Rundung');
   Assert.DoesNotContain(TFile.ReadAllText(FileName), 'Ersatz');
+  // Gemeldete Datendateien vergessen: Das Register bliebe sonst als Leck stehen.
+  TAtlasDataFile.ForgetReports;
 end;
 
 initialization

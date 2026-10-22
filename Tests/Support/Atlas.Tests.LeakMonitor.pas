@@ -91,6 +91,7 @@ uses
   DUnitX.ServiceLocator,
   Atlas.Common.Editing.SlashCommands,
   Atlas.Common.Rules.Catalog,
+  Atlas.Core.Files.DataFile,
   Atlas.Core.Settings.Catalog,
   Atlas.Core.Settings.Plugin,
   Atlas.Core.Settings.Transfer,
@@ -253,11 +254,12 @@ begin
   end;
 end;
 
-/// <summary>Dateifehler einmal auslösen: Die RTL lädt dabei Ressourcen-Strings (EFOpenError, EInOutError) und
+/// <summary>Dateifehler einmal auslösen: Die RTL lädt dabei Ressourcen-Strings (EFOpenError, EFCreateError, EInOutError) und
 /// behält sie bis Programmende; das träfe sonst den ersten Test mit einer gesperrten oder fehlenden Datei.</summary>
 procedure PrewarmFileErrors;
 var
   Missing: string;
+  Held: TFileStream;
 begin
   Missing := TPath.Combine(TPath.GetTempPath, 'atlas-leckmonitor-fehlt-' + IntToStr(GetCurrentProcessId) + '.bin');
   try
@@ -271,6 +273,58 @@ begin
   except
     on Exception do
       ;
+  end;
+  // Gesperrte Datei neu anlegen (EFCreateError), wie die Sperre des Index-Caches.
+  Held := TFileStream.Create(Missing, fmCreate or fmShareExclusive);
+  try
+    try
+      TFileStream.Create(Missing, fmCreate or fmShareExclusive).Free;
+    except
+      on Exception do
+        ;
+    end;
+  finally
+    Held.Free;
+    System.SysUtils.DeleteFile(Missing);
+  end;
+end;
+
+/// <summary>Datendatei einmal unbrauchbar beiseitelegen und gesperrt lesen und schreiben (Bericht N3): Was die
+/// Melde- und Fehlerpfade beim ersten Mal anlegen, träfe sonst den ersten Test mit einer gesperrten Datei.</summary>
+procedure PrewarmDataFiles;
+var
+  FileName: string;
+  Lock: TFileStream;
+begin
+  FileName := TPath.Combine(TPath.GetTempPath, 'atlas-leckmonitor-daten-' + IntToStr(GetCurrentProcessId) + '.json');
+  try
+    TFile.WriteAllText(FileName, '[1, 2]');
+    TAtlasDataFile.Load(FileName, 'Leckmonitor',
+      function(const AText: string): Boolean
+      begin
+        Result := False;
+      end);
+    TAtlasDataFile.Write(FileName, '{}');
+    Lock := TFileStream.Create(FileName, fmOpenRead or fmShareExclusive);
+    try
+      TAtlasDataFile.Load(FileName, 'Leckmonitor',
+        function(const AText: string): Boolean
+        begin
+          Result := True;
+        end);
+      try
+        TAtlasDataFile.Write(FileName, '{}');
+      except
+        on E: Exception do
+          TAtlasDataFile.ReportNotWritten('Leckmonitor', E);
+      end;
+    finally
+      Lock.Free;
+    end;
+  finally
+    System.SysUtils.DeleteFile(FileName);
+    System.SysUtils.DeleteFile(FileName + TAtlasDataFile.DefectExtension);
+    TAtlasDataFile.ForgetReports;
   end;
 end;
 
@@ -309,6 +363,11 @@ begin
   end;
   PrewarmSettingsTransfer;
   PrewarmFileErrors;
+  PrewarmDataFiles;
+  // Dateien ohne BOM liest TFile.ReadAllText mit TEncoding.Default (Singleton beim ersten Gebrauch, z. B. im
+  // Korpustest des Parsers über die RTL-Quellen).
+  if TEncoding.Default.GetString(TEncoding.Default.GetBytes('a')) <> 'a' then
+    raise EInvalidOperation.Create('Kodierung');
 end;
 
 procedure RegisterLeakMonitor;
