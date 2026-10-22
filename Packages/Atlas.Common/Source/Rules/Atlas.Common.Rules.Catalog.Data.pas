@@ -2336,6 +2336,16 @@ begin
     '      "description": "The .dpr creates a form with Application.CreateForm, and the code also assigns TfrmX.Create(…) to the same global variable. There are then two instances; the first one stays invi' + 'sible in memory. The automatically created forms come from the .dpr of the project the unit belongs to; when the rule can read the .dpr, the class must match the CreateForm call. Silent when the routi' + 'ne checks the variable (Assigned, comparison with nil) or frees it before (Free, FreeAndNil, Release), for local names and for fields of the own class with the same name, and for units without a proje' + 'ct. High confidence. Quick fix: remove the Application.CreateForm line from the .dpr (the form is then only created by the code).",' + #10 +
     '      "bad": "// Projekt.dpr: Application.CreateForm(TfrmBericht, frmBericht);\nfrmBericht := TfrmBericht.Create(Application);\nfrmBericht.ShowModal;",' + #10 +
     '      "good": "// Projekt.dpr without CreateForm for TfrmBericht\nfrmBericht := TfrmBericht.Create(Application);\nfrmBericht.ShowModal;"' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "inherited-form-handler-without-inherited",' + #10 +
+    '      "name": "Event handler in an inherited form without inherited",' + #10 +
+    '      "category": "bug",' + #10 +
+    '      "severity": "warning",' + #10 +
+    '      "group": "forms",' + #10 +
+    '      "description": "With form inheritance, an ancestor form assigns a handler of the same name to the same event of the same component, but the handler in the descendant does not call inherited (any' + ' more). The IDE generates inherited; when the handler is created; once it is deleted, the logic of the ancestor is lost silently. The ancestor''s form file comes from the index (file of the class) or f' + 'rom the units in the uses clause next to the unit; the chain follows inherited forms up to the first form with object. Handlers with a different name count as a deliberate replacement. Silent without ' + 'the ancestor''s form file. High confidence. Quick fix: insert inherited; at the start.",' + #10 +
+    '      "bad": "procedure TfrmKundeBearbeiten.btnSpeichernClick(Sender: TObject);\nbegin\n  FKunde.Speichern;\nend;",' + #10 +
+    '      "good": "procedure TfrmKundeBearbeiten.btnSpeichernClick(Sender: TObject);\nbegin\n  inherited;\n  FKunde.Speichern;\nend;"' + #10 +
     '    }' + #10 +
     '  ]' + #10 +
     '}' + #10 +
@@ -3516,6 +3526,11 @@ begin
     '      "id": "form-autocreate-and-manual",' + #10 +
     '      "name": "Formular automatisch und zusätzlich von Hand erzeugt",' + #10 +
     '      "description": "Die .dpr erzeugt ein Formular mit Application.CreateForm, der Code weist derselben globalen Variablen zusätzlich TfrmX.Create(…) zu. Es gibt dann zwei Instanzen, die erste bleibt' + ' unsichtbar im Speicher. Die automatisch erzeugten Formulare kommen aus der .dpr des Projekts, zu dem die Unit gehört; kann die Regel die .dpr lesen, muss die Klasse zum CreateForm-Aufruf passen. Stil' + 'l bleibt sie, wenn die Routine die Variable prüft (Assigned, Vergleich mit nil) oder vorher freigibt (Free, FreeAndNil, Release), bei lokalen Namen und gleichnamigen Feldern der eigenen Klasse und bei' + ' Units ohne Projekt. Sicherheit hoch. Korrektur: die Zeile mit Application.CreateForm aus der .dpr entfernen (das Formular erzeugt dann nur noch der Code)."' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "inherited-form-handler-without-inherited",' + #10 +
+    '      "name": "Ereignis-Handler im geerbten Formular ohne inherited",' + #10 +
+    '      "description": "Bei Formularvererbung belegt ein Vorfahr-Formular dasselbe Ereignis derselben Komponente mit einem gleichnamigen Handler, der Handler im Nachfahren ruft inherited aber nicht (meh' + 'r) auf. Die IDE erzeugt inherited; beim Anlegen; wird es gelöscht, fällt die Logik des Vorfahren still weg. Die Formulardatei des Vorfahren kommt aus dem Index (Datei der Klasse) bzw. aus den Units de' + 'r uses-Liste neben der Unit; die Kette folgt geerbten Formularen bis zum ersten Formular mit object. Handler mit anderem Namen gelten als bewusster Ersatz. Still ohne Formulardatei des Vorfahren. Sich' + 'erheit hoch. Korrektur: inherited; am Anfang einfügen."' + #10 +
     '    }' + #10 +
     '  ]' + #10 +
     '}' + #10 +

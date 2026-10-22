@@ -18,6 +18,8 @@ type
     NameEdit: TEdit;
     Anzeige: TRefAnzeige;
     procedure NameEditChange(Sender: TObject);
+    // Eigener Handler mit inherited; Ziel der Mutation für inherited-form-handler-without-inherited.
+    procedure SchliessenButtonClick(Sender: TObject);
   protected
     procedure Initialisieren; override;
   end;
@@ -39,6 +41,12 @@ end;
 procedure TDetailFormular.NameEditChange(Sender: TObject);
 begin
   Anzeige.Wert := Length(NameEdit.Text);
+end;
+
+procedure TDetailFormular.SchliessenButtonClick(Sender: TObject);
+begin
+  inherited;
+  NameEdit.Clear;
 end;
 
 end.

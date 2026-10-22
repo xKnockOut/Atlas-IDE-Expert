@@ -15,7 +15,7 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 | [Performance](#gruppe-performance) | 4 |
 | [Sicherheit](#gruppe-security) | 11 |
 | [Komponenten](#gruppe-components) | 8 |
-| [Formulare und Daten](#gruppe-forms) | 12 |
+| [Formulare und Daten](#gruppe-forms) | 13 |
 | [Architektur](#gruppe-architecture) | 3 |
 | [Stil und Metriken](#gruppe-style) | 28 |
 | [Packages und Tests](#gruppe-packages) | 3 |
@@ -214,6 +214,7 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 | [`foreign-form-control-access`](#foreign-form-control-access) | Zugriff auf Controls eines anderen Formulars | Code Smell | Warnung |
 | [`form-resource-missing`](#form-resource-missing) | Formular-Unit ohne {$R *.dfm} | Bug | Fehler |
 | [`form-autocreate-and-manual`](#form-autocreate-and-manual) | Formular automatisch und zusätzlich von Hand erzeugt | Bug | Warnung |
+| [`inherited-form-handler-without-inherited`](#inherited-form-handler-without-inherited) | Ereignis-Handler im geerbten Formular ohne inherited | Bug | Warnung |
 
 <a id="gruppe-architecture"></a>
 ### Architektur
@@ -4592,4 +4593,30 @@ Richtig:
 // Projekt.dpr without CreateForm for TfrmBericht
 frmBericht := TfrmBericht.Create(Application);
 frmBericht.ShowModal;
+```
+
+<a id="inherited-form-handler-without-inherited"></a>
+### inherited-form-handler-without-inherited
+
+**Ereignis-Handler im geerbten Formular ohne inherited** · Bug · Warnung · Gruppe Formulare und Daten
+
+Bei Formularvererbung belegt ein Vorfahr-Formular dasselbe Ereignis derselben Komponente mit einem gleichnamigen Handler, der Handler im Nachfahren ruft inherited aber nicht (mehr) auf. Die IDE erzeugt inherited; beim Anlegen; wird es gelöscht, fällt die Logik des Vorfahren still weg. Die Formulardatei des Vorfahren kommt aus dem Index (Datei der Klasse) bzw. aus den Units der uses-Liste neben der Unit; die Kette folgt geerbten Formularen bis zum ersten Formular mit object. Handler mit anderem Namen gelten als bewusster Ersatz. Still ohne Formulardatei des Vorfahren. Sicherheit hoch. Korrektur: inherited; am Anfang einfügen.
+
+Mit Treffer:
+
+```pascal
+procedure TfrmKundeBearbeiten.btnSpeichernClick(Sender: TObject);
+begin
+  FKunde.Speichern;
+end;
+```
+
+Richtig:
+
+```pascal
+procedure TfrmKundeBearbeiten.btnSpeichernClick(Sender: TObject);
+begin
+  inherited;
+  FKunde.Speichern;
+end;
 ```
