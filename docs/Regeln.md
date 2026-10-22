@@ -6,7 +6,7 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 
 | Gruppe | Regeln |
 |---|---|
-| [Fehler finden](#gruppe-find-bugs) | 54 |
+| [Fehler finden](#gruppe-find-bugs) | 55 |
 | [Exceptions](#gruppe-exceptions) | 6 |
 | [Threads](#gruppe-threads) | 9 |
 | [Robustheit und Muster](#gruppe-robustness) | 3 |
@@ -78,6 +78,7 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 | [`delimited-text-without-strict`](#delimited-text-without-strict) | DelimitedText ohne StrictDelimiter | Bug | Warnung |
 | [`self-as-interface-in-constructor`](#self-as-interface-in-constructor) | Self während der Konstruktion als Interface weitergegeben | Bug | Warnung |
 | [`unchecked-enum-cast`](#unchecked-enum-cast) | Zahl ungeprüft in Aufzählung umgewandelt | Bug | Hinweis |
+| [`createprocess-readonly-commandline`](#createprocess-readonly-commandline) | CreateProcess mit unveränderlicher Befehlszeile | Bug | Fehler |
 
 <a id="gruppe-exceptions"></a>
 ### Exceptions
@@ -3743,4 +3744,25 @@ Wert := qry.FieldByName('Status').AsInteger;
 if not InRange(Wert, Ord(Low(TStatus)), Ord(High(TStatus))) then
   raise EConvertError.CreateFmt('Ungültiger Wert %d für TStatus', [Wert]);
 Status := TStatus(Wert);
+```
+
+<a id="createprocess-readonly-commandline"></a>
+### createprocess-readonly-commandline
+
+**CreateProcess mit unveränderlicher Befehlszeile** · Bug · Fehler · Gruppe Fehler finden
+
+CreateProcess (CreateProcessW) und CreateProcessAsUser schreiben in den Puffer von lpCommandLine. Ein PChar auf Speicher, der nicht beschreibbar ist, führt zu einer Zugriffsverletzung. Gemeldet wird PChar(…)/PWideChar(…) auf: ein String-Literal oder eine Konstante; eine Verkettung aus genau einem Literal und einem Wert (ist der Wert leer, liefert die RTL das Literal selbst); eine lokale String-Variable, deren letzte Zuweisung vor dem Aufruf eines davon ist, ohne UniqueString danach; einen String-Parameter (Sicherheit mittel, der Aufrufer kann ein Literal übergeben). Funktionsergebnisse wie Format und Verkettungen aus mehreren Teilen sind beschreibbare Heap-Strings und bleiben still, ebenso CreateProcessA, das die Befehlszeile selbst kopiert. Korrektur: Befehlszeile in eine lokale Variable kopieren und UniqueString aufrufen; bei einer Variablen UniqueString vor der Anweisung. In Schleifenbedingungen keine Korrektur.
+
+Mit Treffer:
+
+```pascal
+CreateProcess(nil, PChar('notepad.exe ' + Datei), nil, nil, False, 0, nil, nil, SI, PI);
+```
+
+Richtig:
+
+```pascal
+Befehl := 'notepad.exe ' + Datei;
+UniqueString(Befehl);
+CreateProcess(nil, PChar(Befehl), nil, nil, False, 0, nil, nil, SI, PI);
 ```

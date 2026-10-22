@@ -1875,6 +1875,16 @@
           "description": "Calls whose result counts as unchecked."
         }
       ]
+    },
+    {
+      "id": "createprocess-readonly-commandline",
+      "name": "CreateProcess with a read-only command line",
+      "category": "bug",
+      "severity": "error",
+      "group": "find-bugs",
+      "description": "CreateProcess (CreateProcessW) and CreateProcessAsUser write into the buffer of lpCommandLine. A PChar on memory that cannot be written causes an access violation. Reported for PChar(...)/PWideChar(...) on: a string literal or constant; a concatenation of exactly one literal and one value (if the value is empty, the RTL returns the literal itself); a local string variable whose last assignment before the call is one of these, without UniqueString afterwards; a string parameter (medium confidence, the caller may pass a literal). Function results such as Format and concatenations with several parts are writable heap strings and stay silent, as does CreateProcessA, which copies the command line itself. Quick fix: copy the command line into a local variable and call UniqueString; for a variable, UniqueString before the statement. No quick fix in loop conditions.",
+      "bad": "CreateProcess(nil, PChar('notepad.exe ' + Datei), nil, nil, False, 0, nil, nil, SI, PI);",
+      "good": "Befehl := 'notepad.exe ' + Datei;\nUniqueString(Befehl);\nCreateProcess(nil, PChar(Befehl), nil, nil, False, 0, nil, nil, SI, PI);"
     }
   ]
 }
