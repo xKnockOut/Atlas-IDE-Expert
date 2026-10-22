@@ -4,6 +4,8 @@
 // und Dictionarys, Besitz aus Erzeugung und OwnsObjects, Elementvariablen, Korrekturen, Optionen.
 // Tests der Regel create-without-assignment (#948): erzeugte und sofort verlorene Objekte,
 // Owner, Threads, selfRegistering, Korrektur mit try/finally.
+// Tests der Regel self-as-interface-in-constructor (#950): eigene Referenzzählung im Konstruktor,
+// TInterfacedObject nach inherited AfterConstruction, Formen der Weitergabe, Korrektur.
 
 interface
 
@@ -44,6 +46,14 @@ type
     procedure CreateOffAndExclude;
     [Test]
     procedure CreateNames;
+    [Test]
+    procedure SelfAsInterfaceOwnCounting;
+    [Test]
+    procedure SelfAsInterfaceOwnCountingSilentCases;
+    [Test]
+    procedure SelfAsInterfaceAfterConstruction;
+    [Test]
+    procedure SelfAsInterfaceOffAndExclude;
   end;
 
 implementation
@@ -463,6 +473,160 @@ begin
   Assert.AreEqual('StringList', TCreateWithoutAssignmentRule.VariableName('System.Classes.TStringList'));
   Assert.AreEqual('List', TCreateWithoutAssignmentRule.VariableName('TList<Integer>'));
   Assert.AreEqual('Termin', TCreateWithoutAssignmentRule.VariableName('Termin'));
+end;
+
+function Beobachter(const AAncestor, AMembers, AImplementation: string): string;
+begin
+  Result :=
+    'unit Beobachtung;'#10 +
+    'interface'#10 +
+    'type'#10 +
+    '  IBeobachter = interface'#10 +
+    '  end;'#10 +
+    '  IQuelle = interface'#10 +
+    '    procedure Anmelden(const ABeobachter: IBeobachter);'#10 +
+    '    procedure Merken(AObjekt: TObject);'#10 +
+    '  end;'#10 +
+    '  TBeobachter = class(' + AAncestor + ', IBeobachter)'#10 +
+    '  private'#10 +
+    '    FQuelle: IQuelle;'#10 +
+    AMembers +
+    '  public'#10 +
+    '    constructor Create(const AQuelle: IQuelle);'#10 +
+    '    procedure AfterConstruction; override;'#10 +
+    '  end;'#10 +
+    'implementation'#10 +
+    AImplementation +
+    'end.';
+end;
+
+function Gezaehlt(const AConstructorBody: string): string;
+begin
+  Result := Beobachter('TObject',
+    '    FZaehler: Integer;'#10 +
+    '    function QueryInterface(const IID: TGUID; out Obj): HResult; stdcall;'#10 +
+    '    function _AddRef: Integer; stdcall;'#10 +
+    '    function _Release: Integer; stdcall;'#10,
+    'function TBeobachter._Release: Integer;'#10 +
+    'begin'#10 +
+    '  Dec(FZaehler);'#10 +
+    '  Result := FZaehler;'#10 +
+    '  if Result = 0 then'#10 +
+    '    Destroy;'#10 +
+    'end;'#10 +
+    'constructor TBeobachter.Create(const AQuelle: IQuelle);'#10 +
+    'begin'#10 +
+    '  inherited Create;'#10 +
+    '  FQuelle := AQuelle;'#10 +
+    AConstructorBody +
+    'end;'#10 +
+    'procedure TBeobachter.AfterConstruction;'#10 +
+    'begin'#10 +
+    '  inherited;'#10 +
+    'end;'#10);
+end;
+
+function NachInherited(const ABody: string): string;
+begin
+  Result := Beobachter('TInterfacedObject', '',
+    'constructor TBeobachter.Create(const AQuelle: IQuelle);'#10 +
+    'begin'#10 +
+    '  inherited Create;'#10 +
+    '  FQuelle := AQuelle;'#10 +
+    '  FQuelle.Anmelden(Self);'#10 +
+    'end;'#10 +
+    'procedure TBeobachter.AfterConstruction;'#10 +
+    'begin'#10 +
+    ABody +
+    'end;'#10);
+end;
+
+procedure TOwnershipRulesTests.SelfAsInterfaceOwnCounting;
+var
+  Findings: TArray<TRuleFinding>;
+begin
+  Findings := TRuleAssert.Findings(TSelfAsInterfaceInConstructorRule.Create,
+    Gezaehlt('  FQuelle.Anmelden(Self);'#10));
+  Assert.AreEqual(1, Integer(Length(Findings)));
+  Assert.AreEqual('self-as-interface-in-constructor', Findings[0].RuleId);
+  Assert.AreEqual(Ord(TRuleSeverity.Warning), Ord(Findings[0].Severity));
+  Assert.AreEqual(Ord(TRuleConfidence.High), Ord(Findings[0].Confidence));
+  Assert.AreEqual('Self wird im Konstruktor als Interface übergeben; die eigene Referenzzählung von TBeobachter ' +
+    'gibt das Objekt frei, sobald der Zähler danach auf 0 fällt.', Findings[0].Message);
+  Assert.AreEqual(32, Findings[0].Range.StartPos.Line);
+  Assert.AreEqual(19, Findings[0].Range.StartPos.Character);
+  Assert.AreEqual(0, Integer(Length(Findings[0].Fixes)));
+  // Weitere Formen der Weitergabe.
+  TRuleAssert.Reports(TSelfAsInterfaceInConstructorRule.Create, Gezaehlt('  (Self as IBeobachter)._AddRef;'#10));
+  TRuleAssert.Reports(TSelfAsInterfaceInConstructorRule.Create,
+    Gezaehlt('  FQuelle.Anmelden(IBeobachter(Self));'#10));
+  TRuleAssert.Reports(TSelfAsInterfaceInConstructorRule.Create,
+    StringReplace(Gezaehlt('  FSelbst := Self;'#10), '    FQuelle: IQuelle;'#10,
+    '    FQuelle: IQuelle;'#10'    FSelbst: IBeobachter;'#10, []));
+end;
+
+procedure TOwnershipRulesTests.SelfAsInterfaceOwnCountingSilentCases;
+begin
+  // Als Objekt weitergegeben, Methode von Self, Feld von Self.
+  TRuleAssert.Silent(TSelfAsInterfaceInConstructorRule.Create, Gezaehlt('  FQuelle.Merken(Self);'#10 +
+    '  Self.Free;'#10'  FQuelle.Anmelden(nil);'#10));
+  // Schutz in NewInstance.
+  TRuleAssert.Silent(TSelfAsInterfaceInConstructorRule.Create, StringReplace(Gezaehlt('  FQuelle.Anmelden(Self);'#10),
+    '    function _Release: Integer; stdcall;'#10, '    function _Release: Integer; stdcall;'#10 +
+    '    class function NewInstance: TObject; override;'#10, []));
+  // _Release ohne Freigabe (Singleton-Muster).
+  TRuleAssert.Silent(TSelfAsInterfaceInConstructorRule.Create, StringReplace(Gezaehlt('  FQuelle.Anmelden(Self);'#10),
+    '    Destroy;'#10, '    Result := -1;'#10, []));
+  // Unbekannter Vorfahr: die Kette ist nicht zu prüfen.
+  TRuleAssert.Silent(TSelfAsInterfaceInConstructorRule.Create, StringReplace(Gezaehlt('  FQuelle.Anmelden(Self);'#10),
+    'class(TObject,', 'class(TUnbekannt,', []));
+  // TInterfacedObject im Konstruktor: Self ist durch NewInstance geschützt.
+  TRuleAssert.Silent(TSelfAsInterfaceInConstructorRule.Create, NachInherited('  inherited;'#10));
+end;
+
+procedure TOwnershipRulesTests.SelfAsInterfaceAfterConstruction;
+var
+  Source, Fixed: string;
+  Findings: TArray<TRuleFinding>;
+begin
+  Source := NachInherited('  inherited;'#10'  FQuelle.Anmelden(Self);'#10);
+  Findings := TRuleAssert.Findings(TSelfAsInterfaceInConstructorRule.Create, Source);
+  Assert.AreEqual(1, Integer(Length(Findings)));
+  Assert.AreEqual('Self wird nach inherited AfterConstruction als Interface übergeben; fällt der Zähler danach ' +
+    'auf 0, ist das Objekt schon freigegeben.', Findings[0].Message);
+  Assert.AreEqual(26, Findings[0].Range.StartPos.Line);
+  Assert.AreEqual('Vor inherited verschieben', Findings[0].Fixes[0].Title);
+  Fixed := ApplyFix(Source, Findings[0].Fixes[0]);
+  Assert.AreEqual(NachInherited('  FQuelle.Anmelden(Self);'#10'  inherited;'#10), Fixed);
+  AssertParses(Fixed);
+  TRuleAssert.Silent(TSelfAsInterfaceInConstructorRule.Create, Fixed);
+  // Ohne eigene Zeile keine Korrektur.
+  Findings := TRuleAssert.Findings(TSelfAsInterfaceInConstructorRule.Create,
+    NachInherited('  inherited; FQuelle.Anmelden(Self);'#10));
+  Assert.AreEqual(1, Integer(Length(Findings)));
+  Assert.AreEqual(0, Integer(Length(Findings[0].Fixes)));
+  // Eigene Referenzzählung: auch in AfterConstruction gemeldet.
+  Findings := TRuleAssert.Findings(TSelfAsInterfaceInConstructorRule.Create,
+    StringReplace(Gezaehlt(''), '  inherited;'#10'end;'#10'end.', '  FQuelle.Anmelden(Self);'#10'end;'#10'end.', []));
+  Assert.AreEqual(1, Integer(Length(Findings)));
+  Assert.AreEqual('Self wird in AfterConstruction als Interface übergeben; die eigene Referenzzählung von ' +
+    'TBeobachter gibt das Objekt frei, sobald der Zähler danach auf 0 fällt.', Findings[0].Message);
+end;
+
+procedure TOwnershipRulesTests.SelfAsInterfaceOffAndExclude;
+var
+  Source: string;
+begin
+  Source := Gezaehlt('  FQuelle.Anmelden(Self);'#10);
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TSelfAsInterfaceInConstructorRule.Create, Source,
+    '{"rules": {"self-as-interface-in-constructor": "off"}}'))));
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TSelfAsInterfaceInConstructorRule.Create, Source,
+    '{"rules": {"self-as-interface-in-constructor": {"exclude": ["Source/*.pas"]}}}', 'Source/Beobachtung.pas'))));
+  Assert.IsTrue(TSelfAsInterfaceInConstructorRule.IsInterfaceType('IBeobachter'));
+  Assert.IsTrue(TSelfAsInterfaceInConstructorRule.IsInterfaceType('System.IInterface'));
+  Assert.IsTrue(TSelfAsInterfaceInConstructorRule.IsInterfaceType('IList<Integer>'));
+  Assert.IsFalse(TSelfAsInterfaceInConstructorRule.IsInterfaceType('TObject'));
+  Assert.IsFalse(TSelfAsInterfaceInConstructorRule.IsInterfaceType('Integer'));
 end;
 
 initialization

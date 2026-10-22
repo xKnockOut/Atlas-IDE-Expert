@@ -16,6 +16,15 @@
 //                     Threads (geben sich mit FreeOnTerminate selbst frei), unbekannte Klassen mit Argumenten und
 //                     Klassen aus "selfRegistering". Korrektur: Zuweisung an eine neue lokale Variable, die
 //                     folgenden Anweisungen des Blocks in try/finally mit Free.
+//   self-as-interface-in-constructor  Self als Interface weitergegeben, während die Referenzzählung das Objekt
+//                     freigeben kann (#950). Nur zwei echte Fehlerfälle: (1) Klassen mit eigener Referenzzählung
+//                     (_Release in der Kette gibt das Objekt frei, kein NewInstance-Schutz, Kette bis TObject
+//                     bekannt) im Konstruktor oder in AfterConstruction; (2) Nachfahren von TInterfacedObject in
+//                     AfterConstruction nach inherited, das den Schutzzähler aus NewInstance schon abgebaut hat.
+//                     Im Konstruktor von TInterfacedObject-Nachfahren ist Self geschützt und bleibt still. Als
+//                     Weitergabe zählen Self as IX, IX(Self), ein Argument, dessen Parameter in allen bekannten
+//                     Überladungen ein Interface ist, und die Zuweisung an eine Interface-Variable. Korrektur in
+//                     Fall 2: die Anweisung vor inherited verschieben.
 
 interface
 
@@ -44,6 +53,14 @@ type
     class function VariableName(const ATypeName: string): string; static;
   end;
 
+  TSelfAsInterfaceInConstructorRule = class(TInterfacedObject, IRule)
+  public
+    function Descriptor: TRuleDescriptor;
+    procedure Check(const AContext: TRuleContext; const AReport: IRuleReport);
+    /// <summary>Ist ATypeName ein Interface nach der Namensregel (IName, auch Unit.IName, IList&lt;T&gt;)?</summary>
+    class function IsInterfaceType(const AType: string): Boolean; static;
+  end;
+
 procedure RegisterOwnershipRules(const ARegistry: TRuleRegistry);
 
 implementation
@@ -56,6 +73,8 @@ uses
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Pascal.Contract,
   Atlas.Common.Pascal.SyntaxTree,
+  Atlas.Common.Pascal.DeclaredTypes,
+  Atlas.Common.Index.Contract,
   Atlas.Common.Editing.RoutineBody,
   Atlas.Common.Rules.Derived,
   Atlas.Common.Rules.Options,
@@ -64,6 +83,7 @@ uses
 const
   OwnedItemFreedRuleId = 'owned-item-freed';
   CreateWithoutAssignmentRuleId = 'create-without-assignment';
+  SelfAsInterfaceInConstructorRuleId = 'self-as-interface-in-constructor';
   RemoveMethods: array[0..4] of string = ('Delete', 'Remove', 'RemoveItem', 'Clear', 'DeleteRange');
   ExtractMethods: array[0..3] of string = ('Extract', 'ExtractAt', 'ExtractItem', 'ExtractPair');
 
@@ -873,10 +893,373 @@ begin
   end;
 end;
 
+{ TSelfAsInterfaceInConstructorRule }
+
+function TSelfAsInterfaceInConstructorRule.Descriptor: TRuleDescriptor;
+begin
+  Result := TRuleDescriptor.Create(SelfAsInterfaceInConstructorRuleId, TRuleSeverity.Warning,
+    'Self als Interface im Konstruktor weitergegeben');
+end;
+
+class function TSelfAsInterfaceInConstructorRule.IsInterfaceType(const AType: string): Boolean;
+var
+  Name: string;
+begin
+  Name := Trim(AType);
+  if Pos('<', Name) > 0 then
+    Name := Copy(Name, 1, Pos('<', Name) - 1);
+  Name := Copy(Name, LastDelimiter('.', Name) + 1, MaxInt);
+  Result := (Length(Name) >= 2) and (Name[1] = 'I') and CharInSet(Name[2], ['A'..'Z']);
+end;
+
+procedure TSelfAsInterfaceInConstructorRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
+var
+  Tokens: TArray<TPascalToken>;
+  Code: TArray<Integer>;
+  Lines: TArray<string>;
+  LineBreak: string;
+  Ancestry: TAncestry;
+  Types: TDeclaredTypes;
+
+  function Token(APosition: Integer): TPascalToken;
+  begin
+    Result := Tokens[Code[APosition]];
+  end;
+
+  function IsSym(APosition: Integer; const ASymbol: string): Boolean;
+  begin
+    Result := (APosition >= 0) and (APosition <= High(Code)) and Token(APosition).IsSymbol(ASymbol);
+  end;
+
+  function IsWord(APosition: Integer): Boolean;
+  begin
+    Result := (APosition >= 0) and (APosition <= High(Code)) and
+      (Token(APosition).Kind = TPascalTokenKind.Identifier);
+  end;
+
+  function IsName(APosition: Integer; const AName: string): Boolean;
+  begin
+    Result := IsWord(APosition) and SameText(Token(APosition).Text, AName);
+  end;
+
+  function IsKey(APosition: Integer; const AKeyword: string): Boolean;
+  begin
+    Result := (APosition >= 0) and (APosition <= High(Code)) and Token(APosition).IsKeyword(AKeyword);
+  end;
+
+  function CodeAt(AOffset: Integer): Integer;
+  begin
+    for Result := 0 to High(Code) do
+      if Token(Result).Offset >= AOffset then
+        Exit;
+    Result := Length(Code);
+  end;
+
+  // Symbole der Datei und des Index mit dem Namen AName.
+  function SymbolsNamed(const AName: string): TArray<TIndexSymbol>;
+  var
+    Symbol: TIndexSymbol;
+    Location: TSymbolLocation;
+  begin
+    Result := nil;
+    for Symbol in Ancestry.Local.Symbols do
+      if SameText(Symbol.Name, AName) then
+        Result := Result + [Symbol];
+    if AContext.Index <> nil then
+      for Location in AContext.Index.FindSymbols(AName) do
+        Result := Result + [Location.Symbol];
+  end;
+
+  // Methode AMethod (z. B. _Release) als Rumpf in der Datei: 'TKlasse._Release'.
+  function MethodBody(const AClassName, AMethod: string): TSyntaxNode;
+  var
+    Found: TSyntaxNode;
+  begin
+    Found := nil;
+    AContext.Tree.Root.Walk(
+      function(ANode: TSyntaxNode): Boolean
+      begin
+        if (Found = nil) and (ANode.Kind = TSyntaxKind.RoutineDecl) and
+          SameText(ANode.Name, AClassName + '.' + AMethod) and (TRoutineBody.BodyOf(ANode) <> nil) then
+          Found := ANode;
+        Result := Found = nil;
+      end);
+    Result := Found;
+  end;
+
+  function Declares(const AClassName, AMethod: string): Boolean;
+  var
+    Symbol: TIndexSymbol;
+  begin
+    for Symbol in Ancestry.Local.Symbols do
+      if SameText(Symbol.Container, AClassName) and SameText(Symbol.Name, AMethod) and
+        (Symbol.Kind in [TIndexSymbolKind.Method, TIndexSymbolKind.Constructor_]) then
+        Exit(True);
+    Result := False;
+  end;
+
+  // Gibt _Release der Klasse das Objekt selbst frei (Destroy oder Free im Rumpf)?
+  function ReleaseFrees(const AClassName: string): Boolean;
+  var
+    Routine: TSyntaxNode;
+    Position: Integer;
+  begin
+    Routine := MethodBody(AClassName, '_Release');
+    if Routine = nil then
+      Exit(False);
+    for Position := CodeAt(Routine.StartOffset) to High(Code) do
+    begin
+      if Token(Position).Offset >= Routine.EndOffset then
+        Break;
+      if IsName(Position, 'Destroy') or IsName(Position, 'Free') or IsName(Position, 'FreeInstance') then
+        Exit(True);
+    end;
+    Result := False;
+  end;
+
+  // Eigene Referenzzählung ohne Schutz in NewInstance: Eine Klasse der Kette gibt sich in _Release frei,
+  // keine überschreibt NewInstance, die Kette reicht bis TObject.
+  function OwnCounting(const AClassName: string): Boolean;
+  var
+    Current: string;
+    Steps: Integer;
+  begin
+    Result := False;
+    Current := AClassName;
+    for Steps := 1 to 32 do
+    begin
+      if SameText(Current, 'TObject') then
+        Exit;
+      if (Current = '') or SameText(Current, 'TInterfacedObject') or Declares(Current, 'NewInstance') then
+      begin
+        Result := False;
+        Exit;
+      end;
+      if Declares(Current, '_Release') and ReleaseFrees(Current) then
+        Result := True;
+      Current := Ancestry.ParentOf(Current);
+    end;
+    Result := False;
+  end;
+
+  // Parametertyp an Stelle AIndex aller Routinen namens AName: True, wenn alle bekannten ein Interface
+  // erwarten (Überladungen mit TObject an der Stelle machen den Fall unsicher).
+  function ExpectsInterface(const AName: string; AIndex: Integer): Boolean;
+  var
+    Symbol: TIndexSymbol;
+    Known: Boolean;
+  begin
+    Known := False;
+    for Symbol in SymbolsNamed(AName) do
+    begin
+      if not (Symbol.Kind in [TIndexSymbolKind.Method, TIndexSymbolKind.Constructor_, TIndexSymbolKind.Routine]) or
+        (Length(Symbol.ParamTypes) <= AIndex) then
+        Continue;
+      if not IsInterfaceType(Symbol.ParamTypes[AIndex]) then
+        Exit(False);
+      Known := True;
+    end;
+    Result := Known;
+  end;
+
+  // Typ einer Variablen oder eines Feldes vor ":= Self".
+  function TargetIsInterface(APosition: Integer): Boolean;
+  var
+    Target: Integer;
+    Symbol: TIndexSymbol;
+    TypeName: string;
+  begin
+    Target := APosition - 2;
+    if not IsWord(Target) or (IsSym(Target - 1, '.') and not IsName(Target - 2, 'Self')) then
+      Exit(False);
+    TypeName := Types.DeclaredType(Token(Target).Text, Token(Target).StartPos);
+    if TypeName = '' then
+      for Symbol in Ancestry.Local.Symbols do
+        if (Symbol.Kind in [TIndexSymbolKind.Field, TIndexSymbolKind.Variable]) and
+          SameText(Symbol.Name, Token(Target).Text) then
+          TypeName := Symbol.TypeName;
+    Result := IsInterfaceType(TypeName);
+  end;
+
+  // Wird Self an APosition als Interface weitergegeben? Self as IX, IX(Self), Aufruf mit Interface-Parameter
+  // oder Zuweisung an eine Interface-Variable.
+  function PassesAsInterface(APosition: Integer): Boolean;
+  var
+    Position, Depth, Argument: Integer;
+  begin
+    Result := False;
+    if IsSym(APosition - 1, '.') or IsSym(APosition + 1, '.') then
+      Exit;
+    if IsKey(APosition + 1, 'as') and IsWord(APosition + 2) and IsInterfaceType(Token(APosition + 2).Text) then
+      Exit(True);
+    if IsSym(APosition - 1, '(') and IsSym(APosition + 1, ')') and IsWord(APosition - 2) and
+      IsInterfaceType(Token(APosition - 2).Text) then
+      Exit(True);
+    if IsSym(APosition - 1, ':=') and (IsSym(APosition + 1, ';') or IsKey(APosition + 1, 'end') or
+      IsKey(APosition + 1, 'else')) then
+      Exit(TargetIsInterface(APosition));
+    if not (IsSym(APosition - 1, '(') or IsSym(APosition - 1, ',')) or
+      not (IsSym(APosition + 1, ')') or IsSym(APosition + 1, ',')) then
+      Exit;
+    // Öffnende Klammer des Aufrufs und Stelle des Arguments.
+    Depth := 0;
+    Argument := 0;
+    Position := APosition - 1;
+    while Position >= 0 do
+    begin
+      if Token(Position).IsSymbol(')') or Token(Position).IsSymbol(']') then
+        Inc(Depth)
+      else if Token(Position).IsSymbol('[') then
+      begin
+        if Depth = 0 then
+          Exit;
+        Dec(Depth);
+      end
+      else if Token(Position).IsSymbol('(') then
+      begin
+        if Depth = 0 then
+          Break;
+        Dec(Depth);
+      end
+      else if (Depth = 0) and Token(Position).IsSymbol(',') then
+        Inc(Argument)
+      else if (Depth = 0) and Token(Position).IsSymbol(';') then
+        Exit;
+      Dec(Position);
+    end;
+    if (Position < 1) or not IsWord(Position - 1) then
+      Exit;
+    Result := ExpectsInterface(Token(Position - 1).Text, Argument);
+  end;
+
+  // Anweisung direkt im Rumpf ABlock, die AOffset enthält; nil sonst.
+  function TopStatement(ABlock: TSyntaxNode; AOffset: Integer): TSyntaxNode;
+  var
+    Index: Integer;
+  begin
+    for Index := 0 to ABlock.ChildCount - 1 do
+      if (AOffset >= ABlock[Index].StartOffset) and (AOffset < ABlock[Index].EndOffset) then
+        Exit(ABlock[Index]);
+    Result := nil;
+  end;
+
+  // Steht die Anweisung allein auf ihren Zeilen (davor nur Einrückung, danach nur ";")?
+  function OwnLines(AStatement: TSyntaxNode): Boolean;
+  var
+    Rest: string;
+  begin
+    Rest := Trim(Copy(Lines[AStatement.EndPos.Line], AStatement.EndPos.Character + 1, MaxInt));
+    Result := (Trim(Copy(Lines[AStatement.StartPos.Line], 1, AStatement.StartPos.Character)) = '') and
+      ((Rest = '') or (Rest = ';')) and (AStatement.EndPos.Line < High(Lines));
+  end;
+
+  // Korrektur: die Anweisung mit Self vor die Zeile mit inherited verschieben.
+  function MoveFix(ABlock: TSyntaxNode; AInherited, AOffset: Integer): TArray<TRuleFix>;
+  var
+    Before, Moved: TSyntaxNode;
+    Line: Integer;
+    Text: string;
+  begin
+    Result := nil;
+    Before := TopStatement(ABlock, AInherited);
+    Moved := TopStatement(ABlock, AOffset);
+    if (Before = nil) or (Moved = nil) or (Before = Moved) or not OwnLines(Before) or not OwnLines(Moved) then
+      Exit;
+    Text := '';
+    for Line := Moved.StartPos.Line to Moved.EndPos.Line do
+      Text := Text + Lines[Line] + LineBreak;
+    Result := [TRuleFix.Create('Vor inherited verschieben', [
+      TRuleEdit.Create(TTextRange.Create(TTextPosition.Create(Before.StartPos.Line, 0),
+        TTextPosition.Create(Before.StartPos.Line, 0)), Text),
+      TRuleEdit.Create(TTextRange.Create(TTextPosition.Create(Moved.StartPos.Line, 0),
+        TTextPosition.Create(Moved.EndPos.Line + 1, 0)), '')])];
+  end;
+
+  procedure CheckRoutine(ARoutine: TSyntaxNode);
+  var
+    First, Position, InheritedAt: Integer;
+    TypeName, Method, Where: string;
+    Block: TSyntaxNode;
+    IsAfterConstruction, Counting: Boolean;
+  begin
+    First := CodeAt(ARoutine.StartOffset);
+    if (Pos('.', ARoutine.Name) = 0) or IsKey(First, 'class') then
+      Exit;
+    TypeName := Copy(ARoutine.Name, 1, LastDelimiter('.', ARoutine.Name) - 1);
+    Method := Copy(ARoutine.Name, LastDelimiter('.', ARoutine.Name) + 1, MaxInt);
+    IsAfterConstruction := SameText(Method, 'AfterConstruction');
+    if not IsKey(First, 'constructor') and not IsAfterConstruction then
+      Exit;
+    Block := TRoutineBody.BodyOf(ARoutine);
+    if Block = nil then
+      Exit;
+    Counting := OwnCounting(TypeName);
+    // Nachfahren von TInterfacedObject: nur AfterConstruction nach inherited (der Schutz ist dann aufgehoben).
+    if not Counting and not (IsAfterConstruction and Ancestry.DescendsFrom(TypeName, 'TInterfacedObject')) then
+      Exit;
+    if IsKey(First, 'constructor') then
+      Where := 'im Konstruktor'
+    else
+      Where := 'in AfterConstruction';
+    InheritedAt := -1;
+    for Position := CodeAt(Block.StartOffset) to High(Code) do
+    begin
+      if Token(Position).Offset >= Block.EndOffset then
+        Break;
+      if (InheritedAt < 0) and IsKey(Position, 'inherited') then
+        InheritedAt := Position;
+      if not IsName(Position, 'Self') or not PassesAsInterface(Position) or
+        (TRoutineBody.RoutineAt(AContext.Tree, Token(Position).Offset) <> ARoutine) then
+        Continue;
+      if Counting then
+        AReport.Add(TTextRange.Create(Token(Position).StartPos, Token(Position).EndPos),
+          Format('Self wird %s als Interface übergeben; die eigene Referenzzählung von %s gibt das Objekt ' +
+          'frei, sobald der Zähler danach auf 0 fällt.', [Where, TypeName]))
+      else if InheritedAt >= 0 then
+        AReport.Add(TTextRange.Create(Token(Position).StartPos, Token(Position).EndPos),
+          'Self wird nach inherited AfterConstruction als Interface übergeben; fällt der Zähler danach auf 0, ' +
+          'ist das Objekt schon freigegeben.',
+          MoveFix(Block, Token(InheritedAt).Offset, Token(Position).Offset));
+    end;
+  end;
+
+var
+  Index: Integer;
+  Routines: TArray<TSyntaxNode>;
+  Routine: TSyntaxNode;
+begin
+  if (AContext.Tree = nil) or (AContext.Tree.Root = nil) or not ContainsText(AContext.Text, 'Self') then
+    Exit;
+  Tokens := AContext.Tree.Tokens;
+  Code := nil;
+  for Index := 0 to High(Tokens) do
+    if not (Tokens[Index].Kind in [TPascalTokenKind.Comment, TPascalTokenKind.Directive]) then
+      Code := Code + [Index];
+  Lines := TTextLines.SplitLines(AContext.Text, LineBreak);
+  Routines := nil;
+  AContext.Tree.Root.Walk(
+    function(ANode: TSyntaxNode): Boolean
+    begin
+      if ANode.Kind = TSyntaxKind.RoutineDecl then
+        Routines := Routines + [ANode];
+      Result := True;
+    end);
+  Ancestry := TAncestry.Create(AContext.Index, TRuleDerived.UnitIndex(TRuleDerived.Open(AContext), AContext));
+  Types := TDeclaredTypes.Create(AContext.Tree, AContext.Text);
+  try
+    for Routine in Routines do
+      CheckRoutine(Routine);
+  finally
+    Types.Free;
+    Ancestry.Free;
+  end;
+end;
+
 procedure RegisterOwnershipRules(const ARegistry: TRuleRegistry);
 begin
   ARegistry.Register(TOwnedItemFreedRule.Create);
   ARegistry.Register(TCreateWithoutAssignmentRule.Create);
+  ARegistry.Register(TSelfAsInterfaceInConstructorRule.Create);
 end;
 
 end.

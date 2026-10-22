@@ -3673,3 +3673,17 @@ Voraussetzung: Server läuft; Routine mit lokaler `Teile: TStringList`, darin `T
 | DT4 | `Teile.StrictDelimiter := False;` bzw. kein `Delimiter` gesetzt | Keine Meldung |
 | DT5 | `if Zeile <> '' then Teile.DelimitedText := Zeile;` | Warnung ohne Korrektur |
 | DT6 | `"delimited-text-without-strict": "off"` bzw. `exclude` mit dem Pfad der Datei | Keine Meldung |
+
+## Self als Interface während der Konstruktion (#950)
+
+Voraussetzung: Server läuft; Unit mit `IQuelle.Anmelden(const ABeobachter: IBeobachter)` und Klasse `TBeobachter`.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| SA1 | `TBeobachter = class(TObject, IBeobachter)` mit eigenem `_AddRef`/`_Release` (`_Release` ruft bei 0 `Destroy`), im Konstruktor `FQuelle.Anmelden(Self);` | Warnung `self-as-interface-in-constructor` auf `Self`: „Self wird im Konstruktor als Interface übergeben; die eigene Referenzzählung von TBeobachter gibt das Objekt frei, sobald der Zähler danach auf 0 fällt.“; im Fenster „Atlas-Prüfung“ und im Befund-Hover (**Abnahme**) |
+| SA2 | Wie SA1, zusätzlich `class function NewInstance: TObject; override;` bzw. `_Release` ohne `Destroy` (Singleton) | Keine Meldung |
+| SA3 | `TBeobachter = class(TInterfacedObject, IBeobachter)`, `FQuelle.Anmelden(Self);` im Konstruktor | Keine Meldung (Self ist durch NewInstance geschützt) |
+| SA4 | `TInterfacedObject`-Nachfahr, `AfterConstruction` mit `inherited;` und danach `FQuelle.Anmelden(Self);` | Warnung „Self wird nach inherited AfterConstruction als Interface übergeben; …“ (**Abnahme**) |
+| SA5 | Bei SA4 Alt+Enter, „Vor inherited verschieben“ | `FQuelle.Anmelden(Self);` steht vor `inherited;`; ein Undo-Schritt, übersetzt, keine Meldung mehr (**Abnahme**) |
+| SA6 | `(Self as IBeobachter)`, `IBeobachter(Self)` bzw. `FSelbst := Self` mit `FSelbst: IBeobachter` statt des Aufrufs in SA1 | Warnung; `FQuelle.Merken(Self)` mit Parameter `TObject` bleibt still |
+| SA7 | `"self-as-interface-in-constructor": "off"` bzw. `exclude` mit dem Pfad der Datei | Keine Meldung |
