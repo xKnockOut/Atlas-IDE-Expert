@@ -4119,3 +4119,18 @@ Voraussetzung: Server läuft in der IDE mit Projekt; RTL und VCL im Index.
 | RO5 | `Liste.Text := ''`, `if Liste.Count = 0`, gleichnamige lokale Variable `Count := 0`, `property Caption;` aus einem Vorfahren | Keine Meldung |
 | RO6 | `"readonly-property-assigned": "off"`, `"group:compiler": "off"` bzw. `exclude` | Keine Meldung |
 | RO7 | Abgleich mit Delphi: RO1, RO3, RO4 übersetzen | dcc meldet E2129 bzw. E2130 an denselben Stellen, für RO5 nichts |
+
+## Bedingung ist immer gleich (#1041)
+
+Voraussetzung: Server läuft in der IDE mit Projekt.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| KB1 | Das Beispiel aus #1041: `if (Anzahl > 0) or True then Verarbeiten;` | Warnung `constant-condition` an der Bedingung: „Die Bedingung ist immer wahr (… or True).“; im Fenster „Atlas-Prüfung“ und im Befund-Hover (**Abnahme**) |
+| KB2 | Schnellkorrektur „Bedingung entfernen“, danach Strg+Z | Nur `Verarbeiten;` bleibt; ein Undo-Schritt |
+| KB3 | `const DEBUG_MODUS = False;` und `if DEBUG_MODUS then Protokoll('x');` allein auf zwei Zeilen; Korrektur „Toten Zweig entfernen“ | „Die Bedingung ist immer falsch (DEBUG_MODUS = False).“; die Anweisung samt Zeilen verschwindet |
+| KB4 | `if False then A else begin … end;` mit Korrektur | Nur der else-Zweig bleibt, um die Einrückung des if ausgerückt |
+| KB5 | `while True do … Break`, `repeat … until False`, `if Anzahl > 0`, typisierte Konstante `const X: Boolean = False`, Konstante in `{$IFDEF DEBUG} … {$ELSE} … {$ENDIF}`, Konstante aus einer anderen Unit | Keine Meldung |
+| KB6 | `"constant-condition": {"switchConstants": ["DEBUG_MODUS"]}` | KB3 still, `if False then` weiter gemeldet; `"switchConstants": "DEBUG_MODUS"` meldet in atlas.json „"switchConstants" muss eine Liste von Texten sein“ |
+| KB7 | Seite *Prüfregeln › Fehler finden*, Regel `constant-condition` | Option `switchConstants` als Liste |
+| KB8 | `"constant-condition": "off"`, `"group:find-bugs": "off"` bzw. `exclude` | Keine Meldung |

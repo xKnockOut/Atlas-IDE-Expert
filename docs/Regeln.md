@@ -6,7 +6,7 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 
 | Gruppe | Regeln |
 |---|---|
-| [Fehler finden](#gruppe-find-bugs) | 56 |
+| [Fehler finden](#gruppe-find-bugs) | 57 |
 | [Exceptions](#gruppe-exceptions) | 8 |
 | [Threads](#gruppe-threads) | 13 |
 | [Datenbank](#gruppe-database) | 4 |
@@ -82,6 +82,7 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 | [`unchecked-enum-cast`](#unchecked-enum-cast) | Zahl ungeprüft in Aufzählung umgewandelt | Bug | Hinweis |
 | [`createprocess-readonly-commandline`](#createprocess-readonly-commandline) | CreateProcess mit unveränderlicher Befehlszeile | Bug | Fehler |
 | [`form-access-before-create`](#form-access-before-create) | Zugriff auf ein Formular, das noch nicht erzeugt ist | Bug | Warnung |
+| [`constant-condition`](#constant-condition) | Bedingung ist immer gleich | Bug | Warnung |
 
 <a id="gruppe-exceptions"></a>
 ### Exceptions
@@ -4540,4 +4541,29 @@ Richtig:
 
 ```pascal
 Liste.Clear;
+```
+
+<a id="constant-condition"></a>
+### constant-condition
+
+**Bedingung ist immer gleich** · Bug · Warnung · Gruppe Fehler finden
+
+Die Bedingung von if, while oder until steht fest: True, False, Vergleiche von Zahlen und untypisierte Konstanten der Datei, auch über and, or, xor und not (X or True ist immer wahr, X and False immer falsch). Der Zweig ist toter Code oder läuft immer. while True do und repeat … until False gelten als gewollte Endlosschleifen (deren Ausgang prüft infinite-loop). Konstanten aus switchConstants, Konstanten in einem Zweig von {$IF…} und Konstanten aus anderen Units gelten als unbekannt. Korrektur bei if: toten Zweig bzw. die Bedingung entfernen.
+
+| Option | Typ | Vorgabe | Bedeutung |
+|---|---|---|---|
+| `switchConstants` | string-list | `[]` | Konstanten, die bewusst als Schalter dienen; Bedingungen darauf werden nicht gemeldet. |
+
+Mit Treffer:
+
+```pascal
+if (Count > 0) or True then
+  Process;
+```
+
+Richtig:
+
+```pascal
+if Count > 0 then
+  Process;
 ```
