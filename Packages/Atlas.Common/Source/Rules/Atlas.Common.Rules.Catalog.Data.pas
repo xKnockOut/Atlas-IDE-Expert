@@ -1525,6 +1525,16 @@ begin
     '      "description": "if B then X := True else X := False (also with begin/end and the values swapped), if B then Exit(True) else Exit(False) and if B then Exit(True); followed by Exit(False); can be ' + 'written directly. Complements bool-compare. High confidence. Quick fix: X := B, X := not B or Exit(B); negations are simplified (not B becomes B), compound conditions are wrapped in parentheses. Witho' + 'ut a fix when comments stand inside the if.",' + #10 +
     '      "bad": "if Betrag > 0 then\n  Result := True\nelse\n  Result := False;",' + #10 +
     '      "good": "Result := Betrag > 0;"' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "case-insensitive-compare",' + #10 +
+    '      "name": "Comparison through UpperCase or LowerCase",' + #10 +
+    '      "category": "code-smell",' + #10 +
+    '      "severity": "hint",' + #10 +
+    '      "group": "performance",' + #10 +
+    '      "description": "UpperCase(A) = UpperCase(B), LowerCase(A) <> ''x'', AnsiUpperCase(...) or A.ToUpper = B.ToUpper creates two strings for one comparison. SameText (AnsiSameText for the Ansi function' + 's and the Unicode string helpers) is shorter and faster. A literal is only accepted if the conversion does not change it; UpperCase(A) = LowerCase(B) and UpperCase(A) = ''ja'' are left alone because the' + 'y are different mistakes. Does not replace the string helper modernisation of #71. High confidence. Quick fix: SameText(A, B) or not SameText(A, B).",' + #10 +
+    '      "bad": "if UpperCase(Land) = UpperCase(Standard) then",' + #10 +
+    '      "good": "if SameText(Land, Standard) then"' + #10 +
     '    }' + #10 +
     '  ]' + #10 +
     '}' + #10 +
@@ -2325,6 +2335,11 @@ begin
     '      "id": "boolean-assign-if",' + #10 +
     '      "name": "if, das nur True oder False zuweist",' + #10 +
     '      "description": "if B then X := True else X := False (auch mit begin/end und vertauschten Werten), if B then Exit(True) else Exit(False) sowie if B then Exit(True); gefolgt von Exit(False); lasse' + 'n sich direkt schreiben. Ergänzt bool-compare. Konfidenz hoch. Schnellkorrektur: X := B, X := not B bzw. Exit(B); Verneinungen werden vereinfacht (aus not B wird B), zusammengesetzte Bedingungen einge' + 'klammert. Ohne Korrektur, wenn Kommentare im if stehen."' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "case-insensitive-compare",' + #10 +
+    '      "name": "Vergleich über UpperCase oder LowerCase",' + #10 +
+    '      "description": "UpperCase(A) = UpperCase(B), LowerCase(A) <> ''x'', AnsiUpperCase(...) oder A.ToUpper = B.ToUpper erzeugt zwei Strings für einen Vergleich. SameText (AnsiSameText bei den Ansi-Funk' + 'tionen und den Unicode-String-Helfern) ist kürzer und schneller. Ein Literal zählt nur, wenn die Umwandlung es nicht ändert; UpperCase(A) = LowerCase(B) und UpperCase(A) = ''ja'' bleiben unberührt, weil' + ' das andere Fehler sind. Ersetzt nicht die String-Helper-Modernisierung aus #71. Konfidenz hoch. Schnellkorrektur: SameText(A, B) bzw. not SameText(A, B)."' + #10 +
     '    }' + #10 +
     '  ]' + #10 +
     '}' + #10 +

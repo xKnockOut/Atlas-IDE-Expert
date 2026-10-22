@@ -1,6 +1,7 @@
 ﻿unit Atlas.Common.Rules.Builtin.Style.Tests;
 
-// Tests für die Stilregeln (#104): je Regel positiv, negativ und Schnellkorrektur; boolean-assign-if (#935).
+// Tests für die Stilregeln (#104): je Regel positiv, negativ und Schnellkorrektur; boolean-assign-if (#935),
+// case-insensitive-compare (#936).
 
 interface
 
@@ -45,6 +46,12 @@ type
     procedure BooleanAssignIfVariants;
     [Test]
     procedure BooleanAssignIfSilentCases;
+    [Test]
+    procedure CaseInsensitiveCompareIssueExample;
+    [Test]
+    procedure CaseInsensitiveCompareVariants;
+    [Test]
+    procedure CaseInsensitiveCompareSilentCases;
   end;
 
 implementation
@@ -286,6 +293,52 @@ begin
     '  if A then X := True else X := True;'#10'  if A then begin X := True; Log; end else X := False;'#10 +
     '  if A then Exit(True);'#10'  Log;'#10'  if A then X := 1 else X := 0;'#10'  Result := A;'#10 +
     '  if A then Exit(True) else if B then Exit(False);'#10'  Exit(True);'));
+end;
+
+procedure TStyleRulesTests.CaseInsensitiveCompareIssueExample;
+var
+  Source: string;
+  Findings: TArray<TRuleFinding>;
+begin
+  Source := InRoutine('  Land, Standard: string;', '  if UpperCase(Land) = UpperCase(Standard) then'#10'    Log;');
+  Findings := TRuleAssert.Findings(TCaseInsensitiveCompareRule.Create, Source);
+  Assert.AreEqual(1, Integer(Length(Findings)));
+  Assert.AreEqual('Vergleich über UpperCase; SameText vergleicht ohne Zwischenstrings.', Findings[0].Message);
+  Assert.AreEqual(Ord(TRuleSeverity.Hint), Ord(Findings[0].Severity));
+  Assert.AreEqual(Ord(TRuleConfidence.High), Ord(Findings[0].Confidence));
+  Assert.AreEqual('Durch SameText(Land, Standard) ersetzen', Findings[0].Fixes[0].Title);
+  Assert.AreEqual(InRoutine('  Land, Standard: string;', '  if SameText(Land, Standard) then'#10'    Log;'),
+    Fixed(Source, Findings));
+  TRuleAssert.Silent(TCaseInsensitiveCompareRule.Create, Fixed(Source, Findings));
+end;
+
+procedure TStyleRulesTests.CaseInsensitiveCompareVariants;
+var
+  Source: string;
+  Findings: TArray<TRuleFinding>;
+begin
+  Source := InRoutine('  S: string;', '  if LowerCase(S) <> ''ja'' then Exit;');
+  Assert.AreEqual(InRoutine('  S: string;', '  if not SameText(S, ''ja'') then Exit;'),
+    Fixed(Source, TRuleAssert.Findings(TCaseInsensitiveCompareRule.Create, Source)));
+  Source := InRoutine('  S: string;', '  B := ''JA'' = AnsiUpperCase(Trim(S));');
+  Assert.AreEqual(InRoutine('  S: string;', '  B := AnsiSameText(Trim(S), ''JA'');'),
+    Fixed(Source, TRuleAssert.Findings(TCaseInsensitiveCompareRule.Create, Source)));
+  Source := InRoutine('  S: string;', '  B := S.ToUpper = Name.ToUpper();');
+  Findings := TRuleAssert.Findings(TCaseInsensitiveCompareRule.Create, Source);
+  Assert.AreEqual('Vergleich über ToUpper; AnsiSameText vergleicht ohne Zwischenstrings.', Findings[0].Message);
+  Assert.AreEqual(InRoutine('  S: string;', '  B := AnsiSameText(S, Name);'), Fixed(Source, Findings));
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TCaseInsensitiveCompareRule.Create, Source,
+    '{"rules": {"case-insensitive-compare": "off"}}', 'U.pas'))));
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TCaseInsensitiveCompareRule.Create, Source,
+    '{"rules": {"case-insensitive-compare": {"exclude": ["Alt/*.pas"]}}}', 'Alt/U.pas'))));
+end;
+
+procedure TStyleRulesTests.CaseInsensitiveCompareSilentCases;
+begin
+  // Gemischte Umwandlung, Literal mit anderer Schreibweise, nur eine Seite umgewandelt, Zuweisung.
+  TRuleAssert.Silent(TCaseInsensitiveCompareRule.Create, InRoutine('  S, T: string;',
+    '  B := UpperCase(S) = LowerCase(T);'#10'  B := UpperCase(S) = ''ja'';'#10'  B := UpperCase(S) = T;'#10 +
+    '  S := UpperCase(T);'#10'  B := SameText(S, T);'#10'  B := UpperCase(S) < UpperCase(T);'));
 end;
 
 initialization

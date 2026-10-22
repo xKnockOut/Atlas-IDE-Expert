@@ -169,7 +169,7 @@ end;
 procedure TRuleProfilesTests.BuiltinProfilesActivateExpectedRules;
 const
   Threads = 'thread-free-with-free-on-terminate,thread-use-after-free-on-terminate,thread-vcl-access';
-  All = 'assert-side-effect,bidi-control,bool-compare,boolean-assign-if,captured-loop-variable,case-missing-enum-value,char-to-pchar,' +
+  All = 'assert-side-effect,bidi-control,bool-compare,boolean-assign-if,captured-loop-variable,case-insensitive-compare,case-missing-enum-value,char-to-pchar,' +
     'collection-modified-in-loop,' +
     'component-create-without-override,component-default-mismatch,component-fixed-pixels,' +
     'component-hardcoded-color,component-missing-free-notification,component-missing-inherited,' +
@@ -223,7 +223,7 @@ begin
     'security-insecure-random,security-sql-injection,security-tls-verification-disabled,' +
     'security-weak-crypto',
     ActiveRules('security'));
-  Assert.AreEqual('bool-compare,boolean-assign-if,component-fixed-pixels,component-hardcoded-color,component-palette-icon,' +
+  Assert.AreEqual('bool-compare,boolean-assign-if,case-insensitive-compare,component-fixed-pixels,component-hardcoded-color,component-palette-icon,' +
     'component-setter-without-invalidate,deprecated-symbol,dfm-property,empty-except,forbidden-uses,' +
     'foreign-form-control-access,format-without-settings,generic-exception-raised,implicit-package-import,' +
     'metric-cognitive-complexity,metric-cyclomatic-complexity,metric-method-length,metric-nesting-depth,' +

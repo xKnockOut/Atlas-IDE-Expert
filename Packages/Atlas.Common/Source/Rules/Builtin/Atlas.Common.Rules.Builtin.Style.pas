@@ -9,6 +9,8 @@
 //   with-statement           with verdeckt, zu welchem Objekt ein Bezeichner gehört (#94)
 //   boolean-assign-if        if B then X := True else X := False bzw. if B then Exit(True); Exit(False);
 //                            Korrektur X := B, X := not B bzw. Exit(B) (#935)
+//   case-insensitive-compare UpperCase(A) = UpperCase(B), LowerCase(A) = 'x', A.ToUpper = B.ToUpper …;
+//                            Korrektur SameText bzw. AnsiSameText (#936)
 // Exit, Break und Continue aus einem finally-Block lehnt der Compiler selbst ab;
 // dafür gibt es keine eigene Regel.
 
@@ -57,6 +59,12 @@ type
 
 /// <summary>Registriert die Stilregeln.</summary>
   TBooleanAssignIfRule = class(TInterfacedObject, IRule)
+  public
+    function Descriptor: TRuleDescriptor;
+    procedure Check(const AContext: TRuleContext; const AReport: IRuleReport);
+  end;
+
+  TCaseInsensitiveCompareRule = class(TInterfacedObject, IRule)
   public
     function Descriptor: TRuleDescriptor;
     procedure Check(const AContext: TRuleContext; const AReport: IRuleReport);
@@ -703,6 +711,150 @@ begin
   Visit(AContext.Tree.Root);
 end;
 
+{ TCaseInsensitiveCompareRule }
+
+type
+  /// <summary>Eine Seite des Vergleichs: UpperCase(X), X.ToLower …</summary>
+  TCaseSide = record
+    Argument: TSyntaxNode;
+    Name: string;
+    Upper: Boolean;
+    Locale: Boolean;
+  end;
+
+function TCaseInsensitiveCompareRule.Descriptor: TRuleDescriptor;
+begin
+  Result := TRuleDescriptor.Create('case-insensitive-compare', TRuleSeverity.Hint,
+    'Vergleich über UpperCase oder LowerCase');
+end;
+
+procedure TCaseInsensitiveCompareRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
+
+  function Text(ANode: TSyntaxNode): string;
+  begin
+    Result := Trim(Copy(AContext.Text, ANode.StartOffset + 1, ANode.EndOffset - ANode.StartOffset));
+  end;
+
+  function Unwrapped(ANode: TSyntaxNode): TSyntaxNode;
+  begin
+    Result := ANode;
+    while (Result.Kind = TSyntaxKind.ParenExpr) and (Result.ChildCount = 1) do
+      Result := Result[0];
+  end;
+
+  function CaseSide(ANode: TSyntaxNode; out ASide: TCaseSide): Boolean;
+  var
+    Node, Member: TSyntaxNode;
+  begin
+    ASide := Default(TCaseSide);
+    Node := Unwrapped(ANode);
+    // UpperCase(X), AnsiLowerCase(X), SysUtils.UpperCase(X)
+    if (Node.Kind = TSyntaxKind.Call) and (Node.ChildCount = 2) and MatchText(Node.Name, ['UpperCase', 'LowerCase',
+      'AnsiUpperCase', 'AnsiLowerCase']) then
+    begin
+      ASide.Argument := Node[1];
+      ASide.Name := Node[0].Name;
+      ASide.Upper := ContainsText(Node.Name, 'Upper');
+      ASide.Locale := StartsText('Ansi', Node.Name);
+      Exit(True);
+    end;
+    // X.ToUpper, X.ToLower() – die Helfer arbeiten mit Unicode wie AnsiSameText.
+    Member := Node;
+    if (Member.Kind = TSyntaxKind.Call) and (Member.ChildCount = 1) then
+      Member := Member[0];
+    if (Member.Kind = TSyntaxKind.MemberAccess) and (Member.ChildCount = 1) and
+      MatchText(Member.Name, ['ToUpper', 'ToLower']) then
+    begin
+      ASide.Argument := Member[0];
+      ASide.Name := Member.Name;
+      ASide.Upper := SameText(Member.Name, 'ToUpper');
+      ASide.Locale := True;
+      Exit(True);
+    end;
+    Result := False;
+  end;
+
+  // String-Literal, das die Umwandlung nicht ändert: 'ABC' bei UpperCase.
+  function MatchingLiteral(ANode: TSyntaxNode; AUpper: Boolean): Boolean;
+  var
+    Node: TSyntaxNode;
+    Value: string;
+  begin
+    Node := Unwrapped(ANode);
+    Value := Text(Node);
+    Result := (Node.Kind = TSyntaxKind.Literal) and StartsStr('''', Value);
+    if not Result then
+      Exit;
+    if AUpper then
+      Result := AnsiUpperCase(Value) = Value
+    else
+      Result := AnsiLowerCase(Value) = Value;
+  end;
+
+  procedure CheckComparison(ANode: TSyntaxNode);
+  var
+    Left, Right: TCaseSide;
+    HasLeft, HasRight, Locale: Boolean;
+    First, Second, Name, SameName, Replacement: string;
+  begin
+    if ANode.ChildCount <> 2 then
+      Exit;
+    HasLeft := CaseSide(ANode[0], Left);
+    HasRight := CaseSide(ANode[1], Right);
+    if HasLeft and HasRight then
+    begin
+      // UpperCase(A) = LowerCase(B) ist ein anderer Fehler.
+      if Left.Upper <> Right.Upper then
+        Exit;
+      First := Text(Left.Argument);
+      Second := Text(Right.Argument);
+      Name := Left.Name;
+      Locale := Left.Locale or Right.Locale;
+    end
+    else if HasLeft and MatchingLiteral(ANode[1], Left.Upper) then
+    begin
+      First := Text(Left.Argument);
+      Second := Text(Unwrapped(ANode[1]));
+      Name := Left.Name;
+      Locale := Left.Locale;
+    end
+    else if HasRight and MatchingLiteral(ANode[0], Right.Upper) then
+    begin
+      First := Text(Right.Argument);
+      Second := Text(Unwrapped(ANode[0]));
+      Name := Right.Name;
+      Locale := Right.Locale;
+    end
+    else
+      Exit;
+    if Locale then
+      SameName := 'AnsiSameText'
+    else
+      SameName := 'SameText';
+    Replacement := SameName + '(' + First + ', ' + Second + ')';
+    if ANode.Name = '<>' then
+      Replacement := 'not ' + Replacement;
+    AReport.Add(TTextRange.Create(ANode.StartPos, ANode.EndPos), Format('Vergleich über %s; %s vergleicht ohne ' +
+      'Zwischenstrings.', [Name, SameName]), TRuleConfidence.High,
+      [TRuleFix.Create('Durch ' + Replacement + ' ersetzen', [TRuleEdit.Create(TTextRange.Create(ANode.StartPos,
+      ANode.EndPos), Replacement)])]);
+  end;
+
+  procedure Visit(ANode: TSyntaxNode);
+  var
+    Index: Integer;
+  begin
+    if (ANode.Kind = TSyntaxKind.BinaryExpr) and ((ANode.Name = '=') or (ANode.Name = '<>')) then
+      CheckComparison(ANode);
+    for Index := 0 to ANode.ChildCount - 1 do
+      Visit(ANode[Index]);
+  end;
+
+begin
+  if (AContext.Tree <> nil) and (AContext.Tree.Root <> nil) then
+    Visit(AContext.Tree.Root);
+end;
+
 procedure RegisterStyleRules(const ARegistry: TRuleRegistry);
 begin
   ARegistry.Register(TBoolCompareRule.Create);
@@ -712,6 +864,7 @@ begin
   ARegistry.Register(TRedundantBeginEndRule.Create);
   ARegistry.Register(TWithStatementRule.Create);
   ARegistry.Register(TBooleanAssignIfRule.Create);
+  ARegistry.Register(TCaseInsensitiveCompareRule.Create);
 end;
 
 end.
