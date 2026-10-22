@@ -1824,6 +1824,16 @@ begin
     '      "good": "GetMem(Puffer, Groesse);\ntry\n  Strom.ReadBuffer(Puffer^, Groesse);\n  Ergebnis := Pruefsumme(Puffer, Groesse);\nfinally\n  FreeMem(Puffer);\nend;"' + #10 +
     '    },' + #10 +
     '    {' + #10 +
+    '      "id": "stringlist-objects-leak",' + #10 +
+    '      "name": "Objects in a TStringList without ownership",' + #10 +
+    '      "category": "bug",' + #10 +
+    '      "severity": "warning",' + #10 +
+    '      "group": "find-bugs",' + #10 +
+    '      "description": "AddObject or InsertObject puts a newly created object (T.Create(…) directly, or a local variable created that way and otherwise only read) into a TStringList (or THashedStringLis' + 't) that the unit creates without OwnsObjects, or into the Items of a TListBox, TComboBox, TCheckListBox, TComboBoxEx or TColorListBox field; nobody frees these objects. A list is owning with TStringLi' + 'st.Create(True) or OwnsObjects := True. Silent when a routine of the unit reads List.Objects[…] and frees something, when the list is passed on (FreeObjects(List), assigned elsewhere), when the object' + ' has an owner (Self, Owner, AOwner, Application or a TComponent descendant with an argument) and for lists not created in the unit. Medium confidence. Quick fix: TStringList.Create(True) (also instead' + ' of Create(False)), with other constructors OwnsObjects := True after the creation; none for control items.",' + #10 +
+    '      "bad": "FKunden := TStringList.Create;\n…\nFKunden.AddObject(K.Name, TKunde.Create(K));",' + #10 +
+    '      "good": "FKunden := TStringList.Create(True);\n…\nFKunden.AddObject(K.Name, TKunde.Create(K));"' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
     '      "id": "message-handler-without-inherited",' + #10 +
     '      "name": "Message handler without inherited",' + #10 +
     '      "category": "bug",' + #10 +
@@ -3287,6 +3297,11 @@ begin
     '      "id": "raw-memory-leak",' + #10 +
     '      "name": "GetMem oder New ohne Freigabe",' + #10 +
     '      "description": "Eine lokale Variable erhält Speicher über GetMem, AllocMem, ReallocMem, GetMemory, New, StrAlloc oder StrNew, die Routine gibt ihn aber nie mit FreeMem, FreeMemory, Dispose, StrD' + 'ispose oder ReallocMem(P, 0) frei, und der Zeiger verlässt die Routine nicht: weder zurückgegeben (Result, Exit) noch einer anderen Variablen oder einem Feld zugewiesen, nicht über seine Adresse (@P) ' + 'weitergegeben, keiner Methode übergeben, die ihn behält (Add, Insert, Push …), nicht von einer anonymen Methode eingefangen und nicht in einer lokalen Routine benutzt. Zum Lesen oder Füllen weitergebe' + 'n (Pruefsumme(P, N), Strom.ReadBuffer(P^, N)) ist erlaubt; eine Routine mit Free, Frei, Release, Dispose, Destroy oder Dealloc im Namen gilt als Freigabe. Eine Freigabe ohne try/finally meldet pair-wi' + 'thout-finally. Konfidenz mittel. Schnellkorrektur: die folgenden Anweisungen des Blocks in try … finally mit der passenden Freigabe einschließen."' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "stringlist-objects-leak",' + #10 +
+    '      "name": "Objekte in einer TStringList ohne Besitz",' + #10 +
+    '      "description": "AddObject oder InsertObject legt ein neu erzeugtes Objekt (T.Create(…) direkt oder eine so erzeugte lokale Variable, die sonst nur gelesen wird) in eine TStringList (oder THashed' + 'StringList), die die Unit ohne OwnsObjects erzeugt, oder in die Items eines Felds vom Typ TListBox, TComboBox, TCheckListBox, TComboBoxEx oder TColorListBox; niemand gibt diese Objekte frei. Besitzend' + ' ist eine Liste mit TStringList.Create(True) oder OwnsObjects := True. Still, wenn eine Routine der Unit Liste.Objects[…] liest und etwas freigibt, wenn die Liste weitergegeben wird (ObjekteFreigeben(' + 'Liste), anderswo zugewiesen), wenn das Objekt einen Owner hat (Self, Owner, AOwner, Application oder ein Nachfahr von TComponent mit Argument) und bei Listen, die nicht in der Unit erzeugt werden. Kon' + 'fidenz mittel. Schnellkorrektur: TStringList.Create(True) (auch statt Create(False)), bei anderen Konstruktoren OwnsObjects := True nach der Erzeugung; für Items von Steuerelementen keine."' + #10 +
     '    },' + #10 +
     '    {' + #10 +
     '      "id": "message-handler-without-inherited",' + #10 +

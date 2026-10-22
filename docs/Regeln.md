@@ -6,7 +6,7 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 
 | Gruppe | Regeln |
 |---|---|
-| [Fehler finden](#gruppe-find-bugs) | 57 |
+| [Fehler finden](#gruppe-find-bugs) | 58 |
 | [Exceptions](#gruppe-exceptions) | 8 |
 | [Threads](#gruppe-threads) | 13 |
 | [Datenbank](#gruppe-database) | 4 |
@@ -76,6 +76,7 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 | [`owned-item-freed`](#owned-item-freed) | Element einer besitzenden Liste zusätzlich freigegeben | Bug | Fehler |
 | [`create-without-assignment`](#create-without-assignment) | Objekt erzeugt und sofort verloren | Bug | Warnung |
 | [`raw-memory-leak`](#raw-memory-leak) | GetMem oder New ohne Freigabe | Bug | Warnung |
+| [`stringlist-objects-leak`](#stringlist-objects-leak) | Objekte in einer TStringList ohne Besitz | Bug | Warnung |
 | [`message-handler-without-inherited`](#message-handler-without-inherited) | Message-Handler ohne inherited | Bug | Warnung |
 | [`string-index-base`](#string-index-base) | String-Index ab 0 oder Pos-Ergebnis mit -1 verglichen | Bug | Warnung |
 | [`delimited-text-without-strict`](#delimited-text-without-strict) | DelimitedText ohne StrictDelimiter | Bug | Warnung |
@@ -3665,6 +3666,29 @@ try
 finally
   FreeMem(Puffer);
 end;
+```
+
+<a id="stringlist-objects-leak"></a>
+### stringlist-objects-leak
+
+**Objekte in einer TStringList ohne Besitz** · Bug · Warnung · Gruppe Fehler finden
+
+AddObject oder InsertObject legt ein neu erzeugtes Objekt (T.Create(…) direkt oder eine so erzeugte lokale Variable, die sonst nur gelesen wird) in eine TStringList (oder THashedStringList), die die Unit ohne OwnsObjects erzeugt, oder in die Items eines Felds vom Typ TListBox, TComboBox, TCheckListBox, TComboBoxEx oder TColorListBox; niemand gibt diese Objekte frei. Besitzend ist eine Liste mit TStringList.Create(True) oder OwnsObjects := True. Still, wenn eine Routine der Unit Liste.Objects[…] liest und etwas freigibt, wenn die Liste weitergegeben wird (ObjekteFreigeben(Liste), anderswo zugewiesen), wenn das Objekt einen Owner hat (Self, Owner, AOwner, Application oder ein Nachfahr von TComponent mit Argument) und bei Listen, die nicht in der Unit erzeugt werden. Konfidenz mittel. Schnellkorrektur: TStringList.Create(True) (auch statt Create(False)), bei anderen Konstruktoren OwnsObjects := True nach der Erzeugung; für Items von Steuerelementen keine.
+
+Mit Treffer:
+
+```pascal
+FKunden := TStringList.Create;
+…
+FKunden.AddObject(K.Name, TKunde.Create(K));
+```
+
+Richtig:
+
+```pascal
+FKunden := TStringList.Create(True);
+…
+FKunden.AddObject(K.Name, TKunde.Create(K));
 ```
 
 <a id="message-handler-without-inherited"></a>

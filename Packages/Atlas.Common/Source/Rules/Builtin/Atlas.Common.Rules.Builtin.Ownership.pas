@@ -25,6 +25,17 @@
 //                     Weitergabe zählen Self as IX, IX(Self), ein Argument, dessen Parameter in allen bekannten
 //                     Überladungen ein Interface ist, und die Zuweisung an eine Interface-Variable. Korrektur in
 //                     Fall 2: die Anweisung vor inherited verschieben.
+//   raw-memory-leak   lokaler Zeiger aus GetMem, AllocMem, ReallocMem, GetMemory, New, StrAlloc oder StrNew, den
+//                     die Routine nie freigibt und der sie nicht verlässt (#1047): Jedes Vorkommen wird im
+//                     Syntaxbaum nach oben eingeordnet (Belegung, Freigabe, Zugriff, Weitergabe als Ergebnis,
+//                     Zuweisung, @P, Add/Insert…, anonyme Methode, lokale Routine). Lesen und Füllen über ein
+//                     Argument ist erlaubt; Routinen mit Free, Frei, Release, Dispose, Destroy oder Dealloc im Namen
+//                     gelten als Freigabe. Korrektur: try … finally mit FreeMem, Dispose bzw. StrDispose.
+//   stringlist-objects-leak  AddObject/InsertObject mit einem neu erzeugten Objekt (T.Create(…) direkt oder über
+//                     eine lokale Variable, die sonst nur gelesen wird) in eine TStringList der Unit ohne
+//                     OwnsObjects bzw. in Items einer ListBox oder ComboBox (#1048). Still, wenn eine Routine
+//                     Liste.Objects[…] liest und etwas freigibt, die Liste weitergegeben wird oder das Objekt
+//                     einen Owner hat. Korrektur: TStringList.Create(True) bzw. OwnsObjects := True.
 
 interface
 
@@ -70,6 +81,15 @@ type
     class function ReleaseFor(const AAllocator: string): string; static;
   end;
 
+  TStringListObjectsLeakRule = class(TInterfacedObject, IRule)
+  public
+    function Descriptor: TRuleDescriptor;
+    procedure Check(const AContext: TRuleContext; const AReport: IRuleReport);
+    /// <summary>Vergleichsschlüssel eines Ausdrucks: Kleinschreibung, ohne Leerraum und führendes Self.
+    /// </summary>
+    class function KeyOf(const AText: string): string; static;
+  end;
+
 procedure RegisterOwnershipRules(const ARegistry: TRuleRegistry);
 
 implementation
@@ -94,6 +114,7 @@ const
   CreateWithoutAssignmentRuleId = 'create-without-assignment';
   SelfAsInterfaceInConstructorRuleId = 'self-as-interface-in-constructor';
   RawMemoryLeakRuleId = 'raw-memory-leak';
+  StringListObjectsLeakRuleId = 'stringlist-objects-leak';
   RemoveMethods: array[0..4] of string = ('Delete', 'Remove', 'RemoveItem', 'Clear', 'DeleteRange');
   ExtractMethods: array[0..3] of string = ('Extract', 'ExtractAt', 'ExtractItem', 'ExtractPair');
 
@@ -1589,12 +1610,385 @@ begin
   Visit(AContext.Tree.Root);
 end;
 
+{ TStringListObjectsLeakRule }
+
+type
+  /// <summary>Eine TStringList der Unit bzw. die Items einer ListBox oder ComboBox (#1048).</summary>
+  TObjectsHost = record
+    /// <summary>Ausdruck in Kleinschreibung ohne Self. und Leerraum, z. B. fkunden bzw. lbkunden.items.</summary>
+    Key: string;
+    /// <summary>Wie im Quelltext, für die Meldung.</summary>
+    Text: string;
+    /// <summary>Erzeugung X := TStringList.Create(…); nil bei Items eines Steuerelements.</summary>
+    Creation: TSyntaxNode;
+    Owning: Boolean;
+    /// <summary>Gibt die Unit Objects frei oder gibt sie die Liste weiter? Dann schweigt die Regel.</summary>
+    Handled: Boolean;
+  end;
+
+const
+  // Klassen, deren OwnsObjects die Objekte freigibt.
+  StringListClasses: array[0..1] of string = ('TStringList', 'THashedStringList');
+  // Steuerelemente, deren Items Objekte halten, aber nie freigeben.
+  ObjectItemControls: array[0..4] of string = ('TListBox', 'TComboBox', 'TCheckListBox', 'TComboBoxEx',
+    'TColorListBox');
+  FreeWords: array[0..3] of string = ('Free', 'FreeAndNil', 'DisposeOf', 'Destroy');
+
+function TStringListObjectsLeakRule.Descriptor: TRuleDescriptor;
+begin
+  Result := TRuleDescriptor.Create(StringListObjectsLeakRuleId, TRuleSeverity.Warning,
+    'Objekte in einer TStringList ohne Besitz');
+end;
+
+class function TStringListObjectsLeakRule.KeyOf(const AText: string): string;
+var
+  Index: Integer;
+begin
+  Result := '';
+  for Index := 1 to Length(AText) do
+    if not CharInSet(AText[Index], [' ', #9, #10, #13]) then
+      Result := Result + AText[Index];
+  Result := LowerCase(Result);
+  if StartsStr('self.', Result) then
+    Result := Copy(Result, 6, MaxInt);
+end;
+
+procedure TStringListObjectsLeakRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
+var
+  Hosts: TArray<TObjectsHost>;
+  Ancestry: TAncestry;
+  Lines: TArray<string>;
+  LineBreak: string;
+
+  function TextOf(ANode: TSyntaxNode): string;
+  begin
+    Result := TRoutineBody.TextOf(AContext.Text, ANode);
+  end;
+
+  function HostIndex(const AKey: string): Integer;
+  begin
+    for Result := 0 to High(Hosts) do
+      if Hosts[Result].Key = AKey then
+        Exit;
+    Result := -1;
+  end;
+
+  // TStringList.Create bzw. TStringList.Create(…) (auch mit Unit-Präfix): der Create-Knoten, sonst nil.
+  function StringListCreate(ANode: TSyntaxNode; const AClasses: array of string): TSyntaxNode;
+  var
+    Access: TSyntaxNode;
+  begin
+    Result := nil;
+    Access := ANode;
+    if (Access.Kind = TSyntaxKind.Call) and (Access.ChildCount > 0) then
+      Access := Access[0];
+    if (Access.Kind = TSyntaxKind.MemberAccess) and SameText(Access.Name, 'Create') and (Access.ChildCount = 1) and
+      (Access[0].Kind in [TSyntaxKind.Identifier, TSyntaxKind.MemberAccess]) and MatchText(Access[0].Name, AClasses)
+      then
+      Result := ANode;
+  end;
+
+  // Erzeugtes Objekt T.Create(…) ohne Owner: Name der Klasse, sonst ''.
+  function CreatedClass(ANode: TSyntaxNode): string;
+  var
+    Access: TSyntaxNode;
+    Name, First: string;
+  begin
+    Result := '';
+    Access := ANode;
+    First := '';
+    if (Access.Kind = TSyntaxKind.Call) and (Access.ChildCount > 0) then
+    begin
+      if Access.ChildCount > 1 then
+        First := TextOf(Access[1]);
+      Access := Access[0];
+    end;
+    if (Access.Kind <> TSyntaxKind.MemberAccess) or not SameText(Access.Name, 'Create') or (Access.ChildCount <> 1) or
+      not (Access[0].Kind in [TSyntaxKind.Identifier, TSyntaxKind.MemberAccess]) then
+      Exit;
+    Name := Access[0].Name;
+    // Komponenten mit Owner gibt der Owner frei (wie create-without-assignment).
+    if (First <> '') and not SameText(First, 'nil') and (MatchText(First, ['Self', 'Owner', 'AOwner',
+      'Application']) or Ancestry.DescendsFrom(Name, 'TComponent')) then
+      Exit;
+    if TCreateWithoutAssignmentRule.LooksLikeType(Name) then
+      Result := Name;
+  end;
+
+  procedure AddHost(const AText: string; ACreation: TSyntaxNode);
+  var
+    Host: TObjectsHost;
+    Index: Integer;
+  begin
+    Host.Key := KeyOf(AText);
+    Host.Text := AText;
+    Host.Creation := ACreation;
+    Host.Owning := False;
+    Host.Handled := False;
+    if ACreation <> nil then
+      // Create(True) besitzt; andere Konstruktoren (QuoteChar, Duplicates) nicht.
+      Host.Owning := (ACreation.Kind = TSyntaxKind.Call) and (ACreation.ChildCount = 2) and
+        SameText(TextOf(ACreation[1]), 'True');
+    Index := HostIndex(Host.Key);
+    if Index < 0 then
+      Hosts := Hosts + [Host]
+    else if ACreation <> nil then
+    begin
+      // Mehrfach erzeugt: besitzend, sobald eine Erzeugung besitzt; die erste bleibt Ziel der Korrektur.
+      Hosts[Index].Owning := Hosts[Index].Owning or Host.Owning;
+      if Hosts[Index].Creation = nil then
+        Hosts[Index].Creation := ACreation;
+    end;
+  end;
+
+  // Erzeugungen, OwnsObjects := True und Felder vom Typ eines Steuerelements.
+  procedure CollectHosts(ANode: TSyntaxNode);
+  var
+    Index: Integer;
+    Name: string;
+  begin
+    if (ANode.Kind = TSyntaxKind.AssignStatement) and (ANode.ChildCount = 2) and
+      (StringListCreate(ANode[1], StringListClasses) <> nil) then
+      AddHost(TextOf(ANode[0]), ANode[1]);
+    if (ANode.Kind = TSyntaxKind.Field) and (ANode.ChildCount > 0) and
+      (ANode[0].Kind = TSyntaxKind.TypeReference) and MatchText(ANode[0].Name, ObjectItemControls) then
+      for Name in ANode.Name.Split([',']) do
+        AddHost(Trim(Name) + '.Items', nil);
+    for Index := 0 to ANode.ChildCount - 1 do
+      CollectHosts(ANode[Index]);
+  end;
+
+  procedure CollectOwning(ANode: TSyntaxNode);
+  var
+    Index, Host: Integer;
+  begin
+    if (ANode.Kind = TSyntaxKind.AssignStatement) and (ANode.ChildCount = 2) and
+      (ANode[0].Kind = TSyntaxKind.MemberAccess) and SameText(ANode[0].Name, 'OwnsObjects') and
+      (ANode[0].ChildCount = 1) and SameText(TextOf(ANode[1]), 'True') then
+    begin
+      Host := HostIndex(KeyOf(TextOf(ANode[0][0])));
+      if Host >= 0 then
+        Hosts[Host].Owning := True;
+    end;
+    for Index := 0 to ANode.ChildCount - 1 do
+      CollectOwning(ANode[Index]);
+  end;
+
+  function ContainsFree(ANode: TSyntaxNode): Boolean;
+  var
+    Index: Integer;
+  begin
+    if (ANode.Kind in [TSyntaxKind.Identifier, TSyntaxKind.MemberAccess, TSyntaxKind.Call]) and
+      MatchText(ANode.Name, FreeWords) then
+      Exit(True);
+    for Index := 0 to ANode.ChildCount - 1 do
+      if ContainsFree(ANode[Index]) then
+        Exit(True);
+    Result := False;
+  end;
+
+  // Liest die Routine X.Objects[…] und gibt sie etwas frei, gilt die Freigabe als erledigt.
+  procedure MarkReleases(ARoutine, ANode: TSyntaxNode);
+  var
+    Index, Host: Integer;
+  begin
+    if (ANode.Kind = TSyntaxKind.MemberAccess) and SameText(ANode.Name, 'Objects') and (ANode.ChildCount = 1) then
+    begin
+      Host := HostIndex(KeyOf(TextOf(ANode[0])));
+      if (Host >= 0) and ContainsFree(ARoutine) then
+        Hosts[Host].Handled := True;
+    end;
+    // Die Liste als Argument (FreeObjects(Liste)) oder auf der rechten Seite einer Zuweisung: weitergegeben.
+    if (ANode.Parent <> nil) and (((ANode.Parent.Kind = TSyntaxKind.Call) and (ANode.Parent[0] <> ANode) and
+      not MatchText(ANode.Parent.Name, ['FreeAndNil', 'Assigned'])) or
+      ((ANode.Parent.Kind = TSyntaxKind.AssignStatement) and (ANode.Parent[0] <> ANode)) or
+      (ANode.Parent.Kind = TSyntaxKind.AddressOf)) and
+      (ANode.Kind in [TSyntaxKind.Identifier, TSyntaxKind.MemberAccess]) then
+    begin
+      Host := HostIndex(KeyOf(TextOf(ANode)));
+      if Host >= 0 then
+        Hosts[Host].Handled := True;
+    end;
+    for Index := 0 to ANode.ChildCount - 1 do
+      MarkReleases(ARoutine, ANode[Index]);
+  end;
+
+  procedure VisitRoutines(ANode: TSyntaxNode);
+  var
+    Index: Integer;
+  begin
+    if ANode.Kind = TSyntaxKind.RoutineDecl then
+      MarkReleases(ANode, ANode);
+    for Index := 0 to ANode.ChildCount - 1 do
+      VisitRoutines(ANode[Index]);
+  end;
+
+  function EnclosingRoutine(ANode: TSyntaxNode): TSyntaxNode;
+  begin
+    Result := ANode.Parent;
+    while (Result <> nil) and (Result.Kind <> TSyntaxKind.RoutineDecl) do
+      Result := Result.Parent;
+  end;
+
+  // Lokale Variable AName, in der Routine aus T.Create(…) erzeugt und sonst nur gelesen (V.Name) oder an
+  // AddObject übergeben: Name der Klasse, sonst ''.
+  function LocalCreatedClass(ARoutine: TSyntaxNode; const AName: string; AAdd: TSyntaxNode): string;
+  var
+    Found: string;
+    Other: Boolean;
+
+    procedure Scan(ANode: TSyntaxNode);
+    var
+      Index: Integer;
+      Parent: TSyntaxNode;
+    begin
+      if (ANode.Kind = TSyntaxKind.Identifier) and SameText(ANode.Name, AName) and (ANode.Parent <> nil) then
+      begin
+        Parent := ANode.Parent;
+        if (Parent.Kind = TSyntaxKind.AssignStatement) and (Parent[0] = ANode) and (Parent.ChildCount = 2) and
+          (CreatedClass(Parent[1]) <> '') and (Found = '') then
+          Found := CreatedClass(Parent[1])
+        // V.Name liest nur; alles andere außer dem AddObject-Argument gibt V weiter oder frei.
+        else if not ((Parent.Kind = TSyntaxKind.MemberAccess) and (Parent[0] = ANode) and
+          not MatchText(Parent.Name, FreeWords)) and (Parent <> AAdd) then
+          Other := True;
+      end;
+      for Index := 0 to ANode.ChildCount - 1 do
+        Scan(ANode[Index]);
+    end;
+
+  var
+    Index, Inner: Integer;
+    Local: Boolean;
+    Name: string;
+  begin
+    Result := '';
+    Local := False;
+    for Index := 0 to ARoutine.ChildCount - 1 do
+      if ARoutine[Index].Kind = TSyntaxKind.VarSection then
+        for Inner := 0 to ARoutine[Index].ChildCount - 1 do
+          for Name in ARoutine[Index][Inner].Name.Split([',']) do
+            if SameText(Trim(Name), AName) then
+              Local := True;
+    if not Local then
+      Exit;
+    Found := '';
+    Other := False;
+    Scan(ARoutine);
+    if not Other then
+      Result := Found;
+  end;
+
+  function OwnsFix(const AHost: TObjectsHost; out AFix: TRuleFix): Boolean;
+  var
+    Creation, Access: TSyntaxNode;
+    Statement: TSyntaxNode;
+    ClassText: string;
+  begin
+    Result := False;
+    Creation := AHost.Creation;
+    if Creation = nil then
+      Exit;
+    Access := Creation;
+    if Creation.Kind = TSyntaxKind.Call then
+      Access := Creation[0];
+    ClassText := TextOf(Access[0]);
+    if (Creation.Kind = TSyntaxKind.MemberAccess) or (Creation.ChildCount = 1) then
+    begin
+      // TStringList.Create bzw. TStringList.Create() → TStringList.Create(True)
+      AFix := TRuleFix.Create(Format('%s.Create(True) setzen', [ClassText]),
+        [TTextEdit.Create(TTextRange.Create(Creation.StartPos, Creation.EndPos), ClassText + '.Create(True)')]);
+      Exit(True);
+    end;
+    if (Creation.ChildCount = 2) and SameText(TextOf(Creation[1]), 'False') then
+    begin
+      AFix := TRuleFix.Create(Format('%s.Create(True) setzen', [ClassText]),
+        [TTextEdit.Create(TTextRange.Create(Creation[1].StartPos, Creation[1].EndPos), 'True')]);
+      Exit(True);
+    end;
+    // Andere Konstruktoren: OwnsObjects nach der Erzeugung setzen.
+    Statement := Creation.Parent;
+    if (Statement = nil) or (Statement.Kind <> TSyntaxKind.AssignStatement) or
+      (Statement.StartPos.Line <> Statement.EndPos.Line) or (Statement.EndPos.Line > High(Lines)) then
+      Exit;
+    // Die Zeile muss mit der Anweisung enden.
+    if Trim(Copy(Lines[Statement.EndPos.Line], Statement.EndPos.Character + 1, MaxInt)) <> ';' then
+      Exit;
+    AFix := TRuleFix.Create('OwnsObjects := True setzen',
+      [TTextEdit.Create(TTextRange.Create(Statement.EndPos.Line + 1, 0, Statement.EndPos.Line + 1, 0),
+      Copy(Lines[Statement.StartPos.Line], 1, Statement.StartPos.Character) + TextOf(Statement[0]) +
+      '.OwnsObjects := True;' + LineBreak)]);
+    Result := True;
+  end;
+
+  procedure CheckAdds(ANode: TSyntaxNode);
+  var
+    Index, Host, ObjectArg: Integer;
+    Access, Argument, Routine: TSyntaxNode;
+    ClassName: string;
+    Fix: TRuleFix;
+    Fixes: TArray<TRuleFix>;
+  begin
+    for Index := 0 to ANode.ChildCount - 1 do
+      CheckAdds(ANode[Index]);
+    if (ANode.Kind <> TSyntaxKind.Call) or (ANode.ChildCount < 1) or (ANode[0].Kind <> TSyntaxKind.MemberAccess) then
+      Exit;
+    if SameText(ANode.Name, 'AddObject') then
+      ObjectArg := 2
+    else if SameText(ANode.Name, 'InsertObject') then
+      ObjectArg := 3
+    else
+      Exit;
+    Access := ANode[0];
+    if (ANode.ChildCount <> ObjectArg + 1) or (Access.ChildCount <> 1) then
+      Exit;
+    Host := HostIndex(KeyOf(TextOf(Access[0])));
+    if (Host < 0) or Hosts[Host].Owning or Hosts[Host].Handled then
+      Exit;
+    Argument := ANode[ObjectArg];
+    ClassName := CreatedClass(Argument);
+    if (ClassName = '') and (Argument.Kind = TSyntaxKind.Identifier) then
+    begin
+      Routine := EnclosingRoutine(ANode);
+      if Routine <> nil then
+        ClassName := LocalCreatedClass(Routine, Argument.Name, ANode);
+    end;
+    if ClassName = '' then
+      Exit;
+    Fixes := nil;
+    if OwnsFix(Hosts[Host], Fix) then
+      Fixes := [Fix];
+    AReport.Add(TTextRange.Create(ANode.StartPos, ANode.EndPos),
+      Format('%s besitzt die Objekte nicht; die %s-Objekte werden nie freigegeben.',
+      [TextOf(Access[0]), ClassName]), TRuleConfidence.Medium, Fixes);
+  end;
+
+begin
+  if (AContext.Tree = nil) or (AContext.Tree.Root = nil) or not (ContainsText(AContext.Text, 'AddObject') or
+    ContainsText(AContext.Text, 'InsertObject')) then
+    Exit;
+  Lines := TTextLines.SplitLines(AContext.Text, LineBreak);
+  Hosts := nil;
+  CollectHosts(AContext.Tree.Root);
+  if Hosts = nil then
+    Exit;
+  CollectOwning(AContext.Tree.Root);
+  VisitRoutines(AContext.Tree.Root);
+  Ancestry := TAncestry.Create(AContext.Index, TRuleDerived.UnitIndex(TRuleDerived.Open(AContext), AContext));
+  try
+    CheckAdds(AContext.Tree.Root);
+  finally
+    Ancestry.Free;
+  end;
+end;
+
 procedure RegisterOwnershipRules(const ARegistry: TRuleRegistry);
 begin
   ARegistry.Register(TOwnedItemFreedRule.Create);
   ARegistry.Register(TCreateWithoutAssignmentRule.Create);
   ARegistry.Register(TSelfAsInterfaceInConstructorRule.Create);
   ARegistry.Register(TRawMemoryLeakRule.Create);
+  ARegistry.Register(TStringListObjectsLeakRule.Create);
 end;
 
 end.
