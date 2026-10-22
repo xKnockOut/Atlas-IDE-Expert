@@ -2560,6 +2560,7 @@ Voraussetzung für EX2 bis EX7: mindestens eine Einstellung trägt `x-experiment
 | SU16 | Leiste offen, Tastatur in der Leiste: Strg+A, Strg+C, Strg+V, Pfeile im Suchfeld | Wirken im Suchfeld, nicht im Editor |
 | SU17 | Zuletzt mit Bereich Methode gesucht; außerhalb jeder Methode (etwa im interface-Teil) einen Bezeichner markieren, F3 und Umschalt+F3 | Springt zum nächsten bzw. vorigen Vorkommen des markierten Bezeichners in der ganzen Unit; Meldung „außerhalb einer Methode, gesucht wird in der ganzen Unit“; weiteres F3 geht mit dem neuen Suchtext weiter |
 | SU18 | Leiste öffnen, ins Fenster Meldungen oder Struktur klicken, dann nacheinander ins Suchfeld, auf ein Kästchen, in die Bereichsliste und auf ↓ klicken | Jeder Klick wirkt beim ersten Mal (Fokus bleibt in der Leiste, Kästchen schaltet um); holt die IDE den Fokus zurück, steht „Suchleiste: Fokus nach dem Klick …“ mit Fensterklasse im Diagnoseprotokoll |
+| SU19 | In einer Methode Strg+F, Bereich auf „Methode“ stellen, Esc; dann erneut Strg+F (auch in einer anderen Methode) | Bereich steht wieder auf „Unit“ (erster Eintrag der Liste); „Methode“ nur nach gezielter Wahl in der Liste oder mit Strg+Umschalt+Alt+F |
 
 ## Werte im Hover beim Debuggen (#891)
 

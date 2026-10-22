@@ -280,8 +280,9 @@ begin
     FScope.Items.BeginUpdate;
     try
       FScope.Items.Clear;
-      FScope.Items.Add(TAtlasStrings.Text(TAtlasTextId.SearchScopeMethod));
+      // Reihenfolge wie TAtlasSearchScope: Unit, Methode, Auswahl.
       FScope.Items.Add(TAtlasStrings.Text(TAtlasTextId.SearchScopeUnit));
+      FScope.Items.Add(TAtlasStrings.Text(TAtlasTextId.SearchScopeMethod));
       if FHasSelection then
         FScope.Items.Add(TAtlasStrings.Text(TAtlasTextId.SearchScopeSelection));
     finally
