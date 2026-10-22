@@ -65,11 +65,13 @@ uses
   Atlas.Common.Rules.Builtin.Inlining,
   Atlas.Common.Rules.Builtin.MethodDirectives,
   Atlas.Common.Rules.Builtin.Published,
+  Atlas.Common.Rules.Builtin.Collections,
   Atlas.Common.Rules.Builtin.Visibility,
   Atlas.Common.Rules.Builtin.TypeDeclarations,
   Atlas.Common.Rules.Builtin.TypedExpressions,
   Atlas.Common.Rules.Builtin.TypeRestrictions,
   Atlas.Common.Rules.Builtin.Units,
+  Atlas.Common.Rules.Builtin.PublicMembers,
   Atlas.Common.Rules.Builtin.Unresolved;
 
 function BuiltinRules: TArray<IRule>;
@@ -130,11 +132,13 @@ begin
     RegisterInliningRules(Registry);
     RegisterMethodDirectiveRules(Registry);
     RegisterPublishedRules(Registry);
+    RegisterCollectionRules(Registry);
     RegisterVisibilityRules(Registry);
     RegisterTypeDeclarationRules(Registry);
     RegisterTypedExpressionRules(Registry);
     RegisterTypeRestrictionRules(Registry);
     RegisterUnitRules(Registry);
+    RegisterPublicMemberRules(Registry);
     Result := Registry.Rules;
   finally
     Registry.Free;

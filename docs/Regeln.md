@@ -17,7 +17,7 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 | [Komponenten](#gruppe-components) | 8 |
 | [Formulare und Daten](#gruppe-forms) | 10 |
 | [Architektur](#gruppe-architecture) | 3 |
-| [Stil und Metriken](#gruppe-style) | 28 |
+| [Stil und Metriken](#gruppe-style) | 31 |
 | [Packages und Tests](#gruppe-packages) | 3 |
 | [Atlas intern](#gruppe-internal) | 3 |
 
@@ -261,8 +261,11 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 | [`metric-unit-length`](#metric-unit-length) | Unit zu lang | Code Smell | Hinweis |
 | [`metric-uses-count`](#metric-uses-count) | Zu viele Units im uses | Code Smell | Hinweis |
 | [`public-field`](#public-field) | Öffentliches Feld | Code Smell | Hinweis |
+| [`legacy-tlist`](#legacy-tlist) | Ungenerische Liste mit Cast | Code Smell | Information |
+| [`legacy-stack-queue`](#legacy-stack-queue) | Ungenerischer Stapel oder ungenerische Warteschlange mit Cast | Code Smell | Information |
 | [`global-variable`](#global-variable) | Globale Variable im interface | Code Smell | Hinweis |
 | [`commented-out-code`](#commented-out-code) | Auskommentierter Code | Code Smell | Hinweis |
+| [`unused-public-member`](#unused-public-member) | Öffentliches Mitglied wird im Projekt nie verwendet | Code Smell | Hinweis |
 
 <a id="gruppe-packages"></a>
 ### Packages und Tests
@@ -3546,6 +3549,54 @@ public
 end;
 ```
 
+<a id="legacy-tlist"></a>
+### legacy-tlist
+
+**Ungenerische Liste mit Cast** · Code Smell · Information · Gruppe Stil und Metriken
+
+Eine ungenerische TList (System.Classes) oder TObjectList (System.Contnrs), deren Elemente mit Cast gelesen werden: T(Liste[I]), T(Liste.Items[I]), T(Liste.First), Liste[I] as T usw. TList<T> und TObjectList<T> aus System.Generics.Collections prüfen den Typ beim Übersetzen und brauchen keinen Cast. Die Regel meldet je Liste einmal, an ihrer Deklaration, wenn sie in der Datei steht, sonst am ersten Cast; bei mehreren Zieltypen nennt sie alle. Nur wenn die Namensauflösung Listentyp und Zieltyp sicher findet; Casts auf Pointer zählen nicht. Standard aus; für Code, der noch mit alten Delphi-Versionen übersetzen muss, über exclude abschaltbar. Schnellkorrektur (#1105): wandelt die Liste in einem Schritt in TList<T> bzw. TObjectList<T> um: Deklaration, jedes Create (Argumente bleiben), jeden Cast und System.Generics.Collections im uses; Contnrs entfällt, wenn nichts anderes es braucht. Nur wenn alle Lesezugriffe denselben Cast haben, kein Mitglied ohne generisches Gegenstück vorkommt (Sort mit TListSortCompare, Assign mit TListAssignOp, List), keine Pointer- oder Integer-Werte in der Liste stehen, Add, Extract, Remove und IndexOf T bekommen und die Liste nicht weitergegeben wird. Ist die Liste außerhalb der Unit sichtbar, schreibt die Korrektur die anderen Units der Projektgruppe mit um oder entfällt; solche Korrekturen wendet „Alle korrigieren“ (source.fixAll) nie an. Sonst nennt der Befund-Hover den Grund. Stapel und Warteschlangen: legacy-stack-queue.
+
+Mit Treffer:
+
+```pascal
+FPositionen: TList;
+...
+Pos := TPosition(FPositionen[I]);
+```
+
+Richtig:
+
+```pascal
+FPositionen: TList<TPosition>;
+...
+Pos := FPositionen[I];
+```
+
+<a id="legacy-stack-queue"></a>
+### legacy-stack-queue
+
+**Ungenerischer Stapel oder ungenerische Warteschlange mit Cast** · Code Smell · Information · Gruppe Stil und Metriken
+
+Ein ungenerischer TStack, TQueue, TObjectStack oder TObjectQueue (System.Contnrs), dessen Elemente mit Cast gelesen werden: T(Stapel.Pop), T(Stapel.Peek), Schlange.Pop as T usw. TStack<T>, TQueue<T>, TObjectStack<T> und TObjectQueue<T> aus System.Generics.Collections prüfen den Typ beim Übersetzen und brauchen keinen Cast. Wie legacy-tlist meldet die Regel je Stapel bzw. Warteschlange einmal, an der Deklaration, wenn sie in der Datei steht, sonst am ersten Cast; bei mehreren Zieltypen nennt sie alle. Nur wenn die Namensauflösung Typ und Zieltyp sicher findet; Casts auf Pointer zählen nicht. Standard aus; für Code, der noch mit alten Delphi-Versionen übersetzen muss, über exclude abschaltbar. Schnellkorrektur: wandelt in einem Schritt um wie legacy-tlist; bei Warteschlangen wird Push zu Enqueue und Pop zu Dequeue. TObjectStack<T> und TObjectQueue<T> besitzen ihre Objekte, die Contnrs-Klassen nicht: Die Korrektur erzeugt sie deshalb mit Create(False) und liest mit Extract, weil Pop und Dequeue dort Prozeduren sind, die das Objekt freigeben. Ohne Create in der Unit, mit verschiedenen Casts oder mit Mitgliedern ohne generisches Gegenstück (AtLeast) gibt es keine Korrektur; der Befund-Hover nennt den Grund.
+
+Mit Treffer:
+
+```pascal
+FOffen: TObjectStack;
+...
+Knoten := TKnoten(FOffen.Pop);
+```
+
+Richtig:
+
+```pascal
+FOffen: TObjectStack<TKnoten>;
+...
+FOffen := TObjectStack<TKnoten>.Create(False);
+...
+Knoten := FOffen.Extract;
+```
+
 <a id="global-variable"></a>
 ### global-variable
 
@@ -4796,4 +4847,42 @@ Richtig:
 
 ```pascal
 Versenden(Kunde.Mail, 'Rechnung', Text);
+```
+
+<a id="unused-public-member"></a>
+### unused-public-member
+
+**Öffentliches Mitglied wird im Projekt nie verwendet** · Code Smell · Hinweis · Gruppe Stil und Metriken
+
+Eine public- oder published-Methode, -Konstante oder -Property (wahlweise auch protected-Mitglieder, Felder und Klassenvariablen sowie Routinen und Konstanten im interface-Abschnitt einer Unit) wird in den Projekten der Projektgruppe nirgends verwendet. Die Suche läuft projektweit über den Symbolindex: Nur Dateien, deren Verwendungen im Index den Namen enthalten, werden gelesen, und jedes Vorkommen wird über die Namensauflösung zugeordnet; ein Vorkommen, das sich nicht auflösen lässt, zählt als Verwendung. Namen in Formulardateien (.dfm/.fmx) und in String-Literalen zählen als Verwendung. Gelten als verwendet: Interface-Umsetzungen und Mitglieder von Interfaces, Methoden mit virtual, dynamic, override, abstract oder message, Konstruktoren, Destruktoren, Operatoren, Enumeratoren, Default-Properties, implements, Mitglieder mit Attributen, published-Mitglieder von TPersistent-Nachfahren (Streaming), von Klassen aus RegisterComponents, RegisterClass oder RegisterClasses und von Testklassen, published-Methoden, solange eine Formulardatei nicht lesbar ist, Property-Zugriffsmethoden, exportierte Routinen, Klassenhelfer und Mitglieder von Klassen mit unbekanntem Vorfahren. Still, solange Projekte laden oder der Index unvollständig ist, wenn eine Datei nicht lesbar ist, bei Units mit Include-Dateien und bei Units von Packages oder Bibliotheken (Nutzer außerhalb des Projekts), außer projectKinds lässt sie zu. Korrektur: als bewusst öffentlich markieren (lsp-ignore-Kommentar).
+
+| Option | Typ | Vorgabe | Bedeutung |
+|---|---|---|---|
+| `visibilities` | string-list | `["public","published"]` | Geprüfte Sichtbarkeiten: public, published, protected. |
+| `memberKinds` | string-list | `["method","constant","property"]` | Geprüfte Mitgliedsarten: method, constant, property, field, classVar. |
+| `projectKinds` | string-list | `["application"]` | Projektarten, deren Units geprüft werden: application, package, library. Packages und Bibliotheken haben Nutzer außerhalb der Projektgruppe und sind deshalb standardmäßig aus. |
+| `unitLevel` | boolean | `true` | Auch Routinen und Konstanten aus dem interface-Abschnitt einer Unit prüfen. |
+| `scope` | string | `"projectGroup"` | Wo nach Verwendungen gesucht wird: projectGroup (alle Projekte der Gruppe) oder project (nur die Projekte der Datei). |
+| `testsCountAsUse` | boolean | `true` | Verwendungen in Testprojekten zählen; ist es aus, wird ein Mitglied, das nur Tests verwenden, als solches gemeldet. |
+| `stringLiteralsCountAsUse` | boolean | `true` | Der Name als String-Literal ('Name') zählt als Verwendung (RTTI, MethodAddress, Skripte). |
+| `keepAttributes` | string-list | `[]` | Attribute am Mitglied oder seinem Typ, die es als verwendet markieren, z. B. "Keep" oder "Api". |
+| `keepPatterns` | string-list | `[]` | Namensmuster (* und ?) für Mitglieder, die immer als verwendet gelten, z. B. "TPlugin.*" oder "*Callback". |
+
+Mit Treffer:
+
+```pascal
+  TExport = class
+  public
+    procedure ExportiereAlsXml;
+  end;
+// ExportiereAlsXml is called nowhere in the project group
+```
+
+Richtig:
+
+```pascal
+  TExport = class
+  public
+    procedure ExportiereAlsJson; // called by TMainForm
+  end;
 ```

@@ -314,6 +314,7 @@
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.KeywordReference.pas"/>
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.AssignmentSwap.pas"/>
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.ChangeSignature.pas"/>
+        <DCCReference Include="Source\Editing\Atlas.Common.Editing.GenericLists.pas"/>
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.StringLiterals.pas"/>
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.PostfixTemplates.pas"/>
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.CaseCompletion.pas"/>
@@ -405,10 +406,14 @@
         <DCCReference Include="Source\Rules\Builtin\Atlas.Common.Rules.Builtin.Inlining.pas"/>
         <DCCReference Include="Source\Rules\Builtin\Atlas.Common.Rules.Builtin.MethodDirectives.pas"/>
         <DCCReference Include="Source\Rules\Builtin\Atlas.Common.Rules.Builtin.Published.pas"/>
+        <DCCReference Include="Source\Rules\Builtin\Atlas.Common.Rules.Builtin.Collections.pas"/>
         <DCCReference Include="Source\Rules\Builtin\Atlas.Common.Rules.Builtin.Visibility.pas"/>
         <DCCReference Include="Source\Rules\Builtin\Atlas.Common.Rules.Builtin.TypeDeclarations.pas"/>
         <DCCReference Include="Source\Rules\Builtin\Atlas.Common.Rules.Builtin.TypedExpressions.pas"/>
         <DCCReference Include="Source\Rules\Builtin\Atlas.Common.Rules.Builtin.TypeRestrictions.pas"/>
+        <DCCReference Include="Source\Rules\Builtin\Atlas.Common.Rules.Builtin.PublicMembers.pas"/>
+        <DCCReference Include="Source\Rules\Atlas.Common.Rules.ConsideredUsed.pas"/>
+        <DCCReference Include="Source\Rules\Atlas.Common.Rules.ProjectFiles.pas"/>
         <DCCReference Include="Source\Rules\Builtin\Atlas.Common.Rules.Builtin.Packages.pas"/>
         <DCCReference Include="Source\Rules\Builtin\Atlas.Common.Rules.Builtin.OpenTools.pas"/>
         <DCCReference Include="Source\Rules\Builtin\Atlas.Common.Rules.Builtin.Testing.pas"/>

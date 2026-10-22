@@ -45,22 +45,23 @@ uses
 
 const
   /// <summary>Optionen von Prüfregeln, die true oder false sein müssen (#909).</summary>
-  BooleanRuleOptions: array[0..14] of string = ('allowCommented', 'requireElse', 'ignoreStrings', 'ignoreComments',
+  BooleanRuleOptions: array[0..17] of string = ('allowCommented', 'requireElse', 'ignoreStrings', 'ignoreComments',
     'includeRecords', 'includeFormVariables', 'checkUses', 'allowLazyInit', 'checkRound', 'includeFields',
-    'allowSingleLineExit', 'allowSameLine', 'allowComments',
-    'onlyAfterRaisingCode', 'allowInProgram');
+    'allowSingleLineExit', 'allowSameLine', 'allowComments', 'onlyAfterRaisingCode', 'allowInProgram', 'unitLevel',
+    'testsCountAsUse', 'stringLiteralsCountAsUse');
   /// <summary>Optionen von Prüfregeln, die eine Liste von Texten sein müssen (#909).</summary>
-  StringListRuleOptions: array[0..22] of string = ('countNames', 'mutatingMethods', 'ignoreMethods', 'ignoreTypes',
+  StringListRuleOptions: array[0..27] of string = ('countNames', 'mutatingMethods', 'ignoreMethods', 'ignoreTypes',
     'methods', 'allowIn', 'functions', 'sources', 'ignore', 'assertPatterns', 'selfRegistering', 'swallow', 'calls',
     'allowTables', 'types', 'allowProperties', 'threadSafeTypes', 'switchConstants', 'namePatterns', 'kinds',
-    'statements', 'disabledChecks', 'componentClasses');
+    'statements', 'disabledChecks', 'componentClasses', 'visibilities', 'memberKinds', 'projectKinds',
+    'keepAttributes', 'keepPatterns');
   /// <summary>Erlaubte Einträge von kinds bei deprecated-symbol (#1018).</summary>
   DeprecationKinds: array[0..3] of string = ('deprecated', 'experimental', 'platform', 'library');
   /// <summary>Optionen von Prüfregeln, die eine Liste von Zahlen sein müssen (#937).</summary>
   NumberListRuleOptions: array[0..0] of string = ('allowed');
   /// <summary>Optionen von Prüfregeln, die ein Text sein müssen (#926).</summary>
-  StringRuleOptions: array[0..5] of string = ('template', 'replacement', 'wrapper', 'okMarker', 'searchPaths',
-    'defaultEncoding');
+  StringRuleOptions: array[0..6] of string = ('template', 'replacement', 'wrapper', 'okMarker', 'searchPaths',
+    'defaultEncoding', 'scope');
 
 type
   TValidator = class

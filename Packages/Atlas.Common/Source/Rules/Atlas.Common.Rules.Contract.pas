@@ -37,6 +37,12 @@ type
   /// damit Editing die Textänderung ohne Abhängigkeit von Rules nutzen kann (A-11).</summary>
   TRuleEdit = TTextEdit;
 
+  /// <summary>Edits einer weiteren Datei einer Korrektur (#1105).</summary>
+  TRuleFileEdits = record
+    FileName: string;
+    Edits: TArray<TRuleEdit>;
+  end;
+
   /// <summary>Code-Aktion zu einem Treffer.</summary>
   TRuleFix = record
     Title: string;
@@ -55,6 +61,9 @@ type
     JumpTo: TTextPosition;
     /// <summary>Nach dem Sprung öffnet der Client den Parameter-Hint an JumpTo (#1007).</summary>
     OpensSignature: Boolean;
+    /// <summary>Edits in weiteren Dateien zusätzlich zu FileName, z. B. Verwendungen eines öffentlichen Felds in
+    /// anderen Units (#1105); nil = keine. Solche Korrekturen sind nie Safe.</summary>
+    OtherFiles: TArray<TRuleFileEdits>;
     constructor Create(const ATitle: string; const AEdits: TArray<TRuleEdit>; ASafe: Boolean = False);
     /// <summary>Aktion, die nur zu ATarget springt (#915).</summary>
     class function Jump(const ATitle: string; const ATarget: TTextPosition): TRuleFix; static;
@@ -71,6 +80,8 @@ type
     Severity: TRuleSeverity;
     Confidence: TRuleConfidence;
     Fixes: TArray<TRuleFix>;
+    /// <summary>Zusatz für den Befund-Hover, z. B. der durchsuchte Bereich (#1102); '' ohne.</summary>
+    Details: string;
   end;
 
   /// <summary>Liest eine Datei neben der Unit, z. B. die .dcr aus {$R *.dcr} (#114).</summary>
@@ -132,6 +143,47 @@ type
 {$SCOPEDENUMS ON}
   TRuleApplicationKind = (Unknown, Console, Gui, Package, Service, Library_);
 {$SCOPEDENUMS OFF}
+
+  /// <summary>Art eines Projekts für projektweite Regeln (#1102): Anwendung (program), Package (.dpk) oder DLL
+  /// (library).</summary>
+{$SCOPEDENUMS ON}
+  TRuleProjectKind = (Unknown, Application, Package, Library_);
+{$SCOPEDENUMS OFF}
+
+  /// <summary>Ein Projekt der Projektgruppe mit seinen Quelltexten und Formularen (#1102).</summary>
+  TRuleProject = record
+    /// <summary>Projektdatei (.dproj, .dpr oder .dpk).</summary>
+    FileName: string;
+    Kind: TRuleProjectKind;
+    /// <summary>DUnitX- oder DUnit-Testprojekt.</summary>
+    IsTest: Boolean;
+    /// <summary>Absolute Pfade der Units samt Hauptquelltext (.dpr/.dpk).</summary>
+    Sources: TArray<string>;
+    /// <summary>Absolute Pfade der Formulardateien (.dfm/.fmx) neben den Units.</summary>
+    Forms: TArray<string>;
+  end;
+
+  /// <summary>Antwort auf "kommt der Name in der Datei vor?" (#1102).</summary>
+{$SCOPEDENUMS ON}
+  TRuleNameAnswer = (Absent, Present, Unknown);
+{$SCOPEDENUMS OFF}
+
+  /// <summary>Die Projekte der Gruppe für projektweite Regeln wie unused-public-member (#1102); nil = unbekannt
+  /// (Linter, Datei ohne Projekt), die Regeln schweigen.</summary>
+  IRuleProjectFiles = interface
+    ['{3F0B6C1D-9A47-4E2B-8D15-6C7A2E94B0F3}']
+    /// <summary>Sind alle Projekte geladen und indiziert? Sonst nennt AReason den Grund ("Index läuft (180 von
+    /// 214 Units)"), und projektweite Regeln schweigen.</summary>
+    function Complete(out AReason: string): Boolean;
+    /// <summary>Projekte, zu denen AFileName gehört, zuerst; mit AWholeGroup danach alle übrigen der Gruppe.
+    /// </summary>
+    function ProjectsOf(const AFileName: string; AWholeGroup: Boolean): TArray<TRuleProject>;
+    /// <summary>Kommt AName als Bezeichner in AFileName vor (ohne Groß-/Kleinschreibung)? Unknown, wenn die
+    /// Datei nicht gelesen werden kann.</summary>
+    function NameIn(const AFileName, AName: string): TRuleNameAnswer;
+    /// <summary>Text der Datei, geöffnete Dokumente zuerst; False, wenn sie nicht lesbar ist.</summary>
+    function ReadText(const AFileName: string; out AText: string): Boolean;
+  end;
 
   /// <summary>Alles, was eine Regel über die geprüfte Datei wissen darf.</summary>
   TRuleContext = record
@@ -201,6 +253,9 @@ type
     /// <summary>Formatierung aus den Einstellungen (format, #938): Tabbreite und Einrückung für Regeln, die
     /// Spalten zählen oder umbrechen; setzt TRuleEngine.Run. IndentSize 0 = nicht gesetzt.</summary>
     Formatting: TFormatStyle;
+    /// <summary>Projekte der Gruppe für projektweite Regeln (#1102); nil = unbekannt, diese Regeln schweigen.
+    /// </summary>
+    ProjectFiles: IRuleProjectFiles;
   end;
 
   /// <summary>Sammelt die Treffer einer Regel. Ohne Angabe gilt Konfidenz High.</summary>
@@ -214,6 +269,9 @@ type
     /// <summary>Treffer mit eigenem Schweregrad aus der Konfiguration der Regel (#309);
     /// TRuleSeverity.Default = Schweregrad der Regel.</summary>
     procedure AddWithSeverity(const ARange: TTextRange; const AMessage: string; ASeverity: TRuleSeverity;
+      const AFixes: TArray<TRuleFix>);
+    /// <summary>Treffer mit Zusatz für den Befund-Hover (TRuleFinding.Details, #1102).</summary>
+    procedure AddWithDetails(const ARange: TTextRange; const AMessage, ADetails: string; AConfidence: TRuleConfidence;
       const AFixes: TArray<TRuleFix>);
   end;
 

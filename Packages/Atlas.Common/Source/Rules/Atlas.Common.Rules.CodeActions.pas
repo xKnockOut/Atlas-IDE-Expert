@@ -58,26 +58,36 @@ begin
   Result := -1;
 end;
 
-/// <summary>Edits der Korrektur in die Aktion: ins Dokument oder in die Datei der Korrektur (#309).</summary>
-procedure AddFixEdits(var AAction: TCodeAction; const AFix: TRuleFix);
+procedure AddFileEdits(var AAction: TCodeAction; const AFileName: string; const AEdits: TArray<TTextEdit>);
 var
   Index: Integer;
   Entry: TFileTextEdits;
 begin
-  if AFix.FileName = '' then
+  if AFileName = '' then
   begin
-    AAction.Edits := AAction.Edits + AFix.Edits;
+    AAction.Edits := AAction.Edits + AEdits;
     Exit;
   end;
-  Index := FileEditsIndex(AAction, AFix.FileName);
+  Index := FileEditsIndex(AAction, AFileName);
   if Index < 0 then
   begin
-    Entry.FileName := AFix.FileName;
-    Entry.Edits := AFix.Edits;
+    Entry.FileName := AFileName;
+    Entry.Edits := AEdits;
     AAction.FileEdits := AAction.FileEdits + [Entry];
   end
   else
-    AAction.FileEdits[Index].Edits := AAction.FileEdits[Index].Edits + AFix.Edits;
+    AAction.FileEdits[Index].Edits := AAction.FileEdits[Index].Edits + AEdits;
+end;
+
+/// <summary>Edits der Korrektur in die Aktion: ins Dokument oder in die Datei der Korrektur (#309), dazu die
+/// weiterer Dateien (#1105).</summary>
+procedure AddFixEdits(var AAction: TCodeAction; const AFix: TRuleFix);
+var
+  Other: TRuleFileEdits;
+begin
+  AddFileEdits(AAction, AFix.FileName, AFix.Edits);
+  for Other in AFix.OtherFiles do
+    AddFileEdits(AAction, Other.FileName, Other.Edits);
 end;
 
 { TRuleCodeActions }
@@ -151,7 +161,8 @@ begin
   for Finding in AFindings do
     for Fix in Finding.Fixes do
     begin
-      if not Fix.Safe then
+      // Korrekturen über mehrere Dateien (#1105) nie beim Speichern.
+      if not Fix.Safe or (Fix.OtherFiles <> nil) then
         Continue;
       // Überlappung je Datei: das Dokument oder z. B. die Formulardatei (#309).
       Target := FileEditsIndex(AAction, Fix.FileName);

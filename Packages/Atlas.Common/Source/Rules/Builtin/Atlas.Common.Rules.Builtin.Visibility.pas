@@ -14,12 +14,14 @@
 //                        private bzw. strict private Feld, Methode, Konstante
 //                        oder Property, die in der Unit nirgends vorkommt
 //                        (#1020, wie H2219, aber auch für Felder; Option
-//                        includeFields). Ausgenommen sind Methoden mit
-//                        message, virtual, dynamic, override oder abstract,
-//                        Methoden von Typen mit Interfaces (sie können
-//                        Interface-Methoden umsetzen), Konstruktoren und
-//                        Destruktoren, Mitglieder mit Attributen (RTTI), Namen
-//                        aus der Formulardatei und Units mit Include-Dateien.
+//                        includeFields). Ausnahmen kommen aus dem Dienst „gilt
+//                        als verwendet“ (Rules.ConsideredUsed, #1102): u. a.
+//                        message, virtual, dynamic, override, abstract,
+//                        Konstruktoren, Operatoren, Mitglieder mit Attributen
+//                        (RTTI), Zugriffsmethoden und Interface-Methoden. Ist
+//                        die Vorfahrenkette nicht bekannt, gelten Methoden von
+//                        Typen mit Interfaces als verwendet. Dazu Namen aus der
+//                        Formulardatei und Units mit Include-Dateien.
 //                        Verwendung ist jedes Vorkommen des Namens als
 //                        Bezeichner außer Deklarationen und Methodenköpfen,
 //                        auch in inaktiven Zweigen. Korrektur: Deklaration
@@ -72,6 +74,7 @@ uses
   Atlas.Common.Rules.Derived,
   Atlas.Common.Rules.Options,
   Atlas.Common.Rules.Builtin.Inheritance,
+  Atlas.Common.Rules.ConsideredUsed,
   Atlas.Text.Lines;
 
 const
@@ -415,6 +418,8 @@ var
   Occurrences: TDictionary<string, TList<TTextPosition>>;
   // Name -> Positionen, die keine Verwendung sind (Deklarationen, Methodenköpfe)
   Declared: TDictionary<string, TList<TTextPosition>>;
+  // Dienst „gilt als verwendet“, geteilt mit unused-public-member (#1102).
+  Considered: TConsideredUsed;
 
   procedure Note(ADictionary: TDictionary<string, TList<TTextPosition>>; const AName: string;
     const APosition: TTextPosition);
@@ -472,36 +477,6 @@ var
           Exit(True);
       end;
     Result := False;
-  end;
-
-  /// <summary>Erstes Code-Token ab APosition; -1 ohne.</summary>
-  function TokenAt(const APosition: TTextPosition): Integer;
-  var
-    Low, High_, Middle: Integer;
-  begin
-    Low := 0;
-    High_ := Length(Tokens);
-    while Low < High_ do
-    begin
-      Middle := (Low + High_) div 2;
-      if (Tokens[Middle].StartPos.Line < APosition.Line) or ((Tokens[Middle].StartPos.Line = APosition.Line) and
-        (Tokens[Middle].StartPos.Character < APosition.Character)) then
-        Low := Middle + 1
-      else
-        High_ := Middle;
-    end;
-    Result := Low;
-    if Result > High(Tokens) then
-      Result := -1;
-  end;
-
-  /// <summary>Steht vor der Deklaration ein Attribut ([Weak], [JsonName('x')])?</summary>
-  function HasAttribute(const ASymbol: TIndexSymbol): Boolean;
-  var
-    At: Integer;
-  begin
-    At := TokenAt(ASymbol.Range.StartPos);
-    Result := (At > 0) and Tokens[At - 1].IsSymbol(']');
   end;
 
   /// <summary>Kann der Typ AName Interfaces umsetzen (mehr als ein Vorfahr oder ein Vorfahr I…)? Unbekannte
@@ -609,14 +584,19 @@ var
   end;
 
   procedure CheckMember(const ASymbol: TIndexSymbol);
+  var
+    Reason: TConsideredUsedReason;
   begin
     if not (ASymbol.Visibility in [TIndexVisibility.Private, TIndexVisibility.StrictPrivate]) or
       ((ASymbol.Kind = TIndexSymbolKind.Field) and not IncludeFields) or ASymbol.Unavailable or
-      HasDirective(ASymbol.Directives, 'message') or HasDirective(ASymbol.Directives, 'virtual') or
-      HasDirective(ASymbol.Directives, 'dynamic') or HasDirective(ASymbol.Directives, 'override') or
-      HasDirective(ASymbol.Directives, 'abstract') or HasAttribute(ASymbol) or Used(ASymbol.Name) then
+      Used(ASymbol.Name) then
       Exit;
-    if (ASymbol.Kind = TIndexSymbolKind.Method) and HasInterfaces(ASymbol.Container) then
+    Reason := Considered.Reason(ASymbol);
+    if (Reason <> TConsideredUsedReason.None) and (Reason <> TConsideredUsedReason.UnknownAncestor) then
+      Exit;
+    // Kette unbekannt (Vorfahr nicht im Index): Methoden von Typen mit Interfaces können sie umsetzen.
+    if (Reason = TConsideredUsedReason.UnknownAncestor) and (ASymbol.Kind = TIndexSymbolKind.Method) and
+      HasInterfaces(ASymbol.Container) then
       Exit;
     // Komponenten und Ereignisse aus der Formulardatei.
     if (AContext.FormText <> '') and ContainsText(AContext.FormText, ASymbol.Name) then
@@ -642,6 +622,7 @@ begin
   Occurrences := TDictionary<string, TList<TTextPosition>>.Create;
   Declared := TDictionary<string, TList<TTextPosition>>.Create;
   Seen := TDictionary<string, Boolean>.Create;
+  Considered := TConsideredUsed.Create(AContext.Index, Local, Tokens, nil, nil);
   try
     for Token in Tokens do
       if Token.Kind = TPascalTokenKind.Identifier then
@@ -671,6 +652,7 @@ begin
     Occurrences.Free;
     Declared.Free;
     Seen.Free;
+    Considered.Free;
   end;
 end;
 

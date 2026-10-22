@@ -91,7 +91,7 @@ begin
   Items := TJSONObject.ParseJSONValue('[' +
     '{"range":{"start":{"line":3,"character":2},"end":{"line":3,"character":9}},"severity":2,' +
     '"code":"unused-variable","source":"Atlas","message":"Variable X wird nicht verwendet",' +
-    '"data":{"confidence":"medium"}},' +
+    '"data":{"confidence":"medium","details":"Durchsucht: 3 Dateien der Projektgruppe"}},' +
     '{"range":{"start":{"line":5,"character":0},"end":{"line":5,"character":1}},"severity":1,' +
     '"code":"E2003","source":"dcc","message":"Undeklarierter Bezeichner"},' +
     '{"range":{"start":{"line":7,"character":0},"end":{"line":9,"character":0}},"severity":4,' +
@@ -112,6 +112,9 @@ begin
   Assert.IsFalse(Problems[0].IsCompiler);
   Assert.AreEqual('medium', Problems[0].Confidence);
   Assert.AreEqual('', Problems[1].Confidence);
+  // Zusatz für den Befund-Hover (#1102).
+  Assert.AreEqual('Durchsucht: 3 Dateien der Projektgruppe', Problems[0].Details);
+  Assert.AreEqual('', Problems[1].Details);
   Assert.IsTrue(Problems[1].IsCompiler);
   Assert.IsTrue(Problems[1].Severity = TAtlasProblemSeverity.Error);
   Assert.IsTrue(Problems[2].Unnecessary);

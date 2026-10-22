@@ -4173,6 +4173,59 @@ Voraussetzung: Server läuft in der IDE mit Projekt; RTL und VCL im Index.
 | RO7 | Abgleich mit Delphi: RO1, RO3, RO4 übersetzen | dcc meldet E2129 bzw. E2130 an denselben Stellen, für RO5 nichts |
 
 ## Falsche Anzahl Argumente (#1007)
+## Ungenerische Liste mit Cast (#981)
+
+Voraussetzung: Server läuft in der IDE mit Projekt; RTL im Index; in `atlas.json` `"legacy-tlist": "info"` (Standard aus).
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| JT1 | Das Beispiel aus #981: Feld `FPositionen: TList;`, in einer Methode `Pos := TPosition(FPositionen[I]);` | Information `legacy-tlist` an `FPositionen` in der Deklaration: „Ungenerische TList mit Cast beim Lesen; TList<TPosition> prüft den Typ beim Übersetzen.“; im Fenster „Atlas-Prüfung“ und im Befund-Hover (**Abnahme**) |
+| JT2 | Wie JT1, aber `uses System.Classes, System.Generics.Collections` und zusätzlich `FPositionen.Items[I]`, `FPositionen.First`, `FPositionen.Last`, `FPositionen[I] as TPosition` | Weiterhin genau ein Treffer an der Deklaration; Hover auf `TList` zeigt `System.Classes.TList` |
+| JT3 | `FObjekte: TObjectList;` aus `System.Contnrs` mit `TKunde(FObjekte[0])` | „Ungenerische TObjectList mit Cast beim Lesen; TObjectList<TKunde> prüft den Typ beim Übersetzen.“ |
+| JT4 | Dieselbe Liste mit `TPosition(L[0])` und `TObject(L[1])` | „Ungenerische TList mit Casts auf TPosition, TObject beim Lesen; eine generische Liste prüft den Typ beim Übersetzen.“ |
+| JT5 | Öffentliches Feld `Regale: TList` in Unit A, Cast `TRegal(Lager.Regale[0])` nur in Unit B | Treffer in B am Cast `TRegal(Lager.Regale[0])` |
+| JT6 | Korrigierte Form `TList<TPosition>` mit `Pos := FPositionen[I]`, `TList` ohne Cast (`Count`, `Add`), `Pointer(L[I])`, `TStringList.Objects[I]` mit Cast | Keine Meldung |
+| JT7 | Ohne Eintrag in `atlas.json`, mit `"legacy-tlist": "off"` bzw. `exclude` mit dem Pfad der Unit | Keine Meldung |
+| JT8 | Abgleich mit Delphi: JT1 bis JT3 übersetzen | dcc meldet nichts (die Regel ist reine Stilprüfung); nach Umstellen auf `TList<TPosition>` ohne Cast übersetzt es mit 0 Fehlern, 0 Warnungen, 0 Hinweisen |
+
+## Schnellkorrektur legacy-tlist (#1105)
+
+Voraussetzung: wie JT; Projektgruppe geladen und Index fertig aufgebaut.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| LT1 | Das Beispiel aus #1105: privates Feld `FPositionen: TList;`, im Konstruktor `FPositionen := TList.Create;`, in einer Methode `Pos := TPosition(FPositionen[I]);`, `Pos := FPositionen.First as TPosition;`; Hover auf die Meldung | Aktionszeile des Befund-Hovers und Fenster „Atlas-Prüfung“ bieten „In TList<TPosition> umwandeln“ |
+| LT2 | LT1 ausführen | `FPositionen: TList<TPosition>;`, `TList<TPosition>.Create`, `Pos := FPositionen[I];`, `Pos := FPositionen.First;`, `System.Generics.Collections` im uses des interface; die Meldung verschwindet |
+| LT3 | Nach LT2 einmal Strg+Z | Alle Änderungen aus LT2 sind in einem Schritt zurückgenommen |
+| LT4 | `FObjekte: TObjectList;` aus `System.Contnrs` mit `FObjekte := TObjectList.Create(False);` und `TKunde(FObjekte[0])`; Contnrs sonst ungenutzt | `TObjectList<TKunde>.Create(False)`; `Contnrs` bzw. `System.Contnrs` ist aus dem uses entfernt. Mit zusätzlichem `TObjectStack` in der Unit bleibt es stehen |
+| LT5 | Liste mit `FPositionen.Sort(Vergleichen)`; dann mit `TPosition(L[0])` und `TObject(L[1])`; dann mit `L.Add(Pointer(5))`; dann `Verarbeiten(FPositionen)` mit Parameter `TList` | Meldung bleibt, keine Korrektur; der Befund-Hover zeigt „Keine Schnellkorrektur: …“ mit dem Grund (TListSortCompare, verschiedene Casts, Pointer-Werte, Weitergabe) |
+| LT6 | Öffentliches Feld `Regale: TList` in Unit `Lager`, Cast `TRegal(L.Regale[0])` nur in Unit `Auftraege`; Korrektur in `Auftraege` ausführen | Beide Units ändern sich: in `Lager` Deklaration, Create und uses, in `Auftraege` der Cast; „Alle korrigieren“ (source.fixAll) wendet diese Korrektur nicht an |
+| LT7 | Wie LT6, aber `Auftraege` ruft zusätzlich `L.Regale.Sort(Vergleichen)` auf; ebenso direkt nach dem IDE-Start, solange der Index aufgebaut wird | Keine Korrektur; der Hover nennt TListSortCompare bzw. den laufenden Index |
+| LT8 | `property Regale: TList read FRegale;` mit privatem Feld, Cast nur in einer anderen Unit | Korrektur ändert Feld, Property und Create in `Lager` und den Cast in der anderen Unit |
+| LT9 | „Alle korrigieren“ bei LT1 (nur eine Unit, alle Typen bekannt) | Die Liste wird mit umgewandelt |
+| LT10 | `"legacy-tlist": "off"` | Keine Meldung und keine Korrektur |
+| LT11 | Abgleich mit Delphi: LT2, LT4, LT6, LT8 übersetzen | 0 Fehler, 0 Warnungen, 0 Hinweise |
+
+## Ungenerische Stapel und Warteschlangen (#1106)
+
+Voraussetzung: wie JT; in `atlas.json` `"legacy-stack-queue": "info"` (Standard aus); für die Korrektur Projektgruppe geladen und Index fertig aufgebaut.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| SQ1 | Das Beispiel aus #1106: privates Feld `FOffen: TObjectStack;` (`uses System.Contnrs`), in einer Methode `Knoten := TKnoten(FOffen.Pop);` | Information `legacy-stack-queue` an `FOffen` in der Deklaration: „Ungenerischer TObjectStack mit Cast beim Lesen; TObjectStack<TKnoten> prüft den Typ beim Übersetzen.“; im Fenster „Atlas-Prüfung“ und im Befund-Hover (**Abnahme**) |
+| SQ2 | Wie SQ1 ohne `TObjectStack.Create` in der Unit; Hover auf die Meldung | Keine Aktion „In TObjectStack<TKnoten> umwandeln“; der Hover nennt „Keine Schnellkorrektur: …“ mit dem fehlenden Create als Grund |
+| SQ3 | SQ1 mit `FOffen := TObjectStack.Create;` im Konstruktor, `FOffen.Push(Knoten);`, `Knoten := FOffen.Peek as TKnoten;`; Alt+Enter „In TObjectStack<TKnoten> umwandeln“ | `FOffen: TObjectStack<TKnoten>;`, `TObjectStack<TKnoten>.Create(False)`, `Knoten := FOffen.Extract;`, `Knoten := FOffen.Peek;`, `System.Generics.Collections` im uses, `System.Contnrs` entfällt, wenn nichts anderes es braucht; die Meldung verschwindet; Strg+Z nimmt alles in einem Schritt zurück (**Abnahme**) |
+| SQ4 | Nach SQ3: Objekt mit `Push` ablegen, mit `Extract` holen und weiterverwenden, später freigeben | Kein Zugriff auf freigegebenen Speicher (FastMM/Debugger still): `Create(False)` besitzt nichts, `Extract` gibt nichts frei |
+| SQ5 | `FSchlange: TQueue;` mit `FSchlange.Push(K)`, `K := TKnoten(FSchlange.Pop)`; Korrektur ausführen | „Ungenerische TQueue mit Cast beim Lesen; TQueue<TKnoten> …“; danach `TQueue<TKnoten>`, `Enqueue(K)`, `K := FSchlange.Dequeue;` |
+| SQ6 | `TObjectQueue` wie SQ5 | Danach `TObjectQueue<TKnoten>.Create(False)`, `Enqueue`, `K := FSchlange.Extract;` |
+| SQ7 | `TStack` mit `TKnoten(S.Pop)` und `TObject(S.Pop)` | „Ungenerischer TStack mit Casts auf TKnoten, TObject beim Lesen; ein generischer Stapel prüft den Typ beim Übersetzen.“; keine Korrektur, der Hover nennt die verschiedenen Casts |
+| SQ8 | `if S.AtLeast(2) then K := TKnoten(S.Pop);` | Meldung, keine Korrektur; der Hover nennt `AtLeast` |
+| SQ9 | Korrigierte Form `TObjectStack<TKnoten>` mit `Extract`, `TStack` ohne Cast (`Push`, `Count`, `Pop;` als Anweisung), `Pointer(S.Pop)`, `TObjectList` mit Cast | Keine Meldung von `legacy-stack-queue` (die Liste meldet `legacy-tlist`) |
+| SQ10 | Öffentliches Feld `Stapel: TObjectStack` in Unit A, Cast `TKnoten(A.Stapel.Pop)` nur in Unit B | Treffer in B am Cast; die Korrektur ändert A und B, ist nie Teil von „Alle korrigieren“ |
+| SQ11 | Ohne Eintrag in `atlas.json`, mit `"legacy-stack-queue": "off"` bzw. `exclude` mit dem Pfad der Unit | Keine Meldung |
+| SQ12 | Abgleich mit Delphi: SQ1 übersetzen, dann die Ergebnisse von SQ3, SQ5 und SQ6 | dcc meldet für SQ1 nichts (reine Stilprüfung); die umgewandelten Units übersetzen mit 0 Fehlern, 0 Warnungen, 0 Hinweisen |
+
+## Zugriff auf ein nicht sichtbares Mitglied (#1008)
 
 Voraussetzung: Server läuft in der IDE mit Projekt; RTL und VCL im Index.
 
@@ -5659,3 +5712,31 @@ Voraussetzung: Server läuft; Einstellungen auf Vorgabe; Unit mit `IBeobachter =
 | KD7 | `TfrmKunden` von einer eigenen Basis `TMeineBasis` ableiten, die nicht im Projekt steht; dann `"component-interface-dangling": {"componentClasses": ["TMeineBasis"]}` | Ohne Option keine Meldung, mit Option „TfrmKunden ist ein TMeineBasis ohne Referenzzählung; …“ |
 | KD8 | `"component-interface-dangling": "off"` bzw. `exclude` mit dem Pfad der Datei | Keine Meldung |
 | KD9 | Abgleich mit Delphi: KD1 übersetzen, `AnsichtOeffnen`, `AnsichtSchliessen`, danach `Bus` ein `Melden` an alle schicken lassen | Ohne Korrektur Zugriffsverletzung beim Aufruf über das gespeicherte Interface; mit Korrektur keine |
+| UV1 | Das Beispiel aus #1020: `TImport` mit `private FAltFormat: Boolean; procedure KonvertiereAlt;`, beide nirgends verwendet | Hinweise `unused-private-member` an beiden Namen: „Privates Feld FAltFormat wird nie verwendet (wie H2219).“ und „Private Methode KonvertiereAlt wird nie verwendet (wie H2219).“; im Fenster „Atlas-Prüfung“ und im Befund-Hover (**Abnahme**) |
+| UV2 | Schnellkorrektur „KonvertiereAlt entfernen“, danach Strg+Z | Deklaration samt ///-Doku und Rumpf in implementation sind weg; ein Undo-Schritt stellt beides wieder her |
+| UV3 | Private Konstante und Property ohne Verwendung; `FA, FB: Integer` mit nur `FB` verwendet | Meldungen für Konstante, Property und `FA` (bei `FA` ohne Korrektur) |
+| UV4 | Mitglied nur in einem `{$IFDEF}`-Zweig, hinter `read` einer Property oder über `Self.` verwendet | Keine Meldung |
+| UV5 | `message`-Methode, `override`-Methode, Feld mit `[Weak]`, Methode einer Klasse mit Interface, Komponente aus der .dfm, Unit mit `{$I …}` | Keine Meldung |
+| UV6 | `"unused-private-member": {"includeFields": false}` | Nur noch Methoden, Konstanten und Properties |
+| UV7 | `"unused-private-member": "off"`, `"group:compiler": "off"` bzw. `exclude` | Keine Meldung |
+| UV8 | Abgleich mit Delphi: UV1 übersetzen | dcc meldet H2219 für `KonvertiereAlt` an derselben Stelle (für Felder meldet dcc nichts); für UV4 und UV5 nichts |
+
+## Öffentliches Mitglied im Projekt nie verwendet (#1102)
+
+Voraussetzung: Server läuft in der IDE mit einer Projektgruppe aus Anwendung und Testprojekt; Index fertig aufgebaut.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| OM1 | Das Beispiel aus #1102: `TKundenService` mit `public const MaxKunden`, `procedure ExportiereAlsXml`, `property LetzterFehler`, keines davon in einer Unit der Gruppe verwendet | Hinweise `unused-public-member`: „Öffentliche Methode TKundenService.ExportiereAlsXml wird im Projekt nirgends verwendet.“, ebenso für Konstante und Property; im Fenster „Atlas-Prüfung“ (Gruppe Stil) und im Befund-Hover mit der Zeile „Durchsucht: … Dateien und … Formulare der Projektgruppe“ (**Abnahme**) |
+| OM2 | `S.ExportiereAlsXml('x')` in einer anderen Unit der Anwendung ergänzen, speichern, zurück zur Service-Unit | Die Meldung für `ExportiereAlsXml` verschwindet; nach Entfernen des Aufrufs kommt sie wieder |
+| OM3 | Gleichnamige Methode einer anderen Klasse aufrufen; Methode ruft sich nur selbst rekursiv auf | Meldung bleibt in beiden Fällen |
+| OM4 | Aufruf nur im Testprojekt; dann `"unused-public-member": {"testsCountAsUse": false}` | Erst keine Meldung, dann „… wird nur in <Testprojekt> verwendet.“ |
+| OM5 | Methode, die ein Interface umsetzt; `override`-Methode; published-Property einer TComponent; Ereignis-Handler aus der .dfm; Name als `'ExportiereAlsXml'` im Code; Attribut aus `keepAttributes`; Muster aus `keepPatterns` | Keine Meldung |
+| OM6 | Unit eines Packages bzw. einer DLL der Gruppe | Keine Meldung; mit `"projectKinds": ["application", "package", "library"]` wieder Meldungen |
+| OM7 | IDE neu starten, Service-Unit öffnen, solange der Index noch aufgebaut wird | Keine Meldung, bis der Index fertig ist; die Statuszeile des Fensters „Atlas-Prüfung“ zeigt so lange „Projektweite Regeln warten auf den Index (… %)“; danach erscheinen die OM1-Meldungen ohne Neuöffnen |
+| OM12 | Published-Methode einer Klasse, die eine andere Unit mit `RegisterClasses([…])` registriert; eine Formulardatei des Projekts ist gesperrt bzw. unlesbar | Keine Meldung für published-Mitglieder der registrierten Klasse bzw. für published-Methoden, solange die Formulardatei nicht lesbar ist |
+| OM13 | `unused-private-member` (#1020) an einer privaten Methode einer Klasse mit Interface, die keine Interface-Methode umsetzt (Vorfahren im Index) | Meldung; ist ein Vorfahr nicht im Index, bleibt die Regel wie bisher still |
+| OM8 | `"visibilities": ["protected"]`, `"memberKinds": ["field"]`, `"unitLevel": false`, `"scope": "project"` | Nur noch die gewählten Sichtbarkeiten bzw. Arten; ohne unitLevel keine Routinen und Konstanten aus dem interface-Abschnitt; mit scope project zählen Verwendungen anderer Projekte nicht |
+| OM9 | Schnellkorrektur „Als bewusst öffentlich markieren (lsp-ignore)“ | Über der Deklaration steht `// lsp-ignore: unused-public-member`; die Meldung ist weg |
+| OM10 | `"unused-public-member": "off"`, `"group:style": "off"` bzw. `exclude` | Keine Meldung |
+| OM11 | Großes Projekt (mehrere hundert Units): Service-Unit bearbeiten | Keine spürbare Verzögerung der Diagnosen; im Diagnoselog keine Zeitüberschreitung der Regel |

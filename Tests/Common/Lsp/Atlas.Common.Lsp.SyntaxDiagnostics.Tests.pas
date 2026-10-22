@@ -492,6 +492,16 @@ begin
   try
     Assert.AreEqual('compiler', Item.GetValue<string>('data.group'));
     Assert.AreEqual('["E2034","E2035"]', (Item.GetValue('data') as TJSONObject).GetValue('compilerCodes').ToJSON);
+    // Ohne Zusatz kein data.details.
+    Assert.IsNull(Item.FindValue('data.details'));
+  finally
+    Item.Free;
+  end;
+  // Zusatz für den Befund-Hover (#1102).
+  Finding.Details := 'Durchsucht: 3 Dateien der Projektgruppe';
+  Item := TLspSyntaxDiagnostics.FindingToJson(Finding);
+  try
+    Assert.AreEqual('Durchsucht: 3 Dateien der Projektgruppe', Item.GetValue<string>('data.details'));
   finally
     Item.Free;
   end;

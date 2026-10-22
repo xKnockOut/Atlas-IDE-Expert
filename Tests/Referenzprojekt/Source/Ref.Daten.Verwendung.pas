@@ -8,7 +8,7 @@ interface
 uses
   Ref.Daten.Auftraege;
 
-function NeuerAuftrag(ANummer: Integer): TAuftrag;
+function NeuerAuftrag(ANummer: Integer): TAuftrag; // ERWARTET-PROJEKT: unused-public-member
 
 implementation
 
