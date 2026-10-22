@@ -199,9 +199,12 @@ begin
   // hardcoded-string (#56), random-without-randomize (#153), die freiwillige Regel todo-comment (#68),
   // die Architekturregeln des Rollenkonzepts (ohne "prefixes" stumm, Code-Review A-12).
   Assert.AreEqual(Merged(All, ['architecture-contract-content', 'architecture-role-import',
-    'catch-all-without-raise', 'file-header', 'global-variable', 'hardcoded-string',
-    'legacy-stack-queue', 'loop-invariant-call', 'magic-number', 'missing-begin-update', 'narrowing-assignment', 'public-field', 'random-without-randomize', 'redundant-begin-end',
-    'redundant-parens', 'security-path-traversal', 'string-concat-in-loop', 'todo-comment']), ActiveRules('strict'));
+    'catch-all-without-raise', 'default-parameter', 'file-header', 'global-variable', 'hardcoded-string',
+    'implicit-variants-unit', 'legacy-stack-queue', 'legacy-tlist', 'line-length', 'loop-invariant-call', 'magic-number',
+    'managed-param-without-const', 'missing-begin-update', 'money-as-float', 'narrowing-assignment',
+    'override-case-mismatch', 'public-field', 'random-without-randomize', 'redundant-begin-end',
+    'redundant-parens', 'security-path-traversal', 'sql-select-star', 'string-concat-in-loop', 'string-if-chain',
+    'todo-comment']), ActiveRules('strict'));
   Assert.AreEqual('abstract-class-instantiated,abstract-declaration-invalid,anonymous-capture-invalid,anonymous-thread-not-started,argument-count-mismatch,assert-side-effect,assign-to-property-member,attribute-usage-invalid,bidi-control,calling-convention-required,captured-loop-variable,case-missing-enum-value,case-selector-not-ordinal,char-to-pchar,' +
     'class-reference-nonvirtual-constructor,collection-modified-in-loop,comparison-always-constant,comparison-as-statement,' +
     'component-create-without-override,component-default-mismatch,component-interface-dangling,component-missing-free-notification,' +
