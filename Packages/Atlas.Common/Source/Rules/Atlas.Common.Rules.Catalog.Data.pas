@@ -2382,6 +2382,19 @@ begin
     '        "E2417",' + #10 +
     '        "E2569"' + #10 +
     '      ]' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "guid-syntax-invalid",' + #10 +
+    '      "name": "GUID with invalid syntax",' + #10 +
+    '      "category": "bug",' + #10 +
+    '      "severity": "error",' + #10 +
+    '      "group": "compiler",' + #10 +
+    '      "description": "The GUID of an interface or of a typed TGUID constant is not of the form ''{8-4-4-4-12}'' (like E2204): missing braces, wrong number or length of blocks, characters that are not he' + 'x digits, often after editing by hand. Only single literals are checked; concatenations and constants stay silent. Quick fixes: generate a new GUID; when only the braces are missing, add them. Complem' + 'ents interface-guid and duplicate-interface-guid.",' + #10 +
+    '      "bad": "ILogger = interface\n  [''{6A1F3B2C-9D4E-4F5A-8B7C-1D2E3F4A5B6}'']",' + #10 +
+    '      "good": "ILogger = interface\n  [''{6A1F3B2C-9D4E-4F5A-8B7C-1D2E3F4A5B6C}'']",' + #10 +
+    '      "compilerCodes": [' + #10 +
+    '        "E2204"' + #10 +
+    '      ]' + #10 +
     '    }' + #10 +
     '  ]' + #10 +
     '}' + #10 +
@@ -3581,6 +3594,11 @@ begin
     '      "id": "variant-record-managed-field",' + #10 +
     '      "name": "Verwalteter Typ im varianten Teil eines Records",' + #10 +
     '      "description": "Im varianten Teil eines Records (case … of) steht ein String, ein dynamisches Array, ein Interface, ein Variant oder ein Record mit solchen Feldern (wie E2154), ein verwalteter R' + 'ecord mit class operator Initialize oder Finalize (wie E2418) oder ein Typparameter ohne record-Einschränkung (wie E2569); ebenso hinter file of (wie E2155, E2417). Typen werden in der Datei und im In' + 'dex aufgelöst; unbekannte bleiben still. Korrekturen: Feld vor case in den festen Teil verschieben, ShortString verwenden oder den Typparameter mit record einschränken."' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "guid-syntax-invalid",' + #10 +
+    '      "name": "GUID mit falscher Schreibweise",' + #10 +
+    '      "description": "Die GUID eines Interfaces oder einer typisierten TGUID-Konstante hat nicht die Form ''{8-4-4-4-12}'' (wie E2204): fehlende Klammern, falsche Zahl oder Länge der Blöcke, Zeichen, di' + 'e keine Hexadezimalziffern sind, oft nach Hand-Bearbeitung. Geprüft werden nur einzelne Literale; Verkettungen und Konstanten bleiben still. Korrekturen: neue GUID erzeugen; fehlen nur die Klammern, s' + 'ie ergänzen. Ergänzt interface-guid und duplicate-interface-guid."' + #10 +
     '    }' + #10 +
     '  ]' + #10 +
     '}' + #10 +

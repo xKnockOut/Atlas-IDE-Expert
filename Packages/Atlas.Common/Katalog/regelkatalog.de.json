@@ -1187,6 +1187,11 @@
       "id": "variant-record-managed-field",
       "name": "Verwalteter Typ im varianten Teil eines Records",
       "description": "Im varianten Teil eines Records (case … of) steht ein String, ein dynamisches Array, ein Interface, ein Variant oder ein Record mit solchen Feldern (wie E2154), ein verwalteter Record mit class operator Initialize oder Finalize (wie E2418) oder ein Typparameter ohne record-Einschränkung (wie E2569); ebenso hinter file of (wie E2155, E2417). Typen werden in der Datei und im Index aufgelöst; unbekannte bleiben still. Korrekturen: Feld vor case in den festen Teil verschieben, ShortString verwenden oder den Typparameter mit record einschränken."
+    },
+    {
+      "id": "guid-syntax-invalid",
+      "name": "GUID mit falscher Schreibweise",
+      "description": "Die GUID eines Interfaces oder einer typisierten TGUID-Konstante hat nicht die Form '{8-4-4-4-12}' (wie E2204): fehlende Klammern, falsche Zahl oder Länge der Blöcke, Zeichen, die keine Hexadezimalziffern sind, oft nach Hand-Bearbeitung. Geprüft werden nur einzelne Literale; Verkettungen und Konstanten bleiben still. Korrekturen: neue GUID erzeugen; fehlen nur die Klammern, sie ergänzen. Ergänzt interface-guid und duplicate-interface-guid."
     }
   ]
 }

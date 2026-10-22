@@ -10,7 +10,7 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 | [Exceptions](#gruppe-exceptions) | 8 |
 | [Threads](#gruppe-threads) | 13 |
 | [Datenbank](#gruppe-database) | 4 |
-| [Compiler vorab](#gruppe-compiler) | 17 |
+| [Compiler vorab](#gruppe-compiler) | 18 |
 | [Robustheit und Muster](#gruppe-robustness) | 3 |
 | [Performance](#gruppe-performance) | 4 |
 | [Sicherheit](#gruppe-security) | 11 |
@@ -148,6 +148,7 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 | [`readonly-property-assigned`](#readonly-property-assigned) | Zuweisung an eine Property ohne write | Bug | Fehler |
 | [`inherited-constructor-after-try`](#inherited-constructor-after-try) | Geerbter Konstruktor erst im try-Block | Bug | Hinweis |
 | [`variant-record-managed-field`](#variant-record-managed-field) | Verwalteter Typ im varianten Teil eines Records | Bug | Fehler |
+| [`guid-syntax-invalid`](#guid-syntax-invalid) | GUID mit falscher Schreibweise | Bug | Fehler |
 
 <a id="gruppe-robustness"></a>
 ### Robustheit und Muster
@@ -4638,4 +4639,27 @@ TWert = record
   case Art: TArt of
     waZahl: (Zahl: Double);
 end;
+```
+
+<a id="guid-syntax-invalid"></a>
+### guid-syntax-invalid
+
+**GUID mit falscher Schreibweise** · Bug · Fehler · Gruppe Compiler vorab
+
+Die GUID eines Interfaces oder einer typisierten TGUID-Konstante hat nicht die Form '{8-4-4-4-12}' (wie E2204): fehlende Klammern, falsche Zahl oder Länge der Blöcke, Zeichen, die keine Hexadezimalziffern sind, oft nach Hand-Bearbeitung. Geprüft werden nur einzelne Literale; Verkettungen und Konstanten bleiben still. Korrekturen: neue GUID erzeugen; fehlen nur die Klammern, sie ergänzen. Ergänzt interface-guid und duplicate-interface-guid.
+
+Entspricht der Compilermeldung `E2204`.
+
+Mit Treffer:
+
+```pascal
+ILogger = interface
+  ['{6A1F3B2C-9D4E-4F5A-8B7C-1D2E3F4A5B6}']
+```
+
+Richtig:
+
+```pascal
+ILogger = interface
+  ['{6A1F3B2C-9D4E-4F5A-8B7C-1D2E3F4A5B6C}']
 ```
