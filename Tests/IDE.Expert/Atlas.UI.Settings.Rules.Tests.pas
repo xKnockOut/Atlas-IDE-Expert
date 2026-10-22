@@ -18,6 +18,9 @@ type
     FChanges: Integer;
     procedure EditorChanged(Sender: TObject);
   public
+    /// <summary>Erste Benutzung ungemessen vorwegnehmen.</summary>
+    [SetupFixture]
+    procedure WarmUpFirstUse;
     [Setup]
     procedure Setup;
     [TearDown]
@@ -71,6 +74,16 @@ begin
 end;
 
 { TAtlasRulesEditorTests }
+
+procedure TAtlasRulesEditorTests.WarmUpFirstUse;
+begin
+  Setup;
+  try
+    GroupMasterLocksTable;
+  finally
+    TearDown;
+  end;
+end;
 
 procedure TAtlasRulesEditorTests.Setup;
 begin

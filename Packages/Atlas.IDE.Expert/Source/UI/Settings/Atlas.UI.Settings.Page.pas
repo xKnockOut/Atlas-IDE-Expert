@@ -3957,7 +3957,9 @@ begin
   else if not FLockedControls.Contains(AControl) then
     FLockedControls.Add(AControl);
   AControl.Enabled := not ALocked and not FOwnOff.Contains(AControl);
-  if (AControl is TWinControl) and not (AControl is TAtlasSettingsGroup) then
+  // Der Regel-Editor (#909) sperrt Tabelle und Felder selbst (Hauptschalter der Gruppe); eine Sperre von
+  // außen wirkt über sein eigenes Enabled.
+  if (AControl is TWinControl) and not (AControl is TAtlasSettingsGroup) and not (AControl is TAtlasRulesEditor) then
     for Index := 0 to TWinControl(AControl).ControlCount - 1 do
       SetLocked(TWinControl(AControl).Controls[Index], ALocked);
 end;

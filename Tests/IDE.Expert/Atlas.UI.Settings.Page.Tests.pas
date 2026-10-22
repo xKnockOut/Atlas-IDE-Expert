@@ -527,13 +527,14 @@ begin
     Minimap := Page.NodeSheet('editor.minimap');
     Page.Filter.Choice := 2;
     Page.Filter.OnChange(Page.Filter);
-    Assert.IsTrue(Length(TopLevelNodes(Page)) < 16, 'Bereiche ohne experimentelle Einstellung fehlen');
+    Assert.IsTrue(Length(TopLevelNodes(Page)) < 17, 'Bereiche ohne experimentelle Einstellung fehlen');
     Assert.IsNotNull(TreeNodeOf(Page, Minimap), 'Minikarte ist experimentell');
     Assert.IsNotNull(Page.NodeSheet('welcome.header'));
     Assert.IsNull(TreeNodeOf(Page, Page.NodeSheet('welcome.header')), 'Kopf der Willkommensseite ohne Treffer');
     Page.Filter.Choice := 0;
     Page.Filter.OnChange(Page.Filter);
-    Assert.AreEqual(16, Integer(Length(TopLevelNodes(Page))));
+    // 16 Bereiche und „Prüfregeln“ (#909).
+    Assert.AreEqual(17, Integer(Length(TopLevelNodes(Page))));
     // Zurücksetzen auf dem Unterpunkt: nur die Minikarte.
     Page.MinimapWidth.Text := '90';
     Page.StickyScrollMaxLines.Text := '7';
@@ -2481,7 +2482,7 @@ begin
     Assert.AreEqual(0, Integer(Length(Page.RulesChanges)), 'ohne Änderung nichts zu schreiben');
     // Hauptschalter der Gruppe: alle Knoten sehen denselben Wert; nur der Schalter ist zu schreiben.
     Threads.Master.Checked := False;
-    Assert.IsFalse(Threads.List.Enabled);
+    Assert.IsFalse(Threads.List.Enabled, 'Tabelle gesperrt');
     Assert.IsTrue(Page.RulesEditor('').RulesJson.Contains('"group:threads":"off"'));
     Changes := Page.RulesChanges;
     Assert.AreEqual(1, Integer(Length(Changes)));
@@ -2512,8 +2513,8 @@ begin
     Page.LoadFrom(Settings);
     Assert.AreEqual(1, Page.ProblemsWindowScopeChoice.Choice);
     Assert.AreEqual(2, Page.ProblemsWindowGroupByChoice.Choice);
-    Assert.IsFalse(Page.ProblemsLiveCheck.Checked);
-    Assert.IsFalse(Page.HoverProblemActionsCheck.Checked);
+    Assert.IsFalse(Page.ProblemsLiveCheck.Checked, 'Live geladen');
+    Assert.IsFalse(Page.HoverProblemActionsCheck.Checked, 'Hover-Aktionen geladen');
     Page.ProblemsWindowScopeChoice.Choice := 0;
     Page.ProblemsWindowCompilerCheck.Checked := True;
     // Gruppe „Compiler vorab“ (#1024): im Knoten der Gruppe unter dem Regel-Editor.
@@ -2529,8 +2530,8 @@ begin
     Assert.AreEqual('file', Settings.ProblemsWindowScope);
     Assert.AreEqual('rule', Settings.ProblemsWindowGroupBy);
     Assert.IsTrue(Settings.ProblemsWindowCompiler);
-    Assert.IsFalse(Settings.ProblemsLive);
-    Assert.IsFalse(Settings.HoverProblemActions);
+    Assert.IsFalse(Settings.ProblemsLive, 'Live gespeichert');
+    Assert.IsFalse(Settings.HoverProblemActions, 'Hover-Aktionen gespeichert');
   finally
     Host.Free;
     Catalog.Free;

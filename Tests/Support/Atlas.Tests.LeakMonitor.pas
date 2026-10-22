@@ -89,6 +89,7 @@ uses
   System.Generics.Collections,
   DUnitX.ServiceLocator,
   Atlas.Common.Editing.SlashCommands,
+  Atlas.Common.Rules.Catalog,
   Atlas.Core.Settings.Catalog,
   Atlas.Core.Settings.Plugin,
   Atlas.Core.Settings.Transfer,
@@ -261,6 +262,8 @@ begin
   // Gemeinsame Befehlsliste: entsteht beim ersten Zugriff und bleibt; sonst trifft das je nach
   // Reihenfolge (paralleler Lauf) einen anderen Test als Leck.
   TSlashCommandRegistry.Shared;
+  // Ebenso der gemeinsame Regelkatalog mit Gruppen und Optionen (#909).
+  TRuleCatalog.Shared;
   // Legt den Standard-Thread-Pool und seinen Überwachungs-Thread an (bleiben bis Programmende).
   Task := TTask.Run(
     procedure
