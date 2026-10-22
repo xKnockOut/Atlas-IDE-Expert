@@ -1701,6 +1701,30 @@ begin
     '          "description": "Minimum number of consecutive commented-out code lines."' + #10 +
     '        }' + #10 +
     '      ]' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "queue-nil-in-package",' + #10 +
+    '      "name": "TThread.Queue(nil, …) in a package",' + #10 +
+    '      "category": "bug",' + #10 +
+    '      "severity": "warning",' + #10 +
+    '      "group": "threads",' + #10 +
+    '      "description": "TThread.Queue(nil, …) or TThread.ForceQueue(nil, …) in a unit of a design-time or runtime package: the entry belongs to no thread, so nobody removes it when the package is unload' + 'ed, and CheckSynchronize may call it afterwards in memory that no longer holds the code. Package units are recognized through the .dpk or .dproj of the loaded project (a .dpk on its own without projec' + 't). A line with the comment from okMarker (default mainthread-ok) is exempt. High confidence. Quick fix: rewrite to the wrapper from the wrapper option (default TAtlasMainThread.Queue, ForceQueue for ' + 'ForceQueue); with a parenthesis the wrapper text is put in front of the remaining arguments. ForceQueue with a delay gets no quick fix. The command-line linter reads the .dpk files below the checked f' + 'older. Does the same as Tools/Check-MainThreadQueue.ps1 for any plugin project; the script stays for checks without the Atlas server.",' + #10 +
+    '      "bad": "TThread.Queue(nil,\n  procedure\n  begin\n    FPanel.Aktualisieren;\n  end);",' + #10 +
+    '      "good": "TAtlasMainThread.Queue(\n  procedure\n  begin\n    FPanel.Aktualisieren;\n  end);",' + #10 +
+    '      "options": [' + #10 +
+    '        {' + #10 +
+    '          "name": "wrapper",' + #10 +
+    '          "type": "string",' + #10 +
+    '          "default": "TAtlasMainThread.Queue",' + #10 +
+    '          "description": "Replacement for TThread.Queue(nil, in the quick fix."' + #10 +
+    '        },' + #10 +
+    '        {' + #10 +
+    '          "name": "okMarker",' + #10 +
+    '          "type": "string",' + #10 +
+    '          "default": "mainthread-ok",' + #10 +
+    '          "description": "Comment that exempts a line."' + #10 +
+    '        }' + #10 +
+    '      ]' + #10 +
     '    }' + #10 +
     '  ]' + #10 +
     '}' + #10 +
@@ -2600,6 +2624,21 @@ begin
     '        {' + #10 +
     '          "name": "minLines",' + #10 +
     '          "description": "Mindestzahl aufeinanderfolgender auskommentierter Codezeilen."' + #10 +
+    '        }' + #10 +
+    '      ]' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "queue-nil-in-package",' + #10 +
+    '      "name": "TThread.Queue(nil, …) in einem Package",' + #10 +
+    '      "description": "TThread.Queue(nil, …) oder TThread.ForceQueue(nil, …) in einer Unit eines Design-Time- oder Laufzeit-Packages: Der Eintrag gehört keinem Thread, beim Entladen des Packages räumt ' + 'ihn niemand weg, und CheckSynchronize ruft ihn womöglich danach in fremdem Speicher auf. Package-Units erkennt die Regel über die .dpk bzw. .dproj des geladenen Projekts (eine .dpk ohne Projekt für si' + 'ch). Eine Zeile mit dem Kommentar aus okMarker (Vorgabe mainthread-ok) ist ausgenommen. Sicherheit hoch. Korrektur: auf den Wrapper aus der Option wrapper umschreiben (Vorgabe TAtlasMainThread.Queue, ' + 'bei ForceQueue ForceQueue); mit Klammer steht der Text so vor den übrigen Argumenten. ForceQueue mit Verzögerung bekommt keine Korrektur. Der Kommandozeilen-Linter liest die .dpk-Dateien unter dem gep' + 'rüften Ordner. Leistet für jedes Plugin-Projekt dasselbe wie Tools/Check-MainThreadQueue.ps1; das Skript bleibt für Prüfungen ohne Atlas-Server.",' + #10 +
+    '      "options": [' + #10 +
+    '        {' + #10 +
+    '          "name": "wrapper",' + #10 +
+    '          "description": "Ersatz für TThread.Queue(nil, in der Schnellkorrektur."' + #10 +
+    '        },' + #10 +
+    '        {' + #10 +
+    '          "name": "okMarker",' + #10 +
+    '          "description": "Kommentar, der eine Zeile ausnimmt."' + #10 +
     '        }' + #10 +
     '      ]' + #10 +
     '    }' + #10 +

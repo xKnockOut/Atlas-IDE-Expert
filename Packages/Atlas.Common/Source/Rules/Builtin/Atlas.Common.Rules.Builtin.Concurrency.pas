@@ -17,6 +17,11 @@
 //   processmessages-in-loop             Application.ProcessMessages in einer Schleife oder direkt in einem
 //                                       Ereignis-Handler (Methode mit Parameter Sender) öffnet die Tür für
 //                                       Wiedereintritt (#931); Ausnahmen über die Option "allowIn".
+//   queue-nil-in-package                TThread.Queue(nil, …) bzw. ForceQueue(nil, …) in einer Unit eines
+//                                       Packages (#943): der Eintrag gehört keinem Thread und kann nach dem
+//                                       Entladen laufen. Korrektur auf den Wrapper aus "wrapper" (Vorgabe
+//                                       TAtlasMainThread.Queue, für ForceQueue …ForceQueue); eine Zeile mit
+//                                       dem Kommentar aus "okMarker" (Vorgabe mainthread-ok) bleibt still.
 //
 // Ein Thread mit Free ohne Terminate und WaitFor wird nicht gemeldet:
 // TThread.Destroy ruft beides selbst auf.
@@ -104,6 +109,18 @@ type
     procedure Check(const AContext: TRuleContext; const AReport: IRuleReport);
   end;
 
+  TQueueNilInPackageRule = class(TInterfacedObject, IRule)
+  public const
+    DefaultWrapper = 'TAtlasMainThread.Queue';
+    DefaultOkMarker = 'mainthread-ok';
+  public
+    function Descriptor: TRuleDescriptor;
+    procedure Check(const AContext: TRuleContext; const AReport: IRuleReport);
+    /// <summary>Aufruf, der AWrapper für AMethod (Queue oder ForceQueue) ersetzt: bei ForceQueue wird aus
+    /// …Queue …ForceQueue. Enthält AWrapper eine Klammer, steht er so vor den übrigen Argumenten.</summary>
+    class function WrapperCall(const AWrapper, AMethod: string): string; static;
+  end;
+
 /// <summary>Klassen der Unit, die direkt oder über Klassen der Unit von TThread erben.</summary>
 function ThreadClasses(ARoot: TSyntaxNode): TArray<string>;
 
@@ -117,6 +134,8 @@ uses
   Atlas.Text.Lines,
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Documents.Contract,
+  Atlas.Common.Pascal.Contract,
+  Atlas.Common.Rules.Builtin.RtlTypePatterns,
   Atlas.Common.Rules.Derived,
   Atlas.Common.Rules.Options;
 
@@ -1386,6 +1405,143 @@ begin
   Visit(AContext.Tree.Root, 0, False, False);
 end;
 
+{ TQueueNilInPackageRule }
+
+function TQueueNilInPackageRule.Descriptor: TRuleDescriptor;
+begin
+  Result := TRuleDescriptor.Create('queue-nil-in-package', TRuleSeverity.Warning,
+    'TThread.Queue(nil, …) in einem Package');
+end;
+
+class function TQueueNilInPackageRule.WrapperCall(const AWrapper, AMethod: string): string;
+var
+  Name, Rest: string;
+  Paren: Integer;
+begin
+  Paren := Pos('(', AWrapper);
+  if Paren > 0 then
+  begin
+    Name := TrimRight(Copy(AWrapper, 1, Paren - 1));
+    Rest := Copy(AWrapper, Paren, MaxInt);
+  end
+  else
+  begin
+    Name := AWrapper;
+    Rest := '(';
+  end;
+  if SameText(AMethod, 'ForceQueue') and EndsText('Queue', Name) and not EndsText('ForceQueue', Name) then
+    Name := Copy(Name, 1, Length(Name) - Length('Queue')) + 'ForceQueue';
+  Result := Name + Rest;
+end;
+
+procedure TQueueNilInPackageRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
+var
+  Tokens: TArray<TPascalToken>;
+  Code: TArray<Integer>;
+  Wrapper, OkMarker, Where: string;
+
+  function Token(APosition: Integer): TPascalToken;
+  begin
+    Result := Tokens[Code[APosition]];
+  end;
+
+  // Steht in der Zeile ALine ein Kommentar mit der Ausnahme?
+  function MarkedOk(ALine: Integer): Boolean;
+  var
+    Item: TPascalToken;
+  begin
+    for Item in Tokens do
+      if (Item.Kind = TPascalTokenKind.Comment) and (Item.StartPos.Line <= ALine) and (Item.EndPos.Line >= ALine) and
+        ContainsText(Item.Text, OkMarker) then
+        Exit(True);
+    Result := False;
+  end;
+
+  // Anzahl der Argumente ab der öffnenden Klammer AOpen; -1 ohne schließende Klammer.
+  function ArgumentCount(AOpen: Integer): Integer;
+  var
+    Position, Depth: Integer;
+  begin
+    Result := 1;
+    Depth := 0;
+    for Position := AOpen to High(Code) do
+    begin
+      if Token(Position).IsSymbol('(') or Token(Position).IsSymbol('[') then
+        Inc(Depth)
+      else if Token(Position).IsSymbol(')') or Token(Position).IsSymbol(']') then
+      begin
+        Dec(Depth);
+        if Depth = 0 then
+          Exit;
+      end
+      // Kommas in anonymen Methoden stehen in eigenen Klammern; begin … end zählt nicht.
+      else if (Depth = 1) and Token(Position).IsSymbol(',') then
+        Inc(Result);
+    end;
+    Result := -1;
+  end;
+
+  procedure CheckAt(AStart: Integer);
+  var
+    Method: string;
+    Comma: Integer;
+    Range, Replace: TTextRange;
+    Fixes: TArray<TRuleFix>;
+  begin
+    // TThread . Queue|ForceQueue ( nil ,
+    if (AStart + 5 > High(Code)) or not SameText(Token(AStart).Text, 'TThread') or
+      not Token(AStart + 1).IsSymbol('.') or not Token(AStart + 3).IsSymbol('(') or
+      not Token(AStart + 4).IsKeyword('nil') or not Token(AStart + 5).IsSymbol(',') then
+      Exit;
+    Method := Token(AStart + 2).Text;
+    if not (SameText(Method, 'Queue') or SameText(Method, 'ForceQueue')) then
+      Exit;
+    if MarkedOk(Token(AStart).StartPos.Line) then
+      Exit;
+    Comma := AStart + 5;
+    Range := TTextRange.Create(Token(AStart).StartPos, Token(AStart + 4).EndPos);
+    Fixes := nil;
+    // Nur mit genau zwei Argumenten: die Verzögerung von ForceQueue kennt der Wrapper nicht.
+    if ArgumentCount(AStart + 3) = 2 then
+    begin
+      Replace := TTextRange.Create(Token(AStart).StartPos, Token(Comma).EndPos);
+      // Steht das nächste Argument in derselben Zeile, fällt der Leerraum davor mit weg.
+      if (Comma < High(Code)) and (Token(Comma + 1).StartPos.Line = Token(Comma).EndPos.Line) then
+        Replace.EndPos := Token(Comma + 1).StartPos;
+      Fixes := [TRuleFix.Create('Durch ' + WrapperCall(Wrapper, Method) + '…) ersetzen',
+        [TTextEdit.Create(Replace, WrapperCall(Wrapper, Method))])];
+    end;
+    AReport.Add(Range, Format('%s(nil, …) in %s: der Eintrag kann nach dem Entladen des Packages laufen.',
+      [Method, Where]), Fixes);
+  end;
+
+var
+  Kind: TRuleApplicationKind;
+  Index: Integer;
+begin
+  if (AContext.Tree = nil) or (AContext.Text = '') then
+    Exit;
+  Kind := AContext.Application;
+  // Ohne Projekt: die .dpk selbst.
+  if Kind = TRuleApplicationKind.Unknown then
+    Kind := TWritelnInGuiAppRule.ApplicationKind('', AContext.Text);
+  if Kind <> TRuleApplicationKind.Package then
+    Exit;
+  Where := 'diesem Package';
+  if AContext.ProjectName <> '' then
+    Where := AContext.ProjectName + '.bpl';
+  Wrapper := TRuleOptions.Text(AContext.Options, 'wrapper', DefaultWrapper);
+  OkMarker := TRuleOptions.Text(AContext.Options, 'okMarker', DefaultOkMarker);
+  Tokens := AContext.Tree.Tokens;
+  Code := nil;
+  for Index := 0 to High(Tokens) do
+    if not (Tokens[Index].Kind in [TPascalTokenKind.Comment, TPascalTokenKind.Directive]) then
+      Code := Code + [Index];
+  for Index := 0 to High(Code) do
+    if Tokens[Code[Index]].Kind = TPascalTokenKind.Identifier then
+      CheckAt(Index);
+end;
+
 procedure RegisterConcurrencyRules(const ARegistry: TRuleRegistry);
 begin
   ARegistry.Register(TThreadVclAccessRule.Create);
@@ -1396,6 +1552,7 @@ begin
   ARegistry.Register(TThreadResumeSuspendRule.Create);
   ARegistry.Register(TPairWithoutFinallyRule.Create);
   ARegistry.Register(TProcessMessagesInLoopRule.Create);
+  ARegistry.Register(TQueueNilInPackageRule.Create);
 end;
 
 end.

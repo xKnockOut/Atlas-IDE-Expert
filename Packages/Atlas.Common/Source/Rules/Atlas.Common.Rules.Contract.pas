@@ -96,7 +96,7 @@ type
 
   /// <summary>Art der Anwendung, zu der die Datei gehört (#926): mit oder ohne Konsole.</summary>
 {$SCOPEDENUMS ON}
-  TRuleApplicationKind = (Unknown, Console, Gui);
+  TRuleApplicationKind = (Unknown, Console, Gui, Package);
 {$SCOPEDENUMS OFF}
 
   /// <summary>Alles, was eine Regel über die geprüfte Datei wissen darf.</summary>
@@ -151,6 +151,8 @@ type
     PackageProvides: TRulePackageProvides;
     /// <summary>Anwendungsart des Projekts, zu dem die Datei gehört (#926); Unknown ohne Projekt.</summary>
     Application: TRuleApplicationKind;
+    /// <summary>Name des Projekts ohne Endung, z. B. Atlas.IDE.Expert (#943); '' ohne Projekt.</summary>
+    ProjectName: string;
     /// <summary>Formatierung aus den Einstellungen (format, #938): Tabbreite und Einrückung für Regeln, die
     /// Spalten zählen oder umbrechen; setzt TRuleEngine.Run. IndentSize 0 = nicht gesetzt.</summary>
     Formatting: TFormatStyle;

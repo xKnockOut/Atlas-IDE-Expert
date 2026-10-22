@@ -66,6 +66,8 @@ type
     procedure SarifWithoutBaselineHasNoState;
     [Test]
     procedure CheckerReturnsScopes;
+    [Test]
+    procedure CheckerPassesPackageToRules;
   end;
 
 implementation
@@ -80,7 +82,9 @@ uses
   Atlas.Common.Rules.Filter,
   Atlas.Common.Rules.Scopes,
   Atlas.Common.Rules.Baseline,
-  Atlas.Common.Rules.Output;
+  Atlas.Common.Rules.Output,
+  Atlas.Common.Rules.Builtin.Concurrency,
+  Atlas.Common.Projects.PackageReader;
 
 function MakeFinding(const ARuleId: string; ASeverity: TRuleSeverity; ALine: Integer = 0): TRuleFinding;
 begin
@@ -424,6 +428,29 @@ begin
     'unit U; interface implementation procedure TFoo.Bar; begin end; end.', Scopes);
   Assert.AreEqual(1, Scopes.RoutineCount);
   Assert.AreEqual('TFoo.Bar', Scopes.At(0));
+end;
+
+procedure TLinterOutputTests.CheckerPassesPackageToRules;
+const
+  Source = 'unit Laden;'#10'interface'#10'implementation'#10'procedure P;'#10'begin'#10 +
+    '  TThread.Queue(nil, Start);'#10'end;'#10'end.';
+var
+  Packages: TArray<TPackageSource>;
+  Project: TCheckProject;
+  Findings: TArray<TRuleFinding>;
+begin
+  Packages := [TPackageReader.Read('package Werkzeuge;'#10'requires rtl;'#10'contains'#10 +
+    '  Laden in ''Laden.pas'';'#10'end.')];
+  Project := TFileChecker.PackageOf(Packages, 'laden');
+  Assert.AreEqual(Ord(TRuleApplicationKind.Package), Ord(Project.Application));
+  Assert.AreEqual('Werkzeuge', Project.Name);
+  Assert.AreEqual(Ord(TRuleApplicationKind.Unknown), Ord(TFileChecker.PackageOf(Packages, 'Andere').Application));
+  // queue-nil-in-package (#943) meldet nur mit Package.
+  Findings := TFileChecker.CheckText([TQueueNilInPackageRule.Create], Settings('{}'), 'Laden.pas', Source, Project);
+  Assert.AreEqual(1, Integer(Length(Findings)));
+  Assert.Contains(Findings[0].Message, 'Werkzeuge.bpl');
+  Assert.AreEqual(0, Integer(Length(TFileChecker.CheckText([TQueueNilInPackageRule.Create], Settings('{}'),
+    'Laden.pas', Source))));
 end;
 
 initialization

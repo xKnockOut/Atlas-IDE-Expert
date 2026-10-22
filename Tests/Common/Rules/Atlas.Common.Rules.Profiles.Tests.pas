@@ -184,7 +184,7 @@ const
     'invisible-char,' +
     'lock-without-finally,loop-off-by-one,managed-type-raw-memory,metric-class-size,metric-cognitive-complexity,metric-cyclomatic-complexity,' +
     'metric-method-length,metric-nesting-depth,metric-parameter-count,metric-unit-length,metric-uses-count,missing-inherited,operator-precedence,out-param-read,owned-field-free-unclear,pair-without-finally,pchar-of-temporary,' +
-    'possibly-uninitialized,processmessages-in-loop,raise-in-finally,redundant-assigned-free,' +
+    'possibly-uninitialized,processmessages-in-loop,queue-nil-in-package,raise-in-finally,redundant-assigned-free,' +
     'result-not-set,' +
     'security-command-injection,security-insecure-http,security-insecure-random,security-sql-injection,' +
     'security-tls-verification-disabled,security-weak-crypto,self-assignment,setter-recursion,shadowed-name,sizeof-pointer,' +
@@ -212,7 +212,7 @@ begin
     'form-field-type-mismatch,form-field-without-object,form-object-without-field,hides-virtual,' +
     'ifthen-side-effect,implemented-not-declared,int32-mul-overflow,interface-guid,lock-without-finally,loop-off-by-one,managed-type-raw-memory,' +
     'missing-inherited,operator-precedence,out-param-read,owned-field-free-unclear,pair-without-finally,pchar-of-temporary,' +
-    'possibly-uninitialized,raise-in-finally,result-not-set,security-command-injection,' +
+    'possibly-uninitialized,queue-nil-in-package,raise-in-finally,result-not-set,security-command-injection,' +
     'security-sql-injection,security-tls-verification-disabled,self-assignment,setter-recursion,sizeof-pointer,' +
     'stringlist-unsorted,synchronize-in-destructor,thread-free-with-free-on-terminate,' +
     'thread-use-after-free-on-terminate,' +

@@ -8,7 +8,7 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 |---|---|
 | [Fehler finden](#gruppe-find-bugs) | 46 |
 | [Exceptions](#gruppe-exceptions) | 6 |
-| [Threads](#gruppe-threads) | 8 |
+| [Threads](#gruppe-threads) | 9 |
 | [Robustheit und Muster](#gruppe-robustness) | 2 |
 | [Performance](#gruppe-performance) | 4 |
 | [Sicherheit](#gruppe-security) | 11 |
@@ -96,6 +96,7 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 | [`thread-resume-suspend`](#thread-resume-suspend) | Veraltetes TThread.Resume/Suspend | Code Smell | Warnung |
 | [`threadvar-managed`](#threadvar-managed) | threadvar mit verwaltetem Typ | Bug | Warnung |
 | [`processmessages-in-loop`](#processmessages-in-loop) | Application.ProcessMessages in Schleifen | Code Smell | Hinweis |
+| [`queue-nil-in-package`](#queue-nil-in-package) | TThread.Queue(nil, …) in einem Package | Bug | Warnung |
 
 <a id="gruppe-robustness"></a>
 ### Robustheit und Muster
@@ -3393,4 +3394,36 @@ Richtig:
 
 ```pascal
 Speichern;
+```
+
+<a id="queue-nil-in-package"></a>
+### queue-nil-in-package
+
+**TThread.Queue(nil, …) in einem Package** · Bug · Warnung · Gruppe Threads
+
+TThread.Queue(nil, …) oder TThread.ForceQueue(nil, …) in einer Unit eines Design-Time- oder Laufzeit-Packages: Der Eintrag gehört keinem Thread, beim Entladen des Packages räumt ihn niemand weg, und CheckSynchronize ruft ihn womöglich danach in fremdem Speicher auf. Package-Units erkennt die Regel über die .dpk bzw. .dproj des geladenen Projekts (eine .dpk ohne Projekt für sich). Eine Zeile mit dem Kommentar aus okMarker (Vorgabe mainthread-ok) ist ausgenommen. Sicherheit hoch. Korrektur: auf den Wrapper aus der Option wrapper umschreiben (Vorgabe TAtlasMainThread.Queue, bei ForceQueue ForceQueue); mit Klammer steht der Text so vor den übrigen Argumenten. ForceQueue mit Verzögerung bekommt keine Korrektur. Der Kommandozeilen-Linter liest die .dpk-Dateien unter dem geprüften Ordner. Leistet für jedes Plugin-Projekt dasselbe wie Tools/Check-MainThreadQueue.ps1; das Skript bleibt für Prüfungen ohne Atlas-Server.
+
+| Option | Typ | Vorgabe | Bedeutung |
+|---|---|---|---|
+| `wrapper` | string | `"TAtlasMainThread.Queue"` | Ersatz für TThread.Queue(nil, in der Schnellkorrektur. |
+| `okMarker` | string | `"mainthread-ok"` | Kommentar, der eine Zeile ausnimmt. |
+
+Mit Treffer:
+
+```pascal
+TThread.Queue(nil,
+  procedure
+  begin
+    FPanel.Aktualisieren;
+  end);
+```
+
+Richtig:
+
+```pascal
+TAtlasMainThread.Queue(
+  procedure
+  begin
+    FPanel.Aktualisieren;
+  end);
 ```

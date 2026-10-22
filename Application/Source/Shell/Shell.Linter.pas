@@ -60,6 +60,7 @@ uses
   Atlas.Common.Documents.FileEncoding,
   Atlas.Common.Projects.Contract,
   Atlas.Common.Projects.DprojReader,
+  Atlas.Common.Projects.PackageReader,
   Atlas.Common.Rules.Contract,
   Atlas.Common.Rules.Checker,
   Atlas.Common.Rules.Filter,
@@ -183,6 +184,23 @@ begin
 end;
 
 /// <summary>Teilmenge von AFiles nach den Änderungen laut Git; AGit bleibt für --changed-lines geladen.</summary>
+// Die .dpk unter AFiles, damit Regeln wissen, welche Unit zu einem Package gehört (#943).
+function ReadPackages(const AFiles: TArray<string>): TArray<TPackageSource>;
+var
+  FileName: string;
+  FileFormat: TFileFormat;
+begin
+  Result := nil;
+  for FileName in AFiles do
+    if SameText(ExtractFileExt(FileName), '.dpk') then
+      try
+        Result := Result + [TPackageReader.Read(TFileEncoding.LoadFromFile(FileName, FileFormat))];
+      except
+        on E: Exception do
+          WriteError(Format('%s: %s', [FileName, E.Message]));
+      end;
+end;
+
 function SelectChanged(const AOptions: TCommandLineOptions;
   const AFiles: TArray<string>; AGit: TVcsChanges): TArray<string>;
 begin
@@ -354,6 +372,7 @@ var
   Metrics: TArray<TFileMetrics>;
   Todos: TArray<TFileTodos>;
   TodoEntries: TArray<TTodoEntry>;
+  Packages: TArray<TPackageSource>;
 begin
   for Warning in AOptions.Warnings do
     WriteError(Warning);
@@ -442,6 +461,7 @@ begin
     CheckedPaths := TList<string>.Create;
     try
       Candidates := CollectFiles(AOptions.CheckTarget, Settings, Root);
+      Packages := ReadPackages(Candidates);
       if (AOptions.ChangedRef <> '') and AOptions.UpdateBaseline then
         WriteError('--update-baseline schreibt die Baseline immer für alle Dateien; --changed/--diff wird ignoriert')
       else if AOptions.ChangedRef <> '' then
@@ -480,7 +500,8 @@ begin
             [rfReplaceAll]), TodoEntries)], TTodoFilter.Default);
           Continue;
         end;
-        Findings := TFileChecker.CheckText(Rules, Settings, RelativePath, Text, Scopes);
+        Findings := TFileChecker.CheckText(Rules, Settings, RelativePath, Text,
+          TFileChecker.PackageOf(Packages, ChangeFileExt(ExtractFileName(FileName), '')), Scopes);
         if AOptions.SuppressionStats then
           Stats.Add(Text, Findings);
         if AOptions.UpdateBaseline then

@@ -53,7 +53,7 @@ const
   /// <summary>Optionen von Prüfregeln, die eine Liste von Zahlen sein müssen (#937).</summary>
   NumberListRuleOptions: array[0..0] of string = ('allowed');
   /// <summary>Optionen von Prüfregeln, die ein Text sein müssen (#926).</summary>
-  StringRuleOptions: array[0..1] of string = ('template', 'replacement');
+  StringRuleOptions: array[0..3] of string = ('template', 'replacement', 'wrapper', 'okMarker');
 
 type
   TValidator = class

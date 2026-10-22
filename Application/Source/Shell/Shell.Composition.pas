@@ -3897,7 +3897,7 @@ begin
   finally
     TMonitor.Exit(FWorkspacesLock);
   end;
-  // Anwendungsart für writeln-in-gui-app (#926), nur für Dateien des Projekts.
+  // Anwendungsart für writeln-in-gui-app (#926) und queue-nil-in-package (#943), nur für Dateien des Projekts.
   if HasProject and (Project.MainSource <> '') then
   begin
     Member := SameText(Project.MainSource, FileName);
@@ -3909,7 +3909,10 @@ begin
       if SameText(Pair.Key, 'DCC_ConsoleTarget') then
         ConsoleTarget := Pair.Value;
     if Member and ReadSourceText(Project.MainSource, MainText) then
+    begin
       AContext.Application := TWritelnInGuiAppRule.ApplicationKind(ConsoleTarget, MainText);
+      AContext.ProjectName := ChangeFileExt(ExtractFileName(Project.MainSource), '');
+    end;
   end;
   // requires-Packages für implicit-package-import (#46); der Locator lebt so lange wie der Arbeitsbereich.
   if Locator <> nil then

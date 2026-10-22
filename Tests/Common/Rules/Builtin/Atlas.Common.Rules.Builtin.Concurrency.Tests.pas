@@ -67,6 +67,16 @@ type
     procedure ProcessMessagesSilentCases;
     [Test]
     procedure ProcessMessagesOptions;
+    [Test]
+    procedure QueueNilIssueExample;
+    [Test]
+    procedure QueueNilFixAndVariants;
+    [Test]
+    procedure QueueNilSilentCases;
+    [Test]
+    procedure QueueNilOptions;
+    [Test]
+    procedure QueueNilWrapperCall;
   end;
 
 implementation
@@ -74,6 +84,7 @@ implementation
 uses
   System.SysUtils,
   Atlas.Common.Configuration.Contract,
+  Atlas.Common.Documents.Contract,
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.Parser,
   Atlas.Common.Rules.Contract,
@@ -454,6 +465,141 @@ begin
     '{"rules": {"processmessages-in-loop": {"exclude": ["Alt/*.pas"]}}}', 'Alt/U.pas'))));
   TConfigurationParser.Parse('{"rules": {"processmessages-in-loop": {"allowIn": "Warten"}}}', Issues);
   Assert.AreEqual(1, Integer(Length(Issues)));
+end;
+
+const
+  QueueExample =
+    '  TThread.Queue(nil,'#10 +
+    '    procedure'#10 +
+    '    begin'#10 +
+    '      FPanel.Aktualisieren;'#10 +
+    '    end);';
+
+/// <summary>Quelltext nach den Korrekturen des ersten Treffers.</summary>
+function Fixed(const ASource: string; const AFinding: TRuleFinding): string;
+var
+  Lines: TArray<string>;
+  Offsets: TArray<Integer>;
+  Index: Integer;
+  Edit: TTextEdit;
+begin
+  Lines := ASource.Split([#10]);
+  SetLength(Offsets, Length(Lines) + 1);
+  Offsets[0] := 0;
+  for Index := 0 to High(Lines) do
+    Offsets[Index + 1] := Offsets[Index] + Length(Lines[Index]) + 1;
+  Result := ASource;
+  for Index := High(AFinding.Fixes[0].Edits) downto 0 do
+  begin
+    Edit := AFinding.Fixes[0].Edits[Index];
+    Result := Copy(Result, 1, Offsets[Edit.Range.StartPos.Line] + Edit.Range.StartPos.Character) + Edit.NewText +
+      Copy(Result, Offsets[Edit.Range.EndPos.Line] + Edit.Range.EndPos.Character + 1, MaxInt);
+  end;
+end;
+
+procedure TConcurrencyRulesTests.QueueNilIssueExample;
+var
+  Source: string;
+  Findings: TArray<TRuleFinding>;
+  Tree: TSyntaxTree;
+begin
+  Source := Routine(QueueExample);
+  Findings := TRuleAssert.PackageFindings(TQueueNilInPackageRule.Create, Source, 'Atlas.IDE.Expert', '', 'U.pas');
+  Assert.AreEqual(1, Integer(Length(Findings)));
+  Assert.AreEqual('queue-nil-in-package', Findings[0].RuleId);
+  Assert.AreEqual(Ord(TRuleSeverity.Warning), Ord(Findings[0].Severity));
+  Assert.AreEqual(Ord(TRuleConfidence.High), Ord(Findings[0].Confidence));
+  Assert.AreEqual('Queue(nil, …) in Atlas.IDE.Expert.bpl: der Eintrag kann nach dem Entladen des Packages laufen.',
+    Findings[0].Message);
+  Assert.AreEqual(5, Findings[0].Range.StartPos.Line);
+  Assert.AreEqual(2, Findings[0].Range.StartPos.Character);
+  Assert.AreEqual(19, Findings[0].Range.EndPos.Character);
+  // Korrigierte Form wie im Issue; sie parst fehlerfrei und wird nicht mehr gemeldet.
+  Assert.AreEqual(Routine('  TAtlasMainThread.Queue('#10'    procedure'#10'    begin'#10 +
+    '      FPanel.Aktualisieren;'#10'    end);'), Fixed(Source, Findings[0]));
+  Tree := TPascalParser.Parse(Fixed(Source, Findings[0]));
+  try
+    Assert.AreEqual(0, Integer(Length(Tree.Diagnostics)));
+  finally
+    Tree.Free;
+  end;
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.PackageFindings(TQueueNilInPackageRule.Create,
+    Fixed(Source, Findings[0]), 'Atlas.IDE.Expert', '', 'U.pas'))));
+end;
+
+procedure TConcurrencyRulesTests.QueueNilFixAndVariants;
+var
+  Source: string;
+  Findings: TArray<TRuleFinding>;
+begin
+  // ForceQueue und Argument in derselben Zeile.
+  Source := Routine('  TThread.ForceQueue(nil, Aktualisieren);');
+  Findings := TRuleAssert.PackageFindings(TQueueNilInPackageRule.Create, Source, 'P', '', 'U.pas');
+  Assert.AreEqual(1, Integer(Length(Findings)));
+  Assert.AreEqual('ForceQueue(nil, …) in P.bpl: der Eintrag kann nach dem Entladen des Packages laufen.',
+    Findings[0].Message);
+  Assert.AreEqual(Routine('  TAtlasMainThread.ForceQueue(Aktualisieren);'), Fixed(Source, Findings[0]));
+  // ForceQueue mit Verzögerung: Meldung ohne Korrektur.
+  Findings := TRuleAssert.PackageFindings(TQueueNilInPackageRule.Create,
+    Routine('  TThread.ForceQueue(nil, Aktualisieren, 100);'), 'P', '', 'U.pas');
+  Assert.AreEqual(1, Integer(Length(Findings)));
+  Assert.AreEqual(0, Integer(Length(Findings[0].Fixes)));
+  // Mehrere Argumente in der anonymen Methode zählen nicht mit.
+  Findings := TRuleAssert.PackageFindings(TQueueNilInPackageRule.Create,
+    Routine('  TThread.Queue(nil, procedure begin Zeigen(1, [2, 3]); end);'), 'P', '', 'U.pas');
+  Assert.AreEqual(1, Integer(Length(Findings[0].Fixes)));
+  // Ohne Projektname: die .dpk selbst.
+  Findings := TRuleAssert.Findings(TQueueNilInPackageRule.Create,
+    'package P;'#10'requires rtl;'#10'begin'#10'  TThread.Queue(nil, Start);'#10'end.');
+  Assert.AreEqual(1, Integer(Length(Findings)));
+  Assert.AreEqual('Queue(nil, …) in diesem Package: der Eintrag kann nach dem Entladen des Packages laufen.',
+    Findings[0].Message);
+end;
+
+procedure TConcurrencyRulesTests.QueueNilSilentCases;
+begin
+  // Kein Package: Programm oder unbekannt.
+  TRuleAssert.Silent(TQueueNilInPackageRule.Create, Routine(QueueExample));
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.ApplicationFindings(TQueueNilInPackageRule.Create,
+    Routine(QueueExample), TRuleApplicationKind.Gui))));
+  // Mit Besitzer, über den Wrapper, im Kommentar oder String.
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.PackageFindings(TQueueNilInPackageRule.Create,
+    Routine('  TThread.Queue(Self, Aktualisieren);'#10'  TAtlasMainThread.Queue(Aktualisieren);'#10 +
+    '  // TThread.Queue(nil, Aktualisieren);'#10'  S := ''TThread.Queue(nil, X)'';'), 'P', '', 'U.pas'))));
+  // Ausnahme per Kommentar.
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.PackageFindings(TQueueNilInPackageRule.Create,
+    Routine('  TThread.Queue(nil, Aktualisieren); // mainthread-ok'), 'P', '', 'U.pas'))));
+end;
+
+procedure TConcurrencyRulesTests.QueueNilOptions;
+var
+  Source: string;
+  Findings: TArray<TRuleFinding>;
+  Issues: TArray<TConfigurationIssue>;
+begin
+  Source := Routine('  TThread.Queue(nil, Aktualisieren); // ui-ok');
+  Findings := TRuleAssert.PackageFindings(TQueueNilInPackageRule.Create, Source, 'P',
+    '{"rules": {"queue-nil-in-package": {"wrapper": "Haupt.Einreihen"}}}', 'U.pas');
+  Assert.AreEqual(1, Integer(Length(Findings)));
+  Assert.AreEqual(Routine('  Haupt.Einreihen(Aktualisieren); // ui-ok'), Fixed(Source, Findings[0]));
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.PackageFindings(TQueueNilInPackageRule.Create, Source, 'P',
+    '{"rules": {"queue-nil-in-package": {"okMarker": "ui-ok"}}}', 'U.pas'))));
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.PackageFindings(TQueueNilInPackageRule.Create, Source, 'P',
+    '{"rules": {"queue-nil-in-package": "off"}}', 'U.pas'))));
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.PackageFindings(TQueueNilInPackageRule.Create, Source, 'P',
+    '{"rules": {"queue-nil-in-package": {"exclude": ["Alt/*.pas"]}}}', 'Alt/U.pas'))));
+  TConfigurationParser.Parse('{"rules": {"queue-nil-in-package": {"wrapper": 1, "okMarker": true}}}', Issues);
+  Assert.AreEqual(2, Integer(Length(Issues)));
+end;
+
+procedure TConcurrencyRulesTests.QueueNilWrapperCall;
+begin
+  Assert.AreEqual('TAtlasMainThread.Queue(', TQueueNilInPackageRule.WrapperCall('TAtlasMainThread.Queue', 'Queue'));
+  Assert.AreEqual('TAtlasMainThread.ForceQueue(',
+    TQueueNilInPackageRule.WrapperCall('TAtlasMainThread.Queue', 'ForceQueue'));
+  Assert.AreEqual('TAtlasMainThread.Queue(TAtlasFeature.Hover, ',
+    TQueueNilInPackageRule.WrapperCall('TAtlasMainThread.Queue(TAtlasFeature.Hover, ', 'queue'));
+  Assert.AreEqual('Post(', TQueueNilInPackageRule.WrapperCall('Post', 'ForceQueue'));
 end;
 
 initialization

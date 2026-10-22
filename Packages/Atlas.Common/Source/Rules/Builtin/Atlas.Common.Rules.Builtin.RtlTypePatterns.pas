@@ -1709,6 +1709,9 @@ begin
         First := False;
         if Token.IsKeyword('program') then
           Result := TRuleApplicationKind.Gui
+        // package ist kein reserviertes Wort (#943).
+        else if (Token.Kind = TPascalTokenKind.Identifier) and SameText(Token.Text, 'package') then
+          Exit(TRuleApplicationKind.Package)
         else
           Exit(TRuleApplicationKind.Unknown);
       end;

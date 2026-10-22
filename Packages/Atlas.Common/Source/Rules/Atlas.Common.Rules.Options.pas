@@ -18,6 +18,8 @@ type
     class function Strings(const AOptions, AName: string; const ADefault: TArray<string>): TArray<string>; static;
     /// <summary>Liste von Zahlen AName aus AOptions, sonst ADefault (#937).</summary>
     class function Numbers(const AOptions, AName: string; const ADefault: TArray<Double>): TArray<Double>; static;
+    /// <summary>Text AName aus AOptions, sonst ADefault; ein leerer Text gilt als fehlend (#943).</summary>
+    class function Text(const AOptions, AName, ADefault: string): string; static;
   end;
 
 implementation
@@ -111,6 +113,21 @@ begin
         if Item is TJSONNumber then
           Result := Result + [TJSONNumber(Item).AsDouble];
     end;
+  finally
+    Value.Free;
+  end;
+end;
+
+class function TRuleOptions.Text(const AOptions, AName, ADefault: string): string;
+var
+  Value: TJSONValue;
+begin
+  Result := ADefault;
+  Value := Member(AOptions, AName);
+  try
+    // TJSONNumber erbt von TJSONString.
+    if (Value is TJSONString) and not (Value is TJSONNumber) and (Trim(Value.Value) <> '') then
+      Result := Trim(Value.Value);
   finally
     Value.Free;
   end;

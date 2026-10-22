@@ -1681,6 +1681,30 @@
           "description": "Minimum number of consecutive commented-out code lines."
         }
       ]
+    },
+    {
+      "id": "queue-nil-in-package",
+      "name": "TThread.Queue(nil, …) in a package",
+      "category": "bug",
+      "severity": "warning",
+      "group": "threads",
+      "description": "TThread.Queue(nil, …) or TThread.ForceQueue(nil, …) in a unit of a design-time or runtime package: the entry belongs to no thread, so nobody removes it when the package is unloaded, and CheckSynchronize may call it afterwards in memory that no longer holds the code. Package units are recognized through the .dpk or .dproj of the loaded project (a .dpk on its own without project). A line with the comment from okMarker (default mainthread-ok) is exempt. High confidence. Quick fix: rewrite to the wrapper from the wrapper option (default TAtlasMainThread.Queue, ForceQueue for ForceQueue); with a parenthesis the wrapper text is put in front of the remaining arguments. ForceQueue with a delay gets no quick fix. The command-line linter reads the .dpk files below the checked folder. Does the same as Tools/Check-MainThreadQueue.ps1 for any plugin project; the script stays for checks without the Atlas server.",
+      "bad": "TThread.Queue(nil,\n  procedure\n  begin\n    FPanel.Aktualisieren;\n  end);",
+      "good": "TAtlasMainThread.Queue(\n  procedure\n  begin\n    FPanel.Aktualisieren;\n  end);",
+      "options": [
+        {
+          "name": "wrapper",
+          "type": "string",
+          "default": "TAtlasMainThread.Queue",
+          "description": "Replacement for TThread.Queue(nil, in the quick fix."
+        },
+        {
+          "name": "okMarker",
+          "type": "string",
+          "default": "mainthread-ok",
+          "description": "Comment that exempts a line."
+        }
+      ]
     }
   ]
 }
