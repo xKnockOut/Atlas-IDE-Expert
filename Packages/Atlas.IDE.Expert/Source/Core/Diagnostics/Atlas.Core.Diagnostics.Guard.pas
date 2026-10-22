@@ -31,8 +31,8 @@
 //   (falls ein Anbieter installiert ist), sonst der Haken StackOf
 //   (Atlas.IDE.Diagnostics.StackCapture: Mitschnitt beim Auslösen).
 // - Schreibfehler des Protokolls (Bericht M4): Früher verschluckte Add jeden
-//   Fehler, und ein Fehler beim Rotieren verhinderte auch das Anhängen; ab
-//   dem 21.10. 21:29 kam so nichts mehr an, ohne Spur. Jetzt sperrt ein
+//   Fehler, und ein Fehler beim Rotieren verhinderte auch das Anhängen (das
+//   erklärt Lücken wie die ab dem 21.10. 21:29, belegt ist es nicht). Jetzt sperrt ein
 //   benannter Mutex je Ordner Rotieren und Schreiben über alle IDE-Prozesse
 //   (Marcos IDE und die von Claude-Compile gestarteten teilen den Ordner;
 //   ohne Sperre öffneten zwei Schreiber dieselbe Datei exklusiv). Scheitert
