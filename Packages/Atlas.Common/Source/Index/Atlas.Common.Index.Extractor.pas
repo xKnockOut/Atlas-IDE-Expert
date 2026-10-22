@@ -1291,11 +1291,14 @@ end;
 procedure TIndexExtractor.AddUnitHints(var AUnit: TUnitIndex);
 var
   Index, Next: Integer;
-  Started: Boolean;
+  Started, InName, AfterPart: Boolean;
   Text: string;
 begin
   // unit A.B deprecated 'Grund' platform;  Kommentare und Direktiven dazwischen überspringen.
+  // Der Unit-Name zählt nicht als Hinweis: Atlas.Settings.Experimental ist nicht experimental.
   Started := False;
+  InName := True;
+  AfterPart := False;
   for Index := 0 to High(FTokens) do
   begin
     if FTokens[Index].Kind in [TPascalTokenKind.Comment, TPascalTokenKind.Directive] then
@@ -1309,6 +1312,17 @@ begin
     end;
     if FTokens[Index].IsSymbol(';') then
       Exit;
+    if InName then
+    begin
+      // Name aus Teilen mit Punkt dazwischen; nach einem Teil ohne folgenden Punkt beginnen die Hinweise.
+      if AfterPart and not FTokens[Index].IsSymbol('.') then
+        InName := False
+      else
+      begin
+        AfterPart := not FTokens[Index].IsSymbol('.');
+        Continue;
+      end;
+    end;
     if not (FTokens[Index].Kind in [TPascalTokenKind.Identifier, TPascalTokenKind.Keyword]) or
       (IndexText(FTokens[Index].Text, HintDirectives) < 0) then
       Continue;

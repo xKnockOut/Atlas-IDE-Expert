@@ -326,6 +326,13 @@ begin
   UnitIndex := TIndexExtractor.ExtractText(UnitAltlast, 'C:\P\Werk.Altlast.pas', nil);
   Assert.AreEqual('deprecated', String.Join(',', UnitIndex.Directives));
   Assert.AreEqual('Nutze Werkzeug', UnitIndex.DeprecatedText);
+  // Der Unit-Name selbst ist kein Hinweis: Werk.Deprecated ist nicht deprecated.
+  UnitIndex := TIndexExtractor.ExtractText('unit Werk.Deprecated;'#10'interface'#10'implementation'#10'end.',
+    'C:\P\Werk.Deprecated.pas', nil);
+  Assert.AreEqual('', String.Join(',', UnitIndex.Directives));
+  UnitIndex := TIndexExtractor.ExtractText('unit Werk.Experimental platform;'#10'interface'#10'implementation'#10'end.',
+    'C:\P\Werk.Experimental.pas', nil);
+  Assert.AreEqual('platform', String.Join(',', UnitIndex.Directives));
   Source := Haupt('Werkzeug, Werk.Altlast, Werk.Windows', '');
   Assert.AreEqual('2:15 Unit Werk.Altlast ist deprecated: Nutze Werkzeug (wie W1006).|' +
     '2:29 Unit Werk.Windows ist experimental (wie W1007).|', Messages(Run(Source, '', True)));
