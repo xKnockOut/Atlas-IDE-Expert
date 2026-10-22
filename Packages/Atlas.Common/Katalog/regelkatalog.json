@@ -2348,6 +2348,25 @@
           "description": "Do not report hidden strict private members of the ancestor."
         }
       ]
+    },
+    {
+      "id": "published-type-invalid",
+      "name": "Invalid member in the published section",
+      "category": "bug",
+      "severity": "error",
+      "group": "compiler",
+      "description": "A member behind an explicit published that the compiler rejects: a property of a record, array, pointer or plain procedural type (like E2188), of type Real48 (like E2186) or of a set larger than 4 bytes (like E2187), a field that is neither a class nor an interface (like E2217), more than one published overload (like E2266), a class property (like E2545) or a name with non-ASCII characters (like E2452). Types are resolved through the file and the index, aliases are followed; type parameters, unknown types and sections whose published is in another conditional branch than the member stay silent. The section without visibility specifier is not checked, because the compiler silently demotes such members to public there. Quick fix: move the member into the public section.",
+      "bad": "TKarte = class(TCustomControl)\npublished\n  property Mitte: TPointF read FMitte write SetMitte;\nend;",
+      "good": "TKarte = class(TCustomControl)\npublic\n  property Mitte: TPointF read FMitte write SetMitte;\nend;",
+      "compilerCodes": [
+        "E2188",
+        "E2217",
+        "E2186",
+        "E2187",
+        "E2266",
+        "E2545",
+        "E2452"
+      ]
     }
   ]
 }

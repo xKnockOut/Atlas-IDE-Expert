@@ -2368,6 +2368,25 @@ begin
     '          "description": "Do not report hidden strict private members of the ancestor."' + #10 +
     '        }' + #10 +
     '      ]' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "published-type-invalid",' + #10 +
+    '      "name": "Invalid member in the published section",' + #10 +
+    '      "category": "bug",' + #10 +
+    '      "severity": "error",' + #10 +
+    '      "group": "compiler",' + #10 +
+    '      "description": "A member behind an explicit published that the compiler rejects: a property of a record, array, pointer or plain procedural type (like E2188), of type Real48 (like E2186) or of a' + ' set larger than 4 bytes (like E2187), a field that is neither a class nor an interface (like E2217), more than one published overload (like E2266), a class property (like E2545) or a name with non-AS' + 'CII characters (like E2452). Types are resolved through the file and the index, aliases are followed; type parameters, unknown types and sections whose published is in another conditional branch than ' + 'the member stay silent. The section without visibility specifier is not checked, because the compiler silently demotes such members to public there. Quick fix: move the member into the public section.' + '",' + #10 +
+    '      "bad": "TKarte = class(TCustomControl)\npublished\n  property Mitte: TPointF read FMitte write SetMitte;\nend;",' + #10 +
+    '      "good": "TKarte = class(TCustomControl)\npublic\n  property Mitte: TPointF read FMitte write SetMitte;\nend;",' + #10 +
+    '      "compilerCodes": [' + #10 +
+    '        "E2188",' + #10 +
+    '        "E2217",' + #10 +
+    '        "E2186",' + #10 +
+    '        "E2187",' + #10 +
+    '        "E2266",' + #10 +
+    '        "E2545",' + #10 +
+    '        "E2452"' + #10 +
+    '      ]' + #10 +
     '    }' + #10 +
     '  ]' + #10 +
     '}' + #10 +
@@ -3559,6 +3578,11 @@ begin
     '          "description": "Verdeckte strict private Member des Vorfahren nicht melden."' + #10 +
     '        }' + #10 +
     '      ]' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "published-type-invalid",' + #10 +
+    '      "name": "Unzulässiges Mitglied im published-Abschnitt",' + #10 +
+    '      "description": "Ein Mitglied hinter einem ausdrücklichen published, das der Compiler ablehnt: eine Property vom Typ Record, Array, Zeiger oder Prozedurtyp ohne of object (wie E2188), vom Typ Rea' + 'l48 (wie E2186) oder eine Menge über 4 Byte (wie E2187), ein Feld, das weder Klasse noch Interface ist (wie E2217), mehr als eine published-Überladung (wie E2266), eine Klassen-Property (wie E2545) od' + 'er ein Name mit Zeichen außerhalb von ASCII (wie E2452). Typen löst die Regel über die Datei und den Index auf und verfolgt Aliase; Typparameter, unbekannte Typen und Abschnitte, deren published in ei' + 'nem anderen Zweig der bedingten Übersetzung steht als das Mitglied, bleiben still. Den Abschnitt ohne Sichtbarkeitsangabe prüft sie nicht, weil der Compiler solche Mitglieder dort still zu public hera' + 'bstuft. Korrektur: das Mitglied in den public-Abschnitt verschieben."' + #10 +
     '    }' + #10 +
     '  ]' + #10 +
     '}' + #10 +
