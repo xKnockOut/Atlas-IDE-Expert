@@ -15,7 +15,7 @@ type
     class var FAnbieter: TFunc<string, TArray<string>>;
   public
     /// <summary>Meldet die Suche an; nil meldet sie ab.</summary>
-    class procedure Anmelden(const AAnbieter: TFunc<string, TArray<string>>); static;
+    class procedure Anmelden(const AAnbieter: TFunc<string, TArray<string>>); static; // ERWARTET-PROJEKT: unused-public-member
     /// <summary>Namen der Kunden, die mit AName beginnen.</summary>
     class function Suchen(const AName: string): TArray<string>; static;
   end;

@@ -484,6 +484,16 @@ begin
     Assert.AreEqual('exceptions', Item.GetValue<string>('data.group'));
     Assert.AreEqual('code-smell', Item.GetValue<string>('data.category'));
     Assert.AreEqual('Ausnahme protokollieren', Item.GetValue<string>('data.fix'));
+    // Ohne Zusatz kein data.details.
+    Assert.IsNull(Item.FindValue('data.details'));
+  finally
+    Item.Free;
+  end;
+  // Zusatz für den Befund-Hover (#1102).
+  Finding.Details := 'Durchsucht: 3 Dateien der Projektgruppe';
+  Item := TLspSyntaxDiagnostics.FindingToJson(Finding);
+  try
+    Assert.AreEqual('Durchsucht: 3 Dateien der Projektgruppe', Item.GetValue<string>('data.details'));
   finally
     Item.Free;
   end;

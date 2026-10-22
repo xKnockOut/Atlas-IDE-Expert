@@ -2725,6 +2725,12 @@ begin
     begin
       MessageLine(AText);
     end;
+  Hooks.Indexing :=
+    function(out APercent: Integer): Boolean
+    begin
+      APercent := -1;
+      Result := (Manager <> nil) and Manager.ServerIndexing(APercent);
+    end;
   TAtlasIdeProblems.Start(Hooks);
   TAtlasIdeEditorCommands.OnStepList :=
     function(AForward: Boolean): Boolean
