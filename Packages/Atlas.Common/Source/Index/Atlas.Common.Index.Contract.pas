@@ -219,8 +219,12 @@ type
     function WriteText(const AFileName, AText: string): Boolean;
     /// <summary>Binärer Inhalt (Index-Cache, #617); False, wenn die Datei fehlt.</summary>
     function ReadBytes(const AFileName: string; out ABytes: TBytes): Boolean;
-    /// <summary>Schreibt den binären Inhalt so, dass ein Leser nie einen halben Stand sieht.</summary>
-    function WriteBytes(const AFileName: string; const ABytes: TBytes): Boolean;
+    /// <summary>Schreibt den binären Inhalt so, dass ein Leser nie einen halben Stand sieht. False mit AError
+    /// (Grund ohne Pfad, für das anonyme Log), wenn es nicht ging.</summary>
+    function WriteBytes(const AFileName: string; const ABytes: TBytes; out AError: string): Boolean;
+    /// <summary>Ein Schreiber je Datei über alle Prozesse (Bericht N1): sperrt AFileName, ohne zu warten; nil,
+    /// wenn ein anderer sie hält. Freigeben des Ergebnisses hebt die Sperre auf.</summary>
+    function TryLockWrite(const AFileName: string): IInterface;
   end;
 
   TIndexProgressKind = (Started, Report, Finished);

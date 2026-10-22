@@ -162,7 +162,7 @@ end;
 function Wanted(const ASettings: TAtlasPluginSettings): Boolean;
 begin
   Result := ASettings.Enabled and ASettings.CodeLensTestUnit and
-    not TAtlasGuard.Disabled(TAtlasFeature.EditorCommands);
+    not TAtlasGuard.Disabled(TAtlasFeature.CodeLens);
 end;
 
 procedure TAtlasEditorTestUnitLens.Clear;
@@ -214,7 +214,7 @@ begin
     Fetch;
   except
     on E: Exception do
-      TAtlasGuard.Report(TAtlasFeature.EditorCommands, E);
+      TAtlasGuard.Report(TAtlasFeature.CodeLens, E);
   end;
 end;
 
@@ -380,7 +380,7 @@ begin
   except
     // Zeichnen darf die IDE nie stören.
     on E: Exception do
-      TAtlasGuard.Report(TAtlasFeature.EditorCommands, E);
+      TAtlasGuard.Report(TAtlasFeature.CodeLens, E);
   end;
 end;
 
@@ -401,10 +401,10 @@ begin
     (View.TopRow <> FLensTopRow) then
     Exit;
   // Erst nach dem Mausereignis: der Editor setzt sonst den Cursor nach dem Wechsel.
-  TAtlasMainThread.ForceQueue(TAtlasFeature.EditorCommands,
+  TAtlasMainThread.ForceQueue(TAtlasFeature.CodeLens,
     procedure
     begin
-      TAtlasGuard.Run(TAtlasFeature.EditorCommands,
+      TAtlasGuard.Run(TAtlasFeature.CodeLens,
         procedure
         begin
           if Assigned(FOnSwitchTestUnit) then

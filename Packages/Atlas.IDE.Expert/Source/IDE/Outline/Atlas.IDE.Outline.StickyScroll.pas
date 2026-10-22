@@ -181,7 +181,7 @@ var
 begin
   Settings := TAtlasIdeSettings.Current;
   Was := FOn;
-  FOn := Settings.Enabled and Settings.StickyScroll and not TAtlasGuard.Disabled(TAtlasFeature.EditorCommands);
+  FOn := Settings.Enabled and Settings.StickyScroll and not TAtlasGuard.Disabled(TAtlasFeature.StickyScroll);
   FMaxLines := TAtlasStickyScroll.ClampLines(Settings.StickyScrollMaxLines);
   FRowsTop := -1;
   if not FOn then
@@ -207,7 +207,7 @@ begin
     Exit;
   InvalidatePending := True;
   // Nicht während des Malens: nach dem laufenden Ereignis.
-  TAtlasMainThread.ForceQueue(TAtlasFeature.EditorCommands,
+  TAtlasMainThread.ForceQueue(TAtlasFeature.StickyScroll,
     procedure
     begin
       InvalidatePending := False;
@@ -221,7 +221,7 @@ begin
     Update;
   except
     on E: Exception do
-      TAtlasGuard.Report(TAtlasFeature.EditorCommands, E);
+      TAtlasGuard.Report(TAtlasFeature.StickyScroll, E);
   end;
 end;
 
@@ -232,7 +232,7 @@ var
   Shown: Boolean;
 begin
   // Schnellschalter und Schutzschalter wirken ohne eigenes Ereignis.
-  if (TAtlasIdeStickyScroll.Enabled and not TAtlasGuard.Disabled(TAtlasFeature.EditorCommands)) <> FOn then
+  if (TAtlasIdeStickyScroll.Enabled and not TAtlasGuard.Disabled(TAtlasFeature.StickyScroll)) <> FOn then
     ApplySettings;
   if not FOn then
     Exit;
@@ -312,7 +312,7 @@ begin
   except
     // Zeichnen darf die IDE nie stören.
     on E: Exception do
-      TAtlasGuard.Report(TAtlasFeature.EditorCommands, E);
+      TAtlasGuard.Report(TAtlasFeature.StickyScroll, E);
   end;
 end;
 
@@ -416,10 +416,10 @@ begin
     Target := FRows[Row];
     FileName := FFileName;
     // Erst nach dem Mausereignis: der Editor setzt sonst den Cursor auf die angeklickte Stelle.
-    TAtlasMainThread.ForceQueue(TAtlasFeature.EditorCommands,
+    TAtlasMainThread.ForceQueue(TAtlasFeature.StickyScroll,
       procedure
       begin
-        TAtlasGuard.Run(TAtlasFeature.EditorCommands,
+        TAtlasGuard.Run(TAtlasFeature.StickyScroll,
           procedure
           begin
             TAtlasIdeNavigation.GoToLocation(FileName, Target.Line, Target.Character);
@@ -427,7 +427,7 @@ begin
       end);
   except
     on E: Exception do
-      TAtlasGuard.Report(TAtlasFeature.EditorCommands, E);
+      TAtlasGuard.Report(TAtlasFeature.StickyScroll, E);
   end;
 end;
 

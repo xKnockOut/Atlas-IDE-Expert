@@ -135,11 +135,11 @@ begin
     procedure(AChoice: TAtlasHideChoice)
     begin
       // Erst nach dem Schließen des Menüs: Ein Dialog oder das Schreiben in den Puffer soll nicht im Menü laufen.
-      TAtlasMainThread.ForceQueue(TAtlasFeature.EditorCommands,
+      TAtlasMainThread.ForceQueue(TAtlasFeature.Hide,
         procedure
         begin
           if FInstance <> nil then
-            TAtlasGuard.Run(TAtlasFeature.EditorCommands,
+            TAtlasGuard.Run(TAtlasFeature.Hide,
               procedure
               begin
                 FInstance.Choose(AChoice);
@@ -163,7 +163,7 @@ begin
   TAtlasIdeElements.OnOverlayMenu :=
     procedure(const ATargets: TArray<TAtlasHideTarget>; const AScreen: TPoint)
     begin
-      TAtlasGuard.Run(TAtlasFeature.EditorCommands,
+      TAtlasGuard.Run(TAtlasFeature.Hide,
         procedure
         begin
           ShowMenu(ATargets, AScreen);
@@ -570,7 +570,7 @@ begin
   FStep := Default(TStep);
   if not Step.Valid then
     Exit;
-  TAtlasGuard.Run(TAtlasFeature.EditorCommands,
+  TAtlasGuard.Run(TAtlasFeature.Hide,
     procedure
     var
       Ok: Boolean;

@@ -34,6 +34,8 @@ type
     [Test]
     procedure KnowsCastsUnitPrefixesAndNestedTypes;
     [Test]
+    procedure KnowsMembersOfStrictNestedTypes;
+    [Test]
     procedure SkipsNamesWithUnknownAncestor;
   end;
 
@@ -228,6 +230,45 @@ begin
     '  P := PChar(''x'');'#10 +
     '  AtomicIncrement(FWert);'#10 +
     '  Werk.Hilfe.Hilf;'#10 +
+    'end;'#10 +
+    'end.'));
+end;
+
+procedure TUnresolvedNamesTests.KnowsMembersOfStrictNestedTypes;
+begin
+  // Code-Review F-02: Der Kopf TAussen.TInnen.Lauf wurde mit den Sichtbarkeitsregeln des Rumpfs aufgelöst;
+  // für TInnen in strict private fragte IsVisible nach der Klasse der Methode, die gerade ermittelt wurde,
+  // und die Rekursion lief bis zum Stapelüberlauf. Jetzt gilt der Pfad im Kopf unabhängig von der
+  // Sichtbarkeit, und die strict-Mitglieder sind im eigenen Rumpf bekannt.
+  Assert.AreEqual('', Names(
+    'unit Haupt;'#10 +
+    'interface'#10 +
+    'type'#10 +
+    '  TAussen = class'#10 +
+    '  strict private'#10 +
+    '    type'#10 +
+    '      TInnen = class'#10 +
+    '      strict private'#10 +
+    '        FWert: Integer;'#10 +
+    '        procedure Lauf;'#10 +
+    '      end;'#10 +
+    '  strict protected'#10 +
+    '    type'#10 +
+    '      TGeschuetzt = class'#10 +
+    '      strict protected'#10 +
+    '        FZahl: Integer;'#10 +
+    '        procedure Zaehle;'#10 +
+    '      end;'#10 +
+    '  end;'#10 +
+    'implementation'#10 +
+    'procedure TAussen.TInnen.Lauf;'#10 +
+    'begin'#10 +
+    '  FWert := 1;'#10 +
+    '  Lauf;'#10 +
+    'end;'#10 +
+    'procedure TAussen.TGeschuetzt.Zaehle;'#10 +
+    'begin'#10 +
+    '  FZahl := FZahl + 1;'#10 +
     'end;'#10 +
     'end.'));
 end;

@@ -85,6 +85,12 @@ type
     procedure TextFormKeepsCharacterCodesAfterEdit;
     [Test]
     procedure SurveySkipsBinaryFormsAndNamesCodePage;
+    /// <summary>LoadFromFile liest über den Leser der Plattform (Bericht M5).</summary>
+    [Test]
+    procedure LoadsThroughPlatformReader;
+    /// <summary>Ohne Leser der Plattform: lesen, während ein anderer die Datei zum Schreiben offen hat.</summary>
+    [Test]
+    procedure ReadsWhileSomeoneWrites;
   end;
 
 implementation
@@ -278,6 +284,7 @@ end;
 
 procedure TFileEncodingDefaultTests.TearDown;
 begin
+  TFileEncoding.Reader := nil;
   TFileEncodingDefaults.Clear;
   if DirectoryExists(FFolder) then
     TDirectory.Delete(FFolder, True);
@@ -526,6 +533,46 @@ var
 begin
   Format := TFileFormat.Create(TFileEncodingKind.Ansi1252, TLineBreakStyle.CRLF);
   Assert.AreEqual(0, Integer(Length(TFileEncoding.InvalidUtf8(Bytes([Ord('a'), $E4, Ord('b')]), Format))));
+end;
+
+procedure TFileEncodingDefaultTests.LoadsThroughPlatformReader;
+var
+  Asked: string;
+  Format: TFileFormat;
+begin
+  TFileEncoding.Reader :=
+    function(const AFileName: string): TBytes
+    begin
+      Asked := AFileName;
+      Result := Bytes([$61, $C3, $A4]);
+    end;
+  // Die Datei gibt es nicht: Der Text kommt allein vom Leser.
+  Assert.AreEqual('aä', TFileEncoding.LoadFromFile(FFolder + 'Fehlt.pas', Format));
+  Assert.AreEqual(FFolder + 'Fehlt.pas', Asked);
+  Assert.IsTrue(Format.Encoding = TFileEncodingKind.Utf8);
+  TFileEncoding.Reader := nil;
+  Assert.WillRaise(
+    procedure
+    begin
+      TFileEncoding.ReadAllBytes(FFolder + 'Fehlt.pas');
+    end, EFOpenError);
+end;
+
+procedure TFileEncodingDefaultTests.ReadsWhileSomeoneWrites;
+var
+  FileName: string;
+  Writer: TFileStream;
+begin
+  FileName := FFolder + 'Offen.pas';
+  WriteBytes(FileName, Bytes([$61]));
+  // Offen zum Schreiben, Lesen und Schreiben geteilt. Vorher teilte LoadFromFile nur Lesen und scheiterte
+  // daran; umgekehrt scheiterte ein Schreiber, solange der Server las.
+  Writer := TFileStream.Create(FileName, fmOpenReadWrite or fmShareDenyNone);
+  try
+    Assert.IsTrue(SameBytes(Bytes([$61]), TFileEncoding.ReadAllBytes(FileName)));
+  finally
+    Writer.Free;
+  end;
 end;
 
 initialization

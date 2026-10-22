@@ -98,6 +98,7 @@ uses
   System.SysUtils,
   System.StrUtils,
   System.RegularExpressions,
+  System.Generics.Collections,
   Atlas.Common.Pascal.Contract,
   Atlas.Common.Editing.ClassMembers,
   Atlas.Text.Lines;
@@ -121,6 +122,12 @@ const
 
 type
   TTypeGuess = (tgUnknown, tgClass, tgRecord, tgInterface, tgOther);
+
+  /// <summary>Offener Knoten beim Suchen nach Create: Knoten und Methode, in der er steht.</summary>
+  TCreationEntry = record
+    Node: TSyntaxNode;
+    Method: string;
+  end;
 
 function NodeText(const AText: string; ANode: TSyntaxNode): string;
 begin
@@ -200,6 +207,7 @@ type
     function CalledPrivate(AStatement: TSyntaxNode): string;
     procedure ScanCreations(ANode: TSyntaxNode);
     procedure ScanUses(ANode: TSyntaxNode; const AMethod: string; var AFreed: TArray<Boolean>);
+    procedure CheckUse(ANode: TSyntaxNode; const AMethod: string; var AFreed: TArray<Boolean>);
     procedure SetUnclear(AField: Integer; const AReason: string);
     procedure ReadClass;
   public
@@ -563,42 +571,67 @@ end;
 
 procedure TClassAnalyzer.ScanCreations(ANode: TSyntaxNode);
 var
+  Pending: TStack<TCreationEntry>;
+  Entry, Next: TCreationEntry;
+  Node, Body: TSyntaxNode;
   Index, Field: Integer;
   TypeName, Called, Saved: string;
   Owned: Boolean;
-  Body: TSyntaxNode;
 begin
-  if ANode.Kind = TSyntaxKind.AnonymousMethod then
-    Exit;
-  if (ANode.Kind = TSyntaxKind.AssignStatement) and (ANode.ChildCount >= 2) then
-  begin
-    Field := FieldRef(ANode[0]);
-    if (Field >= 0) and (FFields[Field].CreatedIn = '') and Creation(ANode[1], TypeName, Owned) then
+  // Eigener Stapel statt Rekursion: Lange Ausdrucksketten dürfen den Aufrufstapel nicht
+  // erschöpfen. Die Reihenfolge bleibt die der Rekursion: Knoten, dann der Rumpf einer
+  // aufgerufenen privaten Methode, dann die Kinder von links nach rechts.
+  Saved := FCurrent;
+  Pending := TStack<TCreationEntry>.Create;
+  try
+    Entry.Node := ANode;
+    Entry.Method := FCurrent;
+    Pending.Push(Entry);
+    while Pending.Count > 0 do
     begin
-      FFields[Field].CreatedIn := FCurrent;
-      FFields[Field].CreatedType := TypeName;
-      FFields[Field].Order := Length(FCreated);
-      FCreated := FCreated + [Field];
-      // Komponenten mit Owner gelten als erzeugt, aber nicht als eigen.
-      if Owned then
-        FFields[Field].Reason := 'owned';
+      Entry := Pending.Pop;
+      Node := Entry.Node;
+      if (Node = nil) or (Node.Kind = TSyntaxKind.AnonymousMethod) then
+        Continue;
+      FCurrent := Entry.Method;
+      if (Node.Kind = TSyntaxKind.AssignStatement) and (Node.ChildCount >= 2) then
+      begin
+        Field := FieldRef(Node[0]);
+        if (Field >= 0) and (FFields[Field].CreatedIn = '') and Creation(Node[1], TypeName, Owned) then
+        begin
+          FFields[Field].CreatedIn := FCurrent;
+          FFields[Field].CreatedType := TypeName;
+          FFields[Field].Order := Length(FCreated);
+          FCreated := FCreated + [Field];
+          // Komponenten mit Owner gelten als erzeugt, aber nicht als eigen.
+          if Owned then
+            FFields[Field].Reason := 'owned';
+        end;
+      end;
+      Next.Method := Entry.Method;
+      for Index := Node.ChildCount - 1 downto 0 do
+      begin
+        Next.Node := Node[Index];
+        Pending.Push(Next);
+      end;
+      // Zuletzt abgelegt, also vor den Kindern durchsucht.
+      Called := CalledPrivate(Node);
+      if (Called <> '') and (IndexText(Called, FVisited) < 0) then
+      begin
+        FVisited := FVisited + [Called];
+        Body := MethodBody(Called);
+        if Body <> nil then
+        begin
+          Next.Node := Body.FindChild(TSyntaxKind.Block);
+          Next.Method := Body.Name;
+          Pending.Push(Next);
+        end;
+      end;
     end;
+  finally
+    Pending.Free;
+    FCurrent := Saved;
   end;
-  Called := CalledPrivate(ANode);
-  if (Called <> '') and (IndexText(Called, FVisited) < 0) then
-  begin
-    FVisited := FVisited + [Called];
-    Body := MethodBody(Called);
-    if Body <> nil then
-    begin
-      Saved := FCurrent;
-      FCurrent := Body.Name;
-      ScanCreations(Body.FindChild(TSyntaxKind.Block));
-      FCurrent := Saved;
-    end;
-  end;
-  for Index := 0 to ANode.ChildCount - 1 do
-    ScanCreations(ANode[Index]);
 end;
 
 procedure TClassAnalyzer.SetUnclear(AField: Integer; const AReason: string);
@@ -615,7 +648,31 @@ end;
 
 procedure TClassAnalyzer.ScanUses(ANode: TSyntaxNode; const AMethod: string; var AFreed: TArray<Boolean>);
 var
-  Index, Field: Integer;
+  Pending: TStack<TSyntaxNode>;
+  Node: TSyntaxNode;
+  Index: Integer;
+begin
+  // Eigener Stapel statt Rekursion, damit tiefe Ausdrücke den Aufrufstapel nicht erschöpfen.
+  Pending := TStack<TSyntaxNode>.Create;
+  try
+    Pending.Push(ANode);
+    while Pending.Count > 0 do
+    begin
+      Node := Pending.Pop;
+      if Node = nil then
+        Continue;
+      CheckUse(Node, AMethod, AFreed);
+      for Index := Node.ChildCount - 1 downto 0 do
+        Pending.Push(Node[Index]);
+    end;
+  finally
+    Pending.Free;
+  end;
+end;
+
+procedure TClassAnalyzer.CheckUse(ANode: TSyntaxNode; const AMethod: string; var AFreed: TArray<Boolean>);
+var
+  Field: Integer;
   Target: TSyntaxNode;
 begin
   case ANode.Kind of
@@ -670,8 +727,6 @@ begin
           SetUnclear(Field, Format('wird in %s auch ohne Create zugewiesen', [AMethod]));
       end;
   end;
-  for Index := 0 to ANode.ChildCount - 1 do
-    ScanUses(ANode[Index], AMethod, AFreed);
 end;
 
 procedure TClassAnalyzer.ReadClass;

@@ -53,6 +53,7 @@ uses
   ToolsAPI,
   Atlas.Core.Diagnostics.Guard,
   Atlas.Core.Diagnostics.MainThread,
+  Atlas.Core.Files.DataFile,
   Atlas.Core.Lsp.Client,
   Atlas.Core.Lsp.Contract,
   Atlas.Core.Projects.Contract,
@@ -457,13 +458,10 @@ begin
   FSessionOf := ASessionOf;
   Owner := TQuickOpenState.Create;
   FState := Owner;
-  try
-    Owner.Recent.LoadFromFile(RecentFile);
-  except
-    // Kaputter Verlauf: leer weiter, beim nächsten Speichern neu.
-    on Exception do
-      TAtlasGuard.Log('Schnell öffnen: Verlauf nicht lesbar');
-  end;
+  // Fehlt, unbrauchbar oder gesperrt: leer weiter; TAtlasDataFile legt Unbrauchbares als quickopen.json.defekt
+  // beiseite und protokolliert, eine gesperrte Datei schreibt SaveToFile nicht (Bericht N3).
+  Owner.Recent.Kind := 'Verlauf von Schnell öffnen';
+  Owner.Recent.LoadFromFile(RecentFile);
   if Supports(BorlandIDEServices, IOTAServices, Services) then
   begin
     Owner.Notifier := TIdeNotifier.Create;
@@ -492,8 +490,8 @@ begin
   try
     Owner.Recent.SaveToFile(RecentFile);
   except
-    on Exception do
-      TAtlasGuard.Log('Schnell öffnen: Verlauf nicht gespeichert');
+    on E: Exception do
+      TAtlasDataFile.ReportNotWritten(Owner.Recent.Kind, E);
   end;
   Owner.Free;
 end;

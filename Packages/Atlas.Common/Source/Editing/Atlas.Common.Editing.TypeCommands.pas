@@ -51,6 +51,7 @@ implementation
 uses
   System.SysUtils,
   System.StrUtils,
+  System.Generics.Collections,
   Atlas.Common.Pascal.Contract,
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.Lexer,
@@ -301,33 +302,40 @@ begin
 end;
 
 /// <summary>Elementtyp von "ATypeName = set of TElement" im Baum; False ohne oder bei namenloser Aufzählung.</summary>
+/// <summary>Elementtyp des Mengentyps ADecl ("set of TElement"); '' bei namenloser Aufzählung.</summary>
+function SetElementOf(ADecl: TSyntaxNode): string;
+var
+  Body: TSyntaxNode;
+begin
+  Result := '';
+  Body := ADecl.FindChild(TSyntaxKind.SetType);
+  if (Body <> nil) and (Body.ChildCount > 0) and (Body[0].Kind = TSyntaxKind.TypeReference) then
+    Result := Body[0].Name;
+end;
+
 function SetElementIn(ATree: TSyntaxTree; const ATypeName: string; out AElement: string): Boolean;
-
-  function Walk(ANode: TSyntaxNode): Boolean;
-  var
-    Index: Integer;
-    Body: TSyntaxNode;
-  begin
-    if (ANode.Kind = TSyntaxKind.TypeDecl) and SameText(ANode.Name, ATypeName) then
-    begin
-      Body := ANode.FindChild(TSyntaxKind.SetType);
-      if (Body <> nil) and (Body.ChildCount > 0) and (Body[0].Kind = TSyntaxKind.TypeReference) and
-        (Body[0].Name <> '') then
-      begin
-        AElement := Body[0].Name;
-        Exit(True);
-      end;
-      Exit(False);
-    end;
-    for Index := 0 to ANode.ChildCount - 1 do
-      if Walk(ANode[Index]) then
-        Exit(True);
-    Result := False;
-  end;
-
+var
+  TypeName: string;
+  Found: TSyntaxNode;
 begin
   AElement := '';
-  Result := (ATree <> nil) and (ATree.Root <> nil) and Walk(ATree.Root);
+  if (ATree = nil) or (ATree.Root = nil) then
+    Exit(False);
+  TypeName := ATypeName;
+  // Search statt Rekursion (Bericht M1); in einen gleichnamigen Typ ohne Element geht die Suche nicht hinein.
+  Found := ATree.Root.Search(
+    function(ANode: TSyntaxNode): TSyntaxSearchStep
+    begin
+      Result := TSyntaxSearchStep.Descend;
+      if (ANode.Kind <> TSyntaxKind.TypeDecl) or not SameText(ANode.Name, TypeName) then
+        Exit;
+      Result := TSyntaxSearchStep.Skip;
+      if SetElementOf(ANode) <> '' then
+        Result := TSyntaxSearchStep.Found;
+    end);
+  Result := Found <> nil;
+  if Result then
+    AElement := SetElementOf(Found);
 end;
 
 /// <summary>Elementtyp der Menge ATypeName: aus der Datei, sonst aus der Unit, die der Index nennt (#875).</summary>
@@ -602,25 +610,26 @@ var
   Index, Before: Integer;
   Range: TTextRange;
   Inside: Boolean;
-
-  procedure Collect(ANode: TSyntaxNode);
-  var
-    Child: Integer;
-  begin
-    if (ANode.Kind = TSyntaxKind.RoutineDecl) and StartsText(AClassName + '.', ANode.Name) then
-    begin
-      Ranges := Ranges + [TTextRange.Create(ANode.StartPos, ANode.EndPos)];
-      Exit;
-    end;
-    for Child := 0 to ANode.ChildCount - 1 do
-      Collect(ANode[Child]);
-  end;
-
+  Prefix: string;
+  Found: TList<TTextRange>;
 begin
   Result := nil;
-  Ranges := nil;
   Node := ASource.Tree.Root;
-  Collect(Node);
+  Prefix := AClassName + '.';
+  // Walk statt Rekursion (Bericht M1); in die gefundenen Methoden geht der Lauf nicht hinein.
+  Found := TList<TTextRange>.Create;
+  try
+    Node.Walk(
+      function(AChild: TSyntaxNode): Boolean
+      begin
+        Result := not ((AChild.Kind = TSyntaxKind.RoutineDecl) and StartsText(Prefix, AChild.Name));
+        if not Result then
+          Found.Add(TTextRange.Create(AChild.StartPos, AChild.EndPos));
+      end);
+    Ranges := Found.ToArray;
+  finally
+    Found.Free;
+  end;
   Tokens := TPascalLexer.Tokenize(ASource.Text);
   for Index := 0 to High(Tokens) do
   begin

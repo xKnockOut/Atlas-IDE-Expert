@@ -11,8 +11,10 @@
 // - Hinweis: nicht modal (TAtlasSafeModeNotice) mit Rückfrage bzw. Knöpfen,
 //   dazu eine gelbe Zeile „Abgesichert gestartet“ im Atlas-Statusfeld (#591),
 //   die den Hinweis wieder öffnet.
-// - Loaded: Ladezeit in die Marke; zu langsam zählt beim nächsten Start wie
-//   ein Absturz. RecordFailure: Fehler je Feature (#493) in die Marke.
+// - Loaded: Ladezeit in die Marke (für „Details“ nach einem Absturz). Ein
+//   langsamer Start ist kein Absturz (Bericht N4); was Atlas daran hatte,
+//   meldet die Composition mit den Startanteilen.
+// - RecordFailure: Fehler je Feature (#493) in die Marke.
 // - Stop (sauberes Entladen): Marke löschen, Absturzzähler zurücksetzen.
 
 interface
@@ -42,7 +44,6 @@ type
     FDecision: TAtlasSafeDecision;
     FLevel: TAtlasSafeLevel;
     FAnswered: Boolean;
-    FWasSlow: Boolean;
     FCrashed: TAtlasSessionMarker;
     FHasCrashed: Boolean;
     FStartedLocal: TDateTime;
@@ -154,7 +155,7 @@ var
 begin
   Settings := TAtlasIdeSettings.Stored;
   Result := TAtlasSafeOptions.Create(Settings.SafeAskAfterCrash, Settings.SafeAutoAfterRepeatedCrash,
-    TAtlasSafeMode.KeyOf(Settings.SafeStartupKey), Settings.SafeStartupTimeoutMs);
+    TAtlasSafeMode.KeyOf(Settings.SafeStartupKey));
 end;
 
 class function TAtlasIdeSafeMode.NowUtc: TDateTime;
@@ -271,7 +272,6 @@ begin
       Crashed := nil;
     end;
   end;
-  FWasSlow := State.SlowStart and (Length(Crashed) = 0);
   // Für den Vorschlag: Was die letzte gespeicherte Änderung umgestellt hat.
   try
     FChangedKeys := TAtlasIdeSettings.History.LastChangedKeys(TAtlasIdeSettings.Stored);
@@ -283,7 +283,7 @@ begin
     Forced);
   FLevel := FDecision.Level;
   FAnswered := not FDecision.Ask;
-  // Nur die Marke dieses Absturzes; ein hängender Start allein hat keine.
+  // Nur die Marke dieses Absturzes, nicht die eines früheren aus dem Zustand.
   FHasCrashed := (Length(Crashed) > 0) and (State.CrashedMarker <> '') and
     TAtlasSessionMarker.FromJson(State.CrashedMarker, FCrashed);
   try
@@ -315,8 +315,6 @@ begin
 end;
 
 procedure TAtlasIdeSafeMode.Loaded(ALoadMs: Int64);
-var
-  State: TAtlasSafeState;
 begin
   if not FStarted then
     Exit;
@@ -327,16 +325,6 @@ begin
     WriteMarker;
   finally
     FLock.Leave;
-  end;
-  try
-    State := TAtlasSessionFiles.ReadState(FFolder);
-    if TAtlasSafeMode.LoadFinished(State, ALoadMs, Options) then
-      TAtlasGuard.Log(Format('Start dauerte %d ms (Zeitlimit %d ms): zählt beim nächsten Start wie ein Absturz',
-        [ALoadMs, Options.StartupTimeoutMs]));
-    TAtlasSessionFiles.WriteState(FFolder, State);
-  except
-    on Exception do
-      ;
   end;
 end;
 
@@ -434,12 +422,7 @@ end;
 function TAtlasIdeSafeMode.NoticeText(AKind: TAtlasSafeNoticeKind): string;
 begin
   if AKind = TAtlasSafeNoticeKind.Ask then
-  begin
-    Result := TAtlasStrings.Text(TAtlasTextId.SafeAskText);
-    if FWasSlow then
-      Result := TAtlasStrings.Fmt(TAtlasTextId.SafeSlowStart, [Options.StartupTimeoutMs]) + ' ' + Result;
-    Exit;
-  end;
+    Exit(TAtlasStrings.Text(TAtlasTextId.SafeAskText));
   case FDecision.Reason of
     TAtlasSafeReason.StartupKey:
       Result := TAtlasStrings.Fmt(TAtlasTextId.SafeMinimalText, [TAtlasStrings.Text(TAtlasTextId.SafeReasonKey)]);
@@ -516,15 +499,13 @@ var
   Line, Folder: string;
 begin
   Result := nil;
-  if FWasSlow then
-    Result := Result + [TAtlasStrings.Fmt(TAtlasTextId.SafeSlowStart, [Options.StartupTimeoutMs])];
   if not FHasCrashed then
   begin
-    if FDecision.Crashed and (Length(Result) = 0) then
+    if FDecision.Crashed then
       Result := Result + [TAtlasStrings.Text(TAtlasTextId.SafeNoDetails)];
     Exit;
   end;
-  Result := Result + TAtlasSafeMode.Details(FCrashed);
+  Result := TAtlasSafeMode.Details(FCrashed);
   if TAtlasGuard.RotatingLog = nil then
     Exit;
   // Die Sitzung kann über eine Rotation reichen: erst die ältere Datei, dann die aktuelle.

@@ -17,6 +17,10 @@ type
     procedure AnswersServerRequestWithNull;
     [Test]
     procedure RejectsRequestsAfterClose;
+    /// <summary>Ende der Verbindung mit letzter und offenen Anfragen und den Angaben des Transports (Bericht H5).
+    /// </summary>
+    [Test]
+    procedure CloseInfoNamesLastAndOpenRequests;
     [Test]
     procedure ForwardsServerMessagesToHandler;
     [Test]
@@ -120,7 +124,6 @@ type
     procedure WarmUpFirstUse;
     // Startet den echten Server neben dem Testprogramm.
     [Test]
-    [IgnoreMemoryLeaks]
     procedure HoverAndDefinitionAgainstServer;
     [Test]
     procedure PullsDiagnosticsAgainstServer;
@@ -129,6 +132,10 @@ type
     /// <summary>Scheitert der Start, bleiben keine Handles offen (Code-Review S-07).</summary>
     [Test]
     procedure StartFailureLeavesNoHandles;
+    /// <summary>Endet der Prozess, kennt der Client Exit-Code und Zeilen auf stderr; stderr steht in
+    /// server-stderr.log (Bericht H5).</summary>
+    [Test]
+    procedure EndReportsExitCodeAndStderr;
   end;
 
 implementation
@@ -140,7 +147,11 @@ uses
   System.IOUtils,
   System.JSON,
   System.Generics.Collections,
+  System.SyncObjs,
+  System.Diagnostics,
+  Atlas.Core.Diagnostics.Guard,
   Atlas.Core.Lsp.Client,
+  Atlas.Core.Lsp.Crashes,
   Atlas.Core.Lsp.Session,
   Atlas.Core.Lsp.Adapters.ServerProcess,
   Atlas.Core.Lsp.TextChanges,
@@ -416,6 +427,92 @@ begin
       end, ELspClientError);
   finally
     Client.Free;
+  end;
+end;
+
+/// <summary>Anfrage in einem eigenen Thread; endet mit dem Schließen des Clients.</summary>
+function RequestInThread(AClient: TLspClient; const AMethod: string): TThread;
+var
+  Client: TLspClient;
+  Method: string;
+begin
+  Client := AClient;
+  Method := AMethod;
+  Result := TThread.CreateAnonymousThread(
+    procedure
+    begin
+      try
+        Client.Request(Method, nil, 10000).Free;
+      except
+        // Erwartet: Die Verbindung wird geschlossen, während die Anfrage wartet.
+        on ELspClientError do
+          ;
+      end;
+    end);
+  Result.FreeOnTerminate := False;
+  Result.Start;
+end;
+
+procedure TLspClientTests.CloseInfoNamesLastAndOpenRequests;
+var
+  Client: TLspClient;
+  DefinitionSent, DiagnosticSent: TEvent;
+  Definition, Diagnostic: TThread;
+  Ended, Info: TLspCloseInfo;
+begin
+  DefinitionSent := TEvent.Create(nil, True, False, '');
+  DiagnosticSent := TEvent.Create(nil, True, False, '');
+  Client := TLspClient.Create(
+    procedure(const ABytes: TBytes)
+    var
+      Message: TJSONObject;
+    begin
+      // Nie antworten: Beide Anfragen sind beim Ende noch offen.
+      Message := Unframe(ABytes);
+      try
+        if Message.GetValue<string>('method', '') = 'textDocument/definition' then
+          DefinitionSent.SetEvent
+        else if Message.GetValue<string>('method', '') = 'workspace/diagnostic' then
+          DiagnosticSent.SetEvent;
+      finally
+        Message.Free;
+      end;
+    end);
+  Definition := nil;
+  Diagnostic := nil;
+  try
+    Info := Client.CloseInfo;
+    Assert.AreEqual('', Info.LastMethod, 'offen: noch nichts');
+    Definition := RequestInThread(Client, 'textDocument/definition');
+    Assert.AreEqual(Ord(wrSignaled), Ord(DefinitionSent.WaitFor(5000)));
+    // Long-Polling zählt weder als letzte noch als offene Anfrage.
+    Diagnostic := RequestInThread(Client, 'workspace/diagnostic');
+    Assert.AreEqual(Ord(wrSignaled), Ord(DiagnosticSent.WaitFor(5000)));
+    Ended := Default(TLspCloseInfo);
+    Ended.ExitKnown := True;
+    Ended.ExitCode := $C00000FD;
+    Ended.RuntimeMs := 1234;
+    Ended.ErrorLines := 3;
+    Client.CloseWith(Ended);
+    Definition.WaitFor;
+    Diagnostic.WaitFor;
+    Info := Client.CloseInfo;
+    Assert.IsTrue(Info.ExitKnown);
+    Assert.AreEqual(Int64($C00000FD), Int64(Info.ExitCode));
+    Assert.AreEqual(Int64(1234), Info.RuntimeMs);
+    Assert.AreEqual(3, Info.ErrorLines);
+    Assert.AreEqual('textDocument/definition', Info.LastMethod);
+    Assert.AreEqual(1, Integer(Length(Info.OpenMethods)));
+    Assert.AreEqual('textDocument/definition', Info.OpenMethods[0]);
+    // Nur das erste Schließen zählt.
+    Client.Close;
+    Assert.AreEqual(Int64($C00000FD), Int64(Client.CloseInfo.ExitCode));
+  finally
+    Definition.Free;
+    Diagnostic.Free;
+    Client.Free;
+    DefinitionSent.Free;
+    DiagnosticSent.Free;
   end;
 end;
 
@@ -1141,6 +1238,16 @@ end;
 procedure TLspServerProcessTests.WarmUpFirstUse;
 begin
   StartFailureLeavesNoHandles;
+  // Erster echter Start (Pipes, Lese- und Schreib-Thread, Sitzung) ungemessen statt [IgnoreMemoryLeaks]
+  // (Bericht N2). Ohne Server neben dem Testprogramm überspringen die Tests ohnehin.
+  if FileExists(TPath.Combine(ExtractFilePath(ParamStr(0)), 'AtlasServer.exe')) then
+    try
+      HoverAndDefinitionAgainstServer;
+    except
+      // Scheitert der Lauf, meldet das der Test selbst; das Aufwärmen hält die übrigen Tests nicht auf.
+      on Exception do
+        ;
+    end;
 end;
 
 procedure TLspServerProcessTests.StartFailureLeavesNoHandles;
@@ -1166,8 +1273,32 @@ begin
         TLspServerProcess.Create(Missing, '').Free;
       end, EOSError);
   Assert.IsTrue(ProcessHandleCount(GetCurrentProcess, After));
-  // Je Lauf vier Pipe-Enden und NUL; ein Leck zeigte sich als Zuwachs um mindestens zehn.
+  // Je Lauf vier Pipe-Enden und die stderr-Datei; ein Leck zeigte sich als Zuwachs um mindestens zehn.
   Assert.IsTrue(Integer(After) - Integer(Before) < 5, Format('Handles vorher %d, nachher %d', [Before, After]));
+end;
+
+procedure TLspServerProcessTests.EndReportsExitCodeAndStderr;
+var
+  Server: IAtlasLspServer;
+  Watch: TStopwatch;
+  Info: TLspCloseInfo;
+  Text: string;
+begin
+  // Ein „Server“, der eine Zeile auf stderr schreibt und mit Code 3 endet.
+  Server := TLspServerProcess.Create(GetEnvironmentVariable('ComSpec'), '/c echo Testausgabe auf stderr 1>&2 & exit 3');
+  Watch := TStopwatch.StartNew;
+  while not Server.Client.Closed and (Watch.ElapsedMilliseconds < 10000) do
+    Sleep(20);
+  Assert.IsTrue(Server.Client.Closed, 'Verbindung nach dem Ende des Prozesses geschlossen');
+  Info := Server.Client.CloseInfo;
+  Assert.IsTrue(Info.ExitKnown, 'Exit-Code bekannt');
+  Assert.AreEqual(Int64(3), Int64(Info.ExitCode));
+  Assert.AreEqual(1, Info.ErrorLines);
+  Assert.IsTrue(Info.RuntimeMs >= 0);
+  Server := nil;
+  Text := TFile.ReadAllText(TAtlasServerExits.StderrFileName(TAtlasGuard.RotatingLog.Folder), TEncoding.UTF8);
+  Assert.Contains(Text, 'Serverstart');
+  Assert.Contains(Text, 'Testausgabe auf stderr');
 end;
 
 { TLspClientTests (Obergrenzen) }

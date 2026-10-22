@@ -4,9 +4,13 @@
 // Ordner, in der IDE %LOCALAPPDATA%\Atlas\undo: je Satz eine Datei
 // set-<Kennung>.json mit Aktion, Zeit und je Datei Art, Projekt, Zustand und
 // den Inhalten vorher und nachher samt Kodierung. Geschrieben wird erst in
-// eine Nachbardatei, die dann die alte ersetzt. Nach jedem Sichern fallen die
-// ältesten Sätze weg, bis alle zusammen höchstens MaxBytes groß sind; ein
-// einzelner Satz über der Grenze wird gar nicht gesichert. Die Dateien liegen
+// eine Nachbardatei, die dann die alte atomar ersetzt (TAtlasTextFile.Replace;
+// früher Löschen und Umbenennen, Bericht N3). Ein unlesbarer Satz wird beim
+// Laden übergangen und nicht als .defekt beiseitegelegt: Er ließe sich ohnehin
+// nicht anwenden, und Shrink räumt ihn mit den ältesten weg. Nach jedem
+// Sichern fallen die ältesten Sätze weg, bis alle zusammen höchstens
+// MaxBytes groß sind; ein einzelner Satz über der Grenze wird gar nicht
+// gesichert. Die Dateien liegen
 // nur im Profil des Benutzers und nie in einem Protokoll (#647).
 
 interface
@@ -41,6 +45,7 @@ type
 implementation
 
 uses
+  System.Classes,
   System.IOUtils,
   System.DateUtils,
   System.Generics.Collections,
@@ -188,7 +193,7 @@ procedure TAtlasUndoFileStore.Save(const ASet: TAtlasChangeSet);
 var
   Json: TJSONObject;
   Bytes: TBytes;
-  FileName, Temporary: string;
+  FileName: string;
 begin
   Json := ToJson(ASet);
   try
@@ -205,11 +210,7 @@ begin
     Exit;
   end;
   TDirectory.CreateDirectory(FFolder);
-  Temporary := FileName + '.tmp';
-  TFile.WriteAllBytes(Temporary, Bytes);
-  if TFile.Exists(FileName) then
-    TFile.Delete(FileName);
-  TFile.Move(Temporary, FileName);
+  TAtlasTextFile.Replace(FileName, Bytes);
   Shrink;
 end;
 
@@ -247,11 +248,12 @@ begin
   Result := nil;
   for FileName in SetFiles do
   begin
-    // Nicht lesbare oder kaputte Datei: überspringen.
+    // Nicht lesbare oder kaputte Datei: überspringen (siehe Kopf). Lesen teilt Löschen (Bericht M5).
     try
-      Value := TJSONObject.ParseJSONValue(TEncoding.UTF8.GetString(TFile.ReadAllBytes(FileName)));
+      Value := TJSONObject.ParseJSONValue(TEncoding.UTF8.GetString(TAtlasTextFile.ReadAllBytes(FileName)));
     except
-      Value := nil;
+      on EStreamError do
+        Value := nil;
     end;
     try
       if FromJson(Value, ChangeSet) then

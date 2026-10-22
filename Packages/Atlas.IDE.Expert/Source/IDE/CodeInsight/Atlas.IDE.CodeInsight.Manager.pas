@@ -42,6 +42,13 @@
 // Serverprozess, Ordnerbeobachter und die Quellen von Vervollständigung und
 // Parameter-Hint aus dem Kern setzt die Kompositionswurzel ein
 // (TAtlasCodeInsightAdapters, A-09).
+// Ende des Servers (Bericht H5): Endet er von selbst, steht in atlas.log, womit
+// (Exit-Code, etwa Stapelüberlauf), nach welcher Laufzeit, bei welcher Anfrage
+// und wie viel er auf stderr schrieb; das Statusfeld nennt die Ursache. Den
+// ersten Absturz startet die nächste Anfrage wie bisher neu. Endet er zweimal
+// mit demselben Code innerhalb von zehn Minuten, startet Atlas ihn nicht mehr
+// still neu, sondern meldet es mit „Server neu starten“ und „Fehlerbericht
+// erstellen…“ (TAtlasServerCrashes). Ein Start von Hand hebt das auf.
 
 interface
 
@@ -55,6 +62,7 @@ uses
   Atlas.Core.Diagnostics.ThreadList,
   Atlas.Core.Lsp.Client,
   Atlas.Core.Lsp.Session,
+  Atlas.Core.Lsp.Crashes,
   Atlas.Core.Files.WatchedChanges,
   Atlas.Core.Signature.Contract,
   Atlas.IDE.Completion.Editor,
@@ -88,6 +96,9 @@ type
     /// </summary>
     FStarts: Integer;
     FOnOpenLog: TProc;
+    FOnBugReport: TProc;
+    /// <summary>Abstürze des Servers; nach zwei gleichen startet Atlas ihn nicht mehr still neu (Bericht H5).</summary>
+    FCrashes: TAtlasServerCrashes;
     // Ob AtlasServer.exe da ist, höchstens alle paar Sekunden neu geprüft.
     FServerChecked: Cardinal;
     FServerFound: Boolean;
@@ -134,6 +145,11 @@ type
     FThreads: TAtlasThreadList;
     procedure SetPhase(APhase: TAtlasServerPhase; const AError: string); overload;
     procedure SetPhase(APhase: TAtlasServerPhase; const AError: string; AEnded: Boolean); overload;
+    /// <summary>Der Server endete von selbst (Lese-Thread, Bericht H5): Ursache, Laufzeit und letzte Anfrage
+    /// ins Protokoll, Ursache ins Statusfeld; nach zwei gleichen Abstürzen anhalten (ServerHeld).</summary>
+    procedure ServerEnded(const AInfo: TLspCloseInfo);
+    /// <summary>Hauptthread: Statusfeld und Benachrichtigung mit Neustart und Fehlerbericht (Bericht H5).</summary>
+    procedure ServerHeld(ACode: Cardinal);
     /// <summary>Laufende Sitzung oder Start im Hauptthread; außerhalb des Hauptthreads nur, was schon läuft (A-01).</summary>
     function EnsureSession: Boolean;
     /// <summary>Server starten und Sitzung aufbauen; nur aus EnsureSession, nur im Hauptthread.</summary>
@@ -233,8 +249,12 @@ type
     function ServerInfo: TAtlasServerInfo;
     /// <summary>Indizierung läuft? APercent = Fortschritt, -1 = unbekannt; False ohne Sitzung.</summary>
     function ServerIndexing(out APercent: Integer): Boolean;
-    /// <summary>„Server neu starten“ (#591, #393): Sitzung beenden und neu starten.</summary>
+    /// <summary>„Server neu starten“ (#591, #393): Sitzung beenden und neu starten; hebt das Anhalten nach
+    /// Abstürzen auf (AllowStart).</summary>
     function RestartServer: Boolean;
+    /// <summary>Start von Hand („Server starten“): Nach zwei gleichen Abstürzen startet Atlas den Server wieder
+    /// (Bericht H5).</summary>
+    procedure AllowStart;
     /// <summary>atlas.server.status im Hintergrund, nur bei laufender Sitzung und ohne laufende
     /// Abfrage; ADone bekommt das JSON ('' bei Fehler) im Hintergrund-Thread. False = nicht gestartet.</summary>
     function QueryStatusAsync(const ADone: TProc<string>): Boolean;
@@ -253,6 +273,9 @@ type
     /// <summary>„Protokoll öffnen“ für die Einträge der Quelle Server in der Benachrichtigungszentrale (#601).
     /// </summary>
     property OnOpenLog: TProc read FOnOpenLog write FOnOpenLog;
+    /// <summary>„Fehlerbericht erstellen…“ in der Meldung nach zwei gleichen Abstürzen des Servers (Bericht H5).
+    /// </summary>
+    property OnBugReport: TProc read FOnBugReport write FOnBugReport;
     /// <summary>Bietet IOTACodeInsightManager90 (Help Insight) nur an, solange der Atlas-Tooltip an ist.</summary>
     function QueryInterface(const IID: TGUID; out Obj): HResult; stdcall;
     { IOTACodeInsightManager100 }
@@ -364,6 +387,7 @@ begin
   FCommandIdle := TEvent.Create(nil, True, True, '');
   FServerCommandsIdle := TEvent.Create(nil, True, True, '');
   FThreads := TAtlasThreadList.Create;
+  FCrashes := TAtlasServerCrashes.Create(nil);
   Diagnose('Plugin geladen: ' + GetModuleName(HInstance));
   FFileChanges := TAtlasWatchedChanges.Create;
   FFolderWatcher := FAdapters.NewFolderWatcher(FFileChanges);
@@ -437,6 +461,8 @@ destructor TAtlasCodeInsightManager.Destroy;
 begin
   Shutdown;
   FreeAndNil(FThreads);
+  // Nach Shutdown: Kein Lese-Thread meldet mehr ein Ende.
+  FreeAndNil(FCrashes);
   FQueryIdle.Free;
   FCommandIdle.Free;
   FServerCommandsIdle.Free;
@@ -680,9 +706,79 @@ end;
 function TAtlasCodeInsightManager.RestartServer: Boolean;
 begin
   Report('Server wird neu gestartet');
+  AllowStart;
   StopSession;
   SetPhase(TAtlasServerPhase.Stopped, '', True);
   Result := EnsureSession;
+end;
+
+procedure TAtlasCodeInsightManager.AllowStart;
+begin
+  if FCrashes.Held then
+    TAtlasGuard.Log('Server: Start von Hand nach wiederholtem Absturz');
+  FCrashes.Reset;
+end;
+
+procedure TAtlasCodeInsightManager.ServerEnded(const AInfo: TLspCloseInfo);
+var
+  Manager: TAtlasCodeInsightManager;
+  Code: Cardinal;
+  Line: string;
+  Continues: Boolean;
+begin
+  Code := TAtlasServerExits.Unknown;
+  if AInfo.ExitKnown then
+    Code := AInfo.ExitCode;
+  Line := TAtlasServerExits.Line(Code, AInfo.RuntimeMs, AInfo.LastMethod, AInfo.OpenMethods, AInfo.ErrorLines);
+  // atlas.log für den Fehlerbericht, das Diagnoseprotokoll für den zeitlichen Zusammenhang mit den Aufrufen.
+  TAtlasGuard.Log(Line);
+  Report(Line);
+  Continues := FCrashes.Crashed(Code);
+  if not Continues then
+    TAtlasGuard.Log(Format('Server: zweimal %s innerhalb von %d min, kein weiterer Start ohne Zutun',
+      [TAtlasServerExits.Describe(Code), TAtlasServerCrashes.WindowMinutes]));
+  Manager := Self;
+  // Statusfeld und Benachrichtigung im Hauptthread: FPhaseError ist ein String, den der Hauptthread liest.
+  TAtlasMainThread.Queue(TAtlasFeature.Server,
+    procedure
+    begin
+      if LiveManager <> Manager then
+        Exit;
+      if not Continues then
+        Manager.ServerHeld(Code)
+      // Inzwischen neu gestartet oder von Atlas beendet: Die Ursache gehört nicht mehr ins Statusfeld.
+      else if (Manager.FPhase = TAtlasServerPhase.Stopped) and not Manager.FPhaseEnded then
+        Manager.SetPhase(TAtlasServerPhase.Stopped, TAtlasServerExits.Describe(Code));
+    end);
+end;
+
+procedure TAtlasCodeInsightManager.ServerHeld(ACode: Cardinal);
+var
+  Manager: TAtlasCodeInsightManager;
+  Restart: TProc;
+  Actions: TArray<TAtlasNotificationAction>;
+  Cause: string;
+begin
+  // Von Hand neu gestartet, bevor dieser Eintrag dran war: nichts mehr zu melden.
+  if not FCrashes.Held then
+    Exit;
+  Cause := TAtlasServerExits.Describe(ACode);
+  SetPhase(TAtlasServerPhase.Stopped, TAtlasStrings.Fmt(TAtlasTextId.ServerHeldPhase, [Cause]));
+  Manager := Self;
+  Restart :=
+    procedure
+    begin
+      if LiveManager = Manager then
+        Manager.RestartServer;
+    end;
+  Actions := [TAtlasNotificationCenter.Action(TAtlasStrings.Text(TAtlasTextId.StatusRestartServer), Restart)];
+  if Assigned(FOnBugReport) then
+    Actions := Actions + [TAtlasNotificationCenter.Action(TAtlasStrings.Text(TAtlasTextId.BugReportMenu),
+      FOnBugReport)];
+  Actions := Actions + LogActions;
+  TAtlasNotificationCenter.Default.Notify(TAtlasNotificationSources.Server, TAtlasNotificationSeverity.Error,
+    TAtlasStrings.Text(TAtlasTextId.ServerHeldTitle),
+    TAtlasStrings.Fmt(TAtlasTextId.ServerHeldText, [Cause, TAtlasServerCrashes.WindowMinutes]), Actions);
 end;
 
 function TAtlasCodeInsightManager.QueryStatusAsync(const ADone: TProc<string>): Boolean;
@@ -830,6 +926,9 @@ begin
     FlushFileChanges;
     Exit(True);
   end;
+  // Zweimal gleich abgestürzt (Bericht H5): kein stiller Neustart; „Server neu starten“ hebt das auf.
+  if FCrashes.Held then
+    Exit(False);
   FStarting := True;
   try
     Result := StartSession;
@@ -845,6 +944,8 @@ var
   Projects: TArray<string>;
   Crashed: Boolean;
   Text: string;
+  Client: TLspClient;
+  Code: Cardinal;
 begin
   // Vom Server selbst beendet (nicht von Atlas): für den Eintrag „Server neu gestartet“ (#601).
   Crashed := (FPhase = TAtlasServerPhase.Stopped) and not FPhaseEnded;
@@ -865,12 +966,19 @@ begin
   SetPhase(TAtlasServerPhase.Starting, '');
   try
     FServer := FAdapters.NewServer(Path, Arguments);
+    Client := FServer.Client;
     // Ende des Prozesses (z. B. im Task-Manager beendet) färbt das Statusfeld sofort rot (#591).
-    FServer.Client.OnClosed :=
+    Client.OnClosed :=
       procedure
+      var
+        Ended: Boolean;
       begin
         // Während StopSession beendet Atlas den Server selbst; sonst ist er abgestürzt (#754).
-        SetPhase(TAtlasServerPhase.Stopped, '', FStopping);
+        Ended := FStopping;
+        SetPhase(TAtlasServerPhase.Stopped, '', Ended);
+        // Erst danach: Die Ursache aus ServerEnded setzt der Hauptthread nur auf einen abgestürzten Server.
+        if not Ended then
+          ServerEnded(Client.CloseInfo);
       end;
     FSession := TLspSession.Create(FServer.Client);
     FContextsChecked := 0;
@@ -906,7 +1014,9 @@ begin
     if FStarts > 1 then
     begin
       Text := '';
-      if Crashed then
+      if Crashed and FCrashes.LastCode(Code) then
+        Text := TAtlasStrings.Fmt(TAtlasTextId.ServerCrashedCause, [TAtlasServerExits.Describe(Code)])
+      else if Crashed then
         Text := TAtlasStrings.Text(TAtlasTextId.NotificationsServerCrashed);
       if Length(Documents) > 0 then
         Text := Trim(Text + ' ' + TAtlasStrings.Fmt(TAtlasTextId.NotificationsServerReopened, [Length(Documents)]));
@@ -1288,7 +1398,7 @@ begin
       FAdapters.NewSignatureSource(
         function: TLspSession
         begin
-          // Aufgerufen im Zeitlimit-Arbeiter (#493): nur eine laufende Sitzung, nie ein Start (A-01).
+          // Im Hauptthread beim Öffnen des Hints: nur eine laufende Sitzung, nie ein Start (A-01).
           Result := RunningSession;
         end),
       function: Boolean
@@ -1394,7 +1504,7 @@ begin
   ALineNum := 0;
   Result := True;
   // Durch die Sicherung abgeschaltet (#493, Code-Review S-05); AFileName = '' bricht still ab.
-  if TAtlasGuard.Disabled(TAtlasFeature.EditorCommands) then
+  if TAtlasGuard.Disabled(TAtlasFeature.GoToDefinition) then
     Exit;
   Diagnose(Format('GotoDefinition(Index %d) aufgerufen', [Index]));
   try
@@ -1429,7 +1539,7 @@ begin
     on E: Exception do
     begin
       ReportError('Gehe zu Definition: ' + E.Message);
-      ReportFailure(TAtlasFeature.EditorCommands, E);
+      ReportFailure(TAtlasFeature.GoToDefinition, E);
       AFileName := '';
       ALineNum := 0;
     end;

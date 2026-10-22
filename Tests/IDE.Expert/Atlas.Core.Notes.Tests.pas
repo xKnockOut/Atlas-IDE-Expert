@@ -45,6 +45,10 @@ type
     procedure EmptyBookRemovesFile;
     [Test]
     procedure SaveKeepsNewerFormatFile;
+    /// <summary>Unbrauchbare Datei liegt danach als .defekt daneben; eine beim Lesen gesperrte wird nicht
+    /// überschrieben (Bericht N3).</summary>
+    [Test]
+    procedure BrokenFileSetAsideLockedFileKept;
     [Test]
     procedure LoadAllWithoutOpenProject;
     /// <summary>Akzeptanzkriterium „git status zeigt nichts“: die Ablage liegt im Notizordner, nie beim
@@ -60,9 +64,11 @@ implementation
 uses
   System.Generics.Collections,
   System.SysUtils,
+  System.Classes,
   System.IOUtils,
   System.JSON,
   Atlas.Core.Editor.LineAnchor,
+  Atlas.Core.Files.DataFile,
   Atlas.Core.Notes.Store,
   Atlas.Core.Projects.Summary;
 
@@ -373,6 +379,34 @@ procedure TAtlasNoteStoreTests.SameFileIgnoresCaseAndSlashes;
 begin
   Assert.IsTrue(TAtlasNotes.SameFile('C:\Projekte\Kunde.pas', ' c:/projekte/KUNDE.pas '));
   Assert.IsFalse(TAtlasNotes.SameFile('C:\Projekte\Kunde.pas', 'C:\Projekte\Kunde.dfm'));
+end;
+
+procedure TAtlasNoteStoreTests.BrokenFileSetAsideLockedFileKept;
+var
+  Book: TAtlasNoteBook;
+  FileName: string;
+  Lock: TFileStream;
+begin
+  FileName := TAtlasNotes.FileFor(FFolder, Project);
+  ForceDirectories(FFolder);
+  TFile.WriteAllText(FileName, '{"notes": [');
+  Assert.IsFalse(TAtlasNotes.Load(FFolder, Project, Book));
+  Assert.AreEqual(Project, Book.Project);
+  Assert.IsTrue(FileExists(FileName + TAtlasDataFile.DefectExtension), 'beiseitegelegt');
+  Book.Add(UnitFile, Code, 8, 'Rundung', Now);
+  Assert.IsTrue(TAtlasNotes.Save(FFolder, Book));
+  Lock := TFileStream.Create(FileName, fmOpenRead or fmShareExclusive);
+  try
+    Assert.IsFalse(TAtlasNotes.Load(FFolder, Project, Book));
+  finally
+    Lock.Free;
+  end;
+  Assert.AreEqual(0, Integer(Book.Count));
+  Assert.AreEqual(FileName, Book.KeptFile);
+  Book.Add(UnitFile, Code, 8, 'Ersatz', Now);
+  Assert.IsFalse(TAtlasNotes.Save(FFolder, Book), 'beim Laden gesperrt: nicht überschreiben');
+  Assert.Contains(TFile.ReadAllText(FileName), 'Rundung');
+  Assert.DoesNotContain(TFile.ReadAllText(FileName), 'Ersatz');
 end;
 
 initialization

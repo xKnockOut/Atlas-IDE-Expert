@@ -11,12 +11,15 @@
 //     {"format": 1, "choices": [{"candidates": "c:\\a.dproj|c:\\b.dproj",
 //       "project": "C:\\b.dproj"}]}
 //   Neueste Wahl zuerst, höchstens MaxEntries; ein höheres Format bleibt
-//   unangetastet.
+//   unangetastet. Lesen und Schreiben über TAtlasDataFile (Bericht N3):
+//   atomar ersetzt (früher Löschen und Umbenennen), eine unbrauchbare Datei
+//   liegt danach als .defekt daneben, eine gesperrte wird nicht überschrieben.
 
 interface
 
 uses
-  System.SysUtils;
+  System.SysUtils,
+  Atlas.Core.Files.DataFile;
 
 type
   TAtlasTestProjectChoice = record
@@ -40,8 +43,13 @@ type
     class function FormatOf(const AText: string): Integer; static;
     /// <summary>Text der Datei (eingerückt, CRLF).</summary>
     class function ToJson(const AChoices: TArray<TAtlasTestProjectChoice>): string; static;
-    class function Load(const AFile: string): TArray<TAtlasTestProjectChoice>; static;
-    /// <summary>Schreiben über eine temporäre Datei; False bei Fehler oder höherem Format der vorhandenen.</summary>
+    /// <summary>Gemerkte Wahl; leer ohne Datei, bei unbrauchbarer (dann als .defekt beiseitegelegt) oder
+    /// gesperrter. Ergebnis Kept: vorhanden, aber nicht gelesen; dann nicht speichern.</summary>
+    class function Load(const AFile: string; out AChoices: TArray<TAtlasTestProjectChoice>): TAtlasDataLoad;
+      overload; static;
+    class function Load(const AFile: string): TArray<TAtlasTestProjectChoice>; overload; static;
+    /// <summary>Ersetzt die Datei atomar; False bei Fehler (einmal protokolliert), bei höherem Format der
+    /// vorhandenen oder wenn sie gerade nicht lesbar ist.</summary>
     class function Save(const AFile: string; const AChoices: TArray<TAtlasTestProjectChoice>): Boolean; static;
     /// <summary>Index des gemerkten Projekts in ACandidates; bei einem einzigen Kandidaten 0, sonst -1, wenn für
     /// diese Kandidaten nichts gemerkt ist oder das gemerkte Projekt fehlt.</summary>
@@ -56,10 +64,8 @@ type
 implementation
 
 uses
-  Winapi.Windows,
   System.JSON,
-  System.Generics.Collections,
-  System.IOUtils;
+  System.Generics.Collections;
 
 function Quote(const AText: string): string;
 var
@@ -190,41 +196,49 @@ begin
   end;
 end;
 
+class function TAtlasTestProjectChoices.Load(const AFile: string;
+  out AChoices: TArray<TAtlasTestProjectChoice>): TAtlasDataLoad;
+var
+  Choices: TArray<TAtlasTestProjectChoice>;
+begin
+  AChoices := nil;
+  if AFile = '' then
+    Exit(TAtlasDataLoad.Missing);
+  Choices := nil;
+  Result := TAtlasDataFile.Load(AFile, 'Wahl des Testprojekts',
+    function(const AText: string): Boolean
+    begin
+      Choices := Parse(AText);
+      // ToJson schreibt immer "format"; ohne ist die Datei unbrauchbar. Ein höheres Format bleibt (Save
+      // überschreibt es nicht).
+      Result := FormatOf(AText) >= 1;
+    end);
+  if Result = TAtlasDataLoad.Loaded then
+    AChoices := Choices;
+end;
+
 class function TAtlasTestProjectChoices.Load(const AFile: string): TArray<TAtlasTestProjectChoice>;
 begin
-  Result := nil;
-  if (AFile = '') or not FileExists(AFile) then
-    Exit;
-  try
-    Result := Parse(TFile.ReadAllText(AFile, TEncoding.UTF8));
-  except
-    // Gesperrt oder unlesbar: wie ohne Datei.
-    on Exception do
-      Result := nil;
-  end;
+  Load(AFile, Result);
 end;
 
 class function TAtlasTestProjectChoices.Save(const AFile: string;
   const AChoices: TArray<TAtlasTestProjectChoice>): Boolean;
 var
-  Temp: string;
+  Text: string;
 begin
   Result := False;
   if AFile = '' then
     Exit;
   try
-    // Eine neuere Fassung hat die Datei geschrieben: nicht überschreiben.
-    if FileExists(AFile) and (FormatOf(TFile.ReadAllText(AFile, TEncoding.UTF8)) > Format) then
+    // Eine neuere Fassung hat die Datei geschrieben oder sie ist gerade nicht lesbar: nicht überschreiben.
+    if FileExists(AFile) and (not TAtlasDataFile.TryRead(AFile, Text) or (FormatOf(Text) > Format)) then
       Exit;
-    ForceDirectories(ExtractFileDir(AFile));
-    Temp := AFile + '.tmp';
-    TFile.WriteAllText(Temp, ToJson(AChoices), TEncoding.UTF8);
-    if FileExists(AFile) then
-      System.SysUtils.DeleteFile(AFile);
-    Result := RenameFile(Temp, AFile);
+    TAtlasDataFile.Write(AFile, ToJson(AChoices));
+    Result := True;
   except
-    on Exception do
-      Result := False;
+    on E: Exception do
+      TAtlasDataFile.ReportNotWritten('Wahl des Testprojekts', E);
   end;
 end;
 

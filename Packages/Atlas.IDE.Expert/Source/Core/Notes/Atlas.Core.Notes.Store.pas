@@ -31,6 +31,10 @@
 // erhalten; "format" steigt nur bei einer inkompatiblen Änderung, eine Datei
 // mit höherem Format wird weder gelesen noch überschrieben. Ein leeres
 // Notizbuch löscht seine Datei.
+// Lesen und Schreiben über TAtlasDataFile (Bericht N3): atomar ersetzt
+// (früher Löschen und Umbenennen), eine unbrauchbare Datei liegt danach als
+// .defekt daneben; eine beim Lesen gesperrte merkt sich das Notizbuch
+// (KeptFile), und Save überschreibt sie nicht.
 // Nicht threadsicher: Die IDE liest und schreibt nur im Hauptthread.
 
 interface
@@ -76,6 +80,9 @@ type
     Notes: TArray<TAtlasNote>;
     /// <summary>Gelesener Text der Datei; ToJson behält daraus unbekannte Felder.</summary>
     Raw: string;
+    /// <summary>Vorhandene Datei, die beim Lesen gesperrt war: Save überschreibt sie nicht, sonst gingen ihre
+    /// Notizen verloren (Bericht N3). '' sonst.</summary>
+    KeptFile: string;
     class function Create(const AProject: string): TAtlasNoteBook; static;
     function Count: Integer;
     function IndexOf(const AId: string): Integer;
@@ -123,11 +130,13 @@ type
     class function ToJson(const ABook: TAtlasNoteBook): string; static;
     /// <summary>Format einer Datei (0 ohne oder bei ungültigem Inhalt).</summary>
     class function FormatOf(const AJson: string): Integer; static;
-    /// <summary>Liest die Datei zu AProject; False ohne oder bei ungültiger Datei (ABook dann leer mit
-    /// Project = AProject).</summary>
+    /// <summary>Liest die Datei zu AProject über TAtlasDataFile.Load; False ohne, bei unbrauchbarer (dann als
+    /// .defekt beiseitegelegt) oder gesperrter Datei (dann KeptFile). ABook ist dann leer mit Project = AProject.
+    /// </summary>
     class function Load(const AFolder, AProject: string; out ABook: TAtlasNoteBook): Boolean; static;
-    /// <summary>Schreibt über eine temporäre Datei; ohne Notizen wird die Datei gelöscht. False bei Fehler
-    /// oder wenn die vorhandene Datei ein höheres Format hat.</summary>
+    /// <summary>Ersetzt die Datei atomar; ohne Notizen wird sie gelöscht. False bei Fehler (einmal
+    /// protokolliert), wenn die vorhandene Datei ein höheres Format hat, gerade nicht lesbar ist oder beim Laden
+    /// gesperrt war (ABook.KeptFile).</summary>
     class function Save(const AFolder: string; const ABook: TAtlasNoteBook): Boolean; static;
     /// <summary>Alle lesbaren Notizbücher in AFolder (ohne geöffnetes Projekt), nach Projektpfad.</summary>
     class function LoadAll(const AFolder: string): TArray<TAtlasNoteBook>; static;
@@ -142,7 +151,8 @@ uses
   System.JSON,
   System.Generics.Collections,
   System.Generics.Defaults,
-  Atlas.Core.Projects.Summary;
+  Atlas.Core.Projects.Summary,
+  Atlas.Core.Files.DataFile;
 
 const
   // Bekannte Felder; alles andere bleibt beim Schreiben erhalten.
@@ -581,18 +591,6 @@ begin
   end;
 end;
 
-function ReadText(const AFileName: string): string;
-var
-  Bytes: TBytes;
-begin
-  Bytes := TFile.ReadAllBytes(AFileName);
-  // Mit oder ohne BOM.
-  if (Length(Bytes) >= 3) and (Bytes[0] = $EF) and (Bytes[1] = $BB) and (Bytes[2] = $BF) then
-    Result := TEncoding.UTF8.GetString(Bytes, 3, Length(Bytes) - 3)
-  else
-    Result := TEncoding.UTF8.GetString(Bytes);
-end;
-
 { TAtlasNotes }
 
 class function TAtlasNotes.DefaultFolder: string;
@@ -696,40 +694,49 @@ end;
 
 class function TAtlasNotes.Load(const AFolder, AProject: string; out ABook: TAtlasNoteBook): Boolean;
 var
-  FileName, Text: string;
+  FileName: string;
+  Book: TAtlasNoteBook;
+  Parsed: Boolean;
+  Load: TAtlasDataLoad;
 begin
   ABook := TAtlasNoteBook.Create(AProject);
   Result := False;
   if (AFolder = '') or (Trim(AProject) = '') then
     Exit;
   FileName := FileFor(AFolder, AProject);
-  if not FileExists(FileName) then
-    Exit;
-  try
-    Text := ReadText(FileName);
-  except
-    // Gesperrt oder unlesbar: wie ohne Datei.
-    on Exception do
-      Exit;
-  end;
-  Result := Parse(Text, ABook);
-  if not Result then
-    ABook := TAtlasNoteBook.Create(AProject)
-  else if ABook.Project = '' then
-    ABook.Project := AProject;
+  Parsed := False;
+  Load := TAtlasDataFile.Load(FileName, 'Notizen',
+    function(const AText: string): Boolean
+    begin
+      Parsed := Parse(AText, Book);
+      // Ein höheres Format ist nicht unbrauchbar: nicht beiseitelegen; Save überschreibt es nicht.
+      Result := Parsed or (FormatOf(AText) > Format);
+    end);
+  Result := Parsed and (Load = TAtlasDataLoad.Loaded);
+  if Result then
+  begin
+    ABook := Book;
+    if ABook.Project = '' then
+      ABook.Project := AProject;
+  end
+  else if not TAtlasDataFile.Writable(Load) then
+    ABook.KeptFile := FileName;
 end;
 
 class function TAtlasNotes.Save(const AFolder: string; const ABook: TAtlasNoteBook): Boolean;
 var
-  FileName, Temp: string;
+  FileName, Text: string;
 begin
   Result := False;
   if (AFolder = '') or (Trim(ABook.Project) = '') then
     Exit;
   FileName := FileFor(AFolder, ABook.Project);
+  // Beim Laden gesperrt: Das Notizbuch kennt den Inhalt der Datei nicht.
+  if SameFileName(FileName, ABook.KeptFile) then
+    Exit;
   try
-    // Eine neuere Fassung hat die Datei geschrieben: nicht überschreiben.
-    if FileExists(FileName) and (FormatOf(ReadText(FileName)) > Format) then
+    // Eine neuere Fassung hat die Datei geschrieben oder sie ist gerade nicht lesbar: nicht überschreiben.
+    if FileExists(FileName) and (not TAtlasDataFile.TryRead(FileName, Text) or (FormatOf(Text) > Format)) then
       Exit;
     if ABook.Count = 0 then
     begin
@@ -737,16 +744,12 @@ begin
       Result := not FileExists(FileName) or System.SysUtils.DeleteFile(FileName);
       Exit;
     end;
-    ForceDirectories(AFolder);
-    Temp := FileName + '.tmp';
-    // Ohne BOM: UTF-8 wie JSON üblich.
-    TFile.WriteAllBytes(Temp, TEncoding.UTF8.GetBytes(ToJson(ABook)));
-    if FileExists(FileName) then
-      System.SysUtils.DeleteFile(FileName);
-    Result := RenameFile(Temp, FileName);
+    // Atomar ersetzt, UTF-8 ohne BOM wie JSON üblich.
+    TAtlasDataFile.Write(FileName, ToJson(ABook));
+    Result := True;
   except
-    on Exception do
-      Result := False;
+    on E: Exception do
+      TAtlasDataFile.ReportNotWritten('Notizen', E);
   end;
 end;
 
@@ -762,14 +765,10 @@ begin
   if FindFirst(IncludeTrailingPathDelimiter(AFolder) + '*.json', faAnyFile, Search) = 0 then
     try
       repeat
-        if (Search.Attr and faDirectory) <> 0 then
+        // Gesperrt oder verschwunden: übergehen; nur lesen, beiseitegelegt wird beim Laden des Projekts.
+        if ((Search.Attr and faDirectory) <> 0) or
+          not TAtlasDataFile.TryRead(IncludeTrailingPathDelimiter(AFolder) + Search.Name, Text) then
           Continue;
-        try
-          Text := ReadText(IncludeTrailingPathDelimiter(AFolder) + Search.Name);
-        except
-          on Exception do
-            Continue;
-        end;
         if Parse(Text, Book) and (Book.Project <> '') then
           Result := Result + [Book];
       until FindNext(Search) <> 0;

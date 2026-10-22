@@ -24,6 +24,10 @@ type
     procedure ParseDropsInvalidEntries;
     [Test]
     procedure SurvivesRestartViaFile;
+    /// <summary>Unbrauchbare Datei liegt danach als .defekt daneben; eine beim Lesen gesperrte wird nicht
+    /// überschrieben (Bericht N3).</summary>
+    [Test]
+    procedure BrokenFileSetAsideLockedFileKept;
   end;
 
   [TestFixture]
@@ -58,6 +62,7 @@ uses
   Atlas.Core.Completion.Ranking,
   Atlas.Core.Completion.Favorites,
   Atlas.Core.Completion.Controller,
+  Atlas.Core.Files.DataFile,
   Atlas.Core.Completion.Providers.Fixed;
 
 type
@@ -607,6 +612,39 @@ begin
   finally
     Controller.Free;
     Favorites.Free;
+  end;
+end;
+
+procedure TAtlasFavoritesTests.BrokenFileSetAsideLockedFileKept;
+var
+  Favorites: TAtlasFavorites;
+  Folder, FileName: string;
+  Lock: TFileStream;
+begin
+  Folder := TempFile + '.d';
+  FileName := TPath.Combine(Folder, 'favorites.json');
+  TDirectory.CreateDirectory(Folder);
+  Favorites := TAtlasFavorites.Create;
+  try
+    TFile.WriteAllText(FileName, '{kaputt');
+    Assert.IsTrue(Favorites.LoadFromFile(FileName) = TAtlasDataLoad.Renewed);
+    Assert.AreEqual('{kaputt', TFile.ReadAllText(FileName + TAtlasDataFile.DefectExtension));
+    Favorites.Toggle(Member('Open', 'TDataSet', 1, 0));
+    Assert.IsTrue(Favorites.SaveToFile(FileName));
+    Lock := TFileStream.Create(FileName, fmOpenRead or fmShareExclusive);
+    try
+      Assert.IsTrue(Favorites.LoadFromFile(FileName) = TAtlasDataLoad.Kept);
+    finally
+      Lock.Free;
+    end;
+    Assert.AreEqual(0, Integer(Favorites.Count));
+    Favorites.Toggle(Member('Close', 'TDataSet', 1, 0));
+    Assert.IsFalse(Favorites.SaveToFile(FileName), 'beim Lesen gesperrt: nicht überschreiben');
+    Assert.Contains(TFile.ReadAllText(FileName), '"Open"');
+    Assert.DoesNotContain(TFile.ReadAllText(FileName), '"Close"');
+  finally
+    Favorites.Free;
+    TDirectory.Delete(Folder, True);
   end;
 end;
 

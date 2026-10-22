@@ -284,7 +284,7 @@ end;
 procedure TAtlasIdeSmartPaste.TimerTick(Sender: TObject);
 begin
   FTimer.Enabled := False;
-  TAtlasGuard.Run(TAtlasFeature.EditorCommands,
+  TAtlasGuard.Run(TAtlasFeature.SmartPaste,
     procedure
     begin
       Check;
@@ -454,11 +454,11 @@ begin
         Analysis := Default(TAtlasPasteAnalysis);
       end;
       // Atlas gehört der Eintrag: beim Entladen verworfen (Code-Review A-02).
-      TAtlasMainThread.Queue(TAtlasFeature.EditorCommands,
+      TAtlasMainThread.Queue(TAtlasFeature.SmartPaste,
         procedure
         begin
           if FInstance <> nil then
-            TAtlasGuard.Run(TAtlasFeature.EditorCommands,
+            TAtlasGuard.Run(TAtlasFeature.SmartPaste,
               procedure
               begin
                 if FInstance <> nil then
@@ -489,7 +489,7 @@ begin
     FWindow.OnAccept :=
       procedure
       begin
-        TAtlasGuard.Run(TAtlasFeature.EditorCommands,
+        TAtlasGuard.Run(TAtlasFeature.SmartPaste,
           procedure
           begin
             if FInstance <> nil then
@@ -623,7 +623,7 @@ end;
 
 procedure TAtlasIdeSmartPaste.AppMessage(var Msg: TMsg; var Handled: Boolean);
 begin
-  if TAtlasGuard.Disabled(TAtlasFeature.EditorCommands) then
+  if TAtlasGuard.Disabled(TAtlasFeature.SmartPaste) then
     Exit;
   try
     case Msg.message of
@@ -644,7 +644,7 @@ begin
     on E: Exception do
     begin
       Handled := False;
-      TAtlasGuard.Report(TAtlasFeature.EditorCommands, E);
+      TAtlasGuard.Report(TAtlasFeature.SmartPaste, E);
     end;
   end;
 end;

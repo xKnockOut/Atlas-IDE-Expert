@@ -455,6 +455,7 @@ uses
   System.Math,
   System.StrUtils,
   System.Diagnostics,
+  Atlas.Common.Index.Adapters.DiskFileSystem,
   Atlas.Common.Product.Version,
   Atlas.Common.Configuration.Parser,
   Atlas.Common.Configuration.Scopes,
@@ -517,6 +518,7 @@ uses
   Atlas.Common.Compiler.Edition,
   Atlas.Windows.Console.StdStreams,
   Atlas.Windows.Documents.PathCanonicalizer,
+  Atlas.Windows.Documents.SharedRead,
   Atlas.Windows.Diagnostics.Adapters.DebugOutputSink,
   Atlas.Windows.Diagnostics.StackTrace,
   Atlas.Windows.Diagnostics.StackGuard,
@@ -2624,14 +2626,22 @@ begin
   Result.Write :=
     procedure(const AFileName, AText: string)
     var
-      Encoding: TEncoding;
+      Disk: IIndexFileSystem;
+      Error: string;
     begin
-      Encoding := TUTF8Encoding.Create(False);
-      try
-        TFile.WriteAllText(AFileName, AText, Encoding);
-      finally
-        Encoding.Free;
-      end;
+      // Atomar wie der Index-Cache (Bericht N3): Der Arbeitsbereich liest die Datei nach dem Zeitstempel und sah
+      // mit TFile.WriteAllText womöglich einen halben Stand; ein Abbruch hinterließ eine kaputte Baseline.
+      // UTF-8 ohne BOM wie bisher.
+      Disk := TDiskIndexFileSystem.Create;
+      if not Disk.WriteBytes(AFileName, TEncoding.UTF8.GetBytes(AText), Error) then
+        raise EInOutError.Create('Baseline nicht geschrieben (' + Error + ')');
+    end;
+  Result.SetAside :=
+    function(const AFileName: string; out ATarget: string): Boolean
+    begin
+      ATarget := AFileName + '.defekt';
+      // Eine ältere beiseitegelegte Datei wird in einem Schritt ersetzt: Die jüngere hat den neueren Stand.
+      Result := MoveFileEx(PChar(AFileName), PChar(ATarget), MOVEFILE_REPLACE_EXISTING);
     end;
 end;
 
@@ -4569,6 +4579,9 @@ begin
   // Nach einem abgefangenen Stapelüberlauf die Schutzseite neu setzen (#1094); sonst beendet der
   // nächste Überlauf den Prozess.
   TWindowsStackGuard.Install;
+  // Lesen mit FILE_SHARE_DELETE (Bericht M5): Das Plugin ersetzt settings.json, atlas.json und Units atomar,
+  // auch während der Server sie liest.
+  TWindowsSharedRead.Install;
   LoggerImpl := TLogger.Create;
   Logger := LoggerImpl;
   LoggerImpl.AddSink(TDebugOutputLogSink.Create, TLogLevel.Debug);

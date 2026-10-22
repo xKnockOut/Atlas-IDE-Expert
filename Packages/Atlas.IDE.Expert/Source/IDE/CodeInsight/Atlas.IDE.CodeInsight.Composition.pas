@@ -111,9 +111,11 @@ uses
   Atlas.Core.Status.Contract,
   Atlas.Core.Notifications.Contract,
   Atlas.Core.Notifications.Center,
+  Atlas.Core.Notifications.Sources,
   Atlas.IDE.Notifications.Service,
   Atlas.Core.Diagnostics.SafeMode,
   Atlas.IDE.Diagnostics.SafeMode,
+  Atlas.IDE.Diagnostics.StackCapture,
   Atlas.Core.Diagnostics.Guard,
   Atlas.Core.Diagnostics.Shutdown,
   Atlas.Core.Diagnostics.TimeLimit,
@@ -200,6 +202,7 @@ uses
   Atlas.Core.Completion.Providers.Snippets,
   Atlas.Core.Completion.Providers.XmlDoc,
   Atlas.Core.Diagnostics.FeatureTable,
+  Atlas.Core.Diagnostics.StartTimes,
   Atlas.Core.Diagnostics.Teardown,
   Atlas.Core.Build.Inbox,
   Atlas.Core.Build.ReleaseGuard,
@@ -283,10 +286,10 @@ var
   SafeMode: TAtlasIdeSafeMode;
   // Rückfrage und tägliche Update-Prüfung (#495).
   Updates: TAtlasIdeUpdates;
-  // Zeitpunkt des Ladens (TAtlasWatchdog.Timestamp) für Wächter und Ladezeit.
+  // Zeitpunkt des Ladens (TAtlasWatchdog.Timestamp) für Ladezeit und Startanteile.
   LoadedAt: Int64;
-  // Laden abgeschlossen: Später angemeldete Teile messen ab dann.
-  StartupDone: Boolean;
+  // Startanteile von Atlas bis zur freien Nachrichtenschleife (Bericht N4); danach nil.
+  StartTimes: TAtlasStartTimes;
   // Paketbeobachtung und Meldung fremder Vervollständigung angemeldet (#494).
   KeysWatched: Boolean;
   // Atlas-Bereiche auf der Willkommensseite und Fenster „Atlas-Start“ (#753).
@@ -670,6 +673,9 @@ begin
     AUpdate.Added, AUpdate.Removed, AUpdate.Unchanged]));
   if AUpdate.Completed > 0 then
     MessageLine(TAtlasStrings.Fmt(TAtlasTextId.BaselineUpdateCompleted, [AUpdate.Completed]));
+  // Bericht N3: Die unbrauchbare bisherige Datei wurde nicht still ersetzt.
+  if AUpdate.SetAside <> '' then
+    MessageLine(TAtlasStrings.Fmt(TAtlasTextId.BaselineUpdateSetAside, [AUpdate.SetAside]));
 end;
 
 /// <summary>Lässt den Server (atlas.updateBaseline, #97) im Hintergrund alle Dateien von AFileName prüfen und die
@@ -1213,34 +1219,34 @@ begin
   Add('Atlas.QuickOpen', TAtlasTextId.QuickOpenTitle, Guarded(TAtlasFeature.Palette, TAtlasIdeQuickOpen.Show),
     QuickOpenVisible);
   // Navigationsverlauf über Dateien (#504); nur sichtbar, solange navHistory.enabled an ist.
-  Add('Atlas.NavBack', TAtlasTextId.NavBackCommand, Guarded(TAtlasFeature.EditorCommands, TAtlasIdeNavHistory.GoBack),
+  Add('Atlas.NavBack', TAtlasTextId.NavBackCommand, Guarded(TAtlasFeature.NavHistory, TAtlasIdeNavHistory.GoBack),
     NavHistoryVisible);
   Add('Atlas.NavForward', TAtlasTextId.NavForwardCommand,
-    Guarded(TAtlasFeature.EditorCommands, TAtlasIdeNavHistory.GoForward), NavHistoryVisible);
+    Guarded(TAtlasFeature.NavHistory, TAtlasIdeNavHistory.GoForward), NavHistoryVisible);
   Add('Atlas.LastEdit', TAtlasTextId.NavLastEditCommand,
-    Guarded(TAtlasFeature.EditorCommands, TAtlasIdeNavHistory.GoLastEdit), NavHistoryVisible);
+    Guarded(TAtlasFeature.NavHistory, TAtlasIdeNavHistory.GoLastEdit), NavHistoryVisible);
   Add('Atlas.NavList', TAtlasTextId.NavListCommand,
-    Guarded(TAtlasFeature.EditorCommands, TAtlasIdeNavHistory.ShowList), NavHistoryVisible);
+    Guarded(TAtlasFeature.NavHistory, TAtlasIdeNavHistory.ShowList), NavHistoryVisible);
   Add('Atlas.PeekDefinition', TAtlasTextId.PeekDefinitionCommand,
-    Guarded(TAtlasFeature.EditorCommands, TAtlasIdePeek.PeekDefinition), PeekVisible);
+    Guarded(TAtlasFeature.Peek, TAtlasIdePeek.PeekDefinition), PeekVisible);
   Add('Atlas.PeekReferences', TAtlasTextId.PeekReferencesCommand,
-    Guarded(TAtlasFeature.EditorCommands, TAtlasIdePeek.PeekReferences), PeekVisible);
+    Guarded(TAtlasFeature.Peek, TAtlasIdePeek.PeekReferences), PeekVisible);
   // Gliederungsfenster (#537); nur sichtbar, solange outline.enabled an ist.
   Add('Atlas.Outline', TAtlasTextId.OutlineCommand,
-    Guarded(TAtlasFeature.EditorCommands, TAtlasIdeOutline.ShowWindow), OutlineVisible);
+    Guarded(TAtlasFeature.Outline, TAtlasIdeOutline.ShowWindow), OutlineVisible);
   // Brotkrumenleiste (#590): Fokus auf das letzte Glied; nur sichtbar, solange editor.breadcrumbs an ist.
   Add('Atlas.Breadcrumbs', TAtlasTextId.BreadcrumbsCommand,
-    Guarded(TAtlasFeature.EditorCommands, TAtlasIdeBreadcrumbs.Focus), BreadcrumbsVisible);
+    Guarded(TAtlasFeature.Breadcrumbs, TAtlasIdeBreadcrumbs.Focus), BreadcrumbsVisible);
   // Sprung zum Gegenstück (#635); nur sichtbar, solange keys.jumpToMatch an ist.
   Add('Atlas.JumpToMatch', TAtlasTextId.JumpToMatchCommand, Guarded(TAtlasFeature.EditorCommands, JumpToMatch),
     JumpToMatchVisible);
   Add('Atlas.JumpToMatchSelect', TAtlasTextId.JumpToMatchSelectCommand,
     Guarded(TAtlasFeature.EditorCommands, SelectToMatch), JumpToMatchVisible);
   // Nächste/vorherige Änderung gegenüber dem Repository (#507); nur sichtbar, solange editor.gitGutter an ist.
-  Add('Atlas.NextChange', TAtlasTextId.NextChangeCommand, Guarded(TAtlasFeature.EditorCommands, NextChange),
+  Add('Atlas.NextChange', TAtlasTextId.NextChangeCommand, Guarded(TAtlasFeature.LineChanges, NextChange),
     ChangesVisible);
   Add('Atlas.PreviousChange', TAtlasTextId.PreviousChangeCommand,
-    Guarded(TAtlasFeature.EditorCommands, PreviousChange), ChangesVisible);
+    Guarded(TAtlasFeature.LineChanges, PreviousChange), ChangesVisible);
   // Zeilen verschieben und duplizieren (#634); nur sichtbar, solange keys.moveLines an ist.
   Add('Atlas.MoveLinesUp', TAtlasTextId.MoveLinesUpCommand, Guarded(TAtlasFeature.EditorCommands, MoveLinesUp),
     MoveLinesVisible);
@@ -1265,16 +1271,16 @@ begin
   Add('Atlas.NewLineAbove', TAtlasTextId.NewLineAboveCommand, Guarded(TAtlasFeature.EditorCommands, NewLineAbove),
     NewLineAroundVisible);
   // Umschließung entfernen (#657); nur sichtbar, solange keys.unwrap an ist.
-  Add('Atlas.Unwrap', TAtlasTextId.UnwrapCommand, Guarded(TAtlasFeature.EditorCommands, Unwrap), UnwrapVisible);
+  Add('Atlas.Unwrap', TAtlasTextId.UnwrapCommand, Guarded(TAtlasFeature.Unwrap, Unwrap), UnwrapVisible);
   // Mehrere Einfügemarken (#589).
   Add('Atlas.MultiCursorNext', TAtlasTextId.MultiCursorNextCommand,
-    Guarded(TAtlasFeature.EditorCommands, MultiCursorNext), MultiCursorVisible);
+    Guarded(TAtlasFeature.MultiCursor, MultiCursorNext), MultiCursorVisible);
   Add('Atlas.MultiCursorLineEnds', TAtlasTextId.MultiCursorLineEndsCommand,
-    Guarded(TAtlasFeature.EditorCommands, MultiCursorLineEnds), MultiCursorVisible);
+    Guarded(TAtlasFeature.MultiCursor, MultiCursorLineEnds), MultiCursorVisible);
   Add('Atlas.MultiCursorAbove', TAtlasTextId.MultiCursorAboveCommand,
-    Guarded(TAtlasFeature.EditorCommands, MultiCursorAbove), MultiCursorVisible);
+    Guarded(TAtlasFeature.MultiCursor, MultiCursorAbove), MultiCursorVisible);
   Add('Atlas.MultiCursorBelow', TAtlasTextId.MultiCursorBelowCommand,
-    Guarded(TAtlasFeature.EditorCommands, MultiCursorBelow), MultiCursorVisible);
+    Guarded(TAtlasFeature.MultiCursor, MultiCursorBelow), MultiCursorVisible);
   Add('Atlas.Callers', TAtlasTextId.MenuIncoming, Hierarchy(TAtlasHierarchyDirection.Incoming));
   Add('Atlas.Calls', TAtlasTextId.MenuOutgoing, Hierarchy(TAtlasHierarchyDirection.Outgoing));
   Add('Atlas.Supertypes', TAtlasTextId.MenuSupertypes, Hierarchy(TAtlasHierarchyDirection.Supertypes));
@@ -1305,7 +1311,7 @@ begin
   Add('Atlas.GenerateMenu', TAtlasTextId.GenerateMenuCommand,
     procedure
     begin
-      TAtlasGuard.Run(TAtlasFeature.EditorCommands,
+      TAtlasGuard.Run(TAtlasFeature.Generate,
         procedure
         begin
           TAtlasIdeGenerate.Show;
@@ -1324,7 +1330,7 @@ begin
   Add('Atlas.CodeActions', TAtlasTextId.EditorActions, TAtlasIdeEditorCommands.CodeActions);
   // Ausblenden am Element (#628).
   Add('Atlas.HideElement', TAtlasTextId.HideElementCommand,
-    Guarded(TAtlasFeature.EditorCommands, TAtlasIdeHide.ShowForCommand));
+    Guarded(TAtlasFeature.Hide, TAtlasIdeHide.ShowForCommand));
   // Nächster/vorheriger Befund (#509).
   Add('Atlas.NextProblem', TAtlasTextId.ProblemNextCommand,
     procedure
@@ -1561,6 +1567,62 @@ begin
     Actions.OpenFile(FileName);
 end;
 
+/// <summary>Ausgelöste Sicherung (#493) als Eintrag in der Benachrichtigungszentrale mit „Wieder einschalten“ und
+/// „Protokoll öffnen“ (atlas.log mit Stacktrace): Der Fehler soll auffallen und behoben werden, statt still eine
+/// Funktion zu kosten. Aus jedem Thread; die Aktionen laufen im Hauptthread.</summary>
+procedure GuardTripped(AFeature: TAtlasFeature; const AMessage: string);
+var
+  Feature: TAtlasFeature;
+  Enable, Log: TAtlasNotificationAction;
+begin
+  Feature := AFeature;
+  Enable.Caption := TAtlasStrings.Text(TAtlasTextId.FuseTrippedEnable);
+  Enable.Run :=
+    procedure
+    begin
+      TAtlasGuard.Enable(Feature);
+      TAtlasGuard.Log(TAtlasGuard.FeatureName(Feature) + ': aus der Benachrichtigung wieder eingeschaltet');
+    end;
+  Log.Caption := TAtlasStrings.Text(TAtlasTextId.FuseTrippedOpenLog);
+  Log.Run :=
+    procedure
+    var
+      Actions: IOTAActionServices;
+    begin
+      if (TAtlasGuard.RotatingLog <> nil) and FileExists(TAtlasGuard.RotatingLog.FileName) and
+        Supports(BorlandIDEServices, IOTAActionServices, Actions) then
+        Actions.OpenFile(TAtlasGuard.RotatingLog.FileName);
+    end;
+  TAtlasNotificationCenter.Default.Notify(TAtlasNotificationSources.Fuse, TAtlasNotificationSeverity.Error,
+    TAtlasStrings.Fmt(TAtlasTextId.FuseTrippedTitle, [TAtlasGuard.FeatureName(Feature)]), AMessage, [Enable, Log]);
+end;
+
+/// <summary>Atlas-Protokoll gestört (Bericht M4), aus dem Thread des Schreibers: über OutputDebugString (DebugView
+/// zeigt es, auch wenn atlas.log nichts mehr annimmt) und als Benachrichtigung; '' = schreibt wieder.</summary>
+procedure LogError(const AMessage: string);
+var
+  Reason, Text, Detail: string;
+begin
+  if AMessage = '' then
+  begin
+    OutputDebugString(PChar('Atlas: Protokoll schreibt wieder'));
+    Exit;
+  end;
+  Reason := TAtlasGuard.SafeMessage(AMessage);
+  OutputDebugString(PChar('Atlas: Protokoll gestört: ' + Reason));
+  Text := TAtlasStrings.Text(TAtlasTextId.LogBrokenTitle);
+  Detail := TAtlasStrings.Fmt(TAtlasTextId.LogBrokenText, [TAtlasGuard.RotatingLog.FileName, Reason]);
+  if TAtlasNotificationCenter.Default.Notify(TAtlasNotificationSources.Fuse, TAtlasNotificationSeverity.Warning,
+    Text, Detail) <> TAtlasNotificationMode.Show then
+    Exit;
+  Text := Text + ': ' + Detail;
+  TAtlasMainThread.Queue(TAtlasFeature.Status,
+    procedure
+    begin
+      MessageLine(Text);
+    end);
+end;
+
 /// <summary>„Einstellungen“ der Zustandskachel (#754): Optionsseite „Atlas“ (#227) wie Menü Atlas › Einstellungen.</summary>
 procedure OpenAtlasOptions;
 var
@@ -1728,21 +1790,15 @@ begin
   TAtlasStatusRegistry.ReleaseDefault;
 end;
 
-procedure RegisterWatchdog(ALoadedAt: Int64);
+procedure RegisterWatchdog;
 begin
   Hangs := TAtlasHangMonitor.Create(TAtlasIdeSettings.Current.HangThresholdMs);
-  Watchdog := TAtlasWatchdog.Create(ALoadedAt,
+  Watchdog := TAtlasWatchdog.Create(
     function: Integer
     begin
       Result := TAtlasIdeSettings.Current.HangThresholdMs;
     end);
   Watchdog.OnHang := ReportHang;
-  Watchdog.OnStartup :=
-    procedure(AMilliseconds: Int64)
-    begin
-      if Manager <> nil then
-        Manager.Log(Format('Start: Laden des Packages bis zur freien Nachrichtenschleife %d ms', [AMilliseconds]));
-    end;
 end;
 
 procedure UnregisterWatchdog;
@@ -1990,8 +2046,12 @@ begin
       if ARestart then
         Result := Manager.RestartServer
       else
-        // Die aktive Sitzung startet den Server, wenn er noch nicht läuft.
+      begin
+        // Von Hand: auch nach zwei gleichen Abstürzen (Bericht H5). Die aktive Sitzung startet den Server,
+        // wenn er noch nicht läuft.
+        Manager.AllowStart;
         Result := Manager.ActiveSession <> nil;
+      end;
     end;
   Hooks.ServerCommand :=
     function(ACommand: string): Boolean
@@ -2089,6 +2149,8 @@ begin
     ManagerRef := Manager;
     // „Protokoll öffnen“ an den Einträgen des Servers in der Benachrichtigungszentrale (#601).
     Manager.OnOpenLog := OpenLog;
+    // Nach zwei gleichen Abstürzen des Servers bietet die Meldung den Fehlerbericht an (Bericht H5).
+    Manager.OnBugReport := CreateBugReport;
     ManagerIndex := Services.AddCodeInsightManager(Manager);
   end;
 end;
@@ -2114,15 +2176,6 @@ begin
     Manager := nil;
     ManagerRef := nil;
   end;
-end;
-
-procedure StartWatchdog;
-begin
-  // Später angemeldet (Schnellschalter) misst der Wächter ab jetzt, beim Laden ab dem Laden.
-  if StartupDone then
-    RegisterWatchdog(TAtlasWatchdog.Timestamp)
-  else
-    RegisterWatchdog(LoadedAt);
 end;
 
 procedure StartCheckOnSave;
@@ -3350,7 +3403,7 @@ begin
     begin
       Result := Watchdog <> nil;
     end,
-    StartWatchdog, UnregisterWatchdog);
+    RegisterWatchdog, UnregisterWatchdog);
   Features.AddWanted('CheckOnSave',
     function(ALevel: TAtlasSafeLevel): Boolean
     begin
@@ -3778,6 +3831,8 @@ procedure RegisterFeatures;
 begin
   if Features = nil then
     AddFeatures;
+  // Bis zur freien Nachrichtenschleife zählt jedes Teil zu den Startanteilen (Bericht N4).
+  Features.Times := StartTimes;
   Features.StartWanted(Level);
   if Welcome <> nil then
     Welcome.Sync;
@@ -3829,16 +3884,64 @@ begin
     end;
 end;
 
+/// <summary>Startanteile beenden (Bericht N4): Danach zählen weder Aktionen noch Teile mit.</summary>
+procedure EndStartTimes;
+begin
+  TAtlasActivity.TimeInto(nil);
+  if Features <> nil then
+    Features.Times := nil;
+  FreeAndNil(StartTimes);
+end;
+
+/// <summary>Nachrichtenschleife frei nach ALoadMs: Ladezeit in die Startmarke (#722), Startanteile ins Protokoll
+/// und bei einem langsamen Start (safeMode.startupTimeoutMs) eine Zeile im Meldungsfenster (abschaltbar mit
+/// robustness.hangHint). Bericht N4: Ein langsamer Start zählt nicht mehr wie ein Absturz und schaltet beim
+/// nächsten Start nichts ab; er nennt, was Atlas daran hatte, damit sich die Ursache beheben lässt.</summary>
+procedure ReportStartup(ALoadMs: Int64);
+var
+  Limit: Integer;
+  Line, Parts: string;
+begin
+  if SafeMode <> nil then
+    SafeMode.Loaded(ALoadMs);
+  if StartTimes = nil then
+    Exit;
+  try
+    // Erst anhalten, dann lesen: Keine Aktion zählt mehr mit.
+    TAtlasActivity.TimeInto(nil);
+    Limit := TAtlasIdeSettings.Current.SafeStartupTimeoutMs;
+    Line := StartTimes.LogLine(ALoadMs, Limit);
+    TAtlasGuard.Log(Line);
+    if Manager <> nil then
+      Manager.Log(Line);
+    if TAtlasStartTimes.IsSlow(ALoadMs, Limit) and TAtlasIdeSettings.Current.HangHint then
+    begin
+      Parts := StartTimes.SlowestText;
+      if Parts <> '' then
+        Parts := ': ' + Parts;
+      MessageLine(TAtlasStrings.Fmt(TAtlasTextId.StartSlow, [ALoadMs, Limit, StartTimes.Total, Parts]));
+    end;
+  finally
+    EndStartTimes;
+  end;
+end;
+
 procedure Register;
 begin
   LoadedAt := TAtlasWatchdog.Timestamp;
-  StartupDone := False;
+  // Startanteile (Bericht N4): ab dem Laden jedes Teil, nach der Anmeldung die Atlas-Aktionen.
+  EndStartTimes;
+  StartTimes := TAtlasStartTimes.Create;
   // Abbruchsignal eines früheren Entladens in derselben Sitzung zurücknehmen (#493).
   TAtlasShutdown.Reset;
   // Einreihen in den Hauptthread wieder annehmen (nach einem früheren Unregister, Code-Review A-02).
   TAtlasMainThread.Start;
   TAtlasTimeLimit.LimitMs := TAtlasIdeSettings.Current.ProviderTimeLimitMs;
   TAtlasGuard.OnWarning := GuardWarning;
+  TAtlasGuard.OnTripped := GuardTripped;
+  TAtlasGuard.RotatingLog.OnError := LogError;
+  // Stacktraces für jede Fehlerzeile der Sicherung: ohne sie lässt sich kein Fehler bis zur Codezeile verfolgen.
+  TAtlasIdeStackCapture.Install;
   TAtlasStrings.Language := IdeLanguage;
   // Versionsverwaltung (#571): Aufrufe im Hintergrund; fehlt git bzw. svn, einmal eine Zeile.
   TAtlasIdeVcs.Start(MessageLine, VcsBackend);
@@ -3964,13 +4067,19 @@ begin
         Result := nil;
     end;
   RegisterOptions;
-  // Ladezeit bis zur freien Nachrichtenschleife: zu lange zählt beim nächsten Start wie ein Absturz (#722).
+  if StartTimes <> nil then
+  begin
+    // Die übrige Anmeldung ohne die schon einzeln gezählten Teile.
+    StartTimes.Add('Anmeldung', TAtlasWatchdog.Timestamp - LoadedAt - StartTimes.Total);
+    // Bis zur freien Nachrichtenschleife laden IDE, übrige Packages und Projekt; Atlas ist dann nur mit Aktionen
+    // dabei (etwa Bauen beim Öffnen).
+    TAtlasActivity.TimeInto(StartTimes);
+  end;
+  // Ladezeit bis zur freien Nachrichtenschleife (#722) und Startanteile (Bericht N4).
   TAtlasMainThread.ForceQueue(TAtlasFeature.Settings,
     procedure
     begin
-      StartupDone := True;
-      if SafeMode <> nil then
-        SafeMode.Loaded(TAtlasWatchdog.Timestamp - LoadedAt);
+      ReportStartup(TAtlasWatchdog.Timestamp - LoadedAt);
       // Prüfliste beim ersten Start bzw. solange ein Punkt fest gelb oder rot ist (#625).
       if Setup <> nil then
         Setup.Start;
@@ -4014,8 +4123,16 @@ begin
         TAtlasIdeExperimental.Stop;
       end);
     TAtlasGuard.OnWarning := nil;
+    TAtlasGuard.OnTripped := nil;
     TAtlasGuard.OnFailure := nil;
+    TAtlasGuard.RotatingLog.OnError := nil;
     TAtlasIdeSettings.OnChanged := nil;
+    // Entladen vor der freien Nachrichtenschleife: Die Startanteile hängen noch an Aktionen und Teilen.
+    Teardown.Step('StartTimes',
+      procedure
+      begin
+        EndStartTimes;
+      end);
     // Sauberes Ende: Startmarke löschen, Absturzzähler zurück (#722).
     Teardown.Step('SafeMode',
       procedure
@@ -4087,6 +4204,11 @@ begin
       procedure
       begin
         FreeAndNil(Features);
+      end);
+    Teardown.Step('StackCapture',
+      procedure
+      begin
+        TAtlasIdeStackCapture.Uninstall;
       end);
   finally
     TAtlasGuard.Log(Format('Atlas entladen in %d ms; Hintergrund-Threads beendet: %s; Fehler beim Abbau: %s',

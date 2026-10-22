@@ -27,6 +27,9 @@
 // Nicht zu verwechseln mit %APPDATA%\Atlas\usage.json (lernende Gewichtung
 // der Vervollständigung, #418, Roaming); die bleibt unberührt.
 //
+// Lesen und Schreiben über TAtlasDataFile (Bericht N3): atomar ersetzt (früher
+// Löschen und Umbenennen), eine unbrauchbare Datei liegt danach als .defekt
+// daneben, eine gesperrte bleibt unverändert und wird nicht überschrieben.
 // UTF-8 ohne BOM; Zeiten in Ortszeit als "2026-10-15T09:30:00". Schlüssel
 // sind die Namen der Aktionen der IDE bzw. die Befehle der Befehlspalette von
 // Atlas („Atlas.…“, TAtlasShortcutTips.AtlasCommandId); Groß- und
@@ -126,15 +129,18 @@ type
     function ParseCounts(const AJson: string): Boolean;
     /// <summary>Inhalt von usage.json: nur Befehlskennung, Zähler und letzter Aufruf.</summary>
     function CountsToJson: string;
-    /// <summary>Liest shortcut-tips.json; fehlt sie oder ist sie kaputt, bleibt alles leer.</summary>
+    /// <summary>Liest shortcut-tips.json über TAtlasDataFile.Load; fehlt sie oder ist sie unbrauchbar (dann als
+    /// .defekt beiseitegelegt), bleibt alles leer. Ist sie gesperrt, bleibt sie unverändert (Writable False).
+    /// True, wenn sie gelesen wurde und geschrieben werden darf.</summary>
     function LoadFromFile(const AFileName: string): Boolean;
     /// <summary>Liest shortcut-tips.json und usage.json. Ohne usage.json gelten Zähler einer älteren
     /// shortcut-tips.json; der nächste Save legt usage.json damit an.</summary>
     procedure LoadFromFiles(const ATipsFile, AUsageFile: string);
-    /// <summary>Schreibt shortcut-tips.json über eine temporäre Datei; nicht, wenn eine neuere Fassung die Datei
-    /// geschrieben hat.</summary>
+    /// <summary>Ersetzt shortcut-tips.json atomar; nicht, wenn eine neuere Fassung die Datei geschrieben hat oder
+    /// sie beim Lesen gesperrt war.</summary>
     function SaveToFile(const AFileName: string): Boolean;
-    /// <summary>Schreibt usage.json über eine temporäre Datei; nicht bei höherem Format in der Datei.</summary>
+    /// <summary>Ersetzt usage.json atomar; nicht bei höherem Format in der Datei oder wenn sie beim Lesen gesperrt
+    /// war.</summary>
     function SaveCountsToFile(const AFileName: string): Boolean;
     /// <summary>Schreibt, was sich geändert hat: Tipp-Zustand nach ATipsFile, Zähler nach AUsageFile.</summary>
     procedure SaveToFiles(const ATipsFile, AUsageFile: string);
@@ -162,9 +168,11 @@ type
     property TipsChanged: Boolean read FTipsChanged;
     /// <summary>Zähler geändert (usage.json).</summary>
     property CountsChanged: Boolean read FCountsChanged;
-    /// <summary>False, wenn shortcut-tips.json ein höheres Format hat: dann nicht überschreiben.</summary>
+    /// <summary>False, wenn shortcut-tips.json ein höheres Format hat oder beim Lesen gesperrt war: dann nicht
+    /// überschreiben.</summary>
     property Writable: Boolean read FWritable;
-    /// <summary>False, wenn usage.json ein höheres Format hat: dann nicht überschreiben.</summary>
+    /// <summary>False, wenn usage.json ein höheres Format hat oder beim Lesen gesperrt war: dann nicht
+    /// überschreiben.</summary>
     property CountsWritable: Boolean read FCountsWritable;
     /// <summary>tips.usageTracking (#757): False = Count zählt nichts. Vorgabe True.</summary>
     property Tracking: Boolean read FTracking write FTracking;
@@ -173,10 +181,9 @@ type
 implementation
 
 uses
-  Winapi.Windows,
-  System.IOUtils,
   System.JSON,
-  System.Generics.Defaults;
+  System.Generics.Defaults,
+  Atlas.Core.Files.DataFile;
 
 { TAtlasCommandUsageEntry }
 
@@ -250,16 +257,12 @@ begin
     Result := SameText(Value.Value, 'true');
 end;
 
+/// <summary>Text einer vorhandenen Datei, ohne das atomare Ersetzen durch eine zweite IDE zu blockieren;
+/// EInOutError, wenn sie nicht lesbar ist.</summary>
 function ReadText(const AFileName: string): string;
-var
-  Bytes: TBytes;
 begin
-  Bytes := TFile.ReadAllBytes(AFileName);
-  // Mit oder ohne BOM.
-  if (Length(Bytes) >= 3) and (Bytes[0] = $EF) and (Bytes[1] = $BB) and (Bytes[2] = $BF) then
-    Result := TEncoding.UTF8.GetString(Bytes, 3, Length(Bytes) - 3)
-  else
-    Result := TEncoding.UTF8.GetString(Bytes);
+  if not TAtlasDataFile.TryRead(AFileName, Result) then
+    raise EInOutError.Create('Datendatei nicht lesbar');
 end;
 
 /// <summary>JSON-Objekt aus AJson; nil bei kaputtem Text oder anderem Wert. Gehört dem Aufrufer.</summary>
@@ -281,19 +284,6 @@ begin
     Result := TJSONObject(Value)
   else
     Value.Free;
-end;
-
-/// <summary>Über eine temporäre Datei schreiben (UTF-8 ohne BOM).</summary>
-function WriteFile(const AFileName, AText: string): Boolean;
-var
-  Temp: string;
-begin
-  ForceDirectories(ExtractFileDir(AFileName));
-  Temp := AFileName + '.tmp';
-  TFile.WriteAllBytes(Temp, TEncoding.UTF8.GetBytes(AText));
-  if FileExists(AFileName) then
-    System.SysUtils.DeleteFile(AFileName);
-  Result := RenameFile(Temp, AFileName);
 end;
 
 /// <summary>Format in einer vorhandenen Datei ist höher als diese Fassung kennt.</summary>
@@ -607,38 +597,42 @@ end;
 
 function TAtlasCommandUsage.LoadFromFile(const AFileName: string): Boolean;
 var
-  Text: string;
+  Load: TAtlasDataLoad;
 begin
   Clear;
   Result := False;
-  if (AFileName = '') or not FileExists(AFileName) then
+  if AFileName = '' then
     Exit;
-  try
-    Text := ReadText(AFileName);
-  except
-    // Gesperrt oder unlesbar: wie ohne Datei.
-    on Exception do
-      Exit;
+  Load := TAtlasDataFile.Load(AFileName, 'Tastenkürzel-Tipps',
+    function(const AText: string): Boolean
+    begin
+      // Höheres Format ist nicht unbrauchbar, nur nicht zu überschreiben (Parse setzt Writable).
+      Result := Parse(AText) or not FWritable;
+    end);
+  if Load = TAtlasDataLoad.Kept then
+  begin
+    Clear;
+    FWritable := False;
   end;
-  Result := Parse(Text);
+  Result := (Load = TAtlasDataLoad.Loaded) and FWritable;
 end;
 
 procedure TAtlasCommandUsage.LoadFromFiles(const ATipsFile, AUsageFile: string);
 var
-  Text: string;
+  Counts: TAtlasDataLoad;
 begin
   LoadFromFile(ATipsFile);
-  if (AUsageFile <> '') and FileExists(AUsageFile) then
-  begin
-    try
-      Text := ReadText(AUsageFile);
-    except
-      on Exception do
-        Text := '';
-    end;
-    ParseCounts(Text);
-  end
-  else if HasAnyCounts then
+  Counts := TAtlasDataLoad.Missing;
+  if AUsageFile <> '' then
+    Counts := TAtlasDataFile.Load(AUsageFile, 'Befehlsnutzung',
+      function(const AText: string): Boolean
+      begin
+        // Höheres Format ist nicht unbrauchbar, nur nicht zu überschreiben (ParseCounts setzt CountsWritable).
+        Result := ParseCounts(AText) or not FCountsWritable;
+      end);
+  if Counts = TAtlasDataLoad.Kept then
+    FCountsWritable := False
+  else if (Counts <> TAtlasDataLoad.Loaded) and HasAnyCounts then
   begin
     // Ältere shortcut-tips.json mit Zählern: beim nächsten Speichern nach usage.json umziehen.
     FCountsChanged := True;
@@ -669,12 +663,13 @@ begin
         Probe.Free;
       end;
     end;
-    Result := WriteFile(AFileName, ToJson);
-    if Result then
-      FTipsChanged := False;
+    TAtlasDataFile.Write(AFileName, ToJson);
+    Result := True;
+    FTipsChanged := False;
   except
-    on Exception do
-      Result := False;
+    // Gesperrt, kein Platz o. Ä.: Changed bleibt gesetzt, der Grund steht einmal im Protokoll.
+    on E: Exception do
+      TAtlasDataFile.ReportNotWritten('Tastenkürzel-Tipps', E);
   end;
 end;
 
@@ -689,12 +684,13 @@ begin
       FCountsWritable := False;
       Exit;
     end;
-    Result := WriteFile(AFileName, CountsToJson);
-    if Result then
-      FCountsChanged := False;
+    TAtlasDataFile.Write(AFileName, CountsToJson);
+    Result := True;
+    FCountsChanged := False;
   except
-    on Exception do
-      Result := False;
+    // Gesperrt, kein Platz o. Ä.: Changed bleibt gesetzt, der Grund steht einmal im Protokoll.
+    on E: Exception do
+      TAtlasDataFile.ReportNotWritten('Befehlsnutzung', E);
   end;
 end;
 

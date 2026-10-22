@@ -1,4 +1,4 @@
-﻿unit Atlas.Common.Diagnostics.MapFile.Tests;
+﻿unit Atlas.Text.MapFile.Tests;
 
 // Tests für das Lesen der Map-Datei und das Auflösen von Stacktraces (#282).
 
@@ -27,7 +27,7 @@ implementation
 
 uses
   System.SysUtils,
-  Atlas.Common.Diagnostics.MapFile;
+  Atlas.Text.MapFile;
 
 const
   // Ausschnitt einer detaillierten Map (DCC_MapFile=3) im Aufbau des Delphi-Linkers.

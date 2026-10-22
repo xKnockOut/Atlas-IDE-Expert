@@ -97,8 +97,9 @@
 - **Kettenskript:** Löst selbst: Listenkonflikte, falsche `;` in `.dpr`/`.dpk`-Listen nach konfliktfreiem Merge (`fix-terminators.ps1`), Profiltest-Erwartungen (Branch-Seite ohne `unit-name-mismatch`), `Architektur.md` und `Konfiguration.md` (Branch-Seite ohne Teile übersprungener Branches), H2443 und E2532. Jeder andere Konflikt hält an.
 - **Leck-Monitor (seit 177):**
   - Felder im `TearDown` freigeben.
-  - Einmal-Belegungen der RTL im `[SetupFixture]` vorab auslösen; `[IgnoreMemoryLeaks]` nur mit Begründung.
-  - Bei reinen Leck-Fehlschlägen bis zu sechs Läufe; gilt als zeitabhängig, wenn jeder gemeldete Test mindestens einmal sauber war.
+  - Auf jeden Thread warten, den ein Test startet, auch auf nebenläufige Anfragen (in den Verbindungstests `TJoinedWorkers` statt Thread-Pool). Kein Thread darf sich nach dem Test selbst freigeben.
+  - Einmal-Belegungen der RTL im `[SetupFixture]` vorab auslösen. `[IgnoreMemoryLeaks]` nur, wo ein Test sein Wachstum selbst misst oder Speicher absichtlich über das Testende hinaus lebt, und dann mit Grund am Test (Stand Bericht N2: vier Stellen).
+  - Eine Leckmeldung ist ein Befund: Bericht des Monitors (Setup, Test, TearDown, Threads) festhalten und die Ursache suchen. Nicht wiederholen, bis ein Lauf grün ist (früher „bis zu sechs Läufe“, abgelöst durch Bericht N2).
 - **Weitere Fixes in 78–97:** E2029 (Listentrenner), Profilerwartungen (#269, #91, #124, #125), Konflikte `UsesClause` (#284), `Shell.Composition` (#283: Mitschnitt rotiert und weicht aus; Methodendeklaration hinter die Felder), `DiskFileSystem` (#62: `EArgumentException` und `EOSError`), `System.Classes` im Index-Test, RotatingFileStream-Tests (`WillRaiseDescendant`).
 - Die IDE sortiert `DCCReference` um und fügt Leerzeilen ein. Reine Umsortierungen und Leerraum-Änderungen werden verworfen.
 
@@ -602,11 +603,30 @@ Jeder Branch baut auf dem vorigen auf. Nichts davon ist gebaut, getestet oder in
 - **Geprüft in der Cloud:** FPC-trunk: 14 Kern-Tests der Suche grün (4 neu). Prüfskripte grün (PackageDependencies, Delphi12, ConsoleOutput, MainThreadQueue, DocComments, TestCoverage, Update-ConfigDoc -Check). **Nicht gebaut:** VCL- und IDE-Teile (`Atlas.UI.Search.Bar.Tests` mit 5 Tests nur unter Delphi).
 - **In der IDE prüfen (SU1–SU16 in `docs/Atlas-Testfaelle.md`):** ob die IDE Tasten im Suchfeld abfängt (Strg+C/V, Pfeile, Esc), ob `ShowMessageView` den Fokus nimmt und das Zurücksetzen auf die Leiste greift, Lage der Leiste unter dem Editor (über der Statuszeile) und mit Minimap/Übersichtsleiste, Thema der Kästchen.
 
+## Brotkrumenleiste bleibt nach einer Weile stehen (22.10.2026, Branch `claude/project-thread-blplxd` von main 40b789ea, PR #1098, ungebaut)
+- **Meldung (Marco):** Die Leiste lässt sich nach einer Zeit nicht mehr bedienen. Marco wünscht ausdrücklich Ursachen- statt Symptombekämpfung.
+- **Befund im atlas.log vom 22.10.:**
+  - Die Absturzsicherung hat **nicht** ausgelöst.
+  - Um 06:24:32 kommt die Maus an der Leiste an.
+  - Um 06:27:39 meldet `WindowFromPoint` „TPanel EditorPanel“ über der Leiste. `BringToFront` half nicht, und bis zum Neustart um 06:31 kam keine Maus mehr an. Am 21.10. um 22:44 und 22:45 geschah dasselbe.
+  - Außerdem: `ELspClientError` „Keine Antwort auf textDocument/documentSymbol innerhalb von 2000 ms“ aus `TAtlasIdeOutlineCache.Load` lief als Ausnahme in die Takte. Die AV in AnsiLowerCase (#1097) trat ebenfalls auf.
+- **Ursachen und Änderungen:**
+  - Zeitgrenze: `Load` fängt `ELspClientError` ab und behandelt sie wie „keine Antwort“; der alte Stand bleibt, Atlas fragt nach `RetryMs` neu.
+  - #1097 (Branch `claude/project-thread-bnnpvx`) ist hineingemergt.
+  - Maus kommt nicht an: Liefert `WindowFromPoint` das Elternfenster, ist das Fenster der Leiste gesperrt, ausgeblendet oder an einem anderen Elternfenster, oder es gehört einem fremden Thread. `Probe` prüft das jetzt bei jedem Takt (`WindowProblem`), protokolliert die Ursache mit der Elternkette und behebt sie: freigeben, zeigen oder neu anlegen. Beim fremden Thread wird nur protokolliert, weil `DestroyWindow` dort scheitert.
+  - Die Leiste meldet `WM_ENABLE(False)` (`OnDisabled`). Atlas protokolliert dann bis zu dreimal den Aufrufer mit Stack, damit feststeht, wer sperrt.
+  - Sicherheitsnetz: eigenes `TAtlasFeature.Breadcrumbs` statt `EditorCommands`, mit Hinweis in der Leiste, wenn es auslöst.
+- **Geprüft:**
+  - Prüfskripte grün.
+  - Im FPC-Harness sind Guard (ohne `LogRotatesAtLimit`, FPC kennt `TFile.GetSize` nicht), LoadGuard und Strings grün.
+  - Die VCL-Testunit `Atlas.UI.Outline.Breadcrumbs.Tests` (neu `ReportsWhenItsWindowIsDisabled`) lässt sich unter FPC nicht übersetzen.
+- **Offen bei Marco:** Delphi-Build 0/0/0, Testfälle BK24 bis BK27. Danach die neuen „Brotkrumen:“-Zeilen aus atlas.log auswerten; sie nennen die genaue Ursache.
+
 ## Brotkrumenleiste überarbeiten (21.10.2026, Branch `claude/project-thread-blplxd` von `feature/v1.1.0-suche-unitsuche` d983ebf1)
 - **Wunsch von Marco:** Leiste im dunklen Thema in IDE-Farben statt schwarz; über die Leiste navigieren; die immer leeren Comboboxen der IDE („Typ suchen“/„Methode suchen“) füllen oder abschalten.
 - **Farben:** `TAtlasColors.ForChrome` (Kern, getestet) und `TAtlasIdeStyle.ChromeColors`: Fläche clBtnFace, Schrift clBtnText aus `IOTAIDEThemingServices.StyleServices`. Einstellung `editor.breadcrumbsIdeColors` (Vorgabe an).
 - **Navigation:** Unit-Glied hat ein Menü mit allen Elementen der Unit (`TAtlasBreadcrumbs.UnitMembers`); jedes Glied kennt `Children`, Klick auf das „›“ dahinter öffnet sie (auch hinter dem letzten Glied, wenn es Kinder hat); Strg+Klick springt (Umschalt: Deklaration), Glieder ohne Geschwister springen schon beim Klick; Tastatur Strg+↓ und Strg+Enter.
-- **IDE-Navigationsleiste:** Kein Zugang über die Open Tools API, also nicht befüllbar. `TAtlasNavigationToolbar` (UI, nur VCL, getestet) findet sie am Namen `TEditorNavigationToolbar` bzw. Klassennamen und hängt sie in ein unsichtbares Panel (Vorgehen wie GExperts, weil die IDE Visible bei jedem Reiter neu setzt). Einstellung `editor.breadcrumbsHideIdeToolbar` (Vorgabe an); aus, Leiste aus oder Entladen hängt sie zurück. Alternativ die IDE-Option „Navigationssymbolleiste anzeigen“ (Editor-Optionen › Anzeige).
+- **IDE-Navigationsleiste:** Kein Zugang über die Open Tools API, also nicht befüllbar. `TAtlasNavigationToolbar` (UI, nur VCL, getestet) findet sie am Namen `TEditorNavigationToolbar` bzw. Klassennamen und hängt sie in ein unsichtbares Panel (Vorgehen wie GExperts, weil die IDE Visible bei jedem Reiter neu setzt). Einstellung `editor.breadcrumbsHideIdeToolbar` (Vorgabe an); aus, Leiste aus oder Entladen hängt sie zurück. Alternativ die IDE-Option „Navigationssymbolleiste anzeigen“ (Editor-Optionen › Anzeige). **Abgelöst durch Bericht M3 (c5e1968):** Atlas schaltet jetzt diese IDE-Option aus und nur dann wieder ein, wenn es sie ausgeschaltet hatte; das Umhängen bleibt nur als gekennzeichnetes Netz, wenn die Option nicht zu finden ist.
 - **Geprüft in der Cloud:** alle Prüfskripte grün, `Update-ConfigDoc.ps1` ausgeführt; FPC-Harness `Atlas.Core.Style.Tests` und `Atlas.Core.Outline.Breadcrumbs.Tests` 49/49 grün. UI-Tests (Leiste, Navigationsleiste) und Settings-Test nur unter Delphi. **Nicht gebaut.**
 - **Offen bei Marco:** Delphi-Build Win32/Win64 0/0/0, `Atlas.Tests`, Testfälle BK15–BK23. Risiko: Name der IDE-Leiste in RAD Studio 13 (sonst greift die Suche am Klassennamen), Neuanordnung beim Zurückhängen.
 ## Absturz im Statusfeld unter Delphi 12 (21.10.2026, Branch `claude/project-thread-enkkmn` von main db0fffe, ungebaut)
@@ -702,3 +722,24 @@ Jeder Branch baut auf dem vorigen auf. Nichts davon ist gebaut, getestet oder in
 - Unter FPC getestet: RuleTable, Hover.Layout, Findings. VCL-Tests (`Atlas.UI.Settings.Rules.Tests`, Page.Tests) nur mit Delphi.
 - Risiken beim ersten Delphi-Build: `TListView.OnItemChecked`, AutoSize des Editors, `HandleNeeded` der Editoren auf verborgenen Seiten.
 - Handtest AP1–AP26 in `docs/Atlas-Testfaelle.md`. Danach folgen die Unter-Issues (#910 ff.) als Kette auf diesem Branch.
+
+## Zugriffsverletzung in AnsiLowerCase aus der Gliederung (22.10.2026, Branch `claude/project-thread-bnnpvx`, ungebaut)
+- **Anlass:** Marco fragte nach der Fehlermeldung beim Beenden von Delphi und schickte `atlas.log`. Darin beim Entladen jedes Mal „Fehler beim Abbau: keine“; der einzige Atlas-Fehler ist „Fehler in Editorbefehle: EAccessViolation … rtl370.bpl (Offset 45A36)“ in `AnsiLowerCase`, 06:24, 06:33 und 06:40, meist eine Sekunde nach dem Start. Stapel: `TStickyState.Tick` → `TAtlasIdeOutlineCache.Refresh` → `Load` → `TLspSession.Sync` → `SyncLocked` → `AnsiLowerCase(AFileName)`.
+- **Ursache:** `Load` holt die Sitzung über `Manager.ActiveSession` → `EnsureSession` → `RefreshContexts`; meldet die IDE eine andere Plattform oder Konfiguration, ruft das `TAtlasIdeOutlineCache.InvalidateAll` (#845). `Entries.Clear` gab den ladenden `TEntry` frei (doOwnsValues), `AEntry.FileName` zeigte danach ins Leere. Dasselbe drohte beim Warten auf `documentSymbol`, wenn ein zweiter Takt (Brotkrumen, Minimap) `TrimEntries` auslöste.
+- **Behoben:** Neuer Kern `Atlas.Core.Outline.LoadGuard` (6 Tests): Während einer Abfrage merkt er Entfernen und Leeren nur vor, nach der äußersten Abfrage holt `GuardedLoad` es nach. `Refresh` schlägt den Eintrag danach neu nach; ein Takt mitten in einer Abfrage lädt nicht und zeigt nur den vorhandenen Stand. Testfälle GS1–GS4.
+- **Geprüft in der Cloud:** Die fünf Prüfskripte sind grün, der Wächter läuft unter FPC 3.2.2 mit einem kleinen Prüfprogramm. Offen sind der Delphi-Build und GS1–GS4.
+- **Noch offen:** Ein Dialog beim Beenden selbst steht nicht im Atlas-Log. Kommt er weiterhin, braucht es Text/Foto; bekannt ist die AV in rtl370 (Offset 133BE4) über den Beyond-Compare-Experten (#1091), Gegenprobe ohne diesen Experten steht aus.
+
+## Symptom-Audit umgesetzt (22.10.2026, Branch `claude/project-thread-lssjeo` auf `claude/project-thread-blplxd`, ungebaut)
+- **Anlass:** Bericht `berichte/symptombekaempfung-main-2026-10-22.md` (Projektdateien). Marco: „Setz die Punkte um.“ Die Brotkrumen-Teile (M2, M3) bauen auf dem Branch aus PR #1098 auf, deshalb liegt dieser Branch darauf.
+- **Commits:** H3 e7a7bc7 (Stacktraces), H1 0d6f7fa (CurrentClass), H2 91109a5 (Sicherung je Funktion), H4 8a5936b (Zeitüberschreitung kein Fehler), H5 4377a52 (Serverende mit Ursache), M1 3c5c110 und b65b608 (Läufer ohne Rekursion), M2 66ef63b (Brotkrumen: Ursache der verlorenen Maus), M3 c5e1968 (Navigationsleiste über die IDE-Option), M4 bf0d41d und c2ce6d2 (Protokoll), M5 c98dc46 (atomar ersetzen), N1 1bb5be6 (ein Schreiber je Index-Cache), N2 85f3d3b (Leckprüfung), N3 43ba3a8 (Datendateien), N4 dcd1155 (langsamer Start).
+- **Netze, die bewusst bleiben (gekennzeichnet):** `CurrentClass` merkt „wird ermittelt“ (H1); Ausgleichen langer Operatorketten im Parser, 8 MB Stapel des Servers und `MaxTreeDepth` 100000 mit Hinweis `unit-too-deep` (M1); Freigeben, Zeigen, Neuanlegen und `BringToFront` der Brotkrumenleiste (M2); Umhängen der Navigationsleiste ohne IDE-Option (M3); Wiederholungen in `ReplaceWith` (M5). Rekursiv bleiben Läufer über Deklarationen und Typen (Tiefe begrenzt der Parser) und Print/Rebuild in „Boolean umkehren“.
+- **Entscheidungen N3:** Caches und Dateien, deren Inhalt neu entsteht (Index-Stand, Update-Zustand, Undo-Sätze, Willkommensseite, Snippets …), werden nur atomar geschrieben, nicht beiseitegelegt. Der abgesicherte Start schreibt über `TFile.Replace`, weil `Core.Diagnostics` `Core.Files` nicht verwenden darf (Feature-Zyklus, `Check-PackageDependencies`). Exporte und Posteingangsdateien sind unverändert. Der Server schreibt Units über `TFileEncoding.SaveToFile` weiterhin an Ort und Stelle; das ist ein eigener Punkt.
+- **N4:** `safeMode.startupTimeoutMs` behält Schlüssel und Registry-Wert, bedeutet aber „langsamer Start ab“; es schaltet nichts mehr ab. Die Startanteile stehen bei jedem Start im atlas.log („Start: … ms bis zur freien Nachrichtenschleife, davon Atlas … ms: …“). Ist der Atlas-Anteil groß, nennt die Zeile das Teil, das zu beheben ist.
+- **Abhängigkeit zu #1100:** PR #1100 (Speicher, `TSharedCacheWrites` im Prozess) und N1 (Sperre über Prozesse, erneutes Lesen unter der Sperre, `WriteBytes(out AError)`, `TryLockWrite`, `OnCacheNotWritten`) berühren beide `Atlas.Common.Index.Service`. Wird #1100 zuerst gemergt, N1 darauf anpassen: Schreiben im Prozess über `TSharedCacheWrites`, die Sperre über Prozesse und die Fehlermeldung aus N1 behalten.
+- **Geprüft in der Cloud:** Die fünf Prüfskripte sind grün, `Update-ConfigDoc.ps1` ist ausgeführt. Die Core-Tests jedes Punkts laufen unter FPC trunk mit Delphi-Stubs (Harness im Scratchpad, nicht im Repo). Erwartete Abweichungen dort: `KeepsFileThatCannotBeSetAside` (unter Linux lässt sich eine geöffnete Datei umbenennen), `TAtlasRankingTests.FormComponentsComeFirst` (scheitert auch auf dem Basis-Stand), JSON-Parser der FPC-Ersatzunit liefert nach ungültigem JSON hängende Objekte. IDE- und VCL-Units ließen sich nur lesen, nicht übersetzen.
+- **Offen bei Marco:**
+  - Delphi-Build Win64-Gruppe und Win32-Plugin 0/0/0, `Atlas.Tests` grün.
+  - Handtests: ST1–ST6, SJ1–SJ10, SK1–SK11, TV1–TV5, BK22, BK23, BK26, BK28, BK29, SN4, PL1–PL5, ES1–ES6, IC1–IC4, LP1–LP4, DD1–DD7, AS14, AS17–AS20.
+  - M2 und M3 hängen am Handtest: Die Zeilen „Brotkrumen: Maus landet bei …; Ursache: …“ und „Navigationsleiste: …“ im atlas.log nennen die tatsächliche Ursache bzw. ob die IDE-Option gefunden wurde.
+  - Die neuen Protokollzeilen (Startanteile, Datendateien) stehen nicht in `Packages/Atlas.IDE.Expert/atlas-baseline.json`. Meldet die Selbstprüfung sie als `hardcoded-string`, die Baseline aktualisieren.

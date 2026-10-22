@@ -120,6 +120,7 @@ implementation
 
 uses
   System.StrUtils,
+  System.Generics.Collections,
   Atlas.Common.Documents.Contract,
   Atlas.Common.Pascal.Contract,
   Atlas.Common.Configuration.Contract,
@@ -157,53 +158,55 @@ begin
 end;
 
 function HasOpaqueUse(ABlock: TSyntaxNode; const AName: string): Boolean;
-
-  function Visit(ANode: TSyntaxNode): Boolean;
-  var
-    Index: Integer;
-  begin
-    case ANode.Kind of
-      // Lokale Routinen und anonyme Methoden laufen außerhalb dieses Flusses.
-      TSyntaxKind.RoutineDecl, TSyntaxKind.AnonymousMethod:
-        Exit(False);
-      TSyntaxKind.Call:
-        for Index := 1 to ANode.ChildCount - 1 do
-          if IsName(ANode[Index], AName) then
-            Exit(True);
-      TSyntaxKind.AddressOf:
-        if (ANode.ChildCount > 0) and SameText(RootName(ANode[0]), AName) then
-          Exit(True);
-      TSyntaxKind.AssignStatement:
-        if (ANode.ChildCount > 0) and (ANode[0].Kind <> TSyntaxKind.Identifier) and
-          SameText(RootName(ANode[0]), AName) then
-          Exit(True);
-      TSyntaxKind.WithStatement:
-        for Index := 0 to ANode.ChildCount - 2 do
-          if SameText(RootName(ANode[Index]), AName) then
-            Exit(True);
-    end;
-    for Index := 0 to ANode.ChildCount - 1 do
-      if Visit(ANode[Index]) then
-        Exit(True);
-    Result := False;
-  end;
-
+var
+  Name: string;
 begin
-  Result := Visit(ABlock);
+  Name := AName;
+  // Iterativ (Bericht M1): Der Lauf geht auch durch lange Ausdrucksketten.
+  Result := ABlock.Search(
+    function(ANode: TSyntaxNode): TSyntaxSearchStep
+    var
+      Index: Integer;
+    begin
+      Result := TSyntaxSearchStep.Descend;
+      case ANode.Kind of
+        // Lokale Routinen und anonyme Methoden laufen außerhalb dieses Flusses.
+        TSyntaxKind.RoutineDecl, TSyntaxKind.AnonymousMethod:
+          Result := TSyntaxSearchStep.Skip;
+        TSyntaxKind.Call:
+          for Index := 1 to ANode.ChildCount - 1 do
+            if IsName(ANode[Index], Name) then
+              Result := TSyntaxSearchStep.Found;
+        TSyntaxKind.AddressOf:
+          if (ANode.ChildCount > 0) and SameText(RootName(ANode[0]), Name) then
+            Result := TSyntaxSearchStep.Found;
+        TSyntaxKind.AssignStatement:
+          if (ANode.ChildCount > 0) and (ANode[0].Kind <> TSyntaxKind.Identifier) and
+            SameText(RootName(ANode[0]), Name) then
+            Result := TSyntaxSearchStep.Found;
+        TSyntaxKind.WithStatement:
+          for Index := 0 to ANode.ChildCount - 2 do
+            if SameText(RootName(ANode[Index]), Name) then
+              Result := TSyntaxSearchStep.Found;
+      end;
+    end) <> nil;
 end;
 
 function ContainsKind(ANode: TSyntaxNode; AKind: TSyntaxKind): Boolean;
 var
-  Index: Integer;
+  Kind: TSyntaxKind;
 begin
-  if ANode.Kind = AKind then
-    Exit(True);
-  if ANode.Kind in [TSyntaxKind.RoutineDecl, TSyntaxKind.AnonymousMethod] then
-    Exit(False);
-  for Index := 0 to ANode.ChildCount - 1 do
-    if ContainsKind(ANode[Index], AKind) then
-      Exit(True);
-  Result := False;
+  Kind := AKind;
+  // Iterativ (Bericht M1).
+  Result := ANode.Search(
+    function(AVisited: TSyntaxNode): TSyntaxSearchStep
+    begin
+      if AVisited.Kind = Kind then
+        Exit(TSyntaxSearchStep.Found);
+      if AVisited.Kind in [TSyntaxKind.RoutineDecl, TSyntaxKind.AnonymousMethod] then
+        Exit(TSyntaxSearchStep.Skip);
+      Result := TSyntaxSearchStep.Descend;
+    end) <> nil;
 end;
 
 function ShortName(const AName: string): string;
@@ -304,28 +307,41 @@ var
   end;
 
   // Erster Lesezugriff auf Name, der ohne vorherige Zuweisung erreichbar ist.
-  procedure Visit(ANode: TSyntaxNode);
+  procedure Visit(ARoot: TSyntaxNode);
   var
+    Pending: TStack<TSyntaxNode>;
+    Node: TSyntaxNode;
     Child: Integer;
     Flow: TFlowNode;
   begin
-    if Reported or (ANode.Kind in [TSyntaxKind.RoutineDecl, TSyntaxKind.AnonymousMethod]) then
-      Exit;
-    if IsName(ANode, Name) and not ((ANode.Parent <> nil) and (ANode.Parent.Kind = TSyntaxKind.AssignStatement) and
-      (ANode.Parent.ChildCount > 0) and (ANode.Parent[0] = ANode)) then
-    begin
-      Flow := FlowNodeOf(ANode);
-      if (Flow <> nil) and (Graph.IsReachable(Flow) = TFlowAnswer.Yes) and
-        Graph.ReachingDefinitions(Flow, Name).FromEntry then
+    // Iterativ mit eigenem Stapel (Bericht M1); die Kinder rückwärts darauf, damit der erste Treffer derselbe bleibt.
+    Pending := TStack<TSyntaxNode>.Create;
+    try
+      Pending.Push(ARoot);
+      while not Reported and (Pending.Count > 0) do
       begin
-        AReport.Add(NodeRange(ANode),
-          Format('"%s" wird hier möglicherweise gelesen, bevor ein Wert zugewiesen wurde', [Name]), Confidence);
-        Reported := True;
-        Exit;
+        Node := Pending.Pop;
+        if Node.Kind in [TSyntaxKind.RoutineDecl, TSyntaxKind.AnonymousMethod] then
+          Continue;
+        if IsName(Node, Name) and not ((Node.Parent <> nil) and (Node.Parent.Kind = TSyntaxKind.AssignStatement) and
+          (Node.Parent.ChildCount > 0) and (Node.Parent[0] = Node)) then
+        begin
+          Flow := FlowNodeOf(Node);
+          if (Flow <> nil) and (Graph.IsReachable(Flow) = TFlowAnswer.Yes) and
+            Graph.ReachingDefinitions(Flow, Name).FromEntry then
+          begin
+            AReport.Add(NodeRange(Node),
+              Format('"%s" wird hier möglicherweise gelesen, bevor ein Wert zugewiesen wurde', [Name]), Confidence);
+            Reported := True;
+            Continue;
+          end;
+        end;
+        for Child := Node.ChildCount - 1 downto 0 do
+          Pending.Push(Node[Child]);
       end;
+    finally
+      Pending.Free;
     end;
-    for Child := 0 to ANode.ChildCount - 1 do
-      Visit(ANode[Child]);
   end;
 
 begin
@@ -423,15 +439,22 @@ var
     Result := False;
   end;
 
+  // Liegt eine unerreichbare Anweisung in ANode (oder ist es ANode selbst)? Iterativ (Bericht M1): von den
+  // unerreichbaren Anweisungen aufwärts statt rekursiv durch ANode.
   function HasDead(ANode: TSyntaxNode): Boolean;
   var
-    Index: Integer;
+    Item, Current: TSyntaxNode;
   begin
-    if IsDead(ANode) then
-      Exit(True);
-    for Index := 0 to ANode.ChildCount - 1 do
-      if HasDead(ANode[Index]) then
-        Exit(True);
+    for Item in Dead do
+    begin
+      Current := Item;
+      while Current <> nil do
+      begin
+        if Current = ANode then
+          Exit(True);
+        Current := Current.Parent;
+      end;
+    end;
     Result := False;
   end;
 

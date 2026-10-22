@@ -5,7 +5,8 @@
 // Daten, die die IDE-Schicht sammelt.
 // - Server: nicht gestartet (neutral), wird gestartet (gelb), läuft seit
 //   Uhrzeit (grün; gelb ab SlowMs mittlerer Antwortzeit), von Atlas beendet
-//   (neutral), abgestürzt mit Zeitpunkt oder Start fehlgeschlagen (rot).
+//   (neutral), abgestürzt mit Zeitpunkt und Ursache (Exit-Code, Bericht H5)
+//   oder Start fehlgeschlagen (rot).
 //   Antwortzeit über die letzten 50 Anfragen (#28).
 // - Index: wird aufgebaut (gelb, mit Prozent) oder Anzahl Units (grün) mit
 //   Zeitpunkt der letzten vollständigen Indizierung; läuft der Server nicht,
@@ -36,7 +37,8 @@ type
     /// <summary>Mittlere Antwortzeit der letzten Anfragen in ms und deren Anzahl.</summary>
     AverageMs: Double;
     Samples: Integer;
-    /// <summary>Grund bei Failed (ohne Pfade).</summary>
+    /// <summary>Grund bei Failed (ohne Pfade); bei einem abgestürzten Server die Ursache, etwa
+    /// „Stapelüberlauf (0xC00000FD)“ (Bericht H5).</summary>
     Error: string;
     /// <summary>Beginn der Phase in Ortszeit: Start bei Running, Ende bei Stopped und Failed; 0 = unbekannt (#754).</summary>
     Since: TDateTime;
@@ -193,6 +195,8 @@ begin
           Result := 'Server: abgestürzt';
         if AInfo.Since > 0 then
           Result := Result + ' um ' + When(AInfo.Since, ANow);
+        if not AInfo.Ended and (AInfo.Error <> '') then
+          Result := Result + ' (' + AInfo.Error + ')';
       end;
     TAtlasServerPhase.Failed:
       begin
@@ -287,8 +291,14 @@ begin
       if AInfo.Since > 0 then
         Result := 'seit ' + When(AInfo.Since, ANow);
     TAtlasServerPhase.Stopped:
-      if AInfo.Since > 0 then
-        Result := 'um ' + When(AInfo.Since, ANow);
+      begin
+        if AInfo.Since > 0 then
+          Result := 'um ' + When(AInfo.Since, ANow);
+        if not AInfo.Ended and (AInfo.Error <> '') and (Result <> '') then
+          Result := Result + ', ' + AInfo.Error
+        else if not AInfo.Ended and (AInfo.Error <> '') then
+          Result := AInfo.Error;
+      end;
     TAtlasServerPhase.Failed:
       Result := AInfo.Error;
   end;

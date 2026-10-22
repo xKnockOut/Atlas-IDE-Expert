@@ -31,7 +31,7 @@ uses
   Winapi.Windows,
   System.SysUtils,
   System.IOUtils,
-  Atlas.Common.Diagnostics.MapFile;
+  Atlas.Text.MapFile;
 
 const
   MaxFrames = 48;

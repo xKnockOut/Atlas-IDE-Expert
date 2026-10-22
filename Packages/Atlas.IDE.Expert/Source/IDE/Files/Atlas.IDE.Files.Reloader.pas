@@ -16,6 +16,9 @@
 // „Vergleichen“, „Datei gelöscht: X“). Die Zeilen im Meldungsfenster samt
 // Unterschied erscheinen nur bei „einblenden“; „Vergleichen“ schreibt den
 // Unterschied auf Abruf dorthin und zeigt das Fenster.
+// Die Platte liest TAtlasTextFile wie beim Speichern (Kodierung mit der
+// Vorgabe aus atlas.json, Lesen teilt Löschen, Bericht M5): Ein gleichzeitiges
+// atomares Ersetzen scheitert nicht an diesem Vergleich.
 
 interface
 
@@ -61,15 +64,22 @@ implementation
 uses
   Atlas.Core.Diagnostics.Guard,
   Winapi.Windows,
-  System.IOUtils,
   Atlas.UI.Strings,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Foundation.EditorBuffer,
   Atlas.IDE.Foundation.EditorSnapshot,
   Atlas.Core.Diagnostics.Hangs,
   Atlas.Core.Files.TextDiff,
+  Atlas.Core.Files.TextFile,
+  Atlas.Core.Files.EncodingDefault,
   Atlas.Core.Notifications.Center,
   Atlas.Core.Notifications.Sources;
+
+/// <summary>Text der Datei auf der Platte in ihrer Kodierung; Ausnahme, wenn sie nicht lesbar ist.</summary>
+function DiskText(const AFileName: string): string;
+begin
+  Result := TAtlasTextFile.Load(AFileName, TAtlasEncodingDefault.CodePageFor(AFileName)).Text;
+end;
 
 function NowMs: Int64;
 begin
@@ -205,7 +215,7 @@ begin
     Exit;
   Current := TAtlasEditorBuffer.Text(Buffer).Replace(#13, '');
   try
-    Disk := TFile.ReadAllText(AFileName).Replace(#13, '');
+    Disk := DiskText(AFileName).Replace(#13, '');
   except
     Exit;
   end;
@@ -287,7 +297,7 @@ begin
   if not Supports(Editor, IOTAEditBuffer, Buffer) then
     Exit;
   try
-    Disk := TFile.ReadAllText(AFileName);
+    Disk := DiskText(AFileName);
   except
     on Exception do
       Exit;

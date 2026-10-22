@@ -160,26 +160,50 @@ end;
 
 function ContainsKind(ANode: TSyntaxNode; AKind: TSyntaxKind): Boolean;
 var
-  Index: Integer;
+  Kind: TSyntaxKind;
 begin
-  if ANode.Kind = AKind then
-    Exit(True);
-  for Index := 0 to ANode.ChildCount - 1 do
-    if ContainsKind(ANode[Index], AKind) then
-      Exit(True);
-  Result := False;
+  Kind := AKind;
+  // Iterativ (Bericht M1).
+  Result := ANode.Search(
+    function(AVisited: TSyntaxNode): TSyntaxSearchStep
+    begin
+      if AVisited.Kind = Kind then
+        Exit(TSyntaxSearchStep.Found);
+      Result := TSyntaxSearchStep.Descend;
+    end) <> nil;
+end;
+
+/// <summary>Kommt der Bezeichner AName in ANode oder darunter vor?</summary>
+function MentionsName(ANode: TSyntaxNode; const AName: string): Boolean;
+var
+  Name: string;
+begin
+  Name := AName;
+  // Iterativ (Bericht M1).
+  Result := ANode.Search(
+    function(AVisited: TSyntaxNode): TSyntaxSearchStep
+    begin
+      if (AVisited.Kind = TSyntaxKind.Identifier) and SameText(AVisited.Name, Name) then
+        Exit(TSyntaxSearchStep.Found);
+      Result := TSyntaxSearchStep.Descend;
+    end) <> nil;
 end;
 
 
 /// <summary>Namen, die in ANode verwendet werden (klein geschrieben): Bezeichner und Schleifenvariablen.</summary>
 procedure CollectUses(ANode: TSyntaxNode; ASet: TNameSet);
 var
-  Index: Integer;
+  Names: TNameSet;
 begin
-  if ANode.Kind in [TSyntaxKind.Identifier, TSyntaxKind.ForStatement, TSyntaxKind.ForInStatement] then
-    ASet.AddOrSetValue(LowerCase(ANode.Name), True);
-  for Index := 0 to ANode.ChildCount - 1 do
-    CollectUses(ANode[Index], ASet);
+  Names := ASet;
+  // Iterativ (Bericht M1): Der Lauf geht auch durch lange Ausdrucksketten.
+  ANode.Walk(
+    function(AVisited: TSyntaxNode): Boolean
+    begin
+      if AVisited.Kind in [TSyntaxKind.Identifier, TSyntaxKind.ForStatement, TSyntaxKind.ForInStatement] then
+        Names.AddOrSetValue(LowerCase(AVisited.Name), True);
+      Result := True;
+    end);
 end;
 
 
@@ -332,14 +356,18 @@ end;
 /// <summary>Inline-Variablen eines Rumpfs, ohne lokale Routinen und anonyme Methoden.</summary>
 procedure CollectInlineVars(ANode: TSyntaxNode; var AVars: TArray<TSyntaxNode>);
 var
-  Index: Integer;
+  Vars: TArray<TSyntaxNode>;
 begin
-  if ANode.Kind in [TSyntaxKind.RoutineDecl, TSyntaxKind.AnonymousMethod] then
-    Exit;
-  if ANode.Kind = TSyntaxKind.InlineVar then
-    AVars := AVars + [ANode];
-  for Index := 0 to ANode.ChildCount - 1 do
-    CollectInlineVars(ANode[Index], AVars);
+  // Iterativ (Bericht M1); var-Parameter lassen sich nicht in der anonymen Methode verwenden.
+  Vars := AVars;
+  ANode.Walk(
+    function(AVisited: TSyntaxNode): Boolean
+    begin
+      Result := not (AVisited.Kind in [TSyntaxKind.RoutineDecl, TSyntaxKind.AnonymousMethod]);
+      if Result and (AVisited.Kind = TSyntaxKind.InlineVar) then
+        Vars := Vars + [AVisited];
+    end);
+  AVars := Vars;
 end;
 
 { TUnusedLocalRule }
@@ -488,22 +516,37 @@ begin
 end;
 
 /// <summary>Rumpf der Typdeklaration (Klasse, Record, Objekt, Helfer) mit diesem Namen in der Datei.</summary>
-function FindTypeBody(ANode: TSyntaxNode; const ATypeName: string): TSyntaxNode;
+/// <summary>Rumpf (Klasse, Record, Objekt, Helfer) einer Typdeklaration, sonst nil.</summary>
+function TypeBodyOf(ADecl: TSyntaxNode): TSyntaxNode;
 var
   Index: Integer;
 begin
-  if (ANode.Kind = TSyntaxKind.TypeDecl) and SameText(ANode.Name, ATypeName) then
-    for Index := 0 to ANode.ChildCount - 1 do
-      if ANode[Index].Kind in [TSyntaxKind.ClassType, TSyntaxKind.ObjectType, TSyntaxKind.RecordType,
-        TSyntaxKind.HelperType] then
-        Exit(ANode[Index]);
-  for Index := 0 to ANode.ChildCount - 1 do
-  begin
-    Result := FindTypeBody(ANode[Index], ATypeName);
-    if Result <> nil then
-      Exit;
-  end;
+  for Index := 0 to ADecl.ChildCount - 1 do
+    if ADecl[Index].Kind in [TSyntaxKind.ClassType, TSyntaxKind.ObjectType, TSyntaxKind.RecordType,
+      TSyntaxKind.HelperType] then
+      Exit(ADecl[Index]);
   Result := nil;
+end;
+
+function FindTypeBody(ANode: TSyntaxNode; const ATypeName: string): TSyntaxNode;
+var
+  TypeName: string;
+  Decl: TSyntaxNode;
+begin
+  TypeName := ATypeName;
+  // Iterativ (Bericht M1).
+  Decl := ANode.Search(
+    function(AVisited: TSyntaxNode): TSyntaxSearchStep
+    begin
+      if (AVisited.Kind = TSyntaxKind.TypeDecl) and SameText(AVisited.Name, TypeName) and
+        (TypeBodyOf(AVisited) <> nil) then
+        Exit(TSyntaxSearchStep.Found);
+      Result := TSyntaxSearchStep.Descend;
+    end);
+  if Decl = nil then
+    Result := nil
+  else
+    Result := TypeBodyOf(Decl);
 end;
 
 /// <summary>Ist die Signatur der Methode von außen vorgegeben (override, Interface, DFM …) oder unbekannt?</summary>
@@ -579,14 +622,17 @@ end;
 
 function UsedAsValue(ANode: TSyntaxNode; const AName: string): Boolean;
 var
-  Index: Integer;
+  Name: string;
 begin
-  if (ANode.Kind = TSyntaxKind.Identifier) and SameText(ANode.Name, AName) and IsValueUse(ANode) then
-    Exit(True);
-  for Index := 0 to ANode.ChildCount - 1 do
-    if UsedAsValue(ANode[Index], AName) then
-      Exit(True);
-  Result := False;
+  Name := AName;
+  // Iterativ (Bericht M1).
+  Result := ANode.Search(
+    function(AVisited: TSyntaxNode): TSyntaxSearchStep
+    begin
+      if (AVisited.Kind = TSyntaxKind.Identifier) and SameText(AVisited.Name, Name) and IsValueUse(AVisited) then
+        Exit(TSyntaxSearchStep.Found);
+      Result := TSyntaxSearchStep.Descend;
+    end) <> nil;
 end;
 
 procedure TUnusedParameterRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
@@ -658,19 +704,24 @@ begin
   Result := TRuleDescriptor.Create('unused-assignment', TRuleSeverity.Hint, 'Zugewiesener Wert wird nie gelesen');
 end;
 
-/// <summary>Kommt AName in lokalen Routinen oder anonymen Methoden unter ANode vor?
-/// AInside: ANode liegt bereits in einer solchen.</summary>
-function UsedInNested(ANode: TSyntaxNode; const AName: string; AInside: Boolean): Boolean;
+/// <summary>Kommt AName in lokalen Routinen oder anonymen Methoden unter ANode vor (ANode selbst zählt nicht)?</summary>
+function UsedInNested(ANode: TSyntaxNode; const AName: string): Boolean;
 var
-  Index: Integer;
+  Root: TSyntaxNode;
+  Name: string;
 begin
-  if AInside and (ANode.Kind = TSyntaxKind.Identifier) and SameText(ANode.Name, AName) then
-    Exit(True);
-  for Index := 0 to ANode.ChildCount - 1 do
-    if UsedInNested(ANode[Index], AName, AInside or
-      (ANode[Index].Kind in [TSyntaxKind.RoutineDecl, TSyntaxKind.AnonymousMethod])) then
-      Exit(True);
-  Result := False;
+  Root := ANode;
+  Name := AName;
+  // Iterativ (Bericht M1).
+  Result := ANode.Search(
+    function(AVisited: TSyntaxNode): TSyntaxSearchStep
+    begin
+      if (AVisited = Root) or not (AVisited.Kind in [TSyntaxKind.RoutineDecl, TSyntaxKind.AnonymousMethod]) then
+        Exit(TSyntaxSearchStep.Descend);
+      if MentionsName(AVisited, Name) then
+        Exit(TSyntaxSearchStep.Found);
+      Result := TSyntaxSearchStep.Skip;
+    end) <> nil;
 end;
 
 procedure TUnusedAssignmentRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
@@ -685,24 +736,34 @@ var
   Writes, Reads: TList<TSyntaxNode>;
   Cache: IRuleDerivedCache;
 
-  procedure Collect(ANode: TSyntaxNode);
+  procedure Collect(ARoot: TSyntaxNode);
   var
-    Child: Integer;
+    Target: string;
+    TargetWrites, TargetReads: TList<TSyntaxNode>;
   begin
-    if ANode.Kind in [TSyntaxKind.RoutineDecl, TSyntaxKind.AnonymousMethod] then
-      Exit;
-    if (ANode.Kind = TSyntaxKind.Identifier) and SameText(ANode.Name, Name) then
-    begin
-      if (ANode.Parent <> nil) and (ANode.Parent.Kind = TSyntaxKind.AssignStatement) and (ANode.Parent[0] = ANode) then
-        Writes.Add(ANode.Parent)
-      else
-        Reads.Add(ANode);
-    end
-    else if (ANode.Kind = TSyntaxKind.InlineVar) and (ANode.ChildCount > 0) and
-      MatchText(Name, SplitNames(ANode.Name)) then
-      Writes.Add(ANode);
-    for Child := 0 to ANode.ChildCount - 1 do
-      Collect(ANode[Child]);
+    // Iterativ (Bericht M1). Nur Locals dieser Routine gehen in die anonyme Methode: Name ist die Schleifenvariable
+    // in Check und darf nicht eingefangen werden.
+    Target := Name;
+    TargetWrites := Writes;
+    TargetReads := Reads;
+    ARoot.Walk(
+      function(ANode: TSyntaxNode): Boolean
+      begin
+        Result := not (ANode.Kind in [TSyntaxKind.RoutineDecl, TSyntaxKind.AnonymousMethod]);
+        if not Result then
+          Exit;
+        if (ANode.Kind = TSyntaxKind.Identifier) and SameText(ANode.Name, Target) then
+        begin
+          if (ANode.Parent <> nil) and (ANode.Parent.Kind = TSyntaxKind.AssignStatement) and
+            (ANode.Parent[0] = ANode) then
+            TargetWrites.Add(ANode.Parent)
+          else
+            TargetReads.Add(ANode);
+        end
+        else if (ANode.Kind = TSyntaxKind.InlineVar) and (ANode.ChildCount > 0) and
+          MatchText(Target, SplitNames(ANode.Name)) then
+          TargetWrites.Add(ANode);
+      end);
   end;
 
   /// <summary>Flussknoten der nächsten Anweisung um ANode (bei Schleifen mehrere).</summary>
@@ -739,7 +800,7 @@ var
     Definition: TFlowNode;
     Used, Defined: Boolean;
   begin
-    if IsIgnored(Name, Patterns) or HasOpaqueUse(Info.Block, Name) or UsedInNested(Routine, Name, False) or
+    if IsIgnored(Name, Patterns) or HasOpaqueUse(Info.Block, Name) or UsedInNested(Routine, Name) or
       UsedByAbsolute(AContext, Routine, Name) then
       Exit;
     Writes.Clear;

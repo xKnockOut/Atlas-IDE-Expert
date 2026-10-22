@@ -548,9 +548,13 @@ Ablage je Projekt neben der .dproj (Projekte im selben Ordner teilen sich die Da
 | AS11 | Umschalt beim Start der IDE gedrückt halten, bis die Packages geladen sind | Fenster „Atlas wurde abgesichert gestartet (Taste beim Laden)…“; nur Optionsseite und Atlas-Feld, kein Menü Atlas, keine Palette, keine Vervollständigung von Atlas |
 | AS12 | `bds.exe -AtlasSafeMode` bzw. `set ATLAS_SAFE_MODE=1` und IDE starten | Wie AS11 mit „Kommandozeile bzw. ATLAS_SAFE_MODE“ |
 | AS13 | Optionen › Abgesicherter Start: Taste „Strg“; Umschalt bzw. Strg beim Start | Umschalt tut nichts, Strg wirkt wie AS11 |
-| AS14 | Optionen: Längste Ladezeit 1000, IDE mit großem Projekt neu starten (Laden dauert länger), dann noch einmal neu starten | Beim zweiten Start Rückfrage mit „Der letzte Start von Atlas dauerte länger als 1000 ms.“ |
+| AS14 | Optionen: Langsamer Start ab 1000, IDE mit großem Projekt neu starten (Laden dauert länger), dann noch einmal neu starten | Nach dem ersten Start im Meldungsfenster (Gruppe Atlas) „Atlas: Der Start der IDE dauerte … ms (Zeitlimit 1000 ms); Atlas selbst brauchte davon … ms: …“ mit den längsten Teilen; beim zweiten Start keine Rückfrage, Atlas startet normal (Bericht N4: ein langsamer Start ist kein Absturz) |
 | AS15 | Optionen: beide Kästchen aus, Taste „keine“; AS3, AS9, AS11 wiederholen | Nie eine Rückfrage, Atlas startet immer normal |
 | AS16 | Zwei IDEs gleichzeitig starten, eine normal beenden, die andere offen lassen; dritte IDE starten | Keine Rückfrage: die laufende IDE gilt nicht als Absturz |
+| AS17 | IDE normal starten, danach `%LOCALAPPDATA%\Atlas\Logs\atlas.log` öffnen | Eine Zeile „Start: … ms bis zur freien Nachrichtenschleife, davon Atlas … ms: …“ mit Teilnamen und Millisekunden, ohne Pfade; kein Eintrag im Meldungsfenster, solange das Zeitlimit nicht überschritten ist |
+| AS18 | `build.onOpen` an, großes Projekt als zuletzt geöffnetes, Langsamer Start ab 1000, IDE neu starten | Meldung aus AS14 nennt „Aktion Bauen beim Öffnen … ms“ unter den längsten Teilen |
+| AS19 | Wie AS14, aber Optionen › Robustheit „Hinweis im Meldungsfenster nach langen Hängern (ab 2 s)“ aus | Kein Eintrag im Meldungsfenster; die Zeile aus AS17 steht trotzdem im Protokoll |
+| AS20 | `safemode.json` einer älteren Fassung mit `"slowStart": true` unter `%LOCALAPPDATA%\Atlas\Session` ablegen, IDE starten | Keine Rückfrage, Atlas startet normal; danach steht `slowStart` nicht mehr in der Datei |
 
 ## Atlas-Änderungen zurücknehmen (#721)
 
@@ -648,6 +652,36 @@ Protokoll: `Atlas.IDE.Expert370.log` neben dem Plugin (Hänger stehen dort immer
 | W5 | Mit `Diagnose` = 1 IDE starten | Zeile „Start: Laden des Packages bis zur freien Nachrichtenschleife n ms“ |
 | W6 | IDE schließen | Schließt ohne Verzögerung; bei Hängern in der Sitzung steht am Ende „Sitzung: n Hänger, längster …“ |
 | W7 | Diagnosemodus aus; Reiter *Robustheit* ansehen und in der Befehlspalette „Wächter“ suchen | Kein Knopf „Wächter testen“, kein Palettenbefehl; nach dem Einschalten des Diagnosemodus erscheint der Knopf sofort, der Befehl beim nächsten Öffnen der Palette (Code-Review S-07) |
+
+## Stacktraces der Absturzsicherung (#493)
+
+Protokoll: `atlas.log` (Diagnosemodus an). Voraussetzung: `Atlas.IDE.Expert370.map` liegt neben der BPL (Release/Installer oder eigener Build mit Map-Datei „detailliert“).
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| ST1 | IDE mit Atlas starten | Zeile „Stacktraces: Map-Datei … geladen“ spätestens beim ersten Fehler; keine Meldung über einen fehlgeschlagenen Ausnahmebehandler |
+| ST2 | Einen Fehler in einer Atlas-Funktion auslösen (z. B. Datei mit Syntaxfehlern öffnen, während der Server gestoppt ist, und Brotkrumen anklicken) | Unter der Zeile „Fehler in …“ folgen Zeilen `Atlas.IDE.Expert370.bpl+$… Unit.Klasse.Methode (Unit.pas:Zeile)`, die oberste nennt die Stelle des Fehlers |
+| ST3 | Map-Datei umbenennen, IDE neu starten, ST2 wiederholen | Stack nur mit `Modul+$Offset`-Zeilen, Protokoll nennt die fehlende Map einmal |
+| ST4 | Andere Packages der IDE werfen Ausnahmen (z. B. Debuggen eines Programms mit Ausnahmen, Formulardesigner) | Kein spürbarer Unterschied, keine Atlas-Zeilen für diese Ausnahmen |
+| ST5 | Einfrier-Wächter testen (W1) | Rahmen in `Atlas.IDE.Expert370.bpl` tragen Unit, Routine und Zeile |
+| ST6 | IDE beenden und Atlas über *Komponenten › Packages installieren* entladen | Kein Absturz; Protokoll nennt den Abbauschritt „StackCapture“ ohne Fehler |
+
+## Sicherung je Funktion (#493)
+
+Protokoll: `atlas.log` (Diagnosemodus an). Einen Fehler gezielt auszulösen geht nur mit einem Fehler im Plugin; die Fälle prüfen deshalb das Protokoll nach normaler Arbeit und die Benachrichtigung, sobald eine Sicherung auslöst.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| SJ1 | Eine Stunde mit Minimap, mitlaufendem Kopf, Gliederung, Änderungsmarken und Mehrfachmarken arbeiten, danach `atlas.log` durchsuchen | Fehlerzeilen nennen die Funktion selbst („Fehler in Minimap“, „Fehler in Mitlaufender Kopf“ …); „Editorbefehle“ nur nach ausdrücklich aufgerufenen Befehlen (Zeilen verschieben, Formatieren, Blockkommentar, Neue Zeile, Gegenstück) |
+| SJ2 | Tritt ein Fehler beim Zeichnen auf (SJ1) | Höchstens eine Zeile je Sekunde für denselben Fehler; die nächste Zeile endet mit „(seit der letzten Meldung n Wiederholungen übergangen)“ |
+| SJ3 | Eine Sicherung löst aus (Zeile „… nach 3 Fehlern in 5 Minuten abgeschaltet“) | In der Benachrichtigungszentrale (Strg+Umschalt+Alt+N) ein Fehlereintrag „<Funktion> nach Fehlern abgeschaltet“ mit der letzten Meldung und den Knöpfen „Wieder einschalten“ und „Protokoll öffnen“ |
+| SJ4 | In SJ3 „Protokoll öffnen“ | `atlas.log` öffnet sich im Editor der IDE |
+| SJ5 | In SJ3 „Wieder einschalten“ | Die Funktion arbeitet wieder ohne Neustart; Protokoll „<Funktion>: aus der Benachrichtigung wieder eingeschaltet“ |
+| SJ6 | Nach SJ3, solange die Funktion aus ist: Brotkrumen anklicken, Gliederung öffnen, F12, Strg+D, Kontextmenü › Atlas › Erzeugen, Code Lens | Alles außer der abgeschalteten Funktion arbeitet weiter (**Abnahme**) |
+| SJ7 | IDE mit Englisch als Sprache, SJ3 | Eintrag „<Funktion> switched off after errors“, Knöpfe „Switch on again“ und „Open log“ |
+| SJ8 | Nach einem Absturz mit Fehlern einer Funktion (z. B. Minimap) abgesicherter Start (#722) | Der Vorschlag nennt den Schalter dieser Funktion, nicht pauschal die Editorbefehle |
+| SJ9 | Server neu aufbauen lassen (Atlas › Index neu aufbauen) und währenddessen in einer großen Unit (über 5000 Zeilen) zügig tippen, Strg+Leer und `(` für den Parameter-Hint | Vervollständigung und Parameter-Hint bleiben an; `atlas.log` enthält höchstens eine Zeile „Quelle … langsam: …; zählt nicht als Fehler“ je Quelle und Minute, keine Zeile „Quelle … nach 3 Fehlern … abgeschaltet“ (**Abnahme**) |
+| SJ10 | Wie SJ9, danach *Atlas › Abgeschaltete Funktionen einschalten* | Die Liste der abgeschalteten Quellen ist leer |
 
 ## Include-Dateien (#500)
 
@@ -2457,8 +2491,14 @@ Voraussetzung für EX2 bis EX7: mindestens eine Einstellung trägt `x-experiment
 | BK19 | Caret in einer Methode mit lokalen Prozeduren | Hinter dem Methodenglied steht ein „›“ auch am Ende; Klick listet die lokalen Routinen |
 | BK20 | Strg+Klick auf ein Glied; Strg+Umschalt+Klick auf ein Methodenglied | Sprung zur Implementierung bzw. zur Deklaration; Strg+Klick aufs Unit-Glied springt an den Dateianfang |
 | BK21 | Strg+Umschalt+., ←, Strg+↓ bzw. Strg+Enter | Kindermenü des gewählten Glieds bzw. Sprung dorthin |
-| BK22 | `editor.breadcrumbsHideIdeToolbar` an (Vorgabe), mehrere Reiter öffnen und wechseln, zweites Editorfenster | Navigationsleiste der IDE („Typ suchen“/„Methode suchen“) bleibt überall weg, kein Flackern beim Reiterwechsel |
-| BK23 | `editor.breadcrumbsHideIdeToolbar` aus bzw. `editor.breadcrumbs` aus bzw. Atlas entladen | Navigationsleiste der IDE ist wieder an alter Stelle (unter den Reitern, über dem Editor) |
+| BK22 | `editor.breadcrumbsHideIdeToolbar` an (Vorgabe), mehrere Reiter öffnen und wechseln, zweites Editorfenster | Navigationsleiste der IDE („Typ suchen“/„Methode suchen“) bleibt überall weg, kein Flackern beim Reiterwechsel. In Tools › Optionen › Editor › Anzeige ist „Navigationssymbolleiste anzeigen“ aus, atlas.log nennt „Navigationsleiste: über die Option … der IDE“ (Bericht M3). Steht dort „Die IDE hat keine Option dafür (ähnliche Namen: …)“, die Zeile an Claude geben |
+| BK23 | `editor.breadcrumbsHideIdeToolbar` aus bzw. `editor.breadcrumbs` aus bzw. Atlas entladen | Navigationsleiste der IDE ist wieder an alter Stelle (unter den Reitern, über dem Editor), „Navigationssymbolleiste anzeigen“ ist wieder an |
+| BK24 | IDE eine Weile benutzen (Reiter wechseln, Plattform umstellen, tippen), dann auf Glieder und „›“ klicken | Leiste reagiert weiterhin; fällt eine andere Funktion unter „Editorbefehle“ aus, bleibt die Leiste bedienbar |
+| BK25 | Brotkrumenleiste durch Fehler abgeschaltet (atlas.log: „Brotkrumen: durch die Sicherung abgeschaltet“), dann Atlas › Abgeschaltete Funktionen einschalten | Leiste zeigt zuerst den Hinweis „Brotkrumenleiste nach Fehlern abgeschaltet …“, nach dem Einschalten wieder den Pfad am Caret und ist bedienbar |
+| BK26 | Mit eingeschalteter Leiste arbeiten (Reiter, Design-Ansicht und zurück, Debuggen, Dialoge), danach auf ein Glied klicken | Menü öffnet sich. Steht in atlas.log „Brotkrumen: Fenster ist gesperrt/ausgeblendet …“, „Maus landet bei … ; Ursache: …“ oder „Fenster der Leiste wird gesperrt“ mit Aufrufer, die Zeilen an Claude geben; die Ursache nach „Ursache:“ entscheidet, was an der Wurzel zu beheben ist (Bericht M2) |
+| BK27 | Server beschäftigt (z. B. Index-Aufbau), Leiste und mitlaufender Kopf an | Kein Eintrag „Fehler in Editorbefehle: ELspClientError … documentSymbol“; stattdessen „Gliederung: keine Antwort vom Server …“, Leiste behält den alten Pfad |
+| BK28 | „Navigationssymbolleiste anzeigen“ in den Editoroptionen selbst ausschalten, dann `editor.breadcrumbsHideIdeToolbar` an und wieder aus | Die Option bleibt aus: Atlas schaltet nur zurück, was es selbst ausgeschaltet hat (Bericht M3) |
+| BK29 | Gegenprobe zur Zugriffsverletzung beim Beenden (`rtl370`, `TEditWindow.Notification`): Brotkrumen an, atlas.log nennt „über die Option … der IDE“, IDE dreimal beenden | Tritt die Zugriffsverletzung nicht mehr auf, war das Umhängen die Ursache; tritt sie weiter auf, liegt sie nicht am Umhängen (Bericht M3) |
 
 ## Extrahieren, case und with (#50)
 
@@ -3072,7 +3112,7 @@ Voraussetzung: Einstellungen auf Vorgabe, Diagnoselog an; Projektgruppe `Atlas.g
 | SN1 | IDE mit der Gruppe 10 Minuten offen lassen, ohne zu tippen | Keine Benachrichtigung „Server neu gestartet“ (**Abnahme**) |
 | SN2 | Diagnoselog des Laufs (`%LOCALAPPDATA%\Atlas\Logs\Diagnose\diag-<Datum>-<pid>.log`) öffnen | Keine Zeile `workspace/diagnostic … error:EStackOverflow`; am Ende des Laufs steht eine `run end`-Zeile (**Abnahme**) |
 | SN3 | `Packages/Atlas.Common/Source/Rules/Atlas.Common.Rules.Catalog.Data.pas` öffnen | Befunde erscheinen wie bei anderen Units, kein Fehler im Log |
-| SN4 | In einer eigenen Unit `X := 1 - 1 - 1 …` mit 1200 Gliedern schreiben (Testprojekt) und speichern | Kein Absturz; die Prüfregeln melden für diese Unit nichts, im Diagnoselog steht `deepUnits=1 deepUnit=unit#N deepUnitDepth=…` |
+| SN4 | In einer eigenen Unit `X := 1 - 1 - 1 …` mit 1200 Gliedern schreiben (Testprojekt) und speichern | Kein Absturz; die Prüfregeln melden für diese Unit wie für jede andere, keine `deepUnit`-Zeile im Diagnoselog (seit Bericht M1 greift die Grenze erst ab 100000 Ebenen, siehe TV2) |
 | SN5 | Kommandozeile: `AtlasServer.exe --check` über die Gruppe (Abschnitt „Linter mode“ im README) | Läuft durch alle Units ohne Absturz; dieselben Befunde wie vor #1094 |
 | SN6 | Testlauf `Atlas.Tests.exe` | Grün, darunter `SecondOverflowInSameThreadIsCaughtAgain` (drei Stapelüberläufe im selben Thread werden abgefangen, der Prozess lebt) |
 ## Fenster „Atlas-Prüfung“ und Seite „Prüfregeln“ (#909)
@@ -4160,3 +4200,107 @@ Voraussetzung: Server läuft in der IDE mit Projekt; eine Unit mit `Versenden(Ku
 | CV6 | „Regeln der Stufe T prüfen“ aus | In atlas.json steht `"group:compiler": {"typeLevel": "off"}`; `argument-count-mismatch` und die übrigen Regeln der Stufe T (Regeln.md) melden nichts, `duplicate-case-label` (Stufe B) meldet weiter |
 | CV7 | Hauptschalter der Gruppe aus | `"group:compiler": {"typeLevel": "off", "severity": "off"}` bzw. `"off"`; Tabelle, Stufe T und die beiden Plugin-Einstellungen gesperrt, Knoten grau; keine Regel der Gruppe meldet |
 | CV8 | `"group:compiler": {"typeLevel": "maybe"}` in atlas.json | Hinweis „"typeLevel" muss "certain" oder "off" sein“ beim Laden der Konfiguration |
+
+## Ende des Servers mit Ursache (Bericht H5)
+
+Voraussetzung: Einstellungen auf Vorgabe, ein Projekt offen, Atlas-Feld in der Statuszeile sichtbar. „Beenden“ heißt: `AtlasServer.exe` im Task-Manager über „Task beenden“ schließen (Exit-Code 1).
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| SK1 | Server beenden | Atlas-Feld rot, Text „Server: abgestürzt um hh:mm (Code 1 (unbehandelte Ausnahme oder von außen beendet))“; `%LOCALAPPDATA%\Atlas\Logs\atlas.log` enthält „Server beendet: Code 1 (…) nach …; letzte Anfrage …; nichts auf stderr“ (**Abnahme**) |
+| SK2 | Nach SK1 Maus über einen Bezeichner | Der Server startet wieder, Hover erscheint; Benachrichtigung „Server neu gestartet“ mit „Der Server war beendet (Code 1 (…)) und läuft wieder.“ |
+| SK3 | Innerhalb von zehn Minuten nach SK1 den Server noch einmal beenden, danach Maus über Bezeichner, Strg+Leer | Benachrichtigung „Server wiederholt abgestürzt“ (Fehler) mit „Server neu starten“, „Fehlerbericht erstellen…“ und „Protokoll öffnen“; Atlas-Feld „… zweimal, kein automatischer Neustart“; Hover und Vervollständigung starten keinen Server, im Task-Manager kein `AtlasServer.exe` (**Abnahme**) |
+| SK4 | In SK3 „Fehlerbericht erstellen…“ | Vorschau mit beiden Zeilen „Server beendet: …“ im Protokollauszug und dem Hinweis, dass der Server nicht läuft; steht etwas in `server-stderr.log`, der Abschnitt „Fehlerausgabe des Servers (stderr, letzte n Zeilen)“ ohne Pfade und Benutzernamen |
+| SK5 | In SK3 „Server neu starten“ | Server läuft wieder; atlas.log „Server: Start von Hand nach wiederholtem Absturz“; ein weiteres Beenden startet beim nächsten Zugriff wieder von selbst (Zählung von vorn) |
+| SK6 | Wie SK3, dann statt SK5 das Atlas-Feld anklicken › „Server neu starten“ bzw. in der Einrichtung „Server starten“ | Server läuft wieder wie in SK5 |
+| SK7 | `%LOCALAPPDATA%\Atlas\Logs\server-stderr.log` nach einigen Starts öffnen | Je Start eine Zeile „---- <Datum Uhrzeit> Serverstart ----“; ist die Datei beim Start größer als 1 MB, liegt sie danach als `server-stderr.1.log` daneben |
+| SK8 | Atlas › Server neu starten, danach IDE schließen | Kein Eintrag „Server beendet: …“ im atlas.log: Von Atlas beendet ist kein Absturz |
+| SK9 | Zwei IDEs gleichzeitig offen, in beiden arbeiten | Beide Server schreiben in dieselbe `server-stderr.log`, keine Fehlermeldung, kein Start scheitert |
+| SK10 | IDE mit Englisch als Sprache, SK3 | „Server crashed repeatedly“, Knöpfe „Restart server“, „Create bug report…“, „Open log“ |
+| SK11 | Testlauf `Atlas.Tests.exe` | Grün, darunter `EndReportsExitCodeAndStderr` (Exit-Code 3 und eine Zeile stderr von `cmd.exe`) und `CloseInfoNamesLastAndOpenRequests` |
+
+## Prüfregeln bei tief verschachtelten Ausdrücken (Bericht M1)
+
+Voraussetzung: Einstellungen auf Vorgabe, Diagnoselog an, ein Testprojekt offen. Die Units entstehen in PowerShell im Projektordner, z. B. für 20000 Glieder:
+`'unit Tief; interface implementation procedure P; var X: Integer; begin X := 1' + (' - 1' * 20000) + '; with TObject.Create do Free; end; end.' | Set-Content Tief.pas`
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| TV1 | `Tief.pas` mit 20000 Gliedern dem Projekt hinzufügen und öffnen | Kein Absturz, keine Benachrichtigung „Server neu gestartet“; im Problemfenster der Befund `with-statement` in der Zeile mit `with`; kein `unit-too-deep`; im Diagnoselog keine `deepUnit`-Zeile (**Abnahme**) |
+| TV2 | Dasselbe mit 100100 Gliedern (`Tief2.pas`) | Problemfenster: genau ein Hinweis `unit-too-deep` „Die Prüfregeln laufen für diese Unit nicht: Der Syntaxbaum ist 100… Ebenen tief (Grenze 100000). Die tiefste Stelle liegt hier; …“ am ersten `1` der Kette; kein `with-statement`; im Diagnoselog `deepUnits=1 deepUnit=… deepUnitDepth=…` (**Abnahme**) |
+| TV3 | In `atlas.json` `{"rules": {"unit-too-deep": "off"}}`, `Tief2.pas` erneut prüfen lassen | Kein Hinweis mehr; die Unit bleibt ohne Befunde |
+| TV3a | In `Tief.pas` (TV1) Maus über ein `1` mitten in der Kette, Strg+Klick auf `P`, Inlay Hints und Endmarken an | Kein Absturz, keine Benachrichtigung „Server neu gestartet“; Hover und Hinweise wie in anderen Units |
+| TV4 | `AtlasServer.exe --check` über das Projekt aus TV1 | Läuft ohne Absturz durch; `Tief.pas` mit `with-statement`, `Tief2.pas` mit `unit-too-deep` |
+| TV5 | Testlauf `Atlas.Tests.exe` | Grün, darunter `AllRulesHandleDeepTrees` und `EngineChecksDeepUnit` (TBuiltinRulesTests), `TooDeepTreeSkipsRules` und `TooDeepHintCanBeSwitchedOff` (TRuleEngineTests), `WalkAndSearchOfDeepTreeNeedLittleStack` und `DeepestIsFirstNodeAtGreatestDepth` (TSyntaxTreeTests), `WalkersHandleDeepTrees` (TLspDeepTreeTests) |
+
+## Atlas-Protokoll bei Schreibfehlern (Bericht M4)
+
+Voraussetzung: Atlas geladen, DebugView (Sysinternals) mit „Capture Win32“ an, Ordner `%LOCALAPPDATA%\Atlas\Logs` im Explorer offen.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| PL1 | Zweite IDE starten (z. B. über Claude-Compile), in beiden arbeiten, danach `atlas.log` ansehen | Zeilen beider IDEs stehen vollständig und nicht ineinander; kein „Protokoll gestört“ |
+| PL2 | `atlas.2.log` in einem Programm öffnen, das die Datei sperrt (z. B. Excel), dann so lange arbeiten, bis `atlas.log` 1 MB erreicht (oder `atlas.log` vorher mit 1 MB Text füllen) | Atlas schreibt weiter in `atlas.log`; dort steht einmal „Protokoll: Rotieren gescheitert (…); schreibe weiter in atlas.log“, ohne Benutzernamen. Nach dem Schließen rotiert es wieder |
+| PL3 | `atlas.log` umbenennen und einen Ordner `atlas.log` anlegen, eine Atlas-Funktion benutzen | DebugView zeigt „Atlas: Protokoll gestört: …“; Benachrichtigung „Atlas-Protokoll gestört“ (bzw. Zeile in der Meldungsansicht) nur einmal |
+| PL4 | Ordner `atlas.log` wieder löschen, weiterarbeiten | DebugView „Atlas: Protokoll schreibt wieder“; in `atlas.log` steht „Protokoll: N Zeilen nicht geschrieben (zuletzt: …)“ vor der nächsten Zeile |
+| PL5 | Testlauf `Atlas.Tests.exe` | Grün, darunter `LogKeepsWritingWhenRotationFails`, `LogCountsLostLinesAndReportsTheGap` und `LogMutexNameDependsOnlyOnTheFolder` (TAtlasGuardTests) |
+
+## Einstellungen und Units atomar speichern (Bericht M5)
+
+Voraussetzung: Atlas geladen, Server läuft, ein Projekt mit einigen Units offen. Process Monitor (Sysinternals) mit Filter „Path ends with settings.json“ hilft bei ES2.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| ES1 | In den Atlas-Optionen mehrmals schnell hintereinander eine Einstellung umschalten und mit OK speichern | Jedes Speichern gelingt sofort, ohne spürbare Pause; `settings.json` ist danach gültiges JSON; keine `settings.json.atlas-tmp` im Ordner |
+| ES2 | ES1 mit Process Monitor | Beim Speichern ein `SetRenameInformationFile` auf `settings.json` mit Ergebnis SUCCESS, kein `WriteFile` auf `settings.json` selbst; die Leser (`AtlasServer.exe`, `bds.exe`) öffnen mit „Share Mode: Read, Write, Delete“ |
+| ES3 | Eine Unit mit vielen Verwendungen über Atlas umbenennen (Umbenennen über Dateien, die nicht im Editor offen sind), währenddessen indiziert der Server | Alle Dateien geändert, keine Fehlermeldung „von einem anderen Programm gesperrt“, keine `.atlas-tmp` übrig |
+| ES4 | `settings.json` sperren, ohne Löschen zu teilen: in PowerShell `$f = [IO.File]::Open("$env:APPDATA\Atlas\settings.json", 'Open', 'Read', 'Read')`, dann in den Atlas-Optionen speichern; danach `$f.Close()` und erneut speichern | Nach etwa einer halben Sekunde steht in `atlas.log` „Einstellungen nicht gespeichert: Datei ist von einem anderen Programm gesperrt und bleibt unverändert (…)“ ohne Pfad; die Werte gelten bis zum Ende der Sitzung; `settings.json` unverändert und vollständig, keine `.atlas-tmp`; nach `$f.Close()` gelingt das Speichern |
+| ES5 | Unit im Editor ändern und speichern (Strg+S), während der Server sie gerade liest (z. B. kurz nach dem Öffnen eines großen Projekts) | Die IDE speichert ohne Meldung „Datei kann nicht erstellt werden“ |
+| ES6 | Testlauf `Atlas.Tests.exe` | Grün, darunter `ReplacesFileHeldOpenByOthers`, `KeepsFileLockedByOthers`, `ReadAllBytesDoesNotBlockReplace` (TAtlasTextFileTests), `TWindowsSharedReadTests` und `LoadsThroughPlatformReader`, `ReadsWhileSomeoneWrites` (TFileEncodingDefaultTests) |
+
+## Ein Schreiber je Index-Cache (Bericht N1)
+
+Voraussetzung: Zwei Projekte, die unterschiedliche VCL-Units verwenden (z. B. eines mit `Vcl.Grids`, eines mit `Vcl.ComCtrls`), Server-Log an (`--log`).
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| IC1 | Index löschen, beide Projekte in einer Projektgruppe öffnen, warten, bis der Index fertig ist; IDE schließen und neu starten | Beim zweiten Start kommen die Units beider Projekte aus dem Cache (Statuszeile „Index“, „aus dem Cache“); im Log keine Warnung „Index-Cache … nicht geschrieben“ |
+| IC2 | Zwei IDEs gleichzeitig starten, in jeder eines der Projekte; nach dem Index beide schließen, eine IDE mit dem anderen Projekt neu öffnen | Die Bibliotheks-Units des anderen Projekts kommen aus dem Cache, nichts wird doppelt eingelesen |
+| IC3 | Während eine IDE indiziert, `%LOCALAPPDATA%\Atlas\Index\<Version>\Bibliothek\<Hash>\index.atlasidx.lock` in PowerShell exklusiv öffnen (`$f = [IO.File]::Open($pfad, 'Open', 'ReadWrite', 'None')`), 35 Sekunden warten, dann `$f.Close()` | Im Server-Log „Index-Cache (Bibliothek) nicht geschrieben: Schreibsperre nicht erhalten“, ohne Pfad; der nächste Aufbau schreibt den Cache wieder |
+| IC4 | Testlauf `Atlas.Tests.exe` | Grün, darunter `ServiceKeepsLibraryUnitsOfOtherWriters`, `ServiceWaitsForLibraryWriteLock`, `ServiceReportsUnwrittenCache`, `DiskWriteLockIsExclusive` |
+
+## Leckprüfung ohne Pauschalausnahmen (Bericht N2)
+
+Voraussetzung: `Atlas.Tests.exe` (Win64, Debug) mit `AtlasServer.exe` daneben, damit auch die Tests gegen den echten Server laufen.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| LP1 | Volle Testläufe hintereinander, mindestens drei | Jeder Lauf ohne Leckmeldung. Meldet ein Test ein Leck, die Zeile mit Setup, Test, TearDown und Threads aus dem Bericht festhalten; das ist ein Befund, kein Grund zum Wiederholen |
+| LP2 | Im Quelltext nach `[IgnoreMemoryLeaks]` suchen | Nur noch `ReplayDoesNotGrowMemory`, `ConnectionSoakDoesNotGrowMemory`, `ConnectionSoakDetectsWorkerLeak` und `StopDropsWaitingAndLaterEntries`, jeweils mit Grund darüber |
+| LP3 | Testlauf nur der Fixture `TJsonRpcConnectionTests` | Grün, darunter `RunReleasesReaderBeforeReturning` |
+| LP4 | Server in der IDE beenden (IDE schließen) mit `--log` | Im Server-Log keine Meldung „Nebenläufige Anfragen wurden beim Beenden nicht rechtzeitig fertig“; der Prozess endet wie bisher ohne Wartezeit |
+
+## Beschädigte Datendateien (Bericht N3)
+
+Voraussetzung: Atlas geladen, ein Projekt offen. Die Dateien liegen unter `%APPDATA%\Atlas` (`favorites.json`, `usage.json`, `palette.json`, `settings-history.json`, `generate-recent.txt`) bzw. `%LOCALAPPDATA%\Atlas` (`quickopen.json`, `unitsearch.json`, `projects\`, `startprofiles\`). Process Monitor (Sysinternals) hilft bei DD5.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| DD1 | IDE schließen, in `favorites.json` den Inhalt durch `{kaputt` ersetzen; IDE starten, Vervollständigung öffnen und einen Eintrag als Favorit markieren | Neben der Datei liegt `favorites.json.defekt` mit `{kaputt`; in `atlas.log` einmal „Datendatei Favoriten: kein gültiger Inhalt; beiseitegelegt als *.defekt, Atlas beginnt sie neu“, ohne Pfad; `favorites.json` enthält danach den neuen Favoriten |
+| DD2 | Wie DD1 mit `palette.json` (Befehl über die Befehlspalette ausführen), `quickopen.json` (Schnell öffnen), `unitsearch.json` (Units suchen) und `settings-history.json` (Einstellung ändern) | Je eine `.defekt` daneben und eine Zeile mit der Art („Verlauf der Befehlspalette“, „Verlauf von Schnell öffnen“, „Zustand von Units suchen“, „Einstellungsverlauf“); die Funktionen arbeiten normal weiter |
+| DD3 | Gültige `favorites.json` mit Favoriten vor dem IDE-Start exklusiv sperren: in PowerShell `$f = [IO.File]::Open("$env:APPDATA\Atlas\favorites.json", 'Open', 'Read', 'None')`; IDE starten, Vervollständigung öffnen, einen Favoriten setzen; dann `$f.Close()` und die IDE schließen | In `atlas.log` einmal „Datendatei Favoriten: gesperrt oder nicht lesbar; sie bleibt in dieser Sitzung unverändert“; die Datei hat danach unverändert die alten Favoriten, keine `.defekt` |
+| DD4 | `.atlas-bookmarks.json` neben dem Projekt durch `{"bookmarks": [` ersetzen, Projekt öffnen, ein Lesezeichen setzen | `.atlas-bookmarks.json.defekt` daneben, die neue Datei enthält das neue Lesezeichen; Zeile „Datendatei Lesezeichen: kein gültiger Inhalt; …“ |
+| DD5 | Mehrmals schnell hintereinander Favoriten umschalten und Befehle über die Befehlspalette ausführen, mit Process Monitor (Filter „Path contains \Atlas\“) | Geschrieben wird in `*.atlas-tmp` und dann umbenannt (`SetRenameInformationFile`), kein `WriteFile` auf die Datei selbst; keine `.atlas-tmp` übrig; neue Dateien beginnen ohne BOM |
+| DD6 | `atlas-baseline.json` im Projektordner durch `{kaputt` ersetzen, dann *Baseline des Projekts aktualisieren* | Meldungsfenster: „Baseline: Die bisherige Datei war unbrauchbar und liegt jetzt als … atlas-baseline.json.defekt daneben.“; die neue `atlas-baseline.json` ist gültig |
+| DD7 | Testlauf `Atlas.Tests.exe` | Grün, darunter `TAtlasDataFileTests`, die zehn `BrokenFileSetAsideLockedFileKept`, `InvalidPreviousBaselineIsSetAside`, `InvalidPreviousBaselineIsReplacedWhenSetAsideFails` und `MarkerFilesFindCrashedSessions` |
+
+## Gliederung beim Start und Kontextwechsel ohne Zugriffsverletzung
+
+Voraussetzung: experimentelles `editor.stickyScroll` an (wie bei Marco), Brotkrumen an; IDE frisch gestartet, eine Gruppe mit mehreren Plattformen.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| GS1 | IDE starten, eine Pascal-Unit ist beim Start schon offen | In `%LOCALAPPDATA%\Atlas\Logs\atlas.log` keine Zeile „Fehler in Editorbefehle: EAccessViolation … AnsiLowerCase“ (**Abnahme**, 5 Starts) |
+| GS2 | Während der Server noch startet, Plattform Win32 ↔ Win64 wechseln | Kein Fehler; Gliederung, Brotkrumen und Sticky Scroll zeigen danach den Stand der neuen Plattform |
+| GS3 | Konfiguration Debug ↔ Release wechseln, Unit mit `{$IFDEF DEBUG}` offen | Gliederung baut sich neu auf, kein Fehler im Log |
+| GS4 | IDE beenden | Im Log „Atlas entladen …; Fehler beim Abbau: keine“ |

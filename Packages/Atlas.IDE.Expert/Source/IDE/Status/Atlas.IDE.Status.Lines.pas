@@ -19,6 +19,9 @@
 //   markiert die Datei als geändert; nach jedem Speichern schreibt Atlas sie
 //   im gewählten Format und setzt den Zeitstempel der IDE wieder, damit diese
 //   nicht nach Neuladen fragt. Die Wahl gilt bis zum Ende der Sitzung.
+//   Gelesen wird mit TAtlasTextFile.ReadAllBytes, das Löschen teilt: Ersetzt
+//   Atlas die Datei gerade (Umbenennen, Ausblenden), scheitert das nicht an
+//   dieser Zeile (Bericht M5).
 
 interface
 
@@ -107,7 +110,8 @@ implementation
 uses
   System.IOUtils,
   ToolsAPI,
-  Atlas.Core.Diagnostics.Guard;
+  Atlas.Core.Diagnostics.Guard,
+  Atlas.Core.Files.TextFile;
 
 { TAtlasIdeStatusLines }
 
@@ -304,7 +308,7 @@ begin
     Exit;
   end;
   try
-    Cached.Format := TAtlasFileFormats.Detect(TFile.ReadAllBytes(AFileName));
+    Cached.Format := TAtlasFileFormats.Detect(TAtlasTextFile.ReadAllBytes(AFileName));
   except
     on Exception do
       Exit(False);
@@ -328,7 +332,7 @@ begin
   begin
     // Schon im gewählten Format: kein Pfeil.
     try
-      Bytes := TFile.ReadAllBytes(FActiveFile);
+      Bytes := TAtlasTextFile.ReadAllBytes(FActiveFile);
       Info.HasTarget := not TAtlasFileFormats.Satisfies(Bytes, Info.Target);
     except
       on Exception do
@@ -389,7 +393,7 @@ var
 begin
   if (AFileName = '') or not FileExists(AFileName) then
     Exit;
-  Bytes := TFile.ReadAllBytes(AFileName);
+  Bytes := TAtlasTextFile.ReadAllBytes(AFileName);
   if TAtlasFileFormats.Satisfies(Bytes, ATarget) then
     FTargets.Remove(Key(AFileName))
   else
@@ -435,11 +439,12 @@ var
 begin
   if not FTargets.TryGetValue(Key(AFileName), Target) or not FileExists(AFileName) then
     Exit;
-  Bytes := TFile.ReadAllBytes(AFileName);
+  Bytes := TAtlasTextFile.ReadAllBytes(AFileName);
   if not TAtlasFileFormats.Satisfies(Bytes, Target) then
   begin
     Stamp := TFile.GetLastWriteTime(AFileName);
-    TFile.WriteAllBytes(AFileName, TAtlasFileFormats.Convert(Bytes, Target));
+    // Atomar (Bericht N3): An Ort und Stelle geschrieben, kostete ein Abbruch die Quelltextdatei.
+    TAtlasTextFile.Replace(AFileName, TAtlasFileFormats.Convert(Bytes, Target));
     // Zeitstempel des Speicherns der IDE behalten: sonst meldet sie die Datei als extern geändert.
     TFile.SetLastWriteTime(AFileName, Stamp);
     FCache.Remove(Key(AFileName));

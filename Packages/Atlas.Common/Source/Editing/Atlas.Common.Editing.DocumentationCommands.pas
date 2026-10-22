@@ -257,18 +257,21 @@ end;
 
 function FindTypeDecl(ANode: TSyntaxNode; ALine: Integer): TSyntaxNode;
 var
-  Index: Integer;
+  Root: TSyntaxNode;
+  Line: Integer;
 begin
-  if (ANode.Kind = TSyntaxKind.TypeDecl) and (ANode.StartPos.Line = ALine) then
-    Exit(ANode);
-  for Index := 0 to ANode.ChildCount - 1 do
-    if (ANode[Index].StartPos.Line <= ALine) and (ANode[Index].EndPos.Line >= ALine) then
+  Root := ANode;
+  Line := ALine;
+  // Search statt Rekursion (Bericht M1); unter ANode nur Knoten, die ALine überdecken.
+  Result := ANode.Search(
+    function(ACandidate: TSyntaxNode): TSyntaxSearchStep
     begin
-      Result := FindTypeDecl(ANode[Index], ALine);
-      if Result <> nil then
-        Exit;
-    end;
-  Result := nil;
+      if (ACandidate <> Root) and ((ACandidate.StartPos.Line > Line) or (ACandidate.EndPos.Line < Line)) then
+        Exit(TSyntaxSearchStep.Skip);
+      Result := TSyntaxSearchStep.Descend;
+      if (ACandidate.Kind = TSyntaxKind.TypeDecl) and (ACandidate.StartPos.Line = Line) then
+        Result := TSyntaxSearchStep.Found;
+    end);
 end;
 
 function ExecuteDeprecated(const AContext: TSlashContext; out AEdits: TArray<TTextEdit>;

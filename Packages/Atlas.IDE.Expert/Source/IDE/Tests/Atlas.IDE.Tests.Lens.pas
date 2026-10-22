@@ -190,7 +190,7 @@ end;
 
 class function TAtlasIdeTestsLens.Wanted(const ASettings: TAtlasPluginSettings): Boolean;
 begin
-  Result := TAtlasTestDebug.LensWanted(ASettings) and not TAtlasGuard.Disabled(TAtlasFeature.EditorCommands);
+  Result := TAtlasTestDebug.LensWanted(ASettings) and not TAtlasGuard.Disabled(TAtlasFeature.CodeLens);
 end;
 
 procedure TAtlasIdeTestsLens.Clear;
@@ -241,7 +241,7 @@ begin
     end;
   except
     on E: Exception do
-      TAtlasGuard.Report(TAtlasFeature.EditorCommands, E);
+      TAtlasGuard.Report(TAtlasFeature.CodeLens, E);
   end;
 end;
 
@@ -435,7 +435,7 @@ begin
   except
     // Zeichnen darf die IDE nie stören.
     on E: Exception do
-      TAtlasGuard.Report(TAtlasFeature.EditorCommands, E);
+      TAtlasGuard.Report(TAtlasFeature.CodeLens, E);
   end;
 end;
 
@@ -484,7 +484,7 @@ begin
   Keep := FAliveRef;
   // Erst nach dem Mausereignis: der Editor setzt sonst den Cursor danach. Die Lens lebt kürzer als Läufer und
   // Debugger-Teil: Lebt sie noch, leben auch sie.
-  TAtlasMainThread.ForceQueue(TAtlasFeature.EditorCommands,
+  TAtlasMainThread.ForceQueue(TAtlasFeature.CodeLens,
     procedure
     begin
       if (Keep = nil) or not Alive.Alive then

@@ -28,6 +28,13 @@
 //
 // TEncodingSurvey zählt die Kodierungen mehrerer Dateien, damit der Server
 // auf ein Projekt mit gemischten Kodierungen hinweisen kann.
+//
+// Lesen ohne Sperre (Bericht M5): LoadFromFile und ReadAllBytes lesen über
+// Reader. Die Plattform setzt dort einen Leser ein, der die Datei auch zum
+// Löschen teilt (unter Windows Atlas.Windows.Documents.SharedRead). Sonst kann
+// das Plugin settings.json, atlas.json oder eine Unit nicht atomar durch die
+// neue Fassung ersetzen, solange der Server sie gerade liest, und das Speichern
+// der IDE scheitert, solange der Server nur Lesen teilt.
 
 interface
 
@@ -91,9 +98,14 @@ type
     Position: TTextPosition;
   end;
 
+  /// <summary>Liest eine ganze Datei; EFOpenError, wenn sie fehlt oder gesperrt ist (Bericht M5).</summary>
+  TFileBytesReader = reference to function(const AFileName: string): TBytes;
+
   TFileEncoding = class
   public const
     Utf8CodePage = 65001;
+  private
+    class var FReader: TFileBytesReader;
   public
     /// <summary>Erkennt die Kodierung; ADefault gilt für reines ASCII.</summary>
     class function DetectEncoding(const ABytes: TBytes; ADefault: TFileEncodingKind = TFileEncodingKind.Utf8): TFileEncodingKind; static;
@@ -128,6 +140,14 @@ type
     class function Encode(const AText: string; const AFormat: TFileFormat): TBytes; static;
     /// <summary>Ersetzt alle Zeilenumbrüche durch AStyle.</summary>
     class function NormalizeLineBreaks(const AText: string; AStyle: TLineBreakStyle): string; static;
+    /// <summary>
+    /// Liest die ganze Datei über Reader. Ohne Reader liest die RTL und teilt Lesen und Schreiben, aber nicht
+    /// Löschen. EFOpenError, wenn die Datei fehlt oder gesperrt ist.
+    /// </summary>
+    class function ReadAllBytes(const AFileName: string): TBytes; static;
+    /// <summary>Von der Plattform gesetzt: öffnet so, dass ein anderer Prozess die Datei während des Lesens
+    /// atomar ersetzen kann (unter Windows mit FILE_SHARE_DELETE). Nur beim Start setzen.</summary>
+    class property Reader: TFileBytesReader read FReader write FReader;
     /// <summary>Liest mit der Vorgabe aus TFileEncodingDefaults für den Ordner der Datei.</summary>
     class function LoadFromFile(const AFileName: string; out AFormat: TFileFormat): string; overload; static;
     class function LoadFromFile(const AFileName: string; out AFormat: TFileFormat;
@@ -672,11 +692,16 @@ begin
   end;
 end;
 
-function ReadBytes(const AFileName: string): TBytes;
+class function TFileEncoding.ReadAllBytes(const AFileName: string): TBytes;
 var
+  Custom: TFileBytesReader;
   Stream: TFileStream;
 begin
-  Stream := TFileStream.Create(AFileName, fmOpenRead or fmShareDenyWrite);
+  Custom := FReader;
+  if Assigned(Custom) then
+    Exit(Custom(AFileName));
+  // Schreiben teilen: Wer die Datei gerade schreibt (die IDE beim Speichern), scheitert nicht an diesem Leser.
+  Stream := TFileStream.Create(AFileName, fmOpenRead or fmShareDenyNone);
   try
     SetLength(Result, Stream.Size);
     if Length(Result) > 0 then
@@ -688,13 +713,13 @@ end;
 
 class function TFileEncoding.LoadFromFile(const AFileName: string; out AFormat: TFileFormat): string;
 begin
-  Result := DecodeWithCodePage(ReadBytes(AFileName), AFormat, TFileEncodingDefaults.CodePageFor(AFileName));
+  Result := DecodeWithCodePage(ReadAllBytes(AFileName), AFormat, TFileEncodingDefaults.CodePageFor(AFileName));
 end;
 
 class function TFileEncoding.LoadFromFile(const AFileName: string; out AFormat: TFileFormat;
   ADefault: TFileEncodingKind): string;
 begin
-  Result := Decode(ReadBytes(AFileName), AFormat, ADefault);
+  Result := Decode(ReadAllBytes(AFileName), AFormat, ADefault);
 end;
 
 class function TFileEncoding.IsBinaryFormFile(const AFileName: string): Boolean;

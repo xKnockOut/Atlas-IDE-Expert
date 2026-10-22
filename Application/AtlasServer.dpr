@@ -2,9 +2,10 @@
 
 {$APPTYPE CONSOLE}
 
-// 8 MB Stapel je Thread statt 1 MB (#1094): Reserve für rekursive Auswertungen
-// großer Units. Belegt wird nur, was ein Thread wirklich braucht; die Tiefe
-// begrenzen Parser und Regel-Engine selbst.
+// 8 MB Stapel je Thread statt 1 MB (#1094). Netz, nicht Ursache: Seit Bericht M1
+// laufen Prüfregeln, LSP und Editing iterativ über den Syntaxbaum, die Tiefe
+// begrenzen Parser (MaxNesting) und Regel-Engine (MaxTreeDepth, mit Hinweis
+// unit-too-deep). Belegt wird nur, was ein Thread wirklich braucht.
 {$MAXSTACKSIZE $00800000}
 
 uses

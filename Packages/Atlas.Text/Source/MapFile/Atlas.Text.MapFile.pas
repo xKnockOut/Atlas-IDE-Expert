@@ -1,4 +1,4 @@
-﻿unit Atlas.Common.Diagnostics.MapFile;
+﻿unit Atlas.Text.MapFile;
 
 // Liest die detaillierte Map-Datei des Linkers (DCC_MapFile=3, #282) und löst
 // Adressen aus Stacktraces ("AtlasServer.exe+$1A2B3C") in Unit, Routine
@@ -8,6 +8,8 @@
 // - "Line numbers for Unit(Datei.pas) segment .text".
 // Adressen in der Map sind relativ zum Segmentanfang; im Stacktrace stehen
 // Offsets relativ zur Modulbasis, das Codesegment beginnt dort bei $1000.
+// In Atlas.Text, weil Server (Atlas.Windows.Diagnostics.StackTrace) und
+// IDE-Plugin (Atlas.IDE.Diagnostics.StackCapture) dieselbe Auflösung nutzen.
 
 interface
 

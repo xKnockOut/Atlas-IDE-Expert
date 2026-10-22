@@ -1,7 +1,8 @@
 ﻿unit Atlas.Core.Diagnostics.TimeLimit.Tests;
 
 // Absturzsicherheit (#493): Zeitlimit für Quellen, gemeinsames Abbruchsignal
-// und Sicherung je Quelle in der zusammengeführten Vervollständigung.
+// und Sicherung je Quelle in der zusammengeführten Vervollständigung. Eine
+// Zeitüberschreitung ist kein Fehler und schaltet keine Quelle ab.
 
 interface
 
@@ -31,6 +32,10 @@ type
     procedure FailingProviderTripsOnlyItself;
     [Test]
     procedure HangingProviderBlocksAtMostLimit;
+    /// <summary>Langsame Quelle: keine Sicherung, und solange ihr voriger Aufruf läuft, kein weiterer Arbeiter.
+    /// </summary>
+    [Test]
+    procedure SlowProviderNeverTripsAndRunsOnce;
     [Test]
     procedure FetchErrorsCountPerProvider;
     [Test]
@@ -42,7 +47,7 @@ type
     [Test]
     procedure ServerSessionFuncRunsInWorker;
     [Test]
-    procedure SignatureSessionFuncRunsInWorker;
+    procedure SignatureSyncsInCallingThread;
   end;
 
 implementation
@@ -333,12 +338,36 @@ begin
   end;
 end;
 
+/// <summary>Löst nach 50 ms das Signal zum Beenden aus. Der Test wartet am Ende auf den Thread, statt dass er
+/// sich irgendwann selbst freigibt (Bericht N2).</summary>
+function SignalShutdownSoon: TThread;
+begin
+  Result := TThread.CreateAnonymousThread(
+    procedure
+    begin
+      Sleep(50);
+      TAtlasShutdown.Signal;
+    end);
+  Result.FreeOnTerminate := False;
+  Result.Start;
+end;
+
+procedure JoinThread(AThread: TThread);
+begin
+  if AThread = nil then
+    Exit;
+  AThread.WaitFor;
+  AThread.Free;
+end;
+
 procedure TAtlasTimeLimitTests.ShutdownEndsWaitsAndWorkers;
 var
   Watch: TStopwatch;
   Event: TEvent;
   Error: string;
+  Signaller: TThread;
 begin
+  Signaller := nil;
   Event := TEvent.Create(nil, True, False, '');
   try
     Assert.IsTrue(TAtlasShutdown.WaitFor(Event, 30) = wrTimeout);
@@ -351,12 +380,7 @@ begin
       begin
         TAtlasShutdown.Wait(10000);
       end, Error, 50) = TAtlasTimedOutcome.TimedOut);
-    TThread.CreateAnonymousThread(
-      procedure
-      begin
-        Sleep(50);
-        TAtlasShutdown.Signal;
-      end).Start;
+    Signaller := SignalShutdownSoon;
     Watch := TStopwatch.StartNew;
     Assert.IsTrue(TAtlasShutdown.WaitFor(Event, 10000) = wrAbandoned);
     Assert.IsTrue(Watch.ElapsedMilliseconds < 500);
@@ -369,6 +393,7 @@ begin
       begin
       end, Error) = TAtlasTimedOutcome.Failed, 'nach dem Signal startet nichts mehr');
   finally
+    JoinThread(Signaller);
     Event.Free;
   end;
   TAtlasShutdown.Reset;
@@ -382,18 +407,15 @@ procedure TAtlasTimeLimitTests.ClientRequestEndsOnShutdown;
 var
   Client: TLspClient;
   Watch: TStopwatch;
+  Signaller: TThread;
 begin
+  Signaller := nil;
   Client := TLspClient.Create(
     procedure(const ABytes: TBytes)
     begin
     end);
   try
-    TThread.CreateAnonymousThread(
-      procedure
-      begin
-        Sleep(50);
-        TAtlasShutdown.Signal;
-      end).Start;
+    Signaller := SignalShutdownSoon;
     Watch := TStopwatch.StartNew;
     Assert.WillRaise(
       procedure
@@ -402,6 +424,7 @@ begin
       end, ELspClientError);
     Assert.IsTrue(Watch.ElapsedMilliseconds < 500, Format('wartete %d ms', [Watch.ElapsedMilliseconds]));
   finally
+    JoinThread(Signaller);
     Client.Free;
   end;
 end;
@@ -469,8 +492,56 @@ begin
   Assert.IsTrue(Watch.ElapsedMilliseconds < 450, Format('Query blockierte %d ms', [Watch.ElapsedMilliseconds]));
   Assert.IsTrue(Sink.WaitDone(3000));
   Assert.AreEqual('Beta', Sink.Names);
-  Assert.Contains(TFile.ReadAllText(TPath.Combine(FFolder, 'atlas.log'), TEncoding.UTF8), 'Zeitlimit von 200 ms');
+  Assert.Contains(TFile.ReadAllText(TPath.Combine(FFolder, 'atlas.log'), TEncoding.UTF8),
+    'Quelle Hängt langsam: keine Antwort innerhalb von 200 ms; zählt nicht als Fehler');
   // Hängenden Arbeiter freigeben.
+  TAtlasShutdown.Signal;
+  TAtlasTimeLimit.StopAll;
+end;
+
+procedure TAtlasTimeLimitTests.SlowProviderNeverTripsAndRunsOnce;
+var
+  Providers: TAtlasCompletionProviders;
+  Provider: IAtlasCompletionProvider;
+  Slow: TBrokenProvider;
+  SlowRef: IAtlasCompletionProvider;
+  Sink: TSink;
+  SinkRef: IAtlasCompletionSink;
+  Watch: TStopwatch;
+  Index: Integer;
+  Text: string;
+begin
+  Providers := TAtlasCompletionProviders.Create;
+  Provider := Providers;
+  Slow := TBrokenProvider.Create('Langsam', 5000);
+  SlowRef := Slow;
+  Providers.Add(SlowRef);
+  Providers.Add(TAtlasFixedCompletionProvider.Create([Item('Gamma')]));
+  for Index := 1 to 4 do
+  begin
+    Sink := TSink.Create;
+    SinkRef := Sink;
+    Watch := TStopwatch.StartNew;
+    Provider.Query(Context, SinkRef);
+    Assert.IsTrue(Watch.ElapsedMilliseconds < 450, Format('Query blockierte %d ms', [Watch.ElapsedMilliseconds]));
+    Assert.IsTrue(Sink.WaitDone(3000));
+    Assert.AreEqual('Gamma', Sink.Names, 'die übrigen Quellen liefern weiter');
+  end;
+  Assert.IsFalse(TAtlasGuard.ProviderDisabled('Langsam'), 'langsam ist kein Fehler');
+  Assert.AreEqual(1, Slow.Calls, 'solange der erste Aufruf läuft, kein weiterer Arbeiter');
+  Text := TFile.ReadAllText(TPath.Combine(FFolder, 'atlas.log'), TEncoding.UTF8);
+  Assert.Contains(Text, 'Quelle Langsam langsam: keine Antwort innerhalb von 200 ms; zählt nicht als Fehler');
+  Assert.AreEqual(1, Integer(Length(Text.Trim.Split([sLineBreak]))), 'eine Zeile je Quelle und Minute');
+  Assert.IsFalse(Text.Contains('Fehler in Quelle'), 'keine Fehlerzeile');
+  // Hängenden Arbeiter freigeben; danach fragt die Quelle wieder.
+  TAtlasShutdown.Signal;
+  TAtlasTimeLimit.WaitIdle(2000);
+  TAtlasShutdown.Reset;
+  Sink := TSink.Create;
+  SinkRef := Sink;
+  Provider.Query(Context, SinkRef);
+  Assert.IsTrue(Sink.WaitDone(3000));
+  Assert.AreEqual(2, Slow.Calls, 'nach seiner Rückkehr läuft die Quelle wieder');
   TAtlasShutdown.Signal;
   TAtlasTimeLimit.StopAll;
 end;
@@ -585,7 +656,7 @@ begin
     'Die Sitzungsfunktion läuft im Zeitlimit-Arbeiter und darf keinen Server starten (A-01)');
 end;
 
-procedure TAtlasTimeLimitTests.SignatureSessionFuncRunsInWorker;
+procedure TAtlasTimeLimitTests.SignatureSyncsInCallingThread;
 var
   Signatures: TAtlasServerSignatureProvider;
   SessionThread: TThreadID;
@@ -602,9 +673,9 @@ begin
       procedure(const AHelp: TAtlasSignatureHelp)
       begin
       end), 'ohne Sitzung keine Anfrage');
-    Assert.IsTrue(SessionThread <> 0, 'Sitzungsfunktion gerufen');
-    Assert.IsTrue(SessionThread <> MainThreadID,
-      'Die Sitzungsfunktion läuft im Zeitlimit-Arbeiter und darf keinen Server starten (A-01)');
+    Assert.IsTrue(SessionThread = TThread.CurrentThread.ThreadID,
+      'Sitzung und Abgleich im aufrufenden Thread: Sync wartet nicht auf den Server, kein Zeitlimit-Arbeiter');
+    Assert.AreEqual(0, TAtlasTimeLimit.BusyCount);
     Signatures.Shutdown;
   finally
     Signatures.Free;

@@ -150,7 +150,7 @@ begin
   except
     // Die Taste geht in jedem Fall an die IDE (Handled bleibt False).
     on E: Exception do
-      TAtlasGuard.Report(TAtlasFeature.EditorCommands, E);
+      TAtlasGuard.Report(TAtlasFeature.ContinueLines, E);
   end;
 end;
 
@@ -178,10 +178,10 @@ begin
     Exit;
   // Erst nach der Änderung, wenn die IDE den Cursor gesetzt hat.
   View := AView;
-  TAtlasMainThread.ForceQueue(TAtlasFeature.EditorCommands,
+  TAtlasMainThread.ForceQueue(TAtlasFeature.ContinueLines,
     procedure
     begin
-      TAtlasGuard.Run(TAtlasFeature.EditorCommands,
+      TAtlasGuard.Run(TAtlasFeature.ContinueLines,
         procedure
         begin
           Run(View);

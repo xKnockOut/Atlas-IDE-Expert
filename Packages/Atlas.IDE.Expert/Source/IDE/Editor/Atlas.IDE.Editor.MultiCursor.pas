@@ -615,10 +615,10 @@ begin
     not SameText(AView.Buffer.FileName, FInstance.FView.Buffer.FileName) then
     Exit;
   // Nie im Notifier schreiben: nach der Änderung, in der Warteschlange des Hauptthreads.
-  TAtlasMainThread.ForceQueue(TAtlasFeature.EditorCommands,
+  TAtlasMainThread.ForceQueue(TAtlasFeature.MultiCursor,
     procedure
     begin
-      TAtlasGuard.Run(TAtlasFeature.EditorCommands,
+      TAtlasGuard.Run(TAtlasFeature.MultiCursor,
         procedure
         begin
           if (FInstance <> nil) and FInstance.IsActive and (FInstance.FView <> nil) then
@@ -827,7 +827,7 @@ end;
 
 procedure TAtlasIdeMultiCursor.AppMessage(var Msg: TMsg; var Handled: Boolean);
 begin
-  if TAtlasGuard.Disabled(TAtlasFeature.EditorCommands) then
+  if TAtlasGuard.Disabled(TAtlasFeature.MultiCursor) then
     Exit;
   try
     case Msg.message of
@@ -845,7 +845,7 @@ begin
     on E: Exception do
     begin
       Handled := False;
-      TAtlasGuard.Report(TAtlasFeature.EditorCommands, E);
+      TAtlasGuard.Report(TAtlasFeature.MultiCursor, E);
     end;
   end;
 end;
@@ -1085,7 +1085,7 @@ begin
     Invalidate;
   except
     on E: Exception do
-      TAtlasGuard.Report(TAtlasFeature.EditorCommands, E);
+      TAtlasGuard.Report(TAtlasFeature.MultiCursor, E);
   end;
 end;
 
@@ -1103,7 +1103,7 @@ var
   Brush: HBRUSH;
 begin
   if BeforeEvent or (Stage <> plsEndPaint) or (Context = nil) or not IsActive or
-    TAtlasGuard.Disabled(TAtlasFeature.EditorCommands) then
+    TAtlasGuard.Disabled(TAtlasFeature.MultiCursor) then
     Exit;
   try
     if (FView = nil) or not SameText(Context.FileName, FView.Buffer.FileName) then
@@ -1161,7 +1161,7 @@ begin
     end;
   except
     on E: Exception do
-      TAtlasGuard.Report(TAtlasFeature.EditorCommands, E);
+      TAtlasGuard.Report(TAtlasFeature.MultiCursor, E);
   end;
 end;
 

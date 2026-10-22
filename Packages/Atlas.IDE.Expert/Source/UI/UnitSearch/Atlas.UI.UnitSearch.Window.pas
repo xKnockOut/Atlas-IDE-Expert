@@ -638,7 +638,7 @@ begin
     TAtlasUnitSearchAction.OpenTests] then
     Close;
   if Assigned(Handler) then
-    TAtlasMainThread.ForceQueue(TAtlasFeature.EditorCommands,
+    TAtlasMainThread.ForceQueue(TAtlasFeature.UnitSearch,
       procedure
       begin
         Handler(AAction, Entries);

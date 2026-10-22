@@ -7,8 +7,10 @@
 //   Feature aus #493) und löscht sie beim sauberen Beenden. Eine Marke, deren
 //   Prozess nicht mehr läuft, heißt: Die Sitzung ist abgestürzt.
 // - Zustand zwischen den Sitzungen: Anzahl der Abstürze hintereinander, Zeit
-//   des letzten, Marke der abgestürzten Sitzung (für „Details“) und ob der
-//   letzte Start länger als das Zeitlimit brauchte (zählt wie ein Absturz).
+//   des letzten und Marke der abgestürzten Sitzung (für „Details“).
+// - Ein langsamer Start ist kein Absturz (Bericht N4): Er schaltet beim
+//   nächsten Start nichts ab. Atlas misst stattdessen seine Startanteile
+//   (TAtlasStartTimes) und nennt sie, damit sich die Ursache beheben lässt.
 // - Entscheidung beim Start: Umschalt/Strg beim Laden, Kommandozeile
 //   -AtlasSafeMode oder ATLAS_SAFE_MODE=1 → nur Einstellungsseite und
 //   Statusfeld (Minimal); zwei Abstürze innerhalb von RepeatWindowMinutes →
@@ -63,8 +65,7 @@ type
     AskAfterCrash: Boolean;
     AutoAfterRepeatedCrash: Boolean;
     StartupKey: TAtlasStartupKey;
-    StartupTimeoutMs: Integer;
-    class function Create(AAsk, AAuto: Boolean; AKey: TAtlasStartupKey; ATimeoutMs: Integer): TAtlasSafeOptions; static;
+    class function Create(AAsk, AAuto: Boolean; AKey: TAtlasStartupKey): TAtlasSafeOptions; static;
   end;
 
   /// <summary>Was zwischen den Sitzungen bleibt.</summary>
@@ -73,8 +74,6 @@ type
     CrashCount: Integer;
     /// <summary>UTC; 0 ohne.</summary>
     LastCrashAt: TDateTime;
-    /// <summary>Letzter Start brauchte länger als das Zeitlimit.</summary>
-    SlowStart: Boolean;
     /// <summary>Marke der zuletzt abgestürzten Sitzung als JSON; '' ohne.</summary>
     CrashedMarker: string;
     function ToJson: string;
@@ -84,7 +83,7 @@ type
   TAtlasSafeDecision = record
     Level: TAtlasSafeLevel;
     Reason: TAtlasSafeReason;
-    /// <summary>Letzte Sitzung abgestürzt oder hängend gestartet.</summary>
+    /// <summary>Letzte Sitzung abgestürzt (ein langsamer Start zählt nicht, Bericht N4).</summary>
     Crashed: Boolean;
     /// <summary>Rückfrage zeigen („Abgesichert starten“, „Normal starten“, „Details“).</summary>
     Ask: Boolean;
@@ -94,8 +93,6 @@ type
   public const
     /// <summary>Zwei Abstürze in dieser Zeit gelten als wiederholt.</summary>
     RepeatWindowMinutes = 10;
-    MinTimeoutMs = 1000;
-    MaxTimeoutMs = 120000;
     EnvironmentName = 'ATLAS_SAFE_MODE';
     SwitchName = 'AtlasSafeMode';
   public
@@ -107,10 +104,6 @@ type
       AForced: Boolean): TAtlasSafeDecision; static;
     /// <summary>Sauberes Ende: keine Abstürze mehr in Folge.</summary>
     class procedure CleanExit(var AState: TAtlasSafeState); static;
-    /// <summary>Laden fertig nach ALoadMs; länger als AOptions.StartupTimeoutMs zählt beim nächsten Start wie ein
-    /// Absturz. True, wenn zu langsam.</summary>
-    class function LoadFinished(var AState: TAtlasSafeState; ALoadMs: Int64;
-      const AOptions: TAtlasSafeOptions): Boolean; static;
     /// <summary>Umgebungsvariable ("1", "true", "yes") oder Kommandozeile -AtlasSafeMode bzw. /AtlasSafeMode.</summary>
     class function IsForced(const AEnvironment: string; const AArgs: TArray<string>): Boolean; static;
     /// <summary>Taste aus safeMode.startupKey ("shift", "ctrl", "none").</summary>
@@ -298,13 +291,11 @@ end;
 
 { TAtlasSafeOptions }
 
-class function TAtlasSafeOptions.Create(AAsk, AAuto: Boolean; AKey: TAtlasStartupKey;
-  ATimeoutMs: Integer): TAtlasSafeOptions;
+class function TAtlasSafeOptions.Create(AAsk, AAuto: Boolean; AKey: TAtlasStartupKey): TAtlasSafeOptions;
 begin
   Result.AskAfterCrash := AAsk;
   Result.AutoAfterRepeatedCrash := AAuto;
   Result.StartupKey := AKey;
-  Result.StartupTimeoutMs := ATimeoutMs;
 end;
 
 { TAtlasSafeState }
@@ -319,7 +310,6 @@ begin
     Root.AddPair('crashCount', TJSONNumber.Create(CrashCount));
     if LastCrashAt > 0 then
       Root.AddPair('lastCrashAt', TJSONString.Create(DateToISO8601(LastCrashAt, True)));
-    Root.AddPair('slowStart', TJSONBool.Create(SlowStart));
     Crashed := nil;
     if CrashedMarker <> '' then
       Crashed := TJSONObject.ParseJSONValue(CrashedMarker);
@@ -354,8 +344,7 @@ begin
         on EConvertError do
           Result.LastCrashAt := 0;
       end;
-    Value := TJSONObject(Root).GetValue('slowStart');
-    Result.SlowStart := (Value is TJSONBool) and TJSONBool(Value).AsBoolean;
+    // "slowStart" älterer Fassungen bleibt unbeachtet: Ein langsamer Start ist kein Absturz (Bericht N4).
     Value := TJSONObject(Root).GetValue('crashed');
     if Value is TJSONObject then
       Result.CrashedMarker := Value.ToJSON;
@@ -375,7 +364,7 @@ var
   Repeated: Boolean;
 begin
   Result := Default(TAtlasSafeDecision);
-  Result.Crashed := (Length(ACrashed) > 0) or AState.SlowStart;
+  Result.Crashed := Length(ACrashed) > 0;
   Repeated := False;
   if Result.Crashed then
   begin
@@ -387,16 +376,12 @@ begin
       AState.CrashCount := 1;
     AState.LastCrashAt := ANow;
     // Für „Details“ die zuletzt gestartete abgestürzte Sitzung.
-    if Length(ACrashed) > 0 then
-    begin
-      Latest := ACrashed[0];
-      for Marker in ACrashed do
-        if Marker.StartedAt > Latest.StartedAt then
-          Latest := Marker;
-      AState.CrashedMarker := Latest.ToJson;
-    end;
+    Latest := ACrashed[0];
+    for Marker in ACrashed do
+      if Marker.StartedAt > Latest.StartedAt then
+        Latest := Marker;
+    AState.CrashedMarker := Latest.ToJson;
   end;
-  AState.SlowStart := False;
   if AForced then
   begin
     Result.Level := TAtlasSafeLevel.Minimal;
@@ -429,14 +414,6 @@ end;
 class procedure TAtlasSafeMode.CleanExit(var AState: TAtlasSafeState);
 begin
   AState.CrashCount := 0;
-end;
-
-class function TAtlasSafeMode.LoadFinished(var AState: TAtlasSafeState; ALoadMs: Int64;
-  const AOptions: TAtlasSafeOptions): Boolean;
-begin
-  Result := (AOptions.StartupTimeoutMs > 0) and (ALoadMs > EnsureRange(AOptions.StartupTimeoutMs, MinTimeoutMs,
-    MaxTimeoutMs));
-  AState.SlowStart := Result;
 end;
 
 class function TAtlasSafeMode.IsForced(const AEnvironment: string; const AArgs: TArray<string>): Boolean;
@@ -580,16 +557,39 @@ end;
 const
   MarkerPrefix = 'session-';
 
+/// <summary>
+/// Ersetzt AFileName in einem Schritt (Bericht N3): erst vollständig daneben schreiben, dann TFile.Replace
+/// (unter Windows ReplaceFile). Früher erst löschen, dann umbenennen: Ein Absturz dazwischen ließ keine Marke
+/// bzw. keinen Zustand zurück. Ohne TAtlasDataFile, weil das über TAtlasGuard protokolliert und Core.Diagnostics
+/// Core.Files nicht verwenden darf (Feature-Zyklus). EInOutError, wenn die Datei nicht ersetzt wurde; sie bleibt
+/// dann, wie sie war.
+/// </summary>
 procedure WriteFileSafely(const AFileName, AText: string);
 var
-  Temp: string;
+  Temp, Backup: string;
 begin
   ForceDirectories(ExtractFileDir(AFileName));
   Temp := AFileName + '.tmp';
+  // TFile.Replace braucht eine Sicherungsdatei, sobald das Ziel existiert.
+  Backup := AFileName + '.bak';
   TFile.WriteAllText(Temp, AText, TEncoding.UTF8);
-  if TFile.Exists(AFileName) then
-    TFile.Delete(AFileName);
-  TFile.Move(Temp, AFileName);
+  try
+    if TFile.Exists(AFileName) then
+      TFile.Replace(Temp, AFileName, Backup)
+    else
+      TFile.Move(Temp, AFileName);
+    // TFile.Replace meldet ein Scheitern von ReplaceFile nicht. Hat es das Ziel schon zur Sicherung umbenannt,
+    // ohne die neue Datei nachzuschieben, gehört die vollständige neue an seine Stelle.
+    if TFile.Exists(Temp) and not TFile.Exists(AFileName) then
+      TFile.Move(Temp, AFileName);
+    if TFile.Exists(Temp) then
+      raise EInOutError.Create('Datei des abgesicherten Starts nicht ersetzt');
+  finally
+    if TFile.Exists(Temp) then
+      TFile.Delete(Temp);
+    if TFile.Exists(Backup) then
+      TFile.Delete(Backup);
+  end;
 end;
 
 class function TAtlasSessionFiles.MarkerFile(const AFolder: string; AProcessId: Cardinal): string;

@@ -67,6 +67,7 @@ uses
   Vcl.Menus,
   ToolsAPI,
   Atlas.Core.Diagnostics.Guard,
+  Atlas.Core.Files.DataFile,
   Atlas.Core.Lsp.Client,
   Atlas.Core.Lsp.WorkspaceEdits,
   Atlas.Core.Editor.TestUnit,
@@ -234,12 +235,12 @@ begin
     Exit;
   end;
   // Abgeschaltet nach Fehlern (#493) oder Fehler beim Öffnen: Strg+F12 darf nie ins Leere gehen.
-  if TAtlasGuard.Disabled(TAtlasFeature.EditorCommands) then
+  if TAtlasGuard.Disabled(TAtlasFeature.UnitSearch) then
   begin
     RunOriginal;
     Exit;
   end;
-  if not TAtlasGuard.Run(TAtlasFeature.EditorCommands,
+  if not TAtlasGuard.Run(TAtlasFeature.UnitSearch,
     procedure
     begin
       TAtlasIdeUnitSearch.Show(True);
@@ -481,12 +482,9 @@ begin
   GroupInfo(Options.GroupFile, Options.ActiveProject, Options.Root);
   Search := TOpenSearch.Create;
   Search.State := TAtlasUnitSearchState.Create;
-  try
-    Search.State.LoadFromFile(StateFile);
-  except
-    on E: Exception do
-      TAtlasGuard.Log('Units suchen: Zustand nicht lesbar: ' + E.Message);
-  end;
+  // Fehlt, unbrauchbar oder gesperrt: Vorgaben; TAtlasDataFile legt Unbrauchbares beiseite und protokolliert
+  // ohne Pfad, eine gesperrte Datei schreibt SaveToFile nicht (Bericht N3).
+  Search.State.LoadFromFile(StateFile);
   Search.Target := TopFile;
   Search.Window := TAtlasUnitSearchWindow.CreateSearch(Application, Options, Search.State, TAtlasIdeStyle.Colors);
   Current := Search;
@@ -499,8 +497,9 @@ begin
       try
         Current.State.SaveToFile(StateFile);
       except
+        // Die Meldung kann den Pfad enthalten; ReportNotWritten nennt nur die Klasse.
         on E: Exception do
-          TAtlasGuard.Log('Units suchen: Zustand nicht gespeichert: ' + E.Message);
+          TAtlasDataFile.ReportNotWritten('Zustand von Units suchen', E);
       end;
       FreeAndNil(Current);
     end;
@@ -550,7 +549,7 @@ begin
       Target := '';
       if Current <> nil then
         Target := Current.Target;
-      TAtlasGuard.Run(TAtlasFeature.EditorCommands,
+      TAtlasGuard.Run(TAtlasFeature.UnitSearch,
         procedure
         begin
           RunAction(AAction, AEntries, Target);
@@ -559,7 +558,7 @@ begin
   Area := Screen.MonitorFromWindow(GetForegroundWindow).WorkareaRect;
   Search.Window.ShowOver(Area);
   // Erst nach dem Zeichnen laden: das Fenster zeigt so lange „Units werden geladen …“.
-  TAtlasMainThread.ForceQueue(TAtlasFeature.EditorCommands,
+  TAtlasMainThread.ForceQueue(TAtlasFeature.UnitSearch,
     procedure
     var
       Answer: TJSONValue;

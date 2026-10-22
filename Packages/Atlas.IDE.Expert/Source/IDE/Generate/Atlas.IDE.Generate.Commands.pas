@@ -40,6 +40,8 @@ type
     FApplyAction: TProc<TLspCodeAction>;
     FRecent: TAtlasGenerateRecent;
     FRecentLoaded: Boolean;
+    /// <summary>Verlauf war beim Lesen gesperrt: Remember überschreibt ihn nicht (Bericht N3).</summary>
+    FRecentKept: Boolean;
   private
     class function Session: TLspSession; static;
     class procedure Say(const AText: string); static;
@@ -73,6 +75,7 @@ uses
   Vcl.Controls,
   Atlas.Text.Lines,
   Atlas.Core.Diagnostics.Guard,
+  Atlas.Core.Files.DataFile,
   Atlas.Core.Lsp.Client,
   Atlas.Core.Lsp.TextChanges,
   Atlas.Core.Lsp.WorkspaceEdits,
@@ -124,6 +127,7 @@ begin
   FApplyAction := AApplyAction;
   FRecent := TAtlasGenerateRecent.Create;
   FRecentLoaded := False;
+  FRecentKept := False;
 end;
 
 class procedure TAtlasIdeGenerate.Uninstall;
@@ -160,14 +164,16 @@ begin
   if FRecentLoaded or (FRecent = nil) then
     Exit;
   FRecentLoaded := True;
-  try
-    if TFile.Exists(RecentFile) then
-      FRecent.LoadFromText(TFile.ReadAllText(RecentFile, TEncoding.UTF8));
-  except
-    on E: Exception do
-      // Ohne Pfad im Protokoll (#647); der Verlauf beginnt dann leer.
-      TAtlasGuard.Log('Erzeugen-Menü: Verlauf nicht lesbar (' + E.ClassName + ')');
-  end;
+  // Eine Kennung je Zeile, jeder Text ist lesbar. Gesperrt: leer beginnen und die Datei nicht überschreiben;
+  // TAtlasDataFile protokolliert das ohne Pfad.
+  FRecentKept := not TAtlasDataFile.Writable(TAtlasDataFile.Load(RecentFile, 'Verlauf des Erzeugen-Menüs',
+    function(const AText: string): Boolean
+    begin
+      FRecent.LoadFromText(AText);
+      Result := True;
+    end));
+  if FRecentKept then
+    FRecent.Clear;
 end;
 
 class procedure TAtlasIdeGenerate.Remember(const AEntry: TAtlasGenerateEntry);
@@ -176,12 +182,13 @@ begin
     Exit;
   LoadRecent;
   FRecent.Chosen(AEntry.Id);
+  if FRecentKept then
+    Exit;
   try
-    ForceDirectories(ExtractFileDir(RecentFile));
-    TFile.WriteAllText(RecentFile, FRecent.ToText, TEncoding.UTF8);
+    TAtlasDataFile.Write(RecentFile, FRecent.ToText);
   except
     on E: Exception do
-      TAtlasGuard.Log('Erzeugen-Menü: Verlauf nicht gespeichert (' + E.ClassName + ')');
+      TAtlasDataFile.ReportNotWritten('Verlauf des Erzeugen-Menüs', E);
   end;
 end;
 
@@ -404,7 +411,7 @@ begin
     begin
       Entry := AEntry;
       Argument := AArgument;
-      TAtlasGuard.Run(TAtlasFeature.EditorCommands,
+      TAtlasGuard.Run(TAtlasFeature.Generate,
         procedure
         var
           Current: TLspSession;

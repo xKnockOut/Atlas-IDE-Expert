@@ -5,14 +5,18 @@
 // Rangfolge (TAtlasRanking) und die Marken „zuletzt“ (letzte Übernahme bei
 // diesem Typ) und „häufig“ (ab 5 Übernahmen). Gespeichert als JSON
 // (%APPDATA%\Atlas\usage.json, Pfad von der IDE-Schicht), höchstens 5.000
-// Paare; die am längsten nicht genutzten werden verdrängt.
+// Paare; die am längsten nicht genutzten werden verdrängt. Lesen und
+// Schreiben über TAtlasDataFile (Bericht N3): atomar ersetzt, eine
+// unbrauchbare Datei liegt danach als usage.json.defekt daneben, eine
+// gesperrte bleibt unverändert und wird nicht überschrieben.
 
 interface
 
 uses
   System.SysUtils,
   System.Generics.Collections,
-  Atlas.Core.Completion.Contract;
+  Atlas.Core.Completion.Contract,
+  Atlas.Core.Files.DataFile;
 
 type
   TAtlasUsage = class
@@ -31,7 +35,12 @@ type
     FRecent: TDictionary<string, string>;
     FClock: Int64;
     FChanged: Boolean;
+    /// <summary>Vorhandene Datei, die LoadFromFile nicht lesen konnte: SaveToFile überschreibt sie nicht.</summary>
+    FKept: string;
     procedure Evict;
+    /// <summary>Übernimmt AText; False, wenn es kein Objekt ist oder "entries"/"recent" die falsche Form haben.
+    /// </summary>
+    function Parse(const AText: string): Boolean;
   public
     /// <summary>Schlüssel "typ|member" in Kleinbuchstaben; auch für die Favoriten (#458).</summary>
     class function KeyOf(const AItem: TAtlasCompletionItem): string; static;
@@ -46,8 +55,11 @@ type
     function Mark(const AItem: TAtlasCompletionItem): TAtlasUsageMark;
     function Count: Integer;
     procedure Clear;
-    procedure LoadFromFile(const AFileName: string);
-    procedure SaveToFile(const AFileName: string);
+    /// <summary>Liest über TAtlasDataFile.Load; fehlt die Datei oder ist sie unbrauchbar, beginnt der Verlauf
+    /// leer. Ergebnis Kept: Die Datei bleibt unverändert, SaveToFile schreibt sie nicht.</summary>
+    function LoadFromFile(const AFileName: string): TAtlasDataLoad;
+    /// <summary>Schreibt atomar; False, wenn LoadFromFile die vorhandene Datei nicht lesen konnte.</summary>
+    function SaveToFile(const AFileName: string): Boolean;
     /// <summary>Seit dem Laden bzw. Speichern geändert.</summary>
     property Changed: Boolean read FChanged;
   end;
@@ -56,7 +68,6 @@ implementation
 
 uses
   System.Math,
-  System.IOUtils,
   System.JSON,
   System.Generics.Defaults;
 
@@ -160,35 +171,30 @@ begin
   FChanged := True;
 end;
 
-procedure TAtlasUsage.LoadFromFile(const AFileName: string);
+function TAtlasUsage.Parse(const AText: string): Boolean;
 var
   Root: TJSONValue;
-  Items: TJSONArray;
+  Items: TJSONValue;
   Value: TJSONValue;
   Item: TJSONObject;
   Entry: TEntry;
-  Recent: TJSONObject;
+  Recent: TJSONValue;
   Pair: TJSONPair;
 begin
-  Clear;
-  FChanged := False;
-  if not FileExists(AFileName) then
-    Exit;
-  try
-    Root := TJSONObject.ParseJSONValue(TFile.ReadAllText(AFileName, TEncoding.UTF8));
-  except
-    // Unlesbare Datei: ohne Verlauf weiter, beim nächsten Speichern neu.
-    on EInOutError do
-      Exit;
-  end;
+  Result := False;
+  Root := TJSONObject.ParseJSONValue(AText);
   if Root = nil then
     Exit;
   try
     if not (Root is TJSONObject) then
       Exit;
-    Items := TJSONObject(Root).GetValue('entries') as TJSONArray;
+    Items := TJSONObject(Root).GetValue('entries');
+    Recent := TJSONObject(Root).GetValue('recent');
+    if ((Items <> nil) and not (Items is TJSONArray)) or ((Recent <> nil) and not (Recent is TJSONObject)) then
+      Exit;
+    Result := True;
     if Items <> nil then
-      for Value in Items do
+      for Value in TJSONArray(Items) do
         if Value is TJSONObject then
         begin
           Item := TJSONObject(Value);
@@ -198,23 +204,41 @@ begin
             FEntries.AddOrSetValue(Item.GetValue<string>('key', ''), Entry);
           FClock := Max(FClock, Entry.Last);
         end;
-    Recent := TJSONObject(Root).GetValue('recent') as TJSONObject;
     if Recent <> nil then
-      for Pair in Recent do
+      for Pair in TJSONObject(Recent) do
         FRecent.AddOrSetValue(Pair.JsonString.Value, Pair.JsonValue.Value);
   finally
     Root.Free;
   end;
+end;
+
+function TAtlasUsage.LoadFromFile(const AFileName: string): TAtlasDataLoad;
+begin
+  Clear;
+  FKept := '';
+  Result := TAtlasDataFile.Load(AFileName, 'Lernende Gewichtung',
+    function(const AText: string): Boolean
+    begin
+      Result := Parse(AText);
+    end);
+  if not TAtlasDataFile.Writable(Result) then
+    FKept := AFileName;
+  // Unbrauchbarer Inhalt bleibt nicht halb geladen stehen.
+  if Result <> TAtlasDataLoad.Loaded then
+    Clear;
   FChanged := False;
 end;
 
-procedure TAtlasUsage.SaveToFile(const AFileName: string);
+function TAtlasUsage.SaveToFile(const AFileName: string): Boolean;
 var
   Root, Item, Recent: TJSONObject;
   Items: TJSONArray;
   Pair: TPair<string, TEntry>;
   RecentPair: TPair<string, string>;
 begin
+  Result := not SameFileName(AFileName, FKept);
+  if not Result then
+    Exit;
   Root := TJSONObject.Create;
   try
     Root.AddPair('version', TJSONNumber.Create(1));
@@ -232,8 +256,7 @@ begin
     Root.AddPair('recent', Recent);
     for RecentPair in FRecent do
       Recent.AddPair(RecentPair.Key, RecentPair.Value);
-    ForceDirectories(ExtractFileDir(AFileName));
-    TFile.WriteAllText(AFileName, Root.ToJSON, TEncoding.UTF8);
+    TAtlasDataFile.Write(AFileName, Root.ToJSON);
     FChanged := False;
   finally
     Root.Free;

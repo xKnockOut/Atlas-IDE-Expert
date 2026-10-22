@@ -83,28 +83,53 @@ uses
   System.Math,
   System.StrUtils,
   System.RegularExpressions,
+  System.Generics.Collections,
   Atlas.Text.Lines;
+
+function Covers(ANode: TSyntaxNode; ALine: Integer): Boolean;
+begin
+  Result := (ANode.StartPos.Line <= ALine) and (ANode.EndPos.Line >= ALine);
+end;
 
 /// <summary>Innerste Routine mit Rumpf, deren begin…end Zeile ALine enthält; nil sonst.</summary>
 function RoutineAt(ANode: TSyntaxNode; ALine: Integer): TSyntaxNode;
 var
+  Pending: TStack<TSyntaxPostOrderEntry>;
+  Entry: TSyntaxPostOrderEntry;
   Index: Integer;
-  Block, Inner: TSyntaxNode;
+  Child, Block: TSyntaxNode;
 begin
+  // Eigener Stapel statt Rekursion (Bericht M1). Die innerste Routine gewinnt: Ein Knoten wird erst geprüft,
+  // wenn unter seinen Kindern keine passende Routine liegt; dann gilt die letzte passende unter ihnen.
   Result := nil;
-  for Index := 0 to ANode.ChildCount - 1 do
-  begin
-    if (ANode[Index].StartPos.Line > ALine) or (ANode[Index].EndPos.Line < ALine) then
-      Continue;
-    if ANode[Index].Kind = TSyntaxKind.RoutineDecl then
+  Pending := TStack<TSyntaxPostOrderEntry>.Create;
+  try
+    Pending.Push(TSyntaxPostOrderEntry.Create(ANode, False));
+    while Pending.Count > 0 do
     begin
-      Block := ANode[Index].FindChild(TSyntaxKind.Block);
-      if (Block <> nil) and (Block.StartPos.Line < ALine) and (Block.EndPos.Line > ALine) then
-        Result := ANode[Index];
+      Entry := Pending.Pop;
+      if not Entry.Done then
+      begin
+        Pending.Push(TSyntaxPostOrderEntry.Create(Entry.Node, True));
+        for Index := Entry.Node.ChildCount - 1 downto 0 do
+          if Covers(Entry.Node[Index], ALine) then
+            Pending.Push(TSyntaxPostOrderEntry.Create(Entry.Node[Index], False));
+        Continue;
+      end;
+      for Index := 0 to Entry.Node.ChildCount - 1 do
+      begin
+        Child := Entry.Node[Index];
+        if not Covers(Child, ALine) or (Child.Kind <> TSyntaxKind.RoutineDecl) then
+          Continue;
+        Block := Child.FindChild(TSyntaxKind.Block);
+        if (Block <> nil) and (Block.StartPos.Line < ALine) and (Block.EndPos.Line > ALine) then
+          Result := Child;
+      end;
+      if Result <> nil then
+        Exit;
     end;
-    Inner := RoutineAt(ANode[Index], ALine);
-    if Inner <> nil then
-      Exit(Inner);
+  finally
+    Pending.Free;
   end;
 end;
 
@@ -140,42 +165,53 @@ end;
 /// <summary>Deklarierter Typ der lokalen Variable AName in ARoutine vor ALine; False, wenn sie nicht lokal ist.</summary>
 function LocalType(ANode: TSyntaxNode; const AText, AName: string; ALine: Integer; out AType: string): Boolean;
 var
-  Index, Inner: Integer;
-  Child: TSyntaxNode;
-  Nested: string;
+  Root: TSyntaxNode;
+  Text, Name, Found: string;
+  Line: Integer;
+  Any: Boolean;
 begin
-  Result := False;
-  for Index := 0 to ANode.ChildCount - 1 do
-  begin
-    Child := ANode[Index];
-    if Child.StartPos.Line > ALine then
-      Break;
-    case Child.Kind of
-      TSyntaxKind.VarSection:
-        for Inner := 0 to Child.ChildCount - 1 do
-          if (Child[Inner].Kind = TSyntaxKind.VarDecl) and HasName(Child[Inner].Name, AName) then
+  Root := ANode;
+  Text := AText;
+  Name := AName;
+  Line := ALine;
+  Found := '';
+  Any := False;
+  // Walk statt Rekursion (Bericht M1); die letzte Deklaration vor ALine gilt. Die Kinder stehen in
+  // Quelltextreihenfolge, ein Knoten hinter ALine schließt also auch seine übrigen Geschwister aus.
+  ANode.Walk(
+    function(AChild: TSyntaxNode): Boolean
+    var
+      Inner: Integer;
+    begin
+      if AChild = Root then
+        Exit(True);
+      if AChild.StartPos.Line > Line then
+        Exit(False);
+      Result := False;
+      case AChild.Kind of
+        TSyntaxKind.VarSection:
+          for Inner := 0 to AChild.ChildCount - 1 do
+            if (AChild[Inner].Kind = TSyntaxKind.VarDecl) and HasName(AChild[Inner].Name, Name) then
+            begin
+              Found := TypeOfDecl(Text, AChild[Inner]);
+              Any := True;
+            end;
+        TSyntaxKind.InlineVar:
+          if HasName(AChild.Name, Name) then
           begin
-            AType := TypeOfDecl(AText, Child[Inner]);
-            Result := True;
+            Found := TypeOfDecl(Text, AChild);
+            Any := True;
           end;
-      TSyntaxKind.InlineVar:
-        if HasName(Child.Name, AName) then
-        begin
-          AType := TypeOfDecl(AText, Child);
-          Result := True;
-        end;
-      // Verschachtelte Routinen haben eigene Variablen.
-      TSyntaxKind.RoutineDecl:
-        ;
-    else
-      // Eigene Variable: out leert das Argument schon beim Aufruf.
-      if LocalType(Child, AText, AName, ALine, Nested) then
-      begin
-        AType := Nested;
+        // Verschachtelte Routinen haben eigene Variablen.
+        TSyntaxKind.RoutineDecl:
+          ;
+      else
         Result := True;
       end;
-    end;
-  end;
+    end);
+  Result := Any;
+  if Any then
+    AType := Found;
 end;
 
 /// <summary>Erstes Argument auf oberster Ebene aus "(A, B(C, D))"; '' ohne.</summary>

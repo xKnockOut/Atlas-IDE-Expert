@@ -1,13 +1,19 @@
 ﻿unit Atlas.Core.Signature.Providers.Server;
 
 // Signaturen für den Parameter-Hint (#436) vom Atlas-Server
-// (textDocument/signatureHelp, #32). Query gleicht den Editortext in einem
-// Zeitlimit-Arbeiter ab (TAtlasTimeLimit, Sync ist threadsicher) und fragt im
-// Hintergrund; das Ergebnis kommt per TAtlasMainThread.Queue im Hauptthread an,
-// aber nur für die jüngste Anfrage. Vor dem Freigeben der Sitzung Shutdown
-// aufrufen (wartet auf laufende Anfragen). Die Sitzungsfunktion läuft im
-// Zeitlimit-Arbeiter und darf keinen Server starten (Code-Review A-01, K-03).
-// Absturzsicherheit (#493): Überschreitung und Fehler zählt die Sicherung der Quelle
+// (textDocument/signatureHelp, #32). Query holt die Sitzung und gleicht den
+// Editortext im aufrufenden Thread ab und fragt im Hintergrund; das Ergebnis
+// kommt per TAtlasMainThread.Queue im Hauptthread an, aber nur für die jüngste
+// Anfrage. Vor dem Freigeben der Sitzung Shutdown aufrufen (wartet auf
+// laufende Anfragen). Die Sitzungsfunktion darf keinen Server starten
+// (Code-Review A-01, K-03).
+// Abgleich ohne Zeitlimit-Arbeiter: Sync legt die Nachricht nur in die
+// Schreibwarteschlange (TLspServerProcess schreibt in einem eigenen Thread)
+// und wartet nie auf den Server. Früher lief Sync mit 200 ms Zeitlimit, und
+// drei Überschreitungen auf einem beschäftigten Rechner schalteten den
+// Parameter-Hint ab, obwohl nichts kaputt war. Dauert der Abgleich trotzdem
+// länger als TAtlasTimeLimit.LimitMs, steht das als „langsam“ im Protokoll.
+// Absturzsicherheit (#493): Fehler zählt die Sicherung der Quelle
 // ProviderTitle, die nach 3 Fehlern in 5 Minuten nur den Parameter-Hint
 // vom Server abschaltet. Server weg bzw. dessen Zeitlimit zählt nicht.
 
@@ -60,6 +66,7 @@ type
 implementation
 
 uses
+  System.Diagnostics,
   Atlas.Core.Diagnostics.Guard,
   Atlas.Core.Diagnostics.TimeLimit,
   Atlas.Core.Diagnostics.MainThread,
@@ -219,35 +226,33 @@ var
   Provider: TAtlasServerSignatureProvider;
   Flag: TAliveFlag;
   FlagRef: IInterface;
-  SessionFunc: TAtlasSessionFunc;
-  Text, Error: string;
-  Outcome: TAtlasTimedOutcome;
+  Watch: TStopwatch;
 begin
   Generation := TInterlocked.Increment(FGeneration);
   ReapWorkers;
   Result := False;
   if (AFileName = '') or TAtlasGuard.ProviderDisabled(ProviderTitle) then
     Exit;
-  Session := nil;
-  SessionFunc := FSession;
   FileName := AFileName;
-  Text := AText;
-  // Sitzung holen und Text abgleichen mit Zeitlimit; Sync ist threadsicher (#493).
-  Outcome := TAtlasTimeLimit.Run(
-    procedure
+  // Sitzung holen und abgleichen im aufrufenden Thread: Sync wartet nicht auf den Server (siehe oben).
+  Session := nil;
+  Watch := TStopwatch.StartNew;
+  try
+    if Assigned(FSession) then
+      Session := FSession();
+    if Session <> nil then
+      Session.Sync(FileName, AText);
+  except
+    // Server weg: kein Hint. Anderes zählt die Sicherung (#493).
+    on E: Exception do
     begin
-      if Assigned(SessionFunc) then
-        Session := SessionFunc();
-      if Session <> nil then
-        Session.Sync(FileName, Text);
-    end, Error);
-  if Outcome = TAtlasTimedOutcome.TimedOut then
-    Error := Format('Zeitlimit von %d ms überschritten', [TAtlasTimeLimit.LimitMs]);
-  if Outcome <> TAtlasTimedOutcome.Done then
-  begin
-    TAtlasGuard.ReportProvider(ProviderTitle, Error);
-    Exit;
+      if not (E is ELspClientError) then
+        TAtlasGuard.ReportProvider(ProviderTitle, E);
+      Exit;
+    end;
   end;
+  if Watch.ElapsedMilliseconds > TAtlasTimeLimit.LimitMs then
+    TAtlasGuard.ReportProviderSlow(ProviderTitle, Format('Abgleich dauerte %d ms', [Watch.ElapsedMilliseconds]));
   Result := Session <> nil;
   if not Result then
     Exit;

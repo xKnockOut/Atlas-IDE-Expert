@@ -356,35 +356,36 @@ begin
   end;
 end;
 
+/// <summary>Rumpf einer Typdeklaration: class, record oder object; nil ohne.</summary>
+function BodyOfType(ADecl: TSyntaxNode): TSyntaxNode;
+begin
+  Result := ADecl.FindChild(TSyntaxKind.ClassType);
+  if Result = nil then
+    Result := ADecl.FindChild(TSyntaxKind.RecordType);
+  if Result = nil then
+    Result := ADecl.FindChild(TSyntaxKind.ObjectType);
+end;
+
 class function TRoutineBody.TypeBody(ARoot: TSyntaxNode; const AName: string): TSyntaxNode;
-
-  function Find(ANode: TSyntaxNode): TSyntaxNode;
-  var
-    Index: Integer;
-  begin
-    Result := nil;
-    if (ANode.Kind = TSyntaxKind.TypeDecl) and (SameText(ANode.Name, AName) or StartsText(AName + '<', ANode.Name)) then
-    begin
-      Result := ANode.FindChild(TSyntaxKind.ClassType);
-      if Result = nil then
-        Result := ANode.FindChild(TSyntaxKind.RecordType);
-      if Result = nil then
-        Result := ANode.FindChild(TSyntaxKind.ObjectType);
-      if Result <> nil then
-        Exit;
-    end;
-    for Index := 0 to ANode.ChildCount - 1 do
-    begin
-      Result := Find(ANode[Index]);
-      if Result <> nil then
-        Exit;
-    end;
-  end;
-
+var
+  Name: string;
+  Found: TSyntaxNode;
 begin
   Result := nil;
-  if ARoot <> nil then
-    Result := Find(ARoot);
+  if ARoot = nil then
+    Exit;
+  Name := AName;
+  // Search statt Rekursion (Bericht M1).
+  Found := ARoot.Search(
+    function(ANode: TSyntaxNode): TSyntaxSearchStep
+    begin
+      Result := TSyntaxSearchStep.Descend;
+      if (ANode.Kind = TSyntaxKind.TypeDecl) and (SameText(ANode.Name, Name) or StartsText(Name + '<', ANode.Name)) and
+        (BodyOfType(ANode) <> nil) then
+        Result := TSyntaxSearchStep.Found;
+    end);
+  if Found <> nil then
+    Result := BodyOfType(Found);
 end;
 
 class function TRoutineBody.MemberDeclaration(const AText: string; ATree: TSyntaxTree; ABody: TSyntaxNode;
@@ -453,17 +454,14 @@ begin
 end;
 
 class function TRoutineBody.IsVariableChain(ANode: TSyntaxNode): Boolean;
+var
+  Node: TSyntaxNode;
 begin
-  case ANode.Kind of
-    TSyntaxKind.Identifier:
-      Result := True;
-    TSyntaxKind.MemberAccess, TSyntaxKind.Dereference:
-      Result := IsVariableChain(ANode[0]);
-    TSyntaxKind.IndexAccess:
-      Result := IsVariableChain(ANode[0]);
-  else
-    Result := False;
-  end;
+  // Schleife statt Rekursion (Bericht M1).
+  Node := ANode;
+  while Node.Kind in [TSyntaxKind.MemberAccess, TSyntaxKind.Dereference, TSyntaxKind.IndexAccess] do
+    Node := Node[0];
+  Result := Node.Kind = TSyntaxKind.Identifier;
 end;
 
 class function TRoutineBody.HostStatement(ANode, ABody: TSyntaxNode): TSyntaxNode;

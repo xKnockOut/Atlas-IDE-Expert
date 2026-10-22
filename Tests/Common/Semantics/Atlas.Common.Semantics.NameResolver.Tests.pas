@@ -34,6 +34,9 @@ type
     procedure AnonymousMethodLocalsHideFields;
     [Test]
     procedure CandidatesInAnonymousMethodHideFields;
+    /// <summary>Code-Review F-02: Methoden verschachtelter Typen in strict-Abschnitten ohne Endlosrekursion.</summary>
+    [Test]
+    procedure ResolvesStrictMembersInNestedTypeMethods;
     [Test]
     procedure ResolvesInheritedMembersAcrossUnits;
     [Test]
@@ -225,6 +228,52 @@ begin
   Assert.IsTrue(R.Kind = TResolvedKind.Symbol);
   Assert.AreEqual('Haupt', R.UnitName);
   Assert.AreEqual(3, R.SelectionRange.StartPos.Line);
+end;
+
+procedure TNameResolverTests.ResolvesStrictMembersInNestedTypeMethods;
+const
+  Source =
+    'unit Haupt;'#10 +
+    'interface'#10 +
+    'type'#10 +
+    '  TAussen = class'#10 +
+    '  strict private'#10 +
+    '    type'#10 +
+    '      TInnen = class'#10 +
+    '      strict private'#10 +
+    '        FWert: Integer;'#10 +
+    '        procedure Lauf;'#10 +
+    '      end;'#10 +
+    '  strict protected'#10 +
+    '    type'#10 +
+    '      TGeschuetzt = class'#10 +
+    '      strict protected'#10 +
+    '        FZahl: Integer;'#10 +
+    '        procedure Zaehle;'#10 +
+    '      end;'#10 +
+    '  end;'#10 +
+    'implementation'#10 +
+    'procedure TAussen.TInnen.Lauf;'#10 +
+    'begin'#10 +
+    '  FWert := 1;'#10 +
+    'end;'#10 +
+    'procedure TAussen.TGeschuetzt.Zaehle;'#10 +
+    'begin'#10 +
+    '  FZahl := 2;'#10 +
+    'end;'#10 +
+    'end.';
+var
+  R: TResolvedSymbol;
+begin
+  // Bisher: Der Kopf TAussen.TInnen wurde mit der Sichtbarkeit des Rumpfs aufgelöst, die nach der Klasse
+  // der Methode fragt, die gerade ermittelt wurde (Rekursion bis zum Stapelüberlauf).
+  R := ResolveAt(Source, 'FWert := 1');
+  Assert.IsTrue(R.Found, 'strict private Feld im eigenen Rumpf');
+  Assert.AreEqual('Integer', R.TypeName);
+  Assert.AreEqual(8, R.SelectionRange.StartPos.Line);
+  R := ResolveAt(Source, 'FZahl := 2');
+  Assert.IsTrue(R.Found, 'strict protected Feld im eigenen Rumpf');
+  Assert.AreEqual(15, R.SelectionRange.StartPos.Line);
 end;
 
 procedure TNameResolverTests.ResolvesInlineVarsOnlyAfterDeclaration;

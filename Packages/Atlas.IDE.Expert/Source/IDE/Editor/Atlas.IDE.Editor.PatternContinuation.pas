@@ -119,7 +119,7 @@ end;
 
 procedure TAtlasIdePatternContinuation.TKeys.HandleKey(AKey: Word; AShift: TShiftState);
 begin
-  TAtlasGuard.Run(TAtlasFeature.EditorCommands,
+  TAtlasGuard.Run(TAtlasFeature.ContinueLines,
     procedure
     begin
       Accept;

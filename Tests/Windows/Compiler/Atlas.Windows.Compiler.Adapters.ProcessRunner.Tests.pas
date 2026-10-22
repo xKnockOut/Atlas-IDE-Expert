@@ -16,8 +16,6 @@ type
     procedure ReadsOutputLinesAndExitCode;
     /// <summary>Code-Review A-05: Cancel beendet einen laufenden Prozess sofort.</summary>
     [Test]
-    // Der anonyme Thread legt Verwaltungsdaten an, die erst nach dem Test freigegeben werden.
-    [IgnoreMemoryLeaks]
     procedure CancelEndsRunningProcess;
     [Test]
     procedure RunAfterCancelRaises;

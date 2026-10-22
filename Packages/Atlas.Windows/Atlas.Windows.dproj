@@ -82,6 +82,7 @@
         <DCCReference Include="Source\Projects\Atlas.Windows.Projects.DelphiInstallation.pas"/>
         <DCCReference Include="Source\Compiler\Atlas.Windows.Compiler.Adapters.ProcessRunner.pas"/>
         <DCCReference Include="Source\Documents\Atlas.Windows.Documents.PathCanonicalizer.pas"/>
+        <DCCReference Include="Source\Documents\Atlas.Windows.Documents.SharedRead.pas"/>
         <DCCReference Include="Source\Documents\Atlas.Windows.Documents.FileWatcher.pas"/>
         <DCCReference Include="Source\Console\Atlas.Windows.Console.StdStreams.pas"/>
         <DCCReference Include="Source\Editing\Atlas.Windows.Editing.SystemColors.pas"/>

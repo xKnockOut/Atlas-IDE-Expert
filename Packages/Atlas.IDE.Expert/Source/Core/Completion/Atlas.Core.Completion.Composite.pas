@@ -9,6 +9,12 @@
 // Standard 200 ms) und über die Sicherung je Quelle. Wirft eine Quelle, hängt
 // sie oder ist sie abgeschaltet, gilt ihr Teil als fertig; die übrigen Quellen
 // liefern weiter. Nach 3 Fehlern in 5 Minuten fällt nur diese Quelle aus.
+// Eine Zeitüberschreitung ist kein Fehler: Sie zählt nicht zur Sicherung,
+// sondern steht als „langsam“ im Protokoll (ReportProviderSlow). Früher
+// schaltete ein beschäftigter Rechner so nach drei langsamen Anfragen die
+// Quelle ab. Damit eine Quelle, die länger braucht, nicht bei jedem Tastendruck
+// einen weiteren Arbeiter belegt, wird sie übersprungen, solange ihr voriger
+// Aufruf noch läuft.
 // Diagnosemodus (#479): Ist die Messung an, meldet jede Teilsenke beim ersten
 // Complete Name, Dauer seit ihrem Query und Zahl ihrer Einträge an
 // TAtlasQueryTimings (auch bei Fehler oder Zeitlimit); aus nimmt sie keinen
@@ -58,9 +64,18 @@ type
       procedure MarkIncomplete;
       procedure Complete;
     end;
+    /// <summary>Läuft der vorige Aufruf einer Quelle noch (nach dem Zeitlimit aufgegeben)? Lebt, solange ein
+    /// Arbeiter ihn hält.</summary>
+    TRunning = class(TInterfacedObject)
+    public
+      Active: Integer;
+      Started: Int64;
+    end;
     TEntry = record
       Provider: IAtlasCompletionProvider;
       Name: string;
+      Running: TRunning;
+      RunningRef: IInterface;
     end;
   private
     FLock: TCriticalSection;
@@ -86,6 +101,7 @@ type
 implementation
 
 uses
+  System.Classes,
   Atlas.Core.Diagnostics.Timing;
 
 function TimeLimitOf(ALimitMs: Integer): Integer;
@@ -230,6 +246,8 @@ begin
   Entry.Name := DefaultName;
   if Supports(AProvider, IAtlasNamedProvider, Named) and (Named.ProviderName <> '') then
     Entry.Name := Named.ProviderName;
+  Entry.Running := TRunning.Create;
+  Entry.RunningRef := Entry.Running;
   FLock.Enter;
   try
     FProviders := FProviders + [Entry];
@@ -244,6 +262,8 @@ var
   Provider: IAtlasCompletionProvider;
   Part: IAtlasCompletionSink;
   Context: TAtlasContext;
+  Running: TRunning;
+  RunningRef: IInterface;
   Error: string;
 begin
   if TAtlasGuard.ProviderDisabled(AEntry.Name) then
@@ -251,24 +271,43 @@ begin
     APart.Complete;
     Exit;
   end;
+  Running := AEntry.Running;
+  RunningRef := AEntry.RunningRef;
+  // Der vorige Aufruf läuft noch: keinen weiteren Arbeiter belegen, diesmal ohne diese Quelle.
+  if TInterlocked.CompareExchange(Running.Active, 1, 0) <> 0 then
+  begin
+    APart.Complete;
+    TAtlasGuard.ReportProviderSlow(AEntry.Name, Format('vorige Anfrage läuft seit %d ms, übersprungen',
+      [Int64(TThread.GetTickCount64) - TInterlocked.Read(Running.Started)]));
+    Exit;
+  end;
+  TInterlocked.Exchange(Running.Started, Int64(TThread.GetTickCount64));
   Provider := AEntry.Provider;
   Part := APart;
   Context := AContext;
   case TAtlasTimeLimit.Run(
     procedure
     begin
-      Provider.Query(Context, Part);
+      try
+        Provider.Query(Context, Part);
+      finally
+        // Über RunningRef lebt der Zustand, auch wenn die Quellen inzwischen freigegeben sind.
+        if RunningRef <> nil then
+          TInterlocked.Exchange(Running.Active, 0);
+      end;
     end, Error, FTimeLimitMs) of
     TAtlasTimedOutcome.Done:
       ;
     TAtlasTimedOutcome.Failed:
       begin
+        // Auch ohne gestarteten Aufruf (Atlas wird beendet) wieder frei.
+        TInterlocked.Exchange(Running.Active, 0);
         Part.Complete;
         TAtlasGuard.ReportProvider(AEntry.Name, Error);
       end;
   else
     begin
-      // Hängt: abbrechen, nicht länger warten; was später noch kommt, verwirft die Teilsenke.
+      // Langsam: nicht länger warten und abbrechen; was später noch kommt, verwirft die Teilsenke. Kein Fehler.
       Part.Complete;
       try
         Provider.Cancel;
@@ -276,7 +315,7 @@ begin
         on E: Exception do
           TAtlasGuard.ReportProvider(AEntry.Name, E);
       end;
-      TAtlasGuard.ReportProvider(AEntry.Name, Format('Zeitlimit von %d ms überschritten',
+      TAtlasGuard.ReportProviderSlow(AEntry.Name, Format('keine Antwort innerhalb von %d ms',
         [TimeLimitOf(FTimeLimitMs)]));
     end;
   end;

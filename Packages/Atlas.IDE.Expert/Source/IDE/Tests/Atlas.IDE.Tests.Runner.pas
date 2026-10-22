@@ -42,6 +42,7 @@ uses
   Atlas.Core.Build.Events,
   Atlas.Core.Build.Messages,
   Atlas.Core.Projects.Summary,
+  Atlas.Core.Files.DataFile,
   Atlas.Core.Tests.Run,
   Atlas.Text.TestResults;
 
@@ -388,9 +389,14 @@ begin
             Say(TAtlasStrings.Text(TAtlasTextId.TestsNoProject));
             Exit;
           end;
-          Stored := TAtlasTestProjectChoices.Load(ChoiceFile);
-          TAtlasTestProjectChoices.Remember(Stored, Files, Project.FileName);
-          if not TAtlasTestProjectChoices.Save(ChoiceFile, Stored) then
+          // Gesperrt gelesene Datei nicht mit dieser einen Wahl überschreiben (Bericht N3).
+          if TAtlasDataFile.Writable(TAtlasTestProjectChoices.Load(ChoiceFile, Stored)) then
+          begin
+            TAtlasTestProjectChoices.Remember(Stored, Files, Project.FileName);
+            if not TAtlasTestProjectChoices.Save(ChoiceFile, Stored) then
+              Say(TAtlasStrings.Text(TAtlasTextId.TestsChoiceSaveFailed));
+          end
+          else
             Say(TAtlasStrings.Text(TAtlasTextId.TestsChoiceSaveFailed));
           AThen(Project);
         end);

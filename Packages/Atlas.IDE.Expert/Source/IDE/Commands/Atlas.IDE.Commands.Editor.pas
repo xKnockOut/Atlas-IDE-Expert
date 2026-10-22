@@ -259,18 +259,39 @@ end;
 
 procedure TEditorNotifier.EditorViewActivated(const EditWindow: INTAEditWindow; const EditView: IOTAEditView);
 begin
+  // Je Funktion mit ihrer eigenen Sicherung: Ein Fehler beim Schließen der einen lässt die übrigen nicht aus.
   TAtlasGuard.Run(TAtlasFeature.EditorCommands,
     procedure
     begin
       TAtlasIdeEditorCommands.EnsureContextMenus;
-      // Ein Mustervorschlag gilt nur in seiner Ansicht (#671), ebenso Zusatzmarken (#589) und das Mitziehen von
-      // Bezeichnern (#658).
+    end);
+  // Ein Mustervorschlag gilt nur in seiner Ansicht (#671), ebenso Zusatzmarken (#589) und das Mitziehen von
+  // Bezeichnern (#658).
+  TAtlasGuard.Run(TAtlasFeature.ContinueLines,
+    procedure
+    begin
       TAtlasIdePatternContinuation.Dismiss;
+    end);
+  TAtlasGuard.Run(TAtlasFeature.MultiCursor,
+    procedure
+    begin
       TAtlasIdeMultiCursor.Dismiss;
+    end);
+  TAtlasGuard.Run(TAtlasFeature.LinkedEditing,
+    procedure
+    begin
       TAtlasIdeLinkedEditing.Dismiss;
-      // Einfügen mit uses-Ergänzung (#515): Das Fenster gilt nur in seiner Ansicht.
+    end);
+  // Einfügen mit uses-Ergänzung (#515): Das Fenster gilt nur in seiner Ansicht.
+  TAtlasGuard.Run(TAtlasFeature.SmartPaste,
+    procedure
+    begin
       TAtlasIdeSmartPaste.Dismiss;
-      // Umschließung entfernen (#657): Liste und Vorschau ebenso.
+    end);
+  // Umschließung entfernen (#657): Liste und Vorschau ebenso.
+  TAtlasGuard.Run(TAtlasFeature.Unwrap,
+    procedure
+    begin
       TAtlasIdeUnwrap.Dismiss;
     end);
 end;
@@ -280,39 +301,39 @@ var
   View: IOTAEditView;
 begin
   View := EditView;
-  TAtlasGuard.Run(TAtlasFeature.EditorCommands,
+  TAtlasGuard.Run(TAtlasFeature.SlashCommands,
     procedure
     begin
       TAtlasIdeEditorCommands.EditorModified(View);
     end);
   // Zeilenumbruch für Kommentar und Muster fortsetzen (#696, #671), unabhängig von den Schrägstrich-Befehlen;
   // ein sichtbarer Mustervorschlag verschwindet mit jeder Änderung.
-  TAtlasGuard.Run(TAtlasFeature.EditorCommands,
+  TAtlasGuard.Run(TAtlasFeature.ContinueLines,
     procedure
     begin
       TAtlasIdePatternContinuation.EditorModified(View);
       TAtlasEnterWatch.EditorModified(View);
     end);
   // Mehrfachmarken (#589): fremde Änderungen an allen Marken nachziehen.
-  TAtlasGuard.Run(TAtlasFeature.EditorCommands,
+  TAtlasGuard.Run(TAtlasFeature.MultiCursor,
     procedure
     begin
       TAtlasIdeMultiCursor.EditorModified(View);
     end);
   // Bezeichner live mitziehen (#658): Änderungen der IDE am Namen nachziehen, sonst die Antwort verwerfen.
-  TAtlasGuard.Run(TAtlasFeature.EditorCommands,
+  TAtlasGuard.Run(TAtlasFeature.LinkedEditing,
     procedure
     begin
       TAtlasIdeLinkedEditing.EditorModified(View);
     end);
   // Einfügen mit uses-Ergänzung (#515): nach einem Einfügen sehen, ein offenes Fenster schließen.
-  TAtlasGuard.Run(TAtlasFeature.EditorCommands,
+  TAtlasGuard.Run(TAtlasFeature.SmartPaste,
     procedure
     begin
       TAtlasIdeSmartPaste.EditorModified(View);
     end);
   // Umschließung entfernen (#657): Jede Änderung schließt die Liste ohne Änderung.
-  TAtlasGuard.Run(TAtlasFeature.EditorCommands,
+  TAtlasGuard.Run(TAtlasFeature.Unwrap,
     procedure
     begin
       TAtlasIdeUnwrap.EditorModified(View);
@@ -353,7 +374,8 @@ begin
       CodeActions;
     end);
   // Erzeugen-Menü (#719); aus = ohne Kürzel, der Aufruf meldet, dass es abgeschaltet ist.
-  FContextMenu.Add('Atlas.GenerateMenu', TAtlasStrings.Text(TAtlasTextId.GenerateMenuCommand),
+  FContextMenu.AddGuarded(TAtlasFeature.Generate, 'Atlas.GenerateMenu',
+    TAtlasStrings.Text(TAtlasTextId.GenerateMenuCommand),
     function: Integer
     begin
       Result := 0;
@@ -362,11 +384,7 @@ begin
     end,
     procedure
     begin
-      TAtlasGuard.Run(TAtlasFeature.EditorCommands,
-        procedure
-        begin
-          TAtlasIdeGenerate.Show;
-        end);
+      TAtlasIdeGenerate.Show;
     end);
   FContextMenu.Add('-', nil, nil);
   FContextMenu.Add('Atlas.ExpandSelection', TAtlasStrings.Text(TAtlasTextId.EditorExpand),
@@ -494,36 +512,26 @@ begin
     end);
   // Persönliche Notizen (#545): nach Rechtsklick in die Rinne für die angeklickte Zeile, sonst für den Cursor.
   FContextMenu.Add('-', nil, nil);
-  FContextMenu.Add('Atlas.NoteAdd', TAtlasStrings.Text(TAtlasTextId.NotesMenuAdd), nil,
+  FContextMenu.AddGuarded(TAtlasFeature.Notes, 'Atlas.NoteAdd', TAtlasStrings.Text(TAtlasTextId.NotesMenuAdd), nil,
     procedure
     begin
-      TAtlasGuard.Run(TAtlasFeature.Notes,
-        procedure
-        begin
-          TAtlasIdeNotes.AddOrEdit;
-        end);
+      TAtlasIdeNotes.AddOrEdit;
     end);
-  FContextMenu.Add('Atlas.NoteDelete', TAtlasStrings.Text(TAtlasTextId.NotesMenuDelete), nil,
+  FContextMenu.AddGuarded(TAtlasFeature.Notes, 'Atlas.NoteDelete',
+    TAtlasStrings.Text(TAtlasTextId.NotesMenuDelete), nil,
     procedure
     begin
-      TAtlasGuard.Run(TAtlasFeature.Notes,
-        procedure
-        begin
-          TAtlasIdeNotes.DeleteAtLine;
-        end);
+      TAtlasIdeNotes.DeleteAtLine;
     end);
-  FContextMenu.Add('Atlas.NoteList', TAtlasStrings.Text(TAtlasTextId.NotesMenuList), nil,
+  FContextMenu.AddGuarded(TAtlasFeature.Notes, 'Atlas.NoteList', TAtlasStrings.Text(TAtlasTextId.NotesMenuList), nil,
     procedure
     begin
-      TAtlasGuard.Run(TAtlasFeature.Notes,
-        procedure
-        begin
-          TAtlasIdeNotes.ShowList;
-        end);
+      TAtlasIdeNotes.ShowList;
     end);
   // Benannte Lesezeichen (#622): wie die Notizen nach Rechtsklick in die Rinne für die angeklickte Zeile.
   FContextMenu.Add('-', nil, nil);
-  FContextMenu.Add('Atlas.BookmarkAdd', TAtlasStrings.Text(TAtlasTextId.BookmarksMenuAdd),
+  FContextMenu.AddGuarded(TAtlasFeature.Bookmarks, 'Atlas.BookmarkAdd',
+    TAtlasStrings.Text(TAtlasTextId.BookmarksMenuAdd),
     function: Integer
     begin
       Result := 0;
@@ -532,20 +540,13 @@ begin
     end,
     procedure
     begin
-      TAtlasGuard.Run(TAtlasFeature.Bookmarks,
-        procedure
-        begin
-          TAtlasIdeBookmarks.AddBookmark;
-        end);
+      TAtlasIdeBookmarks.AddBookmark;
     end);
-  FContextMenu.Add('Atlas.BookmarkGoTo', TAtlasStrings.Text(TAtlasTextId.BookmarksMenuGoTo), nil,
+  FContextMenu.AddGuarded(TAtlasFeature.Bookmarks, 'Atlas.BookmarkGoTo',
+    TAtlasStrings.Text(TAtlasTextId.BookmarksMenuGoTo), nil,
     procedure
     begin
-      TAtlasGuard.Run(TAtlasFeature.Bookmarks,
-        procedure
-        begin
-          TAtlasIdeBookmarks.GoToBookmark;
-        end);
+      TAtlasIdeBookmarks.GoToBookmark;
     end);
   // Nächster/vorheriger Befund (#509).
   FContextMenu.Add('-', nil, nil);
@@ -569,18 +570,14 @@ begin
     end);
   // Ausblenden am Element (#628): nach einem Rechtsklick auf ein Element im Text oder in der Rinne für dieses.
   FContextMenu.Add('-', nil, nil);
-  FContextMenu.Add('Atlas.HideElement', TAtlasStrings.Text(TAtlasTextId.HideElementCommand),
+  FContextMenu.AddGuarded(TAtlasFeature.Hide, 'Atlas.HideElement', TAtlasStrings.Text(TAtlasTextId.HideElementCommand),
     function: Integer
     begin
       Result := TAtlasIdeSettings.Current.HideElementKey;
     end,
     procedure
     begin
-      TAtlasGuard.Run(TAtlasFeature.EditorCommands,
-        procedure
-        begin
-          TAtlasIdeHide.ShowForCommand;
-        end);
+      TAtlasIdeHide.ShowForCommand;
     end);
   if Supports(BorlandIDEServices, IOTAEditorServices, Editors) then
   begin
@@ -1428,10 +1425,10 @@ begin
   FLastSlash := Key;
   // Erst nach der Änderung, wenn die IDE den Cursor gesetzt hat; nie im Notifier.
   View := AView;
-  TAtlasMainThread.ForceQueue(TAtlasFeature.EditorCommands,
+  TAtlasMainThread.ForceQueue(TAtlasFeature.SlashCommands,
     procedure
     begin
-      TAtlasGuard.Run(TAtlasFeature.EditorCommands,
+      TAtlasGuard.Run(TAtlasFeature.SlashCommands,
         procedure
         begin
           RunSlash(View, Kind);
