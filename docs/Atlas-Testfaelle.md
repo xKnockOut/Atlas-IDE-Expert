@@ -3369,3 +3369,16 @@ Voraussetzung: Server läuft, Index aufgebaut; Einstellungen auf Vorgabe; `TBest
 | CE4 | `else` ergänzen | Keine Meldung; mit `"requireElse": true` wieder gemeldet, die Korrektur fügt vor `else` ein |
 | CE5 | `{$SCOPEDENUMS ON}`-Typ mit Marken `TAmpel.Rot:` | Korrektur schreibt `TAmpel.Gelb: ;` |
 | CE6 | `"case-missing-enum-value": "off"` bzw. `exclude` mit dem Pfad der Datei | Keine Meldung |
+
+## Paarige Aufrufe ohne try/finally (#930)
+
+Voraussetzung: Server läuft; Einstellungen auf Vorgabe; Routine mit `Screen.Cursor := crHourGlass; Tabelle.DisableControls; Importieren; Tabelle.EnableControls; Screen.Cursor := crDefault;` je auf einer Zeile.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| PF1 | Unit öffnen | Warnung `pair-without-finally` an `Tabelle.EnableControls`: „EnableControls steht nicht im finally; bei einer Exception bleibt das Grid eingefroren. Gleiches gilt für Screen.Cursor.“; im Fenster „Atlas-Prüfung“ und im Befund-Hover (**Abnahme**) |
+| PF2 | Glühbirne, „In try/finally einschließen“ | `try Importieren; finally Tabelle.EnableControls; Screen.Cursor := crDefault; end;` richtig eingerückt; kompiliert (**Abnahme**) |
+| PF3 | `if FindFirst('*.txt', faAnyFile, SR) = 0 then begin Verarbeiten(SR); FindClose(SR); end;` | Meldung „FindClose steht nicht im finally; … bleibt das Suchhandle offen.“ |
+| PF4 | `Liste.BeginUpdate; Liste.EndUpdate;` direkt hintereinander bzw. mit `try`/`finally` | Keine Meldung |
+| PF5 | `"pair-without-finally": {"pairs": [{"open": "Einfrieren", "close": "Auftauen"}]}` und `Anzeige.Einfrieren; Lesen; Anzeige.Auftauen;` | Meldung „Auftauen steht nicht im finally; … bleibt der Zustand hängen.“ |
+| PF6 | `"pair-without-finally": "off"` bzw. `exclude` mit dem Pfad der Datei | Keine Meldung |

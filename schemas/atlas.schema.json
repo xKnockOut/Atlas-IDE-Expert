@@ -262,6 +262,34 @@
                 "default": ["Create", "Destroy", "AfterConstruction", "BeforeDestruction"],
                 "description": "Nur missing-inherited: geprüfte Methoden (#919). Create steht für alle Konstruktoren, deren Name mit Create beginnt."
               },
+              "pairs": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "required": ["open", "close"],
+                  "additionalProperties": false,
+                  "properties": {
+                    "open": {
+                      "type": "string",
+                      "description": "Öffnende Methode bzw. Routine, z. B. DisableControls, oder eine Zuweisung wie \"Screen.Cursor :=\"."
+                    },
+                    "close": {
+                      "type": "string",
+                      "description": "Schließende Methode bzw. Routine, z. B. EnableControls."
+                    },
+                    "openArg": {
+                      "type": "integer",
+                      "description": "Argument (ab 0), das beide Aufrufe verbindet; ohne Angabe der Empfänger bzw. das erste Argument."
+                    },
+                    "closeArg": {
+                      "type": "integer",
+                      "description": "Argument (ab 0) des schließenden Aufrufs; ohne Angabe der Empfänger bzw. das erste Argument."
+                    }
+                  }
+                },
+                "default": [],
+                "description": "Nur pair-without-finally: weitere Paare neben den eingebauten (DisableControls/EnableControls, BeginUpdate/EndUpdate, FindFirst/FindClose, Reset/CloseFile, GetMem/FreeMem, Screen.Cursor) (#930)."
+              },
               "requireElse": {
                 "type": "boolean",
                 "default": false,

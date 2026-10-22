@@ -6,7 +6,7 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 
 | Gruppe | Regeln |
 |---|---|
-| [Fehler finden](#gruppe-find-bugs) | 43 |
+| [Fehler finden](#gruppe-find-bugs) | 44 |
 | [Exceptions](#gruppe-exceptions) | 6 |
 | [Threads](#gruppe-threads) | 7 |
 | [Robustheit und Muster](#gruppe-robustness) | 2 |
@@ -67,6 +67,7 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 | [`writeln-in-gui-app`](#writeln-in-gui-app) | Writeln in einem Programm ohne Konsole | Bug | Warnung |
 | [`duplicate-condition`](#duplicate-condition) | Doppelte Bedingung oder gleiche Zweige | Bug | Warnung |
 | [`case-missing-enum-value`](#case-missing-enum-value) | case über Aufzählung ohne alle Werte | Bug | Warnung |
+| [`pair-without-finally`](#pair-without-finally) | Paarige Aufrufe ohne try/finally | Bug | Warnung |
 
 <a id="gruppe-exceptions"></a>
 ### Exceptions
@@ -2975,5 +2976,39 @@ case Bestellung.Status of
   bsBezahlt: Versenden;
   bsStorniert: ;
   bsZurueck: ;
+end;
+```
+
+<a id="pair-without-finally"></a>
+### pair-without-finally
+
+**Paarige Aufrufe ohne try/finally** · Bug · Warnung · Gruppe Fehler finden
+
+Verallgemeinert lock-without-finally (dessen Sperrpaare dort bleiben) auf andere Paare: DisableControls/EnableControls, BeginUpdate/EndUpdate, FindFirst/FindClose (auch in if FindFirst(...) = 0 then begin ... end), Reset, Rewrite oder Append/CloseFile, GetMem oder AllocMem/FreeMem und Screen.Cursor := ... mit einem späteren Screen.Cursor := .... Gemeldet wird, wenn das Schließen später ungeschützt in derselben Anweisungsliste steht und mindestens eine Anweisung dazwischen liegt; eine Exception dort lässt den Zustand hängen. Beide Aufrufe müssen denselben Empfänger bzw. dasselbe Argument haben. Überlappende Paare meldet die Regel zusammen. Konfidenz hoch. Schnellkorrektur: die Anweisungen dazwischen in try/finally mit den schließenden Aufrufen einschließen, wenn diese direkt aufeinander folgen. Die Option pairs ergänzt eigene Paare.
+
+| Option | Typ | Vorgabe | Bedeutung |
+|---|---|---|---|
+| `pairs` | json | `[]` | Weitere Paare als [{"open": "Einfrieren", "close": "Auftauen"}], wahlweise mit openArg/closeArg. |
+
+Mit Treffer:
+
+```pascal
+Screen.Cursor := crHourGlass;
+Tabelle.DisableControls;
+Importieren;
+Tabelle.EnableControls;
+Screen.Cursor := crDefault;
+```
+
+Richtig:
+
+```pascal
+Screen.Cursor := crHourGlass;
+Tabelle.DisableControls;
+try
+  Importieren;
+finally
+  Tabelle.EnableControls;
+  Screen.Cursor := crDefault;
 end;
 ```

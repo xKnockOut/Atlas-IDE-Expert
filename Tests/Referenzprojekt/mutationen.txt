@@ -49,3 +49,4 @@ writeln-in-gui-app | ../RefApp.dpr | Application.Initialize; | Application.Initi
 exception-in-destructor | Ref.Sprache.Merkmale.pas |   FElemente.Free; |   if FElemente.Count > 0 then\n    raise EInvalidOperation.Create('Stapel nicht leer');\n  FElemente.Free;
 duplicate-condition | Ref.Komponenten.Anzeige.pas | if (Operation = opRemove) and (AComponent = FVerknuepft) then | if (Operation = opRemove) and (Operation = opRemove) then
 case-missing-enum-value | Ref.Komponenten.Anzeige.pas |   if FStil <> asFlach then |   case FStil of\n    asRahmen: Canvas.Rectangle(ClientRect);\n  end;\n  if FStil <> asFlach then
+pair-without-finally | Ref.Formulare.Haupt.pas | procedure THauptFormular.DetailButtonClick(Sender: TObject); | procedure Zuruecksetzen(Liste: TListBox);\nbegin\n  Liste.Items.BeginUpdate;\n  Liste.Items.Clear;\n  Liste.Items.EndUpdate;\nend;\n\nprocedure THauptFormular.DetailButtonClick(Sender: TObject);
