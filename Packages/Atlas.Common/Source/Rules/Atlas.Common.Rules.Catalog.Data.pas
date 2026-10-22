@@ -1449,6 +1449,41 @@ begin
     '          "description": "Methods in which ProcessMessages is allowed, as Name or Class.Name."' + #10 +
     '        }' + #10 +
     '      ]' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "unchecked-conversion",' + #10 +
+    '      "name": "Unchecked conversion of user input",' + #10 +
+    '      "category": "bug",' + #10 +
+    '      "severity": "hint",' + #10 +
+    '      "group": "find-bugs",' + #10 +
+    '      "description": "StrToInt, StrToInt64, StrToFloat, StrToDate, StrToDateTime or StrToCurr applied directly to user input (Edit.Text, Grid.Cells[...], Memo.Lines[...], also inside Trim) outside the' + ' try part of a try/except. Invalid input raises EConvertError with an English message. try/finally does not count as protection. Medium confidence. Quick fix for X := StrToInt(Edit.Text); as its own s' + 'tatement, when X is a variable or field of the matching type: if not TryStrToInt(Edit.Text, X) then raise EConvertError.Create(''X ist keine Zahl''). format-without-settings additionally reports locale-' + 'dependent conversions without TFormatSettings. Options functions and sources choose the checked conversions and the properties that count as input.",' + #10 +
+    '      "bad": "Menge := StrToInt(edtMenge.Text);",' + #10 +
+    '      "good": "if not TryStrToInt(edtMenge.Text, Menge) then\n  raise EConvertError.Create(''Menge ist keine Zahl'');",' + #10 +
+    '      "options": [' + #10 +
+    '        {' + #10 +
+    '          "name": "functions",' + #10 +
+    '          "type": "string-list",' + #10 +
+    '          "default": [' + #10 +
+    '            "StrToInt",' + #10 +
+    '            "StrToInt64",' + #10 +
+    '            "StrToFloat",' + #10 +
+    '            "StrToDate",' + #10 +
+    '            "StrToDateTime",' + #10 +
+    '            "StrToCurr"' + #10 +
+    '          ],' + #10 +
+    '          "description": "Checked conversions."' + #10 +
+    '        },' + #10 +
+    '        {' + #10 +
+    '          "name": "sources",' + #10 +
+    '          "type": "string-list",' + #10 +
+    '          "default": [' + #10 +
+    '            "Text",' + #10 +
+    '            "Cells",' + #10 +
+    '            "Lines"' + #10 +
+    '          ],' + #10 +
+    '          "description": "Properties that count as user input."' + #10 +
+    '        }' + #10 +
+    '      ]' + #10 +
     '    }' + #10 +
     '  ]' + #10 +
     '}' + #10 +
@@ -2211,6 +2246,21 @@ begin
     '        {' + #10 +
     '          "name": "allowIn",' + #10 +
     '          "description": "Methoden, in denen ProcessMessages erlaubt ist, als Name oder Klasse.Name."' + #10 +
+    '        }' + #10 +
+    '      ]' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "unchecked-conversion",' + #10 +
+    '      "name": "Umwandlung einer Benutzereingabe ohne Prüfung",' + #10 +
+    '      "description": "StrToInt, StrToInt64, StrToFloat, StrToDate, StrToDateTime oder StrToCurr direkt auf einer Benutzereingabe (Edit.Text, Grid.Cells[...], Memo.Lines[...], auch in Trim) außerhalb d' + 'es try-Teils eines try/except. Eine Fehleingabe löst EConvertError mit englischer Meldung aus. try/finally gilt nicht als Schutz. Konfidenz mittel. Schnellkorrektur für X := StrToInt(Edit.Text); als e' + 'igene Anweisung, wenn X eine Variable oder ein Feld des passenden Typs ist: if not TryStrToInt(Edit.Text, X) then raise EConvertError.Create(''X ist keine Zahl''). format-without-settings meldet zusätzl' + 'ich landesabhängige Umwandlungen ohne TFormatSettings. Die Optionen functions und sources wählen die geprüften Umwandlungen und die Eigenschaften, die als Eingabe gelten.",' + #10 +
+    '      "options": [' + #10 +
+    '        {' + #10 +
+    '          "name": "functions",' + #10 +
+    '          "description": "Geprüfte Umwandlungen."' + #10 +
+    '        },' + #10 +
+    '        {' + #10 +
+    '          "name": "sources",' + #10 +
+    '          "description": "Eigenschaften, die als Benutzereingabe gelten."' + #10 +
     '        }' + #10 +
     '      ]' + #10 +
     '    }' + #10 +

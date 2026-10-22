@@ -51,3 +51,4 @@ duplicate-condition | Ref.Komponenten.Anzeige.pas | if (Operation = opRemove) an
 case-missing-enum-value | Ref.Komponenten.Anzeige.pas |   if FStil <> asFlach then |   case FStil of\n    asRahmen: Canvas.Rectangle(ClientRect);\n  end;\n  if FStil <> asFlach then
 pair-without-finally | Ref.Formulare.Haupt.pas | procedure THauptFormular.DetailButtonClick(Sender: TObject); | procedure Zuruecksetzen(Liste: TListBox);\nbegin\n  Liste.Items.BeginUpdate;\n  Liste.Items.Clear;\n  Liste.Items.EndUpdate;\nend;\n\nprocedure THauptFormular.DetailButtonClick(Sender: TObject);
 processmessages-in-loop | Ref.Formulare.Haupt.pas |       KundenListe.Items.Add(Kunde); |     begin\n      KundenListe.Items.Add(Kunde);\n      Application.ProcessMessages;\n    end;
+unchecked-conversion | Ref.Formulare.Detail.pas |   Anzeige.Wert := Length(NameEdit.Text); |   Anzeige.Wert := StrToInt(NameEdit.Text);

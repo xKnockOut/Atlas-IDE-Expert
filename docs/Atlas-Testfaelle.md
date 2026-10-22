@@ -3395,3 +3395,16 @@ Voraussetzung: Server läuft; Einstellungen auf Vorgabe; VCL-Formular mit Knopf 
 | PQ4 | `"processmessages-in-loop": {"allowIn": ["Warten"]}` bzw. `["TForm1.Warten"]` | Keine Meldung in `Warten`; in anderen Methoden weiter |
 | PQ5 | `"processmessages-in-loop": "off"` bzw. `exclude` mit dem Pfad der Datei | Keine Meldung |
 | PQ6 | Einstellungsseite „Prüfregeln“, Gruppe „Threads“ | Regel mit Schweregrad Hinweis und Option `allowIn` als Liste |
+
+## Umwandlung einer Benutzereingabe ohne Prüfung (#932)
+
+Voraussetzung: Server läuft; Einstellungen auf Vorgabe; VCL-Formular mit `edtMenge: TEdit` und in `btnOkClick` die lokale Variable `Menge: Integer` sowie die Zeile `Menge := StrToInt(edtMenge.Text);`.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| UK1 | Unit öffnen | Hinweis `unchecked-conversion` an `StrToInt(edtMenge.Text)`: „Eingabe aus edtMenge.Text ohne Prüfung umgewandelt; eine Fehleingabe löst EConvertError aus.“; im Fenster „Atlas-Prüfung“ und im Befund-Hover (**Abnahme**) |
+| UK2 | Glühbirne, „In TryStrToInt mit Fehlerzweig umschreiben“ | `if not TryStrToInt(edtMenge.Text, Menge) then` und eingerückt `raise EConvertError.Create('Menge ist keine Zahl');`; ein Strg+Z stellt die Zeile wieder her; kompiliert (**Abnahme**) |
+| UK3 | `Preis := StrToFloat(Trim(Grid.Cells[1, Zeile]));` mit `Preis: Double` | Hinweis mit „Grid.Cells[1, Zeile]“, Korrektur mit `TryStrToFloat` |
+| UK4 | Zeile in `try … except … end` setzen bzw. `StrToIntDef(edtMenge.Text, 0)` schreiben | Keine Meldung; mit `try … finally` weiter gemeldet |
+| UK5 | `"unchecked-conversion": {"sources": ["Text", "AsString"]}` und `Menge := StrToInt(Query.Params[0].AsString);` | Hinweis; mit `"functions": ["StrToFloat"]` verschwindet der Hinweis auf `StrToInt` |
+| UK6 | `"unchecked-conversion": "off"` bzw. `exclude` mit dem Pfad der Datei | Keine Meldung |

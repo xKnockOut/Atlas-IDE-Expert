@@ -20,6 +20,9 @@
 //                            Datei erzeugt, aber nie sortiert wird (#925)
 //   writeln-in-gui-app       Write, Writeln, Read oder Readln auf die Standardein- oder -ausgabe in einem
 //                            Programm ohne Konsole (#926): E/A-Fehler 104 bzw. 105 zur Laufzeit
+//   unchecked-conversion     StrToInt, StrToFloat, StrToDate … direkt auf Edit.Text, Cells[…] oder Lines[…]
+//                            ohne umgebendes try/except (#932); Korrektur: TryStrToInt … mit raise im
+//                            Fehlerzweig, wenn das Ziel eine Variable des passenden Typs ist
 // Bezeichner, deren Typ in der Datei nicht deklariert ist, lösen keinen Treffer aus.
 
 interface
@@ -105,6 +108,16 @@ type
     class function Replacement(const AOptions: string): string; static;
   end;
 
+  TUncheckedConversionRule = class(TInterfacedObject, IRule)
+  public const
+    DefaultFunctions: array[0..5] of string = ('StrToInt', 'StrToInt64', 'StrToFloat', 'StrToDate', 'StrToDateTime',
+      'StrToCurr');
+    DefaultSources: array[0..2] of string = ('Text', 'Cells', 'Lines');
+  public
+    function Descriptor: TRuleDescriptor;
+    procedure Check(const AContext: TRuleContext; const AReport: IRuleReport);
+  end;
+
 /// <summary>Registriert die typbasierten Regeln für RTL-Muster.</summary>
 procedure RegisterRtlTypePatternRules(const ARegistry: TRuleRegistry);
 
@@ -122,6 +135,7 @@ uses
   Atlas.Common.Index.Contract,
   Atlas.Common.Pascal.Lexer,
   Atlas.Common.Editing.UsesClause,
+  Atlas.Common.Rules.Options,
   Atlas.Text.Lines;
 
 type
@@ -1967,6 +1981,165 @@ begin
   end;
 end;
 
+{ TUncheckedConversionRule }
+
+type
+  /// <summary>Umwandlung mit Try-Gegenstück: Zieltypen, die als out-Parameter passen, und Meldungstext.</summary>
+  TCheckedConversion = record
+    Name: string;
+    Types: string;
+    Problem: string;
+  end;
+
+const
+  CheckedConversions: array[0..8] of TCheckedConversion = (
+    (Name: 'StrToInt'; Types: ',integer,longint,'; Problem: 'ist keine Zahl'),
+    (Name: 'StrToInt64'; Types: ',int64,'; Problem: 'ist keine Zahl'),
+    (Name: 'StrToFloat'; Types: ',double,extended,single,'; Problem: 'ist keine Zahl'),
+    (Name: 'StrToCurr'; Types: ',currency,'; Problem: 'ist kein Betrag'),
+    (Name: 'StrToDate'; Types: ',tdatetime,'; Problem: 'ist kein Datum'),
+    (Name: 'StrToDateTime'; Types: ',tdatetime,'; Problem: 'ist kein Zeitpunkt'),
+    (Name: 'StrToTime'; Types: ',tdatetime,'; Problem: 'ist keine Uhrzeit'),
+    (Name: 'StrToBool'; Types: ',boolean,'; Problem: 'ist kein Wahrheitswert'),
+    (Name: 'StrToUInt'; Types: ',cardinal,longword,'; Problem: 'ist keine Zahl'));
+  // Hüllen, durch die die Eingabe unverändert geprüft wird: StrToInt(Trim(Edit.Text)).
+  TransparentCalls: array[0..3] of string = ('Trim', 'TrimLeft', 'TrimRight', 'Copy');
+
+function TUncheckedConversionRule.Descriptor: TRuleDescriptor;
+begin
+  Result := TRuleDescriptor.Create('unchecked-conversion', TRuleSeverity.Hint,
+    'Umwandlung einer Benutzereingabe ohne Prüfung');
+end;
+
+procedure TUncheckedConversionRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
+var
+  Functions, Sources: TArray<string>;
+  Types: TDeclaredTypes;
+  LineBreak: string;
+
+  function Text(ANode: TSyntaxNode): string;
+  begin
+    Result := Trim(Copy(AContext.Text, ANode.StartOffset + 1, ANode.EndOffset - ANode.StartOffset));
+  end;
+
+  // Edit.Text, Grid.Cells[C, R], Memo.Lines[I], auch in Trim(…); nil, wenn das Argument keine Eingabe ist.
+  function InputSource(ANode: TSyntaxNode): TSyntaxNode;
+  begin
+    Result := nil;
+    while (ANode.Kind = TSyntaxKind.ParenExpr) and (ANode.ChildCount = 1) do
+      ANode := ANode[0];
+    case ANode.Kind of
+      TSyntaxKind.MemberAccess:
+        if MatchText(ANode.Name, Sources) then
+          Result := ANode;
+      TSyntaxKind.IndexAccess:
+        if (ANode.ChildCount > 0) and (ANode[0].Kind = TSyntaxKind.MemberAccess) and MatchText(ANode.Name, Sources) then
+          Result := ANode;
+      TSyntaxKind.Call:
+        if (ANode.ChildCount > 1) and MatchText(ANode.Name, TransparentCalls) then
+          Result := InputSource(ANode[1]);
+    end;
+  end;
+
+  // Im try-Teil eines try/except: die Fehleingabe wird abgefangen.
+  function Caught(ANode: TSyntaxNode): Boolean;
+  var
+    Child, Parent: TSyntaxNode;
+  begin
+    Child := ANode;
+    Parent := ANode.Parent;
+    while (Parent <> nil) and not (Parent.Kind in [TSyntaxKind.RoutineDecl, TSyntaxKind.AnonymousMethod]) do
+    begin
+      if (Parent.Kind = TSyntaxKind.TryStatement) and not (Child.Kind in [TSyntaxKind.ExceptBlock,
+        TSyntaxKind.FinallyBlock]) and (Parent.FindChild(TSyntaxKind.ExceptBlock) <> nil) then
+        Exit(True);
+      Child := Parent;
+      Parent := Parent.Parent;
+    end;
+    Result := False;
+  end;
+
+  function ConversionOf(const AName: string; out AConversion: TCheckedConversion): Boolean;
+  var
+    Conversion: TCheckedConversion;
+  begin
+    for Conversion in CheckedConversions do
+      if SameText(Conversion.Name, AName) then
+      begin
+        AConversion := Conversion;
+        Exit(True);
+      end;
+    Result := False;
+  end;
+
+  // X := StrToInt(Edit.Text); als eigene Anweisung in einer Anweisungsliste, X eine Variable des
+  // passenden Typs: if not TryStrToInt(Edit.Text, X) then raise EConvertError.Create('X ist keine Zahl').
+  function Fixes(ACall, AArgument: TSyntaxNode): TArray<TRuleFix>;
+  var
+    Statement, Target: TSyntaxNode;
+    Conversion: TCheckedConversion;
+    TypeName, Indent: string;
+  begin
+    Result := nil;
+    Statement := ACall.Parent;
+    if (Statement = nil) or (Statement.Kind <> TSyntaxKind.AssignStatement) or (Statement.ChildCount <> 2) or
+      (Statement[1] <> ACall) or (Statement.Parent = nil) or not (Statement.Parent.Kind in [TSyntaxKind.Block,
+      TSyntaxKind.TryStatement, TSyntaxKind.FinallyBlock, TSyntaxKind.ExceptBlock, TSyntaxKind.RepeatStatement,
+      TSyntaxKind.InitializationSection, TSyntaxKind.FinalizationSection]) then
+      Exit;
+    Target := Statement[0];
+    if (Target.Kind <> TSyntaxKind.Identifier) or not ConversionOf(ACall.Name, Conversion) then
+      Exit;
+    TypeName := LowerCase(Types.DeclaredType(Target.Name, Target.StartPos));
+    if (TypeName = '') or (Pos(',' + TypeName + ',', Conversion.Types) = 0) then
+      Exit;
+    Indent := StringOfChar(' ', Statement.StartPos.Character);
+    Result := [TRuleFix.Create('In Try' + Conversion.Name + ' mit Fehlerzweig umschreiben',
+      [TRuleEdit.Create(TTextRange.Create(Statement.StartPos, Statement.EndPos), 'if not Try' + Conversion.Name +
+      '(' + Text(AArgument) + ', ' + Target.Name + ') then' + LineBreak + Indent + '  raise EConvertError.Create(''' +
+      Target.Name + ' ' + Conversion.Problem + ''')')])];
+  end;
+
+  procedure Visit(ANode: TSyntaxNode);
+  var
+    Index: Integer;
+    Source: TSyntaxNode;
+  begin
+    if (ANode.Kind = TSyntaxKind.Call) and (ANode.ChildCount = 2) and MatchText(ANode.Name, Functions) then
+    begin
+      Source := InputSource(ANode[1]);
+      if (Source <> nil) and not Caught(ANode) then
+        AReport.Add(TTextRange.Create(ANode.StartPos, ANode.EndPos), Format('Eingabe aus %s ohne Prüfung ' +
+          'umgewandelt; eine Fehleingabe löst EConvertError aus.', [Text(Source)]), TRuleConfidence.Medium,
+          Fixes(ANode, ANode[1]));
+    end;
+    for Index := 0 to ANode.ChildCount - 1 do
+      Visit(ANode[Index]);
+  end;
+
+var
+  Defaults: TArray<string>;
+  Name: string;
+begin
+  if (AContext.Tree = nil) or (AContext.Tree.Root = nil) then
+    Exit;
+  Defaults := nil;
+  for Name in DefaultFunctions do
+    Defaults := Defaults + [Name];
+  Functions := TRuleOptions.Strings(AContext.Options, 'functions', Defaults);
+  Defaults := nil;
+  for Name in DefaultSources do
+    Defaults := Defaults + [Name];
+  Sources := TRuleOptions.Strings(AContext.Options, 'sources', Defaults);
+  LineBreak := TTextLines.LineBreakOf(AContext.Text);
+  Types := TDeclaredTypes.Create(AContext.Tree, AContext.Text);
+  try
+    Visit(AContext.Tree.Root);
+  finally
+    Types.Free;
+  end;
+end;
+
 procedure RegisterRtlTypePatternRules(const ARegistry: TRuleRegistry);
 begin
   ARegistry.Register(TInt32MulOverflowRule.Create);
@@ -1980,6 +2153,7 @@ begin
   ARegistry.Register(TPCharOfTemporaryRule.Create);
   ARegistry.Register(TStringListUnsortedRule.Create);
   ARegistry.Register(TWritelnInGuiAppRule.Create);
+  ARegistry.Register(TUncheckedConversionRule.Create);
 end;
 
 end.
