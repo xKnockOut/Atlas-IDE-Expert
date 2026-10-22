@@ -12,6 +12,10 @@
 // case-selector-not-ordinal (#1067): Beispiel mit IndexStr-Korrektur samt
 // uses, Gleitkomma und Klassen, for mit Double, case-Marken und Arraygrenzen
 // aus Variablen, stille Fälle, Abschalten.
+// suspicious-string-pointer-cast (#1080): Beispiel mit drei Korrekturen,
+// PAnsiChar auf Unicode-Strings, RawByteString und UTF8String aus System,
+// Deklarationskorrektur nur für eigene Einzelvariablen, stille Fälle,
+// Abschalten.
 
 interface
 
@@ -76,6 +80,23 @@ type
     procedure VariablesAsConstants;
     [Test]
     procedure OrdinalAndUnknownAreSilent;
+    [Test]
+    procedure OffAndExclude;
+  end;
+
+  [TestFixture]
+  TSuspiciousStringPointerCastTests = class
+  public
+    [Test]
+    procedure IssueExampleWithFixes;
+    [Test]
+    procedure AnsiPointerOnUnicodeString;
+    [Test]
+    procedure SystemStringTypes;
+    [Test]
+    procedure DeclarationFixOnlyForOwnSingleVariable;
+    [Test]
+    procedure MatchingAndUnknownAreSilent;
     [Test]
     procedure OffAndExclude;
   end;
@@ -643,9 +664,161 @@ begin
     '{"rules": {"case-selector-not-ordinal": {"exclude": ["Source/*.pas"]}}}', 'Source/Befehle.pas'))));
 end;
 
+{ TSuspiciousStringPointerCastTests }
+
+function CastFindings(const ASource: string): TArray<TRuleFinding>; overload;
+begin
+  Result := TRuleAssert.Findings(TSuspiciousStringPointerCastRule.Create, ASource);
+end;
+
+function CastFindings(const ASource, AConfig, APath: string): TArray<TRuleFinding>; overload;
+begin
+  Result := TRuleAssert.Findings(TSuspiciousStringPointerCastRule.Create, ASource, AConfig, APath);
+end;
+
+function StringIndex: ISymbolIndex;
+begin
+  Result := TSymbolIndex.Create;
+  Result.AddUnit(TIndexExtractor.ExtractText('unit System;'#10'interface'#10'type'#10 +
+    '  RawByteString = type AnsiString($FFFF);'#10'  UTF8String = type AnsiString(65001);'#10 +
+    'function UTF8Encode(const S: string): RawByteString;'#10'implementation'#10 +
+    'function UTF8Encode(const S: string): RawByteString;'#10'begin'#10'end;'#10'end.',
+    'C:\BDS\source\System.pas', nil));
+end;
+
+procedure TSuspiciousStringPointerCastTests.IssueExampleWithFixes;
+var
+  Source, Fixed: string;
+  Found: TArray<TRuleFinding>;
+begin
+  Source := Routine('  Pfad: AnsiString;'#10, '  DeleteFile(PChar(Pfad));'#10);
+  Found := CastFindings(Source);
+  Assert.AreEqual(1, Integer(Length(Found)));
+  Assert.AreEqual(SuspiciousStringPointerCastRuleId, Found[0].RuleId);
+  Assert.AreEqual('PChar zeigt auf WideChar, Pfad ist AnsiString; die API liest Datenmüll (wie W1044).',
+    Found[0].Message);
+  Assert.AreEqual(Ord(TRuleSeverity.Warning), Ord(Found[0].Severity));
+  Assert.AreEqual(7, Found[0].Range.StartPos.Line);
+  Assert.AreEqual(13, Found[0].Range.StartPos.Character);
+  Assert.AreEqual(24, Found[0].Range.EndPos.Character);
+  Assert.AreEqual(3, Integer(Length(Found[0].Fixes)));
+  Assert.AreEqual('Pfad als string deklarieren', Found[0].Fixes[0].Title);
+  Assert.IsFalse(Found[0].Fixes[0].Alternative);
+  Fixed := AppliedAll(Source, Found[0].Fixes[0]);
+  Assert.IsTrue(Pos('  Pfad: string;'#10, Fixed) > 0, Fixed);
+  Assert.AreEqual(0, Integer(Length(CastFindings(Fixed))), Fixed);
+  Assert.AreEqual('In string umwandeln: PChar(string(…))', Found[0].Fixes[1].Title);
+  Assert.IsTrue(Found[0].Fixes[1].Alternative);
+  Fixed := AppliedAll(Source, Found[0].Fixes[1]);
+  Assert.IsTrue(Pos('  DeleteFile(PChar(string(Pfad)));'#10, Fixed) > 0, Fixed);
+  Assert.AreEqual(0, Integer(Length(CastFindings(Fixed))), Fixed);
+  Assert.AreEqual('Passenden Zeigertyp verwenden: PAnsiChar', Found[0].Fixes[2].Title);
+  Fixed := AppliedAll(Source, Found[0].Fixes[2]);
+  Assert.IsTrue(Pos('  DeleteFile(PAnsiChar(Pfad));'#10, Fixed) > 0, Fixed);
+  Assert.AreEqual(0, Integer(Length(CastFindings(Fixed))), Fixed);
+end;
+
+procedure TSuspiciousStringPointerCastTests.AnsiPointerOnUnicodeString;
+var
+  Source, Fixed: string;
+  Found: TArray<TRuleFinding>;
+begin
+  Source := Routine('  S: string;'#10'  W: WideString;'#10'  U: UnicodeString;'#10'  A: AnsiString;'#10,
+    '  Ausgeben(PAnsiChar(S));'#10'  Ausgeben(PAnsiChar(W));'#10'  Ausgeben(PAnsiChar((U)));'#10 +
+    '  Ausgeben(PWideChar(A));'#10);
+  Found := CastFindings(Source);
+  Assert.AreEqual(4, Integer(Length(Found)), Messages(Found));
+  Assert.AreEqual('PAnsiChar zeigt auf AnsiChar, S ist string; die API liest nur das erste Zeichen (wie W1044).',
+    Found[0].Message);
+  Assert.AreEqual('PAnsiChar zeigt auf AnsiChar, W ist WideString; die API liest nur das erste Zeichen (wie W1044).',
+    Found[1].Message);
+  Assert.AreEqual('PAnsiChar zeigt auf AnsiChar, U ist UnicodeString; die API liest nur das erste Zeichen ' +
+    '(wie W1044).', Found[2].Message);
+  Assert.AreEqual('PWideChar zeigt auf WideChar, A ist AnsiString; die API liest Datenmüll (wie W1044).',
+    Found[3].Message);
+  // PAnsiChar: keine Deklarationskorrektur.
+  Assert.AreEqual(2, Integer(Length(Found[0].Fixes)));
+  Assert.AreEqual('In AnsiString umwandeln: PAnsiChar(AnsiString(…))', Found[0].Fixes[0].Title);
+  Assert.IsFalse(Found[0].Fixes[0].Alternative);
+  Fixed := AppliedAll(Source, Found[0].Fixes[0]);
+  Assert.IsTrue(Pos('  Ausgeben(PAnsiChar(AnsiString(S)));'#10, Fixed) > 0, Fixed);
+  Assert.AreEqual('Passenden Zeigertyp verwenden: PChar', Found[0].Fixes[1].Title);
+  Fixed := AppliedAll(Source, Found[0].Fixes[1]);
+  Assert.IsTrue(Pos('  Ausgeben(PChar(S));'#10, Fixed) > 0, Fixed);
+  Assert.AreEqual(3, Integer(Length(CastFindings(Fixed))), Fixed);
+  // Klammern bleiben in der Umwandlung erhalten.
+  Fixed := AppliedAll(Source, Found[2].Fixes[0]);
+  Assert.IsTrue(Pos('  Ausgeben(PAnsiChar(AnsiString((U))));'#10, Fixed) > 0, Fixed);
+end;
+
+procedure TSuspiciousStringPointerCastTests.SystemStringTypes;
+var
+  Found: TArray<TRuleFinding>;
+begin
+  Found := TRuleAssert.IndexFindings(TSuspiciousStringPointerCastRule.Create, Routine(
+    '  R: RawByteString;'#10'  U8: UTF8String;'#10'  S: string;'#10,
+    '  Ausgeben(PChar(R));'#10'  Ausgeben(PWideChar(U8));'#10'  Ausgeben(PChar(UTF8Encode(S)));'#10 +
+    '  Ausgeben(PAnsiChar(U8));'#10'  Ausgeben(PAnsiChar(UTF8Encode(S)));'#10), StringIndex, '', 'Zaehler.pas');
+  Assert.AreEqual(3, Integer(Length(Found)), Messages(Found));
+  Assert.AreEqual('PChar zeigt auf WideChar, R ist RawByteString; die API liest Datenmüll (wie W1044).',
+    Found[0].Message);
+  Assert.AreEqual('PWideChar zeigt auf WideChar, U8 ist UTF8String; die API liest Datenmüll (wie W1044).',
+    Found[1].Message);
+  Assert.AreEqual('PChar zeigt auf WideChar, UTF8Encode(S) ist RawByteString; die API liest Datenmüll ' +
+    '(wie W1044).', Found[2].Message);
+  // Deklaration R: RawByteString wird string; Funktionsergebnis: nur Umwandlung und Zeigertyp.
+  Assert.AreEqual('R als string deklarieren', Found[0].Fixes[0].Title);
+  Assert.AreEqual(2, Integer(Length(Found[2].Fixes)));
+end;
+
+procedure TSuspiciousStringPointerCastTests.DeclarationFixOnlyForOwnSingleVariable;
+var
+  Found: TArray<TRuleFinding>;
+begin
+  Found := CastFindings('unit Pfade;'#10'interface'#10'type'#10'  TDatei = class'#10'    FName: AnsiString;'#10 +
+    '    procedure Loeschen(const Ziel: AnsiString);'#10'  end;'#10'implementation'#10 +
+    'procedure TDatei.Loeschen(const Ziel: AnsiString);'#10'var'#10'  A, B: AnsiString;'#10 +
+    '  C: AnsiString; // Kommentar'#10'begin'#10'  DeleteFile(PChar(Ziel));'#10'  DeleteFile(PChar(FName));'#10 +
+    '  DeleteFile(PChar(B));'#10'  DeleteFile(PChar(A));'#10'  DeleteFile(PChar(C));'#10'end;'#10'end.');
+  Assert.AreEqual(5, Integer(Length(Found)), Messages(Found));
+  // Parameter, Feld, zwei Namen in einer Deklaration: nur Umwandlung und Zeigertyp.
+  Assert.AreEqual(2, Integer(Length(Found[0].Fixes)));
+  Assert.AreEqual(2, Integer(Length(Found[1].Fixes)));
+  Assert.AreEqual(2, Integer(Length(Found[2].Fixes)));
+  Assert.AreEqual(2, Integer(Length(Found[3].Fixes)));
+  Assert.AreEqual(3, Integer(Length(Found[4].Fixes)));
+  Assert.AreEqual('C als string deklarieren', Found[4].Fixes[0].Title);
+end;
+
+procedure TSuspiciousStringPointerCastTests.MatchingAndUnknownAreSilent;
+begin
+  Assert.AreEqual('', Messages(CastFindings(Routine('  S: string;'#10'  A: AnsiString;'#10'  P: PAnsiChar;'#10 +
+    '  Bytes: TBytes;'#10'  C: Char;'#10 +
+    '  {$IFDEF ANSI}'#10'  Wechselnd: AnsiString;'#10'  {$ELSE}'#10'  Wechselnd: string;'#10'  {$ENDIF}'#10,
+    '  Ausgeben(PChar(S));'#10'  Ausgeben(PWideChar(S));'#10'  Ausgeben(PAnsiChar(A));'#10 +
+    '  Ausgeben(PChar(''abc''));'#10'  Ausgeben(PAnsiChar(''abc''));'#10'  S := string(P);'#10 +
+    '  Ausgeben(PWideChar(Bytes));'#10'  Ausgeben(PChar(Unbekannt));'#10'  Ausgeben(PChar(S + A));'#10 +
+    '  Ausgeben(PChar(Wechselnd));'#10'  Ausgeben(PChar(string(A)));'#10'  Ausgeben(PAnsiChar(AnsiString(S)));'#10))));
+end;
+
+procedure TSuspiciousStringPointerCastTests.OffAndExclude;
+var
+  Source: string;
+begin
+  Source := Routine('  Pfad: AnsiString;'#10, '  DeleteFile(PChar(Pfad));'#10);
+  Assert.AreEqual(1, Integer(Length(CastFindings(Source, '', 'Source/Zaehler.pas'))));
+  Assert.AreEqual(0, Integer(Length(CastFindings(Source, '{"rules": {"suspicious-string-pointer-cast": "off"}}',
+    'Source/Zaehler.pas'))));
+  Assert.AreEqual(0, Integer(Length(CastFindings(Source, '{"rules": {"group:compiler": "off"}}',
+    'Source/Zaehler.pas'))));
+  Assert.AreEqual(0, Integer(Length(CastFindings(Source,
+    '{"rules": {"suspicious-string-pointer-cast": {"exclude": ["Source/*.pas"]}}}', 'Source/Zaehler.pas'))));
+end;
+
 initialization
   TDUnitX.RegisterTestFixture(TComparisonAlwaysConstantTests);
   TDUnitX.RegisterTestFixture(TConstantInitializerMismatchTests);
   TDUnitX.RegisterTestFixture(TCaseSelectorNotOrdinalTests);
+  TDUnitX.RegisterTestFixture(TSuspiciousStringPointerCastTests);
 
 end.

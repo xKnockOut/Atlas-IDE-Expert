@@ -37,6 +37,15 @@
 //                     typisierte Konstanten sind (wie E2026). Korrektur bei Strings
 //                     mit lauter String-Marken: case IndexStr(S, […]) of mit den
 //                     Positionen als Marken, System.StrUtils in uses.
+//   suspicious-string-pointer-cast
+//                     PChar bzw. PWideChar auf einen AnsiString, RawByteString oder
+//                     UTF8String und PAnsiChar auf einen string, UnicodeString oder
+//                     WideString (#1080, wie W1044): Zeiger und Zeichenbreite passen
+//                     nicht zusammen. string(PAnsiChar) wandelt korrekt um, ein
+//                     Zeiger auf TBytes kann gewollt sein; beides meldet die Regel
+//                     nicht. Korrekturen: eigene Variable mit passendem Stringtyp
+//                     deklarieren, string(…) bzw. AnsiString(…) um das Argument,
+//                     passenden Zeigertyp verwenden.
 
 interface
 
@@ -48,6 +57,7 @@ const
   ComparisonAlwaysConstantRuleId = 'comparison-always-constant';
   ConstantInitializerMismatchRuleId = 'constant-initializer-mismatch';
   CaseSelectorNotOrdinalRuleId = 'case-selector-not-ordinal';
+  SuspiciousStringPointerCastRuleId = 'suspicious-string-pointer-cast';
 
 type
   TComparisonAlwaysConstantRule = class(TInterfacedObject, IRule)
@@ -77,6 +87,15 @@ type
     procedure Check(const AContext: TRuleContext; const AReport: IRuleReport);
     /// <summary>Ist der eingebaute Typ ATypeName sicher nicht ordinal (Strings, Gleitkommazahlen)?</summary>
     class function NotOrdinal(const ATypeName: string): Boolean; static;
+  end;
+
+  TSuspiciousStringPointerCastRule = class(TInterfacedObject, IRule)
+  public
+    function Descriptor: TRuleDescriptor;
+    procedure Check(const AContext: TRuleContext; const AReport: IRuleReport);
+    /// <summary>Zeichenbreite des eingebauten Stringtyps ATypeName: 1 für AnsiString, RawByteString und
+    /// UTF8String, 2 für string, UnicodeString und WideString, 0 für andere.</summary>
+    class function StringWidth(const ATypeName: string): Integer; static;
   end;
 
 procedure RegisterTypedExpressionRules(const ARegistry: TRuleRegistry);
@@ -1140,11 +1159,149 @@ begin
   end;
 end;
 
+{ TSuspiciousStringPointerCastRule }
+
+function TSuspiciousStringPointerCastRule.Descriptor: TRuleDescriptor;
+begin
+  Result := TRuleDescriptor.Create(SuspiciousStringPointerCastRuleId, TRuleSeverity.Warning,
+    'Zeiger und Zeichenbreite eines Strings passen nicht zusammen');
+end;
+
+class function TSuspiciousStringPointerCastRule.StringWidth(const ATypeName: string): Integer;
+begin
+  Result := 0;
+  if MatchText(ATypeName, ['AnsiString', 'RawByteString', 'UTF8String']) then
+    Result := 1
+  else if MatchText(ATypeName, ['string', 'UnicodeString', 'WideString']) then
+    Result := 2;
+end;
+
+procedure TSuspiciousStringPointerCastRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
+var
+  Scope: TTypedScope;
+  Tokens: TArray<TPascalToken>;
+
+  /// <summary>Nächstes Token ab AIndex, das kein Kommentar ist; Length(Tokens) am Ende.</summary>
+  function NextToken(AIndex: Integer): Integer;
+  begin
+    Result := AIndex;
+    while (Result <= High(Tokens)) and (Tokens[Result].Kind = TPascalTokenKind.Comment) do
+      Inc(Result);
+  end;
+
+  /// <summary>Korrektur "Pfad als string deklarieren": nur für eine Variable dieser Datei, die allein mit
+  /// "Name: Typ" deklariert ist, wobei Typ einer der Stringtypen der Breite AWidth ist.</summary>
+  function DeclarationFix(const ASymbol: TResolvedSymbol; AWidth: Integer; out AFix: TRuleFix): Boolean;
+  var
+    Index: Integer;
+  begin
+    Result := False;
+    if ASymbol.IsParameter or (ASymbol.SymbolKind <> TIndexSymbolKind.Variable) or ((ASymbol.Kind <>
+      TResolvedKind.Local) and not SameText(ASymbol.FileName, Scope.FileName)) then
+      Exit;
+    Index := Scope.TokenAtPosition(ASymbol.SelectionRange.StartPos);
+    if (Index > High(Tokens)) or not SameText(Tokens[Index].Text, ASymbol.Name) then
+      Exit;
+    // Vor dem Namen kein Komma (A, B: AnsiString änderte beide).
+    if (Index > 0) and (Tokens[Index - 1].Text = ',') then
+      Exit;
+    Index := NextToken(Index + 1);
+    if (Index > High(Tokens)) or (Tokens[Index].Text <> ':') then
+      Exit;
+    Index := NextToken(Index + 1);
+    if (Index > High(Tokens)) or (Tokens[Index].Kind <> TPascalTokenKind.Identifier) or
+      (StringWidth(Tokens[Index].Text) <> AWidth) then
+      Exit;
+    if (NextToken(Index + 1) > High(Tokens)) or not MatchStr(Tokens[NextToken(Index + 1)].Text, [';', '=', ':=']) then
+      Exit;
+    AFix := TRuleFix.Create(Format('%s als string deklarieren', [ASymbol.Name]),
+      [TTextEdit.Create(TTextRange.Create(Tokens[Index].StartPos, Tokens[Index].EndPos), 'string')]);
+    Result := True;
+  end;
+
+  procedure CheckCast(ANode: TSyntaxNode);
+  var
+    Argument: TSyntaxNode;
+    Symbol, TypeInfo: TResolvedSymbol;
+    PointerWidth, Width: Integer;
+    Message, Conversion, OtherPointer: string;
+    Fix: TRuleFix;
+    Fixes: TArray<TRuleFix>;
+  begin
+    // PChar(X): Callee und genau ein Argument.
+    if ANode.ChildCount <> 2 then
+      Exit;
+    if MatchText(ANode.Name, ['PChar', 'PWideChar']) then
+      PointerWidth := 2
+    else if SameText(ANode.Name, 'PAnsiChar') then
+      PointerWidth := 1
+    else
+      Exit;
+    Argument := Unwrapped(ANode[1]);
+    if not Scope.SureType(Argument, Symbol, TypeInfo) then
+      Exit;
+    if not TypeInfo.Builtin and not SameText(TypeInfo.UnitName, 'System') then
+      Exit;
+    Width := StringWidth(TypeInfo.Name);
+    if (Width = 0) or (Width = PointerWidth) then
+      Exit;
+    Fixes := nil;
+    if PointerWidth = 2 then
+    begin
+      Message := Format('%s zeigt auf WideChar, %s ist %s; die API liest Datenmüll (wie W1044).',
+        [ANode.Name, Scope.Text(Argument), TypeInfo.Name]);
+      if DeclarationFix(Symbol, Width, Fix) then
+        Fixes := [Fix];
+      Conversion := 'string';
+      OtherPointer := 'PAnsiChar';
+    end
+    else
+    begin
+      Message := Format('%s zeigt auf AnsiChar, %s ist %s; die API liest nur das erste Zeichen (wie W1044).',
+        [ANode.Name, Scope.Text(Argument), TypeInfo.Name]);
+      Conversion := 'AnsiString';
+      OtherPointer := 'PChar';
+    end;
+    Fix := TRuleFix.Create(Format('In %s umwandeln: %s(%s(…))', [Conversion, ANode.Name, Conversion]),
+      [TTextEdit.Create(TTextRange.Create(ANode[1].StartPos, ANode[1].EndPos), Format('%s(%s)', [Conversion,
+      Scope.Text(ANode[1])]))]);
+    Fix.Alternative := Fixes <> nil;
+    Fixes := Fixes + [Fix];
+    Fix := TRuleFix.Create(Format('Passenden Zeigertyp verwenden: %s', [OtherPointer]),
+      [TTextEdit.Create(TTextRange.Create(ANode[0].StartPos, ANode[0].EndPos), OtherPointer)]);
+    Fix.Alternative := True;
+    Fixes := Fixes + [Fix];
+    AReport.Add(TTextRange.Create(ANode.StartPos, ANode.EndPos), Message, TRuleConfidence.High, Fixes);
+  end;
+
+  procedure Visit(ANode: TSyntaxNode);
+  var
+    Index: Integer;
+  begin
+    if ANode.Kind = TSyntaxKind.Call then
+      CheckCast(ANode);
+    for Index := 0 to ANode.ChildCount - 1 do
+      Visit(ANode[Index]);
+  end;
+
+begin
+  if (AContext.Tree = nil) or (AContext.Tree.Root = nil) then
+    Exit;
+  Tokens := AContext.Tree.Tokens;
+  Scope := TTypedScope.Create(AContext);
+  try
+    Visit(AContext.Tree.Root);
+  finally
+    Scope.Free;
+  end;
+end;
+
 procedure RegisterTypedExpressionRules(const ARegistry: TRuleRegistry);
 begin
   ARegistry.Register(TComparisonAlwaysConstantRule.Create);
   ARegistry.Register(TConstantInitializerMismatchRule.Create);
   ARegistry.Register(TCaseSelectorNotOrdinalRule.Create);
+  ARegistry.Register(TSuspiciousStringPointerCastRule.Create);
 end;
 
 end.
