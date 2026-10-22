@@ -2,7 +2,7 @@
 
 // Fehlerbericht des Plugins (#108): Aufbau mit und ohne Server,
 // Argumente für den Server, Anonymisierung ohne Projektpfad, Auszug aus
-// atlas.log.
+// atlas.log, Fehlerausgabe des Servers (Bericht H5).
 
 interface
 
@@ -25,6 +25,8 @@ type
     procedure ServerArgumentsCarryAnonymizeAndClient;
     [Test]
     procedure TailReadsLastLines;
+    [Test]
+    procedure ServerErrorOutputIsAnonymizedSection;
   end;
 
 implementation
@@ -148,6 +150,26 @@ begin
     TFile.Delete(FileName);
   end;
   Assert.AreEqual('atlas-fehlerbericht-20261014-0000.md', TAtlasBugReport.DefaultFileName(EncodeDate(2026, 10, 14)));
+end;
+
+procedure TAtlasBugReportTests.ServerErrorOutputIsAnonymizedSection;
+var
+  Report: TAtlasBugReportInput;
+  Text: string;
+begin
+  Report := Input;
+  Text := TAtlasBugReport.Build(Report);
+  Assert.DoesNotContain(Text, 'Fehlerausgabe des Servers', 'ohne stderr kein Abschnitt');
+  Report.ServerErrorOutput := ['---- 2026-10-22 10:00:00 Serverstart ----',
+    'Exception EStackOverflow in "TKundeForm" bei ' + Root + '\Main.pas'];
+  Text := TAtlasBugReport.Build(Report);
+  Assert.Contains(Text, '### Fehlerausgabe des Servers (stderr, letzte 2 Zeilen)');
+  Assert.Contains(Text, 'Serverstart');
+  Assert.Contains(Text, 'EStackOverflow');
+  Assert.DoesNotContain(Text, 'TKundeForm');
+  Assert.DoesNotContain(Text, 'Projekte', True);
+  // Vor dem Teil des Servers.
+  Assert.IsTrue(Pos('Fehlerausgabe des Servers', Text) < Pos('## Atlas-Fehlerbericht (Server)', Text));
 end;
 
 initialization

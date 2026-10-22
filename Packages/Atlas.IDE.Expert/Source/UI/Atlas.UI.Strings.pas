@@ -654,7 +654,8 @@ type
     UnwrapWhile, UnwrapRepeat, UnwrapIfDef, UnwrapRegion, UnwrapKeepFinally, UnwrapDropFinally, UnwrapKeepThen,
     UnwrapKeepElse, UnwrapKeepFirst, UnwrapKeepIfDefElse, UnwrapKeepBranch, UnwrapRaiseNote, UnwrapLoopNote,
     UnwrapWithNote, SettingsOutlineConditions, SettingsCompletionVariantBranch, TagVariantBranch,
-    BreadcrumbsDisabled, FuseTrippedTitle, FuseTrippedEnable, FuseTrippedOpenLog);
+    BreadcrumbsDisabled, FuseTrippedTitle, FuseTrippedEnable, FuseTrippedOpenLog, ServerCrashedCause, ServerHeldTitle,
+    ServerHeldText, ServerHeldPhase);
 
   TAtlasStrings = class
   private class var
@@ -2011,7 +2012,13 @@ const
      'Brotkrumenleiste nach Fehlern abgeschaltet – wieder einschalten über Atlas › Abgeschaltete Funktionen einschalten',
      '%s nach Fehlern abgeschaltet',
      'Wieder einschalten',
-     'Protokoll öffnen'),
+     'Protokoll öffnen',
+     'Der Server war beendet (%s) und läuft wieder.',
+     'Server wiederholt abgestürzt',
+     'Der Server endete zweimal mit %s innerhalb von %d Minuten. Atlas startet ihn nicht mehr von selbst neu, ' +
+     'damit der Fehler nicht in einer Schleife wiederkehrt. Der Fehlerbericht enthält das Protokoll und die ' +
+     'Ausgabe des Servers auf stderr.',
+     '%s; zweimal, kein automatischer Neustart'),
     ('Enter to accept · Esc to close', '%d of %d', 'No matches for “%s”', 'Backspace widens the search',
      'No suggestions here', 'Esc closes', 'No details for this entry', 'Overload', 'Deprecated: %s', 'Deprecated.',
      'Inherited from %s', 'Inherited', 'optional, default %s', 'No overload with %d parameters.', '… %d more',
@@ -3276,7 +3283,12 @@ const
      'Breadcrumbs switched off after errors – switch on again via Atlas › Re-enable switched-off features',
      '%s switched off after errors',
      'Switch on again',
-     'Open log'));
+     'Open log',
+     'The server had stopped (%s) and is running again.',
+     'Server crashed repeatedly',
+     'The server ended twice with %s within %d minutes. Atlas no longer restarts it on its own, so the error ' +
+     'does not recur in a loop. The bug report contains the log and the server''s output on stderr.',
+     '%s; twice, no automatic restart'));
 
 { TAtlasStrings }
 
