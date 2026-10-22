@@ -49,7 +49,18 @@ type
     /// <summary>Datei, die die Edits ändern, z. B. die Formulardatei neben der Unit (#309);
     /// '' = die geprüfte Datei.</summary>
     FileName: string;
+    /// <summary>Sprung statt Änderung (#915): der Client setzt den Cursor auf JumpTo in der geprüften Datei,
+    /// z. B. zur Freigabe bei use-after-free. Edits bleiben leer.</summary>
+    HasJump: Boolean;
+    JumpTo: TTextPosition;
+    /// <summary>Nach dem Sprung öffnet der Client den Parameter-Hint an JumpTo (#1007).</summary>
+    OpensSignature: Boolean;
     constructor Create(const ATitle: string; const AEdits: TArray<TRuleEdit>; ASafe: Boolean = False);
+    /// <summary>Aktion, die nur zu ATarget springt (#915).</summary>
+    class function Jump(const ATitle: string; const ATarget: TTextPosition): TRuleFix; static;
+    /// <summary>Aktion, die zu ATarget (in den Klammern eines Aufrufs) springt und dort den Parameter-Hint öffnet
+    /// (#1007).</summary>
+    class function SignatureHelp(const ATitle: string; const ATarget: TTextPosition): TRuleFix; static;
   end;
 
   /// <summary>Ein Treffer einer Regel. Severity setzt die Engine.</summary>
@@ -70,6 +81,34 @@ type
 {$SCOPEDENUMS OFF}
   /// <summary>Gehört AUnitName zu Package APackage (aus requires)? Über dessen .dpk bzw. .dcp (#46).</summary>
   TRulePackageProvides = reference to function(const APackage, AUnitName: string): TRulePackageAnswer;
+  /// <summary>Antwort der Unit-Suche (#1016): gefunden, sicher nicht gefunden oder ohne Aussage (Pfade der
+  /// Installation unbekannt, Makro in einem Pfad offen, Inhalt eines Packages unbekannt).</summary>
+{$SCOPEDENUMS ON}
+  TRuleUnitAnswer = (Found, Missing, Unknown);
+  /// <summary>Wo gesucht wird (#1016): wie der Compiler (Projekt, Suchpfade der .dproj, Bibliothek) bzw. was
+  /// Atlas kennt (Index, Quellpfade der Installation).</summary>
+  TRuleUnitSource = (Project, Atlas);
+{$SCOPEDENUMS OFF}
+  TRuleUnitSources = set of TRuleUnitSource;
+
+  /// <summary>Unit-Suche wie beim Compiler für uses-unit-not-found (#1016); nil = unbekannt, die Regel
+  /// schweigt bis auf Prüfungen ohne Pfade.</summary>
+  IRuleUnitLookup = interface
+    ['{7866E50C-6086-4876-A359-8193140A05BD}']
+    /// <summary>Findet der Compiler AUnitName, verwendet in AFromFile (absolut)? AInPath ist der Text aus
+    /// "in '…'" ('' ohne); dann zählt nur diese Datei.</summary>
+    function Find(const AUnitName, AInPath, AFromFile: string; ASources: TRuleUnitSources): TRuleUnitAnswer;
+    /// <summary>Package aus requires als .dpk oder .dcp (E2202).</summary>
+    function FindPackage(const APackage: string): TRuleUnitAnswer;
+    /// <summary>Namen aller Units, die die Suche findet, für Vorschläge.</summary>
+    function KnownUnits(ASources: TRuleUnitSources): TArray<string>;
+    /// <summary>Ordner unter dem Projektordner, der AUnitName.pas enthält, aber in keinem Suchpfad steht;
+    /// relativ zur .dproj, '' ohne.</summary>
+    function FolderOutsidePaths(const AUnitName: string): string;
+    /// <summary>Pfad und Text der .dproj; False ohne Projekt.</summary>
+    function ReadProject(out AFileName, AText: string): Boolean;
+  end;
+
   /// <summary>True, wenn die Prüfung abgebrochen werden soll (Zeitlimit, Dokument geändert).</summary>
   TRuleCancelled = reference to function: Boolean;
 
@@ -87,6 +126,11 @@ type
     /// <summary>Gibt alle Werte frei (bricht Referenzzyklen über kopierte Kontexte).</summary>
     procedure Clear;
   end;
+
+  /// <summary>Art der Anwendung, zu der die Datei gehört (#926): mit oder ohne Konsole.</summary>
+{$SCOPEDENUMS ON}
+  TRuleApplicationKind = (Unknown, Console, Gui, Package);
+{$SCOPEDENUMS OFF}
 
   /// <summary>Alles, was eine Regel über die geprüfte Datei wissen darf.</summary>
   TRuleContext = record
@@ -128,6 +172,9 @@ type
     NoFreeFields: Boolean;
     /// <summary>Freigabe als FreeAndNil(FFeld) statt FFeld.Free (refactoring.freeFieldsStyle, #666).</summary>
     FreeFieldsFreeAndNil: Boolean;
+    /// <summary>Zugriffsmethoden im protected-Abschnitt anlegen (completion.accessorSection, #467, für #1001).
+    /// </summary>
+    AccessorsProtected: Boolean;
     /// <summary>Abbruch zwischen den Regeln (Diagnoselog 15.10.2026); nil = nie abbrechen.</summary>
     Cancelled: TRuleCancelled;
     /// <summary>Gemeinsame Ableitungen des Laufs (Review P-03); setzt TRuleEngine.Run. nil = jede Regel
@@ -138,6 +185,18 @@ type
     FileName: string;
     /// <summary>Inhalt der Packages aus requires (#46); nil = unbekannt, Package-Prüfungen schweigen.</summary>
     PackageProvides: TRulePackageProvides;
+    /// <summary>Unit-Suche wie beim Compiler (#1016); nil = unbekannt (Linter, Datei ohne Projekt).</summary>
+    Units: IRuleUnitLookup;
+    /// <summary>Anwendungsart des Projekts, zu dem die Datei gehört (#926); Unknown ohne Projekt.</summary>
+    Application: TRuleApplicationKind;
+    /// <summary>Name des Projekts ohne Endung, z. B. Atlas.IDE.Expert (#943); '' ohne Projekt.</summary>
+    ProjectName: string;
+    /// <summary>Variablen der automatisch erzeugten Formulare und Datenmodule in der Reihenfolge der
+    /// Application.CreateForm-Aufrufe der .dpr (#956); nil ohne Projekt.</summary>
+    AutoCreateForms: TArray<string>;
+    /// <summary>Formatierung aus den Einstellungen (format, #938): Tabbreite und Einrückung für Regeln, die
+    /// Spalten zählen oder umbrechen; setzt TRuleEngine.Run. IndentSize 0 = nicht gesetzt.</summary>
+    Formatting: TFormatStyle;
   end;
 
   /// <summary>Sammelt die Treffer einer Regel. Ohne Angabe gilt Konfidenz High.</summary>
@@ -225,6 +284,21 @@ begin
   Safe := ASafe;
   Alternative := False;
   FileName := '';
+  HasJump := False;
+  JumpTo := Default(TTextPosition);
+end;
+
+class function TRuleFix.Jump(const ATitle: string; const ATarget: TTextPosition): TRuleFix;
+begin
+  Result := TRuleFix.Create(ATitle, nil);
+  Result.HasJump := True;
+  Result.JumpTo := ATarget;
+end;
+
+class function TRuleFix.SignatureHelp(const ATitle: string; const ATarget: TTextPosition): TRuleFix;
+begin
+  Result := Jump(ATitle, ATarget);
+  Result.OpensSignature := True;
 end;
 
 end.

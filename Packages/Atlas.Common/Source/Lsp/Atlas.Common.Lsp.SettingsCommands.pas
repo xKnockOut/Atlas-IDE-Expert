@@ -9,7 +9,10 @@
 //                                           oder "project" (Vorgabe) meldet
 //                                           Schlüssel am falschen Ort
 //   atlas.server.settingsCatalog [Sprache] Regeln des Katalogs mit Name,
-//                                           Kategorie und Vorgabe sowie Pfad
+//                                           Kategorie, Vorgabe, Gruppe,
+//                                           Beschreibung, Beispielen,
+//                                           Optionen und Kennzeichen
+//                                           „experimentell“ (#909) sowie Pfad
 //                                           der globalen Datei und Version
 //                                           des Servers
 
@@ -29,8 +32,14 @@ type
     /// <summary>{"valid": Boolean, "issues": [{"line", "character", "message", "error"}]}; Zeilen ab 0. AArguments[1]
     /// = "global" prüft den Text als globale Datei, sonst als atlas.json.</summary>
     class function Check(const AArguments: TJSONArray): TJSONObject; static;
-    /// <summary>{"rules": [{"id", "name", "category", "severity"}], "globalFile", "version"}.</summary>
-    class function Catalog(const AEntries: TArray<TRuleCatalogEntry>; const AGlobalFile: string): TJSONObject; static;
+    /// <summary>{"rules": [{"id", "name", "category", "severity", "group", "description", "bad", "good",
+    /// "options": [{"name", "type", "default", "description"}], "experimental"}], "globalFile", "version"}.
+    /// </summary>
+    class function Catalog(const AEntries: TArray<TRuleCatalogEntry>; const AGlobalFile: string): TJSONObject;
+      overload; static;
+    /// <summary>Wie oben; Regeln aus AExperimental tragen "experimental": true (#834, #909).</summary>
+    class function Catalog(const AEntries: TArray<TRuleCatalogEntry>; const AGlobalFile: string;
+      const AExperimental: TArray<string>): TJSONObject; overload; static;
     /// <summary>Katalog in der Sprache aus AArguments[0] ("de", "en"; sonst englisch).</summary>
     class function CatalogEntries(const AArguments: TJSONArray): TArray<TRuleCatalogEntry>; static;
   end;
@@ -100,10 +109,20 @@ end;
 
 class function TLspSettingsCommands.Catalog(const AEntries: TArray<TRuleCatalogEntry>;
   const AGlobalFile: string): TJSONObject;
+begin
+  Result := Catalog(AEntries, AGlobalFile, nil);
+end;
+
+class function TLspSettingsCommands.Catalog(const AEntries: TArray<TRuleCatalogEntry>; const AGlobalFile: string;
+  const AExperimental: TArray<string>): TJSONObject;
 var
-  Rules: TJSONArray;
-  Rule: TJSONObject;
+  Rules, Options: TJSONArray;
+  Rule, OptionObject: TJSONObject;
   Entry: TRuleCatalogEntry;
+  Option: TRuleOption;
+  DefaultValue: TJSONValue;
+  Id: string;
+  Experimental: Boolean;
 begin
   Rules := TJSONArray.Create;
   for Entry in AEntries do
@@ -113,6 +132,31 @@ begin
     Rule.AddPair('name', Entry.Name);
     Rule.AddPair('category', TRuleCatalog.CategoryName(Entry.Category));
     Rule.AddPair('severity', TFindingsOutput.SeverityName(Entry.DefaultSeverity));
+    Rule.AddPair('group', TRuleCatalog.GroupName(Entry.Group));
+    Rule.AddPair('description', Entry.Description);
+    Rule.AddPair('bad', Entry.Bad);
+    Rule.AddPair('good', Entry.Good);
+    Options := TJSONArray.Create;
+    for Option in Entry.Options do
+    begin
+      OptionObject := TJSONObject.Create;
+      OptionObject.AddPair('name', Option.Name);
+      OptionObject.AddPair('type', Option.Kind);
+      DefaultValue := nil;
+      if Option.DefaultJson <> '' then
+        DefaultValue := TJSONObject.ParseJSONValue(Option.DefaultJson);
+      if DefaultValue <> nil then
+        OptionObject.AddPair('default', DefaultValue);
+      OptionObject.AddPair('description', Option.Description);
+      Options.AddElement(OptionObject);
+    end;
+    Rule.AddPair('options', Options);
+    Experimental := False;
+    for Id in AExperimental do
+      if SameText(Id, Entry.Id) then
+        Experimental := True;
+    if Experimental then
+      Rule.AddPair('experimental', TJSONBool.Create(True));
     Rules.AddElement(Rule);
   end;
   Result := TJSONObject.Create;

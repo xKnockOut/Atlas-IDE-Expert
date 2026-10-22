@@ -12,8 +12,10 @@
 //     Delphi-Versionen, Konfigurationen und Plattformen der .dproj, Profile.
 //   - Textfelder mit Beispielen im Schema als Auswahl mit freier Eingabe.
 //   - Dateiauswahl für x-control „Datei wählen“ (logFile, traceFile).
-//   - "rules" als Tabelle aus dem Regelkatalog (Catalog); geändert wird je
-//     Regel nur ihr Wert in der Datei.
+//   - "rules" mit dem Regel-Editor der Seite Prüfregeln (TAtlasRulesEditor,
+//     #909) aus dem Regelkatalog (Catalog): Gruppen mit Hauptschalter,
+//     Schweregrad, Ausnahmen und Optionen; Werte der globalen Datei als
+//     „(global: …)“. Geändert wird je Regel nur ihr Wert in der Datei.
 //   - Übrige Werte (profiles, overrides, dfmPropertyRules, profile als Objekt)
 //     als JSON-Text.
 // Vor dem Schließen mit OK prüft OnValidate den neuen Text (beim Server, sonst
@@ -39,7 +41,8 @@ uses
   Atlas.Core.Settings.Layers,
   Atlas.Core.Settings.Choices,
   Atlas.Core.Settings.RuleTable,
-  Atlas.Core.Settings.Validation;
+  Atlas.Core.Settings.Validation,
+  Atlas.UI.Settings.Rules;
 
 type
   /// <summary>Auswahl für ein Feld (Pfad); leer = keine eigene Auswahl.</summary>
@@ -69,14 +72,12 @@ type
     FBuildHint: string;
     FProjectHint: string;
     FServerChecks: Boolean;
-    // Regeltabelle: Feld "rules", sein Wert mit den Änderungen, Zeilen, Liste und Auswahl.
+    // Regel-Editor: Feld "rules" und sein Wert mit den Änderungen.
     FRuleIndex: Integer;
     FRulesJson: string;
     /// <summary>Im Projektmodus: "rules" der globalen Einstellungen, für die Anzeige „(global: …)“.</summary>
     FGlobalRulesJson: string;
-    FRuleRows: TArray<TAtlasRuleRow>;
-    FRuleList: TListView;
-    FRuleSeverity: TComboBox;
+    FRuleEditor: TAtlasRulesEditor;
     function ChoicesOf(AIndex: Integer): TArray<TAtlasSettingChoice>;
     function ResetCaption: string;
     function AddLabel(const AText: string; ATop: Integer): TLabel;
@@ -84,10 +85,8 @@ type
     procedure UpdateState(AIndex: Integer);
     procedure UpdateHint;
     function AddRuleTable(ATop: Integer): Integer;
-    procedure FillRuleRow(AItem: TListItem; const ARow: TAtlasRuleRow);
-    procedure RuleSelect(Sender: TObject; Item: TListItem; Selected: Boolean);
-    procedure RuleSeverityChange(Sender: TObject);
-    procedure ApplyRuleSeverity(ARow: Integer; const ASeverity: string);
+    procedure RuleEditorChange(Sender: TObject);
+    function GetRuleList: TListView;
     procedure PageClick(Sender: TObject);
     procedure CheckClick(Sender: TObject);
     procedure EditChange(Sender: TObject);
@@ -115,7 +114,9 @@ type
     function Validate: Boolean;
     property Model: TAtlasSettingsModel read FModel;
     property Pages: TArray<string> read FPages;
-    property RuleList: TListView read FRuleList;
+    property RuleList: TListView read GetRuleList;
+    /// <summary>Regel-Editor auf der gezeigten Seite; nil ohne "rules".</summary>
+    property RuleEditor: TAtlasRulesEditor read FRuleEditor;
     property HintLabel: TLabel read FHint;
     property OnOpenFile: TProc read FOnOpenFile write FOnOpenFile;
     /// <summary>Vor dem ersten Anzeigen einer Seite setzen.</summary>
@@ -388,8 +389,7 @@ begin
   FBox.VertScrollBar.Position := 0;
   while FBox.ControlCount > 0 do
     FBox.Controls[0].Free;
-  FRuleList := nil;
-  FRuleSeverity := nil;
+  FRuleEditor := nil;
   for Index := 0 to High(FStates) do
   begin
     FStates[Index] := nil;
@@ -574,142 +574,56 @@ begin
 end;
 
 function TAtlasProjectSettingsDialog.AddRuleTable(ATop: Integer): Integer;
-var
-  Index: Integer;
-  Column: TListColumn;
-  Caption: TLabel;
-  Severity: string;
 begin
-  FRuleRows := TAtlasRuleTable.Rows(FCatalog, FRulesJson, FGlobalRulesJson);
-  if FCatalog = nil then
-  begin
-    Caption := AddLabel(TAtlasStrings.Text(TAtlasTextId.ProjectSettingsRuleNoCatalog), ATop);
-    Caption.Font.Color := clGrayText;
-    Inc(ATop, Caption.Height + 4);
-  end;
-  FRuleList := TListView.Create(FBox);
-  FRuleList.Parent := FBox;
-  FRuleList.ViewStyle := vsReport;
-  FRuleList.ReadOnly := True;
-  FRuleList.RowSelect := True;
-  FRuleList.HideSelection := False;
-  FRuleList.SetBounds(Gap * 2, ATop, FBox.ClientWidth - Gap * 5, 260);
-  FRuleList.Anchors := [akLeft, akTop, akRight];
-  Column := FRuleList.Columns.Add;
-  Column.Caption := TAtlasStrings.Text(TAtlasTextId.ProjectSettingsRuleId);
-  Column.Width := 170;
-  Column := FRuleList.Columns.Add;
-  Column.Caption := TAtlasStrings.Text(TAtlasTextId.ProjectSettingsRuleName);
-  Column.Width := 250;
-  Column := FRuleList.Columns.Add;
-  Column.Caption := TAtlasStrings.Text(TAtlasTextId.ProjectSettingsRuleCategory);
-  Column.Width := 110;
-  Column := FRuleList.Columns.Add;
-  Column.Caption := TAtlasStrings.Text(TAtlasTextId.ProjectSettingsRuleDefault);
-  Column.Width := 80;
-  Column := FRuleList.Columns.Add;
-  Column.Caption := TAtlasStrings.Text(TAtlasTextId.ProjectSettingsRuleSetting);
-  Column.Width := 140;
-  FRuleList.Items.BeginUpdate;
-  try
-    for Index := 0 to High(FRuleRows) do
-      FillRuleRow(FRuleList.Items.Add, FRuleRows[Index]);
-  finally
-    FRuleList.Items.EndUpdate;
-  end;
-  FRuleList.OnSelectItem := RuleSelect;
-  Inc(ATop, FRuleList.Height + Gap);
-  Caption := TLabel.Create(FBox);
-  Caption.Parent := FBox;
-  Caption.SetBounds(Gap * 2, ATop + 4, 200, 16);
-  Caption.Caption := TAtlasStrings.Text(TAtlasTextId.ProjectSettingsRuleSeverity);
-  FRuleSeverity := TComboBox.Create(FBox);
-  FRuleSeverity.Parent := FBox;
-  FRuleSeverity.Style := csDropDownList;
-  FRuleSeverity.SetBounds(Gap * 2 + 210, ATop, 160, 24);
-  FRuleSeverity.Items.Add(TAtlasStrings.Text(TAtlasTextId.ProjectSettingsRuleUseDefault));
-  for Severity in TAtlasRuleTable.Severities do
-    FRuleSeverity.Items.Add(Severity);
-  FRuleSeverity.Enabled := False;
-  FRuleSeverity.OnChange := RuleSeverityChange;
-  Result := ATop + 24 + Gap;
+  // Regel-Editor der Seite Prüfregeln (#909); er braucht für Tabelle und Auswahllisten ein Fenster.
+  FRuleEditor := TAtlasRulesEditor.Create(FBox);
+  FRuleEditor.Parent := FBox;
+  FRuleEditor.SetBounds(Gap * 2, ATop, FBox.ClientWidth - Gap * 5, 400);
+  FRuleEditor.Anchors := [akLeft, akTop, akRight];
+  FRuleEditor.SetRules(FCatalog, FRulesJson, FGlobalRulesJson);
+  FRuleEditor.OnChange := RuleEditorChange;
+  FRuleEditor.HandleNeeded;
+  Result := ATop + FRuleEditor.Height + Gap;
 end;
 
-procedure TAtlasProjectSettingsDialog.FillRuleRow(AItem: TListItem; const ARow: TAtlasRuleRow);
-var
-  Setting: string;
+function TAtlasProjectSettingsDialog.GetRuleList: TListView;
 begin
-  AItem.Caption := ARow.Id;
-  AItem.SubItems.Clear;
-  AItem.SubItems.Add(ARow.Name);
-  AItem.SubItems.Add(ARow.Category);
-  AItem.SubItems.Add(ARow.DefaultSeverity);
-  Setting := ARow.Severity;
-  if (Setting = '') and (ARow.GlobalSeverity <> '') then
-    Setting := TAtlasStrings.Fmt(TAtlasTextId.ProjectSettingsRuleGlobal, [ARow.GlobalSeverity])
-  else if Setting = '' then
-    Setting := TAtlasStrings.Text(TAtlasTextId.ProjectSettingsRuleUseDefault);
-  if ARow.HasOptions then
-    Setting := TAtlasStrings.Fmt(TAtlasTextId.ProjectSettingsRuleOptions, [Setting]);
-  AItem.SubItems.Add(Setting);
+  Result := nil;
+  if FRuleEditor <> nil then
+    Result := FRuleEditor.List;
 end;
 
-procedure TAtlasProjectSettingsDialog.RuleSelect(Sender: TObject; Item: TListItem; Selected: Boolean);
+procedure TAtlasProjectSettingsDialog.RuleEditorChange(Sender: TObject);
 var
-  Index, Severity: Integer;
+  Change: TPair<string, string>;
 begin
-  FRuleSeverity.Enabled := (FRuleList.Selected <> nil);
-  if FRuleList.Selected = nil then
-    Exit;
-  Index := FRuleList.Selected.Index;
-  // Ohne Ereignis setzen: Die Auswahl einer Zeile ändert nichts.
-  FRuleSeverity.OnChange := nil;
-  try
-    FRuleSeverity.ItemIndex := 0;
-    for Severity := 0 to High(TAtlasRuleTable.Severities) do
-      if SameText(TAtlasRuleTable.Severities[Severity], FRuleRows[Index].Severity) then
-        FRuleSeverity.ItemIndex := Severity + 1;
-  finally
-    FRuleSeverity.OnChange := RuleSeverityChange;
-  end;
-end;
-
-procedure TAtlasProjectSettingsDialog.RuleSeverityChange(Sender: TObject);
-begin
-  if (FRuleList = nil) or (FRuleList.Selected = nil) or (FRuleSeverity.ItemIndex < 0) then
-    Exit;
-  if FRuleSeverity.ItemIndex = 0 then
-    ApplyRuleSeverity(FRuleList.Selected.Index, '')
-  else
-    ApplyRuleSeverity(FRuleList.Selected.Index, TAtlasRuleTable.Severities[FRuleSeverity.ItemIndex - 1]);
-end;
-
-procedure TAtlasProjectSettingsDialog.ApplyRuleSeverity(ARow: Integer; const ASeverity: string);
-var
-  Path, Json: string;
-begin
-  // Nur der Wert dieser Regel ändert sich in der Datei; Kommentare und andere Regeln bleiben.
-  TAtlasRuleTable.SeverityChange(FRulesJson, FRuleRows[ARow].Id, ASeverity, Path, Json);
-  FModel.SetPath(Path, Json);
-  FRulesJson := TAtlasRuleTable.WithSeverity(FRulesJson, FRuleRows[ARow].Id, ASeverity);
-  FRuleRows[ARow].Severity := ASeverity;
-  if FRuleList <> nil then
-    FillRuleRow(FRuleList.Items[ARow], FRuleRows[ARow]);
+  // Nur die geänderten Regeln in die Datei: Kommentare und andere Regeln bleiben.
+  for Change in TAtlasRuleTable.Changes(FRulesJson, FRuleEditor.RulesJson) do
+    FModel.SetPath(Change.Key, Change.Value);
+  FRulesJson := FRuleEditor.RulesJson;
+  UpdateState(FRuleIndex);
 end;
 
 function TAtlasProjectSettingsDialog.SetRuleSeverity(const AId, ASeverity: string): Boolean;
 var
-  Index: Integer;
+  Change: TPair<string, string>;
+  Rows: TArray<TAtlasRuleRow>;
+  Row: TAtlasRuleRow;
+  Updated: string;
 begin
-  if Length(FRuleRows) = 0 then
-    FRuleRows := TAtlasRuleTable.Rows(FCatalog, FRulesJson, FGlobalRulesJson);
-  for Index := 0 to High(FRuleRows) do
-    if SameText(FRuleRows[Index].Id, AId) then
-    begin
-      ApplyRuleSeverity(Index, ASeverity);
-      Exit(True);
-    end;
+  if FRuleEditor <> nil then
+    Exit(FRuleEditor.SetRuleSeverity(AId, ASeverity));
+  Rows := TAtlasRuleTable.Rows(FCatalog, FRulesJson, FGlobalRulesJson);
   Result := False;
+  for Row in Rows do
+    if SameText(Row.Id, AId) then
+      Result := True;
+  if not Result then
+    Exit;
+  Updated := TAtlasRuleTable.WithSeverity(FRulesJson, AId, ASeverity);
+  for Change in TAtlasRuleTable.Changes(FRulesJson, Updated) do
+    FModel.SetPath(Change.Key, Change.Value);
+  FRulesJson := Updated;
 end;
 
 procedure TAtlasProjectSettingsDialog.PageClick(Sender: TObject);

@@ -1,9 +1,9 @@
 ﻿unit Atlas.Common.Lsp.CompilerDirectives;
 
 // Sprachreferenz für Compiler-Direktiven (#102, Teil 1): Kurztext und
-// DocWiki-Link je Direktive, Schalterbuchstaben ({$R+} = RANGECHECKS) und die
-// Bezeichner für {$WARN}. Grundlage für Hover und Vervollständigung in
-// Direktiven; #187 soll dieselbe Tabelle für Schlüsselwörter nutzen.
+// DocWiki-Link je Direktive und Schalterbuchstaben ({$R+} = RANGECHECKS); die
+// Bezeichner für {$WARN} und alle Direktivennamen stehen in Pascal.DirectiveNames
+// (#989). Grundlage für Hover und Vervollständigung in Direktiven; #187 soll dieselbe Tabelle für Schlüsselwörter nutzen.
 //
 // Links folgen dem Schema https://docwiki.embarcadero.com/RADStudio/<Release>/en/<Seite>
 // mit dem Release-Namen aus TDocWiki (Delphi 12 = Athens, Delphi 13 = Florence).
@@ -59,6 +59,7 @@ implementation
 uses
   System.StrUtils,
   Atlas.Common.Pascal.Contract,
+  Atlas.Common.Pascal.DirectiveNames,
   Atlas.Common.Lsp.DocWiki;
 
 function D(const AName, ALetter, AText, ATopic: string): TDirectiveInfo;
@@ -146,25 +147,6 @@ begin
     D('ZEROBASEDSTRINGS', '', 'String-Indizes beginnen bei 0.', 'Zero-based_strings_(Delphi)')];
 end;
 
-const
-  WarningNames: array[0..73] of string = (
-    'ASG_TO_TYPED_CONST', 'BAD_GLOBAL_SYMBOL', 'BOUNDS_ERROR', 'CASE_LABEL_RANGE', 'COMBINING_SIGNED_UNSIGNED',
-    'COMPARING_SIGNED_UNSIGNED', 'COMPARISON_FALSE', 'COMPARISON_TRUE', 'CONSTRUCTING_ABSTRACT',
-    'CVT_ACHAR_TO_WCHAR', 'CVT_NARROWING_STRING_LOST', 'CVT_WCHAR_TO_ACHAR', 'CVT_WIDENING_STRING_LOST',
-    'DUPLICATE_CTOR_DTOR', 'DUPLICATES_IGNORED', 'EXPLICIT_STRING_CAST', 'EXPLICIT_STRING_CAST_LOSS',
-    'FILE_OPEN', 'FILE_OPEN_UNITSRC', 'FOR_LOOP_VAR_UNDEF', 'FOR_LOOP_VAR_VARPAR', 'FOR_VARIABLE', 'GARBAGE',
-    'HIDDEN_VIRTUAL', 'HIDING_MEMBER', 'HPPEMIT_IGNORED', 'HRESULT_COMPAT', 'IMAGEBASE_MULTIPLE',
-    'IMMUTABLE_STRINGS', 'IMPLICIT_IMPORT', 'IMPLICIT_STRING_CAST', 'IMPLICIT_STRING_CAST_LOSS',
-    'IMPLICIT_VARIANTS', 'INVALID_DIRECTIVE', 'LOCAL_PINVOKE', 'LOCALE_TO_UNICODE', 'MESSAGE_DIRECTIVE',
-    'NO_CFG_FILE_FOUND', 'NO_RETVAL', 'NON_PORTABLE_TYPECAST', 'OPTION_TRUNCATED', 'PACKAGE_NO_LINK',
-    'PACKAGED_THREADVAR', 'PRIVATE_PROPACCESSOR', 'RLINK_WARNING', 'STRING_CONST_TRUNCED', 'SUSPICIOUS_TYPECAST',
-    'SYMBOL_DEPRECATED', 'SYMBOL_EXPERIMENTAL', 'SYMBOL_LIBRARY', 'SYMBOL_PLATFORM', 'TYPED_CONST_VARPAR',
-    'TYPEINFO_IMPLICITLY_ADDED', 'UNICODE_TO_LOCALE', 'UNIT_DEPRECATED', 'UNIT_EXPERIMENTAL', 'UNIT_INIT_SEQ',
-    'UNIT_LIBRARY', 'UNIT_NAME_MISMATCH', 'UNIT_PLATFORM', 'UNSAFE_CAST', 'UNSAFE_CODE', 'UNSAFE_TYPE',
-    'UNSUPPORTED_CONSTRUCT', 'USE_BEFORE_DEF', 'WIDECHAR_REDUCED', 'XML_CREF_NO_RESOLVE', 'XML_EXPECTED_CHARACTER',
-    'XML_INVALID_NAME', 'XML_INVALID_NAME_START', 'XML_NO_MATCHING_PARM', 'XML_NO_PARM', 'XML_UNKNOWN_ENTITY',
-    'XML_WHITESPACE_NOT_ALLOWED');
-
 { TCompilerDirectives }
 
 class function TCompilerDirectives.All: TArray<TDirectiveInfo>;
@@ -173,12 +155,8 @@ begin
 end;
 
 class function TCompilerDirectives.Warnings: TArray<string>;
-var
-  Index: Integer;
 begin
-  SetLength(Result, Length(WarningNames));
-  for Index := 0 to High(WarningNames) do
-    Result[Index] := WarningNames[Index];
+  Result := TDirectiveNames.Warnings;
 end;
 
 class function TCompilerDirectives.Find(const AName: string; out AInfo: TDirectiveInfo): Boolean;
@@ -197,32 +175,6 @@ end;
 class function TCompilerDirectives.Url(const ADelphiVersion, ATopic: string): string;
 begin
   Result := BaseUri + TDocWiki.ReleaseName(ADelphiVersion) + '/en/' + ATopic;
-end;
-
-/// <summary>Inhalt der Direktive ohne "{$" bzw. "(*$" und die schließende Klammer.</summary>
-function Body(const ADirective: string): string;
-begin
-  Result := Trim(ADirective);
-  if StartsStr('{$', Result) then
-    Result := Copy(Result, 3, MaxInt)
-  else if StartsStr('(*$', Result) then
-    Result := Copy(Result, 4, MaxInt);
-  if EndsStr('*)', Result) then
-    Result := Copy(Result, 1, Length(Result) - 2)
-  else if EndsStr('}', Result) then
-    Result := Copy(Result, 1, Length(Result) - 1);
-  Result := Trim(Result);
-end;
-
-/// <summary>Führende Buchstaben (Name der Direktive).</summary>
-function LeadingName(const AText: string): string;
-var
-  Index: Integer;
-begin
-  Index := 1;
-  while (Index <= Length(AText)) and CharInSet(AText[Index], ['A'..'Z', 'a'..'z', '_']) do
-    Inc(Index);
-  Result := Copy(AText, 1, Index - 1);
 end;
 
 function DescribeInfo(const AInfo: TDirectiveInfo; const AVersion, AState: string): string;
@@ -244,8 +196,8 @@ var
   Start, Index: Integer;
 begin
   AMarkdown := '';
-  Text := Body(ADirective);
-  Name := LeadingName(Text);
+  Text := TDirectiveNames.Body(ADirective);
+  Name := TDirectiveNames.LeadingName(Text);
   Rest := Trim(Copy(Text, Length(Name) + 1, MaxInt));
   if Name = '' then
     Exit(False);
@@ -290,9 +242,9 @@ begin
     Exit(False);
   if SameText(Info.Name, 'WARN') then
   begin
-    Value := LeadingName(Rest);
+    Value := TDirectiveNames.LeadingName(Rest);
     AMarkdown := DescribeInfo(Info, ADelphiVersion, '');
-    if MatchText(Value, WarningNames) then
+    if TDirectiveNames.IsWarning(Value) then
       AMarkdown := AMarkdown + #10#10 + Format('Warnung `%s`: %s', [UpperCase(Value),
         Trim(Copy(Rest, Length(Value) + 1, MaxInt))]);
     Exit(True);
@@ -333,7 +285,7 @@ begin
     Exit(True);
   end;
   // Nur solange der Name getippt wird.
-  if LeadingName(Inner) <> Inner then
+  if TDirectiveNames.LeadingName(Inner) <> Inner then
     Exit(False);
   for Info in Directives do
     ANames := ANames + [Info.Name];

@@ -43,6 +43,19 @@ uses
   Atlas.Common.Documents.FileEncoding,
   Atlas.Common.Configuration.Internals.JsonTree;
 
+const
+  /// <summary>Optionen von Prüfregeln, die true oder false sein müssen (#909).</summary>
+  BooleanRuleOptions: array[0..6] of string = ('allowCommented', 'requireElse', 'ignoreStrings', 'ignoreComments',
+    'includeRecords', 'includeFormVariables', 'checkUses');
+  /// <summary>Optionen von Prüfregeln, die eine Liste von Texten sein müssen (#909).</summary>
+  StringListRuleOptions: array[0..13] of string = ('countNames', 'mutatingMethods', 'ignoreMethods', 'ignoreTypes',
+    'methods', 'allowIn', 'functions', 'sources', 'ignore', 'assertPatterns', 'selfRegistering', 'swallow', 'calls',
+    'allowTables');
+  /// <summary>Optionen von Prüfregeln, die eine Liste von Zahlen sein müssen (#937).</summary>
+  NumberListRuleOptions: array[0..0] of string = ('allowed');
+  /// <summary>Optionen von Prüfregeln, die ein Text sein müssen (#926).</summary>
+  StringRuleOptions: array[0..4] of string = ('template', 'replacement', 'wrapper', 'okMarker', 'searchPaths');
+
 type
   TValidator = class
   private
@@ -162,6 +175,53 @@ begin
     FSettings.Rules := Rules;
 end;
 
+/// <summary>Array aus Objekten, die alle Texte AKeys haben: "open" und "close" (pair-without-finally, #930),
+/// "start", "commit" und "rollback" (transaction-without-rollback, #965).</summary>
+function IsPairList(ANode: TJsonNode; const AKeys: array of string): Boolean;
+var
+  Index, Inner, Found: Integer;
+  Item: TJsonNode;
+begin
+  Result := ANode.Kind = TJsonKind.Array_;
+  if not Result then
+    Exit;
+  for Index := 0 to ANode.Count - 1 do
+  begin
+    Item := ANode[Index];
+    if Item.Kind <> TJsonKind.Object_ then
+      Exit(False);
+    Found := 0;
+    for Inner := 0 to Item.Count - 1 do
+      if (IndexStr(Item.Keys[Inner], AKeys) >= 0) and (Item[Inner].Kind = TJsonKind.String_) then
+        Inc(Found);
+    if Found <> Length(AKeys) then
+      Exit(False);
+  end;
+end;
+
+/// <summary>Array, dessen Einträge alle Texte sind.</summary>
+function IsNumberList(ANode: TJsonNode): Boolean;
+var
+  Index: Integer;
+begin
+  Result := ANode.Kind = TJsonKind.Array_;
+  if Result then
+    for Index := 0 to ANode.Count - 1 do
+      if ANode[Index].Kind <> TJsonKind.Number then
+        Exit(False);
+end;
+
+function IsStringList(ANode: TJsonNode): Boolean;
+var
+  Index: Integer;
+begin
+  Result := ANode.Kind = TJsonKind.Array_;
+  if Result then
+    for Index := 0 to ANode.Count - 1 do
+      if ANode[Index].Kind <> TJsonKind.String_ then
+        Exit(False);
+end;
+
 function TValidator.ParseRules(ANode: TJsonNode; const AName: string; out ARules: TArray<TRuleSetting>): Boolean;
 var
   Index: Integer;
@@ -183,7 +243,8 @@ begin
     for Index := 0 to ANode.Count - 1 do
     begin
       Value := ANode[Index];
-      Rule.Id := ANode.Keys[Index];
+      // Frühere Kennungen gelten für die umbenannte Regel (#910).
+      Rule.Id := TRuleIdAliases.Current(ANode.Keys[Index]);
       Rule.Severity := TRuleSeverity.Default;
       Rule.Options := '';
       if Value.Kind = TJsonKind.String_ then
@@ -210,9 +271,45 @@ begin
           else if (Value.Keys[Inner] = 'max') and not ((Value[Inner].Kind = TJsonKind.Number) and
             TryStrToInt(Value[Inner].Value, Limit) and (Limit >= 1)) then
             ReportNode(Value[Inner], '"max" muss eine ganze Zahl ab 1 sein')
+          // Mindestzahl der Zeilen von commented-out-code (#942).
+          else if (Value.Keys[Inner] = 'minLines') and not ((Value[Inner].Kind = TJsonKind.Number) and
+            TryStrToInt(Value[Inner].Value, Limit) and (Limit >= 1)) then
+            ReportNode(Value[Inner], '"minLines" muss eine ganze Zahl ab 1 sein')
+          // Kürzeste gemeldete Wartezeit von blocking-call-in-main-thread (#959).
+          else if (Value.Keys[Inner] = 'maxSleepMs') and not ((Value[Inner].Kind = TJsonKind.Number) and
+            TryStrToInt(Value[Inner].Value, Limit) and (Limit >= 0)) then
+            ReportNode(Value[Inner], '"maxSleepMs" muss eine ganze Zahl ab 0 sein')
           // Marken der Regel todo-comment (#68); die Regel und get_todos lesen sie aus den Optionen.
           else if Value.Keys[Inner] = 'keywords' then
-            CheckTodoKeywords(Value[Inner]);
+            CheckTodoKeywords(Value[Inner])
+          // Schalter der Regeln (#909), z. B. allowCommented von empty-statement.
+          else if (IndexStr(Value.Keys[Inner], BooleanRuleOptions) >= 0) and (Value[Inner].Kind <> TJsonKind.Boolean_) then
+            ReportNode(Value[Inner], Format('"%s" muss true oder false sein', [Value.Keys[Inner]]))
+          else if (IndexStr(Value.Keys[Inner], StringListRuleOptions) >= 0) and not IsStringList(Value[Inner]) then
+            ReportNode(Value[Inner], Format('"%s" muss eine Liste von Texten sein', [Value.Keys[Inner]]))
+          else if (IndexStr(Value.Keys[Inner], NumberListRuleOptions) >= 0) and not IsNumberList(Value[Inner]) then
+            ReportNode(Value[Inner], Format('"%s" muss eine Liste von Zahlen sein', [Value.Keys[Inner]]))
+          else if (IndexStr(Value.Keys[Inner], StringRuleOptions) >= 0) and (Value[Inner].Kind <> TJsonKind.String_) then
+            ReportNode(Value[Inner], Format('"%s" muss ein Text sein', [Value.Keys[Inner]]))
+          // Stufe T der Gruppe „Compiler vorab“ (#1024).
+          else if (Value.Keys[Inner] = 'typeLevel') and
+            ((Value[Inner].Kind <> TJsonKind.String_) or (IndexStr(Value[Inner].Value, ['certain', 'off']) < 0)) then
+            ReportNode(Value[Inner], '"typeLevel" muss "certain" oder "off" sein')
+          // Suchquelle von uses-unit-not-found (#1016).
+          else if (Value.Keys[Inner] = 'searchPaths') and
+            (IndexStr(Value[Inner].Value, ['project', 'atlas', 'both']) < 0) then
+            ReportNode(Value[Inner], '"searchPaths" muss "project", "atlas" oder "both" sein')
+          // Transaktionspaare von transaction-without-rollback (#965).
+          else if (Value.Keys[Inner] = 'pairs') and (Rule.Id = 'transaction-without-rollback') then
+          begin
+            if not IsPairList(Value[Inner], ['start', 'commit', 'rollback']) then
+              ReportNode(Value[Inner], '"pairs" muss eine Liste von Objekten mit "start", "commit" und "rollback" sein');
+          end
+          else if (Value.Keys[Inner] = 'pairs') and not IsPairList(Value[Inner], ['open', 'close']) then
+            ReportNode(Value[Inner], '"pairs" muss eine Liste von Objekten mit "open" und "close" sein')
+          // Paare von ota-notifier-not-removed (#944).
+          else if (Value.Keys[Inner] = 'registerPairs') and not IsPairList(Value[Inner], ['open', 'close']) then
+            ReportNode(Value[Inner], '"registerPairs" muss eine Liste von Objekten mit "open" und "close" sein');
         Rule.Options := Copy(FText, Value.Start + 1, Value.Stop - Value.Start);
       end
       else

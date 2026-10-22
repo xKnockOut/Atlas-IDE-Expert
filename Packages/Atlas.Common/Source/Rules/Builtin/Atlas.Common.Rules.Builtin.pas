@@ -42,6 +42,16 @@ uses
   Atlas.Common.Rules.Builtin.ForwardDeclarations,
   Atlas.Common.Rules.Builtin.FreeFields,
   Atlas.Common.Rules.Builtin.Packages,
+  Atlas.Common.Rules.Builtin.OpenTools,
+  Atlas.Common.Rules.Builtin.Testing,
+  Atlas.Common.Rules.Builtin.Events,
+  Atlas.Common.Rules.Builtin.Ownership,
+  Atlas.Common.Rules.Builtin.Expressions,
+  Atlas.Common.Rules.Builtin.Statements,
+  Atlas.Common.Rules.Builtin.Database,
+  Atlas.Common.Rules.Builtin.Directives,
+  Atlas.Common.Rules.Builtin.Properties,
+  Atlas.Common.Rules.Builtin.Calls,
   Atlas.Common.Rules.Builtin.Unresolved;
 
 function BuiltinRules: TArray<IRule>;
@@ -79,6 +89,16 @@ begin
     RegisterForwardDeclarationRules(Registry);
     RegisterFreeFieldRules(Registry);
     RegisterPackageRules(Registry);
+    RegisterOpenToolsRules(Registry);
+    RegisterTestingRules(Registry);
+    RegisterEventRules(Registry);
+    RegisterOwnershipRules(Registry);
+    RegisterExpressionRules(Registry);
+    RegisterStatementRules(Registry);
+    RegisterDatabaseRules(Registry);
+    RegisterDirectiveRules(Registry);
+    RegisterPropertyRules(Registry);
+    RegisterCallRules(Registry);
     Result := Registry.Rules;
   finally
     Registry.Free;

@@ -320,6 +320,10 @@ begin
     Context.ReadFile := Rules.ReadFile;
     Context.FileName := Rules.FileName;
     Context.PackageProvides := Rules.PackageProvides;
+    Context.Units := Rules.Units;
+    Context.Application := Rules.Application;
+    Context.ProjectName := Rules.ProjectName;
+    Context.AutoCreateForms := Rules.AutoCreateForms;
     Findings := TRuleEngine.Run(Rules.Rules, Rules.Settings, Context);
   end;
   HasCompletion := WantsEditing and TClassCompletion.MissingBodies(Tree, Document.Text, Range.StartPos, Completion);
@@ -373,7 +377,7 @@ begin
         FieldIndex := Rules.Index;
       RuleOffersField := False;
       for Finding in Findings do
-        if (Finding.RuleId = 'owned-field-not-freed') and (Finding.Range.StartPos.Line = Range.StartPos.Line) then
+        if (Finding.RuleId = 'field-not-freed') and (Finding.Range.StartPos.Line = Range.StartPos.Line) then
           RuleOffersField := True;
       for Action in TFreeFields.Actions(Tree, Document.Text, FieldIndex, Range.StartPos.Line,
         TFreeFields.StyleOf(Refactoring.FreeFieldsStyle), not RuleOffersField) do

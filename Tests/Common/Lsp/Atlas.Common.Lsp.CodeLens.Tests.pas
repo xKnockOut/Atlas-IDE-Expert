@@ -226,16 +226,27 @@ begin
   Tree := TPascalParser.Parse(UnitHaupt);
   try
     Entries := TLspCodeLens.MetricLenses(Tree, TMetricLimits.Default);
-    Assert.AreEqual(3, Integer(Length(Entries)), 'nur die Rümpfe, keine Deklarationen');
+    // Aufbau (#939) zuerst: Unit-Name, uses, je Klasse; dann nur die Rümpfe, keine Deklarationen.
+    Assert.AreEqual(7, Integer(Length(Entries)));
     Assert.IsTrue(Entries[0].Kind = TCodeLensKind.Metrics);
-    Assert.AreEqual(12, Entries[0].Range.StartPos.Line);
-    Assert.AreEqual(10, Entries[0].Range.StartPos.Character);
-    Assert.AreEqual('4 Zeilen · Tiefe 0 · zyklomatisch 1 · kognitiv 0 · 1 Parameter', Entries[0].Title);
-    Assert.AreEqual(20, Entries[2].Range.StartPos.Line);
+    Assert.AreEqual('24 Zeilen', Entries[0].Title);
+    Assert.AreEqual(0, Entries[0].Range.StartPos.Line);
+    Assert.AreEqual('1 Units im uses', Entries[1].Title);
+    Assert.AreEqual(2, Entries[1].Range.StartPos.Line);
+    Assert.AreEqual('3 Member', Entries[2].Title);
+    Assert.AreEqual(4, Entries[2].Range.StartPos.Line);
+    Assert.AreEqual(2, Entries[2].Range.StartPos.Character);
+    Assert.AreEqual('0 Member', Entries[3].Title);
+    Assert.AreEqual(12, Entries[4].Range.StartPos.Line);
+    Assert.AreEqual(10, Entries[4].Range.StartPos.Character);
+    Assert.AreEqual('4 Zeilen · Tiefe 0 · zyklomatisch 1 · kognitiv 0 · 1 Parameter', Entries[4].Title);
+    Assert.AreEqual(20, Entries[6].Range.StartPos.Line);
     Limits := TMetricLimits.Default;
     Limits.Values[TMetricKind.MethodLength] := 3;
+    Limits.Structure[TStructureKind.ClassSize] := 2;
     Entries := TLspCodeLens.MetricLenses(Tree, Limits);
-    Assert.AreEqual('4 Zeilen (> 3) · Tiefe 0 · zyklomatisch 1 · kognitiv 0 · 1 Parameter', Entries[0].Title);
+    Assert.AreEqual('3 Member (> 2)', Entries[2].Title);
+    Assert.AreEqual('4 Zeilen (> 3) · Tiefe 0 · zyklomatisch 1 · kognitiv 0 · 1 Parameter', Entries[4].Title);
   finally
     Tree.Free;
   end;

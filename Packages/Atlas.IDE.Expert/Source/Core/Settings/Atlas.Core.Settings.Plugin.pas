@@ -278,8 +278,35 @@ type
     PairColorsDark: string;
     /// <summary>Probleme im Editor unterstreichen und im Meldungsfenster auflisten (#398).</summary>
     Problems: Boolean;
-    /// <summary>Probleme zusätzlich im Meldungsfenster auflisten (Gruppe „Atlas-Probleme“); nur mit Problems.</summary>
+    /// <summary>Probleme zusätzlich im Meldungsfenster auflisten (Gruppe „Atlas-Probleme“); nur mit Problems. Seit dem
+    /// Fenster „Atlas-Prüfung“ (#909) Vorgabe aus.</summary>
     ProblemsList: Boolean;
+    /// <summary>Fenster „Atlas-Prüfung“ (#909): verfügbar (aus = kein Menüeintrag, kein Fenster); nur mit Problems.
+    /// </summary>
+    ProblemsWindow: Boolean;
+    /// <summary>Bereich des Fensters: 'file', 'project', 'group' (Vorgabe).</summary>
+    ProblemsWindowScope: string;
+    /// <summary>Gruppierung: 'none', 'file' (Vorgabe), 'rule', 'category'.</summary>
+    ProblemsWindowGroupBy: string;
+    /// <summary>Spalten mit Reihenfolge, Breite und Sichtbarkeit ("kind:70,-rule,…", TAtlasFindings.ParseColumns); '' =
+    /// alle in der Vorgabe-Reihenfolge.</summary>
+    ProblemsWindowColumns: string;
+    /// <summary>Compilermeldungen (dcc) im Fenster mit anzeigen.</summary>
+    ProblemsWindowCompiler: Boolean;
+    /// <summary>Eintrag zur Cursorzeile im Fenster markieren.</summary>
+    ProblemsWindowFollowCursor: Boolean;
+    /// <summary>Bestätigt der Build einen Atlas-Befund (gleiche Zeile, gleicher Code, #1024): 'merge' (Vorgabe)
+    /// zeigt nur den Atlas-Befund mit Marke „Atlas + dcc“, 'both' beide Meldungen.</summary>
+    ProblemsCompilerMerge: string;
+    /// <summary>Compilercode (E2035 …) in Meldung, Spalte „Compiler“ und Hover zeigen (#1024).</summary>
+    ProblemsShowCompilerCode: Boolean;
+    /// <summary>Fenster öffnen (TShortCut, 0 = keins; Vorgabe Strg+Alt+P).</summary>
+    ProblemsWindowKey: Integer;
+    /// <summary>Laufende Prüfung beim Tippen (#909); aus = Prüfung der offenen Datei nur beim Speichern.</summary>
+    ProblemsLive: Boolean;
+    /// <summary>Aktionszeile im Befund-Hover (#909): Schnellkorrektur, für diese Zeile unterdrücken, Regel einstellen.
+    /// </summary>
+    HoverProblemActions: Boolean;
     /// <summary>Fehlertext am Zeilenende (#509): 'off', 'errors' (Vorgabe), 'errorsAndWarnings', 'all'; nur mit
     /// Problems.</summary>
     InlineDiagnostics: string;
@@ -1205,7 +1232,18 @@ begin
   Result.PairColorsLight := '';
   Result.PairColorsDark := '';
   Result.Problems := True;
-  Result.ProblemsList := True;
+  Result.ProblemsList := False;
+  Result.ProblemsWindow := True;
+  Result.ProblemsWindowScope := 'group';
+  Result.ProblemsWindowGroupBy := 'file';
+  Result.ProblemsWindowColumns := '';
+  Result.ProblemsWindowCompiler := False;
+  Result.ProblemsWindowFollowCursor := True;
+  Result.ProblemsCompilerMerge := 'merge';
+  Result.ProblemsShowCompilerCode := True;
+  Result.ProblemsWindowKey := $C050; // Strg+Alt+P
+  Result.ProblemsLive := True;
+  Result.HoverProblemActions := True;
   Result.InlineDiagnostics := 'errors';
   Result.ProblemsStatusCounter := True;
   Result.NextProblemKey := $C077; // Strg+Alt+F8
@@ -1642,6 +1680,10 @@ begin
   BookmarkKey := EnsureRange(BookmarkKey, 0, $FFFF);
   HideElementKey := EnsureRange(HideElementKey, 0, $FFFF);
   InlineDiagnostics := Choice(InlineDiagnostics, ['errors', 'off', 'errorsAndWarnings', 'all']);
+  ProblemsWindowScope := Choice(ProblemsWindowScope, ['group', 'file', 'project']);
+  ProblemsWindowGroupBy := Choice(ProblemsWindowGroupBy, ['file', 'none', 'rule', 'category']);
+  ProblemsCompilerMerge := Choice(ProblemsCompilerMerge, ['merge', 'both']);
+  ProblemsWindowKey := EnsureRange(ProblemsWindowKey, 0, $FFFF);
   NextProblemKey := EnsureRange(NextProblemKey, 0, $FFFF);
   PreviousProblemKey := EnsureRange(PreviousProblemKey, 0, $FFFF);
   SearchKey := EnsureRange(SearchKey, 0, $FFFF);
@@ -1751,6 +1793,19 @@ begin
   PairColorsDark := AStore.ReadString('PairColorsDark', Default.PairColorsDark);
   Problems := AStore.ReadInteger('Problems', BoolValue(Default.Problems)) <> 0;
   ProblemsList := AStore.ReadInteger('ProblemsList', BoolValue(Default.ProblemsList)) <> 0;
+  ProblemsWindow := AStore.ReadInteger('ProblemsWindow', BoolValue(Default.ProblemsWindow)) <> 0;
+  ProblemsWindowScope := AStore.ReadString('ProblemsWindowScope', Default.ProblemsWindowScope);
+  ProblemsWindowGroupBy := AStore.ReadString('ProblemsWindowGroupBy', Default.ProblemsWindowGroupBy);
+  ProblemsWindowColumns := AStore.ReadString('ProblemsWindowColumns', Default.ProblemsWindowColumns);
+  ProblemsWindowCompiler := AStore.ReadInteger('ProblemsWindowCompiler', BoolValue(Default.ProblemsWindowCompiler)) <> 0;
+  ProblemsWindowFollowCursor := AStore.ReadInteger('ProblemsWindowFollowCursor',
+    BoolValue(Default.ProblemsWindowFollowCursor)) <> 0;
+  ProblemsCompilerMerge := AStore.ReadString('ProblemsCompilerMerge', Default.ProblemsCompilerMerge);
+  ProblemsShowCompilerCode := AStore.ReadInteger('ProblemsShowCompilerCode',
+    BoolValue(Default.ProblemsShowCompilerCode)) <> 0;
+  ProblemsWindowKey := AStore.ReadInteger('ProblemsWindowKey', Default.ProblemsWindowKey);
+  ProblemsLive := AStore.ReadInteger('ProblemsLive', BoolValue(Default.ProblemsLive)) <> 0;
+  HoverProblemActions := AStore.ReadInteger('HoverProblemActions', BoolValue(Default.HoverProblemActions)) <> 0;
   InlineDiagnostics := AStore.ReadString('InlineDiagnostics', Default.InlineDiagnostics);
   ProblemsStatusCounter := AStore.ReadInteger('ProblemsStatusCounter', BoolValue(Default.ProblemsStatusCounter)) <> 0;
   NextProblemKey := AStore.ReadInteger('NextProblemKey', Default.NextProblemKey);
@@ -2149,6 +2204,17 @@ begin
   AStore.WriteString('PairColorsDark', PairColorsDark);
   AStore.WriteInteger('Problems', BoolValue(Problems));
   AStore.WriteInteger('ProblemsList', BoolValue(ProblemsList));
+  AStore.WriteInteger('ProblemsWindow', BoolValue(ProblemsWindow));
+  AStore.WriteString('ProblemsWindowScope', ProblemsWindowScope);
+  AStore.WriteString('ProblemsWindowGroupBy', ProblemsWindowGroupBy);
+  AStore.WriteString('ProblemsWindowColumns', ProblemsWindowColumns);
+  AStore.WriteInteger('ProblemsWindowCompiler', BoolValue(ProblemsWindowCompiler));
+  AStore.WriteInteger('ProblemsWindowFollowCursor', BoolValue(ProblemsWindowFollowCursor));
+  AStore.WriteString('ProblemsCompilerMerge', ProblemsCompilerMerge);
+  AStore.WriteInteger('ProblemsShowCompilerCode', BoolValue(ProblemsShowCompilerCode));
+  AStore.WriteInteger('ProblemsWindowKey', ProblemsWindowKey);
+  AStore.WriteInteger('ProblemsLive', BoolValue(ProblemsLive));
+  AStore.WriteInteger('HoverProblemActions', BoolValue(HoverProblemActions));
   AStore.WriteString('InlineDiagnostics', InlineDiagnostics);
   AStore.WriteInteger('ProblemsStatusCounter', BoolValue(ProblemsStatusCounter));
   AStore.WriteInteger('NextProblemKey', NextProblemKey);

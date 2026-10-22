@@ -4,6 +4,11 @@
 //   form-field-without-object   published-Feld ohne Objekt in der .dfm/.fmx
 //   form-object-without-field   Objekt der Formulardatei ohne Feld in der Klasse
 //   form-field-type-mismatch    Feld und Objekt mit verschiedener Klasse
+//   form-access-before-create   Konstruktor, AfterConstruction oder OnCreate eines automatisch erzeugten
+//                               Formulars benutzt die globale Variable eines Formulars, das laut
+//                               Application.CreateForm in der .dpr erst danach entsteht (#956). Die
+//                               Reihenfolge kommt über TRuleContext.AutoCreateForms vom Server. Still bei
+//                               Assigned/nil-Vergleich, eigener Zuweisung, CreateForm und lokalen Namen.
 //
 // Die Formulardatei neben der Unit kommt über TRuleContext.FormText; ohne sie
 // prüfen die Regeln nichts. Geerbte Objekte (inherited) gehören zu Feldern des
@@ -38,6 +43,19 @@ type
     procedure Check(const AContext: TRuleContext; const AReport: IRuleReport);
   end;
 
+  TFormAccessBeforeCreateRule = class(TInterfacedObject, IRule)
+  public
+    function Descriptor: TRuleDescriptor;
+    procedure Check(const AContext: TRuleContext; const AReport: IRuleReport);
+    /// <summary>Variablen aus Application.CreateForm(TKlasse, Variable) der .dpr in Aufrufreihenfolge.</summary>
+    class function AutoCreatedForms(const AMainSource: string): TArray<string>; static;
+    /// <summary>AutoCreatedForms des ersten Programms aus APrograms (Quelltexte der .dpr), dessen uses die Unit
+    /// AUnitName nennt; nil ohne (Linter, Golden-Korpus).</summary>
+    class function FormsOfProgram(const APrograms: TArray<string>; const AUnitName: string): TArray<string>; static;
+    /// <summary>Name des OnCreate-Handlers des Formulars selbst aus der Formulardatei; '' ohne.</summary>
+    class function CreateHandler(const AFormText: string): string; static;
+  end;
+
 procedure RegisterFormFieldRules(const ARegistry: TRuleRegistry);
 
 implementation
@@ -50,6 +68,12 @@ uses
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Dfm.Contract,
   Atlas.Common.Dfm.Parser,
+  System.StrUtils,
+  Atlas.Common.Pascal.Contract,
+  Atlas.Common.Pascal.Lexer,
+  Atlas.Common.Editing.RoutineBody,
+  Atlas.Common.Editing.UsesClause,
+  Atlas.Common.Rules.Derived,
   Atlas.Text.Lines;
 
 type
@@ -364,11 +388,245 @@ begin
   end;
 end;
 
+{ TFormAccessBeforeCreateRule }
+
+function TFormAccessBeforeCreateRule.Descriptor: TRuleDescriptor;
+begin
+  Result := TRuleDescriptor.Create('form-access-before-create', TRuleSeverity.Warning,
+    'Zugriff auf ein Formular, das noch nicht erzeugt ist');
+end;
+
+class function TFormAccessBeforeCreateRule.AutoCreatedForms(const AMainSource: string): TArray<string>;
+var
+  Tokens: TArray<TPascalToken>;
+  Code: TArray<Integer>;
+  Index, Position: Integer;
+
+  function IsText(APosition: Integer; const AText: string): Boolean;
+  begin
+    Result := (APosition <= High(Code)) and SameText(Tokens[Code[APosition]].Text, AText);
+  end;
+
+begin
+  Result := nil;
+  Tokens := TPascalLexer.Tokenize(AMainSource);
+  Code := nil;
+  for Index := 0 to High(Tokens) do
+    if not (Tokens[Index].Kind in [TPascalTokenKind.Comment, TPascalTokenKind.Directive]) then
+      Code := Code + [Index];
+  // Application.CreateForm(TfrmHaupt, frmHaupt);
+  for Position := 0 to High(Code) - 7 do
+    if IsText(Position, 'Application') and IsText(Position + 1, '.') and IsText(Position + 2, 'CreateForm') and
+      IsText(Position + 3, '(') and IsText(Position + 5, ',') and IsText(Position + 7, ')') and
+      (Tokens[Code[Position + 6]].Kind = TPascalTokenKind.Identifier) then
+      Result := Result + [Tokens[Code[Position + 6]].Text];
+end;
+
+class function TFormAccessBeforeCreateRule.FormsOfProgram(const APrograms: TArray<string>;
+  const AUnitName: string): TArray<string>;
+var
+  Main: string;
+begin
+  for Main in APrograms do
+    if MatchText(AUnitName, TUsesClauses.UsedUnits(TPascalLexer.Tokenize(Main))) then
+      Exit(AutoCreatedForms(Main));
+  Result := nil;
+end;
+
+class function TFormAccessBeforeCreateRule.CreateHandler(const AFormText: string): string;
+var
+  Line, Text: string;
+begin
+  // OnCreate des Formulars bzw. Datenmoduls selbst: vor dem ersten eingerückten object.
+  for Line in TTextLines.SplitLines(AFormText) do
+  begin
+    Text := Trim(Line);
+    if (Line <> TrimLeft(Line)) and (StartsText('object ', Text) or StartsText('inherited ', Text) or
+      StartsText('inline ', Text)) then
+      Break;
+    if StartsText('OnCreate = ', Text) then
+      Exit(Trim(Copy(Text, Length('OnCreate = ') + 1, MaxInt)));
+  end;
+  Result := '';
+end;
+
+procedure TFormAccessBeforeCreateRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
+var
+  Forms: TArray<string>;
+  Tokens: TArray<TPascalToken>;
+  Code: TArray<Integer>;
+  OwnIndex: Integer;
+  OwnName, OwnClass, Handler: string;
+
+  function Token(APosition: Integer): TPascalToken;
+  begin
+    Result := Tokens[Code[APosition]];
+  end;
+
+  function IsSym(APosition: Integer; const ASymbol: string): Boolean;
+  begin
+    Result := (APosition >= 0) and (APosition <= High(Code)) and Token(APosition).IsSymbol(ASymbol);
+  end;
+
+  function IsName(APosition: Integer; const AName: string): Boolean;
+  begin
+    Result := (APosition >= 0) and (APosition <= High(Code)) and
+      (Token(APosition).Kind = TPascalTokenKind.Identifier) and SameText(Token(APosition).Text, AName);
+  end;
+
+  function CodeAt(AOffset: Integer): Integer;
+  begin
+    for Result := 0 to High(Code) do
+      if Token(Result).Offset >= AOffset then
+        Exit;
+    Result := Length(Code);
+  end;
+
+  function FormIndex(const AName: string): Integer;
+  begin
+    for Result := 0 to High(Forms) do
+      if SameText(Forms[Result], AName) then
+        Exit;
+    Result := -1;
+  end;
+
+  // Globale Variable dieser Unit, die in der .dpr erzeugt wird und deren Klasse hier deklariert ist.
+  function FindOwnForm: Boolean;
+  var
+    Local: TUnitIndex;
+    Symbol, TypeSymbol: TIndexSymbol;
+    Cache: IRuleDerivedCache;
+  begin
+    Cache := TRuleDerived.Open(AContext);
+    Local := TRuleDerived.UnitIndex(Cache, AContext);
+    for Symbol in Local.Symbols do
+      if (Symbol.Kind = TIndexSymbolKind.Variable) and (Symbol.Container = '') and (FormIndex(Symbol.Name) >= 0) then
+        for TypeSymbol in Local.Symbols do
+          if (TypeSymbol.Kind = TIndexSymbolKind.ClassType) and (TypeSymbol.Container = '') and
+            SameText(TypeSymbol.Name, Symbol.TypeName) then
+          begin
+            OwnName := Symbol.Name;
+            OwnClass := TypeSymbol.Name;
+            OwnIndex := FormIndex(Symbol.Name);
+            Exit(True);
+          end;
+    Result := False;
+  end;
+
+  // Deklariert die Routine AName selbst (Parameter, lokale Variable)?
+  function DeclaresLocally(ANode: TSyntaxNode; const AName: string): Boolean;
+  var
+    Index: Integer;
+    Name: string;
+  begin
+    for Index := 0 to ANode.ChildCount - 1 do
+    begin
+      if ANode[Index].Kind in [TSyntaxKind.VarDecl, TSyntaxKind.InlineVar, TSyntaxKind.Parameter,
+        TSyntaxKind.ConstDecl] then
+        for Name in SplitString(ANode[Index].Name, ',') do
+          if SameText(Trim(Name), AName) then
+            Exit(True);
+      if (ANode[Index].Kind <> TSyntaxKind.Block) and DeclaresLocally(ANode[Index], AName) then
+        Exit(True);
+    end;
+    Result := False;
+  end;
+
+  // Prüft oder setzt die Routine die Variable selbst (Assigned, nil-Vergleich, Zuweisung, CreateForm)?
+  function Handled(AFirst, ALast: Integer; const AName: string): Boolean;
+  var
+    Position: Integer;
+  begin
+    for Position := AFirst to ALast do
+      if IsName(Position, AName) and not IsSym(Position - 1, '.') then
+        if (IsSym(Position - 1, '(') and IsName(Position - 2, 'Assigned')) or IsSym(Position + 1, ':=') or
+          ((IsSym(Position + 1, '<>') or IsSym(Position + 1, '=')) and (Position + 2 <= High(Code)) and
+          Token(Position + 2).IsKeyword('nil')) or (IsSym(Position - 1, ',') and IsName(Position - 4, 'CreateForm')) then
+          Exit(True);
+    Result := False;
+  end;
+
+  procedure CheckRoutine(ARoutine: TSyntaxNode);
+  var
+    First, Last, Position, Index: Integer;
+    Body: TSyntaxNode;
+    Reported: TArray<string>;
+    Name: string;
+  begin
+    Body := TRoutineBody.BodyOf(ARoutine);
+    if Body = nil then
+      Exit;
+    First := CodeAt(Body.StartOffset);
+    Last := CodeAt(Body.EndOffset) - 1;
+    Reported := nil;
+    for Position := First to Last do
+    begin
+      if (Token(Position).Kind <> TPascalTokenKind.Identifier) or IsSym(Position - 1, '.') then
+        Continue;
+      Index := FormIndex(Token(Position).Text);
+      if Index <= OwnIndex then
+        Continue;
+      Name := Forms[Index];
+      if MatchText(Name, Reported) or DeclaresLocally(ARoutine, Name) or Handled(First, Last, Name) then
+        Continue;
+      Reported := Reported + [Name];
+      AReport.Add(TTextRange.Create(Token(Position).StartPos, Token(Position).EndPos),
+        Format('%s wird in der .dpr erst nach %s erzeugt und ist hier noch nil.', [Name, OwnName]),
+        TRuleConfidence.Medium);
+    end;
+  end;
+
+  // Konstruktor, AfterConstruction und OnCreate-Handler der eigenen Klasse.
+  function IsCreationMethod(ARoutine: TSyntaxNode): Boolean;
+  var
+    Method: string;
+  begin
+    Result := False;
+    if not StartsText(OwnClass + '.', ARoutine.Name) then
+      Exit;
+    Method := Copy(ARoutine.Name, Length(OwnClass) + 2, MaxInt);
+    if Pos('.', Method) > 0 then
+      Exit;
+    Result := SameText(Method, 'AfterConstruction') or SameText(Method, Handler) or
+      ((Handler = '') and MatchText(Method, ['FormCreate', 'DataModuleCreate'])) or
+      Token(CodeAt(ARoutine.StartOffset)).IsKeyword('constructor');
+  end;
+
+var
+  Routines: TArray<TSyntaxNode>;
+  Routine: TSyntaxNode;
+  Index: Integer;
+begin
+  Forms := AContext.AutoCreateForms;
+  if (Length(Forms) < 2) or (AContext.Tree = nil) or (AContext.Tree.Root = nil) then
+    Exit;
+  Tokens := AContext.Tree.Tokens;
+  Code := nil;
+  for Index := 0 to High(Tokens) do
+    if not (Tokens[Index].Kind in [TPascalTokenKind.Comment, TPascalTokenKind.Directive]) then
+      Code := Code + [Index];
+  if not FindOwnForm then
+    Exit;
+  Handler := CreateHandler(AContext.FormText);
+  Routines := nil;
+  AContext.Tree.Root.Walk(
+    function(ANode: TSyntaxNode): Boolean
+    begin
+      if ANode.Kind = TSyntaxKind.RoutineDecl then
+        Routines := Routines + [ANode];
+      Result := ANode.Kind <> TSyntaxKind.RoutineDecl;
+    end);
+  for Routine in Routines do
+    if IsCreationMethod(Routine) then
+      CheckRoutine(Routine);
+end;
+
 procedure RegisterFormFieldRules(const ARegistry: TRuleRegistry);
 begin
   ARegistry.Register(TFormFieldWithoutObjectRule.Create);
   ARegistry.Register(TFormObjectWithoutFieldRule.Create);
   ARegistry.Register(TFormFieldTypeMismatchRule.Create);
+  ARegistry.Register(TFormAccessBeforeCreateRule.Create);
 end;
 
 end.

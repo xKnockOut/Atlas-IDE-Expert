@@ -19,6 +19,8 @@ type
   TAtlasProblem = record
   public const
     CompilerSource = 'dcc';
+    /// <summary>Herkunft eines vom Build bestätigten Atlas-Befunds (#1024).</summary>
+    ConfirmedSource = 'Atlas + dcc';
     /// <summary>Zustände aus data.uses.state (#621).</summary>
     UsesUnused = 'unused';
     UsesInitialization = 'initialization';
@@ -37,6 +39,12 @@ type
     Message: string;
     /// <summary>Konfidenz eines Regeltreffers aus data.confidence ("high", "medium", "low", #144); sonst ''.</summary>
     Confidence: string;
+    /// <summary>Kategorie und Gruppe der Regel aus dem Katalog (data.category, data.group, #909), z. B. "bug" und
+    /// "find-bugs"; '' bei Compilermeldungen und Syntaxfehlern ohne Katalog.</summary>
+    Category: string;
+    Group: string;
+    /// <summary>Titel der Schnellkorrektur (data.fix, #909); '' ohne.</summary>
+    FixTitle: string;
     /// <summary>Inaktiver Bereich ({$IFDEF}); kein Problem im eigentlichen Sinn.</summary>
     Unnecessary: Boolean;
     /// <summary>Verwendung eines veralteten Symbols (Tag Deprecated, #38): durchgestrichen statt unterstrichen.
@@ -56,7 +64,19 @@ type
     UsesUnusedCount: Integer;
     /// <summary>Text geändert, seit die Meldung entstand: blass zeigen.</summary>
     Stale: Boolean;
+    /// <summary>Compilermeldungen, denen die Regel entspricht (data.compilerCodes, #1024); nil ohne.</summary>
+    CompilerCodes: TArray<string>;
+    /// <summary>Der letzte Build meldet an derselben Zeile einen dieser Codes (#1024): „vom Compiler bestätigt“.
+    /// Setzt der Problemspeicher; ConfirmedCode ist der Code des Compilers.</summary>
+    Confirmed: Boolean;
+    ConfirmedCode: string;
     function IsCompiler: Boolean;
+    /// <summary>Text der Spalte „Compiler“ (#1024): bestätigter Code, Code einer Compilermeldung bzw. die Codes
+    /// der Regel ("E2034, E2035"); '' ohne.</summary>
+    function CompilerCodeText: string;
+    /// <summary>AMessage ohne die Verweise „(wie E2034)“ bzw. „(wie E2034, E2035)“ (problems.showCompilerCode
+    /// aus, #1024).</summary>
+    class function WithoutCompilerCode(const AMessage: string): string; static;
     /// <summary>Hinweis zu einem uses-Eintrag (#621), kein Problem für Liste und Wellenlinie.</summary>
     function IsUses: Boolean;
     /// <summary>Liegt die Stelle (0-basiert) im Bereich? Leere Bereiche zählen als ein Zeichen.</summary>
@@ -110,6 +130,52 @@ begin
   Result := SameText(Source, CompilerSource);
 end;
 
+class function TAtlasProblem.WithoutCompilerCode(const AMessage: string): string;
+const
+  Opening = ' (wie ';
+var
+  Start, Stop, Index: Integer;
+  Inner: string;
+  Codes: Boolean;
+begin
+  Result := AMessage;
+  Start := Pos(Opening, Result);
+  while Start > 0 do
+  begin
+    Stop := Pos(')', Copy(Result, Start, MaxInt)) + Start - 1;
+    if Stop < Start then
+      Break;
+    Inner := Copy(Result, Start + Length(Opening), Stop - Start - Length(Opening));
+    // Nur Codes wie E2034, W1000–W1007 und Trenner; anderer Text in Klammern bleibt.
+    Codes := Inner <> '';
+    for Index := 1 to Length(Inner) do
+      if not CharInSet(Inner[Index], ['A'..'Z', '0'..'9', ',', ' ']) and (Inner[Index] <> #$2013) then
+        Codes := False;
+    if Codes then
+    begin
+      Delete(Result, Start, Stop - Start + 1);
+      Start := Pos(Opening, Result);
+    end
+    else
+    begin
+      Index := Pos(Opening, Copy(Result, Stop + 1, MaxInt));
+      if Index = 0 then
+        Break;
+      Start := Stop + Index;
+    end;
+  end;
+end;
+
+function TAtlasProblem.CompilerCodeText: string;
+begin
+  if Confirmed then
+    Result := ConfirmedCode
+  else if IsCompiler then
+    Result := Code
+  else
+    Result := string.Join(', ', CompilerCodes);
+end;
+
 function TAtlasProblem.IsUses: Boolean;
 begin
   Result := UsesState <> '';
@@ -155,8 +221,8 @@ end;
 
 class function TAtlasProblem.FromJson(const AItem: TJSONObject): TAtlasProblem;
 var
-  Tags, CodeValue, Data, Inactive, UsesData: TJSONValue;
-  Tag: TJSONValue;
+  Tags, CodeValue, Data, Inactive, UsesData, Codes: TJSONValue;
+  Tag, Item: TJSONValue;
 begin
   Result := Default(TAtlasProblem);
   Result.StartLine := AItem.GetValue<Integer>('range.start.line', 0);
@@ -184,6 +250,14 @@ begin
   if Data is TJSONObject then
   begin
     Result.Confidence := TJSONObject(Data).GetValue<string>('confidence', '');
+    Result.Category := TJSONObject(Data).GetValue<string>('category', '');
+    Result.Group := TJSONObject(Data).GetValue<string>('group', '');
+    Result.FixTitle := TJSONObject(Data).GetValue<string>('fix', '');
+    Codes := TJSONObject(Data).GetValue('compilerCodes');
+    if Codes is TJSONArray then
+      for Item in TJSONArray(Codes) do
+        if Item is TJSONString then
+          Result.CompilerCodes := Result.CompilerCodes + [TJSONString(Item).Value];
     Inactive := TJSONObject(Data).GetValue('inactive');
     if Inactive is TJSONObject then
     begin

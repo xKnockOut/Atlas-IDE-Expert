@@ -10,6 +10,27 @@
 //   thread-free-with-free-on-terminate  Free auf einem Thread mit FreeOnTerminate (Doppelfreigabe)
 //   synchronize-in-destructor           Synchronize im Destruktor eines TThread-Nachfahren
 //   thread-resume-suspend               veraltetes Resume/Suspend; Korrektur Resume → Start
+//   pair-without-finally                beliebige Paare wie DisableControls/EnableControls, BeginUpdate/
+//                                       EndUpdate, FindFirst/FindClose, Reset/CloseFile, GetMem/FreeMem und
+//                                       Screen.Cursor := … ohne try/finally (#930); die Sperrpaare bleiben
+//                                       bei lock-without-finally. Erweiterbar über die Option "pairs".
+//   processmessages-in-loop             Application.ProcessMessages in einer Schleife oder direkt in einem
+//                                       Ereignis-Handler (Methode mit Parameter Sender) öffnet die Tür für
+//                                       Wiedereintritt (#931); Ausnahmen über die Option "allowIn".
+//   queue-nil-in-package                TThread.Queue(nil, …) bzw. ForceQueue(nil, …) in einer Unit eines
+//                                       Packages (#943): der Eintrag gehört keinem Thread und kann nach dem
+//                                       Entladen laufen. Korrektur auf den Wrapper aus "wrapper" (Vorgabe
+//                                       TAtlasMainThread.Queue, für ForceQueue …ForceQueue); eine Zeile mit
+//                                       dem Kommentar aus "okMarker" (Vorgabe mainthread-ok) bleibt still.
+//   blocking-call-in-main-thread        Sleep, WaitFor, WaitForSingleObject, WaitForMultipleObjects und Wait
+//                                       in Methoden von Formularen und Frames sowie in Ereignis-Handlern
+//                                       (#959); kurzes Sleep unter "maxSleepMs" nur in Warteschleifen.
+//   thread-loop-without-terminated      while/repeat ohne Terminated in Execute eines Threads und in Methoden,
+//                                       die nur von dort kommen (#960); nur Endlos- und Warteschleifen.
+//   anonymous-thread-not-started        TThread.CreateAnonymousThread(…) ohne Start, als Anweisung oder in
+//                                       einer lokalen Variablen, die weder gestartet noch weitergegeben wird (#961).
+//   task-exception-unobserved           TTask.Run(…) bzw. TTask.Create(…).Start, das nie abgefragt wird und
+//                                       dessen anonymer Rumpf kein try … except hat (#962).
 //
 // Ein Thread mit Free ohne Terminate und WaitFor wird nicht gemeldet:
 // TThread.Destroy ruft beides selbst auf.
@@ -71,6 +92,70 @@ type
     procedure Check(const AContext: TRuleContext; const AReport: IRuleReport);
   end;
 
+  /// <summary>Paar für pair-without-finally (#930). Open und Close sind Methoden- bzw. Routinennamen oder eine
+  /// Zuweisung "Screen.Cursor :="; OpenArg/CloseArg wählen das Argument, das beide verbindet (-1 = Empfänger,
+  /// ohne Empfänger das erste Argument).</summary>
+  TStatePair = record
+    Open: string;
+    Close: string;
+    OpenArg: Integer;
+    CloseArg: Integer;
+    /// <summary>Was bei einer Ausnahme hängen bleibt, für die Meldung.</summary>
+    Consequence: string;
+  end;
+
+  TPairWithoutFinallyRule = class(TInterfacedObject, IRule)
+  public
+    function Descriptor: TRuleDescriptor;
+    procedure Check(const AContext: TRuleContext; const AReport: IRuleReport);
+    /// <summary>Eingebaute Paare und die aus "pairs" in AOptions.</summary>
+    class function Pairs(const AOptions: string): TArray<TStatePair>; static;
+  end;
+
+  TProcessMessagesInLoopRule = class(TInterfacedObject, IRule)
+  public
+    function Descriptor: TRuleDescriptor;
+    procedure Check(const AContext: TRuleContext; const AReport: IRuleReport);
+  end;
+
+  TBlockingCallInMainThreadRule = class(TInterfacedObject, IRule)
+  public
+    function Descriptor: TRuleDescriptor;
+    procedure Check(const AContext: TRuleContext; const AReport: IRuleReport);
+    /// <summary>Position des Timeouts unter den Argumenten von ACall (ab 0); -1 ohne Timeout.</summary>
+    class function TimeoutArgument(const ACall: string): Integer; static;
+  end;
+
+  TThreadLoopWithoutTerminatedRule = class(TInterfacedObject, IRule)
+  public
+    function Descriptor: TRuleDescriptor;
+    procedure Check(const AContext: TRuleContext; const AReport: IRuleReport);
+  end;
+
+  TAnonymousThreadNotStartedRule = class(TInterfacedObject, IRule)
+  public
+    function Descriptor: TRuleDescriptor;
+    procedure Check(const AContext: TRuleContext; const AReport: IRuleReport);
+  end;
+
+  TTaskExceptionUnobservedRule = class(TInterfacedObject, IRule)
+  public
+    function Descriptor: TRuleDescriptor;
+    procedure Check(const AContext: TRuleContext; const AReport: IRuleReport);
+  end;
+
+  TQueueNilInPackageRule = class(TInterfacedObject, IRule)
+  public const
+    DefaultWrapper = 'TAtlasMainThread.Queue';
+    DefaultOkMarker = 'mainthread-ok';
+  public
+    function Descriptor: TRuleDescriptor;
+    procedure Check(const AContext: TRuleContext; const AReport: IRuleReport);
+    /// <summary>Aufruf, der AWrapper für AMethod (Queue oder ForceQueue) ersetzt: bei ForceQueue wird aus
+    /// …Queue …ForceQueue. Enthält AWrapper eine Klammer, steht er so vor den übrigen Argumenten.</summary>
+    class function WrapperCall(const AWrapper, AMethod: string): string; static;
+  end;
+
 /// <summary>Klassen der Unit, die direkt oder über Klassen der Unit von TThread erben.</summary>
 function ThreadClasses(ARoot: TSyntaxNode): TArray<string>;
 
@@ -80,9 +165,17 @@ implementation
 
 uses
   System.JSON,
+  System.StrUtils,
+  Atlas.Text.Lines,
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Documents.Contract,
-  Atlas.Common.Rules.Derived;
+  Atlas.Common.Pascal.Contract,
+  Atlas.Common.Editing.RoutineBody,
+  Atlas.Common.Editing.UsesClause,
+  Atlas.Common.Rules.Builtin.Inheritance,
+  Atlas.Common.Rules.Builtin.RtlTypePatterns,
+  Atlas.Common.Rules.Derived,
+  Atlas.Common.Rules.Options;
 
 type
   /// <summary>Aufruf X.M, X.M(…) oder M(…) als Anweisung.</summary>
@@ -585,6 +678,398 @@ begin
   Visit(AContext.Tree.Root);
 end;
 
+{ TPairWithoutFinallyRule }
+
+const
+  // Open, Close, OpenArg, CloseArg, Folge.
+  BuiltinStatePairs: array[0..8, 0..4] of string = (
+    ('DisableControls', 'EnableControls', '-1', '-1', 'bleibt das Grid eingefroren'),
+    ('BeginUpdate', 'EndUpdate', '-1', '-1', 'bleibt die Anzeige gesperrt'),
+    ('FindFirst', 'FindClose', '2', '0', 'bleibt das Suchhandle offen'),
+    ('Reset', 'CloseFile', '0', '0', 'bleibt die Datei offen'),
+    ('Rewrite', 'CloseFile', '0', '0', 'bleibt die Datei offen'),
+    ('Append', 'CloseFile', '0', '0', 'bleibt die Datei offen'),
+    ('GetMem', 'FreeMem', '0', '0', 'bleibt der Speicher belegt'),
+    ('AllocMem', 'FreeMem', '-2', '0', 'bleibt der Speicher belegt'),
+    ('Screen.Cursor :=', 'Screen.Cursor :=', '-1', '-1', 'bleibt der Mauszeiger stehen'));
+  AssignSuffix = ':=';
+
+function TPairWithoutFinallyRule.Descriptor: TRuleDescriptor;
+begin
+  Result := TRuleDescriptor.Create('pair-without-finally', TRuleSeverity.Warning,
+    'Paarige Aufrufe ohne try/finally');
+end;
+
+class function TPairWithoutFinallyRule.Pairs(const AOptions: string): TArray<TStatePair>;
+var
+  Index: Integer;
+  Pair: TStatePair;
+  Value, List, Item: TJSONValue;
+  Number: Integer;
+begin
+  Result := nil;
+  for Index := Low(BuiltinStatePairs) to High(BuiltinStatePairs) do
+  begin
+    Pair.Open := BuiltinStatePairs[Index, 0];
+    Pair.Close := BuiltinStatePairs[Index, 1];
+    Pair.OpenArg := StrToInt(BuiltinStatePairs[Index, 2]);
+    Pair.CloseArg := StrToInt(BuiltinStatePairs[Index, 3]);
+    Pair.Consequence := BuiltinStatePairs[Index, 4];
+    Result := Result + [Pair];
+  end;
+  if Trim(AOptions) = '' then
+    Exit;
+  Value := TJSONObject.ParseJSONValue(AOptions);
+  try
+    if not (Value is TJSONObject) then
+      Exit;
+    List := TJSONObject(Value).GetValue('pairs');
+    if not (List is TJSONArray) then
+      Exit;
+    for Item in TJSONArray(List) do
+      if (Item is TJSONObject) and TJSONObject(Item).TryGetValue<string>('open', Pair.Open) and
+        TJSONObject(Item).TryGetValue<string>('close', Pair.Close) and (Trim(Pair.Open) <> '') and
+        (Trim(Pair.Close) <> '') then
+      begin
+        Pair.Open := Trim(Pair.Open);
+        Pair.Close := Trim(Pair.Close);
+        Pair.OpenArg := -1;
+        Pair.CloseArg := -1;
+        if TJSONObject(Item).TryGetValue<Integer>('openArg', Number) then
+          Pair.OpenArg := Number;
+        if TJSONObject(Item).TryGetValue<Integer>('closeArg', Number) then
+          Pair.CloseArg := Number;
+        Pair.Consequence := 'bleibt der Zustand hängen';
+        Result := Result + [Pair];
+      end;
+  finally
+    Value.Free;
+  end;
+end;
+
+procedure TPairWithoutFinallyRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
+type
+  TOpening = record
+    Pair: Integer;
+    Index: Integer;
+    Key: string;
+  end;
+var
+  StatePairs: TArray<TStatePair>;
+
+  function IsAssignPair(const AName: string): Boolean;
+  begin
+    Result := EndsStr(AssignSuffix, AName);
+  end;
+
+  function AssignTarget(const AName: string): string;
+  begin
+    Result := LowerCase(Trim(Copy(AName, 1, Length(AName) - Length(AssignSuffix))));
+  end;
+
+  // Schlüssel eines Aufrufs: Empfänger bzw. das gewählte Argument (Call[1] ist das erste Argument).
+  function CallKey(ACall: TSyntaxNode; AReceiver: TSyntaxNode; AArg: Integer): string;
+  begin
+    Result := '';
+    if AArg = -2 then
+      Exit('*');
+    if (AArg < 0) and (AReceiver <> nil) then
+      Exit(NodeText(AContext.Text, AReceiver));
+    if AArg < 0 then
+      AArg := 0;
+    if (ACall <> nil) and (ACall.ChildCount > AArg + 1) then
+      Result := NodeText(AContext.Text, ACall[AArg + 1]);
+  end;
+
+  // Aufruf von AName in ANode (Anweisung, rechte Seite einer Zuweisung); nil sonst.
+  function FindCall(ANode: TSyntaxNode; const AName: string; out AReceiver: TSyntaxNode): TSyntaxNode;
+  var
+    Callee: TSyntaxNode;
+    Index: Integer;
+  begin
+    AReceiver := nil;
+    if ANode.Kind = TSyntaxKind.Call then
+    begin
+      Callee := ANode[0];
+      if ((Callee.Kind = TSyntaxKind.Identifier) or (Callee.Kind = TSyntaxKind.MemberAccess)) and
+        SameText(Callee.Name, AName) then
+      begin
+        if (Callee.Kind = TSyntaxKind.MemberAccess) and (Callee.ChildCount > 0) then
+          AReceiver := Callee[0];
+        Exit(ANode);
+      end;
+    end;
+    if ANode.Kind in [TSyntaxKind.Block, TSyntaxKind.TryStatement, TSyntaxKind.AnonymousMethod,
+      TSyntaxKind.RoutineDecl] then
+      Exit(nil);
+    for Index := 0 to ANode.ChildCount - 1 do
+    begin
+      Result := FindCall(ANode[Index], AName, AReceiver);
+      if Result <> nil then
+        Exit;
+    end;
+    Result := nil;
+  end;
+
+  // Ist AStatement das Öffnen bzw. Schließen von APair (AOpen) mit Schlüssel AKey?
+  function Matches(AStatement: TSyntaxNode; const APair: TStatePair; AOpen: Boolean; out AKey: string): Boolean;
+  var
+    Name: string;
+    Arg: Integer;
+    Call: TMethodCall;
+    Found, Receiver: TSyntaxNode;
+  begin
+    AKey := '';
+    if AOpen then
+    begin
+      Name := APair.Open;
+      Arg := APair.OpenArg;
+    end
+    else
+    begin
+      Name := APair.Close;
+      Arg := APair.CloseArg;
+    end;
+    if IsAssignPair(Name) then
+    begin
+      Result := (AStatement.Kind = TSyntaxKind.AssignStatement) and (AStatement.ChildCount = 2) and
+        (NodeText(AContext.Text, AStatement[0]) = AssignTarget(Name));
+      if Result then
+        AKey := AssignTarget(Name);
+      Exit;
+    end;
+    if (Arg <> -2) and TryMethodCall(AStatement, Call) and SameText(Call.Method, Name) then
+    begin
+      AKey := CallKey(Call.Call, Call.Receiver, Arg);
+      Exit(True);
+    end;
+    // P := AllocMem(N) bzw. R := FindFirst(...): Aufruf auf der rechten Seite.
+    Result := False;
+    if AOpen and (AStatement.Kind = TSyntaxKind.AssignStatement) and (AStatement.ChildCount = 2) then
+    begin
+      Found := FindCall(AStatement[1], Name, Receiver);
+      if Found <> nil then
+      begin
+        AKey := CallKey(Found, Receiver, Arg);
+        if AKey = '*' then
+          AKey := NodeText(AContext.Text, AStatement[0]);
+        Result := True;
+      end;
+    end;
+  end;
+
+  // Schließt ein finally eines try in AList ab AFrom das Paar mit AKey?
+  function ClosedInFinally(AList: TSyntaxNode; AFrom, APair: Integer; const AKey: string): Boolean;
+
+    function Search(ANode: TSyntaxNode): Boolean;
+    var
+      Index: Integer;
+      Key: string;
+    begin
+      if Matches(ANode, StatePairs[APair], False, Key) and (Key = AKey) then
+        Exit(True);
+      for Index := 0 to ANode.ChildCount - 1 do
+        if Search(ANode[Index]) then
+          Exit(True);
+      Result := False;
+    end;
+
+  var
+    Index: Integer;
+    Final: TSyntaxNode;
+  begin
+    for Index := AFrom to AList.ChildCount - 1 do
+      if AList[Index].Kind = TSyntaxKind.TryStatement then
+      begin
+        Final := AList[Index].FindChild(TSyntaxKind.FinallyBlock);
+        if (Final <> nil) and Search(Final) then
+          Exit(True);
+      end;
+    Result := False;
+  end;
+
+  function CloseIndex(AList: TSyntaxNode; AFrom, APair: Integer; const AKey: string): Integer;
+  var
+    Index: Integer;
+    Key: string;
+  begin
+    for Index := AFrom to AList.ChildCount - 1 do
+      if Matches(AList[Index], StatePairs[APair], False, Key) and (Key = AKey) then
+        Exit(Index);
+    Result := -1;
+  end;
+
+  function CloseName(APair: Integer): string;
+  begin
+    Result := StatePairs[APair].Close;
+    if IsAssignPair(Result) then
+      Result := Trim(Copy(Result, 1, Length(Result) - Length(AssignSuffix)));
+  end;
+
+  // try/finally um die Anweisungen ab AFirst bis vor die Schließen-Anweisungen AFirstClose..ALastClose.
+  function WrapFix(AList: TSyntaxNode; AFirst, AFirstClose, ALastClose: Integer): TArray<TRuleFix>;
+  var
+    Indent, Middle, Closes, LineBreak: string;
+    Index: Integer;
+    First: TSyntaxNode;
+  begin
+    Result := nil;
+    if AFirst >= AFirstClose then
+      Exit;
+    LineBreak := TTextLines.LineBreakOf(AContext.Text);
+    First := AList[AFirst];
+    Indent := StringOfChar(' ', First.StartPos.Character);
+    Middle := TrimRight(Copy(AContext.Text, First.StartOffset + 1, AList[AFirstClose].StartOffset -
+      First.StartOffset));
+    Middle := StringReplace(Middle, #10, #10'  ', [rfReplaceAll]);
+    Closes := '';
+    for Index := AFirstClose to ALastClose do
+      Closes := Closes + LineBreak + Indent + '  ' + Trim(SourceText(AContext.Text, AList[Index])) + ';';
+    Result := [TRuleFix.Create('In try/finally einschließen', [TRuleEdit.Create(
+      TTextRange.Create(First.StartPos, AList[ALastClose].EndPos), 'try' + LineBreak + Indent + '  ' + Middle +
+      LineBreak + Indent + 'finally' + Closes + LineBreak + Indent + 'end')])];
+  end;
+
+  // Meldung für Paare, deren Bereiche sich überlappen; am ersten Schließen, die übrigen Paare nennt sie mit.
+  procedure ReportGroup(AList: TSyntaxNode; const AGroup: TArray<TOpening>; const ACloses: TArray<Integer>);
+  var
+    Index, Other, FirstClose, LastClose, LastOpen, Inner: Integer;
+    Message, Others: string;
+    Contiguous: Boolean;
+  begin
+    FirstClose := ACloses[0];
+    LastClose := ACloses[0];
+    LastOpen := AGroup[0].Index;
+    Inner := 0;
+    for Index := 0 to High(AGroup) do
+    begin
+      if ACloses[Index] < FirstClose then
+      begin
+        FirstClose := ACloses[Index];
+        Inner := Index;
+      end;
+      if ACloses[Index] > LastClose then
+        LastClose := ACloses[Index];
+      if AGroup[Index].Index > LastOpen then
+        LastOpen := AGroup[Index].Index;
+    end;
+    Others := '';
+    for Index := 0 to High(AGroup) do
+      if Index <> Inner then
+      begin
+        if Others <> '' then
+          Others := Others + ', ';
+        Others := Others + CloseName(AGroup[Index].Pair);
+      end;
+    Message := Format('%s steht nicht im finally; bei einer Exception %s.',
+      [CloseName(AGroup[Inner].Pair), StatePairs[AGroup[Inner].Pair].Consequence]);
+    if Others <> '' then
+      Message := Message + Format(' Gleiches gilt für %s.', [Others]);
+    // Korrektur nur, wenn alle Öffnungen vor dem ersten Schließen stehen und die Schließen-Anweisungen
+    // verschieden sind und direkt aufeinander folgen.
+    Contiguous := (LastOpen < FirstClose) and (LastClose - FirstClose + 1 = Length(AGroup));
+    for Index := 0 to High(AGroup) do
+      for Other := Index + 1 to High(AGroup) do
+        if ACloses[Index] = ACloses[Other] then
+          Contiguous := False;
+    if Contiguous then
+      AReport.Add(TTextRange.Create(AList[FirstClose].StartPos, AList[FirstClose].EndPos), Message,
+        TRuleConfidence.High, WrapFix(AList, LastOpen + 1, FirstClose, LastClose))
+    else
+      AReport.Add(TTextRange.Create(AList[FirstClose].StartPos, AList[FirstClose].EndPos), Message,
+        TRuleConfidence.High);
+  end;
+
+  // AOutside: Öffnen außerhalb der Liste (if FindFirst(...) = 0 then), Index -1.
+  procedure CheckList(AList: TSyntaxNode; const AOutside: TArray<TOpening>);
+  var
+    Openings, Group: TArray<TOpening>;
+    Opening: TOpening;
+    Index, PairIndex, Close, Reach: Integer;
+    Key: string;
+    Closes: TArray<Integer>;
+  begin
+    Openings := AOutside;
+    for Index := 0 to AList.ChildCount - 1 do
+      for PairIndex := 0 to High(StatePairs) do
+        if Matches(AList[Index], StatePairs[PairIndex], True, Key) and (Key <> '') then
+        begin
+          Opening.Pair := PairIndex;
+          Opening.Index := Index;
+          Opening.Key := Key;
+          Openings := Openings + [Opening];
+          Break;
+        end;
+    // Offene Paare mit ungeschütztem Schließen in derselben Liste; überlappende Paare zusammen.
+    Group := nil;
+    Closes := nil;
+    Reach := -1;
+    for Opening in Openings do
+    begin
+      Close := CloseIndex(AList, Opening.Index + 1, Opening.Pair, Opening.Key);
+      if (Close < 0) or (Close <= Opening.Index + 1) or
+        ClosedInFinally(AList, Opening.Index + 1, Opening.Pair, Opening.Key) then
+        Continue;
+      if (Group <> nil) and (Opening.Index > Reach) then
+      begin
+        ReportGroup(AList, Group, Closes);
+        Group := nil;
+        Closes := nil;
+      end;
+      Group := Group + [Opening];
+      Closes := Closes + [Close];
+      if Close > Reach then
+        Reach := Close;
+    end;
+    if Group <> nil then
+      ReportGroup(AList, Group, Closes);
+  end;
+
+  // if FindFirst(...) = 0 then begin … FindClose(SR) end: das Öffnen steht in der Bedingung.
+  function ConditionOpening(AIf: TSyntaxNode; out AOpening: TOpening): Boolean;
+  var
+    PairIndex: Integer;
+    Found, Receiver: TSyntaxNode;
+  begin
+    Result := False;
+    if (AIf.ChildCount < 2) or (AIf[1].Kind <> TSyntaxKind.Block) then
+      Exit;
+    for PairIndex := 0 to High(StatePairs) do
+      if not IsAssignPair(StatePairs[PairIndex].Open) then
+      begin
+        Found := FindCall(AIf[0], StatePairs[PairIndex].Open, Receiver);
+        if Found <> nil then
+        begin
+          AOpening.Pair := PairIndex;
+          AOpening.Index := -1;
+          AOpening.Key := CallKey(Found, Receiver, StatePairs[PairIndex].OpenArg);
+          Exit(AOpening.Key <> '');
+        end;
+      end;
+  end;
+
+  procedure Visit(ANode: TSyntaxNode);
+  var
+    Index: Integer;
+    Opening: TOpening;
+  begin
+    if (ANode.Kind = TSyntaxKind.IfStatement) and ConditionOpening(ANode, Opening) then
+      CheckList(ANode[1], [Opening])
+    else if IsStatementList(ANode) and not ((ANode.Kind = TSyntaxKind.Block) and (ANode.Parent <> nil) and
+      (ANode.Parent.Kind = TSyntaxKind.IfStatement) and (ANode.Parent[1] = ANode) and
+      ConditionOpening(ANode.Parent, Opening)) then
+      CheckList(ANode, nil);
+    for Index := 0 to ANode.ChildCount - 1 do
+      Visit(ANode[Index]);
+  end;
+
+begin
+  if (AContext.Tree = nil) or (AContext.Tree.Root = nil) then
+    Exit;
+  StatePairs := Pairs(AContext.Options);
+  Visit(AContext.Tree.Root);
+end;
+
 { Gemeinsam für FreeOnTerminate }
 
 /// <summary>Variable X bei X.FreeOnTerminate := True, sonst ''.</summary>
@@ -859,6 +1344,979 @@ begin
     Visit(AContext.Tree.Root);
 end;
 
+/// <summary>Methode mit einem Parameter Sender: OnClick, OnTimer und Verwandte.</summary>
+function IsEventHandler(ARoutine: TSyntaxNode): Boolean;
+var
+  Header, Params: TSyntaxNode;
+  Index: Integer;
+  Name: string;
+begin
+  Result := False;
+  if Pos('.', ARoutine.Name) = 0 then
+    Exit;
+  Header := ARoutine.FindChild(TSyntaxKind.RoutineHeader);
+  if Header = nil then
+    Exit;
+  Params := Header.FindChild(TSyntaxKind.Parameters);
+  if Params = nil then
+    Exit;
+  for Index := 0 to Params.ChildCount - 1 do
+    if Params[Index].Kind = TSyntaxKind.Parameter then
+      for Name in SplitString(Params[Index].Name, ',') do
+        if SameText(Trim(Name), 'Sender') then
+          Exit(True);
+end;
+
+{ TProcessMessagesInLoopRule }
+
+const
+  ProcessMessagesAdvice = ' Besser die Arbeit in einen Thread oder TTask auslagern oder den Auslöser bis zum ' +
+    'Ende sperren.';
+
+function TProcessMessagesInLoopRule.Descriptor: TRuleDescriptor;
+begin
+  Result := TRuleDescriptor.Create('processmessages-in-loop', TRuleSeverity.Hint,
+    'Application.ProcessMessages in Schleifen');
+end;
+
+procedure TProcessMessagesInLoopRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
+var
+  AllowIn: TArray<string>;
+
+  function Allowed(const ARoutineName: string): Boolean;
+  var
+    Name: string;
+  begin
+    for Name in AllowIn do
+      if SameText(Name, ARoutineName) or SameText(Name, MethodPart(ARoutineName)) then
+        Exit(True);
+    Result := False;
+  end;
+
+  function IsProcessMessages(ANode: TSyntaxNode): Boolean;
+  var
+    Call: TMethodCall;
+  begin
+    Result := TryMethodCall(ANode, Call) and SameText(Call.Method, 'ProcessMessages') and
+      (Call.Receiver <> nil) and SameText(MethodPart(NodeText(AContext.Text, Call.Receiver)), 'application');
+  end;
+
+  procedure Visit(ANode: TSyntaxNode; ALoops: Integer; AHandler, AAllowed: Boolean);
+  var
+    Index: Integer;
+    Loops: Integer;
+  begin
+    case ANode.Kind of
+      TSyntaxKind.RoutineDecl:
+        begin
+          AHandler := IsEventHandler(ANode);
+          AAllowed := Allowed(ANode.Name);
+          ALoops := 0;
+        end;
+      // Anonyme Methoden laufen später oder in einem Thread (dort meldet thread-vcl-access).
+      TSyntaxKind.AnonymousMethod:
+        Exit;
+      TSyntaxKind.CallStatement:
+        if not AAllowed and IsProcessMessages(ANode) then
+        begin
+          if ALoops > 0 then
+            AReport.Add(NodeRange(ANode), 'ProcessMessages in der Schleife erlaubt Wiedereintritt (zweiter Klick, ' +
+              'Formular schließen).' + ProcessMessagesAdvice, TRuleConfidence.Medium)
+          else if AHandler then
+            AReport.Add(NodeRange(ANode), 'ProcessMessages im Ereignis-Handler erlaubt Wiedereintritt (zweiter ' +
+              'Klick, Formular schließen).' + ProcessMessagesAdvice, TRuleConfidence.Medium);
+          Exit;
+        end;
+    end;
+    Loops := ALoops;
+    if ANode.Kind in [TSyntaxKind.ForStatement, TSyntaxKind.ForInStatement, TSyntaxKind.WhileStatement,
+      TSyntaxKind.RepeatStatement] then
+      Inc(Loops);
+    for Index := 0 to ANode.ChildCount - 1 do
+      Visit(ANode[Index], Loops, AHandler, AAllowed);
+  end;
+
+begin
+  if (AContext.Tree = nil) or (AContext.Tree.Root = nil) then
+    Exit;
+  AllowIn := TRuleOptions.Strings(AContext.Options, 'allowIn', nil);
+  Visit(AContext.Tree.Root, 0, False, False);
+end;
+
+{ TQueueNilInPackageRule }
+
+function TQueueNilInPackageRule.Descriptor: TRuleDescriptor;
+begin
+  Result := TRuleDescriptor.Create('queue-nil-in-package', TRuleSeverity.Warning,
+    'TThread.Queue(nil, …) in einem Package');
+end;
+
+class function TQueueNilInPackageRule.WrapperCall(const AWrapper, AMethod: string): string;
+var
+  Name, Rest: string;
+  Paren: Integer;
+begin
+  Paren := Pos('(', AWrapper);
+  if Paren > 0 then
+  begin
+    Name := TrimRight(Copy(AWrapper, 1, Paren - 1));
+    Rest := Copy(AWrapper, Paren, MaxInt);
+  end
+  else
+  begin
+    Name := AWrapper;
+    Rest := '(';
+  end;
+  if SameText(AMethod, 'ForceQueue') and EndsText('Queue', Name) and not EndsText('ForceQueue', Name) then
+    Name := Copy(Name, 1, Length(Name) - Length('Queue')) + 'ForceQueue';
+  Result := Name + Rest;
+end;
+
+procedure TQueueNilInPackageRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
+var
+  Tokens: TArray<TPascalToken>;
+  Code: TArray<Integer>;
+  Wrapper, OkMarker, Where: string;
+
+  function Token(APosition: Integer): TPascalToken;
+  begin
+    Result := Tokens[Code[APosition]];
+  end;
+
+  // Steht in der Zeile ALine ein Kommentar mit der Ausnahme?
+  function MarkedOk(ALine: Integer): Boolean;
+  var
+    Item: TPascalToken;
+  begin
+    for Item in Tokens do
+      if (Item.Kind = TPascalTokenKind.Comment) and (Item.StartPos.Line <= ALine) and (Item.EndPos.Line >= ALine) and
+        ContainsText(Item.Text, OkMarker) then
+        Exit(True);
+    Result := False;
+  end;
+
+  // Anzahl der Argumente ab der öffnenden Klammer AOpen; -1 ohne schließende Klammer.
+  function ArgumentCount(AOpen: Integer): Integer;
+  var
+    Position, Depth: Integer;
+  begin
+    Result := 1;
+    Depth := 0;
+    for Position := AOpen to High(Code) do
+    begin
+      if Token(Position).IsSymbol('(') or Token(Position).IsSymbol('[') then
+        Inc(Depth)
+      else if Token(Position).IsSymbol(')') or Token(Position).IsSymbol(']') then
+      begin
+        Dec(Depth);
+        if Depth = 0 then
+          Exit;
+      end
+      // Kommas in anonymen Methoden stehen in eigenen Klammern; begin … end zählt nicht.
+      else if (Depth = 1) and Token(Position).IsSymbol(',') then
+        Inc(Result);
+    end;
+    Result := -1;
+  end;
+
+  procedure CheckAt(AStart: Integer);
+  var
+    Method: string;
+    Comma: Integer;
+    Range, Replace: TTextRange;
+    Fixes: TArray<TRuleFix>;
+  begin
+    // TThread . Queue|ForceQueue ( nil ,
+    if (AStart + 5 > High(Code)) or not SameText(Token(AStart).Text, 'TThread') or
+      not Token(AStart + 1).IsSymbol('.') or not Token(AStart + 3).IsSymbol('(') or
+      not Token(AStart + 4).IsKeyword('nil') or not Token(AStart + 5).IsSymbol(',') then
+      Exit;
+    Method := Token(AStart + 2).Text;
+    if not (SameText(Method, 'Queue') or SameText(Method, 'ForceQueue')) then
+      Exit;
+    if MarkedOk(Token(AStart).StartPos.Line) then
+      Exit;
+    Comma := AStart + 5;
+    Range := TTextRange.Create(Token(AStart).StartPos, Token(AStart + 4).EndPos);
+    Fixes := nil;
+    // Nur mit genau zwei Argumenten: die Verzögerung von ForceQueue kennt der Wrapper nicht.
+    if ArgumentCount(AStart + 3) = 2 then
+    begin
+      Replace := TTextRange.Create(Token(AStart).StartPos, Token(Comma).EndPos);
+      // Steht das nächste Argument in derselben Zeile, fällt der Leerraum davor mit weg.
+      if (Comma < High(Code)) and (Token(Comma + 1).StartPos.Line = Token(Comma).EndPos.Line) then
+        Replace.EndPos := Token(Comma + 1).StartPos;
+      Fixes := [TRuleFix.Create('Durch ' + WrapperCall(Wrapper, Method) + '…) ersetzen',
+        [TTextEdit.Create(Replace, WrapperCall(Wrapper, Method))])];
+    end;
+    AReport.Add(Range, Format('%s(nil, …) in %s: der Eintrag kann nach dem Entladen des Packages laufen.',
+      [Method, Where]), Fixes);
+  end;
+
+var
+  Kind: TRuleApplicationKind;
+  Index: Integer;
+begin
+  if (AContext.Tree = nil) or (AContext.Text = '') then
+    Exit;
+  Kind := AContext.Application;
+  // Ohne Projekt: die .dpk selbst.
+  if Kind = TRuleApplicationKind.Unknown then
+    Kind := TWritelnInGuiAppRule.ApplicationKind('', AContext.Text);
+  if Kind <> TRuleApplicationKind.Package then
+    Exit;
+  Where := 'diesem Package';
+  if AContext.ProjectName <> '' then
+    Where := AContext.ProjectName + '.bpl';
+  Wrapper := TRuleOptions.Text(AContext.Options, 'wrapper', DefaultWrapper);
+  OkMarker := TRuleOptions.Text(AContext.Options, 'okMarker', DefaultOkMarker);
+  Tokens := AContext.Tree.Tokens;
+  Code := nil;
+  for Index := 0 to High(Tokens) do
+    if not (Tokens[Index].Kind in [TPascalTokenKind.Comment, TPascalTokenKind.Directive]) then
+      Code := Code + [Index];
+  for Index := 0 to High(Code) do
+    if Tokens[Code[Index]].Kind = TPascalTokenKind.Identifier then
+      CheckAt(Index);
+end;
+
+{ TBlockingCallInMainThreadRule }
+
+const
+  FormBaseClasses: array[0..3] of string = ('TCustomForm', 'TForm', 'TCustomFrame', 'TFrame');
+  WindowsWaitCalls: array[0..2] of string = ('Sleep', 'WaitForSingleObject', 'WaitForMultipleObjects');
+  BlockingCallAdvice = ' Besser die Arbeit mit TTask.Run auslagern und das Ergebnis über TThread.Queue melden.';
+
+function TBlockingCallInMainThreadRule.Descriptor: TRuleDescriptor;
+begin
+  Result := TRuleDescriptor.Create('blocking-call-in-main-thread', TRuleSeverity.Warning,
+    'Blockierender Aufruf im Hauptthread');
+end;
+
+class function TBlockingCallInMainThreadRule.TimeoutArgument(const ACall: string): Integer;
+begin
+  // Position des Timeouts in den Argumenten (ab 0); -1: Aufruf ohne Timeout, blockiert immer.
+  if SameText(ACall, 'Sleep') or SameText(ACall, 'WaitFor') or SameText(ACall, 'Wait') then
+    Result := 0
+  else if SameText(ACall, 'WaitForSingleObject') then
+    Result := 1
+  else if SameText(ACall, 'WaitForMultipleObjects') then
+    Result := 3
+  else
+    Result := -1;
+end;
+
+procedure TBlockingCallInMainThreadRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
+var
+  Calls: TArray<string>;
+  MaxSleep: Integer;
+  Ancestry: TAncestry;
+  Threads: TArray<string>;
+
+  // Methode eines Formulars oder Frames bzw. Ereignis-Handler außerhalb eines Threads.
+  function InMainThread(ARoutine: TSyntaxNode): Boolean;
+  var
+    Owner, Base: string;
+  begin
+    Owner := ClassPart(ARoutine.Name);
+    if (Owner = '') or InList(Threads, Owner) or Ancestry.DescendsFrom(Owner, 'TThread') then
+      Exit(False);
+    for Base in FormBaseClasses do
+      if Ancestry.DescendsFrom(Owner, Base) then
+        Exit(True);
+    Result := IsEventHandler(ARoutine);
+  end;
+
+  // Timeout in Millisekunden: Zahl, INFINITE = MaxInt; -1 = unbekannt.
+  function Milliseconds(ANode: TSyntaxNode): Integer;
+  begin
+    if (ANode.Kind = TSyntaxKind.Identifier) and SameText(ANode.Name, 'INFINITE') then
+      Exit(MaxInt);
+    if (ANode.Kind <> TSyntaxKind.Literal) or not TryStrToInt(ANode.Name, Result) then
+      Result := -1;
+  end;
+
+  function MentionsProcessMessages(ANode: TSyntaxNode): Boolean;
+  var
+    Index: Integer;
+  begin
+    if (ANode.Kind in [TSyntaxKind.Identifier, TSyntaxKind.MemberAccess]) and
+      SameText(ANode.Name, 'ProcessMessages') then
+      Exit(True);
+    for Index := 0 to ANode.ChildCount - 1 do
+      if MentionsProcessMessages(ANode[Index]) then
+        Exit(True);
+    Result := False;
+  end;
+
+  function Where(ARoutine: TSyntaxNode): string;
+  var
+    Method: string;
+  begin
+    Method := MethodPart(ARoutine.Name);
+    if EndsText('Click', Method) then
+      Result := 'im Click-Handler'
+    else if IsEventHandler(ARoutine) then
+      Result := 'im Ereignis-Handler ' + Method
+    else
+      Result := 'in ' + Method;
+  end;
+
+  // ACallee: Identifier oder MemberAccess mit dem Namen; AArgs: Aufruf mit Argumenten oder nil.
+  procedure CheckCall(ACallee, AArgs: TSyntaxNode; ARoutine, ALoop: TSyntaxNode);
+  var
+    Name, Text, Receiver: string;
+    Position, Timeout: Integer;
+  begin
+    Name := ACallee.Name;
+    if not InList(Calls, Name) then
+      Exit;
+    // Sleep und die Wait-Funktionen der Windows-API ohne Empfänger (oder Winapi.Windows.…), WaitFor und Wait
+    // mit Empfänger.
+    if InList(WindowsWaitCalls, Name) then
+    begin
+      if (ACallee.Kind = TSyntaxKind.MemberAccess) and not MatchText(SourceText(AContext.Text, ACallee[0]),
+        ['Windows', 'Winapi.Windows']) then
+        Exit;
+    end
+    else if MatchText(Name, ['WaitFor', 'Wait']) and (ACallee.Kind <> TSyntaxKind.MemberAccess) then
+      Exit;
+    Position := TimeoutArgument(Name);
+    Timeout := MaxInt;
+    if (Position >= 0) and (AArgs <> nil) and (AArgs.ChildCount > Position + 1) then
+      Timeout := Milliseconds(AArgs[Position + 1])
+    else if SameText(Name, 'Sleep') then
+      Exit;
+    if AArgs <> nil then
+      Text := SourceText(AContext.Text, AArgs)
+    else
+      Text := SourceText(AContext.Text, ACallee);
+    if (Timeout >= 0) and (Timeout < MaxSleep) then
+    begin
+      // Kurzes Sleep nur in einer Warteschleife ohne ProcessMessages.
+      if not SameText(Name, 'Sleep') or (ALoop = nil) or MentionsProcessMessages(ALoop) then
+        Exit;
+      AReport.Add(NameRange(ACallee), Format('Warteschleife mit Sleep %s blockiert den Hauptthread; die ' +
+        'Oberfläche friert ein.', [Where(ARoutine)]) + BlockingCallAdvice, TRuleConfidence.Medium);
+      Exit;
+    end;
+    Receiver := '';
+    if ACallee.Kind = TSyntaxKind.MemberAccess then
+      Receiver := VariableName(ACallee[0]);
+    if SameText(Name, 'WaitFor') and ((AArgs = nil) or (AArgs.ChildCount = 1)) and (Receiver <> '') then
+      AReport.Add(NameRange(ACallee), Format('WaitFor %s blockiert den Hauptthread; ruft %s Synchronize auf, ' +
+        'hängt das Programm.', [Where(ARoutine), Receiver]) + BlockingCallAdvice, TRuleConfidence.Medium)
+    else
+      AReport.Add(NameRange(ACallee), Format('%s %s blockiert den Hauptthread; die Oberfläche friert ein.',
+        [Text, Where(ARoutine)]) + BlockingCallAdvice, TRuleConfidence.Medium);
+  end;
+
+  procedure Visit(ANode: TSyntaxNode; ARoutine, ALoop: TSyntaxNode);
+  var
+    Index: Integer;
+  begin
+    case ANode.Kind of
+      TSyntaxKind.RoutineDecl:
+        // Eingebettete Routinen gehören zur äußeren Methode.
+        if Pos('.', ANode.Name) > 0 then
+        begin
+          ARoutine := nil;
+          if InMainThread(ANode) then
+            ARoutine := ANode;
+          ALoop := nil;
+        end;
+      // Anonyme Methoden laufen oft in einem Thread oder später.
+      TSyntaxKind.AnonymousMethod:
+        Exit;
+      TSyntaxKind.WhileStatement, TSyntaxKind.RepeatStatement, TSyntaxKind.ForStatement,
+      TSyntaxKind.ForInStatement:
+        ALoop := ANode;
+    end;
+    if ARoutine <> nil then
+      if (ANode.Kind = TSyntaxKind.Call) and (ANode.ChildCount > 0) and
+        (ANode[0].Kind in [TSyntaxKind.Identifier, TSyntaxKind.MemberAccess]) then
+        CheckCall(ANode[0], ANode, ARoutine, ALoop)
+      else if (ANode.Kind = TSyntaxKind.CallStatement) and (ANode.ChildCount > 0) and
+        (ANode[0].Kind = TSyntaxKind.MemberAccess) then
+        CheckCall(ANode[0], nil, ARoutine, ALoop);
+    for Index := 0 to ANode.ChildCount - 1 do
+      Visit(ANode[Index], ARoutine, ALoop);
+  end;
+
+begin
+  if (AContext.Tree = nil) or (AContext.Tree.Root = nil) then
+    Exit;
+  Calls := TRuleOptions.Strings(AContext.Options, 'calls', ['Sleep', 'WaitFor', 'WaitForSingleObject',
+    'WaitForMultipleObjects', 'Wait']);
+  MaxSleep := TRuleOptions.Int(AContext.Options, 'maxSleepMs', 50);
+  Threads := ThreadClasses(AContext.Tree.Root);
+  Ancestry := TAncestry.Create(AContext.Index, TRuleDerived.UnitIndex(TRuleDerived.Open(AContext), AContext));
+  try
+    Visit(AContext.Tree.Root, nil, nil);
+  finally
+    Ancestry.Free;
+  end;
+end;
+
+{ TThreadLoopWithoutTerminatedRule }
+
+const
+  ThreadWaitCalls: array[0..6] of string = ('Sleep', 'WaitFor', 'WaitForSingleObject', 'WaitForMultipleObjects',
+    'MsgWaitForMultipleObjects', 'Wait', 'Yield');
+
+function TThreadLoopWithoutTerminatedRule.Descriptor: TRuleDescriptor;
+begin
+  Result := TRuleDescriptor.Create('thread-loop-without-terminated', TRuleSeverity.Warning,
+    'Thread-Schleife ohne Terminated');
+end;
+
+procedure TThreadLoopWithoutTerminatedRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
+var
+  Routines: TArray<TSyntaxNode>;
+  Names: TArray<TArray<string>>;
+
+  function IsConstant(ANode: TSyntaxNode; const AValue: string): Boolean;
+  begin
+    Result := (ANode.Kind in [TSyntaxKind.Identifier, TSyntaxKind.Literal]) and SameText(ANode.Name, AValue);
+  end;
+
+  // Alle Bezeichner (auch hinter einem Punkt), ohne anonyme Methoden.
+  procedure CollectNames(ANode: TSyntaxNode; var ANames: TArray<string>);
+  var
+    Index: Integer;
+  begin
+    if ANode.Kind = TSyntaxKind.AnonymousMethod then
+      Exit;
+    if (ANode.Kind in [TSyntaxKind.Identifier, TSyntaxKind.MemberAccess]) and not InList(ANames, ANode.Name) then
+      ANames := ANames + [ANode.Name];
+    for Index := 0 to ANode.ChildCount - 1 do
+      CollectNames(ANode[Index], ANames);
+  end;
+
+  function MentionsAny(ANode: TSyntaxNode; const ACandidates: array of string): Boolean;
+  var
+    Found: TArray<string>;
+    Name: string;
+  begin
+    Found := nil;
+    CollectNames(ANode, Found);
+    for Name in ACandidates do
+      if InList(Found, Name) then
+        Exit(True);
+    Result := False;
+  end;
+
+  // Execute und die Methoden der Klasse, die nur aus Execute heraus (auch über andere solche Methoden) kommen.
+  function ThreadRoutines(const AClass: string): TArray<TSyntaxNode>;
+  var
+    Reached: TArray<Integer>;
+    Index, Other, Count: Integer;
+    Method: string;
+    Only: Boolean;
+
+    function IsReached(AIndex: Integer): Boolean;
+    var
+      Item: Integer;
+    begin
+      for Item in Reached do
+        if Item = AIndex then
+          Exit(True);
+      Result := False;
+    end;
+
+  begin
+    Result := nil;
+    Reached := nil;
+    for Index := 0 to High(Routines) do
+      if SameText(Routines[Index].Name, AClass + '.Execute') then
+        Reached := Reached + [Index];
+    if Reached = nil then
+      Exit;
+    repeat
+      Count := Length(Reached);
+      for Index := 0 to High(Routines) do
+      begin
+        if IsReached(Index) or not SameText(ClassPart(Routines[Index].Name), AClass) then
+          Continue;
+        Method := MethodPart(Routines[Index].Name);
+        Only := False;
+        for Other := 0 to High(Routines) do
+          if (Other <> Index) and InList(Names[Other], Method) then
+          begin
+            Only := IsReached(Other);
+            if not Only then
+              Break;
+          end;
+        if Only then
+          Reached := Reached + [Index];
+      end;
+    until Count = Length(Reached);
+    for Index in Reached do
+      Result := Result + [Routines[Index]];
+  end;
+
+  function Fix(ALoop: TSyntaxNode): TArray<TRuleFix>;
+  var
+    Condition: TSyntaxNode;
+    Text, Replacement: string;
+  begin
+    if ALoop.Kind = TSyntaxKind.WhileStatement then
+      Condition := ALoop[0]
+    else
+      Condition := ALoop[ALoop.ChildCount - 1];
+    Text := SourceText(AContext.Text, Condition);
+    if Condition.Kind = TSyntaxKind.BinaryExpr then
+      Text := '(' + Text + ')';
+    if ALoop.Kind = TSyntaxKind.WhileStatement then
+    begin
+      if IsConstant(Condition, 'True') then
+        Replacement := 'not Terminated'
+      else
+        Replacement := Text + ' and not Terminated';
+    end
+    else if IsConstant(Condition, 'False') then
+      Replacement := 'Terminated'
+    else
+      Replacement := Text + ' or Terminated';
+    Result := [TRuleFix.Create('Terminated in die Schleifenbedingung aufnehmen',
+      [TRuleEdit.Create(NodeRange(Condition), Replacement)])];
+  end;
+
+  function HasMethod(const AName: string): Boolean;
+  var
+    Routine: TSyntaxNode;
+  begin
+    for Routine in Routines do
+      if SameText(Routine.Name, AName) then
+        Exit(True);
+    Result := False;
+  end;
+
+  procedure Visit(ANode: TSyntaxNode);
+  var
+    Index: Integer;
+    Infinite: Boolean;
+    Keyword: string;
+  begin
+    if ANode.Kind = TSyntaxKind.AnonymousMethod then
+      Exit;
+    if (ANode.Kind in [TSyntaxKind.WhileStatement, TSyntaxKind.RepeatStatement]) and (ANode.ChildCount >= 2) and
+      not MentionsAny(ANode, ['Terminated', 'CheckTerminated']) then
+    begin
+      if ANode.Kind = TSyntaxKind.WhileStatement then
+      begin
+        Infinite := IsConstant(ANode[0], 'True');
+        Keyword := 'while';
+      end
+      else
+      begin
+        Infinite := IsConstant(ANode[ANode.ChildCount - 1], 'False');
+        Keyword := 'repeat';
+      end;
+      // Endlosschleife oder Warteschleife: beide laufen weiter, bis jemand Terminated prüft.
+      if Infinite or MentionsAny(ANode, ThreadWaitCalls) then
+        AReport.Add(TTextRange.Create(ANode.StartPos, TTextPosition.Create(ANode.StartPos.Line,
+          ANode.StartPos.Character + Length(Keyword))), 'Die Schleife prüft Terminated nicht; der Thread lässt ' +
+          'sich nicht beenden.', TRuleConfidence.High, Fix(ANode));
+    end;
+    for Index := 0 to ANode.ChildCount - 1 do
+      Visit(ANode[Index]);
+  end;
+
+var
+  Ancestry: TAncestry;
+  Classes: TArray<string>;
+  Index: Integer;
+  Owner: string;
+  Routine: TSyntaxNode;
+begin
+  if (AContext.Tree = nil) or (AContext.Tree.Root = nil) or not ContainsText(AContext.Text, 'Execute') then
+    Exit;
+  Routines := nil;
+  AContext.Tree.Root.Walk(
+    function(ANode: TSyntaxNode): Boolean
+    begin
+      if ANode.Kind = TSyntaxKind.RoutineDecl then
+        Routines := Routines + [ANode];
+      Result := ANode.Kind <> TSyntaxKind.RoutineDecl;
+    end);
+  SetLength(Names, Length(Routines));
+  for Index := 0 to High(Routines) do
+  begin
+    Names[Index] := nil;
+    CollectNames(Routines[Index], Names[Index]);
+  end;
+  Classes := SharedThreadClasses(AContext);
+  Ancestry := TAncestry.Create(AContext.Index, TRuleDerived.UnitIndex(TRuleDerived.Open(AContext), AContext));
+  try
+    for Routine in Routines do
+    begin
+      Owner := ClassPart(Routine.Name);
+      if (Owner <> '') and not InList(Classes, Owner) and Ancestry.DescendsFrom(Owner, 'TThread') then
+        Classes := Classes + [Owner];
+    end;
+  finally
+    Ancestry.Free;
+  end;
+  for Owner in Classes do
+    // Mit TerminatedSet beendet die Klasse ihre Schleifen auf eigenem Weg (Ereignis, Flag).
+    if not HasMethod(Owner + '.TerminatedSet') then
+      for Routine in ThreadRoutines(Owner) do
+        Visit(Routine);
+end;
+
+/// <summary>Deklariert die Routine AName als lokale Variable (var-Abschnitt oder Inline-Variable)?</summary>
+function DeclaresLocalVariable(ARoutine: TSyntaxNode; const AName: string): Boolean;
+var
+  Index: Integer;
+  Name: string;
+begin
+  for Index := 0 to ARoutine.ChildCount - 1 do
+  begin
+    if ARoutine[Index].Kind in [TSyntaxKind.VarDecl, TSyntaxKind.InlineVar] then
+      for Name in SplitString(ARoutine[Index].Name, ',') do
+        if SameText(Trim(Name), AName) then
+          Exit(True);
+    if (ARoutine[Index].Kind <> TSyntaxKind.RoutineDecl) and DeclaresLocalVariable(ARoutine[Index], AName) then
+      Exit(True);
+  end;
+  Result := False;
+end;
+
+{ TAnonymousThreadNotStartedRule }
+
+const
+  AnonymousThreadMessage = 'Der anonyme Thread wird nie gestartet und nie freigegeben.';
+
+function TAnonymousThreadNotStartedRule.Descriptor: TRuleDescriptor;
+begin
+  Result := TRuleDescriptor.Create('anonymous-thread-not-started', TRuleSeverity.Warning,
+    'Anonymer Thread nie gestartet');
+end;
+
+procedure TAnonymousThreadNotStartedRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
+var
+  Lines: TArray<string>;
+  LineBreak: string;
+
+  // TThread.CreateAnonymousThread(…) bzw. System.Classes.TThread.CreateAnonymousThread(…)?
+  function IsCreation(ANode: TSyntaxNode): Boolean;
+  begin
+    Result := (ANode.Kind = TSyntaxKind.Call) and (ANode.ChildCount > 0) and
+      (ANode[0].Kind = TSyntaxKind.MemberAccess) and SameText(ANode[0].Name, 'CreateAnonymousThread') and
+      (ANode[0].ChildCount > 0) and SameText(MethodPart(SourceText(AContext.Text, ANode[0][0])), 'TThread');
+  end;
+
+  // Wie benutzt die Routine die Variable sonst? Gestartet, nur Eigenschaften gesetzt oder weitergegeben.
+  procedure Usage(ANode, AParent, AGrand, ATarget: TSyntaxNode; const AName: string; var AStarted,
+    AEscapes: Boolean);
+  var
+    Index: Integer;
+  begin
+    if (ANode <> ATarget) and (ANode.Kind = TSyntaxKind.Identifier) and SameText(ANode.Name, AName) then
+    begin
+      if (AParent <> nil) and (AParent.Kind = TSyntaxKind.MemberAccess) and (AParent[0] = ANode) then
+      begin
+        if MatchText(AParent.Name, ['Start', 'Resume']) then
+          AStarted := True
+        else if not ((AGrand <> nil) and (AGrand.Kind = TSyntaxKind.AssignStatement) and (AGrand[0] = AParent)) then
+          AEscapes := True;
+      end
+      else
+        AEscapes := True;
+      Exit;
+    end;
+    for Index := 0 to ANode.ChildCount - 1 do
+      Usage(ANode[Index], ANode, AParent, ATarget, AName, AStarted, AEscapes);
+  end;
+
+  // T.Start; nach der letzten Anweisung derselben Liste, die T erwähnt.
+  function StartFix(AAssign: TSyntaxNode; const AName: string): TArray<TRuleFix>;
+  var
+    List, Last: TSyntaxNode;
+    Index, Position: Integer;
+    Rest: string;
+  begin
+    Result := nil;
+    List := AAssign.Parent;
+    if (List = nil) or not IsStatementList(List) then
+      Exit;
+    Last := AAssign;
+    Position := -1;
+    for Index := 0 to List.ChildCount - 1 do
+      if List[Index] = AAssign then
+        Position := Index
+      else if (Position >= 0) and Mentions(List[Index], AName) then
+        Last := List[Index];
+    Rest := Trim(Copy(Lines[Last.EndPos.Line], Last.EndPos.Character + 1, MaxInt));
+    if ((Rest <> '') and (Rest <> ';')) or (Last.EndPos.Line >= High(Lines)) then
+      Exit;
+    Result := [TRuleFix.Create(Format('%s.Start ergänzen', [AName]), [TRuleEdit.Create(
+      TTextRange.Create(Last.EndPos.Line + 1, 0, Last.EndPos.Line + 1, 0),
+      TTextLines.IndentOf(Lines[AAssign.StartPos.Line]) + AName + '.Start;' + LineBreak)])];
+  end;
+
+  procedure Visit(ANode, ARoutine: TSyntaxNode);
+  var
+    Index: Integer;
+    Started, Escapes: Boolean;
+    Creation, Target: TSyntaxNode;
+    Name: string;
+  begin
+    if ANode.Kind = TSyntaxKind.RoutineDecl then
+      ARoutine := ANode;
+    // TThread.CreateAnonymousThread(…); als eigene Anweisung.
+    if (ANode.Kind = TSyntaxKind.CallStatement) and (ANode.ChildCount > 0) and IsCreation(ANode[0]) then
+      AReport.Add(NameRange(ANode[0][0]), AnonymousThreadMessage, TRuleConfidence.High,
+        [TRuleFix.Create('.Start anhängen', [TRuleEdit.Create(TTextRange.Create(ANode[0].EndPos, ANode[0].EndPos),
+        '.Start')])]);
+    // T := TThread.CreateAnonymousThread(…); bzw. var T := …; mit lokaler Variable, die nie gestartet und
+    // nicht weitergegeben wird.
+    Creation := nil;
+    Target := nil;
+    Name := '';
+    if (ANode.Kind = TSyntaxKind.AssignStatement) and (ANode.ChildCount = 2) and (ARoutine <> nil) and
+      (ANode[0].Kind = TSyntaxKind.Identifier) and IsCreation(ANode[1]) and DeclaresLocalVariable(ARoutine, ANode[0].Name) then
+    begin
+      Creation := ANode[1];
+      Target := ANode[0];
+      Name := Target.Name;
+    end
+    else if (ANode.Kind = TSyntaxKind.InlineVar) and (ANode.ChildCount > 0) and (Pos(',', ANode.Name) = 0) and
+      (ARoutine <> nil) and IsCreation(ANode[ANode.ChildCount - 1]) then
+    begin
+      Creation := ANode[ANode.ChildCount - 1];
+      Name := ANode.Name;
+    end;
+    if Creation <> nil then
+    begin
+      Started := False;
+      Escapes := False;
+      Usage(ARoutine, nil, nil, Target, Name, Started, Escapes);
+      if not Started and not Escapes then
+        AReport.Add(NameRange(Creation[0]), AnonymousThreadMessage, TRuleConfidence.High, StartFix(ANode, Name));
+    end;
+    for Index := 0 to ANode.ChildCount - 1 do
+      Visit(ANode[Index], ARoutine);
+  end;
+
+begin
+  if (AContext.Tree = nil) or (AContext.Tree.Root = nil) or not ContainsText(AContext.Text,
+    'CreateAnonymousThread') then
+    Exit;
+  Lines := TTextLines.SplitLines(AContext.Text, LineBreak);
+  Visit(AContext.Tree.Root, nil);
+end;
+
+{ TTaskExceptionUnobservedRule }
+
+function TTaskExceptionUnobservedRule.Descriptor: TRuleDescriptor;
+begin
+  Result := TRuleDescriptor.Create('task-exception-unobserved', TRuleSeverity.Hint,
+    'Exception in TTask geht verloren');
+end;
+
+procedure TTaskExceptionUnobservedRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
+var
+  Lines: TArray<string>;
+  LineBreak: string;
+
+  function IsTaskCall(ANode: TSyntaxNode; const AMethod: string): Boolean;
+  begin
+    Result := (ANode <> nil) and (ANode.Kind = TSyntaxKind.Call) and (ANode.ChildCount > 1) and
+      (ANode[0].Kind = TSyntaxKind.MemberAccess) and SameText(ANode[0].Name, AMethod) and (ANode[0].ChildCount > 0) and
+      SameText(MethodPart(SourceText(AContext.Text, ANode[0][0])), 'TTask');
+  end;
+
+  // TTask.Create(…).Start bzw. .Start(): der Create-Aufruf, sonst nil.
+  function StartedCreate(ANode: TSyntaxNode): TSyntaxNode;
+  begin
+    Result := nil;
+    if (ANode.Kind = TSyntaxKind.Call) and (ANode.ChildCount = 1) then
+      ANode := ANode[0];
+    if (ANode.Kind = TSyntaxKind.MemberAccess) and SameText(ANode.Name, 'Start') and (ANode.ChildCount > 0) and
+      IsTaskCall(ANode[0], 'Create') then
+      Result := ANode[0];
+  end;
+
+  function Catches(ANode: TSyntaxNode): Boolean;
+  var
+    Index: Integer;
+  begin
+    if (ANode.Kind = TSyntaxKind.TryStatement) and (ANode.FindChild(TSyntaxKind.ExceptBlock) <> nil) then
+      Exit(True);
+    for Index := 0 to ANode.ChildCount - 1 do
+      if Catches(ANode[Index]) then
+        Exit(True);
+    Result := False;
+  end;
+
+  // Erster Aufruf im Rumpf für die Meldung.
+  function FirstCall(ANode: TSyntaxNode): string;
+  var
+    Index: Integer;
+    Call: TMethodCall;
+  begin
+    if TryMethodCall(ANode, Call) then
+      Exit(Call.Method);
+    for Index := 0 to ANode.ChildCount - 1 do
+    begin
+      Result := FirstCall(ANode[Index]);
+      if Result <> '' then
+        Exit;
+    end;
+    Result := '';
+  end;
+
+  // Steht das Wort an APosition am Zeilenanfang und folgen höchstens Klammern, Komma und Semikolon?
+  function OnOwnLine(const APosition: TTextPosition; ALength: Integer): Boolean;
+  var
+    Rest: string;
+    Character: Char;
+  begin
+    Result := Trim(Copy(Lines[APosition.Line], 1, APosition.Character)) = '';
+    Rest := Copy(Lines[APosition.Line], APosition.Character + ALength + 1, MaxInt);
+    for Character in Rest do
+      if not CharInSet(Character, [' ', #9, ')', ',', ';']) then
+        Result := False;
+  end;
+
+  // Korrektur: Rumpf in try … except, Meldung über TThread.Queue im Hauptthread.
+  function WrapFix(ABody: TSyntaxNode): TArray<TRuleFix>;
+  var
+    Edits: TArray<TRuleEdit>;
+    Indent, Step, Dialogs, Text: string;
+    Line: Integer;
+    Used: TArray<string>;
+    UsesEdit: TRuleEdit;
+    UsedUnit: string;
+  begin
+    Result := nil;
+    if (ABody.EndPos.Line - ABody.StartPos.Line < 2) or not OnOwnLine(ABody.StartPos, Length('begin')) or
+      not OnOwnLine(TTextPosition.Create(ABody.EndPos.Line, ABody.EndPos.Character - Length('end')),
+      Length('end')) then
+      Exit;
+    Indent := TTextLines.IndentOf(Lines[ABody.StartPos.Line]);
+    Step := TRoutineBody.IndentUnit(AContext.Formatting);
+    // Ein Edit für alle Zeilen zwischen begin und end: try, eingerückter Rumpf, except-Teil.
+    Text := Indent + Step + 'try' + LineBreak;
+    for Line := ABody.StartPos.Line + 1 to ABody.EndPos.Line - 1 do
+      if Trim(Lines[Line]) = '' then
+        Text := Text + Lines[Line] + LineBreak
+      else
+        Text := Text + Step + Lines[Line] + LineBreak;
+    Edits := [TRuleEdit.Create(TTextRange.Create(ABody.StartPos.Line + 1, 0, ABody.EndPos.Line, 0), Text +
+      Indent + Step + 'except' + LineBreak +
+      Indent + Step + Step + 'on E: Exception do' + LineBreak +
+      Indent + Step + Step + 'begin' + LineBreak +
+      Indent + Step + Step + Step + 'var Fehler := E.Message;' + LineBreak +
+      Indent + Step + Step + Step + 'TThread.Queue(nil,' + LineBreak + // mainthread-ok
+      Indent + Step + Step + Step + Step + 'procedure' + LineBreak +
+      Indent + Step + Step + Step + Step + 'begin' + LineBreak +
+      Indent + Step + Step + Step + Step + Step + 'ShowMessage(Fehler);' + LineBreak +
+      Indent + Step + Step + Step + Step + 'end);' + LineBreak +
+      Indent + Step + Step + 'end;' + LineBreak +
+      Indent + Step + 'end;' + LineBreak)];
+    // ShowMessage aus Vcl.Dialogs bzw. FMX.Dialogs, Exception aus System.SysUtils.
+    Used := TUsesClauses.UsedUnits(AContext.Tree.Tokens);
+    Dialogs := 'Vcl.Dialogs';
+    for UsedUnit in Used do
+      if StartsText('FMX.', UsedUnit) then
+        Dialogs := 'FMX.Dialogs';
+    if not TUsesClauses.IsUsed(Used, Dialogs, AContext.Namespaces) and
+      TUsesClauses.AddUnit(AContext.Tree.Tokens, ABody.StartOffset, Dialogs, LineBreak, UsesEdit) then
+      Edits := [UsesEdit] + Edits;
+    if not TUsesClauses.IsUsed(Used, 'System.SysUtils', AContext.Namespaces) and
+      TUsesClauses.AddUnit(AContext.Tree.Tokens, ABody.StartOffset, 'System.SysUtils', LineBreak, UsesEdit) then
+      Edits := [UsesEdit] + Edits;
+    Result := [TRuleFix.Create('Rumpf in try … except mit Meldung über TThread.Queue einschließen', Edits)];
+  end;
+
+  procedure Report(ACall: TSyntaxNode);
+  var
+    Method, Body: TSyntaxNode;
+    Name: string;
+  begin
+    Method := ACall[1];
+    if Method.Kind <> TSyntaxKind.AnonymousMethod then
+      Exit;
+    Body := Method.FindChild(TSyntaxKind.Block);
+    if (Body = nil) or Catches(Body) then
+      Exit;
+    Name := FirstCall(Body);
+    if Name = '' then
+      Name := 'im Task'
+    else
+      Name := 'in ' + Name;
+    AReport.Add(NameRange(ACall[0]), Format('Der Task wird nie abgefragt und fängt keine Exceptions; Fehler %s ' +
+      'gehen verloren.', [Name]), TRuleConfidence.Medium, WrapFix(Body));
+  end;
+
+  // Wie oft erwähnt die Routine die Variable außer an ATarget: als V.Start und sonst?
+  procedure CountUses(ANode, AParent, ATarget: TSyntaxNode; const AName: string; var AStarts, AOthers: Integer);
+  var
+    Index: Integer;
+  begin
+    if (ANode <> ATarget) and (ANode.Kind = TSyntaxKind.Identifier) and SameText(ANode.Name, AName) then
+    begin
+      if (AParent <> nil) and (AParent.Kind = TSyntaxKind.MemberAccess) and SameText(AParent.Name, 'Start') then
+        Inc(AStarts)
+      else
+        Inc(AOthers);
+      Exit;
+    end;
+    for Index := 0 to ANode.ChildCount - 1 do
+      CountUses(ANode[Index], ANode, ATarget, AName, AStarts, AOthers);
+  end;
+
+  // Run ohne jede weitere Erwähnung; Create nur mit V.Start.
+  procedure CheckVariable(ARoutine, ATarget, AValue: TSyntaxNode; const AName: string);
+  var
+    Starts, Others: Integer;
+  begin
+    Starts := 0;
+    Others := 0;
+    CountUses(ARoutine, nil, ATarget, AName, Starts, Others);
+    if Others > 0 then
+      Exit;
+    if (IsTaskCall(AValue, 'Run') and (Starts = 0)) or (IsTaskCall(AValue, 'Create') and (Starts > 0)) then
+      Report(AValue);
+  end;
+
+  procedure Visit(ANode, ARoutine: TSyntaxNode);
+  var
+    Index: Integer;
+    Created: TSyntaxNode;
+  begin
+    if ANode.Kind = TSyntaxKind.RoutineDecl then
+      ARoutine := ANode;
+    if (ANode.Kind = TSyntaxKind.CallStatement) and (ANode.ChildCount > 0) then
+    begin
+      Created := StartedCreate(ANode[0]);
+      if IsTaskCall(ANode[0], 'Run') then
+        Report(ANode[0])
+      else if Created <> nil then
+        Report(Created);
+    end
+    // Lokale Variable, die nie wieder vorkommt (bei Create nur in V.Start).
+    else if (ARoutine <> nil) and (ANode.Kind = TSyntaxKind.AssignStatement) and (ANode.ChildCount = 2) and
+      (ANode[0].Kind = TSyntaxKind.Identifier) and not SameText(ANode[0].Name, 'Result') and
+      (Pos('.', ANode[0].Name) = 0) and DeclaresLocalVariable(ARoutine, ANode[0].Name) then
+      CheckVariable(ARoutine, ANode[0], ANode[1], ANode[0].Name)
+    else if (ARoutine <> nil) and (ANode.Kind = TSyntaxKind.InlineVar) and (ANode.ChildCount > 0) and
+      (Pos(',', ANode.Name) = 0) then
+      CheckVariable(ARoutine, nil, ANode[ANode.ChildCount - 1], ANode.Name);
+    for Index := 0 to ANode.ChildCount - 1 do
+      Visit(ANode[Index], ARoutine);
+  end;
+
+begin
+  if (AContext.Tree = nil) or (AContext.Tree.Root = nil) or not ContainsText(AContext.Text, 'TTask') then
+    Exit;
+  Lines := TTextLines.SplitLines(AContext.Text, LineBreak);
+  Visit(AContext.Tree.Root, nil);
+end;
+
 procedure RegisterConcurrencyRules(const ARegistry: TRuleRegistry);
 begin
   ARegistry.Register(TThreadVclAccessRule.Create);
@@ -867,6 +2325,13 @@ begin
   ARegistry.Register(TThreadFreeWithFreeOnTerminateRule.Create);
   ARegistry.Register(TSynchronizeInDestructorRule.Create);
   ARegistry.Register(TThreadResumeSuspendRule.Create);
+  ARegistry.Register(TPairWithoutFinallyRule.Create);
+  ARegistry.Register(TProcessMessagesInLoopRule.Create);
+  ARegistry.Register(TQueueNilInPackageRule.Create);
+  ARegistry.Register(TBlockingCallInMainThreadRule.Create);
+  ARegistry.Register(TThreadLoopWithoutTerminatedRule.Create);
+  ARegistry.Register(TAnonymousThreadNotStartedRule.Create);
+  ARegistry.Register(TTaskExceptionUnobservedRule.Create);
 end;
 
 end.

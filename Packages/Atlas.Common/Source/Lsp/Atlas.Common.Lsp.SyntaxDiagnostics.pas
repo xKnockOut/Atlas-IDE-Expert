@@ -74,6 +74,14 @@ type
     /// <summary>Absoluter Pfad und Inhalt der requires-Packages für Package-Prüfungen (#46).</summary>
     FileName: string;
     PackageProvides: TRulePackageProvides;
+    /// <summary>Unit-Suche wie beim Compiler (#1016); nil = keine.</summary>
+    Units: IRuleUnitLookup;
+    /// <summary>Anwendungsart des Projekts der Datei (#926); Unknown ohne Projekt.</summary>
+    Application: TRuleApplicationKind;
+    /// <summary>Name des Projekts ohne Endung (#943); '' ohne Projekt.</summary>
+    ProjectName: string;
+    /// <summary>Automatisch erzeugte Formulare in der Reihenfolge der .dpr (#956); nil ohne Projekt.</summary>
+    AutoCreateForms: TArray<string>;
     /// <summary>Abbruch zwischen den Prüfregeln; nil = nie. Setzt Compute.</summary>
     Cancelled: TRuleCancelled;
   end;
@@ -819,6 +827,11 @@ class function TLspSyntaxDiagnostics.FindingToJson(const AFinding: TRuleFinding)
 var
   Severity: Integer;
   Tags: TJSONArray;
+  Data: TJSONObject;
+  Entry: TRuleCatalogEntry;
+  Fix: TRuleFix;
+  Codes: TJSONArray;
+  Code: string;
 begin
   case AFinding.Severity of
     TRuleSeverity.Error:
@@ -839,7 +852,30 @@ begin
   Result.AddPair('source', Source);
   // Konfidenz als eigenes Feld, der Meldungstext bleibt unverändert (#144).
   Result.AddPair('message', AFinding.Message);
-  Result.AddPair('data', TJSONObject.Create(TJSONPair.Create('confidence', ConfidenceName(AFinding.Confidence))));
+  Data := TJSONObject.Create(TJSONPair.Create('confidence', ConfidenceName(AFinding.Confidence)));
+  // Fenster „Atlas-Prüfung“ und Befund-Hover (#909): Kategorie und Gruppe aus dem Katalog, Titel der
+  // bevorzugten Schnellkorrektur.
+  if TRuleCatalog.Shared.TryFind(AFinding.RuleId, Entry) then
+  begin
+    Data.AddPair('category', TRuleCatalog.CategoryName(Entry.Category));
+    Data.AddPair('group', TRuleCatalog.GroupName(Entry.Group));
+    // Gruppe „Compiler vorab“ (#1024): Codes für den Abgleich mit dcc und die Spalte „Compiler“ im Plugin.
+    if Length(Entry.CompilerCodes) > 0 then
+    begin
+      Codes := TJSONArray.Create;
+      for Code in Entry.CompilerCodes do
+        Codes.Add(Code);
+      Data.AddPair('compilerCodes', Codes);
+    end;
+  end;
+  // Wie Rules.CodeActions: bevorzugt ist nur die erste Korrektur, wenn sie keine Alternative ist.
+  if Length(AFinding.Fixes) > 0 then
+  begin
+    Fix := AFinding.Fixes[0];
+    if not Fix.Alternative then
+      Data.AddPair('fix', Fix.Title);
+  end;
+  Result.AddPair('data', Data);
   // Veraltete Symbole durchgestrichen (#38).
   if AFinding.RuleId = DeprecatedSymbolRuleId then
   begin
@@ -984,6 +1020,10 @@ begin
   Context.ReadFile := ARules.ReadFile;
   Context.FileName := ARules.FileName;
   Context.PackageProvides := ARules.PackageProvides;
+  Context.Units := ARules.Units;
+  Context.Application := ARules.Application;
+  Context.ProjectName := ARules.ProjectName;
+  Context.AutoCreateForms := ARules.AutoCreateForms;
   Context.Cancelled := ARules.Cancelled;
   Result := TRuleEngine.Run(ARules.Rules, ARules.Settings, Context);
 end;

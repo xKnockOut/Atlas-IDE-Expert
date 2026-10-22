@@ -102,9 +102,20 @@ begin
       Action.Title := Fix.Title;
       Action.Kind := QuickFixKind;
       AddFixEdits(Action, Fix);
+      // Sprung zu einer anderen Stelle der Datei (#915), z. B. zur Freigabe; mit Parameter-Hint (#1007).
+      if Fix.HasJump then
+      begin
+        Action.Command := GoToPositionCommand;
+        if Fix.OpensSignature then
+          Action.Command := ShowSignatureHelpCommand;
+        Action.CommandArguments := [IntToStr(Fix.JumpTo.Line), IntToStr(Fix.JumpTo.Character)];
+      end;
       Action.IsPreferred := First and not Fix.Alternative;
       Action.RuleId := Finding.RuleId;
       Action.DiagnosticRange := Finding.Range;
+      // Fenster „Atlas-Prüfung“ und Befund-Hover suchen die Schnellkorrektur über das Tag (#909).
+      if Action.IsPreferred then
+        Action.Tag := RuleFixTag;
       Result := Result + [Action];
       First := False;
     end;
@@ -116,9 +127,11 @@ begin
     Action.Edits := [TCodeActions.SuppressLine(AText, Finding.Range.StartPos.Line, Finding.RuleId)];
     Action.RuleId := Finding.RuleId;
     Action.DiagnosticRange := Finding.Range;
+    Action.Tag := RuleSuppressLineTag;
     Result := Result + [Action];
     Action.Title := Format('"%s" für diese Datei unterdrücken', [Finding.RuleId]);
     Action.Edits := [TCodeActions.SuppressFile(AText, Finding.RuleId)];
+    Action.Tag := RuleSuppressFileTag;
     Result := Result + [Action];
   end;
 end;

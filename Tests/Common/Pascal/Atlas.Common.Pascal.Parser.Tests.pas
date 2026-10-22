@@ -326,6 +326,7 @@ end;
 procedure TPascalParserTests.ParsesStatements;
 var
   Tree: TSyntaxTree;
+  Item: TSyntaxNode;
 begin
   Tree := TPascalParser.Parse(Lines(['program P;', 'begin',
     '  if (A >= B) and not C then X := Y.Z(1)[2]^ else begin end;',
@@ -350,6 +351,12 @@ begin
     Assert.IsNotNull(FindFirst(Tree.Root, TSyntaxKind.SetConstructor));
     Assert.IsNotNull(FindFirst(Tree.Root, TSyntaxKind.Dereference));
     Assert.IsNotNull(FindFirst(Tree.Root, TSyntaxKind.InheritedExpr));
+    // Marke 1..2 ist ein Bereich wie in Mengen (#983), danach die Marke 3.
+    Item := FindFirst(Tree.Root, TSyntaxKind.CaseItem);
+    Assert.AreEqual(2, Item.ChildCount);
+    Assert.AreEqual(Ord(TSyntaxKind.RangeExpr), Ord(Item[0].Kind));
+    Assert.AreEqual(2, Item[0].ChildCount);
+    Assert.AreEqual(Ord(TSyntaxKind.Literal), Ord(Item[1].Kind));
   finally
     Tree.Free;
   end;

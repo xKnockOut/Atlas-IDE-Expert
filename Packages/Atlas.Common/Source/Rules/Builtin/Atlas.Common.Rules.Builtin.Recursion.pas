@@ -1,12 +1,14 @@
 ﻿unit Atlas.Common.Rules.Builtin.Recursion;
 
-// Property-Falle (#623):
-//   recursive-property-accessor   Getter liest bzw. Setter schreibt die eigene
-//                                 Property (Result := Name in GetName) und
-//                                 ruft sich damit endlos selbst auf.
-// Die Analyse liefert TRecursionAnalysis.AccessorTraps. Hat die Klasse das
-// Feld F<Name>, nennt die Meldung es und die Korrektur setzt es ein.
-// Geerbte Properties und Accessoren in anderen Units sieht die Analyse nicht.
+// Property-Falle (#623, #910):
+//   setter-recursion   Setter schreibt bzw. Getter liest die eigene Property
+//                      (Name := Value in SetName) und ruft sich damit endlos
+//                      selbst auf. Fehler mit hoher Konfidenz; bis #910 hieß
+//                      die Regel recursive-property-accessor (TRuleIdAliases).
+// Die Analyse liefert TRecursionAnalysis.AccessorTraps. Die Korrektur setzt
+// das Feld ein: aus read/write der Property, sonst F<Name>, wenn die Klasse
+// es hat. Geerbte Properties und Accessoren in anderen Units sieht die
+// Analyse nicht.
 
 interface
 
@@ -16,10 +18,10 @@ uses
   Atlas.Common.Rules.Registry;
 
 const
-  RecursivePropertyAccessorRuleId = 'recursive-property-accessor';
+  SetterRecursionRuleId = 'setter-recursion';
 
 type
-  TRecursivePropertyAccessorRule = class(TInterfacedObject, IRule)
+  TSetterRecursionRule = class(TInterfacedObject, IRule)
   public
     function Descriptor: TRuleDescriptor;
     procedure Check(const AContext: TRuleContext; const AReport: IRuleReport);
@@ -35,27 +37,23 @@ uses
   System.SysUtils,
   Atlas.Common.Configuration.Contract;
 
-{ TRecursivePropertyAccessorRule }
+{ TSetterRecursionRule }
 
-function TRecursivePropertyAccessorRule.Descriptor: TRuleDescriptor;
+function TSetterRecursionRule.Descriptor: TRuleDescriptor;
 begin
-  Result := TRuleDescriptor.Create(RecursivePropertyAccessorRuleId, TRuleSeverity.Warning,
-    'Getter liest oder Setter schreibt die eigene Property (endlose Rekursion)');
+  Result := TRuleDescriptor.Create(SetterRecursionRuleId, TRuleSeverity.Error,
+    'Setter oder Getter ruft sich selbst auf (Endlosrekursion)');
 end;
 
-class function TRecursivePropertyAccessorRule.Message(const ATrap: TAccessorTrap): string;
+class function TSetterRecursionRule.Message(const ATrap: TAccessorTrap): string;
 begin
   if ATrap.IsSetter then
-    Result := Format('Setter %s schreibt die eigene Property %s und ruft sich damit endlos selbst auf',
-      [ATrap.Accessor, ATrap.PropertyName])
+    Result := Format('Zuweisung an die Property %s im eigenen Setter: Endlosrekursion.', [ATrap.PropertyName])
   else
-    Result := Format('Getter %s liest die eigene Property %s und ruft sich damit endlos selbst auf',
-      [ATrap.Accessor, ATrap.PropertyName]);
-  if ATrap.Field <> '' then
-    Result := Result + Format('; das Feld %s verwenden', [ATrap.Field]);
+    Result := Format('Lesen der Property %s im eigenen Getter: Endlosrekursion.', [ATrap.PropertyName]);
 end;
 
-procedure TRecursivePropertyAccessorRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
+procedure TSetterRecursionRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
 var
   Trap: TAccessorTrap;
 begin
@@ -71,7 +69,7 @@ end;
 
 procedure RegisterRecursionRules(const ARegistry: TRuleRegistry);
 begin
-  ARegistry.Register(TRecursivePropertyAccessorRule.Create);
+  ARegistry.Register(TSetterRecursionRule.Create);
 end;
 
 end.

@@ -32,6 +32,7 @@ uses
   Atlas.Common.Index.Scheduler,
   Atlas.Common.Index.Processes,
   Atlas.Common.Index.Adapters.Processes,
+  Atlas.Common.Rules.Contract,
   Atlas.Common.Rules.Baseline,
   Atlas.Common.Lsp.Status,
   Shell.Compiler;
@@ -57,6 +58,9 @@ type
     /// Arbeitsbereichs, weil Prüfungen in Anfrage-Threads sie noch halten können.</summary>
     FPackageLocator: TPackageLocator;
     FRetiredLocators: TObjectList<TPackageLocator>;
+    /// <summary>Unit-Suche wie beim Compiler für uses-unit-not-found (#1016), je Indexaufbau neu; unter FLock.
+    /// </summary>
+    FUnitLookup: IRuleUnitLookup;
     FOnPackageFolders: TFunc<TArray<string>>;
     /// <summary>Gemerkte Wahl über Neustarts (#46); gehört der Komposition, nil = nichts merken.</summary>
     FSelection: TProjectSelection;
@@ -255,6 +259,8 @@ type
     /// <summary>Packages des zuletzt geladenen Projekts (#46); nil vor dem ersten Laden. Bleibt bis zur Freigabe
     /// des Arbeitsbereichs gültig. Threadsicher.</summary>
     property PackageLocator: TPackageLocator read GetPackageLocator;
+    /// <summary>Unit-Suche des zuletzt geladenen Projekts (#1016); nil vor dem ersten Laden. Threadsicher.</summary>
+    function UnitLookup: IRuleUnitLookup;
     /// <summary>Vor Load setzen (#46): selectBuild merkt die Wahl dort, der erste Indexaufbau übernimmt sie.</summary>
     property Selection: TProjectSelection read FSelection write FSelection;
     /// <summary>Feste Projektdatei oder die des geladenen Projekts; '' ohne Projekt. Threadsicher.</summary>
@@ -279,6 +285,7 @@ uses
   Atlas.Common.Projects.Paths,
   Atlas.Common.Projects.DprojReader,
   Atlas.Common.Projects.PackageReader,
+  Atlas.Common.Projects.UnitLookup,
   Atlas.Common.Projects.DelphiVersions,
   Atlas.Common.Index.ProjectFiles,
   Atlas.Common.Index.Adapters.DiskFileSystem,
@@ -288,8 +295,8 @@ uses
   Shell.Bootstrap;
 
 type
-  /// <summary>.pas-Dateien je Ordner, geteilt von allen Projekten des Servers. Neu gelesen, wenn sich
-  /// der Ordner geändert hat (Datei hinzugefügt oder entfernt).</summary>
+  /// <summary>.pas-Dateien (für uses-unit-not-found auch .dcu, #1016) je Ordner, geteilt von allen Projekten
+  /// des Servers. Neu gelesen, wenn sich der Ordner geändert hat (Datei hinzugefügt oder entfernt).</summary>
   TSharedUnitListings = class
   private type
     TListing = record
@@ -303,6 +310,9 @@ type
     class constructor Create;
     class destructor Destroy;
     class function List(AFolder: string): TArray<string>; static;
+    /// <summary>.pas- und .dcu-Dateien des Ordners.</summary>
+    class function ListUnitFiles(AFolder: string): TArray<string>; static;
+    class function Listed(const AFolder, APattern: string): TArray<string>; static;
   end;
 
 class constructor TSharedUnitListings.Create;
@@ -318,6 +328,16 @@ begin
 end;
 
 class function TSharedUnitListings.List(AFolder: string): TArray<string>;
+begin
+  Result := Listed(AFolder, '*.pas');
+end;
+
+class function TSharedUnitListings.ListUnitFiles(AFolder: string): TArray<string>;
+begin
+  Result := Listed(AFolder, '*.pas') + Listed(AFolder, '*.dcu');
+end;
+
+class function TSharedUnitListings.Listed(const AFolder, APattern: string): TArray<string>;
 var
   Key: string;
   Listing: TListing;
@@ -328,7 +348,7 @@ begin
     if not TDirectory.Exists(AFolder) then
       Exit;
     Stamp := TDirectory.GetLastWriteTime(AFolder);
-    Key := AnsiLowerCase(ExcludeTrailingPathDelimiter(AFolder));
+    Key := AnsiLowerCase(ExcludeTrailingPathDelimiter(AFolder)) + '|' + APattern;
     TMonitor.Enter(FLock);
     try
       if FListings.TryGetValue(Key, Listing) and (Listing.Stamp = Stamp) then
@@ -337,7 +357,7 @@ begin
       TMonitor.Exit(FLock);
     end;
     Listing.Stamp := Stamp;
-    Listing.Files := TDirectory.GetFiles(AFolder, '*.pas');
+    Listing.Files := TDirectory.GetFiles(AFolder, APattern);
     TMonitor.Enter(FLock);
     try
       FListings.AddOrSetValue(Key, Listing);
@@ -350,6 +370,110 @@ begin
     on Exception do
       Result := nil;
   end;
+end;
+
+/// <summary>Unit-Suche wie beim Compiler (#1016) über die geteilten Ordnerlisten. Ohne Installation (und ohne
+/// Bibliothekspfade aus der IDE) gilt keine Unit als sicher fehlend.</summary>
+function UnitLookupFor(const AProject: TProjectInfo; const AInstallation: ILibraryPathProvider;
+  const ALibraryPaths: TArray<string>; ALocator: TPackageLocator; const AIndex: ISymbolIndex): IRuleUnitLookup;
+var
+  Setup: TUnitLookupSetup;
+  Text: string;
+  SourceFormat: TFileFormat;
+  Entry: TPackageEntry;
+begin
+  Setup := Default(TUnitLookupSetup);
+  Setup.Project := AProject;
+  Setup.LibraryPaths := ALibraryPaths;
+  Setup.LibraryKnown := Length(ALibraryPaths) > 0;
+  if AInstallation <> nil then
+    Setup.BrowsingPaths := AInstallation.BrowsingPaths(AProject.Platform);
+  // requires der .dpk: deren Units findet der Compiler über die .dcp.
+  if SameText(ExtractFileExt(AProject.MainSource), '.dpk') then
+  try
+    Text := TFileEncoding.LoadFromFile(AProject.MainSource, SourceFormat);
+    for Entry in TPackageReader.Read(Text).Requires do
+      Setup.RequiredPackages := Setup.RequiredPackages + [Entry.Name];
+  except
+    // Nicht lesbar: ohne requires, dann bleibt die Suche bei Packages unsicher.
+    on Exception do
+      Setup.RequiredPackages := ['?'];
+  end;
+  Setup.ListFiles := TSharedUnitListings.ListUnitFiles;
+  Setup.ListFolders :=
+    function(AFolder: string): TArray<string>
+    begin
+      Result := nil;
+      try
+        if TDirectory.Exists(AFolder) then
+          Result := TDirectory.GetDirectories(AFolder);
+      except
+        on Exception do
+          Result := nil;
+      end;
+    end;
+  Setup.FileExists :=
+    function(AFileName: string): Boolean
+    begin
+      Result := FileExists(AFileName);
+    end;
+  Setup.ReadText :=
+    function(const AFileName: string; out AText: string): Boolean
+    var
+      TextFormat: TFileFormat;
+    begin
+      Result := FileExists(AFileName);
+      AText := '';
+      if Result then
+      try
+        AText := TFileEncoding.LoadFromFile(AFileName, TextFormat);
+      except
+        on Exception do
+          Result := False;
+      end;
+    end;
+  if ALocator <> nil then
+  begin
+    Setup.PackageProvides :=
+      function(const APackage, AUnitName: string): TRulePackageAnswer
+      var
+        Contains: Boolean;
+      begin
+        if not ALocator.Provides(APackage, AUnitName, Contains) then
+          Result := TRulePackageAnswer.Unknown
+        else if Contains then
+          Result := TRulePackageAnswer.Yes
+        else
+          Result := TRulePackageAnswer.No;
+      end;
+    Setup.PackageExists :=
+      function(APackage: string): Boolean
+      var
+        Contains: Boolean;
+      begin
+        Result := ALocator.Provides(APackage, APackage, Contains);
+      end;
+  end;
+  if AIndex <> nil then
+  begin
+    Setup.IndexKnows :=
+      function(AName: string): Boolean
+      var
+        Found: TUnitIndex;
+      begin
+        Result := AIndex.FindUnit(AName, Found);
+      end;
+    Setup.IndexUnits :=
+      function: TArray<string>
+      var
+        Item: TUnitIndex;
+      begin
+        Result := nil;
+        for Item in AIndex.Units do
+          Result := Result + [Item.UnitName];
+      end;
+  end;
+  Result := TUnitLookup.Create(Setup);
 end;
 
 const
@@ -1023,6 +1147,16 @@ begin
   end;
 end;
 
+function TShellWorkspace.UnitLookup: IRuleUnitLookup;
+begin
+  TMonitor.Enter(FLock);
+  try
+    Result := FUnitLookup;
+  finally
+    TMonitor.Exit(FLock);
+  end;
+end;
+
 function TShellWorkspace.GetPackageLocator: TPackageLocator;
 begin
   TMonitor.Enter(FLock);
@@ -1222,6 +1356,7 @@ var
   ProjectUnit: TProjectUnit;
   PackageFolders: TArray<string>;
   Locator: TPackageLocator;
+  Lookup: IRuleUnitLookup;
 begin
   // Mit index.projectGroup = false nur das Projekt der geöffneten Datei (#648).
   if FDeferred and not FActivated and not ASettings.IndexProjectGroup then
@@ -1420,6 +1555,13 @@ begin
     if FPackageLocator <> nil then
       FRetiredLocators.Add(FPackageLocator);
     FPackageLocator := Locator;
+  finally
+    TMonitor.Exit(FLock);
+  end;
+  Lookup := UnitLookupFor(Project, Installation, CompilerLibraryPaths, Locator, FIndex);
+  TMonitor.Enter(FLock);
+  try
+    FUnitLookup := Lookup;
   finally
     TMonitor.Exit(FLock);
   end;

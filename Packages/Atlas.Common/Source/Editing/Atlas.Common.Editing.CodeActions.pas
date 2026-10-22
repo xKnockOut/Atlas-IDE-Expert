@@ -38,6 +38,11 @@ const
   RemoveUnusedKind = 'source.removeUnusedImports';
   /// <summary>Client-Befehl, der das erste Argument in die Zwischenablage legt (#312).</summary>
   CopyTextCommand = 'atlas.copyText';
+  /// <summary>Client-Befehl, der den Cursor im Dokument der Aktion auf Zeile (erstes Argument) und Zeichen
+  /// (zweites Argument, beide 0-basiert) setzt (#915).</summary>
+  GoToPositionCommand = 'atlas.goToPosition';
+  /// <summary>Wie GoToPositionCommand; danach öffnet der Client den Parameter-Hint an der Stelle (#1007).</summary>
+  ShowSignatureHelpCommand = 'atlas.showSignatureHelp';
   /// <summary>Kennungen der uses-Aktionen für den Hover des Plugins (#621), in data.tag.</summary>
   UsesRemoveTag = 'uses.remove';
   UsesRemoveAllTag = 'uses.removeAll';
@@ -46,6 +51,12 @@ const
   /// Plugins sucht sie (#697).</summary>
   ClassBodiesTag = 'class.bodies';
   CaseCompleteTag = 'case.complete';
+  /// <summary>Schnellkorrektur eines Regeltreffers und „für diese Zeile/Datei unterdrücken“ (#909); das Fenster
+  /// „Atlas-Prüfung“ und der Befund-Hover wählen damit die Aktion zum Treffer (Regel in diagnostics[0].code).
+  /// </summary>
+  RuleFixTag = 'rule.fix';
+  RuleSuppressLineTag = 'rule.suppressLine';
+  RuleSuppressFileTag = 'rule.suppressFile';
 
 type
   /// <summary>Edits in einer anderen Datei als dem Dokument der Aktion, z. B. der Formulardatei (#309).</summary>

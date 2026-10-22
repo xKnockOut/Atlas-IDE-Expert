@@ -17,6 +17,9 @@
 // Überschreitung. Die Projekt-Zusammenfassung der Willkommensseite (#592)
 // übernimmt "summary" als Abschnitt "metrics" (#758).
 // Der Text entsteht ohne System.JSON, damit die Unit überall gleich arbeitet.
+// Kennzahlen des Aufbaus einer Datei (#939) als StructureJson:
+//   [{"kind": "classSize", "name": "TFoo", "line": 5, "character": 3, "value": 87, "limit": 40}, …]
+// kind ist classSize, unitLength oder usesCount.
 
 interface
 
@@ -66,6 +69,15 @@ type
     /// <summary>Titel der Code Lens: "12 Zeilen · Tiefe 2 · zyklomatisch 4 · kognitiv 3 · 2 Parameter";
     /// Überschreitungen mit Grenzwert, z. B. "zyklomatisch 17 (> 15)".</summary>
     class function LensTitle(const AValues: TMetricValues; const ALimits: TMetricLimits): string; static;
+    /// <summary>Kennung des Aufbaus in JSON: classSize, unitLength, usesCount (#939).</summary>
+    class function StructureKey(AKind: TStructureKind): string; static;
+    /// <summary>Kennzahlen des Aufbaus als JSON-Array (siehe Kopf der Unit, #939).</summary>
+    class function StructureJson(const AItems: TArray<TStructureMetrics>; const ALimits: TMetricLimits): string;
+      static;
+    /// <summary>Teil der Code Lens zum Aufbau (#939): "87 Member", "2140 Zeilen" bzw. "34 Units im uses";
+    /// Überschreitungen mit Grenzwert, z. B. "87 Member (> 40)".</summary>
+    class function StructureLensPart(AKind: TStructureKind; AValue: Integer; const ALimits: TMetricLimits): string;
+      static;
   end;
 
 implementation
@@ -431,6 +443,53 @@ begin
     Part(TMetricKind.Cyclomatic, 'zyklomatisch ' + IntToStr(AValues[TMetricKind.Cyclomatic])) + ' · ' +
     Part(TMetricKind.Cognitive, 'kognitiv ' + IntToStr(AValues[TMetricKind.Cognitive])) + ' · ' +
     Part(TMetricKind.ParameterCount, IntToStr(AValues[TMetricKind.ParameterCount]) + ' Parameter');
+end;
+
+class function TMetricsReport.StructureKey(AKind: TStructureKind): string;
+begin
+  case AKind of
+    TStructureKind.ClassSize:
+      Result := 'classSize';
+    TStructureKind.UnitLength:
+      Result := 'unitLength';
+  else
+    Result := 'usesCount';
+  end;
+end;
+
+class function TMetricsReport.StructureJson(const AItems: TArray<TStructureMetrics>;
+  const ALimits: TMetricLimits): string;
+var
+  Index: Integer;
+  Item: TStructureMetrics;
+begin
+  Result := '[';
+  for Index := 0 to High(AItems) do
+  begin
+    Item := AItems[Index];
+    if Index > 0 then
+      Result := Result + ', ';
+    Result := Result + '{"kind": ' + JsonString(StructureKey(Item.Kind)) + ', "name": ' + JsonString(Item.Name) +
+      ', "line": ' + IntToStr(Item.NameRange.StartPos.Line + 1) + ', "character": ' +
+      IntToStr(Item.NameRange.StartPos.Character + 1) + ', "value": ' + IntToStr(Item.Value) + ', "limit": ' +
+      IntToStr(ALimits.Structure[Item.Kind]) + '}';
+  end;
+  Result := Result + ']';
+end;
+
+class function TMetricsReport.StructureLensPart(AKind: TStructureKind; AValue: Integer;
+  const ALimits: TMetricLimits): string;
+begin
+  case AKind of
+    TStructureKind.ClassSize:
+      Result := IntToStr(AValue) + ' Member';
+    TStructureKind.UnitLength:
+      Result := IntToStr(AValue) + ' Zeilen';
+  else
+    Result := IntToStr(AValue) + ' Units im uses';
+  end;
+  if ALimits.ExceedsStructure(AKind, AValue) then
+    Result := Result + ' (> ' + IntToStr(ALimits.Structure[AKind]) + ')';
 end;
 
 end.

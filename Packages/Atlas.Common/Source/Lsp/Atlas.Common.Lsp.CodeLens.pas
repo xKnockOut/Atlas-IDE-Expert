@@ -74,7 +74,8 @@ type
     /// <summary>Alle Linsen der Datei; Referenzen noch ohne Titel.</summary>
     class function Lenses(AResolver: TNameResolver; const AIndex: ISymbolIndex; ATree: TSyntaxTree;
       const AFileName: string; const AReadText: TReferenceReadText): TArray<TCodeLensEntry>; static;
-    /// <summary>Metrik-Linse über dem Namen jeder implementierten Methode (#66).</summary>
+    /// <summary>Metrik-Linse über dem Namen jeder implementierten Methode (#66), über jeder Klasse (Member), über
+    /// dem Unit-Namen (Zeilen) und über dem ersten uses (Units im uses, #939); der Aufbau zuerst.</summary>
     class function MetricLenses(ATree: TSyntaxTree; const ALimits: TMetricLimits): TArray<TCodeLensEntry>; static;
     /// <summary>Nächster Vorfahr von AType, der die Routine AName deklariert (auch für die Zeilenleiste #768);
     /// AOwner ist sein Name, ATarget die Deklaration. False, wenn keiner im Index steht.</summary>
@@ -341,9 +342,18 @@ end;
 class function TLspCodeLens.MetricLenses(ATree: TSyntaxTree; const ALimits: TMetricLimits): TArray<TCodeLensEntry>;
 var
   Routine: TRoutineMetrics;
+  Item: TStructureMetrics;
   Entry: TCodeLensEntry;
 begin
   Result := nil;
+  for Item in TMetricsCalculator.Structure(ATree) do
+  begin
+    Entry := Default(TCodeLensEntry);
+    Entry.Kind := TCodeLensKind.Metrics;
+    Entry.Range := Item.NameRange;
+    Entry.Title := TMetricsReport.StructureLensPart(Item.Kind, Item.Value, ALimits);
+    Result := Result + [Entry];
+  end;
   for Routine in TMetricsCalculator.Routines(ATree) do
   begin
     Entry := Default(TCodeLensEntry);

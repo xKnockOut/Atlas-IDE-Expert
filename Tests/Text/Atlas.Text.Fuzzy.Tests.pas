@@ -32,6 +32,10 @@ type
     procedure BoundedSubsequenceRejectsScattered;
     [Test]
     procedure EmptyPatternMatches;
+    [Test]
+    procedure EditDistanceWithLimit;
+    [Test]
+    procedure ClosestFindsTypos;
   end;
 
 implementation
@@ -72,6 +76,25 @@ procedure TTextFuzzyTests.EmptyPatternMatches;
 begin
   Assert.IsTrue(TTextFuzzy.MatchesBoundedSubsequence('', 'TStringList'));
   Assert.IsTrue(TTextFuzzy.MatchesWordStarts('', 'TStringList'));
+end;
+
+procedure TTextFuzzyTests.EditDistanceWithLimit;
+begin
+  Assert.AreEqual(0, TTextFuzzy.EditDistance('Destroy', 'DESTROY', 2));
+  Assert.AreEqual(2, TTextFuzzy.EditDistance('Destory', 'Destroy', 2));
+  Assert.AreEqual(1, TTextFuzzy.EditDistance('Lauf', 'Laufe', 2));
+  // Über der Grenze: Grenze + 1.
+  Assert.AreEqual(3, TTextFuzzy.EditDistance('Abc', 'Xyzuvw', 2));
+end;
+
+procedure TTextFuzzyTests.ClosestFindsTypos;
+begin
+  Assert.AreEqual('Destroy', TTextFuzzy.Closest('Destory', ['Create', 'Destroy', 'Free']));
+  Assert.AreEqual('Laden', TTextFuzzy.Closest('Lade', ['Laden', 'Lader']));
+  Assert.AreEqual('', TTextFuzzy.Closest('Ganzanders', ['Destroy']));
+  // Kurze Namen: höchstens die Hälfte darf abweichen; der Name selbst ist kein Tippfehler.
+  Assert.AreEqual('', TTextFuzzy.Closest('IX', ['IF']));
+  Assert.AreEqual('', TTextFuzzy.Closest('Destroy', ['Destroy', 'Destroyed']));
 end;
 
 initialization

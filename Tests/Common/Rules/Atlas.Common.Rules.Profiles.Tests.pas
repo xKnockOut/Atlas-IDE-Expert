@@ -169,62 +169,66 @@ end;
 procedure TRuleProfilesTests.BuiltinProfilesActivateExpectedRules;
 const
   Threads = 'thread-free-with-free-on-terminate,thread-use-after-free-on-terminate,thread-vcl-access';
-  All = 'assert-side-effect,bidi-control,bool-compare,captured-loop-variable,char-to-pchar,' +
+  All = 'abstract-class-instantiated,anonymous-thread-not-started,argument-count-mismatch,assert-side-effect,assign-to-property-member,bidi-control,blocking-call-in-main-thread,bool-compare,boolean-assign-if,captured-loop-variable,case-insensitive-compare,case-missing-enum-value,char-to-pchar,' +
+    'collection-modified-in-loop,commented-out-code,comparison-as-statement,' +
     'component-create-without-override,component-default-mismatch,component-fixed-pixels,' +
     'component-hardcoded-color,component-missing-free-notification,component-missing-inherited,' +
-    'component-palette-icon,component-setter-without-invalidate,confusable-identifier,' +
-    'constructor-on-instance,control-char,declared-not-implemented,deprecated-symbol,destroy-without-override,' +
+    'component-palette-icon,component-setter-without-invalidate,conditional-directive-unbalanced,confusable-identifier,' +
+    'constructor-on-instance,control-char,create-without-assignment,createprocess-readonly-commandline,dataset-edit-without-post,dataset-loop-without-next,declared-not-implemented,delimited-text-without-strict,deprecated-symbol,deref-before-nil-check,destroy-called-directly,destroy-without-override,' +
     'dfm-circular-datasource,dfm-control-field-type-mismatch,dfm-duplicate-binding,' +
-    'dfm-master-without-fields,dfm-property,dfm-required-field-without-control,duplicate-interface-guid,' +
-    'empty-except,exception-freed,exception-not-raised,float-equality,for-high-to-low,forbidden-uses,' +
-    'foreign-form-control-access,form-field-type-mismatch,form-field-without-object,' +
+    'dfm-master-without-fields,dfm-property,dfm-required-field-without-control,dictionary-get-without-check,dunitx-test-without-assert,duplicate-case-label,duplicate-condition,duplicate-declaration,duplicate-interface-guid,' +
+    'empty-except,empty-statement,event-call-without-assigned,except-handler-order,exception-freed,exception-in-destructor,exception-not-raised,field-after-method,field-free-without-nil,field-not-freed,float-equality,for-high-to-low,forbidden-uses,' +
+    'foreign-form-control-access,form-access-before-create,form-field-type-mismatch,form-field-without-object,' +
     'form-object-without-field,format-without-settings,generic-exception-raised,hides-virtual,' +
-    'ifthen-side-effect,implemented-not-declared,implicit-package-import,int32-mul-overflow,interface-guid,' +
+    'ifthen-side-effect,implemented-not-declared,implicit-package-import,int32-mul-overflow,interface-guid,interface-not-implemented,' +
     'invisible-char,' +
-    'lock-without-finally,metric-cognitive-complexity,metric-cyclomatic-complexity,metric-method-length,' +
-    'metric-nesting-depth,metric-parameter-count,owned-field-free-unclear,owned-field-not-freed,' +
-    'possibly-uninitialized,raise-in-finally,recursive-property-accessor,redundant-assigned-free,' +
+    'lock-without-finally,loop-off-by-one,managed-type-raw-memory,message-handler-without-inherited,metric-class-size,metric-cognitive-complexity,metric-cyclomatic-complexity,' +
+    'metric-method-length,metric-nesting-depth,metric-parameter-count,metric-unit-length,metric-uses-count,missing-inherited,null-compare,operator-precedence,ota-notifier-not-removed,out-param-read,overload-directive-missing,override-target-missing,owned-field-free-unclear,owned-item-freed,pair-without-finally,pchar-of-temporary,' +
+    'possibly-uninitialized,processmessages-in-loop,property-accessor-invalid,queue-nil-in-package,raise-in-finally,readonly-property-assigned,redundant-assigned-free,reraise-exception-object,' +
     'result-not-set,' +
     'security-command-injection,security-insecure-http,security-insecure-random,security-sql-injection,' +
-    'security-tls-verification-disabled,security-weak-crypto,self-assignment,sizeof-pointer,' +
-    'slash-command,synchronize-in-destructor,thread-free-with-free-on-terminate,thread-resume-suspend,' +
-    'thread-use-after-free-on-terminate,thread-vcl-access,type-used-before-declaration,' +
-    'unneeded-forward-declaration,unreachable-code,unresolved-identifier,' +
-    'unused-assignment,unused-local,unused-parameter,virtual-instead-of-override,with-statement';
+    'security-tls-verification-disabled,security-weak-crypto,self-as-interface-in-constructor,self-assignment,setter-recursion,shadowed-name,signature-mismatch,sizeof-pointer,' +
+    'slash-command,sql-write-without-where,string-index-base,stringlist-unsorted,synchronize-in-destructor,task-exception-unobserved,thread-free-with-free-on-terminate,thread-loop-without-terminated,thread-resume-suspend,' +
+    'thread-use-after-free-on-terminate,thread-vcl-access,threadvar-managed,transaction-without-rollback,type-used-before-declaration,' +
+    'unchecked-conversion,unchecked-enum-cast,unneeded-forward-declaration,unreachable-code,unresolved-attribute,unresolved-identifier,' +
+    'unused-assignment,unused-local,unused-parameter,use-after-free,uses-unit-not-found,virtual-instead-of-override,with-statement,' +
+    'writeln-in-gui-app';
 begin
   Assert.AreEqual(All, ActiveRules('standard'));
   // strict schaltet experimentelle Regeln ein (#146): security-path-traversal (#149), file-header und
   // hardcoded-string (#56), random-without-randomize (#153), die freiwillige Regel todo-comment (#68),
   // die Architekturregeln des Rollenkonzepts (ohne "prefixes" stumm, Code-Review A-12).
   Assert.AreEqual(Merged(All, ['architecture-contract-content', 'architecture-role-import',
-    'catch-all-without-raise', 'file-header', 'hardcoded-string',
-    'loop-invariant-call', 'missing-begin-update', 'random-without-randomize', 'redundant-begin-end',
+    'catch-all-without-raise', 'file-header', 'global-variable', 'hardcoded-string',
+    'line-length', 'loop-invariant-call', 'magic-number', 'missing-begin-update', 'public-field', 'random-without-randomize', 'redundant-begin-end',
     'redundant-parens', 'security-path-traversal', 'string-concat-in-loop', 'todo-comment']), ActiveRules('strict'));
-  Assert.AreEqual('assert-side-effect,bidi-control,captured-loop-variable,char-to-pchar,' +
+  Assert.AreEqual('abstract-class-instantiated,anonymous-thread-not-started,argument-count-mismatch,assert-side-effect,assign-to-property-member,bidi-control,captured-loop-variable,case-missing-enum-value,char-to-pchar,' +
+    'collection-modified-in-loop,comparison-as-statement,' +
     'component-create-without-override,component-default-mismatch,component-missing-free-notification,' +
-    'component-missing-inherited,constructor-on-instance,control-char,declared-not-implemented,' +
-    'destroy-without-override,dfm-circular-datasource,dfm-control-field-type-mismatch,' +
-    'dfm-duplicate-binding,dfm-master-without-fields,dfm-required-field-without-control,' +
-    'duplicate-interface-guid,exception-freed,exception-not-raised,float-equality,for-high-to-low,' +
-    'form-field-type-mismatch,form-field-without-object,form-object-without-field,hides-virtual,' +
-    'ifthen-side-effect,implemented-not-declared,int32-mul-overflow,interface-guid,lock-without-finally,' +
-    'owned-field-free-unclear,owned-field-not-freed,' +
-    'possibly-uninitialized,raise-in-finally,recursive-property-accessor,result-not-set,security-command-injection,' +
-    'security-sql-injection,security-tls-verification-disabled,self-assignment,sizeof-pointer,' +
-    'synchronize-in-destructor,thread-free-with-free-on-terminate,thread-use-after-free-on-terminate,' +
-    'thread-vcl-access,type-used-before-declaration,unreachable-code,unresolved-identifier,' +
-    'virtual-instead-of-override',
+    'component-missing-inherited,conditional-directive-unbalanced,constructor-on-instance,control-char,create-without-assignment,createprocess-readonly-commandline,dataset-edit-without-post,dataset-loop-without-next,declared-not-implemented,delimited-text-without-strict,' +
+    'deref-before-nil-check,destroy-called-directly,destroy-without-override,dfm-circular-datasource,dfm-control-field-type-mismatch,' +
+    'dfm-duplicate-binding,dfm-master-without-fields,dfm-required-field-without-control,dictionary-get-without-check,' +
+    'duplicate-case-label,duplicate-condition,duplicate-declaration,duplicate-interface-guid,empty-statement,event-call-without-assigned,except-handler-order,exception-freed,exception-in-destructor,exception-not-raised,field-after-method,field-free-without-nil,field-not-freed,float-equality,for-high-to-low,' +
+    'form-access-before-create,form-field-type-mismatch,form-field-without-object,form-object-without-field,hides-virtual,' +
+    'ifthen-side-effect,implemented-not-declared,int32-mul-overflow,interface-guid,interface-not-implemented,lock-without-finally,loop-off-by-one,managed-type-raw-memory,message-handler-without-inherited,' +
+    'missing-inherited,operator-precedence,ota-notifier-not-removed,out-param-read,overload-directive-missing,override-target-missing,owned-field-free-unclear,owned-item-freed,pair-without-finally,pchar-of-temporary,' +
+    'possibly-uninitialized,property-accessor-invalid,queue-nil-in-package,raise-in-finally,readonly-property-assigned,result-not-set,security-command-injection,' +
+    'security-sql-injection,security-tls-verification-disabled,self-as-interface-in-constructor,self-assignment,setter-recursion,signature-mismatch,sizeof-pointer,' +
+    'sql-write-without-where,string-index-base,stringlist-unsorted,synchronize-in-destructor,thread-free-with-free-on-terminate,thread-loop-without-terminated,' +
+    'thread-use-after-free-on-terminate,' +
+    'thread-vcl-access,threadvar-managed,transaction-without-rollback,type-used-before-declaration,unchecked-conversion,unchecked-enum-cast,unreachable-code,unresolved-attribute,unresolved-identifier,use-after-free,uses-unit-not-found,' +
+    'virtual-instead-of-override,writeln-in-gui-app',
     ActiveRules('fast'));
   Assert.AreEqual('bidi-control,confusable-identifier,invisible-char,security-command-injection,security-insecure-http,' +
     'security-insecure-random,security-sql-injection,security-tls-verification-disabled,' +
     'security-weak-crypto',
     ActiveRules('security'));
-  Assert.AreEqual('bool-compare,component-fixed-pixels,component-hardcoded-color,component-palette-icon,' +
-    'component-setter-without-invalidate,deprecated-symbol,dfm-property,empty-except,forbidden-uses,' +
+  Assert.AreEqual('blocking-call-in-main-thread,bool-compare,boolean-assign-if,case-insensitive-compare,commented-out-code,component-fixed-pixels,component-hardcoded-color,component-palette-icon,' +
+    'component-setter-without-invalidate,deprecated-symbol,dfm-property,dunitx-test-without-assert,empty-except,forbidden-uses,' +
     'foreign-form-control-access,format-without-settings,generic-exception-raised,implicit-package-import,' +
-    'metric-cognitive-complexity,metric-cyclomatic-complexity,metric-method-length,metric-nesting-depth,' +
-    'metric-parameter-count,' +
-    'redundant-assigned-free,slash-command,thread-resume-suspend,unneeded-forward-declaration,' +
+    'metric-class-size,metric-cognitive-complexity,metric-cyclomatic-complexity,metric-method-length,' +
+    'metric-nesting-depth,metric-parameter-count,metric-unit-length,metric-uses-count,' +
+    'null-compare,processmessages-in-loop,redundant-assigned-free,reraise-exception-object,shadowed-name,slash-command,task-exception-unobserved,thread-resume-suspend,unneeded-forward-declaration,' +
     'unused-assignment,unused-local,' +
     'unused-parameter,with-statement',
     ActiveRules('style'));

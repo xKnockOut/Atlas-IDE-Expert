@@ -60,6 +60,7 @@ uses
   Atlas.Common.Documents.FileEncoding,
   Atlas.Common.Projects.Contract,
   Atlas.Common.Projects.DprojReader,
+  Atlas.Common.Projects.PackageReader,
   Atlas.Common.Rules.Contract,
   Atlas.Common.Rules.Checker,
   Atlas.Common.Rules.Filter,
@@ -67,6 +68,7 @@ uses
   Atlas.Common.Rules.Builtin,
   Atlas.Common.Rules.SuppressionStats,
   Atlas.Common.Rules.Builtin.Metrics,
+  Atlas.Common.Rules.Builtin.FormFields,
   Atlas.Common.Metrics.Contract,
   Atlas.Common.Metrics.Calculator,
   Atlas.Common.Metrics.Report,
@@ -183,6 +185,40 @@ begin
 end;
 
 /// <summary>Teilmenge von AFiles nach den Änderungen laut Git; AGit bleibt für --changed-lines geladen.</summary>
+// Die .dpk unter AFiles, damit Regeln wissen, welche Unit zu einem Package gehört (#943).
+function ReadPackages(const AFiles: TArray<string>): TArray<TPackageSource>;
+var
+  FileName: string;
+  FileFormat: TFileFormat;
+begin
+  Result := nil;
+  for FileName in AFiles do
+    if SameText(ExtractFileExt(FileName), '.dpk') then
+      try
+        Result := Result + [TPackageReader.Read(TFileEncoding.LoadFromFile(FileName, FileFormat))];
+      except
+        on E: Exception do
+          WriteError(Format('%s: %s', [FileName, E.Message]));
+      end;
+end;
+
+// Quelltexte der Programme (.dpr) für die CreateForm-Reihenfolge (form-access-before-create, #956).
+function ReadPrograms(const AFiles: TArray<string>): TArray<string>;
+var
+  FileName: string;
+  FileFormat: TFileFormat;
+begin
+  Result := nil;
+  for FileName in AFiles do
+    if SameText(ExtractFileExt(FileName), '.dpr') then
+      try
+        Result := Result + [TFileEncoding.LoadFromFile(FileName, FileFormat)];
+      except
+        on E: Exception do
+          WriteError(Format('%s: %s', [FileName, E.Message]));
+      end;
+end;
+
 function SelectChanged(const AOptions: TCommandLineOptions;
   const AFiles: TArray<string>; AGit: TVcsChanges): TArray<string>;
 begin
@@ -354,6 +390,9 @@ var
   Metrics: TArray<TFileMetrics>;
   Todos: TArray<TFileTodos>;
   TodoEntries: TArray<TTodoEntry>;
+  Packages: TArray<TPackageSource>;
+  Programs: TArray<string>;
+  Project: TCheckProject;
 begin
   for Warning in AOptions.Warnings do
     WriteError(Warning);
@@ -442,6 +481,8 @@ begin
     CheckedPaths := TList<string>.Create;
     try
       Candidates := CollectFiles(AOptions.CheckTarget, Settings, Root);
+      Packages := ReadPackages(Candidates);
+      Programs := ReadPrograms(Candidates);
       if (AOptions.ChangedRef <> '') and AOptions.UpdateBaseline then
         WriteError('--update-baseline schreibt die Baseline immer für alle Dateien; --changed/--diff wird ignoriert')
       else if AOptions.ChangedRef <> '' then
@@ -480,7 +521,11 @@ begin
             [rfReplaceAll]), TodoEntries)], TTodoFilter.Default);
           Continue;
         end;
-        Findings := TFileChecker.CheckText(Rules, Settings, RelativePath, Text, Scopes);
+        Project := TFileChecker.PackageOf(Packages, ChangeFileExt(ExtractFileName(FileName), ''));
+        if Project.Name = '' then
+          Project.AutoCreateForms := TFormAccessBeforeCreateRule.FormsOfProgram(Programs,
+            ChangeFileExt(ExtractFileName(FileName), ''));
+        Findings := TFileChecker.CheckText(Rules, Settings, RelativePath, Text, Project, Scopes);
         if AOptions.SuppressionStats then
           Stats.Add(Text, Findings);
         if AOptions.UpdateBaseline then

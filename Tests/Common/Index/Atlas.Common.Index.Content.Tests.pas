@@ -22,6 +22,8 @@ type
     [Test]
     procedure ExtractsSignatureDirectivesAndSummary;
     [Test]
+    procedure MarksClassMembers;
+    [Test]
     procedure CollectsUsagesWithoutDeclarations;
     [Test]
     procedure UsagesOnlyOnRequest;
@@ -190,6 +192,30 @@ begin
   Assert.AreEqual('property Name: string read GetName', Find(U, 'TKunde.Name').Signature);
   Assert.IsTrue(Find(U, 'Grenze').HasDirective('platform'));
   Assert.AreEqual('Zaehler: Integer', Find(U, 'Zaehler').Signature);
+end;
+
+procedure TIndexContentTests.MarksClassMembers;
+var
+  U: TUnitIndex;
+begin
+  U := TIndexExtractor.ExtractText(
+    'unit Zaehler;'#10'interface'#10'type'#10 +
+    '  TErster = class'#10'    property Wert: Integer read FWert;'#10'  var'#10'    FWert: Integer;'#10'  end;'#10 +
+    '  TZaehler = class'#10'  private'#10'    FName: string;'#10'    class var FAnzahl: Integer;'#10 +
+    '    FGesamt: Integer;'#10'  public'#10'    class function Neu: TZaehler;'#10'    function Name: string;'#10 +
+    '    class property Anzahl: Integer read FAnzahl;'#10'    property Titel: string read FName;'#10 +
+    '  var'#10'    FLetzter: Integer;'#10'  end;'#10'implementation'#10'end.', 'Zaehler.pas', nil, nil, False);
+  // #1001: class var gilt bis zum nächsten Abschnitt, "TErster = class" vor dem ersten Mitglied zählt nicht.
+  Assert.IsTrue(Find(U, 'TZaehler.FAnzahl').HasDirective('class'));
+  Assert.IsTrue(Find(U, 'TZaehler.FGesamt').HasDirective('class'));
+  Assert.IsTrue(Find(U, 'TZaehler.Neu').HasDirective('class'));
+  Assert.IsTrue(Find(U, 'TZaehler.Anzahl').HasDirective('class'));
+  Assert.IsFalse(Find(U, 'TZaehler.FName').HasDirective('class'));
+  Assert.IsFalse(Find(U, 'TZaehler.Name').HasDirective('class'));
+  Assert.IsFalse(Find(U, 'TZaehler.Titel').HasDirective('class'));
+  Assert.IsFalse(Find(U, 'TZaehler.FLetzter').HasDirective('class'));
+  Assert.IsFalse(Find(U, 'TErster.Wert').HasDirective('class'));
+  Assert.IsFalse(Find(U, 'TErster.FWert').HasDirective('class'));
 end;
 
 procedure TIndexContentTests.CollectsUsagesWithoutDeclarations;
