@@ -2357,6 +2357,20 @@ begin
     '        "E2032",' + #10 +
     '        "E2026"' + #10 +
     '      ]' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "suspicious-string-pointer-cast",' + #10 +
+    '      "name": "Pointer and character width of a string do not match",' + #10 +
+    '      "category": "bug",' + #10 +
+    '      "severity": "warning",' + #10 +
+    '      "group": "compiler",' + #10 +
+    '      "description": "PChar or PWideChar on an AnsiString, RawByteString or UTF8String, and PAnsiChar on a string, UnicodeString or WideString (like W1044): pointer and character width do not match, a' + ' typical mistake after the Unicode migration; the API then reads garbage or only the first character. The rule only reports when the type of the argument is known for sure and its declaration is alway' + 's compiled together with the cast. string(PAnsiChar) converts correctly and a pointer to TBytes may be intended; both are not reported. Quick fixes: declare an own variable with the matching string ty' + 'pe (PChar(Pfad) with Pfad: AnsiString becomes Pfad: string), wrap the argument in string(...) or AnsiString(...), use the matching pointer type.",' + #10 +
+    '      "bad": "var Pfad: AnsiString; ... DeleteFile(PChar(Pfad));",' + #10 +
+    '      "good": "var Pfad: string; ... DeleteFile(PChar(Pfad));",' + #10 +
+    '      "compilerCodes": [' + #10 +
+    '        "W1044",' + #10 +
+    '        "W1048"' + #10 +
+    '      ]' + #10 +
     '    }' + #10 +
     '  ]' + #10 +
     '}' + #10 +
@@ -3542,6 +3556,11 @@ begin
     '      "id": "case-selector-not-ordinal",' + #10 +
     '      "name": "case oder for ohne ordinalen Typ",' + #10 +
     '      "description": "case über einen nicht ordinalen Ausdruck (wie E2001): Strings, Gleitkommazahlen, Klassen und Interfaces; for-Schleife mit nicht ordinaler Zählvariable (wie E2032); case-Marken un' + 'd Array-Grenzen, die Variablen, Felder, Properties, Parameter oder typisierte Konstanten statt Konstanten sind (wie E2026). Gemeldet wird nur bei sicher bekanntem Typ, dessen Deklaration immer mit der' + ' Anweisung übersetzt wird. Korrektur bei Strings mit lauter String-Literalen als Marken: case IndexStr(S, […]) of mit den Positionen als Marken, System.StrUtils kommt in die uses."' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "suspicious-string-pointer-cast",' + #10 +
+    '      "name": "Zeiger und Zeichenbreite eines Strings passen nicht zusammen",' + #10 +
+    '      "description": "PChar bzw. PWideChar auf einen AnsiString, RawByteString oder UTF8String und PAnsiChar auf einen string, UnicodeString oder WideString (wie W1044): Zeiger und Zeichenbreite passe' + 'n nicht zusammen, typisch nach der Unicode-Umstellung; die API liest dann Datenmüll bzw. nur das erste Zeichen. Gemeldet wird nur bei sicher bekanntem Typ des Arguments, dessen Deklaration immer mit d' + 'er Umwandlung übersetzt wird. string(PAnsiChar) wandelt korrekt um, ein Zeiger auf TBytes kann gewollt sein; beides meldet die Regel nicht. Korrekturen: eigene Variable mit passendem Stringtyp deklari' + 'eren (PChar(Pfad) mit Pfad: AnsiString wird Pfad: string), string(…) bzw. AnsiString(…) um das Argument, passenden Zeigertyp verwenden."' + #10 +
     '    }' + #10 +
     '  ]' + #10 +
     '}' + #10 +

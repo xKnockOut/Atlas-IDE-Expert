@@ -10,7 +10,7 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 | [Exceptions](#gruppe-exceptions) | 8 |
 | [Threads](#gruppe-threads) | 13 |
 | [Datenbank](#gruppe-database) | 4 |
-| [Compiler vorab](#gruppe-compiler) | 18 |
+| [Compiler vorab](#gruppe-compiler) | 19 |
 | [Robustheit und Muster](#gruppe-robustness) | 3 |
 | [Performance](#gruppe-performance) | 4 |
 | [Sicherheit](#gruppe-security) | 11 |
@@ -149,6 +149,7 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 | [`comparison-always-constant`](#comparison-always-constant) | Vergleich immer wahr oder immer falsch | Bug | Warnung |
 | [`constant-initializer-mismatch`](#constant-initializer-mismatch) | Initialisierung einer Konstanten passt nicht | Bug | Fehler |
 | [`case-selector-not-ordinal`](#case-selector-not-ordinal) | case oder for ohne ordinalen Typ | Bug | Fehler |
+| [`suspicious-string-pointer-cast`](#suspicious-string-pointer-cast) | Zeiger und Zeichenbreite eines Strings passen nicht zusammen | Bug | Warnung |
 
 <a id="gruppe-robustness"></a>
 ### Robustheit und Muster
@@ -4606,4 +4607,25 @@ Richtig:
 
 ```pascal
 case IndexStr(Befehl, ['start', 'stop']) of 0: Starten; 1: Stoppen; end;
+```
+
+<a id="suspicious-string-pointer-cast"></a>
+### suspicious-string-pointer-cast
+
+**Zeiger und Zeichenbreite eines Strings passen nicht zusammen** · Bug · Warnung · Gruppe Compiler vorab
+
+PChar bzw. PWideChar auf einen AnsiString, RawByteString oder UTF8String und PAnsiChar auf einen string, UnicodeString oder WideString (wie W1044): Zeiger und Zeichenbreite passen nicht zusammen, typisch nach der Unicode-Umstellung; die API liest dann Datenmüll bzw. nur das erste Zeichen. Gemeldet wird nur bei sicher bekanntem Typ des Arguments, dessen Deklaration immer mit der Umwandlung übersetzt wird. string(PAnsiChar) wandelt korrekt um, ein Zeiger auf TBytes kann gewollt sein; beides meldet die Regel nicht. Korrekturen: eigene Variable mit passendem Stringtyp deklarieren (PChar(Pfad) mit Pfad: AnsiString wird Pfad: string), string(…) bzw. AnsiString(…) um das Argument, passenden Zeigertyp verwenden.
+
+Entspricht der Compilermeldung `W1044`, `W1048`.
+
+Mit Treffer:
+
+```pascal
+var Pfad: AnsiString; ... DeleteFile(PChar(Pfad));
+```
+
+Richtig:
+
+```pascal
+var Pfad: string; ... DeleteFile(PChar(Pfad));
 ```

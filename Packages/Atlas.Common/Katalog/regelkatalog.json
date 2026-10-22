@@ -2337,6 +2337,20 @@
         "E2032",
         "E2026"
       ]
+    },
+    {
+      "id": "suspicious-string-pointer-cast",
+      "name": "Pointer and character width of a string do not match",
+      "category": "bug",
+      "severity": "warning",
+      "group": "compiler",
+      "description": "PChar or PWideChar on an AnsiString, RawByteString or UTF8String, and PAnsiChar on a string, UnicodeString or WideString (like W1044): pointer and character width do not match, a typical mistake after the Unicode migration; the API then reads garbage or only the first character. The rule only reports when the type of the argument is known for sure and its declaration is always compiled together with the cast. string(PAnsiChar) converts correctly and a pointer to TBytes may be intended; both are not reported. Quick fixes: declare an own variable with the matching string type (PChar(Pfad) with Pfad: AnsiString becomes Pfad: string), wrap the argument in string(...) or AnsiString(...), use the matching pointer type.",
+      "bad": "var Pfad: AnsiString; ... DeleteFile(PChar(Pfad));",
+      "good": "var Pfad: string; ... DeleteFile(PChar(Pfad));",
+      "compilerCodes": [
+        "W1044",
+        "W1048"
+      ]
     }
   ]
 }

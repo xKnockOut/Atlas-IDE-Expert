@@ -4166,3 +4166,19 @@ Voraussetzung: Server läuft in der IDE mit Projekt; RTL im Index.
 | CN6 | case über Integer, Char, Aufzählung, Teilbereich; Marken aus `const N = 3`, `Ord('A')`, `Low(TFarbe)`; Typ unbekannt oder Deklaration in `{$IFDEF}` | Keine Meldung |
 | CN7 | `"case-selector-not-ordinal": "off"`, `"group:compiler": "off"` bzw. `exclude` | Keine Meldung |
 | CN8 | Abgleich mit Delphi: CN1, CN3, CN4, CN5 übersetzen | dcc meldet E2001, E2032 bzw. E2026 an denselben Stellen, für CN6 nichts |
+
+## Zeiger und Zeichenbreite eines Strings passen nicht zusammen (#1080)
+
+Voraussetzung: Server läuft in der IDE mit Projekt; RTL im Index.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| ZW1 | Das Beispiel aus #1080: `var Pfad: AnsiString;` und `DeleteFile(PChar(Pfad));` | Warnung `suspicious-string-pointer-cast` an `PChar(Pfad)`: „PChar zeigt auf WideChar, Pfad ist AnsiString; die API liest Datenmüll (wie W1044).“; im Fenster „Atlas-Prüfung“ und im Befund-Hover (**Abnahme**) |
+| ZW2 | Schnellkorrektur „Pfad als string deklarieren“, danach Strg+Z | Wird `var Pfad: string;`, keine Meldung mehr; ein Undo-Schritt |
+| ZW3 | Die Alternativen „In string umwandeln: PChar(string(…))“ und „Passenden Zeigertyp verwenden: PAnsiChar“ | Ergeben `PChar(string(Pfad))` bzw. `PAnsiChar(Pfad)`, jeweils ohne Meldung |
+| ZW4 | `var S: string;` und `PAnsiChar(S)`, ebenso mit WideString und UnicodeString | „PAnsiChar zeigt auf AnsiChar, S ist string; die API liest nur das erste Zeichen (wie W1044).“; Korrekturen `PAnsiChar(AnsiString(S))` und `PChar(S)` |
+| ZW5 | `R: RawByteString`, `U: UTF8String`, `PChar(R)`, `PWideChar(U)`, `PChar(UTF8Encode(S))` | Je eine Meldung mit dem Typ aus System; beim Funktionsergebnis keine Deklarationskorrektur |
+| ZW6 | Parameter `const Ziel: AnsiString`, Feld `FName: AnsiString`, `A, B: AnsiString` jeweils in `PChar(…)` | Meldung, aber ohne „… als string deklarieren“ |
+| ZW7 | `PChar(S)` mit string, `PAnsiChar(A)` mit AnsiString, `PChar('abc')`, `string(P)` mit `P: PAnsiChar`, `PWideChar(Bytes)` mit TBytes, unbekannter Typ, `PChar(S + A)`, Deklaration in `{$IFDEF}` mit anderem Typ im `{$ELSE}` | Keine Meldung |
+| ZW8 | `"suspicious-string-pointer-cast": "off"`, `"group:compiler": "off"` bzw. `exclude` | Keine Meldung |
+| ZW9 | Abgleich mit Delphi: ZW1, ZW4, ZW5 übersetzen | dcc meldet W1044 an denselben Stellen, für ZW7 nichts |
