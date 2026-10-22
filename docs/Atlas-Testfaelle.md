@@ -4193,3 +4193,18 @@ Voraussetzung: Server läuft in der IDE; in `atlas.json` `"implicit-variants-uni
 | IV6 | Ohne Eintrag in `atlas.json` | Keine Meldung (Regel ist aus) |
 | IV7 | `"group:compiler": "off"` bzw. `exclude` | Keine Meldung |
 | IV8 | Abgleich mit Delphi: IV1 übersetzen | dcc meldet W1040 für die Unit, nach IV2 nicht mehr |
+
+## Kodierung oder Zeichen, die der Compiler nicht liest (#1085)
+
+Voraussetzung: Server läuft in der IDE; Regel `file-encoding-unsupported` ist standardmäßig an (Fehler).
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| KO1 | Das Beispiel aus #1085: `Titel := ‚Bericht‘;` (aus einer Webseite kopiert) | Fehler `file-encoding-unsupported` über `‚Bericht‘`: „Typografische Anführungszeichen sind im Quelltext nicht erlaubt (wie E2038).“; im Fenster „Atlas-Prüfung“ und im Befund-Hover (**Abnahme**) |
+| KO2 | Schnellkorrektur „Durch den String 'Bericht' ersetzen“, danach Strg+Z | `Titel := 'Bericht';`, keine Meldung mehr; ein Undo-Schritt |
+| KO3 | `„Peter’s Bericht“`, `“Text”`, `»Text«`, `"Text"` | Je eine Meldung über das Paar; die Korrektur macht einen String daraus, das `’` bleibt im String |
+| KO4 | `X := 4 – 2;` (Halbgeviertstrich), `A × B`, `A ≤ B`, ein Emoji im Code, ein `?` | Je eine Meldung mit Zeichen und Code (#$2013 …); Korrektur `-`, `*`, `<=`; Emoji und `?` ohne Korrektur |
+| KO5 | Dieselben Zeichen in Strings, Kommentaren, `{$IFDEF FPC}`-Zweigen und asm-Blöcken; Bezeichner `Größe`, `λ` | Keine Meldung |
+| KO6 | Unit als UTF-32 LE speichern (z. B. mit einem Editor, der UTF-32 kann) und in der IDE öffnen | Eine Meldung in Zeile 1: „Die Datei ist UTF-32 kodiert … (wie F2438)“; keine NUL-Meldungen von `control-char` |
+| KO7 | `"file-encoding-unsupported": "off"`, `"group:compiler": "off"` bzw. `exclude` | Keine Meldung |
+| KO8 | Abgleich mit Delphi: KO1, KO4 und KO6 übersetzen | dcc meldet E2038 („Illegal character in input file“) bzw. F2438 an denselben Stellen, KO5 übersetzt ohne E2038; jedes von Atlas gemeldete Zeichen ist auch für dcc ein Fehler |

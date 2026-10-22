@@ -78,6 +78,8 @@ type
     [Test]
     procedure DetectsBinaryForms;
     [Test]
+    procedure DetectsUtf32Bom;
+    [Test]
     procedure NeverOverwritesBinaryForm;
     [Test]
     procedure AnsiDefaultUnitKeepsBytesOutsideEdit;
@@ -427,6 +429,16 @@ begin
   Assert.IsFalse(TFileEncoding.IsBinaryForm(Bytes([Ord('o'), Ord('b'), Ord('j')])));
   Assert.IsFalse(TFileEncoding.IsBinaryForm(nil));
   Assert.IsFalse(TFileEncoding.IsBinaryFormFile(FFolder + 'fehlt.dfm'));
+end;
+
+procedure TFileEncodingDefaultTests.DetectsUtf32Bom;
+begin
+  Assert.IsTrue(TFileEncoding.HasUtf32Bom(Bytes([$FF, $FE, 0, 0, Ord('u'), 0, 0, 0])));
+  Assert.IsTrue(TFileEncoding.HasUtf32Bom(Bytes([0, 0, $FE, $FF, 0, 0, 0, Ord('u')])));
+  // UTF-16 LE mit BOM und einem Zeichen, dessen hohes Byte nicht 0 ist.
+  Assert.IsFalse(TFileEncoding.HasUtf32Bom(Bytes([$FF, $FE, Ord('u'), 0])));
+  Assert.IsFalse(TFileEncoding.HasUtf32Bom(Bytes([$FF, $FE, 0])));
+  Assert.IsFalse(TFileEncoding.HasUtf32Bom(nil));
 end;
 
 procedure TFileEncodingDefaultTests.NeverOverwritesBinaryForm;

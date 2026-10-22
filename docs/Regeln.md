@@ -10,7 +10,7 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 | [Exceptions](#gruppe-exceptions) | 8 |
 | [Threads](#gruppe-threads) | 13 |
 | [Datenbank](#gruppe-database) | 4 |
-| [Compiler vorab](#gruppe-compiler) | 20 |
+| [Compiler vorab](#gruppe-compiler) | 21 |
 | [Robustheit und Muster](#gruppe-robustness) | 3 |
 | [Performance](#gruppe-performance) | 4 |
 | [Sicherheit](#gruppe-security) | 11 |
@@ -151,6 +151,7 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 | [`exports-invalid`](#exports-invalid) | exports-Klausel unzulässig | Bug | Fehler |
 | [`unit-name-conflict`](#unit-name-conflict) | Unit-Name kollidiert | Bug | Fehler |
 | [`implicit-variants-unit`](#implicit-variants-unit) | Variant ohne System.Variants in uses | Code Smell | Hinweis |
+| [`file-encoding-unsupported`](#file-encoding-unsupported) | Kodierung oder Zeichen, die der Compiler nicht liest | Bug | Fehler |
 
 <a id="gruppe-robustness"></a>
 ### Robustheit und Muster
@@ -4678,4 +4679,25 @@ uses
   System.SysUtils, System.Variants;
 …
 var Wert: Variant;
+```
+
+<a id="file-encoding-unsupported"></a>
+### file-encoding-unsupported
+
+**Kodierung oder Zeichen, die der Compiler nicht liest** · Bug · Fehler · Gruppe Compiler vorab
+
+Die Datei ist UTF-32 kodiert (wie F2438; erkannt an der BOM, dann keine weiteren Meldungen), oder der Code außerhalb von Strings, Kommentaren und Direktiven enthält ein Zeichen, das der Compiler ablehnt (wie E2038): typografische Anführungszeichen aus einer Webseite oder Textverarbeitung, die ASCII-Zeichen ! " ? \ ` | ~ sowie Satz- und Sonderzeichen und Emoji jenseits von ASCII. Buchstaben, Ziffern und Verbinder wie U+203F bleiben in Bezeichnern erlaubt; asm-Blöcke und {$IF…}-Zweige werden übersprungen; Steuer-, Format- und Leerzeichen melden control-char und invisible-char. Schnellkorrektur: ein Paar Anführungszeichen auf einer Zeile wird zum String; ein einzelnes Zeichen mit eindeutigem ASCII-Gegenstück (– − × ÷ ≤ ≥ ≠, Vollbreiten-ASCII) wird ersetzt. Eine UTF-32-Datei hat keine Schnellkorrektur; als UTF-8 mit BOM speichern.
+
+Entspricht der Compilermeldung `F2438`, `E2038`.
+
+Mit Treffer:
+
+```pascal
+Titel := ‚Bericht‘;
+```
+
+Richtig:
+
+```pascal
+Titel := 'Bericht';
 ```
