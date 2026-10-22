@@ -4197,3 +4197,16 @@ Voraussetzung: Server läuft in der IDE mit Projekt.
 | GD3 | `Prozent := Teil div Gesamt * 100` mit `Prozent: Single`; `Result := A div B` in einer Funktion `: Double`; `var M: Extended := Summe div 2;` | Je eine Meldung |
 | GD4 | `Ganz := Summe div Anzahl` (Integer), `Schnitt := Round(Summe div Anzahl)`, `Schnitt := Trunc(X) div Trunc(Y)`, `Datum := Sekunden div 86400` (TDateTime), Zuweisung in `with` | Keine Meldung |
 | GD5 | `"integer-division-to-float": "off"`, `"group:find-bugs": "off"` bzw. `exclude` | Keine Meldung |
+
+## Leerer finally-Block (#1065)
+
+Voraussetzung: Server läuft in der IDE mit Projekt.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| EF1 | Das Beispiel aus #1065: `Liste := TStringList.Create; try Liste.LoadFromFile(Pfad); finally end;` (je Zeile) | Hinweis `empty-finally` an `finally`: „Leerer finally-Block; fehlt hier Liste.Free?“; im Fenster „Atlas-Prüfung“ und im Befund-Hover (**Abnahme**) |
+| EF2 | Schnellkorrektur „try … finally end entfernen (Rumpf bleibt)“, danach Strg+Z | try, finally und end weg, Rumpf um eine Stufe ausgerückt; ein Strg+Z stellt das Original her |
+| EF3 | `if Bereit then` mit try, zwei Anweisungen, leerem finally | Schnellkorrektur „try … finally end durch begin … end ersetzen“ ergibt `begin … end;` |
+| EF4 | Ohne Create davor; `try Lesen; finally end;` in einer Zeile | Meldung „… die Freigabe fehlt oder try … finally ist überflüssig.“; in einer Zeile ohne Schnellkorrektur |
+| EF5 | finally mit `// Freigabe übernimmt der Besitzer`, mit `{$IFDEF DEBUG}…{$ENDIF}`, mit `Liste.Free;`; leeres except | Keine Meldung von `empty-finally` |
+| EF6 | `"empty-finally": "off"`, `"group:style": "off"` bzw. `exclude` | Keine Meldung |
