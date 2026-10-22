@@ -1935,6 +1935,36 @@ begin
     '      "description": "raise E; in an on E: … handler raises the caught exception object again as a new raise. The RTL does not free the object twice, but the exception now starts at the handler: Excep' + 'tAddr and the call stack of tools such as madExcept or JclDebug point to the handler instead of the original fault, and the original location is lost. raise; re-raises the current exception unchanged.' + ' Also reported for raise E at …, then without a quick fix. Silent when the handler takes the object over with AcquireExceptionObject or assigns a new object to the variable, inside anonymous methods a' + 'nd for handlers without a variable name. High confidence. Quick fix: raise E; → raise;.",' + #10 +
     '      "bad": "except\n  on E: EDatenbank do\n  begin\n    Protokoll(E.Message);\n    raise E;\n  end;\nend;",' + #10 +
     '      "good": "except\n  on E: EDatenbank do\n  begin\n    Protokoll(E.Message);\n    raise;\n  end;\nend;"' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "blocking-call-in-main-thread",' + #10 +
+    '      "name": "Blocking call in the main thread",' + #10 +
+    '      "category": "code-smell",' + #10 +
+    '      "severity": "warning",' + #10 +
+    '      "group": "threads",' + #10 +
+    '      "description": "Sleep, WaitFor, WaitForSingleObject, WaitForMultipleObjects or Wait in methods of forms and frames (classes that inherit from TForm, TCustomForm, TFrame or TCustomFrame) and in e' + 'vent handlers (methods with a Sender parameter) outside thread classes. The user interface freezes while the call waits; if the other thread waits for Synchronize, the program hangs. WaitFor without a' + ' timeout on a variable names the risk of the Synchronize deadlock. Sleep, WaitForSingleObject and WaitForMultipleObjects count only without a receiver (or with Winapi.Windows), WaitFor and Wait only o' + 'n a receiver. A literal timeout below maxSleepMs (Sleep(10), WaitForSingleObject(H, 0)) stays silent, except a short Sleep in a waiting loop without Application.ProcessMessages. Anonymous methods are ' + 'skipped (TTask.Run, TThread.Queue), nested routines belong to their method. Medium confidence. No quick fix: move the work into TTask.Run and report the result with TThread.Queue.",' + #10 +
+    '      "bad": "procedure TfrmHaupt.btnExportClick(Sender: TObject);\nbegin\n  FExport.Start;\n  FExport.WaitFor;\nend;",' + #10 +
+    '      "good": "procedure TfrmHaupt.btnExportClick(Sender: TObject);\nbegin\n  btnExport.Enabled := False;\n  TTask.Run(\n    procedure\n    begin\n      FExport.Ausfuehren;\n      TThread.Queue(nil, p' + 'rocedure begin btnExport.Enabled := True; end);\n    end);\nend;",' + #10 +
+    '      "options": [' + #10 +
+    '        {' + #10 +
+    '          "name": "maxSleepMs",' + #10 +
+    '          "type": "integer",' + #10 +
+    '          "default": 50,' + #10 +
+    '          "description": "Literal timeouts below this value (milliseconds) are not reported; a short Sleep in a waiting loop still is."' + #10 +
+    '        },' + #10 +
+    '        {' + #10 +
+    '          "name": "calls",' + #10 +
+    '          "type": "string-list",' + #10 +
+    '          "default": [' + #10 +
+    '            "Sleep",' + #10 +
+    '            "WaitFor",' + #10 +
+    '            "WaitForSingleObject",' + #10 +
+    '            "WaitForMultipleObjects",' + #10 +
+    '            "Wait"' + #10 +
+    '          ],' + #10 +
+    '          "description": "Calls that block. Other names are reported regardless of their arguments."' + #10 +
+    '        }' + #10 +
+    '      ]' + #10 +
     '    }' + #10 +
     '  ]' + #10 +
     '}' + #10 +
@@ -2956,6 +2986,21 @@ begin
     '      "id": "reraise-exception-object",' + #10 +
     '      "name": "raise E statt raise im Handler",' + #10 +
     '      "description": "raise E; in einem Handler on E: … löst das gefangene Exception-Objekt als neues raise aus. Die RTL gibt das Objekt nicht doppelt frei, aber die Ausnahme beginnt jetzt im Handler:' + ' ExceptAddr und die Aufrufliste von Werkzeugen wie madExcept oder JclDebug zeigen auf den Handler statt auf den ursprünglichen Fehler, die Absprungstelle geht verloren. raise; wirft die aktuelle Excep' + 'tion unverändert weiter. Auch raise E at … wird gemeldet, dann ohne Korrektur. Still, wenn der Handler das Objekt mit AcquireExceptionObject übernimmt oder der Variablen ein neues Objekt zuweist, in a' + 'nonymen Methoden und bei Handlern ohne Variablennamen. Konfidenz hoch. Korrektur: raise E; → raise;."' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "blocking-call-in-main-thread",' + #10 +
+    '      "name": "Blockierender Aufruf im Hauptthread",' + #10 +
+    '      "description": "Sleep, WaitFor, WaitForSingleObject, WaitForMultipleObjects oder Wait in Methoden von Formularen und Frames (Klassen, die von TForm, TCustomForm, TFrame oder TCustomFrame erben) ' + 'und in Ereignis-Handlern (Methoden mit Parameter Sender) außerhalb von Thread-Klassen. Die Oberfläche friert ein, solange der Aufruf wartet; wartet der andere Thread auf Synchronize, hängt das Program' + 'm. WaitFor ohne Timeout auf einer Variablen nennt die Gefahr der Synchronize-Verklemmung. Sleep, WaitForSingleObject und WaitForMultipleObjects zählen nur ohne Empfänger (oder mit Winapi.Windows), Wai' + 'tFor und Wait nur mit Empfänger. Ein Literal-Timeout unter maxSleepMs (Sleep(10), WaitForSingleObject(H, 0)) bleibt still, außer ein kurzes Sleep in einer Warteschleife ohne Application.ProcessMessage' + 's. Anonyme Methoden sind ausgenommen (TTask.Run, TThread.Queue), eingebettete Routinen gehören zu ihrer Methode. Konfidenz mittel. Keine Schnellkorrektur: die Arbeit in TTask.Run auslagern und das Erg' + 'ebnis mit TThread.Queue melden.",' + #10 +
+    '      "options": [' + #10 +
+    '        {' + #10 +
+    '          "name": "maxSleepMs",' + #10 +
+    '          "description": "Literal-Timeouts unter diesem Wert (Millisekunden) werden nicht gemeldet; ein kurzes Sleep in einer Warteschleife schon."' + #10 +
+    '        },' + #10 +
+    '        {' + #10 +
+    '          "name": "calls",' + #10 +
+    '          "description": "Aufrufe, die blockieren. Andere Namen werden unabhängig von ihren Argumenten gemeldet."' + #10 +
+    '        }' + #10 +
+    '      ]' + #10 +
     '    }' + #10 +
     '  ]' + #10 +
     '}' + #10 +

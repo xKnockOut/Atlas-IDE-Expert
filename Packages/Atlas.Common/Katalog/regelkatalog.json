@@ -1915,6 +1915,36 @@
       "description": "raise E; in an on E: … handler raises the caught exception object again as a new raise. The RTL does not free the object twice, but the exception now starts at the handler: ExceptAddr and the call stack of tools such as madExcept or JclDebug point to the handler instead of the original fault, and the original location is lost. raise; re-raises the current exception unchanged. Also reported for raise E at …, then without a quick fix. Silent when the handler takes the object over with AcquireExceptionObject or assigns a new object to the variable, inside anonymous methods and for handlers without a variable name. High confidence. Quick fix: raise E; → raise;.",
       "bad": "except\n  on E: EDatenbank do\n  begin\n    Protokoll(E.Message);\n    raise E;\n  end;\nend;",
       "good": "except\n  on E: EDatenbank do\n  begin\n    Protokoll(E.Message);\n    raise;\n  end;\nend;"
+    },
+    {
+      "id": "blocking-call-in-main-thread",
+      "name": "Blocking call in the main thread",
+      "category": "code-smell",
+      "severity": "warning",
+      "group": "threads",
+      "description": "Sleep, WaitFor, WaitForSingleObject, WaitForMultipleObjects or Wait in methods of forms and frames (classes that inherit from TForm, TCustomForm, TFrame or TCustomFrame) and in event handlers (methods with a Sender parameter) outside thread classes. The user interface freezes while the call waits; if the other thread waits for Synchronize, the program hangs. WaitFor without a timeout on a variable names the risk of the Synchronize deadlock. Sleep, WaitForSingleObject and WaitForMultipleObjects count only without a receiver (or with Winapi.Windows), WaitFor and Wait only on a receiver. A literal timeout below maxSleepMs (Sleep(10), WaitForSingleObject(H, 0)) stays silent, except a short Sleep in a waiting loop without Application.ProcessMessages. Anonymous methods are skipped (TTask.Run, TThread.Queue), nested routines belong to their method. Medium confidence. No quick fix: move the work into TTask.Run and report the result with TThread.Queue.",
+      "bad": "procedure TfrmHaupt.btnExportClick(Sender: TObject);\nbegin\n  FExport.Start;\n  FExport.WaitFor;\nend;",
+      "good": "procedure TfrmHaupt.btnExportClick(Sender: TObject);\nbegin\n  btnExport.Enabled := False;\n  TTask.Run(\n    procedure\n    begin\n      FExport.Ausfuehren;\n      TThread.Queue(nil, procedure begin btnExport.Enabled := True; end);\n    end);\nend;",
+      "options": [
+        {
+          "name": "maxSleepMs",
+          "type": "integer",
+          "default": 50,
+          "description": "Literal timeouts below this value (milliseconds) are not reported; a short Sleep in a waiting loop still is."
+        },
+        {
+          "name": "calls",
+          "type": "string-list",
+          "default": [
+            "Sleep",
+            "WaitFor",
+            "WaitForSingleObject",
+            "WaitForMultipleObjects",
+            "Wait"
+          ],
+          "description": "Calls that block. Other names are reported regardless of their arguments."
+        }
+      ]
     }
   ]
 }

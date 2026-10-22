@@ -8,7 +8,7 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 |---|---|
 | [Fehler finden](#gruppe-find-bugs) | 56 |
 | [Exceptions](#gruppe-exceptions) | 8 |
-| [Threads](#gruppe-threads) | 9 |
+| [Threads](#gruppe-threads) | 10 |
 | [Robustheit und Muster](#gruppe-robustness) | 3 |
 | [Performance](#gruppe-performance) | 4 |
 | [Sicherheit](#gruppe-security) | 11 |
@@ -109,6 +109,7 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 | [`threadvar-managed`](#threadvar-managed) | threadvar mit verwaltetem Typ | Bug | Warnung |
 | [`processmessages-in-loop`](#processmessages-in-loop) | Application.ProcessMessages in Schleifen | Code Smell | Hinweis |
 | [`queue-nil-in-package`](#queue-nil-in-package) | TThread.Queue(nil, …) in einem Package | Bug | Warnung |
+| [`blocking-call-in-main-thread`](#blocking-call-in-main-thread) | Blockierender Aufruf im Hauptthread | Code Smell | Warnung |
 
 <a id="gruppe-robustness"></a>
 ### Robustheit und Muster
@@ -3853,5 +3854,42 @@ except
     Protokoll(E.Message);
     raise;
   end;
+end;
+```
+
+<a id="blocking-call-in-main-thread"></a>
+### blocking-call-in-main-thread
+
+**Blockierender Aufruf im Hauptthread** · Code Smell · Warnung · Gruppe Threads
+
+Sleep, WaitFor, WaitForSingleObject, WaitForMultipleObjects oder Wait in Methoden von Formularen und Frames (Klassen, die von TForm, TCustomForm, TFrame oder TCustomFrame erben) und in Ereignis-Handlern (Methoden mit Parameter Sender) außerhalb von Thread-Klassen. Die Oberfläche friert ein, solange der Aufruf wartet; wartet der andere Thread auf Synchronize, hängt das Programm. WaitFor ohne Timeout auf einer Variablen nennt die Gefahr der Synchronize-Verklemmung. Sleep, WaitForSingleObject und WaitForMultipleObjects zählen nur ohne Empfänger (oder mit Winapi.Windows), WaitFor und Wait nur mit Empfänger. Ein Literal-Timeout unter maxSleepMs (Sleep(10), WaitForSingleObject(H, 0)) bleibt still, außer ein kurzes Sleep in einer Warteschleife ohne Application.ProcessMessages. Anonyme Methoden sind ausgenommen (TTask.Run, TThread.Queue), eingebettete Routinen gehören zu ihrer Methode. Konfidenz mittel. Keine Schnellkorrektur: die Arbeit in TTask.Run auslagern und das Ergebnis mit TThread.Queue melden.
+
+| Option | Typ | Vorgabe | Bedeutung |
+|---|---|---|---|
+| `maxSleepMs` | integer | `50` | Literal-Timeouts unter diesem Wert (Millisekunden) werden nicht gemeldet; ein kurzes Sleep in einer Warteschleife schon. |
+| `calls` | string-list | `["Sleep","WaitFor","WaitForSingleObject","WaitForMultipleObjects","Wait"]` | Aufrufe, die blockieren. Andere Namen werden unabhängig von ihren Argumenten gemeldet. |
+
+Mit Treffer:
+
+```pascal
+procedure TfrmHaupt.btnExportClick(Sender: TObject);
+begin
+  FExport.Start;
+  FExport.WaitFor;
+end;
+```
+
+Richtig:
+
+```pascal
+procedure TfrmHaupt.btnExportClick(Sender: TObject);
+begin
+  btnExport.Enabled := False;
+  TTask.Run(
+    procedure
+    begin
+      FExport.Ausfuehren;
+      TThread.Queue(nil, procedure begin btnExport.Enabled := True; end);
+    end);
 end;
 ```

@@ -5763,7 +5763,7 @@ var
 begin
   // Künstlicher Hänger für den Einfrier-Wächter (#501): erscheint im Protokoll mit dieser Aktion.
   Activity := TAtlasActivity.Scope('Wächter-Test');
-  Sleep(1000);
+  Sleep(1000); // lsp-ignore: blocking-call-in-main-thread
 end;
 
 procedure TAtlasSettingsPage.DiagnosticModeClick(Sender: TObject);

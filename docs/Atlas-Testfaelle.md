@@ -3769,3 +3769,17 @@ Voraussetzung: Server läuft; Unit mit `try … except on E: … do`.
 | RR4 | `raise E at ReturnAddress` im Handler | Warnung ohne Korrektur |
 | RR5 | `raise;`, `raise EEingabe.Create(E.Message)`, `on EInOutError do`, `AcquireExceptionObject` im Handler, `E := …` vor `raise E`, `raise E` in einer anonymen Methode | Keine Meldung |
 | RR6 | `"reraise-exception-object": "off"` bzw. `exclude` mit dem Pfad der Datei | Keine Meldung |
+
+## Blockierender Aufruf im Hauptthread (#959)
+
+Voraussetzung: Server läuft; VCL-Projekt mit Formular `TfrmHaupt` und Thread-Feld `FExport: TThread`.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| BC1 | In `btnExportClick`: `FExport.Start; FExport.WaitFor;` | Warnung `blocking-call-in-main-thread` auf `WaitFor`: „WaitFor im Click-Handler blockiert den Hauptthread; ruft FExport Synchronize auf, hängt das Programm. Besser …“; im Fenster „Atlas-Prüfung“ und im Befund-Hover, keine Korrektur (**Abnahme**) |
+| BC2 | Umbauen auf `TTask.Run(procedure begin …; TThread.Queue(nil, …); end)` | Keine Meldung (**Abnahme**) |
+| BC3 | In einer Formularmethode `Sleep(500)`, `WaitForSingleObject(H, INFINITE)`, `FEreignis.WaitFor(5000)`, `FAufgabe.Wait` | Je eine Warnung mit dem Aufruf und der Methode |
+| BC4 | `while not Fertig do Sleep(10);` bzw. dieselbe Schleife mit `Application.ProcessMessages` | Warnung „Warteschleife mit Sleep …“ bzw. keine Meldung |
+| BC5 | `Sleep(10)`, `WaitForSingleObject(H, 0)`, `Sleep` in `TThread.Execute`, in einer anonymen Methode oder in einer Klasse ohne Formular und ohne Sender | Keine Meldung |
+| BC6 | `"maxSleepMs": 1000` bzw. `5`; `"calls": ["Pause"]` | `Sleep(500)` still bzw. auch `Sleep(10)` gemeldet; nur noch `Pause(…)` gemeldet; Einstellungsseite zeigt beide Optionen unter der Regel |
+| BC7 | `"blocking-call-in-main-thread": "off"` bzw. `exclude` mit dem Pfad der Datei | Keine Meldung |
