@@ -1665,6 +1665,24 @@ begin
     '          "description": "Also report fields of records."' + #10 +
     '        }' + #10 +
     '      ]' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "global-variable",' + #10 +
+    '      "name": "Global variable in interface",' + #10 +
+    '      "category": "code-smell",' + #10 +
+    '      "severity": "hint",' + #10 +
+    '      "group": "style",' + #10 +
+    '      "description": "var or threadvar in the interface section of a unit: every unit that uses it can read and change the value. The form variable created by the designer (frmMain: TfrmMain, for clas' + 'ses derived from TForm, TFrame, TDataModule or any class in a unit with a form file) is excluded unless includeFormVariables is set. Off by default. Move the variable into the implementation section a' + 'nd offer a function or property instead.",' + #10 +
+    '      "bad": "interface\nvar\n  AktuellerBenutzer: TBenutzer;",' + #10 +
+    '      "good": "interface\nfunction AktuellerBenutzer: TBenutzer;\nimplementation\nvar\n  GBenutzer: TBenutzer;",' + #10 +
+    '      "options": [' + #10 +
+    '        {' + #10 +
+    '          "name": "includeFormVariables",' + #10 +
+    '          "type": "boolean",' + #10 +
+    '          "default": false,' + #10 +
+    '          "description": "Also report the form variables created by the designer."' + #10 +
+    '        }' + #10 +
+    '      ]' + #10 +
     '    }' + #10 +
     '  ]' + #10 +
     '}' + #10 +
@@ -2542,6 +2560,17 @@ begin
     '        {' + #10 +
     '          "name": "includeRecords",' + #10 +
     '          "description": "Auch Felder von Records melden."' + #10 +
+    '        }' + #10 +
+    '      ]' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "global-variable",' + #10 +
+    '      "name": "Globale Variable im interface",' + #10 +
+    '      "description": "var oder threadvar im interface-Teil einer Unit: Jede Unit, die sie einbindet, kann den Wert lesen und ändern. Die Formularvariable des Designers (frmHaupt: TfrmHaupt, bei Nachfa' + 'hren von TForm, TFrame, TDataModule oder jeder Klasse einer Unit mit Formulardatei) ist ausgenommen, außer mit includeFormVariables. Standard aus. Die Variable in den implementation-Teil verschieben u' + 'nd eine Funktion oder Property anbieten.",' + #10 +
+    '      "options": [' + #10 +
+    '        {' + #10 +
+    '          "name": "includeFormVariables",' + #10 +
+    '          "description": "Auch die Formularvariablen des Designers melden."' + #10 +
     '        }' + #10 +
     '      ]' + #10 +
     '    }' + #10 +

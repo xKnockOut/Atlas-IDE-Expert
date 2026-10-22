@@ -1645,6 +1645,24 @@
           "description": "Also report fields of records."
         }
       ]
+    },
+    {
+      "id": "global-variable",
+      "name": "Global variable in interface",
+      "category": "code-smell",
+      "severity": "hint",
+      "group": "style",
+      "description": "var or threadvar in the interface section of a unit: every unit that uses it can read and change the value. The form variable created by the designer (frmMain: TfrmMain, for classes derived from TForm, TFrame, TDataModule or any class in a unit with a form file) is excluded unless includeFormVariables is set. Off by default. Move the variable into the implementation section and offer a function or property instead.",
+      "bad": "interface\nvar\n  AktuellerBenutzer: TBenutzer;",
+      "good": "interface\nfunction AktuellerBenutzer: TBenutzer;\nimplementation\nvar\n  GBenutzer: TBenutzer;",
+      "options": [
+        {
+          "name": "includeFormVariables",
+          "type": "boolean",
+          "default": false,
+          "description": "Also report the form variables created by the designer."
+        }
+      ]
     }
   ]
 }

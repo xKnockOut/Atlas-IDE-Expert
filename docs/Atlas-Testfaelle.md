@@ -3517,3 +3517,16 @@ Voraussetzung: Server läuft; in `atlas.json` `"rules": { "public-field": "hint"
 | PF5 | `X, Y: Integer;` in einer Klasse ohne Vorfahren; `FName` in public | Je eine Meldung für X und Y bzw. FName, aber ohne Korrektur |
 | PF6 | Record `TPunkt = record X: Integer; end;`, dann Option „includeRecords“ an | Erst keine Meldung, danach Meldung mit Korrektur |
 | PF7 | `"public-field": "off"` bzw. `exclude` mit dem Pfad der Datei | Keine Meldung |
+
+## Globale Variable im interface (#941)
+
+Voraussetzung: Server läuft; in `atlas.json` `"rules": { "global-variable": "hint" }` (die Regel ist experimentell und steht auf `off`); Unit mit `var AktuellerBenutzer: TBenutzer;` im interface-Teil.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| GV1 | Unit öffnen | Hinweis `global-variable` am Namen: „Globale Variable AktuellerBenutzer ist in jeder Unit sichtbar, die diese verwendet.“; im Fenster „Atlas-Prüfung“ und im Befund-Hover (**Abnahme**) |
+| GV2 | Variable in den implementation-Teil verschieben, im interface `function AktuellerBenutzer: TBenutzer;` | Keine Meldung |
+| GV3 | Formular-Unit mit `var frmHaupt: TfrmHaupt;` | Keine Meldung (**Abnahme**) |
+| GV4 | Option „includeFormVariables“ auf der Seite „Prüfregeln“ an | Meldung an `frmHaupt` |
+| GV5 | `A, B: Integer;` und `threadvar Puffer: string;` im interface | Je eine Meldung für A, B und Puffer |
+| GV6 | `"global-variable": "off"` bzw. `exclude` mit dem Pfad der Datei | Keine Meldung |

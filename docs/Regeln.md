@@ -15,7 +15,7 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 | [Komponenten](#gruppe-components) | 8 |
 | [Formulare und Daten](#gruppe-forms) | 10 |
 | [Architektur](#gruppe-architecture) | 3 |
-| [Stil und Metriken](#gruppe-style) | 26 |
+| [Stil und Metriken](#gruppe-style) | 27 |
 | [Packages und Tests](#gruppe-packages) | 1 |
 | [Atlas intern](#gruppe-internal) | 3 |
 
@@ -202,6 +202,7 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 | [`metric-unit-length`](#metric-unit-length) | Unit zu lang | Code Smell | Hinweis |
 | [`metric-uses-count`](#metric-uses-count) | Zu viele Units im uses | Code Smell | Hinweis |
 | [`public-field`](#public-field) | Öffentliches Feld | Code Smell | Hinweis |
+| [`global-variable`](#global-variable) | Globale Variable im interface | Code Smell | Hinweis |
 
 <a id="gruppe-packages"></a>
 ### Packages und Tests
@@ -3336,4 +3337,33 @@ private
 public
   property Name: string read FName write FName;
 end;
+```
+
+<a id="global-variable"></a>
+### global-variable
+
+**Globale Variable im interface** · Code Smell · Hinweis · Gruppe Stil und Metriken
+
+var oder threadvar im interface-Teil einer Unit: Jede Unit, die sie einbindet, kann den Wert lesen und ändern. Die Formularvariable des Designers (frmHaupt: TfrmHaupt, bei Nachfahren von TForm, TFrame, TDataModule oder jeder Klasse einer Unit mit Formulardatei) ist ausgenommen, außer mit includeFormVariables. Standard aus. Die Variable in den implementation-Teil verschieben und eine Funktion oder Property anbieten.
+
+| Option | Typ | Vorgabe | Bedeutung |
+|---|---|---|---|
+| `includeFormVariables` | boolean | `false` | Auch die Formularvariablen des Designers melden. |
+
+Mit Treffer:
+
+```pascal
+interface
+var
+  AktuellerBenutzer: TBenutzer;
+```
+
+Richtig:
+
+```pascal
+interface
+function AktuellerBenutzer: TBenutzer;
+implementation
+var
+  GBenutzer: TBenutzer;
 ```

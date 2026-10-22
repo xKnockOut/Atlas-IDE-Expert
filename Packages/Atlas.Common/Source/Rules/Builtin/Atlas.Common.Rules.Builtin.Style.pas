@@ -22,6 +22,9 @@
 //                            bei Klassen ohne Vorfahren bzw. mit TObject: sonst stehen dort die Felder des
 //                            Designers. Korrektur „Feld kapseln“: FName im private-Abschnitt am Ende der Klasse,
 //                            dazu property Name read FName write FName (wie /encapsulate, #298)
+//   global-variable          var bzw. threadvar im interface-Teil einer Unit (Standard aus, #941); die
+//                            Formularvariable des Designers (frmHaupt: TfrmHaupt) nur mit
+//                            includeFormVariables
 // Exit, Break und Continue aus einem finally-Block lehnt der Compiler selbst ab;
 // dafür gibt es keine eigene Regel.
 
@@ -90,6 +93,12 @@ type
   end;
 
   TPublicFieldRule = class(TInterfacedObject, IRule)
+  public
+    function Descriptor: TRuleDescriptor;
+    procedure Check(const AContext: TRuleContext; const AReport: IRuleReport);
+  end;
+
+  TGlobalVariableRule = class(TInterfacedObject, IRule)
   public
     function Descriptor: TRuleDescriptor;
     procedure Check(const AContext: TRuleContext; const AReport: IRuleReport);
@@ -1172,6 +1181,100 @@ begin
   Visit(AContext.Tree.Root);
 end;
 
+{ TGlobalVariableRule }
+
+function TGlobalVariableRule.Descriptor: TRuleDescriptor;
+begin
+  Result := TRuleDescriptor.Create('global-variable', TRuleSeverity.Hint, 'Globale Variable im interface', True);
+end;
+
+procedure TGlobalVariableRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
+const
+  FormRoots: array[0..7] of string = ('TForm', 'TCustomForm', 'TFrame', 'TCustomFrame', 'TDataModule',
+    'TService', 'TWebModule', 'TCustomDataModule');
+var
+  Tokens: TTokens;
+  FormClasses: TArray<string>;
+  IncludeForms: Boolean;
+
+  function NodeText(ANode: TSyntaxNode): string;
+  begin
+    Result := Trim(Copy(AContext.Text, ANode.StartOffset + 1, ANode.EndOffset - ANode.StartOffset));
+  end;
+
+  // Klassen der Unit, die ein Formular, Frame oder Datenmodul sind: mit Formulardatei jede Klasse mit
+  // Vorfahren, sonst die direkten Nachfahren bekannter Designerklassen.
+  procedure CollectForms(ANode: TSyntaxNode);
+  var
+    Index: Integer;
+    Body, Ancestor: TSyntaxNode;
+  begin
+    if ANode.Kind = TSyntaxKind.TypeDecl then
+    begin
+      Body := ANode.FindChild(TSyntaxKind.ClassType);
+      if Body <> nil then
+      begin
+        Ancestor := Body.FindChild(TSyntaxKind.TypeReference);
+        if (Ancestor <> nil) and ((AContext.FormText <> '') or MatchText(NodeText(Ancestor), FormRoots)) then
+          FormClasses := FormClasses + [ANode.Name];
+      end;
+      Exit;
+    end;
+    if ANode.Kind in [TSyntaxKind.Block, TSyntaxKind.AsmBlock, TSyntaxKind.RoutineDecl] then
+      Exit;
+    for Index := 0 to ANode.ChildCount - 1 do
+      CollectForms(ANode[Index]);
+  end;
+
+  function NameRange(ADecl: TSyntaxNode; const AName: string): TTextRange;
+  var
+    Index: Integer;
+  begin
+    Result := TTextRange.Create(ADecl.StartPos, ADecl.EndPos);
+    for Index := 0 to High(Tokens) do
+      if (Tokens[Index].Offset >= ADecl.StartOffset) and (Tokens[Index].Offset < ADecl.EndOffset) and
+        (Tokens[Index].Kind = TPascalTokenKind.Identifier) and SameText(Tokens[Index].Text, AName) then
+        Exit(TTextRange.Create(Tokens[Index].StartPos, Tokens[Index].EndPos));
+  end;
+
+  procedure CheckSection(ASection: TSyntaxNode);
+  var
+    Index: Integer;
+    Decl, TypeRef: TSyntaxNode;
+    Name: string;
+  begin
+    for Index := 0 to ASection.ChildCount - 1 do
+    begin
+      Decl := ASection[Index];
+      if Decl.Kind <> TSyntaxKind.VarDecl then
+        Continue;
+      TypeRef := Decl.FindChild(TSyntaxKind.TypeReference);
+      if not IncludeForms and (TypeRef <> nil) and MatchText(NodeText(TypeRef), FormClasses) then
+        Continue;
+      for Name in Decl.Name.Split([',']) do
+        AReport.Add(NameRange(Decl, Trim(Name)), Format('Globale Variable %s ist in jeder Unit sichtbar, die ' +
+          'diese verwendet.', [Trim(Name)]));
+    end;
+  end;
+
+var
+  InterfacePart: TSyntaxNode;
+  Index: Integer;
+begin
+  if (AContext.Tree = nil) or (AContext.Tree.Root = nil) then
+    Exit;
+  InterfacePart := AContext.Tree.Root.FindChild(TSyntaxKind.InterfaceSection);
+  if InterfacePart = nil then
+    Exit;
+  Tokens := AContext.Tree.Tokens;
+  IncludeForms := TRuleOptions.Bool(AContext.Options, 'includeFormVariables', False);
+  FormClasses := nil;
+  CollectForms(InterfacePart);
+  for Index := 0 to InterfacePart.ChildCount - 1 do
+    if InterfacePart[Index].Kind = TSyntaxKind.VarSection then
+      CheckSection(InterfacePart[Index]);
+end;
+
 { TLineLengthRule }
 
 function TLineLengthRule.Descriptor: TRuleDescriptor;
@@ -1400,6 +1503,7 @@ begin
   ARegistry.Register(TMagicNumberRule.Create);
   ARegistry.Register(TLineLengthRule.Create);
   ARegistry.Register(TPublicFieldRule.Create);
+  ARegistry.Register(TGlobalVariableRule.Create);
 end;
 
 end.
