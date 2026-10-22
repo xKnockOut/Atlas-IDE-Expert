@@ -122,9 +122,10 @@ type
     procedure Clear;
   end;
 
-  /// <summary>Art der Anwendung, zu der die Datei gehört (#926): mit oder ohne Konsole.</summary>
+  /// <summary>Art der Anwendung, zu der die Datei gehört (#926): mit oder ohne Konsole, Package (#943),
+  /// Windows-Dienst und DLL ohne Formulare (#1060). Eine DLL mit Formularen ist Unknown.</summary>
 {$SCOPEDENUMS ON}
-  TRuleApplicationKind = (Unknown, Console, Gui, Package);
+  TRuleApplicationKind = (Unknown, Console, Gui, Package, Service, Library_);
 {$SCOPEDENUMS OFF}
 
   /// <summary>Alles, was eine Regel über die geprüfte Datei wissen darf.</summary>

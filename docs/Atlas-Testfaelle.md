@@ -4119,3 +4119,17 @@ Voraussetzung: Server läuft in der IDE mit Projekt; RTL und VCL im Index.
 | RO5 | `Liste.Text := ''`, `if Liste.Count = 0`, gleichnamige lokale Variable `Count := 0`, `property Caption;` aus einem Vorfahren | Keine Meldung |
 | RO6 | `"readonly-property-assigned": "off"`, `"group:compiler": "off"` bzw. `exclude` | Keine Meldung |
 | RO7 | Abgleich mit Delphi: RO1, RO3, RO4 übersetzen | dcc meldet E2129 bzw. E2130 an denselben Stellen, für RO5 nichts |
+
+## Dialog in Konsolenprogramm oder Dienst (#1060)
+
+Voraussetzung: Server läuft in der IDE mit Projekt.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| KD1 | Das Beispiel aus #1060: Dienstanwendung (Datei › Neu › Weitere › Dienstanwendung), in `ServiceExecute` `if not Verbinden then ShowMessage('Keine Verbindung');` | Warnung `ui-call-in-console-or-service` an `ShowMessage`: „ShowMessage in einem Windows-Dienst blockiert unsichtbar; protokollieren statt anzeigen.“; im Fenster „Atlas-Prüfung“ (Gruppe Robustheit und Muster) und im Befund-Hover (**Abnahme**) |
+| KD2 | `ShowMessage` durch `LogMessage('Keine Verbindung', EVENTLOG_ERROR_TYPE)` ersetzen | Keine Meldung |
+| KD3 | Eine weitere Unit ohne `TService` im selben Dienstprojekt mit `MessageDlg(…)` | Dieselbe Meldung für `MessageDlg`; `Writeln` in dieser Unit meldet zusätzlich `writeln-in-gui-app` |
+| KD4 | Konsolenprogramm (`{$APPTYPE CONSOLE}`) mit `ShowMessage`, `InputBox`, `Application.MessageBox` und `TDialogService.ShowMessage` | Je eine Meldung „… in einem Konsolenprogramm wartet auf einen Klick, wenn das Programm unbeaufsichtigt läuft; …“ |
+| KD5 | DLL-Projekt (`library`) ohne Formular mit `ShowMessage` | Meldung „… in einer DLL ohne Formulare blockiert, wenn der Host keine Oberfläche hat …“ mit mittlerer Konfidenz |
+| KD6 | GUI-Programm, DLL mit Formular, Formular-Unit im Konsolenprogramm, `if not IsConsole then ShowMessage(…)`, eigene Routine `ShowMessage` in der Unit, `Log.ShowMessage(…)` | Keine Meldung |
+| KD7 | `"ui-call-in-console-or-service": "off"`, `"group:robustness": "off"` bzw. `exclude` mit dem Pfad der Datei | Keine Meldung |
