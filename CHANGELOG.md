@@ -7,6 +7,7 @@ Server und Claude-Code-Plugin tragen immer dieselbe Version.
 ## [Unveröffentlicht]
 
 ### Neu
+- Regel `dataset-loop-without-next` (#963), erste Regel der Gruppe „Datenbank“: `while not Q.Eof do` ohne `Q.Next` auf jedem Weg durch den Rumpf läuft endlos („Im Rumpf fehlt qryPositionen.Next; die Schleife läuft endlos.“). Atlas meldet einen Fehler und fügt `Q.Next;` auf Wunsch am Ende des Rumpfs ein.
 - Regel `task-exception-unobserved` (#962): `TTask.Run(…)` bzw. `TTask.Create(…).Start`, das nie abgefragt wird und dessen anonymer Rumpf kein `try … except` hat, verliert Exceptions still. Atlas gibt einen Hinweis („Der Task wird nie abgefragt und fängt keine Exceptions; Fehler in Importieren gehen verloren.“) und schließt den Rumpf auf Wunsch in `try … except` mit Meldung über `TThread.Queue` ein.
 - Regel `anonymous-thread-not-started` (#961): `TThread.CreateAnonymousThread(…)` ohne `Start` läuft nie und wird nie freigegeben. Atlas warnt bei der Anweisung allein und bei lokalen Variablen, die weder gestartet noch weitergegeben werden, und hängt auf Wunsch `.Start` an bzw. ergänzt `T.Start;`.
 - Regel `thread-loop-without-terminated` (#960): Eine Endlos- oder Warteschleife in `TThread.Execute` (oder in einer Methode, die nur von dort kommt) ohne `Terminated` lässt sich nicht beenden; `WaitFor` und `Free` hängen. Atlas warnt („Die Schleife prüft Terminated nicht; der Thread lässt sich nicht beenden.“) und nimmt `Terminated` auf Wunsch in die Schleifenbedingung auf.

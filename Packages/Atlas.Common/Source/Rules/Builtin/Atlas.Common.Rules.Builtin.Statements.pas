@@ -27,6 +27,11 @@
 //                     Selektors löst die Namensauflösung, die Werte kommen aus
 //                     dem Index bzw. der Unit selbst; die Korrektur ergänzt die
 //                     fehlenden Zweige über TCaseCompletion (#449).
+//   dataset-loop-without-next
+//                     while not Q.Eof do ohne Q.Next auf jedem Weg durch den
+//                     Rumpf, der die Schleife fortsetzt (#963); Delete, MoveBy,
+//                     Last, Close und FindNext zählen mit. Wird Q im Rumpf
+//                     weitergegeben, bleibt die Regel still.
 // Grundlage ist der Syntaxbaum: if, while, for, for-in und with ohne Rumpf
 // bzw. mit leerem Block; das Schlüsselwort davor sucht die Regel in den Token.
 
@@ -79,6 +84,12 @@ type
     procedure Check(const AContext: TRuleContext; const AReport: IRuleReport);
   end;
 
+  TDatasetLoopWithoutNextRule = class(TInterfacedObject, IRule)
+  public
+    function Descriptor: TRuleDescriptor;
+    procedure Check(const AContext: TRuleContext; const AReport: IRuleReport);
+  end;
+
 procedure RegisterStatementRules(const ARegistry: TRuleRegistry);
 
 implementation
@@ -93,6 +104,8 @@ uses
   Atlas.Common.Index.Contract,
   Atlas.Common.Semantics.NameResolver,
   Atlas.Common.Editing.CaseCompletion,
+  Atlas.Common.Editing.RoutineBody,
+  Atlas.Text.Lines,
   Atlas.Common.Rules.Options;
 
 type
@@ -1078,6 +1091,213 @@ begin
   end;
 end;
 
+{ TDatasetLoopWithoutNextRule }
+
+const
+  // Methoden, die den Datensatzzeiger weiterbewegen oder die Schleife über Eof beenden.
+  DatasetAdvancing: array[0..6] of string = ('Next', 'Delete', 'MoveBy', 'Last', 'Close', 'FindNext', 'Free');
+
+function TDatasetLoopWithoutNextRule.Descriptor: TRuleDescriptor;
+begin
+  Result := TRuleDescriptor.Create('dataset-loop-without-next', TRuleSeverity.Error,
+    'Datenmengen-Schleife ohne Next');
+end;
+
+procedure TDatasetLoopWithoutNextRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
+var
+  Lines: TArray<string>;
+  LineBreak: string;
+  DataSet: string;
+
+  function NodeText(ANode: TSyntaxNode): string;
+  begin
+    Result := Copy(AContext.Text, ANode.StartOffset + 1, ANode.EndOffset - ANode.StartOffset);
+  end;
+
+  // Name der Anweisung ohne Klammern: Break, Exit, Continue, Q.Next …
+  function StatementName(ANode: TSyntaxNode; out AReceiver: string): string;
+  var
+    Target: TSyntaxNode;
+  begin
+    Result := '';
+    AReceiver := '';
+    if (ANode.Kind <> TSyntaxKind.CallStatement) or (ANode.ChildCount = 0) then
+      Exit;
+    Target := ANode[0];
+    if (Target.Kind = TSyntaxKind.Call) and (Target.ChildCount > 0) then
+      Target := Target[0];
+    if Target.Kind = TSyntaxKind.MemberAccess then
+    begin
+      if Target.ChildCount > 0 then
+        AReceiver := NodeText(Target[0]);
+      Result := Target.Name;
+    end
+    else if Target.Kind = TSyntaxKind.Identifier then
+      Result := Target.Name;
+  end;
+
+  function IsAdvance(ANode: TSyntaxNode): Boolean;
+  var
+    Receiver, Name: string;
+  begin
+    Name := StatementName(ANode, Receiver);
+    Result := SameText(Receiver, DataSet) and MatchText(Name, DatasetAdvancing);
+  end;
+
+  // Continue in ANode, außer in inneren Schleifen?
+  function HasContinue(ANode: TSyntaxNode): Boolean;
+  var
+    Index: Integer;
+    Receiver: string;
+  begin
+    if ANode.Kind in [TSyntaxKind.WhileStatement, TSyntaxKind.RepeatStatement, TSyntaxKind.ForStatement,
+      TSyntaxKind.ForInStatement, TSyntaxKind.AnonymousMethod] then
+      Exit(False);
+    if SameText(StatementName(ANode, Receiver), 'Continue') and (Receiver = '') then
+      Exit(True);
+    for Index := 0 to ANode.ChildCount - 1 do
+      if HasContinue(ANode[Index]) then
+        Exit(True);
+    Result := False;
+  end;
+
+  // Endet jeder Weg durch ANode, der die Schleife fortsetzt, mit einem Weiterbewegen?
+  function Advances(ANode: TSyntaxNode): Boolean;
+  var
+    Index: Integer;
+    Receiver, Name: string;
+    Child: TSyntaxNode;
+  begin
+    Result := False;
+    if ANode = nil then
+      Exit;
+    case ANode.Kind of
+      TSyntaxKind.CallStatement:
+        begin
+          Name := StatementName(ANode, Receiver);
+          // Break, Exit und Halt verlassen die Schleife; Continue setzt sie ohne Weiterbewegen fort.
+          Result := IsAdvance(ANode) or ((Receiver = '') and MatchText(Name, ['Break', 'Exit', 'Halt', 'Abort']));
+        end;
+      TSyntaxKind.RaiseStatement:
+        Result := True;
+      TSyntaxKind.Block, TSyntaxKind.FinallyBlock, TSyntaxKind.CaseElse:
+        for Index := 0 to ANode.ChildCount - 1 do
+        begin
+          Child := ANode[Index];
+          if Advances(Child) then
+            Exit(True);
+          // Ein Continue vor dem Weiterbewegen setzt die Schleife auf demselben Datensatz fort.
+          if HasContinue(Child) then
+            Exit(False);
+        end;
+      TSyntaxKind.IfStatement:
+        Result := (ANode.ChildCount = 3) and Advances(ANode[1]) and Advances(ANode[2]);
+      TSyntaxKind.CaseStatement:
+        begin
+          Result := ANode.FindChild(TSyntaxKind.CaseElse) <> nil;
+          for Index := 1 to ANode.ChildCount - 1 do
+            if ANode[Index].Kind = TSyntaxKind.CaseItem then
+              Result := Result and Advances(ANode[Index][ANode[Index].ChildCount - 1])
+            else if ANode[Index].Kind = TSyntaxKind.CaseElse then
+              Result := Result and Advances(ANode[Index]);
+        end;
+      TSyntaxKind.TryStatement:
+        for Index := 0 to ANode.ChildCount - 1 do
+          if (ANode[Index].Kind <> TSyntaxKind.ExceptBlock) and Advances(ANode[Index]) then
+            Exit(True);
+      TSyntaxKind.WithStatement:
+        Result := Advances(ANode[ANode.ChildCount - 1]);
+      // repeat läuft mindestens einmal; while und for vielleicht nie.
+      TSyntaxKind.RepeatStatement:
+        for Index := 0 to ANode.ChildCount - 2 do
+          if Advances(ANode[Index]) then
+            Exit(True);
+    end;
+  end;
+
+  // Kommt die Datenmenge im Rumpf vor, außer als Empfänger (Argument, Zuweisung, with)?
+  // Dann bewegt vielleicht der Aufgerufene den Zeiger.
+  function Escapes(ANode, AParent: TSyntaxNode): Boolean;
+  var
+    Index: Integer;
+  begin
+    if (ANode.Kind = TSyntaxKind.AnonymousMethod) then
+      Exit(False);
+    if (ANode.Kind in [TSyntaxKind.Identifier, TSyntaxKind.MemberAccess]) and
+      SameText(NodeText(ANode), DataSet) and
+      not ((AParent <> nil) and (AParent.Kind = TSyntaxKind.MemberAccess) and (AParent[0] = ANode)) then
+      Exit(True);
+    if ANode.Kind = TSyntaxKind.WithStatement then
+      Exit(True);
+    for Index := 0 to ANode.ChildCount - 1 do
+      if Escapes(ANode[Index], ANode) then
+        Exit(True);
+    Result := False;
+  end;
+
+  function MentionsAdvance(ANode: TSyntaxNode): Boolean;
+  var
+    Index: Integer;
+  begin
+    if IsAdvance(ANode) then
+      Exit(True);
+    for Index := 0 to ANode.ChildCount - 1 do
+      if MentionsAdvance(ANode[Index]) then
+        Exit(True);
+    Result := False;
+  end;
+
+  // Korrektur: Q.Next; vor dem end des Rumpfs.
+  function NextFix(ABody: TSyntaxNode): TArray<TRuleFix>;
+  var
+    EndLine: Integer;
+  begin
+    Result := nil;
+    if ABody.Kind <> TSyntaxKind.Block then
+      Exit;
+    EndLine := ABody.EndPos.Line;
+    if (EndLine <= ABody.StartPos.Line) or (Trim(Copy(Lines[EndLine], 1, ABody.EndPos.Character - Length('end'))) <> '') then
+      Exit;
+    Result := [TRuleFix.Create(Format('%s.Next; am Ende des Rumpfs einfügen', [DataSet]), [TRuleEdit.Create(
+      TTextRange.Create(EndLine, 0, EndLine, 0), TTextLines.IndentOf(Lines[EndLine]) +
+      TRoutineBody.IndentUnit(AContext.Formatting) + DataSet + '.Next;' + LineBreak)])];
+  end;
+
+  procedure Visit(ANode: TSyntaxNode);
+  var
+    Index: Integer;
+    Condition, Body: TSyntaxNode;
+  begin
+    // while not Q.Eof do …
+    if (ANode.Kind = TSyntaxKind.WhileStatement) and (ANode.ChildCount = 2) then
+    begin
+      Condition := ANode[0];
+      Body := ANode[1];
+      if (Condition.Kind = TSyntaxKind.UnaryExpr) and SameText(Condition.Name, 'not') and
+        (Condition.ChildCount = 1) and (Condition[0].Kind = TSyntaxKind.MemberAccess) and
+        SameText(Condition[0].Name, 'Eof') and (Condition[0].ChildCount = 1) then
+      begin
+        DataSet := NodeText(Condition[0][0]);
+        if not Escapes(Body, nil) and not Advances(Body) then
+          if not MentionsAdvance(Body) then
+            AReport.Add(TTextRange.Create(Condition.StartPos, Condition.EndPos), Format('Im Rumpf fehlt %s.Next; die Schleife läuft endlos.',
+              [DataSet]), TRuleConfidence.High, NextFix(Body))
+          else
+            AReport.Add(TTextRange.Create(Condition.StartPos, Condition.EndPos), Format('Nicht jeder Weg durch den Rumpf ruft %s.Next auf; dort ' +
+              'läuft die Schleife endlos.', [DataSet]), TRuleConfidence.Medium);
+      end;
+    end;
+    for Index := 0 to ANode.ChildCount - 1 do
+      Visit(ANode[Index]);
+  end;
+
+begin
+  if (AContext.Tree = nil) or (AContext.Tree.Root = nil) or not ContainsText(AContext.Text, 'Eof') then
+    Exit;
+  Lines := TTextLines.SplitLines(AContext.Text, LineBreak);
+  Visit(AContext.Tree.Root);
+end;
+
 procedure RegisterStatementRules(const ARegistry: TRuleRegistry);
 begin
   ARegistry.Register(TEmptyStatementRule.Create);
@@ -1085,6 +1305,7 @@ begin
   ARegistry.Register(TLoopOffByOneRule.Create);
   ARegistry.Register(TCollectionModifiedInLoopRule.Create);
   ARegistry.Register(TCaseMissingEnumValueRule.Create);
+  ARegistry.Register(TDatasetLoopWithoutNextRule.Create);
 end;
 
 end.

@@ -75,6 +75,14 @@ type
     procedure CaseMissingEnumValueSilentCases;
     [Test]
     procedure CaseMissingEnumValueOptions;
+    [Test]
+    procedure DatasetLoopIssueExample;
+    [Test]
+    procedure DatasetLoopVariants;
+    [Test]
+    procedure DatasetLoopSilentCases;
+    [Test]
+    procedure DatasetLoopOffAndExclude;
   end;
 
 implementation
@@ -595,6 +603,73 @@ begin
   TConfigurationParser.Parse('{"rules": {"case-missing-enum-value": {"requireElse": "ja"}}}', Issues);
   Assert.AreEqual(1, Integer(Length(Issues)));
   Assert.AreEqual('"requireElse" muss true oder false sein', Issues[0].Message);
+end;
+
+procedure TStatementRulesTests.DatasetLoopIssueExample;
+var
+  Source, Fixed: string;
+  Findings: TArray<TRuleFinding>;
+begin
+  Source := Body('  qryPositionen.First;'#10'  while not qryPositionen.Eof do'#10'  begin'#10 +
+    '    Summe := Summe + qryPositionen.FieldByName(''Betrag'').AsCurrency;'#10'  end;'#10);
+  Findings := TRuleAssert.Findings(TDatasetLoopWithoutNextRule.Create, Source);
+  Assert.AreEqual(1, Integer(Length(Findings)));
+  Assert.AreEqual('dataset-loop-without-next', Findings[0].RuleId);
+  Assert.AreEqual(Ord(TRuleSeverity.Error), Ord(Findings[0].Severity));
+  Assert.AreEqual(Ord(TRuleConfidence.High), Ord(Findings[0].Confidence));
+  Assert.AreEqual('Im Rumpf fehlt qryPositionen.Next; die Schleife läuft endlos.', Findings[0].Message);
+  Assert.AreEqual(8, Findings[0].Range.StartPos.Line);
+  Assert.AreEqual(8, Findings[0].Range.StartPos.Character);
+  Assert.AreEqual('qryPositionen.Next; am Ende des Rumpfs einfügen', Findings[0].Fixes[0].Title);
+  Fixed := TChangeSignature.ApplyEdits(Source, Findings[0].Fixes[0].Edits);
+  Assert.AreEqual(Body('  qryPositionen.First;'#10'  while not qryPositionen.Eof do'#10'  begin'#10 +
+    '    Summe := Summe + qryPositionen.FieldByName(''Betrag'').AsCurrency;'#10'    qryPositionen.Next;'#10 +
+    '  end;'#10), Fixed);
+  TRuleAssert.Silent(TDatasetLoopWithoutNextRule.Create, Fixed);
+end;
+
+procedure TStatementRulesTests.DatasetLoopVariants;
+var
+  Findings: TArray<TRuleFinding>;
+begin
+  // Next nur in einem Zweig bzw. vor Continue übersprungen: mittlere Konfidenz, keine Korrektur.
+  Findings := TRuleAssert.Findings(TDatasetLoopWithoutNextRule.Create, Body('  while not Q.Eof do'#10'  begin'#10 +
+    '    if Q.FieldByName(''Aktiv'').AsBoolean then'#10'      Q.Next;'#10'  end;'#10'  while not Self.Daten.Eof do'#10 +
+    '  begin'#10'    if Fertig then'#10'      Continue;'#10'    Self.Daten.Next;'#10'  end;'#10 +
+    '  while not Q.Eof do'#10'    Summe := Summe + 1;'#10));
+  Assert.AreEqual(3, Integer(Length(Findings)));
+  Assert.AreEqual('Nicht jeder Weg durch den Rumpf ruft Q.Next auf; dort läuft die Schleife endlos.',
+    Findings[0].Message);
+  Assert.AreEqual(Ord(TRuleConfidence.Medium), Ord(Findings[0].Confidence));
+  Assert.AreEqual(0, Integer(Length(Findings[0].Fixes)));
+  Assert.AreEqual('Nicht jeder Weg durch den Rumpf ruft Self.Daten.Next auf; dort läuft die Schleife endlos.',
+    Findings[1].Message);
+  // Einzelne Anweisung ohne begin: gemeldet, ohne Korrektur.
+  Assert.AreEqual('Im Rumpf fehlt Q.Next; die Schleife läuft endlos.', Findings[2].Message);
+  Assert.AreEqual(0, Integer(Length(Findings[2].Fixes)));
+end;
+
+procedure TStatementRulesTests.DatasetLoopSilentCases;
+begin
+  // Next in allen Zweigen, Delete, Break/Exit/raise, try … finally, Datenmenge weitergegeben, with, andere Bedingung.
+  TRuleAssert.Silent(TDatasetLoopWithoutNextRule.Create, Body('  while not Q.Eof do'#10'  begin'#10 +
+    '    if Fertig then'#10'      Q.Delete'#10'    else'#10'      Q.Next;'#10'  end;'#10 +
+    '  while not Q.Eof do'#10'  begin'#10'    if Fertig then'#10'      Break;'#10'    Q.Next;'#10'  end;'#10 +
+    '  while not Q.Eof do'#10'  begin'#10'    try'#10'      Lesen;'#10'    finally'#10'      Q.Next;'#10 +
+    '    end;'#10'  end;'#10'  while not Q.Eof do'#10'    Verarbeiten(Q);'#10 +
+    '  while not Q.Eof do'#10'    with Q do'#10'      Next;'#10'  while not Fertig do'#10'    Lesen;'#10 +
+    '  while not Q.Eof do'#10'    raise EAbbruch.Create(''x'');'#10));
+end;
+
+procedure TStatementRulesTests.DatasetLoopOffAndExclude;
+var
+  Source: string;
+begin
+  Source := Body('  while not Q.Eof do'#10'    Lesen;'#10);
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TDatasetLoopWithoutNextRule.Create, Source,
+    '{"rules": {"dataset-loop-without-next": "off"}}'))));
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TDatasetLoopWithoutNextRule.Create, Source,
+    '{"rules": {"dataset-loop-without-next": {"exclude": ["Source/*.pas"]}}}', 'Source/Daten.pas'))));
 end;
 
 initialization

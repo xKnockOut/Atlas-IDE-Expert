@@ -1975,6 +1975,16 @@
       "description": "TTask.Run(…) or TTask.Create(…).Start whose result is never kept or queried with Wait, Status or similar, and whose anonymous method has no try … except. An exception in the task disappears silently. Also reported for a local variable that is never mentioned again (for TTask.Create only in V.Start). Silent for kept results (fields, Result, any other use of the variable) and for method references, whose body the rule cannot see. Medium confidence. Quick fix: wrap the body in try … except and report the message on the main thread through TThread.Queue with ShowMessage (adds Vcl.Dialogs, or FMX.Dialogs in FireMonkey units, and System.SysUtils to the uses clause when missing); only when begin and end of the anonymous method stand on their own lines.",
       "bad": "TTask.Run(\n  procedure\n  begin\n    Importieren(Datei);\n  end);",
       "good": "TTask.Run(\n  procedure\n  begin\n    try\n      Importieren(Datei);\n    except\n      on E: Exception do\n      begin\n        var Fehler := E.Message;\n        TThread.Queue(nil,\n          procedure\n          begin\n            ShowMessage(Fehler);\n          end);\n      end;\n    end;\n  end);"
+    },
+    {
+      "id": "dataset-loop-without-next",
+      "name": "Dataset loop without Next",
+      "category": "bug",
+      "severity": "error",
+      "group": "database",
+      "description": "while not Q.Eof do without Q.Next in the body, or with Next only on some of the paths that continue the loop (an if without else, Continue before Next). The loop spins forever on the same record. Delete, MoveBy, Last, Close, FindNext and Free also count as moving on; Break, Exit, Abort and raise end the loop. Nested while and for loops are not trusted to run. When Q is passed on in the body (argument, assignment, with), the called code may move the record pointer and the rule stays silent. High confidence when Next is missing entirely, medium when only some paths miss it. Quick fix: insert Q.Next; at the end of the begin … end body (only when Next is missing entirely).",
+      "bad": "qryPositionen.First;\nwhile not qryPositionen.Eof do\nbegin\n  Summe := Summe + qryPositionen.FieldByName('Betrag').AsCurrency;\nend;",
+      "good": "qryPositionen.First;\nwhile not qryPositionen.Eof do\nbegin\n  Summe := Summe + qryPositionen.FieldByName('Betrag').AsCurrency;\n  qryPositionen.Next;\nend;"
     }
   ]
 }

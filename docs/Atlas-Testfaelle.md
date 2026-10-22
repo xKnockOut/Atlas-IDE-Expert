@@ -3823,3 +3823,16 @@ Voraussetzung: Server läuft; VCL-Unit mit `uses System.Threading`.
 | TE4 | `TTask.Create(…).Start;`, `A := TTask.Run(…)` ohne weitere Verwendung, `var B := TTask.Create(…); B.Start;` | Je ein Hinweis; einzeiliger Rumpf ohne Korrektur |
 | TE5 | `try … except` im Rumpf, `.Wait`, `A.Wait`, Feld, `Result`, `TTask.Run(Laden)` | Keine Meldung |
 | TE6 | `"task-exception-unobserved": "off"` bzw. `exclude` mit dem Pfad der Datei | Keine Meldung |
+
+## Datenmengen-Schleife ohne Next (#963)
+
+Voraussetzung: Server läuft; Unit mit einer Abfrage `qryPositionen: TFDQuery`.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| DL1 | `while not qryPositionen.Eof do begin Summe := Summe + …; end;` | Fehler `dataset-loop-without-next` auf `not qryPositionen.Eof`: „Im Rumpf fehlt qryPositionen.Next; die Schleife läuft endlos.“; im Fenster „Atlas-Prüfung“ (Gruppe Datenbank) und im Befund-Hover (**Abnahme**) |
+| DL2 | Schnellkorrektur „qryPositionen.Next; am Ende des Rumpfs einfügen“, danach Strg+Z | `qryPositionen.Next;` steht eingerückt vor `end;`, Meldung weg; ein Undo-Schritt stellt es wieder her (**Abnahme**) |
+| DL3 | `Next` nur in `if … then Q.Next;` bzw. `if Fertig then Continue;` vor `Q.Next` | Fehler „Nicht jeder Weg durch den Rumpf ruft Q.Next auf …“ mit mittlerer Konfidenz, keine Korrektur |
+| DL4 | `if … then Q.Delete else Q.Next;`, `Break` vor `Q.Next`, `Q.Next` im `finally`, `Verarbeiten(Q)`, `with Q do Next` | Keine Meldung |
+| DL5 | Einstellungsseite, Bereich Prüfregeln | Regel unter der Gruppe „Datenbank“ |
+| DL6 | `"dataset-loop-without-next": "off"` bzw. `exclude` mit dem Pfad der Datei | Keine Meldung |
