@@ -6,6 +6,10 @@
 // unbekannten Teilen hinter der Tabelle, weitergegebenem Empfänger, Ergänzung
 // in anderer Routine und Meldungstexten; Option allowTables, Abschalten,
 // Ausnahmen und falscher Optionstyp.
+// sql-select-star (#967): Beispiel aus dem Issue, Zerlegung (DISTINCT, TOP,
+// FIRST/SKIP, Alias.*, Unterabfrage, EXISTS, COUNT(*), Meldungstexte),
+// zusammengesetzte Texte, Korrektur aus den persistenten Feldern der
+// Formulardatei, SQL der Formulardatei, Standard aus, Abschalten und Ausnahmen.
 
 interface
 
@@ -32,6 +36,18 @@ type
     procedure SqlWriteFormFile;
     [Test]
     procedure SqlWriteOptions;
+    [Test]
+    procedure SelectStarIssueExample;
+    [Test]
+    procedure SelectStarAnalysis;
+    [Test]
+    procedure SelectStarSources;
+    [Test]
+    procedure SelectStarFixFromPersistentFields;
+    [Test]
+    procedure SelectStarFormFile;
+    [Test]
+    procedure SelectStarOptions;
     [Test]
     procedure RuleIsRegistered;
   end;
@@ -70,6 +86,24 @@ begin
   Findings := TRuleAssert.Findings(TSqlWriteWithoutWhereRule.Create, ASource);
   Assert.AreEqual(1, Integer(Length(Findings)));
   Result := Findings[0].Message;
+end;
+
+const
+  StarOn = '{"rules": {"sql-select-star": "hint"}}';
+
+function StarFindings(const ASource: string): TArray<TRuleFinding>;
+begin
+  Result := TRuleAssert.Findings(TSqlSelectStarRule.Create, ASource, StarOn);
+end;
+
+function StarCount(const ASource: string): Integer;
+begin
+  Result := Length(StarFindings(ASource));
+end;
+
+function StarsIn(const ASql: string): Integer;
+begin
+  Result := Length(TSqlSelectStarRule.Stars(ASql, False));
 end;
 
 { TDatabaseRulesTests }
@@ -277,16 +311,152 @@ begin
   Assert.AreEqual(0, Integer(Length(Issues)));
 end;
 
+procedure TDatabaseRulesTests.SelectStarIssueExample;
+var
+  Findings: TArray<TRuleFinding>;
+begin
+  Findings := StarFindings(Body('  qry.SQL.Text := ''SELECT * FROM Kunden WHERE Ort = :Ort'';'#10'  qry.Open;'#10));
+  Assert.AreEqual(1, Integer(Length(Findings)));
+  Assert.AreEqual(SqlSelectStarRuleId, Findings[0].RuleId);
+  Assert.AreEqual(Ord(TRuleSeverity.Hint), Ord(Findings[0].Severity));
+  Assert.AreEqual(Ord(TRuleConfidence.High), Ord(Findings[0].Confidence));
+  Assert.AreEqual('SELECT * holt alle Spalten; neue Spalten ändern still die Datenmenge.', Findings[0].Message);
+  Assert.AreEqual(7, Findings[0].Range.StartPos.Line);
+  Assert.AreEqual(18, Findings[0].Range.StartPos.Character);
+  // Ohne Formulardatei kennt die Regel die Spalten nicht: keine Korrektur.
+  Assert.AreEqual(0, Integer(Length(Findings[0].Fixes)));
+  // Korrigierte Form und naheliegender Negativfall
+  Assert.AreEqual(0, StarCount(Body('  qry.SQL.Text := ''SELECT Id, Name FROM Kunden WHERE Ort = :Ort'';'#10)));
+  Assert.AreEqual(0, StarCount(Body('  qry.SQL.Text := ''SELECT COUNT(*) FROM Kunden'';'#10)));
+end;
+
+procedure TDatabaseRulesTests.SelectStarAnalysis;
+var
+  Stars: TArray<TSqlStar>;
+begin
+  Stars := TSqlSelectStarRule.Stars('select * from Kunden', False);
+  Assert.AreEqual(1, Integer(Length(Stars)));
+  Assert.AreEqual(8, Stars[0].Offset);
+  Assert.AreEqual('', Stars[0].Qualifier);
+  Stars := TSqlSelectStarRule.Stars('SELECT k.Id, a.* FROM Kunden k JOIN Auftrag a ON a.Kunde = k.Id', False);
+  Assert.AreEqual(1, Integer(Length(Stars)));
+  Assert.AreEqual('a', Stars[0].Qualifier);
+  Assert.AreEqual(1, StarsIn('SELECT DISTINCT * FROM Kunden'));
+  Assert.AreEqual(1, StarsIn('SELECT TOP 10 * FROM Kunden'));
+  Assert.AreEqual(1, StarsIn('SELECT TOP (10) PERCENT WITH TIES * FROM Kunden ORDER BY Umsatz'));
+  Assert.AreEqual(1, StarsIn('SELECT FIRST 5 SKIP 10 * FROM Kunden'));
+  Assert.AreEqual(1, StarsIn('SELECT FIRST :Anzahl * FROM Kunden'));
+  // Unterabfrage zählt, EXISTS nicht
+  Assert.AreEqual(1, StarsIn('SELECT Id FROM (SELECT * FROM Kunden) k'));
+  Assert.AreEqual(0, StarsIn('SELECT Id FROM Kunden k WHERE NOT EXISTS (SELECT * FROM Sperre s WHERE s.Id = k.Id)'));
+  Assert.AreEqual(2, StarsIn('SELECT * FROM A; SELECT * FROM B'));
+  // Kein Stern als Spalte
+  Assert.AreEqual(0, StarsIn('SELECT COUNT(*), Preis * Menge FROM Posten'));
+  Assert.AreEqual(0, StarsIn('SELECT Id FROM Kunden /* SELECT * FROM Alt */'));
+  Assert.AreEqual(0, StarsIn('SELECT Name FROM Kunden WHERE Notiz = ''SELECT * FROM X'''));
+  // Ohne FROM kein SQL (Meldungstext), im SQL-Text darf ein unbekannter Teil folgen.
+  Assert.AreEqual(0, Integer(Length(TSqlSelectStarRule.Stars('SELECT * ist langsam', True))));
+  Assert.AreEqual(1, StarsIn('SELECT * '#1' '));
+  Assert.AreEqual(0, Integer(Length(TSqlSelectStarRule.Stars('select * from Kunden', True))));
+end;
+
+procedure TDatabaseRulesTests.SelectStarSources;
+begin
+  // SQL.Add, CommandText, Konstante, ExecSQL-Argument, Format
+  Assert.AreEqual(1, StarCount(Body('  qry.SQL.Clear;'#10'  qry.SQL.Add(''SELECT *'');'#10 +
+    '  qry.SQL.Add(''FROM Kunden'');'#10)));
+  Assert.AreEqual(1, StarCount(Body('  cmd.CommandText := ''select * from Kunden'';'#10)));
+  Assert.AreEqual(1, StarCount('unit Daten;'#10'interface'#10'implementation'#10'const'#10 +
+    '  AlleKunden = ''SELECT * FROM Kunden'';'#10'procedure Laden(qry: TFDQuery);'#10'begin'#10 +
+    '  qry.Open(AlleKunden);'#10'end;'#10'end.'));
+  Assert.AreEqual(1, StarCount(Body('  qry.SQL.Text := Format(''SELECT * FROM %s'', [Tabelle]);'#10)));
+  Assert.AreEqual(1, StarCount(Body('  qry.SQL.Text := ''SELECT * FROM '' + Tabelle;'#10)));
+  // Spalten aus einer Variablen und Meldungstexte bleiben still.
+  Assert.AreEqual(0, StarCount(Body('  qry.SQL.Text := ''SELECT '' + Spalten + '' FROM Kunden'';'#10)));
+  Assert.AreEqual(0, StarCount(Body('  ShowMessage(''Select * from Kunden dauert zu lange'');'#10)));
+  // Wird der Text in einer anderen Routine ergänzt, bleibt die Stelle still wie bei sql-write-without-where.
+  Assert.AreEqual(0, StarCount(Body('  qry.SQL.Text := ''SELECT * FROM Kunden'';'#10 +
+    '  Ergaenzen(qry.SQL);'#10)));
+end;
+
+procedure TDatabaseRulesTests.SelectStarFixFromPersistentFields;
+const
+  Source = 'unit Daten;'#10'interface'#10'type'#10'  TdmDaten = class(TDataModule)'#10'    qryKunden: TFDQuery;'#10 +
+    '    procedure Laden;'#10'  end;'#10'implementation'#10'procedure TdmDaten.Laden;'#10'begin'#10 +
+    '  qryKunden.SQL.Text := ''SELECT * FROM Kunden WHERE Ort = ''''Bonn'''''';'#10'  qryKunden.Open;'#10'end;'#10 +
+    'end.';
+  Form = 'object dmDaten: TdmDaten'#10'  object qryKunden: TFDQuery'#10'    object qryKundenId: TIntegerField'#10 +
+    '      FieldName = ''Id'''#10'    end'#10'    object qryKundenName: TWideStringField'#10 +
+    '      FieldName = ''Name'''#10'      Size = 80'#10'    end'#10'    object qryKundenAnzeige: TStringField'#10 +
+    '      FieldKind = fkCalculated'#10'      FieldName = ''Anzeige'''#10'      Calculated = True'#10'    end'#10 +
+    '  end'#10'end';
+var
+  Findings: TArray<TRuleFinding>;
+begin
+  Findings := TRuleAssert.FormFindings(TSqlSelectStarRule.Create, Source, Form, StarOn);
+  Assert.AreEqual(1, Integer(Length(Findings)));
+  Assert.AreEqual(1, Integer(Length(Findings[0].Fixes)));
+  Assert.AreEqual('* durch die persistenten Felder ersetzen', Findings[0].Fixes[0].Title);
+  Assert.AreEqual(1, Integer(Length(Findings[0].Fixes[0].Edits)));
+  Assert.AreEqual('Id, Name', Findings[0].Fixes[0].Edits[0].NewText);
+  Assert.AreEqual(10, Findings[0].Fixes[0].Edits[0].Range.StartPos.Line);
+  Assert.AreEqual(32, Findings[0].Fixes[0].Edits[0].Range.StartPos.Character);
+  Assert.AreEqual(33, Findings[0].Fixes[0].Edits[0].Range.EndPos.Character);
+  // Ohne persistente Felder keine Korrektur
+  Findings := TRuleAssert.FormFindings(TSqlSelectStarRule.Create, Source,
+    'object dmDaten: TdmDaten'#10'  object qryKunden: TFDQuery'#10'  end'#10'end', StarOn);
+  Assert.AreEqual(1, Integer(Length(Findings)));
+  Assert.AreEqual(0, Integer(Length(Findings[0].Fixes)));
+end;
+
+procedure TDatabaseRulesTests.SelectStarFormFile;
+const
+  Source = 'unit Daten;'#10'interface'#10'type'#10'  TdmDaten = class(TDataModule)'#10'    qryLesen: TFDQuery;'#10 +
+    '  end;'#10'implementation'#10'end.';
+  Form = 'object dmDaten: TdmDaten'#10'  object qryLesen: TFDQuery'#10'    SQL.Strings = ('#10 +
+    '      ''SELECT *'''#10'      ''FROM Warenkorb'')'#10'  end'#10'end';
+var
+  Findings: TArray<TRuleFinding>;
+begin
+  Findings := TRuleAssert.FormFindings(TSqlSelectStarRule.Create, Source, Form, StarOn);
+  Assert.AreEqual(1, Integer(Length(Findings)));
+  Assert.AreEqual('SELECT * holt alle Spalten (qryLesen.SQL in der Formulardatei); neue Spalten ändern still die ' +
+    'Datenmenge.', Findings[0].Message);
+  Assert.AreEqual(4, Findings[0].Range.StartPos.Line);
+  // Standard aus
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.FormFindings(TSqlSelectStarRule.Create, Source, Form))));
+end;
+
+procedure TDatabaseRulesTests.SelectStarOptions;
+var
+  Source: string;
+  Rule: IRule;
+begin
+  Source := Body('  qry.SQL.Text := ''SELECT * FROM Kunden'';'#10);
+  Rule := TSqlSelectStarRule.Create;
+  Assert.IsTrue(Rule.Descriptor.Experimental, 'Standard aus');
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TSqlSelectStarRule.Create, Source))));
+  Assert.AreEqual(1, StarCount(Source));
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TSqlSelectStarRule.Create, Source,
+    '{"rules": {"sql-select-star": "off"}}'))));
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TSqlSelectStarRule.Create, Source,
+    '{"rules": {"sql-select-star": {"severity": "hint", "exclude": ["Source/*.pas"]}}}', 'Source/Daten.pas'))));
+end;
+
 procedure TDatabaseRulesTests.RuleIsRegistered;
 var
   Rule: IRule;
-  Found: Boolean;
+  Found, FoundStar: Boolean;
 begin
   Found := False;
+  FoundStar := False;
   for Rule in BuiltinRules do
     if Rule.Descriptor.Id = SqlWriteWithoutWhereRuleId then
-      Found := True;
+      Found := True
+    else if Rule.Descriptor.Id = SqlSelectStarRuleId then
+      FoundStar := True;
   Assert.IsTrue(Found);
+  Assert.IsTrue(FoundStar);
 end;
 
 initialization

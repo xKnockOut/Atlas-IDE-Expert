@@ -2216,7 +2216,7 @@
       "category": "bug",
       "severity": "warning",
       "group": "database",
-      "description": "An UPDATE or DELETE without WHERE in a string literal, SQL.Text, SQL.Add, CommandText, the first argument of ExecSQL, ExecSQLScalar, ExecuteDirect or Execute, or in SQL.Strings/CommandText of the form file. It affects every row of the table; usually the condition was forgotten. The rule assembles the SQL text per query within a routine (Clear and a new Text start over) and substitutes constants and local values. JOIN, TOP, LIMIT and ROWS restrict the rows as well; a WHERE in a subquery or comment does not count. Unknown parts behind the table name (variables, calls at the place of a clause) keep the statement silent; a dynamic table name reports with medium confidence. Silent when the routine passes the SQL on or another routine of the unit adds to it; form file SQL only counts when the unit does not change it. Literals outside SQL properties count only with DELETE or UPDATE in capitals, so message texts stay silent. High confidence, no quick fix; tables that are emptied on purpose go into allowTables.",
+      "description": "An UPDATE or DELETE without WHERE in a string literal, SQL.Text, SQL.Add, CommandText, the first argument of ExecSQL, ExecSQLScalar, Open, ExecuteDirect or Execute, or in SQL.Strings/CommandText of the form file. It affects every row of the table; usually the condition was forgotten. The rule assembles the SQL text per query within a routine (Clear and a new Text start over) and substitutes constants and local values. JOIN, TOP, LIMIT and ROWS restrict the rows as well; a WHERE in a subquery or comment does not count. Unknown parts behind the table name (variables, calls at the place of a clause) keep the statement silent; a dynamic table name reports with medium confidence. Silent when the routine passes the SQL on or another routine of the unit adds to it; form file SQL only counts when the unit does not change it. Literals outside SQL properties count only with DELETE or UPDATE in capitals, so message texts stay silent. High confidence, no quick fix; tables that are emptied on purpose go into allowTables.",
       "bad": "qry.SQL.Text := 'DELETE FROM Warenkorb';\nqry.ExecSQL;",
       "good": "qry.SQL.Text := 'DELETE FROM Warenkorb WHERE Kunde = :Kunde';\nqry.ParamByName('Kunde').AsInteger := KundeId;\nqry.ExecSQL;",
       "options": [
@@ -2488,6 +2488,100 @@
         "E2130"
       ],
       "level": "T"
+    },
+    {
+      "id": "sql-select-star",
+      "name": "SELECT * in code",
+      "category": "code-smell",
+      "severity": "hint",
+      "group": "database",
+      "description": "SELECT * or SELECT alias.* in a column list, in the same places as sql-write-without-where: string literals, SQL.Text, SQL.Add, CommandText, the first argument of ExecSQL, Open and similar calls, constants, local values and SQL.Strings/CommandText of the form file. New columns silently change the dataset, persistent fields no longer match, and more data is transferred than needed. Subqueries count; EXISTS (SELECT * …) and COUNT(*) stay silent, as does a column list from a variable. Literals outside SQL properties count only with SELECT in capitals and a FROM, so message texts stay silent. Off by default (enable in the rules settings or with the strict profile). High confidence. Quick fix: when the star stands in a single literal and the dataset has persistent fields in the form file, replace * with their FieldName list (without calculated and lookup fields).",
+      "bad": "qry.SQL.Text := 'SELECT * FROM Kunden WHERE Ort = :Ort';",
+      "good": "qry.SQL.Text := 'SELECT Id, Name, Ort FROM Kunden WHERE Ort = :Ort';"
+    },
+    {
+      "id": "path-concat-without-delimiter",
+      "name": "Path joined without delimiter",
+      "category": "bug",
+      "severity": "warning",
+      "group": "robustness",
+      "description": "A folder without a trailing path delimiter is joined to a file or folder name with +: results of ExtractFileDir, ExcludeTrailingPathDelimiter, GetCurrentDir, GetHomePath, TPath.GetDocumentsPath and the other TPath.Get…Path folders, TPath.GetDirectoryName, TDirectory.GetCurrentDirectory and TDirectory.GetParent, called directly or held in a local variable that the routine only assigns such values to. The result is C:\\Datadatei.txt instead of C:\\Data\\datei.txt. ExtractFilePath, IncludeTrailingPathDelimiter and TPath.GetTempPath end with a delimiter and stay silent, as do delimiters, extensions (ExtractFileExt, '.bak') and texts that start with a space or punctuation. A literal name reports with high confidence, an identifier with medium confidence. A local variable passed to a procedure other than ForceDirectories, FileExists and similar read-only calls may be changed there and stays silent. Quick fix: TPath.Combine(Folder, Name), adding System.IOUtils to uses.",
+      "bad": "Ordner := TPath.GetDocumentsPath;\nDatei := Ordner + 'export.csv';",
+      "good": "Ordner := TPath.GetDocumentsPath;\nDatei := TPath.Combine(Ordner, 'export.csv');"
+    },
+    {
+      "id": "hardcoded-path",
+      "name": "Hard-coded file path",
+      "category": "code-smell",
+      "severity": "hint",
+      "group": "robustness",
+      "description": "A string literal with a drive letter (C:\\…, also with /) or a UNC path (\\\\server\\share\\…); paths under C:\\Users or C:\\Documents and Settings get their own message. On other computers the path is missing. Drive roots such as 'C:\\' alone and the prefixes \\\\?\\ and \\\\.\\ stay silent, as do comments, test units and units listed in allowUnits (for example a unit with the default paths of an installation). High confidence, no quick fix: take the path from TPath (GetDocumentsPath, GetHomePath, GetSharedDocumentsPath), the settings or an environment variable.",
+      "bad": "Protokoll.SaveToFile('C:\\Users\\marco\\Desktop\\log.txt');",
+      "good": "Protokoll.SaveToFile(TPath.Combine(TPath.GetDocumentsPath, 'log.txt'));",
+      "options": [
+        {
+          "name": "allowUnits",
+          "type": "string-list",
+          "default": [],
+          "description": "Units in which hard-coded paths are allowed, by unit name; * at the end matches a prefix (App.Config*)."
+        }
+      ]
+    },
+    {
+      "id": "filename-compare-case",
+      "name": "File names compared with =",
+      "category": "bug",
+      "severity": "hint",
+      "group": "robustness",
+      "description": "A comparison with = or <> where one side is a file or path name: the result of ExtractFileName, ExtractFilePath, ExtractFileDir, ExtractFileExt, ExpandFileName, ChangeFileExt and related System.SysUtils functions, of TPath.GetFileName, GetExtension, GetDirectoryName, GetFullPath, Combine and related methods, or a variable or property whose name ends in FileName, or Application.ExeName. On Windows Kunde.pas and kunde.PAS are the same file. Comparisons with an empty string, nil or a literal without letters stay silent, as does ExtractFileDir(X) = X (both sides come from the same text). Medium confidence. Quick fix: SameFileName(A, B), or not SameFileName(A, B) for <>; adds System.SysUtils to uses if needed.",
+      "bad": "if ExtractFileName(Datei) = 'Config.ini' then",
+      "good": "if SameFileName(ExtractFileName(Datei), 'Config.ini') then"
+    },
+    {
+      "id": "initialization-not-finalized",
+      "name": "Object created at startup is not freed",
+      "category": "bug",
+      "severity": "warning",
+      "group": "robustness",
+      "description": "An object is created with TClass.Create in the initialization section and assigned to a unit variable, or created in a class constructor and assigned to a class var, but the unit never frees it (no Free, Destroy, DisposeOf, Release or FreeAndNil anywhere in the unit). FastMM reports a leak on shutdown; in packages the object stays behind on every unload. Interface and record types, components with an owner (Application, Self, Owner) and objects the unit hands over stay silent: every mention of the variable must be harmless (member access, comparison with nil, Assigned, a new Create or nil assignment); passing it as an argument, assigning it elsewhere, with, a property reading it or FreeOnTerminate silence the rule. For variables in the interface section and public class vars the rule also stays silent when another indexed unit uses the name. High confidence. Quick fix: FreeAndNil at the end of finalization or in the class destructor; a missing finalization section or class destructor (declaration and body) is created and System.SysUtils is added to uses when needed.",
+      "bad": "initialization\n  GProtokoll := TProtokoll.Create;\nend.",
+      "good": "initialization\n  GProtokoll := TProtokoll.Create;\n\nfinalization\n  FreeAndNil(GProtokoll);\nend."
+    },
+    {
+      "id": "compiler-warnings-disabled",
+      "name": "Compiler warnings or checks switched off up to the end of the unit",
+      "category": "code-smell",
+      "severity": "warning",
+      "group": "robustness",
+      "description": "{$WARNINGS OFF}, {$HINTS OFF}, {$WARN X OFF}, {$R-}, {$Q-} (also combined as {$R-,Q-}) or the long forms {$RANGECHECKS OFF} and {$OVERFLOWCHECKS OFF} without a later restore up to the end of the unit. Messages and checks disappear far beyond the intended spot, and the 0/0/0 rule is bypassed. Any later ON, +, DEFAULT or ERROR for the same switch counts as a restore, also inside {$IFOPT}/{$IFDEF} patterns, as does a later {$POPOPT}. A switch whose counterpart stands in another branch of the same {$IF} ({$IFDEF DEBUG}{$R+}{$ELSE}{$R-}{$ENDIF}) is a deliberate setting per configuration and stays silent, as does a directive with no code after it; {$R *.dfm} is a resource, not a range check. Option allow lists switches that may stay off (warning names such as SYMBOL_PLATFORM, WARNINGS, HINTS, R or RANGECHECKS, Q or OVERFLOWCHECKS). High confidence. Quick fix: insert the restore ({$WARNINGS ON}, {$WARN X DEFAULT}, {$R+} …) after the next block; for range and overflow checks only individually, since {$R+} may switch on a check the project has off.",
+      "bad": "{$WARNINGS OFF}\nfunction AlteBerechnung(const Wert: Integer): Integer;\nbegin\n  Result := Wert * 2;\nend;",
+      "good": "{$WARNINGS OFF}\nfunction AlteBerechnung(const Wert: Integer): Integer;\nbegin\n  Result := Wert * 2;\nend;\n{$WARNINGS ON}",
+      "options": [
+        {
+          "name": "allow",
+          "type": "string-list",
+          "default": [],
+          "description": "Switches that may stay off up to the end of the unit: warning names for {$WARN} (SYMBOL_PLATFORM), WARNINGS, HINTS, R or RANGECHECKS, Q or OVERFLOWCHECKS; case is ignored."
+        }
+      ]
+    },
+    {
+      "id": "dll-export-unsafe",
+      "name": "Exported routine not safe across DLL boundaries",
+      "category": "bug",
+      "severity": "warning",
+      "group": "robustness",
+      "description": "A routine of this file listed in exports has no calling convention (stdcall, cdecl, safecall, winapi or pascal; register is the Delphi convention) or takes or returns a string (string, UnicodeString, AnsiString, UTF8String, RawByteString), a dynamic array (TBytes, TArray<T>, …DynArray, array of T declared in the file), an object or an interface without GUID. Callers in other languages or Delphi versions crash; strings and dynamic arrays live in the memory manager of the DLL. WideString, ShortString, PChar, open array parameters and records are fine. Objects are only recognised for certain: classes of the file, of the index and common RTL classes; interfaces only from the file. Routines from other units and overloads that the exports entry does not pin down stay silent. With ShareMem or SimpleShareMem in uses, strings and dynamic arrays are allowed (option allowShareMem). The finding sits on the exports entry; for strings it recommends PChar with buffer and length. High confidence. Quick fix: add stdcall to every header of the routine (only individually, since it changes the interface for existing callers).",
+      "bad": "function KundeName(Id: Integer): string;\n…\nexports\n  KundeName;",
+      "good": "function KundeName(Id: Integer; Puffer: PChar; Laenge: Integer): Integer; stdcall;\n…\nexports\n  KundeName;",
+      "options": [
+        {
+          "name": "allowShareMem",
+          "type": "boolean",
+          "default": true,
+          "description": "With ShareMem or SimpleShareMem in uses, strings and dynamic arrays are allowed in exported routines."
+        }
+      ]
     },
     {
       "id": "destructor-not-nil-safe",

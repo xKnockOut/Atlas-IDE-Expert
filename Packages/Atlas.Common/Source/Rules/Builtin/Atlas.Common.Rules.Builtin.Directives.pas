@@ -1,6 +1,14 @@
 ﻿unit Atlas.Common.Rules.Builtin.Directives;
 
-// Regeln für Direktiven (#909, Gruppe Compiler vorab):
+// Regeln für Direktiven (#909):
+//   compiler-warnings-disabled        (#972, Gruppe Robustheit und Muster)
+//                                     {$WARNINGS OFF}, {$HINTS OFF}, {$WARN X
+//                                     OFF}, {$R-}, {$Q-} und die langen Formen
+//                                     ohne spätere Wiederherstellung (ON, +,
+//                                     DEFAULT, ERROR oder {$POPOPT}); ein
+//                                     Gegenstück im anderen Zweig desselben
+//                                     {$IF} ist gewollt. Option allow.
+// Gruppe Compiler vorab:
 //   conditional-directive-unbalanced  Bedingte Direktiven unvollständig oder
 //                                     unbekannt (#989): {$IF…} ohne {$ENDIF}
 //                                     (E2095, E2280), {$ELSE}/{$ENDIF} ohne
@@ -36,6 +44,7 @@ uses
 const
   ConditionalDirectiveUnbalancedRuleId = 'conditional-directive-unbalanced';
   DirectiveTypoRuleId = 'directive-typo';
+  CompilerWarningsDisabledRuleId = 'compiler-warnings-disabled';
 
 type
   TConditionalDirectiveUnbalancedRule = class(TInterfacedObject, IRule)
@@ -50,6 +59,12 @@ type
     procedure Check(const AContext: TRuleContext; const AReport: IRuleReport);
   end;
 
+  TCompilerWarningsDisabledRule = class(TInterfacedObject, IRule)
+  public
+    function Descriptor: TRuleDescriptor;
+    procedure Check(const AContext: TRuleContext; const AReport: IRuleReport);
+  end;
+
 procedure RegisterDirectiveRules(const ARegistry: TRuleRegistry);
 
 implementation
@@ -59,9 +74,12 @@ uses
   Atlas.Common.Documents.Contract,
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Pascal.Contract,
+  Atlas.Common.Pascal.ConditionalBranches,
   Atlas.Common.Pascal.DirectiveNames,
   Atlas.Common.Pascal.SyntaxTree,
-  Atlas.Text.Fuzzy;
+  Atlas.Text.Fuzzy,
+  Atlas.Common.Rules.Options,
+  Atlas.Text.Lines;
 
 type
   /// <summary>Offenes {$IF…} mit seiner Kette aus {$ELSEIF}/{$ELSE}.</summary>
@@ -511,10 +529,250 @@ begin
     end);
 end;
 
+{ TCompilerWarningsDisabledRule }
+
+type
+  /// <summary>Ein Schalter in einer Direktive: WARNINGS, HINTS, RANGECHECKS, OVERFLOWCHECKS, WARN:Name,
+  /// PUSHOPT oder POPOPT.</summary>
+  TCompilerSwitch = record
+    Switch: string;
+    /// <summary>So stand der Schalter da: R, RANGECHECKS, WARN usw.; bestimmt die Form der Wiederherstellung.
+    /// </summary>
+    Written: string;
+    Off: Boolean;
+  end;
+
+  /// <summary>Ein ausgeschalteter Schalter und ob er wiederhergestellt wird.</summary>
+  TSwitchOff = record
+    Item: TCompilerSwitch;
+    Token: Integer;
+    Restored: Boolean;
+  end;
+
+/// <summary>Schalter der Direktive ADirective; leer bei allen anderen Direktiven, auch {$R *.dfm}.</summary>
+function SwitchesOf(const ADirective: string): TArray<TCompilerSwitch>;
+var
+  Body, Name, Rest, Part: string;
+  Item: TCompilerSwitch;
+  Words, Parts: TArray<string>;
+begin
+  Result := nil;
+  Body := TDirectiveNames.Body(ADirective);
+  Name := UpperCase(TDirectiveNames.LeadingName(Body));
+  Rest := UpperCase(Trim(Copy(Body, Length(Name) + 1, MaxInt)));
+  Item := Default(TCompilerSwitch);
+  Item.Written := Name;
+  if MatchStr(Name, ['WARNINGS', 'HINTS', 'RANGECHECKS', 'OVERFLOWCHECKS']) then
+  begin
+    if (Rest <> 'ON') and (Rest <> 'OFF') then
+      Exit;
+    Item.Switch := Name;
+    Item.Off := Rest = 'OFF';
+    Result := [Item];
+    Exit;
+  end;
+  if Name = 'WARN' then
+  begin
+    Words := Rest.Split([' ', #9], TStringSplitOptions.ExcludeEmpty);
+    if (Length(Words) <> 2) or not MatchStr(Words[1], ['ON', 'OFF', 'ERROR', 'DEFAULT']) then
+      Exit;
+    Item.Switch := 'WARN:' + Words[0];
+    Item.Off := Words[1] = 'OFF';
+    Result := [Item];
+    Exit;
+  end;
+  if (Name = 'PUSHOPT') or (Name = 'POPOPT') then
+  begin
+    Item.Switch := Name;
+    Result := [Item];
+    Exit;
+  end;
+  // Kurzschalter: {$R-}, {$Q+}, {$R-,Q-,O+}; {$R *.dfm} ist eine Ressource.
+  Parts := Body.Split([',']);
+  for Part in Parts do
+    if (Length(Trim(Part)) <> 2) or not CharInSet(Trim(Part)[1], ['A'..'Z', 'a'..'z']) or
+      not CharInSet(Trim(Part)[2], ['+', '-']) then
+      Exit;
+  for Part in Parts do
+  begin
+    Item := Default(TCompilerSwitch);
+    Item.Written := UpperCase(Trim(Part)[1]);
+    if Item.Written = 'R' then
+      Item.Switch := 'RANGECHECKS'
+    else if Item.Written = 'Q' then
+      Item.Switch := 'OVERFLOWCHECKS'
+    else
+      Continue;
+    Item.Off := Trim(Part)[2] = '-';
+    Result := Result + [Item];
+  end;
+end;
+
+/// <summary>Direktive, die AItem wieder einschaltet.</summary>
+function RestoreText(const AItem: TCompilerSwitch): string;
+begin
+  if StartsStr('WARN:', AItem.Switch) then
+    Result := Format('{$WARN %s DEFAULT}', [Copy(AItem.Switch, 6, MaxInt)])
+  else if Length(AItem.Written) = 1 then
+    Result := Format('{$%s+}', [AItem.Written])
+  else
+    Result := Format('{$%s ON}', [AItem.Written]);
+end;
+
+function SwitchMessage(const AItem: TCompilerSwitch): string;
+begin
+  if AItem.Switch = 'WARNINGS' then
+    Result := 'WARNINGS bleibt bis zum Ende der Unit aus; alle späteren Warnungen fehlen.'
+  else if AItem.Switch = 'HINTS' then
+    Result := 'HINTS bleibt bis zum Ende der Unit aus; alle späteren Hinweise fehlen.'
+  else if AItem.Switch = 'RANGECHECKS' then
+    Result := 'Die Bereichsprüfung bleibt bis zum Ende der Unit aus; Überschreitungen fallen nicht mehr auf.'
+  else if AItem.Switch = 'OVERFLOWCHECKS' then
+    Result := 'Die Überlaufprüfung bleibt bis zum Ende der Unit aus; Überläufe fallen nicht mehr auf.'
+  else
+    Result := Format('Die Warnung %s bleibt bis zum Ende der Unit aus.', [Copy(AItem.Switch, 6, MaxInt)]);
+end;
+
+/// <summary>Steht AItem in der Liste allow (Warnungsname, WARNINGS, HINTS, R bzw. RANGECHECKS, Q bzw.
+/// OVERFLOWCHECKS)?</summary>
+function SwitchAllowed(const AItem: TCompilerSwitch; const AAllow: TArray<string>): Boolean;
+begin
+  if StartsStr('WARN:', AItem.Switch) then
+    Result := MatchText(Copy(AItem.Switch, 6, MaxInt), AAllow)
+  else
+    Result := MatchText(AItem.Switch, AAllow) or ((AItem.Switch = 'RANGECHECKS') and MatchText('R', AAllow)) or
+      ((AItem.Switch = 'OVERFLOWCHECKS') and MatchText('Q', AAllow));
+end;
+
+/// <summary>Folgt hinter dem Token AIndex noch Code außer dem abschließenden "end."?</summary>
+function CodeFollows(const ATokens: TArray<TPascalToken>; AIndex: Integer): Boolean;
+var
+  Index: Integer;
+begin
+  Result := False;
+  for Index := AIndex + 1 to High(ATokens) do
+    if not (ATokens[Index].Kind in [TPascalTokenKind.Comment, TPascalTokenKind.Directive]) and
+      not ATokens[Index].IsKeyword('end') and not ATokens[Index].IsSymbol('.') then
+      Exit(True);
+end;
+
+/// <summary>Der nächste Block hinter AOffset: das erste Geschwister hinter der Direktive im innersten Knoten,
+/// der sie umschließt; nil ohne oder wenn es ein ganzer Abschnitt wäre.</summary>
+function NextBlock(ATree: TSyntaxTree; AOffset: Integer): TSyntaxNode;
+var
+  Node, Inner: TSyntaxNode;
+  Index: Integer;
+begin
+  Result := nil;
+  Node := ATree.Root;
+  while Node <> nil do
+  begin
+    Inner := nil;
+    for Index := 0 to Node.ChildCount - 1 do
+      if (Node[Index].StartOffset <= AOffset) and (AOffset < Node[Index].EndOffset) then
+      begin
+        Inner := Node[Index];
+        Break;
+      end
+      else if Node[Index].StartOffset >= AOffset then
+      begin
+        Result := Node[Index];
+        Break;
+      end;
+    Node := Inner;
+  end;
+  if (Result <> nil) and (Result.Kind in [TSyntaxKind.InterfaceSection, TSyntaxKind.ImplementationSection,
+    TSyntaxKind.InitializationSection, TSyntaxKind.FinalizationSection]) then
+    Result := nil;
+end;
+
+function TCompilerWarningsDisabledRule.Descriptor: TRuleDescriptor;
+begin
+  Result := TRuleDescriptor.Create(CompilerWarningsDisabledRuleId, TRuleSeverity.Warning,
+    'Compiler-Warnungen oder Prüfungen bis zum Ende der Unit abgeschaltet');
+end;
+
+procedure TCompilerWarningsDisabledRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
+var
+  Tokens: TArray<TPascalToken>;
+  Paths, Allow, Lines: TArray<string>;
+  Offs: TArray<TSwitchOff>;
+  Item: TCompilerSwitch;
+  Index, Other, Line: Integer;
+  Off: TSwitchOff;
+  Deliberate: Boolean;
+  Block: TSyntaxNode;
+  Fixes: TArray<TRuleFix>;
+  LineBreak, Indent: string;
+begin
+  // Die Schalter einer .dpk sind die Optionen des Packages, die die IDE dort pflegt.
+  if (AContext.Tree = nil) or (AContext.Tree.Root = nil) or (AContext.Tree.Root.Kind = TSyntaxKind.PackageFile) then
+    Exit;
+  Tokens := AContext.Tree.Tokens;
+  Offs := nil;
+  for Index := 0 to High(Tokens) do
+    if Tokens[Index].Kind = TPascalTokenKind.Directive then
+      for Item in SwitchesOf(Tokens[Index].Text) do
+        if Item.Switch = 'POPOPT' then
+          // {$POPOPT} stellt alles wieder her, was seit {$PUSHOPT} umgestellt wurde.
+          for Other := 0 to High(Offs) do
+            Offs[Other].Restored := True
+        else if Item.Off then
+        begin
+          Off := Default(TSwitchOff);
+          Off.Item := Item;
+          Off.Token := Index;
+          Offs := Offs + [Off];
+        end
+        else
+          for Other := 0 to High(Offs) do
+            if Offs[Other].Item.Switch = Item.Switch then
+              Offs[Other].Restored := True;
+  if Offs = nil then
+    Exit;
+  Allow := TRuleOptions.Strings(AContext.Options, 'allow', nil);
+  Paths := TConditionalBranches.Paths(Tokens);
+  Lines := TTextLines.SplitLines(AContext.Text, LineBreak);
+  for Off in Offs do
+  begin
+    if Off.Restored or SwitchAllowed(Off.Item, Allow) or not CodeFollows(Tokens, Off.Token) then
+      Continue;
+    // {$IFDEF DEBUG}{$R+}{$ELSE}{$R-}{$ENDIF}: gewollt je Konfiguration, kein Vergessen.
+    Deliberate := False;
+    for Index := 0 to High(Tokens) do
+      if (Tokens[Index].Kind = TPascalTokenKind.Directive) and TConditionalBranches.Exclusive(
+        TConditionalBranches.PathAt(Paths, Index), TConditionalBranches.PathAt(Paths, Off.Token)) then
+        for Item in SwitchesOf(Tokens[Index].Text) do
+          if (Item.Switch = Off.Item.Switch) and not Item.Off then
+            Deliberate := True;
+    if Deliberate then
+      Continue;
+    Fixes := nil;
+    Block := NextBlock(AContext.Tree, Tokens[Off.Token].Offset + Length(Tokens[Off.Token].Text));
+    if Block <> nil then
+    begin
+      Line := Block.EndPos.Line;
+      Indent := '';
+      if Tokens[Off.Token].StartPos.Line <= High(Lines) then
+        Indent := TTextLines.IndentOf(Lines[Tokens[Off.Token].StartPos.Line]);
+      if Line <= High(Lines) then
+        // Bereichs- und Überlaufprüfung: {$R+} schaltet sie womöglich erst ein, wenn das Projekt sie aus hat;
+        // deshalb nur einzeln.
+        Fixes := [TRuleFix.Create('Nach dem nächsten Block wiederherstellen',
+          [TRuleEdit.Create(TTextRange.Create(Line, Length(Lines[Line]), Line, Length(Lines[Line])),
+          LineBreak + Indent + RestoreText(Off.Item))], (Off.Item.Switch <> 'RANGECHECKS') and
+          (Off.Item.Switch <> 'OVERFLOWCHECKS'))];
+    end;
+    AReport.Add(TTextRange.Create(Tokens[Off.Token].StartPos, Tokens[Off.Token].EndPos), SwitchMessage(Off.Item),
+      TRuleConfidence.High, Fixes);
+  end;
+end;
+
 procedure RegisterDirectiveRules(const ARegistry: TRuleRegistry);
 begin
   ARegistry.Register(TConditionalDirectiveUnbalancedRule.Create);
   ARegistry.Register(TDirectiveTypoRule.Create);
+  ARegistry.Register(TCompilerWarningsDisabledRule.Create);
 end;
 
 end.

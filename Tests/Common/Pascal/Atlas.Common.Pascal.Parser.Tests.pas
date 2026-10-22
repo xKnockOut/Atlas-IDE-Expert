@@ -16,6 +16,8 @@ type
     [Test]
     procedure ParsesPackageWithRequiresAndContains;
     [Test]
+    procedure ParsesExportsWithParameterLists;
+    [Test]
     procedure ParsesClassWithMembers;
     [Test]
     procedure EndsVarSectionAtVisibility;
@@ -180,6 +182,28 @@ begin
     AssertNoDiagnostics(Tree);
     Assert.AreEqual(TSyntaxKind.PackageFile, Tree.Root.Kind);
     Assert.AreEqual(2, CountKind(Tree.Root, TSyntaxKind.UsesClause));
+  finally
+    Tree.Free;
+  end;
+end;
+
+procedure TPascalParserTests.ParsesExportsWithParameterLists;
+var
+  Tree: TSyntaxTree;
+  Exports_: TSyntaxNode;
+begin
+  // Überladene Routinen stehen mit Parameterliste in exports, darin ";" (#973).
+  Tree := TPascalParser.Parse(Lines(['library L;', 'procedure Setze(const A: string; var B: Integer); overload;',
+    'begin', 'end;', 'exports', '  Setze(const A: string; var B: Integer) name ''SetzeA'' index 3,', '  Lies;',
+    'begin', 'end.']));
+  try
+    AssertNoDiagnostics(Tree);
+    Assert.AreEqual(Ord(TSyntaxKind.LibraryFile), Ord(Tree.Root.Kind));
+    Exports_ := FindFirst(Tree.Root, TSyntaxKind.ExportsClause);
+    Assert.IsNotNull(Exports_);
+    Assert.AreEqual(4, Exports_.StartPos.Line);
+    Assert.AreEqual(6, Exports_.EndPos.Line);
+    Assert.AreEqual(0, CountKind(Tree.Root, TSyntaxKind.VarSection));
   finally
     Tree.Free;
   end;

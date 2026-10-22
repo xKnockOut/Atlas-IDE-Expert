@@ -1161,15 +1161,23 @@ end;
 
 procedure TParser.ParseExports(AParent: TSyntaxNode);
 var
-  Start: Integer;
+  Start, Depth: Integer;
   Node: TSyntaxNode;
 begin
   Start := NodeStart;
   Node := StartNode(TSyntaxKind.ExportsClause);
   AParent.Add(Node);
   Advance; // exports
-  while not AtEnd and not IsSym(';') and not IsSectionEnd do
+  // Parameterlisten überladener Routinen, z. B. Setze(const A: string; var B: TBytes), enthalten ";" (#973).
+  Depth := 0;
+  while not AtEnd and ((Depth > 0) or (not IsSym(';') and not IsSectionEnd)) do
+  begin
+    if IsSym('(') then
+      Inc(Depth)
+    else if IsSym(')') and (Depth > 0) then
+      Dec(Depth);
     Advance;
+  end;
   ExpectSym(';');
   FinishNode(Node, Start);
 end;

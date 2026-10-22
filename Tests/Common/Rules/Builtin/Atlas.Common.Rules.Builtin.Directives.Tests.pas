@@ -2,7 +2,8 @@
 
 // Tests der Regeln für Compiler-Direktiven (#989): offene und überzählige
 // bedingte Direktiven, Symbole, unbekannte Direktiven und {$WARN}-Bezeichner,
-// {$PUSHOPT}/{$POPOPT}, {$ALIGN} und die Einstellungen.
+// {$PUSHOPT}/{$POPOPT}, {$ALIGN} und die Einstellungen; compiler-warnings-disabled
+// (#972).
 
 interface
 
@@ -41,6 +42,14 @@ type
     procedure TypoSilentCases;
     [Test]
     procedure TypoOptions;
+    [Test]
+    procedure WarningsIssueExample;
+    [Test]
+    procedure WarningsAllSwitches;
+    [Test]
+    procedure WarningsRestoredIsSilent;
+    [Test]
+    procedure WarningsAllowAndOff;
   end;
 
 implementation
@@ -363,6 +372,111 @@ begin
     'Source/Dienst.pas'))));
   Assert.AreEqual(0, Integer(Length(TypoFindings(Source, '{"rules": {"directive-typo": {"exclude": ["Source/*.pas"]}}}',
     'Source/Dienst.pas'))));
+end;
+
+function WarningsFindings(const ASource: string): TArray<TRuleFinding>; overload;
+begin
+  Result := TRuleAssert.Findings(TCompilerWarningsDisabledRule.Create, ASource);
+end;
+
+function WarningsFindings(const ASource, AConfig: string): TArray<TRuleFinding>; overload;
+begin
+  Result := TRuleAssert.Findings(TCompilerWarningsDisabledRule.Create, ASource, AConfig, 'Dienst.pas');
+end;
+
+const
+  // Beispiel aus #972
+  AlteBerechnung = 'unit Dienst;'#10'interface'#10'implementation'#10'{$WARNINGS OFF}'#10 +
+    'function AlteBerechnung(const Wert: Integer): Integer;'#10'begin'#10'  Result := Wert * 2;'#10'end;'#10#10 +
+    'procedure Neu;'#10'begin'#10'end;'#10'end.';
+
+procedure TDirectiveRulesTests.WarningsIssueExample;
+var
+  Found: TArray<TRuleFinding>;
+begin
+  Found := WarningsFindings(AlteBerechnung);
+  Assert.AreEqual(1, Integer(Length(Found)));
+  Assert.AreEqual(Ord(TRuleSeverity.Warning), Ord(Found[0].Severity));
+  Assert.AreEqual(Ord(TRuleConfidence.High), Ord(Found[0].Confidence));
+  Assert.AreEqual('WARNINGS bleibt bis zum Ende der Unit aus; alle späteren Warnungen fehlen.', Found[0].Message);
+  Assert.AreEqual(3, Found[0].Range.StartPos.Line);
+  Assert.AreEqual(15, Found[0].Range.EndPos.Character);
+  Assert.AreEqual(1, Integer(Length(Found[0].Fixes)));
+  Assert.AreEqual('Nach dem nächsten Block wiederherstellen', Found[0].Fixes[0].Title);
+  Assert.IsTrue(Found[0].Fixes[0].Safe);
+  Assert.AreEqual(StringReplace(AlteBerechnung, 'Wert * 2;'#10'end;'#10, 'Wert * 2;'#10'end;'#10'{$WARNINGS ON}'#10,
+    []), ApplyFix(AlteBerechnung, Found[0].Fixes[0]));
+  // Korrigierte Form
+  Assert.AreEqual(0, Integer(Length(WarningsFindings(ApplyFix(AlteBerechnung, Found[0].Fixes[0])))));
+end;
+
+procedure TDirectiveRulesTests.WarningsAllSwitches;
+var
+  Source: string;
+  Found: TArray<TRuleFinding>;
+begin
+  Source := Dienst('{$HINTS OFF}'#10'{$WARN SYMBOL_PLATFORM OFF}'#10'{$R-,Q-}'#10'{$OVERFLOWCHECKS OFF}'#10,
+    '  X := 1;'#10);
+  Found := WarningsFindings(Source);
+  Assert.AreEqual(5, Integer(Length(Found)));
+  Assert.AreEqual('HINTS bleibt bis zum Ende der Unit aus; alle späteren Hinweise fehlen.', Found[0].Message);
+  Assert.AreEqual('Die Warnung SYMBOL_PLATFORM bleibt bis zum Ende der Unit aus.', Found[1].Message);
+  Assert.AreEqual('Die Bereichsprüfung bleibt bis zum Ende der Unit aus; Überschreitungen fallen nicht mehr auf.',
+    Found[2].Message);
+  Assert.AreEqual('Die Überlaufprüfung bleibt bis zum Ende der Unit aus; Überläufe fallen nicht mehr auf.',
+    Found[3].Message);
+  Assert.AreEqual(Found[2].Range.StartPos.Line, Found[3].Range.StartPos.Line, '{$R-,Q-} meldet beide');
+  Assert.IsTrue(ApplyFix(Source, Found[1].Fixes[0]).Contains('end;'#10'{$WARN SYMBOL_PLATFORM DEFAULT}'));
+  // {$R+} könnte die Prüfung erst einschalten: nur einzeln
+  Assert.IsTrue(Found[1].Fixes[0].Safe);
+  Assert.IsFalse(Found[2].Fixes[0].Safe);
+  Assert.IsTrue(ApplyFix(Source, Found[2].Fixes[0]).Contains('end;'#10'{$R+}'));
+  Assert.IsTrue(ApplyFix(Source, Found[3].Fixes[0]).Contains('end;'#10'{$Q+}'));
+  Assert.IsTrue(ApplyFix(Source, Found[4].Fixes[0]).Contains('end;'#10'{$OVERFLOWCHECKS ON}'));
+end;
+
+procedure TDirectiveRulesTests.WarningsRestoredIsSilent;
+begin
+  // Wiederhergestellt, auch über {$IFOPT}-Muster und {$POPOPT}
+  Assert.AreEqual(0, Integer(Length(WarningsFindings(Dienst('{$WARNINGS OFF}'#10, '  X := 1;'#10) +
+    #10'{$WARNINGS ON}'))));
+  Assert.AreEqual(0, Integer(Length(WarningsFindings(Dienst('{$IFOPT R+}{$DEFINE BEREICH}{$ENDIF}{$R-}'#10,
+    '  X := 1;'#10'{$IFDEF BEREICH}{$R+}{$ENDIF}'#10)))));
+  Assert.AreEqual(0, Integer(Length(WarningsFindings(Dienst('{$PUSHOPT}{$Q-}'#10, '  X := 1;'#10'{$POPOPT}'#10)))));
+  Assert.AreEqual(0, Integer(Length(WarningsFindings(Dienst('{$WARN GARBAGE OFF}'#10,
+    '  X := 1;'#10'{$WARN GARBAGE ERROR}'#10)))));
+  // Gewollt je Konfiguration
+  Assert.AreEqual(0, Integer(Length(WarningsFindings(Dienst('{$IFDEF DEBUG}{$R+}{$ELSE}{$R-}{$ENDIF}'#10,
+    '  X := 1;'#10)))));
+  // Ressourcen, eingeschaltete Schalter, nichts mehr dahinter
+  Assert.AreEqual(0, Integer(Length(WarningsFindings(Dienst('{$R *.dfm}'#10'{$R+}'#10'{$HINTS ON}'#10, '')))));
+  Assert.AreEqual(0, Integer(Length(WarningsFindings('unit Dienst;'#10'interface'#10'implementation'#10 +
+    '{$WARNINGS OFF}'#10'end.'))));
+  // Optionen eines Packages pflegt die IDE in der .dpk.
+  Assert.AreEqual(0, Integer(Length(WarningsFindings('package Paket;'#10'{$R *.res}'#10'{$RANGECHECKS OFF}'#10 +
+    '{$OVERFLOWCHECKS OFF}'#10'requires'#10'  rtl;'#10'contains'#10'  Dienst in ''Dienst.pas'';'#10'end.'))));
+end;
+
+procedure TDirectiveRulesTests.WarningsAllowAndOff;
+var
+  Source: string;
+  Issues: TArray<TConfigurationIssue>;
+begin
+  TConfigurationParser.Parse('{"rules": {"compiler-warnings-disabled": {"allow": "R"}}}', Issues);
+  Assert.AreEqual(1, Integer(Length(Issues)));
+  Assert.AreEqual('"allow" muss eine Liste von Texten sein', Issues[0].Message);
+  Source := Dienst('{$WARN SYMBOL_PLATFORM OFF}'#10'{$R-}'#10, '');
+  Assert.AreEqual(2, Integer(Length(WarningsFindings(Source, ''))));
+  Assert.AreEqual(1, Integer(Length(WarningsFindings(Source,
+    '{"rules": {"compiler-warnings-disabled": {"allow": ["symbol_platform"]}}}'))));
+  Assert.AreEqual(0, Integer(Length(WarningsFindings(Source,
+    '{"rules": {"compiler-warnings-disabled": {"allow": ["SYMBOL_PLATFORM", "R"]}}}'))));
+  Assert.AreEqual(1, Integer(Length(WarningsFindings(Source,
+    '{"rules": {"compiler-warnings-disabled": {"allow": ["RANGECHECKS"]}}}'))));
+  Assert.AreEqual(0, Integer(Length(WarningsFindings(Source, '{"rules": {"compiler-warnings-disabled": "off"}}'))));
+  Assert.AreEqual(0, Integer(Length(WarningsFindings(Source, '{"rules": {"group:robustness": "off"}}'))));
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TCompilerWarningsDisabledRule.Create, Source,
+    '{"rules": {"compiler-warnings-disabled": {"exclude": ["Alt/*.pas"]}}}', 'Alt/Dienst.pas'))));
 end;
 
 initialization

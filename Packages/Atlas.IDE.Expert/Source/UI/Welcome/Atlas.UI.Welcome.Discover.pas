@@ -257,7 +257,7 @@ end;
 
 procedure TAtlasWelcomeDiscoverFrame.LoadImage(const AFileName: string);
 begin
-  if AFileName = FImageFile then
+  if SameFileName(AFileName, FImageFile) then
     Exit;
   FImageFile := AFileName;
   FOriginal.Assign(nil);
