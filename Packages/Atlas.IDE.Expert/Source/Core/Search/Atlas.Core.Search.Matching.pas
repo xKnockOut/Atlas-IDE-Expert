@@ -25,8 +25,9 @@ uses
 
 type
   {$SCOPEDENUMS ON}
-  /// <summary>Suchbereich: Routine am Cursor (mit lokalen Deklarationen), ganze Unit, Auswahl.</summary>
-  TAtlasSearchScope = (Method, UnitFile, Selection);
+  /// <summary>Suchbereich: ganze Unit (Vorgabe, auch für Default()), Routine am Cursor (mit lokalen
+  /// Deklarationen), Auswahl. Die Reihenfolge ist die der Bereichsliste in der Suchleiste.</summary>
+  TAtlasSearchScope = (UnitFile, Method, Selection);
   {$SCOPEDENUMS OFF}
 
   TAtlasSearchOptions = record

@@ -5,9 +5,10 @@
 //   Editorfensters (alBottom im Eltern-Steuerelement des Editors „Editor“, wie
 //   die Brotkrumenleiste oben). Jedes Editorfenster bekommt beim ersten Öffnen
 //   seine eigene Leiste. Vorschlag ist die einzeilige Markierung, sonst der
-//   Bezeichner am Cursor, sonst die letzte Suche. ShowInMethod („In Methode
-//   suchen“, #877) stellt den Bereich auf Methode und die Stufe auf die
-//   innerste Routine.
+//   Bezeichner am Cursor, sonst die letzte Suche. Bereich ist immer die Unit
+//   (mehrzeilige Markierung: Auswahl); ShowInMethod („In Methode suchen“,
+//   #877) stellt ihn auf Methode und die Stufe auf die innerste Routine.
+//   Sonst gilt Methode nur, wenn der Anwender sie in der Leiste wählt.
 // - Jede Änderung in der Leiste sucht neu: Treffer im Editor gerahmt, Sprung
 //   zum nächsten Treffer ab der Stelle, an der die Leiste geöffnet wurde,
 //   Zähler „n von m“. Bei Bereich Auswahl und Methode gelten Auswahl und
@@ -635,18 +636,9 @@ begin
     Proposal := TAtlasTextSearch.WordAt(Lines[Cursor.Line], Cursor.Character);
   if Proposal = '' then
     Proposal := FLast.Text;
-  Query := FLast;
-  Query.Text := Proposal;
-  // Mehrzeilige Markierung: als Bereich vorschlagen.
-  if HasSelection and (Selection.Start.Line <> Selection.Stop.Line) then
-    Query.Scope := TAtlasSearchScope.Selection
-  else if Query.Scope = TAtlasSearchScope.Selection then
-    Query.Scope := TAtlasSearchScope.UnitFile;
-  if AInMethod then
-  begin
-    Query.Scope := TAtlasSearchScope.Method;
-    Query.Level := 0;
-  end;
+  // Bereich Unit; Methode nur mit „In Methode suchen“, mehrzeilige Markierung als Auswahl.
+  Query := TAtlasSearchResults.StartQuery(FLast, Proposal,
+    HasSelection and (Selection.Start.Line <> Selection.Stop.Line), AInMethod);
   Levels := nil;
   for Routine in TAtlasSearchScopes.RoutinesAt(Text, Cursor) do
     Levels := Levels + [Routine.Caption];
