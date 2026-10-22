@@ -1429,6 +1429,41 @@
           "description": "Methods in which ProcessMessages is allowed, as Name or Class.Name."
         }
       ]
+    },
+    {
+      "id": "unchecked-conversion",
+      "name": "Unchecked conversion of user input",
+      "category": "bug",
+      "severity": "hint",
+      "group": "find-bugs",
+      "description": "StrToInt, StrToInt64, StrToFloat, StrToDate, StrToDateTime or StrToCurr applied directly to user input (Edit.Text, Grid.Cells[...], Memo.Lines[...], also inside Trim) outside the try part of a try/except. Invalid input raises EConvertError with an English message. try/finally does not count as protection. Medium confidence. Quick fix for X := StrToInt(Edit.Text); as its own statement, when X is a variable or field of the matching type: if not TryStrToInt(Edit.Text, X) then raise EConvertError.Create('X ist keine Zahl'). format-without-settings additionally reports locale-dependent conversions without TFormatSettings. Options functions and sources choose the checked conversions and the properties that count as input.",
+      "bad": "Menge := StrToInt(edtMenge.Text);",
+      "good": "if not TryStrToInt(edtMenge.Text, Menge) then\n  raise EConvertError.Create('Menge ist keine Zahl');",
+      "options": [
+        {
+          "name": "functions",
+          "type": "string-list",
+          "default": [
+            "StrToInt",
+            "StrToInt64",
+            "StrToFloat",
+            "StrToDate",
+            "StrToDateTime",
+            "StrToCurr"
+          ],
+          "description": "Checked conversions."
+        },
+        {
+          "name": "sources",
+          "type": "string-list",
+          "default": [
+            "Text",
+            "Cells",
+            "Lines"
+          ],
+          "description": "Properties that count as user input."
+        }
+      ]
     }
   ]
 }

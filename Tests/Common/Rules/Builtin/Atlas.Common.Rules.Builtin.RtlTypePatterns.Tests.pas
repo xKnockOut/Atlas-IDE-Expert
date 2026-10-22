@@ -4,7 +4,7 @@
 // für die deklarierten Typen, auf denen sie aufbauen; zuletzt
 // managed-type-raw-memory (#921) mit Records, Aliassen, Zeigern, Index und
 // Korrekturen, threadvar-managed (#922), pchar-of-temporary (#923) und
-// stringlist-unsorted (#925) und writeln-in-gui-app (#926).
+// stringlist-unsorted (#925), writeln-in-gui-app (#926) und unchecked-conversion (#932).
 
 interface
 
@@ -65,6 +65,14 @@ type
     procedure WritelnInGuiAppSilentCases;
     [Test]
     procedure WritelnInGuiAppOptions;
+    [Test]
+    procedure UncheckedConversionIssueExample;
+    [Test]
+    procedure UncheckedConversionVariants;
+    [Test]
+    procedure UncheckedConversionSilentCases;
+    [Test]
+    procedure UncheckedConversionOptions;
   end;
 
 implementation
@@ -622,6 +630,88 @@ begin
   TConfigurationParser.Parse('{"rules": {"writeln-in-gui-app": {"replacement": ["Log.Info"]}}}', Issues);
   Assert.AreEqual(1, Integer(Length(Issues)));
   Assert.AreEqual('"replacement" muss ein Text sein', Issues[0].Message);
+end;
+
+function Eingabe(const AVars, ABody: string): string;
+begin
+  Result := 'unit U;'#10'interface'#10'type'#10'  TfrmBestellung = class(TForm)'#10'    edtMenge: TEdit;'#10 +
+    '    FAnzahl: Integer;'#10'  end;'#10'implementation'#10'procedure TfrmBestellung.btnOkClick(Sender: TObject);'#10 +
+    'var'#10'  Menge: Integer;'#10 + AVars + 'begin'#10 + ABody + #10'end;'#10'end.';
+end;
+
+procedure TRtlTypePatternRulesTests.UncheckedConversionIssueExample;
+var
+  Source, Fixed: string;
+  Findings: TArray<TRuleFinding>;
+begin
+  Source := Eingabe('', '  Menge := StrToInt(edtMenge.Text);');
+  Findings := TRuleAssert.Findings(TUncheckedConversionRule.Create, Source);
+  Assert.AreEqual(1, Integer(Length(Findings)));
+  Assert.AreEqual('Eingabe aus edtMenge.Text ohne Prüfung umgewandelt; eine Fehleingabe löst EConvertError aus.',
+    Findings[0].Message);
+  Assert.AreEqual(Ord(TRuleSeverity.Hint), Ord(Findings[0].Severity));
+  Assert.AreEqual(Ord(TRuleConfidence.Medium), Ord(Findings[0].Confidence));
+  Assert.AreEqual('In TryStrToInt mit Fehlerzweig umschreiben', Findings[0].Fixes[0].Title);
+  Fixed := TChangeSignature.ApplyEdits(Source, Findings[0].Fixes[0].Edits);
+  Assert.AreEqual(Eingabe('', '  if not TryStrToInt(edtMenge.Text, Menge) then'#10 +
+    '    raise EConvertError.Create(''Menge ist keine Zahl'');'), Fixed);
+  TRuleAssert.Silent(TUncheckedConversionRule.Create, Fixed);
+end;
+
+procedure TRtlTypePatternRulesTests.UncheckedConversionVariants;
+var
+  Findings: TArray<TRuleFinding>;
+begin
+  Findings := TRuleAssert.Findings(TUncheckedConversionRule.Create, Eingabe('  Preis: Double;'#10'  Am: TDateTime;'#10 +
+    '  Summe: Integer;'#10, '  Preis := StrToFloat(Trim(Grid.Cells[1, Zeile]));'#10 +
+    '  Am := SysUtils.StrToDate(Memo.Lines[0]);'#10'  FAnzahl := StrToInt(edtMenge.Text);'#10 +
+    '  Summe := Summe + StrToInt(edtMenge.Text);'#10'  if Pruefen then'#10'    Menge := StrToInt(edtMenge.Text)'#10 +
+    '  else'#10'    Menge := 0;'#10'  Preis := StrToInt(edtMenge.Text);'));
+  Assert.AreEqual(6, Integer(Length(Findings)));
+  Assert.AreEqual('Eingabe aus Grid.Cells[1, Zeile] ohne Prüfung umgewandelt; eine Fehleingabe löst EConvertError ' +
+    'aus.', Findings[0].Message);
+  Assert.AreEqual('if not TryStrToFloat(Trim(Grid.Cells[1, Zeile]), Preis) then'#10 +
+    '    raise EConvertError.Create(''Preis ist keine Zahl'')', Findings[0].Fixes[0].Edits[0].NewText);
+  Assert.AreEqual('Eingabe aus Memo.Lines[0] ohne Prüfung umgewandelt; eine Fehleingabe löst EConvertError aus.',
+    Findings[1].Message);
+  Assert.AreEqual('In TryStrToDate mit Fehlerzweig umschreiben', Findings[1].Fixes[0].Title);
+  // Feld: Korrektur; Ausdruck, then-Zweig ohne begin und unpassender Typ: ohne Korrektur.
+  Assert.AreEqual(1, Integer(Length(Findings[2].Fixes)));
+  Assert.AreEqual(0, Integer(Length(Findings[3].Fixes)));
+  Assert.AreEqual(0, Integer(Length(Findings[4].Fixes)));
+  Assert.AreEqual(0, Integer(Length(Findings[5].Fixes)));
+end;
+
+procedure TRtlTypePatternRulesTests.UncheckedConversionSilentCases;
+begin
+  // Im try/except, Konstante, Variable statt Eingabe, IntToStr, StrToIntDef.
+  TRuleAssert.Silent(TUncheckedConversionRule.Create, Eingabe('', '  try'#10 +
+    '    Menge := StrToInt(edtMenge.Text);'#10'  except'#10'    on EConvertError do'#10'      Menge := 0;'#10 +
+    '  end;'#10'  Menge := StrToInt(''42'');'#10'  Menge := StrToInt(Zeile);'#10 +
+    '  edtMenge.Text := IntToStr(Menge);'#10'  Menge := StrToIntDef(edtMenge.Text, 0);'));
+  // try/finally schützt nicht.
+  TRuleAssert.Reports(TUncheckedConversionRule.Create, Eingabe('', '  try'#10 +
+    '    Menge := StrToInt(edtMenge.Text);'#10'  finally'#10'    Fertig;'#10'  end;'));
+end;
+
+procedure TRtlTypePatternRulesTests.UncheckedConversionOptions;
+var
+  Source: string;
+  Issues: TArray<TConfigurationIssue>;
+begin
+  Source := Eingabe('', '  Menge := StrToInt(edtMenge.Text);'#10'  Menge := StrToInt(Query.Params[0].AsString);'#10 +
+    '  Menge := StrToUInt(edtMenge.Text);');
+  Assert.AreEqual(1, Integer(Length(TRuleAssert.Findings(TUncheckedConversionRule.Create, Source))));
+  Assert.AreEqual(2, Integer(Length(TRuleAssert.Findings(TUncheckedConversionRule.Create, Source,
+    '{"rules": {"unchecked-conversion": {"sources": ["Text", "AsString"]}}}', 'U.pas'))));
+  Assert.AreEqual(1, Integer(Length(TRuleAssert.Findings(TUncheckedConversionRule.Create, Source,
+    '{"rules": {"unchecked-conversion": {"functions": ["StrToUInt"]}}}', 'U.pas'))));
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TUncheckedConversionRule.Create, Source,
+    '{"rules": {"unchecked-conversion": "off"}}', 'U.pas'))));
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TUncheckedConversionRule.Create, Source,
+    '{"rules": {"unchecked-conversion": {"exclude": ["Alt/*.pas"]}}}', 'Alt/U.pas'))));
+  TConfigurationParser.Parse('{"rules": {"unchecked-conversion": {"functions": "StrToInt", "sources": [1]}}}', Issues);
+  Assert.AreEqual(2, Integer(Length(Issues)));
 end;
 
 initialization

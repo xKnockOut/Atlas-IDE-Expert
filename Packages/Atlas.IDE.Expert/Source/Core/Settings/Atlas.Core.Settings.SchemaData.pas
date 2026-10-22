@@ -11,7 +11,7 @@ function AtlasSchemaJson: string;
 implementation
 
 const
-  Lines: array[0..1638] of string = (
+  Lines: array[0..1654] of string = (
     '{',
     '  "$schema": "http://json-schema.org/draft-07/schema#",',
     '  "title": "Atlas-Konfiguration",',
@@ -321,6 +321,22 @@ const
     '                },',
     '                "default": [],',
     '                "description": "Nur processmessages-in-loop: Methoden, in denen Application.ProcessMessages erlaubt ist, als Name oder Klasse.Name (#931)."',
+    '              },',
+    '              "functions": {',
+    '                "type": "array",',
+    '                "items": {',
+    '                  "type": "string"',
+    '                },',
+    '                "default": ["StrToInt", "StrToInt64", "StrToFloat", "StrToDate", "StrToDateTime", "StrToCurr"],',
+    '                "description": "Nur unchecked-conversion: geprüfte Umwandlungen (#932)."',
+    '              },',
+    '              "sources": {',
+    '                "type": "array",',
+    '                "items": {',
+    '                  "type": "string"',
+    '                },',
+    '                "default": ["Text", "Cells", "Lines"],',
+    '                "description": "Nur unchecked-conversion: Eigenschaften, die als Benutzereingabe gelten, z. B. Text in Edit.Text oder Cells in Grid.Cells[…] (#932)."',
     '              }',
     '            }',
     '          }',

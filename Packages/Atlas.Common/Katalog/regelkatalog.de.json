@@ -752,6 +752,21 @@
           "description": "Methoden, in denen ProcessMessages erlaubt ist, als Name oder Klasse.Name."
         }
       ]
+    },
+    {
+      "id": "unchecked-conversion",
+      "name": "Umwandlung einer Benutzereingabe ohne Prüfung",
+      "description": "StrToInt, StrToInt64, StrToFloat, StrToDate, StrToDateTime oder StrToCurr direkt auf einer Benutzereingabe (Edit.Text, Grid.Cells[...], Memo.Lines[...], auch in Trim) außerhalb des try-Teils eines try/except. Eine Fehleingabe löst EConvertError mit englischer Meldung aus. try/finally gilt nicht als Schutz. Konfidenz mittel. Schnellkorrektur für X := StrToInt(Edit.Text); als eigene Anweisung, wenn X eine Variable oder ein Feld des passenden Typs ist: if not TryStrToInt(Edit.Text, X) then raise EConvertError.Create('X ist keine Zahl'). format-without-settings meldet zusätzlich landesabhängige Umwandlungen ohne TFormatSettings. Die Optionen functions und sources wählen die geprüften Umwandlungen und die Eigenschaften, die als Eingabe gelten.",
+      "options": [
+        {
+          "name": "functions",
+          "description": "Geprüfte Umwandlungen."
+        },
+        {
+          "name": "sources",
+          "description": "Eigenschaften, die als Benutzereingabe gelten."
+        }
+      ]
     }
   ]
 }

@@ -6,7 +6,7 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 
 | Gruppe | Regeln |
 |---|---|
-| [Fehler finden](#gruppe-find-bugs) | 44 |
+| [Fehler finden](#gruppe-find-bugs) | 45 |
 | [Exceptions](#gruppe-exceptions) | 6 |
 | [Threads](#gruppe-threads) | 8 |
 | [Robustheit und Muster](#gruppe-robustness) | 2 |
@@ -68,6 +68,7 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 | [`duplicate-condition`](#duplicate-condition) | Doppelte Bedingung oder gleiche Zweige | Bug | Warnung |
 | [`case-missing-enum-value`](#case-missing-enum-value) | case über Aufzählung ohne alle Werte | Bug | Warnung |
 | [`pair-without-finally`](#pair-without-finally) | Paarige Aufrufe ohne try/finally | Bug | Warnung |
+| [`unchecked-conversion`](#unchecked-conversion) | Umwandlung einer Benutzereingabe ohne Prüfung | Bug | Hinweis |
 
 <a id="gruppe-exceptions"></a>
 ### Exceptions
@@ -3046,4 +3047,29 @@ TTask.Run(
       Step;
     TThread.Queue(nil, procedure begin StartButton.Enabled := True; end);
   end);
+```
+
+<a id="unchecked-conversion"></a>
+### unchecked-conversion
+
+**Umwandlung einer Benutzereingabe ohne Prüfung** · Bug · Hinweis · Gruppe Fehler finden
+
+StrToInt, StrToInt64, StrToFloat, StrToDate, StrToDateTime oder StrToCurr direkt auf einer Benutzereingabe (Edit.Text, Grid.Cells[...], Memo.Lines[...], auch in Trim) außerhalb des try-Teils eines try/except. Eine Fehleingabe löst EConvertError mit englischer Meldung aus. try/finally gilt nicht als Schutz. Konfidenz mittel. Schnellkorrektur für X := StrToInt(Edit.Text); als eigene Anweisung, wenn X eine Variable oder ein Feld des passenden Typs ist: if not TryStrToInt(Edit.Text, X) then raise EConvertError.Create('X ist keine Zahl'). format-without-settings meldet zusätzlich landesabhängige Umwandlungen ohne TFormatSettings. Die Optionen functions und sources wählen die geprüften Umwandlungen und die Eigenschaften, die als Eingabe gelten.
+
+| Option | Typ | Vorgabe | Bedeutung |
+|---|---|---|---|
+| `functions` | string-list | `["StrToInt","StrToInt64","StrToFloat","StrToDate","StrToDateTime","StrToCurr"]` | Geprüfte Umwandlungen. |
+| `sources` | string-list | `["Text","Cells","Lines"]` | Eigenschaften, die als Benutzereingabe gelten. |
+
+Mit Treffer:
+
+```pascal
+Menge := StrToInt(edtMenge.Text);
+```
+
+Richtig:
+
+```pascal
+if not TryStrToInt(edtMenge.Text, Menge) then
+  raise EConvertError.Create('Menge ist keine Zahl');
 ```
