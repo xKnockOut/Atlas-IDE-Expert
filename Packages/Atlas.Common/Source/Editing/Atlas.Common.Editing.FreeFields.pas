@@ -689,6 +689,7 @@ end;
 procedure TClassAnalyzer.CheckUse(ANode: TSyntaxNode; const AMethod: string; var AFreed: TArray<Boolean>);
 var
   Field: Integer;
+  Index: Integer;
   Target: TSyntaxNode;
 begin
   case ANode.Kind of
