@@ -3266,3 +3266,14 @@ Voraussetzung: Server läuft; Einstellungen auf Vorgabe; Unit mit `TAdresse = re
 | MR5 | Record aus einer anderen Unit des Projekts (im Index) mit einem Interface-Feld | Meldung „… enthält Interfaces …“ |
 | MR6 | `FillChar(Punkt, SizeOf(Punkt), 0);` mit `TPunkt = record X, Y: Integer; end;` und `FillChar(S[1], …)` | Keine Meldung |
 | MR7 | `"managed-type-raw-memory": "off"` bzw. `exclude` mit dem Pfad der Datei | Keine Meldung |
+
+## threadvar mit verwaltetem Typ (#922)
+
+Voraussetzung: Server läuft; Einstellungen auf Vorgabe; Unit mit `threadvar LetzteMeldung: string; Zaehler: Integer;`.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| TV1 | Unit öffnen | Warnung `threadvar-managed` an `LetzteMeldung`: „threadvar mit string wird beim Thread-Ende nicht finalisiert (Leck je Thread).“; keine an `Zaehler`; im Fenster „Atlas-Prüfung“ (Gruppe Threads) und im Befund-Hover (**Abnahme**) |
+| TV2 | `Meldung: TMeldung;` mit `TMeldung = record Text: string; end;` in der threadvar | Meldung „threadvar mit TMeldung (enthält Strings) …“ |
+| TV3 | `LetzteMeldung: PChar;` bzw. dieselbe Variable unter `var` | Keine Meldung |
+| TV4 | `"threadvar-managed": "off"` bzw. `exclude` mit dem Pfad der Datei | Keine Meldung |

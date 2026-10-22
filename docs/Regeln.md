@@ -8,7 +8,7 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 |---|---|
 | [Fehler finden](#gruppe-find-bugs) | 37 |
 | [Exceptions](#gruppe-exceptions) | 5 |
-| [Threads](#gruppe-threads) | 6 |
+| [Threads](#gruppe-threads) | 7 |
 | [Robustheit und Muster](#gruppe-robustness) | 2 |
 | [Performance](#gruppe-performance) | 3 |
 | [Sicherheit](#gruppe-security) | 11 |
@@ -84,6 +84,7 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 | [`thread-free-with-free-on-terminate`](#thread-free-with-free-on-terminate) | Free auf einem Thread mit FreeOnTerminate | Bug | Fehler |
 | [`synchronize-in-destructor`](#synchronize-in-destructor) | Synchronize im Destruktor eines Threads | Bug | Warnung |
 | [`thread-resume-suspend`](#thread-resume-suspend) | Veraltetes TThread.Resume/Suspend | Code Smell | Warnung |
+| [`threadvar-managed`](#threadvar-managed) | threadvar mit verwaltetem Typ | Bug | Warnung |
 
 <a id="gruppe-robustness"></a>
 ### Robustheit und Muster
@@ -2756,4 +2757,25 @@ Richtig:
 
 ```pascal
 Adresse := Default(TAdresse);
+```
+
+<a id="threadvar-managed"></a>
+### threadvar-managed
+
+**threadvar mit verwaltetem Typ** · Bug · Warnung · Gruppe Threads
+
+Delphi finalisiert threadvar-Variablen nicht. Ein String, Interface, dynamisches Array oder Variant in einer threadvar (auch in einem Record oder statischen Array) leckt in jedem Thread, der endet. Typen werden in der Datei und im Index aufgelöst. Konfidenz hoch. Keine Schnellkorrektur: den Wert am Thread-Ende freigeben (etwa in TThread.Execute auf '' bzw. nil setzen) oder stattdessen einen Zeiger bzw. Puffer fester Größe ablegen.
+
+Mit Treffer:
+
+```pascal
+threadvar
+  LetzteMeldung: string;
+```
+
+Richtig:
+
+```pascal
+threadvar
+  LetzteMeldung: PChar;
 ```

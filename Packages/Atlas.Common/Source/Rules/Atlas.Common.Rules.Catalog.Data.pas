@@ -1317,6 +1317,16 @@ begin
     '      "description": "FillChar, ZeroMemory, FillMemory, Move, CopyMemory, GetMem or FreeMem on a variable whose type contains strings, interfaces, dynamic arrays or variants (records, static arrays an' + 'd aliases are resolved in the file and in the index). Reference counts are overwritten or skipped: leaks, double frees, access violations. Only plain variables (X, @X, P^) are checked; array elements ' + 'such as S[1] and types that cannot be resolved stay silent. High confidence. Quick fixes: FillChar(X, SizeOf(X), 0) becomes X := Default(T), Move(A, B, SizeOf(T)) becomes B := A, GetMem(P, SizeOf(T)) ' + 'becomes New(P) and FreeMem(P) becomes Dispose(P); otherwise Initialize and Finalize help.",' + #10 +
     '      "bad": "FillChar(Adresse, SizeOf(Adresse), 0);",' + #10 +
     '      "good": "Adresse := Default(TAdresse);"' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "threadvar-managed",' + #10 +
+    '      "name": "threadvar with a managed type",' + #10 +
+    '      "category": "bug",' + #10 +
+    '      "severity": "warning",' + #10 +
+    '      "group": "threads",' + #10 +
+    '      "description": "Delphi does not finalize threadvar variables. A string, interface, dynamic array or variant in a threadvar (also inside a record or static array) leaks in every thread that ends.' + ' Types are resolved in the file and in the index. High confidence. No quick fix: release the value at the end of the thread (for example set it to '''' or nil in TThread.Execute), or store a pointer or ' + 'a fixed-size buffer instead.",' + #10 +
+    '      "bad": "threadvar\n  LetzteMeldung: string;",' + #10 +
+    '      "good": "threadvar\n  LetzteMeldung: PChar;"' + #10 +
     '    }' + #10 +
     '  ]' + #10 +
     '}' + #10 +
@@ -2007,6 +2017,11 @@ begin
     '      "id": "managed-type-raw-memory",' + #10 +
     '      "name": "FillChar, Move oder GetMem auf verwaltete Typen",' + #10 +
     '      "description": "FillChar, ZeroMemory, FillMemory, Move, CopyMemory, GetMem oder FreeMem auf eine Variable, deren Typ Strings, Interfaces, dynamische Arrays oder Variants enthält (Records, statis' + 'che Arrays und Aliasse werden in der Datei und im Index aufgelöst). Referenzzähler werden überschrieben oder übergangen: Lecks, doppelte Freigabe, Zugriffsverletzungen. Geprüft werden nur einfache Var' + 'iablen (X, @X, P^); Array-Elemente wie S[1] und Typen, die sich nicht auflösen lassen, bleiben still. Konfidenz hoch. Schnellkorrekturen: aus FillChar(X, SizeOf(X), 0) wird X := Default(T), aus Move(A' + ', B, SizeOf(T)) wird B := A, aus GetMem(P, SizeOf(T)) wird New(P) und aus FreeMem(P) wird Dispose(P); sonst helfen Initialize und Finalize."' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "threadvar-managed",' + #10 +
+    '      "name": "threadvar mit verwaltetem Typ",' + #10 +
+    '      "description": "Delphi finalisiert threadvar-Variablen nicht. Ein String, Interface, dynamisches Array oder Variant in einer threadvar (auch in einem Record oder statischen Array) leckt in jedem' + ' Thread, der endet. Typen werden in der Datei und im Index aufgelöst. Konfidenz hoch. Keine Schnellkorrektur: den Wert am Thread-Ende freigeben (etwa in TThread.Execute auf '''' bzw. nil setzen) oder st' + 'attdessen einen Zeiger bzw. Puffer fester Größe ablegen."' + #10 +
     '    }' + #10 +
     '  ]' + #10 +
     '}' + #10 +
