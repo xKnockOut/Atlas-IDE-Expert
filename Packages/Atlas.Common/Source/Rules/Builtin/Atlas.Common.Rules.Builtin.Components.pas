@@ -21,6 +21,10 @@
 //                                        Destroy auf den Thread wartet), im Konstruktor nach einem
 //                                        Zugriff auf ein geerbtes Feld bzw. eine geerbte Property
 //                                        (über TAncestry.FindMember); Korrektur verschiebt inherited
+//   inherited-wrong-method               inherited Laden in der überschriebenen Methode Speichern
+//                                        (#1050), meist nach Kopieren; nur Aufrufe (Anweisung oder
+//                                        mit Klammern), nicht in Konstruktoren, nicht wenn die Methode
+//                                        auch sich selbst geerbt aufruft; Ausnahmen über "allowed"
 //
 // Die Komponentenregeln prüfen nur Klassen, deren Vorfahrenkette (Datei, Symbolindex) eine
 // bekannte VCL-Basisklasse erreicht. Teil B (nicht registriert, Design-Time-Units
@@ -92,6 +96,15 @@ type
   public
     function Descriptor: TRuleDescriptor;
     procedure Check(const AContext: TRuleContext; const AReport: IRuleReport);
+  end;
+
+  TInheritedWrongMethodRule = class(TInterfacedObject, IRule)
+  public
+    function Descriptor: TRuleDescriptor;
+    procedure Check(const AContext: TRuleContext; const AReport: IRuleReport);
+    /// <summary>Erlaubt die Option allowed (Paare "Methode&gt;geerbte Methode", Muster mit * und ?) den Aufruf
+    /// inherited AInherited in AMethod?</summary>
+    class function Allowed(const APairs: TArray<string>; const AMethod, AInherited: string): Boolean; static;
   end;
 
 procedure RegisterComponentRules(const ARegistry: TRuleRegistry);
@@ -1533,11 +1546,138 @@ begin
   end;
 end;
 
+{ TInheritedWrongMethodRule }
+
+function TInheritedWrongMethodRule.Descriptor: TRuleDescriptor;
+begin
+  Result := TRuleDescriptor.Create('inherited-wrong-method', TRuleSeverity.Warning,
+    'inherited ruft eine andere Methode');
+end;
+
+class function TInheritedWrongMethodRule.Allowed(const APairs: TArray<string>;
+  const AMethod, AInherited: string): Boolean;
+var
+  Pair: string;
+  Separator: Integer;
+begin
+  for Pair in APairs do
+  begin
+    Separator := Pos('>', Pair);
+    if (Separator > 0) and MatchesGlob(Trim(Copy(Pair, 1, Separator - 1)), AMethod) and
+      MatchesGlob(Trim(Copy(Pair, Separator + 1, MaxInt)), AInherited) then
+      Exit(True);
+  end;
+  Result := False;
+end;
+
+procedure TInheritedWrongMethodRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
+var
+  Model: TComponentModel;
+  Cache: IRuleDerivedCache;
+  Pairs: TArray<string>;
+
+  function FindClassInfo(const AName: string; out AInfo: TClassInfo): Boolean;
+  var
+    Info: TClassInfo;
+  begin
+    for Info in Model.Classes do
+      if SameText(Info.Name, AName) then
+      begin
+        AInfo := Info;
+        Exit(True);
+      end;
+    Result := False;
+  end;
+
+  // Aufrufe inherited Name bzw. inherited Name(…) als Anweisung oder mit Klammern; nur sie sind sicher Methoden
+  // (inherited Caption ohne Klammern kann eine Property sein).
+  procedure CollectCalls(ANode: TSyntaxNode; var ACalls: TArray<TSyntaxNode>; var ASameName: Boolean;
+    const AMethodName: string);
+  var
+    Index: Integer;
+  begin
+    if ANode.Kind = TSyntaxKind.InheritedExpr then
+    begin
+      if (ANode.Name = '') or SameText(ANode.Name, AMethodName) then
+        ASameName := True
+      else if (ANode.Parent <> nil) and ((ANode.Parent.Kind = TSyntaxKind.CallStatement) or
+        ((ANode.Parent.Kind = TSyntaxKind.Call) and (ANode.Parent[0] = ANode))) then
+        ACalls := ACalls + [ANode];
+    end;
+    if ANode.Kind = TSyntaxKind.AnonymousMethod then
+      Exit;
+    for Index := 0 to ANode.ChildCount - 1 do
+      CollectCalls(ANode[Index], ACalls, ASameName, AMethodName);
+  end;
+
+  // Anzahl der Parameter im Kopf der Methode (A, B: Integer zählt zwei).
+  function ParameterCount(const AMethod: TMethodImpl): Integer;
+  var
+    Header, Section: TSyntaxNode;
+    Index: Integer;
+  begin
+    Result := 0;
+    Header := AMethod.Decl.FindChild(TSyntaxKind.RoutineHeader);
+    if Header = nil then
+      Exit;
+    Section := Header.FindChild(TSyntaxKind.Parameters);
+    if Section <> nil then
+      for Index := 0 to Section.ChildCount - 1 do
+        Inc(Result, Length(Section[Index].Name.Split([','])));
+  end;
+
+var
+  Method: TMethodImpl;
+  Info: TClassInfo;
+  Calls: TArray<TSyntaxNode>;
+  Call: TSyntaxNode;
+  SameName: Boolean;
+  Arguments: Integer;
+  Source, Message: string;
+  Fixes: TArray<TRuleFix>;
+begin
+  Cache := TRuleDerived.Open(AContext);
+  if not Prepare(Cache, AContext, Model) or not ContainsText(AContext.Text, 'inherited') then
+    Exit;
+  Pairs := TRuleOptions.Strings(AContext.Options, 'allowed', nil);
+  for Method in Model.Methods do
+  begin
+    // Konstruktoren dürfen jeden geerbten Konstruktor aufrufen (inherited Create(nil)).
+    Source := TrimLeft(Model.NodeText(Method.Decl));
+    if StartsText('constructor', Source) or StartsText('class ', Source) or
+      not FindClassInfo(Method.ClassName, Info) or not Model.DeclaredWith(Info, Method.MethodName, 'override') then
+      Continue;
+    Calls := nil;
+    SameName := False;
+    CollectCalls(Method.Block, Calls, SameName, Method.MethodName);
+    // Ruft die Methode auch sich selbst im Vorfahren auf, ist der andere Aufruf gewollt.
+    if SameName then
+      Continue;
+    for Call in Calls do
+    begin
+      if Allowed(Pairs, Method.MethodName, Call.Name) then
+        Continue;
+      Message := Format('%s ruft inherited %s auf; gemeint ist vermutlich inherited %s.',
+        [Method.MethodName, Call.Name, Method.MethodName]);
+      Fixes := nil;
+      // Mit gleicher Zahl an Argumenten wie Parametern passt der eigene Name.
+      Arguments := 0;
+      if Call.Parent.Kind = TSyntaxKind.Call then
+        Arguments := Call.Parent.ChildCount - 1;
+      if Arguments = ParameterCount(Method) then
+        Fixes := [TRuleFix.Create(Format('inherited %s aufrufen', [Method.MethodName]),
+          [TRuleEdit.Create(TTextRange.Create(Call.StartPos, Call.EndPos), 'inherited ' + Method.MethodName)])];
+      AReport.Add(TTextRange.Create(Call.StartPos, Call.EndPos), Message, TRuleConfidence.High, Fixes);
+    end;
+  end;
+end;
+
 procedure RegisterComponentRules(const ARegistry: TRuleRegistry);
 begin
   ARegistry.Register(TMissingInheritedRule.Create);
   ARegistry.Register(TMessageHandlerWithoutInheritedRule.Create);
   ARegistry.Register(TInheritedOrderRule.Create);
+  ARegistry.Register(TInheritedWrongMethodRule.Create);
   ARegistry.Register(TComponentMissingInheritedRule.Create);
   ARegistry.Register(TComponentDefaultMismatchRule.Create);
   ARegistry.Register(TComponentMissingFreeNotificationRule.Create);

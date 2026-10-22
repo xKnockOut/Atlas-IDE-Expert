@@ -1309,6 +1309,24 @@ begin
     '      "good": "destructor TExport.Destroy;\nbegin\n  FDatei.Free;\n  inherited;\nend;"' + #10 +
     '    },' + #10 +
     '    {' + #10 +
+    '      "id": "inherited-wrong-method",' + #10 +
+    '      "name": "inherited calls a different method",' + #10 +
+    '      "category": "bug",' + #10 +
+    '      "severity": "warning",' + #10 +
+    '      "group": "find-bugs",' + #10 +
+    '      "description": "In the overridden method Speichern there is inherited Laden(…) instead of inherited Speichern(…), usually after copying a method. Only calls count (inherited Name as a statement ' + 'or with parentheses); inherited Caption without parentheses may be a property. Silent in constructors (inherited Create(nil), CreateNew), in methods without override and when the method also calls its' + 'elf in the ancestor (inherited; or inherited Speichern), which makes the other call intentional. Pairs from the option allowed stay silent. High confidence. Quick fix: replace the name with the method' + '''s own, when the number of arguments matches its parameters.",' + #10 +
+    '      "bad": "procedure TKundenForm.Speichern;\nbegin\n  inherited Laden;\n  Protokollieren;\nend;",' + #10 +
+    '      "good": "procedure TKundenForm.Speichern;\nbegin\n  inherited Speichern;\n  Protokollieren;\nend;",' + #10 +
+    '      "options": [' + #10 +
+    '        {' + #10 +
+    '          "name": "allowed",' + #10 +
+    '          "type": "string-list",' + #10 +
+    '          "default": [],' + #10 +
+    '          "description": "Allowed pairs \"Method>inherited method\", patterns with * and ?, e.g. \"Speichern>Pruefen\"."' + #10 +
+    '        }' + #10 +
+    '      ]' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
     '      "id": "destroy-called-directly",' + #10 +
     '      "name": "Destroy called instead of Free",' + #10 +
     '      "category": "bug",' + #10 +
@@ -3028,6 +3046,17 @@ begin
     '      "id": "inherited-order",' + #10 +
     '      "name": "inherited an der falschen Stelle",' + #10 +
     '      "description": "Im Destruktor steht inherited (inherited; bzw. inherited Destroy) als Anweisung des Rumpfs vor einer späteren Anweisung, die ein Feld der Klasse selbst freigibt (F.Free, F.Dispos' + 'eOf, FreeAndNil(F), auch mit Self.): Der Vorfahr kann noch virtuelle Methoden aufrufen, die das Feld brauchen. Klassen, in deren Kette eine Klasse mit Thread im Namen steht, bleiben still, denn TThrea' + 'd.Destroy wartet auf Execute und gehört dort an den Anfang. Im Konstruktor greifen die Anweisungen vor inherited auf ein Feld oder eine Property eines Vorfahren zu (aufgelöst über Datei und Index; eig' + 'ene Felder, Parameter und lokale Variablen zählen nicht), solange der Vorfahr noch nicht angelegt ist. missing-inherited meldet fehlendes inherited, diese Regel die Reihenfolge. Konfidenz mittel. Schn' + 'ellkorrektur: inherited an das Ende des Destruktors bzw. den Anfang des Konstruktors verschieben; nicht, wenn die Argumente von inherited Create vorher gesetzte lokale Variablen verwenden."' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "inherited-wrong-method",' + #10 +
+    '      "name": "inherited ruft eine andere Methode",' + #10 +
+    '      "description": "In der überschriebenen Methode Speichern steht inherited Laden(…) statt inherited Speichern(…), meist nach Kopieren einer Methode. Es zählen nur Aufrufe (inherited Name als Anwei' + 'sung oder mit Klammern); inherited Caption ohne Klammern kann eine Property sein. Still in Konstruktoren (inherited Create(nil), CreateNew), in Methoden ohne override und wenn die Methode auch sich se' + 'lbst im Vorfahren aufruft (inherited; bzw. inherited Speichern), denn dann ist der andere Aufruf gewollt. Paare aus der Option allowed bleiben still. Konfidenz hoch. Schnellkorrektur: den Namen durch ' + 'den eigenen ersetzen, wenn die Zahl der Argumente zu ihren Parametern passt.",' + #10 +
+    '      "options": [' + #10 +
+    '        {' + #10 +
+    '          "name": "allowed",' + #10 +
+    '          "description": "Erlaubte Paare \"Methode>geerbte Methode\", Muster mit * und ?, z. B. \"Speichern>Pruefen\"."' + #10 +
+    '        }' + #10 +
+    '      ]' + #10 +
     '    },' + #10 +
     '    {' + #10 +
     '      "id": "destroy-called-directly",' + #10 +
