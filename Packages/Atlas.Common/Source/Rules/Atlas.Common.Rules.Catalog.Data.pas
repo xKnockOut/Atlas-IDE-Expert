@@ -2313,6 +2313,23 @@ begin
     '        "E2129",' + #10 +
     '        "E2130"' + #10 +
     '      ]' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "inaccessible-member",' + #10 +
+    '      "name": "Access to a member that is not visible",' + #10 +
+    '      "category": "bug",' + #10 +
+    '      "severity": "error",' + #10 +
+    '      "group": "compiler",' + #10 +
+    '      "description": "Access A.B to a member that is not visible at that point: private or strict private of another unit or class (like E2361), protected or strict protected outside the declaring uni' + 't and its descendants (like E2362, E2389). Inside a class method or static method, an instance field, method or property of the class is not reachable (like E2124). A property that refers to a private' + ' member of an ancestor in the same unit is reported as a warning (like W1045). The rule only reports when name resolution knows the receiver and its type for sure and finds the member only without reg' + 'ard to visibility; protected members stay visible through a class declared in the same unit (TAccess(Control).Click). Declarations in conditional branches, methods of helpers and nested types stay sil' + 'ent.",' + #10 +
+    '      "bad": "class function TKonfig.Standard: TKonfig;\nbegin\n  Result := TKonfig.Create;\n  Result.Pfad := FBasisPfad;\nend;",' + #10 +
+    '      "good": "class function TKonfig.Standard: TKonfig;\nbegin\n  Result := TKonfig.Create;\n  Result.Pfad := Result.FBasisPfad;\nend;",' + #10 +
+    '      "compilerCodes": [' + #10 +
+    '        "E2361",' + #10 +
+    '        "E2362",' + #10 +
+    '        "E2389",' + #10 +
+    '        "E2124",' + #10 +
+    '        "W1045"' + #10 +
+    '      ]' + #10 +
     '    }' + #10 +
     '  ]' + #10 +
     '}' + #10 +
@@ -3483,6 +3500,11 @@ begin
     '      "id": "readonly-property-assigned",' + #10 +
     '      "name": "Zuweisung an eine Property ohne write",' + #10 +
     '      "description": "Zuweisung an eine Property ohne write (wie E2129) bzw. Lesen einer Property ohne read (wie E2130). Die Regel meldet nur, wenn die Namensauflösung die Property sicher findet; Neud' + 'eklarationen ohne read und write (property Caption;) gelten als unbekannt. Korrekturen: Count := 0 wird Clear, wenn der Typ Clear hat; in einer Methode der deklarierenden Klasse das Feld hinter read z' + 'uweisen; für eine Property dieser Datei den Setter anlegen und write ergänzen."' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "inaccessible-member",' + #10 +
+    '      "name": "Zugriff auf ein nicht sichtbares Mitglied",' + #10 +
+    '      "description": "Zugriff A.B auf ein Mitglied, das an der Stelle nicht sichtbar ist: private bzw. strict private einer anderen Unit oder Klasse (wie E2361), protected bzw. strict protected außerh' + 'alb der deklarierenden Unit und ihrer Nachfahren (wie E2362, E2389). In einer Klassenmethode oder statischen Methode sind Instanzfelder, -methoden und -Properties der Klasse nicht erreichbar (wie E212' + '4). Eine Property, die auf ein private-Mitglied eines Vorfahren derselben Unit verweist, meldet die Regel als Warnung (wie W1045). Gemeldet wird nur, wenn die Namensauflösung den Empfänger und seinen ' + 'Typ sicher kennt und das Mitglied erst ohne Rücksicht auf die Sichtbarkeit findet; protected-Mitglieder bleiben über eine Klasse der eigenen Unit sichtbar (TZugang(Control).Click). Deklarationen in be' + 'dingten Zweigen, Methoden von Helfern und verschachtelten Typen bleiben still."' + #10 +
     '    }' + #10 +
     '  ]' + #10 +
     '}' + #10 +
