@@ -172,7 +172,7 @@ const
   All = 'abstract-class-instantiated,anonymous-thread-not-started,assert-side-effect,assign-to-property-member,bidi-control,blocking-call-in-main-thread,bool-compare,boolean-assign-if,captured-loop-variable,case-insensitive-compare,case-missing-enum-value,char-to-pchar,' +
     'collection-modified-in-loop,commented-out-code,comparison-as-statement,' +
     'component-create-without-override,component-default-mismatch,component-fixed-pixels,' +
-    'component-hardcoded-color,component-missing-free-notification,component-missing-inherited,' +
+    'component-hardcoded-color,component-interface-dangling,component-missing-free-notification,component-missing-inherited,' +
     'component-palette-icon,component-setter-without-invalidate,conditional-directive-unbalanced,confusable-identifier,' +
     'constructor-on-instance,control-char,create-without-assignment,createprocess-readonly-commandline,dataset-edit-without-post,dataset-loop-without-next,declared-not-implemented,delimited-text-without-strict,deprecated-symbol,deref-before-nil-check,destroy-called-directly,destroy-without-override,destructor-not-nil-safe,' +
     'dfm-circular-datasource,dfm-control-field-type-mismatch,dfm-duplicate-binding,' +
@@ -204,7 +204,7 @@ begin
     'redundant-parens', 'security-path-traversal', 'string-concat-in-loop', 'todo-comment']), ActiveRules('strict'));
   Assert.AreEqual('abstract-class-instantiated,anonymous-thread-not-started,assert-side-effect,assign-to-property-member,bidi-control,captured-loop-variable,case-missing-enum-value,char-to-pchar,' +
     'collection-modified-in-loop,comparison-as-statement,' +
-    'component-create-without-override,component-default-mismatch,component-missing-free-notification,' +
+    'component-create-without-override,component-default-mismatch,component-interface-dangling,component-missing-free-notification,' +
     'component-missing-inherited,conditional-directive-unbalanced,constructor-on-instance,control-char,create-without-assignment,createprocess-readonly-commandline,dataset-edit-without-post,dataset-loop-without-next,declared-not-implemented,delimited-text-without-strict,' +
     'deref-before-nil-check,destroy-called-directly,destroy-without-override,destructor-not-nil-safe,dfm-circular-datasource,dfm-control-field-type-mismatch,' +
     'dfm-duplicate-binding,dfm-master-without-fields,dfm-required-field-without-control,dictionary-get-without-check,' +

@@ -2347,6 +2347,26 @@
           "description": "Allow the assignments in the .dpr, for example once at program start."
         }
       ]
+    },
+    {
+      "id": "component-interface-dangling",
+      "name": "Component stored as interface stays referenced after Free",
+      "category": "bug",
+      "severity": "warning",
+      "group": "find-bugs",
+      "description": "A descendant of TComponent (form, frame, data module, own component) implements an interface, but TComponent does not count references. Reported is storing the object as an interface in a field, a global variable or a list (FView as IObserver passed to Bus.Subscribe, FList.Add, Register, Anmelden …, assigned to a field or global, or added to a TList<IFoo>/TInterfaceList) when the same unit frees the object (Free, Release, DisposeOf, FreeAndNil) and nowhere unregisters it: FreeNotification on the object, another call on the same receiver with the object as argument (Unsubscribe, Remove, Abmelden …), Clear, or another assignment to the same field. After the Free the stored interface points to freed memory. Silent for classes with their own _Release and when the chain of ancestors ends at an unknown class. Also reported, without a quick fix: descendants of TInterfacedObject that are stored this way and additionally freed with Free; the stored interface keeps a freed object, and unregistering first would already free it. Medium confidence. Quick fix: insert the unregistration before the first Free (Receiver.Abmelden(…) when the receiver's type has the counterpart, or Field := nil).",
+      "bad": "procedure TfrmHaupt.AnsichtOeffnen;\nbegin\n  FAnsicht := TfrmKunden.Create(Self);\n  Bus.Anmelden(FAnsicht as IBeobachter);\nend;\n\nprocedure TfrmHaupt.AnsichtSchliessen;\nbegin\n  FAnsicht.Free;\nend;",
+      "good": "procedure TfrmHaupt.AnsichtOeffnen;\nbegin\n  FAnsicht := TfrmKunden.Create(Self);\n  Bus.Anmelden(FAnsicht as IBeobachter);\nend;\n\nprocedure TfrmHaupt.AnsichtSchliessen;\nbegin\n  Bus.Abmelden(FAnsicht as IBeobachter);\n  FAnsicht.Free;\nend;",
+      "options": [
+        {
+          "name": "componentClasses",
+          "type": "string-list",
+          "default": [
+            "TComponent"
+          ],
+          "description": "Base classes without reference counting; with TComponent the known VCL and FMX classes (TForm, TFrame, TDataModule …) count as well."
+        }
+      ]
     }
   ]
 }

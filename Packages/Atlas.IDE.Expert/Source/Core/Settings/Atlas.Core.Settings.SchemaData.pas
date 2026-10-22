@@ -11,7 +11,7 @@ function AtlasSchemaJson: string;
 implementation
 
 const
-  Lines: array[0..1779] of string = (
+  Lines: array[0..1787] of string = (
     '{',
     '  "$schema": "http://json-schema.org/draft-07/schema#",',
     '  "title": "Atlas-Konfiguration",',
@@ -285,6 +285,14 @@ const
     '                },',
     '                "default": [],',
     '                "description": "Nur create-without-assignment (#948): Klassen, die sich im Konstruktor selbst registrieren (Muster mit * und ?); TKlasse.Create; bleibt für sie still."',
+    '              },',
+    '              "componentClasses": {',
+    '                "type": "array",',
+    '                "items": {',
+    '                  "type": "string"',
+    '                },',
+    '                "default": ["TComponent"],',
+    '                "description": "Nur component-interface-dangling (#1090): Basisklassen ohne Referenzzählung; ihre Nachfahren als Interface zu speichern und dann freizugeben wird gemeldet. Mit TCompone' + 'nt zählen auch die bekannten VCL- und FMX-Klassen (TForm, TFrame, TDataModule …)."',
     '              },',
     '              "swallow": {',
     '                "type": "array",',
