@@ -1006,10 +1006,13 @@ var
   Start: Integer;
   Node: TSyntaxNode;
   Depth: Integer;
+  InConstraints: Boolean;
 begin
   // <T>, <K, V>, <T: class, constructor>, <T: IFoo; U>. Liefert True, wenn
   // der Lexer ">=" gelesen hat (TFoo<T>=class), das "=" also schon verbraucht ist.
+  // Nach ":" folgen bis zum nächsten ";" Einschränkungen, keine Typparameter.
   Result := False;
+  InConstraints := False;
   Start := NodeStart;
   Node := StartNode(TSyntaxKind.GenericParams);
   AParent.Add(Node);
@@ -1035,7 +1038,13 @@ begin
     end
     else if IsSym('=') or IsSym('(') or IsSym(')') or IsKw(['begin', 'end']) then
       Break
-    else if IsIdent and (Depth = 1) and (PeekIsSym(-1, '<') or PeekIsSym(-1, ',') or PeekIsSym(-1, ';')) then
+    else if (Depth = 1) and (IsSym(':') or IsSym(';')) then
+    begin
+      InConstraints := IsSym(':');
+      Advance;
+    end
+    else if IsIdent and (Depth = 1) and not InConstraints and (PeekIsSym(-1, '<') or PeekIsSym(-1, ',') or
+      PeekIsSym(-1, ';')) then
       Node.Add(Leaf(TSyntaxKind.Identifier, Current.Text))
     else
       Advance;
@@ -1457,7 +1466,8 @@ begin
       Result.Name := 'class';
       Advance;
     end
-    else if PeekIsKw(2, 'for') and SameWord(PeekToken(1).Text, 'helper') then
+    // class helper [(TBaseHelper)] for T (#848)
+    else if SameWord(PeekToken(1).Text, 'helper') and (PeekIsKw(2, 'for') or PeekIsSym(2, '(')) then
     begin
       Result := StartNode(TSyntaxKind.HelperType);
       Result.Name := 'class';
@@ -1490,7 +1500,7 @@ begin
   end
   else if IsKw('record') then
   begin
-    if SameWord(PeekToken(1).Text, 'helper') and PeekIsKw(2, 'for') then
+    if SameWord(PeekToken(1).Text, 'helper') and (PeekIsKw(2, 'for') or PeekIsSym(2, '(')) then
     begin
       Result := StartNode(TSyntaxKind.HelperType);
       Result.Name := 'record';
@@ -2725,7 +2735,8 @@ begin
         Advance;
       FinishNode(Result, Start);
     end
-    else if IsKw('string') then
+    // string und file als Typname im Ausdruck: string(P), SizeOf(string), Default(File) (#1084).
+    else if IsKw(['string', 'file']) then
       Result := Leaf(TSyntaxKind.Identifier, Current.Text)
     else if IsKw(['procedure', 'function']) then
       Result := ParseAnonymousMethod

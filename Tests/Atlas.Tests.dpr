@@ -145,6 +145,7 @@ uses
   Atlas.Common.Rules.Builtin.Visibility.Tests in 'Common\Rules\Builtin\Atlas.Common.Rules.Builtin.Visibility.Tests.pas',
   Atlas.Common.Rules.Builtin.TypeDeclarations.Tests in 'Common\Rules\Builtin\Atlas.Common.Rules.Builtin.TypeDeclarations.Tests.pas',
   Atlas.Common.Rules.Builtin.TypedExpressions.Tests in 'Common\Rules\Builtin\Atlas.Common.Rules.Builtin.TypedExpressions.Tests.pas',
+  Atlas.Common.Rules.Builtin.TypeRestrictions.Tests in 'Common\Rules\Builtin\Atlas.Common.Rules.Builtin.TypeRestrictions.Tests.pas',
   Atlas.Common.Rules.Builtin.Unresolved.Tests in 'Common\Rules\Builtin\Atlas.Common.Rules.Builtin.Unresolved.Tests.pas',
   Atlas.Common.Projects.UnitLookup.Tests in 'Common\Projects\Atlas.Common.Projects.UnitLookup.Tests.pas',
   Atlas.Common.Rules.Builtin.Packages.Tests in 'Common\Rules\Builtin\Atlas.Common.Rules.Builtin.Packages.Tests.pas',

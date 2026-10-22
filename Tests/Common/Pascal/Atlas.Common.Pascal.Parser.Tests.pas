@@ -24,6 +24,10 @@ type
     [Test]
     procedure ParsesTypeArgsBeforeIdentifier;
     [Test]
+    procedure ParsesHelperWithAncestor;
+    [Test]
+    procedure ParsesFileKeywordInExpression;
+    [Test]
     procedure ParsesRecordWithVariantPart;
     [Test]
     procedure ParsesProcedureTypesWithCallingConvention;
@@ -232,11 +236,14 @@ end;
 procedure TPascalParserTests.ParsesGenericsAndAttributes;
 var
   Tree: TSyntaxTree;
+  Params: TSyntaxNode;
 begin
   Tree := TPascalParser.Parse(Lines(['unit U;', 'interface', 'type',
     '  [Attr(''x''), Other]',
     '  TList<T: class, constructor> = class(TEnumerable<T>)',
     '    function Map<R>(const F: TFunc<T, R>): TList<R>;',
+    '  end;',
+    '  TPaar<K: class, TBasis; V: IFoo, constructor> = class',
     '  end;',
     'implementation',
     'procedure X;',
@@ -251,6 +258,60 @@ begin
     Assert.IsTrue(CountKind(Tree.Root, TSyntaxKind.GenericParams) >= 2);
     Assert.IsTrue(CountKind(Tree.Root, TSyntaxKind.GenericArgs) >= 1);
     Assert.AreEqual('<', FindFirst(Tree.Root, TSyntaxKind.BinaryExpr).Name);
+    // Typen aus Einschränkungen sind keine Typparameter (#1029).
+    Params := FindFirst(Tree.Root, TSyntaxKind.GenericParams);
+    Assert.AreEqual(1, Params.ChildCount);
+    Assert.AreEqual('T', Params[0].Name);
+    Params := FindFirst(FindFirst(Tree.Root, TSyntaxKind.TypeSection)[2], TSyntaxKind.GenericParams);
+    Assert.AreEqual(2, Params.ChildCount);
+    Assert.AreEqual('K', Params[0].Name);
+    Assert.AreEqual('V', Params[1].Name);
+  finally
+    Tree.Free;
+  end;
+end;
+
+procedure TPascalParserTests.ParsesHelperWithAncestor;
+var
+  Tree: TSyntaxTree;
+  Helper: TSyntaxNode;
+begin
+  // class helper (TBasis) for T und record helper (…) for T sind Helfer, keine Klassen (#848, #994).
+  Tree := TPascalParser.Parse(Lines(['unit U;', 'interface', 'type',
+    '  TListeHelfer = class helper (TBasisHelfer) for TListe',
+    '    procedure Leeren;',
+    '  end;',
+    '  TZahlHelfer = record helper (TBasisZahl) for Integer',
+    '  end;',
+    'implementation', 'end.']));
+  try
+    AssertNoDiagnostics(Tree);
+    Assert.AreEqual(2, CountKind(Tree.Root, TSyntaxKind.HelperType));
+    Assert.AreEqual(0, CountKind(Tree.Root, TSyntaxKind.ClassType));
+    Helper := FindFirst(Tree.Root, TSyntaxKind.HelperType);
+    Assert.AreEqual('TBasisHelfer', Helper[0].Name);
+    Assert.AreEqual('TListe', Helper[1].Name);
+    Assert.AreEqual('Leeren', Helper[2].Name);
+  finally
+    Tree.Free;
+  end;
+end;
+
+procedure TPascalParserTests.ParsesFileKeywordInExpression;
+var
+  Tree: TSyntaxTree;
+  Call: TSyntaxNode;
+begin
+  // file steht wie string als Typname im Ausdruck: Default(File), SizeOf(file) (#1084).
+  Tree := TPascalParser.Parse(Lines(['unit U;', 'interface', 'implementation', 'procedure P;', 'begin',
+    '  X := Default(File);', '  Y := SizeOf(string);', 'end;', 'end.']));
+  try
+    AssertNoDiagnostics(Tree);
+    Call := FindFirst(Tree.Root, TSyntaxKind.Call);
+    Assert.AreEqual('Default', Call.Name);
+    Assert.AreEqual(2, Integer(Call.ChildCount));
+    Assert.AreEqual('File', Call[1].Name);
+    Assert.IsTrue(Call[1].Kind = TSyntaxKind.Identifier);
   finally
     Tree.Free;
   end;

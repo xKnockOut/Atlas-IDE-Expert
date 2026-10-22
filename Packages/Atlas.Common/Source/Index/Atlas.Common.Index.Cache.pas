@@ -78,7 +78,8 @@ type
     // 19: Direktive class an Klassenmitgliedern (#1001).
     // 20: Verweise der Rümpfe von inline-Routinen (#1017).
     // 21: Hinweise im Unit-Kopf samt Grund hinter deprecated (#1018).
-    const FormatVersion = 21;
+    // 22: Typparameter ohne die Typen aus Einschränkungen (<T: class, TBasis>, #1029).
+    const FormatVersion = 22;
     class function Serialize(const AUnits: TArray<TUnitIndex>): TBytes; static;
     /// <summary>Liest nur die Köpfe; bei falscher Version, falscher Prüfsumme oder fremdem Inhalt leer.</summary>
     class function ReadEntries(const AData: TBytes): TArray<TIndexCacheEntry>; overload; static;

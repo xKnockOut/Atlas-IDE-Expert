@@ -483,6 +483,15 @@
                 "default": false,
                 "description": "Nur missing-begin-end: eine einzelne Anweisung in derselben Zeile wie Bedingung bzw. Schleifenkopf erlauben (#1025)."
               },
+              "disabledChecks": {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "pattern": "^[EeHhWw][0-9]{4}$"
+                },
+                "default": [],
+                "description": "Nur type-restriction-violated: Compilercodes, die die Regel nicht prüft, z. B. [\"E2425\"] (#994)."
+              },
               "searchPaths": {
                 "type": "string",
                 "enum": ["project", "atlas", "both"],
