@@ -20,6 +20,10 @@ type
     procedure EntriesRoundTripSettings;
     [Test]
     procedure StatusFollowsOwnerAndChoice;
+    /// <summary>Schnelle Lesezeichen (#1104): Tasten der IDE übernommen, „anderer Belegung überlassen“ gibt sie
+    /// zurück, Strg+0/Strg+Umschalt+0 bleiben bei der IDE, Wartezeit 0 belegt Strg+Umschalt+K nicht.</summary>
+    [Test]
+    procedure QuickBookmarkKeysYieldToIde;
   end;
 
 implementation
@@ -68,7 +72,7 @@ begin
   Settings.SignatureKey := $6048;
   Settings.CheckKeyPriority := True;
   Entries := TAtlasKeyEntry.FromSettings(Settings);
-  Assert.AreEqual(6, Integer(Length(Entries)));
+  Assert.AreEqual(9, Integer(Length(Entries)), 'sechs, dazu drei der schnellen Lesezeichen (#1104)');
   Assert.IsTrue(Entries[0].Func = TAtlasKeyFunction.Palette);
   Assert.AreEqual(Integer(TAtlasKeyConflicts.PaletteDefault), Integer(Entries[0].Key));
   Assert.IsTrue(Entries[1].Choice = TAtlasKeyChoice.UseAtlas);
@@ -121,6 +125,49 @@ begin
   Assert.IsTrue(Entry.Status('CnPack') = TAtlasKeyStatus.AtlasWins);
   Entry.Choose(TAtlasKeyChoice.OtherKey);
   Assert.IsFalse(Entry.Priority, 'andere Taste: ohne Vorrang');
+end;
+
+procedure TAtlasKeyConflictsTests.QuickBookmarkKeysYieldToIde;
+var
+  Settings, Saved: TAtlasPluginSettings;
+  Entries: TArray<TAtlasKeyEntry>;
+  Known: TArray<TAtlasKeyOwner>;
+begin
+  Settings := TAtlasPluginSettings.Defaults;
+  Entries := TAtlasKeyEntry.FromSettings(Settings);
+  Known := TAtlasKeyConflicts.KnownIdeKeys;
+  Assert.IsTrue(Entries[6].Func = TAtlasKeyFunction.QuickBookmark);
+  Assert.AreEqual($604B, Integer(Entries[6].Key), 'Strg+Umschalt+K');
+  Assert.IsTrue(Entries[7].Func = TAtlasKeyFunction.QuickBookmarkSet);
+  Assert.AreEqual($6031, Integer(Entries[7].Key), 'Strg+Umschalt+1');
+  Assert.IsTrue(Entries[8].Func = TAtlasKeyFunction.QuickBookmarkJump);
+  Assert.AreEqual($4031, Integer(Entries[8].Key), 'Strg+1');
+  // Die IDE belegt die Tasten; Atlas nimmt sie mit Vorrang.
+  Assert.Contains(TAtlasKeyConflicts.OwnerOf(Entries[6].Key, Known), 'Faltung');
+  Assert.Contains(TAtlasKeyConflicts.OwnerOf(Entries[7].Key, Known), 'Lesezeichen 1');
+  Assert.Contains(TAtlasKeyConflicts.OwnerOf($4030, Known), 'Lesezeichen 0', 'Strg+0 bleibt bekannt');
+  Assert.IsTrue(Entries[7].Status(TAtlasKeyConflicts.OwnerOf(Entries[7].Key, Known)) = TAtlasKeyStatus.AtlasWins);
+  // „IDE überlassen“ für die Sprungtasten.
+  Entries[8].Choose(TAtlasKeyChoice.LeaveOther);
+  Assert.IsTrue(Entries[8].Status(TAtlasKeyConflicts.OwnerOf(Entries[8].Key, Known)) = TAtlasKeyStatus.Left);
+  Entries[7].Key := $C031;
+  Saved := TAtlasPluginSettings.Defaults;
+  TAtlasKeyEntry.ToSettings(Entries, Saved);
+  Assert.IsFalse(Saved.QuickBookmarkJumpKeyPriority);
+  Assert.AreEqual($C031, Saved.QuickBookmarkSetKey, 'anders belegt: Strg+Alt+1');
+  // Wartezeit 0: Atlas belegt Strg+Umschalt+K nicht, kein Konflikt.
+  Settings.QuickBookmarkChordWait := 0;
+  Assert.IsTrue(TAtlasKeyEntry.FromSettings(Settings)[6].Disabled);
+  // Funktion aus: alle Tasten wieder bei der IDE.
+  Settings := TAtlasPluginSettings.Defaults;
+  Settings.QuickBookmarks := False;
+  Entries := TAtlasKeyEntry.FromSettings(Settings);
+  Assert.IsTrue(Entries[6].Disabled and Entries[7].Disabled and Entries[8].Disabled);
+  Settings := TAtlasPluginSettings.Defaults;
+  Settings.QuickBookmarksNumberedKeys := False;
+  Entries := TAtlasKeyEntry.FromSettings(Settings);
+  Assert.IsFalse(Entries[6].Disabled, 'Unterschalter wirken einzeln');
+  Assert.IsTrue(Entries[7].Disabled and Entries[8].Disabled);
 end;
 
 initialization

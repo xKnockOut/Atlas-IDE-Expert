@@ -172,6 +172,10 @@ uses
   Atlas.IDE.Notes.Gutter,
   Atlas.IDE.Editor.RecursionGutter,
   Atlas.IDE.Editor.GutterColumn,
+  Atlas.IDE.Bookmarks.QuickColumn,
+  Atlas.Core.Bookmarks.Store,
+  Atlas.Core.Editor.Overview,
+  Atlas.IDE.Bookmarks.QuickChord,
   Atlas.IDE.Editor.SelectionMatches,
   Atlas.IDE.Bookmarks.Service,
   Atlas.IDE.Problems.Service,
@@ -235,6 +239,7 @@ var
   GutterMarks: TAtlasIdeGutterMarks;
   // Atlas-Spalte in der Zeilenleiste (#768).
   GutterColumn: TAtlasIdeGutterColumn;
+  QuickColumn: TAtlasIdeQuickColumn;
   // Gleichen Text wie die Markierung hervorheben (#709).
   SelectionMatches: TAtlasIdeSelectionMatches;
   // Ungespeicherte Dateien für schreibende MCP-Werkzeuge (#61).
@@ -930,6 +935,16 @@ begin
   Result := TAtlasIdeSettings.Current.BookmarksNamed;
 end;
 
+function QuickBookmarksVisible: Boolean;
+begin
+  Result := TAtlasIdeSettings.Current.QuickBookmarks;
+end;
+
+function BookmarksWindowVisible: Boolean;
+begin
+  Result := TAtlasIdeSettings.Current.BookmarksNamed or TAtlasIdeSettings.Current.QuickBookmarks;
+end;
+
 function ProblemsWindowVisible: Boolean;
 begin
   Result := TAtlasIdeProblems.Enabled;
@@ -1320,7 +1335,14 @@ begin
   Add('Atlas.BookmarkGoTo', TAtlasTextId.BookmarksMenuGoTo,
     Guarded(TAtlasFeature.Bookmarks, TAtlasIdeBookmarks.GoToBookmark), BookmarksNamedVisible);
   Add('Atlas.BookmarkWindow', TAtlasTextId.BookmarksMenuWindow,
-    Guarded(TAtlasFeature.Bookmarks, TAtlasIdeBookmarks.ShowWindow), BookmarksNamedVisible);
+    Guarded(TAtlasFeature.Bookmarks, TAtlasIdeBookmarks.ShowWindow), BookmarksWindowVisible);
+  // Schnelle Lesezeichen (#1104); nur sichtbar, solange bookmarks.quick an ist.
+  Add('Atlas.QuickBookmarkToggle', TAtlasTextId.QuickBookmarkToggleCommand,
+    Guarded(TAtlasFeature.QuickBookmarks, TAtlasIdeBookmarks.QuickToggle), QuickBookmarksVisible);
+  Add('Atlas.NextBookmark', TAtlasTextId.NextBookmarkCommand,
+    Guarded(TAtlasFeature.QuickBookmarks, TAtlasIdeBookmarks.NextBookmark), QuickBookmarksVisible);
+  Add('Atlas.PreviousBookmark', TAtlasTextId.PreviousBookmarkCommand,
+    Guarded(TAtlasFeature.QuickBookmarks, TAtlasIdeBookmarks.PreviousBookmark), QuickBookmarksVisible);
   // Fenster „Atlas-Prüfung“ (#909); nur sichtbar, solange problems.window an ist.
   Add('Atlas.ProblemsWindow', TAtlasTextId.ProblemsWindowCommand,
     Guarded(TAtlasFeature.Problems, TAtlasIdeProblems.ShowWindow), ProblemsWindowVisible);
@@ -2519,6 +2541,18 @@ begin
       MessageLine(AText);
     end);
   // Übersichtsleiste an der Scrollleiste (#519).
+  // Mit schnellen Lesezeichen (#1104) zeigt die Art „bookmarks“ die Lesezeichen von Atlas.
+  TAtlasIdeOverviewRuler.Bookmarks :=
+    function(const AFileName: string; out AMarks: TAtlasOverviewMarks): Boolean
+    var
+      Marks: TArray<TAtlasBookmark>;
+      Mark: TAtlasBookmark;
+    begin
+      AMarks := nil;
+      Result := TAtlasIdeBookmarks.OverviewMarks(AFileName, Marks);
+      for Mark in Marks do
+        AMarks := AMarks + [TAtlasOverviewMark.Create(TAtlasOverviewMarkKind.Bookmark, Mark.Line, 1, Mark.DisplayName)];
+    end;
   TAtlasIdeOverviewRuler.Install;
   // Minimap neben der Scrollleiste (#873, experimentell); fragt die Gliederung über TAtlasIdeOutlineCache.
   TAtlasIdeMinimap.Install;
@@ -2559,6 +2593,7 @@ begin
   TAtlasIdeBreadcrumbs.Uninstall;
   TAtlasIdeMinimap.Uninstall;
   TAtlasIdeOverviewRuler.Uninstall;
+  TAtlasIdeOverviewRuler.Bookmarks := nil;
   TAtlasIdeLineChanges.Uninstall;
   TAtlasIdeLineMove.Uninstall;
   TAtlasIdeBlockComment.Uninstall;
@@ -2821,6 +2856,12 @@ begin
     procedure(AText: string)
     begin
       MessageLine(AText);
+    end,
+    // Hinweise der schnellen Lesezeichen (#1104) im Statusfeld.
+    procedure(AText: string)
+    begin
+      if StatusField <> nil then
+        StatusField.SetExtra('quickBookmarks', AText, '', nil);
     end);
   BookmarksStarted := True;
 end;
@@ -2947,6 +2988,17 @@ begin
     begin
       TAtlasIdeEditorCommands.ApplyAction(AAction);
     end);
+end;
+
+procedure StartQuickColumn;
+begin
+  QuickColumn := TAtlasIdeQuickColumn.Create;
+end;
+
+procedure StopQuickColumn;
+begin
+  TAtlasIdeQuickChord.Release;
+  FreeAndNil(QuickColumn);
 end;
 
 procedure StartSelectionMatches;
@@ -3804,6 +3856,19 @@ begin
     begin
       FreeAndNil(GutterColumn);
     end);
+  // Schnelle Lesezeichen (#1104): Spalte links der Zeilennummern, Wiederfinden und Übernahme der IDE-Lesezeichen;
+  // nach den Lesezeichen (#622), deren Listen sie liest.
+  Features.AddWanted('QuickBookmarks',
+    function(ALevel: TAtlasSafeLevel): Boolean
+    begin
+      Result := (ALevel <> TAtlasSafeLevel.Minimal) and ((ALevel = TAtlasSafeLevel.Normal) or
+        TAtlasIdeSettings.Current.QuickBookmarks);
+    end,
+    function: Boolean
+    begin
+      Result := QuickColumn <> nil;
+    end,
+    StartQuickColumn, StopQuickColumn);
   // Gleichen Text wie die Markierung hervorheben (#709): nur im normalen Start oder mit Einstellung.
   Features.AddWanted('SelectionMatches',
     function(ALevel: TAtlasSafeLevel): Boolean

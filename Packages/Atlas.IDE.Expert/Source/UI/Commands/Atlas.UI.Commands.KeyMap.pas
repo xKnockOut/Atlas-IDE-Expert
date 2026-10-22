@@ -344,6 +344,16 @@ begin
       Id := TAtlasTextId.GotoInterfaceCommand;
     TAtlasKeyFunction.SectionImplementation:
       Id := TAtlasTextId.GotoImplementationCommand;
+    TAtlasKeyFunction.QuickBookmark:
+      Id := TAtlasTextId.QuickBookmarkToggleCommand;
+    TAtlasKeyFunction.QuickBookmarkSet:
+      Id := TAtlasTextId.QuickBookmarkSetCommand;
+    TAtlasKeyFunction.QuickBookmarkJump:
+      Id := TAtlasTextId.QuickBookmarkJumpCommand;
+    TAtlasKeyFunction.NextBookmark:
+      Id := TAtlasTextId.NextBookmarkCommand;
+    TAtlasKeyFunction.PreviousBookmark:
+      Id := TAtlasTextId.PreviousBookmarkCommand;
   else
     Id := TAtlasTextId.KeyMapUnitSearchIde;
   end;

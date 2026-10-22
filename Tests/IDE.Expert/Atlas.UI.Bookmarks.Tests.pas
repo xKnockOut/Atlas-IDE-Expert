@@ -54,6 +54,10 @@ type
     procedure MovesWithKeysAndDrop;
     [Test]
     procedure EmptyListShowsHint;
+    /// <summary>Schnelle Lesezeichen (#1104): Spalte „Nr.“, Methode als Name, „nur diese Datei“,
+    /// Strg+Umschalt+Zahl vergibt die Nummer.</summary>
+    [Test]
+    procedure QuickBookmarksInWindow;
   end;
 
 implementation
@@ -66,6 +70,7 @@ uses
   Vcl.Forms,
   Vcl.ComCtrls,
   Atlas.Core.Bookmarks.Store,
+  Atlas.Core.Bookmarks.Quick,
   Atlas.UI.Bookmarks.Dialog,
   Atlas.UI.Bookmarks.Frame;
 
@@ -190,7 +195,9 @@ begin
     Frame := TAtlasBookmarksFrame.Create(Host);
     Frame.Parent := Host;
     Frame.SetBookmarks(List, 'Projekt.dproj · lokal', List.Bookmarks[2].Id);
-    Assert.AreEqual(4, Integer(Frame.List.Columns.Count));
+    Assert.AreEqual(5, Integer(Frame.List.Columns.Count), 'mit „Nr.“ (#1104)');
+    Assert.AreEqual('Nr.', Frame.List.Columns[TAtlasBookmarksFrame.NumberColumn].Caption);
+    Assert.AreEqual('', Frame.List.Items[0].SubItems[3], 'benannte ohne Nummer: leer');
     Assert.AreEqual('Zeilenvorschau', Frame.List.Columns[3].Caption);
     Assert.AreEqual(3, Integer(Frame.List.Items.Count), 'Reihenfolge der Liste');
     Assert.AreEqual('Prüfung', Frame.List.Items[0].Caption);
@@ -405,6 +412,58 @@ begin
     Frame.SetBookmarks(SampleList, '', '');
     Assert.IsFalse(Frame.EmptyLabel.Visible);
     Assert.IsTrue(Frame.List.Visible);
+  finally
+    Host.Free;
+  end;
+end;
+
+procedure TAtlasBookmarksFrameTests.QuickBookmarksInWindow;
+var
+  Host: TForm;
+  Frame: TAtlasBookmarksFrame;
+  List: TAtlasBookmarkList;
+  NumberedId: string;
+  NumberedTo: Integer;
+  Key: Word;
+begin
+  List := SampleList;
+  TAtlasQuickBookmarks.SetNumber(List, Unit1, SampleText, 8, 3, 0);
+  TAtlasQuickBookmarks.Toggle(List, Unit2, SampleText, 0, 0);
+  Host := TForm.CreateNew(nil);
+  try
+    Frame := TAtlasBookmarksFrame.Create(Host);
+    Frame.Parent := Host;
+    Frame.OnNumber :=
+      procedure(AId: string; ANumber: Integer)
+      begin
+        NumberedId := AId;
+        NumberedTo := ANumber;
+      end;
+    Frame.SetBookmarks(List, '', List.Bookmarks[3].Id);
+    Assert.AreEqual(5, Integer(Frame.List.Items.Count));
+    Assert.AreEqual('Laden', Frame.List.Items[3].Caption, 'ohne Namen die Methode');
+    Assert.AreEqual('3', Frame.List.Items[3].SubItems[3]);
+    Assert.AreEqual(AtlasQuickBookmarkDot, Frame.List.Items[4].SubItems[3], 'unnummeriert');
+    Assert.AreEqual('Lager.pas:1', Frame.List.Items[4].Caption, 'außerhalb einer Methode Datei und Zeile');
+    // Nur diese Datei: Kunde.pas.
+    Frame.SetCurrentFile(Unit1);
+    Assert.AreEqual(5, Integer(Frame.List.Items.Count), 'Schalter aus: alle');
+    Frame.OnlyFileCheck.Checked := True;
+    Assert.AreEqual(3, Integer(Frame.List.Items.Count));
+    Frame.SetCurrentFile(Unit2);
+    Assert.AreEqual(2, Integer(Frame.List.Items.Count));
+    Frame.OnlyFileCheck.Checked := False;
+    // Strg+Umschalt+5 vergibt die Nummer.
+    Frame.SetBookmarks(List, '', List.Bookmarks[0].Id);
+    Key := Ord('5');
+    Frame.List.OnKeyDown(Frame.List, Key, [ssCtrl, ssShift]);
+    Assert.AreEqual(List.Bookmarks[0].Id, NumberedId);
+    Assert.AreEqual(5, NumberedTo);
+    Assert.AreEqual(0, Integer(Key));
+    NumberedId := '';
+    Key := Ord('5');
+    Frame.List.OnKeyDown(Frame.List, Key, [ssCtrl]);
+    Assert.AreEqual('', NumberedId, 'nur mit Strg+Umschalt');
   finally
     Host.Free;
   end;

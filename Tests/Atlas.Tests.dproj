@@ -606,6 +606,8 @@
         <DCCReference Include="IDE.Expert\Atlas.UI.Notes.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Bookmarks\Atlas.Core.Bookmarks.Store.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Bookmarks.Tests.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Bookmarks\Atlas.Core.Bookmarks.Quick.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.Core.Bookmarks.Quick.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\UI\Bookmarks\Atlas.UI.Bookmarks.Dialog.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\UI\Todos\Atlas.UI.Todos.Dialog.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\UI\Bookmarks\Atlas.UI.Bookmarks.Frame.pas"/>

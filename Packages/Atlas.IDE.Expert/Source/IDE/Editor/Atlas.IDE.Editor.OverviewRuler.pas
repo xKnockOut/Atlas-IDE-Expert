@@ -10,7 +10,8 @@
 //   inaktive Zweige und uses-Einträge), Treffer des markierten Texts (nach
 //   einer Suche ist der Treffer markiert), Änderungen aus
 //   TAtlasIdeLineChanges (#507), Haltepunkte des Debuggers, die
-//   Lesezeichen 0–9 der IDE und den Cursor. Die Treffer sucht er erst nach
+//   Lesezeichen 0–9 der IDE (mit schnellen Lesezeichen, #1104, statt dessen
+//   die Lesezeichen von Atlas über den Haken Bookmarks) und den Cursor. Die Treffer sucht er erst nach
 //   einer Tipp-Pause neu; der Streifen zeichnet nur bei geänderten Marken.
 //   Mit „Gleichen Text hervorheben“ (#709, highlight.selectionMatches) gelten
 //   dessen Mindestlänge, Groß-/Kleinschreibung, ganze Wörter und Obergrenze.
@@ -29,9 +30,15 @@ uses
   Atlas.Core.Editor.Overview;
 
 type
+  /// <summary>Lesezeichen von Atlas für AFileName; False: keine eigenen, die Leiste zeigt die der IDE.</summary>
+  TAtlasOverviewBookmarksFunc = reference to function(const AFileName: string; out AMarks: TAtlasOverviewMarks): Boolean;
+
   TAtlasIdeOverviewRuler = class
   private class var
     FState: TObject;
+  public class var
+    /// <summary>Kommt von der Komposition (#1104), damit Editor nicht von Bookmarks abhängt.</summary>
+    Bookmarks: TAtlasOverviewBookmarksFunc;
   public
     class procedure Install; static;
     class procedure Uninstall; static;
@@ -318,6 +325,7 @@ var
   Breakpoint: IOTASourceBreakpoint;
   Bookmark: TOTACharPos;
   FileName: string;
+  Own: TAtlasOverviewMarks;
 begin
   Result := nil;
   FileName := AView.Buffer.FileName;
@@ -372,7 +380,9 @@ begin
             1, TAtlasStrings.Text(TAtlasTextId.OverviewBreakpoint))];
       end;
   end;
-  if TAtlasOverviewKind.Bookmarks in AKinds then
+  if (TAtlasOverviewKind.Bookmarks in AKinds) and Assigned(Bookmarks) and Bookmarks(FileName, Own) then
+    Result := Result + Own
+  else if TAtlasOverviewKind.Bookmarks in AKinds then
     for Index := 0 to BookmarkCount - 1 do
     begin
       Bookmark := AView.BookmarkPos[Index];

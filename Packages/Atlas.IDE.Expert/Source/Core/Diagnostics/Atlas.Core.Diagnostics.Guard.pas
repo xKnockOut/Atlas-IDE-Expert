@@ -55,7 +55,7 @@ type
     Notes, Bookmarks, Notifications, Breadcrumbs, Outline, StickyScroll, Minimap, LineChanges, GutterColumn,
     RecursionMarkers, OverviewRuler, SelectionMatches, MultiCursor, LinkedEditing, CodeLens, NavHistory, Peek,
     SmartPaste, WrapSelection, Unwrap, Hide, Search, UnitSearch, Generate, ContinueLines, SlashCommands,
-    GoToDefinition, EditorToolbar);
+    GoToDefinition, EditorToolbar, QuickBookmarks);
 {$SCOPEDENUMS OFF}
 
   TAtlasFeatures = set of TAtlasFeature;
@@ -637,7 +637,8 @@ const
     'Atlas-Spalte', 'Rekursionssymbole', 'Übersichtsleiste', 'Gleichen Text hervorheben', 'Mehrere Einfügemarken',
     'Bezeichner mitziehen', 'Code Lens', 'Navigationsverlauf', 'Definition einblenden', 'Einfügen mit uses-Ergänzung',
     'Markierung umschließen', 'Umschließung entfernen', 'Ausblenden am Element', 'Atlas-Suche', 'Units suchen',
-    'Erzeugen-Menü', 'Kommentar und Muster fortsetzen', 'Schnellbefehle', 'Gehe zu Definition', 'Editorleiste');
+    'Erzeugen-Menü', 'Kommentar und Muster fortsetzen', 'Schnellbefehle', 'Gehe zu Definition', 'Editorleiste',
+    'Schnelle Lesezeichen');
 begin
   Result := Names[AFeature];
 end;

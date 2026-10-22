@@ -92,6 +92,8 @@ type
     [Test]
     procedure EditorToolbarRoundTrip;
     [Test]
+    procedure QuickBookmarksRoundTrip;
+    [Test]
     procedure WelcomeSettingsRoundTrip;
     /// <summary>Freies Layout (#767): Schalter, Spalten, Layouts anlegen, wechseln, umbenennen, löschen; je
     /// Layout eigene Sichtbarkeit; Reveal der neuen Einstellungen.</summary>
@@ -2116,6 +2118,44 @@ begin
     Assert.AreEqual('Atlas.NavBack', Saved.EditorToolbarItems);
     Assert.IsTrue(Saved.EditorToolbar);
     Assert.IsTrue(Saved.EditorToolbarReturnButton);
+  finally
+    Page.Free;
+  end;
+end;
+
+procedure TAtlasSettingsPageTests.QuickBookmarksRoundTrip;
+var
+  Page: TAtlasSettingsPage;
+  Settings, Saved: TAtlasPluginSettings;
+begin
+  // #1104: Schalter, Taste, Wartezeit (begrenzt), Sprungbereich als Auswahl, Tasten für nächstes/voriges.
+  Settings := TAtlasPluginSettings.Defaults;
+  Page := TAtlasSettingsPage.Create(nil);
+  try
+    Page.LoadFrom(Settings);
+    Assert.IsTrue(Page.QuickBookmarksCheck.Checked);
+    Assert.IsTrue(Page.QuickBookmarksGutterCheck.Checked);
+    Assert.AreEqual('800', Page.QuickBookmarkChordWaitEdit.Text);
+    Assert.AreEqual(0, Page.QuickBookmarksScopeBox.Choice);
+    Assert.AreEqual('', Page.NextBookmarkKeyEdit.Text);
+    Page.QuickBookmarksGutterClickCheck.Checked := False;
+    Page.QuickBookmarksNumberedKeysCheck.Checked := False;
+    Page.QuickBookmarksImportIdeCheck.Checked := False;
+    Page.QuickBookmarkChordWaitEdit.Text := '99999';
+    Page.QuickBookmarksScopeBox.Choice := 1;
+    Page.QuickBookmarkKeyEdit.Text := '';
+    Page.NextBookmarkKeyEdit.Text := 'F2';
+    Saved := TAtlasPluginSettings.Defaults;
+    Page.SaveTo(Saved);
+    Assert.IsTrue(Saved.QuickBookmarks);
+    Assert.IsFalse(Saved.QuickBookmarksGutterClick);
+    Assert.IsFalse(Saved.QuickBookmarksNumberedKeys);
+    Assert.IsFalse(Saved.QuickBookmarksImportIde);
+    Assert.AreEqual(TAtlasPluginSettings.MaxQuickChordWait, Saved.QuickBookmarkChordWait);
+    Assert.AreEqual('file', Saved.QuickBookmarksScope);
+    Assert.AreEqual(0, Saved.QuickBookmarkKey);
+    Assert.AreEqual($71, Saved.NextBookmarkKey, 'F2');
+    Assert.AreEqual(0, Saved.PreviousBookmarkKey);
   finally
     Page.Free;
   end;

@@ -484,6 +484,39 @@ Ablage je Projekt neben der .dproj (Projekte im selben Ordner teilen sich die Da
 | BM17 | Rinne bei 100 %, 150 % und 200 %, hell und dunkel, mit Notiz und IDE-Lesezeichen an derselben Zeile | Notizblatt und Band nebeneinander, nichts abgeschnitten; prüfen, ob sie IDE-Symbole überdecken |
 | BM18 | Ohne geöffnetes Projekt eine einzelne Datei öffnen, Strg+Alt+K | Meldung „Lesezeichen gehören zu einem Projekt …“ |
 
+## Schnelle Lesezeichen (#1104)
+
+Gleiche Ablage wie die benannten Lesezeichen, `format` 2 mit `kind` (`named`, `quick`) und `number` (1–9, fehlt bei unnummerierten); unnummerierte schnelle Lesezeichen haben keinen `name`.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| QL1 | Datei öffnen, Rinne bei 100 % | Direkt links der Zeilennummern eine schmale Spalte; Haltepunkte, Faltung und Änderungsbalken bleiben in den Spalten der IDE (Spaltenposition `gclBeforeLineNumbers` beim ersten Bau prüfen) |
+| QL2 | Maus über die Spalte neben Zeile 24 | Gestrichelter Umriss, nach kurzer Zeit Tooltip „Klick setzt ein Lesezeichen“ |
+| QL3 | Linksklick neben Zeile 24, dann erneut | Erster Klick: Band in der Warnfarbe, Zeilennummer 24 hell; zweiter Klick entfernt es. In beiden Fällen entsteht **kein** Haltepunkt; ein Klick in die Haltepunktspalte setzt weiter nur Haltepunkte |
+| QL4 | Strg+Umschalt+3 in Zeile 33 | Marker mit „3“; Tooltip „Lesezeichen 3“, Methode und „Springen: Strg+3“ |
+| QL5 | In einer anderen Unit Strg+3 | Datei öffnet, Cursor in Zeile 33; Alt+← führt zurück (Navigationsverlauf #504) |
+| QL6 | Strg+Umschalt+3 in Zeile 40, dann nochmals | Die 3 zieht nach Zeile 40 um; zweites Mal entfernt sie |
+| QL7 | Strg+5 ohne Lesezeichen 5 | Statusfeld „Lesezeichen 5 ist nicht vergeben.“, verschwindet nach einigen Sekunden |
+| QL8 | Zeile mit Lesezeichen 2 außerhalb der IDE löschen, Strg+2 | Statusfeld „Lesezeichen 2 nicht gefunden; …“, Sprung zur letzten bekannten Zeile; im Fenster grau |
+| QL9 | `bookmarks.quick.scope` = nur aktuelle Datei, Strg+3 aus anderer Unit | Kein Sprung, Statusfeld „Lesezeichen 3 steht in einer anderen Datei …“ |
+| QL10 | Strg+Umschalt+K, sofort loslassen | Nach etwa 800 ms ein unnummeriertes Lesezeichen; nochmals entfernt es |
+| QL11 | Strg+Umschalt+K, U (innerhalb der Wartezeit) | Faltet wie in der IDE, kein Lesezeichen; ebenso E, A, T, O (Teilakkord und Weitergabe beim ersten Bau prüfen) |
+| QL12 | Strg+Umschalt+K, dann X | Lesezeichen gesetzt, das X steht im Editor |
+| QL13 | `bookmarks.quick.chordWait` = 0 | Strg+Umschalt+K gehört der IDE, Seite „Tastenkonflikte“ zeigt die Taste als frei für die IDE |
+| QL14 | Zwei Lesezeichen 7 und unnummeriert an einer Zeile | Marker zeigt „7“ mit gefüllter Ecke; Tooltip „2 Lesezeichen“ mit beiden |
+| QL15 | Rechtsklick in die Spalte | Atlas-Menü statt Kontextmenü der IDE: „Nummer vergeben ›“ 1–9 (belegte mit Ziel, eigene abgehakt), „Namen geben …“, „Lesezeichen entfernen“, „Alle Lesezeichen der Datei entfernen“, „Fenster ‚Lesezeichen‘ öffnen“ |
+| QL16 | „Namen geben …“ auf einem unnummerierten Marker | Dialog mit Methodenvorschlag; danach benanntes Lesezeichen (#622), Nummer bleibt, Marker bleibt in der Spalte |
+| QL17 | 50 Zeilen über der Methode einfügen, IDE neu starten | Alle Marker an ihren Zeilen |
+| QL18 | Datei mit IDE-Lesezeichen 1 und 4 erstmals öffnen | Meldung „Atlas hat 2 IDE-Lesezeichen aus … übernommen.“, Marker 1 und 4 in der Spalte, IDE-Symbole weg; Cursor und Ansicht unverändert |
+| QL19 | Format-1-Datei aus #622 laden, ein Lesezeichen setzen | Alles da; danach `"format": 2` in der Datei |
+| QL20 | Fenster „Lesezeichen“ | Spalte „Nr.“ vorn, unnummerierte ohne Namen zeigen die Methode grau; „nur diese Datei“ filtert; Strg+Umschalt+4 in der Liste vergibt 4, F2 benennt |
+| QL21 | Übersichtsleiste mit Art `bookmarks` | Zeigt die Atlas-Lesezeichen statt der IDE-Lesezeichen |
+| QL22 | Palette „Nächstes Lesezeichen“ / „Voriges Lesezeichen“ | Reihum in der Datei; ohne Lesezeichen Statusfeld „Keine Lesezeichen in dieser Datei.“ |
+| QL23 | `bookmarks.quick` aus | Keine Spalte; Strg+Umschalt+1…9, Strg+1…9 und Strg+Umschalt+K wirken wie in der IDE; benannte Lesezeichen unberührt. Jeder Unterschalter (`gutter`, `gutterClick`, `numberedKeys`, `importIde`) wirkt einzeln |
+| QL24 | Seite „Tastenkonflikte“, Zeile „Lesezeichen 1–9 setzen“ › IDE überlassen | Strg+Umschalt+1…9 setzen sofort wieder IDE-Lesezeichen |
+| QL25 | Strg+. auf einer Zeile mit Marker › Ausblenden „überall“ | Spalte zeigt keine Marker mehr (#628) |
+| QL26 | Zeilennummern einer Zeile mit Marker, hell und dunkel, 100/150/200 % | Zahl heller als die übrigen, gleiche Schrift und Lage (Stufe der Zeilennummern beim ersten Bau prüfen) |
+
 ## Tippfehler (#485)
 
 | Nr. | Schritte | Erwartet |

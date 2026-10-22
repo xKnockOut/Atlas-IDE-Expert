@@ -15,6 +15,10 @@ uses
   System.SysUtils,
   Atlas.Core.Style.Palette;
 
+const
+  /// <summary>Werte von bookmarks.quick.scope (#1104) in der Reihenfolge der Optionsseite.</summary>
+  AtlasQuickBookmarkScopes: array[0..1] of string = ('project', 'file');
+
 type
   /// <summary>Ablage für Einstellungen; Werte als ganze Zahlen (Wahrheitswerte 0/1).</summary>
   IAtlasSettingsStore = interface
@@ -63,6 +67,9 @@ type
     /// <summary>Grenzen für editor.blockEndLabels.minLines (#620).</summary>
     MinBlockEndLines = 1;
     MaxBlockEndLines = 1000;
+    /// <summary>Höchste Wartezeit in ms auf den zweiten Teil der Faltungsakkorde (#1104,
+    /// bookmarks.quick.chordWait).</summary>
+    MaxQuickChordWait = 5000;
     /// <summary>Grenzen für editor.recursionMarkers.depth (#623); wie TRecursionAnalysis im Server.</summary>
     MinRecursionDepth = 1;
     MaxRecursionDepth = 16;
@@ -654,6 +661,41 @@ type
     EditorToolbarReturnButton: Boolean;
     /// <summary>Text neben den Symbolen (#1101, editor.toolbar.labels).</summary>
     EditorToolbarLabels: Boolean;
+    /// <summary>Schnelle Lesezeichen, nummeriert und unnummeriert (#1104, bookmarks.quick); Hauptschalter.</summary>
+    QuickBookmarks: Boolean;
+    /// <summary>Spalte links der Zeilennummern mit den Markern (#1104, bookmarks.quick.gutter).</summary>
+    QuickBookmarksGutter: Boolean;
+    /// <summary>Linksklick in die Spalte setzt und entfernt Lesezeichen (#1104, bookmarks.quick.gutterClick).
+    /// </summary>
+    QuickBookmarksGutterClick: Boolean;
+    /// <summary>Tasten für Nummern 1–9 von der IDE übernehmen (#1104, bookmarks.quick.numberedKeys).</summary>
+    QuickBookmarksNumberedKeys: Boolean;
+    /// <summary>Taste für unnummerierte Lesezeichen (#1104, bookmarks.quick.key); 0 = keine.</summary>
+    QuickBookmarkKey: Integer;
+    /// <summary>Vorrang für QuickBookmarkKey vor der Faltung der IDE (#1104, bookmarks.quick.keyPriority).</summary>
+    QuickBookmarkKeyPriority: Boolean;
+    /// <summary>Wartezeit in ms auf den zweiten Faltungsakkordteil, 0 bis MaxQuickChordWait; 0 = die Taste bleibt
+    /// bei der IDE (#1104, bookmarks.quick.chordWait).</summary>
+    QuickBookmarkChordWait: Integer;
+    /// <summary>Taste für „Lesezeichen 1 setzen“; 2–9 mit denselben Umschalttasten (#1104,
+    /// bookmarks.quick.setKey); 0 = keine.</summary>
+    QuickBookmarkSetKey: Integer;
+    /// <summary>Vorrang vor „Lesezeichen umschalten“ der IDE (#1104, bookmarks.quick.setKeyPriority).</summary>
+    QuickBookmarkSetKeyPriority: Boolean;
+    /// <summary>Taste für „Zu Lesezeichen 1 springen“; 2–9 mit denselben Umschalttasten (#1104,
+    /// bookmarks.quick.jumpKey); 0 = keine.</summary>
+    QuickBookmarkJumpKey: Integer;
+    /// <summary>Vorrang vor „Zu Lesezeichen springen“ der IDE (#1104, bookmarks.quick.jumpKeyPriority).</summary>
+    QuickBookmarkJumpKeyPriority: Boolean;
+    /// <summary>Sprungbereich von Strg+1…9: project oder file (#1104, bookmarks.quick.scope).</summary>
+    QuickBookmarksScope: string;
+    /// <summary>Vorhandene IDE-Lesezeichen 1–9 übernehmen und dort entfernen (#1104, bookmarks.quick.importIde).
+    /// </summary>
+    QuickBookmarksImportIde: Boolean;
+    /// <summary>Taste „Nächstes Lesezeichen“ (#1104, keys.nextBookmark); 0 = keine.</summary>
+    NextBookmarkKey: Integer;
+    /// <summary>Taste „Voriges Lesezeichen“ (#1104, keys.previousBookmark); 0 = keine.</summary>
+    PreviousBookmarkKey: Integer;
     /// <summary>Mitlaufender Kopf (#506, editor.stickyScroll, experimentell).</summary>
     StickyScroll: Boolean;
     /// <summary>Höchstzahl seiner Zeilen, MinStickyLines bis MaxStickyLines (#506,
@@ -1420,6 +1462,21 @@ begin
   Result.EditorToolbarItems := TAtlasToolbarItems.DefaultText;
   Result.EditorToolbarReturnButton := True;
   Result.EditorToolbarLabels := False;
+  Result.QuickBookmarks := True;
+  Result.QuickBookmarksGutter := True;
+  Result.QuickBookmarksGutterClick := True;
+  Result.QuickBookmarksNumberedKeys := True;
+  Result.QuickBookmarkKey := $604B; // Strg+Umschalt+K
+  Result.QuickBookmarkKeyPriority := True;
+  Result.QuickBookmarkChordWait := 800;
+  Result.QuickBookmarkSetKey := $6031; // Strg+Umschalt+1
+  Result.QuickBookmarkSetKeyPriority := True;
+  Result.QuickBookmarkJumpKey := $4031; // Strg+1
+  Result.QuickBookmarkJumpKeyPriority := True;
+  Result.QuickBookmarksScope := 'project';
+  Result.QuickBookmarksImportIde := True;
+  Result.NextBookmarkKey := 0;
+  Result.PreviousBookmarkKey := 0;
   Result.StickyScroll := False;
   Result.StickyScrollMaxLines := 3;
   Result.Minimap := False;
@@ -1700,6 +1757,13 @@ begin
   BreadcrumbsKey := EnsureRange(BreadcrumbsKey, 0, $FFFF);
   EditorToolbarPosition := Choice(EditorToolbarPosition, ['belowBreadcrumbs', 'aboveBreadcrumbs', 'inBreadcrumbs']);
   EditorToolbarItems := TAtlasToolbarItems.Normalize(EditorToolbarItems);
+  QuickBookmarkKey := EnsureRange(QuickBookmarkKey, 0, $FFFF);
+  QuickBookmarkChordWait := EnsureRange(QuickBookmarkChordWait, 0, MaxQuickChordWait);
+  QuickBookmarkSetKey := EnsureRange(QuickBookmarkSetKey, 0, $FFFF);
+  QuickBookmarkJumpKey := EnsureRange(QuickBookmarkJumpKey, 0, $FFFF);
+  QuickBookmarksScope := Choice(QuickBookmarksScope, AtlasQuickBookmarkScopes);
+  NextBookmarkKey := EnsureRange(NextBookmarkKey, 0, $FFFF);
+  PreviousBookmarkKey := EnsureRange(PreviousBookmarkKey, 0, $FFFF);
   NextChangeKey := EnsureRange(NextChangeKey, 0, $FFFF);
   PreviousChangeKey := EnsureRange(PreviousChangeKey, 0, $FFFF);
   OverviewRulerKinds := TAtlasOverviewKindNames.Normalize(OverviewRulerKinds);
@@ -2019,6 +2083,27 @@ begin
   EditorToolbarReturnButton := AStore.ReadInteger('EditorToolbarReturnButton',
     BoolValue(Default.EditorToolbarReturnButton)) <> 0;
   EditorToolbarLabels := AStore.ReadInteger('EditorToolbarLabels', BoolValue(Default.EditorToolbarLabels)) <> 0;
+  QuickBookmarks := AStore.ReadInteger('QuickBookmarks', BoolValue(Default.QuickBookmarks)) <> 0;
+  QuickBookmarksGutter := AStore.ReadInteger('QuickBookmarksGutter', BoolValue(Default.QuickBookmarksGutter)) <> 0;
+  QuickBookmarksGutterClick := AStore.ReadInteger('QuickBookmarksGutterClick',
+    BoolValue(Default.QuickBookmarksGutterClick)) <> 0;
+  QuickBookmarksNumberedKeys := AStore.ReadInteger('QuickBookmarksNumberedKeys',
+    BoolValue(Default.QuickBookmarksNumberedKeys)) <> 0;
+  QuickBookmarkKey := AStore.ReadInteger('QuickBookmarkKey', Default.QuickBookmarkKey);
+  QuickBookmarkKeyPriority := AStore.ReadInteger('QuickBookmarkKeyPriority',
+    BoolValue(Default.QuickBookmarkKeyPriority)) <> 0;
+  QuickBookmarkChordWait := AStore.ReadInteger('QuickBookmarkChordWait', Default.QuickBookmarkChordWait);
+  QuickBookmarkSetKey := AStore.ReadInteger('QuickBookmarkSetKey', Default.QuickBookmarkSetKey);
+  QuickBookmarkSetKeyPriority := AStore.ReadInteger('QuickBookmarkSetKeyPriority',
+    BoolValue(Default.QuickBookmarkSetKeyPriority)) <> 0;
+  QuickBookmarkJumpKey := AStore.ReadInteger('QuickBookmarkJumpKey', Default.QuickBookmarkJumpKey);
+  QuickBookmarkJumpKeyPriority := AStore.ReadInteger('QuickBookmarkJumpKeyPriority',
+    BoolValue(Default.QuickBookmarkJumpKeyPriority)) <> 0;
+  QuickBookmarksScope := AStore.ReadString('QuickBookmarksScope', Default.QuickBookmarksScope);
+  QuickBookmarksImportIde := AStore.ReadInteger('QuickBookmarksImportIde',
+    BoolValue(Default.QuickBookmarksImportIde)) <> 0;
+  NextBookmarkKey := AStore.ReadInteger('NextBookmarkKey', Default.NextBookmarkKey);
+  PreviousBookmarkKey := AStore.ReadInteger('PreviousBookmarkKey', Default.PreviousBookmarkKey);
   StickyScroll := AStore.ReadInteger('StickyScroll', BoolValue(Default.StickyScroll)) <> 0;
   StickyScrollMaxLines := AStore.ReadInteger('StickyScrollMaxLines', Default.StickyScrollMaxLines);
   Minimap := AStore.ReadInteger('Minimap', BoolValue(Default.Minimap)) <> 0;
@@ -2420,6 +2505,21 @@ begin
   AStore.WriteString('EditorToolbarItems', EditorToolbarItems);
   AStore.WriteInteger('EditorToolbarReturnButton', BoolValue(EditorToolbarReturnButton));
   AStore.WriteInteger('EditorToolbarLabels', BoolValue(EditorToolbarLabels));
+  AStore.WriteInteger('QuickBookmarks', BoolValue(QuickBookmarks));
+  AStore.WriteInteger('QuickBookmarksGutter', BoolValue(QuickBookmarksGutter));
+  AStore.WriteInteger('QuickBookmarksGutterClick', BoolValue(QuickBookmarksGutterClick));
+  AStore.WriteInteger('QuickBookmarksNumberedKeys', BoolValue(QuickBookmarksNumberedKeys));
+  AStore.WriteInteger('QuickBookmarkKey', QuickBookmarkKey);
+  AStore.WriteInteger('QuickBookmarkKeyPriority', BoolValue(QuickBookmarkKeyPriority));
+  AStore.WriteInteger('QuickBookmarkChordWait', QuickBookmarkChordWait);
+  AStore.WriteInteger('QuickBookmarkSetKey', QuickBookmarkSetKey);
+  AStore.WriteInteger('QuickBookmarkSetKeyPriority', BoolValue(QuickBookmarkSetKeyPriority));
+  AStore.WriteInteger('QuickBookmarkJumpKey', QuickBookmarkJumpKey);
+  AStore.WriteInteger('QuickBookmarkJumpKeyPriority', BoolValue(QuickBookmarkJumpKeyPriority));
+  AStore.WriteString('QuickBookmarksScope', QuickBookmarksScope);
+  AStore.WriteInteger('QuickBookmarksImportIde', BoolValue(QuickBookmarksImportIde));
+  AStore.WriteInteger('NextBookmarkKey', NextBookmarkKey);
+  AStore.WriteInteger('PreviousBookmarkKey', PreviousBookmarkKey);
   AStore.WriteInteger('StickyScroll', BoolValue(StickyScroll));
   AStore.WriteInteger('StickyScrollMaxLines', StickyScrollMaxLines);
   AStore.WriteInteger('Minimap', BoolValue(Minimap));

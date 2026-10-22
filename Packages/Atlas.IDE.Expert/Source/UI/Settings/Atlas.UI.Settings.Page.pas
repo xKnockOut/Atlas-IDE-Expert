@@ -196,6 +196,14 @@ type
     FNotes: TCheckBox;
     FBookmarksNamed: TCheckBox;
     FBookmarksShared: TCheckBox;
+    FQuickBookmarks: TCheckBox;
+    FQuickBookmarksGutter: TCheckBox;
+    FQuickBookmarksGutterClick: TCheckBox;
+    FQuickBookmarksNumberedKeys: TCheckBox;
+    FQuickBookmarkKey: TEdit;
+    FQuickBookmarkChordWait: TEdit;
+    FQuickBookmarksScope: TAtlasChoiceBox;
+    FQuickBookmarksImportIde: TCheckBox;
     FCodeLensTestUnit: TCheckBox;
     /// <summary>Code Lens mit Code-Metriken (#66).</summary>
     FCodeLensMetrics: TCheckBox;
@@ -397,6 +405,8 @@ type
     FMultiCursorAboveKey: TEdit;
     FMultiCursorBelowKey: TEdit;
     FBookmarkKey: TEdit;
+    FNextBookmarkKey: TEdit;
+    FPreviousBookmarkKey: TEdit;
     /// <summary>„Element ausblenden …“ (#628).</summary>
     FHideElementKey: TEdit;
     /// <summary>Nächster/vorheriger Befund (#509).</summary>
@@ -1072,6 +1082,17 @@ type
     property BookmarksNamedCheck: TCheckBox read FBookmarksNamed;
     property BookmarksSharedCheck: TCheckBox read FBookmarksShared;
     property BookmarkKey: TEdit read FBookmarkKey;
+    /// <summary>Zum Testen: schnelle Lesezeichen (#1104).</summary>
+    property QuickBookmarksCheck: TCheckBox read FQuickBookmarks;
+    property QuickBookmarksGutterCheck: TCheckBox read FQuickBookmarksGutter;
+    property QuickBookmarksGutterClickCheck: TCheckBox read FQuickBookmarksGutterClick;
+    property QuickBookmarksNumberedKeysCheck: TCheckBox read FQuickBookmarksNumberedKeys;
+    property QuickBookmarkKeyEdit: TEdit read FQuickBookmarkKey;
+    property QuickBookmarkChordWaitEdit: TEdit read FQuickBookmarkChordWait;
+    property QuickBookmarksScopeBox: TAtlasChoiceBox read FQuickBookmarksScope;
+    property QuickBookmarksImportIdeCheck: TCheckBox read FQuickBookmarksImportIde;
+    property NextBookmarkKeyEdit: TEdit read FNextBookmarkKey;
+    property PreviousBookmarkKeyEdit: TEdit read FPreviousBookmarkKey;
     /// <summary>Zum Testen: Blockende-Beschriftungen (#620) und Taste „Element ausblenden …“ (#628).</summary>
     property BlockEndLabelsCheck: TCheckBox read FBlockEndLabels;
     /// <summary>Zum Testen: Typmarken von Inline-Variablen (#453).</summary>
@@ -1684,6 +1705,18 @@ begin
   // Benannte Lesezeichen (#622): Funktion und Ablage für das Team; die Taste steht bei den Editorbefehlen.
   FBookmarksNamed := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsBookmarksNamed));
   FBookmarksShared := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsBookmarksShared));
+  // Schnelle Lesezeichen (#1104): Spalte, Tasten, Akkord-Wartezeit, Sprungbereich, Übernahme der IDE-Lesezeichen.
+  FQuickBookmarks := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsQuickBookmarks));
+  FQuickBookmarksGutter := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsQuickBookmarksGutter));
+  FQuickBookmarksGutterClick := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsQuickBookmarksGutterClick));
+  FQuickBookmarksNumberedKeys := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsQuickBookmarksNumberedKeys));
+  FQuickBookmarkKey := AddKey(TAtlasStrings.Text(TAtlasTextId.QuickBookmarkToggleCommand));
+  FQuickBookmarkChordWait := AddNumber(TAtlasStrings.Text(TAtlasTextId.SettingsQuickBookmarkChordWait));
+  // Reihenfolge wie AtlasQuickBookmarkScopes.
+  FQuickBookmarksScope := AddChoice(TAtlasStrings.Text(TAtlasTextId.SettingsQuickBookmarksScope),
+    [TAtlasStrings.Text(TAtlasTextId.SettingsQuickBookmarksScopeProject),
+    TAtlasStrings.Text(TAtlasTextId.SettingsQuickBookmarksScopeFile)]);
+  FQuickBookmarksImportIde := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsQuickBookmarksImportIde));
   FCodeLensTestUnit := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsCodeLensTestUnit));
   FCodeLensMetrics := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsCodeLensMetrics));
   FMetrics := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsMetricsAll));
@@ -1851,6 +1884,9 @@ begin
   FOutlineConditions := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsOutlineConditions));
   // „Lesezeichen setzen…“ (#622).
   FBookmarkKey := AddKey(TAtlasStrings.Text(TAtlasTextId.BookmarksMenuAdd));
+  // Nächstes/voriges Lesezeichen (#1104), ohne Vorgabe.
+  FNextBookmarkKey := AddKey(TAtlasStrings.Text(TAtlasTextId.NextBookmarkCommand));
+  FPreviousBookmarkKey := AddKey(TAtlasStrings.Text(TAtlasTextId.PreviousBookmarkCommand));
   // „Element ausblenden …“ am gezeichneten Element (#628).
   FHideElementKey := AddKey(TAtlasStrings.Text(TAtlasTextId.HideElementCommand));
   // Nächster/vorheriger Befund (#509).
@@ -2795,6 +2831,8 @@ begin
   FMarks.Bind(FLinkedEditing, ['LinkedEditing']);
   FMarks.Bind(FSmartPaste, ['SmartPaste']);
   FMarks.Bind(FBookmarkKey, ['BookmarkKey']);
+  FMarks.Bind(FNextBookmarkKey, ['NextBookmarkKey']);
+  FMarks.Bind(FPreviousBookmarkKey, ['PreviousBookmarkKey']);
   FMarks.Bind(FHideElementKey, ['HideElementKey']);
   FMarks.Bind(FNextProblemKey, ['NextProblemKey']);
   FMarks.Bind(FPreviousProblemKey, ['PreviousProblemKey']);
@@ -2855,6 +2893,14 @@ begin
   FMarks.Bind(FNotes, ['Notes']);
   FMarks.Bind(FBookmarksNamed, ['BookmarksNamed']);
   FMarks.Bind(FBookmarksShared, ['BookmarksShared']);
+  FMarks.Bind(FQuickBookmarks, ['QuickBookmarks']);
+  FMarks.Bind(FQuickBookmarksGutter, ['QuickBookmarksGutter']);
+  FMarks.Bind(FQuickBookmarksGutterClick, ['QuickBookmarksGutterClick']);
+  FMarks.Bind(FQuickBookmarksNumberedKeys, ['QuickBookmarksNumberedKeys']);
+  FMarks.Bind(FQuickBookmarkKey, ['QuickBookmarkKey']);
+  FMarks.Bind(FQuickBookmarkChordWait, ['QuickBookmarkChordWait']);
+  FMarks.Bind(FQuickBookmarksScope, ['QuickBookmarksScope']);
+  FMarks.Bind(FQuickBookmarksImportIde, ['QuickBookmarksImportIde']);
   FMarks.Bind(FCodeLensTestUnit, ['CodeLensTestUnit']);
   FMarks.Bind(FCodeLensMetrics, ['CodeLensMetrics']);
   FMarks.Bind(FMetrics, ['Metrics']);
@@ -5004,6 +5050,8 @@ begin
   FMultiCursorAboveKey.Text := ShortCutToText(TShortCut(ASettings.MultiCursorAboveKey));
   FMultiCursorBelowKey.Text := ShortCutToText(TShortCut(ASettings.MultiCursorBelowKey));
   FBookmarkKey.Text := ShortCutToText(TShortCut(ASettings.BookmarkKey));
+  FNextBookmarkKey.Text := ShortCutToText(TShortCut(ASettings.NextBookmarkKey));
+  FPreviousBookmarkKey.Text := ShortCutToText(TShortCut(ASettings.PreviousBookmarkKey));
   FHideElementKey.Text := ShortCutToText(TShortCut(ASettings.HideElementKey));
   FNextProblemKey.Text := ShortCutToText(TShortCut(ASettings.NextProblemKey));
   FPreviousProblemKey.Text := ShortCutToText(TShortCut(ASettings.PreviousProblemKey));
@@ -5066,6 +5114,14 @@ begin
   FNotes.Checked := ASettings.Notes;
   FBookmarksNamed.Checked := ASettings.BookmarksNamed;
   FBookmarksShared.Checked := ASettings.BookmarksShared;
+  FQuickBookmarks.Checked := ASettings.QuickBookmarks;
+  FQuickBookmarksGutter.Checked := ASettings.QuickBookmarksGutter;
+  FQuickBookmarksGutterClick.Checked := ASettings.QuickBookmarksGutterClick;
+  FQuickBookmarksNumberedKeys.Checked := ASettings.QuickBookmarksNumberedKeys;
+  FQuickBookmarkKey.Text := ShortCutToText(TShortCut(ASettings.QuickBookmarkKey));
+  FQuickBookmarkChordWait.Text := IntToStr(ASettings.QuickBookmarkChordWait);
+  FQuickBookmarksScope.Choice := Max(0, IndexText(ASettings.QuickBookmarksScope, AtlasQuickBookmarkScopes));
+  FQuickBookmarksImportIde.Checked := ASettings.QuickBookmarksImportIde;
   FCodeLensTestUnit.Checked := ASettings.CodeLensTestUnit;
   FCodeLensMetrics.Checked := ASettings.CodeLensMetrics;
   FMetrics.Checked := ASettings.Metrics;
@@ -5437,6 +5493,8 @@ begin
   ASettings.MultiCursorAboveKey := Integer(TextToShortCut(Trim(FMultiCursorAboveKey.Text)));
   ASettings.MultiCursorBelowKey := Integer(TextToShortCut(Trim(FMultiCursorBelowKey.Text)));
   ASettings.BookmarkKey := Integer(TextToShortCut(Trim(FBookmarkKey.Text)));
+  ASettings.NextBookmarkKey := Integer(TextToShortCut(Trim(FNextBookmarkKey.Text)));
+  ASettings.PreviousBookmarkKey := Integer(TextToShortCut(Trim(FPreviousBookmarkKey.Text)));
   ASettings.HideElementKey := Integer(TextToShortCut(Trim(FHideElementKey.Text)));
   ASettings.NextProblemKey := Integer(TextToShortCut(Trim(FNextProblemKey.Text)));
   ASettings.PreviousProblemKey := Integer(TextToShortCut(Trim(FPreviousProblemKey.Text)));
@@ -5501,6 +5559,16 @@ begin
   ASettings.Notes := FNotes.Checked;
   ASettings.BookmarksNamed := FBookmarksNamed.Checked;
   ASettings.BookmarksShared := FBookmarksShared.Checked;
+  ASettings.QuickBookmarks := FQuickBookmarks.Checked;
+  ASettings.QuickBookmarksGutter := FQuickBookmarksGutter.Checked;
+  ASettings.QuickBookmarksGutterClick := FQuickBookmarksGutterClick.Checked;
+  ASettings.QuickBookmarksNumberedKeys := FQuickBookmarksNumberedKeys.Checked;
+  ASettings.QuickBookmarkKey := Integer(TextToShortCut(Trim(FQuickBookmarkKey.Text)));
+  ASettings.QuickBookmarkChordWait := EnsureRange(StrToIntDef(Trim(FQuickBookmarkChordWait.Text),
+    ASettings.QuickBookmarkChordWait), 0, TAtlasPluginSettings.MaxQuickChordWait);
+  ASettings.QuickBookmarksScope := AtlasQuickBookmarkScopes[EnsureRange(FQuickBookmarksScope.Choice, 0,
+    High(AtlasQuickBookmarkScopes))];
+  ASettings.QuickBookmarksImportIde := FQuickBookmarksImportIde.Checked;
   ASettings.CodeLensTestUnit := FCodeLensTestUnit.Checked;
   ASettings.CodeLensMetrics := FCodeLensMetrics.Checked;
   ASettings.Metrics := FMetrics.Checked;

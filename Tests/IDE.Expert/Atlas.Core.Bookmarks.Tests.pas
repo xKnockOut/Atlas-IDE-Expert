@@ -714,10 +714,10 @@ begin
   Assert.IsFalse(TAtlasBookmarks.Parse('', FFolder, List));
   Assert.IsFalse(TAtlasBookmarks.Parse('kein json', FFolder, List));
   Assert.IsFalse(TAtlasBookmarks.Parse('[1, 2]', FFolder, List));
-  Assert.IsFalse(TAtlasBookmarks.Parse('{"format": 2, "bookmarks": []}', FFolder, List));
+  Assert.IsFalse(TAtlasBookmarks.Parse('{"format": 3, "bookmarks": []}', FFolder, List));
   Assert.AreEqual(0, Integer(List.Count));
   Assert.IsTrue(TAtlasBookmarks.Parse('{"bookmarks": []}', FFolder, List), 'Ohne format gilt 1');
-  Assert.AreEqual(2, TAtlasBookmarks.FormatOf('{"format": 2}'));
+  Assert.AreEqual(3, TAtlasBookmarks.FormatOf('{"format": 3}'));
   Assert.AreEqual(0, TAtlasBookmarks.FormatOf('kaputt'));
 end;
 
@@ -786,13 +786,13 @@ var
   FileName: string;
 begin
   FileName := TPath.Combine(FFolder, '.atlas-bookmarks.json');
-  WriteText(FileName, '{"format": 2, "bookmarks": []}');
+  WriteText(FileName, '{"format": 3, "bookmarks": []}');
   Assert.IsFalse(TAtlasBookmarks.Load(Project, False, List));
   Assert.AreEqual(0, Integer(List.Count));
   Assert.AreEqual(Project, List.Project);
   List.Add(UnitFile, Join(Code), 18, 'Rundung', 0);
   Assert.IsFalse(TAtlasBookmarks.Save(List, False));
-  Assert.AreEqual(2, TAtlasBookmarks.FormatOf(TFile.ReadAllText(FileName)));
+  Assert.AreEqual(3, TAtlasBookmarks.FormatOf(TFile.ReadAllText(FileName)));
 end;
 
 procedure TAtlasBookmarkStorageTests.LoadWithoutFileIsEmpty;

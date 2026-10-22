@@ -568,6 +568,19 @@ begin
     begin
       TAtlasIdeBookmarks.GoToBookmark;
     end);
+  // Schnelle Lesezeichen (#1104) an der Cursorzeile; die Spalte hat ihr eigenes Menü.
+  FContextMenu.AddGuarded(TAtlasFeature.QuickBookmarks, 'Atlas.QuickBookmarkToggle',
+    TAtlasStrings.Text(TAtlasTextId.QuickBookmarkToggleCommand),
+    function: Integer
+    begin
+      Result := 0;
+      if TAtlasIdeSettings.Current.QuickBookmarks and (TAtlasIdeSettings.Current.QuickBookmarkChordWait > 0) then
+        Result := TAtlasIdeSettings.Current.QuickBookmarkKey;
+    end,
+    procedure
+    begin
+      TAtlasIdeBookmarks.QuickToggle;
+    end);
   // Nächster/vorheriger Befund (#509).
   FContextMenu.Add('-', nil, nil);
   FContextMenu.Add('Atlas.NextProblem', TAtlasStrings.Text(TAtlasTextId.ProblemNextCommand),

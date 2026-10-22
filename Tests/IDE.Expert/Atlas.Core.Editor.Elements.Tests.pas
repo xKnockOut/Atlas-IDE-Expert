@@ -127,6 +127,9 @@ begin
   Assert.IsTrue(TAtlasHideScope.Here in Info.Scopes);
   Assert.IsTrue(TAtlasDrawnElements.Info(TAtlasDrawnElement.Notes).Gutter);
   Assert.IsTrue(TAtlasDrawnElements.Info(TAtlasDrawnElement.Bookmarks).Gutter);
+  // Spalte der schnellen Lesezeichen (#1104).
+  Assert.IsTrue(TAtlasDrawnElements.Info(TAtlasDrawnElement.QuickBookmarks).Gutter);
+  Assert.AreEqual('QuickBookmarksGutter', TAtlasDrawnElements.SettingKey(TAtlasDrawnElement.QuickBookmarks));
   Assert.IsFalse(TAtlasHideScope.Here in TAtlasDrawnElements.Info(TAtlasDrawnElement.PairColors).Scopes);
 end;
 
