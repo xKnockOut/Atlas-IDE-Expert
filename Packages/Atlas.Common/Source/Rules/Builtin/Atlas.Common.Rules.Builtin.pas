@@ -67,6 +67,7 @@ uses
   Atlas.Common.Rules.Builtin.Published,
   Atlas.Common.Rules.Builtin.Visibility,
   Atlas.Common.Rules.Builtin.TypeDeclarations,
+  Atlas.Common.Rules.Builtin.TypedExpressions,
   Atlas.Common.Rules.Builtin.Unresolved;
 
 function BuiltinRules: TArray<IRule>;
@@ -129,6 +130,7 @@ begin
     RegisterPublishedRules(Registry);
     RegisterVisibilityRules(Registry);
     RegisterTypeDeclarationRules(Registry);
+    RegisterTypedExpressionRules(Registry);
     Result := Registry.Rules;
   finally
     Registry.Free;

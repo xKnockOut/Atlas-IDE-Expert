@@ -2467,6 +2467,64 @@
       "level": "T"
     },
     {
+      "id": "comparison-always-constant",
+      "name": "Comparison always true or always false",
+      "category": "bug",
+      "severity": "warning",
+      "group": "compiler",
+      "description": "A comparison of a variable, field, property or function result of a built-in integer type with a constant outside or at the edge of its value range (like W1021, W1022): Cardinal >= 0 is always true, Byte > 255 always false. Case labels outside the range of the case expression are reported as well (like W1018). The rule only reports when the type is known for sure and its declaration is always compiled together with the comparison. NativeInt, LongInt and their unsigned counterparts count with the widest range of all platforms; subrange types are not reported. Length(...) < 0 and Length(...) >= 0 are reported as well, although dcc does not warn there; the message says so.",
+      "bad": "while Rest >= 0 do  // Rest: Cardinal",
+      "good": "while Rest > 0 do",
+      "compilerCodes": [
+        "W1021",
+        "W1022",
+        "W1018"
+      ]
+    },
+    {
+      "id": "constant-initializer-mismatch",
+      "name": "Initializer of a constant does not match",
+      "category": "bug",
+      "severity": "error",
+      "group": "compiler",
+      "description": "A typed constant or initialized variable of a static array type has more or fewer elements than its index range (like E2072), typically after adding a value to an enumeration (array[TStatus] of string); checked per dimension and for named array types of the file. Record constants whose fields are in a different order than declared are reported as well (like E2083). Index ranges: subranges with constant bounds, enumerations without own values, Boolean, Byte, Char and so on. Declarations with conditional directives count as unsure. Quick fixes: add the missing entries with a placeholder (name of the enumeration value as a comment), put the fields in the order of the declaration.",
+      "bad": "StatusText: array[TStatus] of string = ('Neu', 'Offen', 'Geschlossen');  // TStatus has 4 values",
+      "good": "StatusText: array[TStatus] of string = ('Neu', 'Offen', 'Geschlossen', ''{stArchiviert});",
+      "compilerCodes": [
+        "E2072",
+        "E2083"
+      ]
+    },
+    {
+      "id": "case-selector-not-ordinal",
+      "name": "case or for without an ordinal type",
+      "category": "bug",
+      "severity": "error",
+      "group": "compiler",
+      "description": "case over an expression that is not ordinal (like E2001): strings, floating point numbers, classes and interfaces; a for loop whose counter is not ordinal (like E2032); case labels and array bounds that are variables, fields, properties, parameters or typed constants instead of constants (like E2026). The rule only reports when the type is known for sure and its declaration is always compiled together with the statement. Quick fix for strings whose labels are all string literals: case IndexStr(S, [...]) of with the positions as labels, System.StrUtils is added to uses.",
+      "bad": "case Befehl of 'start': Starten; 'stop': Stoppen; end;  // Befehl: string",
+      "good": "case IndexStr(Befehl, ['start', 'stop']) of 0: Starten; 1: Stoppen; end;",
+      "compilerCodes": [
+        "E2001",
+        "E2032",
+        "E2026"
+      ]
+    },
+    {
+      "id": "suspicious-string-pointer-cast",
+      "name": "Pointer and character width of a string do not match",
+      "category": "bug",
+      "severity": "warning",
+      "group": "compiler",
+      "description": "PChar or PWideChar on an AnsiString, RawByteString or UTF8String, and PAnsiChar on a string, UnicodeString or WideString (like W1044): pointer and character width do not match, a typical mistake after the Unicode migration; the API then reads garbage or only the first character. The rule only reports when the type of the argument is known for sure and its declaration is always compiled together with the cast. string(PAnsiChar) converts correctly and a pointer to TBytes may be intended; both are not reported. Quick fixes: declare an own variable with the matching string type (PChar(Pfad) with Pfad: AnsiString becomes Pfad: string), wrap the argument in string(...) or AnsiString(...), use the matching pointer type.",
+      "bad": "var Pfad: AnsiString; ... DeleteFile(PChar(Pfad));",
+      "good": "var Pfad: string; ... DeleteFile(PChar(Pfad));",
+      "compilerCodes": [
+        "W1044",
+        "W1048"
+      ]
+    },
+    {
       "id": "inaccessible-member",
       "name": "Access to a member that is not visible",
       "category": "bug",
