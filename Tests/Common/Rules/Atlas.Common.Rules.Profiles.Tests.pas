@@ -183,7 +183,7 @@ const
     'ifthen-side-effect,implemented-not-declared,implicit-package-import,int32-mul-overflow,interface-guid,interface-not-implemented,' +
     'invisible-char,' +
     'load-without-encoding,lock-without-finally,loop-off-by-one,managed-type-raw-memory,message-handler-without-inherited,metric-class-size,metric-cognitive-complexity,metric-cyclomatic-complexity,' +
-    'metric-method-length,metric-nesting-depth,metric-parameter-count,metric-unit-length,metric-uses-count,missing-inherited,null-compare,operator-precedence,ota-notifier-not-removed,out-param-read,overload-directive-missing,override-target-missing,owned-field-free-unclear,owned-item-freed,pair-without-finally,pchar-of-temporary,' +
+    'metric-method-length,metric-nesting-depth,metric-parameter-count,metric-unit-length,metric-uses-count,missing-inherited,now-for-elapsed-time,null-compare,operator-precedence,ota-notifier-not-removed,out-param-read,overload-directive-missing,override-target-missing,owned-field-free-unclear,owned-item-freed,pair-without-finally,pchar-of-temporary,' +
     'possibly-uninitialized,processmessages-in-loop,property-accessor-invalid,queue-nil-in-package,raise-in-finally,readonly-property-assigned,redundant-assigned-free,registry-hklm-write,reraise-exception-object,' +
     'result-not-set,' +
     'security-command-injection,security-insecure-http,security-insecure-random,security-sql-injection,' +
@@ -228,7 +228,7 @@ begin
     'foreign-form-control-access,format-without-settings,generic-exception-raised,implicit-package-import,' +
     'metric-class-size,metric-cognitive-complexity,metric-cyclomatic-complexity,metric-method-length,' +
     'metric-nesting-depth,metric-parameter-count,metric-unit-length,metric-uses-count,' +
-    'null-compare,processmessages-in-loop,redundant-assigned-free,reraise-exception-object,shadowed-name,slash-command,task-exception-unobserved,thread-resume-suspend,unneeded-forward-declaration,' +
+    'now-for-elapsed-time,null-compare,processmessages-in-loop,redundant-assigned-free,reraise-exception-object,shadowed-name,slash-command,task-exception-unobserved,thread-resume-suspend,unneeded-forward-declaration,' +
     'unused-assignment,unused-local,' +
     'unused-parameter,with-statement',
     ActiveRules('style'));

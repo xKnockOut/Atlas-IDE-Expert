@@ -2351,6 +2351,16 @@ begin
     '      "description": "RootKey := HKEY_LOCAL_MACHINE on a TRegistry followed in the same routine by a writing access on the same object: OpenKey(…, True), CreateKey, Write…, DeleteKey, DeleteValue, Ren' + 'ameValue, MoveKey, SaveKey or RestoreKey. Without administrator rights this fails or silently lands in the registry virtualization. Use HKEY_CURRENT_USER for user settings; exclude installer code thro' + 'ugh exclude. Reading (OpenKeyReadOnly, Read…, OpenKey(…, False)), another RootKey before the write and writes in the other branch of {$IFDEF} stay silent. High confidence. Quick fix: RootKey := HKEY_C' + 'URRENT_USER.",' + #10 +
     '      "bad": "Reg.RootKey := HKEY_LOCAL_MACHINE;\nReg.OpenKey(''Software\\Firma\\Programm'', True);\nReg.WriteString(''Sprache'', Sprache);",' + #10 +
     '      "good": "Reg.RootKey := HKEY_CURRENT_USER;\nReg.OpenKey(''Software\\Firma\\Programm'', True);\nReg.WriteString(''Sprache'', Sprache);"' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "now-for-elapsed-time",' + #10 +
+    '      "name": "Elapsed time measured with Now",' + #10 +
+    '      "category": "code-smell",' + #10 +
+    '      "severity": "hint",' + #10 +
+    '      "group": "style",' + #10 +
+    '      "description": "A variable set to Now and later used in Now - Start, End - Start or MilliSecondsBetween, SecondsBetween, MinutesBetween, HoursBetween, DaysBetween or the …Span functions in the s' + 'ame routine: it measures elapsed time with the wall clock, which is coarse and wrong across daylight saving changes or clock synchronisation. TStopwatch is precise and monotonic. Assignments in anothe' + 'r routine (fields) and in the other branch of {$IFDEF} stay silent. High confidence. Quick fix when the variable is a local TDateTime (also var Start := Now) used only for MilliSecondsBetween, Seconds' + 'Between or MinutesBetween with Now: TStopwatch.StartNew and ElapsedMilliseconds (div 1000 or div 60000), the variable becomes Uhr when the name is free, System.Diagnostics is added to uses.",' + #10 +
+    '      "bad": "Start := Now;\nImportieren;\nLog(MilliSecondsBetween(Now, Start).ToString + '' ms'');",' + #10 +
+    '      "good": "Uhr := TStopwatch.StartNew;\nImportieren;\nLog(Uhr.ElapsedMilliseconds.ToString + '' ms'');"' + #10 +
     '    }' + #10 +
     '  ]' + #10 +
     '}' + #10 +
@@ -3542,6 +3552,11 @@ begin
     '      "id": "registry-hklm-write",' + #10 +
     '      "name": "Schreiben nach HKEY_LOCAL_MACHINE",' + #10 +
     '      "description": "RootKey := HKEY_LOCAL_MACHINE auf einer TRegistry, danach in derselben Routine ein schreibender Zugriff auf dasselbe Objekt: OpenKey(…, True), CreateKey, Write…, DeleteKey, Delet' + 'eValue, RenameValue, MoveKey, SaveKey oder RestoreKey. Ohne Administratorrechte schlägt das fehl oder landet still in der Virtualisierung der Registry. Für Benutzereinstellungen HKEY_CURRENT_USER verw' + 'enden; Installer-Code über exclude ausnehmen. Lesen (OpenKeyReadOnly, Read…, OpenKey(…, False)), ein anderer RootKey vor dem Schreiben und Schreiben im anderen Zweig von {$IFDEF} bleiben still. Konfid' + 'enz hoch. Schnellkorrektur: RootKey := HKEY_CURRENT_USER."' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "now-for-elapsed-time",' + #10 +
+    '      "name": "Laufzeit mit Now gemessen",' + #10 +
+    '      "description": "Eine Variable, der Now zugewiesen wird und die in derselben Routine danach in Now - Start, Ende - Start oder MilliSecondsBetween, SecondsBetween, MinutesBetween, HoursBetween, Da' + 'ysBetween bzw. den …Span-Funktionen vorkommt: Die Laufzeit wird mit der Uhrzeit gemessen, grob aufgelöst und falsch bei Zeitumstellung oder Uhrabgleich. TStopwatch ist genau und monoton. Zuweisungen i' + 'n einer anderen Routine (Felder) und im anderen Zweig von {$IFDEF} bleiben still. Konfidenz hoch. Schnellkorrektur, wenn die Variable eine lokale TDateTime ist (auch var Start := Now) und nur für Mill' + 'iSecondsBetween, SecondsBetween oder MinutesBetween mit Now dient: TStopwatch.StartNew und ElapsedMilliseconds (div 1000 bzw. div 60000), die Variable heißt danach Uhr, wenn der Name frei ist, System.' + 'Diagnostics kommt ins uses."' + #10 +
     '    }' + #10 +
     '  ]' + #10 +
     '}' + #10 +

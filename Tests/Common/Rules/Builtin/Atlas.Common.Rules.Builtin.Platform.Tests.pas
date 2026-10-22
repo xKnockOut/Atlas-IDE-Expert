@@ -37,6 +37,14 @@ type
     procedure RegistrySilentCases;
     [Test]
     procedure RegistryOptions;
+    [Test]
+    procedure ElapsedIssueExample;
+    [Test]
+    procedure ElapsedVariants;
+    [Test]
+    procedure ElapsedSilentCases;
+    [Test]
+    procedure ElapsedOptions;
   end;
 
 implementation
@@ -302,6 +310,77 @@ begin
     '{"rules": {"registry-hklm-write": "off"}}', 'Setup/Werkzeug.pas'))));
   Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TRegistryHklmWriteRule.Create, Source,
     '{"rules": {"registry-hklm-write": {"exclude": ["Setup/**"]}}}', 'Setup/Werkzeug.pas'))));
+end;
+
+{ now-for-elapsed-time }
+
+procedure TPlatformRulesTests.ElapsedIssueExample;
+var
+  Source, Fixed: string;
+  Findings: TArray<TRuleFinding>;
+begin
+  Source := Routine('var'#10'  Start: TDateTime;'#10, '  Start := Now;'#10'  Importieren;'#10 +
+    '  Log(MilliSecondsBetween(Now, Start).ToString + '' ms'');');
+  Findings := TRuleAssert.Findings(TNowForElapsedTimeRule.Create, Source);
+  Assert.AreEqual(1, Integer(Length(Findings)));
+  Assert.AreEqual('Laufzeit mit Now gemessen; TStopwatch ist genauer und unabhängig von der Uhrzeit.',
+    Findings[0].Message);
+  Assert.AreEqual(Ord(TRuleSeverity.Hint), Ord(Findings[0].Severity));
+  Assert.AreEqual('In TStopwatch umwandeln', Findings[0].Fixes[0].Title);
+  Fixed := TChangeSignature.ApplyEdits(Source, Findings[0].Fixes[0].Edits);
+  Assert.AreEqual('unit Werkzeug;'#10'interface'#10'implementation'#10'uses'#10'  System.SysUtils,'#10 +
+    '  System.Diagnostics;'#10'procedure Pruefen;'#10'var'#10'  Uhr: TStopwatch;'#10'begin'#10 +
+    '  Uhr := TStopwatch.StartNew;'#10'  Importieren;'#10'  Log(Uhr.ElapsedMilliseconds.ToString + '' ms'');'#10 +
+    'end;'#10'end.', Fixed);
+  TRuleAssert.Silent(TNowForElapsedTimeRule.Create, Fixed);
+end;
+
+procedure TPlatformRulesTests.ElapsedVariants;
+var
+  Source, Fixed: string;
+  Findings: TArray<TRuleFinding>;
+begin
+  // Differenz, Ende - Start, Feld; ohne Korrektur, weil Start auch anders benutzt wird.
+  Findings := TRuleAssert.Findings(TNowForElapsedTimeRule.Create, Routine('var'#10'  Start, Ende: TDateTime;'#10,
+    '  Start := Now;'#10'  Arbeiten;'#10'  Ende := Now;'#10'  Dauer := Ende - Start;'#10 +
+    '  FBeginn := Now;'#10'  if Now - FBeginn > 1 / 24 then'#10'    Abbrechen;'));
+  Assert.AreEqual(2, Integer(Length(Findings)));
+  Assert.AreEqual(0, Integer(Length(Findings[0].Fixes)));
+  Assert.AreEqual(0, Integer(Length(Findings[1].Fixes)));
+  // Inline-Variable, SecondsBetween, Name Uhr schon vergeben.
+  Source := Routine('', '  var T := Now;'#10'  Uhr := 1;'#10'  Arbeiten;'#10'  Sekunden := SecondsBetween(Now, T);');
+  Findings := TRuleAssert.Findings(TNowForElapsedTimeRule.Create, Source);
+  Assert.AreEqual(1, Integer(Length(Findings)));
+  Fixed := TChangeSignature.ApplyEdits(Source, Findings[0].Fixes[0].Edits);
+  Assert.IsTrue(Pos('  var T := TStopwatch.StartNew;', Fixed) > 0, Fixed);
+  Assert.IsTrue(Pos('Sekunden := T.ElapsedMilliseconds div 1000;', Fixed) > 0, Fixed);
+end;
+
+procedure TPlatformRulesTests.ElapsedSilentCases;
+begin
+  // Zeitstempel ohne Messung, TStopwatch, Now in einer anderen Routine, Abstand zweier fremder Zeitpunkte.
+  TRuleAssert.Silent(TNowForElapsedTimeRule.Create, Routine('var'#10'  Erstellt: TDateTime;'#10,
+    '  Erstellt := Now;'#10'  Speichern(Erstellt);'#10'  Tage := DaysBetween(Ende, Beginn);'#10 +
+    '  Uhr := TStopwatch.StartNew;'));
+  TRuleAssert.Silent(TNowForElapsedTimeRule.Create, 'unit U;'#10'interface'#10'implementation'#10 +
+    'procedure A;'#10'begin'#10'  FStart := Now;'#10'end;'#10'procedure B;'#10'begin'#10 +
+    '  Dauer := Now - FStart;'#10'end;'#10'end.');
+  // Start nur im anderen Zweig der bedingten Übersetzung.
+  TRuleAssert.Silent(TNowForElapsedTimeRule.Create, Routine('', '{$IFDEF MESSEN}'#10'  Start := Now;'#10 +
+    '{$ELSE}'#10'  Dauer := Now - Start;'#10'{$ENDIF}'));
+end;
+
+procedure TPlatformRulesTests.ElapsedOptions;
+var
+  Source: string;
+begin
+  Source := Routine('', '  Start := Now;'#10'  Dauer := Now - Start;');
+  Assert.AreEqual(1, Integer(Length(TRuleAssert.Findings(TNowForElapsedTimeRule.Create, Source, '',
+    'Werkzeug.pas'))));
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TNowForElapsedTimeRule.Create, Source,
+    '{"rules": {"now-for-elapsed-time": "off"}}', 'Werkzeug.pas'))));
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TNowForElapsedTimeRule.Create, Source,
+    '{"rules": {"now-for-elapsed-time": {"exclude": ["*.pas"]}}}', 'Werkzeug.pas'))));
 end;
 
 initialization

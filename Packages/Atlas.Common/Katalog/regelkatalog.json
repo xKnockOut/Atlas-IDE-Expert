@@ -2331,6 +2331,16 @@
       "description": "RootKey := HKEY_LOCAL_MACHINE on a TRegistry followed in the same routine by a writing access on the same object: OpenKey(…, True), CreateKey, Write…, DeleteKey, DeleteValue, RenameValue, MoveKey, SaveKey or RestoreKey. Without administrator rights this fails or silently lands in the registry virtualization. Use HKEY_CURRENT_USER for user settings; exclude installer code through exclude. Reading (OpenKeyReadOnly, Read…, OpenKey(…, False)), another RootKey before the write and writes in the other branch of {$IFDEF} stay silent. High confidence. Quick fix: RootKey := HKEY_CURRENT_USER.",
       "bad": "Reg.RootKey := HKEY_LOCAL_MACHINE;\nReg.OpenKey('Software\\Firma\\Programm', True);\nReg.WriteString('Sprache', Sprache);",
       "good": "Reg.RootKey := HKEY_CURRENT_USER;\nReg.OpenKey('Software\\Firma\\Programm', True);\nReg.WriteString('Sprache', Sprache);"
+    },
+    {
+      "id": "now-for-elapsed-time",
+      "name": "Elapsed time measured with Now",
+      "category": "code-smell",
+      "severity": "hint",
+      "group": "style",
+      "description": "A variable set to Now and later used in Now - Start, End - Start or MilliSecondsBetween, SecondsBetween, MinutesBetween, HoursBetween, DaysBetween or the …Span functions in the same routine: it measures elapsed time with the wall clock, which is coarse and wrong across daylight saving changes or clock synchronisation. TStopwatch is precise and monotonic. Assignments in another routine (fields) and in the other branch of {$IFDEF} stay silent. High confidence. Quick fix when the variable is a local TDateTime (also var Start := Now) used only for MilliSecondsBetween, SecondsBetween or MinutesBetween with Now: TStopwatch.StartNew and ElapsedMilliseconds (div 1000 or div 60000), the variable becomes Uhr when the name is free, System.Diagnostics is added to uses.",
+      "bad": "Start := Now;\nImportieren;\nLog(MilliSecondsBetween(Now, Start).ToString + ' ms');",
+      "good": "Uhr := TStopwatch.StartNew;\nImportieren;\nLog(Uhr.ElapsedMilliseconds.ToString + ' ms');"
     }
   ]
 }
