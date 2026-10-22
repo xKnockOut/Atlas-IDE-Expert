@@ -2392,6 +2392,20 @@ begin
     '      "compilerCodes": [' + #10 +
     '        "W1040"' + #10 +
     '      ]' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "file-encoding-unsupported",' + #10 +
+    '      "name": "Encoding or character the compiler does not read",' + #10 +
+    '      "category": "bug",' + #10 +
+    '      "severity": "error",' + #10 +
+    '      "group": "compiler",' + #10 +
+    '      "description": "The file is UTF-32 encoded (like F2438; recognized by its byte order mark, no further findings then), or the code outside strings, comments and directives contains a character th' + 'e compiler rejects (like E2038): typographic quotes copied from a web page or a word processor, the ASCII characters ! \" ? \\ ` | ~ and punctuation, symbols and emoji beyond ASCII. Letters, digits an' + 'd connectors such as U+203F stay allowed in identifiers; asm blocks and {$IF…} branches are skipped; control, format and space characters are left to control-char and invisible-char. Quick fix: a pair' + ' of quotes on one line becomes a string literal; a single character with an unambiguous ASCII counterpart (– − × ÷ ≤ ≥ ≠, full-width ASCII) is replaced. A UTF-32 file has no quick fix; save it as UTF-' + '8 with BOM.",' + #10 +
+    '      "bad": "Titel := ‚Bericht‘;",' + #10 +
+    '      "good": "Titel := ''Bericht'';",' + #10 +
+    '      "compilerCodes": [' + #10 +
+    '        "F2438",' + #10 +
+    '        "E2038"' + #10 +
+    '      ]' + #10 +
     '    }' + #10 +
     '  ]' + #10 +
     '}' + #10 +
@@ -3593,6 +3607,11 @@ begin
     '      "id": "implicit-variants-unit",' + #10 +
     '      "name": "Variant ohne System.Variants in uses",' + #10 +
     '      "description": "Die Unit verwendet Variant oder OleVariant als Typ, ohne System.Variants in uses zu haben. Der Compiler bindet die Unit dann still ein (wie W1040) und ändert damit die Initialisi' + 'erungsreihenfolge. Die Regel zählt Typangaben im Syntaxbaum (Variablen, Felder, Parameter, Ergebnisse, Typargumente); Variants in uses gilt auch in einem {$IF…}-Zweig und ohne Namespace. Still in Syst' + 'em, SysInit und Variants selbst, wenn die Datei einen eigenen Typ Variant deklariert, und nach {$WARN IMPLICIT_VARIANTS OFF}. Standardmäßig aus (Profil strict). Schnellkorrektur: System.Variants in us' + 'es aufnehmen (Variants, wenn die Unit SysUtils oder Classes ohne Namespace nennt)."' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "file-encoding-unsupported",' + #10 +
+    '      "name": "Kodierung oder Zeichen, die der Compiler nicht liest",' + #10 +
+    '      "description": "Die Datei ist UTF-32 kodiert (wie F2438; erkannt an der BOM, dann keine weiteren Meldungen), oder der Code außerhalb von Strings, Kommentaren und Direktiven enthält ein Zeichen, ' + 'das der Compiler ablehnt (wie E2038): typografische Anführungszeichen aus einer Webseite oder Textverarbeitung, die ASCII-Zeichen ! \" ? \\ ` | ~ sowie Satz- und Sonderzeichen und Emoji jenseits von A' + 'SCII. Buchstaben, Ziffern und Verbinder wie U+203F bleiben in Bezeichnern erlaubt; asm-Blöcke und {$IF…}-Zweige werden übersprungen; Steuer-, Format- und Leerzeichen melden control-char und invisible-' + 'char. Schnellkorrektur: ein Paar Anführungszeichen auf einer Zeile wird zum String; ein einzelnes Zeichen mit eindeutigem ASCII-Gegenstück (– − × ÷ ≤ ≥ ≠, Vollbreiten-ASCII) wird ersetzt. Eine UTF-32-' + 'Datei hat keine Schnellkorrektur; als UTF-8 mit BOM speichern."' + #10 +
     '    }' + #10 +
     '  ]' + #10 +
     '}' + #10 +

@@ -2372,6 +2372,20 @@
       "compilerCodes": [
         "W1040"
       ]
+    },
+    {
+      "id": "file-encoding-unsupported",
+      "name": "Encoding or character the compiler does not read",
+      "category": "bug",
+      "severity": "error",
+      "group": "compiler",
+      "description": "The file is UTF-32 encoded (like F2438; recognized by its byte order mark, no further findings then), or the code outside strings, comments and directives contains a character the compiler rejects (like E2038): typographic quotes copied from a web page or a word processor, the ASCII characters ! \" ? \\ ` | ~ and punctuation, symbols and emoji beyond ASCII. Letters, digits and connectors such as U+203F stay allowed in identifiers; asm blocks and {$IF…} branches are skipped; control, format and space characters are left to control-char and invisible-char. Quick fix: a pair of quotes on one line becomes a string literal; a single character with an unambiguous ASCII counterpart (– − × ÷ ≤ ≥ ≠, full-width ASCII) is replaced. A UTF-32 file has no quick fix; save it as UTF-8 with BOM.",
+      "bad": "Titel := ‚Bericht‘;",
+      "good": "Titel := 'Bericht';",
+      "compilerCodes": [
+        "F2438",
+        "E2038"
+      ]
     }
   ]
 }
