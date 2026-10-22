@@ -2409,6 +2409,22 @@
           "description": "Compiler codes the rule does not check, e.g. [\"E2425\"]."
         }
       ]
+    },
+    {
+      "id": "attribute-usage-invalid",
+      "name": "Attribute used incorrectly",
+      "category": "bug",
+      "severity": "error",
+      "group": "compiler",
+      "description": "A compiler attribute is used where Delphi rejects it: [Weak] on a field or variable whose type is certainly neither a class nor an interface (built-in value types, records, enumerations, sets, arrays, pointer types of the file, aliases followed; like E2584), [Volatile] on a type, routine, method or property (E2325), Weak, Unsafe, Volatile or Ref twice on the same declaration (E2326; branches that exclude each other do not count), or an attribute argument that is certainly a variable or a routine of the file (E2448; visible before the attribute, not shadowed by a constant, type or other declaration of the same name). Custom attributes may be repeated; a type Weak or WeakAttribute declared in the file keeps the rule silent for that name. No quick fix.",
+      "bad": "TCounter = class\nprivate\n  [Weak] FCount: Integer;\nend;",
+      "good": "TCounter = class\nprivate\n  [Weak] FOwner: IInterface;\n  FCount: Integer;\nend;",
+      "compilerCodes": [
+        "E2325",
+        "E2326",
+        "E2448",
+        "E2584"
+      ]
     }
   ]
 }

@@ -80,6 +80,23 @@ type
     procedure DisabledChecksOffAndExclude;
   end;
 
+  [TestFixture]
+  TAttributeUsageInvalidTests = class
+  public
+    [Test]
+    procedure IssueExample;
+    [Test]
+    procedure WeakTargets;
+    [Test]
+    procedure Duplicates;
+    [Test]
+    procedure VolatileTargets;
+    [Test]
+    procedure ConstantArguments;
+    [Test]
+    procedure OffAndExclude;
+  end;
+
 implementation
 
 uses
@@ -682,9 +699,132 @@ begin
   Assert.AreEqual(0, Integer(Length(Issues)));
 end;
 
+function AttributeFindings(const ASource: string): TArray<TRuleFinding>; overload;
+begin
+  Result := TRuleAssert.Findings(TAttributeUsageInvalidRule.Create, ASource);
+end;
+
+function AttributeFindings(const ASource, AConfig, APath: string): TArray<TRuleFinding>; overload;
+begin
+  Result := TRuleAssert.Findings(TAttributeUsageInvalidRule.Create, ASource, AConfig, APath);
+end;
+
+procedure TAttributeUsageInvalidTests.IssueExample;
+var
+  Found: TArray<TRuleFinding>;
+begin
+  Found := AttributeFindings(GenericUnit('  TZaehler = class'#10'  private'#10'    [Weak] FZaehler: Integer;'#10 +
+    '  end;'#10, ''));
+  Assert.AreEqual('6: [Weak] ist nur an Klassen- und Interface-Referenzen erlaubt; FZaehler hat den Typ Integer ' +
+    '(wie E2584).', Messages(Found));
+  Assert.AreEqual(5, Found[0].Range.StartPos.Character);
+  Assert.AreEqual(9, Found[0].Range.EndPos.Character);
+  Assert.AreEqual(0, Integer(Length(Found[0].Fixes)));
+  // Korrigiert: [Weak] an einer Interface-Referenz.
+  Assert.AreEqual('', Messages(AttributeFindings(GenericUnit('  TZaehler = class'#10'  private'#10 +
+    '    [Weak] FBesitzer: IInterface;'#10'    FZaehler: Integer;'#10'  end;'#10, ''))));
+end;
+
+procedure TAttributeUsageInvalidTests.WeakTargets;
+begin
+  Assert.AreEqual('9: [Weak] ist nur an Klassen- und Interface-Referenzen erlaubt; FPunkt hat den Typ TPunkt ' +
+    '(wie E2584).|' +
+    '10: [Weak] ist nur an Klassen- und Interface-Referenzen erlaubt; FListe hat den Typ array of TObject ' +
+    '(wie E2584).|' +
+    '11: [Weak] ist nur an Klassen- und Interface-Referenzen erlaubt; FZahl hat den Typ TZahl (wie E2584).|' +
+    '12: [Weak] ist nur an Klassen- und Interface-Referenzen erlaubt; FName hat den Typ string (wie E2584).|' +
+    '17: [Weak] ist nur an Klassen- und Interface-Referenzen erlaubt; Global hat den Typ Boolean (wie E2584).|' +
+    '21: [Weak] ist nur an Klassen- und Interface-Referenzen erlaubt; Lokal hat den Typ TFarbe (wie E2584).',
+    Messages(AttributeFindings('unit G;'#10'interface'#10'type'#10'  TPunkt = record X: Integer; end;'#10 +
+    '  TZahl = Integer;'#10'  TFarbe = (Rot, Gruen);'#10'  TKnoten = class'#10'  private'#10 +
+    '    [Weak] FPunkt: TPunkt;'#10'    [Weak] FListe: array of TObject;'#10'    [Weak] FZahl: TZahl;'#10 +
+    '    [System.WeakAttribute] FName: string;'#10'    [Weak] FEltern: TKnoten;'#10'    [Weak] FBasis: TObject;'#10 +
+    '  end;'#10'var'#10'  [Weak] Global: Boolean;'#10'implementation'#10'procedure P;'#10'var'#10 +
+    '  [Weak] Lokal: TFarbe;'#10'begin'#10'end;'#10'end.')));
+  // Unbekannte Typen, Generics, Zeiger, Methodenzeiger und reference to bleiben still, ebenso ein eigenes Weak.
+  Assert.AreEqual('', Messages(AttributeFindings(GenericUnit('  TProc = reference to procedure;'#10 +
+    '  TKnoten = class'#10'  private'#10'    [Weak] FFremd: TFremd;'#10'    [Weak] FListe: TList<Integer>;'#10 +
+    '    [Weak] FZeiger: Pointer;'#10'    [Weak] FAufruf: TProc;'#10'    [Weak] FEreignis: TNotifyEvent;'#10 +
+    '    [Unsafe] FWert: Integer;'#10'    [Weak] procedure Tu([Weak] var A: IInterface);'#10'  end;'#10, ''))));
+  Assert.AreEqual('', Messages(AttributeFindings(GenericUnit('  WeakAttribute = class(TCustomAttribute);'#10 +
+    '  TKnoten = class'#10'    [Weak] FZahl: Integer;'#10'  end;'#10, ''))));
+end;
+
+procedure TAttributeUsageInvalidTests.Duplicates;
+begin
+  Assert.AreEqual('5: [Weak] steht mehrfach an derselben Deklaration; ein Attribut des Compilers darf je Ziel nur ' +
+    'einmal stehen (wie E2326).|' +
+    '6: [Unsafe] steht mehrfach an derselben Deklaration; ein Attribut des Compilers darf je Ziel nur einmal ' +
+    'stehen (wie E2326).|' +
+    '9: [Volatile] steht mehrfach an derselben Deklaration; ein Attribut des Compilers darf je Ziel nur einmal ' +
+    'stehen (wie E2326).',
+    Messages(AttributeFindings('unit G;'#10'interface'#10'type'#10'  TKnoten = class'#10 +
+    '    [Weak, Weak] FA: TObject;'#10'    [Unsafe] [Unsafe] FB: IInterface;'#10'  end;'#10'var'#10 +
+    '  [Volatile, Volatile] Zaehler: Integer;'#10'implementation'#10'end.')));
+  // Eigene Attribute dürfen mehrfach stehen (DUnitX TestCase); sich ausschließende Zweige zählen nicht doppelt.
+  Assert.AreEqual('', Messages(AttributeFindings(GenericUnit('  TTests = class'#10 +
+    '    [TestCase(''A'', ''1'')]'#10'    [TestCase(''B'', ''2'')]'#10'    procedure Pruefe(A: Integer);'#10 +
+    '    {$IFDEF X}[Weak]{$ELSE}[Weak]{$ENDIF} FA: TObject;'#10'    [Weak] FB: TObject;'#10 +
+    '    [Unsafe] FC: TObject;'#10'  end;'#10, ''))));
+end;
+
+procedure TAttributeUsageInvalidTests.VolatileTargets;
+begin
+  Assert.AreEqual('4: [Volatile] gilt nur für Variablen, Parameter und Felder, nicht für Typen, Routinen, Methoden ' +
+    'oder Properties (wie E2325).|' +
+    '6: [Volatile] gilt nur für Variablen, Parameter und Felder, nicht für Typen, Routinen, Methoden oder ' +
+    'Properties (wie E2325).|' +
+    '7: [Volatile] gilt nur für Variablen, Parameter und Felder, nicht für Typen, Routinen, Methoden oder ' +
+    'Properties (wie E2325).',
+    Messages(AttributeFindings(GenericUnit('  [Volatile] TZaehler = class'#10'    FWert: Integer;'#10 +
+    '    [Volatile] procedure Erhoehe;'#10'    [Volatile] property Wert: Integer read FWert;'#10'  end;'#10, ''))));
+  Assert.AreEqual('', Messages(AttributeFindings('unit G;'#10'interface'#10'type'#10'  TZaehler = class'#10 +
+    '    [Volatile] FWert: Integer;'#10'    procedure Erhoehe([Volatile] var A: Integer);'#10'  end;'#10 +
+    'var'#10'  [Volatile] Global: Integer;'#10'implementation'#10'procedure TZaehler.Erhoehe(var A: Integer);'#10 +
+    'begin'#10'end;'#10'end.')));
+end;
+
+procedure TAttributeUsageInvalidTests.ConstantArguments;
+begin
+  Assert.AreEqual('11: Das Argument Grenze von [Bereich] ist kein konstanter Ausdruck; Attributargumente müssen ' +
+    'Konstanten, TypeInfo-Ausdrücke oder Array-Konstruktoren sein (wie E2448).|' +
+    '12: Der Aufruf Standard in [Bereich] ist kein konstanter Ausdruck; Attributargumente müssen Konstanten, ' +
+    'TypeInfo-Ausdrücke oder Array-Konstruktoren sein (wie E2448).|' +
+    '13: Das Argument Standard von [Name] ist kein konstanter Ausdruck; Attributargumente müssen Konstanten, ' +
+    'TypeInfo-Ausdrücke oder Array-Konstruktoren sein (wie E2448).',
+    Messages(AttributeFindings('unit G;'#10'interface'#10'const'#10'  Oben = 10;'#10'var'#10'  Grenze: Integer;'#10 +
+    'function Standard: string;'#10'type'#10'  TKonfig = class'#10'  public'#10 +
+    '    [Bereich(1, Grenze + 1)] FA: Integer;'#10'    [Bereich(Standard(), 2)] FB: Integer;'#10 +
+    '    [Name(Standard)] FC: string;'#10 +
+    '    [Bereich(Oben, SizeOf(Grenze))] [Typ(TypeInfo(TKonfig))] FD: Integer;'#10'  end;'#10 +
+    'implementation'#10'function Standard: string;'#10'begin'#10'  Result := '''';'#10'end;'#10'end.')));
+  // Konstanten, gleichnamige Konstanten in Klassen, später deklarierte Variablen, Felder und Variablen in einem
+  // anderen Zweig bleiben still.
+  Assert.AreEqual('', Messages(AttributeFindings('unit G;'#10'interface'#10'var'#10'  Wert: Integer;'#10 +
+    '{$IFDEF X}'#10'  Bedingt: Integer;'#10'{$ENDIF}'#10'type'#10'  TKonfig = class'#10 +
+    '  public const'#10'    Wert = 3;'#10'  public'#10'    [Bereich(Wert)] FA: Integer;'#10 +
+    '    [Bereich(Spaeter)] FB: Integer;'#10'    [Bereich(FA)] FC: Integer;'#10'    [Bereich(Bedingt)] FD: Integer;'#10 +
+    '  end;'#10'var'#10'  Spaeter: Integer;'#10'implementation'#10'end.')));
+end;
+
+procedure TAttributeUsageInvalidTests.OffAndExclude;
+var
+  Source: string;
+begin
+  Source := GenericUnit('  TZaehler = class'#10'    [Weak] FZaehler: Integer;'#10'  end;'#10, '');
+  Assert.AreEqual(1, Integer(Length(AttributeFindings(Source, '', 'Source/G.pas'))));
+  Assert.AreEqual(0, Integer(Length(AttributeFindings(Source, '{"rules": {"attribute-usage-invalid": "off"}}',
+    'Source/G.pas'))));
+  Assert.AreEqual(0, Integer(Length(AttributeFindings(Source, '{"rules": {"group:compiler": "off"}}',
+    'Source/G.pas'))));
+  Assert.AreEqual(0, Integer(Length(AttributeFindings(Source,
+    '{"rules": {"attribute-usage-invalid": {"exclude": ["Source/*.pas"]}}}', 'Source/G.pas'))));
+end;
+
 initialization
   TDUnitX.RegisterTestFixture(TOperatorDeclarationInvalidTests);
   TDUnitX.RegisterTestFixture(TGenericDeclarationInvalidTests);
   TDUnitX.RegisterTestFixture(TTypeRestrictionViolatedTests);
+  TDUnitX.RegisterTestFixture(TAttributeUsageInvalidTests);
 
 end.

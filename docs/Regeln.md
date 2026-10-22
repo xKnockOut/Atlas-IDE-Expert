@@ -10,7 +10,7 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 | [Exceptions](#gruppe-exceptions) | 8 |
 | [Threads](#gruppe-threads) | 13 |
 | [Datenbank](#gruppe-database) | 4 |
-| [Compiler vorab](#gruppe-compiler) | 19 |
+| [Compiler vorab](#gruppe-compiler) | 20 |
 | [Robustheit und Muster](#gruppe-robustness) | 3 |
 | [Performance](#gruppe-performance) | 4 |
 | [Sicherheit](#gruppe-security) | 11 |
@@ -150,6 +150,7 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 | [`operator-declaration-invalid`](#operator-declaration-invalid) | Operator falsch deklariert | Bug | Fehler |
 | [`generic-declaration-invalid`](#generic-declaration-invalid) | Generische Deklaration unzulässig | Bug | Fehler |
 | [`type-restriction-violated`](#type-restriction-violated) | Sprachregel für Records, Inline und Helfer verletzt | Bug | Fehler |
+| [`attribute-usage-invalid`](#attribute-usage-invalid) | Attribut falsch verwendet | Bug | Fehler |
 
 <a id="gruppe-robustness"></a>
 ### Robustheit und Muster
@@ -4654,5 +4655,33 @@ Richtig:
 TPoint2 = record
   X, Y: Integer;
   function Length: Double;
+end;
+```
+
+<a id="attribute-usage-invalid"></a>
+### attribute-usage-invalid
+
+**Attribut falsch verwendet** · Bug · Fehler · Gruppe Compiler vorab
+
+Ein Attribut des Compilers steht dort, wo Delphi es ablehnt: [Weak] an einem Feld oder einer Variablen, deren Typ sicher weder Klasse noch Interface ist (eingebaute Werttypen, Records, Aufzählungen, Mengen, Arrays, Zeigertypen der Datei, Aliase verfolgt; wie E2584), [Volatile] an Typ, Routine, Methode oder Property (E2325), Weak, Unsafe, Volatile oder Ref doppelt an derselben Deklaration (E2326; sich ausschließende Zweige zählen nicht) oder ein Attributargument, das sicher eine Variable oder Routine der Datei ist (E2448; vor dem Attribut sichtbar, nicht durch eine gleichnamige Konstante, einen Typ oder eine andere Deklaration verdeckt). Eigene Attribute dürfen mehrfach stehen; ein Typ Weak bzw. WeakAttribute in der Datei macht die Regel für diesen Namen still. Keine Schnellkorrektur.
+
+Entspricht der Compilermeldung `E2325`, `E2326`, `E2448`, `E2584`.
+
+Mit Treffer:
+
+```pascal
+TCounter = class
+private
+  [Weak] FCount: Integer;
+end;
+```
+
+Richtig:
+
+```pascal
+TCounter = class
+private
+  [Weak] FOwner: IInterface;
+  FCount: Integer;
 end;
 ```
