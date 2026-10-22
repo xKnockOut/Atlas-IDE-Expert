@@ -3618,3 +3618,17 @@ Voraussetzung: Server läuft; Routine mit `Auftraege := TObjectList<TAuftrag>.Cr
 | OI6 | `TObjectList<TAuftrag>.Create(False)`, `Auftraege.OwnsObjects := False` oder `Extract` in der Routine | Keine Meldung |
 | OI7 | Feld `FKunden := TObjectDictionary<string, TKunde>.Create([doOwnsValues]);`, in einer Methode `FKunden[AName].Free;` | Meldung „FKunden besitzt seine Werte (doOwnsValues) …“, Korrektur „Remove statt Free“; ohne `doOwnsValues` keine Meldung |
 | OI8 | `"owned-item-freed": "off"` bzw. `exclude` mit dem Pfad der Datei | Keine Meldung |
+
+## Objekt erzeugt und sofort verloren (#948)
+
+Voraussetzung: Server läuft; `procedure TImport.Starten;` mit `TImportProtokoll.Create;` und `Laden;` im Rumpf.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| CW1 | Unit öffnen | Warnung `create-without-assignment` auf `TImportProtokoll.Create`: „Das erzeugte TImportProtokoll wird nirgends gespeichert und nie freigegeben (Speicherleck).“; im Fenster „Atlas-Prüfung“ und im Befund-Hover (**Abnahme**) |
+| CW2 | Alt+Enter, „An ImportProtokoll zuweisen und in try/finally freigeben“ | `var ImportProtokoll: TImportProtokoll;`, Zuweisung, `Laden;` im `try`, `ImportProtokoll.Free;` im `finally`; ein Undo-Schritt, übersetzt, keine Meldung mehr (**Abnahme**) |
+| CW3 | `TButton.Create(Self);`, `TArbeiter.Create(False);` (Nachfahr von `TThread`), `TPoint.Create(1, 2);` | Keine Meldung |
+| CW4 | `TButton.Create(nil);` | Warnung |
+| CW5 | `FProtokoll := TImportProtokoll.Create;`, `FListe.Add(TImportProtokoll.Create);` | Keine Meldung |
+| CW6 | Auf der Seite „Prüfregeln“ `selfRegistering` = `["TImport*"]` | Keine Meldung für `TImportProtokoll.Create;` |
+| CW7 | `"create-without-assignment": "off"` bzw. `exclude` mit dem Pfad der Datei | Keine Meldung |

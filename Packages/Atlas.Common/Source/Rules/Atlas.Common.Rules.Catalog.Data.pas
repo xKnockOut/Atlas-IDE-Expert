@@ -1794,6 +1794,24 @@ begin
     '      "description": "An item of a TObjectList/TObjectList<T> (OwnsObjects, default True) or of a TObjectDictionary with doOwnsValues is freed with Free, FreeAndNil, Destroy or DisposeOf, directly (Li' + 'st[I].Free, List.Items[I].Free) or through a variable taken from List[I], List.First/Last or a for-in loop over the list or Dictionary.Values. The list frees the item itself on Delete, Remove, Clear, ' + 'an assignment to List[I], or at the latest when it is freed: a double free. A list is owning when the unit creates it that way (TObjectList without False, TObjectDictionary with doOwnsValues) or decla' + 'res it as TObjectList without creating it, and no OwnsObjects := False follows. Extract in the same routine keeps the rule silent. High confidence. Quick fixes: remove the Free (the whole loop when it' + ' only frees), Delete or Remove instead of Free, Extract instead of Remove.",' + #10 +
     '      "bad": "Auftraege := TObjectList<TAuftrag>.Create;\n…\nAuftraege[I].Free;\nAuftraege.Delete(I);",' + #10 +
     '      "good": "Auftraege := TObjectList<TAuftrag>.Create;\n…\nAuftraege.Delete(I);"' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "create-without-assignment",' + #10 +
+    '      "name": "Object created and lost at once",' + #10 +
+    '      "category": "bug",' + #10 +
+    '      "severity": "warning",' + #10 +
+    '      "group": "find-bugs",' + #10 +
+    '      "description": "TStringList.Create; as a statement of its own: the object is created but stored nowhere and never freed (memory leak). Silent for components with an owner (first argument Self, O' + 'wner, AOwner, Application, or a TComponent descendant with an argument other than nil), threads (they free themselves with FreeOnTerminate), records, unknown classes with arguments and classes listed ' + 'in selfRegistering. High confidence. Quick fix: assign to a new local variable and wrap the following statements of the block in try/finally with Free.",' + #10 +
+    '      "bad": "procedure TImport.Starten;\nbegin\n  TImportProtokoll.Create;\n  Laden;\nend;",' + #10 +
+    '      "good": "procedure TImport.Starten;\nvar\n  ImportProtokoll: TImportProtokoll;\nbegin\n  ImportProtokoll := TImportProtokoll.Create;\n  try\n    Laden;\n  finally\n    ImportProtokoll.Free;\n  e' + 'nd;\nend;",' + #10 +
+    '      "options": [' + #10 +
+    '        {' + #10 +
+    '          "name": "selfRegistering",' + #10 +
+    '          "type": "string-list",' + #10 +
+    '          "default": [],' + #10 +
+    '          "description": "Classes that register themselves in their constructor, as patterns with * and ?; Create as a statement stays silent for them."' + #10 +
+    '        }' + #10 +
+    '      ]' + #10 +
     '    }' + #10 +
     '  ]' + #10 +
     '}' + #10 +
@@ -2742,6 +2760,17 @@ begin
     '      "id": "owned-item-freed",' + #10 +
     '      "name": "Element einer besitzenden Liste zusätzlich freigegeben",' + #10 +
     '      "description": "Ein Element einer TObjectList/TObjectList<T> (OwnsObjects, Vorgabe True) oder eines TObjectDictionary mit doOwnsValues wird mit Free, FreeAndNil, Destroy oder DisposeOf freigegeb' + 'en, direkt (Liste[I].Free, Liste.Items[I].Free) oder über eine Variable aus Liste[I], Liste.First/Last oder einer for-in-Schleife über die Liste bzw. Dictionary.Values. Die Liste gibt das Element selb' + 'st frei: bei Delete, Remove, Clear, einer Zuweisung an Liste[I] oder spätestens beim Freigeben, also doppelt. Besitzend ist eine Liste, wenn die Unit sie so erzeugt (TObjectList ohne False, TObjectDic' + 'tionary mit doOwnsValues) oder ohne Erzeugung als TObjectList deklariert, und kein OwnsObjects := False folgt. Extract in derselben Routine lässt die Regel schweigen. Sicherheit hoch. Korrekturen: Fre' + 'e entfernen (die ganze Schleife, wenn sie nur freigibt), Delete bzw. Remove statt Free, Extract statt Remove."' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "create-without-assignment",' + #10 +
+    '      "name": "Objekt erzeugt und sofort verloren",' + #10 +
+    '      "description": "TStringList.Create; als eigene Anweisung: Das Objekt wird erzeugt, aber nirgends gespeichert und nie freigegeben (Speicherleck). Still bleiben Komponenten mit Owner (erstes Argum' + 'ent Self, Owner, AOwner, Application oder ein Nachfahr von TComponent mit einem Argument ungleich nil), Threads (geben sich mit FreeOnTerminate selbst frei), Records, unbekannte Klassen mit Argumenten' + ' und Klassen aus selfRegistering. Sicherheit hoch. Korrektur: Zuweisung an eine neue lokale Variable, die folgenden Anweisungen des Blocks in try/finally mit Free.",' + #10 +
+    '      "options": [' + #10 +
+    '        {' + #10 +
+    '          "name": "selfRegistering",' + #10 +
+    '          "description": "Klassen, die sich im Konstruktor selbst registrieren, als Muster mit * und ?; Create als Anweisung bleibt für sie still."' + #10 +
+    '        }' + #10 +
+    '      ]' + #10 +
     '    }' + #10 +
     '  ]' + #10 +
     '}' + #10 +

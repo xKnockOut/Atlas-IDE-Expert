@@ -11,7 +11,7 @@ function AtlasSchemaJson: string;
 implementation
 
 const
-  Lines: array[0..1725] of string = (
+  Lines: array[0..1733] of string = (
     '{',
     '  "$schema": "http://json-schema.org/draft-07/schema#",',
     '  "title": "Atlas-Konfiguration",',
@@ -272,6 +272,14 @@ const
     '                },',
     '                "default": ["Assert.*", "WillRaise*", "Check*"],',
     '                "description": "Nur dunitx-test-without-assert (#945): Aufrufe, die als Prüfung zählen, als Muster mit * und ?; ersetzt die Vorgabe. System.Assert und Klassen mit Assert im Namen zähle' + 'n immer."',
+    '              },',
+    '              "selfRegistering": {',
+    '                "type": "array",',
+    '                "items": {',
+    '                  "type": "string"',
+    '                },',
+    '                "default": [],',
+    '                "description": "Nur create-without-assignment (#948): Klassen, die sich im Konstruktor selbst registrieren (Muster mit * und ?); TKlasse.Create; bleibt für sie still."',
     '              },',
     '              "ignoreTypes": {',
     '                "type": "array",',

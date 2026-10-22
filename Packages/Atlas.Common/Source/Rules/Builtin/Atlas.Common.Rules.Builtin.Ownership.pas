@@ -10,6 +10,12 @@
 //                     mit doOwnsValues) bzw. ohne Erzeugung als TObjectList deklariert ist, und kein
 //                     "OwnsObjects := False" folgt. Extract in derselben Routine lässt die Regel schweigen.
 //                     Korrekturen: Free entfernen, Delete bzw. Remove statt Free, Extract statt Remove.
+//   create-without-assignment  "TStringList.Create;" als eigene Anweisung (#948): Das Objekt wird erzeugt, aber
+//                     nirgends gespeichert und nie freigegeben. Still bleiben Komponenten mit Owner (erstes Argument
+//                     Self, Owner, AOwner, Application bzw. ein Nachfahr von TComponent mit Argument ungleich nil),
+//                     Threads (geben sich mit FreeOnTerminate selbst frei), unbekannte Klassen mit Argumenten und
+//                     Klassen aus "selfRegistering". Korrektur: Zuweisung an eine neue lokale Variable, die
+//                     folgenden Anweisungen des Blocks in try/finally mit Free.
 
 interface
 
@@ -28,6 +34,16 @@ type
     class function CreatesOwning(const ATypeName, AArguments: string; out AIsDictionary: Boolean): Boolean; static;
   end;
 
+  TCreateWithoutAssignmentRule = class(TInterfacedObject, IRule)
+  public
+    function Descriptor: TRuleDescriptor;
+    procedure Check(const AContext: TRuleContext; const AReport: IRuleReport);
+    /// <summary>Folgt AName der Namensregel für Typen (TName, EName)?</summary>
+    class function LooksLikeType(const AName: string): Boolean; static;
+    /// <summary>Name der lokalen Variablen für die Korrektur: TImportProtokoll → ImportProtokoll.</summary>
+    class function VariableName(const ATypeName: string): string; static;
+  end;
+
 procedure RegisterOwnershipRules(const ARegistry: TRuleRegistry);
 
 implementation
@@ -39,10 +55,15 @@ uses
   Atlas.Common.Documents.Contract,
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Pascal.Contract,
-  Atlas.Common.Pascal.SyntaxTree;
+  Atlas.Common.Pascal.SyntaxTree,
+  Atlas.Common.Editing.RoutineBody,
+  Atlas.Common.Rules.Derived,
+  Atlas.Common.Rules.Options,
+  Atlas.Common.Rules.Builtin.Inheritance;
 
 const
   OwnedItemFreedRuleId = 'owned-item-freed';
+  CreateWithoutAssignmentRuleId = 'create-without-assignment';
   RemoveMethods: array[0..4] of string = ('Delete', 'Remove', 'RemoveItem', 'Clear', 'DeleteRange');
   ExtractMethods: array[0..3] of string = ('Extract', 'ExtractAt', 'ExtractItem', 'ExtractPair');
 
@@ -52,6 +73,11 @@ type
     Name: string;
     IsDictionary: Boolean;
   end;
+
+  /// <summary>Art einer erzeugten Klasse für create-without-assignment.</summary>
+{$SCOPEDENUMS ON}
+  TCreatedKind = (Unknown, Plain, Component, Thread);
+{$SCOPEDENUMS OFF}
 
   /// <summary>Eine Freigabe eines Listenelements in einer Routine.</summary>
   TItemFree = record
@@ -559,9 +585,298 @@ begin
   Visit(AContext.Tree.Root);
 end;
 
+{ TCreateWithoutAssignmentRule }
+
+function TCreateWithoutAssignmentRule.Descriptor: TRuleDescriptor;
+begin
+  Result := TRuleDescriptor.Create(CreateWithoutAssignmentRuleId, TRuleSeverity.Warning,
+    'Objekt erzeugt und sofort verloren');
+end;
+
+class function TCreateWithoutAssignmentRule.LooksLikeType(const AName: string): Boolean;
+begin
+  Result := (Length(AName) >= 2) and CharInSet(AName[1], ['T', 'E']) and CharInSet(AName[2], ['A'..'Z']);
+end;
+
+class function TCreateWithoutAssignmentRule.VariableName(const ATypeName: string): string;
+begin
+  Result := ATypeName;
+  if Pos('<', Result) > 0 then
+    Result := Copy(Result, 1, Pos('<', Result) - 1);
+  Result := Copy(Result, LastDelimiter('.', Result) + 1, MaxInt);
+  if LooksLikeType(Result) then
+    Result := Copy(Result, 2, MaxInt);
+  if Result = '' then
+    Result := 'Objekt';
+end;
+
+procedure TCreateWithoutAssignmentRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
+var
+  Tokens: TArray<TPascalToken>;
+  Code: TArray<Integer>;
+  Lines: TArray<string>;
+  LineBreak: string;
+  SelfRegistering: TArray<string>;
+  Ancestry: TAncestry;
+
+  function Token(APosition: Integer): TPascalToken;
+  begin
+    Result := Tokens[Code[APosition]];
+  end;
+
+  function IsWord(APosition: Integer): Boolean;
+  begin
+    Result := (APosition >= 0) and (APosition <= High(Code)) and
+      (Token(APosition).Kind = TPascalTokenKind.Identifier);
+  end;
+
+  function IsSym(APosition: Integer; const ASymbol: string): Boolean;
+  begin
+    Result := (APosition >= 0) and (APosition <= High(Code)) and Token(APosition).IsSymbol(ASymbol);
+  end;
+
+  function CodeAt(AOffset: Integer): Integer;
+  begin
+    for Result := 0 to High(Code) do
+      if Token(Result).Offset >= AOffset then
+        Exit;
+    Result := Length(Code);
+  end;
+
+  function Closing(AOpen: Integer): Integer;
+  var
+    Depth: Integer;
+  begin
+    Depth := 0;
+    for Result := AOpen to High(Code) do
+      if Token(Result).IsSymbol('(') or Token(Result).IsSymbol('[') then
+        Inc(Depth)
+      else if Token(Result).IsSymbol(')') or Token(Result).IsSymbol(']') then
+      begin
+        Dec(Depth);
+        if Depth = 0 then
+          Exit;
+      end;
+    Result := -1;
+  end;
+
+  function SkipGenericArgs(APosition: Integer): Integer;
+  var
+    Depth: Integer;
+  begin
+    Result := APosition;
+    if not IsSym(Result, '<') then
+      Exit;
+    Depth := 0;
+    while Result <= High(Code) do
+    begin
+      if Token(Result).IsSymbol('<') then
+        Inc(Depth)
+      else if Token(Result).IsSymbol('>') then
+        Dec(Depth)
+      else if Token(Result).IsSymbol('>>') then
+        Dec(Depth, 2)
+      else if Token(Result).IsSymbol(';') then
+        Exit;
+      Inc(Result);
+      if Depth <= 0 then
+        Exit;
+    end;
+  end;
+
+  function TextBetween(AFirst, ALast: Integer): string;
+  begin
+    Result := Copy(AContext.Text, Token(AFirst).Offset + 1,
+      Token(ALast).Offset + Length(Token(ALast).Text) - Token(AFirst).Offset);
+  end;
+
+  function IsSelfRegistering(const AClassName: string): Boolean;
+  var
+    Pattern: string;
+  begin
+    for Pattern in SelfRegistering do
+      if MatchesGlob(Pattern, AClassName) then
+        Exit(True);
+    Result := False;
+  end;
+
+  // Art der Klasse über die Vorfahren in Datei und Index; Unknown, wenn die Kette vor TObject abbricht.
+  function KindOf(const AClassName: string): TCreatedKind;
+  var
+    Name: string;
+    Depth: Integer;
+    Body: TSyntaxNode;
+  begin
+    // Records (TPoint.Create(1, 2)) belegen keinen Heap.
+    Body := TRoutineBody.TypeBody(AContext.Tree.Root, AClassName);
+    if (Body <> nil) and (Body.Kind = TSyntaxKind.RecordType) then
+      Exit(TCreatedKind.Unknown);
+    Name := AClassName;
+    for Depth := 0 to 63 do
+    begin
+      if SameText(Name, 'TComponent') then
+        Exit(TCreatedKind.Component);
+      if SameText(Name, 'TThread') then
+        Exit(TCreatedKind.Thread);
+      if SameText(Name, 'TObject') then
+        Exit(TCreatedKind.Plain);
+      Name := Ancestry.ParentOf(Name);
+      if Name = '' then
+        Break;
+    end;
+    Result := TCreatedKind.Unknown;
+  end;
+
+  // "Name := T.Create(…);" mit try/finally um die folgenden Anweisungen des Blocks.
+  function AssignFix(ARoutine, AStatement: TSyntaxNode; const ATypeText: string; out AFix: TRuleFix): Boolean;
+  var
+    Parent, LastSibling: TSyntaxNode;
+    Index, Line, LastLine: Integer;
+    Indent, UnitIndent, Name, Rest, NewText: string;
+  begin
+    Result := False;
+    Parent := AStatement.Parent;
+    if (Parent = nil) or not (Parent.Kind in [TSyntaxKind.Block, TSyntaxKind.TryStatement, TSyntaxKind.FinallyBlock,
+      TSyntaxKind.ExceptBlock]) or (AStatement.StartPos.Line <> AStatement.EndPos.Line) or
+      (AStatement.EndPos.Line > High(Lines)) or
+      (Trim(Copy(Lines[AStatement.StartPos.Line], 1, AStatement.StartPos.Character)) <> '') then
+      Exit;
+    Rest := Trim(Copy(Lines[AStatement.EndPos.Line], AStatement.EndPos.Character + 1, MaxInt));
+    if (Rest <> '') and (Rest <> ';') then
+      Exit;
+    // Letzte folgende Anweisung desselben Blocks; sie muss ihre Zeile allein beenden.
+    LastSibling := AStatement;
+    for Index := 0 to Parent.ChildCount - 1 do
+      if Parent[Index].StartOffset > AStatement.StartOffset then
+        LastSibling := Parent[Index];
+    LastLine := LastSibling.EndPos.Line;
+    if LastLine > High(Lines) then
+      Exit;
+    Rest := Trim(Copy(Lines[LastLine], LastSibling.EndPos.Character + 1, MaxInt));
+    if (Rest <> '') and (Rest <> ';') then
+      Exit;
+    Indent := Copy(Lines[AStatement.StartPos.Line], 1, AStatement.StartPos.Character);
+    UnitIndent := TRoutineBody.IndentUnit(AContext.Formatting);
+    Name := TRoutineBody.UniqueName(Tokens, VariableName(ATypeText));
+    NewText := Indent + Name + ' := ' + TrimLeft(Lines[AStatement.StartPos.Line]) + LineBreak + Indent + 'try' +
+      LineBreak;
+    for Line := AStatement.StartPos.Line + 1 to LastLine do
+      if Trim(Lines[Line]) = '' then
+        NewText := NewText + LineBreak
+      else
+        NewText := NewText + UnitIndent + Lines[Line] + LineBreak;
+    NewText := NewText + Indent + 'finally' + LineBreak + Indent + UnitIndent + Name + '.Free;' + LineBreak + Indent +
+      'end;' + LineBreak;
+    AFix := TRuleFix.Create(Format('An %s zuweisen und in try/finally freigeben', [Name]),
+      [TRoutineBody.AddVariable(AContext.Text, ARoutine, Name, ATypeText, AContext.Formatting),
+      TTextEdit.Create(TTextRange.Create(AStatement.StartPos.Line, 0, LastLine + 1, 0), NewText)]);
+    Result := True;
+  end;
+
+  procedure CheckStatement(ARoutine, AStatement: TSyntaxNode);
+  var
+    Position, ClassPosition, After, Close, Next: Integer;
+    ClassName, TypeText, FirstArgument: string;
+    HasArguments: Boolean;
+    Kind: TCreatedKind;
+    Fix: TRuleFix;
+    Fixes: TArray<TRuleFix>;
+  begin
+    Position := CodeAt(AStatement.StartOffset);
+    if not IsWord(Position) then
+      Exit;
+    // Unit.TKlasse<T>.Create(…)
+    ClassPosition := Position;
+    After := SkipGenericArgs(Position + 1);
+    while IsSym(After, '.') and IsWord(After + 1) and not SameText(Token(After + 1).Text, 'Create') do
+    begin
+      ClassPosition := After + 1;
+      After := SkipGenericArgs(After + 2);
+    end;
+    if not IsSym(After, '.') or not IsWord(After + 1) or not SameText(Token(After + 1).Text, 'Create') then
+      Exit;
+    Next := After + 2;
+    HasArguments := False;
+    FirstArgument := '';
+    if IsSym(Next, '(') then
+    begin
+      Close := Closing(Next);
+      if Close < 0 then
+        Exit;
+      HasArguments := Close > Next + 1;
+      if HasArguments and (IsWord(Next + 1) or Token(Next + 1).IsKeyword('nil')) and
+        (IsSym(Next + 2, ',') or IsSym(Next + 2, ')')) then
+        FirstArgument := Token(Next + 1).Text;
+      Next := Close + 1;
+    end;
+    // Die Anweisung endet mit Create(…): nichts wird weitergegeben oder gespeichert.
+    if (Next <= High(Code)) and (Token(Next).Offset < AStatement.EndOffset) then
+      Exit;
+    ClassName := Token(ClassPosition).Text;
+    Kind := KindOf(ClassName);
+    if (not LooksLikeType(ClassName) and (Kind = TCreatedKind.Unknown)) or IsSelfRegistering(ClassName) or
+      (Kind = TCreatedKind.Thread) then
+      Exit;
+    // Komponenten mit Owner gibt der Owner frei; unbekannte Klassen mit Argumenten tragen sich oft selbst ein.
+    // Gemeldet werden mit Argumenten nur bekannte Klassen ohne TComponent und Aufrufe mit nil als Owner.
+    if HasArguments and not SameText(FirstArgument, 'nil') and
+      ((Kind <> TCreatedKind.Plain) or MatchText(FirstArgument, ['Self', 'Owner', 'AOwner', 'Application'])) then
+      Exit;
+    TypeText := TextBetween(Position, After - 1);
+    Fixes := nil;
+    if AssignFix(ARoutine, AStatement, TypeText, Fix) then
+      Fixes := [Fix];
+    AReport.Add(TTextRange.Create(Token(Position).StartPos, Token(Next - 1).EndPos),
+      Format('Das erzeugte %s wird nirgends gespeichert und nie freigegeben (Speicherleck).', [TypeText]), Fixes);
+  end;
+
+  procedure VisitStatements(ARoutine, ANode: TSyntaxNode);
+  var
+    Index: Integer;
+  begin
+    if ANode.Kind = TSyntaxKind.CallStatement then
+      CheckStatement(ARoutine, ANode);
+    // Lokale Routinen prüft Visit für sich.
+    if (ANode <> ARoutine) and (ANode.Kind = TSyntaxKind.RoutineDecl) then
+      Exit;
+    for Index := 0 to ANode.ChildCount - 1 do
+      VisitStatements(ARoutine, ANode[Index]);
+  end;
+
+  procedure Visit(ANode: TSyntaxNode);
+  var
+    Index: Integer;
+  begin
+    if ANode.Kind = TSyntaxKind.RoutineDecl then
+      VisitStatements(ANode, ANode);
+    for Index := 0 to ANode.ChildCount - 1 do
+      Visit(ANode[Index]);
+  end;
+
+var
+  Index: Integer;
+begin
+  if (AContext.Tree = nil) or (AContext.Tree.Root = nil) or not ContainsText(AContext.Text, 'Create') then
+    Exit;
+  Tokens := AContext.Tree.Tokens;
+  Code := nil;
+  for Index := 0 to High(Tokens) do
+    if not (Tokens[Index].Kind in [TPascalTokenKind.Comment, TPascalTokenKind.Directive]) then
+      Code := Code + [Index];
+  Lines := TTextLines.SplitLines(AContext.Text, LineBreak);
+  SelfRegistering := TRuleOptions.Strings(AContext.Options, 'selfRegistering', nil);
+  Ancestry := TAncestry.Create(AContext.Index, TRuleDerived.UnitIndex(TRuleDerived.Open(AContext), AContext));
+  try
+    Visit(AContext.Tree.Root);
+  finally
+    Ancestry.Free;
+  end;
+end;
+
 procedure RegisterOwnershipRules(const ARegistry: TRuleRegistry);
 begin
   ARegistry.Register(TOwnedItemFreedRule.Create);
+  ARegistry.Register(TCreateWithoutAssignmentRule.Create);
 end;
 
 end.
