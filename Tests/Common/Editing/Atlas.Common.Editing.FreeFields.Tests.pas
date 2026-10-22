@@ -1,7 +1,8 @@
 ﻿unit Atlas.Common.Editing.FreeFields.Tests;
 
 // Tests für „Felder im Destruktor freigeben“ (#666): Erkennung, Ausnahmen,
-// unklare Fälle, Freigabe im vorhandenen und im neuen Destruktor.
+// unklare Fälle, Freigabe im vorhandenen und im neuen Destruktor; Erzeugungen
+// außerhalb von Klassen und class destructor (#971).
 
 interface
 
@@ -52,6 +53,10 @@ type
     procedure ComponentFieldAsOwner;
     [Test]
     procedure HandOverAndCastToInterface;
+    [Test]
+    procedure ObjectCreationOutsideClasses;
+    [Test]
+    procedure ClassDestructorIsCreatedOrFilled;
   end;
 
 implementation
@@ -814,6 +819,72 @@ begin
     // Andere Zeile.
     Actions := TFreeFields.Actions(Tree, OrderList, nil, 8, TFreeFieldsStyle.Free, True);
     Assert.AreEqual(0, Integer(Length(Actions)));
+  finally
+    Tree.Free;
+  end;
+end;
+
+procedure TFreeFieldsTests.ObjectCreationOutsideClasses;
+const
+  Source = 'unit U;'#10'interface'#10'implementation'#10'var'#10'  A: TListe;'#10'  B: TStopwatch;'#10 +
+    '  C: TDatenmodul;'#10'initialization'#10'  A := TListe.Create;'#10'  B := TStopwatch.Create;'#10 +
+    '  C := TDatenmodul.Create(Application);'#10'end.';
+var
+  Tree: TSyntaxTree;
+  Section: TSyntaxNode;
+  TypeName: string;
+  Owned: Boolean;
+begin
+  Tree := TPascalParser.Parse(Source);
+  try
+    Section := Tree.Root.FindChild(TSyntaxKind.InitializationSection);
+    Assert.IsTrue(TFreeFields.ObjectCreation(Tree, Source, nil, Section[0][1], TypeName, Owned));
+    Assert.AreEqual('TListe', TypeName);
+    Assert.IsFalse(Owned);
+    Assert.IsFalse(TFreeFields.ObjectCreation(Tree, Source, nil, Section[1][1], TypeName, Owned), 'Record');
+    Assert.IsTrue(TFreeFields.ObjectCreation(Tree, Source, nil, Section[2][1], TypeName, Owned));
+    Assert.IsTrue(Owned, 'Owner Application');
+    Assert.IsTrue(TFreeFields.IsObjectType(Tree, Source, nil, 'TListe'));
+    Assert.IsFalse(TFreeFields.IsObjectType(Tree, Source, nil, 'IListe'));
+    Assert.IsFalse(TFreeFields.IsObjectType(Tree, Source, nil, 'TStopwatch'));
+  finally
+    Tree.Free;
+  end;
+end;
+
+procedure TFreeFieldsTests.ClassDestructorIsCreatedOrFilled;
+const
+  Source = 'unit U;'#10'interface'#10'type'#10'  TDienst<T> = class'#10'    class var FA: TListe;'#10 +
+    '    class constructor Create;'#10'  end;'#10'implementation'#10'class constructor TDienst<T>.Create;'#10 +
+    'begin'#10'  FA := TListe.Create;'#10'end;'#10'end.';
+  Filled = 'unit U;'#10'interface'#10'type'#10'  TDienst = class'#10'    class var FA: TListe;'#10 +
+    '    class constructor Create;'#10'    class destructor Destroy;'#10'  end;'#10'implementation'#10 +
+    'class constructor TDienst.Create;'#10'begin'#10'  FA := TListe.Create;'#10'end;'#10 +
+    'class destructor TDienst.Destroy;'#10'begin'#10'  Protokolliere;'#10'end;'#10'end.';
+var
+  Tree: TSyntaxTree;
+  Edits: TArray<TTextEdit>;
+  Decl: TSyntaxNode;
+begin
+  Tree := TPascalParser.Parse(Source);
+  try
+    Decl := Tree.Root.FindChild(TSyntaxKind.InterfaceSection)[0][0];
+    Assert.IsTrue(TFreeFields.ClassDestructorEdits(Tree, Source, Decl, ['FreeAndNil(FA);'], Edits));
+    Assert.AreEqual('unit U;'#10'interface'#10'type'#10'  TDienst<T> = class'#10'    class var FA: TListe;'#10 +
+      '    class constructor Create;'#10'    class destructor Destroy;'#10'  end;'#10'implementation'#10 +
+      'class constructor TDienst<T>.Create;'#10'begin'#10'  FA := TListe.Create;'#10'end;'#10#10 +
+      'class destructor TDienst<T>.Destroy;'#10'begin'#10'  FreeAndNil(FA);'#10'end;'#10'end.', Apply(Source, Edits));
+    Assert.IsTrue(Parses(Apply(Source, Edits)));
+  finally
+    Tree.Free;
+  end;
+  Tree := TPascalParser.Parse(Filled);
+  try
+    Decl := Tree.Root.FindChild(TSyntaxKind.InterfaceSection)[0][0];
+    Assert.IsTrue(TFreeFields.ClassDestructorEdits(Tree, Filled, Decl, ['FreeAndNil(FA);'], Edits));
+    Assert.AreEqual(1, Integer(Length(Edits)));
+    Assert.AreEqual(StringReplace(Filled, '  Protokolliere;'#10, '  Protokolliere;'#10'  FreeAndNil(FA);'#10, []),
+      Apply(Filled, Edits));
   finally
     Tree.Free;
   end;

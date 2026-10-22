@@ -11,7 +11,7 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 | [Threads](#gruppe-threads) | 13 |
 | [Datenbank](#gruppe-database) | 5 |
 | [Compiler vorab](#gruppe-compiler) | 15 |
-| [Robustheit und Muster](#gruppe-robustness) | 6 |
+| [Robustheit und Muster](#gruppe-robustness) | 7 |
 | [Performance](#gruppe-performance) | 4 |
 | [Sicherheit](#gruppe-security) | 11 |
 | [Komponenten](#gruppe-components) | 8 |
@@ -159,6 +159,7 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 | [`path-concat-without-delimiter`](#path-concat-without-delimiter) | Pfad ohne Trennzeichen zusammengesetzt | Bug | Warnung |
 | [`hardcoded-path`](#hardcoded-path) | Fester Dateipfad im Code | Code Smell | Hinweis |
 | [`filename-compare-case`](#filename-compare-case) | Dateinamen mit = verglichen | Bug | Hinweis |
+| [`initialization-not-finalized`](#initialization-not-finalized) | Beim Start erzeugtes Objekt wird nicht freigegeben | Bug | Warnung |
 
 <a id="gruppe-performance"></a>
 ### Performance
@@ -4626,4 +4627,30 @@ Richtig:
 
 ```pascal
 if SameFileName(ExtractFileName(Datei), 'Config.ini') then
+```
+
+<a id="initialization-not-finalized"></a>
+### initialization-not-finalized
+
+**Beim Start erzeugtes Objekt wird nicht freigegeben** · Bug · Warnung · Gruppe Robustheit und Muster
+
+Ein Objekt wird in initialization mit TKlasse.Create erzeugt und einer Unit-Variablen zugewiesen oder in einem class constructor erzeugt und einer class var zugewiesen, aber die Unit gibt es nirgends frei (kein Free, Destroy, DisposeOf, Release oder FreeAndNil in der ganzen Unit). FastMM meldet beim Beenden ein Leck; in Packages bleibt das Objekt bei jedem Entladen liegen. Interface- und Record-Typen, Komponenten mit Owner (Application, Self, Owner) und Objekte, die die Unit weitergibt, bleiben still: Jede Erwähnung der Variablen muss harmlos sein (Zugriff auf ein Mitglied, Vergleich mit nil, Assigned, erneutes Create oder Zuweisung von nil); als Argument übergeben, anderswo zugewiesen, with, eine Property, die sie liest, oder FreeOnTerminate lassen die Regel schweigen. Bei Variablen aus dem interface-Abschnitt und öffentlichen class vars schweigt sie auch, wenn eine andere Unit im Index den Namen verwendet. Konfidenz hoch. Korrektur: FreeAndNil am Ende von finalization bzw. im class destructor; fehlt der finalization-Abschnitt oder der class destructor (Deklaration und Rumpf), wird er angelegt, System.SysUtils kommt bei Bedarf in die uses-Klausel.
+
+Mit Treffer:
+
+```pascal
+initialization
+  GProtokoll := TProtokoll.Create;
+end.
+```
+
+Richtig:
+
+```pascal
+initialization
+  GProtokoll := TProtokoll.Create;
+
+finalization
+  FreeAndNil(GProtokoll);
+end.
 ```
