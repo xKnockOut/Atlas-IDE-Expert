@@ -6,7 +6,7 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 
 | Gruppe | Regeln |
 |---|---|
-| [Fehler finden](#gruppe-find-bugs) | 47 |
+| [Fehler finden](#gruppe-find-bugs) | 48 |
 | [Exceptions](#gruppe-exceptions) | 6 |
 | [Threads](#gruppe-threads) | 9 |
 | [Robustheit und Muster](#gruppe-robustness) | 2 |
@@ -71,6 +71,7 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 | [`unchecked-conversion`](#unchecked-conversion) | Umwandlung einer Benutzereingabe ohne Prüfung | Bug | Hinweis |
 | [`dictionary-get-without-check`](#dictionary-get-without-check) | Dictionary-Zugriff ohne Prüfung des Schlüssels | Bug | Hinweis |
 | [`event-call-without-assigned`](#event-call-without-assigned) | Ereignis ohne Assigned-Prüfung aufgerufen | Bug | Warnung |
+| [`owned-item-freed`](#owned-item-freed) | Element einer besitzenden Liste zusätzlich freigegeben | Bug | Fehler |
 
 <a id="gruppe-exceptions"></a>
 ### Exceptions
@@ -3527,4 +3528,28 @@ begin
   if Assigned(FOnChange) then
     FOnChange(Self);
 end;
+```
+
+<a id="owned-item-freed"></a>
+### owned-item-freed
+
+**Element einer besitzenden Liste zusätzlich freigegeben** · Bug · Fehler · Gruppe Fehler finden
+
+Ein Element einer TObjectList/TObjectList<T> (OwnsObjects, Vorgabe True) oder eines TObjectDictionary mit doOwnsValues wird mit Free, FreeAndNil, Destroy oder DisposeOf freigegeben, direkt (Liste[I].Free, Liste.Items[I].Free) oder über eine Variable aus Liste[I], Liste.First/Last oder einer for-in-Schleife über die Liste bzw. Dictionary.Values. Die Liste gibt das Element selbst frei: bei Delete, Remove, Clear, einer Zuweisung an Liste[I] oder spätestens beim Freigeben, also doppelt. Besitzend ist eine Liste, wenn die Unit sie so erzeugt (TObjectList ohne False, TObjectDictionary mit doOwnsValues) oder ohne Erzeugung als TObjectList deklariert, und kein OwnsObjects := False folgt. Extract in derselben Routine lässt die Regel schweigen. Sicherheit hoch. Korrekturen: Free entfernen (die ganze Schleife, wenn sie nur freigibt), Delete bzw. Remove statt Free, Extract statt Remove.
+
+Mit Treffer:
+
+```pascal
+Auftraege := TObjectList<TAuftrag>.Create;
+…
+Auftraege[I].Free;
+Auftraege.Delete(I);
+```
+
+Richtig:
+
+```pascal
+Auftraege := TObjectList<TAuftrag>.Create;
+…
+Auftraege.Delete(I);
 ```
