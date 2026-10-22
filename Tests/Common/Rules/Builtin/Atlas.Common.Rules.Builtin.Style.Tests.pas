@@ -1,7 +1,7 @@
 ﻿unit Atlas.Common.Rules.Builtin.Style.Tests;
 
 // Tests für die Stilregeln (#104): je Regel positiv, negativ und Schnellkorrektur; boolean-assign-if (#935),
-// case-insensitive-compare (#936) und magic-number (#937).
+// case-insensitive-compare (#936), magic-number (#937) und line-length (#938).
 
 interface
 
@@ -58,6 +58,12 @@ type
     procedure MagicNumberVariantsAndOptions;
     [Test]
     procedure MagicNumberSilentCases;
+    [Test]
+    procedure LineLengthIssueExample;
+    [Test]
+    procedure LineLengthOptions;
+    [Test]
+    procedure LineLengthCompilerLimit;
   end;
 
 implementation
@@ -403,6 +409,105 @@ begin
   TConfigurationParser.Parse('{"rules": {"magic-number": {"allowed": ["42"]}}}', Issues);
   Assert.AreEqual(1, Integer(Length(Issues)));
   Assert.AreEqual('"allowed" muss eine Liste von Zahlen sein', Issues[0].Message);
+end;
+
+const
+  LineOn = '{ "rules": { "line-length": "hint" } }';
+  LongCall = '  Ergebnis := Rechner.Berechne(Kunde.Rabattstufe, Bestellung.Positionen, ' +
+    'Lager.Verfuegbarkeit(Artikel), Steuer.Satz(Land));';
+
+procedure TStyleRulesTests.LineLengthIssueExample;
+var
+  Source: string;
+  Findings: TArray<TRuleFinding>;
+begin
+  Source := InRoutine('  Ergebnis: Integer;', LongCall);
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TLineLengthRule.Create, Source))), 'Standard aus');
+  Findings := TRuleAssert.Findings(TLineLengthRule.Create, Source, LineOn);
+  Assert.AreEqual(1, Integer(Length(Findings)));
+  Assert.AreEqual('Zeile hat 123 Zeichen (Grenze 120).', Findings[0].Message);
+  Assert.AreEqual(7, Findings[0].Range.StartPos.Line);
+  Assert.AreEqual(120, Findings[0].Range.StartPos.Character, 'Markierung ab der Grenze');
+  Assert.AreEqual('Zeile umbrechen', Findings[0].Fixes[0].Title);
+  Source := Fixed(Source, Findings);
+  Assert.IsTrue(Pos('Lager.Verfuegbarkeit(Artikel),'#10'    Steuer.Satz(Land));', Source) > 0, Source);
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TLineLengthRule.Create, Source, LineOn))));
+  // Ohne Komma und Operator gibt es keine Stelle zum Umbrechen.
+  Findings := TRuleAssert.Findings(TLineLengthRule.Create, InRoutine('  X: Integer;', '  ' +
+    StringOfChar('A', 130) + ';'), LineOn);
+  Assert.AreEqual(1, Integer(Length(Findings)));
+  Assert.AreEqual(0, Integer(Length(Findings[0].Fixes)));
+end;
+
+procedure TStyleRulesTests.LineLengthOptions;
+var
+  Source: string;
+  Findings: TArray<TRuleFinding>;
+  Issues: TArray<TConfigurationIssue>;
+begin
+  // max
+  Source := InRoutine('  Summe: Integer;', '  Summe := Erster + Zweiter + Dritter + Vierter + Fuenfter + Sechster;');
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TLineLengthRule.Create, Source, LineOn))));
+  Findings := TRuleAssert.Findings(TLineLengthRule.Create, Source,
+    '{ "rules": { "line-length": { "severity": "hint", "max": 40 } } }');
+  Assert.AreEqual(1, Integer(Length(Findings)));
+  Assert.AreEqual('Zeile hat 70 Zeichen (Grenze 40).', Findings[0].Message);
+  Source := Fixed(Source, Findings);
+  Assert.IsTrue(Pos('  Summe := Erster + Zweiter + Dritter'#10'    + Vierter + Fuenfter + Sechster;', Source) > 0,
+    Source);
+  // ignoreStrings (Vorgabe an) und ignoreComments (Vorgabe aus)
+  Source := InRoutine('  S: string;', '  S := ''' + StringOfChar('x', 130) + ''';');
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TLineLengthRule.Create, Source, LineOn))));
+  Assert.AreEqual(1, Integer(Length(TRuleAssert.Findings(TLineLengthRule.Create, Source,
+    '{ "rules": { "line-length": { "severity": "hint", "ignoreStrings": false } } }'))));
+  Source := InRoutine('  X: Integer;', '  X := 1; // ' + StringOfChar('k', 130));
+  Assert.AreEqual(1, Integer(Length(TRuleAssert.Findings(TLineLengthRule.Create, Source, LineOn))));
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TLineLengthRule.Create, Source,
+    '{ "rules": { "line-length": { "severity": "hint", "ignoreComments": true } } }'))));
+  // Tabs zählen bis zur nächsten Tabstelle nach format.indentSize.
+  Source := InRoutine('  X: Integer;', #9#9#9#9#9'X := Erster + Zweiter;');
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TLineLengthRule.Create, Source,
+    '{ "rules": { "line-length": { "severity": "hint", "max": 40 } } }'))));
+  Findings := TRuleAssert.Findings(TLineLengthRule.Create, Source,
+    '{ "format": { "indentSize": 8 }, "rules": { "line-length": { "severity": "hint", "max": 40 } } }');
+  Assert.AreEqual(1, Integer(Length(Findings)));
+  Assert.AreEqual('Zeile hat 62 Zeichen (Grenze 40).', Findings[0].Message);
+  // off und exclude
+  Source := InRoutine('  Ergebnis: Integer;', LongCall);
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TLineLengthRule.Create, Source,
+    '{ "rules": { "line-length": "off" } }'))));
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TLineLengthRule.Create, Source,
+    '{ "rules": { "line-length": { "severity": "hint", "exclude": ["Generiert/*.pas"] } } }', 'Generiert/U.pas'))));
+  TConfigurationParser.Parse('{"rules": {"line-length": {"ignoreStrings": "ja", "ignoreComments": 1}}}', Issues);
+  Assert.AreEqual(2, Integer(Length(Issues)));
+  Assert.AreEqual('"ignoreStrings" muss true oder false sein', Issues[0].Message);
+end;
+
+procedure TStyleRulesTests.LineLengthCompilerLimit;
+var
+  Source: string;
+  Findings: TArray<TRuleFinding>;
+begin
+  Source := 'unit U;'#10'interface'#10'const'#10'  Logo = ''' + StringOfChar('i', 1400) + ''';'#10 +
+    'implementation'#10'end.';
+  // Unabhängig von max und ignoreStrings immer ein Error.
+  Findings := TRuleAssert.Findings(TLineLengthRule.Create, Source,
+    '{ "rules": { "line-length": { "severity": "hint", "max": 5000 } } }');
+  Assert.AreEqual(1, Integer(Length(Findings)));
+  Assert.AreEqual('Zeile mit 1412 Zeichen; der Compiler bricht über 1023 Zeichen ab (wie F2069).',
+    Findings[0].Message);
+  Assert.AreEqual(Ord(TRuleSeverity.Error), Ord(Findings[0].Severity));
+  Assert.AreEqual(3, Findings[0].Range.StartPos.Line);
+  // Genau 1023 Zeichen übersetzt der Compiler noch.
+  Source := 'unit U;'#10'interface'#10'const'#10'  Logo = ''' + StringOfChar('i', 1011) + ''';'#10 +
+    'implementation'#10'end.';
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TLineLengthRule.Create, Source,
+    '{ "rules": { "line-length": { "severity": "hint", "max": 5000 } } }'))));
+  Source := StringReplace(Source, StringOfChar('i', 1011), StringOfChar('i', 1012), []);
+  Assert.AreEqual(1, Integer(Length(TRuleAssert.Findings(TLineLengthRule.Create, Source,
+    '{ "rules": { "line-length": { "severity": "hint", "max": 5000 } } }'))), '1024 Zeichen');
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TLineLengthRule.Create, Source,
+    '{ "rules": { "line-length": "off" } }'))));
 end;
 
 initialization

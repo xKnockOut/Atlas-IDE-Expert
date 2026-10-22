@@ -45,7 +45,7 @@ uses
 
 const
   /// <summary>Optionen von Prüfregeln, die true oder false sein müssen (#909).</summary>
-  BooleanRuleOptions: array[0..1] of string = ('allowCommented', 'requireElse');
+  BooleanRuleOptions: array[0..3] of string = ('allowCommented', 'requireElse', 'ignoreStrings', 'ignoreComments');
   /// <summary>Optionen von Prüfregeln, die eine Liste von Texten sein müssen (#909).</summary>
   StringListRuleOptions: array[0..8] of string = ('countNames', 'mutatingMethods', 'ignoreMethods', 'ignoreTypes',
     'methods', 'allowIn', 'functions', 'sources', 'ignore');

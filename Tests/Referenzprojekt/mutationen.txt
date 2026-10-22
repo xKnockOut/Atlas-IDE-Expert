@@ -57,3 +57,4 @@ shadowed-name | Ref.Formulare.Detail.pas | procedure TDetailFormular.Initialisie
 boolean-assign-if | Ref.Formulare.Haupt.pas |   Suche.OnSuchen := SucheAusfuehren; |   Suche.OnSuchen := SucheAusfuehren;\n  if KundenListe.Count = 0 then\n    DetailButton.Enabled := False\n  else\n    DetailButton.Enabled := True;
 case-insensitive-compare | Ref.Formulare.Haupt.pas |   Suche.OnSuchen := SucheAusfuehren; |   Suche.OnSuchen := SucheAusfuehren;\n  if UpperCase(Caption) = UpperCase(Name) then\n    Caption := '';
 magic-number | Ref.Daten.Suche.pas | Result := FAnbieter(AName) | Result := FAnbieter(Copy(AName, 1, 40))
+line-length | Ref.Daten.Suche.pas | FAnbieter := AAnbieter; | FAnbieter := AAnbieter; // Der Anbieter liefert die Namen aller Kunden, deren Name mit dem Suchtext beginnt, sortiert nach Nachname und Vorname

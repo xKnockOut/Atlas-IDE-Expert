@@ -52,6 +52,8 @@ type
     procedure GroupNamesRoundTrip;
     [Test]
     procedure SharedCatalogIsReadOnce;
+    [Test]
+    procedure ReadsCompilerCodes;
   end;
 
 implementation
@@ -280,6 +282,32 @@ end;
 procedure TRuleCatalogTests.RejectsUnknownGroup;
 begin
   ExpectCatalogError('{"rules":[{"id":"x","category":"bug","severity":"error","group":"misc"}]}');
+end;
+
+procedure TRuleCatalogTests.ReadsCompilerCodes;
+var
+  Catalog: TRuleCatalog;
+  Entry: TRuleCatalogEntry;
+begin
+  Catalog := TRuleCatalog.Create('{"rules":[{"id":"x","category":"code-smell","severity":"hint",' +
+    '"compilerCodes":["F2069","W1036"]},{"id":"y","category":"bug","severity":"error"}]}');
+  try
+    Assert.IsTrue(Catalog.TryFind('x', Entry));
+    Assert.AreEqual('F2069,W1036', string.Join(',', Entry.CompilerCodes));
+    Assert.IsTrue(Pos('Entspricht der Compilermeldung F2069, W1036.', TRuleCatalog.Explanation(Entry, #10)) > 0);
+    Assert.IsTrue(Catalog.TryFind('y', Entry));
+    Assert.AreEqual(0, Integer(Length(Entry.CompilerCodes)));
+    Assert.IsFalse(Pos('Compilermeldung', TRuleCatalog.Explanation(Entry, #10)) > 0);
+  finally
+    Catalog.Free;
+  end;
+  // Eingebauter Katalog: line-length entspricht F2069 (#938).
+  Assert.IsTrue(TRuleCatalog.Shared.TryFind('line-length', Entry));
+  Assert.AreEqual('F2069', string.Join(',', Entry.CompilerCodes));
+  ExpectCatalogError('{"rules":[{"id":"x","category":"bug","severity":"error","compilerCodes":"F2069"}]}');
+  ExpectCatalogError('{"rules":[{"id":"x","category":"bug","severity":"error","compilerCodes":["X2069"]}]}');
+  ExpectCatalogError('{"rules":[{"id":"x","category":"bug","severity":"error","compilerCodes":["F206"]}]}');
+  ExpectCatalogError('{"rules":[{"id":"x","category":"bug","severity":"error","compilerCodes":[2069]}]}');
 end;
 
 procedure TRuleCatalogTests.RejectsOptionWithUnknownType;

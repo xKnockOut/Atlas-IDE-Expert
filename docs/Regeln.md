@@ -15,7 +15,7 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 | [Komponenten](#gruppe-components) | 8 |
 | [Formulare und Daten](#gruppe-forms) | 10 |
 | [Architektur](#gruppe-architecture) | 3 |
-| [Stil und Metriken](#gruppe-style) | 21 |
+| [Stil und Metriken](#gruppe-style) | 22 |
 | [Packages und Tests](#gruppe-packages) | 1 |
 | [Atlas intern](#gruppe-internal) | 3 |
 
@@ -197,6 +197,7 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 | [`shadowed-name`](#shadowed-name) | Lokaler Name verdeckt Feld oder Property | Code Smell | Hinweis |
 | [`boolean-assign-if`](#boolean-assign-if) | if, das nur True oder False zuweist | Code Smell | Hinweis |
 | [`magic-number`](#magic-number) | Zahl ohne Namen im Code | Code Smell | Hinweis |
+| [`line-length`](#line-length) | Zeile zu lang | Code Smell | Hinweis |
 
 <a id="gruppe-packages"></a>
 ### Packages und Tests
@@ -3195,4 +3196,32 @@ const
 ...
 if Tage > Mahnfrist then
   Mahnen;
+```
+
+<a id="line-length"></a>
+### line-length
+
+**Zeile zu lang** · Code Smell · Hinweis · Gruppe Stil und Metriken
+
+Zeilen über der Grenze max (Vorgabe 120 Zeichen, passend zu den Linealen aus #710). Tabs zählen bis zur nächsten Tabstelle nach format.indentSize. Zeilen, die nur wegen eines Strings oder, mit ignoreComments, eines Kommentars zu lang sind, werden nicht gemeldet. Zeilen über 1023 Zeichen meldet die Regel unabhängig von max immer als Fehler, weil der Compiler dort abbricht (F2069). Standard aus. Schnellkorrektur: Zeile umbrechen hinter Kommas bzw. vor zweistelligen Operatoren, wenn die Stücke danach passen.
+
+Entspricht der Compilermeldung `F2069`.
+
+| Option | Typ | Vorgabe | Bedeutung |
+|---|---|---|---|
+| `max` | integer | `120` | Höchstlänge einer Zeile in Zeichen. |
+| `ignoreStrings` | boolean | `true` | Zeilen, die nur wegen eines Strings zu lang sind, nicht melden. |
+| `ignoreComments` | boolean | `false` | Zeilen, die nur wegen eines Kommentars zu lang sind, nicht melden. |
+
+Mit Treffer:
+
+```pascal
+Ergebnis := Rechner.Berechne(Kunde.Rabattstufe, Bestellung.Positionen, Lager.Verfuegbarkeit(Artikel), Steuer.Satz(Land));
+```
+
+Richtig:
+
+```pascal
+Ergebnis := Rechner.Berechne(Kunde.Rabattstufe, Bestellung.Positionen, Lager.Verfuegbarkeit(Artikel),
+  Steuer.Satz(Land));
 ```

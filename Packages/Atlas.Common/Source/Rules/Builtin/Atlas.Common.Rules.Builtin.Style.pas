@@ -14,6 +14,9 @@
 //   magic-number             Zahlenliteral in Anweisungen außerhalb von const, Typen und Array-Grenzen,
 //                            nicht in der Option "allowed" (Standard aus, niedrige Konfidenz); Korrektur
 //                            „Konstante einführen“ aus #50 (#937)
+//   line-length              Zeile über der Grenze "max" (Vorgabe 120, Tabs nach format.indentSize), Strings
+//                            und Kommentare abschaltbar ausgenommen (Standard aus); Korrektur bricht hinter
+//                            Kommas bzw. vor Operatoren um. Über 1023 Zeichen immer Error wie F2069 (#938)
 // Exit, Break und Continue aus einem finally-Block lehnt der Compiler selbst ab;
 // dafür gibt es keine eigene Regel.
 
@@ -81,6 +84,16 @@ type
     procedure Check(const AContext: TRuleContext; const AReport: IRuleReport);
   end;
 
+  TLineLengthRule = class(TInterfacedObject, IRule)
+  public const
+    DefaultMax = 120;
+    /// <summary>Längere Zeilen lehnt der Compiler ab (F2069).</summary>
+    CompilerLimit = 1023;
+  public
+    function Descriptor: TRuleDescriptor;
+    procedure Check(const AContext: TRuleContext; const AReport: IRuleReport);
+  end;
+
 procedure RegisterStyleRules(const ARegistry: TRuleRegistry);
 
 implementation
@@ -96,6 +109,8 @@ uses
   Atlas.Common.Pascal.DeclaredTypes,
   Atlas.Common.Editing.CodeActions,
   Atlas.Common.Editing.Extract,
+  Atlas.Common.Editing.Formatter.Layout,
+  Atlas.Text.Lines,
   Atlas.Common.Rules.Options;
 
 type
@@ -976,6 +991,221 @@ begin
   Visit(AContext.Tree.Root, False);
 end;
 
+{ TLineLengthRule }
+
+function TLineLengthRule.Descriptor: TRuleDescriptor;
+begin
+  Result := TRuleDescriptor.Create('line-length', TRuleSeverity.Hint, 'Zeile zu lang', True);
+end;
+
+procedure TLineLengthRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
+const
+  Operators: array[0..11] of string = ('+', '-', '*', '/', 'and', 'or', 'xor', 'div', 'mod', 'shl', 'shr', '<>');
+var
+  Lines: TArray<string>;
+  LineBreak, Continuation: string;
+  Tokens: TTokens;
+  ByLine: TArray<TArray<Integer>>;
+  // Zeilen, in die ein mehrzeiliges Token hineinragt: dort wird nicht umgebrochen.
+  Spanned: TArray<Boolean>;
+  MaxLength, TabWidth: Integer;
+  IgnoreStrings, IgnoreComments: Boolean;
+  Style: TFormatStyle;
+
+  // Sichtbare Spalte vor jedem Zeichen: AColumns[I] = Breite von ALine[1..I]; Tabs springen zur nächsten
+  // Tabstelle, das zweite Zeichen eines Surrogatpaars zählt nicht.
+  function Columns(const ALine: string): TArray<Integer>;
+  var
+    Index: Integer;
+  begin
+    SetLength(Result, Length(ALine) + 1);
+    Result[0] := 0;
+    for Index := 1 to Length(ALine) do
+      if ALine[Index] = #9 then
+        Result[Index] := (Result[Index - 1] div TabWidth + 1) * TabWidth
+      else if (ALine[Index] >= #$DC00) and (ALine[Index] <= #$DFFF) then
+        Result[Index] := Result[Index - 1]
+      else
+        Result[Index] := Result[Index - 1] + 1;
+  end;
+
+  function Clamp(AValue, AHigh: Integer): Integer;
+  begin
+    Result := Min(Max(AValue, 0), AHigh);
+  end;
+
+  // Breite ohne Strings bzw. Kommentare nach den Optionen; Anführungszeichen und Kommentarzeichen bleiben.
+  function CountedWidth(ALine: Integer; const AColumns: TArray<Integer>): Integer;
+  var
+    TokenIndex, First, Last: Integer;
+    Token: TPascalToken;
+  begin
+    Result := AColumns[High(AColumns)];
+    for TokenIndex in ByLine[ALine] do
+    begin
+      Token := Tokens[TokenIndex];
+      if not ((IgnoreStrings and (Token.Kind = TPascalTokenKind.StringLiteral)) or
+        (IgnoreComments and (Token.Kind = TPascalTokenKind.Comment))) then
+        Continue;
+      First := 0;
+      if Token.StartPos.Line = ALine then
+        First := Token.StartPos.Character;
+      Last := High(AColumns);
+      if Token.EndPos.Line = ALine then
+        Last := Token.EndPos.Character;
+      First := Clamp(First, High(AColumns));
+      Last := Clamp(Last, High(AColumns));
+      Result := Result - Max(AColumns[Last] - AColumns[First] - 2, 0);
+    end;
+  end;
+
+  function IsBreak(APrevious, AToken: Integer): Boolean;
+  var
+    Previous, Token: TPascalToken;
+  begin
+    Previous := Tokens[APrevious];
+    Token := Tokens[AToken];
+    if Token.Kind in [TPascalTokenKind.Comment, TPascalTokenKind.Directive] then
+      Exit(False);
+    // Hinter einem Komma oder vor einem zweistelligen Operator, wie der Formatierer (#43).
+    Result := Previous.IsSymbol(',') or (MatchText(Token.Text, Operators) and
+      ((Previous.Kind in [TPascalTokenKind.Identifier, TPascalTokenKind.Number, TPascalTokenKind.StringLiteral,
+      TPascalTokenKind.CharLiteral]) or Previous.IsSymbol(')') or Previous.IsSymbol(']')));
+  end;
+
+  // Umbruchstellen von links nach rechts, so spät wie möglich; nil, wenn ein Stück nicht unter die Grenze passt.
+  function WrapEdits(ALine: Integer; const AColumns: TArray<Integer>): TArray<TTextEdit>;
+  var
+    Candidates: TArray<Integer>;
+    Position, Best, SegmentStart, Prefix, Column, Cut: Integer;
+    Items: TArray<Integer>;
+    Text: string;
+  begin
+    Result := nil;
+    Items := nil;
+    for Position in ByLine[ALine] do
+      if Tokens[Position].StartPos.Line = ALine then
+        Items := Items + [Position];
+    if Spanned[ALine] or (Length(Items) < 2) then
+      Exit;
+    Candidates := nil;
+    for Position := 1 to High(Items) do
+      if (Tokens[Items[Position]].EndPos.Line = ALine) and
+        not (Tokens[Items[Position - 1]].Kind in [TPascalTokenKind.Comment, TPascalTokenKind.Directive]) and
+        IsBreak(Items[Position - 1], Items[Position]) then
+        Candidates := Candidates + [Tokens[Items[Position]].StartPos.Character];
+    Text := Lines[ALine];
+    SegmentStart := TTextLines.IndentLength(Text);
+    Prefix := AColumns[SegmentStart];
+    Best := -1;
+    Position := 0;
+    while Prefix + AColumns[Length(Text)] - AColumns[SegmentStart] > MaxLength do
+    begin
+      // Spätester Schnitt, bei dem das Stück davor passt.
+      while (Position <= High(Candidates)) and
+        (Prefix + AColumns[Length(TrimRight(Copy(Text, 1, Candidates[Position])))] - AColumns[SegmentStart] <=
+        MaxLength) do
+      begin
+        if Candidates[Position] > SegmentStart then
+          Best := Candidates[Position];
+        Inc(Position);
+      end;
+      if Best < 0 then
+      begin
+        Result := nil;
+        Exit;
+      end;
+      Cut := Length(TrimRight(Copy(Text, 1, Best)));
+      Result := Result + [TTextEdit.Create(TTextRange.Create(TTextPosition.Create(ALine, Cut),
+        TTextPosition.Create(ALine, Best)), LineBreak + Continuation)];
+      SegmentStart := Best;
+      Column := 0;
+      for Cut := 1 to Length(Continuation) do
+        if Continuation[Cut] = #9 then
+          Column := (Column div TabWidth + 1) * TabWidth
+        else
+          Inc(Column);
+      Prefix := Column;
+      Best := -1;
+    end;
+  end;
+
+  // Erstes Zeichen hinter der Grenze; dort beginnt die Markierung.
+  function OverflowStart(const AColumns: TArray<Integer>): Integer;
+  begin
+    Result := 0;
+    while (Result < High(AColumns)) and (AColumns[Result + 1] <= MaxLength) do
+      Inc(Result);
+  end;
+
+  procedure CheckLine(ALine: Integer);
+  var
+    Text: string;
+    ColumnsOfLine: TArray<Integer>;
+    Width: Integer;
+    Edits: TArray<TTextEdit>;
+    Fixes: TArray<TRuleFix>;
+  begin
+    Text := Lines[ALine];
+    if Length(Text) > CompilerLimit then
+    begin
+      AReport.AddWithSeverity(TTextRange.Create(TTextPosition.Create(ALine, 0), TTextPosition.Create(ALine,
+        Length(Text))), Format('Zeile mit %d Zeichen; der Compiler bricht über %d Zeichen ab (wie F2069).',
+        [Length(Text), CompilerLimit]), TRuleSeverity.Error, nil);
+      Exit;
+    end;
+    ColumnsOfLine := Columns(Text);
+    Width := ColumnsOfLine[High(ColumnsOfLine)];
+    if (Width <= MaxLength) or (CountedWidth(ALine, ColumnsOfLine) <= MaxLength) then
+      Exit;
+    Fixes := nil;
+    Edits := WrapEdits(ALine, ColumnsOfLine);
+    if Edits <> nil then
+      Fixes := [TRuleFix.Create('Zeile umbrechen', Edits)];
+    AReport.Add(TTextRange.Create(TTextPosition.Create(ALine, OverflowStart(ColumnsOfLine)),
+      TTextPosition.Create(ALine, Length(Text))), Format('Zeile hat %d Zeichen (Grenze %d).', [Width, MaxLength]),
+      Fixes);
+  end;
+
+var
+  Index, Line: Integer;
+begin
+  if AContext.Text = '' then
+    Exit;
+  MaxLength := TRuleOptions.Int(AContext.Options, 'max', DefaultMax);
+  if MaxLength <= 0 then
+    MaxLength := DefaultMax;
+  IgnoreStrings := TRuleOptions.Bool(AContext.Options, 'ignoreStrings', True);
+  IgnoreComments := TRuleOptions.Bool(AContext.Options, 'ignoreComments', False);
+  Style := AContext.Formatting;
+  if Style.IndentSize <= 0 then
+    Style.IndentSize := 2;
+  TabWidth := Style.IndentSize;
+  Lines := TTextLines.SplitLines(AContext.Text, LineBreak);
+  SetLength(ByLine, Length(Lines));
+  SetLength(Spanned, Length(Lines));
+  Tokens := nil;
+  if AContext.Tree <> nil then
+    Tokens := AContext.Tree.Tokens;
+  for Index := 0 to High(Tokens) do
+    for Line := Max(Tokens[Index].StartPos.Line, 0) to Min(Tokens[Index].EndPos.Line, High(Lines)) do
+    begin
+      ByLine[Line] := ByLine[Line] + [Index];
+      if Line > Tokens[Index].StartPos.Line then
+        Spanned[Line] := True;
+    end;
+  Continuation := '';
+  for Line := 0 to High(Lines) do
+    // Ohne Tabs ist die Breite höchstens die Länge.
+    if (Length(Lines[Line]) > Min(MaxLength, CompilerLimit)) or
+      ((Pos(#9, Lines[Line]) > 0) and (Length(Lines[Line]) * TabWidth > MaxLength)) then
+    begin
+      Continuation := TTextLines.IndentOf(Lines[Line]) + TFormatLayout.IndentUnit(Style);
+      CheckLine(Line);
+    end;
+  ByLine := nil;
+end;
+
 procedure RegisterStyleRules(const ARegistry: TRuleRegistry);
 begin
   ARegistry.Register(TBoolCompareRule.Create);
@@ -987,6 +1217,7 @@ begin
   ARegistry.Register(TBooleanAssignIfRule.Create);
   ARegistry.Register(TCaseInsensitiveCompareRule.Create);
   ARegistry.Register(TMagicNumberRule.Create);
+  ARegistry.Register(TLineLengthRule.Create);
 end;
 
 end.

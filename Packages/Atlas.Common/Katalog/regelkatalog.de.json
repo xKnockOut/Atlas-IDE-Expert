@@ -804,6 +804,25 @@
           "description": "Zahlen, die nie gemeldet werden."
         }
       ]
+    },
+    {
+      "id": "line-length",
+      "name": "Zeile zu lang",
+      "description": "Zeilen über der Grenze max (Vorgabe 120 Zeichen, passend zu den Linealen aus #710). Tabs zählen bis zur nächsten Tabstelle nach format.indentSize. Zeilen, die nur wegen eines Strings oder, mit ignoreComments, eines Kommentars zu lang sind, werden nicht gemeldet. Zeilen über 1023 Zeichen meldet die Regel unabhängig von max immer als Fehler, weil der Compiler dort abbricht (F2069). Standard aus. Schnellkorrektur: Zeile umbrechen hinter Kommas bzw. vor zweistelligen Operatoren, wenn die Stücke danach passen.",
+      "options": [
+        {
+          "name": "max",
+          "description": "Höchstlänge einer Zeile in Zeichen."
+        },
+        {
+          "name": "ignoreStrings",
+          "description": "Zeilen, die nur wegen eines Strings zu lang sind, nicht melden."
+        },
+        {
+          "name": "ignoreComments",
+          "description": "Zeilen, die nur wegen eines Kommentars zu lang sind, nicht melden."
+        }
+      ]
     }
   ]
 }

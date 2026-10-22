@@ -5,6 +5,7 @@
 // Übersetzungen liegen als Overlay daneben (regelkatalog.de.json) und
 // überschreiben nur Name und Beschreibung. SARIF nutzt immer den englischen
 // Katalog, damit Fingerabdrücke in GitHub Code Scanning stabil bleiben.
+// "compilerCodes" nennt Compilermeldungen, denen eine Regel entspricht (#938).
 
 interface
 
@@ -42,6 +43,8 @@ type
     Good: string;
     Group: TRuleGroup;
     Options: TArray<TRuleOption>;
+    /// <summary>Compilermeldungen, denen die Regel entspricht, z. B. F2069 (#938); nil = keine.</summary>
+    CompilerCodes: TArray<string>;
   end;
 
   ERuleCatalog = class(Exception);
@@ -161,6 +164,35 @@ begin
   end;
 end;
 
+function IsCompilerCode(const ACode: string): Boolean;
+var
+  Index: Integer;
+begin
+  Result := (Length(ACode) = 5) and CharInSet(ACode[1], ['E', 'F', 'W', 'H']);
+  if Result then
+    for Index := 2 to 5 do
+      if not CharInSet(ACode[Index], ['0'..'9']) then
+        Exit(False);
+end;
+
+function CompilerCodesOf(AItem: TJSONObject; const AId: string): TArray<string>;
+var
+  Value, Item: TJSONValue;
+begin
+  Result := nil;
+  Value := AItem.GetValue('compilerCodes');
+  if Value = nil then
+    Exit;
+  if not (Value is TJSONArray) then
+    raise ERuleCatalog.CreateFmt('Regelkatalog: "%s" hat ungültige "compilerCodes"', [AId]);
+  for Item in TJSONArray(Value) do
+  begin
+    if not (Item is TJSONString) or not IsCompilerCode(TJSONString(Item).Value) then
+      raise ERuleCatalog.CreateFmt('Regelkatalog: "%s" hat einen ungültigen Compilercode', [AId]);
+    Result := Result + [TJSONString(Item).Value];
+  end;
+end;
+
 function RulesOf(ARoot: TJSONValue): TJSONArray;
 var
   Value: TJSONValue;
@@ -225,6 +257,7 @@ begin
       else if not TryParseGroup(StringOf(Item, 'group'), Entry.Group) then
         raise ERuleCatalog.CreateFmt('Regelkatalog: "%s" hat keine gültige Gruppe', [Entry.Id]);
       Entry.Options := OptionsOf(Item, Entry.Id);
+      Entry.CompilerCodes := CompilerCodesOf(Item, Entry.Id);
       FEntries.Add(Entry);
     end;
   finally
@@ -324,6 +357,9 @@ begin
     Result := Result + ALineBreak + ALineBreak + 'Falsch:' + ALineBreak + AEntry.Bad;
   if AEntry.Good <> '' then
     Result := Result + ALineBreak + ALineBreak + 'Richtig:' + ALineBreak + AEntry.Good;
+  if AEntry.CompilerCodes <> nil then
+    Result := Result + ALineBreak + ALineBreak + 'Entspricht der Compilermeldung ' +
+      string.Join(', ', AEntry.CompilerCodes) + '.';
   Result := Result + ALineBreak + ALineBreak + 'Mehr: ' + HelpUri(AEntry.Id);
 end;
 

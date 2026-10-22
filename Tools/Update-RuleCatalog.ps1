@@ -83,6 +83,14 @@ foreach ($Rule in $Base.rules) {
             }
         }
     }
+    # Compilermeldungen, denen die Regel entspricht (#938), z. B. F2069.
+    if ($Rule.PSObject.Properties.Name -contains 'compilerCodes') {
+        foreach ($Code in @($Rule.compilerCodes)) {
+            if ([string]$Code -cnotmatch '^[EFWH]\d{4}$') {
+                $Problems.Add("Regel '$($Rule.id)': ungültiger Compilercode '$Code'")
+            }
+        }
+    }
 }
 
 # Abgleich mit dem Quelltext
@@ -187,6 +195,9 @@ foreach ($Row in $Rows) {
     [void]$Doc.Append("`r`n<a id=""$($Row.Rule.id)""></a>`r`n### $($Row.Rule.id)`r`n`r`n")
     [void]$Doc.Append("**$($Row.Name)** · $($CategoryNames[$Row.Rule.category]) · $($SeverityNames[$Row.Rule.severity]) · Gruppe $($GroupNames[[string]$Row.Rule.group])`r`n`r`n")
     [void]$Doc.Append("$($Row.Description)`r`n`r`n")
+    if ($Row.Rule.PSObject.Properties.Name -contains 'compilerCodes') {
+        [void]$Doc.Append("Entspricht der Compilermeldung $((@($Row.Rule.compilerCodes) | ForEach-Object { '`' + $_ + '`' }) -join ', ').`r`n`r`n")
+    }
     if ($Row.Options.Count -gt 0) {
         [void]$Doc.Append("| Option | Typ | Vorgabe | Bedeutung |`r`n|---|---|---|---|`r`n")
         foreach ($Option in $Row.Options) {
