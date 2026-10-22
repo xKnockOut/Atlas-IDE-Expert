@@ -691,17 +691,30 @@ begin
     Result := -1;
 end;
 
-procedure CollectDeclarations(ANode: TSyntaxNode; AMap: TDictionary<Integer, TSyntaxNode>);
+// Iterativ (Bericht M1).
+procedure CollectDeclarations(ARoot: TSyntaxNode; AMap: TDictionary<Integer, TSyntaxNode>);
 var
+  Pending: TStack<TSyntaxNode>;
+  Node: TSyntaxNode;
   Index: Integer;
 begin
-  if (ANode.Kind in [TSyntaxKind.RoutineHeader, TSyntaxKind.PropertyDecl, TSyntaxKind.TypeDecl,
-    TSyntaxKind.Field, TSyntaxKind.ConstDecl, TSyntaxKind.VarDecl]) and not AMap.ContainsKey(ANode.StartOffset) then
-    AMap.Add(ANode.StartOffset, ANode);
-  if ANode.Kind = TSyntaxKind.Block then
-    Exit;
-  for Index := 0 to ANode.ChildCount - 1 do
-    CollectDeclarations(ANode[Index], AMap);
+  Pending := TStack<TSyntaxNode>.Create;
+  try
+    Pending.Push(ARoot);
+    while Pending.Count > 0 do
+    begin
+      Node := Pending.Pop;
+      if (Node.Kind in [TSyntaxKind.RoutineHeader, TSyntaxKind.PropertyDecl, TSyntaxKind.TypeDecl,
+        TSyntaxKind.Field, TSyntaxKind.ConstDecl, TSyntaxKind.VarDecl]) and not AMap.ContainsKey(Node.StartOffset) then
+        AMap.Add(Node.StartOffset, Node);
+      if Node.Kind = TSyntaxKind.Block then
+        Continue;
+      for Index := Node.ChildCount - 1 downto 0 do
+        Pending.Push(Node[Index]);
+    end;
+  finally
+    Pending.Free;
+  end;
 end;
 
 function SignatureOf(AHeader: TSyntaxNode): TDocSignature;
@@ -1254,7 +1267,9 @@ var
     Result := False;
   end;
 
-  // requirePublic: öffentliche Mitglieder von Typen im interface ohne Doku.
+  // requirePublic: öffentliche Mitglieder von Typen im interface ohne Doku. Die Rekursion steigt nur in
+  // verschachtelte Typdeklarationen ab (Tiefe wie die Schachtelung der Typen im Quelltext, unabhängig von
+  // Anweisungen und Ausdrücken) und bleibt deshalb (Bericht M1).
   procedure CheckPublic(ANode: TSyntaxNode; APublic: Boolean);
   var
     Index, First, Row: Integer;

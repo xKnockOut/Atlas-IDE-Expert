@@ -622,23 +622,36 @@ var
     AReport.Add(Use.NameRange, Message, Level, Fixes);
   end;
 
-  procedure Visit(ANode: TSyntaxNode);
+  // Iterativ (Bericht M1).
+  procedure Visit(ARoot: TSyntaxNode);
   var
+    Pending: TStack<TSyntaxNode>;
+    Node: TSyntaxNode;
     Index: Integer;
   begin
-    if ANode.Kind = TSyntaxKind.Attribute then
-    begin
-      if (ANode.StartPos.Line <= High(Lines)) and Lines[ANode.StartPos.Line] then
-        Exit;
-      for Index := 0 to ANode.ChildCount - 1 do
-        CheckItem(ANode[Index]);
-      Exit;
+    Pending := TStack<TSyntaxNode>.Create;
+    try
+      Pending.Push(ARoot);
+      while Pending.Count > 0 do
+      begin
+        Node := Pending.Pop;
+        if Node.Kind = TSyntaxKind.Attribute then
+        begin
+          if (Node.StartPos.Line <= High(Lines)) and Lines[Node.StartPos.Line] then
+            Continue;
+          for Index := 0 to Node.ChildCount - 1 do
+            CheckItem(Node[Index]);
+          Continue;
+        end;
+        // In Anweisungen gibt es keine Attribute.
+        if Node.Kind in [TSyntaxKind.Block, TSyntaxKind.AsmBlock] then
+          Continue;
+        for Index := Node.ChildCount - 1 downto 0 do
+          Pending.Push(Node[Index]);
+      end;
+    finally
+      Pending.Free;
     end;
-    // In Anweisungen gibt es keine Attribute.
-    if ANode.Kind in [TSyntaxKind.Block, TSyntaxKind.AsmBlock] then
-      Exit;
-    for Index := 0 to ANode.ChildCount - 1 do
-      Visit(ANode[Index]);
   end;
 
 var
@@ -738,17 +751,30 @@ var
   // Typnamen und Typparameter der Datei: gelten als bekannt.
   Declared: TDictionary<string, Boolean>;
 
-  procedure Collect(ANode: TSyntaxNode);
+  // Iterativ (Bericht M1).
+  procedure Collect(ARoot: TSyntaxNode);
   var
+    Pending: TStack<TSyntaxNode>;
+    Node: TSyntaxNode;
     Index: Integer;
   begin
-    if (ANode.Kind in [TSyntaxKind.TypeDecl, TSyntaxKind.ForwardType]) and (ANode.Name <> '') then
-      Declared.AddOrSetValue(LowerCase(ANode.Name), True)
-    else if ANode.Kind = TSyntaxKind.GenericParams then
-      for Index := 0 to ANode.ChildCount - 1 do
-        Declared.AddOrSetValue(LowerCase(ANode[Index].Name), True);
-    for Index := 0 to ANode.ChildCount - 1 do
-      Collect(ANode[Index]);
+    Pending := TStack<TSyntaxNode>.Create;
+    try
+      Pending.Push(ARoot);
+      while Pending.Count > 0 do
+      begin
+        Node := Pending.Pop;
+        if (Node.Kind in [TSyntaxKind.TypeDecl, TSyntaxKind.ForwardType]) and (Node.Name <> '') then
+          Declared.AddOrSetValue(LowerCase(Node.Name), True)
+        else if Node.Kind = TSyntaxKind.GenericParams then
+          for Index := 0 to Node.ChildCount - 1 do
+            Declared.AddOrSetValue(LowerCase(Node[Index].Name), True);
+        for Index := Node.ChildCount - 1 downto 0 do
+          Pending.Push(Node[Index]);
+      end;
+    finally
+      Pending.Free;
+    end;
   end;
 
   /// <summary>Kennt der Index AName als verschachtelten Typ (geerbte innere Typen sind ohne Präfix sichtbar)?
@@ -830,17 +856,30 @@ var
     AReport.Add(Range, Message, Level, Fixes);
   end;
 
-  procedure Visit(ANode: TSyntaxNode);
+  // Iterativ (Bericht M1).
+  procedure Visit(ARoot: TSyntaxNode);
   var
+    Pending: TStack<TSyntaxNode>;
+    Node: TSyntaxNode;
     Index: Integer;
   begin
-    if ANode.Kind in [TSyntaxKind.AsmBlock, TSyntaxKind.WithStatement, TSyntaxKind.Error] then
-      Exit;
-    if (ANode.Kind = TSyntaxKind.TypeReference) and not ((ANode.StartPos.Line <= High(Lines)) and
-      Lines[ANode.StartPos.Line]) then
-      CheckReference(ANode);
-    for Index := 0 to ANode.ChildCount - 1 do
-      Visit(ANode[Index]);
+    Pending := TStack<TSyntaxNode>.Create;
+    try
+      Pending.Push(ARoot);
+      while Pending.Count > 0 do
+      begin
+        Node := Pending.Pop;
+        if Node.Kind in [TSyntaxKind.AsmBlock, TSyntaxKind.WithStatement, TSyntaxKind.Error] then
+          Continue;
+        if (Node.Kind = TSyntaxKind.TypeReference) and not ((Node.StartPos.Line <= High(Lines)) and
+          Lines[Node.StartPos.Line]) then
+          CheckReference(Node);
+        for Index := Node.ChildCount - 1 downto 0 do
+          Pending.Push(Node[Index]);
+      end;
+    finally
+      Pending.Free;
+    end;
   end;
 
 var

@@ -264,29 +264,52 @@ var
       'nicht erreichbar (wie E2124).', [Symbol.Name, What, MethodName]), TRuleConfidence.High);
   end;
 
-  procedure Visit(ANode: TSyntaxNode; AClassMethod: TSyntaxNode);
+  // Iterativ (Bericht M1).
+  procedure Visit(ARoot: TSyntaxNode);
   var
+    Pending, PendingMethod: TStack<TSyntaxNode>;
+    Node, ClassMethod: TSyntaxNode;
     Index: Integer;
   begin
-    case ANode.Kind of
-      TSyntaxKind.InheritedExpr:
-        Exit;
-      TSyntaxKind.RoutineDecl:
-        if (Pos('.', ANode.Name) > 0) and IsClassMethod(ANode) then
-          AClassMethod := ANode;
-      TSyntaxKind.MemberAccess:
-        CheckMemberAccess(ANode);
-      TSyntaxKind.Identifier:
-        if (AClassMethod <> nil) and (ANode.Name <> '') then
-          CheckInstanceMember(ANode, AClassMethod);
+    Pending := TStack<TSyntaxNode>.Create;
+    PendingMethod := TStack<TSyntaxNode>.Create;
+    try
+      Pending.Push(ARoot);
+      PendingMethod.Push(nil);
+      while Pending.Count > 0 do
+      begin
+        Node := Pending.Pop;
+        ClassMethod := PendingMethod.Pop;
+        case Node.Kind of
+          TSyntaxKind.InheritedExpr:
+            Continue;
+          TSyntaxKind.RoutineDecl:
+            if (Pos('.', Node.Name) > 0) and IsClassMethod(Node) then
+              ClassMethod := Node;
+          TSyntaxKind.MemberAccess:
+            CheckMemberAccess(Node);
+          TSyntaxKind.Identifier:
+            if (ClassMethod <> nil) and (Node.Name <> '') then
+              CheckInstanceMember(Node, ClassMethod);
+        end;
+        for Index := Node.ChildCount - 1 downto 0 do
+          // Kopf der Klassenmethode (Parameter, Ergebnistyp) ist kein Zugriff.
+          if (Node.Kind <> TSyntaxKind.RoutineDecl) or (ClassMethod = nil) or (Node[Index].Kind = TSyntaxKind.Block) or
+            (Node[Index].Kind = TSyntaxKind.RoutineDecl) then
+          begin
+            Pending.Push(Node[Index]);
+            PendingMethod.Push(ClassMethod);
+          end
+          else if Node[Index].Kind in [TSyntaxKind.VarSection, TSyntaxKind.ConstSection] then
+          begin
+            Pending.Push(Node[Index]);
+            PendingMethod.Push(nil);
+          end;
+      end;
+    finally
+      PendingMethod.Free;
+      Pending.Free;
     end;
-    for Index := 0 to ANode.ChildCount - 1 do
-      // Kopf der Klassenmethode (Parameter, Ergebnistyp) ist kein Zugriff.
-      if (ANode.Kind <> TSyntaxKind.RoutineDecl) or (AClassMethod = nil) or (ANode[Index].Kind = TSyntaxKind.Block) or
-        (ANode[Index].Kind = TSyntaxKind.RoutineDecl) then
-        Visit(ANode[Index], AClassMethod)
-      else if ANode[Index].Kind in [TSyntaxKind.VarSection, TSyntaxKind.ConstSection] then
-        Visit(ANode[Index], nil);
   end;
 
   /// <summary>Wörter hinter read und write einer Property-Signatur (bei read FPunkt.X nur FPunkt).</summary>
@@ -386,7 +409,7 @@ begin
     Resolver.Namespaces := AContext.Namespaces;
     Resolver.PinTree(AContext.Tree, FileName);
     try
-      Visit(AContext.Tree.Root, nil);
+      Visit(AContext.Tree.Root);
     finally
       Resolver.UnpinTree;
     end;

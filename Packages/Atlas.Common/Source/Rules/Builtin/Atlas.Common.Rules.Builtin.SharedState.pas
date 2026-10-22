@@ -46,6 +46,7 @@ implementation
 
 uses
   System.StrUtils,
+  System.Generics.Collections,
   Atlas.Common.Documents.Contract,
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Index.Contract,
@@ -135,21 +136,33 @@ procedure TSharedState.CollectNames(ANode: TSyntaxNode; var ANames: TArray<strin
 var
   Index: Integer;
   Name: string;
+  Child: TSyntaxNode;
+  Pending: TStack<TSyntaxNode>;
 begin
-  for Index := 0 to ANode.ChildCount - 1 do
-  begin
-    case ANode[Index].Kind of
-      TSyntaxKind.Parameter, TSyntaxKind.VarDecl, TSyntaxKind.InlineVar, TSyntaxKind.ConstDecl,
-      TSyntaxKind.InlineConst:
-        for Name in SplitString(ANode[Index].Name, ',') do
-          ANames := ANames + [Trim(Name)];
-      TSyntaxKind.ForStatement, TSyntaxKind.ForInStatement:
-        // for var I := …
-        if ContainsText(Copy(SourceText(ANode[Index]), 1, 8), ' var ') then
-          ANames := ANames + [ANode[Index].Name];
+  // Iterativ (Bericht M1).
+  Pending := TStack<TSyntaxNode>.Create;
+  try
+    for Index := ANode.ChildCount - 1 downto 0 do
+      Pending.Push(ANode[Index]);
+    while Pending.Count > 0 do
+    begin
+      Child := Pending.Pop;
+      case Child.Kind of
+        TSyntaxKind.Parameter, TSyntaxKind.VarDecl, TSyntaxKind.InlineVar, TSyntaxKind.ConstDecl,
+        TSyntaxKind.InlineConst:
+          for Name in SplitString(Child.Name, ',') do
+            ANames := ANames + [Trim(Name)];
+        TSyntaxKind.ForStatement, TSyntaxKind.ForInStatement:
+          // for var I := …
+          if ContainsText(Copy(SourceText(Child), 1, 8), ' var ') then
+            ANames := ANames + [Child.Name];
+      end;
+      if not (Child.Kind in [TSyntaxKind.AnonymousMethod, TSyntaxKind.RoutineDecl]) then
+        for Index := Child.ChildCount - 1 downto 0 do
+          Pending.Push(Child[Index]);
     end;
-    if not (ANode[Index].Kind in [TSyntaxKind.AnonymousMethod, TSyntaxKind.RoutineDecl]) then
-      CollectNames(ANode[Index], ANames);
+  finally
+    Pending.Free;
   end;
 end;
 
@@ -162,25 +175,50 @@ end;
 function TSharedState.Mentions(ANode: TSyntaxNode; const AName: string): Boolean;
 var
   Index: Integer;
+  Node: TSyntaxNode;
+  Pending: TStack<TSyntaxNode>;
 begin
-  if (ANode.Kind = TSyntaxKind.Identifier) and SameText(ANode.Name, AName) then
-    Exit(True);
-  for Index := 0 to ANode.ChildCount - 1 do
-    if Mentions(ANode[Index], AName) then
-      Exit(True);
+  // Iterativ (Bericht M1).
   Result := False;
+  Pending := TStack<TSyntaxNode>.Create;
+  try
+    Pending.Push(ANode);
+    while Pending.Count > 0 do
+    begin
+      Node := Pending.Pop;
+      if (Node.Kind = TSyntaxKind.Identifier) and SameText(Node.Name, AName) then
+        Exit(True);
+      for Index := Node.ChildCount - 1 downto 0 do
+        Pending.Push(Node[Index]);
+    end;
+  finally
+    Pending.Free;
+  end;
 end;
 
 function TSharedState.HasLock(ANode: TSyntaxNode): Boolean;
 var
   Index: Integer;
+  Node: TSyntaxNode;
+  Pending: TStack<TSyntaxNode>;
 begin
-  if (ANode.Kind in [TSyntaxKind.Identifier, TSyntaxKind.MemberAccess]) and MatchText(ANode.Name, LockNames) then
-    Exit(True);
-  for Index := 0 to ANode.ChildCount - 1 do
-    if (ANode[Index].Kind <> TSyntaxKind.AnonymousMethod) and HasLock(ANode[Index]) then
-      Exit(True);
+  // Iterativ (Bericht M1).
   Result := False;
+  Pending := TStack<TSyntaxNode>.Create;
+  try
+    Pending.Push(ANode);
+    while Pending.Count > 0 do
+    begin
+      Node := Pending.Pop;
+      if (Node.Kind in [TSyntaxKind.Identifier, TSyntaxKind.MemberAccess]) and MatchText(Node.Name, LockNames) then
+        Exit(True);
+      for Index := Node.ChildCount - 1 downto 0 do
+        if Node[Index].Kind <> TSyntaxKind.AnonymousMethod then
+          Pending.Push(Node[Index]);
+    end;
+  finally
+    Pending.Free;
+  end;
 end;
 
 function TSharedState.Writes(AMethod: TSyntaxNode; ACollections: Boolean): TArray<TSharedWrite>;
@@ -206,9 +244,8 @@ var
     Writes_ := Writes_ + [Write];
   end;
 
-  procedure Visit(ANode: TSyntaxNode);
+  procedure VisitNode(ANode: TSyntaxNode);
   var
-    Index: Integer;
     Target, Value, Call: TSyntaxNode;
     Amount: string;
   begin
@@ -249,10 +286,30 @@ var
         MatchText(Call[0].Name, MutatingMethods) and Outside(Call[0][0]) then
         Add(TWriteKind.Collection, ANode, Call[0][0].Name, Call[0].Name, '');
     end;
-    for Index := 0 to ANode.ChildCount - 1 do
-      // Verschachtelte anonyme Methoden (Synchronize, Queue) laufen woanders.
-      if ANode[Index].Kind <> TSyntaxKind.AnonymousMethod then
-        Visit(ANode[Index]);
+  end;
+
+  procedure Visit(ARoot: TSyntaxNode);
+  var
+    Index: Integer;
+    Node: TSyntaxNode;
+    Pending: TStack<TSyntaxNode>;
+  begin
+    // Iterativ (Bericht M1).
+    Pending := TStack<TSyntaxNode>.Create;
+    try
+      Pending.Push(ARoot);
+      while Pending.Count > 0 do
+      begin
+        Node := Pending.Pop;
+        VisitNode(Node);
+        for Index := Node.ChildCount - 1 downto 0 do
+          // Verschachtelte anonyme Methoden (Synchronize, Queue) laufen woanders.
+          if Node[Index].Kind <> TSyntaxKind.AnonymousMethod then
+            Pending.Push(Node[Index]);
+      end;
+    finally
+      Pending.Free;
+    end;
   end;
 
 var
@@ -279,25 +336,33 @@ var
     Index: Integer;
     Child, TypeRef: TSyntaxNode;
     Name: string;
+    Pending: TStack<TSyntaxNode>;
   begin
-    for Index := 0 to ANode.ChildCount - 1 do
-    begin
-      if Found then
-        Exit;
-      Child := ANode[Index];
-      if Child.Kind in [TSyntaxKind.VarDecl, TSyntaxKind.InlineVar, TSyntaxKind.Parameter] then
-        for Name in SplitString(Child.Name, ',') do
-          if SameText(Trim(Name), AName) then
-          begin
-            Found := True;
-            TypeRef := Child.FindChild(TSyntaxKind.TypeReference);
-            if TypeRef <> nil then
-              ATypeName := TypeRef.Name;
-            Exit;
-          end;
-      // Verschachtelte Routinen und anonyme Methoden deklarieren eigene Namen.
-      if not (Child.Kind in [TSyntaxKind.AnonymousMethod, TSyntaxKind.RoutineDecl]) then
-        FindDecl(Child);
+    // Iterativ (Bericht M1).
+    Pending := TStack<TSyntaxNode>.Create;
+    try
+      for Index := ANode.ChildCount - 1 downto 0 do
+        Pending.Push(ANode[Index]);
+      while Pending.Count > 0 do
+      begin
+        Child := Pending.Pop;
+        if Child.Kind in [TSyntaxKind.VarDecl, TSyntaxKind.InlineVar, TSyntaxKind.Parameter] then
+          for Name in SplitString(Child.Name, ',') do
+            if SameText(Trim(Name), AName) then
+            begin
+              Found := True;
+              TypeRef := Child.FindChild(TSyntaxKind.TypeReference);
+              if TypeRef <> nil then
+                ATypeName := TypeRef.Name;
+              Exit;
+            end;
+        // Verschachtelte Routinen und anonyme Methoden deklarieren eigene Namen.
+        if not (Child.Kind in [TSyntaxKind.AnonymousMethod, TSyntaxKind.RoutineDecl]) then
+          for Index := Child.ChildCount - 1 downto 0 do
+            Pending.Push(Child[Index]);
+      end;
+    finally
+      Pending.Free;
     end;
   end;
 
@@ -488,28 +553,54 @@ var
     end;
   end;
 
-  procedure Visit(ANode, ARoutine: TSyntaxNode; AInLoop: Boolean);
+  procedure Visit(ARoot: TSyntaxNode);
   var
     Index: Integer;
-    Method: TSyntaxNode;
+    Node, Routine, Method: TSyntaxNode;
+    InLoop: Boolean;
+    Pending, Routines: TStack<TSyntaxNode>;
+    InLoops: TStack<Boolean>;
   begin
-    if ANode.Kind = TSyntaxKind.RoutineDecl then
-    begin
-      ARoutine := ANode;
-      AInLoop := False;
-    end
-    else if ANode.Kind in [TSyntaxKind.ForStatement, TSyntaxKind.ForInStatement, TSyntaxKind.WhileStatement,
-      TSyntaxKind.RepeatStatement] then
-      AInLoop := True
-    else if ANode.Kind = TSyntaxKind.Call then
-    begin
-      Method := AnonymousArgument(ANode);
-      if (Method <> nil) and (IsCallOf(ANode, 'TParallel', ['For']) or
-        (AInLoop and IsCallOf(ANode, 'TTask', ['Run', 'Create', 'Future']))) then
-        Report(Method, ARoutine);
+    // Iterativ (Bericht M1): zu jedem Knoten auf dem Stapel die umgebende Routine und ob er in einer Schleife liegt.
+    Pending := TStack<TSyntaxNode>.Create;
+    Routines := TStack<TSyntaxNode>.Create;
+    InLoops := TStack<Boolean>.Create;
+    try
+      Pending.Push(ARoot);
+      Routines.Push(nil);
+      InLoops.Push(False);
+      while Pending.Count > 0 do
+      begin
+        Node := Pending.Pop;
+        Routine := Routines.Pop;
+        InLoop := InLoops.Pop;
+        if Node.Kind = TSyntaxKind.RoutineDecl then
+        begin
+          Routine := Node;
+          InLoop := False;
+        end
+        else if Node.Kind in [TSyntaxKind.ForStatement, TSyntaxKind.ForInStatement, TSyntaxKind.WhileStatement,
+          TSyntaxKind.RepeatStatement] then
+          InLoop := True
+        else if Node.Kind = TSyntaxKind.Call then
+        begin
+          Method := AnonymousArgument(Node);
+          if (Method <> nil) and (IsCallOf(Node, 'TParallel', ['For']) or
+            (InLoop and IsCallOf(Node, 'TTask', ['Run', 'Create', 'Future']))) then
+            Report(Method, Routine);
+        end;
+        for Index := Node.ChildCount - 1 downto 0 do
+        begin
+          Pending.Push(Node[Index]);
+          Routines.Push(Routine);
+          InLoops.Push(InLoop and (Node.Kind <> TSyntaxKind.AnonymousMethod));
+        end;
+      end;
+    finally
+      InLoops.Free;
+      Routines.Free;
+      Pending.Free;
     end;
-    for Index := 0 to ANode.ChildCount - 1 do
-      Visit(ANode[Index], ARoutine, AInLoop and (ANode.Kind <> TSyntaxKind.AnonymousMethod));
   end;
 
 begin
@@ -519,7 +610,7 @@ begin
   SafeTypes := TRuleOptions.Strings(AContext.Options, 'threadSafeTypes', DefaultThreadSafeTypes);
   State := TSharedState.Create(AContext);
   try
-    Visit(AContext.Tree.Root, nil, False);
+    Visit(AContext.Tree.Root);
   finally
     State.Free;
   end;
@@ -577,41 +668,67 @@ var
     end;
   end;
 
-  procedure Visit(ANode, ARoutine: TSyntaxNode; AInLoop: Boolean);
+  procedure Visit(ARoot: TSyntaxNode);
   var
     Index: Integer;
-    Method: TSyntaxNode;
+    Node, Routine, Method: TSyntaxNode;
+    InLoop: Boolean;
     Owner: string;
+    Pending, Routines: TStack<TSyntaxNode>;
+    InLoops: TStack<Boolean>;
   begin
-    if ANode.Kind = TSyntaxKind.RoutineDecl then
-    begin
-      ARoutine := ANode;
-      AInLoop := False;
-      // TArbeiter.Execute einer Thread-Klasse.
-      if (LastDelimiter('.', ANode.Name) > 0) and SameText(Copy(ANode.Name, LastDelimiter('.', ANode.Name) + 1,
-        MaxInt), 'Execute') then
+    // Iterativ (Bericht M1): zu jedem Knoten auf dem Stapel die umgebende Routine und ob er in einer Schleife liegt.
+    Pending := TStack<TSyntaxNode>.Create;
+    Routines := TStack<TSyntaxNode>.Create;
+    InLoops := TStack<Boolean>.Create;
+    try
+      Pending.Push(ARoot);
+      Routines.Push(nil);
+      InLoops.Push(False);
+      while Pending.Count > 0 do
       begin
-        Owner := Copy(ANode.Name, 1, LastDelimiter('.', ANode.Name) - 1);
-        // Eigene Felder schreibt nur der Thread selbst; geteilt sind globale Variablen.
-        if IsThreadClass(Owner) then
-          Report(ANode, ANode, [TNameScope.Global]);
+        Node := Pending.Pop;
+        Routine := Routines.Pop;
+        InLoop := InLoops.Pop;
+        if Node.Kind = TSyntaxKind.RoutineDecl then
+        begin
+          Routine := Node;
+          InLoop := False;
+          // TArbeiter.Execute einer Thread-Klasse.
+          if (LastDelimiter('.', Node.Name) > 0) and SameText(Copy(Node.Name, LastDelimiter('.', Node.Name) + 1,
+            MaxInt), 'Execute') then
+          begin
+            Owner := Copy(Node.Name, 1, LastDelimiter('.', Node.Name) - 1);
+            // Eigene Felder schreibt nur der Thread selbst; geteilt sind globale Variablen.
+            if IsThreadClass(Owner) then
+              Report(Node, Node, [TNameScope.Global]);
+          end;
+        end
+        else if Node.Kind in [TSyntaxKind.ForStatement, TSyntaxKind.ForInStatement, TSyntaxKind.WhileStatement,
+          TSyntaxKind.RepeatStatement] then
+          InLoop := True
+        else if Node.Kind = TSyntaxKind.Call then
+        begin
+          Method := AnonymousArgument(Node);
+          // TTask in Schleifen und TParallel.For meldet parallel-for-shared-write.
+          if (Method <> nil) and ((not InLoop and IsCallOf(Node, 'TTask', ['Run', 'Create', 'Future'])) or
+            IsCallOf(Node, 'TThread', ['CreateAnonymousThread'])) then
+            // Eingefangene lokale Variablen schreibt nur dieser eine Thread neben dem Aufrufer; Felder und globale
+            // Variablen teilen sich alle Aufrufe.
+            Report(Method, Routine, [TNameScope.Field, TNameScope.Global]);
+        end;
+        for Index := Node.ChildCount - 1 downto 0 do
+        begin
+          Pending.Push(Node[Index]);
+          Routines.Push(Routine);
+          InLoops.Push(InLoop and (Node.Kind <> TSyntaxKind.AnonymousMethod));
+        end;
       end;
-    end
-    else if ANode.Kind in [TSyntaxKind.ForStatement, TSyntaxKind.ForInStatement, TSyntaxKind.WhileStatement,
-      TSyntaxKind.RepeatStatement] then
-      AInLoop := True
-    else if ANode.Kind = TSyntaxKind.Call then
-    begin
-      Method := AnonymousArgument(ANode);
-      // TTask in Schleifen und TParallel.For meldet parallel-for-shared-write.
-      if (Method <> nil) and ((not AInLoop and IsCallOf(ANode, 'TTask', ['Run', 'Create', 'Future'])) or
-        IsCallOf(ANode, 'TThread', ['CreateAnonymousThread'])) then
-        // Eingefangene lokale Variablen schreibt nur dieser eine Thread neben dem Aufrufer; Felder und globale
-        // Variablen teilen sich alle Aufrufe.
-        Report(Method, ARoutine, [TNameScope.Field, TNameScope.Global]);
+    finally
+      InLoops.Free;
+      Routines.Free;
+      Pending.Free;
     end;
-    for Index := 0 to ANode.ChildCount - 1 do
-      Visit(ANode[Index], ARoutine, AInLoop and (ANode.Kind <> TSyntaxKind.AnonymousMethod));
   end;
 
 begin
@@ -623,7 +740,7 @@ begin
   Ancestry := nil;
   State := TSharedState.Create(AContext);
   try
-    Visit(AContext.Tree.Root, nil, False);
+    Visit(AContext.Tree.Root);
   finally
     State.Free;
     Ancestry.Free;

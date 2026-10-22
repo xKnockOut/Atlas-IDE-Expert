@@ -105,6 +105,7 @@ implementation
 uses
   System.SysUtils,
   System.StrUtils,
+  System.Generics.Collections,
   Atlas.Common.Documents.Contract,
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Pascal.Contract,
@@ -444,16 +445,29 @@ var
     end;
   end;
 
-  procedure Visit(ANode: TSyntaxNode);
+  procedure Visit(ARoot: TSyntaxNode);
   var
     Index: Integer;
+    Node: TSyntaxNode;
+    Pending: TStack<TSyntaxNode>;
   begin
-    if (ANode.Kind = TSyntaxKind.BinaryExpr) and MatchStr(ANode.Name, ['=', '<>', '<', '<=', '>', '>=']) then
-      CheckComparison(ANode)
-    else if ANode.Kind = TSyntaxKind.CaseStatement then
-      CheckCase(ANode);
-    for Index := 0 to ANode.ChildCount - 1 do
-      Visit(ANode[Index]);
+    // Iterativ (Bericht M1).
+    Pending := TStack<TSyntaxNode>.Create;
+    try
+      Pending.Push(ARoot);
+      while Pending.Count > 0 do
+      begin
+        Node := Pending.Pop;
+        if (Node.Kind = TSyntaxKind.BinaryExpr) and MatchStr(Node.Name, ['=', '<>', '<', '<=', '>', '>=']) then
+          CheckComparison(Node)
+        else if Node.Kind = TSyntaxKind.CaseStatement then
+          CheckCase(Node);
+        for Index := Node.ChildCount - 1 downto 0 do
+          Pending.Push(Node[Index]);
+      end;
+    finally
+      Pending.Free;
+    end;
   end;
 
 begin
@@ -560,21 +574,32 @@ var
   var
     Found: TSyntaxNode;
 
-    procedure Search(ANode: TSyntaxNode);
+    procedure Search(ARoot: TSyntaxNode);
     var
       Index: Integer;
+      Node: TSyntaxNode;
+      Pending: TStack<TSyntaxNode>;
     begin
-      if Found <> nil then
-        Exit;
-      if (ANode.Kind = TSyntaxKind.TypeDecl) and SameText(ANode.Name, ASymbol.Name) and
-        (ANode.StartPos.Line <= ASymbol.SelectionRange.StartPos.Line) and
-        (ANode.EndPos.Line >= ASymbol.SelectionRange.StartPos.Line) then
-      begin
-        Found := ANode;
-        Exit;
+      // Iterativ (Bericht M1).
+      Pending := TStack<TSyntaxNode>.Create;
+      try
+        Pending.Push(ARoot);
+        while Pending.Count > 0 do
+        begin
+          Node := Pending.Pop;
+          if (Node.Kind = TSyntaxKind.TypeDecl) and SameText(Node.Name, ASymbol.Name) and
+            (Node.StartPos.Line <= ASymbol.SelectionRange.StartPos.Line) and
+            (Node.EndPos.Line >= ASymbol.SelectionRange.StartPos.Line) then
+          begin
+            Found := Node;
+            Exit;
+          end;
+          for Index := Node.ChildCount - 1 downto 0 do
+            Pending.Push(Node[Index]);
+        end;
+      finally
+        Pending.Free;
       end;
-      for Index := 0 to ANode.ChildCount - 1 do
-        Search(ANode[Index]);
     end;
 
   begin
@@ -620,63 +645,86 @@ var
     LowValue, HighValue: Int64;
     Index: Integer;
     Symbol, TypeInfo: TResolvedSymbol;
+    Node: TSyntaxNode;
+    OuterName: string;
+    Seen: TList<TSyntaxNode>;
   begin
+    // Iterativ (Bericht M1): benannte Typen dieser Datei (TIndex = TBereich) werden in einer Schleife aufgelöst;
+    // die Meldung nennt den äußersten Namen. Seen schützt vor Zyklen wie TA = TB; TB = TA.
     AInfo := Default(TIndexInfo);
     Result := False;
-    if ANode = nil then
-      Exit;
-    case ANode.Kind of
-      TSyntaxKind.SubrangeType:
-        if (ANode.ChildCount = 2) and Scope.Values.EvaluateNode(ANode[0], LowValue) and
-          Scope.Values.EvaluateNode(ANode[1], HighValue) and (HighValue >= LowValue) then
-        begin
-          AInfo.Count := HighValue - LowValue + 1;
-          AInfo.Text := Scope.Text(ANode);
-          Result := True;
+    OuterName := '';
+    Node := ANode;
+    Seen := TList<TSyntaxNode>.Create;
+    try
+      while (Node <> nil) and not Seen.Contains(Node) do
+      begin
+        Seen.Add(Node);
+        case Node.Kind of
+          TSyntaxKind.SubrangeType:
+            if (Node.ChildCount = 2) and Scope.Values.EvaluateNode(Node[0], LowValue) and
+              Scope.Values.EvaluateNode(Node[1], HighValue) and (HighValue >= LowValue) then
+            begin
+              AInfo.Count := HighValue - LowValue + 1;
+              AInfo.Text := Scope.Text(Node);
+              Result := True;
+            end;
+          TSyntaxKind.EnumType:
+            begin
+              for Index := 0 to Node.ChildCount - 1 do
+                if Node[Index].Kind = TSyntaxKind.Identifier then
+                  AInfo.Names := AInfo.Names + [Node[Index].Name]
+                else
+                  Exit;
+              AInfo.Count := Length(AInfo.Names);
+              AInfo.Text := Scope.Text(Node);
+              Result := AInfo.Count > 0;
+            end;
+          TSyntaxKind.TypeReference:
+            begin
+              if (Node.ChildCount > 0) or (Pos('.', Node.Name) > 0) then
+                Exit;
+              Symbol := Scope.Resolver.Resolve(AContext.Tree, Scope.FileName, Node.StartPos);
+              if not Symbol.Found or SameText(Symbol.UnitName, 'System') then
+              begin
+                // Eingebaute Typen haben keine Deklaration im Quelltext.
+                AInfo.Count := BuiltinIndexCount(Node.Name);
+                AInfo.Text := Node.Name;
+                Result := AInfo.Count > 0;
+              end
+              else
+              begin
+                if not Scope.DeclarationSure(Symbol, Node) then
+                  Exit;
+                // Typ dieser Datei: Die Extraktion aus dem Baum kennt keine Bedingungen, deshalb die Direktiven in
+                // der Deklaration selbst prüfen (TypeDeclOf liefert dann nil).
+                if ((Symbol.Kind = TResolvedKind.Local) or (Symbol.FileName = '') or SameText(Symbol.FileName,
+                  Scope.FileName)) and (TypeDeclOf(Symbol) = nil) then
+                  Exit;
+                TypeInfo := Scope.Resolver.ResolveType(AContext.Tree, Scope.FileName, Node.StartPos);
+                if TypeInfo.Found and (TypeInfo.SymbolKind = TIndexSymbolKind.EnumType) then
+                begin
+                  Result := Scope.Values.EnumMembers(TypeInfo, AInfo.Names);
+                  AInfo.Count := Length(AInfo.Names);
+                  AInfo.Text := Node.Name;
+                end
+                else
+                begin
+                  // Teilbereich oder Aufzählung als benannter Typ dieser Datei: TIndex = 1..5.
+                  if OuterName = '' then
+                    OuterName := Node.Name;
+                  Node := DeclaredType(TypeDeclOf(Symbol));
+                  Continue;
+                end;
+              end;
+            end;
         end;
-      TSyntaxKind.EnumType:
-        begin
-          for Index := 0 to ANode.ChildCount - 1 do
-            if ANode[Index].Kind = TSyntaxKind.Identifier then
-              AInfo.Names := AInfo.Names + [ANode[Index].Name]
-            else
-              Exit;
-          AInfo.Count := Length(AInfo.Names);
-          AInfo.Text := Scope.Text(ANode);
-          Result := AInfo.Count > 0;
-        end;
-      TSyntaxKind.TypeReference:
-        begin
-          if (ANode.ChildCount > 0) or (Pos('.', ANode.Name) > 0) then
-            Exit;
-          Symbol := Scope.Resolver.Resolve(AContext.Tree, Scope.FileName, ANode.StartPos);
-          if not Symbol.Found or SameText(Symbol.UnitName, 'System') then
-          begin
-            // Eingebaute Typen haben keine Deklaration im Quelltext.
-            AInfo.Count := BuiltinIndexCount(ANode.Name);
-            AInfo.Text := ANode.Name;
-            Exit(AInfo.Count > 0);
-          end;
-          if not Scope.DeclarationSure(Symbol, ANode) then
-            Exit;
-          // Typ dieser Datei: Die Extraktion aus dem Baum kennt keine Bedingungen, deshalb die Direktiven in der
-          // Deklaration selbst prüfen (TypeDeclOf liefert dann nil).
-          if ((Symbol.Kind = TResolvedKind.Local) or (Symbol.FileName = '') or SameText(Symbol.FileName,
-            Scope.FileName)) and (TypeDeclOf(Symbol) = nil) then
-            Exit;
-          TypeInfo := Scope.Resolver.ResolveType(AContext.Tree, Scope.FileName, ANode.StartPos);
-          if TypeInfo.Found and (TypeInfo.SymbolKind = TIndexSymbolKind.EnumType) then
-          begin
-            Result := Scope.Values.EnumMembers(TypeInfo, AInfo.Names);
-            AInfo.Count := Length(AInfo.Names);
-            AInfo.Text := ANode.Name;
-            Exit;
-          end;
-          // Teilbereich oder Aufzählung als benannter Typ dieser Datei: TIndex = 1..5.
-          Result := IndexInfo(DeclaredType(TypeDeclOf(Symbol)), AInfo);
-          if Result then
-            AInfo.Text := ANode.Name;
-        end;
+        Break;
+      end;
+      if Result and (OuterName <> '') then
+        AInfo.Text := OuterName;
+    finally
+      Seen.Free;
     end;
   end;
 
@@ -804,6 +852,8 @@ var
     // Werte der Felder: verschachtelte Records und Arrays sind hier nicht bekannt.
   end;
 
+  // CheckArray und CheckValue rufen sich gegenseitig auf; die Rekursion bleibt (Bericht M1): jede Ebene ist eine
+  // Dimension bzw. ein Elementtyp des deklarierten Arraytyps und ein Klammerpaar der Konstanten, keine Kette.
   procedure CheckArray(AArray: TSyntaxNode; ADimension: Integer; AValue: TSyntaxNode);
   var
     Dimensions, Index: Integer;
@@ -877,15 +927,28 @@ var
       CheckRecord(TypeInfo, AValue);
   end;
 
-  procedure Visit(ANode: TSyntaxNode);
+  procedure Visit(ARoot: TSyntaxNode);
   var
     Index: Integer;
+    Node: TSyntaxNode;
+    Pending: TStack<TSyntaxNode>;
   begin
-    if (ANode.Kind in [TSyntaxKind.ConstDecl, TSyntaxKind.VarDecl]) and (ANode.ChildCount >= 2) and
-      (ANode[ANode.ChildCount - 1].Kind = TSyntaxKind.ParenExpr) and not HasConditional(ANode) then
-      CheckValue(ANode[0], ANode[ANode.ChildCount - 1]);
-    for Index := 0 to ANode.ChildCount - 1 do
-      Visit(ANode[Index]);
+    // Iterativ (Bericht M1).
+    Pending := TStack<TSyntaxNode>.Create;
+    try
+      Pending.Push(ARoot);
+      while Pending.Count > 0 do
+      begin
+        Node := Pending.Pop;
+        if (Node.Kind in [TSyntaxKind.ConstDecl, TSyntaxKind.VarDecl]) and (Node.ChildCount >= 2) and
+          (Node[Node.ChildCount - 1].Kind = TSyntaxKind.ParenExpr) and not HasConditional(Node) then
+          CheckValue(Node[0], Node[Node.ChildCount - 1]);
+        for Index := Node.ChildCount - 1 downto 0 do
+          Pending.Push(Node[Index]);
+      end;
+    finally
+      Pending.Free;
+    end;
   end;
 
 begin
@@ -1128,23 +1191,36 @@ var
     end;
   end;
 
-  procedure Visit(ANode: TSyntaxNode);
+  procedure Visit(ARoot: TSyntaxNode);
   var
     Index: Integer;
+    Node: TSyntaxNode;
+    Pending: TStack<TSyntaxNode>;
   begin
-    case ANode.Kind of
-      TSyntaxKind.CaseStatement:
-        begin
-          CheckCase(ANode);
-          CheckLabels(ANode);
+    // Iterativ (Bericht M1).
+    Pending := TStack<TSyntaxNode>.Create;
+    try
+      Pending.Push(ARoot);
+      while Pending.Count > 0 do
+      begin
+        Node := Pending.Pop;
+        case Node.Kind of
+          TSyntaxKind.CaseStatement:
+            begin
+              CheckCase(Node);
+              CheckLabels(Node);
+            end;
+          TSyntaxKind.ForStatement:
+            CheckFor(Node);
+          TSyntaxKind.ArrayType:
+            CheckBounds(Node);
         end;
-      TSyntaxKind.ForStatement:
-        CheckFor(ANode);
-      TSyntaxKind.ArrayType:
-        CheckBounds(ANode);
+        for Index := Node.ChildCount - 1 downto 0 do
+          Pending.Push(Node[Index]);
+      end;
+    finally
+      Pending.Free;
     end;
-    for Index := 0 to ANode.ChildCount - 1 do
-      Visit(ANode[Index]);
   end;
 
 begin
@@ -1274,14 +1350,27 @@ var
     AReport.Add(TTextRange.Create(ANode.StartPos, ANode.EndPos), Message, TRuleConfidence.High, Fixes);
   end;
 
-  procedure Visit(ANode: TSyntaxNode);
+  procedure Visit(ARoot: TSyntaxNode);
   var
     Index: Integer;
+    Node: TSyntaxNode;
+    Pending: TStack<TSyntaxNode>;
   begin
-    if ANode.Kind = TSyntaxKind.Call then
-      CheckCast(ANode);
-    for Index := 0 to ANode.ChildCount - 1 do
-      Visit(ANode[Index]);
+    // Iterativ (Bericht M1).
+    Pending := TStack<TSyntaxNode>.Create;
+    try
+      Pending.Push(ARoot);
+      while Pending.Count > 0 do
+      begin
+        Node := Pending.Pop;
+        if Node.Kind = TSyntaxKind.Call then
+          CheckCast(Node);
+        for Index := Node.ChildCount - 1 downto 0 do
+          Pending.Push(Node[Index]);
+      end;
+    finally
+      Pending.Free;
+    end;
   end;
 
 begin

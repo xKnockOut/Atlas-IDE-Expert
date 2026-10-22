@@ -615,24 +615,35 @@ var
   end;
 
   // Inline-Variablen und for var dieses Bereichs (nicht verschachtelter anonymer Methoden), die AOffset sehen.
-  procedure VisitInline(ANode: TSyntaxNode);
+  // Iterativ (Bericht M1).
+  procedure VisitInline(ARoot: TSyntaxNode);
   var
+    Pending: TStack<TSyntaxNode>;
+    Node: TSyntaxNode;
     I: Integer;
   begin
-    if Found then
-      Exit;
-    if (ANode <> AScope) and IsCaptureScope(ANode) then
-      Exit;
-    if (ANode.Kind in [TSyntaxKind.InlineVar, TSyntaxKind.InlineConst]) and HasName(ANode.Name, AName) and
-      (ANode.StartOffset <= AOffset) and (ANode.Parent <> nil) and (AOffset <= ANode.Parent.EndOffset) and
-      Active(ANode) then
-      Take(TCaptureDeclKind.Other, ANode, '')
-    else if (ANode.Kind in [TSyntaxKind.ForStatement, TSyntaxKind.ForInStatement]) and
-      SameText(ANode.Name, AName) and (ANode.StartOffset <= AOffset) and (AOffset <= ANode.EndOffset) and
-      TRoutineLocals.IsInlineFor(ATokens, ANode) and Active(ANode) then
-      Take(TCaptureDeclKind.Other, ANode, '');
-    for I := 0 to ANode.ChildCount - 1 do
-      VisitInline(ANode[I]);
+    Pending := TStack<TSyntaxNode>.Create;
+    try
+      Pending.Push(ARoot);
+      while (Pending.Count > 0) and not Found do
+      begin
+        Node := Pending.Pop;
+        if (Node <> AScope) and IsCaptureScope(Node) then
+          Continue;
+        if (Node.Kind in [TSyntaxKind.InlineVar, TSyntaxKind.InlineConst]) and HasName(Node.Name, AName) and
+          (Node.StartOffset <= AOffset) and (Node.Parent <> nil) and (AOffset <= Node.Parent.EndOffset) and
+          Active(Node) then
+          Take(TCaptureDeclKind.Other, Node, '')
+        else if (Node.Kind in [TSyntaxKind.ForStatement, TSyntaxKind.ForInStatement]) and
+          SameText(Node.Name, AName) and (Node.StartOffset <= AOffset) and (AOffset <= Node.EndOffset) and
+          TRoutineLocals.IsInlineFor(ATokens, Node) and Active(Node) then
+          Take(TCaptureDeclKind.Other, Node, '');
+        for I := Node.ChildCount - 1 downto 0 do
+          Pending.Push(Node[I]);
+      end;
+    finally
+      Pending.Free;
+    end;
   end;
 
 begin
@@ -908,14 +919,36 @@ var
       AReport.Add(TTextRange.Create(AIdent.StartPos, AIdent.EndPos), Message, TRuleConfidence.High);
   end;
 
-  procedure Visit(ANode: TSyntaxNode; AInAnonymous: Boolean);
+  // Iterativ (Bericht M1).
+  procedure Visit(ARoot: TSyntaxNode);
   var
+    Pending: TStack<TSyntaxNode>;
+    PendingInAnonymous: TStack<Boolean>;
+    Node: TSyntaxNode;
+    InAnonymous: Boolean;
     Index: Integer;
   begin
-    if AInAnonymous and (ANode.Kind = TSyntaxKind.Identifier) then
-      CheckIdentifier(ANode);
-    for Index := 0 to ANode.ChildCount - 1 do
-      Visit(ANode[Index], AInAnonymous or (ANode.Kind = TSyntaxKind.AnonymousMethod));
+    Pending := TStack<TSyntaxNode>.Create;
+    PendingInAnonymous := TStack<Boolean>.Create;
+    try
+      Pending.Push(ARoot);
+      PendingInAnonymous.Push(False);
+      while Pending.Count > 0 do
+      begin
+        Node := Pending.Pop;
+        InAnonymous := PendingInAnonymous.Pop;
+        if InAnonymous and (Node.Kind = TSyntaxKind.Identifier) then
+          CheckIdentifier(Node);
+        for Index := Node.ChildCount - 1 downto 0 do
+        begin
+          Pending.Push(Node[Index]);
+          PendingInAnonymous.Push(InAnonymous or (Node.Kind = TSyntaxKind.AnonymousMethod));
+        end;
+      end;
+    finally
+      PendingInAnonymous.Free;
+      Pending.Free;
+    end;
   end;
 
 begin
@@ -926,7 +959,7 @@ begin
   Lines := TTextLines.SplitLines(AContext.Text, LineBreak);
   Reported := TList<string>.Create;
   try
-    Visit(AContext.Tree.Root, False);
+    Visit(AContext.Tree.Root);
   finally
     Reported.Free;
   end;

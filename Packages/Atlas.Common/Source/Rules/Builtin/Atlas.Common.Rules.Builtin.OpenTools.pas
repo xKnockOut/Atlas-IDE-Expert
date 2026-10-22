@@ -226,40 +226,59 @@ var
     Result := False;
   end;
 
-  // Innerste Routine um AOffset; nil außerhalb.
+  // Innerste Routine um AOffset; nil außerhalb. Iterativ (Bericht M1): Suche in Vorordnung über die Knoten um
+  // AOffset; jede gefundene Routine ersetzt das Ergebnis, und die Suche geht nur in ihr weiter.
   function RoutineAt(ANode: TSyntaxNode; AOffset: Integer): TSyntaxNode;
   var
+    Pending: TStack<TSyntaxNode>;
+    Node: TSyntaxNode;
     Index: Integer;
-    Inner: TSyntaxNode;
   begin
     Result := nil;
-    if (AOffset < ANode.StartOffset) or (AOffset >= ANode.EndOffset) then
-      Exit;
-    if ANode.Kind = TSyntaxKind.RoutineDecl then
-      Result := ANode;
-    for Index := 0 to ANode.ChildCount - 1 do
-    begin
-      Inner := RoutineAt(ANode[Index], AOffset);
-      if Inner <> nil then
-        Exit(Inner);
+    Pending := TStack<TSyntaxNode>.Create;
+    try
+      Pending.Push(ANode);
+      while Pending.Count > 0 do
+      begin
+        Node := Pending.Pop;
+        if (AOffset < Node.StartOffset) or (AOffset >= Node.EndOffset) then
+          Continue;
+        if Node.Kind = TSyntaxKind.RoutineDecl then
+        begin
+          Result := Node;
+          Pending.Clear;
+        end;
+        for Index := Node.ChildCount - 1 downto 0 do
+          Pending.Push(Node[Index]);
+      end;
+    finally
+      Pending.Free;
     end;
   end;
 
-  // Äußerste Routine um AOffset; nil außerhalb.
+  // Äußerste Routine um AOffset; nil außerhalb. Iterativ (Bericht M1).
   function OuterRoutineAt(ANode: TSyntaxNode; AOffset: Integer): TSyntaxNode;
   var
+    Pending: TStack<TSyntaxNode>;
+    Node: TSyntaxNode;
     Index: Integer;
   begin
     Result := nil;
-    if (AOffset < ANode.StartOffset) or (AOffset >= ANode.EndOffset) then
-      Exit;
-    if ANode.Kind = TSyntaxKind.RoutineDecl then
-      Exit(ANode);
-    for Index := 0 to ANode.ChildCount - 1 do
-    begin
-      Result := OuterRoutineAt(ANode[Index], AOffset);
-      if Result <> nil then
-        Exit;
+    Pending := TStack<TSyntaxNode>.Create;
+    try
+      Pending.Push(ANode);
+      while Pending.Count > 0 do
+      begin
+        Node := Pending.Pop;
+        if (AOffset < Node.StartOffset) or (AOffset >= Node.EndOffset) then
+          Continue;
+        if Node.Kind = TSyntaxKind.RoutineDecl then
+          Exit(Node);
+        for Index := Node.ChildCount - 1 downto 0 do
+          Pending.Push(Node[Index]);
+      end;
+    finally
+      Pending.Free;
     end;
   end;
 
@@ -282,21 +301,30 @@ var
         end;
   end;
 
+  // Iterativ (Bericht M1).
   function FindClassDecl(ANode: TSyntaxNode; const AName: string): TSyntaxNode;
   var
+    Pending: TStack<TSyntaxNode>;
+    Node: TSyntaxNode;
     Index: Integer;
   begin
     Result := nil;
-    if (ANode.Kind = TSyntaxKind.TypeDecl) and SameText(ANode.Name, AName) and
-      (ANode.FindChild(TSyntaxKind.ClassType) <> nil) then
-      Exit(ANode);
-    if ANode.Kind in [TSyntaxKind.Block, TSyntaxKind.RoutineDecl] then
-      Exit;
-    for Index := 0 to ANode.ChildCount - 1 do
-    begin
-      Result := FindClassDecl(ANode[Index], AName);
-      if Result <> nil then
-        Exit;
+    Pending := TStack<TSyntaxNode>.Create;
+    try
+      Pending.Push(ANode);
+      while Pending.Count > 0 do
+      begin
+        Node := Pending.Pop;
+        if (Node.Kind = TSyntaxKind.TypeDecl) and SameText(Node.Name, AName) and
+          (Node.FindChild(TSyntaxKind.ClassType) <> nil) then
+          Exit(Node);
+        if Node.Kind in [TSyntaxKind.Block, TSyntaxKind.RoutineDecl] then
+          Continue;
+        for Index := Node.ChildCount - 1 downto 0 do
+          Pending.Push(Node[Index]);
+      end;
+    finally
+      Pending.Free;
     end;
   end;
 

@@ -644,15 +644,28 @@ var
     end;
   end;
 
-  procedure Visit(ANode: TSyntaxNode);
+  procedure Visit(ARoot: TSyntaxNode);
   var
     Index: Integer;
+    Node: TSyntaxNode;
+    Pending: TStack<TSyntaxNode>;
   begin
-    if ANode.Kind = TSyntaxKind.TypeDecl then
-      AddMethods(ANode);
-    for Index := 0 to ANode.ChildCount - 1 do
-      if ANode[Index].Kind in Containers then
-        Visit(ANode[Index]);
+    // Iterativ (Bericht M1).
+    Pending := TStack<TSyntaxNode>.Create;
+    try
+      Pending.Push(ARoot);
+      while Pending.Count > 0 do
+      begin
+        Node := Pending.Pop;
+        if Node.Kind = TSyntaxKind.TypeDecl then
+          AddMethods(Node);
+        for Index := Node.ChildCount - 1 downto 0 do
+          if Node[Index].Kind in Containers then
+            Pending.Push(Node[Index]);
+      end;
+    finally
+      Pending.Free;
+    end;
   end;
 
 begin
@@ -1010,55 +1023,84 @@ var
   function Assigned_(ANode: TSyntaxNode; const AName: string): Boolean;
   var
     Index: Integer;
+    Node: TSyntaxNode;
+    Pending: TStack<TSyntaxNode>;
   begin
-    if (ANode.Kind = TSyntaxKind.AssignStatement) and (ANode.ChildCount = 2) and
-      (ANode[0].Kind = TSyntaxKind.Identifier) and SameText(ANode[0].Name, AName) then
-      Exit(True);
-    for Index := 0 to ANode.ChildCount - 1 do
-      if Assigned_(ANode[Index], AName) then
-        Exit(True);
+    // Iterativ (Bericht M1).
     Result := False;
+    Pending := TStack<TSyntaxNode>.Create;
+    try
+      Pending.Push(ANode);
+      while Pending.Count > 0 do
+      begin
+        Node := Pending.Pop;
+        if (Node.Kind = TSyntaxKind.AssignStatement) and (Node.ChildCount = 2) and
+          (Node[0].Kind = TSyntaxKind.Identifier) and SameText(Node[0].Name, AName) then
+          Exit(True);
+        for Index := Node.ChildCount - 1 downto 0 do
+          Pending.Push(Node[Index]);
+      end;
+    finally
+      Pending.Free;
+    end;
   end;
 
   // Deklaration der Methode in der Klasse: Kopf mit gleichem Namen und demselben Parameter an derselben Stelle.
   function DeclarationHeader(const AClassName, AMethod, AParam: string; AParamIndex: Integer): TSyntaxNode;
 
-    function Search(ANode: TSyntaxNode; AInClass: Boolean): TSyntaxNode;
+    function Search(ARoot: TSyntaxNode): TSyntaxNode;
     var
       Index, Position: Integer;
-      Params: TSyntaxNode;
+      Node, Params: TSyntaxNode;
       Name: string;
+      InClass: Boolean;
+      Pending: TStack<TSyntaxNode>;
+      PendingInClass: TStack<Boolean>;
     begin
+      // Iterativ (Bericht M1): zu jedem Knoten auf dem Stapel, ob er in der Klasse AClassName liegt.
       Result := nil;
-      if ANode.Kind = TSyntaxKind.TypeDecl then
-        AInClass := SameText(ANode.Name, AClassName);
-      if AInClass and (ANode.Kind = TSyntaxKind.RoutineHeader) and SameText(ANode.Name, AMethod) then
-      begin
-        Params := ANode.FindChild(TSyntaxKind.Parameters);
-        Position := 0;
-        if Params <> nil then
-          for Index := 0 to Params.ChildCount - 1 do
-            if Params[Index].Kind = TSyntaxKind.Parameter then
-              for Name in SplitNames(Params[Index].Name) do
-              begin
-                if (Position = AParamIndex) and SameText(Name, AParam) then
-                  Exit(ANode);
-                Inc(Position);
-              end;
-        Exit;
-      end;
-      if ANode.Kind in [TSyntaxKind.ImplementationSection, TSyntaxKind.RoutineDecl] then
-        Exit;
-      for Index := 0 to ANode.ChildCount - 1 do
-      begin
-        Result := Search(ANode[Index], AInClass);
-        if Result <> nil then
-          Exit;
+      Pending := TStack<TSyntaxNode>.Create;
+      PendingInClass := TStack<Boolean>.Create;
+      try
+        Pending.Push(ARoot);
+        PendingInClass.Push(False);
+        while Pending.Count > 0 do
+        begin
+          Node := Pending.Pop;
+          InClass := PendingInClass.Pop;
+          if Node.Kind = TSyntaxKind.TypeDecl then
+            InClass := SameText(Node.Name, AClassName);
+          if InClass and (Node.Kind = TSyntaxKind.RoutineHeader) and SameText(Node.Name, AMethod) then
+          begin
+            Params := Node.FindChild(TSyntaxKind.Parameters);
+            Position := 0;
+            if Params <> nil then
+              for Index := 0 to Params.ChildCount - 1 do
+                if Params[Index].Kind = TSyntaxKind.Parameter then
+                  for Name in SplitNames(Params[Index].Name) do
+                  begin
+                    if (Position = AParamIndex) and SameText(Name, AParam) then
+                      Exit(Node);
+                    Inc(Position);
+                  end;
+            Continue;
+          end;
+          if Node.Kind in [TSyntaxKind.ImplementationSection, TSyntaxKind.RoutineDecl] then
+            Continue;
+          for Index := Node.ChildCount - 1 downto 0 do
+          begin
+            Pending.Push(Node[Index]);
+            PendingInClass.Push(InClass);
+          end;
+        end;
+      finally
+        PendingInClass.Free;
+        Pending.Free;
       end;
     end;
 
   begin
-    Result := Search(AContext.Tree.Root, False);
+    Result := Search(AContext.Tree.Root);
   end;
 
   // Globale Variable der Unit vor ARoutine.
@@ -1168,18 +1210,31 @@ var
     Name, ClassName: string;
     HasSender: Boolean;
 
-    procedure CheckInline(ANode: TSyntaxNode);
+    procedure CheckInline(ARoot: TSyntaxNode);
     var
       Item: Integer;
       InlineName: string;
+      Node: TSyntaxNode;
+      Pending: TStack<TSyntaxNode>;
     begin
-      if ANode.Kind = TSyntaxKind.InlineVar then
-        for InlineName in SplitNames(ANode.Name) do
-          CheckName(ARoutine, ClassName, InlineName, False, ANode, -1);
-      if ANode.Kind in [TSyntaxKind.RoutineDecl, TSyntaxKind.AnonymousMethod] then
-        Exit;
-      for Item := 0 to ANode.ChildCount - 1 do
-        CheckInline(ANode[Item]);
+      // Iterativ (Bericht M1).
+      Pending := TStack<TSyntaxNode>.Create;
+      try
+        Pending.Push(ARoot);
+        while Pending.Count > 0 do
+        begin
+          Node := Pending.Pop;
+          if Node.Kind = TSyntaxKind.InlineVar then
+            for InlineName in SplitNames(Node.Name) do
+              CheckName(ARoutine, ClassName, InlineName, False, Node, -1);
+          if Node.Kind in [TSyntaxKind.RoutineDecl, TSyntaxKind.AnonymousMethod] then
+            Continue;
+          for Item := Node.ChildCount - 1 downto 0 do
+            Pending.Push(Node[Item]);
+        end;
+      finally
+        Pending.Free;
+      end;
     end;
 
   begin
@@ -1224,21 +1279,35 @@ var
       else if Child.Kind = TSyntaxKind.Block then
         CheckInline(Child)
       else if Child.Kind = TSyntaxKind.RoutineDecl then
+        // Die Rekursion bleibt (Bericht M1): sie geht nur über verschachtelte Routinendeklarationen.
         CheckRoutine(Child, ClassName);
     end;
   end;
 
-  procedure Visit(ANode: TSyntaxNode);
+  procedure Visit(ARoot: TSyntaxNode);
   var
     Index: Integer;
+    Node: TSyntaxNode;
+    Pending: TStack<TSyntaxNode>;
   begin
-    if ANode.Kind = TSyntaxKind.RoutineDecl then
-    begin
-      CheckRoutine(ANode, '');
-      Exit;
+    // Iterativ (Bericht M1).
+    Pending := TStack<TSyntaxNode>.Create;
+    try
+      Pending.Push(ARoot);
+      while Pending.Count > 0 do
+      begin
+        Node := Pending.Pop;
+        if Node.Kind = TSyntaxKind.RoutineDecl then
+        begin
+          CheckRoutine(Node, '');
+          Continue;
+        end;
+        for Index := Node.ChildCount - 1 downto 0 do
+          Pending.Push(Node[Index]);
+      end;
+    finally
+      Pending.Free;
     end;
-    for Index := 0 to ANode.ChildCount - 1 do
-      Visit(ANode[Index]);
   end;
 
 var

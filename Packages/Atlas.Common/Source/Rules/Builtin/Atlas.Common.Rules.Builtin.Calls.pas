@@ -51,6 +51,7 @@ implementation
 uses
   System.SysUtils,
   System.StrUtils,
+  System.Generics.Collections,
   Atlas.Common.Documents.Contract,
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Index.Contract,
@@ -222,29 +223,39 @@ var
   end;
 
   /// <summary>Kopf einer Routine dieser Datei, die der Resolver ohne Index-Eintrag liefert (verschachtelte
-  /// Routinen): der Knoten, der an ARange beginnt.</summary>
-  function LocalHeader(ANode: TSyntaxNode; const ARange: TTextRange): string;
+  /// Routinen): der Knoten, der an ARange beginnt. Iterativ (Bericht M1).</summary>
+  function LocalHeader(ARoot: TSyntaxNode; const ARange: TTextRange): string;
   var
+    Pending: TStack<TSyntaxNode>;
+    Node, Header: TSyntaxNode;
     Index: Integer;
-    Header: TSyntaxNode;
   begin
     Result := '';
-    if (ANode.Kind = TSyntaxKind.RoutineDecl) and (ANode.StartPos.Line = ARange.StartPos.Line) and
-      (ANode.StartPos.Character = ARange.StartPos.Character) then
-    begin
-      Header := ANode.FindChild(TSyntaxKind.RoutineHeader);
-      if Header = nil then
-        Header := ANode;
-      Exit(NodeText(Header));
-    end;
-    for Index := 0 to ANode.ChildCount - 1 do
-      if (ANode[Index].StartPos.Line <= ARange.StartPos.Line) and
-        (ANode[Index].EndPos.Line >= ARange.StartPos.Line) then
+    Pending := TStack<TSyntaxNode>.Create;
+    try
+      Pending.Push(ARoot);
+      while Pending.Count > 0 do
       begin
-        Result := LocalHeader(ANode[Index], ARange);
-        if Result <> '' then
-          Exit;
+        Node := Pending.Pop;
+        if (Node.Kind = TSyntaxKind.RoutineDecl) and (Node.StartPos.Line = ARange.StartPos.Line) and
+          (Node.StartPos.Character = ARange.StartPos.Character) then
+        begin
+          Header := Node.FindChild(TSyntaxKind.RoutineHeader);
+          if Header = nil then
+            Header := Node;
+          Result := NodeText(Header);
+          if Result <> '' then
+            Exit;
+          Continue;
+        end;
+        for Index := Node.ChildCount - 1 downto 0 do
+          if (Node[Index].StartPos.Line <= ARange.StartPos.Line) and
+            (Node[Index].EndPos.Line >= ARange.StartPos.Line) then
+            Pending.Push(Node[Index]);
       end;
+    finally
+      Pending.Free;
+    end;
   end;
 
   function HeaderOf(const ASymbol: TResolvedSymbol): string;
@@ -384,26 +395,39 @@ var
     AReport.Add(Range, Message, TRuleConfidence.High, [Fix]);
   end;
 
-  procedure Visit(ANode: TSyntaxNode);
+  // Iterativ (Bericht M1).
+  procedure Visit(ARoot: TSyntaxNode);
   var
+    Pending: TStack<TSyntaxNode>;
+    Node: TSyntaxNode;
     Index: Integer;
     Arguments: TArray<TSyntaxNode>;
   begin
-    if (ANode.Kind = TSyntaxKind.Call) and (ANode.ChildCount > 0) and
-      (NodeText(ANode).TrimRight.EndsWith(')')) then
-    begin
-      Arguments := nil;
-      for Index := 1 to ANode.ChildCount - 1 do
-        if ANode[Index].Kind <> TSyntaxKind.GenericArgs then
-          Arguments := Arguments + [ANode[Index]];
-      CheckCall(ANode, ANode[0], Arguments);
-    end
-    // Versenden; als Anweisung ohne Klammern.
-    else if (ANode.Kind = TSyntaxKind.CallStatement) and (ANode.ChildCount = 1) and
-      (ANode[0].Kind in [TSyntaxKind.Identifier, TSyntaxKind.MemberAccess]) then
-      CheckCall(ANode[0], ANode[0], nil);
-    for Index := 0 to ANode.ChildCount - 1 do
-      Visit(ANode[Index]);
+    Pending := TStack<TSyntaxNode>.Create;
+    try
+      Pending.Push(ARoot);
+      while Pending.Count > 0 do
+      begin
+        Node := Pending.Pop;
+        if (Node.Kind = TSyntaxKind.Call) and (Node.ChildCount > 0) and
+          (NodeText(Node).TrimRight.EndsWith(')')) then
+        begin
+          Arguments := nil;
+          for Index := 1 to Node.ChildCount - 1 do
+            if Node[Index].Kind <> TSyntaxKind.GenericArgs then
+              Arguments := Arguments + [Node[Index]];
+          CheckCall(Node, Node[0], Arguments);
+        end
+        // Versenden; als Anweisung ohne Klammern.
+        else if (Node.Kind = TSyntaxKind.CallStatement) and (Node.ChildCount = 1) and
+          (Node[0].Kind in [TSyntaxKind.Identifier, TSyntaxKind.MemberAccess]) then
+          CheckCall(Node[0], Node[0], nil);
+        for Index := Node.ChildCount - 1 downto 0 do
+          Pending.Push(Node[Index]);
+      end;
+    finally
+      Pending.Free;
+    end;
   end;
 
 begin

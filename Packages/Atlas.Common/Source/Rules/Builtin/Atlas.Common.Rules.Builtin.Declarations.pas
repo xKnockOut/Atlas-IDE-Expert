@@ -782,14 +782,27 @@ var
       end;
   end;
 
-  procedure Visit(ANode: TSyntaxNode);
+  procedure Visit(ARoot: TSyntaxNode);
   var
     Index: Integer;
+    Node: TSyntaxNode;
+    Pending: TStack<TSyntaxNode>;
   begin
-    if ANode.Kind in [TSyntaxKind.ClassType, TSyntaxKind.ObjectType, TSyntaxKind.RecordType] then
-      CheckBody(ANode);
-    for Index := 0 to ANode.ChildCount - 1 do
-      Visit(ANode[Index]);
+    // Iterativ (Bericht M1).
+    Pending := TStack<TSyntaxNode>.Create;
+    try
+      Pending.Push(ARoot);
+      while Pending.Count > 0 do
+      begin
+        Node := Pending.Pop;
+        if Node.Kind in [TSyntaxKind.ClassType, TSyntaxKind.ObjectType, TSyntaxKind.RecordType] then
+          CheckBody(Node);
+        for Index := Node.ChildCount - 1 downto 0 do
+          Pending.Push(Node[Index]);
+      end;
+    finally
+      Pending.Free;
+    end;
   end;
 
 begin
@@ -1054,35 +1067,48 @@ var
       end;
   end;
 
-  procedure Visit(ANode: TSyntaxNode);
+  procedure Visit(ARoot: TSyntaxNode);
   var
     Headers: TArray<TSyntaxNode>;
     Index: Integer;
+    Node: TSyntaxNode;
+    Pending: TStack<TSyntaxNode>;
   begin
-    Headers := nil;
-    case ANode.Kind of
-      TSyntaxKind.ClassType, TSyntaxKind.ObjectType, TSyntaxKind.RecordType, TSyntaxKind.InterfaceType,
-      TSyntaxKind.HelperType:
-        begin
-          for Index := 0 to ANode.ChildCount - 1 do
-            if ANode[Index].Kind = TSyntaxKind.RoutineHeader then
-              Headers := Headers + [ANode[Index]];
-          CheckScope(Headers, False);
+    // Iterativ (Bericht M1).
+    Pending := TStack<TSyntaxNode>.Create;
+    try
+      Pending.Push(ARoot);
+      while Pending.Count > 0 do
+      begin
+        Node := Pending.Pop;
+        Headers := nil;
+        case Node.Kind of
+          TSyntaxKind.ClassType, TSyntaxKind.ObjectType, TSyntaxKind.RecordType, TSyntaxKind.InterfaceType,
+          TSyntaxKind.HelperType:
+            begin
+              for Index := 0 to Node.ChildCount - 1 do
+                if Node[Index].Kind = TSyntaxKind.RoutineHeader then
+                  Headers := Headers + [Node[Index]];
+              CheckScope(Headers, False);
+            end;
+          TSyntaxKind.UnitFile:
+            begin
+              AddRoutines(Node.FindChild(TSyntaxKind.InterfaceSection), Headers);
+              AddRoutines(Node.FindChild(TSyntaxKind.ImplementationSection), Headers);
+              CheckScope(Headers, True);
+            end;
+          TSyntaxKind.ProgramFile, TSyntaxKind.LibraryFile, TSyntaxKind.RoutineDecl:
+            begin
+              AddRoutines(Node, Headers);
+              CheckScope(Headers, True);
+            end;
         end;
-      TSyntaxKind.UnitFile:
-        begin
-          AddRoutines(ANode.FindChild(TSyntaxKind.InterfaceSection), Headers);
-          AddRoutines(ANode.FindChild(TSyntaxKind.ImplementationSection), Headers);
-          CheckScope(Headers, True);
-        end;
-      TSyntaxKind.ProgramFile, TSyntaxKind.LibraryFile, TSyntaxKind.RoutineDecl:
-        begin
-          AddRoutines(ANode, Headers);
-          CheckScope(Headers, True);
-        end;
+        for Index := Node.ChildCount - 1 downto 0 do
+          Pending.Push(Node[Index]);
+      end;
+    finally
+      Pending.Free;
     end;
-    for Index := 0 to ANode.ChildCount - 1 do
-      Visit(ANode[Index]);
   end;
 
 begin
@@ -1262,27 +1288,37 @@ var
   var
     Index, Inner: Integer;
     Child: TSyntaxNode;
+    Pending: TStack<TSyntaxNode>;
   begin
-    for Index := 0 to ABody.ChildCount - 1 do
-    begin
-      Child := ABody[Index];
-      case Child.Kind of
-        TSyntaxKind.Field:
-          AddNames(Child, nil, 'Feld');
-        TSyntaxKind.RoutineHeader:
-          AddName(Child, nil, Child.Name, 'Methode', 0, 1, NameToken(Child, Child.Name), True);
-        TSyntaxKind.PropertyDecl:
-          AddName(Child, nil, Child.Name, 'Property', 0, 1, NameToken(Child, Child.Name), False);
-        TSyntaxKind.VarSection:
-          for Inner := 0 to Child.ChildCount - 1 do
-            if Child[Inner].Kind = TSyntaxKind.VarDecl then
-              AddNames(Child[Inner], Child, 'Feld');
-        TSyntaxKind.ConstSection, TSyntaxKind.TypeSection:
-          AddSection(Child);
-        // Varianter Teil: Selektorfeld und die Felder der Zweige gehören zum Record.
-        TSyntaxKind.VariantPart, TSyntaxKind.CaseItem, TSyntaxKind.Visibility:
-          AddMembers(Child);
+    // Iterativ (Bericht M1): Vorordnung, die Namen kommen in derselben Reihenfolge dazu.
+    Pending := TStack<TSyntaxNode>.Create;
+    try
+      for Index := ABody.ChildCount - 1 downto 0 do
+        Pending.Push(ABody[Index]);
+      while Pending.Count > 0 do
+      begin
+        Child := Pending.Pop;
+        case Child.Kind of
+          TSyntaxKind.Field:
+            AddNames(Child, nil, 'Feld');
+          TSyntaxKind.RoutineHeader:
+            AddName(Child, nil, Child.Name, 'Methode', 0, 1, NameToken(Child, Child.Name), True);
+          TSyntaxKind.PropertyDecl:
+            AddName(Child, nil, Child.Name, 'Property', 0, 1, NameToken(Child, Child.Name), False);
+          TSyntaxKind.VarSection:
+            for Inner := 0 to Child.ChildCount - 1 do
+              if Child[Inner].Kind = TSyntaxKind.VarDecl then
+                AddNames(Child[Inner], Child, 'Feld');
+          TSyntaxKind.ConstSection, TSyntaxKind.TypeSection:
+            AddSection(Child);
+          // Varianter Teil: Selektorfeld und die Felder der Zweige gehören zum Record.
+          TSyntaxKind.VariantPart, TSyntaxKind.CaseItem, TSyntaxKind.Visibility:
+            for Inner := Child.ChildCount - 1 downto 0 do
+              Pending.Push(Child[Inner]);
+        end;
       end;
+    finally
+      Pending.Free;
     end;
   end;
 
@@ -1399,15 +1435,29 @@ var
     Fixes: TArray<TRuleFix>;
     Range: TTextRange;
 
-    procedure Collect(ANode: TSyntaxNode);
+    procedure Collect(ARoot: TSyntaxNode);
     var
       Inner: Integer;
+      Node: TSyntaxNode;
+      Pending: TStack<TSyntaxNode>;
     begin
-      for Inner := 0 to ANode.ChildCount - 1 do
-        if ANode[Inner].Kind = TSyntaxKind.UsesClause then
-          Clauses := Clauses + [ANode[Inner]]
-        else if ANode[Inner].Kind in [TSyntaxKind.InterfaceSection, TSyntaxKind.ImplementationSection] then
-          Collect(ANode[Inner]);
+      // Iterativ (Bericht M1); Vorordnung, die Klauseln bleiben in Textreihenfolge.
+      Pending := TStack<TSyntaxNode>.Create;
+      try
+        for Inner := ARoot.ChildCount - 1 downto 0 do
+          Pending.Push(ARoot[Inner]);
+        while Pending.Count > 0 do
+        begin
+          Node := Pending.Pop;
+          if Node.Kind = TSyntaxKind.UsesClause then
+            Clauses := Clauses + [Node]
+          else if Node.Kind in [TSyntaxKind.InterfaceSection, TSyntaxKind.ImplementationSection] then
+            for Inner := Node.ChildCount - 1 downto 0 do
+              Pending.Push(Node[Inner]);
+        end;
+      finally
+        Pending.Free;
+      end;
     end;
 
   begin
@@ -1457,37 +1507,50 @@ var
         end;
   end;
 
-  procedure Visit(ANode: TSyntaxNode);
+  procedure Visit(ARoot: TSyntaxNode);
   var
     Index: Integer;
+    Node: TSyntaxNode;
+    Pending: TStack<TSyntaxNode>;
   begin
-    case ANode.Kind of
-      TSyntaxKind.RoutineDecl:
-        CheckRoutine(ANode);
-      TSyntaxKind.ClassType, TSyntaxKind.ObjectType, TSyntaxKind.RecordType, TSyntaxKind.InterfaceType,
-      TSyntaxKind.HelperType:
-        begin
-          Names := nil;
-          AddMembers(ANode);
-          CheckNames;
+    // Iterativ (Bericht M1).
+    Pending := TStack<TSyntaxNode>.Create;
+    try
+      Pending.Push(ARoot);
+      while Pending.Count > 0 do
+      begin
+        Node := Pending.Pop;
+        case Node.Kind of
+          TSyntaxKind.RoutineDecl:
+            CheckRoutine(Node);
+          TSyntaxKind.ClassType, TSyntaxKind.ObjectType, TSyntaxKind.RecordType, TSyntaxKind.InterfaceType,
+          TSyntaxKind.HelperType:
+            begin
+              Names := nil;
+              AddMembers(Node);
+              CheckNames;
+            end;
+          TSyntaxKind.UnitFile:
+            begin
+              Names := nil;
+              for Index := 0 to Node.ChildCount - 1 do
+                if Node[Index].Kind in [TSyntaxKind.InterfaceSection, TSyntaxKind.ImplementationSection] then
+                  AddSections(Node[Index]);
+              CheckNames;
+            end;
+          TSyntaxKind.ProgramFile, TSyntaxKind.LibraryFile:
+            begin
+              Names := nil;
+              AddSections(Node);
+              CheckNames;
+            end;
         end;
-      TSyntaxKind.UnitFile:
-        begin
-          Names := nil;
-          for Index := 0 to ANode.ChildCount - 1 do
-            if ANode[Index].Kind in [TSyntaxKind.InterfaceSection, TSyntaxKind.ImplementationSection] then
-              AddSections(ANode[Index]);
-          CheckNames;
-        end;
-      TSyntaxKind.ProgramFile, TSyntaxKind.LibraryFile:
-        begin
-          Names := nil;
-          AddSections(ANode);
-          CheckNames;
-        end;
+        for Index := Node.ChildCount - 1 downto 0 do
+          Pending.Push(Node[Index]);
+      end;
+    finally
+      Pending.Free;
     end;
-    for Index := 0 to ANode.ChildCount - 1 do
-      Visit(ANode[Index]);
   end;
 
 begin
@@ -2629,56 +2692,68 @@ var
       end;
   end;
 
-  procedure Visit(ANode: TSyntaxNode);
+  procedure Visit(ARoot: TSyntaxNode);
   var
     Scope, Declared: TArray<TSyntaxNode>;
-    Header, Other: TSyntaxNode;
+    Node, Header, Other: TSyntaxNode;
     Index: Integer;
     IsBody: Boolean;
     Decl, Earlier: TSignatureHeader;
+    Pending: TStack<TSyntaxNode>;
   begin
-    Scope := nil;
-    Declared := nil;
-    case ANode.Kind of
-      TSyntaxKind.ClassType, TSyntaxKind.ObjectType, TSyntaxKind.RecordType, TSyntaxKind.InterfaceType,
-      TSyntaxKind.HelperType:
-        begin
-          for Index := 0 to ANode.ChildCount - 1 do
-            if ANode[Index].Kind = TSyntaxKind.RoutineHeader then
-              Scope := Scope + [ANode[Index]];
-          for Header in Scope do
-            CheckHeader(Header, Scope, ANode);
+    // Iterativ (Bericht M1).
+    Pending := TStack<TSyntaxNode>.Create;
+    try
+      Pending.Push(ARoot);
+      while Pending.Count > 0 do
+      begin
+        Node := Pending.Pop;
+        Scope := nil;
+        Declared := nil;
+        case Node.Kind of
+          TSyntaxKind.ClassType, TSyntaxKind.ObjectType, TSyntaxKind.RecordType, TSyntaxKind.InterfaceType,
+          TSyntaxKind.HelperType:
+            begin
+              for Index := 0 to Node.ChildCount - 1 do
+                if Node[Index].Kind = TSyntaxKind.RoutineHeader then
+                  Scope := Scope + [Node[Index]];
+              for Header in Scope do
+                CheckHeader(Header, Scope, Node);
+            end;
+          TSyntaxKind.UnitFile, TSyntaxKind.ProgramFile, TSyntaxKind.LibraryFile, TSyntaxKind.RoutineDecl:
+            begin
+              if Node.Kind = TSyntaxKind.UnitFile then
+              begin
+                CheckRoutines(Node.FindChild(TSyntaxKind.InterfaceSection), Scope);
+                CheckRoutines(Node.FindChild(TSyntaxKind.ImplementationSection), Scope);
+              end
+              else
+                CheckRoutines(Node, Scope);
+              for Header in Scope do
+              begin
+                // Rumpf zu einer früheren Deklaration (interface, forward) mit gleichen Parametern.
+                IsBody := False;
+                if (Header.Parent.FindChild(TSyntaxKind.Block) <> nil) and
+                  TChangeSignature.ReadHeader(AContext.Text, Tokens, NameToken(Header), Decl) then
+                  for Other in Scope do
+                    if (Other <> Header) and (Other.Parent.FindChild(TSyntaxKind.Block) = nil) and
+                      SameText(Other.Name, Header.Name) and (Other.StartOffset < Header.StartOffset) and
+                      TChangeSignature.ReadHeader(AContext.Text, Tokens, NameToken(Other), Earlier) and
+                      ((Decl.OpenToken < 0) or (ParamKey(Decl.Parameters) = ParamKey(Earlier.Parameters))) then
+                      IsBody := True;
+                if not IsBody then
+                  Declared := Declared + [Header];
+              end;
+              for Header in Declared do
+                CheckHeader(Header, Declared, nil);
+            end;
         end;
-      TSyntaxKind.UnitFile, TSyntaxKind.ProgramFile, TSyntaxKind.LibraryFile, TSyntaxKind.RoutineDecl:
-        begin
-          if ANode.Kind = TSyntaxKind.UnitFile then
-          begin
-            CheckRoutines(ANode.FindChild(TSyntaxKind.InterfaceSection), Scope);
-            CheckRoutines(ANode.FindChild(TSyntaxKind.ImplementationSection), Scope);
-          end
-          else
-            CheckRoutines(ANode, Scope);
-          for Header in Scope do
-          begin
-            // Rumpf zu einer früheren Deklaration (interface, forward) mit gleichen Parametern.
-            IsBody := False;
-            if (Header.Parent.FindChild(TSyntaxKind.Block) <> nil) and
-              TChangeSignature.ReadHeader(AContext.Text, Tokens, NameToken(Header), Decl) then
-              for Other in Scope do
-                if (Other <> Header) and (Other.Parent.FindChild(TSyntaxKind.Block) = nil) and
-                  SameText(Other.Name, Header.Name) and (Other.StartOffset < Header.StartOffset) and
-                  TChangeSignature.ReadHeader(AContext.Text, Tokens, NameToken(Other), Earlier) and
-                  ((Decl.OpenToken < 0) or (ParamKey(Decl.Parameters) = ParamKey(Earlier.Parameters))) then
-                  IsBody := True;
-            if not IsBody then
-              Declared := Declared + [Header];
-          end;
-          for Header in Declared do
-            CheckHeader(Header, Declared, nil);
-        end;
+        for Index := Node.ChildCount - 1 downto 0 do
+          Pending.Push(Node[Index]);
+      end;
+    finally
+      Pending.Free;
     end;
-    for Index := 0 to ANode.ChildCount - 1 do
-      Visit(ANode[Index]);
   end;
 
 begin

@@ -82,6 +82,7 @@ implementation
 uses
   System.SysUtils,
   System.StrUtils,
+  System.Generics.Collections,
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Documents.Contract,
   Atlas.Common.Pascal.Contract,
@@ -124,16 +125,27 @@ begin
   Result := Copy(AText, ANode.StartOffset + 1, ANode.EndOffset - ANode.StartOffset);
 end;
 
+// Iterativ (Bericht M1): erst die Punktkette hinab, dann die Namen von innen nach außen anhängen.
 function DottedText(ANode: TSyntaxNode): string;
+var
+  Chain: TStack<TSyntaxNode>;
+  Node: TSyntaxNode;
 begin
-  Result := '';
-  if ANode.Kind = TSyntaxKind.Identifier then
-    Result := ANode.Name
-  else if (ANode.Kind = TSyntaxKind.MemberAccess) and (ANode.ChildCount = 1) then
-  begin
-    Result := DottedText(ANode[0]);
-    if Result <> '' then
-      Result := Result + '.' + ANode.Name;
+  Chain := TStack<TSyntaxNode>.Create;
+  try
+    Node := ANode;
+    while (Node.Kind = TSyntaxKind.MemberAccess) and (Node.ChildCount = 1) do
+    begin
+      Chain.Push(Node);
+      Node := Node[0];
+    end;
+    Result := '';
+    if Node.Kind = TSyntaxKind.Identifier then
+      Result := Node.Name;
+    while (Chain.Count > 0) and (Result <> '') do
+      Result := Result + '.' + Chain.Pop.Name;
+  finally
+    Chain.Free;
   end;
 end;
 

@@ -37,6 +37,7 @@ implementation
 
 uses
   System.StrUtils,
+  System.Generics.Collections,
   System.RegularExpressions,
   Atlas.Text.Lines,
   Atlas.Common.Documents.Contract,
@@ -112,18 +113,31 @@ var
     Result := StringReplace(LowerCase(Result), 'self.', '', [rfReplaceAll]);
   end;
 
-  procedure CollectTypes(ANode: TSyntaxNode);
+  procedure CollectTypes(ARoot: TSyntaxNode);
   var
     Index: Integer;
+    Node: TSyntaxNode;
+    Pending: TStack<TSyntaxNode>;
   begin
-    if ANode.Kind = TSyntaxKind.TypeDecl then
-      UnitTypes := UnitTypes + [ANode];
-    if ANode.Kind = TSyntaxKind.RoutineDecl then
-      Routines := Routines + [ANode];
-    if ANode.Kind in [TSyntaxKind.Block, TSyntaxKind.RoutineDecl] then
-      Exit;
-    for Index := 0 to ANode.ChildCount - 1 do
-      CollectTypes(ANode[Index]);
+    // Iterativ (Bericht M1).
+    Pending := TStack<TSyntaxNode>.Create;
+    try
+      Pending.Push(ARoot);
+      while Pending.Count > 0 do
+      begin
+        Node := Pending.Pop;
+        if Node.Kind = TSyntaxKind.TypeDecl then
+          UnitTypes := UnitTypes + [Node];
+        if Node.Kind = TSyntaxKind.RoutineDecl then
+          Routines := Routines + [Node];
+        if Node.Kind in [TSyntaxKind.Block, TSyntaxKind.RoutineDecl] then
+          Continue;
+        for Index := Node.ChildCount - 1 downto 0 do
+          Pending.Push(Node[Index]);
+      end;
+    finally
+      Pending.Free;
+    end;
   end;
 
   // Ereignistyp: bekannt, als Methodenzeiger in der Unit deklariert oder im Index.
@@ -155,28 +169,39 @@ var
   // Weist ein Konstruktor (bzw. mit AAnyMethod irgendeine Methode) von AClassName dem Feld AName einen Wert
   // ungleich nil zu? Dann ist es eine eingereichte Abhängigkeit (FReadText := AReadText) und kein Ereignis,
   // das ein Nutzer setzt.
-  function Injected(ANode: TSyntaxNode; const AClassName, AName: string; AAnyMethod: Boolean): Boolean;
+  function Injected(ARoot: TSyntaxNode; const AClassName, AName: string; AAnyMethod: Boolean): Boolean;
   var
     Index, Position: Integer;
-    Block: TSyntaxNode;
+    Node, Block: TSyntaxNode;
+    Pending: TStack<TSyntaxNode>;
   begin
+    // Iterativ (Bericht M1).
     Result := False;
-    if ANode.Kind = TSyntaxKind.RoutineDecl then
-    begin
-      Block := ANode.FindChild(TSyntaxKind.Block);
-      if (Block = nil) or not StartsText(AClassName + '.', ANode.Name) or
-        (not AAnyMethod and not StartsText('constructor', TrimLeft(NodeText(ANode)))) then
-        Exit;
-      for Position := 0 to High(Code) - 2 do
-        if (Token(Position).Offset >= Block.StartOffset) and (Token(Position).Offset < Block.EndOffset) and
-          (Token(Position).Kind = TPascalTokenKind.Identifier) and SameText(Token(Position).Text, AName) and
-          Token(Position + 1).IsSymbol(':=') and not Token(Position + 2).IsKeyword('nil') then
-          Exit(True);
-      Exit;
+    Pending := TStack<TSyntaxNode>.Create;
+    try
+      Pending.Push(ARoot);
+      while Pending.Count > 0 do
+      begin
+        Node := Pending.Pop;
+        if Node.Kind = TSyntaxKind.RoutineDecl then
+        begin
+          Block := Node.FindChild(TSyntaxKind.Block);
+          if (Block = nil) or not StartsText(AClassName + '.', Node.Name) or
+            (not AAnyMethod and not StartsText('constructor', TrimLeft(NodeText(Node)))) then
+            Continue;
+          for Position := 0 to High(Code) - 2 do
+            if (Token(Position).Offset >= Block.StartOffset) and (Token(Position).Offset < Block.EndOffset) and
+              (Token(Position).Kind = TPascalTokenKind.Identifier) and SameText(Token(Position).Text, AName) and
+              Token(Position + 1).IsSymbol(':=') and not Token(Position + 2).IsKeyword('nil') then
+              Exit(True);
+          Continue;
+        end;
+        for Index := Node.ChildCount - 1 downto 0 do
+          Pending.Push(Node[Index]);
+      end;
+    finally
+      Pending.Free;
     end;
-    for Index := 0 to ANode.ChildCount - 1 do
-      if Injected(ANode[Index], AClassName, AName, AAnyMethod) then
-        Exit(True);
   end;
 
   // Felder und Properties der Klasse mit Ereignistyp; ohne Felder, die der Konstruktor belegt (ohne
@@ -230,31 +255,52 @@ var
   end;
 
   // Deklariert ARoutine (auch in anonymen Methoden) eine Variable, Konstante oder einen Parameter AName?
-  function Shadowed(ANode: TSyntaxNode; const AName: string): Boolean;
+  function Shadowed(ARoot: TSyntaxNode; const AName: string): Boolean;
   var
     Index: Integer;
     Name: string;
+    Node: TSyntaxNode;
+    Pending: TStack<TSyntaxNode>;
   begin
-    if ANode.Kind in [TSyntaxKind.VarDecl, TSyntaxKind.Parameter, TSyntaxKind.InlineVar,
-      TSyntaxKind.InlineConst] then
-      for Name in ANode.Name.Split([',']) do
-        if SameText(Trim(Name), AName) then
-          Exit(True);
-    for Index := 0 to ANode.ChildCount - 1 do
-      if Shadowed(ANode[Index], AName) then
-        Exit(True);
+    // Iterativ (Bericht M1).
     Result := False;
+    Pending := TStack<TSyntaxNode>.Create;
+    try
+      Pending.Push(ARoot);
+      while Pending.Count > 0 do
+      begin
+        Node := Pending.Pop;
+        if Node.Kind in [TSyntaxKind.VarDecl, TSyntaxKind.Parameter, TSyntaxKind.InlineVar,
+          TSyntaxKind.InlineConst] then
+          for Name in Node.Name.Split([',']) do
+            if SameText(Trim(Name), AName) then
+              Exit(True);
+        for Index := Node.ChildCount - 1 downto 0 do
+          Pending.Push(Node[Index]);
+      end;
+    finally
+      Pending.Free;
+    end;
   end;
 
   // Innerster Knoten unter ANode, der AOffset enthält.
   function NodeAt(ANode: TSyntaxNode; AOffset: Integer): TSyntaxNode;
   var
     Index: Integer;
+    Found: Boolean;
   begin
+    // Iterativ (Bericht M1).
     Result := ANode;
-    for Index := 0 to ANode.ChildCount - 1 do
-      if (AOffset >= ANode[Index].StartOffset) and (AOffset < ANode[Index].EndOffset) then
-        Exit(NodeAt(ANode[Index], AOffset));
+    repeat
+      Found := False;
+      for Index := 0 to Result.ChildCount - 1 do
+        if (AOffset >= Result[Index].StartOffset) and (AOffset < Result[Index].EndOffset) then
+        begin
+          Result := Result[Index];
+          Found := True;
+          Break;
+        end;
+    until not Found;
   end;
 
   function Positive(const ACondition, AName: string): Boolean;
@@ -458,18 +504,31 @@ var
     end;
   end;
 
-  procedure CheckRoutines(ANode: TSyntaxNode; const AClassName: string; const AEvents: TArray<string>);
+  procedure CheckRoutines(ARoot: TSyntaxNode; const AClassName: string; const AEvents: TArray<string>);
   var
     Index: Integer;
+    Node: TSyntaxNode;
+    Pending: TStack<TSyntaxNode>;
   begin
-    if ANode.Kind = TSyntaxKind.RoutineDecl then
-    begin
-      if StartsText(AClassName + '.', ANode.Name) then
-        CheckRoutine(ANode, AEvents);
-      Exit;
+    // Iterativ (Bericht M1).
+    Pending := TStack<TSyntaxNode>.Create;
+    try
+      Pending.Push(ARoot);
+      while Pending.Count > 0 do
+      begin
+        Node := Pending.Pop;
+        if Node.Kind = TSyntaxKind.RoutineDecl then
+        begin
+          if StartsText(AClassName + '.', Node.Name) then
+            CheckRoutine(Node, AEvents);
+          Continue;
+        end;
+        for Index := Node.ChildCount - 1 downto 0 do
+          Pending.Push(Node[Index]);
+      end;
+    finally
+      Pending.Free;
     end;
-    for Index := 0 to ANode.ChildCount - 1 do
-      CheckRoutines(ANode[Index], AClassName, AEvents);
   end;
 
 var

@@ -118,13 +118,26 @@ begin
   Result := Low;
 end;
 
-procedure CollectNodes(ANode: TSyntaxNode; AList: TList<TSyntaxNode>);
+// Iterativ (Bericht M1).
+procedure CollectNodes(ARoot: TSyntaxNode; AList: TList<TSyntaxNode>);
 var
+  Pending: TStack<TSyntaxNode>;
+  Node: TSyntaxNode;
   Index: Integer;
 begin
-  AList.Add(ANode);
-  for Index := 0 to ANode.ChildCount - 1 do
-    CollectNodes(ANode[Index], AList);
+  Pending := TStack<TSyntaxNode>.Create;
+  try
+    Pending.Push(ARoot);
+    while Pending.Count > 0 do
+    begin
+      Node := Pending.Pop;
+      AList.Add(Node);
+      for Index := Node.ChildCount - 1 downto 0 do
+        Pending.Push(Node[Index]);
+    end;
+  finally
+    Pending.Free;
+  end;
 end;
 
 /// <summary>ARoot und alle Nachfahren in Dokumentreihenfolge.</summary>
@@ -655,12 +668,15 @@ begin
   Result := TUsesClauses.AddUnit(ATokens, AOffset, AUnitName, TTextLines.LineBreakOf(AContext.Text), AEdit);
 end;
 
-/// <summary>Nur Bezeichner und Punkte: S, Self.FBefehl, Edit1.Text.</summary>
+/// <summary>Nur Bezeichner und Punkte: S, Self.FBefehl, Edit1.Text. Iterativ (Bericht M1).</summary>
 function IsSubject(ANode: TSyntaxNode): Boolean;
+var
+  Node: TSyntaxNode;
 begin
-  if ANode.Kind = TSyntaxKind.Identifier then
-    Exit(True);
-  Result := (ANode.Kind = TSyntaxKind.MemberAccess) and (ANode.ChildCount = 1) and IsSubject(ANode[0]);
+  Node := ANode;
+  while (Node.Kind = TSyntaxKind.MemberAccess) and (Node.ChildCount = 1) do
+    Node := Node[0];
+  Result := Node.Kind = TSyntaxKind.Identifier;
 end;
 
 function IsStringLiteral(const AContext: TRuleContext; ANode: TSyntaxNode): Boolean;
@@ -680,21 +696,15 @@ var
     Result := StringReplace(NodeText(AContext, ANode), ' ', '', [rfReplaceAll]);
   end;
 
-  // Vergleiche in ACondition: S = 'x', 'x' = S, SameText(S, 'x'), mit or verknüpft und geklammert.
-  // ASensitive: 1 = nur =, 2 = nur SameText, 3 = gemischt.
-  function Comparisons(ACondition: TSyntaxNode; var ASubject: string; var ALiterals: TArray<string>;
+  // Ein einzelner Vergleich S = 'x', 'x' = S oder SameText(S, 'x').
+  function Comparison(ACondition: TSyntaxNode; var ASubject: string; var ALiterals: TArray<string>;
     var ASensitive: Integer): Boolean;
   var
     Subject, Literal: TSyntaxNode;
   begin
     case ACondition.Kind of
-      TSyntaxKind.ParenExpr:
-        Exit((ACondition.ChildCount = 1) and Comparisons(ACondition[0], ASubject, ALiterals, ASensitive));
       TSyntaxKind.BinaryExpr:
-        if SameText(ACondition.Name, 'or') and (ACondition.ChildCount = 2) then
-          Exit(Comparisons(ACondition[0], ASubject, ALiterals, ASensitive) and
-            Comparisons(ACondition[1], ASubject, ALiterals, ASensitive))
-        else if (ACondition.Name = '=') and (ACondition.ChildCount = 2) then
+        if (ACondition.Name = '=') and (ACondition.ChildCount = 2) then
         begin
           Subject := ACondition[0];
           Literal := ACondition[1];
@@ -732,6 +742,42 @@ var
     else if not SameText(ASubject, Normalized(Subject)) then
       Exit(False);
     ALiterals := ALiterals + [NodeText(AContext, Literal)];
+    Result := True;
+  end;
+
+  // Vergleiche in ACondition: S = 'x', 'x' = S, SameText(S, 'x'), mit or verknüpft und geklammert.
+  // ASensitive: 1 = nur =, 2 = nur SameText, 3 = gemischt. Iterativ (Bericht M1): die Vergleiche der
+  // or-Kette von links nach rechts; der erste, der nicht passt, beendet die Suche.
+  function Comparisons(ACondition: TSyntaxNode; var ASubject: string; var ALiterals: TArray<string>;
+    var ASensitive: Integer): Boolean;
+  var
+    Pending: TStack<TSyntaxNode>;
+    Node: TSyntaxNode;
+  begin
+    Result := False;
+    Pending := TStack<TSyntaxNode>.Create;
+    try
+      Pending.Push(ACondition);
+      while Pending.Count > 0 do
+      begin
+        Node := Pending.Pop;
+        if Node.Kind = TSyntaxKind.ParenExpr then
+        begin
+          if Node.ChildCount <> 1 then
+            Exit;
+          Pending.Push(Node[0]);
+        end
+        else if (Node.Kind = TSyntaxKind.BinaryExpr) and SameText(Node.Name, 'or') and (Node.ChildCount = 2) then
+        begin
+          Pending.Push(Node[1]);
+          Pending.Push(Node[0]);
+        end
+        else if not Comparison(Node, ASubject, ALiterals, ASensitive) then
+          Exit;
+      end;
+    finally
+      Pending.Free;
+    end;
     Result := True;
   end;
 
