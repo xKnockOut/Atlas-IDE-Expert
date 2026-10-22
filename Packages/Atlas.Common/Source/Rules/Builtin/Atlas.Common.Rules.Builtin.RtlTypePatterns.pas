@@ -124,8 +124,9 @@ type
     function Descriptor: TRuleDescriptor;
     procedure Check(const AContext: TRuleContext; const AReport: IRuleReport);
     /// <summary>Anwendungsart aus DCC_ConsoleTarget der .dproj und dem Text der .dpr: Console bei
-    /// "true" oder {$APPTYPE CONSOLE}, Gui bei einem program ohne Konsole, sonst Unknown
-    /// (library, package, kein Text).</summary>
+    /// "true" oder {$APPTYPE CONSOLE}, Service bei einem program mit Vcl.SvcMgr und ohne Vcl.Forms,
+    /// sonst Gui bei einem program; Library_ bei einer library ohne Formulare und ohne Vcl.Forms,
+    /// Package bei einem package, sonst Unknown (DLL mit Formularen, kein Text).</summary>
     class function ApplicationKind(const AConsoleTarget, AMainSource: string): TRuleApplicationKind; static;
     /// <summary>Option "replacement" aus den Regeloptionen; ohne Angabe OutputDebugString.</summary>
     class function Replacement(const AOptions: string): string; static;
@@ -1725,7 +1726,7 @@ class function TWritelnInGuiAppRule.ApplicationKind(const AConsoleTarget, AMainS
 var
   Tokens: TArray<TPascalToken>;
   Token: TPascalToken;
-  First: Boolean;
+  First, ServiceManager, Forms, FormMarker, AfterFileName: Boolean;
   Directive: string;
 begin
   if SameText(Trim(AConsoleTarget), 'true') then
@@ -1733,6 +1734,10 @@ begin
   Result := TRuleApplicationKind.Unknown;
   Tokens := TPascalLexer.Tokenize(AMainSource);
   First := True;
+  ServiceManager := False;
+  Forms := False;
+  FormMarker := False;
+  AfterFileName := False;
   for Token in Tokens do
     case Token.Kind of
       TPascalTokenKind.Directive:
@@ -1744,13 +1749,24 @@ begin
             Exit(TRuleApplicationKind.Console);
         end;
       TPascalTokenKind.Comment:
-        ;
+        // Unit1 in 'Unit1.pas' {Form1}: die IDE markiert Formulare ohne Doppelpunkt, andere Designer
+        // als {Name: TDataModule} (#1060).
+        if AfterFileName and StartsStr('{', Token.Text) and
+          ((Pos(':', Token.Text) = 0) or ContainsText(Token.Text, ': TForm')) then
+          FormMarker := True;
     else
+      AfterFileName := Token.Kind = TPascalTokenKind.StringLiteral;
+      if (Token.Kind = TPascalTokenKind.Identifier) and SameText(Token.Text, 'SvcMgr') then
+        ServiceManager := True;
+      if (Token.Kind = TPascalTokenKind.Identifier) and SameText(Token.Text, 'Forms') then
+        Forms := True;
       if First then
       begin
         First := False;
         if Token.IsKeyword('program') then
           Result := TRuleApplicationKind.Gui
+        else if Token.IsKeyword('library') then
+          Result := TRuleApplicationKind.Library_
         // package ist kein reserviertes Wort (#943).
         else if (Token.Kind = TPascalTokenKind.Identifier) and SameText(Token.Text, 'package') then
           Exit(TRuleApplicationKind.Package)
@@ -1758,6 +1774,11 @@ begin
           Exit(TRuleApplicationKind.Unknown);
       end;
     end;
+  // Ein Dienst bindet Vcl.SvcMgr ein; mit Vcl.Forms daneben startet dasselbe Programm auch mit Oberfläche.
+  if (Result = TRuleApplicationKind.Gui) and ServiceManager and not Forms then
+    Result := TRuleApplicationKind.Service;
+  if (Result = TRuleApplicationKind.Library_) and (Forms or FormMarker) then
+    Result := TRuleApplicationKind.Unknown;
 end;
 
 class function TWritelnInGuiAppRule.Replacement(const AOptions: string): string;
@@ -2024,7 +2045,8 @@ begin
   // Ohne Projekt nur die .dpr selbst: program ohne {$APPTYPE CONSOLE}.
   if Kind = TRuleApplicationKind.Unknown then
     Kind := ApplicationKind('', AContext.Text);
-  if Kind <> TRuleApplicationKind.Gui then
+  // Auch ein Windows-Dienst hat keine Konsole (#1060).
+  if (Kind <> TRuleApplicationKind.Gui) and (Kind <> TRuleApplicationKind.Service) then
     Exit;
   Tokens := AContext.Tree.Tokens;
   ReplacementText := Replacement(AContext.Options);

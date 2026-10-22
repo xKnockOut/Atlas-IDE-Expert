@@ -11,7 +11,7 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 | [Threads](#gruppe-threads) | 13 |
 | [Datenbank](#gruppe-database) | 4 |
 | [Compiler vorab](#gruppe-compiler) | 15 |
-| [Robustheit und Muster](#gruppe-robustness) | 3 |
+| [Robustheit und Muster](#gruppe-robustness) | 4 |
 | [Performance](#gruppe-performance) | 4 |
 | [Sicherheit](#gruppe-security) | 11 |
 | [Komponenten](#gruppe-components) | 8 |
@@ -155,6 +155,7 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 | [`random-without-randomize`](#random-without-randomize) | Random ohne Randomize | Code Smell | Hinweis |
 | [`format-without-settings`](#format-without-settings) | Formatierung abhängig vom Gebietsschema | Code Smell | Hinweis |
 | [`null-compare`](#null-compare) | Vergleich mit Null statt VarIsNull oder IsNull | Code Smell | Warnung |
+| [`ui-call-in-console-or-service`](#ui-call-in-console-or-service) | Dialog in Konsolenprogramm oder Dienst | Bug | Warnung |
 
 <a id="gruppe-performance"></a>
 ### Performance
@@ -4540,4 +4541,31 @@ Richtig:
 
 ```pascal
 Liste.Clear;
+```
+
+<a id="ui-call-in-console-or-service"></a>
+### ui-call-in-console-or-service
+
+**Dialog in Konsolenprogramm oder Dienst** · Bug · Warnung · Gruppe Robustheit und Muster
+
+ShowMessage, ShowMessageFmt, MessageDlg, TaskMessageDlg, InputBox, InputQuery, Application.MessageBox oder TDialogService in einem Programm mit {$APPTYPE CONSOLE} (oder DCC_ConsoleTarget in der .dproj), in einem Windows-Dienst oder in einer DLL ohne Formulare. Im Dienst blockiert der Dialog unsichtbar; ein Konsolenprogramm wartet auf einen Klick, den niemand sieht, wenn es unbeaufsichtigt läuft. Als Dienst gilt eine Unit mit einer Klasse, die von TService erbt, oder jede Unit eines Projekts, dessen .dpr Vcl.SvcMgr ohne Vcl.Forms einbindet. Eine DLL ohne Formulare ist eine library, deren .dpr kein Formular aufführt und Vcl.Forms nicht einbindet; dort meldet die Regel mit mittlerer Konfidenz, weil erst der Host entscheidet, ob es eine Oberfläche gibt. Units mit Formulardatei, Aufrufe unter if IsConsole und gleichnamige Routinen der Unit bleiben still. Gegenstück zu writeln-in-gui-app. Konfidenz hoch. Keine Schnellkorrektur: die Meldung protokollieren statt anzeigen.
+
+Mit Treffer:
+
+```pascal
+procedure TDatenDienst.ServiceExecute(Sender: TService);
+begin
+  if not Verbinden then
+    ShowMessage('Keine Verbindung');
+end;
+```
+
+Richtig:
+
+```pascal
+procedure TDatenDienst.ServiceExecute(Sender: TService);
+begin
+  if not Verbinden then
+    LogMessage('Keine Verbindung', EVENTLOG_ERROR_TYPE);
+end;
 ```
