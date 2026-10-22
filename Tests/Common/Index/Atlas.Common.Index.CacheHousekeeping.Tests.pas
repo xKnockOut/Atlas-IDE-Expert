@@ -52,8 +52,6 @@ type
     [TearDown]
     procedure TearDown;
     [Test]
-    // Die RTL legt bei der ersten fehlgeschlagenen Dateisperre (EFCreateError) Daten an, die bis Programmende bleiben; kein Leck des Testcodes.
-    [IgnoreMemoryLeaks]
     procedure SecondLockFails;
     [Test]
     procedure ClearSkipsLockedCaches;
@@ -277,10 +275,19 @@ var
   Lock, BackupLock: TFileStream;
   Disk: IIndexFileSystem;
   Missing: string;
+  CacheLock: TStream;
 begin
   Disk := TDiskIndexFileSystem.Create;
   Target := TPath.Combine(ARoot, 'index-00000001.json');
   Disk.WriteText(Target, 'x');
+  // Die RTL legt bei der ersten gescheiterten Sperre (EFCreateError) Daten an, die bis Programmende bleiben:
+  // hier statt [IgnoreMemoryLeaks] an SecondLockFails (Bericht N2).
+  CacheLock := TIndexCacheDirectory.TryLock(Target);
+  try
+    TIndexCacheDirectory.TryLock(Target).Free;
+  finally
+    CacheLock.Free;
+  end;
   Lock := TFileStream.Create(Target, fmOpenRead or fmShareExclusive);
   try
     Disk.WriteText(Target, 'y');

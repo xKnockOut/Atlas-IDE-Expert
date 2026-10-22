@@ -97,8 +97,9 @@
 - **Kettenskript:** Löst selbst: Listenkonflikte, falsche `;` in `.dpr`/`.dpk`-Listen nach konfliktfreiem Merge (`fix-terminators.ps1`), Profiltest-Erwartungen (Branch-Seite ohne `unit-name-mismatch`), `Architektur.md` und `Konfiguration.md` (Branch-Seite ohne Teile übersprungener Branches), H2443 und E2532. Jeder andere Konflikt hält an.
 - **Leck-Monitor (seit 177):**
   - Felder im `TearDown` freigeben.
-  - Einmal-Belegungen der RTL im `[SetupFixture]` vorab auslösen; `[IgnoreMemoryLeaks]` nur mit Begründung.
-  - Bei reinen Leck-Fehlschlägen bis zu sechs Läufe; gilt als zeitabhängig, wenn jeder gemeldete Test mindestens einmal sauber war.
+  - Auf jeden Thread warten, den ein Test startet, auch auf nebenläufige Anfragen (in den Verbindungstests `TJoinedWorkers` statt Thread-Pool). Kein Thread darf sich nach dem Test selbst freigeben.
+  - Einmal-Belegungen der RTL im `[SetupFixture]` vorab auslösen. `[IgnoreMemoryLeaks]` nur, wo ein Test sein Wachstum selbst misst oder Speicher absichtlich über das Testende hinaus lebt, und dann mit Grund am Test (Stand Bericht N2: vier Stellen).
+  - Eine Leckmeldung ist ein Befund: Bericht des Monitors (Setup, Test, TearDown, Threads) festhalten und die Ursache suchen. Nicht wiederholen, bis ein Lauf grün ist (früher „bis zu sechs Läufe“, abgelöst durch Bericht N2).
 - **Weitere Fixes in 78–97:** E2029 (Listentrenner), Profilerwartungen (#269, #91, #124, #125), Konflikte `UsesClause` (#284), `Shell.Composition` (#283: Mitschnitt rotiert und weicht aus; Methodendeklaration hinter die Felder), `DiskFileSystem` (#62: `EArgumentException` und `EOSError`), `System.Classes` im Index-Test, RotatingFileStream-Tests (`WillRaiseDescendant`).
 - Die IDE sortiert `DCCReference` um und fügt Leerzeilen ein. Reine Umsortierungen und Leerraum-Änderungen werden verworfen.
 

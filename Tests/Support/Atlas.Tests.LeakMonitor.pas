@@ -3,7 +3,11 @@
 // Speicherleck-Überwachung für DUnitX. Misst über GetMemoryManagerState des
 // eingebauten Speichermanagers (FastMM-basiert), wie viele Bytes Setup, Test
 // und TearDown netto belegt haben. DUnitX wertet einen Test mit Rest als
-// Speicherleck; Tests mit gewollten Caches tragen [IgnoreMemoryLeaks].
+// Speicherleck. Eine Leckmeldung ist ein Befund, kein Grund zum Wiederholen
+// (Bericht N2): Tests warten auf jeden Thread, den sie starten, und leeren
+// Felder im TearDown; Einmal-Belegungen der RTL nimmt ein [SetupFixture]
+// vorweg. [IgnoreMemoryLeaks] nur, wo ein Test sein Wachstum selbst misst oder
+// Speicher absichtlich über das Testende hinaus lebt, und dann mit Grund.
 //
 // Die Messung ist prozessweit und sieht deshalb auch andere Threads. Damit
 // sie nur Lecks des Tests meldet:

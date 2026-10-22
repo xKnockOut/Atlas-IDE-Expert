@@ -338,12 +338,36 @@ begin
   end;
 end;
 
+/// <summary>Löst nach 50 ms das Signal zum Beenden aus. Der Test wartet am Ende auf den Thread, statt dass er
+/// sich irgendwann selbst freigibt (Bericht N2).</summary>
+function SignalShutdownSoon: TThread;
+begin
+  Result := TThread.CreateAnonymousThread(
+    procedure
+    begin
+      Sleep(50);
+      TAtlasShutdown.Signal;
+    end);
+  Result.FreeOnTerminate := False;
+  Result.Start;
+end;
+
+procedure JoinThread(AThread: TThread);
+begin
+  if AThread = nil then
+    Exit;
+  AThread.WaitFor;
+  AThread.Free;
+end;
+
 procedure TAtlasTimeLimitTests.ShutdownEndsWaitsAndWorkers;
 var
   Watch: TStopwatch;
   Event: TEvent;
   Error: string;
+  Signaller: TThread;
 begin
+  Signaller := nil;
   Event := TEvent.Create(nil, True, False, '');
   try
     Assert.IsTrue(TAtlasShutdown.WaitFor(Event, 30) = wrTimeout);
@@ -356,12 +380,7 @@ begin
       begin
         TAtlasShutdown.Wait(10000);
       end, Error, 50) = TAtlasTimedOutcome.TimedOut);
-    TThread.CreateAnonymousThread(
-      procedure
-      begin
-        Sleep(50);
-        TAtlasShutdown.Signal;
-      end).Start;
+    Signaller := SignalShutdownSoon;
     Watch := TStopwatch.StartNew;
     Assert.IsTrue(TAtlasShutdown.WaitFor(Event, 10000) = wrAbandoned);
     Assert.IsTrue(Watch.ElapsedMilliseconds < 500);
@@ -374,6 +393,7 @@ begin
       begin
       end, Error) = TAtlasTimedOutcome.Failed, 'nach dem Signal startet nichts mehr');
   finally
+    JoinThread(Signaller);
     Event.Free;
   end;
   TAtlasShutdown.Reset;
@@ -387,18 +407,15 @@ procedure TAtlasTimeLimitTests.ClientRequestEndsOnShutdown;
 var
   Client: TLspClient;
   Watch: TStopwatch;
+  Signaller: TThread;
 begin
+  Signaller := nil;
   Client := TLspClient.Create(
     procedure(const ABytes: TBytes)
     begin
     end);
   try
-    TThread.CreateAnonymousThread(
-      procedure
-      begin
-        Sleep(50);
-        TAtlasShutdown.Signal;
-      end).Start;
+    Signaller := SignalShutdownSoon;
     Watch := TStopwatch.StartNew;
     Assert.WillRaise(
       procedure
@@ -407,6 +424,7 @@ begin
       end, ELspClientError);
     Assert.IsTrue(Watch.ElapsedMilliseconds < 500, Format('wartete %d ms', [Watch.ElapsedMilliseconds]));
   finally
+    JoinThread(Signaller);
     Client.Free;
   end;
 end;

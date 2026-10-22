@@ -12,8 +12,6 @@ type
   TShellWorkspaceTests = class
   public
     [Test]
-    // Der anonyme Thread legt Verwaltungsdaten an, die erst nach dem Test freigegeben werden.
-    [IgnoreMemoryLeaks]
     procedure ReloadOutsideLoopThreadRaises;
     /// <summary>Einheitliche Wahl des Arbeitsbereichs (S-02): Treffer, sonst der einzige, sonst keiner.</summary>
     [Test]

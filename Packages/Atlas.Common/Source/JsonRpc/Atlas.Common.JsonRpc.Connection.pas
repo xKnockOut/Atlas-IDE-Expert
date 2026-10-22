@@ -299,8 +299,9 @@ end;
 
 // Startet den Lese-Thread. Er hält nur referenzgezählte Objekte, damit er auch
 // dann sicher endet, wenn Run nicht auf ihn warten konnte (blockierendes stdin).
-procedure StartReader(const ATransport: IJsonRpcTransport; const APending: IJsonRpcPendingRequests;
-  const AInbox: IJsonRpcInbox);
+// Er gibt sich nicht selbst frei: Run wartet auf ihn (ReleaseReader).
+function StartReader(const ATransport: IJsonRpcTransport; const APending: IJsonRpcPendingRequests;
+  const AInbox: IJsonRpcInbox): TThread;
 var
   Transport: IJsonRpcTransport;
   Pending: IJsonRpcPendingRequests;
@@ -367,8 +368,29 @@ begin
         Inbox.ReaderDone;
       end;
     end);
-  Reader.FreeOnTerminate := True;
+  Reader.FreeOnTerminate := False;
   Reader.Start;
+  Result := Reader;
+end;
+
+// Wartet auf den Lese-Thread und gibt ihn frei (Bericht N2). Bisher gab er sich
+// selbst frei, kurz nach ReaderDone und damit nach dem Ende von Run; was er
+// bis dahin hielt, überlebte Run. Hängt er nach ATimeout noch im Lesen
+// (blockierendes stdin), gibt er sich bei seiner Rückkehr selbst frei. Liest
+// er FreeOnTerminate vor dem Setzen, bleibt höchstens ein Leck (wie
+// TAtlasThreadList.StopAll im Plugin).
+procedure ReleaseReader(AReader: TThread; const AInbox: IJsonRpcInbox; ATimeout: Cardinal);
+begin
+  if AReader = nil then
+    Exit;
+  if AInbox.WaitForReader(ATimeout) then
+  begin
+    // ReaderDone kommt im finally des Threads: Danach endet er sofort.
+    AReader.WaitFor;
+    AReader.Free;
+  end
+  else
+    AReader.FreeOnTerminate := True;
 end;
 
 function ThreadPoolScheduler: TJsonRpcScheduler;
@@ -512,6 +534,7 @@ var
   OwnScheduler: Boolean;
   OwnResponder: Boolean;
   Error: Exception;
+  Reader: TThread;
 begin
   FStopped := False;
   FUnfinishedWork := False;
@@ -526,8 +549,9 @@ begin
     FDispatcher.Responder := CreateResponder();
 
   Failure := nil;
+  Reader := nil;
   try
-    StartReader(FTransport, FDispatcher.PendingRequests, Inbox);
+    Reader := StartReader(FTransport, FDispatcher.PendingRequests, Inbox);
     while not FStopped do
     begin
       Item := Inbox.Take;
@@ -580,7 +604,7 @@ begin
       FDispatcher.Scheduler := nil;
     if OwnResponder then
       FDispatcher.Responder := nil;
-    Inbox.WaitForReader(DefaultReaderTimeout);
+    ReleaseReader(Reader, Inbox, DefaultReaderTimeout);
   end;
 
   if Failure <> nil then

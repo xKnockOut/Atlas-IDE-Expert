@@ -3180,6 +3180,17 @@ Voraussetzung: Zwei Projekte, die unterschiedliche VCL-Units verwenden (z. B. ei
 | IC3 | Während eine IDE indiziert, `%LOCALAPPDATA%\Atlas\Index\<Version>\Bibliothek\<Hash>\index.atlasidx.lock` in PowerShell exklusiv öffnen (`$f = [IO.File]::Open($pfad, 'Open', 'ReadWrite', 'None')`), 35 Sekunden warten, dann `$f.Close()` | Im Server-Log „Index-Cache (Bibliothek) nicht geschrieben: Schreibsperre nicht erhalten“, ohne Pfad; der nächste Aufbau schreibt den Cache wieder |
 | IC4 | Testlauf `Atlas.Tests.exe` | Grün, darunter `ServiceKeepsLibraryUnitsOfOtherWriters`, `ServiceWaitsForLibraryWriteLock`, `ServiceReportsUnwrittenCache`, `DiskWriteLockIsExclusive` |
 
+## Leckprüfung ohne Pauschalausnahmen (Bericht N2)
+
+Voraussetzung: `Atlas.Tests.exe` (Win64, Debug) mit `AtlasServer.exe` daneben, damit auch die Tests gegen den echten Server laufen.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| LP1 | Volle Testläufe hintereinander, mindestens drei | Jeder Lauf ohne Leckmeldung. Meldet ein Test ein Leck, die Zeile mit Setup, Test, TearDown und Threads aus dem Bericht festhalten; das ist ein Befund, kein Grund zum Wiederholen |
+| LP2 | Im Quelltext nach `[IgnoreMemoryLeaks]` suchen | Nur noch `ReplayDoesNotGrowMemory`, `ConnectionSoakDoesNotGrowMemory`, `ConnectionSoakDetectsWorkerLeak` und `StopDropsWaitingAndLaterEntries`, jeweils mit Grund darüber |
+| LP3 | Testlauf nur der Fixture `TJsonRpcConnectionTests` | Grün, darunter `RunReleasesReaderBeforeReturning` |
+| LP4 | Server in der IDE beenden (IDE schließen) mit `--log` | Im Server-Log keine Meldung „Nebenläufige Anfragen wurden beim Beenden nicht rechtzeitig fertig“; der Prozess endet wie bisher ohne Wartezeit |
+
 ## Gliederung beim Start und Kontextwechsel ohne Zugriffsverletzung
 
 Voraussetzung: experimentelles `editor.stickyScroll` an (wie bei Marco), Brotkrumen an; IDE frisch gestartet, eine Gruppe mit mehreren Plattformen.
