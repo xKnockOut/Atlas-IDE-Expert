@@ -2362,6 +2362,19 @@
         "E2417",
         "E2569"
       ]
+    },
+    {
+      "id": "guid-syntax-invalid",
+      "name": "GUID with invalid syntax",
+      "category": "bug",
+      "severity": "error",
+      "group": "compiler",
+      "description": "The GUID of an interface or of a typed TGUID constant is not of the form '{8-4-4-4-12}' (like E2204): missing braces, wrong number or length of blocks, characters that are not hex digits, often after editing by hand. Only single literals are checked; concatenations and constants stay silent. Quick fixes: generate a new GUID; when only the braces are missing, add them. Complements interface-guid and duplicate-interface-guid.",
+      "bad": "ILogger = interface\n  ['{6A1F3B2C-9D4E-4F5A-8B7C-1D2E3F4A5B6}']",
+      "good": "ILogger = interface\n  ['{6A1F3B2C-9D4E-4F5A-8B7C-1D2E3F4A5B6C}']",
+      "compilerCodes": [
+        "E2204"
+      ]
     }
   ]
 }

@@ -4165,3 +4165,17 @@ Voraussetzung: Server läuft in der IDE mit Projekt; `variant-record-managed-fie
 | VT7 | `TDatei = file of string;`, Alt+Enter „ShortString verwenden“ | Fehler wie E2155; danach `file of ShortString` ohne Meldung |
 | VT8 | `ShortString`, `string[20]`, `Integer`, `TObject`, `PChar`, unbekannter Typ, String im festen Teil, `TBox<T: class>`, `file of Integer`, `file` | Keine Meldung |
 | VT9 | `"variant-record-managed-field": "off"`, `"group:compiler": "off"` bzw. `exclude` | Keine Meldung |
+
+## GUID mit falscher Schreibweise (#1072)
+
+Voraussetzung: Server läuft in der IDE mit Projekt; `guid-syntax-invalid` steht auf der Vorgabe (Fehler).
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| GU1 | Das Beispiel aus #1072 (`ILogger = interface ['{6A1F3B2C-9D4E-4F5A-8B7C-1D2E3F4A5B6}']`) | Fehler am GUID-Literal: „Der letzte Block der GUID hat 11 statt 12 Zeichen (wie E2204).“; im Fenster „Atlas-Prüfung“ und im Befund-Hover |
+| GU2 | Projekt bauen | Der Compiler meldet E2204 an derselben Stelle; Fenster zeigt Quelle „Atlas + dcc“ |
+| GU3 | Alt+Enter: „Neue GUID erzeugen“, danach Strg+Z | Gültige neue GUID in Großbuchstaben mit Klammern; übersetzt; ein Undo-Schritt |
+| GU4 | GUID ohne `{` und `}`, Alt+Enter „Geschweifte Klammern ergänzen“ | Meldung „Der GUID fehlen die geschweiften Klammern (wie E2204).“; die Korrektur behält die GUID und ergänzt nur die Klammern |
+| GU5 | `IID_Logger: TGUID = '{6A1F3B2C-9D4E-4F5A-8B7C-1D2E3F4A5B6X}';`, eine GUID mit vier Blöcken, ein erster Block mit 7 Zeichen | „Die GUID enthält „X“, das ist keine Hexadezimalziffer (wie E2204).“, „Die GUID hat 4 statt 5 Blöcke …“, „Der erste Block der GUID hat 7 statt 8 Zeichen …“ |
+| GU6 | Gültige GUID (auch in Kleinbuchstaben), GUID über eine Konstante `[IID_Logger]`, verkettete Konstante, Attribut `[Beschreibung('kurz')]` | Keine Meldung |
+| GU7 | `"guid-syntax-invalid": "off"`, `"group:compiler": "off"` bzw. `exclude` | Keine Meldung |
