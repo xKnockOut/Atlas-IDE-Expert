@@ -4135,3 +4135,18 @@ Voraussetzung: Server läuft in der IDE mit Projekt; RTL und VCL im Index.
 | NS7 | `TKind = class(TBasis)` in derselben Unit mit `property Wert: Integer read FWert;`, `FWert` private in `TBasis` | Warnung an `Wert`: „Die Property Wert verweist auf TBasis.FWert, das im Vorfahren private ist (wie W1045).“ |
 | NS8 | `"inaccessible-member": "off"`, `"group:compiler": "off"` bzw. `exclude` | Keine Meldung |
 | NS9 | Abgleich mit Delphi: NS1, NS2, NS4, NS6, NS7 übersetzen | dcc meldet E2124, E2362, E2361 bzw. W1045 an denselben Stellen, für NS3 und NS5 nichts |
+
+## Privates Mitglied nie verwendet (#1020)
+
+Voraussetzung: Server läuft in der IDE mit Projekt.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| UV1 | Das Beispiel aus #1020: `TImport` mit `private FAltFormat: Boolean; procedure KonvertiereAlt;`, beide nirgends verwendet | Hinweise `unused-private-member` an beiden Namen: „Privates Feld FAltFormat wird nie verwendet (wie H2219).“ und „Private Methode KonvertiereAlt wird nie verwendet (wie H2219).“; im Fenster „Atlas-Prüfung“ und im Befund-Hover (**Abnahme**) |
+| UV2 | Schnellkorrektur „KonvertiereAlt entfernen“, danach Strg+Z | Deklaration samt ///-Doku und Rumpf in implementation sind weg; ein Undo-Schritt stellt beides wieder her |
+| UV3 | Private Konstante und Property ohne Verwendung; `FA, FB: Integer` mit nur `FB` verwendet | Meldungen für Konstante, Property und `FA` (bei `FA` ohne Korrektur) |
+| UV4 | Mitglied nur in einem `{$IFDEF}`-Zweig, hinter `read` einer Property oder über `Self.` verwendet | Keine Meldung |
+| UV5 | `message`-Methode, `override`-Methode, Feld mit `[Weak]`, Methode einer Klasse mit Interface, Komponente aus der .dfm, Unit mit `{$I …}` | Keine Meldung |
+| UV6 | `"unused-private-member": {"includeFields": false}` | Nur noch Methoden, Konstanten und Properties |
+| UV7 | `"unused-private-member": "off"`, `"group:compiler": "off"` bzw. `exclude` | Keine Meldung |
+| UV8 | Abgleich mit Delphi: UV1 übersetzen | dcc meldet H2219 für `KonvertiereAlt` an derselben Stelle (für Felder meldet dcc nichts); für UV4 und UV5 nichts |
