@@ -2351,6 +2351,81 @@ begin
     '          "description": "Also report private fields that are never used (the compiler reports only methods)."' + #10 +
     '        }' + #10 +
     '      ]' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "unused-public-member",' + #10 +
+    '      "name": "Public member never used in the project",' + #10 +
+    '      "category": "code-smell",' + #10 +
+    '      "severity": "hint",' + #10 +
+    '      "group": "style",' + #10 +
+    '      "description": "A public or published method, constant or property (optionally also protected members, fields and class variables, and unit-level routines and constants of the interface section)' + ' is used nowhere in the projects of the project group. The search is project-wide via the symbol index: only files whose index usages contain the name are parsed, and every occurrence is resolved by n' + 'ame resolution; an occurrence that cannot be resolved counts as a use. Names in form files (.dfm/.fmx) and in string literals count as uses. Considered used: interface implementations and members of i' + 'nterfaces, virtual, dynamic, override, abstract and message methods, constructors, destructors, operators, enumerators, default properties, implements, members with attributes, published members of TP' + 'ersistent descendants (streaming) and test fixtures, property accessors, exported routines, class helpers, members of classes with an unknown ancestor. Silent while projects are loading or the index i' + 's incomplete, when a file cannot be read, for units with include files and for units of packages or libraries (external users) unless projectKinds allows them. Quick fix: mark as intentionally public ' + '(lsp-ignore comment).",' + #10 +
+    '      "bad": "  TExport = class\n  public\n    procedure ExportiereAlsXml;\n  end;\n// ExportiereAlsXml is called nowhere in the project group",' + #10 +
+    '      "good": "  TExport = class\n  public\n    procedure ExportiereAlsJson; // called by TMainForm\n  end;",' + #10 +
+    '      "options": [' + #10 +
+    '        {' + #10 +
+    '          "name": "visibilities",' + #10 +
+    '          "type": "string-list",' + #10 +
+    '          "default": [' + #10 +
+    '            "public",' + #10 +
+    '            "published"' + #10 +
+    '          ],' + #10 +
+    '          "description": "Visibilities that are checked: public, published, protected."' + #10 +
+    '        },' + #10 +
+    '        {' + #10 +
+    '          "name": "memberKinds",' + #10 +
+    '          "type": "string-list",' + #10 +
+    '          "default": [' + #10 +
+    '            "method",' + #10 +
+    '            "constant",' + #10 +
+    '            "property"' + #10 +
+    '          ],' + #10 +
+    '          "description": "Member kinds that are checked: method, constant, property, field, classVar."' + #10 +
+    '        },' + #10 +
+    '        {' + #10 +
+    '          "name": "projectKinds",' + #10 +
+    '          "type": "string-list",' + #10 +
+    '          "default": [' + #10 +
+    '            "application"' + #10 +
+    '          ],' + #10 +
+    '          "description": "Project kinds whose units are checked: application, package, library. Packages and libraries have users outside the project group, so they are off by default."' + #10 +
+    '        },' + #10 +
+    '        {' + #10 +
+    '          "name": "unitLevel",' + #10 +
+    '          "type": "boolean",' + #10 +
+    '          "default": true,' + #10 +
+    '          "description": "Also check routines and constants declared in the interface section of a unit."' + #10 +
+    '        },' + #10 +
+    '        {' + #10 +
+    '          "name": "scope",' + #10 +
+    '          "type": "string",' + #10 +
+    '          "default": "projectGroup",' + #10 +
+    '          "description": "Where uses are searched: projectGroup (all projects of the group) or project (only the projects of the file)."' + #10 +
+    '        },' + #10 +
+    '        {' + #10 +
+    '          "name": "testsCountAsUse",' + #10 +
+    '          "type": "boolean",' + #10 +
+    '          "default": true,' + #10 +
+    '          "description": "Uses in test projects count; when off, a member used only by tests is reported as such."' + #10 +
+    '        },' + #10 +
+    '        {' + #10 +
+    '          "name": "stringLiteralsCountAsUse",' + #10 +
+    '          "type": "boolean",' + #10 +
+    '          "default": true,' + #10 +
+    '          "description": "The name as a string literal (''Name'') counts as a use (RTTI, MethodAddress, scripts)."' + #10 +
+    '        },' + #10 +
+    '        {' + #10 +
+    '          "name": "keepAttributes",' + #10 +
+    '          "type": "string-list",' + #10 +
+    '          "default": [],' + #10 +
+    '          "description": "Attributes on the member or its type that mark it as used, e.g. \"Keep\" or \"Api\"."' + #10 +
+    '        },' + #10 +
+    '        {' + #10 +
+    '          "name": "keepPatterns",' + #10 +
+    '          "type": "string-list",' + #10 +
+    '          "default": [],' + #10 +
+    '          "description": "Name patterns (* and ?) for members that are always considered used, e.g. \"TPlugin.*\" or \"*Callback\"."' + #10 +
+    '        }' + #10 +
+    '      ]' + #10 +
     '    }' + #10 +
     '  ]' + #10 +
     '}' + #10 +
@@ -3535,6 +3610,49 @@ begin
     '        {' + #10 +
     '          "name": "includeFields",' + #10 +
     '          "description": "Auch nie verwendete private Felder melden (der Compiler meldet nur Methoden)."' + #10 +
+    '        }' + #10 +
+    '      ]' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "unused-public-member",' + #10 +
+    '      "name": "Öffentliches Mitglied wird im Projekt nie verwendet",' + #10 +
+    '      "description": "Eine public- oder published-Methode, -Konstante oder -Property (wahlweise auch protected-Mitglieder, Felder und Klassenvariablen sowie Routinen und Konstanten im interface-Abschn' + 'itt einer Unit) wird in den Projekten der Projektgruppe nirgends verwendet. Die Suche läuft projektweit über den Symbolindex: Nur Dateien, deren Verwendungen im Index den Namen enthalten, werden geles' + 'en, und jedes Vorkommen wird über die Namensauflösung zugeordnet; ein Vorkommen, das sich nicht auflösen lässt, zählt als Verwendung. Namen in Formulardateien (.dfm/.fmx) und in String-Literalen zähle' + 'n als Verwendung. Gelten als verwendet: Interface-Umsetzungen und Mitglieder von Interfaces, Methoden mit virtual, dynamic, override, abstract oder message, Konstruktoren, Destruktoren, Operatoren, En' + 'umeratoren, Default-Properties, implements, Mitglieder mit Attributen, published-Mitglieder von TPersistent-Nachfahren (Streaming) und Testklassen, Property-Zugriffsmethoden, exportierte Routinen, Kla' + 'ssenhelfer und Mitglieder von Klassen mit unbekanntem Vorfahren. Still, solange Projekte laden oder der Index unvollständig ist, wenn eine Datei nicht lesbar ist, bei Units mit Include-Dateien und bei' + ' Units von Packages oder Bibliotheken (Nutzer außerhalb des Projekts), außer projectKinds lässt sie zu. Korrektur: als bewusst öffentlich markieren (lsp-ignore-Kommentar).",' + #10 +
+    '      "options": [' + #10 +
+    '        {' + #10 +
+    '          "name": "visibilities",' + #10 +
+    '          "description": "Geprüfte Sichtbarkeiten: public, published, protected."' + #10 +
+    '        },' + #10 +
+    '        {' + #10 +
+    '          "name": "memberKinds",' + #10 +
+    '          "description": "Geprüfte Mitgliedsarten: method, constant, property, field, classVar."' + #10 +
+    '        },' + #10 +
+    '        {' + #10 +
+    '          "name": "projectKinds",' + #10 +
+    '          "description": "Projektarten, deren Units geprüft werden: application, package, library. Packages und Bibliotheken haben Nutzer außerhalb der Projektgruppe und sind deshalb standardmäßig aus' + '."' + #10 +
+    '        },' + #10 +
+    '        {' + #10 +
+    '          "name": "unitLevel",' + #10 +
+    '          "description": "Auch Routinen und Konstanten aus dem interface-Abschnitt einer Unit prüfen."' + #10 +
+    '        },' + #10 +
+    '        {' + #10 +
+    '          "name": "scope",' + #10 +
+    '          "description": "Wo nach Verwendungen gesucht wird: projectGroup (alle Projekte der Gruppe) oder project (nur die Projekte der Datei)."' + #10 +
+    '        },' + #10 +
+    '        {' + #10 +
+    '          "name": "testsCountAsUse",' + #10 +
+    '          "description": "Verwendungen in Testprojekten zählen; ist es aus, wird ein Mitglied, das nur Tests verwenden, als solches gemeldet."' + #10 +
+    '        },' + #10 +
+    '        {' + #10 +
+    '          "name": "stringLiteralsCountAsUse",' + #10 +
+    '          "description": "Der Name als String-Literal (''Name'') zählt als Verwendung (RTTI, MethodAddress, Skripte)."' + #10 +
+    '        },' + #10 +
+    '        {' + #10 +
+    '          "name": "keepAttributes",' + #10 +
+    '          "description": "Attribute am Mitglied oder seinem Typ, die es als verwendet markieren, z. B. \"Keep\" oder \"Api\"."' + #10 +
+    '        },' + #10 +
+    '        {' + #10 +
+    '          "name": "keepPatterns",' + #10 +
+    '          "description": "Namensmuster (* und ?) für Mitglieder, die immer als verwendet gelten, z. B. \"TPlugin.*\" oder \"*Callback\"."' + #10 +
     '        }' + #10 +
     '      ]' + #10 +
     '    }' + #10 +

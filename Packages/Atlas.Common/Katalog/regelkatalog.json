@@ -2331,6 +2331,81 @@
           "description": "Also report private fields that are never used (the compiler reports only methods)."
         }
       ]
+    },
+    {
+      "id": "unused-public-member",
+      "name": "Public member never used in the project",
+      "category": "code-smell",
+      "severity": "hint",
+      "group": "style",
+      "description": "A public or published method, constant or property (optionally also protected members, fields and class variables, and unit-level routines and constants of the interface section) is used nowhere in the projects of the project group. The search is project-wide via the symbol index: only files whose index usages contain the name are parsed, and every occurrence is resolved by name resolution; an occurrence that cannot be resolved counts as a use. Names in form files (.dfm/.fmx) and in string literals count as uses. Considered used: interface implementations and members of interfaces, virtual, dynamic, override, abstract and message methods, constructors, destructors, operators, enumerators, default properties, implements, members with attributes, published members of TPersistent descendants (streaming) and test fixtures, property accessors, exported routines, class helpers, members of classes with an unknown ancestor. Silent while projects are loading or the index is incomplete, when a file cannot be read, for units with include files and for units of packages or libraries (external users) unless projectKinds allows them. Quick fix: mark as intentionally public (lsp-ignore comment).",
+      "bad": "  TExport = class\n  public\n    procedure ExportiereAlsXml;\n  end;\n// ExportiereAlsXml is called nowhere in the project group",
+      "good": "  TExport = class\n  public\n    procedure ExportiereAlsJson; // called by TMainForm\n  end;",
+      "options": [
+        {
+          "name": "visibilities",
+          "type": "string-list",
+          "default": [
+            "public",
+            "published"
+          ],
+          "description": "Visibilities that are checked: public, published, protected."
+        },
+        {
+          "name": "memberKinds",
+          "type": "string-list",
+          "default": [
+            "method",
+            "constant",
+            "property"
+          ],
+          "description": "Member kinds that are checked: method, constant, property, field, classVar."
+        },
+        {
+          "name": "projectKinds",
+          "type": "string-list",
+          "default": [
+            "application"
+          ],
+          "description": "Project kinds whose units are checked: application, package, library. Packages and libraries have users outside the project group, so they are off by default."
+        },
+        {
+          "name": "unitLevel",
+          "type": "boolean",
+          "default": true,
+          "description": "Also check routines and constants declared in the interface section of a unit."
+        },
+        {
+          "name": "scope",
+          "type": "string",
+          "default": "projectGroup",
+          "description": "Where uses are searched: projectGroup (all projects of the group) or project (only the projects of the file)."
+        },
+        {
+          "name": "testsCountAsUse",
+          "type": "boolean",
+          "default": true,
+          "description": "Uses in test projects count; when off, a member used only by tests is reported as such."
+        },
+        {
+          "name": "stringLiteralsCountAsUse",
+          "type": "boolean",
+          "default": true,
+          "description": "The name as a string literal ('Name') counts as a use (RTTI, MethodAddress, scripts)."
+        },
+        {
+          "name": "keepAttributes",
+          "type": "string-list",
+          "default": [],
+          "description": "Attributes on the member or its type that mark it as used, e.g. \"Keep\" or \"Api\"."
+        },
+        {
+          "name": "keepPatterns",
+          "type": "string-list",
+          "default": [],
+          "description": "Name patterns (* and ?) for members that are always considered used, e.g. \"TPlugin.*\" or \"*Callback\"."
+        }
+      ]
     }
   ]
 }

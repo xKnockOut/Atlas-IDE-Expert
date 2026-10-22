@@ -1174,6 +1174,49 @@
           "description": "Auch nie verwendete private Felder melden (der Compiler meldet nur Methoden)."
         }
       ]
+    },
+    {
+      "id": "unused-public-member",
+      "name": "Öffentliches Mitglied wird im Projekt nie verwendet",
+      "description": "Eine public- oder published-Methode, -Konstante oder -Property (wahlweise auch protected-Mitglieder, Felder und Klassenvariablen sowie Routinen und Konstanten im interface-Abschnitt einer Unit) wird in den Projekten der Projektgruppe nirgends verwendet. Die Suche läuft projektweit über den Symbolindex: Nur Dateien, deren Verwendungen im Index den Namen enthalten, werden gelesen, und jedes Vorkommen wird über die Namensauflösung zugeordnet; ein Vorkommen, das sich nicht auflösen lässt, zählt als Verwendung. Namen in Formulardateien (.dfm/.fmx) und in String-Literalen zählen als Verwendung. Gelten als verwendet: Interface-Umsetzungen und Mitglieder von Interfaces, Methoden mit virtual, dynamic, override, abstract oder message, Konstruktoren, Destruktoren, Operatoren, Enumeratoren, Default-Properties, implements, Mitglieder mit Attributen, published-Mitglieder von TPersistent-Nachfahren (Streaming) und Testklassen, Property-Zugriffsmethoden, exportierte Routinen, Klassenhelfer und Mitglieder von Klassen mit unbekanntem Vorfahren. Still, solange Projekte laden oder der Index unvollständig ist, wenn eine Datei nicht lesbar ist, bei Units mit Include-Dateien und bei Units von Packages oder Bibliotheken (Nutzer außerhalb des Projekts), außer projectKinds lässt sie zu. Korrektur: als bewusst öffentlich markieren (lsp-ignore-Kommentar).",
+      "options": [
+        {
+          "name": "visibilities",
+          "description": "Geprüfte Sichtbarkeiten: public, published, protected."
+        },
+        {
+          "name": "memberKinds",
+          "description": "Geprüfte Mitgliedsarten: method, constant, property, field, classVar."
+        },
+        {
+          "name": "projectKinds",
+          "description": "Projektarten, deren Units geprüft werden: application, package, library. Packages und Bibliotheken haben Nutzer außerhalb der Projektgruppe und sind deshalb standardmäßig aus."
+        },
+        {
+          "name": "unitLevel",
+          "description": "Auch Routinen und Konstanten aus dem interface-Abschnitt einer Unit prüfen."
+        },
+        {
+          "name": "scope",
+          "description": "Wo nach Verwendungen gesucht wird: projectGroup (alle Projekte der Gruppe) oder project (nur die Projekte der Datei)."
+        },
+        {
+          "name": "testsCountAsUse",
+          "description": "Verwendungen in Testprojekten zählen; ist es aus, wird ein Mitglied, das nur Tests verwenden, als solches gemeldet."
+        },
+        {
+          "name": "stringLiteralsCountAsUse",
+          "description": "Der Name als String-Literal ('Name') zählt als Verwendung (RTTI, MethodAddress, Skripte)."
+        },
+        {
+          "name": "keepAttributes",
+          "description": "Attribute am Mitglied oder seinem Typ, die es als verwendet markieren, z. B. \"Keep\" oder \"Api\"."
+        },
+        {
+          "name": "keepPatterns",
+          "description": "Namensmuster (* und ?) für Mitglieder, die immer als verwendet gelten, z. B. \"TPlugin.*\" oder \"*Callback\"."
+        }
+      ]
     }
   ]
 }

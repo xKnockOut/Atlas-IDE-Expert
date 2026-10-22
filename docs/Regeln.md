@@ -17,7 +17,7 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 | [Komponenten](#gruppe-components) | 8 |
 | [Formulare und Daten](#gruppe-forms) | 10 |
 | [Architektur](#gruppe-architecture) | 3 |
-| [Stil und Metriken](#gruppe-style) | 28 |
+| [Stil und Metriken](#gruppe-style) | 29 |
 | [Packages und Tests](#gruppe-packages) | 3 |
 | [Atlas intern](#gruppe-internal) | 3 |
 
@@ -257,6 +257,7 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 | [`public-field`](#public-field) | Öffentliches Feld | Code Smell | Hinweis |
 | [`global-variable`](#global-variable) | Globale Variable im interface | Code Smell | Hinweis |
 | [`commented-out-code`](#commented-out-code) | Auskommentierter Code | Code Smell | Hinweis |
+| [`unused-public-member`](#unused-public-member) | Öffentliches Mitglied wird im Projekt nie verwendet | Code Smell | Hinweis |
 
 <a id="gruppe-packages"></a>
 ### Packages und Tests
@@ -4601,5 +4602,43 @@ Richtig:
 ```pascal
   TImport = class
   private
+  end;
+```
+
+<a id="unused-public-member"></a>
+### unused-public-member
+
+**Öffentliches Mitglied wird im Projekt nie verwendet** · Code Smell · Hinweis · Gruppe Stil und Metriken
+
+Eine public- oder published-Methode, -Konstante oder -Property (wahlweise auch protected-Mitglieder, Felder und Klassenvariablen sowie Routinen und Konstanten im interface-Abschnitt einer Unit) wird in den Projekten der Projektgruppe nirgends verwendet. Die Suche läuft projektweit über den Symbolindex: Nur Dateien, deren Verwendungen im Index den Namen enthalten, werden gelesen, und jedes Vorkommen wird über die Namensauflösung zugeordnet; ein Vorkommen, das sich nicht auflösen lässt, zählt als Verwendung. Namen in Formulardateien (.dfm/.fmx) und in String-Literalen zählen als Verwendung. Gelten als verwendet: Interface-Umsetzungen und Mitglieder von Interfaces, Methoden mit virtual, dynamic, override, abstract oder message, Konstruktoren, Destruktoren, Operatoren, Enumeratoren, Default-Properties, implements, Mitglieder mit Attributen, published-Mitglieder von TPersistent-Nachfahren (Streaming) und Testklassen, Property-Zugriffsmethoden, exportierte Routinen, Klassenhelfer und Mitglieder von Klassen mit unbekanntem Vorfahren. Still, solange Projekte laden oder der Index unvollständig ist, wenn eine Datei nicht lesbar ist, bei Units mit Include-Dateien und bei Units von Packages oder Bibliotheken (Nutzer außerhalb des Projekts), außer projectKinds lässt sie zu. Korrektur: als bewusst öffentlich markieren (lsp-ignore-Kommentar).
+
+| Option | Typ | Vorgabe | Bedeutung |
+|---|---|---|---|
+| `visibilities` | string-list | `["public","published"]` | Geprüfte Sichtbarkeiten: public, published, protected. |
+| `memberKinds` | string-list | `["method","constant","property"]` | Geprüfte Mitgliedsarten: method, constant, property, field, classVar. |
+| `projectKinds` | string-list | `["application"]` | Projektarten, deren Units geprüft werden: application, package, library. Packages und Bibliotheken haben Nutzer außerhalb der Projektgruppe und sind deshalb standardmäßig aus. |
+| `unitLevel` | boolean | `true` | Auch Routinen und Konstanten aus dem interface-Abschnitt einer Unit prüfen. |
+| `scope` | string | `"projectGroup"` | Wo nach Verwendungen gesucht wird: projectGroup (alle Projekte der Gruppe) oder project (nur die Projekte der Datei). |
+| `testsCountAsUse` | boolean | `true` | Verwendungen in Testprojekten zählen; ist es aus, wird ein Mitglied, das nur Tests verwenden, als solches gemeldet. |
+| `stringLiteralsCountAsUse` | boolean | `true` | Der Name als String-Literal ('Name') zählt als Verwendung (RTTI, MethodAddress, Skripte). |
+| `keepAttributes` | string-list | `[]` | Attribute am Mitglied oder seinem Typ, die es als verwendet markieren, z. B. "Keep" oder "Api". |
+| `keepPatterns` | string-list | `[]` | Namensmuster (* und ?) für Mitglieder, die immer als verwendet gelten, z. B. "TPlugin.*" oder "*Callback". |
+
+Mit Treffer:
+
+```pascal
+  TExport = class
+  public
+    procedure ExportiereAlsXml;
+  end;
+// ExportiereAlsXml is called nowhere in the project group
+```
+
+Richtig:
+
+```pascal
+  TExport = class
+  public
+    procedure ExportiereAlsJson; // called by TMainForm
   end;
 ```
