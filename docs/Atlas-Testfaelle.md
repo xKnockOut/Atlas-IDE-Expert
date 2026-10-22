@@ -4021,3 +4021,22 @@ Voraussetzung: Server läuft in der IDE mit Projekt.
 | DD8 | Überladungen und Rümpfe, Vorwärtsdeklaration, `TListe` neben `TListe<T>`, Feld und gleichnamiger Parameter einer Methode, `{$IFDEF}`/`{$ELSE}` | Keine Meldung |
 | DD9 | `"duplicate-declaration": "off"`, `"group:compiler": "off"` bzw. `exclude` mit dem Pfad der Datei | Keine Meldung |
 | DD10 | Abgleich mit Delphi: DD1, DD3 bis DD6 übersetzen | dcc meldet E2004 an denselben Stellen, für DD8 nichts |
+
+## Bedingte Direktiven unvollständig oder unbekannt (#989)
+
+Voraussetzung: Server läuft in der IDE mit Projekt.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| BD1 | Das Beispiel aus #989: `{$IFDEF DEBUG}` ohne `{$ENDIF}` vor einer Prozedur | Fehler `conditional-directive-unbalanced` an der Direktive: „{$IFDEF DEBUG} wird nie geschlossen; der Rest der Datei hängt an DEBUG (wie E2095).“; im Fenster „Atlas-Prüfung“ (Gruppe Compiler vorab) und im Befund-Hover (**Abnahme**) |
+| BD2 | Schnellkorrektur „{$ENDIF} nach Zeile N ergänzen“, danach Strg+Z | `{$ENDIF}` steht vor der ersten Leerzeile hinter dem Block, mit der Einrückung des `{$IFDEF}`; ein Undo-Schritt nimmt es zurück |
+| BD3 | `{$IF CompilerVersion >= 36}` ohne Abschluss; `{$IFNDEF RELEASE}` ohne Abschluss | „… (wie E2280)“ bzw. „… hängt an not RELEASE (wie E2095)“ |
+| BD4 | Einzelnes `{$ENDIF}`; `{$ELSE}` ohne `{$IF}`; zweites `{$ELSE}` in einer Kette | „… ohne passendes {$IF…} (wie E2279)“ mit Korrektur „Überzähliges … entfernen“ bzw. „{$ELSE} nach {$ELSE} von … (wie E2279)“ |
+| BD5 | `{$IFDEF}` ohne Symbol; `{$DEFINE 1X}` | „{$IFDEF} ohne Symbol (wie E2173).“ bzw. „1X ist kein gültiges Symbol für {$DEFINE} (wie E2173).“ |
+| BD6 | `{$OPTIMISATION ON}`; `{$WARN SYMBOL_PLATFROM OFF}`; `{$WARN UNKOWN OFF}`; `{$FOOBAR}` | W1030-Meldungen; für die ersten beiden die Korrektur „Tippfehler korrigieren: …“, Schreibweise bleibt (klein bleibt klein) |
+| BD7 | `{$POPOPT}` ohne `{$PUSHOPT}`; zwei `{$PUSHOPT}`, ein `{$POPOPT}` | „… (wie W1078)“ bzw. eine Meldung am ersten `{$PUSHOPT}` „… (wie W1079)“ |
+| BD8 | `{$ALIGN 3}`, `{$R+,A32}`, `{$ALIGN DOUBLE}` | „Ungültiger Wert … für {$ALIGN} …(wie E2573)“ |
+| BD9 | `{$IFDEF FPC}{$MODE DELPHI}{$ENDIF}`, `{$IF Defined(FPC_FULLVERSION)}{$WARN 5024 OFF}{$ENDIF}`, verschachtelte Ketten, `{$R *.res}`, `{$A8}`, `{$YD}`, `{$SetPEFlags 1}`, `(*$IFDEF X*)(*$ENDIF*)` | Keine Meldung |
+| BD10 | `"conditional-directive-unbalanced": "off"`, `"group:compiler": "off"` bzw. `exclude` mit dem Pfad der Datei | Keine Meldung |
+| BD11 | Hover über `{$WARN ZERO_NIL_COMPAT OFF}` | Hover nennt die Warnung `ZERO_NIL_COMPAT`; die Vervollständigung nach `{$WARN ` bietet sie an |
+| BD12 | Abgleich mit Delphi: BD1, BD3 bis BD8 übersetzen | dcc meldet an denselben Stellen die Codes aus der Meldung (E2095, E2280, E2279, E2173, W1030, W1078, W1079, E2573); bei abweichendem Code die Meldung in der Regel anpassen; für BD9 nichts |

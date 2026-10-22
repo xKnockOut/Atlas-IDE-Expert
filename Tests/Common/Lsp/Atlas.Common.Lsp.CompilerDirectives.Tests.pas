@@ -41,6 +41,7 @@ uses
   Atlas.Common.Documents.Contract,
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.Parser,
+  Atlas.Common.Pascal.DirectiveNames,
   Atlas.Common.Lsp.CompilerDirectives;
 
 procedure TCompilerDirectivesTests.EveryDirectiveHasTextAndLinkForDelphi12And13;
@@ -52,6 +53,8 @@ begin
   begin
     Assert.IsTrue(Info.Text <> '', Info.Name);
     Assert.IsTrue(Info.Topic <> '', Info.Name);
+    // Die Prüfregel conditional-directive-unbalanced (#989) kennt jede Direktive der Tabelle.
+    Assert.IsTrue(TDirectiveNames.IsDirective(Info.Name), Info.Name);
     Assert.AreEqual('https://docwiki.embarcadero.com/RADStudio/Athens/en/' + Info.Topic,
       TCompilerDirectives.Url('23.0', Info.Topic));
     Assert.AreEqual('https://docwiki.embarcadero.com/RADStudio/Florence/en/' + Info.Topic,
