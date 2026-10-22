@@ -82,6 +82,16 @@ type
     /// <summary>Ist AName in der Datei oder im Index als eigener Typ deklariert (Klasse, Record, Aufzählung,
     /// Interface), also kein Alias?</summary>
     function IsDeclaredType(const AName: string): Boolean;
+    /// <summary>Typ AName jeder Art (Klasse, Record, Interface, Aufzählung, Alias) aus der Datei oder dem Index
+    /// (#1001); bei mehreren gleichnamigen der erste.</summary>
+    function FindAnyType(const AName: string; out AType: TSymbolLocation): Boolean;
+    /// <summary>Felder, Properties, Methoden und Konstruktoren des Typs AType (#1001).</summary>
+    function Members(const AType: TSymbolLocation): TArray<TIndexSymbol>;
+    /// <summary>Bezeichnen A und B denselben Typ? Synonyme (Longint, Integer) gleich; Typparameter aus
+    /// AWildcards und Aliase der Datei oder des Index passen zu allem (#997, #1001).</summary>
+    function SameType(const A, B: string; const AWildcards: TArray<string>): Boolean;
+    /// <summary>Steht der Typ sicher für sich (eingebaut oder als Klasse, Record, Aufzählung deklariert)?</summary>
+    function KnownType(const AName: string): Boolean;
     property Local: TUnitIndex read FLocal;
   end;
 
@@ -175,6 +185,31 @@ begin
         Exit(False);
 end;
 
+const
+  // Virtuelle Instanzmethoden von TObject, falls System nicht im Index steht.
+  ObjectVirtualNames: array[0..9] of string = ('AfterConstruction', 'BeforeDestruction', 'Dispatch',
+    'DefaultHandler', 'FreeInstance', 'Destroy', 'SafeCallException', 'ToString', 'Equals', 'GetHashCode');
+  // Gleiche Typen unter anderem Namen: Name=Grundname.
+  TypeSynonyms: array[0..17] of string = ('longint=integer', 'int32=integer', 'longword=cardinal',
+    'uint32=cardinal', 'dword=cardinal', 'unicodestring=string', 'widechar=char', 'pwidechar=pchar',
+    'intptr=nativeint', 'uintptr=nativeuint', 'int16=smallint', 'int8=shortint', 'uint8=byte', 'uint16=word',
+    'real=double', 'tobject=tobject', 'system.tobject=tobject', 'hresult=hresult');
+  // Eingebaute Typen, die sicher kein Alias eines anderen sind.
+  BuiltinTypes: array[0..25] of string = ('integer', 'cardinal', 'int64', 'uint64', 'string', 'ansistring',
+    'shortstring', 'widestring', 'char', 'ansichar', 'boolean', 'double', 'single', 'extended', 'currency', 'byte',
+    'word', 'smallint', 'shortint', 'pointer', 'variant', 'tobject', 'nativeint', 'nativeuint', 'pchar',
+    'tdatetime');
+
+function CanonicalType(const AName: string): string;
+var
+  Pair: string;
+begin
+  Result := LowerCase(BareName(AName));
+  for Pair in TypeSynonyms do
+    if StartsStr(Result + '=', Pair) then
+      Exit(Copy(Pair, Length(Result) + 2, MaxInt));
+end;
+
 { TAncestry }
 
 constructor TAncestry.Create(const AIndex: ISymbolIndex; const ALocal: TUnitIndex);
@@ -221,6 +256,16 @@ end;
 
 function TAncestry.Methods(const AType: TSymbolLocation): TArray<TIndexSymbol>;
 var
+  Symbol: TIndexSymbol;
+begin
+  Result := nil;
+  for Symbol in Members(AType) do
+    if Symbol.Kind in [TIndexSymbolKind.Method, TIndexSymbolKind.Constructor_] then
+      Result := Result + [Symbol];
+end;
+
+function TAncestry.Members(const AType: TSymbolLocation): TArray<TIndexSymbol>;
+var
   Symbols: TArray<TIndexSymbol>;
   Symbol: TIndexSymbol;
   UnitIndex: TUnitIndex;
@@ -233,10 +278,49 @@ begin
   else
     Exit;
   for Symbol in Symbols do
-    if (Symbol.Kind in [TIndexSymbolKind.Method, TIndexSymbolKind.Constructor_]) and
-      SameText(Symbol.Container, AType.Symbol.Name) and
+    if (Symbol.Kind in [TIndexSymbolKind.Field, TIndexSymbolKind.Property_, TIndexSymbolKind.Method,
+      TIndexSymbolKind.Constructor_]) and SameText(Symbol.Container, AType.Symbol.Name) and
       ContainsLine(AType.Symbol.Range, Symbol.Range.StartPos.Line) then
       Result := Result + [Symbol];
+end;
+
+function TAncestry.FindAnyType(const AName: string; out AType: TSymbolLocation): Boolean;
+const
+  Kinds = [TIndexSymbolKind.ClassType, TIndexSymbolKind.ObjectType, TIndexSymbolKind.RecordType,
+    TIndexSymbolKind.InterfaceType, TIndexSymbolKind.EnumType, TIndexSymbolKind.TypeAlias];
+var
+  Symbol: TIndexSymbol;
+  Location: TSymbolLocation;
+begin
+  for Symbol in FLocal.Symbols do
+    if (Symbol.Kind in Kinds) and (Symbol.Container = '') and SameText(Symbol.Name, AName) then
+    begin
+      AType := Default(TSymbolLocation);
+      AType.Symbol := Symbol;
+      Exit(True);
+    end;
+  if FIndex <> nil then
+    for Location in FIndex.FindSymbols(AName) do
+      if (Location.Symbol.Kind in Kinds) and (Location.Symbol.Container = '') then
+      begin
+        AType := Location;
+        Exit(True);
+      end;
+  Result := False;
+end;
+
+function TAncestry.SameType(const A, B: string; const AWildcards: TArray<string>): Boolean;
+begin
+  Result := (CanonicalType(A) = CanonicalType(B)) or MatchText(BareName(A), AWildcards) or
+    MatchText(BareName(B), AWildcards);
+  // Ein Alias der Datei oder des Index kann auf den anderen Typ zeigen: keine Aussage.
+  if not Result and (A <> '') and (B <> '') then
+    Result := IsTypeAlias(BareName(A)) or IsTypeAlias(BareName(B));
+end;
+
+function TAncestry.KnownType(const AName: string): Boolean;
+begin
+  Result := MatchText(CanonicalType(AName), BuiltinTypes) or IsDeclaredType(BareName(AName));
 end;
 
 function TAncestry.MethodsOf(const AType: TSymbolLocation; const AName: string): TArray<TIndexSymbol>;
@@ -1115,21 +1199,6 @@ end;
 
 { TOverrideTargetMissingRule }
 
-const
-  // Virtuelle Instanzmethoden von TObject, falls System nicht im Index steht.
-  ObjectVirtualNames: array[0..9] of string = ('AfterConstruction', 'BeforeDestruction', 'Dispatch',
-    'DefaultHandler', 'FreeInstance', 'Destroy', 'SafeCallException', 'ToString', 'Equals', 'GetHashCode');
-  // Gleiche Typen unter anderem Namen: Name=Grundname.
-  TypeSynonyms: array[0..17] of string = ('longint=integer', 'int32=integer', 'longword=cardinal',
-    'uint32=cardinal', 'dword=cardinal', 'unicodestring=string', 'widechar=char', 'pwidechar=pchar',
-    'intptr=nativeint', 'uintptr=nativeuint', 'int16=smallint', 'int8=shortint', 'uint8=byte', 'uint16=word',
-    'real=double', 'tobject=tobject', 'system.tobject=tobject', 'hresult=hresult');
-  // Eingebaute Typen, die sicher kein Alias eines anderen sind.
-  BuiltinTypes: array[0..25] of string = ('integer', 'cardinal', 'int64', 'uint64', 'string', 'ansistring',
-    'shortstring', 'widestring', 'char', 'ansichar', 'boolean', 'double', 'single', 'extended', 'currency', 'byte',
-    'word', 'smallint', 'shortint', 'pointer', 'variant', 'tobject', 'nativeint', 'nativeuint', 'pchar',
-    'tdatetime');
-
 type
   /// <summary>Gleichnamige Methode eines Vorfahren für override-target-missing (#997).</summary>
   TOverrideCandidate = record
@@ -1143,16 +1212,6 @@ type
 
   /// <summary>Vergleich zweier Köpfe: gleich, nur Typen anders, anders gebaut.</summary>
   TOverrideMatch = (Same, OtherTypes, Different);
-
-function CanonicalType(const AName: string): string;
-var
-  Pair: string;
-begin
-  Result := LowerCase(BareName(AName));
-  for Pair in TypeSynonyms do
-    if StartsStr(Result + '=', Pair) then
-      Exit(Copy(Pair, Length(Result) + 2, MaxInt));
-end;
 
 /// <summary>Schlüsselwort und Kopf ab dem Namen aus einer Signatur wie "procedure Foo(A: Integer); virtual;".
 /// </summary>
@@ -1254,21 +1313,6 @@ var
             Result := Result + [Trim(Name)];
   end;
 
-  function SameType(const A, B: string; const AWildcards: TArray<string>): Boolean;
-  begin
-    Result := (CanonicalType(A) = CanonicalType(B)) or MatchText(BareName(A), AWildcards) or
-      MatchText(BareName(B), AWildcards);
-    // Ein Alias der Datei oder des Index kann auf den anderen Typ zeigen: keine Aussage.
-    if not Result and (A <> '') and (B <> '') then
-      Result := Ancestry.IsTypeAlias(BareName(A)) or Ancestry.IsTypeAlias(BareName(B));
-  end;
-
-  /// <summary>Steht der Typ sicher für sich (eingebaut oder als Klasse, Record, Aufzählung deklariert)?</summary>
-  function Known(const AName: string): Boolean;
-  begin
-    Result := MatchText(CanonicalType(AName), BuiltinTypes) or Ancestry.IsDeclaredType(BareName(AName));
-  end;
-
   /// <summary>Wie Compare; ACertain: alle abweichenden Typen stehen sicher für sich.</summary>
   function CompareTypes(const AMethod: TMethodDecl; const ACandidate: TOverrideCandidate;
     const AWildcards: TArray<string>; out ACertain: Boolean): TOverrideMatch;
@@ -1278,7 +1322,7 @@ var
     procedure Differ(const A, B: string);
     begin
       Result := TOverrideMatch.OtherTypes;
-      ACertain := ACertain and Known(A) and Known(B);
+      ACertain := ACertain and Ancestry.KnownType(A) and Ancestry.KnownType(B);
     end;
 
   begin
@@ -1291,9 +1335,10 @@ var
     for Index := 0 to High(AMethod.Symbol.ParamTypes) do
       if (AMethod.Symbol.ParamTypes[Index] = '') <> (ACandidate.Symbol.ParamTypes[Index] = '') then
         Exit(TOverrideMatch.Different)
-      else if not SameType(AMethod.Symbol.ParamTypes[Index], ACandidate.Symbol.ParamTypes[Index], AWildcards) then
+      else if not Ancestry.SameType(AMethod.Symbol.ParamTypes[Index], ACandidate.Symbol.ParamTypes[Index],
+        AWildcards) then
         Differ(AMethod.Symbol.ParamTypes[Index], ACandidate.Symbol.ParamTypes[Index]);
-    if not SameType(AMethod.Symbol.TypeName, ACandidate.Symbol.TypeName, AWildcards) then
+    if not Ancestry.SameType(AMethod.Symbol.TypeName, ACandidate.Symbol.TypeName, AWildcards) then
       Differ(AMethod.Symbol.TypeName, ACandidate.Symbol.TypeName);
   end;
 

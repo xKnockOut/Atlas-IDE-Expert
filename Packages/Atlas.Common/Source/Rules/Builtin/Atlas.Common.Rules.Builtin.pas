@@ -50,6 +50,7 @@ uses
   Atlas.Common.Rules.Builtin.Statements,
   Atlas.Common.Rules.Builtin.Database,
   Atlas.Common.Rules.Builtin.Directives,
+  Atlas.Common.Rules.Builtin.Properties,
   Atlas.Common.Rules.Builtin.Unresolved;
 
 function BuiltinRules: TArray<IRule>;
@@ -95,6 +96,7 @@ begin
     RegisterStatementRules(Registry);
     RegisterDatabaseRules(Registry);
     RegisterDirectiveRules(Registry);
+    RegisterPropertyRules(Registry);
     Result := Registry.Rules;
   finally
     Registry.Free;

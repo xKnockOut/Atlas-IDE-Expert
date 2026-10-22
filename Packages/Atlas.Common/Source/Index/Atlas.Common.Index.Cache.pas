@@ -14,6 +14,8 @@
 // Format 11 (#617, Schritt 4): binär mit String-Tabelle.
 // Format 12: gleiches Layout; nur neu einlesen, weil Vorwärtsdeklarationen
 // vollständig deklarierter Typen nicht mehr im Index stehen.
+// Format 19 (#1001): gleiches Layout; neu einlesen, weil Klassenmitglieder
+// (class var, class property, class function) die Direktive "class" tragen.
 // - Jeder Text steht genau einmal in der Tabelle; Units und Symbole
 //   verweisen per Nummer darauf. Nach dem Laden teilen sich gleiche Texte
 //   (Container, Typnamen, Dateinamen) eine Instanz, das spart Speicher.
@@ -73,7 +75,7 @@ type
     // 16: Zählung der Präfixe je Unit (#452).
     // 17: Grund hinter deprecated je Symbol (#38).
     // 18: Zweig varianter Record-Felder je Symbol (#846).
-    const FormatVersion = 18;
+    const FormatVersion = 19;
     class function Serialize(const AUnits: TArray<TUnitIndex>): TBytes; static;
     /// <summary>Liest nur die Köpfe; bei falscher Version, falscher Prüfsumme oder fremdem Inhalt leer.</summary>
     class function ReadEntries(const AData: TBytes): TArray<TIndexCacheEntry>; overload; static;

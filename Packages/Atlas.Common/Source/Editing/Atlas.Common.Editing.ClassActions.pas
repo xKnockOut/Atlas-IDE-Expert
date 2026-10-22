@@ -11,6 +11,9 @@
 //   - "Name überschreiben" für jede virtuelle Methode der Vorfahren, die die
 //     Klasse noch nicht deklariert (Erzeuger von /override, Auswahl wie im
 //     Erzeugen-Menü #719), höchstens MaxOverrides
+//   - "Name anlegen" für ein fehlendes Feld F<Name>, Get<Name> oder Set<Name>
+//     hinter read/write einer Property (Erzeuger der Vervollständigung #467,
+//     Korrektur der Regel property-accessor-invalid #1001)
 // Angeboten wird in der Deklaration einer Klasse (Kopfzeile bis vor "end").
 // /intf und /override laufen über eine gedachte Befehlszeile hinter der
 // Cursorzeile; ihre Änderungen werden auf den Text ohne diese Zeile
@@ -24,7 +27,8 @@ uses
   Atlas.Common.Index.Contract,
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Editing.SlashCommands,
-  Atlas.Common.Editing.CodeActions;
+  Atlas.Common.Editing.CodeActions,
+  Atlas.Common.Editing.AccessorCreation;
 
 type
   /// <summary>Umgebung der Klassen-Aktionen: Index für Vorfahren und Interfaces aus anderen Units, Formatstil.</summary>
@@ -55,6 +59,10 @@ type
       const AContext: TClassActionContext; out AAction: TCodeAction): Boolean; static;
     /// <summary>Virtuelle Methode AName eines Vorfahren überschreiben.</summary>
     class function OverrideMethod(const AText: string; ALine: Integer; const AName: string;
+      const AContext: TClassActionContext; out AAction: TCodeAction): Boolean; static;
+    /// <summary>Fehlendes Feld bzw. fehlende Zugriffsmethode APlan der Property in Zeile ALine anlegen (#1001);
+    /// False, wenn es das Mitglied schon gibt oder ALine in keiner Klasse liegt.</summary>
+    class function CreateAccessor(const AText: string; ALine: Integer; const APlan: TAccessorPlan;
       const AContext: TClassActionContext; out AAction: TCodeAction): Boolean; static;
     /// <summary>Überschreibbare Methoden der Vorfahren, die die Klasse um ALine noch nicht deklariert.</summary>
     class function OverrideCandidates(const AText: string; ALine: Integer;
@@ -287,6 +295,30 @@ begin
     AAction.Title := Format('%s überschreiben', [AName]);
     AAction.Kind := RewriteKind;
   end;
+end;
+
+class function TClassActions.CreateAccessor(const AText: string; ALine: Integer; const APlan: TAccessorPlan;
+  const AContext: TClassActionContext; out AAction: TCodeAction): Boolean;
+var
+  Source: TCommandSource;
+  ClassSymbol: TIndexSymbol;
+  Edits: TArray<TTextEdit>;
+  WithField: Boolean;
+begin
+  AAction := Default(TCodeAction);
+  // Die Property-Zeile gilt als Befehlszeile wie in der Vervollständigung; sie bleibt unverändert.
+  Source := TCommandSource.Create(SlashContext(AText, ALine, AContext));
+  try
+    Result := Source.ClassAt(ClassSymbol) and TAccessorCreation.Edits(Source, AContext.Index, ClassSymbol, APlan,
+      Edits, WithField);
+  finally
+    Source.Free;
+  end;
+  if not Result then
+    Exit;
+  AAction.Title := Format('%s anlegen', [APlan.Name]);
+  AAction.Kind := RewriteKind;
+  AAction.Edits := TSlashCommandRegistry.Reindent(AText, Edits, AContext.Style);
 end;
 
 class function TClassActions.OverrideCandidates(const AText: string; ALine: Integer;
