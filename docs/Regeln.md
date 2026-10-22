@@ -6,7 +6,7 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 
 | Gruppe | Regeln |
 |---|---|
-| [Fehler finden](#gruppe-find-bugs) | 51 |
+| [Fehler finden](#gruppe-find-bugs) | 52 |
 | [Exceptions](#gruppe-exceptions) | 6 |
 | [Threads](#gruppe-threads) | 9 |
 | [Robustheit und Muster](#gruppe-robustness) | 2 |
@@ -75,6 +75,7 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 | [`create-without-assignment`](#create-without-assignment) | Objekt erzeugt und sofort verloren | Bug | Warnung |
 | [`message-handler-without-inherited`](#message-handler-without-inherited) | Message-Handler ohne inherited | Bug | Warnung |
 | [`string-index-base`](#string-index-base) | String-Index ab 0 oder Pos-Ergebnis mit -1 verglichen | Bug | Warnung |
+| [`delimited-text-without-strict`](#delimited-text-without-strict) | DelimitedText ohne StrictDelimiter | Bug | Warnung |
 
 <a id="gruppe-exceptions"></a>
 ### Exceptions
@@ -3643,4 +3644,26 @@ Richtig:
 ```pascal
 if Pos(';', Zeile) > 0 then
   Felder := Copy(Zeile, 1, Pos(';', Zeile) - 1);
+```
+
+<a id="delimited-text-without-strict"></a>
+### delimited-text-without-strict
+
+**DelimitedText ohne StrictDelimiter** · Bug · Warnung · Gruppe Fehler finden
+
+Liste.DelimitedText := … nach Liste.Delimiter := … in derselben Routine, ohne dass StrictDelimiter gesetzt wird: DelimitedText trennt dann auch an Leerzeichen, 'Max Muster;Berlin' ergibt drei statt zwei Einträge. Bei Feldern zählt StrictDelimiter in der ganzen Unit (oft im Konstruktor); StrictDelimiter := False ist bewusst und bleibt still, ebenso DelimitedText ohne eigenen Delimiter. Sicherheit hoch. Korrektur: StrictDelimiter := True; vor der Zuweisung einfügen.
+
+Mit Treffer:
+
+```pascal
+Teile.Delimiter := ';';
+Teile.DelimitedText := Zeile;
+```
+
+Richtig:
+
+```pascal
+Teile.Delimiter := ';';
+Teile.StrictDelimiter := True;
+Teile.DelimitedText := Zeile;
 ```

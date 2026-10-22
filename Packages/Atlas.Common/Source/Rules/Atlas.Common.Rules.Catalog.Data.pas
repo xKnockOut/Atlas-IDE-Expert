@@ -1842,6 +1842,16 @@ begin
     '      "description": "The classic string routines count from 1: Copy(S, 0, N) and Insert(T, S, 0) only work like 1 by chance, Delete(S, 0, N) deletes nothing. The string must be known: declared type i' + 'n the file, literal, or .Text/.Caption; dynamic arrays (0-based) stay silent. Pos, PosEx and AnsiPos return 0 for no match: Pos(...) > -1, >= 0 and <> -1 are always true, = -1 and < 0 never. Conversel' + 'y S.IndexOf(...) > 0 or >= 1 misses a match at the start, < 1 or <= 0 counts it as not found (medium confidence; LastIndexOf stays silent, where > 0 usually means \"not at the start\"). High confidenc' + 'e for Delete and Pos. Quick fix: start value 1 or the corrected comparison (> 0, = 0, >= 0, < 0).",' + #10 +
     '      "bad": "if Pos('';'', Zeile) > -1 then\n  Felder := Copy(Zeile, 0, Pos('';'', Zeile) - 1);",' + #10 +
     '      "good": "if Pos('';'', Zeile) > 0 then\n  Felder := Copy(Zeile, 1, Pos('';'', Zeile) - 1);"' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "delimited-text-without-strict",' + #10 +
+    '      "name": "DelimitedText without StrictDelimiter",' + #10 +
+    '      "category": "bug",' + #10 +
+    '      "severity": "warning",' + #10 +
+    '      "group": "find-bugs",' + #10 +
+    '      "description": "List.DelimitedText := ... after List.Delimiter := ... in the same routine without StrictDelimiter being set: DelimitedText then also splits at spaces, ''Max Muster;Berlin'' becomes' + ' three entries instead of two. For fields, StrictDelimiter anywhere in the unit counts (often in the constructor); StrictDelimiter := False is deliberate and stays silent, as does DelimitedText withou' + 't a Delimiter of its own. High confidence. Quick fix: insert StrictDelimiter := True; before the assignment.",' + #10 +
+    '      "bad": "Teile.Delimiter := '';'';\nTeile.DelimitedText := Zeile;",' + #10 +
+    '      "good": "Teile.Delimiter := '';'';\nTeile.StrictDelimiter := True;\nTeile.DelimitedText := Zeile;"' + #10 +
     '    }' + #10 +
     '  ]' + #10 +
     '}' + #10 +
@@ -2817,6 +2827,11 @@ begin
     '      "id": "string-index-base",' + #10 +
     '      "name": "String-Index ab 0 oder Pos-Ergebnis mit -1 verglichen",' + #10 +
     '      "description": "Die klassischen String-Routinen zählen ab 1: Copy(S, 0, N) und Insert(T, S, 0) wirken nur zufällig wie 1, Delete(S, 0, N) löscht nichts. Der String muss bekannt sein: deklarierte' + 'r Typ in der Datei, Literal oder .Text/.Caption; dynamische Arrays (ab 0) bleiben still. Pos, PosEx und AnsiPos liefern 0 bei keinem Treffer: Pos(…) > -1, >= 0 und <> -1 sind immer wahr, = -1 und < 0 ' + 'nie. Umgekehrt übersieht S.IndexOf(…) > 0 bzw. >= 1 den Treffer am Anfang, < 1 bzw. <= 0 zählt ihn als nicht gefunden (Sicherheit mittel; LastIndexOf bleibt still, dort heißt > 0 meist „nicht am Anfan' + 'g“). Sicherheit hoch für Delete und Pos. Korrektur: Startwert 1 bzw. der richtige Vergleich (> 0, = 0, >= 0, < 0)."' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "delimited-text-without-strict",' + #10 +
+    '      "name": "DelimitedText ohne StrictDelimiter",' + #10 +
+    '      "description": "Liste.DelimitedText := … nach Liste.Delimiter := … in derselben Routine, ohne dass StrictDelimiter gesetzt wird: DelimitedText trennt dann auch an Leerzeichen, ''Max Muster;Berlin' + ''' ergibt drei statt zwei Einträge. Bei Feldern zählt StrictDelimiter in der ganzen Unit (oft im Konstruktor); StrictDelimiter := False ist bewusst und bleibt still, ebenso DelimitedText ohne eigenen D' + 'elimiter. Sicherheit hoch. Korrektur: StrictDelimiter := True; vor der Zuweisung einfügen."' + #10 +
     '    }' + #10 +
     '  ]' + #10 +
     '}' + #10 +

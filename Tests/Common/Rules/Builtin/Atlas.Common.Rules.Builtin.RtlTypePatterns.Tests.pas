@@ -5,7 +5,7 @@
 // managed-type-raw-memory (#921) mit Records, Aliassen, Zeigern, Index und
 // Korrekturen, threadvar-managed (#922), pchar-of-temporary (#923) und
 // stringlist-unsorted (#925), writeln-in-gui-app (#926), unchecked-conversion (#932) und
-// dictionary-get-without-check (#933).
+// dictionary-get-without-check (#933), delimited-text-without-strict (#952).
 
 interface
 
@@ -80,6 +80,14 @@ type
     procedure DictionaryGetVariants;
     [Test]
     procedure DictionaryGetSilentCases;
+    [Test]
+    procedure DelimitedTextIssueExample;
+    [Test]
+    procedure DelimitedTextVariants;
+    [Test]
+    procedure DelimitedTextSilentCases;
+    [Test]
+    procedure DelimitedTextOffAndExclude;
   end;
 
 implementation
@@ -785,6 +793,108 @@ begin
     '  Erster: string;'#10, '  Liste := Preise.Keys.ToArray;'#10'  for var I := 0 to High(Liste) do'#10 +
     '    Anzeigen(Preise[Liste[I]]);'#10'  for var Paar in Preise do'#10'    Erster := Paar.Key;'#10 +
     '  Preis := Preise[Erster];'#10'  FPreise.AddOrSetValue(''A'', 1);'#10'  Preis := FPreise[''B''];'));
+end;
+
+function Teilen(const ABody: string): string;
+begin
+  Result := 'unit Import;'#10'interface'#10'implementation'#10'procedure Zerlegen(const Zeile: string);'#10'var'#10 +
+    '  Teile: TStringList;'#10'begin'#10'  Teile := TStringList.Create;'#10'  try'#10 + ABody +
+    '  finally'#10'    Teile.Free;'#10'  end;'#10'end;'#10'end.';
+end;
+
+procedure TRtlTypePatternRulesTests.DelimitedTextIssueExample;
+var
+  Source, Fixed: string;
+  Findings: TArray<TRuleFinding>;
+  Edit: TRuleEdit;
+  Tree: TSyntaxTree;
+begin
+  Source := Teilen('    Teile.Delimiter := '';'';'#10'    Teile.DelimitedText := Zeile;'#10);
+  Findings := TRuleAssert.Findings(TDelimitedTextWithoutStrictRule.Create, Source);
+  Assert.AreEqual(1, Integer(Length(Findings)));
+  Assert.AreEqual('delimited-text-without-strict', Findings[0].RuleId);
+  Assert.AreEqual(Ord(TRuleSeverity.Warning), Ord(Findings[0].Severity));
+  Assert.AreEqual(Ord(TRuleConfidence.High), Ord(Findings[0].Confidence));
+  Assert.AreEqual('Ohne StrictDelimiter trennt DelimitedText auch an Leerzeichen: ''Max Muster'' wird zu zwei ' +
+    'Einträgen.', Findings[0].Message);
+  Assert.AreEqual(10, Findings[0].Range.StartPos.Line);
+  Assert.AreEqual(10, Findings[0].Range.StartPos.Character);
+  Assert.AreEqual('StrictDelimiter := True; einfügen', Findings[0].Fixes[0].Title);
+  Edit := Findings[0].Fixes[0].Edits[0];
+  Fixed := Copy(Source, 1, Pos('    Teile.DelimitedText', Source) + 3) + Edit.NewText +
+    Copy(Source, Pos('    Teile.DelimitedText', Source) + 4, MaxInt);
+  Assert.AreEqual(Teilen('    Teile.Delimiter := '';'';'#10'    Teile.StrictDelimiter := True;'#10 +
+    '    Teile.DelimitedText := Zeile;'#10), Fixed);
+  Tree := TPascalParser.Parse(Fixed);
+  try
+    Assert.AreEqual(0, Integer(Length(Tree.Diagnostics)));
+  finally
+    Tree.Free;
+  end;
+  TRuleAssert.Silent(TDelimitedTextWithoutStrictRule.Create, Fixed);
+end;
+
+procedure TRtlTypePatternRulesTests.DelimitedTextVariants;
+const
+  Feld =
+    'unit Import;'#10 +
+    'interface'#10 +
+    'type'#10 +
+    '  TImport = class'#10 +
+    '    FTeile: TStringList;'#10 +
+    '    constructor Create;'#10 +
+    '    procedure Lesen(const Zeile: string);'#10 +
+    '  end;'#10 +
+    'implementation'#10 +
+    'constructor TImport.Create;'#10 +
+    'begin'#10 +
+    '  FTeile := TStringList.Create;'#10 +
+    '  FTeile.StrictDelimiter := True;'#10 +
+    'end;'#10 +
+    'procedure TImport.Lesen(const Zeile: string);'#10 +
+    'begin'#10 +
+    '  Self.FTeile.Delimiter := #9;'#10 +
+    '  Self.FTeile.DelimitedText := Zeile;'#10 +
+    'end;'#10 +
+    'end.';
+var
+  Findings: TArray<TRuleFinding>;
+begin
+  // Feld: StrictDelimiter im Konstruktor genügt.
+  TRuleAssert.Silent(TDelimitedTextWithoutStrictRule.Create, Feld);
+  Findings := TRuleAssert.Findings(TDelimitedTextWithoutStrictRule.Create,
+    StringReplace(Feld, '  FTeile.StrictDelimiter := True;'#10, '', []));
+  Assert.AreEqual(1, Integer(Length(Findings)));
+  Assert.AreEqual('Self.FTeile.StrictDelimiter := True;'#10'  ', Findings[0].Fixes[0].Edits[0].NewText);
+  // Nach then keine Korrektur.
+  Findings := TRuleAssert.Findings(TDelimitedTextWithoutStrictRule.Create,
+    Teilen('    Teile.Delimiter := '';'';'#10'    if Zeile <> '''' then Teile.DelimitedText := Zeile;'#10));
+  Assert.AreEqual(1, Integer(Length(Findings)));
+  Assert.AreEqual(0, Integer(Length(Findings[0].Fixes)));
+end;
+
+procedure TRtlTypePatternRulesTests.DelimitedTextSilentCases;
+begin
+  // Ohne eigenen Delimiter, mit StrictDelimiter := False (bewusst) oder beim Lesen.
+  TRuleAssert.Silent(TDelimitedTextWithoutStrictRule.Create, Teilen('    Teile.DelimitedText := Zeile;'#10));
+  TRuleAssert.Silent(TDelimitedTextWithoutStrictRule.Create, Teilen('    Teile.Delimiter := '';'';'#10 +
+    '    Teile.StrictDelimiter := False;'#10'    Teile.DelimitedText := Zeile;'#10));
+  TRuleAssert.Silent(TDelimitedTextWithoutStrictRule.Create, Teilen('    Teile.Delimiter := '';'';'#10 +
+    '    Writeln(Teile.DelimitedText);'#10));
+  // Delimiter einer anderen Liste.
+  TRuleAssert.Silent(TDelimitedTextWithoutStrictRule.Create, Teilen('    Andere.Delimiter := '';'';'#10 +
+    '    Teile.DelimitedText := Zeile;'#10));
+end;
+
+procedure TRtlTypePatternRulesTests.DelimitedTextOffAndExclude;
+var
+  Source: string;
+begin
+  Source := Teilen('    Teile.Delimiter := '';'';'#10'    Teile.DelimitedText := Zeile;'#10);
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TDelimitedTextWithoutStrictRule.Create, Source,
+    '{"rules": {"delimited-text-without-strict": "off"}}'))));
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TDelimitedTextWithoutStrictRule.Create, Source,
+    '{"rules": {"delimited-text-without-strict": {"exclude": ["Source/*.pas"]}}}', 'Source/Import.pas'))));
 end;
 
 initialization

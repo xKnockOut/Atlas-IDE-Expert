@@ -29,6 +29,10 @@
 //                            Regel, wenn die Routine das Dictionary vorher selbst füllt (Add, AddOrSetValue,
 //                            Dict[K] := …) oder der Schlüssel aus Keys stammt (for K in Dict.Keys,
 //                            Namen := Dict.Keys.ToArray). Korrektur: TryGetValue mit Vorgabewert
+//   delimited-text-without-strict
+//                            Liste.DelimitedText := … nach Liste.Delimiter := … in derselben Routine, ohne dass
+//                            StrictDelimiter gesetzt wird (#952; bei Feldern in der ganzen Unit): DelimitedText
+//                            trennt dann auch an Leerzeichen. Korrektur: StrictDelimiter := True; davor
 // Bezeichner, deren Typ in der Datei nicht deklariert ist, lösen keinen Treffer aus.
 
 interface
@@ -131,6 +135,12 @@ type
   end;
 
 /// <summary>Registriert die typbasierten Regeln für RTL-Muster.</summary>
+  TDelimitedTextWithoutStrictRule = class(TInterfacedObject, IRule)
+  public
+    function Descriptor: TRuleDescriptor;
+    procedure Check(const AContext: TRuleContext; const AReport: IRuleReport);
+  end;
+
 procedure RegisterRtlTypePatternRules(const ARegistry: TRuleRegistry);
 
 implementation
@@ -147,6 +157,7 @@ uses
   Atlas.Common.Index.Contract,
   Atlas.Common.Pascal.Lexer,
   Atlas.Common.Editing.UsesClause,
+  Atlas.Common.Editing.RoutineBody,
   Atlas.Common.Rules.Options,
   Atlas.Text.Lines;
 
@@ -2453,9 +2464,180 @@ begin
   end;
 end;
 
+{ TDelimitedTextWithoutStrictRule }
+
+function TDelimitedTextWithoutStrictRule.Descriptor: TRuleDescriptor;
+begin
+  Result := TRuleDescriptor.Create('delimited-text-without-strict', TRuleSeverity.Warning,
+    'DelimitedText ohne StrictDelimiter');
+end;
+
+procedure TDelimitedTextWithoutStrictRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
+var
+  Tokens: TTokens;
+  Code: TArray<Integer>;
+
+  function Token(APosition: Integer): TPascalToken;
+  begin
+    Result := Tokens[Code[APosition]];
+  end;
+
+  function IsSym(APosition: Integer; const ASymbol: string): Boolean;
+  begin
+    Result := (APosition >= 0) and (APosition <= High(Code)) and Token(APosition).IsSymbol(ASymbol);
+  end;
+
+  function IsName(APosition: Integer; const AName: string): Boolean;
+  begin
+    Result := (APosition >= 0) and (APosition <= High(Code)) and
+      (Token(APosition).Kind = TPascalTokenKind.Identifier) and SameText(Token(APosition).Text, AName);
+  end;
+
+  // Liste vor ".Eigenschaft" bei APosition (X bzw. Self.X); '' bei anderen Ausdrücken.
+  function ListBefore(APosition: Integer): string;
+  begin
+    Result := '';
+    if not IsSym(APosition - 1, '.') or (APosition < 2) or
+      (Token(APosition - 2).Kind <> TPascalTokenKind.Identifier) then
+      Exit;
+    if IsSym(APosition - 3, '.') and not IsName(APosition - 4, 'Self') then
+      Exit;
+    Result := Token(APosition - 2).Text;
+  end;
+
+  // Wird in [AFrom, ATo) "Liste.AProperty := …" gesetzt? AValue liefert das erste Token des Werts.
+  function Assigns(AFrom, ATo: Integer; const AList, AProperty: string; out AValue: string): Boolean;
+  var
+    Position: Integer;
+  begin
+    for Position := 0 to High(Code) - 2 do
+      if (Token(Position).Offset >= AFrom) and (Token(Position).Offset < ATo) and
+        IsName(Position, AProperty) and IsSym(Position + 1, ':=') and SameText(ListBefore(Position), AList) then
+      begin
+        AValue := Token(Position + 2).Text;
+        Exit(True);
+      end;
+    AValue := '';
+    Result := False;
+  end;
+
+  // Deklariert die Routine AName lokal (Variable, Parameter)? Sonst ist es ein Feld der Klasse.
+  function IsLocal(ARoutine: TSyntaxNode; const AName: string): Boolean;
+  var
+    Index: Integer;
+    Child: TSyntaxNode;
+    Name: string;
+  begin
+    for Index := 0 to ARoutine.ChildCount - 1 do
+    begin
+      Child := ARoutine[Index];
+      if Child.Kind = TSyntaxKind.RoutineDecl then
+        Continue;
+      if Child.Kind in [TSyntaxKind.VarDecl, TSyntaxKind.InlineVar, TSyntaxKind.Parameter] then
+        for Name in SplitString(Child.Name, ',') do
+          if SameText(Trim(Name), AName) then
+            Exit(True);
+      if IsLocal(Child, AName) then
+        Exit(True);
+    end;
+    Result := False;
+  end;
+
+  function RoutineAt(ANode: TSyntaxNode; AOffset: Integer): TSyntaxNode;
+  var
+    Index: Integer;
+    Inner: TSyntaxNode;
+  begin
+    Result := nil;
+    for Index := 0 to ANode.ChildCount - 1 do
+      if (AOffset >= ANode[Index].StartOffset) and (AOffset < ANode[Index].EndOffset) then
+      begin
+        if ANode[Index].Kind = TSyntaxKind.RoutineDecl then
+          Result := ANode[Index];
+        Inner := RoutineAt(ANode[Index], AOffset);
+        if Inner <> nil then
+          Result := Inner;
+        Exit;
+      end;
+  end;
+
+  // Innerste Zuweisung unter ANode, die AOffset enthält.
+  function StatementAt(ANode: TSyntaxNode; AOffset: Integer): TSyntaxNode;
+  var
+    Index: Integer;
+    Inner: TSyntaxNode;
+  begin
+    Result := nil;
+    for Index := 0 to ANode.ChildCount - 1 do
+      if (AOffset >= ANode[Index].StartOffset) and (AOffset < ANode[Index].EndOffset) then
+      begin
+        if ANode[Index].Kind = TSyntaxKind.AssignStatement then
+          Result := ANode[Index];
+        Inner := StatementAt(ANode[Index], AOffset);
+        if Inner <> nil then
+          Result := Inner;
+        Exit;
+      end;
+  end;
+
+  procedure CheckAt(APosition: Integer);
+  var
+    List, Value, Prefix: string;
+    Routine, Statement: TSyntaxNode;
+    From, Till: Integer;
+    Fixes: TArray<TRuleFix>;
+  begin
+    List := ListBefore(APosition);
+    Routine := RoutineAt(AContext.Tree.Root, Token(APosition).Offset);
+    if (List = '') or (Routine = nil) then
+      Exit;
+    // Lokal: die Routine; Feld: die ganze Unit (StrictDelimiter oft im Konstruktor).
+    From := Routine.StartOffset;
+    Till := Routine.EndOffset;
+    if not IsLocal(Routine, List) then
+    begin
+      From := 0;
+      Till := MaxInt;
+    end;
+    // Ohne eigenen Delimiter bleibt die Regel still; StrictDelimiter := False ist bewusst.
+    if not Assigns(Routine.StartOffset, Routine.EndOffset, List, 'Delimiter', Value) or
+      Assigns(From, Till, List, 'StrictDelimiter', Value) then
+      Exit;
+    Fixes := nil;
+    Statement := StatementAt(Routine, Token(APosition).Offset);
+    if (Statement <> nil) and (Statement.Parent <> nil) and (Statement.Parent.Kind in [TSyntaxKind.Block,
+      TSyntaxKind.TryStatement, TSyntaxKind.FinallyBlock, TSyntaxKind.ExceptBlock, TSyntaxKind.RepeatStatement]) then
+    begin
+      Prefix := '';
+      if IsSym(APosition - 3, '.') then
+        Prefix := 'Self.';
+      Fixes := [TRuleFix.Create('StrictDelimiter := True; einfügen',
+        [TRoutineBody.InsertBefore(AContext.Text, Statement, Prefix + List + '.StrictDelimiter := True;')])];
+    end;
+    AReport.Add(TTextRange.Create(Token(APosition).StartPos, Token(APosition).EndPos),
+      'Ohne StrictDelimiter trennt DelimitedText auch an Leerzeichen: ''Max Muster'' wird zu zwei Einträgen.',
+      Fixes);
+  end;
+
+var
+  Index, Position: Integer;
+begin
+  if (AContext.Tree = nil) or (AContext.Tree.Root = nil) or not ContainsText(AContext.Text, 'DelimitedText') then
+    Exit;
+  Tokens := AContext.Tree.Tokens;
+  Code := nil;
+  for Index := 0 to High(Tokens) do
+    if not IsTrivia(Tokens[Index]) then
+      Code := Code + [Index];
+  for Position := 0 to High(Code) - 1 do
+    if IsName(Position, 'DelimitedText') and IsSym(Position + 1, ':=') then
+      CheckAt(Position);
+end;
+
 procedure RegisterRtlTypePatternRules(const ARegistry: TRuleRegistry);
 begin
   ARegistry.Register(TInt32MulOverflowRule.Create);
+  ARegistry.Register(TDelimitedTextWithoutStrictRule.Create);
   ARegistry.Register(TSizeOfPointerRule.Create);
   ARegistry.Register(TCharToPCharRule.Create);
   ARegistry.Register(TFloatEqualityRule.Create);

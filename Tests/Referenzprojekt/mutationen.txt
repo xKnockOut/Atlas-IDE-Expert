@@ -72,3 +72,4 @@ owned-item-freed | Ref.Daten.Suche.pas | \nimplementation | \nimplementation\n\n
 create-without-assignment | Ref.Daten.Suche.pas | \nimplementation | \nimplementation\n\nprocedure Protokollieren;\nbegin\n  TStringList.Create;\nend;
 message-handler-without-inherited | Ref.Daten.Suche.pas | \nimplementation | \nimplementation\n\ntype\n  TRahmen = class(TForm)\n    procedure WMSize(var Msg: TWMSize); message WM_SIZE;\n  end;\n\nprocedure TRahmen.WMSize(var Msg: TWMSize);\nbegin\n  Anpassen;\nend;
 string-index-base | Ref.Daten.Suche.pas | \nimplementation | \nimplementation\n\nprocedure Kuerzen(var AText: string);\nbegin\n  Delete(AText, 0, 1);\nend;
+delimited-text-without-strict | Ref.Daten.Suche.pas | \nimplementation | \nimplementation\n\nprocedure Zerlegen(const AZeile: string);\nvar\n  Teile: TStringList;\nbegin\n  Teile := TStringList.Create;\n  try\n    Teile.Delimiter := ';';\n    Teile.DelimitedText := AZeile;\n  finally\n    Teile.Free;\n  end;\nend;
