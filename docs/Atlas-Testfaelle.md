@@ -3180,3 +3180,18 @@ Voraussetzung: Server läuft; Einstellungen auf Vorgabe; `Bericht: TBericht`, `P
 | UF6 | `Bericht.Free; Bericht := TBericht.Create; Bericht.Drucken;` bzw. `Bericht.Free; Liste.Remove(Bericht);` | Keine Meldung |
 | UF7 | `if A then Bericht.Free; Bericht.Drucken;` mit `"minConfidence": "low"` | Meldung mit Konfidenz mittel; mit Vorgabe `medium` ebenfalls sichtbar |
 | UF8 | `"use-after-free": "off"` bzw. `exclude` mit dem Pfad der Datei | Keine Meldung |
+
+## Erst benutzt, dann auf nil geprüft (#916)
+
+Voraussetzung: Server läuft; Einstellungen auf Vorgabe; Parameter `Kunde: TKunde`, Variable `Titel: string`.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| DN1 | `Titel := Kunde.Name;` und danach `if Assigned(Kunde) then Anzeigen(Kunde);` | Gelbe Wellenlinie unter `Kunde` in der ersten Zeile: „Kunde wird hier benutzt, aber erst in Zeile N auf nil geprüft.“ (**Abnahme**) |
+| DN2 | Alt+Enter „Prüfung vor den Zugriff ziehen“ | `if Assigned(Kunde) then begin Titel := Kunde.Name; Anzeigen(Kunde); end;` in eigenen Zeilen; ein Strg+Z nimmt es zurück; keine Meldung mehr |
+| DN3 | Wie DN1 mit `else`-Zweig oder einer Anweisung zwischen Zugriff und Prüfung | Meldung ohne Schnellkorrektur |
+| DN4 | `if Kunde = nil then Exit;` vor DN1 | Keine Meldung |
+| DN5 | `Kunde := Suchen(Titel);` bzw. `Ersetzen(Kunde);` zwischen Zugriff und Prüfung | Keine Meldung |
+| DN6 | Feld `FKunde` statt Parameter, dazwischen ein Aufruf `Laden;` | Keine Meldung; ohne den Aufruf gemeldet |
+| DN7 | Befund-Hover und Fenster „Atlas-Prüfung“ | Gruppe „Fehler finden“, Konfidenz mittel, Aktionszeile mit der Korrektur aus DN2 |
+| DN8 | `"deref-before-nil-check": "off"` bzw. `exclude` mit dem Pfad der Datei | Keine Meldung |
