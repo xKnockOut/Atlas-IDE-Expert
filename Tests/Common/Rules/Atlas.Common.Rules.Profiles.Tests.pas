@@ -201,7 +201,7 @@ begin
   Assert.AreEqual(Merged(All, ['architecture-contract-content', 'architecture-role-import',
     'catch-all-without-raise', 'file-header', 'global-variable', 'hardcoded-string',
     'line-length', 'loop-invariant-call', 'magic-number', 'missing-begin-update', 'public-field', 'random-without-randomize', 'redundant-begin-end',
-    'redundant-parens', 'security-path-traversal', 'string-concat-in-loop', 'todo-comment']), ActiveRules('strict'));
+    'redundant-parens', 'security-path-traversal', 'sql-select-star', 'string-concat-in-loop', 'todo-comment']), ActiveRules('strict'));
   Assert.AreEqual('abstract-class-instantiated,anonymous-thread-not-started,assert-side-effect,assign-to-property-member,bidi-control,captured-loop-variable,case-missing-enum-value,char-to-pchar,' +
     'collection-modified-in-loop,comparison-as-statement,' +
     'component-create-without-override,component-default-mismatch,component-missing-free-notification,' +

@@ -2036,7 +2036,7 @@
       "category": "bug",
       "severity": "warning",
       "group": "database",
-      "description": "An UPDATE or DELETE without WHERE in a string literal, SQL.Text, SQL.Add, CommandText, the first argument of ExecSQL, ExecSQLScalar, ExecuteDirect or Execute, or in SQL.Strings/CommandText of the form file. It affects every row of the table; usually the condition was forgotten. The rule assembles the SQL text per query within a routine (Clear and a new Text start over) and substitutes constants and local values. JOIN, TOP, LIMIT and ROWS restrict the rows as well; a WHERE in a subquery or comment does not count. Unknown parts behind the table name (variables, calls at the place of a clause) keep the statement silent; a dynamic table name reports with medium confidence. Silent when the routine passes the SQL on or another routine of the unit adds to it; form file SQL only counts when the unit does not change it. Literals outside SQL properties count only with DELETE or UPDATE in capitals, so message texts stay silent. High confidence, no quick fix; tables that are emptied on purpose go into allowTables.",
+      "description": "An UPDATE or DELETE without WHERE in a string literal, SQL.Text, SQL.Add, CommandText, the first argument of ExecSQL, ExecSQLScalar, Open, ExecuteDirect or Execute, or in SQL.Strings/CommandText of the form file. It affects every row of the table; usually the condition was forgotten. The rule assembles the SQL text per query within a routine (Clear and a new Text start over) and substitutes constants and local values. JOIN, TOP, LIMIT and ROWS restrict the rows as well; a WHERE in a subquery or comment does not count. Unknown parts behind the table name (variables, calls at the place of a clause) keep the statement silent; a dynamic table name reports with medium confidence. Silent when the routine passes the SQL on or another routine of the unit adds to it; form file SQL only counts when the unit does not change it. Literals outside SQL properties count only with DELETE or UPDATE in capitals, so message texts stay silent. High confidence, no quick fix; tables that are emptied on purpose go into allowTables.",
       "bad": "qry.SQL.Text := 'DELETE FROM Warenkorb';\nqry.ExecSQL;",
       "good": "qry.SQL.Text := 'DELETE FROM Warenkorb WHERE Kunde = :Kunde';\nqry.ParamByName('Kunde').AsInteger := KundeId;\nqry.ExecSQL;",
       "options": [
@@ -2293,6 +2293,16 @@
         "E2129",
         "E2130"
       ]
+    },
+    {
+      "id": "sql-select-star",
+      "name": "SELECT * in code",
+      "category": "code-smell",
+      "severity": "hint",
+      "group": "database",
+      "description": "SELECT * or SELECT alias.* in a column list, in the same places as sql-write-without-where: string literals, SQL.Text, SQL.Add, CommandText, the first argument of ExecSQL, Open and similar calls, constants, local values and SQL.Strings/CommandText of the form file. New columns silently change the dataset, persistent fields no longer match, and more data is transferred than needed. Subqueries count; EXISTS (SELECT * …) and COUNT(*) stay silent, as does a column list from a variable. Literals outside SQL properties count only with SELECT in capitals and a FROM, so message texts stay silent. Off by default (enable in the rules settings or with the strict profile). High confidence. Quick fix: when the star stands in a single literal and the dataset has persistent fields in the form file, replace * with their FieldName list (without calculated and lookup fields).",
+      "bad": "qry.SQL.Text := 'SELECT * FROM Kunden WHERE Ort = :Ort';",
+      "good": "qry.SQL.Text := 'SELECT Id, Name, Ort FROM Kunden WHERE Ort = :Ort';"
     }
   ]
 }
