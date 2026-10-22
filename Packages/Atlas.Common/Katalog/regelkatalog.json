@@ -2470,6 +2470,80 @@
       "level": "T"
     },
     {
+      "id": "destructor-not-nil-safe",
+      "name": "Destructor uses fields that may be nil",
+      "category": "bug",
+      "severity": "warning",
+      "group": "find-bugs",
+      "description": "If a constructor raises, Delphi calls the destructor right away, even though not all fields exist yet. Reported is an access in the destructor (or in a private method that only the destructor calls) to a field such as FLines.Clear, FFile.Position or FLines[0], when a constructor of the class creates the field (TClass.Create) only after a call that can raise or only on some paths. The resulting access violation hides the original exception. Free, FreeAndNil, DisposeOf and accesses after Assigned(FField) or FField <> nil are nil-safe; BeforeDestruction does not run on this path. Constructors of RTL classes that raise at most EOutOfMemory (TStringList.Create, TObjectList<T>.Create(True)), inherited Create and Supports do not count as raising. High confidence. Quick fix: put if Assigned(FField) then in front of the statement. With onlyAfterRaisingCode off, every field created in the constructor counts.",
+      "bad": "constructor TImport.Create(const Datei: string);\nbegin\n  inherited Create;\n  FStrom := TFileStream.Create(Datei, fmOpenRead);\n  FZeilen := TStringList.Create;\nend;\n\ndestructor TImport.Destroy;\nbegin\n  FZeilen.Clear;\n  FZeilen.Free;\n  FStrom.Free;\n  inherited;\nend;",
+      "good": "destructor TImport.Destroy;\nbegin\n  if Assigned(FZeilen) then\n    FZeilen.Clear;\n  FZeilen.Free;\n  FStrom.Free;\n  inherited;\nend;",
+      "options": [
+        {
+          "name": "onlyAfterRaisingCode",
+          "type": "boolean",
+          "default": true,
+          "description": "Only report when the constructor calls something that can raise before it creates the field."
+        }
+      ]
+    },
+    {
+      "id": "handle-leak",
+      "name": "Windows handle is not closed",
+      "category": "bug",
+      "severity": "warning",
+      "group": "find-bugs",
+      "description": "A Windows handle in a local variable is not closed with its counterpart on some path to the end of the routine: CreateFile, CreateEvent, CreateMutex, OpenProcess, CreateProcess (hProcess, hThread) and CreateToolhelp32Snapshot with CloseHandle, FindFirstFile with FindClose, RegOpenKeyEx/RegCreateKeyEx with RegCloseKey, LoadLibrary with FreeLibrary, GetDC with ReleaseDC, CreatePen/CreateBrush/CreateFont/CreateBitmap with DeleteObject, CreateCompatibleDC with DeleteDC and others. Returning the handle, storing it in a field or global, passing it to an unknown routine or capturing it in an anonymous method counts as handing it on. Branches in which an if check says the open failed (H = 0, H = INVALID_HANDLE_VALUE, RegOpenKeyEx(...) <> ERROR_SUCCESS) and exception paths (see pair-without-finally) do not count. The option pairs adds your own pairs. Medium confidence. Quick fix when the handle is never closed: wrap the statements after the open in try … finally with the close call, or append the close call when the open is the last statement.",
+      "bad": "H := CreateFile(PChar(Datei), GENERIC_READ, 0, nil, OPEN_EXISTING, 0, 0);\nif H = INVALID_HANDLE_VALUE then\n  RaiseLastOSError;\nReadFile(H, Puffer, SizeOf(Puffer), Gelesen, nil);",
+      "good": "H := CreateFile(PChar(Datei), GENERIC_READ, 0, nil, OPEN_EXISTING, 0, 0);\nif H = INVALID_HANDLE_VALUE then\n  RaiseLastOSError;\ntry\n  ReadFile(H, Puffer, SizeOf(Puffer), Gelesen, nil);\nfinally\n  CloseHandle(H);\nend;",
+      "options": [
+        {
+          "name": "pairs",
+          "type": "json",
+          "default": [],
+          "description": "Additional open/close pairs as \"Open>Close\" or {\"open\": …, \"close\": …}; the open function returns the handle, the close procedure takes it as its only argument."
+        }
+      ]
+    },
+    {
+      "id": "global-formatsettings-modified",
+      "name": "Global FormatSettings is modified",
+      "category": "bug",
+      "severity": "warning",
+      "group": "robustness",
+      "description": "Assignment to the global FormatSettings or one of its fields (also to the deprecated global variables DecimalSeparator, ShortDateFormat, ThousandSeparator … of older Delphi versions). This changes the formatting for the whole application, for every package in the same process (in an IDE plugin the IDE itself) and for all threads, and is not thread-safe; it is often a workaround to force a dot as decimal separator. Reported only when the name is surely the variable from System.SysUtils: no local declaration, no member of the class or its ancestors (silent when the chain of ancestors ends at an unknown class), not inside with. Complements format-without-settings, which reports formatting calls without settings. High confidence. Quick fix when the routine changes the global settings only once and formats something afterwards: declare a local TFormatSettings (TFormatSettings.Invariant for DecimalSeparator := '.', otherwise a copy of FormatSettings with the changed field) and pass it to the formatting calls that follow. With allowInProgram on, assignments in the .dpr are allowed.",
+      "bad": "procedure TExport.Schreiben;\nbegin\n  FormatSettings.DecimalSeparator := '.';\n  Zeile := FloatToStr(Betrag);\nend;",
+      "good": "procedure TExport.Schreiben;\nvar\n  FS: TFormatSettings;\nbegin\n  FS := TFormatSettings.Invariant;\n  Zeile := FloatToStr(Betrag, FS);\nend;",
+      "options": [
+        {
+          "name": "allowInProgram",
+          "type": "boolean",
+          "default": false,
+          "description": "Allow the assignments in the .dpr, for example once at program start."
+        }
+      ]
+    },
+    {
+      "id": "component-interface-dangling",
+      "name": "Component stored as interface stays referenced after Free",
+      "category": "bug",
+      "severity": "warning",
+      "group": "find-bugs",
+      "description": "A descendant of TComponent (form, frame, data module, own component) implements an interface, but TComponent does not count references. Reported is storing the object as an interface in a field, a global variable or a list (FView as IObserver passed to Bus.Subscribe, FList.Add, Register, Anmelden …, assigned to a field or global, or added to a TList<IFoo>/TInterfaceList) when the same unit frees the object (Free, Release, DisposeOf, FreeAndNil) and nowhere unregisters it: FreeNotification on the object, another call on the same receiver with the object as argument (Unsubscribe, Remove, Abmelden …), Clear, or another assignment to the same field. After the Free the stored interface points to freed memory. Silent for classes with their own _Release and when the chain of ancestors ends at an unknown class. Also reported, without a quick fix: descendants of TInterfacedObject that are stored this way and additionally freed with Free; the stored interface keeps a freed object, and unregistering first would already free it. Medium confidence. Quick fix: insert the unregistration before the first Free (Receiver.Abmelden(…) when the receiver's type has the counterpart, or Field := nil).",
+      "bad": "procedure TfrmHaupt.AnsichtOeffnen;\nbegin\n  FAnsicht := TfrmKunden.Create(Self);\n  Bus.Anmelden(FAnsicht as IBeobachter);\nend;\n\nprocedure TfrmHaupt.AnsichtSchliessen;\nbegin\n  FAnsicht.Free;\nend;",
+      "good": "procedure TfrmHaupt.AnsichtOeffnen;\nbegin\n  FAnsicht := TfrmKunden.Create(Self);\n  Bus.Anmelden(FAnsicht as IBeobachter);\nend;\n\nprocedure TfrmHaupt.AnsichtSchliessen;\nbegin\n  Bus.Abmelden(FAnsicht as IBeobachter);\n  FAnsicht.Free;\nend;",
+      "options": [
+        {
+          "name": "componentClasses",
+          "type": "string-list",
+          "default": [
+            "TComponent"
+          ],
+          "description": "Base classes without reference counting; with TComponent the known VCL and FMX classes (TForm, TFrame, TDataModule …) count as well."
+        }
+      ]
+    },
+    {
       "id": "unit-name-mismatch",
       "name": "Unit name does not match the file name",
       "category": "bug",

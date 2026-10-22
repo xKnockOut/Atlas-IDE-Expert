@@ -6,7 +6,7 @@
 // Korrekturen, threadvar-managed (#922), pchar-of-temporary (#923) und
 // stringlist-unsorted (#925), writeln-in-gui-app (#926), unchecked-conversion (#932) und
 // dictionary-get-without-check (#933), delimited-text-without-strict (#952), unchecked-enum-cast (#954),
-// createprocess-readonly-commandline (#955).
+// createprocess-readonly-commandline (#955), global-formatsettings-modified (#1089).
 
 interface
 
@@ -105,6 +105,14 @@ type
     procedure CreateProcessSilentCases;
     [Test]
     procedure CreateProcessOffAndExclude;
+    [Test]
+    procedure GlobalFormatSettingsIssueExample;
+    [Test]
+    procedure GlobalFormatSettingsVariants;
+    [Test]
+    procedure GlobalFormatSettingsSilentCases;
+    [Test]
+    procedure GlobalFormatSettingsOptions;
   end;
 
 implementation
@@ -1109,6 +1117,151 @@ begin
     '{"rules": {"createprocess-readonly-commandline": "off"}}'))));
   Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TCreateProcessReadonlyCommandLineRule.Create, Source,
     '{"rules": {"createprocess-readonly-commandline": {"exclude": ["Source/*.pas"]}}}', 'Source/Start.pas'))));
+end;
+
+function Export(const AVars, ABody: string): string; overload;
+begin
+  Result := 'unit Export;'#10'interface'#10'uses'#10'  System.SysUtils;'#10'type'#10'  TExport = class'#10 +
+    '  private'#10'    FBetrag: Double;'#10'    FZeile: string;'#10'  public'#10'    procedure Schreiben;'#10 +
+    '  end;'#10'implementation'#10'procedure TExport.Schreiben;'#10 + AVars + 'begin'#10 + ABody + 'end;'#10'end.';
+end;
+
+/// <summary>Freie Prozedur mit uses AUses im implementation-Teil.</summary>
+function Export(const AUses, AVars, ABody: string): string; overload;
+begin
+  Result := 'unit Export;'#10'interface'#10'implementation'#10 + AUses + 'procedure Schreiben(Betrag: Double);'#10 +
+    AVars + 'begin'#10 + ABody + 'end;'#10'end.';
+end;
+
+procedure TRtlTypePatternRulesTests.GlobalFormatSettingsIssueExample;
+var
+  Source, Fixed: string;
+  Findings: TArray<TRuleFinding>;
+  Tree: TSyntaxTree;
+begin
+  Source := Export('', '  FormatSettings.DecimalSeparator := ''.'';'#10'  FZeile := FloatToStr(FBetrag);'#10);
+  Findings := TRuleAssert.Findings(TGlobalFormatSettingsModifiedRule.Create, Source);
+  Assert.AreEqual(1, Integer(Length(Findings)));
+  Assert.AreEqual('global-formatsettings-modified', Findings[0].RuleId);
+  Assert.AreEqual(Ord(TRuleSeverity.Warning), Ord(Findings[0].Severity));
+  Assert.AreEqual(Ord(TRuleConfidence.High), Ord(Findings[0].Confidence));
+  Assert.AreEqual('Ändert den Dezimaltrenner für die ganze Anwendung und alle Threads; eine lokale ' +
+    'TFormatSettings verwenden.', Findings[0].Message);
+  Assert.AreEqual(15, Findings[0].Range.StartPos.Line);
+  Assert.AreEqual(2, Findings[0].Range.StartPos.Character);
+  Assert.AreEqual(1, Integer(Length(Findings[0].Fixes)));
+  Assert.AreEqual('Lokale TFormatSettings anlegen und übergeben', Findings[0].Fixes[0].Title);
+  Fixed := TChangeSignature.ApplyEdits(Source, Findings[0].Fixes[0].Edits);
+  Assert.AreEqual(Export('var'#10'  FS: TFormatSettings;'#10, '  FS := TFormatSettings.Invariant;'#10 +
+    '  FZeile := FloatToStr(FBetrag, FS);'#10), Fixed);
+  Tree := TPascalParser.Parse(Fixed);
+  try
+    Assert.AreEqual(0, Integer(Length(Tree.Diagnostics)));
+  finally
+    Tree.Free;
+  end;
+  TRuleAssert.Silent(TGlobalFormatSettingsModifiedRule.Create, Fixed);
+end;
+
+procedure TRtlTypePatternRulesTests.GlobalFormatSettingsVariants;
+const
+  Formular = 'unit Haupt;'#10'interface'#10'uses'#10'  System.SysUtils, Vcl.Forms;'#10'type'#10 +
+    '  THaupt = class(TForm)'#10'    procedure FormCreate(Sender: TObject);'#10'  end;'#10'implementation'#10 +
+    'procedure THaupt.FormCreate(Sender: TObject);'#10'begin'#10'  FormatSettings.ShortDateFormat := ''dd.mm.yyyy'';'#10 +
+    'end;'#10'end.';
+var
+  Source: string;
+  Findings: TArray<TRuleFinding>;
+  Index: Integer;
+begin
+  // Veraltete globale Variable mit anderem Wert: Kopie der FormatSettings mit dem geänderten Feld.
+  Source := Export('uses SysUtils;'#10, 'var'#10'  Zeile: string;'#10, '  DecimalSeparator := '','';'#10 +
+    '  Zeile := Format(''%.2f'', [Betrag]);'#10'  Zeile := Zeile + IntToStr(1);'#10);
+  Findings := TRuleAssert.Findings(TGlobalFormatSettingsModifiedRule.Create, Source);
+  Assert.AreEqual(1, Integer(Length(Findings)));
+  Assert.AreEqual('Ändert den Dezimaltrenner für die ganze Anwendung und alle Threads; eine lokale ' +
+    'TFormatSettings verwenden.', Findings[0].Message);
+  Assert.AreEqual(Export('uses SysUtils;'#10, 'var'#10'  Zeile: string;'#10'  FS: TFormatSettings;'#10,
+    '  FS := FormatSettings;'#10'  FS.DecimalSeparator := '','';'#10'  Zeile := Format(''%.2f'', [Betrag], FS);'#10 +
+    '  Zeile := Zeile + IntToStr(1);'#10), TChangeSignature.ApplyEdits(Source, Findings[0].Fixes[0].Edits));
+  // Mit Unit-Namen, ganze FormatSettings, Feld mit Index, Methode eines Formulars (TForm ist bekannt).
+  Findings := TRuleAssert.Findings(TGlobalFormatSettingsModifiedRule.Create, Export('uses System.SysUtils;'#10, '',
+    '  System.SysUtils.FormatSettings.ShortDateFormat := ''dd.mm.yyyy'';'#10 +
+    '  FormatSettings := TFormatSettings.Create(''en-US'');'#10'  FormatSettings.ShortMonthNames[1] := ''Jan'';'#10));
+  Assert.AreEqual(3, Integer(Length(Findings)));
+  Assert.AreEqual('Ändert das kurze Datumsformat für die ganze Anwendung und alle Threads; eine lokale ' +
+    'TFormatSettings verwenden.', Findings[0].Message);
+  Assert.Contains(Findings[1].Message, 'Ändert alle Formateinstellungen');
+  Assert.Contains(Findings[2].Message, 'Ändert die kurzen Monatsnamen');
+  // Mehrere Änderungen in der Routine (Zurücksetzen im finally) bzw. kein Aufruf danach: ohne Korrektur.
+  for Index := 0 to High(Findings) do
+    Assert.AreEqual(0, Integer(Length(Findings[Index].Fixes)));
+  Findings := TRuleAssert.Findings(TGlobalFormatSettingsModifiedRule.Create, Export('uses System.SysUtils;'#10,
+    'var'#10'  Alt: Char;'#10, '  Alt := FormatSettings.DecimalSeparator;'#10 +
+    '  FormatSettings.DecimalSeparator := ''.'';'#10'  try'#10'    Writeln(FloatToStr(Betrag));'#10'  finally'#10 +
+    '    FormatSettings.DecimalSeparator := Alt;'#10'  end;'#10));
+  Assert.AreEqual(2, Integer(Length(Findings)));
+  Assert.AreEqual(0, Integer(Length(Findings[0].Fixes)));
+  Assert.AreEqual(0, Integer(Length(Findings[1].Fixes)));
+  Findings := TRuleAssert.Findings(TGlobalFormatSettingsModifiedRule.Create, Formular);
+  Assert.AreEqual(1, Integer(Length(Findings)));
+  Assert.AreEqual(0, Integer(Length(Findings[0].Fixes)));
+  // Im initialization-Abschnitt.
+  Findings := TRuleAssert.Findings(TGlobalFormatSettingsModifiedRule.Create, 'unit Start;'#10'interface'#10 +
+    'implementation'#10'uses System.SysUtils;'#10'initialization'#10'  FormatSettings.DecimalSeparator := ''.'';'#10 +
+    'end.');
+  Assert.AreEqual(1, Integer(Length(Findings)));
+  Assert.AreEqual('das Listentrennzeichen', TGlobalFormatSettingsModifiedRule.Subject('ListSeparator'));
+  Assert.AreEqual('die Formateinstellung NormalizedLocaleName',
+    TGlobalFormatSettingsModifiedRule.Subject('NormalizedLocaleName'));
+end;
+
+procedure TRtlTypePatternRulesTests.GlobalFormatSettingsSilentCases;
+const
+  Eigene = 'unit Eigene;'#10'interface'#10'uses'#10'  System.SysUtils;'#10'type'#10'  TZahlFeld = class'#10 +
+    '  private'#10'    DecimalSeparator: Char;'#10'    procedure Setzen;'#10'  end;'#10 +
+    '  TFremd = class(TCustomMaskEdit)'#10'    procedure Setzen;'#10'  end;'#10'implementation'#10 +
+    'procedure TZahlFeld.Setzen;'#10'begin'#10'  DecimalSeparator := ''.'';'#10'end;'#10 +
+    'procedure TFremd.Setzen;'#10'begin'#10'  DecimalSeparator := ''.'';'#10 +
+    '  FormatSettings.DecimalSeparator := ''.'';'#10'end;'#10'end.';
+begin
+  // Lokale Namen verdecken die globale Variable; Lesen ist erlaubt.
+  TRuleAssert.Silent(TGlobalFormatSettingsModifiedRule.Create, Export('uses System.SysUtils;'#10,
+    'var'#10'  FormatSettings, FS: TFormatSettings;'#10'  DecimalSeparator: Char;'#10,
+    '  FormatSettings.DecimalSeparator := ''.'';'#10'  FS.DecimalSeparator := ''.'';'#10 +
+    '  DecimalSeparator := System.SysUtils.FormatSettings.DecimalSeparator;'#10));
+  // Feld der eigenen Klasse; unbekannter Vorfahr kann gleichnamige Mitglieder haben.
+  TRuleAssert.Silent(TGlobalFormatSettingsModifiedRule.Create, Eigene);
+  // Ohne System.SysUtils in uses ist es nicht die globale Variable; in with unklar.
+  TRuleAssert.Silent(TGlobalFormatSettingsModifiedRule.Create, Export('', '',
+    '  FormatSettings.DecimalSeparator := ''.'';'#10));
+  TRuleAssert.Silent(TGlobalFormatSettingsModifiedRule.Create, Export('uses System.SysUtils;'#10, '',
+    '  with Feld do'#10'    DecimalSeparator := ''.'';'#10));
+end;
+
+procedure TRtlTypePatternRulesTests.GlobalFormatSettingsOptions;
+const
+  Programm = 'program Start;'#10'uses'#10'  System.SysUtils;'#10'begin'#10 +
+    '  FormatSettings.DecimalSeparator := ''.'';'#10'end.';
+var
+  Source: string;
+  Issues: TArray<TConfigurationIssue>;
+begin
+  Source := Export('', '  FormatSettings.DecimalSeparator := ''.'';'#10);
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TGlobalFormatSettingsModifiedRule.Create, Source,
+    '{"rules": {"global-formatsettings-modified": "off"}}'))));
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TGlobalFormatSettingsModifiedRule.Create, Source,
+    '{"rules": {"global-formatsettings-modified": {"exclude": ["Source/*.pas"]}}}', 'Source/Export.pas'))));
+  // allowInProgram gilt nur für die .dpr.
+  Assert.AreEqual(1, Integer(Length(TRuleAssert.Findings(TGlobalFormatSettingsModifiedRule.Create, Programm))));
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TGlobalFormatSettingsModifiedRule.Create, Programm,
+    '{"rules": {"global-formatsettings-modified": {"allowInProgram": true}}}', 'Start.dpr'))));
+  Assert.AreEqual(1, Integer(Length(TRuleAssert.Findings(TGlobalFormatSettingsModifiedRule.Create, Source,
+    '{"rules": {"global-formatsettings-modified": {"allowInProgram": true}}}', 'Export.pas'))));
+  TConfigurationParser.Parse('{"rules": {"global-formatsettings-modified": {"allowInProgram": "ja"}}}', Issues);
+  Assert.AreEqual(1, Integer(Length(Issues)));
+  TConfigurationParser.Parse('{"rules": {"global-formatsettings-modified": {"allowInProgram": true}}}', Issues);
+  Assert.AreEqual(0, Integer(Length(Issues)));
 end;
 
 initialization

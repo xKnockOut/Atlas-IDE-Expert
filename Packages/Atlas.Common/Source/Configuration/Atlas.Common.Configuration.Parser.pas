@@ -45,14 +45,17 @@ uses
 
 const
   /// <summary>Optionen von Prüfregeln, die true oder false sein müssen (#909).</summary>
-  BooleanRuleOptions: array[0..12] of string = ('allowCommented', 'requireElse', 'ignoreStrings', 'ignoreComments',
-    'includeRecords', 'includeFormVariables', 'checkUses', 'allowLazyInit', 'checkRound', 'includeFields', 'allowSingleLineExit', 'allowSameLine', 'allowComments');
+  BooleanRuleOptions: array[0..14] of string = ('allowCommented', 'requireElse', 'ignoreStrings', 'ignoreComments',
+    'includeRecords', 'includeFormVariables', 'checkUses', 'allowLazyInit', 'checkRound', 'includeFields',
+    'allowSingleLineExit', 'allowSameLine', 'allowComments',
+    'onlyAfterRaisingCode', 'allowInProgram');
   /// <summary>Optionen von Prüfregeln, die eine Liste von Texten sein müssen (#909).</summary>
-  StringListRuleOptions: array[0..21] of string = ('countNames', 'mutatingMethods', 'ignoreMethods', 'ignoreTypes',
+  StringListRuleOptions: array[0..22] of string = ('countNames', 'mutatingMethods', 'ignoreMethods', 'ignoreTypes',
     'methods', 'allowIn', 'functions', 'sources', 'ignore', 'assertPatterns', 'selfRegistering', 'swallow', 'calls',
-    'allowTables', 'types', 'allowProperties', 'threadSafeTypes', 'switchConstants', 'namePatterns', 'kinds');
+    'allowTables', 'types', 'allowProperties', 'threadSafeTypes', 'switchConstants', 'namePatterns', 'kinds',
+    'statements', 'disabledChecks', 'componentClasses');
   /// <summary>Erlaubte Einträge von kinds bei deprecated-symbol (#1018).</summary>
-  DeprecationKinds: array[0..3] of string = ('deprecated', 'experimental', 'platform', 'library', 'statements', 'disabledChecks');
+  DeprecationKinds: array[0..3] of string = ('deprecated', 'experimental', 'platform', 'library');
   /// <summary>Optionen von Prüfregeln, die eine Liste von Zahlen sein müssen (#937).</summary>
   NumberListRuleOptions: array[0..0] of string = ('allowed');
   /// <summary>Optionen von Prüfregeln, die ein Text sein müssen (#926).</summary>
@@ -202,6 +205,36 @@ begin
   end;
 end;
 
+/// <summary>Array aus Texten "Öffnen>Schließen" oder Objekten mit "open" und "close" (handle-leak, #1088).</summary>
+function IsArrowPairList(ANode: TJsonNode): Boolean;
+var
+  Index, Inner, Arrow, Found: Integer;
+  Item: TJsonNode;
+begin
+  Result := ANode.Kind = TJsonKind.Array_;
+  if not Result then
+    Exit;
+  for Index := 0 to ANode.Count - 1 do
+  begin
+    Item := ANode[Index];
+    if Item.Kind = TJsonKind.String_ then
+    begin
+      Arrow := Pos('>', Item.Value);
+      if (Arrow <= 1) or (Arrow >= Length(Item.Value)) then
+        Exit(False);
+      Continue;
+    end;
+    if Item.Kind <> TJsonKind.Object_ then
+      Exit(False);
+    Found := 0;
+    for Inner := 0 to Item.Count - 1 do
+      if ((Item.Keys[Inner] = 'open') or (Item.Keys[Inner] = 'close')) and (Item[Inner].Kind = TJsonKind.String_) then
+        Inc(Found);
+    if Found <> 2 then
+      Exit(False);
+  end;
+end;
+
 /// <summary>Array, dessen Einträge alle Texte sind.</summary>
 function IsNumberList(ANode: TJsonNode): Boolean;
 var
@@ -343,6 +376,13 @@ begin
           begin
             if not IsPairList(Value[Inner], ['start', 'commit', 'rollback']) then
               ReportNode(Value[Inner], '"pairs" muss eine Liste von Objekten mit "start", "commit" und "rollback" sein');
+          end
+          // Paare von handle-leak (#1088): auch als Text "Öffnen>Schließen".
+          else if (Value.Keys[Inner] = 'pairs') and (Rule.Id = 'handle-leak') then
+          begin
+            if not IsArrowPairList(Value[Inner]) then
+              ReportNode(Value[Inner], '"pairs" muss eine Liste von Texten "Öffnen>Schließen" oder von Objekten mit ' +
+                '"open" und "close" sein');
           end
           else if (Value.Keys[Inner] = 'pairs') and not IsPairList(Value[Inner], ['open', 'close']) then
             ReportNode(Value[Inner], '"pairs" muss eine Liste von Objekten mit "open" und "close" sein')

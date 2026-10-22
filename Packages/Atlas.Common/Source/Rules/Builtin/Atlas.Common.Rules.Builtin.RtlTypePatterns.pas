@@ -46,6 +46,17 @@
 //                            einer solchen letzten Zuweisung ohne UniqueString danach, ein String-Parameter (mittlere
 //                            Konfidenz). CreateProcessW schreibt in den Puffer. Korrektur: lokale Kopie mit
 //                            UniqueString bzw. UniqueString(Variable) vor der Anweisung
+//   global-formatsettings-modified
+//                            Zuweisung an die globale FormatSettings oder eines ihrer Felder, auch an die veralteten
+//                            globalen Variablen DecimalSeparator, ShortDateFormat … (#1089): ändert die Formatierung
+//                            für die ganze Anwendung, alle Packages im Prozess (im IDE-Plugin die IDE) und alle
+//                            Threads. Gemeldet wird nur, wenn der Name sicher die Variable aus System.SysUtils ist:
+//                            keine lokale Deklaration, kein Mitglied der Klasse und ihrer Vorfahren (bricht die Kette
+//                            an einem unbekannten Vorfahren ab, schweigt die Regel), kein with. Korrektur bei genau
+//                            einer solchen Zuweisung in der Routine und Formatierungsaufrufen danach: lokale
+//                            TFormatSettings (TFormatSettings.Invariant für DecimalSeparator := '.', sonst eine
+//                            Kopie mit dem geänderten Feld) an diese Aufrufe übergeben. Option allowInProgram
+//                            erlaubt die Zuweisungen in der .dpr
 // Bezeichner, deren Typ in der Datei nicht deklariert ist, lösen keinen Treffer aus.
 
 interface
@@ -172,6 +183,23 @@ type
     class function Origin(const ASource: string): string; static;
   end;
 
+  TGlobalFormatSettingsModifiedRule = class(TInterfacedObject, IRule)
+  public const
+    /// <summary>Veraltete globale Variablen aus System.SysUtils (bis XE5), gleichnamig mit den Feldern von
+    /// TFormatSettings.</summary>
+    DeprecatedGlobals: array[0..19] of string = ('CurrencyString', 'CurrencyFormat', 'NegCurrFormat',
+      'ThousandSeparator', 'DecimalSeparator', 'CurrencyDecimals', 'DateSeparator', 'ShortDateFormat',
+      'LongDateFormat', 'TimeSeparator', 'TimeAMString', 'TimePMString', 'ShortTimeFormat', 'LongTimeFormat',
+      'ShortMonthNames', 'LongMonthNames', 'ShortDayNames', 'LongDayNames', 'ListSeparator',
+      'TwoDigitYearCenturyWindow');
+  public
+    function Descriptor: TRuleDescriptor;
+    procedure Check(const AContext: TRuleContext; const AReport: IRuleReport);
+    /// <summary>Was die Zuweisung an das Feld AField ändert, für die Meldung ("den Dezimaltrenner");
+    /// AField = '' steht für die ganze FormatSettings.</summary>
+    class function Subject(const AField: string): string; static;
+  end;
+
 procedure RegisterRtlTypePatternRules(const ARegistry: TRuleRegistry);
 
 implementation
@@ -192,6 +220,7 @@ uses
   Atlas.Common.Rules.Options,
   Atlas.Common.Rules.Derived,
   Atlas.Common.Rules.ManagedTypes,
+  Atlas.Common.Semantics.NameResolver,
   Atlas.Text.Lines;
 
 type
@@ -600,47 +629,53 @@ begin
     Result := 0;
 end;
 
+/// <summary>Formatierungsaufruf ohne TFormatSettings bei AIndex (Format mit %f/%n/%m/%g/%e, FloatToStr, StrToDate
+/// …); AClose ist dann die schließende Klammer.</summary>
+function IsLocaleCall(const ATokens: TTokens; AIndex: Integer; out AClose: Integer): Boolean;
+var
+  Open, First, Prev: Integer;
+begin
+  Result := False;
+  AClose := -1;
+  if ATokens[AIndex].Kind <> TPascalTokenKind.Identifier then
+    Exit;
+  Prev := PreviousCode(ATokens, AIndex);
+  Open := NextCode(ATokens, AIndex + 1);
+  // Methoden wie Writer.Format bleiben außen vor; SysUtils.Format zählt.
+  if (Open > High(ATokens)) or not ATokens[Open].IsSymbol('(') or ((Prev >= 0) and ATokens[Prev].IsSymbol('.') and
+    not ((PreviousCode(ATokens, Prev) >= 0) and MatchText(ATokens[PreviousCode(ATokens, Prev)].Text,
+    ['SysUtils', 'System.SysUtils']))) then
+    Exit;
+  AClose := Closing(ATokens, Open);
+  if AClose < 0 then
+    Exit;
+  if SameText(ATokens[AIndex].Text, 'Format') then
+  begin
+    First := NextCode(ATokens, Open + 1);
+    Result := (ArgumentCount(ATokens, Open, AClose) = 2) and
+      (ATokens[First].Kind = TPascalTokenKind.StringLiteral) and
+      TFormatWithoutSettingsRule.HasLocaleSpecifier(ATokens[First].Text);
+  end
+  else
+    Result := (PlainArgumentCount(ATokens[AIndex].Text) > 0) and
+      (ArgumentCount(ATokens, Open, AClose) = PlainArgumentCount(ATokens[AIndex].Text));
+end;
+
 procedure TFormatWithoutSettingsRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
 var
   Tokens: TTokens;
-  Index, Open, Close, First, Prev, Expected: Integer;
-  Reported: Boolean;
+  Index, Close: Integer;
 begin
   if AContext.Tree = nil then
     Exit;
   Tokens := AContext.Tree.Tokens;
   for Index := 0 to High(Tokens) do
-  begin
-    if Tokens[Index].Kind <> TPascalTokenKind.Identifier then
-      Continue;
-    Prev := PreviousCode(Tokens, Index);
-    Open := NextCode(Tokens, Index + 1);
-    // Methoden wie Writer.Format bleiben außen vor; SysUtils.Format zählt.
-    if (Open > High(Tokens)) or not Tokens[Open].IsSymbol('(') or ((Prev >= 0) and Tokens[Prev].IsSymbol('.') and
-      not ((PreviousCode(Tokens, Prev) >= 0) and MatchText(Tokens[PreviousCode(Tokens, Prev)].Text,
-      ['SysUtils', 'System.SysUtils']))) then
-      Continue;
-    Close := Closing(Tokens, Open);
-    if Close < 0 then
-      Continue;
-    if SameText(Tokens[Index].Text, 'Format') then
-    begin
-      First := NextCode(Tokens, Open + 1);
-      Reported := (ArgumentCount(Tokens, Open, Close) = 2) and
-        (Tokens[First].Kind = TPascalTokenKind.StringLiteral) and HasLocaleSpecifier(Tokens[First].Text);
-    end
-    else
-    begin
-      Expected := PlainArgumentCount(Tokens[Index].Text);
-      Reported := (Expected > 0) and (ArgumentCount(Tokens, Open, Close) = Expected);
-    end;
-    if Reported then
+    if IsLocaleCall(Tokens, Index, Close) then
       AReport.Add(RangeOf(Tokens, Index, Close), Format('%s ohne TFormatSettings hängt vom Gebietsschema ab ' +
         '(Dezimaltrenner, Datumsformat); für Dateien und Protokolle eine feste TFormatSettings übergeben',
         [Tokens[Index].Text]), TRuleConfidence.Medium, [TRuleFix.Create('FormatSettings übergeben',
         [TRuleEdit.Create(TTextRange.Create(Tokens[Close].StartPos, Tokens[Close].StartPos),
         ', FormatSettings')])]);
-  end;
 end;
 
 { TManagedTypeRawMemoryRule }
@@ -3024,6 +3059,285 @@ begin
   end;
 end;
 
+{ TGlobalFormatSettingsModifiedRule }
+
+function TGlobalFormatSettingsModifiedRule.Descriptor: TRuleDescriptor;
+begin
+  Result := TRuleDescriptor.Create('global-formatsettings-modified', TRuleSeverity.Warning,
+    'Globale FormatSettings wird verändert');
+end;
+
+class function TGlobalFormatSettingsModifiedRule.Subject(const AField: string): string;
+const
+  // In der Reihenfolge von DeprecatedGlobals.
+  Texts: array[0..19] of string = ('das Währungssymbol', 'das Währungsformat', 'das Format negativer Beträge',
+    'das Tausendertrennzeichen', 'den Dezimaltrenner', 'die Nachkommastellen von Beträgen', 'das Datumstrennzeichen',
+    'das kurze Datumsformat', 'das lange Datumsformat', 'das Zeittrennzeichen', 'die Vormittagskennung',
+    'die Nachmittagskennung', 'das kurze Zeitformat', 'das lange Zeitformat', 'die kurzen Monatsnamen',
+    'die Monatsnamen', 'die kurzen Tagesnamen', 'die Tagesnamen', 'das Listentrennzeichen',
+    'das Jahrhundertfenster zweistelliger Jahreszahlen');
+var
+  Index: Integer;
+begin
+  if AField = '' then
+    Exit('alle Formateinstellungen');
+  for Index := 0 to High(DeprecatedGlobals) do
+    if SameText(DeprecatedGlobals[Index], AField) then
+      Exit(Texts[Index]);
+  Result := Format('die Formateinstellung %s', [AField]);
+end;
+
+procedure TGlobalFormatSettingsModifiedRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
+const
+  // RTL- und VCL-Basisklassen ohne Mitglieder namens FormatSettings, DecimalSeparator …: Bricht die Kette der
+  // Vorfahren ohne Index an einer von ihnen ab, ist der Name trotzdem sicher die globale Variable.
+  SafeBases: array[0..18] of string = ('TObject', 'TInterfacedObject', 'TAggregatedObject', 'TContainedObject',
+    'TPersistent', 'TInterfacedPersistent', 'TComponent', 'TThread', 'TCustomAttribute', 'TControl', 'TWinControl',
+    'TCustomControl', 'TGraphicControl', 'TScrollingWinControl', 'TCustomForm', 'TForm', 'TCustomFrame', 'TFrame',
+    'TDataModule');
+type
+  TModification = record
+    Statement: TSyntaxNode;
+    Target: TSyntaxNode;
+    Routine: TSyntaxNode;
+    /// <summary>Feld hinter FormatSettings bzw. die veraltete Variable; '' = die ganze FormatSettings.</summary>
+    Field: string;
+  end;
+var
+  Tokens: TTokens;
+  Resolver: TNameResolver;
+  FileName, LineBreak: string;
+  Used, Lines: TArray<string>;
+  Found: TArray<TModification>;
+  Item: TModification;
+  Index, Count: Integer;
+  Fixes: TArray<TRuleFix>;
+  Fix: TRuleFix;
+
+  function NodeText(ANode: TSyntaxNode): string;
+  begin
+    Result := Copy(AContext.Text, ANode.StartOffset + 1, ANode.EndOffset - ANode.StartOffset);
+  end;
+
+  function ChainOf(ANode: TSyntaxNode; out ANames: TArray<string>): Boolean;
+  begin
+    ANames := nil;
+    case ANode.Kind of
+      TSyntaxKind.Identifier:
+        begin
+          ANames := [ANode.Name];
+          Result := True;
+        end;
+      TSyntaxKind.MemberAccess:
+        begin
+          Result := (ANode.ChildCount > 0) and ChainOf(ANode[0], ANames);
+          if Result then
+            ANames := ANames + [ANode.Name];
+        end;
+    else
+      Result := False;
+    end;
+  end;
+
+  function InWith(ANode: TSyntaxNode): Boolean;
+  begin
+    Result := False;
+    while (ANode <> nil) and (ANode.Kind <> TSyntaxKind.RoutineDecl) do
+    begin
+      if ANode.Kind = TSyntaxKind.WithStatement then
+        Exit(True);
+      ANode := ANode.Parent;
+    end;
+  end;
+
+  /// <summary>Kann ein Vorfahr der Klasse, in deren Methode AOffset liegt, den Namen selbst deklarieren? Ja, wenn
+  /// die Kette an einem unbekannten Vorfahren abbricht, der nicht in SafeBases steht.</summary>
+  function UnknownAncestor(AOffset: Integer): Boolean;
+  var
+    Current, Next: TResolvedSymbol;
+    Expected: string;
+    Depth: Integer;
+  begin
+    Result := False;
+    Current := Resolver.ResolveChain(AContext.Tree, FileName, ['Self'], AOffset);
+    if Current.Kind <> TResolvedKind.Symbol then
+      Exit;
+    for Depth := 1 to 64 do
+    begin
+      if Resolver.AncestorOf(Current, Next) then
+      begin
+        Current := Next;
+        Continue;
+      end;
+      Expected := '';
+      if Length(Current.Ancestors) > 0 then
+        Expected := Current.Ancestors[0]
+      else if (Current.SymbolKind = TIndexSymbolKind.ClassType) and not SameText(Current.Name, 'TObject') then
+        Expected := 'TObject';
+      if Pos('.', Expected) > 0 then
+        Expected := Copy(Expected, LastDelimiter('.', Expected) + 1, MaxInt);
+      Exit((Expected <> '') and not MatchText(Expected, SafeBases));
+    end;
+  end;
+
+  /// <summary>Ist AName an der Stelle sicher die globale Variable aus System.SysUtils?</summary>
+  function IsGlobal(AStatement: TSyntaxNode; const AName: string; AQualified: Boolean): Boolean;
+  var
+    Resolved: TResolvedSymbol;
+  begin
+    if AQualified then
+      Exit(True);
+    Result := False;
+    if InWith(AStatement) or not (MatchText('System.SysUtils', Used) or MatchText('SysUtils', Used)) then
+      Exit;
+    Resolved := Resolver.ResolveChain(AContext.Tree, FileName, [AName], AStatement.StartOffset);
+    case Resolved.Kind of
+      TResolvedKind.Local, TResolvedKind.UnitName:
+        Exit;
+      TResolvedKind.Symbol:
+        if not MatchText(Resolved.UnitName, ['System.SysUtils', 'SysUtils']) then
+          Exit;
+    end;
+    Result := not UnknownAncestor(AStatement.StartOffset);
+  end;
+
+  procedure Inspect(AStatement: TSyntaxNode);
+  var
+    Target: TSyntaxNode;
+    Names: TArray<string>;
+    First: Integer;
+    Modification: TModification;
+  begin
+    Target := AStatement[0];
+    while (Target.Kind = TSyntaxKind.IndexAccess) and (Target.ChildCount > 0) do
+      Target := Target[0];
+    if not ChainOf(Target, Names) then
+      Exit;
+    First := 0;
+    if (Length(Names) >= 3) and SameText(Names[0], 'System') and SameText(Names[1], 'SysUtils') then
+      First := 2
+    else if (Length(Names) >= 2) and SameText(Names[0], 'SysUtils') then
+      First := 1;
+    Modification.Field := '';
+    if SameText(Names[First], 'FormatSettings') and (Length(Names) - First <= 2) then
+    begin
+      if Length(Names) - First = 2 then
+        Modification.Field := Names[First + 1];
+    end
+    else if (Length(Names) - First = 1) and MatchText(Names[First], DeprecatedGlobals) then
+      Modification.Field := Names[First]
+    else
+      Exit;
+    if not IsGlobal(AStatement, Names[First], First > 0) then
+      Exit;
+    Modification.Statement := AStatement;
+    Modification.Target := AStatement[0];
+    Modification.Routine := TRoutineBody.RoutineAt(AContext.Tree, AStatement.StartOffset);
+    Found := Found + [Modification];
+  end;
+
+  procedure Visit(ANode: TSyntaxNode);
+  var
+    Child: Integer;
+  begin
+    if (ANode.Kind = TSyntaxKind.AssignStatement) and (ANode.ChildCount >= 2) then
+      Inspect(ANode);
+    for Child := 0 to ANode.ChildCount - 1 do
+      Visit(ANode[Child]);
+  end;
+
+  /// <summary>Lokale TFormatSettings anlegen, statt der Zuweisung belegen und an die Formatierungsaufrufe danach
+  /// übergeben. Nur bei einer einzeiligen Anweisung in einer Anweisungsliste mit mindestens einem solchen Aufruf.
+  /// </summary>
+  function LocalFix(const AItem: TModification; out AFix: TRuleFix): Boolean;
+  var
+    Body: TSyntaxNode;
+    Name, Value, Tail, NewText: string;
+    Edits: TArray<TRuleEdit>;
+    Position, Close, Field: Integer;
+  begin
+    Result := False;
+    Body := TRoutineBody.BodyOf(AItem.Routine);
+    if (Body = nil) or not TRoutineBody.InList(AItem.Statement) or
+      (AItem.Statement.StartPos.Line <> AItem.Statement.EndPos.Line) or
+      (AItem.Statement.StartPos.Line > High(Lines)) then
+      Exit;
+    Name := TRoutineBody.UniqueName(Tokens, 'FS');
+    Edits := nil;
+    Position := TRoutineBody.TokenAt(Tokens, AItem.Statement.EndOffset);
+    while (Position <= High(Tokens)) and (Tokens[Position].Offset < Body.EndOffset) do
+    begin
+      if IsLocaleCall(Tokens, Position, Close) then
+        Edits := Edits + [TRuleEdit.Create(TTextRange.Create(Tokens[Close].StartPos, Tokens[Close].StartPos),
+          ', ' + Name)];
+      Inc(Position);
+    end;
+    if Edits = nil then
+      Exit;
+    Value := NodeText(AItem.Statement[1]);
+    if AItem.Field = '' then
+      NewText := Name + ' := ' + Value
+    else if SameText(AItem.Field, 'DecimalSeparator') and (Value = '''.''') then
+      NewText := Name + ' := TFormatSettings.Invariant'
+    else
+    begin
+      // Feld samt Index wie geschrieben: ShortMonthNames[1] aus FormatSettings.ShortMonthNames[1].
+      Field := TRoutineBody.TokenAt(Tokens, AItem.Target.StartOffset);
+      while (Field <= High(Tokens)) and (Tokens[Field].Offset < AItem.Target.EndOffset) and
+        not ((Tokens[Field].Kind = TPascalTokenKind.Identifier) and SameText(Tokens[Field].Text, AItem.Field)) do
+        Inc(Field);
+      if (Field > High(Tokens)) or (Tokens[Field].Offset >= AItem.Target.EndOffset) then
+        Exit;
+      Tail := Copy(AContext.Text, Tokens[Field].Offset + 1, AItem.Target.EndOffset - Tokens[Field].Offset);
+      NewText := Name + ' := FormatSettings;' + LineBreak + TTextLines.IndentOf(Lines[AItem.Statement.StartPos.Line]) +
+        Name + '.' + Tail + ' := ' + Value;
+    end;
+    Edits := [TRoutineBody.AddVariable(AContext.Text, AItem.Routine, Name, 'TFormatSettings', AContext.Formatting),
+      TRuleEdit.Create(TTextRange.Create(AItem.Statement.StartPos, AItem.Statement.EndPos), NewText)] + Edits;
+    AFix := TRuleFix.Create('Lokale TFormatSettings anlegen und übergeben', Edits);
+    Result := True;
+  end;
+
+begin
+  if (AContext.Tree = nil) or (AContext.Tree.Root = nil) then
+    Exit;
+  if (AContext.Tree.Root.Kind in [TSyntaxKind.ProgramFile, TSyntaxKind.LibraryFile]) and
+    TRuleOptions.Bool(AContext.Options, 'allowInProgram', False) then
+    Exit;
+  Tokens := AContext.Tree.Tokens;
+  Used := TUsesClauses.UsedUnits(Tokens);
+  FileName := AContext.FileName;
+  if FileName = '' then
+    FileName := AContext.RelativePath;
+  if FileName = '' then
+    FileName := AContext.UnitName + '.pas';
+  Lines := TTextLines.SplitLines(AContext.Text);
+  LineBreak := TTextLines.LineBreakOf(AContext.Text);
+  Found := nil;
+  Resolver := TNameResolver.Create(AContext.Index, AContext.EnsureUnit);
+  try
+    Resolver.Namespaces := AContext.Namespaces;
+    Visit(AContext.Tree.Root);
+    for Item in Found do
+    begin
+      // Die Korrektur nur bei genau einer Änderung in der Routine; sonst stellt sie etwa ein Zurücksetzen im
+      // finally nicht sinnvoll um.
+      Count := 0;
+      for Index := 0 to High(Found) do
+        if Found[Index].Routine = Item.Routine then
+          Inc(Count);
+      Fixes := nil;
+      if (Item.Routine <> nil) and (Count = 1) and LocalFix(Item, Fix) then
+        Fixes := [Fix];
+      AReport.Add(TTextRange.Create(Item.Statement.StartPos, Item.Statement.EndPos),
+        Format('Ändert %s für die ganze Anwendung und alle Threads; eine lokale TFormatSettings verwenden.',
+        [Subject(Item.Field)]), TRuleConfidence.High, Fixes);
+    end;
+  finally
+    Resolver.Free;
+  end;
+end;
+
 procedure RegisterRtlTypePatternRules(const ARegistry: TRuleRegistry);
 begin
   ARegistry.Register(TInt32MulOverflowRule.Create);
@@ -3042,6 +3356,7 @@ begin
   ARegistry.Register(TDictionaryGetWithoutCheckRule.Create);
   ARegistry.Register(TUncheckedEnumCastRule.Create);
   ARegistry.Register(TCreateProcessReadonlyCommandLineRule.Create);
+  ARegistry.Register(TGlobalFormatSettingsModifiedRule.Create);
 end;
 
 end.
