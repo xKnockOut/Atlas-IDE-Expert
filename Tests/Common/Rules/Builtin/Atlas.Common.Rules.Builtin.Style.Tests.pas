@@ -1,7 +1,7 @@
 ﻿unit Atlas.Common.Rules.Builtin.Style.Tests;
 
 // Tests für die Stilregeln (#104): je Regel positiv, negativ und Schnellkorrektur; boolean-assign-if (#935),
-// case-insensitive-compare (#936), magic-number (#937), line-length (#938) und public-field (#940).
+// case-insensitive-compare (#936), magic-number (#937), line-length (#938), public-field (#940) und global-variable (#941).
 
 interface
 
@@ -70,6 +70,10 @@ type
     procedure PublicFieldVariantsAndOptions;
     [Test]
     procedure PublicFieldSilentCases;
+    [Test]
+    procedure GlobalVariableIssueExample;
+    [Test]
+    procedure GlobalVariableFormVariablesAndOptions;
   end;
 
 implementation
@@ -595,6 +599,58 @@ begin
   TConfigurationParser.Parse('{"rules": {"public-field": {"includeRecords": "ja"}}}', Issues);
   Assert.AreEqual(1, Integer(Length(Issues)));
   Assert.AreEqual('"includeRecords" muss true oder false sein', Issues[0].Message);
+end;
+
+const
+  GlobalOn = '{ "rules": { "global-variable": "hint" } }';
+
+procedure TStyleRulesTests.GlobalVariableIssueExample;
+var
+  Source: string;
+  Findings: TArray<TRuleFinding>;
+begin
+  Source := 'unit U;'#10'interface'#10'uses Benutzer;'#10'var'#10'  AktuellerBenutzer: TBenutzer;'#10 +
+    'implementation'#10'end.';
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TGlobalVariableRule.Create, Source))), 'Standard aus');
+  Findings := TRuleAssert.Findings(TGlobalVariableRule.Create, Source, GlobalOn);
+  Assert.AreEqual(1, Integer(Length(Findings)));
+  Assert.AreEqual('Globale Variable AktuellerBenutzer ist in jeder Unit sichtbar, die diese verwendet.',
+    Findings[0].Message);
+  Assert.AreEqual(4, Findings[0].Range.StartPos.Line);
+  Assert.AreEqual(2, Findings[0].Range.StartPos.Character);
+  Assert.AreEqual(19, Findings[0].Range.EndPos.Character);
+  // Korrigiert: im implementation-Teil, dazu eine Funktion im interface.
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TGlobalVariableRule.Create, 'unit U;'#10'interface'#10 +
+    'uses Benutzer;'#10'function AktuellerBenutzer: TBenutzer;'#10'implementation'#10'var'#10 +
+    '  GBenutzer: TBenutzer;'#10'function AktuellerBenutzer: TBenutzer;'#10'begin'#10'  Result := GBenutzer;'#10 +
+    'end;'#10'end.', GlobalOn))));
+end;
+
+procedure TStyleRulesTests.GlobalVariableFormVariablesAndOptions;
+var
+  Source: string;
+  Findings: TArray<TRuleFinding>;
+  Issues: TArray<TConfigurationIssue>;
+begin
+  Source := 'unit U;'#10'interface'#10'type'#10'  TfrmHaupt = class(TForm)'#10'  end;'#10'var'#10 +
+    '  frmHaupt: TfrmHaupt;'#10'  A, B: Integer;'#10'threadvar'#10'  Puffer: string;'#10'implementation'#10'end.';
+  Findings := TRuleAssert.Findings(TGlobalVariableRule.Create, Source, GlobalOn);
+  Assert.AreEqual(3, Integer(Length(Findings)), 'ohne die Formularvariable');
+  Assert.AreEqual('Globale Variable B ist in jeder Unit sichtbar, die diese verwendet.', Findings[1].Message);
+  Assert.AreEqual('Globale Variable Puffer ist in jeder Unit sichtbar, die diese verwendet.', Findings[2].Message);
+  Findings := TRuleAssert.Findings(TGlobalVariableRule.Create, Source,
+    '{ "rules": { "global-variable": { "severity": "hint", "includeFormVariables": true } } }');
+  Assert.AreEqual(4, Integer(Length(Findings)));
+  Assert.AreEqual('Globale Variable frmHaupt ist in jeder Unit sichtbar, die diese verwendet.', Findings[0].Message);
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TGlobalVariableRule.Create, Source,
+    '{ "rules": { "global-variable": "off" } }'))));
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TGlobalVariableRule.Create, Source,
+    '{ "rules": { "global-variable": { "severity": "hint", "exclude": ["Alt/*.pas"] } } }', 'Alt/U.pas'))));
+  // Programme haben keinen interface-Teil.
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TGlobalVariableRule.Create,
+    'program P;'#10'var'#10'  X: Integer;'#10'begin'#10'end.', GlobalOn))));
+  TConfigurationParser.Parse('{"rules": {"global-variable": {"includeFormVariables": 1}}}', Issues);
+  Assert.AreEqual(1, Integer(Length(Issues)));
 end;
 
 initialization

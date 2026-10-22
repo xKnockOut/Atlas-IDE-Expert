@@ -346,6 +346,11 @@
                 "type": "boolean",
                 "default": false,
                 "description": "Nur public-field: auch Felder von Records melden (#940)."
+              },
+              "includeFormVariables": {
+                "type": "boolean",
+                "default": false,
+                "description": "Nur global-variable: auch die Formularvariablen des Designers melden (#941)."
               }
             }
           }

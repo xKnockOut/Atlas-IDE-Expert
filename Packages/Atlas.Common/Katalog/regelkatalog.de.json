@@ -867,6 +867,17 @@
           "description": "Auch Felder von Records melden."
         }
       ]
+    },
+    {
+      "id": "global-variable",
+      "name": "Globale Variable im interface",
+      "description": "var oder threadvar im interface-Teil einer Unit: Jede Unit, die sie einbindet, kann den Wert lesen und ändern. Die Formularvariable des Designers (frmHaupt: TfrmHaupt, bei Nachfahren von TForm, TFrame, TDataModule oder jeder Klasse einer Unit mit Formulardatei) ist ausgenommen, außer mit includeFormVariables. Standard aus. Die Variable in den implementation-Teil verschieben und eine Funktion oder Property anbieten.",
+      "options": [
+        {
+          "name": "includeFormVariables",
+          "description": "Auch die Formularvariablen des Designers melden."
+        }
+      ]
     }
   ]
 }
