@@ -51,6 +51,13 @@ genau die markierten Zeilen müssen gemeldet werden, jede weitere Meldung ist ei
 Fehlalarm. `TKundenSuche.Anmelden` ist markiert, weil nur RefDaten es aufruft und
 RefDaten nicht zu RefApp gehört.
 
+Regeln, die die RTL im Index brauchen (z. B. `System.Contnrs.TObjectStack`),
+schweigen im Golden-Korpus, weil er je Datei ohne Symbolindex prüft. Ihre
+Treffer tragen `// ERWARTET-INDEX: <regel-id>`. Für `legacy-stack-queue`
+(#1106) prüft `TLegacyStackQueueTests.ReferenceProjectMatchesMarkers` alle
+Units unter `Source` mit RTL-Stubs im Index: genau die markierten Zeilen
+müssen gemeldet werden, jede weitere Meldung ist ein Fehlalarm.
+
 ## Marker-IDs und zuständige Regeln
 
 | Marker-ID | Stand |
@@ -64,6 +71,7 @@ RefDaten nicht zu RefApp gehört.
 | `with-statement` | Regel im Katalog (#94) |
 | `unreachable-code` | Regel im Katalog (#94) |
 | `possible-leak` | geplant, `geplante-regeln.txt`, Issue #56 |
+| `legacy-stack-queue` | Regel im Katalog (#1106), `ERWARTET-INDEX`, in `Ref.Pruefung.Verstoesse` |
 
 Jede ID steht im Regelkatalog oder in `geplante-regeln.txt` mit dem
 offenen Issue, das sie in den Katalog übernimmt. Eine ID ohne Issue lässt

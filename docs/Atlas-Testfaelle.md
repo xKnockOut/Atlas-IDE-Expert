@@ -4153,6 +4153,25 @@ Voraussetzung: wie JT; Projektgruppe geladen und Index fertig aufgebaut.
 | LT10 | `"legacy-tlist": "off"` | Keine Meldung und keine Korrektur |
 | LT11 | Abgleich mit Delphi: LT2, LT4, LT6, LT8 übersetzen | 0 Fehler, 0 Warnungen, 0 Hinweise |
 
+## Ungenerische Stapel und Warteschlangen (#1106)
+
+Voraussetzung: wie JT; in `atlas.json` `"legacy-stack-queue": "info"` (Standard aus); für die Korrektur Projektgruppe geladen und Index fertig aufgebaut.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| SQ1 | Das Beispiel aus #1106: privates Feld `FOffen: TObjectStack;` (`uses System.Contnrs`), in einer Methode `Knoten := TKnoten(FOffen.Pop);` | Information `legacy-stack-queue` an `FOffen` in der Deklaration: „Ungenerischer TObjectStack mit Cast beim Lesen; TObjectStack<TKnoten> prüft den Typ beim Übersetzen.“; im Fenster „Atlas-Prüfung“ und im Befund-Hover (**Abnahme**) |
+| SQ2 | Wie SQ1 ohne `TObjectStack.Create` in der Unit; Hover auf die Meldung | Keine Aktion „In TObjectStack<TKnoten> umwandeln“; der Hover nennt „Keine Schnellkorrektur: …“ mit dem fehlenden Create als Grund |
+| SQ3 | SQ1 mit `FOffen := TObjectStack.Create;` im Konstruktor, `FOffen.Push(Knoten);`, `Knoten := FOffen.Peek as TKnoten;`; Alt+Enter „In TObjectStack<TKnoten> umwandeln“ | `FOffen: TObjectStack<TKnoten>;`, `TObjectStack<TKnoten>.Create(False)`, `Knoten := FOffen.Extract;`, `Knoten := FOffen.Peek;`, `System.Generics.Collections` im uses, `System.Contnrs` entfällt, wenn nichts anderes es braucht; die Meldung verschwindet; Strg+Z nimmt alles in einem Schritt zurück (**Abnahme**) |
+| SQ4 | Nach SQ3: Objekt mit `Push` ablegen, mit `Extract` holen und weiterverwenden, später freigeben | Kein Zugriff auf freigegebenen Speicher (FastMM/Debugger still): `Create(False)` besitzt nichts, `Extract` gibt nichts frei |
+| SQ5 | `FSchlange: TQueue;` mit `FSchlange.Push(K)`, `K := TKnoten(FSchlange.Pop)`; Korrektur ausführen | „Ungenerische TQueue mit Cast beim Lesen; TQueue<TKnoten> …“; danach `TQueue<TKnoten>`, `Enqueue(K)`, `K := FSchlange.Dequeue;` |
+| SQ6 | `TObjectQueue` wie SQ5 | Danach `TObjectQueue<TKnoten>.Create(False)`, `Enqueue`, `K := FSchlange.Extract;` |
+| SQ7 | `TStack` mit `TKnoten(S.Pop)` und `TObject(S.Pop)` | „Ungenerischer TStack mit Casts auf TKnoten, TObject beim Lesen; ein generischer Stapel prüft den Typ beim Übersetzen.“; keine Korrektur, der Hover nennt die verschiedenen Casts |
+| SQ8 | `if S.AtLeast(2) then K := TKnoten(S.Pop);` | Meldung, keine Korrektur; der Hover nennt `AtLeast` |
+| SQ9 | Korrigierte Form `TObjectStack<TKnoten>` mit `Extract`, `TStack` ohne Cast (`Push`, `Count`, `Pop;` als Anweisung), `Pointer(S.Pop)`, `TObjectList` mit Cast | Keine Meldung von `legacy-stack-queue` (die Liste meldet `legacy-tlist`) |
+| SQ10 | Öffentliches Feld `Stapel: TObjectStack` in Unit A, Cast `TKnoten(A.Stapel.Pop)` nur in Unit B | Treffer in B am Cast; die Korrektur ändert A und B, ist nie Teil von „Alle korrigieren“ |
+| SQ11 | Ohne Eintrag in `atlas.json`, mit `"legacy-stack-queue": "off"` bzw. `exclude` mit dem Pfad der Unit | Keine Meldung |
+| SQ12 | Abgleich mit Delphi: SQ1 übersetzen, dann die Ergebnisse von SQ3, SQ5 und SQ6 | dcc meldet für SQ1 nichts (reine Stilprüfung); die umgewandelten Units übersetzen mit 0 Fehlern, 0 Warnungen, 0 Hinweisen |
+
 ## Zugriff auf ein nicht sichtbares Mitglied (#1008)
 
 Voraussetzung: Server läuft in der IDE mit Projekt; RTL und VCL im Index.
