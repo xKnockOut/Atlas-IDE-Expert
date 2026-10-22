@@ -3742,3 +3742,17 @@ Voraussetzung: Server läuft; Projekt mit `Application.CreateForm(TfrmHaupt, frm
 | FA4 | `if Assigned(dmDaten) then …`, `if frmLog <> nil then …`, `Application.CreateForm(TfrmOpt, frmOpt)` vor dem Zugriff, lokale Variable `dmDaten` | Keine Meldung |
 | FA5 | Zugriff in `FormShow` bzw. Formular, das nicht in der .dpr erzeugt wird | Keine Meldung |
 | FA6 | `"form-access-before-create": "off"` bzw. `exclude` mit dem Pfad der Datei | Keine Meldung |
+
+## Allgemeiner Exception-Handler vor speziellem (#957)
+
+Voraussetzung: Server läuft; Unit mit `try … except` und mehreren `on`-Handlern.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| EH1 | `on E: Exception do Protokoll(E.Message);` und danach `on E: EConvertError do ShowMessage('Ungültige Zahl');`, jeweils auf eigenen Zeilen | Warnung `except-handler-order` auf `EConvertError`: „Nie erreicht: EConvertError ist ein Nachfahr von Exception, das schon in Zeile … behandelt wird.“; im Fenster „Atlas-Prüfung“ und im Befund-Hover (**Abnahme**) |
+| EH2 | Schnellkorrektur „on EConvertError vor on Exception verschieben“ | Der EConvertError-Handler steht vor dem Exception-Handler, Code übersetzt, Meldung weg (**Abnahme**) |
+| EH3 | Letzter Handler ohne Semikolon, danach `else` | Korrektur ergänzt das Semikolon, Code übersetzt |
+| EH4 | `on EStreamError` vor `on EFOpenError`; eigene Klassen `EBasis = class(Exception)`, `EKunde = class(EBasis)` in dieser Reihenfolge | Je eine Warnung mit dem Namen des Vorfahren |
+| EH5 | Zweimal `on E: EConvertError` | „Nie erreicht: EConvertError wird schon in Zeile … behandelt.“, keine Korrektur |
+| EH6 | Spezielle Handler vor `Exception`; unverwandte Klassen (`EConvertError`, `EInOutError`) | Keine Meldung |
+| EH7 | `"except-handler-order": "off"` bzw. `exclude` mit dem Pfad der Datei | Keine Meldung |

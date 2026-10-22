@@ -6,6 +6,7 @@
 //                               deshalb Standard aus und über Profile/Pfadregeln einzuschalten (#146)
 //   exception-freed             Exception-Objekt nach raise bzw. im Handler zusätzlich freigegeben
 //   exception-in-destructor     raise in einem Destruktor, das kein except im Destruktor abfängt (#927)
+//   except-handler-order        on-Handler, der nie erreicht wird, weil ein früherer die Klasse schon fängt (#957)
 // Der leere except-Block bleibt bei empty-except (#56).
 
 interface
@@ -39,6 +40,14 @@ type
     procedure Check(const AContext: TRuleContext; const AReport: IRuleReport);
   end;
 
+  TExceptHandlerOrderRule = class(TInterfacedObject, IRule)
+  public
+    function Descriptor: TRuleDescriptor;
+    procedure Check(const AContext: TRuleContext; const AReport: IRuleReport);
+    /// <summary>Vorfahr einer bekannten RTL-, VCL- oder FireDAC-Exception; leer, wenn unbekannt.</summary>
+    class function KnownParent(const AName: string): string; static;
+  end;
+
 /// <summary>Registriert die Exception-Regeln.</summary>
 procedure RegisterExceptionRules(const ARegistry: TRuleRegistry);
 
@@ -47,10 +56,13 @@ implementation
 uses
   System.SysUtils,
   System.StrUtils,
+  Atlas.Text.Lines,
   Atlas.Common.Documents.Contract,
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Pascal.Contract,
-  Atlas.Common.Pascal.SyntaxTree;
+  Atlas.Common.Pascal.SyntaxTree,
+  Atlas.Common.Rules.Derived,
+  Atlas.Common.Rules.Builtin.Inheritance;
 
 type
   TTokens = TArray<TPascalToken>;
@@ -479,12 +491,184 @@ begin
     Search(AContext.Tree.Root);
 end;
 
+{ TExceptHandlerOrderRule }
+
+const
+  // Vorfahren bekannter RTL-, VCL- und FireDAC-Exceptions (Klasse=Vorfahr), wenn der Index sie nicht kennt.
+  KnownExceptionParents: array[0..39] of string = (
+    'EAbort=Exception', 'EConvertError=Exception', 'EInOutError=Exception', 'EOSError=Exception',
+    'EInvalidCast=Exception', 'EInvalidPointer=EHeapException', 'EOutOfMemory=EHeapException',
+    'EHeapException=Exception', 'EExternal=Exception', 'EAccessViolation=EExternal', 'EIntError=EExternal',
+    'EDivByZero=EIntError', 'ERangeError=EIntError', 'EIntOverflow=EIntError', 'EMathError=EExternal',
+    'EInvalidOp=EMathError', 'EZeroDivide=EMathError', 'EOverflow=EMathError', 'EUnderflow=EMathError',
+    'EArgumentException=Exception', 'EArgumentOutOfRangeException=EArgumentException',
+    'EArgumentNilException=EArgumentException', 'ENotImplemented=Exception', 'ENotSupportedException=Exception',
+    'EListError=Exception', 'EStringListError=EListError', 'EStreamError=Exception',
+    'EFileStreamError=EStreamError', 'EFOpenError=EFileStreamError', 'EFCreateError=EFileStreamError',
+    'EFilerError=EStreamError', 'EReadError=EFilerError', 'EWriteError=EFilerError',
+    'EVariantError=Exception', 'EDatabaseError=Exception', 'EFDException=EDatabaseError',
+    'EFDDBEngineException=EFDException', 'EEncodingError=Exception', 'EJSONException=Exception',
+    'EComponentError=Exception');
+
+function TExceptHandlerOrderRule.Descriptor: TRuleDescriptor;
+begin
+  Result := TRuleDescriptor.Create('except-handler-order', TRuleSeverity.Warning,
+    'Allgemeiner Exception-Handler vor speziellem');
+end;
+
+class function TExceptHandlerOrderRule.KnownParent(const AName: string): string;
+var
+  Entry: string;
+begin
+  for Entry in KnownExceptionParents do
+    if SameText(Copy(Entry, 1, Pos('=', Entry) - 1), AName) then
+      Exit(Copy(Entry, Pos('=', Entry) + 1, MaxInt));
+  Result := '';
+end;
+
+procedure TExceptHandlerOrderRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
+var
+  Ancestry: TAncestry;
+  Lines: TArray<string>;
+  LineBreak: string;
+
+  function TypeOf(AHandler: TSyntaxNode): string;
+  var
+    Reference: TSyntaxNode;
+  begin
+    Result := '';
+    Reference := AHandler.FindChild(TSyntaxKind.TypeReference);
+    if Reference <> nil then
+      Result := Copy(Reference.Name, LastDelimiter('.', Reference.Name) + 1, MaxInt);
+  end;
+
+  // Fängt ein Handler für AGeneral auch ASpecial? Über die Datei, den Index und die Tabelle bekannter Klassen.
+  function Covers(const AGeneral, ASpecial: string): Boolean;
+  var
+    Current, Parent: string;
+    Steps: Integer;
+  begin
+    if SameText(AGeneral, 'TObject') then
+      Exit(True);
+    // Alles, was als Exception ausgelöst wird, erbt in der Praxis von Exception.
+    if SameText(AGeneral, 'Exception') and not SameText(ASpecial, 'TObject') then
+      Exit(True);
+    Current := ASpecial;
+    for Steps := 1 to 16 do
+    begin
+      Parent := Ancestry.ParentOf(Current);
+      if (Parent = '') or SameText(Parent, 'TObject') then
+        Parent := KnownParent(Current);
+      if Parent = '' then
+        Exit(False);
+      if SameText(Parent, AGeneral) then
+        Exit(True);
+      Current := Parent;
+    end;
+    Result := False;
+  end;
+
+  // Steht der Handler allein auf seinen Zeilen (davor Einrückung, danach höchstens ";")?
+  function OwnLines(AHandler: TSyntaxNode): Boolean;
+  var
+    Rest: string;
+  begin
+    Rest := Trim(Copy(Lines[AHandler.EndPos.Line], AHandler.EndPos.Character + 1, MaxInt));
+    Result := (Trim(Copy(Lines[AHandler.StartPos.Line], 1, AHandler.StartPos.Character)) = '') and
+      ((Rest = '') or (Rest = ';')) and (AHandler.EndPos.Line < High(Lines));
+  end;
+
+  // Korrektur: den speziellen Handler vor den allgemeinen verschieben.
+  function MoveFix(AGeneral, ASpecial: TSyntaxNode): TArray<TRuleFix>;
+  var
+    Line: Integer;
+    Text: string;
+  begin
+    Result := nil;
+    if not OwnLines(AGeneral) or not OwnLines(ASpecial) or (AGeneral.EndPos.Line >= ASpecial.StartPos.Line) then
+      Exit;
+    Text := '';
+    for Line := ASpecial.StartPos.Line to ASpecial.EndPos.Line do
+      Text := Text + Lines[Line] + LineBreak;
+    // Der letzte Handler darf ohne Semikolon stehen; vor einem anderen braucht er eines.
+    if Trim(Copy(Lines[ASpecial.EndPos.Line], ASpecial.EndPos.Character + 1, MaxInt)) = '' then
+      Text := Copy(Text, 1, Length(Text) - Length(LineBreak)) + ';' + LineBreak;
+    Result := [TRuleFix.Create(Format('on %s vor on %s verschieben', [TypeOf(ASpecial), TypeOf(AGeneral)]), [
+      TRuleEdit.Create(TTextRange.Create(TTextPosition.Create(AGeneral.StartPos.Line, 0),
+        TTextPosition.Create(AGeneral.StartPos.Line, 0)), Text),
+      TRuleEdit.Create(TTextRange.Create(TTextPosition.Create(ASpecial.StartPos.Line, 0),
+        TTextPosition.Create(ASpecial.EndPos.Line + 1, 0)), '')])];
+  end;
+
+  procedure CheckBlock(ABlock: TSyntaxNode);
+  var
+    Handlers: TArray<TSyntaxNode>;
+    Index, Earlier: Integer;
+    General, Special: string;
+    Range: TTextRange;
+    Reference: TSyntaxNode;
+  begin
+    Handlers := nil;
+    for Index := 0 to ABlock.ChildCount - 1 do
+      if ABlock[Index].Kind = TSyntaxKind.ExceptionHandler then
+        Handlers := Handlers + [ABlock[Index]];
+    for Index := 1 to High(Handlers) do
+    begin
+      Special := TypeOf(Handlers[Index]);
+      if Special = '' then
+        Continue;
+      for Earlier := 0 to Index - 1 do
+      begin
+        General := TypeOf(Handlers[Earlier]);
+        if General = '' then
+          Continue;
+        Reference := Handlers[Index].FindChild(TSyntaxKind.TypeReference);
+        Range := TTextRange.Create(Reference.StartPos, Reference.EndPos);
+        if SameText(General, Special) then
+        begin
+          AReport.Add(Range, Format('Nie erreicht: %s wird schon in Zeile %d behandelt.',
+            [Special, Handlers[Earlier].StartPos.Line + 1]));
+          Break;
+        end;
+        if Covers(General, Special) then
+        begin
+          AReport.Add(Range, Format('Nie erreicht: %s ist ein Nachfahr von %s, das schon in Zeile %d behandelt wird.',
+            [Special, General, Handlers[Earlier].StartPos.Line + 1]), MoveFix(Handlers[Earlier], Handlers[Index]));
+          Break;
+        end;
+      end;
+    end;
+  end;
+
+  procedure Visit(ANode: TSyntaxNode);
+  var
+    Index: Integer;
+  begin
+    if ANode.Kind = TSyntaxKind.ExceptBlock then
+      CheckBlock(ANode);
+    for Index := 0 to ANode.ChildCount - 1 do
+      Visit(ANode[Index]);
+  end;
+
+begin
+  if (AContext.Tree = nil) or (AContext.Tree.Root = nil) or not ContainsText(AContext.Text, 'except') then
+    Exit;
+  Lines := TTextLines.SplitLines(AContext.Text, LineBreak);
+  Ancestry := TAncestry.Create(AContext.Index, TRuleDerived.UnitIndex(TRuleDerived.Open(AContext), AContext));
+  try
+    Visit(AContext.Tree.Root);
+  finally
+    Ancestry.Free;
+  end;
+end;
+
 procedure RegisterExceptionRules(const ARegistry: TRuleRegistry);
 begin
   ARegistry.Register(TGenericExceptionRaisedRule.Create);
   ARegistry.Register(TCatchAllWithoutRaiseRule.Create);
   ARegistry.Register(TExceptionFreedRule.Create);
   ARegistry.Register(TExceptionInDestructorRule.Create);
+  ARegistry.Register(TExceptHandlerOrderRule.Create);
 end;
 
 end.

@@ -7,7 +7,7 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 | Gruppe | Regeln |
 |---|---|
 | [Fehler finden](#gruppe-find-bugs) | 56 |
-| [Exceptions](#gruppe-exceptions) | 6 |
+| [Exceptions](#gruppe-exceptions) | 7 |
 | [Threads](#gruppe-threads) | 9 |
 | [Robustheit und Muster](#gruppe-robustness) | 3 |
 | [Performance](#gruppe-performance) | 4 |
@@ -92,6 +92,7 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 | [`exception-freed`](#exception-freed) | Exception-Objekt manuell freigegeben | Bug | Fehler |
 | [`raise-in-finally`](#raise-in-finally) | raise in einem finally-Block | Bug | Warnung |
 | [`exception-in-destructor`](#exception-in-destructor) | raise im Destruktor | Bug | Warnung |
+| [`except-handler-order`](#except-handler-order) | Allgemeiner Exception-Handler vor speziellem | Bug | Warnung |
 
 <a id="gruppe-threads"></a>
 ### Threads
@@ -3791,5 +3792,34 @@ Richtig:
 procedure TfrmHaupt.FormCreate(Sender: TObject);
 begin
   lblNutzer.Caption := dmDaten.Benutzer;
+end;
+```
+
+<a id="except-handler-order"></a>
+### except-handler-order
+
+**Allgemeiner Exception-Handler vor speziellem** · Bug · Warnung · Gruppe Exceptions
+
+In einem try..except mit mehreren on-Handlern gewinnt der erste passende. Ein Handler für eine Klasse, die ein früherer Handler schon fängt, wird nie erreicht: Sein Code ist tot und die Sonderbehandlung läuft nie. Gemeldet, wenn ein früherer Handler dieselbe Klasse, einen Vorfahren davon, Exception (deckt jede Exception-Klasse ab) oder TObject nennt. Vorfahren kommen aus der Unit, dem Projektindex und einer Tabelle bekannter RTL-, VCL- und FireDAC-Exceptions (etwa EStreamError > EFOpenError, EIntError > ERangeError); unbekannte Klassen werden nur mit Exception und TObject verglichen. Korrektur: den speziellen Handler vor den allgemeinen verschieben (nur, wenn beide Handler auf eigenen Zeilen stehen). Ein doppelter Handler für dieselbe Klasse wird ohne Korrektur gemeldet.
+
+Mit Treffer:
+
+```pascal
+except
+  on E: Exception do
+    Protokoll(E.Message);
+  on E: EConvertError do
+    ShowMessage('Ungültige Zahl');
+end;
+```
+
+Richtig:
+
+```pascal
+except
+  on E: EConvertError do
+    ShowMessage('Ungültige Zahl');
+  on E: Exception do
+    Protokoll(E.Message);
 end;
 ```
