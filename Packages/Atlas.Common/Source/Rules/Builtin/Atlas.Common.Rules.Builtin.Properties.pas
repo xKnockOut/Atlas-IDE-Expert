@@ -19,6 +19,10 @@
 //                              denselben Indextypen (E2131), Obj[I] auf einer
 //                              Klasse ohne default-Property in ihrer ganzen
 //                              Vorfahrenkette (E2149, Typ über TNameResolver).
+//   property-redeclaration-invalid
+//                              property Caption; ohne Property im Vorfahren
+//                              (#1074, E2147, Korrektur: ähnlichster Name)
+//                              oder dort nicht erreichbar (E2233).
 //
 // Die Regel liest read/write aus den Token der Property und sucht die Namen
 // im Index der Datei und über TAncestry in den Vorfahren. Bricht die Kette der
@@ -41,6 +45,7 @@ uses
 const
   PropertyAccessorInvalidRuleId = 'property-accessor-invalid';
   DefaultPropertyInvalidRuleId = 'default-property-invalid';
+  PropertyRedeclarationInvalidRuleId = 'property-redeclaration-invalid';
 
 type
   TPropertyAccessorInvalidRule = class(TInterfacedObject, IRule)
@@ -50,6 +55,12 @@ type
   end;
 
   TDefaultPropertyInvalidRule = class(TInterfacedObject, IRule)
+  public
+    function Descriptor: TRuleDescriptor;
+    procedure Check(const AContext: TRuleContext; const AReport: IRuleReport);
+  end;
+
+  TPropertyRedeclarationInvalidRule = class(TInterfacedObject, IRule)
   public
     function Descriptor: TRuleDescriptor;
     procedure Check(const AContext: TRuleContext; const AReport: IRuleReport);
@@ -72,7 +83,8 @@ uses
   Atlas.Common.Rules.Builtin.Inheritance,
   Atlas.Common.Editing.CodeActions,
   Atlas.Common.Editing.ClassActions,
-  Atlas.Common.Editing.AccessorCreation;
+  Atlas.Common.Editing.AccessorCreation,
+  Atlas.Text.Fuzzy;
 
 type
   /// <summary>Ein Zugriff hinter read oder write: Name und Feldselektoren, Token von First bis Last.</summary>
@@ -816,10 +828,125 @@ begin
   end;
 end;
 
+{ TPropertyRedeclarationInvalidRule }
+
+function TPropertyRedeclarationInvalidRule.Descriptor: TRuleDescriptor;
+begin
+  Result := TRuleDescriptor.Create(PropertyRedeclarationInvalidRuleId, TRuleSeverity.Error,
+    'Neu deklarierte Property fehlt im Vorfahren');
+end;
+
+procedure TPropertyRedeclarationInvalidRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
+var
+  Cache: IRuleDerivedCache;
+  Ancestry: TAncestry;
+
+  /// <summary>Bindet die Klasse AType Include-Dateien ein? Dann kennt die Datei nicht alle Mitglieder.</summary>
+  function HasInclude(const AType: TIndexSymbol): Boolean;
+  var
+    Token: TPascalToken;
+    Name: string;
+  begin
+    for Token in AContext.Tree.Tokens do
+      if (Token.Kind = TPascalTokenKind.Directive) and (Token.StartPos.Line >= AType.Range.StartPos.Line) and
+        (Token.StartPos.Line <= AType.Range.EndPos.Line) then
+      begin
+        Name := TDirectiveNames.LeadingName(TDirectiveNames.Body(Token.Text));
+        if SameText(Name, 'I') or SameText(Name, 'INCLUDE') then
+          Exit(True);
+      end;
+    Result := False;
+  end;
+
+  /// <summary>Sieht der Nachfahre den Member ASymbol des Vorfahren auf AType?</summary>
+  function Visible(const AType: TSymbolLocation; const ASymbol: TIndexSymbol): Boolean;
+  begin
+    Result := (ASymbol.Visibility <> TIndexVisibility.StrictPrivate) and
+      ((ASymbol.Visibility <> TIndexVisibility.Private) or (AType.FileName = ''));
+  end;
+
+  procedure CheckProperty(const AOwner: TIndexSymbol; const AProperty: TIndexSymbol);
+  var
+    Chain: TArray<TSymbolLocation>;
+    Location: TSymbolLocation;
+    Member: TIndexSymbol;
+    Complete, ObjectMissing: Boolean;
+    Names: TArray<string>;
+    Closest, Ancestor, Hidden: string;
+  begin
+    Chain := Ancestry.Ancestors(AOwner.Name, Complete, ObjectMissing);
+    if not Complete then
+      Exit;
+    Hidden := '';
+    Names := nil;
+    for Location in Chain do
+      for Member in Ancestry.Members(Location) do
+      begin
+        if SameText(Member.Name, AProperty.Name) then
+        begin
+          // Nur in einem inaktiven Zweig oder kein Property (Feld, Methode): keine sichere Aussage.
+          if Member.Unavailable or (Member.Kind <> TIndexSymbolKind.Property_) then
+            Exit;
+          if Visible(Location, Member) then
+            Exit;
+          if Hidden = '' then
+            Hidden := Location.Symbol.Name;
+        end
+        else if (Member.Kind = TIndexSymbolKind.Property_) and Visible(Location, Member) and
+          not MatchText(Member.Name, Names) then
+          Names := Names + [Member.Name];
+      end;
+    if Hidden <> '' then
+    begin
+      AReport.Add(AProperty.SelectionRange, Format('Die Property %s von %s ist hier nicht erreichbar (wie E2233).',
+        [AProperty.Name, Hidden]), TRuleConfidence.High);
+      Exit;
+    end;
+    Ancestor := 'TObject';
+    if Chain <> nil then
+      Ancestor := Chain[0].Symbol.Name;
+    Closest := TTextFuzzy.Closest(AProperty.Name, Names);
+    if Closest <> '' then
+      AReport.Add(AProperty.SelectionRange, Format('%s hat keine Property %s; gemeint ist %s (wie E2147).',
+        [Ancestor, AProperty.Name, Closest]), TRuleConfidence.High,
+        [TRuleFix.Create(Format('%s verwenden', [Closest]), [TRuleEdit.Create(AProperty.SelectionRange, Closest)])])
+    else
+      AReport.Add(AProperty.SelectionRange, Format('%s hat keine Property %s (wie E2147).', [Ancestor,
+        AProperty.Name]), TRuleConfidence.High);
+  end;
+
+var
+  Symbol, Member: TIndexSymbol;
+  Location: TSymbolLocation;
+begin
+  if AContext.Tree = nil then
+    Exit;
+  Cache := TRuleDerived.Open(AContext);
+  Ancestry := TAncestry.Create(AContext.Index, TRuleDerived.UnitIndex(Cache, AContext));
+  try
+    for Symbol in Ancestry.Local.Symbols do
+    begin
+      if (Symbol.Kind <> TIndexSymbolKind.ClassType) or (Symbol.Container <> '') or Symbol.Unavailable or
+        HasInclude(Symbol) then
+        Continue;
+      Location := Default(TSymbolLocation);
+      Location.Symbol := Symbol;
+      // Neudeklaration: property Caption; bzw. property Align default alClient; (ohne Typ und Index).
+      for Member in Ancestry.Members(Location) do
+        if (Member.Kind = TIndexSymbolKind.Property_) and (Member.TypeName = '') and (Member.MaxArgs = 0) and
+          not Member.Unavailable and not Member.HasDirective('class') then
+          CheckProperty(Symbol, Member);
+    end;
+  finally
+    Ancestry.Free;
+  end;
+end;
+
 procedure RegisterPropertyRules(const ARegistry: TRuleRegistry);
 begin
   ARegistry.Register(TPropertyAccessorInvalidRule.Create);
   ARegistry.Register(TDefaultPropertyInvalidRule.Create);
+  ARegistry.Register(TPropertyRedeclarationInvalidRule.Create);
 end;
 
 end.

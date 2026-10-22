@@ -4211,3 +4211,17 @@ Voraussetzung: Server läuft in der IDE mit Projekt.
 | JD5 | `TStringList`-Variable `L[0]`, `string`- und Array-Indizes, Array-Property `L.Kinder[0]`, Klasse mit unbekanntem Vorfahren | Keine Meldung |
 | JD6 | `"default-property-invalid": "off"`, `"group:compiler": "off"` bzw. `exclude` | Keine Meldung |
 | JD7 | Abgleich mit Delphi: JD1, JD2 und JD4 übersetzen | dcc meldet E2132, E2131 bzw. E2149 an denselben Stellen, für JD3 und JD5 nichts |
+
+## Neu deklarierte Property fehlt im Vorfahren (#1074)
+
+Voraussetzung: Server läuft in der IDE mit Projekt, VCL im Index.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| JN1 | Das Beispiel aus #1074: `TMeinPanel = class(TCustomPanel)` mit `published` und `property Captoin;` | Fehler `property-redeclaration-invalid` am Namen: „TCustomPanel hat keine Property Captoin; gemeint ist Caption (wie E2147).“; im Fenster „Atlas-Prüfung“ und im Befund-Hover (**Abnahme**) |
+| JN2 | Schnellkorrektur „Caption verwenden“, danach Strg+Z | Zeile wird `property Caption;`, keine Meldung mehr; ein Undo-Schritt |
+| JN3 | `property Beschriftung;` ohne ähnlichen Namen; `property Caption;` in einer Klasse ohne Vorfahr | „… hat keine Property … (wie E2147).“ ohne Korrektur; bei der Klasse ohne Vorfahr mit TObject |
+| JN4 | Vorfahr in einer anderen Unit mit Property in `private` bzw. `strict private`, im Nachfahren `property Wert;` | „Die Property Wert von … ist hier nicht erreichbar (wie E2233).“ |
+| JN5 | `property Caption;`, `property Color default clRed;`, Properties mit Typ, unbekannter Vorfahr, gleichnamiges Feld im Vorfahren | Keine Meldung |
+| JN6 | `"property-redeclaration-invalid": "off"`, `"group:compiler": "off"` bzw. `exclude` | Keine Meldung |
+| JN7 | Abgleich mit Delphi: JN1, JN3 und JN4 übersetzen | dcc meldet E2147 bzw. E2233 an denselben Stellen, für JN5 nichts |

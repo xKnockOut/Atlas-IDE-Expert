@@ -122,6 +122,7 @@ uses
   Atlas.Common.Rules.Builtin.Properties.Tests in 'Common\Rules\Builtin\Atlas.Common.Rules.Builtin.Properties.Tests.pas',
   Atlas.Common.Rules.Builtin.MemberHiding.Tests in 'Common\Rules\Builtin\Atlas.Common.Rules.Builtin.MemberHiding.Tests.pas',
   Atlas.Common.Rules.Builtin.MethodDirectives.Tests in 'Common\Rules\Builtin\Atlas.Common.Rules.Builtin.MethodDirectives.Tests.pas',
+  Atlas.Common.Rules.Builtin.PropertyRedeclaration.Tests in 'Common\Rules\Builtin\Atlas.Common.Rules.Builtin.PropertyRedeclaration.Tests.pas',
   Atlas.Common.Rules.Builtin.DefaultProperty.Tests in 'Common\Rules\Builtin\Atlas.Common.Rules.Builtin.DefaultProperty.Tests.pas',
   Atlas.Common.Rules.Builtin.OverrideCase.Tests in 'Common\Rules\Builtin\Atlas.Common.Rules.Builtin.OverrideCase.Tests.pas',
   Atlas.Common.Rules.Builtin.Published.Tests in 'Common\Rules\Builtin\Atlas.Common.Rules.Builtin.Published.Tests.pas',
