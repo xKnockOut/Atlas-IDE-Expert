@@ -10,7 +10,7 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 | [Exceptions](#gruppe-exceptions) | 8 |
 | [Threads](#gruppe-threads) | 13 |
 | [Datenbank](#gruppe-database) | 4 |
-| [Compiler vorab](#gruppe-compiler) | 16 |
+| [Compiler vorab](#gruppe-compiler) | 17 |
 | [Robustheit und Muster](#gruppe-robustness) | 3 |
 | [Performance](#gruppe-performance) | 4 |
 | [Sicherheit](#gruppe-security) | 11 |
@@ -147,6 +147,7 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 | [`assign-to-property-member`](#assign-to-property-member) | Zuweisung an ein Feld eines Property-Records | Bug | Fehler |
 | [`readonly-property-assigned`](#readonly-property-assigned) | Zuweisung an eine Property ohne write | Bug | Fehler |
 | [`abstract-declaration-invalid`](#abstract-declaration-invalid) | abstract, final oder static falsch kombiniert | Bug | Fehler |
+| [`unsatisfied-forward`](#unsatisfied-forward) | Vorwärtsdeklaration nie aufgelöst | Bug | Fehler |
 
 <a id="gruppe-robustness"></a>
 ### Robustheit und Muster
@@ -4566,4 +4567,42 @@ Richtig:
 TForm = class
   function Flaeche: Double; virtual; abstract;
 end;
+```
+
+<a id="unsatisfied-forward"></a>
+### unsatisfied-forward
+
+**Vorwärtsdeklaration nie aufgelöst** · Bug · Fehler · Gruppe Compiler vorab
+
+Eine Routine aus dem interface-Teil oder mit forward hat keinen Rumpf (wie E2065), oder eine Vorwärtsdeklaration TFoo = class; bzw. IFoo = interface; wird im selben type-Abschnitt nie vollständig deklariert (wie E2086, E2420). Methoden prüft declared-not-implemented. Ein Rumpf passt, wenn er gleich heißt; bei overload muss auch die Zahl der Parameter stimmen. Ein external im implementation-Teil zählt als Rumpf. Deklarationen in einem {$IFDEF}-Zweig bleiben unbeachtet; mit Include-Dateien prüft die Regel keine Routinen. Korrektur: leeren Rumpf vor initialization bzw. dem abschließenden end. anlegen.
+
+Entspricht der Compilermeldung `E2065`, `E2086`, `E2420`.
+
+Mit Treffer:
+
+```pascal
+interface
+
+function Pruefsumme(const Daten: TBytes): Cardinal;
+
+implementation
+
+end.
+```
+
+Richtig:
+
+```pascal
+interface
+
+function Pruefsumme(const Daten: TBytes): Cardinal;
+
+implementation
+
+function Pruefsumme(const Daten: TBytes): Cardinal;
+begin
+  Result := 0;
+end;
+
+end.
 ```
