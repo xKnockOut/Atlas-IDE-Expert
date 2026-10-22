@@ -171,6 +171,29 @@ begin
     FSettings.Rules := Rules;
 end;
 
+/// <summary>Array aus Objekten mit den Texten "open" und "close" (pair-without-finally, #930).</summary>
+function IsPairList(ANode: TJsonNode): Boolean;
+var
+  Index, Inner, Found: Integer;
+  Item: TJsonNode;
+begin
+  Result := ANode.Kind = TJsonKind.Array_;
+  if not Result then
+    Exit;
+  for Index := 0 to ANode.Count - 1 do
+  begin
+    Item := ANode[Index];
+    if Item.Kind <> TJsonKind.Object_ then
+      Exit(False);
+    Found := 0;
+    for Inner := 0 to Item.Count - 1 do
+      if ((Item.Keys[Inner] = 'open') or (Item.Keys[Inner] = 'close')) and (Item[Inner].Kind = TJsonKind.String_) then
+        Inc(Found);
+    if Found <> 2 then
+      Exit(False);
+  end;
+end;
+
 /// <summary>Array, dessen Einträge alle Texte sind.</summary>
 function IsStringList(ANode: TJsonNode): Boolean;
 var
@@ -241,7 +264,9 @@ begin
           else if (IndexStr(Value.Keys[Inner], StringListRuleOptions) >= 0) and not IsStringList(Value[Inner]) then
             ReportNode(Value[Inner], Format('"%s" muss eine Liste von Texten sein', [Value.Keys[Inner]]))
           else if (IndexStr(Value.Keys[Inner], StringRuleOptions) >= 0) and (Value[Inner].Kind <> TJsonKind.String_) then
-            ReportNode(Value[Inner], Format('"%s" muss ein Text sein', [Value.Keys[Inner]]));
+            ReportNode(Value[Inner], Format('"%s" muss ein Text sein', [Value.Keys[Inner]]))
+          else if (Value.Keys[Inner] = 'pairs') and not IsPairList(Value[Inner]) then
+            ReportNode(Value[Inner], '"pairs" muss eine Liste von Objekten mit "open" und "close" sein');
         Rule.Options := Copy(FText, Value.Start + 1, Value.Stop - Value.Start);
       end
       else

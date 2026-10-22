@@ -1,6 +1,6 @@
 ﻿unit Atlas.Common.Rules.Builtin.Concurrency.Tests;
 
-// Tests für die Nebenläufigkeitsregeln (#148).
+// Tests für die Nebenläufigkeitsregeln (#148) und pair-without-finally (#930).
 
 interface
 
@@ -51,6 +51,14 @@ type
     procedure ResumeReportsWithFix;
     [Test]
     procedure SuspendReportsAndResumeWithArgumentsIsSilent;
+    [Test]
+    procedure PairWithoutFinallyIssueExample;
+    [Test]
+    procedure PairWithoutFinallyVariants;
+    [Test]
+    procedure PairWithoutFinallySilentCases;
+    [Test]
+    procedure PairWithoutFinallyOptions;
   end;
 
 implementation
@@ -62,6 +70,8 @@ uses
   Atlas.Common.Pascal.Parser,
   Atlas.Common.Rules.Contract,
   Atlas.Common.Rules.Builtin.Concurrency,
+  Atlas.Common.Configuration.Parser,
+  Atlas.Common.Editing.ChangeSignature,
   Atlas.Tests.RuleAssert;
 
 const
@@ -285,6 +295,90 @@ begin
   Assert.AreEqual(1, Integer(Length(Findings)));
   Assert.AreEqual(0, Integer(Length(Findings[0].Fixes)));
   TRuleAssert.Silent(TThreadResumeSuspendRule.Create, Routine('  FPlayer.Resume(Position);'));
+end;
+
+function Import(const ABody: string): string;
+begin
+  Result := 'unit U;'#10'interface'#10'implementation'#10'procedure Laden(Tabelle: TDataSet);'#10'var'#10 +
+    '  SR: TSearchRec;'#10'  F: TextFile;'#10'begin'#10 + ABody + #10'end;'#10'end.';
+end;
+
+procedure TConcurrencyRulesTests.PairWithoutFinallyIssueExample;
+var
+  Source, Fixed: string;
+  Findings: TArray<TRuleFinding>;
+begin
+  Source := Import('  Screen.Cursor := crHourGlass;'#10'  Tabelle.DisableControls;'#10'  Importieren;'#10 +
+    '  Tabelle.EnableControls;'#10'  Screen.Cursor := crDefault;');
+  Findings := TRuleAssert.Findings(TPairWithoutFinallyRule.Create, Source);
+  Assert.AreEqual(1, Integer(Length(Findings)));
+  Assert.AreEqual('EnableControls steht nicht im finally; bei einer Exception bleibt das Grid eingefroren. ' +
+    'Gleiches gilt für Screen.Cursor.', Findings[0].Message);
+  Assert.AreEqual(Ord(TRuleSeverity.Warning), Ord(Findings[0].Severity));
+  Assert.AreEqual(Ord(TRuleConfidence.High), Ord(Findings[0].Confidence));
+  Assert.AreEqual('In try/finally einschließen', Findings[0].Fixes[0].Title);
+  Fixed := TChangeSignature.ApplyEdits(Source, Findings[0].Fixes[0].Edits);
+  Assert.AreEqual(Import('  Screen.Cursor := crHourGlass;'#10'  Tabelle.DisableControls;'#10'  try'#10 +
+    '    Importieren;'#10'  finally'#10'    Tabelle.EnableControls;'#10'    Screen.Cursor := crDefault;'#10 +
+    '  end;'), Fixed);
+  TRuleAssert.Silent(TPairWithoutFinallyRule.Create, Fixed);
+end;
+
+procedure TConcurrencyRulesTests.PairWithoutFinallyVariants;
+var
+  Findings: TArray<TRuleFinding>;
+begin
+  // FindFirst in der Bedingung, Datei, Speicher.
+  Findings := TRuleAssert.Findings(TPairWithoutFinallyRule.Create, Import('  if FindFirst(''*.txt'', faAnyFile, SR) = 0 then'#10 +
+    '  begin'#10'    Verarbeiten(SR);'#10'    FindClose(SR);'#10'  end;'#10'  AssignFile(F, ''a.txt'');'#10'  Reset(F);'#10 +
+    '  Readln(F);'#10'  CloseFile(F);'#10'  P := AllocMem(100);'#10'  Fuellen(P);'#10'  FreeMem(P);'));
+  Assert.AreEqual(3, Integer(Length(Findings)));
+  Assert.AreEqual('FindClose steht nicht im finally; bei einer Exception bleibt das Suchhandle offen.',
+    Findings[0].Message);
+  Assert.AreEqual(1, Integer(Length(Findings[0].Fixes)));
+  Assert.AreEqual('CloseFile steht nicht im finally; bei einer Exception bleibt die Datei offen.', Findings[1].Message);
+  Assert.AreEqual('FreeMem steht nicht im finally; bei einer Exception bleibt der Speicher belegt.', Findings[2].Message);
+  // BeginUpdate/EndUpdate auf Lines; verschachtelt ohne Korrektur.
+  Findings := TRuleAssert.Findings(TPairWithoutFinallyRule.Create, Import('  Memo.Lines.BeginUpdate;'#10 +
+    '  Memo.Lines.Add(''x'');'#10'  Tabelle.DisableControls;'#10'  Memo.Lines.EndUpdate;'#10'  Lesen;'#10 +
+    '  Tabelle.EnableControls;'));
+  Assert.AreEqual(1, Integer(Length(Findings)));
+  Assert.AreEqual(0, Integer(Length(Findings[0].Fixes)));
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TPairWithoutFinallyRule.Create,
+    Import('  Tabelle.DisableControls;'#10'  Lesen;'#10'  Tabelle.EnableControls;'),
+    '{"rules": {"pair-without-finally": "off"}}', 'U.pas'))));
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TPairWithoutFinallyRule.Create,
+    Import('  Tabelle.DisableControls;'#10'  Lesen;'#10'  Tabelle.EnableControls;'),
+    '{"rules": {"pair-without-finally": {"exclude": ["Alt/*.pas"]}}}', 'Alt/U.pas'))));
+end;
+
+procedure TConcurrencyRulesTests.PairWithoutFinallySilentCases;
+begin
+  // Mit try/finally, direkt hintereinander, anderer Empfänger, Schließen in einer anderen Routine.
+  TRuleAssert.Silent(TPairWithoutFinallyRule.Create, Import('  Tabelle.DisableControls;'#10'  try'#10 +
+    '    Lesen;'#10'  finally'#10'    Tabelle.EnableControls;'#10'  end;'#10'  Liste.BeginUpdate;'#10 +
+    '  Liste.EndUpdate;'#10'  A.BeginUpdate;'#10'  Lesen;'#10'  B.EndUpdate;'#10'  Tabelle.DisableControls;'));
+  TRuleAssert.Silent(TPairWithoutFinallyRule.Create, Import('  if FindFirst(''*.txt'', faAnyFile, SR) = 0 then'#10 +
+    '  try'#10'    Verarbeiten(SR);'#10'  finally'#10'    FindClose(SR);'#10'  end;'#10 +
+    '  Alt := Screen.Cursor;'#10'  Screen.Cursor := crHourGlass;'#10'  try'#10'    Lesen;'#10'  finally'#10 +
+    '    Screen.Cursor := Alt;'#10'  end;'));
+end;
+
+procedure TConcurrencyRulesTests.PairWithoutFinallyOptions;
+var
+  Findings: TArray<TRuleFinding>;
+  Issues: TArray<TConfigurationIssue>;
+begin
+  Findings := TRuleAssert.Findings(TPairWithoutFinallyRule.Create, Import('  Anzeige.Einfrieren;'#10 +
+    '  Lesen;'#10'  Anzeige.Auftauen;'), '{"rules": {"pair-without-finally": {"pairs": [{"open": "Einfrieren", ' +
+    '"close": "Auftauen"}]}}}', 'U.pas');
+  Assert.AreEqual(1, Integer(Length(Findings)));
+  Assert.AreEqual('Auftauen steht nicht im finally; bei einer Exception bleibt der Zustand hängen.',
+    Findings[0].Message);
+  Assert.AreEqual(9, Integer(Length(TPairWithoutFinallyRule.Pairs(''))));
+  TConfigurationParser.Parse('{"rules": {"pair-without-finally": {"pairs": [["Einfrieren", "Auftauen"]]}}}', Issues);
+  Assert.AreEqual(1, Integer(Length(Issues)));
+  Assert.AreEqual('"pairs" muss eine Liste von Objekten mit "open" und "close" sein', Issues[0].Message);
 end;
 
 initialization

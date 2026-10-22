@@ -7,6 +7,7 @@ Server und Claude-Code-Plugin tragen immer dieselbe Version.
 ## [Unveröffentlicht]
 
 ### Neu
+- Regel `pair-without-finally` (#930): `DisableControls`/`EnableControls`, `BeginUpdate`/`EndUpdate`, `FindFirst`/`FindClose`, `Reset`/`CloseFile`, `GetMem`/`FreeMem` und `Screen.Cursor := …` ohne `try`/`finally` meldet Atlas („EnableControls steht nicht im finally; bei einer Exception bleibt das Grid eingefroren. Gleiches gilt für Screen.Cursor.“). Die Korrektur schließt die Anweisungen dazwischen in `try`/`finally` ein; eigene Paare über die neue Option `rules.pair-without-finally.pairs`.
 - Regel `case-missing-enum-value` (#929): Ein `case` über einen Aufzählungstyp ohne `else`, dem Werte fehlen, meldet Atlas („Fehlende Werte von TBestellStatus: bsStorniert, bsZurueck.“). Die Korrektur „Fehlende Werte ergänzen (n)“ legt leere Zweige an; mit der neuen Option `rules.case-missing-enum-value.requireElse` auch bei `case` mit `else`.
 - Regel `duplicate-condition` (#928): Dieselbe Bedingung zweimal in einer `if … else if`-Kette, gleiche `then`- und `else`-Zweige, `A and A` und `X = X` meldet Atlas („Gleiche Bedingung wie in Zeile 1; dieser Zweig wird nie erreicht.“). Die Aktion springt zum ersten Vorkommen.
 - Regel `exception-in-destructor` (#927): Ein `raise` im Destruktor, das kein `except` im Destruktor abfängt, meldet Atlas („raise im Destruktor: inherited Destroy läuft nicht mehr, Felder bleiben liegen.“). Auch ein erneutes `raise;` im except-Teil und `class destructor` zählen.

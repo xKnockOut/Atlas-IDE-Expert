@@ -1393,6 +1393,24 @@
           "description": "Also report case statements with else when values are missing."
         }
       ]
+    },
+    {
+      "id": "pair-without-finally",
+      "name": "Paired calls without try/finally",
+      "category": "bug",
+      "severity": "warning",
+      "group": "find-bugs",
+      "description": "Generalises lock-without-finally (whose lock pairs stay there) to other pairs: DisableControls/EnableControls, BeginUpdate/EndUpdate, FindFirst/FindClose (also in if FindFirst(...) = 0 then begin ... end), Reset, Rewrite or Append/CloseFile, GetMem or AllocMem/FreeMem and Screen.Cursor := ... with a later Screen.Cursor := .... Reported when the closing call stands unprotected later in the same statement list with at least one statement in between; an exception there leaves the state hanging. Both calls must use the same receiver or argument. Overlapping pairs are reported together. High confidence. Quick fix: wrap the statements in between in try/finally with the closing calls, when the closing calls follow each other directly. Option pairs adds own pairs.",
+      "bad": "Screen.Cursor := crHourGlass;\nTabelle.DisableControls;\nImportieren;\nTabelle.EnableControls;\nScreen.Cursor := crDefault;",
+      "good": "Screen.Cursor := crHourGlass;\nTabelle.DisableControls;\ntry\n  Importieren;\nfinally\n  Tabelle.EnableControls;\n  Screen.Cursor := crDefault;\nend;",
+      "options": [
+        {
+          "name": "pairs",
+          "type": "json",
+          "default": [],
+          "description": "Additional pairs as [{\"open\": \"Freeze\", \"close\": \"Thaw\"}], optionally with openArg/closeArg."
+        }
+      ]
     }
   ]
 }

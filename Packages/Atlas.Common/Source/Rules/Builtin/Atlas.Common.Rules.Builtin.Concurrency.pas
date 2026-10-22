@@ -10,6 +10,10 @@
 //   thread-free-with-free-on-terminate  Free auf einem Thread mit FreeOnTerminate (Doppelfreigabe)
 //   synchronize-in-destructor           Synchronize im Destruktor eines TThread-Nachfahren
 //   thread-resume-suspend               veraltetes Resume/Suspend; Korrektur Resume → Start
+//   pair-without-finally                beliebige Paare wie DisableControls/EnableControls, BeginUpdate/
+//                                       EndUpdate, FindFirst/FindClose, Reset/CloseFile, GetMem/FreeMem und
+//                                       Screen.Cursor := … ohne try/finally (#930); die Sperrpaare bleiben
+//                                       bei lock-without-finally. Erweiterbar über die Option "pairs".
 //
 // Ein Thread mit Free ohne Terminate und WaitFor wird nicht gemeldet:
 // TThread.Destroy ruft beides selbst auf.
@@ -71,6 +75,26 @@ type
     procedure Check(const AContext: TRuleContext; const AReport: IRuleReport);
   end;
 
+  /// <summary>Paar für pair-without-finally (#930). Open und Close sind Methoden- bzw. Routinennamen oder eine
+  /// Zuweisung "Screen.Cursor :="; OpenArg/CloseArg wählen das Argument, das beide verbindet (-1 = Empfänger,
+  /// ohne Empfänger das erste Argument).</summary>
+  TStatePair = record
+    Open: string;
+    Close: string;
+    OpenArg: Integer;
+    CloseArg: Integer;
+    /// <summary>Was bei einer Ausnahme hängen bleibt, für die Meldung.</summary>
+    Consequence: string;
+  end;
+
+  TPairWithoutFinallyRule = class(TInterfacedObject, IRule)
+  public
+    function Descriptor: TRuleDescriptor;
+    procedure Check(const AContext: TRuleContext; const AReport: IRuleReport);
+    /// <summary>Eingebaute Paare und die aus "pairs" in AOptions.</summary>
+    class function Pairs(const AOptions: string): TArray<TStatePair>; static;
+  end;
+
 /// <summary>Klassen der Unit, die direkt oder über Klassen der Unit von TThread erben.</summary>
 function ThreadClasses(ARoot: TSyntaxNode): TArray<string>;
 
@@ -80,6 +104,8 @@ implementation
 
 uses
   System.JSON,
+  System.StrUtils,
+  Atlas.Text.Lines,
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Documents.Contract,
   Atlas.Common.Rules.Derived;
@@ -585,6 +611,398 @@ begin
   Visit(AContext.Tree.Root);
 end;
 
+{ TPairWithoutFinallyRule }
+
+const
+  // Open, Close, OpenArg, CloseArg, Folge.
+  BuiltinStatePairs: array[0..8, 0..4] of string = (
+    ('DisableControls', 'EnableControls', '-1', '-1', 'bleibt das Grid eingefroren'),
+    ('BeginUpdate', 'EndUpdate', '-1', '-1', 'bleibt die Anzeige gesperrt'),
+    ('FindFirst', 'FindClose', '2', '0', 'bleibt das Suchhandle offen'),
+    ('Reset', 'CloseFile', '0', '0', 'bleibt die Datei offen'),
+    ('Rewrite', 'CloseFile', '0', '0', 'bleibt die Datei offen'),
+    ('Append', 'CloseFile', '0', '0', 'bleibt die Datei offen'),
+    ('GetMem', 'FreeMem', '0', '0', 'bleibt der Speicher belegt'),
+    ('AllocMem', 'FreeMem', '-2', '0', 'bleibt der Speicher belegt'),
+    ('Screen.Cursor :=', 'Screen.Cursor :=', '-1', '-1', 'bleibt der Mauszeiger stehen'));
+  AssignSuffix = ':=';
+
+function TPairWithoutFinallyRule.Descriptor: TRuleDescriptor;
+begin
+  Result := TRuleDescriptor.Create('pair-without-finally', TRuleSeverity.Warning,
+    'Paarige Aufrufe ohne try/finally');
+end;
+
+class function TPairWithoutFinallyRule.Pairs(const AOptions: string): TArray<TStatePair>;
+var
+  Index: Integer;
+  Pair: TStatePair;
+  Value, List, Item: TJSONValue;
+  Number: Integer;
+begin
+  Result := nil;
+  for Index := Low(BuiltinStatePairs) to High(BuiltinStatePairs) do
+  begin
+    Pair.Open := BuiltinStatePairs[Index, 0];
+    Pair.Close := BuiltinStatePairs[Index, 1];
+    Pair.OpenArg := StrToInt(BuiltinStatePairs[Index, 2]);
+    Pair.CloseArg := StrToInt(BuiltinStatePairs[Index, 3]);
+    Pair.Consequence := BuiltinStatePairs[Index, 4];
+    Result := Result + [Pair];
+  end;
+  if Trim(AOptions) = '' then
+    Exit;
+  Value := TJSONObject.ParseJSONValue(AOptions);
+  try
+    if not (Value is TJSONObject) then
+      Exit;
+    List := TJSONObject(Value).GetValue('pairs');
+    if not (List is TJSONArray) then
+      Exit;
+    for Item in TJSONArray(List) do
+      if (Item is TJSONObject) and TJSONObject(Item).TryGetValue<string>('open', Pair.Open) and
+        TJSONObject(Item).TryGetValue<string>('close', Pair.Close) and (Trim(Pair.Open) <> '') and
+        (Trim(Pair.Close) <> '') then
+      begin
+        Pair.Open := Trim(Pair.Open);
+        Pair.Close := Trim(Pair.Close);
+        Pair.OpenArg := -1;
+        Pair.CloseArg := -1;
+        if TJSONObject(Item).TryGetValue<Integer>('openArg', Number) then
+          Pair.OpenArg := Number;
+        if TJSONObject(Item).TryGetValue<Integer>('closeArg', Number) then
+          Pair.CloseArg := Number;
+        Pair.Consequence := 'bleibt der Zustand hängen';
+        Result := Result + [Pair];
+      end;
+  finally
+    Value.Free;
+  end;
+end;
+
+procedure TPairWithoutFinallyRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
+type
+  TOpening = record
+    Pair: Integer;
+    Index: Integer;
+    Key: string;
+  end;
+var
+  StatePairs: TArray<TStatePair>;
+
+  function IsAssignPair(const AName: string): Boolean;
+  begin
+    Result := EndsStr(AssignSuffix, AName);
+  end;
+
+  function AssignTarget(const AName: string): string;
+  begin
+    Result := LowerCase(Trim(Copy(AName, 1, Length(AName) - Length(AssignSuffix))));
+  end;
+
+  // Schlüssel eines Aufrufs: Empfänger bzw. das gewählte Argument (Call[1] ist das erste Argument).
+  function CallKey(ACall: TSyntaxNode; AReceiver: TSyntaxNode; AArg: Integer): string;
+  begin
+    Result := '';
+    if AArg = -2 then
+      Exit('*');
+    if (AArg < 0) and (AReceiver <> nil) then
+      Exit(NodeText(AContext.Text, AReceiver));
+    if AArg < 0 then
+      AArg := 0;
+    if (ACall <> nil) and (ACall.ChildCount > AArg + 1) then
+      Result := NodeText(AContext.Text, ACall[AArg + 1]);
+  end;
+
+  // Aufruf von AName in ANode (Anweisung, rechte Seite einer Zuweisung); nil sonst.
+  function FindCall(ANode: TSyntaxNode; const AName: string; out AReceiver: TSyntaxNode): TSyntaxNode;
+  var
+    Callee: TSyntaxNode;
+    Index: Integer;
+  begin
+    AReceiver := nil;
+    if ANode.Kind = TSyntaxKind.Call then
+    begin
+      Callee := ANode[0];
+      if ((Callee.Kind = TSyntaxKind.Identifier) or (Callee.Kind = TSyntaxKind.MemberAccess)) and
+        SameText(Callee.Name, AName) then
+      begin
+        if (Callee.Kind = TSyntaxKind.MemberAccess) and (Callee.ChildCount > 0) then
+          AReceiver := Callee[0];
+        Exit(ANode);
+      end;
+    end;
+    if ANode.Kind in [TSyntaxKind.Block, TSyntaxKind.TryStatement, TSyntaxKind.AnonymousMethod,
+      TSyntaxKind.RoutineDecl] then
+      Exit(nil);
+    for Index := 0 to ANode.ChildCount - 1 do
+    begin
+      Result := FindCall(ANode[Index], AName, AReceiver);
+      if Result <> nil then
+        Exit;
+    end;
+    Result := nil;
+  end;
+
+  // Ist AStatement das Öffnen bzw. Schließen von APair (AOpen) mit Schlüssel AKey?
+  function Matches(AStatement: TSyntaxNode; const APair: TStatePair; AOpen: Boolean; out AKey: string): Boolean;
+  var
+    Name: string;
+    Arg: Integer;
+    Call: TMethodCall;
+    Found, Receiver: TSyntaxNode;
+  begin
+    AKey := '';
+    if AOpen then
+    begin
+      Name := APair.Open;
+      Arg := APair.OpenArg;
+    end
+    else
+    begin
+      Name := APair.Close;
+      Arg := APair.CloseArg;
+    end;
+    if IsAssignPair(Name) then
+    begin
+      Result := (AStatement.Kind = TSyntaxKind.AssignStatement) and (AStatement.ChildCount = 2) and
+        (NodeText(AContext.Text, AStatement[0]) = AssignTarget(Name));
+      if Result then
+        AKey := AssignTarget(Name);
+      Exit;
+    end;
+    if (Arg <> -2) and TryMethodCall(AStatement, Call) and SameText(Call.Method, Name) then
+    begin
+      AKey := CallKey(Call.Call, Call.Receiver, Arg);
+      Exit(True);
+    end;
+    // P := AllocMem(N) bzw. R := FindFirst(...): Aufruf auf der rechten Seite.
+    Result := False;
+    if AOpen and (AStatement.Kind = TSyntaxKind.AssignStatement) and (AStatement.ChildCount = 2) then
+    begin
+      Found := FindCall(AStatement[1], Name, Receiver);
+      if Found <> nil then
+      begin
+        AKey := CallKey(Found, Receiver, Arg);
+        if AKey = '*' then
+          AKey := NodeText(AContext.Text, AStatement[0]);
+        Result := True;
+      end;
+    end;
+  end;
+
+  // Schließt ein finally eines try in AList ab AFrom das Paar mit AKey?
+  function ClosedInFinally(AList: TSyntaxNode; AFrom, APair: Integer; const AKey: string): Boolean;
+
+    function Search(ANode: TSyntaxNode): Boolean;
+    var
+      Index: Integer;
+      Key: string;
+    begin
+      if Matches(ANode, StatePairs[APair], False, Key) and (Key = AKey) then
+        Exit(True);
+      for Index := 0 to ANode.ChildCount - 1 do
+        if Search(ANode[Index]) then
+          Exit(True);
+      Result := False;
+    end;
+
+  var
+    Index: Integer;
+    Final: TSyntaxNode;
+  begin
+    for Index := AFrom to AList.ChildCount - 1 do
+      if AList[Index].Kind = TSyntaxKind.TryStatement then
+      begin
+        Final := AList[Index].FindChild(TSyntaxKind.FinallyBlock);
+        if (Final <> nil) and Search(Final) then
+          Exit(True);
+      end;
+    Result := False;
+  end;
+
+  function CloseIndex(AList: TSyntaxNode; AFrom, APair: Integer; const AKey: string): Integer;
+  var
+    Index: Integer;
+    Key: string;
+  begin
+    for Index := AFrom to AList.ChildCount - 1 do
+      if Matches(AList[Index], StatePairs[APair], False, Key) and (Key = AKey) then
+        Exit(Index);
+    Result := -1;
+  end;
+
+  function CloseName(APair: Integer): string;
+  begin
+    Result := StatePairs[APair].Close;
+    if IsAssignPair(Result) then
+      Result := Trim(Copy(Result, 1, Length(Result) - Length(AssignSuffix)));
+  end;
+
+  // try/finally um die Anweisungen ab AFirst bis vor die Schließen-Anweisungen AFirstClose..ALastClose.
+  function WrapFix(AList: TSyntaxNode; AFirst, AFirstClose, ALastClose: Integer): TArray<TRuleFix>;
+  var
+    Indent, Middle, Closes, LineBreak: string;
+    Index: Integer;
+    First: TSyntaxNode;
+  begin
+    Result := nil;
+    if AFirst >= AFirstClose then
+      Exit;
+    LineBreak := TTextLines.LineBreakOf(AContext.Text);
+    First := AList[AFirst];
+    Indent := StringOfChar(' ', First.StartPos.Character);
+    Middle := TrimRight(Copy(AContext.Text, First.StartOffset + 1, AList[AFirstClose].StartOffset -
+      First.StartOffset));
+    Middle := StringReplace(Middle, #10, #10'  ', [rfReplaceAll]);
+    Closes := '';
+    for Index := AFirstClose to ALastClose do
+      Closes := Closes + LineBreak + Indent + '  ' + Trim(SourceText(AContext.Text, AList[Index])) + ';';
+    Result := [TRuleFix.Create('In try/finally einschließen', [TRuleEdit.Create(
+      TTextRange.Create(First.StartPos, AList[ALastClose].EndPos), 'try' + LineBreak + Indent + '  ' + Middle +
+      LineBreak + Indent + 'finally' + Closes + LineBreak + Indent + 'end')])];
+  end;
+
+  // Meldung für Paare, deren Bereiche sich überlappen; am ersten Schließen, die übrigen Paare nennt sie mit.
+  procedure ReportGroup(AList: TSyntaxNode; const AGroup: TArray<TOpening>; const ACloses: TArray<Integer>);
+  var
+    Index, Other, FirstClose, LastClose, LastOpen, Inner: Integer;
+    Message, Others: string;
+    Contiguous: Boolean;
+  begin
+    FirstClose := ACloses[0];
+    LastClose := ACloses[0];
+    LastOpen := AGroup[0].Index;
+    Inner := 0;
+    for Index := 0 to High(AGroup) do
+    begin
+      if ACloses[Index] < FirstClose then
+      begin
+        FirstClose := ACloses[Index];
+        Inner := Index;
+      end;
+      if ACloses[Index] > LastClose then
+        LastClose := ACloses[Index];
+      if AGroup[Index].Index > LastOpen then
+        LastOpen := AGroup[Index].Index;
+    end;
+    Others := '';
+    for Index := 0 to High(AGroup) do
+      if Index <> Inner then
+      begin
+        if Others <> '' then
+          Others := Others + ', ';
+        Others := Others + CloseName(AGroup[Index].Pair);
+      end;
+    Message := Format('%s steht nicht im finally; bei einer Exception %s.',
+      [CloseName(AGroup[Inner].Pair), StatePairs[AGroup[Inner].Pair].Consequence]);
+    if Others <> '' then
+      Message := Message + Format(' Gleiches gilt für %s.', [Others]);
+    // Korrektur nur, wenn alle Öffnungen vor dem ersten Schließen stehen und die Schließen-Anweisungen
+    // verschieden sind und direkt aufeinander folgen.
+    Contiguous := (LastOpen < FirstClose) and (LastClose - FirstClose + 1 = Length(AGroup));
+    for Index := 0 to High(AGroup) do
+      for Other := Index + 1 to High(AGroup) do
+        if ACloses[Index] = ACloses[Other] then
+          Contiguous := False;
+    if Contiguous then
+      AReport.Add(TTextRange.Create(AList[FirstClose].StartPos, AList[FirstClose].EndPos), Message,
+        TRuleConfidence.High, WrapFix(AList, LastOpen + 1, FirstClose, LastClose))
+    else
+      AReport.Add(TTextRange.Create(AList[FirstClose].StartPos, AList[FirstClose].EndPos), Message,
+        TRuleConfidence.High);
+  end;
+
+  // AOutside: Öffnen außerhalb der Liste (if FindFirst(...) = 0 then), Index -1.
+  procedure CheckList(AList: TSyntaxNode; const AOutside: TArray<TOpening>);
+  var
+    Openings, Group: TArray<TOpening>;
+    Opening: TOpening;
+    Index, PairIndex, Close, Reach: Integer;
+    Key: string;
+    Closes: TArray<Integer>;
+  begin
+    Openings := AOutside;
+    for Index := 0 to AList.ChildCount - 1 do
+      for PairIndex := 0 to High(StatePairs) do
+        if Matches(AList[Index], StatePairs[PairIndex], True, Key) and (Key <> '') then
+        begin
+          Opening.Pair := PairIndex;
+          Opening.Index := Index;
+          Opening.Key := Key;
+          Openings := Openings + [Opening];
+          Break;
+        end;
+    // Offene Paare mit ungeschütztem Schließen in derselben Liste; überlappende Paare zusammen.
+    Group := nil;
+    Closes := nil;
+    Reach := -1;
+    for Opening in Openings do
+    begin
+      Close := CloseIndex(AList, Opening.Index + 1, Opening.Pair, Opening.Key);
+      if (Close < 0) or (Close <= Opening.Index + 1) or
+        ClosedInFinally(AList, Opening.Index + 1, Opening.Pair, Opening.Key) then
+        Continue;
+      if (Group <> nil) and (Opening.Index > Reach) then
+      begin
+        ReportGroup(AList, Group, Closes);
+        Group := nil;
+        Closes := nil;
+      end;
+      Group := Group + [Opening];
+      Closes := Closes + [Close];
+      if Close > Reach then
+        Reach := Close;
+    end;
+    if Group <> nil then
+      ReportGroup(AList, Group, Closes);
+  end;
+
+  // if FindFirst(...) = 0 then begin … FindClose(SR) end: das Öffnen steht in der Bedingung.
+  function ConditionOpening(AIf: TSyntaxNode; out AOpening: TOpening): Boolean;
+  var
+    PairIndex: Integer;
+    Found, Receiver: TSyntaxNode;
+  begin
+    Result := False;
+    if (AIf.ChildCount < 2) or (AIf[1].Kind <> TSyntaxKind.Block) then
+      Exit;
+    for PairIndex := 0 to High(StatePairs) do
+      if not IsAssignPair(StatePairs[PairIndex].Open) then
+      begin
+        Found := FindCall(AIf[0], StatePairs[PairIndex].Open, Receiver);
+        if Found <> nil then
+        begin
+          AOpening.Pair := PairIndex;
+          AOpening.Index := -1;
+          AOpening.Key := CallKey(Found, Receiver, StatePairs[PairIndex].OpenArg);
+          Exit(AOpening.Key <> '');
+        end;
+      end;
+  end;
+
+  procedure Visit(ANode: TSyntaxNode);
+  var
+    Index: Integer;
+    Opening: TOpening;
+  begin
+    if (ANode.Kind = TSyntaxKind.IfStatement) and ConditionOpening(ANode, Opening) then
+      CheckList(ANode[1], [Opening])
+    else if IsStatementList(ANode) and not ((ANode.Kind = TSyntaxKind.Block) and (ANode.Parent <> nil) and
+      (ANode.Parent.Kind = TSyntaxKind.IfStatement) and (ANode.Parent[1] = ANode) and
+      ConditionOpening(ANode.Parent, Opening)) then
+      CheckList(ANode, nil);
+    for Index := 0 to ANode.ChildCount - 1 do
+      Visit(ANode[Index]);
+  end;
+
+begin
+  if (AContext.Tree = nil) or (AContext.Tree.Root = nil) then
+    Exit;
+  StatePairs := Pairs(AContext.Options);
+  Visit(AContext.Tree.Root);
+end;
+
 { Gemeinsam für FreeOnTerminate }
 
 /// <summary>Variable X bei X.FreeOnTerminate := True, sonst ''.</summary>
@@ -867,6 +1285,7 @@ begin
   ARegistry.Register(TThreadFreeWithFreeOnTerminateRule.Create);
   ARegistry.Register(TSynchronizeInDestructorRule.Create);
   ARegistry.Register(TThreadResumeSuspendRule.Create);
+  ARegistry.Register(TPairWithoutFinallyRule.Create);
 end;
 
 end.
