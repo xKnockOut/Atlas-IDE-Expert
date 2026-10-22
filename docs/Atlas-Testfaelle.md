@@ -4150,3 +4150,22 @@ Voraussetzung: Server läuft in der IDE mit Projekt; Unit mit `TGeld = record Be
 | OD8 | Richtige Operatoren (Add, Equal mit Boolean, Implicit nach Integer, Initialize/Finalize, True/False), Parametertyp aus fremder Unit, Alias `TMoney = TGeld` | Keine Meldung |
 | OD9 | `"operator-declaration-invalid": "off"`, `"group:compiler": "off"` bzw. `exclude` | Keine Meldung |
 | OD10 | Abgleich mit Delphi: OD1 bis OD7 übersetzen | dcc meldet E2520, E2393, E2517, E2518, E2521, E2519, E2522, E2464 an denselben Stellen, für OD8 nichts |
+
+## Generische Deklaration unzulässig (#1029)
+
+Voraussetzung: Server läuft in der IDE mit Projekt.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| GD1 | Das Beispiel aus #1029: im interface-Teil `procedure Tauschen<T>(var A, B: T);` | Fehler `generic-declaration-invalid` an `Tauschen<T>`: „Globale Routinen dürfen keine Typparameter haben; als class-Methode eines Records deklarieren (wie E2530).“; im Fenster „Atlas-Prüfung“ und im Befund-Hover (**Abnahme**) |
+| GD2 | Als `class procedure Tauschen<T>(var A, B: T); static;` in `TTausch = record` verschieben | Keine Meldung |
+| GD3 | `TA<T: class, record>`, `TA<T: class, constructor, constructor>`, `TA<T: record, constructor>`, `TA<T: class, TBasis>` (TBasis Klasse der Unit), `TA<T: TEins, TZwei>`, `TA<T: Integer>`, `M<T: TPunkt>` (TPunkt Record) | Meldungen wie E2507, E2603, E2516, E2552, E2553 und zweimal E2510, jeweils an der Einschränkung |
+| GD4 | `TE<T> = (eA, eB);`, `TL<T> = TList<T>;`, `TZ<T> = ^Integer;`, `TM<T> = set of Byte;`, `TH<T> = class helper for TObject` | Je „Der Typ … darf keine Typparameter haben; …“ (wie E2508) am Typnamen |
+| GD5 | In einer Klasse `class operator Add<T>`, `destructor Destroy<T>;`, `class constructor Create<T>;`, `procedure Laden<T>; virtual;`, `procedure Lesen<T>(A: T); override;`; im Interface `procedure Schreiben<T>(A: T);` | Meldungen wie E2529, E2528 (zweimal), E2533 (an `virtual` bzw. `override`), E2535 |
+| GD6 | `TListeKlasse = class of TListe<Integer>;`, `TNamen<T> = class(TCustomAttribute)`, Attribut `[TMarke<Integer>]` | Meldungen wie E2548, E2549, E2565 |
+| GD7 | `TListe<T> = class procedure Hinzu<T>(A: T); end;` | „Der Typparameter T verdeckt den gleichnamigen Typparameter von TListe (wie H2509).“ |
+| GD8 | Klasse mit `F<T>` und `F<T, U>`, in einer Methode `F<Integer, string, Byte>(2)` bzw. `TA.F<Integer, Byte, Word>(1)` | „F hat keine Variante mit 3 Typparametern; deklariert: F<T>, F<T, U> (wie E2551).“; mit 1 oder 2 Typargumenten keine Meldung |
+| GD9 | `TListe<T> = class` im interface-Teil, im implementation-Teil `const Grenze = 10;` und `TListe<T>.Pruefen` verwendet `Grenze` | „TListe.Pruefen gehört zu einem generischen Typ …, darf Grenze aus dem implementation-Teil nicht verwenden (wie E2506).“; mit einem Feld `Grenze` in TListe, einer lokalen Variable `Grenze`, in `with` oder bei einer nicht generischen Klasse keine Meldung |
+| GD10 | Erlaubtes: `T: class, constructor`, `T: TComponent, IFoo, constructor`, `TArr<T> = array of T`, `TP<T> = reference to procedure(A: T)`, generischer Konstruktor, `class function Neu<T>: T; static;` | Keine Meldung |
+| GD11 | `"generic-declaration-invalid": "off"`, `"group:compiler": "off"` bzw. `exclude` | Keine Meldung |
+| GD12 | Abgleich mit Delphi: GD1 und GD3 bis GD9 übersetzen; zusätzlich eine lokale Prozedur in `TListe<T>.Pruefen` | dcc meldet dieselben Codes an denselben Stellen, für GD2 und GD10 nichts; meldet dcc für die lokale Prozedur E2570, ergänzt die Regel diesen Fall |
