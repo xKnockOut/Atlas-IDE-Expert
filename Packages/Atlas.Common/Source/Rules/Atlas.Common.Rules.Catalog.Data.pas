@@ -2389,6 +2389,16 @@ begin
     '      "description": "Average := Sum div Count with Average: Double: div cuts off the fraction before the value is assigned. Also Percent := Part div Total * 100, Result of a function with a floating-' + 'point result and var X: Double := A div B. The div is searched through parentheses, signs and + - * /, not inside calls (Round(A div B)), indexes, mod or comparisons. The target must be a variable, fi' + 'eld (also Self.X) or Result whose type Single, Double, Extended, Real, Currency … is declared in the file. TDateTime, TDate and TTime stay silent (whole days are usually intended there), as do assignm' + 'ents inside with and Trunc(A) div Trunc(B) (also Round, Floor, Ceil: explicitly converted, so integer division is intended). High confidence. Quick fix: replace div with / (same precedence).",' + #10 +
     '      "bad": "var Average: Double;\n…\nAverage := Sum div Count;",' + #10 +
     '      "good": "var Average: Double;\n…\nAverage := Sum / Count;"' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "empty-finally",' + #10 +
+    '      "name": "Empty finally block",' + #10 +
+    '      "category": "code-smell",' + #10 +
+    '      "severity": "hint",' + #10 +
+    '      "group": "style",' + #10 +
+    '      "description": "A finally block without statements: usually the release got lost during a rework. If the statement right before try is X := T….Create, the message names X.Free. A block with an e' + 'xplaining comment counts as deliberate and is not reported (as with empty-except); a block with a compiler directive is skipped as well, because another branch may contain code. High confidence. Quick' + ' fix: remove try, finally and end and outdent the body (when try, finally and end each stand on their own line); as the only statement of an if, while, for, with or case branch with several statements' + ' in the body, try becomes begin.",' + #10 +
+    '      "bad": "Liste := TStringList.Create;\ntry\n  Liste.LoadFromFile(Pfad);\nfinally\nend;",' + #10 +
+    '      "good": "Liste := TStringList.Create;\ntry\n  Liste.LoadFromFile(Pfad);\nfinally\n  Liste.Free;\nend;"' + #10 +
     '    }' + #10 +
     '  ]' + #10 +
     '}' + #10 +
@@ -3601,6 +3611,11 @@ begin
     '      "id": "integer-division-to-float",' + #10 +
     '      "name": "Ganzzahldivision an Gleitkommazahl",' + #10 +
     '      "description": "Schnitt := Summe div Anzahl mit Schnitt: Double: div schneidet die Nachkommastellen ab, bevor zugewiesen wird. Ebenso Prozent := Teil div Gesamt * 100, Result einer Funktion mit ' + 'Gleitkommaergebnis und var X: Double := A div B. Gesucht wird durch Klammern, Vorzeichen und + - * / hindurch, nicht in Aufrufen (Round(A div B)), Indizes, mod oder Vergleichen. Das Ziel muss eine Var' + 'iable, ein Feld (auch Self.X) oder Result sein, deren Typ Single, Double, Extended, Real, Currency … in der Datei deklariert ist. TDateTime, TDate und TTime bleiben still (ganze Tage sind dort meist g' + 'ewollt), ebenso Zuweisungen in with und Trunc(A) div Trunc(B) (auch Round, Floor, Ceil: ausdrücklich gewandelt, also gewollt ganzzahlig). Konfidenz hoch. Schnellkorrektur: div durch / ersetzen (gleich' + 'er Vorrang)."' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "empty-finally",' + #10 +
+    '      "name": "Leerer finally-Block",' + #10 +
+    '      "description": "Ein finally-Block ohne Anweisung: Meist ist die Freigabe beim Umbau verloren gegangen. Steht direkt vor try X := T….Create, nennt die Meldung X.Free. Ein Block mit erklärendem Ko' + 'mmentar gilt als bewusst und wird nicht gemeldet (wie bei empty-except); ein Block mit Compiler-Direktive ebenso nicht, weil ein anderer Zweig Code enthalten kann. Konfidenz hoch. Schnellkorrektur: tr' + 'y, finally und end entfernen und den Rumpf ausrücken (wenn try, finally und end je allein auf ihrer Zeile stehen); als einzige Anweisung eines if-, while-, for-, with- oder case-Zweigs mit mehreren An' + 'weisungen im Rumpf wird aus try begin."' + #10 +
     '    }' + #10 +
     '  ]' + #10 +
     '}' + #10 +

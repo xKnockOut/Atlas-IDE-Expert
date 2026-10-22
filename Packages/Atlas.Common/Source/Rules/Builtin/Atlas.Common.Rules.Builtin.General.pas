@@ -2,6 +2,9 @@
 
 // Allgemeine Regeln, Stufe 1 aus #56 (syntaktisch, ohne Typen):
 //   empty-except              except-Block ohne Anweisung und ohne erklärenden Kommentar
+//   empty-finally             finally-Block ohne Anweisung, Kommentar und Direktive (#1065); nennt X.Free, wenn
+//                             direkt davor X := T….Create steht. Korrektur: try/finally/end entfernen, Rumpf ausrücken
+//                             (als einzige Anweisung eines if/while … mit mehreren Anweisungen: begin … end)
 //   interface-guid            Interface ohne GUID; mit Supports/as/QueryInterface hohe Konfidenz
 //   duplicate-interface-guid  zwei Interfaces der Datei mit derselben GUID
 //   file-header               Dateikopf weicht von der Vorlage ab (Option "template", Standard aus)
@@ -15,6 +18,12 @@ uses
 
 type
   TEmptyExceptRule = class(TInterfacedObject, IRule)
+  public
+    function Descriptor: TRuleDescriptor;
+    procedure Check(const AContext: TRuleContext; const AReport: IRuleReport);
+  end;
+
+  TEmptyFinallyRule = class(TInterfacedObject, IRule)
   public
     function Descriptor: TRuleDescriptor;
     procedure Check(const AContext: TRuleContext; const AReport: IRuleReport);
@@ -63,6 +72,7 @@ uses
   Atlas.Common.Documents.Contract,
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Pascal.Contract,
+  Atlas.Common.Pascal.SyntaxTree,
   Atlas.Text.Lines;
 
 function TokenRange(const AToken: TPascalToken): TTextRange;
@@ -154,6 +164,184 @@ begin
       [TRuleFix.Create('raise; einfügen', [TRuleEdit.Create(TTextRange.Create(Tokens[Index].EndPos,
         Tokens[Index].EndPos), TTextLines.LineBreakOf(AContext.Text) + Indent + '  raise;')])]);
   end;
+end;
+
+{ TEmptyFinallyRule }
+
+function TEmptyFinallyRule.Descriptor: TRuleDescriptor;
+begin
+  Result := TRuleDescriptor.Create('empty-finally', TRuleSeverity.Hint, 'Leerer finally-Block');
+end;
+
+procedure TEmptyFinallyRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
+var
+  Tokens: TArray<TPascalToken>;
+  Lines: TArray<string>;
+  LineBreak: string;
+
+  function IsEmptyBlock(ABlock: TSyntaxNode): Boolean;
+  var
+    Index: Integer;
+  begin
+    for Index := 0 to ABlock.ChildCount - 1 do
+      if ABlock[Index].Kind <> TSyntaxKind.EmptyStatement then
+        Exit(False);
+    Result := True;
+  end;
+
+  // Index des Tokens mit dem Schlüsselwort AWord ab Offset AFrom (erstes) bzw. vor ABefore (letztes); -1 ohne.
+  function FirstKeyword(const AWord: string; AFrom: Integer): Integer;
+  begin
+    for Result := 0 to High(Tokens) do
+      if (Tokens[Result].Offset >= AFrom) and Tokens[Result].IsKeyword(AWord) then
+        Exit;
+    Result := -1;
+  end;
+
+  function LastKeyword(const AWord: string; ABefore: Integer): Integer;
+  begin
+    for Result := High(Tokens) downto 0 do
+      if (Tokens[Result].Offset < ABefore) and Tokens[Result].IsKeyword(AWord) then
+        Exit;
+    Result := -1;
+  end;
+
+  // Variable aus X := T….Create direkt vor dem try; '' ohne.
+  function CreatedVariable(ATry: TSyntaxNode): string;
+  var
+    Parent, Previous, Value: TSyntaxNode;
+    Index: Integer;
+  begin
+    Result := '';
+    Parent := ATry.Parent;
+    if Parent = nil then
+      Exit;
+    Previous := nil;
+    for Index := 1 to Parent.ChildCount - 1 do
+      if Parent[Index] = ATry then
+        Previous := Parent[Index - 1];
+    if (Previous = nil) or (Previous.Kind <> TSyntaxKind.AssignStatement) or (Previous.ChildCount <> 2) or
+      (Previous[0].Kind <> TSyntaxKind.Identifier) then
+      Exit;
+    Value := Previous[1];
+    if (Value.Kind = TSyntaxKind.Call) and (Value.ChildCount > 0) then
+      Value := Value[0];
+    if (Value.Kind = TSyntaxKind.MemberAccess) and SameText(Value.Name, 'Create') then
+      Result := Previous[0].Name;
+  end;
+
+  // Steht ATry in einer Anweisungsliste (begin … end, try, repeat …)? Sonst ist sie die einzige Anweisung
+  // eines if, while, for, with oder case-Zweigs.
+  function InStatementList(ATry: TSyntaxNode): Boolean;
+  begin
+    Result := (ATry.Parent <> nil) and (ATry.Parent.Kind in [TSyntaxKind.Block, TSyntaxKind.TryStatement,
+      TSyntaxKind.FinallyBlock, TSyntaxKind.ExceptBlock, TSyntaxKind.RepeatStatement, TSyntaxKind.CaseElse]);
+  end;
+
+  // try, finally und end stehen je allein auf ihrer Zeile (end mit oder ohne Semikolon): Dann entfernt die
+  // Korrektur die drei Zeilen und rückt den Rumpf aus; als einzige Anweisung mit mehreren Anweisungen im Rumpf
+  // wird aus try begin.
+  function Fix(ATry: TSyntaxNode; ATryToken, AFinallyToken, AEndToken: Integer; out AFix: TRuleFix): Boolean;
+  var
+    TryLine, FinallyLine, EndLine, Line, Shift, Statements, Index: Integer;
+    Body: TArray<string>;
+    Ending, Text: string;
+    Range: TTextRange;
+  begin
+    Result := False;
+    TryLine := Tokens[ATryToken].StartPos.Line;
+    FinallyLine := Tokens[AFinallyToken].StartPos.Line;
+    EndLine := Tokens[AEndToken].StartPos.Line;
+    if (EndLine > High(Lines)) or (Trim(Lines[TryLine]) <> 'try') or (Trim(Lines[FinallyLine]) <> 'finally') then
+      Exit;
+    Ending := Trim(Lines[EndLine]);
+    if (Ending <> 'end') and (Ending <> 'end;') then
+      Exit;
+    Statements := 0;
+    for Index := 0 to ATry.ChildCount - 1 do
+      if not (ATry[Index].Kind in [TSyntaxKind.FinallyBlock, TSyntaxKind.EmptyStatement]) then
+        Inc(Statements);
+    Range := TTextRange.Create(TTextPosition.Create(TryLine, 0), TTextPosition.Create(EndLine, Length(Lines[EndLine])));
+    if not InStatementList(ATry) and (Statements > 1) then
+    begin
+      Body := [TTextLines.IndentOf(Lines[TryLine]) + 'begin'];
+      for Line := TryLine + 1 to FinallyLine - 1 do
+        Body := Body + [Lines[Line]];
+      Body := Body + [Lines[EndLine]];
+      AFix := TRuleFix.Create('try … finally end durch begin … end ersetzen',
+        [TRuleEdit.Create(Range, TTextLines.JoinLines(Body, LineBreak))]);
+      Exit(True);
+    end;
+    // Rumpf um den Unterschied zwischen seiner Einrückung und der von try ausrücken.
+    Shift := MaxInt;
+    for Line := TryLine + 1 to FinallyLine - 1 do
+      if Trim(Lines[Line]) <> '' then
+        Shift := Min(Shift, TTextLines.IndentLength(Lines[Line]) - TTextLines.IndentLength(Lines[TryLine]));
+    if (Shift = MaxInt) or (Shift < 0) then
+      Shift := 0;
+    Body := nil;
+    for Line := TryLine + 1 to FinallyLine - 1 do
+      if Trim(Lines[Line]) = '' then
+        Body := Body + ['']
+      else
+        Body := Body + [Copy(Lines[Line], Shift + 1, MaxInt)];
+    if Body = nil then
+      Exit;
+    // end; trennte die Anweisung von der folgenden: Das Semikolon wandert an die letzte Zeile des Rumpfs.
+    Text := TrimRight(Body[High(Body)]);
+    if (Ending = 'end;') and not EndsStr(';', Text) then
+      Body[High(Body)] := Text + ';';
+    AFix := TRuleFix.Create('try … finally end entfernen (Rumpf bleibt)',
+      [TRuleEdit.Create(Range, TTextLines.JoinLines(Body, LineBreak))]);
+    Result := True;
+  end;
+
+  procedure CheckTry(ATry: TSyntaxNode);
+  var
+    Block: TSyntaxNode;
+    TryToken, FinallyToken, EndToken, Index: Integer;
+    Variable, Message: string;
+    RuleFix: TRuleFix;
+  begin
+    Block := ATry[ATry.ChildCount - 1];
+    if (Block.Kind <> TSyntaxKind.FinallyBlock) or not IsEmptyBlock(Block) then
+      Exit;
+    TryToken := FirstKeyword('try', ATry.StartOffset);
+    FinallyToken := LastKeyword('finally', ATry.EndOffset);
+    EndToken := LastKeyword('end', ATry.EndOffset);
+    if (TryToken < 0) or (FinallyToken < 0) or (EndToken <= FinallyToken) then
+      Exit;
+    // Ein Kommentar begründet den leeren Block; eine Direktive kann Code eines anderen Zweigs enthalten.
+    for Index := FinallyToken + 1 to EndToken - 1 do
+      if Tokens[Index].Kind in [TPascalTokenKind.Comment, TPascalTokenKind.Directive] then
+        Exit;
+    Variable := CreatedVariable(ATry);
+    if Variable <> '' then
+      Message := Format('Leerer finally-Block; fehlt hier %s.Free?', [Variable])
+    else
+      Message := 'Leerer finally-Block; die Freigabe fehlt oder try … finally ist überflüssig.';
+    if Fix(ATry, TryToken, FinallyToken, EndToken, RuleFix) then
+      AReport.Add(TokenRange(Tokens[FinallyToken]), Message, TRuleConfidence.High, [RuleFix])
+    else
+      AReport.Add(TokenRange(Tokens[FinallyToken]), Message, TRuleConfidence.High, []);
+  end;
+
+  procedure Walk(ANode: TSyntaxNode);
+  var
+    Index: Integer;
+  begin
+    if (ANode.Kind = TSyntaxKind.TryStatement) and (ANode.ChildCount > 0) then
+      CheckTry(ANode);
+    for Index := 0 to ANode.ChildCount - 1 do
+      Walk(ANode[Index]);
+  end;
+
+begin
+  if (AContext.Tree = nil) or (AContext.Tree.Root = nil) then
+    Exit;
+  Tokens := AContext.Tree.Tokens;
+  Lines := TTextLines.SplitLines(AContext.Text, LineBreak);
+  Walk(AContext.Tree.Root);
 end;
 
 { Interface-Deklarationen }
@@ -403,6 +591,7 @@ end;
 procedure RegisterGeneralRules(const ARegistry: TRuleRegistry);
 begin
   ARegistry.Register(TEmptyExceptRule.Create);
+  ARegistry.Register(TEmptyFinallyRule.Create);
   ARegistry.Register(TInterfaceGuidRule.Create);
   ARegistry.Register(TDuplicateInterfaceGuidRule.Create);
   ARegistry.Register(TFileHeaderRule.Create);

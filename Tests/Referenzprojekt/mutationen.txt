@@ -108,3 +108,4 @@ loop-condition-unchanged | Ref.Pruefung.Verstoesse.pas |   if Benutzt > 0 then\n
 unconditional-recursion | Ref.Sprache.Merkmale.pas | Result := 0;\n  for var Wert in AWerte do | Result := SummeQuadrate(AWerte);\n  for var Wert in AWerte do
 pos-arguments-swapped | Ref.Daten.Suche.pas | if Assigned(FAnbieter) then | if Assigned(FAnbieter) and (Pos(AName, '*') = 0) then
 integer-division-to-float | Ref.Komponenten.Anzeige.pas |   Canvas.TextOut(TextAbstand, (Height - Canvas.TextHeight(Anzeigetext)) div 2, Anzeigetext); |   var Mitte: Double := (Height - Canvas.TextHeight(Anzeigetext)) div 2;\n  Canvas.TextOut(TextAbstand, Round(Mitte), Anzeigetext);
+empty-finally | Ref.Formulare.Haupt.pas |   finally\n    Formular.Free;\n  end; |   finally\n  end;
