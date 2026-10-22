@@ -2324,6 +2324,19 @@
         "E2094",
         "E2278"
       ]
+    },
+    {
+      "id": "hresult-integer-mix",
+      "name": "Integer and HRESULT interchanged",
+      "category": "bug",
+      "severity": "warning",
+      "group": "compiler",
+      "description": "A class implements an interface method with an HRESULT result through a method with an Integer (or LongInt) result, or the other way round (like X1008). Both are 32 bits wide, so it goes unnoticed, but the meaning of the values (S_FALSE as success) is lost; important for COM and Open Tools API code. Methods are matched by name and parameter types, including resolution clauses such as function IFoo.Bar = Baz; interfaces and their ancestors come from the file or the index. If variants stand in conditional branches, the rule only reports when every variant differs. Quick fix: align the result type in declaration and implementation with the interface.",
+      "bad": "IExport = interface\n  function Schreiben: HRESULT; stdcall;\nend;\n…\n  function Schreiben: Integer; stdcall;",
+      "good": "IExport = interface\n  function Schreiben: HRESULT; stdcall;\nend;\n…\n  function Schreiben: HRESULT; stdcall;",
+      "compilerCodes": [
+        "X1008"
+      ]
     }
   ]
 }

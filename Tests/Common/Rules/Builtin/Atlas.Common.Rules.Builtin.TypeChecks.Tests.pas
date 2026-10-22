@@ -8,6 +8,10 @@
 // Zuweisung, Prozedur und parameterlose Funktion, ohne Korrektur bei Zugriff
 // auf äußere Namen, Adresse in typisierter Konstante, stille Fälle (Aufrufe,
 // of object, reference to, Unit-Routinen, @Routine), Abschalten.
+// hresult-integer-mix (#1040): Beispiel mit Korrektur in Deklaration und
+// Rumpf, umgekehrt und über eine Zuordnung IFoo.Bar = Baz, Interface samt
+// Vorfahr aus dem Index, stille Fälle (gleiche Typen, Cardinal, Varianten in
+// bedingten Zweigen, andere Parameter), Abschalten.
 
 interface
 
@@ -35,6 +39,21 @@ type
   end;
 
   [TestFixture]
+  THresultIntegerMixTests = class
+  public
+    [Test]
+    procedure IssueExampleWithFix;
+    [Test]
+    procedure ReverseAndResolutionClause;
+    [Test]
+    procedure InterfaceFromIndex;
+    [Test]
+    procedure MatchingAndConditionalVariantsAreSilent;
+    [Test]
+    procedure OffAndExclude;
+  end;
+
+  [TestFixture]
   TLocalRoutineAsCallbackTests = class
   public
     [Test]
@@ -55,6 +74,7 @@ implementation
 
 uses
   System.SysUtils,
+  Atlas.Common.Configuration.Contract,
   Atlas.Common.Documents.Contract,
   Atlas.Common.Rules.Contract,
   Atlas.Common.Rules.Builtin,
@@ -210,6 +230,120 @@ begin
     if Rule.Descriptor.Id = LocalRoutineAsCallbackRuleId then
       Found := True;
   Assert.IsTrue(Found);
+  Found := False;
+  for Rule in BuiltinRules do
+    if Rule.Descriptor.Id = HresultIntegerMixRuleId then
+      Found := True;
+  Assert.IsTrue(Found);
+end;
+
+{ THresultIntegerMixTests }
+
+function MixFindings(const ASource: string; const AIndex: ISymbolIndex = nil): TArray<TRuleFinding>; overload;
+var
+  Index: ISymbolIndex;
+begin
+  Index := AIndex;
+  if Index = nil then
+    Index := SystemIndex;
+  Result := TRuleAssert.IndexFindings(THresultIntegerMixRule.Create, ASource, Index, '', 'Export.pas');
+end;
+
+function MixFindings(const ASource, AConfig, APath: string): TArray<TRuleFinding>; overload;
+begin
+  Result := TRuleAssert.IndexFindings(THresultIntegerMixRule.Create, ASource, SystemIndex, AConfig, APath);
+end;
+
+/// <summary>IExport mit Schreiben: HRESULT; TExport implementiert es mit AResult.</summary>
+function Export(const AResult: string): string;
+begin
+  Result := 'unit Export;'#10'interface'#10'type'#10'  IExport = interface'#10'    function Schreiben: HRESULT; stdcall;'#10 +
+    '  end;'#10'  TExport = class(TInterfacedObject, IExport)'#10'    function Schreiben: ' + AResult + '; stdcall;'#10 +
+    '  end;'#10'implementation'#10'function TExport.Schreiben: ' + AResult + ';'#10'begin'#10'  Result := 0;'#10 +
+    'end;'#10'end.';
+end;
+
+procedure THresultIntegerMixTests.IssueExampleWithFix;
+var
+  Source, Fixed: string;
+  Found: TArray<TRuleFinding>;
+begin
+  Source := Export('Integer');
+  Found := MixFindings(Source);
+  Assert.AreEqual(1, Integer(Length(Found)));
+  Assert.AreEqual(HresultIntegerMixRuleId, Found[0].RuleId);
+  Assert.AreEqual(Ord(TRuleSeverity.Warning), Ord(Found[0].Severity));
+  Assert.AreEqual('IExport.Schreiben liefert HRESULT, die Implementierung Integer (wie X1008).', Found[0].Message);
+  Assert.AreEqual(7, Found[0].Range.StartPos.Line);
+  Assert.AreEqual(1, Integer(Length(Found[0].Fixes)));
+  Assert.AreEqual('Ergebnistyp HRESULT wie im Interface', Found[0].Fixes[0].Title);
+  Fixed := Apply(Source, Found[0].Fixes[0]);
+  Assert.AreEqual(Export('HRESULT'), Fixed);
+  Assert.AreEqual(0, Integer(Length(MixFindings(Fixed))), Fixed);
+end;
+
+procedure THresultIntegerMixTests.ReverseAndResolutionClause;
+var
+  Found: TArray<TRuleFinding>;
+begin
+  Found := MixFindings(Export('Integer').Replace('function Schreiben: HRESULT;', 'function Schreiben: Integer;')
+    .Replace(': Integer; stdcall;'#10'  end;'#10'implementation', ': HResult; stdcall;'#10'  end;'#10'implementation'));
+  Assert.AreEqual(1, Integer(Length(Found)));
+  Assert.AreEqual('IExport.Schreiben liefert Integer, die Implementierung HResult (wie X1008).', Found[0].Message);
+  // Zuordnung: Schreiben implementiert SchreibenIntern.
+  Found := MixFindings('unit Export;'#10'interface'#10'type'#10'  IExport = interface'#10 +
+    '    function Schreiben: HRESULT; stdcall;'#10'  end;'#10'  TExport = class(TInterfacedObject, IExport)'#10 +
+    '    function IExport.Schreiben = SchreibenIntern;'#10'    function Schreiben: HRESULT; stdcall;'#10 +
+    '    function SchreibenIntern: LongInt; stdcall;'#10'  end;'#10'implementation'#10'end.');
+  Assert.AreEqual(1, Integer(Length(Found)));
+  Assert.AreEqual('IExport.Schreiben liefert HRESULT, die Implementierung LongInt (wie X1008).', Found[0].Message);
+  Assert.AreEqual(9, Found[0].Range.StartPos.Line);
+end;
+
+procedure THresultIntegerMixTests.InterfaceFromIndex;
+var
+  Index: ISymbolIndex;
+  Found: TArray<TRuleFinding>;
+begin
+  Index := SystemIndex;
+  Index.AddUnit(TIndexExtractor.ExtractText('unit Schnittstellen;'#10'interface'#10'type'#10 +
+    '  IBasis = interface'#10'    function Pruefen(const A: string): HRESULT; stdcall;'#10'  end;'#10 +
+    '  IExport = interface(IBasis)'#10'    procedure Leeren;'#10'  end;'#10'implementation'#10'end.',
+    'C:\Projekt\Schnittstellen.pas', nil));
+  Found := MixFindings('unit Export;'#10'interface'#10'uses'#10'  Schnittstellen;'#10'type'#10 +
+    '  TExport = class(TInterfacedObject, IExport)'#10'    function Pruefen(const A: string): Integer; stdcall;'#10 +
+    '    procedure Leeren;'#10'  end;'#10'implementation'#10'end.', Index);
+  Assert.AreEqual(1, Integer(Length(Found)));
+  Assert.AreEqual('IBasis.Pruefen liefert HRESULT, die Implementierung Integer (wie X1008).', Found[0].Message);
+end;
+
+procedure THresultIntegerMixTests.MatchingAndConditionalVariantsAreSilent;
+begin
+  Assert.AreEqual(0, Integer(Length(MixFindings(Export('HRESULT')))));
+  Assert.AreEqual(0, Integer(Length(MixFindings(Export('HResult')))));
+  Assert.AreEqual(0, Integer(Length(MixFindings(Export('Cardinal')))));
+  // Andere Parameter: implementiert etwas anderes.
+  Assert.AreEqual(0, Integer(Length(MixFindings(Export('Integer').Replace('    function Schreiben: Integer; stdcall;',
+    '    function Schreiben(A: Integer): Integer; stdcall;'#10'    function Schreiben: HRESULT; stdcall;')
+    .Replace('function TExport.Schreiben: Integer;', 'function TExport.Schreiben(A: Integer): Integer;')))));
+  // Varianten in bedingten Zweigen: eine passt.
+  Assert.AreEqual(0, Integer(Length(MixFindings(Export('Integer').Replace('    function Schreiben: Integer; stdcall;',
+    '{$IFDEF ALT}'#10'    function Schreiben: Integer; stdcall;'#10'{$ELSE}'#10'    function Schreiben: HRESULT; stdcall;' +
+    #10'{$ENDIF}')))));
+end;
+
+procedure THresultIntegerMixTests.OffAndExclude;
+var
+  Source: string;
+begin
+  Source := Export('Integer');
+  Assert.AreEqual(1, Integer(Length(MixFindings(Source, '', 'Source/Export.pas'))));
+  Assert.AreEqual(0, Integer(Length(MixFindings(Source, '{"rules": {"hresult-integer-mix": "off"}}',
+    'Source/Export.pas'))));
+  Assert.AreEqual(0, Integer(Length(MixFindings(Source, '{"rules": {"group:compiler": "off"}}',
+    'Source/Export.pas'))));
+  Assert.AreEqual(0, Integer(Length(MixFindings(Source,
+    '{"rules": {"hresult-integer-mix": {"exclude": ["Source/*.pas"]}}}', 'Source/Export.pas'))));
 end;
 
 { TLocalRoutineAsCallbackTests }
@@ -334,5 +468,6 @@ end;
 initialization
   TDUnitX.RegisterTestFixture(TDynamicArrayMisuseTests);
   TDUnitX.RegisterTestFixture(TLocalRoutineAsCallbackTests);
+  TDUnitX.RegisterTestFixture(THresultIntegerMixTests);
 
 end.

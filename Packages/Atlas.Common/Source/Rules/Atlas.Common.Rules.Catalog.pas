@@ -168,7 +168,8 @@ function IsCompilerCode(const ACode: string): Boolean;
 var
   Index: Integer;
 begin
-  Result := (Length(ACode) = 5) and CharInSet(ACode[1], ['E', 'F', 'W', 'H']);
+  // X wie X1008 (#1040): Meldungen, die dcc als Warnung ausgibt.
+  Result := (Length(ACode) = 5) and CharInSet(ACode[1], ['E', 'F', 'W', 'H', 'X']);
   if Result then
     for Index := 2 to 5 do
       if not CharInSet(ACode[Index], ['0'..'9']) then

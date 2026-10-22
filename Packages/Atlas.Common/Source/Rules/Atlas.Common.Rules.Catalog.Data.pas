@@ -2344,6 +2344,19 @@ begin
     '        "E2094",' + #10 +
     '        "E2278"' + #10 +
     '      ]' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "hresult-integer-mix",' + #10 +
+    '      "name": "Integer and HRESULT interchanged",' + #10 +
+    '      "category": "bug",' + #10 +
+    '      "severity": "warning",' + #10 +
+    '      "group": "compiler",' + #10 +
+    '      "description": "A class implements an interface method with an HRESULT result through a method with an Integer (or LongInt) result, or the other way round (like X1008). Both are 32 bits wide, so' + ' it goes unnoticed, but the meaning of the values (S_FALSE as success) is lost; important for COM and Open Tools API code. Methods are matched by name and parameter types, including resolution clauses' + ' such as function IFoo.Bar = Baz; interfaces and their ancestors come from the file or the index. If variants stand in conditional branches, the rule only reports when every variant differs. Quick fix' + ': align the result type in declaration and implementation with the interface.",' + #10 +
+    '      "bad": "IExport = interface\n  function Schreiben: HRESULT; stdcall;\nend;\n…\n  function Schreiben: Integer; stdcall;",' + #10 +
+    '      "good": "IExport = interface\n  function Schreiben: HRESULT; stdcall;\nend;\n…\n  function Schreiben: HRESULT; stdcall;",' + #10 +
+    '      "compilerCodes": [' + #10 +
+    '        "X1008"' + #10 +
+    '      ]' + #10 +
     '    }' + #10 +
     '  ]' + #10 +
     '}' + #10 +
@@ -3524,6 +3537,11 @@ begin
     '      "id": "local-routine-as-callback",' + #10 +
     '      "name": "Lokale Routine als Prozedurvariable",' + #10 +
     '      "description": "Eine lokale (verschachtelte) Routine wird einer Variablen oder einem Parameter eines prozeduralen Typs ohne of object zugewiesen (wie E2094), oder eine typisierte Konstante einer' + ' Routine nimmt die Adresse einer lokalen Variablen (wie E2278). Gemeint ist meist eine anonyme Methode oder eine Routine der Unit. Die Regel meldet nur, wenn die Namensauflösung den Zieltyp sicher ken' + 'nt; Methodenzeiger und Methodenreferenzen bleiben still, weil der Compiler sie mit anderen Codes meldet, ebenso @Routine (ein untypisierter Zeiger). Korrektur: die Routine als Routine der Unit vor die' + ' umgebende Routine verschieben, wenn sie nichts aus ihr nutzt (keine lokalen Namen weiter außen, keine Klassenmitglieder ohne Präfix)."' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "hresult-integer-mix",' + #10 +
+    '      "name": "Integer und HRESULT vertauscht",' + #10 +
+    '      "description": "Eine Klasse implementiert eine Interface-Methode mit HRESULT-Ergebnis über eine Methode mit Integer- (bzw. LongInt-) Ergebnis oder umgekehrt (wie X1008). Beide sind 32 Bit groß, ' + 'deshalb fällt es nicht auf; die Bedeutung der Werte (S_FALSE als Erfolg) geht aber verloren; wichtig für COM- und OTA-Code. Zugeordnet wird über Name und Parametertypen samt Zuordnungen wie function I' + 'Foo.Bar = Baz; Interfaces samt ihren Vorfahren kommen aus der Datei bzw. dem Index. Stehen Varianten in bedingten Zweigen, meldet die Regel nur, wenn jede Variante abweicht. Korrektur: den Ergebnistyp' + ' in Deklaration und Implementierung an das Interface angleichen."' + #10 +
     '    }' + #10 +
     '  ]' + #10 +
     '}' + #10 +

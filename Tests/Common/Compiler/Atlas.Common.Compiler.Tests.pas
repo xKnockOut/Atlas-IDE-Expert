@@ -88,6 +88,11 @@ begin
   Assert.AreEqual(Ord(TCompilerSeverity.Hint), Ord(Item.Severity));
   Assert.AreEqual(Ord(TCompilerSeverity.Warning),
     Ord(Parsed('Unit1.pas(5) Warning: W1036 Variable ''Z'' might not have been initialized').Severity));
+  // X-Codes (z. B. X1008 Integer und HRESULT vertauscht) sind Warnungen (#1040).
+  Item := Parsed('Unit1.pas(7) Warning: X1008 Integer and HRESULT interchanged');
+  Assert.AreEqual('X1008', Item.Code);
+  Assert.AreEqual(Ord(TCompilerSeverity.Warning), Ord(Item.Severity));
+  Assert.AreEqual('Integer and HRESULT interchanged', Item.Text);
 end;
 
 procedure TCompilerOutputParserTests.ReadsColumns;

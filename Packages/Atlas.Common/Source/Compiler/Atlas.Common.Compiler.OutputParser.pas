@@ -34,8 +34,8 @@ function IsCodeAt(const AText: string; AIndex: Integer): Boolean;
 var
   Offset: Integer;
 begin
-  // Buchstabe E/W/H/F und vier Ziffern, davor Anfang oder Leerzeichen/Doppelpunkt, danach Ende oder Leerzeichen/Doppelpunkt.
-  Result := (AIndex + 4 <= Length(AText)) and CharInSet(AText[AIndex], ['E', 'W', 'H', 'F']) and
+  // Buchstabe E/W/H/F/X und vier Ziffern, davor Anfang oder Leerzeichen/Doppelpunkt, danach Ende oder Leerzeichen/Doppelpunkt.
+  Result := (AIndex + 4 <= Length(AText)) and CharInSet(AText[AIndex], ['E', 'W', 'H', 'F', 'X']) and
     ((AIndex = 1) or CharInSet(AText[AIndex - 1], [' ', ':'])) and
     ((AIndex + 5 > Length(AText)) or CharInSet(AText[AIndex + 5], [' ', ':']));
   if Result then
@@ -118,6 +118,8 @@ begin
         'E': AMessage.Severity := TCompilerSeverity.Error;
         'W': AMessage.Severity := TCompilerSeverity.Warning;
         'H': AMessage.Severity := TCompilerSeverity.Hint;
+        // X1008 und Verwandte meldet dcc als Warnung (#1040).
+        'X': AMessage.Severity := TCompilerSeverity.Warning;
       else
         AMessage.Severity := TCompilerSeverity.Fatal;
       end;

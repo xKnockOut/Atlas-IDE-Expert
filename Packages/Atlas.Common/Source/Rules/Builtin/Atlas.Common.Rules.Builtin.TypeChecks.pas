@@ -19,6 +19,15 @@
 //                     Methoden meldet der Compiler anders). Korrektur: die Routine
 //                     als Routine der Unit vor die umgebende Routine verschieben,
 //                     wenn sie nichts aus ihr nutzt.
+//   hresult-integer-mix
+//                     Eine Klasse der Datei implementiert eine Interface-Methode
+//                     mit HRESULT-Ergebnis über eine Methode mit Integer-Ergebnis
+//                     oder umgekehrt (wie X1008, #1040). Zugeordnet wird über
+//                     Name und Parametertypen samt Zuordnungen "IFoo.Bar = Baz";
+//                     Interfaces samt ihren Vorfahren kommen aus Datei bzw. Index.
+//                     Stehen Varianten in bedingten Zweigen, meldet die Regel nur,
+//                     wenn jede Variante abweicht. Korrektur: den Ergebnistyp in
+//                     Deklaration und Rumpf an das Interface angleichen.
 
 interface
 
@@ -30,6 +39,7 @@ uses
 const
   DynamicArrayMisuseRuleId = 'dynamic-array-misuse';
   LocalRoutineAsCallbackRuleId = 'local-routine-as-callback';
+  HresultIntegerMixRuleId = 'hresult-integer-mix';
 
 type
   TDynamicArrayMisuseRule = class(TInterfacedObject, IRule)
@@ -42,6 +52,14 @@ type
   public
     function Descriptor: TRuleDescriptor;
     procedure Check(const AContext: TRuleContext; const AReport: IRuleReport);
+  end;
+
+  THresultIntegerMixRule = class(TInterfacedObject, IRule)
+  public
+    function Descriptor: TRuleDescriptor;
+    procedure Check(const AContext: TRuleContext; const AReport: IRuleReport);
+    /// <summary>Ist das eine Ergebnis HRESULT und das andere Integer (bzw. LongInt)?</summary>
+    class function Interchanged(const AExpected, AActual: string): Boolean; static;
   end;
 
 procedure RegisterTypeCheckRules(const ARegistry: TRuleRegistry);
@@ -798,10 +816,229 @@ begin
   end;
 end;
 
+{ THresultIntegerMixRule }
+
+function THresultIntegerMixRule.Descriptor: TRuleDescriptor;
+begin
+  Result := TRuleDescriptor.Create(HresultIntegerMixRuleId, TRuleSeverity.Warning, 'Integer und HRESULT vertauscht');
+end;
+
+class function THresultIntegerMixRule.Interchanged(const AExpected, AActual: string): Boolean;
+
+  function Family(const AType: string): Integer;
+  var
+    Name: string;
+  begin
+    Name := Trim(AType);
+    Name := Copy(Name, LastDelimiter('.', Name) + 1, MaxInt);
+    if SameText(Name, 'HRESULT') then
+      Result := 1
+    else if SameText(Name, 'Integer') or SameText(Name, 'LongInt') then
+      Result := 2
+    else
+      Result := 0;
+  end;
+
+begin
+  Result := (Family(AExpected) <> 0) and (Family(AActual) <> 0) and (Family(AExpected) <> Family(AActual));
+end;
+
+procedure THresultIntegerMixRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
+var
+  Resolver: TNameResolver;
+  FileName: string;
+  Local: TUnitIndex;
+  Nodes: TArray<TSyntaxNode>;
+  Symbol: TIndexSymbol;
+
+  function Key(const AName: string; const AParamTypes: TArray<string>): string;
+  var
+    ParamType: string;
+  begin
+    Result := LowerCase(AName) + '(';
+    for ParamType in AParamTypes do
+      Result := Result + LowerCase(Resolver.UnqualifyType(NormalizedType(ParamType), Local.UnitName)) + ';';
+    Result := Result + ')';
+  end;
+
+  function Inside(const ARange, AOuter: TTextRange): Boolean;
+  begin
+    Result := (ARange.StartPos.Line >= AOuter.StartPos.Line) and (ARange.StartPos.Line <= AOuter.EndPos.Line);
+  end;
+
+  /// <summary>Ergebnistyp im Kopf (letzter Typverweis); nil ohne.</summary>
+  function ResultNode(AHeader: TSyntaxNode): TSyntaxNode;
+  var
+    Index: Integer;
+  begin
+    Result := nil;
+    for Index := 0 to AHeader.ChildCount - 1 do
+      if AHeader[Index].Kind = TSyntaxKind.TypeReference then
+        Result := AHeader[Index];
+  end;
+
+  /// <summary>Korrektur: Ergebnistyp in Deklaration und (einzigem) Rumpf auf AType setzen.</summary>
+  function AlignFix(const AClass: string; const AMethod: TIndexSymbol; const AType: string;
+    out AFix: TRuleFix): Boolean;
+  var
+    Node, Declaration, Body, Target: TSyntaxNode;
+    Bodies: Integer;
+    Edits: TArray<TTextEdit>;
+  begin
+    Result := False;
+    Declaration := nil;
+    Body := nil;
+    Bodies := 0;
+    for Node in Nodes do
+      if (Node.Kind = TSyntaxKind.RoutineHeader) and Covers(Node, AMethod.SelectionRange.StartPos) then
+        Declaration := Node
+      else if (Node.Kind = TSyntaxKind.RoutineDecl) and SameText(Node.Name, AClass + '.' + AMethod.Name) then
+      begin
+        Inc(Bodies);
+        Body := Node.FindChild(TSyntaxKind.RoutineHeader);
+      end;
+    if (Declaration = nil) or (Bodies > 1) then
+      Exit;
+    Target := ResultNode(Declaration);
+    if Target = nil then
+      Exit;
+    Edits := [TTextEdit.Create(TTextRange.Create(Target.StartPos, Target.EndPos), AType)];
+    if Body <> nil then
+    begin
+      Target := ResultNode(Body);
+      // Ein Rumpf ohne Ergebnistyp (function TExport.Schreiben;) bleibt richtig.
+      if (Target <> nil) and (Target.StartPos.Line <> Declaration.StartPos.Line) then
+        Edits := Edits + [TTextEdit.Create(TTextRange.Create(Target.StartPos, Target.EndPos), AType)];
+    end;
+    AFix := TRuleFix.Create(Format('Ergebnistyp %s wie im Interface', [AType]), Edits);
+    Result := True;
+  end;
+
+  procedure CheckClass(const AClass: TIndexSymbol);
+  var
+    Methods: TList<TIndexSymbol>;
+    Resolutions: TStringList;
+    Seen: TStringList;
+    Ancestor, Intf, Parent: TResolvedSymbol;
+    IntfUnit: TUnitIndex;
+    Member, Method, Wanted: TIndexSymbol;
+    Name, Target, MethodKey: string;
+    Depth: Integer;
+    Expected: TArray<TIndexSymbol>;
+    Actual: TArray<TIndexSymbol>;
+    AllDiffer: Boolean;
+    Fix: TRuleFix;
+    Fixes: TArray<TRuleFix>;
+  begin
+    Methods := TList<TIndexSymbol>.Create;
+    Resolutions := TStringList.Create;
+    Seen := TStringList.Create;
+    try
+      // Methoden im Rumpf der Klasse; "function IExport.Lesen = LesenIntern" als Zuordnung.
+      for Member in Local.Symbols do
+        if SameText(Member.Container, AClass.Name) and (Member.Kind = TIndexSymbolKind.Method) and
+          Inside(Member.SelectionRange, AClass.Range) then
+        begin
+          if Pos('.', Member.Name) > 0 then
+          begin
+            Target := Member.Signature;
+            if Pos('=', Target) > 0 then
+              Resolutions.Values[LowerCase(Member.Name)] := Trim(Copy(Target, Pos('=', Target) + 1, MaxInt));
+          end
+          else
+            Methods.Add(Member);
+        end;
+      for Name in AClass.Ancestors do
+      begin
+        if not Resolver.ResolveTypeFrom(Local, Name, Ancestor) or
+          (Ancestor.SymbolKind <> TIndexSymbolKind.InterfaceType) then
+          Continue;
+        Intf := Ancestor;
+        for Depth := 0 to MaxAliasDepth do
+        begin
+          if (Seen.IndexOf(Intf.QualifiedName) >= 0) or not SymbolUnit(Resolver, Local, Intf, IntfUnit) then
+            Break;
+          Seen.Add(Intf.QualifiedName);
+          for Member in IntfUnit.Symbols do
+          begin
+            if not SameText(Member.Container, Intf.QualifiedName) or (Member.Kind <> TIndexSymbolKind.Method) then
+              Continue;
+            // Alle Varianten der Interface-Methode (bedingte Zweige) und der Implementierung.
+            Expected := nil;
+            for Method in IntfUnit.Symbols do
+              if SameText(Method.Container, Member.Container) and (Method.Kind = TIndexSymbolKind.Method) and
+                (Key(Method.Name, Method.ParamTypes) = Key(Member.Name, Member.ParamTypes)) then
+                Expected := Expected + [Method];
+            if (Length(Expected) = 0) or (Expected[0].SelectionRange.StartPos.Line <>
+              Member.SelectionRange.StartPos.Line) then
+              Continue;
+            Target := Resolutions.Values[LowerCase(Intf.Name + '.' + Member.Name)];
+            if Target = '' then
+              Target := Member.Name;
+            MethodKey := Key(Target, Member.ParamTypes);
+            Actual := nil;
+            for Method in Methods do
+              if Key(Method.Name, Method.ParamTypes) = MethodKey then
+                Actual := Actual + [Method];
+            if Length(Actual) = 0 then
+              Continue;
+            AllDiffer := True;
+            for Method in Actual do
+              for Wanted in Expected do
+                if not Interchanged(Wanted.TypeName, Method.TypeName) then
+                  AllDiffer := False;
+            if not AllDiffer then
+              Continue;
+            for Method in Actual do
+            begin
+              Fixes := nil;
+              if (Length(Expected) = 1) and (Length(Actual) = 1) and
+                AlignFix(AClass.Name, Method, Member.TypeName, Fix) then
+                Fixes := [Fix];
+              AReport.Add(Method.SelectionRange, Format('%s.%s liefert %s, die Implementierung %s (wie X1008).',
+                [Intf.Name, Member.Name, Member.TypeName, Method.TypeName]), TRuleConfidence.High, Fixes);
+            end;
+          end;
+          if not Resolver.AncestorOf(Intf, Parent) or (Parent.SymbolKind <> TIndexSymbolKind.InterfaceType) then
+            Break;
+          Intf := Parent;
+        end;
+      end;
+    finally
+      Seen.Free;
+      Resolutions.Free;
+      Methods.Free;
+    end;
+  end;
+
+begin
+  if (AContext.Tree = nil) or (AContext.Tree.Root = nil) or (not ContainsText(AContext.Text, 'HRESULT') and
+    not ContainsText(AContext.Text, 'Integer') and not ContainsText(AContext.Text, 'LongInt')) then
+    Exit;
+  FileName := ResolverFileName(AContext);
+  Resolver := TNameResolver.Create(AContext.Index, AContext.EnsureUnit);
+  try
+    Resolver.Namespaces := AContext.Namespaces;
+    Resolver.PinTree(AContext.Tree, FileName);
+    try
+      Local := Resolver.ExtractedUnit(AContext.Tree, FileName);
+      Nodes := PreOrder(AContext.Tree.Root);
+      for Symbol in Local.Symbols do
+        if (Symbol.Kind = TIndexSymbolKind.ClassType) and (Length(Symbol.Ancestors) > 0) then
+          CheckClass(Symbol);
+    finally
+      Resolver.UnpinTree;
+    end;
+  finally
+    Resolver.Free;
+  end;
+end;
+
 procedure RegisterTypeCheckRules(const ARegistry: TRuleRegistry);
 begin
   ARegistry.Register(TDynamicArrayMisuseRule.Create);
   ARegistry.Register(TLocalRoutineAsCallbackRule.Create);
+  ARegistry.Register(THresultIntegerMixRule.Create);
 end;
 
 end.
