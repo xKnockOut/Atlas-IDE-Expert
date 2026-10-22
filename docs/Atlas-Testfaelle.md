@@ -4161,3 +4161,16 @@ Voraussetzung: Server läuft in der IDE mit Projekt, `"default-parameter": "warn
 | JD4 | Routine nur im implementation-Teil mit Standardparameter; Korrektur | Neue Routine mit `overload;` direkt davor, die alte bekommt `overload;` |
 | JD5 | `virtual`, Interface-Typ, `Zeiger := @P`, schon vorhandene Überladung, Deklaration in `{$IFDEF}` | Meldung ohne Korrektur |
 | JD6 | `"default-parameter": "off"`, `"group:style": "off"` bzw. `exclude` | Keine Meldung |
+
+## Leere Methode (#977)
+
+Voraussetzung: Server läuft in der IDE mit Projekt.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| JE1 | Das Beispiel aus #977: `procedure TImport.Pruefen; begin end;` mit öffentlicher Deklaration | Hinweis `empty-routine` am Namen im Rumpf: „Pruefen ist leer; entweder fehlt der Inhalt oder die Methode kann weg.“; im Fenster „Atlas-Prüfung“ und im Befund-Hover (**Abnahme**) |
+| JE2 | Schnellkorrektur „Kommentar einfügen“, danach Strg+Z | Zwischen begin und end steht `// Absichtlich leer.`; keine Meldung mehr; ein Undo-Schritt stellt den Rumpf wieder her |
+| JE3 | Methode `private`, nirgends aufgerufen, mit `///`-Doku; Schnellkorrektur „Methode entfernen“ | Deklaration samt Doku und Rumpf verschwinden, keine doppelte Leerzeile; übersetzt |
+| JE4 | Wie JE3, aber die Methode wird in der Unit aufgerufen bzw. steht im interface-Teil | Nur „Kommentar einfügen“ |
+| JE5 | Leere Methode mit Kommentar, `virtual`, `message WM_SIZE`, in einer Klasse mit Interface (z. B. ein Notifier der Open Tools API), `FormCreate` aus der .dfm, `asm end` | Keine Meldung |
+| JE6 | `"empty-routine": "off"`, `"group:style": "off"` bzw. `exclude` | Keine Meldung |

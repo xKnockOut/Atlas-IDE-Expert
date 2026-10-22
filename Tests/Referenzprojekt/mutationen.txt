@@ -105,3 +105,4 @@ readonly-property-assigned | Ref.Formulare.Suchrahmen.pas | read FOnSuchen write
 setlength-in-loop | Ref.Daten.Kunden.pas | Result := Result + [Daten.FieldByName('Name').AsString]; | SetLength(Result, Length(Result) + 1);\n    Result[High(Result)] := Daten.FieldByName('Name').AsString;
 managed-param-without-const | Ref.Daten.Suche.pas | \nimplementation | \nimplementation\n\nfunction Gruss(AName: string): string;\nbegin\n  Result := 'Hallo ' + AName;\nend;
 default-parameter | Ref.Daten.Suche.pas | \nimplementation | \nimplementation\n\nfunction Kopf(const AText: string; ABreite: Integer = 40): string;\nbegin\n  Result := Copy(AText, 1, ABreite);\nend;
+empty-routine | Ref.Daten.Suche.pas | \nimplementation | \nimplementation\n\nprocedure Vorbereiten;\nbegin\nend;

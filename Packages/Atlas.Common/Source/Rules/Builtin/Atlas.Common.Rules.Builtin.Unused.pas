@@ -21,6 +21,13 @@
 //
 // Option aller drei Regeln: {"ignore": ["Dummy*", "_*"]} nimmt Namen nach
 // Muster aus (* und ? als Platzhalter).
+//
+// empty-routine (#977): Rumpf ohne Anweisung und ohne Kommentar (auch keine
+// Direktive). Ausgenommen sind virtuelle bzw. dynamische Methoden (Ersatz für
+// abstract), Nachrichten-Handler und Ereignis-Handler aus der Formulardatei.
+// Korrekturen: Kommentar zwischen begin und end; "Methode entfernen" nur für
+// private Methoden bzw. Routinen ohne Deklaration im interface, die in der
+// Datei nirgends vorkommen und keine Signatur von außen erfüllen.
 
 interface
 
@@ -49,6 +56,12 @@ type
     procedure Check(const AContext: TRuleContext; const AReport: IRuleReport);
   end;
 
+  TEmptyRoutineRule = class(TInterfacedObject, IRule)
+  public
+    function Descriptor: TRuleDescriptor;
+    procedure Check(const AContext: TRuleContext; const AReport: IRuleReport);
+  end;
+
 /// <summary>Passt AName auf das Muster? * steht für beliebig viele, ? für genau ein Zeichen;
 /// ohne Groß-/Kleinschreibung.</summary>
 function MatchesWildcard(const AName, APattern: string): Boolean;
@@ -61,6 +74,8 @@ uses
   System.StrUtils,
   System.JSON,
   System.Generics.Collections,
+  System.RegularExpressions,
+  Atlas.Text.Lines,
   Atlas.Common.Documents.Contract,
   Atlas.Common.Pascal.Contract,
   Atlas.Common.Configuration.Contract,
@@ -810,11 +825,287 @@ begin
   end;
 end;
 
+{ TEmptyRoutineRule }
+
+function TEmptyRoutineRule.Descriptor: TRuleDescriptor;
+begin
+  Result := TRuleDescriptor.Create('empty-routine', TRuleSeverity.Hint,
+    'Methode oder Routine ohne Anweisung und ohne Kommentar');
+end;
+
+/// <summary>Kopf der Methode in ihrem Typ und der Sichtbarkeitsabschnitt davor ('' ohne Angabe).</summary>
+function MemberHeader(ATypeBody: TSyntaxNode; const AName: string; out AVisibility: string): TSyntaxNode;
+var
+  Index: Integer;
+  Visibility: string;
+begin
+  Result := nil;
+  AVisibility := '';
+  Visibility := '';
+  for Index := 0 to ATypeBody.ChildCount - 1 do
+    if ATypeBody[Index].Kind = TSyntaxKind.Visibility then
+      Visibility := LowerCase(ATypeBody[Index].Name)
+    else if (ATypeBody[Index].Kind = TSyntaxKind.RoutineHeader) and SameText(ATypeBody[Index].Name, AName) then
+    begin
+      Result := ATypeBody[Index];
+      AVisibility := Visibility;
+      Exit;
+    end;
+end;
+
+function NodesOfKind(ARoot: TSyntaxNode; AKind: TSyntaxKind): TArray<TSyntaxNode>;
+var
+  Found: TArray<TSyntaxNode>;
+begin
+  Found := nil;
+  ARoot.Walk(
+    function(ANode: TSyntaxNode): Boolean
+    begin
+      if ANode.Kind = AKind then
+        Found := Found + [ANode];
+      Result := True;
+    end);
+  Result := Found;
+end;
+
+/// <summary>Nennt der Typ Interfaces (class(TBasis, IFoo) bzw. class(IFoo))? Unbekannter Typ zählt nicht.</summary>
+function ListsInterfaces(ATypeBody: TSyntaxNode): Boolean;
+var
+  Index, Count: Integer;
+  Name: string;
+begin
+  Result := False;
+  if ATypeBody = nil then
+    Exit;
+  Count := 0;
+  for Index := 0 to ATypeBody.ChildCount - 1 do
+    if ATypeBody[Index].Kind = TSyntaxKind.TypeReference then
+    begin
+      Inc(Count);
+      Name := ATypeBody[Index].Name;
+      if (Count > 1) or ((Length(Name) > 1) and (Name[1] = 'I') and CharInSet(Name[2], ['A'..'Z'])) then
+        Exit(True);
+    end;
+end;
+
+function HasDirectiveIn(AHeader: TSyntaxNode; const ANames: array of string): Boolean;
+var
+  Index: Integer;
+begin
+  if AHeader <> nil then
+    for Index := 0 to AHeader.ChildCount - 1 do
+      if (AHeader[Index].Kind = TSyntaxKind.Directive) and MatchText(AHeader[Index].Name, ANames) then
+        Exit(True);
+  Result := False;
+end;
+
+procedure TEmptyRoutineRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
+var
+  Cache: IRuleDerivedCache;
+  Tokens: TArray<TPascalToken>;
+  Root: TSyntaxNode;
+  References: TArray<TSyntaxNode>;
+  LineBreak: string;
+
+  function Range(AStart, AEnd: Integer): TTextRange;
+  begin
+    Result := TRuleDerived.OffsetRange(Cache, AContext, AStart, AEnd);
+  end;
+
+  // Kommentare oder Direktiven zwischen Kopf und Ende der Routine?
+  function HasCommentOrDirective(AHeader, ARoutine: TSyntaxNode): Boolean;
+  var
+    Token: TPascalToken;
+  begin
+    for Token in Tokens do
+    begin
+      if Token.Offset >= ARoutine.EndOffset then
+        Break;
+      if (Token.Offset >= AHeader.EndOffset) and (Token.Kind in [TPascalTokenKind.Comment,
+        TPascalTokenKind.Directive]) then
+        Exit(True);
+    end;
+    Result := False;
+  end;
+
+  function IsEmpty(ABlock: TSyntaxNode): Boolean;
+  var
+    Index: Integer;
+  begin
+    for Index := 0 to ABlock.ChildCount - 1 do
+      if ABlock[Index].Kind <> TSyntaxKind.EmptyStatement then
+        Exit(False);
+    Result := True;
+  end;
+
+  function Referenced(const AName: string): Boolean;
+  var
+    Node: TSyntaxNode;
+  begin
+    for Node in References do
+      if SameText(Node.Name, AName) then
+        Exit(True);
+    Result := ((AContext.FormText <> '') and TRegEx.IsMatch(AContext.FormText, '\b' + AName + '\b',
+      [roIgnoreCase]));
+  end;
+
+  // Erstes Token ab AOffset.
+  function TokenAt(AOffset: Integer): Integer;
+  begin
+    Result := 0;
+    while (Result <= High(Tokens)) and (Tokens[Result].Offset < AOffset) do
+      Inc(Result);
+  end;
+
+  // Ganze Zeilen von ANode samt ";" dahinter und ///-Kommentaren direkt darüber; False, wenn auf den Zeilen
+  // noch anderes steht.
+  function RemovalOf(ANode: TSyntaxNode; out AEdit: TRuleEdit): Boolean;
+  var
+    First, Last, Index, LineStart, LineEnd: Integer;
+  begin
+    Result := False;
+    First := ANode.StartOffset;
+    Index := TokenAt(ANode.StartOffset) - 1;
+    while (Index >= 0) and (Tokens[Index].Kind = TPascalTokenKind.Comment) and StartsStr('///', Tokens[Index].Text) do
+    begin
+      First := Tokens[Index].Offset;
+      Dec(Index);
+    end;
+    Last := ANode.EndOffset;
+    Index := TokenAt(ANode.EndOffset);
+    if (Index <= High(Tokens)) and Tokens[Index].IsSymbol(';') then
+      Last := Tokens[Index].Offset + 1;
+    if not WholeLines(AContext.Text, First, Last, LineStart, LineEnd) then
+      Exit;
+    // Eine Leerzeile davor fällt mit weg, damit keine doppelten Leerzeilen bleiben.
+    if (LineStart >= 2) and (AContext.Text[LineStart] = #10) and
+      ((AContext.Text[LineStart - 1] = #10) or ((AContext.Text[LineStart - 1] = #13) and (LineStart >= 3) and
+      (AContext.Text[LineStart - 2] = #10))) then
+    begin
+      Dec(LineStart);
+      if AContext.Text[LineStart] = #13 then
+        Dec(LineStart);
+    end;
+    AEdit := TRuleEdit.Create(Range(LineStart, LineEnd), '');
+    Result := True;
+  end;
+
+  procedure CheckRoutine(ARoutine: TSyntaxNode);
+  var
+    Header, Block, TypeBody, Member, Forward_, Node: TSyntaxNode;
+    Name, Short, TypeName, Visibility, Kind, Indent: string;
+    CanRemove, IsMethod: Boolean;
+    Fixes: TArray<TRuleFix>;
+    Edits: TArray<TRuleEdit>;
+    Edit: TRuleEdit;
+    BeginToken, EndToken: Integer;
+    Lines: TArray<string>;
+  begin
+    Header := ARoutine.FindChild(TSyntaxKind.RoutineHeader);
+    Block := ARoutine.FindChild(TSyntaxKind.Block);
+    if (Header = nil) or (Block = nil) or not IsEmpty(Block) or HasCommentOrDirective(Header, ARoutine) then
+      Exit;
+    Name := Header.Name;
+    Short := ShortName(Name);
+    IsMethod := Pos('.', Name) > 0;
+    // Nachrichten-Handler ohne Inhalt schlucken die Nachricht absichtlich.
+    if HasDirectiveIn(Header, ['message']) then
+      Exit;
+    Member := nil;
+    TypeBody := nil;
+    Visibility := '';
+    if IsMethod then
+    begin
+      TypeName := Copy(Name, 1, LastDelimiter('.', Name) - 1);
+      if Pos('<', TypeName) > 0 then
+        TypeName := Copy(TypeName, 1, Pos('<', TypeName) - 1);
+      TypeBody := FindTypeBody(Root, ShortName(TypeName));
+      if TypeBody <> nil then
+        Member := MemberHeader(TypeBody, Short, Visibility);
+      // Leere virtuelle Methode als Ersatz für abstract; leerer Nachrichten-Handler; Klasse mit Interfaces:
+      // der Compiler verlangt jede Interface-Methode, auch wenn sie nichts zu tun hat (Notifier der Open Tools API).
+      if HasDirectiveIn(Member, ['virtual', 'dynamic', 'message']) or ListsInterfaces(TypeBody) then
+        Exit;
+    end;
+    // Ereignis-Handler aus der Formulardatei: die IDE entfernt sie beim Speichern selbst.
+    if (AContext.FormText <> '') and TRegEx.IsMatch(AContext.FormText, '=\s*' + Short + '\b', [roIgnoreCase]) then
+      Exit;
+    Kind := 'Routine';
+    if IsMethod then
+      Kind := 'Methode';
+    Fixes := nil;
+    // Kommentar zwischen begin und end.
+    BeginToken := TokenAt(Block.StartOffset);
+    EndToken := TokenAt(Block.EndOffset) - 1;
+    if (BeginToken <= High(Tokens)) and Tokens[BeginToken].IsKeyword('begin') and (EndToken > BeginToken) and
+      Tokens[EndToken].IsKeyword('end') then
+    begin
+      Lines := TTextLines.SplitLines(AContext.Text);
+      Indent := '';
+      if Tokens[BeginToken].StartPos.Line <= High(Lines) then
+        Indent := TTextLines.IndentOf(Lines[Tokens[BeginToken].StartPos.Line]);
+      Fixes := [TRuleFix.Create('Kommentar einfügen', [TRuleEdit.Create(TTextRange.Create(
+        Tokens[BeginToken].EndPos, Tokens[EndToken].StartPos), LineBreak + Indent + '  // Absichtlich leer.' +
+        LineBreak + Indent)])];
+    end;
+    // Entfernen nur, wo niemand außerhalb der Datei die Routine sehen kann und sie hier nicht vorkommt.
+    Forward_ := nil;
+    if IsMethod then
+      CanRemove := (Member <> nil) and ((Visibility = 'private') or (Visibility = 'strict private')) and
+        not MethodSignatureFixed(Root, Name) and not HasDirectiveIn(Member, ['override', 'overload'])
+    else
+    begin
+      CanRemove := True;
+      for Node in NodesOfKind(Root, TSyntaxKind.RoutineHeader) do
+        if (Node <> Header) and SameText(Node.Name, Name) then
+          if (Node.Parent <> nil) and (Node.Parent.Kind = TSyntaxKind.RoutineDecl) and
+            (Node.Parent.FindChild(TSyntaxKind.Block) = nil) and (Node.Parent.Parent <> nil) and
+            (Node.Parent.Parent.Kind = TSyntaxKind.ImplementationSection) and (Forward_ = nil) then
+            Forward_ := Node.Parent
+          else
+            CanRemove := False;
+    end;
+    CanRemove := CanRemove and not Referenced(Short);
+    if CanRemove and RemovalOf(ARoutine, Edit) then
+    begin
+      Edits := [Edit];
+      if (Member <> nil) and RemovalOf(Member, Edit) then
+        Edits := Edits + [Edit]
+      else if Member <> nil then
+        Edits := nil;
+      if (Forward_ <> nil) and (Edits <> nil) and RemovalOf(Forward_, Edit) then
+        Edits := Edits + [Edit]
+      else if Forward_ <> nil then
+        Edits := nil;
+      if Edits <> nil then
+        Fixes := Fixes + [TRuleFix.Create(Kind + ' entfernen', Edits)];
+    end;
+    AReport.Add(NameRange(AContext, Header, Short), Format('%s ist leer; entweder fehlt der Inhalt oder die %s ' +
+      'kann weg.', [Short, Kind]), Fixes);
+  end;
+
+var
+  Routine: TSyntaxNode;
+begin
+  if (AContext.Tree = nil) or (AContext.Tree.Root = nil) then
+    Exit;
+  Root := AContext.Tree.Root;
+  Tokens := AContext.Tree.Tokens;
+  Cache := TRuleDerived.Open(AContext);
+  LineBreak := TTextLines.LineBreakOf(AContext.Text);
+  References := nil;
+  for Routine in NodesOfKind(Root, TSyntaxKind.Identifier) + NodesOfKind(Root, TSyntaxKind.MemberAccess) do
+    References := References + [Routine];
+  for Routine in TRuleDerived.Routines(Cache, AContext) do
+    CheckRoutine(Routine);
+end;
+
 procedure RegisterUnusedRules(const ARegistry: TRuleRegistry);
 begin
   ARegistry.Register(TUnusedLocalRule.Create);
   ARegistry.Register(TUnusedParameterRule.Create);
   ARegistry.Register(TUnusedAssignmentRule.Create);
+  ARegistry.Register(TEmptyRoutineRule.Create);
 end;
 
 end.
