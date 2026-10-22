@@ -81,13 +81,13 @@ uses
   Atlas.Common.Pascal.Contract,
   Atlas.Common.Pascal.TreeCache,
   Atlas.Common.Index.Extractor,
+  Atlas.Common.Index.LibraryUnits,
   Atlas.Common.Lsp.Internals.Cancellation;
 
 const
   TypeNames: array[TSemanticTokenType] of string = ('namespace', 'class', 'enum', 'interface', 'struct', 'type',
     'parameter', 'variable', 'field', 'property', 'event', 'enumMember', 'function', 'method');
   ModifierNames: array[TSemanticTokenModifier] of string = ('declaration', 'readonly', 'defaultLibrary');
-  LibraryPrefixes: array[0..5] of string = ('System.', 'Vcl.', 'Fmx.', 'Winapi.', 'Data.', 'Xml.');
 
 function ComparePositions(const A, B: TTextPosition): Integer;
 begin
@@ -110,18 +110,6 @@ begin
     Result := AText;
 end;
 
-function IsLibraryUnit(const AUnitName: string): Boolean;
-var
-  Prefix: string;
-begin
-  if SameText(AUnitName, 'System') then
-    Exit(True);
-  for Prefix in LibraryPrefixes do
-    if StartsText(Prefix, AUnitName) then
-      Exit(True);
-  Result := False;
-end;
-
 function Classify(const ASymbol: TResolvedSymbol; out AType: TSemanticTokenType;
   out AModifiers: TSemanticTokenModifiers): Boolean;
 begin
@@ -131,12 +119,12 @@ begin
     TResolvedKind.UnitName:
       begin
         AType := TSemanticTokenType.Namespace;
-        if IsLibraryUnit(ASymbol.UnitName) then
+        if TLibraryUnits.IsLibraryUnit(ASymbol.UnitName) then
           Include(AModifiers, TSemanticTokenModifier.DefaultLibrary);
         Exit;
       end;
     TResolvedKind.Symbol:
-      if IsLibraryUnit(ASymbol.UnitName) then
+      if TLibraryUnits.IsLibraryUnit(ASymbol.UnitName) then
         Include(AModifiers, TSemanticTokenModifier.DefaultLibrary);
     TResolvedKind.Local:
       ;
@@ -349,7 +337,7 @@ begin
       begin
         Item.TokenType := TSemanticTokenType.Namespace;
         Item.Modifiers := [];
-        if IsLibraryUnit(Chain) or IsLibraryUnit(Chain + '.') then
+        if TLibraryUnits.IsLibraryUnit(Chain) then
           Include(Item.Modifiers, TSemanticTokenModifier.DefaultLibrary);
         List.Add(Item);
       end;

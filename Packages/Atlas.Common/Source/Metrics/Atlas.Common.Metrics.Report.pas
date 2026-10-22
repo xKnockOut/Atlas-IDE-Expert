@@ -5,7 +5,8 @@
 //
 // JSON (Format 1, Zeilen und Spalten ab 1):
 //   {"format": 1,
-//    "limits": {"length": 60, "nesting": 4, "cyclomatic": 15, "cognitive": 15, "parameters": 6},
+//    "limits": {"length": 60, "nesting": 4, "cyclomatic": 15, "cognitive": 15, "parameters": 6,
+//               "operands": 5, "locals": 12, "exits": 4},
 //    "summary": {"files": 2, "methods": 10, "overLimits": 1,
 //                "average": {"length": 12.5, …}, "maximum": {"length": 75, …},
 //                "exceeded": {"length": 1, …}},
@@ -19,7 +20,8 @@
 // Der Text entsteht ohne System.JSON, damit die Unit überall gleich arbeitet.
 // Kennzahlen des Aufbaus einer Datei (#939) als StructureJson:
 //   [{"kind": "classSize", "name": "TFoo", "line": 5, "character": 3, "value": 87, "limit": 40}, …]
-// kind ist classSize, unitLength oder usesCount.
+// kind ist classSize, unitLength, usesCount oder inheritanceDepth (#980, nur mit Index über
+// TMetricRules.InheritanceDepths); "atLeast": true, wenn value nur eine Untergrenze ist.
 
 interface
 
@@ -66,17 +68,24 @@ type
     /// <summary>Gesamtbericht als Markdown; ATitle z. B. der Projektname.</summary>
     class function Markdown(const AFiles: TArray<TFileMetrics>; const ALimits: TMetricLimits;
       const ATitle: string): string; static;
-    /// <summary>Titel der Code Lens: "12 Zeilen · Tiefe 2 · zyklomatisch 4 · kognitiv 3 · 2 Parameter";
+    /// <summary>Titel der Code Lens: "12 Zeilen · Tiefe 2 · zyklomatisch 4 · kognitiv 3 · 2 Parameter · Operanden 2 ·
+    /// 3 lokale · 1 Ausstiege";
     /// Überschreitungen mit Grenzwert, z. B. "zyklomatisch 17 (> 15)".</summary>
     class function LensTitle(const AValues: TMetricValues; const ALimits: TMetricLimits): string; static;
-    /// <summary>Kennung des Aufbaus in JSON: classSize, unitLength, usesCount (#939).</summary>
+    /// <summary>Kennung des Aufbaus in JSON: classSize, unitLength, usesCount (#939), inheritanceDepth (#980).
+    /// </summary>
     class function StructureKey(AKind: TStructureKind): string; static;
     /// <summary>Kennzahlen des Aufbaus als JSON-Array (siehe Kopf der Unit, #939).</summary>
     class function StructureJson(const AItems: TArray<TStructureMetrics>; const ALimits: TMetricLimits): string;
       static;
-    /// <summary>Teil der Code Lens zum Aufbau (#939): "87 Member", "2140 Zeilen" bzw. "34 Units im uses";
+    /// <summary>Teil der Code Lens zum Aufbau (#939): "87 Member", "2140 Zeilen", "34 Units im uses" bzw.
+    /// "Vererbungstiefe 3" (#980);
     /// Überschreitungen mit Grenzwert, z. B. "87 Member (> 40)".</summary>
     class function StructureLensPart(AKind: TStructureKind; AValue: Integer; const ALimits: TMetricLimits): string;
+      overload; static;
+    /// <summary>Wie oben für AItem; eine Untergrenze der Vererbungstiefe als "Vererbungstiefe mindestens 3"
+    /// (#980).</summary>
+    class function StructureLensPart(const AItem: TStructureMetrics; const ALimits: TMetricLimits): string; overload;
       static;
   end;
 
@@ -300,8 +309,8 @@ end;
 
 function RoutineHeader: string;
 begin
-  Result := '| Methode | Datei | Zeile | Länge | Tiefe | zyklomatisch | kognitiv | Parameter |' + LineBreak +
-    '|---|---|---:|---:|---:|---:|---:|---:|';
+  Result := '| Methode | Datei | Zeile | Länge | Tiefe | zyklomatisch | kognitiv | Parameter | Operanden | ' +
+    'lokale Variablen | Ausstiege |' + LineBreak + '|---|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|';
 end;
 
 class function TMetricsReport.Markdown(const AFiles: TArray<TFileMetrics>; const ALimits: TMetricLimits;
@@ -442,7 +451,10 @@ begin
     Part(TMetricKind.NestingDepth, 'Tiefe ' + IntToStr(AValues[TMetricKind.NestingDepth])) + ' · ' +
     Part(TMetricKind.Cyclomatic, 'zyklomatisch ' + IntToStr(AValues[TMetricKind.Cyclomatic])) + ' · ' +
     Part(TMetricKind.Cognitive, 'kognitiv ' + IntToStr(AValues[TMetricKind.Cognitive])) + ' · ' +
-    Part(TMetricKind.ParameterCount, IntToStr(AValues[TMetricKind.ParameterCount]) + ' Parameter');
+    Part(TMetricKind.ParameterCount, IntToStr(AValues[TMetricKind.ParameterCount]) + ' Parameter') + ' · ' +
+    Part(TMetricKind.BooleanOperands, 'Operanden ' + IntToStr(AValues[TMetricKind.BooleanOperands])) + ' · ' +
+    Part(TMetricKind.LocalCount, IntToStr(AValues[TMetricKind.LocalCount]) + ' lokale') + ' · ' +
+    Part(TMetricKind.ExitPoints, IntToStr(AValues[TMetricKind.ExitPoints]) + ' Ausstiege');
 end;
 
 class function TMetricsReport.StructureKey(AKind: TStructureKind): string;
@@ -452,8 +464,10 @@ begin
       Result := 'classSize';
     TStructureKind.UnitLength:
       Result := 'unitLength';
+    TStructureKind.UsesCount:
+      Result := 'usesCount';
   else
-    Result := 'usesCount';
+    Result := 'inheritanceDepth';
   end;
 end;
 
@@ -472,7 +486,10 @@ begin
     Result := Result + '{"kind": ' + JsonString(StructureKey(Item.Kind)) + ', "name": ' + JsonString(Item.Name) +
       ', "line": ' + IntToStr(Item.NameRange.StartPos.Line + 1) + ', "character": ' +
       IntToStr(Item.NameRange.StartPos.Character + 1) + ', "value": ' + IntToStr(Item.Value) + ', "limit": ' +
-      IntToStr(ALimits.Structure[Item.Kind]) + '}';
+      IntToStr(ALimits.Structure[Item.Kind]);
+    if Item.AtLeast then
+      Result := Result + ', "atLeast": true';
+    Result := Result + '}';
   end;
   Result := Result + ']';
 end;
@@ -485,11 +502,20 @@ begin
       Result := IntToStr(AValue) + ' Member';
     TStructureKind.UnitLength:
       Result := IntToStr(AValue) + ' Zeilen';
+    TStructureKind.UsesCount:
+      Result := IntToStr(AValue) + ' Units im uses';
   else
-    Result := IntToStr(AValue) + ' Units im uses';
+    Result := 'Vererbungstiefe ' + IntToStr(AValue);
   end;
   if ALimits.ExceedsStructure(AKind, AValue) then
     Result := Result + ' (> ' + IntToStr(ALimits.Structure[AKind]) + ')';
+end;
+
+class function TMetricsReport.StructureLensPart(const AItem: TStructureMetrics; const ALimits: TMetricLimits): string;
+begin
+  Result := StructureLensPart(AItem.Kind, AItem.Value, ALimits);
+  if AItem.AtLeast and (AItem.Kind = TStructureKind.InheritanceDepth) then
+    Result := StringReplace(Result, 'Vererbungstiefe ', 'Vererbungstiefe mindestens ', []);
 end;
 
 end.

@@ -2,7 +2,8 @@
 
 // Tests der Metrik-Regeln (#66): Treffer mit Regel-ID auf dem Methodennamen,
 // Unterdrückung per Kommentar, Grenzwerte aus atlas.json ("max"); Aufbau (#939): Member je Klasse, Zeilen
-// der Unit, Units im uses.
+// der Unit, Units im uses; #980: Operanden einer Bedingung samt Korrektur, lokale Variablen, Ausstiege,
+// Vererbungstiefe über Datei und Index (Bibliothek ausgenommen, abgebrochene Kette als Untergrenze).
 
 interface
 
@@ -41,6 +42,22 @@ type
     procedure UnitLengthAndUsesCount;
     [Test]
     procedure StructureLimitsOffAndExclude;
+    [Test]
+    procedure BooleanOperandsIssueExample;
+    [Test]
+    procedure BooleanOperandsFixExtractsCondition;
+    [Test]
+    procedure BooleanOperandsOptionsOffAndExclude;
+    [Test]
+    procedure LocalCountReports;
+    [Test]
+    procedure ExitPointsReports;
+    [Test]
+    procedure InheritanceDepthInFile;
+    [Test]
+    procedure InheritanceDepthSkipsLibrary;
+    [Test]
+    procedure InheritanceDepthLowerBound;
   end;
 
 implementation
@@ -53,6 +70,12 @@ uses
   Atlas.Common.Rules.Contract,
   Atlas.Common.Rules.Builtin,
   Atlas.Common.Rules.Builtin.Metrics,
+  Atlas.Common.Pascal.SyntaxTree,
+  Atlas.Common.Pascal.Parser,
+  Atlas.Common.Index.Contract,
+  Atlas.Common.Index.SymbolIndex,
+  Atlas.Common.Index.Extractor,
+  Atlas.Common.Editing.ChangeSignature,
   Atlas.Tests.RuleAssert;
 
 function InUnit(const ABody: string): string;
@@ -182,8 +205,8 @@ begin
     if Rule.Descriptor.Id.StartsWith('metric-') then
       Found := Found + Rule.Descriptor.Id + ' ';
   Assert.AreEqual('metric-method-length metric-nesting-depth metric-cyclomatic-complexity ' +
-    'metric-cognitive-complexity metric-parameter-count metric-class-size metric-unit-length metric-uses-count ',
-    Found);
+    'metric-cognitive-complexity metric-parameter-count metric-boolean-operands metric-local-count ' +
+    'metric-exit-points metric-class-size metric-unit-length metric-uses-count metric-inheritance-depth ', Found);
 end;
 
 /// <summary>Unit mit einer Formularklasse aus ACount Feldern.</summary>
@@ -280,6 +303,200 @@ begin
   Assert.AreEqual(50, Limits.Structure[TStructureKind.ClassSize]);
   Assert.AreEqual(2000, Limits.Structure[TStructureKind.UnitLength]);
   Assert.AreEqual(12, Limits.Structure[TStructureKind.UsesCount]);
+end;
+
+const
+  /// <summary>Beispiel aus #980: sechs Operanden.</summary>
+  SixOperands = 'unit U;'#10'interface'#10'type'#10'  TKunde = class'#10'    Aktiv: Boolean;'#10 +
+    '    Land: string;'#10'  end;'#10'implementation'#10 +
+    'procedure Pruefe(Kunde: TKunde; Betrag: Currency; Gesperrt: Boolean; Datum, Start, Ende: TDate);'#10 +
+    'begin'#10'  if (Kunde.Aktiv) and (Kunde.Land = ''DE'') and (Betrag > 0) and'#10 +
+    '     (not Gesperrt) and (Datum >= Start) and (Datum <= Ende) then'#10'    Buche;'#10'end;'#10'end.';
+
+procedure TMetricRulesTests.BooleanOperandsIssueExample;
+var
+  Findings: TArray<TRuleFinding>;
+begin
+  Findings := TRuleAssert.Findings(TMetricRule.Create(TMetricKind.BooleanOperands), SixOperands);
+  Assert.AreEqual(1, Integer(Length(Findings)));
+  Assert.AreEqual(BooleanOperandsRuleId, Findings[0].RuleId);
+  Assert.AreEqual(Ord(TRuleSeverity.Hint), Ord(Findings[0].Severity));
+  Assert.AreEqual('Bedingung mit 6 Operanden (Grenze 5).', Findings[0].Message);
+  Assert.AreEqual(10, Findings[0].Range.StartPos.Line, 'auf der Bedingung');
+  Assert.AreEqual(5, Findings[0].Range.StartPos.Character);
+  Assert.AreEqual(11, Findings[0].Range.EndPos.Line);
+  // Fünf Operanden (auch durch Klammern und not hindurch) sind erlaubt.
+  TRuleAssert.Silent(TMetricRule.Create(TMetricKind.BooleanOperands),
+    StringReplace(SixOperands, ' and (Datum <= Ende)', '', []));
+  // Zwei Bedingungen mit je drei Operanden zählen getrennt.
+  TRuleAssert.Silent(TMetricRule.Create(TMetricKind.BooleanOperands),
+    StringReplace(SixOperands, ' and'#10'     (not Gesperrt)', ' then'#10'  if (not Gesperrt)', []));
+end;
+
+procedure TMetricRulesTests.BooleanOperandsFixExtractsCondition;
+var
+  Findings: TArray<TRuleFinding>;
+  Fixed: string;
+begin
+  Findings := TRuleAssert.Findings(TMetricRule.Create(TMetricKind.BooleanOperands), SixOperands);
+  Assert.AreEqual(1, Integer(Length(Findings)));
+  Assert.AreEqual(1, Integer(Length(Findings[0].Fixes)));
+  Assert.AreEqual('Bedingung in Funktion auslagern', Findings[0].Fixes[0].Title);
+  Fixed := TChangeSignature.ApplyEdits(SixOperands, Findings[0].Fixes[0].Edits);
+  Assert.Contains(Fixed, 'function ExtractedCondition(const Kunde: TKunde; const Betrag: Currency; ' +
+    'const Gesperrt: Boolean; const Datum: TDate; const Start: TDate; const Ende: TDate): Boolean;'#10'begin'#10 +
+    '  Result := (Kunde.Aktiv) and (Kunde.Land = ''DE'') and (Betrag > 0) and'#10 +
+    '     (not Gesperrt) and (Datum >= Start) and (Datum <= Ende);'#10'end;'#10#10'procedure Pruefe(');
+  Assert.Contains(Fixed, '  if ExtractedCondition(Kunde, Betrag, Gesperrt, Datum, Start, Ende) then'#10'    Buche;');
+  // Die korrigierte Form meldet nichts mehr.
+  TRuleAssert.Silent(TMetricRule.Create(TMetricKind.BooleanOperands), Fixed);
+end;
+
+procedure TMetricRulesTests.BooleanOperandsOptionsOffAndExclude;
+begin
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TMetricRule.Create(TMetricKind.BooleanOperands),
+    SixOperands, '{"rules": {"metric-boolean-operands": {"max": 6}}}'))));
+  Assert.AreEqual(1, Integer(Length(TRuleAssert.Findings(TMetricRule.Create(TMetricKind.BooleanOperands),
+    StringReplace(SixOperands, ' and (Datum <= Ende)', '', []), '{"rules": {"metric-boolean-operands": {"max": 4}}}'))));
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TMetricRule.Create(TMetricKind.BooleanOperands),
+    SixOperands, '{"rules": {"metric-boolean-operands": "off"}}'))));
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TMetricRule.Create(TMetricKind.BooleanOperands),
+    SixOperands, '{"rules": {"metric-boolean-operands": {"exclude": ["Alt/*.pas"]}}}', 'Alt/U.pas'))));
+end;
+
+procedure TMetricRulesTests.LocalCountReports;
+const
+  // 10 Namen im var-Abschnitt, eine Inline-Variable, eine for-var-Schleife: 12. Die lokale Routine und die
+  // anonyme Methode zählen für sich.
+  Source = 'procedure Run;'#10'var'#10'  A, B, C: Integer;'#10'  D, E, F, G: string;'#10'  H, I, J: Boolean;'#10 +
+    '  procedure Inner;'#10'  var'#10'    X, Y: Integer;'#10'  begin'#10'  end;'#10'begin'#10 +
+    '  var K := 1;'#10'  for var L := 0 to 9 do'#10'    Inner;'#10 +
+    '  TThread.Queue(nil, procedure'#10'    var'#10'      Z: Integer;'#10'    begin'#10'      var W := 2;'#10 +
+    '    end);'#10'end;';
+var
+  Findings: TArray<TRuleFinding>;
+begin
+  TRuleAssert.Silent(TMetricRule.Create(TMetricKind.LocalCount), InUnit(Source));
+  Findings := TRuleAssert.Findings(TMetricRule.Create(TMetricKind.LocalCount), InUnit(Source),
+    '{"rules": {"metric-local-count": {"max": 11}}}');
+  Assert.AreEqual(1, Integer(Length(Findings)), 'nur Run, nicht Inner');
+  Assert.AreEqual(LocalCountRuleId, Findings[0].RuleId);
+  Assert.AreEqual('Methode Run hat 12 lokale Variablen (Grenze 11); Teile in eigene Methoden auslagern',
+    Findings[0].Message);
+  Assert.AreEqual(3, Findings[0].Range.StartPos.Line, 'auf dem Namen im Kopf');
+  TRuleAssert.Reports(TMetricRule.Create(TMetricKind.LocalCount),
+    InUnit(StringReplace(Source, '  H, I, J: Boolean;', '  H, I, J, M: Boolean;', [])));
+end;
+
+procedure TMetricRulesTests.ExitPointsReports;
+const
+  // Exit, Exit(Wert) als Anweisung, raise mit Objekt, raise; im except: 4. Exit in der lokalen Routine und
+  // in der anonymen Methode zählen nicht.
+  Source = 'function Run(A: Integer): Integer;'#10'  procedure Inner;'#10'  begin'#10'    Exit;'#10'  end;'#10 +
+    'begin'#10'  if A = 0 then'#10'    Exit;'#10'  if A = 1 then'#10'    Exit(1);'#10'  try'#10 +
+    '    if A < 0 then'#10'      raise EArgumentException.Create(''A'');'#10'  except'#10'    raise;'#10'  end;'#10 +
+    '  Call(procedure'#10'    begin'#10'      Exit;'#10'    end);'#10'  Result := A;'#10'end;';
+var
+  Findings: TArray<TRuleFinding>;
+begin
+  TRuleAssert.Silent(TMetricRule.Create(TMetricKind.ExitPoints), InUnit(Source));
+  Findings := TRuleAssert.Findings(TMetricRule.Create(TMetricKind.ExitPoints), InUnit(Source),
+    '{"rules": {"metric-exit-points": {"max": 3}}}');
+  Assert.AreEqual(1, Integer(Length(Findings)));
+  Assert.AreEqual(ExitPointsRuleId, Findings[0].RuleId);
+  Assert.AreEqual('Methode Run hat 4 Ausstiege mit Exit oder raise (Grenze 3); Ablauf vereinfachen',
+    Findings[0].Message);
+  TRuleAssert.Reports(TMetricRule.Create(TMetricKind.ExitPoints),
+    InUnit(StringReplace(Source, '  Result := A;', '  if A = 2 then'#10'    Exit(2);'#10'  Result := A;', [])));
+end;
+
+/// <summary>Unit mit der Kette TStufe1 = class(ABasis) bis TStufe<ACount>.</summary>
+function Chain(const ABasis: string; ACount: Integer): string;
+var
+  Index: Integer;
+begin
+  Result := 'unit Kette;'#10'interface'#10'type'#10'  TStufe1 = class(' + ABasis + ')'#10'  end;'#10;
+  for Index := 2 to ACount do
+    Result := Result + Format('  TStufe%d = class(TStufe%d)'#10'  end;'#10, [Index, Index - 1]);
+  Result := Result + 'implementation'#10'end.';
+end;
+
+function IndexOf(const ASources: array of string; const ALibrary: array of Boolean): ISymbolIndex;
+var
+  Index: Integer;
+  Tree: TSyntaxTree;
+  Item: TUnitIndex;
+begin
+  Result := TSymbolIndex.Create;
+  for Index := 0 to High(ASources) do
+  begin
+    Tree := TPascalParser.Parse(ASources[Index]);
+    try
+      Item := TIndexExtractor.Extract(Tree, Format('C:\Quellen\Unit%d.pas', [Index]));
+      Item.Library_ := ALibrary[Index];
+      Result.AddUnit(Item);
+    finally
+      Tree.Free;
+    end;
+  end;
+end;
+
+procedure TMetricRulesTests.InheritanceDepthInFile;
+var
+  Findings: TArray<TRuleFinding>;
+begin
+  // TStufe6 hat fünf eigene Vorfahren (TStufe1 bis TStufe5), genau die Grenze; TObject zählt nicht.
+  TRuleAssert.Silent(TStructureMetricRule.Create(TStructureKind.InheritanceDepth), Chain('TObject', 6));
+  Findings := TRuleAssert.IndexFindings(TStructureMetricRule.Create(TStructureKind.InheritanceDepth),
+    Chain('TObject', 7), nil, '', '');
+  Assert.AreEqual(1, Integer(Length(Findings)), 'nur TStufe7');
+  Assert.AreEqual(InheritanceDepthRuleId, Findings[0].RuleId);
+  Assert.AreEqual('TStufe7 hat Vererbungstiefe 6 ohne RTL und VCL (Grenze 5).', Findings[0].Message);
+  Assert.AreEqual(15, Findings[0].Range.StartPos.Line, 'auf dem Klassennamen');
+  Assert.AreEqual(2, Findings[0].Range.StartPos.Character);
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.IndexFindings(
+    TStructureMetricRule.Create(TStructureKind.InheritanceDepth), Chain('TObject', 7), nil,
+    '{"rules": {"metric-inheritance-depth": {"max": 6}}}', ''))));
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.IndexFindings(
+    TStructureMetricRule.Create(TStructureKind.InheritanceDepth), Chain('TObject', 7), nil,
+    '{"rules": {"metric-inheritance-depth": "off"}}', ''))));
+end;
+
+procedure TMetricRulesTests.InheritanceDepthSkipsLibrary;
+const
+  Forms = 'unit Vcl.Forms;'#10'interface'#10'type'#10'  TControl = class'#10'  end;'#10 +
+    '  TWinControl = class(TControl)'#10'  end;'#10'  TCustomForm = class(TWinControl)'#10'  end;'#10 +
+    '  TForm = class(TCustomForm)'#10'  end;'#10'implementation'#10'end.';
+  Grid = 'unit cxGrid;'#10'interface'#10'type'#10'  TcxBasis = class'#10'  end;'#10 +
+    '  TcxGrid = class(TcxBasis)'#10'  end;'#10'implementation'#10'end.';
+var
+  Index: ISymbolIndex;
+begin
+  Index := IndexOf([Forms, Grid], [False, True]);
+  // Vier VCL-Klassen über der Kette zählen nicht: TStufe6 hat 5 eigene Vorfahren.
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.IndexFindings(
+    TStructureMetricRule.Create(TStructureKind.InheritanceDepth), Chain('TForm', 6), Index, '', ''))));
+  Assert.AreEqual(1, Integer(Length(TRuleAssert.IndexFindings(
+    TStructureMetricRule.Create(TStructureKind.InheritanceDepth), Chain('TForm', 7), Index, '', ''))));
+  // Bibliothek laut Index (über den Bibliothekspfad nachgeladen).
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.IndexFindings(
+    TStructureMetricRule.Create(TStructureKind.InheritanceDepth), Chain('TcxGrid', 6), Index, '', ''))));
+  // Die Unit der Bibliothek selbst meldet nichts.
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.IndexFindings(
+    TStructureMetricRule.Create(TStructureKind.InheritanceDepth),
+    StringReplace(Chain('TObject', 8), 'unit Kette;', 'unit Vcl.Kette;', []), Index, '', ''))));
+end;
+
+procedure TMetricRulesTests.InheritanceDepthLowerBound;
+var
+  Findings: TArray<TRuleFinding>;
+begin
+  // TUnbekannt steht weder in der Datei noch im Index: Die Kette bricht ab, der Wert ist eine Untergrenze.
+  Findings := TRuleAssert.IndexFindings(TStructureMetricRule.Create(TStructureKind.InheritanceDepth),
+    Chain('TUnbekannt', 7), nil, '', '');
+  Assert.AreEqual(1, Integer(Length(Findings)));
+  Assert.AreEqual('TStufe7 hat Vererbungstiefe mindestens 6 ohne RTL und VCL (Grenze 5).', Findings[0].Message);
+  TRuleAssert.Silent(TStructureMetricRule.Create(TStructureKind.InheritanceDepth), Chain('TUnbekannt', 6));
 end;
 
 initialization

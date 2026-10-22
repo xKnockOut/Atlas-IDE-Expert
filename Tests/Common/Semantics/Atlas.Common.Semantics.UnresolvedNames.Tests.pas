@@ -37,6 +37,8 @@ type
     procedure KnowsMembersOfStrictNestedTypes;
     [Test]
     procedure SkipsNamesWithUnknownAncestor;
+    [Test]
+    procedure UsesKnownNeedsEveryUnit;
   end;
 
 implementation
@@ -309,6 +311,24 @@ begin
   Empty := TSymbolIndex.Create;
   Assert.IsFalse(TUnresolvedNames.Available(Empty));
   Assert.IsTrue(TUnresolvedNames.IsIntrinsic('writeln'));
+end;
+
+procedure TUnresolvedNamesTests.UsesKnownNeedsEveryUnit;
+var
+  Asked: string;
+begin
+  // Für unresolved-attribute und xmldoc-mismatch (#979): auch über Namespaces und nachgeladene Units.
+  Assert.IsTrue(TUnresolvedNames.UsesKnown(FIndex, ['System', 'Basis'], nil, nil));
+  Assert.IsFalse(TUnresolvedNames.UsesKnown(FIndex, ['Basis', 'Fremd'], nil, nil));
+  Assert.IsTrue(TUnresolvedNames.UsesKnown(FIndex, ['Fremd'], nil,
+    function(const AUnitName: string): Boolean
+    begin
+      Asked := AUnitName;
+      Result := True;
+    end));
+  Assert.AreEqual('Fremd', Asked);
+  Assert.IsFalse(TUnresolvedNames.UsesKnown(FIndex, ['Lib'], ['Fremd'], nil));
+  Asked := '';
 end;
 
 initialization

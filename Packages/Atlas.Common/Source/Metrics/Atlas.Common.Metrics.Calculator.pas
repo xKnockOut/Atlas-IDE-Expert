@@ -17,7 +17,8 @@
 //     Parameter der Deklaration in derselben Datei.
 // Der Baum wird iterativ durchlaufen: Lange Ausdrucksketten ergeben sehr
 // tiefe Bäume. Structure liefert die Kennzahlen des Aufbaus (#939): Member je
-// Klasse, Zeilen der Unit und Units im uses.
+// Klasse, Zeilen der Unit und Units im uses. Conditions liefert die
+// Bedingungen mit ihren Operanden für metric-boolean-operands (#980).
 
 interface
 
@@ -50,6 +51,11 @@ type
     class function StructureForText(const AText: string): TArray<TStructureMetrics>; static;
     /// <summary>Member einer Klasse (ClassType, ObjectType), Zählweise siehe Metrics.Contract.</summary>
     class function MemberCount(AClass: TSyntaxNode): Integer; static;
+    /// <summary>Bedingungen in den Rümpfen aller Routinen mit ihren Operanden (#980), nach Position.</summary>
+    class function Conditions(ATree: TSyntaxTree): TArray<TConditionMetrics>; static;
+    /// <summary>Glieder der and/or/xor-Kette in AExpression, durch Klammern und not hindurch; mindestens 1.
+    /// </summary>
+    class function Operands(AExpression: TSyntaxNode): Integer; static;
   end;
 
 implementation
@@ -57,9 +63,11 @@ implementation
 uses
   System.SysUtils,
   System.Generics.Collections,
+  System.Generics.Defaults,
   Atlas.Common.Documents.Contract,
   Atlas.Common.Pascal.Contract,
-  Atlas.Common.Pascal.TreeCache;
+  Atlas.Common.Pascal.TreeCache,
+  Atlas.Common.Editing.RoutineLocals;
 
 const
   ExpressionKinds = [TSyntaxKind.Identifier, TSyntaxKind.Literal, TSyntaxKind.MemberAccess, TSyntaxKind.Call,
@@ -83,6 +91,9 @@ type
     Condition: Boolean;
     /// <summary>Der Knoten ist der else-Zweig eines if und selbst ein if (else if).</summary>
     ElseIf: Boolean;
+    /// <summary>Der Knoten steht in einer anonymen Methode: Exit, raise und Variablen gehören zu ihr (#980).
+    /// </summary>
+    Anonymous: Boolean;
   end;
 
   /// <summary>Ergebnis eines Durchlaufs über den Rumpf einer Routine.</summary>
@@ -90,6 +101,10 @@ type
     Depth: Integer;
     Cyclomatic: Integer;
     Cognitive: Integer;
+    /// <summary>Operanden der größten Bedingung, Inline- und for-Variablen, Exit und raise (#980).</summary>
+    Operands: Integer;
+    InlineLocals: Integer;
+    Exits: Integer;
   end;
 
 function Visit(ANode: TSyntaxNode; ADepth, ALevel: Integer; ACondition, AElseIf: Boolean): TVisit;
@@ -99,6 +114,7 @@ begin
   Result.Level := ALevel;
   Result.Condition := ACondition;
   Result.ElseIf := AElseIf;
+  Result.Anonymous := False;
 end;
 
 /// <summary>Index des ersten Tokens mit Offset ab AOffset.</summary>
@@ -157,6 +173,33 @@ begin
   Result := (Parent <> nil) and (Parent.Kind = TSyntaxKind.BinaryExpr) and SameText(Parent.Name, ANode.Name);
 end;
 
+function NameCount(const ANames: string): Integer;
+var
+  Position: Integer;
+begin
+  Result := 0;
+  if Trim(ANames) = '' then
+    Exit;
+  Result := 1;
+  for Position := 1 to Length(ANames) do
+    if ANames[Position] = ',' then
+      Inc(Result);
+end;
+
+/// <summary>Exit bzw. Exit(Wert) als Anweisung.</summary>
+function IsExitCall(ANode: TSyntaxNode): Boolean;
+var
+  Target: TSyntaxNode;
+begin
+  Result := False;
+  if (ANode.Kind <> TSyntaxKind.CallStatement) or (ANode.ChildCount = 0) then
+    Exit;
+  Target := ANode[0];
+  if (Target.Kind = TSyntaxKind.Call) and (Target.ChildCount > 0) then
+    Target := Target[0];
+  Result := (Target.Kind = TSyntaxKind.Identifier) and SameText(Target.Name, 'Exit');
+end;
+
 function BodyOf(ARoutine: TSyntaxNode): TSyntaxNode;
 var
   Index: Integer;
@@ -169,20 +212,43 @@ begin
       Exit(ARoutine[Index]);
 end;
 
-/// <summary>Ein Durchlauf über den Rumpf: Tiefe, zyklomatische und kognitive Komplexität.</summary>
-function Analyze(ATree: TSyntaxTree; ARoutine: TSyntaxNode): TFlow;
+/// <summary>Ein Durchlauf über den Rumpf: Tiefe, zyklomatische und kognitive Komplexität, Operanden, Inline-
+/// Variablen und Ausstiege; AConditions (oder nil) sammelt die Bedingungen.</summary>
+function AnalyzeWith(ATree: TSyntaxTree; ARoutine: TSyntaxNode; AConditions: TList<TSyntaxNode>): TFlow;
 var
   Tokens: TArray<TPascalToken>;
   Stack: TStack<TVisit>;
   Item: TVisit;
   Node, Branch: TSyntaxNode;
   Index, Handlers: Integer;
-  Inner: Boolean;
+  Inner, Anonymous: Boolean;
   Flow: TFlow;
+
+  procedure PushVisit(AVisit: TVisit);
+  begin
+    AVisit.Anonymous := Anonymous;
+    Stack.Push(AVisit);
+  end;
 
   procedure Push(AChild: TSyntaxNode; ADepth, ALevel: Integer; ACondition: Boolean);
   begin
-    Stack.Push(Visit(AChild, ADepth, ALevel, ACondition, False));
+    PushVisit(Visit(AChild, ADepth, ALevel, ACondition, False));
+  end;
+
+  // Wurzel einer Bedingung (if, while, until, Bedingungsausdruck).
+  procedure PushCondition(AChild: TSyntaxNode; ADepth, ALevel: Integer);
+  var
+    Count: Integer;
+  begin
+    if AChild.Kind in ExpressionKinds then
+    begin
+      Count := TMetricsCalculator.Operands(AChild);
+      if Count > Flow.Operands then
+        Flow.Operands := Count;
+      if AConditions <> nil then
+        AConditions.Add(AChild);
+    end;
+    Push(AChild, ADepth, ALevel, True);
   end;
 
   procedure Reach(ADepth: Integer);
@@ -192,9 +258,9 @@ var
   end;
 
 begin
-  Flow.Depth := 0;
+  Flow := Default(TFlow);
+  Anonymous := False;
   Flow.Cyclomatic := 1;
-  Flow.Cognitive := 0;
   Result := Flow;
   Node := BodyOf(ARoutine);
   if Node = nil then
@@ -207,10 +273,20 @@ begin
     begin
       Item := Stack.Pop;
       Node := Item.Node;
+      Anonymous := Item.Anonymous;
       case Node.Kind of
         TSyntaxKind.RoutineDecl:
           // Lokale Routinen zählen für sich.
           Continue;
+        TSyntaxKind.CallStatement:
+          if not Anonymous and IsExitCall(Node) then
+            Inc(Flow.Exits);
+        TSyntaxKind.RaiseStatement:
+          if not Anonymous then
+            Inc(Flow.Exits);
+        TSyntaxKind.InlineVar:
+          if not Anonymous then
+            Inc(Flow.InlineLocals, NameCount(Node.Name));
         TSyntaxKind.IfStatement:
           begin
             Inc(Flow.Cyclomatic);
@@ -222,12 +298,12 @@ begin
             Branch := ElseBranch(Tokens, Node);
             for Index := 0 to Node.ChildCount - 1 do
               if Index = 0 then
-                Push(Node[Index], Item.Depth, Item.Level, True)
+                PushCondition(Node[Index], Item.Depth, Item.Level)
               else if Node[Index] = Branch then
               begin
                 if Branch.Kind = TSyntaxKind.IfStatement then
                   // else if: gleiche Ebene wie das if, +1 beim inneren if.
-                  Stack.Push(Visit(Branch, Item.Depth, Item.Level, False, True))
+                  PushVisit(Visit(Branch, Item.Depth, Item.Level, False, True))
                 else
                 begin
                   Inc(Flow.Cognitive);
@@ -244,7 +320,7 @@ begin
             Inc(Flow.Cognitive, 1 + Item.Level);
             for Index := 0 to Node.ChildCount - 1 do
               if Index = 0 then
-                Push(Node[Index], Item.Depth, Item.Level, True)
+                PushCondition(Node[Index], Item.Depth, Item.Level)
               else
                 Push(Node[Index], Item.Depth, Item.Level + 1, False);
             Continue;
@@ -300,6 +376,7 @@ begin
           Inc(Flow.Cognitive);
         TSyntaxKind.AnonymousMethod:
           begin
+            Anonymous := True;
             for Index := 0 to Node.ChildCount - 1 do
               Push(Node[Index], Item.Depth, Item.Level + 1, False);
             Continue;
@@ -314,6 +391,9 @@ begin
       end;
       if Node.Kind in LoopKinds then
       begin
+        if not Anonymous and (Node.Kind in [TSyntaxKind.ForStatement, TSyntaxKind.ForInStatement]) and
+          TRoutineLocals.IsInlineFor(Tokens, Node) then
+          Inc(Flow.InlineLocals);
         Inc(Flow.Cyclomatic);
         Reach(Item.Depth + 1);
         Inc(Flow.Cognitive, 1 + Item.Level);
@@ -321,7 +401,7 @@ begin
           if ((Node.Kind = TSyntaxKind.WhileStatement) and (Index = 0)) or
             ((Node.Kind = TSyntaxKind.RepeatStatement) and (Index = Node.ChildCount - 1) and
             (Node[Index].Kind in ExpressionKinds)) then
-            Push(Node[Index], Item.Depth, Item.Level, True)
+            PushCondition(Node[Index], Item.Depth, Item.Level)
           else
             Push(Node[Index], Item.Depth + 1, Item.Level + 1, False);
         Continue;
@@ -335,6 +415,62 @@ begin
     Stack.Free;
   end;
   Result := Flow;
+end;
+
+function Analyze(ATree: TSyntaxTree; ARoutine: TSyntaxNode): TFlow;
+begin
+  Result := AnalyzeWith(ATree, ARoutine, nil);
+end;
+
+/// <summary>Namen im var-Abschnitt von ARoutine (nicht in lokalen Routinen).</summary>
+function DeclaredLocals(ARoutine: TSyntaxNode): Integer;
+var
+  Index, Inner: Integer;
+  Section: TSyntaxNode;
+begin
+  Result := 0;
+  for Index := 0 to ARoutine.ChildCount - 1 do
+  begin
+    Section := ARoutine[Index];
+    if Section.Kind = TSyntaxKind.VarSection then
+      for Inner := 0 to Section.ChildCount - 1 do
+        if Section[Inner].Kind = TSyntaxKind.VarDecl then
+          Inc(Result, NameCount(Section[Inner].Name));
+  end;
+end;
+
+/// <summary>Routinen mit Rumpf in ATree, auch lokale, in der Reihenfolge des Durchlaufs.</summary>
+function FindRoutines(ATree: TSyntaxTree): TArray<TSyntaxNode>;
+var
+  Stack: TStack<TSyntaxNode>;
+  Node: TSyntaxNode;
+  Index: Integer;
+begin
+  Result := nil;
+  Stack := TStack<TSyntaxNode>.Create;
+  try
+    Stack.Push(ATree.Root);
+    while Stack.Count > 0 do
+    begin
+      Node := Stack.Pop;
+      if Node.Kind = TSyntaxKind.RoutineDecl then
+      begin
+        if BodyOf(Node) <> nil then
+          Result := Result + [Node];
+        // Lokale Routinen stehen als Kinder darin.
+        for Index := Node.ChildCount - 1 downto 0 do
+          if Node[Index].Kind = TSyntaxKind.RoutineDecl then
+            Stack.Push(Node[Index]);
+        Continue;
+      end;
+      if Node.Kind in [TSyntaxKind.Block, TSyntaxKind.AsmBlock] + ExpressionKinds then
+        Continue;
+      for Index := Node.ChildCount - 1 downto 0 do
+        Stack.Push(Node[Index]);
+    end;
+  finally
+    Stack.Free;
+  end;
 end;
 
 /// <summary>Qualifizierter Name der Typen um ANode, z. B. "TFoo.TInner"; '' außerhalb von Typen.</summary>
@@ -538,8 +674,6 @@ end;
 
 class function TMetricsCalculator.Routines(ATree: TSyntaxTree): TArray<TRoutineMetrics>;
 var
-  Stack: TStack<TSyntaxNode>;
-  Found: TList<TSyntaxNode>;
   Node, Header, Parent: TSyntaxNode;
   Index, Count: Integer;
   Known: TDictionary<string, Integer>;
@@ -549,30 +683,9 @@ begin
   Result := nil;
   if (ATree = nil) or (ATree.Root = nil) then
     Exit;
-  Found := TList<TSyntaxNode>.Create;
-  Stack := TStack<TSyntaxNode>.Create;
   Known := nil;
   try
-    Stack.Push(ATree.Root);
-    while Stack.Count > 0 do
-    begin
-      Node := Stack.Pop;
-      if Node.Kind = TSyntaxKind.RoutineDecl then
-      begin
-        if BodyOf(Node) <> nil then
-          Found.Add(Node);
-        // Lokale Routinen stehen als Kinder darin.
-        for Index := Node.ChildCount - 1 downto 0 do
-          if Node[Index].Kind = TSyntaxKind.RoutineDecl then
-            Stack.Push(Node[Index]);
-        Continue;
-      end;
-      if Node.Kind in [TSyntaxKind.Block, TSyntaxKind.AsmBlock] + ExpressionKinds then
-        Continue;
-      for Index := Node.ChildCount - 1 downto 0 do
-        Stack.Push(Node[Index]);
-    end;
-    for Node in Found do
+    for Node in FindRoutines(ATree) do
     begin
       Metrics := Default(TRoutineMetrics);
       Metrics.Name := Node.Name;
@@ -594,6 +707,9 @@ begin
       Metrics.Values[TMetricKind.NestingDepth] := Flow.Depth;
       Metrics.Values[TMetricKind.Cyclomatic] := Flow.Cyclomatic;
       Metrics.Values[TMetricKind.Cognitive] := Flow.Cognitive;
+      Metrics.Values[TMetricKind.BooleanOperands] := Flow.Operands;
+      Metrics.Values[TMetricKind.LocalCount] := DeclaredLocals(Node) + Flow.InlineLocals;
+      Metrics.Values[TMetricKind.ExitPoints] := Flow.Exits;
       Count := ParameterCount(Header);
       if (Header <> nil) and (Header.FindChild(TSyntaxKind.Parameters) = nil) and (Pos('.', Node.Name) > 0) then
       begin
@@ -608,22 +724,68 @@ begin
     end;
   finally
     Known.Free;
-    Stack.Free;
-    Found.Free;
   end;
 end;
 
-function NameCount(const ANames: string): Integer;
+class function TMetricsCalculator.Operands(AExpression: TSyntaxNode): Integer;
 var
-  Position: Integer;
+  Stack: TStack<TSyntaxNode>;
+  Node: TSyntaxNode;
 begin
+  // Iterativ: lange Ketten ergeben tiefe Bäume.
   Result := 0;
-  if Trim(ANames) = '' then
+  Stack := TStack<TSyntaxNode>.Create;
+  try
+    Stack.Push(AExpression);
+    while Stack.Count > 0 do
+    begin
+      Node := Stack.Pop;
+      if (Node.Kind = TSyntaxKind.BinaryExpr) and (Node.ChildCount = 2) and (SameText(Node.Name, 'and') or
+        SameText(Node.Name, 'or') or SameText(Node.Name, 'xor')) then
+      begin
+        Stack.Push(Node[1]);
+        Stack.Push(Node[0]);
+      end
+      else if ((Node.Kind = TSyntaxKind.ParenExpr) or ((Node.Kind = TSyntaxKind.UnaryExpr) and
+        SameText(Node.Name, 'not'))) and (Node.ChildCount = 1) then
+        Stack.Push(Node[0])
+      else
+        Inc(Result);
+    end;
+  finally
+    Stack.Free;
+  end;
+end;
+
+class function TMetricsCalculator.Conditions(ATree: TSyntaxTree): TArray<TConditionMetrics>;
+var
+  Routine, Node: TSyntaxNode;
+  Found: TList<TSyntaxNode>;
+  Item: TConditionMetrics;
+begin
+  Result := nil;
+  if (ATree = nil) or (ATree.Root = nil) then
     Exit;
-  Result := 1;
-  for Position := 1 to Length(ANames) do
-    if ANames[Position] = ',' then
-      Inc(Result);
+  Found := TList<TSyntaxNode>.Create;
+  try
+    for Routine in FindRoutines(ATree) do
+      AnalyzeWith(ATree, Routine, Found);
+    Found.Sort(TComparer<TSyntaxNode>.Construct(
+      function(const A, B: TSyntaxNode): Integer
+      begin
+        Result := A.StartOffset - B.StartOffset;
+      end));
+    for Node in Found do
+    begin
+      Item.Range := TTextRange.Create(Node.StartPos, Node.EndPos);
+      Item.StartOffset := Node.StartOffset;
+      Item.EndOffset := Node.EndOffset;
+      Item.Operands := Operands(Node);
+      Result := Result + [Item];
+    end;
+  finally
+    Found.Free;
+  end;
 end;
 
 class function TMetricsCalculator.MemberCount(AClass: TSyntaxNode): Integer;

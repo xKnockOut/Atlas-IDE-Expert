@@ -5838,3 +5838,101 @@ Voraussetzung: Server läuft in der IDE mit einem DLL-Projekt (`library`).
 | DX5 | `ShareMem` als erste Unit in der uses der DLL, `stdcall` gesetzt; dann `"dll-export-unsafe": {"allowShareMem": false}` | Erst keine Meldung für den string, danach wieder Meldung |
 | DX6 | Überladene Routinen in exports mit Parameterliste und `name`; Unit mit Deklaration im interface und `exports` im implementation-Teil | Keine Syntaxfehler-Meldung zum exports-Abschnitt; die Meldung gilt der gewählten Überladung; in der Unit bekommen beide Köpfe `stdcall` |
 | DX7 | `"dll-export-unsafe": "off"`, `"group:robustness": "off"` bzw. `exclude` | Keine Meldung |
+
+## Array wächst in der Schleife um je ein Element (#974)
+
+Voraussetzung: Server läuft in der IDE mit Projekt.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| JL1 | Das Beispiel aus #974: `Namen: TArray<string>` lokal, `for I := 0 to Liste.Count - 1 do begin SetLength(Namen, Length(Namen) + 1); Namen[High(Namen)] := Liste[I].Name; end;` | Hinweis `setlength-in-loop` an der SetLength-Zeile: „SetLength in der Schleife kopiert Namen bei jedem Durchlauf; die Anzahl Liste.Count ist vorher bekannt.“; im Fenster „Atlas-Prüfung“ und im Befund-Hover (**Abnahme**) |
+| JL2 | Schnellkorrektur „Länge von Namen vor der Schleife setzen“, danach Strg+Z | `SetLength(Namen, Liste.Count);` vor der Schleife, Rumpf `Namen[I] := Liste[I].Name;` ohne begin/end; keine Meldung mehr; ein Undo-Schritt stellt alles wieder her |
+| JL3 | Wie JL1, aber `for I := 1 to N` und `Namen[Length(Namen) - 1]`; dann mit einer zweiten Anweisung im Rumpf | Anzahl N, Index `I - 1`; mit zweiter Anweisung bleibt begin/end stehen |
+| JL4 | `while not Eof(F)`, `repeat … until`, `for X in Quelle`, SetLength unter `if` | Meldung „… die Länge vor der Schleife setzen oder die Werte in einer TList<T> sammeln.“ ohne Korrektur |
+| JL5 | Array vor der Schleife befüllt, Feld statt lokaler Variable, `Result` einer Funktion, `Break` im Rumpf | Meldung ohne Korrektur |
+| JL6 | `S: string` mit `SetLength(S, Length(S) + 1)` in einer Schleife, `SetLength(A, 10)` in einer Schleife, SetLength außerhalb einer Schleife | Keine Meldung |
+| JL7 | `"setlength-in-loop": "off"`, `"group:performance": "off"` bzw. `exclude` | Keine Meldung |
+
+## Parameter ohne const, der nicht verändert wird (#975)
+
+Voraussetzung: Server läuft in der IDE mit Projekt, `"managed-param-without-const": "hint"` (Standard aus).
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| JK1 | Das Beispiel aus #975: `TKundenDaten = record Name: string; Nummer: Int64; end;`, `function Formatieren(Text: string; Kunde: TKundenDaten): string;` im interface und im Rumpf `Result := Text + Kunde.Name;` | Hinweis `managed-param-without-const` an der Parameterliste: „Text und Kunde werden nicht verändert; mit const entfallen Referenzzählung und Kopie.“; im Fenster „Atlas-Prüfung“ und im Befund-Hover (**Abnahme**) |
+| JK2 | Schnellkorrektur „const ergänzen“, danach Strg+Z | Beide Köpfe (interface und implementation) lauten `function Formatieren(const Text: string; const Kunde: TKundenDaten): string;`; keine Meldung mehr; übersetzt; ein Undo-Schritt stellt beide Köpfe wieder her |
+| JK3 | `procedure P(A, B: string)` mit `B := A;` im Rumpf, Korrektur anwenden | Meldung nur für A; Kopf danach `procedure P(const A: string; B: string)` |
+| JK4 | Rumpf ändert den Parameter: `Text := Trim(Text)`, `Text[1] := 'x'`, `Delete(Text, 1, 1)`, `Kunde.Name := ''`, Übergabe an `var`, `@Kunde`, `with Kunde do`, Einfangen in einer anonymen Methode, `Kunde.Leeren` (Record-Methode) | Für diesen Parameter keine Meldung |
+| JK5 | `Liste.Add(Text)` an einem Objekt: einmal mit fertigem Index, einmal direkt nach dem Öffnen ohne Index | Mit Index Meldung (Add nimmt const), ohne Index keine (Signatur unbekannt) |
+| JK6 | Methode `virtual`, `override`, `published`, Ereignis-Handler aus der .dfm, `OnText := M` im Code, Klasse mit Interface, `stdcall`/`external`/`exports` | Keine Meldung; mit `"ignoreOverrides": false` meldet die Regel das Override ohne Korrektur |
+| JK7 | Record mit `X, Y: Integer` (8 Byte), `Integer`- und `TObject`-Parameter; danach `"minRecordSize": 8` | Erst keine Meldung; mit 8 wird der Record gemeldet |
+| JK8 | `"managed-param-without-const": "off"`, `"group:performance": "off"` bzw. `exclude` | Keine Meldung |
+
+## Standardparameter statt Überladung (#976)
+
+Voraussetzung: Server läuft in der IDE mit Projekt, `"default-parameter": "warning"` (Standard aus).
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| JD1 | Das Beispiel aus #976: `procedure Exportieren(const Datei: string; MitKopf: Boolean = True);` im interface, Rumpf im implementation-Teil | Warnung `default-parameter` an `MitKopf: Boolean = True`: „Standardparameter; eine Überladung ohne MitKopf hält den Vorgabewert in der Bibliothek.“; im Fenster „Atlas-Prüfung“ und im Befund-Hover (**Abnahme**); am Rumpf keine zweite Meldung |
+| JD2 | Schnellkorrektur „Überladungen statt Standardparameter“, übersetzen, danach Strg+Z | Im interface `procedure Exportieren(const Datei: string); overload;` und `procedure Exportieren(const Datei: string; MitKopf: Boolean); overload;`; im implementation-Teil davor der neue Rumpf mit `Exportieren(Datei, True);`; übersetzt; ein Undo-Schritt stellt alles wieder her |
+| JD3 | Methode `function Summe(A: Integer; B: Integer = 1; C: Integer = 2): Integer;` einer Klasse, Rumpf wiederholt `= 1` und `= 2`; Korrektur | Meldung „… Überladungen ohne B und C halten die Vorgabewerte …“; drei Überladungen mit `overload`, zwei neue Rümpfe mit `Result := Summe(A, 1, 2)` bzw. `Summe(A, B, 2)`; im alten Rumpf keine Vorgabewerte mehr |
+| JD4 | Routine nur im implementation-Teil mit Standardparameter; Korrektur | Neue Routine mit `overload;` direkt davor, die alte bekommt `overload;` |
+| JD5 | `virtual`, Interface-Typ, `Zeiger := @P`, schon vorhandene Überladung, Deklaration in `{$IFDEF}` | Meldung ohne Korrektur |
+| JD6 | `"default-parameter": "off"`, `"group:style": "off"` bzw. `exclude` | Keine Meldung |
+
+## Leere Methode (#977)
+
+Voraussetzung: Server läuft in der IDE mit Projekt.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| JE1 | Das Beispiel aus #977: `procedure TImport.Pruefen; begin end;` mit öffentlicher Deklaration | Hinweis `empty-routine` am Namen im Rumpf: „Pruefen ist leer; entweder fehlt der Inhalt oder die Methode kann weg.“; im Fenster „Atlas-Prüfung“ und im Befund-Hover (**Abnahme**) |
+| JE2 | Schnellkorrektur „Kommentar einfügen“, danach Strg+Z | Zwischen begin und end steht `// Absichtlich leer.`; keine Meldung mehr; ein Undo-Schritt stellt den Rumpf wieder her |
+| JE3 | Methode `private`, nirgends aufgerufen, mit `///`-Doku; Schnellkorrektur „Methode entfernen“ | Deklaration samt Doku und Rumpf verschwinden, keine doppelte Leerzeile; übersetzt |
+| JE4 | Wie JE3, aber die Methode wird in der Unit aufgerufen bzw. steht im interface-Teil | Nur „Kommentar einfügen“ |
+| JE5 | Leere Methode mit Kommentar, `virtual`, `message WM_SIZE`, in einer Klasse mit Interface (z. B. ein Notifier der Open Tools API), `FormCreate` aus der .dfm, `asm end` | Keine Meldung |
+| JE6 | `"empty-routine": "off"`, `"group:style": "off"` bzw. `exclude` | Keine Meldung |
+
+## Property ohne read (#978)
+
+Voraussetzung: Server läuft in der IDE mit Projekt.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| JW1 | Das Beispiel aus #978: `property Passwort: string write SetPasswort;` in einer Klasse | Hinweis `write-only-property` am Namen: „Property Passwort hat kein read.“; im Fenster „Atlas-Prüfung“ und im Befund-Hover (**Abnahme**) |
+| JW2 | Feld `FPasswort: string;` in der Klasse ergänzen; Schnellkorrektur „read FPasswort ergänzen“, danach Strg+Z | `property Passwort: string read FPasswort write SetPasswort;`, keine Meldung mehr; ein Undo-Schritt |
+| JW3 | Feld `FPasswort` mit anderem Typ | Meldung ohne Korrektur |
+| JW4 | `property Caption write SetCaption;` (ohne Typ), Property mit read | Keine Meldung |
+| JW5 | `[Geheim]` vor der Property, `"allowAttributes": ["Geheim"]` bzw. `["GeheimAttribute"]` | Keine Meldung; ohne Option Meldung |
+| JW6 | `"write-only-property": "off"`, `"group:style": "off"` bzw. `exclude` | Keine Meldung |
+
+## XMLDoc passt nicht zur Signatur (#979)
+
+Voraussetzung: Server läuft in der IDE mit Projekt und Index.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| JX1 | Das Beispiel aus #979: `/// <param name="Nummer">` über `function Suchen(const Id: Integer; Aktive: Boolean): TKunde;` | Hinweis `xmldoc-mismatch` am `<param>`: „<param name="Nummer"> gibt es nicht; Id und Aktive sind nicht beschrieben.“; im Fenster „Atlas-Prüfung“ und im Befund-Hover (**Abnahme**) |
+| JX2 | Schnellkorrektur „Doku an die Signatur anpassen“, danach Strg+Z | `<param name="Id">Kundennummer</param>` und darunter `<param name="Aktive"></param>`, keine Meldung mehr; ein Undo-Schritt |
+| JX3 | `/// <returns>…</returns>` über einer Prozedur; Korrektur | Meldung „<returns> steht an einer Routine ohne Ergebnis.“; die Korrektur entfernt die Zeile. Mit `"checkReturns": false` keine Meldung |
+| JX4 | `/// <summary>Liefert True, wenn A < B.</summary>`; Korrektur | „Doku-Kommentar ist kein wohlgeformtes XML: '<' muss &lt; heißen (wie W1201).“; danach `A &lt; B`. Ebenso `&` (→ `&amp;`), `TList<T>` (→ als Text), vergessenes `</summary>` (wird ergänzt) |
+| JX5 | `/// <seealso cref="TVergleicher.Vergleich"/>`, im Projekt gibt es `TVergleicher.Vergleiche`; Korrektur | „cref "TVergleicher.Vergleich" zeigt auf kein Symbol (wie W1206). Gemeint ist wohl TVergleicher.Vergleiche.“; Korrektur setzt den Namen. Unit in uses, die nicht im Index steht: keine Meldung |
+| JX6 | Mit Compiler-Option „XML-Dokumentation erzeugen“ im Referenzprojekt übersetzen und mit den Meldungen vergleichen | Jede W1201–W1208 des Compilers hat einen Befund an derselben Stelle; Befunde werden zusammengeführt wie in #1024 |
+| JX7 | `"requirePublic": true`; öffentliche Methode ohne `///`, override-Methode, `property Tag;` | Meldung „Öffentliches Mitglied … hat keinen Doku-Kommentar.“ nur an der ersten; Korrektur erzeugt das Gerüst wie nach `///`. Funktion mit Doku ohne `<returns>` meldet jetzt „<returns> fehlt.“ |
+| JX8 | `"xmldoc-mismatch": "off"`, `"group:style": "off"` bzw. `exclude` | Keine Meldung |
+
+## Weitere Metriken: Bedingung, lokale Variablen, Ausstiege, Vererbungstiefe (#980)
+
+Voraussetzung: Server läuft in der IDE mit Projekt und Index; Metrik-Linse (`codeLens.metrics`) an.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| JM1 | Das Beispiel aus #980: `if (Kunde.Aktiv) and (Kunde.Land = 'DE') and (Betrag > 0) and (not Gesperrt) and (Datum >= Start) and (Datum <= Ende) then` | Hinweis `metric-boolean-operands` auf der ganzen Bedingung: „Bedingung mit 6 Operanden (Grenze 5).“; im Fenster „Atlas-Prüfung“ und im Befund-Hover mit Aktionszeile (**Abnahme**) |
+| JM2 | Schnellkorrektur „Bedingung in Funktion auslagern“, danach Strg+Z | In einer Methode: `function ExtractedCondition(const …): Boolean;` im private-Abschnitt und als Rumpf vor der Methode, die Bedingung wird zu `if ExtractedCondition(Kunde, Betrag, …) then`; außerhalb von Klassen eine Routine davor. Übersetzt ohne Fehler, keine Meldung mehr; ein Undo-Schritt. Ändert die Bedingung etwas (var-Argument) oder steht `Result` darin: keine Korrektur, nur die Meldung |
+| JM3 | Routine mit 13 lokalen Variablen (var-Abschnitt, `var X := …`, `for var I := …`); lokale Routine und anonyme Methode mit eigenen Variablen | `metric-local-count` am Routinennamen: „Methode … hat 13 lokale Variablen (Grenze 12) …“; Variablen der lokalen Routine und der anonymen Methode zählen nicht mit |
+| JM4 | Routine mit fünf `Exit`/`Exit(Wert)`/`raise`; `Exit` in einer anonymen Methode | `metric-exit-points`: „Methode … hat 5 Ausstiege mit Exit oder raise (Grenze 4) …“; das `Exit` der anonymen Methode zählt nicht |
+| JM5 | Kette `TStufe1 = class(TForm)` bis `TStufe6`, Klassen in zwei Units des Projekts verteilt | Linse über `TStufe6`: „… Member · Vererbungstiefe 6“, Meldung `metric-inheritance-depth` „TStufe6 hat Vererbungstiefe 6 ohne RTL und VCL (Grenze 5).“; TForm und die VCL-Vorfahren zählen nicht. Klassen aus einer Komponentenbibliothek (Bibliothekspfad) zählen ebenso nicht |
+| JM6 | Vorfahr aus einer Unit, die nicht im Index steht | Linse „Vererbungstiefe mindestens n“; Meldung nur, wenn schon die bekannten Vorfahren über der Grenze liegen |
+| JM7 | Metrik-Linse über einer Methode | „… · 2 Parameter · Operanden 6 (> 5) · 3 lokale · 1 Ausstiege“; Werte über der Grenze farbig. Auf Englisch: „operands 6 (> 5) · 3 locals · 1 exits“ |
+| JM8 | `"metric-boolean-operands": {"max": 6}`, `"metric-local-count": "off"`, `"metric-exit-points": {"exclude": ["Alt/*.pas"]}`, `"group:style": "off"` | Beispiel aus JM1 meldet nichts mehr; keine lokale-Variablen-Meldung; keine Ausstiege-Meldung in `Alt/`; mit der Gruppe aus keine der vier Regeln |

@@ -45,16 +45,17 @@ uses
 
 const
   /// <summary>Optionen von Prüfregeln, die true oder false sein müssen (#909).</summary>
-  BooleanRuleOptions: array[0..18] of string = ('allowCommented', 'requireElse', 'ignoreStrings', 'ignoreComments',
+  BooleanRuleOptions: array[0..21] of string = ('allowCommented', 'requireElse', 'ignoreStrings', 'ignoreComments',
     'includeRecords', 'includeFormVariables', 'checkUses', 'allowLazyInit', 'checkRound', 'includeFields',
     'allowSingleLineExit', 'allowSameLine', 'allowComments', 'onlyAfterRaisingCode', 'allowInProgram', 'unitLevel',
-    'testsCountAsUse', 'stringLiteralsCountAsUse', 'allowShareMem');
+    'testsCountAsUse', 'stringLiteralsCountAsUse', 'allowShareMem', 'ignoreOverrides', 'requirePublic',
+    'checkReturns');
   /// <summary>Optionen von Prüfregeln, die eine Liste von Texten sein müssen (#909).</summary>
-  StringListRuleOptions: array[0..29] of string = ('countNames', 'mutatingMethods', 'ignoreMethods', 'ignoreTypes',
+  StringListRuleOptions: array[0..30] of string = ('countNames', 'mutatingMethods', 'ignoreMethods', 'ignoreTypes',
     'methods', 'allowIn', 'functions', 'sources', 'ignore', 'assertPatterns', 'selfRegistering', 'swallow', 'calls',
     'allowTables', 'types', 'allowProperties', 'threadSafeTypes', 'switchConstants', 'namePatterns', 'kinds',
     'statements', 'disabledChecks', 'componentClasses', 'visibilities', 'memberKinds', 'projectKinds',
-    'keepAttributes', 'keepPatterns', 'allowUnits', 'allow');
+    'keepAttributes', 'keepPatterns', 'allowUnits', 'allow', 'allowAttributes');
   /// <summary>Erlaubte Einträge von kinds bei deprecated-symbol (#1018).</summary>
   DeprecationKinds: array[0..3] of string = ('deprecated', 'experimental', 'platform', 'library');
   /// <summary>Optionen von Prüfregeln, die eine Liste von Zahlen sein müssen (#937).</summary>
@@ -328,6 +329,10 @@ begin
           else if (Value.Keys[Inner] = 'min') and not ((Value[Inner].Kind = TJsonKind.Number) and
             TryStrToInt(Value[Inner].Value, Limit) and (Limit >= 2)) then
             ReportNode(Value[Inner], '"min" muss eine ganze Zahl ab 2 sein')
+          // Kleinste gemeldete Record-Größe von managed-param-without-const (#975).
+          else if (Value.Keys[Inner] = 'minRecordSize') and not ((Value[Inner].Kind = TJsonKind.Number) and
+            TryStrToInt(Value[Inner].Value, Limit) and (Limit >= 1)) then
+            ReportNode(Value[Inner], '"minRecordSize" muss eine ganze Zahl ab 1 sein')
           // Kürzeste gemeldete Wartezeit von blocking-call-in-main-thread (#959).
           else if (Value.Keys[Inner] = 'maxSleepMs') and not ((Value[Inner].Kind = TJsonKind.Number) and
             TryStrToInt(Value[Inner].Value, Limit) and (Limit >= 0)) then

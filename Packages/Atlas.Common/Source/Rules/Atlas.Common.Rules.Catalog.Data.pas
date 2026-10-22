@@ -934,6 +934,40 @@ begin
     '      "good": "ListBox1.Items.BeginUpdate;\ntry\n  for I := 1 to 1000 do\n    ListBox1.Items.Add(IntToStr(I));\nfinally\n  ListBox1.Items.EndUpdate;\nend;"' + #10 +
     '    },' + #10 +
     '    {' + #10 +
+    '      "id": "setlength-in-loop",' + #10 +
+    '      "name": "Array grows by one element in a loop",' + #10 +
+    '      "category": "code-smell",' + #10 +
+    '      "severity": "hint",' + #10 +
+    '      "group": "performance",' + #10 +
+    '      "description": "SetLength(A, Length(A) + 1) inside a loop copies the dynamic array on every iteration. The rule only reports when A is surely a dynamic array (array of, TArray<T>, an array type ' + 'of the file or a known RTL type such as TBytes), never for strings. In a for loop the count is known: the message names it, and when A is a local variable not used before the loop and only written as ' + 'A[High(A)] or A[Length(A) - 1] inside it, the quick fix sets the length once before the loop and indexes with the loop variable. Otherwise collect the values in a TList<T>.",' + #10 +
+    '      "bad": "for I := 0 to Liste.Count - 1 do\nbegin\n  SetLength(Namen, Length(Namen) + 1);\n  Namen[High(Namen)] := Liste[I].Name;\nend;",' + #10 +
+    '      "good": "SetLength(Namen, Liste.Count);\nfor I := 0 to Liste.Count - 1 do\n  Namen[I] := Liste[I].Name;"' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "managed-param-without-const",' + #10 +
+    '      "name": "Managed parameter without const",' + #10 +
+    '      "category": "code-smell",' + #10 +
+    '      "severity": "hint",' + #10 +
+    '      "group": "performance",' + #10 +
+    '      "description": "A value parameter of type string, interface, dynamic or open array, or a record of the file with at least minRecordSize bytes, that the routine never changes. Every call pays ref' + 'erence counting or a copy; const avoids both. Changed means: assigned, a part assigned (characters, fields, elements), passed to var or out, @Param, a method call on a record, a for loop variable. The' + ' rule only reports when this is certain: calls with unknown signature (methods without the symbol index, overloads), with blocks, captures in anonymous methods, bare inherited and asm make it stay sil' + 'ent. Virtual, dynamic, abstract and message methods, calling conventions, external and exported routines, methods of classes implementing interfaces, published methods and methods used as values (even' + 't handlers, @Routine, form file) are skipped because their signature is given from outside; overrides only with ignoreOverrides = false and then without fix. The fix adds const in the implementation a' + 'nd the declaration and splits parameter groups when needed. References as method pointers in other units are not visible to the rule; the compiler reports them after the fix.",' + #10 +
+    '      "bad": "function Formatieren(Text: string; Kunde: TKundenDaten): string;\nbegin\n  Result := Text + Kunde.Name;\nend;",' + #10 +
+    '      "good": "function Formatieren(const Text: string; const Kunde: TKundenDaten): string;\nbegin\n  Result := Text + Kunde.Name;\nend;",' + #10 +
+    '      "options": [' + #10 +
+    '        {' + #10 +
+    '          "name": "minRecordSize",' + #10 +
+    '          "type": "integer",' + #10 +
+    '          "default": 16,' + #10 +
+    '          "description": "Report record parameters from this size in bytes on."' + #10 +
+    '        },' + #10 +
+    '        {' + #10 +
+    '          "name": "ignoreOverrides",' + #10 +
+    '          "type": "boolean",' + #10 +
+    '          "default": true,' + #10 +
+    '          "description": "Do not report overrides; their signature is given by the ancestor."' + #10 +
+    '        }' + #10 +
+    '      ]' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
     '      "id": "bool-compare",' + #10 +
     '      "name": "Comparison with True or False",' + #10 +
     '      "category": "code-smell",' + #10 +
@@ -1080,6 +1114,60 @@ begin
     '          "type": "integer",' + #10 +
     '          "default": 6,' + #10 +
     '          "description": "Highest allowed number of parameters."' + #10 +
+    '        }' + #10 +
+    '      ]' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "metric-boolean-operands",' + #10 +
+    '      "name": "Condition with too many operands",' + #10 +
+    '      "category": "code-smell",' + #10 +
+    '      "severity": "hint",' + #10 +
+    '      "group": "style",' + #10 +
+    '      "description": "A condition of if, while, until or a conditional expression joins more operands with and, or and xor than the limit (default 5); parentheses and not are looked through, a compari' + 'son or call counts as one operand. The finding sits on the condition. Quick fix: Extract condition to function (#50) turns the whole condition into a Boolean function (a method of the class or a routi' + 'ne before the current one) with the local names it reads as const parameters. Also shown in the metrics lens.",' + #10 +
+    '      "bad": "if (Kunde.Aktiv) and (Kunde.Land = ''DE'') and (Betrag > 0) and\n   (not Gesperrt) and (Datum >= Start) and (Datum <= Ende) then",' + #10 +
+    '      "good": "if IstBuchbar(Kunde, Betrag, Gesperrt, Datum, Start, Ende) then",' + #10 +
+    '      "options": [' + #10 +
+    '        {' + #10 +
+    '          "name": "max",' + #10 +
+    '          "type": "integer",' + #10 +
+    '          "default": 5,' + #10 +
+    '          "description": "Highest allowed number of operands in one condition."' + #10 +
+    '        }' + #10 +
+    '      ]' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "metric-local-count",' + #10 +
+    '      "name": "Too many local variables",' + #10 +
+    '      "category": "code-smell",' + #10 +
+    '      "severity": "hint",' + #10 +
+    '      "group": "style",' + #10 +
+    '      "description": "The routine declares more local variables than the limit (default 12): names in its var section, inline variables and for var loops. Local routines and anonymous methods count on' + ' their own. Many locals usually mean the routine does several things; extract parts into own methods. Also shown in the metrics lens.",' + #10 +
+    '      "bad": "procedure Abschluss;\nvar\n  Summe, Netto, Steuer, Rabatt, Skonto, Porto: Currency;\n  Kunde, Konto, Beleg, Datei, Zeile, Text, Pfad: string;",' + #10 +
+    '      "good": "procedure Abschluss;\nvar\n  Beleg: TBeleg;\nbegin\n  Beleg := BerechneBeleg;\n  SchreibeBeleg(Beleg);",' + #10 +
+    '      "options": [' + #10 +
+    '        {' + #10 +
+    '          "name": "max",' + #10 +
+    '          "type": "integer",' + #10 +
+    '          "default": 12,' + #10 +
+    '          "description": "Highest allowed number of local variables."' + #10 +
+    '        }' + #10 +
+    '      ]' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "metric-exit-points",' + #10 +
+    '      "name": "Too many exit points",' + #10 +
+    '      "category": "code-smell",' + #10 +
+    '      "severity": "hint",' + #10 +
+    '      "group": "style",' + #10 +
+    '      "description": "The routine leaves more often through Exit and raise than the limit (default 4); Exit(Value) and a bare raise in an except block count too. Local routines and anonymous methods c' + 'ount on their own. Many exits make the flow hard to follow; combine guard clauses or extract parts. Also shown in the metrics lens.",' + #10 +
+    '      "bad": "if A = nil then Exit;\nif B = nil then Exit;\nif not Valid then raise EError.Create(''...'');\nif Done then Exit(True);\nif Cancel then Exit(False);",' + #10 +
+    '      "good": "if not Ready(A, B) then\n  Exit;\nResult := Process(A, B);",' + #10 +
+    '      "options": [' + #10 +
+    '        {' + #10 +
+    '          "name": "max",' + #10 +
+    '          "type": "integer",' + #10 +
+    '          "default": 4,' + #10 +
+    '          "description": "Highest allowed number of Exit and raise statements."' + #10 +
     '        }' + #10 +
     '      ]' + #10 +
     '    },' + #10 +
@@ -1738,6 +1826,24 @@ begin
     '      ]' + #10 +
     '    },' + #10 +
     '    {' + #10 +
+    '      "id": "metric-inheritance-depth",' + #10 +
+    '      "name": "Inheritance too deep",' + #10 +
+    '      "category": "code-smell",' + #10 +
+    '      "severity": "hint",' + #10 +
+    '      "group": "style",' + #10 +
+    '      "description": "The class has more ancestors of its own than the limit (default 5). Ancestors from RTL, VCL, FMX and other libraries do not count (by unit name or because the index loaded them f' + 'rom the library path), nor does TObject. Ancestors are looked up in the file and in the symbol index. If the chain breaks at an unknown ancestor before reaching a library, the value is a lower bound a' + 'nd the message says at least; it is only reported when that bound already exceeds the limit. Units of a library itself are not checked. The finding sits on the class name; the metrics lens shows the d' + 'epth next to the member count.",' + #10 +
+    '      "bad": "TBasis = class(TForm) ... TStufe6 = class(TStufe5)  { 6 own ancestors }",' + #10 +
+    '      "good": "TStufe2 = class(TBasis)\n  FDruck: IDruck;  { composition instead of more levels }",' + #10 +
+    '      "options": [' + #10 +
+    '        {' + #10 +
+    '          "name": "max",' + #10 +
+    '          "type": "integer",' + #10 +
+    '          "default": 5,' + #10 +
+    '          "description": "Highest allowed number of own ancestors."' + #10 +
+    '        }' + #10 +
+    '      ]' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
     '      "id": "public-field",' + #10 +
     '      "name": "Public field",' + #10 +
     '      "category": "code-smell",' + #10 +
@@ -1788,6 +1894,78 @@ begin
     '          "type": "integer",' + #10 +
     '          "default": 3,' + #10 +
     '          "description": "Minimum number of consecutive commented-out code lines."' + #10 +
+    '        }' + #10 +
+    '      ]' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "default-parameter",' + #10 +
+    '      "name": "Default parameter instead of overload",' + #10 +
+    '      "category": "code-smell",' + #10 +
+    '      "severity": "warning",' + #10 +
+    '      "group": "style",' + #10 +
+    '      "description": "A parameter with a default value (Count: Integer = 10). For teams that prefer overloads: default values end up compiled into the caller, do not change with the library and do not' + ' mix well with overloads. Reported once per declaration (class member, interface section, forward or a routine only in the implementation part); the body of a declaration is not reported again. The qu' + 'ick fix inserts one overload per omitted trailing default parameter before the declaration, each forwarding with the default value, removes the default values (also repeated ones in the body) and adds' + ' overload. No fix when the signature is given from outside (virtual, dynamic, abstract, override, message, external, interface types), when the name is used as a value (@Routine, method pointer), when' + ' an overload of the same name exists, inside conditional compilation, or when the body cannot be found unambiguously.",' + #10 +
+    '      "bad": "procedure Exportieren(const Datei: string; MitKopf: Boolean = True);",' + #10 +
+    '      "good": "procedure Exportieren(const Datei: string); overload;\nprocedure Exportieren(const Datei: string; MitKopf: Boolean); overload;"' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "empty-routine",' + #10 +
+    '      "name": "Empty routine",' + #10 +
+    '      "category": "code-smell",' + #10 +
+    '      "severity": "hint",' + #10 +
+    '      "group": "style",' + #10 +
+    '      "description": "A method or routine whose body has neither a statement nor a comment (nor a compiler directive). Either the content is missing or the method can go. Not reported: virtual and dyn' + 'amic methods (a stand-in for abstract in base classes), message handlers, methods of classes that list interfaces (the compiler requires every interface method), event handlers named in the form file ' + '(the IDE removes empty ones when saving) and bodies with a comment, such as overrides that deliberately do nothing. Quick fixes: insert a comment between begin and end; remove the method (declaration ' + 'with its XML doc and body) only for private methods and routines without a declaration in the interface part that occur nowhere else in the file and fulfil no signature from outside.",' + #10 +
+    '      "bad": "procedure TImport.Pruefen;\nbegin\nend;",' + #10 +
+    '      "good": "procedure TImport.Pruefen;\nbegin\n  // Absichtlich leer.\nend;"' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "write-only-property",' + #10 +
+    '      "name": "Property without read",' + #10 +
+    '      "category": "code-smell",' + #10 +
+    '      "severity": "hint",' + #10 +
+    '      "group": "style",' + #10 +
+    '      "description": "A property has write but no read. It cannot be shown in the Object Inspector or read in the debugger and confuses callers. Properties without a type are skipped (they republish a' + 'n inherited property whose read comes from the ancestor), as are properties with an attribute from allowAttributes (with or without the Attribute suffix). Quick fix: add read FName when the type decla' + 'res a field FName of the same type. Reading such a property is reported by readonly-property-assigned.",' + #10 +
+    '      "bad": "property Passwort: string write SetPasswort;",' + #10 +
+    '      "good": "property Passwort: string read FPasswort write SetPasswort;",' + #10 +
+    '      "options": [' + #10 +
+    '        {' + #10 +
+    '          "name": "allowAttributes",' + #10 +
+    '          "type": "string-list",' + #10 +
+    '          "default": [],' + #10 +
+    '          "description": "Attributes that allow a property without read."' + #10 +
+    '        }' + #10 +
+    '      ]' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "xmldoc-mismatch",' + #10 +
+    '      "name": "XMLDoc does not match the signature",' + #10 +
+    '      "category": "code-smell",' + #10 +
+    '      "severity": "hint",' + #10 +
+    '      "group": "style",' + #10 +
+    '      "description": "A /// comment does not match its declaration or is not well-formed XML, like the compiler warnings W1201 to W1208 with XML documentation enabled. Reported: <param> for a paramete' + 'r that does not exist; missing <param> when the block describes parameters at all (like W1208, ''but other parameters do''); with checkReturns, <returns> on a routine without a result and missing <retur' + 'ns> on a function whose block describes parameters. <inheritdoc/> fills in what is missing. Also ''<'' and ''&'' outside tags and entities, unknown entities, attribute values without quotes, unclosed and ' + 'stray end tags, and cref targets that do not exist (W1206, only with an index and when every unit in uses is known; generic targets, unit names and types with unknown ancestors stay silent). With requ' + 'irePublic, public and published methods and properties of types in the interface section without a /// comment are reported too (not override, not properties without a type). Quick fixes: rename unkno' + 'wn <param> in order to the missing ones, add the rest as empty lines in signature order, remove surplus <param> and stray <returns>; escape the character, add quotes, add or remove the end tag, write ' + 'an unknown empty tag like TList<T> as text; set cref to the most similar symbol; generate the comment skeleton.",' + #10 +
+    '      "bad": "/// <summary>Sucht einen Kunden.</summary>\n/// <param name=\"Nummer\">Kundennummer</param>\nfunction Suchen(const Id: Integer; Aktive: Boolean): TKunde;",' + #10 +
+    '      "good": "/// <summary>Sucht einen Kunden.</summary>\n/// <param name=\"Id\">Kundennummer</param>\n/// <param name=\"Aktive\"></param>\nfunction Suchen(const Id: Integer; Aktive: Boolean): TKunde' + ';",' + #10 +
+    '      "compilerCodes": [' + #10 +
+    '        "W1201",' + #10 +
+    '        "W1202",' + #10 +
+    '        "W1203",' + #10 +
+    '        "W1204",' + #10 +
+    '        "W1205",' + #10 +
+    '        "W1206",' + #10 +
+    '        "W1207",' + #10 +
+    '        "W1208"' + #10 +
+    '      ],' + #10 +
+    '      "options": [' + #10 +
+    '        {' + #10 +
+    '          "name": "requirePublic",' + #10 +
+    '          "type": "boolean",' + #10 +
+    '          "default": false,' + #10 +
+    '          "description": "Also report public members without XMLDoc."' + #10 +
+    '        },' + #10 +
+    '        {' + #10 +
+    '          "name": "checkReturns",' + #10 +
+    '          "type": "boolean",' + #10 +
+    '          "default": true,' + #10 +
+    '          "description": "Check <returns>."' + #10 +
     '        }' + #10 +
     '      ]' + #10 +
     '    },' + #10 +
@@ -2938,6 +3116,26 @@ begin
     '      "description": "Items.Add, Lines.Add und ähnliche Aufrufe in einer Schleife zeichnen das Steuerelement bei jedem Aufruf neu. Die Schleife mit BeginUpdate und try … finally EndUpdate umschließen.' + ' Standardmäßig aus."' + #10 +
     '    },' + #10 +
     '    {' + #10 +
+    '      "id": "setlength-in-loop",' + #10 +
+    '      "name": "Array wächst in der Schleife um je ein Element",' + #10 +
+    '      "description": "SetLength(A, Length(A) + 1) in einer Schleife kopiert das dynamische Array bei jedem Durchlauf. Die Regel meldet nur, wenn A sicher ein dynamisches Array ist (array of, TArray<T>' + ', ein Array-Typ der Datei oder ein bekannter RTL-Typ wie TBytes), nie bei Strings. In einer for-Schleife ist die Anzahl bekannt: Die Meldung nennt sie, und ist A eine lokale Variable, die vor der Schl' + 'eife nicht benutzt und darin nur als A[High(A)] bzw. A[Length(A) - 1] beschrieben wird, setzt die Schnellkorrektur die Länge einmal vor der Schleife und indiziert mit der Schleifenvariable. Sonst die ' + 'Werte in einer TList<T> sammeln."' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "managed-param-without-const",' + #10 +
+    '      "name": "Verwalteter Parameter ohne const",' + #10 +
+    '      "description": "Ein Wertparameter vom Typ String, Interface, dynamisches oder offenes Array oder ein Record der Datei ab minRecordSize Byte, den die Routine nie verändert. Jeder Aufruf zahlt Ref' + 'erenzzählung bzw. Kopie; const spart beides. Verändert heißt: zugewiesen, ein Teil zugewiesen (Zeichen, Felder, Elemente), an var oder out übergeben, @Parameter, Methodenaufruf an einem Record, Laufva' + 'riable einer for-Schleife. Die Regel meldet nur, wenn das sicher ist: Aufrufe mit unbekannter Signatur (Methoden ohne Symbolindex, Überladungen), with-Blöcke, Einfangen in anonymen Methoden, inherited' + ' ohne Namen und asm lassen sie schweigen. Virtuelle, dynamische, abstrakte und message-Methoden, Aufrufkonventionen, external- und exportierte Routinen, Methoden von Klassen mit Interfaces, published-' + 'Methoden und als Wert benutzte Methoden (Ereignisse, @Routine, Formulardatei) bleiben außen vor, weil ihre Signatur von außen vorgegeben ist; Overrides nur mit ignoreOverrides = false und dann ohne Ko' + 'rrektur. Die Korrektur ergänzt const in Rumpf und Deklaration und teilt Parametergruppen bei Bedarf. Verweise als Methodenzeiger in anderen Units sieht die Regel nicht; die meldet nach der Korrektur d' + 'er Compiler.",' + #10 +
+    '      "options": [' + #10 +
+    '        {' + #10 +
+    '          "name": "minRecordSize",' + #10 +
+    '          "description": "Record-Parameter ab dieser Größe in Byte melden."' + #10 +
+    '        },' + #10 +
+    '        {' + #10 +
+    '          "name": "ignoreOverrides",' + #10 +
+    '          "description": "Overrides nicht melden; ihre Signatur gibt der Vorfahr vor."' + #10 +
+    '        }' + #10 +
+    '      ]' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
     '      "id": "bool-compare",' + #10 +
     '      "name": "Vergleich mit True oder False",' + #10 +
     '      "description": "Ein Vergleich eines Boolean mit True oder False ist überflüssig; den Ausdruck oder not direkt verwenden."' + #10 +
@@ -3019,6 +3217,39 @@ begin
     '        {' + #10 +
     '          "name": "max",' + #10 +
     '          "description": "Höchstens so viele Parameter."' + #10 +
+    '        }' + #10 +
+    '      ]' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "metric-boolean-operands",' + #10 +
+    '      "name": "Bedingung mit zu vielen Operanden",' + #10 +
+    '      "description": "Eine Bedingung von if, while, until oder einem Bedingungsausdruck verknüpft mehr Operanden mit and, or und xor als der Grenzwert (Vorgabe 5); Klammern und not zählen nicht, ein V' + 'ergleich oder Aufruf ist ein Operand. Der Befund steht auf der Bedingung. Schnellkorrektur „Bedingung in Funktion auslagern“ (#50) macht aus der ganzen Bedingung eine Funktion mit Ergebnis Boolean (Me' + 'thode der Klasse bzw. Routine vor der umgebenden), die gelesenen lokalen Namen werden const-Parameter. Erscheint auch in der Metrik-Linse.",' + #10 +
+    '      "options": [' + #10 +
+    '        {' + #10 +
+    '          "name": "max",' + #10 +
+    '          "description": "Höchstens so viele Operanden in einer Bedingung."' + #10 +
+    '        }' + #10 +
+    '      ]' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "metric-local-count",' + #10 +
+    '      "name": "Zu viele lokale Variablen",' + #10 +
+    '      "description": "Die Routine deklariert mehr lokale Variablen als der Grenzwert (Vorgabe 12): Namen im var-Abschnitt, Inline-Variablen und for var. Lokale Routinen und anonyme Methoden zählen für' + ' sich. Viele lokale Variablen heißen meist, dass die Routine mehreres tut; Teile in eigene Methoden auslagern. Erscheint auch in der Metrik-Linse.",' + #10 +
+    '      "options": [' + #10 +
+    '        {' + #10 +
+    '          "name": "max",' + #10 +
+    '          "description": "Höchstens so viele lokale Variablen."' + #10 +
+    '        }' + #10 +
+    '      ]' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "metric-exit-points",' + #10 +
+    '      "name": "Zu viele Ausstiege",' + #10 +
+    '      "description": "Die Routine wird öfter mit Exit und raise verlassen als der Grenzwert (Vorgabe 4); Exit(Wert) und raise; im except zählen mit. Lokale Routinen und anonyme Methoden zählen für sic' + 'h. Viele Ausstiege machen den Ablauf schwer lesbar; Wächter zusammenfassen oder Teile auslagern. Erscheint auch in der Metrik-Linse.",' + #10 +
+    '      "options": [' + #10 +
+    '        {' + #10 +
+    '          "name": "max",' + #10 +
+    '          "description": "Höchstens so viele Exit und raise."' + #10 +
     '        }' + #10 +
     '      ]' + #10 +
     '    },' + #10 +
@@ -3370,6 +3601,17 @@ begin
     '      ]' + #10 +
     '    },' + #10 +
     '    {' + #10 +
+    '      "id": "metric-inheritance-depth",' + #10 +
+    '      "name": "Zu tiefe Vererbung",' + #10 +
+    '      "description": "Die Klasse hat mehr eigene Vorfahren als der Grenzwert (Vorgabe 5). Vorfahren aus RTL, VCL, FMX und anderen Bibliotheken zählen nicht (am Unit-Namen oder weil der Index sie aus d' + 'em Bibliothekspfad nachgeladen hat), TObject ebenso. Vorfahren werden in der Datei und im Symbolindex gesucht. Bricht die Kette an einem unbekannten Vorfahren ab, bevor sie eine Bibliothek erreicht, i' + 'st der Wert eine Untergrenze und die Meldung sagt „mindestens“; gemeldet wird nur, wenn schon sie über der Grenze liegt. Units einer Bibliothek selbst werden nicht geprüft. Der Befund steht auf dem Kl' + 'assennamen; die Metrik-Linse zeigt die Tiefe neben den Membern.",' + #10 +
+    '      "options": [' + #10 +
+    '        {' + #10 +
+    '          "name": "max",' + #10 +
+    '          "description": "Höchstens so viele eigene Vorfahren."' + #10 +
+    '        }' + #10 +
+    '      ]' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
     '      "id": "public-field",' + #10 +
     '      "name": "Öffentliches Feld",' + #10 +
     '      "description": "Felder im public- oder published-Abschnitt einer Klasse. Der Abschnitt ohne Sichtbarkeitswort zählt nur bei Klassen ohne Vorfahren oder mit TObject, weil der Formulardesigner dor' + 't seine Felder anlegt. Records sind ausgenommen, außer mit includeRecords; class var wird nicht gemeldet. Standard aus. Schnellkorrektur: Feld kapseln legt das Feld als FName in einen private-Abschnit' + 't am Ende der Klasse und ergänzt im alten Abschnitt property Name read FName write FName; Zugriffe von außen bleiben gültig.",' + #10 +
@@ -3399,6 +3641,42 @@ begin
     '        {' + #10 +
     '          "name": "minLines",' + #10 +
     '          "description": "Mindestzahl aufeinanderfolgender auskommentierter Codezeilen."' + #10 +
+    '        }' + #10 +
+    '      ]' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "default-parameter",' + #10 +
+    '      "name": "Standardparameter statt Überladung",' + #10 +
+    '      "description": "Ein Parameter mit Vorgabewert (Anzahl: Integer = 10). Für Teams, die Überladungen bevorzugen: Vorgabewerte landen beim Aufrufer im Code, ändern sich nicht mit der Bibliothek und ' + 'vertragen sich schlecht mit Überladungen. Gemeldet wird einmal je Deklaration (Klassenmitglied, interface-Teil, forward oder eine Routine nur im implementation-Teil); der Rumpf zu einer Deklaration ni' + 'cht noch einmal. Die Schnellkorrektur fügt vor der Deklaration je weggelassenem Standardparameter am Ende eine Überladung ein, die mit dem Vorgabewert weiterreicht, entfernt die Vorgabewerte (auch im ' + 'Rumpf wiederholte) und ergänzt overload. Keine Korrektur, wenn die Signatur von außen vorgegeben ist (virtual, dynamic, abstract, override, message, external, Interface-Typen), der Name als Wert benut' + 'zt wird (@Routine, Methodenzeiger), es schon eine gleichnamige Überladung gibt, in bedingter Übersetzung oder wenn der Rumpf nicht eindeutig zu finden ist."' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "empty-routine",' + #10 +
+    '      "name": "Leere Methode",' + #10 +
+    '      "description": "Eine Methode oder Routine, deren Rumpf weder eine Anweisung noch einen Kommentar (noch eine Compiler-Direktive) enthält. Entweder fehlt der Inhalt oder die Methode kann weg. Nich' + 't gemeldet werden virtuelle und dynamische Methoden (Ersatz für abstract in Basisklassen), Nachrichten-Handler, Methoden von Klassen mit Interfaces (der Compiler verlangt jede Interface-Methode), Erei' + 'gnis-Handler, die in der Formulardatei stehen (die IDE entfernt leere beim Speichern), und Rümpfe mit Kommentar, etwa Überschreibungen, die bewusst nichts tun. Schnellkorrekturen: Kommentar zwischen b' + 'egin und end einfügen; Methode entfernen (Deklaration samt XML-Doku und Rumpf) nur bei privaten Methoden und Routinen ohne Deklaration im interface-Teil, die sonst nirgends in der Datei vorkommen und ' + 'keine Signatur von außen erfüllen."' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "write-only-property",' + #10 +
+    '      "name": "Property ohne read",' + #10 +
+    '      "description": "Eine Property hat write, aber kein read. Sie lässt sich nicht im Objektinspektor anzeigen, nicht im Debugger lesen und verwirrt Aufrufer. Properties ohne Typ bleiben außen vor (s' + 'ie veröffentlichen eine geerbte Property neu, deren read vom Vorfahren kommt), ebenso Properties mit einem Attribut aus allowAttributes (mit oder ohne Endung Attribute). Schnellkorrektur: read FName e' + 'rgänzen, wenn der Typ ein Feld FName gleichen Typs deklariert. Das Lesen einer solchen Property meldet readonly-property-assigned.",' + #10 +
+    '      "options": [' + #10 +
+    '        {' + #10 +
+    '          "name": "allowAttributes",' + #10 +
+    '          "description": "Attribute, die eine Property ohne read erlauben."' + #10 +
+    '        }' + #10 +
+    '      ]' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "xmldoc-mismatch",' + #10 +
+    '      "name": "XMLDoc passt nicht zur Signatur",' + #10 +
+    '      "description": "Ein ///-Kommentar passt nicht zu seiner Deklaration oder ist kein wohlgeformtes XML, wie die Compilerwarnungen W1201 bis W1208 mit eingeschalteter XML-Dokumentation. Gemeldet wer' + 'den: <param> zu einem Parameter, den es nicht gibt; fehlende <param>, wenn der Block überhaupt Parameter beschreibt (wie W1208, „but other parameters do“); mit checkReturns <returns> an einer Routine ' + 'ohne Ergebnis und fehlendes <returns> an einer Funktion, deren Block Parameter beschreibt. <inheritdoc/> ergänzt, was fehlt. Außerdem ''<'' und ''&'' außerhalb von Tags und Entitäten, unbekannte Entitäten' + ', Attributwerte ohne Anführungszeichen, nicht geschlossene und überzählige Endtags sowie cref-Ziele, die es nicht gibt (W1206, nur mit Index und wenn jede Unit aus uses bekannt ist; generische Ziele, ' + 'Unit-Namen und Typen mit unbekannten Vorfahren bleiben still). Mit requirePublic zusätzlich public- und published-Methoden und -Properties von Typen im interface ohne ///-Kommentar (nicht override, ni' + 'cht Properties ohne Typ). Schnellkorrekturen: unbekannte <param> der Reihe nach auf die fehlenden umbenennen, die übrigen als leere Zeilen in Signaturreihenfolge ergänzen, überzählige <param> und <ret' + 'urns> an Prozeduren entfernen; Zeichen maskieren, Anführungszeichen setzen, Endtag ergänzen oder entfernen, ein fremdes leeres Tag wie TList<T> als Text schreiben; cref auf das ähnlichste Symbol setze' + 'n; Kommentargerüst erzeugen.",' + #10 +
+    '      "options": [' + #10 +
+    '        {' + #10 +
+    '          "name": "requirePublic",' + #10 +
+    '          "description": "Öffentliche Member ohne XMLDoc melden."' + #10 +
+    '        },' + #10 +
+    '        {' + #10 +
+    '          "name": "checkReturns",' + #10 +
+    '          "description": "<returns> prüfen."' + #10 +
     '        }' + #10 +
     '      ]' + #10 +
     '    },' + #10 +

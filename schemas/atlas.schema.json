@@ -124,7 +124,7 @@
               "max": {
                 "type": "integer",
                 "minimum": 1,
-                "description": "Nur metric-* (#66): Grenzwert der Kennzahl; darüber meldet die Regel die Methode. Vorgaben: Länge 60, Tiefe 4, zyklomatisch 15, kognitiv 15, Parameter 6; metric-class-size 40 Member, metric-unit-length 2000 Zeilen, metric-uses-count 30 Units (#939). Bei line-length (#938) die Höchstlänge einer Zeile, Vorgabe 120."
+                "description": "Nur metric-* (#66): Grenzwert der Kennzahl; darüber meldet die Regel die Methode. Vorgaben: Länge 60, Tiefe 4, zyklomatisch 15, kognitiv 15, Parameter 6; metric-class-size 40 Member, metric-unit-length 2000 Zeilen, metric-uses-count 30 Units (#939); metric-boolean-operands 5 Operanden, metric-local-count 12 lokale Variablen, metric-exit-points 4 Ausstiege, metric-inheritance-depth 5 Vorfahren (#980). Bei line-length (#938) die Höchstlänge einer Zeile, Vorgabe 120."
               },
               "minLines": {
                 "type": "integer",
@@ -530,6 +530,35 @@
                 "type": "boolean",
                 "default": true,
                 "description": "Nur text-after-final-end: Kommentare und Direktiven nach end. erlauben (#991)."
+              },
+              "minRecordSize": {
+                "type": "integer",
+                "minimum": 1,
+                "default": 16,
+                "description": "Nur managed-param-without-const: Record-Parameter ab dieser Größe in Byte melden (#975)."
+              },
+              "ignoreOverrides": {
+                "type": "boolean",
+                "default": true,
+                "description": "Nur managed-param-without-const: Overrides nicht melden, ihre Signatur gibt der Vorfahr vor (#975)."
+              },
+              "allowAttributes": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "default": [],
+                "description": "Nur write-only-property: Attribute, die eine Property ohne read erlauben, mit oder ohne Endung Attribute (#978)."
+              },
+              "requirePublic": {
+                "type": "boolean",
+                "default": false,
+                "description": "Nur xmldoc-mismatch: öffentliche Methoden und Properties von Typen im interface ohne XMLDoc melden (#979)."
+              },
+              "checkReturns": {
+                "type": "boolean",
+                "default": true,
+                "description": "Nur xmldoc-mismatch: <returns> an Routinen ohne Ergebnis und fehlendes <returns> prüfen (#979)."
               },
               "allowTables": {
                 "type": "array",

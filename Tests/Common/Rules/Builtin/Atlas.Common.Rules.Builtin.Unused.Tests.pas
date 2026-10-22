@@ -4,6 +4,8 @@
 // duplicate-assignment (#1051): Beispiel mit Sprung, Gegenstück im Hinweis, Ziele
 // (Self., Felder, Zeiger), stille Fälle (Lesen, Aufruf, lokale Variablen,
 // False/True, bedingte Zweige), Option allowProperties, Abschalten und exclude.
+// empty-routine (#977): Beispiel des Issues, beide Korrekturen, Ausnahmen
+// (Kommentar, virtual, message, Formular-Handler), Entfernen nur ohne Verweis.
 
 interface
 
@@ -61,6 +63,16 @@ type
     procedure AssignmentReadInLoopIsSilent;
     [Test]
     procedure WildcardMatching;
+    [Test]
+    procedure EmptyRoutineReported;
+    [Test]
+    procedure EmptyRoutineCommentFix;
+    [Test]
+    procedure EmptyRoutineRemoveFix;
+    [Test]
+    procedure EmptyRoutineSilentCases;
+    [Test]
+    procedure EmptyRoutineSwitchedOff;
   end;
 
   [TestFixture]
@@ -92,6 +104,9 @@ uses
   Atlas.Common.Configuration.Parser,
   Atlas.Common.Rules.Contract,
   Atlas.Common.Rules.Builtin.Unused,
+  Atlas.Common.Pascal.SyntaxTree,
+  Atlas.Common.Pascal.Parser,
+  Atlas.Common.Editing.ChangeSignature,
   Atlas.Tests.RuleAssert;
 
 function Routine(const ABody: string; const AHeader: string = 'procedure P;';
@@ -492,6 +507,132 @@ begin
     '{"rules": {"duplicate-assignment": "off"}}', 'Source/U.pas'))));
   Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TDuplicateAssignmentRule.Create, Source,
     '{"rules": {"duplicate-assignment": {"exclude": ["Source/*.pas"]}}}', 'Source/U.pas'))));
+end;
+
+/// <summary>Unit mit Klasse TImport: AMembers im Typ, ABodies im implementation-Teil.</summary>
+function ImportUnit(const AMembers, ABodies: string): string;
+begin
+  Result := 'unit U;'#10'interface'#10'type'#10'  TImport = class'#10 + AMembers + #10'  end;'#10'implementation'#10 +
+    ABodies + #10'end.';
+end;
+
+/// <summary>Wendet die Korrektur mit dem Titel ATitle an; das Ergebnis muss fehlerfrei parsen.</summary>
+function EmptyFixed(const ASource, ATitle: string): string;
+var
+  Findings: TArray<TRuleFinding>;
+  Fix: TRuleFix;
+  Tree: TSyntaxTree;
+begin
+  Findings := TRuleAssert.Findings(TEmptyRoutineRule.Create, ASource);
+  Assert.AreEqual(1, Integer(Length(Findings)));
+  Result := '';
+  for Fix in Findings[0].Fixes do
+    if Fix.Title = ATitle then
+      Result := TChangeSignature.ApplyEdits(ASource, Fix.Edits);
+  Assert.AreNotEqual('', Result, ATitle);
+  Tree := TPascalParser.Parse(Result);
+  try
+    Assert.AreEqual(0, Integer(Length(Tree.Diagnostics)), Result);
+  finally
+    Tree.Free;
+  end;
+end;
+
+procedure TUnusedRulesTests.EmptyRoutineReported;
+var
+  Findings: TArray<TRuleFinding>;
+begin
+  Assert.IsFalse(TEmptyRoutineRule.Create.Descriptor.Experimental, 'Standard an');
+  Findings := TRuleAssert.Findings(TEmptyRoutineRule.Create, ImportUnit('  public'#10'    procedure Pruefen;',
+    'procedure TImport.Pruefen;'#10'begin'#10'end;'));
+  Assert.AreEqual(1, Integer(Length(Findings)));
+  Assert.AreEqual('Pruefen ist leer; entweder fehlt der Inhalt oder die Methode kann weg.', Findings[0].Message);
+  Assert.AreEqual(8, Findings[0].Range.StartPos.Line);
+  // Öffentlich: nur der Kommentar, nicht das Entfernen.
+  Assert.AreEqual(1, Integer(Length(Findings[0].Fixes)));
+  // Routinen, auch lokale und mit leerer Anweisung.
+  Findings := TRuleAssert.Findings(TEmptyRoutineRule.Create, 'unit U;'#10'interface'#10'implementation'#10 +
+    'procedure Aussen;'#10'  procedure Innen;'#10'  begin'#10'  end;'#10'begin'#10'  Innen;'#10'end;'#10 +
+    'procedure Leer;'#10'begin'#10'  ;'#10'end;'#10'end.');
+  Assert.AreEqual(2, Integer(Length(Findings)));
+  Assert.AreEqual('Innen ist leer; entweder fehlt der Inhalt oder die Routine kann weg.', Findings[0].Message);
+end;
+
+procedure TUnusedRulesTests.EmptyRoutineCommentFix;
+var
+  Source: string;
+begin
+  Source := ImportUnit('  public'#10'    procedure Pruefen;', 'procedure TImport.Pruefen;'#10'begin'#10'end;');
+  Assert.AreEqual(ImportUnit('  public'#10'    procedure Pruefen;', 'procedure TImport.Pruefen;'#10'begin'#10 +
+    '  // Absichtlich leer.'#10'end;'), EmptyFixed(Source, 'Kommentar einfügen'));
+  // Die korrigierte Form wird nicht mehr gemeldet.
+  TRuleAssert.Silent(TEmptyRoutineRule.Create, EmptyFixed(Source, 'Kommentar einfügen'));
+end;
+
+procedure TUnusedRulesTests.EmptyRoutineRemoveFix;
+var
+  Source: string;
+begin
+  // Private Methode ohne Verweis: Deklaration samt XML-Doku und Rumpf verschwinden.
+  Source := ImportUnit('  private'#10'    /// <summary>Prüft.</summary>'#10'    procedure Pruefen;'#10 +
+    '  public'#10'    procedure Laden;', 'procedure TImport.Laden;'#10'begin'#10'  Writeln;'#10'end;'#10#10 +
+    'procedure TImport.Pruefen;'#10'begin'#10'end;');
+  Assert.AreEqual(ImportUnit('  private'#10'  public'#10'    procedure Laden;', 'procedure TImport.Laden;'#10 +
+    'begin'#10'  Writeln;'#10'end;'), EmptyFixed(Source, 'Methode entfernen'));
+  // Routine nur im implementation-Teil, mit forward.
+  Source := 'unit U;'#10'interface'#10'implementation'#10'procedure Leer; forward;'#10#10'procedure Leer;'#10 +
+    'begin'#10'end;'#10'end.';
+  Assert.AreEqual('unit U;'#10'interface'#10'implementation'#10'end.', EmptyFixed(Source, 'Routine entfernen'));
+  // Mit Verweis oder im interface: nur der Kommentar.
+  Source := ImportUnit('  private'#10'    procedure Pruefen;'#10'  public'#10'    procedure Laden;',
+    'procedure TImport.Laden;'#10'begin'#10'  Pruefen;'#10'end;'#10'procedure TImport.Pruefen;'#10'begin'#10'end;');
+  Assert.AreEqual(1, Integer(Length(TRuleAssert.Findings(TEmptyRoutineRule.Create, Source)[0].Fixes)));
+  Source := 'unit U;'#10'interface'#10'procedure Leer;'#10'implementation'#10'procedure Leer;'#10'begin'#10'end;'#10 +
+    'end.';
+  Assert.AreEqual(1, Integer(Length(TRuleAssert.Findings(TEmptyRoutineRule.Create, Source)[0].Fixes)));
+end;
+
+procedure TUnusedRulesTests.EmptyRoutineSilentCases;
+const
+  Cases: array[0..4] of string = (
+    '  public'#10'    procedure Pruefen;|procedure TImport.Pruefen;'#10'begin'#10'  // Nichts zu tun.'#10'end;',
+    '  public'#10'    procedure Pruefen;|procedure TImport.Pruefen;'#10'begin'#10'  Writeln;'#10'end;',
+    '  protected'#10'    procedure Pruefen; virtual;|procedure TImport.Pruefen;'#10'begin'#10'end;',
+    '  private'#10'    procedure WMSize(var Msg: TMessage); message WM_SIZE;|procedure TImport.WMSize(var Msg: TMessage);' +
+      #10'begin'#10'end;',
+    '  public'#10'    procedure Pruefen;|procedure TImport.Pruefen;'#10'asm'#10'end;');
+var
+  Item: string;
+  Parts: TArray<string>;
+begin
+  for Item in Cases do
+  begin
+    Parts := Item.Split(['|']);
+    Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TEmptyRoutineRule.Create, ImportUnit(Parts[0],
+      Parts[1])))), Item);
+  end;
+  // Klasse mit Interface: der Compiler verlangt jede Methode des Interfaces.
+  TRuleAssert.Silent(TEmptyRoutineRule.Create, 'unit U;'#10'interface'#10'type'#10 +
+    '  TNotifier = class(TInterfacedObject, IOTANotifier)'#10'    procedure AfterSave;'#10'  end;'#10 +
+    'implementation'#10'procedure TNotifier.AfterSave;'#10'begin'#10'end;'#10'end.');
+  // Ereignis-Handler aus der Formulardatei.
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.FormFindings(TEmptyRoutineRule.Create,
+    ImportUnit('  published'#10'    procedure FormCreate(Sender: TObject);',
+    'procedure TImport.FormCreate(Sender: TObject);'#10'begin'#10'end;'),
+    'object Import: TImport'#10'  OnCreate = FormCreate'#10'end'))));
+end;
+
+procedure TUnusedRulesTests.EmptyRoutineSwitchedOff;
+var
+  Source: string;
+begin
+  Source := ImportUnit('  public'#10'    procedure Pruefen;', 'procedure TImport.Pruefen;'#10'begin'#10'end;');
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TEmptyRoutineRule.Create, Source,
+    '{"rules": {"empty-routine": "off"}}'))));
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TEmptyRoutineRule.Create, Source,
+    '{"rules": {"empty-routine": {"exclude": ["Alt/**"]}}}', 'Alt/U.pas'))));
+  Assert.AreEqual(1, Integer(Length(TRuleAssert.Findings(TEmptyRoutineRule.Create, Source,
+    '{"rules": {"empty-routine": {"exclude": ["Alt/**"]}}}', 'Neu/U.pas'))));
 end;
 
 initialization

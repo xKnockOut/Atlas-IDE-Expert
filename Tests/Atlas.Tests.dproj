@@ -98,6 +98,7 @@
         <DCCReference Include="Common\Index\Atlas.Common.Index.Tests.pas"/>
         <DCCReference Include="Common\Index\Atlas.Common.Index.NameIndex.Tests.pas"/>
         <DCCReference Include="Common\Index\Atlas.Common.Index.Files.Tests.pas"/>
+        <DCCReference Include="Common\Index\Atlas.Common.Index.LibraryUnits.Tests.pas"/>
         <DCCReference Include="Common\Index\Atlas.Common.Index.CacheHousekeeping.Tests.pas"/>
         <DCCReference Include="Common\Index\Atlas.Common.Index.Processes.Tests.pas"/>
         <DCCReference Include="Common\Index\Atlas.Common.Index.Adapters.Processes.Tests.pas"/>
@@ -210,6 +211,7 @@
         <DCCReference Include="Common\Rules\Builtin\Atlas.Common.Rules.Builtin.PublicMembers.Tests.pas"/>
         <DCCReference Include="Common\Rules\Atlas.Common.Rules.ConsideredUsed.Tests.pas"/>
         <DCCReference Include="Common\Rules\Atlas.Common.Rules.ProjectFiles.Tests.pas"/>
+        <DCCReference Include="Common\Rules\Builtin\Atlas.Common.Rules.Builtin.XmlDoc.Tests.pas"/>
         <DCCReference Include="Common\Rules\Builtin\Atlas.Common.Rules.Builtin.Unresolved.Tests.pas"/>
         <DCCReference Include="Common\Projects\Atlas.Common.Projects.UnitLookup.Tests.pas"/>
         <DCCReference Include="Common\Rules\Builtin\Atlas.Common.Rules.Builtin.Packages.Tests.pas"/>

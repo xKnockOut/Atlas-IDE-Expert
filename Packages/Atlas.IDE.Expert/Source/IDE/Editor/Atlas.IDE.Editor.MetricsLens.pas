@@ -162,6 +162,9 @@ begin
   Result[TAtlasMetric.Cyclomatic] := TAtlasStrings.Text(TAtlasTextId.MetricsLensCyclomatic);
   Result[TAtlasMetric.Cognitive] := TAtlasStrings.Text(TAtlasTextId.MetricsLensCognitive);
   Result[TAtlasMetric.Parameters] := TAtlasStrings.Text(TAtlasTextId.MetricsLensParameters);
+  Result[TAtlasMetric.Operands] := TAtlasStrings.Text(TAtlasTextId.MetricsLensOperands);
+  Result[TAtlasMetric.Locals] := TAtlasStrings.Text(TAtlasTextId.MetricsLensLocals);
+  Result[TAtlasMetric.Exits] := TAtlasStrings.Text(TAtlasTextId.MetricsLensExits);
 end;
 
 class function TAtlasEditorMetricsLens.StructureFormats: TAtlasStructureFormats;
@@ -169,6 +172,7 @@ begin
   Result[TAtlasStructureMetric.ClassSize] := TAtlasStrings.Text(TAtlasTextId.MetricsLensMembers);
   Result[TAtlasStructureMetric.UnitLength] := TAtlasStrings.Text(TAtlasTextId.MetricsLensLines);
   Result[TAtlasStructureMetric.UsesCount] := TAtlasStrings.Text(TAtlasTextId.MetricsLensUses);
+  Result[TAtlasStructureMetric.InheritanceDepth] := TAtlasStrings.Text(TAtlasTextId.MetricsLensInheritance);
 end;
 
 function Wanted(const ASettings: TAtlasPluginSettings): Boolean;
@@ -296,6 +300,7 @@ var
   Index, TabWidth, Width, Height, Top, Column: Integer;
   Method: TAtlasMethodMetrics;
   Structure: TAtlasStructureItem;
+  Structures: TArray<TAtlasStructureItem>;
   LensName: string;
   Over: Boolean;
   Colors: TAtlasColors;
@@ -330,17 +335,21 @@ begin
     end
     else
     begin
-      // Aufbau (#939): Member über der Klasse, Zeilen über dem Unit-Namen, Units im uses über uses.
-      Index := FMetrics.StructureAt(Context.LogicalLineNum - 1);
-      if Index < 0 then
+      // Aufbau (#939): Member und Vererbungstiefe (#980) über der Klasse, Zeilen über dem Unit-Namen, Units im
+      // uses über uses.
+      Structures := FMetrics.StructuresAt(Context.LogicalLineNum - 1);
+      if Structures = nil then
         Exit;
-      Structure := FMetrics.Structures[Index];
-      LensName := Structure.Name;
-      if Structure.Kind = TAtlasStructureMetric.UsesCount then
+      LensName := Structures[0].Name;
+      if Structures[0].Kind = TAtlasStructureMetric.UsesCount then
         LensName := 'uses';
-      Text := TAtlasMetricsLens.StructureCaption(Structure, FStructureFormats,
+      Text := TAtlasMetricsLens.StructureCaption(Structures, FStructureFormats,
+        TAtlasStrings.Text(TAtlasTextId.MetricsLensInheritanceAtLeast),
         TAtlasStrings.Text(TAtlasTextId.MetricsLensLimit));
-      Over := Structure.Value > Structure.Limit;
+      Over := False;
+      for Structure in Structures do
+        if Structure.Value > Structure.Limit then
+          Over := True;
     end;
     Line := LineState.Text;
     // Nur, wenn die Zeile noch den Namen trägt (Text kann seit dem Abruf verschoben sein).

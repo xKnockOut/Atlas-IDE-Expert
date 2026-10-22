@@ -547,28 +547,6 @@ begin
   end;
 end;
 
-/// <summary>Stehen alle Units aus uses im Index (auch über einen Namespace, notfalls nachgeladen)? Sonst kann
-/// eine davon das Attribut deklarieren.</summary>
-function UsesKnown(const AContext: TRuleContext): Boolean;
-var
-  Name, Namespace: string;
-  Found: TUnitIndex;
-  Known: Boolean;
-begin
-  for Name in TUsesClauses.UsedUnits(AContext.Tree.Tokens) do
-  begin
-    Known := AContext.Index.FindUnit(Name, Found);
-    for Namespace in AContext.Namespaces do
-      if not Known then
-        Known := AContext.Index.FindUnit(Namespace + '.' + Name, Found);
-    if not Known and Assigned(AContext.EnsureUnit) then
-      Known := AContext.EnsureUnit(Name);
-    if not Known then
-      Exit(False);
-  end;
-  Result := True;
-end;
-
 /// <summary>Offset ab 0 des ersten Tokens an APosition; 0 ohne.</summary>
 function OffsetAt(const ATokens: TArray<TPascalToken>; const APosition: TTextPosition): Integer;
 var
@@ -667,7 +645,8 @@ var
   Token: TPascalToken;
 begin
   if (AContext.Tree = nil) or (AContext.Tree.Root = nil) or not TUnresolvedNames.Available(AContext.Index) or
-    not UsesKnown(AContext) then
+    not TUnresolvedNames.UsesKnown(AContext.Index, TUsesClauses.UsedUnits(AContext.Tree.Tokens),
+    AContext.Namespaces, AContext.EnsureUnit) then
     Exit;
   Lines := ConditionalLines(AContext.Tree.Tokens);
   LineBreak := TTextLines.LineBreakOf(AContext.Text);

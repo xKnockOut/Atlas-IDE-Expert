@@ -680,7 +680,8 @@ type
     ProblemsCompilerMergeMerge, ProblemsCompilerMergeBoth, SettingsProblemsShowCompilerCode, RulesTypeLevel,
     BreadcrumbsDisabled, FuseTrippedTitle, FuseTrippedEnable, FuseTrippedOpenLog, ServerCrashedCause, ServerHeldTitle,
     ServerHeldText, ServerHeldPhase, LogBrokenTitle, LogBrokenText,
-    RulesOverriddenBy);
+    RulesOverriddenBy,
+    MetricsLensOperands, MetricsLensLocals, MetricsLensExits, MetricsLensInheritance, MetricsLensInheritanceAtLeast);
 
   TAtlasStrings = class
   private class var
@@ -2164,7 +2165,12 @@ const
      'Atlas-Protokoll gestört',
      'Atlas kann nicht in %s schreiben: %s. Atlas versucht es bei jeder Zeile weiter und vermerkt die Lücke im ' +
      'Protokoll, sobald es wieder geht.',
-     'Wird durch %s übersteuert: Solange diese Regel an ist, meldet diese hier nichts.'),
+     'Wird durch %s übersteuert: Solange diese Regel an ist, meldet diese hier nichts.',
+     'Operanden %d',
+     '%d lokale',
+     '%d Ausstiege',
+     'Vererbungstiefe %d',
+     'Vererbungstiefe mindestens %d'),
     ('Enter to accept · Esc to close', '%d of %d', 'No matches for “%s”', 'Backspace widens the search',
      'No suggestions here', 'Esc closes', 'No details for this entry', 'Overload', 'Deprecated: %s', 'Deprecated.',
      'Inherited from %s', 'Inherited', 'optional, default %s', 'No overload with %d parameters.', '… %d more',
@@ -3552,7 +3558,12 @@ const
      'Atlas log disrupted',
      'Atlas cannot write to %s: %s. Atlas keeps trying with every line and notes the gap in the log once writing ' +
      'works again.',
-     'Overridden by %s: while that rule is on, this one reports nothing.'));
+     'Overridden by %s: while that rule is on, this one reports nothing.',
+     'operands %d',
+     '%d locals',
+     '%d exits',
+     'inheritance depth %d',
+     'inheritance depth at least %d'));
 
 { TAtlasStrings }
 

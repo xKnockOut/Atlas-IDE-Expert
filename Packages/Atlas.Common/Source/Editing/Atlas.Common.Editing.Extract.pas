@@ -16,6 +16,14 @@
 //     selben Block, solange dazwischen keiner seiner Namen geändert wird.
 //   - „Konstante extrahieren“: Das Literal wird zu einer Konstante im
 //     const-Abschnitt der Routine bzw. vor der Routine in der Unit.
+//   - „Bedingung in Funktion auslagern“ (#980, Korrektur von
+//     metric-boolean-operands): Die ganze Bedingung eines if, while, until
+//     oder Bedingungsausdrucks wird zu einer Funktion mit Ergebnis Boolean
+//     (Methode der Klasse bzw. Routine vor der umgebenden); gelesene lokale
+//     Namen werden const-Parameter, lokale Konstanten mitkopiert. Nicht
+//     angeboten, wenn die Bedingung etwas ändert (Zuweisung, var-Argument),
+//     Result, nur in der Routine sichtbare Namen oder eine anonyme Methode
+//     enthält oder ein Typ unbekannt ist.
 // Inline-Variable (var X := …) oder Eintrag im var-Abschnitt entscheidet
 // TExtractOptions.InlineVar (refactoring.inlineVar und Sprachversion, #109).
 // Für einen Eintrag im var-Abschnitt braucht es den Typ: Literale, einfache
@@ -79,6 +87,7 @@ type
     MethodName = 'ExtractedMethod';
     VariableName = 'Value';
     ConstantName = 'NewConstant';
+    ConditionName = 'ExtractedCondition';
     ProbeName = 'AtlasProbe';
   public
     /// <summary>„Methode extrahieren“ für die Anweisungen in ARange; False mit Grund in AReason.</summary>
@@ -94,6 +103,12 @@ type
     /// der Unit statt im const-Abschnitt der Routine.</summary>
     class function ExtractConstant(const AText: string; ATree: TSyntaxTree; const ARange: TTextRange;
       const AOptions: TExtractOptions; AUnit: Boolean; out AAction: TCodeAction): Boolean; static;
+    /// <summary>„Bedingung in Funktion auslagern“ für die ganze Bedingung in ARange (#980); False mit Grund in
+    /// AReason.</summary>
+    class function ExtractCondition(const AText: string; ATree: TSyntaxTree; const ARange: TTextRange;
+      const AOptions: TExtractOptions; out AAction: TCodeAction; out AReason: string): Boolean; overload; static;
+    class function ExtractCondition(const AText: string; ATree: TSyntaxTree; const ARange: TTextRange;
+      const AOptions: TExtractOptions; out AAction: TCodeAction): Boolean; overload; static;
     /// <summary>Alle passenden Extrahieren-Aktionen für ARange.</summary>
     class function Actions(const AText: string; ATree: TSyntaxTree; const ARange: TTextRange;
       const AOptions: TExtractOptions): TArray<TCodeAction>; static;
@@ -426,6 +441,83 @@ begin
   Result := (Index <= High(ATokens)) and ATokens[Index].IsKeyword('class');
 end;
 
+/// <summary>Liegt ANode in einer anonymen Methode, einem with-Rumpf oder asm innerhalb von ABody? Dort hätten
+/// Namen in einer neuen Routine eine andere Bedeutung.</summary>
+function InsideBlocked(ANode, ABody: TSyntaxNode; out AReason: string): Boolean;
+var
+  Node: TSyntaxNode;
+begin
+  AReason := '';
+  Node := ANode.Parent;
+  while (Node <> nil) and (Node <> ABody) do
+  begin
+    if Node.Kind = TSyntaxKind.AnonymousMethod then
+      Exit(not Fail('in einer anonymen Methode', AReason));
+    if Node.Kind = TSyntaxKind.WithStatement then
+      Exit(not Fail('in einem with-Rumpf', AReason));
+    if Node.Kind = TSyntaxKind.AsmBlock then
+      Exit(not Fail('asm', AReason));
+    Node := Node.Parent;
+  end;
+  Result := False;
+end;
+
+/// <summary>Erste Zeile der neuen Routine ABaseName (eindeutig gemacht in AShortName) vor ARoutine: Methode der
+/// Klasse samt Deklaration im private-Abschnitt (Edit in AEdits) oder Routine davor. AKind ist procedure oder
+/// function, AParams samt Klammern, AResult z. B. ': Boolean'.</summary>
+function NewRoutineHead(const AText: string; ATree: TSyntaxTree; ARoutine, ABody: TSyntaxNode;
+  const ABaseName, AKind, AParams, AResult: string; const AOptions: TExtractOptions; var AEdits: TArray<TTextEdit>;
+  out AShortName, AHead, AReason: string): Boolean;
+var
+  Name, Qualifier, Header, Indent, LineBreak, ClassDecl: string;
+  TypeBody: TSyntaxNode;
+  Tokens: TArray<TPascalToken>;
+  Token: Integer;
+  IsStatic: Boolean;
+  Edit: TTextEdit;
+begin
+  AHead := '';
+  AReason := '';
+  Tokens := ATree.Tokens;
+  LineBreak := TTextLines.LineBreakOf(AText);
+  Indent := TTextLines.IndentOf(AText, ARoutine.StartPos.Line);
+  AShortName := TRoutineBody.UniqueName(Tokens, ABaseName);
+  Header := AKind + ' ';
+  if IsClassRoutine(Tokens, ARoutine) then
+    Header := 'class ' + Header;
+  Name := ARoutine.Name;
+  Qualifier := '';
+  if Name.LastIndexOf('.') > 0 then
+    Qualifier := Name.Substring(0, Name.LastIndexOf('.'));
+  if (Qualifier = '') or (ARoutine.Parent = nil) or (ARoutine.Parent.Kind = TSyntaxKind.RoutineDecl) then
+  begin
+    AHead := Indent + Header + AShortName + AParams + AResult + ';' + LineBreak;
+    Exit(True);
+  end;
+  Name := Qualifier.Substring(Qualifier.LastIndexOf('.') + 1);
+  if Pos('<', Name) > 0 then
+    Name := Copy(Name, 1, Pos('<', Name) - 1);
+  TypeBody := TRoutineBody.TypeBody(ATree.Root, Name);
+  if TypeBody = nil then
+    Exit(Fail('Klasse ' + Name + ' nicht in der Datei', AReason));
+  IsStatic := False;
+  Token := TRoutineBody.TokenAt(Tokens, ARoutine.StartOffset);
+  while (Token <= High(Tokens)) and (Tokens[Token].Offset < ABody.StartOffset) do
+  begin
+    if (Tokens[Token].Kind = TPascalTokenKind.Identifier) and SameText(Tokens[Token].Text, 'static') then
+      IsStatic := True;
+    Inc(Token);
+  end;
+  ClassDecl := Header + AShortName + AParams + AResult + ';';
+  if IsStatic then
+    ClassDecl := ClassDecl + ' static;';
+  if not TRoutineBody.MemberDeclaration(AText, ATree, TypeBody, 'private', ClassDecl, AOptions.Style, Edit) then
+    Exit(Fail('Klassendeklaration nicht erweiterbar', AReason));
+  AEdits := AEdits + [Edit];
+  AHead := Indent + Header + Qualifier + '.' + AShortName + AParams + AResult + ';' + LineBreak;
+  Result := True;
+end;
+
 class function TExtractRefactoring.ExtractMethod(const AText: string; ATree: TSyntaxTree;
   const ARange: TTextRange; const AOptions: TExtractOptions; out AAction: TCodeAction): Boolean;
 var
@@ -439,7 +531,7 @@ class function TExtractRefactoring.ExtractMethod(const AText: string; ATree: TSy
   out AReason: string): Boolean;
 var
   First, Last, SelStart, SelEnd, Index, LocalIndex, LoopStart, LoopEnd, Line: Integer;
-  Routine, Body, Node, Loop, Statement, TypeBody, Anonymous: TSyntaxNode;
+  Routine, Body, Node, Loop, Statement, Anonymous: TSyntaxNode;
   Statements: TArray<TSyntaxNode>;
   Locals: TArray<TLocal>;
   Occurrences: TList<TOccurrence>;
@@ -452,14 +544,11 @@ var
   ReadIn, WriteIn, Before, After, FirstWrite, Seen: TArray<Boolean>;
   FirstNode: TArray<TSyntaxNode>;
   OnlyNames, Removed: TArray<string>;
-  Name, Qualifier, MethodText, ShortName, Params, Args, Header, Indent, Unit_, LineBreak, VarLines, ConstLines,
-    BodyText, StatementIndent, TypeText, ClassDecl: string;
+  MethodText, ShortName, Params, Args, Indent, Unit_, LineBreak, VarLines, ConstLines, BodyText, StatementIndent,
+    TypeText: string;
   Probed: TProbedType;
   Edits: TArray<TTextEdit>;
-  Edit: TTextEdit;
-  IsMethod, IsClass, IsStatic: Boolean;
   Tokens: TArray<TPascalToken>;
-  Token: Integer;
 begin
   AAction := Default(TCodeAction);
   AReason := '';
@@ -476,17 +565,8 @@ begin
   if not SelectedStatements(ATree, Body, SelStart, SelEnd, Statements) then
     Exit(Fail('keine vollständigen Anweisungen', AReason));
   // In einer anonymen Methode oder einem with-Rumpf: Namen hätten außen eine andere Bedeutung.
-  Node := Statements[0].Parent;
-  while (Node <> nil) and (Node <> Body) do
-  begin
-    if Node.Kind = TSyntaxKind.AnonymousMethod then
-      Exit(Fail('in einer anonymen Methode', AReason));
-    if Node.Kind = TSyntaxKind.WithStatement then
-      Exit(Fail('in einem with-Rumpf', AReason));
-    if Node.Kind = TSyntaxKind.AsmBlock then
-      Exit(Fail('asm', AReason));
-    Node := Node.Parent;
-  end;
+  if InsideBlocked(Statements[0], Body, AReason) then
+    Exit;
   if not JumpsInside(Body, Statements, SelStart, SelEnd, AReason) then
     Exit;
   Locals := TRoutineLocals.Collect(AText, ATree, Routine);
@@ -695,47 +775,13 @@ begin
     end;
   end;
   // Kopf: Methode der Klasse oder Routine vor der umgebenden.
-  Name := Routine.Name;
-  Qualifier := '';
-  if Name.LastIndexOf('.') > 0 then
-    Qualifier := Name.Substring(0, Name.LastIndexOf('.'));
-  IsMethod := (Qualifier <> '') and (Routine.Parent <> nil) and (Routine.Parent.Kind <> TSyntaxKind.RoutineDecl);
-  IsClass := IsClassRoutine(Tokens, Routine);
-  ShortName := TRoutineBody.UniqueName(Tokens, MethodName);
   if Params <> '' then
     Params := '(' + Params + ')';
   if Args <> '' then
     Args := '(' + Args + ')';
-  Header := 'procedure ';
-  if IsClass then
-    Header := 'class ' + Header;
-  if IsMethod then
-  begin
-    ShortName := TRoutineBody.UniqueName(Tokens, MethodName);
-    Name := Qualifier.Substring(Qualifier.LastIndexOf('.') + 1);
-    if Pos('<', Name) > 0 then
-      Name := Copy(Name, 1, Pos('<', Name) - 1);
-    TypeBody := TRoutineBody.TypeBody(ATree.Root, Name);
-    if TypeBody = nil then
-      Exit(Fail('Klasse ' + Name + ' nicht in der Datei', AReason));
-    IsStatic := False;
-    Token := TRoutineBody.TokenAt(Tokens, Routine.StartOffset);
-    while (Token <= High(Tokens)) and (Tokens[Token].Offset < Body.StartOffset) do
-    begin
-      if (Tokens[Token].Kind = TPascalTokenKind.Identifier) and SameText(Tokens[Token].Text, 'static') then
-        IsStatic := True;
-      Inc(Token);
-    end;
-    ClassDecl := Header + ShortName + Params + ';';
-    if IsStatic then
-      ClassDecl := ClassDecl + ' static;';
-    if not TRoutineBody.MemberDeclaration(AText, ATree, TypeBody, 'private', ClassDecl, AOptions.Style, Edit) then
-      Exit(Fail('Klassendeklaration nicht erweiterbar', AReason));
-    Edits := Edits + [Edit];
-    MethodText := Indent + Header + Qualifier + '.' + ShortName + Params + ';' + LineBreak;
-  end
-  else
-    MethodText := Indent + Header + ShortName + Params + ';' + LineBreak;
+  if not NewRoutineHead(AText, ATree, Routine, Body, MethodName, 'procedure', Params, '', AOptions, Edits, ShortName,
+    MethodText, AReason) then
+    Exit;
   if VarLines <> '' then
     MethodText := MethodText + Indent + 'var' + LineBreak + VarLines;
   if ConstLines <> '' then
@@ -992,6 +1038,159 @@ begin
   Result := True;
 end;
 
+{ Bedingung in Funktion auslagern }
+
+/// <summary>Ist ANode die ganze Bedingung eines if, while, until oder Bedingungsausdrucks?</summary>
+function IsConditionRoot(ANode: TSyntaxNode): Boolean;
+var
+  Parent: TSyntaxNode;
+begin
+  Result := False;
+  Parent := ANode.Parent;
+  if (Parent = nil) or (Parent.ChildCount = 0) or not (ANode.Kind in ExpressionKinds) then
+    Exit;
+  case Parent.Kind of
+    TSyntaxKind.IfStatement, TSyntaxKind.WhileStatement, TSyntaxKind.IfExpr:
+      Result := Parent[0] = ANode;
+    TSyntaxKind.RepeatStatement:
+      Result := Parent[Parent.ChildCount - 1] = ANode;
+  end;
+end;
+
+class function TExtractRefactoring.ExtractCondition(const AText: string; ATree: TSyntaxTree;
+  const ARange: TTextRange; const AOptions: TExtractOptions; out AAction: TCodeAction): Boolean;
+var
+  Reason: string;
+begin
+  Result := ExtractCondition(AText, ATree, ARange, AOptions, AAction, Reason);
+end;
+
+class function TExtractRefactoring.ExtractCondition(const AText: string; ATree: TSyntaxTree;
+  const ARange: TTextRange; const AOptions: TExtractOptions; out AAction: TCodeAction;
+  out AReason: string): Boolean;
+var
+  First, Last, SelStart, SelEnd, LocalIndex, Line: Integer;
+  Routine, Body, Condition, Node, Inner: TSyntaxNode;
+  Locals: TArray<TLocal>;
+  Identifiers: TList<TSyntaxNode>;
+  Lookup: TFlowSignatureLookup;
+  Order: TArray<Integer>;
+  Seen: TArray<Boolean>;
+  OnlyNames: TArray<string>;
+  Params, Args, ConstLines, TypeText, Indent, Unit_, LineBreak, ShortName, MethodText: string;
+  Probed: TProbedType;
+  Edits: TArray<TTextEdit>;
+begin
+  AAction := Default(TCodeAction);
+  AReason := '';
+  if (ATree = nil) or not OffsetRange(AText, ARange, First, Last) or (First = Last) or
+    not Trimmed(ATree.Tokens, First, Last, SelStart, SelEnd) then
+    Exit(Fail('keine Auswahl', AReason));
+  Routine := TRoutineBody.RoutineAt(ATree, SelStart);
+  if (Routine = nil) or (TRoutineBody.RoutineAt(ATree, SelEnd) <> Routine) then
+    Exit(Fail('nicht im Rumpf einer Routine', AReason));
+  Body := TRoutineBody.BodyOf(Routine);
+  Condition := TRoutineBody.Enclosing(Body, SelStart, SelEnd);
+  // Deckungsgleiche Knoten: von innen nach außen bis zur Bedingung.
+  while not IsConditionRoot(Condition) and (Condition.Parent <> nil) and
+    (Condition.Parent.StartOffset = SelStart) and (Condition.Parent.EndOffset = SelEnd) do
+    Condition := Condition.Parent;
+  if (Condition.StartOffset <> SelStart) or (Condition.EndOffset <> SelEnd) or not IsConditionRoot(Condition) then
+    Exit(Fail('keine ganze Bedingung', AReason));
+  if InsideBlocked(Condition, Body, AReason) then
+    Exit(False);
+  if TRoutineLocals.HasKind(Condition, TSyntaxKind.AnonymousMethod) then
+    Exit(Fail('anonyme Methode in der Bedingung', AReason));
+  Locals := TRoutineLocals.Collect(AText, ATree, Routine);
+  OnlyNames := RoutineOnlyNames(Routine);
+  Lookup := TFlowSignatures.FromTree(ATree.Root);
+  SetLength(Seen, Length(Locals));
+  for LocalIndex := 0 to High(Seen) do
+    Seen[LocalIndex] := False;
+  Order := nil;
+  Identifiers := TList<TSyntaxNode>.Create;
+  try
+    TRoutineLocals.CollectKind(Condition, TSyntaxKind.Identifier, Identifiers);
+    for Node in Identifiers do
+    begin
+      LocalIndex := TRoutineLocals.IndexOf(Locals, Node.Name, Node.StartOffset);
+      if LocalIndex < 0 then
+      begin
+        if SameText(Node.Name, 'Result') then
+          Exit(Fail('Result in der Bedingung', AReason));
+        if IndexText(Node.Name, OnlyNames) >= 0 then
+          Exit(Fail(Node.Name + ' ist nur in der Routine sichtbar', AReason));
+        Continue;
+      end;
+      // Nur lesen: Die Funktion bekommt die Werte als const-Parameter.
+      if TRoutineLocals.AccessOf(Node, Lookup) <> TAccess.Read then
+        Exit(Fail('die Bedingung ändert ' + Node.Name, AReason));
+      if not Seen[LocalIndex] then
+      begin
+        Seen[LocalIndex] := True;
+        Order := Order + [LocalIndex];
+      end;
+    end;
+  finally
+    Identifiers.Free;
+  end;
+  Edits := nil;
+  Params := '';
+  Args := '';
+  ConstLines := '';
+  LineBreak := TTextLines.LineBreakOf(AText);
+  Unit_ := TRoutineBody.IndentUnit(AOptions.Style);
+  Indent := TTextLines.IndentOf(AText, Routine.StartPos.Line);
+  for LocalIndex in Order do
+  begin
+    if Locals[LocalIndex].Kind = TLocalKind.Constant then
+    begin
+      ConstLines := ConstLines + Indent + Unit_ + TRoutineBody.TextOf(AText, Locals[LocalIndex].Decl) + LineBreak;
+      Continue;
+    end;
+    TypeText := Locals[LocalIndex].TypeText;
+    if (TypeText = '') and (Locals[LocalIndex].Initializer <> nil) then
+    begin
+      Probed := TypeOfExpression(AText, ATree, Locals[LocalIndex].Initializer, Locals[LocalIndex].Statement,
+        AOptions);
+      TypeText := Probed.Name;
+      AddUsesFor(ATree, AText, Probed, Routine.StartOffset, Edits);
+    end;
+    if TypeText = '' then
+      Exit(Fail('Typ von ' + Locals[LocalIndex].Name + ' unbekannt', AReason));
+    if Params <> '' then
+    begin
+      Params := Params + '; ';
+      Args := Args + ', ';
+    end;
+    Params := Params + 'const ' + Locals[LocalIndex].Name + ': ' + TypeText;
+    Args := Args + Locals[LocalIndex].Name;
+  end;
+  if Params <> '' then
+    Params := '(' + Params + ')';
+  if Args <> '' then
+    Args := '(' + Args + ')';
+  if not NewRoutineHead(AText, ATree, Routine, Body, ConditionName, 'function', Params, ': Boolean', AOptions,
+    Edits, ShortName, MethodText, AReason) then
+    Exit(False);
+  if ConstLines <> '' then
+    MethodText := MethodText + Indent + 'const' + LineBreak + ConstLines;
+  // Klammern um die ganze Bedingung braucht die Zuweisung nicht.
+  Inner := Condition;
+  if (Inner.Kind = TSyntaxKind.ParenExpr) and (Inner.ChildCount = 1) then
+    Inner := Inner[0];
+  MethodText := MethodText + Indent + 'begin' + LineBreak + TRoutineBody.Reindent('Result := ' +
+    TRoutineBody.TextOf(AText, Inner) + ';', TTextLines.IndentOf(AText, Condition.StartPos.Line), Indent + Unit_,
+    LineBreak) + LineBreak + Indent + 'end;' + LineBreak + LineBreak;
+  Line := TRoutineBody.RoutineInsertLine(AText, Routine);
+  Edits := Edits + [TTextEdit.Create(TTextRange.Create(Line, 0, Line, 0), MethodText),
+    TTextEdit.Create(TTextRange.Create(Condition.StartPos, Condition.EndPos), ShortName + Args)];
+  AAction.Title := 'Bedingung in Funktion auslagern';
+  AAction.Kind := ExtractKind;
+  AAction.Edits := Edits;
+  Result := True;
+end;
+
 class function TExtractRefactoring.Actions(const AText: string; ATree: TSyntaxTree; const ARange: TTextRange;
   const AOptions: TExtractOptions): TArray<TCodeAction>;
 var
@@ -1007,6 +1206,8 @@ begin
   if ExtractConstant(AText, ATree, ARange, AOptions, False, Action) then
     Result := Result + [Action];
   if ExtractConstant(AText, ATree, ARange, AOptions, True, Action) then
+    Result := Result + [Action];
+  if ExtractCondition(AText, ATree, ARange, AOptions, Action) then
     Result := Result + [Action];
 end;
 
