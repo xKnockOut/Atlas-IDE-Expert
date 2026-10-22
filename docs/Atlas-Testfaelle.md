@@ -4135,3 +4135,17 @@ Voraussetzung: Server läuft in der IDE mit Projekt; ein Formular `TfrmKunde` in
 | FR7 | `"form-resource-missing": "off"`, `"group:forms": "off"` bzw. `exclude` | Keine Meldung |
 | FR8 | Linter: `AtlasServer --check` über ein Projekt mit einer Unit wie FR1 | Treffer `form-resource-missing` in der Ausgabe |
 | FR9 | Abgleich mit Delphi: FR1 übersetzen und das Formular erzeugen, FR4 übersetzen | FR1: EResNotFound zur Laufzeit; FR4: F1026 |
+
+## Formular automatisch und zusätzlich von Hand erzeugt (#1055)
+
+Voraussetzung: Server läuft in der IDE mit Projekt; die `.dpr` enthält `Application.CreateForm(TfrmBericht, frmBericht);`.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| FX1 | Das Beispiel aus #1055: im Hauptformular `frmBericht := TfrmBericht.Create(Application); frmBericht.ShowModal;` | Warnung `form-autocreate-and-manual` an `frmBericht := TfrmBericht.Create`: „frmBericht wird schon in Projekt.dpr erzeugt; hier entsteht eine zweite Instanz.“; im Fenster „Atlas-Prüfung“ und im Befund-Hover (**Abnahme**) |
+| FX2 | Schnellkorrektur „Application.CreateForm(TfrmBericht, frmBericht) aus Projekt.dpr entfernen“, danach in der `.dpr` Strg+Z | Die Zeile verschwindet aus der `.dpr` (Projekt > Optionen > Formulare: frmBericht unter „Verfügbare Formulare“), keine Meldung mehr; Strg+Z stellt sie in einem Schritt wieder her |
+| FX3 | `if not Assigned(frmBericht) then frmBericht := …`, `if frmBericht = nil then …`, vorher `frmBericht.Free` bzw. `FreeAndNil(frmBericht)` | Keine Meldung |
+| FX4 | Lokale Variable `frmBericht`, Feld `frmBericht` in der eigenen Klasse, `Dialog := TfrmBericht.Create(nil)`, `with TfrmBericht.Create(nil) do`, `frmBericht := TfrmAnders.Create(nil)` | Keine Meldung |
+| FX5 | Formular nicht in der Liste der automatisch erzeugten (Projektoptionen) | Keine Meldung |
+| FX6 | `"form-autocreate-and-manual": "off"`, `"group:forms": "off"` bzw. `exclude` | Keine Meldung |
+| FX7 | Abgleich mit Delphi: FX1 ausführen, im Debugger `Screen.FormCount` vor und nach dem Klick | Ein Formular mehr als ohne Fehler; nach FX2 nicht mehr |

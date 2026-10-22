@@ -15,7 +15,7 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 | [Performance](#gruppe-performance) | 4 |
 | [Sicherheit](#gruppe-security) | 11 |
 | [Komponenten](#gruppe-components) | 8 |
-| [Formulare und Daten](#gruppe-forms) | 11 |
+| [Formulare und Daten](#gruppe-forms) | 12 |
 | [Architektur](#gruppe-architecture) | 3 |
 | [Stil und Metriken](#gruppe-style) | 28 |
 | [Packages und Tests](#gruppe-packages) | 3 |
@@ -213,6 +213,7 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 | [`dfm-property`](#dfm-property) | Komponenten-Property verletzt eine Eigenschaftsregel | Code Smell | Warnung |
 | [`foreign-form-control-access`](#foreign-form-control-access) | Zugriff auf Controls eines anderen Formulars | Code Smell | Warnung |
 | [`form-resource-missing`](#form-resource-missing) | Formular-Unit ohne {$R *.dfm} | Bug | Fehler |
+| [`form-autocreate-and-manual`](#form-autocreate-and-manual) | Formular automatisch und zusätzlich von Hand erzeugt | Bug | Warnung |
 
 <a id="gruppe-architecture"></a>
 ### Architektur
@@ -4568,4 +4569,27 @@ implementation
 {$R *.dfm}
 
 procedure TfrmKunde.FormShow(Sender: TObject);
+```
+
+<a id="form-autocreate-and-manual"></a>
+### form-autocreate-and-manual
+
+**Formular automatisch und zusätzlich von Hand erzeugt** · Bug · Warnung · Gruppe Formulare und Daten
+
+Die .dpr erzeugt ein Formular mit Application.CreateForm, der Code weist derselben globalen Variablen zusätzlich TfrmX.Create(…) zu. Es gibt dann zwei Instanzen, die erste bleibt unsichtbar im Speicher. Die automatisch erzeugten Formulare kommen aus der .dpr des Projekts, zu dem die Unit gehört; kann die Regel die .dpr lesen, muss die Klasse zum CreateForm-Aufruf passen. Still bleibt sie, wenn die Routine die Variable prüft (Assigned, Vergleich mit nil) oder vorher freigibt (Free, FreeAndNil, Release), bei lokalen Namen und gleichnamigen Feldern der eigenen Klasse und bei Units ohne Projekt. Sicherheit hoch. Korrektur: die Zeile mit Application.CreateForm aus der .dpr entfernen (das Formular erzeugt dann nur noch der Code).
+
+Mit Treffer:
+
+```pascal
+// Projekt.dpr: Application.CreateForm(TfrmBericht, frmBericht);
+frmBericht := TfrmBericht.Create(Application);
+frmBericht.ShowModal;
+```
+
+Richtig:
+
+```pascal
+// Projekt.dpr without CreateForm for TfrmBericht
+frmBericht := TfrmBericht.Create(Application);
+frmBericht.ShowModal;
 ```

@@ -2306,6 +2306,16 @@
       "compilerCodes": [
         "F1026"
       ]
+    },
+    {
+      "id": "form-autocreate-and-manual",
+      "name": "Form created automatically and by hand",
+      "category": "bug",
+      "severity": "warning",
+      "group": "forms",
+      "description": "The .dpr creates a form with Application.CreateForm, and the code also assigns TfrmX.Create(…) to the same global variable. There are then two instances; the first one stays invisible in memory. The automatically created forms come from the .dpr of the project the unit belongs to; when the rule can read the .dpr, the class must match the CreateForm call. Silent when the routine checks the variable (Assigned, comparison with nil) or frees it before (Free, FreeAndNil, Release), for local names and for fields of the own class with the same name, and for units without a project. High confidence. Quick fix: remove the Application.CreateForm line from the .dpr (the form is then only created by the code).",
+      "bad": "// Projekt.dpr: Application.CreateForm(TfrmBericht, frmBericht);\nfrmBericht := TfrmBericht.Create(Application);\nfrmBericht.ShowModal;",
+      "good": "// Projekt.dpr without CreateForm for TfrmBericht\nfrmBericht := TfrmBericht.Create(Application);\nfrmBericht.ShowModal;"
     }
   ]
 }
