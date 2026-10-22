@@ -106,3 +106,4 @@ unit-name-mismatch | Ref.Daten.Suche.pas | unit Ref.Daten.Suche; | unit Ref.Date
 text-after-final-end | Ref.Daten.Kunden.pas | \nend. | \nend.\n\nprocedure Nachtrag;\nbegin\nend;
 exports-invalid | Ref.Daten.Verwendung.pas | \nend. | \nexports\n  NeuerAuftrag,\n  NeuerAuftrag;\n\nend.
 unit-name-conflict | Ref.Sprache.Merkmale.pas | unit Ref.Sprache.Merkmale; | unit SysInit;
+implicit-variants-unit | Ref.Daten.Verwendung.pas | \nimplementation\n | \nimplementation\n\nvar\n  Wert: Variant;\n

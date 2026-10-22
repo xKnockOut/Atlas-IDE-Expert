@@ -4178,3 +4178,18 @@ Voraussetzung: Server läuft in der IDE mit Projekt; Unit-Suche kennt die Biblio
 | NK5 | Das Beispiel aus #1079: `unit Kunden;` neben `Kunden.Daten.pas` und `Kunden.Ansicht.pas` | Keine Meldung; Delphi übersetzt das ohne E2399 (bitte gegenprüfen) |
 | NK6 | `"unit-name-conflict": "off"`, `"group:compiler": "off"` bzw. `exclude` | Keine Meldung |
 | NK7 | Abgleich mit Delphi: NK1, NK4 und NK5 übersetzen | dcc meldet E2272 bzw. E2242 an denselben Stellen, für NK5 nichts |
+
+## Variant ohne System.Variants in uses (#1082)
+
+Voraussetzung: Server läuft in der IDE; in `atlas.json` `"implicit-variants-unit": "hint"` (standardmäßig aus) oder Profil `strict`.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| IV1 | Das Beispiel aus #1082: `uses System.SysUtils;` und `var Wert: Variant;` | Hinweis `implicit-variants-unit` an `Variant`: „Variant wird ohne System.Variants in uses verwendet (wie W1040).“; im Fenster „Atlas-Prüfung“ und im Befund-Hover (**Abnahme**) |
+| IV2 | Schnellkorrektur „System.Variants in uses aufnehmen“, danach Strg+Z | `System.Variants` steht im uses des Abschnitts, keine Meldung mehr; ein Undo-Schritt |
+| IV3 | Unit mit `uses SysUtils, Classes;` (ohne Namespace) | Korrektur heißt „Variants in uses aufnehmen“ |
+| IV4 | `OleVariant`-Parameter, `TList<Variant>` | Meldung an der ersten Typangabe |
+| IV5 | `System.Variants` im uses (auch in `{$IFDEF}`), `{$WARN IMPLICIT_VARIANTS OFF}`, eigener `type Variant = …` | Keine Meldung |
+| IV6 | Ohne Eintrag in `atlas.json` | Keine Meldung (Regel ist aus) |
+| IV7 | `"group:compiler": "off"` bzw. `exclude` | Keine Meldung |
+| IV8 | Abgleich mit Delphi: IV1 übersetzen | dcc meldet W1040 für die Unit, nach IV2 nicht mehr |
